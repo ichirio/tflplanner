@@ -1,5 +1,16 @@
 # rtfplanner 0.0.0.9000
 
+- rtfplanner keeps each study's state in a home of its own
+  (`setup_rtfplanner()`, `rtfplanner_home()`, `rtfplanner_config()`): a
+  study opens as it was last saved, with a history of earlier saves.  The
+  definition workbooks are written from it; `export_spec()` /
+  `import_spec()` move them in and out.  `create_study()`,
+  `open_study()`, `register_study()`, `unregister_study()` and
+  `list_studies()` work on the registered studies; `run_app()` sets the
+  home up on first use.
+- The code editors no longer write one report's text into another when
+  the study or report is switched while the browser is still reporting.
+
 - Studies: each study is a folder (`study.yml`, `data/`, `spec/`, `programs/`,
   `output/ard/`, `output/tfl/`, `logs/`) created, opened, saved, run and
   tracked from the app (`create_study()`, `open_study()`, `save_study()`,

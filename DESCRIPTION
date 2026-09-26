@@ -25,10 +25,11 @@ Language: en-US
 Depends:
     R (>= 4.1)
 Imports:
+    jsonlite,
     processx,
     readxl,
     rhandsontable,
-    rtfreporter (>= 0.8.0.9081),
+    rtfreporter (>= 0.8.0.9082),
     shiny,
     bslib,
     DT,

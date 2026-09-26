@@ -5,15 +5,13 @@
 \alias{planner_app}
 \title{Start the rtfplanner app}
 \usage{
-run_app(root = getOption("rtfplanner.root", getwd()), study = NULL, ...)
+run_app(study = NULL, ...)
 
-planner_app(root = getOption("rtfplanner.root", getwd()), study = NULL)
+planner_app(study = NULL)
 }
 \arguments{
-\item{root}{The folder that holds the studies; defaults to
-\code{getOption("rtfplanner.root")}, else the working directory.}
-
-\item{study}{A study to open at start: its folder, or its id in \code{root}.}
+\item{study}{A study to open at start: a registered study's id, or a
+study folder.}
 
 \item{...}{Passed to \code{\link[shiny:runApp]{shiny::runApp()}} (e.g. \code{launch.browser}, \code{port}).}
 }
@@ -22,14 +20,15 @@ planner_app(root = getOption("rtfplanner.root", getwd()), study = NULL)
 \code{run_app()} runs it.
 }
 \description{
-Opens the study manager: choose or create a study in \code{root}, then define
-its reports (Tables from the table definition; Listings and Figures from
-their programs), their data code, and run them.  Each study is a folder
-with a fixed layout (\code{\link[=study_layout]{study_layout()}}).
+Opens the study manager.  Choose a study -- it opens as it was last
+saved -- or create or register one, then define its reports (Tables from
+the table definition; Listings and Figures from their programs), their
+data code, and run them.  The first time, rtfplanner's home is set up
+with the defaults (\code{\link[=setup_rtfplanner]{setup_rtfplanner()}}).
 }
 \examples{
 \dontrun{
-run_app("C:/studies")
-run_app("C:/studies", study = "ABC-101")
+run_app()
+run_app("ABC-101")
 }
 }

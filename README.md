@@ -5,6 +5,29 @@ A 'shiny' study manager for clinical TFLs built with
 folder that holds its input data, its definitions, its programs, its
 deliverables and its logs; the app defines the reports and runs them.
 
+## Where rtfplanner keeps things
+
+rtfplanner has a **home** of its own, apart from the study folders:
+
+```
+<home>/                      tools::R_user_dir("rtfplanner", "data") by default
+  config.yml                 studies_root (where new study folders go), last_study
+  studies/<STUDY_ID>/
+    state.json               the study as last saved -- the master copy
+    history/<time>.json      every earlier saved state
+```
+
+A study opens **as it was last saved**, from its `state.json`: the study's
+fields, every sheet of the definition, the report list and the data code.
+The definition workbooks in the study folder's `spec/` are written from it
+on every save (the programs read them); exporting them elsewhere and
+importing workbooks are separate, explicit actions.
+
+```r
+rtfplanner::setup_rtfplanner(studies_root = "C:/studies")   # once
+rtfplanner::setup_rtfplanner(home = "D:/rtfplanner")         # another home
+```
+
 ## A study is a folder
 
 ```
@@ -50,15 +73,17 @@ rtfplanner needs the rtfreporter branch that has the definition workbooks
 remotes::install_github("ichirio/rtfreporter@feat/474-ard-experimental")
 remotes::install_local("C:/Yrepo/rtfplanner")
 
-rtfplanner::run_app("C:/studies")                     # the folder of studies
-rtfplanner::run_app("C:/studies", study = "ABC-101")  # open one at start
+rtfplanner::run_app()             # sets the home up the first time
+rtfplanner::run_app("ABC-101")    # open a study at start
 ```
 
 ## The app
 
-- **試験** — the studies in the root folder; create one (empty, copied
-  from another study, or from rtfreporter's five sample reports), open
-  one, edit its title/compound/phase/rounding, import workbooks, zip it.
+- **試験** — the registered studies (the last one used is selected);
+  open one as last saved, create one (empty, copied from another study,
+  or from rtfreporter's five sample reports), register an existing study
+  folder, unregister one (its folder stays); edit its title / compound /
+  phase / rounding; import or export the definition workbooks; zip it.
 - **帳票一覧** — add (with type), copy, rename, delete and order the
   reports; each report's data code and the setup code every program runs;
   the program as it will be written, and whether the one on disk was edited.
@@ -77,8 +102,8 @@ rtfplanner::run_app("C:/studies", study = "ABC-101")  # open one at start
 
 ```r
 library(rtfplanner)
-s <- create_study("C:/studies", "ABC-101", title = "A phase 2 study")
-s <- open_study("C:/studies/ABC-101")
+s <- create_study("ABC-101", title = "A phase 2 study")
+s <- open_study("ABC-101")                  # as last saved
 s$planner <- add_output(s$planner, "T_DM", type = "table")
 s <- save_study(s)
 run_study(s)            # -> study_status(s)

@@ -3,48 +3,73 @@
 \name{create_study}
 \alias{create_study}
 \alias{open_study}
+\alias{register_study}
+\alias{unregister_study}
 \alias{list_studies}
-\title{Create, open and list studies}
+\title{Create, open, register and list studies}
 \usage{
 create_study(
-  root,
   study_id,
   title = NA,
   compound = NA,
   phase = NA,
   description = NA,
-  planner = NULL
+  planner = NULL,
+  root = studies_root(home),
+  home = rtfplanner_home()
 )
 
-open_study(path)
+open_study(study, home = rtfplanner_home())
 
-list_studies(root)
+register_study(path, home = rtfplanner_home())
+
+unregister_study(study_id, home = rtfplanner_home())
+
+list_studies(home = rtfplanner_home())
 }
 \arguments{
-\item{root}{The folder that holds the studies.}
-
 \item{study_id}{The study's id, which is also its folder name.}
 
 \item{title, compound, phase, description}{What the study is.}
 
-\item{planner}{An \code{rtfplanner} to start from (e.g. \code{\link[=read_planner]{read_planner()}} of an
-earlier study's workbooks); \code{NULL} starts empty.}
+\item{planner}{An \code{rtfplanner} to start from (e.g. an earlier study's
+\code{open_study(...)$planner}); \code{NULL} starts empty.}
+
+\item{root}{The folder the new study folder goes in; defaults to the
+one set up with \code{\link[=setup_rtfplanner]{setup_rtfplanner()}}.}
+
+\item{home}{rtfplanner's home.}
+
+\item{study}{A registered study's id, or a study folder.}
 
 \item{path}{A study folder.}
 }
 \value{
-\code{create_study()} and \code{open_study()} return an \code{rtfstudy}:
-\code{path}, \code{meta} (the study.yml fields) and \code{planner}.
+\code{create_study()}, \code{open_study()} and \code{register_study()} return
+an \code{rtfstudy}: \code{path}, \code{meta} (the study.yml fields) and \code{planner}.
 \code{list_studies()} returns a data frame.
 }
 \description{
-\code{create_study()} makes the study folder with its layout, \code{study.yml}, an
-RStudio project and empty (or given) definition workbooks.
-\code{open_study()} reads one.  \code{list_studies()} lists the studies in a
-folder of studies.
+A study is known to rtfplanner by its saved state in the home
+(\code{\link[=setup_rtfplanner]{setup_rtfplanner()}}); its folder holds the data, the programs and the
+deliverables.
+}
+\details{
+\itemize{
+\item \code{create_study()} makes the study folder -- layout, \code{study.yml}, an
+RStudio project -- and saves the study, which registers it.
+\item \code{open_study()} returns a study as it was last saved.  Given the folder
+of a study rtfplanner does not know yet, it registers it first.
+\item \code{register_study()} adds an existing study folder: its \code{study.yml}, and
+its definition workbooks when \verb{spec/} has them.
+\item \code{unregister_study()} forgets a study; its folder is left alone.
+\item \code{list_studies()} lists the registered studies.
+}
 }
 \examples{
-root <- tempfile()
-s <- create_study(root, "ABC-101", title = "A phase 2 study")
-list_studies(root)
+\dontrun{
+s <- create_study("ABC-101", title = "A phase 2 study")
+list_studies()
+s <- open_study("ABC-101")
+}
 }

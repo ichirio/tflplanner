@@ -4,21 +4,25 @@
 \alias{save_study}
 \title{Save a study}
 \usage{
-save_study(study, regenerate = character())
+save_study(study, regenerate = character(), home = rtfplanner_home())
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
 
 \item{regenerate}{Report ids whose program is written anew.}
+
+\item{home}{rtfplanner's home.}
 }
 \value{
 The study, invisibly, with \code{files}: what was written or kept.
 }
 \description{
-Writes the definition workbooks to \verb{spec/} (with \code{output_path} and
-\code{program_dir} set to the study's own folders), the report programs,
-\code{autoexec_report.R}, and \code{study.yml}.  A program rtfplanner wrote and
-nobody has touched since (its banner's checksum still matches) follows
-the definition and is rewritten when it changes; one edited by hand is
-kept unless it is named in \code{regenerate}.
+Saves the study's state in rtfplanner's home (the copy
+\code{\link[=open_study]{open_study()}} reads; the one before goes to its history), then writes
+the study folder from it: the definition workbooks in \verb{spec/} (with
+\code{output_path} and \code{program_dir} set to the study's own folders), the
+report programs, \code{autoexec_report.R}, and \code{study.yml}.  A program
+rtfplanner wrote and nobody has touched since (its banner's checksum
+still matches) follows the definition and is rewritten when it changes;
+one edited by hand is kept unless it is named in \code{regenerate}.
 }

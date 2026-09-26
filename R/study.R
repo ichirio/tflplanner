@@ -79,30 +79,48 @@ study_layout <- function() {
   p
 }
 
-#' Create, open and list studies
+#' Create, open, register and list studies
 #'
-#' `create_study()` makes the study folder with its layout, `study.yml`, an
-#' RStudio project and empty (or given) definition workbooks.
-#' `open_study()` reads one.  `list_studies()` lists the studies in a
-#' folder of studies.
+#' A study is known to rtfplanner by its saved state in the home
+#' ([setup_rtfplanner()]); its folder holds the data, the programs and the
+#' deliverables.
 #'
-#' @param root The folder that holds the studies.
+#' * `create_study()` makes the study folder -- layout, `study.yml`, an
+#'   RStudio project -- and saves the study, which registers it.
+#' * `open_study()` returns a study as it was last saved.  Given the folder
+#'   of a study rtfplanner does not know yet, it registers it first.
+#' * `register_study()` adds an existing study folder: its `study.yml`, and
+#'   its definition workbooks when `spec/` has them.
+#' * `unregister_study()` forgets a study; its folder is left alone.
+#' * `list_studies()` lists the registered studies.
+#'
 #' @param study_id The study's id, which is also its folder name.
 #' @param title,compound,phase,description What the study is.
-#' @param planner An `rtfplanner` to start from (e.g. [read_planner()] of an
-#'   earlier study's workbooks); `NULL` starts empty.
+#' @param planner An `rtfplanner` to start from (e.g. an earlier study's
+#'   `open_study(...)$planner`); `NULL` starts empty.
+#' @param root The folder the new study folder goes in; defaults to the
+#'   one set up with [setup_rtfplanner()].
+#' @param study A registered study's id, or a study folder.
 #' @param path A study folder.
-#' @return `create_study()` and `open_study()` return an `rtfstudy`:
-#'   `path`, `meta` (the study.yml fields) and `planner`.
+#' @param home rtfplanner's home.
+#' @return `create_study()`, `open_study()` and `register_study()` return
+#'   an `rtfstudy`: `path`, `meta` (the study.yml fields) and `planner`.
 #'   `list_studies()` returns a data frame.
 #' @examples
-#' root <- tempfile()
-#' s <- create_study(root, "ABC-101", title = "A phase 2 study")
-#' list_studies(root)
+#' \dontrun{
+#' s <- create_study("ABC-101", title = "A phase 2 study")
+#' list_studies()
+#' s <- open_study("ABC-101")
+#' }
 #' @export
-create_study <- function(root, study_id, title = NA, compound = NA,
-                         phase = NA, description = NA, planner = NULL) {
+create_study <- function(study_id, title = NA, compound = NA, phase = NA,
+                         description = NA, planner = NULL,
+                         root = studies_root(home),
+                         home = rtfplanner_home()) {
   study_id <- .check_study_id(study_id)
+  if (!is.null(.read_state(study_id, home))) {
+    stop("Study '", study_id, "' is already registered.", call. = FALSE)
+  }
   path <- file.path(root, study_id)
   if (file.exists(path)) {
     stop("A folder '", study_id, "' is already there: ", path, call. = FALSE)
@@ -116,42 +134,116 @@ create_study <- function(root, study_id, title = NA, compound = NA,
                created = format(Sys.Date()))
   .write_meta(meta, path)
   writeLines(.rproj, file.path(path, paste0(study_id, ".Rproj")))
-  s <- structure(list(path = normalizePath(path, "/"), meta = .read_meta(path),
-                      planner = planner %||% new_planner()),
-                 class = "rtfstudy")
-  save_study(s)
+  s <- .new_study(path, .read_meta(path)[.study_fields],
+                  planner %||% new_planner())
+  save_study(s, home = home)
 }
 
-#' @rdname create_study
-#' @export
-open_study <- function(path) {
-  meta <- .read_meta(path)
-  sp <- file.path(path, study_layout()[["spec"]], c(.table_file, .report_file))
-  sp <- sp[file.exists(sp)]
-  p <- if (length(sp)) read_planner(sp) else new_planner()
-  structure(list(path = normalizePath(path, "/"), meta = meta, planner = p),
+.new_study <- function(path, meta, planner) {
+  structure(list(path = normalizePath(path, "/", mustWork = FALSE),
+                 meta = meta, planner = .study_spec_keys(planner)),
             class = "rtfstudy")
 }
 
+.study_from_state <- function(st) {
+  meta <- lapply(stats::setNames(.study_fields, .study_fields), function(k)
+    as.character(st$meta[[k]] %||% NA_character_))
+  .new_study(st$path, meta, .planner_from_state(st))
+}
+
 #' @rdname create_study
 #' @export
-list_studies <- function(root) {
-  dirs <- list.dirs(root, recursive = FALSE)
-  dirs <- dirs[file.exists(file.path(dirs, .study_file))]
-  rows <- lapply(dirs, function(d) {
-    m <- tryCatch(.read_meta(d), error = function(e) NULL)
-    if (is.null(m)) return(NULL)
-    data.frame(study_id = m$study_id %||% basename(d),
-               title = m$title, compound = m$compound, phase = m$phase,
-               updated = as.character(m$updated %||% NA),
-               path = normalizePath(d, "/"), stringsAsFactors = FALSE)
+open_study <- function(study, home = rtfplanner_home()) {
+  is_dir <- dir.exists(study) &&
+    file.exists(file.path(study, .study_file))
+  id <- if (is_dir) .read_meta(study)$study_id else study
+  st <- .read_state(id, home)
+  if (is.null(st)) {
+    if (is_dir) return(register_study(study, home = home))
+    stop("No study '", study, "': not registered and not a study folder.",
+         call. = FALSE)
+  }
+  s <- .study_from_state(st)
+  # a registered study whose folder has moved, opened from where it is now
+  if (is_dir && !identical(s$path, normalizePath(study, "/"))) {
+    s$path <- normalizePath(study, "/")
+    .write_state(s, home)
+  }
+  .set_config("last_study", id, home)
+  s
+}
+
+#' @rdname create_study
+#' @export
+register_study <- function(path, home = rtfplanner_home()) {
+  meta <- .read_meta(path)
+  id <- .check_study_id(meta$study_id)
+  st <- .read_state(id, home)
+  if (!is.null(st) &&
+      !identical(normalizePath(st$path, "/", FALSE),
+                 normalizePath(path, "/"))) {
+    stop("Study '", id, "' is already registered at ", st$path, ".",
+         call. = FALSE)
+  }
+  sp <- file.path(path, study_layout()[["spec"]], c(.table_file, .report_file))
+  sp <- sp[file.exists(sp)]
+  p <- if (length(sp)) read_planner(sp) else new_planner()
+  s <- .new_study(path, meta[.study_fields], p)
+  .write_state(s, home)
+  .set_config("last_study", id, home)
+  s
+}
+
+#' @rdname create_study
+#' @export
+unregister_study <- function(study_id, home = rtfplanner_home()) {
+  unlink(.store_dir(study_id, home), recursive = TRUE)
+  if (identical(rtfplanner_config(home)$last_study, study_id)) {
+    .set_config("last_study", NULL, home)
+  }
+  invisible(study_id)
+}
+
+#' @rdname create_study
+#' @export
+list_studies <- function(home = rtfplanner_home()) {
+  ids <- basename(list.dirs(file.path(home, "studies"), recursive = FALSE))
+  rows <- lapply(ids, function(id) {
+    st <- tryCatch(.read_state(id, home), error = function(e) NULL)
+    if (is.null(st)) return(NULL)
+    v <- function(k) as.character(st$meta[[k]] %||% NA_character_)
+    data.frame(study_id = id, title = v("title"), compound = v("compound"),
+               phase = v("phase"), saved = as.character(st$saved %||% NA),
+               path = st$path, folder = dir.exists(st$path),
+               stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, c(list(data.frame(
     study_id = character(), title = character(), compound = character(),
-    phase = character(), updated = character(), path = character())),
-    rows))
+    phase = character(), saved = character(), path = character(),
+    folder = logical())), rows))
   rownames(out) <- NULL
   out
+}
+
+#' Definition workbooks in and out
+#'
+#' The study's definition lives in rtfplanner's home and is written to the
+#' study folder's `spec/` on every save.  `export_spec()` writes the two
+#' workbooks anywhere else; `import_spec()` replaces the study's definition
+#' with what a set of workbooks says (save the study to keep it).
+#'
+#' @param study An `rtfstudy`.
+#' @param dir Destination folder.
+#' @param path One or more `.xlsx` workbooks.
+#' @return `export_spec()` the paths written; `import_spec()` the study.
+#' @export
+export_spec <- function(study, dir) write_planner(study$planner, dir)
+
+#' @rdname export_spec
+#' @export
+import_spec <- function(study, path) {
+  study$planner <- .study_spec_keys(read_planner(path))
+  study
 }
 
 #' @export
@@ -167,18 +259,22 @@ print.rtfstudy <- function(x, ...) {
 
 #' Save a study
 #'
-#' Writes the definition workbooks to `spec/` (with `output_path` and
-#' `program_dir` set to the study's own folders), the report programs,
-#' `autoexec_report.R`, and `study.yml`.  A program rtfplanner wrote and
-#' nobody has touched since (its banner's checksum still matches) follows
-#' the definition and is rewritten when it changes; one edited by hand is
-#' kept unless it is named in `regenerate`.
+#' Saves the study's state in rtfplanner's home (the copy
+#' [open_study()] reads; the one before goes to its history), then writes
+#' the study folder from it: the definition workbooks in `spec/` (with
+#' `output_path` and `program_dir` set to the study's own folders), the
+#' report programs, `autoexec_report.R`, and `study.yml`.  A program
+#' rtfplanner wrote and nobody has touched since (its banner's checksum
+#' still matches) follows the definition and is rewritten when it changes;
+#' one edited by hand is kept unless it is named in `regenerate`.
 #'
 #' @param study An `rtfstudy`.
 #' @param regenerate Report ids whose program is written anew.
+#' @param home rtfplanner's home.
 #' @return The study, invisibly, with `files`: what was written or kept.
 #' @export
-save_study <- function(study, regenerate = character()) {
+save_study <- function(study, regenerate = character(),
+                       home = rtfplanner_home()) {
   p <- .study_spec_keys(study$planner)
   study$planner <- p
   root <- study$path
@@ -226,11 +322,13 @@ save_study <- function(study, regenerate = character()) {
   } else {
     files[nrow(files) + 1L, ] <- list(f, "unchanged")
   }
-  meta <- study$meta
-  meta$updated <- NULL
-  meta$rtfplanner <- NULL
+  meta <- study$meta[.study_fields]
+  old_meta <- tryCatch(.read_meta(root), error = function(e) list())
+  meta$created <- old_meta$created %||% format(Sys.Date())
   .write_meta(meta, root)
-  study$meta <- .read_meta(root)
+  study$meta <- .read_meta(root)[.study_fields]
+  .write_state(study, home)
+  .set_config("last_study", study$meta$study_id, home)
   study$files <- files
   invisible(study)
 }

@@ -48,39 +48,34 @@
 
 #' Start the rtfplanner app
 #'
-#' Opens the study manager: choose or create a study in `root`, then define
-#' its reports (Tables from the table definition; Listings and Figures from
-#' their programs), their data code, and run them.  Each study is a folder
-#' with a fixed layout ([study_layout()]).
+#' Opens the study manager.  Choose a study -- it opens as it was last
+#' saved -- or create or register one, then define its reports (Tables from
+#' the table definition; Listings and Figures from their programs), their
+#' data code, and run them.  The first time, rtfplanner's home is set up
+#' with the defaults ([setup_rtfplanner()]).
 #'
-#' @param root The folder that holds the studies; defaults to
-#'   `getOption("rtfplanner.root")`, else the working directory.
-#' @param study A study to open at start: its folder, or its id in `root`.
+#' @param study A study to open at start: a registered study's id, or a
+#'   study folder.
 #' @param ... Passed to [shiny::runApp()] (e.g. `launch.browser`, `port`).
 #' @return `planner_app()` returns a [shiny::shinyApp()] object;
 #'   `run_app()` runs it.
 #' @examples
 #' \dontrun{
-#' run_app("C:/studies")
-#' run_app("C:/studies", study = "ABC-101")
+#' run_app()
+#' run_app("ABC-101")
 #' }
 #' @export
-run_app <- function(root = getOption("rtfplanner.root", getwd()),
-                    study = NULL, ...) {
-  shiny::runApp(planner_app(root, study), ...)
+run_app <- function(study = NULL, ...) {
+  shiny::runApp(planner_app(study), ...)
 }
 
 #' @rdname run_app
 #' @export
-planner_app <- function(root = getOption("rtfplanner.root", getwd()),
-                        study = NULL) {
-  start <- NULL
-  if (!is.null(study)) {
-    path <- if (dir.exists(study)) study else file.path(root, study)
-    start <- open_study(path)
-  }
-  shiny::shinyApp(app_ui(root), function(input, output, session)
-    app_server(input, output, session, root, start))
+planner_app <- function(study = NULL) {
+  if (!.is_set_up()) setup_rtfplanner()
+  start <- if (!is.null(study)) open_study(study)
+  shiny::shinyApp(app_ui(), function(input, output, session)
+    app_server(input, output, session, start))
 }
 
 # ------------------------------------------------------------------- UI
@@ -114,7 +109,7 @@ planner_app <- function(root = getOption("rtfplanner.root", getwd()),
   shiny::actionButton(id, label, class = class, ...)
 }
 
-app_ui <- function(root) {
+app_ui <- function() {
   two <- bslib::breakpoints(sm = 12, lg = c(5, 7))
   bslib::page_navbar(
     id = "nav",
@@ -136,15 +131,18 @@ app_ui <- function(root) {
         col_widths = two,
         bslib::card(
           bslib::card_header("\u8a66\u9a13\u4e00\u89a7"),
-          shiny::div(
-            class = "d-flex gap-2 align-items-end",
-            shiny::textInput("root", "\u8a66\u9a13\u3092\u7f6e\u304f\u30d5\u30a9\u30eb\u30c0", value = root,
-                             width = "100%"),
-            .btn("refresh_studies", "\u66f4\u65b0", class = "btn-sm mb-3")),
           DT::DTOutput("studies"),
-          shiny::div(class = "d-flex gap-2",
+          shiny::div(class = "d-flex flex-wrap gap-2",
                      .btn("open_study", "\u958b\u304f", class = "btn-sm btn-primary"),
-                     .btn("new_study", "\u65b0\u898f\u8a66\u9a13"))),
+                     .btn("new_study", "\u65b0\u898f\u8a66\u9a13"),
+                     .btn("register", "\u65e2\u5b58\u30d5\u30a9\u30eb\u30c0\u3092\u767b\u9332"),
+                     .btn("unregister", "\u767b\u9332\u89e3\u9664",
+                          class = "btn-sm btn-outline-danger"),
+                     .btn("refresh_studies", "\u66f4\u65b0")),
+          shiny::tags$details(
+            class = "mt-2 small",
+            shiny::tags$summary("\u8a2d\u5b9a"),
+            shiny::uiOutput("settings"))),
         bslib::card(
           bslib::card_header("\u3053\u306e\u8a66\u9a13"),
           shiny::uiOutput("study_detail")))),
@@ -300,7 +298,7 @@ app_ui <- function(root) {
                                scrollX = TRUE, ...))
 }
 
-app_server <- function(input, output, session, root, start) {
+app_server <- function(input, output, session, start) {
   # `want`: the report to select once the sidebar knows it
   rv <- shiny::reactiveValues(
     study = NULL, p = NULL, saved = NULL, meta = NULL, saved_meta = NULL,
@@ -321,6 +319,9 @@ app_server <- function(input, output, session, root, start) {
     has_study() && (!identical(rv$p, rv$saved) ||
                        !identical(rv$meta, rv$saved_meta))
   })
+  # for shiny::testServer(), which sees only the session
+  session$userData$rv <- rv
+  session$userData$dirty <- dirty
 
   # -- the study ---------------------------------------------------------
   set_study <- function(s) {
@@ -383,23 +384,105 @@ app_server <- function(input, output, session, root, start) {
   studies <- shiny::reactive({
     rv$studies_ver
     input$refresh_studies
-    r <- trimws(input$root %||% root)
-    if (!dir.exists(r)) return(list_studies(tempfile()))
-    list_studies(r)
+    list_studies()
   })
   output$studies <- DT::renderDT({
     d <- studies()
-    .dt(d[c("study_id", "title", "compound", "phase", "updated")],
-        scrollY = "320px")
+    last <- shiny::isolate(if (has_study()) rv$study$meta$study_id else
+      rtfplanner_config()$last_study)
+    v <- data.frame(
+      "\u8a66\u9a13 ID" = d$study_id, "\u8a66\u9a13\u540d" = d$title, "\u5316\u5408\u7269" = d$compound,
+      "\u76f8" = d$phase, "\u6700\u7d42\u4fdd\u5b58" = d$saved,
+      "\u30d5\u30a9\u30eb\u30c0" = ifelse(d$folder, d$path, paste(d$path, "\uff08\u898b\u3064\u304b\u308a\u307e\u305b\u3093\uff09")),
+      check.names = FALSE, stringsAsFactors = FALSE)
+    sel <- match(last, d$study_id)
+    DT::datatable(v, rownames = FALSE,
+                  selection = list(mode = "single",
+                                   selected = if (!is.na(sel)) sel),
+                  options = list(dom = "t", paging = FALSE, ordering = FALSE,
+                                 scrollX = TRUE, scrollY = "320px"))
+  })
+  output$settings <- shiny::renderUI({
+    rv$studies_ver
+    shiny::tagList(
+      shiny::p("rtfplanner \u306e\u4fdd\u5b58\u30d5\u30a9\u30eb\u30c0\uff08\u8a66\u9a13\u60c5\u5831\u306e\u6b63\u672c\uff09:", shiny::br(),
+               shiny::code(rtfplanner_home())),
+      shiny::div(
+        class = "d-flex gap-2 align-items-end",
+        shiny::textInput("studies_root", "\u65b0\u898f\u8a66\u9a13\u306e\u30d5\u30a9\u30eb\u30c0\u3092\u4f5c\u308b\u5834\u6240",
+                         value = studies_root(), width = "100%"),
+        .btn("save_settings", "\u5909\u66f4", class = "btn-sm mb-3")))
+  })
+  shiny::observeEvent(input$save_settings, {
+    r <- trimws(input$studies_root)
+    if (!nzchar(r)) return()
+    guarded(suppressMessages(setup_rtfplanner(studies_root = r)))
+    rv$studies_ver <- rv$studies_ver + 1L
+    notify(paste("\u65b0\u898f\u8a66\u9a13\u306f", r, "\u306b\u4f5c\u308a\u307e\u3059"))
+  })
+  selected_study <- function() {
+    i <- input$studies_rows_selected
+    if (!length(i)) {
+      notify("\u8a66\u9a13\u3092\u9078\u3093\u3067\u304f\u3060\u3055\u3044", "warning")
+      return(NULL)
+    }
+    studies()[i, , drop = FALSE]
+  }
+  shiny::observeEvent(input$register, {
+    shiny::showModal(shiny::modalDialog(
+      title = "\u65e2\u5b58\u306e\u8a66\u9a13\u30d5\u30a9\u30eb\u30c0\u3092\u767b\u9332",
+      shiny::textInput("reg_path", "\u8a66\u9a13\u30d5\u30a9\u30eb\u30c0\uff08study.yml \u306e\u3042\u308b\u30d5\u30a9\u30eb\u30c0\uff09",
+                       width = "100%"),
+      shiny::p(class = "small text-muted",
+               "spec/ \u306b\u5b9a\u7fa9\u30d6\u30c3\u30af\u304c\u3042\u308c\u3070\u3001\u305d\u306e\u5185\u5bb9\u3092\u8a66\u9a13\u60c5\u5831\u3068\u3057\u3066\u53d6\u308a\u8fbc\u307f\u307e\u3059\u3002"),
+      footer = shiny::tagList(shiny::modalButton("\u53d6\u6d88"),
+                              .btn("reg_ok", "\u767b\u9332", class = "btn-primary")),
+      easyClose = TRUE))
+  })
+  shiny::observeEvent(input$reg_ok, {
+    if (dirty()) {
+      return(notify("\u672a\u4fdd\u5b58\u306e\u5909\u66f4\u304c\u3042\u308a\u307e\u3059\u3002\u4fdd\u5b58\u3057\u3066\u304b\u3089\u767b\u9332\u3057\u3066\u304f\u3060\u3055\u3044",
+                    "warning"))
+    }
+    s <- guarded(register_study(trimws(input$reg_path)))
+    if (is.null(s)) return()
+    shiny::removeModal()
+    rv$studies_ver <- rv$studies_ver + 1L
+    set_study(s)
+    notify(paste(s$meta$study_id, "\u3092\u767b\u9332\u3057\u307e\u3057\u305f"))
+    bslib::nav_select("nav", "outputs")
+  })
+  shiny::observeEvent(input$unregister, {
+    d <- selected_study()
+    if (is.null(d)) return()
+    shiny::showModal(shiny::modalDialog(
+      title = paste(d$study_id, "\u306e\u767b\u9332\u3092\u89e3\u9664"),
+      "rtfplanner \u306b\u4fdd\u5b58\u3057\u305f\u8a66\u9a13\u60c5\u5831\uff08\u5b9a\u7fa9\u30fb\u30c7\u30fc\u30bf\u6e96\u5099\u30b3\u30fc\u30c9\u30fb\u5c65\u6b74\uff09\u3092\u524a\u9664\u3057\u307e\u3059\u3002",
+      "\u8a66\u9a13\u30d5\u30a9\u30eb\u30c0\uff08\u30c7\u30fc\u30bf\u30fbspec\u30fb\u30d7\u30ed\u30b0\u30e9\u30e0\u30fb\u6210\u679c\u7269\uff09\u306f\u305d\u306e\u307e\u307e\u6b8b\u308a\u3001",
+      "\u300c\u65e2\u5b58\u30d5\u30a9\u30eb\u30c0\u3092\u767b\u9332\u300d\u3067 spec/ \u304b\u3089\u623b\u305b\u307e\u3059\u3002",
+      footer = shiny::tagList(shiny::modalButton("\u53d6\u6d88"),
+                              .btn("unregister_ok", "\u767b\u9332\u89e3\u9664",
+                                   class = "btn-danger"))))
+  })
+  shiny::observeEvent(input$unregister_ok, {
+    d <- studies()[input$studies_rows_selected, , drop = FALSE]
+    shiny::removeModal()
+    if (has_study() && identical(rv$study$meta$study_id, d$study_id)) {
+      rv$study <- rv$p <- rv$saved <- rv$meta <- rv$saved_meta <- NULL
+      bump()
+    }
+    unregister_study(d$study_id)
+    rv$studies_ver <- rv$studies_ver + 1L
+    notify(paste(d$study_id, "\u306e\u767b\u9332\u3092\u89e3\u9664\u3057\u307e\u3057\u305f"))
   })
   shiny::observeEvent(input$open_study, {
-    i <- input$studies_rows_selected
-    if (!length(i)) return(notify("\u8a66\u9a13\u3092\u9078\u3093\u3067\u304f\u3060\u3055\u3044", "warning"))
+    d <- selected_study()
+    if (is.null(d)) return()
     if (dirty()) {
       return(notify("\u672a\u4fdd\u5b58\u306e\u5909\u66f4\u304c\u3042\u308a\u307e\u3059\u3002\u4fdd\u5b58\u3057\u3066\u304b\u3089\u958b\u3044\u3066\u304f\u3060\u3055\u3044",
                     "warning"))
     }
-    s <- guarded(open_study(studies()$path[i]))
+    s <- guarded(open_study(d$study_id))
     if (!is.null(s)) {
       set_study(s)
       notify(paste(s$meta$study_id, "\u3092\u958b\u304d\u307e\u3057\u305f"))
@@ -422,8 +505,10 @@ app_server <- function(input, output, session, root, start) {
       shiny::conditionalPanel(
         "input.ns_from == 'study'",
         shiny::selectInput("ns_src", "\u30b3\u30d4\u30fc\u5143",
-                           stats::setNames(studies()$path,
+                           stats::setNames(studies()$study_id,
                                            studies()$study_id))),
+      shiny::textInput("ns_root", "\u8a66\u9a13\u30d5\u30a9\u30eb\u30c0\u3092\u4f5c\u308b\u5834\u6240",
+                       value = studies_root(), width = "100%"),
       footer = shiny::tagList(shiny::modalButton("\u53d6\u6d88"),
                               .btn("ns_ok", "\u4f5c\u6210", class = "btn-primary")),
       easyClose = TRUE))
@@ -442,10 +527,11 @@ app_server <- function(input, output, session, root, start) {
       new_planner())
     if (is.null(p)) return()
     s <- guarded(create_study(
-      trimws(input$root), trimws(input$ns_id),
+      trimws(input$ns_id),
       title = blank(input$ns_title), compound = blank(input$ns_compound),
       phase = blank(input$ns_phase),
-      description = blank(input$ns_description), planner = p))
+      description = blank(input$ns_description), planner = p,
+      root = trimws(input$ns_root)))
     if (is.null(s)) return()
     shiny::removeModal()
     rv$studies_ver <- rv$studies_ver + 1L
@@ -488,10 +574,13 @@ app_server <- function(input, output, session, root, start) {
             "\u6210\u679c\u7269\u30c7\u30fc\u30bf: \u5404 Table \u306e ARD (.rds)",
             "\u6210\u679c\u7269\u5e33\u7968: RTF", "\u5b9f\u884c\u30ed\u30b0")), collapse = "\n"))),
       shiny::fileInput(
-        "import", "\u4ed6\u306e\u5b9a\u7fa9\u30d6\u30c3\u30af\u3092\u53d6\u308a\u8fbc\u3080\uff08\u3053\u306e\u8a66\u9a13\u306e\u5b9a\u7fa9\u3092\u7f6e\u304d\u63db\u3048\uff09",
+        "import", "Excel \u306e\u5b9a\u7fa9\u30d6\u30c3\u30af\u3092\u53d6\u308a\u8fbc\u3080\uff08\u3053\u306e\u8a66\u9a13\u306e\u5b9a\u7fa9\u3092\u7f6e\u304d\u63db\u3048\uff09",
         multiple = TRUE, accept = ".xlsx", width = "100%"),
-      shiny::div(class = "d-flex gap-2 align-items-center",
-                 shiny::downloadButton("study_zip", "zip \u3067\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9",
+      shiny::div(class = "d-flex flex-wrap gap-2 align-items-center",
+                 shiny::downloadButton("spec_xlsx",
+                                       "\u5b9a\u7fa9\u30d6\u30c3\u30af\u3092\u66f8\u304d\u51fa\u3059 (Excel)",
+                                       class = "btn-sm"),
+                 shiny::downloadButton("study_zip", "\u8a66\u9a13\u3092 zip \u3067\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9",
                                        class = "btn-sm"),
                  shiny::checkboxInput("zip_data", "\u30c7\u30fc\u30bf\u3082\u542b\u3081\u308b")),
       .btn("study_folder", "\u8a66\u9a13\u30d5\u30a9\u30eb\u30c0\u3092\u958b\u304f"))
@@ -516,13 +605,21 @@ app_server <- function(input, output, session, root, start) {
     tmp <- file.path(tempfile("import"), f$name)
     dir.create(dirname(tmp[1L]))
     file.copy(f$datapath, tmp)
-    p <- guarded(read_planner(tmp))
-    if (is.null(p)) return()
-    rv$p <- .study_spec_keys(p)
+    s <- guarded(import_spec(current_study(), tmp))
+    if (is.null(s)) return()
+    p <- s$planner
+    rv$p <- p
     rv$want <- output_ids(p)[1L]
     bump()
     notify(paste0(nrow(p$outputs), " \u5e33\u7968\u3092\u53d6\u308a\u8fbc\u307f\u307e\u3057\u305f\uff08\u672a\u4fdd\u5b58\uff09"))
   })
+  output$spec_xlsx <- shiny::downloadHandler(
+    filename = function() paste0(rv$study$meta$study_id, "_spec.zip"),
+    content = function(file) {
+      d <- tempfile("spec")
+      export_spec(current_study(), d)
+      zip::zipr(file, list.files(d, full.names = TRUE))
+    })
   output$study_zip <- shiny::downloadHandler(
     filename = function() paste0(rv$study$meta$study_id, ".zip"),
     content = function(file) {
@@ -632,13 +729,49 @@ app_server <- function(input, output, session, root, start) {
     }
   })
 
-  # detail editors follow the chosen report; editing writes it back
+  # Detail editors follow the chosen report; editing writes it back.
+  # What the server puts in an editor comes back from the browser as an
+  # input event, and by then another report -- or another study -- may be
+  # chosen.  So an edit belongs to the report (and study) the editor was
+  # filled for, not to whatever is chosen when the event arrives, and an
+  # event that only echoes what the server put there is not an edit.
+  # Every value the server puts in an editor comes back once, as an
+  # input event, unless the editor already showed it -- and a text box
+  # reports late (it is debounced), so an echo can arrive after the next
+  # fill.  Each fill that will echo is queued; an event matching a queued
+  # value is that echo, and anything else is the user's edit, of what the
+  # editor shows now: the latest fill.
+  filled <- new.env()
+  fill <- function(input_id, value, owner, update) {
+    f <- filled[[input_id]] %||% list(pending = list())
+    shown <- shiny::isolate(input[[input_id]])
+    if (!identical(shown, value)) f$pending <- c(f$pending, list(value))
+    f$owner <- owner
+    filled[[input_id]] <- f
+    update(session, input_id, value = value)
+  }
+  edit_of <- function(input_id, value) {
+    f <- filled[[input_id]]
+    if (is.null(f)) return(NULL)
+    hit <- which(vapply(f$pending, identical, NA, value))
+    if (length(hit)) {
+      # echoes come in order: one that arrived means those before it
+      # will not
+      f$pending <- f$pending[-seq_len(hit[1L])]
+      filled[[input_id]] <- f
+      return(NULL)
+    }
+    f$owner
+  }
+  study_key <- function() if (has_study()) rv$study$meta$study_id
+
   shiny::observeEvent(list(current(), rv$ver), {
     id <- current()
     o <- rv$p$outputs[rv$p$outputs$output_id %in% id, , drop = FALSE]
     val <- function(v) if (length(v) && !is.na(v)) v else ""
-    shiny::updateTextInput(session, "description", value = val(o$description))
-    shiny::updateTextAreaInput(session, "data_code", value = val(o$data_code))
+    owner <- if (!is.null(id)) list(study = study_key(), id = id)
+    fill("description", val(o$description), owner, shiny::updateTextInput)
+    fill("data_code", val(o$data_code), owner, shiny::updateTextAreaInput)
   })
   output$current_label <- shiny::renderUI({
     id <- current()
@@ -651,12 +784,12 @@ app_server <- function(input, output, session, root, start) {
     }
   })
   set_field <- function(field, value) {
-    id <- current()
-    if (is.null(id)) return()
+    owner <- edit_of(field, value)
+    if (is.null(owner) || !identical(owner$study, study_key())) return()
     value <- if (is.null(value) || !nzchar(trimws(value))) NA_character_ else
       value
-    i <- which(rv$p$outputs$output_id == id)
-    if (!identical(rv$p$outputs[[field]][i], value)) {
+    i <- which(rv$p$outputs$output_id == owner$id)
+    if (length(i) && !identical(rv$p$outputs[[field]][i], value)) {
       rv$p$outputs[[field]][i] <- value
     }
   }
@@ -668,11 +801,13 @@ app_server <- function(input, output, session, root, start) {
 
   shiny::observeEvent(rv$ver, {
     s <- if (is.null(rv$p)) NA else rv$p$setup
-    shiny::updateTextAreaInput(session, "setup",
-                               value = if (is.na(s)) "" else s)
+    fill("setup", if (is.na(s)) "" else s,
+         if (has_study()) list(study = study_key()),
+         shiny::updateTextAreaInput)
   })
   shiny::observeEvent(input$setup, {
-    if (is.null(rv$p)) return()
+    owner <- edit_of("setup", input$setup)
+    if (is.null(owner) || !identical(owner$study, study_key())) return()
     v <- if (nzchar(trimws(input$setup))) input$setup else NA_character_
     if (!identical(rv$p$setup, v)) rv$p$setup <- v
   }, ignoreInit = TRUE)

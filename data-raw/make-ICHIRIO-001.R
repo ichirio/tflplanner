@@ -7,14 +7,17 @@
 #   L-16-2-7  Listing  Severe adverse events               program
 #   F-14-2-1  Figure   Kaplan-Meier, time to first derm.  program
 #
-#   Rscript data-raw/make-ICHIRIO-001.R [root]      (root: C:/Yrepo/studies)
+#   Rscript data-raw/make-ICHIRIO-001.R [root]
 #
-# The study is written from scratch: an existing ICHIRIO-001 in `root` is
+# root: where the study folder goes (default: the studies_root of
+# setup_rtfplanner()).  The study is written from scratch: an existing
+# ICHIRIO-001 -- its folder and its saved state in rtfplanner's home -- is
 # replaced.  Afterwards every report is run and must end "ok".
 
 devtools::load_all(quiet = TRUE)
+if (!.is_set_up()) setup_rtfplanner()
 args <- commandArgs(trailingOnly = TRUE)
-root <- if (length(args)) args[1L] else "C:/Yrepo/studies"
+root <- if (length(args)) args[1L] else studies_root()
 id <- "ICHIRIO-001"
 
 tbl <- function(...) {
@@ -93,8 +96,7 @@ sheets <- list(
     list(line = "2", cols = ".values", span = "each", text = "(N={n})"),
     list(output_id = "T-14-3-1", line = "1", cols = "row_label"),
     list(output_id = "T-14-3-1", line = "1", cols = ".values", span = "each",
-         text = "{col}\nn (%)",
-         note = "no N: {n} would read the Any TEAE count (rtfreporter)"),
+         text = "{col}\n(N={n})\nn (%)"),
     list(output_id = "T-14-3-1", line = "2", cols = "row_label",
          text = "System Organ Class\n   Preferred Term"),
     list(output_id = "T-14-3-1", line = "2", cols = ".values")))
@@ -136,9 +138,7 @@ sheets$footer <- tbl(
        left = "SD = Standard Deviation."),
   list(output_id = "T-14-3-1", line = "1",
        left = "Subjects are counted once per system organ class and once per preferred term."),
-  list(output_id = "T-14-3-1", line = "2",
-       left = "Percentages are based on the subjects in the Safety Analysis Set of each arm."),
-  list(output_id = "T-14-3-1", line = "3", left = "MedDRA version 27.1."),
+  list(output_id = "T-14-3-1", line = "2", left = "MedDRA version 27.1."),
   list(output_id = "F-14-2-1", line = "1",
        left = "Event: first dermatologic adverse event; subjects without an event are censored."))
 
@@ -227,7 +227,8 @@ for (o in names(code)) {
 
 # ------------------------------------------------------------ the study
 unlink(file.path(root, id), recursive = TRUE)
-s <- create_study(root, id, title = "Test study for rtfplanner",
+unregister_study(id)
+s <- create_study(id, root = root, title = "Test study for rtfplanner",
                   compound = "Xanomeline", phase = "2",
                   description = paste(
                     "CDISC pilot ADaM data ({cards}) relabelled as",
