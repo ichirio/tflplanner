@@ -7,9 +7,20 @@
 ard_methods()
 }
 \value{
-A data frame: \code{method}, \code{call} (the cards / cardx function),
-\code{statistics} (the default), \code{note}.
+A data frame: \code{method}, \code{call} (the function), \code{defaults} (the
+arguments it is given unless \code{args} gives them), \code{statistics} (the
+default statistics), \code{note}.
 }
 \description{
-The methods an analysis row may name
+An analysis's \code{method} is one of these keywords, or the name of any
+function, \code{pkg::fun} (every \verb{cards::ard_*} and \verb{cardx::ard_*} among
+them), which is called as \code{pkg::fun(data, by = , variables = , ...)} with
+the analysis data first, \code{by} and \code{variables} when the row gives them,
+and the row's \code{args} after them.  A function whose first argument is not
+the data (\code{cardx::ard_survival_survdiff(formula, data)}) takes it the same
+way once \code{args} names the first one (\code{formula = ...}).
+}
+\details{
+In \code{args} and \code{code}, \code{data} is the analysis data and \code{population} the
+population's subjects.
 }

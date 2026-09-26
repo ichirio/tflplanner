@@ -64,7 +64,7 @@ test_that("the definition becomes code and the code the study ARD", {
   code <- ard_spec_code(x)
   expect_silent(parse(text = code))
   expect_true(any(grepl("cards::ard_stack_hierarchical", code, fixed = TRUE)))
-  expect_true(any(grepl("denominator = pop_saf", code, fixed = TRUE)))
+  expect_true(any(grepl("denominator = population", code, fixed = TRUE)))
 
   a <- build_ard(x, dir = dir)
   expect_true(file.exists(file.path(dir, "output", "ard", "ard.rds")))

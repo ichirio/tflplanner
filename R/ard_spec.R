@@ -31,32 +31,87 @@
 
 #' The methods an analysis row may name
 #'
-#' @return A data frame: `method`, `call` (the cards / cardx function),
-#'   `statistics` (the default), `note`.
+#' An analysis's `method` is one of these keywords, or the name of any
+#' function, `pkg::fun` (every `cards::ard_*` and `cardx::ard_*` among
+#' them), which is called as `pkg::fun(data, by = , variables = , ...)` with
+#' the analysis data first, `by` and `variables` when the row gives them,
+#' and the row's `args` after them.  A function whose first argument is not
+#' the data (`cardx::ard_survival_survdiff(formula, data)`) takes it the same
+#' way once `args` names the first one (`formula = ...`).
+#'
+#' In `args` and `code`, `data` is the analysis data and `population` the
+#' population's subjects.
+#'
+#' @return A data frame: `method`, `call` (the function), `defaults` (the
+#'   arguments it is given unless `args` gives them), `statistics` (the
+#'   default statistics), `note`.
 #' @export
 ard_methods <- function() {
   data.frame(
-    method = c("continuous", "categorical", "dichotomous", "hierarchical",
-               "total_n", "proportion_ci", "custom"),
+    method = c("continuous", "categorical", "dichotomous", "missing",
+               "hierarchical", "max", "subjects", "total_n", "proportion_ci",
+               "mean_ci", "custom"),
     call = c("cards::ard_continuous", "cards::ard_categorical",
-             "cards::ard_dichotomous", "cards::ard_stack_hierarchical",
-             "cards::ard_total_n", "cardx::ard_categorical_ci", "(code)"),
+             "cards::ard_dichotomous", "cards::ard_missing",
+             "cards::ard_stack_hierarchical", "cardx::ard_categorical_max",
+             "cards::ard_dichotomous", "cards::ard_total_n",
+             "cardx::ard_categorical_ci", "cardx::ard_continuous_ci",
+             "(code)"),
+    defaults = c("", "", "", "", "denominator = population, id = <id>",
+                 "denominator = population, id = <id>", "", "", "", "", ""),
     statistics = c("N | mean | sd | median | p25 | p75 | min | max",
-                   "n | N | p", "n | N | p", "n | N | p", "N", "", ""),
+                   "n | N | p", "n | N | p", "", "n | N | p", "n | N | p",
+                   "n | N | p", "N", "", "", ""),
     note = c(
       "summary statistics of numeric variables",
       "counts and percents of each level",
       "counts of one level (args: value = list(VAR = \"Y\"))",
-      "nested counts (variables outermost first); denominator = population",
-      "number of subjects in the population",
-      "confidence interval of a proportion (args: method = \"wilson\", conf.level = 0.95 ...)",
-      "any R expression in `code`, with `data` the analysis data and `population` the population"),
+      "missing and non-missing counts",
+      "nested subject counts, outermost variable first (SOC | PT)",
+      "the worst level per subject (severity, toxicity grade); variables = the graded variable",
+      "subjects with at least one record of the data (after `where`) among the population; variables = a name for the count",
+      "number of subjects",
+      "confidence interval of a proportion (args: method = \"wilson\" | \"clopper-pearson\" ...)",
+      "confidence interval of a mean",
+      "any R expression in `code`, e.g. a model: cardx::ard_regression(glm(..., data = data))"),
     stringsAsFactors = FALSE)
 }
 
 .split_bar <- function(x) {
   if (is.null(x) || is.na(x) || !nzchar(trimws(x))) return(character())
   trimws(strsplit(x, "|", fixed = TRUE)[[1L]])
+}
+
+# The call an analysis row stands for, with `data` and `population` bound.
+.analysis_body <- function(r, keys, subj, has) {
+  m <- r$method
+  if (m == "custom") return(r$code)
+  k <- match(m, keys$method)
+  fn <- if (is.na(k)) m else keys$call[k]
+  by <- .vars(r$by)
+  vars <- .vars(r$variables)
+  if (m == "subjects") {
+    # a subject-level flag: has the subject any record of the data?
+    flag <- if (length(.split_bar(r$variables))) .split_bar(r$variables)[1L] else
+      make.names(r$analysis_id)
+    return(paste0(
+      sprintf("population$%s <- population$%s %%in%% data$%s\n", flag, subj,
+              subj),
+      sprintf("cards::ard_dichotomous(population%s, variables = %s, value = list(%s = TRUE)%s%s)",
+              if (!is.null(by)) paste0(", by = ", by) else "", flag, flag,
+              if (!has("statistic") && !is.null(.stat_arg("categorical", r$statistics)))
+                paste0(", ", .stat_arg("categorical", r$statistics)) else "",
+              if (!is.na(r$args)) paste0(", ", r$args) else "")))
+  }
+  args <- c(
+    if (!is.null(by)) paste("by =", by),
+    if (m != "total_n" && !is.null(vars)) paste("variables =", vars),
+    if (!has("statistic")) .stat_arg(if (is.na(k)) "" else m, r$statistics),
+    if (m %in% c("hierarchical", "max")) c(
+      if (!has("denominator")) "denominator = population",
+      if (!has("id")) paste("id =", subj)),
+    if (!is.na(r$args)) r$args)
+  sprintf("%s(%s)", fn, paste(c("data", args), collapse = ",\n    "))
 }
 
 #' Read and check an ARD definition workbook
@@ -105,9 +160,11 @@ ard_spec <- function(x) {
   if (any(dup)) err <- c(err, sprintf("output_id / analysis_id repeated: %s",
                                       paste(unique(paste(a$output_id, a$analysis_id)[dup]),
                                             collapse = ", ")))
-  bad <- setdiff(stats::na.omit(a$method), ard_methods()$method)
-  if (length(bad)) err <- c(err, sprintf("unknown method(s): %s (see ard_methods())",
-                                         paste(bad, collapse = ", ")))
+  m <- stats::na.omit(a$method)
+  bad <- m[!m %in% ard_methods()$method & !grepl("^[A-Za-z.][A-Za-z0-9.]*::[A-Za-z._][A-Za-z0-9._]*$", m)]
+  if (length(bad)) err <- c(err, sprintf(
+    "unknown method(s): %s (a keyword of ard_methods(), or pkg::function)",
+    paste(unique(bad), collapse = ", ")))
   miss <- setdiff(stats::na.omit(c(a$dataset, x$populations$dataset)),
                   x$datasets$dataset)
   if (length(miss)) err <- c(err, sprintf("dataset(s) not in `datasets`: %s",
@@ -158,7 +215,7 @@ ard_spec <- function(x) {
   q <- paste(encodeString(s, quote = "\""), collapse = ", ")
   switch(method,
     continuous = sprintf("statistic = ~ cards::continuous_summary_fns(c(%s))", q),
-    categorical = , dichotomous = , hierarchical =
+    categorical = , dichotomous = , hierarchical = , max =
       sprintf("statistic = ~ c(%s)", q),
     NULL)
 }
@@ -213,6 +270,7 @@ ard_spec_code <- function(spec, output_id = NULL, save = TRUE) {
       .derive_code(obj, r$derive[1L]))
   }
   code <- c(code, "", "# ---- analyses", "ards <- list()")
+  keys <- ard_methods()
   for (i in seq_len(nrow(a))) {
     r <- a[i, ]
     pid <- r$population_id
@@ -227,28 +285,17 @@ ard_spec_code <- function(spec, output_id = NULL, save = TRUE) {
                                           is.na(r$dataset)) pop else
       sprintf("subset(%s, %s %%in%% %s$%s)", ds, subj, pop, subj)
     if (!is.na(r$where)) data <- sprintf("subset(%s, %s)", data, r$where)
-    args <- c(
-      if (!is.null(.vars(r$by))) paste("by =", .vars(r$by)),
-      if (!r$method %in% "total_n" && !is.null(.vars(r$variables)))
-        paste("variables =", .vars(r$variables)),
-      .stat_arg(r$method, r$statistics),
-      if (r$method == "hierarchical") c(
-        if (!is.null(pop)) paste("denominator =", pop),
-        paste("id =", subj)),
-      if (!is.na(r$args)) r$args)
-    fn <- ard_methods()$call[ard_methods()$method == r$method]
-    call <- if (r$method == "custom") {
-      sprintf("local({\n  data <- %s\n  population <- %s\n  %s\n})", data,
-              if (is.null(pop)) "NULL" else pop,
-              gsub("\n", "\n  ", r$code, fixed = TRUE))
-    } else {
-      sprintf("%s(%s)", fn, paste(c(data, args), collapse = ",\n    "))
-    }
+    given <- if (is.na(r$args)) "" else r$args
+    has <- function(arg) grepl(paste0("(^|[,(\\s])", arg, "\\s*="), given)
+    body <- .analysis_body(r, keys, subj, has)
     code <- c(code,
               sprintf("# %s / %s%s", r$output_id, r$analysis_id,
                       if (!is.na(r$label)) paste(":", r$label) else ""),
-              sprintf("ards[[%d]] <- .tag(%s,", i, call),
-              sprintf("  %s, %s, %s)",
+              sprintf("ards[[%d]] <- .tag(local({", i),
+              paste0("  data <- ", data),
+              paste0("  population <- ", if (is.null(pop)) "NULL" else pop),
+              paste0("  ", strsplit(body, "\n", fixed = TRUE)[[1L]]),
+              sprintf("}), %s, %s, %s)",
                       encodeString(r$output_id, quote = "\""),
                       encodeString(r$analysis_id, quote = "\""),
                       if (is.na(pid)) "NA_character_" else
