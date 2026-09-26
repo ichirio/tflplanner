@@ -201,3 +201,7 @@ Not run,未実行
 Error,エラー
 Rerun needed,要再実行
 OK,
+"From the ARD: the column key, and the hierarchy (rows, label, sort) or group = variable. Blank cells only.",ARD から：列のキーと、階層（rows・label・sort）または group = variable。空欄だけを埋めます。
+"From the ARD and the source data: a row per column key and analysis variable, with levels in order, label and order. Blank cells only.",ARD と元データから：列のキーと解析変数ごとに、水準（並び順つき）・ラベル・順番の行を作ります。空欄だけを埋めます。
+missing:,不足：
+Replaces this report's column header rows.,この帳票の列見出しの行を置き換えます。

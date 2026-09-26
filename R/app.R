@@ -40,6 +40,9 @@
 
 .type_labels <- c(table = "Table", listing = "Listing", figure = "Figure")
 
+# the sheets whose tab offers help of its own above the grid
+.assisted <- c("tables", "variables", "cells", "col_header")
+
 .status_labels <- c(
   "no program" = "Not written (save)", unsaved = "Unsaved (save)",
   todo = "TODO (data part)", "not run" = "Not run", error = "Error",
@@ -105,6 +108,7 @@ app_ui <- function(lang = "en") {
   sheet_panel <- function(sheet) {
     bslib::nav_panel(
       t(.sheet_labels[[sheet]]), value = sheet,
+      if (sheet %in% .assisted) shiny::uiOutput(paste0("assist_", sheet)),
       rhandsontable::rHandsontableOutput(paste0("hot_", sheet)),
       shiny::uiOutput(paste0("inh_", sheet)),
       shiny::tags$details(
@@ -796,6 +800,7 @@ app_server <- function(input, output, session, start) {
   })
 
   # -- input assistance ------------------------------------------------------
+  # above the sheets: what the ARD says, and reading it again
   output$assist <- shiny::renderUI({
     id <- current()
     if (is.null(id)) {
@@ -803,38 +808,86 @@ app_server <- function(input, output, session, start) {
                          t("Choose a report in the sidebar to fill its rows from its ARD and from presets.")))
     }
     m <- meta_of(id)
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-center",
+      shiny::strong("ARD"),
+      if (is.null(m)) {
+        shiny::span(class = "small text-muted",
+                    t("not read yet: Run and read the ARD."))
+      } else {
+        shiny::span(class = "small", sprintf(
+          t("read %s: %d keys, %d variables, statistics %s"),
+          m$fetched, length(m$keys), nrow(m$variables),
+          paste(m$stats, collapse = ", ")))
+      },
+      .btn("fetch2", t("Run and read the ARD"),
+           class = "btn-sm btn-outline-primary"))
+  })
+
+  # each assisted tab's own help, above its grid
+  assist_box <- function(...) {
+    if (is.null(current())) return(NULL)
+    shiny::div(class = "rp-assist border rounded p-2 mb-2", ...)
+  }
+  output$assist_tables <- shiny::renderUI(assist_box(
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-center",
+      .btn("fill_tables", t("Fill table roles")),
+      shiny::span(class = "small text-muted",
+                  t("From the ARD: the column key, and the hierarchy (rows, label, sort) or group = variable. Blank cells only.")))))
+  output$assist_variables <- shiny::renderUI(assist_box(
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-center",
+      .btn("fill_vars", t("Fill variables and levels")),
+      shiny::span(class = "small text-muted",
+                  t("From the ARD and the source data: a row per column key and analysis variable, with levels in order, label and order. Blank cells only.")))))
+  output$assist_cells <- shiny::renderUI({
+    m <- meta_of(current())
     vars <- if (!is.null(m)) m$variables$variable else character()
-    shiny::tagList(
+    assist_box(
       shiny::div(
-        class = "d-flex flex-wrap gap-2 align-items-center",
-        shiny::strong("ARD"),
-        if (is.null(m)) {
-          shiny::span(class = "small text-muted",
-                      t("not read yet: Run and read the ARD."))
-        } else {
-          shiny::span(class = "small", sprintf(
-            t("read %s: %d keys, %d variables, statistics %s"),
-            m$fetched, length(m$keys), nrow(m$variables),
-            paste(m$stats, collapse = ", ")))
-        },
-        .btn("fetch2", t("Run and read the ARD"),
-             class = "btn-sm btn-outline-primary"),
-        .btn("fill_vars", t("Fill variables and levels")),
-        .btn("fill_tables", t("Fill table roles"))),
-      shiny::div(
-        class = "d-flex flex-wrap gap-2 align-items-end mt-2",
+        class = "d-flex flex-wrap gap-2 align-items-end",
         shiny::selectInput("cell_preset", t("Cell preset"),
-                           names(cell_presets()), width = "340px"),
+                           names(cell_presets()), width = "360px"),
         shiny::selectInput(
           "cell_var", t("for"),
           c(stats::setNames("", t("every variable of its kind")),
             stats::setNames(vars, vars)),
-          width = "220px"),
-        .btn("add_cells", t("Add cells"), class = "btn-sm mb-3"),
-        shiny::selectInput("header_preset", t("Column header preset"),
-                           names(header_presets()), width = "260px"),
-        .btn("add_header", t("Set column header"), class = "btn-sm mb-3")))
+          width = "240px"),
+        .btn("add_cells", t("Add cells"), class = "btn-sm mb-3")),
+      shiny::div(class = "small", shiny::tableOutput("preview_cells")))
   })
+  output$preview_cells <- shiny::renderTable({
+    shiny::req(input$cell_preset %in% names(cell_presets()))
+    d <- cell_presets()[[input$cell_preset]]
+    if (!is.null(input$cell_var) && nzchar(input$cell_var)) {
+      d$variable <- input$cell_var
+    }
+    m <- meta_of(current())
+    if (!is.null(m)) {
+      d$ARD <- vapply(d$template, function(z) {
+        miss <- .missing_stats(z, m$stats)
+        if (length(miss)) paste(t("missing:"), paste(miss, collapse = ", "))
+        else "\u2713"
+      }, "")
+    }
+    d
+  }, na = "", spacing = "xs")
+  output$assist_col_header <- shiny::renderUI(assist_box(
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-end",
+      shiny::selectInput("header_preset", t("Column header preset"),
+                         names(header_presets()), width = "300px"),
+      .btn("add_header", t("Set column header"), class = "btn-sm mb-3"),
+      shiny::span(class = "small text-muted mb-3",
+                  t("Replaces this report's column header rows."))),
+    shiny::div(class = "small", shiny::tableOutput("preview_header"))))
+  output$preview_header <- shiny::renderTable({
+    shiny::req(input$header_preset %in% names(header_presets()))
+    d <- header_presets()[[input$header_preset]]
+    d$text <- gsub("\n", " / ", d$text, fixed = TRUE)
+    d
+  }, na = "", spacing = "xs")
   after_fill <- function(p, what, sheet) {
     if (is.null(p)) return()
     n <- attr(p, "changed")
