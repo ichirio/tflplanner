@@ -13,7 +13,7 @@ studies_root(home = rtfplanner_home())
 \item{home}{The home folder.}
 }
 \value{
-A list: \code{studies_root}, \code{last_study}.
+A list: \code{studies_root}, \code{last_study}, \code{language}.
 }
 \description{
 rtfplanner's settings

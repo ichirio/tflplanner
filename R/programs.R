@@ -76,6 +76,66 @@ report_info <- function(x, output_id) {
   paste0("# ---- ", title, " ", strrep("-", max(3L, 70L - nchar(title))))
 }
 
+# Does this code assign `data` itself?  (Then it needs no default
+# normalization after it.)
+.makes_data <- function(code) {
+  any(grepl("(^|[^A-Za-z0-9_.])data[[:space:]]*(<-|=)[^=]",
+            strsplit(code, "\n", fixed = TRUE)[[1L]]))
+}
+
+#' The data part of a report's program
+#'
+#' The code a report runs before the report is laid out: the setup every
+#' report runs, the report's own `data_code` (its ARD) and, for a table,
+#' its `process_code` (normalization and rework, by default
+#' `data <- ard_normalize(ard)`).  With no `data_code` it is a TODO that
+#' stops.  [program_code()] writes it into the program, and
+#' [fetch_ard()] runs it to learn what the ARD holds.
+#'
+#' @param x An `rtfplanner`.
+#' @param output_id The report.
+#' @param todo `FALSE` returns `NULL` instead of the TODO.
+#' @return Code lines.
+#' @export
+data_lines <- function(x, output_id, todo = TRUE) {
+  lay <- study_layout()
+  info <- report_info(x, output_id)
+  o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
+  code <- if (nrow(o) && !is.na(o$data_code)) o$data_code else NA
+  proc <- if (nrow(o) && !is.na(o$process_code)) o$process_code else NA
+  type <- info$type
+  if (is.na(code)) {
+    if (!todo) return(NULL)
+    stop_todo <- paste0("stop(\"rtfplanner: the data part of ",
+                        info$program, " is still to be written.\")")
+    body <- switch(type,
+      figure = c(
+        "# TODO: make the figure(s), e.g.",
+        "#   content <- list(ggplot2::ggplot(adsl, ggplot2::aes(AGE)) +",
+        "#                     ggplot2::geom_histogram())",
+        stop_todo),
+      listing = c(
+        "# TODO: make the listing pages, e.g.",
+        paste0("#   adae    <- readRDS(\"", lay[["adam"]], "/adae.rds\")"),
+        "#   content <- as_rtftables(adae[, c(\"USUBJID\", \"AEDECOD\")])",
+        stop_todo),
+      c("# TODO: build the ARD, e.g.",
+        paste0("#   adsl <- readRDS(\"", lay[["adam"]], "/adsl.rds\")"),
+        "#   ard  <- cards::ard_stack(adsl, .by = TRT01A, ...)",
+        stop_todo))
+    return(c(if (!is.na(x$setup)) c(.code_block(x$setup), ""), body))
+  }
+  table <- identical(type, "table")
+  proc_lines <- if (!table) NULL else if (!is.na(proc)) {
+    c("", "# normalize and rework", .code_block(proc))
+  } else if (!.makes_data(code)) {
+    c("", "data <- ard_normalize(ard)")
+  }
+  c(if (!is.na(x$setup)) c(.code_block(x$setup), ""),
+    .code_block(code),
+    proc_lines)
+}
+
 #' The R program for one report
 #'
 #' A program runs with the study folder as its working directory (see
@@ -101,7 +161,6 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   info <- report_info(x, output_id)
   o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
   desc <- if (nrow(o) && !is.na(o$description)) o$description else NULL
-  code <- if (nrow(o) && !is.na(o$data_code)) o$data_code else NA
   titles <- .title_lines(x, output_id)
   type <- info$type
   table <- identical(type, "table")
@@ -121,25 +180,6 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     paste0("program makes `", obj, "` and hands it on.  Edit the data part",
            " freely."))
 
-  stop_todo <- paste0("stop(\"rtfplanner: the data part of ", info$program,
-                      " is still to be written.\")")
-  todo <- switch(type,
-    figure = c(
-      "# TODO: make the figure(s), e.g.",
-      "#   content <- list(ggplot2::ggplot(adsl, ggplot2::aes(AGE)) +",
-      "#                     ggplot2::geom_histogram())",
-      stop_todo),
-    listing = c(
-      "# TODO: make the listing pages, e.g.",
-      paste0("#   adae    <- readRDS(\"", lay[["adam"]], "/adae.rds\")"),
-      "#   content <- as_rtftables(adae[, c(\"USUBJID\", \"AEDECOD\")])",
-      stop_todo),
-    c("# TODO: build the ARD and normalize it, e.g.",
-      paste0("#   adsl <- readRDS(\"", lay[["adam"]], "/adsl.rds\")"),
-      "#   ard  <- cards::ard_stack(adsl, .by = TRT01A, ...)",
-      "#   data <- ard_normalize(ard)",
-      stop_todo))
-
   data_part <- c(
     .section("Data"),
     paste0("# Leaves `", obj, "`: ", switch(type,
@@ -148,8 +188,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
       "the normalized ARD (ard_normalize()) the table is built from.")),
     paste0("# Input data are in ", lay[["adam"]], "/, ", lay[["sdtm"]],
            "/ and ", lay[["other"]], "/."),
-    if (!is.na(x$setup)) c(.code_block(x$setup), ""),
-    if (is.na(code)) todo else .code_block(code))
+    data_lines(x, output_id))
 
   report_part <- c(
     .section("Report"),

@@ -12,7 +12,8 @@ add_output(
   output_id,
   description = NA_character_,
   data_code = NA_character_,
-  type = "table"
+  type = "table",
+  process_code = NA_character_
 )
 
 copy_output(x, from, to)
@@ -28,11 +29,16 @@ remove_output(x, output_id)
 
 \item{description}{A short description shown in the report list.}
 
-\item{data_code}{R code that leaves \code{data} for \code{\link[rtfreporter:rtf_plan]{rtfreporter::rtf_plan()}}
-(\code{content} for a listing or figure); \code{NA} writes a TODO.}
+\item{data_code}{R code that makes the report's ARD, \code{ard} (for a
+listing or figure: its \code{content}); \code{NA} writes a TODO.}
 
 \item{type}{The report's type, one of \code{\link[=report_types]{report_types()}}; anything but
 \code{"table"} is written on the \code{report} sheet.}
+
+\item{process_code}{R code that turns \code{ard} into \code{data}, what
+\code{\link[rtfreporter:rtf_plan]{rtfreporter::rtf_plan()}} is given: \code{\link[rtfreporter:ard_normalize]{rtfreporter::ard_normalize()}}
+and any rework after it (\code{mutate()} ...).  \code{NA} means
+\code{data <- ard_normalize(ard)}, unless \code{data_code} makes \code{data} itself.}
 }
 \value{
 The updated \code{rtfplanner}.

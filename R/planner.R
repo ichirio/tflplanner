@@ -3,7 +3,8 @@
 #   sheets   every rtfreporter sheet as an all-character data frame, the
 #            columns rtfreporter::table_spec() gives it plus `note`
 #   study    the study sheet's keys, a named character vector
-#   outputs  the report list: output_id, description, data_code -- the
+#   outputs  the report list: output_id, description, data_code (makes
+#            the ARD), process_code (normalizes and reworks it) -- the
 #            part rtfreporter does not read, kept in the report workbook's
 #            `_rtfplanner` sheet (a sheet whose name starts with `_` is
 #            not read by rtfreporter)
@@ -73,7 +74,8 @@ sheet_columns <- function(sheet) {
 
 .empty_outputs <- function() {
   data.frame(output_id = character(), description = character(),
-             data_code = character(), stringsAsFactors = FALSE)
+             data_code = character(), process_code = character(),
+             stringsAsFactors = FALSE)
 }
 
 #' A new, empty study definition
@@ -202,14 +204,19 @@ read_planner <- function(path) {
 #' @param x An `rtfplanner`.
 #' @param output_id,from,to Report ids.
 #' @param description A short description shown in the report list.
-#' @param data_code R code that leaves `data` for [rtfreporter::rtf_plan()]
-#'   (`content` for a listing or figure); `NA` writes a TODO.
+#' @param data_code R code that makes the report's ARD, `ard` (for a
+#'   listing or figure: its `content`); `NA` writes a TODO.
+#' @param process_code R code that turns `ard` into `data`, what
+#'   [rtfreporter::rtf_plan()] is given: [rtfreporter::ard_normalize()]
+#'   and any rework after it (`mutate()` ...).  `NA` means
+#'   `data <- ard_normalize(ard)`, unless `data_code` makes `data` itself.
 #' @param type The report's type, one of [report_types()]; anything but
 #'   `"table"` is written on the `report` sheet.
 #' @return The updated `rtfplanner`.
 #' @export
 add_output <- function(x, output_id, description = NA_character_,
-                       data_code = NA_character_, type = "table") {
+                       data_code = NA_character_, type = "table",
+                       process_code = NA_character_) {
   id <- .check_id(output_id)
   if (id %in% x$outputs$output_id) {
     stop("Report '", id, "' is already on the list.", call. = FALSE)
@@ -228,7 +235,8 @@ add_output <- function(x, output_id, description = NA_character_,
   }
   x$outputs <- rbind(x$outputs, data.frame(
     output_id = id, description = as.character(description),
-    data_code = as.character(data_code), stringsAsFactors = FALSE))
+    data_code = as.character(data_code),
+    process_code = as.character(process_code), stringsAsFactors = FALSE))
   x
 }
 
@@ -251,7 +259,8 @@ copy_output <- function(x, from, to) {
   src <- x$outputs[x$outputs$output_id == from, , drop = FALSE]
   x <- add_output(x, to,
                   description = if (nrow(src)) src$description else NA,
-                  data_code = if (nrow(src)) src$data_code else NA)
+                  data_code = if (nrow(src)) src$data_code else NA,
+                  process_code = if (nrow(src)) src$process_code else NA)
   x
 }
 
@@ -375,7 +384,8 @@ write_planner <- function(x, dir, table_file = "table_spec.xlsx",
   .write_book(.spec_object(x, table_sheets(), .study_keys$table), tp)
   meta <- rbind(
     data.frame(output_id = NA_character_, description = "(every report)",
-               data_code = x$setup, stringsAsFactors = FALSE),
+               data_code = x$setup, process_code = NA_character_,
+               stringsAsFactors = FALSE),
     x$outputs)
   .write_book(.spec_object(x, report_sheets(), .study_keys$report), rp,
               stats::setNames(list(meta), .planner_sheet))

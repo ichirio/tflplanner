@@ -159,14 +159,12 @@ code <- list(
     "                   c(\"N\", \"mean\", \"sd\", \"median\", \"min\", \"max\"))),",
     "  ard_categorical(variables = c(AGEGR1, SEX, RACE),",
     "                  statistic = ~ c(\"n\", \"p\")),",
-    "  .total_n = TRUE)",
-    "data <- ard_normalize(ard)"),
+    "  .total_n = TRUE)"),
   "T-14-1-2" = c(
     "ard <- ard_stack(",
     "  adsl, .by = TRT01A,",
     "  ard_categorical(variables = DCDECOD, statistic = ~ c(\"n\", \"p\")),",
-    "  .total_n = TRUE)",
-    "data <- ard_normalize(ard)"),
+    "  .total_n = TRUE)"),
   "T-14-3-1" = c(
     "adae <- readRDS(\"data/adam/adae.rds\")",
     "adae <- adae[adae$TRTEMFL == \"Y\" & adae$SAFFL == \"Y\", ]",
@@ -174,9 +172,7 @@ code <- list(
     "ard <- ard_stack_hierarchical(",
     "  adae, variables = c(AEBODSYS, AEDECOD), by = TRTA,",
     "  denominator = adsl, id = USUBJID, over_variables = TRUE)",
-    "ard <- ard[ard$context != \"tabulate\", ]",
-    "data <- ard_normalize(ard, hierarchy = c(\"AEBODSYS\", \"AEDECOD\"),",
-    "                      overall = \"Any TEAE\")"),
+    "ard <- ard[ard$context != \"tabulate\", ]"),
   "L-16-2-7" = c(
     "adae <- readRDS(\"data/adam/adae.rds\")",
     "sev <- adae[adae$AESEV == \"SEVERE\", ]",
@@ -219,9 +215,16 @@ desc <- c("T-14-1-1" = "Demographic characteristics",
           "F-14-2-1" = "KM plot, time to first dermatologic event")
 types <- c("T-14-1-1" = "table", "T-14-1-2" = "table", "T-14-3-1" = "table",
            "L-16-2-7" = "listing", "F-14-2-1" = "figure")
+# the second step, normalize and rework (blank: data <- ard_normalize(ard))
+process <- list(
+  "T-14-3-1" = c(
+    "data <- ard_normalize(ard, hierarchy = c(\"AEBODSYS\", \"AEDECOD\"),",
+    "                      overall = \"Any TEAE\")"))
 for (o in names(code)) {
   p <- add_output(p, o, description = desc[[o]],
                   data_code = paste(code[[o]], collapse = "\n"),
+                  process_code = if (!is.null(process[[o]]))
+                    paste(process[[o]], collapse = "\n") else NA,
                   type = types[[o]])
 }
 
@@ -248,6 +251,9 @@ saveRDS(relabel(cards::ADTTE), file.path(adam, "adtte.rds"))
 if (requireNamespace("haven", quietly = TRUE)) {
   haven::write_xpt(relabel(cards::ADSL), file.path(adam, "adsl.xpt"))
 }
+
+# what each table's ARD holds, for the app's input assistance
+for (o in names(types)[types == "table"]) fetch_ard(s, o)
 
 print(check_planner(s$planner))
 st <- run_study(s)

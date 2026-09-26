@@ -53,7 +53,7 @@ A study's reports (TFL) are listed in order; each has a type.
 
 | Type | Content | Layout |
 |---|---|---|
-| Table | the data code leaves `data`, the `ard_normalize()`d ARD, saved to `output/ard/` | `table_spec.xlsx` → `rtf_plan(spec = )` |
+| Table | 1. ARD code makes `ard`; 2. normalize and rework makes `data` (default `data <- ard_normalize(ard)`), saved to `output/ard/` | `table_spec.xlsx` → `rtf_plan(spec = )` |
 | Listing | the data code leaves `content`, `rtftable` pages | program |
 | Figure | the data code leaves `content`, the figures | program |
 
@@ -63,6 +63,38 @@ comes from `report_spec.xlsx` for every type.
 A generated program carries a checksum.  While nobody edits it, it follows
 the definition (saving rewrites it when the definition or data code
 changes); once edited by hand it is kept, until you regenerate it.
+
+## Input assistance from the ARD
+
+**Run and read the ARD** runs a report's data code (setup, ARD code,
+normalize and rework) from the study folder and keeps what the result holds
+(`fetch_ard()`, `ard_meta()`) -- read after the rework, since that is what
+the table is built from:
+
+- the **keys**: the column key (`TRT01A`) and the hierarchy
+  (`AEBODSYS > AEDECOD`), with their levels;
+- the **analysis variables**, their kind, levels and statistics;
+- from the source data the code loaded (`adsl`, ...): each variable's
+  **label**, and the **order** of its values -- a factor's levels, or a
+  numeric companion `<name>N` (`TRT01A` by `TRT01AN`, `AGEGR1` by
+  `AGEGR1N`).
+
+With it the Table definition offers:
+
+- **Fill variables and levels** -- a `variables` row per column key and
+  analysis variable, with levels, label and order (blank cells only);
+- **Fill table roles** -- `cols`, `rows` / `label` / `sort` of the
+  hierarchy, or `group = variable`;
+- **cell presets** (n / Mean (SD) / Median / Q1, Q3 / Min, Max; n (%);
+  n/N (%) ...) for every variable of a kind or one variable, and **column
+  header presets** (`Arm / (N=n)`, `Arm (N=n) n (%)`, SOC / PT);
+- **dropdowns** in the grids with the ARD's variables, keys, contexts and
+  the templates its statistics can fill -- anything else may still be
+  typed.
+
+A report's grid also shows, greyed, the **study default** rows it
+inherits (rows with a blank `output_id`: the page header, the run line,
+the usual cell template ...).
 
 ## Install and start
 
@@ -87,9 +119,12 @@ rtfplanner::run_app("ABC-101")    # open a study at start
 - **帳票一覧** — add (with type), copy, rename, delete and order the
   reports; each report's data code and the setup code every program runs;
   the program as it will be written, and whether the one on disk was edited.
-- **表の定義 / 帳票の体裁** — one grid per sheet, filtered to the report
-  chosen in the sidebar; paste from Excel, dropdowns for fixed values,
-  column help from rtfreporter's `_README`.
+- **Table definition / Report layout** — one grid per sheet, filtered to
+  what the sidebar shows: a report, the **Study defaults**, or **ALL**
+  (every row, with `output_id`); input assistance above; paste from
+  Excel; column help from rtfreporter's `_README`.
+- The app is in English or Japanese: Studies > Settings, or
+  `setup_rtfplanner(language = "ja")`.
 - **データ** — the input data; upload into `data/adam|sdtm|other`, preview
   (`.rds`, `.csv`, `.xpt`, `.sas7bdat`, `.parquet`).
 - **成果物** — per report: program state, ARD, RTF, status (未作成 / TODO /

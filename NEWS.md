@@ -1,5 +1,18 @@
 # rtfplanner 0.0.0.9000
 
+- Input assistance from the ARD: `fetch_ard()` runs a report's data code
+  from the study folder and keeps `ard_meta()` (keys, hierarchy,
+  variables, levels, statistics, with labels and value order from the
+  source data); `fill_variables()`, `fill_tables()`, `cell_presets()`,
+  `header_presets()`, `add_preset()`; dropdowns in the grids.
+- A report's data code is two steps: the ARD code (`data_code`, makes
+  `ard`) and normalize and rework (`process_code`, makes `data`;
+  `data_lines()`).
+- The sidebar shows a report, the Study defaults or ALL; a report's grid
+  shows the default rows it inherits (`inherited_rows()`).
+- The app is in English (default) or Japanese (`tr()`,
+  `setup_rtfplanner(language = )`).
+
 - rtfplanner keeps each study's state in a home of its own
   (`setup_rtfplanner()`, `rtfplanner_home()`, `rtfplanner_config()`): a
   study opens as it was last saved, with a history of earlier saves.  The

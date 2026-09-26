@@ -52,13 +52,16 @@ rtfplanner_home <- function() {
 #'   sessions.
 #' @param studies_root Where new study folders are created.  `NULL` keeps
 #'   the current setting, or on a first setup uses `<home>/workspace`.
+#' @param language The app's language, `"en"` (the default) or `"ja"`;
+#'   `NULL` keeps the current setting.
 #' @return The settings, invisibly.
 #' @examples
 #' \dontrun{
 #' setup_rtfplanner(studies_root = "C:/studies")
 #' }
 #' @export
-setup_rtfplanner <- function(home = NULL, studies_root = NULL) {
+setup_rtfplanner <- function(home = NULL, studies_root = NULL,
+                             language = NULL) {
   if (!is.null(home)) {
     home <- normalizePath(home, "/", mustWork = FALSE)
     dir.create(dirname(.pointer_file()), recursive = TRUE,
@@ -75,6 +78,7 @@ setup_rtfplanner <- function(home = NULL, studies_root = NULL) {
     cfg$studies_root <- file.path(home, "workspace")
   }
   cfg$studies_root <- normalizePath(cfg$studies_root, "/", mustWork = FALSE)
+  if (!is.null(language)) cfg$language <- match.arg(language, app_languages())
   dir.create(cfg$studies_root, recursive = TRUE, showWarnings = FALSE)
   .write_config(cfg, home)
   message("rtfplanner home: ", home, "\nnew studies go to: ",
@@ -87,13 +91,13 @@ setup_rtfplanner <- function(home = NULL, studies_root = NULL) {
 #' rtfplanner's settings
 #'
 #' @param home The home folder.
-#' @return A list: `studies_root`, `last_study`.
+#' @return A list: `studies_root`, `last_study`, `language`.
 #' @export
 rtfplanner_config <- function(home = rtfplanner_home()) {
   f <- .config_file(home)
   cfg <- if (file.exists(f)) yaml::read_yaml(f) else list()
-  cfg[c("studies_root", "last_study")] <- lapply(
-    cfg[c("studies_root", "last_study")], function(v)
+  keys <- c("studies_root", "last_study", "language")
+  cfg[keys] <- lapply(cfg[keys], function(v)
       if (is.null(v) || !nzchar(v)) NULL else as.character(v))
   cfg
 }

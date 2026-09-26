@@ -4,7 +4,7 @@
 \alias{setup_rtfplanner}
 \title{Set up rtfplanner's home}
 \usage{
-setup_rtfplanner(home = NULL, studies_root = NULL)
+setup_rtfplanner(home = NULL, studies_root = NULL, language = NULL)
 }
 \arguments{
 \item{home}{The home folder.  \code{NULL} keeps the current one (see
@@ -13,6 +13,9 @@ sessions.}
 
 \item{studies_root}{Where new study folders are created.  \code{NULL} keeps
 the current setting, or on a first setup uses \verb{<home>/workspace}.}
+
+\item{language}{The app's language, \code{"en"} (the default) or \code{"ja"};
+\code{NULL} keeps the current setting.}
 }
 \value{
 The settings, invisibly.
