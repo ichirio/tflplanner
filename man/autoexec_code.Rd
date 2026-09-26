@@ -4,13 +4,10 @@
 \alias{autoexec_code}
 \title{The program that runs every report program}
 \usage{
-autoexec_code(x, program_dir = NULL, date = Sys.Date())
+autoexec_code(x, date = Sys.Date())
 }
 \arguments{
 \item{x}{An \code{rtfplanner}.}
-
-\item{program_dir}{The folder the programs are in; \code{NULL} means the
-folder autoexec_report.R itself is run from.}
 
 \item{date}{The date stamped in the banner.}
 }
@@ -18,9 +15,10 @@ folder autoexec_report.R itself is run from.}
 The program, one element per line.
 }
 \description{
-\code{autoexec_report.R} runs the programs in the order of the report list,
-each in its own \code{Rscript} process (so one report's packages and options
-cannot leak into the next) with its log in \verb{logs/}, and ends with a
-table of what passed.  Set \code{isolate <- FALSE} in it to \code{source()} them
-in one session instead.
+\code{programs/autoexec_report.R} runs from the study folder.  It runs the
+programs in the order of the report list -- or only the ones named on
+its command line (\verb{Rscript programs/autoexec_report.R DM.R AE.R}) --
+each in its own \code{Rscript} process with the study folder as its working
+directory and its log in \verb{logs/}, and ends with a table of what passed
+(\code{logs/autoexec_report.csv}).
 }

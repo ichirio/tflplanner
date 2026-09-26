@@ -4,23 +4,12 @@
 \alias{program_code}
 \title{The R program for one report}
 \usage{
-program_code(
-  x,
-  output_id,
-  spec_dir = ".",
-  table_file = "table_spec.xlsx",
-  report_file = "report_spec.xlsx",
-  date = Sys.Date()
-)
+program_code(x, output_id, date = Sys.Date())
 }
 \arguments{
 \item{x}{An \code{rtfplanner}.}
 
 \item{output_id}{The report.}
-
-\item{spec_dir}{The folder the program reads the workbooks from.}
-
-\item{table_file, report_file}{The workbook names.}
 
 \item{date}{The date stamped in the banner.}
 }
@@ -28,5 +17,19 @@ program_code(
 The program, one element per line.
 }
 \description{
-The R program for one report
+A program runs with the study folder as its working directory (see
+\code{\link[=study_layout]{study_layout()}}) and names every file relative to it.  What it does
+depends on the report's \code{type}:
+}
+\details{
+\itemize{
+\item \code{table} -- the data part leaves \code{data}, the normalized ARD; the program
+saves it to \verb{output/ard/<output_id>.rds} (the deliverable data) and
+plans the table from \code{table_spec.xlsx}.
+\item \code{listing}, \code{figure} -- the data part leaves \code{content}: \code{rtftable}
+pages for a listing, the figures for a figure.
+}
+
+The report around it -- page, header, footer, titles, footnotes -- comes
+from \code{report_spec.xlsx} for every type.
 }

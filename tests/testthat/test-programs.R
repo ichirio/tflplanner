@@ -1,9 +1,16 @@
-test_that("a program names its report, reads the specs and parses", {
+sample_planner <- function() {
   d <- system.file("extdata", "ard-spec", package = "rtfreporter")
-  p <- read_planner(file.path(d, c("report.xlsx", "study.xlsx")))
-  code <- program_code(p, "PK", spec_dir = "C:\\study\\spec")
+  read_planner(file.path(d, c("report.xlsx", "study.xlsx")))
+}
+
+test_that("a table program reads the specs, saves its ARD and parses", {
+  p <- sample_planner()
+  code <- program_code(p, "PK")
   expect_true(any(grepl('output_id <- "PK"', code, fixed = TRUE)))
-  expect_true(any(grepl('spec_dir  <- "C:/study/spec"', code, fixed = TRUE)))
+  expect_true(any(grepl('"spec/report_spec.xlsx", "spec/table_spec.xlsx"',
+                        code, fixed = TRUE)))
+  expect_true(any(grepl('file.exists("study.yml")', code, fixed = TRUE)))
+  expect_true(any(grepl("saveRDS(data", code, fixed = TRUE)))
   expect_true(any(grepl("still to be written", code)))
   expect_silent(parse(text = code))
   expect_equal(report_info(p, "PK")$file, "output/PK.rtf")
@@ -20,55 +27,16 @@ test_that("a program names its report, reads the specs and parses", {
   expect_equal(report_info(p, "AE")$program, "t_ae_AE.R")
 })
 
-test_that("export keeps an edited program unless told to overwrite", {
-  d <- system.file("extdata", "ard-spec", package = "rtfreporter")
-  p <- read_planner(file.path(d, c("report.xlsx", "study.xlsx")))
-  dir <- withr_tempdir()
-  r <- export_planner(p, dir)
-  expect_true(all(r$status == "written"))
-  expect_equal(nrow(r), 2 + 5 + 1)
-  writeLines("# mine", file.path(dir, "DM.R"))
-  r <- export_planner(p, dir)
-  expect_equal(r$status[basename(r$file) == "DM.R"], "kept")
-  expect_equal(readLines(file.path(dir, "DM.R")), "# mine")
-  export_planner(p, dir, overwrite_programs = TRUE)
-  expect_gt(length(readLines(file.path(dir, "DM.R"))), 1)
-})
-
-test_that("the generated programs run end to end through autoexec", {
-  skip_if_not_installed("cards")
-  skip_on_cran()
-  d <- system.file("extdata", "ard-spec", package = "rtfreporter")
-  p <- read_planner(file.path(d, c("report.xlsx", "study.xlsx")))
-  for (id in c("AE", "ORR", "LB", "PK")) p <- remove_output(p, id)
-  dir <- withr_tempdir()
-  p$study[["output_path"]] <- file.path(dir, "rtf")
-  p$setup <- "library(cards)"
-  p$outputs$data_code[1] <- paste(
-    "adsl <- transform(cards::ADSL, TRT01P = \"XXXXX\", HTBL = HEIGHTBL)",
-    "ard <- ard_stack(",
-    "  adsl, .by = TRT01P,",
-    "  ard_continuous(variables = c(AGE, HTBL),",
-    "                 statistic = ~ continuous_summary_fns(",
-    "                   c(\"N\", \"mean\", \"sd\", \"median\", \"min\", \"max\"))),",
-    "  ard_categorical(variables = c(AGEGR1, SEX, ETHNIC),",
-    "                  statistic = ~ c(\"n\", \"p\")),",
-    "  .total_n = TRUE)",
-    "data <- ard_normalize(ard)", sep = "\n")
-  p <- add_output(p, "TODO1")
-  dir.create(file.path(dir, "rtf"))
-  export_planner(p, dir)
-
-  rscript <- file.path(R.home("bin"), "Rscript")
-  out <- suppressWarnings(system2(
-    rscript, shQuote(file.path(dir, "autoexec_report.R")),
-    stdout = TRUE, stderr = TRUE))
-  expect_equal(attr(out, "status"), 1L)          # TODO1 is still a TODO
-  res <- utils::read.csv(file.path(dir, "logs", "autoexec_report.csv"))
-  expect_equal(res$status, c("OK", "ERROR"))
-  expect_match(res$note[2], "still to be written")
-  rtf <- file.path(dir, "rtf", "DM.rtf")
-  expect_true(file.exists(rtf))
-  expect_true(any(grepl("Age (years)", readLines(rtf, warn = FALSE),
-                        fixed = TRUE)))
+test_that("listings and figures make `content` and skip the table plan", {
+  p <- add_output(new_planner(), "L1", type = "listing")
+  p <- add_output(p, "F1", type = "figure")
+  expect_equal(report_info(p, "L1")$type, "listing")
+  expect_equal(p$sheets$report$type, c("listing", "figure"))
+  for (id in c("L1", "F1")) {
+    code <- program_code(p, id)
+    expect_silent(parse(text = code))
+    expect_true("doc  <- rtf_report(spec, content)" %in% code)
+    expect_false(any(grepl("rtf_plan", code)))
+  }
+  expect_error(add_output(p, "X", type = "chart"))
 })

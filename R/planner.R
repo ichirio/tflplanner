@@ -30,6 +30,10 @@ report_sheets <- function() {
   c("report", "page", "header", "footer", "titles", "footnotes")
 }
 
+#' @rdname table_sheets
+#' @export
+report_types <- function() c("table", "listing", "figure")
+
 .study_keys <- list(table = "rounding",
                     report = c("output_path", "program_dir"))
 
@@ -199,14 +203,28 @@ read_planner <- function(path) {
 #' @param output_id,from,to Report ids.
 #' @param description A short description shown in the report list.
 #' @param data_code R code that leaves `data` for [rtfreporter::rtf_plan()]
-#'   (or `content` for a figure); `NA` writes a TODO.
+#'   (`content` for a listing or figure); `NA` writes a TODO.
+#' @param type The report's type, one of [report_types()]; anything but
+#'   `"table"` is written on the `report` sheet.
 #' @return The updated `rtfplanner`.
 #' @export
 add_output <- function(x, output_id, description = NA_character_,
-                       data_code = NA_character_) {
+                       data_code = NA_character_, type = "table") {
   id <- .check_id(output_id)
   if (id %in% x$outputs$output_id) {
     stop("Report '", id, "' is already on the list.", call. = FALSE)
+  }
+  type <- match.arg(type, report_types())
+  if (!identical(report_info(x, id)$type, type)) {
+    r <- x$sheets$report
+    i <- which(!is.na(r$output_id) & r$output_id == id)
+    if (!length(i)) {
+      r[nrow(r) + 1L, ] <- NA_character_
+      i <- nrow(r)
+      r$output_id[i] <- id
+    }
+    r$type[i] <- type
+    x$sheets$report <- r
   }
   x$outputs <- rbind(x$outputs, data.frame(
     output_id = id, description = as.character(description),

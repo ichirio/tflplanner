@@ -3,11 +3,14 @@
 \name{table_sheets}
 \alias{table_sheets}
 \alias{report_sheets}
+\alias{report_types}
 \title{Sheets of the two definition workbooks}
 \usage{
 table_sheets()
 
 report_sheets()
+
+report_types()
 }
 \value{
 \code{table_sheets()} and \code{report_sheets()} return a character vector.

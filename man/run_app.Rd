@@ -5,17 +5,15 @@
 \alias{planner_app}
 \title{Start the rtfplanner app}
 \usage{
-run_app(path = NULL, dir = NULL, ...)
+run_app(root = getOption("rtfplanner.root", getwd()), study = NULL, ...)
 
-planner_app(path = NULL, dir = NULL)
+planner_app(root = getOption("rtfplanner.root", getwd()), study = NULL)
 }
 \arguments{
-\item{path}{Workbook(s) to open at start, e.g.
-\code{c("spec/table_spec.xlsx", "spec/report_spec.xlsx")}; \code{NULL} starts
-empty.}
+\item{root}{The folder that holds the studies; defaults to
+\code{getOption("rtfplanner.root")}, else the working directory.}
 
-\item{dir}{The folder "write" writes to; defaults to the folder of
-\code{path}, else the working directory.}
+\item{study}{A study to open at start: its folder, or its id in \code{root}.}
 
 \item{...}{Passed to \code{\link[shiny:runApp]{shiny::runApp()}} (e.g. \code{launch.browser}, \code{port}).}
 }
@@ -24,13 +22,14 @@ empty.}
 \code{run_app()} runs it.
 }
 \description{
-Opens the editor for a study's \code{table_spec.xlsx} and \code{report_spec.xlsx}.
-From it the workbooks, one R program per report and
-\code{autoexec_report.R} are written to a folder (or downloaded as a zip).
+Opens the study manager: choose or create a study in \code{root}, then define
+its reports (Tables from the table definition; Listings and Figures from
+their programs), their data code, and run them.  Each study is a folder
+with a fixed layout (\code{\link[=study_layout]{study_layout()}}).
 }
 \examples{
 \dontrun{
-run_app()
-run_app(c("spec/table_spec.xlsx", "spec/report_spec.xlsx"))
+run_app("C:/studies")
+run_app("C:/studies", study = "ABC-101")
 }
 }

@@ -1,21 +1,45 @@
 # rtfplanner
 
-A 'shiny' editor for the definition workbooks that
-[rtfreporter](https://github.com/ichirio/rtfreporter) builds clinical
-tables from — and the programs that use them.
+A 'shiny' study manager for clinical TFLs built with
+[rtfreporter](https://github.com/ichirio/rtfreporter).  Each study is a
+folder that holds its input data, its definitions, its programs, its
+deliverables and its logs; the app defines the reports and runs them.
 
-rtfplanner writes, for one study:
+## A study is a folder
 
-| File | What it holds |
-|---|---|
-| `table_spec.xlsx` | the table: `tables`, `variables`, `cells`, `layout`, `columns`, `style`, `col_header` (+ `rounding`) |
-| `report_spec.xlsx` | the report around it: `report`, `page`, `header`, `footer`, `titles`, `footnotes` (+ `output_path`, `program_dir`), and the `_rtfplanner` sheet (report list, data code) |
-| `<program>.R` | one program per report: makes `data`, then `read_report_spec()` → `rtf_plan(spec = )` → `rtf_report()` → `generate_rtfreport()` |
-| `autoexec_report.R` | runs every report program in list order, one `Rscript` process each, logs in `logs/` |
+```
+ABC-101/
+  study.yml            the study: id, title, compound, phase, description
+  ABC-101.Rproj        open it and the study folder is the working directory
+  data/adam/           input data: analysis datasets
+  data/sdtm/                       tabulation datasets
+  data/other/                      anything else
+  spec/                table_spec.xlsx, report_spec.xlsx
+  programs/            one program per report, autoexec_report.R
+  output/ard/          deliverable data: each Table's ARD (.rds)
+  output/tfl/          deliverable reports: the RTF files
+  logs/                one log per program run
+```
 
-The workbooks are written by `rtfreporter::write_table_spec()` and checked
-with `rtfreporter::read_report_spec()`, so what the app saves is exactly
-what the programs read.
+Every program runs **from the study folder** and names its files relative
+to it, so a study can be moved, copied or zipped and still run.
+
+## Reports: Tables, Listings, Figures
+
+A study's reports (TFL) are listed in order; each has a type.
+
+| Type | Content | Layout |
+|---|---|---|
+| Table | the data code leaves `data`, the `ard_normalize()`d ARD, saved to `output/ard/` | `table_spec.xlsx` → `rtf_plan(spec = )` |
+| Listing | the data code leaves `content`, `rtftable` pages | program |
+| Figure | the data code leaves `content`, the figures | program |
+
+The report around the content — page, header, footer, titles, footnotes —
+comes from `report_spec.xlsx` for every type.
+
+A generated program carries a checksum.  While nobody edits it, it follows
+the definition (saving rewrites it when the definition or data code
+changes); once edited by hand it is kept, until you regenerate it.
 
 ## Install and start
 
@@ -23,38 +47,46 @@ rtfplanner needs the rtfreporter branch that has the definition workbooks
 (`feat/474-ard-experimental`, 0.8.0.9081 or later).
 
 ```r
-# install.packages("remotes")
 remotes::install_github("ichirio/rtfreporter@feat/474-ard-experimental")
 remotes::install_local("C:/Yrepo/rtfplanner")
 
-rtfplanner::run_app()
-rtfplanner::run_app(c("spec/table_spec.xlsx", "spec/report_spec.xlsx"))
+rtfplanner::run_app("C:/studies")                     # the folder of studies
+rtfplanner::run_app("C:/studies", study = "ABC-101")  # open one at start
 ```
 
-## Using the app
+## The app
 
-- **Sidebar — the chosen report.**  Every sheet shows only the rows of the
-  report chosen here; `(既定 = 空欄)` shows the study-wide defaults
-  (blank `output_id`), `(全行)` shows everything.
-- **帳票一覧** — add, copy (every sheet's rows at once), rename, delete and
-  order the reports; write each report's data code (it must leave `data`,
-  the `ard_normalize()`d ARD — `content` for a figure) and the setup code
-  every program runs first.  A report with no data code gets a TODO that
-  stops with a clear message.  The generated program is previewed live.
-- **表の定義 / 帳票の体裁** — one grid per sheet: right-click to add or
-  delete rows, paste blocks from Excel, dropdowns for fixed values.  The
-  column descriptions come from rtfreporter's own `_README`.
-- **試験** — `rounding`, `output_path`, `program_dir`.
-- **ファイル** — open workbooks, check them, write everything to a folder
-  (an existing report program is kept unless you tick overwrite — it may
-  have been edited by hand), or download a portable zip.
+- **試験** — the studies in the root folder; create one (empty, copied
+  from another study, or from rtfreporter's five sample reports), open
+  one, edit its title/compound/phase/rounding, import workbooks, zip it.
+- **帳票一覧** — add (with type), copy, rename, delete and order the
+  reports; each report's data code and the setup code every program runs;
+  the program as it will be written, and whether the one on disk was edited.
+- **表の定義 / 帳票の体裁** — one grid per sheet, filtered to the report
+  chosen in the sidebar; paste from Excel, dropdowns for fixed values,
+  column help from rtfreporter's `_README`.
+- **データ** — the input data; upload into `data/adam|sdtm|other`, preview
+  (`.rds`, `.csv`, `.xpt`, `.sas7bdat`, `.parquet`).
+- **成果物** — per report: program state, ARD, RTF, status (未作成 / TODO /
+  未実行 / エラー / 要再実行 / OK); run all or the selected ones in the
+  background, read logs, download an RTF, check the definition.
+- **保存** writes the workbooks, the programs and `study.yml`; nothing is
+  written before.
 
 ## From R
 
 ```r
 library(rtfplanner)
-p <- read_planner(c("table_spec.xlsx", "report_spec.xlsx"))
-p <- copy_output(p, "DM", "DM_ITT")
-check_planner(p)
-export_planner(p, "study/tfl")
+s <- create_study("C:/studies", "ABC-101", title = "A phase 2 study")
+s <- open_study("C:/studies/ABC-101")
+s$planner <- add_output(s$planner, "T_DM", type = "table")
+s <- save_study(s)
+run_study(s)            # -> study_status(s)
 ```
+
+## Roadmap
+
+- ARD generation: cards / cardx code generated from an Excel spec
+  (`programs/ard/`, results in `output/ard/`), which Table programs read.
+- Figures from templates, defined in an Excel spec and the GUI.
+- Listings generated by listing type.

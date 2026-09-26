@@ -1,11 +1,14 @@
-# The app.  One planner object in a reactiveValues is the whole state; every
-# grid shows a slice of one sheet (the rows of the report chosen in the
-# sidebar) and writes the slice back when it is edited.  A grid is redrawn
-# only when the slice it shows changes from outside (another report chosen,
-# a workbook opened, a report copied), never because it was edited itself.
+# The app.  A study is opened first; everything else is that study.  The
+# study's planner lives in a reactiveValues and every grid shows a slice of
+# one sheet (the rows of the report chosen in the sidebar) and writes the
+# slice back when it is edited.  A grid is redrawn only when the slice it
+# shows changes from outside (another report chosen, the study opened, a
+# report copied), never because it was edited itself.  Nothing reaches the
+# disk until the user saves.
 
 .all_rows <- "__all__"
 .default_rows <- "__default__"
+.study_tabs <- c("outputs", "table_spec", "report_spec", "data", "results")
 
 # Values a column takes, offered as a dropdown (anything else may still be
 # typed: rtfreporter checks it when the workbook is read).
@@ -34,40 +37,50 @@
   col_header = "col_header \u5217\u898b\u51fa\u3057",
   report = "report \u5e33\u7968", page = "page \u7528\u7d19",
   header = "header \u30d8\u30c3\u30c0", footer = "footer \u30d5\u30c3\u30bf",
-  titles = "titles \u30bf\u30a4\u30c8\u30eb",
-  footnotes = "footnotes \u811a\u6ce8")
+  titles = "titles \u30bf\u30a4\u30c8\u30eb", footnotes = "footnotes \u811a\u6ce8")
+
+.type_labels <- c(table = "Table", listing = "Listing", figure = "Figure")
+
+.status_labels <- c(
+  "no program" = "\u672a\u4f5c\u6210\uff08\u4fdd\u5b58\u3067\u751f\u6210\uff09", unsaved = "\u672a\u4fdd\u5b58\uff08\u4fdd\u5b58\u3067\u66f4\u65b0\uff09",
+  todo = "TODO\uff08\u30c7\u30fc\u30bf\u90e8\u672a\u8a18\u5165\uff09",
+  "not run" = "\u672a\u5b9f\u884c", error = "\u30a8\u30e9\u30fc", outdated = "\u8981\u518d\u5b9f\u884c", ok = "OK")
 
 #' Start the rtfplanner app
 #'
-#' Opens the editor for a study's `table_spec.xlsx` and `report_spec.xlsx`.
-#' From it the workbooks, one R program per report and
-#' `autoexec_report.R` are written to a folder (or downloaded as a zip).
+#' Opens the study manager: choose or create a study in `root`, then define
+#' its reports (Tables from the table definition; Listings and Figures from
+#' their programs), their data code, and run them.  Each study is a folder
+#' with a fixed layout ([study_layout()]).
 #'
-#' @param path Workbook(s) to open at start, e.g.
-#'   `c("spec/table_spec.xlsx", "spec/report_spec.xlsx")`; `NULL` starts
-#'   empty.
-#' @param dir The folder "write" writes to; defaults to the folder of
-#'   `path`, else the working directory.
+#' @param root The folder that holds the studies; defaults to
+#'   `getOption("rtfplanner.root")`, else the working directory.
+#' @param study A study to open at start: its folder, or its id in `root`.
 #' @param ... Passed to [shiny::runApp()] (e.g. `launch.browser`, `port`).
 #' @return `planner_app()` returns a [shiny::shinyApp()] object;
 #'   `run_app()` runs it.
 #' @examples
 #' \dontrun{
-#' run_app()
-#' run_app(c("spec/table_spec.xlsx", "spec/report_spec.xlsx"))
+#' run_app("C:/studies")
+#' run_app("C:/studies", study = "ABC-101")
 #' }
 #' @export
-run_app <- function(path = NULL, dir = NULL, ...) {
-  shiny::runApp(planner_app(path, dir), ...)
+run_app <- function(root = getOption("rtfplanner.root", getwd()),
+                    study = NULL, ...) {
+  shiny::runApp(planner_app(root, study), ...)
 }
 
 #' @rdname run_app
 #' @export
-planner_app <- function(path = NULL, dir = NULL) {
-  start <- if (is.null(path)) new_planner() else read_planner(path)
-  if (is.null(dir)) dir <- if (is.null(path)) getwd() else dirname(path[1L])
-  shiny::shinyApp(app_ui(dir), function(input, output, session)
-    app_server(input, output, session, start))
+planner_app <- function(root = getOption("rtfplanner.root", getwd()),
+                        study = NULL) {
+  start <- NULL
+  if (!is.null(study)) {
+    path <- if (dir.exists(study)) study else file.path(root, study)
+    start <- open_study(path)
+  }
+  shiny::shinyApp(app_ui(root), function(input, output, session)
+    app_server(input, output, session, root, start))
 }
 
 # ------------------------------------------------------------------- UI
@@ -78,6 +91,8 @@ planner_app <- function(path = NULL, dir = NULL) {
 .rp-code pre { max-height: 520px; overflow: auto; white-space: pre; }
 .rp-help { font-size: 12.5px; }
 .handsontable td, .handsontable th { font-size: 12.5px; }
+.rp-dirty { color: #b45309; font-weight: 600; }
+.rp-study { font-weight: 600; }
 "
 
 .sheet_panel <- function(sheet) {
@@ -92,49 +107,64 @@ planner_app <- function(path = NULL, dir = NULL) {
 
 .grid_note <- shiny::p(
   class = "text-muted small mb-1",
-  "\u884c\u306e\u8ffd\u52a0\u30fb\u524a\u9664\u306f\u53f3\u30af\u30ea\u30c3",
-  "\u30af\u3002Excel \u304b\u3089\u306e\u8cbc\u308a\u4ed8\u3051\u53ef\u3002",
-  "\u7a7a\u6b04 = \u672a\u6307\u5b9a\u3002",
-  "1 \u30bb\u30eb\u306b\u8907\u6570\u306f | \u533a\u5207\u308a\u3002")
+  "\u884c\u306e\u8ffd\u52a0\u30fb\u524a\u9664\u306f\u53f3\u30af\u30ea\u30c3\u30af\u3002Excel \u304b\u3089\u306e\u8cbc\u308a\u4ed8\u3051\u53ef\u3002",
+  "\u7a7a\u6b04 = \u672a\u6307\u5b9a\u30021 \u30bb\u30eb\u306b\u8907\u6570\u306f | \u533a\u5207\u308a\u3002")
 
-app_ui <- function(dir) {
+.btn <- function(id, label, class = "btn-sm", ...) {
+  shiny::actionButton(id, label, class = class, ...)
+}
+
+app_ui <- function(root) {
+  two <- bslib::breakpoints(sm = 12, lg = c(5, 7))
   bslib::page_navbar(
+    id = "nav",
     title = "rtfplanner",
     theme = bslib::bs_theme(version = 5, preset = "shiny"),
     header = shiny::tags$style(.code_css),
     sidebar = bslib::sidebar(
-      width = 260,
-      shiny::radioButtons(
-        "target", "\u5bfe\u8c61\u306e\u5e33\u7968",
-        choices = c("(\u5168\u884c)" = .all_rows)),
+      width = 250,
+      shiny::uiOutput("study_side"),
+      shiny::radioButtons("target", "\u5bfe\u8c61\u306e\u5e33\u7968",
+                          choices = c("(\u5168\u884c)" = .all_rows)),
       shiny::p(class = "text-muted small",
-               "\u5404\u30b7\u30fc\u30c8\u306f\u9078\u3093\u3060\u5e33\u7968",
-               "\u306e\u884c\u3060\u3051\u3092\u8868\u793a\u30fb\u7de8\u96c6",
-               "\u3057\u307e\u3059\u3002\u300c\u65e2\u5b9a\u300d\u306f",
-               "output_id \u304c\u7a7a\u6b04\u306e\u884c\uff08\u8a66\u9a13",
-               "\u5168\u4f53\u306e\u30c7\u30d5\u30a9\u30eb\u30c8\uff09\u3002")),
+               "\u5404\u30b7\u30fc\u30c8\u306f\u9078\u3093\u3060\u5e33\u7968\u306e\u884c\u3060\u3051\u3092\u8868\u793a\u30fb\u7de8\u96c6\u3057\u307e\u3059\u3002",
+               "\u300c\u65e2\u5b9a\u300d\u306f output_id \u304c\u7a7a\u6b04\u306e\u884c\uff08\u8a66\u9a13\u5168\u4f53\u306e\u30c7\u30d5\u30a9\u30eb\u30c8\uff09\u3002")),
 
     bslib::nav_panel(
-      "\u5e33\u7968\u4e00\u89a7",
+      "\u8a66\u9a13", value = "study",
       bslib::layout_columns(
-        col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
+        col_widths = two,
         bslib::card(
-          bslib::card_header("\u5e33\u7968"),
+          bslib::card_header("\u8a66\u9a13\u4e00\u89a7"),
+          shiny::div(
+            class = "d-flex gap-2 align-items-end",
+            shiny::textInput("root", "\u8a66\u9a13\u3092\u7f6e\u304f\u30d5\u30a9\u30eb\u30c0", value = root,
+                             width = "100%"),
+            .btn("refresh_studies", "\u66f4\u65b0", class = "btn-sm mb-3")),
+          DT::DTOutput("studies"),
+          shiny::div(class = "d-flex gap-2",
+                     .btn("open_study", "\u958b\u304f", class = "btn-sm btn-primary"),
+                     .btn("new_study", "\u65b0\u898f\u8a66\u9a13"))),
+        bslib::card(
+          bslib::card_header("\u3053\u306e\u8a66\u9a13"),
+          shiny::uiOutput("study_detail")))),
+
+    bslib::nav_panel(
+      "\u5e33\u7968\u4e00\u89a7", value = "outputs",
+      bslib::layout_columns(
+        col_widths = two,
+        bslib::card(
+          bslib::card_header("\u5e33\u7968 (TFL)"),
           DT::DTOutput("outputs"),
           shiny::div(
             class = "d-flex flex-wrap gap-1",
-            shiny::actionButton("add", "\u8ffd\u52a0", class = "btn-sm"),
-            shiny::actionButton("copy", "\u8907\u88fd", class = "btn-sm"),
-            shiny::actionButton("rename", "\u540d\u524d\u5909\u66f4",
-                                class = "btn-sm"),
-            shiny::actionButton("remove", "\u524a\u9664",
-                                class = "btn-sm btn-outline-danger"),
-            shiny::actionButton("up", "\u2191", class = "btn-sm"),
-            shiny::actionButton("down", "\u2193", class = "btn-sm")),
+            .btn("add", "\u8ffd\u52a0"), .btn("copy", "\u8907\u88fd"),
+            .btn("rename", "\u540d\u524d\u5909\u66f4"),
+            .btn("remove", "\u524a\u9664", class = "btn-sm btn-outline-danger"),
+            .btn("up", "\u2191"), .btn("down", "\u2193")),
           shiny::p(class = "text-muted small mt-1",
-                   "\u9806\u756a = autoexec_report.R \u306e\u5b9f\u884c",
-                   "\u9806\u3002\u8907\u88fd\u306f\u5168\u30b7\u30fc\u30c8",
-                   "\u306e\u884c\u3054\u3068\u30b3\u30d4\u30fc\u3057\u307e\u3059\u3002")),
+                   "\u9806\u756a = autoexec_report.R \u306e\u5b9f\u884c\u9806\u3002",
+                   "\u8907\u88fd\u306f\u5168\u30b7\u30fc\u30c8\u306e\u884c\u3054\u3068\u30b3\u30d4\u30fc\u3057\u307e\u3059\u3002")),
         bslib::navset_card_tab(
           bslib::nav_panel(
             "\u30c7\u30fc\u30bf\u6e96\u5099\u30b3\u30fc\u30c9",
@@ -144,80 +174,80 @@ app_ui <- function(dir) {
               class = "rp-code",
               shiny::textAreaInput(
                 "data_code",
-                "\u3053\u306e\u5e33\u7968\u306e\u30c7\u30fc\u30bf\u6e96\u5099 (`data` \u3092\u4f5c\u308b\u3002\u56f3\u306f `content`\u3002\u7a7a\u6b04 = TODO)",
+                "\u3053\u306e\u5e33\u7968\u306e\u30c7\u30fc\u30bf\u6e96\u5099\uff08Table \u306f `data` \u3092\u3001Listing / Figure \u306f `content` \u3092\u4f5c\u308b\u3002\u7a7a\u6b04 = TODO\uff09",
                 rows = 12, width = "100%", resize = "vertical"),
               shiny::textAreaInput(
                 "setup",
-                "\u5168\u5e33\u7968\u5171\u901a\u306e\u524d\u51e6\u7406 (library(), ADaM \u306e\u8aad\u307f\u8fbc\u307f\u306a\u3069)",
+                "\u5168\u5e33\u7968\u5171\u901a\u306e\u524d\u51e6\u7406\uff08library()\u3001\u5171\u901a\u30c7\u30fc\u30bf\u306e\u8aad\u307f\u8fbc\u307f\u306a\u3069\uff09",
                 rows = 5, width = "100%", resize = "vertical"))),
           bslib::nav_panel(
             "\u751f\u6210\u3055\u308c\u308b\u30d7\u30ed\u30b0\u30e9\u30e0",
+            shiny::uiOutput("program_state"),
             shiny::div(class = "rp-code",
                        shiny::verbatimTextOutput("program")))))),
 
     bslib::nav_panel(
-      "\u8868\u306e\u5b9a\u7fa9 (table_spec)",
+      "\u8868\u306e\u5b9a\u7fa9 (table_spec)", value = "table_spec",
+      shiny::uiOutput("type_note"),
       .grid_note,
       do.call(bslib::navset_card_underline,
               lapply(table_sheets(), .sheet_panel))),
 
     bslib::nav_panel(
-      "\u5e33\u7968\u306e\u4f53\u88c1 (report_spec)",
+      "\u5e33\u7968\u306e\u4f53\u88c1 (report_spec)", value = "report_spec",
       .grid_note,
       do.call(bslib::navset_card_underline,
               lapply(report_sheets(), .sheet_panel))),
 
     bslib::nav_panel(
-      "\u8a66\u9a13",
-      bslib::card(
-        bslib::card_header("study \u30b7\u30fc\u30c8\uff08\u8a66\u9a13\u3067 1 \u3064\u306b\u6c7a\u307e\u308b\u5024\uff09"),
-        shiny::selectInput(
-          "rounding", "rounding \u4e38\u3081\u65b9",
-          c("(options(rtfreporter.rounding) \u306b\u5f93\u3046)" = "",
-            "r \uff08\u5076\u6570\u4e38\u3081\uff09" = "r",
-            "sas \uff08\u56db\u6368\u4e94\u5165\uff09" = "sas")),
-        shiny::textInput("output_path",
-                         "output_path RTF \u306e\u51fa\u529b\u5148",
-                         width = "100%"),
-        shiny::textInput("program_dir",
-                         "program_dir \u30d7\u30ed\u30b0\u30e9\u30e0\u306e\u7f6e\u304d\u5834 ({PROGRAM} \u7528)",
-                         width = "100%"))),
+      "\u30c7\u30fc\u30bf", value = "data",
+      bslib::layout_columns(
+        col_widths = two,
+        bslib::card(
+          bslib::card_header("\u5165\u529b\u30c7\u30fc\u30bf (data/)"),
+          shiny::div(
+            class = "d-flex gap-2 align-items-end",
+            shiny::selectInput("data_folder", "\u53d6\u308a\u8fbc\u307f\u5148",
+                               c("adam", "sdtm", "other"), width = "110px"),
+            shiny::fileInput("data_upload", "\u30d5\u30a1\u30a4\u30eb\u3092\u53d6\u308a\u8fbc\u3080",
+                             multiple = TRUE)),
+          DT::DTOutput("data_files"),
+          shiny::div(class = "d-flex gap-2",
+                     .btn("data_refresh", "\u66f4\u65b0"),
+                     .btn("data_open", "\u30d5\u30a9\u30eb\u30c0\u3092\u958b\u304f"))),
+        bslib::card(
+          bslib::card_header("\u4e2d\u8eab\uff08\u5148\u982d 50 \u884c\uff09"),
+          shiny::uiOutput("data_dim"),
+          DT::DTOutput("data_head")))),
 
     bslib::nav_panel(
-      "\u30d5\u30a1\u30a4\u30eb",
-      bslib::layout_columns(
-        col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
-        bslib::card(
-          bslib::card_header("\u958b\u304f"),
-          shiny::fileInput(
-            "open", "table_spec.xlsx / report_spec.xlsx (\u8907\u6570\u53ef)",
-            multiple = TRUE, accept = ".xlsx"),
-          shiny::div(
-            class = "d-flex gap-2",
-            shiny::actionButton("new", "\u65b0\u898f"),
-            shiny::actionButton(
-              "sample",
-              "rtfreporter \u306e\u30b5\u30f3\u30d7\u30eb (5 \u5e33\u7968)"))),
-        bslib::card(
-          bslib::card_header("\u66f8\u304d\u51fa\u3059"),
-          shiny::textInput("dir", "\u51fa\u529b\u5148\u30d5\u30a9\u30eb\u30c0",
-                           value = dir, width = "100%"),
-          shiny::textInput(
-            "program_out",
-            "\u30d7\u30ed\u30b0\u30e9\u30e0\u306e\u30d5\u30a9\u30eb\u30c0 (\u7a7a\u6b04 = \u540c\u3058)",
-            width = "100%"),
-          shiny::checkboxInput(
-            "overwrite",
-            "\u65e2\u5b58\u306e\u5e33\u7968\u30d7\u30ed\u30b0\u30e9\u30e0\u3092\u4e0a\u66f8\u304d\u3059\u308b (\u624b\u3067\u76f4\u3057\u305f\u5206\u306f\u6d88\u3048\u307e\u3059)"),
-          shiny::div(
-            class = "d-flex gap-2",
-            shiny::actionButton("check", "\u30c1\u30a7\u30c3\u30af"),
-            shiny::actionButton("export", "\u66f8\u304d\u51fa\u3059",
-                                class = "btn-primary"),
-            shiny::downloadButton("zip", "zip \u3067\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9")))),
+      "\u6210\u679c\u7269", value = "results",
       bslib::card(
-        bslib::card_header("\u7d50\u679c"),
-        DT::DTOutput("result"))))
+        bslib::card_header("\u5e33\u7968\u306e\u72b6\u614b"),
+        shiny::div(
+          class = "d-flex flex-wrap gap-2",
+          .btn("run_selected", "\u9078\u629e\u3057\u305f\u5e33\u7968\u3092\u5b9f\u884c",
+               class = "btn-sm btn-primary"),
+          .btn("run_all", "\u5168\u3066\u5b9f\u884c", class = "btn-sm btn-primary"),
+          .btn("status_refresh", "\u72b6\u614b\u3092\u66f4\u65b0"),
+          .btn("check", "\u5b9a\u7fa9\u30c1\u30a7\u30c3\u30af"),
+          .btn("tfl_open", "output/tfl \u3092\u958b\u304f"),
+          shiny::downloadButton("rtf_download", "RTF \u3092\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9",
+                                class = "btn-sm")),
+        shiny::uiOutput("job"),
+        DT::DTOutput("status")),
+      bslib::layout_columns(
+        col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
+        bslib::card(
+          bslib::card_header("\u30ed\u30b0"),
+          shiny::div(class = "rp-code", shiny::verbatimTextOutput("log"))),
+        bslib::card(
+          bslib::card_header("\u5b9a\u7fa9\u30c1\u30a7\u30c3\u30af\u306e\u7d50\u679c"),
+          DT::DTOutput("check_result")))),
+
+    bslib::nav_spacer(),
+    bslib::nav_item(shiny::uiOutput("save_state")),
+    bslib::nav_item(.btn("save", "\u4fdd\u5b58", class = "btn-sm btn-primary")))
 }
 
 # ---------------------------------------------------------------- server
@@ -259,10 +289,23 @@ app_ui <- function(dir) {
   rd
 }
 
-app_server <- function(input, output, session, start) {
+.open_folder <- function(path) {
+  dir.create(path, recursive = TRUE, showWarnings = FALSE)
+  utils::browseURL(normalizePath(path))
+}
+
+.dt <- function(d, ..., selection = "single") {
+  DT::datatable(d, rownames = FALSE, selection = selection,
+                options = list(dom = "t", paging = FALSE, ordering = FALSE,
+                               scrollX = TRUE, ...))
+}
+
+app_server <- function(input, output, session, root, start) {
   # `want`: the report to select once the sidebar knows it
-  rv <- shiny::reactiveValues(p = start, ver = 0L,
-                              want = output_ids(start)[1L])
+  rv <- shiny::reactiveValues(
+    study = NULL, p = NULL, saved = NULL, meta = NULL, saved_meta = NULL,
+    ver = 0L, want = NULL, job = NULL, job_what = NULL, status_ver = 0L,
+    studies_ver = 0L)
   bump <- function() rv$ver <- rv$ver + 1L
   notify <- function(msg, type = "message") {
     shiny::showNotification(msg, type = type, duration = 6)
@@ -273,14 +316,231 @@ app_server <- function(input, output, session, start) {
       NULL
     })
   }
+  has_study <- shiny::reactive(!is.null(rv$study))
+  dirty <- shiny::reactive({
+    has_study() && (!identical(rv$p, rv$saved) ||
+                       !identical(rv$meta, rv$saved_meta))
+  })
+
+  # -- the study ---------------------------------------------------------
+  set_study <- function(s) {
+    s$planner <- .study_spec_keys(s$planner)
+    rv$study <- s
+    rv$p <- rv$saved <- s$planner
+    rv$meta <- rv$saved_meta <- s$meta[.study_fields]
+    rv$want <- output_ids(s$planner)[1L]
+    bump()
+    rv$status_ver <- rv$status_ver + 1L
+  }
+  if (!is.null(start)) set_study(start)
+
+  shiny::observe({
+    for (t in .study_tabs) {
+      if (has_study()) bslib::nav_show("nav", t) else bslib::nav_hide("nav", t)
+    }
+  })
+
+  current_study <- function() {
+    s <- rv$study
+    s$planner <- rv$p
+    s$meta[.study_fields] <- rv$meta
+    s
+  }
+  do_save <- function(regenerate = character()) {
+    s <- guarded(save_study(current_study(), regenerate = regenerate))
+    if (is.null(s)) return(FALSE)
+    rv$study <- s
+    rv$p <- rv$saved <- s$planner
+    rv$meta <- rv$saved_meta <- s$meta[.study_fields]
+    rv$status_ver <- rv$status_ver + 1L
+    rv$studies_ver <- rv$studies_ver + 1L
+    n <- sum(s$files$status == "written")
+    kept <- sum(s$files$status == "kept")
+    notify(sprintf("\u4fdd\u5b58\u3057\u307e\u3057\u305f\uff08%d \u30d5\u30a1\u30a4\u30eb\u3092\u66f4\u65b0%s\uff09", n,
+                   if (kept) sprintf("\u3001\u624b\u4fee\u6b63\u306e\u3042\u308b %d \u30d7\u30ed\u30b0\u30e9\u30e0\u306f\u305d\u306e\u307e\u307e", kept)
+                   else ""))
+    TRUE
+  }
+  shiny::observeEvent(input$save, {
+    if (!has_study()) return(notify("\u8a66\u9a13\u3092\u958b\u3044\u3066\u304f\u3060\u3055\u3044", "warning"))
+    do_save()
+  })
+  output$save_state <- shiny::renderUI({
+    if (!has_study()) return(NULL)
+    if (dirty()) shiny::span(class = "rp-dirty me-2", "\u25cf \u672a\u4fdd\u5b58\u306e\u5909\u66f4") else
+      shiny::span(class = "text-muted me-2", "\u4fdd\u5b58\u6e08\u307f")
+  })
+  output$study_side <- shiny::renderUI({
+    if (!has_study()) {
+      return(shiny::p(class = "text-muted", "\u8a66\u9a13\u3092\u958b\u3044\u3066\u304f\u3060\u3055\u3044\u3002"))
+    }
+    m <- rv$meta
+    shiny::div(class = "mb-2",
+               shiny::div(class = "rp-study", m$study_id),
+               if (!is.na(m$title)) shiny::div(class = "small", m$title))
+  })
+
+  studies <- shiny::reactive({
+    rv$studies_ver
+    input$refresh_studies
+    r <- trimws(input$root %||% root)
+    if (!dir.exists(r)) return(list_studies(tempfile()))
+    list_studies(r)
+  })
+  output$studies <- DT::renderDT({
+    d <- studies()
+    .dt(d[c("study_id", "title", "compound", "phase", "updated")],
+        scrollY = "320px")
+  })
+  shiny::observeEvent(input$open_study, {
+    i <- input$studies_rows_selected
+    if (!length(i)) return(notify("\u8a66\u9a13\u3092\u9078\u3093\u3067\u304f\u3060\u3055\u3044", "warning"))
+    if (dirty()) {
+      return(notify("\u672a\u4fdd\u5b58\u306e\u5909\u66f4\u304c\u3042\u308a\u307e\u3059\u3002\u4fdd\u5b58\u3057\u3066\u304b\u3089\u958b\u3044\u3066\u304f\u3060\u3055\u3044",
+                    "warning"))
+    }
+    s <- guarded(open_study(studies()$path[i]))
+    if (!is.null(s)) {
+      set_study(s)
+      notify(paste(s$meta$study_id, "\u3092\u958b\u304d\u307e\u3057\u305f"))
+      bslib::nav_select("nav", "outputs")
+    }
+  })
+  shiny::observeEvent(input$new_study, {
+    shiny::showModal(shiny::modalDialog(
+      title = "\u65b0\u898f\u8a66\u9a13",
+      shiny::textInput("ns_id", "\u8a66\u9a13 ID\uff08\u30d5\u30a9\u30eb\u30c0\u540d\u3002\u82f1\u6570\u5b57 . _ -\uff09"),
+      shiny::textInput("ns_title", "\u8a66\u9a13\u540d", width = "100%"),
+      shiny::textInput("ns_compound", "\u5316\u5408\u7269"),
+      shiny::textInput("ns_phase", "\u76f8"),
+      shiny::textAreaInput("ns_description", "\u8aac\u660e", width = "100%"),
+      shiny::radioButtons(
+        "ns_from", "\u5e33\u7968\u306e\u5b9a\u7fa9",
+        c("\u7a7a\u3067\u59cb\u3081\u308b" = "empty",
+          "\u65e2\u5b58\u306e\u8a66\u9a13\u304b\u3089\u30b3\u30d4\u30fc\uff08\u5b9a\u7fa9\u3068\u30c7\u30fc\u30bf\u6e96\u5099\u30b3\u30fc\u30c9\uff09" = "study",
+          "rtfreporter \u306e\u30b5\u30f3\u30d7\u30eb\uff085 \u5e33\u7968\uff09" = "sample")),
+      shiny::conditionalPanel(
+        "input.ns_from == 'study'",
+        shiny::selectInput("ns_src", "\u30b3\u30d4\u30fc\u5143",
+                           stats::setNames(studies()$path,
+                                           studies()$study_id))),
+      footer = shiny::tagList(shiny::modalButton("\u53d6\u6d88"),
+                              .btn("ns_ok", "\u4f5c\u6210", class = "btn-primary")),
+      easyClose = TRUE))
+  })
+  shiny::observeEvent(input$ns_ok, {
+    if (dirty()) {
+      return(notify("\u672a\u4fdd\u5b58\u306e\u5909\u66f4\u304c\u3042\u308a\u307e\u3059\u3002\u4fdd\u5b58\u3057\u3066\u304b\u3089\u4f5c\u6210\u3057\u3066\u304f\u3060\u3055\u3044",
+                    "warning"))
+    }
+    blank <- function(v) if (is.null(v) || !nzchar(trimws(v))) NA else v
+    p <- switch(input$ns_from,
+      study = guarded(open_study(input$ns_src)$planner),
+      sample = guarded(read_planner(file.path(
+        system.file("extdata", "ard-spec", package = "rtfreporter"),
+        c("report.xlsx", "study.xlsx")))),
+      new_planner())
+    if (is.null(p)) return()
+    s <- guarded(create_study(
+      trimws(input$root), trimws(input$ns_id),
+      title = blank(input$ns_title), compound = blank(input$ns_compound),
+      phase = blank(input$ns_phase),
+      description = blank(input$ns_description), planner = p))
+    if (is.null(s)) return()
+    shiny::removeModal()
+    rv$studies_ver <- rv$studies_ver + 1L
+    set_study(s)
+    notify(paste(s$meta$study_id, "\u3092\u4f5c\u6210\u3057\u307e\u3057\u305f"))
+    bslib::nav_select("nav", "outputs")
+  })
+
+  output$study_detail <- shiny::renderUI({
+    if (!has_study()) {
+      return(shiny::p(class = "text-muted",
+                      "\u5de6\u306e\u4e00\u89a7\u304b\u3089\u8a66\u9a13\u3092\u958b\u304f\u304b\u3001\u65b0\u898f\u8a66\u9a13\u3092\u4f5c\u6210\u3057\u3066\u304f\u3060\u3055\u3044\u3002"))
+    }
+    rv$ver
+    m <- shiny::isolate(rv$meta)
+    r <- shiny::isolate(rv$p$study[["rounding"]])
+    v <- function(x) if (is.na(x)) "" else x
+    lay <- study_layout()
+    shiny::tagList(
+      shiny::p(shiny::strong(m$study_id), shiny::br(),
+               shiny::span(class = "small text-muted", rv$study$path)),
+      shiny::textInput("m_title", "\u8a66\u9a13\u540d", v(m$title), width = "100%"),
+      shiny::div(class = "d-flex gap-2",
+                 shiny::textInput("m_compound", "\u5316\u5408\u7269", v(m$compound)),
+                 shiny::textInput("m_phase", "\u76f8", v(m$phase))),
+      shiny::textAreaInput("m_description", "\u8aac\u660e", v(m$description),
+                           width = "100%"),
+      shiny::selectInput(
+        "rounding", "\u4e38\u3081\u65b9 (rounding)",
+        c("options(rtfreporter.rounding) \u306b\u5f93\u3046" = "",
+          "r\uff08\u5076\u6570\u4e38\u3081\uff09" = "r", "sas\uff08\u56db\u6368\u4e94\u5165\uff09" = "sas"),
+        selected = v(r)),
+      shiny::tags$details(
+        shiny::tags$summary("\u30d5\u30a9\u30eb\u30c0\u69cb\u6210"),
+        shiny::tags$pre(class = "small", paste(
+          sprintf("%-15s %s", paste0(lay, "/"), c(
+            "\u5165\u529b\u30c7\u30fc\u30bf: ADaM", "\u5165\u529b\u30c7\u30fc\u30bf: SDTM", "\u5165\u529b\u30c7\u30fc\u30bf: \u305d\u306e\u4ed6",
+            "\u5b9a\u7fa9\u30d6\u30c3\u30af table_spec.xlsx / report_spec.xlsx",
+            "\u5e33\u7968\u30d7\u30ed\u30b0\u30e9\u30e0, autoexec_report.R",
+            "\u6210\u679c\u7269\u30c7\u30fc\u30bf: \u5404 Table \u306e ARD (.rds)",
+            "\u6210\u679c\u7269\u5e33\u7968: RTF", "\u5b9f\u884c\u30ed\u30b0")), collapse = "\n"))),
+      shiny::fileInput(
+        "import", "\u4ed6\u306e\u5b9a\u7fa9\u30d6\u30c3\u30af\u3092\u53d6\u308a\u8fbc\u3080\uff08\u3053\u306e\u8a66\u9a13\u306e\u5b9a\u7fa9\u3092\u7f6e\u304d\u63db\u3048\uff09",
+        multiple = TRUE, accept = ".xlsx", width = "100%"),
+      shiny::div(class = "d-flex gap-2 align-items-center",
+                 shiny::downloadButton("study_zip", "zip \u3067\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9",
+                                       class = "btn-sm"),
+                 shiny::checkboxInput("zip_data", "\u30c7\u30fc\u30bf\u3082\u542b\u3081\u308b")),
+      .btn("study_folder", "\u8a66\u9a13\u30d5\u30a9\u30eb\u30c0\u3092\u958b\u304f"))
+  })
+  for (k in c("title", "compound", "phase", "description")) local({
+    key <- k
+    shiny::observeEvent(input[[paste0("m_", key)]], {
+      v <- trimws(input[[paste0("m_", key)]])
+      v <- if (nzchar(v)) v else NA_character_
+      if (!identical(rv$meta[[key]], v)) rv$meta[[key]] <- v
+    }, ignoreInit = TRUE)
+  })
+  shiny::observeEvent(input$rounding, {
+    v <- if (nzchar(input$rounding)) input$rounding else NA_character_
+    if (!identical(unname(rv$p$study[["rounding"]]), v)) {
+      rv$p$study[["rounding"]] <- v
+    }
+  }, ignoreInit = TRUE)
+  shiny::observeEvent(input$study_folder, .open_folder(rv$study$path))
+  shiny::observeEvent(input$import, {
+    f <- input$import
+    tmp <- file.path(tempfile("import"), f$name)
+    dir.create(dirname(tmp[1L]))
+    file.copy(f$datapath, tmp)
+    p <- guarded(read_planner(tmp))
+    if (is.null(p)) return()
+    rv$p <- .study_spec_keys(p)
+    rv$want <- output_ids(p)[1L]
+    bump()
+    notify(paste0(nrow(p$outputs), " \u5e33\u7968\u3092\u53d6\u308a\u8fbc\u307f\u307e\u3057\u305f\uff08\u672a\u4fdd\u5b58\uff09"))
+  })
+  output$study_zip <- shiny::downloadHandler(
+    filename = function() paste0(rv$study$meta$study_id, ".zip"),
+    content = function(file) {
+      s <- rv$study
+      top <- list.files(s$path, all.files = FALSE)
+      if (!isTRUE(input$zip_data)) top <- setdiff(top, "data")
+      zip::zip(file, file.path(basename(s$path), top),
+               root = dirname(s$path))
+    })
 
   # -- the report chosen in the sidebar --------------------------------
   shiny::observe({
     rv$ver
-    ids <- output_ids(shiny::isolate(rv$p))
+    p <- shiny::isolate(rv$p)
+    ids <- if (is.null(p)) character() else output_ids(p)
     cur <- shiny::isolate(input$target)
     ch <- c(stats::setNames(.all_rows, "(\u5168\u884c)"),
-            stats::setNames(.default_rows, "(\u65e2\u5b9a = \u7a7a\u6b04)"),
+            if (!is.null(p)) stats::setNames(.default_rows, "(\u65e2\u5b9a = \u7a7a\u6b04)"),
             stats::setNames(ids, ids))
     want <- shiny::isolate(rv$want)
     rv$want <- NULL
@@ -292,7 +552,8 @@ app_server <- function(input, output, session, start) {
   target <- shiny::reactive(.target_value(input$target))
   current <- shiny::reactive({
     t <- target()
-    if (!is.na(t) && nzchar(t) && t %in% rv$p$outputs$output_id) t else NULL
+    if (!is.null(rv$p) && !is.na(t) && nzchar(t) &&
+        t %in% rv$p$outputs$output_id) t else NULL
   })
 
   # -- sheet grids -------------------------------------------------------
@@ -301,6 +562,7 @@ app_server <- function(input, output, session, start) {
     out_id <- paste0("hot_", sh)
     key <- shiny::reactive(paste(sh, input$target, rv$ver, sep = "|"))
     output[[out_id]] <- rhandsontable::renderRHandsontable({
+      shiny::req(has_study())
       t <- target()
       d <- sheet_rows(shiny::isolate(rv$p), sh, t)
       if (!identical(t, "")) d$output_id <- NULL
@@ -318,20 +580,28 @@ app_server <- function(input, output, session, start) {
       .help_table(sh), rownames = FALSE,
       options = list(dom = "t", paging = FALSE, ordering = FALSE))
   })
+  output$type_note <- shiny::renderUI({
+    id <- current()
+    if (is.null(id)) return(NULL)
+    type <- report_info(rv$p, id)$type
+    if (identical(type, "table")) return(NULL)
+    shiny::div(class = "alert alert-info py-2 small",
+               sprintf("%s \u306f %s \u3067\u3059\u3002\u8868\u306e\u5b9a\u7fa9\u306f Table \u306e\u5e33\u7968\u304c\u4f7f\u3044\u307e\u3059\uff08%s \u306f\u30d7\u30ed\u30b0\u30e9\u30e0\u306e\u30c7\u30fc\u30bf\u90e8\u3067\u4f5c\u308a\u307e\u3059\uff09\u3002",
+                       id, .type_labels[[type]], .type_labels[[type]]))
+  })
 
   # -- report list -------------------------------------------------------
   outputs_view <- shiny::reactive({
     p <- rv$p
-    o <- p$outputs
-    if (!nrow(o)) {
-      return(data.frame(output_id = character(), type = character(),
+    empty <- data.frame(output_id = character(), type = character(),
                         program = character(), rtf = character(),
-                        data = character(), description = character()))
-    }
+                        data = character(), description = character())
+    if (is.null(p) || !nrow(p$outputs)) return(empty)
+    o <- p$outputs
     info <- lapply(o$output_id, function(id) report_info(p, id))
     data.frame(
       output_id = o$output_id,
-      type = vapply(info, `[[`, "", "type"),
+      type = unname(.type_labels[vapply(info, `[[`, "", "type")]),
       program = vapply(info, `[[`, "", "program"),
       rtf = vapply(info, `[[`, "", "file"),
       data = ifelse(is.na(o$data_code), "TODO", "\u2713"),
@@ -375,7 +645,10 @@ app_server <- function(input, output, session, start) {
     if (is.null(id)) {
       shiny::p(class = "text-muted",
                "\u5de6\u306e\u4e00\u89a7\u304b\u30b5\u30a4\u30c9\u30d0\u30fc\u3067\u5e33\u7968\u3092\u9078\u3093\u3067\u304f\u3060\u3055\u3044\u3002")
-    } else shiny::h5(id)
+    } else {
+      shiny::h5(id, shiny::span(class = "badge bg-secondary ms-1",
+                                .type_labels[[report_info(rv$p, id)$type]]))
+    }
   })
   set_field <- function(field, value) {
     id <- current()
@@ -394,11 +667,12 @@ app_server <- function(input, output, session, start) {
                       ignoreInit = TRUE)
 
   shiny::observeEvent(rv$ver, {
-    s <- rv$p$setup
+    s <- if (is.null(rv$p)) NA else rv$p$setup
     shiny::updateTextAreaInput(session, "setup",
                                value = if (is.na(s)) "" else s)
   })
   shiny::observeEvent(input$setup, {
+    if (is.null(rv$p)) return()
     v <- if (nzchar(trimws(input$setup))) input$setup else NA_character_
     if (!identical(rv$p$setup, v)) rv$p$setup <- v
   }, ignoreInit = TRUE)
@@ -406,16 +680,53 @@ app_server <- function(input, output, session, start) {
   output$program <- shiny::renderText({
     id <- current()
     if (is.null(id)) return("")
-    paste(program_code(rv$p, id, spec_dir = input$dir), collapse = "\n")
+    paste(program_code(rv$p, id), collapse = "\n")
+  })
+  output$program_state <- shiny::renderUI({
+    id <- current()
+    if (is.null(id)) return(NULL)
+    rv$status_ver
+    f <- file.path(rv$study$path, study_layout()[["programs"]],
+                   report_info(rv$p, id)$program)
+    st <- .program_state(rv$p, id, f)
+    msg <- switch(st,
+      missing = "\u307e\u3060\u30d5\u30a1\u30a4\u30eb\u306f\u3042\u308a\u307e\u305b\u3093\u3002\u4fdd\u5b58\u3059\u308b\u3068\u4e0b\u306e\u30d7\u30ed\u30b0\u30e9\u30e0\u304c\u66f8\u304b\u308c\u307e\u3059\u3002",
+      current = "\u4fdd\u5b58\u6e08\u307f\u306e\u30d7\u30ed\u30b0\u30e9\u30e0\u306f\u4e0b\u306e\u5185\u5bb9\u3068\u540c\u3058\u3067\u3059\u3002",
+      todo = "\u4fdd\u5b58\u6e08\u307f\u306e\u30d7\u30ed\u30b0\u30e9\u30e0\u3068\u540c\u3058\u3067\u3059\uff08\u30c7\u30fc\u30bf\u90e8\u306f TODO \u306e\u307e\u307e\uff09\u3002",
+      generated = "\u5b9a\u7fa9\u304c\u5909\u308f\u3063\u3066\u3044\u307e\u3059\u3002\u4fdd\u5b58\u3059\u308b\u3068\u4e0b\u306e\u5185\u5bb9\u306b\u66f4\u65b0\u3055\u308c\u307e\u3059\uff08\u624b\u4fee\u6b63\u306e\u306a\u3044\u30d7\u30ed\u30b0\u30e9\u30e0\u306f\u5b9a\u7fa9\u306b\u8ffd\u5f93\u3057\u307e\u3059\uff09\u3002",
+      edited = "\u4fdd\u5b58\u6e08\u307f\u306e\u30d7\u30ed\u30b0\u30e9\u30e0\u306f\u624b\u3067\u4fee\u6b63\u3055\u308c\u3066\u3044\u307e\u3059\u3002\u4fdd\u5b58\u3057\u3066\u3082\u4e0a\u66f8\u304d\u3057\u307e\u305b\u3093\u3002")
+    shiny::div(
+      class = "d-flex gap-2 align-items-center mb-2 small",
+      shiny::span(msg),
+      if (identical(st, "edited")) {
+        .btn("regenerate", "\u3053\u306e\u30d7\u30ed\u30b0\u30e9\u30e0\u3092\u518d\u751f\u6210",
+             class = "btn-sm btn-outline-warning")
+      })
+  })
+  shiny::observeEvent(input$regenerate, {
+    shiny::showModal(shiny::modalDialog(
+      title = paste(current(), "\u306e\u30d7\u30ed\u30b0\u30e9\u30e0\u3092\u518d\u751f\u6210"),
+      "\u30c7\u30a3\u30b9\u30af\u4e0a\u306e\u30d7\u30ed\u30b0\u30e9\u30e0\u3092\u3001\u4eca\u306e\u5b9a\u7fa9\u3068\u30c7\u30fc\u30bf\u6e96\u5099\u30b3\u30fc\u30c9\u304b\u3089\u66f8\u304d\u76f4\u3057\u307e\u3059\u3002\u624b\u3067\u76f4\u3057\u305f\u90e8\u5206\u306f\u6d88\u3048\u307e\u3059\u3002",
+      footer = shiny::tagList(shiny::modalButton("\u53d6\u6d88"),
+                              .btn("regenerate_ok", "\u518d\u751f\u6210",
+                                   class = "btn-warning"))))
+  })
+  shiny::observeEvent(input$regenerate_ok, {
+    shiny::removeModal()
+    do_save(regenerate = current())
   })
 
-  ask_id <- function(title, button, value = "") {
+  ask_id <- function(title, button, value = "", type = FALSE) {
     shiny::showModal(shiny::modalDialog(
       title = title,
       shiny::textInput("modal_id", "output_id", value = value),
+      if (type) shiny::radioButtons(
+        "modal_type", "\u7a2e\u5225",
+        stats::setNames(report_types(), .type_labels[report_types()]),
+        inline = TRUE),
+      if (type) shiny::textInput("modal_desc", "\u8aac\u660e", width = "100%"),
       footer = shiny::tagList(shiny::modalButton("\u53d6\u6d88"),
-                              shiny::actionButton(button, "OK",
-                                                  class = "btn-primary")),
+                              .btn(button, "OK", class = "btn-primary")),
       easyClose = TRUE))
   }
   after_id_change <- function(p, id) {
@@ -425,39 +736,42 @@ app_server <- function(input, output, session, start) {
     shiny::removeModal()
     bump()
   }
-  shiny::observeEvent(input$add, ask_id("\u5e33\u7968\u3092\u8ffd\u52a0",
-                                        "add_ok"))
+  need_current <- function() {
+    if (is.null(current())) notify("\u5e33\u7968\u3092\u9078\u3093\u3067\u304f\u3060\u3055\u3044", "warning")
+    !is.null(current())
+  }
+  shiny::observeEvent(input$add, ask_id("\u5e33\u7968\u3092\u8ffd\u52a0", "add_ok", type = TRUE))
   shiny::observeEvent(input$add_ok, {
     id <- trimws(input$modal_id)
-    after_id_change(guarded(add_output(rv$p, id)), id)
+    d <- trimws(input$modal_desc)
+    after_id_change(guarded(add_output(
+      rv$p, id, description = if (nzchar(d)) d else NA,
+      type = input$modal_type)), id)
   })
   shiny::observeEvent(input$copy, {
-    if (is.null(current())) return(notify("\u5e33\u7968\u3092\u9078\u3093\u3067\u304f\u3060\u3055\u3044", "warning"))
-    ask_id(paste(current(), "\u3092\u8907\u88fd"), "copy_ok",
-           paste0(current(), "_2"))
+    if (need_current()) ask_id(paste(current(), "\u3092\u8907\u88fd"), "copy_ok",
+                               paste0(current(), "_2"))
   })
   shiny::observeEvent(input$copy_ok, {
     id <- trimws(input$modal_id)
     after_id_change(guarded(copy_output(rv$p, current(), id)), id)
   })
   shiny::observeEvent(input$rename, {
-    if (is.null(current())) return(notify("\u5e33\u7968\u3092\u9078\u3093\u3067\u304f\u3060\u3055\u3044", "warning"))
-    ask_id(paste(current(), "\u306e\u540d\u524d\u3092\u5909\u66f4"),
-           "rename_ok", current())
+    if (need_current()) ask_id(paste(current(), "\u306e\u540d\u524d\u3092\u5909\u66f4"),
+                               "rename_ok", current())
   })
   shiny::observeEvent(input$rename_ok, {
     id <- trimws(input$modal_id)
     after_id_change(guarded(rename_output(rv$p, current(), id)), id)
   })
   shiny::observeEvent(input$remove, {
-    if (is.null(current())) return()
+    if (!need_current()) return()
     shiny::showModal(shiny::modalDialog(
       title = paste(current(), "\u3092\u524a\u9664"),
-      "\u5168\u30b7\u30fc\u30c8\u304b\u3089\u3053\u306e\u5e33\u7968\u306e\u884c\u3092\u524a\u9664\u3057\u307e\u3059\u3002",
+      "\u5168\u30b7\u30fc\u30c8\u304b\u3089\u3053\u306e\u5e33\u7968\u306e\u884c\u3092\u524a\u9664\u3057\u307e\u3059\uff08\u4fdd\u5b58\u3059\u308b\u307e\u3067\u30c7\u30a3\u30b9\u30af\u306f\u5909\u308f\u308a\u307e\u305b\u3093\u3002\u30d7\u30ed\u30b0\u30e9\u30e0\u3068\u6210\u679c\u7269\u306e\u30d5\u30a1\u30a4\u30eb\u306f\u6b8b\u308a\u307e\u3059\uff09\u3002",
       footer = shiny::tagList(
         shiny::modalButton("\u53d6\u6d88"),
-        shiny::actionButton("remove_ok", "\u524a\u9664",
-                            class = "btn-danger"))))
+        .btn("remove_ok", "\u524a\u9664", class = "btn-danger"))))
   })
   shiny::observeEvent(input$remove_ok, {
     rv$p <- remove_output(rv$p, current())
@@ -478,74 +792,155 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$up, move(-1L))
   shiny::observeEvent(input$down, move(1L))
 
-  # -- study -------------------------------------------------------------
-  shiny::observeEvent(rv$ver, {
-    st <- rv$p$study
-    v <- function(k) if (is.na(st[[k]])) "" else st[[k]]
-    shiny::updateSelectInput(session, "rounding", selected = v("rounding"))
-    shiny::updateTextInput(session, "output_path", value = v("output_path"))
-    shiny::updateTextInput(session, "program_dir", value = v("program_dir"))
+  # -- data ----------------------------------------------------------------
+  data_ver <- shiny::reactiveVal(0L)
+  data_files <- shiny::reactive({
+    data_ver()
+    input$data_refresh
+    shiny::req(has_study())
+    study_files(rv$study, "data")
   })
-  for (k in c("rounding", "output_path", "program_dir")) local({
-    key <- k
-    shiny::observeEvent(input[[key]], {
-      v <- trimws(input[[key]])
-      v <- if (nzchar(v)) v else NA_character_
-      if (!identical(unname(rv$p$study[[key]]), v)) rv$p$study[[key]] <- v
-    }, ignoreInit = TRUE)
+  output$data_files <- DT::renderDT(
+    .dt(data_files()[c("folder", "file", "size_kb", "modified")],
+        scrollY = "360px"))
+  shiny::observeEvent(input$data_upload, {
+    f <- input$data_upload
+    dest <- file.path(rv$study$path, study_layout()[[input$data_folder]])
+    dir.create(dest, recursive = TRUE, showWarnings = FALSE)
+    ok <- file.copy(f$datapath, file.path(dest, f$name), overwrite = TRUE)
+    data_ver(data_ver() + 1L)
+    notify(sprintf("%d \u30d5\u30a1\u30a4\u30eb\u3092 %s \u306b\u53d6\u308a\u8fbc\u307f\u307e\u3057\u305f", sum(ok),
+                   study_layout()[[input$data_folder]]))
+  })
+  shiny::observeEvent(input$data_open, .open_folder(
+    file.path(rv$study$path, "data")))
+  data_head <- shiny::reactive({
+    i <- input$data_files_rows_selected
+    shiny::req(length(i))
+    guarded(read_data_head(data_files()$path[i]))
+  })
+  output$data_head <- DT::renderDT({
+    d <- data_head()
+    shiny::req(d)
+    DT::datatable(d, rownames = FALSE, selection = "none",
+                  options = list(dom = "t", paging = FALSE, scrollX = TRUE,
+                                 scrollY = "420px"))
+  })
+  output$data_dim <- shiny::renderUI({
+    d <- data_head()
+    shiny::req(d)
+    full <- attr(d, "dim_full")
+    shiny::p(class = "small text-muted",
+             sprintf("%s \u884c \u00d7 %s \u5217", format(full[1L], big.mark = ","),
+                     full[2L]))
   })
 
-  # -- files -------------------------------------------------------------
-  load <- function(p) {
-    if (is.null(p)) return()
-    rv$p <- p
-    rv$want <- output_ids(p)[1L]
-    bump()
-    notify(paste0(nrow(p$outputs), " \u5e33\u7968\u3092\u8aad\u307f\u8fbc\u307f\u307e\u3057\u305f"))
-  }
-  shiny::observeEvent(input$open, {
-    f <- input$open
-    # keep the file names: a message then names the workbook it is about
-    tmp <- file.path(tempfile("open"), f$name)
-    dir.create(dirname(tmp[1L]))
-    file.copy(f$datapath, tmp)
-    load(guarded(read_planner(tmp)))
+  # -- results -------------------------------------------------------------
+  status <- shiny::reactive({
+    rv$status_ver
+    input$status_refresh
+    shiny::req(has_study())
+    s <- rv$study
+    study_status(s)
   })
-  shiny::observeEvent(input$new, load(new_planner()))
-  shiny::observeEvent(input$sample, {
-    d <- system.file("extdata", "ard-spec", package = "rtfreporter")
-    load(guarded(read_planner(file.path(d, c("report.xlsx", "study.xlsx")))))
+  output$status <- DT::renderDT({
+    d <- status()
+    v <- data.frame(
+      output_id = d$output_id,
+      type = unname(.type_labels[d$type]),
+      program = d$program,
+      "\u30d7\u30ed\u30b0\u30e9\u30e0" = unname(c(missing = "\u306a\u3057", todo = "TODO",
+                              current = "\u751f\u6210\u306e\u307e\u307e",
+                              generated = "\u751f\u6210\u306e\u307e\u307e\uff08\u672a\u4fdd\u5b58\u306e\u5909\u66f4\uff09",
+                              edited = "\u624b\u4fee\u6b63\u3042\u308a")[d$program_state]),
+      "ARD" = ifelse(is.na(d$ard), "", d$ard),
+      "RTF" = ifelse(is.na(d$rtf), "", d$rtf),
+      "\u72b6\u614b" = unname(.status_labels[d$status]),
+      check.names = FALSE, stringsAsFactors = FALSE)
+    DT::formatStyle(
+      .dt(v, selection = "multiple"), "\u72b6\u614b",
+      color = DT::styleEqual(
+        unname(.status_labels[c("error", "todo", "outdated", "unsaved",
+                                "ok")]),
+        c("#b91c1c", "#b45309", "#b45309", "#b45309", "#15803d")))
   })
-
-  result <- shiny::reactiveVal(NULL)
-  output$result <- DT::renderDT(result(), rownames = FALSE,
-                                options = list(dom = "t", paging = FALSE))
+  selected_status <- shiny::reactive({
+    d <- status()
+    d[input$status_rows_selected, , drop = FALSE]
+  })
+  output$log <- shiny::renderText({
+    d <- selected_status()
+    rv$status_ver
+    if (!nrow(d)) {
+      f <- file.path(rv$study$path, study_layout()[["logs"]],
+                     "autoexec_report.log")
+      if (!file.exists(f)) return("\u5e33\u7968\u3092\u9078\u3076\u3068\u305d\u306e\u30ed\u30b0\u3092\u8868\u793a\u3057\u307e\u3059\u3002")
+    } else {
+      f <- d$log[1L]
+      if (is.na(f)) return(paste(d$output_id[1L], "\u306f\u307e\u3060\u5b9f\u884c\u3055\u308c\u3066\u3044\u307e\u305b\u3093\u3002"))
+    }
+    paste(utils::tail(readLines(f, warn = FALSE, encoding = "UTF-8"), 300L),
+          collapse = "\n")
+  })
+  output$rtf_download <- shiny::downloadHandler(
+    filename = function() {
+      d <- selected_status()
+      if (nrow(d)) basename(d$rtf_path[1L]) else "none.rtf"
+    },
+    content = function(file) {
+      d <- selected_status()
+      if (!nrow(d) || !file.exists(d$rtf_path[1L])) {
+        stop("RTF \u304c\u3042\u308a\u307e\u305b\u3093")
+      }
+      file.copy(d$rtf_path[1L], file)
+    })
+  shiny::observeEvent(input$tfl_open, .open_folder(
+    file.path(rv$study$path, study_layout()[["tfl"]])))
   shiny::observeEvent(input$check, {
     r <- check_planner(rv$p)
-    result(r)
-    if (all(r$ok)) {
-      notify("\u554f\u984c\u306f\u3042\u308a\u307e\u305b\u3093")
-    } else {
-      notify("\u30a8\u30e9\u30fc\u304c\u3042\u308a\u307e\u3059 (\u7d50\u679c\u3092\u53c2\u7167)", "error")
-    }
+    output$check_result <- DT::renderDT(.dt(r, selection = "none"))
+    if (all(r$ok)) notify("\u5b9a\u7fa9\u306b\u554f\u984c\u306f\u3042\u308a\u307e\u305b\u3093") else
+      notify("\u5b9a\u7fa9\u306b\u30a8\u30e9\u30fc\u304c\u3042\u308a\u307e\u3059\uff08\u5b9a\u7fa9\u30c1\u30a7\u30c3\u30af\u306e\u7d50\u679c\u3092\u53c2\u7167\uff09", "error")
   })
-  shiny::observeEvent(input$export, {
-    dir <- trimws(input$dir)
-    pd <- trimws(input$program_out)
-    r <- guarded(export_planner(rv$p, dir,
-                                program_dir = if (nzchar(pd)) pd else dir,
-                                overwrite_programs = isTRUE(input$overwrite)))
-    if (!is.null(r)) {
-      result(r)
-      notify(sprintf("%d \u30d5\u30a1\u30a4\u30eb\u3092\u66f8\u304d\u51fa\u3057\u307e\u3057\u305f (%d \u4ef6\u306f\u65e2\u5b58\u306e\u307e\u307e)",
-                     sum(r$status == "written"), sum(r$status == "kept")))
-    }
+
+  start_run <- function(ids, what) {
+    if (!is.null(rv$job)) return(notify("\u5b9f\u884c\u4e2d\u3067\u3059", "warning"))
+    if (dirty() && !do_save()) return()
+    px <- guarded(run_study(rv$study, ids, wait = FALSE))
+    if (is.null(px)) return()
+    rv$job <- px
+    rv$job_what <- what
+  }
+  shiny::observeEvent(input$run_all, start_run(NULL, "\u5168\u5e33\u7968"))
+  shiny::observeEvent(input$run_selected, {
+    d <- selected_status()
+    if (!nrow(d)) return(notify("\u5e33\u7968\u3092\u9078\u3093\u3067\u304f\u3060\u3055\u3044", "warning"))
+    start_run(d$output_id, paste(d$output_id, collapse = ", "))
   })
-  output$zip <- shiny::downloadHandler(
-    filename = function() "rtfplanner.zip",
-    content = function(file) {
-      d <- tempfile("zip")
-      export_planner(rv$p, d, overwrite_programs = TRUE, portable = TRUE)
-      zip::zipr(file, list.files(d, full.names = TRUE))
+  shiny::observe({
+    px <- rv$job
+    if (is.null(px)) return()
+    if (px$is_alive()) {
+      shiny::invalidateLater(1000)
+      return()
+    }
+    rc <- px$get_exit_status()
+    shiny::isolate({
+      notify(sprintf("%s \u306e\u5b9f\u884c\u304c\u7d42\u308f\u308a\u307e\u3057\u305f%s", rv$job_what,
+                     if (identical(rc, 0L)) "" else "\uff08\u30a8\u30e9\u30fc\u3042\u308a\uff09"),
+             if (identical(rc, 0L)) "message" else "warning")
+      rv$job <- NULL
+      rv$status_ver <- rv$status_ver + 1L
     })
+  })
+  output$job <- shiny::renderUI({
+    if (is.null(rv$job)) return(NULL)
+    shiny::div(class = "alert alert-info py-2 small my-2",
+               shiny::span(class = "spinner-border spinner-border-sm me-2"),
+               paste(rv$job_what, "\u3092\u5b9f\u884c\u4e2d\u2026"))
+  })
+  session$onSessionEnded(function() {
+    px <- shiny::isolate(rv$job)
+    if (!is.null(px) && px$is_alive()) px$kill()
+  })
 }

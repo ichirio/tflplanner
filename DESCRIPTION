@@ -7,7 +7,9 @@ Authors@R:
            family = "Masui",
            email  = "ichi.r.pro@gmail.com",
            role   = c("aut", "cre", "cph"))
-Description: A 'shiny' application for writing the definition workbooks
+Description: A 'shiny' application that keeps each clinical study in a
+    folder of its own -- input data, definitions, programs, deliverables
+    and logs -- and writes the definition workbooks
     that 'rtfreporter' builds clinical tables from: the table definition
     ('table_spec.xlsx': the table, its variables, cells, layout, columns,
     style and column header) and the report definition
@@ -23,17 +25,23 @@ Language: en-US
 Depends:
     R (>= 4.1)
 Imports:
+    processx,
     readxl,
     rhandsontable,
     rtfreporter (>= 0.8.0.9081),
     shiny,
     bslib,
     DT,
+    stats,
+    tools,
     utils,
     writexl,
+    yaml,
     zip
 Suggests:
+    arrow,
     cards,
+    haven,
     testthat (>= 3.0.0)
 Remotes:
     ichirio/rtfreporter@feat/474-ard-experimental

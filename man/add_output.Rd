@@ -11,7 +11,8 @@ add_output(
   x,
   output_id,
   description = NA_character_,
-  data_code = NA_character_
+  data_code = NA_character_,
+  type = "table"
 )
 
 copy_output(x, from, to)
@@ -28,7 +29,10 @@ remove_output(x, output_id)
 \item{description}{A short description shown in the report list.}
 
 \item{data_code}{R code that leaves \code{data} for \code{\link[rtfreporter:rtf_plan]{rtfreporter::rtf_plan()}}
-(or \code{content} for a figure); \code{NA} writes a TODO.}
+(\code{content} for a listing or figure); \code{NA} writes a TODO.}
+
+\item{type}{The report's type, one of \code{\link[=report_types]{report_types()}}; anything but
+\code{"table"} is written on the \code{report} sheet.}
 }
 \value{
 The updated \code{rtfplanner}.

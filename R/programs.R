@@ -1,9 +1,9 @@
 # The report programs: one per report, and autoexec_report.R to run them.
 #
 # A program does four things and only the first is the study's own: make
-# `data` (the normalized ARD), read the report's definition, plan the table
-# from it, write the RTF.  Everything about how the table looks lives in the
-# workbooks, so a change of layout is a change of workbook, not of program.
+# its data, read the report's definition, lay the report out from it, write
+# the RTF.  How the report looks lives in the workbooks, so a change of
+# layout is a change of workbook, not of program.
 
 # A one-row sheet (report, page) resolved for one report the way
 # rtfreporter resolves it: the report's own cells over the default row,
@@ -78,141 +78,166 @@ report_info <- function(x, output_id) {
 
 #' The R program for one report
 #'
+#' A program runs with the study folder as its working directory (see
+#' [study_layout()]) and names every file relative to it.  What it does
+#' depends on the report's `type`:
+#'
+#' * `table` -- the data part leaves `data`, the normalized ARD; the program
+#'   saves it to `output/ard/<output_id>.rds` (the deliverable data) and
+#'   plans the table from `table_spec.xlsx`.
+#' * `listing`, `figure` -- the data part leaves `content`: `rtftable`
+#'   pages for a listing, the figures for a figure.
+#'
+#' The report around it -- page, header, footer, titles, footnotes -- comes
+#' from `report_spec.xlsx` for every type.
+#'
 #' @param x An `rtfplanner`.
 #' @param output_id The report.
-#' @param spec_dir The folder the program reads the workbooks from.
-#' @param table_file,report_file The workbook names.
 #' @param date The date stamped in the banner.
 #' @return The program, one element per line.
 #' @export
-program_code <- function(x, output_id, spec_dir = ".",
-                         table_file = "table_spec.xlsx",
-                         report_file = "report_spec.xlsx",
-                         date = Sys.Date()) {
+program_code <- function(x, output_id, date = Sys.Date()) {
+  lay <- study_layout()
   info <- report_info(x, output_id)
   o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
   desc <- if (nrow(o) && !is.na(o$description)) o$description else NULL
   code <- if (nrow(o) && !is.na(o$data_code)) o$data_code else NA
   titles <- .title_lines(x, output_id)
-  figure <- identical(info$type, "figure")
-  obj <- if (figure) "content" else "data"
+  type <- info$type
+  table <- identical(type, "table")
+  obj <- if (table) "data" else "content"
+  spec <- file.path(lay[["spec"]], c(.report_file, .table_file))
 
   head <- .banner(
-    paste("Program    :", info$program),
-    paste("Output     :", output_id, "->", info$file),
+    paste("Program    :", file.path(lay[["programs"]], info$program)),
+    paste0("Output     : ", output_id, " (", type, ") -> ", info$file),
     if (!is.null(desc)) paste("Description:", desc),
     if (length(titles)) paste("Title      :", titles),
     paste0("Generated  : rtfplanner ", utils::packageVersion("rtfplanner"),
            ", ", format(date, "%Y-%m-%d")),
     "",
-    "How the report looks is in the definition workbooks; this program only",
-    paste0("makes `", obj, "` and hands it on.  Edit the data part freely."))
+    "Runs from the study folder (open the study's .Rproj, or run",
+    "programs/autoexec_report.R).  How the report looks is in spec/; this",
+    paste0("program makes `", obj, "` and hands it on.  Edit the data part",
+           " freely."))
 
-  todo <- if (figure) c(
-    "# TODO: make the figure(s) for this report, e.g.",
-    "#   content <- list(\"path/to/plot.png\")   # or a ggplot object",
-    paste0("stop(\"rtfplanner: the data part of ", info$program,
-           " is still to be written.\")")) else c(
-    "# TODO: build the ARD and normalize it, e.g.",
-    "#   ard  <- cards::ard_stack(adsl, .by = TRT01A, ...)",
-    "#   data <- ard_normalize(ard)",
-    paste0("stop(\"rtfplanner: the data part of ", info$program,
-           " is still to be written.\")"))
+  stop_todo <- paste0("stop(\"rtfplanner: the data part of ", info$program,
+                      " is still to be written.\")")
+  todo <- switch(type,
+    figure = c(
+      "# TODO: make the figure(s), e.g.",
+      "#   content <- list(ggplot2::ggplot(adsl, ggplot2::aes(AGE)) +",
+      "#                     ggplot2::geom_histogram())",
+      stop_todo),
+    listing = c(
+      "# TODO: make the listing pages, e.g.",
+      paste0("#   adae    <- readRDS(\"", lay[["adam"]], "/adae.rds\")"),
+      "#   content <- as_rtftables(adae[, c(\"USUBJID\", \"AEDECOD\")])",
+      stop_todo),
+    c("# TODO: build the ARD and normalize it, e.g.",
+      paste0("#   adsl <- readRDS(\"", lay[["adam"]], "/adsl.rds\")"),
+      "#   ard  <- cards::ard_stack(adsl, .by = TRT01A, ...)",
+      "#   data <- ard_normalize(ard)",
+      stop_todo))
 
   data_part <- c(
     .section("Data"),
-    paste0("# Leaves `", obj, "`: ",
-           if (figure) "the figure(s) for rtf_report()." else
-             "the normalized ARD (ard_normalize()) the table is built from."),
+    paste0("# Leaves `", obj, "`: ", switch(type,
+      figure = "the figure(s) for rtf_report().",
+      listing = "the listing's rtftable pages.",
+      "the normalized ARD (ard_normalize()) the table is built from.")),
+    paste0("# Input data are in ", lay[["adam"]], "/, ", lay[["sdtm"]],
+           "/ and ", lay[["other"]], "/."),
     if (!is.na(x$setup)) c(.code_block(x$setup), ""),
     if (is.na(code)) todo else .code_block(code))
+
+  report_part <- c(
+    .section("Report"),
+    if (table) c(
+      paste0("saveRDS(data, file.path(\"", lay[["ard"]],
+             "\", paste0(output_id, \".rds\")))"),
+      "plan <- rtf_plan(data, spec = spec)",
+      "doc  <- rtf_report(spec, plan)") else
+      "doc  <- rtf_report(spec, content)",
+    "generate_rtfreport(doc, report_path(spec), overwrite = TRUE)")
 
   c(head,
     "",
     "library(rtfreporter)",
+    "if (!file.exists(\"study.yml\")) {",
+    "  stop(\"Run this program from the study folder: open the study's .Rproj\",",
+    "       \" or setwd() to the folder that holds study.yml.\")",
+    "}",
     "",
     paste("output_id <-", .r_string(output_id)),
-    paste("spec_dir  <-", .r_string(gsub("\\\\", "/", spec_dir))),
     "spec <- read_report_spec(",
-    paste0("  file.path(spec_dir, c(", .r_string(report_file), ", ",
-           .r_string(table_file), ")),"),
+    paste0("  c(", paste(.r_string(spec), collapse = ", "), "),"),
     "  output_id = output_id)",
     "",
     data_part,
     "",
-    .section("Report"),
-    if (figure) "doc <- rtf_report(spec, content)" else c(
-      "plan <- rtf_plan(data, spec = spec)",
-      "doc  <- rtf_report(spec, plan)"),
-    "generate_rtfreport(doc, report_path(spec), overwrite = TRUE)",
+    report_part,
     "")
 }
 
 #' The program that runs every report program
 #'
-#' `autoexec_report.R` runs the programs in the order of the report list,
-#' each in its own `Rscript` process (so one report's packages and options
-#' cannot leak into the next) with its log in `logs/`, and ends with a
-#' table of what passed.  Set `isolate <- FALSE` in it to `source()` them
-#' in one session instead.
+#' `programs/autoexec_report.R` runs from the study folder.  It runs the
+#' programs in the order of the report list -- or only the ones named on
+#' its command line (`Rscript programs/autoexec_report.R DM.R AE.R`) --
+#' each in its own `Rscript` process with the study folder as its working
+#' directory and its log in `logs/`, and ends with a table of what passed
+#' (`logs/autoexec_report.csv`).
 #'
 #' @param x An `rtfplanner`.
-#' @param program_dir The folder the programs are in; `NULL` means the
-#'   folder autoexec_report.R itself is run from.
 #' @param date The date stamped in the banner.
 #' @return The program, one element per line.
 #' @export
-autoexec_code <- function(x, program_dir = NULL, date = Sys.Date()) {
+autoexec_code <- function(x, date = Sys.Date()) {
+  lay <- study_layout()
   progs <- vapply(x$outputs$output_id, function(id)
     report_info(x, id)$program, "")
   c(.banner(
-      "Program    : autoexec_report.R",
-      "Runs every report program of the study, in the report list's order.",
+      paste("Program    :", file.path(lay[["programs"]], "autoexec_report.R")),
+      "Runs the study's report programs, in the report list's order.",
+      "  Rscript programs/autoexec_report.R            every program",
+      "  Rscript programs/autoexec_report.R DM.R AE.R  only these",
+      "Run it from the study folder.",
       paste0("Generated  : rtfplanner ", utils::packageVersion("rtfplanner"),
              ", ", format(date, "%Y-%m-%d"))),
+    "",
+    "if (!file.exists(\"study.yml\")) {",
+    "  stop(\"Run autoexec_report.R from the study folder (the one with study.yml).\")",
+    "}",
     "",
     "programs <- c(",
     paste0("  ", .r_string(progs),
            c(rep(",", max(0L, length(progs) - 1L)), "")[seq_along(progs)]),
     ")",
-    if (is.null(program_dir)) "program_dir <- getwd()" else
-      paste("program_dir <-", .r_string(gsub("\\\\", "/", program_dir))),
-    "isolate  <- TRUE   # one Rscript process per program, a log for each",
+    "only <- if (interactive()) character() else commandArgs(trailingOnly = TRUE)",
+    "if (length(only)) {",
+    "  programs <- programs[programs %in% only |",
+    "                        sub(\"\\\\.[Rr]$\", \"\", programs) %in% only]",
+    "}",
     "",
-    "log_dir <- file.path(program_dir, \"logs\")",
+    paste0("program_dir <- ", .r_string(lay[["programs"]])),
+    paste0("log_dir     <- ", .r_string(lay[["logs"]])),
     "dir.create(log_dir, showWarnings = FALSE)",
     "",
     "run_one <- function(p) {",
-    "  path <- file.path(program_dir, p)",
-    "  log  <- file.path(log_dir, sub(\"\\\\.[Rr]$\", \".log\", p))",
-    "  t0 <- Sys.time()",
-    "  if (isolate) {",
-    "    owd <- setwd(program_dir)",
-    "    on.exit(setwd(owd))",
-    "    rc <- system2(file.path(R.home(\"bin\"), \"Rscript\"), shQuote(path),",
-    "                  stdout = log, stderr = log)",
-    "    lines  <- if (file.exists(log)) readLines(log, warn = FALSE) else \"\"",
-    "    status <- if (identical(rc, 0L)) \"OK\" else \"ERROR\"",
-    "    err    <- grep(\"^Error\", lines)[1L]",
-    "    note   <- if (status == \"OK\" || is.na(err)) \"\" else",
-    "      paste(trimws(stats::na.omit(lines[err + 0:1])), collapse = \" \")",
-    "    note   <- sub(\" ?Execution halted$\", \"\", note)",
-    "    warns  <- sum(grepl(\"^Warning\", lines))",
-    "  } else {",
-    "    warns <- 0L",
-    "    res <- withCallingHandlers(",
-    "      tryCatch({",
-    "        source(path, local = new.env(parent = globalenv()), chdir = TRUE)",
-    "        \"\"",
-    "      }, error = function(e) conditionMessage(e)),",
-    "      warning = function(w) {",
-    "        warns <<- warns + 1L",
-    "        invokeRestart(\"muffleWarning\")",
-    "      })",
-    "    status <- if (nzchar(res)) \"ERROR\" else \"OK\"",
-    "    note   <- res",
-    "  }",
-    "  secs <- round(as.numeric(difftime(Sys.time(), t0, units = \"secs\")), 1)",
+    "  log <- file.path(log_dir, sub(\"\\\\.[Rr]$\", \".log\", p))",
+    "  t0  <- Sys.time()",
+    "  rc  <- system2(file.path(R.home(\"bin\"), \"Rscript\"),",
+    "                 shQuote(file.path(program_dir, p)),",
+    "                 stdout = log, stderr = log)",
+    "  lines  <- if (file.exists(log)) readLines(log, warn = FALSE) else \"\"",
+    "  status <- if (identical(rc, 0L)) \"OK\" else \"ERROR\"",
+    "  err    <- grep(\"^Error\", lines)[1L]",
+    "  note   <- if (status == \"OK\" || is.na(err)) \"\" else",
+    "    paste(trimws(stats::na.omit(lines[err + 0:1])), collapse = \" \")",
+    "  note   <- sub(\" ?Execution halted$\", \"\", note)",
+    "  warns  <- sum(grepl(\"^Warning\", lines))",
+    "  secs   <- round(as.numeric(difftime(Sys.time(), t0, units = \"secs\")), 1)",
     "  cat(sprintf(\"%-5s %-30s %6.1fs\\n\", status, p, secs))",
     "  data.frame(program = p, status = status, warnings = warns,",
     "             seconds = secs, note = note, stringsAsFactors = FALSE)",
@@ -229,52 +254,4 @@ autoexec_code <- function(x, program_dir = NULL, date = Sys.Date()) {
     "  if (!interactive()) quit(status = 1L)",
     "}",
     "")
-}
-
-#' Write everything: the workbooks, the programs, autoexec_report.R
-#'
-#' @param x An `rtfplanner`.
-#' @param dir Folder for the two workbooks.
-#' @param program_dir Folder for the programs and autoexec_report.R;
-#'   defaults to `dir`.
-#' @param overwrite_programs A report program already there is left alone
-#'   unless this is `TRUE` -- it may have been edited by hand since it was
-#'   generated.  The workbooks and autoexec_report.R are always rewritten.
-#' @param portable `FALSE` writes the folders into the programs as absolute
-#'   paths, so a program runs from anywhere.  `TRUE` writes them relative
-#'   (the workbooks beside the programs, `spec_dir <- "."`), for a set that
-#'   is moved or zipped; run it from its own folder.
-#' @return A data frame of the files, each `written` or `kept`, invisibly.
-#' @export
-export_planner <- function(x, dir, program_dir = dir,
-                           overwrite_programs = FALSE, portable = FALSE) {
-  if (!nrow(x$outputs)) stop("The report list is empty.", call. = FALSE)
-  progs <- vapply(x$outputs$output_id, function(id)
-    report_info(x, id)$program, "")
-  dup <- unique(progs[duplicated(progs)])
-  if (length(dup)) {
-    stop("Two reports share the program ", paste(dup, collapse = ", "),
-         "; give each its own `program` on the report sheet.", call. = FALSE)
-  }
-  paths <- write_planner(x, dir)
-  dir.create(program_dir, showWarnings = FALSE, recursive = TRUE)
-  abs <- function(d) normalizePath(d, "/", FALSE)
-  spec_dir <- if (portable) "." else abs(dir)
-  files <- data.frame(file = unname(paths), status = "written",
-                      stringsAsFactors = FALSE)
-  for (i in seq_along(progs)) {
-    f <- file.path(program_dir, progs[[i]])
-    if (file.exists(f) && !overwrite_programs) {
-      files[nrow(files) + 1L, ] <- list(f, "kept")
-      next
-    }
-    code <- program_code(x, x$outputs$output_id[i], spec_dir = spec_dir)
-    writeLines(enc2utf8(code), f, useBytes = TRUE)
-    files[nrow(files) + 1L, ] <- list(f, "written")
-  }
-  f <- file.path(program_dir, "autoexec_report.R")
-  writeLines(enc2utf8(autoexec_code(x, if (!portable) abs(program_dir))), f,
-             useBytes = TRUE)
-  files[nrow(files) + 1L, ] <- list(f, "written")
-  invisible(files)
 }
