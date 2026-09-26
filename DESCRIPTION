@@ -1,0 +1,42 @@
+Package: rtfplanner
+Type: Package
+Title: A 'shiny' Editor for 'rtfreporter' Table and Report Definitions
+Version: 0.0.0.9000
+Authors@R:
+    person(given  = "Yoichi",
+           family = "Masui",
+           email  = "ichi.r.pro@gmail.com",
+           role   = c("aut", "cre", "cph"))
+Description: A 'shiny' application for writing the definition workbooks
+    that 'rtfreporter' builds clinical tables from: the table definition
+    ('table_spec.xlsx': the table, its variables, cells, layout, columns,
+    style and column header) and the report definition
+    ('report_spec.xlsx': the report list, page, running header and footer,
+    titles and footnotes). From the same definition it writes one R program
+    per report, which reads the two workbooks and writes the report's RTF,
+    and 'autoexec_report.R', which runs them all.
+License: Apache License (>= 2)
+URL: https://github.com/ichirio/rtfplanner
+BugReports: https://github.com/ichirio/rtfplanner/issues
+Encoding: UTF-8
+Language: en-US
+Depends:
+    R (>= 4.1)
+Imports:
+    readxl,
+    rhandsontable,
+    rtfreporter (>= 0.8.0.9081),
+    shiny,
+    bslib,
+    DT,
+    utils,
+    writexl,
+    zip
+Suggests:
+    cards,
+    testthat (>= 3.0.0)
+Remotes:
+    ichirio/rtfreporter@feat/474-ard-experimental
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3

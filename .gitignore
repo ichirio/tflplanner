@@ -1,0 +1,8 @@
+.Rproj.user
+.Rhistory
+.RData
+.Rdata
+.httr-oauth
+.DS_Store
+*.Rcheck/
+rtfplanner_*.tar.gz
