@@ -91,6 +91,7 @@ planner_app <- function(study = NULL) {
 .rp-study { font-weight: 600; }
 .rp-assist { background: var(--bs-tertiary-bg, #f6f7f9); }
 .rp-inherited td { color: #6b7280; }
+.rhandsontable.html-fill-item { flex: none !important; }
 "
 
 .btn <- function(id, label, class = "btn-sm", ...) {
@@ -118,6 +119,8 @@ app_ui <- function(lang = "en") {
   bslib::page_navbar(
     id = "nav",
     title = "rtfplanner",
+    # pages scroll: a grid squeezed to fit the window would be 0 px high
+    fillable = FALSE,
     theme = bslib::bs_theme(version = 5, preset = "shiny"),
     header = shiny::tags$style(.code_css),
     sidebar = bslib::sidebar(
