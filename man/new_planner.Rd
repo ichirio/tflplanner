@@ -11,7 +11,7 @@ new_planner(study = NULL)
 \code{program_dir}).}
 }
 \value{
-An \code{rtfplanner} object.
+An \code{tflplanner} object.
 }
 \description{
 A new, empty study definition

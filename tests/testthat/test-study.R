@@ -6,9 +6,9 @@ sample_planner <- function() {
 # a fresh home and study root for one test
 local_home <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
-  old <- options(rtfplanner.home = home)
+  old <- options(tflplanner.home = home)
   do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
-  suppressMessages(setup_rtfplanner(studies_root = file.path(home, "ws")))
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "ws")))
   home
 }
 
@@ -16,7 +16,7 @@ test_that("setup makes the home and remembers where studies go", {
   home <- local_home()
   expect_true(dir.exists(file.path(home, "studies")))
   expect_equal(studies_root(), normalizePath(file.path(home, "ws"), "/"))
-  suppressMessages(setup_rtfplanner(studies_root = file.path(home, "ws2")))
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "ws2")))
   expect_match(studies_root(), "ws2$")
 })
 
@@ -36,7 +36,7 @@ test_that("a new study has its layout and is registered", {
   expect_equal(l$study_id, "ABC-101")
   expect_equal(l$title, "A phase 2 study")
   expect_true(l$folder)
-  expect_equal(rtfplanner_config()$last_study, "ABC-101")
+  expect_equal(tflplanner_config()$last_study, "ABC-101")
 })
 
 test_that("a study opens as it was last saved, not from its workbooks", {

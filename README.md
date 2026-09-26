@@ -1,16 +1,16 @@
-# rtfplanner
+# tflplanner
 
 A 'shiny' study manager for clinical TFLs built with
 [rtfreporter](https://github.com/ichirio/rtfreporter).  Each study is a
 folder that holds its input data, its definitions, its programs, its
 deliverables and its logs; the app defines the reports and runs them.
 
-## Where rtfplanner keeps things
+## Where tflplanner keeps things
 
-rtfplanner has a **home** of its own, apart from the study folders:
+tflplanner has a **home** of its own, apart from the study folders:
 
 ```
-<home>/                      tools::R_user_dir("rtfplanner", "data") by default
+<home>/                      tools::R_user_dir("tflplanner", "data") by default
   config.yml                 studies_root (where new study folders go), last_study
   studies/<STUDY_ID>/
     state.json               the study as last saved -- the master copy
@@ -24,8 +24,8 @@ on every save (the programs read them); exporting them elsewhere and
 importing workbooks are separate, explicit actions.
 
 ```r
-rtfplanner::setup_rtfplanner(studies_root = "C:/studies")   # once
-rtfplanner::setup_rtfplanner(home = "D:/rtfplanner")         # another home
+tflplanner::setup_tflplanner(studies_root = "C:/studies")   # once
+tflplanner::setup_tflplanner(home = "D:/tflplanner")         # another home
 ```
 
 ## A study is a folder
@@ -98,15 +98,15 @@ the usual cell template ...).
 
 ## Install and start
 
-rtfplanner needs the rtfreporter branch that has the definition workbooks
+tflplanner needs the rtfreporter branch that has the definition workbooks
 (`feat/474-ard-experimental`, 0.8.0.9082 or later: its column header N is the analysis set).
 
 ```r
 remotes::install_github("ichirio/rtfreporter@feat/474-ard-experimental")
-remotes::install_local("C:/Yrepo/rtfplanner")
+remotes::install_local("C:/Yrepo/tflplanner")
 
-rtfplanner::run_app()             # sets the home up the first time
-rtfplanner::run_app("ABC-101")    # open a study at start
+tflplanner::run_app()             # sets the home up the first time
+tflplanner::run_app("ABC-101")    # open a study at start
 ```
 
 ## The app
@@ -124,7 +124,7 @@ rtfplanner::run_app("ABC-101")    # open a study at start
   (every row, with `output_id`); input assistance above; paste from
   Excel; column help from rtfreporter's `_README`.
 - The app is in English or Japanese: Studies > Settings, or
-  `setup_rtfplanner(language = "ja")`.
+  `setup_tflplanner(language = "ja")`.
 - **データ** — the input data; upload into `data/adam|sdtm|other`, preview
   (`.rds`, `.csv`, `.xpt`, `.sas7bdat`, `.parquet`).
 - **成果物** — per report: program state, ARD, RTF, status (未作成 / TODO /
@@ -136,7 +136,7 @@ rtfplanner::run_app("ABC-101")    # open a study at start
 ## From R
 
 ```r
-library(rtfplanner)
+library(tflplanner)
 s <- create_study("ABC-101", title = "A phase 2 study")
 s <- open_study("ABC-101")                  # as last saved
 s$planner <- add_output(s$planner, "T_DM", type = "table")

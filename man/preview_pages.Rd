@@ -10,7 +10,7 @@ preview_pages(x, output_id, data)
 preview_html(pages, max_pages = 3L)
 }
 \arguments{
-\item{x}{An \code{rtfplanner}.}
+\item{x}{An \code{tflplanner}.}
 
 \item{output_id}{The report.}
 

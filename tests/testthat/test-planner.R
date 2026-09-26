@@ -31,7 +31,7 @@ test_that("each workbook carries its half and rtfreporter reads each alone", {
   expect_gt(nrow(r$header), 0)
   expect_equal(t$study$value[t$study$key == "rounding"], "sas")
   expect_equal(r$study$value[r$study$key == "output_path"], "output")
-  expect_true("_rtfplanner" %in% readxl::excel_sheets(paths[["report"]]))
+  expect_true("_tflplanner" %in% readxl::excel_sheets(paths[["report"]]))
   expect_equal(readxl::excel_sheets(paths[["table"]])[1], "_README")
 })
 

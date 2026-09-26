@@ -7,7 +7,7 @@
 check_planner(x)
 }
 \arguments{
-\item{x}{An \code{rtfplanner}.}
+\item{x}{An \code{tflplanner}.}
 }
 \value{
 A data frame: \code{output_id}, \code{ok}, \code{message}.

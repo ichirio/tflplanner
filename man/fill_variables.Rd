@@ -10,7 +10,7 @@ fill_variables(x, output_id, meta, max_levels = 30L)
 fill_tables(x, output_id, meta)
 }
 \arguments{
-\item{x}{An \code{rtfplanner}.}
+\item{x}{An \code{tflplanner}.}
 
 \item{output_id}{The report.}
 
@@ -20,7 +20,7 @@ fill_tables(x, output_id, meta)
 no \code{levels}.}
 }
 \value{
-The \code{rtfplanner}, with attribute \code{changed} (rows added or
+The \code{tflplanner}, with attribute \code{changed} (rows added or
 filled).
 }
 \description{

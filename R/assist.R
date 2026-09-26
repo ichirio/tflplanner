@@ -149,7 +149,7 @@ ard_meta <- function(ard = NULL, data = NULL) {
 
 # ------------------------------------------------------------ fetching
 
-.meta_file <- function(study, output_id, home = rtfplanner_home()) {
+.meta_file <- function(study, output_id, home = tflplanner_home()) {
   file.path(.store_dir(study$meta$study_id, home), "ard",
             paste0(output_id, ".rds"))
 }
@@ -163,12 +163,12 @@ ard_meta <- function(ard = NULL, data = NULL) {
 #' code loaded (`adsl`, ...) add what the ARD lacks: each variable's label,
 #' and the order of its values (a factor's levels, or the order of a
 #' numeric companion `<name>N`: `TRT01A` by `TRT01AN`).  The result is kept
-#' in rtfplanner's home, so it is there the next time the study is opened.
+#' in tflplanner's home, so it is there the next time the study is opened.
 #'
 #' @param study An `rtfstudy`.
 #' @param output_id The report.
 #' @param timeout Seconds to allow.
-#' @param home rtfplanner's home.
+#' @param home tflplanner's home.
 #' `ard_info()` returns the metadata kept, `ard_data()` the normalized data
 #' kept with it (what the builder's preview is planned from).
 #'
@@ -177,7 +177,7 @@ ard_meta <- function(ard = NULL, data = NULL) {
 #'   `log`, invisibly.
 #' @export
 fetch_ard <- function(study, output_id, timeout = 300,
-                      home = rtfplanner_home()) {
+                      home = tflplanner_home()) {
   p <- study$planner
   o <- p$outputs[p$outputs$output_id == output_id, , drop = FALSE]
   if (!nrow(o) || is.na(o$data_code)) {
@@ -282,14 +282,14 @@ fetch_ard <- function(study, output_id, timeout = 300,
 
 #' @rdname fetch_ard
 #' @export
-ard_info <- function(study, output_id, home = rtfplanner_home()) {
+ard_info <- function(study, output_id, home = tflplanner_home()) {
   f <- .meta_file(study, output_id, home)
   if (file.exists(f)) readRDS(f)
 }
 
 #' @rdname fetch_ard
 #' @export
-ard_data <- function(study, output_id, home = rtfplanner_home()) {
+ard_data <- function(study, output_id, home = tflplanner_home()) {
   f <- sub("[.]rds$", "_data.rds", .meta_file(study, output_id, home))
   if (file.exists(f)) readRDS(f)
 }
@@ -309,12 +309,12 @@ ard_data <- function(study, output_id, home = rtfplanner_home()) {
 #' report's `tables` row: the column key, and the hierarchy (`rows`,
 #' `label`, `sort`) or `group = variable`.
 #'
-#' @param x An `rtfplanner`.
+#' @param x An `tflplanner`.
 #' @param output_id The report.
 #' @param meta Its [ard_meta()].
 #' @param max_levels Keys with more levels than this (a preferred term) get
 #'   no `levels`.
-#' @return The `rtfplanner`, with attribute `changed` (rows added or
+#' @return The `tflplanner`, with attribute `changed` (rows added or
 #'   filled).
 #' @export
 fill_variables <- function(x, output_id, meta, max_levels = 30L) {
@@ -472,13 +472,13 @@ header_presets <- function() {
 
 #' Add a preset's rows to a report
 #'
-#' @param x An `rtfplanner`.
+#' @param x An `tflplanner`.
 #' @param output_id The report (`NA` for the study defaults).
 #' @param preset A name of [cell_presets()] or [header_presets()].
 #' @param variable For a cell preset: the variable its rows are for,
 #'   instead of the kind (`continuous` / `categorical`) that serves every
 #'   variable of that kind.
-#' @return The `rtfplanner`.  A report's own column header replaces the
+#' @return The `tflplanner`.  A report's own column header replaces the
 #'   default one whole, so a header preset replaces the report's header
 #'   rows.
 #' @export
@@ -554,7 +554,7 @@ grid_choices <- function(sheet, meta) {
 
 #' The study default rows a report inherits
 #'
-#' @param x An `rtfplanner`.
+#' @param x An `tflplanner`.
 #' @param sheet A sheet.
 #' @param output_id The report.
 #' @return The default rows (blank `output_id`) that still apply to the

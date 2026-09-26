@@ -7,7 +7,7 @@
 report_info(x, output_id)
 }
 \arguments{
-\item{x}{An \code{rtfplanner}.}
+\item{x}{An \code{tflplanner}.}
 
 \item{output_id}{A report id.}
 }

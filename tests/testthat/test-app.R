@@ -1,8 +1,8 @@
 local_home <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
-  old <- options(rtfplanner.home = home)
+  old <- options(tflplanner.home = home)
   do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
-  suppressMessages(setup_rtfplanner(studies_root = file.path(home, "ws")))
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "ws")))
   home
 }
 

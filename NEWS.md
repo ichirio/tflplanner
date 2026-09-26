@@ -1,4 +1,4 @@
-# rtfplanner 0.0.0.9000
+# tflplanner 0.0.0.9000
 
 - Input assistance from the ARD: `fetch_ard()` runs a report's data code
   from the study folder and keeps `ard_meta()` (keys, hierarchy,
@@ -11,10 +11,10 @@
 - The sidebar shows a report, the Study defaults or ALL; a report's grid
   shows the default rows it inherits (`inherited_rows()`).
 - The app is in English (default) or Japanese (`tr()`,
-  `setup_rtfplanner(language = )`).
+  `setup_tflplanner(language = )`).
 
-- rtfplanner keeps each study's state in a home of its own
-  (`setup_rtfplanner()`, `rtfplanner_home()`, `rtfplanner_config()`): a
+- tflplanner keeps each study's state in a home of its own
+  (`setup_tflplanner()`, `tflplanner_home()`, `tflplanner_config()`): a
   study opens as it was last saved, with a history of earlier saves.  The
   definition workbooks are written from it; `export_spec()` /
   `import_spec()` move them in and out.  `create_study()`,

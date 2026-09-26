@@ -48,7 +48,7 @@ study_layout <- function() {
 
 .write_meta <- function(meta, path) {
   meta$updated <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
-  meta$rtfplanner <- as.character(utils::packageVersion("rtfplanner"))
+  meta$tflplanner <- as.character(utils::packageVersion("tflplanner"))
   meta <- lapply(meta, function(v) if (length(v) == 1L && is.na(v)) "" else v)
   yaml::write_yaml(meta, file.path(path, .study_file))
   invisible(meta)
@@ -81,14 +81,14 @@ study_layout <- function() {
 
 #' Create, open, register and list studies
 #'
-#' A study is known to rtfplanner by its saved state in the home
-#' ([setup_rtfplanner()]); its folder holds the data, the programs and the
+#' A study is known to tflplanner by its saved state in the home
+#' ([setup_tflplanner()]); its folder holds the data, the programs and the
 #' deliverables.
 #'
 #' * `create_study()` makes the study folder -- layout, `study.yml`, an
 #'   RStudio project -- and saves the study, which registers it.
 #' * `open_study()` returns a study as it was last saved.  Given the folder
-#'   of a study rtfplanner does not know yet, it registers it first.
+#'   of a study tflplanner does not know yet, it registers it first.
 #' * `register_study()` adds an existing study folder: its `study.yml`, and
 #'   its definition workbooks when `spec/` has them.
 #' * `unregister_study()` forgets a study; its folder is left alone.
@@ -96,13 +96,13 @@ study_layout <- function() {
 #'
 #' @param study_id The study's id, which is also its folder name.
 #' @param title,compound,phase,description What the study is.
-#' @param planner An `rtfplanner` to start from (e.g. an earlier study's
+#' @param planner An `tflplanner` to start from (e.g. an earlier study's
 #'   `open_study(...)$planner`); `NULL` starts empty.
 #' @param root The folder the new study folder goes in; defaults to the
-#'   one set up with [setup_rtfplanner()].
+#'   one set up with [setup_tflplanner()].
 #' @param study A registered study's id, or a study folder.
 #' @param path A study folder.
-#' @param home rtfplanner's home.
+#' @param home tflplanner's home.
 #' @return `create_study()`, `open_study()` and `register_study()` return
 #'   an `rtfstudy`: `path`, `meta` (the study.yml fields) and `planner`.
 #'   `list_studies()` returns a data frame.
@@ -116,7 +116,7 @@ study_layout <- function() {
 create_study <- function(study_id, title = NA, compound = NA, phase = NA,
                          description = NA, planner = NULL,
                          root = studies_root(home),
-                         home = rtfplanner_home()) {
+                         home = tflplanner_home()) {
   study_id <- .check_study_id(study_id)
   if (!is.null(.read_state(study_id, home))) {
     stop("Study '", study_id, "' is already registered.", call. = FALSE)
@@ -153,7 +153,7 @@ create_study <- function(study_id, title = NA, compound = NA, phase = NA,
 
 #' @rdname create_study
 #' @export
-open_study <- function(study, home = rtfplanner_home()) {
+open_study <- function(study, home = tflplanner_home()) {
   is_dir <- dir.exists(study) &&
     file.exists(file.path(study, .study_file))
   id <- if (is_dir) .read_meta(study)$study_id else study
@@ -175,7 +175,7 @@ open_study <- function(study, home = rtfplanner_home()) {
 
 #' @rdname create_study
 #' @export
-register_study <- function(path, home = rtfplanner_home()) {
+register_study <- function(path, home = tflplanner_home()) {
   meta <- .read_meta(path)
   id <- .check_study_id(meta$study_id)
   st <- .read_state(id, home)
@@ -196,9 +196,9 @@ register_study <- function(path, home = rtfplanner_home()) {
 
 #' @rdname create_study
 #' @export
-unregister_study <- function(study_id, home = rtfplanner_home()) {
+unregister_study <- function(study_id, home = tflplanner_home()) {
   unlink(.store_dir(study_id, home), recursive = TRUE)
-  if (identical(rtfplanner_config(home)$last_study, study_id)) {
+  if (identical(tflplanner_config(home)$last_study, study_id)) {
     .set_config("last_study", NULL, home)
   }
   invisible(study_id)
@@ -206,7 +206,7 @@ unregister_study <- function(study_id, home = rtfplanner_home()) {
 
 #' @rdname create_study
 #' @export
-list_studies <- function(home = rtfplanner_home()) {
+list_studies <- function(home = tflplanner_home()) {
   ids <- basename(list.dirs(file.path(home, "studies"), recursive = FALSE))
   rows <- lapply(ids, function(id) {
     st <- tryCatch(.read_state(id, home), error = function(e) NULL)
@@ -227,7 +227,7 @@ list_studies <- function(home = rtfplanner_home()) {
 
 #' Definition workbooks in and out
 #'
-#' The study's definition lives in rtfplanner's home and is written to the
+#' The study's definition lives in tflplanner's home and is written to the
 #' study folder's `spec/` on every save.  `export_spec()` writes the two
 #' workbooks anywhere else; `import_spec()` replaces the study's definition
 #' with what a set of workbooks says (save the study to keep it).
@@ -259,22 +259,22 @@ print.rtfstudy <- function(x, ...) {
 
 #' Save a study
 #'
-#' Saves the study's state in rtfplanner's home (the copy
+#' Saves the study's state in tflplanner's home (the copy
 #' [open_study()] reads; the one before goes to its history), then writes
 #' the study folder from it: the definition workbooks in `spec/` (with
 #' `output_path` and `program_dir` set to the study's own folders), the
 #' report programs, `autoexec_report.R`, and `study.yml`.  A program
-#' rtfplanner wrote and nobody has touched since (its banner's checksum
+#' tflplanner wrote and nobody has touched since (its banner's checksum
 #' still matches) follows the definition and is rewritten when it changes;
 #' one edited by hand is kept unless it is named in `regenerate`.
 #'
 #' @param study An `rtfstudy`.
 #' @param regenerate Report ids whose program is written anew.
-#' @param home rtfplanner's home.
+#' @param home tflplanner's home.
 #' @return The study, invisibly, with `files`: what was written or kept.
 #' @export
 save_study <- function(study, regenerate = character(),
-                       home = rtfplanner_home()) {
+                       home = tflplanner_home()) {
   p <- .study_spec_keys(study$planner)
   study$planner <- p
   root <- study$path
@@ -336,8 +336,8 @@ save_study <- function(study, regenerate = character(),
 # ------------------------------------------------------------ the state
 
 # A generated program carries a checksum of its own body in its banner.  A
-# program whose body still matches it has not been touched since rtfplanner
-# wrote it, so rtfplanner may write it again when the definition changes;
+# program whose body still matches it has not been touched since tflplanner
+# wrote it, so tflplanner may write it again when the definition changes;
 # one that does not match was edited by hand and is left alone.
 .gen_line <- "^#  (Generated|Checksum)  *:"
 
@@ -355,7 +355,7 @@ save_study <- function(study, regenerate = character(),
 }
 
 # missing   no file yet
-# current   untouched, and what rtfplanner would write now
+# current   untouched, and what tflplanner would write now
 # todo      untouched, still the TODO data part
 # generated untouched, but the definition has moved on: saving rewrites it
 # edited    changed by hand: saving leaves it alone
@@ -366,7 +366,7 @@ save_study <- function(study, regenerate = character(),
              grep("^#  Checksum   :", have, value = TRUE))
   if (!length(chk) || !identical(chk[1L], .body_hash(have))) return("edited")
   if (identical(.body_hash(have), .body_hash(program_code(p, id)))) {
-    if (any(grepl("rtfplanner: the data part of", have, fixed = TRUE))) {
+    if (any(grepl("tflplanner: the data part of", have, fixed = TRUE))) {
       return("todo")
     }
     return("current")
@@ -381,7 +381,7 @@ save_study <- function(study, regenerate = character(),
 #' What each report of a study has produced
 #'
 #' One row per report: its program (`missing`; `current`, `todo` or
-#' `generated` -- untouched since rtfplanner wrote it, `generated` meaning
+#' `generated` -- untouched since tflplanner wrote it, `generated` meaning
 #' the next save rewrites it; or `edited` by hand), whether its ARD and RTF exist
 #' and when they were made, and a `status`:
 #'

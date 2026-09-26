@@ -49,14 +49,14 @@
   todo = "TODO (data part)", "not run" = "Not run", error = "Error",
   outdated = "Rerun needed", ok = "OK")
 
-#' Start the rtfplanner app
+#' Start the tflplanner app
 #'
 #' Opens the study manager.  Choose a study -- it opens as it was last
 #' saved -- or create or register one, then define its reports (Tables from
 #' the table definition; Listings and Figures from their programs), their
-#' data code, and run them.  The first time, rtfplanner's home is set up
-#' with the defaults ([setup_rtfplanner()]).  The app is in English or
-#' Japanese (`setup_rtfplanner(language = )`, or its settings).
+#' data code, and run them.  The first time, tflplanner's home is set up
+#' with the defaults ([setup_tflplanner()]).  The app is in English or
+#' Japanese (`setup_tflplanner(language = )`, or its settings).
 #'
 #' @param study A study to open at start: a registered study's id, or a
 #'   study folder.
@@ -76,9 +76,9 @@ run_app <- function(study = NULL, ...) {
 #' @rdname run_app
 #' @export
 planner_app <- function(study = NULL) {
-  if (!.is_set_up()) setup_rtfplanner()
+  if (!.is_set_up()) setup_tflplanner()
   start <- if (!is.null(study)) open_study(study)
-  shiny::shinyApp(function(req) app_ui(rtfplanner_language()),
+  shiny::shinyApp(function(req) app_ui(tflplanner_language()),
                   function(input, output, session)
                     app_server(input, output, session, start))
 }
@@ -140,7 +140,7 @@ app_ui <- function(lang = "en") {
 
   bslib::page_navbar(
     id = "nav",
-    title = "rtfplanner",
+    title = "tflplanner",
     # pages scroll: a grid squeezed to fit the window would be 0 px high
     fillable = FALSE,
     theme = bslib::bs_theme(version = 5, preset = "shiny"),
@@ -377,7 +377,7 @@ app_ui <- function(lang = "en") {
 }
 
 app_server <- function(input, output, session, start) {
-  lang <- rtfplanner_language()
+  lang <- tflplanner_language()
   t <- function(x) tr(x, lang)
   # `want`: the report to select once the sidebar knows it
   rv <- shiny::reactiveValues(
@@ -475,7 +475,7 @@ app_server <- function(input, output, session, start) {
   output$studies <- DT::renderDT({
     d <- studies()
     last <- shiny::isolate(if (has_study()) rv$study$meta$study_id else
-      rtfplanner_config()$last_study)
+      tflplanner_config()$last_study)
     v <- data.frame(
       a = d$study_id, b = d$title, c = d$compound, d = d$phase,
       e = d$saved,
@@ -493,8 +493,8 @@ app_server <- function(input, output, session, start) {
   output$settings <- shiny::renderUI({
     rv$studies_ver
     shiny::tagList(
-      shiny::p(t("rtfplanner keeps the studies here (the master copy):"),
-               shiny::br(), shiny::code(rtfplanner_home())),
+      shiny::p(t("tflplanner keeps the studies here (the master copy):"),
+               shiny::br(), shiny::code(tflplanner_home())),
       shiny::div(
         class = "d-flex gap-2 align-items-end",
         shiny::textInput("studies_root", t("New study folders go to"),
@@ -509,7 +509,7 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$save_settings, {
     r <- trimws(input$studies_root)
     if (!nzchar(r)) return()
-    guarded(suppressMessages(setup_rtfplanner(studies_root = r)))
+    guarded(suppressMessages(setup_tflplanner(studies_root = r)))
     rv$studies_ver <- rv$studies_ver + 1L
     notify(sprintf(t("New studies go to %s"), r))
   })
@@ -517,7 +517,7 @@ app_server <- function(input, output, session, start) {
     if (dirty()) {
       return(notify(t("There are unsaved changes. Save first."), "warning"))
     }
-    guarded(suppressMessages(setup_rtfplanner(language = input$language)))
+    guarded(suppressMessages(setup_tflplanner(language = input$language)))
     session$reload()
   })
   selected_study <- function() {
@@ -557,7 +557,7 @@ app_server <- function(input, output, session, start) {
     if (is.null(d)) return()
     shiny::showModal(shiny::modalDialog(
       title = sprintf(t("Unregister %s"), d$study_id),
-      t("This deletes what rtfplanner keeps about the study (definition, data code, history). The study folder (data, spec, programs, outputs) stays, and Register a folder brings it back from spec/."),
+      t("This deletes what tflplanner keeps about the study (definition, data code, history). The study folder (data, spec, programs, outputs) stays, and Register a folder brings it back from spec/."),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn("unregister_ok", t("Unregister"),
                                    class = "btn-danger"))))

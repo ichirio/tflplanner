@@ -20,7 +20,7 @@ import_spec(study, path)
 \code{export_spec()} the paths written; \code{import_spec()} the study.
 }
 \description{
-The study's definition lives in rtfplanner's home and is written to the
+The study's definition lives in tflplanner's home and is written to the
 study folder's \verb{spec/} on every save.  \code{export_spec()} writes the two
 workbooks anywhere else; \code{import_spec()} replaces the study's definition
 with what a set of workbooks says (save the study to keep it).

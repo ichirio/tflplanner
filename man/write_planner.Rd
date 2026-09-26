@@ -12,7 +12,7 @@ write_planner(
 )
 }
 \arguments{
-\item{x}{An \code{rtfplanner}.}
+\item{x}{An \code{tflplanner}.}
 
 \item{dir}{Destination folder.}
 
@@ -24,7 +24,7 @@ The two paths, invisibly.
 \description{
 \code{table_spec.xlsx} gets the table sheets and \code{rounding};
 \code{report_spec.xlsx} the report sheets, \code{output_path}, \code{program_dir}, and
-the \verb{_rtfplanner} sheet (report list and data code).  Both carry every
+the \verb{_tflplanner} sheet (report list and data code).  Both carry every
 sheet rtfreporter defines -- the other half's sheets empty -- and its
 \verb{_README}, and both are checked by \code{\link[rtfreporter:table_spec]{rtfreporter::table_spec()}} on the
 way out.

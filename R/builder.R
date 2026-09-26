@@ -54,7 +54,7 @@ builder_stats <- function() {
 #' not manage (a statistic it does not offer, a variable of its own
 #' template) are left as they are.
 #'
-#' @param x An `rtfplanner`.
+#' @param x An `tflplanner`.
 #' @param output_id The report.
 #' @param meta Its [ard_meta()], or `NULL`.
 #' @param state What `builder_read()` returns, as edited.
@@ -63,7 +63,7 @@ builder_stats <- function() {
 #'   `kind`, `label`), `levels` (named list), `stats` (keys of
 #'   [builder_stats()] in order), `decimals`, `cat_format` (`npct`,
 #'   `nNpct`, `n`), `pct_decimals`, `header` (`keep` or a name of
-#'   [header_presets()]).  `builder_write()`: the `rtfplanner`.
+#'   [header_presets()]).  `builder_write()`: the `tflplanner`.
 #' @export
 builder_read <- function(x, output_id, meta = NULL) {
   id <- output_id
@@ -240,7 +240,7 @@ builder_write <- function(x, output_id, state) {
 #' not) and the report's normalized data, and gives its pages -- what
 #' [rtfreporter::rtf_report()] lays out -- or an HTML rendering of them.
 #'
-#' @param x An `rtfplanner`.
+#' @param x An `tflplanner`.
 #' @param output_id The report.
 #' @param data Its normalized data ([ard_data()]).
 #' @param pages `rtftable` pages.

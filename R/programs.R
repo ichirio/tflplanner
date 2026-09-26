@@ -22,7 +22,7 @@
 
 #' Where a report's program and RTF go
 #'
-#' @param x An `rtfplanner`.
+#' @param x An `tflplanner`.
 #' @param output_id A report id.
 #' @return A list: `type`, `program` (file name, with `.R`), `file` (the
 #'   RTF, joined to `output_path`).
@@ -92,7 +92,7 @@ report_info <- function(x, output_id) {
 #' stops.  [program_code()] writes it into the program, and
 #' [fetch_ard()] runs it to learn what the ARD holds.
 #'
-#' @param x An `rtfplanner`.
+#' @param x An `tflplanner`.
 #' @param output_id The report.
 #' @param todo `FALSE` returns `NULL` instead of the TODO.
 #' @return Code lines.
@@ -106,7 +106,7 @@ data_lines <- function(x, output_id, todo = TRUE) {
   type <- info$type
   if (is.na(code)) {
     if (!todo) return(NULL)
-    stop_todo <- paste0("stop(\"rtfplanner: the data part of ",
+    stop_todo <- paste0("stop(\"tflplanner: the data part of ",
                         info$program, " is still to be written.\")")
     body <- switch(type,
       figure = c(
@@ -151,7 +151,7 @@ data_lines <- function(x, output_id, todo = TRUE) {
 #' The report around it -- page, header, footer, titles, footnotes -- comes
 #' from `report_spec.xlsx` for every type.
 #'
-#' @param x An `rtfplanner`.
+#' @param x An `tflplanner`.
 #' @param output_id The report.
 #' @param date The date stamped in the banner.
 #' @return The program, one element per line.
@@ -172,7 +172,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     paste0("Output     : ", output_id, " (", type, ") -> ", info$file),
     if (!is.null(desc)) paste("Description:", desc),
     if (length(titles)) paste("Title      :", titles),
-    paste0("Generated  : rtfplanner ", utils::packageVersion("rtfplanner"),
+    paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
            ", ", format(date, "%Y-%m-%d")),
     "",
     "Runs from the study folder (open the study's .Rproj, or run",
@@ -228,7 +228,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 #' directory and its log in `logs/`, and ends with a table of what passed
 #' (`logs/autoexec_report.csv`).
 #'
-#' @param x An `rtfplanner`.
+#' @param x An `tflplanner`.
 #' @param date The date stamped in the banner.
 #' @return The program, one element per line.
 #' @export
@@ -242,7 +242,7 @@ autoexec_code <- function(x, date = Sys.Date()) {
       "  Rscript programs/autoexec_report.R            every program",
       "  Rscript programs/autoexec_report.R DM.R AE.R  only these",
       "Run it from the study folder.",
-      paste0("Generated  : rtfplanner ", utils::packageVersion("rtfplanner"),
+      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
              ", ", format(date, "%Y-%m-%d"))),
     "",
     "if (!file.exists(\"study.yml\")) {",

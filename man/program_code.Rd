@@ -7,7 +7,7 @@
 program_code(x, output_id, date = Sys.Date())
 }
 \arguments{
-\item{x}{An \code{rtfplanner}.}
+\item{x}{An \code{tflplanner}.}
 
 \item{output_id}{The report.}
 

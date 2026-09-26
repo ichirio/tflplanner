@@ -3,7 +3,7 @@
 \name{run_app}
 \alias{run_app}
 \alias{planner_app}
-\title{Start the rtfplanner app}
+\title{Start the tflplanner app}
 \usage{
 run_app(study = NULL, ...)
 
@@ -23,9 +23,9 @@ study folder.}
 Opens the study manager.  Choose a study -- it opens as it was last
 saved -- or create or register one, then define its reports (Tables from
 the table definition; Listings and Figures from their programs), their
-data code, and run them.  The first time, rtfplanner's home is set up
-with the defaults (\code{\link[=setup_rtfplanner]{setup_rtfplanner()}}).  The app is in English or
-Japanese (\code{setup_rtfplanner(language = )}, or its settings).
+data code, and run them.  The first time, tflplanner's home is set up
+with the defaults (\code{\link[=setup_tflplanner]{setup_tflplanner()}}).  The app is in English or
+Japanese (\code{setup_tflplanner(language = )}, or its settings).
 }
 \examples{
 \dontrun{

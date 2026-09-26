@@ -1,4 +1,4 @@
-# The test study ICHIRIO-001: every kind of report rtfplanner knows, on the
+# The test study ICHIRIO-001: every kind of report tflplanner knows, on the
 # CDISC pilot ADaM data that ships with {cards}.
 #
 #   T-14-1-1  Table    Demographic characteristics         table_spec.xlsx
@@ -10,12 +10,12 @@
 #   Rscript data-raw/make-ICHIRIO-001.R [root]
 #
 # root: where the study folder goes (default: the studies_root of
-# setup_rtfplanner()).  The study is written from scratch: an existing
-# ICHIRIO-001 -- its folder and its saved state in rtfplanner's home -- is
+# setup_tflplanner()).  The study is written from scratch: an existing
+# ICHIRIO-001 -- its folder and its saved state in tflplanner's home -- is
 # replaced.  Afterwards every report is run and must end "ok".
 
 devtools::load_all(quiet = TRUE)
-if (!.is_set_up()) setup_rtfplanner()
+if (!.is_set_up()) setup_tflplanner()
 args <- commandArgs(trailingOnly = TRUE)
 root <- if (length(args)) args[1L] else studies_root()
 id <- "ICHIRIO-001"
@@ -231,7 +231,7 @@ for (o in names(code)) {
 # ------------------------------------------------------------ the study
 unlink(file.path(root, id), recursive = TRUE)
 unregister_study(id)
-s <- create_study(id, root = root, title = "Test study for rtfplanner",
+s <- create_study(id, root = root, title = "Test study for tflplanner",
                   compound = "Xanomeline", phase = "2",
                   description = paste(
                     "CDISC pilot ADaM data ({cards}) relabelled as",

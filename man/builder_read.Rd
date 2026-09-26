@@ -10,7 +10,7 @@ builder_read(x, output_id, meta = NULL)
 builder_write(x, output_id, state)
 }
 \arguments{
-\item{x}{An \code{rtfplanner}.}
+\item{x}{An \code{tflplanner}.}
 
 \item{output_id}{The report.}
 
@@ -24,7 +24,7 @@ builder_write(x, output_id, state)
 \code{kind}, \code{label}), \code{levels} (named list), \code{stats} (keys of
 \code{\link[=builder_stats]{builder_stats()}} in order), \code{decimals}, \code{cat_format} (\code{npct},
 \code{nNpct}, \code{n}), \code{pct_decimals}, \code{header} (\code{keep} or a name of
-\code{\link[=header_presets]{header_presets()}}).  \code{builder_write()}: the \code{rtfplanner}.
+\code{\link[=header_presets]{header_presets()}}).  \code{builder_write()}: the \code{tflplanner}.
 }
 \description{
 \code{builder_read()} describes a report's summary table from its sheets (and

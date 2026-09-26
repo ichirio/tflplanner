@@ -1,4 +1,4 @@
-Package: rtfplanner
+Package: tflplanner
 Type: Package
 Title: A 'shiny' Editor for 'rtfreporter' Table and Report Definitions
 Version: 0.0.0.9000
@@ -18,8 +18,8 @@ Description: A 'shiny' application that keeps each clinical study in a
     per report, which reads the two workbooks and writes the report's RTF,
     and 'autoexec_report.R', which runs them all.
 License: Apache License (>= 2)
-URL: https://github.com/ichirio/rtfplanner
-BugReports: https://github.com/ichirio/rtfplanner/issues
+URL: https://github.com/ichirio/tflplanner
+BugReports: https://github.com/ichirio/tflplanner/issues
 Encoding: UTF-8
 Language: en-US
 Depends:

@@ -1,4 +1,4 @@
-# The app's own home: where rtfplanner keeps what it knows about each study,
+# The app's own home: where tflplanner keeps what it knows about each study,
 # apart from the study folders themselves.
 #
 #   <home>/
@@ -14,41 +14,41 @@
 # state on every save (the programs read them), and can be exported or
 # imported on request; the app itself opens a study from its state.
 #
-# Where the home is: option(rtfplanner.home), else the environment variable
-# RTFPLANNER_HOME, else the folder setup_rtfplanner() was last given (kept
-# in a one-line file in tools::R_user_dir("rtfplanner", "config")), else
-# tools::R_user_dir("rtfplanner", "data").
+# Where the home is: option(tflplanner.home), else the environment variable
+# TFLPLANNER_HOME, else the folder setup_tflplanner() was last given (kept
+# in a one-line file in tools::R_user_dir("tflplanner", "config")), else
+# tools::R_user_dir("tflplanner", "data").
 
 .pointer_file <- function() {
-  file.path(tools::R_user_dir("rtfplanner", "config"), "home")
+  file.path(tools::R_user_dir("tflplanner", "config"), "home")
 }
 
-#' Where rtfplanner keeps its settings and the studies' saved state
+#' Where tflplanner keeps its settings and the studies' saved state
 #'
 #' @return The home folder (it may not exist yet: see
-#'   [setup_rtfplanner()]).
+#'   [setup_tflplanner()]).
 #' @export
-rtfplanner_home <- function() {
-  h <- getOption("rtfplanner.home")
-  if (is.null(h) || !nzchar(h)) h <- Sys.getenv("RTFPLANNER_HOME")
+tflplanner_home <- function() {
+  h <- getOption("tflplanner.home")
+  if (is.null(h) || !nzchar(h)) h <- Sys.getenv("TFLPLANNER_HOME")
   if (!nzchar(h) && file.exists(.pointer_file())) {
     h <- trimws(readLines(.pointer_file(), n = 1L, warn = FALSE))
   }
-  if (!length(h) || !nzchar(h)) h <- tools::R_user_dir("rtfplanner", "data")
+  if (!length(h) || !nzchar(h)) h <- tools::R_user_dir("tflplanner", "data")
   normalizePath(h, "/", mustWork = FALSE)
 }
 
-.config_file <- function(home = rtfplanner_home()) file.path(home, "config.yml")
+.config_file <- function(home = tflplanner_home()) file.path(home, "config.yml")
 
-#' Set up rtfplanner's home
+#' Set up tflplanner's home
 #'
-#' Creates the folder where rtfplanner keeps its settings and the saved
+#' Creates the folder where tflplanner keeps its settings and the saved
 #' state of every study, and says where new study folders go.  Run it once;
 #' [run_app()] runs it with the defaults when it finds no home.  Running it
 #' again changes the settings given and keeps the rest.
 #'
 #' @param home The home folder.  `NULL` keeps the current one (see
-#'   [rtfplanner_home()]); a folder given here is remembered for later
+#'   [tflplanner_home()]); a folder given here is remembered for later
 #'   sessions.
 #' @param studies_root Where new study folders are created.  `NULL` keeps
 #'   the current setting, or on a first setup uses `<home>/workspace`.
@@ -57,10 +57,10 @@ rtfplanner_home <- function() {
 #' @return The settings, invisibly.
 #' @examples
 #' \dontrun{
-#' setup_rtfplanner(studies_root = "C:/studies")
+#' setup_tflplanner(studies_root = "C:/studies")
 #' }
 #' @export
-setup_rtfplanner <- function(home = NULL, studies_root = NULL,
+setup_tflplanner <- function(home = NULL, studies_root = NULL,
                              language = NULL) {
   if (!is.null(home)) {
     home <- normalizePath(home, "/", mustWork = FALSE)
@@ -68,11 +68,11 @@ setup_rtfplanner <- function(home = NULL, studies_root = NULL,
                showWarnings = FALSE)
     writeLines(home, .pointer_file())
   } else {
-    home <- rtfplanner_home()
+    home <- tflplanner_home()
   }
   dir.create(file.path(home, "studies"), recursive = TRUE,
              showWarnings = FALSE)
-  cfg <- rtfplanner_config(home)
+  cfg <- tflplanner_config(home)
   if (!is.null(studies_root)) cfg$studies_root <- studies_root
   if (is.null(cfg$studies_root) || !nzchar(cfg$studies_root)) {
     cfg$studies_root <- file.path(home, "workspace")
@@ -81,19 +81,19 @@ setup_rtfplanner <- function(home = NULL, studies_root = NULL,
   if (!is.null(language)) cfg$language <- match.arg(language, app_languages())
   dir.create(cfg$studies_root, recursive = TRUE, showWarnings = FALSE)
   .write_config(cfg, home)
-  message("rtfplanner home: ", home, "\nnew studies go to: ",
+  message("tflplanner home: ", home, "\nnew studies go to: ",
           cfg$studies_root)
   invisible(c(list(home = home), cfg))
 }
 
-.is_set_up <- function(home = rtfplanner_home()) file.exists(.config_file(home))
+.is_set_up <- function(home = tflplanner_home()) file.exists(.config_file(home))
 
-#' rtfplanner's settings
+#' tflplanner's settings
 #'
 #' @param home The home folder.
 #' @return A list: `studies_root`, `last_study`, `language`.
 #' @export
-rtfplanner_config <- function(home = rtfplanner_home()) {
+tflplanner_config <- function(home = tflplanner_home()) {
   f <- .config_file(home)
   cfg <- if (file.exists(f)) yaml::read_yaml(f) else list()
   keys <- c("studies_root", "last_study", "language")
@@ -102,31 +102,31 @@ rtfplanner_config <- function(home = rtfplanner_home()) {
   cfg
 }
 
-.write_config <- function(cfg, home = rtfplanner_home()) {
+.write_config <- function(cfg, home = tflplanner_home()) {
   cfg <- cfg[!vapply(cfg, is.null, NA)]
   yaml::write_yaml(cfg, .config_file(home))
 }
 
-.set_config <- function(key, value, home = rtfplanner_home()) {
-  cfg <- rtfplanner_config(home)
+.set_config <- function(key, value, home = tflplanner_home()) {
+  cfg <- tflplanner_config(home)
   cfg[[key]] <- value
   .write_config(cfg, home)
 }
 
-#' @rdname rtfplanner_config
+#' @rdname tflplanner_config
 #' @export
-studies_root <- function(home = rtfplanner_home()) {
-  r <- rtfplanner_config(home)$studies_root
+studies_root <- function(home = tflplanner_home()) {
+  r <- tflplanner_config(home)$studies_root
   if (is.null(r)) file.path(home, "workspace") else r
 }
 
 # ------------------------------------------------------------- the store
 
-.store_dir <- function(id, home = rtfplanner_home()) {
+.store_dir <- function(id, home = tflplanner_home()) {
   file.path(home, "studies", id)
 }
 
-.state_file <- function(id, home = rtfplanner_home()) {
+.state_file <- function(id, home = tflplanner_home()) {
   file.path(.store_dir(id, home), "state.json")
 }
 
@@ -139,7 +139,7 @@ studies_root <- function(home = rtfplanner_home()) {
 .state_of <- function(study) {
   p <- study$planner
   list(format = 1L,
-       rtfplanner = as.character(utils::packageVersion("rtfplanner")),
+       tflplanner = as.character(utils::packageVersion("tflplanner")),
        saved = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
        path = study$path,
        meta = lapply(study$meta[.study_fields], function(v)
@@ -185,13 +185,13 @@ studies_root <- function(home = rtfplanner_home()) {
   p
 }
 
-.read_state <- function(id, home = rtfplanner_home()) {
+.read_state <- function(id, home = tflplanner_home()) {
   f <- .state_file(id, home)
   if (!file.exists(f)) return(NULL)
   jsonlite::fromJSON(f, simplifyVector = FALSE)
 }
 
-.write_state <- function(study, home = rtfplanner_home()) {
+.write_state <- function(study, home = tflplanner_home()) {
   id <- study$meta$study_id
   dir <- .store_dir(id, home)
   dir.create(file.path(dir, "history"), recursive = TRUE,
@@ -200,7 +200,7 @@ studies_root <- function(home = rtfplanner_home()) {
   new <- .state_of(study)
   body <- function(x) {
     x$saved <- NULL
-    x$rtfplanner <- NULL
+    x$tflplanner <- NULL
     x
   }
   if (file.exists(f)) {

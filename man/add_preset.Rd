@@ -7,7 +7,7 @@
 add_preset(x, output_id, preset, variable = NULL)
 }
 \arguments{
-\item{x}{An \code{rtfplanner}.}
+\item{x}{An \code{tflplanner}.}
 
 \item{output_id}{The report (\code{NA} for the study defaults).}
 
@@ -18,7 +18,7 @@ instead of the kind (\code{continuous} / \code{categorical}) that serves every
 variable of that kind.}
 }
 \value{
-The \code{rtfplanner}.  A report's own column header replaces the
+The \code{tflplanner}.  A report's own column header replaces the
 default one whole, so a header preset replaces the report's header
 rows.
 }

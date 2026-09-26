@@ -23,7 +23,7 @@ rename_output(x, from, to)
 remove_output(x, output_id)
 }
 \arguments{
-\item{x}{An \code{rtfplanner}.}
+\item{x}{An \code{tflplanner}.}
 
 \item{output_id, from, to}{Report ids.}
 
@@ -41,7 +41,7 @@ and any rework after it (\code{mutate()} ...).  \code{NA} means
 \code{data <- ard_normalize(ard)}, unless \code{data_code} makes \code{data} itself.}
 }
 \value{
-The updated \code{rtfplanner}.
+The updated \code{tflplanner}.
 }
 \description{
 \code{add_output()} puts a report on the list; \code{copy_output()} gives a new

@@ -6,7 +6,7 @@
 
 .strings <- function() {
   if (is.null(.i18n$table)) {
-    f <- system.file("i18n", "strings.csv", package = "rtfplanner")
+    f <- system.file("i18n", "strings.csv", package = "tflplanner")
     .i18n$table <- if (nzchar(f)) {
       utils::read.csv(f, fileEncoding = "UTF-8", stringsAsFactors = FALSE,
                       na.strings = character())
@@ -19,14 +19,14 @@
 
 #' The app's languages
 #'
-#' `tr()` translates an English text of the app; `rtfplanner_language()` is
-#' the language set with [setup_rtfplanner()] (English by default).
+#' `tr()` translates an English text of the app; `tflplanner_language()` is
+#' the language set with [setup_tflplanner()] (English by default).
 #'
 #' @param x English text.
 #' @param lang `"en"` or `"ja"`.
 #' @return The text in `lang`.
 #' @export
-tr <- function(x, lang = rtfplanner_language()) {
+tr <- function(x, lang = tflplanner_language()) {
   if (identical(lang, "en") || !length(x)) return(x)
   t <- .strings()
   if (!lang %in% names(t)) return(x)
@@ -37,8 +37,8 @@ tr <- function(x, lang = rtfplanner_language()) {
 
 #' @rdname tr
 #' @export
-rtfplanner_language <- function() {
-  l <- tryCatch(rtfplanner_config()$language, error = function(e) NULL)
+tflplanner_language <- function() {
+  l <- tryCatch(tflplanner_config()$language, error = function(e) NULL)
   if (is.null(l) || !l %in% app_languages()) "en" else l
 }
 

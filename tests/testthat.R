@@ -1,4 +1,4 @@
 library(testthat)
-library(rtfplanner)
+library(tflplanner)
 
-test_check("rtfplanner")
+test_check("tflplanner")

@@ -7,7 +7,7 @@
 inherited_rows(x, sheet, output_id)
 }
 \arguments{
-\item{x}{An \code{rtfplanner}.}
+\item{x}{An \code{tflplanner}.}
 
 \item{sheet}{A sheet.}
 

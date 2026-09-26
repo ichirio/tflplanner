@@ -6,7 +6,7 @@
 #   outputs  the report list: output_id, description, data_code (makes
 #            the ARD), process_code (normalizes and reworks it) -- the
 #            part rtfreporter does not read, kept in the report workbook's
-#            `_rtfplanner` sheet (a sheet whose name starts with `_` is
+#            `_tflplanner` sheet (a sheet whose name starts with `_` is
 #            not read by rtfreporter)
 #   setup    code every report program runs before its own data code
 #
@@ -38,7 +38,7 @@ report_types <- function() c("table", "listing", "figure")
 .study_keys <- list(table = "rounding",
                     report = c("output_path", "program_dir"))
 
-.planner_sheet <- "_rtfplanner"
+.planner_sheet <- "_tflplanner"
 
 # The columns a sheet has, straight from rtfreporter, plus the free `note`.
 sheet_columns <- function(sheet) {
@@ -82,7 +82,7 @@ sheet_columns <- function(sheet) {
 #'
 #' @param study Named study keys (`rounding`, `output_path`,
 #'   `program_dir`).
-#' @return An `rtfplanner` object.
+#' @return An `tflplanner` object.
 #' @examples
 #' p <- new_planner(c(rounding = "sas"))
 #' p <- add_output(p, "DM", description = "Demographics")
@@ -103,12 +103,12 @@ new_planner <- function(study = NULL) {
   structure(list(sheets = stats::setNames(lapply(sh, .empty_sheet), sh),
                  study = st, outputs = .empty_outputs(),
                  setup = NA_character_),
-            class = "rtfplanner")
+            class = "tflplanner")
 }
 
 #' @export
-print.rtfplanner <- function(x, ...) {
-  cat("<rtfplanner> ", nrow(x$outputs), " report(s)", sep = "")
+print.tflplanner <- function(x, ...) {
+  cat("<tflplanner> ", nrow(x$outputs), " report(s)", sep = "")
   if (nrow(x$outputs)) cat(":", paste(x$outputs$output_id, collapse = ", "))
   cat("\n")
   n <- vapply(x$sheets, nrow, 1L)
@@ -123,7 +123,7 @@ print.rtfplanner <- function(x, ...) {
 #' Report ids the definition names
 #'
 #' The report list first, then any id a sheet names that the list lacks.
-#' @param x An `rtfplanner`.
+#' @param x An `tflplanner`.
 #' @return A character vector.
 #' @export
 output_ids <- function(x) {
@@ -145,11 +145,11 @@ output_ids <- function(x) {
 #' definition workbooks, one or several) through
 #' [rtfreporter::read_report_spec()], so what the app opens is exactly what
 #' the report programs will read.  The report list and the data code come
-#' from the `_rtfplanner` sheet when a workbook has one; otherwise the list
+#' from the `_tflplanner` sheet when a workbook has one; otherwise the list
 #' is every report a sheet names.
 #'
 #' @param path One or more `.xlsx` files.
-#' @return An `rtfplanner` object.
+#' @return An `tflplanner` object.
 #' @export
 read_planner <- function(path) {
   sp <- rtfreporter::read_report_spec(path)
@@ -162,8 +162,10 @@ read_planner <- function(path) {
     }
   }
   for (f in path) {
-    if (.planner_sheet %in% readxl::excel_sheets(f)) {
-      d <- .read_sheet_text(f, .planner_sheet)
+    # _rtfplanner: the sheet's name before the package was renamed
+    sh <- intersect(c(.planner_sheet, "_rtfplanner"), readxl::excel_sheets(f))
+    if (length(sh)) {
+      d <- .read_sheet_text(f, sh[1L])
       for (cn in names(.empty_outputs())) {
         if (!cn %in% names(d)) d[[cn]] <- NA_character_
       }
@@ -201,7 +203,7 @@ read_planner <- function(path) {
 #' like one already defined); `rename_output()` changes an id everywhere;
 #' `remove_output()` takes a report and all its rows out.
 #'
-#' @param x An `rtfplanner`.
+#' @param x An `tflplanner`.
 #' @param output_id,from,to Report ids.
 #' @param description A short description shown in the report list.
 #' @param data_code R code that makes the report's ARD, `ard` (for a
@@ -212,7 +214,7 @@ read_planner <- function(path) {
 #'   `data <- ard_normalize(ard)`, unless `data_code` makes `data` itself.
 #' @param type The report's type, one of [report_types()]; anything but
 #'   `"table"` is written on the `report` sheet.
-#' @return The updated `rtfplanner`.
+#' @return The updated `tflplanner`.
 #' @export
 add_output <- function(x, output_id, description = NA_character_,
                        data_code = NA_character_, type = "table",
@@ -366,12 +368,12 @@ set_sheet_rows <- function(x, sheet, output_id = "", rows) {
 #'
 #' `table_spec.xlsx` gets the table sheets and `rounding`;
 #' `report_spec.xlsx` the report sheets, `output_path`, `program_dir`, and
-#' the `_rtfplanner` sheet (report list and data code).  Both carry every
+#' the `_tflplanner` sheet (report list and data code).  Both carry every
 #' sheet rtfreporter defines -- the other half's sheets empty -- and its
 #' `_README`, and both are checked by [rtfreporter::table_spec()] on the
 #' way out.
 #'
-#' @param x An `rtfplanner`.
+#' @param x An `tflplanner`.
 #' @param dir Destination folder.
 #' @param table_file,report_file File names.
 #' @return The two paths, invisibly.
@@ -399,11 +401,11 @@ write_planner <- function(x, dir, table_file = "table_spec.xlsx",
 #' report program makes.  (What needs the data -- a column the ARD lacks --
 #' shows only when the program runs.)
 #'
-#' @param x An `rtfplanner`.
+#' @param x An `tflplanner`.
 #' @return A data frame: `output_id`, `ok`, `message`.
 #' @export
 check_planner <- function(x) {
-  dir <- tempfile("rtfplanner")
+  dir <- tempfile("tflplanner")
   on.exit(unlink(dir, recursive = TRUE), add = TRUE)
   paths <- tryCatch(write_planner(x, dir), error = function(e) e)
   if (inherits(paths, "error")) {

@@ -7,7 +7,7 @@
 data_lines(x, output_id, todo = TRUE)
 }
 \arguments{
-\item{x}{An \code{rtfplanner}.}
+\item{x}{An \code{tflplanner}.}
 
 \item{output_id}{The report.}
 

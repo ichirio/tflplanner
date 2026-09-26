@@ -7,7 +7,7 @@
 autoexec_code(x, date = Sys.Date())
 }
 \arguments{
-\item{x}{An \code{rtfplanner}.}
+\item{x}{An \code{tflplanner}.}
 
 \item{date}{The date stamped in the banner.}
 }

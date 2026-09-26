@@ -2,13 +2,13 @@
 % Please edit documentation in R/i18n.R
 \name{tr}
 \alias{tr}
-\alias{rtfplanner_language}
+\alias{tflplanner_language}
 \alias{app_languages}
 \title{The app's languages}
 \usage{
-tr(x, lang = rtfplanner_language())
+tr(x, lang = tflplanner_language())
 
-rtfplanner_language()
+tflplanner_language()
 
 app_languages()
 }
@@ -21,6 +21,6 @@ app_languages()
 The text in \code{lang}.
 }
 \description{
-\code{tr()} translates an English text of the app; \code{rtfplanner_language()} is
-the language set with \code{\link[=setup_rtfplanner]{setup_rtfplanner()}} (English by default).
+\code{tr()} translates an English text of the app; \code{tflplanner_language()} is
+the language set with \code{\link[=setup_tflplanner]{setup_tflplanner()}} (English by default).
 }

@@ -16,29 +16,29 @@ create_study(
   description = NA,
   planner = NULL,
   root = studies_root(home),
-  home = rtfplanner_home()
+  home = tflplanner_home()
 )
 
-open_study(study, home = rtfplanner_home())
+open_study(study, home = tflplanner_home())
 
-register_study(path, home = rtfplanner_home())
+register_study(path, home = tflplanner_home())
 
-unregister_study(study_id, home = rtfplanner_home())
+unregister_study(study_id, home = tflplanner_home())
 
-list_studies(home = rtfplanner_home())
+list_studies(home = tflplanner_home())
 }
 \arguments{
 \item{study_id}{The study's id, which is also its folder name.}
 
 \item{title, compound, phase, description}{What the study is.}
 
-\item{planner}{An \code{rtfplanner} to start from (e.g. an earlier study's
+\item{planner}{An \code{tflplanner} to start from (e.g. an earlier study's
 \code{open_study(...)$planner}); \code{NULL} starts empty.}
 
 \item{root}{The folder the new study folder goes in; defaults to the
-one set up with \code{\link[=setup_rtfplanner]{setup_rtfplanner()}}.}
+one set up with \code{\link[=setup_tflplanner]{setup_tflplanner()}}.}
 
-\item{home}{rtfplanner's home.}
+\item{home}{tflplanner's home.}
 
 \item{study}{A registered study's id, or a study folder.}
 
@@ -50,8 +50,8 @@ an \code{rtfstudy}: \code{path}, \code{meta} (the study.yml fields) and \code{pl
 \code{list_studies()} returns a data frame.
 }
 \description{
-A study is known to rtfplanner by its saved state in the home
-(\code{\link[=setup_rtfplanner]{setup_rtfplanner()}}); its folder holds the data, the programs and the
+A study is known to tflplanner by its saved state in the home
+(\code{\link[=setup_tflplanner]{setup_tflplanner()}}); its folder holds the data, the programs and the
 deliverables.
 }
 \details{
@@ -59,7 +59,7 @@ deliverables.
 \item \code{create_study()} makes the study folder -- layout, \code{study.yml}, an
 RStudio project -- and saves the study, which registers it.
 \item \code{open_study()} returns a study as it was last saved.  Given the folder
-of a study rtfplanner does not know yet, it registers it first.
+of a study tflplanner does not know yet, it registers it first.
 \item \code{register_study()} adds an existing study folder: its \code{study.yml}, and
 its definition workbooks when \verb{spec/} has them.
 \item \code{unregister_study()} forgets a study; its folder is left alone.

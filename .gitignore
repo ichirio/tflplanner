@@ -5,4 +5,4 @@
 .httr-oauth
 .DS_Store
 *.Rcheck/
-rtfplanner_*.tar.gz
+tflplanner_*.tar.gz

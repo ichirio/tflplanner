@@ -121,9 +121,9 @@ test_that("fetch_ard() runs the data part from the study folder", {
   skip_if_not_installed("cards")
   skip_on_cran()
   home <- withr_tempdir()
-  old <- options(rtfplanner.home = home)
+  old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
-  suppressMessages(setup_rtfplanner(studies_root = file.path(home, "ws")))
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "ws")))
   p <- add_output(new_planner(), "DM", data_code = paste(
     "adsl <- readRDS(\"data/adam/adsl.rds\")",
     "ard <- cards::ard_stack(adsl, .by = TRT01A,",

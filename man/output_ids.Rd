@@ -7,7 +7,7 @@
 output_ids(x)
 }
 \arguments{
-\item{x}{An \code{rtfplanner}.}
+\item{x}{An \code{tflplanner}.}
 }
 \value{
 A character vector.

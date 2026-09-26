@@ -14,7 +14,7 @@ A data frame.
 }
 \description{
 One row per report: its program (\code{missing}; \code{current}, \code{todo} or
-\code{generated} -- untouched since rtfplanner wrote it, \code{generated} meaning
+\code{generated} -- untouched since tflplanner wrote it, \code{generated} meaning
 the next save rewrites it; or \code{edited} by hand), whether its ARD and RTF exist
 and when they were made, and a \code{status}:
 }

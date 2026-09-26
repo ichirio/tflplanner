@@ -6,11 +6,11 @@
 \alias{ard_data}
 \title{Run a report's data part and keep what its ARD holds}
 \usage{
-fetch_ard(study, output_id, timeout = 300, home = rtfplanner_home())
+fetch_ard(study, output_id, timeout = 300, home = tflplanner_home())
 
-ard_info(study, output_id, home = rtfplanner_home())
+ard_info(study, output_id, home = tflplanner_home())
 
-ard_data(study, output_id, home = rtfplanner_home())
+ard_data(study, output_id, home = tflplanner_home())
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
@@ -19,7 +19,7 @@ ard_data(study, output_id, home = rtfplanner_home())
 
 \item{timeout}{Seconds to allow.}
 
-\item{home}{rtfplanner's home.
+\item{home}{tflplanner's home.
 \code{ard_info()} returns the metadata kept, \code{ard_data()} the normalized data
 kept with it (what the builder's preview is planned from).}
 }
@@ -36,5 +36,5 @@ study folder, and reads \code{\link[=ard_meta]{ard_meta()}} from the result: the
 code loaded (\code{adsl}, ...) add what the ARD lacks: each variable's label,
 and the order of its values (a factor's levels, or the order of a
 numeric companion \verb{<name>N}: \code{TRT01A} by \code{TRT01AN}).  The result is kept
-in rtfplanner's home, so it is there the next time the study is opened.
+in tflplanner's home, so it is there the next time the study is opened.
 }

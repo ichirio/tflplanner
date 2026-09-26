@@ -62,7 +62,7 @@ Compound,化合物
 Phase,相
 Last saved,最終保存
 Folder,フォルダ
-rtfplanner keeps the studies here (the master copy):,rtfplanner が試験情報（正本）を保存する場所：
+tflplanner keeps the studies here (the master copy):,tflplanner が試験情報（正本）を保存する場所：
 New study folders go to,新規試験のフォルダを作る場所
 Change,変更
 Language,言語
@@ -76,7 +76,7 @@ Cancel,取消
 Register,登録
 Registered %s,%s を登録しました
 Unregister %s,%s の登録を解除
-"This deletes what rtfplanner keeps about the study (definition, data code, history). The study folder (data, spec, programs, outputs) stays, and Register a folder brings it back from spec/.",rtfplanner に保存した試験情報（定義・データ準備コード・履歴）を削除します。試験フォルダ（データ・spec・プログラム・成果物）は残り、「既存フォルダを登録」で spec/ から戻せます。
+"This deletes what tflplanner keeps about the study (definition, data code, history). The study folder (data, spec, programs, outputs) stays, and Register a folder brings it back from spec/.",tflplanner に保存した試験情報（定義・データ準備コード・履歴）を削除します。試験フォルダ（データ・spec・プログラム・成果物）は残り、「既存フォルダを登録」で spec/ から戻せます。
 Unregistered %s,%s の登録を解除しました
 Opened %s,%s を開きました
 "Study ID (the folder name: letters, digits . _ -)",試験 ID（フォルダ名。英数字 . _ -）
