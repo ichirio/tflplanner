@@ -180,7 +180,8 @@ fetch_ard <- function(study, output_id, timeout = 300,
                       home = tflplanner_home()) {
   p <- study$planner
   o <- p$outputs[p$outputs$output_id == output_id, , drop = FALSE]
-  if (!nrow(o) || is.na(o$data_code)) {
+  ard_code <- .ard_code_of(p, output_id)
+  if (!nrow(o) || is.na(ard_code)) {
     stop("Report '", output_id, "' has no ARD code yet.", call. = FALSE)
   }
   tmp <- tempfile("fetch")
@@ -190,9 +191,9 @@ fetch_ard <- function(study, output_id, timeout = 300,
   f_proc <- file.path(tmp, "process.R")
   f_out <- file.path(tmp, "out.rds")
   writeLines(enc2utf8(c(if (!is.na(p$setup)) .code_block(p$setup),
-                        .code_block(o$data_code))), f_ard, useBytes = TRUE)
+                        .code_block(ard_code))), f_ard, useBytes = TRUE)
   proc <- if (!is.na(o$process_code)) .code_block(o$process_code) else
-    if (!.makes_data(o$data_code)) "data <- ard_normalize(ard)" else ""
+    if (!.makes_data(ard_code)) "data <- ard_normalize(ard)" else ""
   writeLines(enc2utf8(proc), f_proc, useBytes = TRUE)
   q <- function(x) encodeString(normalizePath(x, "/", FALSE), quote = "\"")
   script <- c(

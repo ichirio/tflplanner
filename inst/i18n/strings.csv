@@ -228,3 +228,24 @@ Order of the columns (drag),列の順番（ドラッグ）
 The ARD has no %s: those cells stay empty. Add them to the ARD code.,ARD に %s がありません。そのセルは空欄になります。ARD 作成コードに追加してください。
 No data to preview: Run and read the ARD.,プレビューするデータがありません：「実行して ARD を読む」を押してください。
 %d pages,%d ページ
+ARD definition (ard_spec),ARD の定義 (ard_spec)
+"One row per analysis: the data, the population, the subset, the grouping, the variables and the method (a keyword or any cards / cardx function). The sidebar picks the report whose analyses are shown.",1 行 = 1 解析：データ・解析対象集団・部分集合・グループ・変数・手法（キーワード、または cards / cardx の任意の関数）。サイドバーで選んだ帳票の解析を表示します。
+Methods,手法の一覧
+Code (cards / cardx),コード (cards / cardx)
+This report,この帳票
+The whole study,試験全体
+Generated ARD,生成される ARD
+Run this report's analyses,この帳票の解析を実行
+Build the study ARD,試験 ARD を作成
+"Runs the code on the left in its own R process, from the study folder.",左のコードを試験フォルダで、別の R プロセスとして実行します。
+%d analyses; the definition reads without errors.,解析 %d 件。定義にエラーはありません。
+No analyses yet: add rows to the analyses sheet.,まだ解析がありません。analyses シートに行を追加してください。
+"Choose a report in the sidebar, or show the whole study.",サイドバーで帳票を選ぶか、試験全体を表示してください。
+%s has no analyses in the ARD definition.,%s には ARD の定義に解析がありません。
+The code cannot be written yet:,まだコードを書けません：
+Correct the ARD definition first.,先に ARD の定義を直してください。
+Running the ARD code,ARD のコードを実行中
+the whole study,試験全体
+The ARD code failed: see the log.,ARD のコードがエラーになりました。ログを見てください。
+Run the analyses to see the ARD they make.,解析を実行すると、生成される ARD を表示します。
+%s: %d rows in %.1f s,%s：%d 行（%.1f 秒）

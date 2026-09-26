@@ -10,8 +10,8 @@
 
 .all_rows <- "__all__"
 .default_rows <- "__default__"
-.study_tabs <- c("outputs", "builder", "table_spec", "report_spec", "data",
-                 "results")
+.study_tabs <- c("outputs", "ard", "builder", "table_spec", "report_spec",
+                 "data", "results")
 
 # Values a column takes whatever the ARD, offered as a dropdown (anything
 # else may still be typed: rtfreporter checks it when the workbook is read).
@@ -230,6 +230,51 @@ app_ui <- function(lang = "en") {
             shiny::uiOutput("program_state"),
             shiny::div(class = "rp-code",
                        shiny::verbatimTextOutput("program")))))),
+
+    bslib::nav_panel(
+      "ARD", value = "ard",
+      bslib::layout_columns(
+        col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
+        bslib::card(
+          bslib::card_header(t("ARD definition (ard_spec)")),
+          shiny::p(class = "small text-muted",
+                   t("One row per analysis: the data, the population, the subset, the grouping, the variables and the method (a keyword or any cards / cardx function). The sidebar picks the report whose analyses are shown.")),
+          bslib::navset_underline(
+            id = "ard_sheet",
+            bslib::nav_panel("analyses", value = "analyses",
+                             rhandsontable::rHandsontableOutput("hot_ard_analyses")),
+            bslib::nav_panel("datasets", value = "datasets",
+                             rhandsontable::rHandsontableOutput("hot_ard_datasets")),
+            bslib::nav_panel("populations", value = "populations",
+                             rhandsontable::rHandsontableOutput("hot_ard_populations")),
+            bslib::nav_panel("study", value = "study",
+                             rhandsontable::rHandsontableOutput("hot_ard_study"))),
+          shiny::uiOutput("ard_check"),
+          shiny::tags$details(
+            class = "rp-help mt-2",
+            shiny::tags$summary(t("Methods")),
+            DT::DTOutput("ard_methods"))),
+        bslib::navset_card_tab(
+          id = "ard_right",
+          bslib::nav_panel(
+            t("Code (cards / cardx)"), value = "code",
+            shiny::radioButtons(
+              "ard_scope", NULL,
+              stats::setNames(c("report", "study"),
+                              t(c("This report", "The whole study"))),
+              inline = TRUE),
+            shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_code"))),
+          bslib::nav_panel(
+            t("Generated ARD"), value = "result",
+            shiny::div(
+              class = "d-flex flex-wrap gap-2 align-items-center",
+              .btn("ard_run", t("Run this report's analyses"),
+                   class = "btn-sm btn-primary"),
+              .btn("ard_build", t("Build the study ARD")),
+              shiny::span(class = "small text-muted",
+                          t("Runs the code on the left in its own R process, from the study folder."))),
+            shiny::uiOutput("ard_run_info"),
+            DT::DTOutput("ard_table"))))),
 
     bslib::nav_panel(
       t("Table builder (beta)"), value = "builder",
@@ -1016,6 +1061,170 @@ app_server <- function(input, output, session, start) {
                  paste(m$stats, collapse = ", ")))
   })
 
+
+
+  # -- the ARD definition ------------------------------------------------
+  # Its grids work like the others: `analyses` shows the rows of the report
+  # chosen in the sidebar (all of them for Study defaults / ALL); the other
+  # sheets are the study's.  The code is ard_spec_code() of the definition
+  # as it stands; Run executes it with run_ard() and shows the ARD.
+  ard_res <- shiny::reactiveVal(NULL)
+  ard_cols <- new.env()
+  data_columns <- function() {
+    if (!has_study()) return(character())
+    ds <- rv$p$ard$datasets
+    unique(unlist(lapply(ds$path[!is.na(ds$path)], function(pth) {
+      f <- file.path(rv$study$path, pth)
+      if (!file.exists(f)) return(NULL)
+      k <- paste(f, file.mtime(f))
+      if (is.null(ard_cols[[k]])) {
+        ard_cols[[k]] <- tryCatch(names(read_data_head(f, 1L)),
+                                  error = function(e) character())
+      }
+      ard_cols[[k]]
+    })))
+  }
+  ard_functions <- function() {
+    fs <- character()
+    for (pkg in c("cards", "cardx")) {
+      if (requireNamespace(pkg, quietly = TRUE)) {
+        e <- getNamespaceExports(pkg)
+        fs <- c(fs, paste0(pkg, "::", sort(e[startsWith(e, "ard_")])))
+      }
+    }
+    fs
+  }
+  ard_choices <- function(sheet) {
+    p <- rv$p
+    cols <- data_columns()
+    switch(sheet,
+      analyses = list(
+        output_id = output_ids(p),
+        method = c(ard_methods()$method, ard_functions()),
+        dataset = p$ard$datasets$dataset,
+        population_id = p$ard$populations$population_id,
+        by = cols, variables = cols),
+      datasets = list(path = if (has_study()) {
+        f <- study_files(rv$study, "data")
+        file.path(f$folder, f$file)
+      }),
+      populations = list(dataset = p$ard$datasets$dataset),
+      study = list(key = c("id", "output")),
+      list())
+  }
+  for (sheet in names(.ard_spec_sheets)) local({
+    sh <- sheet
+    out_id <- paste0("hot_ard_", sh)
+    by_report <- sh == "analyses"
+    key <- shiny::reactive(paste("ard", sh, if (by_report) input$target,
+                                 rv$ver, sep = "|"))
+    output[[out_id]] <- rhandsontable::renderRHandsontable({
+      shiny::req(has_study())
+      tg <- if (by_report) target() else ""
+      d <- ard_rows(shiny::isolate(rv$p), sh, tg)
+      if (by_report && !identical(tg, "") && !is.na(tg)) d$output_id <- NULL
+      .grid(d, sh, key(), shiny::isolate(ard_choices(sh)))
+    })
+    shiny::observeEvent(input[[out_id]], {
+      h <- input[[out_id]]
+      if (is.null(h$changes$changes) &&
+          !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
+      if (!identical(h$params$planner_key, key())) return()
+      d <- rhandsontable::hot_to_r(h)
+      tg <- if (by_report) target() else ""
+      rv$p <- set_ard_rows(rv$p, sh, tg, d)
+    })
+  })
+  output$ard_methods <- DT::renderDT(
+    ard_methods()[c("method", "call", "defaults", "note")], rownames = FALSE,
+    options = list(dom = "t", paging = FALSE, ordering = FALSE))
+  ard_valid <- shiny::reactive({
+    shiny::req(has_study())
+    tryCatch({
+      ard_spec(rv$p$ard)
+      NULL
+    }, error = function(e) conditionMessage(e))
+  })
+  output$ard_check <- shiny::renderUI({
+    msg <- ard_valid()
+    if (is.null(msg)) {
+      n <- nrow(rv$p$ard$analyses)
+      return(shiny::p(class = "small text-success mt-2",
+                      sprintf(t("%d analyses; the definition reads without errors."), n)))
+    }
+    shiny::div(class = "alert alert-warning py-1 small mt-2",
+               shiny::tags$pre(class = "mb-0", msg))
+  })
+  ard_scope_id <- shiny::reactive({
+    if (identical(input$ard_scope, "study")) NULL else current()
+  })
+  output$ard_code <- shiny::renderText({
+    shiny::req(has_study())
+    a <- rv$p$ard
+    if (!nrow(a$analyses)) {
+      return(t("No analyses yet: add rows to the analyses sheet."))
+    }
+    id <- ard_scope_id()
+    if (identical(input$ard_scope, "report") && is.null(id)) {
+      return(t("Choose a report in the sidebar, or show the whole study."))
+    }
+    if (!is.null(id) && !any(a$analyses$output_id %in% id)) {
+      return(sprintf(t("%s has no analyses in the ARD definition."), id))
+    }
+    tryCatch(paste(ard_spec_code(structure(a, class = "ard_spec"),
+                                 output_id = id), collapse = "\n"),
+             error = function(e) paste(t("The code cannot be written yet:"),
+                                       conditionMessage(e)))
+  })
+  run_ard_now <- function(output_id) {
+    if (!is.null(ard_valid())) {
+      return(notify(t("Correct the ARD definition first."), "warning"))
+    }
+    r <- NULL
+    shiny::withProgress(message = t("Running the ARD code"), {
+      r <- guarded(run_ard(current_study(), output_id = output_id))
+    })
+    if (is.null(r)) return()
+    r$scope <- output_id %||% t("the whole study")
+    ard_res(r)
+    bslib::nav_select("ard_right", "result")
+    if (!is.null(r$error)) notify(t("The ARD code failed: see the log."), "error")
+  }
+  shiny::observeEvent(input$ard_run, {
+    if (is.null(current())) return(notify(t("Choose a report"), "warning"))
+    run_ard_now(current())
+  })
+  shiny::observeEvent(input$ard_build, {
+    if (dirty() && !do_save()) return()
+    run_ard_now(NULL)
+    rv$status_ver <- rv$status_ver + 1L
+  })
+  output$ard_run_info <- shiny::renderUI({
+    r <- ard_res()
+    if (is.null(r)) {
+      return(shiny::p(class = "small text-muted mt-2",
+                      t("Run the analyses to see the ARD they make.")))
+    }
+    if (!is.null(r$error)) {
+      return(shiny::div(class = "alert alert-danger py-1 small mt-2",
+                        shiny::tags$pre(class = "mb-0", r$error)))
+    }
+    a <- r$ard
+    tab <- table(factor(a$analysis_id, levels = unique(a$analysis_id)))
+    shiny::div(
+      class = "small mt-2",
+      shiny::p(sprintf(t("%s: %d rows in %.1f s"), r$scope, nrow(a), r$seconds),
+               " ", paste(sprintf("%s %d", names(tab), as.integer(tab)),
+                          collapse = ", ")))
+  })
+  output$ard_table <- DT::renderDT({
+    r <- ard_res()
+    shiny::req(r, r$ard)
+    DT::datatable(ard_view(r$ard), rownames = FALSE, filter = "top",
+                  selection = "none",
+                  options = list(pageLength = 20, scrollX = TRUE,
+                                 dom = "tip"))
+  })
 
   # -- the table builder -------------------------------------------------
   # The form is drawn once per report (and whenever the builder tab is

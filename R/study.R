@@ -188,6 +188,8 @@ register_study <- function(path, home = tflplanner_home()) {
   sp <- file.path(path, study_layout()[["spec"]], c(.table_file, .report_file))
   sp <- sp[file.exists(sp)]
   p <- if (length(sp)) read_planner(sp) else new_planner()
+  af <- file.path(path, study_layout()[["spec"]], .ard_file)
+  if (file.exists(af)) p$ard <- unclass(read_ard_spec(af, check = FALSE))
   s <- .new_study(path, meta[.study_fields], p)
   .write_state(s, home)
   .set_config("last_study", id, home)
@@ -313,6 +315,7 @@ save_study <- function(study, regenerate = character(),
     .write_program(program_code(p, id), f)
     files[nrow(files) + 1L, ] <- list(f, "written")
   }
+  files <- rbind(files, .save_ard(p, root))
   f <- file.path(root, lay[["programs"]], "autoexec_report.R")
   auto <- enc2utf8(autoexec_code(p))
   old <- if (file.exists(f)) readLines(f, warn = FALSE, encoding = "UTF-8")

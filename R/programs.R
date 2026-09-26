@@ -83,6 +83,25 @@ report_info <- function(x, output_id) {
             strsplit(code, "\n", fixed = TRUE)[[1L]]))
 }
 
+# A report's ARD code: its own, or -- a table the study's ARD definition
+# serves -- the lines that take its part of the study ARD.
+.ard_code_of <- function(x, output_id) {
+  o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
+  code <- if (nrow(o) && !is.na(o$data_code)) o$data_code else NA
+  if (is.na(code) && identical(report_info(x, output_id)$type, "table") &&
+      any(x$ard$analyses$output_id %in% output_id)) {
+    out <- .ard_study_value(x$ard, "output", "output/ard/ard.rds")
+    code <- paste(
+      "# this report's part of the study ARD (spec/ard_spec.xlsx, programs/make_ard.R)",
+      sprintf("ard <- readRDS(%s)", encodeString(out, quote = '"')),
+      sprintf("ard <- ard[ard$output_id == %s,",
+              encodeString(output_id, quote = '"')),
+      '           setdiff(names(ard), c("output_id", "analysis_id", "population_id"))]',
+      sep = "\n")
+  }
+  code
+}
+
 #' The data part of a report's program
 #'
 #' The code a report runs before the report is laid out: the setup every
@@ -101,7 +120,7 @@ data_lines <- function(x, output_id, todo = TRUE) {
   lay <- study_layout()
   info <- report_info(x, output_id)
   o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
-  code <- if (nrow(o) && !is.na(o$data_code)) o$data_code else NA
+  code <- .ard_code_of(x, output_id)
   proc <- if (nrow(o) && !is.na(o$process_code)) o$process_code else NA
   type <- info$type
   if (is.na(code)) {
@@ -253,6 +272,15 @@ autoexec_code <- function(x, date = Sys.Date()) {
     paste0("  ", .r_string(progs),
            c(rep(",", max(0L, length(progs) - 1L)), "")[seq_along(progs)]),
     ")",
+    "# the study ARD first, when the study defines one",
+    paste0("if (file.exists(\"", lay[["programs"]], "/make_ard.R\")) {"),
+    paste0("  rc <- system2(file.path(R.home(\"bin\"), \"Rscript\"), \"",
+           lay[["programs"]], "/make_ard.R\","),
+    paste0("               stdout = \"", lay[["logs"]], "/make_ard.log\", stderr = \"",
+           lay[["logs"]], "/make_ard.log\")"),
+    "  cat(sprintf(\"%-5s %-30s\\n\", if (identical(rc, 0L)) \"OK\" else \"ERROR\", \"make_ard.R\"))",
+    "}",
+    "",
     "only <- if (interactive()) character() else commandArgs(trailingOnly = TRUE)",
     "if (length(only)) {",
     "  programs <- programs[programs %in% only |",

@@ -5,12 +5,15 @@
 \alias{ard_spec}
 \title{Read and check an ARD definition workbook}
 \usage{
-read_ard_spec(path)
+read_ard_spec(path, check = TRUE)
 
 ard_spec(x)
 }
 \arguments{
 \item{path}{An \code{ard_spec.xlsx}.}
+
+\item{check}{\code{FALSE} reads a definition still being written without
+refusing it.}
 
 \item{x}{A list of the sheets (data frames).}
 }

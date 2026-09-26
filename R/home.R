@@ -148,7 +148,8 @@ studies_root <- function(home = tflplanner_home()) {
          study = as.list(p$study[!is.na(p$study)]),
          setup = if (is.na(p$setup)) NULL else p$setup,
          outputs = .cols_df(p$outputs),
-         sheets = lapply(p$sheets, .cols_df)))
+         sheets = lapply(p$sheets, .cols_df),
+         ard = lapply(p$ard %||% .empty_ard_spec(), .cols_df)))
 }
 
 .json <- function(x) {
@@ -181,6 +182,11 @@ studies_root <- function(home = tflplanner_home()) {
   for (s in names(p$sheets)) {
     p$sheets[[s]] <- .normalize_sheet(.df_from(ps$sheets[[s]],
                                                p$sheets[[s]]), s)
+  }
+  if (!is.null(ps$ard)) {
+    for (s in names(p$ard)) {
+      p$ard[[s]] <- .normalize_ard_sheet(.df_from(ps$ard[[s]], p$ard[[s]]), s)
+    }
   }
   p
 }

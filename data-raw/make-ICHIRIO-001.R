@@ -151,28 +151,6 @@ p$setup <- paste(
   "adsl <- readRDS(\"data/adam/adsl.rds\")",
   "adsl <- adsl[adsl$SAFFL == \"Y\", ]", sep = "\n")
 code <- list(
-  "T-14-1-1" = c(
-    "ard <- ard_stack(",
-    "  adsl, .by = TRT01A,",
-    "  ard_continuous(variables = c(AGE, WEIGHTBL, HEIGHTBL),",
-    "                 statistic = ~ continuous_summary_fns(",
-    "                   c(\"N\", \"mean\", \"sd\", \"median\", \"min\", \"max\"))),",
-    "  ard_categorical(variables = c(AGEGR1, SEX, RACE),",
-    "                  statistic = ~ c(\"n\", \"p\")),",
-    "  .total_n = TRUE)"),
-  "T-14-1-2" = c(
-    "ard <- ard_stack(",
-    "  adsl, .by = TRT01A,",
-    "  ard_categorical(variables = DCDECOD, statistic = ~ c(\"n\", \"p\")),",
-    "  .total_n = TRUE)"),
-  "T-14-3-1" = c(
-    "adae <- readRDS(\"data/adam/adae.rds\")",
-    "adae <- adae[adae$TRTEMFL == \"Y\" & adae$SAFFL == \"Y\", ]",
-    "adsl$TRTA <- adsl$TRT01A",
-    "ard <- ard_stack_hierarchical(",
-    "  adae, variables = c(AEBODSYS, AEDECOD), by = TRTA,",
-    "  denominator = adsl, id = USUBJID, over_variables = TRUE)",
-    "ard <- ard[ard$context != \"tabulate\", ]"),
   "L-16-2-7" = c(
     "adae <- readRDS(\"data/adam/adae.rds\")",
     "sev <- adae[adae$AESEV == \"SEVERE\", ]",
@@ -208,6 +186,42 @@ code <- list(
     "       colour = NULL) +",
     "  theme_bw() + theme(legend.position = \"bottom\")",
     "content <- list(plot)"))
+
+# ---------------------------------------------------------- the study ARD
+# The tables' data: one study ARD from spec/ard_spec.xlsx (made by
+# programs/make_ard.R); each table takes its part, so they have no data
+# code of their own.
+arow <- function(...) list(...)
+p$ard$datasets <- tbl(
+  list(dataset = "ADSL", path = "data/adam/adsl.rds"),
+  list(dataset = "ADAE", path = "data/adam/adae.rds"))
+p$ard$populations <- tbl(
+  list(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"",
+       derive = "TRTA = TRT01A"))
+p$ard$analyses <- tbl(
+  list(output_id = "T-14-1-1", analysis_id = "BIGN", label = "Subjects per arm",
+       method = "categorical", population_id = "SAF", variables = "TRT01A"),
+  list(output_id = "T-14-1-1", analysis_id = "TOTAL", method = "total_n",
+       population_id = "SAF"),
+  list(output_id = "T-14-1-1", analysis_id = "CONT", label = "Continuous",
+       method = "continuous", population_id = "SAF", by = "TRT01A",
+       variables = "AGE | WEIGHTBL | HEIGHTBL",
+       statistics = "N | mean | sd | median | min | max"),
+  list(output_id = "T-14-1-1", analysis_id = "CAT", label = "Categorical",
+       method = "categorical", population_id = "SAF", by = "TRT01A",
+       variables = "AGEGR1 | SEX | RACE", statistics = "n | p"),
+  list(output_id = "T-14-1-2", analysis_id = "BIGN", method = "categorical",
+       population_id = "SAF", variables = "TRT01A"),
+  list(output_id = "T-14-1-2", analysis_id = "DISP",
+       label = "Status at end of study", method = "categorical",
+       population_id = "SAF", by = "TRT01A", variables = "DCDECOD",
+       statistics = "n | p"),
+  list(output_id = "T-14-3-1", analysis_id = "TEAE",
+       label = "TEAE by SOC / PT", method = "hierarchical", dataset = "ADAE",
+       population_id = "SAF", where = "TRTEMFL == \"Y\"", by = "TRTA",
+       variables = "AEBODSYS | AEDECOD", args = "over_variables = TRUE"))
+for (sh in names(p$ard)) p$ard[[sh]] <- .normalize_ard_sheet(p$ard[[sh]], sh)
+
 desc <- c("T-14-1-1" = "Demographic characteristics",
           "T-14-1-2" = "Subject disposition",
           "T-14-3-1" = "TEAEs by SOC / PT",
@@ -220,9 +234,10 @@ process <- list(
   "T-14-3-1" = c(
     "data <- ard_normalize(ard, hierarchy = c(\"AEBODSYS\", \"AEDECOD\"),",
     "                      overall = \"Any TEAE\")"))
-for (o in names(code)) {
+for (o in names(desc)) {
   p <- add_output(p, o, description = desc[[o]],
-                  data_code = paste(code[[o]], collapse = "\n"),
+                  data_code = if (!is.null(code[[o]]))
+                    paste(code[[o]], collapse = "\n") else NA,
                   process_code = if (!is.null(process[[o]]))
                     paste(process[[o]], collapse = "\n") else NA,
                   type = types[[o]])
@@ -252,12 +267,13 @@ if (requireNamespace("haven", quietly = TRUE)) {
   haven::write_xpt(relabel(cards::ADSL), file.path(adam, "adsl.xpt"))
 }
 
+st <- run_study(s)
+print(st[c("output_id", "type", "program_state", "status")])
 # what each table's ARD holds, for the app's input assistance
 for (o in names(types)[types == "table"]) fetch_ard(s, o)
 
 print(check_planner(s$planner))
-st <- run_study(s)
-print(st[c("output_id", "type", "program_state", "status")])
+
 if (!all(st$status == "ok")) {
   for (f in stats::na.omit(st$log[st$status != "ok"])) {
     cat("\n====", f, "\n")
