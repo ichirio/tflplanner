@@ -67,7 +67,7 @@ changes); once edited by hand it is kept, until you regenerate it.
 ## Install and start
 
 rtfplanner needs the rtfreporter branch that has the definition workbooks
-(`feat/474-ard-experimental`, 0.8.0.9081 or later).
+(`feat/474-ard-experimental`, 0.8.0.9082 or later: its column header N is the analysis set).
 
 ```r
 remotes::install_github("ichirio/rtfreporter@feat/474-ard-experimental")
