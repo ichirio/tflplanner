@@ -10,7 +10,8 @@
 
 .all_rows <- "__all__"
 .default_rows <- "__default__"
-.study_tabs <- c("outputs", "table_spec", "report_spec", "data", "results")
+.study_tabs <- c("outputs", "builder", "table_spec", "report_spec", "data",
+                 "results")
 
 # Values a column takes whatever the ARD, offered as a dropdown (anything
 # else may still be typed: rtfreporter checks it when the workbook is read).
@@ -95,6 +96,23 @@ planner_app <- function(study = NULL) {
 .rp-assist { background: var(--bs-tertiary-bg, #f6f7f9); }
 .rp-inherited td { color: #6b7280; }
 .rhandsontable.html-fill-item { flex: none !important; }
+.rp-pv { font-family: Consolas, 'Courier New', monospace; font-size: 12px;
+  border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+.rp-pv thead { border-top: 1px solid #333; border-bottom: 1px solid #333; }
+.rp-pv tbody { border-bottom: 1px solid #333; }
+.rp-pv th { font-weight: normal; vertical-align: bottom; padding: 1px 6px; }
+.rp-pv td { padding: 0 6px; white-space: pre; }
+.rp-pv .rp-pv-val { text-align: center; }
+.rp-pv .rp-pv-indent { padding-left: 2.2em; }
+.rp-pv-blank td { height: 1em; }
+.rp-pv-page { font-size: 11px; color: #6b7280; }
+.rp-b-card { border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: .5rem; padding: .6rem .8rem; margin-bottom: .6rem; }
+.rp-b-card h6 { font-weight: 600; margin-bottom: .4rem; }
+.rp-b-card .rank-list-container { margin: 0; }
+.rp-b-card .rank-list-item { padding: 2px 8px !important; font-size: 13px; }
+.rp-b-var { display: flex; gap: .5rem; align-items: center; }
+.rp-b-kind { font-size: 11px; color: #6b7280; }
 "
 
 .btn <- function(id, label, class = "btn-sm", ...) {
@@ -212,6 +230,19 @@ app_ui <- function(lang = "en") {
             shiny::uiOutput("program_state"),
             shiny::div(class = "rp-code",
                        shiny::verbatimTextOutput("program")))))),
+
+    bslib::nav_panel(
+      t("Table builder (beta)"), value = "builder",
+      shiny::uiOutput("builder_note"),
+      bslib::layout_columns(
+        col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
+        shiny::uiOutput("builder_form"),
+        bslib::card(
+          bslib::card_header(shiny::div(
+            class = "d-flex justify-content-between",
+            shiny::span(t("Preview: the table as it will print")),
+            shiny::uiOutput("builder_pages", inline = TRUE))),
+          shiny::uiOutput("builder_preview")))),
 
     bslib::nav_panel(
       t("Table definition"), value = "table_spec",
@@ -983,6 +1014,213 @@ app_server <- function(input, output, session, start) {
                                     collapse = ", ") else "-"),
       shiny::div(shiny::strong(t("Statistics")), ": ",
                  paste(m$stats, collapse = ", ")))
+  })
+
+
+  # -- the table builder -------------------------------------------------
+  # The form is drawn once per report (and whenever the builder tab is
+  # opened), with input ids fresh each time: an input of the form before
+  # can never be read as one of this form's.  Its edits write the sheets
+  # (builder_write()), and the grids redraw when their tab is opened.
+  bform <- new.env()
+  bform$n <- 0L
+  bform_drawn <- shiny::reactiveVal(0L)
+  rv$bver <- 0L
+  rv$btouched <- FALSE
+  shiny::observeEvent(input$nav, {
+    if (identical(input$nav, "builder")) rv$bver <- rv$bver + 1L
+    if (input$nav %in% c("table_spec", "report_spec") && rv$btouched) {
+      rv$btouched <- FALSE
+      bump()
+    }
+  })
+  builder_case <- shiny::reactive({
+    id <- current()
+    if (is.null(id)) return("none")
+    if (!identical(report_info(rv$p, id)$type, "table")) return("type")
+    m <- meta_of(id)
+    if (is.null(m)) return("meta")
+    if (length(m$hierarchy)) return("hierarchy")
+    "ok"
+  })
+  output$builder_note <- shiny::renderUI({
+    msg <- switch(builder_case(),
+      none = t("Choose a report in the sidebar."),
+      type = t("The builder is for Tables; Listings and Figures are made in their data code."),
+      meta = t("Read the report's ARD first (Reports > Data code > Run and read the ARD): the builder is built from it."),
+      hierarchy = t("This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Use Table definition; the preview works."),
+      NULL)
+    if (is.null(msg)) return(shiny::p(class = "small text-muted",
+      t("Drag to order, type to rename; every change is written to the sheets (Table definition) and shown on the right.")))
+    shiny::div(class = "alert alert-info py-2 small", msg)
+  })
+  bid <- function(x) paste0("b", bform$n, "_", x)
+  output$builder_form <- shiny::renderUI({
+    rv$bver
+    rv$ard_ver
+    shiny::req(identical(builder_case(), "ok"))
+    id <- current()
+    m <- meta_of(id)
+    st <- builder_read(shiny::isolate(rv$p), id, m)
+    bform$n <- bform$n + 1L
+    bform_drawn(bform$n)
+    bform$id <- id
+    bform$st <- st
+    bform$meta <- m
+    v <- st$variables
+    bs <- builder_stats()
+    keys <- unique(c(m$by, names(m$keys)))
+    var_items <- stats::setNames(lapply(seq_len(nrow(v)), function(i)
+      shiny::span(class = "rp-b-var", shiny::strong(v$variable[i]),
+                  shiny::span(class = "rp-b-kind", v$kind[i]))), v$variable)
+    shiny::tagList(
+      shiny::div(
+        class = "rp-b-card",
+        shiny::h6(t("Columns")),
+        shiny::selectInput(bid("key"), t("Column variable"), keys,
+                           selected = st$key, width = "240px"),
+        shiny::uiOutput(bid("arms_ui")),
+        shiny::radioButtons(
+          bid("header"), t("Column header"),
+          stats::setNames(c("keep", names(header_presets())),
+                          c(t("as it is"), names(header_presets()))),
+          selected = "keep", inline = TRUE)),
+      shiny::div(
+        class = "rp-b-card",
+        shiny::h6(t("Rows: variables in order")),
+        sortable::rank_list(text = NULL, labels = var_items,
+                            input_id = bid("vars")),
+        bslib::accordion(
+          open = FALSE,
+          lapply(seq_len(nrow(v)), function(i) {
+            bslib::accordion_panel(
+              title = paste0(v$variable[i],
+                             if (!is.na(v$label[i])) paste0(": ", v$label[i])),
+              value = v$variable[i],
+              shiny::textInput(bid(paste0("lab", i)), t("Label"),
+                               value = if (is.na(v$label[i])) "" else
+                                 v$label[i], width = "100%"),
+              if (identical(v$kind[i], "categorical") &&
+                  length(st$levels[[v$variable[i]]])) {
+                shiny::tagList(
+                  shiny::tags$label(class = "form-label small",
+                                    t("Levels (drag to order)")),
+                  sortable::rank_list(
+                    text = NULL, labels = st$levels[[v$variable[i]]],
+                    input_id = bid(paste0("lv", i)),
+                    orientation = "horizontal"))
+              })
+          }))),
+      shiny::div(
+        class = "rp-b-card",
+        shiny::h6(t("Statistics")),
+        shiny::checkboxGroupInput(
+          bid("stats"), t("Continuous variables"),
+          stats::setNames(bs$key, bs$row), selected = st$stats),
+        shiny::numericInput(
+          bid("dec"), t("Decimals the data are collected with"),
+          value = st$decimals, min = 0, max = 6, width = "260px"),
+        shiny::p(class = "small text-muted",
+                 t("Mean, median and quartiles get one more, SD two more, Min / Max the same.")),
+        shiny::radioButtons(
+          bid("cat"), t("Categorical variables"),
+          stats::setNames(names(.cat_formats), c("n (%)", "n/N (%)", "n")),
+          selected = st$cat_format, inline = TRUE),
+        shiny::numericInput(bid("pct"), t("Decimals of the percent"),
+                            value = st$pct_decimals, min = 0, max = 3,
+                            width = "260px"),
+        shiny::uiOutput(bid("warn"))))
+  })
+  # the arms follow the column variable chosen
+  shiny::observe({
+    bform_drawn()
+    k <- input[[bid("key")]]
+    shiny::req(identical(builder_case(), "ok"), !is.null(k))
+    n <- bform$n
+    arms <- if (identical(k, bform$st$key)) bform$st$arms else
+      bform$meta$keys[[k]]
+    output[[paste0("b", n, "_arms_ui")]] <- shiny::renderUI(shiny::tagList(
+      shiny::tags$label(class = "form-label small",
+                        t("Order of the columns (drag)")),
+      sortable::rank_list(text = NULL, labels = arms,
+                          input_id = paste0("b", n, "_arms"),
+                          orientation = "horizontal")))
+  })
+  bstate <- shiny::reactive({
+    bform_drawn()
+    shiny::req(identical(builder_case(), "ok"),
+               identical(bform$id, current()))
+    st <- bform$st
+    get <- function(x) input[[bid(x)]]
+    vars <- get("vars")
+    shiny::req(!is.null(vars), !is.null(get("key")), !is.null(get("arms")),
+               setequal(vars, st$variables$variable))
+    v <- st$variables[match(vars, st$variables$variable), , drop = FALSE]
+    idx <- match(vars, st$variables$variable)
+    v$label <- vapply(seq_along(vars), function(k) {
+      l <- get(paste0("lab", idx[k]))
+      if (is.null(l)) v$label[k] else if (nzchar(trimws(l))) l else NA
+    }, "")
+    lev <- stats::setNames(lapply(seq_along(vars), function(k)
+      get(paste0("lv", idx[k])) %||% st$levels[[vars[k]]]), vars)
+    num <- function(x, d) {
+      x <- suppressWarnings(as.numeric(get(x)))
+      if (length(x) != 1L || is.na(x)) d else max(0, round(x))
+    }
+    stats <- builder_stats()$key
+    list(key = get("key"), arms = get("arms"), variables = v, levels = lev,
+         stats = stats[stats %in% get("stats")],
+         decimals = num("dec", st$decimals),
+         cat_format = get("cat") %||% st$cat_format,
+         pct_decimals = num("pct", st$pct_decimals),
+         header = get("header") %||% "keep",
+         auto_levels = st$auto_levels)
+  })
+  bstate_d <- shiny::debounce(bstate, 400)
+  shiny::observeEvent(bstate_d(), {
+    st <- bstate_d()
+    id <- bform$id
+    p2 <- guarded(builder_write(rv$p, id, st))
+    if (!is.null(p2) && !identical(p2, rv$p)) {
+      rv$p <- p2
+      rv$btouched <- TRUE
+    }
+  })
+  shiny::observe({
+    st <- bstate()
+    m <- bform$meta
+    n <- bform$n
+    tpl <- c(builder_stats()$template[builder_stats()$key %in% st$stats],
+             sprintf(.cat_formats[[st$cat_format]], st$pct_decimals))
+    miss <- if (!is.null(m)) .missing_stats(tpl, m$stats) else character()
+    output[[paste0("b", n, "_warn")]] <- shiny::renderUI(
+      if (length(miss)) shiny::div(
+        class = "alert alert-warning py-1 small",
+        sprintf(t("The ARD has no %s: those cells stay empty. Add them to the ARD code."),
+                paste(miss, collapse = ", "))))
+  })
+  preview <- shiny::reactive({
+    id <- current()
+    shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
+    rv$ard_ver
+    d <- ard_data(rv$study, id)
+    if (is.null(d)) return(list(error = t("No data to preview: Run and read the ARD.")))
+    tryCatch(list(pages = preview_pages(rv$p, id, d)),
+             error = function(e) list(error = conditionMessage(e)))
+  })
+  preview_d <- shiny::debounce(preview, 300)
+  output$builder_preview <- shiny::renderUI({
+    pv <- preview_d()
+    if (!is.null(pv$error)) {
+      return(shiny::div(class = "small text-muted", pv$error))
+    }
+    preview_html(pv$pages)
+  })
+  output$builder_pages <- shiny::renderUI({
+    pv <- preview_d()
+    if (is.null(pv$pages)) return(NULL)
+    shiny::span(class = "small text-muted",
+                sprintf(t("%d pages"), length(pv$pages)))
   })
 
   # -- report list -------------------------------------------------------

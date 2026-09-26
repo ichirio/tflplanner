@@ -205,3 +205,26 @@ OK,
 "From the ARD and the source data: a row per column key and analysis variable, with levels in order, label and order. Blank cells only.",ARD と元データから：列のキーと解析変数ごとに、水準（並び順つき）・ラベル・順番の行を作ります。空欄だけを埋めます。
 missing:,不足：
 Replaces this report's column header rows.,この帳票の列見出しの行を置き換えます。
+Table builder (beta),表ビルダー（試作）
+Preview: the table as it will print,プレビュー：出力される表
+Choose a report in the sidebar.,サイドバーで帳票を選んでください。
+The builder is for Tables; Listings and Figures are made in their data code.,ビルダーは Table 用です。Listing / Figure はデータ準備コードで作ります。
+Read the report's ARD first (Reports > Data code > Run and read the ARD): the builder is built from it.,先に帳票の ARD を読んでください（帳票 > データ準備コード > 実行して ARD を読む）。ビルダーはその内容から作られます。
+This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Use Table definition; the preview works.,この表は階層（SOC / PT）を持ちます。ビルダーは今のところ要約表のみ対応です。表の定義を使ってください（プレビューは表示されます）。
+"Drag to order, type to rename; every change is written to the sheets (Table definition) and shown on the right.",ドラッグで並べ替え、入力で名前変更。変更はすべてシート（表の定義）に書き込まれ、右側に表示されます。
+Columns,列
+Column variable,列の変数
+Column header,列見出し
+as it is,そのまま
+Rows: variables in order,行：変数（この順で表示）
+Label,ラベル
+Levels (drag to order),水準（ドラッグで並べ替え）
+Continuous variables,連続変数
+Decimals the data are collected with,データの小数桁数
+"Mean, median and quartiles get one more, SD two more, Min / Max the same.",平均・中央値・四分位は +1、SD は +2、最小・最大は同じ桁数。
+Categorical variables,カテゴリ変数
+Decimals of the percent,% の小数桁数
+Order of the columns (drag),列の順番（ドラッグ）
+The ARD has no %s: those cells stay empty. Add them to the ARD code.,ARD に %s がありません。そのセルは空欄になります。ARD 作成コードに追加してください。
+No data to preview: Run and read the ARD.,プレビューするデータがありません：「実行して ARD を読む」を押してください。
+%d pages,%d ページ

@@ -169,6 +169,9 @@ ard_meta <- function(ard = NULL, data = NULL) {
 #' @param output_id The report.
 #' @param timeout Seconds to allow.
 #' @param home rtfplanner's home.
+#' `ard_info()` returns the metadata kept, `ard_data()` the normalized data
+#' kept with it (what the builder's preview is planned from).
+#'
 #' @return The metadata ([ard_meta()]) with `fetched` (the time), `source`
 #'   (`"data"` or `"ard"`), `error` (the rework's error, if it failed) and
 #'   `log`, invisibly.
@@ -246,6 +249,8 @@ fetch_ard <- function(study, output_id, timeout = 300,
   f <- .meta_file(study, output_id, home)
   dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
   saveRDS(m, f)
+  fd <- sub("[.]rds$", "_data.rds", f)
+  if (!is.null(data)) saveRDS(data, fd) else unlink(fd)
   invisible(m)
 }
 
@@ -279,6 +284,13 @@ fetch_ard <- function(study, output_id, timeout = 300,
 #' @export
 ard_info <- function(study, output_id, home = rtfplanner_home()) {
   f <- .meta_file(study, output_id, home)
+  if (file.exists(f)) readRDS(f)
+}
+
+#' @rdname fetch_ard
+#' @export
+ard_data <- function(study, output_id, home = rtfplanner_home()) {
+  f <- sub("[.]rds$", "_data.rds", .meta_file(study, output_id, home))
   if (file.exists(f)) readRDS(f)
 }
 

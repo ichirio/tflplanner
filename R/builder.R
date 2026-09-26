@@ -1,0 +1,314 @@
+# The table builder: a summary table (columns = one key, rows = variables)
+# described the way one thinks of it -- which arms in which order, which
+# variables in which order with which label and levels, which statistics
+# with how many decimals -- instead of sheet rows.  It reads that from the
+# same sheets the grids show and writes it back to them, so the two views
+# never disagree; and it shows the table as it will print.
+
+#' The statistics the builder offers for a continuous variable
+#'
+#' Each has its row label, its template and its digits as a function of
+#' the decimals the data are collected with (`d`): the usual convention is
+#' the mean and median one more, the SD two more, the extremes as
+#' collected.
+#'
+#' @return A data frame: `key`, `row`, `template`, `digits` (a function of
+#'   `d`).
+#' @export
+builder_stats <- function() {
+  data.frame(
+    key = c("n", "mean_sd", "median", "q1q3", "median_q1q3", "min_max"),
+    row = c("n", "Mean (SD)", "Median", "Q1, Q3", "Median (Q1, Q3)",
+            "Min, Max"),
+    template = c("{N}", "{mean} ({sd})", "{median}", "{p25}, {p75}",
+                 "{median} ({p25}, {p75})", "{min}, {max}"),
+    stringsAsFactors = FALSE)
+}
+
+.stat_digits <- function(key, d) {
+  switch(key, n = "0", mean_sd = paste(d + 1, d + 2, sep = ","),
+         median = , q1q3 = , median_q1q3 = as.character(d + 1),
+         min_max = as.character(d))
+}
+
+.cat_formats <- c(npct = "{n:.0f} ({p:.%df%%})",
+                  nNpct = "{n:.0f}/{N:.0f} ({p:.%df%%})",
+                  n = "{n:.0f}")
+
+.split_list <- function(x) {
+  if (is.null(x) || is.na(x) || !nzchar(x)) return(character())
+  trimws(strsplit(x, "|", fixed = TRUE)[[1L]])
+}
+
+# a report's rows of a sheet, its own before the defaults it inherits
+.rows_for <- function(p, sheet, id) {
+  rbind(sheet_rows(p, sheet, id), inherited_rows(p, sheet, id))
+}
+
+#' Read and write a table the builder way
+#'
+#' `builder_read()` describes a report's summary table from its sheets (and
+#' what its ARD holds, for what the sheets do not say yet);
+#' `builder_write()` writes such a description back to the report's own
+#' rows of `tables`, `variables`, `cells` and `col_header`.  Rows it does
+#' not manage (a statistic it does not offer, a variable of its own
+#' template) are left as they are.
+#'
+#' @param x An `rtfplanner`.
+#' @param output_id The report.
+#' @param meta Its [ard_meta()], or `NULL`.
+#' @param state What `builder_read()` returns, as edited.
+#' @return `builder_read()`: a list -- `key` (the column variable),
+#'   `arms` (its levels in order), `variables` (a data frame: `variable`,
+#'   `kind`, `label`), `levels` (named list), `stats` (keys of
+#'   [builder_stats()] in order), `decimals`, `cat_format` (`npct`,
+#'   `nNpct`, `n`), `pct_decimals`, `header` (`keep` or a name of
+#'   [header_presets()]).  `builder_write()`: the `rtfplanner`.
+#' @export
+builder_read <- function(x, output_id, meta = NULL) {
+  id <- output_id
+  tb <- .rows_for(x, "tables", id)
+  key <- .split_list(tb$cols[1L])
+  if (!length(key) && !is.null(meta) && length(meta$by)) key <- meta$by[1L]
+  key <- if (length(key)) key[1L] else NA_character_
+
+  vr <- .rows_for(x, "variables", id)
+  vr <- vr[!duplicated(vr$variable), , drop = FALSE]
+  # levels no sheet states are the ARD's order; remembered, so that
+  # writing them back unchanged writes nothing
+  auto <- list()
+  lev_of <- function(v) {
+    l <- .split_list(vr$levels[match(v, vr$variable)])
+    if (!length(l) && !is.null(meta)) {
+      l <- if (v %in% names(meta$keys)) meta$keys[[v]] else
+        .split_list(meta$variables$levels[match(v, meta$variables$variable)])
+      auto[[v]] <<- l
+    }
+    l
+  }
+  arms <- if (!is.na(key)) lev_of(key) else character()
+
+  mv <- if (!is.null(meta)) meta$variables else
+    data.frame(variable = character(), kind = character(),
+               label = character(), stringsAsFactors = FALSE)
+  own <- vr[!is.na(vr$variable) & !vr$variable %in% c(key, names(meta$keys)),
+            , drop = FALSE]
+  vars <- unique(c(mv$variable, own$variable))
+  ord <- suppressWarnings(as.numeric(vr$order[match(vars, vr$variable)]))
+  vars <- vars[order(is.na(ord), ord, match(vars, mv$variable))]
+  label <- vr$label[match(vars, vr$variable)]
+  mlab <- mv$label[match(vars, mv$variable)]
+  label[is.na(label)] <- mlab[is.na(label)]
+  kind <- mv$kind[match(vars, mv$variable)]
+  kind[is.na(kind)] <- ifelse(
+    vapply(vars[is.na(kind)], function(v) length(lev_of(v)) > 0, NA),
+    "categorical", "continuous")
+  variables <- data.frame(variable = vars, kind = kind, label = label,
+                          stringsAsFactors = FALSE)
+  levels <- stats::setNames(lapply(vars, function(v)
+    if (identical(kind[match(v, vars)], "categorical")) lev_of(v) else
+      character()), vars)
+
+  ce <- .rows_for(x, "cells", id)
+  bs <- builder_stats()
+  cont <- ce[!is.na(ce$variable) & ce$variable == "continuous", , drop = FALSE]
+  stats <- bs$key[match(cont$row, bs$row)]
+  stats <- stats[!is.na(stats)]
+  dig <- function(k) {
+    v <- cont$digits[match(bs$row[bs$key == k], cont$row)]
+    suppressWarnings(as.numeric(strsplit(v %||% "", ",")[[1L]][1L]))
+  }
+  decimals <- if ("min_max" %in% stats && !is.na(dig("min_max"))) {
+    dig("min_max")
+  } else if ("median" %in% stats && !is.na(dig("median"))) {
+    dig("median") - 1
+  } else 0
+  if (!length(stats)) stats <- c("n", "mean_sd", "median", "min_max")
+
+  cat_row <- ce[(!is.na(ce$variable) & ce$variable == "categorical") |
+                  (is.na(ce$variable) & is.na(ce$row)), , drop = FALSE]
+  tpl <- cat_row$template[1L]
+  cat_format <- if (is.na(tpl)) "npct" else if (grepl("/{N", tpl, fixed = TRUE))
+    "nNpct" else if (grepl("{p", tpl, fixed = TRUE)) "npct" else "n"
+  pd <- regmatches(tpl, regexec("[.]([0-9])f%", tpl))[[1L]]
+  pct_decimals <- if (length(pd)) as.numeric(pd[2L]) else 1
+
+  list(key = key, arms = arms, variables = variables, levels = levels,
+       stats = stats, decimals = decimals, cat_format = cat_format,
+       pct_decimals = pct_decimals, header = "keep", auto_levels = auto)
+}
+
+#' @rdname builder_read
+#' @export
+builder_write <- function(x, output_id, state) {
+  id <- output_id
+  st <- state
+  # tables: the column key, and one group per variable unless said otherwise
+  tb <- sheet_rows(x, "tables", id)
+  tb$output_id <- NULL
+  if (!nrow(tb)) tb[1L, ] <- NA
+  if (!is.na(st$key)) tb$cols[1L] <- st$key
+  if (is.na(tb$rows[1L])) {
+    inh <- inherited_rows(x, "tables", id)
+    if (!nrow(inh) || is.na(inh$rows[1L])) tb$rows[1L] <- "group = variable"
+  }
+  x <- set_sheet_rows(x, "tables", id, tb)
+
+  # variables: the arms' order, each variable's label, order and levels
+  vr <- sheet_rows(x, "variables", id)
+  vr$output_id <- NULL
+  put <- function(vr, v, ...) {
+    val <- list(...)
+    i <- match(v, vr$variable)
+    if (is.na(i)) {
+      vr[nrow(vr) + 1L, ] <- NA
+      i <- nrow(vr)
+      vr$variable[i] <- v
+    }
+    for (k in names(val)) vr[[k]][i] <- val[[k]]
+    vr
+  }
+  j <- function(l) if (length(l)) paste(l, collapse = " | ") else NA_character_
+  lv <- function(v, l) {
+    if (identical(l, st$auto_levels[[v]])) NA_character_ else j(l)
+  }
+  if (!is.na(st$key)) vr <- put(vr, st$key, levels = lv(st$key, st$arms))
+  v <- st$variables
+  for (i in seq_len(nrow(v))) {
+    vr <- put(vr, v$variable[i],
+              label = if (is.na(v$label[i]) || !nzchar(v$label[i])) NA else
+                v$label[i],
+              order = as.character(i),
+              levels = if (identical(v$kind[i], "categorical"))
+                lv(v$variable[i], st$levels[[v$variable[i]]]) else
+                  NA_character_)
+  }
+  empty <- rowSums(!is.na(vr[setdiff(names(vr), "variable")])) == 0 &
+    vr$variable %in% st$key
+  x <- set_sheet_rows(x, "variables", id, vr[!empty, , drop = FALSE])
+
+  # cells: the continuous statistics and the categorical format it manages
+  ce <- sheet_rows(x, "cells", id)
+  ce$output_id <- NULL
+  bs <- builder_stats()
+  mine <- (!is.na(ce$variable) & ce$variable == "continuous" &
+             ce$row %in% bs$row) |
+    (!is.na(ce$variable) & ce$variable == "categorical" & is.na(ce$row))
+  keep <- ce[!mine, , drop = FALSE]
+  new <- ce[0, , drop = FALSE]
+  # a table of categorical variables only has no statistics to state
+  had <- any(!is.na(ce$variable) & ce$variable == "continuous")
+  stats <- if (had || any(st$variables$kind == "continuous")) st$stats else
+    character()
+  for (k in stats) {
+    b <- bs[bs$key == k, ]
+    new[nrow(new) + 1L, ] <- NA
+    new$variable[nrow(new)] <- "continuous"
+    new$row[nrow(new)] <- b$row
+    new$template[nrow(new)] <- b$template
+    new$digits[nrow(new)] <- .stat_digits(k, st$decimals)
+  }
+  inh <- inherited_rows(x, "cells", id)
+  inh_cont <- inh[!is.na(inh$variable) & inh$variable == "continuous", ,
+                  drop = FALSE]
+  same <- function(a, b) {
+    identical(paste(a$row, a$template, a$digits),
+              paste(b$row, b$template, b$digits))
+  }
+  if (nrow(inh_cont) && same(new, inh_cont)) new <- new[0, , drop = FALSE]
+  tpl <- sprintf(.cat_formats[[st$cat_format]], st$pct_decimals)
+  inh_cat <- inh[(!is.na(inh$variable) & inh$variable == "categorical") |
+                   (is.na(inh$variable) & is.na(inh$row)), , drop = FALSE]
+  if (!identical(inh_cat$template[1L], tpl)) {
+    new[nrow(new) + 1L, ] <- NA
+    new$variable[nrow(new)] <- "categorical"
+    new$template[nrow(new)] <- tpl
+  }
+  x <- set_sheet_rows(x, "cells", id, rbind(new, keep))
+
+  if (!identical(st$header, "keep") && st$header %in% names(header_presets())) {
+    x <- add_preset(x, id, st$header)
+  }
+  x
+}
+
+# ------------------------------------------------------------ preview
+
+#' The table as it will print
+#'
+#' Plans the report's table from the definition as it stands (saved or
+#' not) and the report's normalized data, and gives its pages -- what
+#' [rtfreporter::rtf_report()] lays out -- or an HTML rendering of them.
+#'
+#' @param x An `rtfplanner`.
+#' @param output_id The report.
+#' @param data Its normalized data ([ard_data()]).
+#' @param pages `rtftable` pages.
+#' @param max_pages How many pages to render.
+#' @return `preview_pages()`: a list of `rtftable`; `preview_html()`: HTML.
+#' @export
+preview_pages <- function(x, output_id, data) {
+  sheets <- lapply(x$sheets[table_sheets()], function(d) {
+    d <- d[is.na(d$output_id) | d$output_id == output_id, , drop = FALSE]
+    if (all(is.na(d$note))) d$note <- NULL
+    d
+  })
+  st <- x$study["rounding"]
+  sheets$study <- if (!is.na(st)) st
+  spec <- rtfreporter::table_spec(sheets)
+  plan <- suppressMessages(rtfreporter::rtf_plan(data, spec = spec,
+                                                 notes = FALSE))
+  res <- suppressMessages(rtfreporter::apply_plan(plan))
+  # a plan with no layout gives its table, not pages: one page of it
+  if (is.data.frame(res)) {
+    res <- list(structure(list(data = res, col_header = list(names(res)),
+                               blank_rows = integer()),
+                          class = "rtftable"))
+  }
+  if (inherits(res, "rtftable")) res <- list(res)
+  res
+}
+
+#' @rdname preview_pages
+#' @export
+preview_html <- function(pages, max_pages = 3L) {
+  one <- function(pg, i) {
+    d <- pg$data
+    blank_after <- attr(d, "rtf_blank_rows") %||% pg$blank_rows %||%
+      integer()
+    stub <- attr(d, "rtf_stub_src")
+    val <- function(v) if (is.na(v)) "" else as.character(v)
+    head <- lapply(pg$col_header, function(line) {
+      htmltools::tags$tr(lapply(seq_along(line), function(k)
+        htmltools::tags$th(
+          class = if (k == 1L) "rp-pv-stub" else "rp-pv-val",
+          htmltools::HTML(gsub("\n", "<br>", htmltools::htmlEscape(
+            val(line[k])), fixed = TRUE)))))
+    })
+    blank <- htmltools::tags$tr(class = "rp-pv-blank",
+                                htmltools::tags$td(colspan = ncol(d),
+                                                   htmltools::HTML("&nbsp;")))
+    body <- list()
+    if (0L %in% blank_after) body <- c(body, list(blank))
+    for (r in seq_len(nrow(d))) {
+      group <- !is.null(stub) && is.na(stub[r])
+      body <- c(body, list(htmltools::tags$tr(
+        class = if (group) "rp-pv-group",
+        lapply(seq_len(ncol(d)), function(k) htmltools::tags$td(
+          class = if (k == 1L) {
+            if (!is.null(stub) && !group) "rp-pv-stub rp-pv-indent" else
+              "rp-pv-stub"
+          } else "rp-pv-val",
+          val(d[r, k]))))))
+      if (r %in% blank_after) body <- c(body, list(blank))
+    }
+    htmltools::tagList(
+      if (length(pages) > 1L) htmltools::div(
+        class = "rp-pv-page", sprintf("%d / %d", i, length(pages))),
+      htmltools::tags$table(
+        class = "rp-pv",
+        htmltools::tags$thead(head), htmltools::tags$tbody(body)))
+  }
+  n <- min(length(pages), max_pages)
+  htmltools::tagList(lapply(seq_len(n), function(i) one(pages[[i]], i)))
+}

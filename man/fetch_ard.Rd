@@ -3,11 +3,14 @@
 \name{fetch_ard}
 \alias{fetch_ard}
 \alias{ard_info}
+\alias{ard_data}
 \title{Run a report's data part and keep what its ARD holds}
 \usage{
 fetch_ard(study, output_id, timeout = 300, home = rtfplanner_home())
 
 ard_info(study, output_id, home = rtfplanner_home())
+
+ard_data(study, output_id, home = rtfplanner_home())
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
@@ -16,7 +19,9 @@ ard_info(study, output_id, home = rtfplanner_home())
 
 \item{timeout}{Seconds to allow.}
 
-\item{home}{rtfplanner's home.}
+\item{home}{rtfplanner's home.
+\code{ard_info()} returns the metadata kept, \code{ard_data()} the normalized data
+kept with it (what the builder's preview is planned from).}
 }
 \value{
 The metadata (\code{\link[=ard_meta]{ard_meta()}}) with \code{fetched} (the time), \code{source}
