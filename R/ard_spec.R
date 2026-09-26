@@ -171,7 +171,7 @@ ard_rows <- function(x, sheet, output_id = "") {
 #' @rdname ard_rows
 #' @export
 set_ard_rows <- function(x, sheet, output_id = "", rows) {
-  rows <- as.data.frame(rows, stringsAsFactors = FALSE)
+  rows <- .drop_blank_rows(as.data.frame(rows, stringsAsFactors = FALSE))
   whole <- sheet != "analyses" || identical(output_id, "") ||
     is.na(output_id)
   if (!whole) rows$output_id <- rep(output_id, nrow(rows))

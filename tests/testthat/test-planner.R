@@ -71,6 +71,23 @@ test_that("a filtered edit puts the rows back where they were", {
   expect_identical(q$sheets$cells, p$sheets$cells)
 })
 
+test_that("a grid's empty rows never become rows of an output_id", {
+  p <- read_planner(sample_paths())
+  v <- sheet_rows(p, "variables", "AE")
+  v$output_id <- NULL
+  spare <- v[1, ]
+  spare[] <- NA
+  q <- set_sheet_rows(p, "variables", "AE", rbind(v, spare, ""))
+  expect_identical(q$sheets, p$sheets)
+  a <- add_output(new_planner(), "T1")
+  a$ard$analyses <- .normalize_ard_sheet(data.frame(
+    output_id = "T1", analysis_id = "A", method = "categorical"), "analyses")
+  r <- ard_rows(a, "analyses", "T1")
+  r$output_id <- NULL
+  r[2, ] <- NA
+  expect_identical(set_ard_rows(a, "analyses", "T1", r)$ard, a$ard)
+})
+
 test_that("check_planner() reports what rtfreporter refuses", {
   p <- read_planner(sample_paths())
   expect_true(all(check_planner(p)$ok))

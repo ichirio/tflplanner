@@ -1155,8 +1155,14 @@ app_server <- function(input, output, session, start) {
     shiny::div(class = "alert alert-warning py-1 small mt-2",
                shiny::tags$pre(class = "mb-0", msg))
   })
+  # the output the sidebar names: a report, or an output the ARD
+  # definition has analyses for and the report list does not have yet
+  ard_target <- shiny::reactive({
+    tg <- target()
+    if (is.na(tg) || !nzchar(tg)) NULL else tg
+  })
   ard_scope_id <- shiny::reactive({
-    if (identical(input$ard_scope, "study")) NULL else current()
+    if (identical(input$ard_scope, "study")) NULL else ard_target()
   })
   output$ard_code <- shiny::renderText({
     shiny::req(has_study())
@@ -1191,8 +1197,8 @@ app_server <- function(input, output, session, start) {
     if (!is.null(r$error)) notify(t("The ARD code failed: see the log."), "error")
   }
   shiny::observeEvent(input$ard_run, {
-    if (is.null(current())) return(notify(t("Choose a report"), "warning"))
-    run_ard_now(current())
+    if (is.null(ard_target())) return(notify(t("Choose a report"), "warning"))
+    run_ard_now(ard_target())
   })
   shiny::observeEvent(input$ard_build, {
     if (dirty() && !do_save()) return()

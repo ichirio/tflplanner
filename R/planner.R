@@ -122,13 +122,16 @@ print.tflplanner <- function(x, ...) {
 
 #' Report ids the definition names
 #'
-#' The report list first, then any id a sheet names that the list lacks.
+#' The report list first, then any id a sheet or the ARD definition names
+#' that the list lacks.
 #' @param x An `tflplanner`.
 #' @return A character vector.
 #' @export
 output_ids <- function(x) {
   seen <- unlist(lapply(x$sheets, `[[`, "output_id"), use.names = FALSE)
-  unique(c(x$outputs$output_id, stats::na.omit(seen)))
+  # an output may be defined in the ARD before it is on the report list
+  unique(c(x$outputs$output_id, stats::na.omit(seen),
+           stats::na.omit(x$ard$analyses$output_id)))
 }
 
 # ---------------------------------------------------------------- reading
@@ -316,11 +319,25 @@ sheet_rows <- function(x, sheet, output_id = "") {
   d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
 }
 
+# A grid's empty rows (its spare row, a row cleared) say nothing -- and
+# must be gone before a filtered view stamps its output_id on every row,
+# or they would come back as rows of nothing but an output_id.
+.drop_blank_rows <- function(rows) {
+  cols <- setdiff(names(rows), "output_id")
+  if (!length(cols) || !nrow(rows)) return(rows)
+  filled <- vapply(cols, function(c) {
+    v <- as.character(rows[[c]])
+    !is.na(v) & nzchar(trimws(v))
+  }, logical(nrow(rows)))
+  filled <- matrix(filled, nrow = nrow(rows))
+  rows[rowSums(filled) > 0, , drop = FALSE]
+}
+
 # Put back what the filter showed, edited: the rows outside the filter
 # stay, in place, and the edited ones go where the first shown one was.
 set_sheet_rows <- function(x, sheet, output_id = "", rows) {
   d <- x$sheets[[sheet]]
-  rows <- as.data.frame(rows, stringsAsFactors = FALSE)
+  rows <- .drop_blank_rows(as.data.frame(rows, stringsAsFactors = FALSE))
   if (!identical(output_id, "")) rows$output_id <- rep(output_id, nrow(rows))
   rows <- .normalize_sheet(rows, sheet)
   if (identical(output_id, "")) {
