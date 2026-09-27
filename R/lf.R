@@ -6,7 +6,8 @@
 # variables stacked in a column, the header, the width, whether a repeated
 # value is printed once).  Its program reads the data, reworks it with the
 # report's data code when it has one, and lays it out with
-# rtfreporter::listing_spec() / as_rtftables().
+# rtfreporter::listing_spec() / as_rtftables().  The code is written by
+# tflspec::listing_spec_code(); the rows are kept and edited here.
 #
 # A figure names the datasets it reads; its program reads them and writes
 # the RTF, and the plot in between -- ggplot2 -- is the report's data code,
@@ -86,68 +87,15 @@ listing_types <- function() company_standards()$listing_types
 # the lines that read one dataset of the catalog into an object named
 # after it (adsl, adae ...), with its derived columns
 .read_dataset_lines <- function(x, dataset) {
-  cat <- x$ard$datasets
-  r <- cat[!is.na(cat$dataset) & cat$dataset == dataset, , drop = FALSE]
-  if (!nrow(r) || is.na(r$path[1L])) {
-    return(sprintf("stop(\"tflplanner: dataset %s is not in the data catalog.\")",
-                   dataset))
-  }
-  obj <- .r_name(dataset)
-  c(sprintf("%s <- %s", obj, .reader(r$path[1L])),
-    .derive_code(obj, r$derive[1L]))
-}
-
-.r_sort <- function(obj, sort) {
-  s <- .split_bar(sort)
-  if (!length(s)) return(NULL)
-  keys <- vapply(s, function(k) {
-    if (startsWith(k, "-")) sprintf("-xtfrm(%s$%s)", obj, substring(k, 2L))
-    else sprintf("%s$%s", obj, k)
-  }, "")
-  sprintf("%s <- %s[order(%s), , drop = FALSE]", obj, obj,
-          paste(keys, collapse = ", "))
-}
-
-.r_label <- function(x) {
-  encodeString(gsub("\\n", "\n", x, fixed = TRUE), quote = "\"")
+  tflspec::read_data_code(x$ard$datasets, dataset)
 }
 
 # the part of a listing's program between its setup and its report
 .listing_lines <- function(x, output_id, rework = NA) {
-  l <- lf_rows(x, "listings", output_id)
-  cols <- lf_rows(x, "listing_cols", output_id)
-  if (!nrow(l) || is.na(l$dataset[1L])) return(NULL)
-  l <- l[1L, ]
-  obj <- .r_name(l$dataset)
-  col_code <- vapply(seq_len(nrow(cols)), function(i) {
-    c <- cols[i, ]
-    v <- .split_bar(c$vars)
-    vv <- if (length(v) == 1L) encodeString(v, quote = "\"") else
-      sprintf("c(%s)", paste(encodeString(v, quote = "\""), collapse = ", "))
-    a <- c(vv,
-           if (!is.na(c$width)) paste("width =", c$width),
-           if (!is.na(c$label)) paste("label =", .r_label(c$label)),
-           if (identical(toupper(c$collapse_repeats), "TRUE"))
-             "collapse_repeats = TRUE")
-    sprintf("  listing_col(%s)", paste(a, collapse = ", "))
-  }, "")
-  type <- if (is.na(l$type)) .std_setting("listing_type", "multiline") else
-    l$type
-  c(paste0("# the data: ", l$dataset, " (data catalog)"),
-    .read_dataset_lines(x, l$dataset),
-    sprintf("data <- %s", if (is.na(l$where)) obj else
-      sprintf("subset(%s, %s)", obj, l$where)),
-    if (!is.na(rework)) c("", "# rework", .code_block(rework), ""),
-    .r_sort("data", l$sort),
-    "# dates as they print",
-    "data[] <- lapply(data, function(v) if (inherits(v, c(\"Date\", \"POSIXt\"))) format(v) else v)",
-    "",
-    sprintf("lst <- listing_spec(list(\n%s),\n  type = %s)",
-            paste(col_code, collapse = ",\n"),
-            encodeString(type, quote = "\"")),
-    sprintf("content <- as_rtftables(data, listing = lst%s)",
-            if (!is.na(l$max_rows)) paste0(", max_rows = ", l$max_rows) else
-              ""))
+  tflspec::listing_spec_code(
+    lf_rows(x, "listings", output_id), lf_rows(x, "listing_cols", output_id),
+    x$ard$datasets, rework = if (!is.na(rework)) .code_block(rework),
+    type = .std_setting("listing_type", "multiline"))
 }
 
 # the part of a figure's program between its setup and its report
