@@ -206,7 +206,7 @@ p$ard$analyses <- tbl(
 for (sh in names(p$ard)) p$ard[[sh]] <- .normalize_ard_sheet(p$ard[[sh]], sh)
 
 # ------------------------------------------------ the listing, the figure
-# The listing is defined in rows (Type 1: rtfreporter's multiline); the
+# The listing is defined in rows (rtfreporter's multiline); the
 # figure reads ADTTE and its data code is the plot alone.
 p$lf$listings <- .normalize_lf_sheet(tbl(
   list(output_id = "L-16-2-7", type = "multiline", dataset = "ADAE",

@@ -150,7 +150,7 @@
         "confidence interval of a proportion (args: method = \"wilson\" ...)",
         "confidence interval of a mean",
         "any R code in `code`; data and population are bound")),
-    listing_types = .df(type = "multiline", label = "Type 1: multiline",
+    listing_types = .df(type = "multiline", label = "multiline",
                         note = "rtfreporter's listing type: / separator, gutters, a blank row per record"),
     populations = .df(
       population_id = c("SAF", "FAS", "PPS", "ENR"),
