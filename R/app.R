@@ -383,9 +383,11 @@ app_ui <- function(lang = "en") {
             t("Code (cards / cardx)"), value = "code",
             shiny::radioButtons(
               "ard_scope", NULL,
-              stats::setNames(c("report", "study"),
-                              t(c("This report", "The whole study"))),
+              stats::setNames(c("report", "setup", "autoexec"),
+                              c(t("This output's program"), "ard_setup.R",
+                                "autoexec_ard.R")),
               inline = TRUE),
+            shiny::uiOutput("ard_prog_state"),
             shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_code"))),
           bslib::nav_panel(
             t("Study ARD"), value = "state",
@@ -396,7 +398,11 @@ app_ui <- function(lang = "en") {
               .btn("ard_update", t("Put this output into the study ARD"),
                    class = "btn-sm btn-primary"),
               .btn("ard_build2", t("Build the whole study ARD"))),
-            DT::DTOutput("ard_state")),
+            shiny::p(class = "small text-muted mt-1 mb-1",
+                     t("Both run the saved programs (programs/ard/): unsaved changes are saved first. Choose a row to see its log.")),
+            DT::DTOutput("ard_state"),
+            shiny::div(class = "rp-code mt-2",
+                       shiny::verbatimTextOutput("ard_log"))),
           bslib::nav_panel(
             t("Generated ARD"), value = "result",
             shiny::div(
@@ -1028,9 +1034,11 @@ app_server <- function(input, output, session, start) {
           sprintf("%-15s %s", paste0(lay, "/"), t(c(
             "Input data: ADaM", "Input data: SDTM", "Input data: other",
             "Definition workbooks (written on save)",
+            "ARD programs: one per output, ard_setup.R, autoexec_ard.R",
             "Report programs, autoexec_report.R",
-            "Deliverable data: each Table's ARD (.rds)",
-            "Deliverable reports: RTF", "Run logs"))), collapse = "\n"))),
+            "Deliverable data: the study ARD (ard.rds)",
+            "Deliverable reports: RTF", "Logs of the ARD programs",
+            "Logs of the report programs"))), collapse = "\n"))),
       shiny::fileInput(
         "import",
         t("Import definition workbooks (replaces this study's definition)"),
@@ -1621,17 +1629,49 @@ app_server <- function(input, output, session, start) {
     if (!nrow(a$analyses)) {
       return(t("No analyses yet: add rows to the analyses sheet."))
     }
-    id <- ard_scope_id()
-    if (identical(input$ard_scope, "report") && is.null(id)) {
-      return(t("Choose a report in the sidebar, or show the whole study."))
+    code <- ard_code_now()
+    if (is.character(code) && length(code) == 1L && !is.null(attr(code, "msg"))) {
+      return(code)
     }
-    if (!is.null(id) && !any(a$analyses$output_id %in% id)) {
-      return(sprintf(t("%s has no analyses in the ARD definition."), id))
+    paste(code, collapse = "\n")
+  })
+  # what the Code panel shows, as the save would write it
+  ard_code_now <- shiny::reactive({
+    a <- structure(rv$p$ard, class = "ard_spec")
+    msg <- function(x) structure(x, msg = TRUE)
+    scope <- input$ard_scope %||% "report"
+    id <- ard_target()
+    if (scope == "report") {
+      if (is.null(id)) return(msg(t("Choose a report in the sidebar.")))
+      if (!any(a$analyses$output_id %in% id)) {
+        return(msg(sprintf(t("%s has no analyses in the ARD definition."), id)))
+      }
     }
-    tryCatch(paste(ard_spec_code(structure(a, class = "ard_spec"),
-                                 output_id = id), collapse = "\n"),
-             error = function(e) paste(t("The code cannot be written yet:"),
-                                       conditionMessage(e)))
+    tryCatch(switch(scope,
+      report = ard_program_code(a, id),
+      setup = ard_setup_code(a),
+      autoexec = ard_autoexec_code(a)),
+      error = function(e) msg(paste(t("The code cannot be written yet:"),
+                                    conditionMessage(e))))
+  })
+  output$ard_prog_state <- shiny::renderUI({
+    shiny::req(has_study())
+    code <- ard_code_now()
+    if (!is.null(attr(code, "msg"))) return(NULL)
+    rv$status_ver
+    lay <- study_layout()
+    name <- switch(input$ard_scope %||% "report",
+                   report = .ard_prog_name(ard_target()),
+                   setup = .ard_setup_file, autoexec = .ard_autoexec_file)
+    f <- file.path(rv$study$path, lay[["programs_ard"]], name)
+    st <- .ard_program_state(code, f)
+    shiny::p(class = "small text-muted mb-1",
+             shiny::code(file.path(lay[["programs_ard"]], name)), " ",
+             t(switch(st,
+               missing = "No file yet. Saving writes it.",
+               current = "The saved program is the one below.",
+               generated = "The definition has changed: saving rewrites the program as below.",
+               edited = "The saved program was edited by hand. Saving leaves it alone.")))
   })
   run_ard_now <- function(output_id) {
     if (!is.null(ard_valid())) {
@@ -1651,12 +1691,32 @@ app_server <- function(input, output, session, start) {
     if (is.null(ard_target())) return(notify(t("Choose a report"), "warning"))
     run_ard_now(ard_target())
   })
-  shiny::observeEvent(input$ard_build, {
+  # making the study ARD: always the saved programs (programs/ard/), so
+  # what is built is what anyone rerunning autoexec_ard.R gets
+  ard_log_ver <- shiny::reactiveVal(0L)
+  build_study_ard <- function(ids) {
+    if (!is.null(ard_valid())) {
+      return(notify(t("Correct the ARD definition first."), "warning"))
+    }
     if (dirty() && !do_save()) return()
-    run_ard_now(NULL)
-    rv$status_ver <- rv$status_ver + 1L
+    r <- NULL
+    shiny::withProgress(message = t("Running the ARD programs"), {
+      r <- guarded(run_study_ard(current_study(), ids))
+    })
+    ard_state_ver(ard_state_ver() + 1L)
+    ard_log_ver(ard_log_ver() + 1L)
     rv$ard_ver <- rv$ard_ver + 1L
-  })
+    rv$status_ver <- rv$status_ver + 1L
+    if (is.null(r)) return()
+    n <- if (is.null(r$result)) 0L else nrow(r$result)
+    if (r$ok) {
+      notify(sprintf(t("The study ARD is updated: %d program(s) ran without error."), n))
+    } else {
+      notify(t("An ARD program failed: see its log (Study ARD)."), "error")
+    }
+    bslib::nav_select("ard_right", "state")
+  }
+  shiny::observeEvent(input$ard_build, build_study_ard(NULL))
   output$ard_run_info <- shiny::renderUI({
     r <- ard_res()
     if (is.null(r)) {
@@ -1707,7 +1767,7 @@ app_server <- function(input, output, session, start) {
     names(v) <- t(c("output_id", "Analyses", "State", "Rows", "Built",
                     "Error"))
     DT::formatStyle(
-      .dt(v, selection = "none"), names(v)[3L],
+      .dt(v, selection = "single"), names(v)[3L],
       color = DT::styleEqual(t(c("built", "outdated", "not built", "error")),
                              c("#15803d", "#b45309", "#6b7280", "#b91c1c")))
   }
@@ -1716,29 +1776,30 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$ard_update, {
     id <- ard_target()
     if (is.null(id)) return(notify(t("Choose a report"), "warning"))
-    if (!is.null(ard_valid())) {
-      return(notify(t("Correct the ARD definition first."), "warning"))
+    if (!any(rv$p$ard$analyses$output_id %in% id)) {
+      return(notify(sprintf(t("%s has no analyses in the ARD definition."), id),
+                    "warning"))
     }
-    r <- NULL
-    shiny::withProgress(message = t("Running the ARD code"), {
-      r <- guarded(update_study_ard(current_study(), id))
-    })
-    ard_state_ver(ard_state_ver() + 1L)
-    rv$ard_ver <- rv$ard_ver + 1L
-    if (!is.null(r) && is.null(r$error)) {
-      notify(sprintf(t("%s is in the study ARD (%d rows)"), id, nrow(r$ard)))
-    } else {
-      notify(t("The ARD code failed: see the log."), "error")
-      if (!is.null(r)) {
-        r$scope <- id
-        ard_res(r)
-      }
-    }
+    build_study_ard(id)
   })
-  shiny::observeEvent(input$ard_build2, {
-    if (dirty() && !do_save()) return()
-    run_ard_now(NULL)
-    ard_state_ver(ard_state_ver() + 1L)
+  shiny::observeEvent(input$ard_build2, build_study_ard(NULL))
+  output$ard_log <- shiny::renderText({
+    shiny::req(has_study())
+    ard_log_ver()
+    d <- ard_state()
+    i <- input$ard_state_rows_selected
+    lay <- study_layout()
+    f <- if (length(i)) {
+      file.path(rv$study$path, lay[["logs_ard"]],
+                sub("\\.[Rr]$", ".log", .ard_prog_name(d$output_id[i])))
+    } else file.path(rv$study$path, lay[["logs_ard"]], "autoexec_ard.log")
+    if (!file.exists(f)) {
+      return(if (length(i)) sprintf(t("%s has not been run yet."), d$output_id[i])
+             else t("Choose a row to see its log."))
+    }
+    paste(c(paste("#", normalizePath(f, "/", FALSE)), "",
+            utils::tail(readLines(f, warn = FALSE, encoding = "UTF-8"), 400L)),
+          collapse = "\n")
   })
   output$catalog <- DT::renderDT({
     shiny::req(has_study())
@@ -2271,7 +2332,7 @@ app_server <- function(input, output, session, start) {
     id <- current()
     if (is.null(id)) return(NULL)
     rv$status_ver
-    f <- file.path(rv$study$path, study_layout()[["programs"]],
+    f <- file.path(rv$study$path, study_layout()[["programs_tfl"]],
                    report_info(rv$p, id)$program)
     st <- .program_state(rv$p, id, f)
     msg <- t(switch(st,
@@ -2458,7 +2519,7 @@ app_server <- function(input, output, session, start) {
     d <- selected_status()
     rv$status_ver
     if (!nrow(d)) {
-      f <- file.path(rv$study$path, study_layout()[["logs"]],
+      f <- file.path(rv$study$path, study_layout()[["logs_tfl"]],
                      "autoexec_report.log")
       if (!file.exists(f)) return(t("Choose a report to see its log."))
     } else {

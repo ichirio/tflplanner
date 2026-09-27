@@ -282,7 +282,7 @@ f <- file.path(s$path, "spec", "ard_spec.xlsx")
 writexl::write_xlsx(c(spec, list(`_methods` = ard_methods())), f)
 x <- read_ard_spec(f)
 # the study keeps its definition (the app shows it); saving writes
-# spec/ard_spec.xlsx and programs/make_ard.R from it
+# spec/ard_spec.xlsx and programs/ard/ from it
 s$planner$ard <- lapply(stats::setNames(names(.ard_spec_sheets),
                                         names(.ard_spec_sheets)),
                         function(sh) .normalize_ard_sheet(x[[sh]], sh))

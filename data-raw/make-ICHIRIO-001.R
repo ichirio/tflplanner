@@ -170,7 +170,7 @@ code <- list(
 
 # ---------------------------------------------------------- the study ARD
 # The tables' data: one study ARD from spec/ard_spec.xlsx (made by
-# programs/make_ard.R); each table takes its part, so they have no data
+# programs/ard/<output_id>.R); each table takes its part, so they have no data
 # code of their own.
 arow <- function(...) list(...)
 p$ard$datasets <- tbl(

@@ -321,3 +321,14 @@ Apply to the analysis,解析に反映
 "Format: xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown.",書式：xx.x = 小数 1 桁、xx.x% = 割合を % で、2 = 小数 2 桁、pvalue = <0.001 か小数 3 桁。空欄 = 薄字の既定値。
 Not a format: %s,書式ではありません：%s
 %s: statistics and formats written,%s：統計量と書式を書き込みました
+"ARD programs: one per output, ard_setup.R, autoexec_ard.R",ARD プログラム：帳票ごとに 1 本、ard_setup.R、autoexec_ard.R
+Deliverable data: the study ARD (ard.rds),成果物データ：試験 ARD（ard.rds）
+Logs of the ARD programs,ARD プログラムのログ
+Logs of the report programs,帳票プログラムのログ
+This output's program,この帳票のプログラム
+No file yet. Saving writes it.,まだファイルがありません。保存すると書き出します。
+Both run the saved programs (programs/ard/): unsaved changes are saved first. Choose a row to see its log.,どちらも保存済みのプログラム（programs/ard/）を実行します。未保存の変更は先に保存します。行を選ぶとそのログを表示します。
+Running the ARD programs,ARD プログラムを実行中
+The study ARD is updated: %d program(s) ran without error.,試験 ARD を更新しました：%d 本のプログラムがエラーなしで終了。
+An ARD program failed: see its log (Study ARD).,ARD プログラムがエラーになりました。ログを確認してください（試験 ARD）。
+Choose a row to see its log.,行を選ぶとログを表示します。

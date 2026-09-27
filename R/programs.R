@@ -92,7 +92,8 @@ report_info <- function(x, output_id) {
       any(x$ard$analyses$output_id %in% output_id)) {
     out <- .ard_study_value(x$ard, "output", "output/ard/ard.rds")
     code <- paste(
-      "# this report's part of the study ARD (spec/ard_spec.xlsx, programs/make_ard.R)",
+      paste0("# this report's part of the study ARD (spec/ard_spec.xlsx, ",
+             study_layout()[["programs_ard"]], "/", .ard_prog_name(output_id), ")"),
       sprintf("ard <- readRDS(%s)", encodeString(out, quote = '"')),
       sprintf("ard <- ard[ard$output_id == %s,",
               encodeString(output_id, quote = '"')),
@@ -198,7 +199,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   spec <- file.path(lay[["spec"]], c(.report_file, .table_file))
 
   head <- .banner(
-    paste("Program    :", file.path(lay[["programs"]], info$program)),
+    paste("Program    :", file.path(lay[["programs_tfl"]], info$program)),
     paste0("Output     : ", output_id, " (", type, ") -> ", info$file),
     if (!is.null(desc)) paste("Description:", desc),
     if (length(titles)) paste("Title      :", titles),
@@ -206,7 +207,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
            ", ", format(date, "%Y-%m-%d")),
     "",
     "Runs from the study folder (open the study's .Rproj, or run",
-    "programs/autoexec_report.R).  How the report looks is in spec/; this",
+    "programs/tfl/autoexec_report.R).  How the report looks is in spec/; this",
     paste0("program makes `", obj, "` and hands it on.  Edit the data part",
            " freely."))
 
@@ -251,9 +252,9 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 
 #' The program that runs every report program
 #'
-#' `programs/autoexec_report.R` runs from the study folder.  It runs the
+#' `programs/tfl/autoexec_report.R` runs from the study folder.  It runs the
 #' programs in the order of the report list -- or only the ones named on
-#' its command line (`Rscript programs/autoexec_report.R DM.R AE.R`) --
+#' its command line (`Rscript programs/tfl/autoexec_report.R DM.R AE.R`) --
 #' each in its own `Rscript` process with the study folder as its working
 #' directory and its log in `logs/`, and ends with a table of what passed
 #' (`logs/autoexec_report.csv`).
@@ -267,11 +268,13 @@ autoexec_code <- function(x, date = Sys.Date()) {
   progs <- vapply(x$outputs$output_id, function(id)
     report_info(x, id)$program, "")
   c(.banner(
-      paste("Program    :", file.path(lay[["programs"]], "autoexec_report.R")),
+      paste("Program    :", file.path(lay[["programs_tfl"]], "autoexec_report.R")),
       "Runs the study's report programs, in the report list's order.",
-      "  Rscript programs/autoexec_report.R            every program",
-      "  Rscript programs/autoexec_report.R DM.R AE.R  only these",
-      "Run it from the study folder.",
+      "  Rscript programs/tfl/autoexec_report.R            every program",
+      "  Rscript programs/tfl/autoexec_report.R DM.R AE.R  only these",
+      "Run it from the study folder.  Each program runs in its own R process;",
+      "its log is logs/tfl/<program>.log.  The tables read the study ARD as",
+      "it is: make it first (programs/ard/autoexec_ard.R).",
       paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
              ", ", format(date, "%Y-%m-%d"))),
     "",
@@ -283,14 +286,6 @@ autoexec_code <- function(x, date = Sys.Date()) {
     paste0("  ", .r_string(progs),
            c(rep(",", max(0L, length(progs) - 1L)), "")[seq_along(progs)]),
     ")",
-    "# the study ARD first, when the study defines one",
-    paste0("if (file.exists(\"", lay[["programs"]], "/make_ard.R\")) {"),
-    paste0("  rc <- system2(file.path(R.home(\"bin\"), \"Rscript\"), \"",
-           lay[["programs"]], "/make_ard.R\","),
-    paste0("               stdout = \"", lay[["logs"]], "/make_ard.log\", stderr = \"",
-           lay[["logs"]], "/make_ard.log\")"),
-    "  cat(sprintf(\"%-5s %-30s\\n\", if (identical(rc, 0L)) \"OK\" else \"ERROR\", \"make_ard.R\"))",
-    "}",
     "",
     "only <- if (interactive()) character() else commandArgs(trailingOnly = TRUE)",
     "if (length(only)) {",
@@ -298,38 +293,8 @@ autoexec_code <- function(x, date = Sys.Date()) {
     "                        sub(\"\\\\.[Rr]$\", \"\", programs) %in% only]",
     "}",
     "",
-    paste0("program_dir <- ", .r_string(lay[["programs"]])),
-    paste0("log_dir     <- ", .r_string(lay[["logs"]])),
-    "dir.create(log_dir, showWarnings = FALSE)",
-    "",
-    "run_one <- function(p) {",
-    "  log <- file.path(log_dir, sub(\"\\\\.[Rr]$\", \".log\", p))",
-    "  t0  <- Sys.time()",
-    "  rc  <- system2(file.path(R.home(\"bin\"), \"Rscript\"),",
-    "                 shQuote(file.path(program_dir, p)),",
-    "                 stdout = log, stderr = log)",
-    "  lines  <- if (file.exists(log)) readLines(log, warn = FALSE) else \"\"",
-    "  status <- if (identical(rc, 0L)) \"OK\" else \"ERROR\"",
-    "  err    <- grep(\"^Error\", lines)[1L]",
-    "  note   <- if (status == \"OK\" || is.na(err)) \"\" else",
-    "    paste(trimws(stats::na.omit(lines[err + 0:1])), collapse = \" \")",
-    "  note   <- sub(\" ?Execution halted$\", \"\", note)",
-    "  warns  <- sum(grepl(\"^Warning\", lines))",
-    "  secs   <- round(as.numeric(difftime(Sys.time(), t0, units = \"secs\")), 1)",
-    "  cat(sprintf(\"%-5s %-30s %6.1fs\\n\", status, p, secs))",
-    "  data.frame(program = p, status = status, warnings = warns,",
-    "             seconds = secs, note = note, stringsAsFactors = FALSE)",
-    "}",
-    "",
-    "result <- do.call(rbind, lapply(programs, run_one))",
-    "utils::write.csv(result, file.path(log_dir, \"autoexec_report.csv\"),",
-    "                 row.names = FALSE)",
-    "cat(sprintf(\"\\n%d of %d program(s) ran without error.\\n\",",
-    "            sum(result$status == \"OK\"), nrow(result)))",
-    "if (any(result$status != \"OK\")) {",
-    "  print(result[result$status != \"OK\", c(\"program\", \"note\")],",
-    "        right = FALSE, row.names = FALSE)",
-    "  if (!interactive()) quit(status = 1L)",
-    "}",
+    .runner_lines(lay[["programs_tfl"]], lay[["logs_tfl"]]),
+    "result <- do.call(rbind, lapply(programs, run_program))",
+    .runner_end("autoexec_report.csv"),
     "")
 }

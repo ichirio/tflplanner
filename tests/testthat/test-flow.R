@@ -48,6 +48,7 @@ test_that("the study ARD grows output by output, and says where it stands", {
   s$planner$ard$analyses$statistics[1] <- "N | mean"
   expect_equal(ard_status(s)$state[1], "outdated")
   s$planner$ard$analyses$method[2] <- "cards::ard_nope"
+  s <- save_study(s)
   update_study_ard(s, "SEX")
   expect_equal(ard_status(s)$state[2], "error")
   a3 <- readRDS(file.path(s$path, "output", "ard", "ard.rds"))

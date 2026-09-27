@@ -10,11 +10,13 @@
 #     data/adam/           input data: analysis datasets
 #     data/sdtm/                       tabulation datasets
 #     data/other/                      anything else (formats, lookups)
-#     spec/                table_spec.xlsx, report_spec.xlsx
-#     programs/            one program per report, autoexec_report.R
-#     output/ard/          deliverable data: each table's ARD (.rds)
+#     spec/                table_spec.xlsx, report_spec.xlsx, ard_spec.xlsx
+#     programs/ard/        one ARD program per output, ard_setup.R,
+#                          autoexec_ard.R
+#     programs/tfl/        one program per report, autoexec_report.R
+#     output/ard/          deliverable data: the study ARD (ard.rds)
 #     output/tfl/          deliverable reports: the RTF files
-#     logs/                one log per program run
+#     logs/ard/, logs/tfl/ one log per program run
 #
 # Every program runs with the study folder as its working directory:
 # RStudio does that when the .Rproj is opened, autoexec_report.R does it
@@ -27,8 +29,9 @@
 #' @export
 study_layout <- function() {
   c(adam = "data/adam", sdtm = "data/sdtm", other = "data/other",
-    spec = "spec", programs = "programs", ard = "output/ard",
-    tfl = "output/tfl", logs = "logs")
+    spec = "spec", programs_ard = "programs/ard",
+    programs_tfl = "programs/tfl", ard = "output/ard", tfl = "output/tfl",
+    logs_ard = "logs/ard", logs_tfl = "logs/tfl")
 }
 
 .study_file <- "study.yml"
@@ -75,7 +78,7 @@ study_layout <- function() {
 # the programs are, both relative to the study folder.
 .study_spec_keys <- function(p) {
   p$study[["output_path"]] <- study_layout()[["tfl"]]
-  p$study[["program_dir"]] <- study_layout()[["programs"]]
+  p$study[["program_dir"]] <- study_layout()[["programs_tfl"]]
   p
 }
 
@@ -321,8 +324,11 @@ save_study <- function(study, regenerate = character(),
   files <- data.frame(file = paths,
                       status = if (same) "unchanged" else "written",
                       stringsAsFactors = FALSE)
+  for (d in lay) dir.create(file.path(root, d), recursive = TRUE,
+                            showWarnings = FALSE)
+  .move_old_programs(root, progs)
   for (i in seq_along(progs)) {
-    f <- file.path(root, lay[["programs"]], progs[[i]])
+    f <- file.path(root, lay[["programs_tfl"]], progs[[i]])
     id <- p$outputs$output_id[i]
     state <- .program_state(p, id, f)
     if (state == "edited" && !id %in% regenerate) {
@@ -337,7 +343,7 @@ save_study <- function(study, regenerate = character(),
     files[nrow(files) + 1L, ] <- list(f, "written")
   }
   files <- rbind(files, .save_ard(p, root), .save_lf(p, root))
-  f <- file.path(root, lay[["programs"]], "autoexec_report.R")
+  f <- file.path(root, lay[["programs_tfl"]], "autoexec_report.R")
   auto <- enc2utf8(autoexec_code(p))
   old <- if (file.exists(f)) readLines(f, warn = FALSE, encoding = "UTF-8")
   if (!identical(.body_hash(old %||% ""), .body_hash(auto))) {
@@ -355,6 +361,21 @@ save_study <- function(study, regenerate = character(),
   .set_config("last_study", study$meta$study_id, home)
   study$files <- files
   invisible(study)
+}
+
+# A study of an earlier version kept its report programs in programs/ and
+# the ARD in one programs/make_ard.R: the report programs move to
+# programs/tfl/ (edits and all), the generated autoexec goes.
+.move_old_programs <- function(root, progs) {
+  lay <- study_layout()
+  for (p in progs) {
+    old <- file.path(root, "programs", p)
+    new <- file.path(root, lay[["programs_tfl"]], p)
+    if (file.exists(old) && !file.exists(new)) file.rename(old, new)
+  }
+  old <- file.path(root, "programs", "autoexec_report.R")
+  if (file.exists(old)) file.remove(old)
+  invisible()
 }
 
 # ------------------------------------------------------------ the state
@@ -433,10 +454,10 @@ study_status <- function(study) {
                                     na.rm = TRUE))
   rows <- lapply(p$outputs$output_id, function(id) {
     info <- report_info(p, id)
-    prog <- file.path(root, lay[["programs"]], info$program)
+    prog <- file.path(root, lay[["programs_tfl"]], info$program)
     rtf <- file.path(root, info$file)
     ard <- file.path(root, lay[["ard"]], paste0(id, ".rds"))
-    log <- file.path(root, lay[["logs"]], sub("\\.[Rr]$", ".log",
+    log <- file.path(root, lay[["logs_tfl"]], sub("\\.[Rr]$", ".log",
                                              info$program))
     pstate <- .program_state(p, id, prog)
     t_rtf <- .mtime(rtf)
@@ -471,7 +492,7 @@ study_status <- function(study) {
 
 #' Run a study's report programs
 #'
-#' Runs `programs/autoexec_report.R` from the study folder, for every
+#' Runs `programs/tfl/autoexec_report.R` from the study folder, for every
 #' report or the ones named, each program in its own `Rscript` process
 #' with its log in `logs/`.
 #'
@@ -488,9 +509,9 @@ run_study <- function(study, output_id = NULL, wait = TRUE) {
   lay <- study_layout()
   px <- processx::process$new(
     file.path(R.home("bin"), "Rscript"),
-    c(file.path(lay[["programs"]], "autoexec_report.R"), progs),
+    c(file.path(lay[["programs_tfl"]], "autoexec_report.R"), progs),
     wd = study$path,
-    stdout = file.path(study$path, lay[["logs"]], "autoexec_report.log"),
+    stdout = file.path(study$path, lay[["logs_tfl"]], "autoexec_report.log"),
     stderr = "2>&1")
   if (!wait) return(px)
   px$wait()

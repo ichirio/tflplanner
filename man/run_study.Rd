@@ -18,7 +18,7 @@ With \code{wait = TRUE}, \code{\link[=study_status]{study_status()}} after the r
 the process.
 }
 \description{
-Runs \code{programs/autoexec_report.R} from the study folder, for every
+Runs \code{programs/tfl/autoexec_report.R} from the study folder, for every
 report or the ones named, each program in its own \code{Rscript} process
 with its log in \verb{logs/}.
 }

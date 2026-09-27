@@ -15,9 +15,9 @@ autoexec_code(x, date = Sys.Date())
 The program, one element per line.
 }
 \description{
-\code{programs/autoexec_report.R} runs from the study folder.  It runs the
+\code{programs/tfl/autoexec_report.R} runs from the study folder.  It runs the
 programs in the order of the report list -- or only the ones named on
-its command line (\verb{Rscript programs/autoexec_report.R DM.R AE.R}) --
+its command line (\verb{Rscript programs/tfl/autoexec_report.R DM.R AE.R}) --
 each in its own \code{Rscript} process with the study folder as its working
 directory and its log in \verb{logs/}, and ends with a table of what passed
 (\code{logs/autoexec_report.csv}).
