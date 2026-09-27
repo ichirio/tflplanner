@@ -43,8 +43,6 @@ reference:
     contents:
       - standards_template
       - code_templates
-      - ard_methods
-      - ard_statistics
   - title: Studies
     contents:
       - create_study
@@ -56,15 +54,10 @@ reference:
       - study_status
   - title: The ARD definition and the study ARD
     contents:
-      - read_ard_spec
-      - write_ard_spec
       - ard_rows
-      - ard_spec_code
       - ard_setup_code
-      - build_ard
       - run_ard
       - ard_view
-      - ard_for
       - ard_status
       - update_study_ard
   - title: Tables, listings and figures

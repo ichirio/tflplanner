@@ -1443,7 +1443,7 @@ app_server <- function(input, output, session, start) {
     switch(sheet,
       analyses = list(
         output_id = output_ids(p),
-        method = c(ard_methods()$method, ard_functions()),
+        method = c(.std_ard_methods()$method, ard_functions()),
         dataset = p$ard$datasets$dataset,
         population_id = p$ard$populations$population_id,
         by = cols, variables = cols),
@@ -1455,7 +1455,7 @@ app_server <- function(input, output, session, start) {
       study = list(key = c("id", "output")),
       list())
   }
-  for (sheet in names(.ard_spec_sheets)) local({
+  for (sheet in names(.ard_sheets())) local({
     sh <- sheet
     out_id <- paste0("hot_ard_", sh)
     by_report <- sh == "analyses"
@@ -1479,11 +1479,11 @@ app_server <- function(input, output, session, start) {
     })
   })
   output$ard_methods <- DT::renderDT(
-    ard_methods()[c("method", "call", "kind", "defaults", "formats", "note")],
+    .std_ard_methods()[c("method", "call", "kind", "defaults", "formats", "note")],
     rownames = FALSE,
     options = list(dom = "t", paging = FALSE, ordering = FALSE))
   output$ard_stat_catalog <- DT::renderDT({
-    d <- ard_statistics()
+    d <- .std_ard_statistics()
     d$computed <- ifelse(is.na(d$fun), "cards / cardx", "tflplanner")
     DT::datatable(d[c("statistic", "kind", "group", "label", "fmt",
                       "computed", "note")],
@@ -1514,17 +1514,17 @@ app_server <- function(input, output, session, start) {
     a[a$analysis_id == input$ard_stat_row, , drop = FALSE][1L, ]
   })
   st_kind <- function(r) {
-    keys <- ard_methods()
+    keys <- .std_ard_methods()
     k <- match(r$method, keys$method)
     if (is.na(k)) "" else keys$kind[k]
   }
   # the format a statistic gets when the analysis says none
   st_default <- function(r, stat) {
-    keys <- ard_methods()
+    keys <- .std_ard_methods()
     k <- match(r$method, keys$method)
     m <- if (!is.na(k)) .parse_formats(keys$formats[k]) else character()
     if (!is.na(m[stat])) return(unname(m[stat]))
-    st <- ard_statistics()
+    st <- .std_ard_statistics()
     unname(st$fmt[match(stat, st$statistic)])
   }
   output$ard_stat_ui <- shiny::renderUI({
@@ -1549,9 +1549,9 @@ app_server <- function(input, output, session, start) {
     st_drawn(st_env$n)
     kind <- st_kind(r)
     kinds <- .stat_kinds(kind)
-    if (identical(ard_methods()$call[match(r$method, ard_methods()$method)],
+    if (identical(.std_ard_methods()$call[match(r$method, .std_ard_methods()$method)],
                   "(subjects)")) kinds <- "categorical"
-    cat <- ard_statistics(kinds)
+    cat <- .std_ard_statistics(kinds)
     cat <- cat[!duplicated(cat$statistic), , drop = FALSE]
     have <- .split_bar(r$statistics)
     extra <- setdiff(have, cat$statistic)
@@ -1622,7 +1622,7 @@ app_server <- function(input, output, session, start) {
   ard_valid <- shiny::reactive({
     shiny::req(has_study())
     tryCatch({
-      ard_spec(rv$p$ard)
+      .ard_spec(rv$p$ard)
       NULL
     }, error = function(e) conditionMessage(e))
   })

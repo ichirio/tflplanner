@@ -50,7 +50,7 @@ test_that("a company's workbook changes what the app offers", {
 
   expect_true("ACME: n / Mean (SD)" %in% names(cell_presets()))
   expect_equal(.stat_digits("mean_sd", 1), "3,4")
-  expect_true("ae_socpt" %in% ard_methods()$method)
+  expect_true("ae_socpt" %in% .std_ard_methods()$method)
   expect_true("portrait-wide" %in% .std_choices("page")$orientation)
 
   st <- create_study("NEW-1")
@@ -66,7 +66,7 @@ test_that("a company's workbook changes what the app offers", {
     output_id = "T1", analysis_id = "AE", method = "ae_socpt",
     dataset = "ADAE", population_id = "SAF", by = "TRTA",
     variables = "AEBODSYS | AEDECOD"), "analyses")
-  code <- ard_spec_code(ard_spec(st$planner$ard))
+  code <- .ard_spec_code(.ard_spec(st$planner$ard))
   expect_true(any(grepl("cards::ard_stack_hierarchical(data,", code,
                         fixed = TRUE)))
   expect_true(any(grepl("id = SUBJID", code, fixed = TRUE)))
@@ -74,7 +74,7 @@ test_that("a company's workbook changes what the app offers", {
 
   # and back to the draft
   suppressMessages(setup_tflplanner(standards = "builtin"))
-  expect_false("ae_socpt" %in% ard_methods()$method)
+  expect_false("ae_socpt" %in% .std_ard_methods()$method)
   expect_equal(.stat_digits("mean_sd", 1), "2,3")
 })
 

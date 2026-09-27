@@ -203,7 +203,7 @@ register_study <- function(path, home = tflplanner_home()) {
   if (file.exists(aj)) {
     p$ard <- .read_ard_json(aj)
   } else if (file.exists(af)) {
-    p$ard <- unclass(read_ard_spec(af, check = FALSE))
+    p$ard <- unclass(.read_ard_spec(af, check = FALSE))
   }
   lf <- file.path(path, study_layout()[["spec"]], .lf_file)
   if (file.exists(lf)) {
@@ -275,7 +275,7 @@ export_spec <- function(study, dir) {
   out <- write_planner(study$planner, dir)
   a <- study$planner$ard
   if (!is.null(a) && (nrow(a$analyses) || nrow(a$datasets))) {
-    out <- c(out, write_ard_spec(a, file.path(dir, .ard_file)))
+    out <- c(out, .write_ard_spec(a, file.path(dir, .ard_file)))
   }
   invisible(out)
 }
@@ -293,7 +293,7 @@ import_spec <- function(study, path) {
     study$planner$ard <- ard
   }
   if (any(is_ard)) {
-    study$planner$ard <- unclass(read_ard_spec(path[is_ard][1L], check = FALSE))
+    study$planner$ard <- unclass(.read_ard_spec(path[is_ard][1L], check = FALSE))
   }
   study
 }

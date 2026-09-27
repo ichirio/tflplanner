@@ -31,7 +31,7 @@
 #' The ARD programs of a study
 #'
 #' `ard_setup_code()` is `programs/ard/ard_setup.R`, which every ARD program
-#' sources: cards, the statistics tflplanner computes ([ard_statistics()]),
+#' sources: cards, the statistics tflplanner computes ([tflspec::ard_statistics()], the company standards' catalog),
 #' the stat_fmt formats, and `.save_output()`, which replaces one output's
 #' rows of the study ARD and records the build.  `ard_program_code()` is one
 #' output's program, `programs/ard/<output_id>.R`.  `ard_autoexec_code()` is
@@ -39,23 +39,22 @@
 #' all, or the ones named (`Rscript programs/ard/autoexec_ard.R T-14-1-1`)
 #' -- each in its own R process with its log in `logs/ard/`.
 #'
-#' @param spec An [ard_spec()] (or the path of one).
+#' @param spec An [tflspec::ard_spec()] (or the path of one).
 #' @param output_id The output.
 #' @param date The date stamped in the banner.
 #' @return The code, one element per line.
 #' @export
 ard_setup_code <- function(spec, date = Sys.Date()) {
-  x <- if (is.character(spec)) read_ard_spec(spec) else spec
+  x <- if (is.character(spec)) .read_ard_spec(spec) else spec
   lay <- study_layout()
   out <- .study_value(x, "output", "output/ard/ard.rds")
-  st <- ard_statistics("continuous")
   c(.banner(
       paste("Program    :", file.path(lay[["programs_ard"]], .ard_setup_file)),
       "What every ARD program of the study starts with (it sources this).",
       paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
              ", ", format(date, "%Y-%m-%d"))),
     "",
-    .ard_common_lines(st$statistic[!is.na(st$fun)]),
+    .ard_spec_code(x, part = "setup"),
     "# one output's rows into the study ARD, the other outputs' left as they",
     "# are; and what was built, from which definition (tflplanner reads it)",
     ".save_output <- function(ard, output_id, definition) {",
@@ -87,7 +86,7 @@ ard_setup_code <- function(spec, date = Sys.Date()) {
 #' @rdname ard_setup_code
 #' @export
 ard_program_code <- function(spec, output_id, date = Sys.Date()) {
-  x <- if (is.character(spec)) read_ard_spec(spec) else spec
+  x <- if (is.character(spec)) .read_ard_spec(spec) else spec
   lay <- study_layout()
   a <- x$analyses[x$analyses$output_id %in% output_id, , drop = FALSE]
   if (!nrow(a)) stop("No analyses for ", output_id, call. = FALSE)
@@ -109,10 +108,10 @@ ard_program_code <- function(spec, output_id, date = Sys.Date()) {
                                                  .ard_setup_file),
                                        quote = "\"")),
     "",
-    .ard_body_lines(x, a),
+    .ard_spec_code(x, output_id = output_id, part = "body"),
     "",
     sprintf(".save_output(ard, %s, %s)", encodeString(output_id, quote = "\""),
-            encodeString(.ard_output_hash(x, output_id), quote = "\"")),
+            encodeString(tflspec::ard_spec_hash(x, output_id), quote = "\"")),
     "")
 }
 
