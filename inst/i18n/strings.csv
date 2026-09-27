@@ -301,3 +301,23 @@ Stacked,上下
 One pane,1 ペイン
 ARD definition,ARD 定義
 Code / ARD,コード / ARD
+Click a study to see it on the right; double-click to open it.,試験をクリックすると右に内容を表示、ダブルクリックで開きます。
+Study,試験
+(open),（開いています）
+(not open),（未オープン）
+ARD analyses,ARD 解析数
+Open this study,この試験を開く
+"Choose a study in the list, or create one.",一覧から試験を選ぶか、新しく作成してください。
+Statistics and formats,統計量と書式
+Statistics (company standards),統計量（カンパニースタンダード）
+Choose a report with analyses in the sidebar: its analyses' statistics and formats are picked here.,サイドバーで解析のある帳票を選ぶと、その解析の統計量と書式をここで選べます。
+Analysis,解析
+not in the catalog,カタログにないもの
+"Statistics of the numeric variables, in this order. cards computes its own; tflplanner writes a function for the others (CV, geometric mean, percentiles, CI of the mean ...).",数値変数の統計量（この順）。cards にあるものは cards が計算し、それ以外（CV、幾何平均、パーセンタイル、平均の信頼区間など）は tflplanner が関数をプログラムに書きます。
+Counts and percents of each level.,各カテゴリの例数と割合。
+Missing and non-missing counts.,欠測数と非欠測数。
+"This method gives a fixed set of results (estimate, confidence limits, p-value ...): the statistics picked here are the ones kept. Blank keeps them all.",この手法は決まった結果（推定値、信頼限界、p 値など）を返します。ここで選んだ統計量だけを残します。空欄ならすべて残します。
+Apply to the analysis,解析に反映
+"Format: xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown.",書式：xx.x = 小数 1 桁、xx.x% = 割合を % で、2 = 小数 2 桁、pvalue = <0.001 か小数 3 桁。空欄 = 薄字の既定値。
+Not a format: %s,書式ではありません：%s
+%s: statistics and formats written,%s：統計量と書式を書き込みました

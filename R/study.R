@@ -223,15 +223,20 @@ list_studies <- function(home = tflplanner_home()) {
     st <- tryCatch(.read_state(id, home), error = function(e) NULL)
     if (is.null(st)) return(NULL)
     v <- function(k) as.character(st$meta[[k]] %||% NA_character_)
+    n <- function(x) length(x$output_id %||% list())
     data.frame(study_id = id, title = v("title"), compound = v("compound"),
                phase = v("phase"), saved = as.character(st$saved %||% NA),
                path = st$path, folder = dir.exists(st$path),
+               description = v("description"),
+               reports = n(st$planner$outputs),
+               analyses = n(st$planner$ard$analyses),
                stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, c(list(data.frame(
     study_id = character(), title = character(), compound = character(),
     phase = character(), saved = character(), path = character(),
-    folder = logical())), rows))
+    folder = logical(), description = character(), reports = integer(),
+    analyses = integer())), rows))
   rownames(out) <- NULL
   out
 }

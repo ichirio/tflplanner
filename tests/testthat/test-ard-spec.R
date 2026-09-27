@@ -97,3 +97,53 @@ test_that("a workbook reads back as written", {
   y <- read_ard_spec(f)
   expect_equal(ard_spec_code(y, save = FALSE)[-2], ard_spec_code(x, save = FALSE)[-2])
 })
+
+test_that("statistics of the catalog and formats become stat_fmt", {
+  skip_if_not_installed("cards")
+  skip_if_not_installed("cardx")
+  dir <- withr_tempdir()
+  saveRDS(cards::ADSL, file.path(dir, "adsl.rds"))
+  x <- toy_spec(spec_df(
+    list(output_id = "DM", analysis_id = "AGE", method = "continuous",
+         population_id = "SAF", by = "TRT01A", variables = "AGE | BMIBL",
+         statistics = "N | mean | cv | geo_mean | sd",
+         formats = "mean=xx.xx | BMIBL:sd=3"),
+    list(output_id = "DM", analysis_id = "CI", method = "mean_ci",
+         population_id = "SAF", by = "TRT01A", variables = "AGE",
+         statistics = "estimate | conf.low | conf.high"),
+    list(output_id = "DM", analysis_id = "SEX", method = "categorical",
+         population_id = "SAF", by = "TRT01A", variables = "SEX")))
+  code <- ard_spec_code(x)
+  expect_true(any(grepl(".tfl_stats[c(\"cv\", \"geo_mean\")]", code,
+                        fixed = TRUE)))
+  expect_false(any(grepl("`p5` = function", code, fixed = TRUE)))
+  a <- build_ard(x, dir = dir)
+  v <- ard_view(a)
+  pick <- function(id, var, s) v$stat_fmt[v$analysis_id == id &
+                                             v$variable == var &
+                                             v$stat_name == s][1L]
+  expect_equal(pick("AGE", "AGE", "mean"), "75.21")
+  expect_equal(pick("AGE", "AGE", "sd"), "8.59")
+  expect_equal(pick("AGE", "BMIBL", "sd"), "3.672")
+  expect_equal(pick("AGE", "AGE", "cv"), "11.4")
+  expect_setequal(unique(v$stat_name[v$analysis_id == "CI"]),
+                  c("estimate", "conf.low", "conf.high"))
+  expect_equal(pick("CI", "AGE", "estimate"), "75.2")
+  expect_equal(pick("SEX", "SEX", "p"), "61.6")
+
+  bad <- x
+  bad$analyses$statistics[1] <- "N | nonsense"
+  bad$analyses$formats[3] <- "p=x.y"
+  expect_error(ard_spec(unclass(bad)), "no continuous statistic nonsense")
+  expect_error(ard_spec(unclass(bad)), "p")
+})
+
+test_that("every computed statistic of the catalog is a function of x", {
+  st <- ard_statistics("continuous")
+  x <- c(2.1, 3.4, 5.9, 4.2, 3.3)
+  for (i in which(!is.na(st$fun))) {
+    f <- eval(parse(text = st$fun[i]))
+    expect_true(is.numeric(f(x)) && length(f(x)) == 1L, label = st$statistic[i])
+  }
+  expect_equal(eval(parse(text = st$fun[st$statistic == "geo_mean"]))(c(1, 100)), 10)
+})

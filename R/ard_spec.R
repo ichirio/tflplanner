@@ -16,7 +16,7 @@
 #   populations  population_id, dataset, where,  analysis sets (and the
 #                derive                          denominators)
 #   analyses     output_id, analysis_id, method, dataset, population_id,
-#                where, by, variables, statistics, args, code
+#                where, by, variables, statistics, formats, args, code
 #
 # The concepts are those of CDISC ARS (analysis set, data subset, grouping,
 # method), so an ard_spec can later be written as ARS metadata.
@@ -27,7 +27,7 @@
   populations = c("population_id", "dataset", "where", "derive"),
   analyses = c("output_id", "analysis_id", "label", "method", "dataset",
                "population_id", "where", "by", "variables", "statistics",
-               "args", "code"))
+               "formats", "args", "code"))
 
 #' The methods an analysis row may name
 #'
@@ -199,7 +199,8 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
                                       error = function(e) NULL)
   if (!identical(old, a)) {
     writexl::write_xlsx(c(list(`_README` = .ard_readme()), a,
-                          list(`_methods` = ard_methods())), f)
+                          list(`_methods` = ard_methods(),
+                               `_statistics` = ard_statistics())), f)
     out[nrow(out) + 1L, ] <- list(f, "written")
   } else {
     out[nrow(out) + 1L, ] <- list(f, "unchanged")
@@ -219,12 +220,13 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
 .ard_readme <- function() {
   data.frame(
     sheet = c("study", "datasets", "datasets", "populations", "populations",
-              "analyses", "analyses", "analyses", "analyses", "analyses"),
+              "analyses", "analyses", "analyses", "analyses", "analyses",
+              "analyses"),
     column = c("key / value", "dataset / path", "derive",
                "population_id / dataset / where", "derive",
                "output_id / analysis_id", "method",
                "dataset / population_id / where",
-               "by / variables / statistics", "args / code"),
+               "by / variables / statistics", "formats", "args / code"),
     description = c(
       "id: the subject key (USUBJID); output: where the study ARD goes",
       "a name for the data, and its file relative to the study folder",
@@ -234,7 +236,8 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
       "the report the analysis serves, and its id; both are ARD columns",
       "a keyword (sheet _methods) or any pkg::function (cards::, cardx::)",
       "the analysis data: `dataset` restricted to the population and `where`",
-      "grouping and analysis variables, statistics; | between several",
+      "grouping and analysis variables, statistics (sheet _statistics); | between several",
+      "stat_fmt formats: statistic=format, | between them (mean=xx.x | p=xx.x% | AGE:sd=xx.xx); blank = the default of the statistic",
       "more arguments as R; `code` for custom (data, population are bound)"),
     stringsAsFactors = FALSE)
 }
@@ -294,7 +297,7 @@ ard_view <- function(ard) {
   keep <- c("output_id", "analysis_id",
             grep("^group[0-9]+(_level)?$", names(ard), value = TRUE),
             "variable", "variable_level", "context", "stat_name",
-            "stat_label", "stat")
+            "stat_label", "stat", "stat_fmt")
   keep <- intersect(keep, names(ard))
   out <- as.data.frame(lapply(ard[keep], flat), stringsAsFactors = FALSE)
   out[is.na(out)] <- ""
@@ -362,6 +365,23 @@ ard_spec <- function(x) {
                   x$populations$population_id)
   if (length(miss)) err <- c(err, sprintf("population(s) not in `populations`: %s",
                                           paste(miss, collapse = ", ")))
+  keys <- ard_methods()
+  st <- ard_statistics()
+  for (i in seq_len(nrow(a))) {
+    k <- match(a$method[i], keys$method)
+    s <- .split_bar(a$statistics[i])
+    if (!is.na(k) && keys$kind[k] == "continuous") {
+      bad <- setdiff(s, st$statistic[st$kind == "continuous"])
+      if (length(bad)) err <- c(err, sprintf(
+        "%s / %s: no continuous statistic %s (see ard_statistics())",
+        a$output_id[i], a$analysis_id[i], paste(bad, collapse = ", ")))
+    }
+    f <- .parse_formats(a$formats[i])
+    bad <- names(f)[is.na(f) | !.fmt_ok(f)]
+    if (length(bad)) err <- c(err, sprintf(
+      "%s / %s: formats are statistic=format, the format xx.x, xx.x%%, a number of decimals or pvalue (%s)",
+      a$output_id[i], a$analysis_id[i], paste(bad, collapse = ", ")))
+  }
   cust <- a$method %in% "custom" & is.na(a$code)
   if (any(cust)) err <- c(err, "a `custom` analysis needs its `code`")
   if (length(err)) stop(paste(c("The ARD definition is not valid:", err),
@@ -401,11 +421,135 @@ ard_spec <- function(x) {
 .stat_arg <- function(method, stats) {
   s <- .split_bar(stats)
   if (!length(s)) return(NULL)
-  q <- paste(encodeString(s, quote = "\""), collapse = ", ")
+  q <- function(v) paste(encodeString(v, quote = "\""), collapse = ", ")
   switch(method,
-    continuous = sprintf("statistic = ~ cards::continuous_summary_fns(c(%s))", q),
-    categorical = sprintf("statistic = ~ c(%s)", q),
+    continuous = {
+      # cards' own statistics and those computed by .tfl_stats, in the
+      # order asked
+      own <- !s %in% .computed_stats()
+      run <- cumsum(c(TRUE, own[-1L] != own[-length(own)]))
+      parts <- vapply(split(seq_along(s), run), function(i) {
+        if (own[i[1L]]) sprintf("cards::continuous_summary_fns(c(%s))", q(s[i]))
+        else sprintf(".tfl_stats[c(%s)]", q(s[i]))
+      }, "")
+      sprintf("statistic = ~ %s", if (length(parts) == 1L) parts else
+        sprintf("c(%s)", paste(parts, collapse = ", ")))
+    },
+    categorical = ,
+    missing = sprintf("statistic = ~ c(%s)", q(s)),
     NULL)
+}
+
+#' The statistics an ARD analysis may ask for
+#'
+#' The company standards' catalog (sheet `ard_statistics`, see
+#' [company_standards()]): each statistic's `kind` -- which methods give it:
+#' `continuous`, `categorical`, `missing`, or `result` (what a confidence
+#' interval, a test or a model gives) --, its label, the format its
+#' `stat_fmt` gets unless the method or the analysis gives another, and,
+#' for the continuous statistics cards does not compute itself (CV,
+#' geometric mean, percentiles ...), the R function tflplanner writes into
+#' the ARD program.
+#'
+#' An analysis's `formats` are `statistic=format` pairs, `|` between them
+#' (`mean=xx.xx | sd=xx.xxx`); `VARIABLE:statistic=format` for one variable
+#' only.  A format is `xx.x` (as many x after the point as decimals),
+#' `xx.x%` (a proportion as a percent), a number of decimals, or `pvalue`
+#' (`<0.001`, else 3 decimals).
+#'
+#' @param kind Only the statistics of these kinds; `NULL` for all.
+#' @return A data frame: `statistic`, `kind`, `group`, `label`, `fmt`,
+#'   `fun`, `note`.
+#' @export
+ard_statistics <- function(kind = NULL) {
+  d <- company_standards()$ard_statistics
+  if (!is.null(kind)) d <- d[d$kind %in% kind, , drop = FALSE]
+  rownames(d) <- NULL
+  d
+}
+
+# the continuous statistics tflplanner computes (not cards)
+.computed_stats <- function() {
+  d <- ard_statistics("continuous")
+  d$statistic[!is.na(d$fun)]
+}
+
+# the kinds of statistic a method's analysis may ask for
+.stat_kinds <- function(kind) {
+  switch(kind %||% "",
+         continuous = "continuous", categorical = "categorical",
+         missing = "missing", "result")
+}
+
+.fmt_ok <- function(f) grepl("^(x+(\\.x+)?%?|[0-9]+|pvalue)$", f)
+
+# `mean=xx.x | AGE:sd=xx.xx` as a named vector
+.parse_formats <- function(x) {
+  p <- .split_bar(x)
+  if (!length(p)) return(character())
+  k <- trimws(sub("=.*$", "", p))
+  v <- trimws(sub("^[^=]*=", "", p))
+  v[!grepl("=", p, fixed = TRUE)] <- NA
+  stats::setNames(v, k)
+}
+
+.fmt_vector <- function(f) {
+  if (!length(f)) return("character()")
+  sprintf("c(%s)", paste(sprintf("%s = %s", encodeString(names(f), quote = "`"),
+                                 encodeString(f, quote = "\"")),
+                         collapse = ", "))
+}
+
+# the helpers every ARD program starts with: the computed statistics it
+# uses, and stat_fmt
+.ard_helpers <- function(used) {
+  st <- ard_statistics()
+  cst <- st[st$kind == "continuous" & !is.na(st$fun) & st$statistic %in% used, ]
+  dflt <- st[!duplicated(st$statistic) & !is.na(st$fmt), ]
+  dflt <- stats::setNames(dflt$fmt, dflt$statistic)
+  fl <- sprintf("%s = %s", encodeString(names(dflt), quote = "`"),
+                encodeString(dflt, quote = "\""))
+  fl <- vapply(split(fl, ceiling(seq_along(fl) / 5)), paste, "",
+               collapse = ", ")
+  c(if (nrow(cst)) c(
+      "# statistics cards does not compute itself (company standards)",
+      ".tfl_stats <- list(",
+      paste0("  ", encodeString(cst$statistic, quote = "`"), " = ", cst$fun,
+             c(rep(",", nrow(cst) - 1L), "")),
+      ")", ""),
+    "# stat_fmt: each statistic formatted -- xx.x = 1 decimal, xx.x% = a",
+    "# proportion as a percent, pvalue = <0.001 or 3 decimals",
+    ".fmt_default <- c(",
+    paste0("  ", fl, c(rep(",", length(fl) - 1L), "")),
+    ")",
+    ".fmt <- function(ard, fmt = character()) {",
+    "  if (!inherits(ard, \"card\")) return(ard)",
+    "  f <- .fmt_default",
+    "  f[names(fmt)] <- fmt",
+    "  f <- f[order(grepl(\":\", names(f), fixed = TRUE))]",
+    "  for (k in names(f)) {",
+    "    s <- sub(\"^.*:\", \"\", k)",
+    "    v <- if (grepl(\":\", k, fixed = TRUE)) sub(\":.*$\", \"\", k)",
+    "    rows <- ard$stat_name == s & (is.null(v) | ard$variable %in% v)",
+    "    if (!any(rows)) next",
+    "    fun <- if (f[[k]] == \"pvalue\") {",
+    "      function(x) ifelse(x < 0.001, \"<0.001\", sprintf(\"%.3f\", x))",
+    "    } else {",
+    "      # the decimals (the x after the point, or the number); % scales by 100",
+    "      d <- if (grepl(\"^[0-9]+$\", f[[k]])) as.integer(f[[k]]) else",
+    "        nchar(sub(\"^[^.]*[.]?\", \"\", sub(\"%$\", \"\", f[[k]])))",
+    "      sc <- if (endsWith(f[[k]], \"%\")) 100 else 1",
+    "      local({ d <- d; sc <- sc; cards::label_round(d, scale = sc) })",
+    "    }",
+    "    ard <- cards::update_ard_fmt_fun(",
+    "      ard, variables = dplyr::all_of(unique(ard$variable[rows])),",
+    "      stat_names = s, fmt_fun = fun)",
+    "  }",
+    "  cards::apply_fmt_fun(ard)",
+    "}",
+    "# only the statistics asked for, of a method that gives more",
+    ".keep <- function(ard, keep) ard[ard$stat_name %in% keep, , drop = FALSE]",
+    "")
 }
 
 #' The R code that makes the study's ARD
@@ -439,6 +583,7 @@ ard_spec_code <- function(spec, output_id = NULL, save = TRUE) {
     "        population_id = population_id, ard, stringsAsFactors = FALSE)",
     "}",
     "",
+    .ard_helpers(unlist(lapply(a$statistics, .split_bar))),
     "# ---- data")
   used_ds <- unique(stats::na.omit(c(a$dataset, x$populations$dataset[
     x$populations$population_id %in% a$population_id])))
@@ -476,13 +621,28 @@ ard_spec_code <- function(spec, output_id = NULL, save = TRUE) {
     given <- if (is.na(r$args)) "" else r$args
     has <- function(arg) grepl(paste0("(^|[,(\\s])", arg, "\\s*="), given)
     body <- .analysis_body(r, keys, subj, has)
+    k <- match(r$method, keys$method)
+    kind <- if (is.na(k)) "" else keys$kind[k]
+    keep <- if (!kind %in% c("continuous", "categorical", "missing") &&
+                !identical(keys$call[k], "(subjects)"))
+      .split_bar(r$statistics)
+    fmt <- c(if (!is.na(k)) .parse_formats(keys$formats[k]),
+             .parse_formats(r$formats))
+    fmt <- fmt[!duplicated(names(fmt), fromLast = TRUE)]
     code <- c(code,
               sprintf("# %s / %s%s", r$output_id, r$analysis_id,
                       if (!is.na(r$label)) paste(":", r$label) else ""),
               sprintf("ards[[%d]] <- .tag(local({", i),
               paste0("  data <- ", data),
               paste0("  population <- ", if (is.null(pop)) "NULL" else pop),
-              paste0("  ", strsplit(body, "\n", fixed = TRUE)[[1L]]),
+              "  ard <- local({",
+              paste0("    ", strsplit(body, "\n", fixed = TRUE)[[1L]]),
+              "  })",
+              if (length(keep)) sprintf("  ard <- .keep(ard, c(%s))",
+                                        paste(encodeString(keep, quote = "\""),
+                                              collapse = ", ")),
+              sprintf("  .fmt(ard%s)", if (length(fmt))
+                paste0(", ", .fmt_vector(fmt)) else ""),
               sprintf("}), %s, %s, %s)",
                       encodeString(r$output_id, quote = "\""),
                       encodeString(r$analysis_id, quote = "\""),

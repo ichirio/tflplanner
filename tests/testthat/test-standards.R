@@ -37,7 +37,7 @@ test_that("a company's workbook changes what the app offers", {
     method = "ae_socpt", call = "cards::ard_stack_hierarchical",
     kind = "categorical",
     defaults = "denominator = population, id = <id>, over_variables = TRUE",
-    statistics = NA, note = "AE by SOC / PT, with the Any row"))
+    statistics = NA, formats = NA, note = "AE by SOC / PT, with the Any row"))
   s$settings$value[s$settings$key == "subject_id"] <- "SUBJID"
   s$default_header$left[1] <- "ACME Pharma"
   s$choices <- rbind(s$choices, data.frame(sheet = "page",
