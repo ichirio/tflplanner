@@ -32,7 +32,7 @@ Imports:
     readxl,
     rhandsontable,
     rtfreporter (>= 0.8.0.9085),
-    tflspec (>= 0.0.4),
+    tflspec (>= 0.0.6),
     shiny,
     sortable,
     bslib,
@@ -51,8 +51,11 @@ Suggests:
     cardx,
     dplyr,
     ggplot2,
+    ggsurvfit,
     haven,
     logrx,
+    patchwork,
+    survival,
     testthat (>= 3.0.0)
 Remotes:
     ichirio/rtfreporter,

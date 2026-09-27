@@ -106,8 +106,8 @@ test_that("workbooks export and import", {
 test_that("saving keeps an edited program unless asked to regenerate", {
   local_home()
   s <- create_study("S1", planner = sample_planner())
-  # the workbooks, the programs, batch.R and the two autoexec programs
-  expect_equal(sum(s$files$status == "written"), 2 + 5 + 3)
+  # the workbooks, the programs, batch.R, the two autoexec programs, fig_setup.R
+  expect_equal(sum(s$files$status == "written"), 2 + 5 + 4)
   s0 <- save_study(s)
   expect_true(all(s0$files$status == "unchanged"))
   f <- file.path(s$path, "programs", "tfl", "DM.R")

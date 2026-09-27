@@ -126,6 +126,9 @@
       note = c("<p> = the decimals of the percent", "", "")),
     ard_methods = tflspec::ard_methods(),
     ard_statistics = tflspec::ard_statistics(),
+    figure_settings = .tflspec_fig_style()$settings,
+    figure_colors = .tflspec_fig_style()$colors,
+    figure_markers = .tflspec_fig_style()$markers,
     code_templates = .df(
       name = c("table_data", "table_process", "figure_plot", "setup"),
       code = c(paste(
@@ -142,8 +145,10 @@
         "# data <- dplyr::mutate(data, label = dplyr::recode(label, \"Age\" = \"Age (years)\"))",
         sep = "\n"),
         paste(
-        "# TODO: the plot (ggplot2), e.g.",
-        "#   plot <- ggplot2::ggplot(adsl, ggplot2::aes(AGE)) + ggplot2::geom_histogram()",
+        "# TODO: the plot (ggplot2), in the figure style of the company standards, e.g.",
+        "#   plot <- ggplot2::ggplot(adsl, ggplot2::aes(AGE, fill = TRT01A)) +",
+        "#     ggplot2::geom_histogram() + scale_fill_tfl(\"treatment\", levels(adsl$TRT01A)) +",
+        "#     theme_tfl()",
         sep = "\n"),
         NA),
       note = c(
@@ -209,7 +214,8 @@
 .standards_readme <- function() {
   .df(sheet = c("about", "settings", "choices", "cell_presets",
                 "header_presets", "statistics", "categorical_formats",
-                "ard_methods", "ard_statistics", "code_templates",
+                "ard_methods", "ard_statistics", "figure_settings",
+                "figure_colors", "figure_markers", "code_templates",
                 "listing_types",
                 "populations", "datasets",
                 "default_<sheet>"),
@@ -223,6 +229,9 @@
         "the categorical formats the table builder offers; <p> = the decimals of the percent",
         "the ARD methods (keywords): the function, its kind (continuous / categorical / missing / none, for statistic =), default arguments (<id> = the subject key), statistics and formats",
         "the statistics an ARD analysis may ask for: kind, label, default format of stat_fmt (xx.x, xx.x%, pvalue), and the R function of those tflplanner computes",
+        "the figure style: one value per key (type blank = every figure; km / waterfall / swimmer = that type)",
+        "the figure palettes: a named palette colours the values it names (response: CR, PR ...); one with value blank is used in order (treatment)",
+        "the figure markers: event markers by label (Death, Discontinued ...) and the figures' symbols (censor, assessment)",
         "the code written where a report says none: table_data (its rows of the study ARD), table_process (normalize, rework), figure_plot, setup; {OUTPUT_ID} {ARD} {ARD_PROGRAM} {PROGRAM} {STUDY_ID} are filled in",
         "the listing types a listing may use (rtfreporter's)",
         "the analysis sets a new study's ARD definition starts with",
@@ -238,6 +247,9 @@
         "\u8868\u30d3\u30eb\u30c0\u30fc\u306e\u30ab\u30c6\u30b4\u30ea\u5909\u6570\u306e\u66f8\u5f0f\u3002<p> = % \u306e\u5c0f\u6570\u6841\u6570",
         "ARD \u306e\u624b\u6cd5\u30ad\u30fc\u30ef\u30fc\u30c9\uff1a\u95a2\u6570\u3001\u7a2e\u985e\uff08statistic \u306e\u5f62\uff09\u3001\u65e2\u5b9a\u306e\u5f15\u6570\uff08<id> = \u88ab\u9a13\u8005\u30ad\u30fc\uff09\u3001\u7d71\u8a08\u91cf\u3001\u66f8\u5f0f",
         "ARD \u306e\u7d71\u8a08\u91cf\uff1a\u7a2e\u985e\u3001\u30e9\u30d9\u30eb\u3001stat_fmt \u306e\u65e2\u5b9a\u306e\u66f8\u5f0f\uff08xx.x, xx.x%, pvalue\uff09\u3001tflplanner \u304c\u8a08\u7b97\u3059\u308b\u3082\u306e\u306e R \u95a2\u6570",
+        "\u56f3\u306e\u30b9\u30bf\u30a4\u30eb\uff1a\u30ad\u30fc\u3054\u3068\u306b 1 \u3064\u306e\u5024\uff08type \u7a7a\u6b04 = \u3059\u3079\u3066\u306e\u56f3\u3001km / waterfall / swimmer = \u305d\u306e\u7a2e\u985e\u3060\u3051\uff09",
+        "\u56f3\u306e\u30d1\u30ec\u30c3\u30c8\uff1a\u5024\u306e\u540d\u524d\u4ed8\u304d\uff08response\uff1aCR\u3001PR \u306a\u3069\uff09\u306f\u305d\u306e\u5024\u306e\u8272\u3001value \u7a7a\u6b04\uff08treatment\uff09\u306f\u9806\u756a\u306b\u4f7f\u3046",
+        "\u56f3\u306e\u8a18\u53f7\uff1a\u30e9\u30d9\u30eb\u3054\u3068\u306e\u30a4\u30d9\u30f3\u30c8\u8a18\u53f7\uff08Death\u3001Discontinued \u306a\u3069\uff09\u3068\u56f3\u306e\u8a18\u53f7\uff08censor\u3001assessment\uff09",
         "\u5e33\u7968\u304c\u4f55\u3082\u66f8\u304b\u306a\u3044\u3068\u304d\u306e\u30b3\u30fc\u30c9\uff1atable_data\uff08ARD \u304b\u3089\u306e\u53d6\u5f97\uff09\u3001table_process\uff08normalize\u30fb\u52a0\u5de5\uff09\u3001figure_plot\u3001setup",
         "Listing \u306e\u7a2e\u985e\uff08rtfreporter \u306e\u3082\u306e\uff09",
         "\u65b0\u898f\u8a66\u9a13\u306e ARD \u5b9a\u7fa9\u304c\u6700\u521d\u306b\u6301\u3064\u89e3\u6790\u5bfe\u8c61\u96c6\u56e3",
@@ -334,6 +346,20 @@ company_standards <- function(home = tflplanner_home()) {
   ch <- company_standards()$choices
   ch <- ch[!is.na(ch$sheet) & ch$sheet == sheet, , drop = FALSE]
   split(ch$value, factor(ch$column, levels = unique(ch$column)))
+}
+
+# the figure style of tflspec's built-in catalog (the sample programs')
+.tflspec_fig_style <- function() {
+  old <- options(tflspec.fig_style = NULL)
+  on.exit(options(old), add = TRUE)
+  tflspec::fig_style()
+}
+
+# the company standards' figure style, as tflspec takes it
+.std_fig_style <- function() {
+  s <- company_standards()
+  list(settings = s$figure_settings, colors = s$figure_colors,
+       markers = s$figure_markers)
 }
 
 # the rows a new study starts with: its study defaults, its ARD definition's

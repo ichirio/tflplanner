@@ -47,9 +47,12 @@ test_that("a figure reads its data and leaves the plot to its code", {
   code <- data_lines(p, "F1")
   expect_true("adsl <- readRDS(\"data/adam/adsl.rds\")" %in% code)
   expect_true(any(grepl("still to be written", code)))
+  # the figure style of the company standards, and the checks
+  expect_true('source("programs/tfl/fig_setup.R")' %in% code)
   p$outputs$data_code[p$outputs$output_id == "F1"] <- "plot <- 1"
   code <- data_lines(p, "F1")
   expect_true("content <- list(plot)" %in% code)
+  expect_true("tfl_check(plot)" %in% code)
   p$outputs$data_code[p$outputs$output_id == "F1"] <- "content <- list(1)"
   expect_false("content <- list(plot)" %in% data_lines(p, "F1"))
 })

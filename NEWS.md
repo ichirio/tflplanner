@@ -1,5 +1,15 @@
 # tflplanner 0.0.0.9000
 
+- Figures in the company's style, and checked: the company standards gain
+  `figure_settings`, `figure_colors` and `figure_markers` (built-in =
+  tflspec's figure style, taken from the KM / waterfall / swimmer sample
+  programs).  Saving writes `programs/tfl/fig_setup.R` (`theme_tfl()`,
+  `scale_colour_tfl()`, `tfl_marker()`, `tfl_save()`, `tfl_km_risk()`,
+  `tfl_check()`); every figure program sources it and ends with
+  `tfl_check(plot)`, whose warnings the official run counts.
+- SAMPLE-01 gains ADTTE (time to the first dermatologic event, derived from
+  ADSL / ADAE), a Kaplan-Meier table (T-14-2-2) and a Kaplan-Meier figure
+  (F-14-2-2) whose number at risk is the table's ARD.
 - The sample study SAMPLE-01 (`create_sample_study()`,
   `setup_tflplanner(sample = TRUE)`, *Add the sample study* in the app):
   the CDISC pilot ADaM data of pharmaverseadam, one study ARD, four
