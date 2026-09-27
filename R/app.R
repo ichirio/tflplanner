@@ -101,6 +101,15 @@ planner_app <- function(study = NULL) {
   grid-template-columns: minmax(0, 1fr); }
 .rp-split.rp-lay-one.rp-show-def > :nth-child(2),
 .rp-split.rp-lay-one.rp-show-out > :nth-child(1) { display: none !important; }
+.rhandsontable.html-widget { overflow: hidden; }
+.rp-grip { height: 8px; margin: 2px 0 4px; cursor: ns-resize;
+  border-radius: 4px; background: var(--bs-tertiary-bg, #eef0f3);
+  background-image: linear-gradient(90deg, transparent 45%, #9ca3af 45%,
+    #9ca3af 55%, transparent 55%);
+  background-size: 100% 2px; background-repeat: no-repeat;
+  background-position: center; }
+.rp-grip:hover { background-color: #dbe4f0; }
+.rp-resize .dataTables_scrollBody { resize: vertical; }
 @media (max-width: 991px) {
   .rp-split { grid-template-columns: minmax(0, 1fr); } }
 "
@@ -146,6 +155,66 @@ planner_app <- function(study = NULL) {
     apply();
   });
   document.addEventListener('DOMContentLoaded', apply);
+})();
+
+// a grid is as tall as its rows; the bar under it drags it taller or
+// shorter, and the height it is given stays through redraws
+(function() {
+  var heights = {}, drag = null;
+  function hotOf(id) {
+    var w = window.HTMLWidgets && HTMLWidgets.find('#' + id);
+    return w && w.hot;
+  }
+  function fit(g, h) {
+    var hot = hotOf(g.id);
+    if (!hot) return;
+    g.style.height = h + 'px';
+    hot.updateSettings({height: h});
+  }
+  function grip(g) {
+    var n = g.nextElementSibling;
+    if (n && n.classList.contains('rp-grip')) return;
+    var b = document.createElement('div');
+    b.className = 'rp-grip';
+    b.title = 'drag to resize';
+    b.dataset.grid = g.id;
+    g.parentNode.insertBefore(b, g.nextSibling);
+  }
+  document.addEventListener('mousedown', function(e) {
+    var b = e.target.closest('.rp-grip');
+    if (b) {
+      var g = document.getElementById(b.dataset.grid);
+      drag = {g: g, y: e.clientY, h: g.getBoundingClientRect().height};
+      e.preventDefault();
+      return;
+    }
+    var s = e.target.closest('.rp-resize .dataTables_scrollBody');
+    if (s) {
+      var r = s.getBoundingClientRect();
+      if (e.clientX > r.right - 18 && e.clientY > r.bottom - 18) {
+        s.style.maxHeight = 'none';
+      }
+    }
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!drag) return;
+    var h = Math.max(80, Math.round(drag.h + e.clientY - drag.y));
+    heights[drag.g.id] = h;
+    fit(drag.g, h);
+  });
+  document.addEventListener('mouseup', function() { drag = null; });
+  if (window.jQuery) {
+    jQuery(document).on('shiny:value', function(e) {
+      setTimeout(function() {
+        var g = document.getElementById(e.name);
+        if (!g || !g.classList.contains('rhandsontable')) return;
+        var hot = hotOf(e.name);
+        if (!hot) return;
+        grip(g);
+        fit(g, heights[e.name] || hot.getSettings().height);
+      }, 100);
+    });
+  }
 })();
 "
 
@@ -319,7 +388,8 @@ app_ui <- function(lang = "en") {
               shiny::span(class = "small text-muted",
                           t("Runs the code on the left in its own R process, from the study folder."))),
             shiny::uiOutput("ard_run_info"),
-            DT::DTOutput("ard_table", height = "auto", fill = FALSE))))),
+            shiny::div(class = "rp-resize",
+                       DT::DTOutput("ard_table", height = "auto", fill = FALSE)))))),
 
     bslib::nav_panel(
       t("Reports"), value = "outputs",
@@ -456,12 +526,18 @@ app_ui <- function(lang = "en") {
   d
 }
 
+# as tall as its rows (and the spare one), up to a screenful; the viewer
+# can drag it taller or shorter (.split_js)
+.grid_height <- function(n) {
+  as.integer(min(max(28 + 23 * (n + 1L) + 20, 100), 420))
+}
+
 .grid <- function(d, sheet, key, choices) {
   d <- .na_blank(d)
   if (!nrow(d)) d[1L, ] <- ""
   h <- rhandsontable::rhandsontable(
     d, rowHeaders = TRUE, useTypes = FALSE, stretchH = "all",
-    height = 420, minSpareRows = 1L, planner_key = key)
+    height = .grid_height(nrow(d)), minSpareRows = 1L, planner_key = key)
   h <- rhandsontable::hot_context_menu(h, allowRowEdit = TRUE,
                                        allowColEdit = FALSE)
   for (cn in names(choices)) {
