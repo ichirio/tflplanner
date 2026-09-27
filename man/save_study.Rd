@@ -4,7 +4,12 @@
 \alias{save_study}
 \title{Save a study}
 \usage{
-save_study(study, regenerate = character(), home = tflplanner_home())
+save_study(
+  study,
+  regenerate = character(),
+  home = tflplanner_home(),
+  base = NULL
+)
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
@@ -12,6 +17,13 @@ save_study(study, regenerate = character(), home = tflplanner_home())
 \item{regenerate}{Report ids whose program is written anew.}
 
 \item{home}{tflplanner's home.}
+
+\item{base}{The study as it was opened (or last saved) by whoever saves
+now.  Given it, the save merges: a part (the study fields, the report
+list, each sheet, each sheet of the ARD definition ...) this person did
+not change keeps what is saved now -- someone else may have changed
+it -- and a part both changed differently is a conflict that stops the
+save (class \code{tflplanner_conflict}).}
 }
 \value{
 The study, invisibly, with \code{files}: what was written or kept.

@@ -184,6 +184,16 @@ fetch_ard <- function(study, output_id, timeout = 300,
   if (!nrow(o) || is.na(ard_code)) {
     stop("Report '", output_id, "' has no ARD code yet.", call. = FALSE)
   }
+  if (is.na(o$data_code) && any(p$ard$analyses$output_id %in% output_id)) {
+    # its data is its part of the study ARD: there must be one
+    out <- file.path(study$path, .ard_study_value(p$ard, "output",
+                                                  "output/ard/ard.rds"))
+    have <- file.exists(out) && any(readRDS(out)$output_id == output_id)
+    if (!have) {
+      stop("The study ARD has nothing for '", output_id,
+           "' yet: build it on the ARD tab first.", call. = FALSE)
+    }
+  }
   tmp <- tempfile("fetch")
   dir.create(tmp)
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
@@ -237,6 +247,7 @@ fetch_ard <- function(study, output_id, timeout = 300,
   log <- px$stdout
   if (!file.exists(f_out)) {
     err <- utils::tail(strsplit(log, "\n")[[1L]], 12L)
+
     stop("The ARD code of '", output_id, "' failed:\n",
          paste(err, collapse = "\n"), call. = FALSE)
   }

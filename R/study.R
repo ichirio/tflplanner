@@ -274,10 +274,17 @@ print.rtfstudy <- function(x, ...) {
 #' @param study An `rtfstudy`.
 #' @param regenerate Report ids whose program is written anew.
 #' @param home tflplanner's home.
+#' @param base The study as it was opened (or last saved) by whoever saves
+#'   now.  Given it, the save merges: a part (the study fields, the report
+#'   list, each sheet, each sheet of the ARD definition ...) this person did
+#'   not change keeps what is saved now -- someone else may have changed
+#'   it -- and a part both changed differently is a conflict that stops the
+#'   save (class `tflplanner_conflict`).
 #' @return The study, invisibly, with `files`: what was written or kept.
 #' @export
 save_study <- function(study, regenerate = character(),
-                       home = tflplanner_home()) {
+                       home = tflplanner_home(), base = NULL) {
+  if (!is.null(base)) study <- .merge_saved(study, base, home)
   p <- .study_spec_keys(study$planner)
   study$planner <- p
   root <- study$path
@@ -540,4 +547,60 @@ read_data_head <- function(path, n = 50L) {
   d <- as.data.frame(utils::head(d, n))
   attr(d, "dim_full") <- full
   d
+}
+
+# The parts a study is saved in, each merged on its own.
+.study_parts <- function(s) {
+  p <- s$planner
+  c(stats::setNames(lapply(.study_fields, function(k) s$meta[[k]]),
+                    paste0("meta:", .study_fields)),
+    list(`study keys` = p$study, setup = p$setup,
+         `report list` = p$outputs),
+    stats::setNames(p$sheets, paste0("sheet:", names(p$sheets))),
+    stats::setNames(p$ard, paste0("ard:", names(p$ard))))
+}
+
+.set_study_part <- function(s, part, value) {
+  kind <- sub(":.*$", "", part)
+  name <- sub("^[^:]*:", "", part)
+  switch(kind,
+    meta = s$meta[[name]] <- value,
+    sheet = s$planner$sheets[[name]] <- value,
+    ard = s$planner$ard[[name]] <- value,
+    `study keys` = s$planner$study <- value,
+    setup = s$planner$setup <- value,
+    `report list` = s$planner$outputs <- value)
+  s
+}
+
+.merge_saved <- function(study, base, home) {
+  st <- .read_state(study$meta$study_id, home)
+  if (is.null(st)) return(study)
+  disk <- .study_from_state(st)
+  base$planner <- .study_spec_keys(base$planner)
+  study$planner <- .study_spec_keys(study$planner)
+  mine <- .study_parts(study)
+  was <- .study_parts(base)
+  now <- .study_parts(disk)
+  clash <- character()
+  for (k in names(mine)) {
+    changed_here <- !identical(mine[[k]], was[[k]])
+    changed_there <- !identical(now[[k]], was[[k]])
+    if (!changed_here && changed_there) {
+      study <- .set_study_part(study, k, now[[k]])
+    } else if (changed_here && changed_there &&
+               !identical(mine[[k]], now[[k]])) {
+      clash <- c(clash, k)
+    }
+  }
+  if (length(clash)) {
+    cond <- structure(class = c("tflplanner_conflict", "error", "condition"),
+      list(message = paste0(
+        "Someone else saved changes to the same part(s) since you opened the study: ",
+        paste(clash, collapse = ", "),
+        ".  Open the study again to see them (your unsaved changes to those parts would be lost)."),
+        call = NULL, parts = clash))
+    stop(cond)
+  }
+  study
 }

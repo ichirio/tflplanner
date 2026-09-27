@@ -489,12 +489,144 @@ ard_spec_code <- function(spec, output_id = NULL, save = TRUE) {
   }
   code <- c(code, "", "ard <- do.call(dplyr::bind_rows, ards)")
   if (save) {
+    ids <- unique(a$output_id)
+    hashes <- vapply(ids, function(id) .ard_output_hash(x, id), "")
+    q <- function(v) paste(encodeString(v, quote = "\""), collapse = ", ")
     code <- c(code,
               sprintf("dir.create(dirname(%s), recursive = TRUE, showWarnings = FALSE)",
                       encodeString(out, quote = "\"")),
-              sprintf("saveRDS(ard, %s)", encodeString(out, quote = "\"")))
+              sprintf("saveRDS(ard, %s)", encodeString(out, quote = "\"")),
+              "# what was built, and from which definition (tflplanner reads it)",
+              "status <- data.frame(",
+              sprintf("  output_id = c(%s),", q(ids)),
+              sprintf("  definition = c(%s),", q(hashes)),
+              "  built = format(Sys.time(), \"%Y-%m-%d %H:%M:%S\"),",
+              "  stringsAsFactors = FALSE)",
+              "status$rows <- as.integer(table(factor(ard$output_id, levels = status$output_id)))",
+              sprintf("utils::write.csv(status, file.path(dirname(%s), \"ard_status.csv\"), row.names = FALSE)",
+                      encodeString(out, quote = "\"")))
   }
   c(code, "")
+}
+
+# A fingerprint of what makes an output's ARD: its analysis rows and the
+# data, populations and study keys they use.  A built ARD whose fingerprint
+# differs from the definition's now is outdated.
+.ard_output_hash <- function(spec, output_id) {
+  a <- spec$analyses[spec$analyses$output_id %in% output_id, , drop = FALSE]
+  pops <- spec$populations[spec$populations$population_id %in%
+                             a$population_id, , drop = FALSE]
+  dss <- spec$datasets[spec$datasets$dataset %in%
+                         c(a$dataset, pops$dataset), , drop = FALSE]
+  txt <- paste(c(utils::capture.output(print(as.list(a[order(a$analysis_id), ]))),
+                 utils::capture.output(print(as.list(pops))),
+                 utils::capture.output(print(as.list(dss[setdiff(names(dss), "level")]))),
+                 utils::capture.output(print(as.list(spec$study)))),
+               collapse = "\n")
+  f <- tempfile()
+  on.exit(unlink(f))
+  writeLines(enc2utf8(txt), f, useBytes = TRUE)
+  unname(tools::md5sum(f))
+}
+
+.ard_status_file <- function(study) {
+  out <- .ard_study_value(study$planner$ard, "output", "output/ard/ard.rds")
+  file.path(study$path, dirname(out), "ard_status.csv")
+}
+
+.read_ard_status <- function(study) {
+  f <- .ard_status_file(study)
+  empty <- data.frame(output_id = character(), definition = character(),
+                      built = character(), rows = integer(),
+                      error = character(), stringsAsFactors = FALSE)
+  if (!file.exists(f)) return(empty)
+  d <- utils::read.csv(f, colClasses = "character")
+  for (c in names(empty)) if (!c %in% names(d)) d[[c]] <- NA_character_
+  d$rows <- as.integer(d$rows)
+  d[names(empty)]
+}
+
+.write_ard_status <- function(study, d) {
+  f <- .ard_status_file(study)
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  tmp <- paste0(f, ".tmp")
+  utils::write.csv(d, tmp, row.names = FALSE)
+  file.rename(tmp, f)
+}
+
+#' Where each output's ARD stands
+#'
+#' For every output the ARD definition has analyses for: `built` (its rows
+#' are in the study ARD, made from the definition as it is now), `outdated`
+#' (made from an earlier definition), `not built`, or `error` (its last
+#' update failed).  Many people may work on one study: the study ARD is
+#' updated output by output ([update_study_ard()]), and a table is made
+#' from whatever of it is there.
+#'
+#' @param study An `rtfstudy`.
+#' @return A data frame: `output_id`, `analyses`, `state`, `rows`,
+#'   `built`, `error`.
+#' @export
+ard_status <- function(study) {
+  a <- study$planner$ard
+  ids <- unique(stats::na.omit(a$analyses$output_id))
+  st <- .read_ard_status(study)
+  spec <- structure(a, class = "ard_spec")
+  rows <- lapply(ids, function(id) {
+    r <- st[st$output_id == id, , drop = FALSE][1L, ]
+    now <- .ard_output_hash(spec, id)
+    state <- if (is.na(r$output_id)) "not built" else
+      if (!is.na(r$error) && nzchar(r$error)) "error" else
+        if (!identical(r$definition, now)) "outdated" else "built"
+    data.frame(output_id = id, analyses = sum(a$analyses$output_id %in% id),
+               state = state, rows = r$rows, built = r$built,
+               error = if (is.na(r$error)) "" else r$error,
+               stringsAsFactors = FALSE)
+  })
+  out <- do.call(rbind, c(list(data.frame(
+    output_id = character(), analyses = integer(), state = character(),
+    rows = integer(), built = character(), error = character())), rows))
+  rownames(out) <- NULL
+  out
+}
+
+#' Put one output's analyses into the study ARD
+#'
+#' Runs the output's analyses ([run_ard()]) and replaces its rows in the
+#' study ARD, leaving every other output's as they are -- so the study ARD
+#' grows output by output while tables are made from what is there.  A
+#' failed run leaves the study ARD alone and records the error.
+#'
+#' @param study An `rtfstudy`.
+#' @param output_id The output.
+#' @return The run ([run_ard()]), invisibly.
+#' @export
+update_study_ard <- function(study, output_id) {
+  r <- run_ard(study, output_id)
+  st <- .read_ard_status(study)
+  st <- st[st$output_id != output_id, , drop = FALSE]
+  now <- .ard_output_hash(structure(study$planner$ard, class = "ard_spec"),
+                          output_id)
+  if (is.null(r$ard)) {
+    st[nrow(st) + 1L, ] <- list(output_id, now, format(Sys.time(),
+      "%Y-%m-%d %H:%M:%S"), NA_integer_, r$error %||% "failed")
+    .write_ard_status(study, st)
+    return(invisible(r))
+  }
+  out <- file.path(study$path, .ard_study_value(study$planner$ard, "output",
+                                                "output/ard/ard.rds"))
+  old <- if (file.exists(out)) readRDS(out)
+  new <- if (is.null(old)) r$ard else dplyr::bind_rows(
+    old[old$output_id != output_id, , drop = FALSE], r$ard)
+  dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)
+  tmp <- paste0(out, ".tmp")
+  saveRDS(new, tmp)
+  file.rename(tmp, out)
+  st[nrow(st) + 1L, ] <- list(output_id, now,
+                              format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+                              nrow(r$ard), "")
+  .write_ard_status(study, st)
+  invisible(r)
 }
 
 #' Make the study's ARD from its definition
