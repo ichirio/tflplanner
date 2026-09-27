@@ -39,7 +39,10 @@ tr <- function(x, lang = tflplanner_language()) {
 #' @export
 tflplanner_language <- function() {
   l <- tryCatch(tflplanner_config()$language, error = function(e) NULL)
-  if (is.null(l) || !l %in% app_languages()) "en" else l
+  # the user's choice, else the company standards', else English
+  if (is.null(l)) l <- tryCatch(.std_setting("language", "en"),
+                                error = function(e) "en")
+  if (!l %in% app_languages()) "en" else l
 }
 
 #' @rdname tr

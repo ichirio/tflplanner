@@ -97,7 +97,8 @@ study_layout <- function() {
 #' @param study_id The study's id, which is also its folder name.
 #' @param title,compound,phase,description What the study is.
 #' @param planner An `tflplanner` to start from (e.g. an earlier study's
-#'   `open_study(...)$planner`); `NULL` starts empty.
+#'   `open_study(...)$planner`); `NULL` starts from the company standards:
+#'   their study-default rows, analysis sets and data catalog.
 #' @param root The folder the new study folder goes in; defaults to the
 #'   one set up with [setup_tflplanner()].
 #' @param study A registered study's id, or a study folder.
@@ -135,7 +136,7 @@ create_study <- function(study_id, title = NA, compound = NA, phase = NA,
   .write_meta(meta, path)
   writeLines(.rproj, file.path(path, paste0(study_id, ".Rproj")))
   s <- .new_study(path, .read_meta(path)[.study_fields],
-                  planner %||% new_planner())
+                  planner %||% .standard_planner(study_id))
   save_study(s, home = home)
 }
 

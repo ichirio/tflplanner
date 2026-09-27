@@ -16,24 +16,42 @@
 #'   `d`).
 #' @export
 builder_stats <- function() {
-  data.frame(
-    key = c("n", "mean_sd", "median", "q1q3", "median_q1q3", "min_max"),
-    row = c("n", "Mean (SD)", "Median", "Q1, Q3", "Median (Q1, Q3)",
-            "Min, Max"),
-    template = c("{N}", "{mean} ({sd})", "{median}", "{p25}, {p75}",
-                 "{median} ({p25}, {p75})", "{min}, {max}"),
-    stringsAsFactors = FALSE)
+  d <- company_standards()$statistics
+  d[c("key", "row", "template", "digits")]
 }
 
+# a statistic's digits from its rule: "d", "d+1", "d+1,d+2", "0" ...
 .stat_digits <- function(key, d) {
-  switch(key, n = "0", mean_sd = paste(d + 1, d + 2, sep = ","),
-         median = , q1q3 = , median_q1q3 = as.character(d + 1),
-         min_max = as.character(d))
+  rule <- builder_stats()$digits[match(key, builder_stats()$key)]
+  if (is.na(rule)) return(NA_character_)
+  parts <- trimws(strsplit(rule, ",")[[1L]])
+  paste(vapply(parts, function(x) {
+    x <- gsub("d", as.character(d), x, fixed = TRUE)
+    as.character(eval(parse(text = x), baseenv()))
+  }, ""), collapse = ",")
 }
 
-.cat_formats <- c(npct = "{n:.0f} ({p:.%df%%})",
-                  nNpct = "{n:.0f}/{N:.0f} ({p:.%df%%})",
-                  n = "{n:.0f}")
+# the categorical formats: key, label, template with <p> for the decimals
+.cat_formats <- function() company_standards()$categorical_formats
+
+.cat_template <- function(key, pct) {
+  f <- .cat_formats()
+  gsub("<p>", as.character(pct), f$template[match(key, f$key)], fixed = TRUE)
+}
+
+# which format, with how many decimals, a template is
+.cat_read <- function(tpl) {
+  f <- .cat_formats()
+  if (is.na(tpl)) return(list(key = f$key[1L], pct = 1))
+  for (i in seq_len(nrow(f))) {
+    for (p in 0:3) {
+      if (identical(gsub("<p>", p, f$template[i], fixed = TRUE), tpl)) {
+        return(list(key = f$key[i], pct = p))
+      }
+    }
+  }
+  list(key = f$key[1L], pct = 1)
+}
 
 .split_list <- function(x) {
   if (is.null(x) || is.na(x) || !nzchar(x)) return(character())
@@ -127,11 +145,9 @@ builder_read <- function(x, output_id, meta = NULL) {
 
   cat_row <- ce[(!is.na(ce$variable) & ce$variable == "categorical") |
                   (is.na(ce$variable) & is.na(ce$row)), , drop = FALSE]
-  tpl <- cat_row$template[1L]
-  cat_format <- if (is.na(tpl)) "npct" else if (grepl("/{N", tpl, fixed = TRUE))
-    "nNpct" else if (grepl("{p", tpl, fixed = TRUE)) "npct" else "n"
-  pd <- regmatches(tpl, regexec("[.]([0-9])f%", tpl))[[1L]]
-  pct_decimals <- if (length(pd)) as.numeric(pd[2L]) else 1
+  cr <- .cat_read(cat_row$template[1L])
+  cat_format <- cr$key
+  pct_decimals <- cr$pct
 
   list(key = key, arms = arms, variables = variables, levels = levels,
        stats = stats, decimals = decimals, cat_format = cat_format,
@@ -216,7 +232,7 @@ builder_write <- function(x, output_id, state) {
               paste(b$row, b$template, b$digits))
   }
   if (nrow(inh_cont) && same(new, inh_cont)) new <- new[0, , drop = FALSE]
-  tpl <- sprintf(.cat_formats[[st$cat_format]], st$pct_decimals)
+  tpl <- .cat_template(st$cat_format, st$pct_decimals)
   inh_cat <- inh[(!is.na(inh$variable) & inh$variable == "categorical") |
                    (is.na(inh$variable) & is.na(inh$row)), , drop = FALSE]
   if (!identical(inh_cat$template[1L], tpl)) {

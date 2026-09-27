@@ -7,9 +7,8 @@
 ard_methods()
 }
 \value{
-A data frame: \code{method}, \code{call} (the function), \code{defaults} (the
-arguments it is given unless \code{args} gives them), \code{statistics} (the
-default statistics), \code{note}.
+A data frame: \code{method}, \code{call}, \code{kind}, \code{defaults}, \code{statistics},
+\code{note}.
 }
 \description{
 An analysis's \code{method} is one of these keywords, or the name of any
@@ -23,4 +22,11 @@ way once \code{args} names the first one (\code{formula = ...}).
 \details{
 In \code{args} and \code{code}, \code{data} is the analysis data and \code{population} the
 population's subjects.
+
+The keywords are the company standards' (sheet \code{ard_methods}, see
+\code{\link[=company_standards]{company_standards()}}): each names its function (\code{(subjects)} and
+\code{(code)} are the two built into the engine), its \code{kind} -- how its
+\code{statistics} are passed: \code{continuous}, \code{categorical} or \code{none} -- the
+arguments it gets unless \code{args} gives them (\verb{<id>} stands for the
+subject key) and its default statistics.
 }

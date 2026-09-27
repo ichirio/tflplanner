@@ -13,5 +13,6 @@ output_ids(x)
 A character vector.
 }
 \description{
-The report list first, then any id a sheet names that the list lacks.
+The report list first, then any id a sheet or the ARD definition names
+that the list lacks.
 }

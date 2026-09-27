@@ -318,7 +318,8 @@ ard_data <- function(study, output_id, home = tflplanner_home()) {
 #' @return The `tflplanner`, with attribute `changed` (rows added or
 #'   filled).
 #' @export
-fill_variables <- function(x, output_id, meta, max_levels = 30L) {
+fill_variables <- function(x, output_id, meta,
+                           max_levels = as.integer(.std_setting("max_levels", "30"))) {
   rows <- sheet_rows(x, "variables", output_id)
   rows$output_id <- NULL
   changed <- 0L
@@ -407,61 +408,30 @@ fill_tables <- function(x, output_id, meta) {
 
 #' Presets for cells and column headers
 #'
-#' Ready-made rows to start from and adjust: the usual cell templates of a
-#' continuous and a categorical summary, and the usual column headers.
+#' Ready-made rows to start from and adjust: the cell templates and the
+#' column headers of the company standards ([company_standards()]).
 #'
 #' @return `cell_presets()` and `header_presets()` return a named list of
 #'   data frames in the columns of their sheet.
 #' @export
 cell_presets <- function() {
-  cont <- function(rows, tpl, dig) {
-    data.frame(variable = "continuous", row = rows, template = tpl,
-               digits = dig, stringsAsFactors = FALSE)
-  }
-  cat_ <- function(tpl) {
-    data.frame(variable = "categorical", row = NA_character_, template = tpl,
-               digits = NA_character_, stringsAsFactors = FALSE)
-  }
-  list(
-    "Continuous: n / Mean (SD) / Median / Min, Max" = cont(
-      c("n", "Mean (SD)", "Median", "Min, Max"),
-      c("{N}", "{mean} ({sd})", "{median}", "{min}, {max}"),
-      c("0", "1,2", "1", "0")),
-    "Continuous: n / Mean (SD) / Median / Q1, Q3 / Min, Max" = cont(
-      c("n", "Mean (SD)", "Median", "Q1, Q3", "Min, Max"),
-      c("{N}", "{mean} ({sd})", "{median}", "{p25}, {p75}", "{min}, {max}"),
-      c("0", "1,2", "1", "1", "0")),
-    "Continuous: n / Mean (SD) / Median (Q1, Q3) / Min, Max" = cont(
-      c("n", "Mean (SD)", "Median (Q1, Q3)", "Min, Max"),
-      c("{N}", "{mean} ({sd})", "{median} ({p25}, {p75})", "{min}, {max}"),
-      c("0", "1,2", "1", "0")),
-    "Categorical: n (%)" = cat_("{n:.0f} ({p:.1f%})"),
-    "Categorical: n (%), 0 for none" = cat_("{n:.0f} ({p:.1f%})"),
-    "Categorical: n/N (%)" = cat_("{n:.0f}/{N:.0f} ({p:.1f%})"),
-    "Categorical: n" = cat_("{n:.0f}"))
+  d <- company_standards()$cell_presets
+  lapply(split(d[c("variable", "row", "template", "digits")],
+               factor(d$preset, levels = unique(d$preset))), function(x) {
+    rownames(x) <- NULL
+    x
+  })
 }
 
 #' @rdname cell_presets
 #' @export
 header_presets <- function() {
-  h <- function(line, cols, span, text) {
-    data.frame(line = line, cols = cols, span = span, text = text,
-               stringsAsFactors = FALSE)
-  }
-  list(
-    "Arm / (N=n)" = h(c("1", "1", "2", "2"),
-                      c("row_label", ".values", "row_label", ".values"),
-                      c(NA, "each", NA, "each"),
-                      c(NA, "{col}", "Characteristic", "(N={n})")),
-    "Arm (N=n) n (%)" = h(c("1", "1"), c("row_label", ".values"),
-                          c(NA, "each"),
-                          c(NA, "{col}\n(N={n})\nn (%)")),
-    "Arm (N=n) n (%), SOC / PT" = h(
-      c("1", "1", "2", "2"),
-      c("row_label", ".values", "row_label", ".values"),
-      c(NA, "each", NA, NA),
-      c(NA, "{col}\n(N={n})\nn (%)",
-        "System Organ Class\n   Preferred Term", NA)))
+  d <- company_standards()$header_presets
+  lapply(split(d[c("line", "cols", "span", "text")],
+               factor(d$preset, levels = unique(d$preset))), function(x) {
+    rownames(x) <- NULL
+    x
+  })
 }
 
 # tokens a template names that the ARD lacks
@@ -531,13 +501,12 @@ grid_choices <- function(sheet, meta) {
         if (length(stats)) t[!vapply(t, function(z)
           length(.missing_stats(z, stats)) > 0L, NA)] else t
       },
-      digits = c("0", "1", "2", "1,2", "0,1", "2,3")),
+      digits = NULL),
     columns = list(column = unique(c("row_label", ".values", keys))),
     col_header = list(
       cols = c("row_label", ".values", "row_label | .values", "3:last"),
       span = c("each", keys),
-      text = c("{col}", "(N={n})", "{col}\n(N={n})", "{col}\n(N={n})\nn (%)",
-               "Characteristic", "{col1}", "{col2}", "(N={n:sum})")),
+      text = NULL),
     list())
 }
 

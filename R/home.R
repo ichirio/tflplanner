@@ -54,6 +54,9 @@ tflplanner_home <- function() {
 #'   the current setting, or on a first setup uses `<home>/workspace`.
 #' @param language The app's language, `"en"` (the default) or `"ja"`;
 #'   `NULL` keeps the current setting.
+#' @param standards A company standards workbook ([standards_template()])
+#'   to install, `"builtin"` to go back to the built-in draft, or `NULL` to
+#'   keep what is installed.
 #' @return The settings, invisibly.
 #' @examples
 #' \dontrun{
@@ -61,7 +64,7 @@ tflplanner_home <- function() {
 #' }
 #' @export
 setup_tflplanner <- function(home = NULL, studies_root = NULL,
-                             language = NULL) {
+                             language = NULL, standards = NULL) {
   if (!is.null(home)) {
     home <- normalizePath(home, "/", mustWork = FALSE)
     dir.create(dirname(.pointer_file()), recursive = TRUE,
@@ -79,6 +82,16 @@ setup_tflplanner <- function(home = NULL, studies_root = NULL,
   }
   cfg$studies_root <- normalizePath(cfg$studies_root, "/", mustWork = FALSE)
   if (!is.null(language)) cfg$language <- match.arg(language, app_languages())
+  if (!is.null(standards)) {
+    f <- .standards_file(home)
+    if (identical(standards, "builtin")) {
+      unlink(f)
+    } else {
+      read_standards(standards)          # refuse a workbook that does not read
+      dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+      file.copy(standards, f, overwrite = TRUE)
+    }
+  }
   dir.create(cfg$studies_root, recursive = TRUE, showWarnings = FALSE)
   .write_config(cfg, home)
   message("tflplanner home: ", home, "\nnew studies go to: ",

@@ -5,7 +5,12 @@
 \alias{fill_tables}
 \title{Fill a report's definition from its ARD}
 \usage{
-fill_variables(x, output_id, meta, max_levels = 30L)
+fill_variables(
+  x,
+  output_id,
+  meta,
+  max_levels = as.integer(.std_setting("max_levels", "30"))
+)
 
 fill_tables(x, output_id, meta)
 }

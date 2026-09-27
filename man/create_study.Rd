@@ -33,7 +33,8 @@ list_studies(home = tflplanner_home())
 \item{title, compound, phase, description}{What the study is.}
 
 \item{planner}{An \code{tflplanner} to start from (e.g. an earlier study's
-\code{open_study(...)$planner}); \code{NULL} starts empty.}
+\code{open_study(...)$planner}); \code{NULL} starts from the company standards:
+their study-default rows, analysis sets and data catalog.}
 
 \item{root}{The folder the new study folder goes in; defaults to the
 one set up with \code{\link[=setup_tflplanner]{setup_tflplanner()}}.}

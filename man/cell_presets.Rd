@@ -14,6 +14,6 @@ header_presets()
 data frames in the columns of their sheet.
 }
 \description{
-Ready-made rows to start from and adjust: the usual cell templates of a
-continuous and a categorical summary, and the usual column headers.
+Ready-made rows to start from and adjust: the cell templates and the
+column headers of the company standards (\code{\link[=company_standards]{company_standards()}}).
 }

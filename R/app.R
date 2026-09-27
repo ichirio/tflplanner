@@ -13,25 +13,6 @@
 .study_tabs <- c("outputs", "ard", "builder", "table_spec", "report_spec",
                  "data", "results")
 
-# Values a column takes whatever the ARD, offered as a dropdown (anything
-# else may still be typed: rtfreporter checks it when the workbook is read).
-.bool <- c("TRUE", "FALSE")
-.choices <- list(
-  tables = list(stats = c("cells", "rows"), value = c("stat", "stat_fmt")),
-  layout = list(pages_split = c("group_safe", "group_force"),
-                blank_where = c("between_groups"),
-                group_page = .bool, group_show = .bool, blank_first = .bool,
-                blank_last = .bool, blank_counted = .bool,
-                stub_before = .bool),
-  columns = list(row_title = .bool, decimal_split = .bool, hide = .bool),
-  style = list(align_count_pct = .bool, auto_width = .bool),
-  col_header = list(bold = .bool, align = c("left", "center", "right")),
-  report = list(type = c("table", "listing", "figure"),
-                auto_section = .bool, auto_title = .bool,
-                page_header = .bool, page_footer = .bool),
-  page = list(orientation = c("portrait", "landscape"),
-              paper_size = c("letter", "A4")))
-
 .sheet_labels <- c(
   tables = "tables: roles", variables = "variables", cells = "cells",
   layout = "layout: pages", columns = "columns", style = "style",
@@ -549,7 +530,46 @@ app_server <- function(input, output, session, start) {
         class = "d-flex gap-2 align-items-end",
         shiny::selectInput("language", t("Language"), app_languages(),
                            selected = lang),
-        .btn("save_language", t("Change"), class = "btn-sm mb-3")))
+        .btn("save_language", t("Change"), class = "btn-sm mb-3")),
+      shiny::hr(),
+      shiny::p(shiny::strong(t("Company standards")), shiny::br(),
+               if (file.exists(.standards_file())) {
+                 a <- company_standards()$about
+                 sprintf("%s %s (%s)", a$value[a$key == "name"],
+                         a$value[a$key == "version"], .standards_file())
+               } else t("the built-in draft")),
+      shiny::p(class = "small text-muted",
+               t("Dropdowns, presets, statistics, ARD methods, listing types, and the defaults a new study starts with.")),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2",
+        shiny::downloadButton("std_current", t("Download the standards in use"),
+                              class = "btn-sm"),
+        shiny::downloadButton("std_draft", t("Download the built-in draft"),
+                              class = "btn-sm"),
+        .btn("std_builtin", t("Back to the built-in draft"),
+             class = "btn-sm btn-outline-secondary")),
+      shiny::fileInput("std_upload", t("Install company standards (Excel)"),
+                       accept = ".xlsx", width = "100%"))
+  })
+  output$std_current <- shiny::downloadHandler(
+    filename = function() "company_standards.xlsx",
+    content = function(file) standards_template(file, from = "current"))
+  output$std_draft <- shiny::downloadHandler(
+    filename = function() "company_standards_draft.xlsx",
+    content = function(file) standards_template(file, from = "builtin"))
+  shiny::observeEvent(input$std_upload, {
+    f <- input$std_upload
+    ok <- guarded(suppressMessages(setup_tflplanner(standards = f$datapath)))
+    if (is.null(ok)) return()
+    rv$studies_ver <- rv$studies_ver + 1L
+    bump()
+    notify(t("Company standards installed. They apply to what is offered from now on, and to new studies."))
+  })
+  shiny::observeEvent(input$std_builtin, {
+    suppressMessages(setup_tflplanner(standards = "builtin"))
+    rv$studies_ver <- rv$studies_ver + 1L
+    bump()
+    notify(t("Back to the built-in draft."))
   })
   shiny::observeEvent(input$save_settings, {
     r <- trimws(input$studies_root)
@@ -827,7 +847,7 @@ app_server <- function(input, output, session, start) {
       tg <- target()
       d <- sheet_rows(shiny::isolate(rv$p), sh, tg)
       if (!identical(tg, "")) d$output_id <- NULL
-      ch <- .choices[[sh]] %||% list()
+      ch <- .std_choices(sh)
       gc <- grid_choices(sh, meta_now())
       for (cn in names(gc)) ch[[cn]] <- unique(c(gc[[cn]], ch[[cn]]))
       .grid(d, sh, key(), ch)
@@ -1339,7 +1359,7 @@ app_server <- function(input, output, session, start) {
                  t("Mean, median and quartiles get one more, SD two more, Min / Max the same.")),
         shiny::radioButtons(
           bid("cat"), t("Categorical variables"),
-          stats::setNames(names(.cat_formats), c("n (%)", "n/N (%)", "n")),
+          stats::setNames(.cat_formats()$key, .cat_formats()$label),
           selected = st$cat_format, inline = TRUE),
         shiny::numericInput(bid("pct"), t("Decimals of the percent"),
                             value = st$pct_decimals, min = 0, max = 3,
@@ -1406,7 +1426,7 @@ app_server <- function(input, output, session, start) {
     m <- bform$meta
     n <- bform$n
     tpl <- c(builder_stats()$template[builder_stats()$key %in% st$stats],
-             sprintf(.cat_formats[[st$cat_format]], st$pct_decimals))
+             .cat_template(st$cat_format, st$pct_decimals))
     miss <- if (!is.null(m)) .missing_stats(tpl, m$stats) else character()
     output[[paste0("b", n, "_warn")]] <- shiny::renderUI(
       if (length(miss)) shiny::div(

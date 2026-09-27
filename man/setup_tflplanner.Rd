@@ -4,7 +4,12 @@
 \alias{setup_tflplanner}
 \title{Set up tflplanner's home}
 \usage{
-setup_tflplanner(home = NULL, studies_root = NULL, language = NULL)
+setup_tflplanner(
+  home = NULL,
+  studies_root = NULL,
+  language = NULL,
+  standards = NULL
+)
 }
 \arguments{
 \item{home}{The home folder.  \code{NULL} keeps the current one (see
@@ -16,6 +21,10 @@ the current setting, or on a first setup uses \verb{<home>/workspace}.}
 
 \item{language}{The app's language, \code{"en"} (the default) or \code{"ja"};
 \code{NULL} keeps the current setting.}
+
+\item{standards}{A company standards workbook (\code{\link[=standards_template]{standards_template()}})
+to install, \code{"builtin"} to go back to the built-in draft, or \code{NULL} to
+keep what is installed.}
 }
 \value{
 The settings, invisibly.
