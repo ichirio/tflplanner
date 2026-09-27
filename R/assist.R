@@ -31,7 +31,7 @@
 #' Reads the keys (the column and hierarchy variables) with their levels,
 #' the analysis variables with their kind, levels, statistics and labels,
 #' and the contexts and statistic names, from a normalized ARD (`data`,
-#' what [rtfreporter::rtf_plan()] is given) or, failing that, from the raw
+#' what [tflspec::rtf_plan()] is given) or, failing that, from the raw
 #' cards ARD.
 #'
 #' @param ard A cards ARD, or `NULL`.
@@ -52,7 +52,7 @@ ard_meta <- function(ard = NULL, data = NULL) {
               columns = character())
   d <- data
   if (is.null(d) && is.data.frame(ard)) {
-    d <- tryCatch(rtfreporter::ard_normalize(ard), error = function(e) NULL)
+    d <- tryCatch(tflspec::ard_normalize(ard), error = function(e) NULL)
   }
   labels <- .ard_labels(ard)
   if (is.data.frame(d) && "variable" %in% names(d)) {
@@ -208,6 +208,7 @@ fetch_ard <- function(study, output_id, timeout = 300,
   q <- function(x) encodeString(normalizePath(x, "/", FALSE), quote = "\"")
   script <- c(
     "suppressPackageStartupMessages(library(rtfreporter))",
+    "suppressPackageStartupMessages(library(tflspec))",
     ".e <- new.env(parent = globalenv())",
     paste0("eval(parse(", q(f_ard), ", encoding = \"UTF-8\"), envir = .e)"),
     ".res <- list(ard = get0(\"ard\", .e, inherits = FALSE), data = NULL,",

@@ -1,5 +1,5 @@
 sample_planner <- function() {
-  d <- system.file("extdata", "ard-spec", package = "rtfreporter")
+  d <- system.file("extdata", "ard-spec", package = "tflspec")
   read_planner(file.path(d, c("report.xlsx", "study.xlsx")))
 }
 

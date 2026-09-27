@@ -961,7 +961,7 @@ app_server <- function(input, output, session, start) {
         stats::setNames(c("empty", "study", "sample"),
                         t(c("Start empty",
                             "Copy another study (definition and data code)",
-                            "rtfreporter's sample (5 reports)")))),
+                            "tflspec's sample (5 reports)")))),
       shiny::conditionalPanel(
         "input.ns_from == 'study'",
         shiny::selectInput("ns_src", t("Copy from"),
@@ -982,7 +982,7 @@ app_server <- function(input, output, session, start) {
     p <- switch(input$ns_from,
       study = guarded(open_study(input$ns_src)$planner),
       sample = guarded(read_planner(file.path(
-        system.file("extdata", "ard-spec", package = "rtfreporter"),
+        system.file("extdata", "ard-spec", package = "tflspec"),
         c("report.xlsx", "study.xlsx")))),
       new_planner())
     if (is.null(p)) return()
