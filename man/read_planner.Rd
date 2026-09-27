@@ -15,7 +15,7 @@ An \code{tflplanner} object.
 \description{
 Reads \code{table_spec.xlsx} and \code{report_spec.xlsx} (or any rtfreporter
 definition workbooks, one or several) through
-\code{\link[rtfreporter:read_report_spec]{rtfreporter::read_report_spec()}}, so what the app opens is exactly what
+\code{\link[tflspec:read_report_spec]{tflspec::read_report_spec()}}, so what the app opens is exactly what
 the report programs will read.  The report list and the data code come
 from the \verb{_tflplanner} sheet when a workbook has one; otherwise the list
 is every report a sheet names.

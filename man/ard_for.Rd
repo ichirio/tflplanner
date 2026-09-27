@@ -12,7 +12,7 @@ ard_for(ard, output_id)
 \item{output_id}{The output.}
 }
 \value{
-Its rows, without the id columns: what \code{\link[rtfreporter:ard_normalize]{rtfreporter::ard_normalize()}}
+Its rows, without the id columns: what \code{\link[tflspec:ard_normalize]{tflspec::ard_normalize()}}
 takes.
 }
 \description{
