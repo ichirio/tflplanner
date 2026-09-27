@@ -50,6 +50,7 @@ Suggests:
     cards,
     cardx,
     dplyr,
+    ggplot2,
     haven,
     logrx,
     testthat (>= 3.0.0)

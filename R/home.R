@@ -57,14 +57,18 @@ tflplanner_home <- function() {
 #' @param standards A company standards workbook ([standards_template()])
 #'   to install, `"builtin"` to go back to the built-in draft, or `NULL` to
 #'   keep what is installed.
+#' @param sample `TRUE` adds the sample study (SAMPLE-01) to the studies
+#'   folder and makes its ARD and reports ([create_sample_study()]); a
+#'   sample already there is left as it is.
 #' @return The settings, invisibly.
 #' @examples
 #' \dontrun{
-#' setup_tflplanner(studies_root = "C:/studies")
+#' setup_tflplanner(studies_root = "C:/studies", sample = TRUE)
 #' }
 #' @export
 setup_tflplanner <- function(home = NULL, studies_root = NULL,
-                             language = NULL, standards = NULL) {
+                             language = NULL, standards = NULL,
+                             sample = FALSE) {
   if (!is.null(home)) {
     home <- normalizePath(home, "/", mustWork = FALSE)
     dir.create(dirname(.pointer_file()), recursive = TRUE,
@@ -98,6 +102,14 @@ setup_tflplanner <- function(home = NULL, studies_root = NULL,
   .write_config(cfg, home)
   message("tflplanner home: ", home, "\nnew studies go to: ",
           cfg$studies_root)
+  if (isTRUE(sample)) {
+    if (!is.null(.read_state(.sample_id, home)) ||
+        file.exists(file.path(cfg$studies_root, .sample_id))) {
+      message("The sample study ", .sample_id, " is already there.")
+    } else {
+      create_sample_study(cfg$studies_root, home = home)
+    }
+  }
   invisible(c(list(home = home), cfg))
 }
 

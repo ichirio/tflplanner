@@ -59,7 +59,8 @@ tflplanner は、試験フォルダとは別に「ホーム」を持ちます。
 library(tflplanner)
 setup_tflplanner(
   studies_root = "C:/studies",   # 新しい試験フォルダを作る場所
-  language     = "ja"            # 画面の言語（既定は "en"）
+  language     = "ja",           # 画面の言語（既定は "en"）
+  sample       = TRUE            # サンプル試験 SAMPLE-01 を追加する
 )
 tflplanner_home()                # ホームの場所
 ```
@@ -103,7 +104,29 @@ setup_tflplanner(standards = "builtin")
 | `populations` / `datasets` | 新規試験が最初に持つ解析対象集団とデータカタログ |
 | `default_<シート>` | 新規試験の「試験共通の既定」（ヘッダー・フッターなど）。`{STUDY_ID}` は試験 ID に置き換わる |
 
-### 2.3 起動
+### 2.3 サンプル試験
+
+`sample = TRUE` を付けると、試験フォルダにサンプル試験 **SAMPLE-01** をコピーし、
+ARD と帳票まで作成します（正式実行を 1 回行い、1 分ほどかかります）。
+まずはこの試験で各画面を触ってみるのがおすすめです。
+
+| 帳票 | 種類 | 内容 |
+|---|---|---|
+| T-14-1-1 | Table | 人口統計学的特性 |
+| T-14-1-2 | Table | 被験者の内訳 |
+| T-14-2-1 | Table | 収縮期血圧の Week 24 のベースラインからの変化（SE、平均の 95% 信頼区間） |
+| T-14-3-1 | Table | SOC / PT 別の有害事象（TEAE） |
+| L-16-2-7 | Listing | 重度の有害事象 |
+| F-14-2-1 | Figure | 収縮期血圧のベースラインからの平均変化量の推移 |
+
+データは [pharmaverseadam](https://pharmaverse.github.io/pharmaverseadam/)
+パッケージの CDISC パイロット試験 ADaM（ADSL、ADAE、ADVS）です。
+表は 1 つの試験 ARD から、Listing と Figure は ADaM から作られます。
+
+後から追加する場合は、`create_sample_study()` を実行するか、
+アプリの Studies タブの「設定」にある「サンプル試験を追加」を押します。
+
+### 2.4 起動
 
 ```{r}
 tflplanner::run_app()             # 最後に開いた試験から
