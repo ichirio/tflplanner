@@ -95,6 +95,58 @@ planner_app <- function(study = NULL) {
 .rp-b-card .rank-list-item { padding: 2px 8px !important; font-size: 13px; }
 .rp-b-var { display: flex; gap: .5rem; align-items: center; }
 .rp-b-kind { font-size: 11px; color: #6b7280; }
+.rp-split { display: grid; gap: 1rem; align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.rp-split.rp-lay-stack, .rp-split.rp-lay-one {
+  grid-template-columns: minmax(0, 1fr); }
+.rp-split.rp-lay-one.rp-show-def > :nth-child(2),
+.rp-split.rp-lay-one.rp-show-out > :nth-child(1) { display: none !important; }
+@media (max-width: 991px) {
+  .rp-split { grid-template-columns: minmax(0, 1fr); } }
+"
+
+# the ARD tab's panes: side by side, stacked, or one at a time (kept in
+# the viewer's browser)
+.split_js <- "
+(function() {
+  var cur = {lay: 'side', pane: 'def'};
+  try {
+    var v = (localStorage.getItem('tflplanner.ard_layout') || '').split('|');
+    if (v[0]) cur.lay = v[0];
+    if (v[1]) cur.pane = v[1];
+  } catch (e) {}
+  function apply() {
+    var s = document.getElementById('ard_split');
+    if (!s) return;
+    s.classList.remove('rp-lay-side', 'rp-lay-stack', 'rp-lay-one',
+                       'rp-show-def', 'rp-show-out');
+    s.classList.add('rp-lay-' + cur.lay, 'rp-show-' + cur.pane);
+    document.querySelectorAll('#ard_layout [data-lay]').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.lay === cur.lay);
+    });
+    document.querySelectorAll('#ard_pane [data-pane]').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.pane === cur.pane);
+    });
+    var g = document.getElementById('ard_pane');
+    if (g) g.style.display = cur.lay === 'one' ? '' : 'none';
+    try { localStorage.setItem('tflplanner.ard_layout', cur.lay + '|' + cur.pane); }
+    catch (e) {}
+    setTimeout(function() {
+      window.dispatchEvent(new Event('resize'));
+      if (window.jQuery && jQuery.fn.dataTable) {
+        jQuery.fn.dataTable.tables({visible: true, api: true}).columns.adjust();
+      }
+    }, 50);
+  }
+  document.addEventListener('click', function(e) {
+    var b = e.target.closest('#ard_layout [data-lay], #ard_pane [data-pane]');
+    if (!b) return;
+    if (b.dataset.lay) cur.lay = b.dataset.lay;
+    if (b.dataset.pane) cur.pane = b.dataset.pane;
+    apply();
+  });
+  document.addEventListener('DOMContentLoaded', apply);
+})();
 "
 
 .btn <- function(id, label, class = "btn-sm", ...) {
@@ -104,6 +156,10 @@ planner_app <- function(study = NULL) {
 app_ui <- function(lang = "en") {
   t <- function(x) tr(x, lang)
   two <- bslib::breakpoints(sm = 12, lg = c(5, 7))
+  lay_btn <- function(...) {
+    shiny::tags$button(type = "button", class = "btn btn-outline-secondary",
+                       ...)
+  }
 
   sheet_panel <- function(sheet) {
     bslib::nav_panel(
@@ -126,7 +182,8 @@ app_ui <- function(lang = "en") {
     # pages scroll: a grid squeezed to fit the window would be 0 px high
     fillable = FALSE,
     theme = bslib::bs_theme(version = 5, preset = "shiny"),
-    header = shiny::tags$style(.code_css),
+    header = shiny::tagList(shiny::tags$style(shiny::HTML(.code_css)),
+                            shiny::tags$script(shiny::HTML(.split_js))),
     sidebar = bslib::sidebar(
       width = 270,
       shiny::uiOutput("study_side"),
@@ -199,8 +256,20 @@ app_ui <- function(lang = "en") {
 
     bslib::nav_panel(
       "ARD", value = "ard",
-      bslib::layout_columns(
-        col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2 align-items-center mb-2 small",
+        shiny::span(class = "text-muted", t("Layout")),
+        shiny::div(
+          id = "ard_layout", class = "btn-group btn-group-sm", role = "group",
+          lay_btn("data-lay" = "side", t("Side by side")),
+          lay_btn("data-lay" = "stack", t("Stacked")),
+          lay_btn("data-lay" = "one", t("One pane"))),
+        shiny::div(
+          id = "ard_pane", class = "btn-group btn-group-sm", role = "group",
+          lay_btn("data-pane" = "def", t("ARD definition")),
+          lay_btn("data-pane" = "out", t("Code / ARD")))),
+      shiny::div(
+        id = "ard_split", class = "rp-split rp-lay-side rp-show-def",
         bslib::card(
           bslib::card_header(t("ARD definition (ard_spec)")),
           shiny::p(class = "small text-muted",
@@ -250,7 +319,7 @@ app_ui <- function(lang = "en") {
               shiny::span(class = "small text-muted",
                           t("Runs the code on the left in its own R process, from the study folder."))),
             shiny::uiOutput("ard_run_info"),
-            DT::DTOutput("ard_table"))))),
+            DT::DTOutput("ard_table", height = "auto", fill = FALSE))))),
 
     bslib::nav_panel(
       t("Reports"), value = "outputs",
@@ -1307,9 +1376,11 @@ app_server <- function(input, output, session, start) {
   output$ard_table <- DT::renderDT({
     r <- ard_res()
     shiny::req(r, r$ard)
+    # a height of its own, so the horizontal scroll bar stays in sight
     DT::datatable(ard_view(r$ard), rownames = FALSE, filter = "top",
-                  selection = "none",
-                  options = list(pageLength = 20, scrollX = TRUE,
+                  selection = "none", class = "compact stripe nowrap", fillContainer = FALSE,
+                  options = list(pageLength = 50, scrollX = TRUE,
+                                 scrollY = "55vh", scrollCollapse = TRUE,
                                  dom = "tip"))
   })
 

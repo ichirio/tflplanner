@@ -295,3 +295,9 @@ Condition (R),条件 (R)
 vars: variables stacked in the column (| between them); label: \\n breaks the header; width: characters; collapse_repeats: print a repeated value once.,vars：列に積み重ねる変数（| 区切り）、label：\\n で見出しを改行、width：文字数、collapse_repeats：繰り返す値を 1 回だけ表示。
 Choose a Listing report,Listing の帳票を選んでください
 Preview the listing to see its first pages with the data.,Listing をプレビューすると、実データで最初のページを表示します。
+Layout,配置
+Side by side,左右
+Stacked,上下
+One pane,1 ペイン
+ARD definition,ARD 定義
+Code / ARD,コード / ARD
