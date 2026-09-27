@@ -1,0 +1,9 @@
+study_id: SAMPLE-01
+title: Sample study (CDISC pilot data, pharmaverseadam)
+compound: Xanomeline
+phase: '2'
+description: 'The sample study of tflplanner: the CDISC pilot ADaM data of the pharmaverseadam
+  package; one study ARD and tables, a listing and a figure made from it.'
+created: '2026-09-27'
+updated: 2026-09-27 18:54:11
+tflplanner: 0.0.0.9000

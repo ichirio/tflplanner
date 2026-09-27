@@ -8,7 +8,8 @@ setup_tflplanner(
   home = NULL,
   studies_root = NULL,
   language = NULL,
-  standards = NULL
+  standards = NULL,
+  sample = FALSE
 )
 }
 \arguments{
@@ -25,6 +26,10 @@ the current setting, or on a first setup uses \verb{<home>/workspace}.}
 \item{standards}{A company standards workbook (\code{\link[=standards_template]{standards_template()}})
 to install, \code{"builtin"} to go back to the built-in draft, or \code{NULL} to
 keep what is installed.}
+
+\item{sample}{\code{TRUE} adds the sample study (SAMPLE-01) to the studies
+folder and makes its ARD and reports (\code{\link[=create_sample_study]{create_sample_study()}}); a
+sample already there is left as it is.}
 }
 \value{
 The settings, invisibly.
@@ -37,6 +42,6 @@ again changes the settings given and keeps the rest.
 }
 \examples{
 \dontrun{
-setup_tflplanner(studies_root = "C:/studies")
+setup_tflplanner(studies_root = "C:/studies", sample = TRUE)
 }
 }

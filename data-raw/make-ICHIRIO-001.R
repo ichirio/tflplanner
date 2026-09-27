@@ -9,13 +9,14 @@
 #
 #   Rscript data-raw/make-ICHIRIO-001.R [root]
 #
-# root: where the study folder goes (default: the studies_root of
-# setup_tflplanner()).  The study is written from scratch: an existing
+# A development test study: it needs the development home (see
+# data-raw/dev-home.R).  root: where the study folder goes (default: the
+# development home's studies_root).  The study is written from scratch: an existing
 # ICHIRIO-001 -- its folder and its saved state in tflplanner's home -- is
 # replaced.  Afterwards every report is run and must end "ok".
 
 devtools::load_all(quiet = TRUE)
-if (!.is_set_up()) setup_tflplanner()
+source("data-raw/dev-home.R")   # the development home, never a user's
 args <- commandArgs(trailingOnly = TRUE)
 root <- if (length(args)) args[1L] else studies_root()
 id <- "ICHIRIO-001"

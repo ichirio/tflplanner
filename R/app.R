@@ -820,6 +820,10 @@ app_server <- function(input, output, session, start) {
         shiny::selectInput("language", t("Language"), app_languages(),
                            selected = lang),
         .btn("save_language", t("Change"), class = "btn-sm mb-3")),
+      shiny::p(class = "small text-muted mb-1",
+               t("The sample study SAMPLE-01: CDISC pilot data (pharmaverseadam), one study ARD, four tables, a listing and a figure.")),
+      .btn("add_sample", t("Add the sample study"),
+           class = "btn-sm btn-outline-primary mb-2"),
       shiny::hr(),
       shiny::p(shiny::strong(t("Company standards")), shiny::br(),
                if (file.exists(.standards_file())) {
@@ -839,6 +843,16 @@ app_server <- function(input, output, session, start) {
              class = "btn-sm btn-outline-secondary")),
       shiny::fileInput("std_upload", t("Install company standards (Excel)"),
                        accept = ".xlsx", width = "100%"))
+  })
+  shiny::observeEvent(input$add_sample, {
+    s <- NULL
+    shiny::withProgress(
+      message = t("Adding the sample study and making its ARD and reports ..."),
+      s <- guarded(suppressMessages(create_sample_study())))
+    if (is.null(s)) return()
+    rv$studies_ver <- rv$studies_ver + 1L
+    notify(sprintf(t("Added %s: double-click it in the list to open it."),
+                   s$meta$study_id))
   })
   output$std_current <- shiny::downloadHandler(
     filename = function() "company_standards.xlsx",

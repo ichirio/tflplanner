@@ -55,11 +55,19 @@ install.packages(c("cards", "cardx", "dplyr", "logrx"))
 
 ```r
 library(tflplanner)
-setup_tflplanner(studies_root = "C:/studies")          # once
+setup_tflplanner(studies_root = "C:/studies",          # once; with the
+                 sample = TRUE)                        #   sample study
 standards_template("company_standards.xlsx")           # the draft to edit
 setup_tflplanner(standards = "company_standards.xlsx") # your standards
 run_app()
 ```
+
+`sample = TRUE` (or `create_sample_study()`, or *Add the sample study* in
+the app's settings) copies the sample study **SAMPLE-01** into the studies
+folder and makes it: the CDISC pilot ADaM data of
+[pharmaverseadam](https://pharmaverse.github.io/pharmaverseadam/), one
+study ARD, four tables, a listing and a figure -- a study to try
+everything on.
 
 A guide in Japanese (provisional):
 [tflplanner 利用ガイド（日本語）](https://ichirio.github.io/tflplanner/articles/ja-guide.html).

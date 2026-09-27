@@ -15,6 +15,7 @@
 #   Rscript data-raw/verify-ard-spec.R
 
 devtools::load_all(quiet = TRUE)
+source("data-raw/dev-home.R")   # the development home, never a user's
 suppressPackageStartupMessages(library(rtfreporter))
 library(pharmaverseadam)
 

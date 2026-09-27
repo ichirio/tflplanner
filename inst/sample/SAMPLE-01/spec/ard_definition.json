@@ -1,0 +1,33 @@
+{
+  "study": {
+    "key": ["id", "output"],
+    "value": ["USUBJID", "output/ard/ard.rds"]
+  },
+  "datasets": {
+    "dataset": ["ADSL", "ADAE", "ADVS"],
+    "level": ["ADaM", "ADaM", "ADaM"],
+    "path": ["data/adam/adsl.rds", "data/adam/adae.rds", "data/adam/advs.rds"],
+    "derive": [null, null, null]
+  },
+  "populations": {
+    "population_id": ["SAF"],
+    "dataset": ["ADSL"],
+    "where": ["SAFFL == \"Y\""],
+    "derive": ["TRTA = TRT01A"]
+  },
+  "analyses": {
+    "output_id": ["T-14-1-1", "T-14-1-1", "T-14-1-1", "T-14-1-1", "T-14-1-2", "T-14-1-2", "T-14-2-1", "T-14-2-1", "T-14-3-1"],
+    "analysis_id": ["BIGN", "TOTAL", "CONT", "CAT", "BIGN", "DISP", "BIGN", "SYSBP", "TEAE"],
+    "label": ["Subjects per arm", null, "Continuous", "Categorical", null, "Status at end of study", null, "SYSBP at Week 24", "TEAE by SOC / PT"],
+    "method": ["categorical", "total_n", "continuous", "categorical", "categorical", "categorical", "categorical", "continuous", "hierarchical"],
+    "dataset": [null, null, null, null, null, null, null, "ADVS", "ADAE"],
+    "population_id": ["SAF", "SAF", "SAF", "SAF", "SAF", "SAF", "SAF", "SAF", "SAF"],
+    "where": [null, null, null, null, null, null, null, "AVISIT == \"Week 24\"", "TRTEMFL == \"Y\""],
+    "by": [null, null, "TRT01A", "TRT01A", null, "TRT01A", null, "TRTA", "TRT01A"],
+    "variables": ["TRT01A", null, "AGE", "AGEGR1 | SEX | RACE | ETHNIC", "TRT01A", "EOSSTT", "TRTA", "BASE | AVAL | CHG", "AEBODSYS | AEDECOD"],
+    "statistics": [null, null, "N | mean | sd | median | min | max", "n | p", null, "n | p", null, "N | mean | sd | se | mean_lcl | mean_ucl | median | min | max", null],
+    "formats": [null, null, null, null, null, null, null, "mean=xx.x | sd=xx.xx | se=xx.xx", null],
+    "args": [null, null, null, null, null, null, null, null, "over_variables = TRUE"],
+    "code": [null, null, null, null, null, null, null, null, null]
+  }
+}

@@ -362,3 +362,7 @@ Working reports: RTF,作業用帳票：RTF
 What a report program printed in its last preview,帳票プログラムの直近プレビューの出力
 1. ARD: make `ard` (Listing: rework `data`; Figure: the plot). Blank for a table = the company template: its rows of the study ARD.,1. ARD：`ard` を作る（Listing：`data` の加工、Figure：プロット）。表で空欄なら会社テンプレート（試験 ARD から自分の行を取得）。
 "2. Normalize and rework: make `data` from `ard` (ard_normalize(), then mutate() ...). Blank = the company template (normalize).",2. normalize と加工：`ard` から `data` を作る（ard_normalize() の後に mutate() など）。空欄なら会社テンプレート（normalize）。
+"The sample study SAMPLE-01: CDISC pilot data (pharmaverseadam), one study ARD, four tables, a listing and a figure.",サンプル試験 SAMPLE-01：CDISC パイロットデータ（pharmaverseadam）、試験 ARD 1 つ、表 4 つ、Listing 1 つ、Figure 1 つ。
+Add the sample study,サンプル試験を追加
+Adding the sample study and making its ARD and reports ...,サンプル試験を追加し、ARD と帳票を作成しています ...
+Added %s: double-click it in the list to open it.,%s を追加しました。一覧でダブルクリックすると開きます。

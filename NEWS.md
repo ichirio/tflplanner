@@ -1,5 +1,9 @@
 # tflplanner 0.0.0.9000
 
+- The sample study SAMPLE-01 (`create_sample_study()`,
+  `setup_tflplanner(sample = TRUE)`, *Add the sample study* in the app):
+  the CDISC pilot ADaM data of pharmaverseadam, one study ARD, four
+  tables, a listing and a figure, made at once by an official run.
 - The ARD definition is kept by the app (web GUI); `ard_spec.xlsx` is an
   optional export / import (`write_ard_spec()`, `export_spec()`,
   `import_spec()`).  Saving writes one ARD program per output
