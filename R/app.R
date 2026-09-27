@@ -351,7 +351,7 @@ app_ui <- function(lang = "en") {
       shiny::div(
         id = "ard_split", class = "rp-split rp-lay-side rp-show-def",
         bslib::card(
-          bslib::card_header(t("ARD definition (ard_spec)")),
+          bslib::card_header(t("ARD definition")),
           shiny::p(class = "small text-muted",
                    t("One row per analysis: the data, the population, the subset, the grouping, the variables and the method (a keyword or any cards / cardx function). The sidebar picks the report whose analyses are shown.")),
           bslib::navset_underline(

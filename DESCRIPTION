@@ -48,6 +48,7 @@ Suggests:
     cardx,
     dplyr,
     haven,
+    logrx,
     testthat (>= 3.0.0)
 Remotes:
     ichirio/rtfreporter@feat/474-ard-experimental

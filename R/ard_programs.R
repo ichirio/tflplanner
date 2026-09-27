@@ -102,7 +102,7 @@ ard_program_code <- function(spec, output_id, date = Sys.Date()) {
       paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
              ", ", format(date, "%Y-%m-%d")),
       "",
-      "Made from spec/ard_spec.xlsx.  Runs from the study folder (open the",
+      "Made from the study's ARD definition.  Runs from the study folder (open the",
       "study's .Rproj, or run programs/ard/autoexec_ard.R)."),
     "",
     sprintf("source(%s)", encodeString(file.path(lay[["programs_ard"]],

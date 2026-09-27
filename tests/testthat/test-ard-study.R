@@ -56,7 +56,9 @@ test_that("the definition is saved, reopened and run", {
   local_home2()
   s <- create_study("A1", planner = ard_planner())
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
-  expect_true(file.exists(file.path(s$path, "spec", "ard_spec.xlsx")))
+  # no workbook: the ARD definition's copy in the folder, and the programs
+  expect_false(file.exists(file.path(s$path, "spec", "ard_spec.xlsx")))
+  expect_true(file.exists(file.path(s$path, "spec", "ard_definition.json")))
   for (f in c("ard_setup.R", "DM.R", "autoexec_ard.R")) {
     expect_true(file.exists(file.path(s$path, "programs", "ard", f)))
   }
@@ -87,7 +89,7 @@ test_that("the definition is saved, reopened and run", {
   for (f in c("logs/ard/DM.log", "output/ard/ard.rds",
               "output/ard/ard_status.csv", "run.csv", "batch.txt",
               "code/programs/ard/DM.R", "code/programs/ard/ard_setup.R",
-              "code/spec/ard_spec.xlsx")) {
+              "code/programs/batch.R")) {
     expect_true(file.exists(file.path(b$batch, f)), label = f)
   }
   expect_false(file.exists(file.path(b$batch, "code", "programs", "tfl",
@@ -119,8 +121,18 @@ test_that("the definition is saved, reopened and run", {
   expect_null(r$ard)
   expect_match(r$error, "ard_nope")
 
-  # registering a folder reads its ard_spec.xlsx
+  # registering a folder reads its ARD definition
   unregister_study("A1")
   g <- register_study(s$path)
   expect_identical(g$planner$ard, o2$planner$ard)
+
+  # ard_spec.xlsx: an export, and an import
+  d <- withr_tempdir()
+  f <- export_spec(g, d)
+  expect_true(file.exists(file.path(d, "ard_spec.xlsx")))
+  g2 <- g
+  g2$planner$ard$analyses <- g2$planner$ard$analyses[0, ]
+  g2 <- import_spec(g2, file.path(d, "ard_spec.xlsx"))
+  expect_identical(g2$planner$ard, g$planner$ard)
+  expect_identical(g2$planner$sheets, g$planner$sheets)
 })

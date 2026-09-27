@@ -10,7 +10,8 @@
 #     data/adam/           input data: analysis datasets
 #     data/sdtm/                       tabulation datasets
 #     data/other/                      anything else (formats, lookups)
-#     spec/                table_spec.xlsx, report_spec.xlsx, ard_spec.xlsx
+#     spec/                table_spec.xlsx, report_spec.xlsx (the report
+#                          programs read them; ard_spec.xlsx only if exported)
 #     programs/            batch.R, autoexec_all.R (official runs)
 #     programs/ard/        one ARD program per output, ard_setup.R,
 #                          autoexec_ard.R
@@ -196,8 +197,14 @@ register_study <- function(path, home = tflplanner_home()) {
   sp <- file.path(path, study_layout()[["spec"]], c(.table_file, .report_file))
   sp <- sp[file.exists(sp)]
   p <- if (length(sp)) read_planner(sp) else new_planner()
+  # the ARD definition: the study folder's copy, else an exported workbook
+  aj <- file.path(path, study_layout()[["spec"]], .ard_json)
   af <- file.path(path, study_layout()[["spec"]], .ard_file)
-  if (file.exists(af)) p$ard <- unclass(read_ard_spec(af, check = FALSE))
+  if (file.exists(aj)) {
+    p$ard <- .read_ard_json(aj)
+  } else if (file.exists(af)) {
+    p$ard <- unclass(read_ard_spec(af, check = FALSE))
+  }
   lf <- file.path(path, study_layout()[["spec"]], .lf_file)
   if (file.exists(lf)) {
     for (sh in names(.lf_sheets)) {
@@ -251,21 +258,43 @@ list_studies <- function(home = tflplanner_home()) {
 #' Definition workbooks in and out
 #'
 #' The study's definition lives in tflplanner's home and is written to the
-#' study folder's `spec/` on every save.  `export_spec()` writes the two
-#' workbooks anywhere else; `import_spec()` replaces the study's definition
-#' with what a set of workbooks says (save the study to keep it).
+#' study folder's `spec/` on every save (the table and report workbooks the
+#' programs read; the ARD definition as `ard_definition.json`).
+#' `export_spec()` writes the workbooks anywhere else -- with
+#' `ard_spec.xlsx`, the ARD definition, to edit in Excel or keep;
+#' `import_spec()` replaces the study's definition with what a set of
+#' workbooks says (an `ard_spec.xlsx` among them replaces the ARD
+#' definition; save the study to keep it).
 #'
 #' @param study An `rtfstudy`.
 #' @param dir Destination folder.
 #' @param path One or more `.xlsx` workbooks.
 #' @return `export_spec()` the paths written; `import_spec()` the study.
 #' @export
-export_spec <- function(study, dir) write_planner(study$planner, dir)
+export_spec <- function(study, dir) {
+  out <- write_planner(study$planner, dir)
+  a <- study$planner$ard
+  if (!is.null(a) && (nrow(a$analyses) || nrow(a$datasets))) {
+    out <- c(out, write_ard_spec(a, file.path(dir, .ard_file)))
+  }
+  invisible(out)
+}
 
 #' @rdname export_spec
 #' @export
 import_spec <- function(study, path) {
-  study$planner <- .study_spec_keys(read_planner(path))
+  # an ARD definition workbook (sheet `analyses`) replaces the ARD
+  # definition; the others the table and report definition
+  is_ard <- vapply(path, function(f) "analyses" %in% readxl::excel_sheets(f),
+                   NA)
+  if (any(!is_ard)) {
+    ard <- study$planner$ard
+    study$planner <- .study_spec_keys(read_planner(path[!is_ard]))
+    study$planner$ard <- ard
+  }
+  if (any(is_ard)) {
+    study$planner$ard <- unclass(read_ard_spec(path[is_ard][1L], check = FALSE))
+  }
   study
 }
 

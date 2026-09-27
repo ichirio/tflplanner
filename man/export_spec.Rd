@@ -21,7 +21,11 @@ import_spec(study, path)
 }
 \description{
 The study's definition lives in tflplanner's home and is written to the
-study folder's \verb{spec/} on every save.  \code{export_spec()} writes the two
-workbooks anywhere else; \code{import_spec()} replaces the study's definition
-with what a set of workbooks says (save the study to keep it).
+study folder's \verb{spec/} on every save (the table and report workbooks the
+programs read; the ARD definition as \code{ard_definition.json}).
+\code{export_spec()} writes the workbooks anywhere else -- with
+\code{ard_spec.xlsx}, the ARD definition, to edit in Excel or keep;
+\code{import_spec()} replaces the study's definition with what a set of
+workbooks says (an \code{ard_spec.xlsx} among them replaces the ARD
+definition; save the study to keep it).
 }
