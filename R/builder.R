@@ -261,6 +261,8 @@ builder_write <- function(x, output_id, state) {
 #' @param data Its normalized data ([ard_data()]).
 #' @param pages `rtftable` pages.
 #' @param max_pages How many pages to render.
+#' @param align How value cells align: `"center"` (a table) or `"left"` (a
+#'   listing).
 #' @return `preview_pages()`: a list of `rtftable`; `preview_html()`: HTML.
 #' @export
 preview_pages <- function(x, output_id, data) {
@@ -287,7 +289,7 @@ preview_pages <- function(x, output_id, data) {
 
 #' @rdname preview_pages
 #' @export
-preview_html <- function(pages, max_pages = 3L) {
+preview_html <- function(pages, max_pages = 3L, align = "center") {
   one <- function(pg, i) {
     d <- pg$data
     blank_after <- attr(d, "rtf_blank_rows") %||% pg$blank_rows %||%
@@ -322,7 +324,8 @@ preview_html <- function(pages, max_pages = 3L) {
       if (length(pages) > 1L) htmltools::div(
         class = "rp-pv-page", sprintf("%d / %d", i, length(pages))),
       htmltools::tags$table(
-        class = "rp-pv",
+        class = paste(c("rp-pv", if (identical(align, "left")) "rp-pv-left"),
+                      collapse = " "),
         htmltools::tags$thead(head), htmltools::tags$tbody(body)))
   }
   n <- min(length(pages), max_pages)

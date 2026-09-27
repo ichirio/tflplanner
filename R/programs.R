@@ -123,6 +123,17 @@ data_lines <- function(x, output_id, todo = TRUE) {
   code <- .ard_code_of(x, output_id)
   proc <- if (nrow(o) && !is.na(o$process_code)) o$process_code else NA
   type <- info$type
+  setup <- if (!is.na(x$setup)) c(.code_block(x$setup), "")
+  # a listing defined in rows: its data code is a rework of `data`
+  if (identical(type, "listing")) {
+    l <- .listing_lines(x, output_id, rework = code)
+    if (!is.null(l)) return(c(setup, l))
+  }
+  # a figure: its datasets read for it, its data code the plot
+  if (identical(type, "figure")) {
+    f <- .figure_lines(x, output_id, info, plot_code = code)
+    if (!is.null(f)) return(c(setup, f))
+  }
   if (is.na(code)) {
     if (!todo) return(NULL)
     stop_todo <- paste0("stop(\"tflplanner: the data part of ",

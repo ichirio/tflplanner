@@ -102,7 +102,8 @@ new_planner <- function(study = NULL) {
   sh <- c(table_sheets(), report_sheets())
   structure(list(sheets = stats::setNames(lapply(sh, .empty_sheet), sh),
                  study = st, outputs = .empty_outputs(),
-                 setup = NA_character_, ard = .empty_ard_spec()),
+                 setup = NA_character_, ard = .empty_ard_spec(),
+                 lf = .empty_lf()),
             class = "tflplanner")
 }
 
@@ -266,6 +267,13 @@ copy_output <- function(x, from, to) {
   own$output_id <- rep(to, nrow(own))
   x$ard$analyses <- rbind(an, own)
   rownames(x$ard$analyses) <- NULL
+  for (sh in names(x$lf)) {
+    d <- x$lf[[sh]]
+    own <- d[!is.na(d$output_id) & d$output_id == from, , drop = FALSE]
+    own$output_id <- rep(to, nrow(own))
+    x$lf[[sh]] <- rbind(d, own)
+    rownames(x$lf[[sh]]) <- NULL
+  }
   src <- x$outputs[x$outputs$output_id == from, , drop = FALSE]
   x <- add_output(x, to,
                   description = if (nrow(src)) src$description else NA,
@@ -289,6 +297,10 @@ rename_output <- function(x, from, to) {
   x$outputs$output_id[x$outputs$output_id == from] <- to
   i <- !is.na(x$ard$analyses$output_id) & x$ard$analyses$output_id == from
   x$ard$analyses$output_id[i] <- to
+  for (sh in names(x$lf)) {
+    i <- !is.na(x$lf[[sh]]$output_id) & x$lf[[sh]]$output_id == from
+    x$lf[[sh]]$output_id[i] <- to
+  }
   x
 }
 
@@ -307,6 +319,12 @@ remove_output <- function(x, output_id) {
   x$ard$analyses <- an[is.na(an$output_id) | an$output_id != output_id, ,
                        drop = FALSE]
   rownames(x$ard$analyses) <- NULL
+  for (sh in names(x$lf)) {
+    d <- x$lf[[sh]]
+    x$lf[[sh]] <- d[is.na(d$output_id) | d$output_id != output_id, ,
+                    drop = FALSE]
+    rownames(x$lf[[sh]]) <- NULL
+  }
   x
 }
 

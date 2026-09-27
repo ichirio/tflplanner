@@ -249,3 +249,49 @@ the whole study,試験全体
 The ARD code failed: see the log.,ARD のコードがエラーになりました。ログを見てください。
 Run the analyses to see the ARD they make.,解析を実行すると、生成される ARD を表示します。
 %s: %d rows in %.1f s,%s：%d 行（%.1f 秒）
+Data catalog (SDTM / ADaM),データカタログ (SDTM / ADaM)
+The datasets the study's programs read: edit them on the ARD tab (datasets).,試験のプログラムが読むデータセット。編集は ARD タブ（datasets）で。
+Study ARD,試験 ARD
+One ARD for the study; each output takes its rows by output_id.,試験で 1 つの ARD。各帳票は output_id で自分の行を取り出します。
+"Build the ARD output by output as each is ready: tables can be made from the outputs already in it, while others are still being defined.",準備ができた帳票から 1 つずつ ARD に入れられます。入った帳票から表を作り始められ、他の帳票はその間も定義を続けられます。
+Put this output into the study ARD,この帳票を試験 ARD に入れる
+Build the whole study ARD,試験 ARD 全体を作成
+Listing / Figure,Listing / Figure
+Preview,プレビュー
+Preview the listing,Listing をプレビュー
+Someone else saved the same part,他の人が同じ部分を保存しています
+Changes others saved meanwhile were merged in.,その間に他の人が保存した変更を取り込みました。
+Company standards,カンパニースタンダード
+the built-in draft,組み込みのドラフト
+"Dropdowns, presets, statistics, ARD methods, listing types, and the defaults a new study starts with.",プルダウン、プリセット、統計量、ARD の手法、Listing の種類、新規試験の初期値。
+Download the standards in use,使用中のスタンダードをダウンロード
+Download the built-in draft,組み込みのドラフトをダウンロード
+Back to the built-in draft,組み込みのドラフトに戻す
+Install company standards (Excel),カンパニースタンダードを取り込む (Excel)
+"Company standards installed. They apply to what is offered from now on, and to new studies.",カンパニースタンダードを取り込みました。以後の候補表示と新規試験に適用されます。
+Back to the built-in draft.,組み込みのドラフトに戻しました。
+built,作成済み
+not built,未作成
+Analyses,解析数
+State,状態
+Rows,行数
+Built,作成日時
+%s is in the study ARD (%d rows),%s を試験 ARD に入れました（%d 行）
+missing,なし
+Dataset,データセット
+Level,区分
+Present,ファイル
+Choose a Listing or Figure report in the sidebar.,サイドバーで Listing か Figure の帳票を選んでください。
+This is a Table: its data is the study ARD (ARD tab) and its layout the Table definition.,これは Table です。データは試験 ARD（ARD タブ）、レイアウトは表の定義で作ります。
+"A listing in rows: the data (a dataset of the catalog, a condition, an order) and its columns. Its data code (Reports tab), if any, reworks `data` after the condition.",Listing を行で定義します：データ（カタログのデータセット・条件・並び順）と列。データ準備コード（帳票タブ）があれば、条件の後に `data` を加工します。
+"A figure reads its datasets here; the plot is its data code (Reports tab), written with ggplot2: it leaves `plot`.",Figure が読むデータセットをここで選びます。プロットはデータ準備コード（帳票タブ）に ggplot2 で書き、`plot` を作ります。
+Data the figure reads,Figure が読むデータ
+The program's data part,プログラムのデータ部分
+Listing,Listing
+Rows per page,1 ページの行数
+Condition (R),条件 (R)
+"Order (| between variables, - for descending)",並び順（変数は | 区切り、降順は -）
+"Columns, in order",列（この順で表示）
+vars: variables stacked in the column (| between them); label: \\n breaks the header; width: characters; collapse_repeats: print a repeated value once.,vars：列に積み重ねる変数（| 区切り）、label：\\n で見出しを改行、width：文字数、collapse_repeats：繰り返す値を 1 回だけ表示。
+Choose a Listing report,Listing の帳票を選んでください
+Preview the listing to see its first pages with the data.,Listing をプレビューすると、実データで最初のページを表示します。

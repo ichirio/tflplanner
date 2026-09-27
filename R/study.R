@@ -191,6 +191,14 @@ register_study <- function(path, home = tflplanner_home()) {
   p <- if (length(sp)) read_planner(sp) else new_planner()
   af <- file.path(path, study_layout()[["spec"]], .ard_file)
   if (file.exists(af)) p$ard <- unclass(read_ard_spec(af, check = FALSE))
+  lf <- file.path(path, study_layout()[["spec"]], .lf_file)
+  if (file.exists(lf)) {
+    for (sh in names(.lf_sheets)) {
+      if (sh %in% readxl::excel_sheets(lf)) {
+        p$lf[[sh]] <- .normalize_lf_sheet(.read_sheet_text(lf, sh), sh)
+      }
+    }
+  }
   s <- .new_study(path, meta[.study_fields], p)
   .write_state(s, home)
   .set_config("last_study", id, home)
@@ -323,7 +331,7 @@ save_study <- function(study, regenerate = character(),
     .write_program(program_code(p, id), f)
     files[nrow(files) + 1L, ] <- list(f, "written")
   }
-  files <- rbind(files, .save_ard(p, root))
+  files <- rbind(files, .save_ard(p, root), .save_lf(p, root))
   f <- file.path(root, lay[["programs"]], "autoexec_report.R")
   auto <- enc2utf8(autoexec_code(p))
   old <- if (file.exists(f)) readLines(f, warn = FALSE, encoding = "UTF-8")
@@ -557,7 +565,8 @@ read_data_head <- function(path, n = 50L) {
     list(`study keys` = p$study, setup = p$setup,
          `report list` = p$outputs),
     stats::setNames(p$sheets, paste0("sheet:", names(p$sheets))),
-    stats::setNames(p$ard, paste0("ard:", names(p$ard))))
+    stats::setNames(p$ard, paste0("ard:", names(p$ard))),
+    stats::setNames(p$lf %||% .empty_lf(), paste0("lf:", names(.lf_sheets))))
 }
 
 .set_study_part <- function(s, part, value) {
@@ -567,6 +576,7 @@ read_data_head <- function(path, n = 50L) {
     meta = s$meta[[name]] <- value,
     sheet = s$planner$sheets[[name]] <- value,
     ard = s$planner$ard[[name]] <- value,
+    lf = s$planner$lf[[name]] <- value,
     `study keys` = s$planner$study <- value,
     setup = s$planner$setup <- value,
     `report list` = s$planner$outputs <- value)

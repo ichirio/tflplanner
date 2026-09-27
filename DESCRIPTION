@@ -46,6 +46,7 @@ Suggests:
     broom,
     cards,
     cardx,
+    dplyr,
     haven,
     testthat (>= 3.0.0)
 Remotes:

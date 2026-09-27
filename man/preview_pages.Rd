@@ -7,7 +7,7 @@
 \usage{
 preview_pages(x, output_id, data)
 
-preview_html(pages, max_pages = 3L)
+preview_html(pages, max_pages = 3L, align = "center")
 }
 \arguments{
 \item{x}{An \code{tflplanner}.}
@@ -19,6 +19,9 @@ preview_html(pages, max_pages = 3L)
 \item{pages}{\code{rtftable} pages.}
 
 \item{max_pages}{How many pages to render.}
+
+\item{align}{How value cells align: \code{"center"} (a table) or \code{"left"} (a
+listing).}
 }
 \value{
 \code{preview_pages()}: a list of \code{rtftable}; \code{preview_html()}: HTML.

@@ -151,27 +151,9 @@ p$setup <- paste(
   "adsl <- readRDS(\"data/adam/adsl.rds\")",
   "adsl <- adsl[adsl$SAFFL == \"Y\", ]", sep = "\n")
 code <- list(
-  "L-16-2-7" = c(
-    "adae <- readRDS(\"data/adam/adae.rds\")",
-    "sev <- adae[adae$AESEV == \"SEVERE\", ]",
-    "sev <- sev[order(sev$TRTA, sev$USUBJID, sev$ASTDT), ]",
-    "sev$ASTDT <- format(sev$ASTDT)",
-    "sev$AENDT <- format(sev$AENDT)",
-    "lst <- listing_spec(list(",
-    "  listing_col(\"TRTA\", width = 22, label = \"Treatment\"),",
-    "  listing_col(\"USUBJID\", width = 14, label = \"Subject\",",
-    "              collapse_repeats = TRUE),",
-    "  listing_col(c(\"AEBODSYS\", \"AEDECOD\"), width = 44,",
-    "              label = \"System Organ Class/\\nPreferred Term\"),",
-    "  listing_col(c(\"ASTDT\", \"AENDT\"), width = 12, label = \"Start/\\nEnd\"),",
-    "  listing_col(\"AESER\", width = 7, label = \"Serious\"),",
-    "  listing_col(\"AEREL\", width = 9, label = \"Relation\"),",
-    "  listing_col(\"AEOUT\", width = 26, label = \"Outcome\")))",
-    "content <- as_rtftables(sev, listing = lst, max_rows = 22)"),
   "F-14-2-1" = c(
     "library(ggplot2)",
     "library(survival)",
-    "adtte <- readRDS(\"data/adam/adtte.rds\")",
     "fit <- survfit(Surv(AVAL, 1 - CNSR) ~ TRTA, data = adtte)",
     "km <- data.frame(time = c(0, fit$time), surv = c(1, fit$surv),",
     "                 arm = c(NA, rep(sub(\"TRTA=\", \"\", names(fit$strata)),",
@@ -184,8 +166,7 @@ code <- list(
     "  scale_y_continuous(limits = c(0, 1)) +",
     "  labs(x = \"Days since first dose\", y = \"Probability without event\",",
     "       colour = NULL) +",
-    "  theme_bw() + theme(legend.position = \"bottom\")",
-    "content <- list(plot)"))
+    "  theme_bw() + theme(legend.position = \"bottom\")"))
 
 # ---------------------------------------------------------- the study ARD
 # The tables' data: one study ARD from spec/ard_spec.xlsx (made by
@@ -193,8 +174,10 @@ code <- list(
 # code of their own.
 arow <- function(...) list(...)
 p$ard$datasets <- tbl(
-  list(dataset = "ADSL", path = "data/adam/adsl.rds"),
-  list(dataset = "ADAE", path = "data/adam/adae.rds"))
+  list(dataset = "ADSL", level = "ADaM", path = "data/adam/adsl.rds"),
+  list(dataset = "ADAE", level = "ADaM", path = "data/adam/adae.rds"),
+  list(dataset = "ADLB", level = "ADaM", path = "data/adam/adlb.rds"),
+  list(dataset = "ADTTE", level = "ADaM", path = "data/adam/adtte.rds"))
 p$ard$populations <- tbl(
   list(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"",
        derive = "TRTA = TRT01A"))
@@ -221,6 +204,28 @@ p$ard$analyses <- tbl(
        population_id = "SAF", where = "TRTEMFL == \"Y\"", by = "TRTA",
        variables = "AEBODSYS | AEDECOD", args = "over_variables = TRUE"))
 for (sh in names(p$ard)) p$ard[[sh]] <- .normalize_ard_sheet(p$ard[[sh]], sh)
+
+# ------------------------------------------------ the listing, the figure
+# The listing is defined in rows (Type 1: rtfreporter's multiline); the
+# figure reads ADTTE and its data code is the plot alone.
+p$lf$listings <- .normalize_lf_sheet(tbl(
+  list(output_id = "L-16-2-7", type = "multiline", dataset = "ADAE",
+       where = "AESEV == \"SEVERE\"", sort = "TRTA | USUBJID | ASTDT",
+       max_rows = "22")), "listings")
+p$lf$listing_cols <- .normalize_lf_sheet(tbl(
+  list(output_id = "L-16-2-7", vars = "TRTA", label = "Treatment", width = "22"),
+  list(output_id = "L-16-2-7", vars = "USUBJID", label = "Subject", width = "14",
+       collapse_repeats = "TRUE"),
+  list(output_id = "L-16-2-7", vars = "AEBODSYS | AEDECOD",
+       label = "System Organ Class/\\nPreferred Term", width = "44"),
+  list(output_id = "L-16-2-7", vars = "ASTDT | AENDT", label = "Start/\\nEnd",
+       width = "12"),
+  list(output_id = "L-16-2-7", vars = "AESER", label = "Serious", width = "7"),
+  list(output_id = "L-16-2-7", vars = "AEREL", label = "Relation", width = "9"),
+  list(output_id = "L-16-2-7", vars = "AEOUT", label = "Outcome", width = "26")),
+  "listing_cols")
+p$lf$figures <- .normalize_lf_sheet(tbl(
+  list(output_id = "F-14-2-1", datasets = "ADTTE")), "figures")
 
 desc <- c("T-14-1-1" = "Demographic characteristics",
           "T-14-1-2" = "Subject disposition",

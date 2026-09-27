@@ -10,8 +10,8 @@
 
 .all_rows <- "__all__"
 .default_rows <- "__default__"
-.study_tabs <- c("outputs", "ard", "builder", "table_spec", "report_spec",
-                 "data", "results")
+.study_tabs <- c("outputs", "ard", "lf", "builder", "table_spec",
+                 "report_spec", "data", "results")
 
 .sheet_labels <- c(
   tables = "tables: roles", variables = "variables", cells = "cells",
@@ -84,6 +84,7 @@ planner_app <- function(study = NULL) {
 .rp-pv th { font-weight: normal; vertical-align: bottom; padding: 1px 6px; }
 .rp-pv td { padding: 0 6px; white-space: pre; }
 .rp-pv .rp-pv-val { text-align: center; }
+.rp-pv.rp-pv-left .rp-pv-val, .rp-pv.rp-pv-left th { text-align: left; }
 .rp-pv .rp-pv-indent { padding-left: 2.2em; }
 .rp-pv-blank td { height: 1em; }
 .rp-pv-page { font-size: 11px; color: #6b7280; }
@@ -298,6 +299,22 @@ app_ui <- function(lang = "en") {
             shiny::uiOutput("program_state"),
             shiny::div(class = "rp-code",
                        shiny::verbatimTextOutput("program")))))),
+
+    bslib::nav_panel(
+      t("Listing / Figure"), value = "lf",
+      shiny::uiOutput("lf_note"),
+      bslib::layout_columns(
+        col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
+        shiny::div(
+          shiny::uiOutput("lf_form"),
+          shiny::uiOutput("lf_cols_box")),
+        bslib::card(
+          bslib::card_header(shiny::div(
+            class = "d-flex justify-content-between align-items-center",
+            shiny::span(t("Preview")),
+            .btn("lf_preview", t("Preview the listing"),
+                 class = "btn-sm btn-outline-primary"))),
+          shiny::uiOutput("lf_preview_out")))),
 
     bslib::nav_panel(
       t("Table builder (beta)"), value = "builder",
@@ -1359,6 +1376,180 @@ app_server <- function(input, output, session, start) {
                     stringsAsFactors = FALSE)
     names(v) <- t(c("Dataset", "Level", "File", "Present"))
     .dt(v, selection = "none")
+  })
+
+
+  # -- listings and figures ------------------------------------------------
+  # The form is drawn per report with fresh input ids (as the builder's),
+  # so an input of another report's form is never read as this one's.
+  lf_env <- new.env()
+  lf_env$n <- 0L
+  lf_drawn <- shiny::reactiveVal(0L)
+  lf_id <- function(x) paste0("lf", lf_env$n, "_", x)
+  lf_type <- shiny::reactive({
+    id <- current()
+    if (is.null(id)) "none" else report_info(rv$p, id)$type
+  })
+  catalog <- shiny::reactive({
+    d <- rv$p$ard$datasets
+    d[!is.na(d$dataset), , drop = FALSE]
+  })
+  dataset_columns <- function(ds) {
+    d <- catalog()
+    pth <- d$path[match(ds, d$dataset)]
+    if (length(pth) != 1L || is.na(pth)) return(character())
+    f <- file.path(rv$study$path, pth)
+    if (!file.exists(f)) return(character())
+    k <- paste(f, file.mtime(f))
+    if (is.null(ard_cols[[k]])) {
+      ard_cols[[k]] <- tryCatch(names(read_data_head(f, 1L)),
+                                error = function(e) character())
+    }
+    ard_cols[[k]]
+  }
+  output$lf_note <- shiny::renderUI({
+    msg <- switch(lf_type(),
+      none = t("Choose a Listing or Figure report in the sidebar."),
+      table = t("This is a Table: its data is the study ARD (ARD tab) and its layout the Table definition."),
+      listing = t("A listing in rows: the data (a dataset of the catalog, a condition, an order) and its columns. Its data code (Reports tab), if any, reworks `data` after the condition."),
+      figure = t("A figure reads its datasets here; the plot is its data code (Reports tab), written with ggplot2: it leaves `plot`."))
+    shiny::div(class = "alert alert-info py-2 small", msg)
+  })
+  output$lf_form <- shiny::renderUI({
+    rv$ver
+    type <- lf_type()
+    shiny::req(type %in% c("listing", "figure"))
+    id <- current()
+    p <- shiny::isolate(rv$p)
+    lf_env$n <- lf_env$n + 1L
+    lf_drawn(lf_env$n)
+    lf_env$id <- id
+    cat_ds <- shiny::isolate(catalog())
+    ds_choices <- stats::setNames(cat_ds$dataset,
+                                  paste0(cat_ds$dataset, " (", cat_ds$level, ")"))
+    if (type == "figure") {
+      f <- lf_rows(p, "figures", id)
+      have <- if (nrow(f)) .split_bar(f$datasets[1L]) else character()
+      return(shiny::div(
+        class = "rp-b-card",
+        shiny::h6(t("Data the figure reads")),
+        shiny::selectizeInput(lf_id("fig_ds"), NULL, ds_choices,
+                              selected = have, multiple = TRUE,
+                              width = "100%"),
+        shiny::h6(t("The program's data part")),
+        shiny::div(class = "rp-code", shiny::verbatimTextOutput("lf_fig_code"))))
+    }
+    l <- lf_rows(p, "listings", id)
+    lv <- function(k, d = "") if (nrow(l) && !is.na(l[[k]][1L])) l[[k]][1L] else d
+    lt <- listing_types()
+    shiny::div(
+      class = "rp-b-card",
+      shiny::h6(t("Listing")),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2",
+        shiny::selectInput(lf_id("type"), t("Type"),
+                           stats::setNames(lt$type, lt$label),
+                           selected = lv("type", .std_setting("listing_type",
+                                                             "multiline")),
+                           width = "200px"),
+        shiny::selectInput(lf_id("dataset"), t("Dataset"),
+                           c(stats::setNames("", "-"), ds_choices),
+                           selected = lv("dataset"), width = "200px"),
+        shiny::numericInput(lf_id("max_rows"), t("Rows per page"),
+                            value = suppressWarnings(as.numeric(lv("max_rows", NA))),
+                            min = 1, width = "140px")),
+      shiny::textInput(lf_id("where"), t("Condition (R)"), value = lv("where"),
+                       width = "100%",
+                       placeholder = "AESEV == \"SEVERE\""),
+      shiny::textInput(lf_id("sort"), t("Order (| between variables, - for descending)"),
+                       value = lv("sort"), width = "100%",
+                       placeholder = "TRTA | USUBJID | ASTDT"))
+  })
+  # the form's values back to the listing / figure rows
+  lf_values <- shiny::reactive({
+    lf_drawn()
+    shiny::req(identical(lf_env$id, current()))
+    get <- function(x) input[[lf_id(x)]]
+    if (identical(lf_type(), "figure")) {
+      return(list(sheet = "figures", rows = data.frame(
+        datasets = paste(get("fig_ds") %||% character(), collapse = " | "),
+        stringsAsFactors = FALSE)))
+    }
+    shiny::req(!is.null(get("type")))
+    mr <- get("max_rows")
+    list(sheet = "listings", rows = data.frame(
+      type = get("type"), dataset = get("dataset") %||% "",
+      where = get("where") %||% "", sort = get("sort") %||% "",
+      max_rows = if (is.null(mr) || is.na(mr)) "" else as.character(mr),
+      stringsAsFactors = FALSE))
+  })
+  lf_values_d <- shiny::debounce(lf_values, 400)
+  shiny::observeEvent(lf_values_d(), {
+    v <- lf_values_d()
+    id <- lf_env$id
+    p2 <- set_lf_rows(rv$p, v$sheet, id, v$rows)
+    if (!identical(p2$lf, rv$p$lf)) rv$p <- p2
+  })
+  output$lf_fig_code <- shiny::renderText({
+    id <- current()
+    shiny::req(identical(lf_type(), "figure"))
+    paste(data_lines(rv$p, id), collapse = "\n")
+  })
+  output$lf_cols_box <- shiny::renderUI({
+    shiny::req(identical(lf_type(), "listing"))
+    shiny::div(
+      class = "rp-b-card",
+      shiny::h6(t("Columns, in order")),
+      shiny::p(class = "small text-muted",
+               t("vars: variables stacked in the column (| between them); label: \\n breaks the header; width: characters; collapse_repeats: print a repeated value once.")),
+      rhandsontable::rHandsontableOutput("hot_lf_cols"))
+  })
+  lf_cols_key <- shiny::reactive(paste("lf_cols", input$target, rv$ver,
+                                       sep = "|"))
+  output$hot_lf_cols <- rhandsontable::renderRHandsontable({
+    shiny::req(identical(lf_type(), "listing"))
+    id <- current()
+    p <- shiny::isolate(rv$p)
+    d <- lf_rows(p, "listing_cols", id)
+    d$output_id <- NULL
+    l <- lf_rows(p, "listings", id)
+    cols <- if (nrow(l)) dataset_columns(l$dataset[1L]) else character()
+    .grid(d, "listing_cols", lf_cols_key(),
+          list(vars = cols, collapse_repeats = .bool))
+  })
+  shiny::observeEvent(input$hot_lf_cols, {
+    h <- input$hot_lf_cols
+    if (is.null(h$changes$changes) &&
+        !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
+    if (!identical(h$params$planner_key, lf_cols_key())) return()
+    rv$p <- set_lf_rows(rv$p, "listing_cols", current(),
+                        rhandsontable::hot_to_r(h))
+  })
+  lf_pv <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(current(), lf_pv(NULL))
+  shiny::observeEvent(input$lf_preview, {
+    id <- current()
+    if (!identical(lf_type(), "listing")) {
+      return(notify(t("Choose a Listing report"), "warning"))
+    }
+    r <- tryCatch(list(pages = preview_listing(current_study(), id)),
+                  error = function(e) list(error = conditionMessage(e)))
+    lf_pv(r)
+  })
+  output$lf_preview_out <- shiny::renderUI({
+    r <- lf_pv()
+    if (is.null(r)) {
+      return(shiny::p(class = "small text-muted",
+                      t("Preview the listing to see its first pages with the data.")))
+    }
+    if (!is.null(r$error)) {
+      return(shiny::div(class = "alert alert-danger py-1 small",
+                        shiny::tags$pre(class = "mb-0", r$error)))
+    }
+    shiny::tagList(
+      shiny::p(class = "small text-muted",
+               sprintf(t("%d pages"), length(r$pages))),
+      preview_html(r$pages, max_pages = 2L, align = "left"))
   })
 
   # -- the table builder -------------------------------------------------

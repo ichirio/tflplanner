@@ -189,7 +189,9 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
   g <- file.path(root, study_layout()[["programs"]], "make_ard.R")
   out <- data.frame(file = character(), status = character(),
                     stringsAsFactors = FALSE)
-  if (!nrow(a$analyses) && !file.exists(f)) return(out)
+  # the data catalog is the study's too (listings and figures read it)
+  if (!nrow(a$analyses) && !nrow(a$datasets) && !nrow(a$populations) &&
+      !file.exists(f)) return(out)
   norm <- function(z) stats::setNames(lapply(names(.ard_spec_sheets), function(s)
     .normalize_ard_sheet(z[[s]], s)), names(.ard_spec_sheets))
   a <- norm(a)
