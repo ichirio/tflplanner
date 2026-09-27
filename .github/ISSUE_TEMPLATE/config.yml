@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question / discussion
+    url: https://github.com/ichirio/tflplanner/discussions
+    about: For usage questions and open-ended discussion (not bug reports).
+  - name: Contributing guide
+    url: https://github.com/ichirio/tflplanner/blob/main/CONTRIBUTING.md
+    about: How to report bugs, open pull requests, and the release process.

@@ -443,11 +443,11 @@ app_ui <- function(lang = "en") {
               class = "rp-code",
               shiny::textAreaInput(
                 "data_code",
-                t("1. ARD: make `ard` (Listing / Figure: make `content`). Blank = TODO."),
+                t("1. ARD: make `ard` (Listing: rework `data`; Figure: the plot). Blank for a table = the company template: its rows of the study ARD."),
                 rows = 10, width = "100%", resize = "vertical"),
               shiny::textAreaInput(
                 "process_code",
-                t("2. Normalize and rework: make `data` from `ard` (ard_normalize(), then mutate() ...). Blank = data <- ard_normalize(ard)."),
+                t("2. Normalize and rework: make `data` from `ard` (ard_normalize(), then mutate() ...). Blank = the company template (normalize)."),
                 rows = 5, width = "100%", resize = "vertical",
                 placeholder = "data <- ard_normalize(ard)"),
               shiny::div(

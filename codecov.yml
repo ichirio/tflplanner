@@ -1,0 +1,32 @@
+comment: false
+
+# Phase 1 baseline (v0.0.28): 73%.  After the R6 removal in v0.0.41
+# we sit at 91.88%.  We lock a 70% floor so any future PR that drops
+# below 70% fails the check.  Patch coverage is informational only --
+# new features land with their tests but we don't gate on a specific
+# patch-level threshold.
+#
+# `range` controls the colour gradient on the README badge.  We
+# use the industry-standard "60% acceptable / 85% high quality"
+# split that most public OSS repos adopt:
+#
+#   * <= 60%  -> red       (insufficient -- improvement needed)
+#   *  60-85% -> orange -> yellow -> green gradient
+#   * >= 85%  -> green     (release-ready quality)
+#
+# Reference points: tidyverse packages typically sit at 85-95%;
+# Google's internal standard is ~80%.  Anything above 85% is widely
+# accepted as a "trustworthy" package on its own merits.
+coverage:
+  range: "60...85"
+  status:
+    project:
+      default:
+        target: 70%
+        threshold: 1%
+        informational: false
+    patch:
+      default:
+        target: 60%
+        threshold: 1%
+        informational: true

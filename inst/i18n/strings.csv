@@ -360,3 +360,5 @@ Working data: the study ARD (ard.rds),作業用データ：試験 ARD（ard.rds�
 Working reports: RTF,作業用帳票：RTF
 "Official runs: one batch folder each (logs, results, code)",正式実行：1 回ごとのバッチフォルダ（ログ・結果・コード）
 What a report program printed in its last preview,帳票プログラムの直近プレビューの出力
+1. ARD: make `ard` (Listing: rework `data`; Figure: the plot). Blank for a table = the company template: its rows of the study ARD.,1. ARD：`ard` を作る（Listing：`data` の加工、Figure：プロット）。表で空欄なら会社テンプレート（試験 ARD から自分の行を取得）。
+"2. Normalize and rework: make `data` from `ard` (ard_normalize(), then mutate() ...). Blank = the company template (normalize).",2. normalize と加工：`ard` から `data` を作る（ard_normalize() の後に mutate() など）。空欄なら会社テンプレート（normalize）。

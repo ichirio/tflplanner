@@ -1,5 +1,20 @@
 # tflplanner 0.0.0.9000
 
+- The ARD definition is kept by the app (web GUI); `ard_spec.xlsx` is an
+  optional export / import (`write_ard_spec()`, `export_spec()`,
+  `import_spec()`).  Saving writes one ARD program per output
+  (`programs/ard/`), `ard_setup.R` and the folder's copy of the definition.
+- Official runs (`run_batch()`, `programs/*/autoexec_*.R`) make a dated
+  batch folder with each program's logrx log, what the run made and the
+  code it ran; a program run on its own is a preview and keeps no log.
+- Company standards (`standards_template()`, `setup_tflplanner(standards =)`):
+  dropdowns, presets, ARD methods and statistics (`ard_statistics()`), code
+  templates (`code_templates()`), the rows a new study starts with.
+- ARD statistics beyond cards' own (CV, SE, geometric mean / CV and CIs,
+  percentiles, ...) and per-statistic formats giving `stat_fmt`.
+- Listings in rows (rtfreporter's `multiline`) and figures that read their
+  data, with the plot written by hand.
+
 - Input assistance from the ARD: `fetch_ard()` runs a report's data code
   from the study folder and keeps `ard_meta()` (keys, hierarchy,
   variables, levels, statistics, with labels and value order from the

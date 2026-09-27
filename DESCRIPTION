@@ -1,24 +1,26 @@
 Package: tflplanner
 Type: Package
-Title: A 'shiny' Editor for 'rtfreporter' Table and Report Definitions
+Title: A 'shiny' Study Manager for Clinical TFLs Made with 'rtfreporter'
 Version: 0.0.0.9000
 Authors@R:
     person(given  = "Yoichi",
            family = "Masui",
            email  = "ichi.r.pro@gmail.com",
            role   = c("aut", "cre", "cph"))
-Description: A 'shiny' application that keeps each clinical study in a
-    folder of its own -- input data, definitions, programs, deliverables
-    and logs -- and writes the definition workbooks
-    that 'rtfreporter' builds clinical tables from: the table definition
-    ('table_spec.xlsx': the table, its variables, cells, layout, columns,
-    style and column header) and the report definition
-    ('report_spec.xlsx': the report list, page, running header and footer,
-    titles and footnotes). From the same definition it writes one R program
-    per report, which reads the two workbooks and writes the report's RTF,
-    and 'autoexec_report.R', which runs them all.
+Description: A 'shiny' study manager for clinical tables, listings and
+    figures made with 'rtfreporter'. Each study is a folder of its own --
+    input data, definitions, programs, results and the records of its
+    official runs. The app defines the study's analysis results data (ARD)
+    and writes one 'cards' / 'cardx' program per output, which together
+    make one study ARD; it defines the tables, listings and figures and
+    writes one program per report, which reads its part of the study ARD
+    (or the 'SDTM' / 'ADaM' data) and writes the report's RTF. Official
+    runs keep each program's log, what it made and the code it ran in a
+    dated batch folder. Defaults and code lists come from a company's
+    standards workbook.
 License: Apache License (>= 2)
-URL: https://github.com/ichirio/tflplanner
+URL: https://github.com/ichirio/tflplanner,
+    https://ichirio.github.io/tflplanner/
 BugReports: https://github.com/ichirio/tflplanner/issues
 Encoding: UTF-8
 Language: en-US

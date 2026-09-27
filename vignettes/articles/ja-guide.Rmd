@@ -1,0 +1,262 @@
+---
+title: "tflplanner 利用ガイド（日本語）"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE, collapse = TRUE, comment = "#>")
+```
+
+> この記事は、tflplanner を使い始めるための前提となる暫定版の案内です。
+> 将来、英語化するか、パッケージのドキュメントへ統合して削除する可能性があります。
+> tflplanner 自体も開発中（experimental）で、画面や関数は変わることがあります。
+
+## tflplanner とは
+
+tflplanner は、臨床試験の TFL（Tables, Listings, Figures）を
+[rtfreporter](https://github.com/ichirio/rtfreporter) で作るための、
+試験単位の管理ツール（Shiny アプリ）です。
+1 試験を 1 フォルダとして扱い、入力データ・定義・プログラム・成果物・実行記録をまとめて管理します。
+
+全体の流れは次のとおりです。
+
+```
+ARD   :  Web GUI（ARD 定義） ⇒ （Excel：任意） ⇒ ARD 作成プログラム ⇒ 試験 ARD
+帳票  :  試験 ARD から output_id で取得 ⇒ normalize ⇒ 加工 ⇒ 表の定義 ⇒ RTF
+Listing / Figure : SDTM / ADaM ⇒ 帳票プログラム ⇒ RTF
+正式実行 : autoexec_*.R ⇒ runs/<日時>_<内容>/（ログ・結果・コード）
+```
+
+- **ARD 作成と帳票作成は分かれています。** 担当者が違っても、また ARD がすべてそろう前でも、
+  すでに入っている帳票から表を作り始められます。
+- **Excel は必須ではありません。** 定義はアプリが保持し、Excel は書き出し・読み込み
+  （Excel で一括編集したいとき、定義をファイルとして残したいとき）のためだけにあります。
+  ただし表・レポートの定義ブック（`table_spec.xlsx` / `report_spec.xlsx`）は
+  帳票プログラムが実行時に読むため、保存のたびに試験フォルダへ書き出されます。
+
+## 1. インストール
+
+R 4.1 以上が必要です。rtfreporter は開発ブランチのものを使います。
+
+```{r}
+install.packages("remotes")
+remotes::install_github("ichirio/rtfreporter@feat/474-ard-experimental")
+remotes::install_github("ichirio/tflplanner")
+
+# ARD の作成と正式実行のログに使うパッケージ
+install.packages(c("cards", "cardx", "dplyr", "logrx"))
+# 必要に応じて：SAS データ（haven）、parquet（arrow）
+install.packages(c("haven", "arrow"))
+```
+
+## 2. 環境設定
+
+### 2.1 ホームと試験フォルダの置き場所
+
+tflplanner は、試験フォルダとは別に「ホーム」を持ちます。
+ホームには、各試験の最新の保存状態（`state.json`）と保存履歴が置かれ、これがマスターです。
+
+```{r}
+library(tflplanner)
+setup_tflplanner(
+  studies_root = "C:/studies",   # 新しい試験フォルダを作る場所
+  language     = "ja"            # 画面の言語（既定は "en"）
+)
+tflplanner_home()                # ホームの場所
+```
+
+ホームの既定の場所は `tools::R_user_dir("tflplanner", "data")` です。
+別の場所にしたい場合は `setup_tflplanner(home = "D:/tflplanner")` とするか、
+オプション `tflplanner.home` を使います。
+
+### 2.2 カンパニー標準の準備
+
+アプリが提示する選択肢や、自動で埋める既定値は、すべて
+**カンパニー標準（Excel ブック 1 冊）** から読みます。
+会社ごとの標準を作り、環境構築時に 1 度取り込みます。
+
+```{r}
+# 1. 組み込みのドラフトを書き出す
+standards_template("company_standards.xlsx")
+
+# 2. Excel で編集する（下の表を参照）
+
+# 3. 取り込む（ホームの standards/ にコピーされる）
+setup_tflplanner(standards = "company_standards.xlsx")
+
+# 組み込みのドラフトに戻す
+setup_tflplanner(standards = "builtin")
+```
+
+アプリの Studies タブにある「設定」からも、ダウンロード・取り込み・ドラフトへの戻しができます。
+ブックに含めなかったシートは、組み込みのドラフトのものが使われます。
+
+| シート | 内容 |
+|---|---|
+| `settings` | 言語、新規試験の丸め方、被験者キー（USUBJID）、試験 ARD の置き場所など |
+| `choices` | 表の各列のプルダウン候補 |
+| `cell_presets` / `header_presets` | 表の定義で使うセル・列見出しのプリセット |
+| `statistics` / `categorical_formats` | 表ビルダーの統計量と桁（d = データの小数桁数）、カテゴリの書式 |
+| `ard_methods` | ARD の手法キーワード（呼ぶ関数、種類、既定の引数・書式） |
+| `ard_statistics` | ARD で選べる統計量のカタログ（既定の書式、tflplanner が計算する関数） |
+| `code_templates` | 帳票プログラムに埋め込むコードのテンプレート（後述） |
+| `listing_types` | 選べる Listing の種類（現在は rtfreporter の `multiline`） |
+| `populations` / `datasets` | 新規試験が最初に持つ解析対象集団とデータカタログ |
+| `default_<シート>` | 新規試験の「試験共通の既定」（ヘッダー・フッターなど）。`{STUDY_ID}` は試験 ID に置き換わる |
+
+### 2.3 起動
+
+```{r}
+tflplanner::run_app()             # 最後に開いた試験から
+tflplanner::run_app("ABC-101")    # 試験を指定して
+```
+
+## 3. 試験を作る
+
+Studies タブの「新規試験」で作成します。一覧は 1 行 1 試験で、
+クリックすると右に内容を表示し、ダブルクリックで開きます。
+
+```
+ABC-101/
+  study.yml            試験の情報
+  ABC-101.Rproj        開くと作業ディレクトリが試験フォルダになる
+  data/adam/  data/sdtm/  data/other/     入力データ
+  spec/                表・レポートの定義ブック、ARD 定義のコピー（ard_definition.json）
+  programs/            batch.R、autoexec_all.R（正式実行）
+  programs/ard/        ARD プログラム（帳票ごと）、ard_setup.R、autoexec_ard.R
+  programs/tfl/        帳票プログラム、autoexec_report.R
+  output/ard/          作業用の試験 ARD（ard.rds）
+  output/tfl/          作業用の RTF
+  runs/                正式実行のバッチフォルダ
+```
+
+プログラムはすべて試験フォルダを作業ディレクトリとして動き、ファイルを相対パスで参照するため、
+フォルダごと移動・コピーしても動きます。
+
+**データ** タブで ADaM / SDTM のファイルを取り込み、ARD タブの `datasets` シートで
+データカタログ（データセット名・区分・パス）を定義します。
+Listing / Figure もこのカタログからデータを読みます。
+
+## 4. ARD を作る
+
+ARD タブで、帳票ごとの解析を 1 行ずつ定義します（`analyses` シート）。
+
+| 列 | 内容 |
+|---|---|
+| `output_id` / `analysis_id` | どの帳票の、どの解析か（ARD の列にも入る） |
+| `method` | 手法キーワード（continuous, categorical, hierarchical, mean_ci, ttest など）か、任意の `pkg::関数` |
+| `dataset` / `population_id` / `where` | 解析データ（解析対象集団で絞り、さらに条件を付ける） |
+| `by` / `variables` | 群と解析変数（複数は `|` 区切り） |
+| `statistics` | 統計量（下の「統計量と書式」から選べる） |
+| `formats` | 統計量ごとの書式（`mean=xx.x | p=xx.x% | AGE:sd=xx.xx | p.value=pvalue`） |
+| `args` / `code` | 追加の引数、custom 手法のコード |
+
+- **統計量と書式** パネルで、手法に合う統計量をカタログから選び、書式を指定できます。
+  CV、SE、幾何平均・幾何 CV とその信頼区間、対数の平均・SD、パーセンタイル、平均の信頼区間など、
+  cards にない統計量は tflplanner が関数をプログラムに書き込むので、データの事前加工は要りません。
+- 生成される ARD の各行には、書式を適用した `stat_fmt` 列が付きます。
+- 信頼区間や検定の手法（mean_ci など）では、statistics に書いた統計量だけを残します。
+
+保存すると、帳票ごとの ARD プログラム `programs/ard/<output_id>.R` が書き出されます。
+
+- **プレビュー**：「プレビュー：この帳票を試験 ARD に入れる」で、その帳票の分だけ
+  作業用の試験 ARD（`output/ard/ard.rds`）を更新します。ログは残しません。
+  Generated ARD タブでは、保存前の定義をその場で試せます。
+- **正式実行**：後述の「正式実行」を参照。
+
+Excel で一括編集したい場合は、Studies タブの「定義ブックを書き出す (Excel)」で `ard_spec.xlsx` を書き出し、
+編集後に「Excel の定義ブックを取り込む」で読み込みます（どちらも任意です）。
+
+## 5. 表（Table）を作る
+
+表の帳票プログラムの冒頭には、カンパニー標準のコードテンプレートが埋め込まれます。
+
+```{r}
+# ---- this output's rows of the study ARD (code_templates: table_data)
+ard <- readRDS("output/ard/ard.rds")
+ard <- ard[ard$output_id == "T-14-1-1",
+           setdiff(names(ard), c("output_id", "analysis_id", "population_id"))]
+# ---- normalize (code_templates: table_process)
+data <- ard_normalize(ard)
+# ---- rework as needed, e.g.
+# data <- dplyr::mutate(data, ...)
+```
+
+加工が必要な場合は、帳票タブの「2. normalize と加工」に `mutate` などを書きます（書いた内容がテンプレートの代わりになります）。
+テンプレートは `code_templates` シートで会社ごとに変えられ、
+`{OUTPUT_ID}`、`{ARD}`、`{ARD_PROGRAM}`、`{PROGRAM}`、`{STUDY_ID}` が埋め込まれます。
+
+表のレイアウトは次のどちらかで定義します。
+
+- **表ビルダー（試作）**：群の順序、変数と統計量、書式を画面で選び、プレビューを見ながら作成
+- **表の定義**：rtfreporter の `table_spec` の各シート（tables / variables / cells / layout / columns / style / col_header）をグリッドで編集。
+  ARD から変数・水準・統計量を読み取り、入力を支援します
+
+列見出しの N は解析対象集団の N です。
+
+## 6. Listing を作る
+
+Listing / Figure タブで、Listing の帳票に次を指定します。
+
+- 種類（`multiline`）、データセット（SDTM / ADaM のカタログから）、条件、並び順（`-` で降順）、1 ページの行数
+- 列：重ねる変数（`|` 区切り）、見出し（`\n` で改行）、幅、同じ値を 1 回だけ表示するか
+
+「Listing をプレビュー」で、実データで最初のページを確認できます。
+
+## 7. Figure を作る
+
+Figure の帳票に、読み込むデータセットを選びます。プログラムのうち、
+データの読み込みと RTF 出力の部分は自動で書かれ、
+その間のプロット部分（ggplot2）を帳票タブのデータコードに人が書き、`plot` を作ります。
+
+```{r}
+plot <- ggplot2::ggplot(adtte, ggplot2::aes(AVAL)) + ggplot2::geom_histogram()
+```
+
+## 8. レポートの体裁
+
+帳票の体裁タブで、ページ・ヘッダー・フッター・タイトル・脚注を定義します。
+「試験共通の既定」（output_id 空欄の行）は、自分の行を持たないすべての帳票に使われます。
+
+## 9. 実行：プレビューと正式実行
+
+| | プレビュー | 正式実行 |
+|---|---|---|
+| 実行方法 | アプリの各プレビューボタン、RStudio でプログラムを直接実行 | `autoexec_ard.R` / `autoexec_report.R` / `autoexec_all.R`、アプリの「正式実行を開始」 |
+| 結果 | 作業用の `output/` を更新 | 作業用の `output/` を更新し、バッチフォルダにも格納 |
+| ログ | 残さない | logrx で各プログラムのログを残す |
+
+正式実行はバッチフォルダ `runs/<日付>_<時刻>_<ard|report|all>/` を作ります。
+
+```
+runs/20260927_143000_all/
+  batch.txt            実行者、マシン、日時、R のバージョン、結果
+  run.csv              プログラムごとの状態、エラー・警告数、時間、md5
+  logs/ard/*.log       logrx のログ
+  logs/tfl/*.log
+  output/ard/          試験 ARD（ard.rds、ard_status.csv）、表のデータ
+  output/tfl/          RTF
+  code/                実行したプログラムと定義ブック（--no-code で省略）
+```
+
+```{r}
+# コマンドラインから（試験フォルダで）
+# Rscript programs/autoexec_all.R              ARD、続いて帳票
+# Rscript programs/ard/autoexec_ard.R          ARD だけ
+# Rscript programs/tfl/autoexec_report.R       帳票だけ
+# Rscript programs/autoexec_all.R --no-code    コードを含めない
+# Rscript programs/tfl/autoexec_report.R T-14-1-1.R   指定したものだけ
+
+# R から
+s <- open_study("ABC-101")
+run_batch(s, c("ard", "tfl"), code = TRUE)
+list_batches(s)
+```
+
+logrx がインストールされていない環境では、R CMD BATCH のログに切り替わります。
+
+## 10. 多人数での作業
+
+- 保存は部分ごとの 3 方向マージです。その間に他の人が保存した別の部分の変更は取り込まれ、
+  同じ部分を 2 人が変えた場合だけ競合として知らせます。
+- 試験 ARD の状態（作成済み・定義変更あり・未作成・エラー）は ARD タブの「試験 ARD」で確認できます。
+- 手で編集したプログラムは、保存しても上書きされません（チェックサムで判定）。

@@ -6,3 +6,8 @@
 .DS_Store
 *.Rcheck/
 tflplanner_*.tar.gz
+
+# pkgdown build output -- deployed to gh-pages branch via GitHub Actions
+/docs/
+/doc/
+/Meta/

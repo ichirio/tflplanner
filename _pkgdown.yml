@@ -1,0 +1,100 @@
+url: https://ichirio.github.io/tflplanner/
+
+template:
+  bootstrap: 5
+  bootswatch: cosmo
+  bslib:
+    primary: "#1f4e79"
+    base_font: {google: "Source Sans 3"}
+    heading_font: {google: "Source Sans 3"}
+    code_font: {google: "JetBrains Mono"}
+
+# As rtfreporter: published at the root, and the README's badges are shown.
+development:
+  mode: unreleased
+  version_label: warning
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]
+  components:
+    articles:
+      text: Articles
+      menu:
+        - text: "tflplanner 利用ガイド（日本語）"
+          href: articles/ja-guide.html
+
+articles:
+  - title: Guides
+    navbar: ~
+    contents:
+      - articles/ja-guide
+
+reference:
+  - title: The app and its home
+    contents:
+      - run_app
+      - setup_tflplanner
+      - tflplanner_home
+      - tflplanner_config
+      - tr
+  - title: Company standards
+    contents:
+      - standards_template
+      - code_templates
+      - ard_methods
+      - ard_statistics
+  - title: Studies
+    contents:
+      - create_study
+      - save_study
+      - export_spec
+      - study_layout
+      - study_files
+      - read_data_head
+      - study_status
+  - title: The ARD definition and the study ARD
+    contents:
+      - read_ard_spec
+      - write_ard_spec
+      - ard_rows
+      - ard_spec_code
+      - ard_setup_code
+      - build_ard
+      - run_ard
+      - ard_view
+      - ard_for
+      - ard_status
+      - update_study_ard
+  - title: Tables, listings and figures
+    contents:
+      - new_planner
+      - add_output
+      - output_ids
+      - table_sheets
+      - inherited_rows
+      - read_planner
+      - write_planner
+      - check_planner
+      - report_info
+      - lf_rows
+      - preview_listing
+  - title: Input assistance and the table builder
+    contents:
+      - fetch_ard
+      - ard_meta
+      - fill_variables
+      - cell_presets
+      - add_preset
+      - builder_read
+      - builder_stats
+      - preview_pages
+  - title: Programs and runs
+    contents:
+      - data_lines
+      - program_code
+      - autoexec_code
+      - batch_code
+      - run_study
+      - run_batch
