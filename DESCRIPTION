@@ -31,7 +31,8 @@ Imports:
     processx,
     readxl,
     rhandsontable,
-    rtfreporter (>= 0.8.0.9082),
+    rtfreporter (>= 0.8.0.9085),
+    tflspec (>= 0.0.3),
     shiny,
     sortable,
     bslib,
@@ -53,7 +54,8 @@ Suggests:
     logrx,
     testthat (>= 3.0.0)
 Remotes:
-    ichirio/rtfreporter@feat/474-ard-experimental
+    ichirio/rtfreporter,
+    ichirio/tflspec
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3

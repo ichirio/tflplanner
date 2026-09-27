@@ -21,6 +21,6 @@ frame: \code{variable}, \code{kind}, \code{levels}, \code{n_levels}, \code{stats
 Reads the keys (the column and hierarchy variables) with their levels,
 the analysis variables with their kind, levels, statistics and labels,
 and the contexts and statistic names, from a normalized ARD (\code{data},
-what \code{\link[rtfreporter:rtf_plan]{rtfreporter::rtf_plan()}} is given) or, failing that, from the raw
+what \code{\link[tflspec:rtf_plan]{tflspec::rtf_plan()}} is given) or, failing that, from the raw
 cards ARD.
 }

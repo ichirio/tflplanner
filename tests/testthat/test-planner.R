@@ -1,5 +1,5 @@
 sample_paths <- function() {
-  d <- system.file("extdata", "ard-spec", package = "rtfreporter")
+  d <- system.file("extdata", "ard-spec", package = "tflspec")
   file.path(d, c("report.xlsx", "study.xlsx"))
 }
 
@@ -20,11 +20,11 @@ test_that("the sample reads, writes and reads back unchanged", {
   expect_identical(q$setup, p$setup)
 })
 
-test_that("each workbook carries its half and rtfreporter reads each alone", {
+test_that("each workbook carries its half and tflspec reads each alone", {
   p <- read_planner(sample_paths())
   paths <- write_planner(p, withr_tempdir())
-  t <- rtfreporter::read_table_spec(paths[["table"]])
-  r <- rtfreporter::read_report_spec(paths[["report"]])
+  t <- tflspec::read_table_spec(paths[["table"]])
+  r <- tflspec::read_report_spec(paths[["report"]])
   expect_gt(nrow(t$tables), 0)
   expect_equal(nrow(t$report), 0)
   expect_equal(nrow(r$tables), 0)
@@ -88,7 +88,7 @@ test_that("a grid's empty rows never become rows of an output_id", {
   expect_identical(set_ard_rows(a, "analyses", "T1", r)$ard, a$ard)
 })
 
-test_that("check_planner() reports what rtfreporter refuses", {
+test_that("check_planner() reports what tflspec refuses", {
   p <- read_planner(sample_paths())
   expect_true(all(check_planner(p)$ok))
   p$sheets$layout$pages_max_rows[1] <- "twenty"

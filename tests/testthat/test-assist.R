@@ -14,7 +14,7 @@ ae_data <- function() {
   ard <- cards::ard_stack_hierarchical(
     adae, variables = c(AEBODSYS, AEDECOD), by = TRTA,
     denominator = adsl, id = USUBJID, over_variables = TRUE)
-  rtfreporter::ard_normalize(ard, hierarchy = c("AEBODSYS", "AEDECOD"),
+  tflspec::ard_normalize(ard, hierarchy = c("AEBODSYS", "AEDECOD"),
                              overall = "Any TEAE")
 }
 
@@ -38,7 +38,7 @@ test_that("ard_meta() reads keys, variables, levels and statistics", {
 
 test_that("ard_meta() reads the rework, and a hierarchy", {
   skip_if_not_installed("cards")
-  d <- rtfreporter::ard_normalize(dm_ard())
+  d <- tflspec::ard_normalize(dm_ard())
   d$variable_level[d$variable == "SEX"] <-
     ifelse(d$variable_level[d$variable == "SEX"] == "F", "Female", "Male")
   m <- ard_meta(data = d)

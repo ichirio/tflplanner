@@ -80,6 +80,9 @@ setup_tflplanner <- function(home = NULL, studies_root = NULL,
   if (is.null(cfg$studies_root) || !nzchar(cfg$studies_root)) {
     cfg$studies_root <- file.path(home, "workspace")
   }
+  # made before it is normalized, so the path is the resolved one
+  # (symbolic links, short names)
+  dir.create(cfg$studies_root, recursive = TRUE, showWarnings = FALSE)
   cfg$studies_root <- normalizePath(cfg$studies_root, "/", mustWork = FALSE)
   if (!is.null(language)) cfg$language <- match.arg(language, app_languages())
   if (!is.null(standards)) {
@@ -92,7 +95,6 @@ setup_tflplanner <- function(home = NULL, studies_root = NULL,
       file.copy(standards, f, overwrite = TRUE)
     }
   }
-  dir.create(cfg$studies_root, recursive = TRUE, showWarnings = FALSE)
   .write_config(cfg, home)
   message("tflplanner home: ", home, "\nnew studies go to: ",
           cfg$studies_root)

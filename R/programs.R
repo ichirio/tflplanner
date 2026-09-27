@@ -262,6 +262,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   c(head,
     "",
     "library(rtfreporter)",
+    "library(tflspec)",
     "if (!file.exists(\"study.yml\")) {",
     "  stop(\"Run this program from the study folder: open the study's .Rproj\",",
     "       \" or setwd() to the folder that holds study.yml.\")",

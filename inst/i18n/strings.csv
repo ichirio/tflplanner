@@ -82,7 +82,7 @@ Opened %s,%s を開きました
 "Study ID (the folder name: letters, digits . _ -)",試験 ID（フォルダ名。英数字 . _ -）
 Start empty,空で始める
 Copy another study (definition and data code),既存の試験からコピー（定義とデータ準備コード）
-rtfreporter's sample (5 reports),rtfreporter のサンプル（5 帳票）
+tflspec's sample (5 reports),tflspec のサンプル（5 帳票）
 Copy from,コピー元
 Create the study folder in,試験フォルダを作る場所
 Create,作成

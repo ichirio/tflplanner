@@ -36,14 +36,17 @@ Official runs   autoexec_*.R  =>  runs/<date>_<time>_<what>/  (logs, results, co
   what it made and the code it ran in a dated batch folder.
 - English (default) or Japanese.
 
-> **Status: experimental.**  tflplanner depends on the development branch
-> of rtfreporter, and its screens and functions may change.
+> **Status: experimental.**  tflplanner is the GUI over
+> [tflspec](https://github.com/ichirio/tflspec) (the Excel specifications,
+> ARD and plan engine) and rtfreporter (the RTF renderer); its screens and
+> functions may change.
 
 ## Installation
 
 ```r
 # install.packages("remotes")
-remotes::install_github("ichirio/rtfreporter@feat/474-ard-experimental")
+remotes::install_github("ichirio/rtfreporter")
+remotes::install_github("ichirio/tflspec")
 remotes::install_github("ichirio/tflplanner")
 install.packages(c("cards", "cardx", "dplyr", "logrx"))
 ```
