@@ -9,13 +9,13 @@
 #                                 it replaces that output's rows of
 #                                 output/ard/ard.rds and records the build in
 #                                 output/ard/ard_status.csv
-#   programs/ard/autoexec_ard.R   runs them all (or the ones named), each in
-#                                 its own R process with its log in logs/ard/
+#   programs/ard/autoexec_ard.R   the official run of them all: a batch
+#                                 folder with each program's log (logrx),
+#                                 the study ARD and the code (programs/batch.R)
 #
-# The report programs are in programs/tfl/ (autoexec_report.R runs them,
-# logs in logs/tfl/).  So the ARD and the reports can be made by different
-# people at different times: a table reads whatever of the study ARD is
-# there.
+# Run on its own -- from the app or in RStudio -- an ARD program is a
+# preview: it updates the study's working ARD, so tables can be made from
+# it, and keeps no log.  The report programs are in programs/tfl/.
 #
 # Like the report programs, a generated ARD program carries a checksum: one
 # nobody edited follows the definition on every save, one edited by hand is
@@ -27,14 +27,6 @@
 
 .ard_setup_file <- "ard_setup.R"
 .ard_autoexec_file <- "autoexec_ard.R"
-
-# how programs are run and logged: R CMD BATCH (the code and its output, as
-# R writes it) or logrx::axecute() (when the standards say logrx and it is
-# installed)
-.log_engine <- function() {
-  e <- .std_setting("log_engine", "batch")
-  if (e %in% c("batch", "logrx")) e else "batch"
-}
 
 #' The ARD programs of a study
 #'
@@ -127,127 +119,11 @@ ard_program_code <- function(spec, output_id, date = Sys.Date()) {
 #' @rdname ard_setup_code
 #' @export
 ard_autoexec_code <- function(spec, date = Sys.Date()) {
-  x <- if (is.character(spec)) read_ard_spec(spec) else spec
   lay <- study_layout()
-  ids <- unique(stats::na.omit(x$analyses$output_id))
-  out <- .study_value(x, "output", "output/ard/ard.rds")
-  q <- function(v) paste0("  ", encodeString(v, quote = "\""),
-                          c(rep(",", max(0L, length(v) - 1L)), "")[seq_along(v)])
-  c(.banner(
-      paste("Program    :", file.path(lay[["programs_ard"]],
-                                      .ard_autoexec_file)),
-      "Makes the study ARD: runs the ARD programs, one per output.",
-      "  Rscript programs/ard/autoexec_ard.R            every output",
-      "  Rscript programs/ard/autoexec_ard.R T-14-1-1   only these",
-      "Run it from the study folder.  Each program runs in its own R process;",
-      "its log is logs/ard/<program>.log.",
-      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
-             ", ", format(date, "%Y-%m-%d"))),
-    "",
-    "if (!file.exists(\"study.yml\")) {",
-    "  stop(\"Run autoexec_ard.R from the study folder (the one with study.yml).\")",
-    "}",
-    "",
-    "outputs <- c(", q(ids), ")",
-    "programs <- c(", q(vapply(ids, .ard_prog_name, "")), ")",
-    "",
-    "only <- if (interactive()) character() else commandArgs(trailingOnly = TRUE)",
-    "if (length(only)) {",
-    "  pick <- outputs %in% only | programs %in% only |",
-    "    sub(\"\\\\.[Rr]$\", \"\", programs) %in% only",
-    "  outputs <- outputs[pick]",
-    "  programs <- programs[pick]",
-    "}",
-    "",
-    .runner_lines(lay[["programs_ard"]], lay[["logs_ard"]]),
-    "# a failed program leaves the study ARD alone; its error is recorded",
-    "record_error <- function(output_id, note) {",
-    paste0("  sf <- file.path(dirname(", encodeString(out, quote = "\""),
-           "), \"ard_status.csv\")"),
-    "  row <- data.frame(output_id = output_id, definition = \"\",",
-    "                    built = format(Sys.time(), \"%Y-%m-%d %H:%M:%S\"),",
-    "                    rows = \"\", error = if (nzchar(note)) note else \"failed\",",
-    "                    stringsAsFactors = FALSE)",
-    "  st <- if (file.exists(sf)) utils::read.csv(sf, colClasses = \"character\")",
-    "  if (!is.null(st) && nrow(st)) {",
-    "    for (k in setdiff(names(row), names(st))) st[[k]] <- \"\"",
-    "    row <- rbind(st[st$output_id != output_id, names(row), drop = FALSE], row)",
-    "  }",
-    "  dir.create(dirname(sf), recursive = TRUE, showWarnings = FALSE)",
-    "  utils::write.csv(row, sf, row.names = FALSE)",
-    "}",
-    "",
-    "result <- do.call(rbind, lapply(seq_along(programs), function(i) {",
-    "  r <- run_program(programs[i])",
-    "  if (r$status != \"OK\") record_error(outputs[i], r$note)",
-    "  r",
-    "}))",
-    .runner_end("autoexec_ard.csv"),
-    "")
-}
-
-# The part of an autoexec program that runs one program in its own R
-# process and keeps its log: R CMD BATCH, or logrx::axecute().
-.runner_lines <- function(program_dir, log_dir) {
-  c(paste0("program_dir <- ", .r_string(program_dir)),
-    paste0("log_dir     <- ", .r_string(log_dir)),
-    paste0("log_engine  <- ", .r_string(.log_engine()),
-           "   # batch: R CMD BATCH; logrx: logrx::axecute()"),
-    "dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)",
-    "if (log_engine == \"logrx\" && !requireNamespace(\"logrx\", quietly = TRUE)) {",
-    "  message(\"logrx is not installed: the logs are R CMD BATCH's.\")",
-    "  log_engine <- \"batch\"",
-    "}",
-    "",
-    "run_program <- function(p) {",
-    "  prog <- file.path(program_dir, p)",
-    "  log  <- file.path(log_dir, sub(\"\\\\.[Rr]$\", \".log\", p))",
-    "  if (file.exists(log)) file.remove(log)",
-    "  t0 <- Sys.time()",
-    "  rc <- if (log_engine == \"logrx\") {",
-    "    system2(file.path(R.home(\"bin\"), \"Rscript\"),",
-    "            c(\"-e\", shQuote(sprintf(",
-    "              \"logrx::axecute('%s', log_name = '%s', log_path = '%s')\",",
-    "              prog, basename(log), log_dir))),",
-    "            stdout = FALSE, stderr = FALSE)",
-    "  } else {",
-    "    system2(file.path(R.home(\"bin\"), \"R\"),",
-    "            c(\"CMD\", \"BATCH\", \"--no-save\", \"--no-restore\", \"--quiet\",",
-    "              shQuote(prog), shQuote(log)))",
-    "  }",
-    "  # who ran it, where, with which R",
-    "  if (log_engine == \"batch\") {",
-    "    cat(\"\", sprintf(\"# %s: run by %s on %s, %s, %s; exit status %s\", prog,",
-    "                    Sys.info()[[\"user\"]], Sys.info()[[\"nodename\"]],",
-    "                    format(t0, \"%Y-%m-%d %H:%M:%S\"), R.version.string, rc),",
-    "        file = log, sep = \"\\n\", append = TRUE)",
-    "  }",
-    "  lines  <- if (file.exists(log)) readLines(log, warn = FALSE) else \"\"",
-    "  status <- if (identical(rc, 0L)) \"OK\" else \"ERROR\"",
-    "  err    <- grep(\"^[[:space:]]*Error\", lines)[1L]",
-    "  note   <- if (status == \"OK\" || is.na(err)) \"\" else",
-    "    paste(trimws(stats::na.omit(lines[err + 0:1])), collapse = \" \")",
-    "  note   <- sub(\" ?Execution halted$\", \"\", note)",
-    "  warns  <- sum(grepl(\"^[[:space:]]*Warning\", lines))",
-    "  secs   <- round(as.numeric(difftime(Sys.time(), t0, units = \"secs\")), 1)",
-    "  cat(sprintf(\"%-5s %-30s %6.1fs\\n\", status, p, secs))",
-    "  data.frame(program = p, status = status, warnings = warns,",
-    "             seconds = secs, note = note, log = log,",
-    "             stringsAsFactors = FALSE)",
-    "}",
-    "")
-}
-
-.runner_end <- function(csv) {
-  c(paste0("utils::write.csv(result, file.path(log_dir, \"", csv,
-           "\"), row.names = FALSE)"),
-    "cat(sprintf(\"\\n%d of %d program(s) ran without error.\\n\",",
-    "            sum(result$status == \"OK\"), nrow(result)))",
-    "if (any(result$status != \"OK\")) {",
-    "  print(result[result$status != \"OK\", c(\"program\", \"note\")],",
-    "        right = FALSE, row.names = FALSE)",
-    "  if (!interactive()) quit(status = 1L)",
-    "}")
+  c(.autoexec_banner(file.path(lay[["programs_ard"]], .ard_autoexec_file),
+                     "Official run of the ARD programs, one per output.",
+                     "T-14-1-1         only these", date),
+    .autoexec_body("ard"))
 }
 
 # missing / current / generated / edited, as a report program's
@@ -256,6 +132,10 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
   have <- readLines(f, warn = FALSE, encoding = "UTF-8")
   chk <- sub("^#  Checksum   : *", "",
              grep("^#  Checksum   :", have, value = TRUE))
+  # an earlier tflplanner wrote its autoexec without a checksum
+  if (!length(chk) && any(grepl("^#  Generated  : tflplanner", have))) {
+    return("generated")
+  }
   if (!length(chk) || !identical(chk[1L], .body_hash(have))) return("edited")
   if (identical(.body_hash(have), .body_hash(code))) "current" else "generated"
 }
@@ -306,54 +186,42 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
   out
 }
 
-#' Make the study ARD from its saved programs
+#' Preview one output's ARD
 #'
-#' Runs `programs/ard/autoexec_ard.R` from the study folder -- every
-#' output's ARD program, or the ones named -- each in its own R process with
-#' its log in `logs/ard/`.  An output's program replaces its rows of the
-#' study ARD; one that fails leaves them and records its error
-#' ([ard_status()]).  `update_study_ard()` does it for one output.
+#' Runs the output's saved ARD program (`programs/ard/<output_id>.R`) on its
+#' own, from the study folder: it replaces the output's rows of the study's
+#' working ARD, so its table can be made, and keeps no log.  A program that
+#' fails leaves the ARD alone and records its error ([ard_status()]).  The
+#' official run is [run_batch()].
 #'
-#' The programs are the saved ones: save the study first.
-#'
-#' @param study An `rtfstudy`.
-#' @param output_id Outputs to make; `NULL` for all.
-#' @param wait `FALSE` returns the running [processx::process] at once.
-#' @return With `wait = TRUE`, a list: `ok`, `status` ([ard_status()]),
-#'   `result` (autoexec_ard.csv: program, status, note, log) and `log` (the
-#'   output of autoexec_ard.R).
+#' @param study An `rtfstudy` (saved: the program runs from disk).
+#' @param output_id The output.
+#' @param timeout Seconds to allow.
+#' @return A list: `ok`, `rows`, `error`, `output` (what the program
+#'   printed).
 #' @export
-run_study_ard <- function(study, output_id = NULL, wait = TRUE) {
-  lay <- study_layout()
-  auto <- file.path(study$path, lay[["programs_ard"]], .ard_autoexec_file)
-  if (!file.exists(auto)) {
-    stop("The study has no ARD programs yet: save it first.", call. = FALSE)
+update_study_ard <- function(study, output_id, timeout = 600) {
+  prog <- file.path(study_layout()[["programs_ard"]], .ard_prog_name(output_id))
+  if (!file.exists(file.path(study$path, prog))) {
+    stop("No ", prog, " yet: save the study first.", call. = FALSE)
   }
-  dir.create(file.path(study$path, lay[["logs_ard"]]), recursive = TRUE,
-             showWarnings = FALSE)
-  log <- file.path(study$path, lay[["logs_ard"]], "autoexec_ard.log")
-  px <- processx::process$new(
-    file.path(R.home("bin"), "Rscript"),
-    c(file.path(lay[["programs_ard"]], .ard_autoexec_file), output_id),
-    wd = study$path, stdout = log, stderr = "2>&1")
-  if (!wait) return(px)
-  px$wait()
-  csv <- file.path(study$path, lay[["logs_ard"]], "autoexec_ard.csv")
-  res <- if (file.exists(csv)) utils::read.csv(csv, colClasses = "character")
-  list(ok = identical(px$get_exit_status(), 0L), status = ard_status(study),
-       result = res,
-       log = if (file.exists(log)) readLines(log, warn = FALSE) else "")
-}
-
-#' @rdname run_study_ard
-#' @export
-update_study_ard <- function(study, output_id) {
-  r <- run_study_ard(study, output_id)
-  st <- r$status[r$status$output_id == output_id, , drop = FALSE]
-  r$rows <- if (nrow(st)) st$rows[1L] else NA_integer_
-  r$error <- if (!r$ok) {
-    e <- if (nrow(st)) st$error[1L] else ""
-    if (nzchar(e)) e else paste(utils::tail(r$log, 15L), collapse = "\n")
+  px <- processx::run(file.path(R.home("bin"), "Rscript"), prog,
+                      wd = study$path, error_on_status = FALSE,
+                      timeout = timeout, stderr_to_stdout = TRUE)
+  out <- strsplit(px$stdout, "\r?\n")[[1L]]
+  ok <- identical(px$status, 0L)
+  if (!ok) {
+    err <- grep("^Error", out, value = TRUE)
+    note <- if (length(err)) err[1L] else "failed"
+    st <- .read_ard_status(study)
+    st <- st[st$output_id != output_id, , drop = FALSE]
+    st[nrow(st) + 1L, ] <- list(output_id, "", format(Sys.time(),
+      "%Y-%m-%d %H:%M:%S"), NA_integer_, note)
+    .write_ard_status(study, st)
   }
-  r
+  st <- ard_status(study)
+  st <- st[st$output_id == output_id, , drop = FALSE]
+  list(ok = ok, rows = if (nrow(st)) st$rows[1L] else NA_integer_,
+       error = if (!ok) paste(utils::tail(out, 15L), collapse = "\n"),
+       output = out)
 }

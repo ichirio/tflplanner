@@ -84,3 +84,23 @@ test_that("a workbook that does not read is refused", {
   writexl::write_xlsx(list(statistics = data.frame(key = "n")), f)
   expect_error(setup_tflplanner(standards = f), "lacks column")
 })
+
+test_that("a table without data code starts from the company's template", {
+  home <- home_for_test()
+  f <- file.path(withr_tempdir(), "acme.xlsx")
+  s <- .builtin_standards()
+  s$code_templates$code[s$code_templates$name == "table_process"] <-
+    "data <- ard_normalize(ard)\ndata <- acme_rework(data)"
+  s$code_templates$code[s$code_templates$name == "setup"] <-
+    "library(acme)  # {STUDY_ID}"
+  writexl::write_xlsx(s, f)
+  suppressMessages(setup_tflplanner(standards = f))
+  p <- add_output(new_planner(), "T1")
+  code <- data_lines(p, "T1")
+  expect_true(any(grepl('ard$output_id == "T1"', code, fixed = TRUE)))
+  expect_true(any(grepl("acme_rework(data)", code, fixed = TRUE)))
+  st <- create_study("NEW-2")
+  expect_equal(st$planner$setup, "library(acme)  # NEW-2")
+  suppressMessages(setup_tflplanner(standards = "builtin"))
+  expect_false(any(grepl("acme", data_lines(p, "T1"))))
+})

@@ -138,16 +138,15 @@
                           "2026-09-27")),
     settings = .df(
       key = c("language", "rounding", "subject_id", "ard_output",
-              "listing_type", "max_levels", "log_engine"),
+              "listing_type", "max_levels"),
       value = c("en", "", "USUBJID", "output/ard/ard.rds", "multiline",
-                "30", "batch"),
+                "30"),
       note = c("the app's language: en or ja",
                "a new study's rounding: r, sas, or blank (rtfreporter's)",
                "the subject key of the ARD definition",
                "where the study ARD goes (relative to the study folder)",
                "the listing type a new listing starts with",
-               "a key with more levels gets no levels list when filled from the ARD",
-               "how programs are run and logged: batch (R CMD BATCH: the code and its output) or logrx (logrx::axecute(), when installed)")),
+               "a key with more levels gets no levels list when filled from the ARD")),
     choices = rbind(
       ch("tables", "stats", c("cells", "rows")),
       ch("tables", "value", c("stat", "stat_fmt")),
@@ -266,6 +265,31 @@
         "Fisher's exact test of variables x by",
         "any R code in `code`; data and population are bound")),
     ard_statistics = .ard_statistics_builtin(),
+    code_templates = .df(
+      name = c("table_data", "table_process", "figure_plot", "setup"),
+      code = c(paste(
+        "# ---- this output's rows of the study ARD ({ARD}, made by {ARD_PROGRAM})",
+        "ard <- readRDS(\"{ARD}\")",
+        "ard <- ard[ard$output_id == \"{OUTPUT_ID}\",",
+        "           setdiff(names(ard), c(\"output_id\", \"analysis_id\", \"population_id\"))]",
+        "if (!nrow(ard)) stop(\"The study ARD has no rows for {OUTPUT_ID}: make its ARD first.\")",
+        sep = "\n"),
+        paste(
+        "# ---- normalize",
+        "data <- ard_normalize(ard)",
+        "# ---- rework as needed, e.g.",
+        "# data <- dplyr::mutate(data, label = dplyr::recode(label, \"Age\" = \"Age (years)\"))",
+        sep = "\n"),
+        paste(
+        "# TODO: the plot (ggplot2), e.g.",
+        "#   plot <- ggplot2::ggplot(adsl, ggplot2::aes(AGE)) + ggplot2::geom_histogram()",
+        sep = "\n"),
+        NA),
+      note = c(
+        "a table's data code when it has none: its rows of the study ARD",
+        "a table's normalization when it has none: after table_data",
+        "a figure's plot before it is written (a stop() follows it)",
+        "the setup code every report of a new study runs first (blank: none)")),
     listing_types = .df(type = "multiline", label = "multiline",
                         note = "rtfreporter's listing type: / separator, gutters, a blank row per record"),
     populations = .df(
@@ -324,7 +348,8 @@
 .standards_readme <- function() {
   .df(sheet = c("about", "settings", "choices", "cell_presets",
                 "header_presets", "statistics", "categorical_formats",
-                "ard_methods", "ard_statistics", "listing_types",
+                "ard_methods", "ard_statistics", "code_templates",
+                "listing_types",
                 "populations", "datasets",
                 "default_<sheet>"),
       description = c(
@@ -337,6 +362,7 @@
         "the categorical formats the table builder offers; <p> = the decimals of the percent",
         "the ARD methods (keywords): the function, its kind (continuous / categorical / missing / none, for statistic =), default arguments (<id> = the subject key), statistics and formats",
         "the statistics an ARD analysis may ask for: kind, label, default format of stat_fmt (xx.x, xx.x%, pvalue), and the R function of those tflplanner computes",
+        "the code written where a report says none: table_data (its rows of the study ARD), table_process (normalize, rework), figure_plot, setup; {OUTPUT_ID} {ARD} {ARD_PROGRAM} {PROGRAM} {STUDY_ID} are filled in",
         "the listing types a listing may use (rtfreporter's)",
         "the analysis sets a new study's ARD definition starts with",
         "the data catalog a new study starts with: ADaM and SDTM datasets and their files",
@@ -351,6 +377,7 @@
         "\u8868\u30d3\u30eb\u30c0\u30fc\u306e\u30ab\u30c6\u30b4\u30ea\u5909\u6570\u306e\u66f8\u5f0f\u3002<p> = % \u306e\u5c0f\u6570\u6841\u6570",
         "ARD \u306e\u624b\u6cd5\u30ad\u30fc\u30ef\u30fc\u30c9\uff1a\u95a2\u6570\u3001\u7a2e\u985e\uff08statistic \u306e\u5f62\uff09\u3001\u65e2\u5b9a\u306e\u5f15\u6570\uff08<id> = \u88ab\u9a13\u8005\u30ad\u30fc\uff09\u3001\u7d71\u8a08\u91cf\u3001\u66f8\u5f0f",
         "ARD \u306e\u7d71\u8a08\u91cf\uff1a\u7a2e\u985e\u3001\u30e9\u30d9\u30eb\u3001stat_fmt \u306e\u65e2\u5b9a\u306e\u66f8\u5f0f\uff08xx.x, xx.x%, pvalue\uff09\u3001tflplanner \u304c\u8a08\u7b97\u3059\u308b\u3082\u306e\u306e R \u95a2\u6570",
+        "\u5e33\u7968\u304c\u4f55\u3082\u66f8\u304b\u306a\u3044\u3068\u304d\u306e\u30b3\u30fc\u30c9\uff1atable_data\uff08ARD \u304b\u3089\u306e\u53d6\u5f97\uff09\u3001table_process\uff08normalize\u30fb\u52a0\u5de5\uff09\u3001figure_plot\u3001setup",
         "Listing \u306e\u7a2e\u985e\uff08rtfreporter \u306e\u3082\u306e\uff09",
         "\u65b0\u898f\u8a66\u9a13\u306e ARD \u5b9a\u7fa9\u304c\u6700\u521d\u306b\u6301\u3064\u89e3\u6790\u5bfe\u8c61\u96c6\u56e3",
         "\u65b0\u898f\u8a66\u9a13\u304c\u6700\u521d\u306b\u6301\u3064\u30c7\u30fc\u30bf\u30ab\u30bf\u30ed\u30b0\uff08ADaM / SDTM \u3068\u30d5\u30a1\u30a4\u30eb\uff09",
@@ -455,6 +482,10 @@ company_standards <- function(home = tflplanner_home()) {
   p <- new_planner()
   r <- .std_setting("rounding")
   if (!is.na(r)) p$study[["rounding"]] <- r
+  su <- s$code_templates$code[match("setup", s$code_templates$name)]
+  if (length(su) && !is.na(su)) {
+    p$setup <- gsub("{STUDY_ID}", study_id, su, fixed = TRUE)
+  }
   for (sh in c(table_sheets(), report_sheets())) {
     d <- s[[paste0("default_", sh)]]
     if (is.null(d) || !nrow(d)) next

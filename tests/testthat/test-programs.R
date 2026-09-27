@@ -11,7 +11,9 @@ test_that("a table program reads the specs, saves its ARD and parses", {
                         code, fixed = TRUE)))
   expect_true(any(grepl('file.exists("study.yml")', code, fixed = TRUE)))
   expect_true(any(grepl("saveRDS(data", code, fixed = TRUE)))
-  expect_true(any(grepl("still to be written", code)))
+  # no data code: the company template takes its rows of the study ARD
+  expect_true(any(grepl('ard$output_id == "PK"', code, fixed = TRUE)))
+  expect_true(any(grepl("data <- ard_normalize(ard)", code, fixed = TRUE)))
   expect_silent(parse(text = code))
   expect_equal(report_info(p, "PK")$file, "output/PK.rtf")
   expect_silent(parse(text = autoexec_code(p)))

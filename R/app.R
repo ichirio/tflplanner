@@ -395,11 +395,14 @@ app_ui <- function(lang = "en") {
                      t("Build the ARD output by output as each is ready: tables can be made from the outputs already in it, while others are still being defined.")),
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-center",
-              .btn("ard_update", t("Put this output into the study ARD"),
+              .btn("ard_update", t("Preview: put this output into the study ARD"),
                    class = "btn-sm btn-primary"),
-              .btn("ard_build2", t("Build the whole study ARD"))),
+              .btn("ard_build2", t("Official run: the whole study ARD")),
+              shiny::checkboxInput("ard_batch_code",
+                                   t("keep the code in the batch folder"),
+                                   value = TRUE)),
             shiny::p(class = "small text-muted mt-1 mb-1",
-                     t("Both run the saved programs (programs/ard/): unsaved changes are saved first. Choose a row to see its log.")),
+                     t("Both run the saved programs (programs/ard/): unsaved changes are saved first. A preview updates the working ARD and keeps no log; an official run makes a batch folder (runs/) with the logs (logrx), the ARD and the code. Choose a row to see its log in the latest official run.")),
             DT::DTOutput("ard_state"),
             shiny::div(class = "rp-code mt-2",
                        shiny::verbatimTextOutput("ard_log"))),
@@ -514,9 +517,9 @@ app_ui <- function(lang = "en") {
         bslib::card_header(t("Reports")),
         shiny::div(
           class = "d-flex flex-wrap gap-2",
-          .btn("run_selected", t("Run selected"),
+          .btn("run_selected", t("Preview selected"),
                class = "btn-sm btn-primary"),
-          .btn("run_all", t("Run all"), class = "btn-sm btn-primary"),
+          .btn("run_all", t("Preview all"), class = "btn-sm btn-primary"),
           .btn("status_refresh", t("Refresh")),
           .btn("check", t("Check the definition")),
           .btn("tfl_open", t("Open output/tfl")),
@@ -524,6 +527,23 @@ app_ui <- function(lang = "en") {
                                 class = "btn-sm")),
         shiny::uiOutput("job"),
         DT::DTOutput("status")),
+      bslib::card(
+        bslib::card_header(t("Official runs (batch folders)")),
+        shiny::p(class = "small text-muted mb-1",
+                 t("An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs) and, if kept, the programs and definition workbooks it ran.")),
+        shiny::div(
+          class = "d-flex flex-wrap gap-3 align-items-center",
+          shiny::radioButtons(
+            "batch_parts", NULL, inline = TRUE,
+            stats::setNames(c("ard", "tfl", "all"),
+                            t(c("ARD", "Reports", "ARD, then reports")))),
+          shiny::checkboxInput("batch_code",
+                               t("keep the code in the batch folder"),
+                               value = TRUE),
+          .btn("batch_run", t("Start the official run"),
+               class = "btn-sm btn-primary"),
+          .btn("batch_open", t("Open the batch folder"))),
+        DT::DTOutput("batches")),
       bslib::layout_columns(
         col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
         bslib::card(
@@ -1036,9 +1056,11 @@ app_server <- function(input, output, session, start) {
             "Definition workbooks (written on save)",
             "ARD programs: one per output, ard_setup.R, autoexec_ard.R",
             "Report programs, autoexec_report.R",
-            "Deliverable data: the study ARD (ard.rds)",
-            "Deliverable reports: RTF", "Logs of the ARD programs",
-            "Logs of the report programs"))), collapse = "\n"))),
+            "Working data: the study ARD (ard.rds)",
+            "Working reports: RTF",
+            "Official runs: one batch folder each (logs, results, code)",
+            "What a report program printed in its last preview"))),
+          collapse = "\n"))),
       shiny::fileInput(
         "import",
         t("Import definition workbooks (replaces this study's definition)"),
@@ -1694,29 +1716,17 @@ app_server <- function(input, output, session, start) {
   # making the study ARD: always the saved programs (programs/ard/), so
   # what is built is what anyone rerunning autoexec_ard.R gets
   ard_log_ver <- shiny::reactiveVal(0L)
-  build_study_ard <- function(ids) {
+  ard_preview_out <- shiny::reactiveVal(NULL)
+  ard_ready <- function() {
     if (!is.null(ard_valid())) {
-      return(notify(t("Correct the ARD definition first."), "warning"))
+      notify(t("Correct the ARD definition first."), "warning")
+      return(FALSE)
     }
-    if (dirty() && !do_save()) return()
-    r <- NULL
-    shiny::withProgress(message = t("Running the ARD programs"), {
-      r <- guarded(run_study_ard(current_study(), ids))
-    })
-    ard_state_ver(ard_state_ver() + 1L)
-    ard_log_ver(ard_log_ver() + 1L)
-    rv$ard_ver <- rv$ard_ver + 1L
-    rv$status_ver <- rv$status_ver + 1L
-    if (is.null(r)) return()
-    n <- if (is.null(r$result)) 0L else nrow(r$result)
-    if (r$ok) {
-      notify(sprintf(t("The study ARD is updated: %d program(s) ran without error."), n))
-    } else {
-      notify(t("An ARD program failed: see its log (Study ARD)."), "error")
-    }
-    bslib::nav_select("ard_right", "state")
+    !(dirty() && !do_save())
   }
-  shiny::observeEvent(input$ard_build, build_study_ard(NULL))
+  shiny::observeEvent(input$ard_build, {
+    if (ard_ready()) start_batch("ard", isTRUE(input$ard_batch_code))
+  })
   output$ard_run_info <- shiny::renderUI({
     r <- ard_res()
     if (is.null(r)) {
@@ -1780,25 +1790,50 @@ app_server <- function(input, output, session, start) {
       return(notify(sprintf(t("%s has no analyses in the ARD definition."), id),
                     "warning"))
     }
-    build_study_ard(id)
+    if (!ard_ready()) return()
+    r <- NULL
+    shiny::withProgress(message = t("Running the ARD program"), {
+      r <- guarded(update_study_ard(current_study(), id))
+    })
+    ard_state_ver(ard_state_ver() + 1L)
+    rv$ard_ver <- rv$ard_ver + 1L
+    rv$status_ver <- rv$status_ver + 1L
+    if (is.null(r)) return()
+    ard_preview_out(list(id = id, text = r$output))
+    if (r$ok) {
+      notify(sprintf(t("%s is in the study ARD (%d rows)"), id, r$rows))
+    } else {
+      notify(t("The ARD program failed: see what it printed below."), "error")
+    }
   })
-  shiny::observeEvent(input$ard_build2, build_study_ard(NULL))
+  shiny::observeEvent(input$ard_build2, {
+    if (ard_ready()) start_batch("ard", isTRUE(input$ard_batch_code))
+  })
+  # below the table: what the last preview printed, or -- a row chosen --
+  # that output's log in the latest official run of the ARD
   output$ard_log <- shiny::renderText({
     shiny::req(has_study())
     ard_log_ver()
+    rv$status_ver
     d <- ard_state()
     i <- input$ard_state_rows_selected
-    lay <- study_layout()
-    f <- if (length(i)) {
-      file.path(rv$study$path, lay[["logs_ard"]],
-                sub("\\.[Rr]$", ".log", .ard_prog_name(d$output_id[i])))
-    } else file.path(rv$study$path, lay[["logs_ard"]], "autoexec_ard.log")
-    if (!file.exists(f)) {
-      return(if (length(i)) sprintf(t("%s has not been run yet."), d$output_id[i])
-             else t("Choose a row to see its log."))
+    if (!length(i)) {
+      pv <- ard_preview_out()
+      if (is.null(pv)) return(t("Choose a row to see its log in the latest official run."))
+      return(paste(c(sprintf(t("# Preview of %s (not kept)"), pv$id), "",
+                     pv$text), collapse = "\n"))
     }
-    paste(c(paste("#", normalizePath(f, "/", FALSE)), "",
-            utils::tail(readLines(f, warn = FALSE, encoding = "UTF-8"), 400L)),
+    id <- d$output_id[i]
+    b <- list_batches(current_study())
+    b <- b[b$what %in% c("ard", "all"), , drop = FALSE]
+    log <- if (nrow(b)) file.path(b$path, "logs", "ard",
+                                  sub("[.][Rr]$", ".log", .ard_prog_name(id)))
+    log <- log[file.exists(log)]
+    if (!length(log)) {
+      return(sprintf(t("%s has no official run yet."), id))
+    }
+    paste(c(paste("#", normalizePath(log[1L], "/", FALSE)), "",
+            readLines(log[1L], warn = FALSE, encoding = "UTF-8")),
           collapse = "\n")
   })
   output$catalog <- DT::renderDT({
@@ -2516,12 +2551,24 @@ app_server <- function(input, output, session, start) {
     d[input$status_rows_selected, , drop = FALSE]
   })
   output$log <- shiny::renderText({
+    bi <- input$batches_rows_selected
+    if (length(bi)) {
+      b <- batches()[bi, , drop = FALSE]
+      info <- file.path(b$path, "batch.txt")
+      run <- file.path(b$path, "run.csv")
+      r <- if (file.exists(run)) utils::read.csv(run, colClasses = "character")
+      return(paste(c(
+        if (file.exists(info)) readLines(info, warn = FALSE, encoding = "UTF-8"),
+        "",
+        if (!is.null(r)) utils::capture.output(print(
+          r[c("part", "program", "status", "errors", "warnings", "seconds",
+              "note")], right = FALSE, row.names = FALSE))),
+        collapse = "\n"))
+    }
     d <- selected_status()
     rv$status_ver
     if (!nrow(d)) {
-      f <- file.path(rv$study$path, study_layout()[["logs_tfl"]],
-                     "autoexec_report.log")
-      if (!file.exists(f)) return(t("Choose a report to see its log."))
+      return(t("Choose a report to see what its last preview printed, or a batch folder to see its run."))
     } else {
       f <- d$log[1L]
       if (is.na(f)) return(sprintf(t("%s has not been run yet."),
@@ -2558,6 +2605,49 @@ app_server <- function(input, output, session, start) {
     rv$job_what <- what
   }
   shiny::observeEvent(input$run_all, start_run(NULL, t("every report")))
+  start_batch <- function(parts, code) {
+    if (!is.null(rv$job)) return(notify(t("A run is going on"), "warning"))
+    if (dirty() && !do_save()) return()
+    parts <- if (identical(parts, "all")) c("ard", "tfl") else parts
+    px <- guarded(run_batch(rv$study, parts, code = code, wait = FALSE))
+    if (is.null(px)) return()
+    rv$job <- px
+    rv$job_what <- paste(t("the official run:"),
+                         paste(t(c(ard = "ARD", tfl = "Reports")[parts]),
+                               collapse = ", "))
+  }
+  shiny::observeEvent(input$batch_run, {
+    parts <- input$batch_parts %||% "all"
+    if (parts %in% c("ard", "all") && !is.null(ard_valid())) {
+      return(notify(t("Correct the ARD definition first."), "warning"))
+    }
+    start_batch(parts, isTRUE(input$batch_code))
+  })
+  batches <- shiny::reactive({
+    rv$status_ver
+    shiny::req(has_study())
+    list_batches(current_study())
+  })
+  output$batches <- DT::renderDT({
+    d <- batches()
+    v <- data.frame(a = d$batch, b = d$started,
+                    c = t(c(ard = "ARD", report = "Reports",
+                            all = "ARD, then reports")[d$what]),
+                    d = d$programs, e = d$errors,
+                    f = ifelse(d$code, "\u2713", ""),
+                    stringsAsFactors = FALSE)
+    names(v) <- t(c("Batch folder", "Started", "Runs", "Programs", "Errors",
+                    "Code"))
+    DT::formatStyle(.dt(v, selection = "single"), names(v)[5L],
+                    color = DT::styleInterval(0, c("#15803d", "#b91c1c")))
+  })
+  shiny::observeEvent(input$batch_open, {
+    d <- batches()
+    i <- input$batches_rows_selected
+    if (!length(i)) {
+      .open_folder(file.path(rv$study$path, study_layout()[["runs"]]))
+    } else .open_folder(d$path[i])
+  })
   shiny::observeEvent(input$run_selected, {
     d <- selected_status()
     if (!nrow(d)) return(notify(t("Choose a report"), "warning"))

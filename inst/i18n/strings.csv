@@ -332,3 +332,31 @@ Running the ARD programs,ARD プログラムを実行中
 The study ARD is updated: %d program(s) ran without error.,試験 ARD を更新しました：%d 本のプログラムがエラーなしで終了。
 An ARD program failed: see its log (Study ARD).,ARD プログラムがエラーになりました。ログを確認してください（試験 ARD）。
 Choose a row to see its log.,行を選ぶとログを表示します。
+Preview: put this output into the study ARD,プレビュー：この帳票を試験 ARD に入れる
+Official run: the whole study ARD,正式実行：試験 ARD 全体
+keep the code in the batch folder,バッチフォルダにコードを含める
+"Both run the saved programs (programs/ard/): unsaved changes are saved first. A preview updates the working ARD and keeps no log; an official run makes a batch folder (runs/) with the logs (logrx), the ARD and the code. Choose a row to see its log in the latest official run.",どちらも保存済みのプログラム（programs/ard/）を実行します（未保存の変更は先に保存）。プレビューは作業用 ARD を更新しログは残しません。正式実行はバッチフォルダ（runs/）を作り、ログ（logrx）・ARD・コードを格納します。行を選ぶと最新の正式実行でのログを表示します。
+Preview selected,選択をプレビュー
+Preview all,すべてプレビュー
+Official runs (batch folders),正式実行（バッチフォルダ）
+"An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs) and, if kept, the programs and definition workbooks it ran.",正式実行は runs/<日付>_<時刻>_<内容>/ のバッチフォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、指定すれば実行したプログラムと定義ブックを格納します。
+"ARD, then reports",ARD → 帳票
+Start the official run,正式実行を開始
+Open the batch folder,バッチフォルダを開く
+Running the ARD program,ARD プログラムを実行中
+The ARD program failed: see what it printed below.,ARD プログラムがエラーになりました。下の出力を確認してください。
+Choose a row to see its log in the latest official run.,行を選ぶと最新の正式実行でのログを表示します。
+# Preview of %s (not kept),# %s のプレビュー（保存されません）
+%s has no official run yet.,%s はまだ正式実行されていません。
+the official run:,正式実行：
+Batch folder,バッチフォルダ
+Started,開始
+Runs,実行内容
+Programs,プログラム数
+Errors,エラー
+Code,コード
+"Choose a report to see what its last preview printed, or a batch folder to see its run.",帳票を選ぶと直近のプレビューの出力を、バッチフォルダを選ぶとその実行内容を表示します。
+Working data: the study ARD (ard.rds),作業用データ：試験 ARD（ard.rds）
+Working reports: RTF,作業用帳票：RTF
+"Official runs: one batch folder each (logs, results, code)",正式実行：1 回ごとのバッチフォルダ（ログ・結果・コード）
+What a report program printed in its last preview,帳票プログラムの直近プレビューの出力

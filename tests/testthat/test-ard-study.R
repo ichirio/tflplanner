@@ -43,7 +43,7 @@ test_that("a table the ARD definition serves reads its part of the study ARD", {
   p <- ard_planner()
   code <- data_lines(p, "DM")
   expect_true(any(grepl("readRDS(\"output/ard/ard.rds\")", code, fixed = TRUE)))
-  expect_true("data <- ard_normalize(ard)" %in% code)
+  expect_true(any(grepl("data <- ard_normalize(ard)", code, fixed = TRUE)))
   expect_true(any(grepl("still to be written", data_lines(p, "L1"))))
   p$outputs$data_code[1] <- "ard <- my_ard()"
   expect_false(any(grepl("ard.rds", data_lines(p, "DM"))))
@@ -73,19 +73,35 @@ test_that("the definition is saved, reopened and run", {
   expect_true(all(c("analysis_id", "variable", "stat_name", "stat") %in%
                     names(v)))
   expect_false(file.exists(file.path(s$path, "output", "ard", "ard.rds")))
-  # the study ARD from the saved programs, each with its log
-  r <- run_study_ard(o)
-  expect_true(r$ok)
+  # a preview of one output: the working ARD, no log
+  u <- update_study_ard(o, "DM")
+  expect_true(u$ok)
   expect_true(file.exists(file.path(s$path, "output", "ard", "ard.rds")))
   expect_equal(ard_status(o)$state, "built")
-  log <- readLines(file.path(s$path, "logs", "ard", "DM.log"))
-  expect_true(any(grepl("cards::ard_continuous", log, fixed = TRUE)))
-  expect_true(any(grepl("run by", log, fixed = TRUE)))
+  expect_equal(nrow(list_batches(o)), 0L)
 
-  # the reports: their programs in programs/tfl, logs in logs/tfl
+  # an official run: a batch folder with the logs, the ARD and the code
+  b <- run_batch(o, "ard")
+  expect_true(b$ok)
+  expect_match(basename(b$batch), "^[0-9]{8}_[0-9]{6}_ard$")
+  for (f in c("logs/ard/DM.log", "output/ard/ard.rds",
+              "output/ard/ard_status.csv", "run.csv", "batch.txt",
+              "code/programs/ard/DM.R", "code/programs/ard/ard_setup.R",
+              "code/spec/ard_spec.xlsx")) {
+    expect_true(file.exists(file.path(b$batch, f)), label = f)
+  }
+  expect_false(file.exists(file.path(b$batch, "code", "programs", "tfl",
+                                     "autoexec_report.R")))
+  expect_equal(b$result$status, "OK")
+  Sys.sleep(1.1)
+  b2 <- run_batch(o, "ard", code = FALSE)
+  expect_false(dir.exists(file.path(b2$batch, "code")))
+  expect_equal(nrow(list_batches(o)), 2L)
+
+  # the reports: previews keep what they print in logs/preview
   st <- run_study(o, "DM")
   expect_equal(st$status[st$output_id == "DM"], "error")   # no table spec
-  expect_true(file.exists(file.path(s$path, "logs", "tfl", "DM.log")))
+  expect_true(file.exists(file.path(s$path, "logs", "preview", "DM.log")))
 
   # a failing ARD program leaves the study ARD and records its error
   o2 <- o

@@ -106,11 +106,12 @@ test_that("workbooks export and import", {
 test_that("saving keeps an edited program unless asked to regenerate", {
   local_home()
   s <- create_study("S1", planner = sample_planner())
-  expect_equal(sum(s$files$status == "written"), 2 + 5 + 1)
+  # the workbooks, the programs, batch.R and the two autoexec programs
+  expect_equal(sum(s$files$status == "written"), 2 + 5 + 3)
   s0 <- save_study(s)
   expect_true(all(s0$files$status == "unchanged"))
   f <- file.path(s$path, "programs", "tfl", "DM.R")
-  expect_equal(study_status(s)$program_state, rep("todo", 5))
+  expect_equal(study_status(s)$program_state, rep("current", 5))
 
   # an untouched program follows the definition
   s$planner$outputs$data_code[1] <- "data <- ard_normalize(my_ard)"
@@ -166,7 +167,7 @@ test_that("a study runs end to end and reports what it produced", {
   expect_equal(st$status, c("ok", "todo"))
   expect_true(file.exists(file.path(s$path, "output", "tfl", "DM.rtf")))
   expect_true(file.exists(file.path(s$path, "output", "ard", "DM.rds")))
-  expect_true(file.exists(file.path(s$path, "logs", "tfl", "DM.log")))
+  expect_true(file.exists(file.path(s$path, "logs", "preview", "DM.log")))
 
   # saving an unchanged study leaves the RTF current
   s <- save_study(s)

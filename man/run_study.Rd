@@ -2,7 +2,7 @@
 % Please edit documentation in R/study.R
 \name{run_study}
 \alias{run_study}
-\title{Run a study's report programs}
+\title{Preview a study's reports}
 \usage{
 run_study(study, output_id = NULL, wait = TRUE)
 }
@@ -18,7 +18,9 @@ With \code{wait = TRUE}, \code{\link[=study_status]{study_status()}} after the r
 the process.
 }
 \description{
-Runs \code{programs/tfl/autoexec_report.R} from the study folder, for every
-report or the ones named, each program in its own \code{Rscript} process
-with its log in \verb{logs/}.
+Runs report programs on their own (a preview), from the study folder --
+every report or the ones named -- each in its own \code{Rscript} process.
+They write the working RTFs (output/tfl/); what each printed is kept in
+\verb{logs/preview/} until the next preview, and no log of record is made.
+The official run is \code{\link[=run_batch]{run_batch()}}.
 }

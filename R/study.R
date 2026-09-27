@@ -11,12 +11,16 @@
 #     data/sdtm/                       tabulation datasets
 #     data/other/                      anything else (formats, lookups)
 #     spec/                table_spec.xlsx, report_spec.xlsx, ard_spec.xlsx
+#     programs/            batch.R, autoexec_all.R (official runs)
 #     programs/ard/        one ARD program per output, ard_setup.R,
 #                          autoexec_ard.R
 #     programs/tfl/        one program per report, autoexec_report.R
-#     output/ard/          deliverable data: the study ARD (ard.rds)
-#     output/tfl/          deliverable reports: the RTF files
-#     logs/ard/, logs/tfl/ one log per program run
+#     output/ard/          the study's working ARD (ard.rds)
+#     output/tfl/          the working reports: the RTF files
+#     runs/                official runs: one batch folder each, with the
+#                          logs, the results and the code
+#     logs/preview/        what a report program printed when last run on
+#                          its own (a preview; not a log of record)
 #
 # Every program runs with the study folder as its working directory:
 # RStudio does that when the .Rproj is opened, autoexec_report.R does it
@@ -31,7 +35,7 @@ study_layout <- function() {
   c(adam = "data/adam", sdtm = "data/sdtm", other = "data/other",
     spec = "spec", programs_ard = "programs/ard",
     programs_tfl = "programs/tfl", ard = "output/ard", tfl = "output/tfl",
-    logs_ard = "logs/ard", logs_tfl = "logs/tfl")
+    runs = "runs", logs_preview = "logs/preview")
 }
 
 .study_file <- "study.yml"
@@ -343,15 +347,7 @@ save_study <- function(study, regenerate = character(),
     files[nrow(files) + 1L, ] <- list(f, "written")
   }
   files <- rbind(files, .save_ard(p, root), .save_lf(p, root))
-  f <- file.path(root, lay[["programs_tfl"]], "autoexec_report.R")
-  auto <- enc2utf8(autoexec_code(p))
-  old <- if (file.exists(f)) readLines(f, warn = FALSE, encoding = "UTF-8")
-  if (!identical(.body_hash(old %||% ""), .body_hash(auto))) {
-    writeLines(auto, f, useBytes = TRUE)
-    files[nrow(files) + 1L, ] <- list(f, "written")
-  } else {
-    files[nrow(files) + 1L, ] <- list(f, "unchanged")
-  }
+  files <- rbind(files, .save_batch_programs(p, root))
   meta <- study$meta[.study_fields]
   old_meta <- tryCatch(.read_meta(root), error = function(e) list())
   meta$created <- old_meta$created %||% format(Sys.Date())
@@ -457,7 +453,7 @@ study_status <- function(study) {
     prog <- file.path(root, lay[["programs_tfl"]], info$program)
     rtf <- file.path(root, info$file)
     ard <- file.path(root, lay[["ard"]], paste0(id, ".rds"))
-    log <- file.path(root, lay[["logs_tfl"]], sub("\\.[Rr]$", ".log",
+    log <- file.path(root, lay[["logs_preview"]], sub("\\.[Rr]$", ".log",
                                              info$program))
     pstate <- .program_state(p, id, prog)
     t_rtf <- .mtime(rtf)
@@ -490,11 +486,13 @@ study_status <- function(study) {
   out
 }
 
-#' Run a study's report programs
+#' Preview a study's reports
 #'
-#' Runs `programs/tfl/autoexec_report.R` from the study folder, for every
-#' report or the ones named, each program in its own `Rscript` process
-#' with its log in `logs/`.
+#' Runs report programs on their own (a preview), from the study folder --
+#' every report or the ones named -- each in its own `Rscript` process.
+#' They write the working RTFs (output/tfl/); what each printed is kept in
+#' `logs/preview/` until the next preview, and no log of record is made.
+#' The official run is [run_batch()].
 #'
 #' @param study An `rtfstudy` (saved: the programs run from disk).
 #' @param output_id Reports to run; `NULL` runs all.
@@ -504,15 +502,31 @@ study_status <- function(study) {
 #' @export
 run_study <- function(study, output_id = NULL, wait = TRUE) {
   p <- study$planner
-  progs <- if (is.null(output_id)) character() else
-    vapply(output_id, function(id) report_info(p, id)$program, "")
+  ids <- output_id %||% p$outputs$output_id
+  progs <- vapply(ids, function(id) report_info(p, id)$program, "")
   lay <- study_layout()
-  px <- processx::process$new(
-    file.path(R.home("bin"), "Rscript"),
-    c(file.path(lay[["programs_tfl"]], "autoexec_report.R"), progs),
-    wd = study$path,
-    stdout = file.path(study$path, lay[["logs_tfl"]], "autoexec_report.log"),
-    stderr = "2>&1")
+  # a small runner: each program in its own Rscript, what it prints kept
+  # in logs/preview/ (overwritten each time)
+  f <- tempfile("preview", fileext = ".R")
+  writeLines(c(
+    paste0("progs <- c(", paste(encodeString(progs, quote = "\""),
+                                collapse = ", "), ")"),
+    paste0("dir.create(", encodeString(lay[["logs_preview"]], quote = "\""),
+           ", recursive = TRUE, showWarnings = FALSE)"),
+    "bad <- 0L",
+    "for (p in progs) {",
+    paste0("  log <- file.path(", encodeString(lay[["logs_preview"]], quote = "\""),
+           ", sub(\"[.][Rr]$\", \".log\", p))"),
+    paste0("  rc <- system2(file.path(R.home(\"bin\"), \"Rscript\"), shQuote(file.path(",
+           encodeString(lay[["programs_tfl"]], quote = "\""), ", p)),"),
+    "                stdout = log, stderr = log)",
+    "  cat(if (identical(rc, 0L)) \"OK   \" else \"ERROR\", p, \"\\n\")",
+    "  if (!identical(rc, 0L)) bad <- bad + 1L",
+    "}",
+    "quit(status = if (bad) 1L else 0L)"), f)
+  px <- processx::process$new(file.path(R.home("bin"), "Rscript"), f,
+                              wd = study$path, stdout = NULL,
+                              stderr = NULL, cleanup = TRUE)
   if (!wait) return(px)
   px$wait()
   study_status(study)

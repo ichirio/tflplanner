@@ -83,24 +83,51 @@ report_info <- function(x, output_id) {
             strsplit(code, "\n", fixed = TRUE)[[1L]]))
 }
 
-# A report's ARD code: its own, or -- a table the study's ARD definition
-# serves -- the lines that take its part of the study ARD.
+# A report's ARD code: its own, or -- a table -- the company's template
+# (code_templates: table_data) that takes its rows of the study ARD.
 .ard_code_of <- function(x, output_id) {
   o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
   code <- if (nrow(o) && !is.na(o$data_code)) o$data_code else NA
-  if (is.na(code) && identical(report_info(x, output_id)$type, "table") &&
-      any(x$ard$analyses$output_id %in% output_id)) {
-    out <- .ard_study_value(x$ard, "output", "output/ard/ard.rds")
-    code <- paste(
-      paste0("# this report's part of the study ARD (spec/ard_spec.xlsx, ",
-             study_layout()[["programs_ard"]], "/", .ard_prog_name(output_id), ")"),
-      sprintf("ard <- readRDS(%s)", encodeString(out, quote = '"')),
-      sprintf("ard <- ard[ard$output_id == %s,",
-              encodeString(output_id, quote = '"')),
-      '           setdiff(names(ard), c("output_id", "analysis_id", "population_id"))]',
-      sep = "\n")
+  if (is.na(code) && identical(report_info(x, output_id)$type, "table")) {
+    code <- .fill_template("table_data", x, output_id)
   }
   code
+}
+
+#' Code templates
+#'
+#' The code tflplanner writes where a report says none: the company
+#' standards' sheet `code_templates` (see [company_standards()]).
+#' `table_data` takes a table's rows of the study ARD, `table_process`
+#' normalizes them (and shows where to rework them), `figure_plot` is the
+#' plot a figure starts with, `setup` the code every report of a new study
+#' runs first.  In a template, `{OUTPUT_ID}`, `{ARD}` (the study ARD),
+#' `{ARD_PROGRAM}` (the output's ARD program), `{PROGRAM}` and `{STUDY_ID}`
+#' stand for the report's.
+#'
+#' @param name A template's name; `NULL` for all.
+#' @return A named character vector.
+#' @export
+code_templates <- function(name = NULL) {
+  d <- company_standards()$code_templates
+  out <- stats::setNames(d$code, d$name)
+  if (is.null(name)) out else out[name]
+}
+
+.fill_template <- function(name, x, output_id = NA, study_id = NA) {
+  code <- code_templates(name)
+  if (!length(code) || is.na(code)) return(NA_character_)
+  lay <- study_layout()
+  sub <- c(
+    `{OUTPUT_ID}` = if (is.na(output_id)) "" else output_id,
+    `{ARD}` = .ard_study_value(x$ard, "output", "output/ard/ard.rds"),
+    `{ARD_PROGRAM}` = if (is.na(output_id)) "" else
+      file.path(lay[["programs_ard"]], .ard_prog_name(output_id)),
+    `{PROGRAM}` = if (is.na(output_id)) "" else
+      file.path(lay[["programs_tfl"]], report_info(x, output_id)$program),
+    `{STUDY_ID}` = if (is.na(study_id)) "" else study_id)
+  for (k in names(sub)) code <- gsub(k, sub[[k]], code, fixed = TRUE)
+  unname(code)
 }
 
 #' The data part of a report's program
@@ -160,7 +187,8 @@ data_lines <- function(x, output_id, todo = TRUE) {
   proc_lines <- if (!table) NULL else if (!is.na(proc)) {
     c("", "# normalize and rework", .code_block(proc))
   } else if (!.makes_data(code)) {
-    c("", "data <- ard_normalize(ard)")
+    tp <- .fill_template("table_process", x, output_id)
+    c("", if (is.na(tp)) "data <- ard_normalize(ard)" else .code_block(tp))
   }
   c(if (!is.na(x$setup)) c(.code_block(x$setup), ""),
     .code_block(code),
@@ -265,36 +293,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 #' @export
 autoexec_code <- function(x, date = Sys.Date()) {
   lay <- study_layout()
-  progs <- vapply(x$outputs$output_id, function(id)
-    report_info(x, id)$program, "")
-  c(.banner(
-      paste("Program    :", file.path(lay[["programs_tfl"]], "autoexec_report.R")),
-      "Runs the study's report programs, in the report list's order.",
-      "  Rscript programs/tfl/autoexec_report.R            every program",
-      "  Rscript programs/tfl/autoexec_report.R DM.R AE.R  only these",
-      "Run it from the study folder.  Each program runs in its own R process;",
-      "its log is logs/tfl/<program>.log.  The tables read the study ARD as",
-      "it is: make it first (programs/ard/autoexec_ard.R).",
-      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
-             ", ", format(date, "%Y-%m-%d"))),
-    "",
-    "if (!file.exists(\"study.yml\")) {",
-    "  stop(\"Run autoexec_report.R from the study folder (the one with study.yml).\")",
-    "}",
-    "",
-    "programs <- c(",
-    paste0("  ", .r_string(progs),
-           c(rep(",", max(0L, length(progs) - 1L)), "")[seq_along(progs)]),
-    ")",
-    "",
-    "only <- if (interactive()) character() else commandArgs(trailingOnly = TRUE)",
-    "if (length(only)) {",
-    "  programs <- programs[programs %in% only |",
-    "                        sub(\"\\\\.[Rr]$\", \"\", programs) %in% only]",
-    "}",
-    "",
-    .runner_lines(lay[["programs_tfl"]], lay[["logs_tfl"]]),
-    "result <- do.call(rbind, lapply(programs, run_program))",
-    .runner_end("autoexec_report.csv"),
-    "")
+  c(.autoexec_banner(file.path(lay[["programs_tfl"]], "autoexec_report.R"),
+                     "Official run of the report programs, in the report list's order.",
+                     "T-14-1-1.R       only these", date),
+    .autoexec_body("tfl"))
 }

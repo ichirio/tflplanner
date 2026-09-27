@@ -155,9 +155,11 @@ listing_types <- function() company_standards()$listing_types
   f <- lf_rows(x, "figures", output_id)
   ds <- if (nrow(f)) .split_bar(f$datasets[1L]) else character()
   if (!length(ds) && is.na(plot_code)) return(NULL)
+  tpl <- .fill_template("figure_plot", x, output_id)
   plot <- if (is.na(plot_code)) c(
-    "# TODO: the plot, e.g.",
-    "#   plot <- ggplot2::ggplot(adsl, ggplot2::aes(AGE)) + ggplot2::geom_histogram()",
+    if (!is.na(tpl)) .code_block(tpl) else c(
+      "# TODO: the plot, e.g.",
+      "#   plot <- ggplot2::ggplot(adsl, ggplot2::aes(AGE)) + ggplot2::geom_histogram()"),
     paste0("stop(\"tflplanner: the plot of ", info$program,
            " is still to be written.\")")) else .code_block(plot_code)
   makes_content <- !is.na(plot_code) &&
