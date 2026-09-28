@@ -235,10 +235,10 @@ desc <- c("T-14-1-1" = "Demographic characteristics",
           "F-14-2-1" = "KM plot, time to first dermatologic event")
 types <- c("T-14-1-1" = "table", "T-14-1-2" = "table", "T-14-3-1" = "table",
            "L-16-2-7" = "listing", "F-14-2-1" = "figure")
-# the second step, normalize and rework (blank: data <- ard_normalize(ard))
+# the second step, normalize and rework (blank: data <- tfl_ard_normalize(ard))
 process <- list(
   "T-14-3-1" = c(
-    "data <- ard_normalize(ard, hierarchy = c(\"AEBODSYS\", \"AEDECOD\"),",
+    "data <- tfl_ard_normalize(ard, hierarchy = c(\"AEBODSYS\", \"AEDECOD\"),",
     "                      overall = \"Any TEAE\")"))
 for (o in names(desc)) {
   p <- add_output(p, o, description = desc[[o]],

@@ -43,7 +43,7 @@ test_that("a table the ARD definition serves reads its part of the study ARD", {
   p <- ard_planner()
   code <- data_lines(p, "DM")
   expect_true(any(grepl("readRDS(\"output/ard/ard.rds\")", code, fixed = TRUE)))
-  expect_true(any(grepl("data <- ard_normalize(ard)", code, fixed = TRUE)))
+  expect_true(any(grepl("data <- tfl_ard_normalize(ard)", code, fixed = TRUE)))
   expect_true(any(grepl("still to be written", data_lines(p, "L1"))))
   p$outputs$data_code[1] <- "ard <- my_ard()"
   expect_false(any(grepl("ard.rds", data_lines(p, "DM"))))

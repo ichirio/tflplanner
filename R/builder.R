@@ -254,7 +254,7 @@ builder_write <- function(x, output_id, state) {
 #'
 #' Plans the report's table from the definition as it stands (saved or
 #' not) and the report's normalized data, and gives its pages -- what
-#' [tflspec::rtf_report()] lays out -- or an HTML rendering of them.
+#' [tflspec::tfl_report()] lays out -- or an HTML rendering of them.
 #'
 #' @param x An `tflplanner`.
 #' @param output_id The report.
@@ -273,10 +273,10 @@ preview_pages <- function(x, output_id, data) {
   })
   st <- x$study["rounding"]
   sheets$study <- if (!is.na(st)) st
-  spec <- tflspec::table_spec(sheets)
-  plan <- suppressMessages(tflspec::rtf_plan(data, spec = spec,
+  spec <- tflspec::tfl_table_spec(sheets)
+  plan <- suppressMessages(tflspec::tfl_plan(data, spec = spec,
                                                  notes = FALSE))
-  res <- suppressMessages(tflspec::apply_plan(plan))
+  res <- suppressMessages(tflspec::tfl_apply_plan(plan))
   # a plan with no layout gives its table, not pages: one page of it
   if (is.data.frame(res)) {
     res <- list(structure(list(data = res, col_header = list(names(res)),

@@ -447,9 +447,9 @@ app_ui <- function(lang = "en") {
                 rows = 10, width = "100%", resize = "vertical"),
               shiny::textAreaInput(
                 "process_code",
-                t("2. Normalize and rework: make `data` from `ard` (ard_normalize(), then mutate() ...). Blank = the company template (normalize)."),
+                t("2. Normalize and rework: make `data` from `ard` (tfl_ard_normalize(), then mutate() ...). Blank = the company template (normalize)."),
                 rows = 5, width = "100%", resize = "vertical",
-                placeholder = "data <- ard_normalize(ard)"),
+                placeholder = "data <- tfl_ard_normalize(ard)"),
               shiny::div(
                 class = "d-flex gap-2 align-items-center mb-2",
                 .btn("fetch", t("Run and read the ARD"),
@@ -1449,7 +1449,7 @@ app_server <- function(input, output, session, start) {
   # -- the ARD definition ------------------------------------------------
   # Its grids work like the others: `analyses` shows the rows of the report
   # chosen in the sidebar (all of them for Study defaults / ALL); the other
-  # sheets are the study's.  The code is ard_spec_code() of the definition
+  # sheets are the study's.  The code is tfl_ard_code() of the definition
   # as it stands; Run executes it with run_ard() and shows the ARD.
   ard_res <- shiny::reactiveVal(NULL)
   ard_cols <- new.env()
@@ -1699,7 +1699,7 @@ app_server <- function(input, output, session, start) {
   })
   # what the Code panel shows, as the save would write it
   ard_code_now <- shiny::reactive({
-    a <- structure(rv$p$ard, class = "ard_spec")
+    a <- structure(rv$p$ard, class = "tfl_ard_spec")
     msg <- function(x) structure(x, msg = TRUE)
     scope <- input$ard_scope %||% "report"
     id <- ard_target()

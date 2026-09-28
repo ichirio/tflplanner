@@ -90,7 +90,7 @@ test_that("a table without data code starts from the company's template", {
   f <- file.path(withr_tempdir(), "acme.xlsx")
   s <- .builtin_standards()
   s$code_templates$code[s$code_templates$name == "table_process"] <-
-    "data <- ard_normalize(ard)\ndata <- acme_rework(data)"
+    "data <- tfl_ard_normalize(ard)\ndata <- acme_rework(data)"
   s$code_templates$code[s$code_templates$name == "setup"] <-
     "library(acme)  # {STUDY_ID}"
   writexl::write_xlsx(s, f)
@@ -111,7 +111,7 @@ test_that("the figure style is part of the company standards", {
   for (sh in c("figure_settings", "figure_colors", "figure_markers")) {
     expect_true(nrow(s[[sh]]) > 0, label = sh)
   }
-  code <- tflspec::fig_setup_code(.std_fig_style())
+  code <- tflspec::tfl_fig_setup_code(.std_fig_style())
   expect_true(any(grepl('"twodash"', code, fixed = TRUE)))
 
   # a company's colour reaches the helper script
@@ -121,7 +121,7 @@ test_that("the figure style is part of the company standards", {
                            b$figure_colors$value %in% "CR"] <- "#00AA00"
   writexl::write_xlsx(b, f)
   suppressMessages(setup_tflplanner(standards = f))
-  code <- tflspec::fig_setup_code(.std_fig_style())
+  code <- tflspec::tfl_fig_setup_code(.std_fig_style())
   expect_true(any(grepl('"CR" = "#00AA00"', code, fixed = TRUE)))
   suppressMessages(setup_tflplanner(standards = "builtin"))
 })

@@ -27,7 +27,7 @@ The order is the order autoexec_report.R runs them in. Copy copies the report's 
 Data code,データ準備コード
 Description,説明
 1. ARD: make `ard` (Listing / Figure: make `content`). Blank = TODO.,1. ARD 作成：`ard` を作る（Listing / Figure は `content` を作る）。空欄 = TODO。
-"2. Normalize and rework: make `data` from `ard` (ard_normalize(), then mutate() ...). Blank = data <- ard_normalize(ard).",2. 正規化・手動加工：`ard` から `data` を作る（ard_normalize() とその後の mutate() など）。空欄 = data <- ard_normalize(ard)。
+"2. Normalize and rework: make `data` from `ard` (tfl_ard_normalize(), then mutate() ...). Blank = data <- tfl_ard_normalize(ard).",2. 正規化・手動加工：`ard` から `data` を作る（tfl_ard_normalize() とその後の mutate() など）。空欄 = data <- tfl_ard_normalize(ard)。
 Run and read the ARD,実行して ARD を読む
 "Runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance.",1 と 2 を試験フォルダで実行し、変数・水準・統計量を読み取って入力支援に使います。
 "Setup code every report runs first (library(), common data)",全帳票共通の前処理（library()、共通データの読み込みなど）
@@ -360,7 +360,7 @@ Working reports: RTF,作業用帳票：RTF
 "Official runs: one batch folder each (logs, results, code)",正式実行：1 回ごとのバッチフォルダ（ログ・結果・コード）
 What a report program printed in its last preview,帳票プログラムの直近プレビューの出力
 1. ARD: make `ard` (Listing: rework `data`; Figure: the plot). Blank for a table = the company template: its rows of the study ARD.,1. ARD：`ard` を作る（Listing：`data` の加工、Figure：プロット）。表で空欄なら会社テンプレート（試験 ARD から自分の行を取得）。
-"2. Normalize and rework: make `data` from `ard` (ard_normalize(), then mutate() ...). Blank = the company template (normalize).",2. normalize と加工：`ard` から `data` を作る（ard_normalize() の後に mutate() など）。空欄なら会社テンプレート（normalize）。
+"2. Normalize and rework: make `data` from `ard` (tfl_ard_normalize(), then mutate() ...). Blank = the company template (normalize).",2. normalize と加工：`ard` から `data` を作る（tfl_ard_normalize() の後に mutate() など）。空欄なら会社テンプレート（normalize）。
 "The sample study SAMPLE-01: CDISC pilot data (pharmaverseadam), one study ARD, four tables, a listing and a figure.",サンプル試験 SAMPLE-01：CDISC パイロットデータ（pharmaverseadam）、試験 ARD 1 つ、表 4 つ、Listing 1 つ、Figure 1 つ。
 Add the sample study,サンプル試験を追加
 Adding the sample study and making its ARD and reports ...,サンプル試験を追加し、ARD と帳票を作成しています ...

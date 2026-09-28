@@ -6,7 +6,7 @@ sample_paths <- function() {
 test_that("the sample reads, writes and reads back unchanged", {
   p <- read_planner(sample_paths())
   expect_equal(p$outputs$output_id, c("DM", "AE", "ORR", "LB", "PK"))
-  p$outputs$data_code[1] <- "data <- ard_normalize(ard)\n# two lines"
+  p$outputs$data_code[1] <- "data <- tfl_ard_normalize(ard)\n# two lines"
   p$outputs$description[2] <- "有害事象"
   p$setup <- "library(cards)"
 
@@ -23,8 +23,8 @@ test_that("the sample reads, writes and reads back unchanged", {
 test_that("each workbook carries its half and tflspec reads each alone", {
   p <- read_planner(sample_paths())
   paths <- write_planner(p, withr_tempdir())
-  t <- tflspec::read_table_spec(paths[["table"]])
-  r <- tflspec::read_report_spec(paths[["report"]])
+  t <- tflspec::tfl_read_table_spec(paths[["table"]])
+  r <- tflspec::tfl_read_report_spec(paths[["report"]])
   expect_gt(nrow(t$tables), 0)
   expect_equal(nrow(t$report), 0)
   expect_equal(nrow(r$tables), 0)
