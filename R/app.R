@@ -973,9 +973,10 @@ app_server <- function(input, output, session, start) {
       shiny::radioButtons(
         "ns_from", t("Reports"),
         stats::setNames(c("empty", "study", "sample"),
-                        t(c("Start empty",
-                            "Copy another study (definition and data code)",
-                            "tflspec's sample (5 reports)")))),
+                        c(t("Start empty"),
+                          t("Copy another study (definition and data code)"),
+                          t("The sample study: data, ARD definition, tables, listing and figures (made at once)"))),
+        selected = "sample"),
       shiny::conditionalPanel(
         "input.ns_from == 'study'",
         shiny::selectInput("ns_src", t("Copy from"),
@@ -993,19 +994,31 @@ app_server <- function(input, output, session, start) {
       return(notify(t("There are unsaved changes. Save first."), "warning"))
     }
     blank <- function(v) if (is.null(v) || !nzchar(trimws(v))) NA else v
-    p <- switch(input$ns_from,
-      study = guarded(open_study(input$ns_src)$planner),
-      sample = guarded(read_planner(file.path(
-        system.file("extdata", "ard-spec", package = "tflspec"),
-        c("report.xlsx", "study.xlsx")))),
-      new_planner())
-    if (is.null(p)) return()
-    s <- guarded(create_study(
-      trimws(input$ns_id),
-      title = blank(input$ns_title), compound = blank(input$ns_compound),
-      phase = blank(input$ns_phase),
-      description = blank(input$ns_description), planner = p,
-      root = trimws(input$ns_root)))
+    s <- if (identical(input$ns_from, "sample")) {
+      # the sample study under this ID: its data, ARD definition, tables,
+      # listing and figures, made at once by an official run
+      nz <- function(v) { v <- blank(v); if (is.na(v)) NULL else v }
+      out <- NULL
+      shiny::withProgress(
+        message = t("Copying the sample study and making its ARD and reports ..."),
+        out <- guarded(suppressMessages(create_sample_study(
+          root = trimws(input$ns_root), study_id = trimws(input$ns_id),
+          title = nz(input$ns_title), compound = nz(input$ns_compound),
+          phase = nz(input$ns_phase),
+          description = nz(input$ns_description)))))
+      out
+    } else {
+      p <- switch(input$ns_from,
+        study = guarded(open_study(input$ns_src)$planner),
+        new_planner())
+      if (is.null(p)) return()
+      guarded(create_study(
+        trimws(input$ns_id),
+        title = blank(input$ns_title), compound = blank(input$ns_compound),
+        phase = blank(input$ns_phase),
+        description = blank(input$ns_description), planner = p,
+        root = trimws(input$ns_root)))
+    }
     if (is.null(s)) return()
     shiny::removeModal()
     rv$studies_ver <- rv$studies_ver + 1L
