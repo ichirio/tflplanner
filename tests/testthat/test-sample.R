@@ -9,10 +9,11 @@ test_that("the sample study is copied, registered and written", {
   expect_equal(normalizePath(dirname(s$path), "/"),
                normalizePath(root, "/"))
   expect_setequal(s$planner$outputs$output_id,
-                  c("T-14-1-1", "T-14-1-2", "T-14-2-1", "T-14-3-1",
-                    "L-16-2-7", "F-14-2-1"))
+                  c("T-14-1-1", "T-14-1-2", "T-14-2-1", "T-14-2-2",
+                    "T-14-3-1", "L-16-2-7", "F-14-2-1", "F-14-2-2"))
   expect_true(nrow(s$planner$ard$analyses) > 0)
-  for (f in c("data/adam/adsl.rds", "programs/batch.R",
+  for (f in c("data/adam/adsl.rds", "data/adam/adtte.rds",
+              "programs/tfl/fig_setup.R", "programs/batch.R",
               "programs/ard/T-14-1-1.R", "programs/tfl/F-14-2-1.R")) {
     expect_true(file.exists(file.path(s$path, f)), label = f)
   }
@@ -27,6 +28,8 @@ test_that("the sample study makes its ARD and reports", {
   skip_if_not_installed("cards")
   skip_if_not_installed("cardx")
   skip_if_not_installed("ggplot2")
+  skip_if_not_installed("ggsurvfit")
+  skip_if_not_installed("patchwork")
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)

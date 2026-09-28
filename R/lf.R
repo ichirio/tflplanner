@@ -113,13 +113,22 @@ listing_types <- function() company_standards()$listing_types
   makes_content <- !is.na(plot_code) &&
     any(grepl("(^|[^A-Za-z0-9_.])content[[:space:]]*(<-|=)[^=]",
               strsplit(plot_code, "\n", fixed = TRUE)[[1L]]))
+  setup <- file.path(study_layout()[["programs_tfl"]], .fig_setup_file)
   c(if (length(ds)) c(paste0("# the data: ", paste(ds, collapse = ", "),
                              " (data catalog)"),
                       unlist(lapply(ds, function(d) .read_dataset_lines(x, d))),
                       ""),
+    "# the figure style of the company standards, and the figure checks",
+    sprintf("source(%s)", encodeString(setup, quote = "\"")),
+    "",
     "# ---- the plot (ggplot2), written by hand: leaves `plot`",
+    "#      (theme_tfl(), scale_colour_tfl(), tfl_marker() ... give the standard's look)",
     plot,
-    if (!makes_content) c("", "content <- list(plot)"))
+    if (!makes_content) c(
+      "",
+      "# the figure checks: dropped rows, colours against the standard (warnings)",
+      "tfl_check(plot)",
+      "content <- list(plot)"))
 }
 
 #' The rows of a listing, as they will print
