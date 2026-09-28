@@ -55,3 +55,34 @@ test_that("an edit in the editor changes the chosen report and is saved", {
   }))
   expect_equal(open_study("S1")$planner$outputs$data_code, "a <- 10")
 })
+
+test_that("unregistering removes the chosen study only, and the list still draws", {
+  local_home()
+  two_studies()
+  # S2 was created last: the last study opened
+  suppressWarnings(shiny::testServer(server_for("S1"), {
+    session$setInputs(studies_rows_selected = 2L, unregister = 1L)
+    # the selection moves before the OK: the study chosen when the
+    # confirmation opened is the one unregistered
+    session$setInputs(studies_rows_selected = 1L, unregister_ok = 1L)
+    expect_equal(list_studies()$study_id, "S1")
+    expect_s3_class(output$studies, "json")
+    # the last one: an empty list is a message, not an error
+    session$setInputs(studies_rows_selected = 1L, unregister = 2L)
+    session$setInputs(unregister_ok = 2L)
+    expect_equal(nrow(list_studies()), 0L)
+    expect_error(output$studies, "No studies yet")
+  }))
+})
+
+test_that("unregister_study() takes one registered study and nothing else", {
+  home <- local_home()
+  two_studies()
+  expect_error(unregister_study(""), "one study ID")
+  expect_error(unregister_study(character()), "one study ID")
+  expect_error(unregister_study(NA_character_), "one study ID")
+  expect_error(unregister_study("NOPE"), "not registered")
+  expect_setequal(list_studies()$study_id, c("S1", "S2"))
+  unregister_study("S2")
+  expect_equal(list_studies()$study_id, "S1")
+})

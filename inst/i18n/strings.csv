@@ -365,5 +365,6 @@ What a report program printed in its last preview,帳票プログラムの直近
 Add the sample study,サンプル試験を追加
 Adding the sample study and making its ARD and reports ...,サンプル試験を追加し、ARD と帳票を作成しています ...
 Added %s: double-click it in the list to open it.,%s を追加しました。一覧でダブルクリックすると開きます。
+"No studies yet. Create one with New study (the sample study is one of its choices), or register a study folder.",試験がまだありません。「新規試験」で作成するか（サンプル試験のコピーも選べます）、試験フォルダを登録してください。
 "The sample study: data, ARD definition, tables, listing and figures (made at once)",サンプル試験をコピー：データ・ARD 定義・表・Listing・図（作成まで一括）
 Copying the sample study and making its ARD and reports ...,サンプル試験をコピーし、ARD と帳票を作成しています ...

@@ -222,6 +222,13 @@ register_study <- function(path, home = tflplanner_home()) {
 #' @rdname create_study
 #' @export
 unregister_study <- function(study_id, home = tflplanner_home()) {
+  if (length(study_id) != 1L || is.na(study_id) || !nzchar(study_id)) {
+    stop("unregister_study() takes one study ID.", call. = FALSE)
+  }
+  study_id <- .check_study_id(study_id)
+  if (is.null(.read_state(study_id, home))) {
+    stop("Study '", study_id, "' is not registered.", call. = FALSE)
+  }
   unlink(.store_dir(study_id, home), recursive = TRUE)
   if (identical(tflplanner_config(home)$last_study, study_id)) {
     .set_config("last_study", NULL, home)

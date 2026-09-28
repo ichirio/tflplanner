@@ -22,7 +22,7 @@ library(pharmaverseadam)
 id <- "ICHIRIO-002"
 root <- studies_root()
 unlink(file.path(root, id), recursive = TRUE)
-unregister_study(id)
+if (!is.null(.read_state(id))) unregister_study(id)
 s <- create_study(id, root = root,
                   title = "Verification study for ard_spec (pharmaverseadam)",
                   compound = "Xanomeline", phase = "2")
