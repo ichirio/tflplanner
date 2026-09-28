@@ -20,7 +20,7 @@ Code lines.
 The code a report runs before the report is laid out: the setup every
 report runs, the report's own \code{data_code} (its ARD) and, for a table,
 its \code{process_code} (normalization and rework, by default
-\code{data <- ard_normalize(ard)}).  With no \code{data_code} it is a TODO that
+\code{data <- tfl_ard_normalize(ard)}).  With no \code{data_code} it is a TODO that
 stops.  \code{\link[=program_code]{program_code()}} writes it into the program, and
 \code{\link[=fetch_ard]{fetch_ard()}} runs it to learn what the ARD holds.
 }

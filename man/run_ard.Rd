@@ -18,6 +18,6 @@ definition's \code{output} says).}
 A list: \code{ard} (or \code{NULL}), \code{error}, \code{log}, \code{seconds}, \code{code}.
 }
 \description{
-Runs \code{\link[tflspec:ard_spec_code]{tflspec::ard_spec_code()}} in its own R process from the study folder and
+Runs \code{\link[tflspec:tfl_ard_code]{tflspec::tfl_ard_code()}} in its own R process from the study folder and
 reads back the ARD it makes.
 }
