@@ -64,6 +64,8 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
   for (d in study_layout()) {
     dir.create(file.path(path, d), recursive = TRUE, showWarnings = FALSE)
   }
+  rproj <- file.path(path, paste0(study_id, ".Rproj"))
+  if (!file.exists(rproj)) writeLines(.rproj, rproj)
   # the study's own ID and fields
   meta <- .read_meta(path)
   meta$study_id <- study_id
