@@ -7,7 +7,7 @@
 # value is printed once).  Its program reads the data, reworks it with the
 # report's data code when it has one, and lays it out with
 # rtfreporter::listing_spec() / as_rtftables().  The code is written by
-# tflspec::listing_spec_code(); the rows are kept and edited here.
+# tflspec::tfl_listing_code(); the rows are kept and edited here.
 #
 # A figure names the datasets it reads; its program reads them and writes
 # the RTF, and the plot in between -- ggplot2 -- is the report's data code,
@@ -87,12 +87,12 @@ listing_types <- function() company_standards()$listing_types
 # the lines that read one dataset of the catalog into an object named
 # after it (adsl, adae ...), with its derived columns
 .read_dataset_lines <- function(x, dataset) {
-  tflspec::read_data_code(x$ard$datasets, dataset)
+  tflspec::tfl_read_data_code(x$ard$datasets, dataset)
 }
 
 # the part of a listing's program between its setup and its report
 .listing_lines <- function(x, output_id, rework = NA) {
-  tflspec::listing_spec_code(
+  tflspec::tfl_listing_code(
     lf_rows(x, "listings", output_id), lf_rows(x, "listing_cols", output_id),
     x$ard$datasets, rework = if (!is.na(rework)) .code_block(rework),
     type = .std_setting("listing_type", "multiline"))

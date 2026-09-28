@@ -17,7 +17,7 @@
 .df <- function(...) data.frame(..., stringsAsFactors = FALSE)
 
 # The ARD catalogs (sheets ard_methods, ard_statistics) start from tflspec's
-# built-in ones: tflspec::ard_methods(), tflspec::ard_statistics().
+# built-in ones: tflspec::tfl_ard_methods(), tflspec::tfl_ard_statistics().
 
 # the draft: what the app held before it read standards
 .builtin_standards <- function() {
@@ -124,8 +124,8 @@
       template = c("{n:.0f} ({p:.<p>f%})", "{n:.0f}/{N:.0f} ({p:.<p>f%})",
                    "{n:.0f}"),
       note = c("<p> = the decimals of the percent", "", "")),
-    ard_methods = tflspec::ard_methods(),
-    ard_statistics = tflspec::ard_statistics(),
+    ard_methods = tflspec::tfl_ard_methods(),
+    ard_statistics = tflspec::tfl_ard_statistics(),
     figure_settings = .tflspec_fig_style()$settings,
     figure_colors = .tflspec_fig_style()$colors,
     figure_markers = .tflspec_fig_style()$markers,
@@ -140,7 +140,7 @@
         sep = "\n"),
         paste(
         "# ---- normalize",
-        "data <- ard_normalize(ard)",
+        "data <- tfl_ard_normalize(ard)",
         "# ---- rework as needed, e.g.",
         "# data <- dplyr::mutate(data, label = dplyr::recode(label, \"Age\" = \"Age (years)\"))",
         sep = "\n"),
@@ -352,7 +352,7 @@ company_standards <- function(home = tflplanner_home()) {
 .tflspec_fig_style <- function() {
   old <- options(tflspec.fig_style = NULL)
   on.exit(options(old), add = TRUE)
-  tflspec::fig_style()
+  tflspec::tfl_fig_style()
 }
 
 # the company standards' figure style, as tflspec takes it

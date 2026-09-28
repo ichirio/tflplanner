@@ -1,8 +1,8 @@
 # The study's ARD definition, as the app keeps it.
 #
 # The engine -- the definition checked, turned into cards / cardx code, and
-# run -- is tflspec's (ard_spec(), ard_spec_code(), build_ard(); the
-# workbook ard_spec.xlsx is read_ard_spec() / write_ard_spec()).  What is
+# run -- is tflspec's (tfl_ard_spec(), tfl_ard_code(), tfl_build_ard(); the
+# workbook ard_spec.xlsx is tfl_read_ard_spec() / tfl_write_ard_spec()).  What is
 # here belongs to a study: editing its rows, saving its definition and
 # programs in the study folder, running them there, and where each output's
 # ARD stands.  The catalogs the engine checks against are the company
@@ -10,7 +10,7 @@
 # engine passes them.
 
 # the sheets of an ARD definition and their columns (tflspec's)
-.ard_sheets <- function() lapply(tflspec::ard_spec_template(), names)
+.ard_sheets <- function() lapply(tflspec::tfl_ard_spec_template(), names)
 
 # the company standards' catalogs, as the engine and the app read them
 .std_ard_methods <- function() {
@@ -28,23 +28,23 @@
 
 # the engine, with the company standards' catalogs
 .ard_spec <- function(x) {
-  tflspec::ard_spec(x, statistics = .std_ard_statistics(),
+  tflspec::tfl_ard_spec(x, statistics = .std_ard_statistics(),
                     methods = .std_ard_methods())
 }
 
 .read_ard_spec <- function(path, check = TRUE) {
-  tflspec::read_ard_spec(path, check = check,
+  tflspec::tfl_read_ard_spec(path, check = check,
                          statistics = .std_ard_statistics(),
                          methods = .std_ard_methods())
 }
 
 .write_ard_spec <- function(spec, path) {
-  tflspec::write_ard_spec(spec, path, statistics = .std_ard_statistics(),
+  tflspec::tfl_write_ard_spec(spec, path, statistics = .std_ard_statistics(),
                           methods = .std_ard_methods())
 }
 
 .ard_spec_code <- function(spec, ...) {
-  tflspec::ard_spec_code(spec, ..., statistics = .std_ard_statistics(),
+  tflspec::tfl_ard_code(spec, ..., statistics = .std_ard_statistics(),
                          methods = .std_ard_methods())
 }
 
@@ -79,7 +79,7 @@
 
 .ard_file <- "ard_spec.xlsx"
 
-.empty_ard_spec <- function() tflspec::ard_spec_template()
+.empty_ard_spec <- function() tflspec::tfl_ard_spec_template()
 
 .normalize_ard_sheet <- function(d, sheet) {
   cols <- .ard_sheets()[[sheet]]
@@ -152,7 +152,7 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
 # (spec/ard_definition.json: a folder registered elsewhere keeps its ARD
 # definition -- not meant to be edited).  ard_spec.xlsx is only an export --
 # to edit the definition in Excel, or keep it as a file -- and an import
-# (write_ard_spec(), read_ard_spec()).
+# (tfl_write_ard_spec(), tfl_read_ard_spec()).
 .ard_json <- "ard_definition.json"
 
 .save_ard <- function(p, root) {
@@ -193,7 +193,7 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
 
 #' Run a report's analyses, or the whole study's
 #'
-#' Runs [tflspec::ard_spec_code()] in its own R process from the study folder and
+#' Runs [tflspec::tfl_ard_code()] in its own R process from the study folder and
 #' reads back the ARD it makes.
 #'
 #' @param study An `rtfstudy`.
@@ -295,10 +295,10 @@ ard_status <- function(study) {
   a <- study$planner$ard
   ids <- unique(stats::na.omit(a$analyses$output_id))
   st <- .read_ard_status(study)
-  spec <- structure(a, class = "ard_spec")
+  spec <- structure(a, class = "tfl_ard_spec")
   rows <- lapply(ids, function(id) {
     r <- st[st$output_id == id, , drop = FALSE][1L, ]
-    now <- tflspec::ard_spec_hash(spec, id)
+    now <- tflspec::tfl_ard_spec_hash(spec, id)
     state <- if (is.na(r$output_id)) "not built" else
       if (!is.na(r$error) && nzchar(r$error)) "error" else
         if (!identical(r$definition, now)) "outdated" else "built"

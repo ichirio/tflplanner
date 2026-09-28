@@ -280,8 +280,8 @@ spec <- list(
       by = "TRT01A | PARAMCD", variables = "AVAL"))))
 
 f <- file.path(s$path, "spec", "ard_spec.xlsx")
-writexl::write_xlsx(c(spec, list(`_methods` = ard_methods())), f)
-x <- read_ard_spec(f)
+writexl::write_xlsx(c(spec, list(`_methods` = tfl_ard_methods())), f)
+x <- tfl_read_ard_spec(f)
 # the study keeps its definition (the app shows it); saving writes
 # spec/ard_spec.xlsx and programs/ard/ from it
 s$planner$ard <- lapply(stats::setNames(names(.ard_spec_sheets),
@@ -296,7 +296,7 @@ runs <- lapply(seq_len(nrow(a)), function(i) {
   one$analyses <- a[i, ]
   t0 <- Sys.time()
   r <- tryCatch(suppressWarnings(suppressMessages(
-    build_ard(one, dir = s$path, save = FALSE))),
+    tfl_build_ard(one, dir = s$path, save = FALSE))),
     error = function(e) e)
   list(ard = if (!inherits(r, "error")) r, error = if (inherits(r, "error"))
     conditionMessage(r), secs = as.numeric(difftime(Sys.time(), t0,
@@ -392,7 +392,7 @@ if (nrow(mid)) {
 # 3. does each output's part normalize?
 norm <- vapply(unique(a$output_id), function(o) {
   r <- tryCatch({
-    d <- suppressMessages(ard_normalize(ard_for(ard, o)))
+    d <- suppressMessages(tfl_ard_normalize(tfl_ard_for(ard, o)))
     sprintf("ok (%d rows)", nrow(d))
   }, error = function(e) paste("fails:", conditionMessage(e)))
   r

@@ -135,7 +135,7 @@ code_templates <- function(name = NULL) {
 #' The code a report runs before the report is laid out: the setup every
 #' report runs, the report's own `data_code` (its ARD) and, for a table,
 #' its `process_code` (normalization and rework, by default
-#' `data <- ard_normalize(ard)`).  With no `data_code` it is a TODO that
+#' `data <- tfl_ard_normalize(ard)`).  With no `data_code` it is a TODO that
 #' stops.  [program_code()] writes it into the program, and
 #' [fetch_ard()] runs it to learn what the ARD holds.
 #'
@@ -188,7 +188,7 @@ data_lines <- function(x, output_id, todo = TRUE) {
     c("", "# normalize and rework", .code_block(proc))
   } else if (!.makes_data(code)) {
     tp <- .fill_template("table_process", x, output_id)
-    c("", if (is.na(tp)) "data <- ard_normalize(ard)" else .code_block(tp))
+    c("", if (is.na(tp)) "data <- tfl_ard_normalize(ard)" else .code_block(tp))
   }
   c(if (!is.na(x$setup)) c(.code_block(x$setup), ""),
     .code_block(code),
@@ -242,9 +242,9 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   data_part <- c(
     .section("Data"),
     paste0("# Leaves `", obj, "`: ", switch(type,
-      figure = "the figure(s) for rtf_report().",
+      figure = "the figure(s) for tfl_report().",
       listing = "the listing's rtftable pages.",
-      "the normalized ARD (ard_normalize()) the table is built from.")),
+      "the normalized ARD (tfl_ard_normalize()) the table is built from.")),
     paste0("# Input data are in ", lay[["adam"]], "/, ", lay[["sdtm"]],
            "/ and ", lay[["other"]], "/."),
     data_lines(x, output_id))
@@ -254,10 +254,10 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     if (table) c(
       paste0("saveRDS(data, file.path(\"", lay[["ard"]],
              "\", paste0(output_id, \".rds\")))"),
-      "plan <- rtf_plan(data, spec = spec)",
-      "doc  <- rtf_report(spec, plan)") else
-      "doc  <- rtf_report(spec, content)",
-    "generate_rtfreport(doc, report_path(spec), overwrite = TRUE)")
+      "plan <- tfl_plan(data, spec = spec)",
+      "doc  <- tfl_report(spec, plan)") else
+      "doc  <- tfl_report(spec, content)",
+    "generate_rtfreport(doc, tfl_report_path(spec), overwrite = TRUE)")
 
   c(head,
     "",
@@ -269,7 +269,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     "}",
     "",
     paste("output_id <-", .r_string(output_id)),
-    "spec <- read_report_spec(",
+    "spec <- tfl_read_report_spec(",
     paste0("  c(", paste(.r_string(spec), collapse = ", "), "),"),
     "  output_id = output_id)",
     "",

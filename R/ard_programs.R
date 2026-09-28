@@ -31,7 +31,7 @@
 #' The ARD programs of a study
 #'
 #' `ard_setup_code()` is `programs/ard/ard_setup.R`, which every ARD program
-#' sources: cards, the statistics tflplanner computes ([tflspec::ard_statistics()], the company standards' catalog),
+#' sources: cards, the statistics tflplanner computes ([tflspec::tfl_ard_statistics()], the company standards' catalog),
 #' the stat_fmt formats, and `.save_output()`, which replaces one output's
 #' rows of the study ARD and records the build.  `ard_program_code()` is one
 #' output's program, `programs/ard/<output_id>.R`.  `ard_autoexec_code()` is
@@ -39,7 +39,7 @@
 #' all, or the ones named (`Rscript programs/ard/autoexec_ard.R T-14-1-1`)
 #' -- each in its own R process with its log in `logs/ard/`.
 #'
-#' @param spec An [tflspec::ard_spec()] (or the path of one).
+#' @param spec An [tflspec::tfl_ard_spec()] (or the path of one).
 #' @param output_id The output.
 #' @param date The date stamped in the banner.
 #' @return The code, one element per line.
@@ -111,7 +111,7 @@ ard_program_code <- function(spec, output_id, date = Sys.Date()) {
     .ard_spec_code(x, output_id = output_id, part = "body"),
     "",
     sprintf(".save_output(ard, %s, %s)", encodeString(output_id, quote = "\""),
-            encodeString(tflspec::ard_spec_hash(x, output_id), quote = "\"")),
+            encodeString(tflspec::tfl_ard_spec_hash(x, output_id), quote = "\"")),
     "")
 }
 

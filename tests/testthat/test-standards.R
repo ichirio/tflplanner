@@ -111,7 +111,7 @@ test_that("the figure style is part of the company standards", {
   for (sh in c("figure_settings", "figure_colors", "figure_markers")) {
     expect_true(nrow(s[[sh]]) > 0, label = sh)
   }
-  code <- tflspec::fig_setup_code(.std_fig_style())
+  code <- tflspec::tfl_fig_setup_code(.std_fig_style())
   expect_true(any(grepl('"twodash"', code, fixed = TRUE)))
 
   # a company's colour reaches the helper script
@@ -121,7 +121,7 @@ test_that("the figure style is part of the company standards", {
                            b$figure_colors$value %in% "CR"] <- "#00AA00"
   writexl::write_xlsx(b, f)
   suppressMessages(setup_tflplanner(standards = f))
-  code <- tflspec::fig_setup_code(.std_fig_style())
+  code <- tflspec::tfl_fig_setup_code(.std_fig_style())
   expect_true(any(grepl('"CR" = "#00AA00"', code, fixed = TRUE)))
   suppressMessages(setup_tflplanner(standards = "builtin"))
 })

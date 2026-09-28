@@ -1,5 +1,12 @@
 # tflplanner 0.0.0.9000
 
+- Follows tflspec's `tfl_` prefix (tflspec 0.0.9): the programs it writes
+  say `tfl_ard_normalize()`, `tfl_read_report_spec()`, `tfl_plan()`,
+  `tfl_report()` and `tfl_report_path()`, and it calls tflspec by the new
+  names.  Rework code already saved in a study (`ard_normalize()` ...)
+  still runs: tflspec keeps the former names.  The reports are unchanged;
+  the programs' checksums change with the names (#11).
+
 - *New study* now offers the sample study itself (copied under the new
   study's ID, its ARD and reports made at once) in place of tflspec's
   table-definition examples, which had no ARD definition or data.

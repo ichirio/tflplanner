@@ -1,7 +1,7 @@
 # The planner: one study's definition as the app edits it.
 #
 #   sheets   every rtfreporter sheet as an all-character data frame, the
-#            columns tflspec::table_spec() gives it plus `note`
+#            columns tflspec::tfl_table_spec() gives it plus `note`
 #   study    the study sheet's keys, a named character vector
 #   outputs  the report list: output_id, description, data_code (makes
 #            the ARD), process_code (normalizes and reworks it) -- the
@@ -42,7 +42,7 @@ report_types <- function() c("table", "listing", "figure")
 
 # The columns a sheet has, straight from rtfreporter, plus the free `note`.
 sheet_columns <- function(sheet) {
-  c(names(tflspec::table_spec()[[sheet]]), "note")
+  c(names(tflspec::tfl_table_spec()[[sheet]]), "note")
 }
 
 .empty_sheet <- function(sheet) {
@@ -147,7 +147,7 @@ output_ids <- function(x) {
 #'
 #' Reads `table_spec.xlsx` and `report_spec.xlsx` (or any rtfreporter
 #' definition workbooks, one or several) through
-#' [tflspec::read_report_spec()], so what the app opens is exactly what
+#' [tflspec::tfl_read_report_spec()], so what the app opens is exactly what
 #' the report programs will read.  The report list and the data code come
 #' from the `_tflplanner` sheet when a workbook has one; otherwise the list
 #' is every report a sheet names.
@@ -156,7 +156,7 @@ output_ids <- function(x) {
 #' @return An `tflplanner` object.
 #' @export
 read_planner <- function(path) {
-  sp <- tflspec::read_report_spec(path)
+  sp <- tflspec::tfl_read_report_spec(path)
   p <- new_planner()
   for (s in names(p$sheets)) p$sheets[[s]] <- .normalize_sheet(sp[[s]], s)
   st <- sp$study
@@ -213,9 +213,9 @@ read_planner <- function(path) {
 #' @param data_code R code that makes the report's ARD, `ard` (for a
 #'   listing or figure: its `content`); `NA` writes a TODO.
 #' @param process_code R code that turns `ard` into `data`, what
-#'   [tflspec::rtf_plan()] is given: [tflspec::ard_normalize()]
+#'   [tflspec::tfl_plan()] is given: [tflspec::tfl_ard_normalize()]
 #'   and any rework after it (`mutate()` ...).  `NA` means
-#'   `data <- ard_normalize(ard)`, unless `data_code` makes `data` itself.
+#'   `data <- tfl_ard_normalize(ard)`, unless `data_code` makes `data` itself.
 #' @param type The report's type, one of [report_types()]; anything but
 #'   `"table"` is written on the `report` sheet.
 #' @return The updated `tflplanner`.
@@ -385,7 +385,7 @@ set_sheet_rows <- function(x, sheet, output_id = "", rows) {
     d
   })
   args$study <- if (length(st)) st else NULL
-  tflspec::table_spec(args)
+  tflspec::tfl_table_spec(args)
 }
 
 .readme <- function() {
@@ -400,7 +400,7 @@ set_sheet_rows <- function(x, sheet, output_id = "", rows) {
 .write_book <- function(sp, path, extra = list()) {
   tmp <- tempfile(fileext = ".xlsx")
   on.exit(unlink(tmp), add = TRUE)
-  tflspec::write_table_spec(sp, tmp)
+  tflspec::tfl_write_table_spec(sp, tmp)
   books <- lapply(readxl::excel_sheets(tmp), function(s)
     .read_sheet_text(tmp, s))
   names(books) <- readxl::excel_sheets(tmp)
@@ -416,7 +416,7 @@ set_sheet_rows <- function(x, sheet, output_id = "", rows) {
 #' `report_spec.xlsx` the report sheets, `output_path`, `program_dir`, and
 #' the `_tflplanner` sheet (report list and data code).  Both carry every
 #' sheet rtfreporter defines -- the other half's sheets empty -- and its
-#' `_README`, and both are checked by [tflspec::table_spec()] on the
+#' `_README`, and both are checked by [tflspec::tfl_table_spec()] on the
 #' way out.
 #'
 #' @param x An `tflplanner`.
@@ -443,7 +443,7 @@ write_planner <- function(x, dir, table_file = "table_spec.xlsx",
 #' Check the definition the way the report programs will read it
 #'
 #' Writes the workbooks to a temporary folder and reads each report back
-#' with [tflspec::read_report_spec()] narrowed to it, the call every
+#' with [tflspec::tfl_read_report_spec()] narrowed to it, the call every
 #' report program makes.  (What needs the data -- a column the ARD lacks --
 #' shows only when the program runs.)
 #'
@@ -464,7 +464,7 @@ check_planner <- function(x) {
     msg <- character()
     r <- withCallingHandlers(
       tryCatch({
-        tflspec::read_report_spec(unname(rev(paths)), output_id = id)
+        tflspec::tfl_read_report_spec(unname(rev(paths)), output_id = id)
         TRUE
       }, error = function(e) {
         msg <<- c(msg, conditionMessage(e))
