@@ -1,5 +1,19 @@
 # tflplanner 0.0.0.9000
 
+- **Plot Designer** (#15): a figure can be designed instead of written by
+  hand.  A design is the figure type (km, waterfall, forest, mean, box ...,
+  the 15 of tflspec), its style and the arguments of tflspec's
+  `tfl_fig_<type>()`; the figure's program then takes its plot from the
+  design.  The new *Plot Designer* tab shows the design by section (data,
+  mapping, style, axes, legend, output; basic settings first, the advanced
+  ones on request), each with its default and, for variables and
+  PARAMCDs, the study data's values to pick; the figure as its program
+  saves it (the PNG, at its size), redrawn as the design changes; the
+  checks (the design against the data, the figure checks); the code and
+  the design as YAML.  Designs are saved with the study and written as
+  `spec/figures/<output_id>.yml`; `fig_design()`, `set_fig_design()` and
+  `preview_figure()` do the same from R.  Needs tflspec 0.0.12.
+
 - Follows tflspec's `tfl_` prefix (tflspec 0.0.9): the programs it writes
   say `tfl_ard_normalize()`, `tfl_read_report_spec()`, `tfl_plan()`,
   `tfl_report()` and `tfl_report_path()`, and it calls tflspec by the new

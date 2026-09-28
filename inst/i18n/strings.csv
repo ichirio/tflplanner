@@ -368,3 +368,84 @@ Added %s: double-click it in the list to open it.,%s を追加しました。一
 "No studies yet. Create one with New study (the sample study is one of its choices), or register a study folder.",試験がまだありません。「新規試験」で作成するか（サンプル試験のコピーも選べます）、試験フォルダを登録してください。
 "The sample study: data, ARD definition, tables, listing and figures (made at once)",サンプル試験をコピー：データ・ARD 定義・表・Listing・図（作成まで一括）
 Copying the sample study and making its ARD and reports ...,サンプル試験をコピーし、ARD と帳票を作成しています ...
+Plot Designer,プロットデザイナー
+Mapping (variables),マッピング（変数）
+Style,スタイル
+Axes,軸
+Legend,凡例
+Output,出力
+Choose a Figure report in the sidebar.,サイドバーで図（Figure）の帳票を選んでください。
+The Plot Designer designs figures: choose a Figure report in the sidebar.,プロットデザイナーは図を設計します。サイドバーで図（Figure）の帳票を選んでください。
+"This figure's plot is written by hand (its data code, Reports tab). Start a design to make it from a figure type instead: the plot's code is then made from the design.",この図のプロットは手書きのコードです（帳票タブのデータコード）。デザインを開始すると、図の種類から設計でき、プロットのコードはデザインから作られます。
+The figure is made from its design. Change it on the left: the figure is redrawn as its program will save it. Empty = the default (shown grey).,この図はデザインから作られます。左で変更すると、プログラムが保存するのと同じ図が再描画されます。空欄 = デフォルト（灰色で表示）。
+Start a design,デザインを開始
+Figure type,図の種類
+Start the design,デザインを開始する
+Design,デザイン
+Remove the design,デザインを削除
+Preview (as saved),プレビュー（保存される図）
+Redraw,再描画
+Checks,チェック
+Design (YAML),デザイン（YAML）
+Remove the design?,デザインを削除しますか？
+"The figure's plot is then its data code again (Reports tab), written by hand.",図のプロットは再び手書きのデータコード（帳票タブ）になります。
+Remove,削除
+default,デフォルト
+figure type,図の種類
+The figure,図
+The figure could not be drawn: ,図を描画できませんでした：
+Not drawn yet.,まだ描画していません。
+No problems found.,問題は見つかりませんでした。
+Parameter (PARAMCD),パラメータ（PARAMCD）
+Group (treatment),群（投与群）
+Analysis set flag,解析対象集団フラグ
+Time,時間
+Censor (1 = censored),打ち切り（1 = 打ち切り）
+Time unit,時間の単位
+X max,X 最大
+X step,X 間隔
+Y min,Y 最小
+Y max,Y 最大
+Y step,Y 間隔
+Censor mark,打ち切りマーク
+Number at risk title,リスク集合数の見出し
+Value,値
+Response parameter,奏効パラメータ
+Response dataset,奏効データセット
+Subject label,被験者ラベル
+Reference lines,参照線
+Duration,期間
+Start,開始
+End,終了
+Assessment parameter,評価パラメータ
+Assessment day,評価日
+Events,イベント
+Ongoing,継続中
+Visit lines every,来院線の間隔
+Subject key,被験者キー
+Visit label,来院ラベル
+Palette,パレット
+Theme,テーマ
+Width,幅
+Height,高さ
+DPI,DPI
+Units,単位
+Subgroups,部分集団
+Responders,奏効とする反応
+Category,カテゴリ
+Visit (numeric),来院（数値）
+Record flag,レコードフラグ
+At visit,表示する来院
+Term,用語
+Treatment-emergent flag,TEAE フラグ
+Top N,上位 N
+Minimum %,最小 %
+ALT parameter,ALT パラメータ
+AST parameter,AST パラメータ
+Bilirubin parameter,ビリルビン パラメータ
+ULN multiple,ULN の倍数
+Post-baseline only,ベースライン後のみ
+Time label,時点ラベル
+Stage,段階
+By,層別（パネル）
+Show advanced settings,詳細設定も表示

@@ -483,6 +483,8 @@ app_ui <- function(lang = "en") {
                  class = "btn-sm btn-outline-primary"))),
           shiny::uiOutput("lf_preview_out")))),
 
+    .designer_ui(t),
+
     bslib::nav_panel(
       t("Table builder (beta)"), value = "builder",
       shiny::uiOutput("builder_note"),
@@ -1916,6 +1918,8 @@ app_server <- function(input, output, session, start) {
     }
     ard_cols[[k]]
   }
+  .designer_server(input, output, session, rv, current, t, notify, guarded,
+                   catalog)
   output$lf_note <- shiny::renderUI({
     msg <- switch(lf_type(),
       none = t("Choose a Listing or Figure report in the sidebar."),
