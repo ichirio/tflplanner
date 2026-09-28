@@ -6,7 +6,7 @@ sample_paths <- function() {
 test_that("the sample reads, writes and reads back unchanged", {
   p <- read_planner(sample_paths())
   expect_equal(p$outputs$output_id, c("DM", "AE", "ORR", "LB", "PK"))
-  p$outputs$data_code[1] <- "data <- ard_normalize(ard)\n# two lines"
+  p$outputs$data_code[1] <- "data <- tfl_ard_normalize(ard)\n# two lines"
   p$outputs$description[2] <- "有害事象"
   p$setup <- "library(cards)"
 

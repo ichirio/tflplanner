@@ -90,7 +90,7 @@ test_that("a table without data code starts from the company's template", {
   f <- file.path(withr_tempdir(), "acme.xlsx")
   s <- .builtin_standards()
   s$code_templates$code[s$code_templates$name == "table_process"] <-
-    "data <- ard_normalize(ard)\ndata <- acme_rework(data)"
+    "data <- tfl_ard_normalize(ard)\ndata <- acme_rework(data)"
   s$code_templates$code[s$code_templates$name == "setup"] <-
     "library(acme)  # {STUDY_ID}"
   writexl::write_xlsx(s, f)

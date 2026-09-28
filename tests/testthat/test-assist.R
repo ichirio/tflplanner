@@ -129,7 +129,7 @@ test_that("fetch_ard() runs the data part from the study folder", {
     "ard <- cards::ard_stack(adsl, .by = TRT01A,",
     "  cards::ard_categorical(variables = SEX))", sep = "\n"),
     process_code = paste(
-      "data <- ard_normalize(ard)",
+      "data <- tfl_ard_normalize(ard)",
       "data$variable_level[data$variable == \"SEX\"] <- \"Any\"",
       sep = "\n"))
   s <- create_study("S1", planner = p)
