@@ -750,6 +750,9 @@ app_server <- function(input, output, session, start) {
   })
   output$studies <- DT::renderDT({
     d <- studies()
+    shiny::validate(shiny::need(
+      nrow(d) > 0L,
+      t("No studies yet. Create one with New study (the sample study is one of its choices), or register a study folder.")))
     last <- shiny::isolate(if (has_study()) rv$study$meta$study_id else
       tflplanner_config()$last_study)
     open_id <- shiny::isolate(if (has_study()) rv$study$meta$study_id)
@@ -762,10 +765,13 @@ app_server <- function(input, output, session, start) {
     v[is.na(v)] <- ""
     names(v) <- t(c("Study ID", "Title", "Compound", "Phase", "Reports",
                     "Last saved"))
-    sel <- match(last, d$study_id)
+    # the study to show selected: the open one, else the last one opened
+    # (none, e.g. just unregistered: nothing selected)
+    sel <- if (length(last) == 1L) match(last, d$study_id) else NA_integer_
     DT::datatable(
       v, rownames = FALSE, class = "compact hover",
-      selection = list(mode = "single", selected = if (!is.na(sel)) sel),
+      selection = list(mode = "single",
+                       selected = if (!is.na(sel)) sel else NULL),
       callback = DT::JS(
         "table.on('dblclick', 'tbody tr', function() {",
         "  var i = table.row(this).index();",
@@ -785,7 +791,8 @@ app_server <- function(input, output, session, start) {
   shown_study <- shiny::reactive({
     d <- studies()
     i <- input$studies_rows_selected
-    if (length(i)) return(d[i, , drop = FALSE])
+    i <- i[i >= 1L & i <= nrow(d)]
+    if (length(i)) return(d[i[1L], , drop = FALSE])
     if (has_study()) {
       k <- match(rv$study$meta$study_id, d$study_id)
       if (!is.na(k)) return(d[k, , drop = FALSE])
@@ -889,12 +896,14 @@ app_server <- function(input, output, session, start) {
     session$reload()
   })
   selected_study <- function() {
+    d <- studies()
     i <- input$studies_rows_selected
+    i <- i[i >= 1L & i <= nrow(d)]
     if (!length(i)) {
       notify(t("Choose a study"), "warning")
       return(NULL)
     }
-    studies()[i, , drop = FALSE]
+    d[i[1L], , drop = FALSE]
   }
   shiny::observeEvent(input$register, {
     shiny::showModal(shiny::modalDialog(
@@ -920,9 +929,11 @@ app_server <- function(input, output, session, start) {
     notify(sprintf(t("Registered %s"), s$meta$study_id))
     bslib::nav_select("nav", "outputs")
   })
+  to_unregister <- shiny::reactiveVal(NULL)
   shiny::observeEvent(input$unregister, {
     d <- selected_study()
     if (is.null(d)) return()
+    to_unregister(d$study_id)
     shiny::showModal(shiny::modalDialog(
       title = sprintf(t("Unregister %s"), d$study_id),
       t("This deletes what tflplanner keeps about the study (definition, data code, history). The study folder (data, spec, programs, outputs) stays, and Register a folder brings it back from spec/."),
@@ -931,15 +942,17 @@ app_server <- function(input, output, session, start) {
                                    class = "btn-danger"))))
   })
   shiny::observeEvent(input$unregister_ok, {
-    d <- studies()[input$studies_rows_selected, , drop = FALSE]
+    id <- to_unregister()
     shiny::removeModal()
-    if (has_study() && identical(rv$study$meta$study_id, d$study_id)) {
+    to_unregister(NULL)
+    if (length(id) != 1L || is.na(id) || !nzchar(id)) return()
+    if (has_study() && identical(rv$study$meta$study_id, id)) {
       rv$study <- rv$p <- rv$saved <- rv$meta <- rv$saved_meta <- NULL
       bump()
     }
-    unregister_study(d$study_id)
+    if (is.null(guarded(unregister_study(id)))) return()
     rv$studies_ver <- rv$studies_ver + 1L
-    notify(sprintf(t("Unregistered %s"), d$study_id))
+    notify(sprintf(t("Unregistered %s"), id))
   })
   open_row <- function(d) {
     if (is.null(d)) return()

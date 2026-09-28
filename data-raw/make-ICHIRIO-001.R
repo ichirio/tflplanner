@@ -251,7 +251,7 @@ for (o in names(desc)) {
 
 # ------------------------------------------------------------ the study
 unlink(file.path(root, id), recursive = TRUE)
-unregister_study(id)
+if (!is.null(.read_state(id))) unregister_study(id)
 s <- create_study(id, root = root, title = "Test study for tflplanner",
                   compound = "Xanomeline", phase = "2",
                   description = paste(
