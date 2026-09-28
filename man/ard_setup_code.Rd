@@ -13,7 +13,7 @@ ard_program_code(spec, output_id, date = Sys.Date())
 ard_autoexec_code(spec, date = Sys.Date())
 }
 \arguments{
-\item{spec}{An \code{\link[tflspec:read_ard_spec]{tflspec::ard_spec()}} (or the path of one).}
+\item{spec}{An \code{\link[tflspec:tfl_read_ard_spec]{tflspec::tfl_ard_spec()}} (or the path of one).}
 
 \item{date}{The date stamped in the banner.}
 
@@ -24,7 +24,7 @@ The code, one element per line.
 }
 \description{
 \code{ard_setup_code()} is \code{programs/ard/ard_setup.R}, which every ARD program
-sources: cards, the statistics tflplanner computes (\code{\link[tflspec:ard_statistics]{tflspec::ard_statistics()}}, the company standards' catalog),
+sources: cards, the statistics tflplanner computes (\code{\link[tflspec:tfl_ard_statistics]{tflspec::tfl_ard_statistics()}}, the company standards' catalog),
 the stat_fmt formats, and \code{.save_output()}, which replaces one output's
 rows of the study ARD and records the build.  \code{ard_program_code()} is one
 output's program, \verb{programs/ard/<output_id>.R}.  \code{ard_autoexec_code()} is

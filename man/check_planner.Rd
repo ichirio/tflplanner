@@ -14,7 +14,7 @@ A data frame: \code{output_id}, \code{ok}, \code{message}.
 }
 \description{
 Writes the workbooks to a temporary folder and reads each report back
-with \code{\link[tflspec:read_report_spec]{tflspec::read_report_spec()}} narrowed to it, the call every
+with \code{\link[tflspec:tfl_read_report_spec]{tflspec::tfl_read_report_spec()}} narrowed to it, the call every
 report program makes.  (What needs the data -- a column the ARD lacks --
 shows only when the program runs.)
 }

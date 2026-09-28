@@ -26,6 +26,6 @@ The two paths, invisibly.
 \code{report_spec.xlsx} the report sheets, \code{output_path}, \code{program_dir}, and
 the \verb{_tflplanner} sheet (report list and data code).  Both carry every
 sheet rtfreporter defines -- the other half's sheets empty -- and its
-\verb{_README}, and both are checked by \code{\link[tflspec:table_spec]{tflspec::table_spec()}} on the
+\verb{_README}, and both are checked by \code{\link[tflspec:tfl_table_spec]{tflspec::tfl_table_spec()}} on the
 way out.
 }

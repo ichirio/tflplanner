@@ -29,5 +29,5 @@ listing).}
 \description{
 Plans the report's table from the definition as it stands (saved or
 not) and the report's normalized data, and gives its pages -- what
-\code{\link[tflspec:rtf_report]{tflspec::rtf_report()}} lays out -- or an HTML rendering of them.
+\code{\link[tflspec:tfl_report]{tflspec::tfl_report()}} lays out -- or an HTML rendering of them.
 }
