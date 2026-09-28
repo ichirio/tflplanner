@@ -125,6 +125,19 @@ ARD と帳票まで作成します（正式実行を 1 回行い、1 分ほど�
 
 後から追加する場合は、`create_sample_study()` を実行するか、
 アプリの Studies タブの「設定」にある「サンプル試験を追加」を押します。
+自分の試験 ID で練習用にコピーしたいときは、Studies タブの「新規試験」で
+「サンプル試験をコピー」を選びます（`create_sample_study(study_id = "MY-01")` と同じ）。
+
+サンプル試験には、ARD の作成から帳票までのすべての定義が入っています。
+
+| どこで | 何を見るか |
+|---|---|
+| ARD タブ | `analyses` / `datasets` / `populations`：表 5 本分の ARD の定義。Code パネルに生成される ARD プログラム |
+| 帳票タブ | 帳票の一覧、表の「normalize と加工」（T-14-2-2、T-14-3-1）、図のプロットのコード |
+| 表の定義・帳票の体裁タブ | 表の定義（列・行・セル・列見出し）とページ・ヘッダー・タイトル・脚注 |
+| Listing / Figure タブ | Listing の列定義、図が読むデータセット |
+| 試験フォルダの `spec/` | 上の定義の Excel：`table_spec.xlsx`、`report_spec.xlsx`、`listing_figure_spec.xlsx`、`ard_spec.xlsx`（ARD 定義を書き出した参照用。正はアプリ側） |
+| 試験フォルダの `programs/` と `runs/` | 生成されたプログラムと、正式実行のバッチフォルダ（ログ・結果・コード） |
 
 ### 2.4 起動
 

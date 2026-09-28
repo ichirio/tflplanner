@@ -42,3 +42,23 @@ test_that("the sample study makes its ARD and reports", {
   expect_equal(nrow(b), 1L)
   expect_equal(b$errors, 0L)
 })
+
+test_that("the sample study copies under another ID, with every definition as Excel", {
+  home <- withr_tempdir()
+  old <- options(tflplanner.home = home)
+  on.exit(options(old), add = TRUE)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "st")))
+  s <- suppressMessages(create_sample_study(study_id = "MY-1", title = "Mine",
+                                            run = FALSE))
+  expect_equal(s$meta$study_id, "MY-1")
+  expect_equal(s$meta$title, "Mine")
+  expect_true(file.exists(file.path(s$path, "MY-1.Rproj")))
+  for (f in c("table_spec.xlsx", "report_spec.xlsx", "listing_figure_spec.xlsx",
+              "ard_spec.xlsx")) {
+    expect_true(file.exists(file.path(s$path, "spec", f)), label = f)
+  }
+  expect_true(nrow(ard_rows(s$planner, "analyses", "T-14-1-1")) > 0)
+  # the sample itself can still be added alongside
+  expect_equal(suppressMessages(create_sample_study(run = FALSE))$meta$study_id,
+               "SAMPLE-01")
+})
