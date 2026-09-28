@@ -7,26 +7,31 @@
 # value is printed once).  Its program reads the data, reworks it with the
 # report's data code when it has one, and lays it out with
 # rtfreporter::listing_spec() / as_rtftables().  The code is written by
-# tflspec::tfl_listing_code(); the rows are kept and edited here.
+# tflspec::tfl_listing_code(); the rows are kept and edited here.  The
+# listing sheets (`listings`, `listing_cols`) are tflspec's listing
+# definition -- their columns, reading and checking are tflspec's
+# (tfl_listing_spec(), tfl_read_listing_spec()); only `figures` is ours.
 #
 # A figure names the datasets it reads; its program reads them and writes
 # the RTF, and the plot in between -- ggplot2 -- is the report's data code,
 # written by hand (it leaves `plot`, or `content`).
 
-.lf_sheets <- list(
-  listings = c("output_id", "type", "dataset", "where", "sort", "max_rows"),
-  listing_cols = c("output_id", "vars", "label", "width", "collapse_repeats"),
-  figures = c("output_id", "datasets"))
+.lf_sheet_names <- c("listings", "listing_cols", "figures")
+.lf_figure_cols <- c("output_id", "datasets")
 
 .empty_lf <- function() {
-  lapply(.lf_sheets, function(cols)
-    as.data.frame(stats::setNames(replicate(length(cols), character(),
-                                            simplify = FALSE), cols),
-                  stringsAsFactors = FALSE))
+  c(unclass(tflspec::tfl_listing_spec()),
+    list(figures = as.data.frame(stats::setNames(
+      replicate(length(.lf_figure_cols), character(), simplify = FALSE),
+      .lf_figure_cols), stringsAsFactors = FALSE)))
 }
 
 .normalize_lf_sheet <- function(d, sheet) {
-  cols <- .lf_sheets[[sheet]]
+  if (sheet != "figures") {
+    return(tflspec::tfl_listing_spec(stats::setNames(list(d), sheet),
+                                     check = FALSE)[[sheet]])
+  }
+  cols <- .lf_figure_cols
   d <- as.data.frame(d, stringsAsFactors = FALSE)
   out <- lapply(cols, function(c) {
     v <- if (c %in% names(d)) as.character(d[[c]]) else
@@ -92,8 +97,9 @@ listing_types <- function() company_standards()$listing_types
 
 # the part of a listing's program between its setup and its report
 .listing_lines <- function(x, output_id, rework = NA) {
+  if (!nrow(lf_rows(x, "listings", output_id))) return(NULL)
   tflspec::tfl_listing_code(
-    lf_rows(x, "listings", output_id), lf_rows(x, "listing_cols", output_id),
+    tflspec::tfl_listing_spec(x$lf, check = FALSE), output_id,
     x$ard$datasets, rework = if (!is.na(rework)) .code_block(rework),
     type = .std_setting("listing_type", "multiline"))
 }
@@ -164,11 +170,11 @@ preview_listing <- function(study, output_id) {
   out <- data.frame(file = character(), status = character(),
                     stringsAsFactors = FALSE)
   if (!sum(vapply(lf, nrow, 1L)) && !file.exists(f)) return(out)
-  old <- if (file.exists(f)) tryCatch(stats::setNames(lapply(names(.lf_sheets),
+  old <- if (file.exists(f)) tryCatch(stats::setNames(lapply(.lf_sheet_names,
     function(sh) .normalize_lf_sheet(.read_sheet_text(f, sh), sh)),
-    names(.lf_sheets)), error = function(e) NULL)
-  new <- stats::setNames(lapply(names(.lf_sheets), function(sh)
-    .normalize_lf_sheet(lf[[sh]], sh)), names(.lf_sheets))
+    .lf_sheet_names), error = function(e) NULL)
+  new <- stats::setNames(lapply(.lf_sheet_names, function(sh)
+    .normalize_lf_sheet(lf[[sh]], sh)), .lf_sheet_names)
   if (identical(old, new)) {
     out[1L, ] <- list(f, "unchanged")
   } else {
