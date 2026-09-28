@@ -1,5 +1,11 @@
 # tflplanner 0.0.0.9000
 
+- *New study* now offers the sample study itself (copied under the new
+  study's ID, its ARD and reports made at once) in place of tflspec's
+  table-definition examples, which had no ARD definition or data.
+  `create_sample_study()` gains `study_id` / `title` / `compound` /
+  `phase` / `description`, and writes `spec/ard_spec.xlsx` (an export of
+  the ARD definition, to read) so every definition is there as Excel.
 - Figures in the company's style, and checked: the company standards gain
   `figure_settings`, `figure_colors` and `figure_markers` (built-in =
   tflspec's figure style, taken from the KM / waterfall / swimmer sample
