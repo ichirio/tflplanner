@@ -207,10 +207,14 @@ register_study <- function(path, home = tflplanner_home()) {
   }
   lf <- file.path(path, study_layout()[["spec"]], .lf_file)
   if (file.exists(lf)) {
-    for (sh in names(.lf_sheets)) {
-      if (sh %in% readxl::excel_sheets(lf)) {
-        p$lf[[sh]] <- .normalize_lf_sheet(.read_sheet_text(lf, sh), sh)
-      }
+    sheets <- readxl::excel_sheets(lf)
+    if ("listings" %in% sheets) {
+      ls <- tflspec::tfl_read_listing_spec(lf, check = FALSE)
+      for (sh in names(ls)) p$lf[[sh]] <- ls[[sh]]
+    }
+    if ("figures" %in% sheets) {
+      p$lf$figures <- .normalize_lf_sheet(.read_sheet_text(lf, "figures"),
+                                          "figures")
     }
   }
   s <- .new_study(path, meta[.study_fields], p)
@@ -642,7 +646,7 @@ read_data_head <- function(path, n = 50L) {
          `report list` = p$outputs),
     stats::setNames(p$sheets, paste0("sheet:", names(p$sheets))),
     stats::setNames(p$ard, paste0("ard:", names(p$ard))),
-    stats::setNames(p$lf %||% .empty_lf(), paste0("lf:", names(.lf_sheets))))
+    stats::setNames(p$lf %||% .empty_lf(), paste0("lf:", .lf_sheet_names)))
 }
 
 .set_study_part <- function(s, part, value) {

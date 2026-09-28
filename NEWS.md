@@ -1,5 +1,13 @@
 # tflplanner 0.0.0.9000
 
+- The listing sheets of `listing_figure_spec.xlsx` (`listings`,
+  `listing_cols`) are tflspec's listing definition: their columns, reading
+  and normalising come from `tflspec::tfl_listing_spec()` /
+  `tfl_read_listing_spec()`, and the listing program from
+  `tfl_listing_code()` with that definition (tflspec 0.0.11).  The workbook
+  and the programs are unchanged; only the `figures` sheet stays
+  tflplanner's own (#13).
+
 - Follows tflspec's `tfl_` prefix (tflspec 0.0.9): the programs it writes
   say `tfl_ard_normalize()`, `tfl_read_report_spec()`, `tfl_plan()`,
   `tfl_report()` and `tfl_report_path()`, and it calls tflspec by the new
