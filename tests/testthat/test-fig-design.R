@@ -116,3 +116,31 @@ test_that("a designed figure is copied to other parameters", {
   expect_equal(report_info(p2, "F-14-2-1-DIABP")$type, "figure")
   expect_error(copy_fig_to_params(p, "F-14-2-2", "X"), "no design")
 })
+
+test_that("a preview for the screen is smaller, and says the saved size", {
+  home <- withr_tempdir()
+  old <- options(tflplanner.home = home)
+  on.exit(options(old), add = TRUE)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", value = "CHG")
+  full <- preview_figure(s, "F-14-2-1", d)
+  small <- preview_figure(s, "F-14-2-1", d, max_px = 800)
+  expect_null(small$error)
+  # a PNG's width: bytes 17-20 of its header (IHDR), big-endian
+  w <- function(f) {
+    b <- as.integer(readBin(f, "raw", 24L)[17:20])
+    sum(b * 256^(3:0))
+  }
+  expect_lte(w(small$png), 800)
+  expect_gt(w(full$png), 800)
+  expect_equal(small$size$dpi, full$size$dpi)
+})
+
+test_that("a design's other parts (ggplot2 version, composed figures) are kept", {
+  skip_if_not("ggplot2_version" %in% names(formals(tflspec::tfl_fig_design)))
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP")
+  d$ggplot2_version <- "3.5"
+  p <- set_fig_design(new_planner(), "F1", d)
+  expect_equal(fig_design(p, "F1")$ggplot2_version, "3.5")
+})

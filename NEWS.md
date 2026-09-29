@@ -1,5 +1,25 @@
 # tflplanner 0.0.0.9000
 
+- Fix: `run_app("SAMPLE-01")` (a study given at start) stopped the session
+  on its first page ("Can't access reactive value 'ver' outside of
+  reactive consumer"); opening the study from the Studies tab worked.
+
+- **The Figures tab keeps up with editing**: the preview is drawn at
+  screen resolution (the saved size; about 1 s instead of several), only
+  while the tab shows, 0.6 s after the last change; *Redraw on change* can
+  be turned off, and a notice then says the drawing is older than the
+  design.  The code of the chosen piece still follows every change at
+  once.  `preview_figure()` gains `max_px`.  (Code generation itself got
+  about 30 times faster in tflspec's catalog cache, ichirio/tflspec#41.)
+
+- **One tab a kind of report** (#26): the tabs are now *Tables* (the
+  table definition and the table builder, as two sub-tabs), *Listings*
+  and *Figures* (the Plot Designer), in place of *Table definition*,
+  *Table builder (beta)*, *Listing / Figure* and *Plot Designer*.  A
+  hand-written figure's datasets and data part moved from *Listing /
+  Figure* to the top of *Figures*.  Choosing a report in the sidebar while
+  one of these tabs is open opens its own kind's tab.
+
 - The table builder's preview plans the table with
   `tflspec::tfl_table_plan()`: tflspec 0.0.20's `tfl_plan()` no longer
   reads a table definition (`spec =`).  Needs tflspec 0.0.20 (#23).

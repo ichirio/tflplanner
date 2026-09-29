@@ -22,7 +22,7 @@
 
 .designer_ui <- function(t) {
   bslib::nav_panel(
-    t("Plot Designer"), value = "designer",
+    t("Figures"), value = "designer",
     shiny::tags$style(shiny::HTML("
       .pd-item { cursor: pointer; padding: .25rem .5rem; font-size: .85rem; }
       .pd-item.active { background: #e7f1ff; border-left: 3px solid #0d6efd; }
@@ -36,8 +36,11 @@
       .pd-overlay .badge { font-size: .65rem; }
       .pd-overlay button { padding: 0 .4rem; font-size: .7rem; }
       .pd-overlay-head { display: flex; justify-content: space-between; align-items: center; }
-      .pd-piece-code pre { font-size: .75rem; max-height: 16rem; margin-bottom: 0; }")),
+      .pd-piece-code pre { font-size: .75rem; max-height: 16rem; margin-bottom: 0; }
+      .pd-auto .form-group, .pd-auto .checkbox { margin: 0; }
+      .pd-auto label { font-size: .8rem; font-weight: normal; margin: 0; }")),
     shiny::uiOutput("pd_note"),
+    shiny::uiOutput("lf_fig_box"),
     shiny::uiOutput("pd_body"))
 }
 
@@ -167,8 +170,8 @@
     m <- mode()
     msg <- switch(m,
       none = t("Choose a Figure report in the sidebar."),
-      other = t("The Plot Designer designs figures: choose a Figure report in the sidebar."),
-      hand = t("This figure's plot is written by hand (its data code, Reports tab). Start a design from a template: its data steps, statistics, settings and layers are filled at once, then each can be changed."),
+      other = t("This tab designs figures: choose a Figure report in the sidebar."),
+      hand = t("This figure's plot is written by hand (its data code, Reports tab). To design it here instead, start a design from a template: its data steps, statistics, settings and layers are filled at once, then each can be changed."),
       t("Choose a piece on the left to change it on the right; the figure is redrawn as its program will save it. Empty = the default (shown grey)."))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
@@ -230,8 +233,12 @@
         full_screen = TRUE,
         bslib::card_header(shiny::div(
           class = "d-flex justify-content-between align-items-center",
-          shiny::span(t("Preview (as saved)")),
-          .btn("pd_redraw", t("Redraw"), class = "btn-sm btn-outline-primary"))),
+          shiny::span(t("Preview")),
+          shiny::div(
+            class = "d-flex align-items-center gap-3 pd-auto",
+            shiny::checkboxInput("pd_auto", t("Redraw on change"), value = TRUE, width = "auto"),
+            .btn("pd_redraw", t("Redraw"), class = "btn-sm btn-outline-primary")))),
+        shiny::uiOutput("pd_state"),
         shiny::uiOutput("pd_size"),
         shiny::uiOutput("pd_overlay"),
         shiny::imageOutput("pd_img", height = "auto"),
@@ -692,26 +699,52 @@
   })
 
   # ---- the drawing ----------------------------------------------------------
+  # The figure is drawn for the screen (about 1400 px wide, the saved
+  # size), only while this tab shows, and -- unless "Redraw on change" is
+  # off -- 0.6 s after the last change.  The code on the right follows
+  # every change at once (it takes a few ms).
   pv <- shiny::reactiveVal(NULL)
+  drawn <- shiny::reactiveVal(NULL)          # the design the picture shows
+  on_tab <- shiny::reactive(identical(input$nav, "designer"))
   draw <- function() {
-    id <- current()
-    d <- design()
+    id <- shiny::isolate(current())
+    d <- shiny::isolate(design())
     if (is.null(id) || is.null(d) || is.null(rv$study)) {
       pv(NULL)
+      drawn(NULL)
       return()
     }
     s <- rv$study
-    s$planner <- rv$p
-    r <- tryCatch(preview_figure(s, id, d), error = function(e)
+    s$planner <- shiny::isolate(rv$p)
+    r <- tryCatch(preview_figure(s, id, d, max_px = 1400), error = function(e)
       list(png = NULL, problems = NULL, warnings = character(),
            error = conditionMessage(e), code = NULL))
+    r$id <- id
     pv(r)
+    drawn(list(id = id, design = .fig_norm(unclass(d))))
   }
-  design_d <- shiny::debounce(design, 700)
-  shiny::observeEvent(design_d(), draw(), ignoreNULL = FALSE)
-  # another figure chosen: its own drawing, even when its design reads the same
-  shiny::observeEvent(fig_id(), draw(), ignoreInit = TRUE)
+  stale <- shiny::reactive({
+    d <- design()
+    w <- drawn()
+    !is.null(d) && (is.null(w) || !identical(w$id, current()) ||
+                      !identical(w$design, .fig_norm(unclass(d))))
+  })
+  design_d <- shiny::debounce(design, 600)
+  shiny::observe({
+    design_d()
+    fig_id()
+    auto <- !identical(input$pd_auto, FALSE)
+    if (on_tab() && shiny::isolate(stale()) &&
+        (auto || !identical(shiny::isolate(drawn()$id), current()))) {
+      draw()
+    }
+  })
   shiny::observeEvent(input$pd_redraw, draw())
+  output$pd_state <- shiny::renderUI({
+    if (!stale() || is.null(pv())) return(NULL)
+    shiny::div(class = "alert alert-warning py-1 px-2 small mb-2",
+               t("The design has changed since this drawing: press Redraw."))
+  })
 
   output$pd_img <- shiny::renderImage({
     r <- pv()
@@ -729,7 +762,8 @@
     z <- r$size
     if (is.null(z)) return(NULL)
     shiny::p(class = "text-muted small mb-1",
-             sprintf("%s x %s %s, %s dpi", z$width, z$height, z$units, z$dpi))
+             sprintf(t("Saved as %s x %s %s, %s dpi (shown at screen resolution)"),
+                     z$width, z$height, z$units, z$dpi))
   })
   output$pd_checks <- shiny::renderUI({
     r <- pv()
