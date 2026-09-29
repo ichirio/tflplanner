@@ -1,9 +1,9 @@
 # tflplanner 0.0.1
 
 - **First release.**  The last version before plan E (the table engine
-  moving from tflspec to rtfreporter): it runs on rtfreporter 0.8.1 and
-  tflspec 0.0.23 (`Remotes:` pins both tags), and is where to go back to
-  if plan E is undone.
+  moving from tflspec to rtfreporter), where to go back to if plan E is
+  undone.  It runs on tflspec 0.0.23 (`Remotes:` pins that tag) and
+  rtfreporter 0.8.1 or later.
 
 - Fix: `run_app("SAMPLE-01")` (a study given at start) stopped the session
   on its first page ("Can't access reactive value 'ver' outside of
