@@ -86,3 +86,13 @@ test_that("unregister_study() takes one registered study and nothing else", {
   unregister_study("S2")
   expect_equal(list_studies()$study_id, "S1")
 })
+
+test_that("the app starts with a study given (run_app(\"S1\"))", {
+  local_home()
+  two_studies()
+  app <- planner_app("S1")
+  s <- shiny::MockShinySession$new()
+  # as runApp() calls it: outside any reactive context
+  expect_no_error(shiny::withReactiveDomain(
+    s, app$serverFuncSource()(s$input, s$output, s)))
+})

@@ -1,5 +1,9 @@
 # tflplanner 0.0.0.9000
 
+- Fix: `run_app("SAMPLE-01")` (a study given at start) stopped the session
+  on its first page ("Can't access reactive value 'ver' outside of
+  reactive consumer"); opening the study from the Studies tab worked.
+
 - **The Figures tab keeps up with editing**: the preview is drawn at
   screen resolution (the saved size; about 1 s instead of several), only
   while the tab shows, 0.6 s after the last change; *Redraw on change* can

@@ -677,7 +677,8 @@ app_server <- function(input, output, session, start) {
     rv$status_ver <- rv$status_ver + 1L
     rv$ard_ver <- rv$ard_ver + 1L
   }
-  if (!is.null(start)) set_study(start)
+  # (outside any reactive context at startup: its bump() reads rv$ver)
+  if (!is.null(start)) shiny::isolate(set_study(start))
 
   shiny::observe({
     for (tb in .study_tabs) {
