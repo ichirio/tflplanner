@@ -1,5 +1,9 @@
 # tflplanner 0.0.0.9000
 
+- The table builder's preview plans the table with
+  `tflspec::tfl_table_plan()`: tflspec 0.0.20's `tfl_plan()` no longer
+  reads a table definition (`spec =`).  Needs tflspec 0.0.20 (#23).
+
 - **Plot Designer: every figure type, and copies per parameter** (#21).
   The template list (grouped by kind) now covers every type: the 27
   templates in parts (KM, waterfall, swimmer, spider, bar, mean over time,
