@@ -159,7 +159,15 @@ data_lines <- function(x, output_id, todo = TRUE) {
   }
   # a figure: its datasets read for it, its data code the plot
   if (identical(type, "figure")) {
-    f <- .figure_lines(x, output_id, info, plot_code = code)
+    design <- fig_design(x, output_id)
+    f <- if (is.null(design)) {
+      .figure_lines(x, output_id, info, plot_code = code)
+    } else {
+      .figure_lines(x, output_id, info,
+                    plot_code = paste(.fig_design_plot(design, output_id),
+                                      collapse = "\n"),
+                    datasets = .fig_design_datasets(design, output_id))
+    }
     if (!is.null(f)) return(c(setup, f))
   }
   if (is.na(code)) {

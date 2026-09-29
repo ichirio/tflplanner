@@ -103,7 +103,7 @@ new_planner <- function(study = NULL) {
   structure(list(sheets = stats::setNames(lapply(sh, .empty_sheet), sh),
                  study = st, outputs = .empty_outputs(),
                  setup = NA_character_, ard = .empty_ard_spec(),
-                 lf = .empty_lf()),
+                 lf = .empty_lf(), fig_designs = list()),
             class = "tflplanner")
 }
 
@@ -274,6 +274,7 @@ copy_output <- function(x, from, to) {
     x$lf[[sh]] <- rbind(d, own)
     rownames(x$lf[[sh]]) <- NULL
   }
+  x <- set_fig_design(x, to, fig_design(x, from))
   src <- x$outputs[x$outputs$output_id == from, , drop = FALSE]
   x <- add_output(x, to,
                   description = if (nrow(src)) src$description else NA,
@@ -301,6 +302,8 @@ rename_output <- function(x, from, to) {
     i <- !is.na(x$lf[[sh]]$output_id) & x$lf[[sh]]$output_id == from
     x$lf[[sh]]$output_id[i] <- to
   }
+  d <- fig_design(x, from)
+  x <- set_fig_design(set_fig_design(x, from, NULL), to, d)
   x
 }
 
@@ -325,7 +328,7 @@ remove_output <- function(x, output_id) {
                     drop = FALSE]
     rownames(x$lf[[sh]]) <- NULL
   }
-  x
+  set_fig_design(x, output_id, NULL)
 }
 
 # The rows of a sheet one filter shows: "" = every row, NA = the defaults,

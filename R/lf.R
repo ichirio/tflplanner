@@ -105,9 +105,11 @@ listing_types <- function() company_standards()$listing_types
 }
 
 # the part of a figure's program between its setup and its report
-.figure_lines <- function(x, output_id, info, plot_code = NA) {
+.figure_lines <- function(x, output_id, info, plot_code = NA,
+                          datasets = character()) {
   f <- lf_rows(x, "figures", output_id)
   ds <- if (nrow(f)) .split_bar(f$datasets[1L]) else character()
+  ds <- union(ds, datasets)
   if (!length(ds) && is.na(plot_code)) return(NULL)
   tpl <- .fill_template("figure_plot", x, output_id)
   plot <- if (is.na(plot_code)) c(
@@ -127,8 +129,9 @@ listing_types <- function() company_standards()$listing_types
     "# the figure style of the company standards, and the figure checks",
     sprintf("source(%s)", encodeString(setup, quote = "\"")),
     "",
-    "# ---- the plot (ggplot2), written by hand: leaves `plot`",
-    "#      (theme_tfl(), scale_colour_tfl(), tfl_marker() ... give the standard's look)",
+    if (length(datasets)) "# ---- the plot (ggplot2), from the figure's design: leaves `plot`" else c(
+      "# ---- the plot (ggplot2), written by hand: leaves `plot`",
+      "#      (theme_tfl(), scale_colour_tfl(), tfl_marker() ... give the standard's look)"),
     plot,
     if (!makes_content) c(
       "",

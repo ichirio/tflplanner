@@ -386,7 +386,8 @@ save_study <- function(study, regenerate = character(),
     .write_program(program_code(p, id), f)
     files[nrow(files) + 1L, ] <- list(f, "written")
   }
-  files <- rbind(files, .save_ard(p, root), .save_lf(p, root))
+  files <- rbind(files, .save_ard(p, root), .save_lf(p, root),
+                 .save_fig_designs(p, root))
   files <- rbind(files, .save_batch_programs(p, root))
   meta <- study$meta[.study_fields]
   old_meta <- tryCatch(.read_meta(root), error = function(e) list())

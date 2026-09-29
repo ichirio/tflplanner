@@ -177,7 +177,8 @@ studies_root <- function(home = tflplanner_home()) {
          outputs = .cols_df(p$outputs),
          sheets = lapply(p$sheets, .cols_df),
          ard = lapply(p$ard %||% .empty_ard_spec(), .cols_df),
-         lf = lapply(p$lf %||% .empty_lf(), .cols_df)))
+         lf = lapply(p$lf %||% .empty_lf(), .cols_df),
+         fig_designs = if (length(p$fig_designs)) p$fig_designs))
 }
 
 .json <- function(x) {
@@ -216,6 +217,7 @@ studies_root <- function(home = tflplanner_home()) {
       p$lf[[s]] <- .normalize_lf_sheet(.df_from(ps$lf[[s]], p$lf[[s]]), s)
     }
   }
+  p$fig_designs <- .fig_designs_from_state(ps$fig_designs)
   if (!is.null(ps$ard)) {
     for (s in names(p$ard)) {
       p$ard[[s]] <- .normalize_ard_sheet(.df_from(ps$ard[[s]], p$ard[[s]]), s)

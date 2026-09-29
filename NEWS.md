@@ -1,5 +1,24 @@
 # tflplanner 0.0.0.9000
 
+- **Plot Designer** (#15): a figure can be designed instead of written by
+  hand, as tflspec's figure design: data steps from ADaM (read, join, keep a
+  PARAMCD or an analysis set, derive, change a time's unit, order values,
+  rank, or R code), statistics (a KM fit, summary statistics, or R code),
+  the figure-wide settings and the layers in order (KM curves and marks,
+  the number at risk, any layer of tflspec's geom catalog, any function by
+  name, or R code).  The new *Plot Designer* tab starts a design from a
+  template (KM with the number at risk, mean over time, waterfall ...)
+  filled in for the study's data; the pieces are then a stack on the left
+  (add, move, remove; a piece with a problem is marked), the chosen piece
+  is a form on the right (defaults shown; the data's datasets, variables
+  and PARAMCDs to pick from), and the middle shows the figure as its
+  program saves it (the PNG, at its size), redrawn as it changes, with the
+  checks.  The code and the design (YAML) are below.  Designs are saved
+  with the study and written as `spec/figures/<output_id>.yml`; the
+  figure's program takes its plot from the design.  `fig_design()`,
+  `set_fig_design()` and `preview_figure()` do the same from R.  Needs
+  tflspec 0.0.15.
+
 - **Report programs carry the expanded code** (#17): instead of reading
   the workbooks at run time (`tfl_read_report_spec()`, `tfl_plan(data, spec
   = spec)`, `tfl_report(spec, ...)`), a report program now says what it
