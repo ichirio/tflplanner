@@ -306,11 +306,11 @@
         if (sec != "plot") shiny::div(
           class = "pd-tools text-nowrap",
           if (i > 1L) shiny::tags$button(class = "btn btn-link", title = t("Up"),
-                                         onclick = .pd_act("up", sec, i), "▲"),
+                                         onclick = .pd_act("up", sec, i), "\u25b2"),
           if (i < n) shiny::tags$button(class = "btn btn-link", title = t("Down"),
-                                        onclick = .pd_act("down", sec, i), "▼"),
+                                        onclick = .pd_act("down", sec, i), "\u25bc"),
           shiny::tags$button(class = "btn btn-link text-danger", title = t("Remove"),
-                             onclick = .pd_act("del", sec, i), "✕")))
+                             onclick = .pd_act("del", sec, i), "\u2715")))
     }
     label_of <- function(p) {
       k <- p$step %||% p$layer %||% ""

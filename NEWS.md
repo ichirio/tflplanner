@@ -19,6 +19,18 @@
   `set_fig_design()` and `preview_figure()` do the same from R.  Needs
   tflspec 0.0.15.
 
+- **Report programs carry the expanded code** (#17): instead of reading
+  the workbooks at run time (`tfl_read_report_spec()`, `tfl_plan(data, spec
+  = spec)`, `tfl_report(spec, ...)`), a report program now says what it
+  makes -- the table's `tfl_plan() |> tfl_plan_*()` pipeline
+  (`tflspec::tfl_table_code()`), the document's `rtf_document()`,
+  `rtf_section()`, `rtf_tables()` / `rtf_figures()`, `rtf_titles()`,
+  `rtf_footnotes()` (`tfl_report_code()`) and the output path.  Generate
+  the programs again after changing the workbooks.  A definition that does
+  not hold yet gives a program whose `stop()` says why.  The reports are
+  unchanged (the sample study's RTF are identical).  Requires tflspec
+  0.0.14.
+
 - The listing sheets of `listing_figure_spec.xlsx` (`listings`,
   `listing_cols`) are tflspec's listing definition: their columns, reading
   and normalising come from `tflspec::tfl_listing_spec()` /
