@@ -710,3 +710,7 @@ Arrow (R),矢印（R）
 Drop missing silently,欠測を黙って除く
 "For dodging without a colour, e.g. a mean marker per group",色分けなしでずらすため（群ごとの平均マークなど）
 Other,その他
+Show,表示
+Checks and advice,チェックとアドバイス
+Code of this piece,この部品のコード
+What this piece writes into the program; it follows every change.,この部品がプログラムに書き出すコードです。変更するとすぐ更新されます。

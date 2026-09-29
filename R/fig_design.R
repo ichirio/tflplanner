@@ -74,8 +74,11 @@ set_fig_design <- function(x, output_id, design) {
 
 # the design's script, whole (it saves its PNG to `fig_path`)
 .fig_design_script <- function(design, output_id) {
-  unlist(strsplit(as.character(tflspec::tfl_fig_design_code(design, output_id)),
-                  "\n", fixed = TRUE))
+  code <- as.character(tflspec::tfl_fig_design_code(design, output_id))
+  # one element a line; a blank line stays (strsplit would drop it)
+  unlist(lapply(code, function(l) {
+    if (!nzchar(l)) "" else strsplit(l, "\n", fixed = TRUE)[[1L]]
+  }))
 }
 
 # the design's plot part of the figure's program: the script up to its

@@ -31,13 +31,12 @@
       .pd-tools button { padding: 0 .3rem; font-size: .75rem; }
       .pd-sec { font-size: .8rem; font-weight: 600; margin: .5rem 0 .2rem; }
       .pd-code textarea { font-family: monospace; font-size: .8rem; }
-      .pd-prev { position: relative; }
-      .pd-overlay { position: absolute; top: .5rem; left: .5rem; right: .5rem;
-        background: rgba(255,255,255,.92); border: 1px solid #dee2e6; border-radius: .3rem;
-        padding: .4rem .6rem; font-size: .8rem; max-height: 45%; overflow: auto; }
+      .pd-overlay { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: .3rem;
+        padding: .4rem .6rem; font-size: .8rem; margin-bottom: .5rem; max-height: 14rem; overflow: auto; }
       .pd-overlay .badge { font-size: .65rem; }
       .pd-overlay button { padding: 0 .4rem; font-size: .7rem; }
-      .pd-overlay-toggle { position: absolute; top: .5rem; right: .5rem; font-size: .75rem; }")),
+      .pd-overlay-head { display: flex; justify-content: space-between; align-items: center; }
+      .pd-piece-code pre { font-size: .75rem; max-height: 16rem; margin-bottom: 0; }")),
     shiny::uiOutput("pd_note"),
     shiny::uiOutput("pd_body"))
 }
@@ -211,13 +210,13 @@
     bslib::layout_columns(
       col_widths = bslib::breakpoints(sm = 12, lg = c(3, 5, 4, 12)),
       bslib::card(
-        bslib::card_header(shiny::div(
-          class = "d-flex justify-content-between align-items-center",
-          shiny::span(t("Design")),
-          shiny::div(
-            .btn("pd_batch", t("Copy to other parameters"), class = "btn-sm btn-outline-secondary"),
-            .btn("pd_preset_save", t("Save as preset"), class = "btn-sm btn-outline-secondary"),
-            .btn("pd_drop", t("Remove the design"), class = "btn-sm btn-outline-danger")))),
+        bslib::card_header(t("Design")),
+        # the actions on their own row, so they wrap instead of crowding the title
+        shiny::div(
+          class = "d-flex flex-wrap gap-1 mb-2",
+          .btn("pd_batch", t("Copy to other parameters"), class = "btn-sm btn-outline-secondary"),
+          .btn("pd_preset_save", t("Save as preset"), class = "btn-sm btn-outline-secondary"),
+          .btn("pd_drop", t("Remove the design"), class = "btn-sm btn-outline-danger")),
         shiny::uiOutput("pd_stack"),
         # adding a piece: outside the stack, which is drawn again on each change
         shiny::div(
@@ -234,13 +233,16 @@
           shiny::span(t("Preview (as saved)")),
           .btn("pd_redraw", t("Redraw"), class = "btn-sm btn-outline-primary"))),
         shiny::uiOutput("pd_size"),
-        shiny::div(class = "pd-prev",
-                   shiny::imageOutput("pd_img", height = "auto"),
-                   shiny::uiOutput("pd_overlay")),
+        shiny::uiOutput("pd_overlay"),
+        shiny::imageOutput("pd_img", height = "auto"),
         shiny::uiOutput("pd_checks")),
       bslib::card(
         bslib::card_header(t("Edit")),
-        shiny::uiOutput("pd_form")),
+        shiny::uiOutput("pd_form"),
+        shiny::h6(class = "mt-3", t("Code of this piece")),
+        shiny::p(class = "small text-muted mb-1",
+                 t("What this piece writes into the program; it follows every change.")),
+        shiny::div(class = "rp-code pd-piece-code", shiny::verbatimTextOutput("pd_piece_code"))),
       bslib::navset_card_tab(
         bslib::nav_panel(t("Code"), shiny::div(
           class = "rp-code", shiny::verbatimTextOutput("pd_code"))),
@@ -396,10 +398,12 @@
     n_adv <- if (is.null(a)) 0L else nrow(a)
     if (!n_bad && !n_adv) return(NULL)
     toggle <- shiny::tags$button(
-      class = "btn btn-sm btn-light pd-overlay-toggle", type = "button",
+      class = "btn btn-sm btn-light", type = "button",
       onclick = "Shiny.setInputValue('pd_overlay_toggle', Math.random(), {priority: 'event'})",
-      if (overlay_open()) t("Hide") else sprintf("%s (%d)", t("Advice"), n_bad + n_adv))
-    if (!overlay_open()) return(toggle)
+      if (overlay_open()) t("Hide") else t("Show"))
+    head <- shiny::div(class = "pd-overlay-head",
+                       shiny::strong(sprintf("%s (%d)", t("Checks and advice"), n_bad + n_adv)), toggle)
+    if (!overlay_open()) return(shiny::div(class = "pd-overlay", head))
     badge <- function(level) shiny::span(
       class = paste("badge me-1", switch(level, warning = "text-bg-warning",
                                          error = "text-bg-danger", "text-bg-info")),
@@ -420,7 +424,7 @@
           class = "btn btn-outline-primary btn-sm text-nowrap", type = "button",
           onclick = sprintf("Shiny.setInputValue('pd_fix', {i: %d, n: Math.random()}, {priority: 'event'})", i),
           t("Apply")))))
-    shiny::div(class = "pd-overlay", toggle, items)
+    shiny::div(class = "pd-overlay", head, items)
   })
 
   shiny::observeEvent(input$pd_drop, {
@@ -741,6 +745,16 @@
       if (!length(items)) shiny::p(class = "text-success small", t("No problems found."))
       else shiny::tags$ul(class = "small ps-3", items))
   })
+  # the lines of the script that the chosen piece makes
+  output$pd_piece_code <- shiny::renderText({
+    id <- current()
+    d <- design()
+    s <- sel()
+    shiny::req(id, d)
+    code <- tryCatch(.fig_design_script(d, id), error = function(e) return(conditionMessage(e)))
+    if (length(code) == 1L && !grepl("\n", code)) return(code)
+    .piece_code(code, d, s)
+  })
   output$pd_code <- shiny::renderText({
     id <- current()
     d <- design()
@@ -757,3 +771,61 @@
     paste(readLines(f, encoding = "UTF-8"), collapse = "\n")
   })
 }
+
+# The lines of a design's script that one piece makes: for a layer, from
+# its "# ---- layer i:" marker to the next marker; for the figure settings,
+# their block; for a data step, the df pipeline (its steps in order) or its
+# own code block; for a statistic, the block that makes its object.
+.piece_code <- function(code, d, s) {
+  block <- function(from, to_pattern) {
+    if (!length(from)) return(character())
+    rest <- code[seq(from[1L], length(code))]
+    end <- grep(to_pattern, rest)
+    end <- end[end > 1L]
+    if (length(end)) rest[seq_len(end[1L] - 1L)] else rest
+  }
+  trim <- function(x) {
+    while (length(x) && !nzchar(trimws(x[length(x)]))) x <- x[-length(x)]
+    x
+  }
+  out <- switch(s$sec,
+    plot = block(grep("^# ---- the figure's settings ----", code), "^# ----|^#{5,}"),
+    layers = {
+      i <- s$i
+      l <- d$layers[[i]]
+      k <- l$layer %||% ""
+      if (identical(k, "figure")) {
+        code
+      } else if (i == 1L && !length(grep(sprintf("^# ---- layer %d:", i), code))) {
+        # the base layer has no marker: the first line of step 2
+        from <- grep("^# Step2", code)
+        if (length(from)) block(from[1L] + 2L, "^# ----") else character()
+      } else {
+        block(grep(sprintf("^# ---- layer %d:", i), code), "^# ----|^#{5,}")
+      }
+    },
+    data = {
+      st <- d$data[[s$i]]
+      if (identical(st$step, "data_code")) {
+        from <- grep("^# your code", code)
+        block(from, "^$")
+      } else {
+        block(grep("^df <- ", code), "^$")
+      }
+    },
+    stats = {
+      st <- d$stats[[s$i]]
+      if (identical(st$step, "stats_code")) {
+        block(grep("^# your code", code), "^$")
+      } else {
+        nm <- st$name %||% switch(st$step %||% "", survfit = "fit", summary = "sm",
+                                  summary_by = "sg", rate = "rt", count = "ct", "")
+        block(grep(sprintf("^%s <- ", nm), code), "^$")
+      }
+    },
+    character())
+  out <- trim(out)
+  if (!length(out)) return(t_static("(nothing yet: this piece writes no line on its own)"))
+  paste(out, collapse = "\n")
+}
+t_static <- function(x) x
