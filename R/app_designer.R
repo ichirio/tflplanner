@@ -22,7 +22,7 @@
 
 .designer_ui <- function(t) {
   bslib::nav_panel(
-    t("Plot Designer"), value = "designer",
+    t("Figures"), value = "designer",
     shiny::tags$style(shiny::HTML("
       .pd-item { cursor: pointer; padding: .25rem .5rem; font-size: .85rem; }
       .pd-item.active { background: #e7f1ff; border-left: 3px solid #0d6efd; }
@@ -38,6 +38,7 @@
       .pd-overlay-head { display: flex; justify-content: space-between; align-items: center; }
       .pd-piece-code pre { font-size: .75rem; max-height: 16rem; margin-bottom: 0; }")),
     shiny::uiOutput("pd_note"),
+    shiny::uiOutput("lf_fig_box"),
     shiny::uiOutput("pd_body"))
 }
 
@@ -167,8 +168,8 @@
     m <- mode()
     msg <- switch(m,
       none = t("Choose a Figure report in the sidebar."),
-      other = t("The Plot Designer designs figures: choose a Figure report in the sidebar."),
-      hand = t("This figure's plot is written by hand (its data code, Reports tab). Start a design from a template: its data steps, statistics, settings and layers are filled at once, then each can be changed."),
+      other = t("This tab designs figures: choose a Figure report in the sidebar."),
+      hand = t("This figure's plot is written by hand (its data code, Reports tab). To design it here instead, start a design from a template: its data steps, statistics, settings and layers are filled at once, then each can be changed."),
       t("Choose a piece on the left to change it on the right; the figure is redrawn as its program will save it. Empty = the default (shown grey)."))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })

@@ -10,7 +10,7 @@
 
 .all_rows <- "__all__"
 .default_rows <- "__default__"
-.study_tabs <- c("outputs", "ard", "lf", "builder", "table_spec",
+.study_tabs <- c("outputs", "ard", "tables", "lf", "designer",
                  "report_spec", "data", "results")
 
 .sheet_labels <- c(
@@ -467,8 +467,36 @@ app_ui <- function(lang = "en") {
             shiny::div(class = "rp-code",
                        shiny::verbatimTextOutput("program")))))),
 
+    # one tab a kind of report: what it takes to make one, in the order made
     bslib::nav_panel(
-      t("Listing / Figure"), value = "lf",
+      t("Tables"), value = "tables",
+      bslib::navset_card_underline(
+        id = "table_nav",
+        bslib::nav_panel(
+          t("Definition"), value = "table_spec",
+      shiny::uiOutput("type_note"),
+      shiny::div(class = "rp-assist border rounded p-2 mb-2",
+                 shiny::uiOutput("assist")),
+      grid_note,
+      do.call(bslib::navset_card_underline,
+              c(list(id = "table_sheet"), lapply(table_sheets(), sheet_panel)))
+        ),
+        bslib::nav_panel(
+          t("Builder (beta)"), value = "builder",
+      shiny::uiOutput("builder_note"),
+      bslib::layout_columns(
+        col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
+        shiny::uiOutput("builder_form"),
+        bslib::card(
+          bslib::card_header(shiny::div(
+            class = "d-flex justify-content-between",
+            shiny::span(t("Preview: the table as it will print")),
+            shiny::uiOutput("builder_pages", inline = TRUE))),
+          shiny::uiOutput("builder_preview")))
+        ))),
+
+    bslib::nav_panel(
+      t("Listings"), value = "lf",
       shiny::uiOutput("lf_note"),
       bslib::layout_columns(
         col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
@@ -484,28 +512,6 @@ app_ui <- function(lang = "en") {
           shiny::uiOutput("lf_preview_out")))),
 
     .designer_ui(t),
-
-    bslib::nav_panel(
-      t("Table builder (beta)"), value = "builder",
-      shiny::uiOutput("builder_note"),
-      bslib::layout_columns(
-        col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
-        shiny::uiOutput("builder_form"),
-        bslib::card(
-          bslib::card_header(shiny::div(
-            class = "d-flex justify-content-between",
-            shiny::span(t("Preview: the table as it will print")),
-            shiny::uiOutput("builder_pages", inline = TRUE))),
-          shiny::uiOutput("builder_preview")))),
-
-    bslib::nav_panel(
-      t("Table definition"), value = "table_spec",
-      shiny::uiOutput("type_note"),
-      shiny::div(class = "rp-assist border rounded p-2 mb-2",
-                 shiny::uiOutput("assist")),
-      grid_note,
-      do.call(bslib::navset_card_underline,
-              c(list(id = "table_sheet"), lapply(table_sheets(), sheet_panel)))),
 
     bslib::nav_panel(
       t("Report layout"), value = "report_spec",
@@ -1922,16 +1928,43 @@ app_server <- function(input, output, session, start) {
                    catalog)
   output$lf_note <- shiny::renderUI({
     msg <- switch(lf_type(),
-      none = t("Choose a Listing or Figure report in the sidebar."),
-      table = t("This is a Table: its data is the study ARD (ARD tab) and its layout the Table definition."),
+      none = t("Choose a Listing report in the sidebar."),
+      table = t("This is a Table: its definition and builder are on the Tables tab."),
       listing = t("A listing in rows: the data (a dataset of the catalog, a condition, an order) and its columns. Its data code (Reports tab), if any, reworks `data` after the condition."),
-      figure = t("A figure reads its datasets here; the plot is its data code (Reports tab), written with ggplot2: it leaves `plot`."))
+      figure = t("This is a Figure: it is designed on the Figures tab."))
     shiny::div(class = "alert alert-info py-2 small", msg)
+  })
+  # a hand-written figure (no design): the datasets it reads, and its
+  # program's data part -- on the Figures tab, above the designer
+  output$lf_fig_box <- shiny::renderUI({
+    rv$ver
+    shiny::req(identical(lf_type(), "figure"))
+    id <- current()
+    p <- shiny::isolate(rv$p)
+    shiny::req(is.null(fig_design(p, id)))
+    lf_env$n <- lf_env$n + 1L
+    lf_drawn(lf_env$n)
+    lf_env$id <- id
+    cat_ds <- shiny::isolate(catalog())
+    ds_choices <- stats::setNames(cat_ds$dataset,
+                                  paste0(cat_ds$dataset, " (", cat_ds$level, ")"))
+    f <- lf_rows(p, "figures", id)
+    have <- if (nrow(f)) .split_bar(f$datasets[1L]) else character()
+    bslib::card(
+      bslib::card_header(t("Written by hand")),
+      shiny::p(class = "small text-muted",
+               t("This figure's plot is its data code (Reports tab), written with ggplot2: it leaves `plot`. Its program reads these datasets first.")),
+      shiny::h6(t("Data the figure reads")),
+      shiny::selectizeInput(lf_id("fig_ds"), NULL, ds_choices,
+                            selected = have, multiple = TRUE,
+                            width = "100%"),
+      shiny::h6(t("The program's data part")),
+      shiny::div(class = "rp-code", shiny::verbatimTextOutput("lf_fig_code")))
   })
   output$lf_form <- shiny::renderUI({
     rv$ver
     type <- lf_type()
-    shiny::req(type %in% c("listing", "figure"))
+    shiny::req(identical(type, "listing"))
     id <- current()
     p <- shiny::isolate(rv$p)
     lf_env$n <- lf_env$n + 1L
@@ -1940,18 +1973,6 @@ app_server <- function(input, output, session, start) {
     cat_ds <- shiny::isolate(catalog())
     ds_choices <- stats::setNames(cat_ds$dataset,
                                   paste0(cat_ds$dataset, " (", cat_ds$level, ")"))
-    if (type == "figure") {
-      f <- lf_rows(p, "figures", id)
-      have <- if (nrow(f)) .split_bar(f$datasets[1L]) else character()
-      return(shiny::div(
-        class = "rp-b-card",
-        shiny::h6(t("Data the figure reads")),
-        shiny::selectizeInput(lf_id("fig_ds"), NULL, ds_choices,
-                              selected = have, multiple = TRUE,
-                              width = "100%"),
-        shiny::h6(t("The program's data part")),
-        shiny::div(class = "rp-code", shiny::verbatimTextOutput("lf_fig_code"))))
-    }
     l <- lf_rows(p, "listings", id)
     lv <- function(k, d = "") if (nrow(l) && !is.na(l[[k]][1L])) l[[k]][1L] else d
     lt <- listing_types()
@@ -2075,12 +2096,28 @@ app_server <- function(input, output, session, start) {
   bform_drawn <- shiny::reactiveVal(0L)
   rv$bver <- 0L
   rv$btouched <- FALSE
-  shiny::observeEvent(input$nav, {
-    if (identical(input$nav, "builder")) rv$bver <- rv$bver + 1L
-    if (input$nav %in% c("table_spec", "report_spec") && rv$btouched) {
+  # the page shown: a Tables sub-tab counts as its own page
+  active_page <- shiny::reactive({
+    nav <- input$nav %||% ""
+    if (identical(nav, "tables")) input$table_nav %||% "table_spec" else nav
+  })
+  shiny::observeEvent(active_page(), {
+    if (identical(active_page(), "builder")) rv$bver <- rv$bver + 1L
+    if (active_page() %in% c("table_spec", "report_spec") && rv$btouched) {
       rv$btouched <- FALSE
       bump()
     }
+  })
+  # the report chosen in the sidebar opens its own kind of tab, when a
+  # design tab of another kind is showing
+  # (on the sidebar's choice only: current() also changes with every edit)
+  shiny::observeEvent(target(), {
+    id <- shiny::isolate(current())
+    nav <- input$nav %||% ""
+    if (is.null(id) || !nav %in% c("tables", "lf", "designer")) return()
+    want <- switch(report_info(rv$p, id)$type, table = "tables", listing = "lf",
+                   figure = "designer", NULL)
+    if (!is.null(want) && !identical(nav, want)) bslib::nav_select("nav", want)
   })
   builder_case <- shiny::reactive({
     id <- current()

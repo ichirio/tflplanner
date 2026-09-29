@@ -1,5 +1,13 @@
 # tflplanner 0.0.0.9000
 
+- **One tab a kind of report** (#26): the tabs are now *Tables* (the
+  table definition and the table builder, as two sub-tabs), *Listings*
+  and *Figures* (the Plot Designer), in place of *Table definition*,
+  *Table builder (beta)*, *Listing / Figure* and *Plot Designer*.  A
+  hand-written figure's datasets and data part moved from *Listing /
+  Figure* to the top of *Figures*.  Choosing a report in the sidebar while
+  one of these tabs is open opens its own kind's tab.
+
 - The table builder's preview plans the table with
   `tflspec::tfl_table_plan()`: tflspec 0.0.20's `tfl_plan()` no longer
   reads a table definition (`spec =`).  Needs tflspec 0.0.20 (#23).
