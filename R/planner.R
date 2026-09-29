@@ -72,6 +72,24 @@ sheet_columns <- function(sheet) {
   out
 }
 
+# Saved code that calls a name the table engine no longer has, rewritten as
+# it is read (study workbooks, the app's state, the company standards):
+# rtfreporter 0.8.0.9087 took the engine over from tflspec, with no alias
+# for the former names.
+.renamed_calls <- function(code) {
+  code <- gsub("tflspec::tfl_ard_normalize(", "rtfreporter::normalize_ard(",
+               code, fixed = TRUE)
+  gsub("\\btfl_ard_normalize\\(", "normalize_ard(", code, perl = TRUE)
+}
+
+.renamed_outputs <- function(p) {
+  for (cn in c("data_code", "process_code")) {
+    p$outputs[[cn]] <- .renamed_calls(p$outputs[[cn]])
+  }
+  p$setup <- .renamed_calls(p$setup)
+  p
+}
+
 .empty_outputs <- function() {
   data.frame(output_id = character(), description = character(),
              data_code = character(), process_code = character(),
@@ -183,7 +201,7 @@ read_planner <- function(path) {
   }
   for (id in setdiff(output_ids(p), p$outputs$output_id)) p <- add_output(p, id)
   rownames(p$outputs) <- NULL
-  p
+  .renamed_outputs(p)
 }
 
 # ---------------------------------------------------------------- editing
@@ -213,9 +231,9 @@ read_planner <- function(path) {
 #' @param data_code R code that makes the report's ARD, `ard` (for a
 #'   listing or figure: its `content`); `NA` writes a TODO.
 #' @param process_code R code that turns `ard` into `data`, what
-#'   [tflspec::tfl_plan()] is given: [tflspec::tfl_ard_normalize()]
+#'   [rtfreporter::table_plan()] is given: [rtfreporter::normalize_ard()]
 #'   and any rework after it (`mutate()` ...).  `NA` means
-#'   `data <- tfl_ard_normalize(ard)`, unless `data_code` makes `data` itself.
+#'   `data <- normalize_ard(ard)`, unless `data_code` makes `data` itself.
 #' @param type The report's type, one of [report_types()]; anything but
 #'   `"table"` is written on the `report` sheet.
 #' @return The updated `tflplanner`.

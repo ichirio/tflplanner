@@ -14,7 +14,7 @@ ae_data <- function() {
   ard <- cards::ard_stack_hierarchical(
     adae, variables = c(AEBODSYS, AEDECOD), by = TRTA,
     denominator = adsl, id = USUBJID, over_variables = TRUE)
-  tflspec::tfl_ard_normalize(ard, hierarchy = c("AEBODSYS", "AEDECOD"),
+  rtfreporter::normalize_ard(ard, hierarchy = c("AEBODSYS", "AEDECOD"),
                              overall = "Any TEAE")
 }
 
@@ -38,7 +38,7 @@ test_that("ard_meta() reads keys, variables, levels and statistics", {
 
 test_that("ard_meta() reads the rework, and a hierarchy", {
   skip_if_not_installed("cards")
-  d <- tflspec::tfl_ard_normalize(dm_ard())
+  d <- rtfreporter::normalize_ard(dm_ard())
   d$variable_level[d$variable == "SEX"] <-
     ifelse(d$variable_level[d$variable == "SEX"] == "F", "Female", "Male")
   m <- ard_meta(data = d)
@@ -129,7 +129,7 @@ test_that("fetch_ard() runs the data part from the study folder", {
     "ard <- cards::ard_stack(adsl, .by = TRT01A,",
     "  cards::ard_categorical(variables = SEX))", sep = "\n"),
     process_code = paste(
-      "data <- tfl_ard_normalize(ard)",
+      "data <- normalize_ard(ard)",
       "data$variable_level[data$variable == \"SEX\"] <- \"Any\"",
       sep = "\n"))
   s <- create_study("S1", planner = p)

@@ -447,9 +447,9 @@ app_ui <- function(lang = "en") {
                 rows = 10, width = "100%", resize = "vertical"),
               shiny::textAreaInput(
                 "process_code",
-                t("2. Normalize and rework: make `data` from `ard` (tfl_ard_normalize(), then mutate() ...). Blank = the company template (normalize)."),
+                t("2. Normalize and rework: make `data` from `ard` (normalize_ard(), then mutate() ...). Blank = the company template (normalize)."),
                 rows = 5, width = "100%", resize = "vertical",
-                placeholder = "data <- tfl_ard_normalize(ard)"),
+                placeholder = "data <- normalize_ard(ard)"),
               shiny::div(
                 class = "d-flex gap-2 align-items-center mb-2",
                 .btn("fetch", t("Run and read the ARD"),

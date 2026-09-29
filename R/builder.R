@@ -276,7 +276,7 @@ preview_pages <- function(x, output_id, data) {
   spec <- tflspec::tfl_table_spec(sheets)
   plan <- suppressMessages(tflspec::tfl_table_plan(data, spec, output_id,
                                                        notes = FALSE))
-  res <- suppressMessages(tflspec::tfl_apply_plan(plan))
+  res <- suppressMessages(rtfreporter::plan_apply(plan))
   # a plan with no layout gives its table, not pages: one page of it
   if (is.data.frame(res)) {
     res <- list(structure(list(data = res, col_header = list(names(res)),

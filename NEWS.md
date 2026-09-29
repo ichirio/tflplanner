@@ -1,5 +1,22 @@
 # tflplanner 0.0.0.9000
 
+- **The table engine is rtfreporter's** (plan E, ichirio/tflspec
+  Discussion #23): tflspec 0.0.23 keeps the specifications only, and the
+  ARD functions and the plan moved to rtfreporter (>= 0.8.0.9087) under
+  new names, with no aliases: `tfl_ard_normalize()` is now
+  `normalize_ard()`, `tfl_plan()` `table_plan()`, `tfl_plan_*()`
+  `plan_*()`, `tfl_apply_plan()` `plan_apply()`.  Generated programs and
+  the built-in table template write the new names.
+  - **Saved code is rewritten as it is read**: `tfl_ard_normalize(`
+    becomes `normalize_ard(` (and `tflspec::tfl_ard_normalize(`
+    `rtfreporter::normalize_ard(`) in a study's data code, normalize code
+    and setup code -- from the app's saved state and from a study
+    workbook's `_tflplanner` sheet -- and in the company standards' code
+    templates.  Save the study (and install the standards again) to keep
+    the new names; programs the app wrote are written again on save,
+    hand-edited ones need the rename by hand.
+  - Needs rtfreporter 0.8.0.9087 and tflspec 0.0.23.
+
 - Fix: `run_app("SAMPLE-01")` (a study given at start) stopped the session
   on its first page ("Can't access reactive value 'ver' outside of
   reactive consumer"); opening the study from the Studies tab worked.

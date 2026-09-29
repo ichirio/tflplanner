@@ -135,7 +135,7 @@ code_templates <- function(name = NULL) {
 #' The code a report runs before the report is laid out: the setup every
 #' report runs, the report's own `data_code` (its ARD) and, for a table,
 #' its `process_code` (normalization and rework, by default
-#' `data <- tfl_ard_normalize(ard)`).  With no `data_code` it is a TODO that
+#' `data <- normalize_ard(ard)`).  With no `data_code` it is a TODO that
 #' stops.  [program_code()] writes it into the program, and
 #' [fetch_ard()] runs it to learn what the ARD holds.
 #'
@@ -196,7 +196,7 @@ data_lines <- function(x, output_id, todo = TRUE) {
     c("", "# normalize and rework", .code_block(proc))
   } else if (!.makes_data(code)) {
     tp <- .fill_template("table_process", x, output_id)
-    c("", if (is.na(tp)) "data <- tfl_ard_normalize(ard)" else .code_block(tp))
+    c("", if (is.na(tp)) "data <- normalize_ard(ard)" else .code_block(tp))
   }
   c(if (!is.na(x$setup)) c(.code_block(x$setup), ""),
     .code_block(code),
@@ -212,7 +212,7 @@ data_lines <- function(x, output_id, todo = TRUE) {
 #' * `table` -- the data part leaves `data`, the normalized ARD; the program
 #'   saves it to `output/ard/<output_id>.rds` (the deliverable data) and
 #'   plans the table as `table_spec.xlsx` defines it, written out as
-#'   `tfl_plan() |> tfl_plan_*()` ([tflspec::tfl_table_code()]).
+#'   `table_plan() |> plan_*()` ([tflspec::tfl_table_code()]).
 #' * `listing`, `figure` -- the data part leaves `content`: `rtftable`
 #'   pages for a listing, the figures for a figure.
 #'
@@ -255,7 +255,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     paste0("# Leaves `", obj, "`: ", switch(type,
       figure = "the figure(s) of the report.",
       listing = "the listing's rtftable pages.",
-      "the normalized ARD (tfl_ard_normalize()) the table is built from.")),
+      "the normalized ARD (normalize_ard()) the table is built from.")),
     paste0("# Input data are in ", lay[["adam"]], "/, ", lay[["sdtm"]],
            "/ and ", lay[["other"]], "/."),
     data_lines(x, output_id))

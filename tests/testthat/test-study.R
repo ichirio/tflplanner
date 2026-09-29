@@ -42,7 +42,7 @@ test_that("a new study has its layout and is registered", {
 test_that("a study opens as it was last saved, not from its workbooks", {
   local_home()
   s <- create_study("S1", planner = sample_planner())
-  s$planner$outputs$data_code[1] <- "data <- tfl_ard_normalize(my_ard)\n# 2"
+  s$planner$outputs$data_code[1] <- "data <- normalize_ard(my_ard)\n# 2"
   s$planner$outputs$description[2] <- "有害事象"
   s$planner$setup <- "library(cards)"
   s$planner$sheets$variables$label[1] <- "Age"
@@ -114,11 +114,11 @@ test_that("saving keeps an edited program unless asked to regenerate", {
   expect_equal(study_status(s)$program_state, rep("current", 5))
 
   # an untouched program follows the definition
-  s$planner$outputs$data_code[1] <- "data <- tfl_ard_normalize(my_ard)"
+  s$planner$outputs$data_code[1] <- "data <- normalize_ard(my_ard)"
   expect_equal(study_status(s)$program_state[1], "generated")
   expect_equal(study_status(s)$status[1], "unsaved")
   s <- save_study(s)
-  expect_true("data <- tfl_ard_normalize(my_ard)" %in% readLines(f))
+  expect_true("data <- normalize_ard(my_ard)" %in% readLines(f))
   expect_equal(study_status(s)$program_state[1], "current")
 
   # nothing changed: nothing is rewritten
@@ -155,7 +155,7 @@ test_that("a study runs end to end and reports what it produced", {
     "  ard_categorical(variables = c(AGEGR1, SEX, ETHNIC),",
     "                  statistic = ~ c(\"n\", \"p\")),",
     "  .total_n = TRUE)",
-    "data <- tfl_ard_normalize(ard)", sep = "\n")
+    "data <- normalize_ard(ard)", sep = "\n")
   p <- add_output(p, "L1", type = "listing")
   s <- create_study("S2", planner = p)
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))

@@ -140,7 +140,7 @@
         sep = "\n"),
         paste(
         "# ---- normalize",
-        "data <- tfl_ard_normalize(ard)",
+        "data <- normalize_ard(ard)",
         "# ---- rework as needed, e.g.",
         "# data <- dplyr::mutate(data, label = dplyr::recode(label, \"Age\" = \"Age (years)\"))",
         sep = "\n"),
@@ -309,6 +309,7 @@ read_standards <- function(path) {
     })
     d <- d[rowSums(!is.na(d)) > 0, , drop = FALSE]
     rownames(d) <- NULL
+    if (s == "code_templates") d$code <- .renamed_calls(d$code)
     d
   })
   stats::setNames(out, names(b))

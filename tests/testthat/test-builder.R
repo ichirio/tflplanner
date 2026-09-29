@@ -79,7 +79,7 @@ test_that("the builder's choices land in the sheets", {
 test_that("the preview is the table rtfreporter lays out", {
   skip_if_not_installed("cards")
   p <- dm_study_planner()
-  d <- tflspec::tfl_ard_normalize(dm_ard())
+  d <- rtfreporter::normalize_ard(dm_ard())
   pages <- preview_pages(p, "DM", d)
   expect_s3_class(pages[[1]], "rtftable")
   expect_true(any(vapply(pages[[1]]$data, function(v) "Mean (SD)" %in% v,

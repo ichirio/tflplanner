@@ -410,14 +410,14 @@ types <- c("T-14-1-1" = "table", "T-14-1-2" = "table", "T-14-2-1" = "table",
            "F-14-2-1" = "figure", "F-14-2-2" = "figure")
 process <- list(
   "T-14-2-2" = c(
-    "data <- tfl_ard_normalize(ard)",
+    "data <- normalize_ard(ard)",
     "# row labels: the median, and the event-free probability by day (day 0 left out)",
     "is_time <- data$variable == \"time\"",
     "data$.label[data$variable == \"prob\"] <- \"Median (95% CI)\"",
     "data$.label[is_time] <- paste(\"Day\", as.character(data$variable_level[is_time]))",
     "data <- data[!(is_time & as.character(data$variable_level) == \"0\"), ]"),
   "T-14-3-1" = c(
-    "data <- tfl_ard_normalize(ard, hierarchy = c(\"AEBODSYS\", \"AEDECOD\"),",
+    "data <- normalize_ard(ard, hierarchy = c(\"AEBODSYS\", \"AEDECOD\"),",
     "                      overall = \"Any TEAE\")"))
 for (o in names(desc)) {
   p <- add_output(p, o, description = desc[[o]],
