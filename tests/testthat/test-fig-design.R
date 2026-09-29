@@ -127,8 +127,11 @@ test_that("a preview for the screen is smaller, and says the saved size", {
   full <- preview_figure(s, "F-14-2-1", d)
   small <- preview_figure(s, "F-14-2-1", d, max_px = 800)
   expect_null(small$error)
-  w <- function(f) dim(png::readPNG(f))[2]
-  skip_if_not_installed("png")
+  # a PNG's width: bytes 17-20 of its header (IHDR), big-endian
+  w <- function(f) {
+    b <- as.integer(readBin(f, "raw", 24L)[17:20])
+    sum(b * 256^(3:0))
+  }
   expect_lte(w(small$png), 800)
   expect_gt(w(full$png), 800)
   expect_equal(small$size$dpi, full$size$dpi)
