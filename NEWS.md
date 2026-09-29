@@ -1,5 +1,17 @@
 # tflplanner 0.0.0.9000
 
+- **Plot Designer: every figure type, and copies per parameter** (#21).
+  The template list (grouped by kind) now covers every type: the 27
+  templates in parts (KM, waterfall, swimmer, spider, bar, mean over time,
+  spaghetti, box, scatter, PK) with the fields each kind needs on the start
+  screen (value, x / y, nominal time, category, responders, duration, the
+  visit), and the whole-script templates (forest, AE dot, butterfly, eDISH,
+  sankey, sunburst), whose design is one *Whole figure* piece edited on a
+  form of the type's own arguments.  *Copy to other parameters* makes one
+  new figure report per PARAMCD from a designed figure, its design the
+  same but for the parameter (`copy_fig_to_params()`).  Needs tflspec
+  0.0.19.
+
 - **Plot Designer: advice and presets** (#19).  The preview now carries
   tflspec's advice on the design (what is usually wanted and is missing or
   unusual: a KM figure without the number at risk, a legend inside the

@@ -276,10 +276,12 @@ copy_output <- function(x, from, to) {
   }
   x <- set_fig_design(x, to, fig_design(x, from))
   src <- x$outputs[x$outputs$output_id == from, , drop = FALSE]
+  # the copy is the same kind of report (its report row was copied above)
   x <- add_output(x, to,
                   description = if (nrow(src)) src$description else NA,
                   data_code = if (nrow(src)) src$data_code else NA,
-                  process_code = if (nrow(src)) src$process_code else NA)
+                  process_code = if (nrow(src)) src$process_code else NA,
+                  type = report_info(x, from)$type)
   x
 }
 
