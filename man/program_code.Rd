@@ -25,11 +25,14 @@ depends on the report's \code{type}:
 \itemize{
 \item \code{table} -- the data part leaves \code{data}, the normalized ARD; the program
 saves it to \verb{output/ard/<output_id>.rds} (the deliverable data) and
-plans the table from \code{table_spec.xlsx}.
+plans the table as \code{table_spec.xlsx} defines it, written out as
+\verb{tfl_plan() |> tfl_plan_*()} (\code{\link[tflspec:tfl_table_code]{tflspec::tfl_table_code()}}).
 \item \code{listing}, \code{figure} -- the data part leaves \code{content}: \code{rtftable}
 pages for a listing, the figures for a figure.
 }
 
-The report around it -- page, header, footer, titles, footnotes -- comes
-from \code{report_spec.xlsx} for every type.
+The report around it -- page, header, footer, titles, footnotes -- is
+written out from \code{report_spec.xlsx} for every type, as rtfreporter calls
+(\code{\link[tflspec:tfl_report_code]{tflspec::tfl_report_code()}}).  The program does not read the workbooks:
+generate it again after changing them.
 }

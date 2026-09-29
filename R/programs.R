@@ -203,12 +203,15 @@ data_lines <- function(x, output_id, todo = TRUE) {
 #'
 #' * `table` -- the data part leaves `data`, the normalized ARD; the program
 #'   saves it to `output/ard/<output_id>.rds` (the deliverable data) and
-#'   plans the table from `table_spec.xlsx`.
+#'   plans the table as `table_spec.xlsx` defines it, written out as
+#'   `tfl_plan() |> tfl_plan_*()` ([tflspec::tfl_table_code()]).
 #' * `listing`, `figure` -- the data part leaves `content`: `rtftable`
 #'   pages for a listing, the figures for a figure.
 #'
-#' The report around it -- page, header, footer, titles, footnotes -- comes
-#' from `report_spec.xlsx` for every type.
+#' The report around it -- page, header, footer, titles, footnotes -- is
+#' written out from `report_spec.xlsx` for every type, as rtfreporter calls
+#' ([tflspec::tfl_report_code()]).  The program does not read the workbooks:
+#' generate it again after changing them.
 #'
 #' @param x An `tflplanner`.
 #' @param output_id The report.
@@ -224,7 +227,6 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   type <- info$type
   table <- identical(type, "table")
   obj <- if (table) "data" else "content"
-  spec <- file.path(lay[["spec"]], c(.report_file, .table_file))
 
   head <- .banner(
     paste("Program    :", file.path(lay[["programs_tfl"]], info$program)),
@@ -235,14 +237,15 @@ program_code <- function(x, output_id, date = Sys.Date()) {
            ", ", format(date, "%Y-%m-%d")),
     "",
     "Runs from the study folder (open the study's .Rproj, or run",
-    "programs/tfl/autoexec_report.R).  How the report looks is in spec/; this",
-    paste0("program makes `", obj, "` and hands it on.  Edit the data part",
-           " freely."))
+    "programs/tfl/autoexec_report.R).  How the report looks comes from",
+    "spec/ and is written out in the Report part: generate the program again",
+    paste0("after changing the workbooks.  This program makes `", obj,
+           "`; edit the data part freely."))
 
   data_part <- c(
     .section("Data"),
     paste0("# Leaves `", obj, "`: ", switch(type,
-      figure = "the figure(s) for tfl_report().",
+      figure = "the figure(s) of the report.",
       listing = "the listing's rtftable pages.",
       "the normalized ARD (tfl_ard_normalize()) the table is built from.")),
     paste0("# Input data are in ", lay[["adam"]], "/, ", lay[["sdtm"]],
@@ -254,10 +257,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     if (table) c(
       paste0("saveRDS(data, file.path(\"", lay[["ard"]],
              "\", paste0(output_id, \".rds\")))"),
-      "plan <- tfl_plan(data, spec = spec)",
-      "doc  <- tfl_report(spec, plan)") else
-      "doc  <- tfl_report(spec, content)",
-    "generate_rtfreport(doc, tfl_report_path(spec), overwrite = TRUE)")
+      ""),
+    .report_code_lines(x, output_id, table))
 
   c(head,
     "",
@@ -269,14 +270,39 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     "}",
     "",
     paste("output_id <-", .r_string(output_id)),
-    "spec <- tfl_read_report_spec(",
-    paste0("  c(", paste(.r_string(spec), collapse = ", "), "),"),
-    "  output_id = output_id)",
     "",
     data_part,
     "",
     report_part,
     "")
+}
+
+# The report part of a report program, written out from its definition by
+# tflspec: the table's plan (tfl_table_code()), the document around it
+# (tfl_report_code()) and where it goes (tfl_report_path()).  A definition
+# that does not hold yet (a half-filled sheet) gives a stop() line saying
+# why, so the program is still written and says what to fix when run.
+.report_code_lines <- function(x, output_id, table) {
+  lay <- study_layout()
+  sp <- .spec_object(x, c(table_sheets(), report_sheets()),
+                     unique(c(.study_keys$table, .study_keys$report)))
+  tryCatch(c(
+    if (table) c(
+      paste0("# the table, as ", file.path(lay[["spec"]], .table_file),
+             " defines it"),
+      tflspec::tfl_table_code(sp, output_id, pipe = "|>"),
+      ""),
+    paste0("# the report -- page, running header and footer, titles and ",
+           "footnotes -- as"),
+    paste0("# ", file.path(lay[["spec"]], .report_file), " defines it"),
+    tflspec::tfl_report_code(sp, output_id,
+                             content = if (table) "plan" else "content"),
+    sprintf("generate_rtfreport(doc, %s, overwrite = TRUE)",
+            .r_string(tflspec::tfl_report_path(sp, output_id)))),
+    error = function(e) sprintf(
+      "stop(%s)", .r_string(paste0("tflplanner: the definition of ",
+                                   output_id, " does not hold: ",
+                                   conditionMessage(e)))))
 }
 
 #' The program that runs every report program
