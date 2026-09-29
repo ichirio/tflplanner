@@ -24,12 +24,15 @@ navbar:
       menu:
         - text: "tflplanner 利用ガイド（日本語）"
           href: articles/ja-guide.html
+        - text: "プロットデザイナーで図を作る（日本語）"
+          href: articles/ja-figures.html
 
 articles:
   - title: Guides
     navbar: ~
     contents:
       - articles/ja-guide
+      - articles/ja-figures
 
 reference:
   - title: The app and its home
