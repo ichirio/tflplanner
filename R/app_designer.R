@@ -30,7 +30,14 @@
       .pd-item .pd-bad { color: #dc3545; font-weight: bold; }
       .pd-tools button { padding: 0 .3rem; font-size: .75rem; }
       .pd-sec { font-size: .8rem; font-weight: 600; margin: .5rem 0 .2rem; }
-      .pd-code textarea { font-family: monospace; font-size: .8rem; }")),
+      .pd-code textarea { font-family: monospace; font-size: .8rem; }
+      .pd-prev { position: relative; }
+      .pd-overlay { position: absolute; top: .5rem; left: .5rem; right: .5rem;
+        background: rgba(255,255,255,.92); border: 1px solid #dee2e6; border-radius: .3rem;
+        padding: .4rem .6rem; font-size: .8rem; max-height: 45%; overflow: auto; }
+      .pd-overlay .badge { font-size: .65rem; }
+      .pd-overlay button { padding: 0 .4rem; font-size: .7rem; }
+      .pd-overlay-toggle { position: absolute; top: .5rem; right: .5rem; font-size: .75rem; }")),
     shiny::uiOutput("pd_note"),
     shiny::uiOutput("pd_body"))
 }
@@ -174,17 +181,30 @@
     shiny::req(m %in% c("hand", "design"))
     if (m == "hand") {
       ds <- catalog()$dataset
+      pr <- fig_presets()
       return(bslib::card(
         bslib::card_header(t("Start a design")),
-        bslib::layout_columns(
-          col_widths = c(6, 6),
-          shiny::div(
-            shiny::selectInput("pd_tpl", t("Template"),
-                               c(stats::setNames(templates$template, t(templates$label)),
-                                 stats::setNames("", t("Empty design")))),
-            shiny::selectizeInput("pd_tpl_data", t("Dataset"), c("", ds),
-                                  options = list(placeholder = t("the template's default")))),
-          shiny::uiOutput("pd_tpl_more")),
+        shiny::radioButtons("pd_from", NULL, inline = TRUE,
+                            c(stats::setNames("template", t("From a template")),
+                              if (nrow(pr)) stats::setNames("preset", t("From a company preset")))),
+        shiny::conditionalPanel(
+          "input.pd_from == 'template'",
+          bslib::layout_columns(
+            col_widths = c(6, 6),
+            shiny::div(
+              shiny::selectInput("pd_tpl", t("Template"),
+                                 c(stats::setNames(templates$template, t(templates$label)),
+                                   stats::setNames("", t("Empty design")))),
+              shiny::selectizeInput("pd_tpl_data", t("Dataset"), c("", ds),
+                                    options = list(placeholder = t("the template's default")))),
+            shiny::uiOutput("pd_tpl_more"))),
+        if (nrow(pr)) shiny::conditionalPanel(
+          "input.pd_from == 'preset'",
+          shiny::selectInput("pd_preset", t("Preset"),
+                             stats::setNames(pr$name, ifelse(nzchar(pr$description),
+                                                             paste0(pr$name, " - ", pr$description), pr$name))),
+          shiny::p(class = "small text-muted",
+                   t("A preset is a design kept with the company standards (Save as preset, on a designed figure). It is copied as it is; change its dataset and parameter after."))),
         shiny::div(.btn("pd_start", t("Start the design"), class = "btn-sm btn-primary"))))
     }
     bslib::layout_columns(
@@ -193,7 +213,9 @@
         bslib::card_header(shiny::div(
           class = "d-flex justify-content-between align-items-center",
           shiny::span(t("Design")),
-          .btn("pd_drop", t("Remove the design"), class = "btn-sm btn-outline-danger"))),
+          shiny::div(
+            .btn("pd_preset_save", t("Save as preset"), class = "btn-sm btn-outline-secondary"),
+            .btn("pd_drop", t("Remove the design"), class = "btn-sm btn-outline-danger")))),
         shiny::uiOutput("pd_stack"),
         # adding a piece: outside the stack, which is drawn again on each change
         shiny::div(
@@ -210,7 +232,9 @@
           shiny::span(t("Preview (as saved)")),
           .btn("pd_redraw", t("Redraw"), class = "btn-sm btn-outline-primary"))),
         shiny::uiOutput("pd_size"),
-        shiny::imageOutput("pd_img", height = "auto"),
+        shiny::div(class = "pd-prev",
+                   shiny::imageOutput("pd_img", height = "auto"),
+                   shiny::uiOutput("pd_overlay")),
         shiny::uiOutput("pd_checks")),
       bslib::card(
         bslib::card_header(t("Edit")),
@@ -248,7 +272,10 @@
     shiny::req(id)
     tp <- input$pd_tpl
     nz <- function(v) if (is.null(v) || !nzchar(v)) NULL else v
-    d <- if (is.null(tp) || !nzchar(tp)) {
+    d <- if (identical(input$pd_from, "preset")) {
+      shiny::req(input$pd_preset)
+      guarded(read_fig_preset(input$pd_preset))
+    } else if (is.null(tp) || !nzchar(tp)) {
       tflspec::tfl_fig_design(
         data = list(list(step = "read", dataset = nz(input$pd_tpl_data) %||% "ADSL")))
     } else {
@@ -269,6 +296,77 @@
     }
     if (is.null(d)) return()
     set_design(d)
+  })
+
+  shiny::observeEvent(input$pd_preset_save, {
+    shiny::req(design())
+    shiny::showModal(shiny::modalDialog(
+      title = t("Save as preset"),
+      shiny::textInput("pd_preset_name", t("Name"), width = "100%"),
+      shiny::textInput("pd_preset_desc", t("Description"), width = "100%"),
+      shiny::p(class = "small text-muted",
+               t("Kept with the company standards (standards/figure-presets), for every study of this home.")),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("pd_preset_ok", t("Save"), class = "btn-primary"))))
+  })
+  shiny::observeEvent(input$pd_preset_ok, {
+    d <- design()
+    shiny::req(d)
+    f <- guarded(save_fig_preset(d, input$pd_preset_name, input$pd_preset_desc %||% ""))
+    if (is.null(f)) return()
+    shiny::removeModal()
+    notify(sprintf(t("Preset saved: %s"), basename(f)))
+  })
+  # the advice's one-step fixes
+  shiny::observeEvent(input$pd_fix, {
+    r <- pv()
+    d <- design()
+    i <- as.integer(input$pd_fix$i)
+    shiny::req(r, d, !is.null(r$advice), i >= 1L, i <= nrow(r$advice))
+    fix <- r$advice$fix[[i]]
+    shiny::req(!is.null(fix))
+    d2 <- guarded(tflspec::tfl_fig_apply_fix(d, fix))
+    if (is.null(d2)) return()
+    set_design(d2)
+    sel(list(sec = "plot", i = 1L))
+    redraw_form()
+  })
+  overlay_open <- shiny::reactiveVal(TRUE)
+  shiny::observeEvent(input$pd_overlay_toggle, overlay_open(!overlay_open()))
+  output$pd_overlay <- shiny::renderUI({
+    r <- pv()
+    shiny::req(r, r$png)
+    a <- r$advice
+    pr <- r$problems
+    n_bad <- if (is.null(pr)) 0L else nrow(pr)
+    n_adv <- if (is.null(a)) 0L else nrow(a)
+    if (!n_bad && !n_adv) return(NULL)
+    toggle <- shiny::tags$button(
+      class = "btn btn-sm btn-light pd-overlay-toggle", type = "button",
+      onclick = "Shiny.setInputValue('pd_overlay_toggle', Math.random(), {priority: 'event'})",
+      if (overlay_open()) t("Hide") else sprintf("%s (%d)", t("Advice"), n_bad + n_adv))
+    if (!overlay_open()) return(toggle)
+    badge <- function(level) shiny::span(
+      class = paste("badge me-1", switch(level, warning = "text-bg-warning",
+                                         error = "text-bg-danger", "text-bg-info")),
+      t(level))
+    part_label <- function(p) {
+      k <- sub("\\[.*$", "", p)
+      t(if (k %in% names(.pd_sections)) .pd_sections[[k]] else p)
+    }
+    items <- c(
+      if (n_bad) lapply(seq_len(nrow(pr)), function(i) shiny::div(
+        class = "mb-1", badge("error"),
+        shiny::span(class = "text-muted", pr$part[i], " "), pr$field[i], ": ", pr$problem[i])),
+      if (n_adv) lapply(seq_len(nrow(a)), function(i) shiny::div(
+        class = "mb-1 d-flex justify-content-between align-items-start gap-2",
+        shiny::div(badge(a$level[i]), shiny::span(class = "text-muted", part_label(a$part[i]), " "),
+                   do.call(sprintf, c(list(t(a$template[i])), a$args[[i]]))),
+        if (!is.null(a$fix[[i]])) shiny::tags$button(
+          class = "btn btn-outline-primary btn-sm text-nowrap", type = "button",
+          onclick = sprintf("Shiny.setInputValue('pd_fix', {i: %d, n: Math.random()}, {priority: 'event'})", i),
+          t("Apply")))))
+    shiny::div(class = "pd-overlay", toggle, items)
   })
 
   shiny::observeEvent(input$pd_drop, {

@@ -1,5 +1,18 @@
 # tflplanner 0.0.0.9000
 
+- **Plot Designer: advice and presets** (#19).  The preview now carries
+  tflspec's advice on the design (what is usually wanted and is missing or
+  unusual: a KM figure without the number at risk, a legend inside the
+  panel with many groups, more groups than the palette has colours, text
+  visits with no order, a waterfall without its marks ...) together with
+  the checks, as an overlay on the figure; where one change would do it,
+  *Apply* makes it.  A designed figure can be kept as a company *preset*
+  (*Save as preset*: a `.yml` under the home's `standards/figure-presets`),
+  and a new design can start from a preset instead of a template.
+  `fig_presets()`, `save_fig_preset()`, `read_fig_preset()`,
+  `remove_fig_preset()`; `preview_figure()` gains `advice`.  Needs tflspec
+  0.0.18.
+
 - **Plot Designer** (#15): a figure can be designed instead of written by
   hand, as tflspec's figure design: data steps from ADaM (read, join, keep a
   PARAMCD or an analysis set, derive, change a time's unit, order values,
