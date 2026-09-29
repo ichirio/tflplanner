@@ -97,3 +97,22 @@ test_that("the preview carries the advice, and a fix applies", {
   d2 <- tflspec::tfl_fig_apply_fix(d, r$advice$fix[[which(r$advice$rule == "km_risk")]])
   expect_true("risk_table" %in% vapply(d2$layers, `[[`, "", "layer"))
 })
+
+test_that("a designed figure is copied to other parameters", {
+  home <- withr_tempdir()
+  old <- options(tflplanner.home = home)
+  on.exit(options(old), add = TRUE)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", value = "CHG")
+  p <- set_fig_design(s$planner, "F-14-2-1", d)
+  p$outputs$description[p$outputs$output_id == "F-14-2-1"] <- "Mean change in SYSBP"
+  p2 <- copy_fig_to_params(p, "F-14-2-1", c("DIABP", "PULSE"))
+  expect_true(all(c("F-14-2-1-DIABP", "F-14-2-1-PULSE") %in% p2$outputs$output_id))
+  d2 <- fig_design(p2, "F-14-2-1-DIABP")
+  expect_equal(Filter(function(x) identical(x$step, "param"), d2$data)[[1L]]$value, "DIABP")
+  expect_equal(p2$outputs$description[p2$outputs$output_id == "F-14-2-1-PULSE"], "Mean change in PULSE")
+  # the copies are figures, as the original (copy_output keeps the type)
+  expect_equal(report_info(p2, "F-14-2-1-DIABP")$type, "figure")
+  expect_error(copy_fig_to_params(p, "F-14-2-2", "X"), "no design")
+})

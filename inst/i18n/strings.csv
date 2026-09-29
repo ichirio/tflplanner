@@ -648,3 +648,65 @@ No layer: nothing is drawn.,レイヤーがありません。何も描かれま�
 No dataset is read.,データセットを読んでいません。
 "No analysis set: every row of the dataset is used. Keep the analysis set's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。
 The figure is taller than wide; a landscape page usually wants the reverse.,図が縦長です。横向きのページでは通常、横長にします。
+Nominal time,名目時間
+Counted as response,奏効とする反応
+Duration (days),期間（日）
+"This type is not yet in parts: the design is its whole script, with the type's arguments to edit.",この種類はまだ部品化していません。デザインはスクリプト全体で、種類の引数を編集します。
+Whole figure,図全体
+Copy to other parameters,他のパラメータへ複製
+The design has no 'Keep a parameter' step to change.,このデザインには変更できる「パラメータで絞る」がありません。
+Parameters (one figure each),パラメータ（1 つにつき 1 図）
+"New IDs: {id} = this figure's ID, {param} = the parameter",新しい ID：{id} = この図の ID、{param} = パラメータ
+Each new figure copies this one's layout and design; only its parameter differs.,新しい図は、この図の帳票レイアウトとデザインを複製し、パラメータだけが変わります。
+Made %d figure(s): %s,%d 件の図を作成しました：%s
+Swimmer: bars + ongoing arrows,Swimmer：棒 + 継続中の矢印
+Swimmer: bars by best response + ongoing arrows,Swimmer：最良総合効果で色分け + 継続中の矢印
+Swimmer: bars by best response + response at each assessment,Swimmer：最良総合効果で色分け + 各評価時点の反応
+"Swimmer: bars, assessments, event markers, ongoing arrows",Swimmer：棒・評価・イベントマーク・継続中の矢印
+"Spider: % change in tumour size per subject, by best response",Spider：被験者ごとの腫瘍径変化率（最良総合効果で色分け）
+Response rate by group with 95% CI,群ごとの奏効率と 95% CI
+100% stacked bars of a category by group,群ごとのカテゴリ 100% 積み上げ棒
+"Percent per category, groups side by side",カテゴリごとの割合（群を並べて）
+Spaghetti: one line per subject + group means,Spaghetti：被験者ごとの線 + 群の平均
+Box plots by visit and group + mean marker,来院・群ごとの箱ひげ図 + 平均マーク
+Box plot per group at one visit + points + mean marker,1 来院の群ごとの箱ひげ図 + 点 + 平均マーク
+Box plots of change from baseline by visit + zero line,来院ごとのベースラインからの変化の箱ひげ図 + ゼロ線
+Baseline vs post-baseline at one visit + identity line,ベースライン vs ベースライン後（1 来院）+ 対角線
+Two variables with a linear fit per group,2 変数の散布図と群ごとの回帰直線
+PK: mean +/- SD concentration by nominal time,PK：名目時間ごとの平均 ± SD 濃度
+"PK: mean +/- SD concentration, log axis",PK：平均 ± SD 濃度（対数軸）
+"PK: individual profiles, log axis, one panel per group",PK：個別推移（対数軸、群ごとのパネル）
+Summary by group,群ごとの要約
+Rate with 95% CI,率と 95% CI
+Counts and percents,件数と割合
+Another dataset (as an object),別のデータセット（オブジェクトとして）
+Lower bound only above 0,下限は 0 より大きい場合のみ
+For a log axis: lo is left blank where it would be <= 0.,対数軸用：lo が 0 以下になる場合は空にします。
+"n, mean, SD, SE and an interval of a value by group only (one row a group): a mean marker per box ...",群ごとだけの n、平均、SD、SE と区間（1 群 1 行）：箱ごとの平均マークなど。
+"Responders / n by group with the exact binomial interval: rate, lcl, ucl (%), and a label 'rate (x/n)'.",群ごとの奏効数 / n と正確二項信頼区間：rate、lcl、ucl（%）と「率 (x/n)」のラベル。
+"n and % of each category within each group: n, pct, and a label 'pct%'.",群内のカテゴリごとの n と %：n、pct と「pct%」のラベル。
+"Rows of another dataset (or of `df`), by name, for layers that draw them: the assessments of a swimmer plot, the ongoing subjects ...",別のデータセット（または `df`）の行を名前付きで保持し、レイヤーが描けるようにします：Swimmer の評価時点、継続中の被験者など。
+"Categories, in order",カテゴリ（順に）
+| between them; others follow,| で区切る。他は後ろに続く
+or df,または df
+Variables taken from df,df から取る変数
+"Joined by the key: the y position of its subject, a colour ...",キーで結合：被験者の y 位置、色など。
+Key,キー
+Log X axis,X 軸を対数に
+Log Y axis,Y 軸を対数に
+Equal X and Y scales,X と Y を同じ尺度に
+"The same range on both axes, e.g. baseline vs post-baseline; needs X and Y min / max.",両軸を同じ範囲にします（ベースライン vs ベースライン後など）。X と Y の最小・最大が必要です。
+One panel per,パネル分け
+A variable: one panel for each of its values.,変数：その値ごとに 1 パネル。
+Position (R),位置（R）
+stack / fill / position_dodge(width = 0.75); empty = as is,stack / fill / position_dodge(width = 0.75)。空欄 = そのまま
+e.g. position_dodge(width = 0.8),例：position_dodge(width = 0.8)
+"e.g. position_stack(vjust = 0.5), position_dodge(width = 0.75)",例：position_stack(vjust = 0.5)、position_dodge(width = 0.75)
+Outline colour,枠線の色
+Vertical adjust,縦位置の調整
+e.g. -0.3 = just above,例：-0.3 = すぐ上
+Arrow (R),矢印（R）
+"e.g. arrow(length = unit(2, 'mm'))","例：arrow(length = unit(2, 'mm'))"
+Drop missing silently,欠測を黙って除く
+"For dodging without a colour, e.g. a mean marker per group",色分けなしでずらすため（群ごとの平均マークなど）
+Other,その他

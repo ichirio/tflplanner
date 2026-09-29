@@ -192,9 +192,10 @@
           bslib::layout_columns(
             col_widths = c(6, 6),
             shiny::div(
-              shiny::selectInput("pd_tpl", t("Template"),
-                                 c(stats::setNames(templates$template, t(templates$label)),
-                                   stats::setNames("", t("Empty design")))),
+              shiny::selectInput("pd_tpl", t("Template"), width = "100%",
+                                 c(split(stats::setNames(templates$template, t(templates$label)),
+                                         factor(templates$kind, levels = unique(templates$kind))),
+                                   stats::setNames(list(stats::setNames("", t("Empty design"))), t("Other")))),
               shiny::selectizeInput("pd_tpl_data", t("Dataset"), c("", ds),
                                     options = list(placeholder = t("the template's default")))),
             shiny::uiOutput("pd_tpl_more"))),
@@ -214,6 +215,7 @@
           class = "d-flex justify-content-between align-items-center",
           shiny::span(t("Design")),
           shiny::div(
+            .btn("pd_batch", t("Copy to other parameters"), class = "btn-sm btn-outline-secondary"),
             .btn("pd_preset_save", t("Save as preset"), class = "btn-sm btn-outline-secondary"),
             .btn("pd_drop", t("Remove the design"), class = "btn-sm btn-outline-danger")))),
         shiny::uiOutput("pd_stack"),
@@ -257,14 +259,26 @@
     prm <- if (!is.null(x) && "PARAMCD" %in% names(x)) sort(unique(x$PARAMCD))
     sz <- function(id, lab, ch) shiny::selectizeInput(id, lab, c("", ch),
       options = list(placeholder = t("the template's default"), create = TRUE))
+    whole <- !templates$parts[templates$template == tp]
     shiny::tagList(
-      sz("pd_tpl_param", t("Parameter (PARAMCD)"), prm),
+      if (kind != "swimmer") sz("pd_tpl_param", t("Parameter (PARAMCD)"), prm),
       sz("pd_tpl_pop", t("Analysis set flag"), grep("FL$", vars, value = TRUE)),
-      if (!identical(tp, "km_single_arm") && kind != "waterfall")
+      if (!tp %in% c("km_single_arm", "individual_spider") && !kind %in% c("waterfall", "swimmer"))
         sz("pd_tpl_group", t("Group (treatment)"), grep("^TRT|ARM", vars, value = TRUE)),
-      if (kind == "km") shiny::selectInput("pd_tpl_unit", t("Time unit"),
-                                           c("months", "weeks", "days", "years")),
-      if (kind == "mean") sz("pd_tpl_value", t("Value"), intersect(c("AVAL", "CHG", "PCHG"), vars)))
+      if (kind %in% c("km", "swimmer") || tp == "individual_spider")
+        shiny::selectInput("pd_tpl_unit", t("Time unit"), c("months", "weeks", "days", "years")),
+      if (kind %in% c("mean", "box", "individual", "pk") && !whole)
+        sz("pd_tpl_value", t("Value"), intersect(c("AVAL", "CHG", "PCHG"), vars)),
+      if (kind == "scatter") sz("pd_tpl_x", t("X"), vars),
+      if (kind == "scatter") sz("pd_tpl_y", t("Y"), vars),
+      if (kind == "pk") sz("pd_tpl_time", t("Nominal time"), vars),
+      if (kind == "bar") sz("pd_tpl_category", t("Category"), vars),
+      if (tp == "bar_rate_ci") shiny::textInput("pd_tpl_responders", t("Counted as response"), "CR, PR"),
+      if (kind == "swimmer") sz("pd_tpl_duration", t("Duration (days)"), vars),
+      if (tp %in% c("box_by_group", "scatter_shift")) sz("pd_tpl_at_visit", t("At visit"),
+        if (!is.null(x) && "AVISIT" %in% names(x)) unique(x$AVISIT)),
+      if (whole) shiny::p(class = "small text-muted",
+        t("This type is not yet in parts: the design is its whole script, with the type's arguments to edit.")))
   })
 
   shiny::observeEvent(input$pd_start, {
@@ -288,14 +302,54 @@
         !is.null(x) && !all(c(grp, pop) %in% names(x))
       }
       args <- list(tp, data = ds, param = nz(input$pd_tpl_param), pop = pop,
-                   group = grp, join_adsl = if (isTRUE(join)) TRUE)
-      kind <- templates$kind[templates$template == tp]
-      if (kind == "km") args$time_unit <- input$pd_tpl_unit %||% "months"
-      if (kind == "mean" && !is.null(nz(input$pd_tpl_value))) args$value <- input$pd_tpl_value
+                   group = grp, join_adsl = if (isTRUE(join)) TRUE,
+                   value = nz(input$pd_tpl_value), x = nz(input$pd_tpl_x), y = nz(input$pd_tpl_y),
+                   time = nz(input$pd_tpl_time), category = nz(input$pd_tpl_category),
+                   responders = nz(input$pd_tpl_responders), duration = nz(input$pd_tpl_duration),
+                   at_visit = nz(input$pd_tpl_at_visit))
+      if (!is.null(nz(input$pd_tpl_unit))) args$time_unit <- input$pd_tpl_unit
       guarded(do.call(tflspec::tfl_fig_template, args[!vapply(args, is.null, logical(1))]))
     }
     if (is.null(d)) return()
     set_design(d)
+  })
+
+  # the same figure for other parameters: one new figure report each, its
+  # design this one with the parameter changed
+  shiny::observeEvent(input$pd_batch, {
+    d <- design()
+    id <- current()
+    shiny::req(d, id)
+    ps <- Filter(function(x) identical(x$step, "param"), d$data)
+    if (!length(ps)) {
+      notify(t("The design has no 'Keep a parameter' step to change."), "warning")
+      return()
+    }
+    params <- design_params(d)
+    now <- unlist(strsplit(paste(ps[[1L]]$value, collapse = ","), "\\s*[|,]\\s*"))
+    shiny::showModal(shiny::modalDialog(
+      title = t("Copy to other parameters"),
+      shiny::selectizeInput("pd_batch_params", t("Parameters (one figure each)"),
+                            setdiff(params, now), multiple = TRUE, width = "100%",
+                            options = list(create = TRUE)),
+      shiny::textInput("pd_batch_id", t("New IDs: {id} = this figure's ID, {param} = the parameter"),
+                       paste0(id, "-{param}"), width = "100%"),
+      shiny::p(class = "small text-muted",
+               t("Each new figure copies this one's layout and design; only its parameter differs.")),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("pd_batch_ok", t("Copy"), class = "btn-primary"))))
+  })
+  shiny::observeEvent(input$pd_batch_ok, {
+    id <- current()
+    prms <- input$pd_batch_params
+    shiny::req(design(), id, length(prms))
+    shiny::removeModal()
+    p <- guarded(copy_fig_to_params(rv$p, id, prms, input$pd_batch_id))
+    if (is.null(p)) return()
+    rv$p <- p
+    rv$ver <- rv$ver + 1L
+    made <- setdiff(p$outputs$output_id, rv$saved$outputs$output_id)
+    notify(sprintf(t("Made %d figure(s): %s"), length(prms), paste(utils::tail(p$outputs$output_id, length(prms)), collapse = ", ")))
   })
 
   shiny::observeEvent(input$pd_preset_save, {
@@ -490,11 +544,22 @@
     pn <- piece_now(d, s)
     shiny::req(pn)
     f <- parts[parts$piece == pn$kind, , drop = FALSE]
+    # a whole-script layer: the type's own arguments, from its schema
+    fig_args <- NULL
+    if (identical(pn$kind, "figure")) {
+      sc <- tflspec::tfl_fig_schema(pn$p$type)
+      fig_args <- data.frame(
+        field = sc$arg, kind = sc$kind, label = sc$label, default = sc$default,
+        choices = sc$choices, help = sc$help, required = FALSE, of = sc$of,
+        stringsAsFactors = FALSE)
+      f <- f[f$field == "type", , drop = FALSE]
+    }
     pd$n <- pd$n + 1L
     pd_drawn(pd$n)
     pd$id <- shiny::isolate(current())
     pd$sel <- s
     pd$fields <- f
+    pd$fig_args <- fig_args
     vars <- shiny::isolate(design_vars(d))
     params <- shiny::isolate(design_params(d))
     objects <- c("df", unlist(lapply(d$stats, function(x) x$name %||%
@@ -540,6 +605,31 @@
       else el
     }
     head <- if (pn$kind == "plot") t("Figure settings") else t(f$piece_label[1L])
+    if (!is.null(fig_args)) {
+      # the arguments' values are pn$p$args; the style has its own choices
+      a <- pn$p$args %||% list()
+      one_arg <- function(r) {
+        v <- a[[r$field]]
+        if (r$field == "style") v <- pn$p$style
+        id <- pd_id(paste0("arg_", r$field))
+        lab <- shiny::tags$span(title = r$help, t(r$label),
+          if (!is.na(r$default)) shiny::tags$small(class = "text-muted", paste0(" (", t("default"), ": ", r$default, ")")))
+        ch <- if (!is.na(r$choices)) strsplit(r$choices, " | ", fixed = TRUE)[[1L]]
+        switch(r$kind,
+          choice = shiny::selectizeInput(id, lab, c("", ch), selected = v %||% "", width = "100%",
+                                         options = list(placeholder = r$default %||% "")),
+          number = shiny::numericInput(id, lab, value = if (is.null(v)) NA else as.numeric(v), width = "100%"),
+          logical = shiny::checkboxInput(id, lab, value = isTRUE(as.logical(v %||% r$default))),
+          shiny::selectizeInput(id, lab, unique(c("", if (r$kind %in% c("variable", "variables", "flag")) vars,
+                                                   if (r$kind == "param") params, if (r$kind == "dataset") cat_ds, v)),
+                                selected = v %||% "", multiple = r$kind %in% c("variables", "param"),
+                                width = "100%", options = list(placeholder = r$default %||% "", create = TRUE)))
+      }
+      return(shiny::tagList(
+        shiny::h6(paste0(t("Whole figure"), ": ", pn$p$type)),
+        shiny::p(class = "small text-muted", t(f$piece_help[1L])),
+        lapply(seq_len(nrow(fig_args)), function(i) one_arg(fig_args[i, ]))))
+    }
     shiny::tagList(
       shiny::h6(head),
       if (nzchar(f$piece_help[1L] %||% "")) shiny::p(class = "small text-muted", t(f$piece_help[1L])),
@@ -554,6 +644,21 @@
     shiny::req(!is.null(f), nrow(f))
     out <- list()
     seen <- FALSE
+    if (!is.null(pd$fig_args)) {
+      fa <- pd$fig_args
+      args <- list()
+      style <- NULL
+      for (i in seq_len(nrow(fa))) {
+        v <- input[[pd_id(paste0("arg_", fa$field[i]))]]
+        if (is.null(v)) next
+        seen <- TRUE
+        val <- .pd_value(if (fa$kind[i] %in% c("variables", "param")) "variables" else fa$kind[i], v)
+        if (fa$field[i] == "style") style <- val else args[fa$field[i]] <- list(val)
+      }
+      shiny::req(seen)
+      return(list(sel = pd$sel, fields = list(style = style, args = args[!vapply(args, is.null, logical(1))]),
+                  whole = TRUE))
+    }
     for (i in seq_len(nrow(f))) {
       v <- input[[pd_id(f$field[i])]]
       if (is.null(v)) next
@@ -573,6 +678,7 @@
     if (is.null(old)) return()
     new <- old
     for (k in names(v$fields)) new[k] <- list(v$fields[[k]])
+    if (isTRUE(v$whole) && !length(new$args)) new$args <- NULL
     new <- new[!vapply(new, is.null, logical(1))]
     if (s$sec == "plot") d$plot <- new else d[[s$sec]][[s$i]] <- new
     if (identical(.fig_norm(unclass(d)), .fig_norm(unclass(design())))) return()
@@ -599,6 +705,8 @@
   }
   design_d <- shiny::debounce(design, 700)
   shiny::observeEvent(design_d(), draw(), ignoreNULL = FALSE)
+  # another figure chosen: its own drawing, even when its design reads the same
+  shiny::observeEvent(fig_id(), draw(), ignoreInit = TRUE)
   shiny::observeEvent(input$pd_redraw, draw())
 
   output$pd_img <- shiny::renderImage({

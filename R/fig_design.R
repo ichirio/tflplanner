@@ -221,6 +221,40 @@ preview_figure <- function(study, output_id,
        error = err, code = code)
 }
 
+#' The same figure for other parameters
+#'
+#' Copies a designed figure once per parameter: each copy is a new figure
+#' report ([copy_output()]: layout and design) whose design keeps every
+#' piece but the parameter (its `param` step), and whose description says
+#' the new parameter where it said the old one.
+#'
+#' @param x An `tflplanner`.
+#' @param output_id The designed figure.
+#' @param params The PARAMCDs, one figure each.
+#' @param pattern The new IDs: `{id}` = `output_id`, `{param}` = the
+#'   parameter.
+#' @return `x` with the new figures.
+#' @export
+copy_fig_to_params <- function(x, output_id, params, pattern = "{id}-{param}") {
+  d <- fig_design(x, output_id)
+  if (is.null(d)) stop("The figure has no design.", call. = FALSE)
+  at <- which(vapply(d$data, function(s) identical(s$step, "param"), logical(1)))
+  if (!length(at)) stop("The design has no 'Keep a parameter' step to change.", call. = FALSE)
+  old <- trimws(strsplit(paste(d$data[[at[1L]]]$value, collapse = ","), "[|,]")[[1L]])[1L]
+  for (prm in params) {
+    new_id <- gsub("{param}", prm, gsub("{id}", output_id, pattern, fixed = TRUE), fixed = TRUE)
+    x <- copy_output(x, output_id, new_id)
+    d2 <- d
+    for (i in at) d2$data[[i]]$value <- prm
+    x <- set_fig_design(x, new_id, d2)
+    o <- x$outputs$output_id == new_id
+    if (!is.na(old) && nzchar(old) && any(o) && !is.na(x$outputs$description[o])) {
+      x$outputs$description[o] <- gsub(old, prm, x$outputs$description[o], fixed = TRUE)
+    }
+  }
+  x
+}
+
 # ---- presets: designs kept with the company standards ----------------------
 
 .fig_preset_dir <- function(home = tflplanner_home()) {
