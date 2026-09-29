@@ -1,13 +1,15 @@
 # Figure designs: the Plot Designer's figures.
 #
-# A figure can be designed instead of written by hand: its type (km,
-# waterfall, forest ...), its style and the arguments of tflspec's
-# tfl_fig_<type>() -- which dataset and PARAMCD, which variables, the axes,
-# the legend, the size.  The design is kept with the study (its state) and
-# written as spec/figures/<output_id>.yml, one file a figure, to read and to
-# diff.  The figure's program then has the design's code as its plot part,
-# in place of hand-written code; what a design can be is tflspec's
-# tfl_fig_schema().
+# A figure can be designed instead of written by hand, as tflspec's figure
+# design: the data steps from ADaM (read, join, keep a PARAMCD or an
+# analysis set, derive ... or code), the statistics (a KM fit, summary
+# statistics ... or code), the figure-wide settings and the layers, in
+# order.  A template fills them at once; each is then edited on its own.
+# The design is kept with the study (its state) and written as
+# spec/figures/<output_id>.yml, one file a figure, to read and to diff.  The
+# figure's program then has the design's code as its plot part, in place of
+# hand-written code; the pieces a design can have are tflspec's
+# tfl_fig_parts().
 
 .fig_design_dir <- "figures"
 
@@ -15,9 +17,9 @@
 #'
 #' `fig_design()` gives a figure's design, `NULL` when it has none (its plot
 #' is written by hand); `set_fig_design()` sets it, or with `NULL` drops it.
-#' A design is tflspec's [tflspec::tfl_fig_design()]: the figure type, its
-#' style and the arguments of its `tfl_fig_<type>()`.  With a design, the
-#' figure's program makes its plot from it ([program_code()]).
+#' A design is tflspec's [tflspec::tfl_fig_design()] (see also
+#' [tflspec::tfl_fig_template()]).  With a design, the figure's program
+#' makes its plot from it ([program_code()]).
 #'
 #' @param x An `tflplanner`.
 #' @param output_id The figure.
@@ -28,7 +30,8 @@
 fig_design <- function(x, output_id) {
   d <- (x$fig_designs %||% list())[[output_id]]
   if (is.null(d)) return(NULL)
-  tflspec::tfl_fig_design(d$type, d$style, d$args %||% list())
+  tflspec::tfl_fig_design(d$data %||% list(), d$stats %||% list(),
+                          d$plot %||% list(), d$layers %||% list(), d$template)
 }
 
 #' @rdname fig_design
@@ -38,18 +41,25 @@ set_fig_design <- function(x, output_id, design) {
   if (is.null(design)) {
     x$fig_designs[[output_id]] <- NULL
   } else {
-    d <- unclass(design)
-    d$args <- .fig_args_norm(d$args)
-    x$fig_designs[[output_id]] <- d
+    x$fig_designs[[output_id]] <- .fig_norm(unclass(design))
   }
   x
 }
 
-# the arguments as kept: none unset, numbers as doubles (7, read back from
-# JSON or YAML as an integer, is the same 7)
-.fig_args_norm <- function(args) {
-  args <- args[!vapply(args, is.null, logical(1))]
-  lapply(args, function(v) if (is.integer(v)) as.numeric(v) else v)
+# a design as kept: nothing unset, numbers as doubles, lists of single
+# values as vectors -- the same, whether made here or read back from JSON
+# or YAML
+.fig_norm <- function(x) {
+  if (is.list(x)) {
+    x <- x[!vapply(x, function(v) is.null(v) || (is.atomic(v) && length(v) == 1L &&
+                                                 (is.na(v) || identical(v, ""))), logical(1))]
+    x <- lapply(x, .fig_norm)
+    if (!is.null(names(x)) || !length(x)) return(x)
+    scalar <- vapply(x, function(v) is.atomic(v) && length(v) == 1L, logical(1))
+    if (all(scalar)) return(unlist(x))
+    return(x)
+  }
+  if (is.integer(x)) as.numeric(x) else x
 }
 
 # the datasets a design's script reads (its "Input data frames" line)
@@ -64,12 +74,8 @@ set_fig_design <- function(x, output_id, design) {
 
 # the design's script, whole (it saves its PNG to `fig_path`)
 .fig_design_script <- function(design, output_id) {
-  args <- design$args
-  args$plot_id <- output_id
-  d <- tflspec::tfl_fig_design(design$type, design$style, args)
-  unlist(strsplit(as.character(tflspec::tfl_fig_design_code(d)), "
-",
-                  fixed = TRUE))
+  unlist(strsplit(as.character(tflspec::tfl_fig_design_code(design, output_id)),
+                  "\n", fixed = TRUE))
 }
 
 # the design's plot part of the figure's program: the script up to its
@@ -82,7 +88,8 @@ set_fig_design <- function(x, output_id, design) {
     code <- code[-length(code)]
   }
   c(paste0("# the plot, from the figure's design (spec/", .fig_design_dir, "/",
-           output_id, ".yml): ", design$type, " / ", design$style),
+           output_id, ".yml)", if (!is.null(design$template))
+             paste0(", made from the template ", design$template)),
     "#      edit the design in the Plot Designer, not this code", code,
     "plot <- fig")
 }
@@ -122,17 +129,7 @@ set_fig_design <- function(x, output_id, design) {
 # the designs from the study's state (JSON), as fig_designs
 .fig_designs_from_state <- function(x) {
   if (!length(x)) return(list())
-  flat <- function(v) {
-    if (is.list(v) && !is.null(names(v)) && all(nzchar(names(v)))) {
-      unlist(lapply(v, function(e) if (is.null(e)) NA else e))
-    } else if (is.list(v)) {
-      unlist(lapply(v, function(e) if (is.null(e)) NA else e))
-    } else v
-  }
-  lapply(x, function(d) list(type = as.character(d$type),
-                             style = as.character(d$style),
-                             args = .fig_args_norm(lapply(d$args %||% list(),
-                                                          flat))))
+  lapply(x, .fig_norm)
 }
 
 # the study's data a design reads, read as its programs read it

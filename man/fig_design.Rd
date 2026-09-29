@@ -23,7 +23,7 @@ set_fig_design(x, output_id, design)
 \description{
 \code{fig_design()} gives a figure's design, \code{NULL} when it has none (its plot
 is written by hand); \code{set_fig_design()} sets it, or with \code{NULL} drops it.
-A design is tflspec's \code{\link[tflspec:tfl_fig_design]{tflspec::tfl_fig_design()}}: the figure type, its
-style and the arguments of its \verb{tfl_fig_<type>()}.  With a design, the
-figure's program makes its plot from it (\code{\link[=program_code]{program_code()}}).
+A design is tflspec's \code{\link[tflspec:tfl_fig_design]{tflspec::tfl_fig_design()}} (see also
+\code{\link[tflspec:tfl_fig_templates]{tflspec::tfl_fig_template()}}).  With a design, the figure's program
+makes its plot from it (\code{\link[=program_code]{program_code()}}).
 }

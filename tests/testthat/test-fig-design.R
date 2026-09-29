@@ -5,9 +5,9 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(create_sample_study(run = FALSE))
   expect_null(fig_design(s$planner, "F-14-2-1"))
-  d <- tflspec::tfl_fig_design("mean", "ci", list(
-    data = "ADVS", param = "SYSBP", value = "CHG", width = 7L,
-    title = "SBP: mean change"))
+  d <- tflspec::tfl_fig_template("mean_ci", data = "ADVS", param = "SYSBP",
+                                  value = "CHG", title = "SBP: mean change")
+  d$plot$width <- 7L
   s$planner <- set_fig_design(s$planner, "F-14-2-1", d)
 
   # the program's plot is the design's code, reading what it needs
@@ -21,17 +21,16 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   s <- save_study(s)
   f <- file.path(s$path, "spec", "figures", "F-14-2-1.yml")
   expect_true(file.exists(f))
-  expect_equal(tflspec::tfl_read_fig_design(f)$args$title, "SBP: mean change")
+  expect_equal(tflspec::tfl_read_fig_design(f)$plot$title, "SBP: mean change")
   s2 <- open_study("SAMPLE-01")
-  expect_identical(fig_design(s2$planner, "F-14-2-1")$args,
-                   fig_design(s$planner, "F-14-2-1")$args)
+  expect_identical(s2$planner$fig_designs, s$planner$fig_designs)
 
   # a copy of the figure has it too; a renamed one takes it along
   p <- copy_output(s2$planner, "F-14-2-1", "F-14-2-9")
-  expect_equal(fig_design(p, "F-14-2-9")$type, "mean")
+  expect_equal(fig_design(p, "F-14-2-9")$template, "mean_ci")
   p <- rename_output(p, "F-14-2-9", "F-14-2-8")
   expect_null(fig_design(p, "F-14-2-9"))
-  expect_equal(fig_design(p, "F-14-2-8")$style, "ci")
+  expect_equal(fig_design(p, "F-14-2-8")$template, "mean_ci")
   p <- remove_output(p, "F-14-2-8")
   expect_null(fig_design(p, "F-14-2-8"))
 
@@ -48,16 +47,17 @@ test_that("a design is drawn on the study's data, as its program saves it", {
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(create_sample_study(run = FALSE))
-  d <- tflspec::tfl_fig_design("mean", "se", list(
-    data = "ADVS", param = "SYSBP", value = "CHG"))
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP",
+                                  value = "CHG")
   r <- preview_figure(s, "F-14-2-1", d)
   expect_null(r$error)
   expect_true(file.exists(r$png))
   expect_equal(nrow(r$problems), 0L)
   expect_equal(r$size$dpi, 300)
   # the design against the data
-  bad <- tflspec::tfl_fig_design("mean", "se", list(
-    data = "ADVS", param = "NOPE", value = "NOVAR"))
+  bad <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "NOPE",
+                                    value = "NOVAR")
   r <- preview_figure(s, "F-14-2-1", bad)
-  expect_setequal(r$problems$arg, c("param", "value"))
+  expect_true(any(grepl("no PARAMCD NOPE", r$problems$problem)))
+  expect_true(any(grepl("NOVAR", r$problems$problem)))
 })

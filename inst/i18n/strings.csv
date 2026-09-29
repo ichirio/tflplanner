@@ -449,3 +449,173 @@ Time label,時点ラベル
 Stage,段階
 By,層別（パネル）
 Show advanced settings,詳細設定も表示
+Read a dataset,データセットを読む
+Join variables,変数を結合
+Keep a parameter,パラメータで絞る
+Keep an analysis set,解析対象集団で絞る
+Keep rows (condition),条件で絞る
+Derive a variable,変数を作る
+Change a time's unit,時間の単位を変える
+Order a variable's values,値の並び順
+Rank rows,順位を付ける
+R code,R コード
+Kaplan-Meier fit,Kaplan-Meier 推定
+Summary statistics,要約統計量
+KM curves,KM 曲線
+KM confidence bands,KM 信頼帯
+Censor marks,打ち切りマーク
+Reference line labels,参照線のラベル
+Number at risk (panel),リスク集合数（下段）
+n by visit (panel),来院ごとの n（下段）
+Any ggplot2 layer,任意の ggplot2 レイヤー
+Whole figure (type),図全体（種類）
+Lines,線
+Points,点
+Error bars,エラーバー
+Point and range,点と範囲
+Bars,棒
+Text,テキスト
+Text in boxes,枠付きテキスト
+Steps,階段
+Area,面
+Ribbon,帯
+Segments,線分
+Tiles,タイル
+Box plots,箱ひげ図
+Violins,バイオリン
+Histogram,ヒストグラム
+Density,密度
+Jittered points,散らした点
+Smoothed line,平滑線
+Horizontal lines,水平線
+Vertical lines,垂直線
+Diagonal line,斜線
+Text that avoids overlaps,重ならないテキスト
+Figure,図
+Its rows (R),その行（R）
+PARAMCD,PARAMCD
+Variable,変数
+Flag,フラグ
+Value (R),値（R）
+Time variable,時間の変数
+Unit,単位
+Order by,並べる基準
+"Values, in order",値（順に）
+Their labels,そのラベル
+Sort by,並べ替え
+Descending,降順
+New variable,新しい変数
+Name,名前
+Group,群
+Confidence interval,信頼区間
+"Interval (lo, hi)","区間（lo, hi）"
+Fit,推定結果
+Line width,線の太さ
+Transparency,透明度
+Shape,形
+Size,大きさ
+Stroke,線の太さ（マーク）
+At y,y の位置
+Text size,文字の大きさ
+Height (share),高さ（割合）
+X,X
+Function,関数
+Aesthetics,エステティクス（aes）
+Settings (R),設定（R）
+Arguments,引数
+Y,Y
+Colour by,色分け
+Line type by,線種分け
+Dodge,ずらす
+Lower,下限
+Upper,上限
+Fill by,塗り分け
+X end,X 終点
+Y end,Y 終点
+Outlier shape,外れ値の形
+Bins,階級数
+Method,方法
+Band,帯を描く
+Line type,線種
+Colour,色
+At x,x の位置
+Intercept,切片
+Slope,傾き
+X label,X 軸ラベル
+Y label,Y 軸ラベル
+X min,X 最小
+X axis text,X 軸の目盛り文字
+Colours by,色を割り当てる変数
+Dodge width,ずらし幅
+Base font size,基本フォントサイズ
+The dataset the figure starts from: `df`.,図の出発点になるデータセット（`df`）。
+"Variables of another dataset (e.g. ADSL's treatment, ADRS's best response), one row a subject.",別のデータセットの変数（ADSL の投与群、ADRS の最良総合効果など）を、被験者ごとに結合します。
+The rows of one (or more) PARAMCD.,指定した PARAMCD の行だけにします。
+"The rows whose flag is ""Y"" (FASFL, SAFFL, ANL01FL ...).","フラグが ""Y"" の行だけにします（FASFL、SAFFL、ANL01FL など）。"
+"Any condition, in R.",任意の条件を R で書きます。
+"A new (or changed) variable, in R.",新しい変数（または変更）を R で書きます。
+"A time in days, shown in weeks, months or years.",日単位の時間を、週・月・年で表示します。
+"The order of groups or visits on the axis and in the legend: by another variable (AVISIT by AVISITN), or listed.",軸と凡例での群や来院の並び順：別の変数で（AVISIT を AVISITN で）、または列挙して。
+"A row number after sorting, e.g. the bars of a waterfall.",並べ替えた後の行番号（Waterfall の棒など）。
+What no step does: code that changes `df` (the datasets are there by their lower-case names).,ステップでできない加工：`df` を変えるコード（データセットは小文字名で使えます）。
+"survfit2(Surv(time, censor == 0) ~ group).","survfit2(Surv(時間, 打ち切り == 0) ~ 群)。"
+"n, mean, SD, SE and an interval (lo, hi) of a value, by group and visit.","群・来院ごとの n、平均、SD、SE と区間（lo, hi）。"
+"Code that computes what the layers draw, from `df`.",レイヤーが描くものを `df` から計算するコード。
+The Kaplan-Meier curves (ggsurvfit); the first layer.,Kaplan-Meier 曲線（ggsurvfit）。最初のレイヤーです。
+The curves' confidence intervals.,曲線の信頼区間。
+A mark where a subject is censored.,打ち切りの位置に付けるマーク。
+"Labels right of the panel at reference lines, e.g. 20% and -30%.",参照線の右外に付けるラベル（20%、-30% など）。
+"The number at risk below the curves, at the x axis's breaks.",曲線の下に、X 軸の目盛りごとのリスク集合数。
+"The n of each group at each x, below the plot.",図の下に、各 x での群ごとの n。
+"Any geom or stat by name, with its aesthetics and settings.",任意の geom / stat を名前で指定し、aes と設定を与えます。
+Code that adds to the plot `p` (e.g. p <- p + annotate(...)).,図 `p` に追加するコード（例：p <- p + annotate(...)）。
+A figure type not yet in parts: its script as tfl_fig_<type>() writes it; the other parts are then unused.,まだ部品化していない図の種類：tfl_fig_<type>() のスクリプトをそのまま使います（他の部品は使われません）。
+Lines through the points of each group.,群ごとに点を結ぶ線。
+"From ymin to ymax, e.g. the summary's lo and hi.",ymin から ymax まで（要約統計量の lo、hi など）。
+A point with its interval.,点とその区間。
+Bars of height y.,高さ y の棒。
+A band from ymin to ymax.,ymin から ymax までの帯。
+"Lines from (x, y) to (xend, yend), e.g. the bars of a swimmer plot.","(x, y) から (xend, yend) への線分（Swimmer プロットの棒など）。"
+A heat map.,ヒートマップ。
+A fitted line and its band.,当てはめた線とその帯。
+"Reference lines, e.g. y = 0.5 (median), 0, or 20 and -30.",参照線（y = 0.5（中央値）、0、20 と -30 など）。
+Labels pushed apart (ggrepel).,重ならないように離したラベル（ggrepel）。
+The figure-wide settings.,図全体の設定。
+"e.g. PARAMCD == ""BOR""","例：PARAMCD == ""BOR"""
+"NAME = VAR renames, e.g. BOR = AVALC.",新名 = 変数 で改名（例：BOR = AVALC）。
+e.g. AVISITN > 0 & !is.na(AVAL),例：AVISITN > 0 & !is.na(AVAL)
+e.g. AVAL / 7,例：AVAL / 7
+e.g. AVISITN,例：AVISITN
+| between them,| で区切る
+Empty = one curve,空欄 = 曲線 1 本
+"Several: 20, -30","複数：20, -30"
+"{y} = the value, e.g. {y}%",{y} = その値（例：{y}%）
+"e.g. geom_area, stat_ecdf, ggrepel::geom_text_repel",例：geom_area、stat_ecdf、ggrepel::geom_text_repel
+x = AVAL | y = CHG | colour = TRT01A,x = AVAL | y = CHG | colour = TRT01A
+alpha = 0.3 | size = 2,alpha = 0.3 | size = 2
+Empty = the colour,空欄 = 色分けと同じ
+"Several: 1, 2","複数：1, 2"
+"The variable the palette's colours go to (groups, responses).",パレットの色を割り当てる変数（群、効果など）。
+KM curves + number at risk,KM 曲線 + リスク集合数
+KM curves + confidence bands + number at risk,KM 曲線 + 信頼帯 + リスク集合数
+One KM curve + number at risk,KM 曲線 1 本 + リスク集合数
+Mean +/- SE by visit,来院ごとの平均 ± SE
+Mean +/- SD by visit,来院ごとの平均 ± SD
+Mean (95% CI) by visit,来院ごとの平均（95% CI）
+Mean +/- SE by visit + n,来院ごとの平均 ± SE + n
+"Waterfall, bars by best response",Waterfall（最良総合効果で色分け）
+Waterfall,Waterfall
+Data steps,データ加工
+Figure settings,図全体の設定
+Layers,レイヤー
+"This figure's plot is written by hand (its data code, Reports tab). Start a design from a template: its data steps, statistics, settings and layers are filled at once, then each can be changed.",この図のプロットは手書きのコードです（帳票タブのデータコード）。テンプレートからデザインを開始すると、データ加工・統計量・設定・レイヤーが一括で入り、その後 1 つずつ変更できます。
+Choose a piece on the left to change it on the right; the figure is redrawn as its program will save it. Empty = the default (shown grey).,左で項目を選び、右で変更します。プログラムが保存するのと同じ図が再描画されます。空欄 = デフォルト（灰色で表示）。
+Template,テンプレート
+Empty design,空のデザイン
+the template's default,テンプレートのデフォルト
+Edit,編集
+Up,上へ
+Down,下へ
+"Title, axes, colours, legend, size",タイトル・軸・色・凡例・サイズ
+(none),（なし）
+Figure title,図のタイトル

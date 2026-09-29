@@ -74,6 +74,8 @@ reference:
       - report_info
       - lf_rows
       - preview_listing
+      - fig_design
+      - preview_figure
   - title: Input assistance and the table builder
     contents:
       - fetch_ard

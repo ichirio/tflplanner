@@ -1,18 +1,23 @@
 # tflplanner 0.0.0.9000
 
 - **Plot Designer** (#15): a figure can be designed instead of written by
-  hand.  A design is the figure type (km, waterfall, forest, mean, box ...,
-  the 15 of tflspec), its style and the arguments of tflspec's
-  `tfl_fig_<type>()`; the figure's program then takes its plot from the
-  design.  The new *Plot Designer* tab shows the design by section (data,
-  mapping, style, axes, legend, output; basic settings first, the advanced
-  ones on request), each with its default and, for variables and
-  PARAMCDs, the study data's values to pick; the figure as its program
-  saves it (the PNG, at its size), redrawn as the design changes; the
-  checks (the design against the data, the figure checks); the code and
-  the design as YAML.  Designs are saved with the study and written as
-  `spec/figures/<output_id>.yml`; `fig_design()`, `set_fig_design()` and
-  `preview_figure()` do the same from R.  Needs tflspec 0.0.12.
+  hand, as tflspec's figure design: data steps from ADaM (read, join, keep a
+  PARAMCD or an analysis set, derive, change a time's unit, order values,
+  rank, or R code), statistics (a KM fit, summary statistics, or R code),
+  the figure-wide settings and the layers in order (KM curves and marks,
+  the number at risk, any layer of tflspec's geom catalog, any function by
+  name, or R code).  The new *Plot Designer* tab starts a design from a
+  template (KM with the number at risk, mean over time, waterfall ...)
+  filled in for the study's data; the pieces are then a stack on the left
+  (add, move, remove; a piece with a problem is marked), the chosen piece
+  is a form on the right (defaults shown; the data's datasets, variables
+  and PARAMCDs to pick from), and the middle shows the figure as its
+  program saves it (the PNG, at its size), redrawn as it changes, with the
+  checks.  The code and the design (YAML) are below.  Designs are saved
+  with the study and written as `spec/figures/<output_id>.yml`; the
+  figure's program takes its plot from the design.  `fig_design()`,
+  `set_fig_design()` and `preview_figure()` do the same from R.  Needs
+  tflspec 0.0.15.
 
 - The listing sheets of `listing_figure_spec.xlsx` (`listings`,
   `listing_cols`) are tflspec's listing definition: their columns, reading
