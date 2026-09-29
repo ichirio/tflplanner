@@ -751,7 +751,7 @@
     d <- design()
     s <- sel()
     shiny::req(id, d)
-    code <- tryCatch(.fig_design_script(d, id), error = function(e) return(conditionMessage(e)))
+    code <- tryCatch(.fig_design_script(d, id), error = function(e) conditionMessage(e))
     if (length(code) == 1L && !grepl("\n", code)) return(code)
     .piece_code(code, d, s)
   })
