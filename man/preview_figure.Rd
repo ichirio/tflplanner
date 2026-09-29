@@ -15,7 +15,8 @@ preview_figure(study, output_id, design = fig_design(study$planner, output_id))
 }
 \value{
 A list: \code{png} (the file, \code{NULL} when it failed), \code{size} (its
-\code{width}, \code{height}, \code{units} and \code{dpi}), \code{problems} (the
+\code{width}, \code{height}, \code{units} and \code{dpi}), \code{advice} (what is usually
+wanted and missing, see \code{\link[tflspec:tfl_fig_advice]{tflspec::tfl_fig_advice()}}), \code{problems} (the
 design against the schema and the data, see
 \code{\link[tflspec:tfl_fig_design]{tflspec::tfl_check_fig_design()}}), \code{warnings} (the figure checks and
 the plot's own warnings), \code{error} (\code{NULL} or the message), \code{code}.

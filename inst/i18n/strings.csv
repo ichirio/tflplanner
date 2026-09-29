@@ -619,3 +619,32 @@ Down,下へ
 "Title, axes, colours, legend, size",タイトル・軸・色・凡例・サイズ
 (none),（なし）
 Figure title,図のタイトル
+From a template,テンプレートから
+From a company preset,会社のプリセットから
+Preset,プリセット
+"A preset is a design kept with the company standards (Save as preset, on a designed figure). It is copied as it is; change its dataset and parameter after.",プリセットは会社標準として保存したデザインです（設計済みの図で「プリセットとして保存」）。そのままコピーされるので、データセットやパラメータは後で変更してください。
+Save as preset,プリセットとして保存
+"Kept with the company standards (standards/figure-presets), for every study of this home.",会社標準（standards/figure-presets）に保存され、このホームの全試験で使えます。
+Preset saved: %s,プリセットを保存しました：%s
+Hide,閉じる
+Advice,アドバイス
+Apply,適用
+info,参考
+warning,注意
+A KM figure usually shows the number at risk below the curves.,KM 図では通常、曲線の下にリスク集合数を表示します。
+KM curves usually mark where subjects are censored.,KM 曲線では通常、打ち切りの位置にマークを付けます。
+"Set X max and X step, so the breaks (and the number at risk's columns) fall on round times.",X 最大と X 間隔を設定すると、目盛り（とリスク集合数の列）がきりのよい時点に揃います。
+The time is in days; a KM axis is usually in months (or weeks).,時間が日単位です。KM 図の軸は通常、月（または週）にします。
+"%d groups, but the palette has %d colours: some groups get none.",群が %d ありますが、パレットの色は %d 色です。色が付かない群が出ます。
+The palette has no colour for %s (drawn grey).,パレットに %s の色がありません（灰色で描かれます）。
+%d groups: a legend inside the panel may cover the data; below is usual.,群が %d あります。パネル内の凡例はデータに重なることがあるので、通常は下に置きます。
+"%d groups are coloured, but there is no legend.",%d 群を色分けしていますが、凡例がありません。
+"Layers colour by %s, but the figure's 'Colours by' is empty: the palette is not applied.",レイヤーは %s で色分けしていますが、図全体の「色を割り当てる変数」が空です。パレットが適用されません。
+A mean-over-time figure usually shows the n of each group at each visit below it.,平均推移の図では通常、来院ごとの各群の n を下に表示します。
+%s is text: without an order its visits sort alphabetically. Order it by its number.,%s は文字列です。並び順を決めないと来院がアルファベット順になります。番号で並べてください。
+A waterfall usually marks +20% (progression) and -30% (response).,Waterfall では通常、+20%（進行）と -30%（奏効）の線を引きます。
+The bars' numbers on the x axis say nothing; they are usually hidden.,X 軸の棒の番号は意味がないので、通常は非表示にします。
+No layer: nothing is drawn.,レイヤーがありません。何も描かれません。
+No dataset is read.,データセットを読んでいません。
+"No analysis set: every row of the dataset is used. Keep the analysis set's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。
+The figure is taller than wide; a landscape page usually wants the reverse.,図が縦長です。横向きのページでは通常、横長にします。

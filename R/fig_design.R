@@ -161,7 +161,8 @@ set_fig_design <- function(x, output_id, design) {
 #' @param output_id The figure.
 #' @param design The design (default: the figure's).
 #' @return A list: `png` (the file, `NULL` when it failed), `size` (its
-#'   `width`, `height`, `units` and `dpi`), `problems` (the
+#'   `width`, `height`, `units` and `dpi`), `advice` (what is usually
+#'   wanted and missing, see [tflspec::tfl_fig_advice()]), `problems` (the
 #'   design against the schema and the data, see
 #'   [tflspec::tfl_check_fig_design()]), `warnings` (the figure checks and
 #'   the plot's own warnings), `error` (`NULL` or the message), `code`.
@@ -170,8 +171,10 @@ preview_figure <- function(study, output_id,
                            design = fig_design(study$planner, output_id)) {
   if (is.null(design)) stop("The figure has no design.", call. = FALSE)
   ds <- .fig_design_datasets(design)
-  data <- .study_data(study, ds)
+  # ADSL too: the advice counts the groups, which may be joined from it
+  data <- .study_data(study, union(ds, "ADSL"))
   problems <- tflspec::tfl_check_fig_design(design, data)
+  advice <- tryCatch(tflspec::tfl_fig_advice(design, data), error = function(e) NULL)
   code <- .fig_design_script(design, output_id)
   tmp <- tempfile("tflplanner-fig-")
   dir.create(tmp)
@@ -214,6 +217,80 @@ preview_figure <- function(study, output_id,
     list(width = e$fig_width, height = e$fig_height, units = e$fig_units,
          dpi = e$fig_dpi)
   }
-  list(png = png, size = size, problems = problems, warnings = warns,
+  list(png = png, size = size, problems = problems, advice = advice, warnings = warns,
        error = err, code = code)
+}
+
+# ---- presets: designs kept with the company standards ----------------------
+
+.fig_preset_dir <- function(home = tflplanner_home()) {
+  file.path(home, "standards", "figure-presets")
+}
+
+#' Figure presets
+#'
+#' A preset is a figure design kept with the company standards, to start a
+#' figure from as a template is: a KM figure as the company draws it, the
+#' mean-over-time figure of a study type ...  `fig_presets()` lists them;
+#' `save_fig_preset()` keeps a design as one (a `.yml` in the home's
+#' `standards/figure-presets`); `read_fig_preset()` gives it back;
+#' `remove_fig_preset()` drops it.
+#'
+#' @param design A `tfl_fig_design`.
+#' @param name The preset's name (its file's).
+#' @param description A line on what it is.
+#' @param home tflplanner's home.
+#' @return `fig_presets()`: a data frame (`name`, `description`, `template`,
+#'   `file`); `read_fig_preset()`: a `tfl_fig_design`; the others: the
+#'   file, invisibly.
+#' @export
+fig_presets <- function(home = tflplanner_home()) {
+  dir <- .fig_preset_dir(home)
+  files <- if (dir.exists(dir)) list.files(dir, "\\.yml$", full.names = TRUE) else character()
+  rows <- lapply(files, function(f) {
+    x <- tryCatch(yaml::read_yaml(f), error = function(e) NULL)
+    if (is.null(x)) return(NULL)
+    data.frame(name = x$name %||% tools::file_path_sans_ext(basename(f)),
+               description = x$description %||% "", template = x$template %||% "",
+               file = f, stringsAsFactors = FALSE)
+  })
+  out <- do.call(rbind, c(rows, list(data.frame(
+    name = character(), description = character(), template = character(),
+    file = character(), stringsAsFactors = FALSE))))
+  rownames(out) <- NULL
+  out
+}
+
+#' @rdname fig_presets
+#' @export
+save_fig_preset <- function(design, name, description = "",
+                            home = tflplanner_home()) {
+  name <- trimws(name)
+  if (!nzchar(name) || grepl("[\\\\/:*?\"<>|]", name)) {
+    stop("A preset's name is its file's: letters, digits, spaces, - and _.",
+         call. = FALSE)
+  }
+  dir <- .fig_preset_dir(home)
+  dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+  f <- file.path(dir, paste0(name, ".yml"))
+  x <- c(list(name = name, description = description), .fig_norm(unclass(design)))
+  x <- x[!vapply(x, function(v) is.null(v) || !length(v), logical(1))]
+  writeLines(enc2utf8(yaml::as.yaml(x)), f, useBytes = TRUE)
+  invisible(f)
+}
+
+#' @rdname fig_presets
+#' @export
+read_fig_preset <- function(name, home = tflplanner_home()) {
+  f <- file.path(.fig_preset_dir(home), paste0(name, ".yml"))
+  if (!file.exists(f)) stop("No preset '", name, "'.", call. = FALSE)
+  tflspec::tfl_read_fig_design(f)
+}
+
+#' @rdname fig_presets
+#' @export
+remove_fig_preset <- function(name, home = tflplanner_home()) {
+  f <- file.path(.fig_preset_dir(home), paste0(name, ".yml"))
+  if (file.exists(f)) unlink(f)
+  invisible(f)
 }
