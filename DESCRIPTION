@@ -58,8 +58,8 @@ Suggests:
     survival,
     testthat (>= 3.0.0)
 Remotes:
-    ichirio/rtfreporter,
-    ichirio/tflspec
+    ichirio/rtfreporter@feat/491-plan-engine,
+    ichirio/tflspec@feat/e4-spec-only
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
