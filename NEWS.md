@@ -1,4 +1,9 @@
-# tflplanner 0.0.0.9000
+# tflplanner 0.0.1
+
+- **First release.**  The last version before plan E (the table engine
+  moving from tflspec to rtfreporter), where to go back to if plan E is
+  undone.  It runs on tflspec 0.0.23 (`Remotes:` pins that tag) and
+  rtfreporter 0.8.1 or later.
 
 - **The table engine is rtfreporter's** (plan E, ichirio/tflspec
   Discussion #23): tflspec 0.0.23 keeps the specifications only, and the
