@@ -4,7 +4,12 @@
 \alias{preview_figure}
 \title{Draw a figure from its design}
 \usage{
-preview_figure(study, output_id, design = fig_design(study$planner, output_id))
+preview_figure(
+  study,
+  output_id,
+  design = fig_design(study$planner, output_id),
+  max_px = NULL
+)
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
@@ -12,6 +17,9 @@ preview_figure(study, output_id, design = fig_design(study$planner, output_id))
 \item{output_id}{The figure.}
 
 \item{design}{The design (default: the figure's).}
+
+\item{max_px}{For the screen: at most this many pixels wide (the PNG is
+drawn at a lower dpi, same size); \code{NULL} draws it as saved.}
 }
 \value{
 A list: \code{png} (the file, \code{NULL} when it failed), \code{size} (its

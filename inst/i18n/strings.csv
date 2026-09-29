@@ -726,3 +726,6 @@ Written by hand,手書きの図
 "This figure's plot is its data code (Reports tab), written with ggplot2: it leaves `plot`. Its program reads these datasets first.",この図のプロットは帳票タブのデータコード（ggplot2 で書き、`plot` を残す）です。プログラムは先にこれらのデータセットを読みます。
 This tab designs figures: choose a Figure report in the sidebar.,このタブは図を設計します。サイドバーで図の帳票を選んでください。
 "This figure's plot is written by hand (its data code, Reports tab). To design it here instead, start a design from a template: its data steps, statistics, settings and layers are filled at once, then each can be changed.",この図のプロットは手書きのコードです（帳票タブのデータコード）。ここで設計するには、テンプレートからデザインを開始してください。データ加工・統計量・設定・レイヤーが一括で入り、その後 1 つずつ変更できます。
+Redraw on change,変更したら再描画
+The design has changed since this drawing: press Redraw.,この図のあとでデザインを変更しました。「再描画」を押してください。
+"Saved as %s x %s %s, %s dpi (shown at screen resolution)",保存：%s x %s %s、%s dpi（画面用の解像度で表示）

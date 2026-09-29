@@ -30,8 +30,13 @@
 fig_design <- function(x, output_id) {
   d <- (x$fig_designs %||% list())[[output_id]]
   if (is.null(d)) return(NULL)
-  tflspec::tfl_fig_design(d$data %||% list(), d$stats %||% list(),
-                          d$plot %||% list(), d$layers %||% list(), d$template)
+  # every part the design has that this tflspec takes (composed figures,
+  # the ggplot2 version ... are kept, not dropped)
+  args <- c(list(data = d$data %||% list(), stats = d$stats %||% list(),
+                 plot = d$plot %||% list(), layers = d$layers %||% list()),
+            d[setdiff(names(d), c("data", "stats", "plot", "layers"))])
+  args <- args[names(args) %in% names(formals(tflspec::tfl_fig_design))]
+  do.call(tflspec::tfl_fig_design, args)
 }
 
 #' @rdname fig_design
@@ -163,6 +168,8 @@ set_fig_design <- function(x, output_id, design) {
 #' @param study An `rtfstudy`.
 #' @param output_id The figure.
 #' @param design The design (default: the figure's).
+#' @param max_px For the screen: at most this many pixels wide (the PNG is
+#'   drawn at a lower dpi, same size); `NULL` draws it as saved.
 #' @return A list: `png` (the file, `NULL` when it failed), `size` (its
 #'   `width`, `height`, `units` and `dpi`), `advice` (what is usually
 #'   wanted and missing, see [tflspec::tfl_fig_advice()]), `problems` (the
@@ -171,14 +178,27 @@ set_fig_design <- function(x, output_id, design) {
 #'   the plot's own warnings), `error` (`NULL` or the message), `code`.
 #' @export
 preview_figure <- function(study, output_id,
-                           design = fig_design(study$planner, output_id)) {
+                           design = fig_design(study$planner, output_id),
+                           max_px = NULL) {
   if (is.null(design)) stop("The figure has no design.", call. = FALSE)
-  ds <- .fig_design_datasets(design)
+  saved <- design
+  # a preview for the screen: the saved size, fewer dots (much faster);
+  # the size reported is still the saved one
+  if (!is.null(max_px)) {
+    w <- as.numeric(design$plot$width %||% 7.5)
+    u <- design$plot$units %||% "in"
+    inches <- switch(u, cm = w / 2.54, px = w / 300, w)
+    dpi <- as.numeric(design$plot$dpi %||% 300)
+    if (inches * dpi > max_px) design$plot$dpi <- max(72, floor(max_px / inches))
+  }
+  code <- .fig_design_script(design, output_id)
+  l <- grep("^# Input data frames:", code, value = TRUE)
+  ds <- if (length(l)) toupper(trimws(strsplit(sub("^# Input data frames:", "", l[1L]), ",")[[1L]])) else character()
+  ds <- ds[nzchar(ds)]
   # ADSL too: the advice counts the groups, which may be joined from it
   data <- .study_data(study, union(ds, "ADSL"))
-  problems <- tflspec::tfl_check_fig_design(design, data)
-  advice <- tryCatch(tflspec::tfl_fig_advice(design, data), error = function(e) NULL)
-  code <- .fig_design_script(design, output_id)
+  problems <- tflspec::tfl_check_fig_design(saved, data)
+  advice <- tryCatch(tflspec::tfl_fig_advice(saved, data), error = function(e) NULL)
   tmp <- tempfile("tflplanner-fig-")
   dir.create(tmp)
   owd <- setwd(tmp)
@@ -218,7 +238,7 @@ preview_figure <- function(study, output_id,
   warns <- unique(warns[!grepl("was built under R version", warns)])
   size <- if (!is.null(e$fig_width)) {
     list(width = e$fig_width, height = e$fig_height, units = e$fig_units,
-         dpi = e$fig_dpi)
+         dpi = as.numeric(saved$plot$dpi %||% 300))
   }
   list(png = png, size = size, problems = problems, advice = advice, warnings = warns,
        error = err, code = code)
