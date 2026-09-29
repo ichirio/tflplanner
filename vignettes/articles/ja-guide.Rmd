@@ -22,7 +22,7 @@ tflplanner は、臨床試験の TFL（Tables, Listings, Figures）を
 ```
 ARD   :  Web GUI（ARD 定義） ⇒ （Excel：任意） ⇒ ARD 作成プログラム ⇒ 試験 ARD
 帳票  :  試験 ARD から output_id で取得 ⇒ normalize ⇒ 加工 ⇒ 表の定義 ⇒ RTF
-Listing / Figure : SDTM / ADaM ⇒ 帳票プログラム ⇒ RTF
+Listing / 図 : SDTM / ADaM ⇒ 帳票プログラム ⇒ RTF
 正式実行 : autoexec_*.R ⇒ runs/<日時>_<内容>/（ログ・結果・コード）
 ```
 
@@ -135,7 +135,8 @@ ARD と帳票まで作成します（正式実行を 1 回行い、1 分ほど�
 | ARD タブ | `analyses` / `datasets` / `populations`：表 5 本分の ARD の定義。Code パネルに生成される ARD プログラム |
 | 帳票タブ | 帳票の一覧、表の「normalize と加工」（T-14-2-2、T-14-3-1）、図のプロットのコード |
 | 表の定義・帳票の体裁タブ | 表の定義（列・行・セル・列見出し）とページ・ヘッダー・タイトル・脚注 |
-| Listing / Figure タブ | Listing の列定義、図が読むデータセット |
+| Listing タブ | Listing の行の定義と列 |
+| 図タブ | 図のデザイン（テンプレート・部品・プレビュー）、手書きの図が読むデータセット |
 | 試験フォルダの `spec/` | 上の定義の Excel：`table_spec.xlsx`、`report_spec.xlsx`、`listing_figure_spec.xlsx`、`ard_spec.xlsx`（ARD 定義を書き出した参照用。正はアプリ側） |
 | 試験フォルダの `programs/` と `runs/` | 生成されたプログラムと、正式実行のバッチフォルダ（ログ・結果・コード） |
 
@@ -170,7 +171,7 @@ ABC-101/
 
 **データ** タブで ADaM / SDTM のファイルを取り込み、ARD タブの `datasets` シートで
 データカタログ（データセット名・区分・パス）を定義します。
-Listing / Figure もこのカタログからデータを読みます。
+Listing と図もこのカタログからデータを読みます。
 
 ## 4. ARD を作る
 
@@ -231,7 +232,7 @@ data <- ard_normalize(ard)
 
 ## 6. Listing を作る
 
-Listing / Figure タブで、Listing の帳票に次を指定します。
+Listing タブで、Listing の帳票に次を指定します。
 
 - 種類（`multiline`）、データセット（SDTM / ADaM のカタログから）、条件、並び順（`-` で降順）、1 ページの行数
 - 列：重ねる変数（`|` 区切り）、見出し（`\n` で改行）、幅、同じ値を 1 回だけ表示するか
