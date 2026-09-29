@@ -16,7 +16,10 @@
 
 devtools::load_all(quiet = TRUE)
 source("data-raw/dev-home.R")   # the development home, never a user's
-suppressPackageStartupMessages(library(rtfreporter))
+suppressPackageStartupMessages({
+  library(rtfreporter)
+  library(tflspec)
+})
 library(pharmaverseadam)
 
 id <- "ICHIRIO-002"
@@ -392,7 +395,7 @@ if (nrow(mid)) {
 # 3. does each output's part normalize?
 norm <- vapply(unique(a$output_id), function(o) {
   r <- tryCatch({
-    d <- suppressMessages(tfl_ard_normalize(tfl_ard_for(ard, o)))
+    d <- suppressMessages(normalize_ard(tfl_ard_for(ard, o)))
     sprintf("ok (%d rows)", nrow(d))
   }, error = function(e) paste("fails:", conditionMessage(e)))
   r

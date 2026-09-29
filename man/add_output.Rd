@@ -36,9 +36,9 @@ listing or figure: its \code{content}); \code{NA} writes a TODO.}
 \code{"table"} is written on the \code{report} sheet.}
 
 \item{process_code}{R code that turns \code{ard} into \code{data}, what
-\code{\link[tflspec:tfl_plan]{tflspec::tfl_plan()}} is given: \code{\link[tflspec:tfl_ard_normalize]{tflspec::tfl_ard_normalize()}}
+\code{\link[rtfreporter:table_plan]{rtfreporter::table_plan()}} is given: \code{\link[rtfreporter:normalize_ard]{rtfreporter::normalize_ard()}}
 and any rework after it (\code{mutate()} ...).  \code{NA} means
-\code{data <- tfl_ard_normalize(ard)}, unless \code{data_code} makes \code{data} itself.}
+\code{data <- normalize_ard(ard)}, unless \code{data_code} makes \code{data} itself.}
 }
 \value{
 The updated \code{tflplanner}.

@@ -99,6 +99,9 @@ test_that("a table without data code starts from the company's template", {
   code <- data_lines(p, "T1")
   expect_true(any(grepl('ard$output_id == "T1"', code, fixed = TRUE)))
   expect_true(any(grepl("acme_rework(data)", code, fixed = TRUE)))
+  # a template saved with the former name is read with the new one
+  expect_true(any(grepl("data <- normalize_ard(ard)", code, fixed = TRUE)))
+  expect_false(any(grepl("tfl_ard_normalize", code, fixed = TRUE)))
   st <- create_study("NEW-2")
   expect_equal(st$planner$setup, "library(acme)  # NEW-2")
   suppressMessages(setup_tflplanner(standards = "builtin"))

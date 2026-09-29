@@ -10,8 +10,8 @@ test_that("a table program writes out its plan and report, saves its ARD and par
   # the definition written out, not read at run time
   expect_false(any(grepl("tfl_read_report_spec", code, fixed = TRUE)))
   expect_false(any(grepl("spec = spec", code, fixed = TRUE)))
-  expect_true(any(startsWith(code, "plan <- tfl_plan(")))
-  expect_true(any(grepl("tfl_plan_", code, fixed = TRUE)))
+  expect_true(any(startsWith(code, "plan <- table_plan(")))
+  expect_true(any(startsWith(trimws(code), "plan_digits(")))
   expect_true(any(startsWith(code, "doc <- rtf_document(")))
   expect_true(any(startsWith(code, "doc <- rtf_tables(doc, plan")))
   expect_true('generate_rtfreport(doc, "output/PK.rtf", overwrite = TRUE)' %in% code)
@@ -19,7 +19,7 @@ test_that("a table program writes out its plan and report, saves its ARD and par
   expect_true(any(grepl("saveRDS(data", code, fixed = TRUE)))
   # no data code: the company template takes its rows of the study ARD
   expect_true(any(grepl('ard$output_id == "PK"', code, fixed = TRUE)))
-  expect_true(any(grepl("data <- tfl_ard_normalize(ard)", code, fixed = TRUE)))
+  expect_true(any(grepl("data <- normalize_ard(ard)", code, fixed = TRUE)))
   expect_silent(parse(text = code))
   expect_equal(report_info(p, "PK")$file, "output/PK.rtf")
   expect_silent(parse(text = autoexec_code(p)))
@@ -45,7 +45,7 @@ test_that("listings and figures make `content` and skip the table plan", {
     expect_silent(parse(text = code))
     expect_true(any(code %in% c("doc <- rtf_tables(doc, content)",
                                 "doc <- rtf_figures(doc, content)")))
-    expect_false(any(grepl("tfl_plan(", code, fixed = TRUE)))
+    expect_false(any(grepl("table_plan(", code, fixed = TRUE)))
   }
   expect_error(add_output(p, "X", type = "chart"))
 })

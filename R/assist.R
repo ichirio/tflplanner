@@ -8,7 +8,7 @@
 # the report's normalization and rework, since that is what the table is
 # built from.  The rest fills sheets from it and offers it as choices.
 
-# the columns tfl_ard_normalize() adds or keeps that are not keys
+# the columns normalize_ard() adds or keeps that are not keys
 .ard_fixed <- c("variable", "variable_level", "context", "stat_name",
                 "stat_label", "stat", "stat_fmt", "fmt_fun", "warning",
                 "error")
@@ -31,7 +31,7 @@
 #' Reads the keys (the column and hierarchy variables) with their levels,
 #' the analysis variables with their kind, levels, statistics and labels,
 #' and the contexts and statistic names, from a normalized ARD (`data`,
-#' what [tflspec::tfl_plan()] is given) or, failing that, from the raw
+#' what [rtfreporter::table_plan()] is given) or, failing that, from the raw
 #' cards ARD.
 #'
 #' @param ard A cards ARD, or `NULL`.
@@ -52,7 +52,7 @@ ard_meta <- function(ard = NULL, data = NULL) {
               columns = character())
   d <- data
   if (is.null(d) && is.data.frame(ard)) {
-    d <- tryCatch(tflspec::tfl_ard_normalize(ard), error = function(e) NULL)
+    d <- tryCatch(rtfreporter::normalize_ard(ard), error = function(e) NULL)
   }
   labels <- .ard_labels(ard)
   if (is.data.frame(d) && "variable" %in% names(d)) {
@@ -203,7 +203,7 @@ fetch_ard <- function(study, output_id, timeout = 300,
   writeLines(enc2utf8(c(if (!is.na(p$setup)) .code_block(p$setup),
                         .code_block(ard_code))), f_ard, useBytes = TRUE)
   proc <- if (!is.na(o$process_code)) .code_block(o$process_code) else
-    if (!.makes_data(ard_code)) "data <- tfl_ard_normalize(ard)" else ""
+    if (!.makes_data(ard_code)) "data <- normalize_ard(ard)" else ""
   writeLines(enc2utf8(proc), f_proc, useBytes = TRUE)
   q <- function(x) encodeString(normalizePath(x, "/", FALSE), quote = "\"")
   script <- c(

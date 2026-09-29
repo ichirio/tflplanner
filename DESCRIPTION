@@ -1,7 +1,7 @@
 Package: tflplanner
 Type: Package
 Title: A 'shiny' Study Manager for Clinical TFLs Made with 'rtfreporter'
-Version: 0.0.1
+Version: 0.0.1.9000
 Authors@R:
     person(given  = "Yoichi",
            family = "Masui",
@@ -31,8 +31,8 @@ Imports:
     processx,
     readxl,
     rhandsontable,
-    rtfreporter (>= 0.8.0.9085),
-    tflspec (>= 0.0.20),
+    rtfreporter (>= 0.8.1.9001),
+    tflspec (>= 0.0.23.9000),
     shiny,
     sortable,
     bslib,
@@ -59,7 +59,7 @@ Suggests:
     testthat (>= 3.0.0)
 Remotes:
     ichirio/rtfreporter,
-    ichirio/tflspec@v0.0.23
+    ichirio/tflspec
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3

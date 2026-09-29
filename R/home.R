@@ -223,7 +223,7 @@ studies_root <- function(home = tflplanner_home()) {
       p$ard[[s]] <- .normalize_ard_sheet(.df_from(ps$ard[[s]], p$ard[[s]]), s)
     }
   }
-  p
+  .renamed_outputs(p)
 }
 
 .read_state <- function(id, home = tflplanner_home()) {

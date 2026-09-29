@@ -26,7 +26,7 @@ depends on the report's \code{type}:
 \item \code{table} -- the data part leaves \code{data}, the normalized ARD; the program
 saves it to \verb{output/ard/<output_id>.rds} (the deliverable data) and
 plans the table as \code{table_spec.xlsx} defines it, written out as
-\verb{tfl_plan() |> tfl_plan_*()} (\code{\link[tflspec:tfl_table_code]{tflspec::tfl_table_code()}}).
+\verb{table_plan() |> plan_*()} (\code{\link[tflspec:tfl_table_code]{tflspec::tfl_table_code()}}).
 \item \code{listing}, \code{figure} -- the data part leaves \code{content}: \code{rtftable}
 pages for a listing, the figures for a figure.
 }

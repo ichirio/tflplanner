@@ -6,7 +6,7 @@ sample_paths <- function() {
 test_that("the sample reads, writes and reads back unchanged", {
   p <- read_planner(sample_paths())
   expect_equal(p$outputs$output_id, c("DM", "AE", "ORR", "LB", "PK"))
-  p$outputs$data_code[1] <- "data <- tfl_ard_normalize(ard)\n# two lines"
+  p$outputs$data_code[1] <- "data <- normalize_ard(ard)\n# two lines"
   p$outputs$description[2] <- "有害事象"
   p$setup <- "library(cards)"
 
@@ -18,6 +18,27 @@ test_that("the sample reads, writes and reads back unchanged", {
   expect_identical(q$study, p$study)
   expect_identical(q$outputs, p$outputs)
   expect_identical(q$setup, p$setup)
+})
+
+test_that("code saved with tflspec's former engine names is read with rtfreporter's", {
+  expect_equal(
+    .renamed_calls(c("data <- tfl_ard_normalize(ard)",
+                     "d <- tflspec::tfl_ard_normalize(a, hierarchy = h)",
+                     "my_tfl_ard_normalize(x)", NA)),
+    c("data <- normalize_ard(ard)",
+      "d <- rtfreporter::normalize_ard(a, hierarchy = h)",
+      "my_tfl_ard_normalize(x)", NA))
+  p <- read_planner(sample_paths())
+  p$outputs$process_code[1] <- "data <- tfl_ard_normalize(ard)"
+  p$setup <- "x <- tflspec::tfl_ard_normalize(y)"
+  q <- read_planner(write_planner(p, withr_tempdir()))
+  expect_equal(q$outputs$process_code[1], "data <- normalize_ard(ard)")
+  expect_equal(q$setup, "x <- rtfreporter::normalize_ard(y)")
+  st <- .planner_from_state(list(planner = list(
+    outputs = list(output_id = "T1", description = NA,
+                   data_code = "data <- tfl_ard_normalize(ard)",
+                   process_code = NA))))
+  expect_equal(st$outputs$data_code, "data <- normalize_ard(ard)")
 })
 
 test_that("each workbook carries its half and tflspec reads each alone", {

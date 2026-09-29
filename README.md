@@ -37,9 +37,9 @@ Official runs   autoexec_*.R  =>  runs/<date>_<time>_<what>/  (logs, results, co
 - English (default) or Japanese.
 
 > **Status: experimental.**  tflplanner is the GUI over
-> [tflspec](https://github.com/ichirio/tflspec) (the Excel specifications,
-> ARD and plan engine) and rtfreporter (the RTF renderer); its screens and
-> functions may change.
+> [tflspec](https://github.com/ichirio/tflspec) (the specifications and the
+> code written from them) and rtfreporter (the ARD and table engine and the
+> RTF renderer); its screens and functions may change.
 
 ## Installation
 

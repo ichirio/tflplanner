@@ -35,11 +35,12 @@ Listing / 図 : SDTM / ADaM ⇒ 帳票プログラム ⇒ RTF
 
 ## 1. インストール
 
-R 4.1 以上が必要です。rtfreporter は開発ブランチのものを使います。
+R 4.1 以上が必要です。
 
 ```{r}
 install.packages("remotes")
-remotes::install_github("ichirio/rtfreporter@feat/474-ard-experimental")
+remotes::install_github("ichirio/rtfreporter")
+remotes::install_github("ichirio/tflspec")
 remotes::install_github("ichirio/tflplanner")
 
 # ARD の作成と正式実行のログに使うパッケージ
