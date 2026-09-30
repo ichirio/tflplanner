@@ -368,12 +368,36 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
       integer()
     stub <- attr(d, "rtf_stub_src")
     val <- function(v) if (is.na(v)) "" else as.character(v)
+    text <- function(x) htmltools::HTML(gsub("\n", "<br>", htmltools::htmlEscape(
+      val(x)), fixed = TRUE))
     head <- lapply(pg$col_header, function(line) {
+      # a line of spanning cells (list(from, to, label)): each over its
+      # columns, the columns no cell covers left empty
+      spans <- is.list(line) && length(line) &&
+        all(vapply(line, function(x) is.list(x) && !is.null(x$from), NA))
+      if (spans) {
+        cells <- list()
+        at <- 1L
+        for (x in line[order(vapply(line, function(x) as.integer(x$from), 1L))]) {
+          from <- as.integer(x$from)
+          to <- as.integer(x$to %||% x$from)
+          while (at < from) {
+            cells <- c(cells, list(htmltools::tags$th(
+              class = if (at == 1L) "rp-pv-stub" else "rp-pv-val")))
+            at <- at + 1L
+          }
+          cells <- c(cells, list(htmltools::tags$th(
+            colspan = to - from + 1L,
+            class = if (from == 1L) "rp-pv-stub" else "rp-pv-val rp-pv-span",
+            text(x$label %||% ""))))
+          at <- to + 1L
+        }
+        return(htmltools::tags$tr(cells))
+      }
       htmltools::tags$tr(lapply(seq_along(line), function(k)
         htmltools::tags$th(
           class = if (k == 1L) "rp-pv-stub" else "rp-pv-val",
-          htmltools::HTML(gsub("\n", "<br>", htmltools::htmlEscape(
-            val(line[k])), fixed = TRUE)))))
+          text(line[[k]]))))
     })
     blank <- htmltools::tags$tr(class = "rp-pv-blank",
                                 htmltools::tags$td(colspan = ncol(d),

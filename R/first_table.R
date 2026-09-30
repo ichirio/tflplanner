@@ -305,6 +305,7 @@ first_listing <- function(x, output_id, path, data, columns, group = NULL,
   cols <- unique(c(group, columns))
   x <- set_lf_rows(x, "listings", id, data.frame(
     type = .std_setting("listing_type", "multiline"), dataset = cd$dataset,
+    max_rows = .std_setting("listing_max_rows", NA_character_),
     sort = if (length(sort)) paste(sort, collapse = " | ") else NA_character_,
     stringsAsFactors = FALSE))
   lab <- vapply(cols, function(v) {

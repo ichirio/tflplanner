@@ -2108,7 +2108,7 @@ app_server <- function(input, output, session, start) {
     st_drawn(st_env$n)
     m <- .std_ard_methods()
     lab <- method_label(m$method, m$label)
-    mch <- stats::setNames(m$method, paste0(lab, "  (", m$method, ")"))
+    mch <- stats::setNames(m$method, lab)
     if (!is.na(r$method) && !r$method %in% m$method) {
       mch <- c(mch, stats::setNames(r$method, r$method))
     }
@@ -2161,7 +2161,9 @@ app_server <- function(input, output, session, start) {
     k <- match(input[[st_id("method")]] %||% "", m$method)
     if (is.na(k) || !nzchar(m$note[k])) return(NULL)
     shiny::p(class = "small text-muted mt-n2 mb-2",
-             method_note(m$method[k], m$note[k]))
+             method_note(m$method[k], m$note[k]),
+             shiny::span(class = "ms-1 text-body-tertiary",
+                         paste0("(method: ", m$method[k], ")")))
   })
   # the groups and the variables, from the data the analysis reads: groups
   # first those that look like treatments; variables of the method's kind
@@ -2582,7 +2584,7 @@ app_server <- function(input, output, session, start) {
     msg <- switch(lf_type(),
       none = t("Choose a Listing report in the sidebar."),
       table = t("This is a Table: its definition and builder are on the Tables tab."),
-      listing = t("A listing in rows: the data (a dataset of the catalog, a condition, an order) and its columns. Its data code (Reports tab), if any, reworks `data` after the condition."),
+      listing = t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Code on the Code tab, if any, changes the data after the condition."),
       figure = t("This is a Figure: it is designed on the Figures tab."))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })

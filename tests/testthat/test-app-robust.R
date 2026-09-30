@@ -386,3 +386,16 @@ test_that("a new session opens the study opened last", {
     expect_null(output$welcome$html)
   })
 })
+
+test_that("a preview's spanning header cells span their columns", {
+  pg <- list(data = data.frame(a = "x", b = "1", c = "2", d = "3"),
+             col_header = list(
+               list(list(from = 1, to = 1, label = "SOC\nPT"),
+                    list(from = 3, to = 4, label = "Active")),
+               c("", "Placebo", "Low", "High")))
+  h <- as.character(preview_html(list(pg)))
+  expect_false(grepl("list(from", h, fixed = TRUE))
+  expect_match(h, 'colspan="2"[^>]*>Active')
+  expect_match(h, "SOC<br>PT")
+  expect_match(h, "Placebo")
+})

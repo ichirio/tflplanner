@@ -39,14 +39,15 @@
                           "2026-09-27")),
     settings = .df(
       key = c("language", "rounding", "subject_id", "ard_output",
-              "listing_type", "max_levels"),
+              "listing_type", "listing_max_rows", "max_levels"),
       value = c("en", "", "USUBJID", "output/ard/ard.rds", "multiline",
-                "30"),
+                "", "30"),
       note = c("the app's language: en or ja",
                "a new study's rounding: r, sas, or blank (rtfreporter's)",
                "the subject key of the ARD definition",
                "where the study ARD goes (relative to the study folder)",
                "the listing type a new listing starts with",
+               "the rows per page a new listing starts with (blank: as many as fit, rtfreporter's)",
                "a key with more levels gets no levels list when filled from the ARD")),
     choices = rbind(
       ch("tables", "stats", c("cells", "rows")),

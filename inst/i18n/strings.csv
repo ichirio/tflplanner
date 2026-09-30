@@ -902,3 +902,4 @@ method-note:wilcox,by の 2 群の Wilcoxon 順位和検定
 method-note:chisq,variables と by のカイ二乗検定
 method-note:fisher,variables と by の Fisher の正確検定
 method-note:custom,code に書いた任意の R コード。data と population が使えます
+"A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Code on the Code tab, if any, changes the data after the condition.",一覧表を定義します：データ（カタログのデータセット・条件・並び順）と列。コードのタブにコードがあれば、条件の後にデータを加工します。
