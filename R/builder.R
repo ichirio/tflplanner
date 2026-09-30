@@ -20,6 +20,9 @@ builder_stats <- function() {
   d[c("key", "row", "template", "digits")]
 }
 
+# the statistics a new table shows for a continuous variable
+.builder_default_stats <- c("n", "mean_sd", "median", "min_max")
+
 # The statistics a template reads: "{mean} ({sd:.2f})" -> mean, sd
 .template_stats <- function(tpl) {
   tok <- regmatches(tpl, gregexpr("\\{[^}:]+", tpl))[[1L]]
@@ -157,7 +160,7 @@ builder_read <- function(x, output_id, meta = NULL) {
   } else if ("median" %in% stats && !is.na(dig("median"))) {
     dig("median") - 1
   } else 0
-  if (!length(stats)) stats <- c("n", "mean_sd", "median", "min_max")
+  if (!length(stats)) stats <- .builder_default_stats
 
   cat_row <- ce[(!is.na(ce$variable) & ce$variable == "categorical") |
                   (is.na(ce$variable) & is.na(ce$row)), , drop = FALSE]

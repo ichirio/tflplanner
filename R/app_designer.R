@@ -891,7 +891,7 @@ t_static <- function(x) x
                                           categorical = "counts")) {
   ok <- vapply(names(cols), function(nm) {
     !grepl("^(STUDYID|USUBJID|SUBJID|SITEID)$|FL$", nm) &&
-      !is.na(.column_kind(cols[[nm]]))
+      !.date_like(nm, cols[[nm]]) && !is.na(.column_kind(cols[[nm]]))
   }, NA)
   nm <- names(cols)[ok]
   ch <- .labelled(nm, cols)
@@ -902,12 +902,26 @@ t_static <- function(x) x
   ch
 }
 
+# A date, a time, or their imputation flag, whatever its type: named so
+# (ADaM / SDTM: ...DTC, ...DT, ...DTM, ...TM, ...DTF, ...TMF, ...DY) or
+# holding ISO 8601 dates as text.
+.date_like <- function(nm, v) {
+  if (inherits(v, c("Date", "POSIXt", "difftime"))) return(TRUE)
+  if (grepl("(DTC|DTM|DT|TM|DTF|TMF)$", nm)) return(TRUE)
+  if (is.character(v)) {
+    x <- utils::head(v[!is.na(v) & nzchar(v)], 20L)
+    if (length(x) && all(grepl("^[0-9]{4}-[0-9]{2}(-[0-9]{2})?", x))) return(TRUE)
+  }
+  FALSE
+}
+
 # Columns a figure can be split by: named like a treatment (TRT..., ARM...),
 # text or a factor, with few values -- not a date or a time (TRTSDT).
 .group_choices <- function(cols, max_levels = 12L) {
   ok <- vapply(names(cols), function(nm) {
     v <- cols[[nm]]
-    grepl("^TRT|ARM", nm) && (is.character(v) || is.factor(v)) &&
+    grepl("^TRT|ARM", nm) && !.date_like(nm, v) &&
+      (is.character(v) || is.factor(v)) &&
       length(unique(stats::na.omit(v))) <= max_levels
   }, NA)
   .labelled(names(cols)[ok], cols)

@@ -1164,10 +1164,12 @@ app_server <- function(input, output, session, start) {
           description = nz(input$ns_description)))))
       out
     } else {
+      # "empty": no reports, but the company's study defaults, analysis
+      # sets and data catalog (create_study() with no planner)
       p <- switch(input$ns_from,
         study = guarded(open_study(input$ns_src)$planner),
-        new_planner())
-      if (is.null(p)) return()
+        NULL)
+      if (identical(input$ns_from, "study") && is.null(p)) return()
       guarded(create_study(
         trimws(input$ns_id),
         title = blank(input$ns_title), compound = blank(input$ns_compound),
@@ -1562,13 +1564,18 @@ app_server <- function(input, output, session, start) {
       return(notify(sprintf(t("%s has no analyses in the ARD definition."), id),
                     "warning"))
     }
-    if (has_an && !ard_ready()) return(invisible(FALSE))
     t0 <- Sys.time()
     ok <- TRUE
     m <- NULL
+    n_an <- sum(rv$p$ard$analyses$output_id %in% id)
     shiny::withProgress(message = sprintf(t("Preview of %s"), id), {
       if (has_an) {
-        shiny::setProgress(0.1, detail = t("running its ARD program"))
+        shiny::setProgress(0.05, detail = t("1/3 saving the study"))
+        ok <- ard_ready()
+      }
+      if (ok && has_an) {
+        shiny::setProgress(0.15, detail = sprintf(
+          t("2/3 making its ARD (%d analyses, in its own R process)"), n_an))
         r <- guarded(update_study_ard(current_study(), id))
         ard_state_ver(ard_state_ver() + 1L)
         rv$status_ver <- rv$status_ver + 1L
@@ -1585,7 +1592,7 @@ app_server <- function(input, output, session, start) {
         }
       }
       if (ok && is_report) {
-        shiny::setProgress(0.6, detail = t("reading it"))
+        shiny::setProgress(0.6, detail = t("3/3 reading it for the builder"))
         m <- guarded(fetch_ard(current_study(), id))
         if (is.null(m)) ok <- FALSE
       }
@@ -2424,6 +2431,23 @@ app_server <- function(input, output, session, start) {
     })
   }
 
+  # A table with no definition yet (made without the first-table form, an
+  # older study, a workbook read in): what the builder shows is written to
+  # the sheets once, so the preview has a table to show.
+  shiny::observeEvent(bform_drawn(), {
+    id <- bform$id
+    tb <- sheet_rows(rv$p, "tables", id)
+    inh <- inherited_rows(rv$p, "tables", id)
+    has_cols <- (nrow(tb) && !is.na(tb$cols[1L])) ||
+      (nrow(inh) && !is.na(inh$cols[1L]))
+    if (has_cols || is.na(bform$st$key)) return()
+    p2 <- guarded(builder_write(rv$p, id, bform$st))
+    if (!is.null(p2)) {
+      rv$p <- p2
+      rv$btouched <- TRUE
+    }
+  }, ignoreInit = TRUE)
+
   # the arms follow the column variable chosen
   shiny::observe(builder_guard({
     bform_drawn()
@@ -2432,9 +2456,13 @@ app_server <- function(input, output, session, start) {
     n <- bform$n
     arms <- if (identical(k, bform$st$key)) bform$st$arms else
       bform$meta$keys[[k]]
+    guess <- identical(k, bform$st$key) && k %in% names(bform$st$auto_levels)
     output[[paste0("b", n, "_arms_ui")]] <- shiny::renderUI(shiny::tagList(
       shiny::tags$label(class = "form-label small",
                         t("Order of the columns (drag)")),
+      if (guess) shiny::div(
+        class = "small text-warning",
+        t("Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.")),
       sortable::rank_list(text = NULL, labels = arms,
                           input_id = paste0("b", n, "_arms"),
                           orientation = "horizontal")))

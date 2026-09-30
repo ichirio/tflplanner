@@ -771,3 +771,7 @@ Group (the columns),群（列）
 Choose the data,データを選んでください
 In the data catalog now: %s,データカタログに入りました: %s
 %s: analyses of no report yet. Add the report on the Reports tab to make its table.,%s: まだ帳票の無い解析です。表を作るには、帳票タブで帳票を追加してください。
+"Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.",この順を確認してください。データに順の手がかり（因子、TRT01AN のような数値の対応列）が無いため、ARD の順になっています。
+1/3 saving the study,1/3 試験を保存しています
+"2/3 making its ARD (%d analyses, in its own R process)",2/3 ARD を作っています（%d 分析、別の R プロセス）
+3/3 reading it for the builder,3/3 ビルダーのために読み取っています

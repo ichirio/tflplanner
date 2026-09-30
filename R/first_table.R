@@ -54,6 +54,20 @@ catalog_add_files <- function(x, files) {
   x
 }
 
+# The groups in the order the data give them: a factor's levels, else the
+# order of its numeric twin (TRT01A by TRT01AN), else none (the ARD's).
+.group_order <- function(data, group) {
+  v <- data[[group]]
+  if (is.factor(v)) return(levels(droplevels(v)))
+  n <- data[[paste0(group, "N")]]
+  if (is.character(v) && is.numeric(n)) {
+    u <- unique(data.frame(v = v, n = n, stringsAsFactors = FALSE))
+    u <- u[!is.na(u$v) & nzchar(u$v), , drop = FALSE]
+    if (!anyDuplicated(u$v)) return(u$v[order(u$n)])
+  }
+  character()
+}
+
 # a column's kind for a summary table: numbers are summarized, the rest
 # counted (dates and times are neither)
 .column_kind <- function(v) {
@@ -132,13 +146,18 @@ first_table <- function(x, output_id, path, data, population, group,
     x <- set_ard_rows(x, "populations", "", po)
   }
 
-  # the report, and one analysis per variable
+  # the report; the subjects per group (the N of the column headers), then
+  # one analysis per variable
   if (!id %in% x$outputs$output_id) {
     x <- add_output(x, id, description = description, type = "table")
   }
-  an <- data.frame(analysis_id = variables, method = unname(kind),
-                   dataset = dsn, population_id = pop, by = group,
-                   variables = variables, stringsAsFactors = FALSE)
+  an <- data.frame(
+    analysis_id = c("BIGN", variables),
+    label = c("Subjects per group", rep(NA, length(variables))),
+    method = c("categorical", unname(kind)),
+    dataset = dsn, population_id = pop,
+    by = c(NA, rep(group, length(variables))),
+    variables = c(group, variables), stringsAsFactors = FALSE)
   x <- set_ard_rows(x, "analyses", id, an)
 
   # the table: the group as columns, one group per variable
@@ -149,9 +168,19 @@ first_table <- function(x, output_id, path, data, population, group,
   tb$rows[1L] <- "group = variable"
   x <- set_sheet_rows(x, "tables", id, tb)
 
-  # the variables: their order, and the data's labels
+  # the variables: the groups' order; the rows' order and the data's labels
   vr <- sheet_rows(x, "variables", id)
   vr$output_id <- NULL
+  arms <- .group_order(data, group)
+  if (length(arms)) {
+    i <- match(group, vr$variable)
+    if (is.na(i)) {
+      vr[nrow(vr) + 1L, ] <- NA
+      i <- nrow(vr)
+      vr$variable[i] <- group
+    }
+    if (is.na(vr$levels[i])) vr$levels[i] <- paste(arms, collapse = " | ")
+  }
   for (k in seq_along(variables)) {
     v <- variables[k]
     i <- match(v, vr$variable)
@@ -165,5 +194,24 @@ first_table <- function(x, output_id, path, data, population, group,
     if (is.na(vr$label[i]) && is.character(lab) && length(lab) == 1L &&
         nzchar(lab)) vr$label[i] <- lab
   }
-  set_sheet_rows(x, "variables", id, vr)
+  x <- set_sheet_rows(x, "variables", id, vr)
+
+  # the cells: the usual statistics of a continuous variable (the builder
+  # changes them), unless the study's defaults state them
+  ce <- sheet_rows(x, "cells", id)
+  ce$output_id <- NULL
+  v_all <- c(ce$variable, inherited_rows(x, "cells", id)$variable)
+  if (any(kind == "continuous") &&
+      !any(!is.na(v_all) & v_all == "continuous")) {
+    bs <- builder_stats()
+    for (k in intersect(.builder_default_stats, bs$key)) {
+      ce[nrow(ce) + 1L, ] <- NA
+      ce$variable[nrow(ce)] <- "continuous"
+      ce$row[nrow(ce)] <- bs$row[bs$key == k]
+      ce$template[nrow(ce)] <- bs$template[bs$key == k]
+      ce$digits[nrow(ce)] <- .stat_digits(k, 0)
+    }
+    x <- set_sheet_rows(x, "cells", id, ce)
+  }
+  x
 }
