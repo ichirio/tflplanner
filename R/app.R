@@ -2382,7 +2382,7 @@ app_server <- function(input, output, session, start) {
     ard_cols[[k]]
   }
   .designer_server(input, output, session, rv, current, t, notify, guarded,
-                   catalog)
+                   catalog, fig_is_new = function() fig_is_new())
   output$lf_note <- shiny::renderUI({
     msg <- switch(lf_type(),
       none = t("Choose a Listing report in the sidebar."),
@@ -2392,10 +2392,31 @@ app_server <- function(input, output, session, start) {
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
   # a hand-written figure (no design): the datasets it reads, and its
-  # program's data part -- on the Figures tab, above the designer
+  # program's data part -- on the Figures tab, above the designer; for a new
+  # figure (no plot code yet), below it, as the advanced way
+  fig_is_new <- function() {
+    id <- current()
+    if (is.null(id)) return(FALSE)
+    o <- rv$p$outputs
+    code <- o$data_code[match(id, o$output_id)]
+    is.na(code) || !nzchar(trimws(code))
+  }
+  output$lf_fig_box_new <- shiny::renderUI({
+    rv$ver
+    shiny::req(identical(lf_type(), "figure"),
+               is.null(fig_design(shiny::isolate(rv$p), current())),
+               fig_is_new())
+    shiny::tags$details(
+      class = "mt-3",
+      shiny::tags$summary(t("Advanced: write the plot by hand (ggplot2)")),
+      fig_hand_box())
+  })
   output$lf_fig_box <- shiny::renderUI({
     rv$ver
-    shiny::req(identical(lf_type(), "figure"))
+    shiny::req(identical(lf_type(), "figure"), !fig_is_new())
+    fig_hand_box()
+  })
+  fig_hand_box <- function() {
     id <- current()
     p <- shiny::isolate(rv$p)
     shiny::req(is.null(fig_design(p, id)))
@@ -2417,7 +2438,7 @@ app_server <- function(input, output, session, start) {
                             width = "100%"),
       shiny::h6(t("The program's data part")),
       shiny::div(class = "rp-code", shiny::verbatimTextOutput("lf_fig_code")))
-  })
+  }
   output$lf_form <- shiny::renderUI({
     rv$ver
     type <- lf_type()
@@ -2451,10 +2472,10 @@ app_server <- function(input, output, session, start) {
                             min = 1, width = "140px")),
       shiny::textInput(lf_id("where"), t("Condition (R)"), value = lv("where"),
                        width = "100%",
-                       placeholder = "AESEV == \"SEVERE\""),
+                       placeholder = paste(t("e.g."), "AESEV == \"SEVERE\"")),
       shiny::textInput(lf_id("sort"), t("Order (| between variables, - for descending)"),
                        value = lv("sort"), width = "100%",
-                       placeholder = "TRTA | USUBJID | ASTDT"))
+                       placeholder = paste(t("e.g."), "TRTA | USUBJID | ASTDT")))
   })
   # the form's values back to the listing / figure rows
   lf_values <- shiny::reactive({
@@ -2525,10 +2546,19 @@ app_server <- function(input, output, session, start) {
     if (!identical(lf_type(), "listing")) {
       return(notify(t("Choose a Listing report"), "warning"))
     }
-    r <- tryCatch(list(pages = preview_listing(current_study(), id)),
-                  error = function(e) list(error = conditionMessage(e)))
-    lf_pv(r)
+    lf_show_preview(id)
   })
+  lf_show_preview <- function(id) {
+    if (!nrow(lf_rows(rv$p, "listing_cols", id))) {
+      return(lf_pv(list(error = t("The listing has no columns yet: add them to the table of columns (below the form), or add the listing again with 'Start the listing from the data'."))))
+    }
+    r <- NULL
+    shiny::withProgress(message = sprintf(t("Preview of %s"), id), {
+      r <- tryCatch(list(pages = preview_listing(current_study(), id)),
+                    error = function(e) list(error = conditionMessage(e)))
+    })
+    lf_pv(r)
+  }
   output$lf_preview_out <- shiny::renderUI({
     r <- lf_pv()
     if (is.null(r)) {
@@ -2632,7 +2662,14 @@ app_server <- function(input, output, session, start) {
           bid("header"), t("Column header"),
           stats::setNames(c("keep", names(header_presets())),
                           c(t("as it is"), names(header_presets()))),
-          selected = "keep", inline = TRUE)),
+          selected = "keep", inline = TRUE),
+        if (!is.na(st$key) && !.has_group_n(shiny::isolate(rv$p), id, st$key))
+          shiny::div(
+            class = "small text-warning d-flex flex-wrap gap-2 align-items-center",
+            shiny::span(sprintf(t("The ARD has no subjects per %s: a header's (N=n) prints NA."),
+                                st$key)),
+            .btn("b_add_n", t("Count them (then Preview)"),
+                 class = "btn-sm btn-outline-primary py-0"))),
       shiny::div(
         class = "rp-b-card",
         shiny::h6(t("Rows: variables in order")),
@@ -2736,6 +2773,16 @@ app_server <- function(input, output, session, start) {
       rv$btouched <- TRUE
     }
   }, ignoreInit = TRUE)
+
+  shiny::observeEvent(input$b_add_n, {
+    id <- bform$id
+    key <- bform$st$key
+    p2 <- guarded(add_group_n(rv$p, id, key))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    bump()
+    do_preview(id)
+  })
 
   # the arms follow the column variable chosen
   shiny::observe(builder_guard({
@@ -3018,6 +3065,14 @@ app_server <- function(input, output, session, start) {
       if (type) shiny::textInput("modal_desc", t("Description"),
                                  width = "100%"),
       if (type) shiny::conditionalPanel(
+        "input.modal_type == 'listing'",
+        shiny::checkboxInput(
+          "modal_first_l",
+          t("Start the listing from the data (writes its columns and shows it)"),
+          value = TRUE, width = "100%"),
+        shiny::conditionalPanel("input.modal_first_l",
+                                shiny::uiOutput("modal_first_l_ui"))),
+      if (type) shiny::conditionalPanel(
         "input.modal_type == 'table'",
         shiny::checkboxInput(
           "modal_first",
@@ -3049,9 +3104,68 @@ app_server <- function(input, output, session, start) {
     if (identical(input$modal_type, "table") && isTRUE(input$modal_first)) {
       return(start_first_table(id, desc))
     }
-    after_id_change(guarded(add_output(
-      rv$p, id, description = desc, type = input$modal_type)), id)
+    if (identical(input$modal_type, "listing") && isTRUE(input$modal_first_l)) {
+      return(start_first_listing(id, desc))
+    }
+    p2 <- guarded(add_output(rv$p, id, description = desc,
+                             type = input$modal_type))
+    after_id_change(p2, id)
+    # the new report's own tab
+    if (!is.null(p2)) bslib::nav_select("nav", switch(input$modal_type,
+      table = "tables", listing = "lf", figure = "designer", "outputs"))
   })
+  # -- the first listing: the data and its columns --------------------------
+  first_data_l <- shiny::reactive({
+    shiny::req(input$ml_data %in% first_files())
+    guarded(read_data_head(file.path(rv$study$path, input$ml_data), n = 2000L))
+  })
+  output$modal_first_l_ui <- shiny::renderUI({
+    f <- first_files()
+    if (!length(f)) {
+      return(shiny::div(class = "alert alert-warning py-1 small",
+        t("No data files yet: put them on the Data tab (data/adam), then add the listing.")))
+    }
+    shiny::tagList(
+      shiny::selectInput("ml_data", t("Data"), f,
+                         selected = c(grep("adae", f, value = TRUE), f)[1L],
+                         width = "100%"),
+      shiny::uiOutput("ml_cols"))
+  })
+  output$ml_cols <- shiny::renderUI({
+    d <- first_data_l()
+    shiny::req(d)
+    cols <- as.list(d)
+    grp <- .group_choices(cols)
+    all <- .labelled(names(cols), cols)
+    usual <- c("USUBJID", "AEBODSYS", "AEDECOD", "ASTDT", "AENDT", "AESEV",
+               "AESER", "AEREL", "AEOUT", "PARAM", "AVISIT", "AVAL", "AVALC",
+               "CMDECOD", "MHDECOD")
+    shiny::tagList(
+      shiny::selectInput("ml_group", t("Group (ordered by first; optional)"),
+                         c(stats::setNames("", t("(none)")), grp),
+                         selected = c(intersect(c("TRTA", "TRT01A", "ARM"), grp), "")[1L],
+                         width = "100%"),
+      shiny::selectizeInput(
+        "ml_cols_pick", t("Columns (in order)"), all,
+        selected = intersect(usual, names(cols)), multiple = TRUE,
+        width = "100%",
+        options = list(plugins = list("remove_button", "drag_drop"))),
+      shiny::p(class = "small text-muted",
+               t("Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards on the Listings tab.")))
+  })
+  start_first_listing <- function(id, desc) {
+    d <- first_data_l()
+    if (is.null(d)) return(notify(t("Choose the data"), "warning"))
+    g <- input$ml_group
+    p2 <- guarded(first_listing(rv$p, id, input$ml_data, d,
+                                columns = input$ml_cols_pick,
+                                group = if (length(g) && nzchar(g)) g,
+                                description = desc))
+    if (is.null(p2)) return()
+    after_id_change(p2, id)
+    bslib::nav_select("nav", "lf")
+    lf_show_preview(id)
+  }
   # -- the first table: a few answers instead of five sheets ---------------
   first_files <- shiny::reactive({
     f <- data_files()

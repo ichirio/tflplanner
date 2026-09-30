@@ -114,20 +114,9 @@ first_table <- function(x, output_id, path, data, population, group,
   }
 
   # the dataset
-  ds <- ard_rows(x, "datasets")
-  dsn <- ds$dataset[match(path, ds$path)]
-  if (is.na(dsn)) {
-    dsn <- .dataset_name(path)
-    if (!dsn %in% ds$dataset) {
-      lv <- .folder_level(dirname(path))
-      if (is.na(lv)) lv <- if (grepl("sdtm", path, ignore.case = TRUE)) "SDTM" else "ADaM"
-      ds[nrow(ds) + 1L, ] <- NA
-      ds$dataset[nrow(ds)] <- dsn
-      ds$level[nrow(ds)] <- lv
-      ds$path[nrow(ds)] <- path
-      x <- set_ard_rows(x, "datasets", "", ds)
-    }
-  }
+  cd <- .catalog_dataset(x, path)
+  x <- cd$x
+  dsn <- cd$dataset
 
   # the analysis set
   pop <- sub("FL$", "", population)
@@ -214,4 +203,116 @@ first_table <- function(x, output_id, path, data, population, group,
     x <- set_sheet_rows(x, "cells", id, ce)
   }
   x
+}
+
+# Does a report's ARD count the subjects per group (the N of the column
+# headers)?  An analysis of the group itself, not by anything, or a
+# total_n by the group.
+.has_group_n <- function(x, output_id, group) {
+  a <- ard_rows(x, "analyses", output_id)
+  if (!nrow(a) || is.na(group)) return(FALSE)
+  any((a$method %in% c("categorical", "subjects") & a$variables %in% group &
+         is.na(a$by)) |
+        (a$method %in% "total_n" & a$by %in% group))
+}
+
+#' Count the subjects per group for a report's column headers
+#'
+#' Adds to the report's ARD analyses the subjects per group (`BIGN`: the
+#' group counted, by nothing) -- what the column headers' `(N={n})` read --
+#' with the data and analysis set of its first analysis.
+#'
+#' @param x A `tflplanner`.
+#' @param output_id The report.
+#' @param group The group column (`TRT01A`).
+#' @return The `tflplanner`.
+#' @export
+add_group_n <- function(x, output_id, group) {
+  a <- ard_rows(x, "analyses", output_id)
+  if (!nrow(a)) stop("'", output_id, "' has no analyses.", call. = FALSE)
+  id <- "BIGN"
+  while (id %in% a$analysis_id) id <- paste0(id, "_")
+  first <- a[1L, , drop = FALSE]
+  new <- a[0L, , drop = FALSE]
+  new[1L, ] <- NA
+  new$analysis_id <- id
+  new$label <- "Subjects per group"
+  new$method <- "categorical"
+  new$dataset <- first$dataset
+  new$population_id <- first$population_id
+  new$variables <- group
+  new$output_id <- NULL
+  a$output_id <- NULL
+  set_ard_rows(x, "analyses", output_id, rbind(new, a))
+}
+
+# The dataset of a data file in the catalog, added when missing:
+# list(x, dataset).
+.catalog_dataset <- function(x, path) {
+  ds <- ard_rows(x, "datasets")
+  dsn <- ds$dataset[match(path, ds$path)]
+  if (!is.na(dsn)) return(list(x = x, dataset = dsn))
+  dsn <- .dataset_name(path)
+  if (!dsn %in% ds$dataset) {
+    lv <- .folder_level(dirname(path))
+    if (is.na(lv)) lv <- if (grepl("sdtm", path, ignore.case = TRUE)) "SDTM" else "ADaM"
+    ds[nrow(ds) + 1L, ] <- NA
+    ds$dataset[nrow(ds)] <- dsn
+    ds$level[nrow(ds)] <- lv
+    ds$path[nrow(ds)] <- path
+    x <- set_ard_rows(x, "datasets", "", ds)
+  }
+  list(x = x, dataset = dsn)
+}
+
+#' Start a listing from the data
+#'
+#' Writes what a listing needs from the answers of the app's "first
+#' listing" form: the dataset in the data catalog (added when missing), the
+#' report (a Listing, added when missing), its `listings` row (the company's
+#' listing type; the order: the group, the subject, the start date when the
+#' data have one) and one `listing_cols` row per column, in order, headed by
+#' the data's label (a repeated group or subject printed once).
+#'
+#' @param x A `tflplanner`.
+#' @param output_id The report.
+#' @param path The data file, relative to the study folder.
+#' @param data Its data (the columns' labels).
+#' @param columns The columns, in order.
+#' @param group A group column the listing is ordered by first, or `NULL`.
+#' @param description The report's description.
+#' @return The `tflplanner`.
+#' @export
+first_listing <- function(x, output_id, path, data, columns, group = NULL,
+                          description = NA_character_) {
+  id <- output_id
+  if (!length(columns)) stop("Choose the listing's columns.", call. = FALSE)
+  miss <- setdiff(c(group, columns), names(data))
+  if (length(miss)) {
+    stop("The data have no ", paste(miss, collapse = ", "), ".", call. = FALSE)
+  }
+  if (nrow(lf_rows(x, "listing_cols", id))) {
+    stop("'", id, "' has columns already: edit them on the Listings tab.",
+         call. = FALSE)
+  }
+  cd <- .catalog_dataset(x, path)
+  x <- cd$x
+  if (!id %in% x$outputs$output_id) {
+    x <- add_output(x, id, description = description, type = "listing")
+  }
+  start <- intersect(c("ASTDT", "ASTDTM", "ADT", "ADTM"), names(data))[1L]
+  sort <- unique(stats::na.omit(c(group, intersect("USUBJID", names(data)), start)))
+  cols <- unique(c(group, columns))
+  x <- set_lf_rows(x, "listings", id, data.frame(
+    type = .std_setting("listing_type", "multiline"), dataset = cd$dataset,
+    sort = if (length(sort)) paste(sort, collapse = " | ") else NA_character_,
+    stringsAsFactors = FALSE))
+  lab <- vapply(cols, function(v) {
+    l <- attr(data[[v]], "label", exact = TRUE)
+    if (is.character(l) && length(l) == 1L && nzchar(l)) l else v
+  }, "", USE.NAMES = FALSE)
+  set_lf_rows(x, "listing_cols", id, data.frame(
+    vars = cols, label = lab,
+    collapse_repeats = ifelse(cols %in% c(group, "USUBJID"), "TRUE", NA),
+    stringsAsFactors = FALSE))
 }

@@ -41,7 +41,61 @@
       .pd-auto label { font-size: .8rem; font-weight: normal; margin: 0; }")),
     shiny::uiOutput("pd_note"),
     shiny::uiOutput("lf_fig_box"),
-    shiny::uiOutput("pd_body"))
+    shiny::uiOutput("pd_body"),
+    shiny::uiOutput("lf_fig_box_new"))
+}
+
+# A select input with some of its options disabled (selectize keeps them
+# listed but not choosable)
+.disable_options <- function(tag, values) {
+  html <- as.character(tag)
+  for (v in values) {
+    html <- sub(paste0('<option value="', v, '"'),
+                paste0('<option value="', v, '" disabled'), html, fixed = TRUE)
+  }
+  # (the selectize script and style go with it)
+  htmltools::attachDependencies(htmltools::HTML(html),
+                                htmltools::findDependencies(tag))
+}
+
+# Can a study with these datasets draw a template?  Its `data` is written
+# as tflspec's catalog writes it: "ADTR + ADRS" (both), "ADLB / ADVS + ADSL"
+# (ADLB or ADVS, and ADSL); "any" and "(your estimates)" need nothing.
+.fig_data_ok <- function(data, have) {
+  if (is.null(data) || is.na(data) || !nzchar(data)) return(TRUE)
+  have <- toupper(have)
+  parts <- trimws(strsplit(data, "+", fixed = TRUE)[[1L]])
+  all(vapply(parts, function(p) {
+    alt <- toupper(trimws(strsplit(p, "/", fixed = TRUE)[[1L]]))
+    !all(grepl("^[A-Z][A-Z0-9]*$", alt)) || any(alt %in% have)
+  }, NA))
+}
+
+# the dataset a template reads first, of those the study has
+.fig_first_data <- function(data, have) {
+  if (is.null(data) || is.na(data)) return(NA_character_)
+  alt <- toupper(trimws(strsplit(trimws(strsplit(data, "+", fixed = TRUE)[[1L]])[1L],
+                                 "/", fixed = TRUE)[[1L]]))
+  alt <- alt[alt %in% toupper(have)]
+  if (length(alt)) alt[1L] else NA_character_
+}
+
+# The template choices: under their category (tflspec >= 0.0.24.9003; the
+# kind before), each with the data it reads; those the study's data cannot
+# draw stay listed but cannot be chosen, and say why.
+.fig_template_choices <- function(templates, have, words) {
+  cat <- if ("category" %in% names(templates)) templates$category else templates$kind
+  dat <- if ("data" %in% names(templates)) templates$data else rep(NA_character_, nrow(templates))
+  ok <- vapply(dat, .fig_data_ok, NA, have = have, USE.NAMES = FALSE)
+  lab <- paste0(words$label(templates$label),
+                ifelse(is.na(dat), "", paste0("  \u00b7 ", dat)),
+                ifelse(ok, "", paste0("  \u2014 ", words$missing)))
+  ch <- split(stats::setNames(templates$template, lab),
+              factor(cat, levels = unique(cat)))
+  ch <- lapply(ch, as.list)
+  ch[[words$other]] <- stats::setNames(list(""), words$empty)
+  list(choices = ch, off = templates$template[!ok],
+       first = c(templates$template[ok], "")[1L])
 }
 
 # the value an input gives, as a field: NULL = not set (the default)
@@ -80,7 +134,7 @@
 }
 
 .designer_server <- function(input, output, session, rv, current, t, notify,
-                             guarded, catalog) {
+                             guarded, catalog, fig_is_new = function() FALSE) {
   pd <- new.env()
   pd$n <- 0L
   pd$data <- list()
@@ -171,18 +225,43 @@
     msg <- switch(m,
       none = t("Choose a Figure report in the sidebar."),
       other = t("This tab designs figures: choose a Figure report in the sidebar."),
-      hand = t("This figure's plot is written by hand (its data code, Reports tab). To design it here instead, start a design from a template: its data steps, statistics, settings and layers are filled at once, then each can be changed."),
+      hand = if (fig_is_new()) t("A new figure: choose a template -- those this study's data cannot draw are greyed, with the data they need -- and start the design. To write the plot with ggplot2 instead, open Advanced below.") else
+        t("This figure's plot is written by hand (its data code, Reports tab). To design it here instead, start a design from a template: its data steps, statistics, settings and layers are filled at once, then each can be changed."),
       t("Choose a piece on the left to change it on the right; the figure is redrawn as its program will save it. Empty = the default (shown grey)."))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
 
   # ---- starting: a template, filled in for the study's data --------------
   templates <- tflspec::tfl_fig_templates()
+  # the catalog's datasets whose file is there
+  data_present <- function() {
+    d <- catalog()
+    d$dataset[!is.na(d$path) & file.exists(file.path(rv$study$path, d$path))]
+  }
+  tpl_select <- function() {
+    tc <- .fig_template_choices(
+      templates, data_present(),
+      list(label = t, missing = t("needs data this study has not got"),
+           other = t("Other"), empty = t("Empty design")))
+    s <- shiny::selectInput("pd_tpl", t("Template"), tc$choices,
+                            selected = tc$first, width = "100%")
+    # the ones the data cannot draw: listed, but not to be chosen (the
+    # options are HTML inside the tag, so they are marked in the HTML)
+    .disable_options(s, tc$off)
+  }
+  # the template's data, when the study has it, fills the Dataset
+  shiny::observeEvent(input$pd_tpl, {
+    tp <- input$pd_tpl
+    if (is.null(tp) || !nzchar(tp) || !"data" %in% names(templates)) return()
+    ds <- .fig_first_data(templates$data[templates$template == tp], data_present())
+    shiny::updateSelectizeInput(session, "pd_tpl_data",
+                                selected = if (is.na(ds)) "" else ds)
+  })
   output$pd_body <- shiny::renderUI({
     m <- mode()
     shiny::req(m %in% c("hand", "design"))
     if (m == "hand") {
-      ds <- catalog()$dataset
+      ds_have <- data_present()
       pr <- fig_presets()
       return(bslib::card(
         bslib::card_header(t("Start a design")),
@@ -194,12 +273,9 @@
           bslib::layout_columns(
             col_widths = c(6, 6),
             shiny::div(
-              shiny::selectInput("pd_tpl", t("Template"), width = "100%",
-                                 c(split(stats::setNames(templates$template, t(templates$label)),
-                                         factor(templates$kind, levels = unique(templates$kind))),
-                                   stats::setNames(list(stats::setNames("", t("Empty design"))), t("Other")))),
-              shiny::selectizeInput("pd_tpl_data", t("Dataset"), c("", ds),
-                                    options = list(placeholder = t("the template's default")))),
+              tpl_select(),
+              shiny::selectizeInput("pd_tpl_data", t("Dataset"), c("", ds_have),
+                                    options = list(placeholder = t("choose the data")))),
             shiny::uiOutput("pd_tpl_more"))),
         if (nrow(pr)) shiny::conditionalPanel(
           "input.pd_from == 'preset'",
@@ -257,7 +333,14 @@
           class = "rp-code", shiny::verbatimTextOutput("pd_yaml")))))
   })
 
-  output$pd_tpl_more <- shiny::renderUI({
+  output$pd_tpl_more <- shiny::renderUI(tryCatch(pd_tpl_more_ui(), error = function(e) {
+    if (inherits(e, "shiny.silent.error")) stop(e)
+    message("tflplanner: template form: ", conditionMessage(e))
+    shiny::div(class = "alert alert-warning py-1 small",
+               sprintf(t("The template's choices could not be made from the data: %s"),
+                       conditionMessage(e)))
+  }))
+  pd_tpl_more_ui <- function() {
     tp <- input$pd_tpl
     shiny::req(!is.null(tp), nzchar(tp))
     kind <- templates$kind[templates$template == tp]
@@ -291,7 +374,7 @@
         if (!is.null(x) && "AVISIT" %in% names(x)) unique(x$AVISIT)),
       if (whole) shiny::p(class = "small text-muted",
         t("This type is not yet in parts: the design is its whole script, with the type's arguments to edit.")))
-  })
+  }
 
   shiny::observeEvent(input$pd_start, {
     id <- current()
@@ -878,6 +961,7 @@ t_static <- function(x) x
 
 # Choices shown as "NAME \u2014 label" when the column has a label.
 .labelled <- function(nm, cols) {
+  nm <- as.character(nm)
   shown <- vapply(nm, function(n) {
     l <- attr(cols[[n]], "label", exact = TRUE)
     if (is.null(l) || !nzchar(l)) n else paste0(n, " \u2014 ", l)
@@ -889,6 +973,7 @@ t_static <- function(x) x
 # summarized: "AGE \u2014 Age (numbers)".  Not identifiers, flags, dates.
 .row_choices <- function(cols, words = c(continuous = "numbers",
                                           categorical = "counts")) {
+  if (!length(cols)) return(character())
   ok <- vapply(names(cols), function(nm) {
     !grepl("^(STUDYID|USUBJID|SUBJID|SITEID)$|FL$", nm) &&
       !.date_like(nm, cols[[nm]]) && !is.na(.column_kind(cols[[nm]]))
@@ -918,6 +1003,7 @@ t_static <- function(x) x
 # Columns a figure can be split by: named like a treatment (TRT..., ARM...),
 # text or a factor, with few values -- not a date or a time (TRTSDT).
 .group_choices <- function(cols, max_levels = 12L) {
+  if (!length(cols)) return(character())
   ok <- vapply(names(cols), function(nm) {
     v <- cols[[nm]]
     grepl("^TRT|ARM", nm) && !.date_like(nm, v) &&

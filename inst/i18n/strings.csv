@@ -817,3 +817,17 @@ the method's default (below),メソッドの既定（下）
 Blank = the method's default (%d):,空欄 = メソッドの既定（%d 個）:
 Start from these,これから始める
 Blank = every result the method gives.,空欄 = メソッドが出す結果すべて。
+needs data this study has not got,この試験に無いデータが要ります
+choose the data,データを選んでください
+The template's choices could not be made from the data: %s,データからテンプレートの選択肢を作れませんでした: %s
+"A new figure: choose a template -- those this study's data cannot draw are greyed, with the data they need -- and start the design. To write the plot with ggplot2 instead, open Advanced below.",新しい図です。テンプレートを選んでデザインを始めてください（この試験のデータで描けないものは、要るデータとともに灰色で出ます）。ggplot2 で手書きする場合は、下の「上級」を開いてください。
+Advanced: write the plot by hand (ggplot2),上級: 図を手で書く（ggplot2）
+Start the listing from the data (writes its columns and shows it),データから一覧表を始める（列を書き、プレビューします）
+"No data files yet: put them on the Data tab (data/adam), then add the listing.",データファイルがまだありません。データタブで置いて（data/adam）から、一覧表を追加してください。
+Group (ordered by first; optional),群（最初に並べる、任意）
+Columns (in order),列（この順）
+"Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards on the Listings tab.",各列の見出しはデータのラベルです。並べ順は群・被験者・開始日です。あとから一覧表タブですべて変えられます。
+"The listing has no columns yet: add them to the table of columns (below the form), or add the listing again with 'Start the listing from the data'.",一覧表にまだ列がありません。フォームの下の列の表に足すか、「データから一覧表を始める」で追加し直してください。
+e.g.,例:
+The ARD has no subjects per %s: a header's (N=n) prints NA.,ARD に %s ごとの被験者数がありません。見出しの (N=n) は NA になります。
+Count them (then Preview),数える（そしてプレビュー）

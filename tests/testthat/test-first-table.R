@@ -194,3 +194,106 @@ test_that("another study with unsaved changes asks: save and open, or open witho
     expect_false(is.null(.read_draft("S1")))
   })
 })
+
+test_that("a template says whether the study's data can draw it", {
+  expect_true(.fig_data_ok("ADTTE", c("ADSL", "ADTTE")))
+  expect_false(.fig_data_ok("ADTR + ADRS", c("ADSL", "ADRS")))
+  expect_true(.fig_data_ok("ADLB / ADVS + ADSL", c("adsl", "advs")))
+  expect_false(.fig_data_ok("ADLB / ADVS + ADSL", c("ADSL", "ADAE")))
+  expect_true(.fig_data_ok("(your estimates)", character()))
+  expect_true(.fig_data_ok(NA, character()))
+  expect_identical(.fig_first_data("ADLB / ADVS + ADSL", c("ADSL", "ADVS")), "ADVS")
+  tp <- data.frame(template = c("km", "ae"), kind = c("km", "ae_dot"),
+                   label = c("KM", "AE dots"), category = c("Efficacy", "Safety"),
+                   data = c("ADTTE", "ADAE + ADSL"), stringsAsFactors = FALSE)
+  w <- list(label = identity, missing = "no data", other = "Other", empty = "Empty")
+  tc <- .fig_template_choices(tp, c("ADSL", "ADAE"), w)
+  expect_identical(names(tc$choices), c("Efficacy", "Safety", "Other"))
+  expect_identical(tc$off, "km")
+  expect_identical(tc$first, "ae")
+  # a tflspec without the columns: grouped by kind, nothing greyed
+  tc2 <- .fig_template_choices(tp[c("template", "kind", "label")], character(), w)
+  expect_identical(names(tc2$choices)[1:2], c("km", "ae_dot"))
+  expect_length(tc2$off, 0L)
+  # no columns read: no choices, not an error
+  expect_length(.group_choices(list()), 0L)
+  expect_length(.labelled(NULL, list()), 0L)
+})
+
+test_that("first_listing() writes the listing and its columns from the data", {
+  d <- data.frame(TRTA = "A", USUBJID = "1", AEDECOD = "X", ASTDT = as.Date("2020-01-01"),
+                  stringsAsFactors = FALSE)
+  attr(d$AEDECOD, "label") <- "Preferred Term"
+  p <- first_listing(new_planner(), "L-AE", "data/adam/adae.rds", d,
+                     columns = c("USUBJID", "AEDECOD", "ASTDT"), group = "TRTA")
+  expect_identical(report_info(p, "L-AE")$type, "listing")
+  l <- lf_rows(p, "listings", "L-AE")
+  expect_identical(l$dataset, "ADAE")
+  expect_identical(l$sort, "TRTA | USUBJID | ASTDT")
+  lc <- lf_rows(p, "listing_cols", "L-AE")
+  expect_identical(lc$vars, c("TRTA", "USUBJID", "AEDECOD", "ASTDT"))
+  expect_identical(lc$label[3], "Preferred Term")
+  expect_error(first_listing(p, "L-AE", "data/adam/adae.rds", d, "USUBJID"),
+               "has columns already")
+})
+
+test_that("Add > Listing from the data: a listing shown in one form", {
+  skip_on_cran()
+  local_home()
+  s <- create_study("L1")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADAE, file.path(s$path, "data/adam/adae.rds"))
+  shiny::testServer(server_for("L1"), {
+    rv <- session$userData$rv
+    session$setInputs(add = 1, modal_type = "listing", modal_first_l = TRUE,
+                      modal_id = "L-AE", modal_desc = "AEs")
+    session$setInputs(ml_data = "data/adam/adae.rds")
+    expect_match(output$ml_cols$html, "AEDECOD")
+    session$setInputs(ml_group = "TRTA", ml_cols_pick = c("USUBJID", "AEDECOD", "AESEV"))
+    session$setInputs(add_ok = 1, target = "L-AE", nav = "lf")
+    expect_identical(lf_rows(rv$p, "listing_cols", "L-AE")$vars,
+                     c("TRTA", "USUBJID", "AEDECOD", "AESEV"))
+    h <- output$lf_preview_out$html
+    expect_false(grepl("alert-danger", h))
+  })
+})
+
+test_that("a new figure starts from a template the study's data can draw", {
+  skip_on_cran()
+  skip_if_not("data" %in% names(tflspec::tfl_fig_templates()))
+  local_home()
+  s <- create_study("G1")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADSL, file.path(s$path, "data/adam/adsl.rds"))
+  saveRDS(cards::ADAE, file.path(s$path, "data/adam/adae.rds"))
+  s$planner <- add_output(s$planner, "F-AGE", type = "figure")
+  save_study(s)
+  shiny::testServer(server_for("G1"), {
+    session$setInputs(target = "F-AGE", nav = "designer")
+    h <- output$pd_body$html
+    # ADTTE templates are listed but cannot be chosen, and say why
+    expect_match(h, "needs data this study has not got")
+    expect_match(h, 'value="km_risk_table" disabled')
+    # the note of a new figure, and the hand-written way below, folded
+    expect_match(output$pd_note$html, "A new figure")
+    expect_match(output$lf_fig_box_new$html, "Advanced")
+    # a drawable template's form: no R error
+    session$setInputs(pd_from = "template", pd_tpl = "ae_dot_incidence",
+                      pd_tpl_data = "ADAE")
+    expect_false(grepl("attempt to set", output$pd_tpl_more$html))
+  })
+})
+
+test_that("a report's ARD can be given the subjects per group", {
+  p <- set_ard_rows(new_planner(), "analyses", "T1", data.frame(
+    analysis_id = "AGE", method = "continuous", dataset = "ADSL",
+    population_id = "SAF", by = "TRT01A", variables = "AGE"))
+  expect_false(.has_group_n(p, "T1", "TRT01A"))
+  p <- add_group_n(p, "T1", "TRT01A")
+  a <- ard_rows(p, "analyses", "T1")
+  expect_identical(a$analysis_id, c("BIGN", "AGE"))
+  expect_identical(a$variables[1], "TRT01A")
+  expect_true(is.na(a$by[1]))
+  expect_identical(a$population_id[1], "SAF")
+  expect_true(.has_group_n(p, "T1", "TRT01A"))
+})
