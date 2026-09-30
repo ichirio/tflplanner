@@ -885,6 +885,23 @@ t_static <- function(x) x
   stats::setNames(nm, shown)
 }
 
+# Columns a summary table can have as rows, shown with how they are
+# summarized: "AGE \u2014 Age (numbers)".  Not identifiers, flags, dates.
+.row_choices <- function(cols, words = c(continuous = "numbers",
+                                          categorical = "counts")) {
+  ok <- vapply(names(cols), function(nm) {
+    !grepl("^(STUDYID|USUBJID|SUBJID|SITEID)$|FL$", nm) &&
+      !is.na(.column_kind(cols[[nm]]))
+  }, NA)
+  nm <- names(cols)[ok]
+  ch <- .labelled(nm, cols)
+  kind <- vapply(nm, function(n) .column_kind(cols[[n]]), "", USE.NAMES = FALSE)
+  names(ch) <- paste0(names(ch), " (",
+                      words[kind],
+                      ")")
+  ch
+}
+
 # Columns a figure can be split by: named like a treatment (TRT..., ARM...),
 # text or a factor, with few values -- not a date or a time (TRTSDT).
 .group_choices <- function(cols, max_levels = 12L) {

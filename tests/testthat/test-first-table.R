@@ -46,3 +46,32 @@ test_that("first_table() writes every sheet a summary table needs", {
   expect_error(first_table(p, "T-3", "data/adam/adsl.rds", d, "SAFFL", "TRT01A", "TRTSDT"),
                "Dates")
 })
+
+test_that("Add > Table from the data: data file to a previewed table in one form", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  local_home()
+  s <- create_study("F1")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADSL, file.path(s$path, "data/adam/adsl.rds"))
+  shiny::testServer(server_for("F1"), {
+    rv <- session$userData$rv
+    # Refresh on the Data tab: the file joins the data catalog
+    session$setInputs(data_refresh = 1)
+    expect_true("ADSL" %in% ard_rows(rv$p, "datasets")$dataset)
+    session$setInputs(add = 1, modal_type = "table", modal_first = TRUE,
+                      modal_id = "T-DM", modal_desc = "Demographics")
+    session$setInputs(mf_data = "data/adam/adsl.rds")
+    expect_match(output$mf_cols$html, "SAFFL")
+    session$setInputs(mf_pop = "SAFFL", mf_group = "TRT01A",
+                      mf_vars = c("AGE", "SEX"))
+    session$setInputs(add_ok = 1)
+    expect_true("T-DM" %in% rv$p$outputs$output_id)
+    expect_identical(nrow(ard_rows(rv$p, "analyses", "T-DM")), 2L)
+    # saved, previewed and read: the builder can start
+    s2 <- open_study("F1")
+    st <- ard_status(s2)
+    expect_identical(st$state[st$output_id == "T-DM"], "built")
+    expect_false(is.null(ard_info(s2, "T-DM")))
+  })
+})

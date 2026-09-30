@@ -760,3 +760,13 @@ Preview to see the ARD this report's analyses make.,プレビューすると、�
 This table has no ARD yet: the builder is built from it.,この表にはまだ ARD がありません。ビルダーは ARD から作られます。
 No data to show yet: Preview this table's ARD.,表示するデータがまだありません。この表の ARD をプレビューしてください。
 Preview this table's ARD first.,先にこの表の ARD をプレビューしてください。
+Start the table from the data (writes its ARD definition and opens the builder),データから表を始める（ARD の定義を書き、ビルダーを開きます）
+"No data files yet: put them on the Data tab (data/adam), then add the table.",データファイルがまだありません。データタブで置いて（data/adam）から、表を追加してください。
+numbers,数値
+counts,度数
+"Analysis set (its flag = ""Y"")","解析対象集団（フラグ = ""Y""）"
+Group (the columns),群（列）
+"Variables (the rows, in order)",変数（行、この順）
+"Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (builder, ARD tab).",数値は要約統計量、それ以外は度数と割合になります。あとからすべて変えられます（ビルダー、ARD タブ）。
+Choose the data,データを選んでください
+In the data catalog now: %s,データカタログに入りました: %s

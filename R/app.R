@@ -2687,6 +2687,14 @@ app_server <- function(input, output, session, start) {
         inline = TRUE),
       if (type) shiny::textInput("modal_desc", t("Description"),
                                  width = "100%"),
+      if (type) shiny::conditionalPanel(
+        "input.modal_type == 'table'",
+        shiny::checkboxInput(
+          "modal_first",
+          t("Start the table from the data (writes its ARD definition and opens the builder)"),
+          value = !nrow(rv$p$ard$analyses), width = "100%"),
+        shiny::conditionalPanel("input.modal_first",
+                                shiny::uiOutput("modal_first_ui"))),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn(button, "OK", class = "btn-primary")),
       easyClose = TRUE))
@@ -2707,10 +2715,75 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$add_ok, {
     id <- trimws(input$modal_id)
     d <- trimws(input$modal_desc)
+    desc <- if (nzchar(d)) d else NA
+    if (identical(input$modal_type, "table") && isTRUE(input$modal_first)) {
+      return(start_first_table(id, desc))
+    }
     after_id_change(guarded(add_output(
-      rv$p, id, description = if (nzchar(d)) d else NA,
-      type = input$modal_type)), id)
+      rv$p, id, description = desc, type = input$modal_type)), id)
   })
+  # -- the first table: a few answers instead of five sheets ---------------
+  first_files <- shiny::reactive({
+    f <- data_files()
+    ok <- !is.na(vapply(f$folder, .folder_level, "", USE.NAMES = FALSE)) &
+      tolower(tools::file_ext(f$file)) %in% .data_exts
+    file.path(f$folder, f$file)[ok]
+  })
+  first_data <- shiny::reactive({
+    shiny::req(input$mf_data %in% first_files())
+    guarded(read_data_head(file.path(rv$study$path, input$mf_data), n = Inf))
+  })
+  output$modal_first_ui <- shiny::renderUI({
+    f <- first_files()
+    if (!length(f)) {
+      return(shiny::div(class = "alert alert-warning py-1 small",
+        t("No data files yet: put them on the Data tab (data/adam), then add the table.")))
+    }
+    shiny::tagList(
+      shiny::selectInput("mf_data", t("Data"), f,
+                         selected = c(grep("adsl", f, value = TRUE), f)[1L],
+                         width = "100%"),
+      shiny::uiOutput("mf_cols"))
+  })
+  output$mf_cols <- shiny::renderUI({
+    d <- first_data()
+    shiny::req(d)
+    cols <- as.list(d)
+    fl <- grep("FL$", names(cols), value = TRUE)
+    grp <- .group_choices(cols)
+    vars <- .row_choices(cols, c(continuous = t("numbers"),
+                                 categorical = t("counts")))
+    shiny::tagList(
+      shiny::selectInput("mf_pop", t("Analysis set (its flag = \"Y\")"),
+                         .labelled(fl, cols),
+                         selected = c(intersect(c("SAFFL", "ITTFL", "FASFL"), fl),
+                                      fl)[1L], width = "100%"),
+      shiny::selectInput("mf_group", t("Group (the columns)"), grp,
+                         selected = c(intersect(c("TRT01A", "TRT01P", "ARM"),
+                                                grp), grp)[1L],
+                         width = "100%"),
+      shiny::selectizeInput(
+        "mf_vars", t("Variables (the rows, in order)"), vars,
+        selected = intersect(c("AGE", "AGEGR1", "SEX", "RACE"), vars),
+        multiple = TRUE, width = "100%",
+        options = list(plugins = list("remove_button", "drag_drop"))),
+      shiny::p(class = "small text-muted",
+               t("Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (builder, ARD tab).")))
+  })
+  start_first_table <- function(id, desc) {
+    d <- first_data()
+    if (is.null(d)) return(notify(t("Choose the data"), "warning"))
+    p2 <- guarded(first_table(rv$p, id, input$mf_data, d,
+                              population = input$mf_pop,
+                              group = input$mf_group,
+                              variables = input$mf_vars,
+                              description = desc))
+    if (is.null(p2)) return()
+    after_id_change(p2, id)
+    bslib::nav_select("nav", "tables")
+    bslib::nav_select("table_nav", "builder")
+    do_preview(id)
+  }
   shiny::observeEvent(input$copy, {
     if (need_current()) ask_id(sprintf(t("Copy %s"), current()), "copy_ok",
                                paste0(current(), "_2"))
@@ -2776,7 +2849,20 @@ app_server <- function(input, output, session, start) {
     data_ver(data_ver() + 1L)
     notify(sprintf(t("%d files added to %s"), sum(ok),
                    study_layout()[[input$data_folder]]))
+    to_catalog()
   })
+  shiny::observeEvent(input$data_refresh, to_catalog(), ignoreInit = TRUE)
+  # the data files the catalog (ARD tab > datasets) does not have yet go in
+  to_catalog <- function() {
+    if (!has_study()) return()
+    p2 <- guarded(catalog_add_files(rv$p, data_files()))
+    added <- attr(p2, "added")
+    if (!length(added)) return()
+    attr(p2, "added") <- NULL
+    rv$p <- p2
+    bump()
+    notify(sprintf(t("In the data catalog now: %s"), paste(added, collapse = ", ")))
+  }
   shiny::observeEvent(input$data_open, .open_folder(
     file.path(rv$study$path, "data")))
   data_head <- shiny::reactive({
