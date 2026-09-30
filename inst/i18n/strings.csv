@@ -741,3 +741,22 @@ Not in this report's ARD: add %s to its analysis on the ARD tab.,この帳票の
 "Greyed statistics are not in this report's ARD: add them to its analysis on the ARD tab, then read the ARD again.",グレーの統計量は、この帳票の ARD にありません。ARD タブでこの分析に足してから、ARD を読み直してください。
 Time shown in (the data's time is in days),表示する時間の単位（データの時間は日数として読みます）
 The builder could not read the form: %s,Builder がフォームを読めませんでした: %s
+"Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Results tab. Choose a row to see its log in the latest official run.",プレビュー（この帳票の ARD）は、1 つの帳票を作業用の試験 ARD に入れ、ログは残しません。試験 ARD 全体の正式実行（ログ logrx 付き）は結果タブにあります。行を選ぶと、最新の正式実行でのログを表示します。
+ARD (this report),この帳票の ARD
+"Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills.",保存し、この帳票の ARD プログラムを実行して試験 ARD に入れ、表ビルダーと入力支援のために読み取ります。
+"Makes this report's ARD (as the ARD tab's Preview), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance.",この帳票の ARD を作り（ARD タブのプレビューと同じ）、試験フォルダから 1 と 2 を実行して、入力支援のために変数・水準・統計量を読み取ります。
+Preview this table's ARD,この表の ARD をプレビュー
+not made yet,未作成
+outdated: the ARD definition has changed since it was made,古い：作成後に ARD の定義が変わりました
+error: its program failed (ARD tab > Study ARD),エラー：プログラムが失敗しました（ARD タブ > 試験 ARD）
+"made %s: %d keys, %d variables, statistics %s",作成 %s：キー %d、変数 %d、統計量 %s
+Preview of %s,%s のプレビュー
+running its ARD program,ARD プログラムを実行中
+reading it,読み取り中
+The ARD program failed: see what it printed on the ARD tab (Study ARD).,ARD プログラムが失敗しました。ARD タブ（試験 ARD）で出力を見てください。
+%s is in the study ARD; add it on the Reports tab to make its table.,%s は試験 ARD に入りました。表を作るには、帳票タブで帳票として追加してください。
+"Preview of %s: %d keys, %d variables",%s のプレビュー：キー %d、変数 %d
+Preview to see the ARD this report's analyses make.,プレビューすると、この帳票の解析が作る ARD が表示されます。
+This table has no ARD yet: the builder is built from it.,この表にはまだ ARD がありません。ビルダーは ARD から作られます。
+No data to show yet: Preview this table's ARD.,表示するデータがまだありません。この表の ARD をプレビューしてください。
+Preview this table's ARD first.,先にこの表の ARD をプレビューしてください。

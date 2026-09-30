@@ -394,28 +394,18 @@ app_ui <- function(lang = "en") {
             t("Study ARD"), value = "state",
             shiny::p(class = "small text-muted",
                      t("Build the ARD output by output as each is ready: tables can be made from the outputs already in it, while others are still being defined.")),
-            shiny::div(
-              class = "d-flex flex-wrap gap-2 align-items-center",
-              .btn("ard_update", t("Preview: put this output into the study ARD"),
-                   class = "btn-sm btn-primary"),
-              .btn("ard_build2", t("Official run: the whole study ARD")),
-              shiny::checkboxInput("ard_batch_code",
-                                   t("keep the code in the batch folder"),
-                                   value = TRUE)),
             shiny::p(class = "small text-muted mt-1 mb-1",
-                     t("Both run the saved programs (programs/ard/): unsaved changes are saved first. A preview updates the working ARD and keeps no log; an official run makes a batch folder (runs/) with the logs (logrx), the ARD and the code. Choose a row to see its log in the latest official run.")),
+                     t("Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Results tab. Choose a row to see its log in the latest official run.")),
             DT::DTOutput("ard_state"),
             shiny::div(class = "rp-code mt-2",
                        shiny::verbatimTextOutput("ard_log"))),
           bslib::nav_panel(
-            t("Generated ARD"), value = "result",
+            t("ARD (this report)"), value = "result",
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-center",
-              .btn("ard_run", t("Run this report's analyses"),
-                   class = "btn-sm btn-primary"),
-              .btn("ard_build", t("Build the study ARD")),
+              .btn("ard_preview", t("Preview"), class = "btn-sm btn-primary"),
               shiny::span(class = "small text-muted",
-                          t("Runs the code on the left in its own R process, from the study folder."))),
+                          t("Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills."))),
             shiny::uiOutput("ard_run_info"),
             shiny::div(class = "rp-resize",
                        DT::DTOutput("ard_table", height = "auto", fill = FALSE)))))),
@@ -453,10 +443,10 @@ app_ui <- function(lang = "en") {
                 placeholder = "data <- normalize_ard(ard)"),
               shiny::div(
                 class = "d-flex gap-2 align-items-center mb-2",
-                .btn("fetch", t("Run and read the ARD"),
+                .btn("fetch", t("Preview"),
                      class = "btn-sm btn-outline-primary"),
                 shiny::span(class = "small text-muted",
-                            t("Runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
+                            t("Makes this report's ARD (as the ARD tab's Preview), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
               shiny::uiOutput("ard_summary"),
               shiny::textAreaInput(
                 "setup",
@@ -1421,22 +1411,33 @@ app_server <- function(input, output, session, start) {
       return(shiny::span(class = "small text-muted",
                          t("Choose a report in the sidebar to fill its rows from its ARD and from presets.")))
     }
-    m <- meta_of(id)
+    st <- report_ard_state(id)
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center",
       shiny::strong("ARD"),
-      if (is.null(m)) {
-        shiny::span(class = "small text-muted",
-                    t("not read yet: Run and read the ARD."))
-      } else {
-        shiny::span(class = "small", sprintf(
-          t("read %s: %d keys, %d variables, statistics %s"),
-          m$fetched, length(m$keys), nrow(m$variables),
-          paste(m$stats, collapse = ", ")))
-      },
-      .btn("fetch2", t("Run and read the ARD"),
-           class = "btn-sm btn-outline-primary"))
+      shiny::span(class = paste("small", if (st$need) "text-muted"), st$text),
+      if (st$need) .btn("fetch2", t("Preview this table's ARD"),
+                        class = "btn-sm btn-outline-primary"))
   })
+  # A report's ARD in one word -- not made, outdated (its definition has
+  # changed), made (when), error -- and whether a Preview is wanted.
+  report_ard_state <- function(id) {
+    m <- meta_of(id)
+    s <- tryCatch(ard_state(), error = function(e) NULL)
+    state <- if (!is.null(s) && id %in% s$output_id)
+      s$state[match(id, s$output_id)] else NA_character_
+    if (is.null(m) && (is.na(state) || state != "error")) state <- "not built"
+    if (is.na(state)) state <- "built"
+    text <- switch(state,
+      `not built` = t("not made yet"),
+      outdated = t("outdated: the ARD definition has changed since it was made"),
+      error = t("error: its program failed (ARD tab > Study ARD)"),
+      sprintf(t("made %s: %d keys, %d variables, statistics %s"),
+              m$fetched, length(m$keys), nrow(m$variables),
+              paste(m$stats, collapse = ", ")))
+    list(state = state, need = !identical(state, "built"),
+         text = text)
+  }
 
   # each assisted tab's own help, above its grid
   assist_box <- function(...) {
@@ -1515,7 +1516,7 @@ app_server <- function(input, output, session, start) {
   need_meta <- function() {
     m <- meta_of(current())
     if (is.null(m)) {
-      notify(t("Read the ARD first (Run and read the ARD)."), "warning")
+      notify(t("Preview this table's ARD first."), "warning")
     }
     m
   }
@@ -1548,26 +1549,69 @@ app_server <- function(input, output, session, start) {
     after_fill(guarded(add_preset(rv$p, current(), input$header_preset)),
                "col_header", "col_header")
   })
-  do_fetch <- function() {
-    id <- current()
+  # Preview: the one action that makes a report's ARD and reads it, the
+  # same from the ARD, Tables and Reports tabs.  It saves; runs the report's
+  # ARD program into the study's working ARD (when the ARD definition has
+  # analyses for it); then runs its data code (1 and 2) and reads what the
+  # builder and the fills use; and shows the report's ARD on the ARD tab.
+  do_preview <- function(id = current()) {
     if (is.null(id)) return(notify(t("Choose a report"), "warning"))
+    has_an <- any(rv$p$ard$analyses$output_id %in% id)
+    is_report <- id %in% rv$p$outputs$output_id
+    if (!has_an && !is_report) {
+      return(notify(sprintf(t("%s has no analyses in the ARD definition."), id),
+                    "warning"))
+    }
+    if (has_an && !ard_ready()) return(invisible(FALSE))
+    t0 <- Sys.time()
+    ok <- TRUE
     m <- NULL
-    shiny::withProgress(message = sprintf(t("Running the data code of %s"),
-                                          id), {
-      m <- guarded(fetch_ard(current_study(), id))
+    shiny::withProgress(message = sprintf(t("Preview of %s"), id), {
+      if (has_an) {
+        shiny::setProgress(0.1, detail = t("running its ARD program"))
+        r <- guarded(update_study_ard(current_study(), id))
+        ard_state_ver(ard_state_ver() + 1L)
+        rv$status_ver <- rv$status_ver + 1L
+        if (is.null(r)) {
+          ok <- FALSE
+        } else {
+          ard_preview_out(list(id = id, text = r$output))
+          if (!r$ok) {
+            ok <- FALSE
+            ard_res(list(scope = id, error = r$error))
+            notify(t("The ARD program failed: see what it printed on the ARD tab (Study ARD)."),
+                   "error")
+          }
+        }
+      }
+      if (ok && is_report) {
+        shiny::setProgress(0.6, detail = t("reading it"))
+        m <- guarded(fetch_ard(current_study(), id))
+        if (is.null(m)) ok <- FALSE
+      }
     })
-    if (is.null(m)) return()
     rv$ard_ver <- rv$ard_ver + 1L
-    if (!is.null(m$error)) {
+    if (!ok) return(invisible(FALSE))
+    if (has_an) {
+      ard_res(list(ard = study_ard_rows(current_study(), id), scope = id,
+                   seconds = as.numeric(difftime(Sys.time(), t0,
+                                                 units = "secs"))))
+    }
+    if (!is_report) {
+      notify(sprintf(t("%s is in the study ARD; add it on the Reports tab to make its table."),
+                     id), "warning")
+    } else if (!is.null(m$error)) {
       notify(paste(t("The ARD was read, but normalize and rework failed:"),
                    m$error), "warning")
     } else {
-      notify(sprintf(t("ARD read: %d keys, %d variables"),
+      notify(sprintf(t("Preview of %s: %d keys, %d variables"), id,
                      length(m$keys), nrow(m$variables)))
     }
+    invisible(TRUE)
   }
-  shiny::observeEvent(input$fetch, do_fetch())
-  shiny::observeEvent(input$fetch2, do_fetch())
+  shiny::observeEvent(input$fetch, do_preview())
+  shiny::observeEvent(input$fetch2, do_preview())
+  shiny::observeEvent(input$fetch3, do_preview())
   output$ard_summary <- shiny::renderUI({
     m <- meta_of(current())
     if (is.null(m)) return(NULL)
@@ -1893,23 +1937,9 @@ app_server <- function(input, output, session, start) {
                generated = "The definition has changed: saving rewrites the program as below.",
                edited = "The saved program was edited by hand. Saving leaves it alone.")))
   })
-  run_ard_now <- function(output_id) {
-    if (!is.null(ard_valid())) {
-      return(notify(t("Correct the ARD definition first."), "warning"))
-    }
-    r <- NULL
-    shiny::withProgress(message = t("Running the ARD code"), {
-      r <- guarded(run_ard(current_study(), output_id = output_id))
-    })
-    if (is.null(r)) return()
-    r$scope <- output_id %||% t("the whole study")
-    ard_res(r)
-    bslib::nav_select("ard_right", "result")
-    if (!is.null(r$error)) notify(t("The ARD code failed: see the log."), "error")
-  }
-  shiny::observeEvent(input$ard_run, {
+  shiny::observeEvent(input$ard_preview, {
     if (is.null(ard_target())) return(notify(t("Choose a report"), "warning"))
-    run_ard_now(ard_target())
+    if (isTRUE(do_preview(ard_target()))) bslib::nav_select("ard_right", "result")
   })
   # making the study ARD: always the saved programs (programs/ard/), so
   # what is built is what anyone rerunning autoexec_ard.R gets
@@ -1922,14 +1952,11 @@ app_server <- function(input, output, session, start) {
     }
     !(dirty() && !do_save())
   }
-  shiny::observeEvent(input$ard_build, {
-    if (ard_ready()) start_batch("ard", isTRUE(input$ard_batch_code))
-  })
   output$ard_run_info <- shiny::renderUI({
     r <- ard_res()
     if (is.null(r)) {
       return(shiny::p(class = "small text-muted mt-2",
-                      t("Run the analyses to see the ARD they make.")))
+                      t("Preview to see the ARD this report's analyses make.")))
     }
     if (!is.null(r$error)) {
       return(shiny::div(class = "alert alert-danger py-1 small mt-2",
@@ -1981,32 +2008,6 @@ app_server <- function(input, output, session, start) {
   }
   output$ard_state <- DT::renderDT(ard_state_view())
   output$ard_state_data <- DT::renderDT(ard_state_view())
-  shiny::observeEvent(input$ard_update, {
-    id <- ard_target()
-    if (is.null(id)) return(notify(t("Choose a report"), "warning"))
-    if (!any(rv$p$ard$analyses$output_id %in% id)) {
-      return(notify(sprintf(t("%s has no analyses in the ARD definition."), id),
-                    "warning"))
-    }
-    if (!ard_ready()) return()
-    r <- NULL
-    shiny::withProgress(message = t("Running the ARD program"), {
-      r <- guarded(update_study_ard(current_study(), id))
-    })
-    ard_state_ver(ard_state_ver() + 1L)
-    rv$ard_ver <- rv$ard_ver + 1L
-    rv$status_ver <- rv$status_ver + 1L
-    if (is.null(r)) return()
-    ard_preview_out(list(id = id, text = r$output))
-    if (r$ok) {
-      notify(sprintf(t("%s is in the study ARD (%d rows)"), id, r$rows))
-    } else {
-      notify(t("The ARD program failed: see what it printed below."), "error")
-    }
-  })
-  shiny::observeEvent(input$ard_build2, {
-    if (ard_ready()) start_batch("ard", isTRUE(input$ard_batch_code))
-  })
   # below the table: what the last preview printed, or -- a row chosen --
   # that output's log in the latest official run of the ARD
   output$ard_log <- shiny::renderText({
@@ -2285,7 +2286,10 @@ app_server <- function(input, output, session, start) {
     msg <- switch(builder_case(),
       none = t("Choose a report in the sidebar."),
       type = t("The builder is for Tables; Listings and Figures are made in their data code."),
-      meta = t("Read the report's ARD first (Reports > Data code > Run and read the ARD): the builder is built from it."),
+      meta = shiny::tagList(
+        t("This table has no ARD yet: the builder is built from it."), " ",
+        .btn("fetch3", t("Preview this table's ARD"),
+             class = "btn-sm btn-primary ms-1")),
       hierarchy = t("This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Use Table definition; the preview works."),
       NULL)
     if (is.null(msg)) return(shiny::p(class = "small text-muted",
@@ -2484,7 +2488,7 @@ app_server <- function(input, output, session, start) {
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
     rv$ard_ver
     d <- ard_data(rv$study, id)
-    if (is.null(d)) return(list(error = t("No data to preview: Run and read the ARD.")))
+    if (is.null(d)) return(list(error = t("No data to show yet: Preview this table's ARD.")))
     tryCatch(list(pages = preview_pages(rv$p, id, d)),
              error = function(e) list(error = conditionMessage(e)))
   })

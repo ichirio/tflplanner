@@ -253,6 +253,16 @@ ard_view <- function(ard) {
   out
 }
 
+# One output's rows of the study's working ARD (NULL when there are none).
+study_ard_rows <- function(study, output_id) {
+  out <- .ard_study_value(study$planner$ard, "output", "output/ard/ard.rds")
+  f <- file.path(study$path, out)
+  if (!file.exists(f)) return(NULL)
+  a <- readRDS(f)
+  if (!"output_id" %in% names(a)) return(NULL)
+  a[a$output_id %in% output_id, , drop = FALSE]
+}
+
 .ard_status_file <- function(study) {
   out <- .ard_study_value(study$planner$ard, "output", "output/ard/ard.rds")
   file.path(study$path, dirname(out), "ard_status.csv")

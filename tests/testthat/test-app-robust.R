@@ -256,3 +256,14 @@ test_that("the builder of a table with no definition yet writes one, and keeps t
     expect_match(output$builder_preview$html, "Mean")
   })
 })
+
+test_that("a table with no ARD says so, and offers the one Preview", {
+  local_home()
+  create_study("P1", planner = add_output(new_planner(), "T1", type = "table"))
+  shiny::testServer(server_for("P1"), {
+    session$setInputs(target = "T1", nav = "tables", table_nav = "builder")
+    expect_match(output$assist$html, "not made yet")
+    expect_match(output$assist$html, 'id="fetch2"')
+    expect_match(output$builder_note$html, 'id="fetch3"')
+  })
+})
