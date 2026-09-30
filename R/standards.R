@@ -39,14 +39,15 @@
                           "2026-09-27")),
     settings = .df(
       key = c("language", "rounding", "subject_id", "ard_output",
-              "listing_type", "max_levels"),
+              "listing_type", "listing_max_rows", "max_levels"),
       value = c("en", "", "USUBJID", "output/ard/ard.rds", "multiline",
-                "30"),
+                "", "30"),
       note = c("the app's language: en or ja",
                "a new study's rounding: r, sas, or blank (rtfreporter's)",
                "the subject key of the ARD definition",
                "where the study ARD goes (relative to the study folder)",
                "the listing type a new listing starts with",
+               "the rows per page a new listing starts with (blank: as many as fit, rtfreporter's)",
                "a key with more levels gets no levels list when filled from the ARD")),
     choices = rbind(
       ch("tables", "stats", c("cells", "rows")),
@@ -315,7 +316,9 @@ read_standards <- function(path) {
   stats::setNames(out, names(b))
 }
 
-.std_optional <- list(ard_methods = "formats")
+# columns a company's workbook may lack (written before they were added):
+# they read as blank, and a method's blank label is its name (tflspec)
+.std_optional <- list(ard_methods = c("formats", "label"))
 
 .standards_file <- function(home = tflplanner_home()) {
   file.path(home, "standards", "company_standards.xlsx")
@@ -327,7 +330,12 @@ read_standards <- function(path) {
 #' @export
 company_standards <- function(home = tflplanner_home()) {
   f <- .standards_file(home)
-  if (!file.exists(f)) return(.builtin_standards())
+  # the built-in ones are made once a session (they are tflspec's, fixed):
+  # making them is most of the time of every call that reads a standard
+  if (!file.exists(f)) {
+    if (is.null(.std_cache$builtin)) .std_cache$builtin <- .builtin_standards()
+    return(.std_cache$builtin)
+  }
   key <- paste(f, file.mtime(f))
   if (!identical(.std_cache$key, key)) {
     .std_cache$value <- read_standards(f)
@@ -361,6 +369,41 @@ company_standards <- function(home = tflplanner_home()) {
   s <- company_standards()
   list(settings = s$figure_settings, colors = s$figure_colors,
        markers = s$figure_markers)
+}
+
+#' Add the company's study defaults a study lacks
+#'
+#' For a study made without them (before a new empty study started from the
+#' company standards): each definition sheet with no study-default rows
+#' gets the company's (`default_<sheet>`), and the analysis sets and data
+#' catalog get the company's they do not have (by id).  Nothing already
+#' there is changed.
+#'
+#' @param x A `tflplanner`.
+#' @param study_id The study's id (`{STUDY_ID}` in the defaults).
+#' @return The `tflplanner`, with attribute `added` (the sheets added to).
+#' @export
+add_standard_defaults <- function(x, study_id) {
+  std <- .standard_planner(study_id)
+  added <- character()
+  for (sh in c(table_sheets(), report_sheets())) {
+    mine <- x$sheets[[sh]]
+    def <- std$sheets[[sh]]
+    if (is.null(def) || !nrow(def) || any(is.na(mine$output_id))) next
+    x$sheets[[sh]] <- rbind(def[names(mine)], mine)
+    added <- c(added, sh)
+  }
+  for (sh in c("populations", "datasets")) {
+    key <- if (sh == "populations") "population_id" else "dataset"
+    new <- std$ard[[sh]]
+    new <- new[!new[[key]] %in% x$ard[[sh]][[key]], , drop = FALSE]
+    if (nrow(new)) {
+      x$ard[[sh]] <- rbind(x$ard[[sh]], new[names(x$ard[[sh]])])
+      added <- c(added, sh)
+    }
+  }
+  attr(x, "added") <- added
+  x
 }
 
 # the rows a new study starts with: its study defaults, its ARD definition's

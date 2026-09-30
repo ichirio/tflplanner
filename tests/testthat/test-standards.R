@@ -34,7 +34,8 @@ test_that("a company's workbook changes what the app offers", {
     digits = c("0", "1,2")))
   s$statistics$digits[s$statistics$key == "mean_sd"] <- "d+2,d+3"
   s$ard_methods <- rbind(s$ard_methods, data.frame(
-    method = "ae_socpt", call = "cards::ard_stack_hierarchical",
+    method = "ae_socpt", label = "AE by SOC / PT",
+    call = "cards::ard_stack_hierarchical",
     kind = "categorical",
     defaults = "denominator = population, id = <id>, over_variables = TRUE",
     statistics = NA, formats = NA, note = "AE by SOC / PT, with the Any row"))
@@ -127,4 +128,15 @@ test_that("the figure style is part of the company standards", {
   code <- tflspec::tfl_fig_setup_code(.std_fig_style())
   expect_true(any(grepl('"CR" = "#00AA00"', code, fixed = TRUE)))
   suppressMessages(setup_tflplanner(standards = "builtin"))
+})
+
+test_that("a company's methods sheet written before labels still reads", {
+  home_for_test()
+  f <- file.path(withr_tempdir(), "old.xlsx")
+  s <- .builtin_standards()
+  s$ard_methods$label <- NULL
+  writexl::write_xlsx(s, f)
+  m <- read_standards(f)$ard_methods
+  expect_true("label" %in% names(m))
+  expect_true(all(is.na(m$label)))
 })

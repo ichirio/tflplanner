@@ -20,6 +20,25 @@ builder_stats <- function() {
   d[c("key", "row", "template", "digits")]
 }
 
+# the statistics a new table shows for a continuous variable
+.builder_default_stats <- c("n", "mean_sd", "median", "min_max")
+
+# The statistics a template reads: "{mean} ({sd:.2f})" -> mean, sd
+.template_stats <- function(tpl) {
+  tok <- regmatches(tpl, gregexpr("\\{[^}:]+", tpl))[[1L]]
+  unique(substring(tok, 2L))
+}
+
+# For each builder statistic, what its template needs that the ARD does not
+# have ("" when the ARD has it all).  With no statistics known, nothing is
+# said to be missing.
+.builder_stats_lacking <- function(templates, have) {
+  if (!length(have)) return(rep("", length(templates)))
+  vapply(templates, function(tp)
+    paste(setdiff(.template_stats(tp), have), collapse = ", "), "",
+    USE.NAMES = FALSE)
+}
+
 # a statistic's digits from its rule: "d", "d+1", "d+1,d+2", "0" ...
 .stat_digits <- function(key, d) {
   rule <- builder_stats()$digits[match(key, builder_stats()$key)]
@@ -141,7 +160,7 @@ builder_read <- function(x, output_id, meta = NULL) {
   } else if ("median" %in% stats && !is.na(dig("median"))) {
     dig("median") - 1
   } else 0
-  if (!length(stats)) stats <- c("n", "mean_sd", "median", "min_max")
+  if (!length(stats)) stats <- .builder_default_stats
 
   cat_row <- ce[(!is.na(ce$variable) & ce$variable == "categorical") |
                   (is.na(ce$variable) & is.na(ce$row)), , drop = FALSE]
@@ -289,6 +308,59 @@ preview_pages <- function(x, output_id, data) {
 
 #' @rdname preview_pages
 #' @export
+# The lines of a report's header / titles / footnotes / footer: its own,
+# and the study defaults for the lines it has not (by line number).
+.page_lines <- function(x, sheet, output_id) {
+  own <- sheet_rows(x, sheet, output_id)
+  inh <- inherited_rows(x, sheet, output_id)
+  inh <- inh[!inh$line %in% own$line, , drop = FALSE]
+  d <- rbind(own, inh)
+  d[order(suppressWarnings(as.numeric(d$line))), , drop = FALSE]
+}
+
+# A page's sample in HTML: each line in three parts (left, centre, right),
+# the {PLACEHOLDERS} filled as a first page would have them.
+.page_sample_html <- function(x, output_id, study_id, body, program = "") {
+  fill <- function(s) {
+    if (is.na(s)) return("")
+    s <- gsub("{PAGE}", "1", s, fixed = TRUE)
+    s <- gsub("{TOTAL_PAGES}", "N", s, fixed = TRUE)
+    s <- gsub("{STUDY_ID}", study_id, s, fixed = TRUE)
+    s <- gsub("{PROGRAM}", program %||% "", s, fixed = TRUE)
+    s <- gsub("{DATETIME}", format(Sys.time(), "%Y-%m-%d %H:%M"), s, fixed = TRUE)
+    s <- gsub("{output_id}", output_id, s, fixed = TRUE)
+    s
+  }
+  block <- function(sheet, cls) {
+    d <- .page_lines(x, sheet, output_id)
+    if (!nrow(d)) return(NULL)
+    lapply(seq_len(nrow(d)), function(i) htmltools::div(
+      class = paste("rp-page-line", cls),
+      htmltools::span(class = "l", fill(d$left[i])),
+      htmltools::span(class = "c", fill(d$center[i])),
+      htmltools::span(class = "r", fill(d$right[i]))))
+  }
+  pg <- rbind(sheet_rows(x, "page", output_id), inherited_rows(x, "page", output_id))
+  land <- any(tolower(pg$orientation) %in% "landscape")
+  htmltools::div(
+    class = paste("rp-page", if (land) "rp-landscape"),
+    htmltools::tags$style(htmltools::HTML("
+      .rp-page { border: 1px solid #ccc; padding: .6rem .8rem; font-size: .7rem;
+                 font-family: 'Courier New', monospace; background: #fff;
+                 zoom: .6; }
+      .rp-page-full .rp-page { zoom: 1; }
+      .rp-page.rp-landscape { min-width: 60rem; }
+      .rp-page-line { display: grid; grid-template-columns: 1fr auto 1fr; gap: .5rem; }
+      .rp-page-line .c { text-align: center; } .rp-page-line .r { text-align: right; }
+      .rp-page-body { margin: .5rem 0; overflow-x: auto; }
+      .rp-page-foot { border-top: 1px solid #ddd; margin-top: .4rem; padding-top: .2rem; }")),
+    block("header", "head"),
+    block("titles", "title"),
+    htmltools::div(class = "rp-page-body", body),
+    block("footnotes", "note"),
+    htmltools::div(class = "rp-page-foot", block("footer", "foot")))
+}
+
 preview_html <- function(pages, max_pages = 3L, align = "center") {
   one <- function(pg, i) {
     d <- pg$data
@@ -296,12 +368,36 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
       integer()
     stub <- attr(d, "rtf_stub_src")
     val <- function(v) if (is.na(v)) "" else as.character(v)
+    text <- function(x) htmltools::HTML(gsub("\n", "<br>", htmltools::htmlEscape(
+      val(x)), fixed = TRUE))
     head <- lapply(pg$col_header, function(line) {
+      # a line of spanning cells (list(from, to, label)): each over its
+      # columns, the columns no cell covers left empty
+      spans <- is.list(line) && length(line) &&
+        all(vapply(line, function(x) is.list(x) && !is.null(x$from), NA))
+      if (spans) {
+        cells <- list()
+        at <- 1L
+        for (x in line[order(vapply(line, function(x) as.integer(x$from), 1L))]) {
+          from <- as.integer(x$from)
+          to <- as.integer(x$to %||% x$from)
+          while (at < from) {
+            cells <- c(cells, list(htmltools::tags$th(
+              class = if (at == 1L) "rp-pv-stub" else "rp-pv-val")))
+            at <- at + 1L
+          }
+          cells <- c(cells, list(htmltools::tags$th(
+            colspan = to - from + 1L,
+            class = if (from == 1L) "rp-pv-stub" else "rp-pv-val rp-pv-span",
+            text(x$label %||% ""))))
+          at <- to + 1L
+        }
+        return(htmltools::tags$tr(cells))
+      }
       htmltools::tags$tr(lapply(seq_along(line), function(k)
         htmltools::tags$th(
           class = if (k == 1L) "rp-pv-stub" else "rp-pv-val",
-          htmltools::HTML(gsub("\n", "<br>", htmltools::htmlEscape(
-            val(line[k])), fixed = TRUE)))))
+          text(line[[k]]))))
     })
     blank <- htmltools::tags$tr(class = "rp-pv-blank",
                                 htmltools::tags$td(colspan = ncol(d),

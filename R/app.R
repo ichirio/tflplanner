@@ -10,8 +10,7 @@
 
 .all_rows <- "__all__"
 .default_rows <- "__default__"
-.study_tabs <- c("outputs", "ard", "tables", "lf", "designer",
-                 "report_spec", "data", "results")
+.study_tabs <- c("outputs", "ard", "data", "results")
 
 .sheet_labels <- c(
   tables = "tables: roles", variables = "variables", cells = "cells",
@@ -24,6 +23,15 @@
 
 # the sheets whose tab offers help of its own above the grid
 .assisted <- c("tables", "variables", "cells", "col_header")
+
+# a report's ARD, in the same four words everywhere (ard_status()'s states)
+.ard_state_labels <- c(built = "Made", outdated = "Outdated",
+                       `not built` = "Not made", error = "Error")
+
+# a report's run status in the four words (the status says why)
+.run_state <- c(ok = "built", outdated = "outdated", unsaved = "outdated",
+                todo = "not built", "not run" = "not built",
+                "no program" = "not built", error = "error")
 
 .status_labels <- c(
   "no program" = "Not written (save)", unsaved = "Unsaved (save)",
@@ -259,12 +267,14 @@ app_ui <- function(lang = "en") {
     fillable = FALSE,
     theme = bslib::bs_theme(version = 5, preset = "shiny"),
     header = shiny::tagList(shiny::tags$style(shiny::HTML(.code_css)),
-                            shiny::tags$script(shiny::HTML(.split_js))),
+                            shiny::tags$script(shiny::HTML(.split_js)),
+                            shiny::tags$script(shiny::HTML(.unsaved_js)),
+                            shiny::tags$script(shiny::HTML(.updating_js))),
     sidebar = bslib::sidebar(
-      width = 270,
+      id = "side", width = 270, open = "closed",
       shiny::uiOutput("study_side"),
-      shiny::radioButtons("target", t("Show rows of"),
-                          choices = c("-" = .all_rows)),
+      shiny::selectInput("target", t("Report"),
+                         choices = c("-" = .all_rows), width = "100%"),
       shiny::tags$details(
         class = "small text-muted",
         shiny::tags$summary(t("What do these mean?")),
@@ -276,23 +286,26 @@ app_ui <- function(lang = "en") {
                  t("every row of every report and the defaults at once, with output_id shown: for bulk edits and pasting from Excel.")))),
 
     bslib::nav_panel(
-      t("Studies"), value = "study",
+      t("Study"), value = "study",
       bslib::layout_columns(
         col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
         bslib::card(
           bslib::card_header(t("Studies")),
+          shiny::uiOutput("welcome"),
           shiny::uiOutput("studies_root_note"),
           DT::DTOutput("studies"),
           shiny::p(class = "small text-muted mb-1",
                    t("Click a study to see it on the right; double-click to open it.")),
-          shiny::div(class = "d-flex flex-wrap gap-2",
-                     .btn("open_study", t("Open"),
-                          class = "btn-sm btn-primary"),
-                     .btn("new_study", t("New study")),
-                     .btn("register", t("Register a folder")),
-                     .btn("unregister", t("Unregister"),
-                          class = "btn-sm btn-outline-danger"),
-                     .btn("refresh_studies", t("Refresh"))),
+          shiny::conditionalPanel(
+            "output.n_studies > 0",
+            shiny::div(class = "d-flex flex-wrap gap-2",
+                       .btn("open_study", t("Open"),
+                            class = "btn-sm btn-primary"),
+                       .btn("new_study", t("New study")),
+                       .btn("register", t("Register a folder")),
+                       .btn("unregister", t("Unregister"),
+                            class = "btn-sm btn-outline-danger"),
+                       .btn("refresh_studies", t("Refresh")))),
           shiny::tags$details(
             class = "mt-2 small",
             shiny::tags$summary(t("Settings")),
@@ -367,7 +380,7 @@ app_ui <- function(lang = "en") {
           shiny::uiOutput("ard_check"),
           shiny::div(
             class = "rp-b-card mt-2",
-            shiny::h6(t("Statistics and formats")),
+            shiny::h6(t("Analysis")),
             shiny::uiOutput("ard_stat_ui")),
           shiny::tags$details(
             class = "rp-help mt-2",
@@ -393,36 +406,31 @@ app_ui <- function(lang = "en") {
             t("Study ARD"), value = "state",
             shiny::p(class = "small text-muted",
                      t("Build the ARD output by output as each is ready: tables can be made from the outputs already in it, while others are still being defined.")),
-            shiny::div(
-              class = "d-flex flex-wrap gap-2 align-items-center",
-              .btn("ard_update", t("Preview: put this output into the study ARD"),
-                   class = "btn-sm btn-primary"),
-              .btn("ard_build2", t("Official run: the whole study ARD")),
-              shiny::checkboxInput("ard_batch_code",
-                                   t("keep the code in the batch folder"),
-                                   value = TRUE)),
             shiny::p(class = "small text-muted mt-1 mb-1",
-                     t("Both run the saved programs (programs/ard/): unsaved changes are saved first. A preview updates the working ARD and keeps no log; an official run makes a batch folder (runs/) with the logs (logrx), the ARD and the code. Choose a row to see its log in the latest official run.")),
+                     t("Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Results tab. Choose a row to see its log in the latest official run.")),
             DT::DTOutput("ard_state"),
             shiny::div(class = "rp-code mt-2",
                        shiny::verbatimTextOutput("ard_log"))),
           bslib::nav_panel(
-            t("Generated ARD"), value = "result",
+            t("ARD (this report)"), value = "result",
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-center",
-              .btn("ard_run", t("Run this report's analyses"),
-                   class = "btn-sm btn-primary"),
-              .btn("ard_build", t("Build the study ARD")),
+              .btn("ard_preview", t("Preview"), class = "btn-sm btn-primary"),
               shiny::span(class = "small text-muted",
-                          t("Runs the code on the left in its own R process, from the study folder."))),
+                          t("Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills."))),
             shiny::uiOutput("ard_run_info"),
             shiny::div(class = "rp-resize",
                        DT::DTOutput("ard_table", height = "auto", fill = FALSE)))))),
 
     bslib::nav_panel(
       t("Reports"), value = "outputs",
-      bslib::layout_columns(
-        col_widths = two,
+      # one place for a report: the list, then the report chosen (in the
+      # list or the sidebar) -- its content (by its kind), page and code
+      bslib::navset_underline(
+        id = "rep_nav",
+        bslib::nav_panel(
+          t("All reports"), value = "list",
+          shiny::uiOutput("next_steps"),
         bslib::card(
           bslib::card_header(t("Reports (TFL)")),
           DT::DTOutput("outputs"),
@@ -433,56 +441,22 @@ app_ui <- function(lang = "en") {
             .btn("remove", t("Delete"), class = "btn-sm btn-outline-danger"),
             .btn("up", "\u2191"), .btn("down", "\u2193")),
           shiny::p(class = "text-muted small mt-1",
-                   t("The order is the order autoexec_report.R runs them in. Copy copies the report's rows of every sheet."))),
-        bslib::navset_card_tab(
-          bslib::nav_panel(
-            t("Data code"),
-            shiny::uiOutput("current_label"),
-            shiny::textInput("description", t("Description"), width = "100%"),
-            shiny::div(
-              class = "rp-code",
-              shiny::textAreaInput(
-                "data_code",
-                t("1. ARD: make `ard` (Listing: rework `data`; Figure: the plot). Blank for a table = the company template: its rows of the study ARD."),
-                rows = 10, width = "100%", resize = "vertical"),
-              shiny::textAreaInput(
-                "process_code",
-                t("2. Normalize and rework: make `data` from `ard` (normalize_ard(), then mutate() ...). Blank = the company template (normalize)."),
-                rows = 5, width = "100%", resize = "vertical",
-                placeholder = "data <- normalize_ard(ard)"),
-              shiny::div(
-                class = "d-flex gap-2 align-items-center mb-2",
-                .btn("fetch", t("Run and read the ARD"),
-                     class = "btn-sm btn-outline-primary"),
-                shiny::span(class = "small text-muted",
-                            t("Runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
-              shiny::uiOutput("ard_summary"),
-              shiny::textAreaInput(
-                "setup",
-                t("Setup code every report runs first (library(), common data)"),
-                rows = 4, width = "100%", resize = "vertical"))),
-          bslib::nav_panel(
-            t("Program"),
-            shiny::uiOutput("program_state"),
-            shiny::div(class = "rp-code",
-                       shiny::verbatimTextOutput("program")))))),
-
-    # one tab a kind of report: what it takes to make one, in the order made
-    bslib::nav_panel(
-      t("Tables"), value = "tables",
-      bslib::navset_card_underline(
+                   t("Reports are made in this order (the official run too). Copy makes a new report with all of this one's definition.")))),
+        bslib::nav_panel(
+          t("Content"), value = "content",
+          shiny::uiOutput("report_head"),
+          shiny::conditionalPanel(
+            "output.report_kind == ''",
+            shiny::p(class = "text-muted mt-3",
+                     t("Choose a report in the list or the sidebar."))),
+    shiny::conditionalPanel(
+      "output.report_kind == 'table'",
+      # not a card: a card around the sheets' own card makes the inner one a
+      # fill item of a box with no height, and every grid in it 0 px high
+      bslib::navset_underline(
         id = "table_nav",
         bslib::nav_panel(
-          t("Definition"), value = "table_spec",
-      shiny::uiOutput("type_note"),
-      shiny::div(class = "rp-assist border rounded p-2 mb-2",
-                 shiny::uiOutput("assist")),
-      grid_note,
-      do.call(bslib::navset_card_underline,
-              c(list(id = "table_sheet"), lapply(table_sheets(), sheet_panel)))
-        ),
-        bslib::nav_panel(
-          t("Builder (beta)"), value = "builder",
+          t("Table (builder)"), value = "builder",
       shiny::uiOutput("builder_note"),
       bslib::layout_columns(
         col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
@@ -490,13 +464,23 @@ app_ui <- function(lang = "en") {
         bslib::card(
           bslib::card_header(shiny::div(
             class = "d-flex justify-content-between",
-            shiny::span(t("Preview: the table as it will print")),
+            shiny::span(t("Preview: the table as it will print"),
+                        shiny::span(id = "builder_updating",
+                                    class = "badge text-bg-warning ms-2 d-none",
+                                    t("Updating ..."))),
             shiny::uiOutput("builder_pages", inline = TRUE))),
-          shiny::uiOutput("builder_preview")))
+          shiny::uiOutput("builder_preview")))),
+        bslib::nav_panel(
+          t("Details (sheets)"), value = "table_spec",
+      shiny::uiOutput("type_note"),
+      shiny::div(class = "rp-assist border rounded p-2 mb-2",
+                 shiny::uiOutput("assist")),
+      grid_note,
+      do.call(bslib::navset_card_underline,
+              c(list(id = "table_sheet"), lapply(table_sheets(), sheet_panel)))
         ))),
-
-    bslib::nav_panel(
-      t("Listings"), value = "lf",
+    shiny::conditionalPanel(
+      "output.report_kind == 'listing'",
       shiny::uiOutput("lf_note"),
       bslib::layout_columns(
         col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
@@ -510,17 +494,65 @@ app_ui <- function(lang = "en") {
             .btn("lf_preview", t("Preview the listing"),
                  class = "btn-sm btn-outline-primary"))),
           shiny::uiOutput("lf_preview_out")))),
-
-    .designer_ui(t),
+    .designer_ui(t)),
+    bslib::nav_panel(
+      t("Page"), value = "page",
+      shiny::p(class = "small text-muted",
+               t("The page of the report chosen in the sidebar: its titles, footnotes and its own header or footer. Study defaults = every report's.")),
+      bslib::layout_columns(
+        col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
+        shiny::div(
+          grid_note,
+          do.call(bslib::navset_card_underline,
+                  lapply(report_sheets(), sheet_panel))),
+        bslib::card(
+          bslib::card_header(shiny::div(
+            class = "d-flex justify-content-between align-items-center",
+            shiny::span(t("First page (sample)")),
+            .btn("page_full", t("Full size"),
+                 class = "btn-sm btn-outline-secondary py-0"))),
+          shiny::uiOutput("page_sample")))),
+        bslib::nav_panel(
+          t("Code"), value = "code",
+        bslib::navset_card_tab(
+          bslib::nav_panel(
+            t("Data code"),
+            shiny::uiOutput("current_label"),
+            shiny::textInput("description", t("Description"), width = "100%"),
+            shiny::div(
+              class = "rp-code",
+              shiny::textAreaInput(
+                "data_code",
+                shiny::span(
+                  title = t("1. ARD: make `ard` (Listing: rework `data`; Figure: the plot). Blank for a table = the company template: its rows of the study ARD."),
+                  t("1. Data code: usually blank (the company's standard code is used). Write code here to make the data yourself; for a figure, the plot."), " \u24d8"),
+                rows = 10, width = "100%", resize = "vertical"),
+              shiny::textAreaInput(
+                "process_code",
+                shiny::span(
+                  title = t("2. Normalize and rework: make `data` from `ard` (normalize_ard(), then mutate() ...). Blank = the company template (normalize)."),
+                  t("2. Rework: usually blank (the standard one). Write code to change the data before the table is made."), " \u24d8"),
+                rows = 5, width = "100%", resize = "vertical",
+                placeholder = "data <- normalize_ard(ard)"),
+              shiny::div(
+                class = "d-flex gap-2 align-items-center mb-2",
+                .btn("fetch", t("Preview"),
+                     class = "btn-sm btn-outline-primary"),
+                shiny::span(class = "small text-muted",
+                            t("Makes this report's ARD (as the ARD tab's Preview), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
+              shiny::uiOutput("ard_summary"),
+              shiny::textAreaInput(
+                "setup",
+                t("Setup code every report runs first (library(), common data)"),
+                rows = 4, width = "100%", resize = "vertical"))),
+          bslib::nav_panel(
+            t("Program"),
+            shiny::uiOutput("program_state"),
+            shiny::div(class = "rp-code",
+                       shiny::verbatimTextOutput("program"))))))),
 
     bslib::nav_panel(
-      t("Report layout"), value = "report_spec",
-      grid_note,
-      do.call(bslib::navset_card_underline,
-              lapply(report_sheets(), sheet_panel))),
-
-    bslib::nav_panel(
-      t("Results"), value = "results",
+      t("Runs"), value = "results",
       bslib::card(
         bslib::card_header(t("Reports")),
         shiny::div(
@@ -563,7 +595,7 @@ app_ui <- function(lang = "en") {
 
     bslib::nav_spacer(),
     bslib::nav_item(shiny::uiOutput("save_state")),
-    bslib::nav_item(.btn("save", t("Save"), class = "btn-sm btn-primary")))
+    bslib::nav_item(shiny::uiOutput("save_btn")))
 }
 
 # ---------------------------------------------------------------- server
@@ -581,27 +613,88 @@ app_ui <- function(lang = "en") {
 
 # as tall as its rows (and the spare one), up to a screenful; the viewer
 # can drag it taller or shorter (.split_js)
+# While the study has unsaved changes, leaving the page (reload, closing the
+# tab) asks first; the server says when (message "tflplanner-dirty").
+# The builder's preview says "Updating" from the moment the builder writes a
+# change to the sheets (the server says so) until the new table arrives.
+.updating_js <- "
+$(document).on('shiny:connected', function() {
+  Shiny.addCustomMessageHandler('builder-updating', function(x) {
+    $('#builder_updating').removeClass('d-none');
+    $('#builder_preview').css('opacity', 0.4);
+    clearTimeout(window.rpUpd);
+    window.rpUpd = setTimeout(function() {
+      $('#builder_updating').addClass('d-none');
+      $('#builder_preview').css('opacity', 1);
+    }, 30000);
+  });
+});
+$(document).on('shiny:value', function(e) {
+  if (e.name === 'builder_preview') {
+    $('#builder_updating').addClass('d-none');
+    $('#builder_preview').css('opacity', 1);
+  }
+});
+"
+
+.unsaved_js <- "
+(function() {
+  var dirty = false;
+  $(document).on('shiny:connected', function() {
+    Shiny.addCustomMessageHandler('tflplanner-dirty', function(x) { dirty = !!x; });
+  });
+  window.addEventListener('beforeunload', function(e) {
+    if (dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+})();
+"
+
 .grid_height <- function(n) {
   as.integer(min(max(28 + 23 * (n + 1L) + 20, 100), 420))
 }
 
-.grid <- function(d, sheet, key, choices) {
+# A sheet as an editable grid.  `choices` offers values in a dropdown;
+# the columns named in `closed` accept nothing else (a typo is refused in
+# the cell rather than saved), the others take free text too.
+.grid <- function(d, sheet, key, choices, closed = character(),
+                  select = FALSE) {
   d <- .na_blank(d)
   if (!nrow(d)) d[1L, ] <- ""
   h <- rhandsontable::rhandsontable(
     d, rowHeaders = TRUE, useTypes = FALSE, stretchH = "all",
-    height = .grid_height(nrow(d)), minSpareRows = 1L, planner_key = key)
+    height = .grid_height(nrow(d)), minSpareRows = 1L, planner_key = key,
+    selectCallback = select)
   h <- rhandsontable::hot_context_menu(h, allowRowEdit = TRUE,
                                        allowColEdit = FALSE)
   for (cn in names(choices)) {
     if (cn %in% names(d) && length(choices[[cn]])) {
+      shut <- cn %in% closed
       h <- suppressWarnings(rhandsontable::hot_col(
         h, cn, type = "dropdown", source = c("", choices[[cn]]),
-        strict = FALSE))
+        strict = shut, allowInvalid = !shut))
     }
   }
   h
 }
+
+# The rows a grid sends back, each as long as the grid is wide.  A row
+# typed into the spare row starting from a dropdown column arrives with
+# fewer cells than columns, and hot_to_r() -- which lays the cells out row
+# by row -- then cannot rebuild the table: that is a new row, not an error.
+.grid_rows_full <- function(rows, width) {
+  if (!length(width) || width < 1L || !is.list(rows)) return(rows)
+  lapply(rows, function(r) {
+    r <- as.list(r)
+    r <- r[seq_len(min(length(r), width))]
+    if (length(r) < width) r[(length(r) + 1L):width] <- list(NULL)
+    lapply(r, function(x) if (is.null(x)) NA else x)
+  })
+}
+
+# ARD columns whose values can only be one of their choices (the study's
+# datasets and populations).  `method` stays open: besides the keywords it
+# takes any pkg::function.
+.ard_closed_columns <- c("dataset", "population_id")
 
 .help_table <- function(sheet) {
   rd <- .readme()
@@ -648,14 +741,58 @@ app_server <- function(input, output, session, start) {
     ver = 0L, want = NULL, job = NULL, job_what = NULL, status_ver = 0L,
     studies_ver = 0L, ard_ver = 0L)
   bump <- function() rv$ver <- rv$ver + 1L
+  # an ARD method's name and note as the user reads them: the translation
+  # kept by the app under "method:<name>" / "method-note:<name>", else
+  # tflspec's English (tflspec's catalog stays the English original)
+  method_label <- function(method, label) {
+    k <- paste0("method:", method)
+    v <- t(k)
+    fallback <- ifelse(!is.na(label) & nzchar(label), label, method)
+    ifelse(v == k, fallback, v)
+  }
+  method_note <- function(method, note) {
+    k <- paste0("method-note:", method)
+    v <- t(k)
+    ifelse(v == k, note, v)
+  }
   notify <- function(msg, type = "message") {
     shiny::showNotification(msg, type = type, duration = 6)
   }
   guarded <- function(expr) {
-    tryCatch(expr, error = function(e) {
-      notify(conditionMessage(e), "error")
-      NULL
-    })
+    # the detail (the calls) goes to the console / log; the screen gets
+    # the message only
+    tryCatch(
+      withCallingHandlers(expr, error = function(e) {
+        calls <- vapply(utils::tail(sys.calls(), 12L), function(cl)
+          paste(utils::head(deparse(cl, width.cutoff = 80L), 1L), collapse = ""), "")
+        message("tflplanner: ", conditionMessage(e), "\n  ",
+                paste(calls, collapse = "\n  "))
+      }),
+      error = function(e) {
+        # a problem's full output (a program that failed) is for the log
+        if (inherits(e, "tflplanner_problem") && length(e$detail)) {
+          message("tflplanner: the output of what failed:\n",
+                  paste(e$detail, collapse = "\n"))
+        }
+        notify(conditionMessage(e), "error")
+        NULL
+      })
+  }
+
+  # Every grid's edits come back through read_grid().  A grid whose change
+  # cannot be read (rhandsontable could not rebuild the data frame) must not
+  # stop the session: the change is dropped, said so, and every grid is
+  # drawn again from what the study holds.
+  grids_drawn <- shiny::reactiveVal(0L)
+  read_grid <- function(h) {
+    h$data <- .grid_rows_full(h$data, length(unlist(h$params$rColHeaders)))
+    d <- tryCatch(rhandsontable::hot_to_r(h), error = function(e) NULL)
+    if (is.null(d)) {
+      notify(t("This change could not be taken in; the grid shows the definition as it was."),
+             "warning")
+      grids_drawn(grids_drawn() + 1L)
+    }
+    d
   }
   has_study <- shiny::reactive(!is.null(rv$study))
   dirty <- shiny::reactive({
@@ -664,7 +801,21 @@ app_server <- function(input, output, session, start) {
   })
   # for shiny::testServer(), which sees only the session
   session$userData$rv <- rv
+  session$userData$grids_drawn <- grids_drawn
   session$userData$dirty <- dirty
+  # unsaved changes: the page asks before it is left, and a draft keeps
+  # them (written once the edits pause) until they are saved or discarded
+  shiny::observe(session$sendCustomMessage("tflplanner-dirty", isTRUE(dirty())))
+  draft_due <- shiny::debounce(shiny::reactive(list(dirty(), rv$p, rv$meta)),
+                               2000)
+  shiny::observe({
+    unsaved <- isTRUE(draft_due()[[1L]])
+    shiny::isolate({
+      if (!has_study() || !is.null(rv$draft)) return()
+      if (unsaved) .write_draft(current_study())
+      else .drop_draft(rv$study$meta$study_id)
+    })
+  })
 
   # -- the study ---------------------------------------------------------
   set_study <- function(s) {
@@ -676,8 +827,48 @@ app_server <- function(input, output, session, start) {
     bump()
     rv$status_ver <- rv$status_ver + 1L
     rv$ard_ver <- rv$ard_ver + 1L
+    offer_draft(s)
   }
+  # a draft left by a session that did not save: take it back, or drop it
+  offer_draft <- function(s) {
+    d <- .read_draft(s$meta$study_id)
+    if (is.null(d)) return(invisible())
+    if (identical(d$planner, s$planner) &&
+        identical(d$meta[.study_fields], s$meta[.study_fields])) {
+      .drop_draft(s$meta$study_id)
+      return(invisible())
+    }
+    rv$draft <- d
+    shiny::showModal(shiny::modalDialog(
+      title = t("Changes that were not saved"),
+      t("The last time this study was open, some changes were not saved. Take them back (they are not saved until you save), or discard them?"),
+      footer = shiny::tagList(
+        .btn("draft_discard", t("Discard"), class = "btn-outline-secondary"),
+        .btn("draft_restore", t("Take them back"), class = "btn-primary")),
+      easyClose = FALSE))
+  }
+  shiny::observeEvent(input$draft_restore, {
+    d <- rv$draft
+    if (!is.null(d)) {
+      rv$p <- .study_spec_keys(d$planner)
+      rv$meta <- d$meta[.study_fields]
+      bump()
+    }
+    rv$draft <- NULL
+    shiny::removeModal()
+  })
+  shiny::observeEvent(input$draft_discard, {
+    if (has_study()) .drop_draft(rv$study$meta$study_id)
+    rv$draft <- NULL
+    shiny::removeModal()
+  })
   # (outside any reactive context at startup: its bump() reads rv$ver)
+  if (is.null(start)) {
+    last <- tflplanner_config()$last_study
+    if (!is.null(last) && last %in% list_studies()$study_id) {
+      start <- tryCatch(open_study(last), error = function(e) NULL)
+    }
+  }
   if (!is.null(start)) shiny::isolate(set_study(start))
 
   shiny::observe({
@@ -759,9 +950,7 @@ app_server <- function(input, output, session, start) {
   })
   output$studies <- DT::renderDT({
     d <- studies()
-    shiny::validate(shiny::need(
-      nrow(d) > 0L,
-      t("No studies yet. Create one with New study (the sample study is one of its choices), or register a study folder.")))
+    shiny::req(nrow(d) > 0L)
     last <- shiny::isolate(if (has_study()) rv$study$meta$study_id else
       tflplanner_config()$last_study)
     open_id <- shiny::isolate(if (has_study()) rv$study$meta$study_id)
@@ -789,6 +978,56 @@ app_server <- function(input, output, session, start) {
       options = list(dom = if (nrow(v) > 10L) "ft" else "t", paging = FALSE,
                      ordering = FALSE, scrollX = TRUE, scrollY = "50vh",
                      scrollCollapse = TRUE))
+  })
+  output$n_studies <- shiny::renderText(nrow(studies()))
+  shiny::outputOptions(output, "n_studies", suspendWhenHidden = FALSE)
+  output$save_btn <- shiny::renderUI(
+    if (has_study()) .btn("save", t("Save"), class = "btn-sm btn-primary"))
+  # no study yet: the ways to start, the sample first
+  output$welcome <- shiny::renderUI({
+    if (nrow(studies())) return(NULL)
+    shiny::div(
+      class = "border rounded p-3 mb-3 bg-light",
+      shiny::h5(t("Getting started")),
+      shiny::p(t("tflplanner makes a study's tables, listings and figures: the data, the analyses (ARD), each report's definition, and the programs that make the RTFs.")),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2 mb-2",
+        .btn("try_sample", t("Try the sample study (about 1 minute)"),
+             class = "btn btn-primary"),
+        .btn("start_empty", t("Create an empty study"),
+             class = "btn btn-outline-primary"),
+        .btn("register2", t("Register a study folder"),
+             class = "btn btn-outline-secondary")),
+      shiny::p(class = "small text-muted mb-0",
+               t("The sample uses the CDISC pilot data: it makes its ARD, 5 tables, a listing and 2 figures, to look at and change.")))
+  })
+  shiny::observeEvent(input$start_empty, open_new_study("empty"))
+  # SAMPLE-01, or the first SAMPLE-nn not taken
+  next_sample_id <- function(root = studies_root()) {
+    id <- "SAMPLE-01"
+    k <- 1L
+    while (id %in% studies()$study_id || dir.exists(file.path(root, id))) {
+      k <- k + 1L
+      id <- sprintf("SAMPLE-%02d", k)
+    }
+    id
+  }
+  shiny::observeEvent(input$register2, show_register())
+  shiny::observeEvent(input$try_sample, {
+    root <- studies_root()
+    id <- next_sample_id()
+    s <- NULL
+    shiny::withProgress(
+      message = t("Making the sample study (about 1 minute)"),
+      detail = t("copying the data, making its ARD, then its tables, listing and figures"),
+      s <- guarded(suppressMessages(create_sample_study(root = root,
+                                                        study_id = id))))
+    if (is.null(s)) return()
+    rv$studies_ver <- rv$studies_ver + 1L
+    set_study(s)
+    rv$next_steps <- TRUE
+    notify(sprintf(t("Created %s"), s$meta$study_id))
+    go("outputs")
   })
   output$studies_root_note <- shiny::renderUI({
     rv$studies_ver
@@ -837,7 +1076,7 @@ app_server <- function(input, output, session, start) {
                            selected = lang),
         .btn("save_language", t("Change"), class = "btn-sm mb-3")),
       shiny::p(class = "small text-muted mb-1",
-               t("The sample study SAMPLE-01: CDISC pilot data (pharmaverseadam), one study ARD, four tables, a listing and a figure.")),
+               t("The sample study: CDISC pilot data (pharmaverseadam), its ARD, 5 tables, a listing and 2 figures.")),
       .btn("add_sample", t("Add the sample study"),
            class = "btn-sm btn-outline-primary mb-2"),
       shiny::hr(),
@@ -902,6 +1141,11 @@ app_server <- function(input, output, session, start) {
       return(notify(t("There are unsaved changes. Save first."), "warning"))
     }
     guarded(suppressMessages(setup_tflplanner(language = input$language)))
+    shiny::showNotification(
+      shiny::tagList(t("The language is changed: the page reloads to show it."), " ",
+                     shiny::tags$a(href = "javascript:location.reload()",
+                                   t("Reload now"))),
+      duration = NULL, type = "message")
     session$reload()
   })
   selected_study <- function() {
@@ -914,7 +1158,8 @@ app_server <- function(input, output, session, start) {
     }
     d[i[1L], , drop = FALSE]
   }
-  shiny::observeEvent(input$register, {
+  shiny::observeEvent(input$register, show_register())
+  show_register <- function() {
     shiny::showModal(shiny::modalDialog(
       title = t("Register an existing study folder"),
       shiny::textInput("reg_path", t("Study folder (the one with study.yml)"),
@@ -925,7 +1170,7 @@ app_server <- function(input, output, session, start) {
                               .btn("reg_ok", t("Register"),
                                    class = "btn-primary")),
       easyClose = TRUE))
-  })
+  }
   shiny::observeEvent(input$reg_ok, {
     if (dirty()) {
       return(notify(t("There are unsaved changes. Save first."), "warning"))
@@ -966,8 +1211,32 @@ app_server <- function(input, output, session, start) {
   open_row <- function(d) {
     if (is.null(d)) return()
     if (dirty()) {
-      return(notify(t("There are unsaved changes. Save first."), "warning"))
+      to_open(d)
+      return(shiny::showModal(shiny::modalDialog(
+        title = sprintf(t("%s has changes that are not saved"),
+                        rv$study$meta$study_id),
+        sprintf(t("Save them and open %s, or open it without saving them (they are kept as a draft: opening %s again offers them back)."),
+                d$study_id, rv$study$meta$study_id),
+        footer = shiny::tagList(
+          shiny::modalButton(t("Cancel")),
+          .btn("open_discard", t("Open without saving"),
+               class = "btn-outline-secondary"),
+          .btn("open_save", t("Save and open"), class = "btn-primary")))))
     }
+    open_now(d)
+  }
+  to_open <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(input$open_save, {
+    shiny::removeModal()
+    if (isTRUE(do_save())) open_now(to_open())
+  })
+  shiny::observeEvent(input$open_discard, {
+    shiny::removeModal()
+    guarded(.write_draft(current_study()))
+    open_now(to_open())
+  })
+  open_now <- function(d) {
+    if (is.null(d)) return()
     s <- guarded(open_study(d$study_id))
     if (!is.null(s)) {
       set_study(s)
@@ -983,35 +1252,72 @@ app_server <- function(input, output, session, start) {
     i <- input$studies_dbl
     if (i >= 1L && i <= nrow(d)) open_row(d[i, , drop = FALSE])
   })
-  shiny::observeEvent(input$new_study, {
+  shiny::observeEvent(input$new_study, open_new_study("sample"))
+  open_new_study <- function(from = "sample") {
     shiny::showModal(shiny::modalDialog(
       title = t("New study"),
-      shiny::textInput("ns_id",
-                       t("Study ID (the folder name: letters, digits . _ -)")),
-      shiny::textInput("ns_title", t("Title"), width = "100%"),
-      shiny::textInput("ns_compound", t("Compound")),
-      shiny::textInput("ns_phase", t("Phase")),
-      shiny::textAreaInput("ns_description", t("Description"), width = "100%"),
       shiny::radioButtons(
-        "ns_from", t("Reports"),
-        stats::setNames(c("empty", "study", "sample"),
-                        c(t("Start empty"),
-                          t("Copy another study (definition and data code)"),
-                          t("The sample study: data, ARD definition, tables, listing and figures (made at once)"))),
-        selected = "sample"),
+        "ns_from", t("Start from"),
+        stats::setNames(c("sample", "empty", "study"),
+                        c(t("The sample study: data, ARD definition, tables, listing and figures (made at once)"),
+                          t("Start empty"),
+                          t("Copy another study (definition and data code)"))),
+        selected = from, width = "100%"),
       shiny::conditionalPanel(
         "input.ns_from == 'study'",
         shiny::selectInput("ns_src", t("Copy from"),
                            stats::setNames(studies()$study_id,
                                            studies()$study_id))),
-      shiny::textInput("ns_root", t("Create the study folder in"),
-                       value = studies_root(), width = "100%"),
+      shiny::textInput("ns_id",
+                       t("Study ID (the folder name: letters, digits . _ -)"),
+                       value = if (identical(from, "sample")) next_sample_id() else ""),
+      shiny::uiOutput("ns_id_check"),
+      shiny::tags$details(
+        class = "mb-2",
+        shiny::tags$summary(t("Details (optional)")),
+        shiny::textInput("ns_title", t("Title"), width = "100%"),
+        shiny::textInput("ns_compound", t("Compound")),
+        shiny::textInput("ns_phase", t("Phase")),
+        shiny::textAreaInput("ns_description", t("Description"), width = "100%")),
+      shiny::tags$details(
+        shiny::tags$summary(t("Where the study folder goes")),
+        shiny::textInput("ns_root", t("Create the study folder in"),
+                         value = studies_root(), width = "100%")),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn("ns_ok", t("Create"),
                                    class = "btn-primary")),
       easyClose = TRUE))
+  }
+  # the ID is checked where it is typed, not in a message after Create
+  ns_id_problem <- function(id) {
+    id <- trimws(id %||% "")
+    if (!nzchar(id)) return(t("Give the study an ID."))
+    if (!grepl("^[A-Za-z0-9][A-Za-z0-9._-]*$", id)) {
+      return(t("Use letters, digits, '.', '_' or '-' only (e.g. ABC-101)."))
+    }
+    if (id %in% studies()$study_id) return(t("A study with this ID is already registered."))
+    root <- trimws(input$ns_root %||% "")
+    if (nzchar(root) && dir.exists(file.path(root, id))) {
+      return(sprintf(t("A folder %s is already there: choose another ID, or register that folder (Studies > Register a folder)."),
+                     file.path(root, id)))
+    }
+    NULL
+  }
+  output$ns_id_check <- shiny::renderUI({
+    msg <- ns_id_problem(input$ns_id)
+    if (!is.null(msg)) shiny::div(class = "small text-danger mb-2", msg)
   })
+  # the sample suggests its own ID; another choice leaves the field to you
+  shiny::observeEvent(input$ns_from, {
+    id <- trimws(input$ns_id %||% "")
+    if (identical(input$ns_from, "sample") && !nzchar(id)) {
+      shiny::updateTextInput(session, "ns_id", value = next_sample_id())
+    } else if (!identical(input$ns_from, "sample") && grepl("^SAMPLE-[0-9]+$", id)) {
+      shiny::updateTextInput(session, "ns_id", value = "")
+    }
+  }, ignoreInit = TRUE)
   shiny::observeEvent(input$ns_ok, {
+    if (!is.null(ns_id_problem(input$ns_id))) return()
     if (dirty()) {
       return(notify(t("There are unsaved changes. Save first."), "warning"))
     }
@@ -1030,10 +1336,12 @@ app_server <- function(input, output, session, start) {
           description = nz(input$ns_description)))))
       out
     } else {
+      # "empty": no reports, but the company's study defaults, analysis
+      # sets and data catalog (create_study() with no planner)
       p <- switch(input$ns_from,
         study = guarded(open_study(input$ns_src)$planner),
-        new_planner())
-      if (is.null(p)) return()
+        NULL)
+      if (identical(input$ns_from, "study") && is.null(p)) return()
       guarded(create_study(
         trimws(input$ns_id),
         title = blank(input$ns_title), compound = blank(input$ns_compound),
@@ -1045,10 +1353,62 @@ app_server <- function(input, output, session, start) {
     shiny::removeModal()
     rv$studies_ver <- rv$studies_ver + 1L
     set_study(s)
+    if (identical(input$ns_from, "sample")) rv$next_steps <- TRUE
     notify(sprintf(t("Created %s"), s$meta$study_id))
     bslib::nav_select("nav", "outputs")
   })
+  # -- the next steps, once: after the sample is made, where to look ------
+  rv$next_steps <- FALSE
+  steps_flag <- function() file.path(tflplanner_home(), "next_steps_seen")
+  output$next_steps <- shiny::renderUI({
+    if (!isTRUE(rv$next_steps) || file.exists(steps_flag())) return(NULL)
+    ids <- output_ids(rv$p)
+    ft <- c(intersect("T-14-1-1", ids), ids)[1L]
+    step <- function(text, id, label) shiny::tags$li(
+      class = "mb-1", text, " ",
+      .btn(id, label, class = "btn-sm btn-outline-primary py-0"))
+    shiny::div(
+      class = "border rounded p-3 mb-3 bg-light",
+      shiny::div(
+        class = "d-flex justify-content-between align-items-start",
+        shiny::h5(t("Next steps")),
+        .btn("steps_close", t("Close"), class = "btn-sm btn-link")),
+      shiny::tags$ol(
+        class = "mb-0",
+        if (!is.na(ft)) step(sprintf(t("Open %s: its Content builds the table in words, with the table as it will print beside it."), ft),
+                             "steps_table", t("Open it")),
+        step(t("ARD: where the numbers come from (cards / cardx). A click on a row shows the analysis as a form."),
+             "steps_ard", t("Go to ARD")),
+        step(t("Runs: preview every report and open its RTF."),
+             "steps_runs", t("Go to Runs"))))
+  })
+  shiny::observeEvent(input$steps_close, {
+    rv$next_steps <- FALSE
+    try(writeLines(format(Sys.time()), steps_flag()), silent = TRUE)
+  })
+  shiny::observeEvent(input$steps_table, {
+    ids <- output_ids(rv$p)
+    ft <- c(intersect("T-14-1-1", ids), ids)[1L]
+    shiny::updateSelectInput(session, "target", selected = ft)
+    go("tables")
+  })
+  shiny::observeEvent(input$steps_ard, go("ard"))
+  shiny::observeEvent(input$steps_runs, go("results"))
 
+  shiny::observeEvent(input$std_defaults, {
+    if (!has_study()) return()
+    p2 <- guarded(add_standard_defaults(rv$p, rv$study$meta$study_id))
+    if (is.null(p2)) return()
+    added <- attr(p2, "added")
+    if (!length(added)) {
+      return(notify(t("The study has every company default already.")))
+    }
+    attr(p2, "added") <- NULL
+    rv$p <- p2
+    bump()
+    notify(sprintf(t("Added the company's defaults: %s (save to keep them)"),
+                   paste(added, collapse = ", ")))
+  })
   output$study_detail <- shiny::renderUI({
     s <- shown_study()
     if (is.null(s)) {
@@ -1097,6 +1457,12 @@ app_server <- function(input, output, session, start) {
                         t(c("As options(rtfreporter.rounding)",
                             "r (half to even)", "sas (half away from zero)"))),
         selected = v(r)),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2 align-items-center mb-2",
+        .btn("std_defaults", t("Add the company's study defaults (only what is missing)"),
+             class = "btn-sm btn-outline-primary"),
+        shiny::span(class = "small text-muted",
+                    t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, analysis sets and data catalog. Nothing already there is changed."))),
       shiny::tags$details(
         shiny::tags$summary(t("Folders")),
         shiny::tags$pre(class = "small", paste(
@@ -1177,21 +1543,64 @@ app_server <- function(input, output, session, start) {
     ids <- if (is.null(p)) character() else output_ids(p)
     cur <- shiny::isolate(input$target)
     ch <- if (is.null(p)) c("-" = .all_rows) else
-      c(stats::setNames(.default_rows, t("Study defaults")),
+      stats::setNames(list(
         stats::setNames(ids, ids),
-        stats::setNames(.all_rows, t("ALL (every row)")))
+        stats::setNames(c(.default_rows, .all_rows),
+                        c(t("Study defaults"), t("ALL (every row)")))),
+        c(t("Reports"), t("Rows for every report (ARD, Page)")))
+    vals <- c(ids, .default_rows, .all_rows)
     want <- shiny::isolate(rv$want)
     rv$want <- NULL
-    sel <- if (length(want) && !is.na(want) && want %in% ch) want else
-      if (!is.null(cur) && cur %in% ch) cur else
+    sel <- if (length(want) && !is.na(want) && want %in% vals) want else
+      if (!is.null(cur) && cur %in% vals) cur else
         if (length(ids)) ids[1L] else .default_rows
-    shiny::updateRadioButtons(session, "target", choices = ch, selected = sel)
+    shiny::updateSelectInput(session, "target", choices = ch, selected = sel)
   })
+  # the sidebar is for an open study
+  shiny::observe(bslib::toggle_sidebar("side", open = has_study()))
   target <- shiny::reactive(.target_value(input$target))
   current <- shiny::reactive({
     tg <- target()
     if (!is.null(rv$p) && !is.na(tg) && nzchar(tg) &&
         tg %in% rv$p$outputs$output_id) tg else NULL
+  })
+
+  # -- where the user is ---------------------------------------------------
+  # A report's screens are the Reports tab's sub-tabs (the list, its
+  # content by its kind, its page, its code); the logic knows them by the
+  # pages they were: tables / lf / designer (content), report_spec (page).
+  report_kind <- shiny::reactive({
+    id <- current()
+    if (is.null(id)) "" else report_info(rv$p, id)$type
+  })
+  output$report_kind <- shiny::renderText(report_kind())
+  shiny::outputOptions(output, "report_kind", suspendWhenHidden = FALSE)
+  page <- shiny::reactive({
+    nav <- input$nav %||% ""
+    if (!identical(nav, "outputs")) return(nav)
+    switch(input$rep_nav %||% "list",
+      content = switch(report_kind(), table = "tables", listing = "lf",
+                       figure = "designer", "outputs"),
+      page = "report_spec", code = "code", "outputs")
+  })
+  go <- function(where) {
+    sub <- switch(where, tables = , lf = , designer = "content",
+                  report_spec = "page", code = "code", outputs = "list", NULL)
+    if (is.null(sub)) return(bslib::nav_select("nav", where))
+    bslib::nav_select("nav", "outputs")
+    bslib::nav_select("rep_nav", sub)
+  }
+  output$report_head <- shiny::renderUI({
+    id <- current()
+    if (is.null(id)) return(NULL)
+    o <- rv$p$outputs
+    d <- o$description[match(id, o$output_id)]
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-baseline my-2",
+      shiny::strong(id),
+      shiny::span(class = "badge text-bg-light border",
+                  t(unname(.type_labels[report_kind()]))),
+      if (!is.na(d)) shiny::span(class = "text-muted small", d))
   })
 
   # -- what the ARD says ---------------------------------------------------
@@ -1222,6 +1631,7 @@ app_server <- function(input, output, session, start) {
       ch <- .std_choices(sh)
       gc <- grid_choices(sh, meta_now())
       for (cn in names(gc)) ch[[cn]] <- unique(c(gc[[cn]], ch[[cn]]))
+      grids_drawn()
       .grid(d, sh, key(), ch)
     })
     shiny::observeEvent(input[[out_id]], {
@@ -1229,8 +1639,9 @@ app_server <- function(input, output, session, start) {
       if (is.null(h$changes$changes) &&
           !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
       if (!identical(h$params$planner_key, key())) return()
-      d <- rhandsontable::hot_to_r(h)
-      rv$p <- set_sheet_rows(rv$p, sh, target(), d)
+      d <- read_grid(h)
+      if (is.null(d)) return()
+      guarded(rv$p <- set_sheet_rows(rv$p, sh, target(), d))
     })
     inherited <- shiny::reactive({
       id <- current()
@@ -1275,22 +1686,33 @@ app_server <- function(input, output, session, start) {
       return(shiny::span(class = "small text-muted",
                          t("Choose a report in the sidebar to fill its rows from its ARD and from presets.")))
     }
-    m <- meta_of(id)
+    st <- report_ard_state(id)
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center",
       shiny::strong("ARD"),
-      if (is.null(m)) {
-        shiny::span(class = "small text-muted",
-                    t("not read yet: Run and read the ARD."))
-      } else {
-        shiny::span(class = "small", sprintf(
-          t("read %s: %d keys, %d variables, statistics %s"),
-          m$fetched, length(m$keys), nrow(m$variables),
-          paste(m$stats, collapse = ", ")))
-      },
-      .btn("fetch2", t("Run and read the ARD"),
-           class = "btn-sm btn-outline-primary"))
+      shiny::span(class = paste("small", if (st$need) "text-muted"), st$text),
+      if (st$need) .btn("fetch2", t("Preview this table's ARD"),
+                        class = "btn-sm btn-outline-primary"))
   })
+  # A report's ARD in one word -- not made, outdated (its definition has
+  # changed), made (when), error -- and whether a Preview is wanted.
+  report_ard_state <- function(id) {
+    m <- meta_of(id)
+    s <- tryCatch(ard_state(), error = function(e) NULL)
+    state <- if (!is.null(s) && id %in% s$output_id)
+      s$state[match(id, s$output_id)] else NA_character_
+    if (is.null(m) && (is.na(state) || state != "error")) state <- "not built"
+    if (is.na(state)) state <- "built"
+    text <- switch(state,
+      `not built` = t("Not made"),
+      outdated = t("Outdated: the ARD definition has changed since it was made"),
+      error = t("Error: its program failed (ARD tab > Study ARD)"),
+      sprintf(t("Made %s: %d keys, %d variables, statistics %s"),
+              m$fetched, length(m$keys), nrow(m$variables),
+              paste(m$stats, collapse = ", ")))
+    list(state = state, need = !identical(state, "built"),
+         text = text)
+  }
 
   # each assisted tab's own help, above its grid
   assist_box <- function(...) {
@@ -1369,7 +1791,7 @@ app_server <- function(input, output, session, start) {
   need_meta <- function() {
     m <- meta_of(current())
     if (is.null(m)) {
-      notify(t("Read the ARD first (Run and read the ARD)."), "warning")
+      notify(t("Preview this table's ARD first."), "warning")
     }
     m
   }
@@ -1402,26 +1824,74 @@ app_server <- function(input, output, session, start) {
     after_fill(guarded(add_preset(rv$p, current(), input$header_preset)),
                "col_header", "col_header")
   })
-  do_fetch <- function() {
-    id <- current()
+  # Preview: the one action that makes a report's ARD and reads it, the
+  # same from the ARD, Tables and Reports tabs.  It saves; runs the report's
+  # ARD program into the study's working ARD (when the ARD definition has
+  # analyses for it); then runs its data code (1 and 2) and reads what the
+  # builder and the fills use; and shows the report's ARD on the ARD tab.
+  do_preview <- function(id = current()) {
     if (is.null(id)) return(notify(t("Choose a report"), "warning"))
+    has_an <- any(rv$p$ard$analyses$output_id %in% id)
+    is_report <- id %in% rv$p$outputs$output_id
+    if (!has_an && !is_report) {
+      return(notify(sprintf(t("%s has no analyses in the ARD definition."), id),
+                    "warning"))
+    }
+    t0 <- Sys.time()
+    ok <- TRUE
     m <- NULL
-    shiny::withProgress(message = sprintf(t("Running the data code of %s"),
-                                          id), {
-      m <- guarded(fetch_ard(current_study(), id))
+    n_an <- sum(rv$p$ard$analyses$output_id %in% id)
+    shiny::withProgress(message = sprintf(t("Preview of %s"), id), {
+      if (has_an) {
+        shiny::setProgress(0.05, detail = t("1/3 saving the study"))
+        ok <- ard_ready()
+      }
+      if (ok && has_an) {
+        shiny::setProgress(0.15, detail = sprintf(
+          t("2/3 making its ARD (%d analyses, in its own R process)"), n_an))
+        r <- guarded(update_study_ard(current_study(), id))
+        ard_state_ver(ard_state_ver() + 1L)
+        rv$status_ver <- rv$status_ver + 1L
+        if (is.null(r)) {
+          ok <- FALSE
+        } else {
+          ard_preview_out(list(id = id, text = r$output))
+          if (!r$ok) {
+            ok <- FALSE
+            ard_res(list(scope = id, error = r$error))
+            notify(t("The ARD program failed: see what it printed on the ARD tab (Study ARD)."),
+                   "error")
+          }
+        }
+      }
+      if (ok && is_report) {
+        shiny::setProgress(0.6, detail = t("3/3 reading it for the builder"))
+        m <- guarded(fetch_ard(current_study(), id))
+        if (is.null(m)) ok <- FALSE
+      }
     })
-    if (is.null(m)) return()
     rv$ard_ver <- rv$ard_ver + 1L
-    if (!is.null(m$error)) {
+    if (!ok) return(invisible(FALSE))
+    if (has_an) {
+      ard_res(list(ard = study_ard_rows(current_study(), id), scope = id,
+                   seconds = as.numeric(difftime(Sys.time(), t0,
+                                                 units = "secs"))))
+    }
+    if (!is_report) {
+      notify(sprintf(t("%s is in the study ARD; add it on the Reports tab to make its table."),
+                     id), "warning")
+    } else if (!is.null(m$error)) {
       notify(paste(t("The ARD was read, but normalize and rework failed:"),
                    m$error), "warning")
     } else {
-      notify(sprintf(t("ARD read: %d keys, %d variables"),
+      notify(sprintf(t("Preview of %s: %d keys, %d variables"), id,
                      length(m$keys), nrow(m$variables)))
     }
+    invisible(TRUE)
   }
-  shiny::observeEvent(input$fetch, do_fetch())
-  shiny::observeEvent(input$fetch2, do_fetch())
+  shiny::observeEvent(input$fetch, do_preview())
+  shiny::observeEvent(input$fetch2, do_preview())
+  shiny::observeEvent(input$fetch3, do_preview())
   output$ard_summary <- shiny::renderUI({
     m <- meta_of(current())
     if (is.null(m)) return(NULL)
@@ -1515,16 +1985,19 @@ app_server <- function(input, output, session, start) {
       tg <- if (by_report) target() else ""
       d <- ard_rows(shiny::isolate(rv$p), sh, tg)
       if (by_report && !identical(tg, "") && !is.na(tg)) d$output_id <- NULL
-      .grid(d, sh, key(), shiny::isolate(ard_choices(sh)))
+      grids_drawn()
+      .grid(d, sh, key(), shiny::isolate(ard_choices(sh)),
+            closed = .ard_closed_columns, select = by_report)
     })
     shiny::observeEvent(input[[out_id]], {
       h <- input[[out_id]]
       if (is.null(h$changes$changes) &&
           !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
       if (!identical(h$params$planner_key, key())) return()
-      d <- rhandsontable::hot_to_r(h)
+      d <- read_grid(h)
+      if (is.null(d)) return()
       tg <- if (by_report) target() else ""
-      rv$p <- set_ard_rows(rv$p, sh, tg, d)
+      guarded(rv$p <- set_ard_rows(rv$p, sh, tg, d))
     })
   })
   output$ard_methods <- DT::renderDT(
@@ -1541,15 +2014,19 @@ app_server <- function(input, output, session, start) {
                                  scrollY = "40vh", scrollCollapse = TRUE))
   })
 
-  # -- statistics and formats of one analysis ------------------------------
-  # Picks the analysis's statistics from the company standards' catalog
-  # (those its method can give) and each one's format; Apply writes them
-  # to the row's `statistics` and `formats`.  Fresh input ids per drawing,
-  # as the builder's.
+  # -- one analysis as a form ----------------------------------------------
+  # A click on a row of the analyses grid shows that analysis here, with the
+  # parts of the first-table form: what to compute (by its label), the data,
+  # the analysis set, the groups (columns), the variables (rows), a subset,
+  # and the statistics with their formats.  Apply writes the row; the grid
+  # stays for what the form does not say (args, code).  Fresh input ids per
+  # drawing, as the builder's.
   st_env <- new.env()
   st_env$n <- 0L
+  session$userData$st_env <- st_env
   st_drawn <- shiny::reactiveVal(0L)
   st_id <- function(x) paste0("st", st_env$n, "_", x)
+  an_pick <- shiny::reactiveVal(NULL)
   st_rows <- shiny::reactive({
     tg <- ard_target()
     if (is.null(tg) || !has_study()) return(NULL)
@@ -1557,10 +2034,22 @@ app_server <- function(input, output, session, start) {
     a[!is.na(a$output_id) & a$output_id == tg & !is.na(a$analysis_id), ,
       drop = FALSE]
   })
+  # the grid's row clicked: the analysis it shows
+  shiny::observeEvent(input$hot_ard_analyses_select, {
+    r <- input$hot_ard_analyses_select$select$r
+    tg <- ard_target()
+    if (is.null(tg) || length(r) != 1L) return()
+    d <- ard_rows(rv$p, "analyses", tg)
+    if (r >= 1L && r <= nrow(d) && !is.na(d$analysis_id[r])) {
+      an_pick(d$analysis_id[r])
+    }
+  })
   st_row <- shiny::reactive({
     a <- st_rows()
-    shiny::req(a, nrow(a), input$ard_stat_row)
-    a[a$analysis_id == input$ard_stat_row, , drop = FALSE][1L, ]
+    shiny::req(a, nrow(a))
+    id <- an_pick()
+    if (is.null(id) || !id %in% a$analysis_id) id <- a$analysis_id[1L]
+    a[a$analysis_id == id, , drop = FALSE][1L, ]
   })
   st_kind <- function(r) {
     keys <- .std_ard_methods()
@@ -1576,33 +2065,159 @@ app_server <- function(input, output, session, start) {
     st <- .std_ard_statistics()
     unname(st$fmt[match(stat, st$statistic)])
   }
+  # the row as the form has it now: its method may be changed there
+  st_row_now <- function() {
+    r <- shiny::isolate(st_row())
+    m <- input[[st_id("method")]]
+    if (!is.null(m) && nzchar(m)) r$method <- m
+    r
+  }
+  # a dataset's data (for the choices), read once per file version
+  an_data <- function(ds) {
+    d <- rv$p$ard$datasets
+    pth <- d$path[match(ds, d$dataset)]
+    if (!length(pth) || is.na(pth)) return(NULL)
+    f <- file.path(rv$study$path, pth)
+    if (!file.exists(f)) return(NULL)
+    k <- paste("form", f, file.mtime(f))
+    if (is.null(ard_cols[[k]])) {
+      ard_cols[[k]] <- tryCatch(read_data_head(f, 5000L),
+                                error = function(e) FALSE)
+    }
+    if (isFALSE(ard_cols[[k]])) NULL else ard_cols[[k]]
+  }
+  # the data an analysis reads: its own, else its analysis set's
+  an_dataset <- function(ds, pop) {
+    if (!is.null(ds) && !is.na(ds) && nzchar(ds)) return(ds)
+    po <- rv$p$ard$populations
+    po$dataset[match(pop %||% NA_character_, po$population_id)]
+  }
   output$ard_stat_ui <- shiny::renderUI({
     a <- st_rows()
     if (is.null(a) || !nrow(a)) {
-      return(shiny::p(class = "small text-muted mb-0",
-                      t("Choose a report with analyses in the sidebar: its analyses' statistics and formats are picked here.")))
+      return(shiny::div(
+        class = "d-flex flex-wrap gap-2 align-items-center",
+        shiny::span(class = "small text-muted",
+                    t("Choose a report in the sidebar and add a row to its analyses: a click on a row shows it here as a form.")),
+        if (!is.null(ard_target()))
+          .btn("ard_an_new", t("New analysis"), class = "btn-sm btn-outline-primary")))
     }
-    ids <- a$analysis_id
-    sel <- shiny::isolate(input$ard_stat_row)
-    shiny::tagList(
-      shiny::selectInput("ard_stat_row", t("Analysis"),
-                         stats::setNames(ids, paste0(ids, "  (", a$method, ")")),
-                         selected = if (isTRUE(sel %in% ids)) sel else ids[1L],
-                         width = "100%"),
-      shiny::uiOutput("ard_stat_form"))
-  })
-  output$ard_stat_form <- shiny::renderUI({
     r <- st_row()
     rv$ver
     st_env$n <- st_env$n + 1L
     st_drawn(st_env$n)
+    m <- .std_ard_methods()
+    lab <- method_label(m$method, m$label)
+    mch <- stats::setNames(m$method, lab)
+    if (!is.na(r$method) && !r$method %in% m$method) {
+      mch <- c(mch, stats::setNames(r$method, r$method))
+    }
+    ds <- rv$p$ard$datasets$dataset
+    po <- rv$p$ard$populations$population_id
+    blank_na <- function(x) if (is.na(x)) "" else x
+    tg <- ard_target()
+    shiny::tagList(
+      if (!tg %in% rv$p$outputs$output_id) shiny::div(
+        class = "alert alert-info py-1 small",
+        sprintf(t("%s is not a report yet: add it on the Reports tab to make its table."), tg)),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2 align-items-center mb-1",
+        shiny::span(class = "small text-muted",
+                    sprintf(t("Analysis %s of %s. A click on another row of the grid edits that one."),
+                            r$analysis_id, tg)),
+        .btn("ard_an_new", t("New analysis"), class = "btn-sm btn-outline-primary")),
+      bslib::layout_columns(
+        col_widths = c(4, 8),
+        shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
+        shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
+                         width = "100%")),
+      shiny::selectInput(st_id("method"), t("What to compute"), mch,
+                         selected = r$method, width = "100%"),
+      shiny::uiOutput("ard_method_note"),
+      bslib::layout_columns(
+        col_widths = c(6, 6),
+        shiny::selectInput(st_id("dataset"), t("Data"),
+                           c(stats::setNames("", t("(the analysis set's)")), ds),
+                           selected = blank_na(r$dataset), width = "100%"),
+        shiny::selectInput(st_id("pop"), t("Analysis set"), c("", po),
+                           selected = blank_na(r$population_id), width = "100%")),
+      shiny::uiOutput("ard_an_vars"),
+      shiny::tags$details(
+        class = "mb-2", open = if (!is.na(r$where)) NA,
+        shiny::tags$summary(class = "small", t("Subset (an R condition)")),
+        shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
+                         placeholder = "AESER == \"Y\"")),
+      shiny::uiOutput("ard_stat_part"),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2 align-items-center",
+        .btn("ard_stat_apply", t("Apply to the analysis"),
+             class = "btn-sm btn-primary"),
+        shiny::span(class = "small text-muted",
+                    t("Format: xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown."))))
+  })
+  output$ard_method_note <- shiny::renderUI({
+    st_drawn()
+    m <- .std_ard_methods()
+    k <- match(input[[st_id("method")]] %||% "", m$method)
+    if (is.na(k) || !nzchar(m$note[k])) return(NULL)
+    shiny::p(class = "small text-muted mt-n2 mb-2",
+             method_note(m$method[k], m$note[k]),
+             shiny::span(class = "ms-1 text-body-tertiary",
+                         paste0("(method: ", m$method[k], ")")))
+  })
+  # the groups and the variables, from the data the analysis reads: groups
+  # first those that look like treatments; variables of the method's kind
+  output$ard_an_vars <- shiny::renderUI({
+    st_drawn()
+    r <- st_row_now()
+    ds <- an_dataset(input[[st_id("dataset")]] %||% r$dataset,
+                     input[[st_id("pop")]] %||% r$population_id)
+    d <- if (!is.na(ds %||% NA)) an_data(ds)
+    by_now <- shiny::isolate(input[[st_id("by")]]) %||% .split_bar(r$by)
+    var_now <- shiny::isolate(input[[st_id("vars")]]) %||% .split_bar(r$variables)
+    kind <- st_kind(r)
+    if (is.null(d)) {
+      bch <- by_now
+      vch <- var_now
+    } else {
+      cols <- as.list(d)
+      rows <- .row_choices(cols, c(continuous = t("numbers"),
+                                   categorical = t("counts")))
+      kinds <- vapply(unname(rows), function(n) .column_kind(cols[[n]]), "")
+      vch <- switch(kind,
+        continuous = rows[kinds == "continuous"],
+        categorical = rows[kinds == "categorical"],
+        rows)
+      grp <- .group_choices(cols)
+      bch <- c(grp, rows[kinds == "categorical" & !rows %in% grp])
+      # what the row has stays offered, even if the data do not say so
+      bch <- c(bch, stats::setNames(setdiff(by_now, bch), setdiff(by_now, bch)))
+      vch <- c(vch, stats::setNames(setdiff(var_now, vch), setdiff(var_now, vch)))
+    }
+    shiny::tagList(
+      shiny::selectizeInput(
+        st_id("by"), t("Groups (the columns)"), bch, by_now, multiple = TRUE,
+        width = "100%", options = list(plugins = list("remove_button"))),
+      shiny::selectizeInput(
+        st_id("vars"), t("Variables (the rows)"), vch, var_now,
+        multiple = TRUE, width = "100%",
+        options = list(plugins = list("remove_button", "drag_drop"))),
+      if (is.null(d)) shiny::p(
+        class = "small text-muted",
+        t("The data of this analysis cannot be read (no file in the data catalog): the choices are the row's own.")))
+  })
+  output$ard_stat_part <- shiny::renderUI({
+    st_drawn()
+    r <- st_row_now()
+    r0 <- shiny::isolate(st_row())
     kind <- st_kind(r)
     kinds <- .stat_kinds(kind)
     if (identical(.std_ard_methods()$call[match(r$method, .std_ard_methods()$method)],
                   "(subjects)")) kinds <- "categorical"
     cat <- .std_ard_statistics(kinds)
     cat <- cat[!duplicated(cat$statistic), , drop = FALSE]
-    have <- .split_bar(r$statistics)
+    have <- if (identical(r$method, r0$method)) .split_bar(r0$statistics) else
+      character()
     extra <- setdiff(have, cat$statistic)
     ch <- lapply(split(cat, factor(cat$group, levels = unique(cat$group))),
                  function(g) stats::setNames(as.list(g$statistic),
@@ -1615,26 +2230,47 @@ app_server <- function(input, output, session, start) {
       categorical = t("Counts and percents of each level."),
       missing = t("Missing and non-missing counts."),
       t("This method gives a fixed set of results (estimate, confidence limits, p-value ...): the statistics picked here are the ones kept. Blank keeps them all."))
+    dflt <- .method_default_stats(kinds)
+    lab <- function(x) {
+      l <- cat$label[match(x, cat$statistic)]
+      ifelse(is.na(l), x, paste0(x, " \u2014 ", l))
+    }
     shiny::tagList(
-      shiny::p(class = "small text-muted mb-1", note),
       shiny::selectizeInput(
         st_id("pick"), t("Statistics"), choices = ch, selected = have,
         multiple = TRUE, width = "100%",
-        options = list(plugins = list("remove_button"))),
-      shiny::uiOutput("ard_stat_fmts"),
-      shiny::div(
-        class = "d-flex flex-wrap gap-2 align-items-center",
-        .btn("ard_stat_apply", t("Apply to the analysis"),
-             class = "btn-sm btn-primary"),
-        shiny::span(class = "small text-muted",
-                    t("Format: xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown."))))
+        options = list(plugins = list("remove_button"),
+                       placeholder = t("the method's default (below)"))),
+      if (!length(have)) shiny::div(
+        class = "small mt-n2 mb-1",
+        if (length(dflt)) shiny::tagList(
+          shiny::span(class = "text-muted",
+                      sprintf(t("Blank = the method's default (%d):"), length(dflt))),
+          lapply(dflt, function(x) shiny::span(
+            class = "badge text-bg-light border fw-normal ms-1", lab(x))),
+          .btn(st_id("use_default"), t("Start from these"),
+               class = "btn-sm btn-link py-0"))
+        else shiny::span(class = "text-muted",
+                         t("Blank = every result the method gives."))),
+      shiny::p(class = "small text-muted mb-1", note),
+      shiny::uiOutput("ard_stat_fmts"))
+  })
+  # the defaults as a start: they become the analysis's own, to change
+  shiny::observe({
+    st_drawn()
+    n <- input[[st_id("use_default")]]
+    if (is.null(n) || n < 1L || identical(n, st_env[["used"]])) return()
+    st_env[["used"]] <- n
+    r <- shiny::isolate(st_row_now())
+    shiny::updateSelectizeInput(session, st_id("pick"),
+                                selected = .method_default_stats(.stat_kinds(st_kind(r))))
   })
   output$ard_stat_fmts <- shiny::renderUI({
-    r <- st_row()
     st_drawn()
+    r <- st_row_now()
     pick <- input[[st_id("pick")]]
     if (!length(pick)) return(NULL)
-    f <- .parse_formats(r$formats)
+    f <- .parse_formats(shiny::isolate(st_row())$formats)
     shiny::div(
       class = "rp-stat-fmt",
       lapply(seq_along(pick), function(i) {
@@ -1646,9 +2282,28 @@ app_server <- function(input, output, session, start) {
   })
   shiny::observeEvent(input$ard_stat_apply, {
     r <- st_row()
-    pick <- input[[st_id("pick")]] %||% character()
-    fm <- vapply(pick, function(s) trimws(input[[st_id(paste0("f_", s))]] %||% ""),
-                 "")
+    g <- function(x) input[[st_id(x)]]
+    one <- function(v) {
+      v <- trimws(paste(v %||% character(), collapse = " | "))
+      if (nzchar(v)) v else NA_character_
+    }
+    new_id <- trimws(g("id") %||% r$analysis_id)
+    if (!nzchar(new_id)) return(notify(t("Give the analysis an ID."), "warning"))
+    a <- rv$p$ard$analyses
+    mine <- !is.na(a$output_id) & a$output_id == r$output_id
+    if (!identical(new_id, r$analysis_id) &&
+        any(mine & !is.na(a$analysis_id) & a$analysis_id == new_id)) {
+      return(notify(sprintf(t("%s already has an analysis %s."), r$output_id,
+                            new_id), "warning"))
+    }
+    where <- trimws(g("where") %||% "")
+    if (nzchar(where) &&
+        inherits(try(parse(text = where), silent = TRUE), "try-error")) {
+      return(notify(sprintf(t("The subset is not an R condition: %s"), where),
+                    "warning"))
+    }
+    pick <- g("pick") %||% character()
+    fm <- vapply(pick, function(s) trimws(g(paste0("f_", s)) %||% ""), "")
     fm <- fm[nzchar(fm)]
     bad <- names(fm)[!.fmt_ok(fm)]
     if (length(bad)) {
@@ -1657,16 +2312,47 @@ app_server <- function(input, output, session, start) {
     }
     # the analysis's variable-specific formats (AGE:mean=...) stay
     old <- .parse_formats(r$formats)
-    keep <- old[grepl(":", names(old), fixed = TRUE)]
-    fm <- c(fm, keep)
-    a <- rv$p$ard$analyses
-    i <- which(a$output_id == r$output_id & a$analysis_id == r$analysis_id)[1L]
-    a$statistics[i] <- if (length(pick)) paste(pick, collapse = " | ") else NA
+    fm <- c(fm, old[grepl(":", names(old), fixed = TRUE)])
+    i <- which(mine & a$analysis_id == r$analysis_id)[1L]
+    a$analysis_id[i] <- new_id
+    a$label[i] <- one(g("label"))
+    a$method[i] <- one(g("method"))
+    a$dataset[i] <- one(g("dataset"))
+    a$population_id[i] <- one(g("pop"))
+    a$where[i] <- one(where)
+    a$by[i] <- one(g("by"))
+    a$variables[i] <- one(g("vars"))
+    a$statistics[i] <- one(pick)
     a$formats[i] <- if (length(fm))
       paste(paste0(names(fm), "=", fm), collapse = " | ") else NA
     rv$p$ard$analyses <- a
+    an_pick(new_id)
     bump()
-    notify(sprintf(t("%s: statistics and formats written"), r$analysis_id))
+    notify(sprintf(t("%s: written"), new_id))
+  })
+  # a new analysis for the report: the data, analysis set and groups of the
+  # one shown, to be filled in on the form
+  shiny::observeEvent(input$ard_an_new, {
+    tg <- ard_target()
+    if (is.null(tg)) return()
+    a <- rv$p$ard$analyses
+    have <- a$analysis_id[!is.na(a$output_id) & a$output_id == tg]
+    k <- 1L
+    while (paste0("A", k) %in% have) k <- k + 1L
+    id <- paste0("A", k)
+    a0 <- shiny::isolate(st_rows())
+    r <- if (!is.null(a0) && nrow(a0)) shiny::isolate(st_row()) else
+      list(dataset = NA, population_id = NA, by = NA)
+    a[nrow(a) + 1L, ] <- NA
+    a$output_id[nrow(a)] <- tg
+    a$analysis_id[nrow(a)] <- id
+    a$method[nrow(a)] <- "categorical"
+    a$dataset[nrow(a)] <- r$dataset
+    a$population_id[nrow(a)] <- r$population_id
+    a$by[nrow(a)] <- r$by
+    rv$p$ard$analyses <- a
+    an_pick(id)
+    bump()
   })
   ard_valid <- shiny::reactive({
     shiny::req(has_study())
@@ -1677,10 +2363,20 @@ app_server <- function(input, output, session, start) {
   })
   output$ard_check <- shiny::renderUI({
     msg <- ard_valid()
+    # analyses of an output the report list does not have: they run, but
+    # no table reads them until it is added (Reports > Add)
+    ids <- unique(stats::na.omit(rv$p$ard$analyses$output_id))
+    orphan <- setdiff(ids, rv$p$outputs$output_id)
+    note <- if (length(orphan)) shiny::div(
+      class = "alert alert-info py-1 small mt-2",
+      sprintf(t("%s: analyses of no report yet. Add the report on the Reports tab to make its table."),
+              paste(orphan, collapse = ", ")))
     if (is.null(msg)) {
       n <- nrow(rv$p$ard$analyses)
-      return(shiny::p(class = "small text-success mt-2",
-                      sprintf(t("%d analyses; the definition reads without errors."), n)))
+      return(shiny::tagList(
+        shiny::p(class = "small text-success mt-2",
+                 sprintf(t("%d analyses; the definition reads without errors."), n)),
+        note))
     }
     shiny::div(class = "alert alert-warning py-1 small mt-2",
                shiny::tags$pre(class = "mb-0", msg))
@@ -1744,23 +2440,9 @@ app_server <- function(input, output, session, start) {
                generated = "The definition has changed: saving rewrites the program as below.",
                edited = "The saved program was edited by hand. Saving leaves it alone.")))
   })
-  run_ard_now <- function(output_id) {
-    if (!is.null(ard_valid())) {
-      return(notify(t("Correct the ARD definition first."), "warning"))
-    }
-    r <- NULL
-    shiny::withProgress(message = t("Running the ARD code"), {
-      r <- guarded(run_ard(current_study(), output_id = output_id))
-    })
-    if (is.null(r)) return()
-    r$scope <- output_id %||% t("the whole study")
-    ard_res(r)
-    bslib::nav_select("ard_right", "result")
-    if (!is.null(r$error)) notify(t("The ARD code failed: see the log."), "error")
-  }
-  shiny::observeEvent(input$ard_run, {
+  shiny::observeEvent(input$ard_preview, {
     if (is.null(ard_target())) return(notify(t("Choose a report"), "warning"))
-    run_ard_now(ard_target())
+    if (isTRUE(do_preview(ard_target()))) bslib::nav_select("ard_right", "result")
   })
   # making the study ARD: always the saved programs (programs/ard/), so
   # what is built is what anyone rerunning autoexec_ard.R gets
@@ -1773,14 +2455,11 @@ app_server <- function(input, output, session, start) {
     }
     !(dirty() && !do_save())
   }
-  shiny::observeEvent(input$ard_build, {
-    if (ard_ready()) start_batch("ard", isTRUE(input$ard_batch_code))
-  })
   output$ard_run_info <- shiny::renderUI({
     r <- ard_res()
     if (is.null(r)) {
       return(shiny::p(class = "small text-muted mt-2",
-                      t("Run the analyses to see the ARD they make.")))
+                      t("Preview to see the ARD this report's analyses make.")))
     }
     if (!is.null(r$error)) {
       return(shiny::div(class = "alert alert-danger py-1 small mt-2",
@@ -1818,8 +2497,7 @@ app_server <- function(input, output, session, start) {
   ard_state_view <- function() {
     d <- ard_state()
     v <- data.frame(a = d$output_id, b = d$analyses,
-                    c = t(c(built = "built", outdated = "outdated",
-                            `not built` = "not built", error = "error")[d$state]),
+                    c = t(unname(.ard_state_labels[d$state])),
                     d = ifelse(is.na(d$rows), "", d$rows),
                     e = ifelse(is.na(d$built), "", d$built), f = d$error,
                     stringsAsFactors = FALSE)
@@ -1827,37 +2505,11 @@ app_server <- function(input, output, session, start) {
                     "Error"))
     DT::formatStyle(
       .dt(v, selection = "single"), names(v)[3L],
-      color = DT::styleEqual(t(c("built", "outdated", "not built", "error")),
+      color = DT::styleEqual(t(unname(.ard_state_labels)),
                              c("#15803d", "#b45309", "#6b7280", "#b91c1c")))
   }
   output$ard_state <- DT::renderDT(ard_state_view())
   output$ard_state_data <- DT::renderDT(ard_state_view())
-  shiny::observeEvent(input$ard_update, {
-    id <- ard_target()
-    if (is.null(id)) return(notify(t("Choose a report"), "warning"))
-    if (!any(rv$p$ard$analyses$output_id %in% id)) {
-      return(notify(sprintf(t("%s has no analyses in the ARD definition."), id),
-                    "warning"))
-    }
-    if (!ard_ready()) return()
-    r <- NULL
-    shiny::withProgress(message = t("Running the ARD program"), {
-      r <- guarded(update_study_ard(current_study(), id))
-    })
-    ard_state_ver(ard_state_ver() + 1L)
-    rv$ard_ver <- rv$ard_ver + 1L
-    rv$status_ver <- rv$status_ver + 1L
-    if (is.null(r)) return()
-    ard_preview_out(list(id = id, text = r$output))
-    if (r$ok) {
-      notify(sprintf(t("%s is in the study ARD (%d rows)"), id, r$rows))
-    } else {
-      notify(t("The ARD program failed: see what it printed below."), "error")
-    }
-  })
-  shiny::observeEvent(input$ard_build2, {
-    if (ard_ready()) start_batch("ard", isTRUE(input$ard_batch_code))
-  })
   # below the table: what the last preview printed, or -- a row chosen --
   # that output's log in the latest official run of the ARD
   output$ard_log <- shiny::renderText({
@@ -1926,20 +2578,42 @@ app_server <- function(input, output, session, start) {
     ard_cols[[k]]
   }
   .designer_server(input, output, session, rv, current, t, notify, guarded,
-                   catalog)
+                   catalog, fig_is_new = function() fig_is_new(),
+                   page = function() page())
   output$lf_note <- shiny::renderUI({
     msg <- switch(lf_type(),
       none = t("Choose a Listing report in the sidebar."),
       table = t("This is a Table: its definition and builder are on the Tables tab."),
-      listing = t("A listing in rows: the data (a dataset of the catalog, a condition, an order) and its columns. Its data code (Reports tab), if any, reworks `data` after the condition."),
+      listing = t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Code on the Code tab, if any, changes the data after the condition."),
       figure = t("This is a Figure: it is designed on the Figures tab."))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
   # a hand-written figure (no design): the datasets it reads, and its
-  # program's data part -- on the Figures tab, above the designer
+  # program's data part -- on the Figures tab, above the designer; for a new
+  # figure (no plot code yet), below it, as the advanced way
+  fig_is_new <- function() {
+    id <- current()
+    if (is.null(id)) return(FALSE)
+    o <- rv$p$outputs
+    code <- o$data_code[match(id, o$output_id)]
+    is.na(code) || !nzchar(trimws(code))
+  }
+  output$lf_fig_box_new <- shiny::renderUI({
+    rv$ver
+    shiny::req(identical(lf_type(), "figure"),
+               is.null(fig_design(shiny::isolate(rv$p), current())),
+               fig_is_new())
+    shiny::tags$details(
+      class = "mt-3",
+      shiny::tags$summary(t("Advanced: write the plot by hand (ggplot2)")),
+      fig_hand_box())
+  })
   output$lf_fig_box <- shiny::renderUI({
     rv$ver
-    shiny::req(identical(lf_type(), "figure"))
+    shiny::req(identical(lf_type(), "figure"), !fig_is_new())
+    fig_hand_box()
+  })
+  fig_hand_box <- function() {
     id <- current()
     p <- shiny::isolate(rv$p)
     shiny::req(is.null(fig_design(p, id)))
@@ -1961,7 +2635,7 @@ app_server <- function(input, output, session, start) {
                             width = "100%"),
       shiny::h6(t("The program's data part")),
       shiny::div(class = "rp-code", shiny::verbatimTextOutput("lf_fig_code")))
-  })
+  }
   output$lf_form <- shiny::renderUI({
     rv$ver
     type <- lf_type()
@@ -1995,10 +2669,10 @@ app_server <- function(input, output, session, start) {
                             min = 1, width = "140px")),
       shiny::textInput(lf_id("where"), t("Condition (R)"), value = lv("where"),
                        width = "100%",
-                       placeholder = "AESEV == \"SEVERE\""),
+                       placeholder = paste(t("e.g."), "AESEV == \"SEVERE\"")),
       shiny::textInput(lf_id("sort"), t("Order (| between variables, - for descending)"),
                        value = lv("sort"), width = "100%",
-                       placeholder = "TRTA | USUBJID | ASTDT"))
+                       placeholder = paste(t("e.g."), "TRTA | USUBJID | ASTDT")))
   })
   # the form's values back to the listing / figure rows
   lf_values <- shiny::reactive({
@@ -2049,6 +2723,7 @@ app_server <- function(input, output, session, start) {
     d$output_id <- NULL
     l <- lf_rows(p, "listings", id)
     cols <- if (nrow(l)) dataset_columns(l$dataset[1L]) else character()
+    grids_drawn()
     .grid(d, "listing_cols", lf_cols_key(),
           list(vars = cols, collapse_repeats = .bool))
   })
@@ -2057,20 +2732,33 @@ app_server <- function(input, output, session, start) {
     if (is.null(h$changes$changes) &&
         !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
     if (!identical(h$params$planner_key, lf_cols_key())) return()
-    rv$p <- set_lf_rows(rv$p, "listing_cols", current(),
-                        rhandsontable::hot_to_r(h))
+    d <- read_grid(h)
+    if (is.null(d)) return()
+    guarded(rv$p <- set_lf_rows(rv$p, "listing_cols", current(), d))
   })
   lf_pv <- shiny::reactiveVal(NULL)
-  shiny::observeEvent(current(), lf_pv(NULL))
+  shiny::observeEvent(current(), {
+    if (!identical(lf_pv()$id, current())) lf_pv(NULL)
+  })
   shiny::observeEvent(input$lf_preview, {
     id <- current()
     if (!identical(lf_type(), "listing")) {
       return(notify(t("Choose a Listing report"), "warning"))
     }
-    r <- tryCatch(list(pages = preview_listing(current_study(), id)),
-                  error = function(e) list(error = conditionMessage(e)))
-    lf_pv(r)
+    lf_show_preview(id)
   })
+  lf_show_preview <- function(id) {
+    if (!nrow(lf_rows(rv$p, "listing_cols", id))) {
+      return(lf_pv(list(error = t("The listing has no columns yet: add them to the table of columns (below the form), or add the listing again with 'Start the listing from the data'."))))
+    }
+    r <- NULL
+    shiny::withProgress(message = sprintf(t("Preview of %s"), id), {
+      r <- tryCatch(list(pages = preview_listing(current_study(), id)),
+                    error = function(e) list(error = conditionMessage(e)))
+    })
+    r$id <- id
+    lf_pv(r)
+  }
   output$lf_preview_out <- shiny::renderUI({
     r <- lf_pv()
     if (is.null(r)) {
@@ -2094,13 +2782,14 @@ app_server <- function(input, output, session, start) {
   # (builder_write()), and the grids redraw when their tab is opened.
   bform <- new.env()
   bform$n <- 0L
+  session$userData$bform <- bform
   bform_drawn <- shiny::reactiveVal(0L)
   rv$bver <- 0L
   rv$btouched <- FALSE
   # the page shown: a Tables sub-tab counts as its own page
   active_page <- shiny::reactive({
-    nav <- input$nav %||% ""
-    if (identical(nav, "tables")) input$table_nav %||% "table_spec" else nav
+    nav <- page()
+    if (identical(nav, "tables")) input$table_nav %||% "builder" else nav
   })
   shiny::observeEvent(active_page(), {
     if (identical(active_page(), "builder")) rv$bver <- rv$bver + 1L
@@ -2108,17 +2797,6 @@ app_server <- function(input, output, session, start) {
       rv$btouched <- FALSE
       bump()
     }
-  })
-  # the report chosen in the sidebar opens its own kind of tab, when a
-  # design tab of another kind is showing
-  # (on the sidebar's choice only: current() also changes with every edit)
-  shiny::observeEvent(target(), {
-    id <- shiny::isolate(current())
-    nav <- input$nav %||% ""
-    if (is.null(id) || !nav %in% c("tables", "lf", "designer")) return()
-    want <- switch(report_info(rv$p, id)$type, table = "tables", listing = "lf",
-                   figure = "designer", NULL)
-    if (!is.null(want) && !identical(nav, want)) bslib::nav_select("nav", want)
   })
   builder_case <- shiny::reactive({
     id <- current()
@@ -2129,15 +2807,35 @@ app_server <- function(input, output, session, start) {
     if (length(m$hierarchy)) return("hierarchy")
     "ok"
   })
+  # A table whose rows are in the study ARD (made by an official run, the
+  # sample's for one) but not read for the builder yet: read them when its
+  # builder is opened -- no new ARD, only the reading (once a report).
+  auto_read <- new.env()
+  shiny::observe({
+    shiny::req(identical(active_page(), "builder"),
+               identical(builder_case(), "meta"))
+    id <- current()
+    if (isTRUE(auto_read[[id]])) return()
+    st <- tryCatch(ard_status(shiny::isolate(current_study())), error = function(e) NULL)
+    if (is.null(st) || !identical(st$state[match(id, st$output_id)], "built")) return()
+    auto_read[[id]] <- TRUE
+    m <- NULL
+    shiny::withProgress(message = sprintf(t("Reading the ARD of %s for the builder"), id),
+                        m <- guarded(fetch_ard(shiny::isolate(current_study()), id)))
+    if (!is.null(m)) rv$ard_ver <- shiny::isolate(rv$ard_ver) + 1L
+  })
   output$builder_note <- shiny::renderUI({
     msg <- switch(builder_case(),
       none = t("Choose a report in the sidebar."),
       type = t("The builder is for Tables; Listings and Figures are made in their data code."),
-      meta = t("Read the report's ARD first (Reports > Data code > Run and read the ARD): the builder is built from it."),
-      hierarchy = t("This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Use Table definition; the preview works."),
+      meta = shiny::tagList(
+        t("This table has no ARD yet: the builder is built from it."), " ",
+        .btn("fetch3", t("Preview this table's ARD"),
+             class = "btn-sm btn-primary ms-1")),
+      hierarchy = t("This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Edit it in Details (sheets); the preview works."),
       NULL)
     if (is.null(msg)) return(shiny::p(class = "small text-muted",
-      t("Drag to order, type to rename; every change is written to the sheets (Table definition) and shown on the right.")))
+      t("Drag to order, type to rename; every change is written to the sheets (Details) and shown on the right.")))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
   bid <- function(x) paste0("b", bform$n, "_", x)
@@ -2170,7 +2868,14 @@ app_server <- function(input, output, session, start) {
           bid("header"), t("Column header"),
           stats::setNames(c("keep", names(header_presets())),
                           c(t("as it is"), names(header_presets()))),
-          selected = "keep", inline = TRUE)),
+          selected = "keep", inline = TRUE),
+        if (!is.na(st$key) && !.has_group_n(shiny::isolate(rv$p), id, st$key))
+          shiny::div(
+            class = "small text-warning d-flex flex-wrap gap-2 align-items-center",
+            shiny::span(sprintf(t("The ARD has no subjects per %s: a header's (N=n) prints NA."),
+                                st$key)),
+            .btn("b_add_n", t("Count them (then Preview)"),
+                 class = "btn-sm btn-outline-primary py-0"))),
       shiny::div(
         class = "rp-b-card",
         shiny::h6(t("Rows: variables in order")),
@@ -2200,9 +2905,7 @@ app_server <- function(input, output, session, start) {
       shiny::div(
         class = "rp-b-card",
         shiny::h6(t("Statistics")),
-        shiny::checkboxGroupInput(
-          bid("stats"), t("Continuous variables"),
-          stats::setNames(bs$key, bs$row), selected = st$stats),
+        builder_stat_boxes(bs, st$stats, m$stats),
         shiny::numericInput(
           bid("dec"), t("Decimals the data are collected with"),
           value = st$decimals, min = 0, max = 6, width = "260px"),
@@ -2217,22 +2920,96 @@ app_server <- function(input, output, session, start) {
                             width = "260px"),
         shiny::uiOutput(bid("warn"))))
   })
+  # The continuous statistics as checkboxes: one whose template needs a
+  # statistic this report's ARD does not have is greyed and cannot be
+  # ticked, and says what to add on the ARD tab.  (One already chosen stays
+  # ticked, so the sheets are not changed behind the user's back.)
+  builder_stat_boxes <- function(bs, chosen, have) {
+    lack <- .builder_stats_lacking(bs$template, have)
+    names_ui <- lapply(seq_len(nrow(bs)), function(i) {
+      if (!nzchar(lack[i])) return(bs$row[i])
+      shiny::span(
+        class = "text-muted",
+        title = sprintf(t("Not in this report's ARD: add %s to its analysis on the ARD tab."),
+                        lack[i]),
+        bs$row[i],
+        shiny::tags$small(class = "ms-1",
+                          sprintf(t("(the ARD has no %s)"), lack[i])))
+    })
+    off <- bs$key[nzchar(lack) & !bs$key %in% chosen]
+    boxes <- shiny::checkboxGroupInput(
+      bid("stats"), t("Continuous variables"),
+      choiceNames = names_ui, choiceValues = bs$key, selected = chosen)
+    boxes <- htmltools::tagQuery(boxes)$find("input")$each(function(x, i) {
+      if (x$attribs$value %in% off) x$attribs$disabled <- NA
+    })$allTags()
+    shiny::tagList(
+      boxes,
+      if (any(nzchar(lack))) shiny::p(
+        class = "small text-muted",
+        t("Greyed statistics are not in this report's ARD: add them to its analysis on the ARD tab, then read the ARD again.")))
+  }
+
+  # Whatever goes wrong in the builder stays in the builder: it is said once
+  # (and logged), and the reactive stops quietly (req) instead of ending the
+  # session.  (req's own silent stop passes through.)
+  builder_guard <- function(expr) {
+    tryCatch(expr, error = function(e) {
+      if (inherits(e, "shiny.silent.error")) stop(e)
+      message("tflplanner: builder: ", conditionMessage(e))
+      notify(sprintf(t("The builder could not read the form: %s"),
+                     conditionMessage(e)), "error")
+      shiny::req(FALSE)
+    })
+  }
+
+  # A table with no definition yet (made without the first-table form, an
+  # older study, a workbook read in): what the builder shows is written to
+  # the sheets once, so the preview has a table to show.
+  shiny::observeEvent(bform_drawn(), {
+    id <- bform$id
+    tb <- sheet_rows(rv$p, "tables", id)
+    inh <- inherited_rows(rv$p, "tables", id)
+    has_cols <- (nrow(tb) && !is.na(tb$cols[1L])) ||
+      (nrow(inh) && !is.na(inh$cols[1L]))
+    if (has_cols || is.na(bform$st$key)) return()
+    p2 <- guarded(builder_write(rv$p, id, bform$st))
+    if (!is.null(p2)) {
+      rv$p <- p2
+      rv$btouched <- TRUE
+    }
+  }, ignoreInit = TRUE)
+
+  shiny::observeEvent(input$b_add_n, {
+    id <- bform$id
+    key <- bform$st$key
+    p2 <- guarded(add_group_n(rv$p, id, key))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    bump()
+    do_preview(id)
+  })
+
   # the arms follow the column variable chosen
-  shiny::observe({
+  shiny::observe(builder_guard({
     bform_drawn()
     k <- input[[bid("key")]]
     shiny::req(identical(builder_case(), "ok"), !is.null(k))
     n <- bform$n
     arms <- if (identical(k, bform$st$key)) bform$st$arms else
       bform$meta$keys[[k]]
+    guess <- identical(k, bform$st$key) && k %in% names(bform$st$auto_levels)
     output[[paste0("b", n, "_arms_ui")]] <- shiny::renderUI(shiny::tagList(
       shiny::tags$label(class = "form-label small",
                         t("Order of the columns (drag)")),
+      if (guess) shiny::div(
+        class = "small text-warning",
+        t("Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.")),
       sortable::rank_list(text = NULL, labels = arms,
                           input_id = paste0("b", n, "_arms"),
                           orientation = "horizontal")))
-  })
-  bstate <- shiny::reactive({
+  }))
+  bstate <- shiny::reactive(builder_guard({
     bform_drawn()
     shiny::req(identical(builder_case(), "ok"),
                identical(bform$id, current()))
@@ -2245,7 +3022,8 @@ app_server <- function(input, output, session, start) {
     idx <- match(vars, st$variables$variable)
     v$label <- vapply(seq_along(vars), function(k) {
       l <- get(paste0("lab", idx[k]))
-      if (is.null(l)) v$label[k] else if (nzchar(trimws(l))) l else NA
+      if (is.null(l)) as.character(v$label[k]) else if (nzchar(trimws(l))) l else
+        NA_character_
     }, "")
     lev <- stats::setNames(lapply(seq_along(vars), function(k)
       get(paste0("lv", idx[k])) %||% st$levels[[vars[k]]]), vars)
@@ -2261,18 +3039,19 @@ app_server <- function(input, output, session, start) {
          pct_decimals = num("pct", st$pct_decimals),
          header = get("header") %||% "keep",
          auto_levels = st$auto_levels)
-  })
+  }))
   bstate_d <- shiny::debounce(bstate, 400)
   shiny::observeEvent(bstate_d(), {
     st <- bstate_d()
     id <- bform$id
     p2 <- guarded(builder_write(rv$p, id, st))
     if (!is.null(p2) && !identical(p2, rv$p)) {
+      session$sendCustomMessage("builder-updating", TRUE)
       rv$p <- p2
       rv$btouched <- TRUE
     }
   })
-  shiny::observe({
+  shiny::observe(builder_guard({
     st <- bstate()
     m <- bform$meta
     n <- bform$n
@@ -2284,17 +3063,48 @@ app_server <- function(input, output, session, start) {
         class = "alert alert-warning py-1 small",
         sprintf(t("The ARD has no %s: those cells stay empty. Add them to the ARD code."),
                 paste(miss, collapse = ", "))))
-  })
+  }))
   preview <- shiny::reactive({
     id <- current()
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
     rv$ard_ver
     d <- ard_data(rv$study, id)
-    if (is.null(d)) return(list(error = t("No data to preview: Run and read the ARD.")))
+    if (is.null(d)) return(list(error = t("No data to show yet: Preview this table's ARD.")))
     tryCatch(list(pages = preview_pages(rv$p, id, d)),
              error = function(e) list(error = conditionMessage(e)))
   })
   preview_d <- shiny::debounce(preview, 300)
+  # the first page as the report's rows and the study defaults make it:
+  # header, titles, the body's start, footnotes, footer
+  shiny::observeEvent(input$page_full, {
+    shiny::showModal(shiny::modalDialog(
+      title = t("First page (sample)"), size = "xl", easyClose = TRUE,
+      shiny::div(class = "rp-page-full", shiny::uiOutput("page_sample_full")),
+      footer = shiny::modalButton(t("Close"))))
+  })
+  output$page_sample_full <- shiny::renderUI(page_sample_ui())
+  output$page_sample <- shiny::renderUI(page_sample_ui())
+  page_sample_ui <- function() {
+    id <- current()
+    if (is.null(id)) {
+      return(shiny::p(class = "small text-muted",
+                      t("Choose a report in the sidebar.")))
+    }
+    rv$ver
+    p <- rv$p
+    info <- report_info(p, id)
+    body <- if (identical(info$type, "table")) {
+      pv <- tryCatch(preview_d(), error = function(e) NULL)
+      if (!is.null(pv$pages)) preview_html(pv$pages[1L], max_pages = 1L) else
+        shiny::div(class = "text-muted small", pv$error %||% t("(the table)"))
+    } else {
+      shiny::div(class = "text-muted small text-center py-4",
+                 if (identical(info$type, "figure")) t("(the figure: see its Content)") else
+                   t("(the listing: see its Content)"))
+    }
+    .page_sample_html(p, id, rv$meta$study_id %||% "", body,
+                      program = info$program)
+  }
   output$builder_preview <- shiny::renderUI({
     pv <- preview_d()
     if (!is.null(pv$error)) {
@@ -2323,18 +3133,20 @@ app_server <- function(input, output, session, start) {
       rep(NA_character_, nrow(o))
     data.frame(
       output_id = o$output_id,
-      type = unname(.type_labels[vapply(info, `[[`, "", "type")]),
+      type = t(unname(.type_labels[vapply(info, `[[`, "", "type")])),
       program = vapply(info, `[[`, "", "program"),
       rtf = vapply(info, `[[`, "", "file"),
-      data = ifelse(!is.na(ard_of), paste("ARD:", ard_of),
-                    ifelse(is.na(o$data_code), "TODO", "\u2713")),
+      data = ifelse(!is.na(ard_of),
+                    paste("ARD:", t(unname(.ard_state_labels[ard_of]))),
+                    ifelse(is.na(o$data_code), t("standard code"),
+                           t("own code"))),
       description = ifelse(is.na(o$description), "", o$description),
       stringsAsFactors = FALSE)
   })
   output$outputs <- DT::renderDT({
     v <- outputs_view()
     sel <- match(shiny::isolate(input$target), v$output_id)
-    names(v) <- t(c("output_id", "Type", "Program", "RTF", "Data code",
+    names(v) <- t(c("output_id", "Type", "Program", "RTF", "Data",
                     "Description"))
     DT::datatable(v, rownames = FALSE,
                   selection = list(mode = "single",
@@ -2353,7 +3165,7 @@ app_server <- function(input, output, session, start) {
     v <- shiny::isolate(outputs_view())
     id <- v$output_id[input$outputs_rows_selected]
     if (length(id) && !identical(id, input$target)) {
-      shiny::updateRadioButtons(session, "target", selected = id)
+      shiny::updateSelectInput(session, "target", selected = id)
     }
   })
 
@@ -2489,6 +3301,22 @@ app_server <- function(input, output, session, start) {
         inline = TRUE),
       if (type) shiny::textInput("modal_desc", t("Description"),
                                  width = "100%"),
+      if (type) shiny::conditionalPanel(
+        "input.modal_type == 'listing'",
+        shiny::checkboxInput(
+          "modal_first_l",
+          t("Start the listing from the data (writes its columns and shows it)"),
+          value = TRUE, width = "100%"),
+        shiny::conditionalPanel("input.modal_first_l",
+                                shiny::uiOutput("modal_first_l_ui"))),
+      if (type) shiny::conditionalPanel(
+        "input.modal_type == 'table'",
+        shiny::checkboxInput(
+          "modal_first",
+          t("Start the table from the data (writes its ARD definition and opens the builder)"),
+          value = !nrow(rv$p$ard$analyses), width = "100%"),
+        shiny::conditionalPanel("input.modal_first",
+                                shiny::uiOutput("modal_first_ui"))),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn(button, "OK", class = "btn-primary")),
       easyClose = TRUE))
@@ -2509,10 +3337,134 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$add_ok, {
     id <- trimws(input$modal_id)
     d <- trimws(input$modal_desc)
-    after_id_change(guarded(add_output(
-      rv$p, id, description = if (nzchar(d)) d else NA,
-      type = input$modal_type)), id)
+    desc <- if (nzchar(d)) d else NA
+    if (identical(input$modal_type, "table") && isTRUE(input$modal_first)) {
+      return(start_first_table(id, desc))
+    }
+    if (identical(input$modal_type, "listing") && isTRUE(input$modal_first_l)) {
+      return(start_first_listing(id, desc))
+    }
+    p2 <- guarded(add_output(rv$p, id, description = desc,
+                             type = input$modal_type))
+    after_id_change(p2, id)
+    # the new report's own tab
+    if (!is.null(p2)) go(switch(input$modal_type,
+      table = "tables", listing = "lf", figure = "designer", "outputs"))
   })
+  # -- the first listing: the data and its columns --------------------------
+  first_data_l <- shiny::reactive({
+    shiny::req(input$ml_data %in% first_files())
+    guarded(read_data_head(file.path(rv$study$path, input$ml_data), n = 2000L))
+  })
+  output$modal_first_l_ui <- shiny::renderUI({
+    f <- first_files()
+    if (!length(f)) {
+      return(shiny::div(class = "alert alert-warning py-1 small",
+        t("No data files yet: put them on the Data tab (data/adam), then add the listing.")))
+    }
+    shiny::tagList(
+      shiny::selectInput("ml_data", t("Data"), f,
+                         selected = c(grep("adae", f, value = TRUE), f)[1L],
+                         width = "100%"),
+      shiny::uiOutput("ml_cols"))
+  })
+  output$ml_cols <- shiny::renderUI({
+    d <- first_data_l()
+    shiny::req(d)
+    cols <- as.list(d)
+    grp <- .group_choices(cols)
+    all <- .labelled(names(cols), cols)
+    usual <- c("USUBJID", "AEBODSYS", "AEDECOD", "ASTDT", "AENDT", "AESEV",
+               "AESER", "AEREL", "AEOUT", "PARAM", "AVISIT", "AVAL", "AVALC",
+               "CMDECOD", "MHDECOD")
+    shiny::tagList(
+      shiny::selectInput("ml_group", t("Group (ordered by first; optional)"),
+                         c(stats::setNames("", t("(none)")), grp),
+                         selected = c(intersect(c("TRTA", "TRT01A", "ARM"), grp), "")[1L],
+                         width = "100%"),
+      shiny::selectizeInput(
+        "ml_cols_pick", t("Columns (in order)"), all,
+        selected = intersect(usual, names(cols)), multiple = TRUE,
+        width = "100%",
+        options = list(plugins = list("remove_button", "drag_drop"))),
+      shiny::p(class = "small text-muted",
+               t("Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards on the Listings tab.")))
+  })
+  start_first_listing <- function(id, desc) {
+    d <- first_data_l()
+    if (is.null(d)) return(notify(t("Choose the data"), "warning"))
+    g <- input$ml_group
+    p2 <- guarded(first_listing(rv$p, id, input$ml_data, d,
+                                columns = input$ml_cols_pick,
+                                group = if (length(g) && nzchar(g)) g,
+                                description = desc))
+    if (is.null(p2)) return()
+    after_id_change(p2, id)
+    go("lf")
+    lf_show_preview(id)
+  }
+  # -- the first table: a few answers instead of five sheets ---------------
+  first_files <- shiny::reactive({
+    f <- data_files()
+    ok <- !is.na(vapply(f$folder, .folder_level, "", USE.NAMES = FALSE)) &
+      tolower(tools::file_ext(f$file)) %in% .data_exts
+    file.path(f$folder, f$file)[ok]
+  })
+  first_data <- shiny::reactive({
+    shiny::req(input$mf_data %in% first_files())
+    guarded(read_data_head(file.path(rv$study$path, input$mf_data), n = Inf))
+  })
+  output$modal_first_ui <- shiny::renderUI({
+    f <- first_files()
+    if (!length(f)) {
+      return(shiny::div(class = "alert alert-warning py-1 small",
+        t("No data files yet: put them on the Data tab (data/adam), then add the table.")))
+    }
+    shiny::tagList(
+      shiny::selectInput("mf_data", t("Data"), f,
+                         selected = c(grep("adsl", f, value = TRUE), f)[1L],
+                         width = "100%"),
+      shiny::uiOutput("mf_cols"))
+  })
+  output$mf_cols <- shiny::renderUI({
+    d <- first_data()
+    shiny::req(d)
+    cols <- as.list(d)
+    fl <- grep("FL$", names(cols), value = TRUE)
+    grp <- .group_choices(cols)
+    vars <- .row_choices(cols, c(continuous = t("numbers"),
+                                 categorical = t("counts")))
+    shiny::tagList(
+      shiny::selectInput("mf_pop", t("Analysis set (its flag = \"Y\")"),
+                         .labelled(fl, cols),
+                         selected = c(intersect(c("SAFFL", "ITTFL", "FASFL"), fl),
+                                      fl)[1L], width = "100%"),
+      shiny::selectInput("mf_group", t("Group (the columns)"), grp,
+                         selected = c(intersect(c("TRT01A", "TRT01P", "ARM"),
+                                                grp), grp)[1L],
+                         width = "100%"),
+      shiny::selectizeInput(
+        "mf_vars", t("Variables (the rows, in order)"), vars,
+        selected = intersect(c("AGE", "AGEGR1", "SEX", "RACE"), vars),
+        multiple = TRUE, width = "100%",
+        options = list(plugins = list("remove_button", "drag_drop"))),
+      shiny::p(class = "small text-muted",
+               t("Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (builder, ARD tab).")))
+  })
+  start_first_table <- function(id, desc) {
+    d <- first_data()
+    if (is.null(d)) return(notify(t("Choose the data"), "warning"))
+    p2 <- guarded(first_table(rv$p, id, input$mf_data, d,
+                              population = input$mf_pop,
+                              group = input$mf_group,
+                              variables = input$mf_vars,
+                              description = desc))
+    if (is.null(p2)) return()
+    after_id_change(p2, id)
+    go("tables")
+    bslib::nav_select("table_nav", "builder")
+    do_preview(id)
+  }
   shiny::observeEvent(input$copy, {
     if (need_current()) ask_id(sprintf(t("Copy %s"), current()), "copy_ok",
                                paste0(current(), "_2"))
@@ -2578,13 +3530,32 @@ app_server <- function(input, output, session, start) {
     data_ver(data_ver() + 1L)
     notify(sprintf(t("%d files added to %s"), sum(ok),
                    study_layout()[[input$data_folder]]))
+    to_catalog()
   })
+  shiny::observeEvent(input$data_refresh, to_catalog(), ignoreInit = TRUE)
+  # the data files the catalog (ARD tab > datasets) does not have yet go in
+  # (nobody edited anything: a study that was saved is saved again)
+  to_catalog <- function() {
+    if (!has_study()) return()
+    was_clean <- !isTRUE(dirty())
+    p2 <- guarded(catalog_add_files(rv$p, data_files()))
+    added <- attr(p2, "added")
+    if (!length(added)) return()
+    attr(p2, "added") <- NULL
+    rv$p <- p2
+    bump()
+    if (was_clean) do_save()
+    notify(sprintf(t("In the data catalog now: %s"), paste(added, collapse = ", ")))
+  }
   shiny::observeEvent(input$data_open, .open_folder(
     file.path(rv$study$path, "data")))
   data_head <- shiny::reactive({
-    i <- input$data_files_rows_selected
-    shiny::req(length(i))
-    guarded(read_data_head(data_files()$path[i]))
+    # a row selection can outlive the list it was made in (the list is
+    # drawn again when the study or the folder changes): read only a file
+    # that is there
+    path <- data_files()$path[input$data_files_rows_selected]
+    shiny::req(length(path) == 1L, !is.na(path), file.exists(path))
+    guarded(read_data_head(path))
   })
   output$data_head <- DT::renderDT({
     d <- data_head()
@@ -2611,26 +3582,28 @@ app_server <- function(input, output, session, start) {
   })
   output$status <- DT::renderDT({
     d <- status()
+    word <- .run_state[d$status]
+    word[is.na(word)] <- "not built"
     v <- data.frame(
-      a = d$output_id, b = unname(.type_labels[d$type]), c = d$program,
-      d = t(unname(c(missing = "none", todo = "TODO",
-                     current = "as generated",
-                     generated = "as generated (definition changed)",
-                     edited = "edited by hand")[d$program_state])),
-      e = ifelse(is.na(d$ard), "", d$ard), f = ifelse(is.na(d$rtf), "", d$rtf),
-      g = t(unname(.status_labels[d$status])), stringsAsFactors = FALSE)
-    names(v) <- t(c("output_id", "Type", "Program", "Program state", "ARD",
-                    "RTF", "Status"))
+      a = d$output_id, b = t(unname(.type_labels[d$type])),
+      c = t(unname(.ard_state_labels[word])),
+      d = ifelse(word == "built" & !is.na(d$rtf), d$rtf, ""),
+      e = ifelse(word == "built", "", t(unname(.status_labels[d$status]))),
+      f = paste0(d$program, ifelse(d$program_state %in% "edited",
+                                   paste0(" (", t("edited by hand"), ")"), "")),
+      stringsAsFactors = FALSE)
+    names(v) <- t(c("output_id", "Type", "State", "When", "Why", "Program"))
     DT::formatStyle(
-      .dt(v, selection = "multiple"), names(v)[7L],
-      color = DT::styleEqual(
-        t(unname(.status_labels[c("error", "todo", "outdated", "unsaved",
-                                  "ok")])),
-        c("#b91c1c", "#b45309", "#b45309", "#b45309", "#15803d")))
+      .dt(v, selection = "multiple"), names(v)[3L],
+      color = DT::styleEqual(t(unname(.ard_state_labels)),
+                             c("#15803d", "#b45309", "#6b7280", "#b91c1c")))
   })
   selected_status <- shiny::reactive({
     d <- status()
-    d[input$status_rows_selected, , drop = FALSE]
+    i <- input$status_rows_selected
+    # no row chosen: the report chosen in the sidebar
+    if (!length(i) && !is.null(current())) i <- match(current(), d$output_id)
+    d[stats::na.omit(i), , drop = FALSE]
   })
   output$log <- shiny::renderText({
     bi <- input$batches_rows_selected

@@ -55,6 +55,15 @@
   trimws(strsplit(x, "|", fixed = TRUE)[[1L]])
 }
 
+# What an analysis computes when it names no statistics (cards' defaults)
+.method_default_stats <- function(kinds) {
+  switch(kinds %||% "",
+         continuous = c("N", "mean", "sd", "median", "p25", "p75", "min", "max"),
+         categorical = c("n", "N", "p"),
+         missing = c("N_obs", "N_miss", "N_nonmiss", "p_miss", "p_nonmiss"),
+         character())
+}
+
 .stat_kinds <- function(kind) {
   switch(kind %||% "",
          continuous = "continuous", categorical = "categorical",
@@ -251,6 +260,16 @@ ard_view <- function(ard) {
   out <- as.data.frame(lapply(ard[keep], flat), stringsAsFactors = FALSE)
   out[is.na(out)] <- ""
   out
+}
+
+# One output's rows of the study's working ARD (NULL when there are none).
+study_ard_rows <- function(study, output_id) {
+  out <- .ard_study_value(study$planner$ard, "output", "output/ard/ard.rds")
+  f <- file.path(study$path, out)
+  if (!file.exists(f)) return(NULL)
+  a <- readRDS(f)
+  if (!"output_id" %in% names(a)) return(NULL)
+  a[a$output_id %in% output_id, , drop = FALSE]
 }
 
 .ard_status_file <- function(study) {

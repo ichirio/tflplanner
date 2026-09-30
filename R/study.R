@@ -612,6 +612,9 @@ study_files <- function(study, folder = "data") {
 #' @return A data frame, with the full dimensions in attribute `dim_full`.
 #' @export
 read_data_head <- function(path, n = 50L) {
+  if (!is.character(path) || length(path) != 1L || is.na(path)) {
+    stop("read_data_head(): `path` is one file.", call. = FALSE)
+  }
   ext <- tolower(tools::file_ext(path))
   need <- function(pkg) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
@@ -633,7 +636,10 @@ read_data_head <- function(path, n = 50L) {
                       max.level = 1L)), collapse = "\n"))
   }
   full <- dim(d)
+  # taking rows drops the columns' labels: keep them (the forms show them)
+  lab <- lapply(d, attr, which = "label", exact = TRUE)
   d <- as.data.frame(utils::head(d, n))
+  for (nm in names(lab)) if (!is.null(lab[[nm]])) attr(d[[nm]], "label") <- lab[[nm]]
   attr(d, "dim_full") <- full
   d
 }

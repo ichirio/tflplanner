@@ -46,6 +46,7 @@ reference:
     contents:
       - standards_template
       - code_templates
+      - add_standard_defaults
   - title: Studies
     contents:
       - create_study
@@ -91,6 +92,12 @@ reference:
       - builder_read
       - builder_stats
       - preview_pages
+  - title: Starting from the data
+    contents:
+      - first_table
+      - first_listing
+      - catalog_add_files
+      - add_group_n
   - title: Programs and runs
     contents:
       - data_lines

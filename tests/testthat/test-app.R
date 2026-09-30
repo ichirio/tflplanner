@@ -1,25 +1,3 @@
-local_home <- function(env = parent.frame()) {
-  home <- withr_tempdir(env)
-  old <- options(tflplanner.home = home)
-  do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
-  suppressMessages(setup_tflplanner(studies_root = file.path(home, "ws")))
-  home
-}
-
-two_studies <- function() {
-  p1 <- add_output(new_planner(), "A", data_code = "a <- 1",
-                   description = "first")
-  p2 <- add_output(new_planner(), "B", data_code = "b <- 2",
-                   description = "second")
-  create_study("S1", planner = p1)
-  create_study("S2", planner = p2)
-}
-
-server_for <- function(study) {
-  start <- open_study(study)
-  function(input, output, session) app_server(input, output, session, start)
-}
-
 test_that("switching studies does not write one report's editor into another", {
   local_home()
   two_studies()
@@ -67,11 +45,11 @@ test_that("unregistering removes the chosen study only, and the list still draws
     session$setInputs(studies_rows_selected = 1L, unregister_ok = 1L)
     expect_equal(list_studies()$study_id, "S1")
     expect_s3_class(output$studies, "json")
-    # the last one: an empty list is a message, not an error
+    # the last one: an empty list gives way to the getting-started card
     session$setInputs(studies_rows_selected = 1L, unregister = 2L)
     session$setInputs(unregister_ok = 2L)
     expect_equal(nrow(list_studies()), 0L)
-    expect_error(output$studies, "No studies yet")
+    expect_match(output$welcome$html, "try_sample")
   }))
 })
 

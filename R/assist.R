@@ -247,10 +247,12 @@ fetch_ard <- function(study, output_id, timeout = 300,
                       timeout = timeout, stderr_to_stdout = TRUE)
   log <- px$stdout
   if (!file.exists(f_out)) {
-    err <- utils::tail(strsplit(log, "\n")[[1L]], 12L)
-
-    stop("The ARD code of '", output_id, "' failed:\n",
-         paste(err, collapse = "\n"), call. = FALSE)
+    why <- .first_error(log)
+    stop(.problem(
+      paste0("The ARD code of '", output_id, "' did not run",
+             if (!is.na(why)) paste0(": ", why) else "", ".",
+             .problem_hint(why)),
+      detail = log))
   }
   res <- readRDS(f_out)
   data <- if (is.data.frame(res$data)) res$data
