@@ -1,4 +1,16 @@
-# tflplanner 0.0.1.9001
+# tflplanner (development version)
+
+- Development reopens at 0.0.2.9000, after the 0.0.2 release.
+
+# tflplanner 0.0.2
+
+- **Tables on rtfreporter's plan, adopted.**  The plan engine (ARD
+  functions, `table_plan()` and the `plan_*()` verbs) was adopted in
+  rtfreporter's pre-CRAN API review and released in rtfreporter 0.8.2;
+  tflplanner 0.0.2 needs rtfreporter 0.8.2 and tflspec 0.0.24.  The
+  entries below (0.0.1.9000, 0.0.1.9001) are the changes since 0.0.1.
+
+## tflplanner 0.0.1.9001
 
 - **Tables follow rtfreporter's redesigned plan verbs** (rtfreporter
   0.8.1.9003, ichirio/rtfreporter#498) through tflspec 0.0.23.9001.  The
@@ -18,7 +30,7 @@
   - Needs rtfreporter 0.8.1.9003 and tflspec 0.0.23.9001.  The sample
     study SAMPLE-01's reports are byte-identical to 0.0.1.9000's.
 
-# tflplanner 0.0.1.9000
+## tflplanner 0.0.1.9000
 
 - **The table engine is rtfreporter's** (plan E, ichirio/tflspec
   Discussion #23): tflspec 0.0.23.9000 keeps the specifications only, and
@@ -36,8 +48,8 @@
     the new names; programs the app wrote are written again on save,
     hand-edited ones need the rename by hand.
   - Needs rtfreporter 0.8.1.9001 and tflspec 0.0.23.9000.
-  - If plan E is undone, go back to tflplanner 0.0.1 (tag `v0.0.1`, with
-    tflspec `v0.0.23` and rtfreporter `v0.8.1`).
+  - tflplanner 0.0.1 (tag `v0.0.1`, with tflspec `v0.0.23` and
+    rtfreporter `v0.8.1`) is the last version on the former engine.
 
 # tflplanner 0.0.1
 
