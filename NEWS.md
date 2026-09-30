@@ -1,3 +1,23 @@
+# tflplanner 0.0.1.9001
+
+- **Tables follow rtfreporter's redesigned plan verbs** (rtfreporter
+  0.8.1.9003, ichirio/rtfreporter#498) through tflspec 0.0.23.9001.  The
+  table definition's `layout` columns are named after the verbs'
+  arguments now: `stub_into` is `stub_name`, `group_show` is
+  `group_keep`, `colpages_carry` is `colpages_keep`, and `pages_by` is
+  gone (one page per value is `group_page = TRUE` with `group_col`).
+  - **A study saved with the former names is not read**: opening it
+    stops with the columns to rename (in the study's workbook) instead
+    of dropping their values.  Company standards with the former
+    `default_layout` columns are refused the same way.  The sample study
+    shipped with the package (SAMPLE-01) is updated.
+  - Code written by hand in a study (data code, normalize code, setup)
+    is not rewritten: a call to a former plan verb (`plan_fmt()`,
+    `plan_header_style()`, `table_plan(notes = )` ...) needs the change
+    by hand -- see rtfreporter's NEWS.
+  - Needs rtfreporter 0.8.1.9003 and tflspec 0.0.23.9001.  The sample
+    study SAMPLE-01's reports are byte-identical to 0.0.1.9000's.
+
 # tflplanner 0.0.1.9000
 
 - **The table engine is rtfreporter's** (plan E, ichirio/tflspec

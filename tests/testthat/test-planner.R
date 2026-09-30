@@ -20,6 +20,16 @@ test_that("the sample reads, writes and reads back unchanged", {
   expect_identical(q$setup, p$setup)
 })
 
+test_that("a layout with the former column names is refused, not emptied", {
+  old <- data.frame(output_id = "T1", stub_into = "row_label",
+                    group_show = "FALSE", stringsAsFactors = FALSE)
+  expect_error(.normalize_sheet(old, "layout"),
+               "stub_into \\(now stub_name\\), group_show \\(now group_keep\\)")
+  new <- data.frame(output_id = "T1", stub_name = "row_label",
+                    stringsAsFactors = FALSE)
+  expect_identical(.normalize_sheet(new, "layout")$stub_name, "row_label")
+})
+
 test_that("code saved with tflspec's former engine names is read with rtfreporter's", {
   expect_equal(
     .renamed_calls(c("data <- tfl_ard_normalize(ard)",

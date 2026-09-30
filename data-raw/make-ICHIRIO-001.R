@@ -78,7 +78,7 @@ sheets <- list(
          template = "{min}, {max}", digits = "0")),
   layout = tbl(
     list(blank_where = "between_groups", blank_first = "TRUE",
-         blank_last = "TRUE", blank_counted = "TRUE", stub_into = "row_label",
+         blank_last = "TRUE", blank_counted = "TRUE", stub_name = "row_label",
          stub_before = "TRUE", note = "study default"),
     list(output_id = "T-14-1-1", pages_max_rows = "24",
          pages_split = "group_safe"),

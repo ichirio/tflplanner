@@ -58,6 +58,7 @@ sheet_columns <- function(sheet) {
   cols <- sheet_columns(sheet)
   if (is.null(d)) return(.empty_sheet(sheet))
   d <- as.data.frame(d, stringsAsFactors = FALSE, check.names = FALSE)
+  .check_retired_columns(d, sheet)
   out <- lapply(cols, function(cn) {
     v <- if (cn %in% names(d)) as.character(d[[cn]]) else
       rep(NA_character_, nrow(d))
@@ -80,6 +81,30 @@ sheet_columns <- function(sheet) {
   code <- gsub("tflspec::tfl_ard_normalize(", "rtfreporter::normalize_ard(",
                code, fixed = TRUE)
   gsub("\\btfl_ard_normalize\\(", "normalize_ard(", code, perl = TRUE)
+}
+
+# Sheet columns a study saved before the plan verbs were redesigned
+# (tflspec 0.0.23.9001, rtfreporter#498) may still have.  They are not read
+# under their old names; the shape above would drop them, and their values
+# with them, so a sheet that has one is refused instead, saying what to
+# write.
+.retired_sheet_columns <- list(
+  layout = c(stub_into = "stub_name", group_show = "group_keep",
+             colpages_carry = "colpages_keep",
+             pages_by = "group_page = TRUE with group_col"))
+
+.check_retired_columns <- function(d, sheet) {
+  map <- .retired_sheet_columns[[sheet]]
+  old <- intersect(names(map), names(d))
+  if (length(old)) {
+    stop("The `", sheet, "` sheet has column(s) from before tflplanner ",
+         "0.0.1.9001: ", paste0(old, " (now ", map[old], ")",
+                                collapse = ", "),
+         ".
+  Rename them in the study's workbook, or make the study ",
+         "again.", call. = FALSE)
+  }
+  invisible(d)
 }
 
 .renamed_outputs <- function(p) {
