@@ -1870,10 +1870,20 @@ app_server <- function(input, output, session, start) {
   })
   output$ard_check <- shiny::renderUI({
     msg <- ard_valid()
+    # analyses of an output the report list does not have: they run, but
+    # no table reads them until it is added (Reports > Add)
+    ids <- unique(stats::na.omit(rv$p$ard$analyses$output_id))
+    orphan <- setdiff(ids, rv$p$outputs$output_id)
+    note <- if (length(orphan)) shiny::div(
+      class = "alert alert-info py-1 small mt-2",
+      sprintf(t("%s: analyses of no report yet. Add the report on the Reports tab to make its table."),
+              paste(orphan, collapse = ", ")))
     if (is.null(msg)) {
       n <- nrow(rv$p$ard$analyses)
-      return(shiny::p(class = "small text-success mt-2",
-                      sprintf(t("%d analyses; the definition reads without errors."), n)))
+      return(shiny::tagList(
+        shiny::p(class = "small text-success mt-2",
+                 sprintf(t("%d analyses; the definition reads without errors."), n)),
+        note))
     }
     shiny::div(class = "alert alert-warning py-1 small mt-2",
                shiny::tags$pre(class = "mb-0", msg))

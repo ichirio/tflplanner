@@ -267,3 +267,14 @@ test_that("a table with no ARD says so, and offers the one Preview", {
     expect_match(output$builder_note$html, 'id="fetch3"')
   })
 })
+
+test_that("analyses of an output that is not a report are pointed out", {
+  local_home()
+  p <- new_planner()
+  p <- set_ard_rows(p, "analyses", "T-X", data.frame(
+    analysis_id = "AGE", method = "continuous", variables = "AGE"))
+  create_study("O1", planner = p)
+  shiny::testServer(server_for("O1"), {
+    expect_match(output$ard_check$html, "T-X: analyses of no report yet")
+  })
+})

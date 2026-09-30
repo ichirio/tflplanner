@@ -770,3 +770,4 @@ Group (the columns),群（列）
 "Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (builder, ARD tab).",数値は要約統計量、それ以外は度数と割合になります。あとからすべて変えられます（ビルダー、ARD タブ）。
 Choose the data,データを選んでください
 In the data catalog now: %s,データカタログに入りました: %s
+%s: analyses of no report yet. Add the report on the Reports tab to make its table.,%s: まだ帳票の無い解析です。表を作るには、帳票タブで帳票を追加してください。
