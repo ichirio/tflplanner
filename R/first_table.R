@@ -313,6 +313,18 @@ first_listing <- function(x, output_id, path, data, columns, group = NULL,
   }, "", USE.NAMES = FALSE)
   set_lf_rows(x, "listing_cols", id, data.frame(
     vars = cols, label = lab,
+    width = vapply(seq_along(cols), function(i)
+      as.character(.guess_width(data[[cols[i]]], lab[i])), ""),
     collapse_repeats = ifelse(cols %in% c(group, "USUBJID"), "TRUE", NA),
     stringsAsFactors = FALSE))
+}
+
+# A column's width in characters: most of its values fit (90%), and its
+# header's longest word; 6 to 40.
+.guess_width <- function(v, label = "") {
+  n <- nchar(as.character(v[!is.na(v)]), type = "width")
+  w <- if (length(n)) ceiling(stats::quantile(n, 0.9, names = FALSE)) else 0
+  words <- strsplit(label %||% "", "\\s+")[[1L]]
+  lw <- if (length(words)) max(nchar(words, type = "width")) else 0
+  as.integer(max(6, min(40, max(w, lw))))
 }

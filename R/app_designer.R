@@ -21,8 +21,8 @@
                   plot = "Figure settings", layers = "Layers")
 
 .designer_ui <- function(t) {
-  bslib::nav_panel(
-    t("Figures"), value = "designer",
+  shiny::conditionalPanel(
+    "output.report_kind == 'figure'",
     shiny::tags$style(shiny::HTML("
       .pd-item { cursor: pointer; padding: .25rem .5rem; font-size: .85rem; }
       .pd-item.active { background: #e7f1ff; border-left: 3px solid #0d6efd; }
@@ -94,8 +94,16 @@
               factor(cat, levels = unique(cat)))
   ch <- lapply(ch, as.list)
   ch[[words$other]] <- stats::setNames(list(""), words$empty)
+  # the first choice: of those it can draw, the one that uses most of the
+  # study's data besides ADSL (an AE figure for a study of ADSL and ADAE)
+  used <- vapply(dat, function(d) {
+    if (is.na(d)) return(0L)
+    ds <- toupper(trimws(unlist(strsplit(d, "[+/]"))))
+    length(intersect(setdiff(ds, "ADSL"), toupper(have)))
+  }, 0L, USE.NAMES = FALSE)
+  best <- if (any(ok)) which(ok)[which.max(used[ok])] else NA
   list(choices = ch, off = templates$template[!ok],
-       first = c(templates$template[ok], "")[1L])
+       first = if (is.na(best)) "" else templates$template[best])
 }
 
 # the value an input gives, as a field: NULL = not set (the default)
@@ -134,7 +142,8 @@
 }
 
 .designer_server <- function(input, output, session, rv, current, t, notify,
-                             guarded, catalog, fig_is_new = function() FALSE) {
+                             guarded, catalog, fig_is_new = function() FALSE,
+                             page = function() input$nav) {
   pd <- new.env()
   pd$n <- 0L
   pd$data <- list()
@@ -791,7 +800,7 @@
   # every change at once (it takes a few ms).
   pv <- shiny::reactiveVal(NULL)
   drawn <- shiny::reactiveVal(NULL)          # the design the picture shows
-  on_tab <- shiny::reactive(identical(input$nav, "designer"))
+  on_tab <- shiny::reactive(identical(page(), "designer"))
   draw <- function() {
     id <- shiny::isolate(current())
     d <- shiny::isolate(design())

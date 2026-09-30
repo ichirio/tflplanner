@@ -211,6 +211,11 @@ test_that("a template says whether the study's data can draw it", {
   expect_identical(names(tc$choices), c("Efficacy", "Safety", "Other"))
   expect_identical(tc$off, "km")
   expect_identical(tc$first, "ae")
+  # of the drawable ones, the one using most of the study's data
+  tp3 <- rbind(tp, data.frame(template = "sw", kind = "swimmer", label = "Swimmer",
+                              category = "Efficacy", data = "ADSL"))
+  tp3 <- tp3[c(3, 1, 2), ]
+  expect_identical(.fig_template_choices(tp3, c("ADSL", "ADAE"), w)$first, "ae")
   # a tflspec without the columns: grouped by kind, nothing greyed
   tc2 <- .fig_template_choices(tp[c("template", "kind", "label")], character(), w)
   expect_identical(names(tc2$choices)[1:2], c("km", "ae_dot"))
@@ -233,6 +238,8 @@ test_that("first_listing() writes the listing and its columns from the data", {
   lc <- lf_rows(p, "listing_cols", "L-AE")
   expect_identical(lc$vars, c("TRTA", "USUBJID", "AEDECOD", "ASTDT"))
   expect_identical(lc$label[3], "Preferred Term")
+  # widths from the data and the header's longest word
+  expect_identical(lc$width[3], "9")
   expect_error(first_listing(p, "L-AE", "data/adam/adae.rds", d, "USUBJID"),
                "has columns already")
 })
@@ -250,11 +257,13 @@ test_that("Add > Listing from the data: a listing shown in one form", {
     session$setInputs(ml_data = "data/adam/adae.rds")
     expect_match(output$ml_cols$html, "AEDECOD")
     session$setInputs(ml_group = "TRTA", ml_cols_pick = c("USUBJID", "AEDECOD", "AESEV"))
-    session$setInputs(add_ok = 1, target = "L-AE", nav = "lf")
+    session$setInputs(add_ok = 1, target = "L-AE", nav = "outputs", rep_nav = "content")
     expect_identical(lf_rows(rv$p, "listing_cols", "L-AE")$vars,
                      c("TRTA", "USUBJID", "AEDECOD", "AESEV"))
     h <- output$lf_preview_out$html
     expect_false(grepl("alert-danger", h))
+    # the preview is shown, not the invitation to preview
+    expect_false(grepl("Preview the listing to see", h))
   })
 })
 
@@ -269,7 +278,7 @@ test_that("a new figure starts from a template the study's data can draw", {
   s$planner <- add_output(s$planner, "F-AGE", type = "figure")
   save_study(s)
   shiny::testServer(server_for("G1"), {
-    session$setInputs(target = "F-AGE", nav = "designer")
+    session$setInputs(target = "F-AGE", nav = "outputs", rep_nav = "content")
     h <- output$pd_body$html
     # ADTTE templates are listed but cannot be chosen, and say why
     expect_match(h, "needs data this study has not got")

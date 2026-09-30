@@ -237,7 +237,7 @@ test_that("the builder of a table with no definition yet writes one, and keeps t
   shiny::testServer(server_for("B1"), {
     rv <- session$userData$rv
     bform <- session$userData$bform
-    session$setInputs(target = "T-DM", nav = "tables", table_nav = "builder")
+    session$setInputs(target = "T-DM", nav = "outputs", rep_nav = "content", table_nav = "builder")
     b <- function(x) paste0("b", bform$n, "_", x)
     v <- list(TRT01A = NULL)
     v[[b("key")]] <- "TRT01A"
@@ -261,7 +261,7 @@ test_that("a table with no ARD says so, and offers the one Preview", {
   local_home()
   create_study("P1", planner = add_output(new_planner(), "T1", type = "table"))
   shiny::testServer(server_for("P1"), {
-    session$setInputs(target = "T1", nav = "tables", table_nav = "builder")
+    session$setInputs(target = "T1", nav = "outputs", rep_nav = "content", table_nav = "builder")
     expect_match(output$assist$html, "Not made")
     expect_match(output$assist$html, 'id="fetch2"')
     expect_match(output$builder_note$html, 'id="fetch3"')
@@ -304,4 +304,36 @@ test_that("Tables opens on the builder, with the sheets as a sibling tab", {
   expect_length(bp, 1L)
   expect_false(grepl("hot_tables", as.character(bp[[1L]]), fixed = TRUE))
   expect_true(grepl("builder_preview", as.character(bp[[1L]]), fixed = TRUE))
+})
+
+test_that("the top tabs are the flow, and a report's screens are in Reports", {
+  ui <- htmltools::tagQuery(app_ui())
+  vals <- function(id) {
+    links <- ui$find(paste0("#", id))$find("a")$selectedTags()
+    v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
+    unname(v[nzchar(v)])
+  }
+  expect_identical(vals("nav"), c("study", "data", "ard", "outputs", "results"))
+  expect_identical(vals("rep_nav"), c("list", "content", "page", "code"))
+  html <- as.character(app_ui())
+  # each kind's content shows for its kind only
+  for (k in c("table", "listing", "figure")) {
+    expect_true(grepl(sprintf("output.report_kind == &#39;%s&#39;", k), html, fixed = TRUE) ||
+                  grepl(sprintf("output.report_kind == '%s'", k), html, fixed = TRUE))
+  }
+})
+
+test_that("the page sample puts a report's lines over the study defaults", {
+  p <- new_planner()
+  p <- set_sheet_rows(p, "header", NA, data.frame(
+    line = c("1", "2"), left = c("Company", "Protocol: {STUDY_ID}"),
+    right = c("DRAFT", "Page {PAGE} of {TOTAL_PAGES}")))
+  p <- add_output(p, "T1")
+  p <- set_sheet_rows(p, "header", "T1", data.frame(line = "3", center = "Table 1"))
+  h <- as.character(.page_sample_html(p, "T1", "S-01", htmltools::div("BODY")))
+  expect_match(h, "Protocol: S-01")
+  expect_match(h, "Page 1 of N")
+  expect_match(h, "Table 1")
+  expect_true(regexpr("Company", h) < regexpr("Table 1", h))
+  expect_match(h, "BODY")
 })

@@ -308,6 +308,54 @@ preview_pages <- function(x, output_id, data) {
 
 #' @rdname preview_pages
 #' @export
+# The lines of a report's header / titles / footnotes / footer: its own,
+# and the study defaults for the lines it has not (by line number).
+.page_lines <- function(x, sheet, output_id) {
+  own <- sheet_rows(x, sheet, output_id)
+  inh <- inherited_rows(x, sheet, output_id)
+  inh <- inh[!inh$line %in% own$line, , drop = FALSE]
+  d <- rbind(own, inh)
+  d[order(suppressWarnings(as.numeric(d$line))), , drop = FALSE]
+}
+
+# A page's sample in HTML: each line in three parts (left, centre, right),
+# the {PLACEHOLDERS} filled as a first page would have them.
+.page_sample_html <- function(x, output_id, study_id, body, program = "") {
+  fill <- function(s) {
+    if (is.na(s)) return("")
+    s <- gsub("{PAGE}", "1", s, fixed = TRUE)
+    s <- gsub("{TOTAL_PAGES}", "N", s, fixed = TRUE)
+    s <- gsub("{STUDY_ID}", study_id, s, fixed = TRUE)
+    s <- gsub("{PROGRAM}", program %||% "", s, fixed = TRUE)
+    s <- gsub("{DATETIME}", format(Sys.time(), "%Y-%m-%d %H:%M"), s, fixed = TRUE)
+    s <- gsub("{output_id}", output_id, s, fixed = TRUE)
+    s
+  }
+  block <- function(sheet, cls) {
+    d <- .page_lines(x, sheet, output_id)
+    if (!nrow(d)) return(NULL)
+    lapply(seq_len(nrow(d)), function(i) htmltools::div(
+      class = paste("rp-page-line", cls),
+      htmltools::span(class = "l", fill(d$left[i])),
+      htmltools::span(class = "c", fill(d$center[i])),
+      htmltools::span(class = "r", fill(d$right[i]))))
+  }
+  htmltools::div(
+    class = "rp-page",
+    htmltools::tags$style(htmltools::HTML("
+      .rp-page { border: 1px solid #ccc; padding: .6rem .8rem; font-size: .7rem;
+                 font-family: 'Courier New', monospace; background: #fff; }
+      .rp-page-line { display: grid; grid-template-columns: 1fr auto 1fr; gap: .5rem; }
+      .rp-page-line .c { text-align: center; } .rp-page-line .r { text-align: right; }
+      .rp-page-body { margin: .5rem 0; overflow-x: auto; }
+      .rp-page-foot { border-top: 1px solid #ddd; margin-top: .4rem; padding-top: .2rem; }")),
+    block("header", "head"),
+    block("titles", "title"),
+    htmltools::div(class = "rp-page-body", body),
+    block("footnotes", "note"),
+    htmltools::div(class = "rp-page-foot", block("footer", "foot")))
+}
+
 preview_html <- function(pages, max_pages = 3L, align = "center") {
   one <- function(pg, i) {
     d <- pg$data

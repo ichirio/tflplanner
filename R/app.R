@@ -10,8 +10,7 @@
 
 .all_rows <- "__all__"
 .default_rows <- "__default__"
-.study_tabs <- c("outputs", "ard", "tables", "lf", "designer",
-                 "report_spec", "data", "results")
+.study_tabs <- c("outputs", "ard", "data", "results")
 
 .sheet_labels <- c(
   tables = "tables: roles", variables = "variables", cells = "cells",
@@ -28,6 +27,11 @@
 # a report's ARD, in the same four words everywhere (ard_status()'s states)
 .ard_state_labels <- c(built = "Made", outdated = "Outdated",
                        `not built` = "Not made", error = "Error")
+
+# a report's run status in the four words (the status says why)
+.run_state <- c(ok = "built", outdated = "outdated", unsaved = "outdated",
+                todo = "not built", "not run" = "not built",
+                "no program" = "not built", error = "error")
 
 .status_labels <- c(
   "no program" = "Not written (save)", unsaved = "Unsaved (save)",
@@ -282,7 +286,7 @@ app_ui <- function(lang = "en") {
                  t("every row of every report and the defaults at once, with output_id shown: for bulk edits and pasting from Excel.")))),
 
     bslib::nav_panel(
-      t("Studies"), value = "study",
+      t("Study"), value = "study",
       bslib::layout_columns(
         col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
         bslib::card(
@@ -417,8 +421,12 @@ app_ui <- function(lang = "en") {
 
     bslib::nav_panel(
       t("Reports"), value = "outputs",
-      bslib::layout_columns(
-        col_widths = two,
+      # one place for a report: the list, then the report chosen (in the
+      # list or the sidebar) -- its content (by its kind), page and code
+      bslib::navset_underline(
+        id = "rep_nav",
+        bslib::nav_panel(
+          t("All reports"), value = "list",
         bslib::card(
           bslib::card_header(t("Reports (TFL)")),
           DT::DTOutput("outputs"),
@@ -429,7 +437,75 @@ app_ui <- function(lang = "en") {
             .btn("remove", t("Delete"), class = "btn-sm btn-outline-danger"),
             .btn("up", "\u2191"), .btn("down", "\u2193")),
           shiny::p(class = "text-muted small mt-1",
-                   t("The order is the order autoexec_report.R runs them in. Copy copies the report's rows of every sheet."))),
+                   t("The order is the order autoexec_report.R runs them in. Copy copies the report's rows of every sheet.")))),
+        bslib::nav_panel(
+          t("Content"), value = "content",
+          shiny::uiOutput("report_head"),
+          shiny::conditionalPanel(
+            "output.report_kind == ''",
+            shiny::p(class = "text-muted mt-3",
+                     t("Choose a report in the list or the sidebar."))),
+    shiny::conditionalPanel(
+      "output.report_kind == 'table'",
+      # not a card: a card around the sheets' own card makes the inner one a
+      # fill item of a box with no height, and every grid in it 0 px high
+      bslib::navset_underline(
+        id = "table_nav",
+        bslib::nav_panel(
+          t("Table (builder)"), value = "builder",
+      shiny::uiOutput("builder_note"),
+      bslib::layout_columns(
+        col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
+        shiny::uiOutput("builder_form"),
+        bslib::card(
+          bslib::card_header(shiny::div(
+            class = "d-flex justify-content-between",
+            shiny::span(t("Preview: the table as it will print"),
+                        shiny::span(id = "builder_updating",
+                                    class = "badge text-bg-warning ms-2 d-none",
+                                    t("Updating ..."))),
+            shiny::uiOutput("builder_pages", inline = TRUE))),
+          shiny::uiOutput("builder_preview")))),
+        bslib::nav_panel(
+          t("Details (sheets)"), value = "table_spec",
+      shiny::uiOutput("type_note"),
+      shiny::div(class = "rp-assist border rounded p-2 mb-2",
+                 shiny::uiOutput("assist")),
+      grid_note,
+      do.call(bslib::navset_card_underline,
+              c(list(id = "table_sheet"), lapply(table_sheets(), sheet_panel)))
+        ))),
+    shiny::conditionalPanel(
+      "output.report_kind == 'listing'",
+      shiny::uiOutput("lf_note"),
+      bslib::layout_columns(
+        col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
+        shiny::div(
+          shiny::uiOutput("lf_form"),
+          shiny::uiOutput("lf_cols_box")),
+        bslib::card(
+          bslib::card_header(shiny::div(
+            class = "d-flex justify-content-between align-items-center",
+            shiny::span(t("Preview")),
+            .btn("lf_preview", t("Preview the listing"),
+                 class = "btn-sm btn-outline-primary"))),
+          shiny::uiOutput("lf_preview_out")))),
+    .designer_ui(t)),
+    bslib::nav_panel(
+      t("Page"), value = "page",
+      shiny::p(class = "small text-muted",
+               t("The page of the report chosen in the sidebar: its titles, footnotes and its own header or footer. Study defaults = every report's.")),
+      bslib::layout_columns(
+        col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
+        shiny::div(
+          grid_note,
+          do.call(bslib::navset_card_underline,
+                  lapply(report_sheets(), sheet_panel))),
+        bslib::card(
+          bslib::card_header(t("First page (sample)")),
+          shiny::uiOutput("page_sample")))),
+        bslib::nav_panel(
+          t("Code"), value = "code",
         bslib::navset_card_tab(
           bslib::nav_panel(
             t("Data code"),
@@ -461,66 +537,10 @@ app_ui <- function(lang = "en") {
             t("Program"),
             shiny::uiOutput("program_state"),
             shiny::div(class = "rp-code",
-                       shiny::verbatimTextOutput("program")))))),
-
-    # one tab a kind of report: what it takes to make one, in the order made
-    bslib::nav_panel(
-      t("Tables"), value = "tables",
-      # not a card: a card around the sheets' own card makes the inner one a
-      # fill item of a box with no height, and every grid in it 0 px high
-      bslib::navset_underline(
-        id = "table_nav",
-        bslib::nav_panel(
-          t("Table (builder)"), value = "builder",
-      shiny::uiOutput("builder_note"),
-      bslib::layout_columns(
-        col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
-        shiny::uiOutput("builder_form"),
-        bslib::card(
-          bslib::card_header(shiny::div(
-            class = "d-flex justify-content-between",
-            shiny::span(t("Preview: the table as it will print"),
-                        shiny::span(id = "builder_updating",
-                                    class = "badge text-bg-warning ms-2 d-none",
-                                    t("Updating ..."))),
-            shiny::uiOutput("builder_pages", inline = TRUE))),
-          shiny::uiOutput("builder_preview")))),
-        bslib::nav_panel(
-          t("Details (sheets)"), value = "table_spec",
-      shiny::uiOutput("type_note"),
-      shiny::div(class = "rp-assist border rounded p-2 mb-2",
-                 shiny::uiOutput("assist")),
-      grid_note,
-      do.call(bslib::navset_card_underline,
-              c(list(id = "table_sheet"), lapply(table_sheets(), sheet_panel)))
-        ))),
+                       shiny::verbatimTextOutput("program"))))))),
 
     bslib::nav_panel(
-      t("Listings"), value = "lf",
-      shiny::uiOutput("lf_note"),
-      bslib::layout_columns(
-        col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
-        shiny::div(
-          shiny::uiOutput("lf_form"),
-          shiny::uiOutput("lf_cols_box")),
-        bslib::card(
-          bslib::card_header(shiny::div(
-            class = "d-flex justify-content-between align-items-center",
-            shiny::span(t("Preview")),
-            .btn("lf_preview", t("Preview the listing"),
-                 class = "btn-sm btn-outline-primary"))),
-          shiny::uiOutput("lf_preview_out")))),
-
-    .designer_ui(t),
-
-    bslib::nav_panel(
-      t("Report layout"), value = "report_spec",
-      grid_note,
-      do.call(bslib::navset_card_underline,
-              lapply(report_sheets(), sheet_panel))),
-
-    bslib::nav_panel(
-      t("Results"), value = "results",
+      t("Runs"), value = "results",
       bslib::card(
         bslib::card_header(t("Reports")),
         shiny::div(
@@ -1408,6 +1428,44 @@ app_server <- function(input, output, session, start) {
     tg <- target()
     if (!is.null(rv$p) && !is.na(tg) && nzchar(tg) &&
         tg %in% rv$p$outputs$output_id) tg else NULL
+  })
+
+  # -- where the user is ---------------------------------------------------
+  # A report's screens are the Reports tab's sub-tabs (the list, its
+  # content by its kind, its page, its code); the logic knows them by the
+  # pages they were: tables / lf / designer (content), report_spec (page).
+  report_kind <- shiny::reactive({
+    id <- current()
+    if (is.null(id)) "" else report_info(rv$p, id)$type
+  })
+  output$report_kind <- shiny::renderText(report_kind())
+  shiny::outputOptions(output, "report_kind", suspendWhenHidden = FALSE)
+  page <- shiny::reactive({
+    nav <- input$nav %||% ""
+    if (!identical(nav, "outputs")) return(nav)
+    switch(input$rep_nav %||% "list",
+      content = switch(report_kind(), table = "tables", listing = "lf",
+                       figure = "designer", "outputs"),
+      page = "report_spec", code = "code", "outputs")
+  })
+  go <- function(where) {
+    sub <- switch(where, tables = , lf = , designer = "content",
+                  report_spec = "page", code = "code", outputs = "list", NULL)
+    if (is.null(sub)) return(bslib::nav_select("nav", where))
+    bslib::nav_select("nav", "outputs")
+    bslib::nav_select("rep_nav", sub)
+  }
+  output$report_head <- shiny::renderUI({
+    id <- current()
+    if (is.null(id)) return(NULL)
+    o <- rv$p$outputs
+    d <- o$description[match(id, o$output_id)]
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-baseline my-2",
+      shiny::strong(id),
+      shiny::span(class = "badge text-bg-light border",
+                  t(unname(.type_labels[report_kind()]))),
+      if (!is.na(d)) shiny::span(class = "text-muted small", d))
   })
 
   # -- what the ARD says ---------------------------------------------------
@@ -2382,7 +2440,8 @@ app_server <- function(input, output, session, start) {
     ard_cols[[k]]
   }
   .designer_server(input, output, session, rv, current, t, notify, guarded,
-                   catalog, fig_is_new = function() fig_is_new())
+                   catalog, fig_is_new = function() fig_is_new(),
+                   page = function() page())
   output$lf_note <- shiny::renderUI({
     msg <- switch(lf_type(),
       none = t("Choose a Listing report in the sidebar."),
@@ -2540,7 +2599,9 @@ app_server <- function(input, output, session, start) {
     guarded(rv$p <- set_lf_rows(rv$p, "listing_cols", current(), d))
   })
   lf_pv <- shiny::reactiveVal(NULL)
-  shiny::observeEvent(current(), lf_pv(NULL))
+  shiny::observeEvent(current(), {
+    if (!identical(lf_pv()$id, current())) lf_pv(NULL)
+  })
   shiny::observeEvent(input$lf_preview, {
     id <- current()
     if (!identical(lf_type(), "listing")) {
@@ -2557,6 +2618,7 @@ app_server <- function(input, output, session, start) {
       r <- tryCatch(list(pages = preview_listing(current_study(), id)),
                     error = function(e) list(error = conditionMessage(e)))
     })
+    r$id <- id
     lf_pv(r)
   }
   output$lf_preview_out <- shiny::renderUI({
@@ -2588,7 +2650,7 @@ app_server <- function(input, output, session, start) {
   rv$btouched <- FALSE
   # the page shown: a Tables sub-tab counts as its own page
   active_page <- shiny::reactive({
-    nav <- input$nav %||% ""
+    nav <- page()
     if (identical(nav, "tables")) input$table_nav %||% "builder" else nav
   })
   shiny::observeEvent(active_page(), {
@@ -2597,17 +2659,6 @@ app_server <- function(input, output, session, start) {
       rv$btouched <- FALSE
       bump()
     }
-  })
-  # the report chosen in the sidebar opens its own kind of tab, when a
-  # design tab of another kind is showing
-  # (on the sidebar's choice only: current() also changes with every edit)
-  shiny::observeEvent(target(), {
-    id <- shiny::isolate(current())
-    nav <- input$nav %||% ""
-    if (is.null(id) || !nav %in% c("tables", "lf", "designer")) return()
-    want <- switch(report_info(rv$p, id)$type, table = "tables", listing = "lf",
-                   figure = "designer", NULL)
-    if (!is.null(want) && !identical(nav, want)) bslib::nav_select("nav", want)
   })
   builder_case <- shiny::reactive({
     id <- current()
@@ -2868,6 +2919,29 @@ app_server <- function(input, output, session, start) {
              error = function(e) list(error = conditionMessage(e)))
   })
   preview_d <- shiny::debounce(preview, 300)
+  # the first page as the report's rows and the study defaults make it:
+  # header, titles, the body's start, footnotes, footer
+  output$page_sample <- shiny::renderUI({
+    id <- current()
+    if (is.null(id)) {
+      return(shiny::p(class = "small text-muted",
+                      t("Choose a report in the sidebar.")))
+    }
+    rv$ver
+    p <- rv$p
+    info <- report_info(p, id)
+    body <- if (identical(info$type, "table")) {
+      pv <- tryCatch(preview_d(), error = function(e) NULL)
+      if (!is.null(pv$pages)) preview_html(pv$pages[1L], max_pages = 1L) else
+        shiny::div(class = "text-muted small", pv$error %||% t("(the table)"))
+    } else {
+      shiny::div(class = "text-muted small text-center py-4",
+                 if (identical(info$type, "figure")) t("(the figure: see its Content)") else
+                   t("(the listing: see its Content)"))
+    }
+    .page_sample_html(p, id, rv$meta$study_id %||% "", body,
+                      program = info$program)
+  })
   output$builder_preview <- shiny::renderUI({
     pv <- preview_d()
     if (!is.null(pv$error)) {
@@ -3111,7 +3185,7 @@ app_server <- function(input, output, session, start) {
                              type = input$modal_type))
     after_id_change(p2, id)
     # the new report's own tab
-    if (!is.null(p2)) bslib::nav_select("nav", switch(input$modal_type,
+    if (!is.null(p2)) go(switch(input$modal_type,
       table = "tables", listing = "lf", figure = "designer", "outputs"))
   })
   # -- the first listing: the data and its columns --------------------------
@@ -3163,7 +3237,7 @@ app_server <- function(input, output, session, start) {
                                 description = desc))
     if (is.null(p2)) return()
     after_id_change(p2, id)
-    bslib::nav_select("nav", "lf")
+    go("lf")
     lf_show_preview(id)
   }
   # -- the first table: a few answers instead of five sheets ---------------
@@ -3224,7 +3298,7 @@ app_server <- function(input, output, session, start) {
                               description = desc))
     if (is.null(p2)) return()
     after_id_change(p2, id)
-    bslib::nav_select("nav", "tables")
+    go("tables")
     bslib::nav_select("table_nav", "builder")
     do_preview(id)
   }
@@ -3345,26 +3419,28 @@ app_server <- function(input, output, session, start) {
   })
   output$status <- DT::renderDT({
     d <- status()
+    word <- .run_state[d$status]
+    word[is.na(word)] <- "not built"
     v <- data.frame(
-      a = d$output_id, b = unname(.type_labels[d$type]), c = d$program,
-      d = t(unname(c(missing = "none", todo = "TODO",
-                     current = "as generated",
-                     generated = "as generated (definition changed)",
-                     edited = "edited by hand")[d$program_state])),
-      e = ifelse(is.na(d$ard), "", d$ard), f = ifelse(is.na(d$rtf), "", d$rtf),
-      g = t(unname(.status_labels[d$status])), stringsAsFactors = FALSE)
-    names(v) <- t(c("output_id", "Type", "Program", "Program state", "ARD",
-                    "RTF", "Status"))
+      a = d$output_id, b = t(unname(.type_labels[d$type])),
+      c = t(unname(.ard_state_labels[word])),
+      d = ifelse(word == "built" & !is.na(d$rtf), d$rtf, ""),
+      e = t(unname(.status_labels[d$status])),
+      f = paste0(d$program, ifelse(d$program_state %in% "edited",
+                                   paste0(" (", t("edited by hand"), ")"), "")),
+      stringsAsFactors = FALSE)
+    names(v) <- t(c("output_id", "Type", "State", "When", "Why", "Program"))
     DT::formatStyle(
-      .dt(v, selection = "multiple"), names(v)[7L],
-      color = DT::styleEqual(
-        t(unname(.status_labels[c("error", "todo", "outdated", "unsaved",
-                                  "ok")])),
-        c("#b91c1c", "#b45309", "#b45309", "#b45309", "#15803d")))
+      .dt(v, selection = "multiple"), names(v)[3L],
+      color = DT::styleEqual(t(unname(.ard_state_labels)),
+                             c("#15803d", "#b45309", "#6b7280", "#b91c1c")))
   })
   selected_status <- shiny::reactive({
     d <- status()
-    d[input$status_rows_selected, , drop = FALSE]
+    i <- input$status_rows_selected
+    # no row chosen: the report chosen in the sidebar
+    if (!length(i) && !is.null(current())) i <- match(current(), d$output_id)
+    d[stats::na.omit(i), , drop = FALSE]
   })
   output$log <- shiny::renderText({
     bi <- input$batches_rows_selected

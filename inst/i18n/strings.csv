@@ -831,3 +831,13 @@ Columns (in order),列（この順）
 e.g.,例:
 The ARD has no subjects per %s: a header's (N=n) prints NA.,ARD に %s ごとの被験者数がありません。見出しの (N=n) は NA になります。
 Count them (then Preview),数える（そしてプレビュー）
+All reports,帳票の一覧
+Content,中身
+Page,ページ
+"The page of the report chosen in the sidebar: its titles, footnotes and its own header or footer. Study defaults = every report's.",サイドバーで選んだ帳票のページ: タイトル、脚注、その帳票だけのヘッダー・フッター。試験の既定 = すべての帳票のもの。
+When,日時
+Why,理由
+First page (sample),1 ページ目（見本）
+(the table),（表）
+(the figure: see its Content),（図: 中身のタブで）
+(the listing: see its Content),（一覧表: 中身のタブで）
