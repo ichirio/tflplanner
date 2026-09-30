@@ -315,7 +315,9 @@ read_standards <- function(path) {
   stats::setNames(out, names(b))
 }
 
-.std_optional <- list(ard_methods = "formats")
+# columns a company's workbook may lack (written before they were added):
+# they read as blank, and a method's blank label is its name (tflspec)
+.std_optional <- list(ard_methods = c("formats", "label"))
 
 .standards_file <- function(home = tflplanner_home()) {
   file.path(home, "standards", "company_standards.xlsx")

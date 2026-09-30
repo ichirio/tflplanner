@@ -2245,6 +2245,7 @@ app_server <- function(input, output, session, start) {
   # (builder_write()), and the grids redraw when their tab is opened.
   bform <- new.env()
   bform$n <- 0L
+  session$userData$bform <- bform
   bform_drawn <- shiny::reactiveVal(0L)
   rv$bver <- 0L
   rv$btouched <- FALSE
@@ -2396,8 +2397,21 @@ app_server <- function(input, output, session, start) {
         t("Greyed statistics are not in this report's ARD: add them to its analysis on the ARD tab, then read the ARD again.")))
   }
 
+  # Whatever goes wrong in the builder stays in the builder: it is said once
+  # (and logged), and the reactive stops quietly (req) instead of ending the
+  # session.  (req's own silent stop passes through.)
+  builder_guard <- function(expr) {
+    tryCatch(expr, error = function(e) {
+      if (inherits(e, "shiny.silent.error")) stop(e)
+      message("tflplanner: builder: ", conditionMessage(e))
+      notify(sprintf(t("The builder could not read the form: %s"),
+                     conditionMessage(e)), "error")
+      shiny::req(FALSE)
+    })
+  }
+
   # the arms follow the column variable chosen
-  shiny::observe({
+  shiny::observe(builder_guard({
     bform_drawn()
     k <- input[[bid("key")]]
     shiny::req(identical(builder_case(), "ok"), !is.null(k))
@@ -2410,8 +2424,8 @@ app_server <- function(input, output, session, start) {
       sortable::rank_list(text = NULL, labels = arms,
                           input_id = paste0("b", n, "_arms"),
                           orientation = "horizontal")))
-  })
-  bstate <- shiny::reactive({
+  }))
+  bstate <- shiny::reactive(builder_guard({
     bform_drawn()
     shiny::req(identical(builder_case(), "ok"),
                identical(bform$id, current()))
@@ -2424,7 +2438,8 @@ app_server <- function(input, output, session, start) {
     idx <- match(vars, st$variables$variable)
     v$label <- vapply(seq_along(vars), function(k) {
       l <- get(paste0("lab", idx[k]))
-      if (is.null(l)) v$label[k] else if (nzchar(trimws(l))) l else NA
+      if (is.null(l)) as.character(v$label[k]) else if (nzchar(trimws(l))) l else
+        NA_character_
     }, "")
     lev <- stats::setNames(lapply(seq_along(vars), function(k)
       get(paste0("lv", idx[k])) %||% st$levels[[vars[k]]]), vars)
@@ -2440,7 +2455,7 @@ app_server <- function(input, output, session, start) {
          pct_decimals = num("pct", st$pct_decimals),
          header = get("header") %||% "keep",
          auto_levels = st$auto_levels)
-  })
+  }))
   bstate_d <- shiny::debounce(bstate, 400)
   shiny::observeEvent(bstate_d(), {
     st <- bstate_d()
@@ -2451,7 +2466,7 @@ app_server <- function(input, output, session, start) {
       rv$btouched <- TRUE
     }
   })
-  shiny::observe({
+  shiny::observe(builder_guard({
     st <- bstate()
     m <- bform$meta
     n <- bform$n
@@ -2463,7 +2478,7 @@ app_server <- function(input, output, session, start) {
         class = "alert alert-warning py-1 small",
         sprintf(t("The ARD has no %s: those cells stay empty. Add them to the ARD code."),
                 paste(miss, collapse = ", "))))
-  })
+  }))
   preview <- shiny::reactive({
     id <- current()
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))

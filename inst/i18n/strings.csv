@@ -740,3 +740,4 @@ Not in this report's ARD: add %s to its analysis on the ARD tab.,この帳票の
 (the ARD has no %s),（ARD に %s がありません）
 "Greyed statistics are not in this report's ARD: add them to its analysis on the ARD tab, then read the ARD again.",グレーの統計量は、この帳票の ARD にありません。ARD タブでこの分析に足してから、ARD を読み直してください。
 Time shown in (the data's time is in days),表示する時間の単位（データの時間は日数として読みます）
+The builder could not read the form: %s,Builder がフォームを読めませんでした: %s

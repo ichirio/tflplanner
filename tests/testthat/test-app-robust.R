@@ -218,3 +218,41 @@ test_that("a figure's group is chosen among short text columns, with labels", {
   expect_identical(names(g)[1L], "TRT01A \u2014 Actual Treatment")
   expect_identical(names(g)[2L], "ARMCD")
 })
+
+test_that("the builder of a table with no definition yet writes one, and keeps the session", {
+  skip_if_not_installed("cards")
+  local_home()
+  p <- add_output(new_planner(), "T-DM", type = "table")
+  s <- create_study("B1", planner = p)
+  ard <- cards::ard_stack(cards::ADSL, .by = TRT01A,
+                          cards::ard_continuous(variables = AGE))
+  data <- rtfreporter::normalize_ard(ard)
+  m <- ard_meta(ard, data)
+  m$variables$label <- NA  # no label: the case that ended the session
+  f <- .meta_file(s, "T-DM")
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(m, f)
+  saveRDS(data, sub("[.]rds$", "_data.rds", f))
+
+  shiny::testServer(server_for("B1"), {
+    rv <- session$userData$rv
+    bform <- session$userData$bform
+    session$setInputs(target = "T-DM", nav = "tables", table_nav = "builder")
+    b <- function(x) paste0("b", bform$n, "_", x)
+    v <- list(TRT01A = NULL)
+    v[[b("key")]] <- "TRT01A"
+    v[[b("vars")]] <- "AGE"
+    v[[b("arms")]] <- m$keys$TRT01A
+    v[[b("stats")]] <- c("n", "mean_sd")
+    v[[b("dec")]] <- 0
+    v[[b("cat")]] <- "npct"
+    v[[b("pct")]] <- 1
+    v[[b("header")]] <- "keep"
+    v[[b("lab1")]] <- ""
+    do.call(session$setInputs, v[-1L])
+    session$elapse(1000)
+    expect_false(session$isClosed())
+    expect_identical(sheet_rows(rv$p, "tables", "T-DM")$cols, "TRT01A")
+    expect_match(output$builder_preview$html, "Mean")
+  })
+})
