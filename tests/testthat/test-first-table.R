@@ -159,3 +159,38 @@ test_that("a row of the analyses grid is edited as a form", {
     expect_true("A1" %in% ard_rows(rv$p, "analyses", "T1")$analysis_id)
   })
 })
+
+test_that("a study made without the company defaults can take them, missing ones only", {
+  local_home()
+  p <- new_planner()
+  p <- set_ard_rows(p, "populations", "", data.frame(
+    population_id = "SAF", dataset = "ADSL", where = "MYFL == \"Y\""))
+  p2 <- add_standard_defaults(p, "X1")
+  expect_true(all(c("layout", "col_header", "columns", "populations",
+                    "datasets") %in% attr(p2, "added")))
+  expect_true(any(sheet_rows(p2, "col_header", NA)$text %in% "(N={n})"))
+  # the study's own analysis set stays as it was
+  po <- ard_rows(p2, "populations")
+  expect_identical(po$where[po$population_id == "SAF"], "MYFL == \"Y\"")
+  # again: nothing to add
+  expect_length(attr(add_standard_defaults(p2, "X1"), "added"), 0L)
+})
+
+test_that("blank statistics show the method's defaults", {
+  expect_identical(.method_default_stats("continuous")[1:3], c("N", "mean", "sd"))
+  expect_identical(.method_default_stats("result"), character())
+})
+
+test_that("another study with unsaved changes asks: save and open, or open without saving", {
+  local_home()
+  two_studies()
+  shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    rv$p$outputs$description[1] <- "changed"
+    session$setInputs(studies_dbl = match("S2", list_studies()$study_id))
+    session$setInputs(open_discard = 1)
+    expect_identical(rv$study$meta$study_id, "S2")
+    # the changes were kept as S1's draft
+    expect_false(is.null(.read_draft("S1")))
+  })
+})

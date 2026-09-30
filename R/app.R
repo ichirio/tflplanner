@@ -264,7 +264,8 @@ app_ui <- function(lang = "en") {
     theme = bslib::bs_theme(version = 5, preset = "shiny"),
     header = shiny::tagList(shiny::tags$style(shiny::HTML(.code_css)),
                             shiny::tags$script(shiny::HTML(.split_js)),
-                            shiny::tags$script(shiny::HTML(.unsaved_js))),
+                            shiny::tags$script(shiny::HTML(.unsaved_js)),
+                            shiny::tags$script(shiny::HTML(.updating_js))),
     sidebar = bslib::sidebar(
       width = 270,
       shiny::uiOutput("study_side"),
@@ -470,16 +471,7 @@ app_ui <- function(lang = "en") {
       bslib::navset_underline(
         id = "table_nav",
         bslib::nav_panel(
-          t("Definition"), value = "table_spec",
-      shiny::uiOutput("type_note"),
-      shiny::div(class = "rp-assist border rounded p-2 mb-2",
-                 shiny::uiOutput("assist")),
-      grid_note,
-      do.call(bslib::navset_card_underline,
-              c(list(id = "table_sheet"), lapply(table_sheets(), sheet_panel)))
-        ),
-        bslib::nav_panel(
-          t("Builder (beta)"), value = "builder",
+          t("Table (builder)"), value = "builder",
       shiny::uiOutput("builder_note"),
       bslib::layout_columns(
         col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
@@ -487,9 +479,20 @@ app_ui <- function(lang = "en") {
         bslib::card(
           bslib::card_header(shiny::div(
             class = "d-flex justify-content-between",
-            shiny::span(t("Preview: the table as it will print")),
+            shiny::span(t("Preview: the table as it will print"),
+                        shiny::span(id = "builder_updating",
+                                    class = "badge text-bg-warning ms-2 d-none",
+                                    t("Updating ..."))),
             shiny::uiOutput("builder_pages", inline = TRUE))),
-          shiny::uiOutput("builder_preview")))
+          shiny::uiOutput("builder_preview")))),
+        bslib::nav_panel(
+          t("Details (sheets)"), value = "table_spec",
+      shiny::uiOutput("type_note"),
+      shiny::div(class = "rp-assist border rounded p-2 mb-2",
+                 shiny::uiOutput("assist")),
+      grid_note,
+      do.call(bslib::navset_card_underline,
+              c(list(id = "table_sheet"), lapply(table_sheets(), sheet_panel)))
         ))),
 
     bslib::nav_panel(
@@ -580,6 +583,28 @@ app_ui <- function(lang = "en") {
 # can drag it taller or shorter (.split_js)
 # While the study has unsaved changes, leaving the page (reload, closing the
 # tab) asks first; the server says when (message "tflplanner-dirty").
+# The builder's preview says "Updating" from the moment the builder writes a
+# change to the sheets (the server says so) until the new table arrives.
+.updating_js <- "
+$(document).on('shiny:connected', function() {
+  Shiny.addCustomMessageHandler('builder-updating', function(x) {
+    $('#builder_updating').removeClass('d-none');
+    $('#builder_preview').css('opacity', 0.4);
+    clearTimeout(window.rpUpd);
+    window.rpUpd = setTimeout(function() {
+      $('#builder_updating').addClass('d-none');
+      $('#builder_preview').css('opacity', 1);
+    }, 30000);
+  });
+});
+$(document).on('shiny:value', function(e) {
+  if (e.name === 'builder_preview') {
+    $('#builder_updating').addClass('d-none');
+    $('#builder_preview').css('opacity', 1);
+  }
+});
+"
+
 .unsaved_js <- "
 (function() {
   var dirty = false;
@@ -1080,8 +1105,32 @@ app_server <- function(input, output, session, start) {
   open_row <- function(d) {
     if (is.null(d)) return()
     if (dirty()) {
-      return(notify(t("There are unsaved changes. Save first."), "warning"))
+      to_open(d)
+      return(shiny::showModal(shiny::modalDialog(
+        title = sprintf(t("%s has changes that are not saved"),
+                        rv$study$meta$study_id),
+        sprintf(t("Save them and open %s, or open it without saving them (they are kept as a draft: opening %s again offers them back)."),
+                d$study_id, rv$study$meta$study_id),
+        footer = shiny::tagList(
+          shiny::modalButton(t("Cancel")),
+          .btn("open_discard", t("Open without saving"),
+               class = "btn-outline-secondary"),
+          .btn("open_save", t("Save and open"), class = "btn-primary")))))
     }
+    open_now(d)
+  }
+  to_open <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(input$open_save, {
+    shiny::removeModal()
+    if (isTRUE(do_save())) open_now(to_open())
+  })
+  shiny::observeEvent(input$open_discard, {
+    shiny::removeModal()
+    guarded(.write_draft(current_study()))
+    open_now(to_open())
+  })
+  open_now <- function(d) {
+    if (is.null(d)) return()
     s <- guarded(open_study(d$study_id))
     if (!is.null(s)) {
       set_study(s)
@@ -1196,6 +1245,20 @@ app_server <- function(input, output, session, start) {
     bslib::nav_select("nav", "outputs")
   })
 
+  shiny::observeEvent(input$std_defaults, {
+    if (!has_study()) return()
+    p2 <- guarded(add_standard_defaults(rv$p, rv$study$meta$study_id))
+    if (is.null(p2)) return()
+    added <- attr(p2, "added")
+    if (!length(added)) {
+      return(notify(t("The study has every company default already.")))
+    }
+    attr(p2, "added") <- NULL
+    rv$p <- p2
+    bump()
+    notify(sprintf(t("Added the company's defaults: %s (save to keep them)"),
+                   paste(added, collapse = ", ")))
+  })
   output$study_detail <- shiny::renderUI({
     s <- shown_study()
     if (is.null(s)) {
@@ -1244,6 +1307,12 @@ app_server <- function(input, output, session, start) {
                         t(c("As options(rtfreporter.rounding)",
                             "r (half to even)", "sas (half away from zero)"))),
         selected = v(r)),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2 align-items-center mb-2",
+        .btn("std_defaults", t("Add the company's study defaults (only what is missing)"),
+             class = "btn-sm btn-outline-primary"),
+        shiny::span(class = "small text-muted",
+                    t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, analysis sets and data catalog. Nothing already there is changed."))),
       shiny::tags$details(
         shiny::tags$summary(t("Folders")),
         shiny::tags$pre(class = "small", paste(
@@ -1965,13 +2034,40 @@ app_server <- function(input, output, session, start) {
       categorical = t("Counts and percents of each level."),
       missing = t("Missing and non-missing counts."),
       t("This method gives a fixed set of results (estimate, confidence limits, p-value ...): the statistics picked here are the ones kept. Blank keeps them all."))
+    dflt <- .method_default_stats(kinds)
+    lab <- function(x) {
+      l <- cat$label[match(x, cat$statistic)]
+      ifelse(is.na(l), x, paste0(x, " \u2014 ", l))
+    }
     shiny::tagList(
       shiny::selectizeInput(
         st_id("pick"), t("Statistics"), choices = ch, selected = have,
         multiple = TRUE, width = "100%",
-        options = list(plugins = list("remove_button"))),
-      shiny::p(class = "small text-muted mt-n2 mb-1", note),
+        options = list(plugins = list("remove_button"),
+                       placeholder = t("the method's default (below)"))),
+      if (!length(have)) shiny::div(
+        class = "small mt-n2 mb-1",
+        if (length(dflt)) shiny::tagList(
+          shiny::span(class = "text-muted",
+                      sprintf(t("Blank = the method's default (%d):"), length(dflt))),
+          lapply(dflt, function(x) shiny::span(
+            class = "badge text-bg-light border fw-normal ms-1", lab(x))),
+          .btn(st_id("use_default"), t("Start from these"),
+               class = "btn-sm btn-link py-0"))
+        else shiny::span(class = "text-muted",
+                         t("Blank = every result the method gives."))),
+      shiny::p(class = "small text-muted mb-1", note),
       shiny::uiOutput("ard_stat_fmts"))
+  })
+  # the defaults as a start: they become the analysis's own, to change
+  shiny::observe({
+    st_drawn()
+    n <- input[[st_id("use_default")]]
+    if (is.null(n) || n < 1L || identical(n, st_env[["used"]])) return()
+    st_env[["used"]] <- n
+    r <- shiny::isolate(st_row_now())
+    shiny::updateSelectizeInput(session, st_id("pick"),
+                                selected = .method_default_stats(.stat_kinds(st_kind(r))))
   })
   output$ard_stat_fmts <- shiny::renderUI({
     st_drawn()
@@ -2463,7 +2559,7 @@ app_server <- function(input, output, session, start) {
   # the page shown: a Tables sub-tab counts as its own page
   active_page <- shiny::reactive({
     nav <- input$nav %||% ""
-    if (identical(nav, "tables")) input$table_nav %||% "table_spec" else nav
+    if (identical(nav, "tables")) input$table_nav %||% "builder" else nav
   })
   shiny::observeEvent(active_page(), {
     if (identical(active_page(), "builder")) rv$bver <- rv$bver + 1L
@@ -2500,10 +2596,10 @@ app_server <- function(input, output, session, start) {
         t("This table has no ARD yet: the builder is built from it."), " ",
         .btn("fetch3", t("Preview this table's ARD"),
              class = "btn-sm btn-primary ms-1")),
-      hierarchy = t("This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Use Table definition; the preview works."),
+      hierarchy = t("This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Edit it in Details (sheets); the preview works."),
       NULL)
     if (is.null(msg)) return(shiny::p(class = "small text-muted",
-      t("Drag to order, type to rename; every change is written to the sheets (Table definition) and shown on the right.")))
+      t("Drag to order, type to rename; every change is written to the sheets (Details) and shown on the right.")))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
   bid <- function(x) paste0("b", bform$n, "_", x)
@@ -2697,6 +2793,7 @@ app_server <- function(input, output, session, start) {
     id <- bform$id
     p2 <- guarded(builder_write(rv$p, id, st))
     if (!is.null(p2) && !identical(p2, rv$p)) {
+      session$sendCustomMessage("builder-updating", TRUE)
       rv$p <- p2
       rv$btouched <- TRUE
     }

@@ -291,3 +291,17 @@ test_that("a new study's ID is checked against the folders already there", {
     expect_null(output$ns_id_check$html)
   })
 })
+
+test_that("Tables opens on the builder, with the sheets as a sibling tab", {
+  ui <- htmltools::tagQuery(app_ui())
+  links <- ui$find("#table_nav")$find("a")$selectedTags()
+  vals <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
+  expect_identical(unname(vals[nzchar(vals)]), c("builder", "table_spec"))
+  # the builder's pane does not hold the sheets (a misplaced parenthesis
+  # once nested them in it)
+  panes <- ui$find(".tab-pane")$selectedTags()
+  bp <- Filter(function(x) identical(x$attribs[["data-value"]], "builder"), panes)
+  expect_length(bp, 1L)
+  expect_false(grepl("hot_tables", as.character(bp[[1L]]), fixed = TRUE))
+  expect_true(grepl("builder_preview", as.character(bp[[1L]]), fixed = TRUE))
+})

@@ -365,6 +365,41 @@ company_standards <- function(home = tflplanner_home()) {
        markers = s$figure_markers)
 }
 
+#' Add the company's study defaults a study lacks
+#'
+#' For a study made without them (before a new empty study started from the
+#' company standards): each definition sheet with no study-default rows
+#' gets the company's (`default_<sheet>`), and the analysis sets and data
+#' catalog get the company's they do not have (by id).  Nothing already
+#' there is changed.
+#'
+#' @param x A `tflplanner`.
+#' @param study_id The study's id (`{STUDY_ID}` in the defaults).
+#' @return The `tflplanner`, with attribute `added` (the sheets added to).
+#' @export
+add_standard_defaults <- function(x, study_id) {
+  std <- .standard_planner(study_id)
+  added <- character()
+  for (sh in c(table_sheets(), report_sheets())) {
+    mine <- x$sheets[[sh]]
+    def <- std$sheets[[sh]]
+    if (is.null(def) || !nrow(def) || any(is.na(mine$output_id))) next
+    x$sheets[[sh]] <- rbind(def[names(mine)], mine)
+    added <- c(added, sh)
+  }
+  for (sh in c("populations", "datasets")) {
+    key <- if (sh == "populations") "population_id" else "dataset"
+    new <- std$ard[[sh]]
+    new <- new[!new[[key]] %in% x$ard[[sh]][[key]], , drop = FALSE]
+    if (nrow(new)) {
+      x$ard[[sh]] <- rbind(x$ard[[sh]], new[names(x$ard[[sh]])])
+      added <- c(added, sh)
+    }
+  }
+  attr(x, "added") <- added
+  x
+}
+
 # the rows a new study starts with: its study defaults, its ARD definition's
 # analysis sets and data catalog
 .standard_planner <- function(study_id) {

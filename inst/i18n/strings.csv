@@ -800,3 +800,20 @@ Give the analysis an ID.,解析 ID を入れてください。
 %s already has an analysis %s.,%s にはすでに解析 %s があります。
 The subset is not an R condition: %s,部分集団が R の条件式になっていません: %s
 %s: written,%s: 書き込みました
+Table (builder),表（ビルダー）
+Details (sheets),詳細（シート）
+Updating ...,更新しています…
+This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Edit it in Details (sheets); the preview works.,この表は階層（SOC / PT）を持ちます。ビルダーは今のところ要約表だけです。詳細（シート）で編集してください。プレビューは使えます。
+"Drag to order, type to rename; every change is written to the sheets (Details) and shown on the right.",ドラッグで並べ替え、入力で名前を変えられます。変更はすべてシート（詳細）に書かれ、右に表示されます。
+%s has changes that are not saved,%s に保存していない変更があります
+"Save them and open %s, or open it without saving them (they are kept as a draft: opening %s again offers them back).",保存して %s を開くか、保存せずに開いてください（変更は下書きとして残り、%s をもう一度開くと戻せます）。
+Open without saving,保存せずに開く
+Save and open,保存して開く
+Add the company's study defaults (only what is missing),会社標準の既定を入れる（無い項目だけ）
+"For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, analysis sets and data catalog. Nothing already there is changed.",既定なしで作られた試験のために: 表の見た目（見出し列、空行、列見出し、幅）、ヘッダー・フッター、解析対象集団、データカタログ。すでにあるものは変えません。
+The study has every company default already.,会社標準の既定はすべて入っています。
+Added the company's defaults: %s (save to keep them),会社標準の既定を入れました: %s（保存すると残ります）
+the method's default (below),メソッドの既定（下）
+Blank = the method's default (%d):,空欄 = メソッドの既定（%d 個）:
+Start from these,これから始める
+Blank = every result the method gives.,空欄 = メソッドが出す結果すべて。
