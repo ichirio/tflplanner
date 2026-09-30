@@ -2114,7 +2114,7 @@ app_server <- function(input, output, session, start) {
     }
     ds <- rv$p$ard$datasets$dataset
     po <- rv$p$ard$populations$population_id
-    val <- function(x) if (is.na(x)) "" else x
+    blank_na <- function(x) if (is.na(x)) "" else x
     tg <- ard_target()
     shiny::tagList(
       if (!tg %in% rv$p$outputs$output_id) shiny::div(
@@ -2129,7 +2129,7 @@ app_server <- function(input, output, session, start) {
       bslib::layout_columns(
         col_widths = c(4, 8),
         shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
-        shiny::textInput(st_id("label"), t("Label"), val(r$label),
+        shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
                          width = "100%")),
       shiny::selectInput(st_id("method"), t("What to compute"), mch,
                          selected = r$method, width = "100%"),
@@ -2138,14 +2138,14 @@ app_server <- function(input, output, session, start) {
         col_widths = c(6, 6),
         shiny::selectInput(st_id("dataset"), t("Data"),
                            c(stats::setNames("", t("(the analysis set's)")), ds),
-                           selected = val(r$dataset), width = "100%"),
+                           selected = blank_na(r$dataset), width = "100%"),
         shiny::selectInput(st_id("pop"), t("Analysis set"), c("", po),
-                           selected = val(r$population_id), width = "100%")),
+                           selected = blank_na(r$population_id), width = "100%")),
       shiny::uiOutput("ard_an_vars"),
       shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
         shiny::tags$summary(class = "small", t("Subset (an R condition)")),
-        shiny::textInput(st_id("where"), NULL, val(r$where), width = "100%",
+        shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
                          placeholder = "AESER == \"Y\"")),
       shiny::uiOutput("ard_stat_part"),
       shiny::div(
@@ -2221,7 +2221,7 @@ app_server <- function(input, output, session, start) {
     extra <- setdiff(have, cat$statistic)
     ch <- lapply(split(cat, factor(cat$group, levels = unique(cat$group))),
                  function(g) stats::setNames(as.list(g$statistic),
-                                             paste0(g$statistic, " — ",
+                                             paste0(g$statistic, " \u2014 ",
                                                     g$label)))
     if (length(extra)) ch[[t("not in the catalog")]] <-
       stats::setNames(as.list(extra), extra)
