@@ -732,3 +732,11 @@ This change could not be taken in; the grid shows the definition as it was.,こ�
 Give the study an ID.,試験 ID を入力してください。
 "Use letters, digits, '.', '_' or '-' only (e.g. ABC-101).",使えるのは英字・数字・「.」「_」「-」だけです（例: ABC-101）。
 A study with this ID is already registered.,この ID の試験はすでに登録されています。
+Changes that were not saved,保存されていない変更
+Discard,捨てる
+Take them back,戻す
+"The last time this study was open, some changes were not saved. Take them back (they are not saved until you save), or discard them?",前回この試験を開いていたとき、保存されていない変更がありました。戻しますか（戻しても、保存するまでは保存されません）、それとも捨てますか？
+Not in this report's ARD: add %s to its analysis on the ARD tab.,この帳票の ARD にありません。ARD タブで、この分析に %s を足してください。
+(the ARD has no %s),（ARD に %s がありません）
+"Greyed statistics are not in this report's ARD: add them to its analysis on the ARD tab, then read the ARD again.",グレーの統計量は、この帳票の ARD にありません。ARD タブでこの分析に足してから、ARD を読み直してください。
+Time shown in (the data's time is in days),表示する時間の単位（データの時間は日数として読みます）

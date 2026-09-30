@@ -20,6 +20,22 @@ builder_stats <- function() {
   d[c("key", "row", "template", "digits")]
 }
 
+# The statistics a template reads: "{mean} ({sd:.2f})" -> mean, sd
+.template_stats <- function(tpl) {
+  tok <- regmatches(tpl, gregexpr("\\{[^}:]+", tpl))[[1L]]
+  unique(substring(tok, 2L))
+}
+
+# For each builder statistic, what its template needs that the ARD does not
+# have ("" when the ARD has it all).  With no statistics known, nothing is
+# said to be missing.
+.builder_stats_lacking <- function(templates, have) {
+  if (!length(have)) return(rep("", length(templates)))
+  vapply(templates, function(tp)
+    paste(setdiff(.template_stats(tp), have), collapse = ", "), "",
+    USE.NAMES = FALSE)
+}
+
 # a statistic's digits from its rule: "d", "d+1", "d+1,d+2", "0" ...
 .stat_digits <- function(key, d) {
   rule <- builder_stats()$digits[match(key, builder_stats()$key)]

@@ -153,6 +153,35 @@ studies_root <- function(home = tflplanner_home()) {
   file.path(home, "studies", id)
 }
 
+# The draft: what a session changed and has not saved yet, kept beside the
+# study's state so that a reload, a closed tab or a lost connection does not
+# lose it.  Saving removes it; opening the study offers it back.
+.draft_file <- function(id, home = tflplanner_home()) {
+  file.path(.store_dir(id, home), "draft.json")
+}
+
+.write_draft <- function(study, home = tflplanner_home()) {
+  f <- .draft_file(study$meta$study_id, home)
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  writeLines(enc2utf8(.json(.state_of(study))), f, useBytes = TRUE)
+  invisible(f)
+}
+
+.read_draft <- function(id, home = tflplanner_home()) {
+  f <- .draft_file(id, home)
+  if (!file.exists(f)) return(NULL)
+  st <- tryCatch(jsonlite::fromJSON(f, simplifyVector = FALSE),
+                 error = function(e) NULL)
+  if (is.null(st)) return(NULL)
+  .study_from_state(st)
+}
+
+.drop_draft <- function(id, home = tflplanner_home()) {
+  f <- .draft_file(id, home)
+  if (file.exists(f)) unlink(f)
+  invisible(NULL)
+}
+
 .state_file <- function(id, home = tflplanner_home()) {
   file.path(.store_dir(id, home), "state.json")
 }

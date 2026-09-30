@@ -268,14 +268,17 @@
     prm <- if (!is.null(x) && "PARAMCD" %in% names(x)) sort(unique(x$PARAMCD))
     sz <- function(id, lab, ch) shiny::selectizeInput(id, lab, c("", ch),
       options = list(placeholder = t("the template's default"), create = TRUE))
+    cols <- .data_columns(dat)
     whole <- !templates$parts[templates$template == tp]
     shiny::tagList(
       if (kind != "swimmer") sz("pd_tpl_param", t("Parameter (PARAMCD)"), prm),
-      sz("pd_tpl_pop", t("Analysis set flag"), grep("FL$", vars, value = TRUE)),
+      sz("pd_tpl_pop", t("Analysis set flag"),
+         .labelled(grep("FL$", names(cols), value = TRUE), cols)),
       if (!tp %in% c("km_single_arm", "individual_spider") && !kind %in% c("waterfall", "swimmer"))
-        sz("pd_tpl_group", t("Group (treatment)"), grep("^TRT|ARM", vars, value = TRUE)),
+        sz("pd_tpl_group", t("Group (treatment)"), .group_choices(cols)),
       if (kind %in% c("km", "swimmer") || tp == "individual_spider")
-        shiny::selectInput("pd_tpl_unit", t("Time unit"), c("months", "weeks", "days", "years")),
+        shiny::selectInput("pd_tpl_unit", t("Time shown in (the data's time is in days)"),
+                           c("months", "weeks", "days", "years")),
       if (kind %in% c("mean", "box", "individual", "pk") && !whole)
         sz("pd_tpl_value", t("Value"), intersect(c("AVAL", "CHG", "PCHG"), vars)),
       if (kind == "scatter") sz("pd_tpl_x", t("X"), vars),
@@ -863,3 +866,32 @@
   paste(out, collapse = "\n")
 }
 t_static <- function(x) x
+
+# ---- choosing variables in the template form ------------------------------
+
+# Every column of the datasets read, once (the first dataset that has it).
+.data_columns <- function(dat) {
+  cols <- list()
+  for (d in dat) for (nm in names(d)) if (is.null(cols[[nm]])) cols[[nm]] <- d[[nm]]
+  cols
+}
+
+# Choices shown as "NAME \u2014 label" when the column has a label.
+.labelled <- function(nm, cols) {
+  shown <- vapply(nm, function(n) {
+    l <- attr(cols[[n]], "label", exact = TRUE)
+    if (is.null(l) || !nzchar(l)) n else paste0(n, " \u2014 ", l)
+  }, "", USE.NAMES = FALSE)
+  stats::setNames(nm, shown)
+}
+
+# Columns a figure can be split by: named like a treatment (TRT..., ARM...),
+# text or a factor, with few values -- not a date or a time (TRTSDT).
+.group_choices <- function(cols, max_levels = 12L) {
+  ok <- vapply(names(cols), function(nm) {
+    v <- cols[[nm]]
+    grepl("^TRT|ARM", nm) && (is.character(v) || is.factor(v)) &&
+      length(unique(stats::na.omit(v))) <= max_levels
+  }, NA)
+  .labelled(names(cols)[ok], cols)
+}

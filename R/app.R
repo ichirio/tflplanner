@@ -259,7 +259,8 @@ app_ui <- function(lang = "en") {
     fillable = FALSE,
     theme = bslib::bs_theme(version = 5, preset = "shiny"),
     header = shiny::tagList(shiny::tags$style(shiny::HTML(.code_css)),
-                            shiny::tags$script(shiny::HTML(.split_js))),
+                            shiny::tags$script(shiny::HTML(.split_js)),
+                            shiny::tags$script(shiny::HTML(.unsaved_js))),
     sidebar = bslib::sidebar(
       width = 270,
       shiny::uiOutput("study_side"),
@@ -583,6 +584,20 @@ app_ui <- function(lang = "en") {
 
 # as tall as its rows (and the spare one), up to a screenful; the viewer
 # can drag it taller or shorter (.split_js)
+# While the study has unsaved changes, leaving the page (reload, closing the
+# tab) asks first; the server says when (message "tflplanner-dirty").
+.unsaved_js <- "
+(function() {
+  var dirty = false;
+  $(document).on('shiny:connected', function() {
+    Shiny.addCustomMessageHandler('tflplanner-dirty', function(x) { dirty = !!x; });
+  });
+  window.addEventListener('beforeunload', function(e) {
+    if (dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+})();
+"
+
 .grid_height <- function(n) {
   as.integer(min(max(28 + 23 * (n + 1L) + 20, 100), 420))
 }
@@ -607,6 +622,20 @@ app_ui <- function(lang = "en") {
     }
   }
   h
+}
+
+# The rows a grid sends back, each as long as the grid is wide.  A row
+# typed into the spare row starting from a dropdown column arrives with
+# fewer cells than columns, and hot_to_r() -- which lays the cells out row
+# by row -- then cannot rebuild the table: that is a new row, not an error.
+.grid_rows_full <- function(rows, width) {
+  if (!length(width) || width < 1L || !is.list(rows)) return(rows)
+  lapply(rows, function(r) {
+    r <- as.list(r)
+    r <- r[seq_len(min(length(r), width))]
+    if (length(r) < width) r[(length(r) + 1L):width] <- list(NULL)
+    lapply(r, function(x) if (is.null(x)) NA else x)
+  })
 }
 
 # ARD columns whose values can only be one of their choices (the study's
@@ -689,6 +718,7 @@ app_server <- function(input, output, session, start) {
   # drawn again from what the study holds.
   grids_drawn <- shiny::reactiveVal(0L)
   read_grid <- function(h) {
+    h$data <- .grid_rows_full(h$data, length(unlist(h$params$rColHeaders)))
     d <- tryCatch(rhandsontable::hot_to_r(h), error = function(e) NULL)
     if (is.null(d)) {
       notify(t("This change could not be taken in; the grid shows the definition as it was."),
@@ -706,6 +736,19 @@ app_server <- function(input, output, session, start) {
   session$userData$rv <- rv
   session$userData$grids_drawn <- grids_drawn
   session$userData$dirty <- dirty
+  # unsaved changes: the page asks before it is left, and a draft keeps
+  # them (written once the edits pause) until they are saved or discarded
+  shiny::observe(session$sendCustomMessage("tflplanner-dirty", isTRUE(dirty())))
+  draft_due <- shiny::debounce(shiny::reactive(list(dirty(), rv$p, rv$meta)),
+                               2000)
+  shiny::observe({
+    unsaved <- isTRUE(draft_due()[[1L]])
+    shiny::isolate({
+      if (!has_study() || !is.null(rv$draft)) return()
+      if (unsaved) .write_draft(current_study())
+      else .drop_draft(rv$study$meta$study_id)
+    })
+  })
 
   # -- the study ---------------------------------------------------------
   set_study <- function(s) {
@@ -717,7 +760,41 @@ app_server <- function(input, output, session, start) {
     bump()
     rv$status_ver <- rv$status_ver + 1L
     rv$ard_ver <- rv$ard_ver + 1L
+    offer_draft(s)
   }
+  # a draft left by a session that did not save: take it back, or drop it
+  offer_draft <- function(s) {
+    d <- .read_draft(s$meta$study_id)
+    if (is.null(d)) return(invisible())
+    if (identical(d$planner, s$planner) &&
+        identical(d$meta[.study_fields], s$meta[.study_fields])) {
+      .drop_draft(s$meta$study_id)
+      return(invisible())
+    }
+    rv$draft <- d
+    shiny::showModal(shiny::modalDialog(
+      title = t("Changes that were not saved"),
+      t("The last time this study was open, some changes were not saved. Take them back (they are not saved until you save), or discard them?"),
+      footer = shiny::tagList(
+        .btn("draft_discard", t("Discard"), class = "btn-outline-secondary"),
+        .btn("draft_restore", t("Take them back"), class = "btn-primary")),
+      easyClose = FALSE))
+  }
+  shiny::observeEvent(input$draft_restore, {
+    d <- rv$draft
+    if (!is.null(d)) {
+      rv$p <- .study_spec_keys(d$planner)
+      rv$meta <- d$meta[.study_fields]
+      bump()
+    }
+    rv$draft <- NULL
+    shiny::removeModal()
+  })
+  shiny::observeEvent(input$draft_discard, {
+    if (has_study()) .drop_draft(rv$study$meta$study_id)
+    rv$draft <- NULL
+    shiny::removeModal()
+  })
   # (outside any reactive context at startup: its bump() reads rv$ver)
   if (!is.null(start)) shiny::isolate(set_study(start))
 
@@ -2274,9 +2351,7 @@ app_server <- function(input, output, session, start) {
       shiny::div(
         class = "rp-b-card",
         shiny::h6(t("Statistics")),
-        shiny::checkboxGroupInput(
-          bid("stats"), t("Continuous variables"),
-          stats::setNames(bs$key, bs$row), selected = st$stats),
+        builder_stat_boxes(bs, st$stats, m$stats),
         shiny::numericInput(
           bid("dec"), t("Decimals the data are collected with"),
           value = st$decimals, min = 0, max = 6, width = "260px"),
@@ -2291,6 +2366,36 @@ app_server <- function(input, output, session, start) {
                             width = "260px"),
         shiny::uiOutput(bid("warn"))))
   })
+  # The continuous statistics as checkboxes: one whose template needs a
+  # statistic this report's ARD does not have is greyed and cannot be
+  # ticked, and says what to add on the ARD tab.  (One already chosen stays
+  # ticked, so the sheets are not changed behind the user's back.)
+  builder_stat_boxes <- function(bs, chosen, have) {
+    lack <- .builder_stats_lacking(bs$template, have)
+    names_ui <- lapply(seq_len(nrow(bs)), function(i) {
+      if (!nzchar(lack[i])) return(bs$row[i])
+      shiny::span(
+        class = "text-muted",
+        title = sprintf(t("Not in this report's ARD: add %s to its analysis on the ARD tab."),
+                        lack[i]),
+        bs$row[i],
+        shiny::tags$small(class = "ms-1",
+                          sprintf(t("(the ARD has no %s)"), lack[i])))
+    })
+    off <- bs$key[nzchar(lack) & !bs$key %in% chosen]
+    boxes <- shiny::checkboxGroupInput(
+      bid("stats"), t("Continuous variables"),
+      choiceNames = names_ui, choiceValues = bs$key, selected = chosen)
+    boxes <- htmltools::tagQuery(boxes)$find("input")$each(function(x, i) {
+      if (x$attribs$value %in% off) x$attribs$disabled <- NA
+    })$allTags()
+    shiny::tagList(
+      boxes,
+      if (any(nzchar(lack))) shiny::p(
+        class = "small text-muted",
+        t("Greyed statistics are not in this report's ARD: add them to its analysis on the ARD tab, then read the ARD again.")))
+  }
+
   # the arms follow the column variable chosen
   shiny::observe({
     bform_drawn()

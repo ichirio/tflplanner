@@ -20,14 +20,13 @@ test_that("an ARD grid edit that cannot be read back leaves the session going", 
     before <- rv$p
     drawn <- session$userData$grids_drawn()
     key <- paste("ard", "analyses", "T1", rv$ver, sep = "|")
-    # the shape rhandsontable sends, broken: data rows that are not rows
+    # the shape rhandsontable sends, broken: rows with no columns to be
     session$setInputs(hot_ard_analyses = list(
       data = list("not a row"),
       changes = list(event = "afterChange",
                      changes = list(list(0L, "method", "continuous", "foo"))),
-      params = list(planner_key = key, rColHeaders = list("method"),
-                    rColClasses = list(method = "character"),
-                    rDataDim = list(1L, 1L))))
+      params = list(planner_key = key, rClass = "data.frame", rColHeaders = list(),
+                    rColClasses = list(), rDataDim = list(1L, 0L))))
     # still here, the definition as it was, and the grids drawn again
     expect_identical(rv$p, before)
     expect_identical(session$userData$grids_drawn(), drawn + 1L)
@@ -116,4 +115,106 @@ test_that("every sentence the app shows has its Japanese", {
   lits <- unique(eval(parse(text = paste0("c(", paste(sub("^t", "", lits), collapse = ","), ")"))))
   have <- .strings()$en
   expect_identical(setdiff(lits, have), character(0))
+})
+
+# the analyses grid as the app shows it for one report (no output_id column)
+analyses_payload <- function(rows, key, event = "afterChange") {
+  cols <- setdiff(.ard_sheets()$analyses, "output_id")
+  list(data = rows,
+       changes = list(event = event,
+                      changes = list(list(length(rows) - 1L, "method", NULL,
+                                          "continuous"))),
+       params = list(planner_key = key, rClass = "data.frame",
+                     rColHeaders = as.list(cols),
+                     rColClasses = stats::setNames(as.list(rep("character", length(cols))),
+                                                   cols),
+                     rDataDim = list(length(rows), length(cols))))
+}
+
+test_that("a row typed into the spare row from a dropdown column is a new row", {
+  local_home()
+  ard_study()
+  suppressWarnings(shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    session$setInputs(target = "T1")
+    cols <- setdiff(.ard_sheets()$analyses, "output_id")
+    full <- as.list(stats::setNames(rep(NA, length(cols)), cols))
+    full[c("analysis_id", "method", "dataset", "variables")] <-
+      list("A1", "continuous", "ADSL", "AGE")
+    # the new row arrives with fewer cells than the grid has columns
+    short <- list(NA, NA, "categorical")[seq_len(match("method", cols))]
+    key <- paste("ard", "analyses", "T1", rv$ver, sep = "|")
+    session$setInputs(hot_ard_analyses = analyses_payload(
+      list(unname(full), short), key))
+    a <- ard_rows(rv$p, "analyses", "T1")
+    expect_identical(nrow(a), 2L)
+    expect_identical(a$method, c("continuous", "categorical"))
+  }))
+})
+
+test_that("grid rows are padded or cut to the grid's width", {
+  rows <- .grid_rows_full(list(list("a"), list("a", "b", "c", "d")), 3L)
+  expect_identical(lengths(rows), c(3L, 3L))
+  expect_identical(rows[[1L]], list("a", NA, NA))
+  expect_identical(rows[[2L]], list("a", "b", "c"))
+  expect_identical(.grid_rows_full("x", 0L), "x")
+})
+
+test_that("unsaved changes are kept as a draft and offered back", {
+  home <- local_home()
+  two_studies()
+  draft <- .draft_file("S1", home)
+  suppressWarnings(shiny::testServer(server_for("S1"), {
+    # the editor echoes what the server put there, then the edit comes
+    session$setInputs(target = "A", description = "first")
+    session$setInputs(description = "first, edited")
+    expect_true(session$userData$dirty())
+    session$elapse(2500)
+    expect_true(file.exists(draft))
+  }))
+  # the next session on S1 offers it back; taking it restores the edit,
+  # still unsaved
+  suppressWarnings(shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    expect_false(is.null(rv$draft))
+    session$setInputs(draft_restore = 1L)
+    expect_identical(rv$p$outputs$description, "first, edited")
+    expect_true(session$userData$dirty())
+  }))
+  # discarding drops it
+  suppressWarnings(shiny::testServer(server_for("S1"), {
+    session$setInputs(draft_discard = 1L)
+    expect_false(file.exists(draft))
+  }))
+})
+
+test_that("a draft identical to the saved study is dropped, not offered", {
+  home <- local_home()
+  two_studies()
+  .write_draft(open_study("S1"))
+  suppressWarnings(shiny::testServer(server_for("S1"), {
+    expect_null(session$userData$rv$draft)
+  }))
+  expect_false(file.exists(.draft_file("S1", home)))
+})
+
+test_that("a builder statistic the ARD cannot fill is named with what it lacks", {
+  expect_identical(.template_stats("{mean} ({sd:.2f})"), c("mean", "sd"))
+  expect_identical(.builder_stats_lacking(c("{mean}", "{p25}, {p75}"), c("mean", "sd")),
+                   c("", "p25, p75"))
+  # nothing known about the ARD: nothing is said to be missing
+  expect_identical(.builder_stats_lacking(c("{p25}"), character()), "")
+})
+
+test_that("a figure's group is chosen among short text columns, with labels", {
+  lab <- function(x, l) { attr(x, "label") <- l; x }
+  cols <- list(TRT01A = lab(c("A", "B"), "Actual Treatment"),
+               TRTSDT = as.Date(c("2020-01-01", "2020-02-01")),
+               ARMCD = factor(c("X", "Y")),
+               TRTDUR = c(10, 20),
+               USUBJID = as.character(1:2))
+  g <- .group_choices(cols)
+  expect_identical(unname(g), c("TRT01A", "ARMCD"))
+  expect_identical(names(g)[1L], "TRT01A \u2014 Actual Treatment")
+  expect_identical(names(g)[2L], "ARMCD")
 })
