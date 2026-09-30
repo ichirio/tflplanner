@@ -290,7 +290,7 @@ Rows per page,1 ページの行数
 Condition (R),条件 (R)
 "Order (| between variables, - for descending)",並び順（変数は | 区切り、降順は -）
 "Columns, in order",列（この順で表示）
-vars: variables stacked in the column (| between them); label: \\n breaks the header; width: characters; collapse_repeats: print a repeated value once.,vars：列に積み重ねる変数（| 区切り）、label：\\n で見出しを改行、width：文字数、collapse_repeats：繰り返す値を 1 回だけ表示。
+vars: variables stacked in the column (| between them); label: \n breaks the header; width: characters; collapse_repeats: print a repeated value once.,vars：列に積み重ねる変数（| 区切り）、label：\\n で見出しを改行、width：文字数、collapse_repeats：繰り返す値を 1 回だけ表示。
 Choose a Listing report,Listing の帳票を選んでください
 Preview the listing to see its first pages with the data.,Listing をプレビューすると、実データで最初のページを表示します。
 Layout,配置
@@ -728,3 +728,7 @@ This tab designs figures: choose a Figure report in the sidebar.,このタブは
 Redraw on change,変更したら再描画
 The design has changed since this drawing: press Redraw.,この図のあとでデザインを変更しました。「再描画」を押してください。
 "Saved as %s x %s %s, %s dpi (shown at screen resolution)",保存：%s x %s %s、%s dpi（画面用の解像度で表示）
+This change could not be taken in; the grid shows the definition as it was.,この変更は取り込めませんでした。表は変更前の定義に戻しています。
+Give the study an ID.,試験 ID を入力してください。
+"Use letters, digits, '.', '_' or '-' only (e.g. ABC-101).",使えるのは英字・数字・「.」「_」「-」だけです（例: ABC-101）。
+A study with this ID is already registered.,この ID の試験はすでに登録されています。

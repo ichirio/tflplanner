@@ -470,7 +470,9 @@ app_ui <- function(lang = "en") {
     # one tab a kind of report: what it takes to make one, in the order made
     bslib::nav_panel(
       t("Tables"), value = "tables",
-      bslib::navset_card_underline(
+      # not a card: a card around the sheets' own card makes the inner one a
+      # fill item of a box with no height, and every grid in it 0 px high
+      bslib::navset_underline(
         id = "table_nav",
         bslib::nav_panel(
           t("Definition"), value = "table_spec",
@@ -585,7 +587,10 @@ app_ui <- function(lang = "en") {
   as.integer(min(max(28 + 23 * (n + 1L) + 20, 100), 420))
 }
 
-.grid <- function(d, sheet, key, choices) {
+# A sheet as an editable grid.  `choices` offers values in a dropdown;
+# the columns named in `closed` accept nothing else (a typo is refused in
+# the cell rather than saved), the others take free text too.
+.grid <- function(d, sheet, key, choices, closed = character()) {
   d <- .na_blank(d)
   if (!nrow(d)) d[1L, ] <- ""
   h <- rhandsontable::rhandsontable(
@@ -595,13 +600,19 @@ app_ui <- function(lang = "en") {
                                        allowColEdit = FALSE)
   for (cn in names(choices)) {
     if (cn %in% names(d) && length(choices[[cn]])) {
+      shut <- cn %in% closed
       h <- suppressWarnings(rhandsontable::hot_col(
         h, cn, type = "dropdown", source = c("", choices[[cn]]),
-        strict = FALSE))
+        strict = shut, allowInvalid = !shut))
     }
   }
   h
 }
+
+# ARD columns whose values can only be one of their choices (the study's
+# datasets and populations).  `method` stays open: besides the keywords it
+# takes any pkg::function.
+.ard_closed_columns <- c("dataset", "population_id")
 
 .help_table <- function(sheet) {
   rd <- .readme()
@@ -652,10 +663,39 @@ app_server <- function(input, output, session, start) {
     shiny::showNotification(msg, type = type, duration = 6)
   }
   guarded <- function(expr) {
-    tryCatch(expr, error = function(e) {
-      notify(conditionMessage(e), "error")
-      NULL
-    })
+    # the detail (the calls) goes to the console / log; the screen gets
+    # the message only
+    tryCatch(
+      withCallingHandlers(expr, error = function(e) {
+        calls <- vapply(utils::tail(sys.calls(), 12L), function(cl)
+          paste(utils::head(deparse(cl, width.cutoff = 80L), 1L), collapse = ""), "")
+        message("tflplanner: ", conditionMessage(e), "\n  ",
+                paste(calls, collapse = "\n  "))
+      }),
+      error = function(e) {
+        # a problem's full output (a program that failed) is for the log
+        if (inherits(e, "tflplanner_problem") && length(e$detail)) {
+          message("tflplanner: the output of what failed:\n",
+                  paste(e$detail, collapse = "\n"))
+        }
+        notify(conditionMessage(e), "error")
+        NULL
+      })
+  }
+
+  # Every grid's edits come back through read_grid().  A grid whose change
+  # cannot be read (rhandsontable could not rebuild the data frame) must not
+  # stop the session: the change is dropped, said so, and every grid is
+  # drawn again from what the study holds.
+  grids_drawn <- shiny::reactiveVal(0L)
+  read_grid <- function(h) {
+    d <- tryCatch(rhandsontable::hot_to_r(h), error = function(e) NULL)
+    if (is.null(d)) {
+      notify(t("This change could not be taken in; the grid shows the definition as it was."),
+             "warning")
+      grids_drawn(grids_drawn() + 1L)
+    }
+    d
   }
   has_study <- shiny::reactive(!is.null(rv$study))
   dirty <- shiny::reactive({
@@ -664,6 +704,7 @@ app_server <- function(input, output, session, start) {
   })
   # for shiny::testServer(), which sees only the session
   session$userData$rv <- rv
+  session$userData$grids_drawn <- grids_drawn
   session$userData$dirty <- dirty
 
   # -- the study ---------------------------------------------------------
@@ -987,7 +1028,9 @@ app_server <- function(input, output, session, start) {
     shiny::showModal(shiny::modalDialog(
       title = t("New study"),
       shiny::textInput("ns_id",
-                       t("Study ID (the folder name: letters, digits . _ -)")),
+                       t("Study ID (the folder name: letters, digits . _ -)"),
+                       value = "SAMPLE-01"),
+      shiny::uiOutput("ns_id_check"),
       shiny::textInput("ns_title", t("Title"), width = "100%"),
       shiny::textInput("ns_compound", t("Compound")),
       shiny::textInput("ns_phase", t("Phase")),
@@ -1011,7 +1054,31 @@ app_server <- function(input, output, session, start) {
                                    class = "btn-primary")),
       easyClose = TRUE))
   })
+  # the ID is checked where it is typed, not in a message after Create
+  ns_id_problem <- function(id) {
+    id <- trimws(id %||% "")
+    if (!nzchar(id)) return(t("Give the study an ID."))
+    if (!grepl("^[A-Za-z0-9][A-Za-z0-9._-]*$", id)) {
+      return(t("Use letters, digits, '.', '_' or '-' only (e.g. ABC-101)."))
+    }
+    if (id %in% studies()$study_id) return(t("A study with this ID is already registered."))
+    NULL
+  }
+  output$ns_id_check <- shiny::renderUI({
+    msg <- ns_id_problem(input$ns_id)
+    if (!is.null(msg)) shiny::div(class = "small text-danger mb-2", msg)
+  })
+  # the sample suggests its own ID; another choice leaves the field to you
+  shiny::observeEvent(input$ns_from, {
+    id <- trimws(input$ns_id %||% "")
+    if (identical(input$ns_from, "sample") && !nzchar(id)) {
+      shiny::updateTextInput(session, "ns_id", value = "SAMPLE-01")
+    } else if (!identical(input$ns_from, "sample") && identical(id, "SAMPLE-01")) {
+      shiny::updateTextInput(session, "ns_id", value = "")
+    }
+  }, ignoreInit = TRUE)
   shiny::observeEvent(input$ns_ok, {
+    if (!is.null(ns_id_problem(input$ns_id))) return()
     if (dirty()) {
       return(notify(t("There are unsaved changes. Save first."), "warning"))
     }
@@ -1222,6 +1289,7 @@ app_server <- function(input, output, session, start) {
       ch <- .std_choices(sh)
       gc <- grid_choices(sh, meta_now())
       for (cn in names(gc)) ch[[cn]] <- unique(c(gc[[cn]], ch[[cn]]))
+      grids_drawn()
       .grid(d, sh, key(), ch)
     })
     shiny::observeEvent(input[[out_id]], {
@@ -1229,8 +1297,9 @@ app_server <- function(input, output, session, start) {
       if (is.null(h$changes$changes) &&
           !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
       if (!identical(h$params$planner_key, key())) return()
-      d <- rhandsontable::hot_to_r(h)
-      rv$p <- set_sheet_rows(rv$p, sh, target(), d)
+      d <- read_grid(h)
+      if (is.null(d)) return()
+      guarded(rv$p <- set_sheet_rows(rv$p, sh, target(), d))
     })
     inherited <- shiny::reactive({
       id <- current()
@@ -1515,16 +1584,19 @@ app_server <- function(input, output, session, start) {
       tg <- if (by_report) target() else ""
       d <- ard_rows(shiny::isolate(rv$p), sh, tg)
       if (by_report && !identical(tg, "") && !is.na(tg)) d$output_id <- NULL
-      .grid(d, sh, key(), shiny::isolate(ard_choices(sh)))
+      grids_drawn()
+      .grid(d, sh, key(), shiny::isolate(ard_choices(sh)),
+            closed = .ard_closed_columns)
     })
     shiny::observeEvent(input[[out_id]], {
       h <- input[[out_id]]
       if (is.null(h$changes$changes) &&
           !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
       if (!identical(h$params$planner_key, key())) return()
-      d <- rhandsontable::hot_to_r(h)
+      d <- read_grid(h)
+      if (is.null(d)) return()
       tg <- if (by_report) target() else ""
-      rv$p <- set_ard_rows(rv$p, sh, tg, d)
+      guarded(rv$p <- set_ard_rows(rv$p, sh, tg, d))
     })
   })
   output$ard_methods <- DT::renderDT(
@@ -2049,6 +2121,7 @@ app_server <- function(input, output, session, start) {
     d$output_id <- NULL
     l <- lf_rows(p, "listings", id)
     cols <- if (nrow(l)) dataset_columns(l$dataset[1L]) else character()
+    grids_drawn()
     .grid(d, "listing_cols", lf_cols_key(),
           list(vars = cols, collapse_repeats = .bool))
   })
@@ -2057,8 +2130,9 @@ app_server <- function(input, output, session, start) {
     if (is.null(h$changes$changes) &&
         !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
     if (!identical(h$params$planner_key, lf_cols_key())) return()
-    rv$p <- set_lf_rows(rv$p, "listing_cols", current(),
-                        rhandsontable::hot_to_r(h))
+    d <- read_grid(h)
+    if (is.null(d)) return()
+    guarded(rv$p <- set_lf_rows(rv$p, "listing_cols", current(), d))
   })
   lf_pv <- shiny::reactiveVal(NULL)
   shiny::observeEvent(current(), lf_pv(NULL))
@@ -2582,9 +2656,12 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$data_open, .open_folder(
     file.path(rv$study$path, "data")))
   data_head <- shiny::reactive({
-    i <- input$data_files_rows_selected
-    shiny::req(length(i))
-    guarded(read_data_head(data_files()$path[i]))
+    # a row selection can outlive the list it was made in (the list is
+    # drawn again when the study or the folder changes): read only a file
+    # that is there
+    path <- data_files()$path[input$data_files_rows_selected]
+    shiny::req(length(path) == 1L, !is.na(path), file.exists(path))
+    guarded(read_data_head(path))
   })
   output$data_head <- DT::renderDT({
     d <- data_head()

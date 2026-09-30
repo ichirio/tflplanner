@@ -612,6 +612,9 @@ study_files <- function(study, folder = "data") {
 #' @return A data frame, with the full dimensions in attribute `dim_full`.
 #' @export
 read_data_head <- function(path, n = 50L) {
+  if (!is.character(path) || length(path) != 1L || is.na(path)) {
+    stop("read_data_head(): `path` is one file.", call. = FALSE)
+  }
   ext <- tolower(tools::file_ext(path))
   need <- function(pkg) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
