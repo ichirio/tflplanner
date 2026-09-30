@@ -285,7 +285,7 @@ This is a Table: its data is the study ARD (ARD tab) and its layout the Table de
 "A figure reads its datasets here; the plot is its data code (Reports tab), written with ggplot2: it leaves `plot`.",Figure が読むデータセットをここで選びます。プロットはデータ準備コード（帳票タブ）に ggplot2 で書き、`plot` を作ります。
 Data the figure reads,Figure が読むデータ
 The program's data part,プログラムのデータ部分
-Listing,Listing
+Listing,一覧表
 Rows per page,1 ページの行数
 Condition (R),条件 (R)
 "Order (| between variables, - for descending)",並び順（変数は | 区切り、降順は -）
@@ -349,7 +349,7 @@ Choose a row to see its log in the latest official run.,行を選ぶと最新の
 the official run:,正式実行：
 Batch folder,バッチフォルダ
 Started,開始
-Runs,実行内容
+Runs,実行
 Programs,プログラム数
 Errors,エラー
 Code,コード
@@ -867,3 +867,38 @@ Go to ARD,ARD へ
 Runs: preview every report and open its RTF.,Runs: 全部の帳票をプレビューし、RTF を開きます。
 Go to Runs,Runs へ
 Reading the ARD of %s for the builder,%s の ARD をビルダーのために読んでいます
+Table,表
+Full size,原寸で見る
+The language is changed: the page reloads to show it.,言語を変えました。画面を読み込み直すと切り替わります。
+Reload now,今すぐ読み込み直す
+"The sample study: CDISC pilot data (pharmaverseadam), its ARD, 5 tables, a listing and 2 figures.",サンプル試験: CDISC パイロットデータ（pharmaverseadam）で、ARD・表 5 本・一覧表 1 本・図 2 本。
+method:continuous,要約統計量
+method:categorical,度数と割合
+method:dichotomous,ある水準の度数
+method:missing,欠測の数
+method:hierarchical,階層の被験者数（SOC / PT など）
+method:max,被験者ごとの最悪の水準
+method:subjects,記録のある被験者数
+method:total_n,被験者数
+method:proportion_ci,割合と信頼区間
+method:mean_ci,平均と信頼区間
+method:ttest,t 検定
+method:wilcox,Wilcoxon 順位和検定
+method:chisq,カイ二乗検定
+method:fisher,Fisher の正確検定
+method:custom,独自の R コード
+method-note:continuous,数値の変数の要約統計量
+method-note:categorical,各水準の度数と割合
+method-note:dichotomous,"ある 1 つの水準の度数（args: value = list(VAR = ""Y"")）"
+method-note:missing,欠測と非欠測の数
+method-note:hierarchical,入れ子の被験者数。外側の変数を先に（SOC | PT）
+method-note:max,被験者ごとの最悪の水準。variables = 等級の変数
+method-note:subjects,データ（where の後）に記録のある被験者数。variables = その数の名前
+method-note:total_n,被験者数
+method-note:proportion_ci,"割合の信頼区間（args: method = ""wilson"" …）。statistics で estimate, conf.low, conf.high のどれを残すか"
+method-note:mean_ci,"平均の信頼区間（args: conf.level = 0.9 …）。statistics で estimate, conf.low, conf.high のどれを残すか"
+method-note:ttest,by の 2 群の t 検定
+method-note:wilcox,by の 2 群の Wilcoxon 順位和検定
+method-note:chisq,variables と by のカイ二乗検定
+method-note:fisher,variables と by の Fisher の正確検定
+method-note:custom,code に書いた任意の R コード。data と population が使えます

@@ -329,7 +329,12 @@ read_standards <- function(path) {
 #' @export
 company_standards <- function(home = tflplanner_home()) {
   f <- .standards_file(home)
-  if (!file.exists(f)) return(.builtin_standards())
+  # the built-in ones are made once a session (they are tflspec's, fixed):
+  # making them is most of the time of every call that reads a standard
+  if (!file.exists(f)) {
+    if (is.null(.std_cache$builtin)) .std_cache$builtin <- .builtin_standards()
+    return(.std_cache$builtin)
+  }
   key <- paste(f, file.mtime(f))
   if (!identical(.std_cache$key, key)) {
     .std_cache$value <- read_standards(f)

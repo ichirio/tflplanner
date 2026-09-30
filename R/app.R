@@ -506,7 +506,11 @@ app_ui <- function(lang = "en") {
           do.call(bslib::navset_card_underline,
                   lapply(report_sheets(), sheet_panel))),
         bslib::card(
-          bslib::card_header(t("First page (sample)")),
+          bslib::card_header(shiny::div(
+            class = "d-flex justify-content-between align-items-center",
+            shiny::span(t("First page (sample)")),
+            .btn("page_full", t("Full size"),
+                 class = "btn-sm btn-outline-secondary py-0"))),
           shiny::uiOutput("page_sample")))),
         bslib::nav_panel(
           t("Code"), value = "code",
@@ -737,6 +741,20 @@ app_server <- function(input, output, session, start) {
     ver = 0L, want = NULL, job = NULL, job_what = NULL, status_ver = 0L,
     studies_ver = 0L, ard_ver = 0L)
   bump <- function() rv$ver <- rv$ver + 1L
+  # an ARD method's name and note as the user reads them: the translation
+  # kept by the app under "method:<name>" / "method-note:<name>", else
+  # tflspec's English (tflspec's catalog stays the English original)
+  method_label <- function(method, label) {
+    k <- paste0("method:", method)
+    v <- t(k)
+    fallback <- ifelse(!is.na(label) & nzchar(label), label, method)
+    ifelse(v == k, fallback, v)
+  }
+  method_note <- function(method, note) {
+    k <- paste0("method-note:", method)
+    v <- t(k)
+    ifelse(v == k, note, v)
+  }
   notify <- function(msg, type = "message") {
     shiny::showNotification(msg, type = type, duration = 6)
   }
@@ -845,6 +863,12 @@ app_server <- function(input, output, session, start) {
     shiny::removeModal()
   })
   # (outside any reactive context at startup: its bump() reads rv$ver)
+  if (is.null(start)) {
+    last <- tflplanner_config()$last_study
+    if (!is.null(last) && last %in% list_studies()$study_id) {
+      start <- tryCatch(open_study(last), error = function(e) NULL)
+    }
+  }
   if (!is.null(start)) shiny::isolate(set_study(start))
 
   shiny::observe({
@@ -978,15 +1002,20 @@ app_server <- function(input, output, session, start) {
                t("The sample uses the CDISC pilot data: it makes its ARD, 5 tables, a listing and 2 figures, to look at and change.")))
   })
   shiny::observeEvent(input$start_empty, open_new_study("empty"))
-  shiny::observeEvent(input$register2, show_register())
-  shiny::observeEvent(input$try_sample, {
-    root <- studies_root()
+  # SAMPLE-01, or the first SAMPLE-nn not taken
+  next_sample_id <- function(root = studies_root()) {
     id <- "SAMPLE-01"
     k <- 1L
     while (id %in% studies()$study_id || dir.exists(file.path(root, id))) {
       k <- k + 1L
       id <- sprintf("SAMPLE-%02d", k)
     }
+    id
+  }
+  shiny::observeEvent(input$register2, show_register())
+  shiny::observeEvent(input$try_sample, {
+    root <- studies_root()
+    id <- next_sample_id()
     s <- NULL
     shiny::withProgress(
       message = t("Making the sample study (about 1 minute)"),
@@ -1047,7 +1076,7 @@ app_server <- function(input, output, session, start) {
                            selected = lang),
         .btn("save_language", t("Change"), class = "btn-sm mb-3")),
       shiny::p(class = "small text-muted mb-1",
-               t("The sample study SAMPLE-01: CDISC pilot data (pharmaverseadam), one study ARD, four tables, a listing and a figure.")),
+               t("The sample study: CDISC pilot data (pharmaverseadam), its ARD, 5 tables, a listing and 2 figures.")),
       .btn("add_sample", t("Add the sample study"),
            class = "btn-sm btn-outline-primary mb-2"),
       shiny::hr(),
@@ -1112,6 +1141,11 @@ app_server <- function(input, output, session, start) {
       return(notify(t("There are unsaved changes. Save first."), "warning"))
     }
     guarded(suppressMessages(setup_tflplanner(language = input$language)))
+    shiny::showNotification(
+      shiny::tagList(t("The language is changed: the page reloads to show it."), " ",
+                     shiny::tags$a(href = "javascript:location.reload()",
+                                   t("Reload now"))),
+      duration = NULL, type = "message")
     session$reload()
   })
   selected_study <- function() {
@@ -1236,7 +1270,7 @@ app_server <- function(input, output, session, start) {
                                            studies()$study_id))),
       shiny::textInput("ns_id",
                        t("Study ID (the folder name: letters, digits . _ -)"),
-                       value = if (identical(from, "sample")) "SAMPLE-01" else ""),
+                       value = if (identical(from, "sample")) next_sample_id() else ""),
       shiny::uiOutput("ns_id_check"),
       shiny::tags$details(
         class = "mb-2",
@@ -1277,8 +1311,8 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$ns_from, {
     id <- trimws(input$ns_id %||% "")
     if (identical(input$ns_from, "sample") && !nzchar(id)) {
-      shiny::updateTextInput(session, "ns_id", value = "SAMPLE-01")
-    } else if (!identical(input$ns_from, "sample") && identical(id, "SAMPLE-01")) {
+      shiny::updateTextInput(session, "ns_id", value = next_sample_id())
+    } else if (!identical(input$ns_from, "sample") && grepl("^SAMPLE-[0-9]+$", id)) {
       shiny::updateTextInput(session, "ns_id", value = "")
     }
   }, ignoreInit = TRUE)
@@ -2073,7 +2107,7 @@ app_server <- function(input, output, session, start) {
     st_env$n <- st_env$n + 1L
     st_drawn(st_env$n)
     m <- .std_ard_methods()
-    lab <- ifelse(nzchar(m$label), m$label, m$method)
+    lab <- method_label(m$method, m$label)
     mch <- stats::setNames(m$method, paste0(lab, "  (", m$method, ")"))
     if (!is.na(r$method) && !r$method %in% m$method) {
       mch <- c(mch, stats::setNames(r$method, r$method))
@@ -2126,7 +2160,8 @@ app_server <- function(input, output, session, start) {
     m <- .std_ard_methods()
     k <- match(input[[st_id("method")]] %||% "", m$method)
     if (is.na(k) || !nzchar(m$note[k])) return(NULL)
-    shiny::p(class = "small text-muted mt-n2 mb-2", m$note[k])
+    shiny::p(class = "small text-muted mt-n2 mb-2",
+             method_note(m$method[k], m$note[k]))
   })
   # the groups and the variables, from the data the analysis reads: groups
   # first those that look like treatments; variables of the method's kind
@@ -3039,7 +3074,15 @@ app_server <- function(input, output, session, start) {
   preview_d <- shiny::debounce(preview, 300)
   # the first page as the report's rows and the study defaults make it:
   # header, titles, the body's start, footnotes, footer
-  output$page_sample <- shiny::renderUI({
+  shiny::observeEvent(input$page_full, {
+    shiny::showModal(shiny::modalDialog(
+      title = t("First page (sample)"), size = "xl", easyClose = TRUE,
+      shiny::div(class = "rp-page-full", shiny::uiOutput("page_sample_full")),
+      footer = shiny::modalButton(t("Close"))))
+  })
+  output$page_sample_full <- shiny::renderUI(page_sample_ui())
+  output$page_sample <- shiny::renderUI(page_sample_ui())
+  page_sample_ui <- function() {
     id <- current()
     if (is.null(id)) {
       return(shiny::p(class = "small text-muted",
@@ -3059,7 +3102,7 @@ app_server <- function(input, output, session, start) {
     }
     .page_sample_html(p, id, rv$meta$study_id %||% "", body,
                       program = info$program)
-  })
+  }
   output$builder_preview <- shiny::renderUI({
     pv <- preview_d()
     if (!is.null(pv$error)) {
@@ -3088,7 +3131,7 @@ app_server <- function(input, output, session, start) {
       rep(NA_character_, nrow(o))
     data.frame(
       output_id = o$output_id,
-      type = unname(.type_labels[vapply(info, `[[`, "", "type")]),
+      type = t(unname(.type_labels[vapply(info, `[[`, "", "type")])),
       program = vapply(info, `[[`, "", "program"),
       rtf = vapply(info, `[[`, "", "file"),
       data = ifelse(!is.na(ard_of),
@@ -3543,7 +3586,7 @@ app_server <- function(input, output, session, start) {
       a = d$output_id, b = t(unname(.type_labels[d$type])),
       c = t(unname(.ard_state_labels[word])),
       d = ifelse(word == "built" & !is.na(d$rtf), d$rtf, ""),
-      e = t(unname(.status_labels[d$status])),
+      e = ifelse(word == "built", "", t(unname(.status_labels[d$status]))),
       f = paste0(d$program, ifelse(d$program_state %in% "edited",
                                    paste0(" (", t("edited by hand"), ")"), "")),
       stringsAsFactors = FALSE)

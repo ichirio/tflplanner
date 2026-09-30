@@ -366,3 +366,23 @@ test_that("the next steps show once after the sample, and stay closed", {
     expect_null(output$next_steps$html)
   })
 })
+
+test_that("every ARD method has its name and note in Japanese, else English", {
+  m <- tflspec::tfl_ard_methods()
+  for (x in m$method) {
+    expect_false(identical(tr(paste0("method:", x), "ja"), paste0("method:", x)), info = x)
+    expect_false(identical(tr(paste0("method-note:", x), "ja"), paste0("method-note:", x)), info = x)
+  }
+  expect_identical(tr("method:continuous", "ja"), "\u8981\u7d04\u7d71\u8a08\u91cf")
+})
+
+test_that("a new session opens the study opened last", {
+  local_home()
+  two_studies()
+  .set_config("last_study", "S1")
+  shiny::testServer(function(input, output, session)
+    app_server(input, output, session, NULL), {
+    expect_identical(session$userData$rv$study$meta$study_id, "S1")
+    expect_null(output$welcome$html)
+  })
+})
