@@ -25,6 +25,10 @@
 # the sheets whose tab offers help of its own above the grid
 .assisted <- c("tables", "variables", "cells", "col_header")
 
+# a report's ARD, in the same four words everywhere (ard_status()'s states)
+.ard_state_labels <- c(built = "Made", outdated = "Outdated",
+                       `not built` = "Not made", error = "Error")
+
 .status_labels <- c(
   "no program" = "Not written (save)", unsaved = "Unsaved (save)",
   todo = "TODO (data part)", "not run" = "Not run", error = "Error",
@@ -1129,6 +1133,11 @@ app_server <- function(input, output, session, start) {
       return(t("Use letters, digits, '.', '_' or '-' only (e.g. ABC-101)."))
     }
     if (id %in% studies()$study_id) return(t("A study with this ID is already registered."))
+    root <- trimws(input$ns_root %||% "")
+    if (nzchar(root) && dir.exists(file.path(root, id))) {
+      return(sprintf(t("A folder %s is already there: choose another ID, or register that folder (Studies > Register a folder)."),
+                     file.path(root, id)))
+    }
     NULL
   }
   output$ns_id_check <- shiny::renderUI({
@@ -1431,10 +1440,10 @@ app_server <- function(input, output, session, start) {
     if (is.null(m) && (is.na(state) || state != "error")) state <- "not built"
     if (is.na(state)) state <- "built"
     text <- switch(state,
-      `not built` = t("not made yet"),
-      outdated = t("outdated: the ARD definition has changed since it was made"),
-      error = t("error: its program failed (ARD tab > Study ARD)"),
-      sprintf(t("made %s: %d keys, %d variables, statistics %s"),
+      `not built` = t("Not made"),
+      outdated = t("Outdated: the ARD definition has changed since it was made"),
+      error = t("Error: its program failed (ARD tab > Study ARD)"),
+      sprintf(t("Made %s: %d keys, %d variables, statistics %s"),
               m$fetched, length(m$keys), nrow(m$variables),
               paste(m$stats, collapse = ", ")))
     list(state = state, need = !identical(state, "built"),
@@ -2011,8 +2020,7 @@ app_server <- function(input, output, session, start) {
   ard_state_view <- function() {
     d <- ard_state()
     v <- data.frame(a = d$output_id, b = d$analyses,
-                    c = t(c(built = "built", outdated = "outdated",
-                            `not built` = "not built", error = "error")[d$state]),
+                    c = t(unname(.ard_state_labels[d$state])),
                     d = ifelse(is.na(d$rows), "", d$rows),
                     e = ifelse(is.na(d$built), "", d$built), f = d$error,
                     stringsAsFactors = FALSE)
@@ -2020,7 +2028,7 @@ app_server <- function(input, output, session, start) {
                     "Error"))
     DT::formatStyle(
       .dt(v, selection = "single"), names(v)[3L],
-      color = DT::styleEqual(t(c("built", "outdated", "not built", "error")),
+      color = DT::styleEqual(t(unname(.ard_state_labels)),
                              c("#15803d", "#b45309", "#6b7280", "#b91c1c")))
   }
   output$ard_state <- DT::renderDT(ard_state_view())
@@ -2562,8 +2570,10 @@ app_server <- function(input, output, session, start) {
       type = unname(.type_labels[vapply(info, `[[`, "", "type")]),
       program = vapply(info, `[[`, "", "program"),
       rtf = vapply(info, `[[`, "", "file"),
-      data = ifelse(!is.na(ard_of), paste("ARD:", ard_of),
-                    ifelse(is.na(o$data_code), "TODO", "\u2713")),
+      data = ifelse(!is.na(ard_of),
+                    paste("ARD:", t(unname(.ard_state_labels[ard_of]))),
+                    ifelse(is.na(o$data_code), t("company template"),
+                           t("own code"))),
       description = ifelse(is.na(o$description), "", o$description),
       stringsAsFactors = FALSE)
   })
@@ -2891,14 +2901,17 @@ app_server <- function(input, output, session, start) {
   })
   shiny::observeEvent(input$data_refresh, to_catalog(), ignoreInit = TRUE)
   # the data files the catalog (ARD tab > datasets) does not have yet go in
+  # (nobody edited anything: a study that was saved is saved again)
   to_catalog <- function() {
     if (!has_study()) return()
+    was_clean <- !isTRUE(dirty())
     p2 <- guarded(catalog_add_files(rv$p, data_files()))
     added <- attr(p2, "added")
     if (!length(added)) return()
     attr(p2, "added") <- NULL
     rv$p <- p2
     bump()
+    if (was_clean) do_save()
     notify(sprintf(t("In the data catalog now: %s"), paste(added, collapse = ", ")))
   }
   shiny::observeEvent(input$data_open, .open_folder(

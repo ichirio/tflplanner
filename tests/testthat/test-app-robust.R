@@ -262,7 +262,7 @@ test_that("a table with no ARD says so, and offers the one Preview", {
   create_study("P1", planner = add_output(new_planner(), "T1", type = "table"))
   shiny::testServer(server_for("P1"), {
     session$setInputs(target = "T1", nav = "tables", table_nav = "builder")
-    expect_match(output$assist$html, "not made yet")
+    expect_match(output$assist$html, "Not made")
     expect_match(output$assist$html, 'id="fetch2"')
     expect_match(output$builder_note$html, 'id="fetch3"')
   })
@@ -276,5 +276,18 @@ test_that("analyses of an output that is not a report are pointed out", {
   create_study("O1", planner = p)
   shiny::testServer(server_for("O1"), {
     expect_match(output$ard_check$html, "T-X: analyses of no report yet")
+  })
+})
+
+test_that("a new study's ID is checked against the folders already there", {
+  local_home()
+  two_studies()
+  root <- withr_tempdir()
+  dir.create(file.path(root, "TAKEN"))
+  shiny::testServer(server_for("S1"), {
+    session$setInputs(ns_root = root, ns_id = "TAKEN")
+    expect_match(output$ns_id_check$html, "already there")
+    session$setInputs(ns_id = "FREE")
+    expect_null(output$ns_id_check$html)
   })
 })
