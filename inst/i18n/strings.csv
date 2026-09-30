@@ -784,3 +784,19 @@ Outdated: the ARD definition has changed since it was made,古い：作成後に
 Error: its program failed (ARD tab > Study ARD),エラー：プログラムが失敗しました（ARD タブ > 試験 ARD）
 "Made %s: %d keys, %d variables, statistics %s",作成済み %s：キー %d、変数 %d、統計量 %s
 "A folder %s is already there: choose another ID, or register that folder (Studies > Register a folder).",フォルダ %s がすでにあります。別の ID にするか、そのフォルダを登録してください（試験 >「フォルダを登録」）。
+Choose a report in the sidebar and add a row to its analyses: a click on a row shows it here as a form.,サイドバーで帳票を選び、解析の行を足してください。グリッドの行をクリックすると、ここにフォームで表示します。
+New analysis,新しい解析
+%s is not a report yet: add it on the Reports tab to make its table.,%s はまだ帳票ではありません。表を作るには、帳票タブで追加してください。
+Analysis %s of %s. A click on another row of the grid edits that one.,%2$s の解析 %1$s。グリッドの別の行をクリックすると、その行を編集します。
+Analysis ID,解析 ID
+What to compute,計算するもの
+(the analysis set's),（解析対象集団のデータ）
+Analysis set,解析対象集団
+Subset (an R condition),部分集団（R の条件式）
+Groups (the columns),群（列）
+Variables (the rows),変数（行）
+The data of this analysis cannot be read (no file in the data catalog): the choices are the row's own.,この解析のデータを読めません（データカタログにファイルがありません）。候補は行にある値だけです。
+Give the analysis an ID.,解析 ID を入れてください。
+%s already has an analysis %s.,%s にはすでに解析 %s があります。
+The subset is not an R condition: %s,部分集団が R の条件式になっていません: %s
+%s: written,%s: 書き込みました

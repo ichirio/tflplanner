@@ -100,3 +100,62 @@ test_that("read_data_head() keeps the columns' labels", {
   saveRDS(d, f)
   expect_identical(attr(read_data_head(f, 2L)$AGE, "label"), "Age")
 })
+
+test_that("a row of the analyses grid is edited as a form", {
+  skip_if_not_installed("cards")
+  local_home()
+  s <- create_study("AF")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  adsl <- cards::ADSL
+  attr(adsl$AGE, "label") <- "Age"
+  saveRDS(adsl, file.path(s$path, "data/adam/adsl.rds"))
+  s$planner <- first_table(s$planner, "T1", "data/adam/adsl.rds", adsl,
+                           "SAFFL", "TRT01A", c("AGE", "SEX"))
+  save_study(s)
+  shiny::testServer(server_for("AF"), {
+    rv <- session$userData$rv
+    session$setInputs(nav = "ard", target = "T1")
+    # the first analysis (BIGN) until a row is clicked
+    expect_match(output$ard_stat_ui$html, "Analysis BIGN of T1")
+    expect_match(output$ard_stat_ui$html, "What to compute")
+    # a click on the grid's second row: AGE
+    session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
+    h <- output$ard_stat_ui$html
+    expect_match(h, "Analysis AGE of T1")
+    st_env <- session$userData$st_env
+    id <- function(x) paste0("st", st_env$n, "_", x)
+    v <- output$ard_an_vars$html
+    expect_match(v, "AGE \u2014 Age")
+    # a continuous analysis offers numbers only as its variables
+    vars_part <- sub(".*_vars-label", "", v)
+    expect_false(grepl('value="SEX"', vars_part))
+    expect_true(grepl('value="HEIGHTBL"', vars_part))
+    inp <- list()
+    inp[[id("id")]] <- "AGE"
+    inp[[id("label")]] <- "Age (years)"
+    inp[[id("method")]] <- "continuous"
+    inp[[id("dataset")]] <- ""
+    inp[[id("pop")]] <- "SAF"
+    inp[[id("by")]] <- "TRT01A"
+    inp[[id("vars")]] <- c("AGE", "HEIGHTBL")
+    inp[[id("where")]] <- "AGE >= 18"
+    inp[[id("pick")]] <- c("N", "mean", "sd")
+    do.call(session$setInputs, inp)
+    session$setInputs(ard_stat_apply = 1)
+    a <- ard_rows(rv$p, "analyses", "T1")
+    r <- a[a$analysis_id == "AGE", ]
+    expect_identical(r$label, "Age (years)")
+    expect_identical(r$variables, "AGE | HEIGHTBL")
+    expect_identical(r$where, "AGE >= 18")
+    expect_identical(r$statistics, "N | mean | sd")
+    # a subset that is not R is refused
+    inp2 <- list(); inp2[[id("where")]] <- "AGE >="
+    do.call(session$setInputs, inp2)
+    session$setInputs(ard_stat_apply = 2)
+    a <- ard_rows(rv$p, "analyses", "T1")
+    expect_identical(a$where[a$analysis_id == "AGE"], "AGE >= 18")
+    # a new analysis
+    session$setInputs(ard_an_new = 1)
+    expect_true("A1" %in% ard_rows(rv$p, "analyses", "T1")$analysis_id)
+  })
+})
