@@ -340,11 +340,18 @@ preview_pages <- function(x, output_id, data) {
       htmltools::span(class = "c", fill(d$center[i])),
       htmltools::span(class = "r", fill(d$right[i]))))
   }
+  pg <- rbind(sheet_rows(x, "page", output_id), inherited_rows(x, "page", output_id))
+  land <- any(tolower(pg$orientation) %in% "landscape")
   htmltools::div(
-    class = "rp-page",
+    class = paste("rp-page", if (land) "rp-landscape"),
+    title = "click: full size / smaller",
+    onclick = "this.classList.toggle('rp-full')",
     htmltools::tags$style(htmltools::HTML("
       .rp-page { border: 1px solid #ccc; padding: .6rem .8rem; font-size: .7rem;
-                 font-family: 'Courier New', monospace; background: #fff; }
+                 font-family: 'Courier New', monospace; background: #fff;
+                 zoom: .6; cursor: zoom-in; }
+      .rp-page.rp-full { zoom: 1; cursor: zoom-out; }
+      .rp-page.rp-landscape { min-width: 60rem; }
       .rp-page-line { display: grid; grid-template-columns: 1fr auto 1fr; gap: .5rem; }
       .rp-page-line .c { text-align: center; } .rp-page-line .r { text-align: right; }
       .rp-page-body { margin: .5rem 0; overflow-x: auto; }

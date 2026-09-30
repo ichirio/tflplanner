@@ -45,11 +45,11 @@ test_that("unregistering removes the chosen study only, and the list still draws
     session$setInputs(studies_rows_selected = 1L, unregister_ok = 1L)
     expect_equal(list_studies()$study_id, "S1")
     expect_s3_class(output$studies, "json")
-    # the last one: an empty list is a message, not an error
+    # the last one: an empty list gives way to the getting-started card
     session$setInputs(studies_rows_selected = 1L, unregister = 2L)
     session$setInputs(unregister_ok = 2L)
     expect_equal(nrow(list_studies()), 0L)
-    expect_error(output$studies, "No studies yet")
+    expect_match(output$welcome$html, "try_sample")
   }))
 })
 

@@ -337,3 +337,32 @@ test_that("the page sample puts a report's lines over the study defaults", {
   expect_true(regexpr("Company", h) < regexpr("Table 1", h))
   expect_match(h, "BODY")
 })
+
+test_that("with no study, the app offers the ways to start, the sample first", {
+  local_home()
+  shiny::testServer(function(input, output, session)
+    app_server(input, output, session, NULL), {
+    expect_match(output$welcome$html, 'id="try_sample"')
+    expect_match(output$welcome$html, 'id="start_empty"')
+    expect_null(output$save_btn$html)
+    expect_identical(output$n_studies, "0")
+  })
+})
+
+test_that("the next steps show once after the sample, and stay closed", {
+  local_home()
+  two_studies()
+  shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    expect_null(output$next_steps$html)
+    rv$next_steps <- TRUE
+    session$flushReact()
+    expect_match(output$next_steps$html, 'id="steps_ard"')
+    session$setInputs(steps_close = 1)
+    expect_null(output$next_steps$html)
+    expect_true(file.exists(file.path(tflplanner_home(), "next_steps_seen")))
+    rv$next_steps <- TRUE
+    session$flushReact()
+    expect_null(output$next_steps$html)
+  })
+})
