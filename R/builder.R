@@ -274,8 +274,8 @@ preview_pages <- function(x, output_id, data) {
   st <- x$study["rounding"]
   sheets$study <- if (!is.na(st)) st
   spec <- tflspec::tfl_table_spec(sheets)
-  plan <- suppressMessages(tflspec::tfl_table_plan(data, spec, output_id,
-                                                       notes = FALSE))
+  plan <- rtfreporter::plan_cells(tflspec::tfl_table_plan(data, spec, output_id),
+                                  notes = FALSE)
   res <- suppressMessages(rtfreporter::plan_apply(plan))
   # a plan with no layout gives its table, not pages: one page of it
   if (is.data.frame(res)) {
