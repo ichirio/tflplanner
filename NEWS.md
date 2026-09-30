@@ -1,3 +1,7 @@
+# tflplanner (development version)
+
+- Development reopens at 0.0.2.9000, after the 0.0.2 release.
+
 # tflplanner 0.0.2
 
 - **Tables on rtfreporter's plan, adopted.**  The plan engine (ARD
