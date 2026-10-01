@@ -440,7 +440,9 @@ test_that("the setup wizard: home, packages, shortcut -- each asked", {
   expect_true(any(grepl("3/3", out)))
   # each step says what it will write, and where
   expect_true(any(grepl("config.yml", out, fixed = TRUE)))
-  expect_true(any(grepl(.show_path(.pointer_file()), out, fixed = TRUE)))
+  # (not the whole path: on Windows a folder made since may then read with
+  # its long name instead of the short one, RUNNER~1)
+  expect_true(any(grepl("remember the home folder in .*tflplanner.home$", out)))
   expect_true(any(grepl("remove_shortcut()", out, fixed = TRUE)))
   expect_true(any(grepl("add_shortcut()", out, fixed = TRUE)))
   expect_false(dir.exists(.launcher_dir()))      # the shortcut was declined
