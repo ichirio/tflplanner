@@ -5,15 +5,19 @@
 \alias{planner_app}
 \title{Start the tflplanner app}
 \usage{
-run_app(study = NULL, ...)
+run_app(study = NULL, ..., stop_on_close = FALSE)
 
-planner_app(study = NULL)
+planner_app(study = NULL, stop_on_close = FALSE)
 }
 \arguments{
 \item{study}{A study to open at start: a registered study's id, or a
 study folder.}
 
 \item{...}{Passed to \code{\link[shiny:runApp]{shiny::runApp()}} (e.g. \code{launch.browser}, \code{port}).}
+
+\item{stop_on_close}{Stop the app when its last browser tab is closed
+(after a few seconds, so that reloading the page does not stop it).
+The shortcut and \code{\link[=launch_app]{launch_app()}} start it this way.}
 }
 \value{
 \code{planner_app()} returns a \code{\link[shiny:shinyApp]{shiny::shinyApp()}} object;
@@ -32,4 +36,8 @@ Japanese (\code{setup_tflplanner(language = )}, or its settings).
 run_app()
 run_app("ABC-101")
 }
+}
+\seealso{
+\code{\link[=launch_app]{launch_app()}} to start it in its own R process, as the
+shortcut does (\code{\link[=add_shortcut]{add_shortcut()}}).
 }

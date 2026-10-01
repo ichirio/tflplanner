@@ -43,15 +43,48 @@ Official runs   autoexec_*.R  =>  runs/<date>_<time>_<what>/  (logs, results, co
 
 ## Installation
 
+Once, at the R console (rtfreporter and tflspec come with it):
+
 ```r
-# install.packages("remotes")
-remotes::install_github("ichirio/rtfreporter")
-remotes::install_github("ichirio/tflspec")
+install.packages("remotes")
 remotes::install_github("ichirio/tflplanner")
-install.packages(c("cards", "cardx", "dplyr", "logrx"))
+```
+
+Without access to GitHub, install the three package files you were given,
+in this order:
+
+```r
+install.packages(c("rtfreporter_0.8.2.tar.gz", "tflspec_0.0.24.tar.gz",
+                   "tflplanner_0.0.2.tar.gz"), repos = NULL, type = "source")
 ```
 
 ## Getting started
+
+```r
+tflplanner::setup_tflplanner()
+```
+
+asks, step by step, for the three things done at the console -- where
+tflplanner keeps its studies (its home), the packages its programs use, and
+a shortcut that starts it with a double click (Windows: desktop and Start
+menu; macOS: `~/Applications`; Linux: the applications menu).  Everything
+else is done in the app.  Without a shortcut, start it with `launch_app()`
+(in its own R process; also the RStudio add-in *Launch tflplanner*) or
+`run_app()`.
+
+To update rtfreporter, tflspec and tflplanner later, close the app and
+start it from the shortcut **tflplanner (update and launch)**, or run
+
+```r
+tflplanner::update_tflplanner()          # the released versions
+tflplanner::update_tflplanner("dev")     # the development versions
+tflplanner::update_tflplanner(from = "D:/packages")   # from package files
+```
+
+The app says when a newer version is out (it looks when it starts; this can
+be turned off in its settings).
+
+The same steps as code, for scripts:
 
 ```r
 library(tflplanner)
@@ -59,6 +92,7 @@ setup_tflplanner(studies_root = "C:/studies",          # once; with the
                  sample = TRUE)                        #   sample study
 standards_template("company_standards.xlsx")           # the draft to edit
 setup_tflplanner(standards = "company_standards.xlsx") # your standards
+add_shortcut(ask = FALSE)
 run_app()
 ```
 

@@ -50,26 +50,50 @@
 #' @param study A study to open at start: a registered study's id, or a
 #'   study folder.
 #' @param ... Passed to [shiny::runApp()] (e.g. `launch.browser`, `port`).
+#' @param stop_on_close Stop the app when its last browser tab is closed
+#'   (after a few seconds, so that reloading the page does not stop it).
+#'   The shortcut and [launch_app()] start it this way.
 #' @return `planner_app()` returns a [shiny::shinyApp()] object;
 #'   `run_app()` runs it.
+#' @seealso [launch_app()] to start it in its own R process, as the
+#'   shortcut does ([add_shortcut()]).
 #' @examples
 #' \dontrun{
 #' run_app()
 #' run_app("ABC-101")
 #' }
 #' @export
-run_app <- function(study = NULL, ...) {
-  shiny::runApp(planner_app(study), ...)
+run_app <- function(study = NULL, ..., stop_on_close = FALSE) {
+  shiny::runApp(planner_app(study, stop_on_close = stop_on_close), ...)
 }
 
 #' @rdname run_app
 #' @export
-planner_app <- function(study = NULL) {
-  if (!.is_set_up()) setup_tflplanner()
+planner_app <- function(study = NULL, stop_on_close = FALSE) {
+  if (!.is_set_up()) setup_tflplanner(home = NULL)
+  .refresh_launcher()
   start <- if (!is.null(study)) open_study(study)
   shiny::shinyApp(function(req) app_ui(tflplanner_language()),
-                  function(input, output, session)
-                    app_server(input, output, session, start))
+                  function(input, output, session) {
+                    if (isTRUE(stop_on_close)) .stop_when_closed(session)
+                    app_server(input, output, session, start)
+                  })
+}
+
+# Stop the app once no browser tab is left: a tab that closes starts a
+# short wait, and the app stops if no tab has come back by then (a reload
+# ends one session and starts the next within it).
+.open_tabs <- new.env()
+.open_tabs$n <- 0L
+
+.stop_when_closed <- function(session, wait = 5) {
+  .open_tabs$n <- .open_tabs$n + 1L
+  session$onSessionEnded(function() {
+    .open_tabs$n <- .open_tabs$n - 1L
+    later::later(function() {
+      if (.open_tabs$n <= 0L) shiny::stopApp()
+    }, wait)
+  })
 }
 
 # ------------------------------------------------------------------- UI
@@ -269,7 +293,8 @@ app_ui <- function(lang = "en") {
     header = shiny::tagList(shiny::tags$style(shiny::HTML(.code_css)),
                             shiny::tags$script(shiny::HTML(.split_js)),
                             shiny::tags$script(shiny::HTML(.unsaved_js)),
-                            shiny::tags$script(shiny::HTML(.updating_js))),
+                            shiny::tags$script(shiny::HTML(.updating_js)),
+                            shiny::uiOutput("update_note")),
     sidebar = bslib::sidebar(
       id = "side", width = 270, open = "closed",
       shiny::uiOutput("study_side"),
@@ -1021,6 +1046,27 @@ app_server <- function(input, output, session, start) {
     id
   }
   shiny::observeEvent(input$register2, show_register())
+  # A newer tflplanner / tflspec / rtfreporter: said, not installed -- the
+  # app cannot replace packages it has loaded.  The check runs once per R
+  # process in the background (.start_update_check()).
+  .start_update_check()
+  update_found <- shiny::reactive({
+    r <- .update_check_result()
+    if (is.null(r)) shiny::invalidateLater(2000)
+    r
+  })
+  output$update_note <- shiny::renderUI({
+    r <- update_found()
+    if (!length(r) || isTRUE(input$update_note_hide)) return(NULL)
+    shiny::div(
+      class = "alert alert-info alert-dismissible small py-2 mb-2",
+      shiny::strong(t("A newer version is out:")), " ",
+      paste(names(r), r, collapse = ", "), ". ",
+      t("To update: close tflplanner and start it from the \"update and launch\" shortcut, or run update_tflplanner() in R."),
+      shiny::tags$button(
+        type = "button", class = "btn-close",
+        onclick = "Shiny.setInputValue('update_note_hide', true);"))
+  })
   output$studies_root_note <- shiny::renderUI({
     rv$studies_ver
     shiny::p(class = "small text-muted mb-1",
@@ -1067,6 +1113,12 @@ app_server <- function(input, output, session, start) {
         shiny::selectInput("language", t("Language"), app_languages(),
                            selected = lang),
         .btn("save_language", t("Change"), class = "btn-sm mb-3")),
+      shiny::checkboxInput(
+        "check_updates", t("Look for a newer version when tflplanner starts"),
+        value = !isFALSE(as.logical(tflplanner_config()$check_updates %||% "true"))),
+      shiny::p(class = "small text-muted mb-3",
+               sprintf(t("Updates (%s channel) are installed from R, not from the app: update_tflplanner(), or the \"update and launch\" shortcut."),
+                       .update_channel())),
       shiny::p(class = "small text-muted mb-1",
                t("The sample study: CDISC pilot data (pharmaverseadam), its ARD, 5 tables, a listing and 2 figures.")),
       .btn("add_sample", t("Add the sample study"),
@@ -1128,6 +1180,13 @@ app_server <- function(input, output, session, start) {
     rv$studies_ver <- rv$studies_ver + 1L
     notify(sprintf(t("New studies go to %s"), r))
   })
+  shiny::observeEvent(input$check_updates, {
+    now <- !isFALSE(as.logical(tflplanner_config()$check_updates %||% "true"))
+    if (!identical(isTRUE(input$check_updates), now)) {
+      guarded(suppressMessages(setup_tflplanner(
+        check_updates = isTRUE(input$check_updates))))
+    }
+  }, ignoreInit = TRUE)
   shiny::observeEvent(input$save_language, {
     if (dirty()) {
       return(notify(t("There are unsaved changes. Save first."), "warning"))

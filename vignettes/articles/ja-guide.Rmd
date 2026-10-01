@@ -35,21 +35,66 @@ Listing / 図 : SDTM / ADaM ⇒ 帳票プログラム ⇒ RTF
 
 ## 1. インストール
 
-R 4.1 以上が必要です。
+R 4.1 以上が必要です。最初の 1 回だけ、R のコンソールで入れます（rtfreporter と tflspec も一緒に入ります）。
 
 ```{r}
 install.packages("remotes")
-remotes::install_github("ichirio/rtfreporter")
-remotes::install_github("ichirio/tflspec")
 remotes::install_github("ichirio/tflplanner")
-
-# ARD の作成と正式実行のログに使うパッケージ
-install.packages(c("cards", "cardx", "dplyr", "logrx"))
-# 必要に応じて：SAS データ（haven）、parquet（arrow）
-install.packages(c("haven", "arrow"))
 ```
 
+GitHub に出られない環境では、受け取ったパッケージのファイルをこの順で入れます。
+
+```{r}
+install.packages(c("rtfreporter_0.8.2.tar.gz", "tflspec_0.0.24.tar.gz",
+                   "tflplanner_0.0.2.tar.gz"), repos = NULL, type = "source")
+```
+
+### 1.1 セットアップ（対話形式）
+
+```{r}
+tflplanner::setup_tflplanner()
+```
+
+引数なしで呼ぶと、コンソールで行う 3 つのことを順に聞きます。どれも、確認してから行います。
+
+1. ホーム（tflplanner が試験の保存状態を置く場所）と、新しい試験フォルダを作る場所、画面の言語
+2. tflplanner のプログラムが使うパッケージ（cards、cardx、dplyr、logrx、haven など）のうち、まだ入っていないもの
+3. ダブルクリックで起動するショートカット（`add_shortcut()`）
+
+これ以外の設定（試験フォルダの場所、言語、カンパニー標準、サンプル試験）は、アプリの設定画面で変えられます。
+
+### 1.2 ショートカット
+
+`add_shortcut()` が作るもの:
+
+| OS | 場所 | 中身 |
+|---|---|---|
+| Windows | デスクトップとスタートメニュー | 「tflplanner」と「tflplanner（更新して起動）」 |
+| macOS | `~/Applications` | `tflplanner.app` と `tflplanner (update).app` |
+| Linux | `~/.local/share/applications` | `tflplanner.desktop`（右クリックに「更新して起動」） |
+
+- ショートカットは起動のたびに R を探します（Windows は R のインストーラーが書くレジストリから）。R を更新してもそのまま使えます。黒いコンソールの画面は出ません。
+- 同じポート（既定 7470、`setup_tflplanner(port = )` で変更）で起動済みなら、そのアプリを開きます。ブラウザを閉じると、数秒後にアプリも止まります。
+- タスクバーへのピン留めはプログラムからはできない決まりです。スタートメニューの tflplanner を右クリックして「タスクバーにピン留めする」を選んでください。
+- 削除は `remove_shortcut()` です。
+
+### 1.3 更新
+
+アプリは自分自身を更新しません（起動中のパッケージは置き換えられないため）。起動時に新しい版があるかを確認して、画面の上に知らせます（設定画面で止められます）。
+
+更新は、アプリを閉じてからショートカット「tflplanner（更新して起動）」で起動するか、R で次を実行します。rtfreporter → tflspec → tflplanner の順に、別の R プロセスで更新します。
+
+```{r}
+tflplanner::update_tflplanner()                       # リリース版（CRAN にあれば CRAN、なければ GitHub のリリース）
+tflplanner::update_tflplanner("dev")                  # 開発版（GitHub の main）
+tflplanner::update_tflplanner(from = "D:/packages")   # 手元のパッケージファイルから
+```
+
+選んだ版（リリース版／開発版）は記録され、「更新して起動」も同じ版を使います。`tflplanner_packages()` で、入っている版と最新の版を一覧できます。
+
 ## 2. 環境設定
+
+1.1 のセットアップを使わずに、コードで設定することもできます（スクリプトで環境を作るとき）。
 
 ### 2.1 ホームと試験フォルダの置き場所
 
@@ -143,8 +188,11 @@ ARD と帳票まで作成します（正式実行を 1 回行い、1 分ほど�
 
 ### 2.4 起動
 
+ふだんはショートカット（1.2）から起動します。R から起動するときは次のとおりです。
+
 ```{r}
-tflplanner::run_app()             # 最後に開いた試験から
+tflplanner::launch_app()          # 別の R プロセスで起動（コンソールは空いたまま。RStudio のアドイン「Launch tflplanner」も同じ）
+tflplanner::run_app()             # この R で起動（最後に開いた試験から）
 tflplanner::run_app("ABC-101")    # 試験を指定して
 ```
 

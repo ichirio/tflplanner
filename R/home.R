@@ -47,6 +47,20 @@ tflplanner_home <- function() {
 #' [run_app()] runs it with the defaults when it finds no home.  Running it
 #' again changes the settings given and keeps the rest.
 #'
+#' **Called with no arguments in an interactive session**, it walks you
+#' through the setup step by step, asking before it changes anything:
+#'
+#' 1. the home folder and where new study folders go;
+#' 2. the packages tflplanner's programs use (cards, cardx, dplyr, ...)
+#'    that are not installed yet ([tflplanner_packages()]);
+#' 3. a shortcut that starts tflplanner with a double click
+#'    ([add_shortcut()]).
+#'
+#' Everything else -- the study folders, the language, the company
+#' standards, the sample study -- can be changed in the app's settings.
+#' To update tflplanner later, use [update_tflplanner()] or the "update and
+#' launch" shortcut.
+#'
 #' @param home The home folder.  `NULL` keeps the current one (see
 #'   [tflplanner_home()]); a folder given here is remembered for later
 #'   sessions.
@@ -60,15 +74,23 @@ tflplanner_home <- function() {
 #' @param sample `TRUE` adds the sample study (SAMPLE-01) to the studies
 #'   folder and makes its ARD and reports ([create_sample_study()]); a
 #'   sample already there is left as it is.
+#' @param port The port the app runs on when started from its shortcut or
+#'   [launch_app()] (default 7470); `NULL` keeps the setting.
+#' @param check_updates Whether the app looks for a newer version when it
+#'   starts (default `TRUE`); `NULL` keeps the setting.
 #' @return The settings, invisibly.
 #' @examples
 #' \dontrun{
+#' setup_tflplanner()            # step by step
 #' setup_tflplanner(studies_root = "C:/studies", sample = TRUE)
 #' }
 #' @export
 setup_tflplanner <- function(home = NULL, studies_root = NULL,
                              language = NULL, standards = NULL,
-                             sample = FALSE) {
+                             sample = FALSE, port = NULL,
+                             check_updates = NULL) {
+  if (nargs() == 0L && interactive()) return(.setup_wizard())
+  if (!is.null(port)) port <- .check_port(port)
   if (!is.null(home)) {
     home <- normalizePath(home, "/", mustWork = FALSE)
     dir.create(dirname(.pointer_file()), recursive = TRUE,
@@ -89,6 +111,8 @@ setup_tflplanner <- function(home = NULL, studies_root = NULL,
   dir.create(cfg$studies_root, recursive = TRUE, showWarnings = FALSE)
   cfg$studies_root <- normalizePath(cfg$studies_root, "/", mustWork = FALSE)
   if (!is.null(language)) cfg$language <- match.arg(language, app_languages())
+  if (!is.null(port)) cfg$port <- port
+  if (!is.null(check_updates)) cfg$check_updates <- isTRUE(check_updates)
   if (!is.null(standards)) {
     f <- .standards_file(home)
     if (identical(standards, "builtin")) {
@@ -118,12 +142,13 @@ setup_tflplanner <- function(home = NULL, studies_root = NULL,
 #' tflplanner's settings
 #'
 #' @param home The home folder.
-#' @return A list: `studies_root`, `last_study`, `language`.
+#' @return A list: `studies_root`, `last_study`, `language`, and when set
+#'   `port`, `update_channel`, `check_updates`.
 #' @export
 tflplanner_config <- function(home = tflplanner_home()) {
   f <- .config_file(home)
   cfg <- if (file.exists(f)) yaml::read_yaml(f) else list()
-  keys <- c("studies_root", "last_study", "language")
+  keys <- c("studies_root", "last_study", "language", "update_channel")
   cfg[keys] <- lapply(cfg[keys], function(v)
       if (is.null(v) || !nzchar(v)) NULL else as.character(v))
   cfg
