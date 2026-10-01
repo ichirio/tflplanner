@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **Getting started: one way into New study** (#38).  With no study, the
+  getting-started card's buttons open the New study dialog: "Try the
+  sample study (about 1 minute)..." with the sample chosen (its ID given
+  there, no longer fixed to SAMPLE-01), "New study..." (was "Create an
+  empty study", which opened the same dialog) with nothing copied.  New
+  study... and Register a folder show under the list even with no study;
+  Open / Unregister / Refresh wait for one.  The dialog offers "Copy
+  another study" only when there is one.  The Japanese "Next steps" card
+  names the tabs as the app does (中身, 実行).
+
 - **The study's analyses as CDISC ARS.**  `export_ars()` writes the ARD
   definition, with the table and report definitions, as a CDISC Analysis
   Results Standard reporting event (`tflspec::tfl_ars()`): the ARS JSON,

@@ -846,12 +846,10 @@ Report,帳票
 "Rows for every report (ARD, Page)",すべての帳票の行（ARD・ページ）
 Getting started,はじめに
 "tflplanner makes a study's tables, listings and figures: the data, the analyses (ARD), each report's definition, and the programs that make the RTFs.",tflplanner は試験の表・一覧表・図を作ります: データ、解析（ARD）、帳票ごとの定義、そして RTF を作るプログラム。
-Try the sample study (about 1 minute),サンプル試験で試す（約 1 分）
-Create an empty study,空の試験を作る
+Try the sample study (about 1 minute)...,サンプル試験で試す（約 1 分）…
+New study...,新規試験…
 Register a study folder,既存の試験フォルダを登録する
 "The sample uses the CDISC pilot data: it makes its ARD, 5 tables, a listing and 2 figures, to look at and change.",サンプルは CDISC pilot のデータで、ARD・表 5 本・一覧表 1 本・図 2 本を作ります。見て、変えてみてください。
-Making the sample study (about 1 minute),サンプル試験を作っています（約 1 分）
-"copying the data, making its ARD, then its tables, listing and figures",データを置き、ARD を作り、表・一覧表・図を作ります
 Start from,始め方
 Details (optional),詳細（任意）
 Where the study folder goes,試験フォルダの置き場所
@@ -861,12 +859,12 @@ Reports are made in this order (the official run too). Copy makes a new report w
 standard code,標準のコード
 Next steps,次の一歩
 Close,閉じる
-"Open %s: its Content builds the table in words, with the table as it will print beside it.",%s を開く: 中身（Content）で表を言葉で組み立て、右にでき上がりが出ます。
+"Open %s: its Content builds the table in words, with the table as it will print beside it.",%s を開く: 「中身」で表を言葉で組み立て、右にでき上がりが出ます。
 Open it,開く
 ARD: where the numbers come from (cards / cardx). A click on a row shows the analysis as a form.,ARD: 表の数字の元（cards / cardx）。行をクリックすると、解析がフォームで出ます。
 Go to ARD,ARD へ
-Runs: preview every report and open its RTF.,Runs: 全部の帳票をプレビューし、RTF を開きます。
-Go to Runs,Runs へ
+Runs: preview every report and open its RTF.,実行: 全部の帳票をプレビューし、RTF を開きます。
+Go to Runs,実行へ
 Reading the ARD of %s for the builder,%s の ARD をビルダーのために読んでいます
 Table,表
 Full size,原寸で見る

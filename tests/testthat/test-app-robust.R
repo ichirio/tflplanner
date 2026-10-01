@@ -344,9 +344,57 @@ test_that("with no study, the app offers the ways to start, the sample first", {
     app_server(input, output, session, NULL), {
     expect_match(output$welcome$html, 'id="try_sample"')
     expect_match(output$welcome$html, 'id="start_empty"')
+    expect_match(output$welcome$html, "New study...", fixed = TRUE)
     expect_null(output$save_btn$html)
     expect_identical(output$n_studies, "0")
   })
+})
+
+test_that("with no study, both ways to start open the New study dialog", {
+  local_home()
+  shiny::testServer(function(input, output, session)
+    app_server(input, output, session, NULL), {
+    # the sample: the dialog opens with the sample chosen and its ID
+    # suggested, to be changed there
+    session$setInputs(try_sample = 1L)
+    session$setInputs(ns_from = "sample", ns_id = "TRAIN-01",
+                      ns_root = studies_root())
+    expect_null(output$ns_id_check)
+    session$setInputs(ns_id = "bad id!")
+    expect_match(as.character(output$ns_id_check$html), "letters, digits")
+    # New study...: the same dialog, an empty study made under its ID
+    session$setInputs(start_empty = 1L)
+    session$setInputs(ns_from = "empty", ns_id = "E-01",
+                      ns_root = studies_root(), ns_ok = 1L)
+    expect_identical(list_studies()$study_id, "E-01")
+  })
+})
+
+test_that("the next steps in Japanese name the tabs as the Japanese app does", {
+  st <- .strings()
+  ja <- function(en) st$ja[match(en, st$en)]
+  steps <- ja(c("Open %s: its Content builds the table in words, with the table as it will print beside it.",
+                "Runs: preview every report and open its RTF.", "Go to Runs"))
+  expect_false(any(grepl("Runs|Content", steps)))
+  expect_true(all(grepl(ja("Runs"), steps[2:3], fixed = TRUE)))
+  expect_match(steps[1], ja("Content"), fixed = TRUE)
+})
+
+test_that("New study and Register a folder show with no study; the rest waits for one", {
+  skip_if_not_installed("xml2")
+  doc <- xml2::read_html(as.character(app_ui()))
+  # the buttons inside a panel shown only when there is a study
+  cond <- xml2::xml_find_all(
+    doc, "//*[@data-display-if='output.n_studies > 0']//button")
+  waits <- xml2::xml_attr(cond, "id")
+  expect_false(any(c("new_study", "register") %in% waits))
+  expect_true(all(c("open_study", "unregister", "refresh_studies") %in% waits))
+  all_ids <- xml2::xml_attr(xml2::xml_find_all(doc, "//button"), "id")
+  expect_true(all(c("new_study", "register") %in% all_ids))
+  # a panel that hides itself has no Bootstrap display class to override it
+  hide <- xml2::xml_find_all(doc, "//*[@data-display-if]")
+  cls <- xml2::xml_attr(hide, "class")
+  expect_false(any(grepl("(^| )d-(flex|inline|block|grid)", cls[!is.na(cls)])))
 })
 
 test_that("the next steps show once after the sample, and stay closed", {
