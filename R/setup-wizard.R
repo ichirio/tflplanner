@@ -27,9 +27,18 @@
   lng <- tflplanner_config(home)$language %||% lang
   a <- trimws(.ask_line(sprintf("%s (en / ja) [%s]: ", t("Language of the app"), lng)))
   if (a %in% app_languages()) lng <- a
-  say(t("Home folder"), ": ", home, "\n", t("New study folders go to"), ": ",
-      root, "\n", t("Language of the app"), ": ", lng)
-  if (!.ask_yes(t("Save these settings (the folders are created)?"))) {
+  say(t("Home folder"), ": ", .show_path(home), "\n",
+      t("New study folders go to"), ": ", .show_path(root), "\n",
+      t("Language of the app"), ": ", lng)
+  say(t("Saving them will:"))
+  say("  - ", sprintf(t("create the folders %s and %s if they are not there"),
+                      .show_path(home), .show_path(root)))
+  say("  - ", sprintf(t("write the settings to %s"),
+                      .show_path(.config_file(home))))
+  say("  - ", sprintf(t("remember the home folder in %s"),
+                      .show_path(.pointer_file())))
+  say(t("Change them later with setup_tflplanner(home = , studies_root = ), or in the app's settings."))
+  if (!.ask_yes(t("Save these settings?"))) {
     say(t("Nothing was changed."))
     return(invisible(NULL))
   }
@@ -46,15 +55,26 @@
   } else {
     say(t("Used by tflplanner's programs, not installed yet:"), " ",
         paste(miss, collapse = ", "))
-    if (.ask_yes(t("Install them now (from CRAN)?"))) {
+    say(sprintf(t("They would be installed from CRAN with install.packages() into %s. tflplanner itself starts without them; the programs it writes need them."),
+                .show_path(.libPaths()[1L])))
+    if (.ask_yes(sprintf(t("Install these %d packages now?"), length(miss)))) {
       utils::install.packages(miss)
+    } else {
+      say(t("Not installed. Later:"), " install.packages(c(",
+          paste0('"', miss, '"', collapse = ", "), "))")
     }
   }
   say(t("To update tflplanner, rtfreporter and tflspec later: update_tflplanner(), or the \"update and launch\" shortcut."))
 
   # 3. the shortcut
   say("\n", t("3/3  A shortcut that starts tflplanner with a double click"))
-  if (.ask_yes(t("Make the shortcut?"))) add_shortcut(ask = FALSE)
+  plan <- .shortcut_plan(lang = lang)
+  say(paste(.shortcut_plan_text(plan, lang), collapse = "\n"))
+  if (.ask_yes(.shortcut_question(nrow(plan), lang))) {
+    add_shortcut(ask = FALSE)
+  } else {
+    say(t("No shortcut was made. Later: add_shortcut()"))
+  }
 
   say("\n", t("Done. Start tflplanner from its shortcut, or with launch_app() in R. Everything else is in the app's settings."))
   invisible(cfg)

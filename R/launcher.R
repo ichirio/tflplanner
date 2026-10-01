@@ -308,6 +308,84 @@
   path
 }
 
+# ------------------------------------------------------------- what is said
+
+# A path as the person reads it on their system.
+.show_path <- function(p) if (identical(.os(), "windows")) .win_path(p) else p
+
+# The shortcuts add_shortcut() would make, as data: one row per shortcut --
+# where it goes (`place`, `folder`), what it is called (`name`), its file
+# (`path`), and whether one is there already (it is then replaced).
+.shortcut_plan <- function(os = .os(), dirs = .shortcut_dirs(os),
+                           lang = .console_language(), desktop = TRUE,
+                           start_menu = TRUE, update = TRUE,
+                           dir = .launcher_dir()) {
+  rows <- switch(os,
+    windows = {
+      sc <- .windows_shortcuts(dir, dirs, lang, desktop, start_menu, update)
+      if (is.null(sc)) return(NULL)
+      # compared as normalized paths: dirname() may change the separators
+      np <- function(p) normalizePath(p, "/", mustWork = FALSE)
+      on_desk <- np(dirname(sc$path)) == np(dirs$desktop %||% "")
+      data.frame(place = ifelse(on_desk, tr("Desktop", lang),
+                                tr("Start menu", lang)),
+                 folder = dirname(sc$path),
+                 name = sub("\\.lnk$", "", basename(sc$path)),
+                 path = sc$path, stringsAsFactors = FALSE)
+    },
+    mac = {
+      apps <- vapply(.mac_app_files(dir, dirs$applications, lang, update),
+                     `[[`, "", "app")
+      data.frame(place = tr("Applications", lang), folder = dirname(apps),
+                 name = basename(apps), path = apps, stringsAsFactors = FALSE)
+    },
+    linux = {
+      f <- file.path(dirs$applications, "tflplanner.desktop")
+      data.frame(place = tr("the application menu", lang),
+                 folder = dirs$applications,
+                 name = if (update) sprintf(
+                   tr("tflplanner (with the action \"%s\")", lang),
+                   tr("Update and launch", lang)) else "tflplanner",
+                 path = f, stringsAsFactors = FALSE)
+    })
+  rows$exists <- file.exists(rows$path)
+  rows
+}
+
+# What add_shortcut() is about to do, in words: what, where, that one
+# already there is replaced, where the launcher is kept, how to undo it.
+.shortcut_plan_text <- function(plan, lang = .console_language(),
+                                dir = .launcher_dir()) {
+  out <- tr("tflplanner will make these shortcuts:", lang)
+  for (f in unique(plan$folder)) {
+    p <- plan[plan$folder == f, , drop = FALSE]
+    out <- c(out, sprintf("  %s  (%s)", p$place[1L], .show_path(f)),
+             paste0("    - ", p$name, ifelse(p$exists, paste0(
+               "  ", tr("[already there: it will be replaced]", lang)), "")))
+  }
+  c(out,
+    tr("A double click starts tflplanner in the browser; \"update and launch\" first updates rtfreporter, tflspec and tflplanner.", lang),
+    paste(tr("They run a small launcher that tflplanner keeps in:", lang),
+          .show_path(dir)),
+    tr("To remove them later: remove_shortcut()", lang))
+}
+
+# The question that ends it, with how many.
+.shortcut_question <- function(n, lang = .console_language()) {
+  sprintf(tr("Make these %d shortcuts?", lang), n)
+}
+
+# What to do next, once they are made.
+.shortcut_made_text <- function(made, os = .os(), lang = .console_language()) {
+  c(sprintf(tr("Made %d shortcuts:", lang), length(made)),
+    paste0("  ", .show_path(made)),
+    switch(os,
+      windows = tr("To pin tflplanner to the taskbar: right-click it in the Start menu and choose \"Pin to taskbar\" (Windows does not let a program do it).", lang),
+      mac = tr("Open tflplanner from Finder > Applications. To keep it in the Dock, drag it there.", lang),
+      linux = tr("tflplanner is in the application menu (on some desktops after you log in again).", lang)),
+    tr("To remove them: remove_shortcut()", lang))
+}
+
 # ------------------------------------------------------------- the API
 
 #' Make a shortcut that starts tflplanner
@@ -357,13 +435,15 @@ add_shortcut <- function(port = NULL, desktop = TRUE, start_menu = TRUE,
   os <- .os()
   if (!is.null(port)) port <- .check_port(port)
   dirs <- .shortcut_dirs(os)
-  where <- switch(os,
-    windows = c(if (desktop) dirs$desktop, if (start_menu) dirs$start_menu),
-    dirs$applications)
   if (isTRUE(ask)) {
-    cat(tr("tflplanner will make its launcher shortcuts in:", lang), "\n",
-        paste0("  ", where, collapse = "\n"), "\n", sep = "")
-    if (!.ask_yes(tr("Make them?", lang))) {
+    plan <- .shortcut_plan(os, dirs, lang, desktop, start_menu, update)
+    if (is.null(plan) || !nrow(plan)) {
+      message(tr("Nothing to make: both desktop and start_menu are FALSE.", lang))
+      return(invisible(character()))
+    }
+    cat(.shortcut_plan_text(plan, lang), sep = "\n")
+    if (!.ask_yes(.shortcut_question(nrow(plan), lang))) {
+      message(tr("No shortcut was made.", lang))
       return(invisible(character()))
     }
   } else if (!identical(ask, FALSE)) {
@@ -395,10 +475,7 @@ add_shortcut <- function(port = NULL, desktop = TRUE, start_menu = TRUE,
                         file.path(dirs$applications, "tflplanner.desktop"),
                         "0755"))
   writeLines(made, file.path(dir, "shortcuts.txt"))
-  message(tr("Made:", lang), "\n", paste0("  ", made, collapse = "\n"))
-  if (identical(os, "windows")) {
-    message(tr("To pin tflplanner to the taskbar: right-click it in the Start menu and choose \"Pin to taskbar\" (Windows does not let a program do it).", lang))
-  }
+  message(paste(.shortcut_made_text(made, os, lang), collapse = "\n"))
   invisible(made)
 }
 
@@ -417,9 +494,10 @@ remove_shortcut <- function(launcher = TRUE, ask = interactive()) {
     return(invisible(character()))
   }
   if (isTRUE(ask)) {
-    cat(tr("tflplanner will remove:", lang), "\n",
-        paste0("  ", gone, collapse = "\n"), "\n", sep = "")
-    if (!.ask_yes(tr("Remove them?", lang))) {
+    cat(.remove_plan_text(made, if (launcher && dir.exists(dir)) dir, lang),
+        sep = "\n")
+    if (!.ask_yes(tr("Remove these?", lang))) {
+      message(tr("Nothing was removed.", lang))
       return(invisible(character()))
     }
   } else if (!identical(ask, FALSE)) {
@@ -433,7 +511,23 @@ remove_shortcut <- function(launcher = TRUE, ask = interactive()) {
     for (d in sm) if (!length(list.files(d))) unlink(d, recursive = TRUE)
   }
   if (launcher) unlink(dir, recursive = TRUE)
+  message(paste(c(tr("Removed:", lang), paste0("  ", .show_path(gone)),
+                  tr("To make the shortcuts again: add_shortcut()", lang)),
+                collapse = "\n"))
   invisible(gone)
+}
+
+# What remove_shortcut() is about to remove, and what it leaves.
+.remove_plan_text <- function(made, launcher_dir = NULL,
+                              lang = .console_language()) {
+  c(tr("tflplanner will remove:", lang),
+    if (length(made)) c(paste0("  ", tr("Shortcuts:", lang)),
+                        paste0("    - ", .show_path(made))),
+    if (length(launcher_dir)) c(
+      paste0("  ", tr("The launcher files the shortcuts run:", lang)),
+      paste0("    - ", .show_path(launcher_dir))),
+    tr("Your studies, their files and tflplanner's settings are not touched.", lang),
+    tr("To make the shortcuts again: add_shortcut()", lang))
 }
 
 #' Start tflplanner in its own R process

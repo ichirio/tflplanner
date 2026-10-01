@@ -238,6 +238,92 @@ test_that("the port and the update check are settings", {
   expect_identical(.app_port(), 7490L)
 })
 
+test_that("add_shortcut() says what it makes, where, and how to undo it", {
+  p <- local_launcher()
+  local_mocked_bindings(.os = function() "windows")
+  dirs <- .shortcut_dirs()
+  plan <- .shortcut_plan(lang = "en")
+  expect_identical(plan$place, c("Desktop", "Start menu", "Start menu"))
+  expect_identical(plan$name, c("tflplanner", "tflplanner",
+                                "tflplanner (update and launch)"))
+  expect_false(any(plan$exists))
+  txt <- paste(.shortcut_plan_text(plan, "en"), collapse = "\n")
+  expect_match(txt, "tflplanner will make these shortcuts:", fixed = TRUE)
+  expect_match(txt, .show_path(dirs$desktop), fixed = TRUE)
+  expect_match(txt, .show_path(dirs$start_menu), fixed = TRUE)
+  expect_match(txt, .show_path(.launcher_dir()), fixed = TRUE)
+  expect_match(txt, "remove_shortcut()", fixed = TRUE)
+  expect_false(grepl("replaced", txt))
+  expect_identical(.shortcut_question(3L, "en"), "Make these 3 shortcuts?")
+  # one already there is said to be replaced
+  dir.create(dirs$desktop, recursive = TRUE)
+  file.create(file.path(dirs$desktop, "tflplanner.lnk"))
+  plan <- .shortcut_plan(lang = "en")
+  expect_identical(plan$exists, c(TRUE, FALSE, FALSE))
+  expect_match(paste(.shortcut_plan_text(plan, "en"), collapse = "\n"),
+               "already there: it will be replaced", fixed = TRUE)
+  # in Japanese: where and what, and a question naming how many
+  ja <- paste(.shortcut_plan_text(.shortcut_plan(lang = "ja"), "ja"),
+              collapse = "\n")
+  expect_match(ja, "デスクトップ", fixed = TRUE)
+  expect_match(ja, "スタートメニュー", fixed = TRUE)
+  expect_match(ja, "tflplanner（更新して起動）", fixed = TRUE)
+  expect_match(.shortcut_question(3L, "ja"), "3 個のショートカットを作成します。よろしいですか", fixed = TRUE)
+  # afterwards: the files, how to pin, how to remove
+  done <- paste(.shortcut_made_text(plan$path, "windows", "en"), collapse = "\n")
+  expect_match(done, "Made 3 shortcuts:", fixed = TRUE)
+  expect_match(done, "Pin to taskbar", fixed = TRUE)
+  expect_match(done, "remove_shortcut()", fixed = TRUE)
+  # the asking path shows it all before the question
+  local_mocked_bindings(.ask_yes = function(question) {
+    expect_identical(question, "Make these 3 shortcuts?")
+    FALSE
+  })
+  out <- capture.output(res <- suppressMessages(add_shortcut(ask = TRUE)))
+  expect_identical(res, character())
+  expect_true(any(grepl("Start menu", out)))
+})
+
+test_that("macOS and Linux name their places", {
+  local_launcher()
+  local_mocked_bindings(.os = function() "mac")
+  plan <- .shortcut_plan(lang = "en")
+  expect_identical(plan$name, c("tflplanner.app", "tflplanner (update).app"))
+  expect_identical(unique(plan$place), "Applications")
+  expect_match(paste(.shortcut_made_text(plan$path, "mac", "en"), collapse = " "),
+               "Finder > Applications", fixed = TRUE)
+  local_mocked_bindings(.os = function() "linux")
+  plan <- .shortcut_plan(lang = "en")
+  expect_identical(plan$place, "the application menu")
+  expect_match(plan$name, "Update and launch", fixed = TRUE)
+})
+
+test_that("remove_shortcut() and update_tflplanner() say what they do and leave", {
+  local_launcher()
+  txt <- paste(.remove_plan_text("C:/x/Desktop/tflplanner.lnk", "C:/cfg/launcher",
+                                 "en"), collapse = "\n")
+  expect_match(txt, "Shortcuts:", fixed = TRUE)
+  expect_match(txt, "The launcher files the shortcuts run:", fixed = TRUE)
+  expect_match(txt, "studies, their files and tflplanner's settings are not touched", fixed = TRUE)
+  expect_match(txt, "add_shortcut()", fixed = TRUE)
+  up <- paste(.update_plan_text("release", NULL, "C:/lib", "en"), collapse = "\n")
+  expect_match(up, "rtfreporter, tflspec, tflplanner", fixed = TRUE)
+  expect_match(up, 'update_tflplanner("dev")', fixed = TRUE)
+  expect_match(up, "Restart R", fixed = TRUE)
+  expect_false(grepl("channel", .update_plan_text("dev", "D:/pk", "C:/lib", "en")[2]))
+})
+
+test_that("every sentence of the setup, the shortcuts and the update has its Japanese", {
+  src <- test_path("..", "..", "R", c("launcher.R", "setup-wizard.R", "update.R"))
+  skip_if_not(all(file.exists(src)), "source not available (installed package)")
+  code <- unlist(lapply(src, readLines, encoding = "UTF-8", warn = FALSE))
+  lits <- unlist(regmatches(code, gregexpr('\\b(tr|t)\\("((?:[^"\\\\]|\\\\.)*)"', code, perl = TRUE)))
+  lits <- unique(eval(parse(text = paste0("c(", paste(sub("^(tr|t)\\(", "", lits), collapse = ","), ")"))))
+  st <- .strings()
+  expect_identical(setdiff(lits, st$en), character(0))
+  expect_true(all(nzchar(st$ja[match(lits, st$en)])))
+})
+
 test_that("asking first: nothing is made without a yes", {
   local_launcher()
   local_mocked_bindings(.ask_yes = function(question) FALSE)
@@ -352,6 +438,11 @@ test_that("the setup wizard: home, packages, shortcut -- each asked", {
   expect_true(dir.exists(new_root))
   expect_identical(tflplanner_config(cfg$home)$language, "ja")
   expect_true(any(grepl("3/3", out)))
+  # each step says what it will write, and where
+  expect_true(any(grepl("config.yml", out, fixed = TRUE)))
+  expect_true(any(grepl(.show_path(.pointer_file()), out, fixed = TRUE)))
+  expect_true(any(grepl("remove_shortcut()", out, fixed = TRUE)))
+  expect_true(any(grepl("add_shortcut()", out, fixed = TRUE)))
   expect_false(dir.exists(.launcher_dir()))      # the shortcut was declined
   # declining the settings changes nothing
   i <- 0L
