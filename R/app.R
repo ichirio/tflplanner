@@ -296,16 +296,23 @@ app_ui <- function(lang = "en") {
           DT::DTOutput("studies"),
           shiny::p(class = "small text-muted mb-1",
                    t("Click a study to see it on the right; double-click to open it.")),
-          shiny::conditionalPanel(
-            "output.n_studies > 0",
-            shiny::div(class = "d-flex flex-wrap gap-2",
-                       .btn("open_study", t("Open"),
-                            class = "btn-sm btn-primary"),
-                       .btn("new_study", t("New study")),
-                       .btn("register", t("Register a folder")),
-                       .btn("unregister", t("Unregister"),
-                            class = "btn-sm btn-outline-danger"),
-                       .btn("refresh_studies", t("Refresh")))),
+          # New study and Register a folder are there even with no study;
+          # what acts on a study needs one
+          # (the panel that hides itself carries no display class: a
+          # Bootstrap d-* class would win over its display: none)
+          shiny::div(
+            class = "d-flex flex-wrap gap-2",
+            shiny::conditionalPanel(
+              "output.n_studies > 0",
+              .btn("open_study", t("Open"), class = "btn-sm btn-primary")),
+            .btn("new_study", t("New study...")),
+            .btn("register", t("Register a folder")),
+            shiny::conditionalPanel(
+              "output.n_studies > 0",
+              shiny::span(class = "d-inline-flex gap-2",
+                          .btn("unregister", t("Unregister"),
+                               class = "btn-sm btn-outline-danger"),
+                          .btn("refresh_studies", t("Refresh"))))),
           shiny::tags$details(
             class = "mt-2 small",
             shiny::tags$summary(t("Settings")),
@@ -990,15 +997,18 @@ app_server <- function(input, output, session, start) {
       shiny::p(t("tflplanner makes a study's tables, listings and figures: the data, the analyses (ARD), each report's definition, and the programs that make the RTFs.")),
       shiny::div(
         class = "d-flex flex-wrap gap-2 mb-2",
-        .btn("try_sample", t("Try the sample study (about 1 minute)"),
+        .btn("try_sample", t("Try the sample study (about 1 minute)..."),
              class = "btn btn-primary"),
-        .btn("start_empty", t("Create an empty study"),
+        .btn("start_empty", t("New study..."),
              class = "btn btn-outline-primary"),
         .btn("register2", t("Register a study folder"),
              class = "btn btn-outline-secondary")),
       shiny::p(class = "small text-muted mb-0",
                t("The sample uses the CDISC pilot data: it makes its ARD, 5 tables, a listing and 2 figures, to look at and change.")))
   })
+  # both open the New study dialog: the sample chosen, or nothing chosen
+  # yet; the study's ID is given there
+  shiny::observeEvent(input$try_sample, open_new_study("sample"))
   shiny::observeEvent(input$start_empty, open_new_study("empty"))
   # SAMPLE-01, or the first SAMPLE-nn not taken
   next_sample_id <- function(root = studies_root()) {
@@ -1011,22 +1021,6 @@ app_server <- function(input, output, session, start) {
     id
   }
   shiny::observeEvent(input$register2, show_register())
-  shiny::observeEvent(input$try_sample, {
-    root <- studies_root()
-    id <- next_sample_id()
-    s <- NULL
-    shiny::withProgress(
-      message = t("Making the sample study (about 1 minute)"),
-      detail = t("copying the data, making its ARD, then its tables, listing and figures"),
-      s <- guarded(suppressMessages(create_sample_study(root = root,
-                                                        study_id = id))))
-    if (is.null(s)) return()
-    rv$studies_ver <- rv$studies_ver + 1L
-    set_study(s)
-    rv$next_steps <- TRUE
-    notify(sprintf(t("Created %s"), s$meta$study_id))
-    go("outputs")
-  })
   output$studies_root_note <- shiny::renderUI({
     rv$studies_ver
     shiny::p(class = "small text-muted mb-1",
@@ -1256,10 +1250,15 @@ app_server <- function(input, output, session, start) {
       title = t("New study"),
       shiny::radioButtons(
         "ns_from", t("Start from"),
-        stats::setNames(c("sample", "empty", "study"),
-                        c(t("The sample study: data, ARD definition, tables, listing and figures (made at once)"),
-                          t("Start empty"),
-                          t("Copy another study (definition and data code)"))),
+        {
+          ch <- stats::setNames(
+            c("sample", "empty", "study"),
+            c(t("The sample study: data, ARD definition, tables, listing and figures (made at once)"),
+              t("Start empty"),
+              t("Copy another study (definition and data code)")))
+          # copying needs a study to copy from
+          if (nrow(studies())) ch else ch[1:2]
+        },
         selected = from, width = "100%"),
       shiny::conditionalPanel(
         "input.ns_from == 'study'",
