@@ -1129,3 +1129,4 @@ An R condition on its columns choosing the rows; blank: every row.,その列に�
 The column header; \n is a line break; blank: the variables' names.,列見出し。\n で改行。空欄 = 変数名。
 "Characters a line before the cell wraps (listing_col(width = )), a whole number; blank: never wraps.",セルを折り返す前の 1 行の文字数（listing_col(width = )）。整数。空欄 = 折り返さない。
 TRUE / FALSE: TRUE prints a value once until it changes; blank: FALSE.,TRUE / FALSE：TRUE で値が変わるまで 1 度だけ表示する。空欄 = FALSE。
+cell_styles: cell looks,cell_styles セルの見た目

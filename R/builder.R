@@ -306,8 +306,6 @@ preview_pages <- function(x, output_id, data) {
   res
 }
 
-#' @rdname preview_pages
-#' @export
 # The lines of a report's header / titles / footnotes / footer: its own,
 # and the study defaults for the lines it has not (by line number).
 .page_lines <- function(x, sheet, output_id) {
@@ -361,6 +359,8 @@ preview_pages <- function(x, output_id, data) {
     htmltools::div(class = "rp-page-foot", block("footer", "foot")))
 }
 
+#' @rdname preview_pages
+#' @export
 preview_html <- function(pages, max_pages = 3L, align = "center") {
   one <- function(pg, i) {
     d <- pg$data

@@ -15,6 +15,7 @@
 .sheet_labels <- c(
   tables = "tables: roles", variables = "variables", cells = "cells",
   layout = "layout: pages", columns = "columns", style = "style",
+  cell_styles = "cell_styles: cell looks",
   col_header = "col_header: column header",
   report = "report", page = "page", header = "header", footer = "footer",
   titles = "titles", footnotes = "footnotes")
