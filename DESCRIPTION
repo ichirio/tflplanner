@@ -1,7 +1,7 @@
 Package: tflplanner
 Type: Package
 Title: A 'shiny' Study Manager for Clinical TFLs Made with 'rtfreporter'
-Version: 0.0.2.9000
+Version: 0.0.2.9001
 Authors@R:
     person(given  = "Yoichi",
            family = "Masui",
@@ -28,11 +28,12 @@ Depends:
     R (>= 4.1)
 Imports:
     jsonlite,
+    openxlsx,
     processx,
     readxl,
     rhandsontable,
     rtfreporter (>= 0.8.2),
-    tflspec (>= 0.0.24.9003),
+    tflspec (>= 0.0.24.9004),
     shiny,
     sortable,
     bslib,

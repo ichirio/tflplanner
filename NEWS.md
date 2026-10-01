@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- The two definition workbooks are written by tflspec
+  (`tfl_write_table_spec()` / `tfl_write_report_spec()`): each holds only
+  its own half's sheets, and what a column means is a comment on its
+  header cell instead of a `_README` sheet.  The grid's column help reads
+  `tflspec::tfl_spec_columns()`.  Needs tflspec 0.0.24.9004.
+
 - Development reopens at 0.0.2.9000, after the 0.0.2 release.
 
 # tflplanner 0.0.2

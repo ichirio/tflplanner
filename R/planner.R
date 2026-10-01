@@ -180,10 +180,17 @@ output_ids <- function(x) {
 
 # ---------------------------------------------------------------- reading
 
+# A line break in a cell comes back as "\n" (openxlsx on Windows writes
+# it as "\r\n").
 .read_sheet_text <- function(path, sheet) {
   d <- readxl::read_excel(path, sheet, col_types = "text", .name_repair =
                             "minimal")
-  as.data.frame(d, stringsAsFactors = FALSE, check.names = FALSE)
+  d <- as.data.frame(d, stringsAsFactors = FALSE, check.names = FALSE)
+  for (j in seq_along(d)) {
+    if (is.character(d[[j]])) d[[j]] <- gsub("\r\n", "\n", d[[j]],
+                                             fixed = TRUE)
+  }
+  d
 }
 
 #' Read the definition workbooks
@@ -436,36 +443,31 @@ set_sheet_rows <- function(x, sheet, output_id = "", rows) {
   tflspec::tfl_table_spec(args)
 }
 
-.readme <- function() {
-  f <- system.file("extdata", "ard-spec", "study.xlsx",
-                   package = "tflspec")
-  if (!nzchar(f) || !"_README" %in% readxl::excel_sheets(f)) return(NULL)
-  .read_sheet_text(f, "_README")
-}
-
-# rtfreporter writes the workbook -- its sheets, the study keys, the
-# spec_version -- and the app adds the sheets rtfreporter does not read.
-.write_book <- function(sp, path, extra = list()) {
-  tmp <- tempfile(fileext = ".xlsx")
-  on.exit(unlink(tmp), add = TRUE)
-  tflspec::tfl_write_table_spec(sp, tmp)
-  books <- lapply(readxl::excel_sheets(tmp), function(s)
-    .read_sheet_text(tmp, s))
-  names(books) <- readxl::excel_sheets(tmp)
-  rd <- .readme()
-  out <- c(if (!is.null(rd)) list(`_README` = rd), books, extra)
-  writexl::write_xlsx(out, path)
+# tflspec writes the workbook -- its half's sheets, the study keys, the
+# spec_version, each column's help on its header -- and the app adds the
+# sheets tflspec does not read.
+.write_book <- function(sp, path, writer, extra = list()) {
+  writer(sp, path)
+  if (!length(extra)) return(invisible(path))
+  wb <- openxlsx::loadWorkbook(path)
+  for (nm in names(extra)) {
+    openxlsx::addWorksheet(wb, nm)
+    openxlsx::writeData(wb, nm, extra[[nm]], keepNA = FALSE)
+    openxlsx::freezePane(wb, nm, firstRow = TRUE)
+  }
+  openxlsx::saveWorkbook(wb, path, overwrite = TRUE)
   invisible(path)
 }
 
 #' Write the two definition workbooks
 #'
-#' `table_spec.xlsx` gets the table sheets and `rounding`;
-#' `report_spec.xlsx` the report sheets, `output_path`, `program_dir`, and
-#' the `_tflplanner` sheet (report list and data code).  Both carry every
-#' sheet rtfreporter defines -- the other half's sheets empty -- and its
-#' `_README`, and both are checked by [tflspec::tfl_table_spec()] on the
-#' way out.
+#' `table_spec.xlsx` gets the table sheets and `rounding`
+#' ([tflspec::tfl_write_table_spec()]); `report_spec.xlsx` the report
+#' sheets, `output_path`, `program_dir` ([tflspec::tfl_write_report_spec()])
+#' and the `_tflplanner` sheet (report list and data code).  Each holds only
+#' its own half's sheets; what a column means is a comment on its header
+#' cell ([tflspec::tfl_spec_columns()]).  Both are checked by
+#' [tflspec::tfl_table_spec()] on the way out.
 #'
 #' @param x An `tflplanner`.
 #' @param dir Destination folder.
@@ -477,13 +479,15 @@ write_planner <- function(x, dir, table_file = "table_spec.xlsx",
   dir.create(dir, showWarnings = FALSE, recursive = TRUE)
   tp <- file.path(dir, table_file)
   rp <- file.path(dir, report_file)
-  .write_book(.spec_object(x, table_sheets(), .study_keys$table), tp)
+  .write_book(.spec_object(x, table_sheets(), .study_keys$table), tp,
+              tflspec::tfl_write_table_spec)
   meta <- rbind(
     data.frame(output_id = NA_character_, description = "(every report)",
                data_code = x$setup, process_code = NA_character_,
                stringsAsFactors = FALSE),
     x$outputs)
   .write_book(.spec_object(x, report_sheets(), .study_keys$report), rp,
+              tflspec::tfl_write_report_spec,
               stats::setNames(list(meta), .planner_sheet))
   invisible(c(table = tp, report = rp))
 }

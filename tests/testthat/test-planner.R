@@ -63,7 +63,9 @@ test_that("each workbook carries its half and tflspec reads each alone", {
   expect_equal(t$study$value[t$study$key == "rounding"], "sas")
   expect_equal(r$study$value[r$study$key == "output_path"], "output")
   expect_true("_tflplanner" %in% readxl::excel_sheets(paths[["report"]]))
-  expect_equal(readxl::excel_sheets(paths[["table"]])[1], "_README")
+  expect_false("_README" %in% readxl::excel_sheets(paths[["table"]]))
+  expect_false("header" %in% readxl::excel_sheets(paths[["table"]]))
+  expect_false("tables" %in% readxl::excel_sheets(paths[["report"]]))
 })
 
 test_that("copy, rename and remove act on every sheet", {
