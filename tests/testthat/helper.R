@@ -5,3 +5,7 @@ withr_tempdir <- function(env = parent.frame()) {
   do.call(on.exit, list(substitute(withr_defer()), add = TRUE), envir = env)
   d
 }
+
+# The app looks for a newer version on the network when it starts; not in
+# the tests.
+options(tflplanner.check_updates = FALSE)

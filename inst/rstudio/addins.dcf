@@ -1,0 +1,4 @@
+Name: Launch tflplanner
+Description: Start tflplanner in its own R process and open it in the browser; the console stays free.
+Binding: launch_app
+Interactive: false

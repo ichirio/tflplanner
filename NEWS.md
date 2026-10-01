@@ -1,5 +1,25 @@
 # tflplanner (development version)
 
+- **Set up, update and start tflplanner without the console** (#40).  The
+  console is needed only for what the app cannot do for itself:
+  `setup_tflplanner()` with no arguments asks, step by step, for the home,
+  the packages the programs use, and a shortcut.  `add_shortcut()` /
+  `remove_shortcut()` make "tflplanner" and "tflplanner (update and
+  launch)": on Windows a desktop and Start menu `.lnk` (no console window;
+  R is found in the registry at every start, so updating R does not break
+  it), on macOS `~/Applications/*.app`, on Linux a `.desktop` menu entry.
+  The shortcut opens the app if it already runs on its port
+  (`setup_tflplanner(port = )`, default 7470), and closing the browser
+  stops it (`run_app(stop_on_close = )`).  `update_tflplanner()` updates
+  rtfreporter, tflspec and tflplanner in that order in a separate R
+  process -- release (CRAN, else the GitHub release) or `"dev"`, or `from =`
+  package files -- and the shortcut's "update and launch" does the same.
+  The app never updates itself: when it starts it looks for a newer
+  version and says so (off in its settings, or `check_updates = FALSE`).
+  `tflplanner_packages()` lists the packages and their versions;
+  `launch_app()` (also the RStudio add-in *Launch tflplanner*) starts the
+  app in its own R process.
+
 - **Getting started: one way into New study** (#38).  With no study, the
   getting-started card's buttons open the New study dialog: "Try the
   sample study (about 1 minute)..." with the sample chosen (its ID given

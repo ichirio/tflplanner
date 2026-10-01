@@ -42,6 +42,15 @@ reference:
       - tflplanner_home
       - tflplanner_config
       - tr
+  - title: Install, update and launch
+    desc: >
+      What is done at the R console: the setup, the packages, the updates
+      and a shortcut that starts the app with a double click.
+    contents:
+      - add_shortcut
+      - launch_app
+      - update_tflplanner
+      - tflplanner_packages
   - title: Company standards
     contents:
       - standards_template

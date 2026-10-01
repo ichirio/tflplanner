@@ -9,7 +9,9 @@ setup_tflplanner(
   studies_root = NULL,
   language = NULL,
   standards = NULL,
-  sample = FALSE
+  sample = FALSE,
+  port = NULL,
+  check_updates = NULL
 )
 }
 \arguments{
@@ -30,6 +32,12 @@ keep what is installed.}
 \item{sample}{\code{TRUE} adds the sample study (SAMPLE-01) to the studies
 folder and makes its ARD and reports (\code{\link[=create_sample_study]{create_sample_study()}}); a
 sample already there is left as it is.}
+
+\item{port}{The port the app runs on when started from its shortcut or
+\code{\link[=launch_app]{launch_app()}} (default 7470); \code{NULL} keeps the setting.}
+
+\item{check_updates}{Whether the app looks for a newer version when it
+starts (default \code{TRUE}); \code{NULL} keeps the setting.}
 }
 \value{
 The settings, invisibly.
@@ -40,8 +48,25 @@ state of every study, and says where new study folders go.  Run it once;
 \code{\link[=run_app]{run_app()}} runs it with the defaults when it finds no home.  Running it
 again changes the settings given and keeps the rest.
 }
+\details{
+\strong{Called with no arguments in an interactive session}, it walks you
+through the setup step by step, asking before it changes anything:
+\enumerate{
+\item the home folder and where new study folders go;
+\item the packages tflplanner's programs use (cards, cardx, dplyr, ...)
+that are not installed yet (\code{\link[=tflplanner_packages]{tflplanner_packages()}});
+\item a shortcut that starts tflplanner with a double click
+(\code{\link[=add_shortcut]{add_shortcut()}}).
+}
+
+Everything else -- the study folders, the language, the company
+standards, the sample study -- can be changed in the app's settings.
+To update tflplanner later, use \code{\link[=update_tflplanner]{update_tflplanner()}} or the "update and
+launch" shortcut.
+}
 \examples{
 \dontrun{
+setup_tflplanner()            # step by step
 setup_tflplanner(studies_root = "C:/studies", sample = TRUE)
 }
 }

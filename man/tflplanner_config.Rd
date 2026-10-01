@@ -13,7 +13,8 @@ studies_root(home = tflplanner_home())
 \item{home}{The home folder.}
 }
 \value{
-A list: \code{studies_root}, \code{last_study}, \code{language}.
+A list: \code{studies_root}, \code{last_study}, \code{language}, and when set
+\code{port}, \code{update_channel}, \code{check_updates}.
 }
 \description{
 tflplanner's settings
