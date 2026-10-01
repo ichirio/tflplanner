@@ -347,7 +347,8 @@ test_that("the setup wizard: home, packages, shortcut -- each asked", {
     .ask_line = function(prompt) { i <<- i + 1L; answers[[i]] },
     .ask_yes = function(question) grepl("Save|保存", question))
   out <- capture.output(cfg <- .setup_wizard())
-  expect_identical(cfg$home, normalizePath(new_home, "/", mustWork = FALSE))
+  # compared once it exists: Windows may give a short (8.3) name or a long one
+  expect_identical(normalizePath(cfg$home, "/"), normalizePath(new_home, "/"))
   expect_true(dir.exists(new_root))
   expect_identical(tflplanner_config(cfg$home)$language, "ja")
   expect_true(any(grepl("3/3", out)))

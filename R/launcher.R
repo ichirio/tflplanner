@@ -144,6 +144,14 @@
 
 # ------------------------------------------------------------- Windows
 
+# A path with Windows separators.  normalizePath(winslash = "\\") changes
+# them only on Windows, and these strings are also built (and tested)
+# elsewhere.
+.win_path <- function(p) {
+  if (identical(.os(), "windows")) p <- normalizePath(p, "/", mustWork = FALSE)
+  gsub("/", "\\", p, fixed = TRUE)
+}
+
 # The shortcuts as data: one row per .lnk.
 .windows_shortcuts <- function(dir, dirs, lang, desktop = TRUE,
                                start_menu = TRUE, update = TRUE,
@@ -152,16 +160,14 @@
   extra <- if (!is.null(port)) paste0(" --port=", port) else ""
   wscript <- file.path(Sys.getenv("SystemRoot", "C:/Windows"), "System32",
                        "wscript.exe")
-  vbs <- paste0('"', normalizePath(file.path(dir, "tflplanner.vbs"), "\\",
-                                   mustWork = FALSE), '"')
+  vbs <- paste0('"', .win_path(file.path(dir, "tflplanner.vbs")), '"')
   rows <- list()
   add <- function(where, name, args, desc) {
     rows[[length(rows) + 1L]] <<- data.frame(
       path = file.path(where, paste0(name, ".lnk")), target = wscript,
       args = paste0(vbs, args, extra),
-      icon = normalizePath(file.path(dir, "tflplanner.ico"), "\\",
-                           mustWork = FALSE),
-      workdir = normalizePath(dir, "\\", mustWork = FALSE),
+      icon = .win_path(file.path(dir, "tflplanner.ico")),
+      workdir = .win_path(dir),
       description = desc, stringsAsFactors = FALSE)
   }
   d_launch <- tr("Start tflplanner in the browser", lang)
@@ -181,7 +187,7 @@
 # Windows has; PowerShell may be blocked by policy).
 .lnk_script <- function(sc) {
   q <- function(x) paste0('"', gsub('"', '""', x), '"')
-  win <- function(p) normalizePath(p, "\\", mustWork = FALSE)
+  win <- .win_path
   body <- unlist(lapply(seq_len(nrow(sc)), function(i) {
     r <- sc[i, ]
     c(sprintf("fso_mkdir %s", q(win(dirname(r$path)))),
