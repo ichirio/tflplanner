@@ -22,7 +22,7 @@
 #' @export
 table_sheets <- function() {
   c("tables", "variables", "cells", "layout", "columns", "style",
-    "col_header")
+    "cell_styles", "col_header")
 }
 
 #' @rdname table_sheets

@@ -127,7 +127,7 @@ test_that("a row of the analyses grid is edited as a form", {
     v <- output$ard_an_vars$html
     expect_match(v, "AGE \u2014 Age")
     # a continuous analysis offers numbers only as its variables
-    vars_part <- sub(".*_vars-label", "", v)
+    vars_part <- sub("_strata-label.*", "", sub(".*_vars-label", "", v))
     expect_false(grepl('value="SEX"', vars_part))
     expect_true(grepl('value="HEIGHTBL"', vars_part))
     inp <- list()
@@ -140,11 +140,16 @@ test_that("a row of the analyses grid is edited as a form", {
     inp[[id("vars")]] <- c("AGE", "HEIGHTBL")
     inp[[id("where")]] <- "AGE >= 18"
     inp[[id("pick")]] <- c("N", "mean", "sd")
+    inp[[id("strata")]] <- "SEX"
+    inp[[id("den")]] <- ""
     do.call(session$setInputs, inp)
     session$setInputs(ard_stat_apply = 1)
     a <- ard_rows(rv$p, "analyses", "T1")
     r <- a[a$analysis_id == "AGE", ]
     expect_identical(r$label, "Age (years)")
+    # strata and the denominator are the row's columns (blank: none)
+    expect_identical(r$strata, "SEX")
+    expect_true(is.na(r$denominator))
     expect_identical(r$variables, "AGE | HEIGHTBL")
     expect_identical(r$where, "AGE >= 18")
     expect_identical(r$statistics, "N | mean | sd")

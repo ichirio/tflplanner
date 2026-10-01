@@ -317,7 +317,7 @@ ard_status <- function(study) {
   spec <- structure(a, class = "tfl_ard_spec")
   rows <- lapply(ids, function(id) {
     r <- st[st$output_id == id, , drop = FALSE][1L, ]
-    now <- tflspec::tfl_ard_spec_hash(spec, id)
+    now <- tflspec::tfl_ard_spec_hash(spec, id, dir = study$path)
     state <- if (is.na(r$output_id)) "not built" else
       if (!is.na(r$error) && nzchar(r$error)) "error" else
         if (!identical(r$definition, now)) "outdated" else "built"

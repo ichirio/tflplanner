@@ -1,5 +1,34 @@
 # tflplanner (development version)
 
+- **The cell_styles sheet in Details (sheets)** (ichirio/tflspec#64).
+  tflspec's table spec has a `cell_styles` sheet (one
+  `plan_cell_style()` a row); it is now a table sheet of the study's
+  workbook, shown and edited under Details (sheets), a report's own rows
+  replacing the defaults whole.
+- `preview_html()` is exported as documented (`.page_lines()`, internal,
+  was exported in its place: a roxygen block attached to the wrong
+  function); `devtools::document()` leaves the Rd as it is.  Needs
+  tflspec 0.0.24.9012.
+
+- **Follows tflspec's column names and help** (ichirio/tflspec#64).  The
+  table spec's `columns$width` is `rel_width`, and the report's
+  `table_font_size` / `title_font_size` / `footnote_font_size` are
+  `*_font_size_half_points` -- in the company standards' defaults, their
+  draft workbook and the sample study (SAMPLE-01; its eight reports'
+  RTFs unchanged).  tflspec's column help is English now; the app shows
+  it in Japanese from its own translations.  An ARD built before a
+  study's own analysis functions (its key `source`) changed shows as
+  outdated.  Needs tflspec 0.0.24.9011.
+
+- **The ARD form's strata and denominator** (ichirio/tflspec#64).  An
+  analysis may be repeated within variables ("Repeated within (strata)":
+  a subgroup, a parameter by visit) and say what its percentages are of
+  ("Percentages of": the analysis set, within a row / column / the whole
+  table, another population or a dataset) -- the ARD spec's new
+  `strata` and `denominator` columns, also on the analyses grid.  The
+  study sheet offers the key `source` (R files of the study's own
+  analysis functions).  Needs tflspec 0.0.24.9010.
+
 - **Set up, update and start tflplanner without the console** (#40).  The
   console is needed only for what the app cannot do for itself:
   `setup_tflplanner()` with no arguments asks, step by step, for the home,

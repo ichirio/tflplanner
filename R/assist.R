@@ -532,7 +532,8 @@ grid_choices <- function(sheet, meta) {
                       report = NULL, page = NULL,
                       variables = "variable",
                       cells = c("variable", "context", "row"),
-                      columns = "column", col_header = NA,
+                      columns = "column", cell_styles = NA,
+                      col_header = NA,
                       header = "line", footer = "line", titles = "line",
                       footnotes = "line")
 

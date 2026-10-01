@@ -15,6 +15,7 @@
 .sheet_labels <- c(
   tables = "tables: roles", variables = "variables", cells = "cells",
   layout = "layout: pages", columns = "columns", style = "style",
+  cell_styles = "cell_styles: cell looks",
   col_header = "col_header: column header",
   report = "report", page = "page", header = "header", footer = "footer",
   titles = "titles", footnotes = "footnotes")
@@ -726,11 +727,13 @@ $(document).on('shiny:value', function(e) {
 # ARD columns whose values can only be one of their choices (the study's
 # datasets and populations).  `method` stays open: besides the keywords it
 # takes any pkg::function.
-.ard_closed_columns <- c("dataset", "population_id")
+.ard_closed_columns <- c("dataset", "population_id", "denominator")
 
+# tflspec's column help is English; the app shows it in its language
 .help_table <- function(sheet) {
   rd <- tflspec::tfl_spec_columns(sheet)
   rd$sheet <- NULL
+  rd$description <- tr(rd$description)
   rd
 }
 
@@ -2031,13 +2034,16 @@ app_server <- function(input, output, session, start) {
         method = c(.std_ard_methods()$method, ard_functions()),
         dataset = p$ard$datasets$dataset,
         population_id = p$ard$populations$population_id,
-        by = cols, variables = cols),
+        by = cols, strata = cols, variables = cols,
+        denominator = c("population", "row", "column", "cell",
+                        p$ard$populations$population_id,
+                        p$ard$datasets$dataset)),
       datasets = list(path = if (has_study()) {
         f <- study_files(rv$study, "data")
         file.path(f$folder, f$file)
       }),
       populations = list(dataset = p$ard$datasets$dataset),
-      study = list(key = c("id", "output")),
+      study = list(key = c("id", "output", "source")),
       list())
   }
   for (sheet in names(.ard_sheets())) local({
@@ -2158,6 +2164,19 @@ app_server <- function(input, output, session, start) {
     po <- rv$p$ard$populations
     po$dataset[match(pop %||% NA_character_, po$population_id)]
   }
+  # what a percentage may be of: the method's own default, the analysis
+  # set, cards' row / column / cell, another population, a dataset
+  den_choices <- function(now = "") {
+    p <- rv$p$ard
+    ch <- c(stats::setNames("", t("the method's default")),
+            stats::setNames("population", t("the analysis set")),
+            stats::setNames("row", t("within a row")),
+            stats::setNames("column", t("within a column")),
+            stats::setNames("cell", t("of the whole table")))
+    more <- c(p$populations$population_id, p$datasets$dataset)
+    more <- unique(c(more[!is.na(more)], setdiff(now, c(ch, ""))))
+    c(ch, stats::setNames(more, more))
+  }
   output$ard_stat_ui <- shiny::renderUI({
     a <- st_rows()
     if (is.null(a) || !nrow(a)) {
@@ -2241,10 +2260,15 @@ app_server <- function(input, output, session, start) {
     d <- if (!is.na(ds %||% NA)) an_data(ds)
     by_now <- shiny::isolate(input[[st_id("by")]]) %||% .split_bar(r$by)
     var_now <- shiny::isolate(input[[st_id("vars")]]) %||% .split_bar(r$variables)
+    strata_now <- shiny::isolate(input[[st_id("strata")]]) %||%
+      .split_bar(r$strata %||% NA)
+    den_now <- shiny::isolate(input[[st_id("den")]]) %||%
+      (if (is.na(r$denominator %||% NA)) "" else r$denominator)
     kind <- st_kind(r)
     if (is.null(d)) {
       bch <- by_now
       vch <- var_now
+      sch <- strata_now
     } else {
       cols <- as.list(d)
       rows <- .row_choices(cols, c(continuous = t("numbers"),
@@ -2258,6 +2282,8 @@ app_server <- function(input, output, session, start) {
       bch <- c(grp, rows[kinds == "categorical" & !rows %in% grp])
       # what the row has stays offered, even if the data do not say so
       bch <- c(bch, stats::setNames(setdiff(by_now, bch), setdiff(by_now, bch)))
+      sch <- c(rows[kinds == "categorical"],
+               stats::setNames(setdiff(strata_now, rows), setdiff(strata_now, rows)))
       vch <- c(vch, stats::setNames(setdiff(var_now, vch), setdiff(var_now, vch)))
     }
     shiny::tagList(
@@ -2268,6 +2294,16 @@ app_server <- function(input, output, session, start) {
         st_id("vars"), t("Variables (the rows)"), vch, var_now,
         multiple = TRUE, width = "100%",
         options = list(plugins = list("remove_button", "drag_drop"))),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2",
+        shiny::div(class = "flex-grow-1", shiny::selectizeInput(
+          st_id("strata"), t("Repeated within (strata)"), sch, strata_now,
+          multiple = TRUE, width = "100%",
+          options = list(plugins = list("remove_button"),
+                         placeholder = t("none")))),
+        shiny::div(class = "flex-grow-1", shiny::selectInput(
+          st_id("den"), t("Percentages of (denominator)"),
+          den_choices(den_now), den_now, width = "100%"))),
       if (is.null(d)) shiny::p(
         class = "small text-muted",
         t("The data of this analysis cannot be read (no file in the data catalog): the choices are the row's own.")))
@@ -2387,6 +2423,8 @@ app_server <- function(input, output, session, start) {
     a$population_id[i] <- one(g("pop"))
     a$where[i] <- one(where)
     a$by[i] <- one(g("by"))
+    if (!is.null(g("strata"))) a$strata[i] <- one(g("strata"))
+    if (!is.null(g("den"))) a$denominator[i] <- one(g("den"))
     a$variables[i] <- one(g("vars"))
     a$statistics[i] <- one(pick)
     a$formats[i] <- if (length(fm))
@@ -2481,7 +2519,7 @@ app_server <- function(input, output, session, start) {
       }
     }
     tryCatch(switch(scope,
-      report = ard_program_code(a, id),
+      report = ard_program_code(a, id, dir = rv$study$path),
       setup = ard_setup_code(a),
       autoexec = ard_autoexec_code(a)),
       error = function(e) msg(paste(t("The code cannot be written yet:"),

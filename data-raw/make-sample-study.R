@@ -176,8 +176,8 @@ sheets <- list(
     list(output_id = "T-14-3-1", pages_max_rows = "22",
          pages_split = "group_force")),
   columns = tbl(
-    list(column = "row_label", width = "40"),
-    list(column = ".values", width = "18")),
+    list(column = "row_label", rel_width = "40"),
+    list(column = ".values", rel_width = "18")),
   style = tbl(
     list(align_count_pct = "TRUE")),
   col_header = tbl(

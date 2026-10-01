@@ -42,6 +42,8 @@
 #' @param spec An [tflspec::tfl_ard_spec()] (or the path of one).
 #' @param output_id The output.
 #' @param date The date stamped in the banner.
+#' @param dir The study folder: the fingerprint recorded with the ARD reads
+#'   the study's own analysis functions (its key `source`) from it.
 #' @return The code, one element per line.
 #' @export
 ard_setup_code <- function(spec, date = Sys.Date()) {
@@ -85,7 +87,7 @@ ard_setup_code <- function(spec, date = Sys.Date()) {
 
 #' @rdname ard_setup_code
 #' @export
-ard_program_code <- function(spec, output_id, date = Sys.Date()) {
+ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".") {
   x <- if (is.character(spec)) .read_ard_spec(spec) else spec
   lay <- study_layout()
   a <- x$analyses[x$analyses$output_id %in% output_id, , drop = FALSE]
@@ -111,7 +113,8 @@ ard_program_code <- function(spec, output_id, date = Sys.Date()) {
     .ard_spec_code(x, output_id = output_id, part = "body"),
     "",
     sprintf(".save_output(ard, %s, %s)", encodeString(output_id, quote = "\""),
-            encodeString(tflspec::tfl_ard_spec_hash(x, output_id), quote = "\"")),
+            encodeString(tflspec::tfl_ard_spec_hash(x, output_id, dir = dir),
+                         quote = "\"")),
     "")
 }
 
@@ -163,7 +166,8 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
     out[nrow(out) + 1L, ] <<- list(f, .put_program(code, f))
   }
   put(ard_setup_code(spec), .ard_setup_file)
-  for (id in ids) put(ard_program_code(spec, id), .ard_prog_name(id))
+  for (id in ids) put(ard_program_code(spec, id, dir = root),
+                      .ard_prog_name(id))
   put(ard_autoexec_code(spec), .ard_autoexec_file)
   keep <- c(.ard_setup_file, .ard_autoexec_file, vapply(ids, .ard_prog_name, ""))
   for (f in setdiff(list.files(dir, "\\.[Rr]$"), keep)) {

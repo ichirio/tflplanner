@@ -129,3 +129,19 @@ test_that("check_planner() reports what tflspec refuses", {
   expect_false(all(r$ok))
   expect_match(paste(r$message, collapse = " "), "pages_max_rows")
 })
+
+test_that("the cell_styles sheet is a table sheet, written and read back", {
+  expect_true("cell_styles" %in% table_sheets())
+  p <- add_output(new_planner(), "T1")
+  p <- set_sheet_rows(p, "cell_styles", "T1", data.frame(
+    cols = ".values", where = "label == \"Any TEAE\"", bold = "TRUE",
+    stringsAsFactors = FALSE))
+  d <- tempfile("pl")
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  dir.create(d)
+  write_planner(p, d)
+  q <- read_planner(file.path(d, c("table_spec.xlsx", "report_spec.xlsx")))
+  r <- sheet_rows(q, "cell_styles", "T1")
+  expect_identical(r$where, "label == \"Any TEAE\"")
+  expect_identical(r$bold, "TRUE")
+})

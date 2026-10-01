@@ -44,7 +44,8 @@ test_that("closed choice columns refuse other values; open ones take them", {
   expect_true(isTRUE(by_name$dataset$strict))
   expect_false(isTRUE(by_name$dataset$allowInvalid))
   expect_false(isTRUE(by_name$method$strict))
-  expect_identical(.ard_closed_columns, c("dataset", "population_id"))
+  expect_identical(.ard_closed_columns,
+                   c("dataset", "population_id", "denominator"))
 })
 
 test_that("the Tables tab's sub-tabs are not a card around the sheets' card", {
@@ -446,4 +447,12 @@ test_that("a preview's spanning header cells span their columns", {
   expect_match(h, 'colspan="2"[^>]*>Active')
   expect_match(h, "SOC<br>PT")
   expect_match(h, "Placebo")
+})
+
+test_that("tflspec's column help (English) is shown in the app's language", {
+  d <- tflspec::tfl_spec_columns()
+  ja <- tr(unique(d$description), lang = "ja")
+  # every description has its translation
+  expect_identical(sum(ja == unique(d$description)), 0L)
+  expect_identical(tr("The variable's name.", lang = "ja"), "変数名。")
 })

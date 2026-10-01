@@ -938,3 +938,195 @@ A newer version is out:,新しい版があります:
 "To update: close tflplanner and start it from the ""update and launch"" shortcut, or run update_tflplanner() in R.",更新するには、tflplanner を閉じてショートカット「更新して起動」から起動するか、R で update_tflplanner() を実行してください。
 Look for a newer version when tflplanner starts,起動時に新しい版を確認する
 "Updates (%s channel) are installed from R, not from the app: update_tflplanner(), or the ""update and launch"" shortcut.",更新（%s の版）はアプリではなく R から行います: update_tflplanner()、またはショートカット「更新して起動」。
+Repeated within (strata),層（この中で繰り返す）
+Percentages of (denominator),% の分母
+the method's default,メソッドの既定
+the analysis set,解析対象集団
+within a row,行の中で
+within a column,列の中で
+of the whole table,表全体
+A tflspec workbook: one sheet per grain. Sheets whose name starts with _ are not read (notes). Each column is described on its header cell's comment and by tfl_spec_columns().,tflspec のワークブック。1 シート = 1 つの単位。名前が _ で始まるシートは読まれない（メモ用）。各列の説明は見出しセルのコメントと tfl_spec_columns() にある。
+The report a row belongs to. Blank: a study-wide default; a row naming a report replaces the default row with the same key (ARD analyses: the report the analysis serves).,その行が属する帳票。空欄 = 試験全体のデフォルト。帳票名を書いた行は、同じキーのデフォルト行を置き換える（ARD の analyses では、その解析が使われる帳票）。
+"A column for people, on any sheet; never read. Any other column a sheet does not read is an error (a mistyped header).",人のためのメモ列。どのシートにも置けて、読まれない。それ以外の、シートが読まない列はエラー（見出しの打ち間違い防止）。
+Several values in one cell: | between them.,1 セルに複数書くときは | で区切る。
+"In titles, footnotes, header and footer cells: {PAGE} {TOTAL_PAGES} {AUTO_PAGE} {AUTO_TOTAL_PAGES} (page numbers), {PROGRAM} {PROGRAM_NAME} {PROGRAM_DIR} (the program), {DATETIME} {DATETIME:%Y-%m-%d} (the run).",タイトル・脚注・ヘッダー・フッターのセルで使える差し込み記号：{PAGE} {TOTAL_PAGES} {AUTO_PAGE} {AUTO_TOTAL_PAGES}（ページ番号）、{PROGRAM} {PROGRAM_NAME} {PROGRAM_DIR}（プログラム）、{DATETIME} {DATETIME:%Y-%m-%d}（実行日時）。
+"What is one for the whole study: one row a key. Table / report keys: rounding, output_path, program_dir. ARD keys: id, output, source. No output_id.",試験で 1 つに決まる事実。1 行 = 1 キー。表・帳票のキー：rounding、output_path、program_dir。ARD のキー：id、output、source。output_id は無い。
+"The fact: rounding (r: round half to even; sas: round half away from zero; blank: options(rtfreporter.rounding)); output_path (the folder of the RTF files); program_dir (the folder of the programs, for {PROGRAM}); ARD: id (the subject key; default USUBJID), output (the study ARD's file; default output/ard/ard.rds), source (R files of the study's own analysis functions, relative to the study folder, | between them).",項目：rounding（r = 偶数丸め、sas = 四捨五入、空欄 = options(rtfreporter.rounding)）、output_path（RTF の出力フォルダ）、program_dir（プログラムのフォルダ。{PROGRAM} に使う）。ARD：id（被験者キー。既定 USUBJID）、output（試験 ARD のファイル。既定 output/ard/ard.rds）、source（試験独自の解析関数の R ファイル。試験フォルダからの相対パス、| 区切り）。
+"Its value, as text.",その値（文字）。
+key / value: spec_version (a workbook of a newer version is refused by an older tflspec).,key / value：spec_version（新しい版のワークブックを古い tflspec で読むとエラー）。
+spec_version.,spec_version。
+A whole number.,整数。
+"ARD: the study's data, one row a dataset.",ARD：試験のデータ。1 行 = 1 データセット。
+"A name for the data, used by populations and analyses (and the object's name in the program, in lower case).",データの名前。populations と analyses から使う（プログラムでは小文字にしたオブジェクト名）。
+SDTM or ADaM (for people and ARS; not read by the program).,SDTM か ADaM（人と ARS のため。プログラムは読まない）。
+"Its file, relative to the study folder; the reader follows the extension: .rds, .xpt, .sas7bdat, .csv, .parquet.",ファイル（試験フォルダからの相対パス）。拡張子で読み方が決まる：.rds、.xpt、.sas7bdat、.csv、.parquet。
+"New columns, NAME = R expression, | between them (transform()); blank: none.",新しい列。NAME = R の式 を | 区切りで（transform()）。空欄 = なし。
+"ARD: the analysis sets, one row a population.",ARD：解析対象集団。1 行 = 1 集団。
+"The population's name, used by analyses.",集団の名前。analyses から使う。
+The dataset its subjects come from.,被験者を取るデータセット。
+An R condition on that dataset choosing the subjects; blank: every row.,そのデータセットで被験者を選ぶ R の条件。空欄 = すべての行。
+"Columns added to the population, NAME = R expression, | between them; blank: none.",集団に足す列。NAME = R の式 を | 区切りで。空欄 = なし。
+"ARD: one analysis a row; each becomes one cards / cardx call in the ARD program, its result tagged with output_id, analysis_id and population_id.",ARD：1 行 = 1 解析。ARD プログラムの cards / cardx の呼び出し 1 つになり、結果に output_id・analysis_id・population_id が付く。
+The analysis's id within its report; an ARD column.,帳票の中での解析の ID。ARD の列になる。
+A name a person reads (for ARS and the GUI); blank: none.,人が読む名前（ARS と GUI 用）。空欄 = なし。
+"What is computed: a keyword of tfl_ard_methods() (continuous, categorical, hierarchical ...), any pkg::function (cards::, cardx::), or a function of the study's own that the study key source loads.",何を計算するか：tfl_ard_methods() のキーワード（continuous、categorical、hierarchical など）、任意の pkg::function（cards::、cardx::）、または study のキー source が読み込む試験独自の関数。
+The data analysed; blank: the population's own dataset.,解析するデータ。空欄 = 集団のデータセット。
+The analysis set: the data is restricted to its subjects; blank: no restriction (population is NULL).,解析対象集団：データをその被験者に絞る。空欄 = 絞らない（population は NULL）。
+"An R condition on the data, applied after the population; blank: every row.",データに対する R の条件。集団で絞った後に効く。空欄 = すべての行。
+"Grouping variables (cards' by), | between them; blank: none.",群の変数（cards の by）。| 区切り。空欄 = なし。
+"Variables the analysis is repeated within (cards' strata: a subgroup, a parameter by visit), | between them; blank: none.",この中で解析を繰り返す変数（cards の strata：部分集団、検査項目×時点など）。| 区切り。空欄 = なし。
+"The variables analysed (cards' variables), | between them.",解析する変数（cards の variables）。| 区切り。
+"For continuous / categorical / missing: the statistics computed, in order (tfl_ard_statistics()); for other methods: the statistics kept of what the method gives; | between them; blank: the method's default.",continuous / categorical / missing では計算する統計量（この順。tfl_ard_statistics()）、ほかの method では結果のうち残す統計量。| 区切り。空欄 = method の既定。
+"What percentages are of: population (the analysis set; hierarchical and max take it anyway), row / column / cell (cards), another population, or a dataset (its records of the analysis set's subjects); blank: the method's default.",% の分母：population（解析対象集団。hierarchical と max は指定しなくてもこれ）、row / column / cell（cards）、別の集団、またはデータセット（その中の、解析対象集団の被験者の行）。空欄 = method の既定。
+"Display formats, statistic=format, | between them; VAR:statistic=format for one variable. xx.x = one decimal (the x's count only after the point), xx.x% = a proportion as a percent, a number = decimals, pvalue = <0.001 or 3 decimals; blank: the statistic's default.",表示書式。統計量=書式 を | 区切りで。変数ごとは VAR:統計量=書式。xx.x = 小数 1 桁（小数点より後の x の数だけが効く）、xx.x% = 割合を % で、数字 = 小数の桁数、pvalue = <0.001 か小数 3 桁。空欄 = 統計量の既定。
+"More arguments of the call, as R (data and population are bound), in any order; refused if not R. An argument a column gives (by, variables, strata, denominator, statistic) may not be given here too; blank: none.",呼び出しに足す引数（R で書く。data と population が使える）。順序は自由。R として読めなければエラー。列で書ける引数（by、variables、strata、denominator、statistic）はここに重ねて書けない。空欄 = なし。
+method = custom only: the R code that gives the ARD (data and population are bound).,method = custom のときだけ：ARD を返す R のコード（data と population が使える）。
+For CDISC ARS (tfl_ars()): PRIMARY / SECONDARY / EXPLORATORY OUTCOME MEASURE; blank: tfl_ars(purpose = ).,CDISC ARS 用（tfl_ars()）：PRIMARY / SECONDARY / EXPLORATORY OUTCOME MEASURE。空欄 = tfl_ars(purpose = )。
+For CDISC ARS: SPECIFIED IN PROTOCOL / SPECIFIED IN SAP / DATA DRIVEN / REQUESTED BY REGULATORY AGENCY; blank: SPECIFIED IN SAP.,CDISC ARS 用：SPECIFIED IN PROTOCOL / SPECIFIED IN SAP / DATA DRIVEN / REQUESTED BY REGULATORY AGENCY。空欄 = SPECIFIED IN SAP。
+Table: one row a report. Its roles (table_plan()) and the table-wide options; a verb written in code afterwards wins.,表：1 行 = 1 帳票。役割（table_plan()）と表全体のオプション。後からコードで書いた verb が勝つ。
+"The key spread across the columns, outermost first, | between them (table_plan(cols = )).",横に展開するキー。外側から順に | 区切りで（table_plan(cols = )）。
+"The keys down the rows (table_plan(rows = )); name = column renames, a quoted value is a constant heading; | between them.",縦のキー（table_plan(rows = )）。name = 列名 で名前を付け替え、引用符で囲んだ値は固定の見出し。| 区切り。
+"Where the row label comes from (table_plan(label = )); blank: .label; NA: used to tell rows apart, not printed; NULL: not used.",行ラベルの元（table_plan(label = )）。空欄 = .label、NA = 行の区別にだけ使い表示しない、NULL = 使わない。
+"cells (cells built from templates) or rows (one statistic a row, the raw values) (plan_cells(stats = )); blank: cells.",cells（テンプレートでセルを作る）か rows（1 行 = 1 統計量、生の値）（plan_cells(stats = )）。空欄 = cells。
+With stats = rows: stat (the number) or stat_fmt (cards' formatted text) (plan_cells(value = )); blank: stat.,stats = rows のときの値：stat（数値）か stat_fmt（cards の整形済み文字）（plan_cells(value = )）。空欄 = stat。
+What joins several column keys into a column name (plan_columns(sep = )); the columns sheet names value columns with it; blank: ____.,列キーが複数のとき値の列名をつなぐ文字（plan_columns(sep = )）。columns シートはこの名前で値の列を指す。空欄 = ____。
+"TRUE, FALSE, or the sort keys in order, - in front for descending (plan_sort()); blank: the data's order.",TRUE、FALSE、または並べ替えキーを順に（降順は前に -）（plan_sort()）。空欄 = データの順。
+The statistic totalled across columns for a frequency order (plan_sort(stat = )).,頻度順に並べるとき列方向に合計する統計量（plan_sort(stat = )）。
+What a cell no template could fill prints (plan_cells(na = )); blank: empty.,どのテンプレートも埋められなかったセルの表示（plan_cells(na = )）。空欄 = 空。
+"Which population {n} in the column header is, for a table split by page (a lab parameter): page (those with that page's data), table (the analysis set), or both as n = page | N = table for {n} and {N}; blank: page (warns when both exist and differ). Both must be in the ARD.",ページ（検査項目など）で分けた表で、列見出しの {n} がどの母集団か：page（そのページのデータがある人）、table（解析対象集団）、両方なら n = page | N = table で {n} と {N}。空欄 = page（両方あって食い違えば警告）。どちらも ARD に入れておくこと。
+"Table: one row a variable (an analysis variable, a column key or the label column).",表：1 行 = 1 変数（解析変数、列キー、ラベル列）。
+The variable's name.,変数名。
+What prints for its name (plan_labels()); blank: the name.,変数名の代わりに表示する文字（plan_labels()）。空欄 = 変数名。
+Its place among the variables (a number); blank: the data's order.,変数の並び順（数値）。空欄 = データの順。
+"Its values in print order, | between them (plan_levels()); blank: the data's order.",値の表示順。| 区切り（plan_levels()）。空欄 = データの順。
+"Table: one row a line of a cell (plan_cells()). Rows with the same variable / context / row are one chain, tried top down. With stats = rows, a row with no template is one statistic's digits (plan_digits(.rows = )): row = the statistic as the label column prints it.",表：1 行 = セルの 1 行分（plan_cells()）。同じ variable / context / row の行は上から順に試す連鎖になる。stats = rows では、template の無い行は 1 つの統計量の桁（plan_digits(.rows = )）：row = ラベル列に出る統計量名。
+"What the template is for: a variable, continuous / categorical (every variable of that kind); blank: every variable.",テンプレートの対象：変数名、continuous / categorical（その種類の変数すべて）。空欄 = すべての変数。
+Only the ARD rows of this context (one variable summarised two ways); blank: any.,この context の ARD の行だけ（1 つの変数を 2 通りに集計したとき）。空欄 = すべて。
+"The row's label; blank: one row a level, labelled by the level.",行のラベル。空欄 = 水準ごとに 1 行（ラベルは水準名）。
+An R condition on the statistics; the row is used only when it holds; blank: always.,統計量に対する R の条件。成り立つときだけこの行を使う。空欄 = 常に。
+The cell's text with {statistic:format} tokens.,セルの文字。{統計量:書式} を埋め込む。
+"Decimals of a token with no format, a comma between tokens; blank: plan_digits().",書式の無いトークンの小数桁。トークンごとにカンマ区切り。空欄 = plan_digits()。
+Significant digits (wins over digits); blank: none.,有効桁（digits より優先）。空欄 = なし。
+"Table: one row a report. Pages, groups, blank rows, stub; the prefix names the plan verb, the rest its argument.",表：1 行 = 1 帳票。ページ・グループ・空行・スタブ。列名の接頭辞が plan の verb、残りがその引数。
+"Rows a page (plan_paginate_rows(max_rows = )), a whole number; blank: as_rtftables()' default.",1 ページの行数（plan_paginate_rows(max_rows = )）。整数。空欄 = as_rtftables() の既定。
+How a page break may cut: group_safe / group_force / rows / ... (plan_paginate_rows(split = )); blank: as_rtftables()' default.,改ページで切ってよい位置：group_safe / group_force / rows など（plan_paginate_rows(split = )）。空欄 = as_rtftables() の既定。
+"Row positions to cut before, | between them, with pages_split = rows (plan_paginate_rows(break_before = )); blank: none.",この行位置の前で改ページ。| 区切り。pages_split = rows と一緒に（plan_paginate_rows(break_before = )）。空欄 = なし。
+"Rows of a group kept together at the foot of a page, a whole number (plan_paginate_rows(min_group_rows = )); blank: the default.",ページ末に一緒に残すグループの行数（plan_paginate_rows(min_group_rows = )）。整数。空欄 = 既定。
+Appended to a group label continued on the next page (plan_paginate_rows(cont_label = )); quote it to keep leading spaces; blank: none.,次のページに続くグループのラベルに付ける文字（plan_paginate_rows(cont_label = )）。先頭の空白を残すときは引用符で囲む。空欄 = なし。
+With group_page = TRUE: the column whose values each start a page (plan_paginate_group(col = )); blank: the outermost row key.,group_page = TRUE のとき、値ごとにページを始める列（plan_paginate_group(col = )）。空欄 = 一番外の行キー。
+How groups print (plan_row_group(mode = )): value / indent / ...; blank: the default.,グループの表示の仕方（plan_row_group(mode = )）：value / indent など。空欄 = 既定。
+"TRUE, or the columns (names or positions, | between them) whose repeated values print once (plan_row_group(collapse = )); blank: none.",TRUE、または繰り返す値を 1 度だけ表示する列（名前か位置。| 区切り）（plan_row_group(collapse = )）。空欄 = なし。
+TRUE / FALSE: one page per value of group_col (plan_paginate_group()); blank: FALSE.,TRUE / FALSE：group_col の値ごとに 1 ページ（plan_paginate_group()）。空欄 = FALSE。
+"TRUE / FALSE: with group_page, FALSE leaves the group column unprinted (plan_paginate_group(keep = )); blank: TRUE.",TRUE / FALSE：group_page のとき、FALSE でグループの列を表示しない（plan_paginate_group(keep = )）。空欄 = TRUE。
+Where blank rows go: a named rule such as between_groups (plan_blanks(where = )); blank: none.,空行を入れる場所：between_groups などの名前付きの規則（plan_blanks(where = )）。空欄 = なし。
+TRUE / FALSE: a blank row before the first row (plan_blanks(first = )); blank: the default.,TRUE / FALSE：最初の行の前に空行（plan_blanks(first = )）。空欄 = 既定。
+TRUE / FALSE: a blank row after the last row (plan_blanks(last = )); blank: the default.,TRUE / FALSE：最後の行の後に空行（plan_blanks(last = )）。空欄 = 既定。
+TRUE / FALSE: blank rows count towards pages_max_rows (plan_blanks(counted = )); blank: the default.,TRUE / FALSE：空行を pages_max_rows に数える（plan_blanks(counted = )）。空欄 = 既定。
+"The row-key columns folded into one stub column, | between them (plan_stub(vars = )); blank: the row keys.",1 つのスタブ列に畳む行キーの列。| 区切り（plan_stub(vars = )）。空欄 = 行キー。
+The stub column's name (plan_stub(name = )); blank: the default.,スタブ列の名前（plan_stub(name = )）。空欄 = 既定。
+"Spaces a level is indented in the stub, a whole number (plan_stub(indent = )); blank: the default.",スタブで 1 段の字下げに使う空白の数（plan_stub(indent = )）。整数。空欄 = 既定。
+How a group's summary row shows in the stub (plan_stub(group_summary = )); blank: the default.,グループの要約行のスタブでの見せ方（plan_stub(group_summary = )）。空欄 = 既定。
+TRUE / FALSE: fold the stub before cell styles and sorting see the rows (plan_stub(before = )); blank: FALSE.,TRUE / FALSE：セルの書式と並べ替えが行を見る前にスタブを畳む（plan_stub(before = )）。空欄 = FALSE。
+"Value columns a column page, a whole number (plan_paginate_cols(every = )); blank: no column pages.",列ページ 1 枚あたりの値の列数（plan_paginate_cols(every = )）。整数。空欄 = 列ページにしない。
+"The columns to cut before (names or positions), | between them (plan_paginate_cols(at = )).",この列の前で列ページを分ける（名前か位置）。| 区切り（plan_paginate_cols(at = )）。
+A separator in the column names: one column page per key before it (plan_paginate_cols(cut_by = )).,列名の中の区切り文字：その前のキーごとに 1 枚の列ページ（plan_paginate_cols(cut_by = )）。
+"Columns printed on every column page (names or positions), | between them (plan_paginate_cols(keep = )); blank: the stub.",すべての列ページに出す列（名前か位置）。| 区切り（plan_paginate_cols(keep = )）。空欄 = スタブ。
+"TRUE / FALSE: TRUE puts every column page on page 1's width scale, FALSE keeps each column's width (plan_paginate_cols(fit = )); blank: TRUE.",TRUE / FALSE：TRUE = どの列ページも 1 ページ目の幅の比率、FALSE = 列ごとの幅のまま（plan_paginate_cols(fit = )）。空欄 = TRUE。
+TRUE / FALSE: FALSE never cuts inside a spanning header cell (plan_paginate_cols(allow_span_break = )); blank: TRUE.,TRUE / FALSE：FALSE = 列見出しのまとまりの途中では分けない（plan_paginate_cols(allow_span_break = )）。空欄 = TRUE。
+"The order the axes nest in, outermost first: group / rows / cols, or across / down (plan_paginate_cols(order = )); | between them; blank: the default.",入れ子の順（外側から）：group / rows / cols、または across / down（plan_paginate_cols(order = )）。| 区切り。空欄 = 既定。
+"Table: one row a printed column, by name (the stub by stub_name, a value column by its keys joined with tables$sep); .values = every value column. Named columns win over .values.",表：1 行 = 印字される列 1 つ。列は名前で指す（スタブは stub_name の名前、値の列は tables の sep でつないだキー）。.values = 値の列すべて。名前で書いた列が .values より優先。
+"A column name, or .values.",列名、または .values。
+Relative width (a number; plan_columns(widths = )). Give one to every printed column (.values covers the value columns); blank: rtfreporter's widths.,相対幅（数値。plan_columns(widths = )）。書くなら印字される列すべてに（値の列は .values でまとめて）。空欄 = rtfreporter の幅。
+TRUE / FALSE: a row-title column (plan_columns(row_title = )); blank: FALSE.,TRUE / FALSE：行見出しの列（plan_columns(row_title = )）。空欄 = FALSE。
+TRUE / FALSE: align the decimal points (plan_columns(decimal = )); blank: FALSE.,TRUE / FALSE：小数点を揃える（plan_columns(decimal = )）。空欄 = FALSE。
+"TRUE / FALSE: used, not printed (plan_hide()); blank: FALSE.",TRUE / FALSE：処理には使うが印字しない（plan_hide()）。空欄 = FALSE。
+Table: one row a report; plan_style()'s arguments (auto_width goes to plan_columns()). Blank: the document's or rtfreporter's default.,表：1 行 = 1 帳票。plan_style() の引数（auto_width は plan_columns() へ）。空欄 = 文書か rtfreporter の既定。
+"The table's rules: tfl (header top and bottom, a bottom rule on the last row) or none; blank: tfl.",表の罫線：tfl（見出しの上下と最終行の下）か none。空欄 = tfl。
+TRUE / FALSE: realign n (xx.x) count / percent cells to one width; blank: FALSE.,TRUE / FALSE：n (xx.x) のセルを同じ幅に揃える。空欄 = FALSE。
+TRUE / FALSE: size each column to its widest content (plan_columns(auto_width = )); an explicit rel_width wins; blank: FALSE.,TRUE / FALSE：列幅を一番長い中身に合わせる（plan_columns(auto_width = )）。rel_width があればそちらが勝つ。空欄 = FALSE。
+Data row height in twips (1/1440 inch); blank: from the font size.,データ行の高さ（twips = 1/1440 インチ）。空欄 = フォントの大きさから。
+"TRUE / FALSE: TRUE exact (clipped), FALSE at least; blank: FALSE.",TRUE / FALSE：TRUE = その高さちょうど（はみ出しは切る）、FALSE = 最低の高さ。空欄 = FALSE。
+Column-header row height in twips; blank: row_height_twips.,列見出しの行の高さ（twips）。空欄 = row_height_twips。
+Blank separator row height in twips; blank: row_height_twips.,区切りの空行の高さ（twips）。空欄 = row_height_twips。
+Left cell padding in twips; blank: 0.,セルの左の余白（twips）。空欄 = 0。
+Right cell padding in twips; blank: 0.,セルの右の余白（twips）。空欄 = 0。
+Font family of the table; blank: the document's (Courier).,表のフォント。空欄 = 文書のフォント（Courier）。
+Font size in half-points (18 = 9 pt); blank: the document's.,フォントの大きさ（半ポイント。18 = 9 pt）。空欄 = 文書の大きさ。
+Placement of the table: left / center / right; blank: left.,表の位置：left / center / right。空欄 = left。
+Vertical alignment in a cell: bottom / top / center; blank: bottom.,セルの中の縦位置：bottom / top / center。空欄 = bottom。
+"Cell-text markup, one of script (^{} _{} as super / subscript), relational (>= <= as symbols), all, none; blank: the document's (script).",セルの文字の記法：script（^{} _{} で上付き・下付き）、relational（>= <= を記号に）、all、none のどれか。空欄 = 文書の設定（script）。
+"One of detect (an all-empty data row prints as one blank row), collapse (a run of blank rows prints as one), none; blank: both detect and collapse.",detect（すべて空のデータ行を 1 つの空行にする）、collapse（続く空行を 1 つにする）、none のどれか。空欄 = detect と collapse の両方。
+"The column header's rules: sides from top | bottom | left | right, or none; blank: border's.",列見出しの罫線：top | bottom | left | right から辺を選ぶか none。空欄 = border のとおり。
+"The spanning header cells' rules: sides, or none; blank: border's.",スパナー（見出しのまとまり）のセルの罫線：辺か none。空欄 = border のとおり。
+"The body rows' rules: sides, or none; blank: border's.",本文の行の罫線：辺か none。空欄 = border のとおり。
+"The first body row's rules: sides, or none; blank: border's.",本文の最初の行の罫線：辺か none。空欄 = border のとおり。
+"The last body row's rules: sides, or none; blank: border's.",本文の最後の行の罫線：辺か none。空欄 = border のとおり。
+"Table: one row a plan_cell_style(), applied in order; a report's own rows replace the default rows whole.",表：1 行 = 1 つの plan_cell_style()。上から順に効く。帳票の行があれば、その帳票ではデフォルトの行をすべて置き換える。
+"The columns styled, | between them (.values = every value column); blank: every column.",対象の列。| 区切り（.values = 値の列すべて）。空欄 = すべての列。
+TRUE / FALSE: TRUE styles the column header instead of the body; blank: FALSE.,TRUE / FALSE：TRUE で本文ではなく列見出しを対象にする。空欄 = FALSE。
+An R condition over the table's columns choosing the rows; blank: every row. Two rows with a where may not set the same look: join their conditions with |.,対象の行を選ぶ R の条件（表の列で書く）。空欄 = すべての行。where のある行どうしで同じ見た目は設定できない。条件は | でまとめる。
+TRUE / FALSE; blank: unchanged.,TRUE / FALSE。空欄 = そのまま。
+left / center / right; blank: unchanged.,left / center / right。空欄 = そのまま。
+"Text colour, #RRGGBB; blank: unchanged.",文字の色（#RRGGBB）。空欄 = そのまま。
+"Cell shading, #RRGGBB; blank: unchanged.",セルの背景色（#RRGGBB）。空欄 = そのまま。
+Table: one row a header cell (plan_col_header(header = )). A report's own cells replace the default header whole.,表：1 行 = 列見出しのセル 1 つ（plan_col_header(header = )）。帳票の行があればデフォルトの見出しを丸ごと置き換える。
+"The header row, a whole number (1 = the top).",見出しの行番号。整数（1 = 一番上）。
+"The columns the cell sits on: a name, .values (every value column), a position or range (3, 3:31, 3:last), or KEY = value (the columns whose key has that value); | between them.",セルが乗る列：列名、.values（値の列すべて）、位置か範囲（3、3:31、3:last）、KEY = 値（そのキーがその値の列）。| 区切り。
+Blank: one cell over cols; each: one cell a column; a key's name: one cell per value of that key (a spanner).,空欄 = cols 全体で 1 セル、each = 列ごとに 1 セル、キー名 = そのキーの値ごとに 1 セル（スパナー）。
+"What prints; a line break is Alt+Enter or \n. Tokens: {col} {col1} {col2} (the column's keys), {n} {n1} {n2} (the population at that depth, read from the ARD), {n:sum} (the total over the cell's columns). Quote it to keep leading spaces.",表示する文字。改行は Alt+Enter か \n。差し込み：{col} {col1} {col2}（列のキー）、{n} {n1} {n2}（その深さの母集団。ARD から読む）、{n:sum}（セルの列の合計）。先頭の空白を残すときは引用符で囲む。
+left / center / right (col_cell()); blank: the default.,left / center / right（col_cell()）。空欄 = 既定。
+TRUE / FALSE; blank: FALSE.,TRUE / FALSE。空欄 = FALSE。
+The cell's top rule: single / double / none ... (rtf_border()); blank: the header's.,セルの上の罫線：single / double / none など（rtf_border()）。空欄 = 見出しのとおり。
+"The cell's bottom rule, as border_top.",セルの下の罫線。border_top と同じ。
+Report: one row a report; blank output_id: the study's default.,帳票：1 行 = 1 帳票。output_id が空欄の行 = 試験の既定。
+table / listing / figure; blank: table.,table / listing / figure。空欄 = table。
+"The RTF file, relative to the study key output_path; {output_id} is the report's id; blank: {output_id}.rtf.",RTF のファイル（study のキー output_path からの相対パス）。{output_id} は帳票の ID。空欄 = {output_id}.rtf。
+"The program's name, joined to program_dir for {PROGRAM}; blank: {output_id}.",プログラムの名前。program_dir とつないで {PROGRAM} になる。空欄 = {output_id}。
+TRUE / FALSE: each named table a section with its name in the page header (rtf_tables(auto_section = )); blank: FALSE.,TRUE / FALSE：名前の付いた表ごとにセクションにし、名前をページヘッダーに出す（rtf_tables(auto_section = )）。空欄 = FALSE。
+left / center / right: the section label (rtf_tables(section_label_align = )); blank: left.,left / center / right：セクションのラベル（rtf_tables(section_label_align = )）。空欄 = left。
+TRUE / FALSE: each named table's name as its last title line (rtf_tables(auto_title = )); blank: FALSE.,TRUE / FALSE：名前の付いた表の名前をタイトルの最後の行にする（rtf_tables(auto_title = )）。空欄 = FALSE。
+left / center / right: that title line (rtf_tables(title_label_align = )); blank: left.,left / center / right：そのタイトルの行（rtf_tables(title_label_align = )）。空欄 = left。
+The table's font size in half-points (18 = 9 pt) (rtf_tables(font_size_half_points = )); blank: the document's.,表のフォントの大きさ（半ポイント。18 = 9 pt）（rtf_tables(font_size_half_points = )）。空欄 = 文書の大きさ。
+The titles' font size in half-points; blank: the document's.,タイトルのフォントの大きさ（半ポイント）。空欄 = 文書の大きさ。
+The footnotes' font size in half-points; blank: the document's.,脚注のフォントの大きさ（半ポイント）。空欄 = 文書の大きさ。
+"TRUE / FALSE: FALSE drops the running page header for this report, the study's default lines included; blank: TRUE.",TRUE / FALSE：FALSE でこの帳票だけページヘッダーを付けない（試験の既定の行も）。空欄 = TRUE。
+"TRUE / FALSE: FALSE drops the running page footer, likewise; blank: TRUE.",TRUE / FALSE：FALSE でこの帳票だけページフッターを付けない（同じく）。空欄 = TRUE。
+"Report: one row a report; the page (rtf_page()) and the document's text defaults (rtf_default_format()). Blank: rtfreporter's options (landscape Letter, 0.75 in margins).",帳票：1 行 = 1 帳票。用紙（rtf_page()）と文書の文字の既定（rtf_default_format()）。空欄 = rtfreporter の設定（横置き Letter、余白 0.75 インチ）。
+letter / legal / A4 / A3 / A5; blank: letter.,letter / legal / A4 / A3 / A5。空欄 = letter。
+landscape / portrait; blank: landscape.,landscape / portrait。空欄 = landscape。
+Page width in inches (wins over paper_size); blank: the paper's.,用紙の幅（インチ。paper_size より優先）。空欄 = 用紙のとおり。
+Page height in inches; blank: the paper's.,用紙の高さ（インチ）。空欄 = 用紙のとおり。
+Top margin in inches; blank: 0.75.,上の余白（インチ）。空欄 = 0.75。
+Bottom margin in inches; blank: 0.75.,下の余白（インチ）。空欄 = 0.75。
+Left margin in inches; blank: 0.75.,左の余白（インチ）。空欄 = 0.75。
+Right margin in inches; blank: 0.75.,右の余白（インチ）。空欄 = 0.75。
+"From the page's top edge to the running header, in inches; blank: the top margin.",用紙の上端からページヘッダーまで（インチ）。空欄 = 上の余白。
+"From the page's bottom edge to the running footer, in inches; blank: the bottom margin.",用紙の下端からページフッターまで（インチ）。空欄 = 下の余白。
+The body font size in half-points (18 = 9 pt); blank: rtfreporter's option.,本文のフォントの大きさ（半ポイント。18 = 9 pt）。空欄 = rtfreporter の設定。
+text (centred paragraphs) / table (a content-width one-column table); blank: text.,text（中央揃えの段落）/ table（本文の幅の 1 列の表）。空欄 = text。
+"table (content-width, with the separator rule) / text (paragraphs); blank: table.",table（本文の幅、区切り線あり）/ text（段落）。空欄 = table。
+The title block's width: content / page / a fraction of the writable width / twips; blank: content.,タイトルの幅：content / page / 書ける幅に対する割合 / twips。空欄 = content。
+"The footnote block's width, as title_width; blank: content.",脚注の幅。title_width と同じ。空欄 = content。
+Cell-text markup for the whole document: script / relational / all / none; blank: script.,文書全体のセルの文字の記法：script / relational / all / none。空欄 = script。
+"Report: the running page header, one row a line; the line is the key (the study's lines on blank output_id, a report's own on its rows). A line with no text is a blank line.",帳票：ページヘッダー。1 行 = 1 行。line がキー（試験共通は output_id 空欄の行、帳票独自はその帳票の行）。文字の無い行は空行。
+"The line number, a whole number (1 = the top).",行番号。整数（1 = 一番上）。
+The text at the left; tokens work.,左の文字。差し込み記号が使える。
+The text in the centre.,中央の文字。
+The text at the right.,右の文字。
+"Report: the running page footer, one row a line, as header. A line 99 on blank output_id closes every report.",帳票：ページフッター。1 行 = 1 行。header と同じ書き方。output_id 空欄の 99 行目は全帳票の最後に付く。
+The line number.,行番号。
+The text at the left.,左の文字。
+"Report: the titles above the table, one row a line, as header.",帳票：表の上のタイトル。1 行 = 1 行。header と同じ書き方。
+"Report: the footnotes below the table, one row a line, as header.",帳票：表の下の脚注。1 行 = 1 行。header と同じ書き方。
+Listing: one row a listing (listing_spec()).,リスト：1 行 = 1 リスト（listing_spec()）。
+An rtfreporter listing type (listing_spec(type = )); blank: multiline.,rtfreporter のリストの型（listing_spec(type = )）。空欄 = multiline。
+The dataset listed (of the ARD spec's datasets catalog).,リストにするデータセット（ARD Spec の datasets の中から）。
+An R condition on its columns choosing the rows; blank: every row.,その列に対する、行を選ぶ R の条件。空欄 = すべての行。
+"The sort variables, | between them, - in front for descending; blank: the data's order.",並べ替えの変数。| 区切り、降順は前に -。空欄 = データの順。
+"Rows a page, a whole number; blank: rtfreporter's default.",1 ページの行数。整数。空欄 = rtfreporter の既定。
+"Listing: one row a printed column, in order (listing_col()).",リスト：1 行 = 印字される列 1 つ（この順。listing_col()）。
+"The variables stacked in the column, | between them.",列に縦に積む変数。| 区切り。
+The column header; \n is a line break; blank: the variables' names.,列見出し。\n で改行。空欄 = 変数名。
+"Characters a line before the cell wraps (listing_col(width = )), a whole number; blank: never wraps.",セルを折り返す前の 1 行の文字数（listing_col(width = )）。整数。空欄 = 折り返さない。
+TRUE / FALSE: TRUE prints a value once until it changes; blank: FALSE.,TRUE / FALSE：TRUE で値が変わるまで 1 度だけ表示する。空欄 = FALSE。
+cell_styles: cell looks,cell_styles セルの見た目
