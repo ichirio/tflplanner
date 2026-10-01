@@ -41,6 +41,45 @@ report_info <- function(x, output_id) {
        file = if (is.na(out)) file else file.path(out, file))
 }
 
+# The datasets a report reads, as the report list shows them: a table the
+# data of its ARD analyses (each analysis's dataset, and its population's),
+# a listing its dataset, a figure the datasets its design reads (or, without
+# a design, the ones its row names).  In the order first used.
+.report_datasets <- function(x, output_id, type = report_info(x, output_id)$type) {
+  ds <- switch(type,
+    table = {
+      a <- x$ard$analyses
+      a <- a[!is.na(a$output_id) & a$output_id == output_id, , drop = FALSE]
+      po <- x$ard$populations
+      pop_ds <- po$dataset[match(a$population_id, po$population_id)]
+      c(ifelse(is.na(a$dataset), pop_ds, a$dataset), pop_ds)
+    },
+    listing = {
+      l <- x$lf$listings
+      l$dataset[!is.na(l$output_id) & l$output_id == output_id]
+    },
+    figure = {
+      d <- (x$fig_designs %||% list())[[output_id]]
+      steps <- d$data %||% list()
+      read <- unlist(lapply(steps, function(s)
+        if (isTRUE(s$step %in% c("read", "join"))) s$dataset))
+      if (length(read)) read else {
+        f <- x$lf$figures
+        unlist(strsplit(f$datasets[!is.na(f$output_id) &
+                                     f$output_id == output_id], "\\s*\\|\\s*"))
+      }
+    },
+    character())
+  ds <- trimws(as.character(ds))
+  unique(ds[!is.na(ds) & nzchar(ds)])
+}
+
+# A report's title for the report list: its own title lines (not the
+# running study lines), one after another.
+.report_title <- function(x, output_id) {
+  paste(.title_lines(x, output_id), collapse = " / ")
+}
+
 # The titles as one line each, for the program's banner.
 .title_lines <- function(x, output_id) {
   d <- x$sheets$titles

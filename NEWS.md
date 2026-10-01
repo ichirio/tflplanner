@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **The report list says what each report reads, and its title** (#46).
+  The Data column names the datasets a report reads -- a table its ARD
+  analyses' data and their populations', a listing its dataset, a figure
+  the datasets its design (or its row) reads: `adsl`, `adae / adsl` --
+  with "(reworked by its own code)" when the report has data code; the
+  ARD's state shows on hover.  The Description column is now the Title:
+  the report's titles (the titles sheet's own lines; without them, its
+  description), cut short with the whole title on hover.  The report
+  types stay Table / Listing / Figure in the Japanese app too.
+
 - **The setup, shortcut and update questions say what they do** (#44).
   Before it asks, `add_shortcut()` lists each shortcut by name and by
   place (Windows: desktop and Start menu; macOS: Applications; Linux: the

@@ -62,3 +62,43 @@ test_that("a definition that does not hold yet still gives a program, which says
   hit <- grep("tflplanner: the definition of DM does not hold", code, fixed = TRUE)
   expect_length(hit, 1L)
 })
+
+test_that("the report list names the datasets a report reads, and its title", {
+  home <- withr_tempdir()
+  old <- options(tflplanner.home = home)
+  on.exit(options(old), add = TRUE)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
+  p <- suppressMessages(create_sample_study(run = FALSE))$planner
+  # a table: its analyses' data and their population's
+  expect_identical(.report_datasets(p, "T-14-1-1"), "ADSL")
+  expect_identical(.report_datasets(p, "T-14-3-1"), c("ADAE", "ADSL"))
+  # a listing: its dataset
+  expect_identical(.report_datasets(p, "L-16-2-7"), "ADAE")
+  # a figure: the datasets its row names, or its design reads
+  expect_identical(.report_datasets(p, "F-14-2-2"), "ADTTE")
+  d <- tflspec::tfl_fig_template("mean_ci", data = "ADVS", param = "SYSBP",
+                                  value = "CHG")
+  p2 <- set_fig_design(p, "F-14-2-1", d)
+  expect_identical(.report_datasets(p2, "F-14-2-1"), c("ADVS", "ADSL"))
+  # the title: the titles sheet's own lines, not the running study lines
+  expect_identical(.report_title(p, "T-14-1-1"), "")
+  p$sheets$titles <- data.frame(
+    output_id = c(NA, "T-14-1-1", "T-14-1-1"), line = c("1", "1", "2"),
+    left = NA, center = c("Study {PAGE}", "Table 14.1.1", "Demographics"),
+    right = NA, note = NA, stringsAsFactors = FALSE)
+  expect_identical(.report_title(p, "T-14-1-1"), "Table 14.1.1 / Demographics")
+})
+
+test_that("the report list's cells are escaped, cut short, with the whole on hover", {
+  expect_identical(.cell_tip("a<b"), "a&lt;b")
+  expect_identical(.cell_tip("a<b", 'x"y'), '<span title="x&quot;y">a&lt;b</span>')
+  long <- strrep("a", 80)
+  expect_identical(nchar(.ellipsis(long, 70L)), 70L)
+  expect_identical(.ellipsis("short", 70L), "short")
+})
+
+test_that("the report types stay English in the Japanese app", {
+  expect_identical(tr(c("Table", "Listing", "Figure"), "ja"),
+                   c("Table", "Listing", "Figure"))
+  expect_identical(tr("Report title", "ja"), "タイトル")
+})
