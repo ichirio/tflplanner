@@ -136,3 +136,26 @@ test_that("the definition is saved, reopened and run", {
   expect_identical(g2$planner$ard, g$planner$ard)
   expect_identical(g2$planner$sheets, g$planner$sheets)
 })
+
+test_that("the study's analyses are exported as CDISC ARS", {
+  local_home2()
+  p <- ard_planner()
+  p$ard$analyses$purpose <- "SECONDARY OUTCOME MEASURE"
+  s <- create_study("A2", planner = p)
+  d <- withr_tempdir()
+  f <- export_ars(s, d)
+  expect_true(all(file.exists(f)))
+  expect_identical(basename(f[["json"]]), "A2_ars.json")
+  ars <- tflspec::tfl_read_ars_json(f[["json"]])
+  expect_identical(ars$id, "A2")
+  expect_identical(vapply(ars$outputs, `[[`, "", "id"), "DM")
+  expect_true("ReportingEvent" %in% readxl::excel_sheets(f[["xlsx"]]))
+  ck <- utils::read.csv(f[["check"]], stringsAsFactors = FALSE)
+  expect_false(any(ck$kind == "check" & ck$item == "purpose"))
+  # a blank purpose is listed
+  s$planner$ard$analyses$purpose <- NA
+  ck <- utils::read.csv(export_ars(s, d)[["check"]], stringsAsFactors = FALSE)
+  expect_true(any(ck$item == "purpose"))
+  s$planner$ard$analyses <- s$planner$ard$analyses[0, ]
+  expect_error(export_ars(s, d), "no analyses")
+})

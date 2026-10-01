@@ -53,6 +53,7 @@ reference:
       - create_sample_study
       - save_study
       - export_spec
+      - export_ars
       - study_layout
       - study_files
       - read_data_head
