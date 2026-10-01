@@ -1130,3 +1130,10 @@ The column header; \n is a line break; blank: the variables' names.,列見出し
 "Characters a line before the cell wraps (listing_col(width = )), a whole number; blank: never wraps.",セルを折り返す前の 1 行の文字数（listing_col(width = )）。整数。空欄 = 折り返さない。
 TRUE / FALSE: TRUE prints a value once until it changes; blank: FALSE.,TRUE / FALSE：TRUE で値が変わるまで 1 度だけ表示する。空欄 = FALSE。
 cell_styles: cell looks,cell_styles セルの見た目
+A word drawn diagonally behind every page (rtf_document(watermark = )); blank: none.,全ページの本文の後ろに斜めに入れる文字（rtf_document(watermark = )）。空欄 = なし。
+A figure report: the figure's width in inches (rtf_figures(width_twips = )); blank: the figure's own.,図の帳票：図の幅（インチ。rtf_figures(width_twips = )）。空欄 = 図そのものの幅。
+A figure report: the figure's height in inches (rtf_figures(height_twips = )); blank: the figure's own.,図の帳票：図の高さ（インチ。rtf_figures(height_twips = )）。空欄 = 図そのものの高さ。
+TRUE / FALSE: a blank row after each record (listing_spec(blank_row = )); blank: the type's.,TRUE / FALSE：レコードごとに後ろに空行（listing_spec(blank_row = )）。空欄 = 型の既定。
+The name of an R function that breaks a cell into lines (listing_spec(wrap = )); blank: the type's own rule.,セルを行に折り返す R の関数の名前（listing_spec(wrap = )）。空欄 = 型の既定の規則。
+What separates the stacked variables (listing_col(sep = )); quote it to keep its spaces; blank: the type's (/).,縦に積む変数の区切り（listing_col(sep = )）。空白を残すときは引用符で囲む。空欄 = 型の既定（/）。
+left / center / right (listing_col(align = )); blank: the type's (left).,left / center / right（listing_col(align = )）。空欄 = 型の既定（left）。
