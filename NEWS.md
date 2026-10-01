@@ -6,7 +6,7 @@
   CDISC's Excel template of it, and `ars_check.csv` (what the check finds
   and what ARS does not say).  The Study tab has a button for it ("Export
   the analyses as CDISC ARS").  The ARD definition's analyses gain the
-  `purpose` / `reason` columns (from tflspec).  Needs tflspec 0.0.24.9008.
+  `purpose` / `reason` columns (from tflspec).  Needs tflspec 0.0.24.9009.
 
 - The two definition workbooks are written by tflspec
   (`tfl_write_table_spec()` / `tfl_write_report_spec()`): each holds only
