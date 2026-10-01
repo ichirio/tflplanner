@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **tflspec's new listing and report columns** (ichirio/tflspec#64): the
+  listing sheets' `blank_row`, `wrap`, `sep` and `align`, and the report
+  sheet's `watermark`, `figure_width_in` and `figure_height_in` show in
+  Details (sheets), with their help in the app's language.  Needs tflspec
+  0.0.24.9013.
+
 - **The cell_styles sheet in Details (sheets)** (ichirio/tflspec#64).
   tflspec's table spec has a `cell_styles` sheet (one
   `plan_cell_style()` a row); it is now a table sheet of the study's
