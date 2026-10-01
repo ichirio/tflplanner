@@ -253,7 +253,7 @@ app_ui <- function(lang = "en") {
       shiny::uiOutput(paste0("inh_", sheet)),
       shiny::tags$details(
         class = "rp-help mt-2",
-        shiny::tags$summary(t("Column help (_README)")),
+        shiny::tags$summary(t("Column help")),
         DT::DTOutput(paste0("help_", sheet))))
   }
   grid_note <- shiny::p(
@@ -697,9 +697,7 @@ $(document).on('shiny:value', function(e) {
 .ard_closed_columns <- c("dataset", "population_id")
 
 .help_table <- function(sheet) {
-  rd <- .readme()
-  if (is.null(rd)) return(NULL)
-  rd <- rd[!is.na(rd$sheet) & rd$sheet == sheet, , drop = FALSE]
+  rd <- tflspec::tfl_spec_columns(sheet)
   rd$sheet <- NULL
   rd
 }
