@@ -728,9 +728,11 @@ $(document).on('shiny:value', function(e) {
 # takes any pkg::function.
 .ard_closed_columns <- c("dataset", "population_id", "denominator")
 
+# tflspec's column help is English; the app shows it in its language
 .help_table <- function(sheet) {
   rd <- tflspec::tfl_spec_columns(sheet)
   rd$sheet <- NULL
+  rd$description <- tr(rd$description)
   rd
 }
 
@@ -2516,7 +2518,7 @@ app_server <- function(input, output, session, start) {
       }
     }
     tryCatch(switch(scope,
-      report = ard_program_code(a, id),
+      report = ard_program_code(a, id, dir = rv$study$path),
       setup = ard_setup_code(a),
       autoexec = ard_autoexec_code(a)),
       error = function(e) msg(paste(t("The code cannot be written yet:"),

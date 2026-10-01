@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **Follows tflspec's column names and help** (ichirio/tflspec#64).  The
+  table spec's `columns$width` is `rel_width`, and the report's
+  `table_font_size` / `title_font_size` / `footnote_font_size` are
+  `*_font_size_half_points` -- in the company standards' defaults, their
+  draft workbook and the sample study (SAMPLE-01; its eight reports'
+  RTFs unchanged).  tflspec's column help is English now; the app shows
+  it in Japanese from its own translations.  An ARD built before a
+  study's own analysis functions (its key `source`) changed shows as
+  outdated.  Needs tflspec 0.0.24.9011.
+
 - **The ARD form's strata and denominator** (ichirio/tflspec#64).  An
   analysis may be repeated within variables ("Repeated within (strata)":
   a subgroup, a parameter by visit) and say what its percentages are of

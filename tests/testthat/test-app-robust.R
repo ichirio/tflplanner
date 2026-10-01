@@ -448,3 +448,11 @@ test_that("a preview's spanning header cells span their columns", {
   expect_match(h, "SOC<br>PT")
   expect_match(h, "Placebo")
 })
+
+test_that("tflspec's column help (English) is shown in the app's language", {
+  d <- tflspec::tfl_spec_columns()
+  ja <- tr(unique(d$description), lang = "ja")
+  # every description has its translation
+  expect_identical(sum(ja == unique(d$description)), 0L)
+  expect_identical(tr("The variable's name.", lang = "ja"), "変数名。")
+})

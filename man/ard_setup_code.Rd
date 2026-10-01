@@ -8,7 +8,7 @@
 \usage{
 ard_setup_code(spec, date = Sys.Date())
 
-ard_program_code(spec, output_id, date = Sys.Date())
+ard_program_code(spec, output_id, date = Sys.Date(), dir = ".")
 
 ard_autoexec_code(spec, date = Sys.Date())
 }
@@ -18,6 +18,9 @@ ard_autoexec_code(spec, date = Sys.Date())
 \item{date}{The date stamped in the banner.}
 
 \item{output_id}{The output.}
+
+\item{dir}{The study folder: the fingerprint recorded with the ARD reads
+the study's own analysis functions (its key \code{source}) from it.}
 }
 \value{
 The code, one element per line.
