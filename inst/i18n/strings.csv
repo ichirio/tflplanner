@@ -101,6 +101,7 @@ Deliverable reports: RTF,成果物帳票: RTF
 Run logs,実行ログ
 Import definition workbooks (replaces this study's definition),Excel の定義ブックを取り込む（この試験の定義を置き換え）
 Export the definition (Excel),定義ブックを書き出す (Excel)
+Export the analyses as CDISC ARS,解析を CDISC ARS で書き出す
 Download the study (zip),試験を zip でダウンロード
 with data,データも含める
 Open the study folder,試験フォルダを開く

@@ -1482,6 +1482,9 @@ app_server <- function(input, output, session, start) {
                  shiny::downloadButton("spec_xlsx",
                                        t("Export the definition (Excel)"),
                                        class = "btn-sm"),
+                 shiny::downloadButton("ars_zip",
+                                       t("Export the analyses as CDISC ARS"),
+                                       class = "btn-sm"),
                  shiny::downloadButton("study_zip",
                                        t("Download the study (zip)"),
                                        class = "btn-sm"),
@@ -1522,6 +1525,13 @@ app_server <- function(input, output, session, start) {
     content = function(file) {
       d <- tempfile("spec")
       export_spec(current_study(), d)
+      zip::zipr(file, list.files(d, full.names = TRUE))
+    })
+  output$ars_zip <- shiny::downloadHandler(
+    filename = function() paste0(rv$study$meta$study_id, "_ars.zip"),
+    content = function(file) {
+      d <- tempfile("ars")
+      export_ars(current_study(), d)
       zip::zipr(file, list.files(d, full.names = TRUE))
     })
   output$study_zip <- shiny::downloadHandler(

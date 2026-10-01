@@ -291,6 +291,54 @@ export_spec <- function(study, dir) {
   invisible(out)
 }
 
+#' Export the study's analyses as CDISC ARS
+#'
+#' Writes the study's ARD definition -- with its table and report
+#' definitions: levels, titles, footnotes, files -- as a CDISC Analysis
+#' Results Standard reporting event ([tflspec::tfl_ars()]): the ARS JSON
+#' (the form to exchange), CDISC's Excel template of it (to read), and
+#' `ars_check.csv`, what [tflspec::tfl_check_ars()] finds and what the ARS
+#' does not say ([tflspec::tfl_ars_unmapped()]).  An analysis needs its
+#' `purpose` (a column of the ARD definition's analyses) for the ARS to be
+#' complete; a blank one is listed.
+#'
+#' @param study An `rtfstudy`.
+#' @param dir Destination folder.
+#' @param profile `"cdisc"`, or `"siera"` for a reporting event siera can
+#'   run (see [tflspec::tfl_ars()]).
+#' @return The paths written, invisibly.
+#' @export
+export_ars <- function(study, dir, profile = c("cdisc", "siera")) {
+  profile <- match.arg(profile)
+  a <- study$planner$ard
+  if (is.null(a) || !nrow(a$analyses)) {
+    stop("The study has no analyses in its ARD definition.", call. = FALSE)
+  }
+  p <- study$planner
+  id <- study$meta$study_id
+  ars <- tflspec::tfl_ars(
+    .ard_spec(a), table_spec = .spec_object(p, table_sheets(),
+                                            .study_keys$table),
+    report_spec = .spec_object(p, report_sheets(), .study_keys$report),
+    profile = profile, study_id = id)
+  dir.create(dir, showWarnings = FALSE, recursive = TRUE)
+  base <- file.path(dir, paste0(id, "_ars", if (profile == "siera") "_siera"))
+  json <- tflspec::tfl_write_ars_json(ars, paste0(base, ".json"))
+  xlsx <- tflspec::tfl_write_ars_xlsx(ars, paste0(base, ".xlsx"),
+                                      overwrite = TRUE)
+  ck <- suppressMessages(tflspec::tfl_check_ars(ars))
+  un <- tflspec::tfl_ars_unmapped(ars)
+  rep <- rbind(
+    data.frame(kind = rep("check", nrow(ck)), where = ck$part,
+               item = ck$field, note = ck$problem, stringsAsFactors = FALSE),
+    data.frame(kind = rep("not in ARS", nrow(un)), where = un$where,
+               item = un$item, note = un$reason, stringsAsFactors = FALSE))
+  csv <- file.path(dir, "ars_check.csv")
+  utils::write.csv(rep, csv, row.names = FALSE, na = "",
+                   fileEncoding = "UTF-8")
+  invisible(c(json = json, xlsx = xlsx, check = csv))
+}
+
 #' @rdname export_spec
 #' @export
 import_spec <- function(study, path) {

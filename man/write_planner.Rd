@@ -22,10 +22,11 @@ write_planner(
 The two paths, invisibly.
 }
 \description{
-\code{table_spec.xlsx} gets the table sheets and \code{rounding};
-\code{report_spec.xlsx} the report sheets, \code{output_path}, \code{program_dir}, and
-the \verb{_tflplanner} sheet (report list and data code).  Both carry every
-sheet rtfreporter defines -- the other half's sheets empty -- and its
-\verb{_README}, and both are checked by \code{\link[tflspec:tfl_table_spec]{tflspec::tfl_table_spec()}} on the
-way out.
+\code{table_spec.xlsx} gets the table sheets and \code{rounding}
+(\code{\link[tflspec:tfl_write_table_spec]{tflspec::tfl_write_table_spec()}}); \code{report_spec.xlsx} the report
+sheets, \code{output_path}, \code{program_dir} (\code{\link[tflspec:tfl_write_table_spec]{tflspec::tfl_write_report_spec()}})
+and the \verb{_tflplanner} sheet (report list and data code).  Each holds only
+its own half's sheets; what a column means is a comment on its header
+cell (\code{\link[tflspec:tfl_spec_columns]{tflspec::tfl_spec_columns()}}).  Both are checked by
+\code{\link[tflspec:tfl_table_spec]{tflspec::tfl_table_spec()}} on the way out.
 }
