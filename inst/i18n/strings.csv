@@ -938,3 +938,10 @@ A newer version is out:,新しい版があります:
 "To update: close tflplanner and start it from the ""update and launch"" shortcut, or run update_tflplanner() in R.",更新するには、tflplanner を閉じてショートカット「更新して起動」から起動するか、R で update_tflplanner() を実行してください。
 Look for a newer version when tflplanner starts,起動時に新しい版を確認する
 "Updates (%s channel) are installed from R, not from the app: update_tflplanner(), or the ""update and launch"" shortcut.",更新（%s の版）はアプリではなく R から行います: update_tflplanner()、またはショートカット「更新して起動」。
+Repeated within (strata),層（この中で繰り返す）
+Percentages of (denominator),% の分母
+the method's default,メソッドの既定
+the analysis set,解析対象集団
+within a row,行の中で
+within a column,列の中で
+of the whole table,表全体

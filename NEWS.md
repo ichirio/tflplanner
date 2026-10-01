@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **The ARD form's strata and denominator** (ichirio/tflspec#64).  An
+  analysis may be repeated within variables ("Repeated within (strata)":
+  a subgroup, a parameter by visit) and say what its percentages are of
+  ("Percentages of": the analysis set, within a row / column / the whole
+  table, another population or a dataset) -- the ARD spec's new
+  `strata` and `denominator` columns, also on the analyses grid.  The
+  study sheet offers the key `source` (R files of the study's own
+  analysis functions).  Needs tflspec 0.0.24.9010.
+
 - **Set up, update and start tflplanner without the console** (#40).  The
   console is needed only for what the app cannot do for itself:
   `setup_tflplanner()` with no arguments asks, step by step, for the home,
