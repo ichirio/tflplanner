@@ -682,6 +682,13 @@ $(document).on('shiny:value', function(e) {
     $('#builder_preview').css('opacity', 1);
   }
 });
+// Save: says \"Saving...\" at once and cannot be pressed again until the
+// server has finished (it then draws the button and the state anew).
+$(document).on('click', '#save', function() {
+  var b = $(this), saving = b.attr('data-saving');
+  setTimeout(function() { b.prop('disabled', true).text(saving); }, 0);
+  $('#save_state').html('<span class=\"text-muted me-2\">' + saving + '</span>');
+});
 "
 
 .unsaved_js <- "
@@ -786,7 +793,7 @@ app_server <- function(input, output, session, start) {
   rv <- shiny::reactiveValues(
     study = NULL, p = NULL, saved = NULL, meta = NULL, saved_meta = NULL,
     ver = 0L, want = NULL, job = NULL, job_what = NULL, status_ver = 0L,
-    studies_ver = 0L, ard_ver = 0L)
+    studies_ver = 0L, ard_ver = 0L, save_ver = 0L)
   bump <- function() rv$ver <- rv$ver + 1L
   # an ARD method's name and note as the user reads them: the translation
   # kept by the app under "method:<name>" / "method-note:<name>", else
@@ -968,10 +975,14 @@ app_server <- function(input, output, session, start) {
     TRUE
   }
   shiny::observeEvent(input$save, {
+    # the button and the state are drawn anew once done, whatever happened
+    # (the page made them say "Saving..." and the button unpressable)
+    on.exit(rv$save_ver <- shiny::isolate(rv$save_ver) + 1L, add = TRUE)
     if (!has_study()) return(notify(t("Open a study first"), "warning"))
     do_save()
   })
   output$save_state <- shiny::renderUI({
+    rv$save_ver
     if (!has_study()) return(NULL)
     if (dirty()) {
       shiny::span(class = "rp-dirty me-2",
@@ -1028,8 +1039,11 @@ app_server <- function(input, output, session, start) {
   })
   output$n_studies <- shiny::renderText(nrow(studies()))
   shiny::outputOptions(output, "n_studies", suspendWhenHidden = FALSE)
-  output$save_btn <- shiny::renderUI(
-    if (has_study()) .btn("save", t("Save"), class = "btn-sm btn-primary"))
+  output$save_btn <- shiny::renderUI({
+    rv$save_ver
+    if (has_study()) .btn("save", t("Save"), class = "btn-sm btn-primary",
+                          `data-saving` = t("Saving..."))
+  })
   # no study yet: the ways to start, the sample first
   output$welcome <- shiny::renderUI({
     if (nrow(studies())) return(NULL)
@@ -1642,11 +1656,17 @@ app_server <- function(input, output, session, start) {
   # the sidebar is for an open study
   shiny::observe(bslib::toggle_sidebar("side", open = has_study()))
   target <- shiny::reactive(.target_value(input$target))
-  current <- shiny::reactive({
+  current_now <- shiny::reactive({
     tg <- target()
     if (!is.null(rv$p) && !is.na(tg) && nzchar(tg) &&
         tg %in% rv$p$outputs$output_id) tg else NULL
   })
+  # The report chosen, passed on only when it changes.  It reads rv$p (is
+  # the report still there?), which every edit writes: as a reactive, each
+  # edit invalidated everything drawn for the report -- the table builder's
+  # form among them, redrawn (closed, the text lost) while being typed in.
+  current <- shiny::reactiveVal(NULL)
+  shiny::observe(current(current_now()), priority = 100)
 
   # -- where the user is ---------------------------------------------------
   # A report's screens are the Reports tab's sub-tabs (the list, its
@@ -1849,8 +1869,16 @@ app_server <- function(input, output, session, start) {
   output$assist_col_header <- shiny::renderUI(assist_box(
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-end",
-      shiny::selectInput("header_preset", t("Column header preset"),
-                         names(header_presets()), width = "300px"),
+      {
+        # the presets that fit this report (all, for the study defaults)
+        id <- current()
+        m <- if (!is.null(id)) meta_of(id)
+        hp <- if (is.null(m)) header_presets() else NULL
+        ch <- if (is.null(m)) names(hp) else .header_preset_choices(
+          length(m$hierarchy) > 0L, .key_label(m, m$by[1L]))
+        shiny::selectInput("header_preset", t("Column header preset"), ch,
+                           width = "300px")
+      },
       .btn("add_header", t("Set column header"), class = "btn-sm mb-3"),
       shiny::span(class = "small text-muted mb-3",
                   t("Replaces this report's column header rows."))),
@@ -2744,14 +2772,14 @@ app_server <- function(input, output, session, start) {
     f <- lf_rows(p, "figures", id)
     have <- if (nrow(f)) .split_bar(f$datasets[1L]) else character()
     bslib::card(
-      bslib::card_header(t("Written by hand")),
+      bslib::card_header(t("The plot written by hand (ggplot2)")),
       shiny::p(class = "small text-muted",
                t("This figure's plot is its data code (Reports tab), written with ggplot2: it leaves `plot`. Its program reads these datasets first.")),
       shiny::h6(t("Data the figure reads")),
       shiny::selectizeInput(lf_id("fig_ds"), NULL, ds_choices,
                             selected = have, multiple = TRUE,
                             width = "100%"),
-      shiny::h6(t("The program's data part")),
+      shiny::h6(t("The code that makes the plot (edit it on the Reports tab)")),
       shiny::div(class = "rp-code", shiny::verbatimTextOutput("lf_fig_code")))
   }
   output$lf_form <- shiny::renderUI({
@@ -2905,10 +2933,15 @@ app_server <- function(input, output, session, start) {
   rv$bver <- 0L
   rv$btouched <- FALSE
   # the page shown: a Tables sub-tab counts as its own page
-  active_page <- shiny::reactive({
+  active_page_now <- shiny::reactive({
     nav <- page()
     if (identical(nav, "tables")) input$table_nav %||% "builder" else nav
   })
+  # Passed on only when the page changes: page() reads the report's kind
+  # from rv$p, which every edit writes -- as a reactive, each edit counted
+  # as opening the builder again and redrew its form mid-typing.
+  active_page <- shiny::reactiveVal("")
+  shiny::observe(active_page(active_page_now()), priority = 100)
   shiny::observeEvent(active_page(), {
     if (identical(active_page(), "builder")) rv$bver <- rv$bver + 1L
     if (active_page() %in% c("table_spec", "report_spec") && rv$btouched) {
@@ -2916,7 +2949,7 @@ app_server <- function(input, output, session, start) {
       bump()
     }
   })
-  builder_case <- shiny::reactive({
+  builder_case_now <- shiny::reactive({
     id <- current()
     if (is.null(id)) return("none")
     if (!identical(report_info(rv$p, id)$type, "table")) return("type")
@@ -2925,6 +2958,11 @@ app_server <- function(input, output, session, start) {
     if (length(m$hierarchy)) return("hierarchy")
     "ok"
   })
+  # Passed on only when it changes: the case reads rv$p, which every edit of
+  # the form writes, and the form is drawn from the case -- a reactive would
+  # redraw the form (closing it, losing the text being typed) at each edit.
+  builder_case <- shiny::reactiveVal("none")
+  shiny::observe(builder_case(builder_case_now()), priority = 100)
   # A table whose rows are in the study ARD (made by an official run, the
   # sample's for one) but not read for the builder yet: read them when its
   # builder is opened -- no new ARD, only the reading (once a report).
@@ -2984,8 +3022,12 @@ app_server <- function(input, output, session, start) {
         shiny::uiOutput(bid("arms_ui")),
         shiny::radioButtons(
           bid("header"), t("Column header"),
-          stats::setNames(c("keep", names(header_presets())),
-                          c(t("as it is"), names(header_presets()))),
+          {
+            # the presets for a table like this one, named after its columns
+            hp <- .header_preset_choices(length(m$hierarchy) > 0L,
+                                         .key_label(m, st$key))
+            stats::setNames(c("keep", unname(hp)), c(t("as it is"), names(hp)))
+          },
           selected = "keep", inline = TRUE),
         if (!is.na(st$key) && !.has_group_n(shiny::isolate(rv$p), id, st$key))
           shiny::div(
@@ -3290,6 +3332,12 @@ app_server <- function(input, output, session, start) {
     names(v) <- c(t(c("output_id", "Type", "Program", "RTF", "Data")),
                   if (identical(lang, "en")) "Title" else t("Report title"))
     DT::datatable(v, rownames = FALSE, escape = FALSE,
+                  # a double click opens the report, as in the study list
+                  callback = DT::JS(
+                    "table.on('dblclick', 'tbody tr', function() {",
+                    "  var i = table.row(this).index();",
+                    "  if (i !== undefined) Shiny.setInputValue('outputs_dbl', i + 1, {priority: 'event'});",
+                    "});"),
                   selection = list(mode = "single",
                                    selected = if (!is.na(sel)) sel),
                   options = list(dom = "t", paging = FALSE,
@@ -3301,6 +3349,14 @@ app_server <- function(input, output, session, start) {
     if (!identical(input$outputs_rows_selected, if (!is.na(sel)) sel)) {
       DT::selectRows(DT::dataTableProxy("outputs"), if (!is.na(sel)) sel)
     }
+  })
+  # a double click on a report: open its Content
+  shiny::observeEvent(input$outputs_dbl, {
+    v <- shiny::isolate(outputs_view())
+    id <- v$output_id[input$outputs_dbl]
+    if (!length(id) || is.na(id)) return()
+    shiny::updateSelectInput(session, "target", selected = id)
+    bslib::nav_select("rep_nav", "content")
   })
   shiny::observeEvent(input$outputs_rows_selected, {
     v <- shiny::isolate(outputs_view())

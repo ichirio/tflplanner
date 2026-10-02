@@ -378,7 +378,7 @@ Choose a Figure report in the sidebar.,サイドバーで図（Figure）の帳�
 The Plot Designer designs figures: choose a Figure report in the sidebar.,プロットデザイナーは図を設計します。サイドバーで図（Figure）の帳票を選んでください。
 "This figure's plot is written by hand (its data code, Reports tab). Start a design to make it from a figure type instead: the plot's code is then made from the design.",この図のプロットは手書きのコードです（帳票タブのデータコード）。デザインを開始すると、図の種類から設計でき、プロットのコードはデザインから作られます。
 The figure is made from its design. Change it on the left: the figure is redrawn as its program will save it. Empty = the default (shown grey).,この図はデザインから作られます。左で変更すると、プログラムが保存するのと同じ図が再描画されます。空欄 = デフォルト（灰色で表示）。
-Start a design,デザインを開始
+Start a design,デザインから作る（テンプレート・会社のプリセット）
 Figure type,図の種類
 Start the design,デザインを開始する
 Design,デザイン
@@ -822,12 +822,12 @@ choose the data,データを選んでください
 The template's choices could not be made from the data: %s,データからテンプレートの選択肢を作れませんでした: %s
 "A new figure: choose a template -- those this study's data cannot draw are greyed, with the data they need -- and start the design. To write the plot with ggplot2 instead, open Advanced below.",新しい図です。テンプレートを選んでデザインを始めてください（この試験のデータで描けないものは、要るデータとともに灰色で出ます）。ggplot2 で手書きする場合は、下の「上級」を開いてください。
 Advanced: write the plot by hand (ggplot2),上級: 図を手で書く（ggplot2）
-Start the listing from the data (writes its columns and shows it),データから一覧表を始める（列を書き、プレビューします）
-"No data files yet: put them on the Data tab (data/adam), then add the listing.",データファイルがまだありません。データタブで置いて（data/adam）から、一覧表を追加してください。
+Start the listing from the data (writes its columns and shows it),データからListingを始める（列を書き、プレビューします）
+"No data files yet: put them on the Data tab (data/adam), then add the listing.",データファイルがまだありません。データタブで置いて（data/adam）から、Listingを追加してください。
 Group (ordered by first; optional),群（最初に並べる、任意）
 Columns (in order),列（この順）
-"Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards on the Listings tab.",各列の見出しはデータのラベルです。並べ順は群・被験者・開始日です。あとから一覧表タブですべて変えられます。
-"The listing has no columns yet: add them to the table of columns (below the form), or add the listing again with 'Start the listing from the data'.",一覧表にまだ列がありません。フォームの下の列の表に足すか、「データから一覧表を始める」で追加し直してください。
+"Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards on the Listings tab.",各列の見出しはデータのラベルです。並べ順は群・被験者・開始日です。あとからListingタブですべて変えられます。
+"The listing has no columns yet: add them to the table of columns (below the form), or add the listing again with 'Start the listing from the data'.",Listingにまだ列がありません。フォームの下の列の表に足すか、「データからListingを始める」で追加し直してください。
 e.g.,例:
 The ARD has no subjects per %s: a header's (N=n) prints NA.,ARD に %s ごとの被験者数がありません。見出しの (N=n) は NA になります。
 Count them (then Preview),数える（そしてプレビュー）
@@ -840,15 +840,15 @@ Why,理由
 First page (sample),1 ページ目（見本）
 (the table),（表）
 (the figure: see its Content),（図: 中身のタブで）
-(the listing: see its Content),（一覧表: 中身のタブで）
+(the listing: see its Content),（Listing: 中身のタブで）
 Report,帳票
 "Rows for every report (ARD, Page)",すべての帳票の行（ARD・ページ）
 Getting started,はじめに
-"tflplanner makes a study's tables, listings and figures: the data, the analyses (ARD), each report's definition, and the programs that make the RTFs.",tflplanner は試験の表・一覧表・図を作ります: データ、解析（ARD）、帳票ごとの定義、そして RTF を作るプログラム。
+"tflplanner makes a study's tables, listings and figures: the data, the analyses (ARD), each report's definition, and the programs that make the RTFs.",tflplanner は試験のTable・Listing・Figureを作ります: データ、解析（ARD）、帳票ごとの定義、そして RTF を作るプログラム。
 Try the sample study (about 1 minute)...,サンプル試験で試す（約 1 分）…
 New study...,新規試験…
 Register a study folder,既存の試験フォルダを登録する
-"The sample uses the CDISC pilot data: it makes its ARD, 5 tables, a listing and 2 figures, to look at and change.",サンプルは CDISC pilot のデータで、ARD・表 5 本・一覧表 1 本・図 2 本を作ります。見て、変えてみてください。
+"The sample uses the CDISC pilot data: it makes its ARD, 5 tables, a listing and 2 figures, to look at and change.",サンプルは CDISC pilot のデータで、ARD・Table 5 本・Listing 1 本・Figure 2 本を作ります。見て、変えてみてください。
 Start from,始め方
 Details (optional),詳細（任意）
 Where the study folder goes,試験フォルダの置き場所
@@ -868,7 +868,7 @@ Table,Table
 Full size,原寸で見る
 The language is changed: the page reloads to show it.,言語を変えました。画面を読み込み直すと切り替わります。
 Reload now,今すぐ読み込み直す
-"The sample study: CDISC pilot data (pharmaverseadam), its ARD, 5 tables, a listing and 2 figures.",サンプル試験: CDISC パイロットデータ（pharmaverseadam）で、ARD・表 5 本・一覧表 1 本・図 2 本。
+"The sample study: CDISC pilot data (pharmaverseadam), its ARD, 5 tables, a listing and 2 figures.",サンプル試験: CDISC パイロットデータ（pharmaverseadam）で、ARD・Table 5 本・Listing 1 本・Figure 2 本。
 method:continuous,要約統計量
 method:categorical,度数と割合
 method:dichotomous,ある水準の度数
@@ -899,7 +899,7 @@ method-note:wilcox,by の 2 群の Wilcoxon 順位和検定
 method-note:chisq,variables と by のカイ二乗検定
 method-note:fisher,variables と by の Fisher の正確検定
 method-note:custom,code に書いた任意の R コード。data と population が使えます
-"A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Code on the Code tab, if any, changes the data after the condition.",一覧表を定義します：データ（カタログのデータセット・条件・並び順）と列。コードのタブにコードがあれば、条件の後にデータを加工します。
+"A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Code on the Code tab, if any, changes the data after the condition.",Listingを定義します：データ（カタログのデータセット・条件・並び順）と列。コードのタブにコードがあれば、条件の後にデータを加工します。
 Done. Restart R (in RStudio: Session > Restart R) before using tflplanner again.,完了しました。tflplanner を使う前に R を再起動してください（RStudio では Session > Restart R）。
 Install from %s:,%s から入れます:
 "R was not found. Install R, then try again.",R が見つかりません。R をインストールしてから、もう一度試してください。
@@ -1170,3 +1170,7 @@ Your studies and tflplanner's settings are not touched.,試験と tflplanner の
 "Afterwards, restart R (in RStudio: Session > Restart R) before using tflplanner again.",終わったら、tflplanner を使う前に R を再起動してください（RStudio では Session > Restart R）。
 (reworked by its own code),（独自コードで加工）
 Report title,タイトル
+Saving...,保存中…
+The plot written by hand (ggplot2),手書きのプロット（ggplot2）
+The code that makes the plot (edit it on the Reports tab),プロットを作るコード（帳票タブのデータコードで編集します）
+"This figure's plot is now ggplot2 code written by hand (below). To make it from a figure design instead, start one from a template or a company preset: its data steps, statistics, settings and layers are filled at once, then each can be changed.",この図のプロットは、今は手書きの ggplot2 のコードです（下）。図のデザインから作るには、テンプレートか会社のプリセットからデザインを始めてください。データ加工・統計量・設定・レイヤーが一括で入り、その後 1 つずつ変更できます。

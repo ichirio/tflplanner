@@ -40,8 +40,10 @@
       .pd-auto .form-group, .pd-auto .checkbox { margin: 0; }
       .pd-auto label { font-size: .8rem; font-weight: normal; margin: 0; }")),
     shiny::uiOutput("pd_note"),
-    shiny::uiOutput("lf_fig_box"),
+    # making the figure from a design first; a plot written by hand (the
+    # figure's code as it is now, or the advanced way for a new one) after
     shiny::uiOutput("pd_body"),
+    shiny::uiOutput("lf_fig_box"),
     shiny::uiOutput("lf_fig_box_new"))
 }
 
@@ -235,7 +237,7 @@
       none = t("Choose a Figure report in the sidebar."),
       other = t("This tab designs figures: choose a Figure report in the sidebar."),
       hand = if (fig_is_new()) t("A new figure: choose a template -- those this study's data cannot draw are greyed, with the data they need -- and start the design. To write the plot with ggplot2 instead, open Advanced below.") else
-        t("This figure's plot is written by hand (its data code, Reports tab). To design it here instead, start a design from a template: its data steps, statistics, settings and layers are filled at once, then each can be changed."),
+        t("This figure's plot is now ggplot2 code written by hand (below). To make it from a figure design instead, start one from a template or a company preset: its data steps, statistics, settings and layers are filled at once, then each can be changed."),
       t("Choose a piece on the left to change it on the right; the figure is redrawn as its program will save it. Empty = the default (shown grey)."))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })

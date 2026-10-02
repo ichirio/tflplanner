@@ -448,6 +448,29 @@ header_presets <- function() {
   })
 }
 
+# The column header presets that fit a table, as choices: a preset for a
+# nested (SOC / PT) table only for one with a hierarchy, the others only
+# for one without; each named after the table's column variable instead of
+# the preset's "Arm" (`key`, e.g. its label "Actual Treatment").
+.header_preset_choices <- function(hierarchy = FALSE, key = NULL,
+                                   presets = header_presets()) {
+  nested <- vapply(presets, function(d)
+    any(grepl("System Organ Class|Preferred Term", d$text)), NA) |
+    grepl("SOC / PT", names(presets), fixed = TRUE)
+  keep <- names(presets)[nested == isTRUE(hierarchy)]
+  shown <- if (length(key) == 1L && !is.na(key) && nzchar(key))
+    sub("^Arm\\b", key, keep) else keep
+  stats::setNames(keep, shown)
+}
+
+# A column variable as a person reads it: its label in the source data
+# (meta$labels, .with_source()), else its name.
+.key_label <- function(m, key) {
+  if (length(key) != 1L || is.na(key)) return(NULL)
+  l <- m$labels[[key]]
+  if (length(l) == 1L && !is.na(l) && nzchar(l)) l else key
+}
+
 # tokens a template names that the ARD lacks
 .missing_stats <- function(templates, stats) {
   tok <- unlist(regmatches(templates, gregexpr("[{][^{}:]+", templates)))

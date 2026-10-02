@@ -166,3 +166,21 @@ test_that("fetch_ard() runs the data part from the study folder", {
   s$planner$outputs$data_code <- "stop('no data')"
   expect_error(fetch_ard(s, "DM"), "no data")
 })
+
+test_that("the column header presets offered fit the table, named after its columns", {
+  hp <- .header_preset_choices(FALSE, "Actual Treatment")
+  expect_false(any(grepl("SOC / PT", unname(hp), fixed = TRUE)))
+  expect_true(length(hp) >= 1L)
+  expect_true(all(startsWith(names(hp), "Actual Treatment")))
+  expect_true(all(unname(hp) %in% names(header_presets())))
+  nested <- .header_preset_choices(TRUE, "TRTA")
+  expect_true(all(grepl("SOC / PT", unname(nested), fixed = TRUE)))
+  expect_identical(.key_label(list(labels = list(TRTA = "Actual Treatment")), "TRTA"),
+                   "Actual Treatment")
+  expect_identical(.key_label(list(labels = list()), "TRTA"), "TRTA")
+})
+
+test_that("the Japanese app says Listing, as the report types (no second word)", {
+  st <- .strings()
+  expect_false(any(grepl("\u4e00\u89a7\u8868", st$ja)))
+})
