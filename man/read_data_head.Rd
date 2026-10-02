@@ -15,6 +15,7 @@ read_data_head(path, n = 50L)
 A data frame, with the full dimensions in attribute \code{dim_full}.
 }
 \description{
-Reads \code{.rds}, \code{.csv}, \code{.xpt}, \code{.sas7bdat} (\pkg{haven}) and \code{.parquet}
+Reads \code{.rds}, \code{.rda} / \code{.RData} (one dataset a file), \code{.csv}, \code{.xpt},
+\code{.sas7bdat} (\pkg{haven}) and \code{.parquet}
 (\pkg{arrow}).
 }

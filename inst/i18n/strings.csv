@@ -1188,3 +1188,11 @@ Datasets,データセット
 Analysis sets,解析対象集団
 Study keys,試験の設定
 The analyses,解析
+codelists: code list,コードリスト (codelists)
+"Read the study's code list (xlsx / csv: variable, value, label, order)","試験のコードリストを読み込む（xlsx / csv: variable, value, label, order）"
+%d values of %d variables read into the code list (the study's defaults).,コードリストに %2$d 個の変数の %1$d 個の値を読み込みました（試験の既定）。
+"Table: the study's code list, one row a value of a variable -- the text it prints as and its place (plan_labels(), plan_levels()). A report's own rows replace the defaults of the same variable and value. A variable's `levels` on the variables sheet, when given, is the order instead.",表: 試験のコードリスト。1 行 = 変数の 1 つの値 -- 表示する文字と並び順（plan_labels()、plan_levels()）。帳票の行は、同じ変数・値の既定の行を置き換える。variables シートの `levels` があれば、そちらが順序になる。
+The variable (an analysis variable or a column key).,変数（解析変数か列のキー）。
+A value as the data have it.,データにある値。
+What prints for the value; blank: the value.,その値の表示; 空欄 = 値そのもの。
+"Its place among the variable's values (a number); blank: after the numbered ones, in the sheet's order.",その変数の値の中での位置（数字）; 空欄 = 番号付きの後、シートの順。

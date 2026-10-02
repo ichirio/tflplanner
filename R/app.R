@@ -13,7 +13,8 @@
 .study_tabs <- c("outputs", "ard", "data", "results")
 
 .sheet_labels <- c(
-  tables = "tables: roles", variables = "variables", cells = "cells",
+  tables = "tables: roles", variables = "variables",
+  codelists = "codelists: code list", cells = "cells",
   layout = "layout: pages", columns = "columns", style = "style",
   cell_styles = "cell_styles: cell looks",
   col_header = "col_header: column header",
@@ -297,6 +298,9 @@ app_ui <- function(lang = "en") {
     bslib::nav_panel(
       t(.sheet_labels[[sheet]]), value = sheet,
       if (sheet %in% .assisted) shiny::uiOutput(paste0("assist_", sheet)),
+      if (identical(sheet, "codelists")) shiny::fileInput(
+        "codelist_file", t("Read the study's code list (xlsx / csv: variable, value, label, order)"),
+        accept = c(".xlsx", ".csv"), width = "100%"),
       rhandsontable::rHandsontableOutput(paste0("hot_", sheet)),
       shiny::uiOutput(paste0("inh_", sheet)),
       shiny::tags$details(
@@ -2751,6 +2755,26 @@ app_server <- function(input, output, session, start) {
                              c("#15803d", "#b45309", "#6b7280", "#b91c1c")))
   }
   output$ard_state <- DT::renderDT(ard_state_view())
+  # the study's code list from a file: its values become the study defaults
+  # of the codelists sheet (a report's own rows still win for that report)
+  shiny::observeEvent(input$codelist_file, {
+    f <- input$codelist_file
+    if (is.null(f) || !has_study()) return()
+    ext <- tolower(tools::file_ext(f$name))
+    path <- f$datapath
+    if (!identical(tolower(tools::file_ext(path)), ext)) {
+      file.copy(path, p2 <- paste0(path, ".", ext))
+      path <- p2
+    }
+    rows <- guarded(read_codelist(path))
+    if (is.null(rows)) return()
+    p2 <- guarded(set_codelist(rv$p, rows))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    bump()
+    notify(sprintf(t("%d values of %d variables read into the code list (the study's defaults)."),
+                   nrow(rows), length(unique(rows$variable))))
+  })
   # a double click on a report's row: its ARD definition, on the left
   shiny::observeEvent(input$ard_state_dbl, {
     id <- input$ard_state_dbl

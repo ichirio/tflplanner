@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **The study's code list** (#56): Details (sheets) has a `codelists`
+  sheet (tflspec 0.0.24.9017: `variable`, `value`, `label`, `order`), and
+  its tab reads a code list from an `.xlsx` or `.csv` file into the
+  study's defaults -- every table prints the values' text in their order
+  (`read_codelist()`, `set_codelist()`).  A report's own rows replace the
+  defaults for it; a variable's `levels` on the `variables` sheet, when
+  given, is its order instead.
+
 - **The ARD tab says what each field is in the spec** (#54).  A method is
   offered as what it does and the function it calls ("Count of one level
   (ard_dichotomous())"); each field says its spec name and, when the

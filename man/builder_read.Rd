@@ -19,8 +19,9 @@ builder_write(x, output_id, state)
 \item{state}{What \code{builder_read()} returns, as edited.}
 }
 \value{
-\code{builder_read()}: a list -- \code{key} (the column variable),
-\code{arms} (its levels in order), \code{variables} (a data frame: \code{variable},
+\code{builder_read()}: a list -- \code{key} (the column variables,
+outermost first), \code{arms} (a named list: each column variable's levels
+in order), \code{variables} (a data frame: \code{variable},
 \code{kind}, \code{label}), \code{levels} (named list), \code{stats} (keys of
 \code{\link[=builder_stats]{builder_stats()}} in order), \code{decimals}, \code{cat_format} (\code{npct},
 \code{nNpct}, \code{n}), \code{pct_decimals}, \code{header} (\code{keep} or a name of

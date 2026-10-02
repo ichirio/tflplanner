@@ -21,7 +21,7 @@
 #' @return `table_sheets()` and `report_sheets()` return a character vector.
 #' @export
 table_sheets <- function() {
-  c("tables", "variables", "cells", "layout", "columns", "style",
+  c("tables", "variables", "codelists", "cells", "layout", "columns", "style",
     "cell_styles", "col_header")
 }
 
@@ -34,6 +34,58 @@ report_sheets <- function() {
 #' @rdname table_sheets
 #' @export
 report_types <- function() c("table", "listing", "figure")
+
+#' Read a study's code list into its definition
+#'
+#' `read_codelist()` reads a code list -- one row a value of a variable:
+#' `variable`, `value`, `label` (what it prints as) and `order` (its
+#' place) -- from an `.xlsx` (its first sheet) or a `.csv` file.
+#' `set_codelist()` puts it into the definition's `codelists` sheet as the
+#' study's defaults (every table uses them): a value already there for the
+#' same variable is replaced, the others are kept.  A report's own rows
+#' replace the defaults for that report (tflspec's table spec).
+#'
+#' @param path An `.xlsx` or `.csv` file.
+#' @param x A `tflplanner`.
+#' @param rows What `read_codelist()` returns.
+#' @return `read_codelist()`: a data frame; `set_codelist()`: the
+#'   `tflplanner`.
+#' @export
+read_codelist <- function(path) {
+  ext <- tolower(tools::file_ext(path))
+  d <- switch(ext,
+    xlsx = as.data.frame(readxl::read_excel(path, col_types = "text")),
+    csv = utils::read.csv(path, colClasses = "character",
+                          fileEncoding = "UTF-8-BOM", check.names = FALSE),
+    stop("A code list is an .xlsx or a .csv file.", call. = FALSE))
+  names(d) <- tolower(trimws(names(d)))
+  miss <- setdiff(c("variable", "value"), names(d))
+  if (length(miss)) {
+    stop("The code list has no column ", paste(sQuote(miss), collapse = ", "),
+         ": it needs variable and value (label and order are optional).",
+         call. = FALSE)
+  }
+  for (k in c("label", "order")) if (!k %in% names(d)) d[[k]] <- NA_character_
+  d <- d[c("variable", "value", "label", "order")]
+  d[] <- lapply(d, function(v) {
+    v <- trimws(as.character(v))
+    v[!is.na(v) & !nzchar(v)] <- NA_character_
+    v
+  })
+  d <- d[!is.na(d$variable) & !is.na(d$value), , drop = FALSE]
+  rownames(d) <- NULL
+  d
+}
+
+#' @rdname read_codelist
+#' @export
+set_codelist <- function(x, rows) {
+  old <- sheet_rows(x, "codelists", NA)
+  key <- function(d) paste(d$variable, d$value, sep = "\r")
+  old <- old[!key(old) %in% key(rows), , drop = FALSE]
+  old$output_id <- NULL
+  set_sheet_rows(x, "codelists", NA, rbind(old[names(rows)], rows))
+}
 
 .study_keys <- list(table = "rounding",
                     report = c("output_path", "program_dir"))
