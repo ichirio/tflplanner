@@ -1,0 +1,305 @@
+# tflplanner
+
+`tflplanner` is a ‘shiny’ study manager for clinical **Tables, Listings
+and Figures (TFLs)** made with
+[rtfreporter](https://github.com/ichirio/rtfreporter). Each study is a
+folder of its own – input data, definitions, programs, results and the
+records of its official runs – and the app defines the study’s analysis
+results data (ARD) and reports, writes their R programs and runs them.
+
+    ARD      web GUI  =>  (Excel, optional)  =>  ARD programs  =>  the study ARD
+    Tables   the study ARD, by output_id  =>  normalize, rework  =>  RTF
+    Listings, Figures   SDTM / ADaM  =>  report programs  =>  RTF
+    Official runs   autoexec_*.R  =>  runs/<date>_<time>_<what>/  (logs, results, code)
+
+- **The ARD and the reports are separate steps**, which different people
+  can take at different times: a table is made from whatever of the
+  study ARD is there.
+- **Company standards**: every default and code list the app offers –
+  dropdowns, presets, ARD methods and statistics, code templates, the
+  rows a new study starts with – comes from one workbook, set up once.
+- **Previews and official runs**: a program run on its own is a preview;
+  an official run keeps each program’s log
+  ([logrx](https://github.com/pharmaverse/logrx)), what it made and the
+  code it ran in a dated batch folder.
+- English (default) or Japanese.
+
+> **Status: experimental.** tflplanner is the GUI over
+> [tflspec](https://github.com/ichirio/tflspec) (the specifications and
+> the code written from them) and rtfreporter (the ARD and table engine
+> and the RTF renderer); its screens and functions may change.
+
+## Installation
+
+Once, at the R console (rtfreporter and tflspec come with it):
+
+``` r
+
+install.packages("remotes")
+remotes::install_github("ichirio/tflplanner")
+```
+
+Without access to GitHub, install the three package files you were
+given, in this order:
+
+``` r
+
+install.packages(c("rtfreporter_0.8.2.tar.gz", "tflspec_0.0.24.tar.gz",
+                   "tflplanner_0.0.2.tar.gz"), repos = NULL, type = "source")
+```
+
+## Getting started
+
+``` r
+
+tflplanner::setup_tflplanner()
+```
+
+asks, step by step, for the three things done at the console – where
+tflplanner keeps its studies (its home), the packages its programs use,
+and a shortcut that starts it with a double click (Windows: desktop and
+Start menu; macOS: `~/Applications`; Linux: the applications menu).
+Everything else is done in the app. Without a shortcut, start it with
+[`launch_app()`](https://ichirio.github.io/tflplanner/reference/launch_app.md)
+(in its own R process; also the RStudio add-in *Launch tflplanner*) or
+[`run_app()`](https://ichirio.github.io/tflplanner/reference/run_app.md).
+
+To update rtfreporter, tflspec and tflplanner later, close the app and
+start it from the shortcut **tflplanner (update and launch)**, or run
+
+``` r
+
+tflplanner::update_tflplanner()          # the released versions
+tflplanner::update_tflplanner("dev")     # the development versions
+tflplanner::update_tflplanner(from = "D:/packages")   # from package files
+```
+
+The app says when a newer version is out (it looks when it starts; this
+can be turned off in its settings).
+
+The same steps as code, for scripts:
+
+``` r
+
+library(tflplanner)
+setup_tflplanner(studies_root = "C:/studies",          # once; with the
+                 sample = TRUE)                        #   sample study
+standards_template("company_standards.xlsx")           # the draft to edit
+setup_tflplanner(standards = "company_standards.xlsx") # your standards
+add_shortcut(ask = FALSE)
+run_app()
+```
+
+`sample = TRUE` (or
+[`create_sample_study()`](https://ichirio.github.io/tflplanner/reference/create_sample_study.md),
+or *Add the sample study* in the app’s settings) copies the sample study
+**SAMPLE-01** into the studies folder and makes it: the CDISC pilot ADaM
+data of
+[pharmaverseadam](https://pharmaverse.github.io/pharmaverseadam/), one
+study ARD, four tables, a listing and a figure – a study to try
+everything on.
+
+A guide in Japanese (provisional): [tflplanner
+利用ガイド（日本語）](https://ichirio.github.io/tflplanner/articles/ja-guide.html).
+
+## License
+
+Apache License 2.0. See
+[LICENSE.md](https://ichirio.github.io/tflplanner/LICENSE.md).
+
+# Package index
+
+## The app and its home
+
+- [`run_app()`](https://ichirio.github.io/tflplanner/reference/run_app.md)
+  [`planner_app()`](https://ichirio.github.io/tflplanner/reference/run_app.md)
+  : Start the tflplanner app
+- [`setup_tflplanner()`](https://ichirio.github.io/tflplanner/reference/setup_tflplanner.md)
+  : Set up tflplanner's home
+- [`tflplanner_home()`](https://ichirio.github.io/tflplanner/reference/tflplanner_home.md)
+  : Where tflplanner keeps its settings and the studies' saved state
+- [`tflplanner_config()`](https://ichirio.github.io/tflplanner/reference/tflplanner_config.md)
+  [`studies_root()`](https://ichirio.github.io/tflplanner/reference/tflplanner_config.md)
+  : tflplanner's settings
+- [`tr()`](https://ichirio.github.io/tflplanner/reference/tr.md)
+  [`tflplanner_language()`](https://ichirio.github.io/tflplanner/reference/tr.md)
+  [`app_languages()`](https://ichirio.github.io/tflplanner/reference/tr.md)
+  : The app's languages
+
+## Install, update and launch
+
+What is done at the R console: the setup, the packages, the updates and
+a shortcut that starts the app with a double click.
+
+- [`add_shortcut()`](https://ichirio.github.io/tflplanner/reference/add_shortcut.md)
+  [`remove_shortcut()`](https://ichirio.github.io/tflplanner/reference/add_shortcut.md)
+  : Make a shortcut that starts tflplanner
+- [`launch_app()`](https://ichirio.github.io/tflplanner/reference/launch_app.md)
+  : Start tflplanner in its own R process
+- [`update_tflplanner()`](https://ichirio.github.io/tflplanner/reference/update_tflplanner.md)
+  : Update tflplanner, rtfreporter and tflspec
+- [`tflplanner_packages()`](https://ichirio.github.io/tflplanner/reference/tflplanner_packages.md)
+  : The packages tflplanner needs, and their versions
+
+## Company standards
+
+- [`standards_template()`](https://ichirio.github.io/tflplanner/reference/standards_template.md)
+  [`read_standards()`](https://ichirio.github.io/tflplanner/reference/standards_template.md)
+  [`company_standards()`](https://ichirio.github.io/tflplanner/reference/standards_template.md)
+  : Company standards
+- [`code_templates()`](https://ichirio.github.io/tflplanner/reference/code_templates.md)
+  : Code templates
+- [`add_standard_defaults()`](https://ichirio.github.io/tflplanner/reference/add_standard_defaults.md)
+  : Add the company's study defaults a study lacks
+
+## Studies
+
+- [`create_study()`](https://ichirio.github.io/tflplanner/reference/create_study.md)
+  [`open_study()`](https://ichirio.github.io/tflplanner/reference/create_study.md)
+  [`register_study()`](https://ichirio.github.io/tflplanner/reference/create_study.md)
+  [`unregister_study()`](https://ichirio.github.io/tflplanner/reference/create_study.md)
+  [`list_studies()`](https://ichirio.github.io/tflplanner/reference/create_study.md)
+  : Create, open, register and list studies
+- [`create_sample_study()`](https://ichirio.github.io/tflplanner/reference/create_sample_study.md)
+  : Add the sample study
+- [`save_study()`](https://ichirio.github.io/tflplanner/reference/save_study.md)
+  : Save a study
+- [`export_spec()`](https://ichirio.github.io/tflplanner/reference/export_spec.md)
+  [`import_spec()`](https://ichirio.github.io/tflplanner/reference/export_spec.md)
+  : Definition workbooks in and out
+- [`export_ars()`](https://ichirio.github.io/tflplanner/reference/export_ars.md)
+  : Export the study's analyses as CDISC ARS
+- [`study_layout()`](https://ichirio.github.io/tflplanner/reference/study_layout.md)
+  : The folder layout of a study
+- [`study_files()`](https://ichirio.github.io/tflplanner/reference/study_files.md)
+  : Files in a study folder
+- [`read_data_head()`](https://ichirio.github.io/tflplanner/reference/read_data_head.md)
+  : The first rows of a data file
+- [`study_status()`](https://ichirio.github.io/tflplanner/reference/study_status.md)
+  : What each report of a study has produced
+
+## The ARD definition and the study ARD
+
+- [`ard_rows()`](https://ichirio.github.io/tflplanner/reference/ard_rows.md)
+  [`set_ard_rows()`](https://ichirio.github.io/tflplanner/reference/ard_rows.md)
+  : A report's rows of the ARD definition
+- [`ard_setup_code()`](https://ichirio.github.io/tflplanner/reference/ard_setup_code.md)
+  [`ard_program_code()`](https://ichirio.github.io/tflplanner/reference/ard_setup_code.md)
+  [`ard_autoexec_code()`](https://ichirio.github.io/tflplanner/reference/ard_setup_code.md)
+  : The ARD programs of a study
+- [`run_ard()`](https://ichirio.github.io/tflplanner/reference/run_ard.md)
+  : Run a report's analyses, or the whole study's
+- [`ard_view()`](https://ichirio.github.io/tflplanner/reference/ard_view.md)
+  : An ARD as a plain table to read
+- [`ard_status()`](https://ichirio.github.io/tflplanner/reference/ard_status.md)
+  : Where each output's ARD stands
+- [`update_study_ard()`](https://ichirio.github.io/tflplanner/reference/update_study_ard.md)
+  : Preview one output's ARD
+
+## Tables, listings and figures
+
+- [`new_planner()`](https://ichirio.github.io/tflplanner/reference/new_planner.md)
+  : A new, empty study definition
+- [`add_output()`](https://ichirio.github.io/tflplanner/reference/add_output.md)
+  [`copy_output()`](https://ichirio.github.io/tflplanner/reference/add_output.md)
+  [`rename_output()`](https://ichirio.github.io/tflplanner/reference/add_output.md)
+  [`remove_output()`](https://ichirio.github.io/tflplanner/reference/add_output.md)
+  : Edit the report list
+- [`output_ids()`](https://ichirio.github.io/tflplanner/reference/output_ids.md)
+  : Report ids the definition names
+- [`table_sheets()`](https://ichirio.github.io/tflplanner/reference/table_sheets.md)
+  [`report_sheets()`](https://ichirio.github.io/tflplanner/reference/table_sheets.md)
+  [`report_types()`](https://ichirio.github.io/tflplanner/reference/table_sheets.md)
+  : Sheets of the two definition workbooks
+- [`read_codelist()`](https://ichirio.github.io/tflplanner/reference/read_codelist.md)
+  [`set_codelist()`](https://ichirio.github.io/tflplanner/reference/read_codelist.md)
+  : Read a study's code list into its definition
+- [`inherited_rows()`](https://ichirio.github.io/tflplanner/reference/inherited_rows.md)
+  : The study default rows a report inherits
+- [`read_planner()`](https://ichirio.github.io/tflplanner/reference/read_planner.md)
+  : Read the definition workbooks
+- [`write_planner()`](https://ichirio.github.io/tflplanner/reference/write_planner.md)
+  : Write the two definition workbooks
+- [`check_planner()`](https://ichirio.github.io/tflplanner/reference/check_planner.md)
+  : Check the definition the way the report programs will read it
+- [`report_info()`](https://ichirio.github.io/tflplanner/reference/report_info.md)
+  : Where a report's program and RTF go
+- [`lf_rows()`](https://ichirio.github.io/tflplanner/reference/lf_rows.md)
+  [`set_lf_rows()`](https://ichirio.github.io/tflplanner/reference/lf_rows.md)
+  [`listing_types()`](https://ichirio.github.io/tflplanner/reference/lf_rows.md)
+  : A listing's or figure's definition
+- [`preview_listing()`](https://ichirio.github.io/tflplanner/reference/preview_listing.md)
+  : The rows of a listing, as they will print
+- [`fig_design()`](https://ichirio.github.io/tflplanner/reference/fig_design.md)
+  [`set_fig_design()`](https://ichirio.github.io/tflplanner/reference/fig_design.md)
+  : A figure's design (the Plot Designer)
+- [`preview_figure()`](https://ichirio.github.io/tflplanner/reference/preview_figure.md)
+  : Draw a figure from its design
+- [`fig_presets()`](https://ichirio.github.io/tflplanner/reference/fig_presets.md)
+  [`save_fig_preset()`](https://ichirio.github.io/tflplanner/reference/fig_presets.md)
+  [`read_fig_preset()`](https://ichirio.github.io/tflplanner/reference/fig_presets.md)
+  [`remove_fig_preset()`](https://ichirio.github.io/tflplanner/reference/fig_presets.md)
+  : Figure presets
+- [`copy_fig_to_params()`](https://ichirio.github.io/tflplanner/reference/copy_fig_to_params.md)
+  : The same figure for other parameters
+
+## Input assistance and the table builder
+
+- [`fetch_ard()`](https://ichirio.github.io/tflplanner/reference/fetch_ard.md)
+  [`ard_info()`](https://ichirio.github.io/tflplanner/reference/fetch_ard.md)
+  [`ard_data()`](https://ichirio.github.io/tflplanner/reference/fetch_ard.md)
+  : Run a report's data part and keep what its ARD holds
+- [`ard_meta()`](https://ichirio.github.io/tflplanner/reference/ard_meta.md)
+  : What an ARD holds
+- [`fill_variables()`](https://ichirio.github.io/tflplanner/reference/fill_variables.md)
+  [`fill_tables()`](https://ichirio.github.io/tflplanner/reference/fill_variables.md)
+  : Fill a report's definition from its ARD
+- [`cell_presets()`](https://ichirio.github.io/tflplanner/reference/cell_presets.md)
+  [`header_presets()`](https://ichirio.github.io/tflplanner/reference/cell_presets.md)
+  : Presets for cells and column headers
+- [`add_preset()`](https://ichirio.github.io/tflplanner/reference/add_preset.md)
+  : Add a preset's rows to a report
+- [`builder_read()`](https://ichirio.github.io/tflplanner/reference/builder_read.md)
+  [`builder_write()`](https://ichirio.github.io/tflplanner/reference/builder_read.md)
+  : Read and write a table the builder way
+- [`builder_stats()`](https://ichirio.github.io/tflplanner/reference/builder_stats.md)
+  : The statistics the builder offers for a continuous variable
+- [`preview_pages()`](https://ichirio.github.io/tflplanner/reference/preview_pages.md)
+  [`preview_html()`](https://ichirio.github.io/tflplanner/reference/preview_pages.md)
+  : The table as it will print
+
+## Starting from the data
+
+- [`first_table()`](https://ichirio.github.io/tflplanner/reference/first_table.md)
+  : Start a summary table from the data
+- [`first_listing()`](https://ichirio.github.io/tflplanner/reference/first_listing.md)
+  : Start a listing from the data
+- [`catalog_add_files()`](https://ichirio.github.io/tflplanner/reference/catalog_add_files.md)
+  : Put a study's data files into its data catalog
+- [`add_group_n()`](https://ichirio.github.io/tflplanner/reference/add_group_n.md)
+  : Count the subjects per group for a report's column headers
+
+## Programs and runs
+
+- [`data_lines()`](https://ichirio.github.io/tflplanner/reference/data_lines.md)
+  : The data part of a report's program
+- [`program_code()`](https://ichirio.github.io/tflplanner/reference/program_code.md)
+  : The R program for one report
+- [`autoexec_code()`](https://ichirio.github.io/tflplanner/reference/autoexec_code.md)
+  : The program that runs every report program
+- [`batch_code()`](https://ichirio.github.io/tflplanner/reference/batch_code.md)
+  [`autoexec_all_code()`](https://ichirio.github.io/tflplanner/reference/batch_code.md)
+  : The official-run programs of a study
+- [`run_study()`](https://ichirio.github.io/tflplanner/reference/run_study.md)
+  : Preview a study's reports
+- [`run_batch()`](https://ichirio.github.io/tflplanner/reference/run_batch.md)
+  [`list_batches()`](https://ichirio.github.io/tflplanner/reference/run_batch.md)
+  : Official runs of a study
+
+# Articles
+
+### Guides
+
+- [tflplanner
+  利用ガイド（日本語）](https://ichirio.github.io/tflplanner/articles/ja-guide.md):
+- [プロットデザイナーで図を作る（ステップ・バイ・ステップ）](https://ichirio.github.io/tflplanner/articles/ja-figures.md):
