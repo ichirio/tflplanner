@@ -475,7 +475,30 @@
                    responders = nz(input$pd_tpl_responders), duration = nz(input$pd_tpl_duration),
                    at_visit = nz(input$pd_tpl_at_visit))
       if (!is.null(nz(input$pd_tpl_unit))) args$time_unit <- input$pd_tpl_unit
-      guarded(do.call(tflspec::tfl_fig_template, args[!vapply(args, is.null, logical(1))]))
+      make <- function(a) guarded(do.call(tflspec::tfl_fig_template,
+                                          a[!vapply(a, is.null, logical(1))]))
+      d <- make(args)
+      # the template's defaults the study's data has not got: the data's own
+      if (!is.null(d) && !is.null(ds)) {
+        dat <- study_data(c(ds, "ADSL"))
+        x <- dat[[toupper(ds)]]
+        given <- c(param = "param", pop = "pop", group = "group")[
+          !vapply(list(args$param, pop, grp), is.null, logical(1))]
+        if (!is.null(x)) d <- .trim_join(d, x)
+        fit <- if (!is.null(x)) .template_fit(d, x, dat$ADSL, given) else character()
+        if (length(fit)) {
+          args[names(fit)] <- as.list(fit)
+          args$join_adsl <- if (!all(c(args$group, args$pop) %in% names(x))) TRUE
+          d2 <- make(args)
+          if (!is.null(d2)) {
+            d <- .trim_join(d2, x)
+            notify(sprintf(t("The template's defaults are not in %s: it uses %s instead."),
+                           ds, paste(sprintf("%s = %s", names(fit), fit),
+                                     collapse = ", ")))
+          }
+        }
+      }
+      d
     }
     d
   }

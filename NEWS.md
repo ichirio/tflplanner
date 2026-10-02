@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **A figure template fits the study's data** (#64).  Applied with its
+  defaults (KM: parameter OS, flag FASFL, group TRT01P), a template no
+  longer draws an error when the data has not got them: for each the user
+  left blank, the dataset's own is used -- its first parameter, a
+  population flag it has (else ADSL's), a treatment variable it has (else
+  ADSL's) -- and a note says which.  The ADSL join takes only what the
+  dataset lacks (a flag in both came back as SAFFL.x / SAFFL.y and was
+  found by neither name).  SAMPLE-01's KM template now draws as applied.
+
 - **A figure is made one way: the plot designer** (#62).  Its first step
   is "Start from a template" (a type, its data and a few settings, applied
   as the designer's layers at once) or "Start empty"; both say they become

@@ -351,3 +351,68 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
   if (file.exists(f)) unlink(f)
   invisible(f)
 }
+
+# A template's own defaults (its parameter OS, its flag FASFL, its group
+# TRT01P) may not be in the study's data.  For each the user left blank,
+# the data's own when the default is not there: the first parameter of
+# the dataset, a population flag it has, a treatment variable it has.
+# `x` is the dataset, `adsl` ADSL (where flags and the group may be);
+# `given` the names the user chose (param, pop, group).  Returns the
+# arguments to give the template instead, named (empty when none).
+.template_fit <- function(d, x, adsl = NULL, given = character()) {
+  cols <- unique(c(names(x), names(adsl)))
+  out <- character()
+  step_of <- function(s) Filter(function(z) identical(z$step, s), d$data)
+  pick <- function(cands) {
+    hit <- cands[cands %in% cols]
+    if (length(hit)) hit[[1L]] else NA_character_
+  }
+  if (!"param" %in% given && "PARAMCD" %in% names(x)) {
+    p <- step_of("param")
+    have <- unique(stats::na.omit(as.character(x$PARAMCD)))
+    v <- if (length(p)) unlist(strsplit(paste(p[[1L]]$value, collapse = ","),
+                                        "\\s*[|,]\\s*")) else character()
+    if (length(v) && !any(v %in% have) && length(have)) out[["param"]] <- sort(have)[1L]
+  }
+  # a variable the template reads: kept when the dataset has it; named
+  # when only ADSL has it (so the caller joins ADSL); else the first of
+  # `cands` the data have
+  fit_var <- function(v, cands) {
+    if (!length(v) || is.na(v) || v %in% names(x)) return(NA_character_)
+    if (v %in% names(adsl)) return(v)
+    # the dataset's own first (no join), then ADSL's
+    hit <- c(cands[cands %in% names(x)], cands[cands %in% names(adsl)])
+    if (length(hit)) hit[[1L]] else NA_character_
+  }
+  if (!"pop" %in% given) {
+    f <- step_of("flag")
+    v <- fit_var(if (length(f)) f[[1L]]$variable,
+                 c("FASFL", "ITTFL", "SAFFL", "EFFFL", "RANDFL",
+                   sort(grep("FL$", cols, value = TRUE))))
+    if (!is.na(v)) out[["pop"]] <- v
+  }
+  if (!"group" %in% given) {
+    g <- d$plot$colour_by %||% unlist(lapply(d$stats, `[[`, "by"))[1L]
+    v <- fit_var(g, c("TRT01P", "TRT01A", "TRTP", "TRTA", "ARM", "ACTARM"))
+    if (!is.na(v)) out[["group"]] <- v
+  }
+  out
+}
+
+# A template joins ADSL for the variables the dataset lacks, but it names
+# them all (the group and the flag): one the dataset has already would come
+# back twice (SAFFL.x, SAFFL.y) and be found by neither name.  Joins only
+# what `x` has not; a join left with nothing is dropped.
+.trim_join <- function(d, x) {
+  keep <- vapply(seq_along(d$data), function(i) {
+    s <- d$data[[i]]
+    if (!identical(s$step, "join") || is.null(s$vars)) return(TRUE)
+    v <- trimws(strsplit(paste(s$vars, collapse = ","), ",")[[1L]])
+    v <- v[nzchar(v) & !v %in% names(x)]
+    if (!length(v)) return(FALSE)
+    d$data[[i]]$vars <<- paste(v, collapse = ", ")
+    TRUE
+  }, logical(1))
+  d$data <- d$data[keep]
+  d
+}
