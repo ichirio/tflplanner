@@ -114,6 +114,15 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 # ------------------------------------------------------------------- UI
 
 .code_css <- "
+/* While the server works (opening a study, switching a tab or a report,
+   saving) the page takes no clicks: a veil, after 0.4 s so that the
+   short updates (the builder's preview, a poll) do not flicker or block. */
+body::after { content: ''; position: fixed; inset: 0; z-index: 2000;
+  visibility: hidden; background: rgba(255,255,255,0); cursor: progress;
+  transition: visibility 0s, background 0s; }
+html.shiny-busy body::after { visibility: visible;
+  background: rgba(255,255,255,.35);
+  transition: visibility 0s .4s, background .2s .4s; }
 .rp-code textarea, .rp-code pre { font-family: Consolas, 'Courier New',
   monospace; font-size: 12.5px; }
 .rp-code pre { max-height: 520px; overflow: auto; white-space: pre; }
