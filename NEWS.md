@@ -1,5 +1,9 @@
 # tflplanner (development version)
 
+- The `style` sheet's `align` help (and its Japanese) no longer warns that
+  any `border_*` or look column left-aligns every column: from rtfreporter
+  0.8.2.9008 a blank `align` keeps each column's default.
+
 - **The table sheets have the columns tflspec 0.0.24.9021 added** (#66): the
   `layout` sheet's `pages_page_by` (BY pages with a row budget inside), the
   `style` sheet's default look (`header_align`, `header_bold`,
