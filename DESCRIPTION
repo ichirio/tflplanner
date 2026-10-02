@@ -59,6 +59,7 @@ Suggests:
     patchwork,
     survival,
     testthat (>= 3.0.0),
+    withr,
     xml2
 Remotes:
     ichirio/rtfreporter,
