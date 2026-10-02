@@ -3026,23 +3026,26 @@ app_server <- function(input, output, session, start) {
       shiny::div(
         class = "rp-b-card",
         shiny::h6(t("Columns")),
-        shiny::selectInput(bid("key"), t("Column variable"), keys,
-                           selected = st$key, width = "240px"),
+        # one or more (a group, then a visit ...): outermost first
+        shiny::selectizeInput(bid("key"), t("Column variables"), keys,
+                              selected = if (!anyNA(st$key)) st$key,
+                              multiple = TRUE, width = "100%"),
         shiny::uiOutput(bid("arms_ui")),
         shiny::radioButtons(
           bid("header"), t("Column header"),
           {
             # the presets for a table like this one, named after its columns
             hp <- .header_preset_choices(length(m$hierarchy) > 0L,
-                                         .key_label(m, st$key))
+                                         .key_label(m, st$key[1L]))
             stats::setNames(c("keep", unname(hp)), c(t("as it is"), names(hp)))
           },
           selected = "keep", inline = TRUE),
-        if (!is.na(st$key) && !.has_group_n(shiny::isolate(rv$p), id, st$key))
+        if (!anyNA(st$key) &&
+            !.has_group_n(shiny::isolate(rv$p), id, st$key[1L]))
           shiny::div(
             class = "small text-warning d-flex flex-wrap gap-2 align-items-center",
             shiny::span(sprintf(t("The ARD has no subjects per %s: a header's (N=n) prints NA."),
-                                st$key)),
+                                st$key[1L])),
             .btn("b_add_n", t("Count them (then Preview)"),
                  class = "btn-sm btn-outline-primary py-0"))),
       shiny::div(
@@ -3141,7 +3144,7 @@ app_server <- function(input, output, session, start) {
     inh <- inherited_rows(rv$p, "tables", id)
     has_cols <- (nrow(tb) && !is.na(tb$cols[1L])) ||
       (nrow(inh) && !is.na(inh$cols[1L]))
-    if (has_cols || is.na(bform$st$key)) return()
+    if (has_cols || anyNA(bform$st$key)) return()
     p2 <- guarded(builder_write(rv$p, id, bform$st))
     if (!is.null(p2)) {
       rv$p <- p2
@@ -3151,7 +3154,7 @@ app_server <- function(input, output, session, start) {
 
   shiny::observeEvent(input$b_add_n, {
     id <- bform$id
-    key <- bform$st$key
+    key <- bform$st$key[1L]
     p2 <- guarded(add_group_n(rv$p, id, key))
     if (is.null(p2)) return()
     rv$p <- p2
@@ -3159,24 +3162,37 @@ app_server <- function(input, output, session, start) {
     do_preview(id)
   })
 
-  # the arms follow the column variable chosen
+  # a column variable's levels in order: as the definition has them, else
+  # the ARD's
+  key_levels <- function(k) {
+    bform$st$arms[[k]] %||% bform$meta$keys[[k]] %||% character()
+  }
+  arms_id <- function(k) bid(paste0("arms_", make.names(k)))
+  # the columns follow the column variables chosen: their order (outermost
+  # first) when there are several, and each one's levels in order
   shiny::observe(builder_guard({
     bform_drawn()
-    k <- input[[bid("key")]]
-    shiny::req(identical(builder_case(), "ok"), !is.null(k))
+    ks <- input[[bid("key")]]
+    shiny::req(identical(builder_case(), "ok"), length(ks) > 0L)
     n <- bform$n
-    arms <- if (identical(k, bform$st$key)) bform$st$arms else
-      bform$meta$keys[[k]]
-    guess <- identical(k, bform$st$key) && k %in% names(bform$st$auto_levels)
     output[[paste0("b", n, "_arms_ui")]] <- shiny::renderUI(shiny::tagList(
-      shiny::tags$label(class = "form-label small",
-                        t("Order of the columns (drag)")),
-      if (guess) shiny::div(
-        class = "small text-warning",
-        t("Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.")),
-      sortable::rank_list(text = NULL, labels = arms,
-                          input_id = paste0("b", n, "_arms"),
-                          orientation = "horizontal")))
+      if (length(ks) > 1L) shiny::tagList(
+        shiny::tags$label(class = "form-label small",
+                          t("Order of the column variables, outermost first (drag)")),
+        sortable::rank_list(text = NULL, labels = ks, input_id = bid("keyorder"),
+                            orientation = "horizontal")),
+      lapply(ks, function(k) {
+        guess <- k %in% names(bform$st$auto_levels) && k %in% bform$st$key
+        shiny::tagList(
+          shiny::tags$label(class = "form-label small",
+                            sprintf(t("Order of the columns of %s (drag)"), k)),
+          if (guess) shiny::div(
+            class = "small text-warning",
+            t("Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.")),
+          sortable::rank_list(text = NULL, labels = key_levels(k),
+                              input_id = arms_id(k),
+                              orientation = "horizontal"))
+      })))
   }))
   bstate <- shiny::reactive(builder_guard({
     bform_drawn()
@@ -3185,8 +3201,14 @@ app_server <- function(input, output, session, start) {
     st <- bform$st
     get <- function(x) input[[bid(x)]]
     vars <- get("vars")
-    shiny::req(!is.null(vars), !is.null(get("key")), !is.null(get("arms")),
+    ks <- get("key")
+    shiny::req(!is.null(vars), length(ks) > 0L,
                setequal(vars, st$variables$variable))
+    # the column variables in the order dragged (outermost first)
+    ko <- get("keyorder")
+    if (length(ks) > 1L && setequal(ko, ks)) ks <- ko
+    arms <- stats::setNames(lapply(ks, function(k)
+      input[[arms_id(k)]] %||% key_levels(k)), ks)
     v <- st$variables[match(vars, st$variables$variable), , drop = FALSE]
     idx <- match(vars, st$variables$variable)
     v$label <- vapply(seq_along(vars), function(k) {
@@ -3201,7 +3223,7 @@ app_server <- function(input, output, session, start) {
       if (length(x) != 1L || is.na(x)) d else max(0, round(x))
     }
     stats <- builder_stats()$key
-    list(key = get("key"), arms = get("arms"), variables = v, levels = lev,
+    list(key = ks, arms = arms, variables = v, levels = lev,
          stats = stats[stats %in% get("stats")],
          decimals = num("dec", st$decimals),
          cat_format = get("cat") %||% st$cat_format,

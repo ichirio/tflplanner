@@ -44,7 +44,7 @@ test_that("the builder's choices land in the sheets", {
   p <- dm_study_planner()
   m <- ard_meta(dm_ard())
   st <- builder_read(p, "DM", m)
-  st$arms <- rev(st$arms)
+  st$arms$TRT01A <- rev(st$arms$TRT01A)
   st$variables <- st$variables[c(3, 1, 2), ]
   st$variables$label[1] <- "Sex"
   st$levels$SEX <- c("M", "F")
@@ -87,4 +87,25 @@ test_that("the preview is the table rtfreporter lays out", {
   h <- as.character(preview_html(pages))
   expect_match(h, "<table class=\"rp-pv\">")
   expect_match(h, "Mean (SD)", fixed = TRUE)
+})
+
+test_that("several column variables: written as tables$cols A | B, read back in order", {
+  skip_if_not_installed("cards")
+  p <- dm_study_planner()
+  m <- ard_meta(dm_ard())
+  st <- builder_read(p, "DM", m)
+  expect_type(st$arms, "list")
+  expect_identical(names(st$arms), "TRT01A")
+  # SEX across the columns (not a row variable any more)
+  st$variables <- st$variables[st$variables$variable != "SEX", ]
+  st$key <- c("TRT01A", "SEX")
+  st$arms <- list(TRT01A = rev(m$keys$TRT01A), SEX = c("M", "F"))
+  q <- builder_write(p, "DM", st)
+  expect_identical(sheet_rows(q, "tables", "DM")$cols, "TRT01A | SEX")
+  v <- sheet_rows(q, "variables", "DM")
+  expect_identical(v$levels[v$variable == "SEX"], "M | F")
+  back <- builder_read(q, "DM", m)
+  expect_identical(back$key, c("TRT01A", "SEX"))
+  expect_identical(back$arms$SEX, c("M", "F"))
+  expect_identical(back$arms$TRT01A, rev(m$keys$TRT01A))
 })

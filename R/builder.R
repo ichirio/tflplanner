@@ -95,8 +95,9 @@ builder_stats <- function() {
 #' @param output_id The report.
 #' @param meta Its [ard_meta()], or `NULL`.
 #' @param state What `builder_read()` returns, as edited.
-#' @return `builder_read()`: a list -- `key` (the column variable),
-#'   `arms` (its levels in order), `variables` (a data frame: `variable`,
+#' @return `builder_read()`: a list -- `key` (the column variables,
+#'   outermost first), `arms` (a named list: each column variable's levels
+#'   in order), `variables` (a data frame: `variable`,
 #'   `kind`, `label`), `levels` (named list), `stats` (keys of
 #'   [builder_stats()] in order), `decimals`, `cat_format` (`npct`,
 #'   `nNpct`, `n`), `pct_decimals`, `header` (`keep` or a name of
@@ -105,9 +106,10 @@ builder_stats <- function() {
 builder_read <- function(x, output_id, meta = NULL) {
   id <- output_id
   tb <- .rows_for(x, "tables", id)
+  # the column variables, outermost first (tables$cols "A | B")
   key <- .split_list(tb$cols[1L])
   if (!length(key) && !is.null(meta) && length(meta$by)) key <- meta$by[1L]
-  key <- if (length(key)) key[1L] else NA_character_
+  if (!length(key)) key <- NA_character_
 
   vr <- .rows_for(x, "variables", id)
   vr <- vr[!duplicated(vr$variable), , drop = FALSE]
@@ -123,7 +125,8 @@ builder_read <- function(x, output_id, meta = NULL) {
     }
     l
   }
-  arms <- if (!is.na(key)) lev_of(key) else character()
+  arms <- if (!anyNA(key)) stats::setNames(lapply(key, lev_of), key) else
+    list()
 
   mv <- if (!is.null(meta)) meta$variables else
     data.frame(variable = character(), kind = character(),
@@ -182,7 +185,7 @@ builder_write <- function(x, output_id, state) {
   tb <- sheet_rows(x, "tables", id)
   tb$output_id <- NULL
   if (!nrow(tb)) tb[1L, ] <- NA
-  if (!is.na(st$key)) tb$cols[1L] <- st$key
+  if (!anyNA(st$key)) tb$cols[1L] <- paste(st$key, collapse = " | ")
   if (is.na(tb$rows[1L])) {
     inh <- inherited_rows(x, "tables", id)
     if (!nrow(inh) || is.na(inh$rows[1L])) tb$rows[1L] <- "group = variable"
@@ -207,7 +210,9 @@ builder_write <- function(x, output_id, state) {
   lv <- function(v, l) {
     if (identical(l, st$auto_levels[[v]])) NA_character_ else j(l)
   }
-  if (!is.na(st$key)) vr <- put(vr, st$key, levels = lv(st$key, st$arms))
+  if (!anyNA(st$key)) for (k in st$key) {
+    vr <- put(vr, k, levels = lv(k, st$arms[[k]] %||% st$auto_levels[[k]]))
+  }
   v <- st$variables
   for (i in seq_len(nrow(v))) {
     vr <- put(vr, v$variable[i],
