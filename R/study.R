@@ -652,7 +652,8 @@ study_files <- function(study, folder = "data") {
 
 #' The first rows of a data file
 #'
-#' Reads `.rds`, `.csv`, `.xpt`, `.sas7bdat` (\pkg{haven}) and `.parquet`
+#' Reads `.rds`, `.rda` / `.RData` (one dataset a file), `.csv`, `.xpt`,
+#' `.sas7bdat` (\pkg{haven}) and `.parquet`
 #' (\pkg{arrow}).
 #'
 #' @param path A file.
@@ -672,6 +673,11 @@ read_data_head <- function(path, n = 50L) {
   }
   d <- switch(ext,
     rds = readRDS(path),
+    rda = , rdata = local({
+      e <- new.env()
+      load(path, envir = e)
+      e[[ls(e)[1L]]]
+    }),
     csv = utils::read.csv(path, stringsAsFactors = FALSE,
                           fileEncoding = "UTF-8-BOM"),
     xpt = { need("haven"); haven::read_xpt(path) },

@@ -1,5 +1,27 @@
 # tflplanner (development version)
 
+- **The study's code list** (#56): Details (sheets) has a `codelists`
+  sheet (tflspec 0.0.24.9017: `variable`, `value`, `label`, `order`), and
+  its tab reads a code list from an `.xlsx` or `.csv` file into the
+  study's defaults -- every table prints the values' text in their order
+  (`read_codelist()`, `set_codelist()`).  A report's own rows replace the
+  defaults for it; a variable's `levels` on the `variables` sheet, when
+  given, is its order instead.
+
+- **The ARD tab says what each field is in the spec** (#54).  A method is
+  offered as what it does and the function it calls ("Count of one level
+  (ard_dichotomous())"); each field says its spec name and, when the
+  method has one, its default ("Percentages of (denominator =
+  population)"); the formats have a heading; the data left blank names
+  the analysis set's data ("(the analysis set's: ADSL)"); the analysis
+  edited is shown as its own code under the form.  A tick shows every
+  report's analyses in the grid (an analysis several reports use, such as
+  BIGN, at once), edited as the whole sheet; a double click on a report
+  in the study ARD's list opens its analyses.  The sidebar's report is
+  "Report (output_id)"; in Japanese the sheet tabs read "ヘッダー
+  (header)" and the Content tab "内容 (content)".  Data files may be `.rda`
+  / `.RData` (one dataset a file; tflspec 0.0.24.9016).
+
 - **Several column variables in the table builder** (#52): the Content
   tab's "Column variables" takes more than one (a group, then a visit
   ...), as `tables$cols` writes them (`A | B`, outermost first).  With

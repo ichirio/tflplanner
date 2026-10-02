@@ -180,19 +180,19 @@ every report,全帳票
 Finished: %s,%s の実行が終わりました
 Finished with errors: %s,%s の実行が終わりました（エラーあり）
 Running %s ...,%s を実行中…
-tables: roles,tables 表の役割
-variables,variables 変数
-cells,cells セル
-layout: pages,layout ページ割
-columns,columns 列
-style,style 書式
-col_header: column header,col_header 列見出し
-report,report 帳票
-page,page 用紙
-header,header ヘッダー
-footer,footer フッター
-titles,titles タイトル
-footnotes,footnotes 脚注
+tables: roles,表の役割 (tables)
+variables,変数 (variables)
+cells,セル (cells)
+layout: pages,ページ割 (layout)
+columns,列 (columns)
+style,書式 (style)
+col_header: column header,列見出し (col_header)
+report,帳票 (report)
+page,用紙 (page)
+header,ヘッダー (header)
+footer,フッター (footer)
+titles,タイトル (titles)
+footnotes,脚注 (footnotes)
 Not written (save),未作成（保存で生成）
 Unsaved (save),未保存（保存で更新）
 TODO (data part),TODO（データ部未記入）
@@ -832,15 +832,15 @@ e.g.,例:
 The ARD has no subjects per %s: a header's (N=n) prints NA.,ARD に %s ごとの被験者数がありません。見出しの (N=n) は NA になります。
 Count them (then Preview),数える（そしてプレビュー）
 All reports,帳票の一覧
-Content,中身
+Content,内容 (content)
 Page,ページ
 "The page of the report chosen in the sidebar: its titles, footnotes and its own header or footer. Study defaults = every report's.",サイドバーで選んだ帳票のページ: タイトル、脚注、その帳票だけのヘッダー・フッター。試験の既定 = すべての帳票のもの。
 When,日時
 Why,理由
 First page (sample),1 ページ目（見本）
 (the table),（表）
-(the figure: see its Content),（図: 中身のタブで）
-(the listing: see its Content),（Listing: 中身のタブで）
+(the figure: see its Content),（図: 内容のタブで）
+(the listing: see its Content),（Listing: 内容のタブで）
 Report,帳票
 "Rows for every report (ARD, Page)",すべての帳票の行（ARD・ページ）
 Getting started,はじめに
@@ -857,7 +857,7 @@ Reports are made in this order (the official run too). Copy makes a new report w
 2. Rework: usually blank (the standard one). Write code to change the data before the table is made.,2. 加工: ふつうは空でよい（標準の加工）。表を作る前にデータを変えるときに書きます。
 Next steps,次の一歩
 Close,閉じる
-"Open %s: its Content builds the table in words, with the table as it will print beside it.",%s を開く: 「中身」で表を言葉で組み立て、右にでき上がりが出ます。
+"Open %s: its Content builds the table in words, with the table as it will print beside it.",%s を開く: 「内容」で表を言葉で組み立て、右にでき上がりが出ます。
 Open it,開く
 ARD: where the numbers come from (cards / cardx). A click on a row shows the analysis as a form.,ARD: 表の数字の元（cards / cardx）。行をクリックすると、解析がフォームで出ます。
 Go to ARD,ARD へ
@@ -896,8 +896,8 @@ method-note:proportion_ci,"割合の信頼区間（args: method = ""wilson"" …
 method-note:mean_ci,"平均の信頼区間（args: conf.level = 0.9 …）。statistics で estimate, conf.low, conf.high のどれを残すか"
 method-note:ttest,by の 2 群の t 検定
 method-note:wilcox,by の 2 群の Wilcoxon 順位和検定
-method-note:chisq,variables と by のカイ二乗検定
-method-note:fisher,variables と by の Fisher の正確検定
+method-note:chisq,と by のカイ二乗検定 (variables)
+method-note:fisher,と by の Fisher の正確検定 (variables)
 method-note:custom,code に書いた任意の R コード。data と population が使えます
 "A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Code on the Code tab, if any, changes the data after the condition.",Listingを定義します：データ（カタログのデータセット・条件・並び順）と列。コードのタブにコードがあれば、条件の後にデータを加工します。
 Done. Restart R (in RStudio: Session > Restart R) before using tflplanner again.,完了しました。tflplanner を使う前に R を再起動してください（RStudio では Session > Restart R）。
@@ -1119,7 +1119,7 @@ An R condition on its columns choosing the rows; blank: every row.,その列に�
 The column header; \n is a line break; blank: the variables' names.,列見出し。\n で改行。空欄 = 変数名。
 "Characters a line before the cell wraps (listing_col(width = )), a whole number; blank: never wraps.",セルを折り返す前の 1 行の文字数（listing_col(width = )）。整数。空欄 = 折り返さない。
 TRUE / FALSE: TRUE prints a value once until it changes; blank: FALSE.,TRUE / FALSE：TRUE で値が変わるまで 1 度だけ表示する。空欄 = FALSE。
-cell_styles: cell looks,cell_styles セルの見た目
+cell_styles: cell looks,セルの見た目 (cell_styles)
 A word drawn diagonally behind every page (rtf_document(watermark = )); blank: none.,全ページの本文の後ろに斜めに入れる文字（rtf_document(watermark = )）。空欄 = なし。
 A figure report: the figure's width in inches (rtf_figures(width_twips = )); blank: the figure's own.,図の帳票：図の幅（インチ。rtf_figures(width_twips = )）。空欄 = 図そのものの幅。
 A figure report: the figure's height in inches (rtf_figures(height_twips = )); blank: the figure's own.,図の帳票：図の高さ（インチ。rtf_figures(height_twips = )）。空欄 = 図そのものの高さ。
@@ -1177,3 +1177,22 @@ The code that makes the plot (edit it on the Reports tab),プロットを作る�
 Column variables,列の変数
 "Order of the column variables, outermost first (drag)",列の変数の順序（外側から。ドラッグ）
 Order of the columns of %s (drag),%s の列の順序（ドラッグ）
+Report (output_id),帳票 (output_id)
+(the analysis set's: %s),（解析対象集団のデータ: %s）
+Repeated within,層（この中で繰り返す）
+Percentages of,% の分母
+Formats,書式
+This analysis as code (after Apply),この解析のコード（反映後）
+Every report's analyses (with output_id),すべての帳票の解析（output_id つき）
+Datasets,データセット
+Analysis sets,解析対象集団
+Study keys,試験の設定
+The analyses,解析
+codelists: code list,コードリスト (codelists)
+"Read the study's code list (xlsx / csv: variable, value, label, order)","試験のコードリストを読み込む（xlsx / csv: variable, value, label, order）"
+%d values of %d variables read into the code list (the study's defaults).,コードリストに %2$d 個の変数の %1$d 個の値を読み込みました（試験の既定）。
+"Table: the study's code list, one row a value of a variable -- the text it prints as and its place (plan_labels(), plan_levels()). A report's own rows replace the defaults of the same variable and value. A variable's `levels` on the variables sheet, when given, is the order instead.",表: 試験のコードリスト。1 行 = 変数の 1 つの値 -- 表示する文字と並び順（plan_labels()、plan_levels()）。帳票の行は、同じ変数・値の既定の行を置き換える。variables シートの `levels` があれば、そちらが順序になる。
+The variable (an analysis variable or a column key).,変数（解析変数か列のキー）。
+A value as the data have it.,データにある値。
+What prints for the value; blank: the value.,その値の表示; 空欄 = 値そのもの。
+"Its place among the variable's values (a number); blank: after the numbered ones, in the sheet's order.",その変数の値の中での位置（数字）; 空欄 = 番号付きの後、シートの順。

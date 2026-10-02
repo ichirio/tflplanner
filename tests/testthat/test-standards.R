@@ -68,7 +68,7 @@ test_that("a company's workbook changes what the app offers", {
     dataset = "ADAE", population_id = "SAF", by = "TRTA",
     variables = "AEBODSYS | AEDECOD"), "analyses")
   code <- .ard_spec_code(.ard_spec(st$planner$ard))
-  expect_true(any(grepl("cards::ard_stack_hierarchical(data,", code,
+  expect_true(any(grepl("cards::ard_stack_hierarchical(", code,
                         fixed = TRUE)))
   expect_true(any(grepl("id = SUBJID", code, fixed = TRUE)))
   expect_true(any(grepl("over_variables = TRUE", code, fixed = TRUE)))

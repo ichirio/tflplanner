@@ -13,7 +13,8 @@
 .study_tabs <- c("outputs", "ard", "data", "results")
 
 .sheet_labels <- c(
-  tables = "tables: roles", variables = "variables", cells = "cells",
+  tables = "tables: roles", variables = "variables",
+  codelists = "codelists: code list", cells = "cells",
   layout = "layout: pages", columns = "columns", style = "style",
   cell_styles = "cell_styles: cell looks",
   col_header = "col_header: column header",
@@ -297,6 +298,9 @@ app_ui <- function(lang = "en") {
     bslib::nav_panel(
       t(.sheet_labels[[sheet]]), value = sheet,
       if (sheet %in% .assisted) shiny::uiOutput(paste0("assist_", sheet)),
+      if (identical(sheet, "codelists")) shiny::fileInput(
+        "codelist_file", t("Read the study's code list (xlsx / csv: variable, value, label, order)"),
+        accept = c(".xlsx", ".csv"), width = "100%"),
       rhandsontable::rHandsontableOutput(paste0("hot_", sheet)),
       shiny::uiOutput(paste0("inh_", sheet)),
       shiny::tags$details(
@@ -322,7 +326,7 @@ app_ui <- function(lang = "en") {
     sidebar = bslib::sidebar(
       id = "side", width = 270, open = "closed",
       shiny::uiOutput("study_side"),
-      shiny::selectInput("target", t("Report"),
+      shiny::selectInput("target", t("Report (output_id)"),
                          choices = c("-" = .all_rows), width = "100%"),
       shiny::tags$details(
         class = "small text-muted",
@@ -425,13 +429,16 @@ app_ui <- function(lang = "en") {
                    t("One row per analysis: the data, the population, the subset, the grouping, the variables and the method (a keyword or any cards / cardx function). The sidebar picks the report whose analyses are shown.")),
           bslib::navset_underline(
             id = "ard_sheet",
-            bslib::nav_panel("analyses", value = "analyses",
+            bslib::nav_panel(paste0(t("The analyses"), " (analyses)"), value = "analyses",
+                             shiny::checkboxInput(
+                               "ard_all", t("Every report's analyses (with output_id)"),
+                               FALSE),
                              rhandsontable::rHandsontableOutput("hot_ard_analyses")),
-            bslib::nav_panel("datasets", value = "datasets",
+            bslib::nav_panel(paste0(t("Datasets"), " (datasets)"), value = "datasets",
                              rhandsontable::rHandsontableOutput("hot_ard_datasets")),
-            bslib::nav_panel("populations", value = "populations",
+            bslib::nav_panel(paste0(t("Analysis sets"), " (populations)"), value = "populations",
                              rhandsontable::rHandsontableOutput("hot_ard_populations")),
-            bslib::nav_panel("study", value = "study",
+            bslib::nav_panel(paste0(t("Study keys"), " (study)"), value = "study",
                              rhandsontable::rHandsontableOutput("hot_ard_study"))),
           shiny::uiOutput("ard_check"),
           shiny::div(
@@ -690,6 +697,11 @@ $(document).on('shiny:value', function(e) {
     $('#builder_updating').addClass('d-none');
     $('#builder_preview').css('opacity', 1);
   }
+});
+// The study ARD's list: a double click on a row opens that report's ARD
+$(document).on('dblclick', '#ard_state tbody tr', function() {
+  var id = $(this).find('td').first().text();
+  if (id) Shiny.setInputValue('ard_state_dbl', id, {priority: 'event'});
 });
 // Save: says \"Saving...\" at once and cannot be pressed again until the
 // server has finished (it then draws the button and the state anew).
@@ -2101,11 +2113,17 @@ app_server <- function(input, output, session, start) {
     sh <- sheet
     out_id <- paste0("hot_ard_", sh)
     by_report <- sh == "analyses"
-    key <- shiny::reactive(paste("ard", sh, if (by_report) input$target,
-                                 rv$ver, sep = "|"))
+    # the analyses of the report chosen, or of every report (an analysis
+    # several reports use, BIGN, seen at once): then the grid is the whole
+    # sheet with its output_id column, edited as such
+    tg_of <- function() if (by_report && !isTRUE(input$ard_all)) target() else ""
+    key <- shiny::reactive({
+      k <- paste("ard", sh, if (by_report) input$target, rv$ver, sep = "|")
+      if (by_report && isTRUE(input$ard_all)) paste0(k, "|all") else k
+    })
     output[[out_id]] <- rhandsontable::renderRHandsontable({
       shiny::req(has_study())
-      tg <- if (by_report) target() else ""
+      tg <- tg_of()
       d <- ard_rows(shiny::isolate(rv$p), sh, tg)
       if (by_report && !identical(tg, "") && !is.na(tg)) d$output_id <- NULL
       grids_drawn()
@@ -2119,7 +2137,7 @@ app_server <- function(input, output, session, start) {
       if (!identical(h$params$planner_key, key())) return()
       d <- read_grid(h)
       if (is.null(d)) return()
-      tg <- if (by_report) target() else ""
+      tg <- tg_of()
       guarded(rv$p <- set_ard_rows(rv$p, sh, tg, d))
     })
   })
@@ -2161,7 +2179,19 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$hot_ard_analyses_select, {
     r <- input$hot_ard_analyses_select$select$r
     tg <- ard_target()
-    if (is.null(tg) || length(r) != 1L) return()
+    if (length(r) != 1L) return()
+    if (isTRUE(input$ard_all)) {
+      # every report's rows: the row's report becomes the one chosen
+      d <- ard_rows(rv$p, "analyses", "")
+      if (r < 1L || r > nrow(d) || is.na(d$analysis_id[r])) return()
+      an_pick(d$analysis_id[r])
+      if (!identical(d$output_id[r], tg) &&
+          d$output_id[r] %in% output_ids(rv$p)) {
+        shiny::updateSelectInput(session, "target", selected = d$output_id[r])
+      }
+      return()
+    }
+    if (is.null(tg)) return()
     d <- ard_rows(rv$p, "analyses", tg)
     if (r >= 1L && r <= nrow(d) && !is.na(d$analysis_id[r])) {
       an_pick(d$analysis_id[r])
@@ -2187,6 +2217,33 @@ app_server <- function(input, output, session, start) {
     if (!is.na(m[stat])) return(unname(m[stat]))
     st <- .std_ard_statistics()
     unname(st$fmt[match(stat, st$statistic)])
+  }
+  # A form field's label: what it is, then its name in the spec and the
+  # value it takes when left blank -- "Percentages of (denominator =
+  # population)".
+  argl <- function(text, arg, dflt = NULL) {
+    d <- if (length(dflt) == 1L && !is.na(dflt) && nzchar(dflt))
+      paste0(" = ", dflt) else ""
+    paste0(t(text), " (", arg, d, ")")
+  }
+  # the value a method's own defaults give an argument ("population" for a
+  # hierarchical analysis's denominator), or NULL
+  st_arg_default <- function(r, arg) {
+    keys <- .std_ard_methods()
+    d <- keys$defaults[match(r$method, keys$method)]
+    if (is.na(d) || !nzchar(d)) return(NULL)
+    p <- trimws(strsplit(d, ",")[[1L]])
+    hit <- p[startsWith(p, paste0(arg, " ")) | startsWith(p, paste0(arg, "="))]
+    if (!length(hit)) return(NULL)
+    trimws(sub("^[^=]*=", "", hit[1L]))
+  }
+  # the data choices: blank is the analysis set's data, named as it is
+  ds_choices <- function(pop) {
+    po <- rv$p$ard$populations
+    pds <- po$dataset[match(pop %||% NA_character_, po$population_id)]
+    blank <- if (length(pds) && !is.na(pds))
+      sprintf(t("(the analysis set's: %s)"), pds) else t("(the analysis set's)")
+    c(stats::setNames("", blank), rv$p$ard$datasets$dataset)
   }
   # the row as the form has it now: its method may be changed there
   st_row_now <- function() {
@@ -2243,7 +2300,11 @@ app_server <- function(input, output, session, start) {
     st_env$n <- st_env$n + 1L
     st_drawn(st_env$n)
     m <- .std_ard_methods()
-    lab <- method_label(m$method, m$label)
+    # what it does, then the function it calls: "Count of one level
+    # (ard_dichotomous())"
+    fn <- sub("^.*::", "", m$call)
+    lab <- paste0(method_label(m$method, m$label),
+                  ifelse(grepl("^[(]", m$call), "", paste0(" (", fn, "())")))
     mch <- stats::setNames(m$method, lab)
     if (!is.na(r$method) && !r$method %in% m$method) {
       mch <- c(mch, stats::setNames(r$method, r$method))
@@ -2267,20 +2328,20 @@ app_server <- function(input, output, session, start) {
         shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
                          width = "100%")),
-      shiny::selectInput(st_id("method"), t("What to compute"), mch,
+      shiny::selectInput(st_id("method"), argl("What to compute", "method"), mch,
                          selected = r$method, width = "100%"),
       shiny::uiOutput("ard_method_note"),
       bslib::layout_columns(
         col_widths = c(6, 6),
-        shiny::selectInput(st_id("dataset"), t("Data"),
-                           c(stats::setNames("", t("(the analysis set's)")), ds),
+        shiny::selectInput(st_id("dataset"), argl("Data", "dataset"),
+                           ds_choices(r$population_id),
                            selected = blank_na(r$dataset), width = "100%"),
-        shiny::selectInput(st_id("pop"), t("Analysis set"), c("", po),
+        shiny::selectInput(st_id("pop"), argl("Analysis set", "population_id"), c("", po),
                            selected = blank_na(r$population_id), width = "100%")),
       shiny::uiOutput("ard_an_vars"),
       shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
-        shiny::tags$summary(class = "small", t("Subset (an R condition)")),
+        shiny::tags$summary(class = "small", argl("Subset (an R condition)", "where")),
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
                          placeholder = "AESER == \"Y\"")),
       shiny::uiOutput("ard_stat_part"),
@@ -2289,7 +2350,35 @@ app_server <- function(input, output, session, start) {
         .btn("ard_stat_apply", t("Apply to the analysis"),
              class = "btn-sm btn-primary"),
         shiny::span(class = "small text-muted",
-                    t("Format: xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown."))))
+                    t("Format: xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown."))),
+      shiny::tags$details(
+        class = "mt-2", open = NA,
+        shiny::tags$summary(class = "small", t("This analysis as code (after Apply)")),
+        shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
+  })
+  # another analysis set: the blank data choice names that set's data
+  shiny::observe({
+    st_drawn()
+    pop <- input[[st_id("pop")]]
+    shiny::req(!is.null(pop))
+    shiny::updateSelectInput(session, st_id("dataset"),
+                             choices = ds_choices(pop),
+                             selected = shiny::isolate(input[[st_id("dataset")]]))
+  })
+  # this analysis alone as code (the data it reads, its analysis set, the
+  # call), as the definition has it now -- the whole program is on the right
+  output$ard_an_code <- shiny::renderText({
+    r <- st_row()
+    a <- rv$p$ard
+    a$analyses <- a$analyses[!is.na(a$analyses$output_id) &
+                               a$analyses$output_id == r$output_id &
+                               a$analyses$analysis_id %in% r$analysis_id, ,
+                             drop = FALSE]
+    code <- tryCatch(tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"),
+                                           part = "body"),
+                     error = function(e) paste(t("The code cannot be written yet:"),
+                                               conditionMessage(e)))
+    paste(code, collapse = "\n")
   })
   output$ard_method_note <- shiny::renderUI({
     st_drawn()
@@ -2339,21 +2428,21 @@ app_server <- function(input, output, session, start) {
     }
     shiny::tagList(
       shiny::selectizeInput(
-        st_id("by"), t("Groups (the columns)"), bch, by_now, multiple = TRUE,
+        st_id("by"), argl("Groups (the columns)", "by"), bch, by_now, multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
       shiny::selectizeInput(
-        st_id("vars"), t("Variables (the rows)"), vch, var_now,
+        st_id("vars"), argl("Variables (the rows)", "variables"), vch, var_now,
         multiple = TRUE, width = "100%",
         options = list(plugins = list("remove_button", "drag_drop"))),
       shiny::div(
         class = "d-flex flex-wrap gap-2",
         shiny::div(class = "flex-grow-1", shiny::selectizeInput(
-          st_id("strata"), t("Repeated within (strata)"), sch, strata_now,
+          st_id("strata"), argl("Repeated within", "strata"), sch, strata_now,
           multiple = TRUE, width = "100%",
           options = list(plugins = list("remove_button"),
                          placeholder = t("none")))),
         shiny::div(class = "flex-grow-1", shiny::selectInput(
-          st_id("den"), t("Percentages of (denominator)"),
+          st_id("den"), argl("Percentages of", "denominator", st_arg_default(r, "denominator")),
           den_choices(den_now), den_now, width = "100%"))),
       if (is.null(d)) shiny::p(
         class = "small text-muted",
@@ -2390,7 +2479,7 @@ app_server <- function(input, output, session, start) {
     }
     shiny::tagList(
       shiny::selectizeInput(
-        st_id("pick"), t("Statistics"), choices = ch, selected = have,
+        st_id("pick"), argl("Statistics", "statistics"), choices = ch, selected = have,
         multiple = TRUE, width = "100%",
         options = list(plugins = list("remove_button"),
                        placeholder = t("the method's default (below)"))),
@@ -2424,14 +2513,16 @@ app_server <- function(input, output, session, start) {
     pick <- input[[st_id("pick")]]
     if (!length(pick)) return(NULL)
     f <- .parse_formats(shiny::isolate(st_row())$formats)
-    shiny::div(
+    shiny::tagList(
+      shiny::h6(class = "mt-2 mb-1", argl("Formats", "formats")),
+      shiny::div(
       class = "rp-stat-fmt",
       lapply(seq_along(pick), function(i) {
         s <- pick[i]
         shiny::textInput(st_id(paste0("f_", s)), s,
                          value = if (!is.na(f[s])) f[[s]] else "",
                          placeholder = st_default(r, s))
-      }))
+      })))
   })
   shiny::observeEvent(input$ard_stat_apply, {
     r <- st_row()
@@ -2664,6 +2755,34 @@ app_server <- function(input, output, session, start) {
                              c("#15803d", "#b45309", "#6b7280", "#b91c1c")))
   }
   output$ard_state <- DT::renderDT(ard_state_view())
+  # the study's code list from a file: its values become the study defaults
+  # of the codelists sheet (a report's own rows still win for that report)
+  shiny::observeEvent(input$codelist_file, {
+    f <- input$codelist_file
+    if (is.null(f) || !has_study()) return()
+    ext <- tolower(tools::file_ext(f$name))
+    path <- f$datapath
+    if (!identical(tolower(tools::file_ext(path)), ext)) {
+      file.copy(path, p2 <- paste0(path, ".", ext))
+      path <- p2
+    }
+    rows <- guarded(read_codelist(path))
+    if (is.null(rows)) return()
+    p2 <- guarded(set_codelist(rv$p, rows))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    bump()
+    notify(sprintf(t("%d values of %d variables read into the code list (the study's defaults)."),
+                   nrow(rows), length(unique(rows$variable))))
+  })
+  # a double click on a report's row: its ARD definition, on the left
+  shiny::observeEvent(input$ard_state_dbl, {
+    id <- input$ard_state_dbl
+    if (!id %in% output_ids(rv$p)) return()
+    shiny::updateCheckboxInput(session, "ard_all", value = FALSE)
+    shiny::updateSelectInput(session, "target", selected = id)
+    bslib::nav_select("ard_sheet", "analyses")
+  })
   output$ard_state_data <- DT::renderDT(ard_state_view())
   # below the table: what the last preview printed, or -- a row chosen --
   # that output's log in the latest official run of the ARD

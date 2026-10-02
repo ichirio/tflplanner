@@ -81,6 +81,7 @@ reference:
       - add_output
       - output_ids
       - table_sheets
+      - read_codelist
       - inherited_rows
       - read_planner
       - write_planner
