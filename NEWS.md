@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **The tabs in the order of the work, and where a report is made** (#58):
+  Study, Data, Reports, ARD, Runs (Reports before ARD).  A report chosen
+  in the list shows the buttons for its kind -- a table "Go to ARD" and
+  "Make the table", a figure "Make the figure", a listing "Make the
+  listing".  A top tab the chosen report has nothing on (ARD for a figure
+  or a listing) is faded but still opens, and then says why.
+
 - **The study's code list** (#56): Details (sheets) has a `codelists`
   sheet (tflspec 0.0.24.9017: `variable`, `value`, `label`, `order`), and
   its tab reads a code list from an `.xlsx` or `.csv` file into the

@@ -10,7 +10,7 @@
 
 .all_rows <- "__all__"
 .default_rows <- "__default__"
-.study_tabs <- c("outputs", "ard", "data", "results")
+.study_tabs <- c("data", "outputs", "ard", "results")
 
 .sheet_labels <- c(
   tables = "tables: roles", variables = "variables",
@@ -22,6 +22,17 @@
   titles = "titles", footnotes = "footnotes")
 
 .type_labels <- c(table = "Table", listing = "Listing", figure = "Figure")
+
+# Where each kind of report is made, in the order of the work: the page
+# (go()'s name) and the button's words.  A fourth kind adds its row here.
+.type_moves <- list(
+  table = c(ard = "Go to ARD", tables = "Make the table"),
+  figure = c(designer = "Make the figure"),
+  listing = c(lf = "Make the listing"))
+
+# The top tabs a kind of report has nothing on: shown faded while such a
+# report is chosen (still open to click; the tab then says why).
+.type_idle_tabs <- list(table = character(), figure = "ard", listing = "ard")
 
 # Text cut to `n` characters, with an ellipsis.
 .ellipsis <- function(x, n) {
@@ -115,6 +126,8 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 # ------------------------------------------------------------------- UI
 
 .code_css <- "
+/* a top tab the chosen report has nothing on */
+.nav-link.rp-idle { opacity: .45; }
 /* While the server works (opening a study, switching a tab or a report,
    saving) the page takes no clicks: a veil, after 0.4 s so that the
    short updates (the builder's preview, a poll) do not flicker or block. */
@@ -408,84 +421,6 @@ app_ui <- function(lang = "en") {
           DT::DTOutput("ard_state_data")))),
 
     bslib::nav_panel(
-      "ARD", value = "ard",
-      shiny::div(
-        class = "d-flex flex-wrap gap-2 align-items-center mb-2 small",
-        shiny::span(class = "text-muted", t("Layout")),
-        shiny::div(
-          id = "ard_layout", class = "btn-group btn-group-sm", role = "group",
-          lay_btn("data-lay" = "side", t("Side by side")),
-          lay_btn("data-lay" = "stack", t("Stacked")),
-          lay_btn("data-lay" = "one", t("One pane"))),
-        shiny::div(
-          id = "ard_pane", class = "btn-group btn-group-sm", role = "group",
-          lay_btn("data-pane" = "def", t("ARD definition")),
-          lay_btn("data-pane" = "out", t("Code / ARD")))),
-      shiny::div(
-        id = "ard_split", class = "rp-split rp-lay-side rp-show-def",
-        bslib::card(
-          bslib::card_header(t("ARD definition")),
-          shiny::p(class = "small text-muted",
-                   t("One row per analysis: the data, the population, the subset, the grouping, the variables and the method (a keyword or any cards / cardx function). The sidebar picks the report whose analyses are shown.")),
-          bslib::navset_underline(
-            id = "ard_sheet",
-            bslib::nav_panel(paste0(t("The analyses"), " (analyses)"), value = "analyses",
-                             shiny::checkboxInput(
-                               "ard_all", t("Every report's analyses (with output_id)"),
-                               FALSE),
-                             rhandsontable::rHandsontableOutput("hot_ard_analyses")),
-            bslib::nav_panel(paste0(t("Datasets"), " (datasets)"), value = "datasets",
-                             rhandsontable::rHandsontableOutput("hot_ard_datasets")),
-            bslib::nav_panel(paste0(t("Analysis sets"), " (populations)"), value = "populations",
-                             rhandsontable::rHandsontableOutput("hot_ard_populations")),
-            bslib::nav_panel(paste0(t("Study keys"), " (study)"), value = "study",
-                             rhandsontable::rHandsontableOutput("hot_ard_study"))),
-          shiny::uiOutput("ard_check"),
-          shiny::div(
-            class = "rp-b-card mt-2",
-            shiny::h6(t("Analysis")),
-            shiny::uiOutput("ard_stat_ui")),
-          shiny::tags$details(
-            class = "rp-help mt-2",
-            shiny::tags$summary(t("Methods")),
-            DT::DTOutput("ard_methods")),
-          shiny::tags$details(
-            class = "rp-help mt-2",
-            shiny::tags$summary(t("Statistics (company standards)")),
-            DT::DTOutput("ard_stat_catalog"))),
-        bslib::navset_card_tab(
-          id = "ard_right",
-          bslib::nav_panel(
-            t("Code (cards / cardx)"), value = "code",
-            shiny::radioButtons(
-              "ard_scope", NULL,
-              stats::setNames(c("report", "setup", "autoexec"),
-                              c(t("This output's program"), "ard_setup.R",
-                                "autoexec_ard.R")),
-              inline = TRUE),
-            shiny::uiOutput("ard_prog_state"),
-            shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_code"))),
-          bslib::nav_panel(
-            t("Study ARD"), value = "state",
-            shiny::p(class = "small text-muted",
-                     t("Build the ARD output by output as each is ready: tables can be made from the outputs already in it, while others are still being defined.")),
-            shiny::p(class = "small text-muted mt-1 mb-1",
-                     t("Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Results tab. Choose a row to see its log in the latest official run.")),
-            DT::DTOutput("ard_state"),
-            shiny::div(class = "rp-code mt-2",
-                       shiny::verbatimTextOutput("ard_log"))),
-          bslib::nav_panel(
-            t("ARD (this report)"), value = "result",
-            shiny::div(
-              class = "d-flex flex-wrap gap-2 align-items-center",
-              .btn("ard_preview", t("Preview"), class = "btn-sm btn-primary"),
-              shiny::span(class = "small text-muted",
-                          t("Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills."))),
-            shiny::uiOutput("ard_run_info"),
-            shiny::div(class = "rp-resize",
-                       DT::DTOutput("ard_table", height = "auto", fill = FALSE)))))),
-
-    bslib::nav_panel(
       t("Reports"), value = "outputs",
       # one place for a report: the list, then the report chosen (in the
       # list or the sidebar) -- its content (by its kind), page and code
@@ -497,6 +432,7 @@ app_ui <- function(lang = "en") {
         bslib::card(
           bslib::card_header(t("Reports (TFL)")),
           DT::DTOutput("outputs"),
+          shiny::uiOutput("report_moves"),
           shiny::div(
             class = "d-flex flex-wrap gap-1",
             .btn("add", t("Add")), .btn("copy", t("Copy")),
@@ -615,6 +551,85 @@ app_ui <- function(lang = "en") {
                        shiny::verbatimTextOutput("program"))))))),
 
     bslib::nav_panel(
+      "ARD", value = "ard",
+      shiny::uiOutput("ard_kind_note"),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2 align-items-center mb-2 small",
+        shiny::span(class = "text-muted", t("Layout")),
+        shiny::div(
+          id = "ard_layout", class = "btn-group btn-group-sm", role = "group",
+          lay_btn("data-lay" = "side", t("Side by side")),
+          lay_btn("data-lay" = "stack", t("Stacked")),
+          lay_btn("data-lay" = "one", t("One pane"))),
+        shiny::div(
+          id = "ard_pane", class = "btn-group btn-group-sm", role = "group",
+          lay_btn("data-pane" = "def", t("ARD definition")),
+          lay_btn("data-pane" = "out", t("Code / ARD")))),
+      shiny::div(
+        id = "ard_split", class = "rp-split rp-lay-side rp-show-def",
+        bslib::card(
+          bslib::card_header(t("ARD definition")),
+          shiny::p(class = "small text-muted",
+                   t("One row per analysis: the data, the population, the subset, the grouping, the variables and the method (a keyword or any cards / cardx function). The sidebar picks the report whose analyses are shown.")),
+          bslib::navset_underline(
+            id = "ard_sheet",
+            bslib::nav_panel(paste0(t("The analyses"), " (analyses)"), value = "analyses",
+                             shiny::checkboxInput(
+                               "ard_all", t("Every report's analyses (with output_id)"),
+                               FALSE),
+                             rhandsontable::rHandsontableOutput("hot_ard_analyses")),
+            bslib::nav_panel(paste0(t("Datasets"), " (datasets)"), value = "datasets",
+                             rhandsontable::rHandsontableOutput("hot_ard_datasets")),
+            bslib::nav_panel(paste0(t("Analysis sets"), " (populations)"), value = "populations",
+                             rhandsontable::rHandsontableOutput("hot_ard_populations")),
+            bslib::nav_panel(paste0(t("Study keys"), " (study)"), value = "study",
+                             rhandsontable::rHandsontableOutput("hot_ard_study"))),
+          shiny::uiOutput("ard_check"),
+          shiny::div(
+            class = "rp-b-card mt-2",
+            shiny::h6(t("Analysis")),
+            shiny::uiOutput("ard_stat_ui")),
+          shiny::tags$details(
+            class = "rp-help mt-2",
+            shiny::tags$summary(t("Methods")),
+            DT::DTOutput("ard_methods")),
+          shiny::tags$details(
+            class = "rp-help mt-2",
+            shiny::tags$summary(t("Statistics (company standards)")),
+            DT::DTOutput("ard_stat_catalog"))),
+        bslib::navset_card_tab(
+          id = "ard_right",
+          bslib::nav_panel(
+            t("Code (cards / cardx)"), value = "code",
+            shiny::radioButtons(
+              "ard_scope", NULL,
+              stats::setNames(c("report", "setup", "autoexec"),
+                              c(t("This output's program"), "ard_setup.R",
+                                "autoexec_ard.R")),
+              inline = TRUE),
+            shiny::uiOutput("ard_prog_state"),
+            shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_code"))),
+          bslib::nav_panel(
+            t("Study ARD"), value = "state",
+            shiny::p(class = "small text-muted",
+                     t("Build the ARD output by output as each is ready: tables can be made from the outputs already in it, while others are still being defined.")),
+            shiny::p(class = "small text-muted mt-1 mb-1",
+                     t("Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Results tab. Choose a row to see its log in the latest official run.")),
+            DT::DTOutput("ard_state"),
+            shiny::div(class = "rp-code mt-2",
+                       shiny::verbatimTextOutput("ard_log"))),
+          bslib::nav_panel(
+            t("ARD (this report)"), value = "result",
+            shiny::div(
+              class = "d-flex flex-wrap gap-2 align-items-center",
+              .btn("ard_preview", t("Preview"), class = "btn-sm btn-primary"),
+              shiny::span(class = "small text-muted",
+                          t("Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills."))),
+            shiny::uiOutput("ard_run_info"),
+            shiny::div(class = "rp-resize",
+                       DT::DTOutput("ard_table", height = "auto", fill = FALSE)))))),
+
+    bslib::nav_panel(
       t("Runs"), value = "results",
       bslib::card(
         bslib::card_header(t("Reports")),
@@ -697,6 +712,14 @@ $(document).on('shiny:value', function(e) {
     $('#builder_updating').addClass('d-none');
     $('#builder_preview').css('opacity', 1);
   }
+});
+// The top tabs the chosen report's kind has nothing on: faded
+$(document).on('shiny:connected', function() {
+  Shiny.addCustomMessageHandler('rp-idle-tabs', function(x) {
+    $('#nav a[data-value]').each(function() {
+      $(this).toggleClass('rp-idle', x.indexOf($(this).attr('data-value')) >= 0);
+    });
+  });
 });
 // The study ARD's list: a double click on a row opens that report's ARD
 $(document).on('dblclick', '#ard_state tbody tr', function() {
@@ -1714,6 +1737,35 @@ app_server <- function(input, output, session, start) {
     bslib::nav_select("nav", "outputs")
     bslib::nav_select("rep_nav", sub)
   }
+  # The report chosen in the list: where its kind is made, as buttons
+  output$report_moves <- shiny::renderUI({
+    id <- current()
+    moves <- .type_moves[[report_kind()]]
+    if (is.null(id) || !length(moves)) return(NULL)
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-center my-2",
+      shiny::span(class = "small text-muted",
+                  sprintf(t("%s (%s):"), id, t(.type_labels[[report_kind()]]))),
+      lapply(names(moves), function(to) shiny::tags$button(
+        type = "button", class = "btn btn-sm btn-outline-primary",
+        onclick = sprintf("Shiny.setInputValue('report_move', '%s', {priority: 'event'})", to),
+        t(moves[[to]]))))
+  })
+  shiny::observeEvent(input$report_move, go(input$report_move))
+  # the tabs this kind of report has nothing on, faded (still clickable)
+  shiny::observe({
+    idle <- .type_idle_tabs[[report_kind()]] %||% character()
+    session$sendCustomMessage("rp-idle-tabs", as.list(idle))
+  })
+  output$ard_kind_note <- shiny::renderUI({
+    k <- report_kind()
+    if (!k %in% names(.type_idle_tabs) || !"ard" %in% .type_idle_tabs[[k]]) {
+      return(NULL)
+    }
+    shiny::div(class = "alert alert-info py-1 small",
+               sprintf(t("%s is a %s: it has no ARD (its program reads its data). The ARD here is the tables'."),
+                       current(), t(.type_labels[[k]])))
+  })
   output$report_head <- shiny::renderUI({
     id <- current()
     if (is.null(id)) return(NULL)
