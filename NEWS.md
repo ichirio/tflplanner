@@ -1,5 +1,10 @@
 # tflplanner (development version)
 
+- **The page takes no clicks while the app works** (#50): opening a
+  study, switching a tab or a report, saving.  After 0.4 s of work a light
+  veil covers the page (the cursor says it is busy) until it is done; the
+  short updates (the builder's preview, the run status) do not show it.
+
 - **Typing in the table builder no longer closes it** (#48).  Every edit
   writes the definition, and the report chosen, the page shown and the
   builder's case were read from the definition: each edit redrew the
