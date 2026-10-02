@@ -187,7 +187,11 @@ update_tflplanner <- function(channel = NULL, from = NULL,
           paste0("  ", list.files(from, "^(rtfreporter|tflspec|tflplanner)_"),
                  collapse = "\n"), "\n", sep = "")
     }
-    if (!.ask_yes(tr("Update?", lang))) return(invisible(FALSE))
+    cat(.update_plan_text(channel, from, lib, lang), sep = "\n")
+    if (!.ask_yes(tr("Update these packages now?", lang))) {
+      message(tr("Nothing was installed.", lang))
+      return(invisible(FALSE))
+    }
   } else if (!identical(ask, FALSE)) {
     stop("update_tflplanner() asks before it installs anything; call it in ",
          "an interactive session, or with `ask = FALSE`.", call. = FALSE)
@@ -211,6 +215,19 @@ update_tflplanner <- function(channel = NULL, from = NULL,
     message(tr("The update did not finish; see the messages above.", lang))
   }
   invisible(ok)
+}
+
+# What update_tflplanner() is about to do, in words: how, where, in what
+# order, what it leaves, what to do after.
+.update_plan_text <- function(channel, from, lib, lang = .console_language()) {
+  c(sprintf(tr("They are installed into %s, in a separate R process, in this order: rtfreporter, tflspec, tflplanner.", lang),
+            .show_path(lib)),
+    if (is.null(from)) c(
+      tr("Channels: \"release\" = CRAN, else the latest GitHub release; \"dev\" = the development version on GitHub.", lang),
+      sprintf(tr("The other channel: update_tflplanner(\"%s\").", lang),
+              setdiff(.channels, channel)[1L])),
+    tr("Your studies and tflplanner's settings are not touched.", lang),
+    tr("Afterwards, restart R (in RStudio: Session > Restart R) before using tflplanner again.", lang))
 }
 
 # ------------------------------------------------------------- the app's notice

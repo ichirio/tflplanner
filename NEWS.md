@@ -1,5 +1,20 @@
 # tflplanner (development version)
 
+- **The setup, shortcut and update questions say what they do** (#44).
+  Before it asks, `add_shortcut()` lists each shortcut by name and by
+  place (Windows: desktop and Start menu; macOS: Applications; Linux: the
+  application menu), with its folder, marks one that is already there as
+  replaced, says where the launcher files are kept and that
+  `remove_shortcut()` removes them; the question names how many ("Make
+  these 3 shortcuts?").  Afterwards it names the files and the next step
+  (Windows: pin to the taskbar from the Start menu).  `remove_shortcut()`
+  separates the shortcuts from the launcher files and says that studies
+  and settings are not touched; `update_tflplanner()` says where it
+  installs, in what order, the channels, and to restart R; the steps of
+  `setup_tflplanner()` say which files and folders they write, where the
+  packages go, and how to do a declined step later.  In English and
+  Japanese.
+
 - **tflspec's new listing and report columns** (ichirio/tflspec#64): the
   listing sheets' `blank_row`, `wrap`, `sep` and `align`, and the report
   sheet's `watermark`, `figure_width_in` and `figure_height_in` show in

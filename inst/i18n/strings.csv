@@ -904,10 +904,7 @@ method-note:custom,code に書いた任意の R コード。data と population 
 "A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Code on the Code tab, if any, changes the data after the condition.",一覧表を定義します：データ（カタログのデータセット・条件・並び順）と列。コードのタブにコードがあれば、条件の後にデータを加工します。
 Done. Restart R (in RStudio: Session > Restart R) before using tflplanner again.,完了しました。tflplanner を使う前に R を再起動してください（RStudio では Session > Restart R）。
 Install from %s:,%s から入れます:
-Made:,作成しました:
-Make them?,作成しますか?
 "R was not found. Install R, then try again.",R が見つかりません。R をインストールしてから、もう一度試してください。
-Remove them?,削除しますか?
 Start tflplanner in the browser,tflplanner をブラウザで起動します
 The update did not finish; see the messages above.,更新は完了しませんでした。上のメッセージを見てください。
 There is no tflplanner shortcut to remove.,削除する tflplanner のショートカットはありません。
@@ -915,21 +912,16 @@ There is no tflplanner shortcut to remove.,削除する tflplanner のショー�
 Update and launch,更新して起動
 Update on the %s channel:,%s の版に更新します:
 "Update tflplanner, then start it",tflplanner を更新してから起動します
-Update?,更新しますか?
 tflplanner (update and launch),tflplanner（更新して起動）
 tflplanner is starting at,tflplanner を起動しています:
-tflplanner will make its launcher shortcuts in:,起動用のショートカットを次の場所に作ります:
 tflplanner will remove:,次のものを削除します:
 1/3  Where tflplanner keeps its settings and the studies' saved state (its home),1/3  tflplanner の設定と試験の保存内容を置く場所（home）
 2/3  Packages,2/3  パッケージ
 3/3  A shortcut that starts tflplanner with a double click,3/3  ダブルクリックで tflplanner を起動するショートカット
 "Done. Start tflplanner from its shortcut, or with launch_app() in R. Everything else is in the app's settings.",完了しました。ショートカットか、R の launch_app() で tflplanner を起動してください。ほかの設定はアプリの設定画面で行えます。
 Home folder,home のフォルダー
-Install them now (from CRAN)?,今入れますか（CRAN から）?
 Language of the app,アプリの言語
-Make the shortcut?,ショートカットを作りますか?
 Nothing was changed.,何も変更していません。
-Save these settings (the folders are created)?,この設定で保存しますか（フォルダーを作成します）?
 The packages tflplanner's programs use are all installed.,tflplanner のプログラムが使うパッケージはすべて入っています。
 "To update tflplanner, rtfreporter and tflspec later: update_tflplanner(), or the ""update and launch"" shortcut.",あとで tflplanner・rtfreporter・tflspec を更新するには: update_tflplanner()、またはショートカット「更新して起動」。
 "Used by tflplanner's programs, not installed yet:",tflplanner のプログラムが使う、まだ入っていないパッケージ:
@@ -1137,3 +1129,44 @@ TRUE / FALSE: a blank row after each record (listing_spec(blank_row = )); blank:
 The name of an R function that breaks a cell into lines (listing_spec(wrap = )); blank: the type's own rule.,セルを行に折り返す R の関数の名前（listing_spec(wrap = )）。空欄 = 型の既定の規則。
 What separates the stacked variables (listing_col(sep = )); quote it to keep its spaces; blank: the type's (/).,縦に積む変数の区切り（listing_col(sep = )）。空白を残すときは引用符で囲む。空欄 = 型の既定（/）。
 left / center / right (listing_col(align = )); blank: the type's (left).,left / center / right（listing_col(align = )）。空欄 = 型の既定（left）。
+Desktop,デスクトップ
+Start menu,スタートメニュー
+Applications,アプリケーション
+the application menu,アプリケーションのメニュー
+"tflplanner (with the action ""%s"")",tflplanner（メニューの項目「%s」付き）
+tflplanner will make these shortcuts:,次のショートカットを作成します:
+[already there: it will be replaced],［既にあります: 置き換えます］
+"A double click starts tflplanner in the browser; ""update and launch"" first updates rtfreporter, tflspec and tflplanner.",ダブルクリックで tflplanner をブラウザで起動します。「更新して起動」は、先に rtfreporter・tflspec・tflplanner を更新します。
+They run a small launcher that tflplanner keeps in:,ショートカットが実行する起動用のファイルの置き場所:
+To remove them later: remove_shortcut(),あとで削除するには: remove_shortcut()
+Make these %d shortcuts?,以上 %d 個のショートカットを作成します。よろしいですか?
+Made %d shortcuts:,%d 個のショートカットを作成しました:
+"Open tflplanner from Finder > Applications. To keep it in the Dock, drag it there.",Finder の「アプリケーション」から tflplanner を開いてください。Dock に置くには、そこへドラッグしてください。
+tflplanner is in the application menu (on some desktops after you log in again).,tflplanner はアプリケーションのメニューにあります（デスクトップ環境によっては、ログインし直した後に表示されます）。
+To remove them: remove_shortcut(),削除するには: remove_shortcut()
+Nothing to make: both desktop and start_menu are FALSE.,作るものがありません: desktop と start_menu がどちらも FALSE です。
+No shortcut was made.,ショートカットは作成していません。
+Remove these?,以上を削除します。よろしいですか?
+Nothing was removed.,何も削除していません。
+Removed:,削除しました:
+To make the shortcuts again: add_shortcut(),もう一度作るには: add_shortcut()
+Shortcuts:,ショートカット:
+The launcher files the shortcuts run:,ショートカットが実行する起動用のファイル:
+"Your studies, their files and tflplanner's settings are not touched.",試験とそのファイル、tflplanner の設定はそのまま残ります。
+Saving them will:,保存すると、次のことを行います:
+create the folders %s and %s if they are not there,フォルダー %s と %s が無ければ作成する
+write the settings to %s,設定を %s に書く
+remember the home folder in %s,home のフォルダーの場所を %s に記録する
+"Change them later with setup_tflplanner(home = , studies_root = ), or in the app's settings.","あとで変えるには: setup_tflplanner(home = , studies_root = )、またはアプリの設定画面。"
+Save these settings?,この設定を保存します。よろしいですか?
+They would be installed from CRAN with install.packages() into %s. tflplanner itself starts without them; the programs it writes need them.,CRAN から install.packages() で %s に入れます。tflplanner はこれらが無くても起動しますが、tflplanner が書くプログラムを動かすには必要です。
+Install these %d packages now?,以上 %d 個のパッケージを今入れます。よろしいですか?
+Not installed. Later:,入れていません。あとで入れるには:
+No shortcut was made. Later: add_shortcut(),ショートカットは作成していません。あとで作るには: add_shortcut()
+Update these packages now?,以上のパッケージを今更新します。よろしいですか?
+Nothing was installed.,何も入れていません。
+"They are installed into %s, in a separate R process, in this order: rtfreporter, tflspec, tflplanner.",別の R のプロセスで、%s に rtfreporter・tflspec・tflplanner の順に入れます。
+"Channels: ""release"" = CRAN, else the latest GitHub release; ""dev"" = the development version on GitHub.","版の種類: ""release"" = CRAN（無ければ GitHub の最新リリース）、""dev"" = GitHub の開発版。"
+"The other channel: update_tflplanner(""%s"").","もう一方の版にするには: update_tflplanner(""%s"")。"
+Your studies and tflplanner's settings are not touched.,試験と tflplanner の設定はそのまま残ります。
+"Afterwards, restart R (in RStudio: Session > Restart R) before using tflplanner again.",終わったら、tflplanner を使う前に R を再起動してください（RStudio では Session > Restart R）。
