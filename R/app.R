@@ -22,6 +22,20 @@
 
 .type_labels <- c(table = "Table", listing = "Listing", figure = "Figure")
 
+# Text cut to `n` characters, with an ellipsis.
+.ellipsis <- function(x, n) {
+  ifelse(nchar(x) > n, paste0(substr(x, 1L, n - 1L), "\u2026"), x)
+}
+
+# A table cell as escaped HTML, with `tip` shown on hover (none when blank).
+.cell_tip <- function(text, tip = "") {
+  esc <- htmltools::htmlEscape
+  ifelse(nzchar(tip),
+         sprintf('<span title="%s">%s</span>', esc(tip, attribute = TRUE),
+                 esc(text)),
+         esc(text))
+}
+
 # the sheets whose tab offers help of its own above the grid
 .assisted <- c("tables", "variables", "cells", "col_header")
 
@@ -3228,31 +3242,54 @@ app_server <- function(input, output, session, start) {
     p <- rv$p
     empty <- data.frame(output_id = character(), type = character(),
                         program = character(), rtf = character(),
-                        data = character(), description = character())
+                        data = character(), title = character())
     if (is.null(p) || !nrow(p$outputs)) return(empty)
     o <- p$outputs
     info <- lapply(o$output_id, function(id) report_info(p, id))
+    type <- vapply(info, `[[`, "", "type")
     st <- tryCatch(ard_status(current_study()), error = function(e) NULL)
     ard_of <- if (!is.null(st)) st$state[match(o$output_id, st$output_id)] else
       rep(NA_character_, nrow(o))
+    # the datasets the report reads (lower case, as the files are named);
+    # reworked by the report's own data code, said after them
+    data <- vapply(seq_len(nrow(o)), function(i) {
+      ds <- tolower(.report_datasets(p, o$output_id[i], type[i]))
+      txt <- if (length(ds)) paste(ds, collapse = " / ") else "-"
+      if (!is.na(o$data_code[i])) {
+        note <- t("(reworked by its own code)")
+        # a full-width bracket brings its own space
+        txt <- paste0(txt, if (startsWith(note, "\uff08")) "" else " ", note)
+      }
+      txt
+    }, "")
+    # the ARD's state, on hover
+    data_tip <- ifelse(is.na(ard_of), "",
+                       paste("ARD:", t(unname(.ard_state_labels[ard_of]))))
+    # the title (the titles sheet's lines; without them, the report's
+    # description), cut short in the list; whole on hover
+    titles <- vapply(o$output_id, function(id) .report_title(p, id), "",
+                     USE.NAMES = FALSE)
+    titles <- ifelse(nzchar(titles) | is.na(o$description), titles,
+                     o$description)
     data.frame(
       output_id = o$output_id,
-      type = t(unname(.type_labels[vapply(info, `[[`, "", "type")])),
+      type = t(unname(.type_labels[type])),
       program = vapply(info, `[[`, "", "program"),
       rtf = vapply(info, `[[`, "", "file"),
-      data = ifelse(!is.na(ard_of),
-                    paste("ARD:", t(unname(.ard_state_labels[ard_of]))),
-                    ifelse(is.na(o$data_code), t("standard code"),
-                           t("own code"))),
-      description = ifelse(is.na(o$description), "", o$description),
+      data = .cell_tip(data, data_tip),
+      title = .cell_tip(.ellipsis(titles, 70L), titles),
       stringsAsFactors = FALSE)
   })
   output$outputs <- DT::renderDT({
     v <- outputs_view()
     sel <- match(shiny::isolate(input$target), v$output_id)
-    names(v) <- t(c("output_id", "Type", "Program", "RTF", "Data",
-                    "Description"))
-    DT::datatable(v, rownames = FALSE,
+    v$output_id <- htmltools::htmlEscape(v$output_id)
+    v$program <- htmltools::htmlEscape(v$program)
+    v$rtf <- htmltools::htmlEscape(v$rtf)
+    # "Title" here is the report's title; t("Title") is the study's
+    names(v) <- c(t(c("output_id", "Type", "Program", "RTF", "Data")),
+                  if (identical(lang, "en")) "Title" else t("Report title"))
+    DT::datatable(v, rownames = FALSE, escape = FALSE,
                   selection = list(mode = "single",
                                    selected = if (!is.na(sel)) sel),
                   options = list(dom = "t", paging = FALSE,
