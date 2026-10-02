@@ -1223,7 +1223,7 @@ The template's defaults are not in %s: it uses %s instead.,テンプレートの
 The whole column header's alignment: left / center / right (rtf_table_style()); blank: each column's.,列見出し全体の揃え：left / center / right（rtf_table_style()）。空欄 = 列ごと。
 TRUE / FALSE: the whole column header bold; blank: FALSE.,TRUE / FALSE：列見出し全体を太字に。空欄 = FALSE。
 TRUE / FALSE: the whole column header italic; blank: FALSE.,TRUE / FALSE：列見出し全体を斜体に。空欄 = FALSE。
-"The body's default alignment: left / center / right (rtf_table_style()); blank: left when any border_* or look column (header_align ... underline) of this sheet is given, as rtf_table_style() defaults; otherwise row-title columns left, the others center.",本文の既定の揃え：left / center / right（rtf_table_style()）。空欄 = このシートの border_* か見た目の列（header_align〜underline）を 1 つでも書けば left（rtf_table_style() の既定）、書かなければ行見出しの列は left、ほかは center。
+"The body's default alignment: left / center / right (rtf_table_style()); blank: row-title columns left, the others center.",本文の既定の揃え：left / center / right（rtf_table_style()）。空欄 = 行見出しの列は left、ほかは center。
 TRUE / FALSE: the body bold by default; blank: FALSE.,TRUE / FALSE：本文を既定で太字に。空欄 = FALSE。
 TRUE / FALSE: the body italic by default; blank: FALSE.,TRUE / FALSE：本文を既定で斜体に。空欄 = FALSE。
 TRUE / FALSE: the body underlined by default; blank: FALSE.,TRUE / FALSE：本文を既定で下線つきに。空欄 = FALSE。
