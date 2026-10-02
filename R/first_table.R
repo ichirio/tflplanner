@@ -15,7 +15,7 @@
   NA_character_
 }
 
-.data_exts <- c("rds", "csv", "xpt", "sas7bdat", "parquet")
+.data_exts <- c("rds", "rda", "rdata", "csv", "xpt", "sas7bdat", "parquet")
 
 # a dataset's name from its file: data/adam/adsl.rds -> ADSL
 .dataset_name <- function(file) {

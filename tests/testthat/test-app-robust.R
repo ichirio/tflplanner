@@ -378,7 +378,8 @@ test_that("the next steps in Japanese name the tabs as the Japanese app does", {
                 "Runs: preview every report and open its RTF.", "Go to Runs"))
   expect_false(any(grepl("Runs|Content", steps)))
   expect_true(all(grepl(ja("Runs"), steps[2:3], fixed = TRUE)))
-  expect_match(steps[1], ja("Content"), fixed = TRUE)
+  # the tab reads "内容 (content)"; the step names its words
+  expect_match(steps[1], sub(" [(]content[)]$", "", ja("Content")), fixed = TRUE)
 })
 
 test_that("New study and Register a folder show with no study; the rest waits for one", {
