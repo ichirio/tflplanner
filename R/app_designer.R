@@ -40,11 +40,10 @@
       .pd-auto .form-group, .pd-auto .checkbox { margin: 0; }
       .pd-auto label { font-size: .8rem; font-weight: normal; margin: 0; }")),
     shiny::uiOutput("pd_note"),
-    # making the figure from a design first; a plot written by hand (the
-    # figure's code as it is now, or the advanced way for a new one) after
+    # one way to make a figure: the designer (its first step a template or
+    # empty); the plot written by hand, user code, apart below
     shiny::uiOutput("pd_body"),
-    shiny::uiOutput("lf_fig_box"),
-    shiny::uiOutput("lf_fig_box_new"))
+    shiny::uiOutput("lf_fig_box"))
 }
 
 # A select input with some of its options disabled (selectize keeps them
@@ -236,8 +235,8 @@
     msg <- switch(m,
       none = t("Choose a Figure report in the sidebar."),
       other = t("This tab designs figures: choose a Figure report in the sidebar."),
-      hand = if (fig_is_new()) t("A new figure: choose a template -- those this study's data cannot draw are greyed, with the data they need -- and start the design. To write the plot with ggplot2 instead, open Advanced below.") else
-        t("This figure's plot is now ggplot2 code written by hand (below). To make it from a figure design instead, start one from a template or a company preset: its data steps, statistics, settings and layers are filled at once, then each can be changed."),
+      hand = if (fig_is_new()) t("A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead, open User code at the bottom.") else
+        t("This figure is drawn by user code (below). To make it with the designer instead, take the first step: from a template or empty."),
       t("Choose a piece on the left to change it on the right; the figure is redrawn as its program will save it. Empty = the default (shown grey)."))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
@@ -268,35 +267,58 @@
     shiny::updateSelectizeInput(session, "pd_tpl_data",
                                 selected = if (is.na(ds)) "" else ds)
   })
+  start_inputs <- function() {
+    ds_have <- data_present()
+    pr <- fig_presets()
+    shiny::tagList(
+      shiny::radioButtons("pd_from", NULL, inline = TRUE,
+                          c(stats::setNames("template", t("From a template")),
+                            if (nrow(pr)) stats::setNames("preset", t("From a company preset")))),
+      shiny::conditionalPanel(
+        "input.pd_from == 'template'",
+        bslib::layout_columns(
+          col_widths = c(6, 6),
+          shiny::div(
+            tpl_select(),
+            shiny::selectizeInput("pd_tpl_data", t("Dataset"), c("", ds_have),
+                                  options = list(placeholder = t("choose the data")))),
+          shiny::uiOutput("pd_tpl_more"))),
+      if (nrow(pr)) shiny::conditionalPanel(
+        "input.pd_from == 'preset'",
+        shiny::selectInput("pd_preset", t("Preset"),
+                           stats::setNames(pr$name, ifelse(nzchar(pr$description),
+                                                           paste0(pr$name, " - ", pr$description), pr$name))),
+        shiny::p(class = "small text-muted",
+                 t("A preset is a design kept with the company standards (Save as preset, on a designed figure). It is copied as it is; change its dataset and parameter after."))))
+  }
   output$pd_body <- shiny::renderUI({
     m <- mode()
     shiny::req(m %in% c("hand", "design"))
     if (m == "hand") {
-      ds_have <- data_present()
-      pr <- fig_presets()
       return(bslib::card(
-        bslib::card_header(t("Start a design")),
-        shiny::radioButtons("pd_from", NULL, inline = TRUE,
-                            c(stats::setNames("template", t("From a template")),
-                              if (nrow(pr)) stats::setNames("preset", t("From a company preset")))),
-        shiny::conditionalPanel(
-          "input.pd_from == 'template'",
-          bslib::layout_columns(
-            col_widths = c(6, 6),
-            shiny::div(
-              tpl_select(),
-              shiny::selectizeInput("pd_tpl_data", t("Dataset"), c("", ds_have),
-                                    options = list(placeholder = t("choose the data")))),
-            shiny::uiOutput("pd_tpl_more"))),
-        if (nrow(pr)) shiny::conditionalPanel(
-          "input.pd_from == 'preset'",
-          shiny::selectInput("pd_preset", t("Preset"),
-                             stats::setNames(pr$name, ifelse(nzchar(pr$description),
-                                                             paste0(pr$name, " - ", pr$description), pr$name))),
-          shiny::p(class = "small text-muted",
-                   t("A preset is a design kept with the company standards (Save as preset, on a designed figure). It is copied as it is; change its dataset and parameter after."))),
-        shiny::div(.btn("pd_start", t("Start the design"), class = "btn-sm btn-primary"))))
+        bslib::card_header(t("First step (both become the designer's layers)")),
+        bslib::layout_columns(
+          col_widths = bslib::breakpoints(sm = 12, lg = c(8, 4)),
+          shiny::div(
+            shiny::h6(t("Start from a template")),
+            shiny::p(class = "small text-muted",
+                     t("Choose a type, its data and a few settings, then apply: the designer gets its layers at once, to add to and change.")),
+            start_inputs(),
+            shiny::div(.btn("pd_start", t("Apply the template"), class = "btn-sm btn-primary"))),
+          shiny::div(
+            shiny::h6(t("Start empty")),
+            shiny::p(class = "small text-muted",
+                     t("Only ggplot() and the data it reads: add the layers one by one.")),
+            shiny::div(.btn("pd_empty", t("Start empty"), class = "btn-sm btn-outline-primary"))))))
     }
+    id <- current()
+    shiny::tagList(
+    shiny::div(
+      class = "small mb-2",
+      shiny::strong(t("This figure's Spec (YAML):")), " ",
+      shiny::code(sprintf("spec/figures/%s.yml", id)), " ",
+      shiny::span(class = "text-muted",
+                  t("-- the designer's result; the same whether started from a template or empty."))),
     bslib::layout_columns(
       col_widths = bslib::breakpoints(sm = 12, lg = c(3, 5, 4, 12)),
       bslib::card(
@@ -304,6 +326,7 @@
         # the actions on their own row, so they wrap instead of crowding the title
         shiny::div(
           class = "d-flex flex-wrap gap-1 mb-2",
+          .btn("pd_retpl", t("Apply a template..."), class = "btn-sm btn-outline-secondary"),
           .btn("pd_batch", t("Copy to other parameters"), class = "btn-sm btn-outline-secondary"),
           .btn("pd_preset_save", t("Save as preset"), class = "btn-sm btn-outline-secondary"),
           .btn("pd_drop", t("Remove the design"), class = "btn-sm btn-outline-danger")),
@@ -340,8 +363,10 @@
       bslib::navset_card_tab(
         bslib::nav_panel(t("Code"), shiny::div(
           class = "rp-code", shiny::verbatimTextOutput("pd_code"))),
-        bslib::nav_panel(t("Design (YAML)"), shiny::div(
-          class = "rp-code", shiny::verbatimTextOutput("pd_yaml")))))
+        bslib::nav_panel(t("Spec (YAML)"),
+          shiny::p(class = "small text-muted mb-1",
+                   t("The designer's result: the same form whether started from a template or built from empty.")),
+          shiny::div(class = "rp-code", shiny::verbatimTextOutput("pd_yaml"))))))
   })
 
   output$pd_tpl_more <- shiny::renderUI(tryCatch(pd_tpl_more_ui(), error = function(e) {
@@ -387,17 +412,53 @@
         t("This type is not yet in parts: the design is its whole script, with the type's arguments to edit.")))
   }
 
+  empty_design <- function() {
+    ds <- input$pd_tpl_data
+    tflspec::tfl_fig_design(data = list(list(
+      step = "read", dataset = if (is.null(ds) || !nzchar(ds)) "ADSL" else ds)))
+  }
+  applied <- function(d) {
+    if (is.null(d)) return()
+    set_design(d)
+    notify(t("The template is applied: add to and change its layers in the designer."))
+  }
   shiny::observeEvent(input$pd_start, {
-    id <- current()
-    shiny::req(id)
+    shiny::req(current())
+    applied(chosen_design())
+  })
+  shiny::observeEvent(input$pd_empty, {
+    shiny::req(current())
+    set_design(empty_design())
+  })
+  # a template on a design already there: it replaces the design, asked first
+  shiny::observeEvent(input$pd_retpl, {
+    d <- design()
+    shiny::req(d)
+    shiny::showModal(shiny::modalDialog(
+      title = t("Apply a template"), size = "l", easyClose = TRUE,
+      shiny::div(class = "alert alert-warning py-2 small",
+                 sprintf(t("The current design (%d layers) is replaced by the template's."),
+                         length(d$layers))),
+      start_inputs(),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("pd_retpl_ok", t("Replace with the template"),
+                                   class = "btn-danger"))))
+  })
+  shiny::observeEvent(input$pd_retpl_ok, {
+    shiny::req(current())
+    d <- chosen_design()
+    if (is.null(d)) return()
+    shiny::removeModal()
+    applied(d)
+  })
+  chosen_design <- function() {
     tp <- input$pd_tpl
     nz <- function(v) if (is.null(v) || !nzchar(v)) NULL else v
     d <- if (identical(input$pd_from, "preset")) {
       shiny::req(input$pd_preset)
       guarded(read_fig_preset(input$pd_preset))
     } else if (is.null(tp) || !nzchar(tp)) {
-      tflspec::tfl_fig_design(
-        data = list(list(step = "read", dataset = nz(input$pd_tpl_data) %||% "ADSL")))
+      empty_design()
     } else {
       ds <- nz(input$pd_tpl_data)
       grp <- nz(input$pd_tpl_group)
@@ -416,9 +477,8 @@
       if (!is.null(nz(input$pd_tpl_unit))) args$time_unit <- input$pd_tpl_unit
       guarded(do.call(tflspec::tfl_fig_template, args[!vapply(args, is.null, logical(1))]))
     }
-    if (is.null(d)) return()
-    set_design(d)
-  })
+    d
+  }
 
   # the same figure for other parameters: one new figure report each, its
   # design this one with the parameter changed

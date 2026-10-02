@@ -2914,9 +2914,9 @@ app_server <- function(input, output, session, start) {
       figure = t("This is a Figure: it is designed on the Figures tab."))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
-  # a hand-written figure (no design): the datasets it reads, and its
-  # program's data part -- on the Figures tab, above the designer; for a new
-  # figure (no plot code yet), below it, as the advanced way
+  # a figure without a design: its user code (the plot written by hand) --
+  # on the Figures tab, apart from the designer, below it; open when the
+  # figure has that code
   fig_is_new <- function() {
     id <- current()
     if (is.null(id)) return(FALSE)
@@ -2924,20 +2924,14 @@ app_server <- function(input, output, session, start) {
     code <- o$data_code[match(id, o$output_id)]
     is.na(code) || !nzchar(trimws(code))
   }
-  output$lf_fig_box_new <- shiny::renderUI({
-    rv$ver
-    shiny::req(identical(lf_type(), "figure"),
-               is.null(fig_design(shiny::isolate(rv$p), current())),
-               fig_is_new())
-    shiny::tags$details(
-      class = "mt-3",
-      shiny::tags$summary(t("Advanced: write the plot by hand (ggplot2)")),
-      fig_hand_box())
-  })
   output$lf_fig_box <- shiny::renderUI({
     rv$ver
-    shiny::req(identical(lf_type(), "figure"), !fig_is_new())
-    fig_hand_box()
+    shiny::req(identical(lf_type(), "figure"),
+               is.null(fig_design(shiny::isolate(rv$p), current())))
+    shiny::tags$details(
+      class = "mt-3", open = if (!fig_is_new()) NA,
+      shiny::tags$summary(t("User code (write the ggplot yourself)")),
+      fig_hand_box())
   })
   fig_hand_box <- function() {
     id <- current()
