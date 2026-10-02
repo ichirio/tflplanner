@@ -1201,3 +1201,9 @@ Make the figure,図を作る
 Make the listing,Listing を作る
 %s (%s):,%s（%s）:
 %s is a %s: it has no ARD (its program reads its data). The ARD here is the tables'.,%s は %s です。ARD はありません（プログラムがデータを読みます）。ここの ARD は表のものです。
+The update did not finish.,更新は完了しませんでした。
+The update's R process could not reach:,更新用の R のプロセスから、次のアドレスに届きませんでした:
+"(A firewall or a proxy: this R session's own settings are passed on, but a network may let RStudio through and not R.)",（ファイアウォールかプロキシの可能性があります。この R セッションの設定は引き継いでいますが、ネットワークによっては RStudio は通っても R は通らないことがあります。）
+To install by hand in this session (then restart R):,この R セッションで手で入れるには（その後 R を再起動）:
+Or download the three package files where you can and install them from a folder:,または、届く場所で 3 つのパッケージのファイルをダウンロードし、フォルダから入れます:
+(The newest versions could not be looked up from here -- GitHub's addresses may be closed; the update itself may still get through.),（ここからは最新の版を調べられませんでした。GitHub のアドレスが閉じている可能性があります。更新そのものは通ることもあります。）
