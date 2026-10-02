@@ -1,5 +1,19 @@
 # tflplanner (development version)
 
+- **Typing in the table builder no longer closes it** (#48).  Every edit
+  writes the definition, and the report chosen, the page shown and the
+  builder's case were read from the definition: each edit redrew the
+  form, closing the variable's panel and losing the text being typed (or,
+  in an emptied field, a further BackSpace).  They now pass on only a
+  change.  **A double click on the report list opens the report's
+  Content**, as the study list opens a study.  **Save says "Saving..."**
+  at once and cannot be pressed again until it is done ("Saved").  The
+  column header presets offered are those that fit the table (the SOC / PT
+  one only for a nested table), named after its column variable instead
+  of "Arm".  A figure's Content shows making it from a design first, the
+  plot written by hand after, under headings that say so.  The Japanese
+  app says Listing throughout (no 一覧表), as the report types.
+
 - **The report list says what each report reads, and its title** (#46).
   The Data column names the datasets a report reads -- a table its ARD
   analyses' data and their populations', a listing its dataset, a figure
