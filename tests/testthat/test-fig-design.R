@@ -144,3 +144,28 @@ test_that("a design's other parts (ggplot2 version, composed figures) are kept",
   p <- set_fig_design(new_planner(), "F1", d)
   expect_equal(fig_design(p, "F1")$ggplot2_version, "3.5")
 })
+
+test_that("a template's defaults the data has not got are replaced by the data's own", {
+  d <- tflspec::tfl_fig_template("km_risk_table", data = "ADTTE")
+  # the dataset: no OS, no FASFL, the group only in ADSL
+  x <- data.frame(USUBJID = "A", PARAMCD = c("TTDE", "TTDE"), AVAL = 1, CNSR = 0,
+                  SAFFL = "Y")
+  adsl <- data.frame(USUBJID = "A", TRT01P = "Placebo", SAFFL = "Y", ITTFL = "Y")
+  fit <- .template_fit(d, x, adsl)
+  expect_identical(fit[["param"]], "TTDE")
+  expect_identical(fit[["pop"]], "SAFFL")       # the dataset's own flag
+  expect_identical(fit[["group"]], "TRT01P")    # named: only ADSL has it
+  # what the user chose stays
+  expect_length(.template_fit(d, x, adsl, given = c("param", "pop", "group")), 0L)
+  # the data has the template's defaults: nothing to change
+  ok <- data.frame(USUBJID = "A", PARAMCD = "OS", FASFL = "Y", TRT01P = "P")
+  expect_length(.template_fit(d, ok, adsl), 0L)
+  # the join takes from ADSL only what the dataset lacks
+  d2 <- tflspec::tfl_fig_template("km_risk_table", data = "ADTTE", param = "TTDE",
+                                  pop = "SAFFL", group = "TRT01P", join_adsl = TRUE)
+  j <- Filter(function(s) identical(s$step, "join"), .trim_join(d2, x)$data)
+  expect_identical(j[[1L]]$vars, "TRT01P")
+  j0 <- Filter(function(s) identical(s$step, "join"),
+               .trim_join(d2, cbind(x, TRT01P = "P"))$data)
+  expect_length(j0, 0L)
+})

@@ -1218,3 +1218,4 @@ Apply a template,テンプレートを適用
 The current design (%d layers) is replaced by the template's.,今のデザイン（レイヤー %d 個）は、テンプレートのもので置き換わります。
 Replace with the template,テンプレートで置き換える
 User code (write the ggplot yourself),ユーザーコード（ggplot を自分で書く）
+The template's defaults are not in %s: it uses %s instead.,テンプレートの既定値が %s にありません。かわりに %s を使います。
