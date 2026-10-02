@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **A figure is made one way: the plot designer** (#62).  Its first step
+  is "Start from a template" (a type, its data and a few settings, applied
+  as the designer's layers at once) or "Start empty"; both say they become
+  the designer's layers.  "Apply a template..." on a figure that already
+  has a design asks before replacing it.  The designer names its result,
+  "This figure's Spec (YAML): spec/figures/<ID>.yml", and its YAML tab is
+  "Spec (YAML)".  The plot written by hand is apart, below, as "User code
+  (write the ggplot yourself)": open for a figure drawn that way, folded
+  for a new one.  No change to the Spec.
+
 - **`update_tflplanner()` behind a firewall or a proxy** (#60).  The
   update's own R process now gets this session's package repositories
   (RStudio's, an internal mirror) and download method -- a fresh Rscript

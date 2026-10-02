@@ -1,7 +1,7 @@
 Package: tflplanner
 Type: Package
 Title: A 'shiny' Study Manager for Clinical TFLs Made with 'rtfreporter'
-Version: 0.0.2.9017
+Version: 0.0.2.9018
 Authors@R:
     person(given  = "Yoichi",
            family = "Masui",

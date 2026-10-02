@@ -288,13 +288,51 @@ test_that("a new figure starts from a template the study's data can draw", {
     # ADTTE templates are listed but cannot be chosen, and say why
     expect_match(h, "needs data this study has not got")
     expect_match(h, 'value="km_risk_table" disabled')
-    # the note of a new figure, and the hand-written way below, folded
+    # the first step: a template or empty, both the designer's layers
+    expect_match(h, "First step")
+    expect_match(h, "pd_empty")
+    # the note of a new figure, and the user code below, folded
     expect_match(output$pd_note$html, "A new figure")
-    expect_match(output$lf_fig_box_new$html, "Advanced")
+    expect_match(output$lf_fig_box$html, "User code")
+    expect_false(grepl("<details[^>]*open", output$lf_fig_box$html))
     # a drawable template's form: no R error
     session$setInputs(pd_from = "template", pd_tpl = "ae_dot_incidence",
                       pd_tpl_data = "ADAE")
     expect_false(grepl("attempt to set", output$pd_tpl_more$html))
+    # applied: the designer, its Spec named, and no user code
+    session$setInputs(pd_start = 1)
+    d <- fig_design(session$userData$rv$p, "F-AGE")
+    expect_true(length(d$layers) > 0L)
+    h <- output$pd_body$html
+    expect_match(h, "spec/figures/F-AGE.yml", fixed = TRUE)
+    expect_match(h, "Spec (YAML)", fixed = TRUE)
+    expect_match(h, "pd_retpl")
+    expect_error(output$lf_fig_box)
+    # a template again: asked first, then the design is replaced
+    session$setInputs(pd_retpl = 1)
+    session$setInputs(pd_tpl = "", pd_retpl_ok = 1)
+    expect_length(fig_design(session$userData$rv$p, "F-AGE")$layers, 0L)
+  })
+})
+
+test_that("a figure starts empty, and a figure of user code shows it open", {
+  skip_on_cran()
+  local_home()
+  s <- create_study("G2")
+  s$planner <- add_output(s$planner, "F-E", type = "figure")
+  s$planner <- add_output(s$planner, "F-U", type = "figure")
+  s$planner$outputs$data_code[s$planner$outputs$output_id == "F-U"] <-
+    "plot <- ggplot2::ggplot(adsl, ggplot2::aes(AGE)) + ggplot2::geom_histogram()"
+  save_study(s)
+  shiny::testServer(server_for("G2"), {
+    session$setInputs(target = "F-U", nav = "outputs", rep_nav = "content")
+    expect_match(output$pd_note$html, "drawn by user code")
+    expect_match(output$lf_fig_box$html, "<details[^>]*open")
+    session$setInputs(target = "F-E")
+    session$setInputs(pd_empty = 1)
+    d <- fig_design(session$userData$rv$p, "F-E")
+    expect_identical(d$data[[1L]]$step, "read")
+    expect_length(d$layers, 0L)
   })
 })
 

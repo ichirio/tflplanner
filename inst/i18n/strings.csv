@@ -378,15 +378,12 @@ Choose a Figure report in the sidebar.,サイドバーで図（Figure）の帳�
 The Plot Designer designs figures: choose a Figure report in the sidebar.,プロットデザイナーは図を設計します。サイドバーで図（Figure）の帳票を選んでください。
 "This figure's plot is written by hand (its data code, Reports tab). Start a design to make it from a figure type instead: the plot's code is then made from the design.",この図のプロットは手書きのコードです（帳票タブのデータコード）。デザインを開始すると、図の種類から設計でき、プロットのコードはデザインから作られます。
 The figure is made from its design. Change it on the left: the figure is redrawn as its program will save it. Empty = the default (shown grey).,この図はデザインから作られます。左で変更すると、プログラムが保存するのと同じ図が再描画されます。空欄 = デフォルト（灰色で表示）。
-Start a design,デザインから作る（テンプレート・会社のプリセット）
 Figure type,図の種類
-Start the design,デザインを開始する
 Design,デザイン
 Remove the design,デザインを削除
 Preview (as saved),プレビュー（保存される図）
 Redraw,再描画
 Checks,チェック
-Design (YAML),デザイン（YAML）
 Remove the design?,デザインを削除しますか？
 "The figure's plot is then its data code again (Reports tab), written by hand.",図のプロットは再び手書きのデータコード（帳票タブ）になります。
 Remove,削除
@@ -820,8 +817,6 @@ Blank = every result the method gives.,空欄 = メソッドが出す結果す�
 needs data this study has not got,この試験に無いデータが要ります
 choose the data,データを選んでください
 The template's choices could not be made from the data: %s,データからテンプレートの選択肢を作れませんでした: %s
-"A new figure: choose a template -- those this study's data cannot draw are greyed, with the data they need -- and start the design. To write the plot with ggplot2 instead, open Advanced below.",新しい図です。テンプレートを選んでデザインを始めてください（この試験のデータで描けないものは、要るデータとともに灰色で出ます）。ggplot2 で手書きする場合は、下の「上級」を開いてください。
-Advanced: write the plot by hand (ggplot2),上級: 図を手で書く（ggplot2）
 Start the listing from the data (writes its columns and shows it),データからListingを始める（列を書き、プレビューします）
 "No data files yet: put them on the Data tab (data/adam), then add the listing.",データファイルがまだありません。データタブで置いて（data/adam）から、Listingを追加してください。
 Group (ordered by first; optional),群（最初に並べる、任意）
@@ -1173,7 +1168,6 @@ Report title,タイトル
 Saving...,保存中…
 The plot written by hand (ggplot2),手書きのプロット（ggplot2）
 The code that makes the plot (edit it on the Reports tab),プロットを作るコード（帳票タブのデータコードで編集します）
-"This figure's plot is now ggplot2 code written by hand (below). To make it from a figure design instead, start one from a template or a company preset: its data steps, statistics, settings and layers are filled at once, then each can be changed.",この図のプロットは、今は手書きの ggplot2 のコードです（下）。図のデザインから作るには、テンプレートか会社のプリセットからデザインを始めてください。データ加工・統計量・設定・レイヤーが一括で入り、その後 1 つずつ変更できます。
 Column variables,列の変数
 "Order of the column variables, outermost first (drag)",列の変数の順序（外側から。ドラッグ）
 Order of the columns of %s (drag),%s の列の順序（ドラッグ）
@@ -1207,3 +1201,20 @@ The update's R process could not reach:,更新用の R のプロセスから、�
 To install by hand in this session (then restart R):,この R セッションで手で入れるには（その後 R を再起動）:
 Or download the three package files where you can and install them from a folder:,または、届く場所で 3 つのパッケージのファイルをダウンロードし、フォルダから入れます:
 (The newest versions could not be looked up from here -- GitHub's addresses may be closed; the update itself may still get through.),（ここからは最新の版を調べられませんでした。GitHub のアドレスが閉じている可能性があります。更新そのものは通ることもあります。）
+"A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead, open User code at the bottom.",新しい図です。「最初の一歩」で、テンプレートから始めるか空から始めてください（どちらもデザイナーのレイヤーになります）。ggplot のコードを自分で書くときは、下の「ユーザーコード」を開きます。
+"This figure is drawn by user code (below). To make it with the designer instead, take the first step: from a template or empty.",この図はユーザーコード（下）で描いています。デザイナーで作り直すには「最初の一歩」から（テンプレートから／空から）。
+First step (both become the designer's layers),最初の一歩（どちらもデザイナーのレイヤーになります）
+Start from a template,テンプレートから始める
+"Choose a type, its data and a few settings, then apply: the designer gets its layers at once, to add to and change.",型・データ・簡単なパラメータを選んで適用すると、デザイナーにレイヤーがまとめて並びます。その後は足す・直すことができます。
+Apply the template,テンプレートを適用
+Only ggplot() and the data it reads: add the layers one by one.,ggplot() と読むデータだけの状態から、レイヤーを 1 つずつ足します。
+This figure's Spec (YAML):,この図の Spec（YAML）:
+-- the designer's result; the same whether started from a template or empty.,― デザイナーの結果です。テンプレートから始めても空から始めても同じ形です。
+Apply a template...,テンプレートを適用…
+Spec (YAML),Spec（YAML）
+The designer's result: the same form whether started from a template or built from empty.,デザイナーの結果です。テンプレートから始めても、空から組んでも同じ形です。
+The template is applied: add to and change its layers in the designer.,テンプレートを適用しました。レイヤーはデザイナーで足す・直すことができます。
+Apply a template,テンプレートを適用
+The current design (%d layers) is replaced by the template's.,今のデザイン（レイヤー %d 個）は、テンプレートのもので置き換わります。
+Replace with the template,テンプレートで置き換える
+User code (write the ggplot yourself),ユーザーコード（ggplot を自分で書く）
