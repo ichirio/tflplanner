@@ -314,7 +314,7 @@ test_that("the top tabs are the flow, and a report's screens are in Reports", {
     v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
     unname(v[nzchar(v)])
   }
-  expect_identical(vals("nav"), c("study", "data", "ard", "outputs", "results"))
+  expect_identical(vals("nav"), c("study", "data", "outputs", "ard", "results"))
   expect_identical(vals("rep_nav"), c("list", "content", "page", "code"))
   html <- as.character(app_ui())
   # each kind's content shows for its kind only
@@ -456,4 +456,13 @@ test_that("tflspec's column help (English) is shown in the app's language", {
   # every description has its translation
   expect_identical(sum(ja == unique(d$description)), 0L)
   expect_identical(tr("The variable's name.", lang = "ja"), "変数名。")
+})
+
+test_that("a report's kind says where it is made, and the tabs it has nothing on", {
+  expect_identical(names(.type_moves), c("table", "figure", "listing"))
+  expect_identical(names(.type_moves$table), c("ard", "tables"))
+  expect_true(all(unlist(lapply(.type_moves, names)) %in%
+                    c("ard", "tables", "designer", "lf")))
+  expect_identical(.type_idle_tabs$figure, "ard")
+  expect_length(.type_idle_tabs$table, 0L)
 })

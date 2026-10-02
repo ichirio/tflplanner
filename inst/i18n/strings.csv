@@ -1196,3 +1196,8 @@ The variable (an analysis variable or a column key).,変数（解析変数か列
 A value as the data have it.,データにある値。
 What prints for the value; blank: the value.,その値の表示; 空欄 = 値そのもの。
 "Its place among the variable's values (a number); blank: after the numbered ones, in the sheet's order.",その変数の値の中での位置（数字）; 空欄 = 番号付きの後、シートの順。
+Make the table,表を作る
+Make the figure,図を作る
+Make the listing,Listing を作る
+%s (%s):,%s（%s）:
+%s is a %s: it has no ARD (its program reads its data). The ARD here is the tables'.,%s は %s です。ARD はありません（プログラムがデータを読みます）。ここの ARD は表のものです。
