@@ -24,7 +24,7 @@
 
 # Text cut to `n` characters, with an ellipsis.
 .ellipsis <- function(x, n) {
-  ifelse(nchar(x) > n, paste0(substr(x, 1L, n - 1L), "…"), x)
+  ifelse(nchar(x) > n, paste0(substr(x, 1L, n - 1L), "\u2026"), x)
 }
 
 # A table cell as escaped HTML, with `tip` shown on hover (none when blank).
@@ -3258,7 +3258,7 @@ app_server <- function(input, output, session, start) {
       if (!is.na(o$data_code[i])) {
         note <- t("(reworked by its own code)")
         # a full-width bracket brings its own space
-        txt <- paste0(txt, if (startsWith(note, "（")) "" else " ", note)
+        txt <- paste0(txt, if (startsWith(note, "\uff08")) "" else " ", note)
       }
       txt
     }, "")
