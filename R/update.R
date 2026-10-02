@@ -182,6 +182,10 @@ update_tflplanner <- function(channel = NULL, from = NULL,
           paste0(sprintf("  %-12s %s -> %s", names(.upstream), cur,
                          ifelse(is.na(new), "?", new)), collapse = "\n"),
           "\n", sep = "")
+      if (all(is.na(new))) {
+        cat(tr("(The newest versions could not be looked up from here -- GitHub's addresses may be closed; the update itself may still get through.)", lang),
+            "\n", sep = "")
+      }
     } else {
       cat(sprintf(tr("Install from %s:", lang), from), "\n",
           paste0("  ", list.files(from, "^(rtfreporter|tflspec|tflplanner)_"),
@@ -203,18 +207,59 @@ update_tflplanner <- function(channel = NULL, from = NULL,
   on.exit(unlink(script), add = TRUE)
   rscript <- file.path(R.home("bin"),
                        if (identical(.os(), "windows")) "Rscript.exe" else "Rscript")
-  res <- processx::run(rscript,
-                       c(script, paste0("--channel=", channel),
-                         paste0("--lib=", lib),
-                         if (!is.null(from)) paste0("--from=", from)),
-                       echo = TRUE, error_on_status = FALSE)
+  res <- tryCatch(
+    processx::run(rscript,
+                  c(script, paste0("--channel=", channel),
+                    paste0("--lib=", lib),
+                    if (!is.null(from)) paste0("--from=", from),
+                    .update_net_args()),
+                  echo = TRUE, error_on_status = FALSE),
+    error = function(e) list(status = NA_integer_,
+                             stdout = paste("FAILED:", conditionMessage(e))))
   ok <- identical(res$status, 0L)
   if (ok) {
     message(tr("Done. Restart R (in RStudio: Session > Restart R) before using tflplanner again.", lang))
   } else {
-    message(tr("The update did not finish; see the messages above.", lang))
+    message(paste(.update_failed_text(res$stdout, channel, from, lang),
+                  collapse = "\n"))
   }
   invisible(ok)
+}
+
+# This session's network settings for the update's own R process, which
+# does not have them: the package repositories (RStudio's, an internal
+# mirror) and the download method.  Proxies (http_proxy ...) are
+# environment variables, inherited as they are.
+.update_net_args <- function() {
+  r <- .cran_repos()
+  r <- r[!is.na(r) & nzchar(r) & r != "@CRAN@"]
+  if (is.null(names(r)) || !all(nzchar(names(r)))) {
+    names(r) <- paste0("repo", seq_along(r))
+  }
+  m <- getOption("download.file.method")
+  c(if (length(r)) paste0("--repos=", paste(names(r), r, sep = "=", collapse = ";")),
+    if (is.character(m) && length(m) == 1L && nzchar(m)) paste0("--method=", m))
+}
+
+# What to say when the update did not finish: what could not be reached,
+# and the two ways round it.
+.update_failed_text <- function(out, channel = "release", from = NULL,
+                                lang = .console_language()) {
+  lines <- unlist(strsplit(out %||% "", "\n", fixed = TRUE))
+  bad <- sub("^UNREACHABLE: ", "", grep("^UNREACHABLE: ", lines, value = TRUE))
+  failed <- sub("^FAILED: ", "", grep("^FAILED: ", lines, value = TRUE))
+  ref <- if (identical(channel, "dev")) "" else "@*release"
+  c(tr("The update did not finish.", lang),
+    if (length(failed)) paste0("  ", failed),
+    if (length(bad)) c(
+      tr("The update's R process could not reach:", lang),
+      paste0("  ", bad),
+      tr("(A firewall or a proxy: this R session's own settings are passed on, but a network may let RStudio through and not R.)", lang)),
+    if (is.null(from)) c(
+      tr("To install by hand in this session (then restart R):", lang),
+      sprintf("  remotes::install_github(\"%s%s\")", .upstream, ref),
+      tr("Or download the three package files where you can and install them from a folder:", lang),
+      "  update_tflplanner(from = \"<folder>\")"))
 }
 
 # What update_tflplanner() is about to do, in words: how, where, in what

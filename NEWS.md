@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **`update_tflplanner()` behind a firewall or a proxy** (#60).  The
+  update's own R process now gets this session's package repositories
+  (RStudio's, an internal mirror) and download method -- a fresh Rscript
+  had only cloud.r-project.org -- and first checks it can reach them and
+  GitHub, naming every address it cannot ("UNREACHABLE: ...").  When the
+  update does not finish, it says what failed and the two ways round it:
+  `remotes::install_github()` of the three in this session, or
+  `update_tflplanner(from = <folder>)`.  When the newest versions cannot
+  be looked up, the list shows "?" with a note, and the update goes on.
+
 - **The tabs in the order of the work, and where a report is made** (#58):
   Study, Data, Reports, ARD, Runs (Reports before ARD).  A report chosen
   in the list shows the buttons for its kind -- a table "Go to ARD" and

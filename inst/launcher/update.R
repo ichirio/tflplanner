@@ -22,6 +22,12 @@ arg <- function(name, default = NULL) {
 channel <- arg("channel", "release")
 from    <- arg("from")
 lib     <- arg("lib", .libPaths()[[1L]])
+# the calling session's network settings, which a fresh Rscript does not
+# have (RStudio's package repositories -- an internal mirror --, its
+# download method): `--repos=name=url;name=url`, `--method=wininet`
+repos_arg <- arg("repos")
+method    <- arg("method")
+if (!is.null(method) && nzchar(method)) options(download.file.method = method)
 if (!channel %in% c("release", "dev")) {
   cat("unknown channel: ", channel, "\n", sep = "")
   quit(status = 1L)
@@ -31,6 +37,12 @@ pkgs <- c("rtfreporter", "tflspec", "tflplanner")
 repo <- c(rtfreporter = "ichirio/rtfreporter", tflspec = "ichirio/tflspec",
           tflplanner = "ichirio/tflplanner")
 cran <- getOption("repos")
+if (!is.null(repos_arg) && nzchar(repos_arg)) {
+  kv <- strsplit(strsplit(repos_arg, ";", fixed = TRUE)[[1L]], "=", fixed = TRUE)
+  kv <- kv[lengths(kv) >= 2L]
+  cran <- stats::setNames(vapply(kv, function(x) paste(x[-1L], collapse = "="), ""),
+                          vapply(kv, `[[`, "", 1L))
+}
 if (is.null(cran) || !length(cran) || identical(unname(cran[["CRAN"]]), "@CRAN@")) {
   cran <- c(CRAN = "https://cloud.r-project.org")
 }
@@ -48,6 +60,23 @@ installed <- function(p) {
 fail <- function(p, e) {
   say("FAILED: ", p, ": ", conditionMessage(e))
   quit(status = 1L)
+}
+# Can this process reach `url`?  (A firewall or a proxy the session had and
+# this process has not shows here, before an install half-way fails.)
+reach <- function(url) {
+  ok <- tryCatch({
+    old <- options(timeout = 10)
+    on.exit(options(old))
+    con <- url(url, open = "rb")
+    close(con)
+    TRUE
+  }, error = function(e) FALSE, warning = function(w) FALSE)
+  isTRUE(ok)
+}
+check_hosts <- function(urls) {
+  bad <- urls[!vapply(urls, reach, NA)]
+  for (u in bad) say("UNREACHABLE: ", u)
+  invisible(bad)
 }
 
 say("tflplanner update: ", if (is.null(from)) channel else paste("from", from),
@@ -78,6 +107,16 @@ if (!is.null(from)) {
   quit(status = 0L)
 }
 
+say("package repositories: ", paste(cran, collapse = ", "))
+# what this update needs to reach: the repositories (and, for GitHub, the
+# API remotes asks for the version and the archive it downloads)
+need <- c(paste0(sub("/+$", "", cran[[1L]]), "/src/contrib/PACKAGES"),
+          "https://api.github.com/repos/ichirio/tflplanner",
+          "https://codeload.github.com/")
+bad <- check_hosts(need)
+if (length(bad) == length(need)) {
+  fail("network", simpleError("none of the addresses above can be reached from this R process"))
+}
 ap <- tryCatch(utils::available.packages(repos = cran),
                error = function(e) NULL)
 on_cran <- function(p) {

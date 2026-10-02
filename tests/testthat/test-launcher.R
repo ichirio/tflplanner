@@ -479,3 +479,49 @@ test_that("RStudio add-in: Launch tflplanner -> launch_app()", {
   expect_identical(unname(dcf[1, "Binding"]), "launch_app")
   expect_true(is.function(launch_app))
 })
+
+test_that("the update passes on this session's repositories and download method", {
+  withr::local_options(repos = c(CRAN = "https://mirror.example/cran",
+                                 INT = "https://int.example/r"),
+                       download.file.method = "wininet")
+  a <- .update_net_args()
+  expect_true("--repos=CRAN=https://mirror.example/cran;INT=https://int.example/r" %in% a)
+  expect_true("--method=wininet" %in% a)
+})
+
+test_that("a failed update says what was not reached, and the ways round it", {
+  out <- paste("tflplanner update: dev -> lib",
+               "UNREACHABLE: https://api.github.com/repos/ichirio/tflplanner",
+               "FAILED: rtfreporter: cannot open URL", sep = "\n")
+  txt <- paste(.update_failed_text(out, "dev", NULL, "en"), collapse = "\n")
+  expect_match(txt, "could not reach", fixed = TRUE)
+  expect_match(txt, "https://api.github.com/repos/ichirio/tflplanner", fixed = TRUE)
+  expect_match(txt, "rtfreporter: cannot open URL", fixed = TRUE)
+  expect_match(txt, 'remotes::install_github("ichirio/tflspec")', fixed = TRUE)
+  expect_match(txt, 'update_tflplanner(from = "<folder>")', fixed = TRUE)
+  rel <- paste(.update_failed_text("", "release", NULL, "en"), collapse = "\n")
+  expect_match(rel, 'install_github("ichirio/rtfreporter@*release")', fixed = TRUE)
+  ja <- paste(.update_failed_text(out, "dev", NULL, "ja"), collapse = "\n")
+  expect_false(grepl("could not reach", ja, fixed = TRUE))
+})
+
+test_that("update.R with the network closed says which addresses, and stops", {
+  skip_on_cran()
+  lib <- withr_tempdir()
+  # every address through a proxy nobody listens on: nothing is reachable
+  res <- withr::with_envvar(
+    c(https_proxy = "http://127.0.0.1:9", http_proxy = "http://127.0.0.1:9",
+      HTTPS_PROXY = "http://127.0.0.1:9", HTTP_PROXY = "http://127.0.0.1:9",
+      no_proxy = "", NO_PROXY = ""),
+    processx::run(file.path(R.home("bin"), "Rscript"),
+                  c(system.file("launcher", "update.R", package = "tflplanner"),
+                    "--channel=dev", paste0("--lib=", lib),
+                    "--repos=CRAN=https://cloud.r-project.org"),
+                  error_on_status = FALSE, timeout = 120))
+  expect_identical(res$status, 1L)
+  expect_match(res$stdout, "UNREACHABLE: https://api.github.com", fixed = TRUE)
+  expect_match(res$stdout, "package repositories: https://cloud.r-project.org", fixed = TRUE)
+  expect_match(res$stdout, "FAILED: network", fixed = TRUE)
+  txt <- paste(.update_failed_text(res$stdout, "dev", NULL, "en"), collapse = "\n")
+  expect_match(txt, "install_github", fixed = TRUE)
+})
