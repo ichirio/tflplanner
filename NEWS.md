@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **Several column variables in the table builder** (#52): the Content
+  tab's "Column variables" takes more than one (a group, then a visit
+  ...), as `tables$cols` writes them (`A | B`, outermost first).  With
+  several, their order is dragged; each one's columns are ordered by
+  dragging as before.  The column header presets are named after the
+  outermost one.
+
 - **The page takes no clicks while the app works** (#50): opening a
   study, switching a tab or a report, saving.  After 0.4 s of work a light
   veil covers the page (the cursor says it is busy) until it is done; the

@@ -243,7 +243,7 @@ test_that("the builder of a table with no definition yet writes one, and keeps t
     v <- list(TRT01A = NULL)
     v[[b("key")]] <- "TRT01A"
     v[[b("vars")]] <- "AGE"
-    v[[b("arms")]] <- m$keys$TRT01A
+    v[[b("arms_TRT01A")]] <- m$keys$TRT01A
     v[[b("stats")]] <- c("n", "mean_sd")
     v[[b("dec")]] <- 0
     v[[b("cat")]] <- "npct"
