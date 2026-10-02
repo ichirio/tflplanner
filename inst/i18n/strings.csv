@@ -1219,3 +1219,16 @@ The current design (%d layers) is replaced by the template's.,今のデザイン
 Replace with the template,テンプレートで置き換える
 User code (write the ggplot yourself),ユーザーコード（ggplot を自分で書く）
 The template's defaults are not in %s: it uses %s instead.,テンプレートの既定値が %s にありません。かわりに %s を使います。
+"BY pages: the column(s) whose value partitions the body first, each value a page, the row budget then applying within one (plan_paginate_rows(page_by = )); | between them; print it or hide it (columns$hide); blank: none.",BY ページ：まずこの列の値で本文を分け、値ごとにページにする。行数の上限はその中で使う（plan_paginate_rows(page_by = )）。| 区切り。列は表示するか隠す（columns$hide）。空欄 = なし。
+The whole column header's alignment: left / center / right (rtf_table_style()); blank: each column's.,列見出し全体の揃え：left / center / right（rtf_table_style()）。空欄 = 列ごと。
+TRUE / FALSE: the whole column header bold; blank: FALSE.,TRUE / FALSE：列見出し全体を太字に。空欄 = FALSE。
+TRUE / FALSE: the whole column header italic; blank: FALSE.,TRUE / FALSE：列見出し全体を斜体に。空欄 = FALSE。
+"The body's default alignment: left / center / right (rtf_table_style()); blank: left when any border_* or look column (header_align ... underline) of this sheet is given, as rtf_table_style() defaults; otherwise row-title columns left, the others center.",本文の既定の揃え：left / center / right（rtf_table_style()）。空欄 = このシートの border_* か見た目の列（header_align〜underline）を 1 つでも書けば left（rtf_table_style() の既定）、書かなければ行見出しの列は left、ほかは center。
+TRUE / FALSE: the body bold by default; blank: FALSE.,TRUE / FALSE：本文を既定で太字に。空欄 = FALSE。
+TRUE / FALSE: the body italic by default; blank: FALSE.,TRUE / FALSE：本文を既定で斜体に。空欄 = FALSE。
+TRUE / FALSE: the body underlined by default; blank: FALSE.,TRUE / FALSE：本文を既定で下線つきに。空欄 = FALSE。
+The table's width in twips (1/1440 inch); blank: the page's writable width.,表の幅（twip = 1/1440 インチ）。空欄 = ページの書ける幅。
+The table's width as a percentage of the page width; blank: the page's writable width.,表の幅（用紙の幅に対する %）。空欄 = ページの書ける幅。
+The table's width as a percentage of the writable width (inside the margins); blank: 100.,表の幅（余白の内側の幅に対する %）。空欄 = 100。
+"The column header text's alignment, every header row: left / center / right (plan_col_header(col_header_align = )); blank: each column's data alignment.",列見出しの文字の揃え（すべての見出し行）：left / center / right（plan_col_header(col_header_align = )）。空欄 = 各列のデータの揃え。
+Left indent of the cell text in twips (not on the header); blank: unchanged.,セルの文字の左インデント（twip。見出しには使えない）。空欄 = 変えない。

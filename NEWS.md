@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **The table sheets have the columns tflspec 0.0.24.9021 added** (#66): the
+  `layout` sheet's `pages_page_by` (BY pages with a row budget inside), the
+  `style` sheet's default look (`header_align`, `header_bold`,
+  `header_italic`, `align`, `bold`, `italic`, `underline`), table width
+  (`table_width_twips`, `table_width_pct`, `table_width_pct_of_writable`)
+  and `col_header_align`, and the `cell_styles` sheet's `underline` and
+  `indent_twips`.  They appear in the grids as every column does (read
+  from tflspec), with their help in Japanese, and a new study's standards
+  offer `TRUE` / `FALSE` and `left` / `center` / `right` for them.  Blank
+  = as before.
+
 - **A figure template fits the study's data** (#64).  Applied with its
   defaults (KM: parameter OS, flag FASFL, group TRT01P), a template no
   longer draws an error when the data has not got them: for each the user
