@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **Follow-up `R CMD check --as-cran` on R 4.6.1** (#70).  `inst/WORDLIST`
+  lists the technical words, so `spelling::spell_check_package()` finds
+  nothing; two British spellings in older entries are American, as the
+  package declares `Language: en-US`; the `run_app()` and `launch_app()`
+  examples are `if (interactive())` rather than `\dontrun{}`.
+
 - The `style` sheet's `align` help (and its Japanese) no longer warns that
   any `border_*` or look column left-aligns every column: from rtfreporter
   0.8.2.9008 a blank `align` keeps each column's default.
@@ -300,7 +306,7 @@
 - **Plot Designer: advice and presets** (#19).  The preview now carries
   tflspec's advice on the design (what is usually wanted and is missing or
   unusual: a KM figure without the number at risk, a legend inside the
-  panel with many groups, more groups than the palette has colours, text
+  panel with many groups, more groups than the palette has colors, text
   visits with no order, a waterfall without its marks ...) together with
   the checks, as an overlay on the figure; where one change would do it,
   *Apply* makes it.  A designed figure can be kept as a company *preset*
@@ -343,7 +349,7 @@
 
 - The listing sheets of `listing_figure_spec.xlsx` (`listings`,
   `listing_cols`) are tflspec's listing definition: their columns, reading
-  and normalising come from `tflspec::tfl_listing_spec()` /
+  and normalizing come from `tflspec::tfl_listing_spec()` /
   `tfl_read_listing_spec()`, and the listing program from
   `tfl_listing_code()` with that definition (tflspec 0.0.11).  The workbook
   and the programs are unchanged; only the `figures` sheet stays
