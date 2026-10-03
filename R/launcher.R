@@ -542,8 +542,8 @@ remove_shortcut <- function(launcher = TRUE, ask = interactive()) {
 #' @return The app's address, invisibly.
 #' @seealso [run_app()] to run the app in this R session.
 #' @examples
-#' \dontrun{
-#' launch_app()
+#' if (interactive()) {
+#'   launch_app()
 #' }
 #' @export
 launch_app <- function(port = NULL) {
