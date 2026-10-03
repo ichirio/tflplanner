@@ -20,8 +20,8 @@ one.  Closing the browser stops it.  This is the RStudio add-in "Launch
 tflplanner".
 }
 \examples{
-\dontrun{
-launch_app()
+if (interactive()) {
+  launch_app()
 }
 }
 \seealso{

@@ -32,9 +32,9 @@ with the defaults (\code{\link[=setup_tflplanner]{setup_tflplanner()}}).  The ap
 Japanese (\code{setup_tflplanner(language = )}, or its settings).
 }
 \examples{
-\dontrun{
-run_app()
-run_app("ABC-101")
+if (interactive()) {
+  run_app()
+  run_app("ABC-101")
 }
 }
 \seealso{
