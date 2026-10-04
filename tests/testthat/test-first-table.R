@@ -134,7 +134,7 @@ test_that("a row of the analyses grid is edited as a form", {
     inp <- list()
     inp[[id("id")]] <- "CONT"
     inp[[id("label")]] <- "Age (years)"
-    inp[[id("method")]] <- "continuous"
+    inp[[id("fn_pick")]] <- "continuous"
     # the data: one choice of dataset x analysis set, named as the program
     # names it
     expect_match(h, "ADSL × SAF (pop_saf)", fixed = TRUE)

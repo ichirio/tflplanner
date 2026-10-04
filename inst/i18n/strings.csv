@@ -1236,3 +1236,141 @@ Left indent of the cell text in twips (not on the header); blank: unchanged.,セ
 Data (dataset × analysis set),データ（データセット × 解析対象集団）
 The rows the analysis reads: the dataset's records of the analysis set's subjects. The name is the one the program gives the data.,解析が読む行：データセットのうち、解析対象集団の被験者の行。（）内は、プログラムでのこのデータの名前です。
 "One analysis is one call: add variables to it. Make another analysis only when the statistics, the condition or the groups differ.",1 つの解析は 1 回の呼び出しです。変数はこの解析に足してください。解析を分けるのは、統計量・条件・群が違うときだけです。
+Company standard,★ 会社の定型
+Summaries,要約（基本）
+Subjects and attributes,被験者数・属性
+Hierarchical (adverse events),階層（有害事象など）
+Confidence intervals and rates,信頼区間・率
+Tests: two groups,検定（2 群）
+Tests: three or more groups / strata,検定（3 群以上・層別）
+Tests: paired / one sample,検定（対応あり・1 標本）
+Effect sizes,効果量
+Models,モデル
+Survival,生存時間
+Run several together,まとめて実行
+Own and code,独自・コード
+Survey designs,サーベイデザイン
+Search the functions,関数を探す
+No function matches.,当てはまる関数はありません。
+An old name: choose its new one.,旧い名前です。新しい名前の関数を選んでください。
+its package is not installed,パッケージが入っていません
+in preparation: a function that runs others,準備中：ほかの解析をまとめて実行する関数
+(default),（既定）
+Arguments of %s,%s の引数
+Other arguments (R),その他の引数（R で書く）
+fn:cards::ard_summary,要約統計量
+fn-note:cards::ard_summary,数値の変数の要約統計量（n、平均、SD、中央値、四分位、最小、最大など）。
+fn:cards::ard_tabulate,度数と割合
+fn-note:cards::ard_tabulate,カテゴリの変数の水準ごとの度数と割合。
+fn:cards::ard_tabulate_value,1 つの水準の度数
+fn-note:cards::ard_tabulate_value,各変数の 1 つの水準（Y、グレード、TRUE など）の度数と割合。
+fn:cards::ard_missing,欠測の数
+fn-note:cards::ard_missing,欠測と非欠測の数。
+fn:cards::ard_tabulate_rows,行数
+fn-note:cards::ard_tabulate_rows,データの行（レコード）の数（群ごと）。
+fn:cards::ard_total_n,被験者数
+fn-note:cards::ard_total_n,データの総行数（被験者単位のデータなら被験者数）。
+fn:cards::ard_attributes,変数のラベル
+fn-note:cards::ard_attributes,各変数のラベル属性（変数自身のラベルを表に出すため）。
+fn:cards::ard_stack_hierarchical,階層の被験者数
+fn-note:cards::ard_stack_hierarchical,階層（SOC / PT）の各水準で事象のあった被験者数。「いずれかの事象」と全体の行つき。
+fn:cards::ard_stack_hierarchical_count,階層の件数
+fn-note:cards::ard_stack_hierarchical_count,階層の各水準の事象の件数（被験者数ではなくレコード数）。全体の行つき。
+fn:cards::ard_hierarchical,階層の被験者数（1 段）
+fn-note:cards::ard_hierarchical,階層の最も内側の水準の被験者の割合。通常は ard_stack_hierarchical() を使う。
+fn:cards::ard_hierarchical_count,階層の件数（1 段）
+fn-note:cards::ard_hierarchical_count,階層の最も内側の水準の事象の件数。通常は ard_stack_hierarchical_count() を使う。
+fn:cardx::ard_tabulate_max,被験者ごとの最悪の水準
+fn-note:cardx::ard_tabulate_max,被験者ごとの最大（最悪）の水準の度数。例：最悪の毒性グレード。
+fn:cardx::ard_tabulate_abnormal,異常値
+fn-note:cardx::ard_tabulate_abnormal,ベースライン後に異常値（Low、High）のあった被験者。ベースラインが正常かどうか別にも。
+fn:cardx::ard_categorical_ci,割合と信頼区間
+fn-note:cardx::ard_categorical_ci,割合の信頼区間（Wilson、Clopper-Pearson、Wald など）。
+fn:cardx::ard_continuous_ci,平均と信頼区間
+fn-note:cardx::ard_continuous_ci,平均（t）または中央値の信頼区間。
+fn:cardx::ard_incidence_rate,発現率
+fn-note:cardx::ard_incidence_rate,人時あたりの事象数と、その信頼区間。
+fn:cardx::ard_stats_t_test,t 検定
+fn-note:cardx::ard_stats_t_test,by の 2 群の間の 2 標本 t 検定。
+fn:cardx::ard_stats_wilcox_test,Wilcoxon 順位和検定
+fn-note:cardx::ard_stats_wilcox_test,by の 2 群の間の Wilcoxon 順位和（Mann-Whitney）検定。
+fn:cardx::ard_stats_chisq_test,カイ二乗検定
+fn-note:cardx::ard_stats_chisq_test,群による変数の Pearson のカイ二乗検定。
+fn:cardx::ard_stats_fisher_test,Fisher の正確検定
+fn-note:cardx::ard_stats_fisher_test,群による変数の Fisher の正確検定。
+fn:cardx::ard_stats_prop_test,2 つの割合の検定
+fn-note:cardx::ard_stats_prop_test,2 標本の割合の検定（prop.test()）。
+fn:cardx::ard_stats_poisson_test,Poisson 検定
+fn-note:cardx::ard_stats_poisson_test,Poisson 率、または 2 つの率の比の正確検定。
+fn:cardx::ard_stats_mood_test,Mood の尺度の検定
+fn-note:cardx::ard_stats_mood_test,Mood の 2 標本の尺度の検定。
+fn:cardx::ard_stats_aov,分散分析
+fn-note:cardx::ard_stats_aov,式からの一元または多元の分散分析（aov()）。
+fn:cardx::ard_stats_oneway_test,一元配置の平均の検定
+fn-note:cardx::ard_stats_oneway_test,一元配置での平均の同等性の検定（oneway.test()）。
+fn:cardx::ard_stats_kruskal_test,Kruskal-Wallis 検定
+fn-note:cardx::ard_stats_kruskal_test,by の群の間の Kruskal-Wallis 順位和検定。
+fn:cardx::ard_stats_mantelhaen_test,Cochran-Mantel-Haenszel 検定
+fn-note:cardx::ard_stats_mantelhaen_test,層の中での、群による変数の CMH カイ二乗検定。
+fn:cardx::ard_stats_anova,入れ子のモデルの分散分析
+fn-note:cardx::ard_stats_anova,データに当てはめた複数のモデル（式）を比べる分散分析。
+fn:cardx::ard_stats_paired_t_test,対応のある t 検定
+fn-note:cardx::ard_stats_paired_t_test,2 つの by の群の間の対応のある t 検定（被験者のキーでレコードを対にする）。
+fn:cardx::ard_stats_paired_wilcox_test,Wilcoxon 符号付き順位検定
+fn-note:cardx::ard_stats_paired_wilcox_test,2 つの by の群の間の対応のある Wilcoxon 検定。
+fn:cardx::ard_stats_mcnemar_test,McNemar 検定
+fn-note:cardx::ard_stats_mcnemar_test,対応のある二値の変数の McNemar 検定（被験者ごとに 1 レコード）。
+fn:cardx::ard_stats_mcnemar_test_long,McNemar 検定（縦長のデータ）
+fn-note:cardx::ard_stats_mcnemar_test_long,被験者・時点ごとに 1 レコードのデータでの McNemar 検定。
+fn:cardx::ard_stats_t_test_onesample,1 標本 t 検定
+fn-note:cardx::ard_stats_t_test_onesample,平均の 1 標本 t 検定。
+fn:cardx::ard_stats_wilcox_test_onesample,1 標本 Wilcoxon 検定
+fn-note:cardx::ard_stats_wilcox_test_onesample,1 標本の Wilcoxon 符号付き順位検定。
+fn:cardx::ard_effectsize_cohens_d,Cohen の d
+fn-note:cardx::ard_effectsize_cohens_d,2 群の間の標準化平均差（Cohen の d）。
+fn:cardx::ard_effectsize_hedges_g,Hedges の g
+fn-note:cardx::ard_effectsize_hedges_g,2 群の間の標準化平均差（Hedges の g）。
+fn:cardx::ard_effectsize_paired_cohens_d,対応のある Cohen の d
+fn-note:cardx::ard_effectsize_paired_cohens_d,対応のあるデータの Cohen の d。
+fn:cardx::ard_effectsize_paired_hedges_g,対応のある Hedges の g
+fn-note:cardx::ard_effectsize_paired_hedges_g,対応のあるデータの Hedges の g。
+fn:cardx::ard_smd_smd,標準化平均差
+fn-note:cardx::ard_smd_smd,標準化平均差（smd パッケージ）。信頼区間も出せる。
+fn:cardx::ard_regression,回帰モデル
+fn-note:cardx::ard_regression,式から当てはめた回帰モデル（lm、glm、coxph など）の係数。
+fn:cardx::ard_regression_basic,回帰モデル（簡易）
+fn-note:cardx::ard_regression_basic,回帰モデルの係数の簡単な表。
+fn:cardx::ard_emmeans_emmeans,最小二乗平均
+fn-note:cardx::ard_emmeans_emmeans,モデルからの最小二乗平均（emmeans）。
+fn:cardx::ard_emmeans_contrast,最小二乗平均の差
+fn-note:cardx::ard_emmeans_contrast,群の間の最小二乗平均の差（emmeans）。
+fn:cardx::ard_car_anova,モデルの分散分析（car）
+fn-note:cardx::ard_car_anova,当てはめたモデルの Type II / III の分散分析（car::Anova()）。
+fn:cardx::ard_car_vif,分散拡大係数
+fn-note:cardx::ard_car_vif,当てはめたモデルの VIF（car::vif()）。
+fn:cardx::ard_aod_wald_test,モデルの Wald 検定
+fn-note:cardx::ard_aod_wald_test,当てはめたモデルの係数の Wald 検定（aod）。
+fn:cardx::ard_survival_survfit,Kaplan-Meier 推定
+fn-note:cardx::ard_survival_survfit,Kaplan-Meier の当てはめからの、時点ごとの生存率または生存時間の分位点（中央値）。
+fn:cardx::ard_survival_survfit_diff,生存率の差
+fn-note:cardx::ard_survival_survfit_diff,時点ごとの、群の間の Kaplan-Meier 生存率の差。
+fn:cardx::ard_survival_survdiff,ログランク検定
+fn-note:cardx::ard_survival_survdiff,生存曲線のログランク（と G-rho 族）検定。
+fn:cards::ard_stack,同じデータの複数の解析
+fn-note:cards::ard_stack,同じデータと by 変数で複数の解析を実行する。by 変数の度数と総数も足す。
+fn:cards::ard_strata,部分集団ごと
+fn-note:cards::ard_strata,層（と by）の変数の水準ごとに解析を実行する。
+fn:cards::ard_pairwise,群の対ごと
+fn-note:cards::ard_pairwise,変数の水準の対ごとに解析を実行する（対比較）。
+fn:cards::ard_mvsummary,独自の関数による要約
+fn-note:cards::ard_mvsummary,独自の関数で計算する統計量。データのほかの列も使える。
+fn:cards::ard_identity,計算済みの統計量
+fn-note:cards::ard_identity,ほかで計算した統計量（名前つきのリスト）を ARD にする。
+fn:cards::ard_formals,引数の値
+fn-note:cards::ard_formals,関数の引数の値を ARD として記録する（独自の ARD 関数を書くための部品で、解析ではない）。
+fn:cardx::ard_survey_svychisq,サーベイのカイ二乗検定
+fn-note:cardx::ard_survey_svychisq,サーベイデザインのオブジェクト（データフレームではない）でのカイ二乗検定。
+fn:cardx::ard_survey_svyranktest,サーベイの順位検定
+fn-note:cardx::ard_survey_svyranktest,サーベイデザインのオブジェクト（データフレームではない）での順位検定。
+fn:cardx::ard_survey_svyttest,サーベイの t 検定
+fn-note:cardx::ard_survey_svyttest,サーベイデザインのオブジェクト（データフレームではない）での t 検定。
