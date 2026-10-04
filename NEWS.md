@@ -1,5 +1,19 @@
 # tflplanner (development version)
 
+- **The builder writes the column header line by line** (#82).  The
+  "Column header" presets radio is a form: one box a header line, with the
+  row-header columns' text (one cell over several, or one each) and the
+  value columns' -- the same text on each column, one cell per value of a
+  key (a spanner over the outer key of a two-key table), one cell over them
+  all, or nothing -- with its alignment, bold and underline.  Lines are
+  added above, moved and removed; "From a preset..." fills them from the
+  company presets.  Tokens are offered as the table has them (`{col}`,
+  `{col1}` ... for several keys, `{n}`, `{n:sum}`, `{N}` when the table's
+  `header_n` names one) and go into the field last clicked; whose `{n}` it
+  is (`header_n`) is asked when a cell uses one.  The form writes the
+  report's own `col_header` rows, only when they change; a header it cannot
+  show (column positions, `KEY = value`, styled row-header cells) is left
+  to the sheet, with a note.
 - The study tab no longer shows an error in place of the study (since the
   `input/ard/` folder came in): each folder's note is looked up by its name,
   so a new folder cannot break it, and `input/ard/` has its note.

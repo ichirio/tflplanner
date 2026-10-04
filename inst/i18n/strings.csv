@@ -214,7 +214,6 @@ This table has a hierarchy (SOC / PT): the builder handles summary tables for no
 Columns,列
 Column variable,列の変数
 Column header,列見出し
-as it is,そのまま
 Rows: variables in order,行：変数（この順で表示）
 Label,ラベル
 Levels (drag to order),水準（ドラッグで並べ替え）
@@ -1382,3 +1381,26 @@ Chosen: %s,選択中: %s
 See ?%s for this argument.,この引数は ?%s を見てください。
 Not offered by the builder: kept as written.,画面では扱わない関数です。書いたまま残します。
 "ARDs made elsewhere, taken in (imports.csv lists them)",よそで作った ARD の取り込み（imports.csv に一覧）
+From a preset...,定型から…
+Add a line above,行を上に足す
+"This report's column header is more than the form shows (positions, KEY = value, styled row-header cells): edit it in Details (sheets), col_header.",この帳票の列見出しは、この画面で表せない書き方（列の位置、KEY = 値、行見出しの列の書式）を含みます。詳しく（シート）の col_header で編集してください。
+Row-header column %s,行見出しの列 %s
+Row-header columns,行見出しの列
+Line %d,行 %d
+Value columns,値の列
+the same on each column,各列に同じ
+one cell per value of a key,キーごとにまとめる
+one cell over them all,全部をまとめる
+nothing,書かない
+left,左
+center,中央
+right,右
+bold,太字
+underline,下線
+Insert (into the field last clicked):,差し込み（最後にクリックした欄へ）:
+Whose {n},{n} の母集団
+the default (page),既定（page）
+each page's (page),ページごと（page）
+the analysis set (table),解析対象集団（table）
+"both: {n} page, {N} table",両方：{n} は page、{N} は table
+The header is the preset %s now.,列見出しを定型 %s にしました。
