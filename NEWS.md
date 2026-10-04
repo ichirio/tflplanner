@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **The Japanese guide and the README catch up** (docs): the ARD tab's
+  outline, parent and post rows, code lists and the order of levels,
+  analyses run together, warnings and errors, ARDs made elsewhere, the
+  company's own ARD functions, the report list from a TOC and reports
+  written as user code; the tabs by their Japanese names and the sample's
+  eight reports as they are now.
+
 - **The errors and warnings inside the analyses, listed** (#109).  cards
   keeps an analysis's errors and warnings in the ARD and carries on; the
   Study ARD tab now lists them for the whole study -- the study ARD as last
