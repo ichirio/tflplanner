@@ -1615,9 +1615,6 @@ Choose the column holding the report IDs.,帳票 ID の列を選んでくださ�
 The TOC cannot be read: %s,TOC を読めません: %s
 Title line,タイトル
 Footnote line,脚注
-added,追加
-updated,更新
-edited here,ここで直した行
 Guessed from the ID: check it,ID から推測しました。確かめてください
 (the TOC says %s: not changed),（TOC では %s。変えません）
 Kept: delete it yourself if it is no longer needed.,消さずに残します。要らなければ自分で削除してください。
@@ -1629,10 +1626,27 @@ Choose the TOC file.,TOC のファイルを選んでください。
 "Saved at once, with the other unsaved changes: the record of TOCs taken in and the reports must agree.",TOC の取り込みの記録と帳票を合わせるため、ほかの未保存の変更も含めてその場で保存しました。
 The mapping is remembered in %s.,対応づけを %s に覚えました。
 "%s is taken in as %s: new %d, changed %d, not in the TOC %d.",%s を %s として取り込みました: 新しい %d・変更あり %d・TOC に無い %d。
-New reports %d: make their content from the list's buttons.,新しい帳票 %d 件: 一覧のボタンから中身を作ってください。
 New,新しい
 Changed,変更あり
 No change,変更なし
 Not in the TOC,TOC に無い
 Titles and footnotes,タイトル・脚注
 TOCs taken in (imports.csv lists them; last.json: what the last one said),取り込んだ TOC（imports.csv が一覧、last.json は前回の TOC の中身）
+"Last taken in: %s (%s, %s).",前回の取り込み: %s（%s、%s）。
+"This is the same file as %s (%s), taken in before.",前に取り込んだ %s（%s）と同じファイルです。
+Taking it in...,取り込み中…
+The population becomes the last title line.,集団はタイトルの最後の行になります。
+Report ID %s is on more than one row (rows %s).,帳票 ID %s が複数の行にあります（%s 行目）。
+will be added,足します
+will be updated,更新します
+will be taken out (the TOC dropped it),外します（TOC から消えた行）
+"edited here, and changed in the TOC",ここで直した行。TOC でも変わりました
+added here: moves after the TOC's lines,ここで足した行。TOC の行の後ろに移ります
+%d title lines and %d footnote lines will be added.,タイトル %d 行・脚注 %d 行を足します。
+"Only what the TOC holds is changed: tables, ARDs, pages and lines added here stay; lines added here go after the TOC's lines.",TOC にある項目だけを変えます。表・ARD・ページの設定・ここで足した行はそのままです（ここで足した行は TOC の行の後ろに置きます）。
+%d heading rows (no report ID) are skipped.,帳票 ID の無い見出しの行 %d 行を飛ばしました。
+%d lines edited here are kept: the TOC did not change them.,ここで直した行 %d 行は、TOC が変わっていないのでそのままにします。
+Show the reports with no change,変更なしの帳票も表示
+* = the type is guessed from the ID: check it before taking it in.,* = 種別は ID から推測しました。取り込む前に確かめてください。
+%d lines edited here were kept instead of the TOC's text.,ここで直した行 %d 行は、TOC の文にせずそのままにしました。
+New reports: %s. Make their content from the list's buttons.,新しい帳票: %s。一覧のボタンから中身を作ってください。

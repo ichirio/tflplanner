@@ -198,3 +198,140 @@ test_that("the app takes a TOC in: mapped, previewed, taken in, saved at once; a
     expect_identical(nrow(toc_imports(rv$study)), 2L)
   })
 })
+
+test_that("lines added here stay, after the TOC's lines, when the TOC gets more lines (S1's review of #104)", {
+  x <- new_planner()
+  sp1 <- tflspec::tfl_read_toc(toc_file(
+    "T-1,Table,Demographics,Safety Population,Note A"), map = toc_map)
+  ch1 <- toc_changes(x, sp1)
+  x <- toc_apply(x, sp1, ch1)
+  last <- toc_snapshot(sp1, toc_title_offset(x))
+  # here: title 1 edited, a third title line and a second footnote added
+  ti <- sheet_rows(x, "titles", "T-1")
+  ti$output_id <- NULL
+  ti$center[1] <- "Demographics (edited)"
+  ti[3, ] <- NA
+  ti$line[3] <- "3"
+  ti$center[3] <- "Our own third line"
+  x <- set_sheet_rows(x, "titles", "T-1", ti)
+  fo <- sheet_rows(x, "footnotes", "T-1")
+  fo$output_id <- NULL
+  fo[2, ] <- NA
+  fo$line[2] <- "2"
+  fo$left[2] <- "Our own footnote"
+  x <- set_sheet_rows(x, "footnotes", "T-1", fo)
+  # the TOC adds a second title and a second footnote
+  f <- tempfile(fileext = ".csv")
+  writeLines(c("No.,Kind,Title 1,Title 2,Population,Footnote 1,Footnote 2",
+               "T-1,Table,Demographics,By Treatment Group,Safety Population,Note A,Percentages use N"), f)
+  m <- list(output_id = "No.", type = "Kind", title = c("Title 1", "Title 2"),
+            population = "Population", footnote = c("Footnote 1", "Footnote 2"))
+  sp2 <- tflspec::tfl_read_toc(f, map = m)
+  ch <- toc_changes(x, sp2, last)
+  # nothing to ask: title 1 was edited here, but the TOC did not change it
+  expect_false(any(ch$lines$action == "ask"))
+  expect_identical(ch$kept$line, "1")
+  expect_true(all(c("add", "update", "move") %in% ch$lines$action))
+  y <- toc_apply(x, sp2, ch)
+  expect_identical(sheet_rows(y, "titles", "T-1")$center,
+                   c("Demographics (edited)", "By Treatment Group", "Safety Population",
+                     "Our own third line"))
+  expect_identical(sheet_rows(y, "footnotes", "T-1")$left,
+                   c("Note A", "Percentages use N", "Our own footnote"))
+  # again with the same TOC: nothing changes, nothing asked
+  last2 <- toc_snapshot(sp2, toc_title_offset(y), last)
+  ch2 <- toc_changes(y, sp2, last2)
+  expect_identical(nrow(ch2$lines), 0L)
+  expect_identical(ch2$reports$status, "same")
+  # the TOC changes title 1 too: now it is asked about
+  writeLines(c("No.,Kind,Title 1,Title 2,Population,Footnote 1,Footnote 2",
+               "T-1,Table,Demography,By Treatment Group,Safety Population,Note A,Percentages use N"), f)
+  sp3 <- tflspec::tfl_read_toc(f, map = m)
+  ch3 <- toc_changes(y, sp3, last2)
+  expect_identical(ch3$lines$action, "ask")
+  expect_identical(sheet_rows(toc_apply(y, sp3, ch3, use_toc = "T-1|titles|1"),
+                              "titles", "T-1")$center[c(1, 4)],
+                   c("Demography", "Our own third line"))
+})
+
+test_that("a report once taken in from a TOC is said to be missing every time", {
+  x <- new_planner()
+  sp1 <- tflspec::tfl_read_toc(toc_file(c("T-1,Table,A,Safety Population,",
+                                          "T-2,Table,B,Safety Population,")), map = toc_map)
+  x <- toc_apply(x, sp1, toc_changes(x, sp1))
+  last <- toc_snapshot(sp1, 0L)
+  sp2 <- tflspec::tfl_read_toc(toc_file("T-1,Table,A,Safety Population,"), map = toc_map)
+  ch2 <- toc_changes(x, sp2, last)
+  expect_identical(ch2$reports$status[ch2$reports$output_id == "T-2"], "missing")
+  last2 <- toc_snapshot(sp2, 0L, last)
+  expect_false(last2[["T-2"]]$in_toc)
+  ch3 <- toc_changes(x, sp2, last2)
+  expect_identical(ch3$reports$status[ch3$reports$output_id == "T-2"], "missing")
+})
+
+test_that("a report ID on two rows is said with its rows", {
+  f <- tempfile(fileext = ".csv")
+  writeLines(c("No.,Title", "T-1,A", "T-2,B", "T-1,C"), f)
+  d <- .toc_dups(f, NULL, 0L, "No.")
+  expect_identical(d$output_id, "T-1")
+  expect_identical(d$rows, "2, 4")
+  expect_null(.toc_dups(f, NULL, 0L, "Title"))
+})
+
+test_that("the dialog: the last TOC said, the same file noticed, two rows of one ID refused, an xlsx read", {
+  local_home()
+  create_study("TD", planner = new_planner())
+  f1 <- file.path(tempdir(), "toc_a.csv")
+  writeLines(c("No.,Kind,Title,Population,Footnotes",
+               "T-1,Table,Demographics,Safety Population,"), f1)
+  f2 <- file.path(tempdir(), "toc_dup.csv")
+  writeLines(c("No.,Kind,Title,Population,Footnotes",
+               "T-1,Table,Demographics,Safety Population,",
+               "T-1,Table,Again,Safety Population,"), f2)
+  f3 <- file.path(tempdir(), "toc_b.xlsx")
+  writexl::write_xlsx(list(
+    Cover = data.frame(x = "cover"),
+    TOC = data.frame(`No.` = c("Study ABC", "No.", "T-2"),
+                     Kind = c(NA, "Kind", "Table"),
+                     Title = c(NA, "Title", "Vital signs"),
+                     check.names = FALSE)), f3, col_names = FALSE)
+  up <- function(f) data.frame(name = basename(f), datapath = f, stringsAsFactors = FALSE)
+  map <- function(n) {
+    l <- list("No.", "Kind", "Title", "", "", "", "", "")
+    names(l) <- paste0("toc", n, "_map_", .toc_items)
+    l
+  }
+  shiny::testServer(server_for("TD"), {
+    rv <- session$userData$rv
+    session$setInputs(toc_new = 1)
+    expect_null(output$toc1_prev$html)
+    session$setInputs(toc1_file = up(f1), toc1_skip = 0)
+    do.call(session$setInputs, map(1))
+    expect_match(output$toc1_do_btn$html, "Taking it in", fixed = TRUE)
+    session$setInputs(toc1_do = 1)
+    expect_identical(toc_imports(rv$study)$import_id, "TOC001")
+    # again: the last one said; the same file noticed
+    session$setInputs(toc_new = 2)
+    expect_match(output$toc2_prev$html, "TOC001 (toc_a.csv", fixed = TRUE)
+    session$setInputs(toc2_file = up(f1), toc2_skip = 0)
+    expect_match(output$toc2_same_file$html, "same file as TOC001", fixed = TRUE)
+    # two rows of one ID: said with the rows, Take it in off
+    session$setInputs(toc_new = 3)
+    session$setInputs(toc3_file = up(f2), toc3_skip = 0)
+    do.call(session$setInputs, map(3))
+    expect_match(output$toc3_changes$html, "T-1 is on more than one row (rows 2, 3)", fixed = TRUE)
+    expect_match(output$toc3_do_btn$html, "disabled", fixed = TRUE)
+    # an xlsx: its sheet and the rows above its header
+    session$setInputs(toc_new = 4)
+    session$setInputs(toc4_file = up(f3))
+    expect_match(output$toc4_where$html, "Cover", fixed = TRUE)
+    session$setInputs(toc4_sheet = "TOC", toc4_skip = 1)
+    do.call(session$setInputs, map(4))
+    expect_match(output$toc4_changes$html, "New 1", fixed = TRUE)
+    # T-1 is not in this TOC: said, and the reports with no change folded
+    expect_match(output$toc4_changes$html, "Not in the TOC", fixed = TRUE)
+    session$setInputs(toc4_type_1 = "listing", toc4_do = 1)
+    expect_identical(report_info(rv$p, "T-2")$type, "listing")
+    expect_identical(sheet_rows(rv$p, "titles", "T-2")$center, "Vital signs")
+  })
+})
