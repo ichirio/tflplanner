@@ -143,3 +143,22 @@ test_that("the form picks a function, fills its arguments and writes args", {
     expect_match(output$ard_fn_list$html, "ard_continuous_ci", fixed = TRUE)
   })
 })
+
+test_that("every hint of the ARD catalog has its Japanese", {
+  f <- system.file("ard", "args.csv", package = "tflspec")
+  skip_if(!nzchar(f))
+  a <- utils::read.csv(f, stringsAsFactors = FALSE)
+  h <- unique(a$hint[!is.na(a$hint) & nzchar(a$hint)])
+  keys <- utils::read.csv(system.file("i18n", "strings.csv", package = "tflplanner"),
+                          stringsAsFactors = FALSE, encoding = "UTF-8")[[1]]
+  miss <- setdiff(paste0("arg-hint:", h), keys)
+  expect_identical(miss, character(), info = paste(miss, collapse = "\n"))
+})
+
+test_that("what the catalog does not offer is not listed", {
+  skip_if_not_installed("cardx")
+  f <- tflspec::tfl_ard_functions()
+  skip_if(!"offered" %in% names(f))
+  e <- .ard_fn_entries(.std_ard_methods(), f)
+  expect_false(any(f$call[!f$offered] %in% e$value))
+})

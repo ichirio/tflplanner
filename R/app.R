@@ -2600,7 +2600,12 @@ app_server <- function(input, output, session, start) {
         shiny::textInput(id, lab, v %||% "", width = "100%", placeholder = ph))
       shiny::div(w, shiny::div(
         class = "small text-muted mt-n2 mb-2",
-        if (!is.na(f$hint[i]) && nzchar(f$hint[i])) f$hint[i] else
+        if (!is.na(f$hint[i]) && nzchar(f$hint[i])) {
+          # the catalog's hint in the app's language ("arg-hint:<English>")
+          k <- paste0("arg-hint:", f$hint[i])
+          h <- t(k)
+          if (identical(h, k)) f$hint[i] else h
+        } else
           sprintf(t("See ?%s for this argument."), call)))
     }
     shiny::div(
