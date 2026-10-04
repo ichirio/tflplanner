@@ -1235,3 +1235,4 @@ Left indent of the cell text in twips (not on the header); blank: unchanged.,セ
 (no data),（データなし）
 Data (dataset × analysis set),データ（データセット × 解析対象集団）
 The rows the analysis reads: the dataset's records of the analysis set's subjects. The name is the one the program gives the data.,解析が読む行：データセットのうち、解析対象集団の被験者の行。（）内は、プログラムでのこのデータの名前です。
+"Where the report's ARD comes from: blank, its own ARD definition (the analyses rows of its output_id); import:<file>, an ARD made elsewhere and taken in (the file in the study's input/ard/ folder, read with tfl_read_ard()).",帳票の ARD の出どころ：空欄 = その帳票の ARD 定義（output_id の analyses の行）。import:<ファイル> = ほかで作って取り込んだ ARD（試験の input/ard/ フォルダのファイル。tfl_read_ard() で読む）。
