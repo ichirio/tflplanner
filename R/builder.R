@@ -186,6 +186,8 @@ builder_write <- function(x, output_id, state) {
   tb$output_id <- NULL
   if (!nrow(tb)) tb[1L, ] <- NA
   if (!anyNA(st$key)) tb$cols[1L] <- paste(st$key, collapse = " | ")
+  # whose {n} the header prints (the form asks only when a cell uses {n})
+  if (!is.null(st$header_n) && "header_n" %in% names(tb)) tb$header_n[1L] <- st$header_n
   if (is.na(tb$rows[1L])) {
     inh <- inherited_rows(x, "tables", id)
     if (!nrow(inh) || is.na(inh$rows[1L])) tb$rows[1L] <- "group = variable"
@@ -266,10 +268,43 @@ builder_write <- function(x, output_id, state) {
   }
   x <- set_sheet_rows(x, "cells", id, rbind(new, keep))
 
-  if (!identical(st$header, "keep") && st$header %in% names(header_presets())) {
+  # the column header: the form's rows (a data frame), written as the
+  # report's own only when they differ from the header it has now
+  if (is.data.frame(st$header)) {
+    own <- sheet_rows(x, "col_header", id)
+    own$output_id <- NULL
+    eff <- if (nrow(own)) own else {
+      inh <- inherited_rows(x, "col_header", id)
+      inh$output_id <- NULL
+      inh
+    }
+    if (!.same_header(eff, st$header)) {
+      x <- set_sheet_rows(x, "col_header", id, st$header)
+    }
+  } else if (!identical(st$header, "keep") &&
+             st$header %in% names(header_presets())) {
     x <- add_preset(x, id, st$header)
   }
   x
+}
+
+# Do two sets of col_header rows say the same?
+.same_header <- function(a, b) {
+  cols <- c("line", "cols", "span", "text", "align", "bold", "border_top",
+            "border_bottom")
+  norm <- function(d) {
+    d <- as.data.frame(d, stringsAsFactors = FALSE)
+    for (k in cols) if (!k %in% names(d)) d[[k]] <- NA_character_
+    d <- d[cols]
+    d[] <- lapply(d, function(v) {
+      v <- as.character(v)
+      v[!is.na(v) & !nzchar(v)] <- NA_character_
+      v
+    })
+    rownames(d) <- NULL
+    d
+  }
+  identical(norm(a), norm(b))
 }
 
 # ------------------------------------------------------------ preview
@@ -301,6 +336,9 @@ preview_pages <- function(x, output_id, data) {
   plan <- rtfreporter::plan_cells(tflspec::tfl_table_plan(data, spec, output_id),
                                   notes = FALSE)
   res <- suppressMessages(rtfreporter::plan_apply(plan))
+  # what the column header's tokens hold here (the builder's insert chips)
+  tokens <- tryCatch(rtfreporter::plan_header_tokens(plan),
+                     error = function(e) NULL)
   # a plan with no layout gives its table, not pages: one page of it
   if (is.data.frame(res)) {
     res <- list(structure(list(data = res, col_header = list(names(res)),
@@ -308,7 +346,24 @@ preview_pages <- function(x, output_id, data) {
                           class = "rtftable"))
   }
   if (inherits(res, "rtftable")) res <- list(res)
+  attr(res, "header_tokens") <- tokens
   res
+}
+
+# The insert chips' labels: a token and what it holds here
+# ("{n} = 86 / 84 / 84"); the token alone when the preview has not said
+header_token_labels <- function(choices, tokens = NULL) {
+  if (is.null(tokens) || !nrow(tokens)) return(stats::setNames(choices, choices))
+  lab <- vapply(choices, function(tk) {
+    k <- match(tk, tokens$token)
+    if (is.na(k) || !isTRUE(tokens$resolved[k])) return(tk)
+    v <- unlist(tokens$values[[k]], use.names = FALSE)
+    v <- v[!is.na(v)]
+    if (!length(v)) return(tk)
+    if (length(v) > 4L) v <- c(utils::head(v, 4L), "\u2026")
+    paste(tk, "=", paste(v, collapse = " / "))
+  }, "")
+  stats::setNames(choices, lab)
 }
 
 # The lines of a report's header / titles / footnotes / footer: its own,
