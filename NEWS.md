@@ -9,6 +9,12 @@
   does not say which statistics it gives`) is in Japanese too.  Needs
   tflspec 0.0.24.9040.
 
+- **The ARS of a study names its own ARD functions** (tflspec #120):
+  `export_ars()` gives tflspec the study folder, so an analysis whose method
+  is a function the study keeps (`programs/ard/functions/`) is written with
+  the call the ARD program makes, the file it is defined in, and the
+  statistics it declares.  Needs tflspec 0.0.24.9037.
+
 - **Follow-up `R CMD check --as-cran` on R 4.6.1** (#70).  `inst/WORDLIST`
   lists the technical words, so `spelling::spell_check_package()` finds
   nothing; two British spellings in older entries are American, as the
