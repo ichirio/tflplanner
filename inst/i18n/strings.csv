@@ -787,7 +787,6 @@ New analysis,新しい解析
 Analysis %s of %s. A click on another row of the grid edits that one.,%2$s の解析 %1$s。グリッドの別の行をクリックすると、その行を編集します。
 Analysis ID,解析 ID
 What to compute,計算するもの
-(the analysis set's),（解析対象集団のデータ）
 Analysis set,解析対象集団
 Subset (an R condition),部分集団（R の条件式）
 Groups (the columns),群（列）
@@ -1172,7 +1171,6 @@ Column variables,列の変数
 "Order of the column variables, outermost first (drag)",列の変数の順序（外側から。ドラッグ）
 Order of the columns of %s (drag),%s の列の順序（ドラッグ）
 Report (output_id),帳票 (output_id)
-(the analysis set's: %s),（解析対象集団のデータ: %s）
 Repeated within,層（この中で繰り返す）
 Percentages of,% の分母
 Formats,書式
@@ -1232,3 +1230,8 @@ The table's width as a percentage of the page width; blank: the page's writable 
 The table's width as a percentage of the writable width (inside the margins); blank: 100.,表の幅（余白の内側の幅に対する %）。空欄 = 100。
 "The column header text's alignment, every header row: left / center / right (plan_col_header(col_header_align = )); blank: each column's data alignment.",列見出しの文字の揃え（すべての見出し行）：left / center / right（plan_col_header(col_header_align = )）。空欄 = 各列のデータの揃え。
 Left indent of the cell text in twips (not on the header); blank: unchanged.,セルの文字の左インデント（twip。見出しには使えない）。空欄 = 変えない。
+%s × %s (%s),%s × %s（%s）
+"%s, no analysis set (%s)",%s、解析対象集団なし（%s）
+(no data),（データなし）
+Data (dataset × analysis set),データ（データセット × 解析対象集団）
+The rows the analysis reads: the dataset's records of the analysis set's subjects. The name is the one the program gives the data.,解析が読む行：データセットのうち、解析対象集団の被験者の行。（）内は、プログラムでのこのデータの名前です。

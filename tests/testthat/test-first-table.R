@@ -134,8 +134,14 @@ test_that("a row of the analyses grid is edited as a form", {
     inp[[id("id")]] <- "AGE"
     inp[[id("label")]] <- "Age (years)"
     inp[[id("method")]] <- "continuous"
-    inp[[id("dataset")]] <- ""
-    inp[[id("pop")]] <- "SAF"
+    # the data: one choice of dataset x analysis set, named as the program
+    # names it
+    expect_match(h, "ADSL × SAF (pop_saf)", fixed = TRUE)
+    expect_false(grepl("(the analysis set's", h, fixed = TRUE))
+    # the wizard wrote the dataset out: the same data as the analysis set's
+    expect_match(h, 'value="ADSL|SAF" selected', fixed = TRUE)
+    expect_false(grepl('value="|SAF"', h, fixed = TRUE))
+    inp[[id("data")]] <- "|SAF"
     inp[[id("by")]] <- "TRT01A"
     inp[[id("vars")]] <- c("AGE", "HEIGHTBL")
     inp[[id("where")]] <- "AGE >= 18"
@@ -147,6 +153,8 @@ test_that("a row of the analyses grid is edited as a form", {
     a <- ard_rows(rv$p, "analyses", "T1")
     r <- a[a$analysis_id == "AGE", ]
     expect_identical(r$label, "Age (years)")
+    expect_true(is.na(r$dataset))
+    expect_identical(r$population_id, "SAF")
     # strata and the denominator are the row's columns (blank: none)
     expect_identical(r$strata, "SEX")
     expect_true(is.na(r$denominator))
@@ -348,4 +356,25 @@ test_that("a report's ARD can be given the subjects per group", {
   expect_true(is.na(a$by[1]))
   expect_identical(a$population_id[1], "SAF")
   expect_true(.has_group_n(p, "T1", "TRT01A"))
+})
+
+test_that("the data of an analysis is one choice of dataset and analysis set", {
+  po <- data.frame(population_id = c("SAF", "ITT"), dataset = c("ADSL", "ADSL"))
+  w <- list(with = "%s x %s (%s)", alone = "%s alone (%s)", none = "(none)")
+  ch <- .an_data_choices(c("ADSL", "ADAE"), po, "|SAF", w)
+  expect_identical(unname(ch), c("|SAF", "ADAE|SAF", "|ITT", "ADAE|ITT",
+                                 "ADSL|", "ADAE|"))
+  expect_identical(names(ch)[1:2], c("ADSL x SAF (pop_saf)", "ADAE x SAF (adae_saf)"))
+  expect_identical(names(ch)[5], "ADSL alone (adsl)")
+  # a choice the analysis has that is none of these is kept
+  ch2 <- .an_data_choices("ADSL", po, "ADVS|SAF", w)
+  expect_true("ADVS|SAF" %in% ch2)
+  expect_identical(.an_data_choices("ADSL", po, "|", w)[[1]], "|")
+  # the analysis set's dataset written out takes the place of the blank one
+  ch3 <- .an_data_choices(c("ADSL", "ADAE"), po, "ADSL|SAF", w)
+  expect_identical(unname(ch3)[1], "ADSL|SAF")
+  expect_false("|SAF" %in% ch3)
+  expect_identical(.an_data_split("ADAE|SAF"), list(dataset = "ADAE", pop = "SAF"))
+  expect_identical(.an_data_split("|SAF"), list(dataset = NA_character_, pop = "SAF"))
+  expect_identical(.an_data_value(NA, "SAF"), "|SAF")
 })

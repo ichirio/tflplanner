@@ -2289,13 +2289,20 @@ app_server <- function(input, output, session, start) {
     if (!length(hit)) return(NULL)
     trimws(sub("^[^=]*=", "", hit[1L]))
   }
-  # the data choices: blank is the analysis set's data, named as it is
-  ds_choices <- function(pop) {
-    po <- rv$p$ard$populations
-    pds <- po$dataset[match(pop %||% NA_character_, po$population_id)]
-    blank <- if (length(pds) && !is.na(pds))
-      sprintf(t("(the analysis set's: %s)"), pds) else t("(the analysis set's)")
-    c(stats::setNames("", blank), rv$p$ard$datasets$dataset)
+  # the data an analysis reads, as one choice: a dataset and an analysis
+  # set ("<dataset>|<population_id>"), named as the program names it
+  data_choices <- function(r) {
+    .an_data_choices(rv$p$ard$datasets$dataset, rv$p$ard$populations,
+                     now = .an_data_value(r$dataset, r$population_id),
+                     words = list(with = t("%s \u00d7 %s (%s)"),
+                                  alone = t("%s, no analysis set (%s)"),
+                                  none = t("(no data)")))
+  }
+  # the dataset and the analysis set the form's data choice stands for
+  form_data <- function(r) {
+    v <- input[[st_id("data")]]
+    if (is.null(v)) return(list(dataset = r$dataset, pop = r$population_id))
+    .an_data_split(v)
   }
   # the row as the form has it now: its method may be changed there
   st_row_now <- function() {
@@ -2361,8 +2368,6 @@ app_server <- function(input, output, session, start) {
     if (!is.na(r$method) && !r$method %in% m$method) {
       mch <- c(mch, stats::setNames(r$method, r$method))
     }
-    ds <- rv$p$ard$datasets$dataset
-    po <- rv$p$ard$populations$population_id
     blank_na <- function(x) if (is.na(x)) "" else x
     tg <- ard_target()
     shiny::tagList(
@@ -2383,13 +2388,12 @@ app_server <- function(input, output, session, start) {
       shiny::selectInput(st_id("method"), argl("What to compute", "method"), mch,
                          selected = r$method, width = "100%"),
       shiny::uiOutput("ard_method_note"),
-      bslib::layout_columns(
-        col_widths = c(6, 6),
-        shiny::selectInput(st_id("dataset"), argl("Data", "dataset"),
-                           ds_choices(r$population_id),
-                           selected = blank_na(r$dataset), width = "100%"),
-        shiny::selectInput(st_id("pop"), argl("Analysis set", "population_id"), c("", po),
-                           selected = blank_na(r$population_id), width = "100%")),
+      shiny::selectInput(st_id("data"), t("Data (dataset \u00d7 analysis set)"),
+                         data_choices(r),
+                         selected = .an_data_value(r$dataset, r$population_id),
+                         width = "100%"),
+      shiny::p(class = "small text-muted mt-n2 mb-2",
+               t("The rows the analysis reads: the dataset's records of the analysis set's subjects. The name is the one the program gives the data.")),
       shiny::uiOutput("ard_an_vars"),
       shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
@@ -2407,15 +2411,6 @@ app_server <- function(input, output, session, start) {
         class = "mt-2", open = NA,
         shiny::tags$summary(class = "small", t("This analysis as code (after Apply)")),
         shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
-  })
-  # another analysis set: the blank data choice names that set's data
-  shiny::observe({
-    st_drawn()
-    pop <- input[[st_id("pop")]]
-    shiny::req(!is.null(pop))
-    shiny::updateSelectInput(session, st_id("dataset"),
-                             choices = ds_choices(pop),
-                             selected = shiny::isolate(input[[st_id("dataset")]]))
   })
   # this analysis alone as code (the data it reads, its analysis set, the
   # call), as the definition has it now -- the whole program is on the right
@@ -2447,8 +2442,8 @@ app_server <- function(input, output, session, start) {
   output$ard_an_vars <- shiny::renderUI({
     st_drawn()
     r <- st_row_now()
-    ds <- an_dataset(input[[st_id("dataset")]] %||% r$dataset,
-                     input[[st_id("pop")]] %||% r$population_id)
+    fd <- form_data(r)
+    ds <- an_dataset(fd$dataset, fd$pop)
     d <- if (!is.na(ds %||% NA)) an_data(ds)
     by_now <- shiny::isolate(input[[st_id("by")]]) %||% .split_bar(r$by)
     var_now <- shiny::isolate(input[[st_id("vars")]]) %||% .split_bar(r$variables)
@@ -2613,8 +2608,9 @@ app_server <- function(input, output, session, start) {
     a$analysis_id[i] <- new_id
     a$label[i] <- one(g("label"))
     a$method[i] <- one(g("method"))
-    a$dataset[i] <- one(g("dataset"))
-    a$population_id[i] <- one(g("pop"))
+    fd <- form_data(r)
+    a$dataset[i] <- fd$dataset
+    a$population_id[i] <- fd$pop
     a$where[i] <- one(where)
     a$by[i] <- one(g("by"))
     if (!is.null(g("strata"))) a$strata[i] <- one(g("strata"))
