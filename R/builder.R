@@ -360,7 +360,7 @@ header_token_labels <- function(choices, tokens = NULL) {
     v <- unlist(tokens$values[[k]], use.names = FALSE)
     v <- v[!is.na(v)]
     if (!length(v)) return(tk)
-    if (length(v) > 4L) v <- c(utils::head(v, 4L), "…")
+    if (length(v) > 4L) v <- c(utils::head(v, 4L), "\u2026")
     paste(tk, "=", paste(v, collapse = " / "))
   }, "")
   stats::setNames(choices, lab)
