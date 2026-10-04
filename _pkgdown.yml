@@ -124,6 +124,12 @@ reference:
       - first_listing
       - catalog_add_files
       - add_group_n
+  - title: A TOC taken in
+    contents:
+      - toc_changes
+      - toc_apply
+      - toc_snapshot
+      - toc_imports
   - title: Programs and runs
     contents:
       - data_lines
