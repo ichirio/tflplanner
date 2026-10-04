@@ -1724,6 +1724,35 @@ Its statistics are not in the ARD (blank in the table).,この解析の統計量
 study ARD,試験の ARD
 In the table,表では
 From,どこから
+Any function (call),任意の関数（call）
+Add a call (figure-wide),関数を足す（図全体）
+Sina plot,シナプロット
+"A time in days, shown in days (as it is), weeks, months or years.",日数の時間を、日（そのまま）・週・月・年で表示します。
+"p <- p + fn(data, aes(...), args...): any ggplot2 or extension function, checked against its own arguments.","p <- p + fn(data, aes(...), 引数...)：ggplot2 や拡張パッケージの任意の関数。引数はその関数の引数と照らしてチェックされます。"
+"p <- p + fn(...), after the figure's settings (scales, axes, labs, theme, legend) and before any panels: theme(), scale_*, coord_*, facet_*, guides, labs ...",p <- p + fn(...)。図全体の設定（スケール・軸・labs・theme・凡例）の後、パネルの前に書かれます：theme()、scale_*、coord_*、facet_*、guides、labs など。
+"Points spread by their density, e.g. a distribution per group (instead of box plot + jitter).",密度に応じて横に広げた点。群ごとの分布など（箱ひげ図 + 散らした点の代わりに）。
+Package,パッケージ
+Aesthetics (map),エステティクス（名前と値の組）
+Positional arguments (sequence),位置で渡す引数（並び）
+Named arguments (map),名前つきの引数（名前と値の組）
+First layer (p <- fn(...)),最初のレイヤー（p <- fn(...)）
+Additional calls (plot.add),追加の関数（plot.add）
+"e.g. geom_label, add_quantile, or pkg::fn",例：geom_label、add_quantile、pkg::fn
+Defaults to the search order ggplot2 -> ggsurvfit -> patchwork.,空欄なら ggplot2 → ggsurvfit → patchwork の順に探します。
+x: AVAL | label: n -- values are expressions.,x: AVAL | label: n（値は R の式）
+"e.g. theme, facet_grid, scale_y_log10, or pkg::fn",例：theme、facet_grid、scale_y_log10、pkg::fn
+"Any ggplot2/extension call, after the figure's settings and before any panels.",ggplot2 や拡張パッケージの任意の関数。図全体の設定の後、パネルの前に書かれます。
+Cox hazard ratio (95% CI) overall and by subgroup + N / estimate text columns (whole script),Cox ハザード比（95% CI）全体とサブグループ別 + N・推定値の文字列の列（スクリプト全体）
+Odds ratio of response (95% CI) overall and by subgroup + text columns (whole script),奏効のオッズ比（95% CI）全体とサブグループ別 + 文字列の列（スクリプト全体）
+Incidence by preferred term (two arms) + risk difference with 95% CI (whole script),基本語ごとの発現率（2 群）+ リスク差と 95% CI（スクリプト全体）
+Incidence by preferred term by arm (whole script),群ごと・基本語ごとの発現率（スクリプト全体）
+"Incidence by system organ class, two arms mirrored (whole script)",器官別大分類ごとの発現率、2 群を左右に（スクリプト全体）
+"Incidence by preferred term (top N), two arms mirrored (whole script)",基本語ごとの発現率（上位 N）、2 群を左右に（スクリプト全体）
+"Max ALT vs max total bilirubin (x ULN, log axes) + Hy's law lines and quadrants (whole script)",ALT の最大値と総ビリルビンの最大値（ULN の倍数、対数軸）+ Hy's law の線と象限（スクリプト全体）
+Max of ALT / AST vs max total bilirubin (x ULN) + Hy's law lines (whole script),ALT・AST の最大値と総ビリルビンの最大値（ULN の倍数）+ Hy's law の線（スクリプト全体）
+Treatment-line nodes (subjects per line x category) + links in light grey (whole script),治療ラインのノード（ライン × カテゴリの被験者数）+ 薄い灰色のリンク（スクリプト全体）
+Treatment-line nodes + links in the colour of their source node (whole script),治療ラインのノード + 出どころのノードの色のリンク（スクリプト全体）
+"One ring per line (inner = first line); arcs = subjects, gaps = no further line (whole script)",ライン 1 つに輪 1 つ（内側 = 1 次治療）。弧 = 被験者、すき間 = 次のラインなし（スクリプト全体）
 Own functions,独自の関数
 "ARD functions of one's own: the company's (the standards folder) and the study's (programs/ard/functions/; a study's copy wins). An analysis names one as its method once the study loads it. They are R files, edited outside the app (RStudio ...): try one after a change.",独自の ARD 関数: 会社標準（標準フォルダ）と試験（programs/ard/functions/。同じ名前なら試験の写しが使われます）。試験が読み込むと、解析の method に書けます。R のファイルなので、直すのはアプリの外（RStudio など）で行い、直したら［試す］で確かめてください。
 New function...,新しい関数…

@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **The figure guide follows the sample again** (docs).  `ja-figures`
+  walks the three ways in order -- a template, then the designer (a new
+  F-14-2-4 made like the sample's F-14-2-3: `km_simple` and the median
+  line, checked identical to it), a design built from empty, and user code
+  -- on the screens as they are (Reports > Content, the first step; Run,
+  preview the selection).  New screenshots; `data-raw/make-article-
+  screenshots.R` drives the new screens (#120).  The designer's figure-wide
+  "Additional calls (plot.add)", the `call` piece's fields and the
+  whole-script templates' names (from tflspec) are in Japanese too.
+
 - **A reload no longer brings back the study as it was at start** (#118).
   `run_app("<study>")` opened the study once, when the app started, and
   each session (a new tab, a reload) began from that copy: what was saved
