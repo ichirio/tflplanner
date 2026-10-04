@@ -156,6 +156,22 @@ test_that("the study's analyses are exported as CDISC ARS", {
   s$planner$ard$analyses$purpose <- NA
   ck <- utils::read.csv(export_ars(s, d)[["check"]], stringsAsFactors = FALSE)
   expect_true(any(ck$item == "purpose"))
+  # a study's own ARD function: its file and its statistics reach the ARS
+  # (read from the study folder, not run)
+  fdir <- file.path(s$path, "programs", "ard", "functions")
+  dir.create(fdir, recursive = TRUE, showWarnings = FALSE)
+  writeLines(c("ard_mine <- cards::as_cards_fn(",
+               "  function(data, by, variables, ...) stop(\"not run\"),",
+               "  stat_names = c(\"estimate\", \"p.value\"))"),
+             file.path(fdir, "ard_mine.R"))
+  s$planner$ard$study <- rbind(s$planner$ard$study, data.frame(
+    key = "source", value = "programs/ard/functions/ard_mine.R"))
+  s$planner$ard$analyses$purpose <- "SECONDARY OUTCOME MEASURE"
+  s$planner$ard$analyses$method[2] <- "ard_mine"
+  ars <- tflspec::tfl_read_ars_json(export_ars(s, d)[["json"]])
+  code <- unlist(lapply(ars$methods, function(m) m$codeTemplate$code))
+  expect_true(any(grepl("programs/ard/functions/ard_mine.R", code, fixed = TRUE)))
+  expect_true(any(grepl("ard_mine(data", code, fixed = TRUE)))
   s$planner$ard$analyses <- s$planner$ard$analyses[0, ]
   expect_error(export_ars(s, d), "no analyses")
 })

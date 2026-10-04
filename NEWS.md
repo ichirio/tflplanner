@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **The ARS of a study names its own ARD functions** (tflspec #120):
+  `export_ars()` gives tflspec the study folder, so an analysis whose method
+  is a function the study keeps (`programs/ard/functions/`) is written with
+  the call the ARD program makes, the file it is defined in, and the
+  statistics it declares.  Needs tflspec 0.0.24.9037.
+
 - **User-code reports, after their screen review** (#98).  The ARD switch
   says what it reads (the ARD taken in; its analyses, built or not; none
   yet, with a button to the ARD tab) and what `ard` is; the ARD tab of a
