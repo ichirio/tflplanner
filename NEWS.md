@@ -16,8 +16,18 @@
   tflspec's templates (a summary, a test or model, a free calculation),
   for the study or the company (`new_ard_function()`).  The files are
   read, not run, to be listed, and edited outside the app.  The analysis
-  form lists the study's own functions under their own titles, and the
-  company's it does not load faint.
+  form lists the study's own functions under their own titles and names
+  (where each is said), and the company's it does not load faint.  After
+  S1's screen review: a try makes the data as the ARD programs do (the
+  analysis set from its dataset, the others cut to its subjects) and says
+  where it stopped (loading the files, making the data, the function);
+  cards' example data is a choice of its own; what changed since the study
+  copied a company's function -- the company's, the study's, both -- is
+  told by the copy's record (`.copied.json`), not by file times, and taking
+  the company's says what is lost and which analyses' ARDs become outdated,
+  and refuses a study file that holds other functions too; the files are
+  read again when the tab is opened, a function chosen, Try opened, or
+  "Read the files again" pressed.
 
 - **The sample study has a figure made with the designer** (#114):
   F-14-2-3, Kaplan-Meier curves of the time to the first dermatologic

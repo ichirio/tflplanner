@@ -98,10 +98,9 @@ own_ard_functions <- function(study, home = tflplanner_home()) {
     differs <- NA
     newer <- NA_character_
     if (!is.na(sf) && !is.na(cf) && file.exists(cf)) {
-      differs <- !identical(unname(tools::md5sum(spath)), unname(tools::md5sum(cf)))
-      if (isTRUE(differs)) {
-        newer <- if (file.mtime(cf) > file.mtime(spath)) "company" else "study"
-      }
+      ch <- .copy_change(study, n, spath, cf)
+      differs <- !identical(ch, "same")
+      if (isTRUE(differs)) newer <- ch
     }
     used <- a[!is.na(a$method) & a$method == n, , drop = FALSE]
     src <- if (!is.na(i)) st else co
@@ -156,16 +155,19 @@ own_function_checks <- function(study) {
   invisible(rec)
 }
 
-# how a program reads a data file, by its extension
-.read_code <- function(path) {
-  q <- encodeString(path, quote = "\"")
-  switch(tolower(tools::file_ext(path)),
-         rds = sprintf("readRDS(%s)", q),
-         xpt = sprintf("haven::read_xpt(%s)", q),
-         sas7bdat = sprintf("haven::read_sas(%s)", q),
-         csv = sprintf("utils::read.csv(%s, stringsAsFactors = FALSE)", q),
-         parquet = sprintf("as.data.frame(arrow::read_parquet(%s))", q),
-         sprintf("readRDS(%s)", q))
+# The code that makes a dataset x analysis set's data as the ARD programs
+# make it (tflspec writes it for one analysis on it), ending with `.data`
+.try_data_code <- function(x, dataset, population_id) {
+  a <- x$ard
+  a$analyses <- .normalize_ard_sheet(data.frame(
+    output_id = ".try", analysis_id = "TRY", method = "continuous",
+    dataset = dataset, population_id = population_id, variables = "TRY_",
+    stringsAsFactors = FALSE), "analyses")
+  code <- tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"), part = "body")
+  stop_at <- match("# ---- analyses", code)
+  call <- code[grep("^ard <- ", code)[1L]]
+  obj <- sub("^ard <- [A-Za-z0-9_.:]+\\(([A-Za-z0-9_.]+).*$", "\\1", call)
+  c(code[seq_len(stop_at - 1L)], paste(".data <-", obj))
 }
 
 #' Try one of a study's (or the company's) ARD functions
@@ -202,22 +204,12 @@ try_ard_function <- function(study, name, dataset = NA_character_,
   extra <- if (is.na(own$study_file[k]) || !own$loaded[k]) {
     if (!is.na(own$study_file[k])) file.path(study$path, own$study_file[k]) else own$company_file[k]
   }
-  # the data: the dataset (else the analysis set's), filtered to the set
-  po <- x$ard$populations
+  # the data, made by the code the ARD programs make it with (the analysis
+  # set from its dataset, the other datasets cut to its subjects)
+  data_code <- if (!is.na(dataset) || !is.na(population_id)) {
+    .try_data_code(x, dataset, population_id)
+  } else c(".data <- cards::ADSL")
   ds <- dataset
-  pw <- NA_character_
-  if (!is.na(population_id)) {
-    i <- match(population_id, po$population_id)
-    if (is.na(ds) && !is.na(i)) ds <- po$dataset[i]
-    if (!is.na(i)) pw <- po$where[i]
-  }
-  d <- x$ard$datasets
-  data_code <- if (!is.na(ds)) {
-    pth <- d$path[match(ds, d$dataset)]
-    if (is.na(pth)) stop("No dataset ", ds, " in the ARD definition.", call. = FALSE)
-    c(paste(".data <-", .read_code(file.path(study$path, pth))),
-      if (!is.na(pw)) sprintf(".data <- subset(.data, %s)", pw))
-  } else ".data <- cards::ADSL"
   tmp <- tempfile("try")
   dir.create(tmp)
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
@@ -226,17 +218,26 @@ try_ard_function <- function(study, name, dataset = NA_character_,
                   if (nzchar(trimws(args))) paste0(", ", args) else "")
   script <- c(
     "suppressPackageStartupMessages(library(cards))",
-    vapply(file.path(study$path, files), function(f) sprintf("source(%s)", q(f)), ""),
-    if (!is.null(extra)) sprintf("source(%s)", q(extra)),
-    data_code,
+    "tryCatch({",
+    vapply(file.path(study$path, files), function(f) sprintf("  source(%s)", q(f)), ""),
+    if (!is.null(extra)) sprintf("  source(%s)", q(extra)),
+    "}, error = function(e) {",
+    sprintf("  saveRDS(list(error = paste(\"[files]\", conditionMessage(e))), %s); quit(save = \"no\")", q(f_out)),
+    "})",
     ".res <- list(problems = NULL, ard = NULL, error = NULL)",
+    "tryCatch({",
+    paste0("  ", data_code),
+    "}, error = function(e) {",
+    "  .res$error <<- paste(\"[data]\", conditionMessage(e))",
+    sprintf("  saveRDS(.res, %s); quit(save = \"no\")", q(f_out)),
+    "})",
     ".res$problems <- tryCatch({",
     paste0("  .p <- ", call),
     "  .a <- attr(.p, \"ard\")",
     "  if (!is.null(.a)) .res$ard <- utils::head(.a, 20)",
     "  attr(.p, \"ard\") <- NULL",
     "  .p",
-    "}, error = function(e) { .res$error <<- conditionMessage(e); NULL })",
+    "}, error = function(e) { .res$error <<- paste(\"[function]\", conditionMessage(e)); NULL })",
     sprintf("saveRDS(.res, %s)", q(f_out)))
   f_script <- file.path(tmp, "try.R")
   writeLines(enc2utf8(script), f_script, useBytes = TRUE)
@@ -254,14 +255,17 @@ try_ard_function <- function(study, name, dataset = NA_character_,
   .record_function_check(study, name, list(
     when = format(Sys.time(), "%Y-%m-%d %H:%M"),
     md5 = unname(tools::md5sum(file_now)),
-    data = if (!is.na(ds)) paste(c(ds, if (!is.na(population_id)) population_id), collapse = " x ") else "cards::ADSL",
+    data = if (!is.na(ds) || !is.na(population_id))
+      paste(stats::na.omit(c(ds, population_id)), collapse = " x ") else "cards::ADSL",
     args = args,
     problems = if (!is.null(res$error)) NA_integer_ else
       sum(p$level %in% c("error", "warning")),
     rows = if (!is.null(res$ard)) nrow(res$ard) else 0L,
     error = res$error,
-    versions = c(tflspec = as.character(utils::packageVersion("tflspec")),
-                 cards = as.character(utils::packageVersion("cards")))))
+    user = Sys.info()[["user"]],
+    versions = as.list(vapply(c("tflspec", "cards", "cardx"), function(pk)
+      if (requireNamespace(pk, quietly = TRUE)) as.character(utils::packageVersion(pk))
+      else NA_character_, ""))))
   res
 }
 
@@ -345,7 +349,16 @@ replace_with_company_ard_function <- function(study, name, home = tflplanner_hom
     stop(name, " is not both the study's and the company's.", call. = FALSE)
   }
   dest <- file.path(study$path, own$study_file[k])
+  # the study's file may hold other functions: not lost
+  mine <- tflspec::tfl_ard_function_info(dest)$name
+  theirs <- tflspec::tfl_ard_function_info(own$company_file[k])$name
+  lost <- setdiff(stats::na.omit(mine), theirs)
+  if (length(lost)) {
+    stop("The study's ", own$study_file[k], " holds ", paste(lost, collapse = ", "),
+         " as well, which the company's file has not: not replaced.", call. = FALSE)
+  }
   file.copy(own$company_file[k], dest, overwrite = TRUE)
+  .record_copied(study, name, own$company_file[k])
   invisible(dest)
 }
 
@@ -353,4 +366,37 @@ replace_with_company_ard_function <- function(study, name, home = tflplanner_hom
 .vars <- function(x) {
   v <- .split_bar(x)
   if (length(v) == 1L) v else paste0("c(", paste(v, collapse = ", "), ")")
+}
+
+# What a study took from the company: the company file's md5 when it was
+# copied (programs/ard/functions/.copied.json), so a later difference is
+# told apart without file times: the company's changed, the study's, both
+.copied_file <- function(study) file.path(study$path, .study_fun_dir, ".copied.json")
+
+.copied <- function(study) {
+  f <- .copied_file(study)
+  if (!file.exists(f)) return(list())
+  tryCatch(jsonlite::read_json(f, simplifyVector = TRUE), error = function(e) list())
+}
+
+.record_copied <- function(study, name, company_file) {
+  all <- .copied(study)
+  all[[name]] <- list(md5 = unname(tools::md5sum(company_file)),
+                      when = format(Sys.time(), "%Y-%m-%d %H:%M"))
+  dir.create(dirname(.copied_file(study)), recursive = TRUE, showWarnings = FALSE)
+  jsonlite::write_json(all, .copied_file(study), auto_unbox = TRUE, pretty = TRUE)
+}
+
+# How a study's copy and the company's file differ: "same", "company" (the
+# company's changed since it was copied), "study" (changed in the study),
+# "both", or "unknown" (no record of the copy)
+.copy_change <- function(study, name, study_file, company_file) {
+  ms <- unname(tools::md5sum(study_file))
+  mc <- unname(tools::md5sum(company_file))
+  if (identical(ms, mc)) return("same")
+  was <- .copied(study)[[name]]$md5
+  if (is.null(was)) return("unknown")
+  if (identical(ms, was)) return("company")
+  if (identical(mc, was)) return("study")
+  "both"
 }

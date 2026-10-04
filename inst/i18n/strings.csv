@@ -1739,7 +1739,6 @@ The study's file:,試験のファイル:
 The company's file:,会社標準のファイル:
 Statistics:,統計量:
 not declared (cards::as_cards_fn(stat_names = ) lets a check see them),宣言なし（cards::as_cards_fn(stat_names = ) で宣言すると確認できます）
-The study's copy is used; the company's file differs (the %s one is newer). Changing the company's does not change the study.,試験の写しが使われます。会社標準のファイルと中身が違います（新しいのは%s）。会社標準を直しても試験は変わりません。
 See the difference,差を見る
 Take the company's...,会社標準に入れ替える…
 The file changed since it was last tried: try it again.,最後に試した後でファイルが変わりました。もう一度試してください。
@@ -1778,3 +1777,13 @@ Tried,試した結果
 "Statistics of one's own on numeric variables, by group (cards::ard_summary(statistic = ))",数値の変数の独自の統計量を群ごとに（cards::ard_summary(statistic = )）
 A test or a model made an ARD (cards::tidy_as_ard(): its errors go into the ARD),検定・モデルを ARD に（cards::tidy_as_ard()。エラーは ARD に入る）
 "Any calculation, group by group (cards::ard_strata() + ard_identity())",自由な計算を群ごとに（cards::ard_strata() ＋ ard_identity()）
+Read the files again,ファイルを読み直す
+What was changed in the study's copy is lost.,試験の写しで直した分は無くなります。
+The analyses that use it (their reports' ARDs become outdated): %s,使っている解析（その帳票の ARD は古くなります）: %s
+The company's file changed since the study copied it; the study uses its copy.,会社標準のファイルが、試験に写した後で変わりました。試験は写しを使っています。
+The study's copy was changed in the study; the company's is as it was copied.,試験の写しが試験で直されています。会社標準は写したときのままです。
+Both changed since the study copied it: the study's copy and the company's file.,写した後で、試験の写しと会社標準のファイルの両方が変わっています。
+The study's copy and the company's file differ (no record of when it was copied).,試験の写しと会社標準のファイルの中身が違います（写したときの記録がありません）。
+Stopped while loading the study's files:,試験のファイルを読み込むところで止まりました:
+Stopped while making the data:,データを作るところで止まりました:
+Stopped in the function:,関数の中で止まりました:
