@@ -1,5 +1,9 @@
 # tflplanner (development version)
 
+- **The tokens help names `{PROGRAM_FULL}`** (tflspec #127), the
+  program's absolute path (rtfreporter #560), in Japanese too.  Needs
+  tflspec 0.0.24.9041 and rtfreporter 0.8.2.9021.
+
 - **Own functions, polished** (#122).  The last try keeps the whole ARD's
   rows, its errors, warnings and notes, and who tried it; a name that is a
   cards / cardx function is refused (it would hide it); Try says it is
