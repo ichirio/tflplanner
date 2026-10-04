@@ -2,19 +2,23 @@
 % Please edit documentation in R/toc_import.R
 \name{toc_snapshot}
 \alias{toc_snapshot}
-\title{What a TOC said, kept for the next time it is taken in}
+\title{What a TOC said, kept for the next time one is taken in}
 \usage{
-toc_snapshot(spec, title_offset = 0L)
+toc_snapshot(spec, title_offset = 0L, last = NULL)
 }
 \arguments{
 \item{spec}{What \code{\link[tflspec:tfl_read_toc]{tflspec::tfl_read_toc()}} returned.}
 
 \item{title_offset}{As \code{\link[=toc_changes]{toc_changes()}}.}
+
+\item{last}{The snapshot of the TOCs taken in before: the reports they
+gave that this TOC has not are kept (\code{in_toc = FALSE}), so a report
+once taken in from a TOC is said to be missing every time.}
 }
 \value{
 A list by output id: its \code{titles} and \code{footnotes} rows (as the
-study numbers them), \code{type} and \code{population}.
+study numbers them), \code{type} and \code{in_toc}.
 }
 \description{
-What a TOC said, kept for the next time it is taken in
+What a TOC said, kept for the next time one is taken in
 }

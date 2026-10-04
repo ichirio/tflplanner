@@ -10,7 +10,8 @@ toc_apply(
   changes,
   use_toc = character(),
   types = character(),
-  title_offset = toc_title_offset(x)
+  last = changes$last,
+  title_offset = changes$title_offset \%||\% toc_title_offset(x)
 )
 }
 \arguments{
@@ -26,7 +27,8 @@ toc_apply(
 \item{types}{The types of new reports, named by output id (a guessed
 type corrected); the TOC's otherwise.}
 
-\item{title_offset}{As \code{\link[=toc_changes]{toc_changes()}}.}
+\item{last, title_offset}{As \code{\link[=toc_changes]{toc_changes()}} was given them (kept in
+\code{changes}).}
 }
 \value{
 The \code{tflplanner}.
@@ -34,8 +36,9 @@ The \code{tflplanner}.
 \description{
 Adds the TOC's new reports (their type, program, file, note, titles and
 footnotes) and, for the reports already there, puts in what the TOC
-holds by the changes \code{\link[=toc_changes]{toc_changes()}} found: a line added, updated or
+holds by the rule \code{\link[=toc_changes]{toc_changes()}} describes: a line added, updated or
 removed; one edited here and changed in the TOC only when \code{use_toc}
-says so.  A report's type is not changed, nor anything the TOC does not
-hold; a report no longer in the TOC stays.
+says so; the lines added here after the TOC's.  A report's type is not
+changed, nor anything the TOC does not hold; a report no longer in the
+TOC stays.
 }

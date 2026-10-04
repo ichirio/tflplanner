@@ -11,7 +11,7 @@ toc_changes(x, spec, last = NULL, title_offset = toc_title_offset(x))
 
 \item{spec}{What \code{\link[tflspec:tfl_read_toc]{tflspec::tfl_read_toc()}} returned.}
 
-\item{last}{The snapshot of the last TOC taken in, or \code{NULL} the first
+\item{last}{The snapshot of the TOCs taken in before, or \code{NULL} the first
 time.}
 
 \item{title_offset}{The study's own title lines (see
@@ -19,15 +19,28 @@ time.}
 }
 \value{
 A list: \code{reports} (one row a report: \code{output_id}, \code{status} --
-\code{"new"}, \code{"changed"}, \code{"same"} or \code{"missing"} (in the last TOC, not
-in this one) --, \code{type_now}, \code{type_toc}, \code{guessed}) and \code{lines} (one
-row a title or footnote line the TOC and the definition differ on:
-\code{output_id}, \code{sheet}, \code{line}, \code{now}, \code{toc}, \code{action} -- \code{"add"},
-\code{"update"}, \code{"remove"} (the TOC dropped a line not edited here),
-\code{"ask"} (edited here and changed in the TOC) or \code{"keep"}).
+\code{"new"}, \code{"changed"}, \code{"same"} or \code{"missing"} (taken in from a TOC
+before, not in this one) --, \code{type_now}, \code{type_toc}, \code{guessed}),
+\code{lines} (one row a title or footnote line that changes: \code{output_id},
+\code{sheet}, \code{line} (its place among the TOC's lines), \code{now}, \code{toc},
+\code{action} -- \code{"add"}, \code{"update"}, \code{"remove"} (the TOC dropped a line not
+edited here), \code{"ask"} (edited here and changed in the TOC) or \code{"move"}
+(a line added here, now after the TOC's lines: \code{to}) -- and \code{to}, the
+line it will be) and \code{kept} (the lines edited here the TOC did not
+change: kept, not asked about); and the \code{last} and \code{title_offset} it
+was given.
 }
 \description{
 Compares the report sheets a TOC gives (\code{\link[tflspec:tfl_read_toc]{tflspec::tfl_read_toc()}}) with
 the study's definition and with what the last TOC taken in said
 (\code{last}, see \code{\link[=toc_snapshot]{toc_snapshot()}}).
+}
+\details{
+A report's title and footnote lines are of two kinds: those the TOC gave
+(the lines the last TOC had; the first time, the lines where this TOC
+has one) and those added here.  The TOC's lines are compared line by
+line: one not edited here takes the TOC's new text; one edited here keeps
+its text when the TOC did not change it, and is asked about when the TOC
+changed it too.  The lines added here are not compared: they stay, after
+the TOC's lines.
 }
