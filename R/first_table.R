@@ -80,8 +80,8 @@ catalog_add_files <- function(x, files) {
 #' Writes what a summary table (columns = a group, rows = variables) needs,
 #' from the answers the app's "first table" form asks: the dataset in the
 #' data catalog (added when missing), the analysis set (`population` flag
-#' `== "Y"`, added when missing), one analysis per variable (numbers
-#' summarized, the rest counted), the report (a Table, added when missing)
+#' `== "Y"`, added when missing), one analysis of the numeric variables
+#' (summarized) and one of the rest (counted), the report (a Table, added when missing)
 #' and its `tables` row (the group as columns, one group per variable) and
 #' `variables` rows (their order, and the data's labels).
 #'
@@ -136,17 +136,23 @@ first_table <- function(x, output_id, path, data, population, group,
   }
 
   # the report; the subjects per group (the N of the column headers), then
-  # one analysis per variable
+  # one analysis per call: the numeric variables together (CONT), the
+  # categorical ones together (CAT) -- the table's rows keep the order the
+  # variables were chosen in (the variables sheet's `order`)
   if (!id %in% x$outputs$output_id) {
     x <- add_output(x, id, description = description, type = "table")
   }
+  groups <- list(CONT = variables[kind == "continuous"],
+                 CAT = variables[kind == "categorical"])
+  groups <- groups[lengths(groups) > 0L]
   an <- data.frame(
-    analysis_id = c("BIGN", variables),
-    label = c("Subjects per group", rep(NA, length(variables))),
-    method = c("categorical", unname(kind)),
+    analysis_id = c("BIGN", names(groups)),
+    label = c("Subjects per group", rep(NA, length(groups))),
+    method = c("categorical", c(CONT = "continuous", CAT = "categorical")[names(groups)]),
     dataset = dsn, population_id = pop,
-    by = c(NA, rep(group, length(variables))),
-    variables = c(group, variables), stringsAsFactors = FALSE)
+    by = c(NA, rep(group, length(groups))),
+    variables = c(group, vapply(groups, paste, "", collapse = " | ")),
+    stringsAsFactors = FALSE, row.names = NULL)
   x <- set_ard_rows(x, "analyses", id, an)
 
   # the table: the group as columns, one group per variable

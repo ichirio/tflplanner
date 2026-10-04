@@ -2289,20 +2289,52 @@ app_server <- function(input, output, session, start) {
     if (!length(hit)) return(NULL)
     trimws(sub("^[^=]*=", "", hit[1L]))
   }
-  # the data choices: blank is the analysis set's data, named as it is
-  ds_choices <- function(pop) {
-    po <- rv$p$ard$populations
-    pds <- po$dataset[match(pop %||% NA_character_, po$population_id)]
-    blank <- if (length(pds) && !is.na(pds))
-      sprintf(t("(the analysis set's: %s)"), pds) else t("(the analysis set's)")
-    c(stats::setNames("", blank), rv$p$ard$datasets$dataset)
+  # the data an analysis reads, as one choice: a dataset and an analysis
+  # set ("<dataset>|<population_id>"), named as the program names it
+  data_choices <- function(r) {
+    .an_data_choices(rv$p$ard$datasets$dataset, rv$p$ard$populations,
+                     now = .an_data_value(r$dataset, r$population_id),
+                     words = list(with = t("%s \u00d7 %s (%s)"),
+                                  alone = t("%s, no analysis set (%s)"),
+                                  none = t("(no data)")))
   }
+  # the dataset and the analysis set the form's data choice stands for
+  form_data <- function(r) {
+    v <- input[[st_id("data")]]
+    if (is.null(v)) return(list(dataset = r$dataset, pop = r$population_id))
+    .an_data_split(v)
+  }
+  # the method chosen in the form (the function list on screen may show
+  # another category, or a search, without the chosen one)
+  st_method <- shiny::reactiveVal(NA_character_)
+  shiny::observe({
+    st_drawn()
+    v <- input[[st_id("fn_pick")]]
+    if (!is.null(v) && nzchar(v)) st_method(v)
+  })
   # the row as the form has it now: its method may be changed there
   st_row_now <- function() {
     r <- shiny::isolate(st_row())
-    m <- input[[st_id("method")]]
-    if (!is.null(m) && nzchar(m)) r$method <- m
+    m <- st_method()
+    if (!is.na(m) && nzchar(m)) r$method <- m
     r
+  }
+  # the functions an analysis can name, the chosen one kept
+  fn_entries <- function(current) {
+    e <- .ard_fn_entries(.std_ard_methods(), tflspec::tfl_ard_functions(),
+                         current = current, company = "Company standard")
+    k <- e$category == "Company standard"
+    e$label[k] <- method_label(e$value[k], e$label[k])
+    e$description[k] <- method_note(e$value[k], e$description[k])
+    e$label[!k] <- vapply(e$value[!k], function(v) {
+      x <- t(paste0("fn:", v))
+      if (identical(x, paste0("fn:", v))) e$label[e$value == v][1L] else x
+    }, "")
+    e$description[!k] <- vapply(e$value[!k], function(v) {
+      x <- t(paste0("fn-note:", v))
+      if (identical(x, paste0("fn-note:", v))) e$description[e$value == v][1L] else x
+    }, "")
+    e
   }
   # a dataset's data (for the choices), read once per file version
   an_data <- function(ds) {
@@ -2351,18 +2383,11 @@ app_server <- function(input, output, session, start) {
     rv$ver
     st_env$n <- st_env$n + 1L
     st_drawn(st_env$n)
-    m <- .std_ard_methods()
-    # what it does, then the function it calls: "Count of one level
-    # (ard_dichotomous())"
-    fn <- sub("^.*::", "", m$call)
-    lab <- paste0(method_label(m$method, m$label),
-                  ifelse(grepl("^[(]", m$call), "", paste0(" (", fn, "())")))
-    mch <- stats::setNames(m$method, lab)
-    if (!is.na(r$method) && !r$method %in% m$method) {
-      mch <- c(mch, stats::setNames(r$method, r$method))
-    }
-    ds <- rv$p$ard$datasets$dataset
-    po <- rv$p$ard$populations$population_id
+    st_method(r$method)
+    e <- fn_entries(r$method)
+    cats <- unique(e$category)
+    cat_now <- e$category[match(r$method, e$value)]
+    if (is.na(cat_now)) cat_now <- cats[1L]
     blank_na <- function(x) if (is.na(x)) "" else x
     tg <- ard_target()
     shiny::tagList(
@@ -2375,22 +2400,42 @@ app_server <- function(input, output, session, start) {
                     sprintf(t("Analysis %s of %s. A click on another row of the grid edits that one."),
                             r$analysis_id, tg)),
         .btn("ard_an_new", t("New analysis"), class = "btn-sm btn-outline-primary")),
+      shiny::p(class = "small text-muted mb-1",
+               t("One analysis is one call: add variables to it. Make another analysis only when the statistics, the condition or the groups differ.")),
       bslib::layout_columns(
         col_widths = c(4, 8),
         shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
                          width = "100%")),
-      shiny::selectInput(st_id("method"), argl("What to compute", "method"), mch,
-                         selected = r$method, width = "100%"),
+      shiny::div(
+        class = "ard-fn mb-2",
+        shiny::div(
+          class = "d-flex justify-content-between align-items-center gap-2",
+          shiny::div(shiny::strong(argl("What to compute", "method")),
+                     shiny::uiOutput("ard_fn_now", inline = TRUE)),
+          shiny::div(style = "width: 14rem",
+                     shiny::textInput(st_id("fn_q"), NULL, "",
+                                      placeholder = t("Search the functions")))),
+        bslib::layout_columns(
+          col_widths = c(4, 8),
+          shiny::div(class = "ard-fn-cats small",
+                     shiny::radioButtons(st_id("fn_cat"), NULL,
+                                         stats::setNames(cats, t(cats)),
+                                         selected = cat_now)),
+          shiny::div(class = "ard-fn-list",
+                     style = paste("max-height: 30rem; overflow-y: auto;",
+                                   "overflow-x: hidden; white-space: normal;",
+                                   "overflow-wrap: anywhere;"),
+                     shiny::uiOutput("ard_fn_list")))),
       shiny::uiOutput("ard_method_note"),
-      bslib::layout_columns(
-        col_widths = c(6, 6),
-        shiny::selectInput(st_id("dataset"), argl("Data", "dataset"),
-                           ds_choices(r$population_id),
-                           selected = blank_na(r$dataset), width = "100%"),
-        shiny::selectInput(st_id("pop"), argl("Analysis set", "population_id"), c("", po),
-                           selected = blank_na(r$population_id), width = "100%")),
+      shiny::selectInput(st_id("data"), t("Data (dataset \u00d7 analysis set)"),
+                         data_choices(r),
+                         selected = .an_data_value(r$dataset, r$population_id),
+                         width = "100%"),
+      shiny::p(class = "small text-muted mt-n2 mb-2",
+               t("The rows the analysis reads: the dataset's records of the analysis set's subjects. The name is the one the program gives the data.")),
       shiny::uiOutput("ard_an_vars"),
+      shiny::uiOutput("ard_an_args"),
       shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
         shiny::tags$summary(class = "small", argl("Subset (an R condition)", "where")),
@@ -2408,15 +2453,6 @@ app_server <- function(input, output, session, start) {
         shiny::tags$summary(class = "small", t("This analysis as code (after Apply)")),
         shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
   })
-  # another analysis set: the blank data choice names that set's data
-  shiny::observe({
-    st_drawn()
-    pop <- input[[st_id("pop")]]
-    shiny::req(!is.null(pop))
-    shiny::updateSelectInput(session, st_id("dataset"),
-                             choices = ds_choices(pop),
-                             selected = shiny::isolate(input[[st_id("dataset")]]))
-  })
   # this analysis alone as code (the data it reads, its analysis set, the
   # call), as the definition has it now -- the whole program is on the right
   output$ard_an_code <- shiny::renderText({
@@ -2432,23 +2468,145 @@ app_server <- function(input, output, session, start) {
                                                conditionMessage(e)))
     paste(code, collapse = "\n")
   })
+  output$ard_fn_now <- shiny::renderUI({
+    st_drawn()
+    m <- st_method()
+    if (is.na(m) || !nzchar(m)) return(NULL)
+    e <- fn_entries(m)
+    k <- match(m, e$value)
+    fn <- if (grepl("::", m, fixed = TRUE)) paste0(" (", sub("^.*::", "", e$call[k]), ")") else ""
+    shiny::span(class = "small text-muted ms-2",
+                sprintf(t("Chosen: %s"), paste0(e$label[k], fn)))
+  })
+  output$ard_fn_list <- shiny::renderUI({
+    st_drawn()
+    now <- shiny::isolate(st_method())
+    e <- fn_entries(now)
+    q <- trimws(input[[st_id("fn_q")]] %||% "")
+    e <- if (nzchar(q)) {
+      hit <- grepl(q, e$label, ignore.case = TRUE, fixed = TRUE) |
+        grepl(q, e$label_en, ignore.case = TRUE, fixed = TRUE) |
+        grepl(q, e$value, ignore.case = TRUE, fixed = TRUE) |
+        grepl(q, gsub("_", " ", e$value, fixed = TRUE), ignore.case = TRUE,
+              fixed = TRUE) |
+        grepl(q, e$description %||% "", ignore.case = TRUE, fixed = TRUE)
+      e[hit, , drop = FALSE]
+    } else {
+      e[e$category == (input[[st_id("fn_cat")]] %||% e$category[1L]), , drop = FALSE]
+    }
+    if (!nrow(e)) return(shiny::p(class = "small text-muted", t("No function matches.")))
+    ok <- e[e$state %in% c("ok", "old", "out"), , drop = FALSE]
+    off <- e[!e$state %in% c("ok", "old", "out"), , drop = FALSE]
+    fn_of <- function(v) if (grepl("::", v, fixed = TRUE))
+      paste0(" (", sub("^.*::", "", v), ")") else ""
+    item <- function(i, d) shiny::tagList(
+      shiny::span(paste0(d$label[i], fn_of(d$call[i]))),
+      if (!is.na(d$description[i]) && nzchar(d$description[i]))
+        shiny::div(class = "small text-muted", d$description[i]),
+      if (identical(d$state[i], "old"))
+        shiny::div(class = "small text-warning", t("An old name: choose its new one.")),
+      if (identical(d$state[i], "out"))
+        shiny::div(class = "small text-warning", t("Not offered by the builder: kept as written.")))
+    shiny::tagList(
+      if (nrow(ok)) shiny::radioButtons(
+        st_id("fn_pick"), NULL, width = "100%",
+        choiceNames = lapply(seq_len(nrow(ok)), item, d = ok),
+        choiceValues = ok$value,
+        selected = if (now %in% ok$value) now else character(0)),
+      lapply(seq_len(nrow(off)), function(i) shiny::div(
+        class = "small text-body-tertiary ms-4 mb-1",
+        paste0(off$label[i], fn_of(off$call[i])), " -- ",
+        if (off$state[i] == "missing") t("its package is not installed") else
+          t("in preparation: a function that runs others"))))
+  })
   output$ard_method_note <- shiny::renderUI({
     st_drawn()
     m <- .std_ard_methods()
-    k <- match(input[[st_id("method")]] %||% "", m$method)
+    k <- match(st_method() %||% "", m$method)
     if (is.na(k) || !nzchar(m$note[k])) return(NULL)
     shiny::p(class = "small text-muted mt-n2 mb-2",
              method_note(m$method[k], m$note[k]),
              shiny::span(class = "ms-1 text-body-tertiary",
                          paste0("(method: ", m$method[k], ")")))
   })
+  # the chosen function's own arguments (those written to `args`): a field
+  # each, its default shown faint; what the fields cannot hold stays as R
+  output$ard_an_args <- shiny::renderUI({
+    st_drawn()
+    r <- st_row_now()
+    call <- .ard_method_call(r$method, .std_ard_methods())
+    f <- .ard_form_fields(call)
+    row <- shiny::isolate(st_row())
+    # the row's own args fill the fields when the function is the row's
+    pa <- .ard_args_parse(if (identical(r$method, row$method)) row$args else NA, f)
+    other <- pa$other
+    if (is.null(f) || !nrow(f)) {
+      return(shiny::tags$details(
+        class = "mb-2", open = if (nzchar(other)) NA,
+        shiny::tags$summary(class = "small", argl("Other arguments (R)", "args")),
+        shiny::textInput(st_id("args_other"), NULL, other, width = "100%")))
+    }
+    fd <- form_data(r)
+    ds <- an_dataset(fd$dataset, fd$pop)
+    d <- if (!is.na(ds %||% NA)) an_data(ds)
+    cols <- if (!is.null(d)) names(d) else character()
+    vars <- .split_bar(row$variables)
+    field <- function(i) {
+      a <- f$arg[i]
+      id <- st_id(paste0("a_", a))
+      v <- pa$values[[a]]
+      dflt <- f$default[i]
+      lab <- paste0(a, if (isTRUE(f$required[i])) " *" else "")
+      ph <- if (!is.na(dflt) && nchar(dflt) <= 40) dflt else ""
+      ch <- .split_bar(f$choices[i])
+      dflt_lab <- .ard_default_label(f$kind[i], dflt, ch,
+                                     t("(default)"), t("(default: %s)"))
+      w <- switch(f$kind[i],
+        choice = {
+          shiny::selectInput(id, lab, c(stats::setNames("", dflt_lab),
+                                        unique(c(ch, v))),
+                             selected = v %||% "", width = "100%")
+        },
+        logical = shiny::radioButtons(
+          id, lab, inline = TRUE,
+          c(stats::setNames("", t("default")), "TRUE", "FALSE"),
+          selected = v %||% ""),
+        column = shiny::selectInput(id, lab,
+                                    c(stats::setNames("", dflt_lab),
+                                      unique(c(v, cols))),
+                                    selected = v %||% "", width = "100%"),
+        columns = shiny::selectizeInput(id, lab, unique(c(v, cols)),
+                                        selected = v, multiple = TRUE,
+                                        width = "100%"),
+        levels = shiny::selectizeInput(
+          id, lab, c(stats::setNames("", dflt_lab),
+                     unique(c(v, .level_choices(vars, sheet_rows(rv$p, "codelists", NA), d)))),
+          selected = v %||% "", multiple = FALSE, width = "100%",
+          options = list(create = TRUE)),
+        shiny::textInput(id, lab, v %||% "", width = "100%", placeholder = ph))
+      shiny::div(w, shiny::div(
+        class = "small text-muted mt-n2 mb-2",
+        if (!is.na(f$hint[i]) && nzchar(f$hint[i])) f$hint[i] else
+          sprintf(t("See ?%s for this argument."), call)))
+    }
+    shiny::div(
+      class = "mb-2",
+      shiny::h6(class = "small fw-bold", sprintf(t("Arguments of %s"), sub("^.*::", "", call))),
+      do.call(bslib::layout_columns,
+              c(list(col_widths = c(6, 6)), lapply(seq_len(nrow(f)), field))),
+      shiny::tags$details(
+        class = "mb-2", open = if (nzchar(other)) NA,
+        shiny::tags$summary(class = "small", argl("Other arguments (R)", "args")),
+        shiny::textInput(st_id("args_other"), NULL, other, width = "100%",
+                         placeholder = "weights = W")))
+  })
   # the groups and the variables, from the data the analysis reads: groups
   # first those that look like treatments; variables of the method's kind
   output$ard_an_vars <- shiny::renderUI({
     st_drawn()
     r <- st_row_now()
-    ds <- an_dataset(input[[st_id("dataset")]] %||% r$dataset,
-                     input[[st_id("pop")]] %||% r$population_id)
+    fd <- form_data(r)
+    ds <- an_dataset(fd$dataset, fd$pop)
     d <- if (!is.na(ds %||% NA)) an_data(ds)
     by_now <- shiny::isolate(input[[st_id("by")]]) %||% .split_bar(r$by)
     var_now <- shiny::isolate(input[[st_id("vars")]]) %||% .split_bar(r$variables)
@@ -2612,9 +2770,18 @@ app_server <- function(input, output, session, start) {
     i <- which(mine & a$analysis_id == r$analysis_id)[1L]
     a$analysis_id[i] <- new_id
     a$label[i] <- one(g("label"))
-    a$method[i] <- one(g("method"))
-    a$dataset[i] <- one(g("dataset"))
-    a$population_id[i] <- one(g("pop"))
+    a$method[i] <- one(st_method())
+    call <- .ard_method_call(a$method[i], .std_ard_methods())
+    f <- .ard_form_fields(call)
+    # a field not on screen (yet) keeps the row's value
+    pa <- .ard_args_parse(if (identical(a$method[i], r$method)) r$args else NA, f)
+    vals <- if (!is.null(f)) stats::setNames(lapply(f$arg, function(x)
+      g(paste0("a_", x)) %||% pa$values[[x]]), f$arg) else list()
+    new_args <- .ard_args_build(vals, f, g("args_other") %||% pa$other)
+    if (!.ard_args_same(new_args, r$args)) a$args[i] <- new_args
+    fd <- form_data(r)
+    a$dataset[i] <- fd$dataset
+    a$population_id[i] <- fd$pop
     a$where[i] <- one(where)
     a$by[i] <- one(g("by"))
     if (!is.null(g("strata"))) a$strata[i] <- one(g("strata"))
