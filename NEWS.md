@@ -8,6 +8,22 @@
   changes, so a report is now outdated when its program, or a file it
   sources (the figure setup), is newer than its RTF.
 
+- **The study's code lists reach the ARD** (tflspec #105, Q5): the ARD
+  programs get the study's code lists (the codelists sheet's study rows) and
+  make each listed column a factor in their order before the analyses, so
+  the ARD keeps the order and **counts a value no record has** (0) -- a table
+  shows its row with 0 by default.  The code lists are part of an output's
+  fingerprint: changing them makes its ARD "outdated".  To leave those rows
+  out of one table, the variables sheet's new `empty_levels` column (`hide`)
+  -- its help is in Japanese too.  Needs tflspec 0.0.24.9031.
+
+- **The check of an ARD taken in, in Japanese** (from the review of #90):
+  `.check_view()` gives the check's rows with tflspec's messages in the
+  session's language (a message of cards' own structure check is introduced
+  as such), for the screens to show.  cards' note that the ARD has no
+  `method` rows is no longer reported: a report never reads them, and the
+  study's own ARD has none either, so every ARD taken in had it.
+
 - **The analysis form's argument hints are in Japanese too** (#85), all 81
   of tflspec's catalog (a test says every hint has its Japanese), and the
   functions the form lists are the ones the catalog offers (its `offered`

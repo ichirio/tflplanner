@@ -1489,3 +1489,12 @@ arg-hint:continuous (a mean) or dichotomous (a proportion).,continuous（平均�
 "arg-hint:The G-rho family parameter: 0 (default) the log-rank test, 1 the Peto & Peto test.",G-rho 族のパラメータ：0（既定）はログランク検定、1 は Peto & Peto 検定。
 arg-hint:The variable name the statistics are recorded under.,統計量を記録する変数の名前。
 arg-hint:The context the ARD records (default identity).,ARD に記録する context（既定 identity）。
+"Its values no record has -- a code list's value, counted 0 in every column -- show (a 0 row) or hide (plan_levels(.drop_empty = )); blank: show.",記録の無い値（コードリストの値で、どの列も 0 のもの）を、show = 0 の行で出す／hide = 出さない（plan_levels(.drop_empty = )）。空欄 = 出す。
+no column %s: not an ARD,%s の列がありません（ARD ではありません）
+%s has no level column,%s に水準の列（_level）がありません
+the ARD has no rows,ARD に行がありません
+the column fmt_fn has cards' old name (fmt_fun since cards 0.6.1),列 fmt_fn は cards の古い名前です（cards 0.6.1 から fmt_fun）
+"the table's %s name %s, which is neither a group nor a variable of the ARD",表の %s に %s とありますが、ARD のグループにも変数にもありません
+"the cells are written for %s, which the ARD does not analyse",セルが %s 用に書かれていますが、ARD はその変数を解析していません
+"a template reads {%s}, a statistic the ARD does not have",テンプレートが {%s} を読みますが、ARD にその統計量がありません
+"cards' check of the ARD's shape: ",cards による ARD の形の確認: 
