@@ -1,5 +1,30 @@
 # tflplanner (development version)
 
+- **Take in a TOC** (#99).  "Take in a TOC..." on the reports list: the
+  file, its sheet and the rows above its header; which column is what,
+  from the company standards' new `toc_map` sheet (an item and the column
+  names it may have; the map is what `tflspec::tfl_read_toc()` takes), with
+  "remember this mapping"; what would change, report by report and line by
+  line; and taking it in, saved at once with the TOC's copy and record in
+  `input/toc/`.  Taken in again, only what the TOC holds is updated: a line
+  edited here that the TOC changed too is asked about (kept unless ticked),
+  a report no longer in the TOC is kept, and an existing report's type is
+  not changed; a new report's guessed type is marked and can be set.
+  `toc_changes()`, `toc_apply()`, `toc_snapshot()`, `toc_imports()` and
+  `toc_last()`.
+  After S1's screen review: a report's lines are of two kinds, the TOC's
+  (compared line by line) and those added here (not compared: they stay,
+  after the TOC's lines), so a TOC that gets more lines no longer meets
+  the lines added here; a line edited here is asked about only when the
+  TOC changed it too; a report once taken in from a TOC is said to be
+  missing every time; "Take it in" says it is working and cannot be
+  pressed twice, nor while the TOC cannot be read; the last TOC taken in
+  is said in the dialog, and the same file again noticed; a report ID on
+  two rows is said with its rows; the reports with no change are folded,
+  the heading rows skipped and the lines kept are said.
+  The reports list takes its own height: a long one no longer covers the
+  buttons under it.
+
 - **User-code reports, after their screen review** (#98).  The ARD switch
   says what it reads (the ARD taken in; its analyses, built or not; none
   yet, with a button to the ARD tab) and what `ard` is; the ARD tab of a
