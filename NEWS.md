@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **The data of an analysis is one choice** (#74).  On the ARD tab's
+  analysis form, Data and Analysis set are one choice of a dataset and an
+  analysis set -- "ADSL × SAF (pop_saf)", "ADAE × SAF (adae_saf)",
+  "ADSL, no analysis set (adsl)" -- named as the program names the data.
+  The definition keeps its two columns (`dataset`, blank for the analysis
+  set's own data, and `population_id`); "(the analysis set's data)" is gone.
+
 - **Copyright of the sample data, and citation** (#72).  The sample study's
   ADaM data are pharmaverseadam's (Apache License 2.0): its copyright
   holders are listed in `Authors@R` and `inst/COPYRIGHTS`, with what was
