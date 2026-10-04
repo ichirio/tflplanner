@@ -1712,3 +1712,15 @@ Its ID is %s (it can be changed on its form).,ID は %s です（後でフォー
 "%s counts the subjects per group, and so does %s: a column header's N shows none then. Keep one of them.",%1$s が群ごとの人数を数えていて、%2$s も数えています。このままでは列見出しの N が出ません。どちらか 1 つにしてください。
 the stack can count the subjects per group itself (this analysis counts them now),まとまりが群ごとの人数を数えられます（今はこの解析が数えています）
 the stack can count the subjects in all itself (this analysis counts them now),まとまりが全体の人数を数えられます（今はこの解析が数えています）
+Errors only,エラーだけ
+"errors %d, warnings %d",エラー %d・警告 %d
+Nothing went wrong (or the study ARD is not made yet).,エラーも警告もありません（または試験の ARD がまだありません）。
+Groups,群
+Kind,種類
+Message,内容
+Errors and warnings inside the analyses,解析の中のエラーと警告
+"From the study ARD as it was last made, and the ARDs taken in. A program that stopped as a whole is in the table above (Error). The messages are cards' own (in English). A click on a row opens that analysis.",最後に作った試験の ARD と、取り込んだ ARD から。プログラムごと止まったものは上の表（エラー）にあります。文は cards のもの（英語）です。行を押すと、その解析を開きます。
+Its statistics are not in the ARD (blank in the table).,この解析の統計量は ARD に入っていません（表では空）。
+study ARD,試験の ARD
+In the table,表では
+From,どこから

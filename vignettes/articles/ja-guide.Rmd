@@ -325,7 +325,9 @@ ard <- cards::ard_stack(pop_saf,
 
 cards は、1 つの解析が失敗しても止まりません（3 群のデータに 2 群の検定、など）。
 その解析の統計量は ARD に入らず、文が ARD の `warning` / `error` 列に残ります。
-見取り図では、その解析の行に印が付きます。R では `tflspec::tfl_ard_conditions(ard)` で一覧にできます。
+見取り図では、その解析の行に印が付きます。
+試験全体の分は、ARD タブの「試験 ARD」に一覧が出ます（エラーが先、「エラーだけ」で絞れる。行をクリックするとその解析が開く）。
+R では `tflspec::tfl_ard_conditions(ard)`、試験全体は `study_ard_conditions()` で一覧にできます。
 
 ### 4.5 他で作った ARD を取り込む
 
