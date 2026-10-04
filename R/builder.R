@@ -336,6 +336,9 @@ preview_pages <- function(x, output_id, data) {
   plan <- rtfreporter::plan_cells(tflspec::tfl_table_plan(data, spec, output_id),
                                   notes = FALSE)
   res <- suppressMessages(rtfreporter::plan_apply(plan))
+  # what the column header's tokens hold here (the builder's insert chips)
+  tokens <- tryCatch(rtfreporter::plan_header_tokens(plan),
+                     error = function(e) NULL)
   # a plan with no layout gives its table, not pages: one page of it
   if (is.data.frame(res)) {
     res <- list(structure(list(data = res, col_header = list(names(res)),
@@ -343,7 +346,24 @@ preview_pages <- function(x, output_id, data) {
                           class = "rtftable"))
   }
   if (inherits(res, "rtftable")) res <- list(res)
+  attr(res, "header_tokens") <- tokens
   res
+}
+
+# The insert chips' labels: a token and what it holds here
+# ("{n} = 86 / 84 / 84"); the token alone when the preview has not said
+header_token_labels <- function(choices, tokens = NULL) {
+  if (is.null(tokens) || !nrow(tokens)) return(stats::setNames(choices, choices))
+  lab <- vapply(choices, function(tk) {
+    k <- match(tk, tokens$token)
+    if (is.na(k) || !isTRUE(tokens$resolved[k])) return(tk)
+    v <- unlist(tokens$values[[k]], use.names = FALSE)
+    v <- v[!is.na(v)]
+    if (!length(v)) return(tk)
+    if (length(v) > 4L) v <- c(utils::head(v, 4L), "…")
+    paste(tk, "=", paste(v, collapse = " / "))
+  }, "")
+  stats::setNames(choices, lab)
 }
 
 # The lines of a report's header / titles / footnotes / footer: its own,

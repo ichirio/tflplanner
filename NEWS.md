@@ -9,7 +9,9 @@
   added above, moved and removed; "From a preset..." fills them from the
   company presets.  Tokens are offered as the table has them (`{col}`,
   `{col1}` ... for several keys, `{n}`, `{n:sum}`, `{N}` when the table's
-  `header_n` names one) and go into the field last clicked; whose `{n}` it
+  `header_n` names one), each with what it holds in the preview
+  (`{n} = 86 / 84 / 84`, from rtfreporter's `plan_header_tokens()`; needs
+  rtfreporter 0.8.2.9012), and go into the field last clicked; whose `{n}` it
   is (`header_n`) is asked when a cell uses one.  The form writes the
   report's own `col_header` rows, only when they change; a header it cannot
   show (column positions, `KEY = value`, styled row-header cells) is left

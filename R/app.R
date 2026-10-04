@@ -3636,15 +3636,10 @@ app_server <- function(input, output, session, start) {
             shiny::checkboxInput(hid(i, "ul"), t("underline"),
                                  !is.na(l$border_bottom) && l$border_bottom != "none")))
       }
-      toks <- header_token_choices(keys, bform$hdr_n)
-      chip <- function(tk) shiny::tags$button(
-        type = "button", class = "btn btn-sm btn-outline-secondary py-0 me-1 mb-1", tk,
-        onclick = sprintf("tflHdrInsert('%s')", tk))
       shiny::tagList(
         head,
         lapply(seq_along(lines), one),
-        shiny::div(class = "small", t("Insert (into the field last clicked):"), " ",
-                   lapply(toks, chip)),
+        shiny::uiOutput(bid("hdr_tok")),
         if (header_uses_n(lines)) shiny::selectInput(
           bid("hdr_n"), t("Whose {n}"), width = "18rem",
           stats::setNames(c("", "page", "table", "n = page | N = table"),
@@ -3664,6 +3659,23 @@ app_server <- function(input, output, session, start) {
           "  f.focus(); f.selectionStart = f.selectionEnd = a + tk.length;",
           "  $(f).trigger('change'); f.dispatchEvent(new Event('input', {bubbles: true})); };",
           "}"))))
+    })
+  }))
+  # the insert chips, with what each token holds in the preview (drawn on
+  # their own: the lines' fields are not drawn again while one types)
+  shiny::observe(builder_guard({
+    hdr_ver()
+    n <- bform$n
+    output[[paste0("b", n, "_hdr_tok")]] <- shiny::renderUI({
+      keys <- input[[bid("key")]] %||% bform$st$key
+      toks <- header_token_choices(keys, input[[bid("hdr_n")]] %||% bform$hdr_n)
+      pv <- tryCatch(preview_d(), error = function(e) NULL)
+      toks <- header_token_labels(toks, attr(pv$pages, "header_tokens"))
+      chip <- function(k) shiny::tags$button(
+        type = "button", class = "btn btn-sm btn-outline-secondary py-0 me-1 mb-1",
+        names(toks)[k], onclick = sprintf("tflHdrInsert('%s')", toks[[k]]))
+      shiny::div(class = "small", t("Insert (into the field last clicked):"), " ",
+                 lapply(seq_along(toks), chip))
     })
   }))
   # moving, removing, adding a line; a preset into the lines

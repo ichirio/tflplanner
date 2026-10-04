@@ -41,6 +41,15 @@ test_that("a header the form cannot show is left to the sheet", {
   expect_identical(header_read(NULL), list())
 })
 
+test_that("a token's chip says what it holds in the preview", {
+  tk <- data.frame(token = c("{col}", "{n}"), resolved = c(TRUE, FALSE))
+  tk$values <- list(c(A = "Placebo", B = "Drug"), NULL)
+  l <- header_token_labels(c("{col}", "{n}", "{n:sum}"), tk)
+  expect_identical(unname(l), c("{col}", "{n}", "{n:sum}"))
+  expect_identical(names(l), c("{col} = Placebo / Drug", "{n}", "{n:sum}"))
+  expect_identical(names(header_token_labels("{col}")), "{col}")
+})
+
 test_that("the tokens are the table's", {
   expect_identical(header_token_choices("TRT01A"), c("{col}", "{n}", "{n:sum}"))
   expect_true(all(c("{col1}", "{col2}", "{n2}") %in%
@@ -54,7 +63,8 @@ test_that("the builder's header form writes the report's col_header", {
   skip_on_cran()
   skip_if_not_installed("cards")
   local_home()
-  p <- add_output(new_planner(), "T-DM", type = "table")
+  # the company defaults (the row-header column the preview's header needs)
+  p <- add_standard_defaults(add_output(new_planner(), "T-DM", type = "table"), "H1")
   s <- create_study("H1", planner = p)
   ard <- cards::ard_stack(cards::ADSL, .by = TRT01A,
                           cards::ard_continuous(variables = AGE))
@@ -84,11 +94,19 @@ test_that("the builder's header form writes the report's col_header", {
     v2 <- list(); v2[[b("hdr_preset")]] <- "Arm / (N=n)"
     do.call(session$setInputs, v2)
     session$elapse(1000)
-    expect_true(.same_header(sheet_rows(rv$p, "col_header", "T-DM"),
-                             header_presets()[["Arm / (N=n)"]]))
+    # the header as the report has it: its own rows, else the study's (the
+    # preset is the study default here, so nothing of its own is written)
+    eff <- function() {
+      own <- sheet_rows(rv$p, "col_header", "T-DM")
+      if (nrow(own)) own else inherited_rows(rv$p, "col_header", "T-DM")
+    }
+    expect_true(.same_header(eff(), header_presets()[["Arm / (N=n)"]]))
     h <- output[[b("hdr_ui")]]$html
     expect_match(h, "Line 2", fixed = TRUE)
-    expect_match(h, "{n:sum}", fixed = TRUE)
+    tk <- output[[b("hdr_tok")]]$html
+    expect_match(tk, "{n:sum}", fixed = TRUE)
+    # the preview's values beside the tokens
+    expect_match(tk, "{col} = ", fixed = TRUE)
     # {n} is used: whose {n} is asked
     expect_match(h, "Whose {n}", fixed = TRUE)
     # a line's text changed
