@@ -75,6 +75,19 @@ reference:
       - ard_view
       - ard_status
       - update_study_ard
+      - study_ard
+  - title: ARDs made elsewhere
+    contents:
+      - import_ard
+      - ard_imports
+      - use_imported_ard
+      - remove_imported_ard
+      - compare_imported_ard
+  - title: The company's own ARD functions
+    contents:
+      - company_ard_functions
+      - use_company_ard_function
+      - check_company_ard_function
   - title: Tables, listings and figures
     contents:
       - new_planner

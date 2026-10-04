@@ -1,5 +1,24 @@
 # tflplanner (development version)
 
+- **ARDs made elsewhere** (tflspec #101): `import_ard()` takes an ARD (rds,
+  the JSON / YAML of `tflspec::tfl_write_ard()`, XPT, CSV) into the study's
+  `input/ard/` -- a folder nothing else writes to, so making the study ARD
+  again never overwrites it -- read-only, checked
+  (`tflspec::tfl_check_ard()`) and recorded in `input/ard/imports.csv`
+  (`ard_imports()`: source, time, user, md5, rows, outputs, the check,
+  in use / removed).  `use_imported_ard()` sets a report's `ard_source`;
+  its program then reads that file, and `study_ard()` gives a report's ARD
+  from wherever it comes.  `compare_imported_ard()` compares it with the
+  report's own ARD (`cards::compare_ard()`), `remove_imported_ard()` takes
+  one out of use but keeps it on the record.  The screen is a later PR.
+
+- **The company's own ARD functions** (tflspec #102):
+  `company_ard_functions()` lists the functions of the standards folder's
+  `ard_functions/*.R`; `use_company_ard_function()` copies one into the
+  study's `programs/ard/functions/` (a study file of that name wins) and
+  adds it to the ARD definition's `source`; `check_company_ard_function()`
+  tries it (`tflspec::tfl_check_ard_function()`).
+
 - The ARD definition's two new columns, `parent` (an analysis run inside
   cards::ard_stack() / ard_strata() / ard_pairwise()) and `post` (steps on
   the ARD after the call), have their help in Japanese (tflspec #96, #97).
@@ -192,6 +211,7 @@
   `plan_cell_style()` a row); it is now a table sheet of the study's
   workbook, shown and edited under Details (sheets), a report's own rows
   replacing the defaults whole.
+
 - `preview_html()` is exported as documented (`.page_lines()`, internal,
   was exported in its place: a roxygen block attached to the wrong
   function); `devtools::document()` leaves the Rd as it is.  Needs

@@ -128,9 +128,26 @@ report_info <- function(x, output_id) {
   o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
   code <- if (nrow(o) && !is.na(o$data_code)) o$data_code else NA
   if (is.na(code) && identical(report_info(x, output_id)$type, "table")) {
-    code <- .fill_template("table_data", x, output_id)
+    imp <- .ard_import_of(x, output_id)
+    code <- if (is.null(imp)) .fill_template("table_data", x, output_id) else
+      .imported_ard_code(imp, output_id)
   }
   code
+}
+
+# a report whose ARD was made elsewhere and taken in (ard_source =
+# import:<file>) reads that file instead of the study ARD
+.imported_ard_code <- function(file, output_id) {
+  p <- encodeString(file.path("input", "ard", file), quote = "\"")
+  id <- encodeString(output_id, quote = "\"")
+  paste(
+    sprintf("# ---- this output's ARD, made elsewhere and taken in (%s)",
+            file.path("input", "ard", file)),
+    sprintf("ard <- tflspec::tfl_read_ard(%s)", p),
+    sprintf("if (\"output_id\" %%in%% names(ard)) ard <- ard[ard$output_id == %s, , drop = FALSE]", id),
+    "ard <- ard[setdiff(names(ard), c(\"output_id\", \"analysis_id\", \"population_id\"))]",
+    sprintf("if (!nrow(ard)) stop(\"The ARD taken in has no rows for %s.\")", output_id),
+    sep = "\n")
 }
 
 #' Code templates
