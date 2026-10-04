@@ -71,13 +71,15 @@ test_that("the check of an ARD taken in is on the record", {
   skip_on_cran()
   imp_home()
   s <- create_study("IMP2", planner = imp_planner())
+  # no stat_name: not an ARD (a group without its level is not an error
+  # since tflspec 0.0.24.9035 -- a test across groups has that shape)
   bad <- data.frame(output_id = "DM", group1 = "TRT01A", variable = "AGE",
-                    stat_name = "mean", stat = 50)
+                    stat = 50)
   f <- tempfile(fileext = ".rds")
   saveRDS(bad, f)
   row <- import_ard(s, f)
   expect_match(row$check, "error")
-  expect_true(any(grepl("group1_level", attr(row, "check")$message)))
+  expect_true(any(grepl("stat_name", attr(row, "check")$message)))
 })
 
 test_that("a company's own ARD function is used by a study, as a copy", {
