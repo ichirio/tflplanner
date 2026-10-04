@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- The ARD definition's two new columns, `parent` (an analysis run inside
+  cards::ard_stack() / ard_strata() / ard_pairwise()) and `post` (steps on
+  the ARD after the call), have their help in Japanese (tflspec #96, #97).
+  They appear in the analyses grid as every column does.  Needs tflspec >=
+  0.0.24.9028.
+
 - The `header` sheet's help (and its Japanese) says that a report's line
   `(none)` takes the study's line of that number out (tflspec #91).  Needs
   tflspec >= 0.0.24.9027.
