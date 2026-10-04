@@ -1,12 +1,18 @@
 Package: tflplanner
 Type: Package
 Title: A 'shiny' Study Manager for Clinical TFLs Made with 'rtfreporter'
-Version: 0.0.2.9022
-Authors@R:
+Version: 0.0.2.9023
+Authors@R: c(
     person(given  = "Yoichi",
            family = "Masui",
            email  = "ichi.r.pro@gmail.com",
-           role   = c("aut", "cre", "cph"))
+           role   = c("aut", "cre", "cph")),
+    person("Cytel Inc.", role = "cph",
+           comment = "pharmaverseadam data in inst/sample (Apache License 2.0)"),
+    person("F. Hoffmann-La Roche AG", role = "cph",
+           comment = "pharmaverseadam data in inst/sample (Apache License 2.0)"),
+    person("GlaxoSmithKline LLC", role = "cph",
+           comment = "pharmaverseadam data in inst/sample (Apache License 2.0)"))
 Description: A 'shiny' study manager for clinical tables, listings and
     figures made with 'rtfreporter'. Each study is a folder of its own --
     input data, definitions, programs, results and the records of its
