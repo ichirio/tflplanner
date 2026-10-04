@@ -179,6 +179,32 @@ test_that("a study runs end to end and reports what it produced", {
   s <- save_study(s)
   expect_equal(study_status(s)$status[1], "outdated")
 
+  # a change to one report leaves the others current: the workbooks are
+  # rewritten, but only that report's program changes
+  st <- run_study(s, "DM")
+  expect_equal(st$status[1], "ok")
+  s$planner <- copy_output(s$planner, "DM", "DM2")
+  s <- save_study(s)
+  st <- run_study(s, "DM2")
+  expect_equal(study_status(s)$status[study_status(s)$output_id %in% c("DM", "DM2")],
+               c("ok", "ok"))
+  Sys.sleep(1.1)
+  i <- which(s$planner$outputs$output_id == "DM2")
+  s$planner$outputs$description[i] <- "Another description"
+  s <- save_study(s)
+  ss <- study_status(s)
+  expect_equal(ss$status[ss$output_id == "DM2"], "outdated")
+  expect_equal(ss$status[ss$output_id == "DM"], "ok")
+
+  # a file the program sources (the figure setup) changes: its reports too
+  f <- file.path(s$path, "programs", "tfl", "DM.R")
+  writeLines(c(readLines(f), 'source("programs/tfl/extra.R")'), f)
+  Sys.sleep(1.1)
+  st <- run_study(s, "DM")
+  Sys.sleep(1.1)
+  writeLines("x <- 1", file.path(s$path, "programs", "tfl", "extra.R"))
+  expect_equal(study_status(s)$status[1], "outdated")
+
   # a program that fails
   writeLines("stop('boom')", file.path(s$path, "programs", "tfl", "DM.R"))
   st <- run_study(s, "DM")

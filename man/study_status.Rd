@@ -26,8 +26,10 @@ save the study
 \item \code{todo} -- the program's data part is still to be written
 \item \verb{not run} -- no RTF yet
 \item \code{error} -- the last run failed (see its log)
-\item \code{outdated} -- the program or a definition workbook changed after the
-RTF was made
+\item \code{outdated} -- the report's program, or a file it sources (the figure
+setup, say), changed after the RTF was made.  The program holds the
+report's whole definition, so a change to the definition reaches the
+reports it is about and no others.
 \item \code{ok}
 }
 }
