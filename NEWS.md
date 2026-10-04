@@ -1,5 +1,23 @@
 # tflplanner (development version)
 
+- **ARDs made elsewhere** (tflspec #101): `import_ard()` takes an ARD (rds,
+  the JSON / YAML of `tflspec::tfl_write_ard()`, XPT, CSV) into the study's
+  `input/ard/` -- a folder nothing else writes to, so making the study ARD
+  again never overwrites it -- read-only, checked
+  (`tflspec::tfl_check_ard()`) and recorded in `input/ard/imports.csv`
+  (`ard_imports()`: source, time, user, md5, rows, outputs, the check,
+  in use / removed).  `use_imported_ard()` sets a report's `ard_source`;
+  its program then reads that file, and `study_ard()` gives a report's ARD
+  from wherever it comes.  `compare_imported_ard()` compares it with the
+  report's own ARD (`cards::compare_ard()`), `remove_imported_ard()` takes
+  one out of use but keeps it on the record.  The screen is a later PR.
+- **The company's own ARD functions** (tflspec #102):
+  `company_ard_functions()` lists the functions of the standards folder's
+  `ard_functions/*.R`; `use_company_ard_function()` copies one into the
+  study's `programs/ard/functions/` (a study file of that name wins) and
+  adds it to the ARD definition's `source`; `check_company_ard_function()`
+  tries it (`tflspec::tfl_check_ard_function()`).
+
 - **The data of an analysis is one choice** (#74).  On the ARD tab's
   analysis form, Data and Analysis set are one choice of a dataset and an
   analysis set -- "ADSL × SAF (pop_saf)", "ADAE × SAF (adae_saf)",

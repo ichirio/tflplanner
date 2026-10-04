@@ -17,6 +17,9 @@
 #                          autoexec_ard.R
 #     programs/tfl/        one program per report, autoexec_report.R
 #     output/ard/          the study's working ARD (ard.rds)
+#     input/ard/           ARDs made elsewhere and taken in (import_ard()),
+#                          with their record imports.csv; nothing else
+#                          writes here
 #     output/tfl/          the working reports: the RTF files
 #     runs/                official runs: one batch folder each, with the
 #                          logs, the results and the code
@@ -36,7 +39,7 @@ study_layout <- function() {
   c(adam = "data/adam", sdtm = "data/sdtm", other = "data/other",
     spec = "spec", programs_ard = "programs/ard",
     programs_tfl = "programs/tfl", ard = "output/ard", tfl = "output/tfl",
-    runs = "runs", logs_preview = "logs/preview")
+    ard_import = "input/ard", runs = "runs", logs_preview = "logs/preview")
 }
 
 .study_file <- "study.yml"
