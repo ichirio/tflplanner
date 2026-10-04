@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **Less English on the Japanese screens** (#124).
+  The arguments of the "(whole script)" figure types (tflspec's
+  `tfl_fig_schema()`, 50 labels and help texts) and the old names of six
+  cards / cardx functions (an analysis may still name one) are in
+  Japanese.  The common errors -- a study or report ID taken, a code list,
+  an ARD function's name, the company standards' folder, a report's ARD
+  not made yet ... -- get a lead in the app's language, the message itself
+  kept after it; an error no pattern knows shows its message alone.
+
 - **The figure guide follows the sample again** (docs).  `ja-figures`
   walks the three ways in order -- a template, then the designer (a new
   F-14-2-4 made like the sample's F-14-2-3: `km_simple` and the median
@@ -9,6 +18,41 @@
   screenshots.R` drives the new screens (#120).  The designer's figure-wide
   "Additional calls (plot.add)", the `call` piece's fields and the
   whole-script templates' names (from tflspec) are in Japanese too.
+
+- **A reload no longer brings back the study as it was at start** (#118).
+  `run_app("<study>")` opened the study once, when the app started, and
+  each session (a new tab, a reload) began from that copy: what was saved
+  since -- in the app or outside it -- was not on screen, and a save wrote
+  the old state back.  Each session now opens the study from its folder.
+
+- **ARD functions of one's own, on screen** (#115).  A new "Own functions"
+  tab on the ARD tab lists the company's (the standards folder) and the
+  study's (`programs/ard/functions/`, the study key `source`) side by side
+  (`own_ard_functions()`): where each is, whether the study loads it, the
+  analyses that use it, and its last try.  A study's copy wins; when it
+  differs from the company's, which is newer is said, with "See the
+  difference" and "Take the company's..." (`take_company_ard_function()`).
+  "Use in this study" copies and loads one; "Try..." runs it in a separate
+  R process on the study's data (or `cards::ADSL`), with the files the ARD
+  programs load and the arguments an analysis gives
+  (`try_ard_function()`): the problems in the app's language, the first
+  rows of its ARD, the try kept in `programs/ard/functions/.checks.json`
+  (said when the file changed since).  "New function..." writes one from
+  tflspec's templates (a summary, a test or model, a free calculation),
+  for the study or the company (`new_ard_function()`).  The files are
+  read, not run, to be listed, and edited outside the app.  The analysis
+  form lists the study's own functions under their own titles and names
+  (where each is said), and the company's it does not load faint.  After
+  S1's screen review: a try makes the data as the ARD programs do (the
+  analysis set from its dataset, the others cut to its subjects) and says
+  where it stopped (loading the files, making the data, the function);
+  cards' example data is a choice of its own; what changed since the study
+  copied a company's function -- the company's, the study's, both -- is
+  told by the copy's record (`.copied.json`), not by file times, and taking
+  the company's says what is lost and which analyses' ARDs become outdated,
+  and refuses a study file that holds other functions too; the files are
+  read again when the tab is opened, a function chosen, Try opened, or
+  "Read the files again" pressed.
 
 - **The sample study has a figure made with the designer** (#114):
   F-14-2-3, Kaplan-Meier curves of the time to the first dermatologic

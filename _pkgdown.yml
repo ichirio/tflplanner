@@ -84,11 +84,17 @@ reference:
       - use_imported_ard
       - remove_imported_ard
       - compare_imported_ard
-  - title: The company's own ARD functions
+  - title: ARD functions of one's own
     contents:
       - company_ard_functions
       - use_company_ard_function
       - check_company_ard_function
+      - study_ard_functions
+      - own_ard_functions
+      - own_function_checks
+      - try_ard_function
+      - new_ard_function
+      - take_company_ard_function
   - title: Tables, listings and figures
     contents:
       - new_planner
