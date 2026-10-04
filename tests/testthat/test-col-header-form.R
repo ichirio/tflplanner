@@ -93,6 +93,9 @@ test_that("the builder's header form writes the report's col_header", {
     # a preset into the lines, then the lines into col_header
     v2 <- list(); v2[[b("hdr_preset")]] <- "Arm / (N=n)"
     do.call(session$setInputs, v2)
+    # a preset replaces the lines only when confirmed
+    v2 <- list(); v2[[b("hdr_preset_ok")]] <- 1
+    do.call(session$setInputs, v2)
     session$elapse(1000)
     # the header as the report has it: its own rows, else the study's (the
     # preset is the study default here, so nothing of its own is written)
@@ -109,18 +112,53 @@ test_that("the builder's header form writes the report's col_header", {
     expect_match(tk, "{col} = ", fixed = TRUE)
     # {n} is used: whose {n} is asked
     expect_match(h, "Whose {n}", fixed = TRUE)
+    # every field as the browser has it, by each line's own number
+    fields <- function() {
+      v <- list()
+      for (l in bform$hdr) {
+        id <- function(part) paste0(b(paste0("h", l$uid)), "_", part)
+        for (k in seq_along(l$stub)) v[[id(paste0("stub", k))]] <-
+          if (is.na(l$stub[[k]])) "" else l$stub[[k]]
+        v[[id("mode")]] <- l$mode
+        v[[id("key")]] <- if (is.na(l$key)) "TRT01A" else l$key
+        v[[id("text")]] <- if (is.na(l$text)) "" else l$text
+        v[[id("align")]] <- if (is.na(l$align)) "" else l$align
+        v[[id("bold")]] <- isTRUE(as.logical(l$bold))
+        v[[id("ul")]] <- !is.na(l$border_bottom)
+      }
+      do.call(session$setInputs, v)
+    }
+    fields()
+    u2 <- bform$hdr[[2]]$uid
     # a line's text changed
-    v3 <- list(); v3[[paste0(b("h2"), "_text")]] <- "N={n}"
+    v3 <- list(); v3[[paste0(b(paste0("h", u2)), "_text")]] <- "N={n}"
     do.call(session$setInputs, v3)
     session$elapse(1000)
-    ch <- sheet_rows(rv$p, "col_header", "T-DM")
+    ch <- eff()
     expect_identical(ch$text[ch$line == "2" & ch$cols == ".values"], "N={n}")
-    # a line removed
-    v4 <- list(); v4[[b("hdr_act")]] <- list(i = 1L, act = "del", t = 1)
+    # a line added above: the others keep what they say
+    v4 <- list(); v4[[b("hdr_add")]] <- 1
     do.call(session$setInputs, v4)
+    fields()
     session$elapse(1000)
-    ch <- sheet_rows(rv$p, "col_header", "T-DM")
-    expect_identical(unique(ch$line), "1")
-    expect_identical(ch$text[ch$cols == ".values"], "N={n}")
+    ch <- eff()
+    expect_identical(ch$text[ch$cols == ".values"], c(NA, "{col}", "N={n}"))
+    # the new line moved down: still its own text, the others theirs
+    nu <- bform$hdr[[1]]$uid
+    v5 <- list(); v5[[paste0(b(paste0("h", nu)), "_text")]] <- "Treatment"
+    do.call(session$setInputs, v5)
+    v6 <- list(); v6[[b("hdr_act")]] <- list(i = 1L, act = "down", t = 1)
+    do.call(session$setInputs, v6)
+    fields()
+    session$elapse(1000)
+    ch <- eff()
+    expect_identical(ch$text[ch$cols == ".values"], c("{col}", "Treatment", "N={n}"))
+    # a line removed
+    v7 <- list(); v7[[b("hdr_act")]] <- list(i = 2L, act = "del", t = 2)
+    do.call(session$setInputs, v7)
+    fields()
+    session$elapse(1000)
+    ch <- eff()
+    expect_identical(ch$text[ch$cols == ".values"], c("{col}", "N={n}"))
   })
 })

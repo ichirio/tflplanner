@@ -1404,3 +1404,7 @@ each page's (page),ページごと（page）
 the analysis set (table),解析対象集団（table）
 "both: {n} page, {N} table",両方：{n} は page、{N} は table
 The header is the preset %s now.,列見出しを定型 %s にしました。
+Replace the column header?,列見出しを置き換えますか？
+The lines below become the preset %s; what they say now is replaced.,下の行が定型 %s の内容になり、今の内容は置き換わります。
+Replace,置き換える
+(empty),（空）

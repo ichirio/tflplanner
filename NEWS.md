@@ -6,8 +6,9 @@
   value columns' -- the same text on each column, one cell per value of a
   key (a spanner over the outer key of a two-key table), one cell over them
   all, or nothing -- with its alignment, bold and underline.  Lines are
-  added above, moved and removed; "From a preset..." fills them from the
-  company presets.  Tokens are offered as the table has them (`{col}`,
+  added above, moved and removed (each line keeps its own fields, wherever
+  it moves); "From a preset..." fills them from the company presets, after
+  asking.  Tokens are offered as the table has them (`{col}`,
   `{col1}` ... for several keys, `{n}`, `{n:sum}`, `{N}` when the table's
   `header_n` names one), each with what it holds in the preview
   (`{n} = 86 / 84 / 84`, from rtfreporter's `plan_header_tokens()`; needs

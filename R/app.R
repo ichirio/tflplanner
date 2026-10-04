@@ -3371,7 +3371,7 @@ app_server <- function(input, output, session, start) {
       inh$output_id <- NULL
       inh
     }
-    bform$hdr <- header_read(eff, st$key)
+    bform$hdr <- hdr_uid(header_read(eff, st$key))
     bform$hdr_n <- {
       tb <- sheet_rows(p0, "tables", id)
       if (nrow(tb) && "header_n" %in% names(tb)) tb$header_n[1L] else NA_character_
@@ -3549,7 +3549,18 @@ app_server <- function(input, output, session, start) {
   }))
   # ---- the column header (Q14): one form a header line, in two parts --
   hdr_ver <- shiny::reactiveVal(0L)
-  hid <- function(i, part) bid(sprintf("h%d_%s", i, part))
+  hid <- function(u, part) bid(sprintf("h%d_%s", u, part))
+  # every line gets a number of its own once, kept when lines move
+  hdr_uid <- function(lines) {
+    if (is.null(lines)) return(NULL)
+    for (i in seq_along(lines)) {
+      if (is.null(lines[[i]]$uid)) {
+        bform$uid <- (bform$uid %||% 0L) + 1L
+        lines[[i]]$uid <- bform$uid
+      }
+    }
+    lines
+  }
   # the lines as the inputs have them now
   hdr_now <- function() {
     lines <- bform$hdr
@@ -3558,17 +3569,17 @@ app_server <- function(input, output, session, start) {
       l <- lines[[i]]
       st <- l$stub
       for (k in seq_along(st)) {
-        v <- input[[hid(i, paste0("stub", k))]]
+        v <- input[[hid(l$uid, paste0("stub", k))]]
         if (!is.null(v)) st[[k]] <- v
       }
       l$stub <- st
       for (part in c("mode", "key", "text", "align")) {
-        v <- input[[hid(i, part)]]
+        v <- input[[hid(l$uid, part)]]
         if (!is.null(v)) l[[part]] <- v
       }
-      b <- input[[hid(i, "bold")]]
+      b <- input[[hid(l$uid, "bold")]]
       if (!is.null(b)) l$bold <- if (isTRUE(b)) "TRUE" else NA_character_
-      u <- input[[hid(i, "ul")]]
+      u <- input[[hid(l$uid, "ul")]]
       if (!is.null(u)) l$border_bottom <- if (isTRUE(u)) "single" else NA_character_
       lines[[i]] <- l
     }
@@ -3602,17 +3613,18 @@ app_server <- function(input, output, session, start) {
         l <- lines[[i]]
         st <- l$stub
         stub_ui <- if (!length(st)) NULL else lapply(seq_along(st), function(k)
-          shiny::textInput(hid(i, paste0("stub", k)),
+          shiny::textInput(hid(l$uid, paste0("stub", k)),
                            if (length(st) > 1L) sprintf(t("Row-header column %s"), names(st)[k]) else
                              t("Row-header columns"),
-                           if (is.na(st[[k]])) "" else st[[k]], width = "100%"))
+                           if (is.na(st[[k]])) "" else st[[k]], width = "100%",
+                           placeholder = t("(empty)")))
         shiny::div(
           class = "rp-b-hdr border rounded p-2 mb-2",
           shiny::div(class = "d-flex align-items-center",
                      shiny::strong(class = "small me-auto", sprintf(t("Line %d"), i)),
                      act(i, "up", "\u2191"), act(i, "down", "\u2193"), act(i, "del", "\u00d7")),
           stub_ui,
-          shiny::radioButtons(hid(i, "mode"), t("Value columns"), inline = TRUE,
+          shiny::radioButtons(hid(l$uid, "mode"), t("Value columns"), inline = TRUE,
                               stats::setNames(c("each", "key", "all", "none"),
                                               c(t("the same on each column"),
                                                 t("one cell per value of a key"),
@@ -3620,20 +3632,20 @@ app_server <- function(input, output, session, start) {
                                                 t("nothing"))),
                               selected = l$mode),
           shiny::conditionalPanel(
-            sprintf("input['%s'] == 'key'", hid(i, "mode")),
-            shiny::selectInput(hid(i, "key"), t("Key"), keys,
+            sprintf("input['%s'] == 'key'", hid(l$uid, "mode")),
+            shiny::selectInput(hid(l$uid, "key"), t("Key"), keys,
                                selected = if (!is.na(l$key)) l$key)),
-          shiny::textAreaInput(hid(i, "text"), NULL,
+          shiny::textAreaInput(hid(l$uid, "text"), NULL,
                                if (is.na(l$text)) "" else l$text, rows = 2,
                                width = "100%"),
           shiny::div(
             class = "d-flex flex-wrap gap-3 align-items-center small",
-            shiny::selectInput(hid(i, "align"), NULL, width = "9rem",
+            shiny::selectInput(hid(l$uid, "align"), NULL, width = "9rem",
                                stats::setNames(c("", "left", "center", "right"),
                                                c(t("(default)"), t("left"), t("center"), t("right"))),
                                selected = if (is.na(l$align)) "" else l$align),
-            shiny::checkboxInput(hid(i, "bold"), t("bold"), isTRUE(as.logical(l$bold))),
-            shiny::checkboxInput(hid(i, "ul"), t("underline"),
+            shiny::checkboxInput(hid(l$uid, "bold"), t("bold"), isTRUE(as.logical(l$bold))),
+            shiny::checkboxInput(hid(l$uid, "ul"), t("underline"),
                                  !is.na(l$border_bottom) && l$border_bottom != "none")))
       }
       shiny::tagList(
@@ -3651,7 +3663,9 @@ app_server <- function(input, output, session, start) {
           " document.addEventListener('focusin', function(e) {",
           "  if (e.target.closest && e.target.closest('.rp-b-hdr') &&",
           "      /^(TEXTAREA|INPUT)$/.test(e.target.tagName) && e.target.type !== 'radio' &&",
-          "      e.target.type !== 'checkbox') window.tflHdrField = e.target; });",
+          "      e.target.type !== 'checkbox') {",
+          "   if (window.tflHdrField) window.tflHdrField.classList.remove('border-primary');",
+          "   window.tflHdrField = e.target; e.target.classList.add('border-primary'); } });",
           " window.tflHdrInsert = function(tk) {",
           "  var f = window.tflHdrField; if (!f) return;",
           "  var a = f.selectionStart || 0, b = f.selectionEnd || 0;",
@@ -3690,7 +3704,7 @@ app_server <- function(input, output, session, start) {
     } else if (!is.na(j) && j >= 1L && j <= length(lines)) {
       lines[c(i, j)] <- lines[c(j, i)]
     }
-    bform$hdr <- lines
+    bform$hdr <- hdr_uid(lines)
     hdr_ver(hdr_ver() + 1L)
   })
   shiny::observeEvent(input[[bid("hdr_add")]], {
@@ -3701,14 +3715,30 @@ app_server <- function(input, output, session, start) {
                 key = (input[[bid("key")]] %||% bform$st$key)[1L],
                 text = NA_character_, align = NA_character_,
                 bold = NA_character_, border_bottom = "single")
-    bform$hdr <- c(list(new), lines)
+    bform$hdr <- hdr_uid(c(list(new), lines))
     hdr_ver(hdr_ver() + 1L)
   })
   shiny::observeEvent(input[[bid("hdr_preset")]], {
     pr <- input[[bid("hdr_preset")]]
     shiny::req(nzchar(pr), pr %in% names(header_presets()))
-    bform$hdr <- header_read(header_presets()[[pr]],
-                             input[[bid("key")]] %||% bform$st$key)
+    shiny::showModal(shiny::modalDialog(
+      title = t("Replace the column header?"),
+      sprintf(t("The lines below become the preset %s; what they say now is replaced."), pr),
+      footer = shiny::tagList(
+        .btn(bid("hdr_preset_no"), t("Cancel"), class = "btn-secondary"),
+        .btn(bid("hdr_preset_ok"), t("Replace"), class = "btn-primary"))))
+  })
+  shiny::observeEvent(input[[bid("hdr_preset_no")]], {
+    shiny::removeModal()
+    shiny::updateSelectInput(session, bid("hdr_preset"), selected = "")
+  })
+  shiny::observeEvent(input[[bid("hdr_preset_ok")]], {
+    shiny::removeModal()
+    pr <- input[[bid("hdr_preset")]]
+    shiny::req(nzchar(pr), pr %in% names(header_presets()))
+    shiny::updateSelectInput(session, bid("hdr_preset"), selected = "")
+    bform$hdr <- hdr_uid(header_read(header_presets()[[pr]],
+                                     input[[bid("key")]] %||% bform$st$key))
     hdr_ver(hdr_ver() + 1L)
     notify(sprintf(t("The header is the preset %s now."), pr))
   })
