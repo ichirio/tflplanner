@@ -962,7 +962,7 @@ app_server <- function(input, output, session, start) {
           message("tflplanner: the output of what failed:\n",
                   paste(e$detail, collapse = "\n"))
         }
-        notify(conditionMessage(e), "error")
+        notify(.error_view(conditionMessage(e), t), "error")
         NULL
       })
   }
@@ -1088,7 +1088,7 @@ app_server <- function(input, output, session, start) {
                     NULL
                   },
                   error = function(e) {
-                    notify(conditionMessage(e), "error")
+                    notify(.error_view(conditionMessage(e), t), "error")
                     NULL
                   })
     if (is.null(s)) return(FALSE)

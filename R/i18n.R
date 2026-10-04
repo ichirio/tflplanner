@@ -48,3 +48,41 @@ tflplanner_language <- function() {
 #' @rdname tr
 #' @export
 app_languages <- function() c(English = "en", "\u65e5\u672c\u8a9e" = "ja")
+
+# An error's message on screen: R's and tflplanner's errors are written in
+# English; the common ones get a lead in the app's language, the message
+# itself (the names in it) kept after it.  A message no pattern knows, and
+# the English app, show the message alone.
+.error_leads <- list(
+  c("^A study id is letters", "The study ID cannot be used"),
+  c("^Study '.+' is already registered", "The study is already registered"),
+  c("^A folder '.+' is already there", "A folder of that name is already there"),
+  c("^Not a study folder", "This is not a study folder"),
+  c("^No study '.+': not registered", "There is no such study"),
+  c("^Report '.+' is already on the list", "A report of that ID is already on the list"),
+  c("^Report '.+' already exists", "A report of that ID is already on the list"),
+  c("^An output_id is a single non-blank string", "The report ID is empty"),
+  c("^output_id '.+' has a character a file name cannot hold", "The report ID has a character a file name cannot hold"),
+  c("^A code list is an [.]xlsx or a [.]csv file","A code list is an .xlsx or a .csv file"),
+  c("^The code list has no column", "The code list lacks a column"),
+  c("^Reading [.].+ files needs the .+ package","A package is needed to read this file"),
+  c("^No file ", "The file is not there"),
+  c("^The study has no analyses in its ARD definition", "The ARD definition has no analyses"),
+  c("^The study ARD has no rows for .+: make its ARD first", "Make the report's ARD first"),
+  c("^There is an ARD function .+ already", "An ARD function of that name is already there"),
+  c("^An ARD function's name starts with ard_", "An ARD function's name starts with ard_"),
+  c("^The company standards' folder cannot be written", "The company standards' folder cannot be written"),
+  c("^The company has no ARD function", "The company standards have no such ARD function"),
+  c("^No ARD function ", "There is no such ARD function"),
+  c("^No dataset .+ in the ARD definition", "The ARD definition has no such dataset"),
+  c("^The report has no code yet", "The report has no code yet"))
+
+.error_view <- function(msg, t = identity) {
+  for (p in .error_leads) {
+    if (grepl(p[1L], msg)) {
+      lead <- t(p[2L])
+      return(if (identical(lead, p[2L])) msg else paste0(lead, "\uff1a", msg))
+    }
+  }
+  msg
+}
