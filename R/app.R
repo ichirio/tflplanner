@@ -3221,7 +3221,7 @@ app_server <- function(input, output, session, start) {
           if (isTRUE(r$guessed[i])) shiny::span(
             class = "small text-warning", title = t("Guessed from the ID: check it"), "*"))
       } else if (st == "missing") {
-        "—"
+        "\u2014"
       } else {
         now <- t(.type_labels[[r$type_now[i]]] %||% r$type_now[i])
         if (!is.na(r$type_toc[i]) && !identical(r$type_toc[i], r$type_now[i])) {
@@ -3245,11 +3245,11 @@ app_server <- function(input, output, session, start) {
         class = "small",
         sprintf("%s %s (%s): ", sheet_lab[[l$sheet[k]]], l$line[k], act_lab[[l$action[k]]]),
         if (l$action[k] == "ask") shiny::tagList(
-          shiny::span(class = "text-muted", toc_line_text(l$now[k])), " → ",
+          shiny::span(class = "text-muted", toc_line_text(l$now[k])), " \u2192 ",
           toc_line_text(l$toc[k]),
           shiny::checkboxInput(toc_id(paste0("ask_", k)), t("Use the TOC's text"), FALSE))
         else shiny::tagList(shiny::span(class = "text-muted", toc_line_text(l$now[k])),
-                            " → ", toc_line_text(l$toc[k])))))
+                            " \u2192 ", toc_line_text(l$toc[k])))))
       shiny::tags$tr(
         class = if (st == "missing") "table-warning",
         shiny::tags$td(id), shiny::tags$td(t(toc_status_labels[[st]])),
