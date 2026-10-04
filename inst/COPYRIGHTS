@@ -1,0 +1,16 @@
+tflplanner is copyright (c) 2026 Yoichi Masui and licensed under the Apache
+License, Version 2.0 (see LICENSE.md).
+
+It includes data from others' work:
+
+inst/sample/SAMPLE-01/data/adam/{adsl,adae,advs}.rds and adtte.rds
+  ADaM datasets of the pharmaverseadam R package
+  (https://pharmaverse.github.io/pharmaverseadam/), themselves made from the
+  CDISC pilot study (Xanomeline): ADSL and ADAE as they are, a subset of
+  ADVS (systolic blood pressure after 5 minutes lying down), and ADTTE
+  derived from ADSL and ADAE -- see data-raw/make-sample-study.R in the source
+  repository.
+  Copyright (c) Cytel Inc., F. Hoffmann-La Roche AG and GlaxoSmithKline LLC
+  (the copyright holders named by pharmaverseadam). Licensed under the
+  Apache License, Version 2.0 -- the same licence as tflplanner, whose text
+  is in LICENSE.md. Changes made here: the subsets and the derivation above.
