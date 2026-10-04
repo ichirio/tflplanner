@@ -93,10 +93,16 @@ catalog_add_files <- function(x, files) {
 #' @param group The column of the groups (`TRT01A`).
 #' @param variables The variables of the rows, in order.
 #' @param description The report's description.
+#' @param stack Run the analyses together, with `cards::ard_stack()` (a
+#'   `STACK` analysis with the data, analysis set and group, the numeric and
+#'   the other variables inside it; it counts the subjects per group and in
+#'   all), rather than one by one (`BIGN`, `CONT`, `CAT`).  Not when a
+#'   subject of the analysis set has no group: `ard_stack()` leaves them
+#'   out (the result's attribute `group_missing` says how many).
 #' @return The `tflplanner`.
 #' @export
 first_table <- function(x, output_id, path, data, population, group,
-                        variables, description = NA_character_) {
+                        variables, description = NA_character_, stack = TRUE) {
   id <- output_id
   miss <- setdiff(c(population, group, variables), names(data))
   if (length(miss)) {
@@ -145,14 +151,37 @@ first_table <- function(x, output_id, path, data, population, group,
   groups <- list(CONT = variables[kind == "continuous"],
                  CAT = variables[kind == "categorical"])
   groups <- groups[lengths(groups) > 0L]
-  an <- data.frame(
-    analysis_id = c("BIGN", names(groups)),
-    label = c("Subjects per group", rep(NA, length(groups))),
-    method = c("categorical", c(CONT = "continuous", CAT = "categorical")[names(groups)]),
-    dataset = dsn, population_id = pop,
-    by = c(NA, rep(group, length(groups))),
-    variables = c(group, vapply(groups, paste, "", collapse = " | ")),
-    stringsAsFactors = FALSE, row.names = NULL)
+  methods <- c(CONT = "continuous", CAT = "categorical")[names(groups)]
+  vars <- vapply(groups, paste, "", collapse = " | ")
+  # a subject of the analysis set with no group: ard_stack() would leave
+  # them out, so the analyses are made one by one
+  g <- data[[group]]
+  miss <- sum((is.na(g) | !nzchar(trimws(as.character(g)))) &
+                data[[population]] %in% "Y")
+  if (miss > 0L) stack <- FALSE
+  an <- if (isTRUE(stack)) {
+    data.frame(
+      analysis_id = c("STACK", names(groups)),
+      parent = c(NA, rep("STACK", length(groups))),
+      label = c(if (is.na(description)) "Summary table" else description,
+                rep(NA, length(groups))),
+      method = c(.stack_fn, methods),
+      dataset = c(dsn, rep(NA, length(groups))),
+      population_id = c(pop, rep(NA, length(groups))),
+      by = c(group, rep(NA, length(groups))),
+      variables = c(NA, vars),
+      args = c(".total_n = TRUE", rep(NA, length(groups))),
+      stringsAsFactors = FALSE, row.names = NULL)
+  } else {
+    data.frame(
+      analysis_id = c("BIGN", names(groups)),
+      label = c("Subjects per group", rep(NA, length(groups))),
+      method = c("categorical", methods),
+      dataset = dsn, population_id = pop,
+      by = c(NA, rep(group, length(groups))),
+      variables = c(group, vars),
+      stringsAsFactors = FALSE, row.names = NULL)
+  }
   x <- set_ard_rows(x, "analyses", id, an)
 
   # the table: the group as columns, one group per variable
@@ -208,6 +237,7 @@ first_table <- function(x, output_id, path, data, population, group,
     }
     x <- set_sheet_rows(x, "cells", id, ce)
   }
+  attr(x, "group_missing") <- miss
   x
 }
 
@@ -217,9 +247,12 @@ first_table <- function(x, output_id, path, data, population, group,
 .has_group_n <- function(x, output_id, group) {
   a <- ard_rows(x, "analyses", output_id)
   if (!nrow(a) || is.na(group)) return(FALSE)
+  stacks <- a$method %in% .stack_fn & a$by %in% group
+  stacks[stacks] <- vapply(a$args[stacks], function(g)
+    isTRUE(.stack_flags_of(g)$flags[[".by_stats"]]), NA)
   any((a$method %in% c("categorical", "subjects") & a$variables %in% group &
          is.na(a$by)) |
-        (a$method %in% "total_n" & a$by %in% group))
+        (a$method %in% "total_n" & a$by %in% group) | stacks)
 }
 
 #' Count the subjects per group for a report's column headers

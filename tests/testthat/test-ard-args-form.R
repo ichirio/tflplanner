@@ -32,8 +32,10 @@ test_that("the functions are the company's keywords and the catalog, by category
   expect_true("cards::ard_continuous" %in%
                 .ard_fn_entries(.std_ard_methods(), tflspec::tfl_ard_functions(),
                                 current = "cards::ard_continuous")$value)
-  # functions that run others: in preparation
-  expect_identical(unique(e$state[e$value == "cards::ard_stack"]), "later")
+  # ard_stack() is offered (analyses inside it, #107); the other functions
+  # that run others are not yet
+  expect_identical(unique(e$state[e$value == "cards::ard_stack"]), "ok")
+  expect_identical(unique(e$state[e$value == "cards::ard_strata"]), "later")
   # a study's own function is kept
   own <- .ard_fn_entries(.std_ard_methods(), tflspec::tfl_ard_functions(),
                          current = "mypkg::ard_mine")

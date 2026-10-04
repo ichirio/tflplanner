@@ -783,7 +783,7 @@ Error: its program failed (ARD tab > Study ARD),エラー：プログラムが�
 Choose a report in the sidebar and add a row to its analyses: a click on a row shows it here as a form.,サイドバーで帳票を選び、解析の行を足してください。グリッドの行をクリックすると、ここにフォームで表示します。
 New analysis,新しい解析
 %s is not a report yet: add it on the Reports tab to make its table.,%s はまだ帳票ではありません。表を作るには、帳票タブで追加してください。
-Analysis %s of %s. A click on another row of the grid edits that one.,%2$s の解析 %1$s。グリッドの別の行をクリックすると、その行を編集します。
+Analysis %s of %s. A click on another analysis above edits that one.,%2$s の解析 %1$s。上の一覧で別の解析を押すと、その解析を編集します。
 Analysis ID,解析 ID
 What to compute,計算するもの
 Analysis set,解析対象集団
@@ -1650,3 +1650,63 @@ Show the reports with no change,変更なしの帳票も表示
 * = the type is guessed from the ID: check it before taking it in.,* = 種別は ID から推測しました。取り込む前に確かめてください。
 %d lines edited here were kept instead of the TOC's text.,ここで直した行 %d 行は、TOC の文にせずそのままにしました。
 New reports: %s. Make their content from the list's buttons.,新しい帳票: %s。一覧のボタンから中身を作ってください。
+Details (the sheet),詳細（シート）
+Run together with other analyses...,ほかの解析とまとめる…
+The order of the variables is the order of the rows of a table that does not order them itself.,変数の並びは、並び順を持たない表では行の順になります。
+"Inside a stack this method keeps every result it gives: to keep only some, make it an analysis of its own.",まとめた中では、この関数の結果は全部残ります。一部だけ残すなら、まとまりから外して単独の解析にしてください。
+%s is computed by %s as well: make one of them an analysis of its own.,%s は %s でも計算しています。どちらかを単独の解析にしてください。
+%s runs analyses together now: add them inside it.,%s はまとめて実行する解析になりました。中に解析を足してください。
+%s has no analyses yet.,%s にはまだ解析がありません。
+by,群
+definition error,定義の誤り
+ARD: %d messages,ARD: メッセージ %d 件
+"The analyses inside a stack are computed in this order, and so are their variables: a table whose variables have no order of their own shows them so.",まとめた中の解析は、この順に計算されます（変数の順も）。並び順を持たない表はこの順で出ます。
+Analysis %s of %s: it runs the analyses inside it together (cards::ard_stack).,%2$s の解析 %1$s: 中の解析をまとめて実行します（cards::ard_stack）。
+What it adds to the analyses inside,中の解析に足すもの
+The analyses inside,中の解析
+None yet: add one.,まだありません。足してください。
+Add an analysis inside,中に解析を足す
+Ungroup...,まとまりをほどく…
+Delete...,削除…
+Inside %s (%s): it runs on %s's data%s%s.,%1$s（%2$s）の中の解析: %3$s のデータ%4$s%5$sで計算します。
+", %s","（%s）"
+Open %s,%s を開く
+Another condition or other groups for this one alone:,この解析だけ条件や群を変えるなら:
+Take it out of %s,%s から外す
+"%s is an analysis of its own again, on %s's data and groups.",%1$s は単独の解析に戻りました（%2$s のデータと群）。
+"%s is the last analysis inside %s: %s goes.",%1$s は %2$s の中の最後の解析です。%3$s は無くなります。
+Ungroup,まとまりをほどく
+"The analyses inside %s become analyses of their own, on its data, condition and groups; %s goes.",%1$s の中の解析は、同じデータ・条件・群の単独の解析になります。%2$s は無くなります。
+Delete %s.,%s を削除します。
+"Keep the analyses inside, as analyses of their own",中の解析は単独の解析として残す
+Delete them too,中の解析も削除する
+Run analyses together (cards::ard_stack),解析をまとめて実行（cards::ard_stack）
+"One call on the same data, analysis set, condition and groups: it also counts the subjects per group (the column headers' N). Subjects with no group are not counted.",同じデータ・解析対象集団・条件・群の解析を 1 回の呼び出しにします。群ごとの人数（列見出しの N）も数えます。群が空の人は数えません。
+Cannot be inside:,入れられないもの:
+Run them together,まとめる
+Choose the analyses.,解析を選んでください。
+"%s does not count the subjects per group: the report's BIGN does already (two would break the column headers' N). Delete BIGN and tick it on %s to let the stack count them.",%1$s は群ごとの人数を数えません（帳票の BIGN が数えているため。二重になると列見出しの N が壊れます）。%2$s に数えさせるなら、BIGN を消して %2$s のチェックを入れてください。
+Run the analyses together (cards::ard_stack),解析をまとめて実行する（cards::ard_stack）
+"%d subjects of the analysis set have no %s: ard_stack does not count them, so the analyses are made one by one.",解析対象集団に %2$s が空の人が %1$d 人います。ard_stack はこの人たちを数えないので、解析は 1 つずつ作ります。
+One call computes the rows and the subjects per group (the column headers' N).,1 回の呼び出しで、行と群ごとの人数（列見出しの N）を計算します。
+The subjects per group (the column headers' N),群ごとの人数（列見出しの N）
+The subjects in all,全体の人数
+Rows for the missing values,欠測の件数の行
+The variables' labels and types,変数のラベルと型
+inside another already,既に別のまとまりの中
+this kind cannot run inside one,この種類はまとまりに入れられない
+other data or analysis set,データか解析対象集団が違う
+another condition,条件が違う
+other groups,群が違う
+other strata,層が違う
+another denominator,分母が違う
+a variable it has already,同じ変数が既にある
+This report's ARD: %s,この帳票の ARD: %s
+ -- %s counts them now,（今は %s が数えています）
+%s deleted: %s counts the subjects per group now.,%1$s を削除しました。群ごとの人数は %2$s が数えます。
+"Make %s: the subjects per group and the total N it gave, as analyses of their own (the column headers' N needs them)",%s を作る: 群ごとの人数と全体の N を単独の解析として残す（列見出しの N に要ります）
+The report counts the subjects per group (and in all) already: no rows are made.,帳票が群ごとの人数（と全体の人数）を既に数えているので、行は作りません。
+Its ID is %s (it can be changed on its form).,ID は %s です（後でフォームで変えられます）。
+"%s counts the subjects per group, and so does %s: a column header's N shows none then. Keep one of them.",%1$s が群ごとの人数を数えていて、%2$s も数えています。このままでは列見出しの N が出ません。どちらか 1 つにしてください。
+the stack can count the subjects per group itself (this analysis counts them now),まとまりが群ごとの人数を数えられます（今はこの解析が数えています）
+the stack can count the subjects in all itself (this analysis counts them now),まとまりが全体の人数を数えられます（今はこの解析が数えています）

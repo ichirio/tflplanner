@@ -1,5 +1,37 @@
 # tflplanner (development version)
 
+- **Analyses run together, on screen** (`cards::ard_stack()`, #107).  The
+  ARD tab opens on an outline of the report's analyses (the sheet folded
+  under it): the analyses inside a stack under it, moved up and down (their
+  order is the ARD's, and a table's whose variables have no order), and per
+  analysis the definition's errors and the ARD's warnings and errors
+  (`tflspec::tfl_ard_conditions()`).  A stack's own form says on what it
+  runs them (data, analysis set, condition, groups), what it adds (the
+  subjects per group, the total N, missing rows, attributes: four ticks,
+  written only when not cards' default), lists the
+  analyses inside (open, add one), and ungroups or deletes it.  One inside
+  has no data of its own (the stack's said, with "take it out" for another
+  condition or groups), offers only what can run inside, keeps statistics
+  only where tflspec allows, and refuses a variable another one inside
+  computes.  "Run together with other analyses..." groups an analysis with
+  the others that can (those that cannot listed with why); when the report
+  counts the subjects per group already (BIGN), the stack does not
+  (`.by_stats = FALSE`: two would break the column headers' N).
+  Ungrouping, taking out the last one or deleting a stack keeps, as
+  analyses of their own, the subjects per group and the total N it gave.
+  The new-table wizard runs its analyses together (STACK, with the
+  numbers and the counts inside it), unless a subject of the analysis set
+  has no group (said, then one by one).  ard_strata() / ard_pairwise() come
+  later.  After S1's screen review: the subjects per group counted twice
+  (BIGN and a stack that counts them, or two BIGN) are found and marked in
+  the outline, said when the stack's tick is set (with "Delete BIGN"), and
+  ungrouping makes no BIGN / TOTAL the report has already; the stack's tick
+  says when BIGN counts them; `.overall` is left to the other arguments (a
+  table may make its Total column as well); the outline says whether the
+  report's ARD is made; the grouping dialog says the stack can count what
+  BIGN and TOTAL count, and the stack's ID; inside a stack, only the
+  categories that can run there.
+
 - **The ARS of a study names its own ARD functions** (tflspec #120):
   `export_ars()` gives tflspec the study folder, so an analysis whose method
   is a function the study keeps (`programs/ard/functions/`) is written with
