@@ -198,11 +198,14 @@ test_that("a study runs end to end and reports what it produced", {
 
   # a file the program sources (the figure setup) changes: its reports too
   f <- file.path(s$path, "programs", "tfl", "DM.R")
+  extra <- file.path(s$path, "programs", "tfl", "extra.R")
+  writeLines("x <- 1", extra)
   writeLines(c(readLines(f), 'source("programs/tfl/extra.R")'), f)
   Sys.sleep(1.1)
   st <- run_study(s, "DM")
+  expect_equal(st$status[1], "ok")
   Sys.sleep(1.1)
-  writeLines("x <- 1", file.path(s$path, "programs", "tfl", "extra.R"))
+  writeLines("x <- 2", extra)
   expect_equal(study_status(s)$status[1], "outdated")
 
   # a program that fails
