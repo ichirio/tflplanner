@@ -7,8 +7,8 @@
   analysis the definition's errors and the ARD's warnings and errors
   (`tflspec::tfl_ard_conditions()`).  A stack's own form says on what it
   runs them (data, analysis set, condition, groups), what it adds (the
-  subjects per group, the total N, a Total column, missing rows,
-  attributes: five ticks, written only when not cards' default), lists the
+  subjects per group, the total N, missing rows, attributes: four ticks,
+  written only when not cards' default), lists the
   analyses inside (open, add one), and ungroups or deletes it.  One inside
   has no data of its own (the stack's said, with "take it out" for another
   condition or groups), offers only what can run inside, keeps statistics
