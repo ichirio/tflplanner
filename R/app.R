@@ -3211,12 +3211,16 @@ app_server <- function(input, output, session, start) {
     output[[imp_id("result")]] <- shiny::renderUI(shiny::tagList(
       shiny::div(class = if (bad) "alert alert-danger py-1 small" else "alert alert-success py-1 small",
                  msg),
-      if (!is.null(probs) && nrow(probs)) shiny::tags$table(
-        class = "table table-sm small",
-        shiny::tags$tbody(lapply(seq_len(nrow(probs)), function(i) shiny::tags$tr(
-          shiny::tags$td(probs$level[i]),
-          shiny::tags$td(if ("output_id" %in% names(probs)) probs$output_id[i] else ""),
-          shiny::tags$td(probs$message[i] %||% "")))))))
+      if (!is.null(probs) && nrow(probs)) {
+        # the check's messages in the session's language (S1's .check_view())
+        pv <- .check_view(probs, t)
+        shiny::tags$table(
+          class = "table table-sm small",
+          shiny::tags$tbody(lapply(seq_len(nrow(pv)), function(i) shiny::tags$tr(
+            shiny::tags$td(pv$level[i]),
+            shiny::tags$td(if ("output_id" %in% names(pv)) pv$output_id[i] else ""),
+            shiny::tags$td(pv$message[i] %||% "")))))
+      }))
   })
   shiny::observeEvent(input$imp_use, {
     r <- imp_row()
