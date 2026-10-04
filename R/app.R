@@ -2496,7 +2496,7 @@ app_server <- function(input, output, session, start) {
       shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-center mb-1",
         shiny::span(class = "small text-muted",
-                    sprintf(t("Analysis %s of %s. A click on another row of the grid edits that one."),
+                    sprintf(t("Analysis %s of %s. A click on another analysis above edits that one."),
                             r$analysis_id, tg)),
         .btn("ard_an_new", t("New analysis"), class = "btn-sm btn-outline-primary")),
       shiny::p(class = "small text-muted mb-1",
@@ -3056,7 +3056,7 @@ app_server <- function(input, output, session, start) {
                         .btn("ard_an_new", t("New analysis"), class = "btn-sm btn-outline-primary")))
     }
     o <- .an_outline(a)
-    pick <- shiny::isolate(st_row())$analysis_id
+    pick <- tryCatch(st_row()$analysis_id, error = function(e) NA)
     cond <- st_conditions()
     js <- function(input, value) sprintf(
       "Shiny.setInputValue('%s', %s, {priority: 'event'}); event.stopPropagation();",
@@ -3071,11 +3071,11 @@ app_server <- function(input, output, session, start) {
                                             gsub(" | ", ", ", r$by, fixed = TRUE)) else "")
       } else paste(.split_bar(r$variables), collapse = ", ")
       own <- if (role == "single") {
-        paste0(" \u00b7 ", data_words(r$dataset, r$population_id),
-               if (!.is_blank(r$by)) paste0(" \u00b7 ", t("by"), " ",
-                                            gsub(" | ", ", ", r$by, fixed = TRUE)) else "",
-               if (!.is_blank(r$where)) paste0(" \u00b7 ", r$where) else "")
+        c(data_words(r$dataset, r$population_id),
+          if (!.is_blank(r$by)) paste(t("by"), gsub(" | ", ", ", r$by, fixed = TRUE)),
+          if (!.is_blank(r$where)) r$where)
       }
+      what <- paste(c(if (nzchar(what)) what, own), collapse = " \u00b7 ")
       probs <- st_problems(tg, id)
       cn <- if (!is.null(cond) && nrow(cond) && "analysis_id" %in% names(cond))
         cond[cond$analysis_id %in% id, , drop = FALSE] else NULL
@@ -3091,7 +3091,7 @@ app_server <- function(input, output, session, start) {
                    shiny::strong(id), " ",
                    shiny::span(fn_label(r$method)),
                    if (!.is_blank(r$label)) shiny::span(class = "text-muted", paste0(" \u2014 ", r$label)),
-                   shiny::div(class = "text-muted", what, own)),
+                   shiny::div(class = "text-muted", what)),
         if (length(probs)) shiny::span(class = "badge text-bg-danger", title = paste(probs, collapse = "\n"),
                                        t("definition error")),
         if (!is.null(cn) && nrow(cn)) shiny::span(
@@ -3148,7 +3148,8 @@ app_server <- function(input, output, session, start) {
     .attributes = "The variables' labels and types")
   # a stack's own form: on what it runs the analyses inside, what it adds,
   # and those analyses (opened, moved, one added)
-  stack_form_ui <- function(r, tg) {
+  stack_form_ui <- function(r, tg) shiny::isolate({
+    # drawn once: the fields' own inputs must not draw it again
     blank_na <- function(x) if (is.na(x)) "" else x
     a <- shiny::isolate(st_rows())
     kids <- a[.stack_kids(a, r$analysis_id), , drop = FALSE]
@@ -3211,7 +3212,7 @@ app_server <- function(input, output, session, start) {
         class = "mt-2", open = NA,
         shiny::tags$summary(class = "small", t("This analysis as code (after Apply)")),
         shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
-  }
+  })
   # one inside a stack: on what it runs, said; how to change that for it
   stack_inside_note <- function(r) {
     p <- st_parent_of(r)
