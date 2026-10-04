@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- The ARD definition's two new columns, `parent` (an analysis run inside
+  cards::ard_stack() / ard_strata() / ard_pairwise()) and `post` (steps on
+  the ARD after the call), have their help in Japanese (tflspec #96, #97).
+  They appear in the analyses grid as every column does.  Needs tflspec >=
+  0.0.24.9028.
+
 - **The analysis form names any ard_* function, and asks for its arguments**
   (#79).  "What to compute" is a list by category -- the company's keywords
   first, then every function of tflspec's catalog (summaries, hierarchical

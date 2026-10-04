@@ -143,7 +143,8 @@ test_that("a row typed into the spare row from a dropdown column is a new row", 
     full[c("analysis_id", "method", "dataset", "variables")] <-
       list("A1", "continuous", "ADSL", "AGE")
     # the new row arrives with fewer cells than the grid has columns
-    short <- list(NA, NA, "categorical")[seq_len(match("method", cols))]
+    short <- as.list(rep(NA, match("method", cols)))
+    short[[match("method", cols)]] <- "categorical"
     key <- paste("ard", "analyses", "T1", rv$ver, sep = "|")
     session$setInputs(hot_ard_analyses = analyses_payload(
       list(unname(full), short), key))
