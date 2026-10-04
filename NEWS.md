@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **The study ARD's errors and warnings, listed** (#109).  cards keeps an
+  analysis's errors and warnings in the ARD and carries on; the Study ARD
+  tab now lists them for the whole study (`study_ard_conditions()`, from
+  `tflspec::tfl_ard_conditions()`: errors first, an errors-only switch),
+  their counts are in the tab's title, and a row opens that analysis.  The
+  messages stay cards' own, in English.
+
 - **The company's ARD functions made from tflspec's templates are listed**
   (tflspec #126): `company_ard_functions()` reads the standards folder with
   `tflspec::tfl_ard_function_info()` -- a function written as
