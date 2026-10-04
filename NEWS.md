@@ -6,7 +6,9 @@
   line, checked identical to it), a design built from empty, and user code
   -- on the screens as they are (Reports > Content, the first step; Run,
   preview the selection).  New screenshots; `data-raw/make-article-
-  screenshots.R` drives the new screens (#120).
+  screenshots.R` drives the new screens (#120).  The designer's figure-wide
+  "Additional calls (plot.add)", the `call` piece's fields and the
+  whole-script templates' names (from tflspec) are in Japanese too.
 
 - **The sample study has a figure made with the designer** (#114):
   F-14-2-3, Kaplan-Meier curves of the time to the first dermatologic
