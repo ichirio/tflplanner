@@ -130,12 +130,23 @@ run_app <- function(study = NULL, ..., stop_on_close = FALSE) {
 planner_app <- function(study = NULL, stop_on_close = FALSE) {
   if (!.is_set_up()) setup_tflplanner(home = NULL)
   .refresh_launcher()
-  start <- if (!is.null(study)) open_study(study)
+  # the study is checked here, once; each session (a new tab, a reload)
+  # opens it again from its folder -- as last saved, not as it was when the
+  # app started (a copy taken at start would be written back by a save)
+  start_path <- if (!is.null(study)) open_study(study)$path
   shiny::shinyApp(function(req) app_ui(tflplanner_language()),
                   function(input, output, session) {
                     if (isTRUE(stop_on_close)) .stop_when_closed(session)
+                    start <- .session_study(start_path)
                     app_server(input, output, session, start)
                   })
+}
+
+# the study a session starts on, read from its folder now; NULL (the last
+# study, as with no study given) when it cannot be opened any more
+.session_study <- function(path) {
+  if (is.null(path)) return(NULL)
+  tryCatch(open_study(path), error = function(e) NULL)
 }
 
 # Stop the app once no browser tab is left: a tab that closes starts a

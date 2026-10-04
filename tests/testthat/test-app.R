@@ -74,3 +74,26 @@ test_that("the app starts with a study given (run_app(\"S1\"))", {
   expect_no_error(shiny::withReactiveDomain(
     s, app$serverFuncSource()(s$input, s$output, s)))
 })
+
+test_that("each session opens the study as last saved, not as at start", {
+  local_home()
+  two_studies()
+  app <- planner_app("S1")
+  # saved after the app started (by an earlier session, or outside it)
+  s1 <- open_study("S1")
+  s1$planner <- add_output(s1$planner, "C", data_code = "c <- 3")
+  save_study(s1)
+  # a new session (a reload, a new tab) sees it
+  shiny::testServer(app, {
+    expect_true("C" %in% start$planner$outputs$output_id)
+  })
+  # the folder as it is now, whatever the copy taken at start said
+  shiny::testServer(app, {
+    expect_identical(start$path, s1$path)
+  })
+})
+
+test_that("a session falls back to no study when the folder is gone", {
+  expect_null(.session_study(NULL))
+  expect_null(.session_study(file.path(tempdir(), "no-such-study")))
+})

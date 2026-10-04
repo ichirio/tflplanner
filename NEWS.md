@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **A reload no longer brings back the study as it was at start** (#118).
+  `run_app("<study>")` opened the study once, when the app started, and
+  each session (a new tab, a reload) began from that copy: what was saved
+  since -- in the app or outside it -- was not on screen, and a save wrote
+  the old state back.  Each session now opens the study from its folder.
+
 - **ARD functions of one's own, on screen** (#115).  A new "Own functions"
   tab on the ARD tab lists the company's (the standards folder) and the
   study's (`programs/ard/functions/`, the study key `source`) side by side
