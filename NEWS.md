@@ -1,5 +1,9 @@
 # tflplanner (development version)
 
+- The study tab no longer shows an error in place of the study (since the
+  `input/ard/` folder came in): each folder's note is looked up by its name,
+  so a new folder cannot break it, and `input/ard/` has its note.
+
 - **ARDs made elsewhere** (tflspec #101): `import_ard()` takes an ARD (rds,
   the JSON / YAML of `tflspec::tfl_write_ard()`, XPT, CSV) into the study's
   `input/ard/` -- a folder nothing else writes to, so making the study ARD

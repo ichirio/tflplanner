@@ -184,3 +184,16 @@ test_that("a study runs end to end and reports what it produced", {
   st <- run_study(s, "DM")
   expect_equal(st$status[1], "error")
 })
+
+test_that("every study folder has its note on the study tab", {
+  lay <- study_layout()
+  notes <- .study_folder_notes(names(lay))
+  expect_length(notes, length(lay))
+  expect_true(all(nzchar(notes)))
+  # a folder with no note yet shows none instead of breaking the tab
+  expect_identical(.study_folder_notes(c("adam", "new_one"))[2], "")
+  # and every note is translated
+  tr <- utils::read.csv(system.file("i18n", "strings.csv", package = "tflplanner"),
+                        encoding = "UTF-8", check.names = FALSE)
+  expect_true(all(notes %in% tr$en))
+})

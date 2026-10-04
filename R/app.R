@@ -35,6 +35,27 @@
 .type_idle_tabs <- list(table = character(), figure = "ard", listing = "ard")
 
 # Text cut to `n` characters, with an ellipsis.
+# What each study folder holds, by its study_layout() name (a folder with no
+# note yet shows none, so a new folder never breaks the study tab).
+.study_folder_notes <- function(nm, t = identity) {
+  notes <- c(
+    adam = "Input data: ADaM", sdtm = "Input data: SDTM",
+    other = "Input data: other",
+    spec = "Definition workbooks (written on save)",
+    programs_ard = "ARD programs: one per output, ard_setup.R, autoexec_ard.R",
+    programs_tfl = "Report programs, autoexec_report.R",
+    ard = "Working data: the study ARD (ard.rds)",
+    tfl = "Working reports: RTF",
+    ard_import = "ARDs made elsewhere, taken in (imports.csv lists them)",
+    runs = "Official runs: one batch folder each (logs, results, code)",
+    logs_preview = "What a report program printed in its last preview")
+  out <- unname(notes[nm])
+  has <- !is.na(out)
+  out[has] <- vapply(out[has], function(x) t(x), character(1))
+  out[!has] <- ""
+  out
+}
+
 .ellipsis <- function(x, n) {
   ifelse(nchar(x) > n, paste0(substr(x, 1L, n - 1L), "\u2026"), x)
 }
@@ -1597,15 +1618,8 @@ app_server <- function(input, output, session, start) {
       shiny::tags$details(
         shiny::tags$summary(t("Folders")),
         shiny::tags$pre(class = "small", paste(
-          sprintf("%-15s %s", paste0(lay, "/"), t(c(
-            "Input data: ADaM", "Input data: SDTM", "Input data: other",
-            "Definition workbooks (written on save)",
-            "ARD programs: one per output, ard_setup.R, autoexec_ard.R",
-            "Report programs, autoexec_report.R",
-            "Working data: the study ARD (ard.rds)",
-            "Working reports: RTF",
-            "Official runs: one batch folder each (logs, results, code)",
-            "What a report program printed in its last preview"))),
+          sprintf("%-15s %s", paste0(lay, "/"),
+                  .study_folder_notes(names(lay), t)),
           collapse = "\n"))),
       shiny::fileInput(
         "import",

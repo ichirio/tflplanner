@@ -1381,3 +1381,4 @@ Chosen: %s,選択中: %s
 (default: %s),（既定: %s）
 See ?%s for this argument.,この引数は ?%s を見てください。
 Not offered by the builder: kept as written.,画面では扱わない関数です。書いたまま残します。
+"ARDs made elsewhere, taken in (imports.csv lists them)",よそで作った ARD の取り込み（imports.csv に一覧）
