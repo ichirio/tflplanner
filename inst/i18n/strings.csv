@@ -1573,4 +1573,3 @@ Later,あとで
 %s: now user-code reports. Their programs are to be made again (Save).,%s をユーザーコードの帳票にしました。プログラムは作り直しが要ります（保存）。
 This figure is written by hand: it can be a user-code report.,この図は手書きのコードです。ユーザーコードの帳票にできます。
 Make it a user-code report,ユーザーコードの帳票にする
-"table / listing / figure / user (the report's own code leaves `content`: a data frame, rtftable pages, rtfplot figures or a list of them); blank: table.",table / listing / figure / user（帳票自身のコードが `content` を残す：data.frame、rtftable のページ、rtfplot の図、またはそれらのリスト）。空欄 = table。
