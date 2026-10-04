@@ -17,7 +17,9 @@
 # written by hand (it leaves `plot`, or `content`).
 
 .lf_sheet_names <- c("listings", "listing_cols", "figures")
-.lf_figure_cols <- c("output_id", "datasets")
+# figures: the datasets a figure written by hand reads; also a user-code
+# report's, and whether that one reads its ARD (`ard`, TRUE / blank)
+.lf_figure_cols <- c("output_id", "datasets", "ard")
 
 .empty_lf <- function() {
   c(unclass(tflspec::tfl_listing_spec()),

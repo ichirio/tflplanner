@@ -74,7 +74,7 @@
                                  "{col}\n(N={n})\nn (%)", "Characteristic",
                                  "{col1}", "{col2}", "(N={n:sum})")),
       ch("cells", "digits", c("0", "1", "2", "1,2", "0,1", "2,3")),
-      ch("report", "type", c("table", "listing", "figure")),
+      ch("report", "type", c("table", "listing", "figure", "user")),
       ch("report", c("auto_section", "auto_title", "page_header",
                      "page_footer")[rep(1:4, each = 2)], rep(.bool, 4)),
       ch("page", "orientation", c("portrait", "landscape")),

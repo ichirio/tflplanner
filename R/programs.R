@@ -58,6 +58,11 @@ report_info <- function(x, output_id) {
       l <- x$lf$listings
       l$dataset[!is.na(l$output_id) & l$output_id == output_id]
     },
+    user = {
+      f <- x$lf$figures
+      unlist(strsplit(f$datasets[!is.na(f$output_id) &
+                                   f$output_id == output_id], "\\s*\\|\\s*"))
+    },
     figure = {
       d <- (x$fig_designs %||% list())[[output_id]]
       steps <- d$data %||% list()
@@ -213,6 +218,10 @@ data_lines <- function(x, output_id, todo = TRUE) {
     l <- .listing_lines(x, output_id, rework = code)
     if (!is.null(l)) return(c(setup, l))
   }
+  # user code: its datasets, its ARD when it reads one, its own code
+  if (identical(type, "user")) {
+    return(c(setup, .user_lines(x, output_id, info)))
+  }
   # a figure: its datasets read for it, its data code the plot
   if (identical(type, "figure")) {
     design <- fig_design(x, output_id)
@@ -310,6 +319,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     .section("Data"),
     paste0("# Leaves `", obj, "`: ", switch(type,
       figure = "the figure(s) of the report.",
+      user = "what the report's own code made (tables, figures).",
       listing = "the listing's rtftable pages.",
       "the normalized ARD (normalize_ard()) the table is built from.")),
     paste0("# Input data are in ", lay[["adam"]], "/, ", lay[["sdtm"]],

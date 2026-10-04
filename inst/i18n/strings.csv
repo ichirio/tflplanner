@@ -1556,3 +1556,21 @@ This ARD was taken out: take it in again to use it.,この ARD は外されて�
 Take out %s?,%s を外しますか？
 "The file and its record stay in input/ard/ (marked taken out), so what a report was made from is not forgotten.",ファイルと記録は input/ard/ に残ります（「外した」の印がつきます）。帳票が何から作られたかは失われません。
 "%s uses an ARD that was taken out (%s): take it in again, or go back to its own ARD definition.",%s は外した ARD（%s）を使っています。もう一度取り込むか、ARD の定義に戻してください。
+User code,ユーザーコード
+Write the code,コードを書く
+"Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them. The report's titles, footnotes, header and page come from its settings (the Page tab), as for any report.",あなたのコードが `content` を残します（data.frame、rtftable のページ、ggplot、またはそれらのリスト）。タイトル・脚注・ヘッダー・ページは、ほかの帳票と同じく帳票の設定（ページのタブ）から付きます。
+Try it,試す
+Run the code,試しに実行
+"Runs the report's code in a fresh R process from the study folder, as its program will, and shows what it left: the first table page, the first figure.",帳票のコードを、プログラムと同じく試験フォルダから新しい R のプロセスで実行し、残したものを出します（最初の表のページ、最初の図）。
+Data it reads (the program reads them first),読むデータ（プログラムが最初に読みます）
+"Use this report's ARD (`ard`): its ARD definition's rows, or the ARD taken in for it",この帳票の ARD を使う（`ard`）：ARD の定義から作った分、または取り込んだ ARD
+%s is a user-code report: its own rows of the table sheets (%s) are not used.,%s はユーザーコードの帳票です。表のシート（%s）の自分の行は使われません。
+Not run yet.,まだ実行していません。
+"It ran: %d table page(s), %d figure(s).",実行できました：表 %d ページ、図 %d 枚。
+"These figures are written by hand: %s. They can be user-code reports (the fourth kind): the same code, its datasets, and `content`.",次の図は手書きのコードです: %s。ユーザーコードの帳票（4 つ目の型）にできます（コードと読むデータはそのまま、`content` を残す形に）。
+Convert,変換する
+Later,あとで
+%s: now user-code reports. Their programs are to be made again (Save).,%s をユーザーコードの帳票にしました。プログラムは作り直しが要ります（保存）。
+This figure is written by hand: it can be a user-code report.,この図は手書きのコードです。ユーザーコードの帳票にできます。
+Make it a user-code report,ユーザーコードの帳票にする
+"table / listing / figure / user (the report's own code leaves `content`: a data frame, rtftable pages, rtfplot figures or a list of them); blank: table.",table / listing / figure / user（帳票自身のコードが `content` を残す：data.frame、rtftable のページ、rtfplot の図、またはそれらのリスト）。空欄 = table。
