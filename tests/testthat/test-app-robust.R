@@ -460,10 +460,13 @@ test_that("tflspec's column help (English) is shown in the app's language", {
 })
 
 test_that("a report's kind says where it is made, and the tabs it has nothing on", {
-  expect_identical(names(.type_moves), c("table", "figure", "listing"))
+  expect_identical(names(.type_moves), c("table", "figure", "listing", "user"))
   expect_identical(names(.type_moves$table), c("ard", "tables"))
   expect_true(all(unlist(lapply(.type_moves, names)) %in%
-                    c("ard", "tables", "designer", "lf")))
+                    c("ard", "tables", "designer", "lf", "usercode")))
   expect_identical(.type_idle_tabs$figure, "ard")
   expect_length(.type_idle_tabs$table, 0L)
+  # every kind of report has its moves and its idle tabs
+  expect_setequal(names(.type_moves), report_types())
+  expect_setequal(names(.type_idle_tabs), report_types())
 })

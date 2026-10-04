@@ -33,7 +33,7 @@ report_sheets <- function() {
 
 #' @rdname table_sheets
 #' @export
-report_types <- function() c("table", "listing", "figure")
+report_types <- function() c("table", "listing", "figure", "user")
 
 #' Read a study's code list into its definition
 #'
@@ -330,17 +330,7 @@ add_output <- function(x, output_id, description = NA_character_,
     stop("Report '", id, "' is already on the list.", call. = FALSE)
   }
   type <- match.arg(type, report_types())
-  if (!identical(report_info(x, id)$type, type)) {
-    r <- x$sheets$report
-    i <- which(!is.na(r$output_id) & r$output_id == id)
-    if (!length(i)) {
-      r[nrow(r) + 1L, ] <- NA_character_
-      i <- nrow(r)
-      r$output_id[i] <- id
-    }
-    r$type[i] <- type
-    x$sheets$report <- r
-  }
+  if (!identical(report_info(x, id)$type, type)) x <- .set_report_type(x, id, type)
   x$outputs <- rbind(x$outputs, data.frame(
     output_id = id, description = as.character(description),
     data_code = as.character(data_code),
@@ -591,4 +581,19 @@ check_planner <- function(x) {
                                           message = character())), res))
   rownames(out) <- NULL
   out
+}
+
+# A report's type, on its report row (added when it has none)
+.set_report_type <- function(x, output_id, type) {
+  type <- match.arg(type, report_types())
+  r <- x$sheets$report
+  i <- which(!is.na(r$output_id) & r$output_id == output_id)
+  if (!length(i)) {
+    r[nrow(r) + 1L, ] <- NA_character_
+    i <- nrow(r)
+    r$output_id[i] <- output_id
+  }
+  r$type[i] <- type
+  x$sheets$report <- r
+  x
 }

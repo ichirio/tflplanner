@@ -1,5 +1,23 @@
 # tflplanner (development version)
 
+- **The fourth kind of report: user code** (#91).  `report_types()` has
+  `user`: the report's own code leaves `content` -- a data frame, rtftable
+  pages, a ggplot (the program makes it an rtfplot) or a list of them --
+  and the report is dressed from its settings as any other (page, header,
+  footer, titles, footnotes).  Its program reads the datasets the report
+  names and, when the report says so, its ARD as `ard` (its ARD
+  definition's rows, or the ARD taken in for it), then runs the code; a
+  program whose code leaves no `content` stops saying so.  The content tab
+  of such a report has the contract in one line, the datasets, the ARD
+  switch, the code (the report's data code, the same as the Code tab's) and
+  "Run the code", which runs it in a fresh R process from the study folder
+  (`preview_user()`) and shows the first table page and figure.  Its own
+  rows of the table sheets are pointed out as not used.  A figure written
+  by hand is offered -- once when the study is opened, and on its own screen
+  -- to be made a user-code report, and is changed only when asked
+  (`make_user_report()`: `content <- plot` added when the code leaves
+  `plot`); its program is then to be made again.
+
 - **ARDs made elsewhere are taken in on the ARD tab** (#89).  A new tab,
   "ARDs taken in", lists the record of `input/ard/` (who made each ARD,
   when, for which reports, its check, removed or in use) with the reports
