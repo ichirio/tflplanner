@@ -1498,3 +1498,4 @@ the column fmt_fn has cards' old name (fmt_fun since cards 0.6.1),列 fmt_fn は
 "the cells are written for %s, which the ARD does not analyse",セルが %s 用に書かれていますが、ARD はその変数を解析していません
 "a template reads {%s}, a statistic the ARD does not have",テンプレートが {%s} を読みますが、ARD にその統計量がありません
 "cards' check of the ARD's shape: ",cards による ARD の形の確認: 
+"table / listing / figure / user (the report's own code leaves `content`: a data frame, rtftable pages, rtfplot figures or a list of them); blank: table.",table / listing / figure / user（帳票自身のコードが `content` を残す：data.frame、rtftable のページ、rtfplot の図、またはそれらのリスト）。空欄 = table。

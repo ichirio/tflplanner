@@ -8,6 +8,9 @@
   changes, so a report is now outdated when its program, or a file it
   sources (the figure setup), is newer than its RTF.
 
+- **The help of a report's `type` in Japanese** (#100): tflspec's column
+  help now names `user`; its translation is added.
+
 - **The study's code lists reach the ARD** (tflspec #105, Q5): the ARD
   programs get the study's code lists (the codelists sheet's study rows) and
   make each listed column a factor in their order before the analyses, so
