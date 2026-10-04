@@ -1753,6 +1753,89 @@ Max of ALT / AST vs max total bilirubin (x ULN) + Hy's law lines (whole script),
 Treatment-line nodes (subjects per line x category) + links in light grey (whole script),治療ラインのノード（ライン × カテゴリの被験者数）+ 薄い灰色のリンク（スクリプト全体）
 Treatment-line nodes + links in the colour of their source node (whole script),治療ラインのノード + 出どころのノードの色のリンク（スクリプト全体）
 "One ring per line (inner = first line); arcs = subjects, gaps = no further line (whole script)",ライン 1 つに輪 1 つ（内側 = 1 次治療）。弧 = 被験者、すき間 = 次のラインなし（スクリプト全体）
+The PARAMCD of the dataset to plot.,図にするデータの PARAMCD。
+"The variable of the groups compared, e.g. TRT01A.",比べる群の変数（例：TRT01A）。
+The figure's style (what it draws).,図の型（何を描くか）。
+Where the legend goes (panel*: a legend drawn from an item table).,凡例の位置（panel*：項目の表から描く凡例）。
+"A flag (== ""Y"") that selects the analysis set, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"
+The analysis dataset the figure reads.,図が読む解析データセット。
+The time variable (AVAL of ADTTE; the time of a PK sample).,時間の変数（ADTTE の AVAL、PK の採血時点など）。
+"CNSR: 1 = censored, 0 = event.",CNSR：1 = 打ち切り、0 = イベント。
+The axis's unit; the data are in days.,軸の単位（データは日数）。
+The figure's own title.,図そのもののタイトル。
+The x axis ends here.,X 軸の終わり。
+The x axis breaks every ...,X 軸の目盛りの間隔。
+"The analysis value, e.g. AVAL, CHG.",解析値（例：AVAL、CHG）。
+The PARAMCD of the best overall response.,最良総合効果の PARAMCD。
+The dataset of the response (e.g. ADRS).,効果のデータセット（例：ADRS）。
+The subject's label on the axis (SUBJID).,軸に出す被験者のラベル（SUBJID）。
+"Threshold lines, e.g. 20,-30.","閾値の線（例：20,-30）。"
+"The bar length (days), e.g. TRTDURD.",棒の長さ（日数。例：TRTDURD）。
+"The bar start (days), for bars not from 0.",棒の始まり（日数。0 から始まらない棒のとき）。
+"The bar end (days), for bars not from 0.",棒の終わり（日数。0 から始まらない棒のとき）。
+The PARAMCD of the response at each assessment.,各評価時点の効果の PARAMCD。
+"The day of each assessment, e.g. ADY.",各評価の日（例：ADY）。
+"Event markers: label = day variable, e.g. Death = DTHADY.",イベントの印：ラベル = 日の変数（例：Death = DTHADY）。
+"Subjects ongoing: variable = value, e.g. EOSSTT = ONGOING.",継続中の被験者：変数 = 値（例：EOSSTT = ONGOING）。
+Dotted visit lines every this many time units.,この時間の単位ごとに来院の点線を引く。
+The variable joining datasets (USUBJID).,データセットを結合する変数（USUBJID）。
+The x variable.,X の変数。
+"A further condition on the data, e.g. AVISITN > 0.",データへの追加の条件（例：AVISITN > 0）。
+The colours (the figure style standard's palettes).,色（図の書式の会社標準のパレット）。
+boxed (panel border) or L_axis (left and bottom axes) ...,boxed（パネルの枠）か L_axis（左と下の軸）など。
+"The subgroup variables, one block each.",サブグループの変数（1 つに 1 ブロック）。
+"The responses counted as response, e.g. CR, PR.",奏効として数える効果（例：CR、PR）。
+The categories counted.,数えるカテゴリ。
+"The visit axis, e.g. AVISITN.",来院の軸（例：AVISITN）。
+"The visit's label, e.g. AVISIT.",来院のラベル（例：AVISIT）。
+"A flag (== ""Y"") selecting the records, e.g. ANL01FL.","レコードを選ぶフラグ（== ""Y""。例：ANL01FL）。"
+The visit shown (a value of the visit variable).,表示する来院（来院の変数の値）。
+"The event term, e.g. AEDECOD.",事象名（例：AEDECOD）。
+"A flag (== ""Y"") selecting the events, e.g. TRTEMFL.","事象を選ぶフラグ（== ""Y""。例：TRTEMFL）。"
+Show the N most frequent.,多いものから N 個を表示する。
+Show only terms at least this frequent (%).,この頻度（%）以上の事象だけを表示する。
+PARAMCD of ALT.,ALT の PARAMCD。
+PARAMCD of AST.,AST の PARAMCD。
+PARAMCD of total bilirubin.,総ビリルビンの PARAMCD。
+The multiple of the upper limit of normal drawn.,線を引く基準値上限（ULN）の倍数。
+Only post-baseline records.,ベースライン後のレコードだけ。
+The nominal time's label.,名目時間のラベル。
+The y variable.,Y の変数。
+"The stage (line of therapy, period ...).",段階（治療ライン、期など）。
+Panels by this variable.,この変数でパネルを分ける。
+fn:cards::ard_continuous,要約統計量（旧名）
+fn-note:cards::ard_continuous,ard_summary() の旧名です。
+fn:cards::ard_categorical,度数と割合（旧名）
+fn-note:cards::ard_categorical,ard_tabulate() の旧名です。
+fn:cards::ard_dichotomous,1 つの水準の度数（旧名）
+fn-note:cards::ard_dichotomous,ard_tabulate_value() の旧名です。
+fn:cards::ard_complex,独自の関数による要約（旧名）
+fn-note:cards::ard_complex,ard_mvsummary() の旧名です。
+fn:cardx::ard_categorical_max,被験者ごとの最悪の水準（旧名）
+fn-note:cardx::ard_categorical_max,ard_tabulate_max() の旧名です。
+fn:cardx::ard_emmeans_mean_difference,最小二乗平均の差（旧名）
+fn-note:cardx::ard_emmeans_mean_difference,ard_emmeans_contrast() の旧名です。
+The study ID cannot be used,この試験 ID は使えません
+The study is already registered,この試験はすでに登録されています
+A folder of that name is already there,同じ名前のフォルダがすでにあります
+This is not a study folder,試験フォルダではありません
+There is no such study,その試験はありません
+A report of that ID is already on the list,同じ ID の帳票がすでにあります
+The report ID is empty,帳票 ID が空です
+The report ID has a character a file name cannot hold,帳票 ID にファイル名に使えない文字があります
+A code list is an .xlsx or a .csv file,コードリストは .xlsx か .csv のファイルです
+The code list lacks a column,コードリストに必要な列がありません
+A package is needed to read this file,このファイルを読むにはパッケージが要ります
+The file is not there,ファイルがありません
+The ARD definition has no analyses,ARD の定義に解析がありません
+Make the report's ARD first,先にこの帳票の ARD を作ってください
+An ARD function of that name is already there,同じ名前の ARD 関数がすでにあります
+An ARD function's name starts with ard_,ARD 関数の名前は ard_ で始めます
+The company standards' folder cannot be written,会社標準のフォルダに書き込めません
+The company standards have no such ARD function,会社標準にその ARD 関数はありません
+There is no such ARD function,その ARD 関数はありません
+The ARD definition has no such dataset,ARD の定義にそのデータセットはありません
+The report has no code yet,帳票のコードがまだありません
 Own functions,独自の関数
 "ARD functions of one's own: the company's (the standards folder) and the study's (programs/ard/functions/; a study's copy wins). An analysis names one as its method once the study loads it. They are R files, edited outside the app (RStudio ...): try one after a change.",独自の ARD 関数: 会社標準（標準フォルダ）と試験（programs/ard/functions/。同じ名前なら試験の写しが使われます）。試験が読み込むと、解析の method に書けます。R のファイルなので、直すのはアプリの外（RStudio など）で行い、直したら［試す］で確かめてください。
 New function...,新しい関数…

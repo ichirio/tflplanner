@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **Less English on the Japanese screens** (#124).
+  The arguments of the "(whole script)" figure types (tflspec's
+  `tfl_fig_schema()`, 50 labels and help texts) and the old names of six
+  cards / cardx functions (an analysis may still name one) are in
+  Japanese.  The common errors -- a study or report ID taken, a code list,
+  an ARD function's name, the company standards' folder, a report's ARD
+  not made yet ... -- get a lead in the app's language, the message itself
+  kept after it; an error no pattern knows shows its message alone.
+
 - **The figure guide follows the sample again** (docs).  `ja-figures`
   walks the three ways in order -- a template, then the designer (a new
   F-14-2-4 made like the sample's F-14-2-3: `km_simple` and the median
