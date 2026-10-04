@@ -16,40 +16,28 @@
 
 .study_fun_dir <- file.path("programs", "ard", "functions")
 
-# the functions an R file defines at its top level (`name <- function`)
-.defined_functions <- function(file) {
-  ex <- tryCatch(parse(file, keep.source = FALSE), error = function(e) NULL)
-  out <- character()
-  for (e in ex) {
-    if (is.call(e) && as.character(e[[1L]]) %in% c("<-", "=") &&
-        is.name(e[[2L]]) && is.call(e[[3L]]) &&
-        identical(e[[3L]][[1L]], as.name("function"))) {
-      out <- c(out, as.character(e[[2L]]))
-    }
-  }
-  out
-}
-
 #' The company's own ARD functions
 #'
 #' The functions defined in the R files of the standards folder's
-#' `ard_functions/` (`<home>/standards/ard_functions/*.R`): one row each,
-#' with its `file`.  An analysis names one as its `method` once the study
+#' `ard_functions/` (`<home>/standards/ard_functions/*.R`), read -- not run
+#' -- with [tflspec::tfl_ard_function_info()]: a plain `name <- function`
+#' and one written as `cards::as_cards_fn()` (the templates of
+#' [tflspec::tfl_ard_function_template()]) alike; test files (`test-*.R`)
+#' are not read.  An analysis names one as its `method` once the study
 #' uses it ([use_company_ard_function()]).
 #'
 #' @param home The tflplanner home.
-#' @return A data frame: `name`, `file`.
+#' @return A data frame, one row a function: `name`, `file`, `title`,
+#'   `description` (from the roxygen block above it), `stat_names` (the
+#'   statistics it declares, ` | ` between them).
 #' @export
 company_ard_functions <- function(home = tflplanner_home()) {
   fs <- list.files(.own_fun_dir(home), pattern = "[.][Rr]$", full.names = TRUE)
-  rows <- lapply(fs, function(f) {
-    n <- .defined_functions(f)
-    if (length(n)) data.frame(name = n, file = basename(f),
-                              stringsAsFactors = FALSE)
-  })
-  out <- do.call(rbind, c(list(data.frame(name = character(),
-                                          file = character(),
-                                          stringsAsFactors = FALSE)), rows))
+  info <- tflspec::tfl_ard_function_info(fs)
+  info <- info[!is.na(info$name), , drop = FALSE]
+  out <- data.frame(name = info$name, file = basename(info$file),
+                    title = info$title, description = info$description,
+                    stat_names = info$stat_names, stringsAsFactors = FALSE)
   rownames(out) <- NULL
   out
 }

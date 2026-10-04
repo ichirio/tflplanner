@@ -150,7 +150,11 @@ import_ard <- function(study, path, output_id = NULL, source = NA_character_,
     c("^the cells are written for (.+), which the ARD does not analyse$",
       "the cells are written for %s, which the ARD does not analyse"),
     c("^a template reads \\{(.+)\\}, a statistic the ARD does not have$",
-      "a template reads {%s}, a statistic the ARD does not have"))
+      "a template reads {%s}, a statistic the ARD does not have"),
+    # tflspec::tfl_check_ard_function(): an ARD function of one's own tried
+    c("^it does not give (.+)$", "it does not give %s"),
+    c("^it does not say which statistics it gives: .*$",
+      "it does not say which statistics it gives: cards::as_cards_fn(<the function>, stat_names = c(...)) lets a check see them"))
   msg <- vapply(seq_len(nrow(p)), function(i) {
     m <- p$message[i]
     if (identical(p$check[i], "cards")) {

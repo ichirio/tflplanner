@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **The company's ARD functions made from tflspec's templates are listed**
+  (tflspec #126): `company_ard_functions()` reads the standards folder with
+  `tflspec::tfl_ard_function_info()` -- a function written as
+  `cards::as_cards_fn(function ...)` (the templates) was not found -- and
+  gives each one's title, description and declared statistics; test files
+  are not read.  The check of an own function (`it does not give ...`, `it
+  does not say which statistics it gives`) is in Japanese too.  Needs
+  tflspec 0.0.24.9040.
+
 - **Analyses run together, on screen** (`cards::ard_stack()`, #107).  The
   ARD tab opens on an outline of the report's analyses (the sheet folded
   under it): the analyses inside a stack under it, moved up and down (their
