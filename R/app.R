@@ -724,7 +724,7 @@ app_ui <- function(lang = "en") {
                      t("ARD functions of one's own: the company's (the standards folder) and the study's (programs/ard/functions/; a study's copy wins). An analysis names one as its method once the study loads it. They are R files, edited outside the app (RStudio ...): try one after a change.")),
             shiny::div(class = "mb-2",
                        .btn("own_new", t("New function..."), class = "btn-sm btn-primary")),
-            DT::DTOutput("own_list"),
+            DT::DTOutput("own_list", height = "auto", fill = FALSE),
             shiny::uiOutput("own_detail"))))),
 
     bslib::nav_panel(
@@ -4083,13 +4083,21 @@ app_server <- function(input, output, session, start) {
                     ifelse(is.na(d$used_by), "", d$used_by), tried,
                     stringsAsFactors = FALSE)
     names(v) <- t(c("Function", "Where", "In this study", "Used by", "Tried"))
-    .dt(v, selection = "single",
+    # the function chosen stays chosen when the list is drawn again
+    k <- match(shiny::isolate(own_pick()) %||% "", d$name)
+    .dt(v, selection = list(mode = "single", selected = if (!is.na(k)) k),
         language = list(emptyTable = t("No ARD function of one's own yet: New function... starts one from a template.")))
   })
-  own_sel <- shiny::reactive({
+  own_pick <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(input$own_list_rows_selected, {
     d <- own_data()
     i <- input$own_list_rows_selected
-    if (is.null(d) || !length(i) || i > nrow(d)) NULL else d[i, , drop = FALSE]
+    if (!is.null(d) && length(i) && i <= nrow(d)) own_pick(d$name[i])
+  }, ignoreNULL = FALSE)
+  own_sel <- shiny::reactive({
+    d <- own_data()
+    k <- match(own_pick() %||% "", d$name)
+    if (is.null(d) || is.na(k)) NULL else d[k, , drop = FALSE]
   })
   output$own_detail <- shiny::renderUI({
     r <- own_sel()
@@ -4192,11 +4200,11 @@ app_server <- function(input, output, session, start) {
               if (!.is_blank(u$variables[1L])) paste0("variables = ", .vars(u$variables[1L])),
               if (!.is_blank(u$args[1L])) u$args[1L]), collapse = ", ")
     } else "by = ARM, variables = AGE"
-    ch <- c(stats::setNames("", t("cards' example data (cards::ADSL)")),
-            .an_data_choices(rv$p$ard$datasets$dataset, rv$p$ard$populations, now = data_now,
+    dch <- .an_data_choices(rv$p$ard$datasets$dataset, rv$p$ard$populations, now = data_now,
                              words = list(with = t("%s \u00d7 %s (%s)"),
                                           alone = t("%s, no analysis set (%s)"),
-                                          none = t("(no data)"))))
+                                          none = t("(no data)")))
+    ch <- c(stats::setNames("", t("cards' example data (cards::ADSL)")), dch[dch != ""])
     shiny::showModal(shiny::modalDialog(
       title = sprintf(t("Try %s"), r$name), size = "l", easyClose = TRUE,
       shiny::selectInput("own_try_data", t("Data"), ch, data_now, width = "100%"),
@@ -4234,7 +4242,7 @@ app_server <- function(input, output, session, start) {
         class = "small", shiny::strong(t("The first rows of its ARD")),
         shiny::div(style = "max-height: 40vh; overflow: auto;",
                    shiny::tableOutput("own_try_ard")))))
-    output$own_try_ard <- shiny::renderTable(res$ard)
+    output$own_try_ard <- shiny::renderTable(ard_view(res$ard))
   })
   # a new one, from a template
   own_type_words <- c(
