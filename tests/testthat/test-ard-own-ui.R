@@ -54,3 +54,51 @@ test_that("own ARD functions: the study's and the company's side by side, tried,
   r <- try_ard_function(s, "ard_bad")
   expect_true(any(r$problems$level == "error"))
 })
+
+test_that("the Own functions tab: listed, used, tried, a new one; the analysis form offers them", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  home <- local_home()
+  dir.create(file.path(home, "standards", "ard_functions"), recursive = TRUE,
+             showWarnings = FALSE)
+  tflspec::tfl_ard_function_template(
+    "ard_cv", "summary", file = file.path(home, "standards", "ard_functions", "ard_cv.R"))
+  s <- create_study("OU")
+  s$planner <- add_output(s$planner, "T1", type = "table")
+  s$planner <- set_ard_rows(s$planner, "analyses", "T1",
+                            data.frame(analysis_id = "A1", method = "continuous",
+                                       variables = "AGE"))
+  save_study(s)
+  shiny::testServer(server_for("OU"), {
+    rv <- session$userData$rv
+    session$setInputs(nav = "ard", target = "T1")
+    expect_no_error(output$own_list)
+    session$setInputs(own_list_rows_selected = 1L)
+    h <- output$own_detail$html
+    expect_match(h, "ard_cv")
+    expect_match(h, "own_use")
+    # the analysis form: the company's, not loaded, faint
+    session$setInputs(ard_ol_pick = "A1")
+    n <- session$userData$st_env$n
+    do.call(session$setInputs, stats::setNames(list("Own and code"), paste0("st", n, "_fn_cat")))
+    expect_match(output$ard_fn_list$html, "not loaded by this study", fixed = TRUE)
+    # used: copied, loaded, saved at once
+    session$setInputs(own_use = 1)
+    expect_true(file.exists(file.path(rv$study$path, "programs/ard/functions/ard_cv.R")))
+    expect_match(open_study(rv$study$path)$planner$ard$study$value[
+      open_study(rv$study$path)$planner$ard$study$key == "source"], "ard_cv.R", fixed = TRUE)
+    expect_false(grepl("not loaded by this study", output$ard_fn_list$html, fixed = TRUE))
+    # tried on cards' example data
+    session$setInputs(own_list_rows_selected = 1L, own_try = 1)
+    session$setInputs(own_try_data = "", own_try_args = "by = ARM, variables = AGE", own_try_go = 1)
+    expect_match(output$own_try_result$html, "It behaves", fixed = TRUE)
+    # the code, shown
+    session$setInputs(own_code = 1)
+    # a new one for the study
+    session$setInputs(own_new = 1)
+    session$setInputs(own_new_name = "ard_hl", own_new_type = "test", own_new_where = "study",
+                      own_new_test = TRUE, own_new_ok = 1)
+    expect_true(file.exists(file.path(rv$study$path, "programs/ard/functions/ard_hl.R")))
+    expect_true("ard_hl" %in% own_ard_functions(rv$study)$name)
+  })
+})

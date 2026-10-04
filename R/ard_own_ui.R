@@ -348,3 +348,9 @@ replace_with_company_ard_function <- function(study, name, home = tflplanner_hom
   file.copy(own$company_file[k], dest, overwrite = TRUE)
   invisible(dest)
 }
+
+# a column list as a call writes it: AGE, or c(AGE, BMIBL)
+.vars <- function(x) {
+  v <- .split_bar(x)
+  if (length(v) == 1L) v else paste0("c(", paste(v, collapse = ", "), ")")
+}

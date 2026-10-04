@@ -717,7 +717,15 @@ app_ui <- function(lang = "en") {
             shiny::div(class = "mb-2",
                        .btn("imp_new", t("Take in an ARD..."), class = "btn-sm btn-primary")),
             DT::DTOutput("imp_list"),
-            shiny::uiOutput("imp_actions"))))),
+            shiny::uiOutput("imp_actions")),
+          bslib::nav_panel(
+            t("Own functions"), value = "own",
+            shiny::p(class = "small text-muted",
+                     t("ARD functions of one's own: the company's (the standards folder) and the study's (programs/ard/functions/; a study's copy wins). An analysis names one as its method once the study loads it. They are R files, edited outside the app (RStudio ...): try one after a change.")),
+            shiny::div(class = "mb-2",
+                       .btn("own_new", t("New function..."), class = "btn-sm btn-primary")),
+            DT::DTOutput("own_list"),
+            shiny::uiOutput("own_detail"))))),
 
     bslib::nav_panel(
       t("Runs"), value = "results",
@@ -2437,6 +2445,20 @@ app_server <- function(input, output, session, start) {
       x <- t(paste0("fn-note:", v))
       if (identical(x, paste0("fn-note:", v))) e$description[e$value == v][1L] else x
     }, "")
+    # the study's own functions (its title and description from its file),
+    # and the company's it does not load yet (offered from Own functions)
+    own <- tryCatch(own_data(), error = function(e) NULL)
+    if (!is.null(own) && nrow(own)) {
+      add <- data.frame(
+        value = own$name,
+        label = ifelse(is.na(own$title), own$name, own$title),
+        label_en = own$name,
+        description = own$description,
+        category = "Own and code", call = own$name,
+        state = ifelse(own$loaded, "ok", "own_off"), stringsAsFactors = FALSE)
+      e <- e[!e$value %in% add$value, , drop = FALSE]
+      e <- rbind(e, add[names(e)])
+    }
     e
   }
   # a dataset's data (for the choices), read once per file version
@@ -2637,8 +2659,10 @@ app_server <- function(input, output, session, start) {
       lapply(seq_len(nrow(off)), function(i) shiny::div(
         class = "small text-body-tertiary ms-4 mb-1",
         paste0(off$label[i], fn_of(off$call[i])), " -- ",
-        if (off$state[i] == "missing") t("its package is not installed") else
-          t("in preparation: a function that runs others"))))
+        switch(off$state[i],
+               missing = t("its package is not installed"),
+               own_off = t("not loaded by this study: Use in this study, on Own functions"),
+               t("in preparation: a function that runs others")))))
   })
   output$ard_method_note <- shiny::renderUI({
     st_drawn()
@@ -4025,6 +4049,232 @@ app_server <- function(input, output, session, start) {
       if (length(new_ids)) shiny::tagList(shiny::br(), sprintf(
         t("New reports: %s. Make their content from the list's buttons."),
         paste(new_ids, collapse = ", ")))))
+  })
+
+  # ---- ARD functions of one's own ------------------------------------------
+  # The company's and the study's side by side (a study's copy wins); one
+  # chosen: use it in the study, try it (in a separate R process, kept),
+  # see its code (edited outside the app), compare it with the company's
+  # and take the company's.  New ones from tflspec's templates.  Writing a
+  # file (a copy, a new one) saves at once: the study key `source` and the
+  # files must agree.
+  own_ver <- shiny::reactiveVal(0L)
+  own_data <- shiny::reactive({
+    own_ver()
+    rv$p
+    shiny::req(has_study())
+    tryCatch(own_ard_functions(imp_study()), error = function(e) {
+      notify(conditionMessage(e), "error")
+      NULL
+    })
+  })
+  own_where_words <- c(study = "study", company = "company", both = "study and company")
+  output$own_list <- DT::renderDT({
+    d <- own_data()
+    shiny::req(d)
+    where <- t(unname(own_where_words[d$where]))
+    star <- ifelse(d$where == "both" & d$differs %in% TRUE, " \u2605", "")
+    loaded <- ifelse(d$loaded, t("loaded"), t("not loaded"))
+    tried <- ifelse(is.na(d$tried), "",
+                    paste0(d$tried, " (", ifelse(is.na(d$problems), t("could not be tried"),
+                                                 sprintf(t("%d problems"), d$problems)), ")",
+                           ifelse(d$stale, paste0(" ", t("-- the file changed since")), "")))
+    v <- data.frame(d$name, paste0(where, star), loaded,
+                    ifelse(is.na(d$used_by), "", d$used_by), tried,
+                    stringsAsFactors = FALSE)
+    names(v) <- t(c("Function", "Where", "In this study", "Used by", "Tried"))
+    .dt(v, selection = "single",
+        language = list(emptyTable = t("No ARD function of one's own yet: New function... starts one from a template.")))
+  })
+  own_sel <- shiny::reactive({
+    d <- own_data()
+    i <- input$own_list_rows_selected
+    if (is.null(d) || !length(i) || i > nrow(d)) NULL else d[i, , drop = FALSE]
+  })
+  output$own_detail <- shiny::renderUI({
+    r <- own_sel()
+    if (is.null(r)) return(shiny::p(class = "small text-muted mt-2", t("Choose a function in the list.")))
+    file_line <- function(lab, f) if (!is.na(f)) shiny::div(class = "small", shiny::strong(lab), " ", shiny::code(f))
+    shiny::div(
+      class = "rp-b-card mt-2",
+      shiny::h6(r$name, if (!is.na(r$title)) shiny::span(class = "fw-normal", paste0(" \u2014 ", r$title))),
+      if (!is.na(r$description)) shiny::p(class = "small", r$description),
+      file_line(t("The study's file:"), r$study_file),
+      file_line(t("The company's file:"), r$company_file),
+      shiny::div(class = "small", shiny::strong(t("Statistics:")), " ",
+                 if (is.na(r$stat_names)) t("not declared (cards::as_cards_fn(stat_names = ) lets a check see them)")
+                 else gsub(" | ", ", ", r$stat_names, fixed = TRUE)),
+      if (r$where == "both" && isTRUE(r$differs)) shiny::div(
+        class = "alert alert-warning py-1 small mt-2",
+        sprintf(t("The study's copy is used; the company's file differs (the %s one is newer). Changing the company's does not change the study."),
+                t(r$newer)),
+        shiny::div(class = "d-flex gap-2 mt-1",
+                   .btn("own_diff", t("See the difference"), class = "btn-sm btn-outline-secondary py-0"),
+                   if (identical(r$newer, "company"))
+                     .btn("own_replace", t("Take the company's..."), class = "btn-sm btn-outline-danger py-0"))),
+      if (!is.na(r$tried) && isTRUE(r$stale)) shiny::p(
+        class = "small text-muted mt-1", t("The file changed since it was last tried: try it again.")),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2 mt-2",
+        if (!r$loaded) .btn("own_use", t("Use in this study"), class = "btn-sm btn-primary"),
+        .btn("own_try", t("Try..."), class = "btn-sm btn-outline-primary"),
+        .btn("own_code", t("See the code"), class = "btn-sm btn-outline-secondary")))
+  })
+  # use the company's in the study: copied, loaded, saved at once
+  shiny::observeEvent(input$own_use, {
+    r <- own_sel()
+    shiny::req(r)
+    s <- imp_study()
+    s <- if (r$where == "company") guarded(use_company_ard_function(s, r$name)) else
+      .add_source(s, r$study_file)
+    if (is.null(s)) return()
+    rv$p <- s$planner
+    do_save()
+    own_ver(own_ver() + 1L)
+    notify(sprintf(t("%s is loaded by the study's ARD programs: an analysis can name it as its method."), r$name))
+  })
+  own_file_of <- function(r) {
+    if (!is.na(r$study_file)) file.path(rv$study$path, r$study_file) else r$company_file
+  }
+  shiny::observeEvent(input$own_code, {
+    r <- own_sel()
+    shiny::req(r)
+    f <- own_file_of(r)
+    shiny::showModal(shiny::modalDialog(
+      title = r$name, size = "l", easyClose = TRUE,
+      shiny::p(class = "small", shiny::code(f)),
+      shiny::p(class = "small text-muted",
+               t("Edit it outside the app (RStudio ...), then try it here.")),
+      shiny::div(class = "rp-code", shiny::tags$pre(paste(readLines(f, warn = FALSE), collapse = "\n"))),
+      footer = shiny::modalButton(t("Close"))))
+  })
+  shiny::observeEvent(input$own_diff, {
+    r <- own_sel()
+    shiny::req(r)
+    pane <- function(lab, f) shiny::div(
+      shiny::h6(lab), shiny::div(class = "rp-code", shiny::tags$pre(
+        style = "max-height: 60vh; overflow: auto;", paste(readLines(f, warn = FALSE), collapse = "\n"))))
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("%s: the study's and the company's"), r$name), size = "xl", easyClose = TRUE,
+      bslib::layout_columns(col_widths = c(6, 6),
+                            pane(t("The study's"), file.path(rv$study$path, r$study_file)),
+                            pane(t("The company's"), r$company_file)),
+      footer = shiny::modalButton(t("Close"))))
+  })
+  shiny::observeEvent(input$own_replace, {
+    r <- own_sel()
+    shiny::req(r)
+    shiny::showModal(shiny::modalDialog(
+      title = t("Take the company's"), easyClose = TRUE,
+      shiny::p(sprintf(t("The study's %s is replaced by the company's. The study's results change when its ARD is made again."),
+                       r$study_file)),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("own_replace_ok", t("Replace"), class = "btn-danger"))))
+  })
+  shiny::observeEvent(input$own_replace_ok, {
+    r <- own_sel()
+    shiny::req(r)
+    if (is.null(guarded(replace_with_company_ard_function(imp_study(), r$name)))) return()
+    shiny::removeModal()
+    own_ver(own_ver() + 1L)
+    notify(sprintf(t("%s: the company's file is the study's now."), r$name))
+  })
+  # trying one: on the data an analysis that uses it reads, with its
+  # arguments; else cards' example data
+  shiny::observeEvent(input$own_try, {
+    r <- own_sel()
+    shiny::req(r)
+    a <- rv$p$ard$analyses
+    u <- a[!is.na(a$method) & a$method == r$name, , drop = FALSE]
+    data_now <- if (nrow(u)) .an_data_value(u$dataset[1L], u$population_id[1L]) else ""
+    args_now <- if (nrow(u)) {
+      paste(c(if (!.is_blank(u$by[1L])) paste0("by = ", .vars(u$by[1L])),
+              if (!.is_blank(u$variables[1L])) paste0("variables = ", .vars(u$variables[1L])),
+              if (!.is_blank(u$args[1L])) u$args[1L]), collapse = ", ")
+    } else "by = ARM, variables = AGE"
+    ch <- c(stats::setNames("", t("cards' example data (cards::ADSL)")),
+            .an_data_choices(rv$p$ard$datasets$dataset, rv$p$ard$populations, now = data_now,
+                             words = list(with = t("%s \u00d7 %s (%s)"),
+                                          alone = t("%s, no analysis set (%s)"),
+                                          none = t("(no data)"))))
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("Try %s"), r$name), size = "l", easyClose = TRUE,
+      shiny::selectInput("own_try_data", t("Data"), ch, data_now, width = "100%"),
+      shiny::textInput("own_try_args", t("Its arguments (as an analysis row gives them)"),
+                       args_now, width = "100%"),
+      shiny::p(class = "small text-muted",
+               t("Run in a separate R process with the files the study's ARD programs load; up to 60 seconds.")),
+      shiny::uiOutput("own_try_result"),
+      footer = shiny::tagList(shiny::modalButton(t("Close")),
+                              .btn("own_try_go", t("Try"), class = "btn-primary"))))
+    output$own_try_result <- shiny::renderUI(NULL)
+  })
+  shiny::observeEvent(input$own_try_go, {
+    r <- own_sel()
+    shiny::req(r)
+    dv <- input$own_try_data %||% ""
+    sp <- if (nzchar(dv)) .an_data_split(dv) else list(dataset = NA_character_, pop = NA_character_)
+    res <- guarded(try_ard_function(imp_study(), r$name, dataset = sp$dataset,
+                                    population_id = sp$pop,
+                                    args = input$own_try_args %||% ""))
+    own_ver(own_ver() + 1L)
+    if (is.null(res)) return()
+    p <- .check_view(res$problems, t)
+    output$own_try_result <- shiny::renderUI(shiny::tagList(
+      if (!is.null(res$error)) shiny::div(class = "alert alert-danger py-1 small", res$error)
+      else if (!is.null(p) && nrow(p)) shiny::tags$table(
+        class = "table table-sm small",
+        shiny::tags$tbody(lapply(seq_len(nrow(p)), function(i) shiny::tags$tr(
+          shiny::tags$td(class = switch(p$level[i], error = "text-danger", warning = "text-warning", ""),
+                         t(p$level[i])),
+          shiny::tags$td(p$message[i])))))
+      else shiny::div(class = "alert alert-success py-1 small",
+                      sprintf(t("It behaves: a cards ARD with the statistics it declares (%.1f s)."), res$seconds)),
+      if (!is.null(res$ard) && nrow(res$ard)) shiny::div(
+        class = "small", shiny::strong(t("The first rows of its ARD")),
+        shiny::div(style = "max-height: 40vh; overflow: auto;",
+                   shiny::tableOutput("own_try_ard")))))
+    output$own_try_ard <- shiny::renderTable(res$ard)
+  })
+  # a new one, from a template
+  own_type_words <- c(
+    summary = "Statistics of one's own on numeric variables, by group (cards::ard_summary(statistic = ))",
+    test = "A test or a model made an ARD (cards::tidy_as_ard(): its errors go into the ARD)",
+    free = "Any calculation, group by group (cards::ard_strata() + ard_identity())")
+  shiny::observeEvent(input$own_new, {
+    shiny::req(has_study())
+    can_company <- .company_writable()
+    shiny::showModal(shiny::modalDialog(
+      title = t("New ARD function"), easyClose = TRUE,
+      shiny::textInput("own_new_name", t("Its name (starts with ard_)"), "ard_", width = "100%"),
+      shiny::radioButtons("own_new_type", t("Kind"),
+                          stats::setNames(names(own_type_words), t(unname(own_type_words))),
+                          width = "100%"),
+      if (can_company) shiny::radioButtons(
+        "own_new_where", t("Where"),
+        stats::setNames(c("study", "company"),
+                        c(t("This study (programs/ard/functions/; loaded at once)"),
+                          t("The company standards (a study uses it with Use in this study)"))),
+        width = "100%"),
+      shiny::checkboxInput("own_new_test", t("Write its test (test-<name>.R) next to it"), TRUE),
+      shiny::p(class = "small text-muted",
+               t("The skeleton is written to be edited outside the app (RStudio ...); try it afterwards.")),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("own_new_ok", t("Write it"), class = "btn-primary"))))
+  })
+  shiny::observeEvent(input$own_new_ok, {
+    nm <- trimws(input$own_new_name %||% "")
+    where <- input$own_new_where %||% "study"
+    s <- guarded(new_ard_function(imp_study(), nm, type = input$own_new_type %||% "summary",
+                                  where = where, test = isTRUE(input$own_new_test)))
+    if (is.null(s)) return()
+    shiny::removeModal()
+    if (where == "study") {
+      rv$p <- s$planner
+      do_save()
+    }
+    own_ver(own_ver() + 1L)
+    notify(sprintf(t("%s is written: edit it outside the app, then try it."), nm))
   })
 
   # ---- ARDs taken in -------------------------------------------------------
