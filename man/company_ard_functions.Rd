@@ -10,11 +10,16 @@ company_ard_functions(home = tflplanner_home())
 \item{home}{The tflplanner home.}
 }
 \value{
-A data frame: \code{name}, \code{file}.
+A data frame, one row a function: \code{name}, \code{file}, \code{title},
+\code{description} (from the roxygen block above it), \code{stat_names} (the
+statistics it declares, \code{|} between them).
 }
 \description{
 The functions defined in the R files of the standards folder's
-\verb{ard_functions/} (\verb{<home>/standards/ard_functions/*.R}): one row each,
-with its \code{file}.  An analysis names one as its \code{method} once the study
+\verb{ard_functions/} (\verb{<home>/standards/ard_functions/*.R}), read -- not run
+-- with \code{\link[tflspec:tfl_ard_function_info]{tflspec::tfl_ard_function_info()}}: a plain \verb{name <- function}
+and one written as \code{cards::as_cards_fn()} (the templates of
+\code{\link[tflspec:tfl_ard_function_template]{tflspec::tfl_ard_function_template()}}) alike; test files (\verb{test-*.R})
+are not read.  An analysis names one as its \code{method} once the study
 uses it (\code{\link[=use_company_ard_function]{use_company_ard_function()}}).
 }

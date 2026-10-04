@@ -1650,3 +1650,5 @@ Show the reports with no change,変更なしの帳票も表示
 * = the type is guessed from the ID: check it before taking it in.,* = 種別は ID から推測しました。取り込む前に確かめてください。
 %d lines edited here were kept instead of the TOC's text.,ここで直した行 %d 行は、TOC の文にせずそのままにしました。
 New reports: %s. Make their content from the list's buttons.,新しい帳票: %s。一覧のボタンから中身を作ってください。
+it does not give %s,宣言した統計量 %s を出していません
+"it does not say which statistics it gives: cards::as_cards_fn(<the function>, stat_names = c(...)) lets a check see them",出す統計量を宣言していません（cards::as_cards_fn(<関数>, stat_names = c(...)) で宣言すると、検査で確かめられます）

@@ -136,3 +136,28 @@ test_that("the check's messages are shown in the session's language", {
   # English: as tflspec wrote them
   expect_identical(.check_view(q)$message[1:3], q$message[1:3])
 })
+
+test_that("a company function made from tflspec's template is listed, with its title", {
+  skip_if(utils::packageVersion("tflspec") < "0.0.24.9040")
+  home <- imp_home()
+  d <- file.path(home, "standards", "ard_functions")
+  dir.create(d, recursive = TRUE)
+  tflspec::tfl_ard_function_template("ard_mine", "test",
+                                     file = file.path(d, "ard_mine.R"), test = TRUE)
+  own <- company_ard_functions(home)
+  # cards::as_cards_fn(function ...) is a function too; the test file is not read
+  expect_identical(own$name, "ard_mine")
+  expect_identical(own$file, "ard_mine.R")
+  expect_identical(own$title, "A test across two groups")
+  expect_identical(own$stat_names, "statistic | p.value")
+})
+
+test_that("the check of an own function speaks the session's language", {
+  p <- data.frame(level = c("error", "note"), check = c("statistics", "statistics"),
+                  message = c("it does not give p.value",
+                              "it does not say which statistics it gives: cards::as_cards_fn(<the function>, stat_names = c(...)) lets a check see them"),
+                  stringsAsFactors = FALSE)
+  v <- .check_view(p, function(x) tr(x, "ja"))
+  expect_identical(v$message[1], "宣言した統計量 p.value を出していません")
+  expect_match(v$message[2], "^出す統計量を宣言していません")
+})
