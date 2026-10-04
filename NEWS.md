@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **The figure guide follows the sample again** (docs).  `ja-figures`
+  walks the three ways in order -- a template, then the designer (a new
+  F-14-2-4 made like the sample's F-14-2-3: `km_simple` and the median
+  line, checked identical to it), a design built from empty, and user code
+  -- on the screens as they are (Reports > Content, the first step; Run,
+  preview the selection).  New screenshots; `data-raw/make-article-
+  screenshots.R` drives the new screens (#120).
+
 - **The sample study has a figure made with the designer** (#114):
   F-14-2-3, Kaplan-Meier curves of the time to the first dermatologic
   event -- the designer's KM template on the sample's ADTTE, with one layer
