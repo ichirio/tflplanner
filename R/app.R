@@ -2411,7 +2411,8 @@ app_server <- function(input, output, session, start) {
         class = "ard-fn mb-2",
         shiny::div(
           class = "d-flex justify-content-between align-items-center gap-2",
-          shiny::strong(argl("What to compute", "method")),
+          shiny::div(shiny::strong(argl("What to compute", "method")),
+                     shiny::uiOutput("ard_fn_now", inline = TRUE)),
           shiny::div(style = "width: 14rem",
                      shiny::textInput(st_id("fn_q"), NULL, "",
                                       placeholder = t("Search the functions")))),
@@ -2422,7 +2423,9 @@ app_server <- function(input, output, session, start) {
                                          stats::setNames(cats, t(cats)),
                                          selected = cat_now)),
           shiny::div(class = "ard-fn-list",
-                     style = "max-height: 18rem; overflow-y: auto;",
+                     style = paste("max-height: 30rem; overflow-y: auto;",
+                                   "overflow-x: hidden; white-space: normal;",
+                                   "overflow-wrap: anywhere;"),
                      shiny::uiOutput("ard_fn_list")))),
       shiny::uiOutput("ard_method_note"),
       shiny::selectInput(st_id("data"), t("Data (dataset \u00d7 analysis set)"),
@@ -2465,6 +2468,16 @@ app_server <- function(input, output, session, start) {
                                                conditionMessage(e)))
     paste(code, collapse = "\n")
   })
+  output$ard_fn_now <- shiny::renderUI({
+    st_drawn()
+    m <- st_method()
+    if (is.na(m) || !nzchar(m)) return(NULL)
+    e <- fn_entries(m)
+    k <- match(m, e$value)
+    fn <- if (grepl("::", m, fixed = TRUE)) paste0(" (", sub("^.*::", "", e$call[k]), ")") else ""
+    shiny::span(class = "small text-muted ms-2",
+                sprintf(t("Chosen: %s"), paste0(e$label[k], fn)))
+  })
   output$ard_fn_list <- shiny::renderUI({
     st_drawn()
     now <- shiny::isolate(st_method())
@@ -2472,15 +2485,18 @@ app_server <- function(input, output, session, start) {
     q <- trimws(input[[st_id("fn_q")]] %||% "")
     e <- if (nzchar(q)) {
       hit <- grepl(q, e$label, ignore.case = TRUE, fixed = TRUE) |
+        grepl(q, e$label_en, ignore.case = TRUE, fixed = TRUE) |
         grepl(q, e$value, ignore.case = TRUE, fixed = TRUE) |
+        grepl(q, gsub("_", " ", e$value, fixed = TRUE), ignore.case = TRUE,
+              fixed = TRUE) |
         grepl(q, e$description %||% "", ignore.case = TRUE, fixed = TRUE)
       e[hit, , drop = FALSE]
     } else {
       e[e$category == (input[[st_id("fn_cat")]] %||% e$category[1L]), , drop = FALSE]
     }
     if (!nrow(e)) return(shiny::p(class = "small text-muted", t("No function matches.")))
-    ok <- e[e$state %in% c("ok", "old"), , drop = FALSE]
-    off <- e[!e$state %in% c("ok", "old"), , drop = FALSE]
+    ok <- e[e$state %in% c("ok", "old", "out"), , drop = FALSE]
+    off <- e[!e$state %in% c("ok", "old", "out"), , drop = FALSE]
     fn_of <- function(v) if (grepl("::", v, fixed = TRUE))
       paste0(" (", sub("^.*::", "", v), ")") else ""
     item <- function(i, d) shiny::tagList(
@@ -2488,7 +2504,9 @@ app_server <- function(input, output, session, start) {
       if (!is.na(d$description[i]) && nzchar(d$description[i]))
         shiny::div(class = "small text-muted", d$description[i]),
       if (identical(d$state[i], "old"))
-        shiny::div(class = "small text-warning", t("An old name: choose its new one.")))
+        shiny::div(class = "small text-warning", t("An old name: choose its new one.")),
+      if (identical(d$state[i], "out"))
+        shiny::div(class = "small text-warning", t("Not offered by the builder: kept as written.")))
     shiny::tagList(
       if (nrow(ok)) shiny::radioButtons(
         st_id("fn_pick"), NULL, width = "100%",
@@ -2540,10 +2558,12 @@ app_server <- function(input, output, session, start) {
       dflt <- f$default[i]
       lab <- paste0(a, if (isTRUE(f$required[i])) " *" else "")
       ph <- if (!is.na(dflt) && nchar(dflt) <= 40) dflt else ""
+      ch <- .split_bar(f$choices[i])
+      dflt_lab <- .ard_default_label(f$kind[i], dflt, ch,
+                                     t("(default)"), t("(default: %s)"))
       w <- switch(f$kind[i],
         choice = {
-          ch <- .split_bar(f$choices[i])
-          shiny::selectInput(id, lab, c(stats::setNames("", t("(default)")),
+          shiny::selectInput(id, lab, c(stats::setNames("", dflt_lab),
                                         unique(c(ch, v))),
                              selected = v %||% "", width = "100%")
         },
@@ -2552,19 +2572,22 @@ app_server <- function(input, output, session, start) {
           c(stats::setNames("", t("default")), "TRUE", "FALSE"),
           selected = v %||% ""),
         column = shiny::selectInput(id, lab,
-                                    c(stats::setNames("", t("(default)")),
+                                    c(stats::setNames("", dflt_lab),
                                       unique(c(v, cols))),
                                     selected = v %||% "", width = "100%"),
         columns = shiny::selectizeInput(id, lab, unique(c(v, cols)),
                                         selected = v, multiple = TRUE,
                                         width = "100%"),
         levels = shiny::selectizeInput(
-          id, lab, unique(c(v, .level_choices(vars, sheet_rows(rv$p, "codelists", NA), d))),
-          selected = v, multiple = FALSE, width = "100%",
-          options = list(create = TRUE, placeholder = t("(default)"))),
+          id, lab, c(stats::setNames("", dflt_lab),
+                     unique(c(v, .level_choices(vars, sheet_rows(rv$p, "codelists", NA), d)))),
+          selected = v %||% "", multiple = FALSE, width = "100%",
+          options = list(create = TRUE)),
         shiny::textInput(id, lab, v %||% "", width = "100%", placeholder = ph))
-      shiny::div(w, if (!is.na(f$hint[i]) && nzchar(f$hint[i]))
-        shiny::div(class = "small text-muted mt-n2 mb-2", f$hint[i]))
+      shiny::div(w, shiny::div(
+        class = "small text-muted mt-n2 mb-2",
+        if (!is.na(f$hint[i]) && nzchar(f$hint[i])) f$hint[i] else
+          sprintf(t("See ?%s for this argument."), call)))
     }
     shiny::div(
       class = "mb-2",

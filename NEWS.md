@@ -13,7 +13,13 @@
   `args` written by hand are never lost, and Apply without a change keeps
   them as written.  Old function names show only for the analysis that uses
   one; functions whose package is not installed, and those that run other
-  analyses (ard_stack and the like), are listed but cannot be chosen yet.
+  analyses (ard_stack and the like), are listed but cannot be chosen yet;
+  the survey-design functions and `ard_formals()` (out of the builder's
+  scope) show only for an analysis that names one.  The chosen function
+  stays named above the list ("Chosen: ..."); the search reads the English
+  headings and the function names as words ("t test") too; a field's empty
+  choice names the default ("(default: waldcc)"), and a field without a
+  hint points to the function's help.
   The headings and descriptions are in Japanese too.  Needs tflspec
   0.0.24.9027.
 

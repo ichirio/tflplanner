@@ -8,27 +8,36 @@
 # `method` column takes), `label`, `description`, `category`, `call`,
 # `state` ("ok", "missing" = its package is not installed, "later" = a
 # function that runs others, not yet declared in the form, "old" = an old
-# name kept only for the row that uses it).  `keywords` is
+# name and "out" = a function the builder does not offer, each kept only for
+# the row that uses it).  `keywords` is
 # .std_ard_methods(); `functions` tfl_ard_functions().
 .ard_fn_entries <- function(keywords, functions, current = NA_character_,
                             company = "Company standard") {
   kw <- data.frame(value = keywords$method, label = keywords$label,
+                   label_en = keywords$label,
                    description = keywords$note %||% NA_character_,
                    category = company, call = keywords$call,
                    state = "ok", stringsAsFactors = FALSE)
   f <- functions
+  # out of the builder's scope (the 2026-10-04 decision, Q9): survey
+  # designs (they take a design object, not data) and ard_formals() (a
+  # building block, not an analysis) -- shown, like an old name, only for
+  # the analysis that names one
+  out_of_scope <- f$category %in% "Survey designs" | f$call %in% "cards::ard_formals"
   state <- ifelse(!f$installed, "missing",
                   ifelse(!is.na(f$replaced_by) & nzchar(f$replaced_by), "old",
-                         ifelse(f$shape %in% "wrapper", "later", "ok")))
-  fn <- data.frame(value = f$call, label = f$label,
+                         ifelse(out_of_scope, "out",
+                                ifelse(f$shape %in% "wrapper", "later", "ok"))))
+  fn <- data.frame(value = f$call, label = f$label, label_en = f$label,
                    description = f$description, category = f$category,
                    call = f$call, state = state, stringsAsFactors = FALSE)
   out <- rbind(kw, fn)
   # an old name only for the row that uses it
-  out <- out[out$state != "old" | out$value %in% current, , drop = FALSE]
+  out <- out[!out$state %in% c("old", "out") | out$value %in% current, , drop = FALSE]
   # a method the catalog does not know (a study's own function): kept
   if (!is.na(current) && nzchar(current) && !current %in% out$value) {
     out <- rbind(out, data.frame(value = current, label = current,
+                                 label_en = current,
                                  description = NA_character_,
                                  category = "Own and code", call = current,
                                  state = "ok", stringsAsFactors = FALSE))
@@ -175,4 +184,14 @@
       sort(unique(as.character(x[!is.na(x)]))))
   }
   unique(out[!is.na(out) & nzchar(out)])
+}
+
+# What a field's empty choice says: the default, named when it is one value
+# ("(default: waldcc)": the first of a choice's values)
+.ard_default_label <- function(kind, default, choices, plain, named) {
+  d <- NA_character_
+  if (kind == "choice" && length(choices)) d <- choices[1L]
+  else if (!is.na(default) && nchar(default) <= 30 && !grepl("[(]", default))
+    d <- gsub('^"|"$', "", default)
+  if (is.na(d) || !nzchar(d) || d == "NULL") plain else sprintf(named, d)
 }

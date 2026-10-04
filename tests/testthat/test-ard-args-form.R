@@ -38,9 +38,26 @@ test_that("the functions are the company's keywords and the catalog, by category
   own <- .ard_fn_entries(.std_ard_methods(), tflspec::tfl_ard_functions(),
                          current = "mypkg::ard_mine")
   expect_identical(own$category[own$value == "mypkg::ard_mine"], "Own and code")
+  # out of the builder's scope (Q9): not listed, but kept for a row naming one
+  expect_false(any(c("cardx::ard_survey_svyttest", "cards::ard_formals") %in% e$value))
+  expect_false("Survey designs" %in% e$category)
+  sv <- .ard_fn_entries(.std_ard_methods(), tflspec::tfl_ard_functions(),
+                        current = "cardx::ard_survey_svyttest")
+  expect_identical(sv$state[sv$value == "cardx::ard_survey_svyttest"], "out")
+  # the English heading is kept for the search
+  expect_identical(e$label_en[e$value == "cardx::ard_stats_t_test"], "t test")
   expect_identical(.ard_method_call("hierarchical", .std_ard_methods()),
                    "cards::ard_stack_hierarchical")
   expect_true(is.na(.ard_method_call("custom", .std_ard_methods())))
+})
+
+test_that("a field's empty choice names the default when it is one value", {
+  expect_identical(.ard_default_label("choice", "c(\"waldcc\", \"wald\")",
+                                      c("waldcc", "wald"), "(d)", "(d: %s)"), "(d: waldcc)")
+  expect_identical(.ard_default_label("number", "0.95", character(), "(d)", "(d: %s)"), "(d: 0.95)")
+  expect_identical(.ard_default_label("levels", "list(where(is_binary) ~ 1L)",
+                                      character(), "(d)", "(d: %s)"), "(d)")
+  expect_identical(.ard_default_label("code", "NULL", character(), "(d)", "(d: %s)"), "(d)")
 })
 
 test_that("a level field offers the code lists first, then the data's values", {
@@ -100,9 +117,29 @@ test_that("the form picks a function, fills its arguments and writes args", {
     r <- ard_rows(rv$p, "analyses", "T1")
     expect_identical(r$args[r$analysis_id == "CAT"],
                      'method = "wilson", conf.level = 0.9, weights = W, max.iterations = 20')
-    # a search across the categories
+    # the chosen function is named above the list
+    expect_match(output$ard_fn_now$html, "ard_categorical_ci", fixed = TRUE)
+    # a level field starts at the default, never at a level: a function
+    # chosen and applied untouched writes no args
+    g <- output$ard_an_args$html
+    expect_match(g, '<option value="" selected>', fixed = TRUE)
+    a2 <- ard_rows(rv$p, "analyses", "T1")
+    a2$args[a2$analysis_id == "CONT"] <- NA
+    rv$p <- set_ard_rows(rv$p, "analyses", "T1", a2)
+    session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
+    inp <- list(); inp[[id("fn_pick")]] <- "cardx::ard_continuous_ci"
+    do.call(session$setInputs, inp)
+    session$setInputs(ard_stat_apply = 3)
+    r <- ard_rows(rv$p, "analyses", "T1")
+    expect_identical(r$method[r$analysis_id == "CONT"], "cardx::ard_continuous_ci")
+    expect_true(is.na(r$args[r$analysis_id == "CONT"]))
+    # a search across the categories: a heading, or the function's name
+    # written as words
     inp <- list(); inp[[id("fn_q")]] <- "t test"
     do.call(session$setInputs, inp)
     expect_match(output$ard_fn_list$html, "ard_stats_t_test", fixed = TRUE)
+    inp <- list(); inp[[id("fn_q")]] <- "continuous ci"
+    do.call(session$setInputs, inp)
+    expect_match(output$ard_fn_list$html, "ard_continuous_ci", fixed = TRUE)
   })
 })

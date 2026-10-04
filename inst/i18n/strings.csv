@@ -1374,3 +1374,7 @@ fn:cardx::ard_survey_svyranktest,サーベイの順位検定
 fn-note:cardx::ard_survey_svyranktest,サーベイデザインのオブジェクト（データフレームではない）での順位検定。
 fn:cardx::ard_survey_svyttest,サーベイの t 検定
 fn-note:cardx::ard_survey_svyttest,サーベイデザインのオブジェクト（データフレームではない）での t 検定。
+Chosen: %s,選択中: %s
+(default: %s),（既定: %s）
+See ?%s for this argument.,この引数は ?%s を見てください。
+Not offered by the builder: kept as written.,画面では扱わない関数です。書いたまま残します。
