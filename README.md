@@ -106,6 +106,37 @@ everything on.
 A guide in Japanese (provisional):
 [tflplanner 利用ガイド（日本語）](https://ichirio.github.io/tflplanner/articles/ja-guide.html).
 
+## Citation
+
+If tflplanner helps your work, please cite it with `citation("tflplanner")`.
+The statistics of its tables come from [cards](https://pharmaverse.github.io/cards/)
+and [cardx](https://insightsengineering.github.io/cardx/); please cite those
+too (`citation("cards")`, `citation("cardx")`).
+
+## Acknowledgements
+
+tflplanner stands on the work of many others, and we are grateful to their
+authors.
+
+- **[cards](https://pharmaverse.github.io/cards/) and
+  [cardx](https://insightsengineering.github.io/cardx/)**: every ARD program
+  the app writes calls them; the analysis results data are their design, an
+  outcome of the [pharmaverse](https://pharmaverse.org/) community's work on
+  analysis results data.
+- **[shiny](https://shiny.posit.co/)**, [bslib](https://rstudio.github.io/bslib/),
+  [DT](https://github.com/rstudio/DT),
+  [rhandsontable](https://jrowen.github.io/rhandsontable/) and
+  [sortable](https://rstudio.github.io/sortable/): the app's screens.
+- **[logrx](https://pharmaverse.github.io/logrx/)**: the log of every program
+  of an official run.
+- **[pharmaverseadam](https://pharmaverse.github.io/pharmaverseadam/)**: the
+  ADaM data of the sample study SAMPLE-01 (from the CDISC pilot study,
+  Apache License 2.0; copyright Cytel Inc., F. Hoffmann-La Roche AG and
+  GlaxoSmithKline LLC -- see `inst/COPYRIGHTS`).
+
+tflplanner is an independent project and is not affiliated with, or endorsed
+by, the authors of these packages.
+
 ## License
 
 Apache License 2.0.  See [LICENSE.md](LICENSE.md).

@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **Copyright of the sample data, and citation** (#72).  The sample study's
+  ADaM data are pharmaverseadam's (Apache License 2.0): its copyright
+  holders are listed in `Authors@R` and `inst/COPYRIGHTS`, with what was
+  changed.  `citation("tflplanner")` has a CITATION file, and the README
+  says how to cite tflplanner (and cards / cardx) and acknowledges the
+  packages it builds on.
+
 - The `style` sheet's `align` help (and its Japanese) no longer warns that
   any `border_*` or look column left-aligns every column: from rtfreporter
   0.8.2.9008 a blank `align` keeps each column's default.
