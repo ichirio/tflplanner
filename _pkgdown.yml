@@ -94,7 +94,7 @@ reference:
       - own_function_checks
       - try_ard_function
       - new_ard_function
-      - replace_with_company_ard_function
+      - take_company_ard_function
   - title: Tables, listings and figures
     contents:
       - new_planner

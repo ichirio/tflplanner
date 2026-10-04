@@ -4198,7 +4198,7 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$own_replace_ok, {
     r <- own_sel()
     shiny::req(r)
-    if (is.null(guarded(replace_with_company_ard_function(imp_study(), r$name)))) return()
+    if (is.null(guarded(take_company_ard_function(imp_study(), r$name)))) return()
     shiny::removeModal()
     own_ver(own_ver() + 1L)
     notify(sprintf(t("%s: the company's file is the study's now."), r$name))

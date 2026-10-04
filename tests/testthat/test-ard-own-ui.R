@@ -40,14 +40,14 @@ test_that("own ARD functions: the study's and the company's side by side, tried,
   cat("\n# edited by the company\n", file = cf, append = TRUE)
   expect_identical(own_ard_functions(s)$newer, "both")
   # replaced by the company's: the same again, the copy recorded anew
-  replace_with_company_ard_function(s, "ard_cv")
+  take_company_ard_function(s, "ard_cv")
   expect_false(own_ard_functions(s)$differs)
   # the company's changes again, the study's not: company
   cat("\n# again\n", file = cf, append = TRUE)
   expect_identical(own_ard_functions(s)$newer, "company")
   # a study file holding another function as well is not replaced
   cat("\nard_other <- function(data, ...) NULL\n", file = f, append = TRUE)
-  expect_error(replace_with_company_ard_function(s, "ard_cv"), "ard_other")
+  expect_error(take_company_ard_function(s, "ard_cv"), "ard_other")
   writeLines(readLines(cf), f)
   # a new one for the study, from a template: written and loaded
   s <- new_ard_function(s, "ard_hl", "test")

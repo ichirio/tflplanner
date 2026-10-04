@@ -342,7 +342,7 @@ new_ard_function <- function(study, name, type = c("summary", "test", "free"),
 #' @param home The tflplanner home.
 #' @return The study file's path, invisibly.
 #' @export
-replace_with_company_ard_function <- function(study, name, home = tflplanner_home()) {
+take_company_ard_function <- function(study, name, home = tflplanner_home()) {
   own <- own_ard_functions(study, home)
   k <- match(name, own$name)
   if (is.na(k) || own$where[k] != "both") {

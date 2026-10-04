@@ -6,7 +6,7 @@
   (`own_ard_functions()`): where each is, whether the study loads it, the
   analyses that use it, and its last try.  A study's copy wins; when it
   differs from the company's, which is newer is said, with "See the
-  difference" and "Take the company's..." (`replace_with_company_ard_function()`).
+  difference" and "Take the company's..." (`take_company_ard_function()`).
   "Use in this study" copies and loads one; "Try..." runs it in a separate
   R process on the study's data (or `cards::ADSL`), with the files the ARD
   programs load and the arguments an analysis gives
