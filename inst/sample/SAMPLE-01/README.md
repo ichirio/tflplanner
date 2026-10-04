@@ -14,8 +14,8 @@ derived from ADSL and ADAE by data-raw/make-sample-study.R).
 | T-14-2-2 | Table | Time to first dermatologic event: Kaplan-Meier estimates |
 | T-14-3-1 | Table | TEAEs by SOC / PT |
 | L-16-2-7 | Listing | Severe adverse events |
-| F-14-2-1 | Figure | Mean change from baseline in systolic blood pressure |
-| F-14-2-2 | Figure | Kaplan-Meier plot of the time to first dermatologic event (number at risk from T-14-2-2's ARD) |
+| F-14-2-1 | User code (a figure) | Mean change from baseline in systolic blood pressure |
+| F-14-2-2 | User code (a figure) | Kaplan-Meier plot of the time to first dermatologic event (number at risk from T-14-2-2's ARD) |
 
 The tables are made from one study ARD (programs/ard/), the listing and
 the figures from the ADaM data, in the figure style of the company
