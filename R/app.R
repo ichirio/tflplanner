@@ -116,9 +116,9 @@
 #' @seealso [launch_app()] to start it in its own R process, as the
 #'   shortcut does ([add_shortcut()]).
 #' @examples
-#' \dontrun{
-#' run_app()
-#' run_app("ABC-101")
+#' if (interactive()) {
+#'   run_app()
+#'   run_app("ABC-101")
 #' }
 #' @export
 run_app <- function(study = NULL, ..., stop_on_close = FALSE) {
