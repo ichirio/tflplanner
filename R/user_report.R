@@ -46,6 +46,10 @@
                       unlist(lapply(ds, function(d) .read_dataset_lines(x, d))),
                       ""),
     ard,
+    "# the figure style of the company standards (theme_tfl(), tfl_check() ...)",
+    sprintf("source(%s)", encodeString(file.path(study_layout()[["programs_tfl"]],
+                                                 .fig_setup_file), quote = "\"")),
+    "",
     "# ---- the report's own code: leaves `content`",
     body,
     "",
@@ -150,8 +154,9 @@ make_user_report <- function(x, output_id) {
     lines <- strsplit(code, "\n", fixed = TRUE)[[1L]]
     leaves <- function(nm) any(grepl(sprintf("(^|[^A-Za-z0-9_.])%s[[:space:]]*(<-|=)[^=]", nm), lines))
     if (!leaves("content") && leaves("plot")) {
-      x$outputs$data_code[i] <- paste(c(sub("\n+$", "", code), "content <- plot"),
-                                      collapse = "\n")
+      # as its figure program did: the figure checks, then the plot
+      x$outputs$data_code[i] <- paste(c(sub("\n+$", "", code), "tfl_check(plot)",
+                                        "content <- plot"), collapse = "\n")
     }
   }
   .set_report_type(x, output_id, "user")
