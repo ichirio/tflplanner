@@ -324,7 +324,7 @@ test_that("a new figure starts from a template the study's data can draw", {
   })
 })
 
-test_that("a figure starts empty, and a figure of user code shows it open", {
+test_that("a figure starts empty, and a figure written by hand shows its two ways", {
   skip_on_cran()
   local_home()
   s <- create_study("G2")
@@ -335,7 +335,9 @@ test_that("a figure starts empty, and a figure of user code shows it open", {
   save_study(s)
   shiny::testServer(server_for("G2"), {
     session$setInputs(target = "F-U", nav = "outputs", rep_nav = "content")
-    expect_match(output$pd_note$html, "drawn by user code")
+    # written by hand: keep the code (a user-code report) or the designer
+    expect_match(output$pd_note$html, "written by hand. Two ways", fixed = TRUE)
+    expect_match(output$pd_note$html, "fig_to_user", fixed = TRUE)
     expect_match(output$lf_fig_box$html, "<details[^>]*open")
     session$setInputs(target = "F-E")
     session$setInputs(pd_empty = 1)
