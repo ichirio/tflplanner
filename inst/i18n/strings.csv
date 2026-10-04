@@ -1529,16 +1529,30 @@ The file cannot be read as an ARD: %s,ARD として読めません: %s
 Choose the ARD file.,ARD のファイルを選んでください。
 "%s is taken in as %s, but its check found errors: no report uses it yet.",%s を %s として取り込みましたが、検査でエラーがありました。まだどの帳票も使いません。
 %s is taken in as %s (check: %s).,%s を %s として取り込みました（検査: %s）。
-This ARD was removed: take it in again to use it.,この ARD は外されています。使うには、もう一度取り込んでください。
 %s now uses %s.,%s は %s を使います。
 No report uses it.,使っている帳票はありません。
 Stop using it?,使うのをやめますか？
 %s go back to their own ARD definition.,%s は、それぞれの ARD の定義に戻ります。
-Remove %s?,%s を外しますか？
-"The file and its record stay in input/ard/ (marked removed), so what a report was made from is not forgotten.",ファイルと記録は input/ard/ に残ります（「外した」の印がつきます）。帳票が何から作られたかは失われません。
 Used by %s.,%s が使っています。
 Set them back to their own ARD definition,それぞれの ARD の定義に戻す
 %s: its own ARD and %s,%s: 自作の ARD と %s
 They agree.,一致しました。
 They differ:,違いがあります:
 The ARD names no report: choose one in the sidebar.,この ARD には帳票の指定がありません。サイドバーで帳票を選んでください。
+"Saved at once, with the other unsaved changes: the record of ARDs taken in and the reports must agree.",その場で保存しました（ほかの未保存の変更も一緒に）。取り込んだ ARD の記録と帳票の設定を一致させるためです。
+taken out,外した
+active,有効
+"Taken out, but a report still uses it",外したのに、使っている帳票があります
+Cannot be used: its check found errors,使えません：検査でエラーがありました
+Note,注意
+No ARD taken in yet.,まだ取り込んだ ARD はありません。
+Choose an ARD in the list.,一覧で ARD を選んでください。
+Take out,外す
+Choose the reports it is for.,どの帳票の ARD かを選んでください。
+Who made it is blank: the record will not say.,出どころが空です。記録に残りません。
+%s is replaced by %s (%s)%s.,%s を %s（%s）に置き換えました%s。
+; %s now use it,。%s を付け替えました
+This ARD was taken out: take it in again to use it.,この ARD は外されています。使うには、もう一度取り込んでください。
+Take out %s?,%s を外しますか？
+"The file and its record stay in input/ard/ (marked taken out), so what a report was made from is not forgotten.",ファイルと記録は input/ard/ に残ります（「外した」の印がつきます）。帳票が何から作られたかは失われません。
+"%s uses an ARD that was taken out (%s): take it in again, or go back to its own ARD definition.",%s は外した ARD（%s）を使っています。もう一度取り込むか、ARD の定義に戻してください。

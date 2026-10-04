@@ -46,3 +46,25 @@ replace_imported_ard <- function(study, old_import_id, path, source = NA_charact
   remove_imported_ard(study, old_import_id)
   list(planner = x, row = row)
 }
+
+# What a row of the record warns of: an ARD taken out that a report still
+# uses, and one its check found errors in (no report can use it)
+.imports_notes <- function(view, words) {
+  if (!nrow(view)) return(character())
+  out <- rep("", nrow(view))
+  out[view$state %in% "removed" & nzchar(view$used_by)] <- words$removed_used
+  err <- !is.na(view$check) & grepl("[0-9]+ error", view$check)
+  out[err & !nzchar(out)] <- words$error
+  out
+}
+
+# The record keeps the name of the file chosen: an upload's temporary path
+# says nothing of where the ARD came from
+.imports_set_original <- function(study, import_id, name) {
+  d <- ard_imports(study)
+  i <- match(import_id, d$import_id)
+  if (is.na(i)) return(invisible(d))
+  d$original[i] <- name
+  .write_imports(study, d)
+  invisible(d)
+}

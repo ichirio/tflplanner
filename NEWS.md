@@ -15,6 +15,13 @@
   in says so -- its analyses there are not used -- with Compare when it has
   its own; the study ARD's list says where each report's ARD comes from.
   Making, rebuilding and previewing the ARD never write to `input/ard/`.
+  Taking in, using, stopping, replacing and taking out are saved at once
+  (the reports' `ard_source` and their programs), as the record is, so the
+  two never part; the dialog starts empty each time, takes a file in once,
+  and asks for the reports when the file names none; the record keeps the
+  name of the file chosen; an ARD taken out that a report still uses, and
+  one whose check found errors, are marked in the list (and the first above
+  the ARD definition, in red).
 
 - **A change to one report no longer makes every report "outdated"**
   (#96).  `study_status()` called a report outdated when either
