@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **The Japanese guide and the README catch up** (docs): the ARD tab's
+  outline, parent and post rows, code lists and the order of levels,
+  analyses run together, warnings and errors, ARDs made elsewhere, the
+  company's own ARD functions, the report list from a TOC and reports
+  written as user code; the tabs by their Japanese names and the sample's
+  eight reports as they are now.
+
 - **The company's ARD functions made from tflspec's templates are listed**
   (tflspec #126): `company_ard_functions()` reads the standards folder with
   `tflspec::tfl_ard_function_info()` -- a function written as
