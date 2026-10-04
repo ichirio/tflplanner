@@ -1,5 +1,22 @@
 # tflplanner (development version)
 
+- **User-code reports, after their screen review** (#98).  The ARD switch
+  says what it reads (the ARD taken in; its analyses, built or not; none
+  yet, with a button to the ARD tab) and what `ard` is; the ARD tab of a
+  user-code report that does not read one says so.  The program checks
+  `content` against the contract and stops naming the item and what it
+  was (`content (item 2) is lm`).  "Run the code" names the line of the
+  code an error is on and a dataset the code reads but the report does not
+  ("Add ADSL to the data it reads"); a data frame's sample has its column
+  header; the figure fits.  The Code tab of a user-code report has the one
+  field it uses, said so.  The offer to convert figures written by hand
+  says why and what Save then means, asks before converting, and "Later"
+  holds while the study is open; a hand-written figure's own screen shows
+  its two ways first (keep the code: a user-code report; or the designer).
+  The kinds are named alike everywhere ("User code" as "Table" ...), with a
+  line on each in the add dialog, and the content tab tells a custom
+  analysis from a whole report of one's own code.
+
 - **The sample study's figures are user-code reports** (#94): F-14-2-1
   and F-14-2-2 are of the type `user` (their code ends with the figure
   checks and `content <- plot`), so a new sample study has no figure

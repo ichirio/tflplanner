@@ -236,7 +236,14 @@
       none = t("Choose a Figure report in the sidebar."),
       other = t("This tab designs figures: choose a Figure report in the sidebar."),
       hand = if (fig_is_new()) t("A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead, open User code at the bottom.") else
-        t("This figure is drawn by user code (below). To make it with the designer instead, take the first step: from a template or empty."),
+        shiny::tagList(
+          shiny::div(t("This figure is written by hand. Two ways:")),
+          shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mt-1",
+                     shiny::span(t("Keep the code:")),
+                     .btn("fig_to_user", t("Make it a user-code report..."),
+                          class = "btn-sm btn-primary py-0")),
+          shiny::div(class = "mt-1",
+                     t("Make it again with the designer: the first step below (a template or empty)."))),
       t("Choose a piece on the left to change it on the right; the figure is redrawn as its program will save it. Empty = the default (shown grey)."))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })

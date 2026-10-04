@@ -106,6 +106,8 @@ reference:
       - preview_figure
       - fig_presets
       - copy_fig_to_params
+      - make_user_report
+      - preview_user
   - title: Input assistance and the table builder
     contents:
       - fetch_ard
