@@ -1598,3 +1598,42 @@ Table: made from the ARD and the table definition.,Table: ARD と表の定義か
 "Listing: the records of a dataset, in columns you define.",Listing: データセットのレコードを、定義した列で並べます。
 "Figure: made with the designer (layers on ggplot()), from a template or empty.",Figure: デザイナー（ggplot() にレイヤーを重ねる）で、テンプレートか空から作ります。
 "User code: your own R code makes the content (tables, figures); the report dresses it.",User code: 自分の R コードで中身（表・図）を作り、帳票の体裁を付けます。
+Take in a TOC...,TOC を取り込む…
+Take in a TOC,TOC を取り込む
+"TOC file (xlsx, xls, csv)",TOC のファイル（xlsx・xls・csv）
+Sheet,シート
+Rows above the header,見出しの上の行数
+The file cannot be read: %s,ファイルを読めません: %s
+Report ID,帳票 ID
+Title lines,タイトルの行
+Population,集団
+Footnote lines,脚注の行
+Remarks,備考
+Which column is what,列の対応づけ
+Remember this mapping in the company standards,この対応づけを会社標準に覚える
+Choose the column holding the report IDs.,帳票 ID の列を選んでください。
+The TOC cannot be read: %s,TOC を読めません: %s
+Title line,タイトル
+Footnote line,脚注
+added,追加
+updated,更新
+edited here,ここで直した行
+Guessed from the ID: check it,ID から推測しました。確かめてください
+(the TOC says %s: not changed),（TOC では %s。変えません）
+Kept: delete it yourself if it is no longer needed.,消さずに残します。要らなければ自分で削除してください。
+"%d title lines, %d footnote lines",タイトル %d 行・脚注 %d 行
+Use the TOC's text,TOC の文にする
+What would change,何が変わるか
+"New %d, changed %d, no change %d, not in the TOC %d.",新しい %d・変更あり %d・変更なし %d・TOC に無い %d。
+"Only what the TOC holds is changed: tables, ARDs, pages and lines added here stay.",TOC にある項目だけを変えます。表・ARD・ページの設定・ここで足した行はそのままです。
+Choose the TOC file.,TOC のファイルを選んでください。
+"Saved at once, with the other unsaved changes: the record of TOCs taken in and the reports must agree.",TOC の取り込みの記録と帳票を合わせるため、ほかの未保存の変更も含めてその場で保存しました。
+The mapping is remembered in %s.,対応づけを %s に覚えました。
+"%s is taken in as %s: new %d, changed %d, not in the TOC %d.",%s を %s として取り込みました: 新しい %d・変更あり %d・TOC に無い %d。
+New reports %d: make their content from the list's buttons.,新しい帳票 %d 件: 一覧のボタンから中身を作ってください。
+New,新しい
+Changed,変更あり
+No change,変更なし
+Not in the TOC,TOC に無い
+Titles and footnotes,タイトル・脚注
+TOCs taken in (imports.csv lists them; last.json: what the last one said),取り込んだ TOC（imports.csv が一覧、last.json は前回の TOC の中身）

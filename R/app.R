@@ -56,6 +56,7 @@
     ard = "Working data: the study ARD (ard.rds)",
     tfl = "Working reports: RTF",
     ard_import = "ARDs made elsewhere, taken in (imports.csv lists them)",
+    toc_import = "TOCs taken in (imports.csv lists them; last.json: what the last one said)",
     runs = "Official runs: one batch folder each (logs, results, code)",
     logs_preview = "What a report program printed in its last preview")
   out <- unname(notes[nm])
@@ -469,7 +470,8 @@ app_ui <- function(lang = "en") {
             .btn("add", t("Add")), .btn("copy", t("Copy")),
             .btn("rename", t("Rename")),
             .btn("remove", t("Delete"), class = "btn-sm btn-outline-danger"),
-            .btn("up", "\u2191"), .btn("down", "\u2193")),
+            .btn("up", "\u2191"), .btn("down", "\u2193"),
+            .btn("toc_new", t("Take in a TOC..."), class = "btn-sm btn-outline-primary ms-auto")),
           shiny::p(class = "text-muted small mt-1",
                    t("Reports are made in this order (the official run too). Copy makes a new report with all of this one's definition.")))),
         bslib::nav_panel(
@@ -3066,6 +3068,240 @@ app_server <- function(input, output, session, start) {
                              c("#15803d", "#b45309", "#6b7280", "#b91c1c")))
   }
   output$ard_state <- DT::renderDT(ard_state_view())
+
+  # ---- a TOC taken in ------------------------------------------------------
+  # One dialog for the first time and every time after: the file, which of
+  # its columns is what (from the company's toc_map), what would change
+  # (lines edited here and changed in the TOC asked about one by one), and
+  # taking it in -- saved at once, with the TOC's copy and record in
+  # input/toc (the record and the reports must agree, as for an ARD)
+  toc_n <- shiny::reactiveVal(0L)
+  toc_id <- function(x) paste0("toc", toc_n(), "_", x)
+  toc_done <- shiny::reactiveVal(FALSE)
+  shiny::observeEvent(input$toc_new, {
+    shiny::req(has_study())
+    toc_n(toc_n() + 1L)
+    toc_done(FALSE)
+    n <- toc_n()
+    shiny::showModal(shiny::modalDialog(
+      title = t("Take in a TOC"), size = "xl",
+      shiny::fileInput(toc_id("file"), t("TOC file (xlsx, xls, csv)"),
+                       accept = c(".xlsx", ".xls", ".csv")),
+      shiny::uiOutput(toc_id("where")),
+      shiny::uiOutput(toc_id("map")),
+      shiny::uiOutput(toc_id("changes")),
+      shiny::uiOutput(toc_id("result")),
+      footer = shiny::tagList(shiny::modalButton(t("Close")),
+                              shiny::uiOutput(toc_id("do_btn"), inline = TRUE))))
+    output[[paste0("toc", n, "_where")]] <- shiny::renderUI(toc_where_ui())
+    output[[paste0("toc", n, "_map")]] <- shiny::renderUI(toc_map_ui())
+    output[[paste0("toc", n, "_changes")]] <- shiny::renderUI(toc_changes_ui())
+    output[[paste0("toc", n, "_result")]] <- shiny::renderUI(NULL)
+    output[[paste0("toc", n, "_do_btn")]] <- shiny::renderUI(
+      if (!toc_done()) .btn(paste0("toc", n, "_do"), t("Take it in"), class = "btn-primary"))
+  })
+  # the file under the name it was chosen by (the record keeps that name)
+  toc_path <- shiny::reactive({
+    f <- input[[toc_id("file")]]
+    shiny::req(f)
+    d <- tempfile("toc")
+    dir.create(d)
+    p <- file.path(d, f$name)
+    file.copy(f$datapath, p, overwrite = TRUE)
+    p
+  })
+  toc_is_csv <- function(p) tolower(tools::file_ext(p)) == "csv"
+  toc_where_ui <- function() {
+    p <- toc_path()
+    sheets <- if (!toc_is_csv(p)) tryCatch(readxl::excel_sheets(p), error = function(e) NULL)
+    shiny::div(
+      class = "d-flex flex-wrap gap-3",
+      if (length(sheets)) shiny::selectInput(toc_id("sheet"), t("Sheet"), sheets),
+      shiny::numericInput(toc_id("skip"), t("Rows above the header"), 0L,
+                          min = 0L, step = 1L, width = "12em"))
+  }
+  toc_where <- shiny::reactive({
+    p <- toc_path()
+    skip <- suppressWarnings(as.integer(input[[toc_id("skip")]] %||% 0L))
+    list(path = p, sheet = if (!toc_is_csv(p)) input[[toc_id("sheet")]],
+         skip = if (is.na(skip) || skip < 0L) 0L else skip)
+  })
+  toc_cols <- shiny::reactive({
+    w <- toc_where()
+    tryCatch(toc_headers(w$path, w$sheet, w$skip), error = function(e) e)
+  })
+  # which column is what: the company's toc_map put on the TOC's header,
+  # each one can be changed
+  toc_map_ui <- function() {
+    h <- toc_cols()
+    if (inherits(h, "error")) {
+      return(shiny::div(class = "alert alert-danger py-1 small",
+                        sprintf(t("The file cannot be read: %s"), conditionMessage(h))))
+    }
+    m <- toc_map_for(h)
+    labs <- c(output_id = t("Report ID"), type = t("Type"), title = t("Title lines"),
+              population = t("Population"), footnote = t("Footnote lines"),
+              program = t("Program"), file = t("File"), note = t("Remarks"))
+    choices <- c(stats::setNames("", t("(none)")), stats::setNames(h, h))
+    shiny::tagList(
+      shiny::h6(t("Which column is what")),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2",
+        lapply(.toc_items, function(it) {
+          many <- it %in% c("title", "footnote")
+          shiny::selectizeInput(toc_id(paste0("map_", it)), labs[[it]],
+                                if (many) stats::setNames(h, h) else choices,
+                                selected = m[[it]] %||% if (!many) "",
+                                multiple = many, width = if (many) "24em" else "12em")
+        })),
+      shiny::checkboxInput(toc_id("remember"),
+                           t("Remember this mapping in the company standards"), FALSE))
+  }
+  toc_map_now <- shiny::reactive({
+    toc_cols()
+    m <- lapply(stats::setNames(.toc_items, .toc_items),
+                function(it) input[[toc_id(paste0("map_", it))]])
+    m <- lapply(m, function(v) v[!is.na(v) & nzchar(v)])
+    m[lengths(m) > 0L]
+  })
+  toc_read <- shiny::reactive({
+    w <- toc_where()
+    m <- toc_map_now()
+    shiny::req(length(m$output_id) == 1L)
+    tryCatch(tflspec::tfl_read_toc(w$path, map = m, sheet = w$sheet, skip = w$skip),
+             error = function(e) e)
+  })
+  toc_offset <- shiny::reactive(toc_title_offset(rv$p))
+  toc_ch <- shiny::reactive({
+    sp <- toc_read()
+    if (inherits(sp, "error")) return(sp)
+    toc_changes(rv$p, sp, toc_last(rv$study), toc_offset())
+  })
+  toc_status_labels <- c(new = "New", changed = "Changed", same = "No change",
+                         missing = "Not in the TOC")
+  toc_line_text <- function(s) {
+    s <- gsub("\u001f", " / ", s %||% "", fixed = TRUE)
+    s <- gsub("^( / )+|( / )+$", "", s)
+    ifelse(is.na(s) | !nzchar(s), t("(none)"), s)
+  }
+  # what would change: a row a report, its lines under it; a new report's
+  # type can be set (a guessed one is marked), a line edited here and
+  # changed in the TOC is asked about (kept as it is unless ticked)
+  toc_changes_ui <- function() {
+    if (is.null(input[[toc_id("map_output_id")]])) return(NULL)
+    if (!length(toc_map_now()$output_id)) {
+      return(shiny::div(class = "alert alert-warning py-1 small",
+                        t("Choose the column holding the report IDs.")))
+    }
+    ch <- toc_ch()
+    if (inherits(ch, "error")) {
+      return(shiny::div(class = "alert alert-danger py-1 small",
+                        sprintf(t("The TOC cannot be read: %s"), conditionMessage(ch))))
+    }
+    r <- ch$reports
+    l <- ch$lines
+    n <- table(factor(r$status, names(toc_status_labels)))
+    sheet_lab <- c(titles = t("Title line"), footnotes = t("Footnote line"))
+    act_lab <- c(add = t("added"), update = t("updated"), remove = t("taken out"),
+                 ask = t("edited here"))
+    types <- stats::setNames(names(.type_labels), t(unname(.type_labels)))
+    rows <- lapply(seq_len(nrow(r)), function(i) {
+      id <- r$output_id[i]
+      st <- r$status[i]
+      type_cell <- if (st == "new") {
+        shiny::div(
+          class = "d-flex align-items-center gap-1",
+          shiny::selectInput(toc_id(paste0("type_", i)), NULL, types,
+                             selected = if (is.na(r$type_toc[i])) "table" else r$type_toc[i], width = "10em"),
+          if (isTRUE(r$guessed[i])) shiny::span(
+            class = "small text-warning", title = t("Guessed from the ID: check it"), "*"))
+      } else if (st == "missing") {
+        "—"
+      } else {
+        now <- t(.type_labels[[r$type_now[i]]] %||% r$type_now[i])
+        if (!is.na(r$type_toc[i]) && !identical(r$type_toc[i], r$type_now[i])) {
+          shiny::span(now, shiny::span(class = "small text-warning",
+                                       sprintf(t("(the TOC says %s: not changed)"),
+                                               t(.type_labels[[r$type_toc[i]]]))))
+        } else now
+      }
+      li <- which(l$output_id == id)
+      what <- if (st == "missing") {
+        shiny::span(class = "small text-muted", t("Kept: delete it yourself if it is no longer needed."))
+      } else if (st == "new") {
+        shiny::span(class = "small text-muted",
+                    sprintf(t("%d title lines, %d footnote lines"),
+                            sum(l$sheet[li] == "titles"), sum(l$sheet[li] == "footnotes")))
+      } else shiny::tagList(lapply(li, function(k) shiny::div(
+        class = "small",
+        sprintf("%s %s (%s): ", sheet_lab[[l$sheet[k]]], l$line[k], act_lab[[l$action[k]]]),
+        if (l$action[k] == "ask") shiny::tagList(
+          shiny::span(class = "text-muted", toc_line_text(l$now[k])), " → ",
+          toc_line_text(l$toc[k]),
+          shiny::checkboxInput(toc_id(paste0("ask_", k)), t("Use the TOC's text"), FALSE))
+        else shiny::tagList(shiny::span(class = "text-muted", toc_line_text(l$now[k])),
+                            " → ", toc_line_text(l$toc[k])))))
+      shiny::tags$tr(
+        class = if (st == "missing") "table-warning",
+        shiny::tags$td(id), shiny::tags$td(t(toc_status_labels[[st]])),
+        shiny::tags$td(type_cell), shiny::tags$td(what))
+    })
+    shiny::tagList(
+      shiny::h6(t("What would change")),
+      shiny::p(class = "small",
+               sprintf(t("New %d, changed %d, no change %d, not in the TOC %d."),
+                       n[["new"]], n[["changed"]], n[["same"]], n[["missing"]]),
+               " ", t("Only what the TOC holds is changed: tables, ARDs, pages and lines added here stay.")),
+      shiny::tags$table(
+        class = "table table-sm align-middle",
+        shiny::tags$thead(shiny::tags$tr(lapply(
+          t(c("output_id", "State", "Type", "Titles and footnotes")), shiny::tags$th))),
+        shiny::tags$tbody(rows)))
+  }
+  shiny::observeEvent(input[[toc_id("do")]], {
+    shiny::req(!toc_done())
+    if (is.null(input[[toc_id("file")]])) return(notify(t("Choose the TOC file."), "warning"))
+    sp <- toc_read()
+    ch <- toc_ch()
+    if (inherits(ch, "error")) return(notify(conditionMessage(ch), "error"))
+    r <- ch$reports
+    l <- ch$lines
+    types <- vapply(which(r$status == "new"), function(i)
+      input[[toc_id(paste0("type_", i))]] %||% NA_character_, "")
+    names(types) <- r$output_id[r$status == "new"]
+    ask <- which(l$action == "ask")
+    use <- ask[vapply(ask, function(k) isTRUE(input[[toc_id(paste0("ask_", k))]]), NA)]
+    use_toc <- paste(l$output_id[use], l$sheet[use], l$line[use], sep = "|")
+    off <- toc_offset()
+    p <- guarded(toc_apply(rv$p, sp, ch, use_toc = use_toc,
+                           types = types[!is.na(types)], title_offset = off))
+    if (is.null(p)) return()
+    w <- toc_where()
+    rec <- guarded(.toc_record(rv$study, w$path, basename(w$path), ch,
+                               toc_snapshot(sp, off)))
+    if (is.null(rec)) return()
+    was_dirty <- isTRUE(shiny::isolate(dirty()))
+    rv$p <- p
+    touched <- r$output_id[r$status %in% c("new", "changed")]
+    if (was_dirty) {
+      notify(t("Saved at once, with the other unsaved changes: the record of TOCs taken in and the reports must agree."))
+    }
+    do_save(regenerate = touched)
+    if (isTRUE(input[[toc_id("remember")]])) {
+      f <- guarded(remember_toc_map(toc_map_now()))
+      if (!is.null(f)) notify(sprintf(t("The mapping is remembered in %s."), f))
+    }
+    toc_done(TRUE)
+    bump()
+    n_new <- sum(r$status == "new")
+    output[[toc_id("result")]] <- shiny::renderUI(shiny::div(
+      class = "alert alert-success py-1 small",
+      sprintf(t("%s is taken in as %s: new %d, changed %d, not in the TOC %d."),
+              basename(w$path), rec$import_id, n_new, sum(r$status == "changed"),
+              sum(r$status == "missing")),
+      if (n_new) shiny::tagList(shiny::br(), sprintf(
+        t("New reports %d: make their content from the list's buttons."), n_new))))
+  })
 
   # ---- ARDs taken in -------------------------------------------------------
   # Taking in, using, stopping, replacing and taking out write the record

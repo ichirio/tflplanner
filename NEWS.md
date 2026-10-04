@@ -1,5 +1,18 @@
 # tflplanner (development version)
 
+- **Take in a TOC** (#99).  "Take in a TOC..." on the reports list: the
+  file, its sheet and the rows above its header; which column is what,
+  from the company standards' new `toc_map` sheet (an item and the column
+  names it may have; the map is what `tflspec::tfl_read_toc()` takes), with
+  "remember this mapping"; what would change, report by report and line by
+  line; and taking it in, saved at once with the TOC's copy and record in
+  `input/toc/`.  Taken in again, only what the TOC holds is updated: a line
+  edited here that the TOC changed too is asked about (kept unless ticked),
+  a report no longer in the TOC is kept, and an existing report's type is
+  not changed; a new report's guessed type is marked and can be set.
+  `toc_changes()`, `toc_apply()`, `toc_snapshot()`, `toc_imports()` and
+  `toc_last()`.
+
 - **User-code reports, after their screen review** (#98).  The ARD switch
   says what it reads (the ARD taken in; its analyses, built or not; none
   yet, with a button to the ARD tab) and what `ard` is; the ARD tab of a
