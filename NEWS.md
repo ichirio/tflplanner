@@ -1,5 +1,10 @@
 # tflplanner (development version)
 
+- **The analysis form's argument hints are in Japanese too** (#85), all 81
+  of tflspec's catalog (a test says every hint has its Japanese), and the
+  functions the form lists are the ones the catalog offers (its `offered`
+  column, tflspec 0.0.24.9029) instead of a list of names.
+
 - **The builder writes the column header line by line** (#82).  The
   "Column header" presets radio is a form: one box a header line, with the
   row-header columns' text (one cell over several, or one each) and the

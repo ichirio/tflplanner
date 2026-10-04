@@ -1408,3 +1408,84 @@ Replace the column header?,列見出しを置き換えますか？
 The lines below become the preset %s; what they say now is replaced.,下の行が定型 %s の内容になり、今の内容は置き換わります。
 Replace,置き換える
 (empty),（空）
+arg-hint:The analysis data (the data of the analysis row: its dataset and analysis set).,解析のデータ（解析の行のデータ：そのデータセットと解析対象集団）。
+"arg-hint:The group columns, e.g. the treatment (TRT01A); the analysis is done within each group.",群の列。例：投与群（TRT01A）。群ごとに解析する。
+arg-hint:The analysed columns; several may be given (one call analyses each).,解析する列。複数を書ける（1 回の呼び出しでそれぞれを解析する）。
+"arg-hint:Columns whose levels form strata, analysed within each but only for the combinations present.",水準で層を作る列。層ごとに解析する（あり得る組み合わせのうち、データにあるものだけ）。
+"arg-hint:The subject key, e.g. USUBJID; subjects are counted once.",被験者のキー。例：USUBJID。被験者は 1 回だけ数える。
+"arg-hint:What a percentage divides by: the analysis set (population), or cards' row / column / cell.",割合の分母：解析対象集団（population）、または cards の row / column / cell。
+arg-hint:The statistics to keep or compute.,残す・計算する統計量。
+"arg-hint:Confidence level, a number between 0 and 1 (0.95).",信頼水準。0 と 1 の間の数（0.95）。
+arg-hint:How each statistic is formatted in stat_fmt (the analysis row's formats column writes it).,stat_fmt での各統計量の書式（解析の行の formats 列が書く）。
+arg-hint:Labels of the statistics in the ARD.,ARD での統計量のラベル。
+"arg-hint:A model formula, e.g. AVAL ~ TRT01P + AGE.",モデルの式。例：AVAL ~ TRT01P + AGE。
+arg-hint:The method to use.,使う方法。
+"arg-hint:Further arguments of the model function, as a list (list(family = binomial)).",モデルの関数に渡すほかの引数。list で書く（list(family = binomial)）。
+arg-hint:The input object (a fitted model or a survival fit) when it is not the data.,入力のオブジェクト（当てはめたモデル、または生存時間の当てはめ）。データでないとき。
+arg-hint:Which of the variables to report (default: all of them).,報告する変数（既定：すべて）。
+"arg-hint:The level to count for each variable, e.g. list(SAFFL = ""Y"").","各変数で数える水準。例：list(SAFFL = ""Y"")。"
+"arg-hint:The level counted for each variable, e.g. list(AESER = ""Y""); blank: the variable's maximum level (TRUE, ""Y"", the highest).","各変数で数える水準。例：list(AESER = ""Y"")。空欄：変数の最大の水準（TRUE、""Y""、最も高いもの）。"
+"arg-hint:The group columns every analysis inside is done by, e.g. TRT01A.",中のすべての解析で使う群の列。例：TRT01A。
+"arg-hint:TRUE: also each analysis over all groups (an ""Overall"" column).",TRUE：各解析を全群でも行う（「全体」の列）。
+arg-hint:TRUE: also the missing counts of each variable.,TRUE：各変数の欠測の数も出す。
+arg-hint:TRUE: also each variable's label.,TRUE：各変数のラベルも出す。
+"arg-hint:TRUE: also the total number of rows (subjects), for a ""(N=...)"" header.",TRUE：総行数（被験者数）も出す。「(N=...)」の見出し用。
+arg-hint:TRUE (default): also the counts of each group (the N of the column headers).,TRUE（既定）：各群の度数も出す（列見出しの N）。
+"arg-hint:The levels of the hierarchy, outermost first: AEBODSYS then AEDECOD.",階層の水準。外側から：AEBODSYS、次に AEDECOD。
+"arg-hint:The subjects the rates divide by: the analysis set (population), with the by columns.",率の分母にする被験者：解析対象集団（population）。by の列つき。
+"arg-hint:TRUE: also ""any event"" rows over the whole hierarchy.",TRUE：階層全体の「いずれかの事象」の行も出す。
+"arg-hint:TRUE: also each level over all groups (an ""Overall"" column).",TRUE：各水準を全群でも出す（「全体」の列）。
+arg-hint:The levels of the hierarchy to report (default: all).,報告する階層の水準（既定：すべて）。
+arg-hint:TRUE: also total event rows over the whole hierarchy.,TRUE：階層全体の事象の総数の行も出す。
+arg-hint:The graded columns (AETOXGR); the worst level per subject is counted.,グレードの列（AETOXGR）。被験者ごとの最悪の水準を数える。
+"arg-hint:The level whose proportion is estimated, e.g. list(AVALC = ""CR"").","割合を推定する水準。例：list(AVALC = ""CR"")。"
+arg-hint:t.test (the mean) or wilcox.test (the pseudo-median).,t.test（平均）または wilcox.test（擬中央値）。
+arg-hint:The time at risk of each subject (in units of unit_label).,各被験者のリスクにさらされた時間（unit_label の単位）。
+arg-hint:The number of events of each subject (blank: one record = one event).,各被験者の事象の数（空欄：1 レコード = 1 事象）。
+arg-hint:The person-time the rate is expressed per (100 = per 100 person-years).,率を表す人時（100 = 100 人年あたり）。
+"arg-hint:The unit of time at risk, e.g. years.",リスクにさらされた時間の単位。例：years。
+arg-hint:The post-baseline range indicator (ANRIND).,ベースライン後の基準範囲の区分（ANRIND）。
+arg-hint:The baseline range indicator (BNRIND).,ベースラインの基準範囲の区分（BNRIND）。
+"arg-hint:The abnormal levels and their names, as R: list(Low = ""LOW"", High = ""HIGH"").","異常の水準とその名前。R で：list(Low = ""LOW"", High = ""HIGH"")。"
+"arg-hint:The model, e.g. AVAL ~ TRT01P.",モデル。例：AVAL ~ TRT01P。
+"arg-hint:The models compared, as a list of formulas: list(AVAL ~ TRT01P, AVAL ~ TRT01P + AGE).","比べるモデル。式の list で：list(AVAL ~ TRT01P, AVAL ~ TRT01P + AGE)。"
+"arg-hint:The subject key that pairs the two records, e.g. USUBJID.",2 つのレコードを対にする被験者のキー。例：USUBJID。
+"arg-hint:The model, e.g. AVAL ~ TRT01P + BASE.",モデル。例：AVAL ~ TRT01P + BASE。
+"arg-hint:The model function, e.g. lm, glm, survival::coxph.",モデルの関数。例：lm、glm、survival::coxph。
+"arg-hint:The model function, e.g. lm, glm.",モデルの関数。例：lm、glm。
+"arg-hint:The name of the column whose LS means are reported, e.g. TRT01P (default: the first term of the formula).",最小二乗平均を出す列の名前。例：TRT01P（既定：式の最初の項）。
+"arg-hint:The survival outcome, e.g. survival::Surv(AVAL, 1 - CNSR).","生存時間の結果。例：survival::Surv(AVAL, 1 - CNSR)。"
+"arg-hint:The group columns of the Kaplan-Meier fit, e.g. TRT01P.",Kaplan-Meier の当てはめの群の列。例：TRT01P。
+"arg-hint:The times survival is estimated at, e.g. c(180, 365).","生存率を推定する時点。例：c(180, 365)。"
+"arg-hint:The survival quantiles, e.g. 0.5 for the median.",生存時間の分位点。例：中央値なら 0.5。
+"arg-hint:What is estimated at the times: survival, risk (1 - survival) or cumhaz.",時点で推定するもの：survival（生存率）、risk（1 - 生存率）、cumhaz（累積ハザード）。
+"arg-hint:The model, e.g. survival::Surv(AVAL, 1 - CNSR) ~ TRT01P.","モデル。例：survival::Surv(AVAL, 1 - CNSR) ~ TRT01P。"
+"arg-hint:The times the difference is estimated at, e.g. c(180, 365).","差を推定する時点。例：c(180, 365)。"
+arg-hint:Columns whose levels form the subgroups (all combinations).,水準で部分集団を作る列（すべての組み合わせ）。
+arg-hint:Columns whose levels form the subgroups (only the combinations present).,水準で部分集団を作る列（データにある組み合わせだけ）。
+"arg-hint:The analysis run within each subgroup, e.g. ~ ard_summary(.x, variables = AGE).","各部分集団で実行する解析。例：~ ard_summary(.x, variables = AGE)。"
+"arg-hint:The column whose pairs of levels are compared, e.g. TRT01A.",水準の対を比べる列。例：TRT01A。
+"arg-hint:The analysis run on each pair, e.g. ~ cardx::ard_stats_t_test(.x, by = TRT01A, variables = AGE).","各対で実行する解析。例：~ cardx::ard_stats_t_test(.x, by = TRT01A, variables = AGE)。"
+"arg-hint:The levels whose pairs are compared, as R: c(""Placebo"", ""Drug A"") (default: every pair).","対を比べる水準。R で：c(""Placebo"", ""Drug A"")（既定：すべての対）。"
+"arg-hint:Your statistics, as functions of x (the variable) and data: ~ list(ratio = function(x, data, ...) ...).","独自の統計量。x（変数）と data の関数で：~ list(ratio = function(x, data, ...) ...)。"
+"arg-hint:The columns of the coefficient table left out, as R: c(""var_type"", ""var_label"").","係数の表から除く列。R で：c(""var_type"", ""var_label"")。"
+arg-hint:TRUE: also the total number of subjects.,TRUE：被験者の総数も出す。
+arg-hint:No longer used (cards 0.7.0): leave it at the default.,もう使われていない（cards 0.7.0）。既定のままにする。
+arg-hint:TRUE (default): also the counts of each group.,TRUE（既定）：各群の度数も出す。
+arg-hint:The name the row count is given in the variable column (default ..row_count..).,行数を variable 列に記録するときの名前（既定 ..row_count..）。
+"arg-hint:Labels to use instead of the data's, as R: list(AGE = ""Age (years)"").","データのラベルの代わりに使うラベル。R で：list(AGE = ""Age (years)"")。"
+arg-hint:TRUE: no message about the order the levels were taken in.,TRUE：水準を取った順についてのメッセージを出さない。
+arg-hint:TRUE (default): subjects already abnormal at baseline are not counted.,TRUE（既定）：ベースラインで既に異常の被験者は数えない。
+arg-hint:TRUE: no messages.,TRUE：メッセージを出さない。
+"arg-hint:Stratum weights for the stratified Wilson methods (strat_wilson), as R; blank: estimated.",層別 Wilson 法（strat_wilson）の層の重み。R で。空欄：推定する。
+arg-hint:Iterations for estimating the stratified Wilson weights (default 10).,層別 Wilson の重みを推定する反復の回数（既定 10）。
+"arg-hint:How the confidence interval is computed: normal, normal-log, exact or byar.",信頼区間の計算法：normal、normal-log、exact、byar。
+arg-hint:TRUE (default): missing values are left out.,TRUE（既定）：欠測値を除く。
+arg-hint:The text the ARD records as the method.,ARD に方法として記録する文字。
+arg-hint:TRUE (default): also the standard error and a confidence interval.,TRUE（既定）：標準誤差と信頼区間も出す。
+"arg-hint:The package whose model function method names, e.g. survival; blank: base.",method が名指すモデルの関数のパッケージ。例：survival。空欄：base。
+arg-hint:The function that turns the model into a table of coefficients; blank: broom / parameters.,モデルを係数の表にする関数。空欄：broom / parameters。
+arg-hint:continuous (a mean) or dichotomous (a proportion).,continuous（平均）または dichotomous（割合）。
+"arg-hint:The G-rho family parameter: 0 (default) the log-rank test, 1 the Peto & Peto test.",G-rho 族のパラメータ：0（既定）はログランク検定、1 は Peto & Peto 検定。
+arg-hint:The variable name the statistics are recorded under.,統計量を記録する変数の名前。
+arg-hint:The context the ARD records (default identity).,ARD に記録する context（既定 identity）。

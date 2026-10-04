@@ -19,11 +19,11 @@
                    category = company, call = keywords$call,
                    state = "ok", stringsAsFactors = FALSE)
   f <- functions
-  # out of the builder's scope (the 2026-10-04 decision, Q9): survey
-  # designs (they take a design object, not data) and ard_formals() (a
-  # building block, not an analysis) -- shown, like an old name, only for
-  # the analysis that names one
-  out_of_scope <- f$category %in% "Survey designs" | f$call %in% "cards::ard_formals"
+  # out of the builder's scope (the 2026-10-04 decision, Q9): the catalog's
+  # `offered` column says so (survey designs, ard_formals() ...) -- shown,
+  # like an old name, only for the analysis that names one
+  out_of_scope <- if ("offered" %in% names(f)) !f$offered %in% TRUE else
+    f$category %in% "Survey designs" | f$call %in% "cards::ard_formals"
   state <- ifelse(!f$installed, "missing",
                   ifelse(!is.na(f$replaced_by) & nzchar(f$replaced_by), "old",
                          ifelse(out_of_scope, "out",
