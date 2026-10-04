@@ -159,3 +159,38 @@ test_that("the study's analyses are exported as CDISC ARS", {
   s$planner$ard$analyses <- s$planner$ard$analyses[0, ]
   expect_error(export_ars(s, d), "no analyses")
 })
+
+test_that("the study's code lists reach the ARD programs", {
+  skip_if_not_installed("cards")
+  skip_on_cran()
+  skip_if(utils::packageVersion("tflspec") < "0.0.24.9031")
+  local_home2()
+  p <- ard_planner()
+  p$ard$analyses$method[1] <- "categorical"
+  p$ard$analyses <- rbind(p$ard$analyses, p$ard$analyses[1, ])
+  p$ard$analyses$analysis_id[3] <- "AGEGR"
+  p$ard$analyses$by[3] <- "TRT01A"
+  p$ard$analyses$variables[3] <- "AGEGR1"
+  p <- set_codelist(p, data.frame(
+    variable = "AGEGR1", value = c("<65", "65-80", ">80", "unknown"),
+    order = c("1", "2", "3", "4"), stringsAsFactors = FALSE))
+  s <- create_study("A2", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  prog <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
+  expect_true(any(grepl(".codelists <- list(", prog, fixed = TRUE)))
+  expect_true(any(grepl("adsl <- .levels(adsl)", prog, fixed = TRUE)))
+  # the ARD counts the value no record has, in the code list's order
+  o <- open_study("A2")
+  u <- update_study_ard(o, "DM")
+  expect_true(u$ok)
+  a <- readRDS(file.path(s$path, "output", "ard", "ard.rds"))
+  a <- a[a$analysis_id == "AGEGR" & a$stat_name == "n", ]
+  lv <- vapply(a$variable_level, as.character, "")
+  expect_identical(unique(lv), c("<65", "65-80", ">80", "unknown"))
+  expect_true(all(unlist(a$stat[lv == "unknown"]) == 0))
+  expect_equal(ard_status(o)$state, "built")
+  # a new code list makes the ARD out of date
+  o$planner <- set_codelist(o$planner, data.frame(variable = "AGEGR1",
+    value = "none", order = "5", stringsAsFactors = FALSE))
+  expect_equal(ard_status(o)$state, "outdated")
+})

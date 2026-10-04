@@ -2899,7 +2899,8 @@ app_server <- function(input, output, session, start) {
       }
     }
     tryCatch(switch(scope,
-      report = ard_program_code(a, id, dir = rv$study$path),
+      report = ard_program_code(a, id, dir = rv$study$path,
+                                codelists = .study_codelists(rv$p)),
       setup = ard_setup_code(a),
       autoexec = ard_autoexec_code(a)),
       error = function(e) msg(paste(t("The code cannot be written yet:"),

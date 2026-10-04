@@ -44,6 +44,11 @@
 #' @param date The date stamped in the banner.
 #' @param dir The study folder: the fingerprint recorded with the ARD reads
 #'   the study's own analysis functions (its key `source`) from it.
+#' @param codelists The study's code lists (the table definition's
+#'   `codelists` sheet, its study rows), or `NULL`: each listed column of the
+#'   data becomes a factor in their order before the analyses, so the ARD
+#'   keeps the order and counts a value no record has (0)
+#'   ([tflspec::tfl_ard_code()]).  They are part of the fingerprint.
 #' @return The code, one element per line.
 #' @export
 ard_setup_code <- function(spec, date = Sys.Date()) {
@@ -87,7 +92,8 @@ ard_setup_code <- function(spec, date = Sys.Date()) {
 
 #' @rdname ard_setup_code
 #' @export
-ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".") {
+ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
+                             codelists = NULL) {
   x <- if (is.character(spec)) .read_ard_spec(spec) else spec
   lay <- study_layout()
   a <- x$analyses[x$analyses$output_id %in% output_id, , drop = FALSE]
@@ -110,10 +116,12 @@ ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".") {
                                                  .ard_setup_file),
                                        quote = "\"")),
     "",
-    .ard_spec_code(x, output_id = output_id, part = "body"),
+    .ard_spec_code(x, output_id = output_id, part = "body",
+                   codelists = codelists),
     "",
     sprintf(".save_output(ard, %s, %s)", encodeString(output_id, quote = "\""),
-            encodeString(tflspec::tfl_ard_spec_hash(x, output_id, dir = dir),
+            encodeString(tflspec::tfl_ard_spec_hash(x, output_id, dir = dir,
+                                                    codelists = codelists),
                          quote = "\"")),
     "")
 }
@@ -155,7 +163,7 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
 
 # the ARD programs, written with the study: the setup, one per output, the
 # autoexec; a program of an output no longer defined goes (unless edited)
-.save_ard_programs <- function(spec, root) {
+.save_ard_programs <- function(spec, root, codelists = NULL) {
   lay <- study_layout()
   dir <- file.path(root, lay[["programs_ard"]])
   ids <- unique(stats::na.omit(spec$analyses$output_id))
@@ -166,7 +174,8 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
     out[nrow(out) + 1L, ] <<- list(f, .put_program(code, f))
   }
   put(ard_setup_code(spec), .ard_setup_file)
-  for (id in ids) put(ard_program_code(spec, id, dir = root),
+  for (id in ids) put(ard_program_code(spec, id, dir = root,
+                                       codelists = codelists),
                       .ard_prog_name(id))
   put(ard_autoexec_code(spec), .ard_autoexec_file)
   keep <- c(.ard_setup_file, .ard_autoexec_file, vapply(ids, .ard_prog_name, ""))
