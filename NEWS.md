@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **A change to one report no longer makes every report "outdated"**
+  (#96).  `study_status()` called a report outdated when either
+  definition workbook was newer than its RTF, so saving any change -- one
+  report's title, converting one figure -- marked them all.  The program
+  holds the report's whole definition and is rewritten only when that
+  changes, so a report is now outdated when its program, or a file it
+  sources (the figure setup), is newer than its RTF.
+
 - **The help of a report's `type` in Japanese** (#100): tflspec's column
   help now names `user`; its translation is added.
 

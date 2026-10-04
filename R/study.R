@@ -524,8 +524,10 @@ save_study <- function(study, regenerate = character(),
 #' * `todo` -- the program's data part is still to be written
 #' * `not run` -- no RTF yet
 #' * `error` -- the last run failed (see its log)
-#' * `outdated` -- the program or a definition workbook changed after the
-#'   RTF was made
+#' * `outdated` -- the report's program, or a file it sources (the figure
+#'   setup, say), changed after the RTF was made.  The program holds the
+#'   report's whole definition, so a change to the definition reaches the
+#'   reports it is about and no others.
 #' * `ok`
 #'
 #' @param study An `rtfstudy`.
@@ -535,11 +537,6 @@ study_status <- function(study) {
   p <- study$planner
   root <- study$path
   lay <- study_layout()
-  spec_time <- suppressWarnings(max(.mtime(file.path(root, lay[["spec"]],
-                                                    .table_file)),
-                                    .mtime(file.path(root, lay[["spec"]],
-                                                     .report_file)),
-                                    na.rm = TRUE))
   rows <- lapply(p$outputs$output_id, function(id) {
     info <- report_info(p, id)
     prog <- file.path(root, lay[["programs_tfl"]], info$program)
@@ -558,7 +555,7 @@ study_status <- function(study) {
       if (pstate == "todo") "todo" else
         if (failed) "error" else
           if (is.na(t_rtf)) "not run" else
-            if (isTRUE(.mtime(prog) > t_rtf) || isTRUE(spec_time > t_rtf))
+            if (isTRUE(.program_time(prog, root) > t_rtf))
               "outdated" else "ok"
     fmt <- function(t) if (is.na(t)) NA_character_ else
       format(t, "%Y-%m-%d %H:%M")
@@ -576,6 +573,22 @@ study_status <- function(study) {
     rows))
   rownames(out) <- NULL
   out
+}
+
+# When a report's program last changed: the program itself, or a file of
+# the study it sources (programs/tfl/fig_setup.R, a setup of the user's).
+# The definition workbooks are not in it: the program is written from them
+# and holds all of the report's own definition, so saving a change to one
+# report rewrites that report's program only.
+.program_time <- function(prog, root) {
+  t <- .mtime(prog)
+  if (is.na(t)) return(t)
+  txt <- readLines(prog, warn = FALSE, encoding = "UTF-8")
+  src <- regmatches(txt, regexpr("^\\s*source\\(\"[^\"]+\"", txt))
+  src <- unique(sub("^\\s*source\\(\"", "", sub("\"$", "", src)))
+  if (!length(src)) return(t)
+  ts <- do.call(c, lapply(file.path(root, src), .mtime))
+  suppressWarnings(max(c(t, ts), na.rm = TRUE))
 }
 
 #' Preview a study's reports
