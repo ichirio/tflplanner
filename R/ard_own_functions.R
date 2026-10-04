@@ -68,6 +68,8 @@ use_company_ard_function <- function(study, name, home = tflplanner_home()) {
   } else {
     dir.create(dirname(dest), recursive = TRUE, showWarnings = FALSE)
     file.copy(file.path(.own_fun_dir(home), own$file[i]), dest)
+    # what was copied, to tell later which side changed
+    .record_copied(study, name, file.path(.own_fun_dir(home), own$file[i]))
   }
   st <- study$planner$ard$study
   k <- match("source", st$key)
