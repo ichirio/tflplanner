@@ -1092,7 +1092,7 @@ text (centred paragraphs) / table (a content-width one-column table); blank: tex
 The title block's width: content / page / a fraction of the writable width / twips; blank: content.,タイトルの幅：content / page / 書ける幅に対する割合 / twips。空欄 = content。
 "The footnote block's width, as title_width; blank: content.",脚注の幅。title_width と同じ。空欄 = content。
 Cell-text markup for the whole document: script / relational / all / none; blank: script.,文書全体のセルの文字の記法：script / relational / all / none。空欄 = script。
-"Report: the running page header, one row a line; the line is the key (the study's lines on blank output_id, a report's own on its rows). A line with no text is a blank line.",帳票：ページヘッダー。1 行 = 1 行。line がキー（試験共通は output_id 空欄の行、帳票独自はその帳票の行）。文字の無い行は空行。
+"Report: the running page header, one row a line; the line is the key (the study's lines on blank output_id, a report's own on its rows). A line with no text is a blank line; a report's line that says (none) takes the study's line of that number out.",帳票：ページヘッダー。1 行 = 1 行。line がキー（試験共通は output_id 空欄の行、帳票独自はその帳票の行）。文字の無い行は空行。帳票の行に (none) と書くと、同じ番号の試験共通の行を出さない。
 "The line number, a whole number (1 = the top).",行番号。整数（1 = 一番上）。
 The text at the left; tokens work.,左の文字。差し込み記号が使える。
 The text in the centre.,中央の文字。

@@ -1,5 +1,8 @@
 # tflplanner (development version)
 
+- The `header` sheet's help (and its Japanese) says that a report's line
+  `(none)` takes the study's line of that number out (tflspec #91).  Needs
+  tflspec >= 0.0.24.9027.
 - **The data of an analysis is one choice** (#74).  On the ARD tab's
   analysis form, Data and Analysis set are one choice of a dataset and an
   analysis set -- "ADSL × SAF (pop_saf)", "ADAE × SAF (adae_saf)",
