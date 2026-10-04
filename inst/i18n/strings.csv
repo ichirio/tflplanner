@@ -1904,3 +1904,13 @@ Marked: a line the other file has not.,色付き: もう一方のファイルに
 Trying %s (up to 60 seconds) ...,%s を試しています（最長 60 秒）…
 It is written for this study: the company standards' folder (%s) cannot be written from here.,この試験に書きます（会社標準のフォルダ %s には、ここから書けません）。
 Open the folder,フォルダを開く
+%s: %s,%s：%s
+%d subjects,%d 人
+"%d records, %d subjects",%d 行・%d 人
+Write it from columns,列から書く
+Response,目的変数
+(choose),（選ぶ）
+Terms,説明変数
+Interaction of the first two,最初の 2 つの交互作用も
+Write the formula,式を書く
+Choose the response and at least one term.,目的変数と、説明変数を 1 つ以上選んでください。

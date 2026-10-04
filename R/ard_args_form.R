@@ -197,3 +197,16 @@
     d <- gsub('^"|"$', "", default)
   if (is.na(d) || !nzchar(d) || d == "NULL") plain else sprintf(named, d)
 }
+
+# a model's formula from columns: `resp ~ t1 + t2 (+ t1:t2)`, or NULL
+.fb_formula <- function(response, terms, interaction = FALSE) {
+  terms <- setdiff(terms[!is.na(terms) & nzchar(terms)], response)
+  if (is.null(response) || is.na(response) || !nzchar(response) || !length(terms)) return(NULL)
+  rhs <- paste(terms, collapse = " + ")
+  if (isTRUE(interaction) && length(terms) >= 2L) rhs <- paste0(rhs, " + ", terms[1L], ":", terms[2L])
+  paste(response, "~", rhs)
+}
+
+# the regressions whose fitting function is chosen from the usual ones
+.regression_calls <- c("cardx::ard_regression", "cardx::ard_regression_basic")
+.regression_methods <- c("lm", "glm", "survival::coxph", "lme4::lmer", "geepack::geeglm")

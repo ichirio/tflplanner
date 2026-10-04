@@ -138,7 +138,7 @@ test_that("a row of the analyses grid is edited as a form", {
     inp[[id("fn_pick")]] <- "continuous"
     # the data: one choice of dataset x analysis set, named as the program
     # names it
-    expect_match(h, "ADSL × SAF (pop_saf)", fixed = TRUE)
+    expect_match(h, "ADSL × SAF (pop_saf: ", fixed = TRUE)
     expect_false(grepl("(the analysis set's", h, fixed = TRUE))
     # the wizard wrote the dataset out: the same data as the analysis set's
     expect_match(h, 'value="ADSL|SAF" selected', fixed = TRUE)

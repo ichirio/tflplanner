@@ -4,6 +4,15 @@
   program's absolute path (rtfreporter #560), in Japanese too.  Needs
   tflspec 0.0.24.9041 and rtfreporter 0.8.2.9021.
 
+- **A regression's formula from columns; the data choices with their
+  subjects** (#123).  A formula argument (`cardx::ard_regression()`,
+  `ard_emmeans_*()` ...) can be written from columns -- the response, the
+  terms (the analysis's groups first), the first two's interaction -- and
+  `ard_regression()`'s fitting function is chosen from the usual ones.  The
+  data choices say how many subjects (and records) each reads
+  (`adae_saf: 1191 records, 225 subjects`), counted once when the study is
+  opened, on all the rows, as the ARD programs make the data.
+
 - **Own functions, polished** (#122).  The last try keeps the whole ARD's
   rows, its errors, warnings and notes, and who tried it; a name that is a
   cards / cardx function is refused (it would hide it); Try says it is
