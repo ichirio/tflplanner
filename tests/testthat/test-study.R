@@ -226,3 +226,17 @@ test_that("every study folder has its note on the study tab", {
                         encoding = "UTF-8", check.names = FALSE)
   expect_true(all(notes %in% tr$en))
 })
+
+test_that("a study folder registered again keeps its designed figures", {
+  local_home()
+  p <- add_output(new_planner(), "F-1", type = "figure")
+  p <- set_fig_design(p, "F-1", tflspec::tfl_fig_template("km_simple", data = "ADTTE"))
+  s <- create_study("FD", planner = p)
+  expect_true(file.exists(file.path(s$path, "spec/figures/F-1.yml")))
+  unregister_study("FD")
+  s2 <- register_study(s$path)
+  expect_identical(fig_design(s2$planner, "F-1")$template, "km_simple")
+  # saved again: the design file stays
+  save_study(s2)
+  expect_true(file.exists(file.path(s$path, "spec/figures/F-1.yml")))
+})
