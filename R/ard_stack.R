@@ -13,9 +13,11 @@
 .stack_own <- c("dataset", "population_id", "where", "by", "strata")
 # the methods that cannot run inside one
 .stack_not_inside <- c("subjects", "custom", .stack_wrappers)
-# ard_stack()'s own switches: cards' default, and what each puts in the table
-.stack_flags <- c(.by_stats = TRUE, .total_n = FALSE, .overall = FALSE,
-                  .missing = FALSE, .attributes = FALSE)
+# ard_stack()'s own switches the form ticks: cards' default.  `.overall`
+# (each analysis again with no groups) is not one of them: a table may make
+# its Total column as well, so it stays among the other arguments
+.stack_flags <- c(.by_stats = TRUE, .total_n = FALSE, .missing = FALSE,
+                  .attributes = FALSE)
 
 .is_blank <- function(x) is.null(x) || length(x) == 0L || is.na(x) || !nzchar(trimws(x))
 
@@ -106,6 +108,9 @@
   same <- function(cn) identical(if (.is_blank(r[[cn]])) NA else r[[cn]],
                                  if (.is_blank(w[[cn]])) NA else w[[cn]])
   if (!.is_blank(r$parent %||% NA)) return("inside")
+  # the subjects per group or in all: the stack can count them itself
+  if (length(.stack_group_n(a[i, , drop = FALSE], w))) return("group_n")
+  if (r$method %in% "total_n" && same("dataset") && same("population_id")) return("total_n")
   if (r$method %in% .stack_not_inside) return("method")
   if (!same("dataset") || !same("population_id")) return("data")
   if (!same("where")) return("where")
@@ -206,6 +211,11 @@ stack_group <- function(x, output_id, ids, parent = NULL, label = NA_character_)
 .stack_n_rows <- function(a, p) {
   f <- .stack_flags_of(p$args)$flags
   out <- a[0L, , drop = FALSE]
+  # what the report counts already is not made again (two N break the
+  # column headers)
+  has_bign <- length(.stack_group_n(a, p)) > 0L
+  has_total <- any(a$method %in% "total_n" & .is_blank_v(a$parent) &
+                     .same_v(a$dataset, p$dataset) & .same_v(a$population_id, p$population_id))
   add <- function(id, method, variables, by) {
     r <- a[0L, , drop = FALSE]
     r[1L, ] <- NA
@@ -220,9 +230,46 @@ stack_group <- function(x, output_id, ids, parent = NULL, label = NA_character_)
     out <<- rbind(out, r)
   }
   by <- .split_bar(p$by)
-  if (isTRUE(f[[".by_stats"]]) && length(by)) add("BIGN", "categorical", paste(by, collapse = " | "), NA)
-  if (isTRUE(f[[".total_n"]])) add("TOTAL", "total_n", NA, NA)
+  if (isTRUE(f[[".by_stats"]]) && length(by) && !has_bign) {
+    add("BIGN", "categorical", paste(by, collapse = " | "), NA)
+  }
+  if (isTRUE(f[[".total_n"]]) && !has_total) add("TOTAL", "total_n", NA, NA)
   out
+}
+
+.is_blank_v <- function(x) is.na(x) | !nzchar(trimws(x))
+.same_v <- function(x, y) {
+  y <- if (.is_blank(y)) NA_character_ else y
+  ifelse(.is_blank_v(x), is.na(y), !is.na(y) & x == y)
+}
+
+# A report's analyses that count the subjects per group twice: for each
+# group, the rows counting it (BIGN: the group counted by nothing; a stack
+# by it that counts them, `.by_stats`), when there are two or more on the
+# same data -- a column header's N reads two and shows none.  One row a
+# report's analysis: `analysis_id`, `with` (the others).
+stack_n_twice <- function(a) {
+  if (is.null(a) || !nrow(a)) return(data.frame(analysis_id = character(), with = character()))
+  if (!"parent" %in% names(a)) a$parent <- NA_character_
+  key <- rep(NA_character_, nrow(a))
+  for (i in seq_len(nrow(a))) {
+    r <- a[i, ]
+    if (!.is_blank(r$parent)) next
+    d <- paste(if (.is_blank(r$dataset)) "" else r$dataset,
+               if (.is_blank(r$population_id)) "" else r$population_id, sep = "|")
+    if (r$method %in% c("categorical", "subjects") && .is_blank(r$by) &&
+        length(.split_bar(r$variables)) == 1L) {
+      key[i] <- paste(d, .split_bar(r$variables))
+    } else if (identical(r$method, .stack_fn) && length(.split_bar(r$by)) &&
+               isTRUE(.stack_flags_of(r$args)$flags[[".by_stats"]])) {
+      key[i] <- paste(d, paste(.split_bar(r$by), collapse = " | "))
+    }
+  }
+  dup <- !is.na(key) & key %in% key[duplicated(key) & !is.na(key)]
+  data.frame(analysis_id = a$analysis_id[dup],
+             with = vapply(which(dup), function(i)
+               paste(a$analysis_id[setdiff(which(key == key[i]), i)], collapse = ", "), ""),
+             stringsAsFactors = FALSE)
 }
 
 # Undo a stack: each analysis inside gets the parent's data back, the
@@ -317,3 +364,6 @@ stack_rename <- function(x, output_id, from, to) {
   a$parent[!is.na(a$parent) & a$parent == from] <- to
   set_ard_rows(x, "analyses", output_id, a)
 }
+
+# the words of stack_n_twice() on screen (translated by the app)
+.n_twice_words <- "%s counts the subjects per group, and so does %s: a column header's N shows none then. Keep one of them."

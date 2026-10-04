@@ -2478,6 +2478,8 @@ app_server <- function(input, output, session, start) {
     st_drawn(st_env$n)
     st_method(r$method)
     e <- fn_entries(r$method)
+    # inside a stack: only what can run inside one (no category left empty)
+    if (identical(st_role(r), "inside")) e <- e[!e$value %in% .stack_not_inside, , drop = FALSE]
     cats <- unique(e$category)
     cat_now <- e$category[match(r$method, e$value)]
     if (is.na(cat_now)) cat_now <- cats[1L]
@@ -2919,7 +2921,12 @@ app_server <- function(input, output, session, start) {
       rv$p <- stack_rename(rv$p, r$output_id, r$analysis_id, new_id)
       an_pick(new_id)
       bump()
-      return(notify(sprintf(t("%s: written"), new_id)))
+      notify(sprintf(t("%s: written"), new_id))
+      # written, but the subjects per group are counted twice: said
+      tw <- stack_n_twice(ard_rows(rv$p, "analyses", r$output_id))
+      k <- match(new_id, tw$analysis_id)
+      if (!is.na(k)) notify(sprintf(t(.n_twice_words), new_id, tw$with[k]), "warning")
+      return()
     }
     # inside a stack: a variable the others have is refused (its rows could
     # not be told apart)
@@ -3042,9 +3049,13 @@ app_server <- function(input, output, session, start) {
   # the definition's check, by analysis: the messages that name it
   st_problems <- function(tg, id) {
     msg <- ard_valid()
-    if (is.null(msg)) return(character())
-    l <- strsplit(msg, "\n", fixed = TRUE)[[1L]]
-    trimws(l[grepl(paste0(tg, " / ", id, ":"), l, fixed = TRUE)])
+    l <- if (is.null(msg)) character() else strsplit(msg, "\n", fixed = TRUE)[[1L]]
+    out <- trimws(l[grepl(paste0(tg, " / ", id, ":"), l, fixed = TRUE)])
+    # the subjects per group counted twice: a column header's N shows none
+    tw <- stack_n_twice(shiny::isolate(st_rows()))
+    k <- match(id, tw$analysis_id)
+    if (!is.na(k)) out <- c(out, sprintf(t(.n_twice_words), id, tw$with[k]))
+    out
   }
   output$ard_outline <- shiny::renderUI({
     a <- st_rows()
@@ -3111,7 +3122,17 @@ app_server <- function(input, output, session, start) {
                                                                  jsonlite::toJSON(id, auto_unbox = TRUE))),
                              "\u2193")))
     })
+    # the report's ARD: made, outdated or not yet (one for the report)
+    stt <- tryCatch(ard_state(), error = function(e) NULL)
+    k <- if (!is.null(stt)) match(tg, stt$output_id) else NA
+    state_line <- if (!is.na(k)) shiny::div(
+      class = "small mb-1",
+      sprintf(t("This report's ARD: %s"), t(.ard_state_labels[[stt$state[k]]])),
+      if (!identical(stt$state[k], "built")) shiny::tags$button(
+        type = "button", class = "btn btn-sm btn-link py-0",
+        onclick = "document.getElementById('ard_preview').click();", t("Preview")))
     shiny::tagList(
+      state_line,
       shiny::div(class = "border rounded mb-1", rows),
       if (any(o$depth == 1L)) shiny::p(
         class = "small text-muted",
@@ -3143,7 +3164,6 @@ app_server <- function(input, output, session, start) {
   .stack_flag_words <- c(
     .by_stats = "The subjects per group (the column headers' N)",
     .total_n = "The subjects in all",
-    .overall = "Each analysis again with no groups (a Total column)",
     .missing = "Rows for the missing values",
     .attributes = "The variables' labels and types")
   # a stack's own form: on what it runs the analyses inside, what it adds,
@@ -3154,6 +3174,8 @@ app_server <- function(input, output, session, start) {
     a <- shiny::isolate(st_rows())
     kids <- a[.stack_kids(a, r$analysis_id), , drop = FALSE]
     fl <- .stack_flags_of(r$args)
+    # the report's own rows that count the subjects per group (BIGN)
+    bign <- a$analysis_id[.stack_group_n(a, r)]
     js <- function(input, value) sprintf(
       "Shiny.setInputValue('%s', %s, {priority: 'event'});", input, value)
     shiny::tagList(
@@ -3182,11 +3204,12 @@ app_server <- function(input, output, session, start) {
         width = "100%", options = list(plugins = list("remove_button"))),
       shiny::h6(class = "small fw-bold mt-1", t("What it adds to the analyses inside")),
       lapply(names(.stack_flag_words), function(k) shiny::checkboxInput(
-        st_id(paste0("fl", k)), paste0(t(.stack_flag_words[[k]]), " (", k, ")"),
+        st_id(paste0("fl", k)),
+        paste0(t(.stack_flag_words[[k]]), " (", k, ")",
+               if (k == ".by_stats" && length(bign)) sprintf(t(" -- %s counts them now"),
+                                                             paste(bign, collapse = ", ")) else ""),
         isTRUE(fl$flags[[k]]), width = "100%")),
-      if (isTRUE(fl$flags[[".overall"]])) shiny::p(
-        class = "small text-warning mt-n2",
-        t("A Total column may be made by the table as well: check that the table does not show it twice.")),
+      shiny::uiOutput("ard_stack_n_note"),
       shiny::tags$details(
         class = "mb-2", open = if (nzchar(fl$other)) NA,
         shiny::tags$summary(class = "small", argl("Other arguments (R)", "args")),
@@ -3212,6 +3235,40 @@ app_server <- function(input, output, session, start) {
         class = "mt-2", open = NA,
         shiny::tags$summary(class = "small", t("This analysis as code (after Apply)")),
         shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
+  })
+  # the stack counting the subjects per group while BIGN does: said at once
+  output$ard_stack_n_note <- shiny::renderUI({
+    st_drawn()
+    r <- shiny::isolate(st_row())
+    if (!identical(st_role(r), "parent")) return(NULL)
+    on <- input[[st_id("fl.by_stats")]]
+    if (!isTRUE(on)) return(NULL)
+    a <- shiny::isolate(st_rows())
+    bign <- a$analysis_id[.stack_group_n(a, r)]
+    if (!length(bign)) return(NULL)
+    shiny::div(
+      class = "alert alert-danger py-1 small",
+      sprintf(t(.n_twice_words), r$analysis_id, paste(bign, collapse = ", ")),
+      " ", .btn("ard_stack_del_bign", sprintf(t("Delete %s"), paste(bign, collapse = ", ")),
+                class = "btn-sm btn-outline-danger py-0"))
+  })
+  shiny::observeEvent(input$ard_stack_del_bign, {
+    r <- st_row()
+    tg <- ard_target()
+    shiny::req(tg, st_role(r) == "parent")
+    a <- st_rows()
+    drop <- a$analysis_id[.stack_group_n(a, r)]
+    a <- a[!a$analysis_id %in% drop, , drop = FALSE]
+    a$output_id <- NULL
+    # the stack counts them now
+    i <- match(r$analysis_id, a$analysis_id)
+    fl <- .stack_flags_of(a$args[i])
+    fl$flags[[".by_stats"]] <- TRUE
+    a$args[i] <- .stack_args(fl$flags, fl$other)
+    rv$p <- set_ard_rows(rv$p, "analyses", tg, a)
+    bump()
+    notify(sprintf(t("%s deleted: %s counts the subjects per group now."),
+                   paste(drop, collapse = ", "), r$analysis_id))
   })
   # one inside a stack: on what it runs, said; how to change that for it
   stack_inside_note <- function(r) {
@@ -3273,13 +3330,23 @@ app_server <- function(input, output, session, start) {
   # ungrouping (and deleting a stack) asks whether to keep, as analyses of
   # their own, the subjects per group and the total N it gave
   stack_ask_n <- function(msg, ok, extra = NULL) {
+    # the rows it would make: none when the report counts them already
+    r <- st_row()
+    if (identical(st_role(r), "inside")) r <- st_parent_of(r)
+    a <- st_rows()
+    a$output_id <- NULL
+    n <- .stack_n_rows(a, r)
     shiny::showModal(shiny::modalDialog(
       title = t("Ungroup"), easyClose = TRUE,
       shiny::p(msg),
       extra,
-      shiny::checkboxInput("ard_stack_keep_n",
-                           t("Keep the subjects per group (BIGN) and the total N it gave, as analyses of their own (the column headers' N needs them)"),
-                           TRUE, width = "100%"),
+      if (nrow(n)) shiny::checkboxInput(
+        "ard_stack_keep_n",
+        sprintf(t("Make %s: the subjects per group and the total N it gave, as analyses of their own (the column headers' N needs them)"),
+                paste(n$analysis_id, collapse = ", ")),
+        TRUE, width = "100%")
+      else shiny::p(class = "small text-muted",
+                    t("The report counts the subjects per group (and in all) already: no rows are made.")),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn(ok, t("OK"), class = "btn-primary"))))
   }
@@ -3326,7 +3393,9 @@ app_server <- function(input, output, session, start) {
     inside = "inside another already", method = "this kind cannot run inside one",
     data = "other data or analysis set", where = "another condition",
     by = "other groups", strata = "other strata", denominator = "another denominator",
-    variable = "a variable it has already")
+    variable = "a variable it has already",
+    group_n = "the stack can count the subjects per group itself (this analysis counts them now)",
+    total_n = "the stack can count the subjects in all itself (this analysis counts them now)")
   shiny::observeEvent(input$ard_stack_group, {
     r <- st_row()
     tg <- ard_target()
@@ -3348,6 +3417,9 @@ app_server <- function(input, output, session, start) {
                                   t(stack_reason_words[[no$reason[i]]]))))),
       shiny::textInput("ard_stack_label", t("Label"),
                        if (.is_blank(desc)) "" else desc, width = "100%"),
+      shiny::p(class = "small text-muted mt-n2",
+               sprintf(t("Its ID is %s (it can be changed on its form)."),
+                       .stack_free_id(ard_rows(rv$p, "analyses", tg)))),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn("ard_stack_group_ok", t("Run them together"), class = "btn-primary"))))
   })

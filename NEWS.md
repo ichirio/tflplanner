@@ -22,7 +22,15 @@
   The new-table wizard runs its analyses together (STACK, with the
   numbers and the counts inside it), unless a subject of the analysis set
   has no group (said, then one by one).  ard_strata() / ard_pairwise() come
-  later.
+  later.  After S1's screen review: the subjects per group counted twice
+  (BIGN and a stack that counts them, or two BIGN) are found and marked in
+  the outline, said when the stack's tick is set (with "Delete BIGN"), and
+  ungrouping makes no BIGN / TOTAL the report has already; the stack's tick
+  says when BIGN counts them; `.overall` is left to the other arguments (a
+  table may make its Total column as well); the outline says whether the
+  report's ARD is made; the grouping dialog says the stack can count what
+  BIGN and TOTAL count, and the stack's ID; inside a stack, only the
+  categories that can run there.
 
 - **The ARS of a study names its own ARD functions** (tflspec #120):
   `export_ars()` gives tflspec the study folder, so an analysis whose method

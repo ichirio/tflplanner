@@ -1663,7 +1663,6 @@ ARD: %d messages,ARD: メッセージ %d 件
 "The analyses inside a stack are computed in this order, and so are their variables: a table whose variables have no order of their own shows them so.",まとめた中の解析は、この順に計算されます（変数の順も）。並び順を持たない表はこの順で出ます。
 Analysis %s of %s: it runs the analyses inside it together (cards::ard_stack).,%2$s の解析 %1$s: 中の解析をまとめて実行します（cards::ard_stack）。
 What it adds to the analyses inside,中の解析に足すもの
-A Total column may be made by the table as well: check that the table does not show it twice.,全体の列は表の側でも作れます。表で二重にならないか確かめてください。
 The analyses inside,中の解析
 None yet: add one.,まだありません。足してください。
 Add an analysis inside,中に解析を足す
@@ -1677,7 +1676,6 @@ Take it out of %s,%s から外す
 "%s is an analysis of its own again, on %s's data and groups.",%1$s は単独の解析に戻りました（%2$s のデータと群）。
 "%s is the last analysis inside %s: %s goes.",%1$s は %2$s の中の最後の解析です。%3$s は無くなります。
 Ungroup,まとまりをほどく
-"Keep the subjects per group (BIGN) and the total N it gave, as analyses of their own (the column headers' N needs them)",群ごとの人数（BIGN）と全体の N の行を作って残す（列見出しの N に要ります）
 "The analyses inside %s become analyses of their own, on its data, condition and groups; %s goes.",%1$s の中の解析は、同じデータ・条件・群の単独の解析になります。%2$s は無くなります。
 Delete %s.,%s を削除します。
 "Keep the analyses inside, as analyses of their own",中の解析は単独の解析として残す
@@ -1693,7 +1691,6 @@ Run the analyses together (cards::ard_stack),解析をまとめて実行する�
 One call computes the rows and the subjects per group (the column headers' N).,1 回の呼び出しで、行と群ごとの人数（列見出しの N）を計算します。
 The subjects per group (the column headers' N),群ごとの人数（列見出しの N）
 The subjects in all,全体の人数
-Each analysis again with no groups (a Total column),群なしでもう一度計算（全体の列）
 Rows for the missing values,欠測の件数の行
 The variables' labels and types,変数のラベルと型
 inside another already,既に別のまとまりの中
@@ -1704,3 +1701,12 @@ other groups,群が違う
 other strata,層が違う
 another denominator,分母が違う
 a variable it has already,同じ変数が既にある
+This report's ARD: %s,この帳票の ARD: %s
+ -- %s counts them now,（今は %s が数えています）
+%s deleted: %s counts the subjects per group now.,%1$s を削除しました。群ごとの人数は %2$s が数えます。
+"Make %s: the subjects per group and the total N it gave, as analyses of their own (the column headers' N needs them)",%s を作る: 群ごとの人数と全体の N を単独の解析として残す（列見出しの N に要ります）
+The report counts the subjects per group (and in all) already: no rows are made.,帳票が群ごとの人数（と全体の人数）を既に数えているので、行は作りません。
+Its ID is %s (it can be changed on its form).,ID は %s です（後でフォームで変えられます）。
+"%s counts the subjects per group, and so does %s: a column header's N shows none then. Keep one of them.",%1$s が群ごとの人数を数えていて、%2$s も数えています。このままでは列見出しの N が出ません。どちらか 1 つにしてください。
+the stack can count the subjects per group itself (this analysis counts them now),まとまりが群ごとの人数を数えられます（今はこの解析が数えています）
+the stack can count the subjects in all itself (this analysis counts them now),まとまりが全体の人数を数えられます（今はこの解析が数えています）
