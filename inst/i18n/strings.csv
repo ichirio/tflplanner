@@ -1621,7 +1621,6 @@ edited here,ここで直した行
 Guessed from the ID: check it,ID から推測しました。確かめてください
 (the TOC says %s: not changed),（TOC では %s。変えません）
 Kept: delete it yourself if it is no longer needed.,消さずに残します。要らなければ自分で削除してください。
-"%d title lines, %d footnote lines",タイトル %d 行・脚注 %d 行
 Use the TOC's text,TOC の文にする
 What would change,何が変わるか
 "New %d, changed %d, no change %d, not in the TOC %d.",新しい %d・変更あり %d・変更なし %d・TOC に無い %d。

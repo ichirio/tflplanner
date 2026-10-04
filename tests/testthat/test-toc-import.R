@@ -170,6 +170,7 @@ test_that("the app takes a TOC in: mapped, previewed, taken in, saved at once; a
     expect_identical(report_info(rv$p, "F-1")$type, "user")
     expect_match(output$toc1_result$html, "TOC001", fixed = TRUE)
     expect_null(output$toc1_do_btn$html)
+    expect_null(output$toc1_changes$html)
     # saved at once, with the record
     expect_identical(open_study(rv$study$path)$planner$outputs$output_id, c("T-1", "F-1"))
     expect_identical(toc_imports(rv$study)$original, "My TOC.csv")

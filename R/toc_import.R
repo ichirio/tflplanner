@@ -279,8 +279,9 @@ remember_toc_map <- function(map, home = tflplanner_home()) {
 toc_headers <- function(path, sheet = NULL, skip = 0L) {
   ext <- tolower(tools::file_ext(path))
   if (ext == "csv") {
-    names(utils::read.csv(path, skip = skip, nrows = 1L, check.names = FALSE,
-                          colClasses = "character", fileEncoding = "UTF-8-BOM"))
+    names(suppressWarnings(utils::read.csv(
+      path, skip = skip, nrows = 1L, check.names = FALSE,
+      colClasses = "character", fileEncoding = "UTF-8-BOM")))
   } else {
     names(readxl::read_excel(path, sheet = sheet %||% 1L, skip = skip, n_max = 0L))
   }

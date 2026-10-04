@@ -3155,7 +3155,8 @@ app_server <- function(input, output, session, start) {
                                 multiple = many, width = if (many) "24em" else "12em")
         })),
       shiny::checkboxInput(toc_id("remember"),
-                           t("Remember this mapping in the company standards"), FALSE))
+                           t("Remember this mapping in the company standards"), FALSE,
+                           width = "100%"))
   }
   toc_map_now <- shiny::reactive({
     toc_cols()
@@ -3188,7 +3189,9 @@ app_server <- function(input, output, session, start) {
   # type can be set (a guessed one is marked), a line edited here and
   # changed in the TOC is asked about (kept as it is unless ticked)
   toc_changes_ui <- function() {
-    if (is.null(input[[toc_id("map_output_id")]])) return(NULL)
+    # taken in: the result says what was done (what is left to change is
+    # nothing, until the TOC changes again)
+    if (toc_done() || is.null(input[[toc_id("map_output_id")]])) return(NULL)
     if (!length(toc_map_now()$output_id)) {
       return(shiny::div(class = "alert alert-warning py-1 small",
                         t("Choose the column holding the report IDs.")))
@@ -3198,6 +3201,7 @@ app_server <- function(input, output, session, start) {
       return(shiny::div(class = "alert alert-danger py-1 small",
                         sprintf(t("The TOC cannot be read: %s"), conditionMessage(ch))))
     }
+    sp <- toc_read()
     r <- ch$reports
     l <- ch$lines
     n <- table(factor(r$status, names(toc_status_labels)))
@@ -3229,9 +3233,13 @@ app_server <- function(input, output, session, start) {
       what <- if (st == "missing") {
         shiny::span(class = "small text-muted", t("Kept: delete it yourself if it is no longer needed."))
       } else if (st == "new") {
-        shiny::span(class = "small text-muted",
-                    sprintf(t("%d title lines, %d footnote lines"),
-                            sum(l$sheet[li] == "titles"), sum(l$sheet[li] == "footnotes")))
+        # what it will hold: the TOC's lines
+        shiny::tagList(lapply(c("titles", "footnotes"), function(sh) {
+          v <- .toc_text(.toc_lines(sp, sh, id, toc_offset()))
+          lapply(seq_along(v), function(k) shiny::div(
+            class = "small", sprintf("%s %s: ", sheet_lab[[sh]], names(v)[k]),
+            toc_line_text(v[[k]])))
+        }))
       } else shiny::tagList(lapply(li, function(k) shiny::div(
         class = "small",
         sprintf("%s %s (%s): ", sheet_lab[[l$sheet[k]]], l$line[k], act_lab[[l$action[k]]]),
