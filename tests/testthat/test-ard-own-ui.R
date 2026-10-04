@@ -26,6 +26,10 @@ test_that("own ARD functions: the study's and the company's side by side, tried,
   expect_true(nrow(r$ard) > 0)
   ck <- own_function_checks(s)[["ard_cv"]]
   expect_identical(ck$data, "cards::ADSL")
+  # the whole ARD's rows, the problems by kind, who tried it
+  expect_true(ck$rows > nrow(r$ard) || ck$rows == nrow(r$ard))
+  expect_identical(ck$errors, 0L)
+  expect_true(all(c("warnings", "notes", "user") %in% names(ck)))
   expect_identical(own_ard_functions(s)$stale, FALSE)
   # the study's copy edited: it differs, changed in the study (not by the
   # files' times), the try is stale
@@ -58,6 +62,8 @@ test_that("own ARD functions: the study's and the company's side by side, tried,
   expect_identical(own$where[own$name == "ard_hl"], "study")
   expect_error(new_ard_function(s, "ard_hl", "test"), "already")
   expect_error(new_ard_function(s, "riskdiff", "test"), "starts with ard_")
+  # a cards / cardx function's name would hide it
+  expect_error(new_ard_function(s, "ard_tabulate", "test"), "cards / cardx function")
   # a function that stops is told, not raised
   writeLines("ard_bad <- function(data, ...) stop(\"nope\")",
              file.path(s$path, "programs/ard/functions/ard_bad.R"))
@@ -111,6 +117,12 @@ test_that("the Own functions tab: listed, used, tried, a new one; the analysis f
     expect_match(output$own_try_result$html, "It behaves", fixed = TRUE)
     # the code, shown
     session$setInputs(own_code = 1)
+    # the difference, the lines the other has not marked
+    cat("# the study's own line", file = file.path(rv$study$path, "programs/ard/functions/ard_cv.R"),
+        append = TRUE, sep = "\n")
+    session$setInputs(own_refresh = 1)
+    expect_match(output$own_detail$html, "own_diff", fixed = TRUE)
+    session$setInputs(own_diff = 1)
     # a new one for the study
     session$setInputs(own_new = 1)
     session$setInputs(own_new_name = "ard_hl", own_new_type = "test", own_new_where = "study",

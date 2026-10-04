@@ -136,9 +136,13 @@ own_ard_functions <- function(study, home = tflplanner_home()) {
 #' The last try of each of a study's own ARD functions
 #'
 #' @param study An `rtfstudy`.
-#' @return A list by function name: `when`, `md5` (of the file tried),
-#'   `data`, `args`, `problems` (errors and warnings found), `rows` (of the
-#'   ARD it gave), `versions`.
+#' @return A list by function name: `when`, `user`, `md5` (of the file
+#'   tried -- not of other files it may use: a change there is not seen),
+#'   `data`, `args`, `problems` (errors and warnings found), `errors`,
+#'   `warnings`, `notes`, `rows` (of the whole ARD it gave), `versions`
+#'   (tflspec, cards, cardx).  A company's function tried before the study
+#'   uses it is kept here too: once it is copied, the record holds (the
+#'   files are the same).
 #' @export
 own_function_checks <- function(study) {
   f <- .fun_checks_file(study)
@@ -234,7 +238,7 @@ try_ard_function <- function(study, name, dataset = NA_character_,
     ".res$problems <- tryCatch({",
     paste0("  .p <- ", call),
     "  .a <- attr(.p, \"ard\")",
-    "  if (!is.null(.a)) .res$ard <- utils::head(.a, 20)",
+    "  if (!is.null(.a)) { .res$ard <- utils::head(.a, 20); .res$rows <- nrow(.a) }",
     "  attr(.p, \"ard\") <- NULL",
     "  .p",
     "}, error = function(e) { .res$error <<- paste(\"[function]\", conditionMessage(e)); NULL })",
@@ -260,7 +264,9 @@ try_ard_function <- function(study, name, dataset = NA_character_,
     args = args,
     problems = if (!is.null(res$error)) NA_integer_ else
       sum(p$level %in% c("error", "warning")),
-    rows = if (!is.null(res$ard)) nrow(res$ard) else 0L,
+    errors = sum(p$level %in% "error"), warnings = sum(p$level %in% "warning"),
+    notes = sum(p$level %in% "note"),
+    rows = res$rows %||% 0L,
     error = res$error,
     user = Sys.info()[["user"]],
     versions = as.list(vapply(c("tflspec", "cards", "cardx"), function(pk)
@@ -295,6 +301,12 @@ new_ard_function <- function(study, name, type = c("summary", "test", "free"),
   }
   if (name %in% own_ard_functions(study, home)$name) {
     stop("There is an ARD function ", name, " already.", call. = FALSE)
+  }
+  taken <- unlist(lapply(c("cards", "cardx"), function(pk)
+    if (requireNamespace(pk, quietly = TRUE)) getNamespaceExports(pk)))
+  if (name %in% taken) {
+    stop(name, " is a cards / cardx function: a function of one's own would hide it.",
+         call. = FALSE)
   }
   dir <- if (where == "study") file.path(study$path, .study_fun_dir) else .own_fun_dir(home)
   if (where == "company" && !.company_writable(home)) {

@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **Own functions, polished** (#122).  The last try keeps the whole ARD's
+  rows, its errors, warnings and notes, and who tried it; a name that is a
+  cards / cardx function is refused (it would hide it); Try says it is
+  running; New function... says when the company's folder cannot be
+  written; See the difference marks the lines the other file has not; Use
+  in this study says every report's ARD is outdated then; where the title
+  and description come from is said; a new function's notice gives its file
+  and opens its folder.
+
 - **Less English on the Japanese screens** (#124).
   The arguments of the "(whole script)" figure types (tflspec's
   `tfl_fig_schema()`, 50 labels and help texts) and the old names of six

@@ -4125,6 +4125,8 @@ app_server <- function(input, output, session, start) {
       class = "rp-b-card mt-2",
       shiny::h6(r$name, if (!is.na(r$title)) shiny::span(class = "fw-normal", paste0(" \u2014 ", r$title))),
       if (!is.na(r$description)) shiny::p(class = "small", r$description),
+      shiny::p(class = "small text-muted",
+               t("The title and description are the first lines of the comment (#') above the function in its file.")),
       file_line(t("The study's file:"), r$study_file),
       file_line(t("The company's file:"), r$company_file),
       shiny::div(class = "small", shiny::strong(t("Statistics:")), " ",
@@ -4160,7 +4162,7 @@ app_server <- function(input, output, session, start) {
     rv$p <- s$planner
     do_save()
     own_ver(own_ver() + 1L)
-    notify(sprintf(t("%s is loaded by the study's ARD programs: an analysis can name it as its method."), r$name))
+    notify(sprintf(t("%s is loaded by the study's ARD programs: an analysis can name it as its method. Every report's ARD is outdated now (the files the programs load are part of it)."), r$name))
   })
   own_file_of <- function(r) {
     if (!is.na(r$study_file)) file.path(rv$study$path, r$study_file) else r$company_file
@@ -4180,14 +4182,20 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$own_diff, {
     r <- own_sel()
     shiny::req(r)
-    pane <- function(lab, f) shiny::div(
+    sl <- readLines(file.path(rv$study$path, r$study_file), warn = FALSE)
+    cl <- readLines(r$company_file, warn = FALSE)
+    # a line the other file has not: marked
+    pane <- function(lab, lines, other) shiny::div(
       shiny::h6(lab), shiny::div(class = "rp-code", shiny::tags$pre(
-        style = "max-height: 60vh; overflow: auto;", paste(readLines(f, warn = FALSE), collapse = "\n"))))
+        style = "max-height: 60vh; overflow: auto;",
+        lapply(lines, function(l) shiny::tags$div(
+          style = if (!l %in% other) "background: #fef3c7;", if (nzchar(l)) l else " ")))))
     shiny::showModal(shiny::modalDialog(
       title = sprintf(t("%s: the study's and the company's"), r$name), size = "xl", easyClose = TRUE,
+      shiny::p(class = "small text-muted", t("Marked: a line the other file has not.")),
       bslib::layout_columns(col_widths = c(6, 6),
-                            pane(t("The study's"), file.path(rv$study$path, r$study_file)),
-                            pane(t("The company's"), r$company_file)),
+                            pane(t("The study's"), sl, cl),
+                            pane(t("The company's"), cl, sl)),
       footer = shiny::modalButton(t("Close"))))
   })
   shiny::observeEvent(input$own_replace, {
@@ -4252,9 +4260,11 @@ app_server <- function(input, output, session, start) {
     dv <- input$own_try_data %||% "__cards__"
     sp <- if (nzchar(dv) && dv != "__cards__") .an_data_split(dv) else
       list(dataset = NA_character_, pop = NA_character_)
-    res <- guarded(try_ard_function(imp_study(), r$name, dataset = sp$dataset,
-                                    population_id = sp$pop,
-                                    args = input$own_try_args %||% ""))
+    res <- shiny::withProgress(
+      message = sprintf(t("Trying %s (up to 60 seconds) ..."), r$name), value = 0.3,
+      guarded(try_ard_function(imp_study(), r$name, dataset = sp$dataset,
+                               population_id = sp$pop,
+                               args = input$own_try_args %||% "")))
     own_ver(own_ver() + 1L)
     if (is.null(res)) return()
     p <- .check_view(res$problems, t)
@@ -4304,11 +4314,20 @@ app_server <- function(input, output, session, start) {
                         c(t("This study (programs/ard/functions/; loaded at once)"),
                           t("The company standards (a study uses it with Use in this study)"))),
         width = "100%"),
+      if (!can_company) shiny::p(class = "small text-muted",
+                                 sprintf(t("It is written for this study: the company standards' folder (%s) cannot be written from here."),
+                                         .own_fun_dir())),
       shiny::checkboxInput("own_new_test", t("Write its test (test-<name>.R) next to it"), TRUE),
       shiny::p(class = "small text-muted",
                t("The skeleton is written to be edited outside the app (RStudio ...); try it afterwards.")),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn("own_new_ok", t("Write it"), class = "btn-primary"))))
+  })
+  # the folder a function was written to, opened in the file manager
+  own_last_dir <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(input$own_open_dir, {
+    d <- own_last_dir()
+    if (!is.null(d) && dir.exists(d)) utils::browseURL(normalizePath(d))
   })
   shiny::observeEvent(input$own_new_ok, {
     nm <- trimws(input$own_new_name %||% "")
@@ -4322,7 +4341,13 @@ app_server <- function(input, output, session, start) {
       do_save()
     }
     own_ver(own_ver() + 1L)
-    notify(sprintf(t("%s is written: edit it outside the app, then try it."), nm))
+    dir <- if (where == "study") file.path(rv$study$path, .study_fun_dir) else .own_fun_dir()
+    own_last_dir(dir)
+    shiny::showNotification(
+      shiny::tagList(sprintf(t("%s is written: edit it outside the app, then try it."), nm),
+                     shiny::br(), shiny::code(file.path(dir, paste0(nm, ".R"))), shiny::br(),
+                     .btn("own_open_dir", t("Open the folder"), class = "btn-sm btn-link p-0")),
+      duration = 15)
   })
 
   # ---- ARDs taken in -------------------------------------------------------
