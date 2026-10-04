@@ -28,8 +28,9 @@ test_that("first_table() writes every sheet a summary table needs", {
   expect_identical(po$population_id, "SAF")
   expect_identical(po$where, "SAFFL == \"Y\"")
   an <- ard_rows(p, "analyses", "T-DM")
-  # the N per group first (column headers), then one analysis per variable
-  expect_identical(an$analysis_id, c("BIGN", "AGE", "SEX"))
+  # the N per group first (column headers), then one analysis per call:
+  # the numbers together, the counts together
+  expect_identical(an$analysis_id, c("BIGN", "CONT", "CAT"))
   expect_identical(an$method, c("categorical", "continuous", "categorical"))
   expect_identical(an$by, c(NA, "TRT01A", "TRT01A"))
   expect_identical(an$variables, c("TRT01A", "AGE", "SEX"))
@@ -118,10 +119,10 @@ test_that("a row of the analyses grid is edited as a form", {
     # the first analysis (BIGN) until a row is clicked
     expect_match(output$ard_stat_ui$html, "Analysis BIGN of T1")
     expect_match(output$ard_stat_ui$html, "What to compute")
-    # a click on the grid's second row: AGE
+    # a click on the grid's second row: CONT (AGE)
     session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
     h <- output$ard_stat_ui$html
-    expect_match(h, "Analysis AGE of T1")
+    expect_match(h, "Analysis CONT of T1")
     st_env <- session$userData$st_env
     id <- function(x) paste0("st", st_env$n, "_", x)
     v <- output$ard_an_vars$html
@@ -131,9 +132,9 @@ test_that("a row of the analyses grid is edited as a form", {
     expect_false(grepl('value="SEX"', vars_part))
     expect_true(grepl('value="HEIGHTBL"', vars_part))
     inp <- list()
-    inp[[id("id")]] <- "AGE"
+    inp[[id("id")]] <- "CONT"
     inp[[id("label")]] <- "Age (years)"
-    inp[[id("method")]] <- "continuous"
+    inp[[id("fn_pick")]] <- "continuous"
     # the data: one choice of dataset x analysis set, named as the program
     # names it
     expect_match(h, "ADSL × SAF (pop_saf)", fixed = TRUE)
@@ -151,7 +152,7 @@ test_that("a row of the analyses grid is edited as a form", {
     do.call(session$setInputs, inp)
     session$setInputs(ard_stat_apply = 1)
     a <- ard_rows(rv$p, "analyses", "T1")
-    r <- a[a$analysis_id == "AGE", ]
+    r <- a[a$analysis_id == "CONT", ]
     expect_identical(r$label, "Age (years)")
     expect_true(is.na(r$dataset))
     expect_identical(r$population_id, "SAF")
@@ -166,7 +167,7 @@ test_that("a row of the analyses grid is edited as a form", {
     do.call(session$setInputs, inp2)
     session$setInputs(ard_stat_apply = 2)
     a <- ard_rows(rv$p, "analyses", "T1")
-    expect_identical(a$where[a$analysis_id == "AGE"], "AGE >= 18")
+    expect_identical(a$where[a$analysis_id == "CONT"], "AGE >= 18")
     # a new analysis
     session$setInputs(ard_an_new = 1)
     expect_true("A1" %in% ard_rows(rv$p, "analyses", "T1")$analysis_id)
@@ -377,4 +378,22 @@ test_that("the data of an analysis is one choice of dataset and analysis set", {
   expect_identical(.an_data_split("ADAE|SAF"), list(dataset = "ADAE", pop = "SAF"))
   expect_identical(.an_data_split("|SAF"), list(dataset = NA_character_, pop = "SAF"))
   expect_identical(.an_data_value(NA, "SAF"), "|SAF")
+})
+
+test_that("the wizard puts the numbers in one analysis and the counts in another", {
+  d <- data.frame(SAFFL = "Y", TRT01A = c("A", "B"), AGE = c(50, 60),
+                  SEX = c("F", "M"), BMIBL = c(20.1, 25.3), RACE = c("X", "Y"))
+  p <- first_table(new_planner(), "T-M", "data/adam/adsl.rds", d, "SAFFL",
+                   "TRT01A", c("AGE", "SEX", "BMIBL", "RACE"))
+  an <- ard_rows(p, "analyses", "T-M")
+  expect_identical(an$analysis_id, c("BIGN", "CONT", "CAT"))
+  expect_identical(an$variables, c("TRT01A", "AGE | BMIBL", "SEX | RACE"))
+  # the rows keep the order they were chosen in
+  vr <- sheet_rows(p, "variables", "T-M")
+  expect_identical(vr$order[match(c("AGE", "SEX", "BMIBL", "RACE"), vr$variable)],
+                   c("1", "2", "3", "4"))
+  # only counts: no CONT
+  p2 <- first_table(new_planner(), "T-C", "data/adam/adsl.rds", d, "SAFFL",
+                    "TRT01A", c("SEX", "RACE"))
+  expect_identical(ard_rows(p2, "analyses", "T-C")$analysis_id, c("BIGN", "CAT"))
 })
