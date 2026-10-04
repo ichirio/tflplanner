@@ -20,7 +20,8 @@ test_that("first_table() writes every sheet a summary table needs", {
   attr(d$AGE, "label") <- "Age"
   p <- first_table(new_planner(), "T-DM", "data/adam/adsl.rds", d,
                    population = "SAFFL", group = "TRT01A",
-                   variables = c("AGE", "SEX"), description = "Demographics")
+                   variables = c("AGE", "SEX"), description = "Demographics",
+                   stack = FALSE)
   expect_true("T-DM" %in% p$outputs$output_id)
   expect_identical(report_info(p, "T-DM")$type, "table")
   expect_identical(ard_rows(p, "datasets")$dataset, "ADSL")
@@ -111,7 +112,7 @@ test_that("a row of the analyses grid is edited as a form", {
   attr(adsl$AGE, "label") <- "Age"
   saveRDS(adsl, file.path(s$path, "data/adam/adsl.rds"))
   s$planner <- first_table(s$planner, "T1", "data/adam/adsl.rds", adsl,
-                           "SAFFL", "TRT01A", c("AGE", "SEX"))
+                           "SAFFL", "TRT01A", c("AGE", "SEX"), stack = FALSE)
   save_study(s)
   shiny::testServer(server_for("AF"), {
     rv <- session$userData$rv
@@ -386,7 +387,7 @@ test_that("the wizard puts the numbers in one analysis and the counts in another
   d <- data.frame(SAFFL = "Y", TRT01A = c("A", "B"), AGE = c(50, 60),
                   SEX = c("F", "M"), BMIBL = c(20.1, 25.3), RACE = c("X", "Y"))
   p <- first_table(new_planner(), "T-M", "data/adam/adsl.rds", d, "SAFFL",
-                   "TRT01A", c("AGE", "SEX", "BMIBL", "RACE"))
+                   "TRT01A", c("AGE", "SEX", "BMIBL", "RACE"), stack = FALSE)
   an <- ard_rows(p, "analyses", "T-M")
   expect_identical(an$analysis_id, c("BIGN", "CONT", "CAT"))
   expect_identical(an$variables, c("TRT01A", "AGE | BMIBL", "SEX | RACE"))
@@ -396,6 +397,30 @@ test_that("the wizard puts the numbers in one analysis and the counts in another
                    c("1", "2", "3", "4"))
   # only counts: no CONT
   p2 <- first_table(new_planner(), "T-C", "data/adam/adsl.rds", d, "SAFFL",
-                    "TRT01A", c("SEX", "RACE"))
+                    "TRT01A", c("SEX", "RACE"), stack = FALSE)
   expect_identical(ard_rows(p2, "analyses", "T-C")$analysis_id, c("BIGN", "CAT"))
+})
+
+test_that("the wizard runs the analyses together (ard_stack), unless a subject has no group", {
+  d <- data.frame(SAFFL = "Y", TRT01A = c("A", "B"), AGE = c(50, 60),
+                  SEX = c("F", "M"), RACE = c("X", "Y"))
+  p <- first_table(new_planner(), "T-S", "data/adam/adsl.rds", d, "SAFFL",
+                   "TRT01A", c("AGE", "SEX", "RACE"), description = "Demographics")
+  an <- ard_rows(p, "analyses", "T-S")
+  expect_identical(an$analysis_id, c("STACK", "CONT", "CAT"))
+  expect_identical(an$parent, c(NA, "STACK", "STACK"))
+  expect_identical(an$method[1], "cards::ard_stack")
+  expect_identical(an$label[1], "Demographics")
+  expect_identical(c(an$dataset[1], an$population_id[1], an$by[1]), c("ADSL", "SAF", "TRT01A"))
+  expect_true(all(is.na(an$dataset[2:3])) && all(is.na(an$by[2:3])))
+  expect_identical(an$args[1], ".total_n = TRUE")
+  expect_identical(attr(p, "group_missing"), 0L)
+  # the stack counts the subjects per group: the column headers' N
+  expect_true(.has_group_n(p, "T-S", "TRT01A"))
+  # a subject of the analysis set with no group: one by one
+  d$TRT01A[2] <- NA
+  p2 <- first_table(new_planner(), "T-S", "data/adam/adsl.rds", d, "SAFFL",
+                    "TRT01A", c("AGE", "SEX"))
+  expect_identical(ard_rows(p2, "analyses", "T-S")$analysis_id, c("BIGN", "CONT", "CAT"))
+  expect_identical(attr(p2, "group_missing"), 1L)
 })

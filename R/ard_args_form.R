@@ -7,7 +7,8 @@
 # The functions an analysis can name, one row each: `value` (what the
 # `method` column takes), `label`, `description`, `category`, `call`,
 # `state` ("ok", "missing" = its package is not installed, "later" = a
-# function that runs others, not yet declared in the form, "old" = an old
+# function that runs others the form does not offer yet (ard_strata(),
+# ard_pairwise(); ard_stack() is offered), "old" = an old
 # name and "out" = a function the builder does not offer, each kept only for
 # the row that uses it).  `keywords` is
 # .std_ard_methods(); `functions` tfl_ard_functions().
@@ -27,7 +28,8 @@
   state <- ifelse(!f$installed, "missing",
                   ifelse(!is.na(f$replaced_by) & nzchar(f$replaced_by), "old",
                          ifelse(out_of_scope, "out",
-                                ifelse(f$shape %in% "wrapper", "later", "ok"))))
+                                ifelse(f$shape %in% "wrapper" &
+                                         !f$call %in% "cards::ard_stack", "later", "ok"))))
   fn <- data.frame(value = f$call, label = f$label, label_en = f$label,
                    description = f$description, category = f$category,
                    call = f$call, state = state, stringsAsFactors = FALSE)
