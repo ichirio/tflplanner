@@ -2,7 +2,7 @@
 
 - The `header` sheet's help (and its Japanese) says that a report's line
   `(none)` takes the study's line of that number out (tflspec #91).  Needs
-  tflspec >= 0.0.24.9024.
+  tflspec >= 0.0.24.9027.
 
 - The `style` sheet's `align` help (and its Japanese) no longer warns that
   any `border_*` or look column left-aligns every column: from rtfreporter
