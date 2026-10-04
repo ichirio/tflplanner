@@ -463,7 +463,8 @@ app_ui <- function(lang = "en") {
         bslib::card(
           bslib::card_header(t("Reports (TFL)")),
           shiny::uiOutput("uc_offer"),
-          DT::DTOutput("outputs"),
+          # its own height (a fixed one let a long list cover the buttons)
+          DT::DTOutput("outputs", height = "auto", fill = FALSE),
           shiny::uiOutput("report_moves"),
           shiny::div(
             class = "d-flex flex-wrap gap-1",

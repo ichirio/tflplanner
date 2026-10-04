@@ -12,6 +12,8 @@
   not changed; a new report's guessed type is marked and can be set.
   `toc_changes()`, `toc_apply()`, `toc_snapshot()`, `toc_imports()` and
   `toc_last()`.
+  The reports list takes its own height: a long one no longer covers the
+  buttons under it.
 
 - **User-code reports, after their screen review** (#98).  The ARD switch
   says what it reads (the ARD taken in; its analyses, built or not; none
