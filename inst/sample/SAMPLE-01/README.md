@@ -16,6 +16,7 @@ derived from ADSL and ADAE by data-raw/make-sample-study.R).
 | L-16-2-7 | Listing | Severe adverse events |
 | F-14-2-1 | User code (a figure) | Mean change from baseline in systolic blood pressure |
 | F-14-2-2 | User code (a figure) | Kaplan-Meier plot of the time to first dermatologic event (number at risk from T-14-2-2's ARD) |
+| F-14-2-3 | Figure (designed) | The same KM curves from the designer's KM template, with a median line added |
 
 The tables are made from one study ARD (programs/ard/), the listing and
 the figures from the ADaM data, in the figure style of the company

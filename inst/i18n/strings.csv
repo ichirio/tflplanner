@@ -1724,3 +1724,66 @@ Its statistics are not in the ARD (blank in the table).,この解析の統計量
 study ARD,試験の ARD
 In the table,表では
 From,どこから
+Own functions,独自の関数
+"ARD functions of one's own: the company's (the standards folder) and the study's (programs/ard/functions/; a study's copy wins). An analysis names one as its method once the study loads it. They are R files, edited outside the app (RStudio ...): try one after a change.",独自の ARD 関数: 会社標準（標準フォルダ）と試験（programs/ard/functions/。同じ名前なら試験の写しが使われます）。試験が読み込むと、解析の method に書けます。R のファイルなので、直すのはアプリの外（RStudio など）で行い、直したら［試す］で確かめてください。
+New function...,新しい関数…
+"not loaded by this study: Use in this study, on Own functions",この試験では読み込んでいません（「独自の関数」の［この試験で使う］から）
+loaded,読み込み済み
+not loaded,未
+could not be tried,試せませんでした
+%d problems,問題 %d
+-- the file changed since,（その後ファイルが変わりました）
+No ARD function of one's own yet: New function... starts one from a template.,独自の ARD 関数はまだありません。［新しい関数…］でひな型から作れます。
+Choose a function in the list.,一覧で関数を選んでください。
+The study's file:,試験のファイル:
+The company's file:,会社標準のファイル:
+Statistics:,統計量:
+not declared (cards::as_cards_fn(stat_names = ) lets a check see them),宣言なし（cards::as_cards_fn(stat_names = ) で宣言すると確認できます）
+See the difference,差を見る
+Take the company's...,会社標準に入れ替える…
+The file changed since it was last tried: try it again.,最後に試した後でファイルが変わりました。もう一度試してください。
+Use in this study,この試験で使う
+Try...,試す…
+See the code,コードを見る
+%s is loaded by the study's ARD programs: an analysis can name it as its method.,%s を試験の ARD プログラムが読み込むようにしました。解析の method に書けます。
+"Edit it outside the app (RStudio ...), then try it here.",直すのはアプリの外（RStudio など）で。直したらここで試してください。
+%s: the study's and the company's,%s: 試験と会社標準
+The study's,試験
+The company's,会社標準
+Take the company's,会社標準に入れ替える
+The study's %s is replaced by the company's. The study's results change when its ARD is made again.,試験の %s を会社標準のファイルで置き換えます。試験の結果が変わるのは、ARD を作り直したときです。
+%s: the company's file is the study's now.,%s: 会社標準のファイルに入れ替えました。
+cards' example data (cards::ADSL),cards の見本データ（cards::ADSL）
+Try %s,%s を試す
+Its arguments (as an analysis row gives them),引数（解析の行が渡す形で）
+Run in a separate R process with the files the study's ARD programs load; up to 60 seconds.,試験の ARD プログラムが読み込むファイルと一緒に、別の R で動かします（最長 60 秒）。
+Try,試す
+It behaves: a cards ARD with the statistics it declares (%.1f s).,問題ありません: 宣言した統計量を持つ cards の ARD です（%.1f 秒）。
+The first rows of its ARD,できた ARD の先頭
+New ARD function,新しい ARD 関数
+Its name (starts with ard_),名前（ard_ で始める）
+Where,置き場
+This study (programs/ard/functions/; loaded at once),この試験（programs/ard/functions/。すぐ読み込む）
+The company standards (a study uses it with Use in this study),会社標準（試験では［この試験で使う］で使う）
+Write its test (test-<name>.R) next to it,テスト（test-<名前>.R）も書く
+"The skeleton is written to be edited outside the app (RStudio ...); try it afterwards.",ひな型を書きます。アプリの外（RStudio など）で直してから、試してください。
+Write it,書く
+"%s is written: edit it outside the app, then try it.",%s を書きました。アプリの外で直してから試してください。
+study,試験
+company,会社標準
+study and company,試験・会社標準
+In this study,この試験で
+Tried,試した結果
+"Statistics of one's own on numeric variables, by group (cards::ard_summary(statistic = ))",数値の変数の独自の統計量を群ごとに（cards::ard_summary(statistic = )）
+A test or a model made an ARD (cards::tidy_as_ard(): its errors go into the ARD),検定・モデルを ARD に（cards::tidy_as_ard()。エラーは ARD に入る）
+"Any calculation, group by group (cards::ard_strata() + ard_identity())",自由な計算を群ごとに（cards::ard_strata() ＋ ard_identity()）
+Read the files again,ファイルを読み直す
+What was changed in the study's copy is lost.,試験の写しで直した分は無くなります。
+The analyses that use it (their reports' ARDs become outdated): %s,使っている解析（その帳票の ARD は古くなります）: %s
+The company's file changed since the study copied it; the study uses its copy.,会社標準のファイルが、試験に写した後で変わりました。試験は写しを使っています。
+The study's copy was changed in the study; the company's is as it was copied.,試験の写しが試験で直されています。会社標準は写したときのままです。
+Both changed since the study copied it: the study's copy and the company's file.,写した後で、試験の写しと会社標準のファイルの両方が変わっています。
+The study's copy and the company's file differ (no record of when it was copied).,試験の写しと会社標準のファイルの中身が違います（写したときの記録がありません）。
+Stopped while loading the study's files:,試験のファイルを読み込むところで止まりました:
+Stopped while making the data:,データを作るところで止まりました:
+Stopped in the function:,関数の中で止まりました:
