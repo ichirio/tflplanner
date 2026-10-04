@@ -69,6 +69,7 @@ reference:
       - study_status
   - title: The ARD definition and the study ARD
     contents:
+      - study_ard_conditions
       - ard_rows
       - ard_setup_code
       - run_ard
