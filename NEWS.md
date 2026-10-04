@@ -1,5 +1,21 @@
 # tflplanner (development version)
 
+- **ARDs made elsewhere are taken in on the ARD tab** (#89).  A new tab,
+  "ARDs taken in", lists the record of `input/ard/` (who made each ARD,
+  when, for which reports, its check, removed or in use) with the reports
+  that use each one.  "Take in an ARD..." reads the file, offers its own
+  `output_id` values as the reports it is for, takes it in and shows the
+  check; with "Use it for these reports" the reports read it (not when the
+  check finds an error).  On a chosen ARD: use it for the report in the
+  sidebar, stop using it, compare it with the report's own ARD (double
+  programming, `cards::compare_ard()`), replace it (the new file taken in,
+  the reports moved to it, the old one kept on the record as removed), or
+  remove it (the reports that use it may go back to their own ARD
+  definition).  Above the ARD definition, a report that uses an ARD taken
+  in says so -- its analyses there are not used -- with Compare when it has
+  its own; the study ARD's list says where each report's ARD comes from.
+  Making, rebuilding and previewing the ARD never write to `input/ard/`.
+
 - **A change to one report no longer makes every report "outdated"**
   (#96).  `study_status()` called a report outdated when either
   definition workbook was newer than its RTF, so saving any change -- one

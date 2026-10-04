@@ -1499,3 +1499,46 @@ the column fmt_fn has cards' old name (fmt_fun since cards 0.6.1),列 fmt_fn は
 "a template reads {%s}, a statistic the ARD does not have",テンプレートが {%s} を読みますが、ARD にその統計量がありません
 "cards' check of the ARD's shape: ",cards による ARD の形の確認: 
 "table / listing / figure / user (the report's own code leaves `content`: a data frame, rtftable pages, rtfplot figures or a list of them); blank: table.",table / listing / figure / user（帳票自身のコードが `content` を残す：data.frame、rtftable のページ、rtfplot の図、またはそれらのリスト）。空欄 = table。
+ARDs taken in,取り込んだ ARD
+"An ARD made elsewhere (a CRO, another program) is taken into the study's input/ard/ folder and recorded there. Making the ARD, rebuilding it and Preview write only to output/ard/, so an ARD taken in is never overwritten. A report uses it when its report row says so.",他で作った ARD（CRO、別のプログラム）を、試験の input/ard/ フォルダに取り込み、記録します。「ARD を作る」「作り直し」「プレビュー」は output/ard/ にだけ書くので、取り込んだ ARD は上書きされません。帳票は、帳票の行で指定したときに、取り込んだ ARD を使います。
+Take in an ARD...,ARD を取り込む…
+Use it for the report in the sidebar,サイドバーの帳票で使う
+Stop using it,使うのをやめる
+Compare with the report's own ARD,帳票の自作の ARD と照合
+Replace...,置き換え…
+%s uses an ARD taken in (%s): the analyses here are not used for it.,%s は取り込んだ ARD（%s）を使います。ここの解析の行は、この帳票には使われません。
+Compare,照合
+its ARD definition,ARD の定義
+taken in: %s,取り込み: %s
+Source,出どころ
+ID,ID
+Taken in,取り込み日時
+Check,検査
+Used by,使っている帳票
+Choose an ARD in the list first.,先に一覧で ARD を選んでください。
+"ARD file (rds, json, yaml, xpt, csv)",ARD のファイル（rds、json、yaml、xpt、csv）
+"Made by (a CRO, a program)",出どころ（CRO、プログラム）
+Reports it is for,帳票
+Use it for these reports,これらの帳票で使う
+Take it in,取り込む
+Take in an ARD,ARD を取り込む
+Replace %s (%s),%s（%s）を置き換える
+The file cannot be read as an ARD: %s,ARD として読めません: %s
+%d rows; reports in its output_id column: %s,%d 行。output_id の列にある帳票: %s
+(none: choose them below),（なし：下で選んでください）
+Choose the ARD file.,ARD のファイルを選んでください。
+"%s is taken in as %s, but its check found errors: no report uses it yet.",%s を %s として取り込みましたが、検査でエラーがありました。まだどの帳票も使いません。
+%s is taken in as %s (check: %s).,%s を %s として取り込みました（検査: %s）。
+This ARD was removed: take it in again to use it.,この ARD は外されています。使うには、もう一度取り込んでください。
+%s now uses %s.,%s は %s を使います。
+No report uses it.,使っている帳票はありません。
+Stop using it?,使うのをやめますか？
+%s go back to their own ARD definition.,%s は、それぞれの ARD の定義に戻ります。
+Remove %s?,%s を外しますか？
+"The file and its record stay in input/ard/ (marked removed), so what a report was made from is not forgotten.",ファイルと記録は input/ard/ に残ります（「外した」の印がつきます）。帳票が何から作られたかは失われません。
+Used by %s.,%s が使っています。
+Set them back to their own ARD definition,それぞれの ARD の定義に戻す
+%s: its own ARD and %s,%s: 自作の ARD と %s
+They agree.,一致しました。
+They differ:,違いがあります:
+The ARD names no report: choose one in the sidebar.,この ARD には帳票の指定がありません。サイドバーで帳票を選んでください。

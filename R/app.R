@@ -648,7 +648,23 @@ app_ui <- function(lang = "en") {
                           t("Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills."))),
             shiny::uiOutput("ard_run_info"),
             shiny::div(class = "rp-resize",
-                       DT::DTOutput("ard_table", height = "auto", fill = FALSE)))))),
+                       DT::DTOutput("ard_table", height = "auto", fill = FALSE))),
+          bslib::nav_panel(
+            t("ARDs taken in"), value = "imports",
+            shiny::p(class = "small text-muted",
+                     t("An ARD made elsewhere (a CRO, another program) is taken into the study's input/ard/ folder and recorded there. Making the ARD, rebuilding it and Preview write only to output/ard/, so an ARD taken in is never overwritten. A report uses it when its report row says so.")),
+            shiny::div(class = "mb-2",
+                       .btn("imp_new", t("Take in an ARD..."), class = "btn-sm btn-primary")),
+            DT::DTOutput("imp_list"),
+            shiny::div(
+              class = "d-flex flex-wrap gap-2 mt-2",
+              .btn("imp_use", t("Use it for the report in the sidebar"),
+                   class = "btn-sm btn-outline-primary"),
+              .btn("imp_stop", t("Stop using it"), class = "btn-sm btn-outline-secondary"),
+              .btn("imp_compare", t("Compare with the report's own ARD"),
+                   class = "btn-sm btn-outline-secondary"),
+              .btn("imp_replace", t("Replace..."), class = "btn-sm btn-outline-secondary"),
+              .btn("imp_remove", t("Remove"), class = "btn-sm btn-outline-danger")))))),
 
     bslib::nav_panel(
       t("Runs"), value = "results",
@@ -1773,6 +1789,16 @@ app_server <- function(input, output, session, start) {
   })
   output$ard_kind_note <- shiny::renderUI({
     k <- report_kind()
+    # a report whose ARD was taken in: its analyses here are not used
+    f <- if (!is.null(current())) .ard_import_of(rv$p, current())
+    if (!is.null(f)) {
+      own <- nrow(ard_rows(rv$p, "analyses", current())) > 0L
+      return(shiny::div(
+        class = "alert alert-warning py-1 small d-flex flex-wrap gap-2 align-items-center",
+        shiny::span(sprintf(t("%s uses an ARD taken in (%s): the analyses here are not used for it."),
+                            current(), f)),
+        if (own) .btn("imp_compare_cur", t("Compare"), class = "btn-sm btn-outline-secondary py-0")))
+    }
     if (!k %in% names(.type_idle_tabs) || !"ard" %in% .type_idle_tabs[[k]]) {
       return(NULL)
     }
@@ -2981,19 +3007,235 @@ app_server <- function(input, output, session, start) {
   })
   ard_state_view <- function() {
     d <- ard_state()
+    src <- vapply(d$output_id, function(id) {
+      f <- .ard_import_of(rv$p, id)
+      if (is.null(f)) t("its ARD definition") else sprintf(t("taken in: %s"), f)
+    }, "")
     v <- data.frame(a = d$output_id, b = d$analyses,
                     c = t(unname(.ard_state_labels[d$state])),
                     d = ifelse(is.na(d$rows), "", d$rows),
                     e = ifelse(is.na(d$built), "", d$built), f = d$error,
-                    stringsAsFactors = FALSE)
+                    g = src, stringsAsFactors = FALSE)
     names(v) <- t(c("output_id", "Analyses", "State", "Rows", "Built",
-                    "Error"))
+                    "Error", "Source"))
     DT::formatStyle(
       .dt(v, selection = "single"), names(v)[3L],
       color = DT::styleEqual(t(unname(.ard_state_labels)),
                              c("#15803d", "#b45309", "#6b7280", "#b91c1c")))
   }
   output$ard_state <- DT::renderDT(ard_state_view())
+
+  # ---- ARDs taken in -------------------------------------------------------
+  imp_ver <- shiny::reactiveVal(0L)
+  imp_mode <- shiny::reactiveVal(list(mode = "new"))
+  # the study as the import functions read it: with the definition on screen
+  imp_study <- function() {
+    s <- rv$study
+    s$planner <- rv$p
+    s
+  }
+  imp_data <- shiny::reactive({
+    imp_ver()
+    rv$p
+    shiny::req(has_study())
+    .imports_view(ard_imports(rv$study), rv$p$sheets$report)
+  })
+  output$imp_list <- DT::renderDT({
+    d <- imp_data()
+    v <- data.frame(d$import_id, d$file, d$source, d$imported, d$outputs,
+                    d$rows, d$check, d$state, d$used_by, stringsAsFactors = FALSE)
+    names(v) <- t(c("ID", "File", "Source", "Taken in", "Reports", "Rows",
+                    "Check", "State", "Used by"))
+    .dt(v, selection = "single")
+  })
+  imp_row <- function() {
+    d <- imp_data()
+    i <- input$imp_list_rows_selected
+    if (is.null(i) || !length(i) || i > nrow(d)) {
+      notify(t("Choose an ARD in the list first."), "warning")
+      return(NULL)
+    }
+    d[i, , drop = FALSE]
+  }
+  report_ids <- function() {
+    o <- rv$p$outputs
+    o$output_id[!is.na(o$output_id)]
+  }
+  # taking in (new, or replacing one)
+  imp_modal <- function(title, outs = character(), replacing = FALSE) {
+    shiny::showModal(shiny::modalDialog(
+      title = title, size = "l",
+      shiny::fileInput("imp_file", t("ARD file (rds, json, yaml, xpt, csv)"),
+                       accept = c(".rds", ".json", ".yaml", ".yml", ".xpt", ".csv")),
+      shiny::uiOutput("imp_summary"),
+      shiny::textInput("imp_source", t("Made by (a CRO, a program)"), width = "100%"),
+      shiny::selectizeInput("imp_outputs", t("Reports it is for"), report_ids(),
+                            selected = outs, multiple = TRUE, width = "100%"),
+      if (!replacing) shiny::checkboxInput("imp_use_it", t("Use it for these reports"), TRUE),
+      shiny::uiOutput("imp_result"),
+      footer = shiny::tagList(shiny::modalButton(t("Close")),
+                              .btn("imp_do", if (replacing) t("Replace") else t("Take it in"),
+                                   class = "btn-primary"))))
+  }
+  shiny::observeEvent(input$imp_new, {
+    imp_mode(list(mode = "new"))
+    imp_modal(t("Take in an ARD"))
+  })
+  shiny::observeEvent(input$imp_replace, {
+    r <- imp_row()
+    shiny::req(r)
+    o <- trimws(strsplit(r$outputs %||% "", "|", fixed = TRUE)[[1L]])
+    imp_mode(list(mode = "replace", id = r$import_id))
+    imp_modal(sprintf(t("Replace %s (%s)"), r$import_id, r$file), o[nzchar(o)],
+              replacing = TRUE)
+  })
+  imp_path <- function() {
+    f <- input$imp_file
+    if (is.null(f)) return(NULL)
+    ext <- tolower(tools::file_ext(f$name))
+    path <- f$datapath
+    if (!identical(tolower(tools::file_ext(path)), ext)) {
+      file.copy(path, p2 <- paste0(path, ".", ext), overwrite = TRUE)
+      path <- p2
+    }
+    path
+  }
+  # what the file holds, as soon as it is chosen
+  output$imp_summary <- shiny::renderUI({
+    path <- imp_path()
+    shiny::req(path)
+    a <- tryCatch(tflspec::tfl_read_ard(path), error = function(e) e)
+    if (inherits(a, "error")) {
+      return(shiny::div(class = "alert alert-danger py-1 small",
+                        sprintf(t("The file cannot be read as an ARD: %s"), conditionMessage(a))))
+    }
+    outs <- if ("output_id" %in% names(a)) unique(stats::na.omit(as.character(a$output_id)))
+    if (length(outs) && !identical(imp_mode()$mode, "replace")) {
+      shiny::updateSelectizeInput(session, "imp_outputs", selected = intersect(outs, report_ids()))
+    }
+    shiny::p(class = "small text-muted",
+             sprintf(t("%d rows; reports in its output_id column: %s"), nrow(a),
+                     if (length(outs)) paste(outs, collapse = ", ") else t("(none: choose them below)")))
+  })
+  shiny::observeEvent(input$imp_do, {
+    path <- imp_path()
+    if (is.null(path)) return(notify(t("Choose the ARD file."), "warning"))
+    outs <- input$imp_outputs
+    src <- trimws(input$imp_source %||% "")
+    src <- if (nzchar(src)) src else NA_character_
+    m <- imp_mode()
+    res <- guarded(if (identical(m$mode, "replace")) {
+      replace_imported_ard(imp_study(), m$id, path, source = src,
+                           name = input$imp_file$name,
+                           output_id = if (length(outs)) outs)
+    } else {
+      list(row = import_ard(imp_study(), path, output_id = if (length(outs)) outs,
+                            source = src, name = input$imp_file$name))
+    })
+    if (is.null(res)) return()
+    probs <- attr(res$row, "check")
+    bad <- !is.null(probs) && nrow(probs) && any(probs$level == "error")
+    if (!is.null(res$planner)) rv$p <- res$planner
+    if (!identical(m$mode, "replace") && isTRUE(input$imp_use_it) && !bad) {
+      for (id in outs) rv$p <- use_imported_ard(rv$p, id, res$row$file)
+    }
+    imp_ver(imp_ver() + 1L)
+    output$imp_result <- shiny::renderUI(shiny::tagList(
+      shiny::div(class = if (bad) "alert alert-danger py-1 small" else "alert alert-success py-1 small",
+                 if (bad) sprintf(t("%s is taken in as %s, but its check found errors: no report uses it yet."),
+                                  res$row$original, res$row$file) else
+                   sprintf(t("%s is taken in as %s (check: %s)."), basename(res$row$original),
+                           res$row$file, res$row$check)),
+      if (!is.null(probs) && nrow(probs)) shiny::tags$table(
+        class = "table table-sm small",
+        shiny::tags$tbody(lapply(seq_len(nrow(probs)), function(i) shiny::tags$tr(
+          shiny::tags$td(probs$level[i]),
+          shiny::tags$td(if ("output_id" %in% names(probs)) probs$output_id[i] else ""),
+          shiny::tags$td(probs$message[i] %||% "")))))))
+  })
+  shiny::observeEvent(input$imp_use, {
+    r <- imp_row()
+    shiny::req(r, !is.null(current()))
+    if (identical(r$state, "removed")) {
+      return(notify(t("This ARD was removed: take it in again to use it."), "warning"))
+    }
+    rv$p <- use_imported_ard(rv$p, current(), r$file)
+    imp_ver(imp_ver() + 1L)
+    notify(sprintf(t("%s now uses %s."), current(), r$file))
+  })
+  shiny::observeEvent(input$imp_stop, {
+    r <- imp_row()
+    shiny::req(r)
+    used <- .imports_used_by(rv$p$sheets$report, r$file)
+    if (!length(used)) return(notify(t("No report uses it."), "message"))
+    shiny::showModal(shiny::modalDialog(
+      title = t("Stop using it?"),
+      sprintf(t("%s go back to their own ARD definition."), paste(used, collapse = ", ")),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("imp_stop_ok", t("Stop using it"), class = "btn-primary"))))
+  })
+  shiny::observeEvent(input$imp_stop_ok, {
+    shiny::removeModal()
+    r <- imp_row()
+    shiny::req(r)
+    for (id in .imports_used_by(rv$p$sheets$report, r$file)) {
+      rv$p <- use_imported_ard(rv$p, id, NULL)
+    }
+    imp_ver(imp_ver() + 1L)
+  })
+  shiny::observeEvent(input$imp_remove, {
+    r <- imp_row()
+    shiny::req(r)
+    used <- .imports_used_by(rv$p$sheets$report, r$file)
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("Remove %s?"), r$import_id),
+      t("The file and its record stay in input/ard/ (marked removed), so what a report was made from is not forgotten."),
+      if (length(used)) shiny::tagList(
+        shiny::p(class = "mt-2 text-warning",
+                 sprintf(t("Used by %s."), paste(used, collapse = ", "))),
+        shiny::checkboxInput("imp_remove_back", t("Set them back to their own ARD definition"), TRUE)),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("imp_remove_ok", t("Remove"), class = "btn-danger"))))
+  })
+  shiny::observeEvent(input$imp_remove_ok, {
+    shiny::removeModal()
+    r <- imp_row()
+    shiny::req(r)
+    if (is.null(guarded(remove_imported_ard(rv$study, r$import_id)))) return()
+    if (isTRUE(input$imp_remove_back)) {
+      for (id in .imports_used_by(rv$p$sheets$report, r$file)) {
+        rv$p <- use_imported_ard(rv$p, id, NULL)
+      }
+    }
+    imp_ver(imp_ver() + 1L)
+  })
+  # double programming: the report's own ARD against the one taken in
+  imp_compare <- function(id, file) {
+    cmp <- guarded(compare_imported_ard(imp_study(), id, file))
+    if (is.null(cmp)) return()
+    same <- isTRUE(cards::is_ard_equal(cmp))
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("%s: its own ARD and %s"), id, file), size = "l", easyClose = TRUE,
+      shiny::div(class = if (same) "alert alert-success py-1" else "alert alert-warning py-1",
+                 if (same) t("They agree.") else t("They differ:")),
+      if (!same) shiny::div(class = "rp-code",
+                            shiny::pre(paste(utils::capture.output(print(cmp)), collapse = "\n"))),
+      footer = shiny::modalButton(t("Close"))))
+  }
+  shiny::observeEvent(input$imp_compare, {
+    r <- imp_row()
+    shiny::req(r)
+    o <- trimws(strsplit(r$outputs %||% "", "|", fixed = TRUE)[[1L]])
+    id <- if (!is.null(current()) && current() %in% c(o, .imports_used_by(rv$p$sheets$report, r$file)))
+      current() else o[nzchar(o)][1L]
+    if (is.na(id %||% NA)) return(notify(t("The ARD names no report: choose one in the sidebar."), "warning"))
+    imp_compare(id, r$file)
+  })
+  shiny::observeEvent(input$imp_compare_cur, {
+    f <- .ard_import_of(rv$p, current())
+    shiny::req(f)
+    imp_compare(current(), f)
+  })
   # the study's code list from a file: its values become the study defaults
   # of the codelists sheet (a report's own rows still win for that report)
   shiny::observeEvent(input$codelist_file, {
