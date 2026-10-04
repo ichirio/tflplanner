@@ -1199,7 +1199,6 @@ To install by hand in this session (then restart R):,この R セッションで
 Or download the three package files where you can and install them from a folder:,または、届く場所で 3 つのパッケージのファイルをダウンロードし、フォルダから入れます:
 (The newest versions could not be looked up from here -- GitHub's addresses may be closed; the update itself may still get through.),（ここからは最新の版を調べられませんでした。GitHub のアドレスが閉じている可能性があります。更新そのものは通ることもあります。）
 "A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead, open User code at the bottom.",新しい図です。「最初の一歩」で、テンプレートから始めるか空から始めてください（どちらもデザイナーのレイヤーになります）。ggplot のコードを自分で書くときは、下の「ユーザーコード」を開きます。
-"This figure is drawn by user code (below). To make it with the designer instead, take the first step: from a template or empty.",この図はユーザーコード（下）で描いています。デザイナーで作り直すには「最初の一歩」から（テンプレートから／空から）。
 First step (both become the designer's layers),最初の一歩（どちらもデザイナーのレイヤーになります）
 Start from a template,テンプレートから始める
 "Choose a type, its data and a few settings, then apply: the designer gets its layers at once, to add to and change.",型・データ・簡単なパラメータを選んで適用すると、デザイナーにレイヤーがまとめて並びます。その後は足す・直すことができます。
@@ -1556,9 +1555,8 @@ This ARD was taken out: take it in again to use it.,この ARD は外されて�
 Take out %s?,%s を外しますか？
 "The file and its record stay in input/ard/ (marked taken out), so what a report was made from is not forgotten.",ファイルと記録は input/ard/ に残ります（「外した」の印がつきます）。帳票が何から作られたかは失われません。
 "%s uses an ARD that was taken out (%s): take it in again, or go back to its own ARD definition.",%s は外した ARD（%s）を使っています。もう一度取り込むか、ARD の定義に戻してください。
-User code,ユーザーコード
+User code,User code
 Write the code,コードを書く
-"Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them. The report's titles, footnotes, header and page come from its settings (the Page tab), as for any report.",あなたのコードが `content` を残します（data.frame、rtftable のページ、ggplot、またはそれらのリスト）。タイトル・脚注・ヘッダー・ページは、ほかの帳票と同じく帳票の設定（ページのタブ）から付きます。
 Try it,試す
 Run the code,試しに実行
 "Runs the report's code in a fresh R process from the study folder, as its program will, and shows what it left: the first table page, the first figure.",帳票のコードを、プログラムと同じく試験フォルダから新しい R のプロセスで実行し、残したものを出します（最初の表のページ、最初の図）。
@@ -1567,9 +1565,88 @@ Data it reads (the program reads them first),読むデータ（プログラム�
 %s is a user-code report: its own rows of the table sheets (%s) are not used.,%s はユーザーコードの帳票です。表のシート（%s）の自分の行は使われません。
 Not run yet.,まだ実行していません。
 "It ran: %d table page(s), %d figure(s).",実行できました：表 %d ページ、図 %d 枚。
-"These figures are written by hand: %s. They can be user-code reports (the fourth kind): the same code, its datasets, and `content`.",次の図は手書きのコードです: %s。ユーザーコードの帳票（4 つ目の型）にできます（コードと読むデータはそのまま、`content` を残す形に）。
 Convert,変換する
 Later,あとで
 %s: now user-code reports. Their programs are to be made again (Save).,%s をユーザーコードの帳票にしました。プログラムは作り直しが要ります（保存）。
 This figure is written by hand: it can be a user-code report.,この図は手書きのコードです。ユーザーコードの帳票にできます。
 Make it a user-code report,ユーザーコードの帳票にする
+Your code,ユーザーコード
+"Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them; they print in that order. The report's titles, footnotes, header and page come from its settings (the Page tab), as for any report.",あなたのコードが `content` を残します（data.frame、rtftable のページ、ggplot、またはそれらのリスト。その順に出ます）。タイトル・脚注・ヘッダー・ページは、ほかの帳票と同じく帳票の設定（ページのタブ）から付きます。
+Only an analysis to write yourself? That is the ARD tab's custom method (or a company ard_*() function). This kind is for a report whose whole content is your code.,解析だけを自分で書くなら、ARD タブの custom（または会社の独自 ard_*()）です。この型は、帳票の中身をまるごと自分のコードで作るときに使います。
+A user-code report: this code leaves `content` (the same field as its Content tab). Nothing else here is used for it.,ユーザーコードの帳票です。このコードが `content` を残します（内容のタブと同じ欄）。ここのほかの欄は使われません。
+"%s does not read an ARD: its Content tab's ""Use this report's ARD"" makes it read one (these analyses, or an ARD taken in).",%s は ARD を読みません。内容のタブの「この帳票の ARD を使う」で読むようになります（ここの解析、または取り込んだ ARD）。
+It reads the ARD taken in (%s).,取り込んだ ARD（%s）を読みます。
+Its ARD definition has %d analyses (built).,ARD の定義に解析が %d 件あります（作成済み）。
+"Its ARD definition has %d analyses, not built yet: build them on the ARD tab.",ARD の定義に解析が %d 件ありますが、まだ作っていません。ARD タブで作ってください。
+"No ARD yet: add analyses on the ARD tab, or take an ARD in.",まだ ARD がありません。ARD タブで解析を足すか、ARD を取り込んでください。
+To the ARD tab,ARD へ
+`ard` is this report's rows of the ARD (a cards ARD); normalize_ard(ard) makes it a table's shape.,`ard` は、この帳票の行だけの ARD（cards の形）です。normalize_ard(ard) で表の形になります。
+Add %s to the data it reads.,読むデータに %s を足してください。
+Line %d of the code: ,コードの %d 行目: 
+These figures are written by hand: %s.,次の図は手書きのコードです: %s。
+"A figure is now made with the designer (layers); code written by hand belongs to a user-code report, the fourth kind. Converting keeps the code and its datasets, and makes it leave `content`; the RTF is the same. After Save the reports are to be run again.",図の型は、これからデザイナー（レイヤー）で作る図のものになります。手書きのコードは、ユーザーコードの帳票（4 つ目の型）が正式な置き場です。変換しても、コードと読むデータはそのままで、`content` を残す形になります（RTF は同じです）。保存の後、帳票の再実行が要ります。
+Convert...,変換する…
+Make them user-code reports?,ユーザーコードの帳票にしますか？
+"%s become user-code reports: the same code and datasets, leaving `content`.",%s をユーザーコードの帳票にします（コードと読むデータはそのまま、`content` を残す形に）。
+"Until you save, discarding the unsaved changes undoes it. After Save their programs are made again, and the reports are to be run again.",保存するまでは、未保存の変更を捨てれば元に戻ります。保存するとプログラムが作り直され、帳票の再実行が要ります。
+"%s: now user-code reports. Save to keep it; until then, discarding the unsaved changes undoes it.",%s をユーザーコードの帳票にしました。保存すると確定します。保存するまでは、未保存の変更を捨てれば戻せます。
+This figure is written by hand. Two ways:,この図は手書きのコードです。2 つの道があります:
+Keep the code:,コードをそのまま使う:
+Make it a user-code report...,ユーザーコードの帳票にする…
+Make it again with the designer: the first step below (a template or empty).,デザイナーで作り直す: 下の「最初の一歩」から（テンプレートか空から）。
+Table: made from the ARD and the table definition.,Table: ARD と表の定義から作ります。
+"Listing: the records of a dataset, in columns you define.",Listing: データセットのレコードを、定義した列で並べます。
+"Figure: made with the designer (layers on ggplot()), from a template or empty.",Figure: デザイナー（ggplot() にレイヤーを重ねる）で、テンプレートか空から作ります。
+"User code: your own R code makes the content (tables, figures); the report dresses it.",User code: 自分の R コードで中身（表・図）を作り、帳票の体裁を付けます。
+Take in a TOC...,TOC を取り込む…
+Take in a TOC,TOC を取り込む
+"TOC file (xlsx, xls, csv)",TOC のファイル（xlsx・xls・csv）
+Sheet,シート
+Rows above the header,見出しの上の行数
+The file cannot be read: %s,ファイルを読めません: %s
+Report ID,帳票 ID
+Title lines,タイトルの行
+Population,集団
+Footnote lines,脚注の行
+Remarks,備考
+Which column is what,列の対応づけ
+Remember this mapping in the company standards,この対応づけを会社標準に覚える
+Choose the column holding the report IDs.,帳票 ID の列を選んでください。
+The TOC cannot be read: %s,TOC を読めません: %s
+Title line,タイトル
+Footnote line,脚注
+Guessed from the ID: check it,ID から推測しました。確かめてください
+(the TOC says %s: not changed),（TOC では %s。変えません）
+Kept: delete it yourself if it is no longer needed.,消さずに残します。要らなければ自分で削除してください。
+Use the TOC's text,TOC の文にする
+What would change,何が変わるか
+"New %d, changed %d, no change %d, not in the TOC %d.",新しい %d・変更あり %d・変更なし %d・TOC に無い %d。
+"Only what the TOC holds is changed: tables, ARDs, pages and lines added here stay.",TOC にある項目だけを変えます。表・ARD・ページの設定・ここで足した行はそのままです。
+Choose the TOC file.,TOC のファイルを選んでください。
+"Saved at once, with the other unsaved changes: the record of TOCs taken in and the reports must agree.",TOC の取り込みの記録と帳票を合わせるため、ほかの未保存の変更も含めてその場で保存しました。
+The mapping is remembered in %s.,対応づけを %s に覚えました。
+"%s is taken in as %s: new %d, changed %d, not in the TOC %d.",%s を %s として取り込みました: 新しい %d・変更あり %d・TOC に無い %d。
+New,新しい
+Changed,変更あり
+No change,変更なし
+Not in the TOC,TOC に無い
+Titles and footnotes,タイトル・脚注
+TOCs taken in (imports.csv lists them; last.json: what the last one said),取り込んだ TOC（imports.csv が一覧、last.json は前回の TOC の中身）
+"Last taken in: %s (%s, %s).",前回の取り込み: %s（%s、%s）。
+"This is the same file as %s (%s), taken in before.",前に取り込んだ %s（%s）と同じファイルです。
+Taking it in...,取り込み中…
+The population becomes the last title line.,集団はタイトルの最後の行になります。
+Report ID %s is on more than one row (rows %s).,帳票 ID %s が複数の行にあります（%s 行目）。
+will be added,足します
+will be updated,更新します
+will be taken out (the TOC dropped it),外します（TOC から消えた行）
+"edited here, and changed in the TOC",ここで直した行。TOC でも変わりました
+added here: moves after the TOC's lines,ここで足した行。TOC の行の後ろに移ります
+%d title lines and %d footnote lines will be added.,タイトル %d 行・脚注 %d 行を足します。
+"Only what the TOC holds is changed: tables, ARDs, pages and lines added here stay; lines added here go after the TOC's lines.",TOC にある項目だけを変えます。表・ARD・ページの設定・ここで足した行はそのままです（ここで足した行は TOC の行の後ろに置きます）。
+%d heading rows (no report ID) are skipped.,帳票 ID の無い見出しの行 %d 行を飛ばしました。
+%d lines edited here are kept: the TOC did not change them.,ここで直した行 %d 行は、TOC が変わっていないのでそのままにします。
+Show the reports with no change,変更なしの帳票も表示
+* = the type is guessed from the ID: check it before taking it in.,* = 種別は ID から推測しました。取り込む前に確かめてください。
+%d lines edited here were kept instead of the TOC's text.,ここで直した行 %d 行は、TOC の文にせずそのままにしました。
+New reports: %s. Make their content from the list's buttons.,新しい帳票: %s。一覧のボタンから中身を作ってください。

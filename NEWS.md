@@ -1,5 +1,53 @@
 # tflplanner (development version)
 
+- **Follow-up `R CMD check --as-cran` on R 4.6.1** (#70).  `inst/WORDLIST`
+  lists the technical words, so `spelling::spell_check_package()` finds
+  nothing; two British spellings in older entries are American, as the
+  package declares `Language: en-US`; the `run_app()` and `launch_app()`
+  examples are `if (interactive())` rather than `\dontrun{}`.
+
+- **Take in a TOC** (#99).  "Take in a TOC..." on the reports list: the
+  file, its sheet and the rows above its header; which column is what,
+  from the company standards' new `toc_map` sheet (an item and the column
+  names it may have; the map is what `tflspec::tfl_read_toc()` takes), with
+  "remember this mapping"; what would change, report by report and line by
+  line; and taking it in, saved at once with the TOC's copy and record in
+  `input/toc/`.  Taken in again, only what the TOC holds is updated: a line
+  edited here that the TOC changed too is asked about (kept unless ticked),
+  a report no longer in the TOC is kept, and an existing report's type is
+  not changed; a new report's guessed type is marked and can be set.
+  `toc_changes()`, `toc_apply()`, `toc_snapshot()`, `toc_imports()` and
+  `toc_last()`.
+  After S1's screen review: a report's lines are of two kinds, the TOC's
+  (compared line by line) and those added here (not compared: they stay,
+  after the TOC's lines), so a TOC that gets more lines no longer meets
+  the lines added here; a line edited here is asked about only when the
+  TOC changed it too; a report once taken in from a TOC is said to be
+  missing every time; "Take it in" says it is working and cannot be
+  pressed twice, nor while the TOC cannot be read; the last TOC taken in
+  is said in the dialog, and the same file again noticed; a report ID on
+  two rows is said with its rows; the reports with no change are folded,
+  the heading rows skipped and the lines kept are said.
+  The reports list takes its own height: a long one no longer covers the
+  buttons under it.
+
+- **User-code reports, after their screen review** (#98).  The ARD switch
+  says what it reads (the ARD taken in; its analyses, built or not; none
+  yet, with a button to the ARD tab) and what `ard` is; the ARD tab of a
+  user-code report that does not read one says so.  The program checks
+  `content` against the contract and stops naming the item and what it
+  was (`content (item 2) is lm`).  "Run the code" names the line of the
+  code an error is on and a dataset the code reads but the report does not
+  ("Add ADSL to the data it reads"); a data frame's sample has its column
+  header; the figure fits.  The Code tab of a user-code report has the one
+  field it uses, said so.  The offer to convert figures written by hand
+  says why and what Save then means, asks before converting, and "Later"
+  holds while the study is open; a hand-written figure's own screen shows
+  its two ways first (keep the code: a user-code report; or the designer).
+  The kinds are named alike everywhere ("User code" as "Table" ...), with a
+  line on each in the add dialog, and the content tab tells a custom
+  analysis from a whole report of one's own code.
+
 - **The sample study's figures are user-code reports** (#94): F-14-2-1
   and F-14-2-2 are of the type `user` (their code ends with the figure
   checks and `content <- plot`), so a new sample study has no figure
@@ -476,7 +524,7 @@
 - **Plot Designer: advice and presets** (#19).  The preview now carries
   tflspec's advice on the design (what is usually wanted and is missing or
   unusual: a KM figure without the number at risk, a legend inside the
-  panel with many groups, more groups than the palette has colours, text
+  panel with many groups, more groups than the palette has colors, text
   visits with no order, a waterfall without its marks ...) together with
   the checks, as an overlay on the figure; where one change would do it,
   *Apply* makes it.  A designed figure can be kept as a company *preset*
@@ -519,7 +567,7 @@
 
 - The listing sheets of `listing_figure_spec.xlsx` (`listings`,
   `listing_cols`) are tflspec's listing definition: their columns, reading
-  and normalising come from `tflspec::tfl_listing_spec()` /
+  and normalizing come from `tflspec::tfl_listing_spec()` /
   `tfl_read_listing_spec()`, and the listing program from
   `tfl_listing_code()` with that definition (tflspec 0.0.11).  The workbook
   and the programs are unchanged; only the `figures` sheet stays

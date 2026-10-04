@@ -164,6 +164,21 @@
         "the setup code every report of a new study runs first (blank: none)")),
     listing_types = .df(type = "multiline", label = "multiline",
                         note = "rtfreporter's listing type: / separator, gutters, a blank row per record"),
+    # a TOC in the company's layout: which of its columns is what -- the
+    # column names each item may have, " | " between them (case and
+    # surrounding blanks do not matter); title and footnote take every one
+    # the TOC has, in the TOC's order
+    toc_map = .df(
+      item = c("output_id", "type", "title", "population", "footnote",
+               "program", "file", "note"),
+      columns = c("Output ID | Output | Output No. | No. | Number | TLF ID | TFL ID | ID",
+                  "Type | Kind | Output Type",
+                  "Title | Title 1 | Title 2 | Title 3 | Title 4",
+                  "Population | Analysis Set | Analysis Population",
+                  "Footnote | Footnotes | Footnote 1 | Footnote 2 | Footnote 3",
+                  "Program | Program Name",
+                  "File | Output File | File Name",
+                  "Note | Notes | Comment | Comments")),
     populations = .df(
       population_id = c("SAF", "FAS", "PPS", "ENR"),
       dataset = "ADSL",
@@ -222,7 +237,7 @@
                 "header_presets", "statistics", "categorical_formats",
                 "ard_methods", "ard_statistics", "figure_settings",
                 "figure_colors", "figure_markers", "code_templates",
-                "listing_types",
+                "listing_types", "toc_map",
                 "populations", "datasets",
                 "default_<sheet>"),
       description = c(
@@ -240,6 +255,7 @@
         "the figure markers: event markers by label (Death, Discontinued ...) and the figures' symbols (censor, assessment)",
         "the code written where a report says none: table_data (its rows of the study ARD), table_process (normalize, rework), figure_plot, setup; {OUTPUT_ID} {ARD} {ARD_PROGRAM} {PROGRAM} {STUDY_ID} are filled in",
         "the listing types a listing may use (rtfreporter's)",
+        "a TOC in the company's layout: for each item (output_id, type, title, population, footnote, program, file, note), the column names it may have, | between them",
         "the analysis sets a new study's ARD definition starts with",
         "the data catalog a new study starts with: ADaM and SDTM datasets and their files",
         "the study-default rows a new study starts with, one sheet per definition sheet (default_header, default_footer, default_cells ...); {STUDY_ID} becomes the study's id"),
@@ -258,6 +274,7 @@
         "\u56f3\u306e\u8a18\u53f7\uff1a\u30e9\u30d9\u30eb\u3054\u3068\u306e\u30a4\u30d9\u30f3\u30c8\u8a18\u53f7\uff08Death\u3001Discontinued \u306a\u3069\uff09\u3068\u56f3\u306e\u8a18\u53f7\uff08censor\u3001assessment\uff09",
         "\u5e33\u7968\u304c\u4f55\u3082\u66f8\u304b\u306a\u3044\u3068\u304d\u306e\u30b3\u30fc\u30c9\uff1atable_data\uff08ARD \u304b\u3089\u306e\u53d6\u5f97\uff09\u3001table_process\uff08normalize\u30fb\u52a0\u5de5\uff09\u3001figure_plot\u3001setup",
         "Listing \u306e\u7a2e\u985e\uff08rtfreporter \u306e\u3082\u306e\uff09",
+        "\u81ea\u793e\u69d8\u5f0f\u306e TOC\uff1a\u9805\u76ee\uff08output_id\u3001type\u3001title\u3001population\u3001footnote\u3001program\u3001file\u3001note\uff09\u3054\u3068\u306e\u5217\u540d\u306e\u5019\u88dc\uff08| \u533a\u5207\u308a\uff09",
         "\u65b0\u898f\u8a66\u9a13\u306e ARD \u5b9a\u7fa9\u304c\u6700\u521d\u306b\u6301\u3064\u89e3\u6790\u5bfe\u8c61\u96c6\u56e3",
         "\u65b0\u898f\u8a66\u9a13\u304c\u6700\u521d\u306b\u6301\u3064\u30c7\u30fc\u30bf\u30ab\u30bf\u30ed\u30b0\uff08ADaM / SDTM \u3068\u30d5\u30a1\u30a4\u30eb\uff09",
         "\u65b0\u898f\u8a66\u9a13\u306e\u300c\u8a66\u9a13\u5171\u901a\u306e\u65e2\u5b9a\u300d\u306e\u884c\u3002\u5b9a\u7fa9\u30b7\u30fc\u30c8\u3054\u3068\u306b 1 \u30b7\u30fc\u30c8\u3002{STUDY_ID} \u306f\u8a66\u9a13 ID \u306b\u7f6e\u304d\u63db\u308f\u308b"))

@@ -106,6 +106,8 @@ reference:
       - preview_figure
       - fig_presets
       - copy_fig_to_params
+      - make_user_report
+      - preview_user
   - title: Input assistance and the table builder
     contents:
       - fetch_ard
@@ -122,6 +124,12 @@ reference:
       - first_listing
       - catalog_add_files
       - add_group_n
+  - title: A TOC taken in
+    contents:
+      - toc_changes
+      - toc_apply
+      - toc_snapshot
+      - toc_imports
   - title: Programs and runs
     contents:
       - data_lines

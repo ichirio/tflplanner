@@ -13,15 +13,24 @@
 }
 
 # the small function the program makes `content` with: a ggplot (alone or
-# in a list) becomes a figure; the rest is rtfreporter's to take
+# in a list) becomes a figure; anything else than the contract's -- a data
+# frame, rtftable pages, a ggplot, an rtfplot, or a list of them -- stops,
+# saying which item it is and what it was
 .user_content_fun <- c(
-  "# the content as rtfreporter takes it: a ggplot becomes a figure",
+  "# the content as rtfreporter takes it: a ggplot becomes a figure; what",
+  "# the contract does not name stops, saying which item it is",
   ".user_content <- function(x) {",
+  "  ok <- function(p) is.data.frame(p) ||",
+  "    inherits(p, c(\"rtftable\", \"rtfplot\", \"ggplot\"))",
   "  fig <- function(p) if (inherits(p, \"ggplot\")) rtfplot(p) else p",
-  "  if (inherits(x, \"ggplot\")) return(fig(x))",
-  "  if (is.list(x) && !is.data.frame(x) &&",
-  "      !inherits(x, c(\"rtftable\", \"rtfplot\"))) x <- lapply(x, fig)",
-  "  x",
+  "  one <- ok(x)",
+  "  items <- if (one) list(x) else if (is.list(x)) x else list(x)",
+  "  for (i in seq_along(items)) if (!ok(items[[i]])) {",
+  "    stop(sprintf(\"`content`%s is %s: make it a data frame, rtftable pages, a ggplot or an rtfplot (or a list of them).\",",
+  "                 if (one || !is.list(x)) \"\" else sprintf(\" (item %d)\", i),",
+  "                 class(items[[i]])[1L]), call. = FALSE)",
+  "  }",
+  "  if (one) fig(x) else lapply(items, fig)",
   "}")
 
 # the part of a user-code report's program between its setup and its report
@@ -89,9 +98,14 @@ preview_user <- function(study, output_id, timeout = 300) {
     "suppressPackageStartupMessages(library(rtfreporter))",
     "suppressPackageStartupMessages(library(tflspec))",
     ".e <- new.env(parent = globalenv())",
-    ".res <- list(content = NULL, error = NULL)",
+    ".res <- list(content = NULL, error = NULL, line = NA_integer_)",
+    paste0(".x <- parse(", q(f_code), ", encoding = \"UTF-8\", keep.source = TRUE)"),
     ".res$content <- tryCatch({",
-    paste0("  eval(parse(", q(f_code), ", encoding = \"UTF-8\"), envir = .e)"),
+    "  for (.i in seq_along(.x)) {",
+    "    .res$line <- utils::getSrcLocation(attr(.x, \"srcref\")[[.i]], \"line\")[1L]",
+    "    eval(.x[[.i]], envir = .e)",
+    "  }",
+    "  .res$line <- NA_integer_",
     "  get0(\"content\", .e, inherits = FALSE)",
     "}, error = function(e) { .res$error <<- conditionMessage(e); NULL })",
     # a figure's image lives in this process's temp folder: keep its bytes
@@ -113,7 +127,34 @@ preview_user <- function(study, output_id, timeout = 300) {
   res <- if (file.exists(f_out)) readRDS(f_out) else
     list(content = NULL, error = .first_error(px$stdout) %||% "The code did not run.")
   res$log <- px$stdout
+  # the line of the report's own code the error is on (the program's line,
+  # less the lines before the code)
+  start <- match("# ---- the report's own code: leaves `content`", code)
+  n_own <- length(strsplit(.user_code_of(study$planner, output_id) %||% "", "\n",
+                           fixed = TRUE)[[1L]])
+  ln <- res$line %||% NA_integer_
+  res$code_line <- if (!is.na(start) && !is.na(ln) && ln > start &&
+                       ln <= start + n_own) ln - start else NA_integer_
   res
+}
+
+# a user-code report's own code (its data code), or NULL
+.user_code_of <- function(x, output_id) {
+  o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
+  if (nrow(o) && !is.na(o$data_code)) o$data_code
+}
+
+# What a user-code report's ARD switch reads: "import" (the ARD taken in,
+# `file`), "own" (its analyses, `n` of them, `built` when the study ARD has
+# its rows) or "none"
+.user_ard_state <- function(study, output_id) {
+  x <- study$planner
+  f <- .ard_import_of(x, output_id)
+  if (!is.null(f)) return(list(kind = "import", file = f))
+  n <- nrow(ard_rows(x, "analyses", output_id))
+  if (!n) return(list(kind = "none"))
+  rows <- tryCatch(study_ard_rows(study, output_id), error = function(e) NULL)
+  list(kind = "own", n = n, built = !is.null(rows) && nrow(rows) > 0L)
 }
 
 # What a preview shows of a user-code report's content: its table pages
@@ -126,7 +167,9 @@ preview_user <- function(study, output_id, timeout = 300) {
   figs <- list()
   for (it in items) {
     if (inherits(it, "rtftable")) pages <- c(pages, list(it))
-    else if (is.data.frame(it)) pages <- c(pages, rtfreporter::as_rtftables(it))
+    else if (is.data.frame(it)) pages <- c(pages, list(structure(
+      list(data = it, col_header = list(names(it)), blank_rows = integer()),
+      class = "rtftable")))
     else if (inherits(it, "uc_png")) figs <- c(figs, list(it$png))
   }
   list(pages = pages, figures = figs)
