@@ -39,8 +39,8 @@ The \code{tflplanner}.
 Writes what a summary table (columns = a group, rows = variables) needs,
 from the answers the app's "first table" form asks: the dataset in the
 data catalog (added when missing), the analysis set (\code{population} flag
-\verb{== "Y"}, added when missing), one analysis per variable (numbers
-summarized, the rest counted), the report (a Table, added when missing)
+\verb{== "Y"}, added when missing), one analysis of the numeric variables
+(summarized) and one of the rest (counted), the report (a Table, added when missing)
 and its \code{tables} row (the group as columns, one group per variable) and
 \code{variables} rows (their order, and the data's labels).
 }

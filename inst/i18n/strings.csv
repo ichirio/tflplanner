@@ -1235,3 +1235,4 @@ Left indent of the cell text in twips (not on the header); blank: unchanged.,セ
 (no data),（データなし）
 Data (dataset × analysis set),データ（データセット × 解析対象集団）
 The rows the analysis reads: the dataset's records of the analysis set's subjects. The name is the one the program gives the data.,解析が読む行：データセットのうち、解析対象集団の被験者の行。（）内は、プログラムでのこのデータの名前です。
+"One analysis is one call: add variables to it. Make another analysis only when the statistics, the condition or the groups differ.",1 つの解析は 1 回の呼び出しです。変数はこの解析に足してください。解析を分けるのは、統計量・条件・群が違うときだけです。

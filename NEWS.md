@@ -1,8 +1,19 @@
 # tflplanner (development version)
 
+- **The new-report wizard writes one analysis per call** (#76).
+  `first_table()` (the "first table" form) wrote one analysis per variable;
+  it now writes `BIGN`, `CONT` (the numeric variables together) and `CAT`
+  (the categorical ones together) -- one cards call each, as an analysis is
+  meant to be.  The table is the same: its rows keep the order the variables
+  were chosen in (the `variables` sheet's `order`).  Studies already made
+  are not touched.  The analysis form says so in one line: add variables to
+  an analysis, and make another only when the statistics, the condition or
+  the groups differ.
+
 - The `header` sheet's help (and its Japanese) says that a report's line
   `(none)` takes the study's line of that number out (tflspec #91).  Needs
   tflspec >= 0.0.24.9027.
+
 - **The data of an analysis is one choice** (#74).  On the ARD tab's
   analysis form, Data and Analysis set are one choice of a dataset and an
   analysis set -- "ADSL × SAF (pop_saf)", "ADAE × SAF (adae_saf)",

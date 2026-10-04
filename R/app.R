@@ -2380,6 +2380,8 @@ app_server <- function(input, output, session, start) {
                     sprintf(t("Analysis %s of %s. A click on another row of the grid edits that one."),
                             r$analysis_id, tg)),
         .btn("ard_an_new", t("New analysis"), class = "btn-sm btn-outline-primary")),
+      shiny::p(class = "small text-muted mb-1",
+               t("One analysis is one call: add variables to it. Make another analysis only when the statistics, the condition or the groups differ.")),
       bslib::layout_columns(
         col_widths = c(4, 8),
         shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
