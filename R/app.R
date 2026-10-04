@@ -2483,7 +2483,13 @@ app_server <- function(input, output, session, start) {
     if (is.na(cat_now)) cat_now <- cats[1L]
     blank_na <- function(x) if (is.na(x)) "" else x
     tg <- ard_target()
+    # a stack's own form; one inside a stack says so, and has no data of
+    # its own
+    role <- st_role(r)
+    if (role == "parent") return(stack_form_ui(r, tg))
+    inside <- role == "inside"
     shiny::tagList(
+      if (inside) stack_inside_note(r),
       if (!tg %in% rv$p$outputs$output_id) shiny::div(
         class = "alert alert-info py-1 small",
         sprintf(t("%s is not a report yet: add it on the Reports tab to make its table."), tg)),
@@ -2521,15 +2527,15 @@ app_server <- function(input, output, session, start) {
                                    "overflow-wrap: anywhere;"),
                      shiny::uiOutput("ard_fn_list")))),
       shiny::uiOutput("ard_method_note"),
-      shiny::selectInput(st_id("data"), t("Data (dataset \u00d7 analysis set)"),
-                         data_choices(r),
-                         selected = .an_data_value(r$dataset, r$population_id),
-                         width = "100%"),
-      shiny::p(class = "small text-muted mt-n2 mb-2",
+      if (!inside) shiny::selectInput(st_id("data"), t("Data (dataset \u00d7 analysis set)"),
+                                      data_choices(r),
+                                      selected = .an_data_value(r$dataset, r$population_id),
+                                      width = "100%"),
+      if (!inside) shiny::p(class = "small text-muted mt-n2 mb-2",
                t("The rows the analysis reads: the dataset's records of the analysis set's subjects. The name is the one the program gives the data.")),
       shiny::uiOutput("ard_an_vars"),
       shiny::uiOutput("ard_an_args"),
-      shiny::tags$details(
+      if (!inside) shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
         shiny::tags$summary(class = "small", argl("Subset (an R condition)", "where")),
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
@@ -2539,6 +2545,9 @@ app_server <- function(input, output, session, start) {
         class = "d-flex flex-wrap gap-2 align-items-center",
         .btn("ard_stat_apply", t("Apply to the analysis"),
              class = "btn-sm btn-primary"),
+        if (role == "single" && !r$method %in% .stack_not_inside)
+          .btn("ard_stack_group", t("Run together with other analyses..."),
+               class = "btn-sm btn-outline-secondary"),
         shiny::span(class = "small text-muted",
                     t("Format: xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown."))),
       shiny::tags$details(
@@ -2551,10 +2560,13 @@ app_server <- function(input, output, session, start) {
   output$ard_an_code <- shiny::renderText({
     r <- st_row()
     a <- rv$p$ard
-    a$analyses <- a$analyses[!is.na(a$analyses$output_id) &
-                               a$analyses$output_id == r$output_id &
-                               a$analyses$analysis_id %in% r$analysis_id, ,
-                             drop = FALSE]
+    # a stack is one call with the analyses inside it: one inside shows it
+    mine <- a$analyses[!is.na(a$analyses$output_id) & a$analyses$output_id == r$output_id, ,
+                       drop = FALSE]
+    top <- switch(st_role(r, mine), parent = r$analysis_id, inside = r$parent, NA)
+    ids <- if (is.na(top)) r$analysis_id else
+      c(top, mine$analysis_id[.stack_kids(mine, top)])
+    a$analyses <- mine[mine$analysis_id %in% ids, , drop = FALSE]
     code <- tryCatch(tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"),
                                            part = "body"),
                      error = function(e) paste(t("The code cannot be written yet:"),
@@ -2575,6 +2587,10 @@ app_server <- function(input, output, session, start) {
     st_drawn()
     now <- shiny::isolate(st_method())
     e <- fn_entries(now)
+    # inside a stack: no subjects count, own code or other stacks
+    if (identical(st_role(shiny::isolate(st_row())), "inside")) {
+      e <- e[!e$value %in% .stack_not_inside, , drop = FALSE]
+    }
     q <- trimws(input[[st_id("fn_q")]] %||% "")
     e <- if (nzchar(q)) {
       hit <- grepl(q, e$label, ignore.case = TRUE, fixed = TRUE) |
@@ -2633,13 +2649,20 @@ app_server <- function(input, output, session, start) {
     # the row's own args fill the fields when the function is the row's
     pa <- .ard_args_parse(if (identical(r$method, row$method)) row$args else NA, f)
     other <- pa$other
+    # inside a stack: the parent's data
+    if (identical(st_role(row), "inside")) {
+      pr <- st_parent_of(row)
+      r$dataset <- pr$dataset
+      r$population_id <- pr$population_id
+    }
     if (is.null(f) || !nrow(f)) {
       return(shiny::tags$details(
         class = "mb-2", open = if (nzchar(other)) NA,
         shiny::tags$summary(class = "small", argl("Other arguments (R)", "args")),
         shiny::textInput(st_id("args_other"), NULL, other, width = "100%")))
     }
-    fd <- form_data(r)
+    fd <- if (identical(st_role(row), "inside"))
+      list(dataset = r$dataset, pop = r$population_id) else form_data(r)
     ds <- an_dataset(fd$dataset, fd$pop)
     d <- if (!is.na(ds %||% NA)) an_data(ds)
     cols <- if (!is.null(d)) names(d) else character()
@@ -2703,7 +2726,16 @@ app_server <- function(input, output, session, start) {
   output$ard_an_vars <- shiny::renderUI({
     st_drawn()
     r <- st_row_now()
-    fd <- form_data(r)
+    # inside a stack: the parent's data; its groups are the parent's
+    in_stack <- identical(st_role(shiny::isolate(st_row())), "inside")
+    if (in_stack) {
+      pr <- st_parent_of(shiny::isolate(st_row()))
+      r$dataset <- pr$dataset
+      r$population_id <- pr$population_id
+      in_stack <- identical(pr$method, .stack_fn)
+    }
+    fd <- if (identical(st_role(shiny::isolate(st_row())), "inside"))
+      list(dataset = r$dataset, pop = r$population_id) else form_data(r)
     ds <- an_dataset(fd$dataset, fd$pop)
     d <- if (!is.na(ds %||% NA)) an_data(ds)
     by_now <- shiny::isolate(input[[st_id("by")]]) %||% .split_bar(r$by)
@@ -2735,16 +2767,18 @@ app_server <- function(input, output, session, start) {
       vch <- c(vch, stats::setNames(setdiff(var_now, vch), setdiff(var_now, vch)))
     }
     shiny::tagList(
-      shiny::selectizeInput(
+      if (!in_stack) shiny::selectizeInput(
         st_id("by"), argl("Groups (the columns)", "by"), bch, by_now, multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
       shiny::selectizeInput(
         st_id("vars"), argl("Variables (the rows)", "variables"), vch, var_now,
         multiple = TRUE, width = "100%",
         options = list(plugins = list("remove_button", "drag_drop"))),
+      if (in_stack) shiny::p(class = "small text-muted mt-n2 mb-2",
+                             t("The order of the variables is the order of the rows of a table that does not order them itself.")),
       shiny::div(
         class = "d-flex flex-wrap gap-2",
-        shiny::div(class = "flex-grow-1", shiny::selectizeInput(
+        if (!in_stack) shiny::div(class = "flex-grow-1", shiny::selectizeInput(
           st_id("strata"), argl("Repeated within", "strata"), sch, strata_now,
           multiple = TRUE, width = "100%",
           options = list(plugins = list("remove_button"),
@@ -2761,6 +2795,14 @@ app_server <- function(input, output, session, start) {
     r <- st_row_now()
     r0 <- shiny::isolate(st_row())
     kind <- st_kind(r)
+    # inside a stack, only a summary, counts or missing counts keep some of
+    # their statistics (tflspec's rule)
+    if (identical(st_role(r0), "inside") &&
+        identical(st_parent_of(r0)$method, .stack_fn) &&
+        !kind %in% c("continuous", "categorical", "missing")) {
+      return(shiny::p(class = "small text-muted",
+                      t("Inside a stack this method keeps every result it gives: to keep only some, make it an analysis of its own.")))
+    }
     kinds <- .stat_kinds(kind)
     if (identical(.std_ard_methods()$call[match(r$method, .std_ard_methods()$method)],
                   "(subjects)")) kinds <- "categorical"
@@ -2839,6 +2881,7 @@ app_server <- function(input, output, session, start) {
       v <- trimws(paste(v %||% character(), collapse = " | "))
       if (nzchar(v)) v else NA_character_
     }
+    role <- st_role(r)
     new_id <- trimws(g("id") %||% r$analysis_id)
     if (!nzchar(new_id)) return(notify(t("Give the analysis an ID."), "warning"))
     a <- rv$p$ard$analyses
@@ -2853,6 +2896,44 @@ app_server <- function(input, output, session, start) {
         inherits(try(parse(text = where), silent = TRUE), "try-error")) {
       return(notify(sprintf(t("The subset is not an R condition: %s"), where),
                     "warning"))
+    }
+    # a stack: on what it runs them, and what it adds
+    if (role == "parent") {
+      a <- rv$p$ard$analyses
+      i <- which(mine & a$analysis_id == r$analysis_id)[1L]
+      a$label[i] <- one(g("label"))
+      fd <- form_data(r)
+      a$dataset[i] <- fd$dataset
+      a$population_id[i] <- fd$pop
+      # a field not on screen (yet) keeps the row's value
+      if (!is.null(g("where"))) a$where[i] <- one(where)
+      if (!is.null(g("by"))) a$by[i] <- one(g("by"))
+      old <- .stack_flags_of(r$args)$flags
+      flags <- vapply(names(.stack_flag_words), function(k) {
+        v <- g(paste0("fl", k))
+        if (is.null(v)) isTRUE(old[[k]]) else isTRUE(v)
+      }, NA)
+      a$args[i] <- .stack_args(flags, g("args_other") %||% .stack_flags_of(r$args)$other)
+      a$analysis_id[i] <- new_id
+      rv$p$ard$analyses <- a
+      rv$p <- stack_rename(rv$p, r$output_id, r$analysis_id, new_id)
+      an_pick(new_id)
+      bump()
+      return(notify(sprintf(t("%s: written"), new_id)))
+    }
+    # inside a stack: a variable the others have is refused (its rows could
+    # not be told apart)
+    if (role == "inside" && identical(st_parent_of(r)$method, .stack_fn)) {
+      sib <- a[mine & !is.na(a$parent) & a$parent == r$parent &
+                 a$analysis_id != r$analysis_id, , drop = FALSE]
+      dup <- intersect(g("vars") %||% character(),
+                       unlist(lapply(sib$variables, .split_bar)))
+      if (length(dup)) {
+        who <- sib$analysis_id[vapply(sib$variables, function(v) any(.split_bar(v) %in% dup), NA)]
+        return(notify(sprintf(t("%s is computed by %s as well: make one of them an analysis of its own."),
+                              paste(dup, collapse = ", "), paste(who, collapse = ", ")),
+                      "warning"))
+      }
     }
     pick <- g("pick") %||% character()
     fm <- vapply(pick, function(s) trimws(g(paste0("f_", s)) %||% ""), "")
@@ -2888,10 +2969,16 @@ app_server <- function(input, output, session, start) {
     a$statistics[i] <- one(pick)
     a$formats[i] <- if (length(fm))
       paste(paste0(names(fm), "=", fm), collapse = " | ") else NA
+    # it becomes a stack: what it computed goes into one inside it
+    to_stack <- identical(a$method[i], .stack_fn) && !identical(r$method, .stack_fn)
+    if (to_stack) {
+      for (cn in c("variables", "statistics", "strata", "denominator", "formats", "args")) a[[cn]][i] <- NA
+    }
     rv$p$ard$analyses <- a
     an_pick(new_id)
     bump()
     notify(sprintf(t("%s: written"), new_id))
+    if (to_stack) notify(sprintf(t("%s runs analyses together now: add them inside it."), new_id))
   })
   # a new analysis for the report: the data, analysis set and groups of the
   # one shown, to be filled in on the form
