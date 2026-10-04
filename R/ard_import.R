@@ -115,11 +115,55 @@ import_ard <- function(study, path, output_id = NULL, source = NA_character_,
     a <- if ("output_id" %in% names(ard)) ard[ard$output_id %in% id, , drop = FALSE] else ard
     has <- !is.null(sp) && id %in% unlist(lapply(sp, function(d)
       if (is.data.frame(d) && "output_id" %in% names(d)) d$output_id))
-    p <- tflspec::tfl_check_ard(a, if (has) sp, if (has) id)
+    p <- .drop_method_note(tflspec::tfl_check_ard(a, if (has) sp, if (has) id))
     if (nrow(p)) p$output_id <- id
     p
   })
   do.call(rbind, out)
+}
+
+# cards' structure check asks for the `method` rows its own ard_*() add; an
+# ARD a report reads does not need them (the study's own ARD has none, and
+# tflspec::tfl_write_ard() does not keep them), so the note says nothing
+# about whether the report can be made -- leave it out
+.drop_method_note <- function(p) {
+  if (is.null(p) || !nrow(p)) return(p)
+  p[!(p$level == "note" & grepl("stat_name = 'method'", p$message,
+                                fixed = TRUE)), , drop = FALSE]
+}
+
+# The check's rows for the screen: the level and the message in the
+# session's language.  tflspec::tfl_check_ard() writes its messages from a
+# few fixed sentences; each is matched and its parts put into the
+# translation.  A message from cards' own structure check stays as cards
+# wrote it, introduced as such.
+.check_view <- function(p, t = identity) {
+  if (is.null(p) || !nrow(p)) return(p)
+  pats <- list(
+    c("^no column (.+): not an ARD$", "no column %s: not an ARD"),
+    c("^(group[0-9]+) has no group[0-9]+_level$", "%s has no level column"),
+    c("^the ARD has no rows$", "the ARD has no rows"),
+    c("^the column fmt_fn has cards' old name.*$",
+      "the column fmt_fn has cards' old name (fmt_fun since cards 0.6.1)"),
+    c("^the table's (cols|rows) name (.+), which is neither a group nor a variable of the ARD$",
+      "the table's %s name %s, which is neither a group nor a variable of the ARD"),
+    c("^the cells are written for (.+), which the ARD does not analyse$",
+      "the cells are written for %s, which the ARD does not analyse"),
+    c("^a template reads \\{(.+)\\}, a statistic the ARD does not have$",
+      "a template reads {%s}, a statistic the ARD does not have"))
+  msg <- vapply(seq_len(nrow(p)), function(i) {
+    m <- p$message[i]
+    if (identical(p$check[i], "cards")) {
+      return(paste0(t("cards' check of the ARD's shape: "), m))
+    }
+    for (pt in pats) {
+      g <- regmatches(m, regexec(pt[1L], m))[[1L]]
+      if (length(g)) return(do.call(sprintf, c(list(t(pt[2L])), as.list(g[-1L]))))
+    }
+    m
+  }, "")
+  p$message <- msg
+  p
 }
 
 .check_summary <- function(p) {

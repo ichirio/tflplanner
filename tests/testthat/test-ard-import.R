@@ -110,3 +110,27 @@ test_that("a company's own ARD function is used by a study, as a copy", {
   expect_identical(readLines(file.path(s$path, rel)), "ard_mean_only <- function(...) NULL")
   expect_error(use_company_ard_function(s, "nope", home = home), "no ARD function")
 })
+
+test_that("the check's messages are shown in the session's language", {
+  p <- data.frame(
+    level = c("error", "warning", "warning", "note", "note"),
+    check = c("shape", "statistics", "rows", "cards", "cards"),
+    message = c("no column stat_name: not an ARD",
+                "a template reads {mean}, a statistic the ARD does not have",
+                "the table's rows name AGEGR1, which is neither a group nor a variable of the ARD",
+                "Expecting a row with `stat_name = 'method'`, but it is not present.",
+                "something else cards says"),
+    stringsAsFactors = FALSE)
+  # the note about cards' own method rows says nothing about the report
+  q <- .drop_method_note(p)
+  expect_identical(nrow(q), 4L)
+  ja <- function(x) tr(x, "ja")
+  v <- .check_view(q, ja)
+  expect_identical(v$message[1:3], c(
+    "stat_name の列がありません（ARD ではありません）",
+    "テンプレートが {mean} を読みますが、ARD にその統計量がありません",
+    "表の rows に AGEGR1 とありますが、ARD のグループにも変数にもありません"))
+  expect_match(v$message[4], "^cards による ARD の形の確認: something else")
+  # English: as tflspec wrote them
+  expect_identical(.check_view(q)$message[1:3], q$message[1:3])
+})

@@ -48,6 +48,17 @@
                          methods = .std_ard_methods())
 }
 
+# The study's code lists (the codelists sheet's study rows): the ARD
+# programs make each listed column a factor in their order before the
+# analyses, so the ARD keeps the order and counts a value no record has (0).
+# NULL when there are none.
+.study_codelists <- function(p) {
+  cl <- if (!is.null(p$sheets$codelists)) sheet_rows(p, "codelists", NA)
+  if (is.null(cl) || !nrow(cl)) return(NULL)
+  cl <- cl[!is.na(cl$variable) & !is.na(cl$value), , drop = FALSE]
+  if (nrow(cl)) cl
+}
+
 # The app's own reading of a row, for its forms (the engine reads them the
 # same way: tflspec's .split_bar / .parse_formats / .fmt_ok / .stat_kinds).
 .split_bar <- function(x) {
@@ -184,7 +195,7 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
   }
   spec <- tryCatch(.ard_spec(a), error = function(e) NULL)
   if (!is.null(spec) && nrow(a$analyses)) {
-    out <- rbind(out, .save_ard_programs(spec, root))
+    out <- rbind(out, .save_ard_programs(spec, root, .study_codelists(p)))
   }
   out
 }
@@ -214,7 +225,8 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
 run_ard <- function(study, output_id = NULL, timeout = 600) {
   spec <- .ard_spec(study$planner$ard)
   code <- .ard_spec_code(spec, output_id = output_id,
-                        save = is.null(output_id))
+                        save = is.null(output_id), dir = study$path,
+                        codelists = .study_codelists(study$planner))
   tmp <- tempfile("ard")
   dir.create(tmp)
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
@@ -317,7 +329,8 @@ ard_status <- function(study) {
   spec <- structure(a, class = "tfl_ard_spec")
   rows <- lapply(ids, function(id) {
     r <- st[st$output_id == id, , drop = FALSE][1L, ]
-    now <- tflspec::tfl_ard_spec_hash(spec, id, dir = study$path)
+    now <- tflspec::tfl_ard_spec_hash(spec, id, dir = study$path,
+                                      codelists = .study_codelists(study$planner))
     state <- if (is.na(r$output_id)) "not built" else
       if (!is.na(r$error) && nzchar(r$error)) "error" else
         if (!identical(r$definition, now)) "outdated" else "built"
