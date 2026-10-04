@@ -1570,7 +1570,6 @@ Later,あとで
 %s: now user-code reports. Their programs are to be made again (Save).,%s をユーザーコードの帳票にしました。プログラムは作り直しが要ります（保存）。
 This figure is written by hand: it can be a user-code report.,この図は手書きのコードです。ユーザーコードの帳票にできます。
 Make it a user-code report,ユーザーコードの帳票にする
-"table / listing / figure / user (the report's own code leaves `content`: a data frame, rtftable pages, rtfplot figures or a list of them); blank: table.",table / listing / figure / user（帳票自身のコードが `content` を残す：data.frame、rtftable のページ、rtfplot の図、またはそれらのリスト）。空欄 = table。
 Your code,ユーザーコード
 "Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them; they print in that order. The report's titles, footnotes, header and page come from its settings (the Page tab), as for any report.",あなたのコードが `content` を残します（data.frame、rtftable のページ、ggplot、またはそれらのリスト。その順に出ます）。タイトル・脚注・ヘッダー・ページは、ほかの帳票と同じく帳票の設定（ページのタブ）から付きます。
 Only an analysis to write yourself? That is the ARD tab's custom method (or a company ard_*() function). This kind is for a report whose whole content is your code.,解析だけを自分で書くなら、ARD タブの custom（または会社の独自 ard_*()）です。この型は、帳票の中身をまるごと自分のコードで作るときに使います。
