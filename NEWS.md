@@ -1,5 +1,24 @@
 # tflplanner (development version)
 
+- **ARD functions of one's own, on screen** (#115).  A new "Own functions"
+  tab on the ARD tab lists the company's (the standards folder) and the
+  study's (`programs/ard/functions/`, the study key `source`) side by side
+  (`own_ard_functions()`): where each is, whether the study loads it, the
+  analyses that use it, and its last try.  A study's copy wins; when it
+  differs from the company's, which is newer is said, with "See the
+  difference" and "Take the company's..." (`replace_with_company_ard_function()`).
+  "Use in this study" copies and loads one; "Try..." runs it in a separate
+  R process on the study's data (or `cards::ADSL`), with the files the ARD
+  programs load and the arguments an analysis gives
+  (`try_ard_function()`): the problems in the app's language, the first
+  rows of its ARD, the try kept in `programs/ard/functions/.checks.json`
+  (said when the file changed since).  "New function..." writes one from
+  tflspec's templates (a summary, a test or model, a free calculation),
+  for the study or the company (`new_ard_function()`).  The files are
+  read, not run, to be listed, and edited outside the app.  The analysis
+  form lists the study's own functions under their own titles, and the
+  company's it does not load faint.
+
 - **The sample study has a figure made with the designer** (#114):
   F-14-2-3, Kaplan-Meier curves of the time to the first dermatologic
   event -- the designer's KM template on the sample's ADTTE, with one layer
