@@ -2417,10 +2417,34 @@ app_server <- function(input, output, session, start) {
   data_choices <- function(r) {
     .an_data_choices(rv$p$ard$datasets$dataset, rv$p$ard$populations,
                      now = .an_data_value(r$dataset, r$population_id),
-                     words = list(with = t("%s \u00d7 %s (%s)"),
-                                  alone = t("%s, no analysis set (%s)"),
-                                  none = t("(no data)")))
+                     words = data_words_list(), counts = shiny::isolate(data_counts()))
   }
+  data_words_list <- function() list(with = t("%s \u00d7 %s (%s)"),
+                                     alone = t("%s, no analysis set (%s)"),
+                                     none = t("(no data)"), count = t("%s: %s"))
+  # the subjects each data choice reads: counted once when the study is
+  # opened (all its rows), and again only when the data catalog, the
+  # analysis sets or a data file changes
+  data_counts <- shiny::reactive({
+    shiny::req(has_study())
+    ds <- rv$p$ard$datasets
+    po <- rv$p$ard$populations
+    f <- file.path(rv$study$path, ds$path[!is.na(ds$path)])
+    key <- paste(c(rv$study$path, ds$dataset, ds$path, po$population_id, po$dataset, po$where,
+                   as.character(file.mtime(f))), collapse = "|")
+    if (!identical(ard_cols[["counts_key"]], key)) {
+      ard_cols[["counts"]] <- tryCatch(
+        .an_data_counts(current_study(),
+                        list(subjects = t("%d subjects"), records = t("%d records, %d subjects"))),
+        error = function(e) NULL)
+      ard_cols[["counts_key"]] <- key
+    }
+    ard_cols[["counts"]]
+  })
+  # counted when the study is opened, not when a form is first drawn
+  shiny::observe({
+    if (has_study()) tryCatch(data_counts(), error = function(e) NULL)
+  }, priority = -10)
   # the dataset and the analysis set the form's data choice stands for
   form_data <- function(r) {
     v <- input[[st_id("data")]]
@@ -2748,7 +2772,30 @@ app_server <- function(input, output, session, start) {
                      unique(c(v, .level_choices(vars, sheet_rows(rv$p, "codelists", NA), d)))),
           selected = v %||% "", multiple = FALSE, width = "100%",
           options = list(create = TRUE)),
-        shiny::textInput(id, lab, v %||% "", width = "100%", placeholder = ph))
+        formula = shiny::div(
+          shiny::textInput(id, lab, v %||% "", width = "100%",
+                           placeholder = if (nzchar(ph)) ph else "AVAL ~ TRTA + BASE"),
+          # written from columns: the response, then the terms (the
+          # analysis's groups first)
+          shiny::tags$details(
+            class = "mt-n2 mb-1",
+            shiny::tags$summary(class = "small", t("Write it from columns")),
+            shiny::div(
+              class = "d-flex flex-wrap gap-2 align-items-end",
+              shiny::selectInput(st_id(paste0("fb_resp_", a)), t("Response"),
+                                 c(stats::setNames("", t("(choose)")), cols), width = "12em"),
+              shiny::selectizeInput(st_id(paste0("fb_terms_", a)), t("Terms"), cols,
+                                    selected = intersect(.split_bar(row$by), cols),
+                                    multiple = TRUE, width = "18em",
+                                    options = list(plugins = list("remove_button", "drag_drop"))),
+              shiny::checkboxInput(st_id(paste0("fb_int_", a)), t("Interaction of the first two"), FALSE),
+              .btn(st_id(paste0("fb_go_", a)), t("Write the formula"),
+                   class = "btn-sm btn-outline-secondary mb-3")))),
+        # a regression's fitting function: the usual ones to choose
+        if (identical(a, "method") && call %in% .regression_calls) shiny::selectInput(
+          id, lab, unique(c(stats::setNames("", t("(default)")), .regression_methods, v)),
+          selected = v %||% "", width = "100%")
+        else shiny::textInput(id, lab, v %||% "", width = "100%", placeholder = ph))
       shiny::div(w, shiny::div(
         class = "small text-muted mt-n2 mb-2",
         if (!is.na(f$hint[i]) && nzchar(f$hint[i])) {
@@ -2896,6 +2943,27 @@ app_server <- function(input, output, session, start) {
                          t("Blank = every result the method gives."))),
       shiny::p(class = "small text-muted mb-1", note),
       shiny::uiOutput("ard_stat_fmts"))
+  })
+  # a formula written from columns (the field keeps what was there until
+  # the button is pressed)
+  shiny::observe({
+    st_drawn()
+    r <- shiny::isolate(st_row_now())
+    f <- .ard_form_fields(.ard_method_call(r$method, .std_ard_methods()))
+    for (a in f$arg[f$kind %in% "formula"]) {
+      n <- input[[st_id(paste0("fb_go_", a))]]
+      key <- paste0("fb_", st_env$n, "_", a)
+      if (is.null(n) || n < 1L || identical(n, st_env[[key]])) next
+      st_env[[key]] <- n
+      fm <- shiny::isolate(.fb_formula(input[[st_id(paste0("fb_resp_", a))]],
+                                       input[[st_id(paste0("fb_terms_", a))]],
+                                       isTRUE(input[[st_id(paste0("fb_int_", a))]])))
+      if (is.null(fm)) {
+        notify(t("Choose the response and at least one term."), "warning")
+        next
+      }
+      shiny::updateTextInput(session, st_id(paste0("a_", a)), value = fm)
+    }
   })
   # the defaults as a start: they become the analysis's own, to change
   shiny::observe({
@@ -4237,9 +4305,7 @@ app_server <- function(input, output, session, start) {
               if (!.is_blank(u$args[1L])) u$args[1L]), collapse = ", ")
     } else "by = ARM, variables = AGE"
     dch <- .an_data_choices(rv$p$ard$datasets$dataset, rv$p$ard$populations, now = data_now,
-                             words = list(with = t("%s \u00d7 %s (%s)"),
-                                          alone = t("%s, no analysis set (%s)"),
-                                          none = t("(no data)")))
+                             words = data_words_list(), counts = data_counts())
     ch <- c(stats::setNames("__cards__", t("cards' example data (cards::ADSL)")), dch[dch != ""])
     if (!nzchar(data_now)) data_now <- "__cards__"
     shiny::showModal(shiny::modalDialog(

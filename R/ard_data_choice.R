@@ -34,8 +34,10 @@
 # The choices: each analysis set's own data, then every other dataset with
 # it, then every dataset alone; the analysis's present choice is kept when
 # it is none of these.  `words`: `with` ("%s x %s (%s)"), `alone`
-# ("%s, no analysis set (%s)"), `none`.
-.an_data_choices <- function(datasets, populations, now = "|", words) {
+# ("%s, no analysis set (%s)"), `none`; `counts` (from .an_data_counts(),
+# named by value) are put after the name when given: `words$count`
+# ("%s: %s").
+.an_data_choices <- function(datasets, populations, now = "|", words, counts = NULL) {
   datasets <- unique(datasets[!is.na(datasets) & nzchar(datasets)])
   po <- populations[!is.na(populations$population_id), , drop = FALSE]
   val <- character()
@@ -44,6 +46,7 @@
     v <- .an_data_value(ds, pop)
     if (v %in% val) return()
     nm <- .an_data_name(ds, pop, populations)
+    if (!is.null(counts) && !is.na(counts[v])) nm <- sprintf(words$count %||% "%s: %s", nm, counts[[v]])
     pds <- po$dataset[match(pop, po$population_id)]
     shown <- if (is.na(ds) || !nzchar(ds)) pds else ds
     l <- if (is.na(pop)) sprintf(words$alone, ds, nm) else
@@ -74,4 +77,57 @@
     }
   }
   stats::setNames(val, lab)
+}
+
+# The subjects (and records) each data choice reads, counted once: the
+# analysis set's own data, another dataset cut to its subjects, a dataset
+# alone -- as the ARD programs make them.  `words`: `subjects` ("%d
+# subjects"), `records` ("%d records, %d subjects").  Named by value
+# (.an_data_value()); a dataset that cannot be read is left out.
+.an_data_counts <- function(study, words = list(subjects = "%d subjects",
+                                                records = "%d records, %d subjects")) {
+  ds <- study$planner$ard$datasets
+  po <- study$planner$ard$populations
+  po <- po[!is.na(po$population_id), , drop = FALSE]
+  read <- function(d) {
+    pth <- ds$path[match(d, ds$dataset)]
+    if (is.na(pth)) return(NULL)
+    f <- file.path(study$path, pth)
+    if (!file.exists(f)) return(NULL)
+    tryCatch(as.data.frame(read_data_head(f, n = .Machine$integer.max)),
+             error = function(e) NULL)
+  }
+  data <- list()
+  get <- function(d) {
+    if (is.null(data[[d]])) data[[d]] <<- read(d) %||% FALSE
+    if (isFALSE(data[[d]])) NULL else data[[d]]
+  }
+  subj <- function(x) if ("USUBJID" %in% names(x)) length(unique(x$USUBJID)) else nrow(x)
+  # records only when there are more than subjects
+  both <- function(x) {
+    n <- subj(x)
+    if (nrow(x) > n) sprintf(words$records, nrow(x), n) else sprintf(words$subjects, n)
+  }
+  out <- character()
+  for (i in seq_len(nrow(po))) {
+    p <- po$population_id[i]
+    base <- get(po$dataset[i])
+    if (is.null(base)) next
+    keep <- tryCatch(with(base, eval(parse(text = po$where[i]))), error = function(e) NULL)
+    if (is.null(keep) && !is.na(po$where[i])) next
+    pop <- if (is.null(keep)) base else base[!is.na(keep) & keep, , drop = FALSE]
+    out[.an_data_value(NA, p)] <- sprintf(words$subjects, subj(pop))
+    for (d in setdiff(ds$dataset, po$dataset[i])) {
+      x <- get(d)
+      if (is.null(x) || !"USUBJID" %in% names(x) || !"USUBJID" %in% names(pop)) next
+      x <- x[x$USUBJID %in% pop$USUBJID, , drop = FALSE]
+      out[.an_data_value(d, p)] <- both(x)
+    }
+  }
+  for (d in ds$dataset) {
+    x <- get(d)
+    if (is.null(x)) next
+    out[.an_data_value(d, NA)] <- both(x)
+  }
+  out
 }
