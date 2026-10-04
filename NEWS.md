@@ -1,5 +1,10 @@
 # tflplanner (development version)
 
+- **The sample study's figures are user-code reports** (#94): F-14-2-1
+  and F-14-2-2 are of the type `user` (their code ends with the figure
+  checks and `content <- plot`), so a new sample study has no figure
+  written by hand to convert.  Its eight RTFs are the same as before.
+
 - **The fourth kind of report: user code** (#91).  `report_types()` has
   `user`: the report's own code leaves `content` -- a data frame, rtftable
   pages, a ggplot (the program makes it an rtfplot) or a list of them --

@@ -5,6 +5,8 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(create_sample_study(run = FALSE))
   expect_null(fig_design(s$planner, "F-14-2-1"))
+  # the sample's F-14-2-1 is user code: a figure again, to be designed
+  s$planner <- .set_report_type(s$planner, "F-14-2-1", "figure")
   d <- tflspec::tfl_fig_template("mean_ci", data = "ADVS", param = "SYSBP",
                                   value = "CHG", title = "SBP: mean change")
   d$plot$width <- 7L
@@ -105,7 +107,7 @@ test_that("a designed figure is copied to other parameters", {
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(create_sample_study(run = FALSE))
   d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP", value = "CHG")
-  p <- set_fig_design(s$planner, "F-14-2-1", d)
+  p <- set_fig_design(.set_report_type(s$planner, "F-14-2-1", "figure"), "F-14-2-1", d)
   p$outputs$description[p$outputs$output_id == "F-14-2-1"] <- "Mean change in SYSBP"
   p2 <- copy_fig_to_params(p, "F-14-2-1", c("DIABP", "PULSE"))
   expect_true(all(c("F-14-2-1-DIABP", "F-14-2-1-PULSE") %in% p2$outputs$output_id))

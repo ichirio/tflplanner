@@ -78,7 +78,8 @@ test_that("the report list names the datasets a report reads, and its title", {
   expect_identical(.report_datasets(p, "F-14-2-2"), "ADTTE")
   d <- tflspec::tfl_fig_template("mean_ci", data = "ADVS", param = "SYSBP",
                                   value = "CHG")
-  p2 <- set_fig_design(p, "F-14-2-1", d)
+  # (the sample's F-14-2-1 is user code: a figure again, to be designed)
+  p2 <- set_fig_design(.set_report_type(p, "F-14-2-1", "figure"), "F-14-2-1", d)
   expect_identical(.report_datasets(p2, "F-14-2-1"), c("ADVS", "ADSL"))
   # the title: the titles sheet's own lines, not the running study lines
   expect_identical(.report_title(p, "T-14-1-1"), "")

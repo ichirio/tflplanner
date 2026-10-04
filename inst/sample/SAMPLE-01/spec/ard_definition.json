@@ -18,6 +18,7 @@
   "analyses": {
     "output_id": ["T-14-1-1", "T-14-1-1", "T-14-1-1", "T-14-1-1", "T-14-1-2", "T-14-1-2", "T-14-2-1", "T-14-2-1", "T-14-2-2", "T-14-2-2", "T-14-3-1"],
     "analysis_id": ["BIGN", "TOTAL", "CONT", "CAT", "BIGN", "DISP", "BIGN", "SYSBP", "BIGN", "KM", "TEAE"],
+    "parent": [null, null, null, null, null, null, null, null, null, null, null],
     "label": ["Subjects per arm", null, "Continuous", "Categorical", null, "Status at end of study", null, "SYSBP at Week 24", null, "Kaplan-Meier estimates", "TEAE by SOC / PT"],
     "method": ["categorical", "total_n", "continuous", "categorical", "categorical", "categorical", "categorical", "continuous", "categorical", "custom", "hierarchical"],
     "dataset": [null, null, null, null, null, null, null, "ADVS", null, "ADTTE", "ADAE"],
@@ -30,6 +31,7 @@
     "denominator": [null, null, null, null, null, null, null, null, null, null, null],
     "formats": [null, null, null, null, null, null, null, "mean=xx.x | sd=xx.xx | se=xx.xx", null, null, null],
     "args": [null, null, null, null, null, null, null, null, null, null, "over_variables = TRUE"],
+    "post": [null, null, null, null, null, null, null, null, null, null, null],
     "code": [null, null, null, null, null, null, null, null, null, "fit <- survival::survfit(survival::Surv(AVAL, 1 - CNSR) ~ TRT01A, data = data)\ncards::bind_ard(\n  cardx::ard_survival_survfit(fit, probs = 0.5),\n  cardx::ard_survival_survfit(fit, times = c(0, 30, 60, 90, 120, 150, 180)),\n  .quiet = TRUE)", null],
     "purpose": [null, null, null, null, null, null, null, null, null, null, null],
     "reason": [null, null, null, null, null, null, null, null, null, null, null]

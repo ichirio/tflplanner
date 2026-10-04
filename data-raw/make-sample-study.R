@@ -10,8 +10,8 @@
 #                      estimates (median, event-free probability by day)
 #   T-14-3-1  Table    TEAEs by SOC / PT, frequency descending
 #   L-16-2-7  Listing  Severe adverse events
-#   F-14-2-1  Figure   Mean change from baseline in systolic blood pressure
-#   F-14-2-2  Figure   Kaplan-Meier plot of the time to first dermatologic
+#   F-14-2-1  User code  Mean change from baseline in systolic blood pressure
+#   F-14-2-2  User code  Kaplan-Meier plot of the time to first dermatologic
 #                      event; its number at risk is T-14-2-2's ARD
 #
 # The figures use the company standards' figure style (programs/tfl/
@@ -203,8 +203,8 @@ sheets$report <- tbl(
   list(type = "table", file = "{output_id}.rtf", program = "{output_id}.R",
        note = "study default"),
   list(output_id = "L-16-2-7", type = "listing"),
-  list(output_id = "F-14-2-1", type = "figure"),
-  list(output_id = "F-14-2-2", type = "figure"))
+  list(output_id = "F-14-2-1", type = "user"),
+  list(output_id = "F-14-2-2", type = "user"))
 sheets$page <- tbl(
   list(output_id = "L-16-2-7", orientation = "landscape"),
   list(output_id = "F-14-2-1", orientation = "landscape"),
@@ -352,7 +352,9 @@ plot_code <- c(
   "  scale_x_continuous(breaks = sort(unique(m$AVISITN))) +",
   "  labs(x = \"Week\", y = \"Mean change from baseline (mmHg)\",",
   "       colour = NULL) +",
-  "  theme_tfl() + theme(legend.position = \"bottom\")")
+  "  theme_tfl() + theme(legend.position = \"bottom\")",
+  "tfl_check(plot)",
+  "content <- plot")
 
 km_code <- c(
   "library(ggplot2)",
@@ -395,7 +397,9 @@ km_code <- c(
   "  theme(plot.title = element_text(hjust = 0, size = rel(0.9)),",
   "        axis.text.y = element_text(hjust = 1, margin = margin(r = 5)))",
   "plot <- p_km / p_risk +",
-  "  plot_layout(heights = c(1, tfl_num(\"risk_height\", \"km\")))")
+  "  plot_layout(heights = c(1, tfl_num(\"risk_height\", \"km\")))",
+  "tfl_check(plot)",
+  "content <- plot")
 
 desc <- c("T-14-1-1" = "Demographic characteristics",
           "T-14-1-2" = "Subject disposition",
@@ -407,7 +411,7 @@ desc <- c("T-14-1-1" = "Demographic characteristics",
           "F-14-2-2" = "KM plot of the time to first dermatologic event")
 types <- c("T-14-1-1" = "table", "T-14-1-2" = "table", "T-14-2-1" = "table",
            "T-14-3-1" = "table", "T-14-2-2" = "table", "L-16-2-7" = "listing",
-           "F-14-2-1" = "figure", "F-14-2-2" = "figure")
+           "F-14-2-1" = "user", "F-14-2-2" = "user")
 process <- list(
   "T-14-2-2" = c(
     "data <- normalize_ard(ard)",
@@ -483,8 +487,8 @@ writeLines(c(
   "| T-14-2-2 | Table | Time to first dermatologic event: Kaplan-Meier estimates |",
   "| T-14-3-1 | Table | TEAEs by SOC / PT |",
   "| L-16-2-7 | Listing | Severe adverse events |",
-  "| F-14-2-1 | Figure | Mean change from baseline in systolic blood pressure |",
-  "| F-14-2-2 | Figure | Kaplan-Meier plot of the time to first dermatologic event (number at risk from T-14-2-2's ARD) |",
+  "| F-14-2-1 | User code (a figure) | Mean change from baseline in systolic blood pressure |",
+  "| F-14-2-2 | User code (a figure) | Kaplan-Meier plot of the time to first dermatologic event (number at risk from T-14-2-2's ARD) |",
   "",
   "The tables are made from one study ARD (programs/ard/), the listing and",
   "the figures from the ADaM data, in the figure style of the company",
