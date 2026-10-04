@@ -695,10 +695,10 @@ app_ui <- function(lang = "en") {
             # leaves its message in the ARD, the others carry on
             shiny::div(
               class = "d-flex flex-wrap gap-3 align-items-center mt-3",
-              shiny::h6(class = "mb-0", t("Errors and warnings while the ARD was made")),
+              shiny::h6(class = "mb-0", t("Errors and warnings inside the analyses")),
               shiny::checkboxInput("ard_cond_errors", t("Errors only"), FALSE)),
             shiny::p(class = "small text-muted mb-1",
-                     t("From the study ARD as it was last made. The messages are cards' own (in English). A click on a row opens that analysis.")),
+                     t("From the study ARD as it was last made, and the ARDs taken in. A program that stopped as a whole is in the table above (Error). The messages are cards' own (in English). A click on a row opens that analysis.")),
             DT::DTOutput("ard_conds")),
           bslib::nav_panel(
             t("ARD (this report)"), value = "result",
@@ -3568,11 +3568,23 @@ app_server <- function(input, output, session, start) {
     }
     a <- r$ard
     tab <- table(factor(a$analysis_id, levels = unique(a$analysis_id)))
+    cn <- .ard_conditions_of(a)
     shiny::div(
       class = "small mt-2",
       shiny::p(sprintf(t("%s: %d rows in %.1f s"), r$scope, nrow(a), r$seconds),
                " ", paste(sprintf("%s %d", names(tab), as.integer(tab)),
-                          collapse = ", ")))
+                          collapse = ", ")),
+      # what went wrong inside its analyses, this report's alone
+      if (nrow(cn)) shiny::div(
+        class = "alert alert-warning py-1 small",
+        shiny::strong(t("Errors and warnings inside the analyses")),
+        lapply(seq_len(nrow(cn)), function(i) shiny::div(
+          shiny::span(class = if (cn$level[i] == "error") "text-danger" else "text-warning",
+                      if (cn$level[i] == "error") t("error") else t("warning")),
+          sprintf(" %s / %s: %s", cn$analysis_id[i] %||% "", cn$variable[i] %||% "", cn$message[i]),
+          if (cn$level[i] == "error") shiny::span(
+            class = "text-muted", " ", t("Its statistics are not in the ARD (blank in the table).")))))
+    )
   })
   output$ard_table <- DT::renderDT({
     r <- ard_res()
@@ -3641,16 +3653,31 @@ app_server <- function(input, output, session, start) {
     shiny::span(class = paste("badge ms-1", if (ne) "text-bg-danger" else "text-bg-warning"),
                 sprintf(t("errors %d, warnings %d"), ne, nw))
   })
+  # an analysis's errors and warnings as a table: an error's statistics
+  # are not in the ARD (the table's cells are blank); a report whose ARD is
+  # outdated, faint
+  conds_table <- function(d, outdated = character()) {
+    lv <- ifelse(d$level %in% "error", t("error"), t("warning"))
+    eff <- ifelse(d$level %in% "error",
+                  t("Its statistics are not in the ARD (blank in the table)."), "")
+    src <- ifelse(is.na(d$source) | !nzchar(d$source), t("study ARD"),
+                  sprintf(t("taken in: %s"), d$source))
+    old <- ifelse(d$output_id %in% outdated, t("outdated"), "")
+    v <- data.frame(d$output_id, d$analysis_id, d$variable, d$groups, lv, d$message,
+                    eff, src, old, stringsAsFactors = FALSE)
+    names(v) <- t(c("output_id", "Analysis ID", "Variable", "Groups", "Kind", "Message",
+                    "In the table", "From", "ARD"))
+    x <- .dt(v, selection = "single",
+             language = list(emptyTable = t("Nothing went wrong (or the study ARD is not made yet).")))
+    x <- DT::formatStyle(x, names(v)[5L],
+                         color = DT::styleEqual(c(t("error"), t("warning")), c("#b91c1c", "#b45309")))
+    DT::formatStyle(x, names(v)[9L], target = "row",
+                    opacity = DT::styleEqual(t("outdated"), 0.5))
+  }
   output$ard_conds <- DT::renderDT({
     d <- ard_conds_shown()
-    lv <- ifelse(d$level %in% "error", t("error"), t("warning"))
-    v <- data.frame(d$output_id, d$analysis_id, d$variable, d$groups, lv, d$message,
-                    stringsAsFactors = FALSE)
-    names(v) <- t(c("output_id", "Analysis ID", "Variable", "Groups", "Kind", "Message"))
-    DT::formatStyle(
-      .dt(v, selection = "single",
-          language = list(emptyTable = t("Nothing went wrong (or the study ARD is not made yet)."))),
-      names(v)[5L], color = DT::styleEqual(c(t("error"), t("warning")), c("#b91c1c", "#b45309")))
+    st <- tryCatch(ard_state(), error = function(e) NULL)
+    conds_table(d, if (!is.null(st)) st$output_id[st$state %in% "outdated"] else character())
   })
   # a row: its report in the sidebar, its analysis on the ARD definition
   shiny::observeEvent(input$ard_conds_rows_selected, {

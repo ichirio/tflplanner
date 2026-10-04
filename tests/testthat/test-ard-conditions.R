@@ -27,15 +27,33 @@ test_that("the study ARD's errors and warnings are listed, and a row opens its a
   d <- study_ard_conditions(s)
   expect_true(any(d$analysis_id == "TTEST" & d$level == "error"))
   expect_identical(d$level[1], "error")
+  expect_identical(unique(d$source), "")
+  # an ARD taken in for another report: its errors too, said where from
+  s <- open_study(s$path)
+  s$planner <- add_output(s$planner, "T2", type = "table")
+  save_study(s)
+  own <- study_ard_rows(s, "T1")
+  f <- file.path(tempdir(), "cro_t2.rds")
+  own$output_id <- "T2"
+  saveRDS(own, f)
+  row <- import_ard(s, f, output_id = "T2", source = "CRO")
+  s$planner <- use_imported_ard(s$planner, "T2", row$file)
+  save_study(s)
+  d2 <- study_ard_conditions(s)
+  expect_true(any(d2$output_id == "T2" & d2$source == row$file & d2$level == "error"))
   shiny::testServer(server_for("CO"), {
     rv <- session$userData$rv
     session$setInputs(nav = "ard", target = "T1")
-    expect_match(output$ard_cond_badge$html, "errors 1", fixed = TRUE)
+    expect_match(output$ard_cond_badge$html, "errors 2", fixed = TRUE)
     expect_no_error(output$ard_conds)
     session$setInputs(ard_cond_errors = TRUE)
     e <- d[d$level == "error", , drop = FALSE]
     i <- which(e$analysis_id == "TTEST")[1]
     session$setInputs(ard_conds_rows_selected = i)
     expect_match(output$ard_stat_ui$html, "Analysis TTEST of T1", fixed = TRUE)
+    # the report's own, after Preview
+    session$setInputs(target = "T1", ard_preview = 1)
+    expect_match(output$ard_run_info$html, "Errors and warnings inside the analyses", fixed = TRUE)
+    expect_match(output$ard_run_info$html, "not in the ARD", fixed = TRUE)
   })
 })

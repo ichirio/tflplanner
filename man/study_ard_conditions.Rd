@@ -2,7 +2,7 @@
 % Please edit documentation in R/ard_conditions.R
 \name{study_ard_conditions}
 \alias{study_ard_conditions}
-\title{What went wrong while a study's ARD was made}
+\title{What went wrong inside the analyses while a study's ARD was made}
 \usage{
 study_ard_conditions(study)
 }
@@ -11,10 +11,14 @@ study_ard_conditions(study)
 }
 \value{
 A data frame (\code{output_id}, \code{analysis_id}, \code{variable}, \code{groups},
-\code{level}, \code{message}, \code{statistics}), no rows when nothing went wrong or
-there is no study ARD yet.
+\code{level}, \code{message}, \code{statistics}, \code{source}: \code{""} for the study ARD,
+the file's name for an ARD taken in); no rows when nothing went wrong
+or there is no ARD yet.
 }
 \description{
 The errors and warnings the study ARD (\code{output/ard/ard.rds}, as last
-made) keeps, one row each, errors first (\code{\link[tflspec:tfl_ard_conditions]{tflspec::tfl_ard_conditions()}}).
+made) keeps, and those of the ARDs reports take in (\verb{input/ard/}), one
+row each, errors first (\code{\link[tflspec:tfl_ard_conditions]{tflspec::tfl_ard_conditions()}}).  An analysis
+with an error has no statistics in the ARD: its cells are blank in the
+table.
 }
