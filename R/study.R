@@ -220,6 +220,14 @@ register_study <- function(path, home = tflplanner_home()) {
                                           "figures")
     }
   }
+  # the designed figures (spec/figures/<output_id>.yml, written on save):
+  # read back, or the next save would take them away
+  fd <- file.path(path, study_layout()[["spec"]], .fig_design_dir)
+  for (f in list.files(fd, "\\.yml$", full.names = TRUE)) {
+    id <- sub("\\.yml$", "", basename(f))
+    d <- tryCatch(tflspec::tfl_read_fig_design(f), error = function(e) NULL)
+    if (!is.null(d) && id %in% p$outputs$output_id) p <- set_fig_design(p, id, d)
+  }
   s <- .new_study(path, meta[.study_fields], p)
   .write_state(s, home)
   .set_config("last_study", id, home)

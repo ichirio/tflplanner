@@ -10,8 +10,15 @@ test_that("the sample study is copied, registered and written", {
                normalizePath(root, "/"))
   expect_setequal(s$planner$outputs$output_id,
                   c("T-14-1-1", "T-14-1-2", "T-14-2-1", "T-14-2-2",
-                    "T-14-3-1", "L-16-2-7", "F-14-2-1", "F-14-2-2"))
+                    "T-14-3-1", "L-16-2-7", "F-14-2-1", "F-14-2-2", "F-14-2-3"))
   expect_true(nrow(s$planner$ard$analyses) > 0)
+  # the figure made with the designer: the KM template, one layer added;
+  # its design read back from spec/figures/ (and kept by the save)
+  expect_identical(report_info(s$planner, "F-14-2-3")$type, "figure")
+  d <- fig_design(s$planner, "F-14-2-3")
+  expect_identical(d$template, "km_simple")
+  expect_identical(vapply(d$layers, `[[`, "", "layer"), c("km_curve", "censor_mark", "hline"))
+  expect_true(file.exists(file.path(s$path, "spec/figures/F-14-2-3.yml")))
   for (f in c("data/adam/adsl.rds", "data/adam/adtte.rds",
               "programs/tfl/fig_setup.R", "programs/batch.R",
               "programs/ard/T-14-1-1.R", "programs/tfl/F-14-2-1.R")) {

@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **The sample study has a figure made with the designer** (#114):
+  F-14-2-3, Kaplan-Meier curves of the time to the first dermatologic
+  event -- the designer's KM template on the sample's ADTTE, with one layer
+  added (the median line) -- so the figure guide's order (template,
+  designer, user code) can be followed on SAMPLE-01.  The other reports are
+  unchanged.  `register_study()` now reads a study folder's designed
+  figures (`spec/figures/`); before, the next save removed them (the sample
+  study, or a study folder registered on another computer).
+
 - **The Japanese guide and the README catch up** (docs): the ARD tab's
   outline, parent and post rows, code lists and the order of levels,
   analyses run together, warnings and errors, ARDs made elsewhere, the

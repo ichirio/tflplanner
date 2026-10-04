@@ -13,6 +13,8 @@
 #   F-14-2-1  User code  Mean change from baseline in systolic blood pressure
 #   F-14-2-2  User code  Kaplan-Meier plot of the time to first dermatologic
 #                      event; its number at risk is T-14-2-2's ARD
+#   F-14-2-3  Figure   The same KM curves, designed: the designer's KM
+#                      template, and one layer added (the median line)
 #
 # The figures use the company standards' figure style (programs/tfl/
 # fig_setup.R: theme_tfl(), scale_colour_tfl(), tfl_km_risk() ...) and end
@@ -204,11 +206,13 @@ sheets$report <- tbl(
        note = "study default"),
   list(output_id = "L-16-2-7", type = "listing"),
   list(output_id = "F-14-2-1", type = "user"),
-  list(output_id = "F-14-2-2", type = "user"))
+  list(output_id = "F-14-2-2", type = "user"),
+  list(output_id = "F-14-2-3", type = "figure"))
 sheets$page <- tbl(
   list(output_id = "L-16-2-7", orientation = "landscape"),
   list(output_id = "F-14-2-1", orientation = "landscape"),
-  list(output_id = "F-14-2-2", orientation = "landscape"))
+  list(output_id = "F-14-2-2", orientation = "landscape"),
+  list(output_id = "F-14-2-3", orientation = "landscape"))
 sheets$header <- do.call(tbl, c(
   list(list(line = "1", left = "Sample Pharma (tflplanner sample)",
             right = "DRAFT"),
@@ -234,6 +238,9 @@ sheets$header <- do.call(tbl, c(
         "<Safety Analysis Set>"),
   title("F-14-2-2", "Figure 14.2.2",
         "Kaplan-Meier Plot of Time to First Dermatologic Event",
+        "<Safety Analysis Set>"),
+  title("F-14-2-3", "Figure 14.2.3",
+        "Kaplan-Meier Curves of Time to First Dermatologic Event",
         "<Safety Analysis Set>")))
 sheets$footer <- tbl(
   list(line = "99", left = "{PROGRAM}       Generated on: {DATETIME}"),
@@ -253,6 +260,8 @@ sheets$footer <- tbl(
        left = "Kaplan-Meier estimates; 95% CI of the median by the Brookmeyer-Crowley method (log transformation). NE = not estimable."),
   list(output_id = "F-14-2-2", line = "1",
        left = "x = censored.  The number at risk is that of Table 14.2.2."),
+  list(output_id = "F-14-2-3", line = "1",
+       left = "x = censored.  Dashed line: the median (probability 0.5)."),
   list(line = "98",
        left = "Source: CDISC pilot study ADaM data of the pharmaverseadam R package."))
 
@@ -332,6 +341,17 @@ p$lf$figures <- .normalize_lf_sheet(tbl(
   list(output_id = "F-14-2-1", datasets = "ADSL | ADVS"),
   list(output_id = "F-14-2-2", datasets = "ADTTE")), "figures")
 
+# F-14-2-3, as the designer makes it: the KM template on the study's ADTTE
+# (its parameter, analysis set, group and time unit), then one layer added
+# -- the median line
+km_design <- tflspec::tfl_fig_template("km_simple", data = "ADTTE",
+                                       param = "TTDE", pop = "SAFFL",
+                                       group = "TRT01A", time_unit = "days")
+km_design$plot$y_label <- "Probability of No Dermatologic Event"
+km_design$layers <- c(km_design$layers, list(list(
+  layer = "hline", yintercept = 0.5, linetype = "dashed", colour = "grey50",
+  linewidth = 0.3)))
+
 plot_code <- c(
   "library(ggplot2)",
   "saf <- adsl$USUBJID[adsl$SAFFL == \"Y\"]",
@@ -408,10 +428,11 @@ desc <- c("T-14-1-1" = "Demographic characteristics",
           "T-14-2-2" = "Time to first dermatologic event: KM estimates",
           "L-16-2-7" = "Listing of severe adverse events",
           "F-14-2-1" = "Mean change from baseline in systolic blood pressure",
-          "F-14-2-2" = "KM plot of the time to first dermatologic event")
+          "F-14-2-2" = "KM plot of the time to first dermatologic event",
+          "F-14-2-3" = "KM curves of the time to first dermatologic event (designed)")
 types <- c("T-14-1-1" = "table", "T-14-1-2" = "table", "T-14-2-1" = "table",
            "T-14-3-1" = "table", "T-14-2-2" = "table", "L-16-2-7" = "listing",
-           "F-14-2-1" = "user", "F-14-2-2" = "user")
+           "F-14-2-1" = "user", "F-14-2-2" = "user", "F-14-2-3" = "figure")
 process <- list(
   "T-14-2-2" = c(
     "data <- normalize_ard(ard)",
@@ -432,6 +453,7 @@ for (o in names(desc)) {
                     paste(process[[o]], collapse = "\n") else NA,
                   type = types[[o]])
 }
+p <- set_fig_design(p, "F-14-2-3", km_design)
 
 # ------------------------------------------------------------ the study
 s <- create_study(id, title = "Sample study (CDISC pilot data, pharmaverseadam)",
@@ -463,7 +485,8 @@ unlink(out, recursive = TRUE)
 dir.create(out, recursive = TRUE)
 keep <- c(.study_file, paste0(id, ".Rproj"),
           file.path(study_layout()[["spec"]],
-                    c(.table_file, .report_file, .ard_json, .lf_file)),
+                    c(.table_file, .report_file, .ard_json, .lf_file,
+                      file.path(.fig_design_dir, "F-14-2-3.yml"))),
           file.path(study_layout()[["adam"]],
                     c("adsl.rds", "adae.rds", "advs.rds", "adtte.rds")))
 for (f in keep) {
@@ -489,6 +512,7 @@ writeLines(c(
   "| L-16-2-7 | Listing | Severe adverse events |",
   "| F-14-2-1 | User code (a figure) | Mean change from baseline in systolic blood pressure |",
   "| F-14-2-2 | User code (a figure) | Kaplan-Meier plot of the time to first dermatologic event (number at risk from T-14-2-2's ARD) |",
+  "| F-14-2-3 | Figure (designed) | The same KM curves from the designer's KM template, with a median line added |",
   "",
   "The tables are made from one study ARD (programs/ard/), the listing and",
   "the figures from the ADaM data, in the figure style of the company",
