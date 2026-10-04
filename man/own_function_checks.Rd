@@ -10,9 +10,13 @@ own_function_checks(study)
 \item{study}{An \code{rtfstudy}.}
 }
 \value{
-A list by function name: \code{when}, \code{md5} (of the file tried),
-\code{data}, \code{args}, \code{problems} (errors and warnings found), \code{rows} (of the
-ARD it gave), \code{versions}.
+A list by function name: \code{when}, \code{user}, \code{md5} (of the file
+tried -- not of other files it may use: a change there is not seen),
+\code{data}, \code{args}, \code{problems} (errors and warnings found), \code{errors},
+\code{warnings}, \code{notes}, \code{rows} (of the whole ARD it gave), \code{versions}
+(tflspec, cards, cardx).  A company's function tried before the study
+uses it is kept here too: once it is copied, the record holds (the
+files are the same).
 }
 \description{
 The last try of each of a study's own ARD functions
