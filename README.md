@@ -113,7 +113,7 @@ The statistics of its tables come from [cards](https://pharmaverse.github.io/car
 and [cardx](https://insightsengineering.github.io/cardx/); please cite those
 too (`citation("cards")`, `citation("cardx")`).
 
-## Acknowledgements
+## Acknowledgments
 
 tflplanner stands on the work of many others, and we are grateful to their
 authors.
