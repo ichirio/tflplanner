@@ -315,6 +315,30 @@ stack_remove <- function(x, output_id, parent, how = c("ungroup", "all"), keep_n
   set_ard_rows(x, "analyses", output_id, a[-drop[!is.na(drop)], , drop = FALSE])
 }
 
+#' Delete one analysis of a report
+#'
+#' Takes an analysis out of a report's ARD definition: one of its own, or
+#' one inside a stack (the stack keeps the others).  A stack itself is
+#' deleted with [stack_remove()], which says what becomes of the analyses
+#' inside it.
+#'
+#' @param x A `tflplanner`.
+#' @param output_id The report.
+#' @param id The analysis.
+#' @return `x` without the analysis.
+#' @export
+remove_analysis <- function(x, output_id, id) {
+  a <- ard_rows(x, "analyses", output_id)
+  a$output_id <- NULL
+  i <- match(id, a$analysis_id)
+  if (is.na(i)) stop("'", id, "' is not an analysis of ", output_id, ".", call. = FALSE)
+  if (a$method[i] %in% .stack_wrappers || length(.stack_kids(a, id))) {
+    stop("'", id, "' is a stack: delete it with stack_remove() (its Delete button), ",
+         "which says what becomes of the analyses inside.", call. = FALSE)
+  }
+  set_ard_rows(x, "analyses", output_id, a[-i, , drop = FALSE])
+}
+
 # A new analysis inside a parent (after its last one): its id, method and
 # variables; nothing of its own on the data
 stack_add_inside <- function(x, output_id, parent, id = NULL, method = "continuous",

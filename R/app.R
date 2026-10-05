@@ -2619,6 +2619,9 @@ app_server <- function(input, output, session, start) {
         if (role == "single" && !r$method %in% .stack_not_inside)
           .btn("ard_stack_group", t("Run together with other analyses..."),
                class = "btn-sm btn-outline-secondary"),
+        if (role %in% c("single", "inside"))
+          .btn("ard_an_delete", t("Delete the analysis..."),
+               class = "btn-sm btn-outline-danger"),
         shiny::span(class = "small text-muted",
                     t("Format: xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown."))),
       shiny::tags$details(
@@ -3240,12 +3243,29 @@ app_server <- function(input, output, session, start) {
     # the report's ARD: made, outdated or not yet (one for the report)
     stt <- tryCatch(ard_state(), error = function(e) NULL)
     k <- if (!is.null(stt)) match(tg, stt$output_id) else NA
-    state_line <- if (!is.na(k)) shiny::div(
-      class = "small mb-1",
-      sprintf(t("This report's ARD: %s"), t(.ard_state_labels[[stt$state[k]]])),
-      if (!identical(stt$state[k], "built")) shiny::tags$button(
-        type = "button", class = "btn btn-sm btn-link py-0",
-        onclick = "document.getElementById('ard_preview').click();", t("Preview")))
+    state_line <- if (!is.na(k)) {
+      s0 <- stt$state[k]
+      # what the state means, and the next step (the Preview button makes
+      # this report's ARD)
+      words <- switch(s0,
+        outdated = t("needs making again (its definition has changed)"),
+        `not built` = t("not made yet (nothing to show)"),
+        t(.ard_state_labels[[s0]]))
+      why <- switch(s0,
+        outdated = t("Since this report's ARD was made, something it is made from has changed: its analyses, their analysis sets or datasets, the study's settings, the study's own ARD functions or the code lists. Make it again to see the tables as the definition is now."),
+        `not built` = t("This report's ARD has not been made yet: make it to see its tables."),
+        error = t("Its ARD program failed: see what it printed (ARD tab > Study ARD), fix it and make it again."),
+        NULL)
+      go <- switch(s0, `not built` = t("Make the ARD"),
+                   outdated = , error = t("Make the ARD again"), NULL)
+      shiny::div(
+        class = "small mb-1", title = why,
+        sprintf(t("This report's ARD: %s"), words),
+        if (!is.null(go)) shiny::tags$button(
+          type = "button", class = "btn btn-sm btn-link py-0",
+          title = why,
+          onclick = "document.getElementById('ard_preview').click();", go))
+    }
     shiny::tagList(
       state_line,
       shiny::div(class = "border rounded mb-1", rows),
@@ -3481,6 +3501,30 @@ app_server <- function(input, output, session, start) {
     shiny::removeModal()
     an_pick(first)
     bump()
+  })
+  # [Delete the analysis...]: asked first (a stack has its own Delete)
+  shiny::observeEvent(input$ard_an_delete, {
+    r <- st_row()
+    shiny::req(r, st_role(r) %in% c("single", "inside"))
+    lab <- if (!.is_blank(r$label)) paste0(" (", r$label, ")") else ""
+    shiny::showModal(shiny::modalDialog(
+      title = t("Delete the analysis"), easyClose = TRUE,
+      shiny::p(sprintf(t("Delete %s%s from %s? Its statistics leave the report's ARD when the ARD is made again."),
+                       r$analysis_id, lab, ard_target())),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("ard_an_delete_ok", t("Delete"), class = "btn-danger"))))
+  })
+  shiny::observeEvent(input$ard_an_delete_ok, {
+    r <- st_row()
+    tg <- ard_target()
+    shiny::req(r, tg)
+    p2 <- guarded(remove_analysis(rv$p, tg, r$analysis_id))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    shiny::removeModal()
+    an_pick(NULL)
+    bump()
+    notify(sprintf(t("%s is deleted."), r$analysis_id))
   })
   shiny::observeEvent(input$ard_stack_delete, {
     r <- st_row()
