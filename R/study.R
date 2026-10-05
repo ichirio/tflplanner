@@ -500,13 +500,27 @@ save_study <- function(study, regenerate = character(),
 # todo      untouched, still the TODO data part
 # generated untouched, but the definition has moved on: saving rewrites it
 # edited    changed by hand: saving leaves it alone
+# A report's program as the definition writes it, kept while the
+# definition is the same: the runs table asks for every report's again at
+# each refresh (study_status()), and the definition rarely changed between
+.program_cache <- new.env()
+.program_code_last <- function(p, id) {
+  if (!identical(.program_cache$p, p) || !identical(.program_cache$date, Sys.Date())) {
+    .program_cache$p <- p
+    .program_cache$date <- Sys.Date()
+    .program_cache$code <- list()
+  }
+  if (is.null(.program_cache$code[[id]])) .program_cache$code[[id]] <- program_code(p, id)
+  .program_cache$code[[id]]
+}
+
 .program_state <- function(p, id, f) {
   if (!file.exists(f)) return("missing")
   have <- readLines(f, warn = FALSE, encoding = "UTF-8")
   chk <- sub("^#  Checksum   : *", "",
              grep("^#  Checksum   :", have, value = TRUE))
   if (!length(chk) || !identical(chk[1L], .body_hash(have))) return("edited")
-  if (identical(.body_hash(have), .body_hash(program_code(p, id)))) {
+  if (identical(.body_hash(have), .body_hash(.program_code_last(p, id)))) {
     if (any(grepl("tflplanner: the data part of", have, fixed = TRUE))) {
       return("todo")
     }
