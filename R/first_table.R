@@ -110,7 +110,7 @@ first_table <- function(x, output_id, path, data, population, group,
   }
   if (!length(variables)) stop("Choose the variables of the rows.", call. = FALSE)
   if (nrow(ard_rows(x, "analyses", id))) {
-    stop("'", id, "' has analyses already: edit them on the ARD tab.",
+    stop("'", id, "' has analyses already: edit them in step 2 (ARD).",
          call. = FALSE)
   }
   kind <- vapply(variables, function(v) .column_kind(data[[v]]), "")
@@ -332,7 +332,7 @@ first_listing <- function(x, output_id, path, data, columns, group = NULL,
     stop("The data have no ", paste(miss, collapse = ", "), ".", call. = FALSE)
   }
   if (nrow(lf_rows(x, "listing_cols", id))) {
-    stop("'", id, "' has columns already: edit them on the Listings tab.",
+    stop("'", id, "' has columns already: edit them in step 3 (Content).",
          call. = FALSE)
   }
   cd <- .catalog_dataset(x, path)

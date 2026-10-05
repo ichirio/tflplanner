@@ -571,9 +571,9 @@ app_ui <- function(lang = "en") {
           bslib::card(
             bslib::card_header(t("Your code")),
             shiny::p(class = "small text-muted",
-                     t("Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them; they print in that order. The report's titles, footnotes, header and page come from its settings (the Page tab), as for any report.")),
+                     t("Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them; they print in that order. The report's titles, footnotes, header and page come from its settings (step 4, Page), as for any report.")),
             shiny::p(class = "small text-muted",
-                     t("Only an analysis to write yourself? That is the ARD tab's custom method (or a company ard_*() function). This kind is for a report whose whole content is your code.")),
+                     t("Only an analysis to write yourself? That is the custom method of step 2 (ARD) (or a company ard_*() function). This kind is for a report whose whole content is your code.")),
             shiny::uiOutput("uc_inputs"),
             shiny::div(class = "rp-code",
                        shiny::textAreaInput("uc_code", t("Code"), rows = 14,
@@ -596,7 +596,7 @@ app_ui <- function(lang = "en") {
         shiny::conditionalPanel(
           "output.report_kind == 'user'",
           shiny::div(class = "alert alert-info py-1 small",
-                     t("A user-code report: this code leaves `content` (the same field as its Content tab). Nothing else here is used for it."))),
+                     t("A user-code report: this code leaves `content` (the same field as its Content). Nothing else here is used for it."))),
         shiny::textAreaInput(
           "data_code",
           shiny::span(
@@ -617,7 +617,7 @@ app_ui <- function(lang = "en") {
             .btn("fetch", t("Preview"),
                  class = "btn-sm btn-outline-primary"),
             shiny::span(class = "small text-muted",
-                        t("Makes this report's ARD (as the ARD tab's Preview), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
+                        t("Makes this report's ARD (as Preview in step 2), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
           shiny::uiOutput("ard_summary")))))
 
   step_page <- bslib::navset_underline(
@@ -625,7 +625,7 @@ app_ui <- function(lang = "en") {
     bslib::nav_panel(
       t("Page"), value = "page",
       shiny::p(class = "small text-muted",
-               t("The page of the report chosen in the sidebar: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
+               t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
       bslib::layout_columns(
         col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
         shiny::div(
@@ -755,7 +755,7 @@ app_ui <- function(lang = "en") {
           shiny::p(class = "small text-muted",
                    t("Build the ARD output by output as each is ready: tables can be made from the outputs already in it, while others are still being defined.")),
           shiny::p(class = "small text-muted mt-1 mb-1",
-                   t("Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Results tab. Choose a row to see its log in the latest official run.")),
+                   t("Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Runs tab. Choose a row to see its log in the latest official run.")),
           DT::DTOutput("ard_state"),
           shiny::div(class = "rp-code mt-2",
                      shiny::verbatimTextOutput("ard_log")),
@@ -2034,7 +2034,7 @@ app_server <- function(input, output, session, start) {
     k <- report_kind()
     if (identical(k, "user") && !.user_reads_ard(rv$p, current())) {
       return(shiny::div(class = "alert alert-info py-1 small",
-                        sprintf(t("%s does not read an ARD: its Content tab's \"Use this report's ARD\" makes it read one (these analyses, or an ARD taken in)."),
+                        sprintf(t("%s does not read an ARD: \"Use this report's ARD\" in its step 3 (Content) makes it read one (these analyses, or an ARD taken in)."),
                                 current())))
     }
     # a report whose ARD was taken in: its analyses here are not used
@@ -2174,7 +2174,7 @@ app_server <- function(input, output, session, start) {
     id <- current()
     if (is.null(id)) {
       return(shiny::span(class = "small text-muted",
-                         t("Choose a report in the sidebar to fill its rows from its ARD and from presets.")))
+                         t("Choose a report on the left to fill its rows from its ARD and from presets.")))
     }
     st <- report_ard_state(id)
     shiny::div(
@@ -2196,7 +2196,7 @@ app_server <- function(input, output, session, start) {
     text <- switch(state,
       `not built` = t("Not made"),
       outdated = t("Outdated: the ARD definition has changed since it was made"),
-      error = t("Error: its program failed (ARD tab > Study ARD)"),
+      error = t("Error: its program failed (Data > Study ARD)"),
       sprintf(t("Made %s: %d keys, %d variables, statistics %s"),
               m$fetched, length(m$keys), nrow(m$variables),
               paste(m$stats, collapse = ", ")))
@@ -2358,7 +2358,7 @@ app_server <- function(input, output, session, start) {
           if (!r$ok) {
             ok <- FALSE
             ard_res(list(scope = id, error = r$error))
-            notify(t("The ARD program failed: see what it printed on the ARD tab (Study ARD)."),
+            notify(t("The ARD program failed: see what it printed in Data > Study ARD."),
                    "error")
           }
         }
@@ -2377,7 +2377,7 @@ app_server <- function(input, output, session, start) {
                                                  units = "secs"))))
     }
     if (!is_report) {
-      notify(sprintf(t("%s is in the study ARD; add it on the Reports tab to make its table."),
+      notify(sprintf(t("%s is in the study ARD; add it to the Report list to make its table."),
                      id), "warning")
     } else if (!is.null(m$error)) {
       notify(paste(t("The ARD was read, but normalize and rework failed:"),
@@ -2861,7 +2861,7 @@ app_server <- function(input, output, session, start) {
       if (inside) stack_inside_note(r),
       if (!tg %in% rv$p$outputs$output_id) shiny::div(
         class = "alert alert-info py-1 small",
-        sprintf(t("%s is not a report yet: add it on the Reports tab to make its table."), tg)),
+        sprintf(t("%s is not a report yet: add it to the Report list to make its table."), tg)),
       shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-center mb-1",
         shiny::span(class = "small text-muted",
@@ -2989,7 +2989,7 @@ app_server <- function(input, output, session, start) {
     if (!nrow(e)) return(shiny::div(
       class = "ard-fn-searching small text-muted",
       shiny::p(class = "mb-1", t("No function matches.")),
-      shiny::p(t("Make it as an own function (the Own functions tab), or write it as R code (custom)."))))
+      shiny::p(t("Make it as an own function (Study > Own functions), or write it as R code (custom)."))))
     searching <- !is.null(s)
     # the settings the words found mean, for ard_fn_preset
     if (searching) {
@@ -4049,7 +4049,7 @@ app_server <- function(input, output, session, start) {
   output$ard_outline <- shiny::renderUI({
     a <- st_rows()
     tg <- ard_target()
-    if (is.null(tg)) return(shiny::p(class = "small text-muted", t("Choose a report in the sidebar.")))
+    if (is.null(tg)) return(shiny::p(class = "small text-muted", t("Choose a report on the left.")))
     if (is.null(a) || !nrow(a)) {
       return(shiny::div(class = "small text-muted mb-2",
                         sprintf(t("%s has no analyses yet."), tg), " ",
@@ -4125,7 +4125,7 @@ app_server <- function(input, output, session, start) {
       why <- switch(s0,
         outdated = t("Since this report's ARD was made, something it is made from has changed: its analyses, their analysis sets or datasets, the study's settings, the study's own ARD functions or the code lists. Make it again to see the tables as the definition is now."),
         `not built` = t("This report's ARD has not been made yet: make it to see its tables."),
-        error = t("Its ARD program failed: see what it printed (ARD tab > Study ARD), fix it and make it again."),
+        error = t("Its ARD program failed: see what it printed (Data > Study ARD), fix it and make it again."),
         NULL)
       go <- switch(s0, `not built` = t("Make the ARD"),
                    outdated = , error = t("Make the ARD again"), NULL)
@@ -4520,7 +4520,7 @@ app_server <- function(input, output, session, start) {
     orphan <- setdiff(ids, rv$p$outputs$output_id)
     note <- if (length(orphan)) shiny::div(
       class = "alert alert-info py-1 small mt-2",
-      sprintf(t("%s: analyses of no report yet. Add the report on the Reports tab to make its table."),
+      sprintf(t("%s: analyses of no report yet. Add the report to the Report list to make its table."),
               paste(orphan, collapse = ", ")))
     if (is.null(msg)) {
       n <- nrow(rv$p$ard$analyses)
@@ -4560,7 +4560,7 @@ app_server <- function(input, output, session, start) {
     scope <- input$ard_scope %||% "report"
     id <- ard_target()
     if (scope == "report") {
-      if (is.null(id)) return(msg(t("Choose a report in the sidebar.")))
+      if (is.null(id)) return(msg(t("Choose a report on the left.")))
       if (!any(a$analyses$output_id %in% id)) {
         return(msg(sprintf(t("%s has no analyses in the ARD definition."), id)))
       }
@@ -5447,7 +5447,7 @@ app_server <- function(input, output, session, start) {
     b <- function(id, label, class) do.call(.btn, c(list(id, label, class = class), off))
     shiny::div(
       class = "d-flex flex-wrap gap-2 mt-2",
-      b("imp_use", t("Use it for the report in the sidebar"), "btn-sm btn-outline-primary"),
+      b("imp_use", t("Use it for the report chosen (Make a report)"), "btn-sm btn-outline-primary"),
       b("imp_stop", t("Stop using it"), "btn-sm btn-outline-secondary"),
       b("imp_compare", t("Compare with the report's own ARD"), "btn-sm btn-outline-secondary"),
       b("imp_replace", t("Replace..."), "btn-sm btn-outline-secondary"),
@@ -5669,7 +5669,7 @@ app_server <- function(input, output, session, start) {
     o <- trimws(strsplit(r$outputs %||% "", "|", fixed = TRUE)[[1L]])
     id <- if (!is.null(current()) && current() %in% c(o, .imports_used_by(rv$p$sheets$report, r$file)))
       current() else o[nzchar(o)][1L]
-    if (is.na(id %||% NA)) return(notify(t("The ARD names no report: choose one in the sidebar."), "warning"))
+    if (is.na(id %||% NA)) return(notify(t("The ARD names no report: choose one in Make a report."), "warning"))
     imp_compare(id, r$file)
   })
   shiny::observeEvent(input$imp_compare_cur, {
@@ -5777,10 +5777,10 @@ app_server <- function(input, output, session, start) {
                    page = function() page())
   output$lf_note <- shiny::renderUI({
     msg <- switch(lf_type(),
-      none = t("Choose a Listing report in the sidebar."),
-      table = t("This is a Table: its definition and builder are on the Tables tab."),
-      listing = t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Code on the Code tab, if any, changes the data after the condition."),
-      figure = t("This is a Figure: it is designed on the Figures tab."))
+      none = t("Choose a Listing report on the left."),
+      table = t("This is a Table: it is made in Table (builder) and Details (sheets)."),
+      listing = t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 3, Data code), if any, changes the data after the condition."),
+      figure = t("This is a Figure: it is made in Make the figure."))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
   # a figure without a design: its user code (the plot written by hand) --
@@ -5822,10 +5822,10 @@ app_server <- function(input, output, session, start) {
                           sprintf(t("It reads the ARD taken in (%s)."), st$file)),
       own = shiny::div(class = if (st$built) "small text-success" else "small text-warning",
                        sprintf(if (st$built) t("Its ARD definition has %d analyses (built).") else
-                         t("Its ARD definition has %d analyses, not built yet: build them on the ARD tab."), st$n)),
+                         t("Its ARD definition has %d analyses, not built yet: build them in step 2 (ARD)."), st$n)),
       none = shiny::div(class = "small text-danger d-flex flex-wrap gap-2 align-items-center",
-                        shiny::span(t("No ARD yet: add analyses on the ARD tab, or take an ARD in.")),
-                        .btn("uc_to_ard", t("To the ARD tab"), class = "btn-sm btn-outline-primary py-0")))
+                        shiny::span(t("No ARD yet: add analyses in step 2 (ARD), or take an ARD in (Data > ARDs taken in).")),
+                        .btn("uc_to_ard", t("To step 2 (ARD)"), class = "btn-sm btn-outline-primary py-0")))
     shiny::tagList(line, shiny::div(
       class = "small text-muted mb-2",
       t("`ard` is this report's rows of the ARD (a cards ARD); normalize_ard(ard) makes it a table's shape.")))
@@ -5965,12 +5965,12 @@ app_server <- function(input, output, session, start) {
     bslib::card(
       bslib::card_header(t("The plot written by hand (ggplot2)")),
       shiny::p(class = "small text-muted",
-               t("This figure's plot is its data code (Reports tab), written with ggplot2: it leaves `plot`. Its program reads these datasets first.")),
+               t("This figure's plot is its data code (step 3, Data code), written with ggplot2: it leaves `plot`. Its program reads these datasets first.")),
       shiny::h6(t("Data the figure reads")),
       shiny::selectizeInput(lf_id("fig_ds"), NULL, ds_choices,
                             selected = have, multiple = TRUE,
                             width = "100%"),
-      shiny::h6(t("The code that makes the plot (edit it on the Reports tab)")),
+      shiny::h6(t("The code that makes the plot (edit it in step 3, Data code)")),
       shiny::div(class = "rp-code", shiny::verbatimTextOutput("lf_fig_code")))
   }
   output$lf_form <- shiny::renderUI({
@@ -6173,7 +6173,7 @@ app_server <- function(input, output, session, start) {
   })
   output$builder_note <- shiny::renderUI({
     msg <- switch(builder_case(),
-      none = t("Choose a report in the sidebar."),
+      none = t("Choose a report on the left."),
       type = t("The builder is for Tables; Listings and Figures are made in their data code."),
       meta = shiny::tagList(
         t("This table has no ARD yet: the builder is built from it."), " ",
@@ -6291,7 +6291,7 @@ app_server <- function(input, output, session, start) {
       if (!nzchar(lack[i])) return(bs$row[i])
       shiny::span(
         class = "text-muted",
-        title = sprintf(t("Not in this report's ARD: add %s to its analysis on the ARD tab."),
+        title = sprintf(t("Not in this report's ARD: add %s to its analysis in step 2 (ARD)."),
                         lack[i]),
         bs$row[i],
         shiny::tags$small(class = "ms-1",
@@ -6308,7 +6308,7 @@ app_server <- function(input, output, session, start) {
       boxes,
       if (any(nzchar(lack))) shiny::p(
         class = "small text-muted",
-        t("Greyed statistics are not in this report's ARD: add them to its analysis on the ARD tab, then read the ARD again.")))
+        t("Greyed statistics are not in this report's ARD: add them to its analysis in step 2 (ARD), then read the ARD again.")))
   }
 
   # Whatever goes wrong in the builder stays in the builder: it is said once
@@ -6671,7 +6671,7 @@ app_server <- function(input, output, session, start) {
     id <- current()
     if (is.null(id)) {
       return(shiny::p(class = "small text-muted",
-                      t("Choose a report in the sidebar.")))
+                      t("Choose a report on the left.")))
     }
     rv$ver
     p <- rv$p
@@ -6682,8 +6682,8 @@ app_server <- function(input, output, session, start) {
         shiny::div(class = "text-muted small", pv$error %||% t("(the table)"))
     } else {
       shiny::div(class = "text-muted small text-center py-4",
-                 if (identical(info$type, "figure")) t("(the figure: see its Content)") else
-                   t("(the listing: see its Content)"))
+                 if (identical(info$type, "figure")) t("(the figure: see step 3)") else
+                   t("(the listing: see step 3)"))
     }
     .page_sample_html(p, id, rv$meta$study_id %||% "", body,
                       program = info$program)
@@ -6842,7 +6842,7 @@ app_server <- function(input, output, session, start) {
     id <- current()
     if (is.null(id)) {
       shiny::p(class = "text-muted",
-               t("Choose a report in the list or the sidebar."))
+               t("Choose a report on the left."))
     } else {
       shiny::h5(id, shiny::span(class = "badge bg-secondary ms-1",
                                 .type_labels[[report_info(rv$p, id)$type]]))
@@ -7022,7 +7022,7 @@ app_server <- function(input, output, session, start) {
         width = "100%",
         options = list(plugins = list("remove_button", "drag_drop"))),
       shiny::p(class = "small text-muted",
-               t("Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards on the Listings tab.")))
+               t("Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards in step 3 (Content).")))
   })
   start_first_listing <- function(id, desc) {
     d <- first_data_l()
@@ -7085,7 +7085,7 @@ app_server <- function(input, output, session, start) {
       shiny::checkboxInput("mf_stack", t("Run the analyses together (cards::ard_stack)"), TRUE),
       shiny::uiOutput("mf_stack_note"),
       shiny::p(class = "small text-muted",
-               t("Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (builder, ARD tab).")))
+               t("Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (steps 2 and 3).")))
   })
   # a subject of the analysis set with no group: ard_stack() leaves them
   # out, so the wizard makes the analyses one by one -- said before

@@ -109,7 +109,7 @@ Imported %d reports (not saved yet),%d 帳票を取り込みました（未保�
 ALL (every row),ALL（全帳票の全行）
 Inherited from the study defaults (%d rows; edit them under Study defaults),試験共通の既定から引き継ぐ行（%d 行。編集は「試験共通の既定」で）
 %s is a %s: the table definition is for Tables (a %s is made in its data code).,%s は %s です。表の定義は Table 用です（%s はデータ準備コードで作ります）。
-Choose a report in the sidebar to fill its rows from its ARD and from presets.,サイドバーで帳票を選ぶと、ARD やプリセットから行を埋められます。
+Choose a report on the left to fill its rows from its ARD and from presets.,左で帳票を選ぶと、ARD やプリセットから行を埋められます。
 not read yet: Run and read the ARD.,未取得：「実行して ARD を読む」を押してください。
 "read %s: %d keys, %d variables, statistics %s",%s 取得：キー %d 個、変数 %d 個、統計量 %s
 Fill variables and levels,変数と水準を埋める
@@ -138,7 +138,6 @@ Statistics,統計量
 output_id,
 Type,種別
 RTF,
-Choose a report in the list or the sidebar.,左の一覧かサイドバーで帳票を選んでください。
 No file yet. Saving writes the program below.,まだファイルはありません。保存すると下のプログラムが書かれます。
 The saved program is the one below.,保存済みのプログラムは下の内容と同じです。
 The saved program is the one below (its data part is a TODO).,保存済みのプログラムと同じです（データ部は TODO のまま）。
@@ -206,7 +205,6 @@ missing:,不足：
 Replaces this report's column header rows.,この帳票の列見出しの行を置き換えます。
 Table builder (beta),表ビルダー（試作）
 Preview: the table as it will print,プレビュー：出力される表
-Choose a report in the sidebar.,サイドバーで帳票を選んでください。
 The builder is for Tables; Listings and Figures are made in their data code.,ビルダーは Table 用です。Listing / Figure はデータ準備コードで作ります。
 Read the report's ARD first (Reports > Data code > Run and read the ARD): the builder is built from it.,先に帳票の ARD を読んでください（帳票 > データ準備コード > 実行して ARD を読む）。ビルダーはその内容から作られます。
 This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Use Table definition; the preview works.,この表は階層（SOC / PT）を持ちます。ビルダーは今のところ要約表のみ対応です。表の定義を使ってください（プレビューは表示されます）。
@@ -373,7 +371,7 @@ Style,スタイル
 Axes,軸
 Legend,凡例
 Output,出力
-Choose a Figure report in the sidebar.,サイドバーで図（Figure）の帳票を選んでください。
+Choose a Figure report on the left.,左で図（Figure）の帳票を選んでください。
 The Plot Designer designs figures: choose a Figure report in the sidebar.,プロットデザイナーは図を設計します。サイドバーで図（Figure）の帳票を選んでください。
 "This figure's plot is written by hand (its data code, Reports tab). Start a design to make it from a figure type instead: the plot's code is then made from the design.",この図のプロットは手書きのコードです（帳票タブのデータコード）。デザインを開始すると、図の種類から設計でき、プロットのコードはデザインから作られます。
 The figure is made from its design. Change it on the left: the figure is redrawn as its program will save it. Empty = the default (shown grey).,この図はデザインから作られます。左で変更すると、プログラムが保存するのと同じ図が再描画されます。空欄 = デフォルト（灰色で表示）。
@@ -384,7 +382,7 @@ Preview (as saved),プレビュー（保存される図）
 Redraw,再描画
 Checks,チェック
 Remove the design?,デザインを削除しますか？
-"The figure's plot is then its data code again (Reports tab), written by hand.",図のプロットは再び手書きのデータコード（帳票タブ）になります。
+"The figure's plot is then its data code again (step 3, Data code), written by hand.",図のプロットは再び手書きのデータ準備コード（段 3）になります。
 Remove,削除
 default,デフォルト
 figure type,図の種類
@@ -715,12 +713,12 @@ Listings,Listings
 Figures,Figures
 Definition,定義
 Builder (beta),ビルダー（試作）
-Choose a Listing report in the sidebar.,サイドバーで Listing の帳票を選んでください。
-This is a Table: its definition and builder are on the Tables tab.,これは表です。定義とビルダーは「表」タブにあります。
-This is a Figure: it is designed on the Figures tab.,これは図です。「図」タブで設計します。
+Choose a Listing report on the left.,左で Listing の帳票を選んでください。
+This is a Table: it is made in Table (builder) and Details (sheets).,これは表です。「表（ビルダー）」と「詳細（シート）」で作ります。
+This is a Figure: it is made in Make the figure.,これは図です。「図を作る」で作ります。
 Written by hand,手書きの図
-"This figure's plot is its data code (Reports tab), written with ggplot2: it leaves `plot`. Its program reads these datasets first.",この図のプロットは帳票タブのデータコード（ggplot2 で書き、`plot` を残す）です。プログラムは先にこれらのデータセットを読みます。
-This tab designs figures: choose a Figure report in the sidebar.,このタブは図を設計します。サイドバーで図の帳票を選んでください。
+"This figure's plot is its data code (step 3, Data code), written with ggplot2: it leaves `plot`. Its program reads these datasets first.",この図のプロットは段 3 のデータ準備コード（ggplot2 で書き、`plot` を残す）です。プログラムは先にこれらのデータセットを読みます。
+Figures are designed here: choose a Figure report on the left.,ここでは図を設計します。左で図の帳票を選んでください。
 "This figure's plot is written by hand (its data code, Reports tab). To design it here instead, start a design from a template: its data steps, statistics, settings and layers are filled at once, then each can be changed.",この図のプロットは手書きのコードです（帳票タブのデータコード）。ここで設計するには、テンプレートからデザインを開始してください。データ加工・統計量・設定・レイヤーが一括で入り、その後 1 つずつ変更できます。
 Redraw on change,変更したら再描画
 The design has changed since this drawing: press Redraw.,この図のあとでデザインを変更しました。「再描画」を押してください。
@@ -733,15 +731,15 @@ Changes that were not saved,保存されていない変更
 Discard,捨てる
 Take them back,戻す
 "The last time this study was open, some changes were not saved. Take them back (they are not saved until you save), or discard them?",前回この試験を開いていたとき、保存されていない変更がありました。戻しますか（戻しても、保存するまでは保存されません）、それとも捨てますか？
-Not in this report's ARD: add %s to its analysis on the ARD tab.,この帳票の ARD にありません。ARD タブで、この分析に %s を足してください。
+Not in this report's ARD: add %s to its analysis in step 2 (ARD).,この帳票の ARD にありません。段 2（ARD）で、この解析に %s を足してください。
 (the ARD has no %s),（ARD に %s がありません）
-"Greyed statistics are not in this report's ARD: add them to its analysis on the ARD tab, then read the ARD again.",グレーの統計量は、この帳票の ARD にありません。ARD タブでこの分析に足してから、ARD を読み直してください。
+"Greyed statistics are not in this report's ARD: add them to its analysis in step 2 (ARD), then read the ARD again.",グレーの統計量は、この帳票の ARD にありません。段 2（ARD）でこの解析に足してから、ARD を読み直してください。
 Time shown in (the data's time is in days),表示する時間の単位（データの時間は日数として読みます）
 The builder could not read the form: %s,Builder がフォームを読めませんでした: %s
-"Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Results tab. Choose a row to see its log in the latest official run.",プレビュー（この帳票の ARD）は、1 つの帳票を作業用の試験 ARD に入れ、ログは残しません。試験 ARD 全体の正式実行（ログ logrx 付き）は結果タブにあります。行を選ぶと、最新の正式実行でのログを表示します。
+"Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Runs tab. Choose a row to see its log in the latest official run.",プレビュー（この帳票の ARD）は、1 つの帳票を作業用の試験 ARD に入れ、ログは残しません。試験 ARD 全体の正式実行（ログ logrx 付き）は「実行」タブにあります。行を選ぶと、最新の正式実行でのログを表示します。
 ARD (this report),この帳票の ARD
 "Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills.",保存し、この帳票の ARD プログラムを実行して試験 ARD に入れ、表ビルダーと入力支援のために読み取ります。
-"Makes this report's ARD (as the ARD tab's Preview), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance.",この帳票の ARD を作り（ARD タブのプレビューと同じ）、試験フォルダから 1 と 2 を実行して、入力支援のために変数・水準・統計量を読み取ります。
+"Makes this report's ARD (as Preview in step 2), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance.",この帳票の ARD を作り（段 2 のプレビューと同じ）、試験フォルダから 1 と 2 を実行して、入力支援のために変数・水準・統計量を読み取ります。
 Preview this table's ARD,この表の ARD をプレビュー
 not made yet,未作成
 outdated: the ARD definition has changed since it was made,古い：作成後に ARD の定義が変わりました
@@ -750,39 +748,39 @@ error: its program failed (ARD tab > Study ARD),エラー：プログラムが�
 Preview of %s,%s のプレビュー
 running its ARD program,ARD プログラムを実行中
 reading it,読み取り中
-The ARD program failed: see what it printed on the ARD tab (Study ARD).,ARD プログラムが失敗しました。ARD タブ（試験 ARD）で出力を見てください。
-%s is in the study ARD; add it on the Reports tab to make its table.,%s は試験 ARD に入りました。表を作るには、帳票タブで帳票として追加してください。
+The ARD program failed: see what it printed in Data > Study ARD.,ARD プログラムが失敗しました。データ > 試験 ARD で出力を見てください。
+%s is in the study ARD; add it to the Report list to make its table.,%s は試験 ARD に入りました。表を作るには、帳票一覧で帳票として追加してください。
 "Preview of %s: %d keys, %d variables",%s のプレビュー：キー %d、変数 %d
 Preview to see the ARD this report's analyses make.,プレビューすると、この帳票の解析が作る ARD が表示されます。
 This table has no ARD yet: the builder is built from it.,この表にはまだ ARD がありません。ビルダーは ARD から作られます。
 No data to show yet: Preview this table's ARD.,表示するデータがまだありません。この表の ARD をプレビューしてください。
 Preview this table's ARD first.,先にこの表の ARD をプレビューしてください。
 Start the table from the data (writes its ARD definition and opens the builder),データから表を始める（ARD の定義を書き、ビルダーを開きます）
-"No data files yet: put them on the Data tab (data/adam), then add the table.",データファイルがまだありません。データタブで置いて（data/adam）から、表を追加してください。
+"No data files yet: put them on the Data tab (data/adam), then add the table.",データファイルがまだありません。「データ」タブに置いて（data/adam）から、表を追加してください。
 numbers,数値
 counts,度数
 "Analysis set (its flag = ""Y"")","解析対象集団（フラグ = ""Y""）"
 Group (the columns),群（列）
 "Variables (the rows, in order)",変数（行、この順）
-"Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (builder, ARD tab).",数値は要約統計量、それ以外は度数と割合になります。あとからすべて変えられます（ビルダー、ARD タブ）。
+"Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (steps 2 and 3).",数値は要約統計量、それ以外は度数と割合になります。あとからすべて変えられます（段 2・段 3）。
 Choose the data,データを選んでください
 In the data catalog now: %s,データカタログに入りました: %s
-%s: analyses of no report yet. Add the report on the Reports tab to make its table.,%s: まだ帳票の無い解析です。表を作るには、帳票タブで帳票を追加してください。
+%s: analyses of no report yet. Add the report to the Report list to make its table.,%s: まだ帳票の無い解析です。表を作るには、帳票一覧で帳票を追加してください。
 "Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.",この順を確認してください。データに順の手がかり（因子、TRT01AN のような数値の対応列）が無いため、ARD の順になっています。
 1/3 saving the study,1/3 試験を保存しています
-"2/3 making its ARD (%d analyses, in its own R process)",2/3 ARD を作っています（%d 分析、別の R プロセス）
+"2/3 making its ARD (%d analyses, in its own R process)",2/3 ARD を作っています（%d 解析、別の R プロセス）
 3/3 reading it for the builder,3/3 ビルダーのために読み取っています
 Made,作成済み
 Outdated,古い
 Not made,未作成
 company template,会社のテンプレート
 Outdated: the ARD definition has changed since it was made,古い：作成後に ARD の定義が変わりました
-Error: its program failed (ARD tab > Study ARD),エラー：プログラムが失敗しました（ARD タブ > 試験 ARD）
+Error: its program failed (Data > Study ARD),エラー：プログラムが失敗しました（データ > 試験 ARD）
 "Made %s: %d keys, %d variables, statistics %s",作成済み %s：キー %d、変数 %d、統計量 %s
 "A folder %s is already there: choose another ID, or register that folder (Studies > Register a folder).",フォルダ %s がすでにあります。別の ID にするか、そのフォルダを登録してください（試験 >「フォルダを登録」）。
 Choose a report in the sidebar and add a row to its analyses: a click on a row shows it here as a form.,サイドバーで帳票を選び、解析の行を足してください。グリッドの行をクリックすると、ここにフォームで表示します。
 New analysis,新しい解析
-%s is not a report yet: add it on the Reports tab to make its table.,%s はまだ帳票ではありません。表を作るには、帳票タブで追加してください。
+%s is not a report yet: add it to the Report list to make its table.,%s はまだ帳票ではありません。表を作るには、帳票一覧で追加してください。
 Analysis %s of %s. A click on another analysis above edits that one.,%2$s の解析 %1$s。上の一覧で別の解析を押すと、その解析を編集します。
 Analysis ID,解析 ID
 What to compute,計算するもの
@@ -815,25 +813,25 @@ Blank = every result the method gives.,空欄 = メソッドが出す結果す�
 needs data this study has not got,この試験に無いデータが要ります
 choose the data,データを選んでください
 The template's choices could not be made from the data: %s,データからテンプレートの選択肢を作れませんでした: %s
-Start the listing from the data (writes its columns and shows it),データからListingを始める（列を書き、プレビューします）
-"No data files yet: put them on the Data tab (data/adam), then add the listing.",データファイルがまだありません。データタブで置いて（data/adam）から、Listingを追加してください。
+Start the listing from the data (writes its columns and shows it),データから Listing を始める（列を書き、プレビューします）
+"No data files yet: put them on the Data tab (data/adam), then add the listing.",データファイルがまだありません。「データ」タブに置いて（data/adam）から、Listing を追加してください。
 Group (ordered by first; optional),群（最初に並べる、任意）
 Columns (in order),列（この順）
-"Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards on the Listings tab.",各列の見出しはデータのラベルです。並べ順は群・被験者・開始日です。あとからListingタブですべて変えられます。
-"The listing has no columns yet: add them to the table of columns (below the form), or add the listing again with 'Start the listing from the data'.",Listingにまだ列がありません。フォームの下の列の表に足すか、「データからListingを始める」で追加し直してください。
+"Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards in step 3 (Content).",各列の見出しはデータのラベルです。並べ順は群・被験者・開始日です。あとから段 3（コンテンツ）ですべて変えられます。
+"The listing has no columns yet: add them to the table of columns (below the form), or add the listing again with 'Start the listing from the data'.",Listing にまだ列がありません。フォームの下の列の表に足すか、「データから Listing を始める」で追加し直してください。
 e.g.,例:
 The ARD has no subjects per %s: a header's (N=n) prints NA.,ARD に %s ごとの被験者数がありません。見出しの (N=n) は NA になります。
 Count them (then Preview),数える（そしてプレビュー）
 All reports,帳票の一覧
 Content,内容 (content)
 Page,ページ
-"The page of the report chosen in the sidebar: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.",サイドバーで選んだ帳票のページ: タイトル、脚注、その帳票だけのヘッダー・フッター、自分のトークン（{STUDY} など）。試験の既定 = すべての帳票のもの。
+"The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.",左で選んだ帳票のページ: タイトル、脚注、その帳票だけのヘッダー・フッター、自分のトークン（{STUDY} など）。試験の既定 = すべての帳票のもの。
 When,日時
 Why,理由
 First page (sample),1 ページ目（見本）
 (the table),（表）
-(the figure: see its Content),（図: 内容のタブで）
-(the listing: see its Content),（Listing: 内容のタブで）
+(the figure: see step 3),（図: 段 3 で）
+(the listing: see step 3),（Listing: 段 3 で）
 Report,帳票
 "Rows for every report (ARD, Page)",すべての帳票の行（ARD・ページ）
 Getting started,はじめに
@@ -892,7 +890,7 @@ method-note:wilcox,by の 2 群の Wilcoxon 順位和検定
 method-note:chisq,と by のカイ二乗検定 (variables)
 method-note:fisher,と by の Fisher の正確検定 (variables)
 method-note:custom,code に書いた任意の R コード。data と population が使えます
-"A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Code on the Code tab, if any, changes the data after the condition.",Listingを定義します：データ（カタログのデータセット・条件・並び順）と列。コードのタブにコードがあれば、条件の後にデータを加工します。
+"A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 3, Data code), if any, changes the data after the condition.",Listing を定義します：データ（カタログのデータセット・条件・並び順）と列。段 3 のデータ準備コードがあれば、条件の後にデータを加工します。
 Done. Restart R (in RStudio: Session > Restart R) before using tflplanner again.,完了しました。tflplanner を使う前に R を再起動してください（RStudio では Session > Restart R）。
 Install from %s:,%s から入れます:
 "R was not found. Install R, then try again.",R が見つかりません。R をインストールしてから、もう一度試してください。
@@ -1165,7 +1163,7 @@ Your studies and tflplanner's settings are not touched.,試験と tflplanner の
 Report title,タイトル
 Saving...,保存中…
 The plot written by hand (ggplot2),手書きのプロット（ggplot2）
-The code that makes the plot (edit it on the Reports tab),プロットを作るコード（帳票タブのデータコードで編集します）
+"The code that makes the plot (edit it in step 3, Data code)",プロットを作るコード（段 3 のデータ準備コードで編集します）
 Column variables,列の変数
 "Order of the column variables, outermost first (drag)",列の変数の順序（外側から。ドラッグ）
 Order of the columns of %s (drag),%s の列の順序（ドラッグ）
@@ -1251,7 +1249,7 @@ Survival,生存時間
 Run several together,まとめて実行
 Own and code,独自・コード
 Survey designs,サーベイデザイン
-"e.g. odds ratio, PROC LOGISTIC, paired t test","例: オッズ比、PROC LOGISTIC、t検定 対応"
+"e.g. odds ratio, PROC LOGISTIC, paired t test",例: オッズ比、PROC LOGISTIC、t検定 対応
 No function matches.,当てはまる関数はありません。
 An old name: choose its new one.,旧い名前です。新しい名前の関数を選んでください。
 its package is not installed,パッケージが入っていません
@@ -1495,12 +1493,12 @@ the column fmt_fn has cards' old name (fmt_fun since cards 0.6.1),列 fmt_fn は
 "the table's %s name %s, which is neither a group nor a variable of the ARD",表の %s に %s とありますが、ARD のグループにも変数にもありません
 "the cells are written for %s, which the ARD does not analyse",セルが %s 用に書かれていますが、ARD はその変数を解析していません
 "a template reads {%s}, a statistic the ARD does not have",テンプレートが {%s} を読みますが、ARD にその統計量がありません
-"cards' check of the ARD's shape: ",cards による ARD の形の確認: 
+cards' check of the ARD's shape: ,cards による ARD の形の確認: 
 "table / listing / figure / user (the report's own code leaves `content`: a data frame, rtftable pages, rtfplot figures or a list of them); blank: table.",table / listing / figure / user（帳票自身のコードが `content` を残す：data.frame、rtftable のページ、rtfplot の図、またはそれらのリスト）。空欄 = table。
 ARDs taken in,取り込んだ ARD
 "An ARD made elsewhere (a CRO, another program) is taken into the study's input/ard/ folder and recorded there. Making the ARD, rebuilding it and Preview write only to output/ard/, so an ARD taken in is never overwritten. A report uses it when its report row says so.",他で作った ARD（CRO、別のプログラム）を、試験の input/ard/ フォルダに取り込み、記録します。「ARD を作る」「作り直し」「プレビュー」は output/ard/ にだけ書くので、取り込んだ ARD は上書きされません。帳票は、帳票の行で指定したときに、取り込んだ ARD を使います。
 Take in an ARD...,ARD を取り込む…
-Use it for the report in the sidebar,サイドバーの帳票で使う
+Use it for the report chosen (Make a report),選んでいる帳票（帳票の作成）で使う
 Stop using it,使うのをやめる
 Compare with the report's own ARD,帳票の自作の ARD と照合
 Replace...,置き換え…
@@ -1536,7 +1534,7 @@ Set them back to their own ARD definition,それぞれの ARD の定義に戻す
 %s: its own ARD and %s,%s: 自作の ARD と %s
 They agree.,一致しました。
 They differ:,違いがあります:
-The ARD names no report: choose one in the sidebar.,この ARD には帳票の指定がありません。サイドバーで帳票を選んでください。
+The ARD names no report: choose one in Make a report.,この ARD には帳票の指定がありません。「帳票の作成」で帳票を選んでください。
 "Saved at once, with the other unsaved changes: the record of ARDs taken in and the reports must agree.",その場で保存しました（ほかの未保存の変更も一緒に）。取り込んだ ARD の記録と帳票の設定を一致させるためです。
 taken out,外した
 active,有効
@@ -1570,15 +1568,15 @@ Later,あとで
 This figure is written by hand: it can be a user-code report.,この図は手書きのコードです。ユーザーコードの帳票にできます。
 Make it a user-code report,ユーザーコードの帳票にする
 Your code,ユーザーコード
-"Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them; they print in that order. The report's titles, footnotes, header and page come from its settings (the Page tab), as for any report.",あなたのコードが `content` を残します（data.frame、rtftable のページ、ggplot、またはそれらのリスト。その順に出ます）。タイトル・脚注・ヘッダー・ページは、ほかの帳票と同じく帳票の設定（ページのタブ）から付きます。
-Only an analysis to write yourself? That is the ARD tab's custom method (or a company ard_*() function). This kind is for a report whose whole content is your code.,解析だけを自分で書くなら、ARD タブの custom（または会社の独自 ard_*()）です。この型は、帳票の中身をまるごと自分のコードで作るときに使います。
-A user-code report: this code leaves `content` (the same field as its Content tab). Nothing else here is used for it.,ユーザーコードの帳票です。このコードが `content` を残します（内容のタブと同じ欄）。ここのほかの欄は使われません。
-"%s does not read an ARD: its Content tab's ""Use this report's ARD"" makes it read one (these analyses, or an ARD taken in).",%s は ARD を読みません。内容のタブの「この帳票の ARD を使う」で読むようになります（ここの解析、または取り込んだ ARD）。
+"Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them; they print in that order. The report's titles, footnotes, header and page come from its settings (step 4, Page), as for any report.",あなたのコードが `content` を残します（data.frame、rtftable のページ、ggplot、またはそれらのリスト。その順に出ます）。タイトル・脚注・ヘッダー・ページは、ほかの帳票と同じく帳票の設定（段 4 ページ）から付きます。
+Only an analysis to write yourself? That is the custom method of step 2 (ARD) (or a company ard_*() function). This kind is for a report whose whole content is your code.,解析だけを自分で書くなら、段 2（ARD）の custom（または会社の独自 ard_*()）です。この型は、帳票の中身をまるごと自分のコードで作るときに使います。
+A user-code report: this code leaves `content` (the same field as its Content). Nothing else here is used for it.,ユーザーコードの帳票です。このコードが `content` を残します（内容 (content) と同じ欄）。ここのほかの欄は使われません。
+"%s does not read an ARD: ""Use this report's ARD"" in its step 3 (Content) makes it read one (these analyses, or an ARD taken in).",%s は ARD を読みません。段 3（コンテンツ）の「この帳票の ARD を使う」で読むようになります（ここの解析、または取り込んだ ARD）。
 It reads the ARD taken in (%s).,取り込んだ ARD（%s）を読みます。
 Its ARD definition has %d analyses (built).,ARD の定義に解析が %d 件あります（作成済み）。
-"Its ARD definition has %d analyses, not built yet: build them on the ARD tab.",ARD の定義に解析が %d 件ありますが、まだ作っていません。ARD タブで作ってください。
-"No ARD yet: add analyses on the ARD tab, or take an ARD in.",まだ ARD がありません。ARD タブで解析を足すか、ARD を取り込んでください。
-To the ARD tab,ARD へ
+"Its ARD definition has %d analyses, not built yet: build them in step 2 (ARD).",ARD の定義に解析が %d 件ありますが、まだ作っていません。段 2（ARD）で作ってください。
+"No ARD yet: add analyses in step 2 (ARD), or take an ARD in (Data > ARDs taken in).",まだ ARD がありません。段 2（ARD）で解析を足すか、ARD を取り込んでください（データ > 取り込んだ ARD）。
+To step 2 (ARD),段 2（ARD）へ
 `ard` is this report's rows of the ARD (a cards ARD); normalize_ard(ard) makes it a table's shape.,`ard` は、この帳票の行だけの ARD（cards の形）です。normalize_ard(ard) で表の形になります。
 Add %s to the data it reads.,読むデータに %s を足してください。
 Line %d of the code: ,コードの %d 行目: 
@@ -1670,12 +1668,12 @@ Add an analysis inside,中に解析を足す
 Ungroup...,まとまりをほどく…
 Delete...,削除…
 Inside %s (%s): it runs on %s's data%s%s.,%1$s（%2$s）の中の解析: %3$s のデータ%4$s%5$sで計算します。
-", %s","（%s）"
+", %s",（%s）
 Open %s,%s を開く
 Another condition or other groups for this one alone:,この解析だけ条件や群を変えるなら:
 Take it out of %s,%s から外す
 "%s is an analysis of its own again, on %s's data and groups.",%1$s は単独の解析に戻りました（%2$s のデータと群）。
-"%s is the last analysis inside %s: %s goes.",%1$s は %2$s の中の最後の解析です。%3$s は無くなります。
+%s is the last analysis inside %s: %s goes.,%1$s は %2$s の中の最後の解析です。%3$s は無くなります。
 Ungroup,まとまりをほどく
 "The analyses inside %s become analyses of their own, on its data, condition and groups; %s goes.",%1$s の中の解析は、同じデータ・条件・群の単独の解析になります。%2$s は無くなります。
 Delete %s.,%s を削除します。
@@ -1686,7 +1684,7 @@ Run analyses together (cards::ard_stack),解析をまとめて実行（cards::ar
 Cannot be inside:,入れられないもの:
 Run them together,まとめる
 Choose the analyses.,解析を選んでください。
-"%s does not count the subjects per group: the report's BIGN does already (two would break the column headers' N). Delete BIGN and tick it on %s to let the stack count them.",%1$s は群ごとの人数を数えません（帳票の BIGN が数えているため。二重になると列見出しの N が壊れます）。%2$s に数えさせるなら、BIGN を消して %2$s のチェックを入れてください。
+%s does not count the subjects per group: the report's BIGN does already (two would break the column headers' N). Delete BIGN and tick it on %s to let the stack count them.,%1$s は群ごとの人数を数えません（帳票の BIGN が数えているため。二重になると列見出しの N が壊れます）。%2$s に数えさせるなら、BIGN を消して %2$s のチェックを入れてください。
 Run the analyses together (cards::ard_stack),解析をまとめて実行する（cards::ard_stack）
 "%d subjects of the analysis set have no %s: ard_stack does not count them, so the analyses are made one by one.",解析対象集団に %2$s が空の人が %1$d 人います。ard_stack はこの人たちを数えないので、解析は 1 つずつ作ります。
 One call computes the rows and the subjects per group (the column headers' N).,1 回の呼び出しで、行と群ごとの人数（列見出しの N）を計算します。
@@ -1876,7 +1874,7 @@ Where,置き場
 This study (programs/ard/functions/; loaded at once),この試験（programs/ard/functions/。すぐ読み込む）
 The company standards (a study uses it with Use in this study),会社標準（試験では［この試験で使う］で使う）
 Write its test (test-<name>.R) next to it,テスト（test-<名前>.R）も書く
-"The skeleton is written to be edited outside the app (RStudio ...); try it afterwards.",ひな型を書きます。アプリの外（RStudio など）で直してから、試してください。
+The skeleton is written to be edited outside the app (RStudio ...); try it afterwards.,ひな型を書きます。アプリの外（RStudio など）で直してから、試してください。
 Write it,書く
 "%s is written: edit it outside the app, then try it.",%s を書きました。アプリの外で直してから試してください。
 study,試験
@@ -1898,7 +1896,7 @@ Stopped while loading the study's files:,試験のファイルを読み込むと
 Stopped while making the data:,データを作るところで止まりました:
 Stopped in the function:,関数の中で止まりました:
 The title and description are the first lines of the comment (#') above the function in its file.,見出しと説明は、関数のファイルで関数の上に書いたコメント（#'）の先頭の行です。
-"%s is loaded by the study's ARD programs: an analysis can name it as its method. Every report's ARD is outdated now (the files the programs load are part of it).",%s を試験の ARD プログラムが読み込むようにしました。解析の method に書けます。読み込むファイルは ARD の一部なので、全部の帳票の ARD が「古い」になります。
+%s is loaded by the study's ARD programs: an analysis can name it as its method. Every report's ARD is outdated now (the files the programs load are part of it).,%s を試験の ARD プログラムが読み込むようにしました。解析の method に書けます。読み込むファイルは ARD の一部なので、全部の帳票の ARD が「古い」になります。
 Marked: a line the other file has not.,色付き: もう一方のファイルに無い行。
 Trying %s (up to 60 seconds) ...,%s を試しています（最長 60 秒）…
 It is written for this study: the company standards' folder (%s) cannot be written from here.,この試験に書きます（会社標準のフォルダ %s には、ここから書けません）。
@@ -1929,7 +1927,7 @@ Near spellings,近い綴りの候補
 Near spelling: %s -> %s,近い綴り: %s → %s
 Match: %s,一致: %s
 Near: ,近いもの: 
-"Make it as an own function (the Own functions tab), or write it as R code (custom).","独自の関数で作る（Own functions タブ）か、R コードで書く（custom）ことができます。"
+"Make it as an own function (Study > Own functions), or write it as R code (custom).",独自の関数で作る（試験 > 独自の関数）か、R コードで書く（custom）ことができます。
 All categories,すべての分類
 (not chosen),（未選択）
 Keywords:,キーワード:
@@ -1937,7 +1935,7 @@ Keywords:,キーワード:
 needs making again (its definition has changed),作り直しが必要（定義が変わりました）
 "Since this report's ARD was made, something it is made from has changed: its analyses, their analysis sets or datasets, the study's settings, the study's own ARD functions or the code lists. Make it again to see the tables as the definition is now.",この帳票の ARD を作った後で、元になるもの（この帳票の解析、その解析対象集団やデータセット、試験の設定、試験独自の ARD 関数、コードリスト）のどれかが変わりました。今の定義の表を見るには作り直してください。
 This report's ARD has not been made yet: make it to see its tables.,この帳票の ARD はまだ作っていません。表を見るには作ってください。
-"Its ARD program failed: see what it printed (ARD tab > Study ARD), fix it and make it again.",ARD プログラムが失敗しました。出力（ARD タブ > 試験 ARD）を見て直し、作り直してください。
+"Its ARD program failed: see what it printed (Data > Study ARD), fix it and make it again.",ARD プログラムが失敗しました。出力（データ > 試験 ARD）を見て直し、作り直してください。
 Make the ARD,ARD を作る
 Make the ARD again,ARD を作り直す
 Delete the analysis...,解析を削除…
