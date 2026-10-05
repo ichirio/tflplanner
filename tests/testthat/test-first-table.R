@@ -380,8 +380,8 @@ test_that("the data of an analysis is one choice of dataset and analysis set", {
   ch3 <- .an_data_choices(c("ADSL", "ADAE"), po, "ADSL|SAF", w)
   expect_identical(unname(ch3)[1], "ADSL|SAF")
   expect_false("|SAF" %in% ch3)
-  expect_identical(.an_data_split("ADAE|SAF"), list(dataset = "ADAE", pop = "SAF"))
-  expect_identical(.an_data_split("|SAF"), list(dataset = NA_character_, pop = "SAF"))
+  expect_identical(.an_data_split("ADAE|SAF"), list(dataset = "ADAE", pop = "SAF", data = NA_character_))
+  expect_identical(.an_data_split("|SAF"), list(dataset = NA_character_, pop = "SAF", data = NA_character_))
   expect_identical(.an_data_value(NA, "SAF"), "|SAF")
 })
 

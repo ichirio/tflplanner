@@ -2047,3 +2047,4 @@ Make the subjects,対象の症例を作る
 Go on without,作らずに続ける
 Data to analyse,解析するデータ
 The subjects of this report,この帳票の対象の症例
+"The rows the analysis reads: an analysis data as 2-1 above makes it, or the dataset's records of the analysis set's subjects. The name is the one the program gives the data.",解析が読む行：上の 2-1 で作る解析データ、またはデータセットのうち解析対象集団の被験者の行。（）内は、プログラムでのこのデータの名前です。

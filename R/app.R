@@ -3431,7 +3431,9 @@ app_server <- function(input, output, session, start) {
     tg <- ard_target()
     if (is.null(tg)) return()
     p <- rv$p
-    if (length(.adata_of_report(p, tg)) || !nrow(p$ard$populations)) return(an_add())
+    a0 <- shiny::isolate(st_rows())
+    if (length(.adata_of_report(p, tg)) || (!is.null(a0) && nrow(a0)) ||
+        !nrow(p$ard$populations)) return(an_add())
     po <- p$ard$populations
     id <- .adata_suggest(p, po$dataset[1L], po$population_id[1L])
     shiny::showModal(shiny::modalDialog(
