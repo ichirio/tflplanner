@@ -17,7 +17,7 @@ setup_tflplanner(
 \arguments{
 \item{home}{The home folder.  \code{NULL} keeps the current one (see
 \code{\link[=tflplanner_home]{tflplanner_home()}}); a folder given here is remembered for later
-sessions.}
+sessions -- one in the temporary folder only for this session.}
 
 \item{studies_root}{Where new study folders are created.  \code{NULL} keeps
 the current setting, or on a first setup uses \verb{<home>/workspace}.}

@@ -20,6 +20,30 @@ test_that("setup makes the home and remembers where studies go", {
   expect_match(studies_root(), "ws2$")
 })
 
+test_that("a home in the temporary folder is not remembered for later sessions", {
+  # the tests write no user settings (helper.R): R_user_dir() is temporary
+  expect_true(.in_temp(tools::R_user_dir("tflplanner", "config")))
+  old <- options(tflplanner.home = NULL)
+  on.exit(options(old), add = TRUE)
+  unlink(.pointer_file())
+  home <- file.path(withr_tempdir(), "home")
+  expect_message(setup_tflplanner(home = home, studies_root = file.path(home, "ws")),
+                 "in this R session only")
+  # this session's home, not the next one's
+  expect_false(file.exists(.pointer_file()))
+  expect_identical(tflplanner_home(), normalizePath(home, "/", mustWork = FALSE))
+  # a folder outside it is remembered
+  expect_false(.in_temp("C:/studies/tflplanner_home"))
+  expect_false(.in_temp("/home/u/tflplanner"))
+  expect_true(.in_temp(file.path(tempdir(), "x")))
+  expect_true(.in_temp(file.path(tempdir(), "not", "made", "yet")))
+  # a folder named two ways is one (macOS: /var is /private/var)
+  if (.Platform$OS.type != "windows") {
+    expect_identical(.real_path("/private/tmp/tflplanner-none/a"),
+                     .real_path("/tmp/tflplanner-none/a"))
+  }
+})
+
 test_that("a new study has its layout and is registered", {
   home <- local_home()
   s <- create_study("ABC-101", title = "A phase 2 study", phase = "2")
