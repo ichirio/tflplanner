@@ -77,7 +77,7 @@ test_that("the builder's header form writes the report's col_header", {
   shiny::testServer(server_for("H1"), {
     rv <- session$userData$rv
     bform <- session$userData$bform
-    session$setInputs(target = "T-DM", nav = "outputs", rep_nav = "content",
+    session$setInputs(target = "T-DM", nav = "make", step = "content", content_nav = "content",
                       table_nav = "builder")
     b <- function(x) paste0("b", bform$n, "_", x)
     v <- list()

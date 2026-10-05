@@ -118,7 +118,7 @@ test_that("a row of the analyses grid is edited as a form", {
   save_study(s)
   shiny::testServer(server_for("AF"), {
     rv <- session$userData$rv
-    session$setInputs(nav = "ard", target = "T1")
+    session$setInputs(nav = "make", step = "ard", target = "T1")
     # the first analysis (BIGN) until a row is clicked
     expect_match(output$ard_stat_ui$html, "Analysis BIGN of T1")
     expect_match(output$ard_stat_ui$html, "What to compute", fixed = TRUE)
@@ -274,7 +274,7 @@ test_that("Add > Listing from the data: a listing shown in one form", {
     session$setInputs(ml_data = "data/adam/adae.rds")
     expect_match(output$ml_cols$html, "AEDECOD")
     session$setInputs(ml_group = "TRTA", ml_cols_pick = c("USUBJID", "AEDECOD", "AESEV"))
-    session$setInputs(add_ok = 1, target = "L-AE", nav = "outputs", rep_nav = "content")
+    session$setInputs(add_ok = 1, target = "L-AE", nav = "make", step = "content", content_nav = "content")
     expect_identical(lf_rows(rv$p, "listing_cols", "L-AE")$vars,
                      c("TRTA", "USUBJID", "AEDECOD", "AESEV"))
     h <- output$lf_preview_out$html
@@ -295,7 +295,7 @@ test_that("a new figure starts from a template the study's data can draw", {
   s$planner <- add_output(s$planner, "F-AGE", type = "figure")
   save_study(s)
   shiny::testServer(server_for("G1"), {
-    session$setInputs(target = "F-AGE", nav = "outputs", rep_nav = "content")
+    session$setInputs(target = "F-AGE", nav = "make", step = "content", content_nav = "content")
     h <- output$pd_body$html
     # ADTTE templates are listed but cannot be chosen, and say why
     expect_match(h, "needs data this study has not got")
@@ -337,7 +337,7 @@ test_that("a figure starts empty, and a figure written by hand shows its two way
     "plot <- ggplot2::ggplot(adsl, ggplot2::aes(AGE)) + ggplot2::geom_histogram()"
   save_study(s)
   shiny::testServer(server_for("G2"), {
-    session$setInputs(target = "F-U", nav = "outputs", rep_nav = "content")
+    session$setInputs(target = "F-U", nav = "make", step = "content", content_nav = "content")
     # written by hand: keep the code (a user-code report) or the designer
     expect_match(output$pd_note$html, "written by hand. Two ways", fixed = TRUE)
     expect_match(output$pd_note$html, "fig_to_user", fixed = TRUE)

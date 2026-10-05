@@ -181,7 +181,7 @@ test_that("the screen says why a function was found, and its category", {
                            "SAFFL", "TRT01A", c("AGE", "SEX"))
   save_study(s)
   shiny::testServer(server_for("FS"), {
-    session$setInputs(nav = "ard", target = "T1")
+    session$setInputs(nav = "make", step = "ard", target = "T1")
     session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
     st_env <- session$userData$st_env
     id <- function(x) paste0("st", st_env$n, "_", x)
@@ -235,7 +235,7 @@ test_that("the chooser is one line once a function is chosen", {
                            "SAFFL", "TRT01A", c("AGE", "SEX"))
   save_study(s)
   shiny::testServer(server_for("FC"), {
-    session$setInputs(nav = "ard", target = "T1")
+    session$setInputs(nav = "make", step = "ard", target = "T1")
     session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
     h <- output$ard_stat_ui$html
     # closed (no open attribute), "method" and the choice on one line
@@ -443,7 +443,7 @@ test_that("the form starts from the setting a word means", {
                            "SAFFL", "TRT01A", c("AGE", "SEX"))
   save_study(s)
   shiny::testServer(server_for("FP"), {
-    session$setInputs(nav = "ard", target = "T1")
+    session$setInputs(nav = "make", step = "ard", target = "T1")
     session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
     st_env <- session$userData$st_env
     id <- function(x) paste0("st", st_env$n, "_", x)
