@@ -115,6 +115,64 @@ test_that("the Windows shortcuts: desktop and Start menu, wscript + the VBScript
                         s, fixed = TRUE)))
 })
 
+test_that("a shortcut the VBScript could not make is made by PowerShell, else said why", {
+  base <- withr::local_tempdir()
+  dirs <- list(desktop = file.path(base, "Desktop"),
+               start_menu = file.path(base, "Programs", "tflplanner"))
+  sc <- .windows_shortcuts(file.path(base, "launcher"), dirs, "en")
+  make <- function(r) {
+    dir.create(dirname(r$path), recursive = TRUE, showWarnings = FALSE)
+    writeLines("lnk", r$path)
+    character()
+  }
+  nothing <- function(r) character()
+  calls <- character()
+  log_ps <- function(r) {
+    calls <<- c(calls, basename(r$path))
+    make(r)
+  }
+  # the VBScript makes them: PowerShell is not asked
+  expect_identical(.make_lnk(sc, vbs = make, ps = log_ps), sc$path)
+  expect_identical(calls, character())
+  unlink(sc$path)
+  # the VBScript stopped (security software, without a word) for the
+  # desktop only: PowerShell makes that one, the others are the VBScript's
+  vbs_no_desktop <- function(r) if (basename(dirname(r$path)) == "Desktop") character() else make(r)
+  expect_identical(.make_lnk(sc, vbs = vbs_no_desktop, ps = log_ps), sc$path)
+  expect_identical(calls, "tflplanner.lnk")
+  expect_true(all(file.exists(sc$path)))
+  unlink(sc$path)
+  # neither: the error names it and says what to do
+  err <- expect_error(.make_lnk(sc, vbs = nothing, ps = function(r) "blocked by policy"),
+                      "Could not make the shortcut")
+  expect_match(conditionMessage(err), "(and 2 more)", fixed = TRUE)
+  expect_match(conditionMessage(err), "blocked by policy", fixed = TRUE)
+  expect_match(conditionMessage(err), "Security software", fixed = TRUE)
+  expect_match(conditionMessage(err), "New > Shortcut", fixed = TRUE)
+  expect_match(conditionMessage(err), "wscript.exe", fixed = TRUE)
+  # an error from one way is a message, not a stop
+  expect_identical(.make_lnk(sc, vbs = function(r) stop("cscript missing"), ps = make), sc$path)
+  # the PowerShell: WScript.Shell, the values quoted for PowerShell
+  r <- sc[3, ]
+  r$description <- "it's"
+  ps <- .lnk_ps(r)
+  expect_true(any(grepl("New-Object -ComObject WScript.Shell", ps, fixed = TRUE)))
+  expect_true(any(grepl("$l.Description = 'it''s'", ps, fixed = TRUE)))
+  expect_true(any(grepl("--update'$", ps)))
+  expect_identical(ps[length(ps)], "$l.Save()")
+})
+
+test_that("the PowerShell way makes a real .lnk", {
+  skip_on_cran()
+  skip_if_not(.Platform$OS.type == "windows")
+  base <- withr::local_tempdir()
+  dirs <- list(desktop = file.path(base, "D"), start_menu = file.path(base, "P"))
+  sc <- .windows_shortcuts(file.path(base, "launcher"), dirs, "en",
+                           start_menu = FALSE, update = FALSE)
+  .lnk_by_ps(sc)
+  expect_true(file.exists(sc$path))
+})
+
 test_that("add_shortcut() / remove_shortcut() on Windows make and remove real .lnk files", {
   skip_on_cran()
   skip_if_not(.Platform$OS.type == "windows")

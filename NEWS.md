@@ -8,6 +8,20 @@
   columns `subjects` (a closed choice: the analysis data) and `keep`.
   Needs tflspec 0.0.24.9046.
 
+- **A temporary home is not remembered** (#150).  `setup_tflplanner(home
+  = )` with a folder in the temporary folder (a script's, a test's) uses it
+  for the session only: remembered, every later session opened a folder
+  that is deleted when the R session ends (a screenshot script did this to
+  a user's home).  The screenshot script and the tests keep their own
+  `tools::R_user_dir()` folders.
+
+- **A shortcut that security software stops is made another way** (#149).
+  On Windows, `add_shortcut()` makes each shortcut on its own, and one the
+  VBScript could not write -- security software may stop a script from
+  writing to the desktop without a message, and then nothing after it was
+  made either -- is made again by PowerShell.  If neither can, the error
+  says so and how to allow it or to make the shortcut by hand.
+
 - **Start from the setting a word means** (#144).  A word of the
   function search can mean a setting as well as a function: PROC LOGISTIC
   is `ard_regression()` with `method = "glm", method.args =
