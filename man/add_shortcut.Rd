@@ -60,6 +60,11 @@ opens it; otherwise it starts it, and closing the browser stops it.
 
 "Update and launch" first updates rtfreporter, tflspec and tflplanner
 (\code{\link[=update_tflplanner]{update_tflplanner()}}, on the channel last used), then starts the app.
+
+On Windows the shortcuts are written by a VBScript, and one it could not
+write again by PowerShell: security software may stop a script from
+writing to the desktop without a message.  If neither can, the error
+says how to allow it or to make the shortcut by hand.
 }
 \examples{
 \dontrun{
