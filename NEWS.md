@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **Closing the app** (#137).  A Close button (where the app runs on this
+  computer) asks about unsaved changes -- save and close, close without
+  saving, or cancel -- and stops tflplanner.  Inside RStudio's Shiny window
+  or Viewer the page no longer holds the window on unsaved changes: they
+  show no question, so the window would not close at all.  `run_app()`
+  opens the system's own web browser by default, as the desktop shortcut
+  does (the address handed to the system, not to RStudio's browser
+  option); `launch.browser =` is followed when given.
+
 - **Find a function by what it computes** (#135).  The ARD form's
   function search reads a dictionary of the words statisticians use: a
   statistic (`SMD`, `odds ratio`, `hazard ratio`), a SAS procedure

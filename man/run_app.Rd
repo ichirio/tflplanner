@@ -5,7 +5,12 @@
 \alias{planner_app}
 \title{Start the tflplanner app}
 \usage{
-run_app(study = NULL, ..., stop_on_close = FALSE)
+run_app(
+  study = NULL,
+  ...,
+  stop_on_close = FALSE,
+  launch.browser = .external_browser
+)
 
 planner_app(study = NULL, stop_on_close = FALSE)
 }
@@ -13,11 +18,18 @@ planner_app(study = NULL, stop_on_close = FALSE)
 \item{study}{A study to open at start: a registered study's id, or a
 study folder.}
 
-\item{...}{Passed to \code{\link[shiny:runApp]{shiny::runApp()}} (e.g. \code{launch.browser}, \code{port}).}
+\item{...}{Passed to \code{\link[shiny:runApp]{shiny::runApp()}} (e.g. \code{port}).}
 
 \item{stop_on_close}{Stop the app when its last browser tab is closed
 (after a few seconds, so that reloading the page does not stop it).
 The shortcut and \code{\link[=launch_app]{launch_app()}} start it this way.}
+
+\item{launch.browser}{Where the app opens: by default the system's own
+web browser, as the desktop shortcut opens it -- also when R runs in
+RStudio, whose Viewer and Shiny window do not ask before a window with
+unsaved changes closes.  \code{FALSE} opens nothing (the address is printed);
+a function of the URL, or \code{TRUE} (shiny's
+\code{getOption("shiny.launch.browser")}), as \code{\link[shiny:runApp]{shiny::runApp()}} takes it.}
 }
 \value{
 \code{planner_app()} returns a \code{\link[shiny:shinyApp]{shiny::shinyApp()}} object;

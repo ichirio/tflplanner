@@ -107,7 +107,13 @@
 #'
 #' @param study A study to open at start: a registered study's id, or a
 #'   study folder.
-#' @param ... Passed to [shiny::runApp()] (e.g. `launch.browser`, `port`).
+#' @param ... Passed to [shiny::runApp()] (e.g. `port`).
+#' @param launch.browser Where the app opens: by default the system's own
+#'   web browser, as the desktop shortcut opens it -- also when R runs in
+#'   RStudio, whose Viewer and Shiny window do not ask before a window with
+#'   unsaved changes closes.  `FALSE` opens nothing (the address is printed);
+#'   a function of the URL, or `TRUE` (shiny's
+#'   `getOption("shiny.launch.browser")`), as [shiny::runApp()] takes it.
 #' @param stop_on_close Stop the app when its last browser tab is closed
 #'   (after a few seconds, so that reloading the page does not stop it).
 #'   The shortcut and [launch_app()] start it this way.
@@ -121,8 +127,30 @@
 #'   run_app("ABC-101")
 #' }
 #' @export
-run_app <- function(study = NULL, ..., stop_on_close = FALSE) {
-  shiny::runApp(planner_app(study, stop_on_close = stop_on_close), ...)
+run_app <- function(study = NULL, ..., stop_on_close = FALSE,
+                    launch.browser = .external_browser) { # nolint: object_name_linter. shiny's name
+  shiny::runApp(planner_app(study, stop_on_close = stop_on_close),
+                launch.browser = launch.browser, ...)
+}
+
+# Is the app at an address of this computer (not a server)?
+.is_local_host <- function(host) {
+  isTRUE(host %in% c("localhost", "127.0.0.1", "::1", "[::1]"))
+}
+
+# Open a URL in the system's own web browser.  utils::browseURL() follows
+# getOption("browser"), which RStudio replaces with its own (a localhost
+# address then opens inside RStudio); the system is asked directly instead.
+.external_browser <- function(url) {
+  sys <- Sys.info()[["sysname"]]
+  if (.Platform$OS.type == "windows") {
+    shell.exec(url)
+  } else if (identical(sys, "Darwin")) {
+    system2("open", url, wait = FALSE)
+  } else {
+    utils::browseURL(url, browser = Sys.getenv("R_BROWSER", "xdg-open"))
+  }
+  invisible(url)
 }
 
 #' @rdname run_app
@@ -793,7 +821,8 @@ app_ui <- function(lang = "en") {
 
     bslib::nav_spacer(),
     bslib::nav_item(shiny::uiOutput("save_state")),
-    bslib::nav_item(shiny::uiOutput("save_btn")))
+    bslib::nav_item(shiny::uiOutput("save_btn")),
+    bslib::nav_item(shiny::uiOutput("close_btn")))
 }
 
 # ---------------------------------------------------------------- server
@@ -861,8 +890,24 @@ $(document).on('click', '#save', function() {
   $(document).on('shiny:connected', function() {
     Shiny.addCustomMessageHandler('tflplanner-dirty', function(x) { dirty = !!x; });
   });
+  // RStudio's Shiny window and Viewer show no dialog: they only refuse to
+  // close.  There, nothing is held (the Close button asks instead).
+  var inRStudio = /RStudio/i.test(navigator.userAgent);
   window.addEventListener('beforeunload', function(e) {
-    if (dirty) { e.preventDefault(); e.returnValue = ''; }
+    if (dirty && !inRStudio) { e.preventDefault(); e.returnValue = ''; }
+  });
+  // the app has stopped (Close): say so, and close the window if allowed
+  $(document).on('shiny:connected', function() {
+    Shiny.addCustomMessageHandler('tflplanner-closed', function(x) {
+      dirty = false;
+      var d = document.createElement('div');
+      d.style.padding = '3rem';
+      d.style.fontSize = '1.1rem';
+      d.textContent = x;
+      document.body.innerHTML = '';
+      document.body.appendChild(d);
+      window.close();
+    });
   });
 })();
 "
@@ -1208,6 +1253,43 @@ app_server <- function(input, output, session, start) {
     if (has_study()) .btn("save", t("Save"), class = "btn-sm btn-primary",
                           `data-saving` = t("Saving..."))
   })
+  # [Close]: tflplanner stops -- where it runs on this computer only (an
+  # app on a server is not one user's to stop).  Unsaved changes are asked
+  # about first: save and close, close without saving, or cancel.  The same
+  # in every browser, RStudio's windows included (they cannot ask on their
+  # own when a window with unsaved changes closes).
+  app_local <- shiny::reactive(.is_local_host(session$clientData$url_hostname))
+  output$close_btn <- shiny::renderUI({
+    if (isTRUE(app_local())) {
+      .btn("close_app", t("Close"), class = "btn-sm btn-outline-secondary ms-1")
+    }
+  })
+  shiny::observeEvent(input$close_app, {
+    unsaved <- isTRUE(dirty())
+    shiny::showModal(shiny::modalDialog(
+      title = t("Close tflplanner"), easyClose = TRUE,
+      shiny::p(if (unsaved) t("There are unsaved changes. Save them before tflplanner stops?") else
+        t("tflplanner stops; then its window can be closed.")),
+      footer = shiny::tagList(
+        shiny::modalButton(t("Cancel")),
+        if (unsaved) .btn("close_nosave", t("Close without saving"),
+                          class = "btn-outline-danger"),
+        if (unsaved) .btn("close_save", t("Save and close"), class = "btn-primary")
+        else .btn("close_nosave", t("Close"), class = "btn-primary"))))
+  })
+  close_now <- function() {
+    shiny::removeModal()
+    session$sendCustomMessage("tflplanner-closed",
+                              t("tflplanner has stopped. This window can be closed."))
+    later::later(function() shiny::stopApp(), 0.5)
+  }
+  shiny::observeEvent(input$close_save, {
+    do_save()
+    # the save did not go through (it said why): stay open
+    if (isTRUE(shiny::isolate(dirty()))) return()
+    close_now()
+  })
+  shiny::observeEvent(input$close_nosave, close_now())
   # no study yet: the ways to start, the sample first
   output$welcome <- shiny::renderUI({
     if (nrow(studies())) return(NULL)
