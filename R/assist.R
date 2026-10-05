@@ -191,7 +191,7 @@ fetch_ard <- function(study, output_id, timeout = 300,
     have <- file.exists(out) && any(readRDS(out)$output_id == output_id)
     if (!have) {
       stop("The study ARD has nothing for '", output_id,
-           "' yet: build it on the ARD tab first.", call. = FALSE)
+           "' yet: build it in step 2 (ARD) first.", call. = FALSE)
     }
   }
   tmp <- tempfile("fetch")

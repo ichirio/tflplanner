@@ -233,8 +233,8 @@
   output$pd_note <- shiny::renderUI({
     m <- mode()
     msg <- switch(m,
-      none = t("Choose a Figure report in the sidebar."),
-      other = t("This tab designs figures: choose a Figure report in the sidebar."),
+      none = t("Choose a Figure report on the left."),
+      other = t("Figures are designed here: choose a Figure report on the left."),
       hand = if (fig_is_new()) t("A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead, open User code at the bottom.") else
         shiny::tagList(
           shiny::div(t("This figure is written by hand. Two ways:")),
@@ -624,7 +624,7 @@
   shiny::observeEvent(input$pd_drop, {
     shiny::showModal(shiny::modalDialog(
       title = t("Remove the design?"),
-      t("The figure's plot is then its data code again (Reports tab), written by hand."),
+      t("The figure's plot is then its data code again (step 3, Data code), written by hand."),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn("pd_drop_ok", t("Remove"), class = "btn-danger"))))
   })

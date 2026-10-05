@@ -7,6 +7,13 @@
   (10 s the first time, about a second after); the answers are the same.
   Saving a study, which writes every program, is quicker too.
 
+- **Texts name the tabs as they are now** (#171).  About 35 messages and
+  help texts still pointed to the old tabs (the ARD tab, the Reports tab, the
+  Tables / Figures / Listings tabs, the Results tab, the sidebar ...); they
+  now say step 2 (ARD), the Report list, Data > Study ARD, step 3 (Content),
+  step 4 (Page), the Runs tab, Study > Own functions or "on the left", in
+  English and Japanese.  A few Japanese wordings are made consistent.
+
 - **The Data tab has the study's data in one place** (#168).  On the left
   what there is, on the right the one chosen: the files (SDTM / ADaM / other,
   filtered by kind, a file's first rows), the ARDs (the study ARD with its
