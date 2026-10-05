@@ -149,10 +149,12 @@ set_fig_design <- function(x, output_id, design) {
   out <- list()
   for (d in datasets) {
     code <- .read_dataset_lines(x, d)
-    r <- tryCatch({
+    # a dataset that cannot be read (no file yet) is left out -- the
+    # design's check says so; readRDS() warns before it fails, quietly here
+    r <- tryCatch(suppressWarnings({
       eval(parse(text = code, encoding = "UTF-8"), envir = e)
       get(make.names(tolower(d)), envir = e)
-    }, error = function(err) NULL)
+    }), error = function(err) NULL)
     if (is.data.frame(r)) out[[toupper(d)]] <- r
   }
   out

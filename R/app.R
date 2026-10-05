@@ -2664,12 +2664,11 @@ app_server <- function(input, output, session, start) {
     }
     q <- trimws(input[[st_id("fn_q")]] %||% "")
     e <- if (nzchar(q)) {
-      hit <- grepl(q, e$label, ignore.case = TRUE, fixed = TRUE) |
-        grepl(q, e$label_en, ignore.case = TRUE, fixed = TRUE) |
-        grepl(q, e$value, ignore.case = TRUE, fixed = TRUE) |
-        grepl(q, gsub("_", " ", e$value, fixed = TRUE), ignore.case = TRUE,
-              fixed = TRUE) |
-        grepl(q, e$description %||% "", ignore.case = TRUE, fixed = TRUE)
+      # the words as typed, in any case (grepl() cannot take fixed and
+      # ignore.case together: both sides lower-cased instead)
+      has <- function(x) grepl(tolower(q), tolower(x), fixed = TRUE)
+      hit <- has(e$label) | has(e$label_en) | has(e$value) |
+        has(gsub("_", " ", e$value, fixed = TRUE)) | has(e$description %||% "")
       e[hit, , drop = FALSE]
     } else {
       e[e$category == (input[[st_id("fn_cat")]] %||% e$category[1L]), , drop = FALSE]

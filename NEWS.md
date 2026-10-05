@@ -7,6 +7,12 @@
   footnote then says `{STUDY}`.  The tokens help names them; in Japanese
   too.  Needs tflspec 0.0.24.9042 and rtfreporter 0.8.2.9023.
 
+- **The ARD form's function search ignores case** (#129).  It asked
+  `grepl()` for `fixed` and `ignore.case` together, and R drops
+  `ignore.case` then: "T TEST" found nothing, and every search warned.
+  The figure preview leaves out a dataset that has no file yet without a
+  warning (as before, the design's check says so).
+
 - **The tokens help names `{PROGRAM_FULL}`** (tflspec #127), the
   program's absolute path (rtfreporter #560), in Japanese too.  Needs
   tflspec 0.0.24.9041 and rtfreporter 0.8.2.9021.
