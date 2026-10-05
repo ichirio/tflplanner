@@ -271,6 +271,7 @@ studies_root <- function(home = tflplanner_home()) {
       p$lf[[s]] <- .normalize_lf_sheet(.df_from(ps$lf[[s]], p$lf[[s]]), s)
     }
   }
+  p <- .old_program_default(p)
   p$fig_designs <- .fig_designs_from_state(ps$fig_designs)
   if (!is.null(ps$ard)) {
     for (s in names(p$ard)) {

@@ -35,6 +35,24 @@ report_sheets <- function() {
 #' @export
 report_types <- function() c("table", "listing", "figure", "user")
 
+# tflplanner wrote `program = {output_id}.R` on every study's default report
+# row (and the company standards' default) up to 0.0.2.9057.  That was its
+# default, not a choice: read as blank, so the program's own file name
+# names it ({PROGRAM}) and the report's ID is only rtfreporter's last resort
+# (tflspec's program_fallback).  A report's own row, or another default,
+# is a choice and is kept.
+.old_program_default <- function(p) {
+  r <- p$sheets$report
+  if (is.null(r) || !nrow(r) || !"program" %in% names(r)) return(p)
+  old <- is.na(r$output_id) & !is.na(r$program) &
+    trimws(r$program) == "{output_id}.R"
+  if (any(old)) {
+    r$program[old] <- NA_character_
+    p$sheets$report <- r
+  }
+  p
+}
+
 #' Read a study's code list into its definition
 #'
 #' `read_codelist()` reads a code list -- one row a value of a variable:
@@ -261,6 +279,7 @@ read_planner <- function(path) {
   sp <- tflspec::tfl_read_report_spec(path)
   p <- new_planner()
   for (s in names(p$sheets)) p$sheets[[s]] <- .normalize_sheet(sp[[s]], s)
+  p <- .old_program_default(p)
   st <- sp$study
   for (i in seq_len(nrow(st))) {
     if (st$key[i] %in% names(p$study) && !is.na(st$value[i])) {
