@@ -19,6 +19,6 @@ remove_analysis(x, output_id, id)
 \description{
 Takes an analysis out of a report's ARD definition: one of its own, or
 one inside a stack (the stack keeps the others).  A stack itself is
-deleted with \code{\link[=stack_remove]{stack_remove()}}, which says what becomes of the analyses
+deleted with its own Delete button (\code{stack_remove()}), which says what becomes of the analyses
 inside it.
 }

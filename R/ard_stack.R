@@ -319,7 +319,7 @@ stack_remove <- function(x, output_id, parent, how = c("ungroup", "all"), keep_n
 #'
 #' Takes an analysis out of a report's ARD definition: one of its own, or
 #' one inside a stack (the stack keeps the others).  A stack itself is
-#' deleted with [stack_remove()], which says what becomes of the analyses
+#' deleted with its own Delete button (`stack_remove()`), which says what becomes of the analyses
 #' inside it.
 #'
 #' @param x A `tflplanner`.
