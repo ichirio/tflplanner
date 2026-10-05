@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **Tokens of your own on the Page tab** (tflspec #129).  Reports > Page
+  has a `tokens` table beside titles and footnotes: one row a token
+  (`name` `STUDY`, `value` `ABC-123`), the study's defaults and the
+  report's own, `(none)` taking a default out; a header, footer, title or
+  footnote then says `{STUDY}`.  The tokens help names them; in Japanese
+  too.  Needs tflspec 0.0.24.9042 and rtfreporter 0.8.2.9023.
+
 - **The ARD form's function search ignores case** (#129).  It asked
   `grepl()` for `fixed` and `ignore.case` together, and R drops
   `ignore.case` then: "T TEST" found nothing, and every search warned.

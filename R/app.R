@@ -19,7 +19,7 @@
   cell_styles = "cell_styles: cell looks",
   col_header = "col_header: column header",
   report = "report", page = "page", header = "header", footer = "footer",
-  titles = "titles", footnotes = "footnotes")
+  titles = "titles", footnotes = "footnotes", tokens = "tokens: your own")
 
 .type_labels <- c(table = "Table", listing = "Listing", figure = "Figure",
                   user = "User code")
@@ -566,7 +566,7 @@ app_ui <- function(lang = "en") {
     bslib::nav_panel(
       t("Page"), value = "page",
       shiny::p(class = "small text-muted",
-               t("The page of the report chosen in the sidebar: its titles, footnotes and its own header or footer. Study defaults = every report's.")),
+               t("The page of the report chosen in the sidebar: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
       bslib::layout_columns(
         col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
         shiny::div(

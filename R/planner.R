@@ -28,7 +28,7 @@ table_sheets <- function() {
 #' @rdname table_sheets
 #' @export
 report_sheets <- function() {
-  c("report", "page", "header", "footer", "titles", "footnotes")
+  c("report", "page", "header", "footer", "titles", "footnotes", "tokens")
 }
 
 #' @rdname table_sheets
