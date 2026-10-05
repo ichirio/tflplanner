@@ -375,7 +375,7 @@ test_that("every setting in the dictionary runs as written", {
     'method = "coxph", package = "survival", exponentiate = TRUE' = paste0("adtte, formula = ", surv, " ~ TRTA"),
     'method = "coxph", package = "survival", method.args = list(ties = "breslow"), exponentiate = TRUE' =
       paste0("adtte, formula = ", surv, " ~ TRTA"),
-    'method = "glm.nb", package = "MASS"' = "adsl, formula = CNT ~ ARM")
+    'method = "glm.nb", package = "MASS", exponentiate = TRUE' = "adsl, formula = CNT ~ ARM")
   run <- function(fn, b, a) {
     r <- suppressWarnings(eval(parse(text = paste0(fn, "(", b, ", ", a, ")"))))
     err <- unlist(r$error)
