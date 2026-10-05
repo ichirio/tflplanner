@@ -247,3 +247,22 @@ test_that("the chooser is one line once a function is chosen", {
     expect_match(h, '<option value=".all" selected>', fixed = TRUE)
   })
 })
+
+test_that("the statistical review's points (S1, #139)", {
+  skip_if_not_installed("cardx")
+  # a CI of the pseudo-median is not a median CI
+  s <- fn_find("median CI")
+  expect_identical(s$rank[s$call == "cardx::ard_continuous_ci"], 3L)
+  expect_match(s$note[s$call == "cardx::ard_continuous_ci"], "pseudo-median", fixed = TRUE)
+  # Pearson: the chi-square test, and the correlation
+  s <- fn_find("Pearson")
+  expect_true("cardx::ard_stats_chisq_test" %in% s$call && "custom" %in% s$value)
+  expect_match(fn_find("Student")$note[1L], "var.equal = TRUE", fixed = TRUE)
+  # an adjusted difference
+  expect_true("cardx::ard_emmeans_contrast" %in% fn_find("\u5e73\u5747\u306e\u5dee")$call)
+  # SAS's defaults
+  expect_match(fn_find("PROC LIFETEST")$note[1L], "log-log", fixed = TRUE)
+  expect_match(fn_find("PROC PHREG")$note[1L], "breslow", fixed = TRUE)
+  expect_match(fn_find("PROC FREQ CHISQ")$note[1L], "correct = FALSE", fixed = TRUE)
+  expect_match(fn_find("PROC FREQ BINOMIAL")$note[1L], "waldcc", fixed = TRUE)
+})
