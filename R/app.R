@@ -417,10 +417,14 @@ app_ui <- function(lang = "en") {
 
   # the report chosen, and the help on what a report's rows are
   report_side <- bslib::sidebar(
-    id = "side", width = 270, open = "desktop",
+    id = "side", width = 330, open = "desktop",
     shiny::uiOutput("study_side"),
-    shiny::selectInput("target", t("Report (output_id)"),
-                       choices = c("-" = .all_rows), width = "100%"),
+    # the reports to search and choose from (R/report_picker.R); the
+    # chooser it sets is kept, out of sight
+    report_picker_ui("rp", lang),
+    shiny::div(style = "display: none",
+               shiny::selectInput("target", t("Report (output_id)"),
+                                  choices = c("-" = .all_rows), width = "100%")),
     shiny::tags$details(
       class = "small text-muted",
       shiny::tags$summary(t("What do these mean?")),
@@ -793,6 +797,7 @@ app_ui <- function(lang = "en") {
       bslib::card(
         bslib::card_header(t("Reports (TFL)")),
         shiny::uiOutput("uc_offer"),
+        report_search_ui("outputs_q", lang),
         # its own height (a fixed one let a long list cover the buttons)
         DT::DTOutput("outputs", height = "auto", fill = FALSE),
         shiny::uiOutput("report_moves"),
@@ -812,6 +817,7 @@ app_ui <- function(lang = "en") {
       bslib::layout_sidebar(
         sidebar = report_side,
         fillable = FALSE,
+        report_picker_compact_ui("rp", lang),
         shiny::uiOutput("report_head"),
         shiny::conditionalPanel(
           "output.report_kind == ''",
@@ -839,6 +845,7 @@ app_ui <- function(lang = "en") {
           shiny::downloadButton("rtf_download", t("Download the RTF"),
                                 class = "btn-sm")),
         shiny::uiOutput("job"),
+        report_search_ui("status_q", lang),
         DT::DTOutput("status")),
       bslib::card(
         bslib::card_header(t("Official runs (batch folders)")),
@@ -1940,6 +1947,27 @@ app_server <- function(input, output, session, start) {
         if (length(ids)) ids[1L] else .default_rows
     shiny::updateSelectInput(session, "target", choices = ch, selected = sel)
   })
+  # the list to choose a report from: searched, by section, by state
+  picker_rows <- shiny::reactive({
+    rv$ver
+    rv$status_ver
+    p <- rv$p
+    if (is.null(p) || !has_study()) return(.report_rows(new_planner()))
+    # the ARD's state as the ARD step has it; the runs' from their files
+    # (study_status() writes every program again: slow for a big study)
+    .report_rows(p, tryCatch(ard_state(), error = function(e) NULL),
+                 tryCatch(.report_run_light(current_study()), error = function(e) NULL))
+  })
+  report_picker_server(
+    "rp", picker_rows, now = shiny::reactive(input$target),
+    pick = function(v) shiny::updateSelectInput(session, "target", selected = v),
+    fixed = stats::setNames(list(t("Study defaults"), t("ALL (every row)")),
+                            c(.default_rows, .all_rows)),
+    lang = lang, folded = shiny::reactive(identical(input$side, FALSE)))
+  # the report list's and the runs' search: DT's own, on a hidden column
+  # of the normalized text (the rows keep their numbers)
+  shiny::observeEvent(input$outputs_q, .report_dt_set_search(session, "outputs", input$outputs_q))
+  shiny::observeEvent(input$status_q, .report_dt_set_search(session, "status", input$status_q))
   target <- shiny::reactive(.target_value(input$target))
   current_now <- shiny::reactive({
     tg <- target()
@@ -6711,6 +6739,7 @@ app_server <- function(input, output, session, start) {
     # "Title" here is the report's title; t("Title") is the study's
     names(v) <- c(t(c("output_id", "Type", "Program", "RTF", "Data")),
                   if (identical(lang, "en")) "Title" else t("Report title"))
+    v$.key <- .report_search_keys(shiny::isolate(picker_rows()), outputs_view()$output_id)
     DT::datatable(v, rownames = FALSE, escape = FALSE,
                   # a double click opens the report, as in the study list
                   callback = DT::JS(
@@ -6721,7 +6750,9 @@ app_server <- function(input, output, session, start) {
                   selection = list(mode = "single",
                                    selected = if (!is.na(sel)) sel),
                   options = list(dom = "t", paging = FALSE,
-                                 ordering = FALSE, scrollX = TRUE))
+                                 ordering = FALSE, scrollX = TRUE,
+                                 columnDefs = list(list(visible = FALSE, targets = ncol(v) - 1L)),
+                                 search = list(search = .report_dt_search(shiny::isolate(input$outputs_q)))))
   })
   shiny::observeEvent(input$target, {
     v <- outputs_view()
@@ -7205,8 +7236,12 @@ app_server <- function(input, output, session, start) {
                                    paste0(" (", t("edited by hand"), ")"), "")),
       stringsAsFactors = FALSE)
     names(v) <- t(c("output_id", "Type", "State", "When", "Why", "Program"))
+    v$.key <- .report_search_keys(shiny::isolate(picker_rows()), d$output_id)
     DT::formatStyle(
-      .dt(v, selection = "multiple"), names(v)[3L],
+      .dt(v, selection = "multiple",
+          columnDefs = list(list(visible = FALSE, targets = ncol(v) - 1L)),
+          search = list(search = .report_dt_search(shiny::isolate(input$status_q)))),
+      names(v)[3L],
       color = DT::styleEqual(t(unname(.ard_state_labels)),
                              c("#15803d", "#b45309", "#6b7280", "#b91c1c")))
   })
