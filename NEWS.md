@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **A shortcut that security software stops is made another way** (#149).
+  On Windows, `add_shortcut()` makes each shortcut on its own, and one the
+  VBScript could not write -- security software may stop a script from
+  writing to the desktop without a message, and then nothing after it was
+  made either -- is made again by PowerShell.  If neither can, the error
+  says so and how to allow it or to make the shortcut by hand.
+
 - **Your own words for the function search** (#140).  A function of
   one's own is found by the comment lines right above it in its file,
   `# tflplanner-keywords: risk difference, PROC FREQ RISKDIFF` (a plain
