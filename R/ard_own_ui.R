@@ -40,25 +40,30 @@
 #'
 #' @param study An `rtfstudy`.
 #' @return A data frame, one row a function: `name`, `file` (relative to
-#'   the study folder), `loaded`, `title`, `description`, `stat_names`.
+#'   the study folder), `loaded`, `title`, `description`, `stat_names`,
+#'   `keywords` (as [company_ard_functions()]).
 #' @export
 study_ard_functions <- function(study) {
   fs <- .study_fun_files(study)
   none <- data.frame(name = character(), file = character(), loaded = logical(),
                      title = character(), description = character(),
-                     stat_names = character(), stringsAsFactors = FALSE)
+                     stat_names = character(), keywords = character(),
+                     stringsAsFactors = FALSE)
   have <- file.exists(file.path(study$path, fs$file))
   fs <- fs[have, , drop = FALSE]
   if (!nrow(fs)) return(none)
   info <- tflspec::tfl_ard_function_info(file.path(study$path, fs$file))
   info <- info[!is.na(info$name), , drop = FALSE]
   if (!nrow(info)) return(none)
+  kw <- .fn_own_keywords(file.path(study$path, fs$file))
   rel <- fs$file[match(normalizePath(info$file, "/", FALSE),
                        normalizePath(file.path(study$path, fs$file), "/", FALSE))]
   out <- data.frame(name = info$name, file = rel,
                     loaded = fs$loaded[match(rel, fs$file)],
                     title = info$title, description = info$description,
-                    stat_names = info$stat_names, stringsAsFactors = FALSE)
+                    stat_names = info$stat_names,
+                    keywords = kw$keywords[match(info$name, kw$name)],
+                    stringsAsFactors = FALSE)
   out <- out[!duplicated(out$name), , drop = FALSE]
   rownames(out) <- NULL
   out
@@ -77,7 +82,7 @@ study_ard_functions <- function(study) {
 #' @return A data frame: `name`, `where` (`"study"`, `"company"`,
 #'   `"both"`), `study_file`, `company_file`, `loaded`, `differs`, `newer`
 #'   (`"study"`, `"company"` or `NA`), `used_by` (`"T1 / RD | ..."`),
-#'   `title`, `description`, `stat_names`, `tried` (when), `problems`
+#'   `title`, `description`, `stat_names`, `keywords`, `tried` (when), `problems`
 #'   (errors and warnings found), `stale` (the file changed since).
 #' @export
 own_ard_functions <- function(study, home = tflplanner_home()) {
@@ -85,7 +90,7 @@ own_ard_functions <- function(study, home = tflplanner_home()) {
   co <- tryCatch(company_ard_functions(home), error = function(e) NULL)
   if (is.null(co)) co <- data.frame(name = character(), file = character(),
                                     title = character(), description = character(),
-                                    stat_names = character())
+                                    stat_names = character(), keywords = character())
   names_ <- unique(c(st$name, co$name))
   a <- study$planner$ard$analyses
   checks <- own_function_checks(study)
@@ -118,7 +123,7 @@ own_ard_functions <- function(study, home = tflplanner_home()) {
       used_by = if (nrow(used)) paste(paste(used$output_id, used$analysis_id, sep = " / "),
                                       collapse = " | ") else NA_character_,
       title = src$title[k], description = src$description[k],
-      stat_names = src$stat_names[k],
+      stat_names = src$stat_names[k], keywords = src$keywords[k],
       tried = if (!is.null(ck)) ck$when %||% NA_character_ else NA_character_,
       problems = if (!is.null(ck)) as.integer(ck$problems %||% NA) else NA_integer_,
       stale = stale, stringsAsFactors = FALSE)
@@ -127,7 +132,8 @@ own_ard_functions <- function(study, home = tflplanner_home()) {
     name = character(), where = character(), study_file = character(),
     company_file = character(), loaded = logical(), differs = logical(),
     newer = character(), used_by = character(), title = character(),
-    description = character(), stat_names = character(), tried = character(),
+    description = character(), stat_names = character(), keywords = character(),
+    tried = character(),
     problems = integer(), stale = logical(), stringsAsFactors = FALSE)), rows))
   rownames(out) <- NULL
   out
@@ -315,8 +321,23 @@ new_ard_function <- function(study, name, type = c("summary", "test", "free"),
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   f <- file.path(dir, paste0(name, ".R"))
   tflspec::tfl_ard_function_template(name, type, file = f, test = test)
+  .add_keywords_line(f, name)
   if (where == "study") study <- .add_source(study, file.path(.study_fun_dir, basename(f)))
   study
+}
+
+# a new function's file: an empty `# tflplanner-keywords:` line at the top
+# of the comments above it, to fill in (the words the ARD form's search
+# finds it by; a plain comment, which roxygen does not read)
+.add_keywords_line <- function(file, name) {
+  x <- readLines(file, warn = FALSE, encoding = "UTF-8")
+  d <- grep(paste0("^", gsub(".", "[.]", name, fixed = TRUE), "[[:space:]]*(<-|=)"), x)[1L]
+  if (is.na(d)) return(invisible(FALSE))
+  k <- d - 1L
+  while (k >= 1L && grepl("^[[:space:]]*#", x[k])) k <- k - 1L
+  x <- append(x, "# tflplanner-keywords: ", after = k)
+  writeLines(enc2utf8(x), file, useBytes = TRUE)
+  invisible(TRUE)
 }
 
 # the study key `source` with one more file

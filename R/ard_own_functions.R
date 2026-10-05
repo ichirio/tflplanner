@@ -29,15 +29,21 @@
 #' @param home The tflplanner home.
 #' @return A data frame, one row a function: `name`, `file`, `title`,
 #'   `description` (from the roxygen block above it), `stat_names` (the
-#'   statistics it declares, ` | ` between them).
+#'   statistics it declares, ` | ` between them), `keywords` (the words the
+#'   ARD form's search finds it by: the comment lines
+#'   `# tflplanner-keywords: odds ratio, PROC LOGISTIC` right above it;
+#'   `", "` between them).
 #' @export
 company_ard_functions <- function(home = tflplanner_home()) {
   fs <- list.files(.own_fun_dir(home), pattern = "[.][Rr]$", full.names = TRUE)
   info <- tflspec::tfl_ard_function_info(fs)
   info <- info[!is.na(info$name), , drop = FALSE]
+  kw <- .fn_own_keywords(fs)
   out <- data.frame(name = info$name, file = basename(info$file),
                     title = info$title, description = info$description,
-                    stat_names = info$stat_names, stringsAsFactors = FALSE)
+                    stat_names = info$stat_names,
+                    keywords = kw$keywords[match(info$name, kw$name)],
+                    stringsAsFactors = FALSE)
   rownames(out) <- NULL
   out
 }

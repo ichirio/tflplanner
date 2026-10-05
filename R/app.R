@@ -2509,11 +2509,14 @@ app_server <- function(input, output, session, start) {
     e
   }
   # the search's dictionary, with the company's keywords and the old names
+  # (and the company's own words, the standards' sheet ard_fn_keywords)
   fn_keywords <- function() {
     m <- .std_ard_methods()
-    k <- paste(m$method, m$call, collapse = "|")
+    co <- .fn_company_dict(company_standards()$ard_fn_keywords)
+    k <- paste(c(m$method, m$call, unlist(co)), collapse = "|")
     if (!identical(ard_cols[["fn_keywords_key"]], k)) {
-      ard_cols[["fn_keywords"]] <- .fn_keywords(m, tflspec::tfl_ard_functions())
+      ard_cols[["fn_keywords"]] <- .fn_keywords(m, tflspec::tfl_ard_functions(),
+                                                dict = rbind(.fn_dict(), co))
       ard_cols[["fn_keywords_key"]] <- k
     }
     ard_cols[["fn_keywords"]]
@@ -2702,7 +2705,9 @@ app_server <- function(input, output, session, start) {
     # a search: across the categories, by the dictionary's words too
     # (R/ard_fn_search.R), each row saying why it was found
     q <- input[[st_id("fn_q")]] %||% ""
-    s <- .fn_search(q, e, fn_keywords(), lang = lang, current = now)
+    # the functions of one's own by their files' tflplanner-keywords lines
+    own_kw <- .fn_own_dict(tryCatch(own_data(), error = function(e) NULL))
+    s <- .fn_search(q, e, rbind(fn_keywords(), own_kw), lang = lang, current = now)
     if (!is.null(s)) e <- s
     # and a category (all by default)
     cat_now <- input[[st_id("fn_cat")]] %||% ".all"
@@ -4299,6 +4304,11 @@ app_server <- function(input, output, session, start) {
                t("The title and description are the first lines of the comment (#') above the function in its file.")),
       file_line(t("The study's file:"), r$study_file),
       file_line(t("The company's file:"), r$company_file),
+      shiny::div(class = "small", shiny::strong(t("Keywords:")), " ",
+                 if (is.na(r$keywords %||% NA)) shiny::span(
+                   class = "text-muted",
+                   t("none: the words the ARD form's search finds it by go in a comment line right above the function, # tflplanner-keywords: odds ratio, PROC LOGISTIC"))
+                 else r$keywords),
       shiny::div(class = "small", shiny::strong(t("Statistics:")), " ",
                  if (is.na(r$stat_names)) t("not declared (cards::as_cards_fn(stat_names = ) lets a check see them)")
                  else gsub(" | ", ", ", r$stat_names, fixed = TRUE)),

@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **Your own words for the function search** (#140).  A function of
+  one's own is found by the comment lines right above it in its file,
+  `# tflplanner-keywords: risk difference, PROC FREQ RISKDIFF` (a plain
+  comment, not roxygen's `#'`: a package of the company's functions keeps
+  them out of its help).  Own functions shows them, and a new function
+  from a template has the line to fill in.  The company standards have a
+  sheet `ard_fn_keywords` (the dictionary's columns, empty by default)
+  for in-house words for any function (`%m_ttest`), added to
+  tflplanner's.
+
 - **Find a function by what it computes** (#135).  The ARD form's
   function search reads a dictionary of the words statisticians use: a
   statistic (`SMD`, `odds ratio`, `hazard ratio`), a SAS procedure

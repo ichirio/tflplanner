@@ -248,6 +248,80 @@ test_that("the chooser is one line once a function is chosen", {
   })
 })
 
+test_that("a function of one's own is found by its tflplanner-keywords lines", {
+  f <- tempfile(fileext = ".R")
+  writeLines(c(
+    "# tflplanner-keywords: risk difference, Miettinen-Nurminen\u3001MN",
+    "#' Risk difference",
+    "#'",
+    "#' The difference of two proportions.",
+    "# tflplanner-keywords: PROC FREQ RISKDIFF",
+    "ard_rd_mn <- function(data, ...) NULL",
+    "",
+    "# a helper: no keywords",
+    "ard_other <- function(data, ...) NULL",
+    "# tflplanner-keywords: not this one (a blank line between)",
+    "",
+    "ard_third <- function(data, ...) NULL"), f)
+  k <- .fn_own_keywords(f)
+  expect_identical(k$keywords[k$name == "ard_rd_mn"],
+                   "risk difference, Miettinen-Nurminen, MN, PROC FREQ RISKDIFF")
+  expect_true(is.na(k$keywords[k$name == "ard_other"]))
+  expect_true(is.na(k$keywords[k$name == "ard_third"]))
+  d <- .fn_own_dict(k)
+  expect_identical(unique(d$fn), "ard_rd_mn")
+  expect_true(all(d$rank == 1L))
+  # found as any other function, by its words
+  m <- .std_ard_methods()
+  fs <- tflspec::tfl_ard_functions()
+  e <- .ard_fn_entries(m, fs, current = "ard_rd_mn")
+  s <- .fn_search("riskdiff", e, rbind(.fn_keywords(m, fs), d))
+  expect_identical(s$value[1L], "ard_rd_mn")
+  expect_identical(s$hit[1L], "PROC FREQ RISKDIFF")
+  expect_identical(.fn_own_keywords(character())$name, character())
+})
+
+test_that("the company's own words are added to the dictionary", {
+  co <- data.frame(fn = c("cardx::ard_stats_t_test", "", "cards::ard_tabulate"),
+                   lang = c("sas", "en", NA), keyword = c("%m_ttest", "x", " TEAE table "),
+                   rank = c(NA, "1", "7"), note_ja = NA, note_en = NA)
+  d <- .fn_company_dict(co)
+  expect_identical(d$keyword, c("%m_ttest", "TEAE table"))
+  expect_identical(d$rank, c(1L, 1L))
+  expect_identical(nrow(.fn_company_dict(NULL)), 0L)
+  m <- .std_ard_methods()
+  fs <- tflspec::tfl_ard_functions()
+  kw <- .fn_keywords(m, fs, dict = rbind(.fn_dict(), d))
+  s <- .fn_search("%m_ttest", .ard_fn_entries(m, fs), kw)
+  expect_identical(s$call[1L], "cardx::ard_stats_t_test")
+  expect_identical(s$hit[1L], "%m_ttest (SAS)")
+  # the sheet: empty by default, kept through a workbook
+  expect_identical(nrow(.builtin_standards()$ard_fn_keywords), 0L)
+  skip_if_not_installed("writexl")
+  x <- tempfile(fileext = ".xlsx")
+  standards_template(x)
+  st <- read_standards(x)
+  expect_identical(names(st$ard_fn_keywords), names(.fn_dict()))
+  expect_identical(nrow(st$ard_fn_keywords), 0L)
+})
+
+test_that("a new function of one's own has a keywords line to fill in", {
+  skip_on_cran()
+  local_home()
+  s <- create_study("KW")
+  s <- new_ard_function(s, "ard_kw", "summary", test = FALSE)
+  f <- file.path(s$path, "programs/ard/functions/ard_kw.R")
+  x <- readLines(f)
+  k <- grep("^# tflplanner-keywords: $", x)
+  expect_length(k, 1L)
+  # at the top of the comments above the function, roxygen's untouched
+  expect_true(grepl("^#'", x[k + 1L]))
+  expect_true(k == 1L || !grepl("^#", x[k - 1L]))
+  expect_true(is.na(study_ard_functions(s)$keywords))
+  writeLines(sub("^# tflplanner-keywords: $", "# tflplanner-keywords: coefficient of variation", x), f)
+  expect_identical(own_ard_functions(s)$keywords, "coefficient of variation")
+})
+
 test_that("the statistical review's points (S1, #139)", {
   skip_if_not_installed("cardx")
   # a CI of the pseudo-median is not a median CI
