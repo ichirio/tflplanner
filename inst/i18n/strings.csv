@@ -1939,3 +1939,7 @@ Delete the analysis,解析を削除
 Delete %s%s from %s? Its statistics leave the report's ARD when the ARD is made again.,%3$s から %1$s%2$s を削除しますか？ この解析の統計量は、ARD を作り直したときに帳票の ARD から無くなります。
 %s is deleted.,%s を削除しました。
 not made yet (nothing to show),まだ作っていません
+Its setting: %s,設定: %s
+Started from the setting: %s (Apply to the analysis writes it).,設定から始めました: %s（「解析に反映」で書き込みます）。
+The word searched means: %s,探した言葉の設定: %s
+Start with this setting,この設定で始める

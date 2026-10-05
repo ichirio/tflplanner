@@ -12,7 +12,7 @@ test_that("the dictionary names the catalog's functions, rightly", {
   d <- .fn_dict()
   m <- tflspec::tfl_ard_methods()
   f <- tflspec::tfl_ard_functions()
-  expect_identical(names(d), c("fn", "lang", "keyword", "rank", "note_ja", "note_en"))
+  expect_identical(names(d), c("fn", "lang", "keyword", "rank", "note_ja", "note_en", "args"))
   # every function is the catalog's, or a company keyword with no function
   expect_true(all(d$fn %in% c(f$call, m$method)))
   expect_true(all(d$lang %in% c("en", "ja", "sas", "r")))
@@ -339,4 +339,121 @@ test_that("the statistical review's points (S1, #139)", {
   expect_match(fn_find("PROC PHREG")$note[1L], "breslow", fixed = TRUE)
   expect_match(fn_find("PROC FREQ CHISQ")$note[1L], "correct = FALSE", fixed = TRUE)
   expect_match(fn_find("PROC FREQ BINOMIAL")$note[1L], "waldcc", fixed = TRUE)
+})
+
+test_that("every setting in the dictionary runs as written", {
+  skip_on_cran()
+  skip_if_not_installed("cardx")
+  d <- .fn_dict()
+  d <- d[nzchar(d$args), , drop = FALSE]
+  # only functions take a setting, and each is R
+  expect_true(all(grepl("::", d$fn, fixed = TRUE)))
+  for (a in unique(d$args)) {
+    expect_no_error(parse(text = paste0("f(", a, ")")))
+  }
+  adsl <- cards::ADSL[cards::ADSL$ARM != "Xanomeline Low Dose", ]
+  adsl$RESP <- as.integer(adsl$AGE > 75)
+  adsl$FEMALE <- adsl$SEX == "F"
+  adsl$CNT <- rep(0:4, length.out = nrow(adsl))
+  adsl$SEX2 <- factor(ifelse(adsl$AGE > 70, adsl$SEX, ifelse(adsl$SEX == "F", "M", "F")))
+  adtte <- cards::ADTTE
+  surv <- "survival::Surv(AVAL, 1 - CNSR)"
+  # the data and the analysis each function is tried on
+  base <- c(
+    "cardx::ard_stats_t_test" = "adsl, by = ARM, variables = AGE",
+    "cardx::ard_stats_wilcox_test" = "adsl, by = ARM, variables = AGE",
+    "cardx::ard_stats_chisq_test" = "adsl, by = ARM, variables = SEX",
+    "cardx::ard_stats_mantelhaen_test" = "adsl, by = ARM, variables = SEX, strata = AGEGR1",
+    "cardx::ard_stats_mcnemar_test" = "adsl, by = SEX, variables = SEX2",
+    "cardx::ard_stats_prop_test" = "adsl, by = ARM, variables = FEMALE",
+    "cardx::ard_categorical_ci" = "adsl, variables = FEMALE",
+    "cardx::ard_survival_survdiff" = paste(surv, "~ TRTA, data = adtte"),
+    "cardx::ard_survival_survfit" = paste0("adtte, y = ", surv, ", variables = \"TRTA\", times = 60"))
+  regression <- c(
+    'method = "glm", method.args = list(family = binomial), exponentiate = TRUE' = "adsl, formula = RESP ~ ARM",
+    'method = "glm", method.args = list(family = poisson), exponentiate = TRUE' = "adsl, formula = CNT ~ ARM",
+    'method = "coxph", package = "survival", exponentiate = TRUE' = paste0("adtte, formula = ", surv, " ~ TRTA"),
+    'method = "coxph", package = "survival", method.args = list(ties = "breslow"), exponentiate = TRUE' =
+      paste0("adtte, formula = ", surv, " ~ TRTA"),
+    'method = "glm.nb", package = "MASS"' = "adsl, formula = CNT ~ ARM")
+  run <- function(fn, b, a) {
+    r <- suppressWarnings(eval(parse(text = paste0(fn, "(", b, ", ", a, ")"))))
+    err <- unlist(r$error)
+    expect_true(nrow(r) > 0 && !length(err), info = paste(fn, a))
+  }
+  done <- 0L
+  for (i in seq_len(nrow(d))) {
+    fn <- d$fn[i]
+    a <- d$args[i]
+    if (grepl("mmrm", a, fixed = TRUE)) next
+    b <- if (fn == "cardx::ard_regression") regression[[a]] else base[[fn]]
+    expect_false(is.null(b), info = paste(fn, a))
+    if (grepl("MASS", a, fixed = TRUE)) skip_if_not_installed("MASS")
+    run(fn, b, a)
+    done <- done + 1L
+  }
+  expect_true(done > 40L)
+  # MMRM (the mmrm package)
+  skip_if_not_installed("mmrm")
+  skip_if_not_installed("emmeans")
+  skip_if_not_installed("pharmaverseadam")
+  advs <- as.data.frame(pharmaverseadam::advs)
+  advs <- advs[advs$PARAMCD == "SYSBP" & !is.na(advs$CHG) &
+                 advs$AVISIT %in% c("Week 2", "Week 4", "Week 8") &
+                 advs$ATPT %in% "AFTER LYING DOWN FOR 5 MINUTES" &
+                 advs$TRTA %in% c("Placebo", "Xanomeline High Dose"), ]
+  advs <- advs[!duplicated(advs[c("USUBJID", "AVISIT")]), ]
+  for (k in c("TRTA", "USUBJID", "AVISIT")) advs[[k]] <- factor(advs[[k]])
+  mm <- 'method = "mmrm", package = "mmrm"'
+  run("cardx::ard_regression", "advs, formula = CHG ~ TRTA * AVISIT + us(AVISIT | USUBJID)", mm)
+  for (fn in c("cardx::ard_emmeans_emmeans", "cardx::ard_emmeans_contrast")) {
+    run(fn, paste("advs, formula = CHG ~ TRTA + AVISIT + BASE + us(AVISIT | USUBJID),",
+                  "response_type = \"continuous\""), mm)
+  }
+})
+
+test_that("a word that means a setting brings it", {
+  skip_if_not_installed("cardx")
+  s <- fn_find("PROC LOGISTIC")
+  expect_identical(s$args[1L], 'method = "glm", method.args = list(family = binomial), exponentiate = TRUE')
+  expect_identical(fn_find("PROC PHREG")$args[1L],
+                   'method = "coxph", package = "survival", method.args = list(ties = "breslow"), exponentiate = TRUE')
+  expect_identical(fn_find("clopper")$args[1L], 'method = "clopper-pearson"')
+  # a word that means none
+  expect_true(is.na(fn_find("SMD")$args[1L]))
+  # the company's sheet may leave the column out
+  co <- data.frame(fn = "cardx::ard_stats_t_test", lang = "sas", keyword = "%m_ttest",
+                   rank = "1", note_ja = NA, note_en = NA)
+  expect_identical(.fn_company_dict(co)$args, "")
+})
+
+test_that("the form starts from the setting a word means", {
+  skip_on_cran()
+  skip_if_not_installed("cardx")
+  local_home()
+  s <- create_study("FP")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADSL, file.path(s$path, "data/adam/adsl.rds"))
+  s$planner <- first_table(s$planner, "T1", "data/adam/adsl.rds", cards::ADSL,
+                           "SAFFL", "TRT01A", c("AGE", "SEX"))
+  save_study(s)
+  shiny::testServer(server_for("FP"), {
+    session$setInputs(nav = "ard", target = "T1")
+    session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
+    st_env <- session$userData$st_env
+    id <- function(x) paste0("st", st_env$n, "_", x)
+    inp <- list(); inp[[id("fn_q")]] <- "PROC LOGISTIC"
+    do.call(session$setInputs, inp)
+    expect_match(output$ard_fn_list$html, 'Its setting: method = "glm"', fixed = TRUE)
+    # nothing offered before a function is picked
+    expect_null(output$ard_fn_preset)
+    inp <- list(); inp[[id("fn_pick")]] <- "cardx::ard_regression"
+    do.call(session$setInputs, inp)
+    expect_match(output$ard_fn_preset$html, "Start with this setting", fixed = TRUE)
+    session$setInputs(ard_fn_preset_go = 1)
+    expect_match(output$ard_fn_preset$html, "Started from the setting", fixed = TRUE)
+    h <- output$ard_an_args$html
+    expect_match(h, 'value="glm"', fixed = TRUE)
+    expect_match(h, "exponentiate = TRUE", fixed = TRUE)
+  })
 })

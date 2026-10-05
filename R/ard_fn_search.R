@@ -3,7 +3,8 @@
 # functions that compute it.  The words come from a dictionary
 # (inst/ard_search/fn_keywords.csv: `fn`, `lang`, `keyword`, `rank`
 # 1 = the function for the word, 2 = related, 3 = near, a note needed;
-# `note_ja`, `note_en`) as well as the functions' labels, names and
+# `note_ja`, `note_en`; `args`, the arguments the word means -- PROC
+# LOGISTIC is method = "glm", ... -- which the form can start from) as well as the functions' labels, names and
 # descriptions.  Words are ANDed; a function is found by how well its
 # weakest word matched (the whole query, a word, a word's start, inside a
 # word, the description), and by a near spelling only when little else is.
@@ -69,6 +70,7 @@
     d <- utils::read.csv(f, fileEncoding = "UTF-8", stringsAsFactors = FALSE,
                          na.strings = character(), colClasses = "character")
     d$rank <- as.integer(d$rank)
+    if (!"args" %in% names(d)) d$args <- ""
     .fn_search_cache$dict <- d
   }
   .fn_search_cache$dict
@@ -101,13 +103,15 @@
 
 # Every text an entry is found by, one row each: `i` (the entry), `kind`
 # ("kw", "label", "name", "desc"), the text as written and normalized,
-# `rank` and the note (a keyword's)
+# `rank`, the note and the arguments (a keyword's)
 .fn_targets <- function(entries, keywords, extra = NULL) {
   n <- nrow(entries)
-  one <- function(i, kind, text, rank = 1L, note_ja = "", note_en = "", lang = "") {
+  if (!"args" %in% names(keywords)) keywords$args <- rep("", nrow(keywords))
+  one <- function(i, kind, text, rank = 1L, note_ja = "", note_en = "", lang = "",
+                  args = "") {
     if (!length(text)) return(NULL)
     data.frame(i = i, kind = kind, text = text, rank = rank,
-               note_ja = note_ja, note_en = note_en, lang = lang,
+               note_ja = note_ja, note_en = note_en, lang = lang, args = args,
                stringsAsFactors = FALSE)
   }
   rows <- list()
@@ -119,7 +123,7 @@
     desc_i <- unique(c(entries$description[i], extra$description[[v]]))
     k <- keywords[keywords$fn == v, , drop = FALSE]
     rows[[length(rows) + 1L]] <- rbind(
-      one(i, "kw", k$keyword, k$rank, k$note_ja, k$note_en, k$lang),
+      one(i, "kw", k$keyword, k$rank, k$note_ja, k$note_en, k$lang, k$args),
       one(i, "label", labels_i[!is.na(labels_i) & nzchar(labels_i)]),
       one(i, "name", names_i[!is.na(names_i) & nzchar(names_i)]),
       one(i, "desc", desc_i[!is.na(desc_i) & nzchar(desc_i)]))
@@ -188,7 +192,8 @@
 # labels), `keywords` .fn_keywords().  The found entries in order, with
 # `tier` (0 = the whole query, 1 to 3.5 as .fn_word_tier(), 4 = a near
 # spelling), `rank`, `hit` (the keywords matched, a SAS / R one marked),
-# `note` (in `lang`), `near_from` / `near_to` (a near spelling).  A
+# `note` (in `lang`), `args` (the arguments the word means, NA for none),
+# `near_from` / `near_to` (a near spelling).  A
 # company keyword and the function it calls are one entry (the keyword's),
 # unless the function is the one chosen, in the function's category.  NULL
 # for an empty query.
@@ -285,11 +290,19 @@
     x <- unique(x[t$kind[r] == "kw" & !is.na(x) & nzchar(x)])
     if (length(x)) paste(x, collapse = " / ") else NA_character_
   }, "")
+  # the arguments the word matched means (the first keyword that has any)
+  args <- vapply(found, function(i) {
+    r <- unique(rows[[i]])
+    x <- t$args[r][t$kind[r] == "kw"]
+    x <- x[!is.na(x) & nzchar(x)]
+    if (length(x)) x[1L] else NA_character_
+  }, "")
   out <- e[found, , drop = FALSE]
   out$tier <- tier[found]
   out$rank <- rank[found]
   out$hit <- hit
   out$note <- note
+  out$args <- args
   out$near_from <- near_from[found]
   out$near_to <- near_to[found]
   out <- out[order(out$tier, out$rank, found), , drop = FALSE]
@@ -337,7 +350,7 @@
     w <- w[nzchar(w)]
     if (!length(w)) return(NULL)
     data.frame(fn = own$name[i], lang = "", keyword = w, rank = 1L,
-               note_ja = "", note_en = "", stringsAsFactors = FALSE)
+               note_ja = "", note_en = "", args = "", stringsAsFactors = FALSE)
   })
   do.call(rbind, c(list(none), rows))
 }
@@ -348,6 +361,8 @@
 .fn_company_dict <- function(d) {
   none <- .fn_dict()[0, , drop = FALSE]
   if (is.null(d) || !nrow(d)) return(none)
+  # args: a column added later, may be left out
+  if (!"args" %in% names(d)) d$args <- NA_character_
   d <- as.data.frame(lapply(d[names(none)], function(v) {
     v <- as.character(v)
     ifelse(is.na(v), "", trimws(v))
