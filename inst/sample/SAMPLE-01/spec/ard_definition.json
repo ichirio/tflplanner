@@ -20,7 +20,7 @@
     "analysis_id": ["BIGN", "TOTAL", "CONT", "CAT", "BIGN", "DISP", "BIGN", "SYSBP", "BIGN", "KM", "TEAE"],
     "parent": [null, null, null, null, null, null, null, null, null, null, null],
     "label": ["Subjects per arm", null, "Continuous", "Categorical", null, "Status at end of study", null, "SYSBP at Week 24", null, "Kaplan-Meier estimates", "TEAE by SOC / PT"],
-    "method": ["categorical", "total_n", "continuous", "categorical", "categorical", "categorical", "categorical", "continuous", "categorical", "custom", "hierarchical"],
+    "method": ["cards::ard_tabulate", "cards::ard_total_n", "cards::ard_summary", "cards::ard_tabulate", "cards::ard_tabulate", "cards::ard_tabulate", "cards::ard_tabulate", "cards::ard_summary", "cards::ard_tabulate", "custom", "cards::ard_stack_hierarchical"],
     "dataset": [null, null, null, null, null, null, null, "ADVS", null, "ADTTE", "ADAE"],
     "population_id": ["SAF", "SAF", "SAF", "SAF", "SAF", "SAF", "SAF", "SAF", "SAF", "SAF", "SAF"],
     "where": [null, null, null, null, null, null, null, "AVISIT == \"Week 24\"", null, "PARAMCD == \"TTDE\"", "TRTEMFL == \"Y\""],

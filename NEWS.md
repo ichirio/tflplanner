@@ -9,6 +9,17 @@
   saved before reads it empty.  The screens to make and use them come
   next.  Needs tflspec 0.0.24.9045.
 
+- **Analyses are written with the cards function, not a company keyword**
+  (#142).  The ARD tab's "Company standard" list shows only the keywords
+  a company added or changed; tflspec's own (continuous, categorical,
+  hierarchical ...) are their functions (`cards::ard_summary`,
+  `cards::ard_tabulate` ...), which get the same statistics, defaults and
+  formats (tflspec #133).  The sample study, a new study's first table and
+  a stack's subjects per group / total N rows write the function.  A
+  study that names a keyword keeps it: it runs as before and stays in its
+  list.  Subjects (no function) is with "Subjects and attributes", custom
+  code with "Own and code".  Needs tflspec 0.0.24.9044.
+
 - **Closing the app** (#137).  A Close button (where the app runs on this
   computer) asks about unsaved changes -- save and close, close without
   saving, or cancel -- and stops tflplanner.  Inside RStudio's Shiny window

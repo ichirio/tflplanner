@@ -32,7 +32,9 @@ test_that("first_table() writes every sheet a summary table needs", {
   # the N per group first (column headers), then one analysis per call:
   # the numbers together, the counts together
   expect_identical(an$analysis_id, c("BIGN", "CONT", "CAT"))
-  expect_identical(an$method, c("categorical", "continuous", "categorical"))
+  # written as the cards functions (the same analyses as the keywords)
+  expect_identical(an$method, c("cards::ard_tabulate", "cards::ard_summary",
+                                "cards::ard_tabulate"))
   expect_identical(an$by, c(NA, "TRT01A", "TRT01A"))
   expect_identical(an$variables, c("TRT01A", "AGE", "SEX"))
   expect_identical(an$population_id, c("SAF", "SAF", "SAF"))

@@ -19,6 +19,31 @@
   m
 }
 
+# The keyword a method stands for: its own name, or the keyword whose
+# function it names (`cards::ard_tabulate` -> `categorical`; tflspec makes
+# the same analysis of either).  Other methods as they are.
+.method_kw <- function(m) {
+  keys <- .std_ard_methods()
+  j <- match(m, keys$call)
+  ifelse(!m %in% keys$method & !is.na(j), keys$method[j], m)
+}
+
+# The keywords the ARD tab offers as the company's: those it added or
+# changed.  tflspec's own, as built in, are offered as the cards / cardx
+# functions they call (the 2026-10-05 decision); a row that names one keeps
+# it.  Subjects and custom code (no function to name) are always there.
+.company_keywords <- function(current = NA_character_) {
+  m <- .std_ard_methods()
+  b <- tflspec::tfl_ard_methods()
+  cols <- intersect(c("method", "call", "kind", "defaults", "statistics",
+                      "formats"), intersect(names(m), names(b)))
+  flat <- function(d) do.call(paste, c(lapply(d[cols], function(v)
+    ifelse(is.na(v), "", as.character(v))), sep = "\r"))
+  keep <- !flat(m) %in% flat(b) | startsWith(m$call, "(") |
+    m$method %in% current
+  m[keep, , drop = FALSE]
+}
+
 .std_ard_statistics <- function(kind = NULL) {
   d <- company_standards()$ard_statistics
   if (!is.null(kind)) d <- d[d$kind %in% kind, , drop = FALSE]
