@@ -94,6 +94,8 @@ test_that("the Own functions tab: listed, used, tried, a new one; the analysis f
     h <- output$own_detail$html
     expect_match(h, "ard_cv")
     expect_match(h, "own_use")
+    # no keywords yet: where they go
+    expect_match(h, "# tflplanner-keywords:", fixed = TRUE)
     # the analysis form: the company's, not loaded, faint
     session$setInputs(ard_ol_pick = "A1")
     n <- session$userData$st_env$n

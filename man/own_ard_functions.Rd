@@ -15,7 +15,7 @@ own_ard_functions(study, home = tflplanner_home())
 A data frame: \code{name}, \code{where} (\code{"study"}, \code{"company"},
 \code{"both"}), \code{study_file}, \code{company_file}, \code{loaded}, \code{differs}, \code{newer}
 (\code{"study"}, \code{"company"} or \code{NA}), \code{used_by} (\code{"T1 / RD | ..."}),
-\code{title}, \code{description}, \code{stat_names}, \code{tried} (when), \code{problems}
+\code{title}, \code{description}, \code{stat_names}, \code{keywords}, \code{tried} (when), \code{problems}
 (errors and warnings found), \code{stale} (the file changed since).
 }
 \description{
