@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **Function search settings, reviewed** (#160).  Negative binomial
+  starts with `exponentiate = TRUE` (rate ratios, as Poisson); the logistic
+  setting says its confidence interval is profile likelihood (SAS's is
+  Wald, which `args` alone cannot give); "Start with this setting" says
+  when it replaces the analysis's own arguments.
+
 - **A report's own code list reaches its ARD** (#151, tflspec #137).  The
   ARD programs, the preview and the ARD's state get the whole codelists
   sheet: a report's ARD program makes factors by the study's rows and the
