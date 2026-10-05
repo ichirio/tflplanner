@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **A temporary home is not remembered** (#150).  `setup_tflplanner(home
+  = )` with a folder in the temporary folder (a script's, a test's) uses it
+  for the session only: remembered, every later session opened a folder
+  that is deleted when the R session ends (a screenshot script did this to
+  a user's home).  The screenshot script and the tests keep their own
+  `tools::R_user_dir()` folders.
+
 - **A shortcut that security software stops is made another way** (#149).
   On Windows, `add_shortcut()` makes each shortcut on its own, and one the
   VBScript could not write -- security software may stop a script from
