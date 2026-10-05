@@ -1,5 +1,9 @@
 # tflplanner (development version)
 
+- **The tokens help names `{PROGRAM_FULL}`** (tflspec #127), the
+  program's absolute path (rtfreporter #560), in Japanese too.  Needs
+  tflspec 0.0.24.9041 and rtfreporter 0.8.2.9021.
+
 - **A regression's formula from columns; the data choices with their
   subjects** (#123).  A formula argument (`cardx::ard_regression()`,
   `ard_emmeans_*()` ...) can be written from columns -- the response, the
