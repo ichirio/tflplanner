@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **The ARD definition's analysis data** (#146, tflspec #135).  The sheet
+  `analysis_data` -- named data the analyses read: from a dataset or an
+  analysis data above, a population's subjects, a condition, columns of
+  the population added, derived, one row per subject and phase -- is
+  saved with the study and has a grid of its own on the ARD tab ("Analysis
+  data"); an analysis names one in `data`, or as its denominator.  A study
+  saved before reads it empty.  The screens to make and use them come
+  next.  Needs tflspec 0.0.24.9045.
+
 - **Closing the app** (#137).  A Close button (where the app runs on this
   computer) asks about unsaved changes -- save and close, close without
   saving, or cancel -- and stops tflplanner.  Inside RStudio's Shiny window

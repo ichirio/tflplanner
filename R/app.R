@@ -703,6 +703,8 @@ app_ui <- function(lang = "en") {
                              rhandsontable::rHandsontableOutput("hot_ard_datasets")),
             bslib::nav_panel(paste0(t("Analysis sets"), " (populations)"), value = "populations",
                              rhandsontable::rHandsontableOutput("hot_ard_populations")),
+            bslib::nav_panel(paste0(t("Analysis data"), " (analysis_data)"), value = "analysis_data",
+                             rhandsontable::rHandsontableOutput("hot_ard_analysis_data")),
             bslib::nav_panel(paste0(t("Study keys"), " (study)"), value = "study",
                              rhandsontable::rHandsontableOutput("hot_ard_study"))),
           shiny::uiOutput("ard_check"),
@@ -955,9 +957,10 @@ $(document).on('click', '#save', function() {
 }
 
 # ARD columns whose values can only be one of their choices (the study's
-# datasets and populations).  `method` stays open: besides the keywords it
-# takes any pkg::function.
-.ard_closed_columns <- c("dataset", "population_id", "denominator")
+# datasets, populations and analysis data).  `method` stays open: besides
+# the keywords it takes any pkg::function.
+.ard_closed_columns <- c("data", "dataset", "population_id", "denominator",
+                         "from")
 
 # tflspec's column help is English; the app shows it in its language
 .help_table <- function(sheet) {
@@ -2362,17 +2365,22 @@ app_server <- function(input, output, session, start) {
       analyses = list(
         output_id = output_ids(p),
         method = c(.std_ard_methods()$method, ard_functions()),
+        data = p$ard$analysis_data$data_id,
         dataset = p$ard$datasets$dataset,
         population_id = p$ard$populations$population_id,
         by = cols, strata = cols, variables = cols,
         denominator = c("population", "row", "column", "cell",
                         p$ard$populations$population_id,
-                        p$ard$datasets$dataset)),
+                        p$ard$datasets$dataset,
+                        p$ard$analysis_data$data_id)),
       datasets = list(path = if (has_study()) {
         f <- study_files(rv$study, "data")
         file.path(f$folder, f$file)
       }),
       populations = list(dataset = p$ard$datasets$dataset),
+      analysis_data = list(
+        from = c(p$ard$datasets$dataset, p$ard$analysis_data$data_id),
+        population_id = p$ard$populations$population_id),
       study = list(key = c("id", "output", "source")),
       list())
   }
