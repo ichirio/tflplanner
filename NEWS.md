@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **Start from the setting a word means** (#144).  A word of the
+  function search can mean a setting as well as a function: PROC LOGISTIC
+  is `ard_regression()` with `method = "glm", method.args =
+  list(family = binomial), exponentiate = TRUE`; PROC FREQ CHISQ is
+  `correct = FALSE` (as SAS); Clopper-Pearson is
+  `method = "clopper-pearson"`; MMRM is `method = "mmrm", package =
+  "mmrm"`.  A function found by such a word shows its setting, and once
+  picked, "Start with this setting" fills its argument fields (Apply
+  writes them).  Every setting is run in the tests.  The company sheet
+  `ard_fn_keywords` may say a setting too (column `args`).
+
 - **The ARD definition's analysis data** (#146, tflspec #135).  The sheet
   `analysis_data` -- named data the analyses read: from a dataset or an
   analysis data above, a population's subjects, a condition, columns of
