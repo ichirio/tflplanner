@@ -3058,16 +3058,25 @@ app_server <- function(input, output, session, start) {
     o <- fn_offer()
     a <- if (!is.null(o) && identical(o$n, n) && !is.na(m)) o$args[[m]]
     if (is.null(a)) return(NULL)
+    # the analysis's own arguments for this function, which the setting
+    # replaces (not added to): said before and after
+    row <- shiny::isolate(st_row())
+    own <- if (identical(row$method, m) && !.is_blank(row$args)) row$args
+    replaces <- if (!is.null(own)) shiny::span(
+      class = "text-warning-emphasis",
+      sprintf(t("It replaces the analysis's own arguments: %s"), own))
     ps <- fn_preset()
     if (!is.null(ps) && identical(ps$n, n) && identical(ps$method, m)) {
       return(shiny::p(class = "small text-muted mt-n1 mb-2",
-                      sprintf(t("Started from the setting: %s (Apply to the analysis writes it)."), a)))
+                      sprintf(t("Started from the setting: %s (Apply to the analysis writes it)."), a),
+                      if (!is.null(replaces)) shiny::tagList(shiny::br(), replaces)))
     }
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center mt-n1 mb-2 small",
       shiny::span(sprintf(t("The word searched means: %s"), a)),
       .btn("ard_fn_preset_go", t("Start with this setting"),
-           class = "btn-sm btn-outline-primary py-0"))
+           class = "btn-sm btn-outline-primary py-0"),
+      replaces)
   })
   shiny::observeEvent(input$ard_fn_preset_go, {
     o <- fn_offer()

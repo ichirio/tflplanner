@@ -2074,3 +2074,4 @@ SDTM / ADaM / other,SDTM・ADaM・その他
 "The study's code lists: each variable's values, their order and the text they print as, for every report (a report's own rows, in its step 1, replace them).",試験のコードリスト：変数ごとの値・順番・表示する文字。すべての帳票に効きます（帳票の段 1 の行がそれを置き換えます）。
 %s chosen: the form below,%s を選択中：下のフォーム
 %s is used: %s,%s は使われています：%s
+It replaces the analysis's own arguments: %s,この解析の今の引数を置き換えます: %s

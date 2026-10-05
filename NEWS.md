@@ -9,6 +9,12 @@
   form's argument headings have an (i): the hint of that argument for that
   function, as a tooltip, instead of a line under each field.
 
+- **Function search settings, reviewed** (#160).  Negative binomial
+  starts with `exponentiate = TRUE` (rate ratios, as Poisson); the logistic
+  setting says its confidence interval is profile likelihood (SAS's is
+  Wald, which `args` alone cannot give); "Start with this setting" says
+  when it replaces the analysis's own arguments.
+
 - **Make a report, step 2: the analysis data, then the analyses** (#161).
   "2-1 The analysis data -- what is analysed" has two groups, made in this
   order: the subjects (an analysis set's own data kept to the report's
