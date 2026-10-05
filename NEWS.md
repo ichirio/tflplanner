@@ -11,6 +11,25 @@
   runs search the same way.  The
   list's state is read from the files (a quick look at 200 reports).
 
+- **Function search settings, reviewed** (#160).  Negative binomial
+  starts with `exponentiate = TRUE` (rate ratios, as Poisson); the logistic
+  setting says its confidence interval is profile likelihood (SAS's is
+  Wald, which `args` alone cannot give); "Start with this setting" says
+  when it replaces the analysis's own arguments.
+
+- **Make a report, step 2: the analysis data, then the analyses** (#161).
+  "2-1 The analysis data -- what is analysed" has two groups, made in this
+  order: the subjects (an analysis set's own data kept to the report's
+  subjects: one row a subject, the denominator) and the data analysed (a
+  dataset kept to those subjects, the rows a condition keeps, columns taken
+  or made, kept, one row per ...), each with its form and a preview.  The
+  data a report's analyses read without a name can be given one.  "2-2 The
+  analyses -- what is computed": the Data field offers the analysis data;
+  choosing one sets a blank denominator to its subjects; a report's first
+  analysis is offered its subjects in one step.  The Japanese word is
+  解析データ.  In R: `set_analysis_data()` (with `subjects`, `keep`),
+  `remove_analysis_data()`, `name_analysis_data()`.
+
 - **The top tabs follow the work** (#157): Study | Data | Report list |
   Make a report | Runs.  **Make a report** has the report chosen on the left
   (the only place a report is chosen) and its steps: 1 Code lists (the
