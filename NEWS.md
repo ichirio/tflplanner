@@ -1,5 +1,22 @@
 # tflplanner (development version)
 
+- **Find a function by what it computes** (#135).  The ARD form's
+  function search reads a dictionary of the words statisticians use: a
+  statistic (`SMD`, `odds ratio`, `hazard ratio`), a SAS procedure
+  (`PROC LOGISTIC`, `PROC FREQ`, `LSMEANS`), an R function (`t.test`), in
+  English or Japanese.  Several words narrow it (`t test paired`); full- and
+  half-width letters, hiragana and katakana, a long vowel mark or a middle
+  dot do not matter; a near spelling (`wilcoxn`) is offered when little
+  else is found.  Each row says why it was found (the word, and how: e.g.
+  `method = "glm"`, `exponentiate = TRUE` for an odds ratio) and its
+  category; a word with no function of its own (MMRM, a correlation)
+  leads to the nearest one or to custom code.  A short word (`or`, `cox`)
+  is a whole word only.  The chooser itself is smaller: one line once a
+  function is chosen (`method` and its name; Change opens the list, a
+  pick closes it), and the categories are a filter beside the search
+  (all of them by default; both narrow the list); a company with no
+  keywords of its own has no Company standard category.
+
 - **A report's program is named by its own file** (tflspec #131).  A new
   study's default report row no longer says `program = {output_id}.R`:
   `{PROGRAM}` is the file name of the program that runs, and
