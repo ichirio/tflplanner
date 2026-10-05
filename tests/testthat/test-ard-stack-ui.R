@@ -12,7 +12,7 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
   save_study(s)
   shiny::testServer(server_for("ST"), {
     rv <- session$userData$rv
-    session$setInputs(nav = "ard", target = "T1")
+    session$setInputs(nav = "make", step = "ard", target = "T1")
     # the outline: the stack, the two inside it
     h <- output$ard_outline$html
     expect_match(h, "STACK")

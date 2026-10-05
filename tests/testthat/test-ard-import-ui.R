@@ -40,7 +40,7 @@ test_that("ARDs are taken in, used, compared, replaced and removed on the ARD ta
   saveRDS(own[setdiff(names(own), "output_id")], f3)
   shiny::testServer(server_for("IM"), {
     rv <- session$userData$rv
-    session$setInputs(nav = "ard", target = "T1")
+    session$setInputs(nav = "make", step = "ard", target = "T1")
     # nothing chosen: the actions are not pressable
     expect_match(output$imp_actions$html, "disabled", fixed = TRUE)
     # take it in, for T1, and use it: saved at once

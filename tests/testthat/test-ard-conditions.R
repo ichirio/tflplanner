@@ -43,7 +43,7 @@ test_that("the study ARD's errors and warnings are listed, and a row opens its a
   expect_true(any(d2$output_id == "T2" & d2$source == row$file & d2$level == "error"))
   shiny::testServer(server_for("CO"), {
     rv <- session$userData$rv
-    session$setInputs(nav = "ard", target = "T1")
+    session$setInputs(nav = "make", step = "ard", target = "T1")
     expect_match(output$ard_cond_badge$html, "errors 2", fixed = TRUE)
     expect_no_error(output$ard_conds)
     session$setInputs(ard_cond_errors = TRUE)

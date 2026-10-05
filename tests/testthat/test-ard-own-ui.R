@@ -88,7 +88,7 @@ test_that("the Own functions tab: listed, used, tried, a new one; the analysis f
   save_study(s)
   shiny::testServer(server_for("OU"), {
     rv <- session$userData$rv
-    session$setInputs(nav = "ard", target = "T1")
+    session$setInputs(nav = "make", step = "ard", target = "T1")
     expect_no_error(output$own_list)
     session$setInputs(own_list_rows_selected = 1L)
     h <- output$own_detail$html

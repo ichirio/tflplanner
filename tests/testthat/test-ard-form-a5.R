@@ -35,7 +35,7 @@ test_that("the data choices say how many subjects (and records) each reads", {
     analysis_id = "A1", method = "continuous", population_id = "SAF", variables = "AGE"))
   save_study(s)
   shiny::testServer(server_for("CN"), {
-    session$setInputs(nav = "ard", target = "T1")
+    session$setInputs(nav = "make", step = "ard", target = "T1")
     session$setInputs(ard_ol_pick = "A1")
     expect_match(output$ard_stat_ui$html, sprintf("pop_saf: %d subjects", saf), fixed = TRUE)
   })
@@ -56,7 +56,7 @@ test_that("a regression's form: its fitting function chosen, its formula written
     by = "ARM", args = "formula = AGE ~ ARM, method = \"lm\""))
   save_study(s)
   shiny::testServer(server_for("RG"), {
-    session$setInputs(nav = "ard", target = "T1")
+    session$setInputs(nav = "make", step = "ard", target = "T1")
     session$setInputs(ard_ol_pick = "M1")
     h <- output$ard_an_args$html
     expect_match(h, "Write the formula", fixed = TRUE)

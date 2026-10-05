@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **The top tabs follow the work** (#157): Study | Data | Report list |
+  Make a report | Runs.  **Make a report** has the report chosen on the left
+  (the only place a report is chosen) and its steps: 1 Code lists (the
+  codelists sheet; optional) | 2 ARD | 3 Content (by its kind, and its data
+  code) | 4 Page and output (the page sheets and preview, and the
+  program), each with a mark of its state.  What was study-wide on the ARD
+  tab is on the Data tab (datasets, analysis sets, analysis data, the study
+  ARD, the ARDs taken in) and the Study tab (study keys, the setup code,
+  own functions).  The screens themselves are as they were.
+
 - **A shortcut that security software stops is made another way** (#149).
   On Windows, `add_shortcut()` makes each shortcut on its own, and one the
   VBScript could not write -- security software may stop a script from
