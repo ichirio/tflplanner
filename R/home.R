@@ -105,6 +105,8 @@ setup_tflplanner <- function(home = NULL, studies_root = NULL,
       # session's only: remembered, every later session would open a folder
       # that is deleted when this one ends
       options(tflplanner.home = home)
+      message("The home ", home, " is in the temporary folder: it is used in ",
+              "this R session only, not remembered for later ones.")
     } else {
       dir.create(dirname(.pointer_file()), recursive = TRUE,
                  showWarnings = FALSE)

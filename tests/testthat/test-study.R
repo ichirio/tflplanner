@@ -27,7 +27,8 @@ test_that("a home in the temporary folder is not remembered for later sessions",
   on.exit(options(old), add = TRUE)
   unlink(.pointer_file())
   home <- file.path(withr_tempdir(), "home")
-  suppressMessages(setup_tflplanner(home = home, studies_root = file.path(home, "ws")))
+  expect_message(setup_tflplanner(home = home, studies_root = file.path(home, "ws")),
+                 "in this R session only")
   # this session's home, not the next one's
   expect_false(file.exists(.pointer_file()))
   expect_identical(tflplanner_home(), normalizePath(home, "/", mustWork = FALSE))
