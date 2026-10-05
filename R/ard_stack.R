@@ -110,7 +110,7 @@
   if (!.is_blank(r$parent %||% NA)) return("inside")
   # the subjects per group or in all: the stack can count them itself
   if (length(.stack_group_n(a[i, , drop = FALSE], w))) return("group_n")
-  if (r$method %in% "total_n" && same("dataset") && same("population_id")) return("total_n")
+  if (.method_kw(r$method) %in% "total_n" && same("dataset") && same("population_id")) return("total_n")
   if (r$method %in% .stack_not_inside) return("method")
   if (!same("dataset") || !same("population_id")) return("data")
   if (!same("where")) return("where")
@@ -189,7 +189,7 @@ stack_group <- function(x, output_id, ids, parent = NULL, label = NA_character_)
   if (!length(by)) return(integer())
   same <- function(x, y) identical(if (.is_blank(x)) NA else x, if (.is_blank(y)) NA else y)
   which(vapply(seq_len(nrow(a)), function(i) {
-    a$method[i] %in% c("categorical", "subjects") &&
+    .method_kw(a$method[i]) %in% c("categorical", "subjects") &&
       identical(.split_bar(a$variables[i]), by) && .is_blank(a$by[i]) &&
       .is_blank(a$parent[i] %||% NA) &&
       same(a$dataset[i], r$dataset) && same(a$population_id[i], r$population_id)
@@ -214,7 +214,7 @@ stack_group <- function(x, output_id, ids, parent = NULL, label = NA_character_)
   # what the report counts already is not made again (two N break the
   # column headers)
   has_bign <- length(.stack_group_n(a, p)) > 0L
-  has_total <- any(a$method %in% "total_n" & .is_blank_v(a$parent) &
+  has_total <- any(.method_kw(a$method) %in% "total_n" & .is_blank_v(a$parent) &
                      .same_v(a$dataset, p$dataset) & .same_v(a$population_id, p$population_id))
   add <- function(id, method, variables, by) {
     r <- a[0L, , drop = FALSE]
@@ -231,9 +231,9 @@ stack_group <- function(x, output_id, ids, parent = NULL, label = NA_character_)
   }
   by <- .split_bar(p$by)
   if (isTRUE(f[[".by_stats"]]) && length(by) && !has_bign) {
-    add("BIGN", "categorical", paste(by, collapse = " | "), NA)
+    add("BIGN", "cards::ard_tabulate", paste(by, collapse = " | "), NA)
   }
-  if (isTRUE(f[[".total_n"]]) && !has_total) add("TOTAL", "total_n", NA, NA)
+  if (isTRUE(f[[".total_n"]]) && !has_total) add("TOTAL", "cards::ard_total_n", NA, NA)
   out
 }
 
@@ -257,7 +257,7 @@ stack_n_twice <- function(a) {
     if (!.is_blank(r$parent)) next
     d <- paste(if (.is_blank(r$dataset)) "" else r$dataset,
                if (.is_blank(r$population_id)) "" else r$population_id, sep = "|")
-    if (r$method %in% c("categorical", "subjects") && .is_blank(r$by) &&
+    if (.method_kw(r$method) %in% c("categorical", "subjects") && .is_blank(r$by) &&
         length(.split_bar(r$variables)) == 1L) {
       key[i] <- paste(d, .split_bar(r$variables))
     } else if (identical(r$method, .stack_fn) && length(.split_bar(r$by)) &&
@@ -341,7 +341,7 @@ remove_analysis <- function(x, output_id, id) {
 
 # A new analysis inside a parent (after its last one): its id, method and
 # variables; nothing of its own on the data
-stack_add_inside <- function(x, output_id, parent, id = NULL, method = "continuous",
+stack_add_inside <- function(x, output_id, parent, id = NULL, method = "cards::ard_summary",
                              variables = NA_character_) {
   a <- ard_rows(x, "analyses", output_id)
   a$output_id <- NULL

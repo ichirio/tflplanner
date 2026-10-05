@@ -77,7 +77,7 @@ test_that("ungrouping gives the data back and keeps the column headers' N", {
   # BIGN was there already: not made again; the total N is TOTAL
   expect_false("BIGN2" %in% b$analysis_id)
   expect_true("TOTAL" %in% b$analysis_id)
-  expect_identical(b$method[b$analysis_id == "TOTAL"], "total_n")
+  expect_identical(b$method[b$analysis_id == "TOTAL"], "cards::ard_total_n")
   # a report with no BIGN gets one
   w <- stack_ungroup(stack_group(stack_remove_bign(stack_planner()), "T1", c("CONT", "CAT")),
                      "T1", "STACK")
