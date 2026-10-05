@@ -164,7 +164,7 @@ own_function_checks <- function(study) {
 .try_data_code <- function(x, dataset, population_id) {
   a <- x$ard
   a$analyses <- .normalize_ard_sheet(data.frame(
-    output_id = ".try", analysis_id = "TRY", method = "continuous",
+    output_id = ".try", analysis_id = "TRY", method = "cards::ard_summary",
     dataset = dataset, population_id = population_id, variables = "TRY_",
     stringsAsFactors = FALSE), "analyses")
   code <- tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"), part = "body")
