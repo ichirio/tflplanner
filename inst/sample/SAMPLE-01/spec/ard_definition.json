@@ -20,9 +20,11 @@
     "label": [],
     "from": [],
     "population_id": [],
+    "subjects": [],
     "where": [],
     "add": [],
     "derive": [],
+    "keep": [],
     "distinct": []
   },
   "analyses": {
