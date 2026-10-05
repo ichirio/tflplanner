@@ -72,6 +72,7 @@ reference:
       - study_ard_conditions
       - ard_rows
       - remove_analysis
+      - copy_analysis
       - set_analysis_data
       - ard_setup_code
       - run_ard

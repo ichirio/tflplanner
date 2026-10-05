@@ -339,6 +339,45 @@ remove_analysis <- function(x, output_id, id) {
   set_ard_rows(x, "analyses", output_id, a[-i, , drop = FALSE])
 }
 
+#' Copy one analysis of a report
+#'
+#' A new analysis, the same as one of the report's, right after it; a stack
+#' with the analyses inside it (under new ids too).  The new id is the old
+#' one with `_2` (or the next number free).
+#'
+#' @inheritParams remove_analysis
+#' @return `x` with the copy; its id in `attr(, "copied")`.
+#' @export
+copy_analysis <- function(x, output_id, id) {
+  a <- ard_rows(x, "analyses", output_id)
+  a$output_id <- NULL
+  i <- match(id, a$analysis_id)
+  if (is.na(i)) stop("'", id, "' is not an analysis of ", output_id, ".", call. = FALSE)
+  if (is.null(a$parent)) a$parent <- NA_character_
+  free <- function(base, taken) {
+    k <- 2L
+    while (paste0(base, "_", k) %in% taken) k <- k + 1L
+    paste0(base, "_", k)
+  }
+  taken <- a$analysis_id
+  rows <- c(i, .stack_kids(a, id))
+  new <- a[rows, , drop = FALSE]
+  ids <- character(length(rows))
+  for (k in seq_along(rows)) {
+    ids[k] <- free(new$analysis_id[k], taken)
+    taken <- c(taken, ids[k])
+  }
+  # the ones inside the copy are inside the copy
+  new$parent[-1L] <- ids[1L]
+  new$analysis_id <- ids
+  after <- max(rows)
+  out <- rbind(a[seq_len(after), , drop = FALSE], new,
+               a[seq_len(nrow(a)) > after, , drop = FALSE])
+  x <- set_ard_rows(x, "analyses", output_id, out)
+  attr(x, "copied") <- ids[1L]
+  x
+}
+
 # A new analysis inside a parent (after its last one): its id, method and
 # variables; nothing of its own on the data
 stack_add_inside <- function(x, output_id, parent, id = NULL, method = "cards::ard_summary",

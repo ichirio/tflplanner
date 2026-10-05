@@ -295,3 +295,20 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
           if (!is.na(r$distinct)) sprintf(words$per, bar(r$distinct))),
         collapse = ", ")
 }
+
+#' @rdname set_analysis_data
+#' @export
+copy_analysis_data <- function(x, data_id) {
+  ad <- .adata_rows(x)
+  i <- match(data_id, ad$data_id)
+  if (is.na(i)) stop("No analysis data '", data_id, "'.", call. = FALSE)
+  k <- 2L
+  while (paste0(data_id, "_", k) %in% ad$data_id) k <- k + 1L
+  new <- ad[i, , drop = FALSE]
+  new$data_id <- paste0(data_id, "_", k)
+  x$ard$analysis_data <- rbind(ad[seq_len(i), , drop = FALSE], new,
+                               ad[seq_len(nrow(ad)) > i, , drop = FALSE])
+  rownames(x$ard$analysis_data) <- NULL
+  attr(x, "copied") <- new$data_id
+  x
+}

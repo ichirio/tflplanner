@@ -70,7 +70,7 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     expect_identical(a$args[a$analysis_id == "STACK"], ".by_stats = FALSE")
     # the stack's form says why it does not count the subjects per group;
     # ticked, it says they would be counted twice, and the outline marks it
-    session$setInputs(ard_ol_pick = "STACK")
+    # (the new stack is the one open; a click on it again would close it)
     expect_match(output$ard_stat_ui$html, "BIGN counts them now", fixed = TRUE)
     n <- session$userData$st_env$n
     do.call(session$setInputs, stats::setNames(list(TRUE), paste0("st", n, "_fl.by_stats")))

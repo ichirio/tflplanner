@@ -2058,3 +2058,7 @@ Keeps the subjects of an analysis data above (a report's own subjects: the safet
 "arg-hint:Columns to analyse within, like by, but only the combinations the data have (e.g. a parameter by visit).",群と同じく分けて集計しますが、データにある組み合わせだけを出します（例: パラメータ × 時点）。
 "arg-hint:The strata of the stratified Wilson interval (method = strat_wilson / strat_wilsoncc): one interval over them, not one per stratum.",層別 Wilson 信頼区間（method = strat_wilson / strat_wilsoncc）の層。層ごとではなく、層をまとめた 1 つの区間を出します。
 "arg-hint:The strata of the Cochran-Mantel-Haenszel test: the by x variables association is tested controlling for them (one test, not one per stratum).",Cochran-Mantel-Haenszel 検定の層。層を調整して、群と変数の関連を検定します（層ごとではなく 1 つの検定）。
+%s is copied as %s.,%s を %s として複製しました。
+A click on a data opens it below; another click closes it.,データをクリックすると下に開きます。もう一度クリックで閉じます。
+A click on an analysis in the list above opens it here.,上の一覧で解析をクリックすると、ここに開きます。
+A click on an analysis opens it below; another click closes it.,解析をクリックすると下に開きます。もう一度クリックで閉じます。
