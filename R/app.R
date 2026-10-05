@@ -128,7 +128,7 @@
 #' }
 #' @export
 run_app <- function(study = NULL, ..., stop_on_close = FALSE,
-                    launch.browser = .external_browser) {
+                    launch.browser = .external_browser) { # nolint: object_name_linter. shiny's name
   shiny::runApp(planner_app(study, stop_on_close = stop_on_close),
                 launch.browser = launch.browser, ...)
 }
