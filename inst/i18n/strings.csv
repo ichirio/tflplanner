@@ -953,14 +953,14 @@ An R condition on that dataset choosing the subjects; blank: every row.,その�
 The analysis's id within its report; an ARD column.,帳票の中での解析の ID。ARD の列になる。
 A name a person reads (for ARS and the GUI); blank: none.,人が読む名前（ARS と GUI 用）。空欄 = なし。
 "What is computed: a keyword of tfl_ard_methods() (continuous, categorical, hierarchical ...), any pkg::function (cards::, cardx::), or a function of the study's own that the study key source loads.",何を計算するか：tfl_ard_methods() のキーワード（continuous、categorical、hierarchical など）、任意の pkg::function（cards::、cardx::）、または study のキー source が読み込む試験独自の関数。
-The data analysed; blank: the population's own dataset.,解析するデータ。空欄 = 集団のデータセット。
-The analysis set: the data is restricted to its subjects; blank: no restriction (population is NULL).,解析対象集団：データをその被験者に絞る。空欄 = 絞らない（population は NULL）。
-"An R condition on the data, applied after the population; blank: every row.",データに対する R の条件。集団で絞った後に効く。空欄 = すべての行。
+The data analysed; blank: the population's own dataset. Blank when `data` is given.,解析するデータ。空欄 = 集団のデータセット。`data` を指定したときは空欄。
+"The analysis set: the data is restricted to its subjects; blank: no restriction (population is NULL), or the population of `data`.",解析対象集団：データをその被験者に絞る。空欄 = 絞らない（population は NULL）、または `data` の集団。
+"An R condition on the data, applied after the population (on an analysis data: after its own conditions); blank: every row.",データに対する R の条件。集団で絞った後に効く（解析用データでは、その条件の後）。空欄 = すべての行。
 "Grouping variables (cards' by), | between them; blank: none.",群の変数（cards の by）。| 区切り。空欄 = なし。
 "Variables the analysis is repeated within (cards' strata: a subgroup, a parameter by visit), | between them; blank: none.",この中で解析を繰り返す変数（cards の strata：部分集団、検査項目×時点など）。| 区切り。空欄 = なし。
 "The variables analysed (cards' variables), | between them.",解析する変数（cards の variables）。| 区切り。
 "For continuous / categorical / missing: the statistics computed, in order (tfl_ard_statistics()); for other methods: the statistics kept of what the method gives; | between them; blank: the method's default.",continuous / categorical / missing では計算する統計量（この順。tfl_ard_statistics()）、ほかの method では結果のうち残す統計量。| 区切り。空欄 = method の既定。
-"What percentages are of: population (the analysis set; hierarchical and max take it anyway), row / column / cell (cards), another population, or a dataset (its records of the analysis set's subjects); blank: the method's default.",% の分母：population（解析対象集団。hierarchical と max は指定しなくてもこれ）、row / column / cell（cards）、別の集団、またはデータセット（その中の、解析対象集団の被験者の行）。空欄 = method の既定。
+"What percentages are of: population (the analysis set; hierarchical and max take it anyway), row / column / cell (cards), another population, a dataset (its records of the analysis set's subjects), or an analysis data (as it is: one row a subject and phase gives the N of each phase); blank: the method's default.",% の分母：population（解析対象集団。hierarchical と max は指定しなくてもこれ）、row / column / cell（cards）、別の集団、データセット（その中の、解析対象集団の被験者の行）、または解析用データ（そのまま。被験者 × フェーズで 1 行にすれば、フェーズごとの N）。空欄 = method の既定。
 "Display formats, statistic=format, | between them; VAR:statistic=format for one variable. xx.x = one decimal (the x's count only after the point), xx.x% = a proportion as a percent, a number = decimals, pvalue = <0.001 or 3 decimals; blank: the statistic's default.",表示書式。統計量=書式 を | 区切りで。変数ごとは VAR:統計量=書式。xx.x = 小数 1 桁（小数点より後の x の数だけが効く）、xx.x% = 割合を % で、数字 = 小数の桁数、pvalue = <0.001 か小数 3 桁。空欄 = 統計量の既定。
 "More arguments of the call, as R (data and population are bound), in any order; refused if not R. An argument a column gives (by, variables, strata, denominator, statistic) may not be given here too; blank: none.",呼び出しに足す引数（R で書く。data と population が使える）。順序は自由。R として読めなければエラー。列で書ける引数（by、variables、strata、denominator、statistic）はここに重ねて書けない。空欄 = なし。
 method = custom only: the R code that gives the ARD (data and population are bound).,method = custom のときだけ：ARD を返す R のコード（data と population が使える）。
@@ -1945,3 +1945,13 @@ Delete the analysis,解析を削除
 Delete %s%s from %s? Its statistics leave the report's ARD when the ARD is made again.,%3$s から %1$s%2$s を削除しますか？ この解析の統計量は、ARD を作り直したときに帳票の ARD から無くなります。
 %s is deleted.,%s を削除しました。
 not made yet (nothing to show),まだ作っていません
+"ARD: named data the analyses read (the study's, one row a data): from a dataset or an analysis data above it, the subjects of a population, the records a condition keeps, columns of the population added, columns derived, one row per set of values. In that order. An analysis names one in `data`, or as its `denominator`.",ARD：解析が読む、名前つきのデータ（試験で共有。1 行 = 1 つのデータ）。データセットか上の行の解析用データから、集団の被験者に絞り、条件で行を絞り、集団のデータの列を足し、列を作り、値の組ごとに 1 行にする。この順に処理する。解析は `data` か `denominator`（分母）で名前を指定する。
+"The data's name, and its object's name in the ARD program: a lower-case letter first, then letters, digits, _ or . -- not a dataset's, pop_<population>'s or another data's.",データの名前。ARD プログラムの中のオブジェクト名にもなる。小文字で始め、英字・数字・_・. を使う。データセット名、pop_<集団>、ほかのデータの名前とは別にする。
+A name a person reads; blank: none.,人が読む名前。空欄 = なし。
+"What it is made from: a dataset, or an analysis data of a row above.",元のデータ：データセット、または上の行の解析用データ。
+Keeps the subjects of this population; blank: no restriction here (made from an analysis data: that one's population).,この集団の被験者に絞る。空欄 = ここでは絞らない（解析用データから作るときは、その集団）。
+An R condition on the records (the numerator's filter); blank: every record.,レコードに対する R の条件（分子の絞り込み）。空欄 = すべてのレコード。
+"Columns of the population's data (its dataset, ADSL) added by the subject key, | between them; a column of the same name is replaced. Needs a population, here or above; blank: none.",集団のデータ（そのデータセット、ADSL）から被験者キーで足す列。複数は | で区切る。同じ名前の列は置き換える。この行か上の行に集団が必要。空欄 = なし。
+"One row for each set of values of these columns, | between them (dplyr::distinct(), the first row kept): a denominator per subject and phase; blank: every row.",これらの列の値の組ごとに 1 行にする。複数は | で区切る（dplyr::distinct()、最初の行を残す）。被験者 × フェーズの分母などに。空欄 = すべての行。
+"The analysis data analysed (a data_id of analysis_data), instead of dataset and population_id: the analysis set is its population; blank: dataset and population_id say it.",解析する解析用データ（analysis_data の data_id）。dataset と population_id の代わりに使い、解析対象集団はそのデータの集団になる。空欄 = dataset と population_id で指定。
+Analysis data,解析用データ
