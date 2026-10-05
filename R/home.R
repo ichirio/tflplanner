@@ -23,6 +23,13 @@
   file.path(tools::R_user_dir("tflplanner", "config"), "home")
 }
 
+# a folder in the temporary folder (where tempdir() is made)
+.in_temp <- function(path) {
+  p <- tolower(normalizePath(path, "/", mustWork = FALSE))
+  tmp <- tolower(normalizePath(dirname(tempdir()), "/", mustWork = FALSE))
+  startsWith(p, paste0(tmp, "/"))
+}
+
 #' Where tflplanner keeps its settings and the studies' saved state
 #'
 #' @return The home folder (it may not exist yet: see
@@ -63,7 +70,7 @@ tflplanner_home <- function() {
 #'
 #' @param home The home folder.  `NULL` keeps the current one (see
 #'   [tflplanner_home()]); a folder given here is remembered for later
-#'   sessions.
+#'   sessions -- one in the temporary folder only for this session.
 #' @param studies_root Where new study folders are created.  `NULL` keeps
 #'   the current setting, or on a first setup uses `<home>/workspace`.
 #' @param language The app's language, `"en"` (the default) or `"ja"`;
@@ -93,9 +100,16 @@ setup_tflplanner <- function(home = NULL, studies_root = NULL,
   if (!is.null(port)) port <- .check_port(port)
   if (!is.null(home)) {
     home <- normalizePath(home, "/", mustWork = FALSE)
-    dir.create(dirname(.pointer_file()), recursive = TRUE,
-               showWarnings = FALSE)
-    writeLines(home, .pointer_file())
+    if (.in_temp(home)) {
+      # a home in the temporary folder (a script's, a test's) is this
+      # session's only: remembered, every later session would open a folder
+      # that is deleted when this one ends
+      options(tflplanner.home = home)
+    } else {
+      dir.create(dirname(.pointer_file()), recursive = TRUE,
+                 showWarnings = FALSE)
+      writeLines(home, .pointer_file())
+    }
   } else {
     home <- tflplanner_home()
   }

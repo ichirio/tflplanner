@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **A temporary home is not remembered** (#150).  `setup_tflplanner(home
+  = )` with a folder in the temporary folder (a script's, a test's) uses it
+  for the session only: remembered, every later session opened a folder
+  that is deleted when the R session ends (a screenshot script did this to
+  a user's home).  The screenshot script and the tests keep their own
+  `tools::R_user_dir()` folders.
+
 - **Your own words for the function search** (#140).  A function of
   one's own is found by the comment lines right above it in its file,
   `# tflplanner-keywords: risk difference, PROC FREQ RISKDIFF` (a plain

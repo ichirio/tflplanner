@@ -10,6 +10,11 @@ dir.create(out, showWarnings = FALSE, recursive = TRUE)
 base <- file.path(tempdir(), "shots")
 home <- file.path(base, "home"); root <- file.path(base, "studies")
 unlink(base, recursive = TRUE); dir.create(root, recursive = TRUE)
+# the user's own settings (tools::R_user_dir(): the home tflplanner opens,
+# the launcher) are not this script's: it keeps its own
+Sys.setenv(R_USER_CONFIG_DIR = file.path(base, "config"),
+           R_USER_DATA_DIR = file.path(base, "data"),
+           R_USER_CACHE_DIR = file.path(base, "cache"))
 setup_tflplanner(home = home, studies_root = root, language = "ja")
 options(tflplanner.home = home)
 create_sample_study(root = root, run = FALSE, home = home)
