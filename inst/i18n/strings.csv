@@ -1917,6 +1917,12 @@ tokens: your own,自分のトークン (tokens)
 "Report: tokens of your own for the header, footer, titles and footnotes, one row a token, written {NAME} there; a report's row replaces the default of the same name, (none) takes it out.",帳票：ヘッダー・フッター・タイトル・脚注で使う自分のトークン。1 行 = 1 トークンで、そこでは {名前} と書く。帳票の行は同じ名前の既定を上書きし、(none) で外す。
 "The token's name: upper case, a letter then letters, digits or _; not one of rtfreporter's own ({PAGE}, {PROGRAM}, {DATETIME} ...).",トークンの名前：大文字の英字で始め、大文字・数字・_ だけ。rtfreporter の組み込み（{PAGE}・{PROGRAM}・{DATETIME} など）と同じ名前は使えない。
 What it becomes; (none) takes a default out for this report.,置き換わる文字。(none) で、この帳票では既定を外す。
+Close tflplanner,tflplanner を閉じる
+There are unsaved changes. Save them before tflplanner stops?,保存していない変更があります。tflplanner を終了する前に保存しますか？
+tflplanner stops; then its window can be closed.,tflplanner を終了します。その後、このウィンドウを閉じてください。
+Close without saving,保存しないで閉じる
+Save and close,保存して閉じる
+tflplanner has stopped. This window can be closed.,tflplanner を終了しました。このウィンドウを閉じてください。
 Clear,消す
 %d found,%d 件
 Near spellings,近い綴りの候補
