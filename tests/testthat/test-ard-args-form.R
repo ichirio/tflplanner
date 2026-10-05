@@ -143,6 +143,10 @@ test_that("the form picks a function, fills its arguments and writes args", {
     inp <- list(); inp[[id("fn_q")]] <- "continuous ci"
     do.call(session$setInputs, inp)
     expect_match(output$ard_fn_list$html, "ard_continuous_ci", fixed = TRUE)
+    # in any case
+    inp <- list(); inp[[id("fn_q")]] <- "T TEST"
+    do.call(session$setInputs, inp)
+    expect_match(output$ard_fn_list$html, "ard_stats_t_test", fixed = TRUE)
   })
 })
 
