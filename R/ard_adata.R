@@ -253,7 +253,9 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
   old <- setwd(path)
   on.exit(setwd(old), add = TRUE)
   tryCatch({
-    eval(parse(text = code[seq_len(stop_at - 1L)]), envir = env)
+    # its warnings (a file not there yet ...) are not the app's: the
+    # error, if any, is said with the preview
+    suppressWarnings(eval(parse(text = code[seq_len(stop_at - 1L)]), envir = env))
     as.data.frame(env[[id]])
   }, error = function(e) structure(list(), error = conditionMessage(e)))
 }

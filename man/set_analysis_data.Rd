@@ -16,7 +16,9 @@ set_analysis_data(
   derive = NA,
   distinct = NA,
   label = NA,
-  old = NULL
+  old = NULL,
+  subjects = NA,
+  keep = NA
 )
 
 remove_analysis_data(x, data_id)
@@ -31,8 +33,10 @@ program).}
 
 \item{from}{A dataset, or an analysis data above.}
 
-\item{population_id, where, add, derive, distinct, label}{The other columns
-(\code{add}, \code{distinct}: several columns with \code{" | "} between them).}
+\item{population_id, subjects, where, add, derive, keep, distinct, label}{The
+other columns (\code{subjects}: an analysis data above whose subjects it
+keeps, instead of \code{population_id}; \code{add}, \code{keep}, \code{distinct}: several
+columns with \code{" | "} between them).}
 
 \item{old}{The name of the one to replace; \code{NULL}: a new one.}
 

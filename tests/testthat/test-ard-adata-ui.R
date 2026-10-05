@@ -148,6 +148,7 @@ test_that("a first analysis is offered the report's subjects; then reads them", 
   p <- adata_planner()
   p$ard$analyses <- p$ard$analyses[0L, ]
   s <- create_study("AN", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
   shiny::testServer(server_for("AN"), {
     session$setInputs(nav = "make", step = "ard", target = "DM")
     session$setInputs(ard_an_new = 1)
