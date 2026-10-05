@@ -3,6 +3,9 @@
 # {pharmaverseadam} (Apache License 2.0).
 #
 #   T-14-1-1  Table    Demographic characteristics
+#   T-14-1-1S Table    The same table, its ARD one cards::ard_stack() call
+#                      (the continuous and the categorical analyses inside
+#                      it, and the column N and total N it makes itself)
 #   T-14-1-2  Table    Subject disposition
 #   T-14-2-1  Table    Change from baseline in systolic blood pressure,
 #                      Week 24 (with SE and the mean's 95% CI)
@@ -194,6 +197,15 @@ sheets <- list(
          text = "System Organ Class\n   Preferred Term"),
     list(output_id = "T-14-3-1", line = "2", cols = ".values")))
 
+# T-14-1-1S: T-14-1-1's table, row for row (its ARD differs: below)
+for (sh in c("tables", "variables", "cells", "layout")) {
+  d <- sheets[[sh]]
+  k <- !is.na(d$output_id) & d$output_id == "T-14-1-1"
+  add <- d[k, , drop = FALSE]
+  add$output_id <- "T-14-1-1S"
+  sheets[[sh]] <- rbind(d, add)
+}
+
 # ----------------------------------------------------------- the report half
 title <- function(oid, number, text, set) {
   list(list(output_id = oid, line = "3"),
@@ -220,6 +232,8 @@ sheets$header <- do.call(tbl, c(
             right = "Page {PAGE} of {TOTAL_PAGES}")),
   title("T-14-1-1", "Table 14.1.1", "Demographic Characteristics",
         "<Safety Analysis Set>"),
+  title("T-14-1-1S", "Table 14.1.1S", "Demographic Characteristics",
+        "<Safety Analysis Set>"),
   title("T-14-1-2", "Table 14.1.2", "Subject Disposition",
         "<Safety Analysis Set>"),
   title("T-14-2-1", "Table 14.2.1",
@@ -245,6 +259,8 @@ sheets$header <- do.call(tbl, c(
 sheets$footer <- tbl(
   list(line = "99", left = "{PROGRAM}       Generated on: {DATETIME}"),
   list(output_id = "T-14-1-1", line = "1",
+       left = "SD = Standard Deviation."),
+  list(output_id = "T-14-1-1S", line = "1",
        left = "SD = Standard Deviation."),
   list(output_id = "T-14-2-1", line = "1",
        left = "SD = Standard Deviation; SE = Standard Error; CI = Confidence Interval (t distribution)."),
@@ -287,6 +303,18 @@ p$ard$analyses <- tbl(
        variables = "AGE", statistics = "N | mean | sd | median | min | max"),
   list(output_id = "T-14-1-1", analysis_id = "CAT", label = "Categorical",
        method = "categorical", population_id = "SAF", by = "TRT01A",
+       variables = "AGEGR1 | SEX | RACE | ETHNIC", statistics = "n | p"),
+  # T-14-1-1's analyses as one cards::ard_stack() call: its data, analysis
+  # set and groups once, the analyses inside it (`parent`); the column N
+  # (.by_stats, cards' default) and the total N (.total_n) are its own
+  list(output_id = "T-14-1-1S", analysis_id = "STACK",
+       label = "Demographics, run together", method = "cards::ard_stack",
+       population_id = "SAF", by = "TRT01A", args = ".total_n = TRUE"),
+  list(output_id = "T-14-1-1S", analysis_id = "CONT", parent = "STACK",
+       label = "Continuous", method = "continuous", variables = "AGE",
+       statistics = "N | mean | sd | median | min | max"),
+  list(output_id = "T-14-1-1S", analysis_id = "CAT", parent = "STACK",
+       label = "Categorical", method = "categorical",
        variables = "AGEGR1 | SEX | RACE | ETHNIC", statistics = "n | p"),
   list(output_id = "T-14-1-2", analysis_id = "BIGN", method = "categorical",
        population_id = "SAF", variables = "TRT01A"),
@@ -422,6 +450,7 @@ km_code <- c(
   "content <- plot")
 
 desc <- c("T-14-1-1" = "Demographic characteristics",
+          "T-14-1-1S" = "Demographic characteristics (its ARD one ard_stack call)",
           "T-14-1-2" = "Subject disposition",
           "T-14-2-1" = "Systolic blood pressure: change from baseline at Week 24",
           "T-14-3-1" = "TEAEs by SOC / PT",
@@ -430,8 +459,8 @@ desc <- c("T-14-1-1" = "Demographic characteristics",
           "F-14-2-1" = "Mean change from baseline in systolic blood pressure",
           "F-14-2-2" = "KM plot of the time to first dermatologic event",
           "F-14-2-3" = "KM curves of the time to first dermatologic event (designed)")
-types <- c("T-14-1-1" = "table", "T-14-1-2" = "table", "T-14-2-1" = "table",
-           "T-14-3-1" = "table", "T-14-2-2" = "table", "L-16-2-7" = "listing",
+types <- c("T-14-1-1" = "table", "T-14-1-1S" = "table", "T-14-1-2" = "table",
+           "T-14-2-1" = "table", "T-14-3-1" = "table", "T-14-2-2" = "table", "L-16-2-7" = "listing",
            "F-14-2-1" = "user", "F-14-2-2" = "user", "F-14-2-3" = "figure")
 process <- list(
   "T-14-2-2" = c(
@@ -505,6 +534,7 @@ writeLines(c(
   "| Output | Type | |",
   "|---|---|---|",
   "| T-14-1-1 | Table | Demographic characteristics |",
+  "| T-14-1-1S | Table | The same table, its ARD one `cards::ard_stack()` call (the analyses inside it, and the column N and total N it makes) |",
   "| T-14-1-2 | Table | Subject disposition |",
   "| T-14-2-1 | Table | Systolic blood pressure: change from baseline at Week 24 (SE, 95% CI of the mean) |",
   "| T-14-2-2 | Table | Time to first dermatologic event: Kaplan-Meier estimates |",
