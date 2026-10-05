@@ -9,6 +9,16 @@
   saved before reads it empty.  The screens to make and use them come
   next.  Needs tflspec 0.0.24.9045.
 
+- **Your own words for the function search** (#140).  A function of
+  one's own is found by the comment lines right above it in its file,
+  `# tflplanner-keywords: risk difference, PROC FREQ RISKDIFF` (a plain
+  comment, not roxygen's `#'`: a package of the company's functions keeps
+  them out of its help).  Own functions shows them, and a new function
+  from a template has the line to fill in.  The company standards have a
+  sheet `ard_fn_keywords` (the dictionary's columns, empty by default)
+  for in-house words for any function (`%m_ttest`), added to
+  tflplanner's.
+
 - **Analyses are written with the cards function, not a company keyword**
   (#142).  The ARD tab's "Company standard" list shows only the keywords
   a company added or changed; tflspec's own (continuous, categorical,

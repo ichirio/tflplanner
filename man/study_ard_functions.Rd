@@ -11,7 +11,8 @@ study_ard_functions(study)
 }
 \value{
 A data frame, one row a function: \code{name}, \code{file} (relative to
-the study folder), \code{loaded}, \code{title}, \code{description}, \code{stat_names}.
+the study folder), \code{loaded}, \code{title}, \code{description}, \code{stat_names},
+\code{keywords} (as \code{\link[=company_ard_functions]{company_ard_functions()}}).
 }
 \description{
 The functions defined in the R files the study's ARD programs load (its

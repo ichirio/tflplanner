@@ -12,7 +12,10 @@ company_ard_functions(home = tflplanner_home())
 \value{
 A data frame, one row a function: \code{name}, \code{file}, \code{title},
 \code{description} (from the roxygen block above it), \code{stat_names} (the
-statistics it declares, \code{|} between them).
+statistics it declares, \code{|} between them), \code{keywords} (the words the
+ARD form's search finds it by: the comment lines
+\verb{# tflplanner-keywords: odds ratio, PROC LOGISTIC} right above it;
+\code{", "} between them).
 }
 \description{
 The functions defined in the R files of the standards folder's

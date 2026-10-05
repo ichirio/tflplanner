@@ -296,3 +296,65 @@
   rownames(out) <- NULL
   out
 }
+
+# The words a function of one's own is found by: the comment lines
+# `# tflplanner-keywords: odds ratio, PROC LOGISTIC` (several allowed,
+# commas between the words) in the comments right above its definition in
+# its file -- plain comments, not roxygen's #', so a package of the
+# company's functions keeps them out of its help.  `files` R files; a data
+# frame `name`, `keywords` (", " between them; NA for none).
+.fn_own_keywords <- function(files) {
+  out <- data.frame(name = character(), keywords = character(),
+                    stringsAsFactors = FALSE)
+  for (f in files[!is.na(files) & file.exists(files)]) {
+    x <- readLines(f, warn = FALSE, encoding = "UTF-8")
+    defs <- grep("^[A-Za-z.][A-Za-z0-9._]*[[:space:]]*(<-|=)", x)
+    for (d in defs) {
+      # the comment lines right above it
+      k <- d - 1L
+      while (k >= 1L && grepl("^[[:space:]]*#", x[k])) k <- k - 1L
+      above <- if (k + 1L <= d - 1L) x[(k + 1L):(d - 1L)] else character()
+      kw <- grep("^[[:space:]]*#[[:space:]]*tflplanner-keywords:", above, value = TRUE)
+      words <- unlist(strsplit(sub("^[^:]*:", "", kw), "[,\u3001\uff0c]"))
+      words <- unique(trimws(words))
+      words <- words[nzchar(words)]
+      out[nrow(out) + 1L, ] <- c(sub("^([A-Za-z.][A-Za-z0-9._]*).*$", "\\1", x[d]),
+                                 if (length(words)) paste(words, collapse = ", ") else NA)
+    }
+  }
+  out <- out[!duplicated(out$name), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
+# the own functions' words as dictionary rows (rank 1, no note)
+.fn_own_dict <- function(own) {
+  none <- .fn_dict()[0, , drop = FALSE]
+  if (is.null(own) || !nrow(own) || !"keywords" %in% names(own)) return(none)
+  rows <- lapply(seq_len(nrow(own)), function(i) {
+    w <- if (is.na(own$keywords[i])) character() else
+      trimws(strsplit(own$keywords[i], ",", fixed = TRUE)[[1L]])
+    w <- w[nzchar(w)]
+    if (!length(w)) return(NULL)
+    data.frame(fn = own$name[i], lang = "", keyword = w, rank = 1L,
+               note_ja = "", note_en = "", stringsAsFactors = FALSE)
+  })
+  do.call(rbind, c(list(none), rows))
+}
+
+# The company's own words (the standards' sheet ard_fn_keywords, the
+# dictionary's columns): added to the built-in dictionary, a row without a
+# function or a word left out, a rank blank = 1
+.fn_company_dict <- function(d) {
+  none <- .fn_dict()[0, , drop = FALSE]
+  if (is.null(d) || !nrow(d)) return(none)
+  d <- as.data.frame(lapply(d[names(none)], function(v) {
+    v <- as.character(v)
+    ifelse(is.na(v), "", trimws(v))
+  }), stringsAsFactors = FALSE)
+  d <- d[nzchar(d$fn) & nzchar(d$keyword), , drop = FALSE]
+  r <- suppressWarnings(as.integer(d$rank))
+  d$rank <- ifelse(is.na(r) | !r %in% 1:3, 1L, r)
+  rownames(d) <- NULL
+  d
+}
