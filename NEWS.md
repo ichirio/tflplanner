@@ -7,7 +7,8 @@
   full / half width); the TOC's sections, folded one by one, with their
   counts; a filter by state; the arrow keys and Enter.  "Study defaults"
   and "ALL" stay first.  Folded, a chooser with a search takes its place
-  at the top.  The report list and the runs search the same way.  The
+  at the top (the browser remembers it folded).  The report list and the
+  runs search the same way.  The
   list's state is read from the files (a quick look at 200 reports).
 
 - **The top tabs follow the work** (#157): Study | Data | Report list |

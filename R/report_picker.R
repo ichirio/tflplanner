@@ -190,6 +190,22 @@ $(document).on('click', '.rp-picker .rp-item', function() {
   var p = $(this).closest('.rp-picker');
   Shiny.setInputValue(p.data('pick'), $(this).data('id'), {priority: 'event'});
 });
+// the list folded or not, remembered by the browser (if it lets us: a
+// browser that keeps nothing shows the list open, as before)
+(function() {
+  var KEY = 'tflplanner.reportList';
+  function get() { try { return window.localStorage.getItem(KEY); } catch (e) { return null; } }
+  function put(v) { try { window.localStorage.setItem(KEY, v); } catch (e) {} }
+  $(document).on('click', '.bslib-sidebar-layout:has(.rp-picker) > .collapse-toggle', function() {
+    var lay = $(this).closest('.bslib-sidebar-layout');
+    setTimeout(function() { put(lay.hasClass('sidebar-collapsed') ? 'folded' : 'open'); }, 50);
+  });
+  $(document).on('shiny:connected', function() {
+    if (get() !== 'folded') return;
+    var lay = $('.rp-picker').closest('.bslib-sidebar-layout');
+    if (lay.length && !lay.hasClass('sidebar-collapsed')) lay.children('.collapse-toggle').click();
+  });
+})();
 // a table's search (the report list, the runs), set without a search box
 Shiny.addCustomMessageHandler('rp-dt-search', function(m) {
   var el = $('#' + m.id + ' table.dataTable');
