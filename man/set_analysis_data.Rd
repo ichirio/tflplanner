@@ -4,6 +4,7 @@
 \alias{set_analysis_data}
 \alias{remove_analysis_data}
 \alias{name_analysis_data}
+\alias{copy_analysis_data}
 \title{Add, change or remove an analysis data of the ARD definition}
 \usage{
 set_analysis_data(
@@ -24,6 +25,8 @@ set_analysis_data(
 remove_analysis_data(x, data_id)
 
 name_analysis_data(x, output_id, dataset, population_id, data_id, label = NA)
+
+copy_analysis_data(x, data_id)
 }
 \arguments{
 \item{x}{A \code{tflplanner}.}

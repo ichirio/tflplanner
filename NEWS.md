@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **Step 2 as lists** (#164).  2-2: [New] [Copy] [Delete...] over the list
+  of the report's analyses; an analysis opens below the list when clicked
+  (another click closes it), so the step starts as the list alone.  Copy
+  makes the analysis again after it, a stack with the ones inside it
+  (`copy_analysis()`).  2-1: [Copy] [Delete...] over the analysis data; its
+  form opens below the list, not in a dialog (`copy_analysis_data()`).  The
+  form's argument headings have an (i): the hint of that argument for that
+  function, as a tooltip, instead of a line under each field.
+
 - **Function search settings, reviewed** (#160).  Negative binomial
   starts with `exponentiate = TRUE` (rate ratios, as Poisson); the logistic
   setting says its confidence interval is profile likelihood (SAS's is
