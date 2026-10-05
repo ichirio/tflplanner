@@ -91,7 +91,10 @@ test_that("the form picks a function, fills its arguments and writes args", {
     id <- function(x) paste0("st", st_env$n, "_", x)
     h <- output$ard_stat_ui$html
     expect_match(h, "Analysis CAT of T1")
-    # its category is open, the function chosen
+    # its category is open (the radio's choice), the function chosen
+    expect_match(h, 'value="Confidence intervals and rates" checked', fixed = TRUE)
+    do.call(session$setInputs,
+            stats::setNames(list("Confidence intervals and rates"), id("fn_cat")))
     expect_match(output$ard_fn_list$html, "ard_categorical_ci", fixed = TRUE)
     g <- output$ard_an_args$html
     expect_match(g, "conf.level", fixed = TRUE)

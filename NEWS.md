@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **Analyses are written with the cards function, not a company keyword**
+  (#142).  The ARD tab's "Company standard" list shows only the keywords
+  a company added or changed; tflspec's own (continuous, categorical,
+  hierarchical ...) are their functions (`cards::ard_summary`,
+  `cards::ard_tabulate` ...), which get the same statistics, defaults and
+  formats (tflspec #133).  The sample study, a new study's first table and
+  a stack's subjects per group / total N rows write the function.  A
+  study that names a keyword keeps it: it runs as before and stays in its
+  list.  Subjects (no function) is with "Subjects and attributes", custom
+  code with "Own and code".  Needs tflspec 0.0.24.9044.
+
 - **An analysis can be deleted on the ARD tab** (#136): its form has
   "Delete the analysis...", asked first -- one of its own, or one inside a
   stack (the stack keeps the others; a stack itself keeps its own Delete).
