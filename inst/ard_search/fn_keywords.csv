@@ -1,0 +1,652 @@
+fn,lang,keyword,rank,note_ja,note_en
+cards::ard_summary,en,summary statistics,1,,
+cards::ard_summary,en,descriptive statistics,1,,
+cards::ard_summary,en,mean,1,,
+cards::ard_summary,en,SD,1,,
+cards::ard_summary,en,standard deviation,1,,
+cards::ard_summary,en,median,1,,
+cards::ard_summary,en,min,1,,
+cards::ard_summary,en,max,1,,
+cards::ard_summary,en,range,1,,
+cards::ard_summary,en,quartile,1,,
+cards::ard_summary,en,Q1,1,,
+cards::ard_summary,en,Q3,1,,
+cards::ard_summary,en,IQR,1,,
+cards::ard_summary,en,continuous,1,,
+cards::ard_summary,en,geometric mean,2,統計量の一覧で geo_mean を選ぶ,choose geo_mean among the statistics
+cards::ard_summary,en,CV,2,統計量の一覧で cv を選ぶ,choose cv among the statistics
+cards::ard_summary,en,coefficient of variation,2,統計量の一覧で cv を選ぶ,choose cv among the statistics
+cards::ard_summary,en,percentile,2,統計量の一覧で p5・p95 などを選ぶ,choose p5 / p95 ... among the statistics
+cards::ard_summary,ja,要約統計量,1,,
+cards::ard_summary,ja,記述統計量,1,,
+cards::ard_summary,ja,基本統計量,1,,
+cards::ard_summary,ja,平均,1,,
+cards::ard_summary,ja,平均値,1,,
+cards::ard_summary,ja,標準偏差,1,,
+cards::ard_summary,ja,中央値,1,,
+cards::ard_summary,ja,最小値,1,,
+cards::ard_summary,ja,最大値,1,,
+cards::ard_summary,ja,範囲,1,,
+cards::ard_summary,ja,四分位,1,,
+cards::ard_summary,ja,連続量,1,,
+cards::ard_summary,ja,幾何平均,2,統計量の一覧で geo_mean を選ぶ,choose geo_mean among the statistics
+cards::ard_summary,ja,変動係数,2,統計量の一覧で cv を選ぶ,choose cv among the statistics
+cards::ard_summary,ja,パーセンタイル,2,統計量の一覧で p5・p95 などを選ぶ,choose p5 / p95 ... among the statistics
+cards::ard_summary,sas,PROC MEANS,1,,
+cards::ard_summary,sas,PROC SUMMARY,1,,
+cards::ard_summary,sas,PROC UNIVARIATE,1,,
+cards::ard_summary,r,summary,1,,
+cards::ard_tabulate,en,frequency,1,,
+cards::ard_tabulate,en,count,1,,
+cards::ard_tabulate,en,percent,1,,
+cards::ard_tabulate,en,n (%),1,,
+cards::ard_tabulate,en,categorical,1,,
+cards::ard_tabulate,en,tabulate,1,,
+cards::ard_tabulate,en,cross tabulation,1,,
+cards::ard_tabulate,en,crosstab,1,,
+cards::ard_tabulate,en,shift table,3,ベースライン × 投与後のクロス集計として。by にベースラインの区分を入れる,as a baseline x post-baseline cross table: put the baseline category in by
+cards::ard_tabulate,ja,度数,1,,
+cards::ard_tabulate,ja,頻度,1,,
+cards::ard_tabulate,ja,例数,1,,
+cards::ard_tabulate,ja,割合,1,,
+cards::ard_tabulate,ja,パーセント,1,,
+cards::ard_tabulate,ja,件数,1,,
+cards::ard_tabulate,ja,カテゴリ,1,,
+cards::ard_tabulate,ja,集計,1,,
+cards::ard_tabulate,ja,クロス集計,1,,
+cards::ard_tabulate,ja,シフトテーブル,3,ベースライン × 投与後のクロス集計として。by にベースラインの区分を入れる,as a baseline x post-baseline cross table: put the baseline category in by
+cards::ard_tabulate,sas,PROC FREQ,1,,
+cards::ard_tabulate,r,table,1,,
+cards::ard_tabulate_value,en,dichotomous,1,,
+cards::ard_tabulate_value,en,binary,1,,
+cards::ard_tabulate_value,en,flag,1,,
+cards::ard_tabulate_value,en,yes/no,1,,
+cards::ard_tabulate_value,en,responder,1,,
+cards::ard_tabulate_value,en,one level,1,,
+cards::ard_tabulate_value,ja,二値,1,,
+cards::ard_tabulate_value,ja,フラグ,1,,
+cards::ard_tabulate_value,ja,該当例数,1,,
+cards::ard_tabulate_value,ja,1 水準,1,,
+cards::ard_tabulate_value,sas,PROC FREQ,2,1 つの水準だけを数えるとき,to count one level only
+cards::ard_missing,en,missing,1,,
+cards::ard_missing,en,non-missing,1,,
+cards::ard_missing,en,nmiss,1,,
+cards::ard_missing,ja,欠測,1,,
+cards::ard_missing,ja,欠損,1,,
+cards::ard_missing,ja,欠測数,1,,
+cards::ard_missing,sas,PROC MEANS NMISS,2,,
+cards::ard_missing,r,is.na,1,,
+cards::ard_tabulate_rows,en,number of rows,1,,
+cards::ard_tabulate_rows,en,records,1,,
+cards::ard_tabulate_rows,en,record count,1,,
+cards::ard_tabulate_rows,ja,行数,1,,
+cards::ard_tabulate_rows,ja,レコード数,1,,
+cards::ard_tabulate_rows,ja,件数,2,,
+cards::ard_tabulate_rows,r,nrow,1,,
+cards::ard_total_n,en,N,1,,
+cards::ard_total_n,en,big N,1,,
+cards::ard_total_n,en,total N,1,,
+cards::ard_total_n,en,number of subjects,1,,
+cards::ard_total_n,en,denominator,1,,
+cards::ard_total_n,en,header N,1,,
+cards::ard_total_n,ja,被験者数,1,,
+cards::ard_total_n,ja,例数,2,,
+cards::ard_total_n,ja,総数,1,,
+cards::ard_total_n,ja,分母,1,,
+cards::ard_total_n,ja,列見出しの N,1,,
+cards::ard_attributes,en,label,1,,
+cards::ard_attributes,en,variable label,1,,
+cards::ard_attributes,en,attributes,1,,
+cards::ard_attributes,ja,変数ラベル,1,,
+cards::ard_attributes,ja,ラベル,1,,
+cards::ard_attributes,ja,属性,1,,
+cards::ard_attributes,sas,PROC CONTENTS,2,,
+subjects,en,subjects with a record,1,,
+subjects,en,at least one,1,,
+subjects,en,any event,1,,
+subjects,en,subject count,1,,
+subjects,ja,1 件以上,1,,
+subjects,ja,該当被験者数,1,,
+subjects,ja,発現例数,2,階層（SOC / PT）なら ard_stack_hierarchical,for a hierarchy (SOC / PT) ard_stack_hierarchical
+cards::ard_stack_hierarchical,en,adverse event,1,,
+cards::ard_stack_hierarchical,en,AE,1,,
+cards::ard_stack_hierarchical,en,TEAE,1,,
+cards::ard_stack_hierarchical,en,SOC,1,,
+cards::ard_stack_hierarchical,en,PT,1,,
+cards::ard_stack_hierarchical,en,system organ class,1,,
+cards::ard_stack_hierarchical,en,preferred term,1,,
+cards::ard_stack_hierarchical,en,MedDRA,1,,
+cards::ard_stack_hierarchical,en,hierarchy,1,,
+cards::ard_stack_hierarchical,en,nested,1,,
+cards::ard_stack_hierarchical,en,incidence,1,,
+cards::ard_stack_hierarchical,en,subjects with event,1,,
+cards::ard_stack_hierarchical,ja,有害事象,1,,
+cards::ard_stack_hierarchical,ja,副作用,1,,
+cards::ard_stack_hierarchical,ja,器官別大分類,1,,
+cards::ard_stack_hierarchical,ja,基本語,1,,
+cards::ard_stack_hierarchical,ja,階層,1,,
+cards::ard_stack_hierarchical,ja,発現例数,1,,
+cards::ard_stack_hierarchical,ja,発現割合,1,,
+cards::ard_stack_hierarchical,ja,発現頻度,1,,
+cards::ard_stack_hierarchical,sas,PROC FREQ,2,被験者の重複を除いてから数えるのと同じ,the same as counting after removing duplicate subjects
+cards::ard_stack_hierarchical_count,en,event count,1,,
+cards::ard_stack_hierarchical_count,en,number of events,1,,
+cards::ard_stack_hierarchical_count,en,AE count,1,,
+cards::ard_stack_hierarchical_count,ja,発現件数,1,,
+cards::ard_stack_hierarchical_count,ja,イベント数,1,,
+cards::ard_stack_hierarchical_count,ja,件数,2,,
+cards::ard_hierarchical,en,adverse event,2,最も内側の水準だけ。普通は ard_stack_hierarchical,the innermost level only: ard_stack_hierarchical is the usual entry
+cards::ard_hierarchical,en,SOC,2,最も内側の水準だけ。普通は ard_stack_hierarchical,the innermost level only: ard_stack_hierarchical is the usual entry
+cards::ard_hierarchical,en,PT,2,最も内側の水準だけ。普通は ard_stack_hierarchical,the innermost level only: ard_stack_hierarchical is the usual entry
+cards::ard_hierarchical,ja,有害事象,2,最も内側の水準だけ。普通は ard_stack_hierarchical,the innermost level only: ard_stack_hierarchical is the usual entry
+cards::ard_hierarchical,ja,発現例数,2,最も内側の水準だけ。普通は ard_stack_hierarchical,the innermost level only: ard_stack_hierarchical is the usual entry
+cards::ard_hierarchical_count,en,event count,2,最も内側の水準だけ。普通は ard_stack_hierarchical_count,the innermost level only: ard_stack_hierarchical_count is the usual entry
+cards::ard_hierarchical_count,ja,発現件数,2,最も内側の水準だけ。普通は ard_stack_hierarchical_count,the innermost level only: ard_stack_hierarchical_count is the usual entry
+cardx::ard_tabulate_max,en,worst grade,1,,
+cardx::ard_tabulate_max,en,maximum grade,1,,
+cardx::ard_tabulate_max,en,highest grade,1,,
+cardx::ard_tabulate_max,en,maximum severity,1,,
+cardx::ard_tabulate_max,en,worst severity,1,,
+cardx::ard_tabulate_max,en,CTCAE,1,,
+cardx::ard_tabulate_max,en,toxicity grade,1,,
+cardx::ard_tabulate_max,en,by severity,1,,
+cardx::ard_tabulate_max,ja,最悪グレード,1,,
+cardx::ard_tabulate_max,ja,最高グレード,1,,
+cardx::ard_tabulate_max,ja,最大重症度,1,,
+cardx::ard_tabulate_max,ja,重症度別,1,,
+cardx::ard_tabulate_max,ja,グレード別,1,,
+cardx::ard_tabulate_abnormal,en,abnormal,1,,
+cardx::ard_tabulate_abnormal,en,abnormality,1,,
+cardx::ard_tabulate_abnormal,en,out of range,1,,
+cardx::ard_tabulate_abnormal,en,lab abnormality,1,,
+cardx::ard_tabulate_abnormal,en,shift table,3,異常値になった例数ならこちら,for the subjects who became abnormal
+cardx::ard_tabulate_abnormal,ja,異常値,1,,
+cardx::ard_tabulate_abnormal,ja,基準値外,1,,
+cardx::ard_tabulate_abnormal,ja,臨床検査値異常,1,,
+cardx::ard_tabulate_abnormal,ja,低値,1,,
+cardx::ard_tabulate_abnormal,ja,高値,1,,
+cardx::ard_tabulate_abnormal,ja,シフトテーブル,3,異常値になった例数ならこちら,for the subjects who became abnormal
+cardx::ard_categorical_ci,en,proportion CI,1,,
+cardx::ard_categorical_ci,en,confidence interval of a proportion,1,,
+cardx::ard_categorical_ci,en,binomial CI,1,,
+cardx::ard_categorical_ci,en,exact CI,1,,
+cardx::ard_categorical_ci,en,Wilson,1,,
+cardx::ard_categorical_ci,en,Clopper-Pearson,1,,
+cardx::ard_categorical_ci,en,Wald,1,,
+cardx::ard_categorical_ci,en,Agresti-Coull,1,,
+cardx::ard_categorical_ci,en,Jeffreys,1,,
+cardx::ard_categorical_ci,en,response rate,1,,
+cardx::ard_categorical_ci,en,ORR,1,,
+cardx::ard_categorical_ci,en,confidence interval,2,割合の区間。平均の区間は ard_continuous_ci,of a proportion; of a mean: ard_continuous_ci
+cardx::ard_categorical_ci,ja,割合の信頼区間,1,,
+cardx::ard_categorical_ci,ja,二項信頼区間,1,,
+cardx::ard_categorical_ci,ja,正確な信頼区間,1,,
+cardx::ard_categorical_ci,ja,奏効率,1,,
+cardx::ard_categorical_ci,ja,奏効割合,1,,
+cardx::ard_categorical_ci,ja,信頼区間,2,割合の区間。平均の区間は ard_continuous_ci,of a proportion; of a mean: ard_continuous_ci
+cardx::ard_categorical_ci,sas,PROC FREQ BINOMIAL,1,"cardx の既定は ""waldcc""（連続修正つき Wald）。SAS と合わせるには method = ""wald"" か ""clopper-pearson""","cardx's default is ""waldcc"" (Wald with a continuity correction); method = ""wald"" or ""clopper-pearson"" matches SAS"
+cardx::ard_categorical_ci,sas,PROC FREQ,2,"割合の信頼区間（BINOMIAL）。cardx の既定は ""waldcc""（連続修正つき Wald）。SAS と合わせるには method = ""wald"" か ""clopper-pearson""","the CI of a proportion (BINOMIAL); cardx's default is ""waldcc"" (Wald with a continuity correction); method = ""wald"" or ""clopper-pearson"" matches SAS"
+cardx::ard_categorical_ci,r,binom.test,1,,
+cardx::ard_categorical_ci,r,prop.test,2,,
+cardx::ard_continuous_ci,en,mean CI,1,,
+cardx::ard_continuous_ci,en,confidence interval of a mean,1,,
+cardx::ard_continuous_ci,en,t interval,1,,
+cardx::ard_continuous_ci,en,median CI,3,擬似中央値（Hodges-Lehmann）の区間で、中央値の区間ではない。中央値の区間は独自の関数で（生存時間の中央値は ard_survival_survfit）,"a CI of the pseudo-median (Hodges-Lehmann), not of the median; a median CI: an own function (a survival median: ard_survival_survfit)"
+cardx::ard_continuous_ci,en,confidence interval,2,平均の区間。割合の区間は ard_categorical_ci,of a mean; of a proportion: ard_categorical_ci
+cardx::ard_continuous_ci,ja,平均の信頼区間,1,,
+cardx::ard_continuous_ci,ja,中央値の信頼区間,3,擬似中央値（Hodges-Lehmann）の区間で、中央値の区間ではない。中央値の区間は独自の関数で（生存時間の中央値は ard_survival_survfit）,"a CI of the pseudo-median (Hodges-Lehmann), not of the median; a median CI: an own function (a survival median: ard_survival_survfit)"
+cardx::ard_continuous_ci,ja,信頼区間,2,平均の区間。割合の区間は ard_categorical_ci,of a mean; of a proportion: ard_categorical_ci
+cardx::ard_continuous_ci,sas,PROC MEANS CLM,1,,
+cardx::ard_continuous_ci,sas,PROC TTEST,2,平均の信頼区間,the CI of a mean
+cardx::ard_continuous_ci,sas,PROC UNIVARIATE CIBASIC,2,,
+cardx::ard_continuous_ci,r,t.test,2,平均の信頼区間,the CI of a mean
+cardx::ard_incidence_rate,en,incidence rate,1,,
+cardx::ard_incidence_rate,en,person-years,1,,
+cardx::ard_incidence_rate,en,patient-years,1,,
+cardx::ard_incidence_rate,en,exposure-adjusted incidence rate,1,,
+cardx::ard_incidence_rate,en,EAIR,1,,
+cardx::ard_incidence_rate,en,events per 100 patient-years,1,,
+cardx::ard_incidence_rate,ja,発現率,1,,
+cardx::ard_incidence_rate,ja,人年,1,,
+cardx::ard_incidence_rate,ja,人年法,1,,
+cardx::ard_incidence_rate,ja,曝露調整発現率,1,,
+cardx::ard_incidence_rate,ja,100 人年あたり,1,,
+cardx::ard_stats_t_test,en,t test,1,,
+cardx::ard_stats_t_test,en,Student,1,args に var.equal = TRUE（既定は Welch）,args var.equal = TRUE (the default is Welch)
+cardx::ard_stats_t_test,en,Welch,1,,
+cardx::ard_stats_t_test,en,two-sample,1,,
+cardx::ard_stats_t_test,en,mean difference,1,調整なし。調整済みの差は ard_emmeans_contrast,unadjusted; an adjusted difference: ard_emmeans_contrast
+cardx::ard_stats_t_test,ja,t 検定,1,,
+cardx::ard_stats_t_test,ja,2 標本 t 検定,1,,
+cardx::ard_stats_t_test,ja,スチューデント,1,args に var.equal = TRUE（既定は Welch）,args var.equal = TRUE (the default is Welch)
+cardx::ard_stats_t_test,ja,ウェルチ,1,,
+cardx::ard_stats_t_test,ja,平均の差,1,調整なし。調整済みの差は ard_emmeans_contrast,unadjusted; an adjusted difference: ard_emmeans_contrast
+cardx::ard_stats_t_test,ja,平均値の差の検定,1,,
+cardx::ard_stats_t_test,sas,PROC TTEST,1,,
+cardx::ard_stats_t_test,r,t.test,1,,
+cardx::ard_stats_wilcox_test,en,Wilcoxon rank-sum,1,,
+cardx::ard_stats_wilcox_test,en,Wilcoxon,1,,
+cardx::ard_stats_wilcox_test,en,Mann-Whitney,1,,
+cardx::ard_stats_wilcox_test,en,U test,1,,
+cardx::ard_stats_wilcox_test,en,nonparametric,2,2 群の比較。3 群以上は ard_stats_kruskal_test、対応ありは ard_stats_paired_wilcox_test,two groups; three or more: ard_stats_kruskal_test; paired: ard_stats_paired_wilcox_test
+cardx::ard_stats_wilcox_test,en,rank test,1,,
+cardx::ard_stats_wilcox_test,en,Hodges-Lehmann,2,args に conf.int = TRUE（推定値と信頼区間が出る）,args conf.int = TRUE (the estimate and its CI)
+cardx::ard_stats_wilcox_test,ja,ウィルコクソン順位和検定,1,,
+cardx::ard_stats_wilcox_test,ja,ウィルコクソン,1,,
+cardx::ard_stats_wilcox_test,ja,マン・ホイットニー,1,,
+cardx::ard_stats_wilcox_test,ja,U 検定,1,,
+cardx::ard_stats_wilcox_test,ja,ノンパラメトリック,2,2 群の比較。3 群以上は ard_stats_kruskal_test、対応ありは ard_stats_paired_wilcox_test,two groups; three or more: ard_stats_kruskal_test; paired: ard_stats_paired_wilcox_test
+cardx::ard_stats_wilcox_test,ja,順位和,1,,
+cardx::ard_stats_wilcox_test,ja,ホッジス・レーマン,2,args に conf.int = TRUE（推定値と信頼区間が出る）,args conf.int = TRUE (the estimate and its CI)
+cardx::ard_stats_wilcox_test,sas,PROC NPAR1WAY,1,exact = FALSE で SAS の正規近似と同じ（R は小標本で正確な p）,exact = FALSE matches SAS's normal approximation (R gives an exact p for small samples)
+cardx::ard_stats_wilcox_test,sas,PROC NPAR1WAY WILCOXON,1,exact = FALSE で SAS の正規近似と同じ（R は小標本で正確な p）,exact = FALSE matches SAS's normal approximation (R gives an exact p for small samples)
+cardx::ard_stats_wilcox_test,sas,PROC NPAR1WAY HL,2,args に conf.int = TRUE,args conf.int = TRUE
+cardx::ard_stats_wilcox_test,r,wilcox.test,1,,
+cardx::ard_stats_chisq_test,en,chi-square,1,,
+cardx::ard_stats_chisq_test,en,chi-squared,1,,
+cardx::ard_stats_chisq_test,en,chisq,1,,
+cardx::ard_stats_chisq_test,en,Pearson,2,ピアソンのカイ二乗検定。ピアソンの相関係数は custom（PROC CORR）,Pearson's chi-square test; Pearson correlation: custom (PROC CORR)
+cardx::ard_stats_chisq_test,ja,カイ二乗検定,1,,
+cardx::ard_stats_chisq_test,ja,カイ二乗,1,,
+cardx::ard_stats_chisq_test,ja,χ二乗,1,,
+cardx::ard_stats_chisq_test,ja,ピアソン,2,ピアソンのカイ二乗検定。ピアソンの相関係数は custom（PROC CORR）,Pearson's chi-square test; Pearson correlation: custom (PROC CORR)
+cardx::ard_stats_chisq_test,sas,PROC FREQ CHISQ,1,SAS と合わせるには correct = FALSE（R は 2×2 で Yates の補正が既定）,correct = FALSE matches SAS (R applies the Yates correction to a 2x2 table by default)
+cardx::ard_stats_chisq_test,sas,PROC FREQ,2,カイ二乗検定（CHISQ）。correct = FALSE で SAS と同じ,the chi-square test (CHISQ); correct = FALSE matches SAS
+cardx::ard_stats_chisq_test,r,chisq.test,1,,
+cardx::ard_stats_fisher_test,en,Fisher's exact test,1,,
+cardx::ard_stats_fisher_test,en,Fisher,1,,
+cardx::ard_stats_fisher_test,en,exact test,2,"Fisher の正確検定。割合の正確な信頼区間は ard_categorical_ci（method = ""clopper-pearson""）","Fisher's exact test; an exact binomial CI: ard_categorical_ci (method = ""clopper-pearson"")"
+cardx::ard_stats_fisher_test,en,odds ratio,2,2×2 の条件付き最尤推定のオッズ比と信頼区間,the conditional MLE odds ratio of a 2x2 table and its CI
+cardx::ard_stats_fisher_test,en,OR,2,2×2 の条件付き最尤推定のオッズ比と信頼区間,the conditional MLE odds ratio of a 2x2 table and its CI
+cardx::ard_stats_fisher_test,ja,フィッシャーの正確検定,1,,
+cardx::ard_stats_fisher_test,ja,フィッシャー,1,,
+cardx::ard_stats_fisher_test,ja,正確検定,2,"Fisher の正確検定。割合の正確な信頼区間は ard_categorical_ci（method = ""clopper-pearson""）","Fisher's exact test; an exact binomial CI: ard_categorical_ci (method = ""clopper-pearson"")"
+cardx::ard_stats_fisher_test,ja,直接確率,1,,
+cardx::ard_stats_fisher_test,ja,オッズ比,2,2×2 の条件付き最尤推定のオッズ比と信頼区間,the conditional MLE odds ratio of a 2x2 table and its CI
+cardx::ard_stats_fisher_test,sas,PROC FREQ FISHER,1,,
+cardx::ard_stats_fisher_test,sas,PROC FREQ EXACT,2,"Fisher の正確検定。割合の正確な信頼区間は ard_categorical_ci（method = ""clopper-pearson""）","Fisher's exact test; an exact binomial CI: ard_categorical_ci (method = ""clopper-pearson"")"
+cardx::ard_stats_fisher_test,sas,PROC FREQ,2,Fisher の正確検定（FISHER / EXACT）,Fisher's exact test (FISHER / EXACT)
+cardx::ard_stats_fisher_test,r,fisher.test,1,,
+cardx::ard_stats_prop_test,en,test of proportions,1,,
+cardx::ard_stats_prop_test,en,two proportions,1,,
+cardx::ard_stats_prop_test,en,difference in proportions,1,,
+cardx::ard_stats_prop_test,en,risk difference,2,割合の差と、その Wald 型（連続修正）の区間。Newcombe・Miettinen-Nurminen は独自の関数で,the difference of the proportions with a Wald-type (continuity-corrected) CI; Newcombe / Miettinen-Nurminen: an own function
+cardx::ard_stats_prop_test,ja,割合の差,1,,
+cardx::ard_stats_prop_test,ja,比率の差の検定,1,,
+cardx::ard_stats_prop_test,ja,2 群の割合,1,,
+cardx::ard_stats_prop_test,ja,リスク差,2,割合の差と、その Wald 型（連続修正）の区間。Newcombe・Miettinen-Nurminen は独自の関数で,the difference of the proportions with a Wald-type (continuity-corrected) CI; Newcombe / Miettinen-Nurminen: an own function
+cardx::ard_stats_prop_test,en,Miettinen-Nurminen,3,この関数は Wald 型の区間だけ。Miettinen-Nurminen は独自の関数（Own functions）で,this function gives a Wald-type CI only: Miettinen-Nurminen needs an own function (Own functions)
+cardx::ard_stats_prop_test,en,Newcombe,3,この関数は Wald 型の区間だけ。Newcombe は独自の関数（Own functions）で,this function gives a Wald-type CI only: Newcombe needs an own function (Own functions)
+cardx::ard_stats_prop_test,sas,PROC FREQ RISKDIFF,2,Wald 型の区間。correct = FALSE で SAS の Wald と同じ。ほかの区間は独自の関数で,a Wald-type CI; correct = FALSE matches SAS's Wald; other intervals: an own function
+cardx::ard_stats_prop_test,r,prop.test,1,,
+cardx::ard_stats_poisson_test,en,Poisson test,1,,
+cardx::ard_stats_poisson_test,en,rate ratio,1,,
+cardx::ard_stats_poisson_test,en,exact rate,1,,
+cardx::ard_stats_poisson_test,ja,ポアソン検定,1,,
+cardx::ard_stats_poisson_test,ja,率比,1,,
+cardx::ard_stats_poisson_test,ja,発生率比,1,,
+cardx::ard_stats_poisson_test,r,poisson.test,1,,
+cardx::ard_stats_mood_test,en,Mood test,1,,
+cardx::ard_stats_mood_test,en,scale,1,,
+cardx::ard_stats_mood_test,en,dispersion,1,,
+cardx::ard_stats_mood_test,ja,ムード検定,1,,
+cardx::ard_stats_mood_test,ja,尺度,1,,
+cardx::ard_stats_mood_test,ja,ばらつきの検定,1,,
+cardx::ard_stats_mood_test,sas,PROC NPAR1WAY MOOD,1,,
+cardx::ard_stats_mood_test,r,mood.test,1,,
+cardx::ard_stats_aov,en,ANOVA,1,,
+cardx::ard_stats_aov,en,analysis of variance,1,,
+cardx::ard_stats_aov,en,one-way,1,,
+cardx::ard_stats_aov,en,two-way,1,,
+cardx::ard_stats_aov,en,F test,1,,
+cardx::ard_stats_aov,ja,分散分析,1,,
+cardx::ard_stats_aov,ja,一元配置,1,,
+cardx::ard_stats_aov,ja,二元配置,1,,
+cardx::ard_stats_aov,ja,F 検定,1,,
+cardx::ard_stats_aov,sas,PROC ANOVA,1,,
+cardx::ard_stats_aov,sas,PROC GLM,2,分散分析表,the ANOVA table
+cardx::ard_stats_aov,r,aov,1,,
+cardx::ard_stats_oneway_test,en,Welch ANOVA,1,,
+cardx::ard_stats_oneway_test,en,one-way test,1,,
+cardx::ard_stats_oneway_test,en,unequal variances,1,,
+cardx::ard_stats_oneway_test,ja,ウェルチの分散分析,1,,
+cardx::ard_stats_oneway_test,ja,一元配置,2,等分散を仮定しないとき,without assuming equal variances
+cardx::ard_stats_oneway_test,ja,等分散を仮定しない,1,,
+cardx::ard_stats_oneway_test,sas,PROC GLM WELCH,2,,
+cardx::ard_stats_oneway_test,r,oneway.test,1,,
+cardx::ard_stats_kruskal_test,en,Kruskal-Wallis,1,,
+cardx::ard_stats_kruskal_test,en,nonparametric ANOVA,1,,
+cardx::ard_stats_kruskal_test,en,rank test,2,3 群以上,three or more groups
+cardx::ard_stats_kruskal_test,ja,クラスカル・ウォリス検定,1,,
+cardx::ard_stats_kruskal_test,ja,ノンパラメトリック,2,3 群以上,three or more groups
+cardx::ard_stats_kruskal_test,sas,PROC NPAR1WAY,2,3 群以上のとき,with three or more groups
+cardx::ard_stats_kruskal_test,r,kruskal.test,1,,
+cardx::ard_stats_mantelhaen_test,en,CMH,1,,
+cardx::ard_stats_mantelhaen_test,en,Cochran-Mantel-Haenszel,1,,
+cardx::ard_stats_mantelhaen_test,en,Mantel-Haenszel,1,,
+cardx::ard_stats_mantelhaen_test,en,stratified test,1,,
+cardx::ard_stats_mantelhaen_test,en,common odds ratio,2,2×2×K の表のとき（層別の共通オッズ比）,for a 2x2xK table (the common odds ratio across strata)
+cardx::ard_stats_mantelhaen_test,en,odds ratio,2,層別の共通オッズ比（2×2×K）,the common odds ratio across strata (2x2xK)
+cardx::ard_stats_mantelhaen_test,en,OR,2,層別の共通オッズ比（2×2×K）,the common odds ratio across strata (2x2xK)
+cardx::ard_stats_mantelhaen_test,ja,コクラン・マンテル・ヘンツェル検定,1,,
+cardx::ard_stats_mantelhaen_test,ja,マンテル・ヘンツェル,1,,
+cardx::ard_stats_mantelhaen_test,ja,層別検定,1,,
+cardx::ard_stats_mantelhaen_test,ja,層別解析,1,,
+cardx::ard_stats_mantelhaen_test,ja,共通オッズ比,2,2×2×K の表のとき（層別の共通オッズ比）,for a 2x2xK table (the common odds ratio across strata)
+cardx::ard_stats_mantelhaen_test,ja,オッズ比,2,層別の共通オッズ比（2×2×K）,the common odds ratio across strata (2x2xK)
+cardx::ard_stats_mantelhaen_test,sas,PROC FREQ CMH,1,SAS と合わせるには correct = FALSE（R は 2×2×K で連続修正が既定）,correct = FALSE matches SAS (R corrects a 2x2xK table by default)
+cardx::ard_stats_mantelhaen_test,sas,PROC FREQ,2,層別の検定（CMH）。correct = FALSE で SAS と同じ,the stratified test (CMH); correct = FALSE matches SAS
+cardx::ard_stats_mantelhaen_test,r,mantelhaen.test,1,,
+cardx::ard_stats_anova,en,model comparison,1,,
+cardx::ard_stats_anova,en,nested models,1,,
+cardx::ard_stats_anova,en,likelihood ratio test,1,,
+cardx::ard_stats_anova,en,LRT,1,,
+cardx::ard_stats_anova,ja,モデル比較,1,,
+cardx::ard_stats_anova,ja,尤度比検定,1,,
+cardx::ard_stats_anova,ja,入れ子モデル,1,,
+cardx::ard_stats_anova,r,anova,1,,
+cardx::ard_stats_paired_t_test,en,paired t test,1,,
+cardx::ard_stats_paired_t_test,en,paired,1,,
+cardx::ard_stats_paired_t_test,en,pre-post,1,,
+cardx::ard_stats_paired_t_test,en,before-after,1,,
+cardx::ard_stats_paired_t_test,ja,対応のある t 検定,1,,
+cardx::ard_stats_paired_t_test,ja,対応あり,1,,
+cardx::ard_stats_paired_t_test,ja,対応のある,1,,
+cardx::ard_stats_paired_t_test,ja,前後比較,1,,
+cardx::ard_stats_paired_t_test,sas,PROC TTEST PAIRED,1,,
+cardx::ard_stats_paired_t_test,sas,PROC TTEST,2,対応のある t 検定（PAIRED 文）,the paired t test (PAIRED statement)
+cardx::ard_stats_paired_t_test,r,t.test,2,paired = TRUE,paired = TRUE
+cardx::ard_stats_paired_wilcox_test,en,Wilcoxon signed-rank,1,,
+cardx::ard_stats_paired_wilcox_test,en,signed rank,1,,
+cardx::ard_stats_paired_wilcox_test,en,paired Wilcoxon,1,,
+cardx::ard_stats_paired_wilcox_test,en,paired,1,,
+cardx::ard_stats_paired_wilcox_test,ja,ウィルコクソン符号付順位検定,1,,
+cardx::ard_stats_paired_wilcox_test,ja,符号付順位,1,,
+cardx::ard_stats_paired_wilcox_test,ja,対応のあるウィルコクソン,1,,
+cardx::ard_stats_paired_wilcox_test,ja,対応のある,1,,
+cardx::ard_stats_paired_wilcox_test,sas,PROC UNIVARIATE,2,差の符号付順位検定,the signed-rank test of the differences
+cardx::ard_stats_paired_wilcox_test,r,wilcox.test,2,paired = TRUE,paired = TRUE
+cardx::ard_stats_mcnemar_test,en,McNemar,1,,
+cardx::ard_stats_mcnemar_test,en,paired binary,1,,
+cardx::ard_stats_mcnemar_test,en,paired proportions,1,,
+cardx::ard_stats_mcnemar_test,ja,マクネマー検定,1,,
+cardx::ard_stats_mcnemar_test,ja,対応のある割合,1,,
+cardx::ard_stats_mcnemar_test,ja,対応のある二値,1,,
+cardx::ard_stats_mcnemar_test,sas,PROC FREQ AGREE,1,SAS と合わせるには correct = FALSE（R の既定は連続修正あり）,correct = FALSE matches SAS (R corrects by default)
+cardx::ard_stats_mcnemar_test,sas,PROC FREQ MCNEM,1,SAS と合わせるには correct = FALSE（R の既定は連続修正あり）,correct = FALSE matches SAS (R corrects by default)
+cardx::ard_stats_mcnemar_test,r,mcnemar.test,1,,
+cardx::ard_stats_mcnemar_test_long,en,McNemar,2,1 被験者・1 時点が 1 行のデータ,one record per subject and visit
+cardx::ard_stats_mcnemar_test_long,ja,マクネマー検定,2,1 被験者・1 時点が 1 行のデータ,one record per subject and visit
+cardx::ard_stats_t_test_onesample,en,one-sample t test,1,,
+cardx::ard_stats_t_test_onesample,en,test against a value,1,,
+cardx::ard_stats_t_test_onesample,en,change from baseline,2,変化量が 0 かの検定,whether the change is zero
+cardx::ard_stats_t_test_onesample,ja,1 標本 t 検定,1,,
+cardx::ard_stats_t_test_onesample,ja,変化量の検定,2,変化量が 0 かの検定,whether the change is zero
+cardx::ard_stats_t_test_onesample,sas,PROC TTEST H0,1,,
+cardx::ard_stats_t_test_onesample,sas,PROC UNIVARIATE,2,1 標本の t 検定,the one-sample t test
+cardx::ard_stats_t_test_onesample,r,t.test,2,1 標本,one sample
+cardx::ard_stats_wilcox_test_onesample,en,one-sample Wilcoxon,1,,
+cardx::ard_stats_wilcox_test_onesample,en,signed rank,2,1 標本,one sample
+cardx::ard_stats_wilcox_test_onesample,ja,1 標本ウィルコクソン,1,,
+cardx::ard_stats_wilcox_test_onesample,ja,符号付順位,2,1 標本,one sample
+cardx::ard_stats_wilcox_test_onesample,sas,PROC UNIVARIATE,2,1 標本の符号付順位検定,the one-sample signed-rank test
+cardx::ard_stats_wilcox_test_onesample,r,wilcox.test,2,1 標本,one sample
+cardx::ard_effectsize_cohens_d,en,Cohen's d,1,,
+cardx::ard_effectsize_cohens_d,en,effect size,1,,
+cardx::ard_effectsize_cohens_d,en,SMD,2,連続量の効果量。背景因子のバランスなら ard_smd_smd,an effect size of a numeric variable; for baseline balance ard_smd_smd
+cardx::ard_effectsize_cohens_d,en,standardized mean difference,2,連続量の効果量。背景因子のバランスなら ard_smd_smd,an effect size of a numeric variable; for baseline balance ard_smd_smd
+cardx::ard_effectsize_cohens_d,ja,コーエンの d,1,,
+cardx::ard_effectsize_cohens_d,ja,効果量,1,,
+cardx::ard_effectsize_cohens_d,ja,標準化平均差,2,連続量の効果量。背景因子のバランスなら ard_smd_smd,an effect size of a numeric variable; for baseline balance ard_smd_smd
+cardx::ard_effectsize_hedges_g,en,Hedges' g,1,,
+cardx::ard_effectsize_hedges_g,en,effect size,1,,
+cardx::ard_effectsize_hedges_g,en,small-sample correction,1,,
+cardx::ard_effectsize_hedges_g,en,SMD,2,小標本の補正つきの効果量。背景因子のバランスなら ard_smd_smd,a small-sample corrected effect size; for baseline balance ard_smd_smd
+cardx::ard_effectsize_hedges_g,en,standardized mean difference,2,小標本の補正つきの効果量。背景因子のバランスなら ard_smd_smd,a small-sample corrected effect size; for baseline balance ard_smd_smd
+cardx::ard_effectsize_hedges_g,ja,ヘッジズの g,1,,
+cardx::ard_effectsize_hedges_g,ja,効果量,1,,
+cardx::ard_effectsize_hedges_g,ja,標準化平均差,2,小標本の補正つきの効果量。背景因子のバランスなら ard_smd_smd,a small-sample corrected effect size; for baseline balance ard_smd_smd
+cardx::ard_effectsize_paired_cohens_d,en,paired Cohen's d,1,,
+cardx::ard_effectsize_paired_cohens_d,en,paired effect size,1,,
+cardx::ard_effectsize_paired_cohens_d,ja,対応のあるコーエンの d,1,,
+cardx::ard_effectsize_paired_cohens_d,ja,対応のある効果量,1,,
+cardx::ard_effectsize_paired_hedges_g,en,paired Hedges' g,1,,
+cardx::ard_effectsize_paired_hedges_g,ja,対応のあるヘッジズの g,1,,
+cardx::ard_smd_smd,en,SMD,1,,
+cardx::ard_smd_smd,en,standardized mean difference,1,,
+cardx::ard_smd_smd,en,standardised mean difference,1,,
+cardx::ard_smd_smd,en,standardized difference,1,,
+cardx::ard_smd_smd,en,baseline balance,1,,
+cardx::ard_smd_smd,en,covariate balance,1,,
+cardx::ard_smd_smd,ja,標準化平均差,1,,
+cardx::ard_smd_smd,ja,標準化差,1,,
+cardx::ard_smd_smd,ja,標準化差分,1,,
+cardx::ard_smd_smd,ja,背景因子のバランス,1,,
+cardx::ard_smd_smd,ja,群間バランス,1,,
+cardx::ard_regression,en,regression,1,,
+cardx::ard_regression,en,linear regression,1,,
+cardx::ard_regression,en,multiple regression,1,,
+cardx::ard_regression,en,coefficient,1,,
+cardx::ard_regression,en,adjusted,1,,
+cardx::ard_regression,en,logistic regression,1,"method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE でオッズ比","method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE for odds ratios"
+cardx::ard_regression,en,odds ratio,1,"method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE","method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE"
+cardx::ard_regression,en,OR,1,"method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE","method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE"
+cardx::ard_regression,en,adjusted odds ratio,1,"method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE。調整する変数を式に","method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE; the covariates in the formula"
+cardx::ard_regression,en,Cox regression,1,"method = ""coxph"", package = ""survival"", exponentiate = TRUE でハザード比","method = ""coxph"", package = ""survival"", exponentiate = TRUE for hazard ratios"
+cardx::ard_regression,en,Cox,1,"method = ""coxph"", package = ""survival"", exponentiate = TRUE でハザード比","method = ""coxph"", package = ""survival"", exponentiate = TRUE for hazard ratios"
+cardx::ard_regression,en,proportional hazards,1,"method = ""coxph"", package = ""survival"", exponentiate = TRUE","method = ""coxph"", package = ""survival"", exponentiate = TRUE"
+cardx::ard_regression,en,hazard ratio,1,"method = ""coxph"", package = ""survival"", exponentiate = TRUE","method = ""coxph"", package = ""survival"", exponentiate = TRUE"
+cardx::ard_regression,en,HR,1,"method = ""coxph"", package = ""survival"", exponentiate = TRUE","method = ""coxph"", package = ""survival"", exponentiate = TRUE"
+cardx::ard_regression,en,GLM,1,"method = ""glm"" と method.args = list(family = ...)","method = ""glm"" with method.args = list(family = ...)"
+cardx::ard_regression,en,generalized linear model,1,"method = ""glm"" と method.args = list(family = ...)","method = ""glm"" with method.args = list(family = ...)"
+cardx::ard_regression,en,Poisson regression,1,"method = ""glm"", method.args = list(family = poisson), exponentiate = TRUE で率比","method = ""glm"", method.args = list(family = poisson), exponentiate = TRUE for rate ratios"
+cardx::ard_regression,en,negative binomial,2,"method = ""glm.nb"", package = ""MASS""（確認済み）","method = ""glm.nb"", package = ""MASS"" (checked)"
+cardx::ard_regression,en,ANCOVA,2,係数の表。群の調整平均と差は ard_emmeans_*,the coefficients; the adjusted group means and their difference: ard_emmeans_*
+cardx::ard_regression,en,analysis of covariance,2,係数の表。群の調整平均と差は ard_emmeans_*,the coefficients; the adjusted group means and their difference: ard_emmeans_*
+cardx::ard_regression,en,MMRM,2,"method = ""mmrm"", package = ""mmrm""、式に us(AVISIT | USUBJID) など（確認済み）。群の差は ard_emmeans_contrast","method = ""mmrm"", package = ""mmrm"", us(AVISIT | USUBJID) ... in the formula (checked); the group difference: ard_emmeans_contrast"
+cardx::ard_regression,en,mixed model,2,"MMRM は method = ""mmrm"", package = ""mmrm""（確認済み）。lme4 の lmer は broom.mixed パッケージが要る","MMRM: method = ""mmrm"", package = ""mmrm"" (checked); lme4's lmer needs the broom.mixed package"
+cardx::ard_regression,en,repeated measures,2,"method = ""mmrm"", package = ""mmrm""（確認済み）","method = ""mmrm"", package = ""mmrm"" (checked)"
+cardx::ard_regression,en,risk ratio,3,"log リンクの glm（method.args = list(family = binomial(link = ""log"")), exponentiate = TRUE）か、独自の関数で。収束しないことがある","a log-link glm (method.args = list(family = binomial(link = ""log"")), exponentiate = TRUE) or an own function; it may not converge"
+cardx::ard_regression,en,relative risk,3,"log リンクの glm（method.args = list(family = binomial(link = ""log"")), exponentiate = TRUE）か、独自の関数で。収束しないことがある","a log-link glm (method.args = list(family = binomial(link = ""log"")), exponentiate = TRUE) or an own function; it may not converge"
+cardx::ard_regression,ja,回帰,1,,
+cardx::ard_regression,ja,回帰モデル,1,,
+cardx::ard_regression,ja,線形回帰,1,,
+cardx::ard_regression,ja,重回帰,1,,
+cardx::ard_regression,ja,回帰係数,1,,
+cardx::ard_regression,ja,調整,1,,
+cardx::ard_regression,ja,ロジスティック回帰,1,"method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE でオッズ比","method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE for odds ratios"
+cardx::ard_regression,ja,オッズ比,1,"method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE","method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE"
+cardx::ard_regression,ja,調整オッズ比,1,"method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE。調整する変数を式に","method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE; the covariates in the formula"
+cardx::ard_regression,ja,Cox 回帰,1,"method = ""coxph"", package = ""survival"", exponentiate = TRUE でハザード比","method = ""coxph"", package = ""survival"", exponentiate = TRUE for hazard ratios"
+cardx::ard_regression,ja,コックス回帰,1,"method = ""coxph"", package = ""survival"", exponentiate = TRUE でハザード比","method = ""coxph"", package = ""survival"", exponentiate = TRUE for hazard ratios"
+cardx::ard_regression,ja,比例ハザード,1,"method = ""coxph"", package = ""survival"", exponentiate = TRUE","method = ""coxph"", package = ""survival"", exponentiate = TRUE"
+cardx::ard_regression,ja,ハザード比,1,"method = ""coxph"", package = ""survival"", exponentiate = TRUE","method = ""coxph"", package = ""survival"", exponentiate = TRUE"
+cardx::ard_regression,ja,一般化線形モデル,1,"method = ""glm"" と method.args = list(family = ...)","method = ""glm"" with method.args = list(family = ...)"
+cardx::ard_regression,ja,ポアソン回帰,1,"method = ""glm"", method.args = list(family = poisson), exponentiate = TRUE で率比","method = ""glm"", method.args = list(family = poisson), exponentiate = TRUE for rate ratios"
+cardx::ard_regression,ja,負の二項回帰,2,"method = ""glm.nb"", package = ""MASS""（確認済み）","method = ""glm.nb"", package = ""MASS"" (checked)"
+cardx::ard_regression,ja,共分散分析,2,係数の表。群の調整平均と差は ard_emmeans_*,the coefficients; the adjusted group means and their difference: ard_emmeans_*
+cardx::ard_regression,ja,混合モデル,2,"MMRM は method = ""mmrm"", package = ""mmrm""（確認済み）。lme4 の lmer は broom.mixed パッケージが要る","MMRM: method = ""mmrm"", package = ""mmrm"" (checked); lme4's lmer needs the broom.mixed package"
+cardx::ard_regression,ja,反復測定,2,"method = ""mmrm"", package = ""mmrm""（確認済み）","method = ""mmrm"", package = ""mmrm"" (checked)"
+cardx::ard_regression,ja,リスク比,3,"log リンクの glm（method.args = list(family = binomial(link = ""log"")), exponentiate = TRUE）か、独自の関数で。収束しないことがある","a log-link glm (method.args = list(family = binomial(link = ""log"")), exponentiate = TRUE) or an own function; it may not converge"
+cardx::ard_regression,ja,相対リスク,3,"log リンクの glm（method.args = list(family = binomial(link = ""log"")), exponentiate = TRUE）か、独自の関数で。収束しないことがある","a log-link glm (method.args = list(family = binomial(link = ""log"")), exponentiate = TRUE) or an own function; it may not converge"
+cardx::ard_regression,sas,PROC REG,1,,
+cardx::ard_regression,sas,PROC GLM,1,,
+cardx::ard_regression,sas,PROC LOGISTIC,1,"method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE。区間は R が profile 尤度、SAS が Wald。SAS は EVENT= が無いと低い方の水準をモデル化する（R は 1 の確率）","method = ""glm"", method.args = list(family = binomial), exponentiate = TRUE; the CI: profile likelihood in R, Wald in SAS; SAS models the lower level unless EVENT= is given (R models P(Y = 1))"
+cardx::ard_regression,sas,PROC PHREG,1,"method = ""coxph"", package = ""survival"", exponentiate = TRUE。SAS と合わせるには method.args = list(ties = ""breslow"")（R の既定は Efron）","method = ""coxph"", package = ""survival"", exponentiate = TRUE; method.args = list(ties = ""breslow"") matches SAS (R's default is Efron)"
+cardx::ard_regression,sas,PROC GENMOD,1,"method = ""glm"" と method.args = list(family = ...)。負の二項は method = ""glm.nb"", package = ""MASS""","method = ""glm"" with method.args = list(family = ...); negative binomial: method = ""glm.nb"", package = ""MASS"""
+cardx::ard_regression,sas,PROC MIXED,2,"MMRM は method = ""mmrm"", package = ""mmrm""（確認済み）。LSMEANS は ard_emmeans_*","MMRM: method = ""mmrm"", package = ""mmrm"" (checked); LSMEANS: ard_emmeans_*"
+cardx::ard_regression,r,lm,1,,
+cardx::ard_regression,r,glm,1,,
+cardx::ard_regression,r,coxph,1,"package = ""survival""","package = ""survival"""
+cardx::ard_regression,r,mmrm,2,"method = ""mmrm"", package = ""mmrm""（確認済み）","method = ""mmrm"", package = ""mmrm"" (checked)"
+cardx::ard_regression,r,glm.nb,2,"package = ""MASS""（確認済み）","package = ""MASS"" (checked)"
+cardx::ard_regression_basic,en,regression,2,係数だけの簡単な表,a simpler table of the coefficients only
+cardx::ard_regression_basic,en,logistic regression,2,係数だけの簡単な表,a simpler table of the coefficients only
+cardx::ard_regression_basic,en,odds ratio,2,係数だけの簡単な表,a simpler table of the coefficients only
+cardx::ard_regression_basic,en,Cox regression,2,係数だけの簡単な表,a simpler table of the coefficients only
+cardx::ard_regression_basic,en,hazard ratio,2,係数だけの簡単な表,a simpler table of the coefficients only
+cardx::ard_regression_basic,ja,回帰,2,係数だけの簡単な表,a simpler table of the coefficients only
+cardx::ard_regression_basic,ja,ロジスティック回帰,2,係数だけの簡単な表,a simpler table of the coefficients only
+cardx::ard_regression_basic,ja,オッズ比,2,係数だけの簡単な表,a simpler table of the coefficients only
+cardx::ard_regression_basic,ja,ハザード比,2,係数だけの簡単な表,a simpler table of the coefficients only
+cardx::ard_regression_basic,sas,PROC LOGISTIC,2,係数だけの簡単な表。区間は R が profile 尤度、SAS が Wald。SAS は EVENT= が無いと低い方の水準をモデル化する（R は 1 の確率）,"a simpler table of the coefficients only; the CI: profile likelihood in R, Wald in SAS; SAS models the lower level unless EVENT= is given (R models P(Y = 1))"
+cardx::ard_regression_basic,sas,PROC PHREG,2,"係数だけの簡単な表。SAS と合わせるには method.args = list(ties = ""breslow"")（R の既定は Efron）","a simpler table of the coefficients only; method.args = list(ties = ""breslow"") matches SAS (R's default is Efron)"
+cardx::ard_emmeans_emmeans,en,LS means,1,,
+cardx::ard_emmeans_emmeans,en,least-squares means,1,,
+cardx::ard_emmeans_emmeans,en,lsmeans,1,,
+cardx::ard_emmeans_emmeans,en,adjusted mean,1,,
+cardx::ard_emmeans_emmeans,en,marginal mean,1,,
+cardx::ard_emmeans_emmeans,en,estimated marginal means,1,,
+cardx::ard_emmeans_emmeans,en,EMM,1,,
+cardx::ard_emmeans_emmeans,en,ANCOVA,1,群ごとの調整平均。差は ard_emmeans_contrast,the adjusted mean of each group; the difference: ard_emmeans_contrast
+cardx::ard_emmeans_emmeans,en,MMRM,2,"method = ""mmrm"", package = ""mmrm""（確認済み）","method = ""mmrm"", package = ""mmrm"" (checked)"
+cardx::ard_emmeans_emmeans,ja,最小二乗平均,1,,
+cardx::ard_emmeans_emmeans,ja,調整済み平均,1,,
+cardx::ard_emmeans_emmeans,ja,調整平均,1,,
+cardx::ard_emmeans_emmeans,ja,周辺平均,1,,
+cardx::ard_emmeans_emmeans,ja,共分散分析,1,群ごとの調整平均。差は ard_emmeans_contrast,the adjusted mean of each group; the difference: ard_emmeans_contrast
+cardx::ard_emmeans_emmeans,sas,PROC GLM LSMEANS,1,,
+cardx::ard_emmeans_emmeans,sas,PROC MIXED LSMEANS,2,"MMRM は method = ""mmrm"", package = ""mmrm""（確認済み）","MMRM: method = ""mmrm"", package = ""mmrm"" (checked)"
+cardx::ard_emmeans_emmeans,sas,LSMEANS,1,,
+cardx::ard_emmeans_emmeans,r,emmeans,1,,
+cardx::ard_emmeans_contrast,en,LS mean difference,1,,
+cardx::ard_emmeans_contrast,en,difference in LS means,1,,
+cardx::ard_emmeans_contrast,en,treatment difference,1,,
+cardx::ard_emmeans_contrast,en,adjusted difference,1,,
+cardx::ard_emmeans_contrast,en,contrast,1,,
+cardx::ard_emmeans_contrast,en,ANCOVA,2,群の調整平均の差,the difference of the adjusted group means
+cardx::ard_emmeans_contrast,en,MMRM,2,"method = ""mmrm"", package = ""mmrm""（確認済み）","method = ""mmrm"", package = ""mmrm"" (checked)"
+cardx::ard_emmeans_contrast,ja,最小二乗平均の差,1,,
+cardx::ard_emmeans_contrast,ja,調整済み平均の差,1,,
+cardx::ard_emmeans_contrast,ja,群間差,1,,
+cardx::ard_emmeans_contrast,ja,投与群間差,1,,
+cardx::ard_emmeans_contrast,ja,対比,1,,
+cardx::ard_emmeans_contrast,ja,共分散分析,2,群の調整平均の差,the difference of the adjusted group means
+cardx::ard_emmeans_contrast,ja,反復測定,2,"MMRM は method = ""mmrm"", package = ""mmrm""（確認済み）","MMRM: method = ""mmrm"", package = ""mmrm"" (checked)"
+cardx::ard_emmeans_contrast,sas,LSMEANS DIFF,1,,
+cardx::ard_emmeans_contrast,sas,LSMEANS PDIFF,1,,
+cardx::ard_emmeans_contrast,sas,ESTIMATE,2,,
+cardx::ard_emmeans_contrast,sas,PROC MIXED LSMEANS,2,"差。MMRM は method = ""mmrm"", package = ""mmrm""（確認済み）","the difference; MMRM: method = ""mmrm"", package = ""mmrm"" (checked)"
+cardx::ard_emmeans_contrast,r,emmeans,2,差,the difference
+cardx::ard_car_anova,en,Type III,1,,
+cardx::ard_car_anova,en,Type II,1,,
+cardx::ard_car_anova,en,type 3 sums of squares,1,,
+cardx::ard_car_anova,en,ANOVA table of a model,1,,
+cardx::ard_car_anova,ja,タイプ III 平方和,1,,
+cardx::ard_car_anova,ja,平方和,1,,
+cardx::ard_car_anova,sas,PROC GLM SS3,1,"type = 3 は options(contrasts = c(""contr.sum"", ""contr.poly"")) と一緒に（既定の対比では SAS と違う）","type = 3 with options(contrasts = c(""contr.sum"", ""contr.poly"")) (with the default contrasts it differs from SAS)"
+cardx::ard_car_anova,r,car::Anova,1,,
+cardx::ard_car_anova,r,Anova,1,,
+cardx::ard_car_vif,en,VIF,1,,
+cardx::ard_car_vif,en,variance inflation factor,1,,
+cardx::ard_car_vif,en,multicollinearity,1,,
+cardx::ard_car_vif,en,collinearity,1,,
+cardx::ard_car_vif,ja,分散拡大係数,1,,
+cardx::ard_car_vif,ja,多重共線性,1,,
+cardx::ard_car_vif,sas,PROC REG VIF,1,,
+cardx::ard_car_vif,r,car::vif,1,,
+cardx::ard_car_vif,r,vif,1,,
+cardx::ard_aod_wald_test,en,Wald test,1,,
+cardx::ard_aod_wald_test,en,joint test,1,,
+cardx::ard_aod_wald_test,en,global test,1,,
+cardx::ard_aod_wald_test,ja,ワルド検定,1,,
+cardx::ard_aod_wald_test,ja,Wald 検定,1,,
+cardx::ard_aod_wald_test,ja,同時検定,1,,
+cardx::ard_aod_wald_test,sas,TEST,2,PROC LOGISTIC / PHREG の TEST 文,the TEST statement of PROC LOGISTIC / PHREG
+cardx::ard_aod_wald_test,r,wald.test,1,,
+cardx::ard_survival_survfit,en,Kaplan-Meier,1,,
+cardx::ard_survival_survfit,en,KM,1,,
+cardx::ard_survival_survfit,en,survival,1,,
+cardx::ard_survival_survfit,en,survival rate,1,,
+cardx::ard_survival_survfit,en,median survival,1,,
+cardx::ard_survival_survfit,en,survival at time,1,,
+cardx::ard_survival_survfit,en,time to event,1,,
+cardx::ard_survival_survfit,en,landmark,1,,
+cardx::ard_survival_survfit,en,OS,1,,
+cardx::ard_survival_survfit,en,PFS,1,,
+cardx::ard_survival_survfit,en,event-free,1,,
+cardx::ard_survival_survfit,ja,カプラン・マイヤー,1,,
+cardx::ard_survival_survfit,ja,生存率,1,,
+cardx::ard_survival_survfit,ja,生存時間中央値,1,,
+cardx::ard_survival_survfit,ja,生存時間解析,1,,
+cardx::ard_survival_survfit,ja,生存期間,1,,
+cardx::ard_survival_survfit,ja,全生存,1,,
+cardx::ard_survival_survfit,ja,無増悪生存,1,,
+cardx::ard_survival_survfit,ja,無イベント,1,,
+cardx::ard_survival_survfit,sas,PROC LIFETEST,1,"SAS と合わせるには conf.type = ""log-log""（R の既定は ""log""）","conf.type = ""log-log"" matches SAS (R's default is ""log"")"
+cardx::ard_survival_survfit,r,survfit,1,,
+cardx::ard_survival_survfit_diff,en,difference in survival,1,,
+cardx::ard_survival_survfit_diff,en,survival rate difference,1,,
+cardx::ard_survival_survfit_diff,en,landmark difference,1,,
+cardx::ard_survival_survfit_diff,ja,生存率の差,1,,
+cardx::ard_survival_survfit_diff,sas,PROC LIFETEST,2,ある時点の生存率の差,the difference in survival at a time
+cardx::ard_survival_survdiff,en,log-rank test,1,,
+cardx::ard_survival_survdiff,en,logrank,1,,
+cardx::ard_survival_survdiff,en,stratified log-rank,1,式に strata() を入れる（確認済み）,strata() in the formula (checked)
+cardx::ard_survival_survdiff,en,Peto,2,rho = 1（確認済み）,rho = 1 (checked)
+cardx::ard_survival_survdiff,ja,ログランク検定,1,,
+cardx::ard_survival_survdiff,ja,ログランク,1,,
+cardx::ard_survival_survdiff,ja,層別ログランク,1,式に strata() を入れる（確認済み）,strata() in the formula (checked)
+cardx::ard_survival_survdiff,sas,PROC LIFETEST,2,STRATA 文の検定（ログランク）,the test of the STRATA statement (log-rank)
+cardx::ard_survival_survdiff,r,survdiff,1,,
+cardx::ard_survival_survdiff,en,Gehan,3,rho = 1 は Peto-Peto 型で、Gehan そのものではない,rho = 1 is the Peto-Peto kind; not Gehan itself
+cardx::ard_survival_survdiff,en,generalized Wilcoxon,3,rho = 1 は Peto-Peto 型で、Gehan の一般化ウィルコクソンそのものではない,rho = 1 is the Peto-Peto kind; not Gehan's generalized Wilcoxon itself
+cardx::ard_survival_survdiff,ja,一般化ウィルコクソン,3,rho = 1 は Peto-Peto 型で、Gehan の一般化ウィルコクソンそのものではない,rho = 1 is the Peto-Peto kind; not Gehan's generalized Wilcoxon itself
+cards::ard_stack,en,stack,1,,
+cards::ard_stack,en,several analyses together,1,,
+cards::ard_stack,en,demographics table,1,,
+cards::ard_stack,en,Table 1,1,,
+cards::ard_stack,ja,まとめて実行,1,,
+cards::ard_stack,ja,背景表,1,,
+cards::ard_stack,ja,人口統計表,1,,
+cards::ard_strata,en,subgroup,1,,
+cards::ard_strata,en,by subgroup,1,,
+cards::ard_strata,en,within strata,1,,
+cards::ard_strata,en,stratified,2,層ごとに繰り返すだけ。層別の検定は ard_stats_mantelhaen_test,repeats within each stratum; a stratified test: ard_stats_mantelhaen_test
+cards::ard_strata,ja,サブグループ,1,,
+cards::ard_strata,ja,部分集団,1,,
+cards::ard_strata,ja,層ごと,1,,
+cards::ard_pairwise,en,pairwise,1,,
+cards::ard_pairwise,en,each pair,1,,
+cards::ard_pairwise,en,versus placebo,1,,
+cards::ard_pairwise,en,multiple comparisons,2,対ごとに繰り返すだけ。多重性の調整はしない,repeats for each pair only; no multiplicity adjustment
+cards::ard_pairwise,ja,対比較,1,,
+cards::ard_pairwise,ja,ペアワイズ,1,,
+cards::ard_pairwise,ja,各群対プラセボ,1,,
+cards::ard_pairwise,ja,多重比較,2,対ごとに繰り返すだけ。多重性の調整はしない,repeats for each pair only; no multiplicity adjustment
+cards::ard_mvsummary,en,own function,1,,
+cards::ard_mvsummary,en,custom statistic,1,,
+cards::ard_mvsummary,en,weighted mean,1,,
+cards::ard_mvsummary,en,uses other columns,1,,
+cards::ard_mvsummary,ja,独自の統計量,1,,
+cards::ard_mvsummary,ja,自作の関数,1,,
+cards::ard_mvsummary,ja,加重平均,1,,
+cards::ard_identity,en,precomputed,1,,
+cards::ard_identity,en,already computed,1,,
+cards::ard_identity,en,statistics from elsewhere,1,,
+cards::ard_identity,ja,計算済み,1,,
+cards::ard_identity,ja,外で計算した統計量,1,,
+custom,en,custom,1,,
+custom,en,R code,1,,
+custom,en,anything,1,,
+custom,en,correlation,3,cards / cardx に相関の ard_* は無い。R コードか独自の関数（Own functions の検定・モデルを包むひな型）で,cards / cardx have no correlation ard_*: R code or an own function (the test / model template on Own functions)
+custom,en,Spearman,3,cards / cardx に相関の ard_* は無い。R コードか独自の関数で,cards / cardx have no correlation ard_*: R code or an own function
+custom,ja,自由,1,,
+custom,ja,R コード,1,,
+custom,ja,自作,1,,
+custom,ja,相関,3,cards / cardx に相関の ard_* は無い。R コードか独自の関数（Own functions の検定・モデルを包むひな型）で,cards / cardx have no correlation ard_*: R code or an own function (the test / model template on Own functions)
+custom,ja,相関係数,3,cards / cardx に相関の ard_* は無い。R コードか独自の関数で,cards / cardx have no correlation ard_*: R code or an own function
+custom,sas,PROC CORR,3,cards / cardx に相関の ard_* は無い。R コードか独自の関数で,cards / cardx have no correlation ard_*: R code or an own function
+cardx::ard_survey_svychisq,en,survey,1,,
+cardx::ard_survey_svychisq,ja,調査,1,,
+cardx::ard_survey_svyranktest,en,survey,1,,
+cardx::ard_survey_svyttest,en,survey,1,,
+custom,en,Pearson,3,cards / cardx に相関の ard_* は無い。R コードか独自の関数で,cards / cardx have no correlation ard_*: R code or an own function
+custom,ja,ピアソン,3,cards / cardx に相関の ard_* は無い。R コードか独自の関数で,cards / cardx have no correlation ard_*: R code or an own function
+cardx::ard_stats_kruskal_test,en,nonparametric,2,3 群以上,three or more groups
+cardx::ard_stats_paired_wilcox_test,en,nonparametric,2,対応のある 2 時点,paired
+cardx::ard_stats_paired_wilcox_test,ja,ノンパラメトリック,2,対応のある 2 時点,paired
+cardx::ard_stats_mood_test,en,nonparametric,2,ばらつき（尺度）の比較,a comparison of scale
+cardx::ard_stats_mood_test,ja,ノンパラメトリック,2,ばらつき（尺度）の比較,a comparison of scale
+cardx::ard_emmeans_contrast,en,mean difference,2,調整済み（最小二乗平均の差）,adjusted (the difference of LS means)
+cardx::ard_emmeans_contrast,ja,平均の差,2,調整済み（最小二乗平均の差）,adjusted (the difference of LS means)

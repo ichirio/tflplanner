@@ -211,6 +211,12 @@ html.shiny-busy body::after { visibility: visible;
   monospace; font-size: 12.5px; }
 .rp-code pre { max-height: 520px; overflow: auto; white-space: pre; }
 .rp-help { font-size: 12.5px; }
+/* the ARD form's function chooser: one line once chosen (Change opens
+   it); a near match of the search faint */
+details.ard-fn > summary { list-style: none; cursor: pointer; }
+details.ard-fn > summary::-webkit-details-marker { display: none; }
+details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { display: none; }
+.ard-fn-near { opacity: .7; }
 .handsontable td, .handsontable th { font-size: 12.5px; }
 .rp-dirty { color: #b45309; font-weight: 600; }
 .rp-study { font-weight: 600; }
@@ -402,6 +408,10 @@ app_ui <- function(lang = "en") {
     fillable = FALSE,
     theme = bslib::bs_theme(version = 5, preset = "shiny"),
     header = shiny::tagList(shiny::tags$style(shiny::HTML(.code_css)),
+                            # a function picked on the ARD form: its list closes
+                            shiny::tags$script(shiny::HTML(paste(
+                              "$(document).on('change', '.ard-fn-list input[type=radio]',",
+                              "function() { $(this).closest('details.ard-fn').prop('open', false); });"))),
                             shiny::tags$script(shiny::HTML(.split_js)),
                             shiny::tags$script(shiny::HTML(.unsaved_js)),
                             shiny::tags$script(shiny::HTML(.updating_js)),
@@ -2580,6 +2590,16 @@ app_server <- function(input, output, session, start) {
     }
     e
   }
+  # the search's dictionary, with the company's keywords and the old names
+  fn_keywords <- function() {
+    m <- .std_ard_methods()
+    k <- paste(m$method, m$call, collapse = "|")
+    if (!identical(ard_cols[["fn_keywords_key"]], k)) {
+      ard_cols[["fn_keywords"]] <- .fn_keywords(m, tflspec::tfl_ard_functions())
+      ard_cols[["fn_keywords_key"]] <- k
+    }
+    ard_cols[["fn_keywords"]]
+  }
   # a dataset's data (for the choices), read once per file version
   an_data <- function(ds) {
     d <- rv$p$ard$datasets
@@ -2632,8 +2652,6 @@ app_server <- function(input, output, session, start) {
     # inside a stack: only what can run inside one (no category left empty)
     if (identical(st_role(r), "inside")) e <- e[!e$value %in% .stack_not_inside, , drop = FALSE]
     cats <- unique(e$category)
-    cat_now <- e$category[match(r$method, e$value)]
-    if (is.na(cat_now)) cat_now <- cats[1L]
     blank_na <- function(x) if (is.na(x)) "" else x
     tg <- ard_target()
     # a stack's own form; one inside a stack says so, and has no data of
@@ -2659,26 +2677,43 @@ app_server <- function(input, output, session, start) {
         shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
                          width = "100%")),
-      shiny::div(
+      # what to compute: one line once chosen, "Change" opens the list (a
+      # category and a search, both narrowing it); a pick closes it again
+      # (the script in app_ui())
+      shiny::tags$details(
         class = "ard-fn mb-2",
+        open = if (is.na(r$method) || !nzchar(r$method)) NA,
+        shiny::tags$summary(
+          class = "d-flex align-items-baseline gap-2 mb-1",
+          shiny::strong(title = t("What to compute"), "method"),
+          shiny::uiOutput("ard_fn_now", inline = TRUE),
+          shiny::span(class = "ard-fn-closed small link-primary", t("Change")),
+          shiny::span(class = "ard-fn-open small link-secondary", t("Close"))),
         shiny::div(
-          class = "d-flex justify-content-between align-items-center gap-2",
-          shiny::div(shiny::strong(argl("What to compute", "method")),
-                     shiny::uiOutput("ard_fn_now", inline = TRUE)),
+          class = "d-flex flex-wrap align-items-center column-gap-2",
           shiny::div(style = "width: 14rem",
-                     shiny::textInput(st_id("fn_q"), NULL, "",
-                                      placeholder = t("Search the functions")))),
-        bslib::layout_columns(
-          col_widths = c(4, 8),
-          shiny::div(class = "ard-fn-cats small",
-                     shiny::radioButtons(st_id("fn_cat"), NULL,
-                                         stats::setNames(cats, t(cats)),
-                                         selected = cat_now)),
-          shiny::div(class = "ard-fn-list",
-                     style = paste("max-height: 30rem; overflow-y: auto;",
-                                   "overflow-x: hidden; white-space: normal;",
-                                   "overflow-wrap: anywhere;"),
-                     shiny::uiOutput("ard_fn_list")))),
+                     shiny::selectInput(st_id("fn_cat"), NULL, selectize = FALSE,
+                                        c(stats::setNames(".all", t("All categories")),
+                                          stats::setNames(cats, t(cats))),
+                                        selected = ".all", width = "100%")),
+          shiny::div(
+            class = "d-flex align-items-center gap-1 flex-grow-1",
+            style = "min-width: 16rem; max-width: 26rem",
+            shiny::textInput(st_id("fn_q"), NULL, "", width = "100%",
+                             placeholder = t("e.g. odds ratio, PROC LOGISTIC, paired t test")),
+            # clears the search
+            shiny::tags$button(
+              type = "button", class = "btn btn-sm btn-link text-muted px-1 mb-3",
+              title = t("Clear"), `aria-label` = t("Clear"),
+              onclick = sprintf(paste0("var i = document.getElementById('%s');",
+                                       " i.value = ''; $(i).trigger('change');"),
+                                st_id("fn_q")),
+              "\u00d7"))),
+        shiny::div(class = "ard-fn-list",
+                   style = paste("max-height: 24rem; overflow-y: auto;",
+                                 "overflow-x: hidden; white-space: normal;",
+                                 "overflow-wrap: anywhere;"),
+                   shiny::uiOutput("ard_fn_list"))),
       shiny::uiOutput("ard_method_note"),
       if (!inside) shiny::selectInput(st_id("data"), t("Data (dataset \u00d7 analysis set)"),
                                       data_choices(r),
@@ -2701,6 +2736,9 @@ app_server <- function(input, output, session, start) {
         if (role == "single" && !r$method %in% .stack_not_inside)
           .btn("ard_stack_group", t("Run together with other analyses..."),
                class = "btn-sm btn-outline-secondary"),
+        if (role %in% c("single", "inside"))
+          .btn("ard_an_delete", t("Delete the analysis..."),
+               class = "btn-sm btn-outline-danger"),
         shiny::span(class = "small text-muted",
                     t("Format: xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown."))),
       shiny::tags$details(
@@ -2729,12 +2767,11 @@ app_server <- function(input, output, session, start) {
   output$ard_fn_now <- shiny::renderUI({
     st_drawn()
     m <- st_method()
-    if (is.na(m) || !nzchar(m)) return(NULL)
+    if (is.na(m) || !nzchar(m)) return(shiny::span(class = "text-muted", t("(not chosen)")))
     e <- fn_entries(m)
     k <- match(m, e$value)
     fn <- if (grepl("::", m, fixed = TRUE)) paste0(" (", sub("^.*::", "", e$call[k]), ")") else ""
-    shiny::span(class = "small text-muted ms-2",
-                sprintf(t("Chosen: %s"), paste0(e$label[k], fn)))
+    shiny::span(paste0(e$label[k], fn))
   })
   output$ard_fn_list <- shiny::renderUI({
     st_drawn()
@@ -2744,31 +2781,56 @@ app_server <- function(input, output, session, start) {
     if (identical(st_role(shiny::isolate(st_row())), "inside")) {
       e <- e[!e$value %in% .stack_not_inside, , drop = FALSE]
     }
-    q <- trimws(input[[st_id("fn_q")]] %||% "")
-    e <- if (nzchar(q)) {
-      # the words as typed, in any case (grepl() cannot take fixed and
-      # ignore.case together: both sides lower-cased instead)
-      has <- function(x) grepl(tolower(q), tolower(x), fixed = TRUE)
-      hit <- has(e$label) | has(e$label_en) | has(e$value) |
-        has(gsub("_", " ", e$value, fixed = TRUE)) | has(e$description %||% "")
-      e[hit, , drop = FALSE]
-    } else {
-      e[e$category == (input[[st_id("fn_cat")]] %||% e$category[1L]), , drop = FALSE]
-    }
-    if (!nrow(e)) return(shiny::p(class = "small text-muted", t("No function matches.")))
+    # a search: across the categories, by the dictionary's words too
+    # (R/ard_fn_search.R), each row saying why it was found
+    q <- input[[st_id("fn_q")]] %||% ""
+    s <- .fn_search(q, e, fn_keywords(), lang = lang, current = now)
+    if (!is.null(s)) e <- s
+    # and a category (all by default)
+    cat_now <- input[[st_id("fn_cat")]] %||% ".all"
+    if (!identical(cat_now, ".all")) e <- e[e$category == cat_now, , drop = FALSE]
+    if (!nrow(e)) return(shiny::div(
+      class = "ard-fn-searching small text-muted",
+      shiny::p(class = "mb-1", t("No function matches.")),
+      shiny::p(t("Make it as an own function (the Own functions tab), or write it as R code (custom)."))))
+    searching <- !is.null(s)
+    # each row's category, unless one is chosen
+    show_cat <- identical(cat_now, ".all")
+    near_spelling <- searching & e$tier >= 4
     ok <- e[e$state %in% c("ok", "old", "out"), , drop = FALSE]
     off <- e[!e$state %in% c("ok", "old", "out"), , drop = FALSE]
     fn_of <- function(v) if (grepl("::", v, fixed = TRUE))
       paste0(" (", sub("^.*::", "", v), ")") else ""
+    # why a row was found: the keywords and their note; a near one says so
+    why <- function(i, d) {
+      if (!searching) return(NULL)
+      txt <- if (!is.na(d$near_from[i])) {
+        sprintf(t("Near spelling: %s -> %s"), d$near_from[i], d$near_to[i])
+      } else if (!is.na(d$hit[i])) {
+        sprintf(t("Match: %s"), d$hit[i])
+      }
+      if (!is.na(d$note[i])) txt <- paste0(txt %||% "", if (!is.null(txt)) " \u2014 ", d$note[i])
+      if (identical(d$rank[i], 3L)) txt <- paste0(t("Near: "), txt %||% "")
+      if (is.null(txt)) NULL else shiny::div(class = "small text-info-emphasis", txt)
+    }
     item <- function(i, d) shiny::tagList(
-      shiny::span(paste0(d$label[i], fn_of(d$call[i]))),
+      shiny::span(class = if (searching && identical(d$rank[i], 3L)) "ard-fn-near",
+                  paste0(d$label[i], fn_of(d$call[i]))),
+      # where it is, for the next time (from the categories)
+      if (show_cat) shiny::span(class = "badge text-bg-light fw-normal ms-1",
+                                 t(d$category[i])),
       if (!is.na(d$description[i]) && nzchar(d$description[i]))
         shiny::div(class = "small text-muted", d$description[i]),
+      why(i, d),
       if (identical(d$state[i], "old"))
         shiny::div(class = "small text-warning", t("An old name: choose its new one.")),
       if (identical(d$state[i], "out"))
         shiny::div(class = "small text-warning", t("Not offered by the builder: kept as written.")))
     shiny::tagList(
+      if (searching) shiny::div(
+        class = "ard-fn-searching small text-muted mb-1",
+        sprintf(t("%d found"), nrow(e)),
+        if (all(near_spelling)) paste0(" \u2014 ", t("Near spellings"))),
       if (nrow(ok)) shiny::radioButtons(
         st_id("fn_pick"), NULL, width = "100%",
         choiceNames = lapply(seq_len(nrow(ok)), item, d = ok),
@@ -3322,12 +3384,29 @@ app_server <- function(input, output, session, start) {
     # the report's ARD: made, outdated or not yet (one for the report)
     stt <- tryCatch(ard_state(), error = function(e) NULL)
     k <- if (!is.null(stt)) match(tg, stt$output_id) else NA
-    state_line <- if (!is.na(k)) shiny::div(
-      class = "small mb-1",
-      sprintf(t("This report's ARD: %s"), t(.ard_state_labels[[stt$state[k]]])),
-      if (!identical(stt$state[k], "built")) shiny::tags$button(
-        type = "button", class = "btn btn-sm btn-link py-0",
-        onclick = "document.getElementById('ard_preview').click();", t("Preview")))
+    state_line <- if (!is.na(k)) {
+      s0 <- stt$state[k]
+      # what the state means, and the next step (the Preview button makes
+      # this report's ARD)
+      words <- switch(s0,
+        outdated = t("needs making again (its definition has changed)"),
+        `not built` = t("not made yet (nothing to show)"),
+        t(.ard_state_labels[[s0]]))
+      why <- switch(s0,
+        outdated = t("Since this report's ARD was made, something it is made from has changed: its analyses, their analysis sets or datasets, the study's settings, the study's own ARD functions or the code lists. Make it again to see the tables as the definition is now."),
+        `not built` = t("This report's ARD has not been made yet: make it to see its tables."),
+        error = t("Its ARD program failed: see what it printed (ARD tab > Study ARD), fix it and make it again."),
+        NULL)
+      go <- switch(s0, `not built` = t("Make the ARD"),
+                   outdated = , error = t("Make the ARD again"), NULL)
+      shiny::div(
+        class = "small mb-1", title = why,
+        sprintf(t("This report's ARD: %s"), words),
+        if (!is.null(go)) shiny::tags$button(
+          type = "button", class = "btn btn-sm btn-link py-0",
+          title = why,
+          onclick = "document.getElementById('ard_preview').click();", go))
+    }
     shiny::tagList(
       state_line,
       shiny::div(class = "border rounded mb-1", rows),
@@ -3563,6 +3642,30 @@ app_server <- function(input, output, session, start) {
     shiny::removeModal()
     an_pick(first)
     bump()
+  })
+  # [Delete the analysis...]: asked first (a stack has its own Delete)
+  shiny::observeEvent(input$ard_an_delete, {
+    r <- st_row()
+    shiny::req(r, st_role(r) %in% c("single", "inside"))
+    lab <- if (!.is_blank(r$label)) paste0(" (", r$label, ")") else ""
+    shiny::showModal(shiny::modalDialog(
+      title = t("Delete the analysis"), easyClose = TRUE,
+      shiny::p(sprintf(t("Delete %s%s from %s? Its statistics leave the report's ARD when the ARD is made again."),
+                       r$analysis_id, lab, ard_target())),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("ard_an_delete_ok", t("Delete"), class = "btn-danger"))))
+  })
+  shiny::observeEvent(input$ard_an_delete_ok, {
+    r <- st_row()
+    tg <- ard_target()
+    shiny::req(r, tg)
+    p2 <- guarded(remove_analysis(rv$p, tg, r$analysis_id))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    shiny::removeModal()
+    an_pick(NULL)
+    bump()
+    notify(sprintf(t("%s is deleted."), r$analysis_id))
   })
   shiny::observeEvent(input$ard_stack_delete, {
     r <- st_row()
