@@ -599,7 +599,7 @@ app_ui <- function(lang = "en") {
           "data_code",
           shiny::span(
             title = t("1. ARD: make `ard` (Listing: rework `data`; Figure: the plot). Blank for a table = the company template: its rows of the study ARD."),
-            t("1. Data code: usually blank (the company's standard code is used). Write code here to make the data yourself; for a figure, the plot."), " ⓘ"),
+            t("1. Data code: usually blank (the company's standard code is used). Write code here to make the data yourself; for a figure, the plot."), " \u24d8"),
           rows = 10, width = "100%", resize = "vertical"),
         shiny::conditionalPanel(
           "output.report_kind != 'user'",
@@ -607,7 +607,7 @@ app_ui <- function(lang = "en") {
             "process_code",
             shiny::span(
               title = t("2. Normalize and rework: make `data` from `ard` (normalize_ard(), then mutate() ...). Blank = the company template (normalize)."),
-              t("2. Rework: usually blank (the standard one). Write code to change the data before the table is made."), " ⓘ"),
+              t("2. Rework: usually blank (the standard one). Write code to change the data before the table is made."), " \u24d8"),
             rows = 5, width = "100%", resize = "vertical",
             placeholder = "data <- normalize_ard(ard)"),
           shiny::div(
@@ -796,7 +796,7 @@ app_ui <- function(lang = "en") {
           .btn("add", t("Add")), .btn("copy", t("Copy")),
           .btn("rename", t("Rename")),
           .btn("remove", t("Delete"), class = "btn-sm btn-outline-danger"),
-          .btn("up", "↑"), .btn("down", "↓"),
+          .btn("up", "\u2191"), .btn("down", "\u2193"),
           .btn("toc_new", t("Take in a TOC..."), class = "btn-sm btn-outline-primary ms-auto")),
         shiny::p(class = "text-muted small mt-1",
                  t("Reports are made in this order (the official run too). Copy makes a new report with all of this one's definition. A double click makes the report (Make a report).")))),
@@ -4017,22 +4017,22 @@ app_server <- function(input, output, session, start) {
     id <- current()
     if (is.null(id) || !has_study()) return(NULL)
     n <- nrow(sheet_rows(rv$p, "codelists", id) %||% data.frame())
-    if (n) step_mark("●", sprintf(t("This report's own code list: %d rows"), n), "text-success") else
-      step_mark("○", t("Optional"), "text-muted")
+    if (n) step_mark("\u25cf", sprintf(t("This report's own code list: %d rows"), n), "text-success") else
+      step_mark("\u25cb", t("Optional"), "text-muted")
   })
   output$step_mark_ard <- shiny::renderUI({
     id <- current()
     if (is.null(id) || !has_study()) return(NULL)
     if ("ard" %in% (.type_idle_tabs[[report_kind()]] %||% character())) {
-      return(step_mark("–", t("Not used"), "text-muted"))
+      return(step_mark("\u2013", t("Not used"), "text-muted"))
     }
     st <- tryCatch(ard_state(), error = function(e) NULL)
     s0 <- if (!is.null(st)) st$state[match(id, st$output_id)] else NA
     switch(if (is.na(s0)) "none" else s0,
-      built = step_mark("●", t(.ard_state_labels[["built"]]), "text-success"),
-      outdated = step_mark("⟳", t(.ard_state_labels[["outdated"]]), "text-warning"),
+      built = step_mark("\u25cf", t(.ard_state_labels[["built"]]), "text-success"),
+      outdated = step_mark("\u27f3", t(.ard_state_labels[["outdated"]]), "text-warning"),
       error = step_mark("!", t(.ard_state_labels[["error"]]), "text-danger"),
-      step_mark("○", t(.ard_state_labels[["not built"]]), "text-muted"))
+      step_mark("\u25cb", t(.ard_state_labels[["not built"]]), "text-muted"))
   })
   ard_state_view <- function() {
     d <- ard_state()
