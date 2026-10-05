@@ -1064,7 +1064,7 @@ The cell's top rule: single / double / none ... (rtf_border()); blank: the heade
 Report: one row a report; blank output_id: the study's default.,帳票：1 行 = 1 帳票。output_id が空欄の行 = 試験の既定。
 table / listing / figure; blank: table.,table / listing / figure。空欄 = table。
 "The RTF file, relative to the study key output_path; {output_id} is the report's id; blank: {output_id}.rtf.",RTF のファイル（study のキー output_path からの相対パス）。{output_id} は帳票の ID。空欄 = {output_id}.rtf。
-"The program's name, joined to program_dir for {PROGRAM}; blank: {output_id}.",プログラムの名前。program_dir とつないで {PROGRAM} になる。空欄 = {output_id}。
+"The program's name, joined to program_dir for {PROGRAM}; blank: the file name of the program that runs, {output_id} only when none is found.",プログラムの名前。program_dir とつないで {PROGRAM} になる。空欄 = 実行しているプログラムのファイル名（取れないときだけ {output_id}）。
 TRUE / FALSE: each named table a section with its name in the page header (rtf_tables(auto_section = )); blank: FALSE.,TRUE / FALSE：名前の付いた表ごとにセクションにし、名前をページヘッダーに出す（rtf_tables(auto_section = )）。空欄 = FALSE。
 left / center / right: the section label (rtf_tables(section_label_align = )); blank: left.,left / center / right：セクションのラベル（rtf_tables(section_label_align = )）。空欄 = left。
 TRUE / FALSE: each named table's name as its last title line (rtf_tables(auto_title = )); blank: FALSE.,TRUE / FALSE：名前の付いた表の名前をタイトルの最後の行にする（rtf_tables(auto_title = )）。空欄 = FALSE。

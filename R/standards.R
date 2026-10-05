@@ -221,9 +221,10 @@
       list(line = "1", cols = ".values", span = "each", text = "{col}"),
       list(line = "2", cols = "row_label", text = "Characteristic"),
       list(line = "2", cols = ".values", span = "each", text = "(N={n})")),
+    # no program: the report's program says its own file name ({PROGRAM}),
+    # and the report's ID is rtfreporter's last resort (program_fallback)
     default_report = default("report",
-      list(type = "table", file = "{output_id}.rtf",
-           program = "{output_id}.R")),
+      list(type = "table", file = "{output_id}.rtf")),
     default_page = default("page"),
     default_titles = default("titles"),
     default_footnotes = default("footnotes"))
@@ -445,6 +446,7 @@ add_standard_defaults <- function(x, study_id) {
     d[] <- lapply(d, function(v) gsub("{STUDY_ID}", study_id, v, fixed = TRUE))
     d$output_id <- NA_character_
     p$sheets[[sh]] <- .normalize_sheet(d, sh)
+    if (sh == "report") p <- .old_program_default(p)
   }
   p$ard$study$value[p$ard$study$key == "id"] <- .std_setting("subject_id",
                                                              "USUBJID")

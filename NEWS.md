@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **A report's program is named by its own file** (tflspec #131).  A new
+  study's default report row no longer says `program = {output_id}.R`:
+  `{PROGRAM}` is the file name of the program that runs, and
+  `programs/tfl/<output_id>` only when none is found (rtfreporter's
+  `program_fallback`, completed to `.R`).  A study saved with that old
+  default on its default report row reads it as blank (it was
+  tflplanner's default, not a choice); a report's own `program`, or
+  another default, is kept and said.  The program files are still
+  `programs/tfl/<output_id>.R`.  Needs tflspec 0.0.24.9043 and rtfreporter
+  0.8.2.9024.
+
 - **Tokens of your own on the Page tab** (tflspec #129).  Reports > Page
   has a `tokens` table beside titles and footnotes: one row a token
   (`name` `STUDY`, `value` `ABC-123`), the study's defaults and the
