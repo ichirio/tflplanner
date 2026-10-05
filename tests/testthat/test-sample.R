@@ -62,7 +62,7 @@ test_that("the sample's T-14-1-1S is T-14-1-1's ARD as one ard_stack", {
   expect_true(any(grepl(".total_n = TRUE", code, fixed = TRUE)))
   # the ARD tab: the stack's own form, an analysis inside says so
   shiny::testServer(server_for("SAMPLE-01"), {
-    session$setInputs(nav = "ard", target = "T-14-1-1S")
+    session$setInputs(nav = "make", step = "ard", target = "T-14-1-1S")
     session$setInputs(ard_ol_pick = "STACK")
     h <- output$ard_stat_ui$html
     expect_match(h, "CONT", fixed = TRUE)

@@ -1959,6 +1959,22 @@ An R condition on the records (the numerator's filter); blank: every record.,レ
 "One row for each set of values of these columns, | between them (dplyr::distinct(), the first row kept): a denominator per subject and phase; blank: every row.",これらの列の値の組ごとに 1 行にする。複数は | で区切る（dplyr::distinct()、最初の行を残す）。被験者 × フェーズの分母などに。空欄 = すべての行。
 "The analysis data analysed (a data_id of analysis_data), instead of dataset and population_id: the analysis set is its population; blank: dataset and population_id say it.",解析する解析用データ（analysis_data の data_id）。dataset と population_id の代わりに使い、解析対象集団はそのデータの集団になる。空欄 = dataset と population_id で指定。
 Analysis data,解析用データ
+1 Code lists,1 コードリスト
+2 ARD,2 ARD
+3 Content,3 コンテンツ（表・図・Listing）
+4 Page and output,4 ページと出力
+Choose a report on the left.,左で帳票を選んでください。
+Make a report,帳票の作成
+Report list,帳票一覧
+Not used,使わない
+Optional,任意
+"One row per analysis: the data, the population, the subset, the grouping, the variables and the method (a keyword or any cards / cardx function). The datasets, analysis sets and analysis data are defined on the Data tab.",1 行 = 1 解析：データ・解析対象集団・部分集合・グループ・変数・手法（キーワード、または cards / cardx の任意の関数）。データセット・解析対象集団・解析データは「データ」タブで定義します。
+Reports are made in this order (the official run too). Copy makes a new report with all of this one's definition. A double click makes the report (Make a report).,帳票はこの順に作られます（正式実行も）。複製は、この帳票の定義をすべて持った新しい帳票を作ります。ダブルクリックで「帳票の作成」に移ります。
+"The code lists this report uses: each variable's values, their order and the text they print as. The study's rows (blank output_id) apply to every report; this report's own rows replace them. Optional: a report that needs none skips this step.",この帳票が使うコードリスト：変数ごとの値・順番・表示する文字。試験の行（output_id が空欄）はすべての帳票に効き、この帳票の行はそれを置き換えます。任意：要らない帳票はこの段を飛ばせます。
+The data's definitions,データの定義
+"The datasets the study's programs read (the data catalog), the analysis sets, and the analysis data: defined once for the study, used by every report's ARD.",試験のプログラムが読むデータセット（データカタログ）、解析対象集団、解析データ。試験で 1 回定義し、すべての帳票の ARD で使います。
+"The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source).",被験者キー（id）、試験 ARD の出力先（output）、試験の独自の解析関数の R ファイル（source）。
+This report's own code list: %d rows,この帳票のコードリスト：%d 行
 Keeps the subjects of an analysis data above (a report's own subjects: the safety set in phase 1 ...): the numerator kept to the denominator's subjects. Instead of population_id; blank: no restriction here.,上の行の解析データの被験者に絞る（帳票の対象の症例：フェーズ 1 の安全性解析対象集団など）。分子を分母の症例に絞るときに使う。population_id の代わり。空欄 = ここでは絞らない。
 "Columns of the population's data (its dataset, ADSL) -- or of the data of `subjects` -- added by the subject key, | between them; a column of the same name is replaced. Needs a population or subjects, here or above; blank: none.",集団のデータ（そのデータセット、ADSL）または `subjects` のデータから、被験者キーで持ってくる列。複数は | で区切る。同じ名前の列は置き換える。この行か上の行に集団か subjects が必要。空欄 = なし。
 "New columns, NAME = R expression, | between them (transform()); a column the code lists list becomes a factor in their order; blank: none.",作る列。名前 = R の式、複数は | で区切る（transform()）。コードリストにある列は、その順の factor になる。空欄 = なし。

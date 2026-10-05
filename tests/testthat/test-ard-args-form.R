@@ -85,7 +85,7 @@ test_that("the form picks a function, fills its arguments and writes args", {
   save_study(s)
   shiny::testServer(server_for("AG"), {
     rv <- session$userData$rv
-    session$setInputs(nav = "ard", target = "T1")
+    session$setInputs(nav = "make", step = "ard", target = "T1")
     session$setInputs(hot_ard_analyses_select = list(select = list(r = 3L)))
     st_env <- session$userData$st_env
     id <- function(x) paste0("st", st_env$n, "_", x)

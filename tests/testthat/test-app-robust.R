@@ -240,7 +240,7 @@ test_that("the builder of a table with no definition yet writes one, and keeps t
   shiny::testServer(server_for("B1"), {
     rv <- session$userData$rv
     bform <- session$userData$bform
-    session$setInputs(target = "T-DM", nav = "outputs", rep_nav = "content", table_nav = "builder")
+    session$setInputs(target = "T-DM", nav = "make", step = "content", content_nav = "content", table_nav = "builder")
     b <- function(x) paste0("b", bform$n, "_", x)
     v <- list(TRT01A = NULL)
     v[[b("key")]] <- "TRT01A"
@@ -264,7 +264,7 @@ test_that("a table with no ARD says so, and offers the one Preview", {
   local_home()
   create_study("P1", planner = add_output(new_planner(), "T1", type = "table"))
   shiny::testServer(server_for("P1"), {
-    session$setInputs(target = "T1", nav = "outputs", rep_nav = "content", table_nav = "builder")
+    session$setInputs(target = "T1", nav = "make", step = "content", content_nav = "content", table_nav = "builder")
     expect_match(output$assist$html, "Not made")
     expect_match(output$assist$html, 'id="fetch2"')
     expect_match(output$builder_note$html, 'id="fetch3"')
@@ -309,15 +309,19 @@ test_that("Tables opens on the builder, with the sheets as a sibling tab", {
   expect_true(grepl("builder_preview", as.character(bp[[1L]]), fixed = TRUE))
 })
 
-test_that("the top tabs are the flow, and a report's screens are in Reports", {
+test_that("the top tabs are the flow, and a report is made in its steps", {
   ui <- htmltools::tagQuery(app_ui())
   vals <- function(id) {
     links <- ui$find(paste0("#", id))$find("a")$selectedTags()
     v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
     unname(v[nzchar(v)])
   }
-  expect_identical(vals("nav"), c("study", "data", "outputs", "ard", "results"))
-  expect_identical(vals("rep_nav"), c("list", "content", "page", "code"))
+  expect_identical(vals("nav"), c("study", "data", "outputs", "make", "results"))
+  expect_identical(vals("step"), c("codelist", "ard", "content", "page"))
+  expect_identical(vals("content_nav"), c("content", "code"))
+  expect_identical(vals("page_nav"), c("page", "program"))
+  # the steps' names are in one place
+  expect_identical(names(.step_labels), c("codelist", "ard", "content", "page"))
   html <- as.character(app_ui())
   # each kind's content shows for its kind only
   for (k in c("table", "listing", "figure")) {

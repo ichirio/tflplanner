@@ -77,7 +77,7 @@ test_that("a user-code report runs out of the app and its content is shown", {
     # the figure written by hand is offered, not converted
     expect_match(output$uc_offer$html, "F-1", fixed = TRUE)
     expect_identical(report_info(rv$p, "F-1")$type, "figure")
-    session$setInputs(target = "U-1", nav = "outputs", rep_nav = "content")
+    session$setInputs(target = "U-1", nav = "make", step = "content", content_nav = "content")
     expect_match(output$uc_inputs$html, "uc_ard", fixed = TRUE)
     # the code is the report's data code: an edit here is written there
     session$setInputs(uc_code = "content <- adsl[1:5, ]")
@@ -142,7 +142,7 @@ test_that("a user-code report's run names the line of its code and a missing dat
   expect_match(res$error, "adsl")
   expect_identical(res$code_line, 3L)
   shiny::testServer(server_for("UE"), {
-    session$setInputs(target = "U-1", nav = "outputs", rep_nav = "content")
+    session$setInputs(target = "U-1", nav = "make", step = "content", content_nav = "content")
     session$setInputs(uc_run = 1)
     h <- output$uc_result$html
     expect_match(h, "Line 3 of the code", fixed = TRUE)
