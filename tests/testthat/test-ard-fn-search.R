@@ -375,7 +375,7 @@ test_that("every setting in the dictionary runs as written", {
     'method = "coxph", package = "survival", exponentiate = TRUE' = paste0("adtte, formula = ", surv, " ~ TRTA"),
     'method = "coxph", package = "survival", method.args = list(ties = "breslow"), exponentiate = TRUE' =
       paste0("adtte, formula = ", surv, " ~ TRTA"),
-    'method = "glm.nb", package = "MASS"' = "adsl, formula = CNT ~ ARM")
+    'method = "glm.nb", package = "MASS", exponentiate = TRUE' = "adsl, formula = CNT ~ ARM")
   run <- function(fn, b, a) {
     r <- suppressWarnings(eval(parse(text = paste0(fn, "(", b, ", ", a, ")"))))
     err <- unlist(r$error)
@@ -460,5 +460,38 @@ test_that("the form starts from the setting a word means", {
     h <- output$ard_an_args$html
     expect_match(h, 'value="glm"', fixed = TRUE)
     expect_match(h, "exponentiate = TRUE", fixed = TRUE)
+  })
+})
+
+test_that("a setting that replaces the analysis's own arguments says so", {
+  skip_on_cran()
+  skip_if_not_installed("cardx")
+  local_home()
+  s <- create_study("FR")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADSL, file.path(s$path, "data/adam/adsl.rds"))
+  s$planner <- first_table(s$planner, "T1", "data/adam/adsl.rds", cards::ADSL,
+                           "SAFFL", "TRT01A", c("AGE", "SEX"))
+  a <- ard_rows(s$planner, "analyses", "T1")
+  k <- which(a$analysis_id == "CONT")
+  a$method[k] <- "cardx::ard_regression"
+  a$args[k] <- 'formula = AGE ~ TRT01A, method = "lm"'
+  s$planner <- set_ard_rows(s$planner, "analyses", "T1", a)
+  save_study(s)
+  shiny::testServer(server_for("FR"), {
+    session$setInputs(nav = "ard", target = "T1")
+    session$setInputs(ard_ol_pick = "CONT")
+    st_env <- session$userData$st_env
+    id <- function(x) paste0("st", st_env$n, "_", x)
+    inp <- list(); inp[[id("fn_q")]] <- "PROC LOGISTIC"
+    do.call(session$setInputs, inp)
+    inp <- list(); inp[[id("fn_pick")]] <- "cardx::ard_regression"
+    do.call(session$setInputs, inp)
+    h <- output$ard_fn_preset$html
+    expect_match(h, "Start with this setting", fixed = TRUE)
+    expect_match(h, "It replaces the analysis's own arguments", fixed = TRUE)
+    expect_match(h, 'method = "lm"', fixed = TRUE)
+    session$setInputs(ard_fn_preset_go = 1)
+    expect_match(output$ard_fn_preset$html, "It replaces the analysis's own arguments", fixed = TRUE)
   })
 })
