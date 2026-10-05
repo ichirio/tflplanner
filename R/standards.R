@@ -185,7 +185,8 @@
     # keyword = %m_ttest); none by default
     ard_fn_keywords = .df(fn = character(), lang = character(),
                           keyword = character(), rank = character(),
-                          note_ja = character(), note_en = character()),
+                          note_ja = character(), note_en = character(),
+                          args = character()),
     populations = .df(
       population_id = c("SAF", "FAS", "PPS", "ENR"),
       dataset = "ADSL",
@@ -264,7 +265,7 @@
         "the code written where a report says none: table_data (its rows of the study ARD), table_process (normalize, rework), figure_plot, setup; {OUTPUT_ID} {ARD} {ARD_PROGRAM} {PROGRAM} {STUDY_ID} are filled in",
         "the listing types a listing may use (rtfreporter's)",
         "a TOC in the company's layout: for each item (output_id, type, title, population, footnote, program, file, note), the column names it may have, | between them",
-        "the company's words for the ARD form's function search, added to tflplanner's: fn (cards::ard_tabulate, cardx::ard_stats_t_test, a method keyword), lang (en / ja / sas / r), keyword, rank (1 the function for the word, 2 related, 3 near: say why in the notes), note_ja, note_en; empty by default",
+        "the company's words for the ARD form's function search, added to tflplanner's: fn (cards::ard_tabulate, cardx::ard_stats_t_test, a method keyword), lang (en / ja / sas / r), keyword, rank (1 the function for the word, 2 related, 3 near: say why in the notes), note_ja, note_en, args (the arguments the word means, which the form can start from: method = \"glm\", exponentiate = TRUE); empty by default",
         "the analysis sets a new study's ARD definition starts with",
         "the data catalog a new study starts with: ADaM and SDTM datasets and their files",
         "the study-default rows a new study starts with, one sheet per definition sheet (default_header, default_footer, default_cells ...); {STUDY_ID} becomes the study's id"),
@@ -284,7 +285,7 @@
         "\u5e33\u7968\u304c\u4f55\u3082\u66f8\u304b\u306a\u3044\u3068\u304d\u306e\u30b3\u30fc\u30c9\uff1atable_data\uff08ARD \u304b\u3089\u306e\u53d6\u5f97\uff09\u3001table_process\uff08normalize\u30fb\u52a0\u5de5\uff09\u3001figure_plot\u3001setup",
         "Listing \u306e\u7a2e\u985e\uff08rtfreporter \u306e\u3082\u306e\uff09",
         "\u81ea\u793e\u69d8\u5f0f\u306e TOC\uff1a\u9805\u76ee\uff08output_id\u3001type\u3001title\u3001population\u3001footnote\u3001program\u3001file\u3001note\uff09\u3054\u3068\u306e\u5217\u540d\u306e\u5019\u88dc\uff08| \u533a\u5207\u308a\uff09",
-        "\u4f1a\u793e\u72ec\u81ea\u306e\u8a00\u8449\uff08ARD \u753b\u9762\u306e\u95a2\u6570\u691c\u7d22\uff09\u3002tflplanner \u306e\u8f9e\u66f8\u306b\u8db3\u3059\uff1afn\uff08cards::ard_tabulate \u306a\u3069\u3001\u307e\u305f\u306f\u624b\u6cd5\u30ad\u30fc\u30ef\u30fc\u30c9\uff09\u3001lang\uff08en / ja / sas / r\uff09\u3001keyword\u3001rank\uff081 \u672c\u547d\u30fb2 \u95a2\u9023\u30fb3 \u8fd1\u3044\u3082\u306e\uff1d\u6ce8\u8a18\u306b\u7406\u7531\uff09\u3001note_ja\u3001note_en\u3002\u65e2\u5b9a\u306f\u7a7a",
+        "\u4f1a\u793e\u72ec\u81ea\u306e\u8a00\u8449\uff08ARD \u753b\u9762\u306e\u95a2\u6570\u691c\u7d22\uff09\u3002tflplanner \u306e\u8f9e\u66f8\u306b\u8db3\u3059\uff1afn\uff08cards::ard_tabulate \u306a\u3069\u3001\u307e\u305f\u306f\u624b\u6cd5\u30ad\u30fc\u30ef\u30fc\u30c9\uff09\u3001lang\uff08en / ja / sas / r\uff09\u3001keyword\u3001rank\uff081 \u672c\u547d\u30fb2 \u95a2\u9023\u30fb3 \u8fd1\u3044\u3082\u306e\uff1d\u6ce8\u8a18\u306b\u7406\u7531\uff09\u3001note_ja\u3001note_en\u3001args\uff08\u305d\u306e\u8a00\u8449\u304c\u610f\u5473\u3059\u308b\u5f15\u6570\u3002\u753b\u9762\u306e\uff3b\u3053\u306e\u8a2d\u5b9a\u3067\u59cb\u3081\u308b\uff3d\u3067\u4f7f\u3046\uff09\u3002\u65e2\u5b9a\u306f\u7a7a",
         "\u65b0\u898f\u8a66\u9a13\u306e ARD \u5b9a\u7fa9\u304c\u6700\u521d\u306b\u6301\u3064\u89e3\u6790\u5bfe\u8c61\u96c6\u56e3",
         "\u65b0\u898f\u8a66\u9a13\u304c\u6700\u521d\u306b\u6301\u3064\u30c7\u30fc\u30bf\u30ab\u30bf\u30ed\u30b0\uff08ADaM / SDTM \u3068\u30d5\u30a1\u30a4\u30eb\uff09",
         "\u65b0\u898f\u8a66\u9a13\u306e\u300c\u8a66\u9a13\u5171\u901a\u306e\u65e2\u5b9a\u300d\u306e\u884c\u3002\u5b9a\u7fa9\u30b7\u30fc\u30c8\u3054\u3068\u306b 1 \u30b7\u30fc\u30c8\u3002{STUDY_ID} \u306f\u8a66\u9a13 ID \u306b\u7f6e\u304d\u63db\u308f\u308b"))
@@ -350,7 +351,8 @@ read_standards <- function(path) {
 
 # columns a company's workbook may lack (written before they were added):
 # they read as blank, and a method's blank label is its name (tflspec)
-.std_optional <- list(ard_methods = c("formats", "label"))
+.std_optional <- list(ard_methods = c("formats", "label"),
+                      ard_fn_keywords = "args")
 
 .standards_file <- function(home = tflplanner_home()) {
   file.path(home, "standards", "company_standards.xlsx")

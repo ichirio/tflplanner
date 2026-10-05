@@ -1945,6 +1945,10 @@ Delete the analysis,解析を削除
 Delete %s%s from %s? Its statistics leave the report's ARD when the ARD is made again.,%3$s から %1$s%2$s を削除しますか？ この解析の統計量は、ARD を作り直したときに帳票の ARD から無くなります。
 %s is deleted.,%s を削除しました。
 not made yet (nothing to show),まだ作っていません
+Its setting: %s,設定: %s
+Started from the setting: %s (Apply to the analysis writes it).,設定から始めました: %s（「解析に反映」で書き込みます）。
+The word searched means: %s,探した言葉の設定: %s
+Start with this setting,この設定で始める
 "ARD: named data the analyses read (the study's, one row a data): from a dataset or an analysis data above it, the subjects of a population, the records a condition keeps, columns of the population added, columns derived, one row per set of values. In that order. An analysis names one in `data`, or as its `denominator`.",ARD：解析が読む、名前つきのデータ（試験で共有。1 行 = 1 つのデータ）。データセットか上の行の解析用データから、集団の被験者に絞り、条件で行を絞り、集団のデータの列を足し、列を作り、値の組ごとに 1 行にする。この順に処理する。解析は `data` か `denominator`（分母）で名前を指定する。
 "The data's name, and its object's name in the ARD program: a lower-case letter first, then letters, digits, _ or . -- not a dataset's, pop_<population>'s or another data's.",データの名前。ARD プログラムの中のオブジェクト名にもなる。小文字で始め、英字・数字・_・. を使う。データセット名、pop_<集団>、ほかのデータの名前とは別にする。
 A name a person reads; blank: none.,人が読む名前。空欄 = なし。
