@@ -7,6 +7,14 @@
   (10 s the first time, about a second after); the answers are the same.
   Saving a study, which writes every program, is quicker too.
 
+- **The Data tab has the study's data in one place** (#168).  On the left
+  what there is, on the right the one chosen: the files (SDTM / ADaM / other,
+  filtered by kind, a file's first rows), the ARDs (the study ARD with its
+  logs and the errors inside the analyses; the ARDs taken in) and the
+  definitions (datasets, analysis sets, analysis data, and the study's code
+  list -- its rows for every report, read from a file here too).  The data
+  catalog is its grid alone, with a line for a file that is not there.
+
 - **Find the report to make** (#165).  The left of Make a report is a
   list to search, for a study of 100 or 200 reports: each report's ID,
   title and state (made / to make again / not made / error); a search on
@@ -17,6 +25,23 @@
   at the top (the browser remembers it folded).  The report list and the
   runs search the same way.  The
   list's state is read from the files (a quick look at 200 reports).
+
+
+
+- **Step 2 as lists** (#164).  2-2: [New] [Copy] [Delete...] over the list
+  of the report's analyses; an analysis opens below the list when clicked
+  (another click closes it), so the step starts as the list alone.  Copy
+  makes the analysis again after it, a stack with the ones inside it
+  (`copy_analysis()`).  2-1: [Copy] [Delete...] over the analysis data; its
+  form opens below the list, not in a dialog (`copy_analysis_data()`).  The
+  form's argument headings have an (i): the hint of that argument for that
+  function, as a tooltip, instead of a line under each field.
+
+- **Function search settings, reviewed** (#160).  Negative binomial
+  starts with `exponentiate = TRUE` (rate ratios, as Poisson); the logistic
+  setting says its confidence interval is profile likelihood (SAS's is
+  Wald, which `args` alone cannot give); "Start with this setting" says
+  when it replaces the analysis's own arguments.
 
 - **Make a report, step 2: the analysis data, then the analyses** (#161).
   "2-1 The analysis data -- what is analysed" has two groups, made in this
