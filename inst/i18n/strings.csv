@@ -1918,3 +1918,14 @@ tokens: your own,自分のトークン (tokens)
 "Report: tokens of your own for the header, footer, titles and footnotes, one row a token, written {NAME} there; a report's row replaces the default of the same name, (none) takes it out.",帳票：ヘッダー・フッター・タイトル・脚注で使う自分のトークン。1 行 = 1 トークンで、そこでは {名前} と書く。帳票の行は同じ名前の既定を上書きし、(none) で外す。
 "The token's name: upper case, a letter then letters, digits or _; not one of rtfreporter's own ({PAGE}, {PROGRAM}, {DATETIME} ...).",トークンの名前：大文字の英字で始め、大文字・数字・_ だけ。rtfreporter の組み込み（{PAGE}・{PROGRAM}・{DATETIME} など）と同じ名前は使えない。
 What it becomes; (none) takes a default out for this report.,置き換わる文字。(none) で、この帳票では既定を外す。
+needs making again (its definition has changed),作り直しが必要（定義が変わりました）
+"Since this report's ARD was made, something it is made from has changed: its analyses, their analysis sets or datasets, the study's settings, the study's own ARD functions or the code lists. Make it again to see the tables as the definition is now.",この帳票の ARD を作った後で、元になるもの（この帳票の解析、その解析対象集団やデータセット、試験の設定、試験独自の ARD 関数、コードリスト）のどれかが変わりました。今の定義の表を見るには作り直してください。
+This report's ARD has not been made yet: make it to see its tables.,この帳票の ARD はまだ作っていません。表を見るには作ってください。
+"Its ARD program failed: see what it printed (ARD tab > Study ARD), fix it and make it again.",ARD プログラムが失敗しました。出力（ARD タブ > 試験 ARD）を見て直し、作り直してください。
+Make the ARD,ARD を作る
+Make the ARD again,ARD を作り直す
+Delete the analysis...,解析を削除…
+Delete the analysis,解析を削除
+Delete %s%s from %s? Its statistics leave the report's ARD when the ARD is made again.,%3$s から %1$s%2$s を削除しますか？ この解析の統計量は、ARD を作り直したときに帳票の ARD から無くなります。
+%s is deleted.,%s を削除しました。
+not made yet (nothing to show),まだ作っていません
