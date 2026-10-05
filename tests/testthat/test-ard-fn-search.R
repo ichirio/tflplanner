@@ -202,7 +202,7 @@ test_that("the screen says why a function was found, and its category", {
     # nothing found: where to go
     inp <- list(); inp[[id("fn_q")]] <- "xyzabc"
     do.call(session$setInputs, inp)
-    expect_match(output$ard_fn_list$html, "Own functions tab", fixed = TRUE)
+    expect_match(output$ard_fn_list$html, "(Study &gt; Own functions)", fixed = TRUE)
     # a category narrows the search too
     inp <- list(); inp[[id("fn_q")]] <- "odds ratio"; inp[[id("fn_cat")]] <- "Models"
     do.call(session$setInputs, inp)
