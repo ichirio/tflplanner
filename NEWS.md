@@ -8,6 +8,21 @@
   as they were.  The ARD tab shows it as a stack, to compare with
   T-14-1-1.
 
+- **A report's own code list reaches its ARD** (#151, tflspec #137).  The
+  ARD programs, the preview and the ARD's state get the whole codelists
+  sheet: a report's ARD program makes factors by the study's rows and the
+  report's own (which replace the study's of the same variable and
+  value), as its tables do.  The analysis data sheet has tflspec's new
+  columns `subjects` (a closed choice: the analysis data) and `keep`.
+  Needs tflspec 0.0.24.9046.
+
+- **A temporary home is not remembered** (#150).  `setup_tflplanner(home
+  = )` with a folder in the temporary folder (a script's, a test's) uses it
+  for the session only: remembered, every later session opened a folder
+  that is deleted when the R session ends (a screenshot script did this to
+  a user's home).  The screenshot script and the tests keep their own
+  `tools::R_user_dir()` folders.
+
 - **A shortcut that security software stops is made another way** (#149).
   On Windows, `add_shortcut()` makes each shortcut on its own, and one the
   VBScript could not write -- security software may stop a script from

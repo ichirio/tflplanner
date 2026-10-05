@@ -73,12 +73,13 @@
                          methods = .std_ard_methods())
 }
 
-# The study's code lists (the codelists sheet's study rows): the ARD
-# programs make each listed column a factor in their order before the
-# analyses, so the ARD keeps the order and counts a value no record has (0).
-# NULL when there are none.
+# The study's code lists (the codelists sheet: its study rows and each
+# report's own): the ARD programs make each listed column a factor in their
+# order before the analyses, so the ARD keeps the order and counts a value
+# no record has (0) -- a report's program with its own rows too (tflspec
+# picks them by output_id).  NULL when there are none.
 .study_codelists <- function(p) {
-  cl <- if (!is.null(p$sheets$codelists)) sheet_rows(p, "codelists", NA)
+  cl <- if (!is.null(p$sheets$codelists)) sheet_rows(p, "codelists", "")
   if (is.null(cl) || !nrow(cl)) return(NULL)
   cl <- cl[!is.na(cl$variable) & !is.na(cl$value), , drop = FALSE]
   if (nrow(cl)) cl
