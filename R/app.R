@@ -960,7 +960,7 @@ $(document).on('click', '#save', function() {
 # datasets, populations and analysis data).  `method` stays open: besides
 # the keywords it takes any pkg::function.
 .ard_closed_columns <- c("data", "dataset", "population_id", "denominator",
-                         "from")
+                         "from", "subjects")
 
 # tflspec's column help is English; the app shows it in its language
 .help_table <- function(sheet) {
@@ -2380,7 +2380,8 @@ app_server <- function(input, output, session, start) {
       populations = list(dataset = p$ard$datasets$dataset),
       analysis_data = list(
         from = c(p$ard$datasets$dataset, p$ard$analysis_data$data_id),
-        population_id = p$ard$populations$population_id),
+        population_id = p$ard$populations$population_id,
+        subjects = p$ard$analysis_data$data_id),
       study = list(key = c("id", "output", "source")),
       list())
   }

@@ -234,3 +234,21 @@ test_that("the analysis data is saved, reopened and run (tflspec #135)", {
   expect_null(r$error)
   expect_identical(unique(r$ard$population_id), "SAF")
 })
+
+test_that("a report's own code list rows reach its ARD program (tflspec #137)", {
+  skip_on_cran()
+  skip_if(utils::packageVersion("tflspec") < "0.0.24.9046")
+  local_home2()
+  p <- ard_planner()
+  p <- set_codelist(p, data.frame(variable = "SEX", value = c("F", "M"),
+                                  order = c("1", "2"), stringsAsFactors = FALSE))
+  # DM's own order of AGEGR1, not the study's
+  p <- set_sheet_rows(p, "codelists", "DM", data.frame(
+    variable = "AGEGR1", value = c(">80", "65-80", "<65"), order = c("1", "2", "3"),
+    stringsAsFactors = FALSE))
+  expect_identical(sort(unique(.study_codelists(p)$output_id), na.last = TRUE), c("DM", NA))
+  s <- create_study("A3", planner = p)
+  prog <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
+  expect_true(any(grepl("`AGEGR1` = c(\">80\", \"65-80\", \"<65\")", prog, fixed = TRUE)))
+  expect_true(any(grepl("`SEX` = c(\"F\", \"M\")", prog, fixed = TRUE)))
+})
