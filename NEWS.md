@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **The Data tab has the study's data in one place** (#168).  On the left
+  what there is, on the right the one chosen: the files (SDTM / ADaM / other,
+  filtered by kind, a file's first rows), the ARDs (the study ARD with its
+  logs and the errors inside the analyses; the ARDs taken in) and the
+  definitions (datasets, analysis sets, analysis data, and the study's code
+  list -- its rows for every report, read from a file here too).  The data
+  catalog is its grid alone, with a line for a file that is not there.
+
 - **Step 2 as lists** (#164).  2-2: [New] [Copy] [Delete...] over the list
   of the report's analyses; an analysis opens below the list when clicked
   (another click closes it), so the step starts as the list alone.  Copy
