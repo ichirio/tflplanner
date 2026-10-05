@@ -36,6 +36,12 @@ test_that("a home in the temporary folder is not remembered for later sessions",
   expect_false(.in_temp("C:/studies/tflplanner_home"))
   expect_false(.in_temp("/home/u/tflplanner"))
   expect_true(.in_temp(file.path(tempdir(), "x")))
+  expect_true(.in_temp(file.path(tempdir(), "not", "made", "yet")))
+  # a folder named two ways is one (macOS: /var is /private/var)
+  if (.Platform$OS.type != "windows") {
+    expect_identical(.real_path("/private/tmp/tflplanner-none/a"),
+                     .real_path("/tmp/tflplanner-none/a"))
+  }
 })
 
 test_that("a new study has its layout and is registered", {

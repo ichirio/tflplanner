@@ -25,9 +25,26 @@
 
 # a folder in the temporary folder (where tempdir() is made)
 .in_temp <- function(path) {
-  p <- tolower(normalizePath(path, "/", mustWork = FALSE))
-  tmp <- tolower(normalizePath(dirname(tempdir()), "/", mustWork = FALSE))
-  startsWith(p, paste0(tmp, "/"))
+  p <- .real_path(path)
+  tmp <- .real_path(dirname(tempdir()))
+  startsWith(p, paste0(sub("/$", "", tmp), "/"))
+}
+
+# A path as the file system has it, so two ways of naming a folder compare
+# equal: its nearest existing folder resolved (normalizePath() resolves
+# only what exists: macOS's /var is /private/var), the rest kept; macOS's
+# /private dropped; in lower case on Windows
+.real_path <- function(path) {
+  p <- normalizePath(path, "/", mustWork = FALSE)
+  rest <- character()
+  while (!file.exists(p) && !identical(dirname(p), p)) {
+    rest <- c(basename(p), rest)
+    p <- dirname(p)
+  }
+  p <- normalizePath(p, "/", mustWork = FALSE)
+  if (length(rest)) p <- paste(c(sub("/$", "", p), rest), collapse = "/")
+  p <- sub("^/private(/(var|tmp|etc)(/|$))", "\\1", p)
+  if (.Platform$OS.type == "windows") tolower(p) else p
 }
 
 #' Where tflplanner keeps its settings and the studies' saved state
