@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **The ARD definition's analysis data** (#146, tflspec #135).  The sheet
+  `analysis_data` -- named data the analyses read: from a dataset or an
+  analysis data above, a population's subjects, a condition, columns of
+  the population added, derived, one row per subject and phase -- is
+  saved with the study and has a grid of its own on the ARD tab ("Analysis
+  data"); an analysis names one in `data`, or as its denominator.  A study
+  saved before reads it empty.  The screens to make and use them come
+  next.  Needs tflspec 0.0.24.9045.
+
 - **Your own words for the function search** (#140).  A function of
   one's own is found by the comment lines right above it in its file,
   `# tflplanner-keywords: risk difference, PROC FREQ RISKDIFF` (a plain
