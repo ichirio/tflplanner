@@ -1,5 +1,17 @@
 # tflplanner (development version)
 
+- **The Study tab and the Data tab, after trying them** (#174).
+  - The Study tab: "Study list" on the left; on the right one card, "Study
+    settings": the study's title, compound, phase, rounding, its keys and
+    setup code, and its files.  "Own ARD functions" below, the company's
+    (every study) and this study's apart, with how many of each.
+  - The study open, its ID and title, is in the bar of the tabs on every
+    tab; a click on it goes to the Study tab, where studies are chosen.
+  - A table drawn while its tab was hidden (headers one letter a line)
+    measures its columns again when the tab shows.
+  - The Data tab: "Into" and "Add files" level; the file's "Preview", 50
+    rows a page with paging.
+
 - **Texts name the tabs as they are now** (#171).  About 35 messages and
   help texts still pointed to the old tabs (the ARD tab, the Reports tab, the
   Tables / Figures / Listings tabs, the Results tab, the sidebar ...); they
