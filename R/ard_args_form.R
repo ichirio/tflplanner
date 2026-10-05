@@ -14,11 +14,13 @@
 # .std_ard_methods(); `functions` tfl_ard_functions().
 .ard_fn_entries <- function(keywords, functions, current = NA_character_,
                             company = "Company standard") {
-  kw <- data.frame(value = keywords$method, label = keywords$label,
-                   label_en = keywords$label,
-                   description = keywords$note %||% NA_character_,
-                   category = company, call = keywords$call,
-                   state = "ok", stringsAsFactors = FALSE)
+  # none (a company that keeps no keywords of its own): no such category
+  nk <- NROW(keywords)
+  kw <- data.frame(value = as.character(keywords$method), label = as.character(keywords$label),
+                   label_en = as.character(keywords$label),
+                   description = as.character(keywords$note %||% rep(NA_character_, nk)),
+                   category = rep(company, nk), call = as.character(keywords$call),
+                   state = rep("ok", nk), stringsAsFactors = FALSE)
   f <- functions
   # out of the builder's scope (the 2026-10-04 decision, Q9): the catalog's
   # `offered` column says so (survey designs, ard_formals() ...) -- shown,
