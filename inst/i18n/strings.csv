@@ -1251,7 +1251,7 @@ Survival,生存時間
 Run several together,まとめて実行
 Own and code,独自・コード
 Survey designs,サーベイデザイン
-Search the functions,関数を探す
+"e.g. odds ratio, PROC LOGISTIC, paired t test","例: オッズ比、PROC LOGISTIC、t検定 対応"
 No function matches.,当てはまる関数はありません。
 An old name: choose its new one.,旧い名前です。新しい名前の関数を選んでください。
 its package is not installed,パッケージが入っていません
@@ -1375,7 +1375,6 @@ fn:cardx::ard_survey_svyranktest,サーベイの順位検定
 fn-note:cardx::ard_survey_svyranktest,サーベイデザインのオブジェクト（データフレームではない）での順位検定。
 fn:cardx::ard_survey_svyttest,サーベイの t 検定
 fn-note:cardx::ard_survey_svyttest,サーベイデザインのオブジェクト（データフレームではない）での t 検定。
-Chosen: %s,選択中: %s
 (default: %s),（既定: %s）
 See ?%s for this argument.,この引数は ?%s を見てください。
 Not offered by the builder: kept as written.,画面では扱わない関数です。書いたまま残します。
@@ -1918,6 +1917,21 @@ tokens: your own,自分のトークン (tokens)
 "Report: tokens of your own for the header, footer, titles and footnotes, one row a token, written {NAME} there; a report's row replaces the default of the same name, (none) takes it out.",帳票：ヘッダー・フッター・タイトル・脚注で使う自分のトークン。1 行 = 1 トークンで、そこでは {名前} と書く。帳票の行は同じ名前の既定を上書きし、(none) で外す。
 "The token's name: upper case, a letter then letters, digits or _; not one of rtfreporter's own ({PAGE}, {PROGRAM}, {DATETIME} ...).",トークンの名前：大文字の英字で始め、大文字・数字・_ だけ。rtfreporter の組み込み（{PAGE}・{PROGRAM}・{DATETIME} など）と同じ名前は使えない。
 What it becomes; (none) takes a default out for this report.,置き換わる文字。(none) で、この帳票では既定を外す。
+Close tflplanner,tflplanner を閉じる
+There are unsaved changes. Save them before tflplanner stops?,保存していない変更があります。tflplanner を終了する前に保存しますか？
+tflplanner stops; then its window can be closed.,tflplanner を終了します。その後、このウィンドウを閉じてください。
+Close without saving,保存しないで閉じる
+Save and close,保存して閉じる
+tflplanner has stopped. This window can be closed.,tflplanner を終了しました。このウィンドウを閉じてください。
+Clear,消す
+%d found,%d 件
+Near spellings,近い綴りの候補
+Near spelling: %s -> %s,近い綴り: %s → %s
+Match: %s,一致: %s
+Near: ,近いもの: 
+"Make it as an own function (the Own functions tab), or write it as R code (custom).","独自の関数で作る（Own functions タブ）か、R コードで書く（custom）ことができます。"
+All categories,すべての分類
+(not chosen),（未選択）
 needs making again (its definition has changed),作り直しが必要（定義が変わりました）
 "Since this report's ARD was made, something it is made from has changed: its analyses, their analysis sets or datasets, the study's settings, the study's own ARD functions or the code lists. Make it again to see the tables as the definition is now.",この帳票の ARD を作った後で、元になるもの（この帳票の解析、その解析対象集団やデータセット、試験の設定、試験独自の ARD 関数、コードリスト）のどれかが変わりました。今の定義の表を見るには作り直してください。
 This report's ARD has not been made yet: make it to see its tables.,この帳票の ARD はまだ作っていません。表を見るには作ってください。

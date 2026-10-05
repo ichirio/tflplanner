@@ -121,7 +121,7 @@ test_that("a row of the analyses grid is edited as a form", {
     session$setInputs(nav = "ard", target = "T1")
     # the first analysis (BIGN) until a row is clicked
     expect_match(output$ard_stat_ui$html, "Analysis BIGN of T1")
-    expect_match(output$ard_stat_ui$html, "What to compute")
+    expect_match(output$ard_stat_ui$html, "What to compute", fixed = TRUE)
     # a click on the grid's second row: CONT (AGE)
     session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
     h <- output$ard_stat_ui$html
