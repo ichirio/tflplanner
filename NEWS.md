@@ -17,6 +17,14 @@
   (all of them by default; both narrow the list); a company with no
   keywords of its own has no Company standard category.
 
+- **An analysis can be deleted on the ARD tab** (#136): its form has
+  "Delete the analysis...", asked first -- one of its own, or one inside a
+  stack (the stack keeps the others; a stack itself keeps its own Delete).
+  `remove_analysis()` does the same in R.  The report's ARD line says what
+  its state means and the next step: "needs making again (its definition
+  has changed)" with "Make the ARD again", "not made yet" with "Make the
+  ARD", the reason in a tooltip (was "Outdated" and "Preview").
+
 - **A report's program is named by its own file** (tflspec #131).  A new
   study's default report row no longer says `program = {output_id}.R`:
   `{PROGRAM}` is the file name of the program that runs, and
