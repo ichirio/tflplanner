@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **The sample shows an ard_stack** (#156).  SAMPLE-01 has a report
+  T-14-1-1S: T-14-1-1's table, its ARD one `cards::ard_stack()` analysis
+  with the continuous and the categorical analyses inside it, the column N
+  and the total N made by the stack itself (no BIGN / TOTAL rows).  Its
+  table is T-14-1-1's to the byte (but its number); the other reports are
+  as they were.  The ARD tab shows it as a stack, to compare with
+  T-14-1-1.
+
 - **A shortcut that security software stops is made another way** (#149).
   On Windows, `add_shortcut()` makes each shortcut on its own, and one the
   VBScript could not write -- security software may stop a script from
