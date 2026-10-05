@@ -2082,3 +2082,16 @@ SDTM / ADaM / other,SDTM・ADaM・その他
 %s chosen: the form below,%s を選択中：下のフォーム
 %s is used: %s,%s は使われています：%s
 It replaces the analysis's own arguments: %s,この解析の今の引数を置き換えます: %s
++ and,+ かつ
++ or (another group),+ または（別のまとまり）
+Add:,足す:
+As rows,行に戻す
+No condition: every row.,条件なし: すべての行。
+The rows cannot hold this condition: it stays as R.,この条件は行では書けません。R の式のままにします。
+Values (search),値（検索）
+"Values, comma between",値（カンマ区切り）
+Write as R,R の式で書く
+Written as R (the rows cannot hold it): edit it here.,R の式で書いています（行では書けない条件）。ここで直せます。
+or,または
+is blank,空
+is not blank,空でない
