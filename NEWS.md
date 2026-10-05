@@ -8,6 +8,17 @@
   list -- its rows for every report, read from a file here too).  The data
   catalog is its grid alone, with a line for a file that is not there.
 
+- **Find the report to make** (#165).  The left of Make a report is a
+  list to search, for a study of 100 or 200 reports: each report's ID,
+  title and state (made / to make again / not made / error); a search on
+  the ID, title, analysis set and data (as the function search: case,
+  full / half width); the TOC's sections, folded one by one, with their
+  counts; a filter by state; the arrow keys and Enter.  "Study defaults"
+  and "ALL" stay first.  Folded, a chooser with a search takes its place
+  at the top (the browser remembers it folded).  The report list and the
+  runs search the same way.  The
+  list's state is read from the files (a quick look at 200 reports).
+
 - **Step 2 as lists** (#164).  2-2: [New] [Copy] [Delete...] over the list
   of the report's analyses; an analysis opens below the list when clicked
   (another click closes it), so the step starts as the list alone.  Copy
