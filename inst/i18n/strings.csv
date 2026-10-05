@@ -2072,6 +2072,15 @@ All,すべて
 A click on a data opens it below; another click closes it.,データをクリックすると下に開きます。もう一度クリックで閉じます。
 A click on an analysis in the list above opens it here.,上の一覧で解析をクリックすると、ここに開きます。
 A click on an analysis opens it below; another click closes it.,解析をクリックすると下に開きます。もう一度クリックで閉じます。
+Code lists (the study's),コードリスト（試験全体）
+Definitions,定義
+"Every report's analysis data, as a sheet: made and changed in each report's step 2-1.",すべての帳票の解析データ（シートの形）。作る・直すのは、各帳票の段 2-1 です。
+Files,ファイル
+No file for: %s,ファイルがありません：%s
+SDTM / ADaM / other,SDTM・ADaM・その他
+"The analysis sets: the subjects of a dataset a condition keeps (SAFFL == ""Y"").","解析対象集団：データセットのうち、条件（SAFFL == ""Y""）で残る被験者。"
+"The datasets the study's programs read (the data catalog): a name, its level, its file in the study folder, columns derived. Defined once for the study, used by every report.",試験のプログラムが読むデータセット（データカタログ）：名前・区分・試験フォルダの中のファイル・作る列。試験で 1 回定義し、すべての帳票で使います。
+"The study's code lists: each variable's values, their order and the text they print as, for every report (a report's own rows, in its step 1, replace them).",試験のコードリスト：変数ごとの値・順番・表示する文字。すべての帳票に効きます（帳票の段 1 の行がそれを置き換えます）。
 %s chosen: the form below,%s を選択中：下のフォーム
 %s is used: %s,%s は使われています：%s
 It replaces the analysis's own arguments: %s,この解析の今の引数を置き換えます: %s

@@ -392,9 +392,6 @@ app_ui <- function(lang = "en") {
   sheet_body <- function(sheet) {
     shiny::tagList(
       if (sheet %in% .assisted) shiny::uiOutput(paste0("assist_", sheet)),
-      if (identical(sheet, "codelists")) shiny::fileInput(
-        "codelist_file", t("Read the study's code list (xlsx / csv: variable, value, label, order)"),
-        accept = c(".xlsx", ".csv"), width = "100%"),
       rhandsontable::rHandsontableOutput(paste0("hot_", sheet)),
       shiny::uiOutput(paste0("inh_", sheet)),
       shiny::tags$details(
@@ -726,43 +723,36 @@ app_ui <- function(lang = "en") {
           DT::DTOutput("own_list", height = "auto", fill = FALSE),
           shiny::uiOutput("own_detail")))),
 
+    # the study's data in one place: on the left what there is (files, ARDs,
+    # definitions), on the right the one chosen
     bslib::nav_panel(
       t("Data"), value = "data",
-      bslib::layout_columns(
-        col_widths = two,
-        bslib::card(
-          bslib::card_header(t("Input data (data/)")),
-          shiny::div(
-            class = "d-flex gap-2 align-items-end",
-            shiny::selectInput("data_folder", t("Into"),
-                               c("adam", "sdtm", "other"), width = "110px"),
-            shiny::fileInput("data_upload", t("Add files"), multiple = TRUE)),
-          DT::DTOutput("data_files"),
-          shiny::div(class = "d-flex gap-2",
-                     .btn("data_refresh", t("Refresh")),
-                     .btn("data_open", t("Open folder")))),
-        bslib::card(
-          bslib::card_header(t("Contents (first 50 rows)")),
-          shiny::uiOutput("data_dim"),
-          DT::DTOutput("data_head"))),
-      # what the study's programs read: its datasets, analysis sets and
-      # analysis data, defined here for every report
-      bslib::card(
-        bslib::card_header(t("The data's definitions")),
-        shiny::p(class = "small text-muted",
-                 t("The datasets the study's programs read (the data catalog), the analysis sets, and the analysis data: defined once for the study, used by every report's ARD.")),
-        bslib::navset_underline(
-          id = "data_def",
-          bslib::nav_panel(paste0(t("Datasets"), " (datasets)"), value = "datasets",
-                           DT::DTOutput("catalog"),
-                           rhandsontable::rHandsontableOutput("hot_ard_datasets")),
-          bslib::nav_panel(paste0(t("Analysis sets"), " (populations)"), value = "populations",
-                           rhandsontable::rHandsontableOutput("hot_ard_populations")),
-          bslib::nav_panel(paste0(t("Analysis data"), " (analysis_data)"), value = "analysis_data",
-                           rhandsontable::rHandsontableOutput("hot_ard_analysis_data")))),
-      # the study's ARDs: the one it makes, and those taken in
-      bslib::navset_card_tab(
-        id = "data_ard",
+      bslib::navset_pill_list(
+        id = "data_nav", widths = c(2, 10), well = FALSE,
+        bslib::nav_item(shiny::div(class = "small text-muted fw-bold mt-2 px-2", t("Files"))),
+        bslib::nav_panel(
+          t("SDTM / ADaM / other"), value = "files",
+          bslib::layout_columns(
+            col_widths = two,
+            bslib::card(
+              bslib::card_header(t("Input data (data/)")),
+              shiny::radioButtons("data_kind", NULL, inline = TRUE,
+                                  stats::setNames(c("all", "sdtm", "adam", "other"),
+                                                  c(t("All"), "SDTM", "ADaM", t("Other")))),
+              DT::DTOutput("data_files"),
+              shiny::div(
+                class = "d-flex gap-2 align-items-end mt-2",
+                shiny::selectInput("data_folder", t("Into"),
+                                   c("adam", "sdtm", "other"), width = "110px"),
+                shiny::fileInput("data_upload", t("Add files"), multiple = TRUE)),
+              shiny::div(class = "d-flex gap-2",
+                         .btn("data_refresh", t("Refresh")),
+                         .btn("data_open", t("Open folder")))),
+            bslib::card(
+              bslib::card_header(t("Contents (first 50 rows)")),
+              shiny::uiOutput("data_dim"),
+              DT::DTOutput("data_head")))),
+        bslib::nav_item(shiny::div(class = "small text-muted fw-bold mt-3 px-2", "ARD")),
         bslib::nav_panel(
           shiny::span(t("Study ARD"), shiny::uiOutput("ard_cond_badge", inline = TRUE)),
           value = "state",
@@ -789,7 +779,40 @@ app_ui <- function(lang = "en") {
           shiny::div(class = "mb-2",
                      .btn("imp_new", t("Take in an ARD..."), class = "btn-sm btn-primary")),
           DT::DTOutput("imp_list"),
-          shiny::uiOutput("imp_actions")))),
+          shiny::uiOutput("imp_actions")),
+        bslib::nav_item(shiny::div(class = "small text-muted fw-bold mt-3 px-2", t("Definitions"))),
+        bslib::nav_panel(
+          paste0(t("Datasets"), " (datasets)"), value = "datasets",
+          shiny::p(class = "small text-muted",
+                   t("The datasets the study's programs read (the data catalog): a name, its level, its file in the study folder, columns derived. Defined once for the study, used by every report.")),
+          shiny::uiOutput("catalog_missing"),
+          grid_note,
+          rhandsontable::rHandsontableOutput("hot_ard_datasets")),
+        bslib::nav_panel(
+          paste0(t("Analysis sets"), " (populations)"), value = "populations",
+          shiny::p(class = "small text-muted",
+                   t("The analysis sets: the subjects of a dataset a condition keeps (SAFFL == \"Y\").")),
+          grid_note,
+          rhandsontable::rHandsontableOutput("hot_ard_populations")),
+        bslib::nav_panel(
+          paste0(t("Analysis data"), " (analysis_data)"), value = "analysis_data",
+          shiny::p(class = "small text-muted",
+                   t("Every report's analysis data, as a sheet: made and changed in each report's step 2-1.")),
+          grid_note,
+          rhandsontable::rHandsontableOutput("hot_ard_analysis_data")),
+        bslib::nav_panel(
+          t("Code lists (the study's)"), value = "codelists",
+          shiny::p(class = "small text-muted",
+                   t("The study's code lists: each variable's values, their order and the text they print as, for every report (a report's own rows, in its step 1, replace them).")),
+          shiny::fileInput(
+            "codelist_file", t("Read the study's code list (xlsx / csv: variable, value, label, order)"),
+            accept = c(".xlsx", ".csv"), width = "100%"),
+          grid_note,
+          rhandsontable::rHandsontableOutput("hot_codelists_study"),
+          shiny::tags$details(
+            class = "rp-help mt-2",
+            shiny::tags$summary(t("Column help")),
+            DT::DTOutput("help_codelists_study"))))),
 
     bslib::nav_panel(
       t("Report list"), value = "outputs",
@@ -2142,6 +2165,27 @@ app_server <- function(input, output, session, start) {
       .help_table(sh), rownames = FALSE,
       options = list(dom = "t", paging = FALSE, ordering = FALSE))
   })
+  # the study's code list on the Data tab: the codelists sheet's study rows
+  cl_key <- shiny::reactive(paste("codelists_study", rv$ver, sep = "|"))
+  output$hot_codelists_study <- rhandsontable::renderRHandsontable({
+    shiny::req(has_study())
+    d <- sheet_rows(shiny::isolate(rv$p), "codelists", NA)
+    d$output_id <- NULL
+    grids_drawn()
+    .grid(d, "codelists", cl_key(), .std_choices("codelists"))
+  })
+  shiny::observeEvent(input$hot_codelists_study, {
+    h <- input$hot_codelists_study
+    if (is.null(h$changes$changes) &&
+        !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
+    if (!identical(h$params$planner_key, cl_key())) return()
+    d <- read_grid(h)
+    if (is.null(d)) return()
+    guarded(rv$p <- set_sheet_rows(rv$p, "codelists", NA, d))
+  })
+  output$help_codelists_study <- DT::renderDT(
+    .help_table("codelists"), rownames = FALSE,
+    options = list(dom = "t", paging = FALSE, ordering = FALSE))
   output$type_note <- shiny::renderUI({
     id <- current()
     if (is.null(id)) return(NULL)
@@ -5717,15 +5761,14 @@ app_server <- function(input, output, session, start) {
             readLines(log[1L], warn = FALSE, encoding = "UTF-8")),
           collapse = "\n")
   })
-  output$catalog <- DT::renderDT({
+  # the catalog's datasets whose file is not there (the grid is the catalog)
+  output$catalog_missing <- shiny::renderUI({
     shiny::req(has_study())
     d <- rv$p$ard$datasets
-    v <- data.frame(a = d$dataset, b = d$level, c = d$path,
-                    d = ifelse(file.exists(file.path(rv$study$path, d$path)),
-                               "\u2713", t("missing")),
-                    stringsAsFactors = FALSE)
-    names(v) <- t(c("Dataset", "Level", "File", "Present"))
-    .dt(v, selection = "none")
+    gone <- d$dataset[!is.na(d$path) & !file.exists(file.path(rv$study$path, d$path))]
+    if (!length(gone)) return(NULL)
+    shiny::div(class = "alert alert-warning py-1 small",
+               sprintf(t("No file for: %s"), paste(gone, collapse = ", ")))
   })
 
 
@@ -7160,8 +7203,16 @@ app_server <- function(input, output, session, start) {
     shiny::req(has_study())
     study_files(rv$study, "data")
   })
+  # the files of the kind chosen (SDTM, ADaM, other, or all)
+  data_files_shown <- shiny::reactive({
+    d <- data_files()
+    k <- input$data_kind %||% "all"
+    if (identical(k, "all")) return(d)
+    d[d$folder %in% c(k, study_layout()[[k]]) |
+        startsWith(as.character(d$folder), study_layout()[[k]]), , drop = FALSE]
+  })
   output$data_files <- DT::renderDT({
-    d <- data_files()[c("folder", "file", "size_kb", "modified")]
+    d <- data_files_shown()[c("folder", "file", "size_kb", "modified")]
     names(d) <- t(c("Folder", "File", "KB", "Modified"))
     .dt(d, scrollY = "360px")
   })
@@ -7196,7 +7247,7 @@ app_server <- function(input, output, session, start) {
     # a row selection can outlive the list it was made in (the list is
     # drawn again when the study or the folder changes): read only a file
     # that is there
-    path <- data_files()$path[input$data_files_rows_selected]
+    path <- data_files_shown()$path[input$data_files_rows_selected]
     shiny::req(length(path) == 1L, !is.na(path), file.exists(path))
     guarded(read_data_head(path))
   })

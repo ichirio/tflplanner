@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **The Data tab has the study's data in one place** (#168).  On the left
+  what there is, on the right the one chosen: the files (SDTM / ADaM / other,
+  filtered by kind, a file's first rows), the ARDs (the study ARD with its
+  logs and the errors inside the analyses; the ARDs taken in) and the
+  definitions (datasets, analysis sets, analysis data, and the study's code
+  list -- its rows for every report, read from a file here too).  The data
+  catalog is its grid alone, with a line for a file that is not there.
+
 - **Find the report to make** (#165).  The left of Make a report is a
   list to search, for a study of 100 or 200 reports: each report's ID,
   title and state (made / to make again / not made / error); a search on
