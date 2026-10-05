@@ -208,7 +208,7 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
     .normalize_ard_sheet(a[[s]], s)), names(.ard_sheets()))
   j <- file.path(root, study_layout()[["spec"]], .ard_json)
   if (nrow(a$analyses) || nrow(a$datasets) || nrow(a$populations) ||
-      file.exists(j)) {
+      nrow(a$analysis_data) || file.exists(j)) {
     txt <- jsonlite::toJSON(a, dataframe = "columns", na = "null",
                             pretty = TRUE, auto_unbox = FALSE)
     old <- if (file.exists(j)) paste(readLines(j, warn = FALSE,

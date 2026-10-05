@@ -7,6 +7,33 @@
   a user's home).  The screenshot script and the tests keep their own
   `tools::R_user_dir()` folders.
 
+- **A shortcut that security software stops is made another way** (#149).
+  On Windows, `add_shortcut()` makes each shortcut on its own, and one the
+  VBScript could not write -- security software may stop a script from
+  writing to the desktop without a message, and then nothing after it was
+  made either -- is made again by PowerShell.  If neither can, the error
+  says so and how to allow it or to make the shortcut by hand.
+
+- **Start from the setting a word means** (#144).  A word of the
+  function search can mean a setting as well as a function: PROC LOGISTIC
+  is `ard_regression()` with `method = "glm", method.args =
+  list(family = binomial), exponentiate = TRUE`; PROC FREQ CHISQ is
+  `correct = FALSE` (as SAS); Clopper-Pearson is
+  `method = "clopper-pearson"`; MMRM is `method = "mmrm", package =
+  "mmrm"`.  A function found by such a word shows its setting, and once
+  picked, "Start with this setting" fills its argument fields (Apply
+  writes them).  Every setting is run in the tests.  The company sheet
+  `ard_fn_keywords` may say a setting too (column `args`).
+
+- **The ARD definition's analysis data** (#146, tflspec #135).  The sheet
+  `analysis_data` -- named data the analyses read: from a dataset or an
+  analysis data above, a population's subjects, a condition, columns of
+  the population added, derived, one row per subject and phase -- is
+  saved with the study and has a grid of its own on the ARD tab ("Analysis
+  data"); an analysis names one in `data`, or as its denominator.  A study
+  saved before reads it empty.  The screens to make and use them come
+  next.  Needs tflspec 0.0.24.9045.
+
 - **Your own words for the function search** (#140).  A function of
   one's own is found by the comment lines right above it in its file,
   `# tflplanner-keywords: risk difference, PROC FREQ RISKDIFF` (a plain

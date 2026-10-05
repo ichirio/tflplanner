@@ -210,3 +210,27 @@ test_that("the study's code lists reach the ARD programs", {
     value = "none", order = "5", stringsAsFactors = FALSE))
   expect_equal(ard_status(o)$state, "outdated")
 })
+
+test_that("the analysis data is saved, reopened and run (tflspec #135)", {
+  skip_if_not_installed("cards")
+  skip_on_cran()
+  local_home2()
+  p <- ard_planner()
+  p$ard$analysis_data <- .normalize_ard_sheet(data.frame(
+    data_id = "adsl_saf", from = "ADSL", population_id = "SAF",
+    where = "AGE >= 18"), "analysis_data")
+  a <- p$ard$analyses
+  a$data[a$analysis_id == "AGE"] <- "adsl_saf"
+  a$population_id[a$analysis_id == "AGE"] <- NA
+  p$ard$analyses <- .normalize_ard_sheet(a, "analyses")
+  s <- create_study("A2", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  o <- open_study("A2")
+  expect_identical(o$planner$ard$analysis_data, p$ard$analysis_data)
+  expect_identical(o$planner$ard$analyses$data, p$ard$analyses$data)
+  code <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
+  expect_true(any(code == "adsl_saf <- subset(pop_saf, AGE >= 18)"))
+  r <- run_ard(o, "DM")
+  expect_null(r$error)
+  expect_identical(unique(r$ard$population_id), "SAF")
+})

@@ -211,19 +211,74 @@
     body)
 }
 
-.make_lnk <- function(sc) {
+# The PowerShell that makes one .lnk (WScript.Shell through COM), for
+# when the VBScript could not: security software may stop a script from
+# writing a shortcut to the desktop without a word (Trend Micro's, seen in
+# 2026-10), while PowerShell gets through -- and PowerShell may be blocked
+# by policy, so it is the second way, not the first.
+.lnk_ps <- function(r) {
+  q <- function(x) paste0("'", gsub("'", "''", x, fixed = TRUE), "'")
+  win <- .win_path
+  c("$ErrorActionPreference = 'Stop'",
+    "$sh = New-Object -ComObject WScript.Shell",
+    sprintf("New-Item -ItemType Directory -Force -Path %s | Out-Null", q(win(dirname(r$path)))),
+    sprintf("$l = $sh.CreateShortcut(%s)", q(win(r$path))),
+    sprintf("$l.TargetPath = %s", q(win(r$target))),
+    sprintf("$l.Arguments = %s", q(r$args)),
+    sprintf("$l.IconLocation = %s", q(paste0(r$icon, ",0"))),
+    sprintf("$l.WorkingDirectory = %s", q(r$workdir)),
+    sprintf("$l.Description = %s", q(r$description)),
+    "$l.WindowStyle = 1",
+    "$l.Save()")
+}
+
+# One .lnk by the VBScript (cscript), and by PowerShell: what each said
+.lnk_by_vbs <- function(r) {
   f <- tempfile(fileext = ".vbs")
   on.exit(unlink(f))
-  .write_utf16(.lnk_script(sc), f)
+  .write_utf16(.lnk_script(r), f)
   cscript <- file.path(Sys.getenv("SystemRoot", "C:/Windows"), "System32",
                        "cscript.exe")
-  out <- suppressWarnings(system2(cscript, c("//nologo", "//B", shQuote(f)),
-                                  stdout = TRUE, stderr = TRUE))
-  missing <- sc$path[!file.exists(sc$path)]
-  if (length(missing)) {
-    stop("Could not make the shortcut ", missing[[1L]],
-         if (length(out)) paste0(": ", paste(out, collapse = " ")),
-         call. = FALSE)
+  suppressWarnings(system2(cscript, c("//nologo", "//B", shQuote(f)),
+                           stdout = TRUE, stderr = TRUE))
+}
+.lnk_by_ps <- function(r) {
+  # -EncodedCommand: UTF-16LE in base64, so no quoting and no script file
+  # (which an execution policy could refuse)
+  cmd <- iconv(paste(.lnk_ps(r), collapse = "\n"), "UTF-8", "UTF-16LE",
+               toRaw = TRUE)[[1L]]
+  ps <- file.path(Sys.getenv("SystemRoot", "C:/Windows"), "System32",
+                  "WindowsPowerShell", "v1.0", "powershell.exe")
+  suppressWarnings(system2(ps, c("-NoProfile", "-NonInteractive", "-EncodedCommand",
+                                 gsub("[[:space:]]", "", jsonlite::base64_enc(cmd))),
+                           stdout = TRUE, stderr = TRUE))
+}
+
+# The .lnk files of `sc`, one at a time (one stopped does not stop the
+# others): by the VBScript, else by PowerShell; an error names those
+# neither could make, and how to make one by hand
+.make_lnk <- function(sc, vbs = .lnk_by_vbs, ps = .lnk_by_ps) {
+  said <- character()
+  for (i in seq_len(nrow(sc))) {
+    r <- sc[i, , drop = FALSE]
+    out <- tryCatch(vbs(r), error = function(e) conditionMessage(e))
+    if (!file.exists(r$path)) {
+      out <- c(out, tryCatch(ps(r), error = function(e) conditionMessage(e)))
+    }
+    if (!file.exists(r$path)) said <- c(said, out[nzchar(out)])
+  }
+  missing <- sc[!file.exists(sc$path), , drop = FALSE]
+  if (nrow(missing)) {
+    m <- missing[1L, ]
+    stop("Could not make the shortcut ", m$path,
+         if (nrow(missing) > 1L) paste0(" (and ", nrow(missing) - 1L, " more)"),
+         if (length(said)) paste0(": ", paste(unique(said), collapse = " ")), ".\n",
+         "Security software (an antivirus program's folder protection) may have ",
+         "stopped the scripts that write it, without a message: allow ",
+         "cscript.exe and powershell.exe to write there and try again, or make ",
+         "it by hand -- right-click the folder > New > Shortcut, the location ",
+         .win_path(m$target), " ", m$args, ", then in its Properties start in ",
+         m$workdir, ".", call. = FALSE)
   }
   sc$path
 }
@@ -411,6 +466,11 @@
 #'
 #' "Update and launch" first updates rtfreporter, tflspec and tflplanner
 #' ([update_tflplanner()], on the channel last used), then starts the app.
+#'
+#' On Windows the shortcuts are written by a VBScript, and one it could not
+#' write again by PowerShell: security software may stop a script from
+#' writing to the desktop without a message.  If neither can, the error
+#' says how to allow it or to make the shortcut by hand.
 #'
 #' @param port The port the app runs on.  `NULL` keeps the setting
 #'   (`setup_tflplanner(port = )`, default 7470); a number is saved as the

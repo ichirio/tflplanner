@@ -703,6 +703,8 @@ app_ui <- function(lang = "en") {
                              rhandsontable::rHandsontableOutput("hot_ard_datasets")),
             bslib::nav_panel(paste0(t("Analysis sets"), " (populations)"), value = "populations",
                              rhandsontable::rHandsontableOutput("hot_ard_populations")),
+            bslib::nav_panel(paste0(t("Analysis data"), " (analysis_data)"), value = "analysis_data",
+                             rhandsontable::rHandsontableOutput("hot_ard_analysis_data")),
             bslib::nav_panel(paste0(t("Study keys"), " (study)"), value = "study",
                              rhandsontable::rHandsontableOutput("hot_ard_study"))),
           shiny::uiOutput("ard_check"),
@@ -955,9 +957,10 @@ $(document).on('click', '#save', function() {
 }
 
 # ARD columns whose values can only be one of their choices (the study's
-# datasets and populations).  `method` stays open: besides the keywords it
-# takes any pkg::function.
-.ard_closed_columns <- c("dataset", "population_id", "denominator")
+# datasets, populations and analysis data).  `method` stays open: besides
+# the keywords it takes any pkg::function.
+.ard_closed_columns <- c("data", "dataset", "population_id", "denominator",
+                         "from")
 
 # tflspec's column help is English; the app shows it in its language
 .help_table <- function(sheet) {
@@ -2362,17 +2365,22 @@ app_server <- function(input, output, session, start) {
       analyses = list(
         output_id = output_ids(p),
         method = c(.std_ard_methods()$method, ard_functions()),
+        data = p$ard$analysis_data$data_id,
         dataset = p$ard$datasets$dataset,
         population_id = p$ard$populations$population_id,
         by = cols, strata = cols, variables = cols,
         denominator = c("population", "row", "column", "cell",
                         p$ard$populations$population_id,
-                        p$ard$datasets$dataset)),
+                        p$ard$datasets$dataset,
+                        p$ard$analysis_data$data_id)),
       datasets = list(path = if (has_study()) {
         f <- study_files(rv$study, "data")
         file.path(f$folder, f$file)
       }),
       populations = list(dataset = p$ard$datasets$dataset),
+      analysis_data = list(
+        from = c(p$ard$datasets$dataset, p$ard$analysis_data$data_id),
+        population_id = p$ard$populations$population_id),
       study = list(key = c("id", "output", "source")),
       list())
   }
@@ -2546,6 +2554,11 @@ app_server <- function(input, output, session, start) {
   # the method chosen in the form (the function list on screen may show
   # another category, or a search, without the chosen one)
   st_method <- shiny::reactiveVal(NA_character_)
+  # the arguments a search's word means (PROC LOGISTIC: method = "glm", ...)
+  # by the function found, for this drawing of the form (`n`); and those
+  # the user chose to start from
+  fn_offer <- shiny::reactiveVal(NULL)
+  fn_preset <- shiny::reactiveVal(NULL)
   shiny::observe({
     st_drawn()
     v <- input[[st_id("fn_pick")]]
@@ -2723,6 +2736,7 @@ app_server <- function(input, output, session, start) {
                                  "overflow-x: hidden; white-space: normal;",
                                  "overflow-wrap: anywhere;"),
                    shiny::uiOutput("ard_fn_list"))),
+      shiny::uiOutput("ard_fn_preset"),
       shiny::uiOutput("ard_method_note"),
       if (!inside) shiny::selectInput(st_id("data"), t("Data (dataset \u00d7 analysis set)"),
                                       data_choices(r),
@@ -2805,6 +2819,12 @@ app_server <- function(input, output, session, start) {
       shiny::p(class = "mb-1", t("No function matches.")),
       shiny::p(t("Make it as an own function (the Own functions tab), or write it as R code (custom)."))))
     searching <- !is.null(s)
+    # the settings the words found mean, for ard_fn_preset
+    if (searching) {
+      a <- s$args[!is.na(s$args)]
+      fn_offer(list(n = shiny::isolate(st_drawn()),
+                    args = as.list(stats::setNames(a, s$value[!is.na(s$args)]))))
+    }
     # each row's category, unless one is chosen
     show_cat <- identical(cat_now, ".all")
     near_spelling <- searching & e$tier >= 4
@@ -2822,7 +2842,10 @@ app_server <- function(input, output, session, start) {
       }
       if (!is.na(d$note[i])) txt <- paste0(txt %||% "", if (!is.null(txt)) " \u2014 ", d$note[i])
       if (identical(d$rank[i], 3L)) txt <- paste0(t("Near: "), txt %||% "")
-      if (is.null(txt)) NULL else shiny::div(class = "small text-info-emphasis", txt)
+      shiny::tagList(
+        if (!is.null(txt)) shiny::div(class = "small text-info-emphasis", txt),
+        if (!is.na(d$args[i] %||% NA)) shiny::div(
+          class = "small text-muted", sprintf(t("Its setting: %s"), d$args[i])))
     }
     item <- function(i, d) shiny::tagList(
       shiny::span(class = if (searching && identical(d$rank[i], 3L)) "ard-fn-near",
@@ -2855,6 +2878,31 @@ app_server <- function(input, output, session, start) {
                own_off = t("not loaded by this study: Use in this study, on Own functions"),
                t("in preparation: a function that runs others")))))
   })
+  # a function found by a word that means a setting: start from it (the
+  # argument fields filled in; Apply writes them)
+  output$ard_fn_preset <- shiny::renderUI({
+    n <- st_drawn()
+    m <- st_method()
+    o <- fn_offer()
+    a <- if (!is.null(o) && identical(o$n, n) && !is.na(m)) o$args[[m]]
+    if (is.null(a)) return(NULL)
+    ps <- fn_preset()
+    if (!is.null(ps) && identical(ps$n, n) && identical(ps$method, m)) {
+      return(shiny::p(class = "small text-muted mt-n1 mb-2",
+                      sprintf(t("Started from the setting: %s (Apply to the analysis writes it)."), a)))
+    }
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-center mt-n1 mb-2 small",
+      shiny::span(sprintf(t("The word searched means: %s"), a)),
+      .btn("ard_fn_preset_go", t("Start with this setting"),
+           class = "btn-sm btn-outline-primary py-0"))
+  })
+  shiny::observeEvent(input$ard_fn_preset_go, {
+    o <- fn_offer()
+    m <- st_method()
+    shiny::req(o, !is.na(m), o$args[[m]])
+    fn_preset(list(n = st_drawn(), method = m, args = o$args[[m]]))
+  })
   output$ard_method_note <- shiny::renderUI({
     st_drawn()
     m <- .std_ard_methods()
@@ -2874,7 +2922,12 @@ app_server <- function(input, output, session, start) {
     f <- .ard_form_fields(call)
     row <- shiny::isolate(st_row())
     # the row's own args fill the fields when the function is the row's
-    pa <- .ard_args_parse(if (identical(r$method, row$method)) row$args else NA, f)
+    # ... or the setting a search's word means, when chosen
+    ps <- fn_preset()
+    from <- if (!is.null(ps) && identical(ps$n, st_drawn()) && identical(ps$method, r$method)) {
+      ps$args
+    } else if (identical(r$method, row$method)) row$args else NA
+    pa <- .ard_args_parse(from, f)
     other <- pa$other
     # inside a stack: the parent's data
     if (identical(st_role(row), "inside")) {
