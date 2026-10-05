@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **Find the report to make** (#165).  The left of Make a report is a
+  list to search, for a study of 100 or 200 reports: each report's ID,
+  title and state (made / to make again / not made / error); a search on
+  the ID, title, analysis set and data (as the function search: case,
+  full / half width); the TOC's sections, folded one by one, with their
+  counts; a filter by state; the arrow keys and Enter.  "Study defaults"
+  and "ALL" stay first.  Folded, a chooser with a search takes its place
+  at the top.  The report list and the runs search the same way.  The
+  list's state is read from the files (a quick look at 200 reports).
+
 - **The top tabs follow the work** (#157): Study | Data | Report list |
   Make a report | Runs.  **Make a report** has the report chosen on the left
   (the only place a report is chosen) and its steps: 1 Code lists (the
