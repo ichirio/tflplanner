@@ -12,6 +12,13 @@
   - The Data tab: "Into" and "Add files" level; the file's "Preview", 50
     rows a page with paging.
 
+- **The runs table is quick for a big study** (#167).  `study_status()`
+  wrote every report's program again to see whether it is current, each
+  building the whole study's spec: a minute for 200 reports.  The spec is
+  now built once and each program kept while the definition is the same
+  (10 s the first time, about a second after); the answers are the same.
+  Saving a study, which writes every program, is quicker too.
+
 - **Texts name the tabs as they are now** (#171).  About 35 messages and
   help texts still pointed to the old tabs (the ARD tab, the Reports tab, the
   Tables / Figures / Listings tabs, the Results tab, the sidebar ...); they
@@ -37,6 +44,8 @@
   at the top (the browser remembers it folded).  The report list and the
   runs search the same way.  The
   list's state is read from the files (a quick look at 200 reports).
+
+
 
 - **Step 2 as lists** (#164).  2-2: [New] [Copy] [Delete...] over the list
   of the report's analyses; an analysis opens below the list when clicked
