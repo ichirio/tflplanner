@@ -10,11 +10,30 @@
   paste0(b(dataset), "|", b(population_id))
 }
 
-# a value back to its two parts (NA for a blank part)
-.an_data_split <- function(value) {
-  v <- strsplit(paste0(value %||% "", "|"), "|", fixed = TRUE)[[1L]]
+# an analysis data's value: "@<data_id>"
+.an_adata_value <- function(id) paste0("@", id)
+
+# the analysis's present choice: its analysis data, else its dataset x set
+.an_data_value_row <- function(r) {
+  d <- r$data %||% NA_character_
+  if (length(d) && !is.na(d[1L]) && nzchar(d[1L])) return(.an_adata_value(d[1L]))
+  .an_data_value(r$dataset, r$population_id)
+}
+
+# a value back to its parts (NA for a blank part): `dataset`, `pop` and,
+# for an analysis data (`adata`: the sheet), `data` -- its dataset and
+# analysis set those it is made from
+.an_data_split <- function(value, adata = NULL) {
+  value <- value %||% ""
+  if (startsWith(value, "@")) {
+    id <- substring(value, 2L)
+    ad <- adata %||% data.frame(data_id = character(), from = character(),
+                                population_id = character())
+    return(list(dataset = .adata_dataset(ad, id), pop = .adata_pop(ad, id), data = id))
+  }
+  v <- strsplit(paste0(value, "|"), "|", fixed = TRUE)[[1L]]
   na <- function(x) if (is.na(x) || !nzchar(x)) NA_character_ else x
-  list(dataset = na(v[1L]), pop = na(v[2L]))
+  list(dataset = na(v[1L]), pop = na(v[2L]), data = NA_character_)
 }
 
 # the name the program gives the data (tflspec's rule, without a subset):
@@ -37,7 +56,8 @@
 # ("%s, no analysis set (%s)"), `none`; `counts` (from .an_data_counts(),
 # named by value) are put after the name when given: `words$count`
 # ("%s: %s").
-.an_data_choices <- function(datasets, populations, now = "|", words, counts = NULL) {
+.an_data_choices <- function(datasets, populations, now = "|", words, counts = NULL,
+                             adata = NULL, first = character(), adata_counts = NULL) {
   datasets <- unique(datasets[!is.na(datasets) & nzchar(datasets)])
   po <- populations[!is.na(populations$population_id), , drop = FALSE]
   val <- character()
@@ -68,8 +88,38 @@
       identical(x$dataset, po$dataset[match(x$pop, po$population_id)])) {
     val[same] <- now
   }
+  # the analysis data: the report's first, then the study's others; in
+  # groups (`words$groups`: the report's, the study's others, the rest)
+  if (!is.null(adata) && nrow(adata)) {
+    ids <- c(intersect(first, adata$data_id), setdiff(adata$data_id, first))
+    av <- .an_adata_value(ids)
+    al <- vapply(ids, function(id) {
+      n <- adata_counts[id]
+      nm <- if (!is.null(adata_counts) && !is.na(n)) sprintf(words$count %||% "%s: %s", id, n) else id
+      sprintf(words$named %||% "%s (%s)", .adata_words(adata, id, words), nm)
+    }, "")
+    if (!is.null(words$groups)) {
+      mine <- ids %in% first
+      out <- list()
+      if (any(mine)) out[[words$groups[[1L]]]] <- stats::setNames(av[mine], al[mine])
+      if (any(!mine)) out[[words$groups[[2L]]]] <- stats::setNames(av[!mine], al[!mine])
+      rest <- .an_data_choices(datasets, populations, now = if (startsWith(now, "@")) "|" else now,
+                               words = words, counts = counts)
+      if (startsWith(now, "@") && !now %in% av) {
+        out[[words$groups[[1L]]]] <- c(out[[words$groups[[1L]]]],
+                                      stats::setNames(now, substring(now, 2L)))
+      }
+      out[[words$groups[[3L]]]] <- rest[rest != "|" | !startsWith(now, "@")]
+      return(out)
+    }
+    val <- c(av, val)
+    lab <- c(unname(al), lab)
+  }
   if (!now %in% val) {
-    if (is.na(x$dataset) && is.na(x$pop)) {
+    if (startsWith(now, "@")) {
+      val <- c(now, val)
+      lab <- c(substring(now, 2L), lab)
+    } else if (is.na(x$dataset) && is.na(x$pop)) {
       val <- c(now, val)
       lab <- c(words$none, lab)
     } else {
@@ -130,4 +180,21 @@
     out[.an_data_value(d, NA)] <- both(x)
   }
   out
+}
+
+# The form's data choice written to analysis row `i`: its analysis data
+# (the dataset and analysis set blank: the data has them), or the two
+# columns
+.an_data_write <- function(a, i, fd) {
+  if (is.null(a$data)) a$data <- rep(NA_character_, nrow(a))
+  if (!is.na(fd$data %||% NA)) {
+    a$data[i] <- fd$data
+    a$dataset[i] <- NA
+    a$population_id[i] <- NA
+  } else {
+    a$data[i] <- NA
+    a$dataset[i] <- fd$dataset
+    a$population_id[i] <- fd$pop
+  }
+  a
 }
