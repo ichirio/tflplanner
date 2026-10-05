@@ -151,7 +151,7 @@ first_table <- function(x, output_id, path, data, population, group,
   groups <- list(CONT = variables[kind == "continuous"],
                  CAT = variables[kind == "categorical"])
   groups <- groups[lengths(groups) > 0L]
-  methods <- c(CONT = "continuous", CAT = "categorical")[names(groups)]
+  methods <- c(CONT = "cards::ard_summary", CAT = "cards::ard_tabulate")[names(groups)]
   vars <- vapply(groups, paste, "", collapse = " | ")
   # a subject of the analysis set with no group: ard_stack() would leave
   # them out, so the analyses are made one by one
@@ -176,7 +176,7 @@ first_table <- function(x, output_id, path, data, population, group,
     data.frame(
       analysis_id = c("BIGN", names(groups)),
       label = c("Subjects per group", rep(NA, length(groups))),
-      method = c("categorical", methods),
+      method = c("cards::ard_tabulate", methods),
       dataset = dsn, population_id = pop,
       by = c(NA, rep(group, length(groups))),
       variables = c(group, vars),
@@ -250,9 +250,10 @@ first_table <- function(x, output_id, path, data, population, group,
   stacks <- a$method %in% .stack_fn & a$by %in% group
   stacks[stacks] <- vapply(a$args[stacks], function(g)
     isTRUE(.stack_flags_of(g)$flags[[".by_stats"]]), NA)
-  any((a$method %in% c("categorical", "subjects") & a$variables %in% group &
+  kw <- .method_kw(a$method)
+  any((kw %in% c("categorical", "subjects") & a$variables %in% group &
          is.na(a$by)) |
-        (a$method %in% "total_n" & a$by %in% group) | stacks)
+        (kw %in% "total_n" & a$by %in% group) | stacks)
 }
 
 #' Count the subjects per group for a report's column headers
@@ -276,7 +277,7 @@ add_group_n <- function(x, output_id, group) {
   new[1L, ] <- NA
   new$analysis_id <- id
   new$label <- "Subjects per group"
-  new$method <- "categorical"
+  new$method <- "cards::ard_tabulate"
   new$dataset <- first$dataset
   new$population_id <- first$population_id
   new$variables <- group

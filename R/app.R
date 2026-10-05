@@ -2473,13 +2473,13 @@ app_server <- function(input, output, session, start) {
   })
   st_kind <- function(r) {
     keys <- .std_ard_methods()
-    k <- match(r$method, keys$method)
+    k <- match(.method_kw(r$method), keys$method)
     if (is.na(k)) "" else keys$kind[k]
   }
   # the format a statistic gets when the analysis says none
   st_default <- function(r, stat) {
     keys <- .std_ard_methods()
-    k <- match(r$method, keys$method)
+    k <- match(.method_kw(r$method), keys$method)
     m <- if (!is.na(k)) .parse_formats(keys$formats[k]) else character()
     if (!is.na(m[stat])) return(unname(m[stat]))
     st <- .std_ard_statistics()
@@ -2497,7 +2497,7 @@ app_server <- function(input, output, session, start) {
   # hierarchical analysis's denominator), or NULL
   st_arg_default <- function(r, arg) {
     keys <- .std_ard_methods()
-    d <- keys$defaults[match(r$method, keys$method)]
+    d <- keys$defaults[match(.method_kw(r$method), keys$method)]
     if (is.na(d) || !nzchar(d)) return(NULL)
     p <- trimws(strsplit(d, ",")[[1L]])
     hit <- p[startsWith(p, paste0(arg, " ")) | startsWith(p, paste0(arg, "="))]
@@ -2565,7 +2565,7 @@ app_server <- function(input, output, session, start) {
   }
   # the functions an analysis can name, the chosen one kept
   fn_entries <- function(current) {
-    e <- .ard_fn_entries(.std_ard_methods(), tflspec::tfl_ard_functions(),
+    e <- .ard_fn_entries(.company_keywords(current), tflspec::tfl_ard_functions(),
                          current = current, company = "Company standard")
     k <- e$category == "Company standard"
     e$label[k] <- method_label(e$value[k], e$label[k])
@@ -2578,6 +2578,12 @@ app_server <- function(input, output, session, start) {
       x <- t(paste0("fn-note:", v))
       if (identical(x, paste0("fn-note:", v))) e$description[e$value == v][1L] else x
     }, "")
+    # subjects and custom code (no function to name): with the functions
+    # like them, after those
+    home <- c(subjects = "Subjects and attributes", custom = "Own and code")
+    mv <- k & e$value %in% names(home)
+    e$category[mv] <- home[e$value[mv]]
+    e <- rbind(e[!mv, , drop = FALSE], e[mv, , drop = FALSE])
     # the study's own functions (its title and description from its file),
     # and the company's it does not load yet (offered from Own functions)
     own <- tryCatch(own_data(), error = function(e) NULL)
@@ -3312,7 +3318,7 @@ app_server <- function(input, output, session, start) {
     a[nrow(a) + 1L, ] <- NA
     a$output_id[nrow(a)] <- tg
     a$analysis_id[nrow(a)] <- id
-    a$method[nrow(a)] <- "categorical"
+    a$method[nrow(a)] <- "cards::ard_tabulate"
     a$dataset[nrow(a)] <- r$dataset
     a$population_id[nrow(a)] <- r$population_id
     a$by[nrow(a)] <- r$by
