@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **The runs table is quick for a big study** (#167).  `study_status()`
+  wrote every report's program again to see whether it is current, each
+  building the whole study's spec: a minute for 200 reports.  The spec is
+  now built once and each program kept while the definition is the same
+  (10 s the first time, about a second after); the answers are the same.
+  Saving a study, which writes every program, is quicker too.
+
 - **Find the report to make** (#165).  The left of Make a report is a
   list to search, for a study of 100 or 200 reports: each report's ID,
   title and state (made / to make again / not made / error); a search on
