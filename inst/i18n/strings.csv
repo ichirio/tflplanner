@@ -2062,3 +2062,5 @@ Keeps the subjects of an analysis data above (a report's own subjects: the safet
 A click on a data opens it below; another click closes it.,データをクリックすると下に開きます。もう一度クリックで閉じます。
 A click on an analysis in the list above opens it here.,上の一覧で解析をクリックすると、ここに開きます。
 A click on an analysis opens it below; another click closes it.,解析をクリックすると下に開きます。もう一度クリックで閉じます。
+%s chosen: the form below,%s を選択中：下のフォーム
+%s is used: %s,%s は使われています：%s
