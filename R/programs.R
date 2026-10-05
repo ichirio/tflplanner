@@ -356,10 +356,24 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 # (tfl_report_code()) and where it goes (tfl_report_path()).  A definition
 # that does not hold yet (a half-filled sheet) gives a stop() line saying
 # why, so the program is still written and says what to fix when run.
+# The whole study's table and report spec, kept for the next report of
+# the same definition: writing or checking every report's program (saving
+# a study, study_status()) built it once per report -- 0.2 s each, a minute
+# for 200 reports -- though it is the same for all of them
+.spec_cache <- new.env()
+.spec_object_last <- function(x, sheets, keys) {
+  key <- list(x, sheets, keys)
+  if (!is.null(.spec_cache$key) && identical(.spec_cache$key, key)) return(.spec_cache$sp)
+  sp <- .spec_object(x, sheets, keys)
+  .spec_cache$key <- key
+  .spec_cache$sp <- sp
+  sp
+}
+
 .report_code_lines <- function(x, output_id, table) {
   lay <- study_layout()
-  sp <- .spec_object(x, c(table_sheets(), report_sheets()),
-                     unique(c(.study_keys$table, .study_keys$report)))
+  sp <- .spec_object_last(x, c(table_sheets(), report_sheets()),
+                          unique(c(.study_keys$table, .study_keys$report)))
   tryCatch(c(
     if (table) c(
       paste0("# the table, as ", file.path(lay[["spec"]], .table_file),
