@@ -4090,7 +4090,7 @@ app_server <- function(input, output, session, start) {
       state_line,
       shiny::div(
         class = "d-flex flex-wrap gap-1 align-items-center mb-1",
-        .btn("ard_an_new", t("New"), class = "btn-sm btn-outline-primary py-0"),
+        .btn("ard_an_new", t("New analysis"), class = "btn-sm btn-outline-primary py-0"),
         .btn("ard_an_copy", t("Copy"), class = "btn-sm btn-outline-secondary py-0",
              disabled = if (!picked) NA),
         # a stack asks what becomes of the analyses inside it
