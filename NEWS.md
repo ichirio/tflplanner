@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **A report's own code list reaches its ARD** (#151, tflspec #137).  The
+  ARD programs, the preview and the ARD's state get the whole codelists
+  sheet: a report's ARD program makes factors by the study's rows and the
+  report's own (which replace the study's of the same variable and
+  value), as its tables do.  The analysis data sheet has tflspec's new
+  columns `subjects` (a closed choice: the analysis data) and `keep`.
+  Needs tflspec 0.0.24.9046.
+
 - **A temporary home is not remembered** (#150).  `setup_tflplanner(home
   = )` with a folder in the temporary folder (a script's, a test's) uses it
   for the session only: remembered, every later session opened a folder
