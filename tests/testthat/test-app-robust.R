@@ -45,7 +45,8 @@ test_that("closed choice columns refuse other values; open ones take them", {
   expect_false(isTRUE(by_name$dataset$allowInvalid))
   expect_false(isTRUE(by_name$method$strict))
   expect_identical(.ard_closed_columns,
-                   c("data", "dataset", "population_id", "denominator", "from"))
+                   c("data", "dataset", "population_id", "denominator", "from",
+                     "subjects"))
 })
 
 test_that("the Tables tab's sub-tabs are not a card around the sheets' card", {

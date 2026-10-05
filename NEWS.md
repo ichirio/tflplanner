@@ -1,5 +1,18 @@
 # tflplanner (development version)
 
+- **Make a report, step 2: the analysis data, then the analyses** (#161).
+  "2-1 The analysis data -- what is analysed" has two groups, made in this
+  order: the subjects (an analysis set's own data kept to the report's
+  subjects: one row a subject, the denominator) and the data analysed (a
+  dataset kept to those subjects, the rows a condition keeps, columns taken
+  or made, kept, one row per ...), each with its form and a preview.  The
+  data a report's analyses read without a name can be given one.  "2-2 The
+  analyses -- what is computed": the Data field offers the analysis data;
+  choosing one sets a blank denominator to its subjects; a report's first
+  analysis is offered its subjects in one step.  The Japanese word is
+  解析データ.  In R: `set_analysis_data()` (with `subjects`, `keep`),
+  `remove_analysis_data()`, `name_analysis_data()`.
+
 - **The top tabs follow the work** (#157): Study | Data | Report list |
   Make a report | Runs.  **Make a report** has the report chosen on the left
   (the only place a report is chosen) and its steps: 1 Code lists (the
@@ -9,6 +22,22 @@
   tab is on the Data tab (datasets, analysis sets, analysis data, the study
   ARD, the ARDs taken in) and the Study tab (study keys, the setup code,
   own functions).  The screens themselves are as they were.
+
+- **The sample shows an ard_stack** (#156).  SAMPLE-01 has a report
+  T-14-1-1S: T-14-1-1's table, its ARD one `cards::ard_stack()` analysis
+  with the continuous and the categorical analyses inside it, the column N
+  and the total N made by the stack itself (no BIGN / TOTAL rows).  Its
+  table is T-14-1-1's to the byte (but its number); the other reports are
+  as they were.  The ARD tab shows it as a stack, to compare with
+  T-14-1-1.
+
+- **A report's own code list reaches its ARD** (#151, tflspec #137).  The
+  ARD programs, the preview and the ARD's state get the whole codelists
+  sheet: a report's ARD program makes factors by the study's rows and the
+  report's own (which replace the study's of the same variable and
+  value), as its tables do.  The analysis data sheet has tflspec's new
+  columns `subjects` (a closed choice: the analysis data) and `keep`.
+  Needs tflspec 0.0.24.9046.
 
 - **A temporary home is not remembered** (#150).  `setup_tflplanner(home
   = )` with a folder in the temporary folder (a script's, a test's) uses it
