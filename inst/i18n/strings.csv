@@ -2064,3 +2064,4 @@ A click on an analysis in the list above opens it here.,上の一覧で解析を
 A click on an analysis opens it below; another click closes it.,解析をクリックすると下に開きます。もう一度クリックで閉じます。
 %s chosen: the form below,%s を選択中：下のフォーム
 %s is used: %s,%s は使われています：%s
+It replaces the analysis's own arguments: %s,この解析の今の引数を置き換えます: %s
