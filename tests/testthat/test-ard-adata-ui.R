@@ -119,3 +119,49 @@ test_that("a suggested name is not the program's own; the choices come in groups
   expect_identical(.adata_preview_cols(d, list(add = "TRT01A", where = "AVISIT == \"W\"")),
                    c("USUBJID", "TRT01A", "AVISIT", "STUDYID", "AVAL"))
 })
+
+test_that("2-1: a report's subjects, then the data analysed kept to them", {
+  p <- adata_planner()
+  p$ard$datasets <- .normalize_ard_sheet(data.frame(
+    dataset = c("ADSL", "ADAE"), path = c("data/adam/adsl.rds", "data/adam/adae.rds")), "datasets")
+  p <- set_analysis_data(p, "adsl_old", from = "ADSL", population_id = "SAF",
+                         where = "AGE >= 65")
+  p <- set_analysis_data(p, "adae_old", from = "ADAE", subjects = "adsl_old",
+                         where = "TRTEMFL == \"Y\"", add = "TRT01A", keep = "TRT01A | AEDECOD")
+  expect_identical(.adata_kind(p, "adsl_old"), "subjects")
+  expect_identical(.adata_kind(p, "adae_old"), "data")
+  ad <- .adata_rows(p)
+  expect_identical(.adata_pop(ad, "adae_old"), "SAF")
+  expect_identical(.adata_subjects_of(ad, "adae_old"), "adsl_old")
+  # the subjects data is used by the data kept to it: not deleted
+  expect_error(remove_analysis_data(p, "adsl_old"), "is used")
+  # a new name is followed by the data that keep its subjects
+  q <- set_analysis_data(p, "adsl_65", from = "ADSL", population_id = "SAF",
+                         where = "AGE >= 65", old = "adsl_old")
+  expect_identical(.adata_rows(q)$subjects[2L], "adsl_65")
+  expect_silent(suppressWarnings(.ard_spec(q$ard)))
+})
+
+test_that("a first analysis is offered the report's subjects; then reads them", {
+  skip_if_not_installed("cards")
+  local_home()
+  p <- adata_planner()
+  p$ard$analyses <- p$ard$analyses[0L, ]
+  s <- create_study("AN", planner = p)
+  shiny::testServer(server_for("AN"), {
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_an_new = 1)
+    session$setInputs(ard_an_new_subj = 1)
+    rv <- session$userData$rv
+    expect_identical(.adata_rows(rv$p)$data_id, "adsl_saf")
+    a <- rv$p$ard$analyses
+    expect_identical(a$data[a$output_id == "DM"], "adsl_saf")
+    # the next one reads it too
+    session$setInputs(ard_an_new = 2)
+    a <- rv$p$ard$analyses
+    expect_identical(unique(a$data[a$output_id == "DM"]), "adsl_saf")
+    h <- output$ard_adata$html
+    expect_match(h, "ard_adata_new_subj", fixed = TRUE)
+    expect_match(h, "ard_adata_new_data", fixed = TRUE)
+  })
+})

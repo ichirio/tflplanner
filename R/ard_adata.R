@@ -21,11 +21,37 @@
   if (length(out)) out
 }
 
-# its analysis set: its own population, else the nearest above it
-.adata_pop <- function(ad, id) {
+# its analysis set: its own population, else that of the data whose
+# subjects it keeps, else the nearest above it (tflspec's rule)
+.adata_pop <- function(ad, id, seen = character()) {
   for (d in rev(.adata_chain(ad, id))) {
-    p <- ad$population_id[match(d, ad$data_id)]
+    i <- match(d, ad$data_id)
+    p <- ad$population_id[i]
     if (!is.na(p)) return(p)
+    s <- ad$subjects[i] %||% NA
+    if (!is.na(s) && !s %in% c(seen, d)) return(.adata_pop(ad, s, c(seen, d)))
+  }
+  NA_character_
+}
+
+# Is an analysis data a report's subjects (an analysis set's own data, kept
+# to some of its subjects: one row a subject, a denominator) or data
+# analysed (another dataset, kept to subjects)?  "subjects" / "data"
+.adata_kind <- function(x, id) {
+  ad <- .adata_rows(x)
+  po <- x$ard$populations
+  ds <- .adata_dataset(ad, id)
+  pop <- .adata_pop(ad, id)
+  pop_ds <- po$dataset[match(pop, po$population_id)]
+  if (!is.na(ds) && !is.na(pop_ds) && identical(ds, pop_ds)) "subjects" else "data"
+}
+
+# the subjects data it is kept to: its own `subjects`, else the nearest
+# above it (NA when none)
+.adata_subjects_of <- function(ad, id) {
+  for (d in rev(.adata_chain(ad, id))) {
+    s <- ad$subjects[match(d, ad$data_id)] %||% NA
+    if (!is.na(s)) return(s)
   }
   NA_character_
 }
@@ -43,7 +69,12 @@
   a <- x$ard$analyses
   a <- a[!is.na(a$output_id) & a$output_id %in% output_id, , drop = FALSE]
   ids <- intersect(c(a$data %||% character(), a$denominator), ad$data_id)
-  all <- unique(unlist(lapply(ids, function(id) .adata_chain(ad, id))))
+  all <- character()
+  while (length(new <- setdiff(unique(unlist(lapply(ids, function(id)
+    .adata_chain(ad, id)))), all))) {
+    all <- c(all, new)
+    ids <- intersect(stats::na.omit(ad$subjects[match(new, ad$data_id)]), ad$data_id)
+  }
   ad$data_id[ad$data_id %in% all]
 }
 
@@ -56,7 +87,8 @@
     (!is.na(a$denominator) & a$denominator == id)
   ad <- .adata_rows(x)
   list(analyses = paste(a$output_id[hit], a$analysis_id[hit], sep = " / "),
-       data = ad$data_id[!is.na(ad$from) & ad$from == id])
+       data = ad$data_id[(!is.na(ad$from) & ad$from == id) |
+                           (!is.na(ad$subjects) & ad$subjects == id)])
 }
 
 # A name for a new analysis data: the dataset (or data) and the value a
@@ -106,20 +138,23 @@
 #' @param data_id The name (lower case; also the object's name in the ARD
 #'   program).
 #' @param from A dataset, or an analysis data above.
-#' @param population_id,where,add,derive,distinct,label The other columns
-#'   (`add`, `distinct`: several columns with `" | "` between them).
+#' @param population_id,subjects,where,add,derive,keep,distinct,label The
+#'   other columns (`subjects`: an analysis data above whose subjects it
+#'   keeps, instead of `population_id`; `add`, `keep`, `distinct`: several
+#'   columns with `" | "` between them).
 #' @param old The name of the one to replace; `NULL`: a new one.
 #' @return The `tflplanner`.
 #' @export
 set_analysis_data <- function(x, data_id, from, population_id = NA,
                               where = NA, add = NA, derive = NA,
-                              distinct = NA, label = NA, old = NULL) {
+                              distinct = NA, label = NA, old = NULL,
+                              subjects = NA, keep = NA) {
   ad <- .adata_rows(x)
   row <- .normalize_ard_sheet(data.frame(
     data_id = data_id, label = label, from = from,
-    population_id = population_id, where = where, add = add,
-    derive = derive, distinct = distinct, stringsAsFactors = FALSE),
-    "analysis_data")
+    population_id = population_id, subjects = subjects, where = where,
+    add = add, derive = derive, keep = keep, distinct = distinct,
+    stringsAsFactors = FALSE), "analysis_data")
   if (!nrow(row) || is.na(row$data_id)) {
     stop("An analysis data needs its name.", call. = FALSE)
   }
@@ -142,6 +177,7 @@ set_analysis_data <- function(x, data_id, from, population_id = NA,
       a$denominator[!is.na(a$denominator) & a$denominator == old] <- row$data_id
       x$ard$analyses <- a
       ad$from[!is.na(ad$from) & ad$from == old] <- row$data_id
+      ad$subjects[!is.na(ad$subjects) & ad$subjects == old] <- row$data_id
     }
   }
   x$ard$analysis_data <- ad
@@ -247,7 +283,9 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
 .adata_words <- function(ad, id, words = list(added = "+ %s", per = "one row per %s")) {
   r <- ad[match(id, ad$data_id), , drop = FALSE]
   if (!nrow(r)) return("")
-  src <- paste(c(r$from, if (!is.na(r$population_id)) r$population_id), collapse = " \u00d7 ")
+  src <- paste(c(r$from, if (!is.na(r$population_id)) r$population_id,
+                 if (!is.na(r$subjects %||% NA)) sprintf(words$subj %||% "%s's subjects", r$subjects)),
+               collapse = " \u00d7 ")
   bar <- function(v) paste(.split_bar(v), collapse = ", ")
   paste(c(src, if (!is.na(r$where)) r$where,
           if (!is.na(r$add)) sprintf(words$added, bar(r$add)),
