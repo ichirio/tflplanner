@@ -5,6 +5,23 @@
 # cannot show (positions, KEY = value, styled row-header cells) is left to
 # the sheet's own grid.
 
+# A text cell's spaces (tflspec's rule for its text columns): leading or
+# trailing spaces count only inside quotes ("  Total"), so that the stray
+# spaces of a pasted cell do not print.  A form shows the text without the
+# quotes and writes it back quoted when it starts or ends with a space:
+# spaces typed in a form are not dropped.
+.text_to_cell <- function(x) {
+  if (is.null(x) || !length(x) || is.na(x[1L]) || !nzchar(trimws(x[1L]))) return(x)
+  if (grepl("^[\"'].*[\"']$", x) || !grepl("^\\s|\\s$", x)) return(x)
+  paste0("\"", x, "\"")
+}
+.text_from_cell <- function(x) {
+  if (is.null(x) || !length(x)) return(x)
+  q <- !is.na(x) & grepl("^([\"']).*\\1$", x) & nchar(x) >= 2L
+  x[q] <- substring(x[q], 2L, nchar(x[q]) - 1L)
+  x
+}
+
 # The rows of a report's col_header as the form's lines, or NULL when the
 # form cannot show them.  A line: `line`, `stub` (text per row-header
 # column, named; or one text over them all when `merge`), `merge`, `mode`
@@ -33,8 +50,8 @@ header_read <- function(rows, keys = character()) {
       return(NULL)
     merge <- nrow(stub) == 1L && length(parts[[1L]]) > 1L
     if (!merge && any(lengths(parts) > 1L)) return(NULL)
-    stub_text <- if (merge) stats::setNames(stub$text, paste(parts[[1L]], collapse = " | ")) else
-      stats::setNames(stub$text, unlist(parts))
+    stub_text <- if (merge) stats::setNames(.text_from_cell(stub$text), paste(parts[[1L]], collapse = " | ")) else
+      stats::setNames(.text_from_cell(stub$text), unlist(parts))
     if (nrow(val)) {
       if (!is.na(val$border_top)) return(NULL)
       sp <- val$span
@@ -47,7 +64,7 @@ header_read <- function(rows, keys = character()) {
     }
     out[[length(out) + 1L]] <- list(
       line = l, stub = stub_text, merge = merge, mode = mode, key = key,
-      text = if (nrow(val)) val$text else NA_character_,
+      text = if (nrow(val)) .text_from_cell(val$text) else NA_character_,
       align = if (nrow(val)) val$align else NA_character_,
       bold = if (nrow(val)) val$bold else NA_character_,
       border_bottom = if (nrow(val)) val$border_bottom else NA_character_)
@@ -65,7 +82,7 @@ header_write <- function(lines) {
     for (k in seq_along(st)) {
       rows[[length(rows) + 1L]] <- data.frame(
         line = as.character(i), cols = names(st)[k], span = NA_character_,
-        text = if (blank(st[[k]])) NA_character_ else st[[k]],
+        text = if (blank(st[[k]])) NA_character_ else .text_to_cell(st[[k]]),
         align = NA_character_, bold = NA_character_,
         border_top = NA_character_, border_bottom = NA_character_,
         stringsAsFactors = FALSE)
@@ -76,7 +93,7 @@ header_write <- function(lines) {
         span = switch(l$mode, each = "each",
                       key = if (blank(l$key)) NA_character_ else l$key,
                       NA_character_),
-        text = if (blank(l$text)) NA_character_ else l$text,
+        text = if (blank(l$text)) NA_character_ else .text_to_cell(l$text),
         align = if (blank(l$align)) NA_character_ else l$align,
         bold = if (blank(l$bold)) NA_character_ else l$bold,
         border_top = NA_character_,

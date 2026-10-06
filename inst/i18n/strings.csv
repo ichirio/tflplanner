@@ -1,6 +1,6 @@
 en,ja
 Column help,列の説明
-Right-click to add or delete rows. Paste from Excel works. Blank = not set. Several values in one cell: separate with |.,行の追加・削除は右クリック。Excel からの貼り付け可。空欄 = 未指定。1 セルに複数は | 区切り。
+"Right-click to add or delete rows. Paste from Excel works. Blank = not set. Several values in one cell: separate with |. Spaces at the start or end of a text are kept only in quotes: ""  Total"".","行の追加・削除は右クリック。Excel からの貼り付け可。空欄 = 未指定。1 セルに複数は | 区切り。文字の前後の空白は、引用符で囲んだときだけ残ります（""  合計""）。"
 Show rows of,表示する行
 What do these mean?,それぞれの意味
 A report,各帳票
@@ -2156,3 +2156,8 @@ Write %s as code,%s をコードで書く
 Formats written out (its method's defaults with its own): %s,書き出した書式（手法の既定とこの解析の指定）：%s
 Write it as code,コードにする
 %s is written as code (custom).,%s をコード（custom）にしました。
+This report's analyses: %d (the study's: %d). The definition reads without errors.,この帳票の解析 %d 件（試験全体 %d 件）。定義にエラーはありません。
+2-2 Analyses,2-2 解析
+"This analysis alone as code, after Apply (the report's program: Code on the right)",この解析だけのコード（反映後。帳票のプログラム全体は右の［コード］）
+"Every report's analysis data, as a sheet: made in each report's step 2-1, and changed there or here (the study's sheet).",すべての帳票の解析データ（シートの形）。作るのは各帳票の段 2-1 です。直すのはそこでも、ここ（試験全体の表）でもできます。
+"The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved. The whole study's: the Data tab.",この帳票が読む analysis_data の行を、ブックと同じくすべての列で表示します。フォームに出ない列はここで書きます。新しい解析データの行は、保存すると入ります。試験全体の表は「データ」タブです。
