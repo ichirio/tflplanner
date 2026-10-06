@@ -83,7 +83,7 @@ test_that("the ARD tab shows a report's analysis data and makes one", {
     # chosen as the others: its mark, and its settings below
     expect_match(output$ard_adata$html, "aria-selected=\"true\"", fixed = TRUE)
     expect_match(output$adata_detail$html, "adata_id", fixed = TRUE)
-    session$setInputs(adata_from = "ADSL", adata_pop_keep = TRUE, adata_subj = "",
+    session$setInputs(adata_from = "ADSL", adata_pop = "SAF", adata_subj = "",
                       adata_add = NULL, adata_derive = "", adata_distinct = NULL,
                       adata_id = "adsl_saf", adata_label = "Safety set")
     session$setInputs(adata_preview = 1)
@@ -348,3 +348,42 @@ test_that("a data's name from what it is made from and its condition", {
   expect_true(is.na(.adata_name_from("ADSL", "AGE >= 65", po)))
   expect_true(is.na(.adata_name_from("ADSL", NA, po)))
 })
+
+test_that("2-1's analysis set: chosen in its field, a data's name after it; a flag made an analysis set in one click", {
+  expect_identical(.population_id_for("PPROTFL"), "PP")
+  expect_identical(.population_id_for("SAFFL", "SAF"), "SAF2")
+  expect_identical(.population_id_for("XYZFL"), "XYZ")
+  expect_identical(.adata_name_from("ADAE", NA, pop = "SAF"), "adae_saf")
+  expect_identical(.adata_name_from("ADSL", "SAFFL == \"Y\"", NULL, pop = NA), "adsl_saf")
+  skip_if_not_installed("cards")
+  local_home()
+  p <- adata_planner()
+  s <- create_study("PO", planner = p)
+  d <- cards::ADSL
+  d$PPROTFL <- ifelse(d$SAFFL == "Y", "Y", "N")
+  saveRDS(d, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("PO"), {
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_adata_new = 1)
+    f <- output$adata_detail$html
+    # the field, after what it is made from; SAF first for a new data
+    expect_lt(regexpr("adata_from", f), regexpr("adata_pop", f))
+    expect_match(f, "<option value=\"SAF\" selected>", fixed = TRUE)
+    # PPROTFL is in the data, no analysis set yet: one click makes one
+    expect_match(output$adata_pop_more$html, "PPROTFL", fixed = TRUE)
+    session$setInputs(adata_pop_add = "PPROTFL")
+    rv <- session$userData$rv
+    po <- rv$p$ard$populations
+    expect_true("PP" %in% po$population_id)
+    expect_identical(po$where[po$population_id == "PP"], "PPROTFL == \"Y\"")
+    expect_identical(po$dataset[po$population_id == "PP"], "ADSL")
+    # saved with it: population_id
+    session$setInputs(adata_id = "adsl_pp", adata_label = "", adata_from = "ADSL", adata_pop = "PP",
+                      adata_subj = "", adata_add = NULL, adata_derive = "", adata_keep = NULL,
+                      adata_distinct = NULL, adata_code = "")
+    session$setInputs(adata_save = 1)
+    ad <- .adata_rows(rv$p)
+    expect_identical(ad$population_id[ad$data_id == "adsl_pp"], "PP")
+  })
+})
+

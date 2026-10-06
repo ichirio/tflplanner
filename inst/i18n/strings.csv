@@ -2169,3 +2169,8 @@ Timing,時点
 A newer version is installed:,新しい版が入っています：
 this window runs,この画面は
 "Save, then Close (top right) and start tflplanner again: until then this window runs the old version.",保存してから、右上の［閉じる］で閉じ、tflplanner を起動し直してください。それまでは、この画面は古い版のままです。
+%s (not an analysis set of the study),%s（試験の解析対象集団にありません）
+Flags of the data that are no analysis set yet:,まだ解析対象集団になっていないデータのフラグ：
+Make %s an analysis set,%s を解析対象集団にする
+Analysis set (population_id): that of %s (%s).,解析対象集団（population_id）：%s のもの（%s）。
+%s is an analysis set now: %s of %s (the Data tab has it too).,%s を解析対象集団にしました：%s の %s（データタブにも入りました）。
