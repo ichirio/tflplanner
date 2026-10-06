@@ -21,6 +21,22 @@
   if (length(out)) out
 }
 
+# the datasets an analysis data is made from: the first one, its analysis
+# set's, and those of the data whose subjects it keeps (in that order)
+.adata_datasets <- function(ad, id, po = NULL, seen = character()) {
+  out <- character()
+  for (d in .adata_chain(ad, id)) {
+    i <- match(d, ad$data_id)
+    f <- ad$from[i]
+    if (!f %in% ad$data_id) out <- c(out, f)
+    p <- ad$population_id[i]
+    if (!is.na(p) && !is.null(po)) out <- c(out, po$dataset[match(p, po$population_id)])
+    s <- ad$subjects[i] %||% NA
+    if (!is.na(s) && !s %in% c(seen, d)) out <- c(out, .adata_datasets(ad, s, po, c(seen, d)))
+  }
+  unique(out[!is.na(out)])
+}
+
 # its analysis set: its own population, else that of the data whose
 # subjects it keeps, else the nearest above it (tflspec's rule)
 .adata_pop <- function(ad, id, seen = character()) {

@@ -42,7 +42,8 @@ report_info <- function(x, output_id) {
 }
 
 # The datasets a report reads, as the report list shows them: a table the
-# data of its ARD analyses (each analysis's dataset, and its population's),
+# data of its ARD analyses (each analysis's dataset, and its population's;
+# an analysis data's: those it is made from),
 # a listing its dataset, a figure the datasets its design reads (or, without
 # a design, the ones its row names).  In the order first used.
 .report_datasets <- function(x, output_id, type = report_info(x, output_id)$type) {
@@ -52,7 +53,15 @@ report_info <- function(x, output_id) {
       a <- a[!is.na(a$output_id) & a$output_id == output_id, , drop = FALSE]
       po <- x$ard$populations
       pop_ds <- po$dataset[match(a$population_id, po$population_id)]
-      c(ifelse(is.na(a$dataset), pop_ds, a$dataset), pop_ds)
+      # one that reads an analysis data: the datasets it is made from
+      ad <- .adata_rows(x)
+      own <- unlist(lapply(seq_len(nrow(a)), function(i) {
+        d <- c(a$data[i] %||% NA, a$denominator[i] %||% NA)
+        if (any(d %in% ad$data_id)) {
+          unlist(lapply(d[d %in% ad$data_id], .adata_datasets, ad = ad, po = po))
+        } else c(if (is.na(a$dataset[i])) pop_ds[i] else a$dataset[i], pop_ds[i])
+      }))
+      own %||% character()
     },
     listing = {
       l <- x$lf$listings
