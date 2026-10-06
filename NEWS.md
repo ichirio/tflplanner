@@ -1,5 +1,17 @@
 # tflplanner (development version)
 
+- **Long explanations are a heading's (i) now** (#207).  The paragraphs of
+  explanation on the screens made them hard to read; they are a tooltip
+  on the heading they explain (shown on hover or keyboard focus), or an
+  "About this (i)" line where there is no heading: the Study tab (own ARD
+  functions, keys and setup code), the Data tab (the study ARD, ARDs taken
+  in, datasets, analysis data, code lists), the Report list, steps 1, 3
+  (user code, the plot written by hand, a listing's columns, the builder)
+  and 4, the Runs tab, and the note under every sheet ("Editing the sheet
+  (i)").  Short labels, warnings, errors, dialogs and the statistics notes
+  stay on the page.  One component for it (`help_tip()`, `with_tip()`,
+  `about_tip()` in R/help_tip.R): a focusable (i) named by its help.
+
 - **2-1: the analysis set as a field of its own** (#202).  After "Made
   from", "Analysis set": the study's analysis sets, each with its
   condition, or none (written as population_id); the condition builder
