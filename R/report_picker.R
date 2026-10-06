@@ -7,14 +7,19 @@
 # plain functions, so the report list and the runs table search the same
 # way.
 
-# A report's section of the TOC: the numbers of its ID after the letters
-# (T-14-1-1 -> 14.1), else its kind
-.report_section <- function(output_id, type) {
+# A report's section of the TOC: its heading when the report list has one
+# (`section`, from the TOC or written in the app), else the numbers of its
+# ID after the letters (T-14-1-1 -> 14.1), else its kind
+.report_section <- function(output_id, type, heading = NULL) {
   num <- regmatches(output_id, regexpr("[0-9]+([^0-9]+[0-9]+)?", output_id))
   out <- rep(NA_character_, length(output_id))
   has <- regexpr("[0-9]+([^0-9]+[0-9]+)?", output_id) > 0
   out[has] <- gsub("[^0-9]+", ".", num)
   out[!has] <- type[!has]
+  if (!is.null(heading)) {
+    h <- !is.na(heading) & nzchar(trimws(heading))
+    out[h] <- trimws(heading[h])
+  }
   out
 }
 
@@ -52,12 +57,16 @@
   data.frame(output_id = ids, status = unname(st), stringsAsFactors = FALSE)
 }
 
-# sections in the TOC's order: by their numbers (14.2 before 14.10), the
-# kinds of reports without numbers after them
+# sections in the TOC's order: by their numbers (14.2 before 14.10; a
+# heading by the number it starts with, "14.1 Demographics"), those
+# without numbers after them
 .section_order <- function(secs) {
-  num <- grepl("^[0-9]+(\\.[0-9]+)*$", secs)
-  key <- vapply(strsplit(secs, ".", fixed = TRUE), function(v)
+  lead <- regmatches(secs, regexpr("^[0-9]+(\\.[0-9]+)*", secs))
+  num <- grepl("^[0-9]+(\\.[0-9]+)*", secs)
+  key <- rep(NA_character_, length(secs))
+  key[num] <- vapply(strsplit(lead, ".", fixed = TRUE), function(v)
     paste(sprintf("%06d", suppressWarnings(as.integer(v))), collapse = "."), "")
+  key[num] <- paste(key[num], secs[num])
   key[!num] <- secs[!num]
   secs[order(!num, key, method = "radix")]
 }
@@ -98,7 +107,8 @@
                       if (!is.null(run)) run$status[match(ids, run$output_id)] else NA)
   data.frame(output_id = ids,
              title = vapply(ids, function(id) .report_short_title(x, id), ""),
-             type = unname(type), section = .report_section(ids, unname(type)),
+             type = unname(type),
+             section = .report_section(ids, unname(type), x$outputs$section),
              population = pop, datasets = ds, state = st,
              stringsAsFactors = FALSE, row.names = NULL)
 }

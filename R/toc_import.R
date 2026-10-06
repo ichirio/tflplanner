@@ -254,6 +254,18 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
       }
     }
   }
+  # the section each report is under (the TOC's heading row above it, or
+  # its section column): written where the report has none yet -- one
+  # given in the app is kept
+  sec <- attr(spec, "sections")
+  if (length(sec)) {
+    o <- x$outputs
+    if (!"section" %in% names(o)) o$section <- NA_character_
+    k <- match(names(sec), o$output_id)
+    put <- !is.na(k) & !is.na(sec) & is.na(o$section[k])
+    o$section[k[put]] <- unname(sec[put])
+    x$outputs <- o
+  }
   # the report sheet's own items the TOC holds (not the type of a report
   # already there)
   cols <- intersect(c("program", "file", "note"), names(spec$report))
@@ -318,7 +330,7 @@ toc_snapshot <- function(spec, title_offset = 0L, last = NULL) {
 # ---- the mapping: which of a TOC's columns is what -------------------------
 
 .toc_items <- c("output_id", "type", "title", "population", "footnote",
-                "program", "file", "note")
+                "program", "file", "note", "section")
 
 # The map tflspec::tfl_read_toc() takes, from a TOC's column names and the
 # company's toc_map (an item: the first of its names the TOC has; title and

@@ -10,6 +10,17 @@
   data, adsl_saf (the safety set) and adae_saf (its TEAEs), its
   denominator adsl_saf: the same tables.
 
+- **The report list has a section (heading)** (#203).  A TOC's heading
+  rows ("14.1 Demographics") were passed over; now each report taken in is
+  under the heading above it (or the TOC's section column, a new item of
+  the mapping and of the company's `toc_map`; tflspec >= 0.0.24.9050).
+  The section is a column of the report list, given in the Add dialog
+  (the chosen report's by default) or next to the description on step 3's
+  Data code tab; one given here stays when the TOC is taken in again.  The
+  list on the left of Make a report is folded by the sections (a heading,
+  else the ID's numbers as before), headings in the order of the numbers
+  they start with.
+
 - **2-1: the analysis set as a field of its own** (#202).  After "Made
   from", "Analysis set": the study's analysis sets, each with its
   condition, or none (written as population_id); the condition builder

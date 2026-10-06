@@ -615,7 +615,13 @@ app_ui <- function(lang = "en") {
     bslib::nav_panel(
       t("Data code"), value = "code",
       shiny::uiOutput("current_label"),
-      shiny::textInput("description", t("Description"), width = "100%"),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2",
+        shiny::div(style = "flex: 3 1 20rem",
+                   shiny::textInput("description", t("Description"), width = "100%")),
+        shiny::div(style = "flex: 1 1 12rem",
+                   shiny::textInput("section", t("Section (heading)"), width = "100%",
+                                    placeholder = t("blank: from the ID")))),
       shiny::div(
         class = "rp-code",
         shiny::conditionalPanel(
@@ -5323,7 +5329,8 @@ app_server <- function(input, output, session, start) {
     m <- toc_map_for(h)
     labs <- c(output_id = t("Report ID"), type = t("Type"), title = t("Title lines"),
               population = t("Population"), footnote = t("Footnote lines"),
-              program = t("Program"), file = t("File"), note = t("Remarks"))
+              program = t("Program"), file = t("File"), note = t("Remarks"),
+              section = t("Section (heading)"))
     choices <- c(stats::setNames("", t("(none)")), stats::setNames(h, h))
     shiny::tagList(
       shiny::h6(t("Which column is what")),
@@ -5338,6 +5345,8 @@ app_server <- function(input, output, session, start) {
         })),
       shiny::p(class = "small text-muted mb-1",
                t("The population becomes the last title line.")),
+      shiny::p(class = "small text-muted mb-1",
+               t("A report's section: this column, else the heading row above it (a row with no ID); a section given here is kept.")),
       shiny::checkboxInput(toc_id("remember"),
                            t("Remember this mapping in the company standards"), FALSE,
                            width = "100%"))
@@ -7219,7 +7228,7 @@ app_server <- function(input, output, session, start) {
   # -- report list -------------------------------------------------------
   outputs_view <- shiny::reactive({
     p <- rv$p
-    empty <- data.frame(output_id = character(), type = character(),
+    empty <- data.frame(output_id = character(), section = character(), type = character(),
                         program = character(), rtf = character(),
                         data = character(), title = character())
     if (is.null(p) || !nrow(p$outputs)) return(empty)
@@ -7252,6 +7261,7 @@ app_server <- function(input, output, session, start) {
                      o$description)
     data.frame(
       output_id = o$output_id,
+      section = .report_section(o$output_id, type, o$section),
       type = t(unname(.type_labels[type])),
       program = vapply(info, `[[`, "", "program"),
       rtf = vapply(info, `[[`, "", "file"),
@@ -7263,10 +7273,11 @@ app_server <- function(input, output, session, start) {
     v <- outputs_view()
     sel <- match(shiny::isolate(input$target), v$output_id)
     v$output_id <- htmltools::htmlEscape(v$output_id)
+    v$section <- htmltools::htmlEscape(v$section)
     v$program <- htmltools::htmlEscape(v$program)
     v$rtf <- htmltools::htmlEscape(v$rtf)
     # "Title" here is the report's title; t("Title") is the study's
-    names(v) <- c(t(c("output_id", "Type", "Program", "RTF", "Data")),
+    names(v) <- c(t(c("output_id", "Section", "Type", "Program", "RTF", "Data")),
                   if (identical(lang, "en")) "Title" else t("Report title"))
     v$.key <- .report_search_keys(shiny::isolate(picker_rows()), outputs_view()$output_id)
     DT::datatable(v, rownames = FALSE, escape = FALSE,
@@ -7338,7 +7349,7 @@ app_server <- function(input, output, session, start) {
   }
   study_key <- function() if (has_study()) rv$study$meta$study_id
 
-  editors <- c(description = "text", data_code = "area",
+  editors <- c(description = "text", section = "text", data_code = "area",
                process_code = "area", uc_code = "area")
   # an editor and the field it edits (a user-code report's code is its
   # data code, edited on its content tab as well as on the Code tab)
@@ -7465,6 +7476,14 @@ app_server <- function(input, output, session, start) {
         shiny::p(class = "small text-muted mt-n2", t(.type_notes[[k]])))),
       if (type) shiny::textInput("modal_desc", t("Description"),
                                  width = "100%"),
+      # the section: the chosen report's, as a new one usually goes beside it
+      if (type) shiny::textInput(
+        "modal_section", t("Section (heading)"), width = "100%",
+        value = {
+          s <- rv$p$outputs$section[match(current(), rv$p$outputs$output_id)]
+          if (length(s) && !is.na(s)) s else ""
+        },
+        placeholder = t("blank: from the ID")),
       if (type) shiny::conditionalPanel(
         "input.modal_type == 'listing'",
         shiny::checkboxInput(
@@ -7498,18 +7517,28 @@ app_server <- function(input, output, session, start) {
   }
   shiny::observeEvent(input$add, ask_id(t("Add a report"), "add_ok",
                                         type = TRUE))
+  # the new report's section, as the Add dialog gave it
+  put_section <- function(id) {
+    s <- trimws(input$modal_section %||% "")
+    i <- match(id, rv$p$outputs$output_id)
+    if (nzchar(s) && !is.na(i)) rv$p$outputs$section[i] <- s
+  }
   shiny::observeEvent(input$add_ok, {
     id <- trimws(input$modal_id)
     d <- trimws(input$modal_desc)
     desc <- if (nzchar(d)) d else NA
     if (identical(input$modal_type, "table") && isTRUE(input$modal_first)) {
+      on.exit(put_section(id), add = TRUE)
       return(start_first_table(id, desc))
     }
     if (identical(input$modal_type, "listing") && isTRUE(input$modal_first_l)) {
+      on.exit(put_section(id), add = TRUE)
       return(start_first_listing(id, desc))
     }
+    sec <- trimws(input$modal_section %||% "")
     p2 <- guarded(add_output(rv$p, id, description = desc,
-                             type = input$modal_type))
+                             type = input$modal_type,
+                             section = if (nzchar(sec)) sec else NA_character_))
     after_id_change(p2, id)
     # the new report's own tab
     if (!is.null(p2)) go(switch(input$modal_type,
