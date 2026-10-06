@@ -2056,7 +2056,7 @@ Keeps the subjects of an analysis data above (a report's own subjects: the safet
 "arg-hint:Columns to analyse within, like by, but only the combinations the data have (e.g. a parameter by visit).",群と同じく分けて集計しますが、データにある組み合わせだけを出します（例: パラメータ × 時点）。
 "arg-hint:The strata of the stratified Wilson interval (method = strat_wilson / strat_wilsoncc): one interval over them, not one per stratum.",層別 Wilson 信頼区間（method = strat_wilson / strat_wilsoncc）の層。層ごとではなく、層をまとめた 1 つの区間を出します。
 "arg-hint:The strata of the Cochran-Mantel-Haenszel test: the by x variables association is tested controlling for them (one test, not one per stratum).",Cochran-Mantel-Haenszel 検定の層。層を調整して、群と変数の関連を検定します（層ごとではなく 1 つの検定）。
-"Search: ID, title, analysis set, data","検索: ID・タイトル・解析対象集団・データ"
+"Search: ID, title, analysis set, data",検索: ID・タイトル・解析対象集団・データ
 To make again,作り直しが必要
 Not made yet,未作成
 No report matches.,当てはまる帳票はありません。
@@ -2135,3 +2135,12 @@ Keep to the subjects of an analysis data of one row a subject,1 人 1 行の解�
 "On the right: SPEC, the sheet's rows; Result, the data it makes (Preview).",右の［SPEC］にシートの行、［結果］に作られるデータ（プレビュー）があります。
 "The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. The whole study's: the Data tab.",この帳票が読む analysis_data の行を、ブックと同じくすべての列で表示します。フォームに出ない列はここで書きます。試験全体の表は「データ」タブです。
 "Makes the analysis data of the form (as it is now, not saved yet) from the study's data: its rows and subjects, the first rows.",フォームの今の内容（保存前）で、試験のデータから解析データを作ります：行数と人数、先頭の行。
+"The code lists reach the report's ARD program: the levels, their order and labels.",コードリストは、この帳票の ARD プログラムに入ります（水準・順序・表示名）。
+"The code list this report uses: the study's rows, this report's own in their place.",この帳票が使うコードリスト（試験共通の行。この帳票だけの行があればそちらを使う）。
+The table as it will print,印刷される表
+The listing's row of the definition (listings); its columns are the grid on the left.,この Listing の定義の行（listings）。列は左の表で決めます。
+"A user-code report's definition is its code, on the left, and its page (step 4).",ユーザーコードの帳票の定義は、左のコードとページ（段 4）です。
+No code list yet.,コードリストはまだありません。
+the study,試験共通
+this report,この帳票
+Result,結果

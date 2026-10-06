@@ -1,5 +1,26 @@
 # tflplanner (development version)
 
+- **SPEC | Code | Result on the right of each step** (#179).  Every step of
+  making a report has the same three tabs on the right, the form (the GUI)
+  on the left: SPEC the step's rows of the definition for this report (to
+  edit; what was "Details (the sheet)"), Code the program written from them
+  (to read, with line numbers and a copy button; a program is never edited
+  in the app), Result what running it makes (step 2 the ARD, step 3 the
+  table / listing preview, step 4 the page).  The figure designer keeps its
+  own layout for now.
+  - Step 1: SPEC the code-list sheet, Code the code-list part of the ARD
+    program, Result the code lists this report uses (the study's and its
+    own).
+  - Step 2: the analyses sheet moves from the left card to SPEC; Code and
+    Result as before (opens on Code).
+  - Step 3: the table builder stays on the left, the sheets, the program
+    and the preview to its right (opens on Result); a change in the sheets
+    redraws the builder.  A listing's own row is a grid in SPEC; user code
+    runs in Result.
+  - Step 4: SPEC the report sheets, Code the program, Result the page.
+  - The old sub-tabs (Builder / Spec sheets / Program, Page / Program) are
+    gone.
+
 - **The Study tab and the Data tab, after trying them** (#174).
   - The Study tab: "Study list" on the left; on the right one card, "Study
     settings": the study's title, compound, phase, rounding, its keys and
