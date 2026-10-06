@@ -146,6 +146,7 @@
                              guarded, catalog, fig_is_new = function() FALSE,
                              page = function() input$nav) {
   pd <- new.env()
+  session$userData$pd <- pd
   pd$n <- 0L
   pd$data <- list()
   pd_drawn <- shiny::reactiveVal(0L)
@@ -758,6 +759,10 @@
     pd$sel <- s
     pd$fields <- f
     pd$fig_args <- fig_args
+    # each field's value as the browser first sends it (as drawn): a field
+    # is written only once it differs, so a value the form cannot show
+    # (text in a number field, a choice it does not offer) stays as it is
+    pd$raw <- list()
     vars <- shiny::isolate(design_vars(d))
     params <- shiny::isolate(design_params(d))
     objects <- c("df", unlist(lapply(d$stats, function(x) x$name %||%
@@ -814,7 +819,7 @@
           if (!is.na(r$default)) shiny::tags$small(class = "text-muted", paste0(" (", t("default"), ": ", r$default, ")")))
         ch <- if (!is.na(r$choices)) strsplit(r$choices, " | ", fixed = TRUE)[[1L]]
         switch(r$kind,
-          choice = shiny::selectizeInput(id, lab, c("", ch), selected = v %||% "", width = "100%",
+          choice = shiny::selectizeInput(id, lab, unique(c("", ch, v)), selected = v %||% "", width = "100%",
                                          options = list(placeholder = r$default %||% "")),
           number = shiny::numericInput(id, lab, value = if (is.null(v)) NA else as.numeric(v), width = "100%"),
           logical = shiny::checkboxInput(id, lab, value = isTRUE(as.logical(v %||% r$default))),
@@ -841,30 +846,37 @@
     f <- pd$fields
     shiny::req(!is.null(f), nrow(f))
     out <- list()
-    seen <- FALSE
+    raw <- list()
+    # a field's value, when it differs from what the form drew
+    moved <- function(key) {
+      v <- input[[pd_id(key)]]
+      if (is.null(v)) return(NULL)
+      if (is.null(pd$raw[[key]])) {
+        pd$raw[[key]] <- list(v)
+        return(NULL)
+      }
+      if (identical(pd$raw[[key]][[1L]], v)) return(NULL)
+      raw[[key]] <<- v
+      list(v)
+    }
     if (!is.null(pd$fig_args)) {
       fa <- pd$fig_args
-      args <- list()
-      style <- NULL
       for (i in seq_len(nrow(fa))) {
-        v <- input[[pd_id(paste0("arg_", fa$field[i]))]]
+        v <- moved(paste0("arg_", fa$field[i]))
         if (is.null(v)) next
-        seen <- TRUE
-        val <- .pd_value(if (fa$kind[i] %in% c("variables", "param")) "variables" else fa$kind[i], v)
-        if (fa$field[i] == "style") style <- val else args[fa$field[i]] <- list(val)
+        out[fa$field[i]] <- list(.pd_value(
+          if (fa$kind[i] %in% c("variables", "param")) "variables" else fa$kind[i], v[[1L]]))
       }
-      shiny::req(seen)
-      return(list(sel = pd$sel, fields = list(style = style, args = args[!vapply(args, is.null, logical(1))]),
-                  whole = TRUE))
+      shiny::req(length(raw))
+      return(list(sel = pd$sel, fields = out, raw = raw, whole = TRUE))
     }
     for (i in seq_len(nrow(f))) {
-      v <- input[[pd_id(f$field[i])]]
+      v <- moved(f$field[i])
       if (is.null(v)) next
-      seen <- TRUE
-      out[f$field[i]] <- list(.pd_value(f$kind[i], v))
+      out[f$field[i]] <- list(.pd_value(f$kind[i], v[[1L]]))
     }
-    shiny::req(seen)
-    list(sel = pd$sel, fields = out)
+    shiny::req(length(raw))
+    list(sel = pd$sel, fields = out, raw = raw)
   })
   pd_values_d <- shiny::debounce(pd_values, 500)
   shiny::observeEvent(pd_values_d(), {
@@ -874,9 +886,20 @@
     s <- v$sel
     old <- if (s$sec == "plot") d$plot else if (s$i <= length(d[[s$sec]])) d[[s$sec]][[s$i]]
     if (is.null(old)) return()
+    for (k in names(v$raw)) pd$raw[[k]] <- list(v$raw[[k]])
     new <- old
-    for (k in names(v$fields)) new[k] <- list(v$fields[[k]])
-    if (isTRUE(v$whole) && !length(new$args)) new$args <- NULL
+    if (isTRUE(v$whole)) {
+      # the whole figure's arguments: those changed, the others (one the
+      # schema does not list too) as they were
+      args <- old$args %||% list()
+      for (k in names(v$fields)) {
+        if (k == "style") new["style"] <- list(v$fields[[k]]) else args[k] <- list(v$fields[[k]])
+      }
+      args <- args[!vapply(args, is.null, logical(1))]
+      new["args"] <- list(if (length(args)) args)
+    } else {
+      for (k in names(v$fields)) new[k] <- list(v$fields[[k]])
+    }
     new <- new[!vapply(new, is.null, logical(1))]
     if (s$sec == "plot") d$plot <- new else d[[s$sec]][[s$i]] <- new
     if (identical(.fig_norm(unclass(d)), .fig_norm(unclass(design())))) return()

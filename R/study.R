@@ -385,13 +385,15 @@ print.rtfstudy <- function(x, ...) {
 #' [open_study()] reads; the one before goes to its history), then writes
 #' the study folder from it: the definition workbooks in `spec/` (with
 #' `output_path` and `program_dir` set to the study's own folders), the
-#' report programs, `autoexec_report.R`, and `study.yml`.  A program
-#' tflplanner wrote and nobody has touched since (its banner's checksum
-#' still matches) follows the definition and is rewritten when it changes;
-#' one edited by hand is kept unless it is named in `regenerate`.
+#' report programs, `autoexec_report.R`, and `study.yml`.  The programs
+#' are the definition's: each is written from it whenever it changes.  One
+#' edited by hand since (its banner's checksum no longer matches) is
+#' written again too, its edited copy first put in `programs/.edited/`
+#' (named after its place and the time) -- what it changed belongs in the
+#' definition (the data code, a user-code report, a custom analysis,
+#' where / derive).
 #'
 #' @param study An `rtfstudy`.
-#' @param regenerate Report ids whose program is written anew.
 #' @param home tflplanner's home.
 #' @param base The study as it was opened (or last saved) by whoever saves
 #'   now.  Given it, the save merges: a part (the study fields, the report
@@ -399,10 +401,10 @@ print.rtfstudy <- function(x, ...) {
 #'   not change keeps what is saved now -- someone else may have changed
 #'   it -- and a part both changed differently is a conflict that stops the
 #'   save (class `tflplanner_conflict`).
-#' @return The study, invisibly, with `files`: what was written or kept.
+#' @return The study, invisibly, with `files`: what was written (status
+#'   `written`, `rewritten` for a program edited by hand, `unchanged`, ...).
 #' @export
-save_study <- function(study, regenerate = character(),
-                       home = tflplanner_home(), base = NULL) {
+save_study <- function(study, home = tflplanner_home(), base = NULL) {
   if (!is.null(base)) study <- .merge_saved(study, base, home)
   p <- .study_spec_keys(study$planner)
   study$planner <- p
@@ -434,16 +436,13 @@ save_study <- function(study, regenerate = character(),
     f <- file.path(root, lay[["programs_tfl"]], progs[[i]])
     id <- p$outputs$output_id[i]
     state <- .program_state(p, id, f)
-    if (state == "edited" && !id %in% regenerate) {
-      files[nrow(files) + 1L, ] <- list(f, "kept")
-      next
-    }
     if (state %in% c("current", "todo")) {
       files[nrow(files) + 1L, ] <- list(f, "unchanged")
       next
     }
+    if (state == "edited") .back_up_edited(f, root)
     .write_program(program_code(p, id), f)
-    files[nrow(files) + 1L, ] <- list(f, "written")
+    files[nrow(files) + 1L, ] <- list(f, if (state == "edited") "rewritten" else "written")
   }
   files <- rbind(files, .save_ard(p, root), .save_lf(p, root),
                  .save_fig_designs(p, root))
@@ -478,8 +477,9 @@ save_study <- function(study, regenerate = character(),
 
 # A generated program carries a checksum of its own body in its banner.  A
 # program whose body still matches it has not been touched since tflplanner
-# wrote it, so tflplanner may write it again when the definition changes;
-# one that does not match was edited by hand and is left alone.
+# wrote it; one that does not match was edited by hand.  Either is written
+# again from the definition (a program is never edited: design 13-00), the
+# edited one first copied to programs/.edited/.
 .gen_line <- "^#  (Generated|Checksum)  *:"
 
 .body_hash <- function(lines) {
@@ -487,6 +487,21 @@ save_study <- function(study, regenerate = character(),
   on.exit(unlink(f))
   writeLines(enc2utf8(lines[!grepl(.gen_line, lines)]), f, useBytes = TRUE)
   unname(tools::md5sum(f))
+}
+
+# A program edited by hand, copied to programs/.edited/ before it is
+# written again: named after its place under programs/ and the time
+# (tfl_T-14-1-1_20261006-153000.R)
+.edited_dir <- file.path("programs", ".edited")
+.back_up_edited <- function(f, root) {
+  dir <- file.path(root, .edited_dir)
+  dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+  rel <- if (startsWith(f, root)) substring(f, nchar(root) + 2L) else basename(f)
+  rel <- sub("^programs/", "", rel)
+  dest <- file.path(dir, paste0(sub("[.][Rr]$", "", gsub("/", "_", rel, fixed = TRUE)),
+                                "_", format(Sys.time(), "%Y%m%d-%H%M%S"), ".R"))
+  file.copy(f, dest, overwrite = TRUE)
+  invisible(dest)
 }
 
 .write_program <- function(code, f) {
@@ -499,7 +514,8 @@ save_study <- function(study, regenerate = character(),
 # current   untouched, and what tflplanner would write now
 # todo      untouched, still the TODO data part
 # generated untouched, but the definition has moved on: saving rewrites it
-# edited    changed by hand: saving leaves it alone
+# edited    changed by hand: saving writes it again (the edited one kept
+#           in programs/.edited/)
 # A report's program as the definition writes it, kept while the
 # definition is the same: the runs table asks for every report's again at
 # each refresh (study_status()), and the definition rarely changed between

@@ -4,17 +4,10 @@
 \alias{save_study}
 \title{Save a study}
 \usage{
-save_study(
-  study,
-  regenerate = character(),
-  home = tflplanner_home(),
-  base = NULL
-)
+save_study(study, home = tflplanner_home(), base = NULL)
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
-
-\item{regenerate}{Report ids whose program is written anew.}
 
 \item{home}{tflplanner's home.}
 
@@ -26,15 +19,19 @@ it -- and a part both changed differently is a conflict that stops the
 save (class \code{tflplanner_conflict}).}
 }
 \value{
-The study, invisibly, with \code{files}: what was written or kept.
+The study, invisibly, with \code{files}: what was written (status
+\code{written}, \code{rewritten} for a program edited by hand, \code{unchanged}, ...).
 }
 \description{
 Saves the study's state in tflplanner's home (the copy
 \code{\link[=open_study]{open_study()}} reads; the one before goes to its history), then writes
 the study folder from it: the definition workbooks in \verb{spec/} (with
 \code{output_path} and \code{program_dir} set to the study's own folders), the
-report programs, \code{autoexec_report.R}, and \code{study.yml}.  A program
-tflplanner wrote and nobody has touched since (its banner's checksum
-still matches) follows the definition and is rewritten when it changes;
-one edited by hand is kept unless it is named in \code{regenerate}.
+report programs, \code{autoexec_report.R}, and \code{study.yml}.  The programs
+are the definition's: each is written from it whenever it changes.  One
+edited by hand since (its banner's checksum no longer matches) is
+written again too, its edited copy first put in \verb{programs/.edited/}
+(named after its place and the time) -- what it changed belongs in the
+definition (the data code, a user-code report, a custom analysis,
+where / derive).
 }

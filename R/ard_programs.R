@@ -17,9 +17,9 @@
 # preview: it updates the study's working ARD, so tables can be made from
 # it, and keeps no log.  The report programs are in programs/tfl/.
 #
-# Like the report programs, a generated ARD program carries a checksum: one
-# nobody edited follows the definition on every save, one edited by hand is
-# left alone.
+# Like the report programs, a generated ARD program carries a checksum, and
+# follows the definition on every save: one edited by hand is written again
+# too, its edited copy first put in programs/.edited/.
 
 .ard_prog_name <- function(output_id) {
   paste0(gsub("[^A-Za-z0-9._-]", "_", output_id), ".R")
@@ -150,19 +150,20 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
   if (identical(.body_hash(have), .body_hash(code))) "current" else "generated"
 }
 
-# write a generated program unless it was edited by hand; the file's row of
-# what the save did
-.put_program <- function(code, f) {
+# write a generated program (one edited by hand copied to
+# programs/.edited/ first); the file's row of what the save did
+.put_program <- function(code, f, root) {
   state <- .ard_program_state(code, f)
-  if (state == "edited") return("kept")
   if (state == "current") return("unchanged")
+  if (state == "edited") .back_up_edited(f, root)
   dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
   .write_program(code, f)
-  "written"
+  if (state == "edited") "rewritten" else "written"
 }
 
 # the ARD programs, written with the study: the setup, one per output, the
-# autoexec; a program of an output no longer defined goes (unless edited)
+# autoexec; a program of an output no longer defined goes (one edited by
+# hand copied to programs/.edited/ first)
 .save_ard_programs <- function(spec, root, codelists = NULL) {
   lay <- study_layout()
   dir <- file.path(root, lay[["programs_ard"]])
@@ -171,7 +172,7 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
                     stringsAsFactors = FALSE)
   put <- function(code, name) {
     f <- file.path(dir, name)
-    out[nrow(out) + 1L, ] <<- list(f, .put_program(code, f))
+    out[nrow(out) + 1L, ] <<- list(f, .put_program(code, f, root))
   }
   put(ard_setup_code(spec), .ard_setup_file)
   for (id in ids) put(ard_program_code(spec, id, dir = root,
@@ -184,10 +185,12 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
     have <- readLines(p, warn = FALSE, encoding = "UTF-8")
     chk <- sub("^#  Checksum   : *", "",
                grep("^#  Checksum   :", have, value = TRUE))
-    if (length(chk) && identical(chk[1L], .body_hash(have))) {
-      file.remove(p)
-      out[nrow(out) + 1L, ] <- list(p, "removed")
-    }
+    # a program tflplanner wrote (with a checksum); a file of one's own,
+    # never written by it, is not its to remove
+    if (!length(chk)) next
+    if (!identical(chk[1L], .body_hash(have))) .back_up_edited(p, root)
+    file.remove(p)
+    out[nrow(out) + 1L, ] <- list(p, "removed")
   }
   # the single make_ard.R of earlier versions
   old <- file.path(root, "programs", "make_ard.R")

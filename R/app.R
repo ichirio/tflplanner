@@ -1033,6 +1033,15 @@ $(document).on('click', '#save', function() {
 # A sheet as an editable grid.  `choices` offers values in a dropdown;
 # the columns named in `closed` accept nothing else (a typo is refused in
 # the cell rather than saved), the others take free text too.
+# The catalog's datasets as choices ("ADSL (ADaM)"), and any of `have` it
+# does not list, as they are: a value the choices lack is not replaced
+.ds_choices <- function(cat_ds, have = character()) {
+  ch <- if (length(cat_ds$dataset)) stats::setNames(
+    cat_ds$dataset, paste0(cat_ds$dataset, " (", cat_ds$level, ")")) else character()
+  gone <- setdiff(have[!is.na(have) & nzchar(have)], ch)
+  c(ch, stats::setNames(gone, gone))
+}
+
 .grid <- function(d, sheet, key, choices, closed = character(),
                   select = FALSE) {
   d <- .na_blank(d)
@@ -1262,15 +1271,14 @@ app_server <- function(input, output, session, start) {
     s$meta[.study_fields] <- rv$meta
     s
   }
-  do_save <- function(regenerate = character()) {
+  do_save <- function() {
     # what this session opened (or last saved): the save merges it with
     # whatever others saved since
     base <- rv$study
     base$planner <- rv$saved
     base$meta[.study_fields] <- rv$saved_meta
     mine <- rv$p
-    s <- tryCatch(save_study(current_study(), regenerate = regenerate,
-                             base = base),
+    s <- tryCatch(save_study(current_study(), base = base),
                   tflplanner_conflict = function(e) {
                     shiny::showModal(shiny::modalDialog(
                       title = t("Someone else saved the same part"),
@@ -1291,11 +1299,14 @@ app_server <- function(input, output, session, start) {
     rv$meta <- rv$saved_meta <- s$meta[.study_fields]
     rv$status_ver <- rv$status_ver + 1L
     rv$studies_ver <- rv$studies_ver + 1L
-    n <- sum(s$files$status == "written")
-    kept <- sum(s$files$status == "kept")
-    notify(paste0(sprintf(t("Saved (%d files written)"), n),
-                  if (kept) paste0(" ", sprintf(
-                    t("%d hand-edited programs kept"), kept))))
+    n <- sum(s$files$status %in% c("written", "rewritten"))
+    re <- sum(s$files$status == "rewritten")
+    notify(sprintf(t("Saved (%d files written)"), n))
+    # a program edited by hand: written again from the definition (a
+    # program is never edited -- the definition is), the edited one kept
+    if (re) notify(sprintf(
+      t("%d programs edited by hand were written again from the definition; the edited ones are in programs/.edited/. Put what they changed in the definition: the data code, a user-code report, a custom analysis, where / derive."),
+      re), "warning")
     TRUE
   }
   shiny::observeEvent(input$save, {
@@ -4768,7 +4779,7 @@ app_server <- function(input, output, session, start) {
                missing = "No file yet. Saving writes it.",
                current = "The saved program is the one below.",
                generated = "The definition has changed: saving rewrites the program as below.",
-               edited = "The saved program was edited by hand. Saving leaves it alone.")))
+               edited = "The saved program was edited by hand. Saving writes it again from the definition (the edited one is kept in programs/.edited/).")))
   })
   shiny::observeEvent(input$ard_preview, {
     if (is.null(ard_target())) return(notify(t("Choose a report"), "warning"))
@@ -5257,11 +5268,10 @@ app_server <- function(input, output, session, start) {
     if (is.null(rec)) return(toc_btn_ver(toc_btn_ver() + 1L))
     was_dirty <- isTRUE(shiny::isolate(dirty()))
     rv$p <- p
-    touched <- r$output_id[r$status %in% c("new", "changed")]
     if (was_dirty) {
       notify(t("Saved at once, with the other unsaved changes: the record of TOCs taken in and the reports must agree."))
     }
-    do_save(regenerate = touched)
+    do_save()
     if (isTRUE(input[[toc_id("remember")]])) {
       f <- guarded(remember_toc_map(toc_map_now()))
       if (!is.null(f)) notify(sprintf(t("The mapping is remembered in %s."), f))
@@ -5609,7 +5619,7 @@ app_server <- function(input, output, session, start) {
     if (isTRUE(shiny::isolate(dirty()))) {
       notify(t("Saved at once, with the other unsaved changes: the record of ARDs taken in and the reports must agree."))
     }
-    do_save(regenerate = unique(ids))
+    do_save()
   }
   imp_data <- shiny::reactive({
     imp_ver()
@@ -5943,6 +5953,7 @@ app_server <- function(input, output, session, start) {
   # The form is drawn per report with fresh input ids (as the builder's),
   # so an input of another report's form is never read as this one's.
   lf_env <- new.env()
+  session$userData$lf_env <- lf_env
   lf_env$n <- 0L
   lf_drawn <- shiny::reactiveVal(0L)
   lf_id <- function(x) paste0("lf", lf_env$n, "_", x)
@@ -5999,8 +6010,7 @@ app_server <- function(input, output, session, start) {
     have <- if (nrow(f)) .split_bar(f$datasets[1L]) else character()
     shiny::tagList(
       shiny::selectizeInput("uc_ds", t("Data it reads (the program reads them first)"),
-                            stats::setNames(cat_ds$dataset,
-                                            paste0(cat_ds$dataset, " (", cat_ds$level, ")")),
+                            .ds_choices(cat_ds, have),
                             selected = have, multiple = TRUE, width = "100%"),
       shiny::checkboxInput("uc_ard", t("Use this report's ARD (`ard`): its ARD definition's rows, or the ARD taken in for it"),
                            .user_reads_ard(p, id)),
@@ -6152,11 +6162,11 @@ app_server <- function(input, output, session, start) {
     lf_env$n <- lf_env$n + 1L
     lf_drawn(lf_env$n)
     lf_env$id <- id
-    cat_ds <- shiny::isolate(catalog())
-    ds_choices <- stats::setNames(cat_ds$dataset,
-                                  paste0(cat_ds$dataset, " (", cat_ds$level, ")"))
     f <- lf_rows(p, "figures", id)
     have <- if (nrow(f)) .split_bar(f$datasets[1L]) else character()
+    # datasets not in the catalog are offered as they are, not dropped
+    ds_choices <- .ds_choices(shiny::isolate(catalog()), have)
+    lf_env$fig_last <- list(datasets = paste(have, collapse = " | "))
     bslib::card(
       bslib::card_header(t("The plot written by hand (ggplot2)")),
       shiny::p(class = "small text-muted",
@@ -6177,28 +6187,34 @@ app_server <- function(input, output, session, start) {
     lf_env$n <- lf_env$n + 1L
     lf_drawn(lf_env$n)
     lf_env$id <- id
-    cat_ds <- shiny::isolate(catalog())
-    ds_choices <- stats::setNames(cat_ds$dataset,
-                                  paste0(cat_ds$dataset, " (", cat_ds$level, ")"))
     l <- lf_rows(p, "listings", id)
     lv <- function(k, d = "") if (nrow(l) && !is.na(l[[k]][1L])) l[[k]][1L] else d
     lt <- listing_types()
+    # a value the choices do not have (a type of one's own, a dataset not
+    # in the catalog) is offered as it is, not replaced by the first
+    type_ch <- stats::setNames(lt$type, lt$label)
+    if (nzchar(lv("type")) && !lv("type") %in% type_ch) {
+      type_ch <- c(type_ch, stats::setNames(lv("type"), lv("type")))
+    }
+    ds_choices <- .ds_choices(shiny::isolate(catalog()), lv("dataset"))
+    mr <- suppressWarnings(as.numeric(lv("max_rows", NA)))
+    # the fields as drawn: an edit writes only the fields that differ
+    lf_env$last <- list(type = lv("type", .std_setting("listing_type", "multiline")),
+                        dataset = lv("dataset"), where = lv("where"),
+                        sort = lv("sort"),
+                        max_rows = if (is.na(mr)) "" else as.character(mr))
     shiny::div(
       class = "rp-b-card",
       shiny::h6(t("Listing")),
       shiny::div(
         class = "d-flex flex-wrap gap-2",
-        shiny::selectInput(lf_id("type"), t("Type"),
-                           stats::setNames(lt$type, lt$label),
-                           selected = lv("type", .std_setting("listing_type",
-                                                             "multiline")),
-                           width = "200px"),
+        shiny::selectInput(lf_id("type"), t("Type"), type_ch,
+                           selected = lf_env$last$type, width = "200px"),
         shiny::selectInput(lf_id("dataset"), t("Dataset"),
                            c(stats::setNames("", "-"), ds_choices),
                            selected = lv("dataset"), width = "200px"),
         shiny::numericInput(lf_id("max_rows"), t("Rows per page"),
-                            value = suppressWarnings(as.numeric(lv("max_rows", NA))),
-                            min = 1, width = "140px")),
+                            value = mr, min = 1, width = "140px")),
       shiny::textInput(lf_id("where"), t("Condition (R)"), value = lv("where"),
                        width = "100%",
                        placeholder = paste(t("e.g."), "AESEV == \"SEVERE\"")),
@@ -6212,23 +6228,33 @@ app_server <- function(input, output, session, start) {
     shiny::req(identical(lf_env$id, current()))
     get <- function(x) input[[lf_id(x)]]
     if (identical(lf_type(), "figure")) {
-      return(list(sheet = "figures", rows = data.frame(
-        datasets = paste(get("fig_ds") %||% character(), collapse = " | "),
-        stringsAsFactors = FALSE)))
+      return(list(sheet = "figures", values = list(
+        datasets = paste(get("fig_ds") %||% character(), collapse = " | "))))
     }
     shiny::req(!is.null(get("type")))
     mr <- get("max_rows")
-    list(sheet = "listings", rows = data.frame(
+    list(sheet = "listings", values = list(
       type = get("type"), dataset = get("dataset") %||% "",
       where = get("where") %||% "", sort = get("sort") %||% "",
-      max_rows = if (is.null(mr) || is.na(mr)) "" else as.character(mr),
-      stringsAsFactors = FALSE))
+      max_rows = if (is.null(mr) || is.na(mr)) "" else as.character(mr)))
   })
   lf_values_d <- shiny::debounce(lf_values, 400)
+  # the form's fields into the report's row: only those changed since drawn
+  # (or last written); the row's other columns (blank_row, wrap, the
+  # figure's ard ...) as they are
   shiny::observeEvent(lf_values_d(), {
     v <- lf_values_d()
     id <- lf_env$id
-    p2 <- set_lf_rows(rv$p, v$sheet, id, v$rows)
+    row <- lf_rows(rv$p, v$sheet, id)
+    row$output_id <- NULL
+    if (!nrow(row)) row[1L, ] <- NA
+    row <- row[1L, , drop = FALSE]
+    last <- if (identical(v$sheet, "listings")) lf_env$last else lf_env$fig_last
+    for (k in names(v$values)) {
+      if (!identical(v$values[[k]], last[[k]])) row[[k]] <- v$values[[k]]
+    }
+    if (identical(v$sheet, "listings")) lf_env$last <- v$values else lf_env$fig_last <- v$values
+    p2 <- set_lf_rows(rv$p, v$sheet, id, row)
     if (!identical(p2$lf, rv$p$lf)) rv$p <- p2
   })
   output$lf_fig_code <- shiny::renderText({
@@ -6423,6 +6449,9 @@ app_server <- function(input, output, session, start) {
     bform_drawn(bform$n)
     bform$id <- id
     bform$st <- st
+    # what the sheets say, as the form last wrote or read it: an edit writes
+    # only what differs from it
+    bform$last <- st
     bform$meta <- m
     # the column header as lines of the form (NULL: the form cannot show it)
     p0 <- shiny::isolate(rv$p)
@@ -6853,7 +6882,8 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(bstate_d(), {
     st <- bstate_d()
     id <- bform$id
-    p2 <- guarded(builder_write(rv$p, id, st))
+    p2 <- guarded(builder_write(rv$p, id, st, was = bform$last))
+    if (!is.null(p2)) bform$last <- st
     if (!is.null(p2) && !identical(p2, rv$p)) {
       session$sendCustomMessage("builder-updating", TRUE)
       rv$p <- p2
@@ -7159,26 +7189,9 @@ app_server <- function(input, output, session, start) {
       current = "The saved program is the one below.",
       todo = "The saved program is the one below (its data part is a TODO).",
       generated = "The definition has changed: saving rewrites the program as below (a program nobody edited follows the definition).",
-      edited = "The saved program was edited by hand. Saving leaves it alone."))
-    shiny::div(
-      class = "d-flex gap-2 align-items-center mb-2 small",
-      shiny::span(msg),
-      if (identical(st, "edited")) {
-        .btn("regenerate", t("Regenerate this program"),
-             class = "btn-sm btn-outline-warning")
-      })
-  })
-  shiny::observeEvent(input$regenerate, {
-    shiny::showModal(shiny::modalDialog(
-      title = sprintf(t("Regenerate %s"), current()),
-      t("The program on disk is written again from the definition and the data code. Its hand edits are lost."),
-      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
-                              .btn("regenerate_ok", t("Regenerate"),
-                                   class = "btn-warning"))))
-  })
-  shiny::observeEvent(input$regenerate_ok, {
-    shiny::removeModal()
-    do_save(regenerate = current())
+      edited = "The saved program was edited by hand. Saving writes it again from the definition (the edited one is kept in programs/.edited/)."))
+    shiny::div(class = "mb-2 small",
+               shiny::span(class = if (identical(st, "edited")) "text-warning", msg))
   })
 
   ask_id <- function(title, button, value = "", type = FALSE) {

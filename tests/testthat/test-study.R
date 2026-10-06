@@ -127,7 +127,7 @@ test_that("workbooks export and import", {
   expect_equal(unname(e$planner$study[["output_path"]]), "output/tfl")
 })
 
-test_that("saving keeps an edited program unless asked to regenerate", {
+test_that("saving writes the programs from the definition, an edited one too", {
   local_home()
   s <- create_study("S1", planner = sample_planner())
   # the workbooks, the programs, batch.R, the two autoexec programs, fig_setup.R
@@ -149,16 +149,32 @@ test_that("saving keeps an edited program unless asked to regenerate", {
   s2 <- save_study(s)
   expect_true(all(s2$files$status == "unchanged"))
 
-  # a hand edit is kept
+  # a hand edit: written again from the definition, the edited one kept
+  # in programs/.edited/ (a program is never edited: the definition is)
   writeLines(c(readLines(f), "# mine"), f)
   expect_equal(study_status(s)$program_state[1], "edited")
-  s$planner$outputs$data_code[1] <- "data <- something_else()"
   s <- save_study(s)
-  expect_equal(utils::tail(readLines(f), 1), "# mine")
-  expect_equal(s$files$status[basename(s$files$file) == "DM.R"], "kept")
-  s <- save_study(s, regenerate = "DM")
-  expect_true("data <- something_else()" %in% readLines(f))
+  expect_false("# mine" %in% readLines(f))
+  expect_equal(s$files$status[basename(s$files$file) == "DM.R"], "rewritten")
   expect_equal(study_status(s)$program_state[1], "current")
+  bk <- list.files(file.path(s$path, "programs", ".edited"), full.names = TRUE)
+  expect_length(bk, 1L)
+  expect_match(basename(bk), "^tfl_DM_[0-9]{8}-[0-9]{6}[.]R$")
+  expect_equal(utils::tail(readLines(bk), 1), "# mine")
+  # an ARD program too
+  s$planner$ard$datasets <- .normalize_ard_sheet(data.frame(
+    dataset = "ADSL", level = "adam", path = "data/adam/adsl.rds"), "datasets")
+  s$planner$ard$analyses <- .normalize_ard_sheet(data.frame(
+    output_id = "DM", analysis_id = "A1", method = "continuous",
+    dataset = "ADSL", variables = "AGE", stringsAsFactors = FALSE), "analyses")
+  s <- save_study(s)
+  fa <- file.path(s$path, "programs", "ard", "DM.R")
+  writeLines(c(readLines(fa), "# mine too"), fa)
+  s <- save_study(s)
+  expect_false("# mine too" %in% readLines(fa))
+  expect_equal(s$files$status[s$files$file == fa], "rewritten")
+  expect_true(any(grepl("^ard_DM_",
+                        list.files(file.path(s$path, "programs", ".edited")))))
 })
 
 test_that("a study runs end to end and reports what it produced", {

@@ -49,7 +49,6 @@ Log,ログ
 Definition check,定義チェックの結果
 Save,保存
 Saved (%d files written),保存しました（%d ファイルを更新）
-%d hand-edited programs kept,手修正のある %d プログラムはそのまま
 Open a study first,試験を開いてください
 Unsaved changes,未保存の変更
 Saved,保存済み
@@ -142,11 +141,7 @@ No file yet. Saving writes the program below.,まだファイルはありませ�
 The saved program is the one below.,保存済みのプログラムは下の内容と同じです。
 The saved program is the one below (its data part is a TODO).,保存済みのプログラムと同じです（データ部は TODO のまま）。
 The definition has changed: saving rewrites the program as below (a program nobody edited follows the definition).,定義が変わっています。保存すると下の内容に更新されます（手修正のないプログラムは定義に追従します）。
-The saved program was edited by hand. Saving leaves it alone.,保存済みのプログラムは手で修正されています。保存しても上書きしません。
-Regenerate this program,このプログラムを再生成
-Regenerate %s,%s のプログラムを再生成
-The program on disk is written again from the definition and the data code. Its hand edits are lost.,ディスク上のプログラムを、今の定義とデータ準備コードから書き直します。手で直した部分は消えます。
-Regenerate,再生成
+The saved program was edited by hand. Saving writes it again from the definition (the edited one is kept in programs/.edited/).,保存済みのプログラムは手で修正されています。保存すると定義から書き直します（修正された版は programs/.edited/ に残します）。
 Add a report,帳票を追加
 Copy %s,%s を複製
 Rename %s,%s の名前を変更
@@ -2144,3 +2139,4 @@ No code list yet.,コードリストはまだありません。
 the study,試験共通
 this report,この帳票
 Result,結果
+"%d programs edited by hand were written again from the definition; the edited ones are in programs/.edited/. Put what they changed in the definition: the data code, a user-code report, a custom analysis, where / derive.",手で修正されていた %d 本のプログラムを、定義から書き直しました。修正された版は programs/.edited/ にあります。直したい点は定義に書いてください（データ準備コード、ユーザーコードの帳票、custom の解析、where／derive）。
