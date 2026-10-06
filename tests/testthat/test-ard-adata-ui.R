@@ -317,3 +317,20 @@ test_that("2-2: an analysis written as code (custom) from what its fields make",
   })
 })
 
+test_that("step 2 says the report's analyses and the study's; the Data tab explains its sheets", {
+  skip_if_not_installed("cards")
+  local_home()
+  p <- adata_planner()
+  p$ard$analyses <- rbind(p$ard$analyses, transform(p$ard$analyses[1L, ], output_id = "OTHER"))
+  s <- create_study("RV", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("RV"), {
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    expect_match(output$ard_check$html, "This report's analyses: 2 (the study's: 3)", fixed = TRUE)
+    expect_match(output$ard_2_2_head$html, "2-2 Analyses", fixed = TRUE)
+    for (sh in c("datasets", "populations", "analysis_data")) {
+      expect_false(is.null(output[[paste0("help_ard_", sh)]]))
+    }
+  })
+})
+

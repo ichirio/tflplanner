@@ -266,7 +266,7 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
 #study_detail code { word-break: break-all; }
 .rp-stat-fmt label { font-size: 12px; margin-bottom: 0; }
 .rp-split { display: grid; gap: 1rem; align-items: start;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
 .rp-split.rp-lay-stack, .rp-split.rp-lay-one {
   grid-template-columns: minmax(0, 1fr); }
 .rp-split.rp-lay-one.rp-show-def > :nth-child(2),
@@ -807,19 +807,31 @@ app_ui <- function(lang = "en") {
                    t("The datasets the study's programs read (the data catalog): a name, its level, its file in the study folder, columns derived. Defined once for the study, used by every report.")),
           shiny::uiOutput("catalog_missing"),
           grid_note,
-          rhandsontable::rHandsontableOutput("hot_ard_datasets")),
+          rhandsontable::rHandsontableOutput("hot_ard_datasets"),
+          shiny::tags$details(
+            class = "rp-help mt-2",
+            shiny::tags$summary(t("Column help")),
+            DT::DTOutput("help_ard_datasets"))),
         bslib::nav_panel(
           paste0(t("Analysis sets"), " (populations)"), value = "populations",
           shiny::p(class = "small text-muted",
                    t("The analysis sets: the subjects of a dataset a condition keeps (SAFFL == \"Y\").")),
           grid_note,
-          rhandsontable::rHandsontableOutput("hot_ard_populations")),
+          rhandsontable::rHandsontableOutput("hot_ard_populations"),
+          shiny::tags$details(
+            class = "rp-help mt-2",
+            shiny::tags$summary(t("Column help")),
+            DT::DTOutput("help_ard_populations"))),
         bslib::nav_panel(
           paste0(t("Analysis data"), " (analysis_data)"), value = "analysis_data",
           shiny::p(class = "small text-muted",
-                   t("Every report's analysis data, as a sheet: made and changed in each report's step 2-1.")),
+                   t("Every report's analysis data, as a sheet: made in each report's step 2-1, and changed there or here (the study's sheet).")),
           grid_note,
-          rhandsontable::rHandsontableOutput("hot_ard_analysis_data")),
+          rhandsontable::rHandsontableOutput("hot_ard_analysis_data"),
+          shiny::tags$details(
+            class = "rp-help mt-2",
+            shiny::tags$summary(t("Column help")),
+            DT::DTOutput("help_ard_analysis_data"))),
         bslib::nav_panel(
           t("Code lists (the study's)"), value = "codelists",
           shiny::p(class = "small text-muted",
@@ -2268,6 +2280,12 @@ app_server <- function(input, output, session, start) {
     if (is.null(d)) return()
     guarded(rv$p <- set_sheet_rows(rv$p, "codelists", NA, d))
   })
+  for (sh in c("datasets", "populations", "analysis_data")) local({
+    sheet <- sh
+    output[[paste0("help_ard_", sheet)]] <- DT::renderDT(
+      .help_table(sheet), rownames = FALSE,
+      options = list(dom = "t", paging = FALSE, ordering = FALSE))
+  })
   output$help_codelists_study <- DT::renderDT(
     .help_table("codelists"), rownames = FALSE,
     options = list(dom = "t", paging = FALSE, ordering = FALSE))
@@ -3090,7 +3108,7 @@ app_server <- function(input, output, session, start) {
                     t("Format: xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown."))),
       shiny::tags$details(
         class = "mt-2", open = NA,
-        shiny::tags$summary(class = "small", t("This analysis as code (after Apply)")),
+        shiny::tags$summary(class = "small", t("This analysis alone as code, after Apply (the report's program: Code on the right)")),
         shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
   })
   # this analysis alone as code (the data it reads, its analysis set, the
@@ -3873,7 +3891,7 @@ app_server <- function(input, output, session, start) {
   output$ard_2_2_head <- shiny::renderUI({
     shiny::req(has_study(), ard_target())
     shiny::tagList(
-      shiny::h6(class = "mt-3 mb-0", t("2-2 The analyses \u2014 what is computed")),
+      shiny::h6(class = "mt-3 mb-0", t("2-2 Analyses")),
       shiny::p(class = "small text-muted mb-1",
                t("The report's analyses. Each one's Data: an analysis data of 2-1; the denominator of a percent: chosen with it.")))
   })
@@ -4520,7 +4538,7 @@ app_server <- function(input, output, session, start) {
         .btn("ard_stat_apply", t("Apply to the analysis"), class = "btn-sm btn-primary")),
       shiny::tags$details(
         class = "mt-2", open = NA,
-        shiny::tags$summary(class = "small", t("This analysis as code (after Apply)")),
+        shiny::tags$summary(class = "small", t("This analysis alone as code, after Apply (the report's program: Code on the right)")),
         shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
   })
   # the stack counting the subjects per group while BIGN does: said at once
@@ -4772,10 +4790,15 @@ app_server <- function(input, output, session, start) {
       sprintf(t("%s: analyses of no report yet. Add the report to the Report list to make its table."),
               paste(orphan, collapse = ", ")))
     if (is.null(msg)) {
-      n <- nrow(rv$p$ard$analyses)
+      a <- rv$p$ard$analyses
+      n <- nrow(a)
+      tg <- ard_target()
+      mine <- if (!is.null(tg)) sum(!is.na(a$output_id) & a$output_id == tg) else NA
       return(shiny::tagList(
         shiny::p(class = "small text-success mt-2",
-                 sprintf(t("%d analyses; the definition reads without errors."), n)),
+                 if (is.na(mine)) sprintf(t("%d analyses; the definition reads without errors."), n) else
+                   sprintf(t("This report's analyses: %d (the study's: %d). The definition reads without errors."),
+                           mine, n)),
         note))
     }
     shiny::div(class = "alert alert-warning py-1 small mt-2",
@@ -4811,7 +4834,7 @@ app_server <- function(input, output, session, start) {
     if (identical(step2_focus(), "adata")) {
       return(shiny::tagList(
         shiny::p(class = "small text-muted mb-1",
-                 t("The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. The whole study's: the Data tab.")),
+                 t("The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved. The whole study's: the Data tab.")),
         rhandsontable::rHandsontableOutput("hot_adata_report")))
     }
     shiny::tagList(
