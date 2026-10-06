@@ -9,6 +9,9 @@
 # 1. --update: update rtfreporter -> tflspec -> tflplanner first, in another
 #    R process (update.R), on the channel kept in config.yml.
 # 2. If tflplanner already runs on the port, open it in the browser and stop.
+#    (If that one was started before an update, its page says a newer
+#    version is installed: it is not stopped here -- it may hold unsaved
+#    changes.)
 # 3. Otherwise start it and open the browser; closing the browser stops it.
 #
 # Nothing here loads tflplanner before the update is done.

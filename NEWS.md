@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **An app started before an update says so** (#196).  The shortcut opens
+  tflplanner if it already runs, so one started before an update (still
+  running) kept showing the old version.  Its page now says, at the top, "A
+  newer version is installed: tflplanner X (this window runs Y). Save, then
+  Close (top right) and start tflplanner again." -- for tflspec and
+  rtfreporter too.  Nothing is stopped by itself (unsaved changes).
+
 - **From the screen review** (#193).
   - The report list's buttons (Add, Copy, Rename, Delete, the arrows,
     Take in a TOC...) are above the list, beside its search: below 200

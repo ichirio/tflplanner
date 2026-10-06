@@ -2161,3 +2161,6 @@ This report's analyses: %d (the study's: %d). The definition reads without error
 "This analysis alone as code, after Apply (the report's program: Code on the right)",この解析だけのコード（反映後。帳票のプログラム全体は右の［コード］）
 "Every report's analysis data, as a sheet: made in each report's step 2-1, and changed there or here (the study's sheet).",すべての帳票の解析データ（シートの形）。作るのは各帳票の段 2-1 です。直すのはそこでも、ここ（試験全体の表）でもできます。
 "The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved. The whole study's: the Data tab.",この帳票が読む analysis_data の行を、ブックと同じくすべての列で表示します。フォームに出ない列はここで書きます。新しい解析データの行は、保存すると入ります。試験全体の表は「データ」タブです。
+A newer version is installed:,新しい版が入っています：
+this window runs,この画面は
+"Save, then Close (top right) and start tflplanner again: until then this window runs the old version.",保存してから、右上の［閉じる］で閉じ、tflplanner を起動し直してください。それまでは、この画面は古い版のままです。
