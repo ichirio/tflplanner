@@ -3827,35 +3827,47 @@ app_server <- function(input, output, session, start) {
   }
   # the analysis sets as conditions to put in at once: the set's condition,
   # and its opposite (the rows not in it, a blank flag too)
-  adata_shortcuts <- function() {
+  adata_shortcuts <- shiny::reactive({
     po <- rv$p$ard$populations
     po <- po[!.is_blank_v(po$where), , drop = FALSE]
     if (!nrow(po)) return(NULL)
-    btn <- function(lab, v, pop) shiny::tags$button(
-      type = "button", class = "btn btn-sm btn-outline-secondary py-0",
-      onclick = adata_js("adata_short", list(where = v, pop = pop)), lab)
-    shiny::div(
-      class = "d-flex flex-wrap gap-1 align-items-center mb-1",
-      shiny::span(class = "small text-muted", t("Put in an analysis set's condition:")),
-      lapply(seq_len(nrow(po)), function(i) shiny::tagList(
-        btn(sprintf("%s (%s)", po$population_id[i], po$where[i]), po$where[i],
-            po$population_id[i]),
-        btn(sprintf(t("not %s"), po$population_id[i]), .cond_not(po$where[i]),
-            paste0("not", po$population_id[i])))))
-  }
-  shiny::observeEvent(input$adata_short, {
-    shiny::req(!is.null(adata_edit()))
-    cur <- trimws(input$adata_where %||% "")
-    v <- input$adata_short$where
-    shiny::updateTextInput(session, "adata_where",
-                           value = if (nzchar(cur)) paste(cur, "&", v) else v)
-    # a new data still under its suggested name: named after the set
-    e <- adata_edit()
-    if (is.null(e$old) && identical(input$adata_id, e$suggested)) {
-      nm <- paste0(tolower(adata_root(input$adata_from)), "_", tolower(input$adata_short$pop))
-      if (!nm %in% .adata_rows(rv$p)$data_id) shiny::updateTextInput(session, "adata_id", value = nm)
-    }
+    stats::setNames(c(po$where, vapply(po$where, .cond_not, "")),
+                    c(sprintf("%s (%s)", po$population_id, po$where),
+                      sprintf(t("not %s"), po$population_id)))
   })
+  # the rows kept: the condition builder (a condition rows cannot hold
+  # stays as R, as written)
+  adata_cond_value <- shiny::reactiveVal(NA_character_)
+  adata_cond_key <- shiny::reactiveVal(0L)
+  adata_cond <- condition_builder_server(
+    "adata_cond",
+    data = shiny::reactive({
+      shiny::req(!is.null(adata_edit()))
+      ds <- adata_root(input$adata_from %||% "")
+      if (.is_blank(ds)) NULL else an_data(ds)
+    }),
+    value = adata_cond_value, lang = lang, key = adata_cond_key,
+    shortcuts = adata_shortcuts)
+  adata_where_now <- function() {
+    v <- adata_cond()$expr
+    if (is.null(v) || !length(v) || is.na(v) || !nzchar(trimws(v))) NA_character_ else v
+  }
+  # a new data still under its suggested name: named after the set a
+  # shortcut puts in
+  shiny::observeEvent(adata_cond()$expr, {
+    e <- adata_edit()
+    shiny::req(!is.null(e), is.null(e$old), identical(input$adata_id, e$suggested))
+    w <- adata_where_now()
+    po <- rv$p$ard$populations
+    k <- match(w, po$where)
+    if (is.na(k)) return()
+    nm <- paste0(tolower(adata_root(input$adata_from)), "_", tolower(po$population_id[k]))
+    if (!nm %in% .adata_rows(rv$p)$data_id) {
+      shiny::updateTextInput(session, "adata_id", value = nm)
+      e$suggested <- nm
+      adata_edit(e)
+    }
+  }, ignoreInit = TRUE)
   adata_form <- function(r, title) {
     blank_na <- function(x) if (is.null(x) || !length(x) || is.na(x[1L])) "" else x[1L]
     p <- rv$p
@@ -3863,6 +3875,8 @@ app_server <- function(input, output, session, start) {
     e <- adata_edit()
     e$pop <- blank_na(r$population_id)
     adata_edit(e)
+    adata_cond_value(if (.is_blank(r$where)) NA_character_ else r$where)
+    adata_cond_key(shiny::isolate(adata_cond_key()) + 1L)
     old <- e$old
     above <- if (is.null(old)) ad$data_id else
       ad$data_id[seq_len(match(old, ad$data_id) - 1L)]
@@ -3911,10 +3925,8 @@ app_server <- function(input, output, session, start) {
         shiny::p(class = "small text-muted mb-0",
                  sprintf(t("Only the subjects in it (an inner join on %s): its condition, the analysis set's for one, is not written here again."),
                          key))),
-      shiny::tags$label(class = "form-label", argl("Rows kept (an R condition)", "where")),
-      adata_shortcuts(),
-      shiny::textInput("adata_where", NULL, blank_na(r$where), width = "100%",
-                       placeholder = sprintf(t("e.g. %s"), "PARAMCD == \"ALT\"")),
+      shiny::tags$label(class = "form-label", argl("Rows kept (a condition)", "where")),
+      condition_builder_ui("adata_cond", lang),
       if (nzchar(e$pop)) shiny::checkboxInput(
         "adata_pop_keep",
         sprintf(t("Kept to the analysis set %s too (as it was made: population_id)"), e$pop),
@@ -4003,7 +4015,7 @@ app_server <- function(input, output, session, start) {
     keep <- one(input$adata_keep)
     distinct <- one(input$adata_distinct)
     p <- set_analysis_data(p, id, from = from, population_id = pop, subjects = subjects,
-                           where = one(input$adata_where), add = add,
+                           where = adata_where_now(), add = add,
                            derive = one(input$adata_derive), keep = keep,
                            distinct = distinct, label = one(input$adata_label),
                            old = e$old)
@@ -4086,7 +4098,7 @@ app_server <- function(input, output, session, start) {
       cols <- .adata_preview_cols(d, list(add = one_of(input$adata_add),
                                           distinct = one_of(input$adata_distinct),
                                           derive = one_of(input$adata_derive),
-                                          where = one_of(input$adata_where)))
+                                          where = adata_where_now()))
       output$adata_preview_tbl <- shiny::renderTable(
         utils::head(d[cols], 5L), striped = TRUE, spacing = "xs")
       shiny::tagList(

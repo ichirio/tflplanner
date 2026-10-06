@@ -80,7 +80,7 @@ test_that("the ARD tab shows a report's analysis data and makes one", {
     expect_match(h, "pop_saf", fixed = TRUE)
     expect_match(h, "ard_adata_name", fixed = TRUE)
     session$setInputs(ard_adata_name = "|SAF")
-    session$setInputs(adata_from = "ADSL", adata_pop_keep = TRUE, adata_subj = "", adata_where = "",
+    session$setInputs(adata_from = "ADSL", adata_pop_keep = TRUE, adata_subj = "",
                       adata_add = NULL, adata_derive = "", adata_distinct = NULL,
                       adata_id = "adsl_saf", adata_label = "Safety set")
     session$setInputs(adata_preview = 1)
@@ -181,20 +181,23 @@ test_that("2-1: one list, a new analysis data, kept to another's subjects", {
     session$setInputs(ard_adata_new = 1)
     f <- output$adata_detail$html
     expect_lt(regexpr("adata_id", f), regexpr("adata_from", f))
-    expect_match(f, "adata_short", fixed = TRUE)
-    session$setInputs(adata_id = "adsl_saf", adata_label = "", adata_from = "ADSL",
-                      adata_subj = "", adata_where = "SAFFL == \"Y\"", adata_add = NULL,
+    expect_match(f, "adata_cond", fixed = TRUE)
+    session$setInputs(adata_label = "", adata_from = "ADSL", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL)
+    # the analysis set's shortcut: its condition, and the name after it
+    session$setInputs(`adata_cond-short` = 1)
+    session$setInputs(adata_id = "adsl_saf")
     session$setInputs(adata_save = 1)
     rv <- session$userData$rv
     ad <- .adata_rows(rv$p)
     expect_identical(ad$data_id, "adsl_saf")
-    expect_identical(ad$where, "SAFFL == \"Y\"")
+    expect_match(ad$where, "SAFFL", fixed = TRUE)
+    expect_match(ad$where, "\"Y\"", fixed = TRUE)
     expect_true(is.na(ad$population_id))
     # another kept to its subjects
     session$setInputs(ard_adata_new = 2)
     session$setInputs(adata_id = "adsl_old", adata_label = "", adata_from = "ADSL",
-                      adata_subj_on = TRUE, adata_where = "AGE >= 65", adata_add = NULL,
+                      adata_subj_on = TRUE, adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL)
     session$setInputs(adata_save = 2)
     ad <- .adata_rows(rv$p)
