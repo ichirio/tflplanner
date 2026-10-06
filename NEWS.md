@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **2-1, after trying it** (#206).  What a data is made from and its
+  analysis set come first (the name follows them).  The analysis set is the
+  condition's first row, put in at once (`SAFFL == "Y"`, changeable, other
+  rows under it), chosen from the study's analysis sets and the population
+  flags of the data; it is no population_id any more (a population_id a
+  sheet has is kept, said so).  2-1's and 2-2's explanations are in a
+  tooltip on their headings.  The sample's T-14-3-1 reads two analysis
+  data, adsl_saf (the safety set) and adae_saf (its TEAEs), its
+  denominator adsl_saf: the same tables.
+
 - **2-1: the analysis set as a field of its own** (#202).  After "Made
   from", "Analysis set": the study's analysis sets, each with its
   condition, or none (written as population_id); the condition builder
