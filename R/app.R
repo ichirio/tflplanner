@@ -3497,6 +3497,14 @@ app_server <- function(input, output, session, start) {
     have <- if (identical(r$method, r0$method)) .split_bar(r0$statistics) else
       character()
     extra <- setdiff(have, cat$statistic)
+    # the catalog's labels in the app's language ("stat-label:<label>" in
+    # the translations; as they are when there is none)
+    cat$label <- vapply(cat$label, function(l) {
+      if (is.na(l)) return(l)
+      k <- paste0("stat-label:", l)
+      v <- t(k)
+      if (identical(v, k)) l else v
+    }, "", USE.NAMES = FALSE)
     ch <- lapply(split(cat, factor(cat$group, levels = unique(cat$group))),
                  function(g) stats::setNames(as.list(g$statistic),
                                              paste0(g$statistic, " \u2014 ",
