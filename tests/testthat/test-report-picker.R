@@ -79,3 +79,18 @@ test_that("the list chooses the report; the tables search the same way", {
   expect_identical(.report_dt_search("T-14-3  \uff21dverse"), "t143 adverse")
   expect_identical(.report_dt_search(""), "")
 })
+
+test_that("a section is the heading when there is one, else the ID's numbers", {
+  expect_identical(.report_section(c("T-14-1-1", "T-14-2-1", "X"), c("table", "table", "listing"),
+                                   c("14.1 Demographics", NA, NA)),
+                   c("14.1 Demographics", "14.2", "listing"))
+  # headings by the number they start with (14.2 before 14.10), then the others
+  expect_identical(.section_order(c("14.10 Labs", "Other", "14.2 Vitals", "14.1")),
+                   c("14.1", "14.2 Vitals", "14.10 Labs", "Other"))
+  # an older study's report list (no section): from the IDs
+  p <- add_output(new_planner(), "T-14-1-1")
+  p$outputs$section <- NULL
+  p <- .renamed_outputs(p)
+  expect_true("section" %in% names(p$outputs))
+  expect_identical(.report_rows(p)$section, "14.1")
+})
