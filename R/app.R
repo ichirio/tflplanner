@@ -416,7 +416,7 @@ app_ui <- function(lang = "en") {
   }
   grid_note <- shiny::p(
     class = "text-muted small mb-1",
-    t("Right-click to add or delete rows. Paste from Excel works. Blank = not set. Several values in one cell: separate with |."))
+    t("Right-click to add or delete rows. Paste from Excel works. Blank = not set. Several values in one cell: separate with |. Spaces at the start or end of a text are kept only in quotes: \"  Total\"."))
   # a step of making a report: its name (one place: .step_labels) and its
   # state's mark
   step_title <- function(step) {
