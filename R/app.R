@@ -416,10 +416,10 @@ app_ui <- function(lang = "en") {
   }
   # a paragraph of help, as an (i) where there is no heading (R/help_tip.R)
   about <- function(x) about_tip(x, lang)
+  edit_note <- t("Right-click to add or delete rows. Paste from Excel works. Blank = not set. Several values in one cell: separate with |. Spaces at the start or end of a text are kept only in quotes: \"  Total\".")
   grid_note <- shiny::div(
     class = "text-muted small mb-1",
-    with_tip(t("Editing the sheet"),
-             t("Right-click to add or delete rows. Paste from Excel works. Blank = not set. Several values in one cell: separate with |. Spaces at the start or end of a text are kept only in quotes: \"  Total\".")))
+    with_tip(t("Editing the sheet"), edit_note))
   # a step of making a report: its name (one place: .step_labels) and its
   # state's mark
   step_title <- function(step) {
@@ -456,19 +456,13 @@ app_ui <- function(lang = "en") {
   # -- the steps of making a report ----------------------------------------
   step_codelist <- shiny::div(
     class = "mt-2",
-    about(t("The code lists this report uses: each variable's values, their order and the text they print as. The study's rows (blank output_id) apply to every report; this report's own rows replace them. Optional: a report that needs none skips this step.")),
+    pane_head(t("This report's code lists"), t("The code lists this report uses: each variable's values, their order and the text they print as. The study's rows (blank output_id) apply to every report; this report's own rows replace them. Optional: a report that needs none skips this step.")),
     # SPEC | Code | Result (R/result_tabs.R): no form of its own yet
     result_tabs_ui(
       "codelist_right", lang = lang,
       spec = shiny::tagList(grid_note, sheet_body("codelists")),
-      code = shiny::tagList(
-        shiny::p(class = "small text-muted",
-                 t("The code lists reach the report's ARD program: the levels, their order and labels.")),
-        code_view("codelist_code", lang)),
-      result = shiny::tagList(
-        shiny::p(class = "small text-muted",
-                 t("The code list this report uses: the study's rows, this report's own in their place.")),
-        DT::DTOutput("codelist_effective", height = "auto", fill = FALSE))))
+      code = code_view("codelist_code", lang),
+      result = DT::DTOutput("codelist_effective", height = "auto", fill = FALSE)))
 
   step_ard <- shiny::div(
     class = "mt-2",
@@ -625,30 +619,29 @@ app_ui <- function(lang = "en") {
                      t("A user-code report: this code leaves `content` (the same field as its Content). Nothing else here is used for it."))),
         shiny::textAreaInput(
           "data_code",
-          shiny::span(
-            title = t("1. ARD: make `ard` (Listing: rework `data`; Figure: the plot). Blank for a table = the company template: its rows of the study ARD."),
-            t("1. Data code: usually blank (the company's standard code is used). Write code here to make the data yourself; for a figure, the plot."), " \u24d8"),
+          with_tip(t("1. Data code"),
+                   paste(t("1. Data code: usually blank (the company's standard code is used). Write code here to make the data yourself; for a figure, the plot."),
+                         t("1. ARD: make `ard` (Listing: rework `data`; Figure: the plot). Blank for a table = the company template: its rows of the study ARD."))),
           rows = 10, width = "100%", resize = "vertical"),
         shiny::conditionalPanel(
           "output.report_kind != 'user'",
           shiny::textAreaInput(
             "process_code",
-            shiny::span(
-              title = t("2. Normalize and rework: make `data` from `ard` (normalize_ard(), then mutate() ...). Blank = the company template (normalize)."),
-              t("2. Rework: usually blank (the standard one). Write code to change the data before the table is made."), " \u24d8"),
+            with_tip(t("2. Rework"),
+                     paste(t("2. Rework: usually blank (the standard one). Write code to change the data before the table is made."),
+                           t("2. Normalize and rework: make `data` from `ard` (normalize_ard(), then mutate() ...). Blank = the company template (normalize)."))),
             rows = 5, width = "100%", resize = "vertical",
             placeholder = "data <- normalize_ard(ard)"),
           shiny::div(
             class = "d-flex gap-2 align-items-center mb-2",
             .btn("fetch", t("Preview"),
                  class = "btn-sm btn-outline-primary"),
-            shiny::span(class = "small text-muted",
-                        t("Makes this report's ARD (as Preview in step 2), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
+            help_tip(t("Makes this report's ARD (as Preview in step 2), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
           shiny::uiOutput("ard_summary")))))
 
   step_page <- shiny::div(
     class = "mt-2",
-    about(t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
+    pane_head(t("This report's page"), t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
     # SPEC | Code | Result: no form of its own; the program is the Code
     result_tabs_ui(
       "page_right", lang = lang,
@@ -680,6 +673,7 @@ app_ui <- function(lang = "en") {
                             shiny::tags$script(shiny::HTML(.split_js)),
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
                             shiny::tags$style(shiny::HTML(.help_tip_css)),
+                            shiny::tags$script(shiny::HTML(.help_tip_js)),
                             shiny::tags$script(shiny::HTML(.result_tabs_js)),
                             shiny::tags$script(shiny::HTML(.unsaved_js)),
                             shiny::tags$script(shiny::HTML(.updating_js)),
@@ -730,8 +724,7 @@ app_ui <- function(lang = "en") {
           shiny::uiOutput("study_detail"),
           shiny::conditionalPanel(
             "output.shows_open == 'yes'",
-            shiny::h6(class = "mt-2", paste0(t("Keys and setup code"), " (study)")),
-            about(t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source).")),
+            shiny::h6(class = "mt-2", with_tip(paste0(t("Keys and setup code"), " (study)"), t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source)."))),
             rhandsontable::rHandsontableOutput("hot_ard_study"),
             shiny::textAreaInput(
               "setup",
@@ -739,7 +732,7 @@ app_ui <- function(lang = "en") {
               rows = 4, width = "100%", resize = "vertical")),
           shiny::uiOutput("study_actions"))),
       bslib::card(
-          bslib::card_header(with_tip(t("Own ARD functions"), t("ARD functions of one's own, of two kinds: the company's, for every study (the standards folder), and this study's only (programs/ard/functions/). A study's copy of a company function wins in that study. An analysis names one as its method once the study loads it. They are R files, edited outside the app (RStudio ...): try one after a change."))),
+          bslib::card_header(with_tip(t("Own ARD functions"), t("Your own ARD functions: the company's (every study) and this study's (programs/ard/functions/; it wins over the company's). They are R files, edited outside the app; try one after a change."))),
           shiny::uiOutput("own_counts"),
           shiny::div(class = "mb-2 d-flex gap-2",
                      .btn("own_new", t("New function..."), class = "btn-sm btn-primary"),
@@ -781,7 +774,7 @@ app_ui <- function(lang = "en") {
         bslib::nav_panel(
           shiny::span(t("Study ARD"), shiny::uiOutput("ard_cond_badge", inline = TRUE)),
           value = "state",
-          about(paste(t("Build the ARD output by output as each is ready: tables can be made from the outputs already in it, while others are still being defined."), t("Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Runs tab. Choose a row to see its log in the latest official run."))),
+          pane_head(t("Study ARD"), paste(t("Build the ARD output by output as each is ready: tables can be made from the outputs already in it, while others are still being defined."), t("Preview (on this report's ARD) puts one report into the working study ARD and keeps no log; the official run, with its logs, is on the Runs tab."))),
           DT::DTOutput("ard_state"),
           shiny::div(class = "rp-code mt-2",
                      shiny::verbatimTextOutput("ard_log")),
@@ -794,7 +787,7 @@ app_ui <- function(lang = "en") {
           DT::DTOutput("ard_conds")),
         bslib::nav_panel(
           t("ARDs taken in"), value = "imports",
-          about(t("An ARD made elsewhere (a CRO, another program) is taken into the study's input/ard/ folder and recorded there. Making the ARD, rebuilding it and Preview write only to output/ard/, so an ARD taken in is never overwritten. A report uses it when its report row says so.")),
+          pane_head(t("ARDs taken in"), t("An ARD made elsewhere (a CRO, another program), kept in input/ard/: making the ARD never overwrites it. A report uses it when its report row says so.")),
           shiny::div(class = "mb-2",
                      .btn("imp_new", t("Take in an ARD..."), class = "btn-sm btn-primary")),
           DT::DTOutput("imp_list"),
@@ -802,9 +795,8 @@ app_ui <- function(lang = "en") {
         bslib::nav_item(shiny::div(class = "small text-muted fw-bold mt-3 px-2", t("Definitions"))),
         bslib::nav_panel(
           paste0(t("Datasets"), " (datasets)"), value = "datasets",
-          about(t("The datasets the study's programs read (the data catalog): a name, its level, its file in the study folder, columns derived. Defined once for the study, used by every report.")),
+          pane_head(paste0(t("Datasets"), " (datasets)"), paste(t("The datasets the study's programs read (the data catalog): a name, its level, its file in the study folder, columns derived. Defined once for the study, used by every report."), edit_note)),
           shiny::uiOutput("catalog_missing"),
-          grid_note,
           rhandsontable::rHandsontableOutput("hot_ard_datasets"),
           shiny::tags$details(
             class = "rp-help mt-2",
@@ -812,9 +804,8 @@ app_ui <- function(lang = "en") {
             DT::DTOutput("help_ard_datasets"))),
         bslib::nav_panel(
           paste0(t("Analysis sets"), " (populations)"), value = "populations",
-          shiny::p(class = "small text-muted",
-                   t("The analysis sets: the subjects of a dataset a condition keeps (SAFFL == \"Y\").")),
-          grid_note,
+          pane_head(paste0(t("Analysis sets"), " (populations)"),
+                    paste(t("The analysis sets: the subjects of a dataset a condition keeps (SAFFL == \"Y\")."), edit_note)),
           rhandsontable::rHandsontableOutput("hot_ard_populations"),
           shiny::tags$details(
             class = "rp-help mt-2",
@@ -822,8 +813,7 @@ app_ui <- function(lang = "en") {
             DT::DTOutput("help_ard_populations"))),
         bslib::nav_panel(
           paste0(t("Analysis data"), " (analysis_data)"), value = "analysis_data",
-          about(t("Every report's analysis data, as a sheet: made in each report's step 2-1, and changed there or here (the study's sheet).")),
-          grid_note,
+          pane_head(paste0(t("Analysis data"), " (analysis_data)"), paste(t("Every report's analysis data, as a sheet: made in each report's step 2-1, and changed there or here (the study's sheet)."), edit_note)),
           rhandsontable::rHandsontableOutput("hot_ard_analysis_data"),
           shiny::tags$details(
             class = "rp-help mt-2",
@@ -831,11 +821,10 @@ app_ui <- function(lang = "en") {
             DT::DTOutput("help_ard_analysis_data"))),
         bslib::nav_panel(
           t("Code lists (the study's)"), value = "codelists",
-          about(t("The study's code lists: each variable's values, their order and the text they print as, for every report (a report's own rows, in its step 1, replace them).")),
+          pane_head(t("Code lists (the study's)"), paste(t("The study's code lists: each variable's values, their order and the text they print as, for every report (a report's own rows, in its step 1, replace them)."), edit_note)),
           shiny::fileInput(
             "codelist_file", t("Read the study's code list (xlsx / csv: variable, value, label, order)"),
             accept = c(".xlsx", ".csv"), width = "100%"),
-          grid_note,
           rhandsontable::rHandsontableOutput("hot_codelists_study"),
           shiny::tags$details(
             class = "rp-help mt-2",
@@ -1588,24 +1577,24 @@ app_server <- function(input, output, session, start) {
                            selected = lang),
         .btn("save_language", t("Change"), class = "btn-sm mb-3")),
       shiny::checkboxInput(
-        "check_updates", t("Look for a newer version when tflplanner starts"),
+        "check_updates",
+        with_tip(t("Look for a newer version when tflplanner starts"),
+                 sprintf(t("Updates (%s channel) are installed from R, not from the app: update_tflplanner(), or the \"update and launch\" shortcut."),
+                         .update_channel())),
         value = !isFALSE(as.logical(tflplanner_config()$check_updates %||% "true"))),
-      shiny::p(class = "small text-muted mb-3",
-               sprintf(t("Updates (%s channel) are installed from R, not from the app: update_tflplanner(), or the \"update and launch\" shortcut."),
-                       .update_channel())),
-      shiny::p(class = "small text-muted mb-1",
-               t("The sample study: CDISC pilot data (pharmaverseadam), its ARD, 5 tables, a listing and 2 figures.")),
-      .btn("add_sample", t("Add the sample study"),
-           class = "btn-sm btn-outline-primary mb-2"),
+      shiny::div(
+        class = "mb-2",
+        .btn("add_sample", t("Add the sample study"), class = "btn-sm btn-outline-primary"),
+        help_tip(t("The sample study: CDISC pilot data (pharmaverseadam), its ARD, 5 tables, a listing and 2 figures."))),
       shiny::hr(),
-      shiny::p(shiny::strong(t("Company standards")), shiny::br(),
+      shiny::p(shiny::strong(with_tip(t("Company standards"),
+                                      t("Dropdowns, presets, statistics, ARD methods, listing types, and the defaults a new study starts with."))),
+               shiny::br(),
                if (file.exists(.standards_file())) {
                  a <- company_standards()$about
                  sprintf("%s %s (%s)", a$value[a$key == "name"],
                          a$value[a$key == "version"], .standards_file())
                } else t("the built-in draft")),
-      shiny::p(class = "small text-muted",
-               t("Dropdowns, presets, statistics, ARD methods, listing types, and the defaults a new study starts with.")),
       shiny::div(
         class = "d-flex flex-wrap gap-2",
         shiny::downloadButton("std_current", t("Download the standards in use"),
@@ -1990,8 +1979,7 @@ app_server <- function(input, output, session, start) {
         class = "d-flex flex-wrap gap-2 align-items-center mb-2",
         .btn("std_defaults", t("Add the company's study defaults (only what is missing)"),
              class = "btn-sm btn-outline-primary"),
-        shiny::span(class = "small text-muted",
-                    t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, analysis sets and data catalog. Nothing already there is changed."))))
+        help_tip(t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, analysis sets and data catalog. Nothing already there is changed."))))
   })
   output$study_actions <- shiny::renderUI({
     shiny::req(shows_open())
@@ -6267,7 +6255,8 @@ app_server <- function(input, output, session, start) {
       table = t("This is a Table: it is made in Table (builder) and Details (sheets)."),
       listing = t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 3, Data code), if any, changes the data after the condition."),
       figure = t("This is a Figure: it is made in Make the figure."))
-    if (identical(lf_type(), "listing")) return(about_tip(msg, lang))
+    # a listing's: the (i) of its form's heading
+    if (identical(lf_type(), "listing")) return(NULL)
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
   # a figure without a design: its user code (the plot written by hand) --
@@ -6485,7 +6474,7 @@ app_server <- function(input, output, session, start) {
                         max_rows = if (is.na(mr)) "" else as.character(mr))
     shiny::div(
       class = "rp-b-card",
-      shiny::h6(t("Listing")),
+      shiny::h6(with_tip(t("Listing"), t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 3, Data code), if any, changes the data after the condition."))),
       shiny::div(
         class = "d-flex flex-wrap gap-2",
         shiny::selectInput(lf_id("type"), t("Type"), type_ch,
@@ -6712,8 +6701,9 @@ app_server <- function(input, output, session, start) {
              class = "btn-sm btn-primary ms-1")),
       hierarchy = t("This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Edit it in Details (sheets); the preview works."),
       NULL)
-    if (is.null(msg)) return(about_tip(
-      t("Drag to order, type to rename; every change is written to the sheets (Details) and shown on the right."), lang))
+    if (is.null(msg)) return(pane_head(
+      t("Table builder"),
+      t("Drag to order, type to rename; every change is written to the sheets (Details) and shown on the right.")))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
   bid <- function(x) paste0("b", bform$n, "_", x)
@@ -7505,7 +7495,8 @@ app_server <- function(input, output, session, start) {
         "input.modal_type == 'listing'",
         shiny::checkboxInput(
           "modal_first_l",
-          t("Start the listing from the data (writes its columns and shows it)"),
+          with_tip(t("Start from the data"),
+                   t("Start the listing from the data (writes its columns and shows it)")),
           value = TRUE, width = "100%"),
         shiny::conditionalPanel("input.modal_first_l",
                                 shiny::uiOutput("modal_first_l_ui"))),
@@ -7513,7 +7504,8 @@ app_server <- function(input, output, session, start) {
         "input.modal_type == 'table'",
         shiny::checkboxInput(
           "modal_first",
-          t("Start the table from the data (writes its ARD definition and opens the builder)"),
+          with_tip(t("Start from the data"),
+                   t("Start the table from the data (writes its ARD definition and opens the builder)")),
           value = !nrow(rv$p$ard$analyses), width = "100%"),
         shiny::conditionalPanel("input.modal_first",
                                 shiny::uiOutput("modal_first_ui"))),

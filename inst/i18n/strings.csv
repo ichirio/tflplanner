@@ -2183,6 +2183,67 @@ Analysis set (population_id): that of %s (%s).,解析対象集団（population_i
 "%s, already there, is this same data: no need to make it again (in 2-2, choose %s).",すでにある %s が同じ解析データです。作り直す必要はありません（2-2 では %s を選んでください）。
 About this,この画面について
 Editing the sheet,シートの編集
+This report's code lists,この帳票のコードリスト
+This report's page,この帳票のページ
+Table builder,表ビルダー
+A new figure,新しい図
+The figure's design,図のデザイン
+1. Data code,1. データ準備コード
+2. Rework,2. 加工
+Start from the data,データから始める
+"Your own ARD functions: the company's (every study) and this study's (programs/ard/functions/; it wins over the company's). They are R files, edited outside the app; try one after a change.",独自の ARD 関数：会社の関数（すべての試験）と、この試験の関数（programs/ard/functions/。会社の関数より優先）。R のファイルで、アプリの外（RStudio など）で直します。直したら試してください。
+"An ARD made elsewhere (a CRO, another program), kept in input/ard/: making the ARD never overwrites it. A report uses it when its report row says so.",ほかで作った ARD（CRO、ほかのプログラム）を input/ard/ に置きます。ARD を作っても上書きされません。帳票の report の行で指定すると、その帳票がこの ARD を使います。
+"Preview (on this report's ARD) puts one report into the working study ARD and keeps no log; the official run, with its logs, is on the Runs tab.",プレビュー（この帳票の ARD）は、1 帳票を作業用の試験 ARD に入れ、ログは残しません。ログを残す正式実行は「実行」タブです。
+The definition has changed: saving rewrites the program as below.,定義が変わりました。保存すると、プログラムは下の内容に書き直されます。
+stat-label:n (non-missing values),n（欠測でない値の数）
+stat-label:Mean,平均
+stat-label:SD,標準偏差
+stat-label:Median,中央値
+stat-label:Q1 (25th percentile),Q1（25 パーセント点）
+stat-label:Q3 (75th percentile),Q3（75 パーセント点）
+stat-label:Min,最小値
+stat-label:Max,最大値
+stat-label:SE of the mean,平均の標準誤差
+stat-label:Variance,分散
+stat-label:CV (%),変動係数（%）
+stat-label:Range (max - min),範囲（最大 - 最小）
+stat-label:IQR (Q3 - Q1),四分位範囲（Q3 - Q1）
+stat-label:Sum,合計
+stat-label:5th percentile,5 パーセント点
+stat-label:10th percentile,10 パーセント点
+stat-label:90th percentile,90 パーセント点
+stat-label:95th percentile,95 パーセント点
+stat-label:Mean: lower 95% confidence limit (t),平均：95% 信頼下限（t）
+stat-label:Mean: upper 95% confidence limit (t),平均：95% 信頼上限（t）
+stat-label:Geometric mean,幾何平均
+stat-label:Geometric SD,幾何標準偏差
+stat-label:Geometric CV (%),幾何変動係数（%）
+stat-label:Geometric mean: lower 95% confidence limit,幾何平均：95% 信頼下限
+stat-label:Geometric mean: upper 95% confidence limit,幾何平均：95% 信頼上限
+stat-label:Mean of log values,対数値の平均
+stat-label:SD of log values,対数値の標準偏差
+stat-label:n (subjects / records in the level),n（その水準の被験者数／レコード数）
+stat-label:N (the denominator),N（分母）
+stat-label:Percent (n / N),割合（n / N）
+stat-label:Cumulative n,累積 n
+stat-label:Cumulative percent,累積割合
+stat-label:Number of records,レコード数
+stat-label:Missing,欠測
+stat-label:Non-missing,欠測でない
+stat-label:Percent missing,欠測の割合
+stat-label:Percent non-missing,欠測でない割合
+stat-label:Estimate,推定値
+stat-label:Lower confidence limit,信頼下限
+stat-label:Upper confidence limit,信頼上限
+stat-label:Standard error,標準誤差
+stat-label:Estimate of group 1,群 1 の推定値
+stat-label:Estimate of group 2,群 2 の推定値
+stat-label:Test statistic,検定統計量
+stat-label:Degrees of freedom,自由度
+stat-label:p-value,p 値
+stat-label:Confidence level,信頼水準
+stat-label:Number at risk,リスク集合の数
+stat-label:Number of events,イベント数
 "This report's analyses (the ARD): the data in 2-1, the analyses in 2-2.",この帳票の解析（ARD）の定義。データは 2-1、解析は 2-2。
 The report's analyses. Each one's Data: an analysis data of 2-1; the denominator of a percent: chosen with it. ARD: the data of the analyses' results (the tables are made from it). Analysis set: the subjects a percent is of (SAF ...).,帳票の解析。各解析のデータは 2-1 の解析データ、% の分母は解析と一緒に選びます。ARD = 解析結果のデータ（表はここから作ります）。解析対象集団 = 分母になる被験者の集まり（SAF など）。
 Analysis %s,解析 %s

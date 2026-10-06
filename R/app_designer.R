@@ -236,7 +236,7 @@
     msg <- switch(m,
       none = t("Choose a Figure report on the left."),
       other = t("Figures are designed here: choose a Figure report on the left."),
-      hand = if (fig_is_new()) t("A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead, open User code at the bottom.") else
+      hand = if (fig_is_new()) pane_head(t("A new figure"), t("A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead, open User code at the bottom.")) else
         shiny::tagList(
           shiny::div(t("This figure is written by hand. Two ways:")),
           shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mt-1",
@@ -245,7 +245,10 @@
                           class = "btn-sm btn-primary py-0")),
           shiny::div(class = "mt-1",
                      t("Make it again with the designer: the first step below (a template or empty)."))),
-      t("Choose a piece on the left to change it on the right; the figure is redrawn as its program will save it. Empty = the default (shown grey)."))
+      pane_head(t("The figure's design"),
+                t("Choose a piece on the left to change it on the right; the figure is redrawn as its program will save it. Empty = the default (shown grey).")))
+    # a heading (its (i) the explanation) as it is; a note in a box
+    if (inherits(msg, "shiny.tag") && identical(msg$name, "h6")) return(msg)
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
 
@@ -293,11 +296,9 @@
           shiny::uiOutput("pd_tpl_more"))),
       if (nrow(pr)) shiny::conditionalPanel(
         "input.pd_from == 'preset'",
-        shiny::selectInput("pd_preset", t("Preset"),
+        shiny::selectInput("pd_preset", with_tip(t("Preset"), t("A preset is a design kept with the company standards (Save as preset, on a designed figure). It is copied as it is; change its dataset and parameter after.")),
                            stats::setNames(pr$name, ifelse(nzchar(pr$description),
-                                                           paste0(pr$name, " - ", pr$description), pr$name))),
-        shiny::p(class = "small text-muted",
-                 t("A preset is a design kept with the company standards (Save as preset, on a designed figure). It is copied as it is; change its dataset and parameter after."))))
+                                                           paste0(pr$name, " - ", pr$description), pr$name)))))
   }
   output$pd_body <- shiny::renderUI({
     m <- mode()
@@ -308,15 +309,13 @@
         bslib::layout_columns(
           col_widths = bslib::breakpoints(sm = 12, lg = c(8, 4)),
           shiny::div(
-            shiny::h6(t("Start from a template")),
-            shiny::p(class = "small text-muted",
-                     t("Choose a type, its data and a few settings, then apply: the designer gets its layers at once, to add to and change.")),
+            shiny::h6(with_tip(t("Start from a template"),
+                               t("Choose a type, its data and a few settings, then apply: the designer gets its layers at once, to add to and change."))),
             start_inputs(),
             shiny::div(.btn("pd_start", t("Apply the template"), class = "btn-sm btn-primary"))),
           shiny::div(
-            shiny::h6(t("Start empty")),
-            shiny::p(class = "small text-muted",
-                     t("Only ggplot() and the data it reads: add the layers one by one.")),
+            shiny::h6(with_tip(t("Start empty"),
+                               t("Only ggplot() and the data it reads: add the layers one by one."))),
             shiny::div(.btn("pd_empty", t("Start empty"), class = "btn-sm btn-outline-primary"))))))
     }
     id <- current()
@@ -364,9 +363,8 @@
       bslib::card(
         bslib::card_header(t("Edit")),
         shiny::uiOutput("pd_form"),
-        shiny::h6(class = "mt-3", t("Code of this piece")),
-        shiny::p(class = "small text-muted mb-1",
-                 t("What this piece writes into the program; it follows every change.")),
+        shiny::h6(class = "mt-3", with_tip(t("Code of this piece"),
+                                           t("What this piece writes into the program; it follows every change."))),
         shiny::div(class = "rp-code pd-piece-code", shiny::verbatimTextOutput("pd_piece_code"))),
       bslib::navset_card_tab(
         bslib::nav_panel(t("Code"), shiny::div(
