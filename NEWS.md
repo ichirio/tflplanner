@@ -1,5 +1,43 @@
 # tflplanner (development version)
 
+- **A program is the definition's: saving writes it again, even one edited
+  by hand** (#187; design 13-00).  A report, ARD or run program whose
+  checksum no longer matched (edited by hand) used to be kept on save, so
+  the program and the definition drifted apart and an official run ran
+  the edited one.  Now a save always writes the programs from the
+  definition; one edited by hand is first copied to `programs/.edited/`
+  (named after its place and the time: `tfl_T-14-1-1_<date>-<time>.R`)
+  and the save says so.  What it changed belongs in the definition: the
+  data code, a user-code report, a custom analysis (args, post), where /
+  derive.  The "Regenerate this program" button and
+  `save_study(regenerate =)` are gone.  An ARD program of a report no
+  longer defined goes even when edited (its copy kept the same way).  The
+  guide says it (11.1): to use a generated program as a template, copy it
+  elsewhere and edit it there, outside the tool.  **A study with programs
+  edited by hand gets them written again at its next save** (their
+  results may change; the edited ones are in `programs/.edited/`).
+
+- **A form writes only what was changed in it** (#187; design 13-2).
+  Each form of steps 1, 3 and 4 has a test: a definition with values the
+  form cannot show is read, shown, one other field changed and saved, and
+  those values are as they were.  What it found:
+  - The table builder, only shown, wrote its own cells over the report's:
+    a statistic's own template, its condition (`when`), `signif` and
+    digits, and renumbered the variables' `order`.  It now writes only the
+    parts changed (the key, a label, the order when moved, the levels, the
+    statistics, the decimals -- the digits then, the templates kept --,
+    the categorical format).
+  - The listing form, only shown, erased `blank_row` and `wrap`; a dataset
+    the catalog does not have became blank; with no data in the catalog
+    the form did not draw.  Its fields are now written into the row as it
+    is, each only when changed, and a value the choices lack is offered.
+  - The figure designer turned a field's value through the form on first
+    show (a number written as text became a number), and an edit of the
+    whole figure dropped its arguments the schema does not list.  It
+    writes only the fields changed, into the arguments as they are.
+  - `builder_write()` has `was`: the description as read (only what
+    differs from it is written).
+
 - **2-2: an analysis written as code** (#186; tflspec #143).  "Write
   this analysis as code..." in the analysis form shows the code its fields
   make now and, confirmed, makes it a custom analysis with that code and

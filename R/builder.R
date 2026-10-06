@@ -95,6 +95,10 @@ builder_stats <- function() {
 #' @param output_id The report.
 #' @param meta Its [ard_meta()], or `NULL`.
 #' @param state What `builder_read()` returns, as edited.
+#' @param was What `builder_read()` returned before the edit, or `NULL`.
+#'   Given it, only what differs from it is written: what the builder does
+#'   not show (a statistic's own template, a condition, an order of one's
+#'   own) stays as the sheets have it.  `NULL` writes the whole description.
 #' @return `builder_read()`: a list -- `key` (the column variables,
 #'   outermost first), `arms` (a named list: each column variable's levels
 #'   in order), `variables` (a data frame: `variable`,
@@ -178,17 +182,25 @@ builder_read <- function(x, output_id, meta = NULL) {
 
 #' @rdname builder_read
 #' @export
-builder_write <- function(x, output_id, state) {
+builder_write <- function(x, output_id, state, was = NULL) {
   id <- output_id
   st <- state
+  # what the form changed from what it read (`was`): only that is written,
+  # so what the form cannot show -- a statistic's own template, a
+  # condition, an order of one's own -- stays as the sheets have it
+  changed <- function(part) is.null(was) || !identical(st[[part]], was[[part]])
   # tables: the column key, and one group per variable unless said otherwise
   tb <- sheet_rows(x, "tables", id)
   tb$output_id <- NULL
   if (!nrow(tb)) tb[1L, ] <- NA
-  if (!anyNA(st$key)) tb$cols[1L] <- paste(st$key, collapse = " | ")
+  # (a key the sheets do not state yet, read from the ARD, is written too)
+  inh_tb <- inherited_rows(x, "tables", id)
+  no_cols <- is.na(tb$cols[1L]) && (!nrow(inh_tb) || is.na(inh_tb$cols[1L]))
+  put_key <- !anyNA(st$key) && (changed("key") || no_cols)
+  if (put_key) tb$cols[1L] <- paste(st$key, collapse = " | ")
   # whose {n} the header prints (the form asks only when a cell uses {n})
   if (!is.null(st$header_n) && "header_n" %in% names(tb)) tb$header_n[1L] <- st$header_n
-  if (is.na(tb$rows[1L])) {
+  if (is.na(tb$rows[1L]) && (is.null(was) || put_key)) {
     inh <- inherited_rows(x, "tables", id)
     if (!nrow(inh) || is.na(inh$rows[1L])) tb$rows[1L] <- "group = variable"
   }
@@ -199,6 +211,7 @@ builder_write <- function(x, output_id, state) {
   vr$output_id <- NULL
   put <- function(vr, v, ...) {
     val <- list(...)
+    if (!length(val)) return(vr)
     i <- match(v, vr$variable)
     if (is.na(i)) {
       vr[nrow(vr) + 1L, ] <- NA
@@ -213,63 +226,96 @@ builder_write <- function(x, output_id, state) {
     if (identical(l, st$auto_levels[[v]])) NA_character_ else j(l)
   }
   if (!anyNA(st$key)) for (k in st$key) {
-    vr <- put(vr, k, levels = lv(k, st$arms[[k]] %||% st$auto_levels[[k]]))
+    l <- st$arms[[k]] %||% st$auto_levels[[k]]
+    if (is.null(was) || !identical(l, was$arms[[k]] %||% was$auto_levels[[k]])) {
+      vr <- put(vr, k, levels = lv(k, l))
+    }
   }
   v <- st$variables
+  wv <- was$variables
+  # the order is written when the variables were moved (then all of them)
+  moved <- is.null(was) || !identical(v$variable, wv$variable)
   for (i in seq_len(nrow(v))) {
-    vr <- put(vr, v$variable[i],
-              label = if (is.na(v$label[i]) || !nzchar(v$label[i])) NA else
-                v$label[i],
-              order = as.character(i),
-              levels = if (identical(v$kind[i], "categorical"))
-                lv(v$variable[i], st$levels[[v$variable[i]]]) else
-                  NA_character_)
+    nm <- v$variable[i]
+    w <- if (!is.null(wv)) match(nm, wv$variable) else NA_integer_
+    val <- list()
+    lab <- if (is.na(v$label[i]) || !nzchar(v$label[i])) NA_character_ else v$label[i]
+    if (is.na(w) || !identical(v$label[i], wv$label[w])) val$label <- lab
+    if (moved) val$order <- as.character(i)
+    cat_v <- identical(v$kind[i], "categorical")
+    if (is.na(w) || !identical(st$levels[[nm]], was$levels[[nm]]) ||
+        !identical(v$kind[i], wv$kind[w])) {
+      val$levels <- if (cat_v) lv(nm, st$levels[[nm]]) else NA_character_
+    }
+    vr <- do.call(put, c(list(vr, nm), val))
   }
   empty <- rowSums(!is.na(vr[setdiff(names(vr), "variable")])) == 0 &
     vr$variable %in% st$key
   x <- set_sheet_rows(x, "variables", id, vr[!empty, , drop = FALSE])
 
-  # cells: the continuous statistics and the categorical format it manages
+  # cells: the continuous statistics and the categorical format it manages,
+  # each written only when changed
+  cont_ch <- changed("stats") || changed("decimals")
+  cat_ch <- changed("cat_format") || changed("pct_decimals")
+  if (!cont_ch && !cat_ch) return(.builder_header(x, id, st))
   ce <- sheet_rows(x, "cells", id)
   ce$output_id <- NULL
   bs <- builder_stats()
-  mine <- (!is.na(ce$variable) & ce$variable == "continuous" &
-             ce$row %in% bs$row) |
-    (!is.na(ce$variable) & ce$variable == "categorical" & is.na(ce$row))
+  is_cont <- !is.na(ce$variable) & ce$variable == "continuous" & ce$row %in% bs$row
+  is_cat <- !is.na(ce$variable) & ce$variable == "categorical" & is.na(ce$row)
+  mine <- (cont_ch & is_cont) | (cat_ch & is_cat)
   keep <- ce[!mine, , drop = FALSE]
   new <- ce[0, , drop = FALSE]
-  # a table of categorical variables only has no statistics to state
-  had <- any(!is.na(ce$variable) & ce$variable == "continuous")
-  stats <- if (had || any(st$variables$kind == "continuous")) st$stats else
-    character()
-  for (k in stats) {
-    b <- bs[bs$key == k, ]
-    new[nrow(new) + 1L, ] <- NA
-    new$variable[nrow(new)] <- "continuous"
-    new$row[nrow(new)] <- b$row
-    new$template[nrow(new)] <- b$template
-    new$digits[nrow(new)] <- .stat_digits(k, st$decimals)
+  if (cont_ch) {
+    # a table of categorical variables only has no statistics to state
+    had <- any(!is.na(ce$variable) & ce$variable == "continuous")
+    stats <- if (had || any(st$variables$kind == "continuous")) st$stats else
+      character()
+    old <- ce[is_cont, , drop = FALSE]
+    for (k in stats) {
+      b <- bs[bs$key == k, ]
+      if (b$row %in% old$row) {
+        # a statistic kept: its own rows as written (its template, the
+        # chain of conditions), the digits only when the decimals changed
+        r <- old[old$row == b$row, , drop = FALSE]
+        if (changed("decimals")) r$digits <- .stat_digits(k, st$decimals)
+        new <- rbind(new, r)
+        next
+      }
+      new[nrow(new) + 1L, ] <- NA
+      new$variable[nrow(new)] <- "continuous"
+      new$row[nrow(new)] <- b$row
+      new$template[nrow(new)] <- b$template
+      new$digits[nrow(new)] <- .stat_digits(k, st$decimals)
+    }
+    inh <- inherited_rows(x, "cells", id)
+    inh_cont <- inh[!is.na(inh$variable) & inh$variable == "continuous", ,
+                    drop = FALSE]
+    same <- function(a, b) {
+      identical(paste(a$row, a$template, a$digits),
+                paste(b$row, b$template, b$digits))
+    }
+    if (nrow(inh_cont) && same(new, inh_cont)) new <- new[0, , drop = FALSE]
   }
-  inh <- inherited_rows(x, "cells", id)
-  inh_cont <- inh[!is.na(inh$variable) & inh$variable == "continuous", ,
-                  drop = FALSE]
-  same <- function(a, b) {
-    identical(paste(a$row, a$template, a$digits),
-              paste(b$row, b$template, b$digits))
+  if (cat_ch) {
+    tpl <- .cat_template(st$cat_format, st$pct_decimals)
+    inh <- inherited_rows(x, "cells", id)
+    inh_cat <- inh[(!is.na(inh$variable) & inh$variable == "categorical") |
+                     (is.na(inh$variable) & is.na(inh$row)), , drop = FALSE]
+    if (!identical(inh_cat$template[1L], tpl)) {
+      new[nrow(new) + 1L, ] <- NA
+      new$variable[nrow(new)] <- "categorical"
+      new$template[nrow(new)] <- tpl
+    }
   }
-  if (nrow(inh_cont) && same(new, inh_cont)) new <- new[0, , drop = FALSE]
-  tpl <- .cat_template(st$cat_format, st$pct_decimals)
-  inh_cat <- inh[(!is.na(inh$variable) & inh$variable == "categorical") |
-                   (is.na(inh$variable) & is.na(inh$row)), , drop = FALSE]
-  if (!identical(inh_cat$template[1L], tpl)) {
-    new[nrow(new) + 1L, ] <- NA
-    new$variable[nrow(new)] <- "categorical"
-    new$template[nrow(new)] <- tpl
-  }
+  # the rows written first, in the place the builder's rows had
   x <- set_sheet_rows(x, "cells", id, rbind(new, keep))
+  .builder_header(x, id, st)
+}
 
-  # the column header: the form's rows (a data frame), written as the
-  # report's own only when they differ from the header it has now
+# the column header: the form's rows (a data frame), written as the
+# report's own only when they differ from the header it has now
+.builder_header <- function(x, id, st) {
   if (is.data.frame(st$header)) {
     own <- sheet_rows(x, "col_header", id)
     own$output_id <- NULL

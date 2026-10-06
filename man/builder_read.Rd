@@ -7,7 +7,7 @@
 \usage{
 builder_read(x, output_id, meta = NULL)
 
-builder_write(x, output_id, state)
+builder_write(x, output_id, state, was = NULL)
 }
 \arguments{
 \item{x}{An \code{tflplanner}.}
@@ -17,6 +17,11 @@ builder_write(x, output_id, state)
 \item{meta}{Its \code{\link[=ard_meta]{ard_meta()}}, or \code{NULL}.}
 
 \item{state}{What \code{builder_read()} returns, as edited.}
+
+\item{was}{What \code{builder_read()} returned before the edit, or \code{NULL}.
+Given it, only what differs from it is written: what the builder does
+not show (a statistic's own template, a condition, an order of one's
+own) stays as the sheets have it.  \code{NULL} writes the whole description.}
 }
 \value{
 \code{builder_read()}: a list -- \code{key} (the column variables,
