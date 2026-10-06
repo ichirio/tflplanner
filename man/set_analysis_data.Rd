@@ -19,7 +19,8 @@ set_analysis_data(
   label = NA,
   old = NULL,
   subjects = NA,
-  keep = NA
+  keep = NA,
+  code = NA
 )
 
 remove_analysis_data(x, data_id)
@@ -43,6 +44,9 @@ columns with \code{" | "} between them).}
 
 \item{old}{The name of the one to replace; \code{NULL}: a new one.}
 
+\item{code}{R that makes the data itself (its value is the data); with
+it the other columns but \code{from} stay blank.}
+
 \item{output_id}{The report.}
 
 \item{dataset}{The dataset its analyses read (\code{NA}: the analysis set's
@@ -56,9 +60,10 @@ The analysis data are named data the analyses read (tflspec's sheet
 \code{analysis_data}): made \code{from} a dataset or an analysis data above,
 kept to a population's subjects and the records \code{where} keeps, with
 columns of the population's data added (\code{add}), columns derived
-(\code{derive}) and one row per set of values (\code{distinct}).  An analysis
-names one in \code{data} (instead of \code{dataset} / \code{population_id}), or as its
-\code{denominator}.
+(\code{derive}) and one row per set of values (\code{distinct}) -- or, when the
+columns cannot say it, made by R of its own (\code{code}, the other columns
+but \code{from} blank).  An analysis names one in \code{data} (instead of
+\code{dataset} / \code{population_id}), or as its \code{denominator}.
 }
 \details{
 \code{set_analysis_data()} adds one, or replaces the one named \code{old} (a new

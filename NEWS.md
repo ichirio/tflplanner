@@ -38,6 +38,13 @@
   - `builder_write()` has `was`: the description as read (only what
     differs from it is written).
 
+- **2-1: an analysis data written as R** (#184; tflspec #141).  "Write it
+  as R (code)" in the form: R whose value is the data, for what the fields
+  cannot say.  Written, the fields that make a data are greyed and saved
+  blank; "Start from the generated code" fills it with the lines the
+  program makes the data with now.  The R is part of the definition: the
+  program is never edited.  `set_analysis_data(code =)`.
+
 - **2-1 in step 2's SPEC | Code | Result** (#182).  The right of step 2
   follows what is open on the left: an analysis data open in 2-1 shows its
   rows of analysis_data in SPEC (the report's and the one open) and its

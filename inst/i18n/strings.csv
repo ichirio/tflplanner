@@ -2140,3 +2140,8 @@ the study,試験共通
 this report,この帳票
 Result,結果
 "%d programs edited by hand were written again from the definition; the edited ones are in programs/.edited/. Put what they changed in the definition: the data code, a user-code report, a custom analysis, where / derive.",手で修正されていた %d 本のプログラムを、定義から書き直しました。修正された版は programs/.edited/ にあります。直したい点は定義に書いてください（データ準備コード、ユーザーコードの帳票、custom の解析、where／derive）。
+Write it as R (code),R のコードで書く（code）
+"When the fields above cannot say it: R whose value is the data (the datasets, pop_<set> and the analysis data above are in reach). Written here, the fields above are not used. The program is never edited: this R is part of the definition.",上の欄で書けないときに：値がそのデータになる R（データセット・pop_<集団>・上の行の解析データを使えます）。ここに書くと上の欄は使われません。プログラムは直接直しません。この R は定義（Spec）の一部です。
+Start from the generated code,生成されたコードから始める
+The code cannot be written yet: give the data a name and what it is made from.,まだコードを作れません。データの名前と元のデータを入れてください。
+"R that makes the data itself, when the columns cannot say it: its value is the data; the datasets (adae), pop_<population> and the analysis data above are in reach. With it, the columns but from are left blank; blank: the columns make the data.",列で書けないときに、データそのものを作る R：値がそのデータになります。データセット（adae）・pop_<集団>・上の行の解析データを使えます。書いたときは from 以外の列は空欄にします。空欄 = 列でデータを作る。

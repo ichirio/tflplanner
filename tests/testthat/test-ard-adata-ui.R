@@ -254,3 +254,42 @@ test_that("2-1's sheet: the report's rows edited in their place; a `from` the fo
   })
 })
 
+test_that("a data written as R: the code the program has as a start; saved, the fields left blank", {
+  p <- adata_planner()
+  p$ard$datasets <- .normalize_ard_sheet(data.frame(
+    dataset = c("ADSL", "ADAE"), path = c("data/adam/adsl.rds", "data/adam/adae.rds")), "datasets")
+  p <- set_analysis_data(p, "adsl_saf", from = "ADSL", where = "SAFFL == \"Y\"")
+  p <- set_analysis_data(p, "adae_teae", from = "ADAE", subjects = "adsl_saf",
+                         where = "TRTEMFL == \"Y\"")
+  v <- .adata_code_start(p, "adae_teae")
+  expect_identical(v, "adae_teae <- subset(adae, USUBJID %in% adsl_saf$USUBJID & (TRTEMFL == \"Y\"))\nadae_teae")
+  q <- set_analysis_data(p, "adae_teae", from = "ADAE", code = v, old = "adae_teae")
+  ad <- .adata_rows(q)
+  expect_identical(ad$code[2L], v)
+  expect_silent(suppressWarnings(.ard_spec(q$ard)))
+  skip_if_not_installed("cards")
+  local_home()
+  s <- create_study("CO", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  saveRDS(cards::ADAE, file.path(s$path, "data", "adam", "adae.rds"))
+  shiny::testServer(server_for("CO"), {
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_adata_pick = "adae_teae")
+    expect_match(output$adata_detail$html, "adata_code", fixed = TRUE)
+    session$setInputs(adata_id = "adae_teae", adata_label = "", adata_from = "ADAE", adata_add = NULL,
+                      adata_derive = "", adata_keep = NULL, adata_distinct = NULL,
+                      adata_code = "dplyr::filter(adae, AESER == \"Y\")")
+    session$setInputs(adata_save = 1)
+    rv <- session$userData$rv
+    ad <- .adata_rows(rv$p)
+    r <- ad[ad$data_id == "adae_teae", ]
+    expect_identical(r$code, "dplyr::filter(adae, AESER == \"Y\")")
+    # written as R: the fields that make a data are not used
+    expect_true(is.na(r$subjects))
+    expect_true(is.na(r$where))
+    # made by it
+    d <- .adata_make(rv$p, s$path, "adae_teae")
+    expect_true(all(d$AESER == "Y"))
+  })
+})
+
