@@ -2267,3 +2267,9 @@ Only the subjects in that analysis data: its condition (its analysis set's too) 
 "When the fields cannot say it: R whose value is the data (the datasets, pop_<set> and the analysis data above are in reach); written, the fields above are not used. The program is never edited: this R is the definition.",欄で書けないとき、値がデータになる R（データセット、pop_<集団>、上の解析データが使えます）。書くと上の欄は使われません。プログラムは直しません（この R が定義です）。
 The method,手法
 "The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (press Apply to the analysis first). The code is part of the definition: the program is never edited.",手法が custom になり、今の定義から書いたこのコードが解析になります（同じ ARD。先に［解析に反映］を押してください）。コードは定義の一部で、プログラムは直しません。
+This report's analysis set,この帳票の解析対象集団
+"The report list's analysis set (the TOC's): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 2-1 and 2-2 start from it.",帳票一覧（TOC）の解析対象集団と同じ 1 つの値です。選ぶと、その集団の被験者のデータ（adsl_<集団>）が作られ、この帳票の解析もそちらに移ります。2-1・2-2 の既定もこれです。
+%s made (save to keep it).,%s を作りました（保存すると残ります）。
+%s left as it is: change it in 2-1 if it should follow the analysis set.,%s はそのままです。解析対象集団に合わせるなら 2-1 で直してください。
+%s has no %s: its condition is not taken as the analysis set %s (written as a condition).,%s に %s がありません。条件は解析対象集団 %s とみなさず、ただの条件として書きます。
+%s's %s is not %s's for %d subjects: its condition is not taken as the analysis set %s (written as a condition).,%s の %s は %s と %d 例で違います。条件は解析対象集団 %s とみなさず、ただの条件として書きます。

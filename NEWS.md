@@ -1,5 +1,19 @@
 # tflplanner (development version)
 
+- **A report's analysis set is one value** (#217).  The report list's
+  `population` (the TOC's, step 2's): `set_report_population()` writes it,
+  makes the data of the set's subjects (`adsl_<set>`) when there is none,
+  and moves the report's analyses to the new set's data (and the data kept
+  to the old set's subjects, found or made with the same definition; data
+  of another kind are left and said).  Step 2 chooses it above 2-1 ("This
+  report's analysis set"); 2-1's new data and 2-2's new analysis start
+  from it.  A set's flag on another dataset (ADAE's SAFFL) is the set only
+  when it agrees with the set's dataset subject by subject; else it is a
+  condition, and the form says so.  The company standards' analysis sets
+  are those the company may use (a new study gets them all).  The report
+  list shows the report's set, else its analyses' (their analysis data's
+  too).
+
 - **2-2's analysis form, after a look at it** (#215).  The card has one
   heading ("Analysis A1 (i)"; "Analysis" while none is chosen); the method
   is "The method (method)" and is described once, under it; the formats'
