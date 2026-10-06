@@ -38,6 +38,13 @@
   - `builder_write()` has `was`: the description as read (only what
     differs from it is written).
 
+- **2-2: an analysis written as code** (#186; tflspec #143).  "Write
+  this analysis as code..." in the analysis form shows the code its fields
+  make now and, confirmed, makes it a custom analysis with that code and
+  its formats written out: the same ARD, then the code is changed for what
+  the fields cannot say.  A custom analysis has its code on the form.  The
+  code is part of the definition: the program is never edited.
+
 - **2-1: an analysis data written as R** (#184; tflspec #141).  "Write it
   as R (code)" in the form: R whose value is the data, for what the fields
   cannot say.  Written, the fields that make a data are greyed and saved

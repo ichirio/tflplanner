@@ -3066,6 +3066,10 @@ app_server <- function(input, output, session, start) {
                t("The rows the analysis reads: an analysis data as 2-1 above makes it, or the dataset's records of the analysis set's subjects. The name is the one the program gives the data.")),
       shiny::uiOutput("ard_an_vars"),
       shiny::uiOutput("ard_an_args"),
+      if (identical(r$method, "custom")) shiny::tagList(
+        shiny::tags$label(class = "form-label", argl("The code (R: `data` and `population` are the analysis's data and analysis set)", "code")),
+        shiny::textAreaInput(st_id("code"), NULL, blank_na(r$code), width = "100%", rows = 8,
+                             resize = "vertical")),
       if (!inside) shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
         shiny::tags$summary(class = "small", argl("Subset (an R condition)", "where")),
@@ -3078,6 +3082,9 @@ app_server <- function(input, output, session, start) {
              class = "btn-sm btn-primary"),
         if (role == "single" && !r$method %in% .stack_not_inside)
           .btn("ard_stack_group", t("Run together with other analyses..."),
+               class = "btn-sm btn-outline-secondary"),
+        if (role == "single" && !identical(r$method, "custom"))
+          .btn("ard_an_as_code", t("Write this analysis as code..."),
                class = "btn-sm btn-outline-secondary"),
         shiny::span(class = "small text-muted",
                     t("Format: xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown."))),
@@ -3629,6 +3636,7 @@ app_server <- function(input, output, session, start) {
     a$statistics[i] <- one(pick)
     a$formats[i] <- if (length(fm))
       paste(paste0(names(fm), "=", fm), collapse = " | ") else NA
+    if (identical(a$method[i], "custom") && !is.null(g("code"))) a$code[i] <- one(g("code"))
     # it becomes a stack: what it computed goes into one inside it
     to_stack <- identical(a$method[i], .stack_fn) && !identical(r$method, .stack_fn)
     if (to_stack) {
@@ -3639,6 +3647,47 @@ app_server <- function(input, output, session, start) {
     bump()
     notify(sprintf(t("%s: written"), new_id))
     if (to_stack) notify(sprintf(t("%s runs analyses together now: add them inside it."), new_id))
+  })
+  # an analysis the fields cannot say: written as code (a custom analysis),
+  # starting from the code its fields make now -- the same ARD; the
+  # definition keeps the code (the program is never edited)
+  an_as_code <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(input$ard_an_as_code, {
+    r <- st_row()
+    shiny::req(r)
+    v <- tryCatch(tflspec::tfl_ard_as_custom(structure(rv$p$ard, class = "tfl_ard_spec"),
+                                             r$output_id, r$analysis_id),
+                  error = function(e) NULL)
+    if (is.null(v) || is.na(v$code)) {
+      return(notify(t("This analysis cannot be written as code from here (one run with others: write the stack's)."), "warning"))
+    }
+    an_as_code(c(list(output_id = r$output_id, analysis_id = r$analysis_id), v))
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("Write %s as code"), r$analysis_id), size = "l", easyClose = TRUE,
+      shiny::p(t("The analysis becomes a custom one: its method custom, its code this (from the definition as it is now -- Apply first what the form has changed). It makes the same ARD; then the code can be changed for what the fields cannot say. The code is part of the definition: the program is never edited.")),
+      shiny::div(class = "rp-code", shiny::tags$pre(v$code)),
+      if (!is.na(v$formats)) shiny::p(class = "small text-muted",
+                                     sprintf(t("Formats written out (its method's defaults with its own): %s"), v$formats)),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("ard_an_as_code_ok", t("Write it as code"), class = "btn-primary"))))
+  })
+  shiny::observeEvent(input$ard_an_as_code_ok, {
+    v <- an_as_code()
+    shiny::req(v)
+    a <- rv$p$ard$analyses
+    if (is.null(a$code)) a$code <- rep(NA_character_, nrow(a))
+    i <- which(!is.na(a$output_id) & a$output_id == v$output_id & a$analysis_id == v$analysis_id)[1L]
+    shiny::req(!is.na(i))
+    a$method[i] <- v$method
+    a$code[i] <- v$code
+    a$formats[i] <- v$formats
+    # what the code says now
+    for (cn in c("args", "strata", "denominator")) a[[cn]][i] <- NA
+    rv$p$ard$analyses <- a
+    shiny::removeModal()
+    an_as_code(NULL)
+    bump()
+    notify(sprintf(t("%s is written as code (custom)."), v$analysis_id))
   })
   # a new analysis for the report: the data, analysis set and groups of the
   # one shown (or the report's analysis data), to be filled in on the form

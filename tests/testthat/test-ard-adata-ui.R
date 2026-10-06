@@ -293,3 +293,27 @@ test_that("a data written as R: the code the program has as a start; saved, the 
   })
 })
 
+test_that("2-2: an analysis written as code (custom) from what its fields make", {
+  skip_if_not_installed("cards")
+  local_home()
+  p <- adata_planner()
+  s <- create_study("AC", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("AC"), {
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_ol_pick = "AGE")
+    expect_match(output$ard_stat_ui$html, "ard_an_as_code", fixed = TRUE)
+    session$setInputs(ard_an_as_code = 1)
+    session$setInputs(ard_an_as_code_ok = 1)
+    rv <- session$userData$rv
+    a <- rv$p$ard$analyses
+    r <- a[a$analysis_id == "AGE", ]
+    expect_identical(r$method, "custom")
+    expect_match(r$code, "cards::ard_summary(data", fixed = TRUE)
+    # the definition takes it, and the form shows its code now
+    expect_silent(suppressWarnings(.ard_spec(rv$p$ard)))
+    session$setInputs(ard_ol_pick = "AGE")
+    expect_false(grepl("ard_an_as_code\"", output$ard_stat_ui$html, fixed = TRUE))
+  })
+})
+

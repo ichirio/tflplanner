@@ -2145,3 +2145,11 @@ Write it as R (code),R のコードで書く（code）
 Start from the generated code,生成されたコードから始める
 The code cannot be written yet: give the data a name and what it is made from.,まだコードを作れません。データの名前と元のデータを入れてください。
 "R that makes the data itself, when the columns cannot say it: its value is the data; the datasets (adae), pop_<population> and the analysis data above are in reach. With it, the columns but from are left blank; blank: the columns make the data.",列で書けないときに、データそのものを作る R：値がそのデータになります。データセット（adae）・pop_<集団>・上の行の解析データを使えます。書いたときは from 以外の列は空欄にします。空欄 = 列でデータを作る。
+The code (R: `data` and `population` are the analysis's data and analysis set),コード（R：`data` と `population` がこの解析のデータと解析対象集団）
+Write this analysis as code...,この解析をコードで書く...
+This analysis cannot be written as code from here (one run with others: write the stack's).,この解析はここからコードにできません（ほかの解析と一緒に実行するもの：まとめの側を書いてください）。
+Write %s as code,%s をコードで書く
+"The analysis becomes a custom one: its method custom, its code this (from the definition as it is now -- Apply first what the form has changed). It makes the same ARD; then the code can be changed for what the fields cannot say. The code is part of the definition: the program is never edited.",この解析は custom（独自のコード）になります。手法は custom、コードは下のもの（今の定義から作ります。フォームで変えたところは先に［解析に反映］してください）。同じ ARD ができます。そのあと、欄では書けないところをコードで直せます。コードは定義（Spec）の一部です。プログラムは直接直しません。
+Formats written out (its method's defaults with its own): %s,書き出した書式（手法の既定とこの解析の指定）：%s
+Write it as code,コードにする
+%s is written as code (custom).,%s をコード（custom）にしました。
