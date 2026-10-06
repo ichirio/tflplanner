@@ -2178,3 +2178,5 @@ Flags of the data that are no analysis set yet:,まだ解析対象集団にな�
 Make %s an analysis set,%s を解析対象集団にする
 Analysis set (population_id): that of %s (%s).,解析対象集団（population_id）：%s のもの（%s）。
 %s is an analysis set now: %s of %s (the Data tab has it too).,%s を解析対象集団にしました：%s の %s（データタブにも入りました）。
+About this,この画面について
+Editing the sheet,シートの編集
