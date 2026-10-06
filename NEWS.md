@@ -9,6 +9,15 @@
   analysis sets and analysis data have their column help; 2-1's SPEC says a
   new data's row comes when it is saved.
 
+- **Spaces typed at the start or end of a text are kept** (#190).  The
+  definition's rule (tflspec's, for text columns) is that such spaces
+  count only inside quotes (`"  Total"`), so a pasted cell's stray spaces
+  do not print.  A form now writes a text typed with them quoted, and
+  shows it without the quotes: the builder's column header (the form that
+  writes a text column of the display sheets).  The grids say the rule in
+  their note.  Nothing else changes: SAMPLE-01's programs, ARD and RTFs are
+  the same, and no fingerprint moves.
+
 - **A program is the definition's: saving writes it again, even one edited
   by hand** (#187; design 13-00).  A report, ARD or run program whose
   checksum no longer matched (edited by hand) used to be kept on save, so
