@@ -447,8 +447,18 @@ app_ui <- function(lang = "en") {
     class = "mt-2",
     shiny::p(class = "small text-muted",
              t("The code lists this report uses: each variable's values, their order and the text they print as. The study's rows (blank output_id) apply to every report; this report's own rows replace them. Optional: a report that needs none skips this step.")),
-    grid_note,
-    sheet_body("codelists"))
+    # SPEC | Code | Result (R/result_tabs.R): no form of its own yet
+    result_tabs_ui(
+      "codelist_right", lang = lang,
+      spec = shiny::tagList(grid_note, sheet_body("codelists")),
+      code = shiny::tagList(
+        shiny::p(class = "small text-muted",
+                 t("The code lists reach the report's ARD program: the levels, their order and labels.")),
+        code_view("codelist_code", lang)),
+      result = shiny::tagList(
+        shiny::p(class = "small text-muted",
+                 t("The code list this report uses: the study's rows, this report's own in their place.")),
+        DT::DTOutput("codelist_effective", height = "auto", fill = FALSE))))
 
   step_ard <- shiny::div(
     class = "mt-2",
@@ -464,7 +474,7 @@ app_ui <- function(lang = "en") {
       shiny::div(
         id = "ard_pane", class = "btn-group btn-group-sm", role = "group",
         lay_btn("data-pane" = "def", t("ARD definition")),
-        lay_btn("data-pane" = "out", t("Code / ARD")))),
+        lay_btn("data-pane" = "out", "SPEC | Code | Result"))),
     shiny::div(
       id = "ard_split", class = "rp-split rp-lay-side rp-show-def",
       bslib::card(
@@ -481,16 +491,7 @@ app_ui <- function(lang = "en") {
                            shiny::uiOutput("ard_2_2_head"),
                            # the outline first: a click shows the analysis
                            # as a form below; the sheet itself folded
-                           shiny::uiOutput("ard_outline"),
-                           shiny::tags$details(
-                             class = "mt-2",
-                             # Handsontable draws itself again on a resize
-                             ontoggle = "window.dispatchEvent(new Event('resize'))",
-                             shiny::tags$summary(class = "small", t("Details (the sheet)")),
-                             shiny::checkboxInput(
-                               "ard_all", t("Every report's analyses (with output_id)"),
-                               FALSE),
-                             rhandsontable::rHandsontableOutput("hot_ard_analyses")))),
+                           shiny::uiOutput("ard_outline"))),
         shiny::uiOutput("ard_check"),
         shiny::div(
           class = "rp-b-card mt-2",
@@ -504,10 +505,14 @@ app_ui <- function(lang = "en") {
           class = "rp-help mt-2",
           shiny::tags$summary(t("Statistics (company standards)")),
           DT::DTOutput("ard_stat_catalog"))),
-      bslib::navset_card_tab(
-        id = "ard_right",
-        bslib::nav_panel(
-          t("Code (cards / cardx)"), value = "code",
+      # SPEC | Code | Result (R/result_tabs.R).  SPEC and Result are
+      # filled by the server (ard_spec_pane, ard_result_pane): what is
+      # chosen on the left decides what they show (2-2 an analysis; 2-1
+      # an analysis data, S1's)
+      result_tabs_ui(
+        "ard_right", lang = lang, selected = "code",
+        spec = shiny::uiOutput("ard_spec_pane"),
+        code = shiny::tagList(
           shiny::radioButtons(
             "ard_scope", NULL,
             stats::setNames(c("report", "setup", "autoexec"),
@@ -515,17 +520,8 @@ app_ui <- function(lang = "en") {
                               "autoexec_ard.R")),
             inline = TRUE),
           shiny::uiOutput("ard_prog_state"),
-          shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_code"))),
-        bslib::nav_panel(
-          t("ARD (this report)"), value = "result",
-          shiny::div(
-            class = "d-flex flex-wrap gap-2 align-items-center",
-            .btn("ard_preview", t("Preview"), class = "btn-sm btn-primary"),
-            shiny::span(class = "small text-muted",
-                        t("Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills."))),
-          shiny::uiOutput("ard_run_info"),
-          shiny::div(class = "rp-resize",
-                     DT::DTOutput("ard_table", height = "auto", fill = FALSE))))))
+          code_view("ard_code", lang)),
+        result = shiny::uiOutput("ard_result_pane"))))
 
   step_content <- bslib::navset_underline(
     id = "content_nav",
@@ -535,32 +531,31 @@ app_ui <- function(lang = "en") {
         "output.report_kind == 'table'",
         # not a card: a card around the sheets' own card makes the inner one a
         # fill item of a box with no height, and every grid in it 0 px high
-        bslib::navset_underline(
-          id = "table_nav",
-          bslib::nav_panel(
-            t("Table (builder)"), value = "builder",
-            shiny::uiOutput("builder_note"),
-            bslib::layout_columns(
-              col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
-              shiny::uiOutput("builder_form"),
-              bslib::card(
-                bslib::card_header(shiny::div(
-                  class = "d-flex justify-content-between",
-                  shiny::span(t("Preview: the table as it will print"),
+        shiny::div(
+          shiny::uiOutput("builder_note"),
+          bslib::layout_columns(
+            col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
+            shiny::uiOutput("builder_form"),
+            result_tabs_ui(
+              "table_right", lang = lang, selected = "result",
+              spec = shiny::tagList(
+                shiny::uiOutput("type_note"),
+                shiny::div(class = "rp-assist border rounded p-2 mb-2",
+                           shiny::uiOutput("assist")),
+                grid_note,
+                do.call(bslib::navset_card_underline,
+                        c(list(id = "table_sheet"),
+                          lapply(setdiff(table_sheets(), "codelists"), sheet_panel)))),
+              code = code_view("program_table", lang),
+              result = shiny::tagList(
+                shiny::div(
+                  class = "d-flex justify-content-between small mb-1",
+                  shiny::span(t("The table as it will print"),
                               shiny::span(id = "builder_updating",
                                           class = "badge text-bg-warning ms-2 d-none",
                                           t("Updating ..."))),
-                  shiny::uiOutput("builder_pages", inline = TRUE))),
-                shiny::uiOutput("builder_preview")))),
-          bslib::nav_panel(
-            t("Details (sheets)"), value = "table_spec",
-            shiny::uiOutput("type_note"),
-            shiny::div(class = "rp-assist border rounded p-2 mb-2",
-                       shiny::uiOutput("assist")),
-            grid_note,
-            do.call(bslib::navset_card_underline,
-                    c(list(id = "table_sheet"),
-                      lapply(setdiff(table_sheets(), "codelists"), sheet_panel)))))),
+                  shiny::uiOutput("builder_pages", inline = TRUE)),
+                shiny::uiOutput("builder_preview")))))),
       shiny::conditionalPanel(
         "output.report_kind == 'listing'",
         shiny::uiOutput("lf_note"),
@@ -569,13 +564,18 @@ app_ui <- function(lang = "en") {
           shiny::div(
             shiny::uiOutput("lf_form"),
             shiny::uiOutput("lf_cols_box")),
-          bslib::card(
-            bslib::card_header(shiny::div(
-              class = "d-flex justify-content-between align-items-center",
-              shiny::span(t("Preview")),
-              .btn("lf_preview", t("Preview the listing"),
-                   class = "btn-sm btn-outline-primary"))),
-            shiny::uiOutput("lf_preview_out")))),
+          result_tabs_ui(
+            "lf_right", lang = lang, selected = "result",
+            spec = shiny::tagList(
+              shiny::p(class = "small text-muted",
+                       t("The listing's row of the definition (listings); its columns are the grid on the left.")),
+              rhandsontable::rHandsontableOutput("hot_lf_listings")),
+            code = code_view("program_lf", lang),
+            result = shiny::tagList(
+              shiny::div(class = "mb-2",
+                         .btn("lf_preview", t("Preview the listing"),
+                              class = "btn-sm btn-outline-primary")),
+              shiny::uiOutput("lf_preview_out"))))),
       .designer_ui(t),
       shiny::conditionalPanel(
         "output.report_kind == 'user'",
@@ -593,14 +593,17 @@ app_ui <- function(lang = "en") {
                        shiny::textAreaInput("uc_code", t("Code"), rows = 14,
                                             width = "100%", resize = "vertical",
                                             placeholder = "content <- adsl[, c(\"USUBJID\", \"AGE\")]"))),
-          bslib::card(
-            bslib::card_header(shiny::div(
-              class = "d-flex justify-content-between align-items-center",
-              shiny::span(t("Try it")),
-              .btn("uc_run", t("Run the code"), class = "btn-sm btn-outline-primary"))),
-            shiny::p(class = "small text-muted",
-                     t("Runs the report's code in a fresh R process from the study folder, as its program will, and shows what it left: the first table page, the first figure.")),
-            shiny::div(style = "overflow-x: auto;", shiny::uiOutput("uc_result")))))),
+          result_tabs_ui(
+            "uc_right", lang = lang, selected = "result",
+            spec = shiny::p(class = "small text-muted",
+                            t("A user-code report's definition is its code, on the left, and its page (step 4).")),
+            code = code_view("program_uc", lang),
+            result = shiny::tagList(
+              shiny::div(class = "d-flex gap-2 align-items-center mb-1",
+                         .btn("uc_run", t("Run the code"), class = "btn-sm btn-outline-primary")),
+              shiny::p(class = "small text-muted",
+                       t("Runs the report's code in a fresh R process from the study folder, as its program will, and shows what it left: the first table page, the first figure.")),
+              shiny::div(style = "overflow-x: auto;", shiny::uiOutput("uc_result"))))))),
     bslib::nav_panel(
       t("Data code"), value = "code",
       shiny::uiOutput("current_label"),
@@ -634,30 +637,26 @@ app_ui <- function(lang = "en") {
                         t("Makes this report's ARD (as Preview in step 2), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
           shiny::uiOutput("ard_summary")))))
 
-  step_page <- bslib::navset_underline(
-    id = "page_nav",
-    bslib::nav_panel(
-      t("Page"), value = "page",
-      shiny::p(class = "small text-muted",
-               t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
-      bslib::layout_columns(
-        col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
-        shiny::div(
-          grid_note,
-          do.call(bslib::navset_card_underline,
-                  lapply(report_sheets(), sheet_panel))),
-        bslib::card(
-          bslib::card_header(shiny::div(
-            class = "d-flex justify-content-between align-items-center",
-            shiny::span(t("First page (sample)")),
-            .btn("page_full", t("Full size"),
-                 class = "btn-sm btn-outline-secondary py-0"))),
-          shiny::uiOutput("page_sample")))),
-    bslib::nav_panel(
-      t("Program"), value = "program",
-      shiny::uiOutput("program_state"),
-      shiny::div(class = "rp-code",
-                 shiny::verbatimTextOutput("program"))))
+  step_page <- shiny::div(
+    class = "mt-2",
+    shiny::p(class = "small text-muted",
+             t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
+    # SPEC | Code | Result: no form of its own; the program is the Code
+    result_tabs_ui(
+      "page_right", lang = lang,
+      spec = shiny::tagList(
+        grid_note,
+        do.call(bslib::navset_card_underline,
+                lapply(report_sheets(), sheet_panel))),
+      code = shiny::tagList(
+        shiny::uiOutput("program_state"),
+        code_view("program", lang)),
+      result = shiny::tagList(
+        shiny::div(class = "d-flex justify-content-between align-items-center mb-1 small",
+                   shiny::span(t("First page (sample)")),
+                   .btn("page_full", t("Full size"),
+                        class = "btn-sm btn-outline-secondary py-0")),
+        shiny::uiOutput("page_sample"))))
 
   bslib::page_navbar(
     id = "nav",
@@ -671,6 +670,8 @@ app_ui <- function(lang = "en") {
                               "$(document).on('change', '.ard-fn-list input[type=radio]',",
                               "function() { $(this).closest('details.ard-fn').prop('open', false); });"))),
                             shiny::tags$script(shiny::HTML(.split_js)),
+                            shiny::tags$style(shiny::HTML(.result_tabs_css)),
+                            shiny::tags$script(shiny::HTML(.result_tabs_js)),
                             shiny::tags$script(shiny::HTML(.unsaved_js)),
                             shiny::tags$script(shiny::HTML(.updating_js)),
                             shiny::tags$script(shiny::HTML(.dt_adjust_js)),
@@ -2081,7 +2082,7 @@ app_server <- function(input, output, session, start) {
       content = if (identical(input$content_nav, "code")) "code" else
         switch(report_kind(), table = "tables", listing = "lf",
                figure = "designer", user = "usercode", "outputs"),
-      page = if (identical(input$page_nav, "program")) "code" else "report_spec",
+      page = if (identical(input$page_right, "code")) "code" else "report_spec",
       "outputs")
   })
   # a page: its top tab, and for a report's, its step (and the step's tab)
@@ -2095,7 +2096,7 @@ app_server <- function(input, output, session, start) {
     if (identical(step, "content")) {
       bslib::nav_select("content_nav", if (identical(where, "code")) "code" else "content")
     }
-    if (identical(step, "page")) bslib::nav_select("page_nav", "page")
+    if (identical(step, "page")) bslib::nav_select("page_right", "spec")
   }
   # The report chosen in the list: where its kind is made, as buttons
   output$report_moves <- shiny::renderUI({
@@ -2198,6 +2199,10 @@ app_server <- function(input, output, session, start) {
       d <- read_grid(h)
       if (is.null(d)) return()
       guarded(rv$p <- set_sheet_rows(rv$p, sh, target(), d))
+      # the table's builder shows the sheets: drawn again from them
+      if (sh %in% table_sheets() && identical(active_page(), "builder")) {
+        rv$bver <- rv$bver + 1L
+      }
     })
     inherited <- shiny::reactive({
       id <- current()
@@ -4640,6 +4645,20 @@ app_server <- function(input, output, session, start) {
     }
     paste(code, collapse = "\n")
   })
+  # SPEC | Code | Result of step 2 (R/result_tabs.R): SPEC the analyses
+  # sheet (this report's, or every report's), Result this report's ARD
+  output$ard_spec_pane <- shiny::renderUI(shiny::tagList(
+    shiny::checkboxInput("ard_all", t("Every report's analyses (with output_id)"), FALSE),
+    rhandsontable::rHandsontableOutput("hot_ard_analyses")))
+  output$ard_result_pane <- shiny::renderUI(shiny::tagList(
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-center",
+      .btn("ard_preview", t("Preview"), class = "btn-sm btn-primary"),
+      shiny::span(class = "small text-muted",
+                  t("Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills."))),
+    shiny::uiOutput("ard_run_info"),
+    shiny::div(class = "rp-resize",
+               DT::DTOutput("ard_table", height = "auto", fill = FALSE))))
   # what the Code panel shows, as the save would write it
   ard_code_now <- shiny::reactive({
     a <- structure(rv$p$ard, class = "tfl_ard_spec")
@@ -6177,6 +6196,30 @@ app_server <- function(input, output, session, start) {
     if (is.null(d)) return()
     guarded(rv$p <- set_lf_rows(rv$p, "listing_cols", current(), d))
   })
+  lf_key <- shiny::reactive(paste("lf_listings", input$target, rv$ver, sep = "|"))
+  output$hot_lf_listings <- rhandsontable::renderRHandsontable({
+    shiny::req(identical(lf_type(), "listing"))
+    id <- current()
+    p <- shiny::isolate(rv$p)
+    d <- lf_rows(p, "listings", id)
+    d$output_id <- NULL
+    grids_drawn()
+    .grid(d, "listings", lf_key(),
+          list(type = listing_types()$type, dataset = shiny::isolate(catalog())$dataset))
+  })
+  shiny::observeEvent(input$hot_lf_listings, {
+    h <- input$hot_lf_listings
+    if (is.null(h$changes$changes) &&
+        !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
+    if (!identical(h$params$planner_key, lf_key())) return()
+    d <- read_grid(h)
+    if (is.null(d)) return()
+    p2 <- guarded(set_lf_rows(rv$p, "listings", current(), d))
+    if (!is.null(p2)) {
+      rv$p <- p2
+      bump()
+    }
+  })
   lf_pv <- shiny::reactiveVal(NULL)
   shiny::observeEvent(current(), {
     if (!identical(lf_pv()$id, current())) lf_pv(NULL)
@@ -6230,13 +6273,20 @@ app_server <- function(input, output, session, start) {
   # the page shown: a Tables sub-tab counts as its own page
   active_page_now <- shiny::reactive({
     nav <- page()
-    if (identical(nav, "tables")) input$table_nav %||% "builder" else nav
+    if (identical(nav, "tables")) "builder" else nav
   })
   # Passed on only when the page changes: page() reads the report's kind
   # from rv$p, which every edit writes -- as a reactive, each edit counted
   # as opening the builder again and redrew its form mid-typing.
   active_page <- shiny::reactiveVal("")
   shiny::observe(active_page(active_page_now()), priority = 100)
+  shiny::observeEvent(list(rv$btouched, input$table_right), {
+    if (identical(active_page(), "builder") && identical(input$table_right, "spec") &&
+        isTRUE(rv$btouched)) {
+      rv$btouched <- FALSE
+      bump()
+    }
+  })
   shiny::observeEvent(active_page(), {
     if (identical(active_page(), "builder")) rv$bver <- rv$bver + 1L
     if (active_page() %in% c("table_spec", "report_spec") && rv$btouched) {
@@ -6990,10 +7040,40 @@ app_server <- function(input, output, session, start) {
     if (!identical(rv$p$setup, v)) rv$p$setup <- v
   }, ignoreInit = TRUE)
 
-  output$program <- shiny::renderText({
+  program_text <- shiny::reactive({
     id <- current()
     if (is.null(id)) return("")
     paste(program_code(rv$p, id), collapse = "\n")
+  })
+  output$program <- shiny::renderText(program_text())
+  output$program_table <- shiny::renderText(program_text())
+  output$program_lf <- shiny::renderText(program_text())
+  output$program_uc <- shiny::renderText(program_text())
+  # step 1: the report's ARD program (where the code lists reach), and the
+  # code list it uses
+  output$codelist_code <- shiny::renderText({
+    id <- current()
+    if (is.null(id) || !has_study()) return("")
+    a <- structure(rv$p$ard, class = "tfl_ard_spec")
+    if (!any(a$analyses$output_id %in% id)) {
+      return(sprintf(t("%s has no analyses in the ARD definition."), id))
+    }
+    tryCatch(paste(ard_program_code(a, id, dir = rv$study$path,
+                                    codelists = .study_codelists(rv$p)),
+                   collapse = "\n"),
+             error = function(e) conditionMessage(e))
+  })
+  output$codelist_effective <- DT::renderDT({
+    id <- current()
+    shiny::req(has_study(), !is.null(id))
+    d <- .study_codelists(rv$p)
+    shiny::validate(shiny::need(!is.null(d), t("No code list yet.")))
+    d <- d[is.na(d$output_id) | d$output_id == id, , drop = FALSE]
+    own <- unique(d$variable[!is.na(d$output_id)])
+    d <- d[!is.na(d$output_id) | !d$variable %in% own, , drop = FALSE]
+    d$from <- ifelse(is.na(d$output_id), t("the study"), t("this report"))
+    d$output_id <- NULL
+    .dt(d)
   })
   output$program_state <- shiny::renderUI({
     id <- current()
@@ -7224,7 +7304,7 @@ app_server <- function(input, output, session, start) {
     attr(p2, "group_missing") <- NULL
     after_id_change(p2, id)
     go("tables")
-    bslib::nav_select("table_nav", "builder")
+    bslib::nav_select("table_right", "result")
     do_preview(id)
   }
   shiny::observeEvent(input$copy, {
