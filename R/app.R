@@ -3960,16 +3960,6 @@ app_server <- function(input, output, session, start) {
     ds <- unique(stats::na.omit(rv$p$ard$populations$dataset))
     if (length(ds)) ds else "ADSL"
   }
-  # the analysis sets as conditions to put in at once: the set's condition,
-  # and its opposite (the rows not in it, a blank flag too)
-  adata_shortcuts <- shiny::reactive({
-    po <- rv$p$ard$populations
-    po <- po[!.is_blank_v(po$where), , drop = FALSE]
-    if (!nrow(po)) return(NULL)
-    stats::setNames(c(po$where, vapply(po$where, .cond_not, "")),
-                    c(sprintf("%s (%s)", po$population_id, po$where),
-                      sprintf(t("not %s"), po$population_id)))
-  })
   # the rows kept: the condition builder (a condition rows cannot hold
   # stays as R, as written)
   adata_cond_value <- shiny::reactiveVal(NA_character_)
@@ -3981,14 +3971,13 @@ app_server <- function(input, output, session, start) {
       ds <- adata_root(input$adata_from %||% "")
       if (.is_blank(ds)) NULL else an_data(ds)
     }),
-    value = adata_cond_value, lang = lang, key = adata_cond_key,
-    shortcuts = adata_shortcuts)
+    value = adata_cond_value, lang = lang, key = adata_cond_key)
   adata_where_now <- function() {
     v <- adata_cond()$expr
     if (is.null(v) || !length(v) || is.na(v) || !nzchar(trimws(v))) NA_character_ else v
   }
-  # a new data still under its suggested name: named after the set a
-  # shortcut puts in
+  # a new data still under its suggested name: named after the analysis
+  # set whose condition the rows now say (SAFFL == "Y": adsl_saf)
   shiny::observeEvent(adata_cond()$expr, {
     e <- adata_edit()
     shiny::req(!is.null(e), is.null(e$old), identical(input$adata_id, e$suggested))

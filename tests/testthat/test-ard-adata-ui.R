@@ -184,8 +184,10 @@ test_that("2-1: one list, a new analysis data, kept to another's subjects", {
     expect_match(f, "adata_cond", fixed = TRUE)
     session$setInputs(adata_label = "", adata_from = "ADSL", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL)
-    # the analysis set's shortcut: its condition, and the name after it
-    session$setInputs(`adata_cond-short` = 1)
+    # the analysis set's condition, built from a row
+    session$setInputs(`adata_cond-add` = 1)
+    session$setInputs(`adata_cond-var_1` = "SAFFL", `adata_cond-op_1` = "==",
+                      `adata_cond-val_1` = "Y")
     session$setInputs(adata_id = "adsl_saf")
     session$setInputs(adata_save = 1)
     rv <- session$userData$rv
