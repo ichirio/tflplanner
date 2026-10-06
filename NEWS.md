@@ -22,7 +22,8 @@
   need to make it again).  2-1's and 2-2's explanations are in a
   tooltip on their headings.  The sample's T-14-3-1 reads two analysis
   data, adsl_saf (the safety set) and adae_saf (its TEAEs), its
-  denominator adsl_saf: the same tables and ARD.
+  denominator adsl_saf: the same tables and ARD.  The report list names
+  the datasets an analysis data is made from (ADAE, ADSL).
 
 - **Long explanations are a heading's (i) now** (#207).  The paragraphs of
   explanation on the screens made them hard to read; they are a tooltip
