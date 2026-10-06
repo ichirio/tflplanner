@@ -147,6 +147,49 @@ report_population <- function(x, output_id) {
   length(unique(v[[key]][norm(v[[flag]]) != norm(s)]))
 }
 
+# The words a TOC may use for an analysis set, by its flag
+.pop_words <- list(
+  SAFFL = c("safety", "safety population", "safety set", "safety analysis set",
+            "safety analysis population", "saf"),
+  ITTFL = c("intent-to-treat", "intent to treat", "intention-to-treat",
+            "intention to treat", "itt", "itt population", "itt set"),
+  FASFL = c("full analysis set", "full analysis population", "fas"),
+  PPROTFL = c("per-protocol", "per protocol", "per-protocol set", "per-protocol population",
+              "per protocol set", "per protocol population", "pp", "pps"),
+  EFFFL = c("efficacy", "efficacy population", "efficacy set", "efficacy analysis set"),
+  ENRLFL = c("enrolled", "enrolled set", "enrolled population", "all enrolled"),
+  RANDFL = c("randomized", "randomised", "randomized set", "randomized population",
+             "all randomized"))
+
+# A TOC's word for an analysis set ("Safety Population") as a population_id
+# of the study: its id, its label (.pop_label()), a usual word for its flag;
+# "Safety Population (SAF)" by the id in it.  NA when none.
+.pop_match <- function(x, text, data = NULL) {
+  if (.is_blank(text)) return(NA_character_)
+  norm <- function(v) gsub("\\s+", " ", trimws(tolower(v)))
+  w <- norm(text)
+  po <- x$ard$populations
+  ids <- po$population_id[!is.na(po$population_id)]
+  if (!length(ids)) return(NA_character_)
+  hit <- ids[norm(ids) == w]
+  if (length(hit)) return(hit[1L])
+  labs <- vapply(ids, function(id) norm(.pop_label(x, id, data)), "")
+  hit <- ids[labs == w]
+  if (length(hit)) return(hit[1L])
+  flags <- vapply(po$where[match(ids, po$population_id)], .pop_flag, "")
+  # "... Population", "... Analysis Set" said or not
+  w2 <- sub(" (analysis )?(population|set)$", "", w)
+  for (k in seq_along(ids)) {
+    words <- .pop_words[[flags[k]]] %||% character()
+    if (!is.na(flags[k]) && any(c(w, w2) %in% words)) return(ids[k])
+  }
+  # an id in brackets or as a word ("Safety Population (SAF)")
+  for (id in ids) {
+    if (grepl(paste0("(^|[^a-z0-9])", norm(id), "($|[^a-z0-9])"), w)) return(id)
+  }
+  NA_character_
+}
+
 .blank_na <- function(v) if (.is_blank(v)) NA_character_ else as.character(v)
 
 #' A report's analysis set

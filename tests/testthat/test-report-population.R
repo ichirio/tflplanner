@@ -149,3 +149,59 @@ test_that("step 2: the report's analysis set chosen, its data made, 2-1 starts f
     expect_match(r$where, "SAFFL", fixed = TRUE)
   })
 })
+
+test_that("a TOC's population, matched to the study's analysis sets", {
+  p <- pop_planner()
+  p$ard$populations <- .normalize_ard_sheet(data.frame(
+    population_id = c("SAF", "ITT", "EFF"), dataset = "ADSL",
+    where = c("SAFFL == \"Y\"", "ITTFL == \"Y\"", "EFFFL == \"Y\"")), "populations")
+  expect_identical(.pop_match(p, "saf"), "SAF")
+  expect_identical(.pop_match(p, "Safety Population"), "SAF")
+  expect_identical(.pop_match(p, "Safety set"), "SAF")
+  expect_identical(.pop_match(p, "Intent-to-Treat Population"), "ITT")
+  expect_identical(.pop_match(p, "Efficacy Population (EFF)"), "EFF")
+  # a flag's label (the data's)
+  d <- data.frame(ITTFL = structure("Y", label = "Randomised Subjects Flag"))
+  expect_identical(.pop_match(p, "Randomised subjects flag", d), "ITT")
+  expect_true(is.na(.pop_match(p, "Per-Protocol")))
+  expect_true(is.na(.pop_match(p, NA)))
+})
+
+test_that("a TOC taken in: the reports' analysis sets, their data made", {
+  f <- tempfile(fileext = ".csv")
+  writeLines(c("No.,Kind,Title,Population",
+               "T1,Table,Demographics,Safety Population",
+               "T2,Table,AEs,Intent-to-treat",
+               "T3,Table,Other,Completers"), f)
+  p <- pop_planner()
+  tp <- toc_populations(p, f, "No.", "Population")
+  expect_identical(tp$output_id, c("T1", "T2", "T3"))
+  expect_identical(tp$population_id, c("SAF", "ITT", NA))
+  expect_identical(nrow(toc_populations(p, f, "No.", "Nope")), 0L)
+  sp <- tflspec::tfl_read_toc(f, map = c(output_id = "No.", type = "Kind", title = "Title",
+                                         population = "Population"))
+  ch <- toc_changes(p, sp)
+  pops <- stats::setNames(tp$population_id, tp$output_id)
+  q <- toc_apply(p, sp, ch, populations = pops[!is.na(pops)])
+  expect_identical(report_population(q, "T1"), "SAF")
+  expect_identical(report_population(q, "T2"), "ITT")
+  expect_true(is.na(report_population(q, "T3")))
+  expect_setequal(attr(q, "made"), c("adsl_saf", "adsl_itt"))
+  # taken in again with another set: the report's changes (its analyses with it)
+  q2 <- toc_apply(q, sp, toc_changes(q, sp), populations = c(T1 = "ITT"))
+  expect_identical(report_population(q2, "T1"), "ITT")
+  expect_null(attr(q2, "made"))
+})
+
+test_that("the Add dialog gives a new report its analysis set", {
+  local_home()
+  s <- create_study("RA", planner = pop_planner())
+  shiny::testServer(server_for("RA"), {
+    rv <- session$userData$rv
+    session$setInputs(add = 1, modal_type = "table", modal_first = FALSE,
+                      modal_id = "T9", modal_desc = "x", modal_pop = "ITT")
+    session$setInputs(add_ok = 1)
+    expect_identical(report_population(rv$p, "T9"), "ITT")
+    expect_true("adsl_itt" %in% .adata_rows(rv$p)$data_id)
+  })
+})

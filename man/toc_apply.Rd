@@ -11,7 +11,8 @@ toc_apply(
   use_toc = character(),
   types = character(),
   last = changes$last,
-  title_offset = changes$title_offset \%||\% toc_title_offset(x)
+  title_offset = changes$title_offset \%||\% toc_title_offset(x),
+  populations = character()
 )
 }
 \arguments{
@@ -29,6 +30,11 @@ type corrected); the TOC's otherwise.}
 
 \item{last, title_offset}{As \code{\link[=toc_changes]{toc_changes()}} was given them (kept in
 \code{changes}).}
+
+\item{populations}{The reports' analysis sets, a population_id named by
+report (see \code{\link[=toc_populations]{toc_populations()}}): each one that differs from the
+report's is set with \code{\link[=set_report_population]{set_report_population()}} (its data made, its
+analyses moved).}
 }
 \value{
 The \code{tflplanner}.
