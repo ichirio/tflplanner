@@ -488,9 +488,7 @@ app_ui <- function(lang = "en") {
     shiny::div(
       id = "ard_split", class = "rp-split rp-lay-side rp-show-def",
       bslib::card(
-        bslib::card_header(t("ARD definition")),
-        shiny::p(class = "small text-muted",
-                 t("One row per analysis: the data, the population, the subset, the grouping, the variables and the method (a keyword or any cards / cardx function). The datasets, analysis sets and analysis data are defined on the Data tab.")),
+        bslib::card_header(with_tip(t("ARD definition"), t("This report's analyses (the ARD): the data in 2-1, the analyses in 2-2."))),
         bslib::navset_underline(
           id = "ard_sheet",
           bslib::nav_panel(paste0(t("The analyses"), " (analyses)"), value = "analyses",
@@ -3058,13 +3056,9 @@ app_server <- function(input, output, session, start) {
       if (!tg %in% rv$p$outputs$output_id) shiny::div(
         class = "alert alert-info py-1 small",
         sprintf(t("%s is not a report yet: add it to the Report list to make its table."), tg)),
-      shiny::div(
-        class = "d-flex flex-wrap gap-2 align-items-center mb-1",
-        shiny::span(class = "small text-muted",
-                    sprintf(t("Analysis %s of %s. A click on another analysis above edits that one."),
-                            r$analysis_id, tg))),
-      shiny::p(class = "small text-muted mb-1",
-               t("One analysis is one call: add variables to it. Make another analysis only when the statistics, the condition or the groups differ.")),
+      shiny::h6(class = "mb-1", with_tip(
+        sprintf(t("Analysis %s"), r$analysis_id),
+        t("One analysis is one call: add variables to it. Make another analysis only when the statistics, the condition or the groups differ."))),
       bslib::layout_columns(
         col_widths = c(4, 8),
         shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
@@ -3109,12 +3103,10 @@ app_server <- function(input, output, session, start) {
                    shiny::uiOutput("ard_fn_list"))),
       shiny::uiOutput("ard_fn_preset"),
       shiny::uiOutput("ard_method_note"),
-      if (!inside) shiny::selectInput(st_id("data"), t("Data (an analysis data, or dataset \u00d7 analysis set)"),
+      if (!inside) shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 2-1, or a dataset \u00d7 analysis set. The name is the one the program gives it.")),
                                       data_choices(r),
                                       selected = .an_data_value_row(r),
                                       width = "100%"),
-      if (!inside) shiny::p(class = "small text-muted mt-n2 mb-2",
-               t("The rows the analysis reads: an analysis data as 2-1 above makes it, or the dataset's records of the analysis set's subjects. The name is the one the program gives the data.")),
       shiny::uiOutput("ard_an_vars"),
       shiny::uiOutput("ard_an_args"),
       if (identical(r$method, "custom")) shiny::tagList(
@@ -3123,7 +3115,8 @@ app_server <- function(input, output, session, start) {
                              resize = "vertical")),
       if (!inside) shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
-        shiny::tags$summary(class = "small", argl("Subset (an R condition)", "where")),
+        shiny::tags$summary(class = "small", with_tip(argl("Rows kept (this analysis's own condition)", "where"),
+                                                      t("An R condition for this analysis alone (e.g. AESER == \"Y\"). The data's own condition is 2-1's."))),
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
                          placeholder = "AESER == \"Y\"")),
       shiny::uiOutput("ard_stat_part"),
@@ -3132,16 +3125,15 @@ app_server <- function(input, output, session, start) {
         .btn("ard_stat_apply", t("Apply to the analysis"),
              class = "btn-sm btn-primary"),
         if (role == "single" && !r$method %in% .stack_not_inside)
-          .btn("ard_stack_group", t("Run together with other analyses..."),
+          .btn("ard_stack_group", t("Run together with other analyses (one call)..."),
                class = "btn-sm btn-outline-secondary"),
         if (role == "single" && !identical(r$method, "custom"))
           .btn("ard_an_as_code", t("Write this analysis as code..."),
                class = "btn-sm btn-outline-secondary"),
-        shiny::span(class = "small text-muted",
-                    t("Format: xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown."))),
+        shiny::span(class = "small text-muted", with_tip(t("Format"), t("xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown.")))),
       shiny::tags$details(
         class = "mt-2", open = NA,
-        shiny::tags$summary(class = "small", t("This analysis alone as code, after Apply (the report's program: Code on the right)")),
+        shiny::tags$summary(class = "small", t("This analysis as code")),
         shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
   })
   # this analysis alone as code (the data it reads, its analysis set, the
@@ -3323,7 +3315,7 @@ app_server <- function(input, output, session, start) {
     if (is.null(f) || !nrow(f)) {
       return(shiny::tags$details(
         class = "mb-2", open = if (nzchar(other)) NA,
-        shiny::tags$summary(class = "small", argl("Other arguments (R)", "args")),
+        shiny::tags$summary(class = "small", with_tip(argl("Other arguments (R)", "args"), t("cards' arguments, in R (e.g. conf.level = 0.9)."))),
         shiny::textInput(st_id("args_other"), NULL, other, width = "100%")))
     }
     fd <- if (identical(st_role(row), "inside"))
@@ -3404,7 +3396,7 @@ app_server <- function(input, output, session, start) {
                 lapply(seq_len(nrow(f)), field))),
       shiny::tags$details(
         class = "mb-2", open = if (nzchar(other)) NA,
-        shiny::tags$summary(class = "small", argl("Other arguments (R)", "args")),
+        shiny::tags$summary(class = "small", with_tip(argl("Other arguments (R)", "args"), t("cards' arguments, in R (e.g. conf.level = 0.9)."))),
         shiny::textInput(st_id("args_other"), NULL, other, width = "100%",
                          placeholder = "weights = W")))
   })
@@ -3457,12 +3449,12 @@ app_server <- function(input, output, session, start) {
     }
     shiny::tagList(
       if (!in_stack) shiny::selectizeInput(
-        st_id("by"), with_hint(argl("Groups (the columns)", "by"), arg_hint(hcall, "by")),
+        st_id("by"), with_tip(argl("Groups (the columns)", "by"), t("The table's columns (e.g. TRT01A). A combination with no records is shown, with 0.")),
         bch, by_now, multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
       shiny::selectizeInput(
-        st_id("vars"), with_hint(argl("Variables (the rows)", "variables"),
-                                 arg_hint(hcall, "variables")), vch, var_now,
+        st_id("vars"), with_tip(argl("Variables (the rows)", "variables"),
+                                arg_hint(hcall, "variables")), vch, var_now,
         multiple = TRUE, width = "100%",
         options = list(plugins = list("remove_button", "drag_drop"))),
       if (in_stack) shiny::p(class = "small text-muted mt-n2 mb-2",
@@ -3470,15 +3462,15 @@ app_server <- function(input, output, session, start) {
       shiny::div(
         class = "d-flex flex-wrap gap-2",
         if (!in_stack) shiny::div(class = "flex-grow-1", shiny::selectizeInput(
-          st_id("strata"), with_hint(argl("Repeated within", "strata"),
-                                     arg_hint(hcall, "strata")), sch, strata_now,
+          st_id("strata"), with_tip(argl("Repeated within", "strata"),
+                                    t("Repeated within each combination the data has (e.g. PARAMCD \u00d7 AVISIT). Unlike the groups (by), a combination with no records is not shown: for 0s, use the groups.")), sch, strata_now,
           multiple = TRUE, width = "100%",
           options = list(plugins = list("remove_button"),
                          placeholder = t("none")))),
         shiny::div(class = "flex-grow-1", shiny::selectInput(
-          st_id("den"), with_hint(argl("Percentages of", "denominator",
-                                       st_arg_default(r, "denominator")),
-                                  arg_hint(hcall, "denominator")),
+          st_id("den"), with_tip(argl("Percentages of", "denominator",
+                                      st_arg_default(r, "denominator")),
+                                 t("What a % is of. The analysis set: its subjects in the group (the column headers' N; an AE table: the SAF's N per arm). Within a row: the total of the row (the variable's level). Within a column: the total of the group. Of the whole table: all of it. The method's default: blank.")),
           den_choices(den_now), den_now, width = "100%"))),
       if (is.null(d)) shiny::p(
         class = "small text-muted",
@@ -3505,6 +3497,14 @@ app_server <- function(input, output, session, start) {
     have <- if (identical(r$method, r0$method)) .split_bar(r0$statistics) else
       character()
     extra <- setdiff(have, cat$statistic)
+    # the catalog's labels in the app's language ("stat-label:<label>" in
+    # the translations; as they are when there is none)
+    cat$label <- vapply(cat$label, function(l) {
+      if (is.na(l)) return(l)
+      k <- paste0("stat-label:", l)
+      v <- t(k)
+      if (identical(v, k)) l else v
+    }, "", USE.NAMES = FALSE)
     ch <- lapply(split(cat, factor(cat$group, levels = unique(cat$group))),
                  function(g) stats::setNames(as.list(g$statistic),
                                              paste0(g$statistic, " \u2014 ",
@@ -3715,7 +3715,7 @@ app_server <- function(input, output, session, start) {
     an_as_code(c(list(output_id = r$output_id, analysis_id = r$analysis_id), v))
     shiny::showModal(shiny::modalDialog(
       title = sprintf(t("Write %s as code"), r$analysis_id), size = "l", easyClose = TRUE,
-      shiny::p(t("The analysis becomes a custom one: its method custom, its code this (from the definition as it is now -- Apply first what the form has changed). It makes the same ARD; then the code can be changed for what the fields cannot say. The code is part of the definition: the program is never edited.")),
+      shiny::p(t("The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (Apply first). The code is part of the definition: the program is never edited.")),
       shiny::div(class = "rp-code", shiny::tags$pre(v$code)),
       if (!is.na(v$formats)) shiny::p(class = "small text-muted",
                                      sprintf(t("Formats written out (its method's defaults with its own): %s"), v$formats)),
@@ -3939,7 +3939,7 @@ app_server <- function(input, output, session, start) {
     shiny::tagList(
       shiny::h6(class = "mt-3 mb-1", with_tip(
         t("2-2 Analyses"),
-        t("The report's analyses. Each one's Data: an analysis data of 2-1; the denominator of a percent: chosen with it."))))
+        t("The report's analyses. Each one's Data: an analysis data of 2-1; the denominator of a percent: chosen with it. ARD: the data of the analyses' results (the tables are made from it). Analysis set: the subjects a percent is of (SAF ...)."))))
   })
   # the form: what is being made (`old`: the one changed; `name`: a
   # report's data being given a name; `pop`: the analysis set it was kept to)
@@ -4098,7 +4098,6 @@ app_server <- function(input, output, session, start) {
       length(cands) > 0L && !adata_root(r$from) %in% adata_pop_ds()
     e$cands <- cands
     adata_edit(e)
-    key <- .adata_subject_key(p)
     # the analysis set: the condition's first row; a new data not kept to
     # other subjects starts with the study's first
     pop_ch <- adata_pop_choices(r$from)
@@ -4132,7 +4131,7 @@ app_server <- function(input, output, session, start) {
                            selected = blank_na(r$from), width = "100%"),
         shiny::selectInput("adata_pop", with_tip(
           t("Analysis set"),
-          t("The first row of the condition below, put in at once (SAFFL = Y); change it there, add others under it.")),
+          t("The study's analysis set (SAF ...) or a population flag of the data, put in as the condition's first row (SAFFL = Y). Left as it is, it is saved as the analysis set (population_id); change it there, add others under it.")),
           pop_ch, selected = pop_now, width = "100%")),
       if (nzchar(e$legacy_pop)) shiny::p(
         class = "small text-muted mb-2",
@@ -4148,20 +4147,21 @@ app_server <- function(input, output, session, start) {
       id = "adata_gui", class = if (!.is_blank(r$code)) "rp-greyed",
       if (length(cands)) shiny::div(
         class = "border-start border-primary border-3 ps-2 mb-2",
-        shiny::checkboxInput(
-          "adata_subj_on",
-          shiny::span(if (length(cands) == 1L) sprintf(t("Keep to the subjects of %s"), cands[1L]) else
-            t("Keep to the subjects of an analysis data of one row a subject"),
-            shiny::span(class = "text-muted small", "(subjects)")),
-          subj_on),
+        shiny::div(
+          class = "d-flex align-items-baseline gap-1",
+          shiny::checkboxInput(
+            "adata_subj_on",
+            shiny::span(if (length(cands) == 1L) sprintf(t("Keep to the subjects of %s"), cands[1L]) else
+              t("Keep to the subjects of an analysis data of one row a subject"),
+              shiny::span(class = "text-muted small", "(subjects)")),
+            subj_on),
+          help_tip(t("Only the subjects in that analysis data: its condition (its analysis set's too) is not written here again."))),
         if (length(cands) > 1L) shiny::conditionalPanel(
           "input.adata_subj_on",
           shiny::selectInput("adata_subj", NULL, stats::setNames(cands, cands),
                              selected = subj_now, width = "100%")),
-        shiny::p(class = "small text-muted mb-0",
-                 sprintf(t("Only the subjects in it (an inner join on %s): its condition, the analysis set's for one, is not written here again."),
-                         key))),
-      shiny::tags$label(class = "form-label", argl("Rows kept (a condition)", "where")),
+        NULL),
+      shiny::tags$label(class = "form-label", with_tip(argl("Rows kept (a condition)", "where"), t("The rows the data keeps. The rows are AND (\"+ and\"); \"+ or (another group)\" is OR. A flag: \"= Y\". What the rows cannot say: \"Write as R\"."))),
       condition_builder_ui("adata_cond", lang),
       shiny::tags$details(
         class = "mb-2", open = if (more) NA,
@@ -4184,9 +4184,7 @@ app_server <- function(input, output, session, start) {
       # the way out: R that makes the data itself (the definition keeps it)
       shiny::tags$details(
         class = "mb-2", open = if (!.is_blank(r$code)) NA,
-        shiny::tags$summary(class = "small", t("Write it as R (code)")),
-        shiny::p(class = "small text-muted mb-1",
-                 t("When the fields above cannot say it: R whose value is the data (the datasets, pop_<set> and the analysis data above are in reach). Written here, the fields above are not used. The program is never edited: this R is part of the definition.")),
+        shiny::tags$summary(class = "small", with_tip(t("Write it as R (code)"), t("When the fields cannot say it: R whose value is the data (the datasets, pop_<set> and the analysis data above are in reach); written, the fields above are not used. The program is never edited: this R is the definition."))),
         shiny::textAreaInput("adata_code", NULL, blank_na(r$code), width = "100%", rows = 6,
                              resize = "vertical"),
         .btn("adata_code_start", t("Start from the generated code"),
@@ -4194,9 +4192,7 @@ app_server <- function(input, output, session, start) {
       shiny::div(
         class = "d-flex gap-2 mt-2 align-items-center",
         .btn("adata_save", t("Save"), class = "btn-sm btn-primary"),
-        .btn("adata_close", t("Close"), class = "btn-sm btn-outline-secondary"),
-        shiny::span(class = "small text-muted",
-                    t("On the right: SPEC, the sheet's rows; Result, the data it makes (Preview).")))))
+        .btn("adata_close", t("Close"), class = "btn-sm btn-outline-secondary"))))
     output$adata_preview_out <- shiny::renderUI(NULL)
     output$adata_preview_tbl <- shiny::renderTable(NULL)
   }
@@ -4585,9 +4581,10 @@ app_server <- function(input, output, session, start) {
                     if (picked) sprintf(t("%s chosen: the form below"), pick) else
                       t("A click on an analysis opens it below; another click closes it."))),
       shiny::div(class = "border rounded mb-1", rows),
-      if (any(o$depth == 1L)) shiny::p(
+      if (any(o$depth == 1L)) shiny::div(
         class = "small text-muted",
-        t("The analyses inside a stack are computed in this order, and so are their variables: a table whose variables have no order of their own shows them so.")))
+        with_tip(t("The order inside a stack"),
+                 t("The analyses inside a stack are computed in this order, and so are their variables: a table whose variables have no order of their own shows them so."))))
   })
   # a click opens an analysis below the list; on the one open, closes it
   shiny::observeEvent(input$ard_ol_pick, {
@@ -4649,22 +4646,21 @@ app_server <- function(input, output, session, start) {
     js <- function(input, value) sprintf(
       "Shiny.setInputValue('%s', %s, {priority: 'event'});", input, value)
     shiny::tagList(
-      shiny::div(
-        class = "d-flex flex-wrap gap-2 align-items-center mb-1",
-        shiny::span(class = "small text-muted",
-                    sprintf(t("Analysis %s of %s: it runs the analyses inside it together (cards::ard_stack)."),
-                            r$analysis_id, tg))),
+      shiny::h6(class = "mb-1", with_tip(
+        sprintf(t("Analysis %s"), r$analysis_id),
+        t("A stack: it runs the analyses inside it together (cards::ard_stack), in one call (the column headers' N too)."))),
       bslib::layout_columns(
         col_widths = c(4, 8),
         shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label), width = "100%")),
-      shiny::selectInput(st_id("data"), t("Data (an analysis data, or dataset \u00d7 analysis set)"),
+      shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 2-1, or a dataset \u00d7 analysis set. The name is the one the program gives it.")),
                          data_choices(r),
                          selected = .an_data_value_row(r),
                          width = "100%"),
       shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
-        shiny::tags$summary(class = "small", argl("Subset (an R condition)", "where")),
+        shiny::tags$summary(class = "small", with_tip(argl("Rows kept (this analysis's own condition)", "where"),
+                                                      t("An R condition for this analysis alone (e.g. AESER == \"Y\"). The data's own condition is 2-1's."))),
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
                          placeholder = "AESER == \"Y\"")),
       shiny::selectizeInput(
@@ -4681,7 +4677,7 @@ app_server <- function(input, output, session, start) {
       shiny::uiOutput("ard_stack_n_note"),
       shiny::tags$details(
         class = "mb-2", open = if (nzchar(fl$other)) NA,
-        shiny::tags$summary(class = "small", argl("Other arguments (R)", "args")),
+        shiny::tags$summary(class = "small", with_tip(argl("Other arguments (R)", "args"), t("cards' arguments, in R (e.g. conf.level = 0.9)."))),
         shiny::textInput(st_id("args_other"), NULL, fl$other, width = "100%")),
       shiny::h6(class = "small fw-bold mt-2", t("The analyses inside")),
       if (!nrow(kids)) shiny::p(class = "small text-muted", t("None yet: add one.")),
@@ -4700,7 +4696,7 @@ app_server <- function(input, output, session, start) {
         .btn("ard_stat_apply", t("Apply to the analysis"), class = "btn-sm btn-primary")),
       shiny::tags$details(
         class = "mt-2", open = NA,
-        shiny::tags$summary(class = "small", t("This analysis alone as code, after Apply (the report's program: Code on the right)")),
+        shiny::tags$summary(class = "small", t("This analysis as code")),
         shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
   })
   # the stack counting the subjects per group while BIGN does: said at once

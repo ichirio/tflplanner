@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **Step 2's help as (i)** (#210).  The paragraphs under the ARD card's
+  heading and an analysis's form head are (i) on their headings now; 2-2's
+  says what ARD and an analysis set are.  Data, the analysis's own
+  condition (now "Rows kept (this analysis's own condition)", the words of
+  2-1), the other arguments, the groups, "Repeated within", the
+  denominator (what each choice is of, an AE table's example) and the
+  format have an (i); so have 2-1's analysis set, condition, subjects tick
+  and "Write it as R".  "Run together with other analyses (one call)".
+  The statistics catalog's labels go through the translations
+  (`stat-label:<label>`).
+
 - **2-1, after trying it** (#206).  What a data is made from and its
   analysis set come first (the name follows them).  The analysis set is the
   condition's first row, put in at once (`SAFFL == "Y"`, changeable, other
