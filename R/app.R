@@ -2608,14 +2608,20 @@ app_server <- function(input, output, session, start) {
   })
   # 2-1's sheet: the analysis data the report reads, edited in their place
   # in the study's sheet (rows added go after them)
-  adata_grid_key <- shiny::reactive(paste("adata_report", input$target, rv$ver, sep = "|"))
+  # the report's analysis data and the one open in 2-1 (not read yet by an
+  # analysis, a new one for one)
+  adata_grid_ids <- function() {
+    unique(c(.adata_of_report(rv$p, ard_target()), adata_pick(), adata_edit()$old))
+  }
+  adata_grid_key <- shiny::reactive(paste("adata_report", input$target, adata_pick() %||% "",
+                                          rv$ver, sep = "|"))
   output$hot_adata_report <- rhandsontable::renderRHandsontable({
     shiny::req(has_study())
     tg <- ard_target()
     shiny::req(tg)
     p <- shiny::isolate(rv$p)
     ad <- .adata_rows(p)
-    d <- ad[ad$data_id %in% .adata_of_report(p, tg), , drop = FALSE]
+    d <- ad[ad$data_id %in% shiny::isolate(adata_grid_ids()), , drop = FALSE]
     grids_drawn()
     .grid(d, "analysis_data", adata_grid_key(), shiny::isolate(ard_choices("analysis_data")),
           closed = .ard_closed_columns)
@@ -2629,7 +2635,7 @@ app_server <- function(input, output, session, start) {
     if (is.null(d)) return()
     p <- rv$p
     guarded(rv$p <- set_ard_rows(p, "analysis_data", "",
-                                 .adata_put_report_rows(.adata_rows(p), .adata_of_report(p, ard_target()),
+                                 .adata_put_report_rows(.adata_rows(p), adata_grid_ids(),
                                                         .normalize_ard_sheet(d, "analysis_data"))))
   })
   output$ard_methods <- DT::renderDT(
