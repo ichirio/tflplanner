@@ -11,6 +11,17 @@
   else the ID's numbers as before), headings in the order of the numbers
   they start with.
 
+- **2-1: the analysis set as a field of its own** (#202).  After "Made
+  from", "Analysis set": the study's analysis sets, each with its
+  condition, or none (written as population_id); the condition builder
+  below for the other conditions.  Kept to another data's subjects, the
+  field shows that data's analysis set instead.  A new data starts with the
+  study's first analysis set and is named after what it is made from and
+  the set (adsl_saf, adae_saf).  A population flag of ADSL that is no
+  analysis set yet is made one in one click ("Make PPROTFL an analysis
+  set": ADSL, `PPROTFL == "Y"`, id PP), chosen at once; the Data tab has
+  it too.
+
 - **The condition builder: variables in ADaM's groups, no shortcuts**
   (#199).  The analysis sets' shortcut buttons (the set, and "not" it) are
   gone: they did what "Keep to the subjects of ..." does, and a study has

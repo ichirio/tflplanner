@@ -4017,24 +4017,88 @@ app_server <- function(input, output, session, start) {
   }
   # a new data still under its suggested name: named after what it is
   # made from and its condition (ADSL, SAFFL == "Y": adsl_saf)
-  shiny::observeEvent(adata_cond()$expr, {
+  shiny::observeEvent(list(adata_cond()$expr, input$adata_pop, input$adata_subj_on), {
     e <- adata_edit()
     shiny::req(!is.null(e), is.null(e$old), identical(input$adata_id, e$suggested))
     nm <- .adata_name_from(adata_root(input$adata_from), adata_where_now(),
-                           rv$p$ard$populations)
+                           rv$p$ard$populations,
+                           pop = if (is.na(adata_subj_value())) adata_pop_value() else NA)
     if (!is.na(nm) && !nm %in% .adata_taken_names(rv$p)) {
       shiny::updateTextInput(session, "adata_id", value = nm)
       e$suggested <- nm
       adata_edit(e)
     }
   }, ignoreInit = TRUE)
+  # the analysis sets to choose from, each with its condition; one the
+  # sheet names that the study has not is kept, said so
+  adata_pop_choices <- function(now = "") {
+    po <- rv$p$ard$populations
+    lab <- ifelse(.is_blank_v(po$where), po$population_id,
+                  sprintf("%s (%s)", po$population_id, po$where))
+    ch <- c(stats::setNames(".none", t("(none)")), stats::setNames(po$population_id, lab))
+    if (nzchar(now) && !now %in% c(".none", po$population_id)) {
+      ch <- c(ch, stats::setNames(now, sprintf(t("%s (not an analysis set of the study)"), now)))
+    }
+    ch
+  }
+  # the analysis set chosen (NA: none)
+  adata_pop_value <- function() {
+    v <- input$adata_pop %||% ""
+    if (!nzchar(v) || identical(v, ".none")) NA_character_ else v
+  }
+  # the population flags of the analysis sets' dataset (ADSL) that are no
+  # analysis set of the study yet: one click makes one
+  adata_pop_missing <- function() {
+    p <- rv$p
+    ds <- intersect(adata_pop_ds(), p$ard$datasets$dataset)
+    if (!length(ds)) return(character())
+    d <- an_data(ds[1L])
+    if (is.null(d)) return(character())
+    flags <- .cond_population_flags(names(d))
+    used <- unlist(regmatches(p$ard$populations$where, gregexpr("[A-Za-z0-9_]+FL", p$ard$populations$where)))
+    setdiff(flags, used)
+  }
+  output$adata_pop_more <- shiny::renderUI({
+    shiny::req(!is.null(adata_edit()))
+    rv$ver
+    miss <- adata_pop_missing()
+    if (!length(miss)) return(NULL)
+    shiny::div(
+      class = "d-flex flex-wrap gap-1 align-items-center mb-2 small",
+      shiny::span(class = "text-muted", t("Flags of the data that are no analysis set yet:")),
+      lapply(miss, function(f) shiny::tags$button(
+        type = "button", class = "btn btn-sm btn-outline-secondary py-0",
+        onclick = adata_js("adata_pop_add", f),
+        sprintf(t("Make %s an analysis set"), f))))
+  })
+  output$adata_pop_of_subj <- shiny::renderUI({
+    s <- adata_subj_value()
+    if (is.na(s)) return(NULL)
+    pop <- .adata_pop(.adata_rows(rv$p), s)
+    sprintf(t("Analysis set (population_id): that of %s (%s)."), s, if (is.na(pop)) t("none") else pop)
+  })
+  shiny::observeEvent(input$adata_pop_add, {
+    f <- input$adata_pop_add
+    p <- rv$p
+    ds <- intersect(adata_pop_ds(), p$ard$datasets$dataset)
+    shiny::req(nzchar(f %||% ""), length(ds))
+    id <- .population_id_for(f, p$ard$populations$population_id)
+    po <- p$ard$populations
+    po[nrow(po) + 1L, ] <- NA
+    po$population_id[nrow(po)] <- id
+    po$dataset[nrow(po)] <- ds[1L]
+    po$where[nrow(po)] <- sprintf("%s == %s", f, encodeString("Y", quote = "\""))
+    rv$p$ard$populations <- .normalize_ard_sheet(po, "populations")
+    bump()
+    shiny::updateSelectInput(session, "adata_pop", choices = adata_pop_choices(id), selected = id)
+    notify(sprintf(t("%s is an analysis set now: %s of %s (the Data tab has it too)."),
+                   id, po$where[nrow(po)], ds[1L]))
+  })
   adata_form <- function(r, title) {
     blank_na <- function(x) if (is.null(x) || !length(x) || is.na(x[1L])) "" else x[1L]
     p <- rv$p
     ad <- .adata_rows(p)
     e <- adata_edit()
-    e$pop <- blank_na(r$population_id)
-    adata_edit(e)
     adata_cond_value(if (.is_blank(r$where)) NA_character_ else r$where)
     adata_cond_key(shiny::isolate(adata_cond_key()) + 1L)
     old <- e$old
@@ -4050,6 +4114,11 @@ app_server <- function(input, output, session, start) {
     e$cands <- cands
     adata_edit(e)
     key <- .adata_subject_key(p)
+    # the analysis set: as it is; a new one not kept to other subjects, the
+    # study's first
+    po <- p$ard$populations
+    pop_now <- if (!.is_blank(r$population_id)) r$population_id else
+      if (is.null(old) && is.null(e$name) && !subj_on && nrow(po)) po$population_id[1L] else ".none"
     ds <- p$ard$datasets$dataset
     from_ch <- c(stats::setNames(ds, ds),
                  stats::setNames(above, sprintf(t("%s (analysis data)"), above)))
@@ -4073,6 +4142,16 @@ app_server <- function(input, output, session, start) {
                          selected = blank_na(r$from), width = "100%"),
       shiny::div(
       id = "adata_gui", class = if (!.is_blank(r$code)) "rp-greyed",
+      # the analysis set (population_id): kept to its subjects; the subjects
+      # of another data, when ticked below, bring their own set
+      shiny::conditionalPanel(
+        "!input.adata_subj_on",
+        shiny::selectInput("adata_pop", argl("Analysis set", "population_id"),
+                           adata_pop_choices(pop_now), selected = pop_now, width = "100%"),
+        shiny::uiOutput("adata_pop_more")),
+      if (length(cands)) shiny::conditionalPanel(
+        "input.adata_subj_on",
+        shiny::p(class = "small text-muted mb-2", shiny::uiOutput("adata_pop_of_subj", inline = TRUE))),
       if (length(cands)) shiny::div(
         class = "border-start border-primary border-3 ps-2 mb-2",
         shiny::checkboxInput(
@@ -4090,10 +4169,6 @@ app_server <- function(input, output, session, start) {
                          key))),
       shiny::tags$label(class = "form-label", argl("Rows kept (a condition)", "where")),
       condition_builder_ui("adata_cond", lang),
-      if (nzchar(e$pop)) shiny::checkboxInput(
-        "adata_pop_keep",
-        sprintf(t("Kept to the analysis set %s too (as it was made: population_id)"), e$pop),
-        TRUE),
       shiny::tags$details(
         class = "mb-2", open = if (more) NA,
         shiny::tags$summary(class = "small", t("Columns taken, made, kept; one row per ...")),
@@ -4183,8 +4258,8 @@ app_server <- function(input, output, session, start) {
     from <- one(input$adata_from)
     code <- if (nzchar(trimws(input$adata_code %||% ""))) input$adata_code else NA_character_
     subjects <- adata_subj_value()
-    # the analysis set it was kept to stays only while ticked
-    pop <- if (nzchar(e$pop %||% "") && isTRUE(input$adata_pop_keep)) e$pop else NA
+    # the analysis set: its field, unless kept to another data's subjects
+    pop <- if (!is.na(subjects)) NA_character_ else adata_pop_value()
     add <- one(input$adata_add)
     keep <- one(input$adata_keep)
     distinct <- one(input$adata_distinct)
@@ -4280,7 +4355,7 @@ app_server <- function(input, output, session, start) {
       tmp <- trimws(input$adata_id %||% "")
       if (!nzchar(tmp)) stop("no name")
       set_analysis_data(q, tmp, from = one_of(input$adata_from), subjects = adata_subj_value(),
-                        population_id = if (nzchar(e$pop %||% "") && isTRUE(input$adata_pop_keep)) e$pop else NA,
+                        population_id = if (is.na(adata_subj_value())) adata_pop_value() else NA,
                         where = adata_where_now(), add = one_of(input$adata_add),
                         derive = one_of(input$adata_derive), keep = one_of(input$adata_keep),
                         distinct = one_of(input$adata_distinct), old = e$old)
