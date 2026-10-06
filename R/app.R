@@ -211,6 +211,8 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 .rp-upload .input-group .btn-file { display: inline-flex; align-items: center; }
 .rp-upload .checkbox, .rp-upload .form-check { margin: 0; }
 .rp-upload select { appearance: auto; }
+/* fields that are not used (a data written as R) */
+.rp-greyed { opacity: .45; pointer-events: none; }
 /* a top tab the chosen report has nothing on */
 .nav-link.rp-idle { opacity: .45; }
 /* While the server works (opening a study, switching a tab or a report,
@@ -675,6 +677,7 @@ app_ui <- function(lang = "en") {
                             shiny::tags$script(shiny::HTML(.unsaved_js)),
                             shiny::tags$script(shiny::HTML(.updating_js)),
                             shiny::tags$script(shiny::HTML(.dt_adjust_js)),
+                            shiny::tags$script(shiny::HTML(.adata_code_js)),
                             shiny::uiOutput("update_note")),
 
     bslib::nav_panel(
@@ -942,6 +945,13 @@ app_ui <- function(lang = "en") {
 # a DataTable drawn while its tab was hidden measured its columns 0 px wide
 # (headers one letter a line): when a tab, pill or sidebar shows, the tables
 # in sight measure again
+# the fields of a data greyed while its code (R) is written
+.adata_code_js <- "
+$(document).on('input change', '#adata_code', function() {
+  $('#adata_gui').toggleClass('rp-greyed', $(this).val().trim() !== '');
+});
+"
+
 .dt_adjust_js <- "
 (function() {
   function adjust() {
@@ -3930,6 +3940,8 @@ app_server <- function(input, output, session, start) {
         shiny::textInput("adata_label", t("Label"), blank_na(r$label), width = "100%")),
       shiny::selectInput("adata_from", argl("Made from", "from"), from_ch,
                          selected = blank_na(r$from), width = "100%"),
+      shiny::div(
+      id = "adata_gui", class = if (!.is_blank(r$code)) "rp-greyed",
       if (length(cands)) shiny::div(
         class = "border-start border-primary border-3 ps-2 mb-2",
         shiny::checkboxInput(
@@ -3968,7 +3980,17 @@ app_server <- function(input, output, session, start) {
         shiny::selectizeInput("adata_distinct", argl("One row per (e.g. subject; subject \u00d7 phase)", "distinct"),
                               choices = unique(c(bar(r$distinct), adata_cols(adata_root(r$from)))),
                               selected = bar(r$distinct), multiple = TRUE, width = "100%",
-                              options = list(create = TRUE, plugins = list("remove_button")))),
+                              options = list(create = TRUE, plugins = list("remove_button"))))),
+      # the way out: R that makes the data itself (the definition keeps it)
+      shiny::tags$details(
+        class = "mb-2", open = if (!.is_blank(r$code)) NA,
+        shiny::tags$summary(class = "small", t("Write it as R (code)")),
+        shiny::p(class = "small text-muted mb-1",
+                 t("When the fields above cannot say it: R whose value is the data (the datasets, pop_<set> and the analysis data above are in reach). Written here, the fields above are not used. The program is never edited: this R is part of the definition.")),
+        shiny::textAreaInput("adata_code", NULL, blank_na(r$code), width = "100%", rows = 6,
+                             resize = "vertical"),
+        .btn("adata_code_start", t("Start from the generated code"),
+             class = "btn-sm btn-outline-secondary")),
       shiny::div(
         class = "d-flex gap-2 mt-2 align-items-center",
         .btn("adata_save", t("Save"), class = "btn-sm btn-primary"),
@@ -4028,17 +4050,24 @@ app_server <- function(input, output, session, start) {
       e$old <- id
     }
     from <- one(input$adata_from)
+    code <- if (nzchar(trimws(input$adata_code %||% ""))) input$adata_code else NA_character_
     subjects <- adata_subj_value()
     # the analysis set it was kept to stays only while ticked
     pop <- if (nzchar(e$pop %||% "") && isTRUE(input$adata_pop_keep)) e$pop else NA
     add <- one(input$adata_add)
     keep <- one(input$adata_keep)
     distinct <- one(input$adata_distinct)
+    where <- adata_where_now()
+    derive <- one(input$adata_derive)
+    # written as R: the fields that make a data are not used
+    if (!is.na(code)) {
+      pop <- subjects <- where <- add <- derive <- keep <- distinct <- NA
+    }
     p <- set_analysis_data(p, id, from = from, population_id = pop, subjects = subjects,
-                           where = adata_where_now(), add = add,
-                           derive = one(input$adata_derive), keep = keep,
+                           where = where, add = add,
+                           derive = derive, keep = keep,
                            distinct = distinct, label = one(input$adata_label),
-                           old = e$old)
+                           old = e$old, code = code)
     suppressWarnings(.ard_spec(p$ard))
     p
   }
@@ -4102,6 +4131,24 @@ app_server <- function(input, output, session, start) {
     adata_form(list(data_id = .adata_suggest(rv$p, from, sp$pop, common), from = from,
                     population_id = sp$pop, where = common),
                sprintf(t("Give %s a name"), data_words(sp$dataset, sp$pop)))
+  })
+  shiny::observeEvent(input$adata_code_start, {
+    shiny::req(!is.null(adata_edit()))
+    e <- adata_edit()
+    p <- tryCatch({
+      q <- rv$p
+      # the fields as they are now, without a code
+      tmp <- trimws(input$adata_id %||% "")
+      if (!nzchar(tmp)) stop("no name")
+      set_analysis_data(q, tmp, from = one_of(input$adata_from), subjects = adata_subj_value(),
+                        population_id = if (nzchar(e$pop %||% "") && isTRUE(input$adata_pop_keep)) e$pop else NA,
+                        where = adata_where_now(), add = one_of(input$adata_add),
+                        derive = one_of(input$adata_derive), keep = one_of(input$adata_keep),
+                        distinct = one_of(input$adata_distinct), old = e$old)
+    }, error = function(err) NULL)
+    v <- if (is.null(p)) NA else .adata_code_start(p, trimws(input$adata_id))
+    if (is.na(v)) return(notify(t("The code cannot be written yet: give the data a name and what it is made from."), "warning"))
+    shiny::updateTextAreaInput(session, "adata_code", value = v)
   })
   shiny::observeEvent(input$adata_preview, {
     p <- tryCatch(adata_planner(), error = function(e) e)
