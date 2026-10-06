@@ -2082,3 +2082,15 @@ SDTM / ADaM / other,SDTM・ADaM・その他
 %s chosen: the form below,%s を選択中：下のフォーム
 %s is used: %s,%s は使われています：%s
 It replaces the analysis's own arguments: %s,この解析の今の引数を置き換えます: %s
+Study list,試験一覧
+Study settings,試験設定
+Own ARD functions,独自の ARD 関数
+"ARD functions of one's own, of two kinds: the company's, for every study (the standards folder), and this study's only (programs/ard/functions/). A study's copy of a company function wins in that study. An analysis names one as its method once the study loads it. They are R files, edited outside the app (RStudio ...): try one after a change.",独自の ARD 関数は 2 種類です：会社の関数（すべての試験で使う。標準フォルダ）と、この試験だけの関数（programs/ard/functions/）。会社の関数と同じ名前の写しが試験にあれば、その試験では写しが使われます。試験が読み込むと、解析の method に書けます。R のファイルなので、直すのはアプリの外（RStudio など）で行い、直したら［試す］で確かめてください。
+company (every study),会社（全試験共通）
+this study's copy of the company's,この試験の写し（会社の関数を上書き）
+this study only,この試験だけ
+company's (every study),会社の関数（全試験共通）
+this study's,この試験の関数
+No study open,試験を開いていません
+studies are chosen on the Study tab,試験は「試験」タブで選びます
+Keys and setup code,キーとセットアップコード

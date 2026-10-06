@@ -112,7 +112,7 @@ test_that("the Own functions tab: listed, used, tried, a new one; the analysis f
     expect_false(grepl("not loaded by this study", output$ard_fn_list$html, fixed = TRUE))
     # under its title and its name, where it is said
     expect_match(output$ard_fn_list$html, "(ard_cv)", fixed = TRUE)
-    expect_match(output$ard_fn_list$html, "[study and company]", fixed = TRUE)
+    expect_match(output$ard_fn_list$html, "copy of the company", fixed = TRUE)
     # tried on cards' example data
     session$setInputs(own_list_rows_selected = 1L, own_try = 1)
     session$setInputs(own_try_data = "__cards__", own_try_args = "by = ARM, variables = AGE", own_try_go = 1)
