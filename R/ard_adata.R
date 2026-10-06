@@ -111,11 +111,14 @@
   out
 }
 
-# A name for a data from what it is made from and its condition: adsl_saf
-# for ADSL kept to an analysis set's condition, or to a flag set to "Y"
-# (SAFFL == "Y"); NA when the condition says no such thing
-.adata_name_from <- function(root, where, populations = NULL) {
-  if (.is_blank(root) || .is_blank(where)) return(NA_character_)
+# A name for a data from what it is made from, its analysis set and its
+# condition: adsl_saf for ADSL of the analysis set SAF, or kept to an
+# analysis set's condition, or to a flag set to "Y" (SAFFL == "Y"); NA
+# when they say no such thing
+.adata_name_from <- function(root, where, populations = NULL, pop = NA) {
+  if (.is_blank(root)) return(NA_character_)
+  if (!.is_blank(pop)) return(paste0(tolower(root), "_", tolower(pop)))
+  if (.is_blank(where)) return(NA_character_)
   w <- trimws(where)
   k <- if (!is.null(populations)) match(w, trimws(populations$where)) else NA
   suf <- if (!is.na(k)) populations$population_id[k] else {
@@ -123,6 +126,22 @@
     if (length(m)) m[2L] else NA_character_
   }
   if (is.na(suf)) NA_character_ else paste0(tolower(root), "_", tolower(suf))
+}
+
+# An analysis set's id for a population flag (SAFFL: SAF, PPROTFL: PP),
+# not one the study has
+.population_id_for <- function(flag, taken = character()) {
+  known <- c(SAFFL = "SAF", ITTFL = "ITT", FASFL = "FAS", PPROTFL = "PP",
+             RANDFL = "RAND", ENRLFL = "ENRL", COMPLFL = "COMPL", MITTFL = "MITT",
+             PPSFL = "PPS", PKFL = "PK")
+  id <- if (flag %in% names(known)) known[[flag]] else sub("FL$", "", flag)
+  base <- id
+  k <- 1L
+  while (id %in% taken) {
+    k <- k + 1L
+    id <- paste0(base, k)
+  }
+  id
 }
 
 # The opposite of a condition, the rows it does not keep: a blank flag too
