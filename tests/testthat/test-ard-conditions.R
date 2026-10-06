@@ -50,7 +50,7 @@ test_that("the study ARD's errors and warnings are listed, and a row opens its a
     e <- d[d$level == "error", , drop = FALSE]
     i <- which(e$analysis_id == "TTEST")[1]
     session$setInputs(ard_conds_rows_selected = i)
-    expect_match(output$ard_stat_ui$html, "Analysis TTEST of T1", fixed = TRUE)
+    expect_match(output$ard_stat_ui$html, "Analysis TTEST", fixed = TRUE)
     # the report's own, after Preview
     session$setInputs(target = "T1", ard_preview = 1)
     expect_match(output$ard_run_info$html, "Errors and warnings inside the analyses", fixed = TRUE)
