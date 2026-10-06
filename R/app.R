@@ -468,6 +468,13 @@ app_ui <- function(lang = "en") {
                            # the analyses
                            shiny::uiOutput("ard_adata"),
                            shiny::uiOutput("adata_detail"),
+                           shiny::tags$details(
+                             class = "mt-1 mb-2",
+                             ontoggle = "window.dispatchEvent(new Event('resize'))",
+                             shiny::tags$summary(class = "small", t("Details (the sheet): this report's analysis data")),
+                             shiny::p(class = "small text-muted mb-1",
+                                      t("The rows of analysis_data this report reads, every column, as in the workbook: what the form above does not show is written here. The whole study's: the Data tab.")),
+                             rhandsontable::rHandsontableOutput("hot_adata_report")),
                            shiny::uiOutput("ard_2_2_head"),
                            # the outline first: a click shows the analysis
                            # as a form below; the sheet itself folded
@@ -2590,6 +2597,32 @@ app_server <- function(input, output, session, start) {
       guarded(rv$p <- set_ard_rows(rv$p, sh, tg, d))
     })
   })
+  # 2-1's sheet: the analysis data the report reads, edited in their place
+  # in the study's sheet (rows added go after them)
+  adata_grid_key <- shiny::reactive(paste("adata_report", input$target, rv$ver, sep = "|"))
+  output$hot_adata_report <- rhandsontable::renderRHandsontable({
+    shiny::req(has_study())
+    tg <- ard_target()
+    shiny::req(tg)
+    p <- shiny::isolate(rv$p)
+    ad <- .adata_rows(p)
+    d <- ad[ad$data_id %in% .adata_of_report(p, tg), , drop = FALSE]
+    grids_drawn()
+    .grid(d, "analysis_data", adata_grid_key(), shiny::isolate(ard_choices("analysis_data")),
+          closed = .ard_closed_columns)
+  })
+  shiny::observeEvent(input$hot_adata_report, {
+    h <- input$hot_adata_report
+    if (is.null(h$changes$changes) &&
+        !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
+    if (!identical(h$params$planner_key, adata_grid_key())) return()
+    d <- read_grid(h)
+    if (is.null(d)) return()
+    p <- rv$p
+    guarded(rv$p <- set_ard_rows(p, "analysis_data", "",
+                                 .adata_put_report_rows(.adata_rows(p), .adata_of_report(p, ard_target()),
+                                                        .normalize_ard_sheet(d, "analysis_data"))))
+  })
   output$ard_methods <- DT::renderDT(
     .std_ard_methods()[c("method", "call", "kind", "defaults", "formats", "note")],
     rownames = FALSE,
@@ -3846,6 +3879,11 @@ app_server <- function(input, output, session, start) {
     ds <- p$ard$datasets$dataset
     from_ch <- c(stats::setNames(ds, ds),
                  stats::setNames(above, sprintf(t("%s (analysis data)"), above)))
+    # what the sheet says, though the form has no such choice: kept as it is
+    if (!.is_blank(r$from) && !r$from %in% from_ch) {
+      from_ch <- c(stats::setNames(r$from, sprintf(t("%s (as written in the sheet: not a dataset nor an analysis data above)"),
+                                                   r$from)), from_ch)
+    }
     more <- !.is_blank(r$add) || !.is_blank(r$derive) || !.is_blank(r$keep) || !.is_blank(r$distinct)
     adata_form_ui(shiny::div(
       class = "rp-b-card mb-2 border-primary",

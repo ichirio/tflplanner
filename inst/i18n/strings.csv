@@ -2109,3 +2109,6 @@ Keep the subjects of,被験者を絞る：この解析データの被験者だ�
 "Only the subjects in that analysis data (as an inner join on the subject key): a condition written there, the analysis set's for one, need not be written here again.",選んだ解析データにいる被験者だけを残します（被験者キーでの inner join）。そちらに書いた条件（解析対象集団など）を、ここにもう一度書く必要はありません。
 Kept to the analysis set %s too (as it was made: population_id),解析対象集団 %s でも絞る（作ったときの指定：population_id）
 "Columns taken, made, kept; one row per ...",持ってくる列・作る列・残す列、1 行の単位 ...
+Details (the sheet): this report's analysis data,詳細（シート）：この帳票の解析データ
+"The rows of analysis_data this report reads, every column, as in the workbook: what the form above does not show is written here. The whole study's: the Data tab.",この帳票が読む analysis_data の行を、ブックと同じくすべての列で表示します。上のフォームに出ない列はここで書きます。試験全体の表は「データ」タブです。
+%s (as written in the sheet: not a dataset nor an analysis data above),%s（シートに書かれたまま：データセットでも上の解析データでもありません）

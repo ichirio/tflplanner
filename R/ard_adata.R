@@ -86,6 +86,19 @@
   x
 }
 
+# The study's analysis_data with a report's rows (`ids`) replaced by `d`:
+# where the first of them was, the other rows as they were
+.adata_put_report_rows <- function(ad, ids, d) {
+  mine <- ad$data_id %in% ids
+  for (nm in setdiff(names(ad), names(d))) d[[nm]] <- rep(NA_character_, nrow(d))
+  at <- if (any(mine)) min(which(mine)) else nrow(ad) + 1L
+  rest <- ad[!mine, , drop = FALSE]
+  before <- which(!mine) < at
+  out <- rbind(rest[before, , drop = FALSE], d[names(ad)], rest[!before, , drop = FALSE])
+  rownames(out) <- NULL
+  out
+}
+
 # The opposite of a condition, the rows it does not keep: a blank flag too
 # (SAFFL != "Y" would drop the rows where SAFFL is blank)
 .cond_not <- function(w) {

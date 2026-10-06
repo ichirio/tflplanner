@@ -210,3 +210,32 @@ test_that("2-1: one list, a new analysis data, kept to another's subjects", {
     expect_identical(sum(a$output_id == "DM"), 1L)
   })
 })
+
+test_that("2-1's sheet: the report's rows edited in their place; a `from` the form has no choice for is kept", {
+  ad <- .normalize_ard_sheet(data.frame(data_id = c("a", "b", "c", "d"), from = "ADSL"), "analysis_data")
+  d <- .normalize_ard_sheet(data.frame(data_id = c("b", "x"), from = c("ADAE", "ADLB")), "analysis_data")
+  out <- .adata_put_report_rows(ad, c("b", "c"), d)
+  expect_identical(out$data_id, c("a", "b", "x", "d"))
+  expect_identical(out$from, c("ADSL", "ADAE", "ADLB", "ADSL"))
+  # none of the report's yet: added at the end
+  expect_identical(.adata_put_report_rows(ad, character(), d)$data_id, c("a", "b", "c", "d", "b", "x"))
+  skip_if_not_installed("cards")
+  local_home()
+  p <- adata_planner()
+  p <- set_analysis_data(p, "adsl_saf", from = "ADSL", where = "SAFFL == \"Y\"")
+  p$ard$analyses$data <- "adsl_saf"
+  p$ard$analyses$population_id <- NA
+  # written in the sheet by hand: a dataset the catalog does not have
+  p$ard$analysis_data$from <- "ADSL2"
+  s <- create_study("SH", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("SH"), {
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    expect_false(is.null(output$hot_adata_report))
+    session$setInputs(ard_adata_pick = "adsl_saf")
+    f <- output$adata_detail$html
+    expect_match(f, "ADSL2 (as written in the sheet", fixed = TRUE)
+    expect_match(f, "<option value=\"ADSL2\" selected>", fixed = TRUE)
+  })
+})
+
