@@ -205,3 +205,37 @@ test_that("the Add dialog gives a new report its analysis set", {
     expect_true("adsl_itt" %in% .adata_rows(rv$p)$data_id)
   })
 })
+
+test_that("a TOC's datasets: kept, a listing's default, a table's analysis data made", {
+  skip_if_not("datasets" %in% tflspec:::.toc_fields)
+  f <- tempfile(fileext = ".csv")
+  writeLines(c("No.,Kind,Title,Population,Data",
+               "N1,Table,AEs,Safety Population,\"ADSL, ADAE\"",
+               "L1,Listing,AE listing,,ADAE",
+               "N2,Table,Demog,Safety Population,ADSL"), f)
+  p <- pop_planner()
+  m <- c(output_id = "No.", type = "Kind", title = "Title", population = "Population",
+         datasets = "Data")
+  sp <- tflspec::tfl_read_toc(f, map = m)
+  tp <- toc_populations(p, f, "No.", "Population")
+  pops <- stats::setNames(tp$population_id, tp$output_id)
+  q <- toc_apply(p, sp, toc_changes(p, sp), populations = pops, make_data = TRUE)
+  expect_identical(q$outputs$datasets, c(NA, "ADSL | ADAE", "ADAE", "ADSL"))
+  expect_setequal(attr(q, "made"), c("adsl_saf", "adae_saf"))
+  r <- .adata_rows(q)
+  expect_identical(r$subjects[r$data_id == "adae_saf"], "adsl_saf")
+  expect_identical(lf_rows(q, "listings", "L1")$dataset, "ADAE")
+  expect_identical(.report_toc_data(q, "N1"), c(ADAE = "adae_saf", "adsl_saf"))
+  # the report list: the TOC's datasets until the definition names its own
+  expect_identical(.report_rows(q)$datasets[3L], "ADAE")
+  # taken in again: not made again unless asked
+  q$ard$analysis_data <- q$ard$analysis_data[q$ard$analysis_data$data_id != "adae_saf", ]
+  q2 <- toc_apply(q, sp, toc_changes(q, sp), populations = pops, make_data = TRUE)
+  expect_false("adae_saf" %in% .adata_rows(q2)$data_id)
+  q3 <- toc_apply(q, sp, toc_changes(q, sp), populations = pops, make_data = TRUE, again = TRUE)
+  expect_true("adae_saf" %in% .adata_rows(q3)$data_id)
+  # without make_data: kept, nothing made
+  q4 <- toc_apply(p, sp, toc_changes(p, sp))
+  expect_identical(q4$outputs$datasets[2L], "ADSL | ADAE")
+  expect_length(.adata_rows(q4)$data_id, 0L)
+})

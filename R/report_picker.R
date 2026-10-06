@@ -107,9 +107,13 @@
     v <- c(v, vapply(d[!is.na(d) & d %in% ad$data_id], function(i) .adata_pop(ad, i), ""))
     paste(unique(stats::na.omit(v)), collapse = " | ")
   }, "")
+  # the datasets the report reads; until its definition names them, the
+  # TOC's
+  toc_ds <- x$outputs$datasets %||% rep(NA_character_, length(ids))
   ds <- vapply(seq_along(ids), function(i) {
     v <- tryCatch(.report_datasets(x, ids[i], type[i]), error = function(e) character())
-    paste(unique(stats::na.omit(v)), collapse = " | ")
+    v <- paste(unique(stats::na.omit(v)), collapse = " | ")
+    if (!nzchar(v) && !is.na(toc_ds[i])) toc_ds[i] else v
   }, "")
   st <- .report_state(if (!is.null(ard)) ard$state[match(ids, ard$output_id)] else NA,
                       if (!is.null(run)) run$status[match(ids, run$output_id)] else NA)
