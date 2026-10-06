@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **2-1 in step 2's SPEC | Code | Result** (#182).  The right of step 2
+  follows what is open on the left: an analysis data open in 2-1 shows its
+  rows of analysis_data in SPEC (the report's and the one open) and its
+  preview in Result (rows, subjects, the first rows); closed, or an
+  analysis chosen in 2-2, the right is 2-2's as before.  2-1's sheet and
+  preview leave the left card.
+
 - **SPEC | Code | Result on the right of each step** (#179).  Every step of
   making a report has the same three tabs on the right, the form (the GUI)
   on the left: SPEC the step's rows of the definition for this report (to

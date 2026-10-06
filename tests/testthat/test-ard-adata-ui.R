@@ -244,6 +244,13 @@ test_that("2-1's sheet: the report's rows edited in their place; a `from` the fo
     f <- output$adata_detail$html
     expect_match(f, "ADSL2 (as written in the sheet", fixed = TRUE)
     expect_match(f, "<option value=\"ADSL2\" selected>", fixed = TRUE)
+    # the right of step 2 follows what is open: the analysis data's rows and
+    # its preview, then 2-2's again when it closes
+    expect_match(output$ard_spec_pane$html, "hot_adata_report", fixed = TRUE)
+    expect_match(output$ard_result_pane$html, "adata_preview", fixed = TRUE)
+    session$setInputs(adata_close = 1)
+    expect_match(output$ard_spec_pane$html, "hot_ard_analyses", fixed = TRUE)
+    expect_match(output$ard_result_pane$html, "ard_preview", fixed = TRUE)
   })
 })
 

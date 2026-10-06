@@ -488,13 +488,6 @@ app_ui <- function(lang = "en") {
                            # the analyses
                            shiny::uiOutput("ard_adata"),
                            shiny::uiOutput("adata_detail"),
-                           shiny::tags$details(
-                             class = "mt-1 mb-2",
-                             ontoggle = "window.dispatchEvent(new Event('resize'))",
-                             shiny::tags$summary(class = "small", t("Details (the sheet): this report's analysis data")),
-                             shiny::p(class = "small text-muted mb-1",
-                                      t("The rows of analysis_data this report reads, every column, as in the workbook: what the form above does not show is written here. The whole study's: the Data tab.")),
-                             rhandsontable::rHandsontableOutput("hot_adata_report")),
                            shiny::uiOutput("ard_2_2_head"),
                            # the outline first: a click shows the analysis
                            # as a form below; the sheet itself folded
@@ -3820,8 +3813,12 @@ app_server <- function(input, output, session, start) {
   # the analysis data clicked in 2-1 (its form open below)
   adata_pick <- shiny::reactiveVal(NULL)
   adata_form_ui <- shiny::reactiveVal(NULL)
+  # the right of step 2 (SPEC | Code | Result) follows what is open on the
+  # left: an analysis data of 2-1, else 2-2's analyses
+  step2_focus <- shiny::reactiveVal("analysis")
   output$adata_detail <- shiny::renderUI(adata_form_ui())
   adata_close <- function() {
+    step2_focus("analysis")
     adata_form_ui(NULL)
     adata_edit(NULL)
     adata_pick(NULL)
@@ -3921,6 +3918,7 @@ app_server <- function(input, output, session, start) {
                                                    r$from)), from_ch)
     }
     more <- !.is_blank(r$add) || !.is_blank(r$derive) || !.is_blank(r$keep) || !.is_blank(r$distinct)
+    step2_focus("adata")
     adata_form_ui(shiny::div(
       class = "rp-b-card mb-2 border-primary",
       shiny::h6(class = "mb-2", title),
@@ -3971,12 +3969,12 @@ app_server <- function(input, output, session, start) {
                               choices = unique(c(bar(r$distinct), adata_cols(adata_root(r$from)))),
                               selected = bar(r$distinct), multiple = TRUE, width = "100%",
                               options = list(create = TRUE, plugins = list("remove_button")))),
-      shiny::uiOutput("adata_preview_out"),
       shiny::div(
-        class = "d-flex gap-2 mt-2",
+        class = "d-flex gap-2 mt-2 align-items-center",
         .btn("adata_save", t("Save"), class = "btn-sm btn-primary"),
-        .btn("adata_preview", t("Preview"), class = "btn-sm btn-outline-secondary"),
-        .btn("adata_close", t("Close"), class = "btn-sm btn-outline-secondary"))))
+        .btn("adata_close", t("Close"), class = "btn-sm btn-outline-secondary"),
+        shiny::span(class = "small text-muted",
+                    t("On the right: SPEC, the sheet's rows; Result, the data it makes (Preview).")))))
     output$adata_preview_out <- shiny::renderUI(NULL)
     output$adata_preview_tbl <- shiny::renderTable(NULL)
   }
@@ -4699,10 +4697,31 @@ app_server <- function(input, output, session, start) {
   })
   # SPEC | Code | Result of step 2 (R/result_tabs.R): SPEC the analyses
   # sheet (this report's, or every report's), Result this report's ARD
-  output$ard_spec_pane <- shiny::renderUI(shiny::tagList(
-    shiny::checkboxInput("ard_all", t("Every report's analyses (with output_id)"), FALSE),
-    rhandsontable::rHandsontableOutput("hot_ard_analyses")))
-  output$ard_result_pane <- shiny::renderUI(shiny::tagList(
+  shiny::observeEvent(an_pick(), {
+    if (!is.null(an_pick())) adata_close()
+  }, ignoreNULL = FALSE, ignoreInit = TRUE)
+  output$ard_spec_pane <- shiny::renderUI({
+    if (identical(step2_focus(), "adata")) {
+      return(shiny::tagList(
+        shiny::p(class = "small text-muted mb-1",
+                 t("The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. The whole study's: the Data tab.")),
+        rhandsontable::rHandsontableOutput("hot_adata_report")))
+    }
+    shiny::tagList(
+      shiny::checkboxInput("ard_all", t("Every report's analyses (with output_id)"), FALSE),
+      rhandsontable::rHandsontableOutput("hot_ard_analyses"))
+  })
+  output$ard_result_pane <- shiny::renderUI({
+    if (identical(step2_focus(), "adata")) {
+      return(shiny::tagList(
+        shiny::div(
+          class = "d-flex flex-wrap gap-2 align-items-center",
+          .btn("adata_preview", t("Preview"), class = "btn-sm btn-primary"),
+          shiny::span(class = "small text-muted",
+                      t("Makes the analysis data of the form (as it is now, not saved yet) from the study's data: its rows and subjects, the first rows."))),
+        shiny::uiOutput("adata_preview_out")))
+    }
+    shiny::tagList(
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center",
       .btn("ard_preview", t("Preview"), class = "btn-sm btn-primary"),
@@ -4710,7 +4729,8 @@ app_server <- function(input, output, session, start) {
                   t("Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills."))),
     shiny::uiOutput("ard_run_info"),
     shiny::div(class = "rp-resize",
-               DT::DTOutput("ard_table", height = "auto", fill = FALSE))))
+               DT::DTOutput("ard_table", height = "auto", fill = FALSE)))
+  })
   # what the Code panel shows, as the save would write it
   ard_code_now <- shiny::reactive({
     a <- structure(rv$p$ard, class = "tfl_ard_spec")

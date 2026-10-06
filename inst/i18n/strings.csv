@@ -2109,15 +2109,6 @@ this study's,この試験の関数
 No study open,試験を開いていません
 studies are chosen on the Study tab,試験は「試験」タブで選びます
 Keys and setup code,キーとセットアップコード
-"The code lists reach the report's ARD program: the levels, their order and labels.",コードリストは、この帳票の ARD プログラムに入ります（水準・順序・表示名）。
-"The code list this report uses: the study's rows, this report's own in their place.",この帳票が使うコードリスト（試験共通の行。この帳票だけの行があればそちらを使う）。
-The table as it will print,印刷される表
-The listing's row of the definition (listings); its columns are the grid on the left.,この Listing の定義の行（listings）。列は左の表で決めます。
-"A user-code report's definition is its code, on the left, and its page (step 4).",ユーザーコードの帳票の定義は、左のコードとページ（段 4）です。
-No code list yet.,コードリストはまだありません。
-the study,試験共通
-this report,この帳票
-Result,結果
 2-1 Analysis data,2-1 解析データ
 "The data the analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are the study's, to use in other reports too. The denominator of a percent is chosen with each analysis, in 2-2.",解析が読むデータです。試験のデータセットから作ります（条件で残す行、ほかの解析データの被験者への絞り込み、作る列）。試験のものなので、ほかの帳票でも使えます。% の分母は、2-2 で解析ごとに選びます。
 Copy the one chosen,選んだ解析データを複製
@@ -2141,3 +2132,15 @@ Keep to the subjects of %s,%s の症例に絞る
 Keep to the subjects of an analysis data of one row a subject,1 人 1 行の解析データの症例に絞る
 "Only the subjects in it (an inner join on %s): its condition, the analysis set's for one, is not written here again.",その解析データにいる症例だけを残します（%s での inner join）。そちらの条件（解析対象集団など）を、ここにもう一度書く必要はありません。
 %s are kept to the subjects of %s now (untick it in their form if one should not be).,%s を %s の症例に絞りました（不要なものは、そのフォームでチェックを外してください）。
+"On the right: SPEC, the sheet's rows; Result, the data it makes (Preview).",右の［SPEC］にシートの行、［結果］に作られるデータ（プレビュー）があります。
+"The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. The whole study's: the Data tab.",この帳票が読む analysis_data の行を、ブックと同じくすべての列で表示します。フォームに出ない列はここで書きます。試験全体の表は「データ」タブです。
+"Makes the analysis data of the form (as it is now, not saved yet) from the study's data: its rows and subjects, the first rows.",フォームの今の内容（保存前）で、試験のデータから解析データを作ります：行数と人数、先頭の行。
+"The code lists reach the report's ARD program: the levels, their order and labels.",コードリストは、この帳票の ARD プログラムに入ります（水準・順序・表示名）。
+"The code list this report uses: the study's rows, this report's own in their place.",この帳票が使うコードリスト（試験共通の行。この帳票だけの行があればそちらを使う）。
+The table as it will print,印刷される表
+The listing's row of the definition (listings); its columns are the grid on the left.,この Listing の定義の行（listings）。列は左の表で決めます。
+"A user-code report's definition is its code, on the left, and its page (step 4).",ユーザーコードの帳票の定義は、左のコードとページ（段 4）です。
+No code list yet.,コードリストはまだありません。
+the study,試験共通
+this report,この帳票
+Result,結果
