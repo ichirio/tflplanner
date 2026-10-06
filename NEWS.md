@@ -21,6 +21,17 @@
   - The old sub-tabs (Builder / Spec sheets / Program, Page / Program) are
     gone.
 
+- **A condition built from rows** (#175).  A component for the analysis
+  data's and the analysis sets' `where` (2-1 takes it in next): rows of a
+  variable (with its label), an operator (=, not equal, <, <=, >, >=,
+  blank, not blank) and values -- a categorical variable's chosen from the
+  data's, with their counts, searched as the function search searches --
+  ANDed, in "or" groups if need be; shortcuts (the study's analysis sets)
+  add their rows.  It writes the R the definition keeps (`SAFFL == "Y" &
+  PARAMCD %in% c("ALT", "AST")`; not equal as `!(x %in% ...)`, so a blank
+  counts as "not Y") and reads it back; what the rows cannot hold stays
+  as R, in a field of its own.
+
 - **The Study tab and the Data tab, after trying them** (#174).
   - The Study tab: "Study list" on the left; on the right one card, "Study
     settings": the study's title, compound, phase, rounding, its keys and
