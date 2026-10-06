@@ -442,7 +442,13 @@ app_ui <- function(lang = "en") {
       shiny::p(shiny::strong(t("Study defaults")), ": ",
                t("rows whose output_id is blank. They apply to every report that has no row of its own for the same thing: the page header, the run-information footer, the usual cell template, ...")),
       shiny::p(shiny::strong(t("ALL")), ": ",
-               t("every row of every report and the defaults at once, with output_id shown: for bulk edits and pasting from Excel."))))
+               t("every row of every report and the defaults at once, with output_id shown: for bulk edits and pasting from Excel.")),
+      # the marks after a report's title: its run's state
+      shiny::p(shiny::strong(t("The marks")), ": ",
+               lapply(names(.report_state_marks), function(k) shiny::span(
+                 class = "me-2 text-nowrap",
+                 shiny::span(class = .report_state_class[[k]], .report_state_marks[[k]]),
+                 " ", t(.report_state_words[[k]]))))))
 
   # -- the steps of making a report ----------------------------------------
   step_codelist <- shiny::div(
@@ -852,17 +858,22 @@ app_ui <- function(lang = "en") {
       bslib::card(
         bslib::card_header(t("Reports (TFL)")),
         shiny::uiOutput("uc_offer"),
-        report_search_ui("outputs_q", lang),
+        # the search and the buttons above the list: below 200 reports no
+        # one found them
+        shiny::div(
+          class = "d-flex flex-wrap gap-1 align-items-start",
+          shiny::div(style = "flex: 0 1 22rem; min-width: 14rem;",
+                     report_search_ui("outputs_q", lang)),
+          shiny::div(
+            class = "d-flex flex-wrap gap-1 ms-2",
+            .btn("add", t("Add")), .btn("copy", t("Copy")),
+            .btn("rename", t("Rename")),
+            .btn("remove", t("Delete"), class = "btn-sm btn-outline-danger"),
+            .btn("up", "\u2191"), .btn("down", "\u2193")),
+          .btn("toc_new", t("Take in a TOC..."), class = "btn-sm btn-outline-primary ms-auto")),
+        shiny::uiOutput("report_moves"),
         # its own height (a fixed one let a long list cover the buttons)
         DT::DTOutput("outputs", height = "auto", fill = FALSE),
-        shiny::uiOutput("report_moves"),
-        shiny::div(
-          class = "d-flex flex-wrap gap-1",
-          .btn("add", t("Add")), .btn("copy", t("Copy")),
-          .btn("rename", t("Rename")),
-          .btn("remove", t("Delete"), class = "btn-sm btn-outline-danger"),
-          .btn("up", "\u2191"), .btn("down", "\u2193"),
-          .btn("toc_new", t("Take in a TOC..."), class = "btn-sm btn-outline-primary ms-auto")),
         shiny::p(class = "text-muted small mt-1",
                  t("Reports are made in this order (the official run too). Copy makes a new report with all of this one's definition. A double click makes the report (Make a report).")))),
 
@@ -877,7 +888,7 @@ app_ui <- function(lang = "en") {
         shiny::conditionalPanel(
           "output.report_kind == ''",
           shiny::p(class = "text-muted mt-3",
-                   t("Choose a report on the left."))),
+                   t("Choose a report above, or in the list on the left (> opens it)."))),
         bslib::navset_pill(
           id = "step",
           bslib::nav_panel(step_title("codelist"), value = "codelist", step_codelist),
@@ -901,7 +912,13 @@ app_ui <- function(lang = "en") {
                                 class = "btn-sm")),
         shiny::uiOutput("job"),
         report_search_ui("status_q", lang),
-        DT::DTOutput("status")),
+        # a study of many reports takes seconds to read: said so in the
+        # table's place until it is drawn (an empty card looked broken)
+        shiny::div(id = "status_loading", class = "small text-muted py-3",
+                   shiny::span(class = "spinner-border spinner-border-sm me-2"),
+                   shiny::textOutput("status_loading_txt", inline = TRUE)),
+        DT::DTOutput("status"),
+        shiny::tags$script(shiny::HTML(.status_loading_js))),
       bslib::card(
         bslib::card_header(t("Official runs (batch folders)")),
         shiny::p(class = "small text-muted mb-1",
@@ -961,6 +978,17 @@ app_ui <- function(lang = "en") {
 .adata_code_js <- "
 $(document).on('input change', '#adata_code', function() {
   $('#adata_gui').toggleClass('rp-greyed', $(this).val().trim() !== '');
+});
+"
+
+# the runs table's "Reading ..." line: shown while the table is (re)made,
+# gone once it is drawn
+.status_loading_js <- "
+$(document).on('shiny:recalculating', function(e) {
+  if (e.target && e.target.id === 'status') $('#status_loading').show();
+});
+$(document).on('shiny:value shiny:error', function(e) {
+  if (e.name === 'status') $('#status_loading').hide();
 });
 "
 
@@ -4316,7 +4344,7 @@ app_server <- function(input, output, session, start) {
   output$ard_outline <- shiny::renderUI({
     a <- st_rows()
     tg <- ard_target()
-    if (is.null(tg)) return(shiny::p(class = "small text-muted", t("Choose a report on the left.")))
+    if (is.null(tg)) return(shiny::p(class = "small text-muted", t("Choose a report above, or in the list on the left (> opens it).")))
     if (is.null(a) || !nrow(a)) {
       return(shiny::div(class = "small text-muted mb-2",
                         sprintf(t("%s has no analyses yet."), tg), " ",
@@ -4868,7 +4896,7 @@ app_server <- function(input, output, session, start) {
     scope <- input$ard_scope %||% "report"
     id <- ard_target()
     if (scope == "report") {
-      if (is.null(id)) return(msg(t("Choose a report on the left.")))
+      if (is.null(id)) return(msg(t("Choose a report above, or in the list on the left (> opens it).")))
       if (!any(a$analyses$output_id %in% id)) {
         return(msg(sprintf(t("%s has no analyses in the ARD definition."), id)))
       }
@@ -6544,7 +6572,7 @@ app_server <- function(input, output, session, start) {
   })
   output$builder_note <- shiny::renderUI({
     msg <- switch(builder_case(),
-      none = t("Choose a report on the left."),
+      none = t("Choose a report above, or in the list on the left (> opens it)."),
       type = t("The builder is for Tables; Listings and Figures are made in their data code."),
       meta = shiny::tagList(
         t("This table has no ARD yet: the builder is built from it."), " ",
@@ -7046,7 +7074,7 @@ app_server <- function(input, output, session, start) {
     id <- current()
     if (is.null(id)) {
       return(shiny::p(class = "small text-muted",
-                      t("Choose a report on the left.")))
+                      t("Choose a report above, or in the list on the left (> opens it).")))
     }
     rv$ver
     p <- rv$p
@@ -7064,6 +7092,11 @@ app_server <- function(input, output, session, start) {
                       program = info$program)
   }
   output$builder_preview <- shiny::renderUI({
+    # no ARD yet: the note above says it, with its button; here only a word
+    if (identical(builder_case(), "meta")) {
+      return(shiny::div(class = "small text-muted",
+                        t("Nothing yet: the button above makes this table's ARD.")))
+    }
     pv <- preview_d()
     if (!is.null(pv$error)) {
       return(shiny::div(class = "small text-muted", pv$error))
@@ -7220,7 +7253,7 @@ app_server <- function(input, output, session, start) {
     id <- current()
     if (is.null(id)) {
       shiny::p(class = "text-muted",
-               t("Choose a report on the left."))
+               t("Choose a report above, or in the list on the left (> opens it)."))
     } else {
       shiny::h5(id, shiny::span(class = "badge bg-secondary ms-1",
                                 .type_labels[[report_info(rv$p, id)$type]]))
@@ -7633,6 +7666,10 @@ app_server <- function(input, output, session, start) {
     input$status_refresh
     shiny::req(has_study())
     study_status(current_study())
+  })
+  output$status_loading_txt <- shiny::renderText({
+    shiny::req(has_study())
+    sprintf(t("Reading the state of %d reports..."), nrow(rv$p$outputs))
   })
   output$status <- DT::renderDT({
     d <- status()

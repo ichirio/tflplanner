@@ -1,5 +1,21 @@
 # tflplanner (development version)
 
+- **From the screen review** (#193).
+  - The report list's buttons (Add, Copy, Rename, Delete, the arrows,
+    Take in a TOC...) are above the list, beside its search: below 200
+    rows no one found them.
+  - "What do these mean?" on the left of Make a report says what the
+    marks after a report's title are (made, to make again, not made yet,
+    error).
+  - The Runs tab says "Reading the state of N reports..." in its table's
+    place until the table is drawn (a study of 200 reports takes seconds;
+    the card looked empty and broken).
+  - "Choose a report on the left." is now "Choose a report above, or in
+    the list on the left (> opens it).": with the left folded it pointed
+    to nothing.
+  - Step 3, a table with no ARD yet: its Result says only that the button
+    above makes the ARD (the note above said it all a second time).
+
 - **Screen review: step 2 and the Data tab** (#192).  Step 2's check
   line says this report's analyses and the study's (it said the study's,
   299, while a report was open); "2-2 Analyses"; side by side, the forms on

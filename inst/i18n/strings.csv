@@ -749,6 +749,7 @@ The ARD program failed: see what it printed in Data > Study ARD.,ARD プログ�
 Preview to see the ARD this report's analyses make.,プレビューすると、この帳票の解析が作る ARD が表示されます。
 This table has no ARD yet: the builder is built from it.,この表にはまだ ARD がありません。ビルダーは ARD から作られます。
 No data to show yet: Preview this table's ARD.,表示するデータがまだありません。この表の ARD をプレビューしてください。
+Nothing yet: the button above makes this table's ARD.,まだありません。上のボタンでこの表の ARD を作ります。
 Preview this table's ARD first.,先にこの表の ARD をプレビューしてください。
 Start the table from the data (writes its ARD definition and opens the builder),データから表を始める（ARD の定義を書き、ビルダーを開きます）
 "No data files yet: put them on the Data tab (data/adam), then add the table.",データファイルがまだありません。「データ」タブに置いて（data/adam）から、表を追加してください。
@@ -1956,7 +1957,9 @@ Analysis data,解析データ
 2 ARD,2 ARD
 3 Content,3 コンテンツ（表・図・Listing）
 4 Page and output,4 ページと出力
-Choose a report on the left.,左で帳票を選んでください。
+"Choose a report above, or in the list on the left (> opens it).",上の選択か、左の一覧（＞で開く）で帳票を選んでください。
+The marks,印
+"Reading the state of %d reports...",%d 帳票の状態を読み込んでいます…
 Make a report,帳票の作成
 Report list,帳票一覧
 Not used,使わない

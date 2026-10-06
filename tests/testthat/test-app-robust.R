@@ -485,3 +485,16 @@ test_that("a report's kind says where it is made, and the tabs it has nothing on
   expect_setequal(names(.type_moves), report_types())
   expect_setequal(names(.type_idle_tabs), report_types())
 })
+
+test_that("the report list's buttons are above the list, the marks have a legend", {
+  html <- as.character(app_ui())
+  # Add and Take in a TOC before the table (below 200 rows no one found them)
+  at <- function(x) regexpr(x, html, fixed = TRUE)[[1L]]
+  expect_lt(at('id="add"'), at('id="outputs"'))
+  expect_lt(at('id="toc_new"'), at('id="outputs"'))
+  # the runs table says it is being read until it is drawn
+  expect_lt(at('id="status_loading"'), at('id="status"'))
+  # what the marks after a report's title mean
+  for (m in .report_state_marks) expect_true(grepl(m, html, fixed = TRUE))
+  expect_match(html, "The marks", fixed = TRUE)
+})
