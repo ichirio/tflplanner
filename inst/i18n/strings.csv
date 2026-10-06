@@ -2265,3 +2265,5 @@ The order inside a stack,スタックの中の順
 "The rows the data keeps. The rows are AND (""+ and""); ""+ or (another group)"" is OR. A flag: ""= Y"". What the rows cannot say: ""Write as R"".",残す行の条件。行どうしは「かつ」（+ かつ）、「+ または（別のまとまり）」は「または」。フラグは「= Y」。行で書けない式は「R の式で書く」。
 Only the subjects in that analysis data: its condition (its analysis set's too) is not written here again.,その解析データにいる被験者だけを残します。そちらの条件（解析対象集団も）をここに書き直す必要はありません。
 "When the fields cannot say it: R whose value is the data (the datasets, pop_<set> and the analysis data above are in reach); written, the fields above are not used. The program is never edited: this R is the definition.",欄で書けないとき、値がデータになる R（データセット、pop_<集団>、上の解析データが使えます）。書くと上の欄は使われません。プログラムは直しません（この R が定義です）。
+The method,手法
+"The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (press Apply to the analysis first). The code is part of the definition: the program is never edited.",手法が custom になり、今の定義から書いたこのコードが解析になります（同じ ARD。先に［解析に反映］を押してください）。コードは定義の一部で、プログラムは直しません。

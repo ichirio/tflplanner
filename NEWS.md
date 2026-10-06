@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **2-2's analysis form, after a look at it** (#215).  The card has one
+  heading ("Analysis A1 (i)"; "Analysis" while none is chosen); the method
+  is "The method (method)" and is described once, under it; the formats'
+  (i) is on their heading; the "Write as code" dialog names the button
+  "Apply to the analysis".
+
 - **Help, after a review of every screen** (#211).  A heading's (i) opens
   on a click or a tap too (a tablet has no hover) and stays open until it
   is clicked again, something else is clicked or Escape is pressed -- for

@@ -497,7 +497,6 @@ app_ui <- function(lang = "en") {
         shiny::uiOutput("ard_check"),
         shiny::div(
           class = "rp-b-card mt-2",
-          shiny::h6(t("Analysis")),
           shiny::uiOutput("ard_stat_ui")),
         shiny::tags$details(
           class = "rp-help mt-2",
@@ -3020,8 +3019,10 @@ app_server <- function(input, output, session, start) {
   output$ard_stat_ui <- shiny::renderUI({
     a <- st_rows()
     if (is.null(a) || !nrow(a) || is.null(an_pick()) || !an_pick() %in% a$analysis_id) {
-      return(shiny::p(class = "small text-muted mb-0",
-                      t("A click on an analysis in the list above opens it here.")))
+      return(shiny::tagList(
+        shiny::h6(t("Analysis")),
+        shiny::p(class = "small text-muted mb-0",
+                 t("A click on an analysis in the list above opens it here."))))
     }
     r <- st_row()
     rv$ver
@@ -3060,7 +3061,7 @@ app_server <- function(input, output, session, start) {
         open = if (is.na(r$method) || !nzchar(r$method)) NA,
         shiny::tags$summary(
           class = "d-flex align-items-baseline gap-2 mb-1",
-          shiny::strong(title = t("What to compute"), "method"),
+          shiny::strong(title = t("What to compute"), argl("The method", "method")),
           shiny::uiOutput("ard_fn_now", inline = TRUE),
           shiny::span(class = "ard-fn-closed small link-primary", t("Change")),
           shiny::span(class = "ard-fn-open small link-secondary", t("Close"))),
@@ -3117,8 +3118,7 @@ app_server <- function(input, output, session, start) {
                class = "btn-sm btn-outline-secondary"),
         if (role == "single" && !identical(r$method, "custom"))
           .btn("ard_an_as_code", t("Write this analysis as code..."),
-               class = "btn-sm btn-outline-secondary"),
-        shiny::span(class = "small text-muted", with_tip(t("Format"), t("xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown.")))),
+               class = "btn-sm btn-outline-secondary")),
       shiny::tags$details(
         class = "mt-2", open = NA,
         shiny::tags$summary(class = "small", t("This analysis as code")),
@@ -3501,8 +3501,8 @@ app_server <- function(input, output, session, start) {
       stats::setNames(as.list(extra), extra)
     note <- switch(kinds,
       continuous = t("Statistics of the numeric variables, in this order. cards computes its own; tflplanner writes a function for the others (CV, geometric mean, percentiles, CI of the mean ...)."),
-      categorical = t("Counts and percents of each level."),
-      missing = t("Missing and non-missing counts."),
+      categorical = NULL,
+      missing = NULL,
       t("This method gives a fixed set of results (estimate, confidence limits, p-value ...): the statistics picked here are the ones kept. Blank keeps them all."))
     dflt <- .method_default_stats(kinds)
     lab <- function(x) {
@@ -3526,7 +3526,7 @@ app_server <- function(input, output, session, start) {
                class = "btn-sm btn-link py-0"))
         else shiny::span(class = "text-muted",
                          t("Blank = every result the method gives."))),
-      shiny::p(class = "small text-muted mb-1", note),
+      if (!is.null(note)) shiny::p(class = "small text-muted mb-1", note),
       shiny::uiOutput("ard_stat_fmts"))
   })
   # a formula written from columns (the field keeps what was there until
@@ -3567,7 +3567,7 @@ app_server <- function(input, output, session, start) {
     if (!length(pick)) return(NULL)
     f <- .parse_formats(shiny::isolate(st_row())$formats)
     shiny::tagList(
-      shiny::h6(class = "mt-2 mb-1", argl("Formats", "formats")),
+      shiny::h6(class = "mt-2 mb-1", with_tip(argl("Formats", "formats"), t("xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown."))),
       shiny::div(
       class = "rp-stat-fmt",
       lapply(seq_along(pick), function(i) {
@@ -3703,7 +3703,7 @@ app_server <- function(input, output, session, start) {
     an_as_code(c(list(output_id = r$output_id, analysis_id = r$analysis_id), v))
     shiny::showModal(shiny::modalDialog(
       title = sprintf(t("Write %s as code"), r$analysis_id), size = "l", easyClose = TRUE,
-      shiny::p(t("The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (Apply first). The code is part of the definition: the program is never edited.")),
+      shiny::p(t("The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (press Apply to the analysis first). The code is part of the definition: the program is never edited.")),
       shiny::div(class = "rp-code", shiny::tags$pre(v$code)),
       if (!is.na(v$formats)) shiny::p(class = "small text-muted",
                                      sprintf(t("Formats written out (its method's defaults with its own): %s"), v$formats)),
