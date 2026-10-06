@@ -13,6 +13,18 @@
   data, adsl_saf (the safety set) and adae_saf (its TEAEs), its
   denominator adsl_saf: the same tables and ARD.
 
+- **Long explanations are a heading's (i) now** (#207).  The paragraphs of
+  explanation on the screens made them hard to read; they are a tooltip
+  on the heading they explain (shown on hover or keyboard focus), or an
+  "About this (i)" line where there is no heading: the Study tab (own ARD
+  functions, keys and setup code), the Data tab (the study ARD, ARDs taken
+  in, datasets, analysis data, code lists), the Report list, steps 1, 3
+  (user code, the plot written by hand, a listing's columns, the builder)
+  and 4, the Runs tab, and the note under every sheet ("Editing the sheet
+  (i)").  Short labels, warnings, errors, dialogs and the statistics notes
+  stay on the page.  One component for it (`help_tip()`, `with_tip()`,
+  `about_tip()` in R/help_tip.R): a focusable (i) named by its help.
+
 - **The report list has a section (heading)** (#203).  A TOC's heading
   rows ("14.1 Demographics") were passed over; now each report taken in is
   under the heading above it (or the TOC's section column, a new item of

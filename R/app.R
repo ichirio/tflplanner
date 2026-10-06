@@ -414,9 +414,12 @@ app_ui <- function(lang = "en") {
   sheet_panel <- function(sheet) {
     bslib::nav_panel(t(.sheet_labels[[sheet]]), value = sheet, sheet_body(sheet))
   }
-  grid_note <- shiny::p(
+  # a paragraph of help, as an (i) where there is no heading (R/help_tip.R)
+  about <- function(x) about_tip(x, lang)
+  grid_note <- shiny::div(
     class = "text-muted small mb-1",
-    t("Right-click to add or delete rows. Paste from Excel works. Blank = not set. Several values in one cell: separate with |. Spaces at the start or end of a text are kept only in quotes: \"  Total\"."))
+    with_tip(t("Editing the sheet"),
+             t("Right-click to add or delete rows. Paste from Excel works. Blank = not set. Several values in one cell: separate with |. Spaces at the start or end of a text are kept only in quotes: \"  Total\".")))
   # a step of making a report: its name (one place: .step_labels) and its
   # state's mark
   step_title <- function(step) {
@@ -453,8 +456,7 @@ app_ui <- function(lang = "en") {
   # -- the steps of making a report ----------------------------------------
   step_codelist <- shiny::div(
     class = "mt-2",
-    shiny::p(class = "small text-muted",
-             t("The code lists this report uses: each variable's values, their order and the text they print as. The study's rows (blank output_id) apply to every report; this report's own rows replace them. Optional: a report that needs none skips this step.")),
+    about(t("The code lists this report uses: each variable's values, their order and the text they print as. The study's rows (blank output_id) apply to every report; this report's own rows replace them. Optional: a report that needs none skips this step.")),
     # SPEC | Code | Result (R/result_tabs.R): no form of its own yet
     result_tabs_ui(
       "codelist_right", lang = lang,
@@ -591,11 +593,7 @@ app_ui <- function(lang = "en") {
         bslib::layout_columns(
           col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
           bslib::card(
-            bslib::card_header(t("Your code")),
-            shiny::p(class = "small text-muted",
-                     t("Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them; they print in that order. The report's titles, footnotes, header and page come from its settings (step 4, Page), as for any report.")),
-            shiny::p(class = "small text-muted",
-                     t("Only an analysis to write yourself? That is the custom method of step 2 (ARD) (or a company ard_*() function). This kind is for a report whose whole content is your code.")),
+            bslib::card_header(with_tip(t("Your code"), paste(t("Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them; they print in that order. The report's titles, footnotes, header and page come from its settings (step 4, Page), as for any report."), t("Only an analysis to write yourself? That is the custom method of step 2 (ARD) (or a company ard_*() function). This kind is for a report whose whole content is your code.")))),
             shiny::uiOutput("uc_inputs"),
             shiny::div(class = "rp-code",
                        shiny::textAreaInput("uc_code", t("Code"), rows = 14,
@@ -609,8 +607,7 @@ app_ui <- function(lang = "en") {
             result = shiny::tagList(
               shiny::div(class = "d-flex gap-2 align-items-center mb-1",
                          .btn("uc_run", t("Run the code"), class = "btn-sm btn-outline-primary")),
-              shiny::p(class = "small text-muted",
-                       t("Runs the report's code in a fresh R process from the study folder, as its program will, and shows what it left: the first table page, the first figure.")),
+              help_tip(t("Runs the report's code in a fresh R process from the study folder, as its program will, and shows what it left: the first table page, the first figure.")),
               shiny::div(style = "overflow-x: auto;", shiny::uiOutput("uc_result"))))))),
     bslib::nav_panel(
       t("Data code"), value = "code",
@@ -653,8 +650,7 @@ app_ui <- function(lang = "en") {
 
   step_page <- shiny::div(
     class = "mt-2",
-    shiny::p(class = "small text-muted",
-             t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
+    about(t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
     # SPEC | Code | Result: no form of its own; the program is the Code
     result_tabs_ui(
       "page_right", lang = lang,
@@ -685,6 +681,7 @@ app_ui <- function(lang = "en") {
                               "function() { $(this).closest('details.ard-fn').prop('open', false); });"))),
                             shiny::tags$script(shiny::HTML(.split_js)),
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
+                            shiny::tags$style(shiny::HTML(.help_tip_css)),
                             shiny::tags$script(shiny::HTML(.result_tabs_js)),
                             shiny::tags$script(shiny::HTML(.unsaved_js)),
                             shiny::tags$script(shiny::HTML(.updating_js)),
@@ -736,8 +733,7 @@ app_ui <- function(lang = "en") {
           shiny::conditionalPanel(
             "output.shows_open == 'yes'",
             shiny::h6(class = "mt-2", paste0(t("Keys and setup code"), " (study)")),
-            shiny::p(class = "small text-muted mb-1",
-                     t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source).")),
+            about(t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source).")),
             rhandsontable::rHandsontableOutput("hot_ard_study"),
             shiny::textAreaInput(
               "setup",
@@ -745,9 +741,7 @@ app_ui <- function(lang = "en") {
               rows = 4, width = "100%", resize = "vertical")),
           shiny::uiOutput("study_actions"))),
       bslib::card(
-          bslib::card_header(t("Own ARD functions")),
-          shiny::p(class = "small text-muted",
-                   t("ARD functions of one's own, of two kinds: the company's, for every study (the standards folder), and this study's only (programs/ard/functions/). A study's copy of a company function wins in that study. An analysis names one as its method once the study loads it. They are R files, edited outside the app (RStudio ...): try one after a change.")),
+          bslib::card_header(with_tip(t("Own ARD functions"), t("ARD functions of one's own, of two kinds: the company's, for every study (the standards folder), and this study's only (programs/ard/functions/). A study's copy of a company function wins in that study. An analysis names one as its method once the study loads it. They are R files, edited outside the app (RStudio ...): try one after a change."))),
           shiny::uiOutput("own_counts"),
           shiny::div(class = "mb-2 d-flex gap-2",
                      .btn("own_new", t("New function..."), class = "btn-sm btn-primary"),
@@ -789,10 +783,7 @@ app_ui <- function(lang = "en") {
         bslib::nav_panel(
           shiny::span(t("Study ARD"), shiny::uiOutput("ard_cond_badge", inline = TRUE)),
           value = "state",
-          shiny::p(class = "small text-muted",
-                   t("Build the ARD output by output as each is ready: tables can be made from the outputs already in it, while others are still being defined.")),
-          shiny::p(class = "small text-muted mt-1 mb-1",
-                   t("Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Runs tab. Choose a row to see its log in the latest official run.")),
+          about(paste(t("Build the ARD output by output as each is ready: tables can be made from the outputs already in it, while others are still being defined."), t("Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Runs tab. Choose a row to see its log in the latest official run."))),
           DT::DTOutput("ard_state"),
           shiny::div(class = "rp-code mt-2",
                      shiny::verbatimTextOutput("ard_log")),
@@ -800,15 +791,12 @@ app_ui <- function(lang = "en") {
           # leaves its message in the ARD, the others carry on
           shiny::div(
             class = "d-flex flex-wrap gap-3 align-items-center mt-3",
-            shiny::h6(class = "mb-0", t("Errors and warnings inside the analyses")),
+            shiny::h6(class = "mb-0", with_tip(t("Errors and warnings inside the analyses"), t("From the study ARD as it was last made, and the ARDs taken in. A program that stopped as a whole is in the table above (Error). The messages are cards' own (in English). A click on a row opens that analysis."))),
             shiny::checkboxInput("ard_cond_errors", t("Errors only"), FALSE)),
-          shiny::p(class = "small text-muted mb-1",
-                   t("From the study ARD as it was last made, and the ARDs taken in. A program that stopped as a whole is in the table above (Error). The messages are cards' own (in English). A click on a row opens that analysis.")),
           DT::DTOutput("ard_conds")),
         bslib::nav_panel(
           t("ARDs taken in"), value = "imports",
-          shiny::p(class = "small text-muted",
-                   t("An ARD made elsewhere (a CRO, another program) is taken into the study's input/ard/ folder and recorded there. Making the ARD, rebuilding it and Preview write only to output/ard/, so an ARD taken in is never overwritten. A report uses it when its report row says so.")),
+          about(t("An ARD made elsewhere (a CRO, another program) is taken into the study's input/ard/ folder and recorded there. Making the ARD, rebuilding it and Preview write only to output/ard/, so an ARD taken in is never overwritten. A report uses it when its report row says so.")),
           shiny::div(class = "mb-2",
                      .btn("imp_new", t("Take in an ARD..."), class = "btn-sm btn-primary")),
           DT::DTOutput("imp_list"),
@@ -816,8 +804,7 @@ app_ui <- function(lang = "en") {
         bslib::nav_item(shiny::div(class = "small text-muted fw-bold mt-3 px-2", t("Definitions"))),
         bslib::nav_panel(
           paste0(t("Datasets"), " (datasets)"), value = "datasets",
-          shiny::p(class = "small text-muted",
-                   t("The datasets the study's programs read (the data catalog): a name, its level, its file in the study folder, columns derived. Defined once for the study, used by every report.")),
+          about(t("The datasets the study's programs read (the data catalog): a name, its level, its file in the study folder, columns derived. Defined once for the study, used by every report.")),
           shiny::uiOutput("catalog_missing"),
           grid_note,
           rhandsontable::rHandsontableOutput("hot_ard_datasets"),
@@ -837,8 +824,7 @@ app_ui <- function(lang = "en") {
             DT::DTOutput("help_ard_populations"))),
         bslib::nav_panel(
           paste0(t("Analysis data"), " (analysis_data)"), value = "analysis_data",
-          shiny::p(class = "small text-muted",
-                   t("Every report's analysis data, as a sheet: made in each report's step 2-1, and changed there or here (the study's sheet).")),
+          about(t("Every report's analysis data, as a sheet: made in each report's step 2-1, and changed there or here (the study's sheet).")),
           grid_note,
           rhandsontable::rHandsontableOutput("hot_ard_analysis_data"),
           shiny::tags$details(
@@ -847,8 +833,7 @@ app_ui <- function(lang = "en") {
             DT::DTOutput("help_ard_analysis_data"))),
         bslib::nav_panel(
           t("Code lists (the study's)"), value = "codelists",
-          shiny::p(class = "small text-muted",
-                   t("The study's code lists: each variable's values, their order and the text they print as, for every report (a report's own rows, in its step 1, replace them).")),
+          about(t("The study's code lists: each variable's values, their order and the text they print as, for every report (a report's own rows, in its step 1, replace them).")),
           shiny::fileInput(
             "codelist_file", t("Read the study's code list (xlsx / csv: variable, value, label, order)"),
             accept = c(".xlsx", ".csv"), width = "100%"),
@@ -863,7 +848,7 @@ app_ui <- function(lang = "en") {
       t("Report list"), value = "outputs",
       shiny::uiOutput("next_steps"),
       bslib::card(
-        bslib::card_header(t("Reports (TFL)")),
+        bslib::card_header(with_tip(t("Reports (TFL)"), t("Reports are made in this order (the official run too). Copy makes a new report with all of this one's definition. A double click makes the report (Make a report)."))),
         shiny::uiOutput("uc_offer"),
         # the search and the buttons above the list: below 200 reports no
         # one found them
@@ -880,9 +865,7 @@ app_ui <- function(lang = "en") {
           .btn("toc_new", t("Take in a TOC..."), class = "btn-sm btn-outline-primary ms-auto")),
         shiny::uiOutput("report_moves"),
         # its own height (a fixed one let a long list cover the buttons)
-        DT::DTOutput("outputs", height = "auto", fill = FALSE),
-        shiny::p(class = "text-muted small mt-1",
-                 t("Reports are made in this order (the official run too). Copy makes a new report with all of this one's definition. A double click makes the report (Make a report).")))),
+        DT::DTOutput("outputs", height = "auto", fill = FALSE))),
 
     # one report at a time: chosen on the left, made in its steps
     bslib::nav_panel(
@@ -927,9 +910,7 @@ app_ui <- function(lang = "en") {
         DT::DTOutput("status"),
         shiny::tags$script(shiny::HTML(.status_loading_js))),
       bslib::card(
-        bslib::card_header(t("Official runs (batch folders)")),
-        shiny::p(class = "small text-muted mb-1",
-                 t("An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs) and, if kept, the programs and definition workbooks it ran.")),
+        bslib::card_header(with_tip(t("Official runs (batch folders)"), t("An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs) and, if kept, the programs and definition workbooks it ran."))),
         shiny::div(
           class = "d-flex flex-wrap gap-3 align-items-center",
           shiny::radioButtons(
@@ -3931,7 +3912,7 @@ app_server <- function(input, output, session, start) {
     picked <- !is.na(pick) && pick %in% ad$data_id
     shiny::div(
       class = "rp-b-card mb-2",
-      shiny::h6(class = "mb-2", with_hint(
+      shiny::h6(class = "mb-2", with_tip(
         t("2-1 Analysis data"),
         t("The data the analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are the study's, to use in other reports too. The denominator of a percent is chosen with each analysis, in 2-2."))),
       shiny::div(
@@ -3956,7 +3937,7 @@ app_server <- function(input, output, session, start) {
   output$ard_2_2_head <- shiny::renderUI({
     shiny::req(has_study(), ard_target())
     shiny::tagList(
-      shiny::h6(class = "mt-3 mb-1", with_hint(
+      shiny::h6(class = "mt-3 mb-1", with_tip(
         t("2-2 Analyses"),
         t("The report's analyses. Each one's Data: an analysis data of 2-1; the denominator of a percent: chosen with it."))))
   })
@@ -4149,7 +4130,7 @@ app_server <- function(input, output, session, start) {
         col_widths = c(6, 6),
         shiny::selectInput("adata_from", argl("Made from", "from"), from_ch,
                            selected = blank_na(r$from), width = "100%"),
-        shiny::selectInput("adata_pop", with_hint(
+        shiny::selectInput("adata_pop", with_tip(
           t("Analysis set"),
           t("The first row of the condition below, put in at once (SAFFL = Y); change it there, add others under it.")),
           pop_ch, selected = pop_now, width = "100%")),
@@ -6290,6 +6271,7 @@ app_server <- function(input, output, session, start) {
       table = t("This is a Table: it is made in Table (builder) and Details (sheets)."),
       listing = t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 3, Data code), if any, changes the data after the condition."),
       figure = t("This is a Figure: it is made in Make the figure."))
+    if (identical(lf_type(), "listing")) return(about_tip(msg, lang))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
   # a figure without a design: its user code (the plot written by hand) --
@@ -6471,9 +6453,8 @@ app_server <- function(input, output, session, start) {
     ds_choices <- .ds_choices(shiny::isolate(catalog()), have)
     lf_env$fig_last <- list(datasets = paste(have, collapse = " | "))
     bslib::card(
-      bslib::card_header(t("The plot written by hand (ggplot2)")),
-      shiny::p(class = "small text-muted",
-               t("This figure's plot is its data code (step 3, Data code), written with ggplot2: it leaves `plot`. Its program reads these datasets first.")),
+      bslib::card_header(with_tip(t("The plot written by hand (ggplot2)"),
+                                  t("This figure's plot is its data code (step 3, Data code), written with ggplot2: it leaves `plot`. Its program reads these datasets first."))),
       shiny::h6(t("Data the figure reads")),
       shiny::selectizeInput(lf_id("fig_ds"), NULL, ds_choices,
                             selected = have, multiple = TRUE,
@@ -6569,9 +6550,8 @@ app_server <- function(input, output, session, start) {
     shiny::req(identical(lf_type(), "listing"))
     shiny::div(
       class = "rp-b-card",
-      shiny::h6(t("Columns, in order")),
-      shiny::p(class = "small text-muted",
-               t("vars: variables stacked in the column (| between them); label: \\n breaks the header; width: characters; collapse_repeats: print a repeated value once.")),
+      shiny::h6(with_tip(t("Columns, in order"),
+                         t("vars: variables stacked in the column (| between them); label: \\n breaks the header; width: characters; collapse_repeats: print a repeated value once."))),
       rhandsontable::rHandsontableOutput("hot_lf_cols"))
   })
   lf_cols_key <- shiny::reactive(paste("lf_cols", input$target, rv$ver,
@@ -6736,8 +6716,8 @@ app_server <- function(input, output, session, start) {
              class = "btn-sm btn-primary ms-1")),
       hierarchy = t("This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Edit it in Details (sheets); the preview works."),
       NULL)
-    if (is.null(msg)) return(shiny::p(class = "small text-muted",
-      t("Drag to order, type to rename; every change is written to the sheets (Details) and shown on the right.")))
+    if (is.null(msg)) return(about_tip(
+      t("Drag to order, type to rename; every change is written to the sheets (Details) and shown on the right."), lang))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
   bid <- function(x) paste0("b", bform$n, "_", x)
