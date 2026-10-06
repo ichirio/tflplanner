@@ -1,6 +1,6 @@
 en,ja
 Column help,列の説明
-Right-click to add or delete rows. Paste from Excel works. Blank = not set. Several values in one cell: separate with |.,行の追加・削除は右クリック。Excel からの貼り付け可。空欄 = 未指定。1 セルに複数は | 区切り。
+"Right-click to add or delete rows. Paste from Excel works. Blank = not set. Several values in one cell: separate with |. Spaces at the start or end of a text are kept only in quotes: ""  Total"".","行の追加・削除は右クリック。Excel からの貼り付け可。空欄 = 未指定。1 セルに複数は | 区切り。文字の前後の空白は、引用符で囲んだときだけ残ります（""  合計""）。"
 Show rows of,表示する行
 What do these mean?,それぞれの意味
 A report,各帳票

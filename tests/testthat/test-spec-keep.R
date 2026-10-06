@@ -279,3 +279,82 @@ test_that("step 3, the figure designer: what it cannot show stays as written", {
                      fig_design(edited, "F1"))
   })
 })
+
+# Spaces at the start or end of a text (tflspec's rule: kept only inside
+# quotes, so a pasted cell's stray spaces do not print)
+test_that("a form keeps the spaces typed: quoted in the sheet, shown without", {
+  expect_identical(.text_to_cell("  Total"), "\"  Total\"")
+  expect_identical(.text_to_cell("Total "), "\"Total \"")
+  expect_identical(.text_to_cell("Total"), "Total")
+  expect_identical(.text_to_cell("\"  Total\""), "\"  Total\"")
+  expect_identical(.text_from_cell(c("\"  Total\"", "Total", NA)),
+                   c("  Total", "Total", NA))
+  l <- list(list(line = 1L, stub = c(row_label = "  Characteristic"), merge = FALSE,
+                 mode = "each", key = NA_character_, text = "  {col}",
+                 align = NA_character_, bold = NA_character_,
+                 border_bottom = NA_character_))
+  rows <- header_write(l)
+  expect_identical(rows$text, c("\"  Characteristic\"", "\"  {col}\""))
+  back <- header_read(rows)
+  expect_identical(back[[1L]]$text, "  {col}")
+  expect_identical(unname(back[[1L]]$stub), "  Characteristic")
+})
+
+test_that("the builder's header form: spaces typed are saved, quoted, and reach the program", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  local_home()
+  p <- add_output(new_planner(), "T-DM", type = "table")
+  p <- set_sheet_rows(p, "col_header", "T-DM", data.frame(
+    line = c("1", "1"), cols = c("row_label", ".values"), span = c(NA, "each"),
+    text = c("Characteristic", "{col}")))
+  builder_study("T-DM", p)
+  shiny::testServer(server_for("B1"), {
+    rv <- session$userData$rv
+    bform <- session$userData$bform
+    session$setInputs(target = "T-DM", nav = "make", step = "content",
+                      content_nav = "content", table_right = "result")
+    builder_show(session, bform)
+    l <- bform$hdr[[1L]]
+    id <- function(part) paste0("b", bform$n, "_h", l$uid, "_", part)
+    v <- list()
+    v[[id("stub1")]] <- "Characteristic"
+    v[[id("mode")]] <- "each"
+    v[[id("key")]] <- "TRT01A"
+    v[[id("text")]] <- "  {col}"
+    v[[id("align")]] <- ""
+    v[[id("bold")]] <- FALSE
+    v[[id("ul")]] <- FALSE
+    do.call(session$setInputs, v)
+    session$elapse(1000)
+    ch <- sheet_rows(rv$p, "col_header", "T-DM")
+    expect_identical(ch$text[ch$cols == ".values"], "\"  {col}\"")
+    session$setInputs(save = 1)
+    q <- open_study("B1")$planner
+    ch <- sheet_rows(q, "col_header", "T-DM")
+    expect_identical(ch$text[ch$cols == ".values"], "\"  {col}\"")
+    # the form shows it without the quotes
+    expect_identical(header_read(ch)[[1L]]$text, "  {col}")
+  })
+})
+
+test_that("a grid's quoted title keeps its spaces through the save and the program", {
+  local_home()
+  p <- add_output(new_planner(), "T1", type = "table")
+  p <- set_sheet_rows(p, "titles", "T1", data.frame(line = "1", left = "Table 1"))
+  create_study("S1", planner = p)
+  shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    session$setInputs(target = "T1", nav = "make", step = "page")
+    grid_edit(session, output, "hot_titles", 1L, "left", "\"  Indented title\"")
+    session$setInputs(save = 1)
+    q <- open_study("S1")$planner
+    expect_identical(sheet_rows(q, "titles", "T1")$left, "\"  Indented title\"")
+    code <- program_code(q, "T1")
+    expect_true(any(grepl("\"  Indented title\"", code, fixed = TRUE) &
+                      grepl("rtf_titles", code, fixed = TRUE)))
+    # without quotes the spaces are a pasted cell's: not kept
+    grid_edit(session, output, "hot_titles", 1L, "left", "  plain  ")
+    expect_identical(sheet_rows(rv$p, "titles", "T1")$left, "plain")
+  })
+})
