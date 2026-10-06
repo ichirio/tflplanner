@@ -1525,7 +1525,24 @@ app_server <- function(input, output, session, start) {
     if (is.null(r)) shiny::invalidateLater(2000)
     r
   })
+  # a newer version installed while this app was running: this window runs
+  # the old one until tflplanner is closed and started again (checked at
+  # each session start and once a minute; nothing is stopped for the user)
+  stale <- shiny::reactive({
+    shiny::invalidateLater(60000)
+    .stale_versions()
+  })
   output$update_note <- shiny::renderUI({
+    s <- stale()
+    if (length(s)) {
+      return(shiny::div(
+        class = "alert alert-warning small py-2 mb-2",
+        shiny::strong(t("A newer version is installed:")), " ",
+        paste(vapply(names(s), function(p) sprintf("%s %s (%s %s)", p, s[[p]][["installed"]],
+                                                      t("this window runs"), s[[p]][["running"]]), ""),
+              collapse = ", "), ". ",
+        t("Save, then Close (top right) and start tflplanner again: until then this window runs the old version.")))
+    }
     r <- update_found()
     if (!length(r) || isTRUE(input$update_note_hide)) return(NULL)
     shiny::div(
