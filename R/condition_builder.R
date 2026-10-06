@@ -11,7 +11,7 @@
 # character vectors), `type` ("chr", "num", "date").
 
 .cond_ops <- c("==", "!=", "<", "<=", ">", ">=", "is.na", "!is.na")
-.cond_op_labels <- c("==" = "=", "!=" = "\u2260", "<" = "<", "<=" = "\u2264",
+.cond_op_labels <- c("==" = "= (any of)", "!=" = "\u2260 (none of)", "<" = "<", "<=" = "\u2264",
                      ">" = ">", ">=" = "\u2265", "is.na" = "is blank",
                      "!is.na" = "is not blank")
 
@@ -383,7 +383,7 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
         shiny::div(
           class = "d-flex gap-1 align-items-start",
           shiny::div(style = "flex: 3 1 0", var_in),
-          shiny::div(style = "flex: 0 0 8rem", op_in),
+          shiny::div(style = "flex: 0 0 11rem", op_in),
           shiny::div(style = "flex: 4 1 0", val_in),
           shiny::tags$button(type = "button", class = "btn btn-sm btn-link text-muted px-1",
                              title = t("Remove"), onclick = js("del", id), "\u00d7"))

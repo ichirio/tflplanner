@@ -2095,3 +2095,5 @@ Written as R (the rows cannot hold it): edit it here.,R の式で書いていま
 or,または
 is blank,空
 is not blank,空でない
+= (any of),= （いずれか）
+≠ (none of),≠ （いずれでもない）
