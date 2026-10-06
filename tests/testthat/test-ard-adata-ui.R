@@ -80,6 +80,9 @@ test_that("the ARD tab shows a report's analysis data and makes one", {
     expect_match(h, "pop_saf", fixed = TRUE)
     expect_match(h, "ard_adata_name", fixed = TRUE)
     session$setInputs(ard_adata_name = "|SAF")
+    # chosen as the others: its mark, and its settings below
+    expect_match(output$ard_adata$html, "aria-selected=\"true\"", fixed = TRUE)
+    expect_match(output$adata_detail$html, "adata_id", fixed = TRUE)
     session$setInputs(adata_from = "ADSL", adata_pop_keep = TRUE, adata_subj = "",
                       adata_add = NULL, adata_derive = "", adata_distinct = NULL,
                       adata_id = "adsl_saf", adata_label = "Safety set")
@@ -184,10 +187,11 @@ test_that("2-1: one list, a new analysis data, kept to another's subjects", {
     expect_match(f, "adata_cond", fixed = TRUE)
     session$setInputs(adata_label = "", adata_from = "ADSL", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL)
-    # the analysis set's condition, built from a row
-    session$setInputs(`adata_cond-add` = 1)
-    session$setInputs(`adata_cond-var_1` = "SAFFL", `adata_cond-op_1` = "==",
-                      `adata_cond-val_1` = "Y")
+    # the condition (as the builder gives it): the name after it
+    cond <- session$userData$adata_cond
+    cond$value("SAFFL == \"Y\"")
+    cond$key(shiny::isolate(cond$key()) + 1L)
+    session$flushReact()
     session$setInputs(adata_id = "adsl_saf")
     session$setInputs(adata_save = 1)
     rv <- session$userData$rv
@@ -336,3 +340,11 @@ test_that("step 2 says the report's analyses and the study's; the Data tab expla
   })
 })
 
+test_that("a data's name from what it is made from and its condition", {
+  po <- data.frame(population_id = c("SAF", "ITT"), where = c("SAFFL == \"Y\"", "ITTFL == \"Y\""))
+  expect_identical(.adata_name_from("ADSL", "SAFFL == \"Y\"", po), "adsl_saf")
+  expect_identical(.adata_name_from("ADSL", "EFFFL %in% \"Y\""), "adsl_eff")
+  expect_identical(.adata_name_from("ADAE", "TRTEMFL == \"Y\""), "adae_trtem")
+  expect_true(is.na(.adata_name_from("ADSL", "AGE >= 65", po)))
+  expect_true(is.na(.adata_name_from("ADSL", NA, po)))
+})
