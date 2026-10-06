@@ -157,11 +157,66 @@
   kn <- vapply(known, function(k) .cond_first(k), "")
   if (length(tm) && deparse1(tm[[1L]]) %in% kn) tm <- tm[-1L]
   if (!.is_blank(first)) tm <- c(list(str2lang(first)), tm)
+  .cond_join(tm)
+}
+
+# Terms put back as one condition (NA: none)
+.cond_join <- function(tm) {
   if (!length(tm)) return(NA_character_)
   paste(vapply(tm, function(x) {
     d <- deparse1(x)
     if (is.call(x) && identical(x[[1L]], as.name("|"))) paste0("(", d, ")") else d
   }, ""), collapse = " & ")
+}
+
+# The analysis set `pop` taken out of a condition whose first rows are its
+# condition as it is: list(pop, where = the rest).  Changed (another value,
+# "!="), or not first: pop NA and the condition as it is.
+.cond_take_pop <- function(where, populations, pop) {
+  out <- list(pop = NA_character_, where = if (.is_blank(where)) NA_character_ else where)
+  if (.is_blank(pop) || is.null(populations)) return(out)
+  pt <- .cond_terms(populations$where[match(pop, populations$population_id)])
+  wt <- .cond_terms(where)
+  if (!length(pt) || is.null(wt) || length(wt) < length(pt)) return(out)
+  k <- seq_along(pt)
+  if (!identical(unname(vapply(wt[k], deparse1, "")), unname(vapply(pt, deparse1, "")))) {
+    return(out)
+  }
+  list(pop = pop, where = .cond_join(wt[-k]))
+}
+
+# A condition with an analysis set's condition as its first rows (NA when
+# either is not R, or the set has none)
+.cond_put_pop <- function(where, pop_where) {
+  pt <- .cond_terms(pop_where)
+  wt <- .cond_terms(where)
+  if (!length(pt) || is.null(wt)) return(NA_character_)
+  .cond_join(c(pt, wt))
+}
+
+# An analysis data already there that is this same data (made from the
+# same, the same subjects, analysis set and condition, nothing else): its
+# name, else NA
+.adata_same_as <- function(ad, from, pop, subjects, where, but = NULL) {
+  if (is.null(ad) || !nrow(ad) || .is_blank(from)) return(NA_character_)
+  norm <- function(v) {
+    if (.is_blank(v)) return(NA_character_)
+    tm <- .cond_terms(v)
+    if (is.null(tm)) trimws(v) else .cond_join(tm)
+  }
+  val <- function(v) if (.is_blank(v)) NA_character_ else as.character(v)
+  for (i in seq_len(nrow(ad))) {
+    if (!is.null(but) && identical(ad$data_id[i], but)) next
+    other <- c("add", "derive", "keep", "distinct", "code")
+    if (any(vapply(intersect(other, names(ad)), function(cn) !.is_blank(ad[[cn]][i]), NA))) next
+    if (identical(val(ad$from[i]), val(from)) &&
+        identical(val(ad$population_id[i]), val(pop)) &&
+        identical(val(ad$subjects[i]), val(subjects)) &&
+        identical(norm(ad$where[i]), norm(where))) {
+      return(ad$data_id[i])
+    }
+  }
+  NA_character_
 }
 
 # An analysis set's id for a population flag (SAFFL: SAF, PPROTFL: PP),

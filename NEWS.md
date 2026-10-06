@@ -4,11 +4,14 @@
   analysis set come first (the name follows them).  The analysis set is the
   condition's first row, put in at once (`SAFFL == "Y"`, changeable, other
   rows under it), chosen from the study's analysis sets and the population
-  flags of the data; it is no population_id any more (a population_id a
-  sheet has is kept, said so).  2-1's and 2-2's explanations are in a
+  flags of the data.  Saved, that row as it is is the sheet's
+  `population_id` (SAF: not in `where`); changed (another value, "!="), it
+  is a condition like the others.  A sheet's `population_id` is shown as
+  that row.  The same data as one already there is said so (use it, no
+  need to make it again).  2-1's and 2-2's explanations are in a
   tooltip on their headings.  The sample's T-14-3-1 reads two analysis
   data, adsl_saf (the safety set) and adae_saf (its TEAEs), its
-  denominator adsl_saf: the same tables.
+  denominator adsl_saf: the same tables and ARD.
 
 - **The report list has a section (heading)** (#203).  A TOC's heading
   rows ("14.1 Demographics") were passed over; now each report taken in is

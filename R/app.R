@@ -4093,8 +4093,18 @@ app_server <- function(input, output, session, start) {
     p <- rv$p
     ad <- .adata_rows(p)
     e <- adata_edit()
-    # a population_id the sheet has: kept as it is (said so; SPEC shows it)
+    # its population_id: the condition's first row (saved back as it while
+    # unchanged); one that cannot be drawn so is kept as it is (said so)
     e$legacy_pop <- blank_na(r$population_id)
+    where <- blank_na(r$where)
+    if (nzchar(e$legacy_pop) && .is_blank(r$subjects)) {
+      po <- p$ard$populations
+      w2 <- .cond_put_pop(where, po$where[match(e$legacy_pop, po$population_id)])
+      if (!is.na(w2)) {
+        where <- w2
+        e$legacy_pop <- ""
+      }
+    }
     old <- e$old
     above <- if (is.null(old)) ad$data_id else
       ad$data_id[seq_len(match(old, ad$data_id) - 1L)]
@@ -4110,7 +4120,6 @@ app_server <- function(input, output, session, start) {
     key <- .adata_subject_key(p)
     # the analysis set: the condition's first row; a new data not kept to
     # other subjects starts with the study's first
-    where <- blank_na(r$where)
     pop_ch <- adata_pop_choices(r$from)
     pop_now <- adata_pop_of_where(where, r$from)
     if (is.null(old) && is.null(e$name) && !subj_on && identical(pop_now, ".none") &&
@@ -4153,6 +4162,7 @@ app_server <- function(input, output, session, start) {
         shiny::textInput("adata_id", argl("Name (used in the program)", "data_id"),
                          blank_na(r$data_id), width = "100%"),
         shiny::textInput("adata_label", t("Label"), blank_na(r$label), width = "100%")),
+      shiny::uiOutput("adata_same"),
       shiny::div(
       id = "adata_gui", class = if (!.is_blank(r$code)) "rp-greyed",
       if (length(cands)) shiny::div(
@@ -4246,6 +4256,37 @@ app_server <- function(input, output, session, start) {
   # a form field as one cell ("A | B"; NA when blank)
   one_of <- function(v) if (is.null(v) || !length(v) || !nzchar(trimws(paste(v, collapse = "")))) NA else
     paste(v, collapse = " | ")
+  # The analysis set and the condition as the sheet has them: the chosen
+  # set's own condition as the first rows, unchanged, is its population_id
+  # (not in `where`); changed, it is a condition like the others.  Kept to
+  # another data's subjects: no population_id (not both).
+  adata_pop_split <- function(subjects) {
+    e <- adata_edit()
+    where <- adata_where_now()
+    if (!is.na(subjects)) return(list(pop = NA_character_, where = where))
+    # the set chosen, else the one the first row is
+    v <- input$adata_pop %||% ""
+    if (!startsWith(v, "pop:")) v <- adata_pop_of_where(where, input$adata_from %||% "")
+    pop <- if (startsWith(v, "pop:")) substring(v, 5L) else NA_character_
+    ps <- .cond_take_pop(where, rv$p$ard$populations, pop)
+    if (is.na(ps$pop) && nzchar(e$legacy_pop %||% "")) ps$pop <- e$legacy_pop
+    ps
+  }
+  # the same data already there: said, so it is not made twice
+  output$adata_same <- shiny::renderUI({
+    e <- adata_edit()
+    shiny::req(!is.null(e), is.null(e$old), is.null(e$name))
+    more <- c(input$adata_add, input$adata_derive, input$adata_keep,
+              input$adata_distinct, input$adata_code)
+    shiny::req(!any(nzchar(trimws(more))))
+    subjects <- adata_subj_value()
+    ps <- adata_pop_split(subjects)
+    same <- .adata_same_as(.adata_rows(rv$p), one_of(input$adata_from), ps$pop, subjects, ps$where)
+    if (is.na(same)) return(NULL)
+    shiny::div(class = "alert alert-info small py-1 mb-2",
+               sprintf(t("%s, already there, is this same data: no need to make it again (in 2-2, choose %s)."),
+                       same, same))
+  })
   # the form's values as a planner with them (an error, said, when it is
   # not a valid analysis data)
   adata_planner <- function() {
@@ -4261,13 +4302,12 @@ app_server <- function(input, output, session, start) {
     from <- one(input$adata_from)
     code <- if (nzchar(trimws(input$adata_code %||% ""))) input$adata_code else NA_character_
     subjects <- adata_subj_value()
-    # the analysis set is in the condition; a population_id the sheet had
-    # stays (unless kept to another data's subjects: not both)
-    pop <- if (!is.na(subjects) || !nzchar(e$legacy_pop %||% "")) NA_character_ else e$legacy_pop
+    ps <- adata_pop_split(subjects)
+    pop <- ps$pop
     add <- one(input$adata_add)
     keep <- one(input$adata_keep)
     distinct <- one(input$adata_distinct)
-    where <- adata_where_now()
+    where <- ps$where
     derive <- one(input$adata_derive)
     # written as R: the fields that make a data are not used
     if (!is.na(code)) {
@@ -4358,9 +4398,10 @@ app_server <- function(input, output, session, start) {
       # the fields as they are now, without a code
       tmp <- trimws(input$adata_id %||% "")
       if (!nzchar(tmp)) stop("no name")
+      ps <- adata_pop_split(adata_subj_value())
       set_analysis_data(q, tmp, from = one_of(input$adata_from), subjects = adata_subj_value(),
-                        population_id = if (is.na(adata_subj_value()) && nzchar(e$legacy_pop %||% "")) e$legacy_pop else NA,
-                        where = adata_where_now(), add = one_of(input$adata_add),
+                        population_id = ps$pop,
+                        where = ps$where, add = one_of(input$adata_add),
                         derive = one_of(input$adata_derive), keep = one_of(input$adata_keep),
                         distinct = one_of(input$adata_distinct), old = e$old)
     }, error = function(err) NULL)
