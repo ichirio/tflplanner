@@ -201,6 +201,16 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 # ------------------------------------------------------------------- UI
 
 .code_css <- "
+/* controls side by side (a choice and a file input; buttons and a tick):
+   one height, one bottom line; a file input's upload bar takes no room */
+.rp-upload > .shiny-input-container { margin-bottom: 0; position: relative; }
+.rp-upload .shiny-file-input-progress { position: absolute; left: 0; right: 0;
+  top: 100%; margin: 2px 0 0; }
+.rp-upload select, .rp-upload .input-group .form-control,
+.rp-upload .input-group .btn-file { height: 38px; }
+.rp-upload .input-group .btn-file { display: inline-flex; align-items: center; }
+.rp-upload .checkbox, .rp-upload .form-check { margin: 0; }
+.rp-upload select { appearance: auto; }
 /* a top tab the chosen report has nothing on */
 .nav-link.rp-idle { opacity: .45; }
 /* While the server works (opening a study, switching a tab or a report,
@@ -753,9 +763,10 @@ app_ui <- function(lang = "en") {
                                                   c(t("All"), "SDTM", "ADaM", t("Other")))),
               DT::DTOutput("data_files"),
               shiny::div(
-                class = "d-flex gap-2 align-items-start mt-2 rp-upload",
+                class = "d-flex gap-2 align-items-end mt-2 rp-upload",
                 shiny::selectInput("data_folder", t("Into"),
-                                   c("adam", "sdtm", "other"), width = "110px"),
+                                   c("adam", "sdtm", "other"), width = "110px",
+                                   selectize = FALSE),
                 shiny::fileInput("data_upload", t("Add files"), multiple = TRUE)),
               shiny::div(class = "d-flex gap-2",
                          .btn("data_refresh", t("Refresh")),
@@ -1939,7 +1950,7 @@ app_server <- function(input, output, session, start) {
         "import",
         t("Import definition workbooks (replaces this study's definition)"),
         multiple = TRUE, accept = ".xlsx", width = "100%"),
-      shiny::div(class = "d-flex flex-wrap gap-2 align-items-center",
+      shiny::div(class = "d-flex flex-wrap gap-2 align-items-center rp-upload mb-2",
                  shiny::downloadButton("spec_xlsx",
                                        t("Export the definition (Excel)"),
                                        class = "btn-sm"),
