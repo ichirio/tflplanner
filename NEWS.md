@@ -1,5 +1,17 @@
 # tflplanner (development version)
 
+- **The Study tab's two cards side by side; 2-1's data without a name
+  chosen as the others** (#198).  The Study list fills its column (5 of
+  12, the settings 7) with the usual gutter between, stacked on a narrow
+  screen (it stopped at its table's width).  In 2-1 a data the analyses
+  read without a name has the list's mark and opens its settings below
+  with a click, the name the program gives it filled in; saving names it
+  (the "Give it a name..." link is gone).  2-1's condition has no
+  analysis-set shortcuts any more (they repeated "Keep to the subjects of";
+  the condition is built from a variable and its values); a new data is
+  still named after what it is made from and its condition (ADSL with
+  `SAFFL == "Y"`: adsl_saf; a flag set to "Y" names it).
+
 - **An app started before an update says so** (#196).  The shortcut opens
   tflplanner if it already runs, so one started before an update (still
   running) kept showing the old version.  Its page now says, at the top, "A

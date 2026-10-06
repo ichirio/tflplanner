@@ -689,10 +689,11 @@ app_ui <- function(lang = "en") {
     bslib::nav_panel(
       t("Study"), value = "study",
       bslib::layout_columns(
-        col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
-        # as tall as its list (not stretched to the settings beside it)
+        col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
+        # as tall as its list (not stretched to the settings beside it), as
+        # wide as its column
         bslib::card(
-          class = "align-self-start", fill = FALSE,
+          class = "align-self-start w-100", fill = FALSE,
           bslib::card_header(t("Study list")),
           shiny::uiOutput("welcome"),
           shiny::uiOutput("studies_root_note"),
@@ -3896,16 +3897,29 @@ app_server <- function(input, output, session, start) {
       auto <- unique(vapply(seq_len(nrow(b)), function(i)
         .an_data_value(b$dataset[i], b$population_id[i]), ""))
     }
+    # a data the analyses read without a name (a dataset x analysis set):
+    # chosen as the others, its settings open below with the program's name
+    # for it; saving gives it that name
     auto_row <- function(v) {
       sp <- .an_data_split(v)
       nm <- .an_data_name(sp$dataset, sp$pop, po)
+      words <- sprintf(t("%s \u2014 no name yet (in the program: %s)"),
+                       data_words(sp$dataset, sp$pop), nm)
+      if (is.na(sp$pop)) {
+        return(shiny::div(
+          class = "d-flex align-items-start gap-2 px-2 py-1 border-bottom small",
+          shiny::span(class = "text-muted", "\u2013"),
+          shiny::div(class = "flex-grow-1 text-muted", words)))
+      }
+      on <- identical(paste0("auto:", v), pick)
       shiny::div(
-        class = "d-flex align-items-start gap-2 px-2 py-1 border-bottom small",
-        shiny::span(class = "text-muted", "\u2013"),
-        shiny::div(class = "flex-grow-1 text-muted",
-                   sprintf(t("%s \u2014 no name given (in the program: %s). It can be used as it is."),
-                           data_words(sp$dataset, sp$pop), nm)),
-        if (!is.na(sp$pop)) link("ard_adata_name", v, t("Give it a name...")))
+        class = paste("d-flex align-items-start gap-2 px-2 py-1 border-bottom small",
+                      if (on) "bg-primary-subtle"),
+        style = "cursor: pointer;", onclick = adata_js("ard_adata_name", v),
+        role = "option", `aria-selected` = if (on) "true" else "false",
+        shiny::span(class = if (on) "text-primary" else "text-muted",
+                    if (on) "\u25c9" else "\u25cb"),
+        shiny::div(class = "flex-grow-1 text-muted", words))
     }
     others <- setdiff(ad$data_id, mine)
     picked <- !is.na(pick) && pick %in% ad$data_id
@@ -3977,16 +3991,6 @@ app_server <- function(input, output, session, start) {
     ds <- unique(stats::na.omit(rv$p$ard$populations$dataset))
     if (length(ds)) ds else "ADSL"
   }
-  # the analysis sets as conditions to put in at once: the set's condition,
-  # and its opposite (the rows not in it, a blank flag too)
-  adata_shortcuts <- shiny::reactive({
-    po <- rv$p$ard$populations
-    po <- po[!.is_blank_v(po$where), , drop = FALSE]
-    if (!nrow(po)) return(NULL)
-    stats::setNames(c(po$where, vapply(po$where, .cond_not, "")),
-                    c(sprintf("%s (%s)", po$population_id, po$where),
-                      sprintf(t("not %s"), po$population_id)))
-  })
   # the rows kept: the condition builder (a condition rows cannot hold
   # stays as R, as written)
   adata_cond_value <- shiny::reactiveVal(NA_character_)
@@ -3998,23 +4002,21 @@ app_server <- function(input, output, session, start) {
       ds <- adata_root(input$adata_from %||% "")
       if (.is_blank(ds)) NULL else an_data(ds)
     }),
-    value = adata_cond_value, lang = lang, key = adata_cond_key,
-    shortcuts = adata_shortcuts)
+    value = adata_cond_value, lang = lang, key = adata_cond_key)
+  # for shiny::testServer(): the condition as the builder gives it
+  session$userData$adata_cond <- list(value = adata_cond_value, key = adata_cond_key)
   adata_where_now <- function() {
     v <- adata_cond()$expr
     if (is.null(v) || !length(v) || is.na(v) || !nzchar(trimws(v))) NA_character_ else v
   }
-  # a new data still under its suggested name: named after the set a
-  # shortcut puts in
+  # a new data still under its suggested name: named after what it is
+  # made from and its condition (ADSL, SAFFL == "Y": adsl_saf)
   shiny::observeEvent(adata_cond()$expr, {
     e <- adata_edit()
     shiny::req(!is.null(e), is.null(e$old), identical(input$adata_id, e$suggested))
-    w <- adata_where_now()
-    po <- rv$p$ard$populations
-    k <- match(w, po$where)
-    if (is.na(k)) return()
-    nm <- paste0(tolower(adata_root(input$adata_from)), "_", tolower(po$population_id[k]))
-    if (!nm %in% .adata_taken_names(rv$p)) {
+    nm <- .adata_name_from(adata_root(input$adata_from), adata_where_now(),
+                           rv$p$ard$populations)
+    if (!is.na(nm) && !nm %in% .adata_taken_names(rv$p)) {
       shiny::updateTextInput(session, "adata_id", value = nm)
       e$suggested <- nm
       adata_edit(e)
@@ -4230,6 +4232,8 @@ app_server <- function(input, output, session, start) {
   })
   shiny::observeEvent(input$ard_adata_name, {
     v <- input$ard_adata_name
+    # a second click closes it, as on a named data
+    if (identical(shiny::isolate(adata_pick()), paste0("auto:", v))) return(adata_close())
     sp <- .an_data_split(v)
     shiny::req(!is.na(sp$pop))
     po <- rv$p$ard$populations
@@ -4249,11 +4253,17 @@ app_server <- function(input, output, session, start) {
               paste(on$analysis_id, collapse = ", ")), " ",
       if (!is.na(common)) sprintf(t("The condition they all have, %s, moves from them to the data (each one's own conditions stay)."),
                                   common))
-    adata_pick(NULL)
+    adata_pick(paste0("auto:", v))
     adata_edit(list(old = NULL, name = v, note = note, reads = on$analysis_id))
-    adata_form(list(data_id = .adata_suggest(rv$p, from, sp$pop, common), from = from,
-                    population_id = sp$pop, where = common),
-               sprintf(t("Give %s a name"), data_words(sp$dataset, sp$pop)))
+    # the name the program gives it now -- unless that is an analysis set's
+    # own (pop_saf) or an analysis data has it
+    nm <- .an_data_name(sp$dataset, sp$pop, po)
+    if (startsWith(nm, "pop_") || nm %in% .adata_rows(rv$p)$data_id ||
+        nm %in% tolower(rv$p$ard$datasets$dataset)) {
+      nm <- .adata_suggest(rv$p, from, sp$pop, common)
+    }
+    adata_form(list(data_id = nm, from = from, population_id = sp$pop, where = common),
+               sprintf(t("%s (no name yet: saving names it)"), data_words(sp$dataset, sp$pop)))
   })
   shiny::observeEvent(input$adata_code_start, {
     shiny::req(!is.null(adata_edit()))
