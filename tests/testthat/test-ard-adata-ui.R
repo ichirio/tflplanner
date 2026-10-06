@@ -382,6 +382,7 @@ test_that("2-1's analysis set: the condition's first row, from the study's sets 
     expect_identical(shiny::isolate(cond$value()), 'SAFFL == "Y"')
     # the data's flags that are no analysis set: offered as well
     expect_match(f, "flag:PPROTFL", fixed = TRUE)
+    expect_false(grepl("flag:\"", f, fixed = TRUE))
     session$setInputs(adata_from = "ADSL", adata_pop = "flag:PPROTFL")
     expect_identical(shiny::isolate(cond$value()), 'PPROTFL == "Y"')
     # saved: the condition, no population_id

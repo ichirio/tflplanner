@@ -4011,13 +4011,18 @@ app_server <- function(input, output, session, start) {
   }
   # a new data still under its suggested name: named after what it is
   # made from and its condition (ADSL, SAFFL == "Y": adsl_saf)
-  shiny::observeEvent(list(adata_cond()$expr, input$adata_pop, input$adata_subj_on), {
+  shiny::observeEvent(list(adata_cond()$expr, input$adata_pop, input$adata_subj_on,
+                           input$adata_from), {
     e <- adata_edit()
     shiny::req(!is.null(e), is.null(e$old), identical(input$adata_id, e$suggested))
-    nm <- .adata_name_from(adata_root(input$adata_from), adata_where_now(),
-                           rv$p$ard$populations,
+    root <- adata_root(input$adata_from)
+    nm <- .adata_name_from(root, adata_where_now(), rv$p$ard$populations,
                            pop = adata_pop_name())
-    if (!is.na(nm) && !nm %in% .adata_taken_names(rv$p)) {
+    # taken, or nothing to name it after: the usual suggestion for its data
+    if ((is.na(nm) || nm %in% .adata_taken_names(rv$p)) && !.is_blank(root)) {
+      nm <- .adata_suggest(rv$p, root, adata_pop_name())
+    }
+    if (!is.na(nm) && !identical(nm, input$adata_id)) {
       shiny::updateTextInput(session, "adata_id", value = nm)
       e$suggested <- nm
       adata_edit(e)
@@ -4036,9 +4041,11 @@ app_server <- function(input, output, session, start) {
     flags <- if (!is.null(d)) .cond_population_flags(names(d)) else character()
     have <- unlist(regmatches(po$where, gregexpr("[A-Za-z0-9_]+FL", po$where)))
     flags <- setdiff(flags, have)
-    fc <- sprintf("%s == %s", flags, encodeString("Y", quote = "\""))
-    data.frame(value = c(val, paste0("flag:", flags)), cond = c(cond, fc),
-               label = c(lab, fc), name = c(po$population_id, vapply(flags, .population_id_for, "")),
+    # (paste0() of no flags would still give one "flag:")
+    fv <- if (length(flags)) paste0("flag:", flags) else character()
+    fc <- if (length(flags)) sprintf("%s == %s", flags, encodeString("Y", quote = "\"")) else character()
+    data.frame(value = c(val, fv), cond = c(cond, fc), label = c(lab, fc),
+               name = c(po$population_id, vapply(flags, .population_id_for, "")),
                stringsAsFactors = FALSE)
   }
   adata_pop_choices <- function(from) {
