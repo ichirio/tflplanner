@@ -583,3 +583,27 @@ test_that("update.R with the network closed says which addresses, and stops", {
   txt <- paste(.update_failed_text(res$stdout, "dev", NULL, "en"), collapse = "\n")
   expect_match(txt, "install_github", fixed = TRUE)
 })
+
+test_that("a newer version installed while the app runs is said on its page", {
+  # the version on disk against the one this process runs
+  d <- withr_tempdir()
+  writeLines(c("Package: tflplanner", "Version: 9.9.9"), file.path(d, "DESCRIPTION"))
+  s <- .stale_versions("tflplanner", running = function(p) "0.0.1", path = function(p) d)
+  expect_identical(s$tflplanner, c(running = "0.0.1", installed = "9.9.9"))
+  expect_length(.stale_versions("tflplanner", running = function(p) "9.9.9",
+                                path = function(p) d), 0L)
+  # as the app runs (load_all or installed): nothing to say
+  expect_length(.stale_versions(), 0L)
+  # the page says it, above everything
+  local_home()
+  two_studies()
+  testthat::local_mocked_bindings(
+    .stale_versions = function(...) list(tflplanner = c(running = "0.0.2.9070",
+                                                        installed = "0.0.2.9088")))
+  shiny::testServer(server_for("S1"), {
+    h <- output$update_note$html
+    expect_match(h, "A newer version is installed", fixed = TRUE)
+    expect_match(h, "tflplanner 0.0.2.9088", fixed = TRUE)
+    expect_match(h, "0.0.2.9070", fixed = TRUE)
+  })
+})
