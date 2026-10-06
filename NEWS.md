@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **The report list has a section (heading)** (#203).  A TOC's heading
+  rows ("14.1 Demographics") were passed over; now each report taken in is
+  under the heading above it (or the TOC's section column, a new item of
+  the mapping and of the company's `toc_map`; tflspec >= 0.0.24.9050).
+  The section is a column of the report list, given in the Add dialog
+  (the chosen report's by default) or next to the description on step 3's
+  Data code tab; one given here stays when the TOC is taken in again.  The
+  list on the left of Make a report is folded by the sections (a heading,
+  else the ID's numbers as before), headings in the order of the numbers
+  they start with.
+
 - **The condition builder: variables in ADaM's groups, no shortcuts**
   (#199).  The analysis sets' shortcut buttons (the set, and "not" it) are
   gone: they did what "Keep to the subjects of ..." does, and a study has
