@@ -202,3 +202,13 @@ test_that("the population flags of a data, for a form of analysis sets", {
                    c("SAFFL", "ITTFL", "PKFL"))
   expect_identical(.cond_population_flags(character()), character())
 })
+
+test_that("each variable's kind, for a form outside the component", {
+  k <- .cond_var_kind(c("SAFFL", "DTHFL", "TRT01A", "PARAMCD", "AVISIT", "AGE"))
+  expect_identical(unname(k), c("population", "analysis", "treatment", "parameter",
+                                "timing", "other"))
+  expect_identical(names(k), c("SAFFL", "DTHFL", "TRT01A", "PARAMCD", "AVISIT", "AGE"))
+  # one row a subject, read from the data: DTHFL is one of the others
+  adsl <- data.frame(USUBJID = c("a", "b"), SAFFL = "Y", DTHFL = c("Y", NA))
+  expect_identical(unname(.cond_var_kind(names(adsl), adsl)), c("other", "population", "other"))
+})

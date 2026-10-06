@@ -14,8 +14,9 @@
   A flag (*FL) chosen starts as "= (any of) Y", to change from there (Y
   taken out, N or the blank put in); another variable starts empty.
   `condition_builder_server()` has no `shortcuts` any more;
-  `.cond_population_flags()` gives a data's population flags in ADaM's
-  order (for a form of analysis sets).
+  `.cond_var_kind()` gives each variable's kind (population, analysis,
+  treatment, parameter, timing, other) and `.cond_population_flags()` a
+  data's population flags in ADaM's order, for forms outside it (2-1).
 
 - **From the screen review** (#193).
   - The report list's buttons (Add, Copy, Rename, Delete, the arrows,

@@ -61,22 +61,37 @@
   v[order(match(v, .cond_pop_flags), seq_along(v))]
 }
 
-.cond_var_groups <- function(vars, labels = NULL, subject_level = FALSE) {
-  lab <- vapply(vars, function(v) {
-    x <- if (!is.null(labels) && v %in% names(labels)) labels[[v]] else NA
-    if (is.na(x) || !nzchar(x)) v else paste0(v, " \u2014 ", x)
-  }, "")
+# Each variable's kind, as ADaM names it: "population", "analysis" (an
+# analysis flag), "treatment", "parameter", "timing" or "other" -- a named
+# character vector.  `subject_level`: one row a subject (ADSL), where a
+# flag that is not a population's is one of the others; given `data`, it
+# is read from it (USUBJID once a row).
+.cond_var_kind <- function(vars, data = NULL, subject_level = NULL) {
+  vars <- as.character(vars)
+  if (is.null(subject_level)) {
+    subject_level <- !is.null(data) && "USUBJID" %in% names(data) &&
+      !anyDuplicated(data$USUBJID)
+  }
   pop <- vars %in% .cond_population_flags(vars)
   flag <- grepl("FL$", vars) & !pop
   anl <- grepl("^ANL[0-9]{2}FL$", vars) | (flag & !subject_level)
   trt <- grepl("^(TRT[0-9]{2}[PA]N?|TRT[PA]N?|TRTSEQ[PA]N?|ARM|ARMCD|ACTARM|ACTARMCD)$", vars)
   par <- grepl("^(PARAMCD|PARAM|PARAMN|PARCAT[0-9]+N?)$", vars)
   tim <- grepl("^(AVISITN?|ATPTN?|APHASEN?|APERIOD|APERIODC|VISIT|VISITNUM)$", vars)
-  kind <- ifelse(pop, "pop", ifelse(anl, "anl", ifelse(trt, "trt", ifelse(par, "par",
-                 ifelse(tim, "time", "other")))))
+  stats::setNames(ifelse(pop, "population", ifelse(anl, "analysis", ifelse(trt, "treatment",
+                  ifelse(par, "parameter", ifelse(tim, "timing", "other"))))), vars)
+}
+
+.cond_var_groups <- function(vars, labels = NULL, subject_level = FALSE) {
+  lab <- vapply(vars, function(v) {
+    x <- if (!is.null(labels) && v %in% names(labels)) labels[[v]] else NA
+    if (is.na(x) || !nzchar(x)) v else paste0(v, " \u2014 ", x)
+  }, "")
+  kind <- unname(.cond_var_kind(vars, subject_level = subject_level))
   ord <- order(match(vars, .cond_pop_flags), seq_along(vars))
-  groups <- c(pop = "Population flags", anl = "Analysis flags", trt = "Treatment",
-              par = "Parameter", time = "Timing", other = "Other")
+  groups <- c(population = "Population flags", analysis = "Analysis flags",
+              treatment = "Treatment", parameter = "Parameter", timing = "Timing",
+              other = "Other")
   out <- list()
   for (k in names(groups)) {
     i <- ord[kind[ord] == k]
