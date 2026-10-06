@@ -21,17 +21,18 @@
   - The old sub-tabs (Builder / Spec sheets / Program, Page / Program) are
     gone.
 
-- **The Study tab and the Data tab, after trying them** (#174).
-  - The Study tab: "Study list" on the left; on the right one card, "Study
-    settings": the study's title, compound, phase, rounding, its keys and
-    setup code, and its files.  "Own ARD functions" below, the company's
-    (every study) and this study's apart, with how many of each.
-  - The study open, its ID and title, is in the bar of the tabs on every
-    tab; a click on it goes to the Study tab, where studies are chosen.
-  - A table drawn while its tab was hidden (headers one letter a line)
-    measures its columns again when the tab shows.
-  - The Data tab: "Into" and "Add files" level; the file's "Preview", 50
-    rows a page with paging.
+- **2-1 as one list of analysis data** (#178).  2-1 no longer has the
+  subjects and the data analysed apart: one list (the report's first, the
+  study's others after them), a mark on the one chosen, [New analysis data]
+  [Copy X] [Delete X...].  The form: the name first; what it is made from;
+  "Keep to the subjects of adsl_saf" as a tick (on by default when the
+  study has a data of one row a subject, a choice only when it has several);
+  the rows kept with the condition builder (#175), the analysis sets and
+  their opposite as shortcuts; the columns.  A data of one row a subject
+  made later keeps the report's other analysis data to its subjects (said
+  so; it moves above them).  2-2's question about making the subjects
+  first is gone.  2-1 has its own sheet, the report's rows of
+  analysis_data; a `from` the form has no choice for is kept as written.
 
 - **A condition built from rows** (#175).  A component for the analysis
   data's and the analysis sets' `where` (2-1 takes it in next): rows of a
@@ -43,6 +44,18 @@
   PARAMCD %in% c("ALT", "AST")`; not equal as `!(x %in% ...)`, so a blank
   counts as "not Y") and reads it back; what the rows cannot hold stays
   as R, in a field of its own.
+
+- **The Study tab and the Data tab, after trying them** (#174).
+  - The Study tab: "Study list" on the left; on the right one card, "Study
+    settings": the study's title, compound, phase, rounding, its keys and
+    setup code, and its files.  "Own ARD functions" below, the company's
+    (every study) and this study's apart, with how many of each.
+  - The study open, its ID and title, is in the bar of the tabs on every
+    tab; a click on it goes to the Study tab, where studies are chosen.
+  - A table drawn while its tab was hidden (headers one letter a line)
+    measures its columns again when the tab shows.
+  - The Data tab: "Into" and "Add files" level; the file's "Preview", 50
+    rows a page with paging.
 
 - **The runs table is quick for a big study** (#167).  `study_status()`
   wrote every report's program again to see whether it is current, each
