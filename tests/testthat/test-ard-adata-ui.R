@@ -80,6 +80,9 @@ test_that("the ARD tab shows a report's analysis data and makes one", {
     expect_match(h, "pop_saf", fixed = TRUE)
     expect_match(h, "ard_adata_name", fixed = TRUE)
     session$setInputs(ard_adata_name = "|SAF")
+    # chosen as the others: its mark, and its settings below
+    expect_match(output$ard_adata$html, "aria-selected=\"true\"", fixed = TRUE)
+    expect_match(output$adata_detail$html, "adata_id", fixed = TRUE)
     session$setInputs(adata_from = "ADSL", adata_pop_keep = TRUE, adata_subj = "",
                       adata_add = NULL, adata_derive = "", adata_distinct = NULL,
                       adata_id = "adsl_saf", adata_label = "Safety set")

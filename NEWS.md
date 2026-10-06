@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **The Study tab's two cards side by side; 2-1's data without a name
+  chosen as the others** (#198).  The Study list fills its column (5 of
+  12, the settings 7) with the usual gutter between, stacked on a narrow
+  screen (it stopped at its table's width).  In 2-1 a data the analyses
+  read without a name has the list's mark and opens its settings below
+  with a click, the name the program gives it filled in; saving names it
+  (the "Give it a name..." link is gone).
+
 - **From the screen review** (#193).
   - The report list's buttons (Add, Copy, Rename, Delete, the arrows,
     Take in a TOC...) are above the list, beside its search: below 200

@@ -689,10 +689,11 @@ app_ui <- function(lang = "en") {
     bslib::nav_panel(
       t("Study"), value = "study",
       bslib::layout_columns(
-        col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
-        # as tall as its list (not stretched to the settings beside it)
+        col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
+        # as tall as its list (not stretched to the settings beside it), as
+        # wide as its column
         bslib::card(
-          class = "align-self-start", fill = FALSE,
+          class = "align-self-start w-100", fill = FALSE,
           bslib::card_header(t("Study list")),
           shiny::uiOutput("welcome"),
           shiny::uiOutput("studies_root_note"),
@@ -3879,16 +3880,29 @@ app_server <- function(input, output, session, start) {
       auto <- unique(vapply(seq_len(nrow(b)), function(i)
         .an_data_value(b$dataset[i], b$population_id[i]), ""))
     }
+    # a data the analyses read without a name (a dataset x analysis set):
+    # chosen as the others, its settings open below with the program's name
+    # for it; saving gives it that name
     auto_row <- function(v) {
       sp <- .an_data_split(v)
       nm <- .an_data_name(sp$dataset, sp$pop, po)
+      words <- sprintf(t("%s \u2014 no name yet (in the program: %s): its settings open as the others'; saving names it."),
+                       data_words(sp$dataset, sp$pop), nm)
+      if (is.na(sp$pop)) {
+        return(shiny::div(
+          class = "d-flex align-items-start gap-2 px-2 py-1 border-bottom small",
+          shiny::span(class = "text-muted", "\u2013"),
+          shiny::div(class = "flex-grow-1 text-muted", words)))
+      }
+      on <- identical(paste0("auto:", v), pick)
       shiny::div(
-        class = "d-flex align-items-start gap-2 px-2 py-1 border-bottom small",
-        shiny::span(class = "text-muted", "\u2013"),
-        shiny::div(class = "flex-grow-1 text-muted",
-                   sprintf(t("%s \u2014 no name given (in the program: %s). It can be used as it is."),
-                           data_words(sp$dataset, sp$pop), nm)),
-        if (!is.na(sp$pop)) link("ard_adata_name", v, t("Give it a name...")))
+        class = paste("d-flex align-items-start gap-2 px-2 py-1 border-bottom small",
+                      if (on) "bg-primary-subtle"),
+        style = "cursor: pointer;", onclick = adata_js("ard_adata_name", v),
+        role = "option", `aria-selected` = if (on) "true" else "false",
+        shiny::span(class = if (on) "text-primary" else "text-muted",
+                    if (on) "\u25c9" else "\u25cb"),
+        shiny::div(class = "flex-grow-1 text-muted", words))
     }
     others <- setdiff(ad$data_id, mine)
     picked <- !is.na(pick) && pick %in% ad$data_id
@@ -4213,6 +4227,8 @@ app_server <- function(input, output, session, start) {
   })
   shiny::observeEvent(input$ard_adata_name, {
     v <- input$ard_adata_name
+    # a second click closes it, as on a named data
+    if (identical(shiny::isolate(adata_pick()), paste0("auto:", v))) return(adata_close())
     sp <- .an_data_split(v)
     shiny::req(!is.na(sp$pop))
     po <- rv$p$ard$populations
@@ -4232,11 +4248,17 @@ app_server <- function(input, output, session, start) {
               paste(on$analysis_id, collapse = ", ")), " ",
       if (!is.na(common)) sprintf(t("The condition they all have, %s, moves from them to the data (each one's own conditions stay)."),
                                   common))
-    adata_pick(NULL)
+    adata_pick(paste0("auto:", v))
     adata_edit(list(old = NULL, name = v, note = note, reads = on$analysis_id))
-    adata_form(list(data_id = .adata_suggest(rv$p, from, sp$pop, common), from = from,
-                    population_id = sp$pop, where = common),
-               sprintf(t("Give %s a name"), data_words(sp$dataset, sp$pop)))
+    # the name the program gives it now -- unless that is an analysis set's
+    # own (pop_saf) or an analysis data has it
+    nm <- .an_data_name(sp$dataset, sp$pop, po)
+    if (startsWith(nm, "pop_") || nm %in% .adata_rows(rv$p)$data_id ||
+        nm %in% tolower(rv$p$ard$datasets$dataset)) {
+      nm <- .adata_suggest(rv$p, from, sp$pop, common)
+    }
+    adata_form(list(data_id = nm, from = from, population_id = sp$pop, where = common),
+               sprintf(t("%s (no name yet: saving names it)"), data_words(sp$dataset, sp$pop)))
   })
   shiny::observeEvent(input$adata_code_start, {
     shiny::req(!is.null(adata_edit()))
