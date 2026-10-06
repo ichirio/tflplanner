@@ -217,10 +217,15 @@ test_that("2-1: one list, a new analysis data, kept to another's subjects", {
 test_that("2-1's sheet: the report's rows edited in their place; a `from` the form has no choice for is kept", {
   ad <- .normalize_ard_sheet(data.frame(data_id = c("a", "b", "c", "d"), from = "ADSL"), "analysis_data")
   d <- .normalize_ard_sheet(data.frame(data_id = c("b", "x"), from = c("ADAE", "ADLB")), "analysis_data")
-  out <- .adata_put_report_rows(ad, c("b", "c"), d)
-  expect_identical(out$data_id, c("a", "b", "x", "d"))
-  expect_identical(out$from, c("ADSL", "ADAE", "ADLB", "ADSL"))
-  # none of the report's yet: added at the end
+  # each in the place it was; the order of the sheet stays
+  out <- .adata_put_report_rows(ad, c("b", "d"), d)
+  expect_identical(out$data_id, c("a", "b", "c", "x"))
+  expect_identical(out$from, c("ADSL", "ADAE", "ADSL", "ADLB"))
+  # one more: added after the last of them; one fewer: removed
+  d3 <- rbind(d, .normalize_ard_sheet(data.frame(data_id = "y", from = "ADVS"), "analysis_data"))
+  expect_identical(.adata_put_report_rows(ad, c("b", "c"), d3)$data_id, c("a", "b", "x", "y", "d"))
+  expect_identical(.adata_put_report_rows(ad, c("b", "c"), d[1L, ])$data_id, c("a", "b", "d"))
+  # none of them yet: added at the end
   expect_identical(.adata_put_report_rows(ad, character(), d)$data_id, c("a", "b", "c", "d", "b", "x"))
   skip_if_not_installed("cards")
   local_home()

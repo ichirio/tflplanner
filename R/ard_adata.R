@@ -86,15 +86,27 @@
   x
 }
 
-# The study's analysis_data with a report's rows (`ids`) replaced by `d`:
-# where the first of them was, the other rows as they were
+# The study's analysis_data with some of its rows (`ids`) as edited in `d`:
+# each edited row in the place of the one it was (the sheet's order stays:
+# `from` and `subjects` name data above), rows added after the last of
+# them, rows taken out removed
 .adata_put_report_rows <- function(ad, ids, d) {
-  mine <- ad$data_id %in% ids
   for (nm in setdiff(names(ad), names(d))) d[[nm]] <- rep(NA_character_, nrow(d))
-  at <- if (any(mine)) min(which(mine)) else nrow(ad) + 1L
-  rest <- ad[!mine, , drop = FALSE]
-  before <- which(!mine) < at
-  out <- rbind(rest[before, , drop = FALSE], d[names(ad)], rest[!before, , drop = FALSE])
+  d <- d[names(ad)]
+  pos <- which(ad$data_id %in% ids)
+  if (!length(pos)) {
+    out <- rbind(ad, d)
+  } else {
+    k <- min(length(pos), nrow(d))
+    out <- ad
+    if (k) out[pos[seq_len(k)], ] <- d[seq_len(k), , drop = FALSE]
+    gone <- if (length(pos) > k) pos[(k + 1L):length(pos)] else integer()
+    add <- if (nrow(d) > k) d[(k + 1L):nrow(d), , drop = FALSE] else d[0L, , drop = FALSE]
+    last <- max(pos)
+    keep <- setdiff(seq_len(nrow(out)), gone)
+    out <- rbind(out[keep[keep <= last], , drop = FALSE], add,
+                 out[keep[keep > last], , drop = FALSE])
+  }
   rownames(out) <- NULL
   out
 }
