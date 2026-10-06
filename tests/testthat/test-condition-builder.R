@@ -167,3 +167,38 @@ test_that("a flag's blank is a value: offered with its count, written NA and \"\
   # a blank only with = or not equal
   expect_null(.cond_parse('AGE > NA'))
 })
+
+test_that("a flag chosen starts as = Y; another variable starts empty", {
+  d <- data.frame(SAFFL = c("Y", "Y", "N"), ANL01FL = c("Y", NA, "Y"),
+                  AGE = c(30, 70, 50), SEX = c("F", "M", "F"),
+                  stringsAsFactors = FALSE)
+  shiny::testServer(condition_builder_server, args = list(
+    data = shiny::reactive(d), value = shiny::reactiveVal(NA_character_)), {
+    session$flushReact()
+    session$setInputs(add = 1)
+    session$setInputs(var_1 = "SAFFL")
+    rows <- st$rows
+    expect_identical(rows$op, "==")
+    expect_identical(rows$values[[1L]], "Y")
+    expect_match(output$body$html, '<option value="Y" selected>', fixed = TRUE)
+    # the browser sends the field as drawn: the condition
+    session$setInputs(val_1 = "Y")
+    expect_identical(session$returned()$expr, 'SAFFL == "Y"')
+    # changed from there: N and the blank
+    session$setInputs(var_1 = "ANL01FL")
+    expect_identical(st$rows$values[[1L]], "Y")
+    session$setInputs(val_1 = c("Y", "(blank)"))
+    expect_identical(session$returned()$expr, 'ANL01FL %in% c("Y", NA, "")')
+    # another variable: no value yet
+    session$setInputs(add = 1)
+    session$setInputs(var_2 = "SEX")
+    expect_identical(st$rows$values[[2L]], character())
+  })
+})
+
+test_that("the population flags of a data, for a form of analysis sets", {
+  expect_identical(.cond_population_flags(c("AGE", "ITTFL", "PKFL", "SAFFL", "ANL01FL",
+                                            "DTHFL")),
+                   c("SAFFL", "ITTFL", "PKFL"))
+  expect_identical(.cond_population_flags(character()), character())
+})

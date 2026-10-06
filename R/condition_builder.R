@@ -48,13 +48,25 @@
 # of the others in a subject-level data (ADSL).
 .cond_pop_flags <- c("SAFFL", "ITTFL", "FASFL", "PPROTFL", "RANDFL", "ENRLFL",
                      "COMPLFL")
+
+# Which of `vars` are population flags (ADaM: SAFFL, ITTFL, FASFL, PPROTFL,
+# RANDFL, ENRLFL, COMPLFL first in that order, then PPSFL, MITTFL, PKFL ...
+# as they come): the names, in that order.  For a form that offers the
+# analysis sets of a data (2-1).
+.cond_population_flags <- function(vars) {
+  vars <- unique(as.character(vars))
+  pop <- vars %in% .cond_pop_flags |
+    grepl("^(PP|PPS|MITT|EFF|EVAL|PK|PKAS|PKPD|SCRN|COMP[0-9]+|RAND[0-9]*)FL$", vars)
+  v <- vars[pop]
+  v[order(match(v, .cond_pop_flags), seq_along(v))]
+}
+
 .cond_var_groups <- function(vars, labels = NULL, subject_level = FALSE) {
   lab <- vapply(vars, function(v) {
     x <- if (!is.null(labels) && v %in% names(labels)) labels[[v]] else NA
     if (is.na(x) || !nzchar(x)) v else paste0(v, " \u2014 ", x)
   }, "")
-  pop <- vars %in% .cond_pop_flags |
-    grepl("^(PP|PPS|MITT|EFF|EVAL|PK|PKAS|PKPD|SCRN|COMP[0-9]+|RAND[0-9]*)FL$", vars)
+  pop <- vars %in% .cond_population_flags(vars)
   flag <- grepl("FL$", vars) & !pop
   anl <- grepl("^ANL[0-9]{2}FL$", vars) | (flag & !subject_level)
   trt <- grepl("^(TRT[0-9]{2}[PA]N?|TRT[PA]N?|TRTSEQ[PA]N?|ARM|ARMCD|ACTARM|ACTARMCD)$", vars)
@@ -488,9 +500,13 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
       r <- rows_now()
       shape <- function(x) paste(x$var, x$op, x$type)
       if (!identical(shape(r), shape(rows))) {
-        # the values of another column are not this one's
+        # the values of another column are not this one's; a flag (*FL)
+        # starts as = Y, to change from there
         changed <- r$var != rows$var
         r$values[changed] <- list(character())
+        fl <- changed & grepl("FL$", r$var)
+        r$op[fl] <- "=="
+        r$values[fl] <- list("Y")
         st$rows <- r
         redraw()
       }

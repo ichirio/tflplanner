@@ -11,7 +11,11 @@
   timing (AVISIT, ATPT, APHASE, APERIOD) and the others.  A flag (Y / N)
   offers its blank as a value too, with its count: written `x %in% c("N",
   NA, "")` (a blank is NA or "", as the data was read).
-  `condition_builder_server()` has no `shortcuts` any more.
+  A flag (*FL) chosen starts as "= (any of) Y", to change from there (Y
+  taken out, N or the blank put in); another variable starts empty.
+  `condition_builder_server()` has no `shortcuts` any more;
+  `.cond_population_flags()` gives a data's population flags in ADaM's
+  order (for a form of analysis sets).
 
 - **From the screen review** (#193).
   - The report list's buttons (Add, Copy, Rename, Delete, the arrows,
