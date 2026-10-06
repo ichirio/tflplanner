@@ -3886,7 +3886,7 @@ app_server <- function(input, output, session, start) {
     auto_row <- function(v) {
       sp <- .an_data_split(v)
       nm <- .an_data_name(sp$dataset, sp$pop, po)
-      words <- sprintf(t("%s \u2014 no name yet (in the program: %s): its settings open as the others'; saving names it."),
+      words <- sprintf(t("%s \u2014 no name yet (in the program: %s)"),
                        data_words(sp$dataset, sp$pop), nm)
       if (is.na(sp$pop)) {
         return(shiny::div(

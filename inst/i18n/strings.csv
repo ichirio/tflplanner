@@ -1959,7 +1959,7 @@ Analysis data,解析データ
 4 Page and output,4 ページと出力
 "Choose a report above, or in the list on the left (> opens it).",上の選択か、左の一覧（＞で開く）で帳票を選んでください。
 The marks,印
-"Reading the state of %d reports...",%d 帳票の状態を読み込んでいます…
+Reading the state of %d reports...,%d 帳票の状態を読み込んでいます…
 Make a report,帳票の作成
 Report list,帳票一覧
 Not used,使わない
@@ -2161,5 +2161,5 @@ This report's analyses: %d (the study's: %d). The definition reads without error
 "This analysis alone as code, after Apply (the report's program: Code on the right)",この解析だけのコード（反映後。帳票のプログラム全体は右の［コード］）
 "Every report's analysis data, as a sheet: made in each report's step 2-1, and changed there or here (the study's sheet).",すべての帳票の解析データ（シートの形）。作るのは各帳票の段 2-1 です。直すのはそこでも、ここ（試験全体の表）でもできます。
 "The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved. The whole study's: the Data tab.",この帳票が読む analysis_data の行を、ブックと同じくすべての列で表示します。フォームに出ない列はここで書きます。新しい解析データの行は、保存すると入ります。試験全体の表は「データ」タブです。
-%s — no name yet (in the program: %s): its settings open as the others'; saving names it.,%s — 名前なし（プログラムでは %s）。ほかと同じく、クリックで下に設定が開きます。保存すると名前が付きます。
+%s — no name yet (in the program: %s),%s — 名前なし（プログラムでは %s）
 %s (no name yet: saving names it),%s（名前なし：保存すると名前が付きます）
