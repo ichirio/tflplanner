@@ -3572,42 +3572,8 @@ app_server <- function(input, output, session, start) {
     if (to_stack) notify(sprintf(t("%s runs analyses together now: add them inside it."), new_id))
   })
   # a new analysis for the report: the data, analysis set and groups of the
-  # one shown, to be filled in on the form
-  # a new analysis reads the report's analysis data (D16); a report with
-  # none is offered its subjects first (an analysis set's own data, one
-  # step), or goes on as before (a dataset x analysis set)
-  shiny::observeEvent(input$ard_an_new, {
-    tg <- ard_target()
-    if (is.null(tg)) return()
-    p <- rv$p
-    a0 <- shiny::isolate(st_rows())
-    if (length(.adata_of_report(p, tg)) || (!is.null(a0) && nrow(a0)) ||
-        !nrow(p$ard$populations)) return(an_add())
-    po <- p$ard$populations
-    id <- .adata_suggest(p, po$dataset[1L], po$population_id[1L])
-    shiny::showModal(shiny::modalDialog(
-      title = t("New analysis"), easyClose = TRUE,
-      shiny::p(sprintf(t("First the report's subjects: %s \u00d7 %s (%s), as 2-1's subjects? The analyses then read it, and it can be changed (a phase ...) in 2-1."),
-                       po$dataset[1L], po$population_id[1L], id)),
-      footer = shiny::tagList(
-        .btn("ard_an_new_plain", t("Go on without"), class = "btn-outline-secondary"),
-        .btn("ard_an_new_subj", t("Make the subjects"), class = "btn-primary"))))
-  })
-  shiny::observeEvent(input$ard_an_new_plain, {
-    shiny::removeModal()
-    an_add()
-  })
-  shiny::observeEvent(input$ard_an_new_subj, {
-    p <- rv$p
-    po <- p$ard$populations
-    id <- .adata_suggest(p, po$dataset[1L], po$population_id[1L])
-    p2 <- guarded(set_analysis_data(p, id, from = po$dataset[1L],
-                                    population_id = po$population_id[1L]))
-    shiny::removeModal()
-    if (is.null(p2)) return()
-    rv$p <- p2
-    an_add(data = id)
-  })
+  # one shown (or the report's analysis data), to be filled in on the form
+  shiny::observeEvent(input$ard_an_new, an_add())
   an_add <- function(data = NULL) {
     tg <- ard_target()
     if (is.null(tg)) return()
@@ -3718,10 +3684,14 @@ app_server <- function(input, output, session, start) {
       here <- u$analyses[startsWith(u$analyses, paste0(tg, " / "))]
       lab <- ad$label[match(id, ad$data_id)]
       cnt <- n[id]
+      on <- identical(id, pick)
       shiny::div(
         class = paste("d-flex align-items-start gap-2 px-2 py-1 border-bottom small",
-                      if (identical(id, pick)) "bg-primary-subtle"),
+                      if (on) "bg-primary-subtle"),
         style = "cursor: pointer;", onclick = adata_js("ard_adata_pick", id),
+        role = "option", `aria-selected` = if (on) "true" else "false",
+        shiny::span(class = if (on) "text-primary" else "text-muted",
+                    if (on) "\u25c9" else "\u25cb"),
         shiny::div(
           class = "flex-grow-1",
           shiny::strong(id), if (!.is_blank(lab)) shiny::span(class = "text-muted", lab),
@@ -3750,66 +3720,47 @@ app_server <- function(input, output, session, start) {
       nm <- .an_data_name(sp$dataset, sp$pop, po)
       shiny::div(
         class = "d-flex align-items-start gap-2 px-2 py-1 border-bottom small",
+        shiny::span(class = "text-muted", "\u2013"),
         shiny::div(class = "flex-grow-1 text-muted",
                    sprintf(t("%s \u2014 no name given (in the program: %s). It can be used as it is."),
                            data_words(sp$dataset, sp$pop), nm)),
         if (!is.na(sp$pop)) link("ard_adata_name", v, t("Give it a name...")))
     }
-    # an analysis set's own data (|SAF, ADSL|SAF) is subjects; the rest data
-    auto_subj <- vapply(auto, function(v) {
-      sp <- .an_data_split(v)
-      is.na(sp$dataset) || identical(sp$dataset, po$dataset[match(sp$pop, po$population_id)])
-    }, NA)
-    kind <- vapply(mine, function(id) .adata_kind(p, id), "")
     others <- setdiff(ad$data_id, mine)
-    group <- function(title, help, btn, btn_label, ids, autos) shiny::div(
-      class = "mb-2",
-      shiny::div(
-        class = "d-flex justify-content-between align-items-center gap-2",
-        shiny::strong(class = "small", title),
-        .btn(btn, btn_label, class = "btn-sm btn-outline-primary py-0")),
-      shiny::p(class = "small text-muted mb-1", help),
-      if (!length(ids) && !length(autos))
-        shiny::p(class = "small text-muted mb-1 ms-2", t("None yet.")),
-      lapply(ids, row_of),
-      lapply(autos, auto_row))
     picked <- !is.na(pick) && pick %in% ad$data_id
     shiny::div(
       class = "rp-b-card mb-2",
-      shiny::h6(class = "mb-1", t("2-1 The analysis data \u2014 what is analysed")),
+      shiny::h6(class = "mb-1", t("2-1 Analysis data")),
+      shiny::p(class = "small text-muted mb-2",
+               t("The data the analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are the study's, to use in other reports too. The denominator of a percent is chosen with each analysis, in 2-2.")),
       shiny::div(
         class = "d-flex flex-wrap gap-1 align-items-center mb-1",
-        .btn("ard_adata_copy", t("Copy"), class = "btn-sm btn-outline-secondary py-0",
-             disabled = if (!picked) NA),
-        .btn("ard_adata_del", t("Delete..."), class = "btn-sm btn-outline-danger py-0",
-             disabled = if (!picked) NA),
-        shiny::span(class = "small text-muted ms-2",
-                    if (picked) sprintf(t("%s chosen: the form below"), pick) else
-                      t("A click on a data opens it below; another click closes it."))),
-      shiny::p(class = "small text-muted mb-2",
-               t("Named data the analyses read, made from the study's datasets, the study's to use in other reports too. First the subjects (the denominator), then the data analysed, kept to those subjects. Not needed for a report that reads a dataset \u00d7 analysis set as it is.")),
-      group(t("The subjects (the denominator)"),
-            t("An analysis set's own data (ADSL \u00d7 SAF), kept to this report's subjects (a phase ...): one row a subject."),
-            "ard_adata_new_subj", t("Choose the subjects..."),
-            mine[kind == "subjects"], auto[auto_subj]),
-      group(t("The data analysed (the numerator)"),
-            t("A dataset (ADAE, ADLB ...) kept to the subjects above, the rows a condition keeps, with columns taken from the subjects' data or made."),
-            "ard_adata_new_data", t("Add data to analyse..."),
-            mine[kind == "data"], auto[!auto_subj]),
-      if (length(others)) shiny::tags$details(
-        class = "small mt-1",
-        shiny::tags$summary(sprintf(t("Use the study's other analysis data (%d)"), length(others))),
-        lapply(others, row_of)))
+        .btn("ard_adata_new", t("New analysis data"), class = "btn-sm btn-outline-primary py-0"),
+        .btn("ard_adata_copy",
+             if (picked) sprintf(t("Copy %s"), pick) else t("Copy the one chosen"),
+             class = "btn-sm btn-outline-secondary py-0", disabled = if (!picked) NA),
+        .btn("ard_adata_del",
+             if (picked) sprintf(t("Delete %s..."), pick) else t("Delete the one chosen..."),
+             class = "btn-sm btn-outline-danger py-0", disabled = if (!picked) NA)),
+      shiny::p(class = "small text-muted mb-1",
+               t("Choose one in the list (\u25c9): its settings open below it.")),
+      # one list: the report's first, then the study's other analysis data
+      shiny::div(
+        class = "border rounded",
+        if (!nrow(ad) && !length(auto))
+          shiny::p(class = "small text-muted m-2", t("None yet: New analysis data makes one.")),
+        lapply(c(mine, others), row_of),
+        lapply(auto, auto_row)))
   })
   output$ard_2_2_head <- shiny::renderUI({
     shiny::req(has_study(), ard_target())
     shiny::tagList(
       shiny::h6(class = "mt-3 mb-0", t("2-2 The analyses \u2014 what is computed")),
       shiny::p(class = "small text-muted mb-1",
-               t("The report's analyses. Each one's Data: an analysis data of 2-1; the denominator: its subjects.")))
+               t("The report's analyses. Each one's Data: an analysis data of 2-1; the denominator of a percent: chosen with it.")))
   })
   # the form: what is being made (`old`: the one changed; `name`: a
-  # report's data being given a name; `kind`: subjects or data)
+  # report's data being given a name; `pop`: the analysis set it was kept to)
   adata_edit <- shiny::reactiveVal(NULL)
   # the analysis data clicked in 2-1 (its form open below)
   adata_pick <- shiny::reactiveVal(NULL)
@@ -3824,68 +3775,122 @@ app_server <- function(input, output, session, start) {
     d <- if (!.is_blank(ds)) an_data(ds)
     if (is.null(d)) character() else names(d)
   }
-  # whose subjects a data keeps: a subjects data of the study ("@<id>"), an
-  # analysis set ("pop:<id>"), or none ("")
-  adata_subj_choices <- function(old = NULL) {
+  # the data of one row a subject a data can be kept to: those above it in
+  # the sheet (all for a new one), the report's first
+  adata_subject_cands <- function(old = NULL) {
     p <- rv$p
     ad <- .adata_rows(p)
-    ids <- ad$data_id[vapply(ad$data_id, function(id) identical(.adata_kind(p, id), "subjects"), NA)]
-    if (!is.null(old)) ids <- ids[seq_along(ids) < match(old, ad$data_id, nomatch = length(ad$data_id) + 1L)]
+    ids <- .adata_subject_level(p)
+    if (!is.null(old)) {
+      k <- match(old, ad$data_id)
+      ids <- ids[!is.na(k) & match(ids, ad$data_id) < k]
+    }
     mine <- .adata_of_report(p, ard_target())
-    ids <- c(intersect(mine, ids), setdiff(ids, mine))
-    pops <- p$ard$populations$population_id
-    c(stats::setNames(paste0("@", ids), ids),
-      stats::setNames(paste0("pop:", pops), sprintf(t("%s (the analysis set as it is)"), pops)),
-      stats::setNames("", t("(no restriction)")))
+    c(intersect(mine, ids), setdiff(ids, mine))
   }
-  adata_form <- function(r, title, kind) {
+  adata_pop_ds <- function() {
+    ds <- unique(stats::na.omit(rv$p$ard$populations$dataset))
+    if (length(ds)) ds else "ADSL"
+  }
+  # the analysis sets as conditions to put in at once: the set's condition,
+  # and its opposite (the rows not in it, a blank flag too)
+  adata_shortcuts <- function() {
+    po <- rv$p$ard$populations
+    po <- po[!.is_blank_v(po$where), , drop = FALSE]
+    if (!nrow(po)) return(NULL)
+    btn <- function(lab, v, pop) shiny::tags$button(
+      type = "button", class = "btn btn-sm btn-outline-secondary py-0",
+      onclick = adata_js("adata_short", list(where = v, pop = pop)), lab)
+    shiny::div(
+      class = "d-flex flex-wrap gap-1 align-items-center mb-1",
+      shiny::span(class = "small text-muted", t("Put in an analysis set's condition:")),
+      lapply(seq_len(nrow(po)), function(i) shiny::tagList(
+        btn(sprintf("%s (%s)", po$population_id[i], po$where[i]), po$where[i],
+            po$population_id[i]),
+        btn(sprintf(t("not %s"), po$population_id[i]), .cond_not(po$where[i]),
+            paste0("not", po$population_id[i])))))
+  }
+  shiny::observeEvent(input$adata_short, {
+    shiny::req(!is.null(adata_edit()))
+    cur <- trimws(input$adata_where %||% "")
+    v <- input$adata_short$where
+    shiny::updateTextInput(session, "adata_where",
+                           value = if (nzchar(cur)) paste(cur, "&", v) else v)
+    # a new data still under its suggested name: named after the set
+    e <- adata_edit()
+    if (is.null(e$old) && identical(input$adata_id, e$suggested)) {
+      nm <- paste0(tolower(adata_root(input$adata_from)), "_", tolower(input$adata_short$pop))
+      if (!nm %in% .adata_rows(rv$p)$data_id) shiny::updateTextInput(session, "adata_id", value = nm)
+    }
+  })
+  adata_form <- function(r, title) {
     blank_na <- function(x) if (is.null(x) || !length(x) || is.na(x[1L])) "" else x[1L]
     p <- rv$p
     ad <- .adata_rows(p)
-    old <- adata_edit()$old
+    e <- adata_edit()
+    e$pop <- blank_na(r$population_id)
+    adata_edit(e)
+    old <- e$old
     above <- if (is.null(old)) ad$data_id else
       ad$data_id[seq_len(match(old, ad$data_id) - 1L)]
-    pops <- p$ard$populations$population_id
     bar <- function(v) .split_bar(v)
-    subjects <- identical(kind, "subjects")
-    subj_now <- if (!.is_blank(r$subjects)) paste0("@", r$subjects) else
-      if (!.is_blank(r$population_id)) paste0("pop:", r$population_id) else ""
+    cands <- adata_subject_cands(old)
+    if (!.is_blank(r$subjects) && !r$subjects %in% cands) cands <- c(r$subjects, cands)
+    subj_now <- if (!.is_blank(r$subjects)) r$subjects else if (length(cands)) cands[1L] else ""
+    # kept to them: as it is; a new one, unless it is itself one row a subject
+    subj_on <- if (!is.null(old) || !is.null(e$name)) !.is_blank(r$subjects) else
+      length(cands) > 0L && !adata_root(r$from) %in% adata_pop_ds()
+    e$cands <- cands
+    adata_edit(e)
+    key <- .adata_subject_key(p)
     ds <- p$ard$datasets$dataset
-    pop_ds <- unique(stats::na.omit(p$ard$populations$dataset))
-    from_ch <- c(stats::setNames(setdiff(ds, pop_ds), setdiff(ds, pop_ds)),
-                 stats::setNames(intersect(ds, pop_ds), intersect(ds, pop_ds)),
+    from_ch <- c(stats::setNames(ds, ds),
                  stats::setNames(above, sprintf(t("%s (analysis data)"), above)))
+    more <- !.is_blank(r$add) || !.is_blank(r$derive) || !.is_blank(r$keep) || !.is_blank(r$distinct)
     adata_form_ui(shiny::div(
       class = "rp-b-card mb-2 border-primary",
       shiny::h6(class = "mb-2", title),
-      adata_edit()$note,
-      if (subjects) shiny::tagList(
-        shiny::selectInput("adata_pop", argl("Analysis set", "population_id"),
-                           stats::setNames(pops, pops),
-                           selected = blank_na(r$population_id), width = "100%"),
-        shiny::textInput("adata_where", argl("This report's subjects among them (an R condition)", "where"),
-                         blank_na(r$where), width = "100%",
-                         placeholder = sprintf(t("e.g. %s"), "APHASE1FL == \"Y\""))) else
-        shiny::tagList(
-          bslib::layout_columns(
-            col_widths = c(6, 6),
-            shiny::selectInput("adata_from", argl("Made from", "from"), from_ch,
-                               selected = blank_na(r$from), width = "100%"),
-            shiny::selectInput("adata_subj", argl("Kept to the subjects of", "subjects / population_id"),
-                               adata_subj_choices(old), selected = subj_now, width = "100%")),
-          shiny::textInput("adata_where", argl("Rows kept (an R condition)", "where"),
-                           blank_na(r$where), width = "100%",
-                           placeholder = sprintf(t("e.g. %s"), "PARAMCD == \"ALT\"")),
-          shiny::selectizeInput("adata_add", argl("Columns taken from the subjects' data", "add"),
-                                choices = unique(c(bar(r$add), adata_add_choices(r$from, subj_now))),
-                                selected = bar(r$add), multiple = TRUE, width = "100%",
-                                options = list(create = TRUE, plugins = list("remove_button")))),
-      shiny::textInput("adata_derive", argl("Columns made (NAME = R, | between them)", "derive"),
-                       blank_na(r$derive), width = "100%",
-                       placeholder = sprintf(t("e.g. %s"), "PHASE = APHASE")),
-      if (!subjects) shiny::tags$details(
-        class = "mb-2", open = if (!.is_blank(r$keep) || !.is_blank(r$distinct)) NA,
-        shiny::tags$summary(class = "small", t("Columns kept, one row per ...")),
+      e$note,
+      bslib::layout_columns(
+        col_widths = c(5, 7),
+        shiny::textInput("adata_id", argl("Name (used in the program)", "data_id"),
+                         blank_na(r$data_id), width = "100%"),
+        shiny::textInput("adata_label", t("Label"), blank_na(r$label), width = "100%")),
+      shiny::selectInput("adata_from", argl("Made from", "from"), from_ch,
+                         selected = blank_na(r$from), width = "100%"),
+      if (length(cands)) shiny::div(
+        class = "border-start border-primary border-3 ps-2 mb-2",
+        shiny::checkboxInput(
+          "adata_subj_on",
+          shiny::span(if (length(cands) == 1L) sprintf(t("Keep to the subjects of %s"), cands[1L]) else
+            t("Keep to the subjects of an analysis data of one row a subject"),
+            shiny::span(class = "text-muted small", "(subjects)")),
+          subj_on),
+        if (length(cands) > 1L) shiny::conditionalPanel(
+          "input.adata_subj_on",
+          shiny::selectInput("adata_subj", NULL, stats::setNames(cands, cands),
+                             selected = subj_now, width = "100%")),
+        shiny::p(class = "small text-muted mb-0",
+                 sprintf(t("Only the subjects in it (an inner join on %s): its condition, the analysis set's for one, is not written here again."),
+                         key))),
+      shiny::tags$label(class = "form-label", argl("Rows kept (an R condition)", "where")),
+      adata_shortcuts(),
+      shiny::textInput("adata_where", NULL, blank_na(r$where), width = "100%",
+                       placeholder = sprintf(t("e.g. %s"), "PARAMCD == \"ALT\"")),
+      if (nzchar(e$pop)) shiny::checkboxInput(
+        "adata_pop_keep",
+        sprintf(t("Kept to the analysis set %s too (as it was made: population_id)"), e$pop),
+        TRUE),
+      shiny::tags$details(
+        class = "mb-2", open = if (more) NA,
+        shiny::tags$summary(class = "small", t("Columns taken, made, kept; one row per ...")),
+        shiny::selectizeInput("adata_add", argl("Columns taken from the subjects' data", "add"),
+                              choices = unique(c(bar(r$add), adata_add_choices(r$from, subj_now))),
+                              selected = bar(r$add), multiple = TRUE, width = "100%",
+                              options = list(create = TRUE, plugins = list("remove_button"))),
+        shiny::textInput("adata_derive", argl("Columns made (NAME = R, | between them)", "derive"),
+                         blank_na(r$derive), width = "100%",
+                         placeholder = sprintf(t("e.g. %s"), "PHASE = APHASE")),
         shiny::selectizeInput("adata_keep", argl("Columns kept (blank: all)", "keep"),
                               choices = unique(c(bar(r$keep), adata_cols(adata_root(r$from)))),
                               selected = bar(r$keep), multiple = TRUE, width = "100%",
@@ -3894,11 +3899,6 @@ app_server <- function(input, output, session, start) {
                               choices = unique(c(bar(r$distinct), adata_cols(adata_root(r$from)))),
                               selected = bar(r$distinct), multiple = TRUE, width = "100%",
                               options = list(create = TRUE, plugins = list("remove_button")))),
-      bslib::layout_columns(
-        col_widths = c(5, 7),
-        shiny::textInput("adata_id", argl("Name (used in the program)", "data_id"),
-                         blank_na(r$data_id), width = "100%"),
-        shiny::textInput("adata_label", t("Label"), blank_na(r$label), width = "100%")),
       shiny::uiOutput("adata_preview_out"),
       shiny::div(
         class = "d-flex gap-2 mt-2",
@@ -3917,24 +3917,30 @@ app_server <- function(input, output, session, start) {
   # data: its dataset's and those it makes), or of the analysis set's
   adata_add_choices <- function(from, subj) {
     subj <- subj %||% ""
-    po <- rv$p$ard$populations
-    if (startsWith(subj, "@")) {
-      id <- substring(subj, 2L)
-      ad <- .adata_rows(rv$p)
-      made <- trimws(sub("=.*$", "", .split_bar(ad$derive[match(id, ad$data_id)])))
-      return(unique(c(adata_cols(adata_root(id)), made)))
-    }
-    if (startsWith(subj, "pop:")) {
-      return(adata_cols(po$dataset[match(substring(subj, 5L), po$population_id)]))
-    }
-    character()
+    if (!nzchar(subj)) return(character())
+    ad <- .adata_rows(rv$p)
+    made <- trimws(sub("=.*$", "", .split_bar(ad$derive[match(subj, ad$data_id)])))
+    unique(c(adata_cols(adata_root(subj)), made))
   }
-  shiny::observeEvent(input$adata_subj, {
+  adata_subj_value <- function() {
+    e <- adata_edit()
+    if (!isTRUE(input$adata_subj_on) || !length(e$cands)) return(NA_character_)
+    v <- input$adata_subj %||% ""
+    if (nzchar(v) && v %in% e$cands) v else e$cands[1L]
+  }
+  shiny::observeEvent(list(input$adata_subj_on, input$adata_subj), {
     shiny::req(!is.null(adata_edit()))
+    s <- adata_subj_value()
     shiny::updateSelectizeInput(
       session, "adata_add",
-      choices = unique(c(input$adata_add, adata_add_choices(input$adata_from, input$adata_subj))),
+      choices = unique(c(input$adata_add, if (!is.na(s)) adata_add_choices(input$adata_from, s))),
       selected = input$adata_add)
+  }, ignoreInit = TRUE)
+  shiny::observeEvent(input$adata_from, {
+    e <- adata_edit()
+    shiny::req(!is.null(e), is.null(e$old), is.null(e$name), length(e$cands))
+    shiny::updateCheckboxInput(session, "adata_subj_on",
+                               value = !adata_root(input$adata_from) %in% adata_pop_ds())
   }, ignoreInit = TRUE)
   # a form field as one cell ("A | B"; NA when blank)
   one_of <- function(v) if (is.null(v) || !length(v) || !nzchar(trimws(paste(v, collapse = "")))) NA else
@@ -3951,23 +3957,13 @@ app_server <- function(input, output, session, start) {
       p <- name_analysis_data(p, ard_target(), sp$dataset, sp$pop, id, label = one(input$adata_label))
       e$old <- id
     }
-    if (identical(e$kind, "subjects")) {
-      po <- p$ard$populations
-      pop <- one(input$adata_pop)
-      from <- po$dataset[match(pop, po$population_id)]
-      subjects <- NA
-      add <- NA
-      keep <- NA
-      distinct <- NA
-    } else {
-      from <- one(input$adata_from)
-      s <- input$adata_subj %||% ""
-      pop <- if (startsWith(s, "pop:")) substring(s, 5L) else NA
-      subjects <- if (startsWith(s, "@")) substring(s, 2L) else NA
-      add <- one(input$adata_add)
-      keep <- one(input$adata_keep)
-      distinct <- one(input$adata_distinct)
-    }
+    from <- one(input$adata_from)
+    subjects <- adata_subj_value()
+    # the analysis set it was kept to stays only while ticked
+    pop <- if (nzchar(e$pop %||% "") && isTRUE(input$adata_pop_keep)) e$pop else NA
+    add <- one(input$adata_add)
+    keep <- one(input$adata_keep)
+    distinct <- one(input$adata_distinct)
     p <- set_analysis_data(p, id, from = from, population_id = pop, subjects = subjects,
                            where = one(input$adata_where), add = add,
                            derive = one(input$adata_derive), keep = keep,
@@ -3976,33 +3972,23 @@ app_server <- function(input, output, session, start) {
     suppressWarnings(.ard_spec(p$ard))
     p
   }
-  shiny::observeEvent(input$ard_adata_new_subj, {
-    tg <- ard_target()
-    shiny::req(has_study(), tg)
-    adata_pick(NULL)
-    adata_edit(list(old = NULL, kind = "subjects"))
-    po <- rv$p$ard$populations
-    pop <- po$population_id[1L]
-    adata_form(list(data_id = .adata_suggest(rv$p, po$dataset[1L], pop), population_id = pop),
-               t("The subjects of this report"), "subjects")
-  })
-  shiny::observeEvent(input$ard_adata_new_data, {
+  shiny::observeEvent(input$ard_adata_new, {
     tg <- ard_target()
     shiny::req(has_study(), tg)
     p <- rv$p
     adata_pick(NULL)
-    adata_edit(list(old = NULL, kind = "data"))
+    # the first one is the subjects' (ADSL); then the data kept to them
+    subj <- .adata_subject_level(p)
     ds <- p$ard$datasets$dataset
-    pop_ds <- unique(stats::na.omit(p$ard$populations$dataset))
-    from <- c(setdiff(ds, pop_ds), ds)[1L]
-    # the report's subjects, when it has some: the data is kept to them
+    pop_ds <- intersect(adata_pop_ds(), ds)
+    from <- if (!length(subj) && length(pop_ds)) pop_ds[1L] else c(setdiff(ds, pop_ds), ds)[1L]
     mine <- .adata_of_report(p, tg)
-    subj <- mine[vapply(mine, function(id) identical(.adata_kind(p, id), "subjects"), NA)]
-    pop <- p$ard$populations$population_id[1L]
-    r <- list(from = from, subjects = if (length(subj)) subj[1L] else NA,
-              population_id = if (!length(subj)) pop else NA)
-    r$data_id <- .adata_suggest(p, from, if (length(subj)) NA else pop)
-    adata_form(r, t("Data to analyse"), "data")
+    s1 <- c(intersect(mine, subj), subj)[1L]
+    suf <- if (!is.na(s1) && grepl("_", s1)) sub("^[^_]*_", "", s1) else NA
+    nm <- if (!is.na(suf) && !from %in% pop_ds) paste0(tolower(from), "_", suf) else NA
+    if (is.na(nm) || nm %in% .adata_rows(p)$data_id) nm <- .adata_suggest(p, from, NA)
+    adata_edit(list(old = NULL, suggested = nm))
+    adata_form(list(from = from, data_id = nm), t("New analysis data"))
   })
   shiny::observeEvent(input$adata_close, adata_close())
   shiny::observeEvent(input$ard_adata_pick, {
@@ -4016,9 +4002,8 @@ app_server <- function(input, output, session, start) {
       class = "alert alert-secondary small py-1",
       sprintf(t("Used by: %s."), paste(c(u$analyses, u$data), collapse = ", ")), " ",
       t("A change makes these reports' ARD need making again."))
-    kind <- .adata_kind(rv$p, id)
-    adata_edit(list(old = id, note = note, kind = kind))
-    adata_form(as.list(ad[match(id, ad$data_id), ]), sprintf(t("Analysis data %s"), id), kind)
+    adata_edit(list(old = id, note = note))
+    adata_form(as.list(ad[match(id, ad$data_id), ]), sprintf(t("Analysis data %s"), id))
   })
   shiny::observeEvent(input$ard_adata_name, {
     v <- input$ard_adata_name
@@ -4027,7 +4012,6 @@ app_server <- function(input, output, session, start) {
     po <- rv$p$ard$populations
     pop_ds <- po$dataset[match(sp$pop, po$population_id)]
     from <- if (is.na(sp$dataset)) pop_ds else sp$dataset
-    kind <- if (identical(from, pop_ds)) "subjects" else "data"
     a <- st_rows()
     d <- a$data %||% rep(NA_character_, nrow(a))
     par <- a$parent %||% rep(NA_character_, nrow(a))
@@ -4043,10 +4027,10 @@ app_server <- function(input, output, session, start) {
       if (!is.na(common)) sprintf(t("The condition they all have, %s, moves from them to the data (each one's own conditions stay)."),
                                   common))
     adata_pick(NULL)
-    adata_edit(list(old = NULL, name = v, note = note, reads = on$analysis_id, kind = kind))
+    adata_edit(list(old = NULL, name = v, note = note, reads = on$analysis_id))
     adata_form(list(data_id = .adata_suggest(rv$p, from, sp$pop, common), from = from,
                     population_id = sp$pop, where = common),
-               sprintf(t("Give %s a name"), data_words(sp$dataset, sp$pop)), kind)
+               sprintf(t("Give %s a name"), data_words(sp$dataset, sp$pop)))
   })
   shiny::observeEvent(input$adata_preview, {
     p <- tryCatch(adata_planner(), error = function(e) e)
@@ -4078,9 +4062,20 @@ app_server <- function(input, output, session, start) {
     if (inherits(p, "error")) return(notify(conditionMessage(p), "warning"))
     e <- adata_edit()
     id <- trimws(input$adata_id)
+    kept <- character()
+    if (is.null(e$old) && id %in% .adata_subject_level(p)) {
+      others <- setdiff(.adata_of_report(p, ard_target()), .adata_subject_level(p))
+      p <- .adata_keep_to(p, id, others)
+      kept <- attr(p, "kept")
+      attr(p, "kept") <- NULL
+    }
     rv$p <- p
     adata_close()
     bump()
+    if (length(kept)) {
+      notify(sprintf(t("%s are kept to the subjects of %s now (untick it in their form if one should not be)."),
+                     paste(kept, collapse = ", "), id))
+    }
     notify(if (!is.null(e$name)) {
       sprintf(t("%s is made; %s read it now."), id, paste(e$reads, collapse = ", "))
     } else if (is.null(e$old)) sprintf(t("%s is made."), id) else sprintf(t("%s is changed."), id))

@@ -2094,3 +2094,18 @@ this study's,この試験の関数
 No study open,試験を開いていません
 studies are chosen on the Study tab,試験は「試験」タブで選びます
 Keys and setup code,キーとセットアップコード
+2-1 Analysis data,2-1 解析データ
+"The data the analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are the study's, to use in other reports too. The denominator of a percent is chosen with each analysis, in 2-2.",解析が読むデータです。試験のデータセットから作ります（条件で残す行、ほかの解析データの被験者への絞り込み、作る列）。試験のものなので、ほかの帳票でも使えます。% の分母は、2-2 で解析ごとに選びます。
+Copy the one chosen,選んだ解析データを複製
+Delete %s...,%s を削除...
+Delete the one chosen...,選んだ解析データを削除...
+Choose one in the list (◉): its settings open below it.,一覧の行をクリックして選ぶと（◉）、その下に設定が開きます。
+None yet: New analysis data makes one.,まだありません。［新しい解析データ］で作ります。
+The report's analyses. Each one's Data: an analysis data of 2-1; the denominator of a percent: chosen with it.,この帳票の解析です。データは 2-1 の解析データから、% の分母は解析ごとに選びます。
+(not kept to other subjects),（絞らない）
+Put in an analysis set's condition:,解析対象集団の条件を入れる：
+not %s,%s 以外
+Keep the subjects of,被験者を絞る：この解析データの被験者だけ
+"Only the subjects in that analysis data (as an inner join on the subject key): a condition written there, the analysis set's for one, need not be written here again.",選んだ解析データにいる被験者だけを残します（被験者キーでの inner join）。そちらに書いた条件（解析対象集団など）を、ここにもう一度書く必要はありません。
+Kept to the analysis set %s too (as it was made: population_id),解析対象集団 %s でも絞る（作ったときの指定：population_id）
+"Columns taken, made, kept; one row per ...",持ってくる列・作る列・残す列、1 行の単位 ...

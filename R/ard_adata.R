@@ -34,16 +34,64 @@
   NA_character_
 }
 
-# Is an analysis data a report's subjects (an analysis set's own data, kept
-# to some of its subjects: one row a subject, a denominator) or data
-# analysed (another dataset, kept to subjects)?  "subjects" / "data"
-.adata_kind <- function(x, id) {
+# The analysis data of one row a subject: made from the analysis sets'
+# dataset (ADSL).  The others are kept to their subjects.
+.adata_subject_level <- function(x) {
   ad <- .adata_rows(x)
-  po <- x$ard$populations
-  ds <- .adata_dataset(ad, id)
-  pop <- .adata_pop(ad, id)
-  pop_ds <- po$dataset[match(pop, po$population_id)]
-  if (!is.na(ds) && !is.na(pop_ds) && identical(ds, pop_ds)) "subjects" else "data"
+  if (!nrow(ad)) return(character())
+  ds <- unique(stats::na.omit(x$ard$populations$dataset))
+  if (!length(ds)) ds <- "ADSL"
+  ad$data_id[vapply(ad$data_id, function(id) .adata_dataset(ad, id) %in% ds, NA)]
+}
+
+# The subject key of the study (study sheet `id`, USUBJID by default)
+.adata_subject_key <- function(x) {
+  st <- x$ard$study
+  v <- if (!is.null(st)) st$value[match("id", st$key)] else NA
+  if (is.null(v) || !length(v) || is.na(v) || !nzchar(v)) "USUBJID" else v
+}
+
+# Keeps the analysis data `ids` to the subjects of `subj`: those kept to no
+# subjects nor analysis set yet (themselves or the data they are made from).
+# `subj` moves above the first of them (`subjects` names a data above),
+# unless what it is made from is below: then only those below it.  The ids
+# kept are in attribute "kept".
+.adata_keep_to <- function(x, subj, ids) {
+  ad <- .adata_rows(x)
+  k <- match(subj, ad$data_id)
+  free <- vapply(ids, function(id) id %in% ad$data_id && id != subj &&
+                   !subj %in% .adata_chain(ad, id) && !id %in% .adata_chain(ad, subj) &&
+                   is.na(.adata_subjects_of(ad, id)) && is.na(.adata_pop(ad, id)), NA)
+  ids <- ids[free]
+  # one made from another kept here follows it
+  ids <- ids[!vapply(ids, function(id) any(setdiff(.adata_chain(ad, id), id) %in% ids), NA)]
+  if (length(ids) && !is.na(k)) {
+    up <- setdiff(.adata_chain(ad, subj), subj)
+    first <- min(match(ids, ad$data_id))
+    if (length(up) && max(match(up, ad$data_id)) >= first) {
+      ids <- ids[match(ids, ad$data_id) > k]
+      first <- if (length(ids)) min(match(ids, ad$data_id)) else k
+    }
+    if (length(ids)) {
+      ad$subjects[match(ids, ad$data_id)] <- subj
+      if (k > first) {
+        ord <- c(setdiff(seq_len(first - 1L), k), k, setdiff(first:nrow(ad), k))
+        ad <- ad[ord, , drop = FALSE]
+      }
+      rownames(ad) <- NULL
+      x$ard$analysis_data <- ad
+    }
+  }
+  attr(x, "kept") <- ids
+  x
+}
+
+# The opposite of a condition, the rows it does not keep: a blank flag too
+# (SAFFL != "Y" would drop the rows where SAFFL is blank)
+.cond_not <- function(w) {
+  m <- regmatches(w, regexec('^\\s*([A-Za-z.][A-Za-z0-9._]*)\\s*==\\s*("[^"]*")\\s*$', w))[[1L]]
+  if (length(m)) sprintf("!(%s %%in%% %s)", m[2L], m[3L]) else
+    sprintf("!((%s) %%in%% TRUE)", w)
 }
 
 # the subjects data it is kept to: its own `subjects`, else the nearest
