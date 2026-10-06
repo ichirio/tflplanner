@@ -240,7 +240,7 @@ test_that("the chooser is one line once a function is chosen", {
     h <- output$ard_stat_ui$html
     # closed (no open attribute), "method" and the choice on one line
     expect_match(h, '<details class="ard-fn mb-2">', fixed = TRUE)
-    expect_match(h, ">method</strong>", fixed = TRUE)
+    expect_match(h, "The method (method)</strong>", fixed = TRUE)
     expect_match(h, "Change", fixed = TRUE)
     expect_false(grepl("Chosen:", output$ard_fn_now$html, fixed = TRUE))
     # all the categories by default
