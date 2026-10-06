@@ -11,6 +11,18 @@
   counts as "not Y") and reads it back; what the rows cannot hold stays
   as R, in a field of its own.
 
+- **The Study tab and the Data tab, after trying them** (#174).
+  - The Study tab: "Study list" on the left; on the right one card, "Study
+    settings": the study's title, compound, phase, rounding, its keys and
+    setup code, and its files.  "Own ARD functions" below, the company's
+    (every study) and this study's apart, with how many of each.
+  - The study open, its ID and title, is in the bar of the tabs on every
+    tab; a click on it goes to the Study tab, where studies are chosen.
+  - A table drawn while its tab was hidden (headers one letter a line)
+    measures its columns again when the tab shows.
+  - The Data tab: "Into" and "Add files" level; the file's "Preview", 50
+    rows a page with paging.
+
 - **The runs table is quick for a big study** (#167).  `study_status()`
   wrote every report's program again to see whether it is current, each
   building the whole study's spec: a minute for 200 reports.  The spec is

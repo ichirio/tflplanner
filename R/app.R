@@ -201,6 +201,16 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 # ------------------------------------------------------------------- UI
 
 .code_css <- "
+/* controls side by side (a choice and a file input; buttons and a tick):
+   one height, one bottom line; a file input's upload bar takes no room */
+.rp-upload > .shiny-input-container { margin-bottom: 0; position: relative; }
+.rp-upload .shiny-file-input-progress { position: absolute; left: 0; right: 0;
+  top: 100%; margin: 2px 0 0; }
+.rp-upload select, .rp-upload .input-group .form-control,
+.rp-upload .input-group .btn-file { height: 38px; }
+.rp-upload .input-group .btn-file { display: inline-flex; align-items: center; }
+.rp-upload .checkbox, .rp-upload .form-check { margin: 0; }
+.rp-upload select { appearance: auto; }
 /* a top tab the chosen report has nothing on */
 .nav-link.rp-idle { opacity: .45; }
 /* While the server works (opening a study, switching a tab or a report,
@@ -663,14 +673,17 @@ app_ui <- function(lang = "en") {
                             shiny::tags$script(shiny::HTML(.split_js)),
                             shiny::tags$script(shiny::HTML(.unsaved_js)),
                             shiny::tags$script(shiny::HTML(.updating_js)),
+                            shiny::tags$script(shiny::HTML(.dt_adjust_js)),
                             shiny::uiOutput("update_note")),
 
     bslib::nav_panel(
       t("Study"), value = "study",
       bslib::layout_columns(
         col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
+        # as tall as its list (not stretched to the settings beside it)
         bslib::card(
-          bslib::card_header(t("Studies")),
+          class = "align-self-start", fill = FALSE,
+          bslib::card_header(t("Study list")),
           shiny::uiOutput("welcome"),
           shiny::uiOutput("studies_root_note"),
           DT::DTOutput("studies"),
@@ -697,31 +710,33 @@ app_ui <- function(lang = "en") {
             class = "mt-2 small",
             shiny::tags$summary(t("Settings")),
             shiny::uiOutput("settings"))),
+        # the study chosen: what it is and how it is set, in one card (its
+        # keys and setup code only for the study open)
         bslib::card(
           bslib::card_header(shiny::uiOutput("study_detail_title",
                                              inline = TRUE)),
-          shiny::uiOutput("study_detail"))),
-      # the study's own settings and code, one of each for the study
-      bslib::layout_columns(
-        col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
-        bslib::card(
-          bslib::card_header(paste0(t("Study keys"), " (study)")),
+          shiny::uiOutput("study_detail"),
+          shiny::conditionalPanel(
+            "output.shows_open == 'yes'",
+            shiny::h6(class = "mt-2", paste0(t("Keys and setup code"), " (study)")),
+            shiny::p(class = "small text-muted mb-1",
+                     t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source).")),
+            rhandsontable::rHandsontableOutput("hot_ard_study"),
+            shiny::textAreaInput(
+              "setup",
+              t("Setup code every report runs first (library(), common data)"),
+              rows = 4, width = "100%", resize = "vertical")),
+          shiny::uiOutput("study_actions"))),
+      bslib::card(
+          bslib::card_header(t("Own ARD functions")),
           shiny::p(class = "small text-muted",
-                   t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source).")),
-          rhandsontable::rHandsontableOutput("hot_ard_study"),
-          shiny::textAreaInput(
-            "setup",
-            t("Setup code every report runs first (library(), common data)"),
-            rows = 4, width = "100%", resize = "vertical")),
-        bslib::card(
-          bslib::card_header(t("Own functions")),
-          shiny::p(class = "small text-muted",
-                   t("ARD functions of one's own: the company's (the standards folder) and the study's (programs/ard/functions/; a study's copy wins). An analysis names one as its method once the study loads it. They are R files, edited outside the app (RStudio ...): try one after a change.")),
+                   t("ARD functions of one's own, of two kinds: the company's, for every study (the standards folder), and this study's only (programs/ard/functions/). A study's copy of a company function wins in that study. An analysis names one as its method once the study loads it. They are R files, edited outside the app (RStudio ...): try one after a change.")),
+          shiny::uiOutput("own_counts"),
           shiny::div(class = "mb-2 d-flex gap-2",
                      .btn("own_new", t("New function..."), class = "btn-sm btn-primary"),
                      .btn("own_refresh", t("Read the files again"), class = "btn-sm btn-outline-secondary")),
           DT::DTOutput("own_list", height = "auto", fill = FALSE),
-          shiny::uiOutput("own_detail")))),
+          shiny::uiOutput("own_detail"))),
 
     # the study's data in one place: on the left what there is (files, ARDs,
     # definitions), on the right the one chosen
@@ -741,15 +756,16 @@ app_ui <- function(lang = "en") {
                                                   c(t("All"), "SDTM", "ADaM", t("Other")))),
               DT::DTOutput("data_files"),
               shiny::div(
-                class = "d-flex gap-2 align-items-end mt-2",
+                class = "d-flex gap-2 align-items-end mt-2 rp-upload",
                 shiny::selectInput("data_folder", t("Into"),
-                                   c("adam", "sdtm", "other"), width = "110px"),
+                                   c("adam", "sdtm", "other"), width = "110px",
+                                   selectize = FALSE),
                 shiny::fileInput("data_upload", t("Add files"), multiple = TRUE)),
               shiny::div(class = "d-flex gap-2",
                          .btn("data_refresh", t("Refresh")),
                          .btn("data_open", t("Open folder")))),
             bslib::card(
-              bslib::card_header(t("Contents (first 50 rows)")),
+              bslib::card_header(t("Preview")),
               shiny::uiOutput("data_dim"),
               DT::DTOutput("data_head")))),
         bslib::nav_item(shiny::div(class = "small text-muted fw-bold mt-3 px-2", "ARD")),
@@ -896,6 +912,7 @@ app_ui <- function(lang = "en") {
           bslib::card_header(t("Definition check")),
           DT::DTOutput("check_result")))),
 
+    bslib::nav_item(shiny::uiOutput("open_study_bar")),
     bslib::nav_spacer(),
     bslib::nav_item(shiny::uiOutput("save_state")),
     bslib::nav_item(shiny::uiOutput("save_btn")),
@@ -921,6 +938,25 @@ app_ui <- function(lang = "en") {
 # tab) asks first; the server says when (message "tflplanner-dirty").
 # The builder's preview says "Updating" from the moment the builder writes a
 # change to the sheets (the server says so) until the new table arrives.
+# a DataTable drawn while its tab was hidden measured its columns 0 px wide
+# (headers one letter a line): when a tab, pill or sidebar shows, the tables
+# in sight measure again
+.dt_adjust_js <- "
+(function() {
+  function adjust() {
+    setTimeout(function() {
+      if (window.jQuery && jQuery.fn.dataTable) {
+        jQuery.fn.dataTable.tables({visible: true, api: true}).columns.adjust();
+      }
+    }, 0);
+  }
+  document.addEventListener('shown.bs.tab', adjust);
+  document.addEventListener('shown.bs.collapse', adjust);
+  document.addEventListener('toggle', adjust, true);
+  if (window.jQuery) jQuery(document).on('shiny:visualchange', adjust);
+})();
+"
+
 .updating_js <- "
 $(document).on('shiny:connected', function() {
   Shiny.addCustomMessageHandler('builder-updating', function(x) {
@@ -1324,6 +1360,22 @@ app_server <- function(input, output, session, start) {
                      ordering = FALSE, scrollX = TRUE, scrollY = "50vh",
                      scrollCollapse = TRUE))
   })
+  # the study open, in the bar of the tabs on every tab (a study is chosen
+  # on the Study tab)
+  output$open_study_bar <- shiny::renderUI({
+    if (!has_study()) {
+      return(shiny::span(class = "small text-muted me-2", t("No study open")))
+    }
+    m <- rv$meta
+    ttl <- if (is.na(m$title %||% NA)) "" else m$title
+    shiny::actionLink(
+      "open_study_go",
+      class = "small ms-3 d-inline-block text-truncate align-middle text-body text-decoration-none",
+      style = "max-width: 32em;",
+      title = paste0(m$study_id, " ", ttl, " -- ", t("studies are chosen on the Study tab")),
+      shiny::tagList(shiny::span(class = "badge text-bg-light border me-1", m$study_id), ttl))
+  })
+  shiny::observeEvent(input$open_study_go, go("study"))
   output$n_studies <- shiny::renderText(nrow(studies()))
   shiny::outputOptions(output, "n_studies", suspendWhenHidden = FALSE)
   output$save_btn <- shiny::renderUI({
@@ -1445,10 +1497,12 @@ app_server <- function(input, output, session, start) {
     has_study() && !is.null(s) && identical(s$study_id,
                                             rv$study$meta$study_id)
   })
+  output$shows_open <- shiny::renderText(if (shows_open()) "yes" else "no")
+  shiny::outputOptions(output, "shows_open", suspendWhenHidden = FALSE)
   output$study_detail_title <- shiny::renderUI({
     s <- shown_study()
-    if (is.null(s)) return(t("Study"))
-    shiny::span(s$study_id, " ",
+    if (is.null(s)) return(t("Study settings"))
+    shiny::span(t("Study settings"), ": ", s$study_id, " ",
                 shiny::span(class = "small text-muted",
                             if (shows_open()) t("(open)") else
                               t("(not open)")))
@@ -1852,7 +1906,6 @@ app_server <- function(input, output, session, start) {
     m <- shiny::isolate(rv$meta)
     r <- shiny::isolate(rv$p$study[["rounding"]])
     v <- function(x) if (is.na(x)) "" else x
-    lay <- study_layout()
     shiny::tagList(
       shiny::p(shiny::strong(m$study_id), shiny::br(),
                shiny::span(class = "small text-muted", rv$study$path)),
@@ -1873,7 +1926,13 @@ app_server <- function(input, output, session, start) {
         .btn("std_defaults", t("Add the company's study defaults (only what is missing)"),
              class = "btn-sm btn-outline-primary"),
         shiny::span(class = "small text-muted",
-                    t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, analysis sets and data catalog. Nothing already there is changed."))),
+                    t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, analysis sets and data catalog. Nothing already there is changed."))))
+  })
+  output$study_actions <- shiny::renderUI({
+    shiny::req(shows_open())
+    lay <- study_layout()
+    shiny::tagList(
+      shiny::hr(),
       shiny::tags$details(
         shiny::tags$summary(t("Folders")),
         shiny::tags$pre(class = "small", paste(
@@ -1884,7 +1943,7 @@ app_server <- function(input, output, session, start) {
         "import",
         t("Import definition workbooks (replaces this study's definition)"),
         multiple = TRUE, accept = ".xlsx", width = "100%"),
-      shiny::div(class = "d-flex flex-wrap gap-2 align-items-center",
+      shiny::div(class = "d-flex flex-wrap gap-2 align-items-center rp-upload mb-2",
                  shiny::downloadButton("spec_xlsx",
                                        t("Export the definition (Excel)"),
                                        class = "btn-sm"),
@@ -5149,12 +5208,29 @@ app_server <- function(input, output, session, start) {
     input$own_refresh
     rv$p
     shiny::req(has_study())
-    tryCatch(own_ard_functions(imp_study()), error = function(e) {
+    d <- tryCatch(own_ard_functions(imp_study()), error = function(e) {
       notify(conditionMessage(e), "error")
       NULL
     })
+    # the company's first, then the study's copies, then the study's own
+    if (!is.null(d) && nrow(d)) {
+      d <- d[order(match(d$where, names(own_where_words))), , drop = FALSE]
+      rownames(d) <- NULL
+    }
+    d
   })
-  own_where_words <- c(study = "study", company = "company", both = "study and company")
+  own_where_words <- c(company = "company (every study)", both = "this study's copy of the company's",
+                       study = "this study only")
+  output$own_counts <- shiny::renderUI({
+    d <- own_data()
+    shiny::req(d)
+    n <- function(w) sum(d$where %in% w)
+    shiny::p(class = "small mb-1",
+             shiny::span(class = "badge text-bg-secondary me-1", n(c("company", "both"))),
+             t("company's (every study)"),
+             shiny::span(class = "badge text-bg-primary ms-3 me-1", n(c("study", "both"))),
+             t("this study's"))
+  })
   output$own_list <- DT::renderDT({
     d <- own_data()
     shiny::req(d)
@@ -7249,13 +7325,13 @@ app_server <- function(input, output, session, start) {
     # that is there
     path <- data_files_shown()$path[input$data_files_rows_selected]
     shiny::req(length(path) == 1L, !is.na(path), file.exists(path))
-    guarded(read_data_head(path))
+    guarded(read_data_head(path, n = Inf))
   })
   output$data_head <- DT::renderDT({
     d <- data_head()
     shiny::req(d)
-    DT::datatable(d, rownames = FALSE, selection = "none",
-                  options = list(dom = "t", paging = FALSE, scrollX = TRUE,
+    DT::datatable(d, rownames = FALSE, selection = "none", class = "compact nowrap",
+                  options = list(dom = "tip", pageLength = 50L, scrollX = TRUE,
                                  scrollY = "420px"))
   })
   output$data_dim <- shiny::renderUI({
