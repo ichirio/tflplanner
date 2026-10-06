@@ -1,5 +1,21 @@
 # tflplanner (development version)
 
+- **Help, after a review of every screen** (#211).  A heading's (i) opens
+  on a click or a tap too (a tablet has no hover) and stays open until it
+  is clicked again, something else is clicked or Escape is pressed -- for
+  the (i) of step 2 too.  The "About this (i)" lines are a part's heading
+  with its (i) now (the Data tab's parts, steps 1 and 4, the table
+  builder, a listing), and on the Data tab a sheet's editing note is in
+  the same (i) (no two (i) in a row).  The rest of the paragraphs went into
+  an (i): the analysis sets, step 1's Code and Result (they say what
+  their names say), the data code's labels (their help was a title shown
+  only on hover), Preview, the study settings and "add the company's
+  defaults", the Add dialog's "Start from the data", and the figure
+  designer.  Long tips are shorter (own ARD functions, ARDs taken in); the
+  study ARD's no longer repeats the line on the page.  Japanese: one
+  missing translation, and the statistics catalog's labels (shown in
+  step 2-2).
+
 - **Long explanations are a heading's (i) now** (#207).  The paragraphs of
   explanation on the screens made them hard to read; they are a tooltip
   on the heading they explain (shown on hover or keyboard focus), or an
