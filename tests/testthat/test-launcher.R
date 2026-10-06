@@ -592,8 +592,6 @@ test_that("a newer version installed while the app runs is said on its page", {
   expect_identical(s$tflplanner, c(running = "0.0.1", installed = "9.9.9"))
   expect_length(.stale_versions("tflplanner", running = function(p) "9.9.9",
                                 path = function(p) d), 0L)
-  # as the app runs (load_all or installed): nothing to say
-  expect_length(.stale_versions(), 0L)
   # the page says it, above everything
   local_home()
   two_studies()

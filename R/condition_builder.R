@@ -4,7 +4,11 @@
 # R the definition keeps (SAFFL == "Y" & PARAMCD %in% c("ALT", "AST")) and
 # reads it back; what it cannot read stays as R, in a field of its own.
 # The values offered are the data's, with their counts, searched as the
-# function search searches (case, full / half width, kana).
+# function search searches (case, full / half width, kana).  The variables
+# are offered in groups, as ADaM names them: the population flags first
+# (SAFFL, ITTFL ...), then the analysis flags, the treatment, the
+# parameter, the timing, and the others.  A flag's blank is a value too:
+# "(blank)", written as NA and "" (a blank is either, as the data was read).
 #
 # The rows: a data frame, one row a condition: `group` (1, 2, ... the
 # "or" groups), `var`, `op` (one of .cond_ops), `values` (a list column of
@@ -34,6 +38,68 @@
 # a variable as R writes it (`a b` when it is not a plain name)
 .cond_name <- function(x) if (identical(make.names(x), x)) x else paste0("`", x, "`")
 
+# a flag's blank, as a value of the rows (written NA, "")
+.cond_blank <- "(blank)"
+
+# The variables of the data as ADaM names them, in groups (a named list of
+# named vectors: label = name), the population flags first; each group
+# only when the data has one of its columns.  A flag that is not a
+# population's is an analysis flag in data of several rows a subject, one
+# of the others in a subject-level data (ADSL).
+.cond_pop_flags <- c("SAFFL", "ITTFL", "FASFL", "PPROTFL", "RANDFL", "ENRLFL",
+                     "COMPLFL")
+
+# Which of `vars` are population flags (ADaM: SAFFL, ITTFL, FASFL, PPROTFL,
+# RANDFL, ENRLFL, COMPLFL first in that order, then PPSFL, MITTFL, PKFL ...
+# as they come): the names, in that order.  For a form that offers the
+# analysis sets of a data (2-1).
+.cond_population_flags <- function(vars) {
+  vars <- unique(as.character(vars))
+  pop <- vars %in% .cond_pop_flags |
+    grepl("^(PP|PPS|MITT|EFF|EVAL|PK|PKAS|PKPD|SCRN|COMP[0-9]+|RAND[0-9]*)FL$", vars)
+  v <- vars[pop]
+  v[order(match(v, .cond_pop_flags), seq_along(v))]
+}
+
+# Each variable's kind, as ADaM names it: "population", "analysis" (an
+# analysis flag), "treatment", "parameter", "timing" or "other" -- a named
+# character vector.  `subject_level`: one row a subject (ADSL), where a
+# flag that is not a population's is one of the others; given `data`, it
+# is read from it (USUBJID once a row).
+.cond_var_kind <- function(vars, data = NULL, subject_level = NULL) {
+  vars <- as.character(vars)
+  if (is.null(subject_level)) {
+    subject_level <- !is.null(data) && "USUBJID" %in% names(data) &&
+      !anyDuplicated(data$USUBJID)
+  }
+  pop <- vars %in% .cond_population_flags(vars)
+  flag <- grepl("FL$", vars) & !pop
+  anl <- grepl("^ANL[0-9]{2}FL$", vars) | (flag & !subject_level)
+  trt <- grepl("^(TRT[0-9]{2}[PA]N?|TRT[PA]N?|TRTSEQ[PA]N?|ARM|ARMCD|ACTARM|ACTARMCD)$", vars)
+  par <- grepl("^(PARAMCD|PARAM|PARAMN|PARCAT[0-9]+N?)$", vars)
+  tim <- grepl("^(AVISITN?|ATPTN?|APHASEN?|APERIOD|APERIODC|VISIT|VISITNUM)$", vars)
+  stats::setNames(ifelse(pop, "population", ifelse(anl, "analysis", ifelse(trt, "treatment",
+                  ifelse(par, "parameter", ifelse(tim, "timing", "other"))))), vars)
+}
+
+.cond_var_groups <- function(vars, labels = NULL, subject_level = FALSE) {
+  lab <- vapply(vars, function(v) {
+    x <- if (!is.null(labels) && v %in% names(labels)) labels[[v]] else NA
+    if (is.na(x) || !nzchar(x)) v else paste0(v, " \u2014 ", x)
+  }, "")
+  kind <- unname(.cond_var_kind(vars, subject_level = subject_level))
+  ord <- order(match(vars, .cond_pop_flags), seq_along(vars))
+  groups <- c(population = "Population flags", analysis = "Analysis flags",
+              treatment = "Treatment", parameter = "Parameter", timing = "Timing",
+              other = "Other")
+  out <- list()
+  for (k in names(groups)) {
+    i <- ord[kind[ord] == k]
+    if (length(i)) out[[groups[[k]]]] <- stats::setNames(vars[i], lab[i])
+  }
+  out
+}
+
 .cond_value <- function(v, type) {
   switch(type,
          num = v,
@@ -50,11 +116,14 @@
     nm <- .cond_name(v)
     op <- rows$op[i]
     vals <- rows$values[[i]]
-    vals <- vals[!is.na(vals) & nzchar(vals)]
+    vals <- unique(vals[!is.na(vals) & nzchar(vals)])
     if (op == "is.na") return(sprintf("is.na(%s)", nm))
     if (op == "!is.na") return(sprintf("!is.na(%s)", nm))
     if (!length(vals)) return(NA_character_)
-    q <- vapply(vals, .cond_value, "", type = rows$type[i], USE.NAMES = FALSE)
+    blank <- .cond_blank %in% vals
+    vals <- setdiff(vals, .cond_blank)
+    q <- c(vapply(vals, .cond_value, "", type = rows$type[i], USE.NAMES = FALSE),
+           if (blank) c("NA", '""'))
     set <- if (length(q) == 1L) q else sprintf("c(%s)", paste(q, collapse = ", "))
     switch(op,
            "==" = if (length(q) == 1L) sprintf("%s == %s", nm, q) else
@@ -97,6 +166,10 @@
   # a constant: its text and type; NULL if not one
   const <- function(x) {
     x <- unparen(x)
+    # a blank: NA, or "" (a flag's third value)
+    if (identical(x, NA) || identical(x, NA_character_) || identical(x, "")) {
+      return(list(v = .cond_blank, type = NA_character_))
+    }
     if (is.character(x) && length(x) == 1L) return(list(v = x, type = "chr"))
     if (is.numeric(x) && length(x) == 1L) return(list(v = format(x, digits = 15), type = "num"))
     if (is.call(x) && identical(x[[1L]], as.name("-")) && length(x) == 2L &&
@@ -111,9 +184,11 @@
       vs <- lapply(as.list(x)[-1L], const)
     } else vs <- list(const(x))
     if (!length(vs) || any(vapply(vs, is.null, NA))) return(NULL)
-    types <- unique(vapply(vs, `[[`, "", "type"))
-    if (length(types) != 1L) return(NULL)
-    list(v = vapply(vs, `[[`, "", "v"), type = types)
+    types <- unique(stats::na.omit(vapply(vs, `[[`, "", "type")))
+    if (length(types) > 1L) return(NULL)
+    if (!length(types)) types <- "chr"
+    if (types != "chr" && any(is.na(vapply(vs, `[[`, "", "type")))) return(NULL)
+    list(v = unique(vapply(vs, `[[`, "", "v")), type = types)
   }
   var_of <- function(x) {
     x <- unparen(x)
@@ -151,6 +226,10 @@
       v <- var_of(x[[2L]])
       k <- const(x[[3L]])
       if (is.null(v) || is.null(k)) return(NULL)
+      if (is.na(k$type)) {
+        if (!f %in% c("==", "!=")) return(NULL)
+        k$type <- "chr"
+      }
       return(.cond_row(group, v, f, k$v, k$type))
     }
     NULL
@@ -179,11 +258,17 @@
 .cond_choices <- function(x, max = 200L) {
   if (is.numeric(x) || inherits(x, c("Date", "POSIXt"))) return(NULL)
   x <- as.character(x)
+  blank <- sum(is.na(x) | !nzchar(x))
   x <- x[!is.na(x) & nzchar(x)]
   if (!length(x)) return(character())
   tab <- sort(table(x), decreasing = TRUE)
   tab <- utils::head(tab, max)
-  stats::setNames(names(tab), sprintf("%s (%d)", names(tab), as.integer(tab)))
+  out <- stats::setNames(names(tab), sprintf("%s (%d)", names(tab), as.integer(tab)))
+  # a flag (Y / N): its blank is a value to choose too
+  if (blank && all(names(tab) %in% c("Y", "N"))) {
+    out <- c(out, stats::setNames(.cond_blank, sprintf("%s (%d)", .cond_blank, blank)))
+  }
+  out
 }
 
 .cond_type <- function(x) {
@@ -235,12 +320,11 @@ condition_builder_ui <- function(id, lang = "en") {
 # variables and values typed in); `value` a reactive of the condition now
 # (R, NA for none); `labels` a reactive of the variables' labels (named),
 # else the data's label attributes; `key` a reactive whose change reads
-# `value` again (the row chosen); `shortcuts` a reactive of named
-# conditions (label = R) a click adds as rows.  Returns a reactive:
+# `value` again (the row chosen).  Returns a reactive:
 # list(expr = the R (NA for none), ok = it reads as R, n_rows = the rows),
 # changed only when the condition changes.
 condition_builder_server <- function(id, data, value, labels = NULL, lang = "en",
-                                     key = NULL, shortcuts = NULL) {
+                                     key = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     ns <- session$ns
     t <- function(x) tr(x, lang)
@@ -302,12 +386,11 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
     var_choices <- function() {
       dd <- d()
       if (is.null(dd)) return(NULL)
-      l <- labs()
-      lab <- vapply(names(dd), function(v) {
-        x <- if (!is.null(l) && v %in% names(l)) l[[v]] else NA
-        if (is.na(x) || !nzchar(x)) v else paste0(v, " \u2014 ", x)
-      }, "")
-      stats::setNames(names(dd), lab)
+      # one row a subject: ADSL (its flags other than the populations' are
+      # not analysis flags)
+      subj <- "USUBJID" %in% names(dd) && !anyDuplicated(dd$USUBJID)
+      g <- .cond_var_groups(names(dd), labs(), subject_level = subj)
+      stats::setNames(g, t(names(g)))
     }
     # the values of a column, kept per data and column
     cache <- new.env()
@@ -326,16 +409,8 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
       st$ver
       raw <- shiny::isolate(st$raw)
       rows <- shiny::isolate(st$rows)
-      sc <- if (!is.null(shortcuts)) tryCatch(shortcuts(), error = function(e) NULL)
-      short <- if (length(sc)) shiny::div(
-        class = "d-flex flex-wrap gap-1 mb-1 small align-items-center",
-        shiny::span(class = "text-muted", t("Add:")),
-        lapply(seq_along(sc), function(i) shiny::tags$button(
-          type = "button", class = "btn btn-sm btn-outline-secondary py-0",
-          onclick = js("short", i), names(sc)[i])))
       if (!is.null(raw)) {
         return(shiny::tagList(
-          short,
           shiny::p(class = "small text-muted mb-1",
                    t("Written as R (the rows cannot hold it): edit it here.")),
           shiny::textAreaInput(ns("raw"), NULL, raw, width = "100%", rows = 2),
@@ -359,8 +434,9 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
         } else {
           shiny::selectizeInput(ns(paste0("var_", id)), NULL, width = "100%",
                                 choices = c(stats::setNames("", t("Variable")), vc,
-                                            if (nzchar(v) && !v %in% vc) stats::setNames(v, v)),
-                                selected = v)
+                                            if (nzchar(v) && !v %in% unlist(vc)) stats::setNames(v, v)),
+                                selected = v,
+                                options = list(score = I("tflCondScore")))
         }
         ops <- stats::setNames(.cond_ops, t(unname(.cond_op_labels[.cond_ops])))
         if (identical(type, "chr")) ops <- ops[!.cond_ops %in% c("<", "<=", ">", ">=")]
@@ -398,7 +474,6 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
                                         onclick = js("add", groups[k]), t("+ and"))))
       })
       shiny::tagList(
-        short,
         if (!nrow(rows)) shiny::p(class = "small text-muted mb-1", t("No condition: every row.")),
         body,
         shiny::div(
@@ -440,9 +515,13 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
       r <- rows_now()
       shape <- function(x) paste(x$var, x$op, x$type)
       if (!identical(shape(r), shape(rows))) {
-        # the values of another column are not this one's
+        # the values of another column are not this one's; a flag (*FL)
+        # starts as = Y, to change from there
         changed <- r$var != rows$var
         r$values[changed] <- list(character())
+        fl <- changed & grepl("FL$", r$var)
+        r$op[fl] <- "=="
+        r$values[fl] <- list("Y")
         st$rows <- r
         redraw()
       }
@@ -470,18 +549,6 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
       r <- r[r$id != as.integer(input$del), , drop = FALSE]
       rownames(r) <- NULL
       st$rows <- r
-      redraw()
-    })
-    shiny::observeEvent(input$short, {
-      sc <- shortcuts()
-      i <- as.integer(input$short)
-      new <- .cond_parse(unname(sc[i]))
-      if (is.null(new)) return()
-      if (!is.null(st$raw)) return()
-      r <- rows_now()
-      g <- if (nrow(r)) max(r$group) else 1L
-      if (nrow(new)) new$group <- g
-      st$rows <- rbind(r, with_ids(new))
       redraw()
     })
     shiny::observeEvent(input$to_raw, {

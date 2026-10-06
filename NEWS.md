@@ -1,5 +1,23 @@
 # tflplanner (development version)
 
+- **The condition builder: variables in ADaM's groups, no shortcuts**
+  (#199).  The analysis sets' shortcut buttons (the set, and "not" it) are
+  gone: they did what "Keep to the subjects of ..." does, and a study has
+  many population flags.  A variable is chosen from groups, as ADaM names
+  them, each with its label and searched as before: population flags
+  first (SAFFL, ITTFL, FASFL, PPROTFL, RANDFL ...; only those the data
+  has), analysis flags (ANLxxFL; a flag of data of several rows a subject),
+  treatment (TRTxxP/A, TRTP/TRTA, ARM ...), parameter (PARAMCD, PARAM),
+  timing (AVISIT, ATPT, APHASE, APERIOD) and the others.  A flag (Y / N)
+  offers its blank as a value too, with its count: written `x %in% c("N",
+  NA, "")` (a blank is NA or "", as the data was read).
+  A flag (*FL) chosen starts as "= (any of) Y", to change from there (Y
+  taken out, N or the blank put in); another variable starts empty.
+  `condition_builder_server()` has no `shortcuts` any more;
+  `.cond_var_kind()` gives each variable's kind (population, analysis,
+  treatment, parameter, timing, other) and `.cond_population_flags()` a
+  data's population flags in ADaM's order, for forms outside it (2-1).
+
 - **The Study tab's two cards side by side; 2-1's data without a name
   chosen as the others** (#198).  The Study list fills its column (5 of
   12, the settings 7) with the usual gutter between, stacked on a narrow
