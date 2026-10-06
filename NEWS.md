@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **Screen review: step 2 and the Data tab** (#192).  Step 2's check
+  line says this report's analyses and the study's (it said the study's,
+  299, while a report was open); "2-2 Analyses"; side by side, the forms on
+  the left get more room; the code under an analysis's form says it is that
+  analysis alone (the report's program: Code on the right).  The Data tab
+  says its analysis data can be changed there too, and its datasets,
+  analysis sets and analysis data have their column help; 2-1's SPEC says a
+  new data's row comes when it is saved.
+
 - **A program is the definition's: saving writes it again, even one edited
   by hand** (#187; design 13-00).  A report, ARD or run program whose
   checksum no longer matched (edited by hand) used to be kept on save, so
