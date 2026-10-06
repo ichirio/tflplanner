@@ -187,8 +187,11 @@ test_that("2-1: one list, a new analysis data, kept to another's subjects", {
     expect_match(f, "adata_cond", fixed = TRUE)
     session$setInputs(adata_label = "", adata_from = "ADSL", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL)
-    # the analysis set's shortcut: its condition, and the name after it
-    session$setInputs(`adata_cond-short` = 1)
+    # the condition (as the builder gives it): the name after it
+    cond <- session$userData$adata_cond
+    cond$value("SAFFL == \"Y\"")
+    cond$key(shiny::isolate(cond$key()) + 1L)
+    session$flushReact()
     session$setInputs(adata_id = "adsl_saf")
     session$setInputs(adata_save = 1)
     rv <- session$userData$rv
@@ -337,3 +340,11 @@ test_that("step 2 says the report's analyses and the study's; the Data tab expla
   })
 })
 
+test_that("a data's name from what it is made from and its condition", {
+  po <- data.frame(population_id = c("SAF", "ITT"), where = c("SAFFL == \"Y\"", "ITTFL == \"Y\""))
+  expect_identical(.adata_name_from("ADSL", "SAFFL == \"Y\"", po), "adsl_saf")
+  expect_identical(.adata_name_from("ADSL", "EFFFL %in% \"Y\""), "adsl_eff")
+  expect_identical(.adata_name_from("ADAE", "TRTEMFL == \"Y\""), "adae_trtem")
+  expect_true(is.na(.adata_name_from("ADSL", "AGE >= 65", po)))
+  expect_true(is.na(.adata_name_from("ADSL", NA, po)))
+})

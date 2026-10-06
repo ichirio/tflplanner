@@ -6,7 +6,11 @@
   screen (it stopped at its table's width).  In 2-1 a data the analyses
   read without a name has the list's mark and opens its settings below
   with a click, the name the program gives it filled in; saving names it
-  (the "Give it a name..." link is gone).
+  (the "Give it a name..." link is gone).  2-1's condition has no
+  analysis-set shortcuts any more (they repeated "Keep to the subjects of";
+  the condition is built from a variable and its values); a new data is
+  still named after what it is made from and its condition (ADSL with
+  `SAFFL == "Y"`: adsl_saf; a flag set to "Y" names it).
 
 - **From the screen review** (#193).
   - The report list's buttons (Add, Copy, Rename, Delete, the arrows,

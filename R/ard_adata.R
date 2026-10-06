@@ -111,6 +111,20 @@
   out
 }
 
+# A name for a data from what it is made from and its condition: adsl_saf
+# for ADSL kept to an analysis set's condition, or to a flag set to "Y"
+# (SAFFL == "Y"); NA when the condition says no such thing
+.adata_name_from <- function(root, where, populations = NULL) {
+  if (.is_blank(root) || .is_blank(where)) return(NA_character_)
+  w <- trimws(where)
+  k <- if (!is.null(populations)) match(w, trimws(populations$where)) else NA
+  suf <- if (!is.na(k)) populations$population_id[k] else {
+    m <- regmatches(w, regexec('^([A-Za-z0-9_]+)FL\\s*(==|%in%)\\s*"Y"$', w))[[1L]]
+    if (length(m)) m[2L] else NA_character_
+  }
+  if (is.na(suf)) NA_character_ else paste0(tolower(root), "_", tolower(suf))
+}
+
 # The opposite of a condition, the rows it does not keep: a blank flag too
 # (SAFFL != "Y" would drop the rows where SAFFL is blank)
 .cond_not <- function(w) {
