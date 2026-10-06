@@ -6,6 +6,19 @@ The CDISC pilot study (Xanomeline) as the ADaM datasets of the
 minutes lying down) and ADTTE (the time to the first dermatologic event,
 derived from ADSL and ADAE by data-raw/make-sample-study.R).
 
+ITTFL, EFFFL and PPROTFL are not in pharmaverseadam's ADSL (of the
+population flags it has SAFFL only); data-raw/make-sample-study.R
+derives them, so step 2 has more than one flag to choose from:
+
+| Flag | Label | Y when | Subjects |
+|---|---|---|---|
+| ITTFL | Intent-To-Treat Population Flag | randomized (ARM is not Screen Failure) | 254 |
+| EFFFL | Efficacy Population Flag | SAFFL is Y and a post-baseline systolic blood pressure (CHG) in ADVS | 230 |
+| PPROTFL | Per-Protocol Population Flag | SAFFL is Y and EOSSTT is COMPLETED | 110 |
+
+They are not analysis sets of the study (its populations sheet has SAF
+only): in step 2-1 they are offered as flags of ADSL, to make one.
+
 | Output | Type | |
 |---|---|---|
 | T-14-1-1 | Table | Demographic characteristics |

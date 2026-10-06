@@ -71,6 +71,18 @@ advs <- advs[advs$PARAMCD == "SYSBP" & advs$ANL01FL %in% "Y" &
                "ATPT", "AVAL", "BASE", "CHG", "ABLFL", "ANL01FL", "TRTA",
                "TRTP")]
 rownames(advs) <- NULL
+# Population flags pharmaverseadam's ADSL lacks (of those, it has SAFFL), derived here
+# so that step 2 has more than one to choose from -- the README says how:
+# ITTFL the randomized (not a screen failure), EFFFL the safety set with a
+# post-baseline systolic blood pressure, PPROTFL the safety set that
+# completed the study.  The study's analysis sets stay SAF only.
+flag <- function(v, label) structure(ifelse(v, "Y", "N"), label = label)
+adsl$ITTFL <- flag(adsl$ARM != "Screen Failure", "Intent-To-Treat Population Flag")
+adsl$EFFFL <- flag(adsl$SAFFL %in% "Y" &
+                     adsl$USUBJID %in% advs$USUBJID[!advs$ABLFL %in% "Y" & !is.na(advs$CHG)],
+                   "Efficacy Population Flag")
+adsl$PPROTFL <- flag(adsl$SAFFL %in% "Y" & adsl$EOSSTT %in% "COMPLETED",
+                     "Per-Protocol Population Flag")
 # ADTTE: time to the first dermatologic treatment-emergent adverse event
 # (skin and subcutaneous tissue disorders, or an application site event),
 # the CDISC pilot's time-to-event endpoint; censored at the end of treatment.
@@ -341,10 +353,17 @@ p$ard$analyses <- tbl(
          "  cardx::ard_survival_survfit(fit, probs = 0.5),",
          "  cardx::ard_survival_survfit(fit, times = c(0, 30, 60, 90, 120, 150, 180)),",
          "  .quiet = TRUE)", sep = "\n")),
+  # T-14-3-1 reads analysis data: the TEAEs of the safety set (adae_saf,
+  # kept to adsl_saf's subjects), its percents of adsl_saf
   list(output_id = "T-14-3-1", analysis_id = "TEAE",
-       label = "TEAE by SOC / PT", method = "hierarchical", dataset = "ADAE",
-       population_id = "SAF", where = "TRTEMFL == \"Y\"", by = "TRT01A",
-       variables = "AEBODSYS | AEDECOD", args = "over_variables = TRUE"))
+       label = "TEAE by SOC / PT", method = "hierarchical", data = "adae_saf",
+       by = "TRT01A", variables = "AEBODSYS | AEDECOD", denominator = "adsl_saf",
+       args = "over_variables = TRUE"))
+p$ard$analysis_data <- tbl(
+  list(data_id = "adsl_saf", label = "Safety set", from = "ADSL",
+       population_id = "SAF"),
+  list(data_id = "adae_saf", label = "Treatment-emergent AEs of the safety set",
+       from = "ADAE", subjects = "adsl_saf", where = "TRTEMFL == \"Y\""))
 for (sh in names(p$ard)) p$ard[[sh]] <- .normalize_ard_sheet(p$ard[[sh]], sh)
 
 # ------------------------------------------------ the listing, the figure
@@ -530,6 +549,19 @@ writeLines(c(
   "(Apache License 2.0): ADSL, ADAE, ADVS (systolic blood pressure after 5",
   "minutes lying down) and ADTTE (the time to the first dermatologic event,",
   "derived from ADSL and ADAE by data-raw/make-sample-study.R).",
+  "",
+  "ITTFL, EFFFL and PPROTFL are not in pharmaverseadam's ADSL (of the",
+  "population flags it has SAFFL only); data-raw/make-sample-study.R",
+  "derives them, so step 2 has more than one flag to choose from:",
+  "",
+  "| Flag | Label | Y when | Subjects |",
+  "|---|---|---|---|",
+  "| ITTFL | Intent-To-Treat Population Flag | randomized (ARM is not Screen Failure) | 254 |",
+  "| EFFFL | Efficacy Population Flag | SAFFL is Y and a post-baseline systolic blood pressure (CHG) in ADVS | 230 |",
+  "| PPROTFL | Per-Protocol Population Flag | SAFFL is Y and EOSSTT is COMPLETED | 110 |",
+  "",
+  "They are not analysis sets of the study (its populations sheet has SAF",
+  "only): in step 2-1 they are offered as flags of ADSL, to make one.",
   "",
   "| Output | Type | |",
   "|---|---|---|",
