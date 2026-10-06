@@ -34,16 +34,89 @@
   NA_character_
 }
 
-# Is an analysis data a report's subjects (an analysis set's own data, kept
-# to some of its subjects: one row a subject, a denominator) or data
-# analysed (another dataset, kept to subjects)?  "subjects" / "data"
-.adata_kind <- function(x, id) {
+# The analysis data of one row a subject: made from the analysis sets'
+# dataset (ADSL).  The others are kept to their subjects.
+.adata_subject_level <- function(x) {
   ad <- .adata_rows(x)
-  po <- x$ard$populations
-  ds <- .adata_dataset(ad, id)
-  pop <- .adata_pop(ad, id)
-  pop_ds <- po$dataset[match(pop, po$population_id)]
-  if (!is.na(ds) && !is.na(pop_ds) && identical(ds, pop_ds)) "subjects" else "data"
+  if (!nrow(ad)) return(character())
+  ds <- unique(stats::na.omit(x$ard$populations$dataset))
+  if (!length(ds)) ds <- "ADSL"
+  ad$data_id[vapply(ad$data_id, function(id) .adata_dataset(ad, id) %in% ds, NA)]
+}
+
+# The subject key of the study (study sheet `id`, USUBJID by default)
+.adata_subject_key <- function(x) {
+  st <- x$ard$study
+  v <- if (!is.null(st)) st$value[match("id", st$key)] else NA
+  if (is.null(v) || !length(v) || is.na(v) || !nzchar(v)) "USUBJID" else v
+}
+
+# Keeps the analysis data `ids` to the subjects of `subj`: those kept to no
+# subjects nor analysis set yet (themselves or the data they are made from).
+# `subj` moves above the first of them (`subjects` names a data above),
+# unless what it is made from is below: then only those below it.  The ids
+# kept are in attribute "kept".
+.adata_keep_to <- function(x, subj, ids) {
+  ad <- .adata_rows(x)
+  k <- match(subj, ad$data_id)
+  free <- vapply(ids, function(id) id %in% ad$data_id && id != subj &&
+                   !subj %in% .adata_chain(ad, id) && !id %in% .adata_chain(ad, subj) &&
+                   is.na(.adata_subjects_of(ad, id)) && is.na(.adata_pop(ad, id)), NA)
+  ids <- ids[free]
+  # one made from another kept here follows it
+  ids <- ids[!vapply(ids, function(id) any(setdiff(.adata_chain(ad, id), id) %in% ids), NA)]
+  if (length(ids) && !is.na(k)) {
+    up <- setdiff(.adata_chain(ad, subj), subj)
+    first <- min(match(ids, ad$data_id))
+    if (length(up) && max(match(up, ad$data_id)) >= first) {
+      ids <- ids[match(ids, ad$data_id) > k]
+      first <- if (length(ids)) min(match(ids, ad$data_id)) else k
+    }
+    if (length(ids)) {
+      ad$subjects[match(ids, ad$data_id)] <- subj
+      if (k > first) {
+        ord <- c(setdiff(seq_len(first - 1L), k), k, setdiff(first:nrow(ad), k))
+        ad <- ad[ord, , drop = FALSE]
+      }
+      rownames(ad) <- NULL
+      x$ard$analysis_data <- ad
+    }
+  }
+  attr(x, "kept") <- ids
+  x
+}
+
+# The study's analysis_data with some of its rows (`ids`) as edited in `d`:
+# each edited row in the place of the one it was (the sheet's order stays:
+# `from` and `subjects` name data above), rows added after the last of
+# them, rows taken out removed
+.adata_put_report_rows <- function(ad, ids, d) {
+  for (nm in setdiff(names(ad), names(d))) d[[nm]] <- rep(NA_character_, nrow(d))
+  d <- d[names(ad)]
+  pos <- which(ad$data_id %in% ids)
+  if (!length(pos)) {
+    out <- rbind(ad, d)
+  } else {
+    k <- min(length(pos), nrow(d))
+    out <- ad
+    if (k) out[pos[seq_len(k)], ] <- d[seq_len(k), , drop = FALSE]
+    gone <- if (length(pos) > k) pos[(k + 1L):length(pos)] else integer()
+    add <- if (nrow(d) > k) d[(k + 1L):nrow(d), , drop = FALSE] else d[0L, , drop = FALSE]
+    last <- max(pos)
+    keep <- setdiff(seq_len(nrow(out)), gone)
+    out <- rbind(out[keep[keep <= last], , drop = FALSE], add,
+                 out[keep[keep > last], , drop = FALSE])
+  }
+  rownames(out) <- NULL
+  out
+}
+
+# The opposite of a condition, the rows it does not keep: a blank flag too
+# (SAFFL != "Y" would drop the rows where SAFFL is blank)
+.cond_not <- function(w) {
+  m <- regmatches(w, regexec('^\\s*([A-Za-z.][A-Za-z0-9._]*)\\s*==\\s*("[^"]*")\\s*$', w))[[1L]]
+  if (length(m)) sprintf("!(%s %%in%% %s)", m[2L], m[3L]) else
+    sprintf("!((%s) %%in%% TRUE)", w)
 }
 
 # the subjects data it is kept to: its own `subjects`, else the nearest
@@ -95,6 +168,18 @@
 # condition keeps (`AVISIT == "Week 24"`: advs_week24), else the analysis
 # set; lower case, and not a name the program gives anything (a dataset, a
 # population, a dataset x analysis set's own: adae_saf)
+# The names the program has already: the datasets, the analysis sets, the
+# data a dataset x analysis set is read as (adae_saf), the analysis data
+.adata_taken_names <- function(x) {
+  rn <- function(v) gsub("[^a-z0-9_.]", "_", tolower(v))
+  ds <- x$ard$datasets$dataset
+  pops <- x$ard$populations$population_id
+  auto <- unlist(lapply(pops, function(p) vapply(ds, function(d)
+    .an_data_name(d, p, x$ard$populations), "")))
+  c(rn(ds), paste0("pop_", rn(pops)), auto,
+    .adata_rows(x)$data_id, "data", "population", "ard", "ards", "status")
+}
+
 .adata_suggest <- function(x, from, population_id = NA, where = NA) {
   rn <- function(v) gsub("[^a-z0-9_.]", "_", tolower(v))
   val <- if (!.is_blank(where)) regmatches(where, regexpr("\"[^\"]+\"", where))
@@ -102,12 +187,7 @@
   base <- paste(c(rn(from), if (nzchar(val)) val else
     if (!.is_blank(population_id)) rn(population_id)), collapse = "_")
   if (!grepl("^[a-z]", base)) base <- paste0("d_", base)
-  ds <- x$ard$datasets$dataset
-  pops <- x$ard$populations$population_id
-  auto <- unlist(lapply(pops, function(p) vapply(ds, function(d)
-    .an_data_name(d, p, x$ard$populations), "")))
-  taken <- c(rn(ds), paste0("pop_", rn(pops)), auto,
-             .adata_rows(x)$data_id, "data", "population", "ard", "ards", "status")
+  taken <- .adata_taken_names(x)
   nm <- base
   k <- 1L
   while (nm %in% taken) {

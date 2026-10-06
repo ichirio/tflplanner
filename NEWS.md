@@ -21,6 +21,19 @@
   - The old sub-tabs (Builder / Spec sheets / Program, Page / Program) are
     gone.
 
+- **2-1 as one list of analysis data** (#178).  2-1 no longer has the
+  subjects and the data analysed apart: one list (the report's first, the
+  study's others after them), a mark on the one chosen, [New analysis data]
+  [Copy X] [Delete X...].  The form: the name first; what it is made from;
+  "Keep to the subjects of adsl_saf" as a tick (on by default when the
+  study has a data of one row a subject, a choice only when it has several);
+  the rows kept with the condition builder (#175), the analysis sets and
+  their opposite as shortcuts; the columns.  A data of one row a subject
+  made later keeps the report's other analysis data to its subjects (said
+  so; it moves above them).  2-2's question about making the subjects
+  first is gone.  2-1 has its own sheet, the report's rows of
+  analysis_data; a `from` the form has no choice for is kept as written.
+
 - **A condition built from rows** (#175).  A component for the analysis
   data's and the analysis sets' `where` (2-1 takes it in next): rows of a
   variable (with its label), an operator (=, not equal, <, <=, >, >=,
