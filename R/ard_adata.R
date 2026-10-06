@@ -156,6 +156,18 @@
 # condition keeps (`AVISIT == "Week 24"`: advs_week24), else the analysis
 # set; lower case, and not a name the program gives anything (a dataset, a
 # population, a dataset x analysis set's own: adae_saf)
+# The names the program has already: the datasets, the analysis sets, the
+# data a dataset x analysis set is read as (adae_saf), the analysis data
+.adata_taken_names <- function(x) {
+  rn <- function(v) gsub("[^a-z0-9_.]", "_", tolower(v))
+  ds <- x$ard$datasets$dataset
+  pops <- x$ard$populations$population_id
+  auto <- unlist(lapply(pops, function(p) vapply(ds, function(d)
+    .an_data_name(d, p, x$ard$populations), "")))
+  c(rn(ds), paste0("pop_", rn(pops)), auto,
+    .adata_rows(x)$data_id, "data", "population", "ard", "ards", "status")
+}
+
 .adata_suggest <- function(x, from, population_id = NA, where = NA) {
   rn <- function(v) gsub("[^a-z0-9_.]", "_", tolower(v))
   val <- if (!.is_blank(where)) regmatches(where, regexpr("\"[^\"]+\"", where))
@@ -163,12 +175,7 @@
   base <- paste(c(rn(from), if (nzchar(val)) val else
     if (!.is_blank(population_id)) rn(population_id)), collapse = "_")
   if (!grepl("^[a-z]", base)) base <- paste0("d_", base)
-  ds <- x$ard$datasets$dataset
-  pops <- x$ard$populations$population_id
-  auto <- unlist(lapply(pops, function(p) vapply(ds, function(d)
-    .an_data_name(d, p, x$ard$populations), "")))
-  taken <- c(rn(ds), paste0("pop_", rn(pops)), auto,
-             .adata_rows(x)$data_id, "data", "population", "ard", "ards", "status")
+  taken <- .adata_taken_names(x)
   nm <- base
   k <- 1L
   while (nm %in% taken) {

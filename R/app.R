@@ -3862,7 +3862,7 @@ app_server <- function(input, output, session, start) {
     k <- match(w, po$where)
     if (is.na(k)) return()
     nm <- paste0(tolower(adata_root(input$adata_from)), "_", tolower(po$population_id[k]))
-    if (!nm %in% .adata_rows(rv$p)$data_id) {
+    if (!nm %in% .adata_taken_names(rv$p)) {
       shiny::updateTextInput(session, "adata_id", value = nm)
       e$suggested <- nm
       adata_edit(e)
@@ -4036,7 +4036,8 @@ app_server <- function(input, output, session, start) {
     s1 <- c(intersect(mine, subj), subj)[1L]
     suf <- if (!is.na(s1) && grepl("_", s1)) sub("^[^_]*_", "", s1) else NA
     nm <- if (!is.na(suf) && !from %in% pop_ds) paste0(tolower(from), "_", suf) else NA
-    if (is.na(nm) || nm %in% .adata_rows(p)$data_id) nm <- .adata_suggest(p, from, NA)
+    # not a name the program has already (adae_saf for ADAE x SAF read as it is)
+    if (is.na(nm) || nm %in% .adata_taken_names(p)) nm <- .adata_suggest(p, from, NA)
     adata_edit(list(old = NULL, suggested = nm))
     adata_form(list(from = from, data_id = nm), t("New analysis data"))
   })

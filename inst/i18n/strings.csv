@@ -2127,3 +2127,8 @@ is blank,空
 is not blank,空でない
 = (any of),= （いずれか）
 ≠ (none of),≠ （いずれでもない）
+Rows kept (a condition),残す行（条件）
+Keep to the subjects of %s,%s の症例に絞る
+Keep to the subjects of an analysis data of one row a subject,1 人 1 行の解析データの症例に絞る
+"Only the subjects in it (an inner join on %s): its condition, the analysis set's for one, is not written here again.",その解析データにいる症例だけを残します（%s での inner join）。そちらの条件（解析対象集団など）を、ここにもう一度書く必要はありません。
+%s are kept to the subjects of %s now (untick it in their form if one should not be).,%s を %s の症例に絞りました（不要なものは、そのフォームでチェックを外してください）。
