@@ -1,5 +1,21 @@
 # tflplanner (development version)
 
+- **From the screen review** (#193).
+  - The report list's buttons (Add, Copy, Rename, Delete, the arrows,
+    Take in a TOC...) are above the list, beside its search: below 200
+    rows no one found them.
+  - "What do these mean?" on the left of Make a report says what the
+    marks after a report's title are (made, to make again, not made yet,
+    error).
+  - The Runs tab says "Reading the state of N reports..." in its table's
+    place until the table is drawn (a study of 200 reports takes seconds;
+    the card looked empty and broken).
+  - "Choose a report on the left." is now "Choose a report above, or in
+    the list on the left (> opens it).": with the left folded it pointed
+    to nothing.
+  - Step 3, a table with no ARD yet: its Result says only that the button
+    above makes the ARD (the note above said it all a second time).
+
 - **A program is the definition's: saving writes it again, even one edited
   by hand** (#187; design 13-00).  A report, ARD or run program whose
   checksum no longer matched (edited by hand) used to be kept on save, so
