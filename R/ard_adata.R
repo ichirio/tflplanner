@@ -128,6 +128,42 @@
   if (is.na(suf)) NA_character_ else paste0(tolower(root), "_", tolower(suf))
 }
 
+# A condition's terms: what `&` joins, outermost first (NULL when it does
+# not read as R)
+.cond_terms <- function(where) {
+  if (.is_blank(where)) return(list())
+  e <- tryCatch(str2lang(where), error = function(err) NULL)
+  if (is.null(e)) return(NULL)
+  out <- list()
+  while (is.call(e) && identical(e[[1L]], as.name("&"))) {
+    out <- c(list(e[[3L]]), out)
+    e <- e[[2L]]
+  }
+  c(list(e), out)
+}
+
+# The first term of a condition, as R writes it (NA: none, or not R)
+.cond_first <- function(where) {
+  tm <- .cond_terms(where)
+  if (!length(tm)) NA_character_ else deparse1(tm[[1L]])
+}
+
+# A condition whose first term is `first`: a first term among `known` (an
+# analysis set's) is replaced, else `first` goes before the rest; `first`
+# NA takes a known first term out.  A condition that is not R stays.
+.cond_set_first <- function(where, first, known = character()) {
+  tm <- .cond_terms(where)
+  if (is.null(tm)) return(where)
+  kn <- vapply(known, function(k) .cond_first(k), "")
+  if (length(tm) && deparse1(tm[[1L]]) %in% kn) tm <- tm[-1L]
+  if (!.is_blank(first)) tm <- c(list(str2lang(first)), tm)
+  if (!length(tm)) return(NA_character_)
+  paste(vapply(tm, function(x) {
+    d <- deparse1(x)
+    if (is.call(x) && identical(x[[1L]], as.name("|"))) paste0("(", d, ")") else d
+  }, ""), collapse = " & ")
+}
+
 # An analysis set's id for a population flag (SAFFL: SAF, PPROTFL: PP),
 # not one the study has
 .population_id_for <- function(flag, taken = character()) {

@@ -2174,3 +2174,5 @@ Flags of the data that are no analysis set yet:,まだ解析対象集団にな�
 Make %s an analysis set,%s を解析対象集団にする
 Analysis set (population_id): that of %s (%s).,解析対象集団（population_id）：%s のもの（%s）。
 %s is an analysis set now: %s of %s (the Data tab has it too).,%s を解析対象集団にしました：%s の %s（データタブにも入りました）。
+"The first row of the condition below, put in at once (SAFFL = Y); change it there, add others under it.",下の条件の 1 行目をまとめて入れます（SAFFL = Y）。直すのも、2 行目からほかの条件を足すのも条件の欄で。
+"Also kept to the analysis set %s (population_id, as the sheet has it: SPEC shows it).",解析対象集団 %s でも絞られています（シートの population_id のまま。SPEC タブで見られます）。

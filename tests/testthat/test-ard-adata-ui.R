@@ -183,7 +183,9 @@ test_that("2-1: one list, a new analysis data, kept to another's subjects", {
     # a new analysis data: the name first; an analysis set's condition put in
     session$setInputs(ard_adata_new = 1)
     f <- output$adata_detail$html
-    expect_lt(regexpr("adata_id", f), regexpr("adata_from", f))
+    # what it is made from and its analysis set first, the name after them
+    expect_lt(regexpr("adata_from", f), regexpr("adata_pop", f))
+    expect_lt(regexpr("adata_pop", f), regexpr("adata_id", f))
     expect_match(f, "adata_cond", fixed = TRUE)
     session$setInputs(adata_label = "", adata_from = "ADSL", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL)
@@ -349,12 +351,20 @@ test_that("a data's name from what it is made from and its condition", {
   expect_true(is.na(.adata_name_from("ADSL", NA, po)))
 })
 
-test_that("2-1's analysis set: chosen in its field, a data's name after it; a flag made an analysis set in one click", {
+test_that("2-1's analysis set: the condition's first row, from the study's sets and the data's flags", {
   expect_identical(.population_id_for("PPROTFL"), "PP")
   expect_identical(.population_id_for("SAFFL", "SAF"), "SAF2")
-  expect_identical(.population_id_for("XYZFL"), "XYZ")
   expect_identical(.adata_name_from("ADAE", NA, pop = "SAF"), "adae_saf")
-  expect_identical(.adata_name_from("ADSL", "SAFFL == \"Y\"", NULL, pop = NA), "adsl_saf")
+  # the first term: put in, replaced (an analysis set's), taken out
+  known <- c('SAFFL == "Y"', 'PPROTFL == "Y"')
+  expect_identical(.cond_set_first(NA, 'SAFFL == "Y"', known), 'SAFFL == "Y"')
+  expect_identical(.cond_set_first('SAFFL == "Y" & AGE >= 65', 'PPROTFL == "Y"', known),
+                   'PPROTFL == "Y" & AGE >= 65')
+  expect_identical(.cond_set_first('AGE >= 65', 'SAFFL == "Y"', known), 'SAFFL == "Y" & AGE >= 65')
+  expect_identical(.cond_set_first('SAFFL == "Y" & (A == 1 | B == 2)', NA, known), "(A == 1 | B == 2)")
+  expect_true(is.na(.cond_set_first('SAFFL == "Y"', NA, known)))
+  expect_identical(.cond_set_first("not R (", 'SAFFL == "Y"', known), "not R (")
+  expect_identical(.cond_first('SAFFL == "Y" & AGE >= 65'), 'SAFFL == "Y"')
   skip_if_not_installed("cards")
   local_home()
   p <- adata_planner()
@@ -366,24 +376,44 @@ test_that("2-1's analysis set: chosen in its field, a data's name after it; a fl
     session$setInputs(nav = "make", step = "ard", target = "DM")
     session$setInputs(ard_adata_new = 1)
     f <- output$adata_detail$html
-    # the field, after what it is made from; SAF first for a new data
-    expect_lt(regexpr("adata_from", f), regexpr("adata_pop", f))
-    expect_match(f, "<option value=\"SAF\" selected>", fixed = TRUE)
-    # PPROTFL is in the data, no analysis set yet: one click makes one
-    expect_match(output$adata_pop_more$html, "PPROTFL", fixed = TRUE)
-    session$setInputs(adata_pop_add = "PPROTFL")
-    rv <- session$userData$rv
-    po <- rv$p$ard$populations
-    expect_true("PP" %in% po$population_id)
-    expect_identical(po$where[po$population_id == "PP"], "PPROTFL == \"Y\"")
-    expect_identical(po$dataset[po$population_id == "PP"], "ADSL")
-    # saved with it: population_id
-    session$setInputs(adata_id = "adsl_pp", adata_label = "", adata_from = "ADSL", adata_pop = "PP",
-                      adata_subj = "", adata_add = NULL, adata_derive = "", adata_keep = NULL,
-                      adata_distinct = NULL, adata_code = "")
+    # a new data: the study's first analysis set, as the condition's first row
+    expect_match(f, "<option value=\"pop:SAF\" selected>", fixed = TRUE)
+    cond <- session$userData$adata_cond
+    expect_identical(shiny::isolate(cond$value()), 'SAFFL == "Y"')
+    # the data's flags that are no analysis set: offered as well
+    expect_match(f, "flag:PPROTFL", fixed = TRUE)
+    session$setInputs(adata_from = "ADSL", adata_pop = "flag:PPROTFL")
+    expect_identical(shiny::isolate(cond$value()), 'PPROTFL == "Y"')
+    # saved: the condition, no population_id
+    session$setInputs(adata_id = "adsl_pp", adata_label = "", adata_subj = "", adata_add = NULL,
+                      adata_derive = "", adata_keep = NULL, adata_distinct = NULL, adata_code = "")
+    session$flushReact()
     session$setInputs(adata_save = 1)
-    ad <- .adata_rows(rv$p)
-    expect_identical(ad$population_id[ad$data_id == "adsl_pp"], "PP")
+    ad <- .adata_rows(session$userData$rv$p)
+    r <- ad[ad$data_id == "adsl_pp", ]
+    expect_identical(r$where, 'PPROTFL == "Y"')
+    expect_true(is.na(r$population_id))
+  })
+})
+
+test_that("2-1: a population_id the sheet has is kept, said so", {
+  skip_if_not_installed("cards")
+  local_home()
+  p <- adata_planner()
+  p <- set_analysis_data(p, "adsl_old", from = "ADSL", population_id = "SAF", where = "AGE >= 65")
+  s <- create_study("PL", planner = p)
+  saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
+  shiny::testServer(server_for("PL"), {
+    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(ard_adata_pick = "adsl_old")
+    expect_match(output$adata_detail$html, "Also kept to the analysis set SAF", fixed = TRUE)
+    session$setInputs(adata_id = "adsl_old", adata_label = "Old", adata_from = "ADSL", adata_subj = "",
+                      adata_add = NULL, adata_derive = "", adata_keep = NULL, adata_distinct = NULL,
+                      adata_code = "")
+    session$setInputs(adata_save = 1)
+    ad <- .adata_rows(session$userData$rv$p)
+    expect_identical(ad$population_id[ad$data_id == "adsl_old"], "SAF")
+    expect_identical(ad$label[ad$data_id == "adsl_old"], "Old")
   })
 })
 
