@@ -306,6 +306,26 @@ update_tflplanner <- function(channel = NULL, from = NULL,
 
 # The packages with a newer version out, once the check is done: a named
 # character vector "installed -> latest"; NULL while it runs.
+# The packages this R process runs, against the ones installed now: an
+# update installed while the app was running (the launcher then opens the
+# running app, the old version) leaves this process on the old code.  A
+# named list, package = c(running, installed), of those that differ.
+.stale_versions <- function(pkgs = c("tflplanner", "tflspec", "rtfreporter"),
+                            running = function(p) as.character(getNamespaceVersion(p)),
+                            path = function(p) getNamespaceInfo(p, "path")) {
+  out <- list()
+  for (p in intersect(pkgs, loadedNamespaces())) {
+    f <- file.path(path(p), "DESCRIPTION")
+    if (!file.exists(f)) next
+    inst <- tryCatch(read.dcf(f, fields = "Version")[1L, 1L], error = function(e) NA)
+    run <- running(p)
+    if (!is.na(inst) && !identical(unname(inst), unname(run))) {
+      out[[p]] <- c(running = unname(run), installed = unname(inst))
+    }
+  }
+  out
+}
+
 .update_check_result <- function() {
   if (!is.null(.upd$result)) return(.upd$result)
   p <- .upd$proc

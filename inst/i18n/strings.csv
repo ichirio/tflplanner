@@ -2164,3 +2164,6 @@ Analysis flags,解析フラグ
 Treatment,治療
 Parameter,パラメータ
 Timing,時点
+A newer version is installed:,新しい版が入っています：
+this window runs,この画面は
+"Save, then Close (top right) and start tflplanner again: until then this window runs the old version.",保存してから、右上の［閉じる］で閉じ、tflplanner を起動し直してください。それまでは、この画面は古い版のままです。
