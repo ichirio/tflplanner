@@ -2094,3 +2094,12 @@ this study's,この試験の関数
 No study open,試験を開いていません
 studies are chosen on the Study tab,試験は「試験」タブで選びます
 Keys and setup code,キーとセットアップコード
+"The code lists reach the report's ARD program: the levels, their order and labels.",コードリストは、この帳票の ARD プログラムに入ります（水準・順序・表示名）。
+"The code list this report uses: the study's rows, this report's own in their place.",この帳票が使うコードリスト（試験共通の行。この帳票だけの行があればそちらを使う）。
+The table as it will print,印刷される表
+The listing's row of the definition (listings); its columns are the grid on the left.,この Listing の定義の行（listings）。列は左の表で決めます。
+"A user-code report's definition is its code, on the left, and its page (step 4).",ユーザーコードの帳票の定義は、左のコードとページ（段 4）です。
+No code list yet.,コードリストはまだありません。
+the study,試験共通
+this report,この帳票
+Result,結果

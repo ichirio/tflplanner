@@ -7,25 +7,29 @@
 # and previews the app already draws (shiny draws none of a hidden tab,
 # so a result is made only while its tab is open).
 
+# not a card: a card around the sheets' own card makes the inner one a fill
+# item of a box with no height, and every grid in it 0 px high
 #' @noRd
 result_tabs_ui <- function(id, spec, code, result, lang = "en", selected = "spec") {
-  bslib::navset_card_tab(
-    id = id, selected = selected,
-    bslib::nav_panel("SPEC", value = "spec", spec),
-    bslib::nav_panel(tr("Code", lang), value = "code", code),
-    bslib::nav_panel(tr("Result", lang), value = "result", result))
+  shiny::div(
+    class = "rp-tabs border rounded p-2",
+    bslib::navset_underline(
+      id = id, selected = selected,
+      bslib::nav_panel("SPEC", value = "spec", shiny::div(class = "pt-2", spec)),
+      bslib::nav_panel(tr("Code", lang), value = "code", shiny::div(class = "pt-2", code)),
+      bslib::nav_panel(tr("Result", lang), value = "result", shiny::div(class = "pt-2", result))))
 }
 
 # Code to read: its lines numbered, a button to copy it.  No field to edit:
 # a program is written from the definition.
 #' @noRd
-code_view <- function(outputId, lang = "en") {
+code_view <- function(output_id, lang = "en") {
   shiny::div(
     class = "rp-code rp-code-view",
     shiny::div(class = "rp-code-tools",
                shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary py-0",
-                                  `data-copy` = outputId, tr("Copy", lang))),
-    shiny::verbatimTextOutput(outputId))
+                                  `data-copy` = output_id, tr("Copy", lang))),
+    shiny::verbatimTextOutput(output_id))
 }
 
 .result_tabs_css <- "
@@ -39,7 +43,8 @@ code_view <- function(outputId, lang = "en") {
 "
 
 # the lines of a code view numbered once its text is in; the copy button
-# copies the text without the numbers
+# copies the text without the numbers; a grid drawn while its tab was hidden
+# draws again when the tab shows
 .result_tabs_js <- "
 $(document).on('shiny:value', function(e) {
   var pre = document.getElementById(e.name);
@@ -53,6 +58,14 @@ $(document).on('shiny:value', function(e) {
       s.className = 'rp-ln';
       s.textContent = l.length ? l : ' ';
       pre.appendChild(s);
+    });
+  }, 0);
+});
+$(document).on('shown.bs.tab', '.rp-tabs', function() {
+  setTimeout(function() {
+    $('.rp-tabs .rhandsontable:visible').each(function() {
+      var w = window.HTMLWidgets && HTMLWidgets.find('#' + this.id);
+      if (w && w.hot) w.hot.render();
     });
   }, 0);
 });

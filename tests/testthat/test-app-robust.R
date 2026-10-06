@@ -49,9 +49,9 @@ test_that("closed choice columns refuse other values; open ones take them", {
                      "subjects"))
 })
 
-test_that("the Tables tab's sub-tabs are not a card around the sheets' card", {
+test_that("the SPEC | Code | Result tabs are not a card around the sheets' card", {
   html <- as.character(app_ui())
-  at <- regexpr('id="table_nav"', html, fixed = TRUE)
+  at <- regexpr('id="table_right"', html, fixed = TRUE)
   expect_gt(at, 0L)
   # a card navset puts its nav inside a card-header; a plain one does not
   before <- substr(html, max(1L, at - 200L), at)
@@ -295,18 +295,28 @@ test_that("a new study's ID is checked against the folders already there", {
   })
 })
 
-test_that("Tables opens on the builder, with the sheets as a sibling tab", {
+test_that("a step's right is SPEC | Code | Result, the form on its left", {
   ui <- htmltools::tagQuery(app_ui())
-  links <- ui$find("#table_nav")$find("a")$selectedTags()
-  vals <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
-  expect_identical(unname(vals[nzchar(vals)]), c("builder", "table_spec"))
-  # the builder's pane does not hold the sheets (a misplaced parenthesis
-  # once nested them in it)
-  panes <- ui$find(".tab-pane")$selectedTags()
-  bp <- Filter(function(x) identical(x$attribs[["data-value"]], "builder"), panes)
-  expect_length(bp, 1L)
-  expect_false(grepl("hot_tables", as.character(bp[[1L]]), fixed = TRUE))
-  expect_true(grepl("builder_preview", as.character(bp[[1L]]), fixed = TRUE))
+  vals <- function(id) {
+    links <- ui$find(paste0("#", id))$find("a")$selectedTags()
+    v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
+    unname(v[nzchar(v)])
+  }
+  for (id in c("codelist_right", "ard_right", "table_right", "lf_right", "uc_right", "page_right")) {
+    expect_identical(vals(id), c("spec", "code", "result"), info = id)
+  }
+  # the table: the sheets in SPEC, the preview in Result, the builder beside
+  panes <- ui$find("#table_right")$parent()$find(".tab-pane")$selectedTags()
+  pane <- function(v) as.character(Filter(function(x) identical(x$attribs[["data-value"]], v),
+                                          panes)[[1L]])
+  expect_true(grepl("hot_tables", pane("spec"), fixed = TRUE))
+  expect_true(grepl("builder_preview", pane("result"), fixed = TRUE))
+  expect_true(grepl("program_table", pane("code"), fixed = TRUE))
+  expect_false(grepl("builder_form", pane("spec"), fixed = TRUE))
+  # code to read: no field to edit it in
+  expect_false(grepl("textarea", pane("code"), fixed = TRUE))
+  # the page: its program is its Code (no sub-tab of its own)
+  expect_identical(length(ui$find("#page_nav")$selectedTags()), 0L)
 })
 
 test_that("the top tabs are the flow, and a report is made in its steps", {
@@ -319,7 +329,7 @@ test_that("the top tabs are the flow, and a report is made in its steps", {
   expect_identical(vals("nav"), c("study", "data", "outputs", "make", "results"))
   expect_identical(vals("step"), c("codelist", "ard", "content", "page"))
   expect_identical(vals("content_nav"), c("content", "code"))
-  expect_identical(vals("page_nav"), c("page", "program"))
+  expect_identical(vals("page_right"), c("spec", "code", "result"))
   # the steps' names are in one place
   expect_identical(names(.step_labels), c("codelist", "ard", "content", "page"))
   html <- as.character(app_ui())
