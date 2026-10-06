@@ -2183,3 +2183,24 @@ Analysis set (population_id): that of %s (%s).,解析対象集団（population_i
 "%s, already there, is this same data: no need to make it again (in 2-2, choose %s).",すでにある %s が同じ解析データです。作り直す必要はありません（2-2 では %s を選んでください）。
 About this,この画面について
 Editing the sheet,シートの編集
+"This report's analyses (the ARD): the data in 2-1, the analyses in 2-2.",この帳票の解析（ARD）の定義。データは 2-1、解析は 2-2。
+The report's analyses. Each one's Data: an analysis data of 2-1; the denominator of a percent: chosen with it. ARD: the data of the analyses' results (the tables are made from it). Analysis set: the subjects a percent is of (SAF ...).,帳票の解析。各解析のデータは 2-1 の解析データ、% の分母は解析と一緒に選びます。ARD = 解析結果のデータ（表はここから作ります）。解析対象集団 = 分母になる被験者の集まり（SAF など）。
+Analysis %s,解析 %s
+"A stack: it runs the analyses inside it together (cards::ard_stack), in one call (the column headers' N too).",スタック: 中の解析をまとめて 1 回で計算します（cards::ard_stack。列見出しの N も）。
+"The rows the analysis reads: an analysis data of 2-1, or a dataset × analysis set. The name is the one the program gives it.",解析が読む行。2-1 の解析データ、またはデータセット × 解析対象集団。名前はプログラムでの名前です。
+"An R condition for this analysis alone (e.g. AESER == ""Y""). The data's own condition is 2-1's.","この解析だけの R の条件（例: AESER == ""Y""）。データ側の条件は 2-1 で。"
+Rows kept (this analysis's own condition),残す行（この解析だけの条件）
+"cards' arguments, in R (e.g. conf.level = 0.9).",cards の引数を R で（例: conf.level = 0.9）。
+"The table's columns (e.g. TRT01A). A combination with no records is shown, with 0.",表の列（例: TRT01A）。記録の無い組み合わせも 0 で出ます。
+"Repeated within each combination the data has (e.g. PARAMCD × AVISIT). Unlike the groups (by), a combination with no records is not shown: for 0s, use the groups.",データにある組み合わせごとに繰り返します（例: PARAMCD × AVISIT）。群（by）と違い、記録の無い組み合わせは出ません。0 を出したいときは群に。
+What a % is of. The analysis set: its subjects in the group (the column headers' N; an AE table: the SAF's N per arm). Within a row: the total of the row (the variable's level). Within a column: the total of the group. Of the whole table: all of it. The method's default: blank.,% を何で割るか。解析対象集団: その群の解析対象集団の人数（列見出しの N。AE の表なら群ごとの SAF の N）。行の中: 同じ行（変数の水準）の合計。列の中: 同じ群の合計。表全体: すべての合計。手法の既定: 空欄。
+Run together with other analyses (one call)...,ほかの解析とまとめる（1 回で計算）…
+"xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown.",xx.x = 小数 1 桁、xx.x% = 割合を % で、2 = 小数 2 桁、pvalue = <0.001 か 3 桁。空欄 = 表示の既定。
+Format,書式
+This analysis as code,この解析のコード
+"The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (Apply first). The code is part of the definition: the program is never edited.",手法が custom になり、今の定義から書いたこのコードが解析になります（同じ ARD。先に［適用］）。コードは定義の一部で、プログラムは直しません。
+The order inside a stack,スタックの中の順
+"The study's analysis set (SAF ...) or a population flag of the data, put in as the condition's first row (SAFFL = Y). Left as it is, it is saved as the analysis set (population_id); change it there, add others under it.",試験の解析対象集団（SAF など）か、データの集団フラグ。下の条件の 1 行目に入ります（SAFFL = Y）。そのままなら解析対象集団（population_id）として保存。直すのも、ほかの条件を足すのも条件の欄で。
+"The rows the data keeps. The rows are AND (""+ and""); ""+ or (another group)"" is OR. A flag: ""= Y"". What the rows cannot say: ""Write as R"".",残す行の条件。行どうしは「かつ」（+ かつ）、「+ または（別のまとまり）」は「または」。フラグは「= Y」。行で書けない式は「R の式で書く」。
+Only the subjects in that analysis data: its condition (its analysis set's too) is not written here again.,その解析データにいる被験者だけを残します。そちらの条件（解析対象集団も）をここに書き直す必要はありません。
+"When the fields cannot say it: R whose value is the data (the datasets, pop_<set> and the analysis data above are in reach); written, the fields above are not used. The program is never edited: this R is the definition.",欄で書けないとき、値がデータになる R（データセット、pop_<集団>、上の解析データが使えます）。書くと上の欄は使われません。プログラムは直しません（この R が定義です）。
