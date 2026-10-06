@@ -203,9 +203,10 @@
 #' `analysis_data`): made `from` a dataset or an analysis data above,
 #' kept to a population's subjects and the records `where` keeps, with
 #' columns of the population's data added (`add`), columns derived
-#' (`derive`) and one row per set of values (`distinct`).  An analysis
-#' names one in `data` (instead of `dataset` / `population_id`), or as its
-#' `denominator`.
+#' (`derive`) and one row per set of values (`distinct`) -- or, when the
+#' columns cannot say it, made by R of its own (`code`, the other columns
+#' but `from` blank).  An analysis names one in `data` (instead of
+#' `dataset` / `population_id`), or as its `denominator`.
 #'
 #' `set_analysis_data()` adds one, or replaces the one named `old` (a new
 #' name is followed in the analyses and the analysis data made from it).
@@ -223,18 +224,20 @@
 #'   keeps, instead of `population_id`; `add`, `keep`, `distinct`: several
 #'   columns with `" | "` between them).
 #' @param old The name of the one to replace; `NULL`: a new one.
+#' @param code R that makes the data itself (its value is the data); with
+#'   it the other columns but `from` stay blank.
 #' @return The `tflplanner`.
 #' @export
 set_analysis_data <- function(x, data_id, from, population_id = NA,
                               where = NA, add = NA, derive = NA,
                               distinct = NA, label = NA, old = NULL,
-                              subjects = NA, keep = NA) {
+                              subjects = NA, keep = NA, code = NA) {
   ad <- .adata_rows(x)
   row <- .normalize_ard_sheet(data.frame(
     data_id = data_id, label = label, from = from,
     population_id = population_id, subjects = subjects, where = where,
     add = add, derive = derive, keep = keep, distinct = distinct,
-    stringsAsFactors = FALSE), "analysis_data")
+    code = code, stringsAsFactors = FALSE), "analysis_data")
   if (!nrow(row) || is.na(row$data_id)) {
     stop("An analysis data needs its name.", call. = FALSE)
   }
@@ -338,6 +341,24 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
     suppressWarnings(eval(parse(text = code[seq_len(stop_at - 1L)]), envir = env))
     as.data.frame(env[[id]])
   }, error = function(e) structure(list(), error = conditionMessage(e)))
+}
+
+# The lines the program makes a data with, as R its `code` can start from:
+# the lines that write it, its name last (the value of the code); NA when
+# the program cannot be written yet
+.adata_code_start <- function(x, id) {
+  a <- x$ard
+  a$analysis_data <- .adata_rows(x)
+  a$analyses <- .normalize_ard_sheet(data.frame(
+    output_id = ".try", analysis_id = "TRY", method = "cards::ard_summary",
+    data = id, variables = "TRY_", stringsAsFactors = FALSE), "analyses")
+  code <- tryCatch(tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"),
+                                         part = "body"),
+                   error = function(e) NULL)
+  if (is.null(code)) return(NA_character_)
+  mine <- code[startsWith(code, paste0(id, " <- "))]
+  if (!length(mine)) return(NA_character_)
+  paste(c(mine, id), collapse = "\n")
 }
 
 # Its records and subjects, as words (`words`: records, one_row): one row a
