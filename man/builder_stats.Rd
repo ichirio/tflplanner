@@ -2,17 +2,15 @@
 % Please edit documentation in R/builder.R
 \name{builder_stats}
 \alias{builder_stats}
-\title{The statistics the builder offers for a continuous variable}
+\title{The rows the builder offers for a continuous variable}
 \usage{
 builder_stats()
 }
 \value{
-A data frame: \code{key}, \code{row}, \code{template}, \code{digits} (a function of
-\code{d}).
+A data frame: \code{key}, \code{row}, \code{template}.
 }
 \description{
-Each has its row label, its template and its digits as a function of
-the decimals the data are collected with (\code{d}): the usual convention is
-the mean and median one more, the SD two more, the extremes as
-collected.
+Each is a row label and its template: one statistic a row (\code{Mean},
+\code{{mean}}) or several in one (\code{Mean (SD)}, \code{{mean} ({sd})}).  Their
+decimals are the statistics' (the \code{digits} sheet, see \code{\link[tflspec:tfl_table_spec]{tflspec::tfl_table_spec()}}).
 }

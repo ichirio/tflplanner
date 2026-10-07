@@ -8,6 +8,59 @@
   writes to the console (its errors, with the calls) in `app.log`, beside
   `launcher.log`.  Needs shiny 1.8.1.
 
+- **2-1's columns made, by kind** (#255).  Each column the data makes is
+  a line of its own, made by kind: split by conditions (the conditions made
+  with the condition builder; one gives `ifelse()`, more give
+  `dplyr::case_when()`), cut a number into groups (`cut(..., right =
+  FALSE)`), the days between two dates (`as.numeric(END - START)`, + 1 if
+  wanted), or an R expression (a variable can be put in).  The sheet keeps
+  `NAME = R | ...` (derive) as before, so the definition and the generated
+  code do not change; the form reads back these four forms only, anything
+  else is an R expression, and a column not opened is saved exactly as
+  written.  The R stays at hand under "As R".
+
+- **2-1's form, in plainer words** (#254).  The condition is a filter:
+  "Filter (a condition)" (2-1) and "This analysis's own filter" (2-2),
+  their help alike.  "Write the condition as R (inside subset())" and
+  "Write this analysis data whole as R (code)" tell the two apart.  The
+  columns added from the subjects' data say what they do (nothing chosen:
+  nothing added) and are not offered while the data is made from the
+  analysis set's own data, which has them all.  The condition builder's
+  variable box is as tall as the others from the first (it took a line of
+  its own until its list was opened).
+
+- **A code list is a report's** (#251; tflspec 0.0.24.9058).  Step 1 edits
+  the report's code lists: the variables it uses (its analyses, what its
+  data derive, what its table shows; all with a box), [Copy code lists...]
+  from the company standards or another report (the rows copied are the
+  report's own), and a file read into the report.  The company standards
+  have a `codelists` sheet (`standard_codelists()`), with CDISC's usual
+  lists by default (SEX, RACE, ETHNIC, AESEV, AESER, AEREL, AEOUT, EOSSTT).
+  `set_codelist()` takes the report; `import_codelist()` copies another
+  report's.  The Data tab's study code lists are gone.  A report's ARD uses
+  the code lists of the variables its analyses read; step 1's result says
+  which.  A study of the old format (analysis data or code lists without a
+  report) is said so once when it is opened, in the app's language: make
+  it again from the sample, or make a new study.  Step 2's 2-1 and 2-2 say
+  the same in a line, the checks' messages folded under it.  The sample's tables have their own code lists
+  (#248): the arms in each, SEX / AGEGR1 / RACE / ETHNIC in the
+  demographics tables (the CRF's values the data have none of print with
+  0), EOSSTT in the disposition table; the variables sheet no longer
+  says the same order again.
+
+- **Step 3: statistics as rows, each statistic's decimals** (#249).  The
+  table builder's Statistics card:
+  - Values: the numbers, rounded here, or the ARD's text as step 2
+    formatted it (`tables$value`; no decimals to set then).
+  - A continuous variable's rows, chosen and ordered by dragging: the
+    company standards' rows (single statistics too: Mean, SD, SE, Q1, Q3,
+    Min, Max) and a row of your own (a label and a template).
+  - The decimals of each statistic, the same for every analysis variable
+    (the `digits` sheet), and a variable's own.  They replace "decimals the
+    data are collected with": a statistic's decimals are fixed numbers now.
+  - Company standards: the `statistics` rows have no digit rules; a new
+    `default_digits` gives a new study each statistic's decimals.
+
 - **The `digits` sheet** (#247; tflspec #168).  A study's definition keeps
   each statistic's decimals and a variable's exceptions (step 3's SPEC,
   the tab "digits: decimals"); a table's templates take them where they
