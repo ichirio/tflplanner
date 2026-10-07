@@ -228,14 +228,27 @@ first_table <- function(x, output_id, path, data, population, group,
   if (any(kind == "continuous") &&
       !any(!is.na(v_all) & v_all == "continuous")) {
     bs <- builder_stats()
-    for (k in intersect(.builder_default_stats, bs$key)) {
+    for (lb in intersect(.builder_default_rows, bs$row)) {
       ce[nrow(ce) + 1L, ] <- NA
       ce$variable[nrow(ce)] <- "continuous"
-      ce$row[nrow(ce)] <- bs$row[bs$key == k]
-      ce$template[nrow(ce)] <- bs$template[bs$key == k]
-      ce$digits[nrow(ce)] <- .stat_digits(k, 0)
+      ce$row[nrow(ce)] <- lb
+      ce$template[nrow(ce)] <- bs$template[bs$row == lb]
     }
     x <- set_sheet_rows(x, "cells", id, ce)
+    # their decimals: the study's; a study that states none takes the
+    # company standards' here, for this table
+    sd <- x$sheets$digits
+    if (is.null(sd) || !any(is.na(sd$output_id) & is.na(sd$variable))) {
+      used <- unique(unlist(lapply(ce$template[ce$variable %in% "continuous"],
+                                   .template_stats)))
+      std <- .std_digits()
+      used <- intersect(used, names(std))
+      if (length(used)) {
+        x <- set_sheet_rows(x, "digits", id, data.frame(
+          variable = NA_character_, statistic = used,
+          digits = as.character(std[used]), stringsAsFactors = FALSE))
+      }
+    }
   }
   attr(x, "group_missing") <- miss
   x
