@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **Unregistering a study loses nothing** (#237).  `unregister_study()`
+  (Unregister) puts what tflplanner kept about the study -- its saved
+  state, history and unsaved changes -- into the study folder
+  (`.tflplanner/`) instead of deleting it, and `register_study()` (Register
+  a folder) takes it back: the study comes back as it was (when `spec/`
+  was changed in between, from `spec/`, the kept state going to its
+  history).  The dialog says the folder is not deleted.  tflplanner never
+  deletes a study folder.
+
 - **A report's analysis set is one value** (#217).  The report list's
   `population` (the TOC's, step 2's): `set_report_population()` writes it,
   makes the data of the set's subjects (`adsl_<set>`) when there is none,
