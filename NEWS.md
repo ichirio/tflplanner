@@ -8,6 +8,48 @@
   installs or updates nothing unless you ask -- `update_tflplanner()`, or
   the "update and launch" shortcut.
 
+- **The design concept, written down** (#224).  The README has a
+  "Concept" section and the Japanese guide a "設計の考え方" section:
+  code for people to read and finish, the typical analyses kept simple,
+  R code kept in the spec, shared parts defined once, screens => spec =>
+  code.  Docs only.
+
+- **A hex logo, shared with rtfreporter and tflspec** (#230), made with the
+  site's favicons by `data-raw/logo.R`.
+
+- Added a root `CITATION.cff` so GitHub's "Cite this repository" button
+  works (#229).
+
+- **The TOC's datasets** (#220; tflspec's `tfl_read_toc()` datasets).  A
+  `datasets` item of the mapping: kept as the report list's datasets
+  (shown until the report's definition names its own), a new listing's
+  dataset and a new figure's datasets; with "Make the tables' analysis
+  data from their datasets" (ticked), a new table gets `<dataset>_<set>`
+  kept to `adsl_<set>`'s subjects (found or made), which its first
+  analysis reads.  Taken in again, they are made again only when asked.
+
+- **The TOC's population is the reports' analysis set** (#219).  The TOC
+  dialog shows each text of its population column with the study's set it
+  is -- matched by id, label (the company standards', else the flag's), a
+  usual word for the flag or the id in the text: "Safety Population" is
+  SAF -- and it can be changed there; taken in, each report's set is set
+  as step 2 sets it (`toc_apply(populations =)`, `toc_populations()`).
+  The Add dialog gives a new report its set too.
+
+- **A report's analysis set is one value** (#217).  The report list's
+  `population` (the TOC's, step 2's): `set_report_population()` writes it,
+  makes the data of the set's subjects (`adsl_<set>`) when there is none,
+  and moves the report's analyses to the new set's data (and the data kept
+  to the old set's subjects, found or made with the same definition; data
+  of another kind are left and said).  Step 2 chooses it above 2-1 ("This
+  report's analysis set"); 2-1's new data and 2-2's new analysis start
+  from it.  A set's flag on another dataset (ADAE's SAFFL) is the set only
+  when it agrees with the set's dataset subject by subject; else it is a
+  condition, and the form says so.  The company standards' analysis sets
+  are those the company may use (a new study gets them all).  The report
+  list shows the report's set, else its analyses' (their analysis data's
+  too).
+
 - **The sample's ADSL has ITTFL, EFFFL and PPROTFL** (#218), derived by
   data-raw/make-sample-study.R (pharmaverseadam's ADSL has SAFFL only of
   the population flags; the sample's README says how), so step 2 has

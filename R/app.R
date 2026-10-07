@@ -488,6 +488,7 @@ app_ui <- function(lang = "en") {
           bslib::nav_panel(paste0(t("The analyses"), " (analyses)"), value = "analyses",
                            # 2-1 the analysis data (its form below it), then 2-2
                            # the analyses
+                           shiny::uiOutput("ard_report_pop"),
                            shiny::uiOutput("ard_adata"),
                            shiny::uiOutput("adata_detail"),
                            shiny::uiOutput("ard_2_2_head"),
@@ -3752,6 +3753,15 @@ app_server <- function(input, output, session, start) {
       rd <- r$data %||% NA
       mine <- .adata_of_report(rv$p, tg)
       if (!is.na(rd)) data <- rd else if (length(mine)) data <- mine[length(mine)]
+      rp <- report_population(rv$p, tg)
+      own <- if (is.null(data)) .report_toc_data(rv$p, tg) else character()
+      if (length(own)) data <- own[1L]
+      if (is.null(data) && !is.na(rp)) {
+        q <- .ensure_pop_adata(rv$p, rp)
+        data <- attr(q, "data_id")
+        attr(q, "data_id") <- attr(q, "added") <- NULL
+        rv$p$ard$analysis_data <- q$ard$analysis_data
+      }
     }
     if (!is.null(data)) {
       a$data[nrow(a)] <- data
@@ -3823,6 +3833,49 @@ app_server <- function(input, output, session, start) {
   adata_js <- function(input, value) sprintf(
     "Shiny.setInputValue('%s', %s, {priority: 'event'});", input,
     jsonlite::toJSON(value, auto_unbox = TRUE))
+  # The report's analysis set: the report list's, the TOC's -- one value.
+  # Chosen here, it is written there, the data of its subjects (adsl_<set>)
+  # is made, and the report's analyses move to the new set's data.
+  pop_choices <- function() {
+    po <- rv$p$ard$populations
+    po <- po[!is.na(po$population_id), , drop = FALSE]
+    adsl <- tryCatch(an_data(po$dataset[1L] %||% "ADSL"), error = function(e) NULL)
+    lab <- vapply(po$population_id, function(id) {
+      l <- .pop_label(rv$p, id, adsl)
+      if (identical(l, id)) id else sprintf("%s \u2014 %s", id, l)
+    }, "")
+    c(stats::setNames("", t("(not chosen)")), stats::setNames(po$population_id, lab))
+  }
+  output$ard_report_pop <- shiny::renderUI({
+    tg <- ard_target()
+    shiny::req(has_study(), tg)
+    rv$ver
+    now <- report_population(rv$p, tg)
+    shiny::div(
+      class = "d-flex flex-wrap align-items-baseline gap-2 mb-2",
+      shiny::tags$label(`for` = "ard_report_pop_pick", class = "small fw-bold mb-0",
+                        with_tip(t("This report's analysis set"), t("The report list's analysis set (the TOC's): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 2-1 and 2-2 start from it."))),
+      shiny::div(style = "min-width: 16rem",
+                 shiny::selectInput("ard_report_pop_pick", NULL, pop_choices(),
+                                    selected = if (is.na(now)) "" else now, width = "100%")))
+  })
+  shiny::observeEvent(input$ard_report_pop_pick, {
+    tg <- ard_target()
+    shiny::req(has_study(), tg)
+    v <- input$ard_report_pop_pick %||% ""
+    now <- report_population(rv$p, tg)
+    if (identical(v, if (is.na(now)) "" else now)) return()
+    p <- guarded(set_report_population(rv$p, tg, if (nzchar(v)) v else NA))
+    if (is.null(p)) return()
+    made <- attr(p, "made")
+    left <- attr(p, "left")
+    attr(p, "made") <- attr(p, "left") <- NULL
+    rv$p <- p
+    bump()
+    if (length(made)) notify(sprintf(t("%s made (save to keep it)."), paste(made, collapse = ", ")))
+    if (length(left)) notify(sprintf(t("%s left as it is: change it in 2-1 if it should follow the analysis set."),
+                                     paste(left, collapse = ", ")), "warning")
+  }, ignoreInit = TRUE)
   output$ard_adata <- shiny::renderUI({
     tg <- ard_target()
     shiny::req(has_study(), tg)
@@ -4080,7 +4133,14 @@ app_server <- function(input, output, session, start) {
     bar <- function(v) .split_bar(v)
     cands <- adata_subject_cands(old)
     if (!.is_blank(r$subjects) && !r$subjects %in% cands) cands <- c(r$subjects, cands)
-    subj_now <- if (!.is_blank(r$subjects)) r$subjects else if (length(cands)) cands[1L] else ""
+    # kept to the report's analysis set's subjects (adsl_<set>), if it is one
+    rp_data <- {
+      rp <- report_population(p, ard_target() %||% "")
+      pds <- p$ard$populations$dataset[match(rp, p$ard$populations$population_id)]
+      if (is.na(rp)) NA else .adata_same_as(ad, if (is.na(pds)) "ADSL" else pds, rp, NA, NA)
+    }
+    subj_now <- if (!.is_blank(r$subjects)) r$subjects else
+      if (!is.na(rp_data) && rp_data %in% cands) rp_data else if (length(cands)) cands[1L] else ""
     # kept to them: as it is; a new one, unless it is itself one row a subject
     subj_on <- if (!is.null(old) || !is.null(e$name)) !.is_blank(r$subjects) else
       length(cands) > 0L && !adata_root(r$from) %in% adata_pop_ds()
@@ -4092,7 +4152,8 @@ app_server <- function(input, output, session, start) {
     pop_now <- adata_pop_of_where(where, r$from)
     if (is.null(old) && is.null(e$name) && !subj_on && identical(pop_now, ".none") &&
         length(pop_ch) > 1L) {
-      pop_now <- unname(pop_ch[2L])
+      rp <- paste0("pop:", report_population(p, ard_target() %||% ""))
+      pop_now <- if (rp %in% pop_ch) rp else unname(pop_ch[2L])
       o <- adata_pop_options(r$from)
       where <- .cond_set_first(where, o$cond[match(pop_now, o$value)], o$cond)
     }
@@ -4121,6 +4182,7 @@ app_server <- function(input, output, session, start) {
           t("Analysis set"),
           t("The study's analysis set (SAF ...) or a population flag of the data, put in as the condition's first row (SAFFL = Y). Left as it is, it is saved as the analysis set (population_id); change it there, add others under it.")),
           pop_ch, selected = pop_now, width = "100%")),
+      shiny::uiOutput("adata_pop_note"),
       if (nzchar(e$legacy_pop)) shiny::p(
         class = "small text-muted mb-2",
         sprintf(t("Also kept to the analysis set %s (population_id, as the sheet has it: SPEC shows it)."),
@@ -4234,9 +4296,44 @@ app_server <- function(input, output, session, start) {
     if (!startsWith(v, "pop:")) v <- adata_pop_of_where(where, input$adata_from %||% "")
     pop <- if (startsWith(v, "pop:")) substring(v, 5L) else NA_character_
     ps <- .cond_take_pop(where, rv$p$ard$populations, pop)
+    # another dataset's flag that is not the set's for every subject (or
+    # missing there): a condition, not the set
+    dis <- if (!is.na(ps$pop)) adata_pop_disagrees(ps$pop)
+    if (!is.null(dis) && dis != 0L) ps <- list(pop = NA_character_, where = where)
     if (is.na(ps$pop) && nzchar(e$legacy_pop %||% "")) ps$pop <- e$legacy_pop
     ps
   }
+  # A set's condition on a dataset that is not the set's own (ADAE's
+  # SAFFL): how many subjects have another flag there than in the set's
+  # dataset (0: the same; NA: a column is missing; NULL: not that case)
+  adata_pop_disagrees <- function(pop) {
+    if (is.na(pop)) return(NULL)
+    po <- rv$p$ard$populations
+    k <- match(pop, po$population_id)
+    root <- adata_root(input$adata_from %||% "")
+    if (is.na(k) || .is_blank(root) || identical(root, po$dataset[k])) return(NULL)
+    fl <- .pop_flag(po$where[k])
+    if (is.na(fl)) return(NULL)
+    d <- tryCatch(an_data(root), error = function(e) NULL)
+    s <- tryCatch(an_data(po$dataset[k]), error = function(e) NULL)
+    if (is.null(d) || is.null(s)) return(NULL)
+    n <- .flag_disagrees(d, s, fl, .adata_subject_key(rv$p))
+    if (is.na(n)) -1L else n
+  }
+  output$adata_pop_note <- shiny::renderUI({
+    shiny::req(!is.null(adata_edit()))
+    v <- input$adata_pop %||% ""
+    shiny::req(startsWith(v, "pop:"))
+    pop <- substring(v, 5L)
+    n <- adata_pop_disagrees(pop)
+    shiny::req(!is.null(n), n != 0L)
+    po <- rv$p$ard$populations
+    k <- match(pop, po$population_id)
+    root <- adata_root(input$adata_from %||% "")
+    shiny::div(class = "alert alert-warning small py-1 mb-2",
+               if (n < 0L) sprintf(t("%s has no %s: its condition is not taken as the analysis set %s (written as a condition)."), root, .pop_flag(po$where[k]), pop) else
+                 sprintf(t("%s's %s is not %s's for %d subjects: its condition is not taken as the analysis set %s (written as a condition)."), root, .pop_flag(po$where[k]), po$dataset[k], n, pop))
+  })
   # the same data already there: said, so it is not made twice
   output$adata_same <- shiny::renderUI({
     e <- adata_edit()
@@ -5254,7 +5351,11 @@ app_server <- function(input, output, session, start) {
     output[[paste0("toc", n, "_same_file")]] <- shiny::renderUI(toc_same_file_ui())
     output[[paste0("toc", n, "_where")]] <- shiny::renderUI(toc_where_ui())
     output[[paste0("toc", n, "_map")]] <- shiny::renderUI(toc_map_ui())
-    output[[paste0("toc", n, "_changes")]] <- shiny::renderUI(toc_changes_ui())
+    output[[paste0("toc", n, "_changes")]] <- shiny::renderUI({
+      parts <- list(toc_pop_ui(), toc_data_ui(), toc_changes_ui())
+      # taken in: nothing (not an empty list)
+      if (all(vapply(parts, is.null, NA))) NULL else shiny::tagList(parts)
+    })
     output[[paste0("toc", n, "_result")]] <- shiny::renderUI(NULL)
     output[[paste0("toc", n, "_do_btn")]] <- shiny::renderUI(toc_do_btn())
   })
@@ -5336,7 +5437,7 @@ app_server <- function(input, output, session, start) {
     labs <- c(output_id = t("Report ID"), type = t("Type"), title = t("Title lines"),
               population = t("Population"), footnote = t("Footnote lines"),
               program = t("Program"), file = t("File"), note = t("Remarks"),
-              section = t("Section (heading)"))
+              section = t("Section (heading)"), datasets = t("Datasets"))
     choices <- c(stats::setNames("", t("(none)")), stats::setNames(h, h))
     shiny::tagList(
       shiny::h6(t("Which column is what")),
@@ -5381,6 +5482,65 @@ app_server <- function(input, output, session, start) {
              error = function(e) e)
   })
   toc_offset <- shiny::reactive(toc_title_offset(rv$p))
+  # the TOC's analysis sets: each text it uses, the study's set it is
+  # (matched; changed here), the reports it names
+  toc_pops <- shiny::reactive({
+    w <- toc_where()
+    m <- toc_map_now()
+    if (!length(m$output_id) || !length(m$population)) return(NULL)
+    po <- rv$p$ard$populations
+    adsl <- tryCatch(an_data(po$dataset[1L] %||% "ADSL"), error = function(e) NULL)
+    tryCatch(toc_populations(rv$p, w$path, m$output_id, m$population, w$sheet, w$skip,
+                             data = adsl), error = function(e) NULL)
+  })
+  toc_pop_ui <- function() {
+    if (toc_done()) return(NULL)
+    tp <- toc_pops()
+    if (is.null(tp) || !nrow(tp)) return(NULL)
+    u <- unique(tp$text)
+    ch <- pop_choices()
+    names(ch)[1L] <- t("(not taken)")
+    shiny::div(
+      class = "mb-2",
+      shiny::h6(with_tip(t("Analysis sets"), t("The TOC's population column, as the study's analysis sets: matched by id, label or a usual word (Safety Population: SAF); change it here. Taken in, it is the report's analysis set (the report list's, step 2's): its data is made, and a report whose set changes has its analyses moved."))),
+      lapply(seq_along(u), function(k) {
+        ids <- tp$output_id[tp$text == u[k]]
+        now <- tp$population_id[match(u[k], tp$text)]
+        shiny::div(
+          class = "d-flex flex-wrap align-items-baseline gap-2 small",
+          shiny::span(class = "fw-bold", u[k]),
+          shiny::span(class = "text-muted", sprintf(t("%d reports"), length(ids))),
+          shiny::div(style = "min-width: 14rem",
+                     shiny::selectInput(toc_id(paste0("pop_", k)), NULL, ch,
+                                        selected = if (is.na(now)) "" else now, width = "100%")),
+          if (is.na(now)) shiny::span(class = "text-warning", t("not matched: choose the analysis set, or leave it")))
+      }))
+  }
+  # the analysis data of the tables' datasets: made for the new reports
+  # (ticked by default), for those taken in before only when asked
+  toc_data_ui <- function() {
+    if (toc_done() || !length(toc_map_now()$datasets)) return(NULL)
+    ch <- toc_ch()
+    if (inherits(ch, "error")) return(NULL)
+    before <- any(ch$reports$status %in% c("changed", "same"))
+    shiny::div(
+      class = "mb-2",
+      shiny::checkboxInput(toc_id("make_data"), with_tip(t("Make the tables' analysis data from their datasets"), t("For each dataset of a table (the TOC's datasets column) that is not its analysis set's own: <dataset>_<set>, kept to the subjects of adsl_<set> -- found, or made. Its first analysis starts from it; change or delete it in 2-1.")), TRUE,
+                           width = "100%"),
+      if (before) shiny::conditionalPanel(
+        sprintf("input['%s']", toc_id("make_data")),
+        shiny::checkboxInput(toc_id("make_again"), t("Also for the reports taken in before (made again where deleted)"), FALSE, width = "100%")))
+  }
+  # the reports' analysis sets as chosen in the dialog
+  toc_pop_chosen <- function() {
+    tp <- toc_pops()
+    if (is.null(tp) || !nrow(tp)) return(character())
+    u <- unique(tp$text)
+    v <- vapply(seq_along(u), function(k) input[[toc_id(paste0("pop_", k))]] %||%
+                  (tp$population_id[match(u[k], tp$text)] %||% ""), "")
+    v <- stats::setNames(v[match(tp$text, u)], tp$output_id)
+    v[!is.na(v) & nzchar(v)]
+  }
   toc_last_now <- shiny::reactive({
     rv$ver
     toc_last(rv$study)
@@ -5528,7 +5688,12 @@ app_server <- function(input, output, session, start) {
     off <- toc_offset()
     last <- toc_last_now()
     p <- guarded(toc_apply(rv$p, sp, ch, use_toc = use_toc,
-                           types = types[!is.na(types)]))
+                           types = types[!is.na(types)],
+                           populations = toc_pop_chosen(),
+                           make_data = isTRUE(input[[toc_id("make_data")]]),
+                           again = isTRUE(input[[toc_id("make_again")]])))
+    made <- attr(p, "made")
+    if (!is.null(p)) attr(p, "made") <- NULL
     if (is.null(p)) return(toc_btn_ver(toc_btn_ver() + 1L))
     w <- toc_where()
     rec <- guarded(.toc_record(rv$study, w$path, basename(w$path), ch,
@@ -5557,7 +5722,9 @@ app_server <- function(input, output, session, start) {
         t("%d lines edited here were kept instead of the TOC's text."), n_ask)),
       if (length(new_ids)) shiny::tagList(shiny::br(), sprintf(
         t("New reports: %s. Make their content from the list's buttons."),
-        paste(new_ids, collapse = ", ")))))
+        paste(new_ids, collapse = ", "))),
+      if (length(made)) shiny::tagList(shiny::br(), sprintf(
+        t("Analysis data made for the reports' analysis sets: %s."), paste(made, collapse = ", ")))))
   })
 
   # ---- ARD functions of one's own ------------------------------------------
@@ -7491,6 +7658,12 @@ app_server <- function(input, output, session, start) {
           if (length(s) && !is.na(s)) s else ""
         },
         placeholder = t("blank: from the ID")),
+      if (type && nrow(rv$p$ard$populations)) shiny::selectInput(
+        "modal_pop", t("This report's analysis set"), pop_choices(), width = "100%",
+        selected = {
+          v <- report_population(rv$p, current() %||% "")
+          if (is.na(v)) "" else v
+        }),
       if (type) shiny::conditionalPanel(
         "input.modal_type == 'listing'",
         shiny::checkboxInput(
@@ -7531,6 +7704,15 @@ app_server <- function(input, output, session, start) {
     s <- trimws(input$modal_section %||% "")
     i <- match(id, rv$p$outputs$output_id)
     if (nzchar(s) && !is.na(i)) rv$p$outputs$section[i] <- s
+    # and its analysis set (its data made)
+    pop <- input$modal_pop %||% ""
+    if (nzchar(pop) && !is.na(i)) {
+      p <- guarded(set_report_population(rv$p, id, pop))
+      if (!is.null(p)) {
+        attr(p, "made") <- attr(p, "left") <- NULL
+        rv$p <- p
+      }
+    }
   }
   shiny::observeEvent(input$add_ok, {
     id <- trimws(input$modal_id)
@@ -7548,6 +7730,11 @@ app_server <- function(input, output, session, start) {
     p2 <- guarded(add_output(rv$p, id, description = desc,
                              type = input$modal_type,
                              section = if (nzchar(sec)) sec else NA_character_))
+    pop <- input$modal_pop %||% ""
+    if (!is.null(p2) && nzchar(pop)) {
+      p2 <- guarded(set_report_population(p2, id, pop))
+      if (!is.null(p2)) attr(p2, "made") <- attr(p2, "left") <- NULL
+    }
     after_id_change(p2, id)
     # the new report's own tab
     if (!is.null(p2)) go(switch(input$modal_type,
