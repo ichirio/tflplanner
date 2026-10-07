@@ -124,6 +124,10 @@ if (!requireNamespace("tflplanner", quietly = TRUE)) {
          wait = TRUE)
   quit(save = "no", status = 1L)
 }
+# what the app writes to the console (its errors, with the calls) goes to
+# app.log, beside this file: the launcher has no console (the last run's)
+app_log <- file(file.path(here, "app.log"), open = "wt")
+sink(app_log, type = "message")
 ok <- tryCatch({
   run <- tflplanner::run_app
   # an older tflplanner (before 0.0.2.9004) has no stop_on_close
@@ -139,5 +143,7 @@ ok <- tryCatch({
                     conditionMessage(e))), wait = TRUE)
   FALSE
 })
+sink(type = "message")
+close(app_log)
 say("stopped")
 quit(save = "no", status = if (ok) 0L else 1L)
