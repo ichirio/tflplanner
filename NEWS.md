@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **Code lists from 2-1, 2-2 and step 3; a variable's label from them**
+  (#262; tflspec 0.0.24.9060).  [Levels and order (code lists)...] in 2-1
+  (the columns the data makes and adds) and 2-2 (the analysis's groups,
+  variables and strata), and [Code lists of this table...] in step 3, open
+  step 1's editor on those variables; a copy comes back to it.  Step 3's
+  drag lists show each level's code list text, faint.  A variable's label
+  can be the report's code list of `variable` (`variable / AGE / Age
+  (years)`): step 3's label field shows it faint when the variables sheet
+  has none, and writes only a label changed there.  A label is a report's:
+  there is no dictionary across the study or the standards.
+
 - **A user-code report's program, shorter** (#253).  The function that
   makes its `content` what rtfreporter takes (a ggplot becomes a figure;
   anything else is said) is `report_content()`, written once in the
