@@ -5349,8 +5349,11 @@ app_server <- function(input, output, session, start) {
     output[[paste0("toc", n, "_same_file")]] <- shiny::renderUI(toc_same_file_ui())
     output[[paste0("toc", n, "_where")]] <- shiny::renderUI(toc_where_ui())
     output[[paste0("toc", n, "_map")]] <- shiny::renderUI(toc_map_ui())
-    output[[paste0("toc", n, "_changes")]] <- shiny::renderUI(shiny::tagList(
-      toc_pop_ui(), toc_changes_ui()))
+    output[[paste0("toc", n, "_changes")]] <- shiny::renderUI({
+      parts <- list(toc_pop_ui(), toc_changes_ui())
+      # taken in: nothing (not an empty list)
+      if (all(vapply(parts, is.null, NA))) NULL else shiny::tagList(parts)
+    })
     output[[paste0("toc", n, "_result")]] <- shiny::renderUI(NULL)
     output[[paste0("toc", n, "_do_btn")]] <- shiny::renderUI(toc_do_btn())
   })
