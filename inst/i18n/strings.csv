@@ -2365,3 +2365,38 @@ Statistic,統計量
 Decimals,小数桁数
 A row of your own needs a label and a template with a {statistic}.,自分の行には、行ラベルと {統計量} を含むテンプレートが要ります。
 "Columns of the subjects' data (the analysis set's, or the analysis data its subjects are kept to) joined by the subject key. Nothing chosen: nothing added. A column of the same name takes the subjects' values.",症例側のデータ（解析対象集団のデータ、または症例を絞った解析データ）の列を被験者 ID で結合して足します。選ばなければ何も足しません。同じ名前の列は症例側の値に置き換わります。
+Columns made,作る列
+"The columns this data makes: split by conditions, cut a number into groups, days between two dates, or any R. The sheet keeps each as NAME = R (derive, | between them); one the form cannot draw is kept as written.",このデータで作る列：条件で分ける、数値を区分に区切る、2 つの日付の日数の差、または任意の R。シートには NAME = R の形で残ります（derive、| 区切り）。フォームで描けないものは書いたまま残します。
+Split by conditions,条件で分ける
+Cut a number into groups,区切る（数値を区分に）
+Days between two dates,日数の差
+R expression,R の式
+"As R (NAME = R, | between them)",R で見る・書く（NAME = R、| 区切り）
+None: the data's columns as they are.,なし（データの列のまま）
++ Make a column,＋ 列を作る
+Name of the column,列の名前
+Made by,作り方
+Change the column,この列を直す
+Add the column,この列を足す
+The condition of the one chosen (◉):,選んだもの（◉）の条件：
+The number,数値の変数
+Cut at (comma between),区切り値（カンマ区切り）
+Groups' labels (| between),区分のラベル（| 区切り）
+"A cut point starts the group above it: 65 is in 65-74. Labels blank: R's own ([65,75) ...).","区切り値はその上の区分に入ります（65 は 65-74）。ラベルが空欄なら R の既定（[65,75) など）。"
+The later date,後の日付
+The earlier date,前の日付
++ 1 (the first day is day 1),＋1（初日を 1 日目とする）
+R (the column's value),R（列の値）
+Put in a variable...,変数を差し込む…
+If,もし
+"(the condition, below)",（条件は下で作ります）
++ Another condition,＋ 条件を足す
+Otherwise,それ以外
+"A column made needs a name (letters, digits, . and _).",作る列には名前が要ります（英字・数字・. と _）。
+Give at least one condition.,条件を 1 つ以上作ってください。
+Choose the variable to cut.,区切る変数を選んでください。
+"The cut points are numbers, comma between them (65, 75).","区切り値は数値をカンマ区切りで（65, 75）。"
+"The cut points go up (65, 75).","区切り値は小さい順に（65, 75）。"
+Choose the two dates.,2 つの日付を選んでください。
+Write the R that makes the column.,列を作る R を書いてください。
+"%s is made already: change that one, or give another name.",%s はもう作られています。そちらを直すか、別の名前にしてください。

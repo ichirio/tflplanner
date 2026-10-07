@@ -4106,6 +4106,23 @@ app_server <- function(input, output, session, start) {
     value = adata_cond_value, lang = lang, key = adata_cond_key)
   # for shiny::testServer(): the condition as the builder gives it
   session$userData$adata_cond <- list(value = adata_cond_value, key = adata_cond_key)
+  # the columns made (R/derive_builder.R): of the data's columns, those added
+  adata_drv <- .derive_editor_server(
+    input, output, session, t, notify,
+    cols = shiny::reactive({
+      shiny::req(!is.null(adata_edit()))
+      unique(c(adata_cols(adata_root(input$adata_from %||% "")), input$adata_add))
+    }),
+    data = shiny::reactive({
+      shiny::req(!is.null(adata_edit()))
+      ds <- adata_root(input$adata_from %||% "")
+      if (.is_blank(ds)) NULL else an_data(ds)
+    }),
+    lang = lang)
+  adata_derive_now <- function() {
+    v <- adata_drv$text()
+    if (is.na(v)) "" else v
+  }
   adata_where_now <- function() {
     v <- adata_cond()$expr
     if (is.null(v) || !length(v) || is.na(v) || !nzchar(trimws(v))) NA_character_ else v
@@ -4241,6 +4258,7 @@ app_server <- function(input, output, session, start) {
                                                    r$from)), from_ch)
     }
     more <- !.is_blank(r$add) || !.is_blank(r$derive) || !.is_blank(r$keep) || !.is_blank(r$distinct)
+    adata_drv$load(r$derive)
     # add: columns of the subjects' data joined in -- not offered while it is
     # made from the analysis set's own data (it has them all), unless the
     # sheet says some
@@ -4307,9 +4325,9 @@ app_server <- function(input, output, session, start) {
         class = "mb-2", open = if (more) NA,
         shiny::tags$summary(class = "small", t("Columns taken, made, kept; one row per ...")),
         add_ui,
-        shiny::textInput("adata_derive", argl("Columns made (NAME = R, | between them)", "derive"),
-                         blank_na(r$derive), width = "100%",
-                         placeholder = sprintf(t("e.g. %s"), "PHASE = APHASE")),
+        .derive_editor_ui(t, with_tip(argl("Columns made", "derive"),
+                                      t("The columns this data makes: split by conditions, cut a number into groups, days between two dates, or any R. The sheet keeps each as NAME = R (derive, | between them); one the form cannot draw is kept as written.")),
+                          blank_na(r$derive)),
         shiny::selectizeInput("adata_keep", argl("Columns kept (blank: all)", "keep"),
                               choices = unique(c(bar(r$keep), adata_cols(adata_root(r$from)))),
                               selected = bar(r$keep), multiple = TRUE, width = "100%",
@@ -4425,7 +4443,7 @@ app_server <- function(input, output, session, start) {
   output$adata_same <- shiny::renderUI({
     e <- adata_edit()
     shiny::req(!is.null(e), is.null(e$old), is.null(e$name))
-    more <- c(input$adata_add, input$adata_derive, input$adata_keep,
+    more <- c(input$adata_add, adata_derive_now(), input$adata_keep,
               input$adata_distinct, input$adata_code)
     shiny::req(!any(nzchar(trimws(more))))
     subjects <- adata_subj_value()
@@ -4457,7 +4475,7 @@ app_server <- function(input, output, session, start) {
     keep <- one(input$adata_keep)
     distinct <- one(input$adata_distinct)
     where <- ps$where
-    derive <- one(input$adata_derive)
+    derive <- one(adata_derive_now())
     # written as R: the fields that make a data are not used
     if (!is.na(code)) {
       pop <- subjects <- where <- add <- derive <- keep <- distinct <- NA
@@ -4551,7 +4569,7 @@ app_server <- function(input, output, session, start) {
       set_analysis_data(q, ard_target(), tmp, from = one_of(input$adata_from), subjects = adata_subj_value(),
                         population_id = ps$pop,
                         where = ps$where, add = one_of(input$adata_add),
-                        derive = one_of(input$adata_derive), keep = one_of(input$adata_keep),
+                        derive = one_of(adata_derive_now()), keep = one_of(input$adata_keep),
                         distinct = one_of(input$adata_distinct), old = e$old)
     }, error = function(err) NULL)
     v <- if (is.null(p)) NA else .adata_code_start(p, ard_target(), trimws(input$adata_id))
@@ -4573,7 +4591,7 @@ app_server <- function(input, output, session, start) {
       w <- adata_count_words
       cols <- .adata_preview_cols(d, list(add = one_of(input$adata_add),
                                           distinct = one_of(input$adata_distinct),
-                                          derive = one_of(input$adata_derive),
+                                          derive = one_of(adata_derive_now()),
                                           where = adata_where_now()))
       output$adata_preview_tbl <- shiny::renderTable(
         utils::head(d[cols], 5L), striped = TRUE, spacing = "xs")
