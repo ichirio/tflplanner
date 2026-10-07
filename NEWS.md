@@ -18,6 +18,16 @@
   the tab "digits: decimals"); a table's templates take them where they
   say no format.  Needs tflspec 0.0.24.9057.
 
+- **The sample study, after an audit** (#238).  T-14-2-2 (KM estimates)
+  has no "Characteristic" over its rows.  L-16-2-7 lists the
+  treatment-emergent severe adverse events (2 of 43 were not), titled so,
+  the arms in their order (sorted by `TRT01AN`, which the sample's ADSL and
+  ADAE now have, as an ADaM does).  F-14-2-1's code says its parameter.
+  The other reports are the same, byte for byte.  The company standards'
+  `table_data` code takes a report's rows of the study ARD with
+  `subset(ard, output_id == ..., select = -c(output_id, analysis_id,
+  population_id))`.
+
 - **An analysis data is a report's** (#244; tflspec 0.0.24.9055).  2-1 lists
   the report's own rows, all of them; delete, "in use" and the names are
   the report's; `set_analysis_data()`, `remove_analysis_data()`,
