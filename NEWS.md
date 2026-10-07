@@ -1,5 +1,10 @@
 # tflplanner (development version)
 
+- **The `digits` sheet** (#247; tflspec #168).  A study's definition keeps
+  each statistic's decimals and a variable's exceptions (step 3's SPEC,
+  the tab "digits: decimals"); a table's templates take them where they
+  say no format.  Needs tflspec 0.0.24.9057.
+
 - **The sample study, after an audit** (#238).  T-14-2-2 (KM estimates)
   has no "Characteristic" over its rows.  L-16-2-7 lists the
   treatment-emergent severe adverse events (2 of 43 were not), titled so,

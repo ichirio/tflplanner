@@ -965,7 +965,6 @@ Table: one row a report. Its roles (table_plan()) and the table-wide options; a 
 "The keys down the rows (table_plan(rows = )); name = column renames, a quoted value is a constant heading; | between them.",縦のキー（table_plan(rows = )）。name = 列名 で名前を付け替え、引用符で囲んだ値は固定の見出し。| 区切り。
 "Where the row label comes from (table_plan(label = )); blank: .label; NA: used to tell rows apart, not printed; NULL: not used.",行ラベルの元（table_plan(label = )）。空欄 = .label、NA = 行の区別にだけ使い表示しない、NULL = 使わない。
 "cells (cells built from templates) or rows (one statistic a row, the raw values) (plan_cells(stats = )); blank: cells.",cells（テンプレートでセルを作る）か rows（1 行 = 1 統計量、生の値）（plan_cells(stats = )）。空欄 = cells。
-With stats = rows: stat (the number) or stat_fmt (cards' formatted text) (plan_cells(value = )); blank: stat.,stats = rows のときの値：stat（数値）か stat_fmt（cards の整形済み文字）（plan_cells(value = )）。空欄 = stat。
 What joins several column keys into a column name (plan_columns(sep = )); the columns sheet names value columns with it; blank: ____.,列キーが複数のとき値の列名をつなぐ文字（plan_columns(sep = )）。columns シートはこの名前で値の列を指す。空欄 = ____。
 "TRUE, FALSE, or the sort keys in order, - in front for descending (plan_sort()); blank: the data's order.",TRUE、FALSE、または並べ替えキーを順に（降順は前に -）（plan_sort()）。空欄 = データの順。
 The statistic totalled across columns for a frequency order (plan_sort(stat = )).,頻度順に並べるとき列方向に合計する統計量（plan_sort(stat = )）。
@@ -2325,3 +2324,9 @@ Back to the study's,試験の既定に戻す
 The study's (its values: this report's tokens),試験の既定のヘッダー（値はこの帳票の tokens）
 "Every report has the study's header; what changes from report to report ({OUTPUT_LABEL}, {OUTPUT_TITLE}, {OUTPUT_POPULATION}) is in the tokens tab.",どの帳票も試験の既定のヘッダーを使います。帳票ごとに変わる値（{OUTPUT_LABEL}、{OUTPUT_TITLE}、{OUTPUT_POPULATION}）は tokens のタブにあります。
 A header of this report's own,この帳票だけのヘッダーにする
+"Which of the ARD's values the table prints: stat (the number, rounded here: the digits sheet, a template's {x:.1f}) or stat_fmt (the ARD's own text, as it was formatted: no digits to set; a template still combines them, {mean} ({sd})); a row may say otherwise in its template ({mean:stat_fmt}, {mean:.1f}). With stats = rows: which goes in the cell (plan_cells(value = )). Blank: stat.",表が使う ARD の値: stat（数値。ここで丸める: digits シート、テンプレートの {x:.1f}）か stat_fmt（ARD の書式済みの文字。桁の設定はない。テンプレートで組み合わせはできる: {mean} ({sd})）。行ごとの例外はテンプレートで（{mean:stat_fmt}、{mean:.1f}）。stats = rows ではセルに入る値（plan_cells(value = )）。空欄: stat。
+"Table: the decimals of each statistic, written once for every analysis variable, and a variable's exceptions. A template's own format ({mean:.2f}) or a cells row's digits win; a table of stat_fmt (tables$value) is not rounded here.",表: 統計量ごとの小数桁数。すべての解析変数に 1 回だけ書き、解析変数ごとの例外を足す。テンプレートに書いた書式（{mean:.2f}）や cells 行の digits が優先。stat_fmt の表（tables$value）はここでは丸めない。
+Blank: every analysis variable (the rule); a variable: its exception.,空欄: すべての解析変数（規則）。変数名: その変数の例外。
+"The statistic, as the ARD names it (mean, sd, median, p ...).",統計量。ARD の名前で（mean、sd、median、p …）。
+"Its decimals, a whole number (p, a percent: 1 prints 61.6).",小数桁数（整数）。p（割合）は 1 で 61.6 と出る。
+digits: decimals,小数桁数 (digits)
