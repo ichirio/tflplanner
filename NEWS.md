@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **Code lists from 2-1, 2-2 and step 3; a variable's label from them**
-  (#262; tflspec 0.0.24.9061).  [Levels and order (code lists)...] in 2-1
+  (#262; tflspec 0.0.24.9060).  [Levels and order (code lists)...] in 2-1
   (the columns the data makes and adds) and 2-2 (the analysis's groups,
   variables and strata), and [Code lists of this table...] in step 3, open
   step 1's editor on those variables; a copy comes back to it.  Step 3's
