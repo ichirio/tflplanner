@@ -101,7 +101,10 @@ tflplanner_home <- function() {
 #' @param port The port the app runs on when started from its shortcut or
 #'   [launch_app()] (default 7470); `NULL` keeps the setting.
 #' @param check_updates Whether the app looks for a newer version when it
-#'   starts (default `TRUE`); `NULL` keeps the setting.
+#'   starts (default `FALSE`; it only says so, it installs nothing); `NULL`
+#'   keeps the setting.  tflplanner is updated only when you ask:
+#'   [update_tflplanner()], or the "update and launch" shortcut
+#'   (`add_shortcut(update = TRUE)`).
 #' @return The settings, invisibly.
 #' @examples
 #' \dontrun{

@@ -101,8 +101,14 @@ study_layout <- function() {
 #' * `open_study()` returns a study as it was last saved.  Given the folder
 #'   of a study tflplanner does not know yet, it registers it first.
 #' * `register_study()` adds an existing study folder: its `study.yml`, and
-#'   its definition workbooks when `spec/` has them.
-#' * `unregister_study()` forgets a study; its folder is left alone.
+#'   its definition workbooks when `spec/` has them.  A folder unregistered
+#'   before comes back as it was (its saved state, history and unsaved
+#'   changes).
+#' * `unregister_study()` takes a study off the list.  Its folder is not
+#'   deleted: what tflplanner kept about it goes into the folder
+#'   (`.tflplanner/`), for `register_study()` to take back.  tflplanner
+#'   never deletes a study folder; to delete one, delete it yourself (in the
+#'   file manager it goes to the recycle bin).
 #' * `list_studies()` lists the registered studies.
 #'
 #' @param study_id The study's id, which is also its folder name.
@@ -185,6 +191,56 @@ open_study <- function(study, home = tflplanner_home()) {
   s
 }
 
+# What tflplanner keeps about a study (its home's studies/<id>/: the saved
+# state, its history, an unsaved draft) goes into the study folder when the
+# study is unregistered, and comes back when the folder is registered again:
+# taking a study off the list loses nothing.
+.kept_dir <- function(path) file.path(path, ".tflplanner")
+
+.keep_store <- function(id, path, home = tflplanner_home()) {
+  from <- .store_dir(id, home)
+  if (!dir.exists(from) || !dir.exists(path)) return(invisible(FALSE))
+  to <- .kept_dir(path)
+  unlink(to, recursive = TRUE)
+  dir.create(to, showWarnings = FALSE)
+  # the ARD fetched for input assistance (ard/) is made again when needed
+  for (f in setdiff(list.files(from), "ard")) {
+    file.copy(file.path(from, f), to, recursive = TRUE, copy.date = TRUE)
+  }
+  invisible(TRUE)
+}
+
+# The kept store back in the home: its history and draft always; its saved
+# state when spec/ has not changed since (else the state read from spec/ is
+# the study's, the kept one goes to its history).  TRUE: the state is back.
+.restore_store <- function(id, path, home = tflplanner_home()) {
+  from <- .kept_dir(path)
+  sf <- file.path(from, "state.json")
+  if (!file.exists(sf)) return(FALSE)
+  st <- tryCatch(jsonlite::fromJSON(sf, simplifyVector = FALSE),
+                 error = function(e) NULL)
+  if (is.null(st) || !identical(st$meta$study_id, id)) return(FALSE)
+  to <- .store_dir(id, home)
+  dir.create(file.path(to, "history"), recursive = TRUE, showWarnings = FALSE)
+  for (f in list.files(file.path(from, "history"), full.names = TRUE)) {
+    file.copy(f, file.path(to, "history"), copy.date = TRUE)
+  }
+  if (file.exists(file.path(from, "draft.json"))) {
+    file.copy(file.path(from, "draft.json"), to, copy.date = TRUE)
+  }
+  spec <- list.files(file.path(path, study_layout()[["spec"]]),
+                     recursive = TRUE, full.names = TRUE)
+  same <- !length(spec) || all(file.mtime(spec) <= file.mtime(sf) + 1)
+  if (same) {
+    file.copy(sf, to, overwrite = TRUE, copy.date = TRUE)
+  } else {
+    stamp <- gsub("[^0-9]", "", st$saved %||% format(file.mtime(sf)))
+    file.copy(sf, file.path(to, "history", paste0(stamp, ".json")))
+  }
+  unlink(from, recursive = TRUE)
+  same
+}
+
 #' @rdname create_study
 #' @export
 register_study <- function(path, home = tflplanner_home()) {
@@ -196,6 +252,14 @@ register_study <- function(path, home = tflplanner_home()) {
                  normalizePath(path, "/"))) {
     stop("Study '", id, "' is already registered at ", st$path, ".",
          call. = FALSE)
+  }
+  # unregistered before: what tflplanner kept comes back as it was
+  if (is.null(st) && .restore_store(id, path, home)) {
+    s <- .study_from_state(.read_state(id, home))
+    s$path <- normalizePath(path, "/")
+    .write_state(s, home)
+    .set_config("last_study", id, home)
+    return(s)
   }
   sp <- file.path(path, study_layout()[["spec"]], c(.table_file, .report_file))
   sp <- sp[file.exists(sp)]
@@ -241,9 +305,13 @@ unregister_study <- function(study_id, home = tflplanner_home()) {
     stop("unregister_study() takes one study ID.", call. = FALSE)
   }
   study_id <- .check_study_id(study_id)
-  if (is.null(.read_state(study_id, home))) {
+  st <- .read_state(study_id, home)
+  if (is.null(st)) {
     stop("Study '", study_id, "' is not registered.", call. = FALSE)
   }
+  # the folder is not touched but for what tflplanner kept, put in it
+  # (.tflplanner/): register_study() takes it back
+  .keep_store(study_id, st$path %||% "", home)
   unlink(.store_dir(study_id, home), recursive = TRUE)
   if (identical(tflplanner_config(home)$last_study, study_id)) {
     .set_config("last_study", NULL, home)
