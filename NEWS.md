@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **2-1 lists the report's own analysis data** (#235): those its analyses
+  read (and what they are made from), the data they read without a name,
+  and those made on its 2-1 until an analysis reads them; the study's
+  others are on the Data tab.  The sample's tables all read analysis data
+  (adsl_saf, advs_w24, adtte_ttde, adae_saf) and have SAF as their
+  analysis set: the demographics table's 2-1 shows adsl_saf alone.  The
+  reports and the ARD are the same.
+
 - **A report's analysis set is one value** (#217).  The report list's
   `population` (the TOC's, step 2's): `set_report_population()` writes it,
   makes the data of the set's subjects (`adsl_<set>`) when there is none,

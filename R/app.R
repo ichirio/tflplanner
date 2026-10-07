@@ -3881,6 +3881,8 @@ app_server <- function(input, output, session, start) {
     ad <- .adata_rows(p)
     po <- p$ard$populations
     mine <- .adata_of_report(p, tg)
+    # and those made here this session, and the one open
+    mine <- c(mine, setdiff(intersect(c(adata_here()[[tg]], adata_pick()), ad$data_id), mine))
     n <- tryCatch(adata_counts(), error = function(e) character())
     w <- data_words_list()
     link <- function(input, value, label, cls = "") shiny::tags$button(
@@ -3947,7 +3949,6 @@ app_server <- function(input, output, session, start) {
                     if (on) "\u25c9" else "\u25cb"),
         shiny::div(class = "flex-grow-1 text-muted", words))
     }
-    others <- setdiff(ad$data_id, mine)
     picked <- !is.na(pick) && pick %in% ad$data_id
     shiny::div(
       class = "rp-b-card mb-2",
@@ -3965,12 +3966,14 @@ app_server <- function(input, output, session, start) {
              class = "btn-sm btn-outline-danger py-0", disabled = if (!picked) NA)),
       shiny::p(class = "small text-muted mb-1",
                t("Choose one in the list (\u25c9): its settings open below it.")),
-      # one list: the report's first, then the study's other analysis data
+      # the report's own: the analysis data its analyses read (and those
+      # they are made from), and the data they read without a name; the
+      # study's others are on the Data tab
       shiny::div(
         class = "border rounded",
-        if (!nrow(ad) && !length(auto))
+        if (!length(mine) && !length(auto))
           shiny::p(class = "small text-muted m-2", t("None yet: New analysis data makes one.")),
-        lapply(c(mine, others), row_of),
+        lapply(mine, row_of),
         lapply(auto, auto_row)))
   })
   output$ard_2_2_head <- shiny::renderUI({
@@ -4494,6 +4497,9 @@ app_server <- function(input, output, session, start) {
                    shiny::tableOutput("adata_preview_tbl")))
     })
   })
+  # analysis data made on a report's 2-1 in this session: listed there
+  # (with the one open) until an analysis of the report reads them
+  adata_here <- shiny::reactiveVal(list())
   shiny::observeEvent(input$adata_save, {
     p <- tryCatch(adata_planner(), error = function(e) e)
     if (inherits(p, "error")) return(notify(conditionMessage(p), "warning"))
@@ -4507,6 +4513,10 @@ app_server <- function(input, output, session, start) {
       attr(p, "kept") <- NULL
     }
     rv$p <- p
+    tg <- ard_target() %||% ""
+    h <- shiny::isolate(adata_here())
+    h[[tg]] <- unique(c(setdiff(h[[tg]], e$old), id))
+    adata_here(h)
     adata_close()
     bump()
     if (length(kept)) {
