@@ -15,6 +15,51 @@ study_token <- function(x, name) {
   if (length(i)) d$value[i[1L]] else NA_character_
 }
 
+# The study's font and size: the page sheet's study row (a blank
+# output_id), written once for every report as options() in
+# programs/tfl/report_setup.R (tflspec::tfl_report_setup_code()).  NA: none
+# (rtfreporter's own, Courier 9 pt).
+study_page_value <- function(x, col) {
+  d <- x$sheets$page
+  if (is.null(d) || !nrow(d) || is.null(d[[col]])) return(NA_character_)
+  i <- which(is.na(d$output_id))
+  if (length(i)) d[[col]][i[1L]] else NA_character_
+}
+
+# Set one of them (NA or "": none); a study row left with nothing goes
+set_study_page_value <- function(x, col, value) {
+  d <- .normalize_sheet(x$sheets$page, "page")
+  if (is.na(value) || !nzchar(trimws(value))) value <- NA_character_
+  i <- which(is.na(d$output_id))
+  if (!length(i)) {
+    if (is.na(value)) return(x)
+    row <- d[0L, , drop = FALSE]
+    row[1L, ] <- NA
+    d <- rbind(row, d)
+    i <- 1L
+  }
+  d[[col]][i[1L]] <- value
+  rest <- setdiff(names(d), "output_id")
+  if (all(is.na(unlist(d[i[1L], rest])))) d <- d[-i[1L], , drop = FALSE]
+  rownames(d) <- NULL
+  x$sheets$page <- d
+  x
+}
+
+# points (9, 10.5) as half-points ("18", "21"); NA when not a size
+.half_points <- function(pt) {
+  v <- suppressWarnings(as.numeric(pt))
+  if (length(v) != 1L || is.na(v) || v <= 0 || v > 72) return(NA_character_)
+  as.character(as.integer(round(v * 2)))
+}
+
+# half-points as points ("18" -> "9", "21" -> "10.5"); "" for none
+.points <- function(hp) {
+  v <- suppressWarnings(as.numeric(hp))
+  if (length(v) != 1L || is.na(v)) return("")
+  format(v / 2)
+}
+
 # Set a study token (NA or "": no row); only that row changes
 set_study_token <- function(x, name, value) {
   d <- x$sheets$tokens

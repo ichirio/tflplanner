@@ -38,12 +38,14 @@
                 value = c("tflplanner draft standards", "0.1", "",
                           "2026-09-27")),
     settings = .df(
-      key = c("language", "rounding", "subject_id", "ard_output",
-              "listing_type", "listing_max_rows", "max_levels"),
-      value = c("en", "", "USUBJID", "output/ard/ard.rds", "multiline",
-                "", "30"),
+      key = c("language", "rounding", "font", "font_size", "subject_id",
+              "ard_output", "listing_type", "listing_max_rows", "max_levels"),
+      value = c("en", "", "", "", "USUBJID", "output/ard/ard.rds",
+                "multiline", "", "30"),
       note = c("the app's language: en or ja",
                "a new study's rounding: r, sas, or blank (rtfreporter's)",
+               "the reports' font (Courier New, Arial ...); blank: rtfreporter's (Courier)",
+               "the reports' font size in points (9, 10 ...); blank: rtfreporter's (9)",
                "the subject key of the ARD definition",
                "where the study ARD goes (relative to the study folder)",
                "the listing type a new listing starts with",
@@ -463,6 +465,12 @@ add_standard_defaults <- function(x, study_id) {
     x$sheets[[sh]] <- rbind(def[names(mine)], mine)
     added <- c(added, sh)
   }
+  # the font and size, where the study's page row has none
+  f <- .std_font(x, only_missing = TRUE)
+  if (!identical(f, x)) {
+    x <- f
+    added <- c(added, "font")
+  }
   for (sh in c("populations", "datasets")) {
     key <- if (sh == "populations") "population_id" else "dataset"
     new <- std$ard[[sh]]
@@ -473,6 +481,20 @@ add_standard_defaults <- function(x, study_id) {
     }
   }
   attr(x, "added") <- added
+  x
+}
+
+# The company's font and size (the standards' settings `font`, `font_size`
+# in points) into the study's page row: every report's, written once as
+# options() in report_setup.R.  `only_missing`: where the study has none.
+.std_font <- function(x, only_missing = FALSE) {
+  want <- c(font = .std_setting("font"),
+            font_size_half_points = .half_points(.std_setting("font_size")))
+  for (cn in names(want)) {
+    if (is.na(want[[cn]])) next
+    if (only_missing && !is.na(study_page_value(x, cn))) next
+    x <- set_study_page_value(x, cn, want[[cn]])
+  }
   x
 }
 
@@ -501,6 +523,7 @@ add_standard_defaults <- function(x, study_id) {
     p$sheets[[sh]] <- .normalize_sheet(d, sh)
     if (sh == "report") p <- .old_program_default(p)
   }
+  p <- .std_font(p)
   p$ard$study$value[p$ard$study$key == "id"] <- .std_setting("subject_id",
                                                              "USUBJID")
   p$ard$study$value[p$ard$study$key == "output"] <-

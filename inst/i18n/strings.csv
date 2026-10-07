@@ -797,7 +797,7 @@ This table has a hierarchy (SOC / PT): the builder handles summary tables for no
 Open without saving,保存せずに開く
 Save and open,保存して開く
 Add the company's study defaults (only what is missing),会社標準の既定を入れる（無い項目だけ）
-"For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, analysis sets and data catalog. Nothing already there is changed.",既定なしで作られた試験のために: 表の見た目（見出し列、空行、列見出し、幅）、ヘッダー・フッター、解析対象集団、データカタログ。すでにあるものは変えません。
+"For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, the font, analysis sets and data catalog. Nothing already there is changed.",既定なしで作られた試験のために: 表の見た目（見出し列、空行、列見出し、幅）、ヘッダー・フッター、フォント、解析対象集団、データカタログ。すでにあるものは変えません。
 The study has every company default already.,会社標準の既定はすべて入っています。
 Added the company's defaults: %s (save to keep them),会社標準の既定を入れました: %s（保存すると残ります）
 the method's default (below),メソッドの既定（下）
@@ -2400,6 +2400,12 @@ Choose the variable to cut.,区切る変数を選んでください。
 Choose the two dates.,2 つの日付を選んでください。
 Write the R that makes the column.,列を作る R を書いてください。
 "%s is made already: change that one, or give another name.",%s はもう作られています。そちらを直すか、別の名前にしてください。
+Every report's font,全帳票のフォント
+"The font and size every report is written in, set once here (the page sheet's study row; programs/tfl/report_setup.R says them as options()). Blank: rtfreporter's, Courier 9 pt. The company standards give a new study theirs.",全帳票の文字のフォントと大きさ。ここで 1 回だけ設定します（page シートの試験の行。programs/tfl/report_setup.R が options() で指定します）。空欄なら rtfreporter の既定（Courier、9 pt）。新しい試験には会社標準の値が入ります。
+Font,フォント
+Size (pt),大きさ（pt）
+"The size is a number of points (9, 10 ...).",大きさはポイントの数（9、10 など）で入れてください。
+"The document's font (its font table); the study's row (blank output_id) is the company's, written once in the setup code; blank: rtfreporter's option (Courier).",文書のフォント（フォント表）。試験の行（output_id が空欄）は会社の値で、共通の準備のコードに 1 回だけ書かれます。空欄 = rtfreporter の設定（Courier）。
 Levels and order (code lists)...,水準と順序（コードリスト）…
 Levels and order: the columns of %s,水準と順序：%s の列
 Levels and order: the columns of this analysis data,水準と順序：この解析データの列

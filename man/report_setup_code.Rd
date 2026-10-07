@@ -16,6 +16,7 @@ The program, one element per line.
 }
 \description{
 \code{programs/tfl/report_setup.R}, which every report program sources: the
+reports' font and size (\code{options(rtfreporter.font = )}), the
 study's tokens (\code{options(rtfreporter.tokens = )}: the company, the
 analysis, the protocol ...), its running header and footer
 (\code{study_header}, \code{study_footer}), written once from \code{report_spec.xlsx}

@@ -409,16 +409,20 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 
 # The study's tokens, header and footer are written once, in
 # programs/tfl/report_setup.R, when the study has tokens of its own (its
-# default rows: COMPANY, STUDY_ID ...) -- a new study does; one that has
-# none writes each report's header in its program, as before
+# default rows: COMPANY, STUDY_ID ...) or a font or size for every report --
+# a new study does; one that has neither writes each report's header in its
+# program, as before
 .uses_report_setup <- function(x) {
   d <- x$sheets$tokens
-  !is.null(d) && any(is.na(d$output_id))
+  (!is.null(d) && any(is.na(d$output_id))) ||
+    !is.na(study_page_value(x, "font")) ||
+    !is.na(study_page_value(x, "font_size_half_points"))
 }
 
 #' The study's setup of its report programs
 #'
 #' `programs/tfl/report_setup.R`, which every report program sources: the
+#' reports' font and size (`options(rtfreporter.font = )`), the
 #' study's tokens (`options(rtfreporter.tokens = )`: the company, the
 #' analysis, the protocol ...), its running header and footer
 #' (`study_header`, `study_footer`), written once from `report_spec.xlsx`
@@ -435,7 +439,7 @@ report_setup_code <- function(x, date = Sys.Date()) {
                           unique(c(.study_keys$table, .study_keys$report)))
   c(.banner(
       paste("Program    :", file.path(lay[["programs_tfl"]], .report_setup_file)),
-      "The study's header, footer and tokens: every report program sources it.",
+      "The study's font, header, footer and tokens: every report program sources it.",
       paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
              ", ", format(date, "%Y-%m-%d")),
       "",

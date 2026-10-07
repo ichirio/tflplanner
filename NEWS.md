@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **The reports' font and size, set once** (#264; tflspec 0.0.24.9062).
+  The company standards' `settings` gain `font` and `font_size` (in
+  points; blank: rtfreporter's, Courier 9 pt): a new study gets them, and
+  "Add the company's study defaults" adds them where the study has none.
+  The study tab sets them under the header's words (Font, Size (pt); the
+  page sheet's study row).  `programs/tfl/report_setup.R` says them once,
+  `options(rtfreporter.font = , rtfreporter.font_size_half_points = )`; a
+  study with a font or size uses it even without tokens of its own.
+
 - **A designed figure's program, shorter** (#240).  Its figure is `plot`
   itself (no `fig <- p`, `plot <- fig`), its palette the study's figure
   setup's `tfl_colours()`, and the design's code is in the style of the
