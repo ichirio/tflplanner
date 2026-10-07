@@ -3754,6 +3754,8 @@ app_server <- function(input, output, session, start) {
       mine <- .adata_of_report(rv$p, tg)
       if (!is.na(rd)) data <- rd else if (length(mine)) data <- mine[length(mine)]
       rp <- report_population(rv$p, tg)
+      own <- if (is.null(data)) .report_toc_data(rv$p, tg) else character()
+      if (length(own)) data <- own[1L]
       if (is.null(data) && !is.na(rp)) {
         q <- .ensure_pop_adata(rv$p, rp)
         data <- attr(q, "data_id")
@@ -5350,7 +5352,7 @@ app_server <- function(input, output, session, start) {
     output[[paste0("toc", n, "_where")]] <- shiny::renderUI(toc_where_ui())
     output[[paste0("toc", n, "_map")]] <- shiny::renderUI(toc_map_ui())
     output[[paste0("toc", n, "_changes")]] <- shiny::renderUI({
-      parts <- list(toc_pop_ui(), toc_changes_ui())
+      parts <- list(toc_pop_ui(), toc_data_ui(), toc_changes_ui())
       # taken in: nothing (not an empty list)
       if (all(vapply(parts, is.null, NA))) NULL else shiny::tagList(parts)
     })
@@ -5435,7 +5437,7 @@ app_server <- function(input, output, session, start) {
     labs <- c(output_id = t("Report ID"), type = t("Type"), title = t("Title lines"),
               population = t("Population"), footnote = t("Footnote lines"),
               program = t("Program"), file = t("File"), note = t("Remarks"),
-              section = t("Section (heading)"))
+              section = t("Section (heading)"), datasets = t("Datasets"))
     choices <- c(stats::setNames("", t("(none)")), stats::setNames(h, h))
     shiny::tagList(
       shiny::h6(t("Which column is what")),
@@ -5513,6 +5515,21 @@ app_server <- function(input, output, session, start) {
                                         selected = if (is.na(now)) "" else now, width = "100%")),
           if (is.na(now)) shiny::span(class = "text-warning", t("not matched: choose the analysis set, or leave it")))
       }))
+  }
+  # the analysis data of the tables' datasets: made for the new reports
+  # (ticked by default), for those taken in before only when asked
+  toc_data_ui <- function() {
+    if (toc_done() || !length(toc_map_now()$datasets)) return(NULL)
+    ch <- toc_ch()
+    if (inherits(ch, "error")) return(NULL)
+    before <- any(ch$reports$status %in% c("changed", "same"))
+    shiny::div(
+      class = "mb-2",
+      shiny::checkboxInput(toc_id("make_data"), with_tip(t("Make the tables' analysis data from their datasets"), t("For each dataset of a table (the TOC's datasets column) that is not its analysis set's own: <dataset>_<set>, kept to the subjects of adsl_<set> -- found, or made. Its first analysis starts from it; change or delete it in 2-1.")), TRUE,
+                           width = "100%"),
+      if (before) shiny::conditionalPanel(
+        sprintf("input['%s']", toc_id("make_data")),
+        shiny::checkboxInput(toc_id("make_again"), t("Also for the reports taken in before (made again where deleted)"), FALSE, width = "100%")))
   }
   # the reports' analysis sets as chosen in the dialog
   toc_pop_chosen <- function() {
@@ -5672,7 +5689,9 @@ app_server <- function(input, output, session, start) {
     last <- toc_last_now()
     p <- guarded(toc_apply(rv$p, sp, ch, use_toc = use_toc,
                            types = types[!is.na(types)],
-                           populations = toc_pop_chosen()))
+                           populations = toc_pop_chosen(),
+                           make_data = isTRUE(input[[toc_id("make_data")]]),
+                           again = isTRUE(input[[toc_id("make_again")]])))
     made <- attr(p, "made")
     if (!is.null(p)) attr(p, "made") <- NULL
     if (is.null(p)) return(toc_btn_ver(toc_btn_ver() + 1L))
