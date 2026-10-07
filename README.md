@@ -1,6 +1,6 @@
 <!-- README.md is written by hand; keep it short and link to the pkgdown site. -->
 
-# tflplanner
+# tflplanner <img src="man/figures/logo.png" align="right" height="120" alt="tflplanner logo: a planning board" />
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/ichirio/tflplanner/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ichirio/tflplanner/actions/workflows/R-CMD-check.yaml)

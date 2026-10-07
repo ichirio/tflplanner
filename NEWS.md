@@ -1,5 +1,8 @@
 # tflplanner (development version)
 
+- **A hex logo, shared with rtfreporter and tflspec** (#230), made with the
+  site's favicons by `data-raw/logo.R`.
+
 - **The sample's ADSL has ITTFL, EFFFL and PPROTFL** (#218), derived by
   data-raw/make-sample-study.R (pharmaverseadam's ADSL has SAFFL only of
   the population flags; the sample's README says how), so step 2 has
