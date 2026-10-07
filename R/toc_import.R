@@ -234,11 +234,16 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
 #'   type corrected); the TOC's otherwise.
 #' @param last,title_offset As [toc_changes()] was given them (kept in
 #'   `changes`).
+#' @param populations The reports' analysis sets, a population_id named by
+#'   report (see [toc_populations()]): each one that differs from the
+#'   report's is set with [set_report_population()] (its data made, its
+#'   analyses moved).
 #' @return The `tflplanner`.
 #' @export
 toc_apply <- function(x, spec, changes, use_toc = character(), types = character(),
                       last = changes$last,
-                      title_offset = changes$title_offset %||% toc_title_offset(x)) {
+                      title_offset = changes$title_offset %||% toc_title_offset(x),
+                      populations = character()) {
   rep <- changes$reports
   # new reports
   for (id in rep$output_id[rep$status == "new"]) {
@@ -266,6 +271,17 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
     o$section[k[put]] <- unname(sec[put])
     x$outputs <- o
   }
+  # the reports' analysis sets, as the TOC says them (one value with the
+  # report list's and step 2's: a change moves the report's analyses)
+  made <- character()
+  for (id in intersect(names(populations), x$outputs$output_id)) {
+    v <- populations[[id]]
+    if (.is_blank(v) || identical(report_population(x, id), v)) next
+    x <- set_report_population(x, id, v)
+    made <- c(made, attr(x, "made"))
+  }
+  attr(x, "made") <- attr(x, "left") <- NULL
+  if (length(made)) attr(x, "made") <- made
   # the report sheet's own items the TOC holds (not the type of a report
   # already there)
   cols <- intersect(c("program", "file", "note"), names(spec$report))
@@ -325,6 +341,49 @@ toc_snapshot <- function(spec, title_offset = 0L, last = NULL) {
     r
   })
   c(now, old)
+}
+
+#' The analysis set each report of a TOC names
+#'
+#' The TOC's population column, by report: its text (`text`, "Safety
+#' Population") and the study's analysis set it is (`population_id`: its id,
+#' its label, a usual word for its flag, or its id in the text; `NA` when
+#' none).
+#'
+#' @param x A `tflplanner`.
+#' @param path,sheet,skip The TOC, as [tflspec::tfl_read_toc()] reads it.
+#' @param id_col,pop_col Its columns of the report IDs and the populations.
+#' @param data The data of the analysis sets (ADSL), for its flags' labels.
+#' @return A data frame: output_id, text, population_id.
+#' @export
+toc_populations <- function(x, path, id_col, pop_col, sheet = NULL, skip = 0L,
+                            data = NULL) {
+  d <- .toc_raw(path, sheet, skip)
+  if (is.null(d) || !all(c(id_col, pop_col) %in% names(d))) {
+    return(data.frame(output_id = character(), text = character(),
+                      population_id = character(), stringsAsFactors = FALSE))
+  }
+  id <- trimws(as.character(d[[id_col]]))
+  v <- trimws(as.character(d[[pop_col]]))
+  keep <- !is.na(id) & nzchar(id) & !is.na(v) & nzchar(v)
+  id <- id[keep]
+  v <- v[keep]
+  u <- unique(v)
+  m <- stats::setNames(vapply(u, function(s) .pop_match(x, s, data), ""), u)
+  data.frame(output_id = id, text = v, population_id = unname(m[v]),
+             stringsAsFactors = FALSE)
+}
+
+.toc_raw <- function(path, sheet = NULL, skip = 0L) {
+  tryCatch(
+    if (tolower(tools::file_ext(path)) == "csv") {
+      suppressWarnings(utils::read.csv(path, skip = skip, check.names = FALSE,
+                                       colClasses = "character",
+                                       fileEncoding = "UTF-8-BOM"))
+    } else {
+      as.data.frame(readxl::read_excel(path, sheet = sheet %||% 1L, skip = skip,
+                                       col_types = "text"))
+    }, error = function(e) NULL)
 }
 
 # ---- the mapping: which of a TOC's columns is what -------------------------
