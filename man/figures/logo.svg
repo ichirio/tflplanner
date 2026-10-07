@@ -3,9 +3,9 @@
 <title>tflplanner</title>
 <defs>
 <linearGradient id="hexbg" x1="50%" y1="0%" x2="50%" y2="100%">
-<stop offset="0%" stop-color="#2d6fa8"/>
-<stop offset="60%" stop-color="#1a4a78"/>
-<stop offset="100%" stop-color="#0e2e4d"/>
+<stop offset="0%" stop-color="#a8424f"/>
+<stop offset="60%" stop-color="#7a2734"/>
+<stop offset="100%" stop-color="#4d1520"/>
 </linearGradient>
 <radialGradient id="topgloss" cx="50%" cy="0%" r="65%" fx="50%" fy="0%">
 <stop offset="0%" stop-color="#ffffff" stop-opacity="0.32"/>
@@ -88,6 +88,6 @@
 <text x="280" y="490" font-family="Liberation Serif, Times New Roman, serif" font-size="46" font-weight="700" text-anchor="middle" fill="#ffffff" letter-spacing="-0.5" filter="url(#text-shadow)">tflplanner</text>
 <text x="280" y="522" font-family="Liberation Serif, Times New Roman, serif" font-size="13.5" font-weight="500" text-anchor="middle" fill="#f7e2bf" letter-spacing="3.5">PLAN · RUN</text>
 <text x="280" y="555" font-family="Liberation Serif, Times New Roman, serif" font-size="11" font-weight="500" text-anchor="middle" fill="#ffffff" opacity="0.32" letter-spacing="6">i c h i r i o</text>
-<polygon points="280,28 512,163 512,431 280,566 48,431 48,163" fill="none" stroke="#0d2840" stroke-width="14" stroke-linejoin="round"/>
+<polygon points="280,28 512,163 512,431 280,566 48,431 48,163" fill="none" stroke="#3e1019" stroke-width="14" stroke-linejoin="round"/>
 <polygon points="280,38 502,168 502,425 280,556 58,425 58,168" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" opacity="0.18"/>
 </svg>

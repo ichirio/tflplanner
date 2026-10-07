@@ -3,9 +3,9 @@
 <title>tflplanner</title>
 <defs>
 <linearGradient id="hexbg" x1="50%" y1="0%" x2="50%" y2="100%">
-<stop offset="0%" stop-color="#2d6fa8"/>
-<stop offset="60%" stop-color="#1a4a78"/>
-<stop offset="100%" stop-color="#0e2e4d"/>
+<stop offset="0%" stop-color="#a8424f"/>
+<stop offset="60%" stop-color="#7a2734"/>
+<stop offset="100%" stop-color="#4d1520"/>
 </linearGradient>
 <radialGradient id="topgloss" cx="50%" cy="0%" r="65%" fx="50%" fy="0%">
 <stop offset="0%" stop-color="#ffffff" stop-opacity="0.32"/>
@@ -85,6 +85,6 @@
 <text x="440" y="320" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" text-anchor="start" fill="#3a4a5a">1</text>
 <text x="108" y="378" font-family="Liberation Serif, Times New Roman, serif" font-size="9.5" font-style="italic" text-anchor="start" fill="#6a7886">Last official run: runs/2026-10-01_0930_all/</text>
 </g>
-<polygon points="280,28 512,163 512,431 280,566 48,431 48,163" fill="none" stroke="#0d2840" stroke-width="14" stroke-linejoin="round"/>
+<polygon points="280,28 512,163 512,431 280,566 48,431 48,163" fill="none" stroke="#3e1019" stroke-width="14" stroke-linejoin="round"/>
 <polygon points="280,38 502,168 502,425 280,556 58,425 58,168" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" opacity="0.18"/>
 </svg>
