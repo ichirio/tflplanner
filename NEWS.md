@@ -1,5 +1,8 @@
 # tflplanner (development version)
 
+- **A hex logo, shared with rtfreporter and tflspec** (#230), made with the
+  site's favicons by `data-raw/logo.R`.
+
 - Added a root `CITATION.cff` so GitHub's "Cite this repository" button
   works (#229).
 
