@@ -4,7 +4,48 @@
   itself (no `fig <- p`, `plot <- fig`), its palette the study's figure
   setup's `tfl_colours()`, and the design's code is in the style of the
   other programs (`|>`, one-line parts: tflspec #164).  The sample's
-  reports are the same.
+  reports are the same.  Needs tflspec 0.0.24.9059.
+
+- **Step 3: statistics as rows, each statistic's decimals** (#249).  The
+  table builder's Statistics card:
+  - Values: the numbers, rounded here, or the ARD's text as step 2
+    formatted it (`tables$value`; no decimals to set then).
+  - A continuous variable's rows, chosen and ordered by dragging: the
+    company standards' rows (single statistics too: Mean, SD, SE, Q1, Q3,
+    Min, Max) and a row of your own (a label and a template).
+  - The decimals of each statistic, the same for every analysis variable
+    (the `digits` sheet), and a variable's own.  They replace "decimals the
+    data are collected with": a statistic's decimals are fixed numbers now.
+  - Company standards: the `statistics` rows have no digit rules; a new
+    `default_digits` gives a new study each statistic's decimals.
+
+- **The `digits` sheet** (#247; tflspec #168).  A study's definition keeps
+  each statistic's decimals and a variable's exceptions (step 3's SPEC,
+  the tab "digits: decimals"); a table's templates take them where they
+  say no format.  Needs tflspec 0.0.24.9057.
+
+- **The sample study, after an audit** (#238).  T-14-2-2 (KM estimates)
+  has no "Characteristic" over its rows.  L-16-2-7 lists the
+  treatment-emergent severe adverse events (2 of 43 were not), titled so,
+  the arms in their order (sorted by `TRT01AN`, which the sample's ADSL and
+  ADAE now have, as an ADaM does).  F-14-2-1's code says its parameter.
+  The other reports are the same, byte for byte.  The company standards'
+  `table_data` code takes a report's rows of the study ARD with
+  `subset(ard, output_id == ..., select = -c(output_id, analysis_id,
+  population_id))`.
+
+- **An analysis data is a report's** (#244; tflspec 0.0.24.9055).  2-1 lists
+  the report's own rows, all of them; delete, "in use" and the names are
+  the report's; `set_analysis_data()`, `remove_analysis_data()`,
+  `copy_analysis_data()` take the report.  [Copy from another report...]
+  copies a report's analysis data under the same names
+  (`import_analysis_data()`).  The Data tab shows the datasets and the
+  analysis sets only: the analysis data grid is gone (2-1's SPEC tab).  A
+  report's analysis set data, the TOC's, and copy / rename / remove of a
+  report follow.  The condition builder shows a variable on one line, cut
+  with ..., the whole on hover.  The sample's tables each have their own
+  rows; the reports and the ARD are the same.  A study made before has no
+  report on its rows: tflspec says so (make it again from the sample).
 
 - **Every report's header, defined once** (#223).
   - The package's header for a new study: `{COMPANY}` and

@@ -32,7 +32,7 @@ test_that("a company's workbook changes what the app offers", {
     preset = "ACME: n / Mean (SD)", variable = "continuous",
     row = c("n", "Mean (SD)"), template = c("{N}", "{mean} ({sd})"),
     digits = c("0", "1,2")))
-  s$statistics$digits[s$statistics$key == "mean_sd"] <- "d+2,d+3"
+  s$default_digits$digits[s$default_digits$statistic == "mean"] <- "2"
   s$ard_methods <- rbind(s$ard_methods, data.frame(
     method = "ae_socpt", label = "AE by SOC / PT",
     call = "cards::ard_stack_hierarchical",
@@ -50,12 +50,15 @@ test_that("a company's workbook changes what the app offers", {
                                     "company_standards.xlsx")))
 
   expect_true("ACME: n / Mean (SD)" %in% names(cell_presets()))
-  expect_equal(.stat_digits("mean_sd", 1), "3,4")
+  expect_equal(.std_digits()[["mean"]], 2L)
   expect_true("ae_socpt" %in% .std_ard_methods()$method)
   expect_true("portrait-wide" %in% .std_choices("page")$orientation)
 
   st <- create_study("NEW-1")
   expect_equal(st$planner$sheets$header$left[1], "ACME Pharma")
+  # each statistic's decimals: the study's, from the standards
+  d <- sheet_rows(st$planner, "digits", NA)
+  expect_equal(d$digits[d$statistic == "mean"], "2")
   # the protocol is a token, its value set once (the study tab)
   expect_equal(st$planner$sheets$header$left[2], "PROTOCOL: {STUDY_ID}")
   expect_equal(study_token(st$planner, "STUDY_ID"), "NEW-1")
@@ -78,7 +81,7 @@ test_that("a company's workbook changes what the app offers", {
   # and back to the draft
   suppressMessages(setup_tflplanner(standards = "builtin"))
   expect_false("ae_socpt" %in% .std_ard_methods()$method)
-  expect_equal(.stat_digits("mean_sd", 1), "2,3")
+  expect_equal(.std_digits()[["mean"]], 1L)
 })
 
 test_that("a workbook that does not read is refused", {
@@ -100,7 +103,7 @@ test_that("a table without data code starts from the company's template", {
   suppressMessages(setup_tflplanner(standards = f))
   p <- add_output(new_planner(), "T1")
   code <- data_lines(p, "T1")
-  expect_true(any(grepl('ard$output_id == "T1"', code, fixed = TRUE)))
+  expect_true(any(grepl('subset(ard, output_id == "T1",', code, fixed = TRUE)))
   expect_true(any(grepl("acme_rework(data)", code, fixed = TRUE)))
   # a template saved with the former name is read with the new one
   expect_true(any(grepl("data <- normalize_ard(ard)", code, fixed = TRUE)))

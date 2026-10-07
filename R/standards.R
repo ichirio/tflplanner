@@ -115,15 +115,18 @@
           span = c(NA, "each", NA, NA),
           text = c(NA, "{col}\n(N={n})\nn (%)",
                    "System Organ Class\n   Preferred Term", NA))),
+    # the rows the table builder offers for a continuous variable: a row is
+    # its label and its template (statistics one a row, or several in one);
+    # their decimals are the statistics' (default_digits)
     statistics = .df(
-      key = c("n", "mean_sd", "median", "q1q3", "median_q1q3", "min_max"),
-      row = c("n", "Mean (SD)", "Median", "Q1, Q3", "Median (Q1, Q3)",
-              "Min, Max"),
-      template = c("{N}", "{mean} ({sd})", "{median}", "{p25}, {p75}",
-                   "{median} ({p25}, {p75})", "{min}, {max}"),
-      digits = c("0", "d+1,d+2", "d+1", "d+1", "d+1", "d"),
-      note = c("", "d = the decimals the data are collected with", "", "",
-               "", "")),
+      key = c("n", "mean_sd", "mean", "sd", "se", "median", "q1q3", "q1", "q3",
+              "median_q1q3", "min_max", "min", "max"),
+      row = c("n", "Mean (SD)", "Mean", "SD", "SE", "Median", "Q1, Q3", "Q1",
+              "Q3", "Median (Q1, Q3)", "Min, Max", "Min", "Max"),
+      template = c("{N}", "{mean} ({sd})", "{mean}", "{sd}", "{se}", "{median}",
+                   "{p25}, {p75}", "{p25}", "{p75}", "{median} ({p25}, {p75})",
+                   "{min}, {max}", "{min}", "{max}"),
+      note = NA_character_),
     categorical_formats = .df(
       key = c("npct", "nNpct", "n"),
       label = c("n (%)", "n/N (%)", "n"),
@@ -140,8 +143,8 @@
       code = c(paste(
         "# ---- this output's rows of the study ARD ({ARD}, made by {ARD_PROGRAM})",
         "ard <- readRDS(\"{ARD}\")",
-        "ard <- ard[ard$output_id == \"{OUTPUT_ID}\",",
-        "           setdiff(names(ard), c(\"output_id\", \"analysis_id\", \"population_id\"))]",
+        "ard <- subset(ard, output_id == \"{OUTPUT_ID}\",",
+        "              select = -c(output_id, analysis_id, population_id))",
         "if (!nrow(ard)) stop(\"The study ARD has no rows for {OUTPUT_ID}: make its ARD first.\")",
         sep = "\n"),
         paste(
@@ -247,6 +250,18 @@
     default_page = default("page"),
     default_titles = default("titles"),
     default_footnotes = default("footnotes"),
+    # each statistic's decimals, the same for every analysis variable (a
+    # table may change them, and give a variable its own)
+    default_digits = default("digits",
+      list(statistic = "N", digits = "0"),
+      list(statistic = "mean", digits = "1"),
+      list(statistic = "sd", digits = "2"),
+      list(statistic = "se", digits = "2"),
+      list(statistic = "median", digits = "1"),
+      list(statistic = "p25", digits = "1"),
+      list(statistic = "p75", digits = "1"),
+      list(statistic = "min", digits = "0"),
+      list(statistic = "max", digits = "0")),
     # the study's words in every report's header, set once (the study tab)
     default_tokens = default("tokens",
       list(name = "COMPANY", value = "Company"),
@@ -271,7 +286,7 @@
         "the values a grid column offers as a dropdown (sheet, column, value; one row per value)",
         "cell presets of the table definition: rows of the cells sheet, grouped by preset",
         "column header presets: rows of the col_header sheet, grouped by preset",
-        "the statistics the table builder offers; digits use d = the decimals of the data",
+        "the rows the table builder offers for a continuous variable: row label and template (their decimals: default_digits)",
         "the categorical formats the table builder offers; <p> = the decimals of the percent",
         "the ARD methods (keywords): the function, its kind (continuous / categorical / missing / none, for statistic =), default arguments (<id> = the subject key), statistics and formats",
         "the statistics an ARD analysis may ask for: kind, label, default format of stat_fmt (xx.x, xx.x%, pvalue), and the R function of those tflplanner computes",
