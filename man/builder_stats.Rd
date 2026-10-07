@@ -12,5 +12,5 @@ A data frame: \code{key}, \code{row}, \code{template}.
 \description{
 Each is a row label and its template: one statistic a row (\code{Mean},
 \code{{mean}}) or several in one (\code{Mean (SD)}, \code{{mean} ({sd})}).  Their
-decimals are the statistics' ().
+decimals are the statistics' (the \code{digits} sheet, see \code{\link[tflspec:tfl_table_spec]{tflspec::tfl_table_spec()}}).
 }
