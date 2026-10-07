@@ -6,6 +6,32 @@
   other programs (`|>`, one-line parts: tflspec #164).  The sample's
   reports are the same.
 
+- **Every report's header, defined once** (#223).
+  - The package's header for a new study: `{COMPANY}` and
+    `{ANALYSIS_TYPE}`, then `PROTOCOL: {STUDY_ID}` and the page, a blank
+    line, then the report's `{OUTPUT_LABEL}` ("Table 14.1.1"),
+    `{OUTPUT_TITLE}` and `<{OUTPUT_POPULATION}>`.
+  - The study's words are set once, in the study tab (Company, Analysis,
+    Protocol): the tokens sheet's study rows; the company standards'
+    `default_tokens` give a new study's.  A new study's protocol is the
+    `{STUDY_ID}` token, not text put in the header.
+  - Taking in a TOC writes each report's own tokens (its label -- a new
+    item of the map, "Label" / "Display ID" ... --, title, analysis set,
+    section), only those the study's header, footer, titles or footnotes
+    say; a value changed here is kept the next time.  When the header says
+    `{OUTPUT_TITLE}`, the TOC's first title line and its analysis set are
+    not title lines as well.
+  - `programs/tfl/report_setup.R` (`report_setup_code()`) holds the
+    study's tokens, header and footer; each report program sources it and
+    says only its own tokens.  A study with no tokens of its own (the
+    sample) writes its programs as before.
+  - Step 4's header tab says the report has the study's header, with
+    "A header of this report's own" (a copy to edit) and "Back to the
+    study's".
+  - The page sample fills the report's tokens as its program does, and
+    leaves out a line they leave empty.
+  - Needs rtfreporter 0.8.2.9025 and tflspec 0.0.24.9054.
+
 - **Unregistering a study loses nothing** (#237).  `unregister_study()`
   (Unregister) puts what tflplanner kept about the study -- its saved
   state, history and unsaved changes -- into the study folder
