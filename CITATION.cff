@@ -1,0 +1,27 @@
+# ------------------------------------------------
+# CITATION.cff file created with {cffr} R package
+# See also: https://docs.ropensci.org/cffr/
+# ------------------------------------------------
+ 
+cff-version: 1.2.0
+message: 'To cite package "tflplanner" in publications use:'
+type: software
+license: Apache-2.0
+title: 'tflplanner: A ''shiny'' Study Manager for Clinical TFLs Made with ''rtfreporter'''
+abstract: A shiny study manager for clinical tables, listings and figures made with
+  rtfreporter. Each study is a folder of its own -- input data, definitions, programs,
+  results and the records of its official runs -- defining the study analysis results
+  data (ARD) and the reports built from it, with defaults and code lists drawn from
+  a company standards workbook.
+authors:
+- family-names: Masui
+  given-names: Yoichi
+  email: ichi.r.pro@gmail.com
+repository-code: https://github.com/ichirio/tflplanner
+url: https://ichirio.github.io/tflplanner/
+keywords:
+- clinical trials
+- shiny
+- TFL
+- R package
+
