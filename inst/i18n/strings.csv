@@ -2400,3 +2400,11 @@ Choose the variable to cut.,区切る変数を選んでください。
 Choose the two dates.,2 つの日付を選んでください。
 Write the R that makes the column.,列を作る R を書いてください。
 "%s is made already: change that one, or give another name.",%s はもう作られています。そちらを直すか、別の名前にしてください。
+Levels and order (code lists)...,水準と順序（コードリスト）…
+Levels and order: the columns of %s,水準と順序：%s の列
+Levels and order: the columns of this analysis data,水準と順序：この解析データの列
+Levels and order: this analysis's groups and variables,水準と順序：この解析の群と変数
+Code lists of %s's table,%s の表のコードリスト
+Code lists of this table...,この表のコードリスト…
+"This report's code lists: each variable's values, their order and the text they print as. The ARD uses those of the variables its analyses read (a value no record has is counted 0); the table uses them all, in their order unless the variables sheet says another (levels).",この帳票のコードリスト：変数ごとの値、その順番、表示する文字。ARD は解析が読む変数のものを使い（データにない値は 0 と数える）、表はすべてを使います。表の順は、variables シートの levels が無ければこの順です。
+Blank: the label of this report's code list of variable (faint). What is written here is the table's own.,空欄なら、この帳票のコードリスト（variable）の見出し（薄い字）。ここに書くとこの表の見出しになります。
