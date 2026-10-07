@@ -290,7 +290,7 @@
                            t("Change")),
         shiny::tags$button(type = "button", class = "btn btn-sm btn-link py-0 text-danger",
                            onclick = sprintf("Shiny.setInputValue('drv_del', %d, {priority: 'event'})", i),
-                           "×"))
+                           "\u00d7"))
     })
     shiny::tagList(
       if (!length(x)) shiny::p(class = "small text-muted mb-1", t("None: the data's columns as they are.")),
@@ -354,7 +354,7 @@
       cond = shiny::tagList(
         shiny::uiOutput("drv_branches"),
         shiny::div(class = "small text-muted mt-1",
-                   t("The condition of the one chosen (◉):")),
+                   t("The condition of the one chosen (\u25c9):")),
         condition_builder_ui("drv_cond", lang)),
       cut = shiny::tagList(
         bslib::layout_columns(
@@ -408,22 +408,22 @@
           shiny::tags$button(
             type = "button", class = paste("btn btn-sm py-0", if (k == sel) "btn-primary" else "btn-outline-secondary"),
             onclick = sprintf("Shiny.setInputValue('drv_br_pick', %d, {priority: 'event'})", k),
-            if (k == sel) "◉" else "○"),
+            if (k == sel) "\u25c9" else "\u25cb"),
           shiny::span(t("If")),
           shiny::tags$code(class = "text-truncate", style = "max-width: 45%",
                            if (.is_blank_v(cnd %||% NA)[1L]) t("(the condition, below)") else cnd),
-          shiny::span("→"),
+          shiny::span("\u2192"),
           shiny::div(style = "width: 30%",
                      shiny::textInput(val_id(k), NULL, shiny::isolate(input[[val_id(k)]]) %||% b[[k]]$value,
                                       width = "100%", placeholder = t("Value"))),
           if (length(b) > 1L) shiny::tags$button(
             type = "button", class = "btn btn-sm btn-link py-0 text-danger",
-            onclick = sprintf("Shiny.setInputValue('drv_br_del', %d, {priority: 'event'})", k), "×"))
+            onclick = sprintf("Shiny.setInputValue('drv_br_del', %d, {priority: 'event'})", k), "\u00d7"))
       }),
       shiny::div(
         class = "d-flex align-items-center gap-2 small",
         .btn("drv_br_add", t("+ Another condition"), class = "btn-sm btn-link py-0"),
-        shiny::span(t("Otherwise")), shiny::span("→"),
+        shiny::span(t("Otherwise")), shiny::span("\u2192"),
         shiny::div(style = "width: 30%",
                    shiny::textInput(fid("else"), NULL,
                                     shiny::isolate(input[[fid("else")]]) %||%
