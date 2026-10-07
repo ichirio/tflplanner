@@ -27,7 +27,7 @@ only): in step 2-1 they are offered as flags of ADSL, to make one.
 | T-14-2-1 | Table | Systolic blood pressure: change from baseline at Week 24 (SE, 95% CI of the mean) |
 | T-14-2-2 | Table | Time to first dermatologic event: Kaplan-Meier estimates |
 | T-14-3-1 | Table | TEAEs by SOC / PT |
-| L-16-2-7 | Listing | Severe adverse events |
+| L-16-2-7 | Listing | Severe treatment-emergent adverse events |
 | F-14-2-1 | User code (a figure) | Mean change from baseline in systolic blood pressure |
 | F-14-2-2 | User code (a figure) | Kaplan-Meier plot of the time to first dermatologic event (number at risk from T-14-2-2's ARD) |
 | F-14-2-3 | Figure (designed) | The same KM curves from the designer's KM template, with a median line added |
