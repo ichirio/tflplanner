@@ -22,7 +22,7 @@ only): in step 2-1 they are offered as flags of ADSL, to make one.
 | Output | Type | |
 |---|---|---|
 | T-14-1-1 | Table | Demographic characteristics |
-| T-14-1-1S | Table | The same table, its ARD one `cards::ard_stack()` call (the analyses inside it, and the column N and total N it makes) |
+| T-14-1-1S | Table | The same table, its ARD one `cards::ard_stack()` call (the analyses inside it, and the column N it makes) |
 | T-14-1-2 | Table | Subject disposition |
 | T-14-2-1 | Table | Systolic blood pressure: change from baseline at Week 24 (SE, 95% CI of the mean) |
 | T-14-2-2 | Table | Time to first dermatologic event: Kaplan-Meier estimates |

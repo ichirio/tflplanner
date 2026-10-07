@@ -46,7 +46,8 @@ test_that("the sample's T-14-1-1S is T-14-1-1's ARD as one ard_stack", {
   expect_identical(st$method, "cards::ard_stack")
   fl <- .stack_flags_of(st$args)$flags
   expect_true(isTRUE(fl[[".by_stats"]]))
-  expect_true(isTRUE(fl[[".total_n"]]))
+  # no total N: no table of the sample prints one
+  expect_false(isTRUE(fl[[".total_n"]]))
   # inside: their own variables and statistics, the stack's data and groups
   kids <- a[a$analysis_id %in% c("CONT", "CAT"), ]
   expect_true(all(is.na(kids$by) & is.na(kids$population_id)))
@@ -59,7 +60,7 @@ test_that("the sample's T-14-1-1S is T-14-1-1's ARD as one ard_stack", {
   # one ard_stack() call in its program
   code <- readLines(file.path(s$path, "programs/ard/T-14-1-1S.R"))
   expect_identical(sum(grepl("cards::ard_stack(", code, fixed = TRUE)), 1L)
-  expect_true(any(grepl(".total_n = TRUE", code, fixed = TRUE)))
+  expect_false(any(grepl(".total_n = TRUE", code, fixed = TRUE)))
   # the ARD tab: the stack's own form, an analysis inside says so
   shiny::testServer(server_for("SAMPLE-01"), {
     session$setInputs(nav = "make", step = "ard", target = "T-14-1-1S")
