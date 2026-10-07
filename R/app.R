@@ -1581,7 +1581,7 @@ app_server <- function(input, output, session, start) {
         with_tip(t("Look for a newer version when tflplanner starts"),
                  sprintf(t("Updates (%s channel) are installed from R, not from the app: update_tflplanner(), or the \"update and launch\" shortcut."),
                          .update_channel())),
-        value = !isFALSE(as.logical(tflplanner_config()$check_updates %||% "true"))),
+        value = isTRUE(as.logical(tflplanner_config()$check_updates %||% "false"))),
       shiny::div(
         class = "mb-2",
         .btn("add_sample", t("Add the sample study"), class = "btn-sm btn-outline-primary"),
@@ -1644,7 +1644,7 @@ app_server <- function(input, output, session, start) {
     notify(sprintf(t("New studies go to %s"), r))
   })
   shiny::observeEvent(input$check_updates, {
-    now <- !isFALSE(as.logical(tflplanner_config()$check_updates %||% "true"))
+    now <- isTRUE(as.logical(tflplanner_config()$check_updates %||% "false"))
     if (!identical(isTRUE(input$check_updates), now)) {
       guarded(suppressMessages(setup_tflplanner(
         check_updates = isTRUE(input$check_updates))))
