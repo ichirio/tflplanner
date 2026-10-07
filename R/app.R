@@ -456,11 +456,11 @@ app_ui <- function(lang = "en") {
   # -- the steps of making a report ----------------------------------------
   step_codelist <- shiny::div(
     class = "mt-2",
-    pane_head(t("This report's code lists"), t("The code lists this report uses: each variable's values, their order and the text they print as. The study's rows (blank output_id) apply to every report; this report's own rows replace them. Optional: a report that needs none skips this step.")),
-    # SPEC | Code | Result (R/result_tabs.R): no form of its own yet
+    pane_head(t("This report's code lists"), t("This report's code lists: each variable's values, their order and the text they print as. A code list is a report's: copy one from the company standards or another report (Copy code lists...), or read a file, and change it here. The ARD uses those of the variables its analyses read (a value no record has is counted 0); the table uses them all. Optional: a report that needs none skips this step.")),
+    # SPEC | Code | Result (R/result_tabs.R); the editor: R/codelists.R
     result_tabs_ui(
       "codelist_right", lang = lang,
-      spec = shiny::tagList(grid_note, sheet_body("codelists")),
+      spec = shiny::tagList(grid_note, .codelist_editor_ui("cl", t)),
       code = code_view("codelist_code", lang),
       result = DT::DTOutput("codelist_effective", height = "auto", fill = FALSE)))
 
@@ -810,18 +810,7 @@ app_ui <- function(lang = "en") {
           shiny::tags$details(
             class = "rp-help mt-2",
             shiny::tags$summary(t("Column help")),
-            DT::DTOutput("help_ard_populations"))),
-        bslib::nav_panel(
-          t("Code lists (the study's)"), value = "codelists",
-          pane_head(t("Code lists (the study's)"), paste(t("The study's code lists: each variable's values, their order and the text they print as, for every report (a report's own rows, in its step 1, replace them)."), edit_note)),
-          shiny::fileInput(
-            "codelist_file", t("Read the study's code list (xlsx / csv: variable, value, label, order)"),
-            accept = c(".xlsx", ".csv"), width = "100%"),
-          rhandsontable::rHandsontableOutput("hot_codelists_study"),
-          shiny::tags$details(
-            class = "rp-help mt-2",
-            shiny::tags$summary(t("Column help")),
-            DT::DTOutput("help_codelists_study"))))),
+            DT::DTOutput("help_ard_populations"))))),
 
     bslib::nav_panel(
       t("Report list"), value = "outputs",
@@ -2237,7 +2226,7 @@ app_server <- function(input, output, session, start) {
   })
 
   # -- sheet grids -------------------------------------------------------
-  for (sheet in c(table_sheets(), report_sheets())) local({
+  for (sheet in setdiff(c(table_sheets(), report_sheets()), "codelists")) local({
     sh <- sheet
     out_id <- paste0("hot_", sh)
     key <- shiny::reactive(paste(sh, input$target, rv$ver, rv$ard_ver,
@@ -2325,33 +2314,18 @@ app_server <- function(input, output, session, start) {
       .help_table(sh), rownames = FALSE,
       options = list(dom = "t", paging = FALSE, ordering = FALSE))
   })
-  # the study's code list on the Data tab: the codelists sheet's study rows
-  cl_key <- shiny::reactive(paste("codelists_study", rv$ver, sep = "|"))
-  output$hot_codelists_study <- rhandsontable::renderRHandsontable({
-    shiny::req(has_study())
-    d <- sheet_rows(shiny::isolate(rv$p), "codelists", NA)
-    d$output_id <- NULL
-    grids_drawn()
-    .grid(d, "codelists", cl_key(), .std_choices("codelists"))
-  })
-  shiny::observeEvent(input$hot_codelists_study, {
-    h <- input$hot_codelists_study
-    if (is.null(h$changes$changes) &&
-        !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
-    if (!identical(h$params$planner_key, cl_key())) return()
-    d <- read_grid(h)
-    if (is.null(d)) return()
-    guarded(rv$p <- set_sheet_rows(rv$p, "codelists", NA, d))
-  })
   for (sh in c("datasets", "populations")) local({
     sheet <- sh
     output[[paste0("help_ard_", sheet)]] <- DT::renderDT(
       .help_table(sheet), rownames = FALSE,
       options = list(dom = "t", paging = FALSE, ordering = FALSE))
   })
-  output$help_codelists_study <- DT::renderDT(
-    .help_table("codelists"), rownames = FALSE,
-    options = list(dom = "t", paging = FALSE, ordering = FALSE))
+  # step 1: the report's code lists (R/codelists.R)
+  .codelist_editor_server(input, output, session, "cl", rv, report = current,
+                          vars = shiny::reactive(.codelist_vars(rv$p, current())),
+                          t = t, notify = notify, guarded = guarded, bump = bump,
+                          read_grid = read_grid, grids_drawn = grids_drawn,
+                          has_study = has_study)
   output$type_note <- shiny::renderUI({
     id <- current()
     if (is.null(id)) return(NULL)
@@ -3403,7 +3377,7 @@ app_server <- function(input, output, session, start) {
                                         width = "100%"),
         levels = shiny::selectizeInput(
           id, lab, c(stats::setNames("", dflt_lab),
-                     unique(c(v, .level_choices(vars, sheet_rows(rv$p, "codelists", NA), d)))),
+                     unique(c(v, .level_choices(vars, sheet_rows(rv$p, "codelists", current() %||% NA), d)))),
           selected = v %||% "", multiple = FALSE, width = "100%",
           options = list(create = TRUE)),
         formula = shiny::div(
@@ -6452,26 +6426,6 @@ app_server <- function(input, output, session, start) {
     shiny::req(f)
     imp_compare(current(), f)
   })
-  # the study's code list from a file: its values become the study defaults
-  # of the codelists sheet (a report's own rows still win for that report)
-  shiny::observeEvent(input$codelist_file, {
-    f <- input$codelist_file
-    if (is.null(f) || !has_study()) return()
-    ext <- tolower(tools::file_ext(f$name))
-    path <- f$datapath
-    if (!identical(tolower(tools::file_ext(path)), ext)) {
-      file.copy(path, p2 <- paste0(path, ".", ext))
-      path <- p2
-    }
-    rows <- guarded(read_codelist(path))
-    if (is.null(rows)) return()
-    p2 <- guarded(set_codelist(rv$p, rows))
-    if (is.null(p2)) return()
-    rv$p <- p2
-    bump()
-    notify(sprintf(t("%d values of %d variables read into the code list (the study's defaults)."),
-                   nrow(rows), length(unique(rows$variable))))
-  })
   # a double click on a report's row: its ARD definition, on the left
   shiny::observeEvent(input$ard_state_dbl, {
     id <- input$ard_state_dbl
@@ -7746,12 +7700,11 @@ app_server <- function(input, output, session, start) {
   output$codelist_effective <- DT::renderDT({
     id <- current()
     shiny::req(has_study(), !is.null(id))
-    d <- .study_codelists(rv$p)
-    shiny::validate(shiny::need(!is.null(d), t("No code list yet.")))
-    d <- d[is.na(d$output_id) | d$output_id == id, , drop = FALSE]
-    own <- unique(d$variable[!is.na(d$output_id)])
-    d <- d[!is.na(d$output_id) | !d$variable %in% own, , drop = FALSE]
-    d$from <- ifelse(is.na(d$output_id), t("the study"), t("this report"))
+    d <- sheet_rows(rv$p, "codelists", id)
+    d <- d[!is.na(d$variable) & !is.na(d$value), , drop = FALSE]
+    shiny::validate(shiny::need(nrow(d) > 0L, t("No code list yet.")))
+    d$used_by <- ifelse(d$variable %in% .codelist_ard_vars(rv$p, id),
+                        t("ARD and table"), t("table"))
     d$output_id <- NULL
     .dt(d)
   })

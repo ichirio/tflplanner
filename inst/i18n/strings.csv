@@ -2325,3 +2325,19 @@ Back to the study's,試験の既定に戻す
 The study's (its values: this report's tokens),試験の既定のヘッダー（値はこの帳票の tokens）
 "Every report has the study's header; what changes from report to report ({OUTPUT_LABEL}, {OUTPUT_TITLE}, {OUTPUT_POPULATION}) is in the tokens tab.",どの帳票も試験の既定のヘッダーを使います。帳票ごとに変わる値（{OUTPUT_LABEL}、{OUTPUT_TITLE}、{OUTPUT_POPULATION}）は tokens のタブにあります。
 A header of this report's own,この帳票だけのヘッダーにする
+"This report's code lists: each variable's values, their order and the text they print as. A code list is a report's: copy one from the company standards or another report (Copy code lists...), or read a file, and change it here. The ARD uses those of the variables its analyses read (a value no record has is counted 0); the table uses them all. Optional: a report that needs none skips this step.",この帳票のコードリスト：変数ごとの値、その順番、表示する文字。コードリストは帳票のもの：会社標準やほかの帳票から写す（［コードリストを写す…］）か、ファイルを読み込み、ここで直す。ARD は解析が読む変数のものを使う（データにない値は 0 と数える）。表はすべてを使う。任意：要らない帳票はこの手順を飛ばしてよい。
+Copy code lists...,コードリストを写す…
+"Every variable, not only those this report uses",この帳票が使う変数だけでなく、すべての変数
+Read a file into this report,ファイルからこの帳票へ読み込む
+"A code list (xlsx / csv: variable, value, label, order)","コードリスト（xlsx / csv: variable, value, label, order）"
+(%d more variables' code lists: tick the box to see them),（ほかに %d 変数のコードリスト：チェックを入れると見える）
+%d values of %d variables read into %s's code lists.,%d 個の値（%d 変数）を %s のコードリストに読み込みました。
+The company standards,会社標準
+"No code lists to copy: the company standards have none, nor do the other reports.",写せるコードリストがありません：会社標準にも、ほかの帳票にもありません。
+Copy code lists into %s,コードリストを %s に写す
+"The rows copied are this report's own: change them here, and the source stays as it is. A value this report has already is replaced.",写した行はこの帳票のもの：ここで直しても写す元は変わりません。この帳票にすでにある値は置き換わります。
+Its code lists,そのコードリスト
+As the variable (its name in this report's data),変数名（この帳票のデータでの名前）
+%s's code lists: %s copied (save to keep them).,%s のコードリスト：%s を写しました（保存すると残ります）。
+ARD and table,ARD と表
+"A report's code lists, one row a value of a variable -- the text it prints as and its place (plan_labels(), plan_levels()). Every row names its report in `output_id` (a blank one is an error: copy the rows into each report that uses them). A variable's `levels` on the variables sheet, when given, is the order in the table instead. The ARD too: a report's ARD program makes factors of the columns it lists that its analyses read (by, strata, variables) before any analysis.",帳票のコードリスト。1 行 = 変数の 1 つの値で、表示する文字と順番（plan_labels()、plan_levels()）。どの行も output_id に帳票を書く（空欄はエラー：使う帳票ごとに行を写す）。variables シートの levels を書いたときは、表ではそちらの順になる。ARD でも使う：帳票の ARD プログラムは、解析が読む列（by、strata、variables）のうちここにあるものを、解析の前に factor にする。

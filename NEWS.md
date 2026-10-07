@@ -1,5 +1,18 @@
 # tflplanner (development version)
 
+- **A code list is a report's** (#251; tflspec 0.0.24.9058).  Step 1 edits
+  the report's code lists: the variables it uses (its analyses, what its
+  data derive, what its table shows; all with a box), [Copy code lists...]
+  from the company standards or another report (the rows copied are the
+  report's own), and a file read into the report.  The company standards
+  have a `codelists` sheet (`standard_codelists()`), with CDISC's usual
+  lists by default (SEX, RACE, ETHNIC, AESEV, AESER, AEREL, AEOUT, EOSSTT).
+  `set_codelist()` takes the report; `import_codelist()` copies another
+  report's.  The Data tab's study code lists are gone.  A report's ARD uses
+  the code lists of the variables its analyses read; step 1's result says
+  which.  A study made before with study-wide rows: tflspec says so (give
+  the rows their report).
+
 - **An analysis data is a report's** (#244; tflspec 0.0.24.9055).  2-1 lists
   the report's own rows, all of them; delete, "in use" and the names are
   the report's; `set_analysis_data()`, `remove_analysis_data()`,

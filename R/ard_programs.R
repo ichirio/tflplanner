@@ -44,11 +44,12 @@
 #' @param date The date stamped in the banner.
 #' @param dir The study folder: the fingerprint recorded with the ARD reads
 #'   the study's own analysis functions (its key `source`) from it.
-#' @param codelists The study's code lists (the table definition's
-#'   `codelists` sheet, its study rows), or `NULL`: each listed column of the
-#'   data becomes a factor in their order before the analyses, so the ARD
-#'   keeps the order and counts a value no record has (0)
-#'   ([tflspec::tfl_ard_code()]).  They are part of the fingerprint.
+#' @param codelists The reports' code lists (the table definition's
+#'   `codelists` sheet, every row a report's), or `NULL`: each column the
+#'   report's analyses read that its code lists list becomes a factor in
+#'   their order before the analyses, so the ARD keeps the order and counts
+#'   a value no record has (0) ([tflspec::tfl_ard_code()]).  They are part of
+#'   the fingerprint.
 #' @return The code, one element per line.
 #' @export
 ard_setup_code <- function(spec, date = Sys.Date()) {
