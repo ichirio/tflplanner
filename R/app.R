@@ -1977,11 +1977,19 @@ app_server <- function(input, output, session, start) {
                          v(study_token(rv$p, "ANALYSIS_TYPE")),
                          placeholder = "Final Analysis"),
         shiny::textInput("tok_STUDY_ID", t("Protocol"), v(study_token(rv$p, "STUDY_ID")))),
+      shiny::h6(with_tip(t("Every report's font"),
+                         t("The font and size every report is written in, set once here (the page sheet's study row; programs/tfl/report_setup.R says them as options()). Blank: rtfreporter's, Courier 9 pt. The company standards give a new study theirs."))),
+      shiny::div(class = "d-flex flex-wrap gap-2",
+        shiny::textInput("pg_font", t("Font"), v(study_page_value(rv$p, "font")),
+                         placeholder = "Courier"),
+        shiny::textInput("pg_font_size", t("Size (pt)"),
+                         .points(study_page_value(rv$p, "font_size_half_points")),
+                         placeholder = "9", width = "8em")),
       shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-center mb-2",
         .btn("std_defaults", t("Add the company's study defaults (only what is missing)"),
              class = "btn-sm btn-outline-primary"),
-        help_tip(t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, analysis sets and data catalog. Nothing already there is changed."))))
+        help_tip(t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, the font, analysis sets and data catalog. Nothing already there is changed."))))
   })
   output$study_actions <- shiny::renderUI({
     shiny::req(shows_open())
@@ -2029,6 +2037,23 @@ app_server <- function(input, output, session, start) {
       }
     }, ignoreInit = TRUE)
   })
+  shiny::observeEvent(input$pg_font, {
+    v <- trimws(input$pg_font)
+    now <- study_page_value(rv$p, "font")
+    if (!identical(if (is.na(now)) "" else now, v)) {
+      rv$p <- set_study_page_value(rv$p, "font", v)
+    }
+  }, ignoreInit = TRUE)
+  shiny::observeEvent(input$pg_font_size, {
+    v <- trimws(input$pg_font_size)
+    hp <- if (nzchar(v)) .half_points(v) else NA_character_
+    if (nzchar(v) && is.na(hp)) {
+      return(notify(t("The size is a number of points (9, 10 ...)."), "warning"))
+    }
+    if (!identical(study_page_value(rv$p, "font_size_half_points"), hp)) {
+      rv$p <- set_study_page_value(rv$p, "font_size_half_points", hp)
+    }
+  }, ignoreInit = TRUE)
   shiny::observeEvent(input$rounding, {
     v <- if (nzchar(input$rounding)) input$rounding else NA_character_
     if (!identical(unname(rv$p$study[["rounding"]]), v)) {
