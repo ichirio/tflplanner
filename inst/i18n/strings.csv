@@ -2273,6 +2273,31 @@ This report's analysis set,この帳票の解析対象集団
 %s left as it is: change it in 2-1 if it should follow the analysis set.,%s はそのままです。解析対象集団に合わせるなら 2-1 で直してください。
 %s has no %s: its condition is not taken as the analysis set %s (written as a condition).,%s に %s がありません。条件は解析対象集団 %s とみなさず、ただの条件として書きます。
 %s's %s is not %s's for %d subjects: its condition is not taken as the analysis set %s (written as a condition).,%s の %s は %s と %d 例で違います。条件は解析対象集団 %s とみなさず、ただの条件として書きます。
+"%d more, at their defaults",ほか %d 個（既定のまま）
+"(default: %s, the study's subject key)",（既定: %s＝試験の被験者キー）
+"(default: %s, the company's method)",（既定: %s＝会社の手法の既定）
+(default: none),（既定: なし）
+(default: see ?%s),（既定: ?%s を参照）
+Only for %s,%s だけの指定
+"This function's own arguments. The data, groups, variables, strata, denominator and condition above are its arguments too: those every method has.",この関数だけの引数です。上のデータ・群・変数・層・分母・条件も引数ですが、どの手法にもある共通の指定です。
+"arg-hint:The subject key, e.g. USUBJID; subjects are counted once. Leave it blank: the study's subject key is written for you.",被験者のキー。例：USUBJID。被験者は 1 回だけ数える。空欄なら試験の被験者キーが自動で入る。
+"arg-hint:What a percentage divides by: the analysis set (population), or cards' row / column / cell. The analysis set gives the usual ""n (%) of the subjects of the group"".",% を何で割るか：解析対象集団（population）、または cards の row / column / cell。よくある「群の被験者のうち n (%)」は解析対象集団。
+"arg-hint:Which of the variables to report (default: all of them). Use it to compute a variable without showing its rows, e.g. only the PTs of a SOC / PT hierarchy.",報告する変数（既定：すべて）。計算はするが行は出さない変数があるときに使う。例：SOC / PT の階層で PT の行だけ出す。
+"arg-hint:Columns to analyse within, like by, but only the combinations the data have (e.g. a parameter by visit). Use it for ""repeat for each visit"" tables; for 0 rows of missing combinations use by.",by と同じく、その中で解析を繰り返す列。ただしデータにある組み合わせだけ（例：パラメータ×来院）。「来院ごとに繰り返す」表に使う。無い組み合わせを 0 で出したいときは by。
+"arg-hint:The level counted for each variable, e.g. list(AESER = ""Y""); blank: the variable's maximum level (TRUE, ""Y"", the highest). Use it to count one level only, e.g. subjects with a serious AE.","各変数で数える水準。例：list(AESER = ""Y"")。空欄なら変数の最大の水準（TRUE、""Y""、いちばん大きいもの）。1 つの水準だけ数えるときに使う。例：重篤な有害事象のある被験者。"
+"arg-hint:TRUE: also each analysis over all groups (an ""Overall"" column). Use it for a Total column.",TRUE：各解析を全群でも計算する（「Overall」列）。合計の列を出すときに使う。
+"arg-hint:TRUE: also the missing counts of each variable. Use it for a ""Missing"" row under each variable.",TRUE：各変数の欠測数も出す。変数ごとに「欠測」の行を出すときに使う。
+"arg-hint:TRUE: also each variable's label (its label attribute, e.g. ""Age (years)""), as rows of the ARD (context ""attributes"") a table can take its row headings from. Use it when the data's labels are the table's headings.","TRUE：各変数のラベル（label 属性。例：""Age (years)""）も ARD の行（context が attributes の行）として出す。表は行見出しにこれを使える。データのラベルを表の見出しにするときに使う。"
+"arg-hint:TRUE: also the total number of rows (subjects), for a ""(N=...)"" header. Use it for the N over all groups.",TRUE：全体の行数（被験者数）も出す。「(N=...)」の見出し用。全群の N が要るときに使う。
+"arg-hint:The levels of the hierarchy, outermost first: AEBODSYS then AEDECOD. The usual AE table: SOC, then PT.",階層の水準。外側から：AEBODSYS、次に AEDECOD。よくある AE の表は SOC、次に PT。
+"arg-hint:TRUE: also ""any event"" rows over the whole hierarchy. Use it for the first row of an AE table, ""Subjects with any TEAE"".",TRUE：階層全体の「いずれかの事象」の行も出す。AE の表の最初の行「いずれかの TEAE のある被験者」に使う。
+"arg-hint:TRUE: also each level over all groups (an ""Overall"" column). Use it for a Total column.",TRUE：各水準を全群でも計算する（「Overall」列）。合計の列を出すときに使う。
+arg-hint:The levels of the hierarchy to report (default: all). Use it to show the PTs only while counting within SOC (include = AEDECOD).,報告する階層の水準（既定：すべて）。SOC の中で数えつつ PT の行だけ出すときに使う（include = AEDECOD）。
+"arg-hint:TRUE: also each variable's label (its label attribute, e.g. ""Body System or Organ Class""), as rows of the ARD (context ""attributes"") a table can take its headings from.","TRUE：各変数のラベル（label 属性。例：""Body System or Organ Class""）も ARD の行（context が attributes の行）として出す。表は見出しにこれを使える。"
+"arg-hint:TRUE: also the total number of subjects. Use it for an ""(N=...)"" header over all groups.",TRUE：全体の被験者数も出す。全群の「(N=...)」の見出しに使う。
+arg-hint:TRUE (default): also the counts of each group (the column headers' N). FALSE when another analysis of the report gives them.,TRUE（既定）：各群の被験者数（列見出しの N）も出す。同じ帳票のほかの解析が出すなら FALSE。
+"arg-hint:The level whose proportion is estimated, e.g. list(AVALC = ""CR""). Use it for a rate with its CI, e.g. the response rate.","割合を推定する水準。例：list(AVALC = ""CR"")。割合とその信頼区間に使う。例：奏効率。"
+stat-label:Number of non-missing values,欠測でない値の数
 (not taken),（取り込まない）
 "The TOC's population column, as the study's analysis sets: matched by id, label or a usual word (Safety Population: SAF); change it here. Taken in, it is the report's analysis set (the report list's, step 2's): its data is made, and a report whose set changes has its analyses moved.",TOC の Population 列を、試験の解析対象集団に対応づけます（ID・ラベル・よく使う言い方で照合: Safety Population → SAF）。ここで直せます。取り込むと、帳票の解析対象集団（帳票一覧・段 2 と同じ値）になり、そのデータが作られます。集団が変わった帳票は、解析もそちらに移ります。
 %d reports,%d 帳票

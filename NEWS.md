@@ -1,5 +1,19 @@
 # tflplanner (development version)
 
+- **2-2: the method first, as a heading with its function** (#236).  An
+  analysis's form starts with its method, large, and the function it calls
+  (`cards::ard_stack_hierarchical`, a company keyword's too), then its ID
+  and label; the 2-2 list names the function as well.  The arguments under
+  it are "Only for <function> (i)" (the data, groups ... above are those
+  every method has): the required ones, those the method writes and those
+  given first, the rest folded ("n more, at their defaults").  A blank
+  says what it gives: the study's subject key, the company method's value,
+  none, or the function's own default.  The help of the arguments used
+  most says when to use them (tflspec's catalog, translated).  The
+  variables, groups and strata show in the definition's order (a
+  hierarchy's outermost first), not the data's; the statistic N reads
+  "Number of non-missing values".
+
 - **2-1 lists the report's own analysis data** (#235): those its analyses
   read (and what they are made from), the data they read without a name,
   and those made on its 2-1 until an analysis reads them; the study's
