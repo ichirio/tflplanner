@@ -15,6 +15,7 @@
 .sheet_labels <- c(
   tables = "tables: roles", variables = "variables",
   codelists = "codelists: code list", cells = "cells",
+  digits = "digits: decimals",
   layout = "layout: pages", columns = "columns", style = "style",
   cell_styles = "cell_styles: cell looks",
   col_header = "col_header: column header",
@@ -6908,6 +6909,8 @@ app_server <- function(input, output, session, start) {
   bform$n <- 0L
   session$userData$bform <- bform
   bform_drawn <- shiny::reactiveVal(0L)
+  # a variable's own decimals, as the form edits them (bform$exc)
+  exc_ver <- shiny::reactiveVal(0L)
   rv$bver <- 0L
   rv$btouched <- FALSE
   # the page shown: a Tables sub-tab counts as its own page
@@ -6992,6 +6995,8 @@ app_server <- function(input, output, session, start) {
     bform_drawn(bform$n)
     bform$id <- id
     bform$st <- st
+    bform$exc <- st$exceptions
+    bform$own_tpl <- list()
     # what the sheets say, as the form last wrote or read it: an edit writes
     # only what differs from it
     bform$last <- st
@@ -7064,51 +7069,174 @@ app_server <- function(input, output, session, start) {
       shiny::div(
         class = "rp-b-card",
         shiny::h6(t("Statistics")),
-        builder_stat_boxes(bs, st$stats, m$stats),
-        shiny::numericInput(
-          bid("dec"), t("Decimals the data are collected with"),
-          value = st$decimals, min = 0, max = 6, width = "260px"),
-        shiny::p(class = "small text-muted",
-                 t("Mean, median and quartiles get one more, SD two more, Min / Max the same.")),
+        shiny::radioButtons(
+          bid("value"),
+          with_tip(t("Values"), t("Numbers: the ARD's values (stat), rounded here to the decimals below. The ARD's text: the values as step 2 formatted them (stat_fmt), printed as they are; a row may still put two in one (Mean (SD)).")),
+          stats::setNames(c("stat", "stat_fmt"),
+                          t(c("Numbers, rounded here", "The ARD's text (as formatted in step 2)"))),
+          selected = st$value, inline = TRUE),
+        builder_rows_ui(bs, st, m$stats),
+        shiny::conditionalPanel(
+          sprintf("input['%s'] == 'stat'", bid("value")),
+          shiny::uiOutput(bid("digits_ui")),
+          shiny::uiOutput(bid("exc_ui"))),
         shiny::radioButtons(
           bid("cat"), t("Categorical variables"),
           stats::setNames(.cat_formats()$key, .cat_formats()$label),
           selected = st$cat_format, inline = TRUE),
-        shiny::numericInput(bid("pct"), t("Decimals of the percent"),
-                            value = st$pct_decimals, min = 0, max = 3,
-                            width = "260px"),
+        shiny::conditionalPanel(
+          sprintf("input['%s'] == 'stat'", bid("value")),
+          shiny::numericInput(bid("pct"), t("Decimals of the percent"),
+                              value = st$pct_decimals, min = 0, max = 3,
+                              width = "260px")),
         shiny::uiOutput(bid("warn"))))
   })
-  # The continuous statistics as checkboxes: one whose template needs a
-  # statistic this report's ARD does not have is greyed and cannot be
-  # ticked, and says what to add on the ARD tab.  (One already chosen stays
-  # ticked, so the sheets are not changed behind the user's back.)
-  builder_stat_boxes <- function(bs, chosen, have) {
-    lack <- .builder_stats_lacking(bs$template, have)
-    names_ui <- lapply(seq_len(nrow(bs)), function(i) {
-      if (!nzchar(lack[i])) return(bs$row[i])
-      shiny::span(
-        class = "text-muted",
-        title = sprintf(t("Not in this report's ARD: add %s to its analysis in step 2 (ARD)."),
-                        lack[i]),
-        bs$row[i],
-        shiny::tags$small(class = "ms-1",
-                          sprintf(t("(the ARD has no %s)"), lack[i])))
-    })
-    off <- bs$key[nzchar(lack) & !bs$key %in% chosen]
-    boxes <- shiny::checkboxGroupInput(
-      bid("stats"), t("Continuous variables"),
-      choiceNames = names_ui, choiceValues = bs$key, selected = chosen)
-    boxes <- htmltools::tagQuery(boxes)$find("input")$each(function(x, i) {
-      if (x$attribs$value %in% off) x$attribs$disabled <- NA
-    })$allTags()
-    shiny::tagList(
-      boxes,
-      if (any(nzchar(lack))) shiny::p(
-        class = "small text-muted",
-        t("Greyed statistics are not in this report's ARD: add them to its analysis in step 2 (ARD), then read the ARD again.")))
+  # A variable's own decimals: the list (each with x to take it away) and a
+  # line to add one
+  builder_exc_ui <- function(n, st, rows) {
+    exc_ver()
+    exc <- bform$exc %||% st$exceptions
+    tpl <- builder_templates(st)
+    used <- unique(c(unlist(lapply(tpl[intersect(rows, names(tpl))], .template_stats)),
+                     "n", "p"))
+    id <- function(x) paste0("b", n, "_", x)
+    shiny::tags$details(
+      class = "small mb-2", open = if (nrow(exc)) NA,
+      shiny::tags$summary(sprintf(t("A variable of its own (%d)"), nrow(exc))),
+      if (nrow(exc)) shiny::tags$ul(
+        class = "list-unstyled mb-1",
+        lapply(seq_len(nrow(exc)), function(i) shiny::tags$li(
+          sprintf("%s: %s %d", exc$variable[i], exc$statistic[i], exc$digits[i]),
+          shiny::tags$a(
+            href = "#", class = "ms-2 text-danger", title = t("Take it away"),
+            onclick = sprintf("Shiny.setInputValue('%s', %d, {priority: 'event'}); return false;",
+                              id("exc_rm"), i), "\u00d7")))),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2 align-items-end",
+        shiny::selectInput(id("exc_var"), t("Variable"), st$variables$variable,
+                           width = "140px"),
+        shiny::selectInput(id("exc_stat"), t("Statistic"), used, width = "110px"),
+        shiny::numericInput(id("exc_dg"), t("Decimals"), value = 2, min = 0,
+                            max = 6, step = 1, width = "88px"),
+        .btn(id("exc_add"), t("Add"), class = "btn-sm btn-outline-primary mb-3")))
   }
-
+  # (the form drawn again has new ids: read them again when it is)
+  shiny::observeEvent({
+    bform_drawn()
+    input[[bid("exc_add")]]
+  }, {
+    v <- input[[bid("exc_var")]]
+    k <- input[[bid("exc_stat")]]
+    d <- suppressWarnings(as.integer(input[[bid("exc_dg")]]))
+    shiny::req(nzchar(v %||% ""), nzchar(k %||% ""), length(d) == 1L, !is.na(d), d >= 0L)
+    exc <- bform$exc %||% data.frame(variable = character(), statistic = character(),
+                                     digits = integer(), stringsAsFactors = FALSE)
+    exc <- exc[!(exc$variable == v & exc$statistic == k), , drop = FALSE]
+    exc[nrow(exc) + 1L, ] <- list(v, k, d)
+    rownames(exc) <- NULL
+    bform$exc <- exc
+    exc_ver(exc_ver() + 1L)
+  })
+  # (the form drawn again has new ids: read them again when it is)
+  shiny::observeEvent({
+    bform_drawn()
+    input[[bid("exc_rm")]]
+  }, {
+    i <- input[[bid("exc_rm")]]
+    exc <- bform$exc
+    shiny::req(!is.null(exc), i >= 1L, i <= nrow(exc))
+    exc <- exc[-i, , drop = FALSE]
+    rownames(exc) <- NULL
+    bform$exc <- exc
+    exc_ver(exc_ver() + 1L)
+  })
+  # a row of one's own: added at the end of the shown rows, written at once
+  # (the form drawn again has new ids: read them again when it is)
+  shiny::observeEvent({
+    bform_drawn()
+    input[[bid("own_add")]]
+  }, {
+    lb <- trimws(input[[bid("own_label")]] %||% "")
+    tp <- trimws(input[[bid("own_tpl")]] %||% "")
+    if (!nzchar(lb) || !grepl("[{][^}]+[}]", tp)) {
+      return(notify(t("A row of your own needs a label and a template with a {statistic}.")))
+    }
+    st <- shiny::isolate(bstate())
+    st$rows <- unique(c(st$rows, lb))
+    st$templates[[lb]] <- tp
+    p2 <- guarded(builder_write(rv$p, bform$id, st, was = bform$last))
+    shiny::req(!is.null(p2))
+    rv$p <- p2
+    rv$bver <- rv$bver + 1L
+  })
+  # A continuous variable's rows: those shown, in order (drag), and those
+  # offered (the company standards' rows); a row whose template needs a
+  # statistic this report's ARD does not have says so.  A row of one's own:
+  # a label and a template.
+  builder_rows_ui <- function(bs, st, have) {
+    tpl <- builder_templates(st)
+    label_of <- function(lb) {
+      lack <- .builder_stats_lacking(tpl[[lb]] %||% "", have)
+      if (!nzchar(lack)) return(lb)
+      shiny::span(lb, shiny::tags$small(class = "text-muted ms-1",
+                                        sprintf(t("(the ARD has no %s)"), lack)))
+    }
+    offered <- setdiff(names(tpl), st$rows)
+    shiny::tagList(
+      sortable::bucket_list(
+        header = NULL,
+        group_name = bid("rows_group"),
+        orientation = "horizontal",
+        sortable::add_rank_list(
+          text = t("Continuous variables: the rows (drag to order)"),
+          labels = stats::setNames(lapply(st$rows, label_of), st$rows),
+          input_id = bid("rows")),
+        sortable::add_rank_list(
+          text = t("Not shown (drag a row to the left)"),
+          labels = stats::setNames(lapply(offered, label_of), offered),
+          input_id = bid("rows_off"))),
+      shiny::tags$details(
+        class = "small mb-2",
+        shiny::tags$summary(t("A row of your own")),
+        shiny::div(
+          class = "d-flex flex-wrap gap-2 align-items-end",
+          shiny::textInput(bid("own_label"), t("Row label"), placeholder = "Mean +/- SD",
+                           width = "160px"),
+          shiny::textInput(bid("own_tpl"), t("Template"), placeholder = "{mean} +/- {sd}",
+                           width = "200px"),
+          .btn(bid("own_add"), t("Add the row"), class = "btn-sm btn-outline-primary mb-3")),
+        shiny::p(class = "text-muted mb-0",
+                 t("{statistic} as the ARD names it: N, mean, sd, se, median, p25, p75, min, max ..."))))
+  }
+  # every row's template: the table's, the standards', one's own
+  builder_templates <- function(st) {
+    bs <- builder_stats()
+    tpl <- stats::setNames(as.list(bs$template), bs$row)
+    own <- as.list(st$templates %||% list())
+    tpl[names(own)] <- own
+    tpl[unique(c(st$rows, names(tpl)))]
+  }
+  # the decimals of the statistics the shown rows print; each a number
+  output_digits_ui <- function(n, st, rows) {
+    tpl <- builder_templates(st)
+    used <- unique(unlist(lapply(tpl[intersect(rows, names(tpl))], .template_stats)))
+    if (!length(used)) return(NULL)
+    rule <- .report_digits(shiny::isolate(rv$p), bform$id)
+    cur <- st$digits
+    shiny::tagList(
+      shiny::tags$label(class = "form-label small mb-0",
+                        with_tip(t("Decimals of each statistic"),
+                                 t("The same for every analysis variable; a variable of its own below. A row's template that says its own format ({mean:.2f}) keeps it."))),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2",
+        lapply(used, function(k) {
+          typed <- suppressWarnings(as.integer(
+            shiny::isolate(input[[paste0("b", n, "_dg_", k)]])))
+          v <- .or_na(typed, .or_na(unname(cur[k]), .or_na(unname(rule[k]), 1L)))
+          shiny::numericInput(paste0("b", n, "_dg_", k), k, value = v, min = 0,
+                              max = 6, step = 1, width = "88px")
+        })))
+  }
   # Whatever goes wrong in the builder stays in the builder: it is said once
   # (and logged), and the reactive stops quietly (req) instead of ending the
   # session.  (req's own silent stop passes through.)
@@ -7404,10 +7532,26 @@ app_server <- function(input, output, session, start) {
       x <- suppressWarnings(as.numeric(get(x)))
       if (length(x) != 1L || is.na(x)) d else max(0, round(x))
     }
-    stats <- builder_stats()$key
+    rows <- get("rows") %||% st$rows
+    tpl <- builder_templates(list(templates = c(as.list(st$templates),
+                                                bform$own_tpl %||% list()),
+                                  rows = st$rows))
+    value <- get("value") %||% st$value
+    used <- unique(unlist(lapply(tpl[intersect(rows, names(tpl))], .template_stats)))
+    digits <- st$digits[intersect(names(st$digits), used)]
+    for (k in used) {
+      dv <- suppressWarnings(as.numeric(get(paste0("dg_", k))))
+      if (length(dv) == 1L && !is.na(dv)) digits[[k]] <- as.integer(max(0, round(dv)))
+    }
+    digits <- digits[intersect(used, names(digits))]
+    if (identical(digits, st$digits[names(digits)]) &&
+        setequal(names(digits), names(st$digits))) digits <- st$digits
+    exc_ver()
     list(key = ks, arms = arms, variables = v, levels = lev,
-         stats = stats[stats %in% get("stats")],
-         decimals = num("dec", st$decimals),
+         rows = rows,
+         templates = tpl[intersect(rows, names(tpl))],
+         value = value, digits = digits,
+         exceptions = bform$exc %||% st$exceptions,
          cat_format = get("cat") %||% st$cat_format,
          pct_decimals = num("pct", st$pct_decimals),
          header = {
@@ -7437,9 +7581,22 @@ app_server <- function(input, output, session, start) {
     st <- bstate()
     m <- bform$meta
     n <- bform$n
-    tpl <- c(builder_stats()$template[builder_stats()$key %in% st$stats],
-             .cat_template(st$cat_format, st$pct_decimals))
+    tpl <- c(unlist(st$templates), .cat_template(st$cat_format, st$pct_decimals))
     miss <- if (!is.null(m)) .missing_stats(tpl, m$stats) else character()
+    # the decimals' fields: drawn again only when the statistics change (a
+    # number typed is not drawn over), the variables' own when they change
+    rows_now <- input[[paste0("b", n, "_rows")]] %||% st$rows
+    tpl_now <- builder_templates(bform$st)
+    used_now <- unique(unlist(lapply(tpl_now[intersect(rows_now, names(tpl_now))],
+                                     .template_stats)))
+    key_now <- paste(n, paste(used_now, collapse = "|"), exc_ver())
+    if (!identical(bform$dg_key, key_now)) {
+      bform$dg_key <- key_now
+      output[[paste0("b", n, "_digits_ui")]] <- shiny::renderUI(
+        output_digits_ui(n, bform$st, rows_now))
+      output[[paste0("b", n, "_exc_ui")]] <- shiny::renderUI(
+        builder_exc_ui(n, bform$st, rows_now))
+    }
     output[[paste0("b", n, "_warn")]] <- shiny::renderUI(
       if (length(miss)) shiny::div(
         class = "alert alert-warning py-1 small",

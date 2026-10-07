@@ -26,8 +26,10 @@ test_that("reading and writing back unchanged changes nothing", {
   m <- ard_meta(dm_ard())
   st <- builder_read(p, "DM", m)
   expect_equal(st$key, "TRT01A")
-  expect_equal(st$stats, c("n", "mean_sd", "median", "min_max"))
-  expect_equal(st$decimals, 0)
+  expect_equal(st$rows, c("n", "Mean (SD)", "Median", "Min, Max"))
+  expect_equal(st$value, "stat")
+  # the decimals the rows print now (their own digits)
+  expect_equal(st$digits, c(N = 0L, mean = 1L, sd = 2L, median = 1L, min = 0L, max = 0L))
   expect_equal(st$cat_format, "npct")
   expect_equal(st$variables$variable, c("AGE", "AGEGR1", "SEX"))
   q <- builder_write(p, "DM", st)
@@ -35,6 +37,7 @@ test_that("reading and writing back unchanged changes nothing", {
   expect_equal(sheet_rows(q, "variables", "DM")$order, c("1", "2", "3"))
   expect_true(all(is.na(sheet_rows(q, "variables", "DM")$levels)))
   expect_identical(q$sheets$cells, p$sheets$cells)
+  expect_identical(nrow(sheet_rows(q, "digits", "DM")), 0L)
   expect_identical(builder_write(q, "DM", builder_read(q, "DM", m))$sheets,
                    q$sheets)
 })
@@ -48,8 +51,10 @@ test_that("the builder's choices land in the sheets", {
   st$variables <- st$variables[c(3, 1, 2), ]
   st$variables$label[1] <- "Sex"
   st$levels$SEX <- c("M", "F")
-  st$stats <- c("n", "mean_sd", "q1q3", "min_max")
-  st$decimals <- 1
+  st$rows <- c("n", "Mean (SD)", "Q1, Q3", "Min, Max")
+  st$templates[["Q1, Q3"]] <- "{p25}, {p75}"
+  st$digits <- c(N = 0L, mean = 2L, sd = 3L, p25 = 2L, p75 = 2L, min = 1L, max = 1L)
+  st$exceptions <- data.frame(variable = "AGE", statistic = "mean", digits = 3L)
   st$cat_format <- "nNpct"
   st$pct_decimals <- 0
   st$header <- "Arm / (N=n)"
@@ -64,14 +69,21 @@ test_that("the builder's choices land in the sheets", {
   c <- sheet_rows(q, "cells", "DM")
   expect_equal(c$row[c$variable == "continuous"],
                c("n", "Mean (SD)", "Q1, Q3", "Min, Max"))
-  expect_equal(c$digits[c$variable == "continuous"], c("0", "2,3", "2", "1"))
+  # the rows say no digits of their own: the statistics' are on the digits sheet
+  expect_true(all(is.na(c$digits[c$variable == "continuous"])))
+  expect_equal(c$template[c$variable == "continuous"],
+               c("{N}", "{mean} ({sd})", "{p25}, {p75}", "{min}, {max}"))
+  dg <- sheet_rows(q, "digits", "DM")
+  expect_equal(dg$digits[is.na(dg$variable) & dg$statistic == "mean"], "2")
+  expect_equal(dg$digits[dg$variable %in% "AGE" & dg$statistic == "mean"], "3")
   expect_equal(c$template[c$variable %in% "categorical"],
                "{n:.0f}/{N:.0f} ({p:.0f%})")
   expect_equal(nrow(sheet_rows(q, "col_header", "DM")), 4)
   # and reads back as written
   back <- builder_read(q, "DM", m)
-  expect_equal(back$stats, st$stats)
-  expect_equal(back$decimals, 1)
+  expect_equal(back$rows, st$rows)
+  expect_equal(back$digits[c("mean", "sd")], c(mean = 2L, sd = 3L))
+  expect_equal(back$exceptions$digits, 3L)
   expect_equal(back$cat_format, "nNpct")
   expect_equal(back$variables$variable, c("SEX", "AGE", "AGEGR1"))
 })

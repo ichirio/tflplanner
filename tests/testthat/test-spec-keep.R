@@ -112,8 +112,9 @@ builder_show <- function(session, bform) {
   v[[b("key")]] <- st$key
   v[[b("vars")]] <- st$variables$variable
   for (k in st$key) v[[b(paste0("arms_", make.names(k)))]] <- st$arms[[k]]
-  v[[b("stats")]] <- st$stats
-  v[[b("dec")]] <- st$decimals
+  v[[b("rows")]] <- st$rows
+  v[[b("value")]] <- st$value
+  for (k in names(st$digits)) v[[b(paste0("dg_", k))]] <- st$digits[[k]]
   v[[b("cat")]] <- st$cat_format
   v[[b("pct")]] <- st$pct_decimals
   for (i in seq_len(nrow(st$variables))) {
@@ -175,10 +176,11 @@ test_that("step 3, the table builder: what it cannot show stays as written", {
       expect_identical(sheet_rows(rv$p, sh, "T-DM"), sheet_rows(p0, sh, "T-DM"),
                        info = paste("label:", sh))
     }
-    # the decimals changed: the digits follow, each statistic's own
-    # template and condition stay
+    # a statistic's decimals changed: the digits sheet says them, the rows
+    # give theirs up (or they would win); each row's template, condition and
+    # significant digits stay
     v <- list()
-    v[[paste0("b", bform$n, "_dec")]] <- bform$st$decimals + 1
+    v[[paste0("b", bform$n, "_dg_mean")]] <- bform$st$digits[["mean"]] + 1
     do.call(session$setInputs, v)
     session$elapse(1000)
     ce <- sheet_rows(rv$p, "cells", "T-DM")

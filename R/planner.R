@@ -24,8 +24,8 @@
 #' @return `table_sheets()` and `report_sheets()` return a character vector.
 #' @export
 table_sheets <- function() {
-  c("tables", "variables", "codelists", "cells", "layout", "columns", "style",
-    "cell_styles", "col_header")
+  c("tables", "variables", "codelists", "cells", "digits", "layout", "columns",
+    "style", "cell_styles", "col_header")
 }
 
 #' @rdname table_sheets
