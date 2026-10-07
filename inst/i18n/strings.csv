@@ -2337,7 +2337,7 @@ Its code lists,そのコードリスト
 As the variable (its name in this report's data),変数名（この帳票のデータでの名前）
 %s's code lists: %s copied (save to keep them).,%s のコードリスト：%s を写しました（保存すると残ります）。
 ARD and table,ARD と表
-"A report's code lists, one row a value of a variable -- the text it prints as and its place (plan_labels(), plan_levels()). Every row names its report in `output_id` (a blank one is an error: copy the rows into each report that uses them). A variable's `levels` on the variables sheet, when given, is the order in the table instead. The ARD too: a report's ARD program makes factors of the columns it lists that its analyses read (by, strata, variables) before any analysis.",帳票のコードリスト。1 行 = 変数の 1 つの値で、表示する文字と順番（plan_labels()、plan_levels()）。どの行も output_id に帳票を書く（空欄はエラー：使う帳票ごとに行を写す）。variables シートの levels を書いたときは、表ではそちらの順になる。ARD でも使う：帳票の ARD プログラムは、解析が読む列（by、strata、variables）のうちここにあるものを、解析の前に factor にする。
+"A report's code lists, one row a value of a variable -- the text it prints as and its place (plan_labels(), plan_levels()). Every row names its report in `output_id` (a blank one is an error: copy the rows into each report that uses them). A variable's `levels` on the variables sheet, when given, is the order in the table instead. The code list of `variable` (its values the variables' names) gives the variables' labels, where the variables sheet's `label` gives none. The ARD too: a report's ARD program makes factors of the columns it lists that its analyses read (by, strata, variables) before any analysis.",帳票のコードリスト。1 行 = 変数の 1 つの値で、表示する文字と順番（plan_labels()、plan_levels()）。どの行も output_id に帳票を書く（空欄はエラー：使う帳票ごとに行を写す）。variables シートの levels を書いたときは、表ではそちらの順になる。variable のコードリスト（値は変数名）は、variables シートの label が無い変数の見出しになる。ARD でも使う：帳票の ARD プログラムは、解析が読む列（by、strata、variables）のうちここにあるものを、解析の前に factor にする。
 "This study is in an old format: its analysis data and code lists are the whole study's, not a report's. Make it again from the sample, or make a new study.",この試験は古い形式です（解析データ・コードリストが帳票のものではなく、試験全体のものです）。サンプルから新しく作り直すか、新しい試験を作ってください。
 "An old format: the analysis data have no report. Make the study again from the sample, or make a new study.",古い形式の試験です（解析データが帳票のものではありません）。サンプルから作り直すか、新しい試験を作ってください。
 The checks' messages,検査のメッセージ（詳細）
@@ -2406,3 +2406,11 @@ Font,フォント
 Size (pt),大きさ（pt）
 "The size is a number of points (9, 10 ...).",大きさはポイントの数（9、10 など）で入れてください。
 "The document's font (its font table); the study's row (blank output_id) is the company's, written once in the setup code; blank: rtfreporter's option (Courier).",文書のフォント（フォント表）。試験の行（output_id が空欄）は会社の値で、共通の準備のコードに 1 回だけ書かれます。空欄 = rtfreporter の設定（Courier）。
+Levels and order (code lists)...,水準と順序（コードリスト）…
+Levels and order: the columns of %s,水準と順序：%s の列
+Levels and order: the columns of this analysis data,水準と順序：この解析データの列
+Levels and order: this analysis's groups and variables,水準と順序：この解析の群と変数
+Code lists of %s's table,%s の表のコードリスト
+Code lists of this table...,この表のコードリスト…
+"This report's code lists: each variable's values, their order and the text they print as. The ARD uses those of the variables its analyses read (a value no record has is counted 0); the table uses them all, in their order unless the variables sheet says another (levels).",この帳票のコードリスト：変数ごとの値、その順番、表示する文字。ARD は解析が読む変数のものを使い（データにない値は 0 と数える）、表はすべてを使います。表の順は、variables シートの levels が無ければこの順です。
+Blank: the label of this report's code list of variable (faint). What is written here is the table's own.,空欄なら、この帳票のコードリスト（variable）の見出し（薄い字）。ここに書くとこの表の見出しになります。

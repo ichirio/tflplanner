@@ -63,7 +63,7 @@ test_that("the company standards' code lists, and the variables a report uses", 
   p <- cl_planner()
   p <- set_sheet_rows(p, "variables", "T1", data.frame(variable = "AGEGR1", label = "Age group"))
   v <- .codelist_vars(p, "T1")
-  expect_true(all(c("TRT01A", "SEX", "AGE", "AGEGRP", "AGEGR1") %in% v))
+  expect_true(all(c("TRT01A", "SEX", "AGE", "AGEGRP", "AGEGR1", "variable") %in% v))
   expect_setequal(.codelist_ard_vars(p, "T1"), c("TRT01A", "SEX", "AGE"))
   expect_identical(.codelist_vars(p, NULL), character())
 })
@@ -142,4 +142,72 @@ test_that("a study of the old format: said once, and why step 2 is empty", {
     expect_match(chk, "An old format", fixed = TRUE)
     expect_match(chk, "<details>", fixed = TRUE)
   })
+})
+
+test_that("a drag list's levels show their code list's text, the values given back", {
+  cl <- data.frame(variable = c("SEX", "SEX"), value = c("F", "M"), label = c("Female", NA))
+  x <- .levels_with_labels(c("F", "M", "U"), "SEX", cl)
+  expect_identical(names(x), c("F", "M", "U"))
+  expect_match(as.character(x[[1L]]), "text-muted small ms-1\">Female", fixed = TRUE)
+  expect_false(grepl("text-muted", as.character(x[[2L]]), fixed = TRUE))
+  # nothing to show: the values as they are
+  expect_identical(.levels_with_labels(c("A", "B"), "ARM", cl), c("A", "B"))
+  expect_identical(.levels_with_labels(character(), "SEX", cl), character())
+})
+
+test_that("2-1, 2-2 and step 3 open the report's code lists in a dialog", {
+  skip_on_cran()
+  local_home()
+  p <- cl_planner()
+  p <- set_analysis_data(p, "T1", "adsl_saf", from = "ADSL", population_id = "SAF",
+                         derive = "OLD = ifelse(AGE >= 75, \"Y\", \"N\")")
+  p <- set_codelist(p, "T1", data.frame(variable = c("OLD", "OLD", "COUNTRY"),
+                                        value = c("Y", "N", "JPN")))
+  create_study("CD", planner = p)
+  shiny::testServer(server_for("CD"), {
+    rv <- session$userData$rv
+    session$setInputs(nav = "make", step = "ard", target = "T1")
+    session$setInputs(ard_adata_pick = "adsl_saf")
+    expect_match(output$adata_detail$html, "cl21_open", fixed = TRUE)
+    session$setInputs(adata_id = "adsl_saf", adata_add = NULL, adata_keep = NULL)
+    # 2-1: the columns it makes (OLD), not the others
+    session$setInputs(cl21_open = 1)
+    expect_true(grepl("OLD", paste(output$cl21_hot, collapse = ""), fixed = TRUE))
+    expect_false(grepl("COUNTRY", paste(output$cl21_hot, collapse = ""), fixed = TRUE))
+    expect_match(output$cl21_hidden$html, "1", fixed = TRUE)
+    # a copy from the dialog: into the report, and back to the dialog
+    session$setInputs(cl21_copy = 1, cl21_from = ".std")
+    session$setInputs(cl21_pick = "AESEV", cl21_as_var = "AESEV", cl21_copy_ok = 1)
+    d <- sheet_rows(rv$p, "codelists", "T1")
+    expect_identical(d$value[d$variable == "AESEV"], c("MILD", "MODERATE", "SEVERE"))
+    session$setInputs(cl21_done = 1)
+    # 2-2 and step 3: the same report's rows
+    session$setInputs(cl22_open = 1)
+    expect_false(is.null(output$cl22_hot))
+    session$setInputs(cl22_done = 1)
+    session$setInputs(cl3_open = 1)
+    # the variables the report uses (OLD its data makes), not COUNTRY
+    expect_true(grepl("OLD", paste(output$cl3_hot, collapse = ""), fixed = TRUE))
+    expect_false(grepl("COUNTRY", paste(output$cl3_hot, collapse = ""), fixed = TRUE))
+    b <- rv$bver
+    session$setInputs(cl3_done = 1)
+    expect_identical(rv$bver, b + 1L)
+  })
+})
+
+test_that("step 3: a variable's label from the code list of `variable`, faint, not written", {
+  p <- cl_planner()
+  p <- set_sheet_rows(p, "variables", "T1", data.frame(
+    variable = c("SEX", "AGE"), label = c(NA, "Age"), order = c("1", "2")))
+  p <- set_codelist(p, "T1", data.frame(variable = "variable", value = c("SEX", "AGE"),
+                                        label = c("Sex (code list)", "not this")))
+  st <- builder_read(p, "T1")
+  v <- st$variables
+  # SEX: no label of its own, the code list's as the hint; AGE: its own
+  expect_true(is.na(v$label[v$variable == "SEX"]))
+  expect_identical(v$hint[v$variable == "SEX"], "Sex (code list)")
+  expect_identical(v$label[v$variable == "AGE"], "Age")
+  # written back unchanged: the variables sheet as it was (no label for SEX)
+  q <- builder_write(p, "T1", st, was = st)
+  expect_identical(sheet_rows(q, "variables", "T1")$label, sheet_rows(p, "variables", "T1")$label)
 })
