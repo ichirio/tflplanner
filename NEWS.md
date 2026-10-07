@@ -14,6 +14,13 @@
   list shows the report's set, else its analyses' (their analysis data's
   too).
 
+- **The sample's ADSL has ITTFL, EFFFL and PPROTFL** (#218), derived by
+  data-raw/make-sample-study.R (pharmaverseadam's ADSL has SAFFL only of
+  the population flags; the sample's README says how), so step 2 has
+  flags to choose from.  The study's analysis sets stay SAF only; the
+  reports and the ARD are the same.  The script also writes T-14-3-1 with
+  the analysis data the sample has had since #213.
+
 - **2-2's analysis form, after a look at it** (#215).  The card has one
   heading ("Analysis A1 (i)"; "Analysis" while none is chosen); the method
   is "The method (method)" and is described once, under it; the formats'
