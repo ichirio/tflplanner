@@ -5,7 +5,8 @@
 #   study    the study sheet's keys, a named character vector
 #   outputs  the report list: output_id, description, data_code (makes
 #            the ARD), process_code (normalizes and reworks it), section
-#            (the TOC's heading it is under; blank: from its ID) -- the
+#            (the TOC's heading it is under; blank: from its ID),
+#            population (its analysis set: the TOC's, step 2's) -- the
 #            part rtfreporter does not read, kept in the report workbook's
 #            `_tflplanner` sheet (a sheet whose name starts with `_` is
 #            not read by rtfreporter)
@@ -193,7 +194,8 @@ sheet_columns <- function(sheet) {
 .empty_outputs <- function() {
   data.frame(output_id = character(), description = character(),
              data_code = character(), process_code = character(),
-             section = character(), stringsAsFactors = FALSE)
+             section = character(), population = character(),
+             stringsAsFactors = FALSE)
 }
 
 #' A new, empty study definition
@@ -346,11 +348,14 @@ read_planner <- function(path) {
 #'   `"table"` is written on the `report` sheet.
 #' @param section The section of the TOC the report is under (its heading,
 #'   "14.1 Demographics"); `NA`: from its ID's numbers.
+#' @param population The report's analysis set, a population_id (see
+#'   [set_report_population()], which also makes its analysis data).
 #' @return The updated `tflplanner`.
 #' @export
 add_output <- function(x, output_id, description = NA_character_,
                        data_code = NA_character_, type = "table",
-                       process_code = NA_character_, section = NA_character_) {
+                       process_code = NA_character_, section = NA_character_,
+                       population = NA_character_) {
   id <- .check_id(output_id)
   if (id %in% x$outputs$output_id) {
     stop("Report '", id, "' is already on the list.", call. = FALSE)
@@ -361,7 +366,8 @@ add_output <- function(x, output_id, description = NA_character_,
     output_id = id, description = as.character(description),
     data_code = as.character(data_code),
     process_code = as.character(process_code),
-    section = as.character(section), stringsAsFactors = FALSE))
+    section = as.character(section), population = as.character(population),
+    stringsAsFactors = FALSE))
   x
 }
 
@@ -400,6 +406,7 @@ copy_output <- function(x, from, to) {
                   description = if (nrow(src)) src$description else NA,
                   data_code = if (nrow(src)) src$data_code else NA,
                   process_code = if (nrow(src)) src$process_code else NA,
+                  population = if (nrow(src)) src$population %||% NA else NA,
                   type = report_info(x, from)$type)
   x
 }
@@ -553,7 +560,8 @@ write_planner <- function(x, dir, table_file = "table_spec.xlsx",
   meta <- rbind(
     data.frame(output_id = NA_character_, description = "(every report)",
                data_code = x$setup, process_code = NA_character_,
-               section = NA_character_, stringsAsFactors = FALSE),
+               section = NA_character_, population = NA_character_,
+               stringsAsFactors = FALSE),
     x$outputs[names(.empty_outputs())])
   .write_book(.spec_object(x, report_sheets(), .study_keys$report), rp,
               tflspec::tfl_write_report_spec,
