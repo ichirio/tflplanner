@@ -140,8 +140,8 @@
       code = c(paste(
         "# ---- this output's rows of the study ARD ({ARD}, made by {ARD_PROGRAM})",
         "ard <- readRDS(\"{ARD}\")",
-        "ard <- ard[ard$output_id == \"{OUTPUT_ID}\",",
-        "           setdiff(names(ard), c(\"output_id\", \"analysis_id\", \"population_id\"))]",
+        "ard <- subset(ard, output_id == \"{OUTPUT_ID}\",",
+        "              select = -c(output_id, analysis_id, population_id))",
         "if (!nrow(ard)) stop(\"The study ARD has no rows for {OUTPUT_ID}: make its ARD first.\")",
         sep = "\n"),
         paste(

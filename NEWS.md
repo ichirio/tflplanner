@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **The sample study, after an audit** (#238).  T-14-2-2 (KM estimates)
+  has no "Characteristic" over its rows.  L-16-2-7 lists the
+  treatment-emergent severe adverse events (2 of 43 were not), titled so,
+  the arms in their order (sorted by `TRT01AN`, which the sample's ADSL and
+  ADAE now have, as an ADaM does).  F-14-2-1's code says its parameter.
+  The other reports are the same, byte for byte.  The company standards'
+  `table_data` code takes a report's rows of the study ARD with
+  `subset(ard, output_id == ..., select = -c(output_id, analysis_id,
+  population_id))`.
+
 - **The TOC's population is the reports' analysis set** (#219).  The TOC
   dialog shows each text of its population column with the study's set it
   is -- matched by id, label (the company standards', else the flag's), a
