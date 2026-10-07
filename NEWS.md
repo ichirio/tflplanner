@@ -1,5 +1,18 @@
 # tflplanner (development version)
 
+- **An analysis data is a report's** (#244; tflspec 0.0.24.9055).  2-1 lists
+  the report's own rows, all of them; delete, "in use" and the names are
+  the report's; `set_analysis_data()`, `remove_analysis_data()`,
+  `copy_analysis_data()` take the report.  [Copy from another report...]
+  copies a report's analysis data under the same names
+  (`import_analysis_data()`).  The Data tab shows the datasets and the
+  analysis sets only: the analysis data grid is gone (2-1's SPEC tab).  A
+  report's analysis set data, the TOC's, and copy / rename / remove of a
+  report follow.  The condition builder shows a variable on one line, cut
+  with ..., the whole on hover.  The sample's tables each have their own
+  rows; the reports and the ARD are the same.  A study made before has no
+  report on its rows: tflspec says so (make it again from the sample).
+
 - **Every report's header, defined once** (#223).
   - The package's header for a new study: `{COMPANY}` and
     `{ANALYSIS_TYPE}`, then `PROTOCOL: {STUDY_ID}` and the page, a blank

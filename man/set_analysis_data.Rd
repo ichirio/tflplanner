@@ -3,12 +3,14 @@
 \name{set_analysis_data}
 \alias{set_analysis_data}
 \alias{remove_analysis_data}
+\alias{import_analysis_data}
 \alias{name_analysis_data}
 \alias{copy_analysis_data}
 \title{Add, change or remove an analysis data of the ARD definition}
 \usage{
 set_analysis_data(
   x,
+  output_id,
   data_id,
   from,
   population_id = NA,
@@ -23,14 +25,18 @@ set_analysis_data(
   code = NA
 )
 
-remove_analysis_data(x, data_id)
+remove_analysis_data(x, output_id, data_id)
+
+import_analysis_data(x, from_output, output_id, data_ids = NULL)
 
 name_analysis_data(x, output_id, dataset, population_id, data_id, label = NA)
 
-copy_analysis_data(x, data_id)
+copy_analysis_data(x, output_id, data_id)
 }
 \arguments{
 \item{x}{A \code{tflplanner}.}
+
+\item{output_id}{The report.}
 
 \item{data_id}{The name (lower case; also the object's name in the ARD
 program).}
@@ -47,7 +53,10 @@ columns with \code{" | "} between them).}
 \item{code}{R that makes the data itself (its value is the data); with
 it the other columns but \code{from} stay blank.}
 
-\item{output_id}{The report.}
+\item{from_output}{The report whose analysis data are copied.}
+
+\item{data_ids}{Which of them (\code{NULL}: all), with what they are made
+from and kept to, when those are analysis data as well.}
 
 \item{dataset}{The dataset its analyses read (\code{NA}: the analysis set's
 own).}
@@ -72,4 +81,8 @@ name is followed in the analyses and the analysis data made from it).
 \code{name_analysis_data()} gives a report's data -- a dataset x analysis set
 its analyses read -- a name: the analysis data is made, those analyses
 read it, and a condition all of them have moves into it.
+
+\code{import_analysis_data()} copies a report's analysis data into
+another report, under the same names (a name the report has already
+gets \verb{_1}, \verb{_2} ...); attribute \code{copied} names the rows added.
 }
