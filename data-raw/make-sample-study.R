@@ -12,7 +12,7 @@
 #   T-14-2-2  Table    Time to first dermatologic event: Kaplan-Meier
 #                      estimates (median, event-free probability by day)
 #   T-14-3-1  Table    TEAEs by SOC / PT, frequency descending
-#   L-16-2-7  Listing  Severe adverse events
+#   L-16-2-7  Listing  Severe treatment-emergent adverse events
 #   F-14-2-1  User code  Mean change from baseline in systolic blood pressure
 #   F-14-2-2  User code  Kaplan-Meier plot of the time to first dermatologic
 #                      event; its number at risk is T-14-2-2's ARD
@@ -83,6 +83,13 @@ adsl$EFFFL <- flag(adsl$SAFFL %in% "Y" &
                    "Efficacy Population Flag")
 adsl$PPROTFL <- flag(adsl$SAFFL %in% "Y" & adsl$EOSSTT %in% "COMPLETED",
                      "Per-Protocol Population Flag")
+# the arm's number, as an ADaM has it (pharmaverseadam lacks it): a listing
+# sorts by it, so the arms come in their order, not the alphabet's
+arm_n <- c("Placebo" = 0, "Xanomeline Low Dose" = 54, "Xanomeline High Dose" = 81)
+adsl$TRT01AN <- structure(unname(arm_n[adsl$TRT01A]),
+                          label = "Actual Treatment for Period 01 (N)")
+adae$TRT01AN <- structure(unname(arm_n[adae$TRT01A]),
+                          label = "Actual Treatment for Period 01 (N)")
 # ADTTE: time to the first dermatologic treatment-emergent adverse event
 # (skin and subcutaneous tissue disorders, or an application site event),
 # the CDISC pilot's time-to-event endpoint; censored at the end of treatment.
@@ -207,7 +214,14 @@ sheets <- list(
          text = "{col}\n(N={n})\nn (%)"),
     list(output_id = "T-14-3-1", line = "2", cols = "row_label",
          text = "System Organ Class\n   Preferred Term"),
-    list(output_id = "T-14-3-1", line = "2", cols = ".values")))
+    list(output_id = "T-14-3-1", line = "2", cols = ".values"),
+    # T-14-2-2: the arms over a blank stub (no "Characteristic" over KM rows)
+    list(output_id = "T-14-2-2", line = "1", cols = "row_label"),
+    list(output_id = "T-14-2-2", line = "1", cols = ".values", span = "each",
+         text = "{col}"),
+    list(output_id = "T-14-2-2", line = "2", cols = "row_label"),
+    list(output_id = "T-14-2-2", line = "2", cols = ".values", span = "each",
+         text = "(N={n})")))
 
 # T-14-1-1S: T-14-1-1's table, row for row (its ARD differs: below)
 for (sh in c("tables", "variables", "cells", "layout")) {
@@ -254,7 +268,7 @@ sheets$header <- do.call(tbl, c(
   title("T-14-3-1", "Table 14.3.1",
         "Treatment-Emergent Adverse Events by System Organ Class and Preferred Term",
         "<Safety Analysis Set>"),
-  title("L-16-2-7", "Listing 16.2.7", "Severe Adverse Events",
+  title("L-16-2-7", "Listing 16.2.7", "Severe Treatment-Emergent Adverse Events",
         "<Safety Analysis Set>"),
   title("F-14-2-1", "Figure 14.2.1",
         "Mean (SE) Change from Baseline in Systolic Blood Pressure over Time",
@@ -379,7 +393,8 @@ for (sh in names(p$ard)) p$ard[[sh]] <- .normalize_ard_sheet(p$ard[[sh]], sh)
 # ------------------------------------------------ the listing, the figure
 p$lf$listings <- .normalize_lf_sheet(tbl(
   list(output_id = "L-16-2-7", type = "multiline", dataset = "ADAE",
-       where = "AESEV == \"SEVERE\"", sort = "TRT01A | USUBJID | ASTDT",
+       where = "AESEV == \"SEVERE\" & TRTEMFL == \"Y\"",
+       sort = "TRT01AN | USUBJID | ASTDT",
        max_rows = "22")), "listings")
 p$lf$listing_cols <- .normalize_lf_sheet(tbl(
   list(output_id = "L-16-2-7", vars = "TRT01A", label = "Treatment",
@@ -412,7 +427,8 @@ km_design$layers <- c(km_design$layers, list(list(
 plot_code <- c(
   "library(ggplot2)",
   "saf <- adsl$USUBJID[adsl$SAFFL == \"Y\"]",
-  "d <- advs[advs$USUBJID %in% saf & advs$AVISITN > 0 & !is.na(advs$CHG), ]",
+  "d <- advs[advs$PARAMCD == \"SYSBP\" & advs$USUBJID %in% saf &",
+  "            advs$AVISITN > 0 & !is.na(advs$CHG), ]",
   "m <- aggregate(CHG ~ TRTA + AVISITN, data = d, FUN = function(x)",
   "  c(mean = mean(x), se = stats::sd(x) / sqrt(length(x))))",
   "m <- data.frame(m[c(\"TRTA\", \"AVISITN\")], m$CHG)",
@@ -484,7 +500,7 @@ desc <- c("T-14-1-1" = "Demographic characteristics",
           "T-14-2-1" = "Systolic blood pressure: change from baseline at Week 24",
           "T-14-3-1" = "TEAEs by SOC / PT",
           "T-14-2-2" = "Time to first dermatologic event: KM estimates",
-          "L-16-2-7" = "Listing of severe adverse events",
+          "L-16-2-7" = "Listing of severe treatment-emergent adverse events",
           "F-14-2-1" = "Mean change from baseline in systolic blood pressure",
           "F-14-2-2" = "KM plot of the time to first dermatologic event",
           "F-14-2-3" = "KM curves of the time to first dermatologic event (designed)")
@@ -583,7 +599,7 @@ writeLines(c(
   "| T-14-2-1 | Table | Systolic blood pressure: change from baseline at Week 24 (SE, 95% CI of the mean) |",
   "| T-14-2-2 | Table | Time to first dermatologic event: Kaplan-Meier estimates |",
   "| T-14-3-1 | Table | TEAEs by SOC / PT |",
-  "| L-16-2-7 | Listing | Severe adverse events |",
+  "| L-16-2-7 | Listing | Severe treatment-emergent adverse events |",
   "| F-14-2-1 | User code (a figure) | Mean change from baseline in systolic blood pressure |",
   "| F-14-2-2 | User code (a figure) | Kaplan-Meier plot of the time to first dermatologic event (number at risk from T-14-2-2's ARD) |",
   "| F-14-2-3 | Figure (designed) | The same KM curves from the designer's KM template, with a median line added |",
