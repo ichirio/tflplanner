@@ -9,6 +9,14 @@
   history).  The dialog says the folder is not deleted.  tflplanner never
   deletes a study folder.
 
+- **Nothing updates on its own** (#226).  `add_shortcut()` no longer makes
+  the "update and launch" shortcut unless asked (`update = TRUE`); the
+  Start menu entry stays.  The app's check for a newer version is off
+  unless turned on in its settings (or `setup_tflplanner(check_updates =
+  TRUE)`; a setting already made is kept), and it only tells: tflplanner
+  installs or updates nothing unless you ask -- `update_tflplanner()`, or
+  the "update and launch" shortcut.
+
 - **2-2: the method first, as a heading with its function** (#236).  An
   analysis's form starts with its method, large, and the function it calls
   (`cards::ard_stack_hierarchical`, a company keyword's too), then its ID
