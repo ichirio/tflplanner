@@ -24,7 +24,7 @@
     study's".
   - The page sample fills the report's tokens as its program does, and
     leaves out a line they leave empty.
-  - Needs rtfreporter 0.8.2.9025 and tflspec 0.0.24.9053.
+  - Needs rtfreporter 0.8.2.9025 and tflspec 0.0.24.9054.
 
 - **2-2's analysis form, after a look at it** (#215).  The card has one
   heading ("Analysis A1 (i)"; "Analysis" while none is chosen); the method
