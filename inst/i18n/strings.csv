@@ -2004,7 +2004,7 @@ Give %s a name,%s に名前を付ける
 Name (used in the program),名前（プログラムでも使う）
 "On saving, this report's analyses %s read this data.",保存すると、この帳票の解析 %s はこのデータを読むようになります。
 One row per (e.g. subject; subject × phase),1 行にする組（例: 被験者、被験者 × フェーズ）
-Rows kept (an R condition),残す行（R の条件式）
+Rows kept (an R condition),絞り込み条件（R の式）
 "The condition they all have, %s, moves from them to the data (each one's own conditions stay).",これらの解析すべてに共通の条件 %s は、解析からこのデータに移します（解析ごとの条件は残ります）。
 "The data the analyses read: a dataset kept to an analysis set and the rows a condition keeps, with columns added. Named, the study's other reports can use it under the same name. Not needed: an analysis can read a dataset × analysis set chosen in 2. (its Data), and this can stay empty.",解析が読むデータです。登録したデータセットを、解析対象集団と条件で絞り、列を足して作ります。名前を付けると、試験のほかの帳票でも同じ名前で使えます。作らなくても進めます：② の「データ」でデータセット × 解析対象集団を選ぶだけなら、ここは空のままで構いません。
 "The method's own, or cards'",メソッドの既定、または cards の指定
@@ -2035,7 +2035,7 @@ The subjects (the denominator),対象の症例（分母）
 This report's subjects among them (an R condition),その中のこの帳票の症例（R の条件式）
 Use the study's other analysis data (%d),試験のほかの解析データから使う（%d）
 Kept to the subjects of,対象の症例
-Columns taken from the subjects' data,症例のデータから持ってくる列
+Columns added from the subjects' data,症例のデータから足す列
 Make the subjects,対象の症例を作る
 Go on without,作らずに続ける
 Data to analyse,解析するデータ
@@ -2084,8 +2084,8 @@ No condition: every row.,条件なし: すべての行。
 The rows cannot hold this condition: it stays as R.,この条件は行では書けません。R の式のままにします。
 Values (search),値（検索）
 "Values, comma between",値（カンマ区切り）
-Write as R,R の式で書く
-Written as R (the rows cannot hold it): edit it here.,R の式で書いています（行では書けない条件）。ここで直せます。
+Write the condition as R (inside subset()),条件を R の式で書く（subset の中身）
+The condition written as R (the rows cannot hold it): edit it here.,条件を R の式で書いています（行では書けない条件）。ここで直せます。
 or,または
 is blank,空
 is not blank,空でない
@@ -2104,7 +2104,7 @@ No study open,試験を開いていません
 studies are chosen on the Study tab,試験は「試験」タブで選びます
 Keys and setup code,キーとセットアップコード
 2-1 Analysis data,2-1 解析データ
-"The data the analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are the study's, to use in other reports too. The denominator of a percent is chosen with each analysis, in 2-2.",解析が読むデータです。試験のデータセットから作ります（条件で残す行、ほかの解析データの被験者への絞り込み、作る列）。試験のものなので、ほかの帳票でも使えます。% の分母は、2-2 で解析ごとに選びます。
+"The data the analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are the study's, to use in other reports too. The denominator of a percent is chosen with each analysis, in 2-2.",解析が読むデータです。試験のデータセットから作ります（絞り込み条件で絞った行、ほかの解析データの被験者への絞り込み、作る列）。試験のものなので、ほかの帳票でも使えます。% の分母は、2-2 で解析ごとに選びます。
 Copy the one chosen,選んだ解析データを複製
 Delete %s...,%s を削除...
 Delete the one chosen...,選んだ解析データを削除...
@@ -2120,7 +2120,7 @@ Kept to the analysis set %s too (as it was made: population_id),解析対象集�
 Details (the sheet): this report's analysis data,詳細（シート）：この帳票の解析データ
 "The rows of analysis_data this report reads, every column, as in the workbook: what the form above does not show is written here. The whole study's: the Data tab.",この帳票が読む analysis_data の行を、ブックと同じくすべての列で表示します。上のフォームに出ない列はここで書きます。試験全体の表は「データ」タブです。
 %s (as written in the sheet: not a dataset nor an analysis data above),%s（シートに書かれたまま：データセットでも上の解析データでもありません）
-Rows kept (a condition),残す行（条件）
+Filter (a condition),絞り込み条件
 Keep to the subjects of %s,%s の症例に絞る
 Keep to the subjects of an analysis data of one row a subject,1 人 1 行の解析データの症例に絞る
 "Only the subjects in it (an inner join on %s): its condition, the analysis set's for one, is not written here again.",その解析データにいる症例だけを残します（%s での inner join）。そちらの条件（解析対象集団など）を、ここにもう一度書く必要はありません。
@@ -2138,7 +2138,7 @@ the study,試験共通
 this report,この帳票
 Result,結果
 "%d programs edited by hand were written again from the definition; the edited ones are in programs/.edited/. Put what they changed in the definition: the data code, a user-code report, a custom analysis, where / derive.",手で修正されていた %d 本のプログラムを、定義から書き直しました。修正された版は programs/.edited/ にあります。直したい点は定義に書いてください（データ準備コード、ユーザーコードの帳票、custom の解析、where／derive）。
-Write it as R (code),R のコードで書く（code）
+Write this analysis data whole as R (code),この解析データを R のコードで丸ごと書く（code）
 "When the fields above cannot say it: R whose value is the data (the datasets, pop_<set> and the analysis data above are in reach). Written here, the fields above are not used. The program is never edited: this R is part of the definition.",上の欄で書けないときに：値がそのデータになる R（データセット・pop_<集団>・上の行の解析データを使えます）。ここに書くと上の欄は使われません。プログラムは直接直しません。この R は定義（Spec）の一部です。
 Start from the generated code,生成されたコードから始める
 The code cannot be written yet: give the data a name and what it is made from.,まだコードを作れません。データの名前と元のデータを入れてください。
@@ -2246,8 +2246,8 @@ The report's analyses. Each one's Data: an analysis data of 2-1; the denominator
 Analysis %s,解析 %s
 "A stack: it runs the analyses inside it together (cards::ard_stack), in one call (the column headers' N too).",スタック: 中の解析をまとめて 1 回で計算します（cards::ard_stack。列見出しの N も）。
 "The rows the analysis reads: an analysis data of 2-1, or a dataset × analysis set. The name is the one the program gives it.",解析が読む行。2-1 の解析データ、またはデータセット × 解析対象集団。名前はプログラムでの名前です。
-"An R condition for this analysis alone (e.g. AESER == ""Y""). The data's own condition is 2-1's.","この解析だけの R の条件（例: AESER == ""Y""）。データ側の条件は 2-1 で。"
-Rows kept (this analysis's own condition),残す行（この解析だけの条件）
+"An R condition that filters this analysis's rows alone (e.g. AESER == ""Y""). The data's own filter is 2-1's.","この解析だけの行の絞り込み条件（R の式。例 AESER == ""Y""）。データそのものの絞り込み条件は 2-1 で。"
+This analysis's own filter,この解析だけの絞り込み条件
 "cards' arguments, in R (e.g. conf.level = 0.9).",cards の引数を R で（例: conf.level = 0.9）。
 "The table's columns (e.g. TRT01A). A combination with no records is shown, with 0.",表の列（例: TRT01A）。記録の無い組み合わせも 0 で出ます。
 "Repeated within each combination the data has (e.g. PARAMCD × AVISIT). Unlike the groups (by), a combination with no records is not shown: for 0s, use the groups.",データにある組み合わせごとに繰り返します（例: PARAMCD × AVISIT）。群（by）と違い、記録の無い組み合わせは出ません。0 を出したいときは群に。
@@ -2259,9 +2259,9 @@ This analysis as code,この解析のコード
 "The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (Apply first). The code is part of the definition: the program is never edited.",手法が custom になり、今の定義から書いたこのコードが解析になります（同じ ARD。先に［適用］）。コードは定義の一部で、プログラムは直しません。
 The order inside a stack,スタックの中の順
 "The study's analysis set (SAF ...) or a population flag of the data, put in as the condition's first row (SAFFL = Y). Left as it is, it is saved as the analysis set (population_id); change it there, add others under it.",試験の解析対象集団（SAF など）か、データの集団フラグ。下の条件の 1 行目に入ります（SAFFL = Y）。そのままなら解析対象集団（population_id）として保存。直すのも、ほかの条件を足すのも条件の欄で。
-"The rows the data keeps. The rows are AND (""+ and""); ""+ or (another group)"" is OR. A flag: ""= Y"". What the rows cannot say: ""Write as R"".",残す行の条件。行どうしは「かつ」（+ かつ）、「+ または（別のまとまり）」は「または」。フラグは「= Y」。行で書けない式は「R の式で書く」。
+"The condition the data's rows are filtered by (subset()). The rows are AND (""+ and""); ""+ or (another group)"" is OR. A flag: ""= Y"". What the rows cannot say: ""Write the condition as R"".",データの行を絞り込む条件（subset() の中身）。行どうしは「かつ」（+ かつ）、「+ または（別のまとまり）」は「または」。フラグは「= Y」。行で書けない式は「条件を R の式で書く」。
 Only the subjects in that analysis data: its condition (its analysis set's too) is not written here again.,その解析データにいる被験者だけを残します。そちらの条件（解析対象集団も）をここに書き直す必要はありません。
-"When the fields cannot say it: R whose value is the data (the datasets, pop_<set> and the analysis data above are in reach); written, the fields above are not used. The program is never edited: this R is the definition.",欄で書けないとき、値がデータになる R（データセット、pop_<集団>、上の解析データが使えます）。書くと上の欄は使われません。プログラムは直しません（この R が定義です）。
+"When the fields cannot say it: R whose value is the whole data (the datasets, pop_<set> and the analysis data above are in reach); written, none of the fields above is used. Only the filter: ""Write the condition as R"" above. The program is never edited: this R is the definition.",欄で書けないとき、値がデータ全体になる R（データセット、pop_<集団>、上の解析データが使えます）。書くと上の欄はどれも使われません。絞り込み条件だけなら、上の「条件を R の式で書く」。プログラムは直しません（この R が定義です）。
 The method,手法
 "The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (press Apply to the analysis first). The code is part of the definition: the program is never edited.",手法が custom になり、今の定義から書いたこのコードが解析になります（同じ ARD。先に［解析に反映］を押してください）。コードは定義の一部で、プログラムは直しません。
 This report's analysis set,この帳票の解析対象集団
@@ -2303,7 +2303,7 @@ Analysis data made for the reports' analysis sets: %s.,帳票の解析対象集�
 Make the tables' analysis data from their datasets,表のデータセットから解析データも作る
 "For each dataset of a table (the TOC's datasets column) that is not its analysis set's own: <dataset>_<set>, kept to the subjects of adsl_<set> -- found, or made. Its first analysis starts from it; change or delete it in 2-1.",表のデータセット（TOC のデータセット列）のうち、解析対象集団のもの以外ごとに、adsl_<集団> の被験者に絞った <データセット>_<集団> を作ります（同じものがあればそれを使います）。最初の解析はこれを読みます。2-1 で直したり消したりできます。
 Also for the reports taken in before (made again where deleted),取り込み済みの帳票にも作り直す（消したものはもう一度作られます）
-"The data this report's analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are this report's (another report's adsl_saf may differ: copy one with the button). The denominator of a percent is chosen with each analysis, in 2-2.",この帳票の解析が読むデータ。試験のデータセットから、条件で残す行・別の解析データの被験者・作る列で作ります。この帳票のものです（別の帳票の adsl_saf は中身が違うことがあります。ボタンで写せます）。% の分母は 2-2 で解析ごとに選びます。
+"The data this report's analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are this report's (another report's adsl_saf may differ: copy one with the button). The denominator of a percent is chosen with each analysis, in 2-2.",この帳票の解析が読むデータ。試験のデータセットから、絞り込み条件で絞った行・別の解析データの被験者・作る列で作ります。この帳票のものです（別の帳票の adsl_saf は中身が違うことがあります。ボタンで写せます）。% の分母は 2-2 で解析ごとに選びます。
 Copy from another report...,ほかの帳票から写す…
 No other report has analysis data.,ほかの帳票に解析データがありません。
 Copy analysis data from another report,ほかの帳票から解析データを写す
@@ -2364,3 +2364,4 @@ Take it away,取り除く
 Statistic,統計量
 Decimals,小数桁数
 A row of your own needs a label and a template with a {statistic}.,自分の行には、行ラベルと {統計量} を含むテンプレートが要ります。
+"Columns of the subjects' data (the analysis set's, or the analysis data its subjects are kept to) joined by the subject key. Nothing chosen: nothing added. A column of the same name takes the subjects' values.",症例側のデータ（解析対象集団のデータ、または症例を絞った解析データ）の列を被験者 ID で結合して足します。選ばなければ何も足しません。同じ名前の列は症例側の値に置き換わります。
