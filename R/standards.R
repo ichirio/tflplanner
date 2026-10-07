@@ -170,7 +170,7 @@
     # the TOC has, in the TOC's order
     toc_map = .df(
       item = c("output_id", "type", "title", "population", "footnote",
-               "program", "file", "note", "section"),
+               "program", "file", "note", "section", "datasets"),
       columns = c("Output ID | Output | Output No. | No. | Number | TLF ID | TFL ID | ID",
                   "Type | Kind | Output Type",
                   "Title | Title 1 | Title 2 | Title 3 | Title 4",
@@ -179,7 +179,8 @@
                   "Program | Program Name",
                   "File | Output File | File Name",
                   "Note | Notes | Comment | Comments",
-                  "Section | Heading | Section Heading")),
+                  "Section | Heading | Section Heading",
+                  "Datasets | Dataset | Data | Source Data | Input Data | ADaM")),
     # the company's own words for the ARD form's function search, added to
     # tflplanner's dictionary (inst/ard_search/fn_keywords.csv, its columns):
     # an in-house name for a function (fn = cardx::ard_stats_t_test,
