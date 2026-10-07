@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **A user-code report's program, shorter** (#253).  The function that
+  makes its `content` what rtfreporter takes (a ggplot becomes a figure;
+  anything else is said) is `report_content()`, written once in the
+  study's `programs/tfl/fig_setup.R`; each program ends with
+  `content <- report_content(content)` instead of 15 lines of its own.
+  The sample's reports are the same.
+
 - **The `digits` sheet** (#247; tflspec #168).  A study's definition keeps
   each statistic's decimals and a variable's exceptions (step 3's SPEC,
   the tab "digits: decimals"); a table's templates take them where they
