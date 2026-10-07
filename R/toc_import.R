@@ -23,6 +23,64 @@
   stats::setNames(v, as.character(rows$line))
 }
 
+# Does the study's header (its default rows) say a token ("OUTPUT_TITLE")?
+.study_header_says <- function(x, token) {
+  d <- x$sheets$header
+  if (is.null(d) || !nrow(d)) return(FALSE)
+  d <- d[is.na(d$output_id), intersect(.toc_cells, names(d)), drop = FALSE]
+  any(grepl(paste0("{", token, "}"), unlist(d), fixed = TRUE))
+}
+
+# A report's own tokens a TOC gives (named by token; none: NA), each the
+# study's bands say -- a study that says none is not changed
+.toc_token_items <- c(OUTPUT_LABEL = "labels", OUTPUT_TITLE = "first_titles",
+                      OUTPUT_POPULATION = "populations",
+                      OUTPUT_SECTION = "sections")
+.toc_tokens <- function(spec, id) {
+  v <- vapply(.toc_token_items, function(a) {
+    v <- attr(spec, a)
+    if (is.null(v) || !id %in% names(v)) NA_character_ else unname(v[[id]])
+  }, "")
+  # a list, as the TOC's record keeps it (input/toc/last.json)
+  v <- v[!is.na(v)]
+  if (length(v)) as.list(v) else list()
+}
+.study_says <- function(x, token) {
+  any(vapply(c("header", "footer", "titles", "footnotes"), function(sh) {
+    d <- x$sheets[[sh]]
+    !is.null(d) && any(grepl(paste0("{", token, "}"),
+                             unlist(d[intersect(.toc_cells, names(d))]),
+                             fixed = TRUE))
+  }, NA))
+}
+
+# A study whose header says {OUTPUT_TITLE} prints a report's title (the
+# TOC's first title line) and analysis set there, from its tokens: they are
+# then not title lines too.  The TOC as read, without them (once: the
+# result is marked).
+.toc_titles_in_header <- function(x, spec) {
+  if (isTRUE(attr(spec, "titles_in_header")) ||
+      !.study_header_says(x, "OUTPUT_TITLE")) return(spec)
+  d <- spec$titles
+  if (!is.null(d) && nrow(d)) {
+    first <- attr(spec, "first_titles")
+    pop <- attr(spec, "populations")
+    keep <- rep(TRUE, nrow(d))
+    for (id in unique(stats::na.omit(d$output_id))) {
+      i <- which(!is.na(d$output_id) & d$output_id == id)
+      i <- i[order(as.integer(d$line[i]))]
+      gone <- rep(FALSE, length(i))
+      if (length(i) && !is.null(first) && !is.na(first[id])) gone[1L] <- TRUE
+      if (length(i) && !is.null(pop) && !is.na(pop[id])) gone[length(i)] <- TRUE
+      keep[i[gone]] <- FALSE
+      d$line[i[!gone]] <- as.character(seq_len(sum(!gone)))
+    }
+    spec$titles <- d[keep, , drop = FALSE]
+  }
+  attr(spec, "titles_in_header") <- TRUE
+  spec
+}
+
 # The lines a TOC gives a report, numbered as the study numbers them: after
 # the study's own title lines (`title_offset`), footnotes from 1
 .toc_lines <- function(spec, sheet, output_id, title_offset = 0L) {
@@ -358,6 +416,29 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
       x <- set_sheet_rows(x, sh, id, rows)
     }
   }
+  # the report's own tokens ({OUTPUT_TITLE} ...) the study says: written
+  # where the report has none, or has what the last TOC gave (a value
+  # changed here is kept)
+  says <- names(.toc_token_items)[vapply(names(.toc_token_items),
+                                         function(k) .study_says(x, k), NA)]
+  tk <- x$sheets$tokens
+  for (id in rep$output_id[rep$status %in% c("new", "changed", "same")]) {
+    vals <- .toc_tokens(spec, id)
+    vals <- vals[intersect(names(vals), says)]
+    was <- last[[id]]$tokens
+    for (k in names(vals)) {
+      i <- which(!is.na(tk$output_id) & tk$output_id == id & tk$name == k)
+      if (length(i) && !identical(tk$value[i[1L]], was[[k]])) next
+      if (!length(i)) {
+        tk[nrow(tk) + 1L, ] <- NA
+        i <- nrow(tk)
+        tk$output_id[i] <- id
+        tk$name[i] <- k
+      }
+      tk$value[i[1L]] <- vals[[k]]
+    }
+  }
+  x$sheets$tokens <- tk
   x
 }
 
@@ -377,6 +458,7 @@ toc_snapshot <- function(spec, title_offset = 0L, last = NULL) {
     titles = .toc_lines(spec, "titles", id, title_offset),
     footnotes = .toc_lines(spec, "footnotes", id),
     type = spec$report$type[match(id, spec$report$output_id)],
+    tokens = .toc_tokens(spec, id),
     in_toc = TRUE)), ids)
   old <- (last %||% list())[setdiff(names(last %||% list()), ids)]
   old <- lapply(old, function(r) {
@@ -482,7 +564,7 @@ toc_populations <- function(x, path, id_col, pop_col, sheet = NULL, skip = 0L,
 # ---- the mapping: which of a TOC's columns is what -------------------------
 
 .toc_items <- c("output_id", "type", "title", "population", "footnote",
-                "program", "file", "note", "section", "datasets")
+                "program", "file", "note", "section", "datasets", "label")
 
 # The map tflspec::tfl_read_toc() takes, from a TOC's column names and the
 # company's toc_map (an item: the first of its names the TOC has; title and

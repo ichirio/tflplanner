@@ -926,7 +926,7 @@ A tflspec workbook: one sheet per grain. Sheets whose name starts with _ are not
 The report a row belongs to. Blank: a study-wide default; a row naming a report replaces the default row with the same key (ARD analyses: the report the analysis serves).,その行が属する帳票。空欄 = 試験全体のデフォルト。帳票名を書いた行は、同じキーのデフォルト行を置き換える（ARD の analyses では、その解析が使われる帳票）。
 "A column for people, on any sheet; never read. Any other column a sheet does not read is an error (a mistyped header).",人のためのメモ列。どのシートにも置けて、読まれない。それ以外の、シートが読まない列はエラー（見出しの打ち間違い防止）。
 Several values in one cell: | between them.,1 セルに複数書くときは | で区切る。
-"In titles, footnotes, header and footer cells: {PAGE} {TOTAL_PAGES} {AUTO_PAGE} {AUTO_TOTAL_PAGES} (page numbers), {PROGRAM} {PROGRAM_FULL} {PROGRAM_NAME} {PROGRAM_DIR} (the program; {PROGRAM_FULL} its absolute path), {DATETIME} {DATETIME:%Y-%m-%d} (the run), and your own from the tokens sheet ({STUDY} ...).",タイトル・脚注・ヘッダー・フッターのセルで使える差し込み記号：{PAGE} {TOTAL_PAGES} {AUTO_PAGE} {AUTO_TOTAL_PAGES}（ページ番号）、{PROGRAM} {PROGRAM_FULL} {PROGRAM_NAME} {PROGRAM_DIR}（プログラム。{PROGRAM_FULL} は絶対パス）、{DATETIME} {DATETIME:%Y-%m-%d}（実行日時）、tokens シートの自分のトークン（{STUDY} など）。
+"In titles, footnotes, header and footer cells: {PAGE} {TOTAL_PAGES} {AUTO_PAGE} {AUTO_TOTAL_PAGES} (page numbers), {PROGRAM} {PROGRAM_FULL} {PROGRAM_NAME} {PROGRAM_DIR} (the program; {PROGRAM_FULL} its absolute path), {DATETIME} {DATETIME:%Y-%m-%d} (the run), the report's own: {OUTPUT_ID}, {OUTPUT_LABEL} (Table 14.1.1, made from the ID; the tokens rows OUTPUT_KIND_TABLE / _LISTING / _FIGURE change the words), {OUTPUT_TITLE} {OUTPUT_POPULATION} {OUTPUT_SECTION} {STUDY_ID} (blank unless the tokens sheet says them; a line left with nothing but them is not printed), and your own from the tokens sheet ({STUDY} ...).",タイトル・脚注・ヘッダー・フッターのセルで使えます: {PAGE} {TOTAL_PAGES} {AUTO_PAGE} {AUTO_TOTAL_PAGES}（ページ番号）、{PROGRAM} {PROGRAM_FULL} {PROGRAM_NAME} {PROGRAM_DIR}（プログラム。{PROGRAM_FULL} は絶対パス）、{DATETIME} {DATETIME:%Y-%m-%d}（実行日時）、帳票自身のもの: {OUTPUT_ID}、{OUTPUT_LABEL}（Table 14.1.1。ID から作ります。tokens シートの OUTPUT_KIND_TABLE／_LISTING／_FIGURE の行で語を変えられます）、{OUTPUT_TITLE} {OUTPUT_POPULATION} {OUTPUT_SECTION} {STUDY_ID}（tokens シートに行が無ければ空。これらだけの行で値が空なら、その行は出しません）、そして tokens シートの自分のトークン（{STUDY} …）。
 "What is one for the whole study: one row a key. Table / report keys: rounding, output_path, program_dir. ARD keys: id, output, source. No output_id.",試験で 1 つに決まる事実。1 行 = 1 キー。表・帳票のキー：rounding、output_path、program_dir。ARD のキー：id、output、source。output_id は無い。
 "The fact: rounding (r: round half to even; sas: round half away from zero; blank: options(rtfreporter.rounding)); output_path (the folder of the RTF files); program_dir (the folder of the programs, for {PROGRAM}); ARD: id (the subject key; default USUBJID), output (the study ARD's file; default output/ard/ard.rds), source (R files of the study's own analysis functions, relative to the study folder, | between them).",項目：rounding（r = 偶数丸め、sas = 四捨五入、空欄 = options(rtfreporter.rounding)）、output_path（RTF の出力フォルダ）、program_dir（プログラムのフォルダ。{PROGRAM} に使う）。ARD：id（被験者キー。既定 USUBJID）、output（試験 ARD のファイル。既定 output/ard/ard.rds）、source（試験独自の解析関数の R ファイル。試験フォルダからの相対パス、| 区切り）。
 "Its value, as text.",その値（文字）。
@@ -2315,3 +2315,13 @@ Its analysis data (what they are made from and kept to come with them),その解
 Choose at least one.,1 つ以上選んでください。
 %s copied from %s (save to keep them).,%s を %s から写しました（保存すると残ります）。
 "The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved.",この帳票の analysis_data の行（全列、ブックのまま）。フォームに無い列はここで書きます。新しいデータの行は保存で入ります。
+Report ID as printed (Table 14.1.1),印刷する帳票番号（Table 14.1.1）
+Company,会社名
+Protocol,プロトコール
+Every report's header,全帳票のヘッダー
+"The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}, {STUDY_ID}. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, analysis set).",全帳票のヘッダーに入る試験の値: {COMPANY}（会社名）、{ANALYSIS_TYPE}（解析）、{STUDY_ID}（プロトコール）。ここで 1 回だけ設定します（tokens シートの試験の行）。帳票ごとに書くのは、その帳票の値（番号・題・解析対象集団）だけです。
+This report has a header of its own.,この帳票だけのヘッダーです。
+Back to the study's,試験の既定に戻す
+The study's (its values: this report's tokens),試験の既定のヘッダー（値はこの帳票の tokens）
+"Every report has the study's header; what changes from report to report ({OUTPUT_LABEL}, {OUTPUT_TITLE}, {OUTPUT_POPULATION}) is in the tokens tab.",どの帳票も試験の既定のヘッダーを使います。帳票ごとに変わる値（{OUTPUT_LABEL}、{OUTPUT_TITLE}、{OUTPUT_POPULATION}）は tokens のタブにあります。
+A header of this report's own,この帳票だけのヘッダーにする
