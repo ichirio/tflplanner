@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **A designed figure's program, shorter** (#240).  Its figure is `plot`
+  itself (no `fig <- p`, `plot <- fig`), its palette the study's figure
+  setup's `tfl_colours()`, and the design's code is in the style of the
+  other programs (`|>`, one-line parts: tflspec #164).  The sample's
+  reports are the same.
+
 - **The TOC's population is the reports' analysis set** (#219).  The TOC
   dialog shows each text of its population column with the study's set it
   is -- matched by id, label (the company standards', else the flag's), a

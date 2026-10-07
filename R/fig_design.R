@@ -86,20 +86,16 @@ set_fig_design <- function(x, output_id, design) {
   }))
 }
 
-# the design's plot part of the figure's program: the script up to its
-# figure, which the program keeps as `plot` (the report saves it)
+# the design's plot part of the figure's program: the figure as `plot`
+# (the report writes it), its palette from the study's figure setup the
+# program has sourced
 .fig_design_plot <- function(design, output_id) {
-  code <- .fig_design_script(design, output_id)
-  step3 <- grep("^# Step3", code)
-  if (length(step3)) code <- code[seq_len(max(0L, step3[1L] - 2L))]
-  while (length(code) && code[length(code)] %in% c("", "fig")) {
-    code <- code[-length(code)]
-  }
+  code <- as.character(tflspec::tfl_fig_design_code(
+    design, output_id, setup = TRUE, save = FALSE, name = "plot"))
   c(paste0("# the plot, from the figure's design (spec/", .fig_design_dir, "/",
            output_id, ".yml)", if (!is.null(design$template))
              paste0(", made from the template ", design$template)),
-    "#      edit the design in the Plot Designer, not this code", code,
-    "plot <- fig")
+    "#      edit the design in the Plot Designer, not this code", code)
 }
 
 # the designs as YAML files, written with the study
