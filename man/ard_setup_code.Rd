@@ -28,11 +28,12 @@ ard_autoexec_code(spec, date = Sys.Date())
 \item{dir}{The study folder: the fingerprint recorded with the ARD reads
 the study's own analysis functions (its key \code{source}) from it.}
 
-\item{codelists}{The study's code lists (the table definition's
-\code{codelists} sheet, its study rows), or \code{NULL}: each listed column of the
-data becomes a factor in their order before the analyses, so the ARD
-keeps the order and counts a value no record has (0)
-(\code{\link[tflspec:tfl_ard_code]{tflspec::tfl_ard_code()}}).  They are part of the fingerprint.}
+\item{codelists}{The reports' code lists (the table definition's
+\code{codelists} sheet, every row a report's), or \code{NULL}: each column the
+report's analyses read that its code lists list becomes a factor in
+their order before the analyses, so the ARD keeps the order and counts
+a value no record has (0) (\code{\link[tflspec:tfl_ard_code]{tflspec::tfl_ard_code()}}).  They are part of
+the fingerprint.}
 }
 \value{
 The code, one element per line.

@@ -3,18 +3,21 @@
 \name{read_codelist}
 \alias{read_codelist}
 \alias{set_codelist}
-\title{Read a study's code list into its definition}
+\title{Read a code list into a report}
 \usage{
 read_codelist(path)
 
-set_codelist(x, rows)
+set_codelist(x, output_id, rows)
 }
 \arguments{
 \item{path}{An \code{.xlsx} or \code{.csv} file.}
 
 \item{x}{A \code{tflplanner}.}
 
-\item{rows}{What \code{read_codelist()} returns.}
+\item{output_id}{The report.}
+
+\item{rows}{A data frame with \code{variable} and \code{value} (\code{label} and \code{order}
+optional): what \code{read_codelist()} returns.}
 }
 \value{
 \code{read_codelist()}: a data frame; \code{set_codelist()}: the
@@ -24,8 +27,9 @@ set_codelist(x, rows)
 \code{read_codelist()} reads a code list -- one row a value of a variable:
 \code{variable}, \code{value}, \code{label} (what it prints as) and \code{order} (its
 place) -- from an \code{.xlsx} (its first sheet) or a \code{.csv} file.
-\code{set_codelist()} puts it into the definition's \code{codelists} sheet as the
-study's defaults (every table uses them): a value already there for the
-same variable is replaced, the others are kept.  A report's own rows
-replace the defaults for that report (tflspec's table spec).
+\code{set_codelist()} puts it into a report's rows of the definition's
+\code{codelists} sheet: a value the report has already for the same variable
+is replaced, the others are kept.  A code list is a report's (tflspec:
+every row names its report); to use one in several reports, copy it
+(\code{\link[=import_codelist]{import_codelist()}}, \code{\link[=standard_codelists]{standard_codelists()}}).
 }

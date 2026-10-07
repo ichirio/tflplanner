@@ -44,7 +44,8 @@ test_that("steps 1 and 4: a grid edit changes that cell and nothing else", {
   for (sh in names(text_sheets)) {
     p <- set_sheet_rows(p, sh, "T1", text_sheets[[sh]](3L))
     p <- set_sheet_rows(p, sh, "T2", text_sheets[[sh]](2L))
-    p <- set_sheet_rows(p, sh, NA, text_sheets[[sh]](1L))
+    # (a code list is a report's: no study defaults)
+    if (sh != "codelists") p <- set_sheet_rows(p, sh, NA, text_sheets[[sh]](1L))
   }
   # the page and the report: settings the app draws no field for
   p <- set_sheet_rows(p, "page", "T1", data.frame(orientation = "landscape",
@@ -54,10 +55,11 @@ test_that("steps 1 and 4: a grid edit changes that cell and nothing else", {
   create_study("S1", planner = p)
   shiny::testServer(server_for("S1"), {
     rv <- session$userData$rv
-    session$setInputs(target = "T1", nav = "make", step = "page")
+    # step 1's editor: every variable (T1 has no analyses to narrow it)
+    session$setInputs(target = "T1", nav = "make", step = "page", cl_all = TRUE)
     for (sh in c(names(text_sheets), "page", "report")) {
       before <- rv$p
-      grid_id <- paste0("hot_", sh)
+      grid_id <- if (sh == "codelists") "cl_hot" else paste0("hot_", sh)
       d <- sheet_rows(before, sh, "T1")
       # one cell changed: the last column of the first row (the page and
       # the report: a setting of the right type)

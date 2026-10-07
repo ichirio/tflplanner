@@ -107,6 +107,7 @@ reference:
       - output_ids
       - table_sheets
       - read_codelist
+      - import_codelist
       - inherited_rows
       - read_planner
       - write_planner
