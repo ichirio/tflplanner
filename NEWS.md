@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **The design concept, written down** (#224).  The README has a
+  "Concept" section and the Japanese guide a "設計の考え方" section:
+  code for people to read and finish, the typical analyses kept simple,
+  R code kept in the spec, shared parts defined once, screens => spec =>
+  code.  Docs only.
+
 - **The sample's ADSL has ITTFL, EFFFL and PPROTFL** (#218), derived by
   data-raw/make-sample-study.R (pharmaverseadam's ADSL has SAFFL only of
   the population flags; the sample's README says how), so step 2 has
