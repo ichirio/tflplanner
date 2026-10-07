@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **2-1's columns made, by kind** (#255).  Each column the data makes is
+  a line of its own, made by kind: split by conditions (the conditions made
+  with the condition builder; one gives `ifelse()`, more give
+  `dplyr::case_when()`), cut a number into groups (`cut(..., right =
+  FALSE)`), the days between two dates (`as.numeric(END - START)`, + 1 if
+  wanted), or an R expression (a variable can be put in).  The sheet keeps
+  `NAME = R | ...` (derive) as before, so the definition and the generated
+  code do not change; the form reads back these four forms only, anything
+  else is an R expression, and a column not opened is saved exactly as
+  written.  The R stays at hand under "As R".
+
 - **2-1's form, in plainer words** (#254).  The condition is a filter:
   "Filter (a condition)" (2-1) and "This analysis's own filter" (2-2),
   their help alike.  "Write the condition as R (inside subset())" and
