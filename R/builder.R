@@ -425,8 +425,28 @@ header_token_labels <- function(choices, tokens = NULL) {
 # A page's sample in HTML: each line in three parts (left, centre, right),
 # the {PLACEHOLDERS} filled as a first page would have them.
 .page_sample_html <- function(x, output_id, study_id, body, program = "") {
+  # the report's tokens, as its program gives them ({OUTPUT_LABEL} ...)
+  tok <- tryCatch(tflspec::tfl_report_tokens(
+    .spec_object_last(x, c(table_sheets(), report_sheets()),
+                      unique(c(.study_keys$table, .study_keys$report))),
+    output_id), error = function(e) character())
+  # a study with no STUDY_ID token: its id, as before
+  if (is.na(tok["STUDY_ID"]) || !nzchar(tok[["STUDY_ID"]])) {
+    tok <- tok[names(tok) != "STUDY_ID"]
+  }
+  rx <- "\\{[A-Z][A-Z0-9_]*\\}"
+  # a line whose tokens are all empty, the rest blanks or brackets, is not
+  # printed (rtfreporter's drop_empty_rows)
+  empty <- function(cells) {
+    txt <- paste(cells[!is.na(cells)], collapse = " ")
+    m <- regmatches(txt, gregexpr(rx, txt))[[1L]]
+    nm <- substr(m, 2L, nchar(m) - 1L)
+    length(m) && all(nm %in% names(tok)) && !any(nzchar(trimws(tok[nm]))) &&
+      !nzchar(gsub("[][[:space:]<>():;,.|/-]", "", gsub(rx, "", txt)))
+  }
   fill <- function(s) {
     if (is.na(s)) return("")
+    for (k in names(tok)) s <- gsub(paste0("{", k, "}"), tok[[k]], s, fixed = TRUE)
     s <- gsub("{PAGE}", "1", s, fixed = TRUE)
     s <- gsub("{TOTAL_PAGES}", "N", s, fixed = TRUE)
     s <- gsub("{STUDY_ID}", study_id, s, fixed = TRUE)
@@ -437,6 +457,9 @@ header_token_labels <- function(choices, tokens = NULL) {
   }
   block <- function(sheet, cls) {
     d <- .page_lines(x, sheet, output_id)
+    for (k in .toc_cells) if (!k %in% names(d)) d[[k]] <- rep(NA_character_, nrow(d))
+    d <- d[!vapply(seq_len(nrow(d)), function(i)
+      empty(unlist(d[i, .toc_cells])), NA), , drop = FALSE]
     if (!nrow(d)) return(NULL)
     lapply(seq_len(nrow(d)), function(i) htmltools::div(
       class = paste("rp-page-line", cls),
