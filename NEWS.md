@@ -9,7 +9,10 @@
   given first, the rest folded ("n more, at their defaults").  A blank
   says what it gives: the study's subject key, the company method's value,
   none, or the function's own default.  The help of the arguments used
-  most says when to use them (tflspec's catalog, translated).
+  most says when to use them (tflspec's catalog, translated).  The
+  variables, groups and strata show in the definition's order (a
+  hierarchy's outermost first), not the data's; the statistic N reads
+  "Number of non-missing values".
 
 - **A report's analysis set is one value** (#217).  The report list's
   `population` (the TOC's, step 2's): `set_report_population()` writes it,

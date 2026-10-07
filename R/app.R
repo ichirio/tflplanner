@@ -3464,6 +3464,12 @@ app_server <- function(input, output, session, start) {
                stats::setNames(setdiff(strata_now, rows), setdiff(strata_now, rows)))
       vch <- c(vch, stats::setNames(setdiff(var_now, vch), setdiff(var_now, vch)))
     }
+    # the chosen first, in the definition's order (a field shows them in
+    # the order of its choices): AEBODSYS before AEDECOD, BASE | AVAL | CHG
+    first <- function(ch, now) c(ch[match(now, ch, nomatch = 0L)], ch[!ch %in% now])
+    vch <- first(vch, var_now)
+    bch <- first(bch, by_now)
+    sch <- first(sch, strata_now)
     shiny::tagList(
       if (!in_stack) shiny::selectizeInput(
         st_id("by"), with_tip(argl("Groups (the columns)", "by"), t("The table's columns (e.g. TRT01A). A combination with no records is shown, with 0.")),

@@ -2297,3 +2297,4 @@ arg-hint:The levels of the hierarchy to report (default: all). Use it to show th
 "arg-hint:TRUE: also the total number of subjects. Use it for an ""(N=...)"" header over all groups.",TRUE：全体の被験者数も出す。全群の「(N=...)」の見出しに使う。
 arg-hint:TRUE (default): also the counts of each group (the column headers' N). FALSE when another analysis of the report gives them.,TRUE（既定）：各群の被験者数（列見出しの N）も出す。同じ帳票のほかの解析が出すなら FALSE。
 "arg-hint:The level whose proportion is estimated, e.g. list(AVALC = ""CR""). Use it for a rate with its CI, e.g. the response rate.","割合を推定する水準。例：list(AVALC = ""CR"")。割合とその信頼区間に使う。例：奏効率。"
+stat-label:Number of non-missing values,欠測でない値の数
