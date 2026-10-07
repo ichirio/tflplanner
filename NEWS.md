@@ -3,6 +3,22 @@
 - **A hex logo, shared with rtfreporter and tflspec** (#230), made with the
   site's favicons by `data-raw/logo.R`.
 
+- **The TOC's datasets** (#220; tflspec's `tfl_read_toc()` datasets).  A
+  `datasets` item of the mapping: kept as the report list's datasets
+  (shown until the report's definition names its own), a new listing's
+  dataset and a new figure's datasets; with "Make the tables' analysis
+  data from their datasets" (ticked), a new table gets `<dataset>_<set>`
+  kept to `adsl_<set>`'s subjects (found or made), which its first
+  analysis reads.  Taken in again, they are made again only when asked.
+
+- **The TOC's population is the reports' analysis set** (#219).  The TOC
+  dialog shows each text of its population column with the study's set it
+  is -- matched by id, label (the company standards', else the flag's), a
+  usual word for the flag or the id in the text: "Safety Population" is
+  SAF -- and it can be changed there; taken in, each report's set is set
+  as step 2 sets it (`toc_apply(populations =)`, `toc_populations()`).
+  The Add dialog gives a new report its set too.
+
 - **A report's analysis set is one value** (#217).  The report list's
   `population` (the TOC's, step 2's): `set_report_population()` writes it,
   makes the data of the set's subjects (`adsl_<set>`) when there is none,
