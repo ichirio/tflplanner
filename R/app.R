@@ -185,17 +185,25 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 
 # Stop the app once no browser tab is left: a tab that closes starts a
 # short wait, and the app stops if no tab has come back by then (a reload
-# ends one session and starts the next within it).
+# ends one session and starts the next within it).  A session that an
+# error ended (the page goes grey) waits much longer (`wait_failed`): the
+# tab is still there, and its Reload brings the app back.
 .open_tabs <- new.env()
 .open_tabs$n <- 0L
 
-.stop_when_closed <- function(session, wait = 5) {
+.stop_when_closed <- function(session, wait = 5, wait_failed = 600) {
   .open_tabs$n <- .open_tabs$n + 1L
+  failed <- FALSE
+  session$onUnhandledError(function(e) {
+    failed <<- TRUE
+    message("tflplanner: the session stopped on an error: ",
+            conditionMessage(e))
+  })
   session$onSessionEnded(function() {
     .open_tabs$n <- .open_tabs$n - 1L
     later::later(function() {
       if (.open_tabs$n <= 0L) shiny::stopApp()
-    }, wait)
+    }, if (failed) wait_failed else wait)
   })
 }
 
@@ -3127,8 +3135,8 @@ app_server <- function(input, output, session, start) {
                              resize = "vertical")),
       if (!inside) shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
-        shiny::tags$summary(class = "small", with_tip(argl("Rows kept (this analysis's own condition)", "where"),
-                                                      t("An R condition for this analysis alone (e.g. AESER == \"Y\"). The data's own condition is 2-1's."))),
+        shiny::tags$summary(class = "small", with_tip(argl("This analysis's own filter", "where"),
+                                                      t("An R condition that filters this analysis's rows alone (e.g. AESER == \"Y\"). The data's own filter is 2-1's."))),
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
                          placeholder = "AESER == \"Y\"")),
       shiny::uiOutput("ard_stat_part"),
@@ -4106,6 +4114,23 @@ app_server <- function(input, output, session, start) {
     value = adata_cond_value, lang = lang, key = adata_cond_key)
   # for shiny::testServer(): the condition as the builder gives it
   session$userData$adata_cond <- list(value = adata_cond_value, key = adata_cond_key)
+  # the columns made (R/derive_builder.R): of the data's columns, those added
+  adata_drv <- .derive_editor_server(
+    input, output, session, t, notify,
+    cols = shiny::reactive({
+      shiny::req(!is.null(adata_edit()))
+      unique(c(adata_cols(adata_root(input$adata_from %||% "")), input$adata_add))
+    }),
+    data = shiny::reactive({
+      shiny::req(!is.null(adata_edit()))
+      ds <- adata_root(input$adata_from %||% "")
+      if (.is_blank(ds)) NULL else an_data(ds)
+    }),
+    lang = lang)
+  adata_derive_now <- function() {
+    v <- adata_drv$text()
+    if (is.na(v)) "" else v
+  }
   adata_where_now <- function() {
     v <- adata_cond()$expr
     if (is.null(v) || !length(v) || is.na(v) || !nzchar(trimws(v))) NA_character_ else v
@@ -4241,6 +4266,24 @@ app_server <- function(input, output, session, start) {
                                                    r$from)), from_ch)
     }
     more <- !.is_blank(r$add) || !.is_blank(r$derive) || !.is_blank(r$keep) || !.is_blank(r$distinct)
+    adata_drv$load(r$derive)
+    # add: columns of the subjects' data joined in -- not offered while it is
+    # made from the analysis set's own data (it has them all), unless the
+    # sheet says some
+    add_ui <- shiny::selectizeInput(
+      "adata_add", with_tip(argl("Columns added from the subjects' data", "add"),
+                            t("Columns of the subjects' data (the analysis set's, or the analysis data its subjects are kept to) joined by the subject key. Nothing chosen: nothing added. A column of the same name takes the subjects' values.")),
+      choices = unique(c(bar(r$add), adata_add_choices(r$from, subj_now))),
+      selected = bar(r$add), multiple = TRUE, width = "100%",
+      options = list(create = TRUE, plugins = list("remove_button")))
+    own <- unname(from_ch)[vapply(unname(from_ch), function(v)
+      adata_root(v) %in% adata_pop_ds(), NA)]
+    if (.is_blank(r$add) && length(own)) {
+      add_ui <- shiny::conditionalPanel(
+        sprintf("[%s].indexOf(input.adata_from) < 0",
+                paste(encodeString(own, quote = "\""), collapse = ", ")),
+        add_ui)
+    }
     step2_focus("adata")
     adata_form_ui(shiny::div(
       class = "rp-b-card mb-2 border-primary",
@@ -4284,18 +4327,15 @@ app_server <- function(input, output, session, start) {
           shiny::selectInput("adata_subj", NULL, stats::setNames(cands, cands),
                              selected = subj_now, width = "100%")),
         NULL),
-      shiny::tags$label(class = "form-label", with_tip(argl("Rows kept (a condition)", "where"), t("The rows the data keeps. The rows are AND (\"+ and\"); \"+ or (another group)\" is OR. A flag: \"= Y\". What the rows cannot say: \"Write as R\"."))),
+      shiny::tags$label(class = "form-label", with_tip(argl("Filter (a condition)", "where"), t("The condition the data's rows are filtered by (subset()). The rows are AND (\"+ and\"); \"+ or (another group)\" is OR. A flag: \"= Y\". What the rows cannot say: \"Write the condition as R\"."))),
       condition_builder_ui("adata_cond", lang),
       shiny::tags$details(
         class = "mb-2", open = if (more) NA,
         shiny::tags$summary(class = "small", t("Columns taken, made, kept; one row per ...")),
-        shiny::selectizeInput("adata_add", argl("Columns taken from the subjects' data", "add"),
-                              choices = unique(c(bar(r$add), adata_add_choices(r$from, subj_now))),
-                              selected = bar(r$add), multiple = TRUE, width = "100%",
-                              options = list(create = TRUE, plugins = list("remove_button"))),
-        shiny::textInput("adata_derive", argl("Columns made (NAME = R, | between them)", "derive"),
-                         blank_na(r$derive), width = "100%",
-                         placeholder = sprintf(t("e.g. %s"), "PHASE = APHASE")),
+        add_ui,
+        .derive_editor_ui(t, with_tip(argl("Columns made", "derive"),
+                                      t("The columns this data makes: split by conditions, cut a number into groups, days between two dates, or any R. The sheet keeps each as NAME = R (derive, | between them); one the form cannot draw is kept as written.")),
+                          blank_na(r$derive)),
         shiny::selectizeInput("adata_keep", argl("Columns kept (blank: all)", "keep"),
                               choices = unique(c(bar(r$keep), adata_cols(adata_root(r$from)))),
                               selected = bar(r$keep), multiple = TRUE, width = "100%",
@@ -4307,7 +4347,7 @@ app_server <- function(input, output, session, start) {
       # the way out: R that makes the data itself (the definition keeps it)
       shiny::tags$details(
         class = "mb-2", open = if (!.is_blank(r$code)) NA,
-        shiny::tags$summary(class = "small", with_tip(t("Write it as R (code)"), t("When the fields cannot say it: R whose value is the data (the datasets, pop_<set> and the analysis data above are in reach); written, the fields above are not used. The program is never edited: this R is the definition."))),
+        shiny::tags$summary(class = "small", with_tip(t("Write this analysis data whole as R (code)"), t("When the fields cannot say it: R whose value is the whole data (the datasets, pop_<set> and the analysis data above are in reach); written, none of the fields above is used. Only the filter: \"Write the condition as R\" above. The program is never edited: this R is the definition."))),
         shiny::textAreaInput("adata_code", NULL, blank_na(r$code), width = "100%", rows = 6,
                              resize = "vertical"),
         .btn("adata_code_start", t("Start from the generated code"),
@@ -4411,7 +4451,7 @@ app_server <- function(input, output, session, start) {
   output$adata_same <- shiny::renderUI({
     e <- adata_edit()
     shiny::req(!is.null(e), is.null(e$old), is.null(e$name))
-    more <- c(input$adata_add, input$adata_derive, input$adata_keep,
+    more <- c(input$adata_add, adata_derive_now(), input$adata_keep,
               input$adata_distinct, input$adata_code)
     shiny::req(!any(nzchar(trimws(more))))
     subjects <- adata_subj_value()
@@ -4443,7 +4483,7 @@ app_server <- function(input, output, session, start) {
     keep <- one(input$adata_keep)
     distinct <- one(input$adata_distinct)
     where <- ps$where
-    derive <- one(input$adata_derive)
+    derive <- one(adata_derive_now())
     # written as R: the fields that make a data are not used
     if (!is.na(code)) {
       pop <- subjects <- where <- add <- derive <- keep <- distinct <- NA
@@ -4537,7 +4577,7 @@ app_server <- function(input, output, session, start) {
       set_analysis_data(q, ard_target(), tmp, from = one_of(input$adata_from), subjects = adata_subj_value(),
                         population_id = ps$pop,
                         where = ps$where, add = one_of(input$adata_add),
-                        derive = one_of(input$adata_derive), keep = one_of(input$adata_keep),
+                        derive = one_of(adata_derive_now()), keep = one_of(input$adata_keep),
                         distinct = one_of(input$adata_distinct), old = e$old)
     }, error = function(err) NULL)
     v <- if (is.null(p)) NA else .adata_code_start(p, ard_target(), trimws(input$adata_id))
@@ -4559,7 +4599,7 @@ app_server <- function(input, output, session, start) {
       w <- adata_count_words
       cols <- .adata_preview_cols(d, list(add = one_of(input$adata_add),
                                           distinct = one_of(input$adata_distinct),
-                                          derive = one_of(input$adata_derive),
+                                          derive = one_of(adata_derive_now()),
                                           where = adata_where_now()))
       output$adata_preview_tbl <- shiny::renderTable(
         utils::head(d[cols], 5L), striped = TRUE, spacing = "xs")
@@ -4856,8 +4896,8 @@ app_server <- function(input, output, session, start) {
                          width = "100%"),
       shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
-        shiny::tags$summary(class = "small", with_tip(argl("Rows kept (this analysis's own condition)", "where"),
-                                                      t("An R condition for this analysis alone (e.g. AESER == \"Y\"). The data's own condition is 2-1's."))),
+        shiny::tags$summary(class = "small", with_tip(argl("This analysis's own filter", "where"),
+                                                      t("An R condition that filters this analysis's rows alone (e.g. AESER == \"Y\"). The data's own filter is 2-1's."))),
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
                          placeholder = "AESER == \"Y\"")),
       shiny::selectizeInput(

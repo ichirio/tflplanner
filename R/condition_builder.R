@@ -326,7 +326,11 @@ condition_builder_ui <- function(id, lang = "en") {
     shiny::tags$style(shiny::HTML(paste0(
       ".tfl-cond .selectize-input .item.tfl-cond-one, ",
       ".tfl-cond .selectize-dropdown .option.tfl-cond-one { white-space: nowrap; ",
-      "overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%; }"))),
+      "overflow: hidden; text-overflow: ellipsis; max-width: 100%; }",
+      ".tfl-cond .selectize-dropdown .option.tfl-cond-one { display: block; }",
+      # the chosen one beside selectize's input, not above it
+      ".tfl-cond .selectize-input .item.tfl-cond-one { display: inline-block; ",
+      "vertical-align: top; max-width: calc(100% - 12px); }"))),
     shiny::uiOutput(ns("body")))
 }
 
@@ -426,7 +430,7 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
       if (!is.null(raw)) {
         return(shiny::tagList(
           shiny::p(class = "small text-muted mb-1",
-                   t("Written as R (the rows cannot hold it): edit it here.")),
+                   t("The condition written as R (the rows cannot hold it): edit it here.")),
           shiny::textAreaInput(ns("raw"), NULL, raw, width = "100%", rows = 2),
           shiny::div(class = "d-flex gap-2",
                      shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary",
@@ -496,7 +500,7 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
           shiny::tags$button(type = "button", class = "btn btn-sm btn-link py-0",
                              onclick = js("add_or", "Math.random()"), t("+ or (another group)")),
           shiny::tags$button(type = "button", class = "btn btn-sm btn-link py-0 text-muted",
-                             onclick = js("to_raw", "Math.random()"), t("Write as R"))))
+                             onclick = js("to_raw", "Math.random()"), t("Write the condition as R (inside subset())"))))
     })
 
     # the rows as the fields have them now

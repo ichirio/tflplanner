@@ -4,7 +4,43 @@
   itself (no `fig <- p`, `plot <- fig`), its palette the study's figure
   setup's `tfl_colours()`, and the design's code is in the style of the
   other programs (`|>`, one-line parts: tflspec #164).  The sample's
-  reports are the same.  Needs tflspec 0.0.24.9059.
+  reports are the same.  Needs tflspec 0.0.24.9062.
+
+- **A user-code report's program, shorter** (#253).  The function that
+  makes its `content` what rtfreporter takes (a ggplot becomes a figure;
+  anything else is said) is `report_content()`, written once in the
+  study's `programs/tfl/fig_setup.R`; each program ends with
+  `content <- report_content(content)` instead of 15 lines of its own.
+  The sample's reports are the same.
+
+- **A session that stops on an error no longer stops the app** (#256).
+  With `stop_on_close = TRUE` (the launcher's), a page that went grey on
+  an error ended its session, which was taken for a closed tab: the app
+  stopped 5 seconds later and the page's Reload could not bring it back.
+  Such a session now waits 10 minutes.  The launcher keeps what the app
+  writes to the console (its errors, with the calls) in `app.log`, beside
+  `launcher.log`.  Needs shiny 1.8.1.
+
+- **2-1's columns made, by kind** (#255).  Each column the data makes is
+  a line of its own, made by kind: split by conditions (the conditions made
+  with the condition builder; one gives `ifelse()`, more give
+  `dplyr::case_when()`), cut a number into groups (`cut(..., right =
+  FALSE)`), the days between two dates (`as.numeric(END - START)`, + 1 if
+  wanted), or an R expression (a variable can be put in).  The sheet keeps
+  `NAME = R | ...` (derive) as before, so the definition and the generated
+  code do not change; the form reads back these four forms only, anything
+  else is an R expression, and a column not opened is saved exactly as
+  written.  The R stays at hand under "As R".
+
+- **2-1's form, in plainer words** (#254).  The condition is a filter:
+  "Filter (a condition)" (2-1) and "This analysis's own filter" (2-2),
+  their help alike.  "Write the condition as R (inside subset())" and
+  "Write this analysis data whole as R (code)" tell the two apart.  The
+  columns added from the subjects' data say what they do (nothing chosen:
+  nothing added) and are not offered while the data is made from the
+  analysis set's own data, which has them all.  The condition builder's
+  variable box is as tall as the others from the first (it took a line of
+  its own until its list was opened).
 
 - **A code list is a report's** (#251; tflspec 0.0.24.9058).  Step 1 edits
   the report's code lists: the variables it uses (its analyses, what its

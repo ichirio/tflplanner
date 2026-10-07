@@ -144,7 +144,9 @@ autoexec_all_code <- function(date = Sys.Date()) {
     out[nrow(out) + 1L, ] <<- list(f, .put_program(code, f, root))
   }
   put(batch_code(p), file.path("programs", .batch_file))
-  put(tflspec::tfl_fig_setup_code(.std_fig_style()),
+  # the figure style, and the one function a report of one's own code ends
+  # with (report_content()), written once here
+  put(c(tflspec::tfl_fig_setup_code(.std_fig_style()), "", .report_content_fun),
       file.path(lay[["programs_tfl"]], .fig_setup_file))
   if (.uses_report_setup(p)) {
     put(report_setup_code(p), file.path(lay[["programs_tfl"]], .report_setup_file))
