@@ -9,7 +9,7 @@
 #'
 #' Each is a row label and its template: one statistic a row (`Mean`,
 #' `{mean}`) or several in one (`Mean (SD)`, `{mean} ({sd})`).  Their
-#' decimals are the statistics' ([the `digits` sheet][tflspec::tfl_table_spec]).
+#' decimals are the statistics' (the `digits` sheet, see [tflspec::tfl_table_spec()]).
 #'
 #' @return A data frame: `key`, `row`, `template`.
 #' @export
@@ -105,7 +105,7 @@ builder_stats <- function() {
 .first_seen_chr <- function(x) unique(x[!is.na(x)])
 
 # a value, unless it is missing (NULL, NA): then the other
-`%|na|%` <- function(a, b) if (length(a) == 1L && !is.na(a)) a else b
+.or_na <- function(a, b) if (length(a) == 1L && !is.na(a)) a else b
 
 .split_list <- function(x) {
   if (is.null(x) || is.na(x) || !nzchar(x)) return(character())

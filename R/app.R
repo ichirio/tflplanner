@@ -7148,7 +7148,11 @@ app_server <- function(input, output, session, start) {
                             max = 6, step = 1, width = "88px"),
         .btn(id("exc_add"), t("Add"), class = "btn-sm btn-outline-primary mb-3")))
   }
-  shiny::observeEvent(input[[bid("exc_add")]], {
+  # (the form drawn again has new ids: read them again when it is)
+  shiny::observeEvent({
+    bform_drawn()
+    input[[bid("exc_add")]]
+  }, {
     v <- input[[bid("exc_var")]]
     k <- input[[bid("exc_stat")]]
     d <- suppressWarnings(as.integer(input[[bid("exc_dg")]]))
@@ -7161,7 +7165,11 @@ app_server <- function(input, output, session, start) {
     bform$exc <- exc
     exc_ver(exc_ver() + 1L)
   })
-  shiny::observeEvent(input[[bid("exc_rm")]], {
+  # (the form drawn again has new ids: read them again when it is)
+  shiny::observeEvent({
+    bform_drawn()
+    input[[bid("exc_rm")]]
+  }, {
     i <- input[[bid("exc_rm")]]
     exc <- bform$exc
     shiny::req(!is.null(exc), i >= 1L, i <= nrow(exc))
@@ -7171,7 +7179,11 @@ app_server <- function(input, output, session, start) {
     exc_ver(exc_ver() + 1L)
   })
   # a row of one's own: added at the end of the shown rows, written at once
-  shiny::observeEvent(input[[bid("own_add")]], {
+  # (the form drawn again has new ids: read them again when it is)
+  shiny::observeEvent({
+    bform_drawn()
+    input[[bid("own_add")]]
+  }, {
     lb <- trimws(input[[bid("own_label")]] %||% "")
     tp <- trimws(input[[bid("own_tpl")]] %||% "")
     if (!nzchar(lb) || !grepl("[{][^}]+[}]", tp)) {
@@ -7248,7 +7260,7 @@ app_server <- function(input, output, session, start) {
         lapply(used, function(k) {
           typed <- suppressWarnings(as.integer(
             shiny::isolate(input[[paste0("b", n, "_dg_", k)]])))
-          v <- typed %|na|% unname(cur[k]) %|na|% unname(rule[k]) %|na|% 1L
+          v <- .or_na(typed, .or_na(unname(cur[k]), .or_na(unname(rule[k]), 1L)))
           shiny::numericInput(paste0("b", n, "_dg_", k), k, value = v, min = 0,
                               max = 6, step = 1, width = "88px")
         })))
