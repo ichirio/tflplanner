@@ -351,6 +351,10 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     "  stop(\"Run this program from the study folder: open the study's .Rproj\",",
     "       \" or setwd() to the folder that holds study.yml.\")",
     "}",
+    if (.uses_report_setup(x)) c(
+      "# the study's header, footer and tokens, every report's",
+      sprintf("source(%s)", .r_string(file.path(lay[["programs_tfl"]],
+                                                 .report_setup_file)))),
     "",
     paste("output_id <-", .r_string(output_id)),
     "",
@@ -393,13 +397,55 @@ program_code <- function(x, output_id, date = Sys.Date()) {
            "footnotes -- as"),
     paste0("# ", file.path(lay[["spec"]], .report_file), " defines it"),
     tflspec::tfl_report_code(sp, output_id,
-                             content = if (table) "plan" else "content"),
+                             content = if (table) "plan" else "content",
+                             setup = .uses_report_setup(x)),
     sprintf("generate_rtfreport(doc, %s, overwrite = TRUE)",
             .r_string(tflspec::tfl_report_path(sp, output_id)))),
     error = function(e) sprintf(
       "stop(%s)", .r_string(paste0("tflplanner: the definition of ",
                                    output_id, " does not hold: ",
                                    conditionMessage(e)))))
+}
+
+# The study's tokens, header and footer are written once, in
+# programs/tfl/report_setup.R, when the study has tokens of its own (its
+# default rows: COMPANY, STUDY_ID ...) -- a new study does; one that has
+# none writes each report's header in its program, as before
+.uses_report_setup <- function(x) {
+  d <- x$sheets$tokens
+  !is.null(d) && any(is.na(d$output_id))
+}
+
+#' The study's setup of its report programs
+#'
+#' `programs/tfl/report_setup.R`, which every report program sources: the
+#' study's tokens (`options(rtfreporter.tokens = )`: the company, the
+#' analysis, the protocol ...), its running header and footer
+#' (`study_header`, `study_footer`), written once from `report_spec.xlsx`
+#' ([tflspec::tfl_report_setup_code()]).  Each report program then says
+#' only its own tokens (`OUTPUT_LABEL`, `OUTPUT_TITLE` ...).
+#'
+#' @param x A `tflplanner`.
+#' @param date The date stamped in the banner.
+#' @return The program, one element per line.
+#' @export
+report_setup_code <- function(x, date = Sys.Date()) {
+  lay <- study_layout()
+  sp <- .spec_object_last(x, c(table_sheets(), report_sheets()),
+                          unique(c(.study_keys$table, .study_keys$report)))
+  c(.banner(
+      paste("Program    :", file.path(lay[["programs_tfl"]], .report_setup_file)),
+      "The study's header, footer and tokens: every report program sources it.",
+      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
+             ", ", format(date, "%Y-%m-%d")),
+      "",
+      "Written from spec/report_spec.xlsx: change them there (the study tab),",
+      "then generate the programs again."),
+    "",
+    "library(rtfreporter)",
+    "",
+    tflspec::tfl_report_setup_code(sp),
+    "")
 }
 
 #' The program that runs every report program

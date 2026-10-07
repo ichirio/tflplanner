@@ -1974,6 +1974,14 @@ app_server <- function(input, output, session, start) {
                         t(c("As options(rtfreporter.rounding)",
                             "r (half to even)", "sas (half away from zero)"))),
         selected = v(r)),
+      shiny::h6(with_tip(t("Every report's header"),
+                         t("The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}, {STUDY_ID}. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, analysis set)."))),
+      shiny::div(class = "d-flex flex-wrap gap-2",
+        shiny::textInput("tok_COMPANY", t("Company"), v(study_token(rv$p, "COMPANY"))),
+        shiny::textInput("tok_ANALYSIS_TYPE", t("Analysis"),
+                         v(study_token(rv$p, "ANALYSIS_TYPE")),
+                         placeholder = "Final Analysis"),
+        shiny::textInput("tok_STUDY_ID", t("Protocol"), v(study_token(rv$p, "STUDY_ID")))),
       shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-center mb-2",
         .btn("std_defaults", t("Add the company's study defaults (only what is missing)"),
@@ -2014,6 +2022,16 @@ app_server <- function(input, output, session, start) {
       v <- trimws(input[[paste0("m_", key)]])
       v <- if (nzchar(v)) v else NA_character_
       if (!identical(rv$meta[[key]], v)) rv$meta[[key]] <- v
+    }, ignoreInit = TRUE)
+  })
+  for (k in .study_token_names) local({
+    key <- k
+    shiny::observeEvent(input[[paste0("tok_", key)]], {
+      v <- trimws(input[[paste0("tok_", key)]])
+      now <- study_token(rv$p, key)
+      if (!identical(if (is.na(now)) "" else now, v)) {
+        rv$p <- set_study_token(rv$p, key, v)
+      }
     }, ignoreInit = TRUE)
   })
   shiny::observeEvent(input$rounding, {
@@ -2265,15 +2283,49 @@ app_server <- function(input, output, session, start) {
     })
     output[[paste0("inh_", sh)]] <- shiny::renderUI({
       d <- inherited()
-      if (is.null(d)) return(NULL)
-      shiny::tags$details(
-        class = "mt-2 small", open = NA,
-        shiny::tags$summary(sprintf(
-          t("Inherited from the study defaults (%d rows; edit them under Study defaults)"),
-          nrow(d))),
-        shiny::div(class = "rp-inherited",
-                   shiny::tableOutput(paste0("inh_tbl_", sh))))
+      # the header: the study's (one for every report, its words
+      # the report's tokens), or the report's own -- a copy of the study's
+      band <- if (identical(sh, "header") && !is.null(current())) {
+        rv$ver
+        own <- nrow(sheet_rows(rv$p, sh, current())) > 0L
+        shiny::div(
+          class = "d-flex flex-wrap gap-2 align-items-center mt-2 small",
+          if (own) shiny::tagList(
+            shiny::span(t("This report has a header of its own.")),
+            .btn(paste0("band_study_", sh), t("Back to the study's"),
+                 class = "btn-sm btn-outline-secondary py-0"))
+          else shiny::tagList(
+            shiny::span(with_tip(t("The study's (its values: this report's tokens)"),
+                                 t("Every report has the study's header; what changes from report to report ({OUTPUT_LABEL}, {OUTPUT_TITLE}, {OUTPUT_POPULATION}) is in the tokens tab."))),
+            if (!is.null(d)) .btn(paste0("band_own_", sh), t("A header of this report's own"),
+                                  class = "btn-sm btn-outline-secondary py-0")))
+      }
+      if (is.null(d)) return(band)
+      shiny::tagList(
+        band,
+        shiny::tags$details(
+          class = "mt-2 small", open = NA,
+          shiny::tags$summary(sprintf(
+            t("Inherited from the study defaults (%d rows; edit them under Study defaults)"),
+            nrow(d))),
+          shiny::div(class = "rp-inherited",
+                     shiny::tableOutput(paste0("inh_tbl_", sh)))))
     })
+    if (identical(sh, "header")) {
+      # a copy of the study's lines, to edit for this report
+      shiny::observeEvent(input[[paste0("band_own_", sh)]], {
+        d <- inherited_rows(rv$p, sh, current())
+        if (!nrow(d)) return()
+        d$output_id <- NULL
+        guarded(rv$p <- set_sheet_rows(rv$p, sh, current(), d))
+        bump()
+      })
+      shiny::observeEvent(input[[paste0("band_study_", sh)]], {
+        guarded(rv$p <- set_sheet_rows(rv$p, sh, current(),
+                                       sheet_rows(rv$p, sh, current())[0L, , drop = FALSE]))
+        bump()
+      })
+    }
     output[[paste0("inh_tbl_", sh)]] <- shiny::renderTable(
       inherited(), na = "", striped = TRUE, spacing = "xs")
     output[[paste0("help_", sh)]] <- DT::renderDT(
@@ -5336,7 +5388,8 @@ app_server <- function(input, output, session, start) {
     labs <- c(output_id = t("Report ID"), type = t("Type"), title = t("Title lines"),
               population = t("Population"), footnote = t("Footnote lines"),
               program = t("Program"), file = t("File"), note = t("Remarks"),
-              section = t("Section (heading)"))
+              section = t("Section (heading)"),
+              label = t("Report ID as printed (Table 14.1.1)"))
     choices <- c(stats::setNames("", t("(none)")), stats::setNames(h, h))
     shiny::tagList(
       shiny::h6(t("Which column is what")),
@@ -5380,13 +5433,19 @@ app_server <- function(input, output, session, start) {
     tryCatch(tflspec::tfl_read_toc(w$path, map = m, sheet = w$sheet, skip = w$skip),
              error = function(e) e)
   })
+  # the TOC as the study takes it: a header that says {OUTPUT_TITLE} has
+  # the title and analysis set, not the title lines
+  toc_spec <- shiny::reactive({
+    sp <- toc_read()
+    if (inherits(sp, "error")) sp else .toc_titles_in_header(rv$p, sp)
+  })
   toc_offset <- shiny::reactive(toc_title_offset(rv$p))
   toc_last_now <- shiny::reactive({
     rv$ver
     toc_last(rv$study)
   })
   toc_ch <- shiny::reactive({
-    sp <- toc_read()
+    sp <- toc_spec()
     if (inherits(sp, "error")) return(sp)
     toc_changes(rv$p, sp, toc_last_now(), toc_offset())
   })
@@ -5414,7 +5473,7 @@ app_server <- function(input, output, session, start) {
       return(shiny::div(class = "alert alert-danger py-1 small",
                         sprintf(t("The TOC cannot be read: %s"), conditionMessage(ch))))
     }
-    sp <- toc_read()
+    sp <- toc_spec()
     r <- ch$reports
     l <- ch$lines
     n <- table(factor(r$status, names(toc_status_labels)))
@@ -5514,7 +5573,7 @@ app_server <- function(input, output, session, start) {
       notify(msg, level)
     }
     if (is.null(input[[toc_id("file")]])) return(refuse(t("Choose the TOC file.")))
-    sp <- toc_read()
+    sp <- toc_spec()
     ch <- toc_ch()
     if (inherits(ch, "error")) return(refuse(conditionMessage(ch), "error"))
     r <- ch$reports

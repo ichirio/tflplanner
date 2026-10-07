@@ -144,6 +144,7 @@ reference:
     contents:
       - data_lines
       - program_code
+      - report_setup_code
       - autoexec_code
       - batch_code
       - run_study
