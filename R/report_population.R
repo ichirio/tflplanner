@@ -41,13 +41,13 @@ report_population <- function(x, output_id) {
 # The analysis data of an analysis set's subjects: the one there (made from
 # its dataset, its set, nothing else), else adsl_<set> is added.  The planner
 # with it; attr "data_id" its name, "added" TRUE when it was made.
-.ensure_pop_adata <- function(x, pop) {
+.ensure_pop_adata <- function(x, output_id, pop) {
   po <- x$ard$populations
   k <- match(pop, po$population_id)
   if (is.na(k)) stop("No analysis set '", pop, "'.", call. = FALSE)
   from <- po$dataset[k]
   if (.is_blank(from)) from <- "ADSL"
-  have <- .adata_same_as(.adata_rows(x), from, pop, NA, NA)
+  have <- .adata_same_as(.adata_rows(x, output_id), from, pop, NA, NA)
   if (!is.na(have)) {
     attr(x, "data_id") <- have
     attr(x, "added") <- FALSE
@@ -55,9 +55,9 @@ report_population <- function(x, output_id) {
   }
   nm <- paste0(gsub("[^a-z0-9_.]", "_", tolower(from)), "_",
                gsub("[^a-z0-9_.]", "_", tolower(pop)))
-  nm <- .adata_free_name(x, nm)
+  nm <- .adata_free_name(x, output_id, nm)
   lab <- .pop_label(x, pop)
-  x <- set_analysis_data(x, nm, from = from, population_id = pop,
+  x <- set_analysis_data(x, output_id, nm, from = from, population_id = pop,
                          label = if (identical(lab, pop)) NA else lab)
   attr(x, "data_id") <- nm
   attr(x, "added") <- TRUE
@@ -69,8 +69,8 @@ report_population <- function(x, output_id) {
 # there with that definition, else one made.  NA when it is not of that
 # kind (made from another analysis data, written as R, of no set).  The
 # planner with attr "data_id".
-.adata_for_pop <- function(x, id, from_pop, to_pop) {
-  ad <- .adata_rows(x)
+.adata_for_pop <- function(x, output_id, id, from_pop, to_pop) {
+  ad <- .adata_rows(x, output_id)
   i <- match(id, ad$data_id)
   out <- function(x, v) {
     attr(x, "data_id") <- v
@@ -83,7 +83,7 @@ report_population <- function(x, output_id) {
     pop <- to_pop
     subj <- NA_character_
   } else if (!.is_blank(r$subjects)) {
-    x <- .adata_for_pop(x, r$subjects, from_pop, to_pop)
+    x <- .adata_for_pop(x, output_id, r$subjects, from_pop, to_pop)
     subj <- attr(x, "data_id")
     if (is.na(subj)) return(out(x, NA_character_))
     pop <- NA_character_
@@ -93,10 +93,10 @@ report_population <- function(x, output_id) {
   # the subjects' own data of a set: adsl_<set>, made as a set's is
   if (!is.na(pop) && .is_blank(r$where) && .is_blank(r$add) && .is_blank(r$derive) &&
       .is_blank(r$keep) && .is_blank(r$distinct)) {
-    x <- .ensure_pop_adata(x, pop)
+    x <- .ensure_pop_adata(x, output_id, pop)
     return(out(x, attr(x, "data_id")))
   }
-  ad <- .adata_rows(x)
+  ad <- .adata_rows(x, output_id)
   same <- vapply(seq_len(nrow(ad)), function(j) {
     identical(ad$from[j], r$from) && identical(.blank_na(ad$population_id[j]), .blank_na(pop)) &&
       identical(.blank_na(ad$subjects[j]), .blank_na(subj)) &&
@@ -110,8 +110,8 @@ report_population <- function(x, output_id) {
   base <- if (endsWith(id, paste0("_", lo(from_pop)))) {
     paste0(substr(id, 1L, nchar(id) - nchar(from_pop)), lo(to_pop))
   } else paste0(id, "_", lo(to_pop))
-  nm <- .adata_free_name(x, base)
-  x <- set_analysis_data(x, nm, from = r$from, population_id = pop, subjects = subj,
+  nm <- .adata_free_name(x, output_id, base)
+  x <- set_analysis_data(x, output_id, nm, from = r$from, population_id = pop, subjects = subj,
                          where = r$where, add = r$add, derive = r$derive, keep = r$keep,
                          distinct = r$distinct, label = r$label)
   out(x, nm)
@@ -120,13 +120,8 @@ report_population <- function(x, output_id) {
 # `base`, else base_1, base_2 ...: a name no data of the program has (the
 # datasets, the sets' pop_<id>, the analysis data, and the names of the
 # dataset x set data the analyses read)
-.adata_free_name <- function(x, base) {
-  rn <- function(v) gsub("[^a-z0-9_.]", "_", tolower(v))
-  a <- x$ard$analyses
-  used <- if (nrow(a)) unique(vapply(seq_len(nrow(a)), function(i)
-    .an_data_name(a$dataset[i], a$population_id[i], x$ard$populations), "")) else character()
-  taken <- c(rn(x$ard$datasets$dataset), paste0("pop_", rn(x$ard$populations$population_id)),
-             used, .adata_rows(x)$data_id, "data", "population", "ard", "ards", "status")
+.adata_free_name <- function(x, output_id, base) {
+  taken <- .adata_names_in_use(x, output_id)
   nm <- base
   k <- 1L
   while (nm %in% taken) {
@@ -134,6 +129,19 @@ report_population <- function(x, output_id) {
     k <- k + 1L
   }
   nm
+}
+
+# The names a report's program has: the datasets, the sets' pop_<id>, the
+# report's analysis data, and the names of the dataset x set data its
+# analyses read
+.adata_names_in_use <- function(x, output_id) {
+  rn <- function(v) gsub("[^a-z0-9_.]", "_", tolower(v))
+  a <- x$ard$analyses
+  a <- a[!is.na(a$output_id) & a$output_id == output_id, , drop = FALSE]
+  used <- if (nrow(a)) unique(vapply(seq_len(nrow(a)), function(i)
+    .an_data_name(a$dataset[i], a$population_id[i], x$ard$populations), "")) else character()
+  c(rn(x$ard$datasets$dataset), paste0("pop_", rn(x$ard$populations$population_id)),
+    used, .adata_rows(x, output_id)$data_id, "data", "population", "ard", "ards", "status")
 }
 
 # How many subjects of `d` have another `flag` than in the subjects' data
@@ -222,18 +230,18 @@ set_report_population <- function(x, output_id, population) {
   if (is.null(o$population)) o$population <- rep(NA_character_, nrow(o))
   o$population[i] <- new
   x$outputs <- o
-  before <- .adata_rows(x)$data_id
+  before <- .adata_rows(x, output_id)$data_id
   left <- character()
   if (!is.na(new)) {
-    x <- .ensure_pop_adata(x, new)
+    x <- .ensure_pop_adata(x, output_id, new)
     if (!is.na(old) && !identical(old, new)) {
       a <- x$ard$analyses
       mine <- which(!is.na(a$output_id) & a$output_id == output_id)
       moved <- list()
       move <- function(id) {
-        if (.is_blank(id) || !id %in% .adata_rows(x)$data_id) return(id)
+        if (.is_blank(id) || !id %in% .adata_rows(x, output_id)$data_id) return(id)
         if (!is.null(moved[[id]])) return(moved[[id]])
-        x <<- .adata_for_pop(x, id, old, new)
+        x <<- .adata_for_pop(x, output_id, id, old, new)
         v <- attr(x, "data_id")
         if (is.na(v)) {
           if (!id %in% left) left <<- c(left, id)
@@ -253,7 +261,7 @@ set_report_population <- function(x, output_id, population) {
   }
   attr(x, "data_id") <- NULL
   attr(x, "added") <- NULL
-  attr(x, "made") <- setdiff(.adata_rows(x)$data_id, before)
+  attr(x, "made") <- setdiff(.adata_rows(x, output_id)$data_id, before)
   attr(x, "left") <- left
   x
 }

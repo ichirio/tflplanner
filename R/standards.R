@@ -170,7 +170,7 @@
     # the TOC has, in the TOC's order
     toc_map = .df(
       item = c("output_id", "type", "title", "population", "footnote",
-               "program", "file", "note", "section"),
+               "program", "file", "note", "section", "datasets", "label"),
       columns = c("Output ID | Output | Output No. | No. | Number | TLF ID | TFL ID | ID",
                   "Type | Kind | Output Type",
                   "Title | Title 1 | Title 2 | Title 3 | Title 4",
@@ -179,7 +179,9 @@
                   "Program | Program Name",
                   "File | Output File | File Name",
                   "Note | Notes | Comment | Comments",
-                  "Section | Heading | Section Heading")),
+                  "Section | Heading | Section Heading",
+                  "Datasets | Dataset | Data | Source Data | Input Data | ADaM",
+                  "Label | Output Label | Display ID | Table Number")),
     # the company's own words for the ARD form's function search, added to
     # tflplanner's dictionary (inst/ard_search/fn_keywords.csv, its columns):
     # an in-house name for a function (fn = cardx::ard_stats_t_test,
@@ -209,10 +211,18 @@
                                                "LB", "VS", "DS")), ".rds")),
       derive = NA_character_,
       note = NA_character_),
+    # the study's header, every report's: the study's words are tokens
+    # (default_tokens), a report's own ({OUTPUT_LABEL} "Table 14.1.1", its
+    # title and analysis set) come from its tokens; a line whose tokens a
+    # report leaves empty is not printed
     default_header = default("header",
-      list(line = "1", left = "Company", right = "DRAFT"),
-      list(line = "2", left = "Protocol: {STUDY_ID}",
-           right = "Page {PAGE} of {TOTAL_PAGES}")),
+      list(line = "1", left = "{COMPANY}", right = "{ANALYSIS_TYPE}"),
+      list(line = "2", left = "PROTOCOL: {STUDY_ID}",
+           right = "Page {PAGE} of {TOTAL_PAGES}"),
+      list(line = "3"),
+      list(line = "4", center = "{OUTPUT_LABEL}"),
+      list(line = "5", center = "{OUTPUT_TITLE}"),
+      list(line = "6", center = "<{OUTPUT_POPULATION}>")),
     default_footer = default("footer",
       list(line = "99", left = "{PROGRAM}       Generated on: {DATETIME}")),
     default_cells = default("cells",
@@ -236,7 +246,12 @@
       list(type = "table", file = "{output_id}.rtf")),
     default_page = default("page"),
     default_titles = default("titles"),
-    default_footnotes = default("footnotes"))
+    default_footnotes = default("footnotes"),
+    # the study's words in every report's header, set once (the study tab)
+    default_tokens = default("tokens",
+      list(name = "COMPANY", value = "Company"),
+      list(name = "ANALYSIS_TYPE", value = "Final Analysis"),
+      list(name = "STUDY_ID", value = "{STUDY_ID}")))
   s
 }
 
@@ -452,10 +467,16 @@ add_standard_defaults <- function(x, study_id) {
   if (length(su) && !is.na(su)) {
     p$setup <- gsub("{STUDY_ID}", study_id, su, fixed = TRUE)
   }
+  # {STUDY_ID} becomes the study's id -- in the tokens only, when they
+  # give it: the header then says the token, its value set in one place
+  tok <- s$default_tokens
+  as_token <- !is.null(tok) && "STUDY_ID" %in% trimws(tok$name)
   for (sh in c(table_sheets(), report_sheets())) {
     d <- s[[paste0("default_", sh)]]
     if (is.null(d) || !nrow(d)) next
-    d[] <- lapply(d, function(v) gsub("{STUDY_ID}", study_id, v, fixed = TRUE))
+    if (!as_token || sh == "tokens") {
+      d[] <- lapply(d, function(v) gsub("{STUDY_ID}", study_id, v, fixed = TRUE))
+    }
     d$output_id <- NA_character_
     p$sheets[[sh]] <- .normalize_sheet(d, sh)
     if (sh == "report") p <- .old_program_default(p)

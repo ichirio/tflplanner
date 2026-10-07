@@ -284,8 +284,10 @@ update_tflplanner <- function(channel = NULL, from = NULL,
 .start_update_check <- function(home = tflplanner_home()) {
   if (!is.null(.upd$proc) || !is.null(.upd$result)) return(invisible())
   # the setting, and an option for tests and offline sites
+  # off unless turned on (the app's settings, setup_tflplanner(check_updates
+  # = TRUE)): it looks on the network, and it never installs anything
   if (isFALSE(getOption("tflplanner.check_updates", TRUE)) ||
-      isFALSE(as.logical(tflplanner_config(home)$check_updates %||% "true"))) {
+      !isTRUE(as.logical(tflplanner_config(home)$check_updates %||% "false"))) {
     .upd$result <- list()
     return(invisible())
   }

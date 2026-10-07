@@ -56,7 +56,9 @@ test_that("a company's workbook changes what the app offers", {
 
   st <- create_study("NEW-1")
   expect_equal(st$planner$sheets$header$left[1], "ACME Pharma")
-  expect_equal(st$planner$sheets$header$left[2], "Protocol: NEW-1")
+  # the protocol is a token, its value set once (the study tab)
+  expect_equal(st$planner$sheets$header$left[2], "PROTOCOL: {STUDY_ID}")
+  expect_equal(study_token(st$planner, "STUDY_ID"), "NEW-1")
   expect_equal(st$planner$ard$study$value[st$planner$ard$study$key == "id"],
                "SUBJID")
   expect_true("SAF" %in% st$planner$ard$populations$population_id)

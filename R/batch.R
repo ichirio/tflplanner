@@ -17,6 +17,7 @@
 
 .batch_file <- "batch.R"
 .fig_setup_file <- "fig_setup.R"
+.report_setup_file <- "report_setup.R"
 .autoexec_all_file <- "autoexec_all.R"
 
 #' The official-run programs of a study
@@ -52,7 +53,9 @@ batch_code <- function(x, date = Sys.Date()) {
                                                .ard_autoexec_file)),
             wb(.ard_file)),
     tfl = c(file.path(lay[["programs_tfl"]], c("autoexec_report.R",
-                                               .fig_setup_file)),
+                                               .fig_setup_file,
+                                               if (.uses_report_setup(x))
+                                                 .report_setup_file)),
             wb(c(.table_file, .report_file, .lf_file, .ard_file))),
     all = c(file.path("programs", c(.batch_file, .autoexec_all_file)),
             .study_file))
@@ -143,6 +146,9 @@ autoexec_all_code <- function(date = Sys.Date()) {
   put(batch_code(p), file.path("programs", .batch_file))
   put(tflspec::tfl_fig_setup_code(.std_fig_style()),
       file.path(lay[["programs_tfl"]], .fig_setup_file))
+  if (.uses_report_setup(p)) {
+    put(report_setup_code(p), file.path(lay[["programs_tfl"]], .report_setup_file))
+  }
   put(autoexec_all_code(), file.path("programs", .autoexec_all_file))
   put(autoexec_code(p), file.path(lay[["programs_tfl"]], "autoexec_report.R"))
   out

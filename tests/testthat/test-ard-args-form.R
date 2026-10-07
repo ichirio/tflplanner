@@ -168,3 +168,38 @@ test_that("what the catalog does not offer is not listed", {
   e <- .ard_fn_entries(.std_ard_methods(), f)
   expect_false(any(f$call[!f$offered] %in% e$value))
 })
+
+test_that("the form shows the variables, groups and strata in the definition's order", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  local_home()
+  s <- create_study("VO")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADSL, file.path(s$path, "data/adam/adsl.rds"))
+  saveRDS(cards::ADAE, file.path(s$path, "data/adam/adae.rds"))
+  s$planner <- first_table(s$planner, "T1", "data/adam/adsl.rds", cards::ADSL,
+                           "SAFFL", "TRT01A", "AGE")
+  s$planner$ard$datasets <- .normalize_ard_sheet(data.frame(
+    dataset = c("ADSL", "ADAE"), path = c("data/adam/adsl.rds", "data/adam/adae.rds")), "datasets")
+  a <- ard_rows(s$planner, "analyses", "T1")
+  a <- a[1L, ]
+  a$analysis_id <- "AE"
+  a$method <- "hierarchical"
+  a$dataset <- "ADAE"
+  # not in the data's (alphabetical) order: the hierarchy, outermost first
+  a$variables <- "AEBODSYS | AEDECOD"
+  a$by <- "TRT01A"
+  s$planner <- set_ard_rows(s$planner, "analyses", "T1", a)
+  save_study(s)
+  shiny::testServer(server_for("VO"), {
+    session$setInputs(nav = "make", step = "ard", target = "T1")
+    session$setInputs(ard_ol_pick = "AE")
+    h <- output$ard_an_vars$html
+    expect_lt(regexpr("value=\"AEBODSYS\" selected", h, fixed = TRUE),
+              regexpr("value=\"AEDECOD\" selected", h, fixed = TRUE))
+    # the method as a heading, with the function it calls
+    f <- output$ard_fn_now$html
+    expect_match(f, "fs-5", fixed = TRUE)
+    expect_match(f, "cards::ard_stack_hierarchical", fixed = TRUE)
+  })
+})

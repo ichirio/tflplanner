@@ -74,6 +74,7 @@ reference:
       - remove_analysis
       - copy_analysis
       - set_analysis_data
+      - import_analysis_data
       - set_report_population
       - ard_setup_code
       - run_ard
@@ -146,6 +147,7 @@ reference:
     contents:
       - data_lines
       - program_code
+      - report_setup_code
       - autoexec_code
       - batch_code
       - run_study

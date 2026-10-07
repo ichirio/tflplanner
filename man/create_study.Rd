@@ -62,8 +62,14 @@ RStudio project -- and saves the study, which registers it.
 \item \code{open_study()} returns a study as it was last saved.  Given the folder
 of a study tflplanner does not know yet, it registers it first.
 \item \code{register_study()} adds an existing study folder: its \code{study.yml}, and
-its definition workbooks when \verb{spec/} has them.
-\item \code{unregister_study()} forgets a study; its folder is left alone.
+its definition workbooks when \verb{spec/} has them.  A folder unregistered
+before comes back as it was (its saved state, history and unsaved
+changes).
+\item \code{unregister_study()} takes a study off the list.  Its folder is not
+deleted: what tflplanner kept about it goes into the folder
+(\verb{.tflplanner/}), for \code{register_study()} to take back.  tflplanner
+never deletes a study folder; to delete one, delete it yourself (in the
+file manager it goes to the recycle bin).
 \item \code{list_studies()} lists the registered studies.
 }
 }
