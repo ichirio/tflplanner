@@ -16,7 +16,12 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   code <- data_lines(s$planner, "F-14-2-1")
   expect_true(any(grepl("advs <- ", code, fixed = TRUE)))
   expect_true(any(grepl("adsl <- ", code, fixed = TRUE)))
-  expect_true(any(grepl("^plot <- fig$", unlist(strsplit(code, "\n", fixed = TRUE)))))
+  lines <- unlist(strsplit(code, "\n", fixed = TRUE))
+  # the design's figure is the program's `plot` itself, its palette the
+  # study's figure setup's
+  expect_true(any(grepl("^plot <- p$", lines)))
+  expect_false(any(grepl("^plot <- fig$|^fig <- p$", lines)))
+  expect_true(any(grepl("tfl_colours(", lines, fixed = TRUE)))
   expect_false(any(grepl("ggsave(", code, fixed = TRUE)))
 
   # saved: the YAML, and the state (7 kept as 7, whatever the reader says)
@@ -170,4 +175,15 @@ test_that("a template's defaults the data has not got are replaced by the data's
   j0 <- Filter(function(s) identical(s$step, "join"),
                .trim_join(d2, cbind(x, TRT01P = "P"))$data)
   expect_length(j0, 0L)
+})
+
+test_that("the designer shows a piece's own lines of the design's code", {
+  d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTDE",
+                                 pop = "SAFFL", group = "TRT01A")
+  code <- .fig_design_script(d, "F-1")
+  base <- .piece_code(code, d, list(sec = "layers", i = 1L))
+  expect_true(startsWith(base[1L], "p <- ggsurvfit("))
+  expect_false(any(grepl("^# ----", base)))
+  df <- .piece_code(code, d, list(sec = "data", i = 1L))
+  expect_true(startsWith(df[1L], "df <- adtte |>"))
 })
