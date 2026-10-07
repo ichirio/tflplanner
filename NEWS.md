@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **Nothing updates on its own** (#226).  `add_shortcut()` no longer makes
+  the "update and launch" shortcut unless asked (`update = TRUE`); the
+  Start menu entry stays.  The app's check for a newer version is off
+  unless turned on in its settings (or `setup_tflplanner(check_updates =
+  TRUE)`; a setting already made is kept), and it only tells: tflplanner
+  installs or updates nothing unless you ask -- `update_tflplanner()`, or
+  the "update and launch" shortcut.
+
 - **The sample's ADSL has ITTFL, EFFFL and PPROTFL** (#218), derived by
   data-raw/make-sample-study.R (pharmaverseadam's ADSL has SAFFL only of
   the population flags; the sample's README says how), so step 2 has

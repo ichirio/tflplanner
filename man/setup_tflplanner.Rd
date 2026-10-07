@@ -37,7 +37,10 @@ sample already there is left as it is.}
 \code{\link[=launch_app]{launch_app()}} (default 7470); \code{NULL} keeps the setting.}
 
 \item{check_updates}{Whether the app looks for a newer version when it
-starts (default \code{TRUE}); \code{NULL} keeps the setting.}
+starts (default \code{FALSE}; it only says so, it installs nothing); \code{NULL}
+keeps the setting.  tflplanner is updated only when you ask:
+\code{\link[=update_tflplanner]{update_tflplanner()}}, or the "update and launch" shortcut
+(\code{add_shortcut(update = TRUE)}).}
 }
 \value{
 The settings, invisibly.

@@ -83,8 +83,8 @@ else is done in the app.  Without a shortcut, start it with `launch_app()`
 (in its own R process; also the RStudio add-in *Launch tflplanner*) or
 `run_app()`.
 
-To update rtfreporter, tflspec and tflplanner later, close the app and
-start it from the shortcut **tflplanner (update and launch)**, or run
+tflplanner never updates itself or anything else on its own.  To update
+rtfreporter, tflspec and tflplanner, close the app and run
 
 ```r
 tflplanner::update_tflplanner()          # the released versions
@@ -92,8 +92,10 @@ tflplanner::update_tflplanner("dev")     # the development versions
 tflplanner::update_tflplanner(from = "D:/packages")   # from package files
 ```
 
-The app says when a newer version is out (it looks when it starts; this can
-be turned off in its settings).
+or start it from the shortcut **tflplanner (update and launch)**, made
+only when asked for: `add_shortcut(update = TRUE)`.  The app can say when
+a newer version is out (it looks when it starts): off by default, turned
+on in its settings.
 
 The same steps as code, for scripts:
 
