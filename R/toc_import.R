@@ -238,12 +238,17 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
 #'   report (see [toc_populations()]): each one that differs from the
 #'   report's is set with [set_report_population()] (its data made, its
 #'   analyses moved).
+#' @param make_data Make the analysis data of each new report's datasets
+#'   (the TOC's `datasets`): `<dataset>_<set>`, kept to the subjects of its
+#'   analysis set (`adsl_<set>`), found or made.
+#' @param again With `make_data`, also for the reports taken in before
+#'   (those deleted since are made again).
 #' @return The `tflplanner`.
 #' @export
 toc_apply <- function(x, spec, changes, use_toc = character(), types = character(),
                       last = changes$last,
                       title_offset = changes$title_offset %||% toc_title_offset(x),
-                      populations = character()) {
+                      populations = character(), make_data = FALSE, again = FALSE) {
   rep <- changes$reports
   # new reports
   for (id in rep$output_id[rep$status == "new"]) {
@@ -281,7 +286,45 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
     made <- c(made, attr(x, "made"))
   }
   attr(x, "made") <- attr(x, "left") <- NULL
-  if (length(made)) attr(x, "made") <- made
+  # the reports' datasets as the TOC says them (the report list shows them
+  # until the ARD names its own); a new listing or figure reads them; the
+  # analysis data of a table's, kept to its set's subjects
+  ds <- attr(spec, "datasets")
+  ds <- ds[!is.na(names(ds)) & names(ds) %in% x$outputs$output_id]
+  if (length(ds)) {
+    o <- x$outputs
+    if (is.null(o$datasets)) o$datasets <- rep(NA_character_, nrow(o))
+    k <- match(names(ds), o$output_id)
+    o$datasets[k] <- unname(ds)
+    x$outputs <- o
+    new_ids <- rep$output_id[rep$status == "new"]
+    for (id in intersect(names(ds), new_ids)) {
+      v <- .split_bar(ds[[id]])
+      if (!length(v)) next
+      type <- report_info(x, id)$type
+      if (identical(type, "listing")) {
+        r <- lf_rows(x, "listings", id)
+        if (!nrow(r)) r <- data.frame(dataset = v[1L])
+        if (.is_blank(r$dataset[1L])) r$dataset[1L] <- v[1L]
+        x <- set_lf_rows(x, "listings", id, r)
+      } else if (type %in% c("figure", "user")) {
+        r <- lf_rows(x, "figures", id)
+        if (!nrow(r)) r <- data.frame(datasets = ds[[id]])
+        if (.is_blank(r$datasets[1L])) r$datasets[1L] <- ds[[id]]
+        x <- set_lf_rows(x, "figures", id, r)
+      }
+    }
+    if (isTRUE(make_data)) {
+      for (id in names(ds)) {
+        if (!id %in% new_ids && !isTRUE(again)) next
+        if (!identical(report_info(x, id)$type, "table")) next
+        x <- .toc_make_data(x, id)
+        made <- c(made, attr(x, "made"))
+        attr(x, "made") <- NULL
+      }
+    }
+  }
+  if (length(made)) attr(x, "made") <- unique(made)
   # the report sheet's own items the TOC holds (not the type of a report
   # already there)
   cols <- intersect(c("program", "file", "note"), names(spec$report))
@@ -343,6 +386,56 @@ toc_snapshot <- function(spec, title_offset = 0L, last = NULL) {
   c(now, old)
 }
 
+# A table's analysis data from its datasets (the report list's, the TOC's):
+# for each dataset of the study that is not its analysis set's own (ADSL),
+# <dataset>_<set> kept to the set's subjects (adsl_<set>) -- the one there
+# with that definition, else one made.  Its set: the report's, else the
+# study's first.  The planner, with attr "made".
+.toc_make_data <- function(x, output_id) {
+  before <- .adata_rows(x)$data_id
+  po <- x$ard$populations
+  pop <- report_population(x, output_id)
+  if (is.na(pop)) pop <- po$population_id[!is.na(po$population_id)][1L]
+  out <- function(x) {
+    attr(x, "made") <- setdiff(.adata_rows(x)$data_id, before)
+    x
+  }
+  if (is.na(pop %||% NA)) return(out(x))
+  v <- .split_bar(x$outputs$datasets[match(output_id, x$outputs$output_id)])
+  have <- x$ard$datasets$dataset
+  v <- have[match(toupper(v), toupper(have))]
+  pds <- po$dataset[match(pop, po$population_id)]
+  v <- setdiff(v[!is.na(v)], c(pds, "ADSL"))
+  if (!length(v)) return(out(x))
+  x <- .ensure_pop_adata(x, pop)
+  subj <- attr(x, "data_id")
+  attr(x, "data_id") <- attr(x, "added") <- NULL
+  for (d in v) {
+    if (!is.na(.adata_same_as(.adata_rows(x), d, NA, subj, NA))) next
+    lo <- function(s) gsub("[^a-z0-9_.]", "_", tolower(s))
+    nm <- .adata_free_name(x, paste0(lo(d), "_", lo(pop)))
+    x <- set_analysis_data(x, nm, from = d, subjects = subj)
+  }
+  out(x)
+}
+
+# The analysis data a report starts with from its datasets (the report
+# list's, the TOC's): those .toc_make_data() makes, the set's first
+.report_toc_data <- function(x, output_id) {
+  pop <- report_population(x, output_id)
+  if (is.na(pop)) return(character())
+  ad <- .adata_rows(x)
+  po <- x$ard$populations
+  pds <- po$dataset[match(pop, po$population_id)]
+  subj <- .adata_same_as(ad, if (is.na(pds)) "ADSL" else pds, pop, NA, NA)
+  if (is.na(subj)) return(character())
+  v <- .split_bar(x$outputs$datasets[match(output_id, x$outputs$output_id)] %||% NA)
+  have <- x$ard$datasets$dataset
+  v <- setdiff(have[match(toupper(v), toupper(have))], c(NA, pds))
+  own <- vapply(v, function(d) .adata_same_as(ad, d, NA, subj, NA), "")
+  c(own[!is.na(own)], subj)
+}
+
 #' The analysis set each report of a TOC names
 #'
 #' The TOC's population column, by report: its text (`text`, "Safety
@@ -389,7 +482,7 @@ toc_populations <- function(x, path, id_col, pop_col, sheet = NULL, skip = 0L,
 # ---- the mapping: which of a TOC's columns is what -------------------------
 
 .toc_items <- c("output_id", "type", "title", "population", "footnote",
-                "program", "file", "note", "section")
+                "program", "file", "note", "section", "datasets")
 
 # The map tflspec::tfl_read_toc() takes, from a TOC's column names and the
 # company's toc_map (an item: the first of its names the TOC has; title and

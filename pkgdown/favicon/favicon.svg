@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="620" viewBox="0 0 560 620">
+<title>tflplanner</title>
+<defs>
+<linearGradient id="hexbg" x1="50%" y1="0%" x2="50%" y2="100%">
+<stop offset="0%" stop-color="#a8424f"/>
+<stop offset="60%" stop-color="#7a2734"/>
+<stop offset="100%" stop-color="#4d1520"/>
+</linearGradient>
+<radialGradient id="topgloss" cx="50%" cy="0%" r="65%" fx="50%" fy="0%">
+<stop offset="0%" stop-color="#ffffff" stop-opacity="0.32"/>
+<stop offset="40%" stop-color="#ffffff" stop-opacity="0.10"/>
+<stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="vignette" cx="50%" cy="100%" r="80%" fx="50%" fy="100%">
+<stop offset="0%" stop-color="#000000" stop-opacity="0"/>
+<stop offset="80%" stop-color="#000000" stop-opacity="0"/>
+<stop offset="100%" stop-color="#000000" stop-opacity="0.30"/>
+</radialGradient>
+<linearGradient id="paperbg" x1="50%" y1="0%" x2="50%" y2="100%">
+<stop offset="0%" stop-color="#f3f8fd"/>
+<stop offset="100%" stop-color="#dde9f4"/>
+</linearGradient>
+<filter id="hex-shadow" x="-12%" y="-8%" width="124%" height="124%">
+<feDropShadow dx="0" dy="9" stdDeviation="11" flood-color="#000913" flood-opacity="0.45"/>
+</filter>
+<filter id="paper-shadow" x="-8%" y="-8%" width="116%" height="120%">
+<feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0a1c30" flood-opacity="0.55"/>
+</filter>
+<filter id="text-shadow" x="-10%" y="-50%" width="120%" height="200%">
+<feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000913" flood-opacity="0.55"/>
+</filter>
+<clipPath id="hex-clip"><polygon points="280,28 512,163 512,431 280,566 48,431 48,163"/></clipPath>
+</defs>
+<g filter="url(#hex-shadow)"><polygon points="280,28 512,163 512,431 280,566 48,431 48,163" fill="url(#hexbg)"/></g>
+<g clip-path="url(#hex-clip)">
+<rect x="0" y="0" width="560" height="620" fill="url(#topgloss)"/>
+<rect x="0" y="0" width="560" height="620" fill="url(#vignette)"/>
+</g>
+<g clip-path="url(#hex-clip)">
+<rect x="92" y="138" width="376" height="252" rx="7" ry="7" fill="url(#paperbg)" stroke="#9fb6c8" stroke-width="1.4" filter="url(#paper-shadow)"/>
+<line x1="98" y1="141" x2="462" y2="141" stroke="#ffffff" stroke-width="1" opacity="0.8"/>
+<text x="108" y="166" font-family="Liberation Serif, Times New Roman, serif" font-size="12" text-anchor="start" fill="#4a5a6a">Study XYZ-001</text>
+<text x="452" y="166" font-family="Liberation Serif, Times New Roman, serif" font-size="12" text-anchor="end" fill="#4a5a6a">TFL plan</text>
+<line x1="108" y1="192" x2="334" y2="192" stroke="#1a3a5a" stroke-width="1.5"/>
+<text x="116" y="206" font-family="Liberation Serif, Times New Roman, serif" font-size="11" font-weight="600" text-anchor="start" fill="#1f3a5a">Output</text>
+<text x="330" y="206" font-family="Liberation Serif, Times New Roman, serif" font-size="11" font-weight="600" text-anchor="end" fill="#1f3a5a">Status</text>
+<line x1="108" y1="214" x2="334" y2="214" stroke="#1a3a5a" stroke-width="1.5"/>
+<text x="116" y="232" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" font-weight="600" text-anchor="start" fill="#1f3a5a">T-14-1-1</text>
+<text x="180" y="232" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" text-anchor="start" fill="#3a4a5a">Demographics</text>
+<circle cx="316" cy="228.5" r="6.5" fill="#3d8f5f"/>
+<path d="M 312.8 228.7 L 315.2 231.1 L 319.4 225.9" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="108" y1="241" x2="334" y2="241" stroke="#b9cbdb" stroke-width="1"/>
+<text x="116" y="258" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" font-weight="600" text-anchor="start" fill="#1f3a5a">T-14-1-2</text>
+<text x="180" y="258" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" text-anchor="start" fill="#3a4a5a">Disposition</text>
+<circle cx="316" cy="254.5" r="6.5" fill="#3d8f5f"/>
+<path d="M 312.8 254.7 L 315.2 257.1 L 319.4 251.9" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="108" y1="267" x2="334" y2="267" stroke="#b9cbdb" stroke-width="1"/>
+<text x="116" y="284" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" font-weight="600" text-anchor="start" fill="#1f3a5a">T-14-3-1</text>
+<text x="180" y="284" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" text-anchor="start" fill="#3a4a5a">AE by SOC</text>
+<circle cx="316" cy="280.5" r="6.5" fill="#f2a33a"/>
+<line x1="108" y1="293" x2="334" y2="293" stroke="#b9cbdb" stroke-width="1"/>
+<text x="116" y="310" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" font-weight="600" text-anchor="start" fill="#1f3a5a">L-16-2-1</text>
+<text x="180" y="310" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" text-anchor="start" fill="#3a4a5a">AE listing</text>
+<circle cx="316" cy="306.5" r="6.5" fill="#f2a33a"/>
+<line x1="108" y1="319" x2="334" y2="319" stroke="#b9cbdb" stroke-width="1"/>
+<text x="116" y="336" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" font-weight="600" text-anchor="start" fill="#1f3a5a">F-14-2-1</text>
+<text x="180" y="336" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" text-anchor="start" fill="#3a4a5a">KM plot</text>
+<circle cx="316" cy="332.5" r="5.8" fill="none" stroke="#6a7886" stroke-width="1.4"/>
+<line x1="108" y1="348" x2="334" y2="348" stroke="#1a3a5a" stroke-width="1.5"/>
+<rect x="346" y="192" width="106" height="156" rx="5" fill="#ffffff" fill-opacity="0.55" stroke="#9fb6c8" stroke-width="1"/>
+<rect x="354" y="200" width="90" height="3" rx="1.5" fill="#f2a33a"/>
+<text x="399" y="220" font-family="Liberation Serif, Times New Roman, serif" font-size="11" font-weight="600" text-anchor="middle" fill="#1f3a5a">Progress</text>
+<text x="399" y="258" font-family="Liberation Serif, Times New Roman, serif" font-size="26" font-weight="700" text-anchor="middle" fill="#1f4e79">2 / 5</text>
+<text x="399" y="274" font-family="Liberation Serif, Times New Roman, serif" font-size="9.5" text-anchor="middle" fill="#6a7886">outputs done</text>
+<rect x="358" y="288" width="82" height="8" rx="4" fill="#c4d4e2"/>
+<rect x="358" y="288" width="65.6" height="8" rx="4" fill="#f2a33a"/>
+<rect x="358" y="288" width="32.8" height="8" rx="4" fill="#3d8f5f"/>
+<circle cx="364" cy="316" r="6.5" fill="#3d8f5f"/>
+<path d="M 360.8 316.2 L 363.2 318.6 L 367.4 313.4" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="376" y="320" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" text-anchor="start" fill="#3a4a5a">2</text>
+<circle cx="396" cy="316" r="6.5" fill="#f2a33a"/>
+<text x="408" y="320" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" text-anchor="start" fill="#3a4a5a">2</text>
+<circle cx="428" cy="316" r="5.8" fill="none" stroke="#6a7886" stroke-width="1.4"/>
+<text x="440" y="320" font-family="Liberation Serif, Times New Roman, serif" font-size="10.5" text-anchor="start" fill="#3a4a5a">1</text>
+<text x="108" y="378" font-family="Liberation Serif, Times New Roman, serif" font-size="9.5" font-style="italic" text-anchor="start" fill="#6a7886">Last official run: runs/2026-10-01_0930_all/</text>
+</g>
+<polygon points="280,28 512,163 512,431 280,566 48,431 48,163" fill="none" stroke="#3e1019" stroke-width="14" stroke-linejoin="round"/>
+<polygon points="280,38 502,168 502,425 280,556 58,425 58,168" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" opacity="0.18"/>
+</svg>

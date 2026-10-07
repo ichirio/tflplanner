@@ -6,6 +6,69 @@
   other programs (`|>`, one-line parts: tflspec #164).  The sample's
   reports are the same.
 
+- **Unregistering a study loses nothing** (#237).  `unregister_study()`
+  (Unregister) puts what tflplanner kept about the study -- its saved
+  state, history and unsaved changes -- into the study folder
+  (`.tflplanner/`) instead of deleting it, and `register_study()` (Register
+  a folder) takes it back: the study comes back as it was (when `spec/`
+  was changed in between, from `spec/`, the kept state going to its
+  history).  The dialog says the folder is not deleted.  tflplanner never
+  deletes a study folder.
+
+- **Nothing updates on its own** (#226).  `add_shortcut()` no longer makes
+  the "update and launch" shortcut unless asked (`update = TRUE`); the
+  Start menu entry stays.  The app's check for a newer version is off
+  unless turned on in its settings (or `setup_tflplanner(check_updates =
+  TRUE)`; a setting already made is kept), and it only tells: tflplanner
+  installs or updates nothing unless you ask -- `update_tflplanner()`, or
+  the "update and launch" shortcut.
+
+- **2-2: the method first, as a heading with its function** (#236).  An
+  analysis's form starts with its method, large, and the function it calls
+  (`cards::ard_stack_hierarchical`, a company keyword's too), then its ID
+  and label; the 2-2 list names the function as well.  The arguments under
+  it are "Only for <function> (i)" (the data, groups ... above are those
+  every method has): the required ones, those the method writes and those
+  given first, the rest folded ("n more, at their defaults").  A blank
+  says what it gives: the study's subject key, the company method's value,
+  none, or the function's own default.  The help of the arguments used
+  most says when to use them (tflspec's catalog, translated).  The
+  variables, groups and strata show in the definition's order (a
+  hierarchy's outermost first), not the data's; the statistic N reads
+  "Number of non-missing values".
+
+- **2-1 lists the report's own analysis data** (#235): those its analyses
+  read (and what they are made from), the data they read without a name,
+  and those made on its 2-1 until an analysis reads them; the study's
+  others are on the Data tab.  The sample's tables all read analysis data
+  (adsl_saf, advs_w24, adtte_ttde, adae_saf) and have SAF as their
+  analysis set: the demographics table's 2-1 shows adsl_saf alone.  From
+  S2's look at the sample: T-14-1-1's total N and T-14-1-1S's `.total_n`
+  (no table prints them) are gone, advs_w24 says its parameter
+  (`PARAMCD == "SYSBP"`), and T-14-2-1's decimals are the table's alone
+  (its analysis's `formats` gone).  The reports are the same; the ARD has
+  the same numbers, less the two total N rows.
+
+- **The design concept, written down** (#224).  The README has a
+  "Concept" section and the Japanese guide a "設計の考え方" section:
+  code for people to read and finish, the typical analyses kept simple,
+  R code kept in the spec, shared parts defined once, screens => spec =>
+  code.  Docs only.
+
+- **A hex logo, shared with rtfreporter and tflspec** (#230), made with the
+  site's favicons by `data-raw/logo.R`.
+
+- Added a root `CITATION.cff` so GitHub's "Cite this repository" button
+  works (#229).
+
+- **The TOC's datasets** (#220; tflspec's `tfl_read_toc()` datasets).  A
+  `datasets` item of the mapping: kept as the report list's datasets
+  (shown until the report's definition names its own), a new listing's
+  dataset and a new figure's datasets; with "Make the tables' analysis
+  data from their datasets" (ticked), a new table gets `<dataset>_<set>`
+  kept to `adsl_<set>`'s subjects (found or made), which its first
+  analysis reads.  Taken in again, they are made again only when asked.
+
 - **The TOC's population is the reports' analysis set** (#219).  The TOC
   dialog shows each text of its population column with the study's set it
   is -- matched by id, label (the company standards', else the flag's), a

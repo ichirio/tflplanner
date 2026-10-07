@@ -12,7 +12,9 @@ toc_apply(
   types = character(),
   last = changes$last,
   title_offset = changes$title_offset \%||\% toc_title_offset(x),
-  populations = character()
+  populations = character(),
+  make_data = FALSE,
+  again = FALSE
 )
 }
 \arguments{
@@ -35,6 +37,13 @@ type corrected); the TOC's otherwise.}
 report (see \code{\link[=toc_populations]{toc_populations()}}): each one that differs from the
 report's is set with \code{\link[=set_report_population]{set_report_population()}} (its data made, its
 analyses moved).}
+
+\item{make_data}{Make the analysis data of each new report's datasets
+(the TOC's \code{datasets}): \verb{<dataset>_<set>}, kept to the subjects of its
+analysis set (\verb{adsl_<set>}), found or made.}
+
+\item{again}{With \code{make_data}, also for the reports taken in before
+(those deleted since are made again).}
 }
 \value{
 The \code{tflplanner}.

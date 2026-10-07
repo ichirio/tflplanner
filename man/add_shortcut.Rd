@@ -9,7 +9,7 @@ add_shortcut(
   port = NULL,
   desktop = TRUE,
   start_menu = TRUE,
-  update = TRUE,
+  update = FALSE,
   ask = interactive()
 )
 
@@ -24,7 +24,9 @@ setting.}
 
 \item{start_menu}{Make the Start menu entries (Windows).}
 
-\item{update}{Also make "update and launch".}
+\item{update}{Also make "update and launch" (\code{FALSE} by default:
+tflplanner is never updated unless you ask -- with this shortcut, made
+when \code{update = TRUE}, or \code{\link[=update_tflplanner]{update_tflplanner()}}).}
 
 \item{ask}{Ask before making them.  \code{FALSE} makes them without asking
 (scripts); outside an interactive session nothing is made unless
