@@ -94,9 +94,17 @@
                       stringsAsFactors = FALSE))
   }
   type <- vapply(ids, function(id) report_info(x, id)$type, "")
+  # the report's analysis set (the report list's, the TOC's); else those
+  # its analyses have (their own, or their analysis data's)
   a <- x$ard$analyses
+  ad <- .adata_rows(x)
   pop <- vapply(ids, function(id) {
-    v <- a$population_id[!is.na(a$output_id) & a$output_id == id]
+    own <- report_population(x, id)
+    if (!is.na(own)) return(own)
+    k <- !is.na(a$output_id) & a$output_id == id
+    v <- a$population_id[k]
+    d <- if (!is.null(a$data)) a$data[k] else character()
+    v <- c(v, vapply(d[!is.na(d) & d %in% ad$data_id], function(i) .adata_pop(ad, i), ""))
     paste(unique(stats::na.omit(v)), collapse = " | ")
   }, "")
   ds <- vapply(seq_along(ids), function(i) {

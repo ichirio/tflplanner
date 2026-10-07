@@ -194,7 +194,9 @@ test_that("the study's code lists reach the ARD programs", {
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
   prog <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
   expect_true(any(grepl(".codelists <- list(", prog, fixed = TRUE)))
-  expect_true(any(grepl("adsl <- .levels(adsl)", prog, fixed = TRUE)))
+  # (the code lists put on as tflspec writes it: adsl <- .levels(adsl), or
+  # read in one statement, adsl <- readRDS(...) |> .levels())
+  expect_true(any(grepl("^adsl <- (\\.levels\\(adsl\\)|readRDS\\(.*\\) \\|> \\.levels\\(\\))$", prog)))
   # the ARD counts the value no record has, in the code list's order
   o <- open_study("A2")
   u <- update_study_ard(o, "DM")
