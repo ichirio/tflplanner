@@ -14,7 +14,8 @@ add_output(
   data_code = NA_character_,
   type = "table",
   process_code = NA_character_,
-  section = NA_character_
+  section = NA_character_,
+  population = NA_character_
 )
 
 copy_output(x, from, to)
@@ -43,6 +44,9 @@ and any rework after it (\code{mutate()} ...).  \code{NA} means
 
 \item{section}{The section of the TOC the report is under (its heading,
 "14.1 Demographics"); \code{NA}: from its ID's numbers.}
+
+\item{population}{The report's analysis set, a population_id (see
+\code{\link[=set_report_population]{set_report_population()}}, which also makes its analysis data).}
 }
 \value{
 The updated \code{tflplanner}.
