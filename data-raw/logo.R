@@ -60,9 +60,11 @@ font_mono  <- sprintf("%s, Courier New, monospace", mono)
 
 family <- list(
   tflspec    = list(accent = "#3dbb8a", tint = "#cdeedd",
-                    tagline = "SPEC \u00b7 CODE"),
+                    tagline = "SPEC \u00b7 CODE",
+                    bg = c("#2f8a68", "#1d5e47", "#0f3a2b"), edge = "#0c2e22"),
   tflplanner = list(accent = "#f2a33a", tint = "#f7e2bf",
-                    tagline = "PLAN \u00b7 RUN")
+                    tagline = "PLAN \u00b7 RUN",
+                    bg = c("#a8424f", "#7a2734", "#4d1520"), edge = "#3e1019")
 )
 rtfreporter_png <- "../rtfreporter/man/figures/logo.png"
 rtfreporter_url <- paste0("https://raw.githubusercontent.com/ichirio/",
@@ -108,14 +110,15 @@ vline <- function(x, y1, y2, col = hair, lwd = 1) {
           x, y1, x, y2, col, lwd)
 }
 
-# -- shared frame (rtfreporter's, unchanged) ----------------------------------
+# -- shared frame (rtfreporter's; each package its own calm background) ------
 
-defs <- c(
+# rtfreporter's navy is #2d6fa8 / #1a4a78 / #0e2e4d with a #0d2840 edge.
+defs <- function(bg) c(
   "<defs>",
   '<linearGradient id="hexbg" x1="50%" y1="0%" x2="50%" y2="100%">',
-  '<stop offset="0%" stop-color="#2d6fa8"/>',
-  '<stop offset="60%" stop-color="#1a4a78"/>',
-  '<stop offset="100%" stop-color="#0e2e4d"/>',
+  sprintf('<stop offset="0%%" stop-color="%s"/>', bg[1]),
+  sprintf('<stop offset="60%%" stop-color="%s"/>', bg[2]),
+  sprintf('<stop offset="100%%" stop-color="%s"/>', bg[3]),
   "</linearGradient>",
   '<radialGradient id="topgloss" cx="50%" cy="0%" r="65%" fx="50%" fy="0%">',
   '<stop offset="0%" stop-color="#ffffff" stop-opacity="0.32"/>',
@@ -159,9 +162,9 @@ paper <- c(
   '<line x1="98" y1="141" x2="462" y2="141" stroke="#ffffff" stroke-width="1" opacity="0.8"/>'
 )
 
-outline <- c(
-  sprintf(paste0('<polygon points="%s" fill="none" stroke="#0d2840" ',
-                 'stroke-width="14" stroke-linejoin="round"/>'), hex),
+outline <- function(edge) c(
+  sprintf(paste0('<polygon points="%s" fill="none" stroke="%s" ',
+                 'stroke-width="14" stroke-linejoin="round"/>'), hex, edge),
   sprintf(paste0('<polygon points="%s" fill="none" stroke="#ffffff" ',
                  'stroke-width="1.5" stroke-linejoin="round" opacity="0.18"/>'), inner)
 )
@@ -304,10 +307,10 @@ sticker <- function(p, name = TRUE) {
     sprintf(paste0('<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" ',
                    'viewBox="0 0 %d %d">'), W, H, W, H),
     sprintf("<title>%s</title>", p),
-    defs, body,
+    defs(fm$bg), body,
     '<g clip-path="url(#hex-clip)">', paper, card, "</g>",
     if (name) wordmark(p, fm$tint, fm$tagline),
-    outline,
+    outline(fm$edge),
     "</svg>")
 }
 
