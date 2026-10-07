@@ -5,7 +5,7 @@
 #   T-14-1-1  Table    Demographic characteristics
 #   T-14-1-1S Table    The same table, its ARD one cards::ard_stack() call
 #                      (the continuous and the categorical analyses inside
-#                      it, and the column N and total N it makes itself)
+#                      it, and the column N it makes itself)
 #   T-14-1-2  Table    Subject disposition
 #   T-14-2-1  Table    Change from baseline in systolic blood pressure,
 #                      Week 24 (with SE and the mean's 95% CI)
@@ -308,8 +308,6 @@ p$ard$populations <- tbl(
 p$ard$analyses <- tbl(
   list(output_id = "T-14-1-1", analysis_id = "BIGN", label = "Subjects per arm",
        method = "categorical", data = "adsl_saf", variables = "TRT01A"),
-  list(output_id = "T-14-1-1", analysis_id = "TOTAL", method = "total_n",
-       data = "adsl_saf"),
   list(output_id = "T-14-1-1", analysis_id = "CONT", label = "Continuous",
        method = "continuous", data = "adsl_saf", by = "TRT01A",
        variables = "AGE", statistics = "N | mean | sd | median | min | max"),
@@ -318,10 +316,10 @@ p$ard$analyses <- tbl(
        variables = "AGEGR1 | SEX | RACE | ETHNIC", statistics = "n | p"),
   # T-14-1-1's analyses as one cards::ard_stack() call: its data, analysis
   # set and groups once, the analyses inside it (`parent`); the column N
-  # (.by_stats, cards' default) and the total N (.total_n) are its own
+  # (.by_stats, cards' default) is its own
   list(output_id = "T-14-1-1S", analysis_id = "STACK",
        label = "Demographics, run together", method = "cards::ard_stack",
-       data = "adsl_saf", by = "TRT01A", args = ".total_n = TRUE"),
+       data = "adsl_saf", by = "TRT01A"),
   list(output_id = "T-14-1-1S", analysis_id = "CONT", parent = "STACK",
        label = "Continuous", method = "continuous", variables = "AGE",
        statistics = "N | mean | sd | median | min | max"),
@@ -339,8 +337,7 @@ p$ard$analyses <- tbl(
   list(output_id = "T-14-2-1", analysis_id = "SYSBP",
        label = "SYSBP at Week 24", method = "continuous", data = "advs_w24", by = "TRTA",
        variables = "BASE | AVAL | CHG",
-       statistics = "N | mean | sd | se | mean_lcl | mean_ucl | median | min | max",
-       formats = "mean=xx.x | sd=xx.xx | se=xx.xx"),
+       statistics = "N | mean | sd | se | mean_lcl | mean_ucl | median | min | max"),
   list(output_id = "T-14-2-2", analysis_id = "BIGN", method = "categorical",
        data = "adsl_saf", variables = "TRT01A"),
   list(output_id = "T-14-2-2", analysis_id = "KM",
@@ -365,7 +362,8 @@ p$ard$analysis_data <- tbl(
   list(data_id = "adae_saf", label = "Treatment-emergent AEs of the safety set",
        from = "ADAE", subjects = "adsl_saf", where = "TRTEMFL == \"Y\""),
   list(data_id = "advs_w24", label = "Systolic blood pressure at Week 24, safety set",
-       from = "ADVS", subjects = "adsl_saf", where = "AVISIT == \"Week 24\""),
+       from = "ADVS", subjects = "adsl_saf",
+       where = "PARAMCD == \"SYSBP\" & AVISIT == \"Week 24\""),
   list(data_id = "adtte_ttde", label = "Time to first dermatologic event, safety set",
        from = "ADTTE", subjects = "adsl_saf", where = "PARAMCD == \"TTDE\""))
 for (sh in names(p$ard)) p$ard[[sh]] <- .normalize_ard_sheet(p$ard[[sh]], sh)
@@ -572,7 +570,7 @@ writeLines(c(
   "| Output | Type | |",
   "|---|---|---|",
   "| T-14-1-1 | Table | Demographic characteristics |",
-  "| T-14-1-1S | Table | The same table, its ARD one `cards::ard_stack()` call (the analyses inside it, and the column N and total N it makes) |",
+  "| T-14-1-1S | Table | The same table, its ARD one `cards::ard_stack()` call (the analyses inside it, and the column N it makes) |",
   "| T-14-1-2 | Table | Subject disposition |",
   "| T-14-2-1 | Table | Systolic blood pressure: change from baseline at Week 24 (SE, 95% CI of the mean) |",
   "| T-14-2-2 | Table | Time to first dermatologic event: Kaplan-Meier estimates |",

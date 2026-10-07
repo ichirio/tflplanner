@@ -5,8 +5,12 @@
   and those made on its 2-1 until an analysis reads them; the study's
   others are on the Data tab.  The sample's tables all read analysis data
   (adsl_saf, advs_w24, adtte_ttde, adae_saf) and have SAF as their
-  analysis set: the demographics table's 2-1 shows adsl_saf alone.  The
-  reports and the ARD are the same.
+  analysis set: the demographics table's 2-1 shows adsl_saf alone.  From
+  S2's look at the sample: T-14-1-1's total N and T-14-1-1S's `.total_n`
+  (no table prints them) are gone, advs_w24 says its parameter
+  (`PARAMCD == "SYSBP"`), and T-14-2-1's decimals are the table's alone
+  (its analysis's `formats` gone).  The reports are the same; the ARD has
+  the same numbers, less the two total N rows.
 
 - **A report's analysis set is one value** (#217).  The report list's
   `population` (the TOC's, step 2's): `set_report_population()` writes it,
