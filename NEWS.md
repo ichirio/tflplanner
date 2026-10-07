@@ -1,5 +1,10 @@
 # tflplanner (development version)
 
+- **The `digits` sheet** (#247; tflspec #168).  A study's definition keeps
+  each statistic's decimals and a variable's exceptions (step 3's SPEC,
+  the tab "digits: decimals"); a table's templates take them where they
+  say no format.  Needs tflspec 0.0.24.9057.
+
 - **Every report's header, defined once** (#223).
   - The package's header for a new study: `{COMPANY}` and
     `{ANALYSIS_TYPE}`, then `PROTOCOL: {STUDY_ID}` and the page, a blank
