@@ -1,5 +1,18 @@
 # tflplanner (development version)
 
+- **Step 3: statistics as rows, each statistic's decimals** (#249).  The
+  table builder's Statistics card:
+  - Values: the numbers, rounded here, or the ARD's text as step 2
+    formatted it (`tables$value`; no decimals to set then).
+  - A continuous variable's rows, chosen and ordered by dragging: the
+    company standards' rows (single statistics too: Mean, SD, SE, Q1, Q3,
+    Min, Max) and a row of your own (a label and a template).
+  - The decimals of each statistic, the same for every analysis variable
+    (the `digits` sheet), and a variable's own.  They replace "decimals the
+    data are collected with": a statistic's decimals are fixed numbers now.
+  - Company standards: the `statistics` rows have no digit rules; a new
+    `default_digits` gives a new study each statistic's decimals.
+
 - **The `digits` sheet** (#247; tflspec #168).  A study's definition keeps
   each statistic's decimals and a variable's exceptions (step 3's SPEC,
   the tab "digits: decimals"); a table's templates take them where they

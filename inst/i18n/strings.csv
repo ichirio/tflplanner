@@ -211,8 +211,6 @@ Rows: variables in order,行：変数（この順で表示）
 Label,ラベル
 Levels (drag to order),水準（ドラッグで並べ替え）
 Continuous variables,連続変数
-Decimals the data are collected with,データの小数桁数
-"Mean, median and quartiles get one more, SD two more, Min / Max the same.",平均・中央値・四分位は +1、SD は +2、最小・最大は同じ桁数。
 Categorical variables,カテゴリ変数
 Decimals of the percent,% の小数桁数
 Order of the columns (drag),列の順番（ドラッグ）
@@ -2330,3 +2328,20 @@ Blank: every analysis variable (the rule); a variable: its exception.,空欄: �
 "The statistic, as the ARD names it (mean, sd, median, p ...).",統計量。ARD の名前で（mean、sd、median、p …）。
 "Its decimals, a whole number (p, a percent: 1 prints 61.6).",小数桁数（整数）。p（割合）は 1 で 61.6 と出る。
 digits: decimals,小数桁数 (digits)
+Values,値
+"Numbers: the ARD's values (stat), rounded here to the decimals below. The ARD's text: the values as step 2 formatted them (stat_fmt), printed as they are; a row may still put two in one (Mean (SD)).",数値: ARD の値（stat）を、下の桁数でここで丸めます。ARD の文字: 段 2 で書式を付けた値（stat_fmt）をそのまま出します。2 つを 1 行にまとめること（Mean (SD)）はできます。
+"Numbers, rounded here",数値（ここで丸める）
+The ARD's text (as formatted in step 2),ARD の文字（段 2 の書式のまま）
+Continuous variables: the rows (drag to order),連続変数: 出す行（ドラッグで並べ替え）
+Not shown (drag a row to the left),出さない行（左へドラッグで追加）
+A row of your own,自分の行
+Row label,行ラベル
+Add the row,行を足す
+"{statistic} as the ARD names it: N, mean, sd, se, median, p25, p75, min, max ...",{統計量} は ARD の名前で: N、mean、sd、se、median、p25、p75、min、max …
+Decimals of each statistic,統計量ごとの小数桁数
+The same for every analysis variable; a variable of its own below. A row's template that says its own format ({mean:.2f}) keeps it.,すべての解析変数に同じ桁数を使います。変数ごとの例外は下で。テンプレートに書式を書いた行（{mean:.2f}）はその書式のままです。
+A variable of its own (%d),変数ごとの例外（%d）
+Take it away,取り除く
+Statistic,統計量
+Decimals,小数桁数
+A row of your own needs a label and a template with a {statistic}.,自分の行には、行ラベルと {統計量} を含むテンプレートが要ります。
