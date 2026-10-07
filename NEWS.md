@@ -1,5 +1,24 @@
 # tflplanner (development version)
 
+- **A code list is a report's** (#251; tflspec 0.0.24.9058).  Step 1 edits
+  the report's code lists: the variables it uses (its analyses, what its
+  data derive, what its table shows; all with a box), [Copy code lists...]
+  from the company standards or another report (the rows copied are the
+  report's own), and a file read into the report.  The company standards
+  have a `codelists` sheet (`standard_codelists()`), with CDISC's usual
+  lists by default (SEX, RACE, ETHNIC, AESEV, AESER, AEREL, AEOUT, EOSSTT).
+  `set_codelist()` takes the report; `import_codelist()` copies another
+  report's.  The Data tab's study code lists are gone.  A report's ARD uses
+  the code lists of the variables its analyses read; step 1's result says
+  which.  A study of the old format (analysis data or code lists without a
+  report) is said so once when it is opened, in the app's language: make
+  it again from the sample, or make a new study.  Step 2's 2-1 and 2-2 say
+  the same in a line, the checks' messages folded under it.  The sample's tables have their own code lists
+  (#248): the arms in each, SEX / AGEGR1 / RACE / ETHNIC in the
+  demographics tables (the CRF's values the data have none of print with
+  0), EOSSTT in the disposition table; the variables sheet no longer
+  says the same order again.
+
 - **Step 3: statistics as rows, each statistic's decimals** (#249).  The
   table builder's Statistics card:
   - Values: the numbers, rounded here, or the ARD's text as step 2

@@ -230,6 +230,8 @@
       list(line = "99", left = "{PROGRAM}       Generated on: {DATETIME}")),
     default_cells = default("cells",
       list(template = "{n:.0f} ({p:.1f%})", note = "every categorical cell")),
+    # the company's code lists, copied into a report (step 1)
+    codelists = .builtin_codelists(),
     default_layout = default("layout",
       list(blank_where = "between_groups", blank_first = "TRUE",
            blank_last = "TRUE", blank_counted = "TRUE",
@@ -278,7 +280,7 @@
                 "ard_methods", "ard_statistics", "figure_settings",
                 "figure_colors", "figure_markers", "code_templates",
                 "listing_types", "toc_map", "ard_fn_keywords",
-                "populations", "datasets",
+                "populations", "datasets", "codelists",
                 "default_<sheet>"),
       description = c(
         "who keeps these standards, and which version",
@@ -299,6 +301,7 @@
         "the company's words for the ARD form's function search, added to tflplanner's: fn (cards::ard_tabulate, cardx::ard_stats_t_test, a method keyword), lang (en / ja / sas / r), keyword, rank (1 the function for the word, 2 related, 3 near: say why in the notes), note_ja, note_en, args (the arguments the word means, which the form can start from: method = \"glm\", exponentiate = TRUE); empty by default",
         "the analysis sets (population flags) the company may use, its own too: id, dataset, condition, label (note); a new study gets them all, and a report's set chosen (the TOC's, step 2's) makes its analysis data (adsl_<set>)",
         "the data catalog a new study starts with: ADaM and SDTM datasets and their files",
+        "the company's code lists, one row a value: set (the list's name; blank: the variable), variable, value, label (what it prints as), order, note; a report copies the ones it needs (step 1, Copy code lists...)",
         "the study-default rows a new study starts with, one sheet per definition sheet (default_header, default_footer, default_cells ...); {STUDY_ID} becomes the study's id"),
       ja = c(
         "\u6a19\u6e96\u306e\u7ba1\u7406\u8005\u30fb\u7248",
@@ -319,6 +322,7 @@
         "\u4f1a\u793e\u72ec\u81ea\u306e\u8a00\u8449\uff08ARD \u753b\u9762\u306e\u95a2\u6570\u691c\u7d22\uff09\u3002tflplanner \u306e\u8f9e\u66f8\u306b\u8db3\u3059\uff1afn\uff08cards::ard_tabulate \u306a\u3069\u3001\u307e\u305f\u306f\u624b\u6cd5\u30ad\u30fc\u30ef\u30fc\u30c9\uff09\u3001lang\uff08en / ja / sas / r\uff09\u3001keyword\u3001rank\uff081 \u672c\u547d\u30fb2 \u95a2\u9023\u30fb3 \u8fd1\u3044\u3082\u306e\uff1d\u6ce8\u8a18\u306b\u7406\u7531\uff09\u3001note_ja\u3001note_en\u3001args\uff08\u305d\u306e\u8a00\u8449\u304c\u610f\u5473\u3059\u308b\u5f15\u6570\u3002\u753b\u9762\u306e\uff3b\u3053\u306e\u8a2d\u5b9a\u3067\u59cb\u3081\u308b\uff3d\u3067\u4f7f\u3046\uff09\u3002\u65e2\u5b9a\u306f\u7a7a",
         "\u4f1a\u793e\u3067\u4f7f\u3046\u53ef\u80fd\u6027\u306e\u3042\u308b\u89e3\u6790\u5bfe\u8c61\u96c6\u56e3\uff08\u96c6\u56e3\u30d5\u30e9\u30b0\u3002\u72ec\u81ea\u306e\u3082\u306e\u3082\uff09\uff1aID\u30fb\u30c7\u30fc\u30bf\u30bb\u30c3\u30c8\u30fb\u6761\u4ef6\u30fb\u30e9\u30d9\u30eb\uff08note\uff09\u3002\u65b0\u3057\u3044\u8a66\u9a13\u306b\u3059\u3079\u3066\u5199\u308a\u3001\u5e33\u7968\u306e\u96c6\u56e3\u3092\u9078\u3076\u3068\uff08TOC\u30fb\u6bb5 2\uff09\u305d\u306e\u96c6\u56e3\u306e\u89e3\u6790\u30c7\u30fc\u30bf\uff08adsl_<\u96c6\u56e3>\uff09\u304c\u4f5c\u3089\u308c\u308b",
         "\u65b0\u898f\u8a66\u9a13\u304c\u6700\u521d\u306b\u6301\u3064\u30c7\u30fc\u30bf\u30ab\u30bf\u30ed\u30b0\uff08ADaM / SDTM \u3068\u30d5\u30a1\u30a4\u30eb\uff09",
+        "\u4f1a\u793e\u306e\u30b3\u30fc\u30c9\u30ea\u30b9\u30c8\uff081 \u884c 1 \u5024\uff09\uff1aset\uff08\u30ea\u30b9\u30c8\u306e\u540d\u524d\u3002\u7a7a\u6b04\u306f\u5909\u6570\u540d\uff09\u3001variable\u3001value\u3001label\uff08\u8868\u793a\uff09\u3001order\u3001note\u3002\u5e33\u7968\u306f\u8981\u308b\u3082\u306e\u3092\u5199\u3059\uff08\u624b\u9806 1\u3001\uff3b\u30b3\u30fc\u30c9\u30ea\u30b9\u30c8\u3092\u5199\u3059\u2026\uff3d\uff09",
         "\u65b0\u898f\u8a66\u9a13\u306e\u300c\u8a66\u9a13\u5171\u901a\u306e\u65e2\u5b9a\u300d\u306e\u884c\u3002\u5b9a\u7fa9\u30b7\u30fc\u30c8\u3054\u3068\u306b 1 \u30b7\u30fc\u30c8\u3002{STUDY_ID} \u306f\u8a66\u9a13 ID \u306b\u7f6e\u304d\u63db\u308f\u308b"))
 }
 
@@ -383,7 +387,8 @@ read_standards <- function(path) {
 # columns a company's workbook may lack (written before they were added):
 # they read as blank, and a method's blank label is its name (tflspec)
 .std_optional <- list(ard_methods = c("formats", "label"),
-                      ard_fn_keywords = "args")
+                      ard_fn_keywords = "args",
+                      codelists = c("set", "label", "order", "note"))
 
 .standards_file <- function(home = tflplanner_home()) {
   file.path(home, "standards", "company_standards.xlsx")

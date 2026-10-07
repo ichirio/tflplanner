@@ -146,7 +146,7 @@ test_that("the cell_styles sheet is a table sheet, written and read back", {
   expect_identical(r$bold, "TRUE")
 })
 
-test_that("a code list file becomes the study's defaults of the codelists sheet", {
+test_that("a code list file is read into a report's code lists", {
   expect_true("codelists" %in% table_sheets())
   f <- withr::local_tempfile(fileext = ".csv")
   writeLines(c("Variable,Value,Label,Order", "SEX,F,Female,2", "SEX,M,Male,1",
@@ -154,14 +154,14 @@ test_that("a code list file becomes the study's defaults of the codelists sheet"
   cl <- read_codelist(f)
   expect_identical(names(cl), c("variable", "value", "label", "order"))
   expect_identical(nrow(cl), 3L)
-  p <- new_planner()
-  p <- set_codelist(p, cl)
-  d <- sheet_rows(p, "codelists", NA)
+  p <- add_output(new_planner(), "T1")
+  p <- set_codelist(p, "T1", cl)
+  d <- sheet_rows(p, "codelists", "T1")
   expect_identical(d$label, c("Female", "Male", "Under 65"))
   # read again: the same values replaced, others kept
-  p <- set_codelist(p, data.frame(variable = "SEX", value = "F", label = "Women",
+  p <- set_codelist(p, "T1", data.frame(variable = "SEX", value = "F", label = "Women",
                                   order = "2", stringsAsFactors = FALSE))
-  d <- sheet_rows(p, "codelists", NA)
+  d <- sheet_rows(p, "codelists", "T1")
   expect_identical(sort(d$label), sort(c("Women", "Male", "Under 65")))
   bad <- withr::local_tempfile(fileext = ".csv")
   writeLines(c("name,label", "SEX,Sex"), bad)

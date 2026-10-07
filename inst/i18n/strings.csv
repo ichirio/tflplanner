@@ -2322,6 +2322,25 @@ Back to the study's,試験の既定に戻す
 The study's (its values: this report's tokens),試験の既定のヘッダー（値はこの帳票の tokens）
 "Every report has the study's header; what changes from report to report ({OUTPUT_LABEL}, {OUTPUT_TITLE}, {OUTPUT_POPULATION}) is in the tokens tab.",どの帳票も試験の既定のヘッダーを使います。帳票ごとに変わる値（{OUTPUT_LABEL}、{OUTPUT_TITLE}、{OUTPUT_POPULATION}）は tokens のタブにあります。
 A header of this report's own,この帳票だけのヘッダーにする
+"This report's code lists: each variable's values, their order and the text they print as. A code list is a report's: copy one from the company standards or another report (Copy code lists...), or read a file, and change it here. The ARD uses those of the variables its analyses read (a value no record has is counted 0); the table uses them all. Optional: a report that needs none skips this step.",この帳票のコードリスト：変数ごとの値、その順番、表示する文字。コードリストは帳票のもの：会社標準やほかの帳票から写す（［コードリストを写す…］）か、ファイルを読み込み、ここで直す。ARD は解析が読む変数のものを使う（データにない値は 0 と数える）。表はすべてを使う。任意：要らない帳票はこの手順を飛ばしてよい。
+Copy code lists...,コードリストを写す…
+"Every variable, not only those this report uses",この帳票が使う変数だけでなく、すべての変数
+Read a file into this report,ファイルからこの帳票へ読み込む
+"A code list (xlsx / csv: variable, value, label, order)","コードリスト（xlsx / csv: variable, value, label, order）"
+(%d more variables' code lists: tick the box to see them),（ほかに %d 変数のコードリスト：チェックを入れると見える）
+%d values of %d variables read into %s's code lists.,%d 個の値（%d 変数）を %s のコードリストに読み込みました。
+The company standards,会社標準
+"No code lists to copy: the company standards have none, nor do the other reports.",写せるコードリストがありません：会社標準にも、ほかの帳票にもありません。
+Copy code lists into %s,コードリストを %s に写す
+"The rows copied are this report's own: change them here, and the source stays as it is. A value this report has already is replaced.",写した行はこの帳票のもの：ここで直しても写す元は変わりません。この帳票にすでにある値は置き換わります。
+Its code lists,そのコードリスト
+As the variable (its name in this report's data),変数名（この帳票のデータでの名前）
+%s's code lists: %s copied (save to keep them).,%s のコードリスト：%s を写しました（保存すると残ります）。
+ARD and table,ARD と表
+"A report's code lists, one row a value of a variable -- the text it prints as and its place (plan_labels(), plan_levels()). Every row names its report in `output_id` (a blank one is an error: copy the rows into each report that uses them). A variable's `levels` on the variables sheet, when given, is the order in the table instead. The ARD too: a report's ARD program makes factors of the columns it lists that its analyses read (by, strata, variables) before any analysis.",帳票のコードリスト。1 行 = 変数の 1 つの値で、表示する文字と順番（plan_labels()、plan_levels()）。どの行も output_id に帳票を書く（空欄はエラー：使う帳票ごとに行を写す）。variables シートの levels を書いたときは、表ではそちらの順になる。ARD でも使う：帳票の ARD プログラムは、解析が読む列（by、strata、variables）のうちここにあるものを、解析の前に factor にする。
+"This study is in an old format: its analysis data and code lists are the whole study's, not a report's. Make it again from the sample, or make a new study.",この試験は古い形式です（解析データ・コードリストが帳票のものではなく、試験全体のものです）。サンプルから新しく作り直すか、新しい試験を作ってください。
+"An old format: the analysis data have no report. Make the study again from the sample, or make a new study.",古い形式の試験です（解析データが帳票のものではありません）。サンプルから作り直すか、新しい試験を作ってください。
+The checks' messages,検査のメッセージ（詳細）
 "Which of the ARD's values the table prints: stat (the number, rounded here: the digits sheet, a template's {x:.1f}) or stat_fmt (the ARD's own text, as it was formatted: no digits to set; a template still combines them, {mean} ({sd})); a row may say otherwise in its template ({mean:stat_fmt}, {mean:.1f}). With stats = rows: which goes in the cell (plan_cells(value = )). Blank: stat.",表が使う ARD の値: stat（数値。ここで丸める: digits シート、テンプレートの {x:.1f}）か stat_fmt（ARD の書式済みの文字。桁の設定はない。テンプレートで組み合わせはできる: {mean} ({sd})）。行ごとの例外はテンプレートで（{mean:stat_fmt}、{mean:.1f}）。stats = rows ではセルに入る値（plan_cells(value = )）。空欄: stat。
 "Table: the decimals of each statistic, written once for every analysis variable, and a variable's exceptions. A template's own format ({mean:.2f}) or a cells row's digits win; a table of stat_fmt (tables$value) is not rounded here.",表: 統計量ごとの小数桁数。すべての解析変数に 1 回だけ書き、解析変数ごとの例外を足す。テンプレートに書いた書式（{mean:.2f}）や cells 行の digits が優先。stat_fmt の表（tables$value）はここでは丸めない。
 Blank: every analysis variable (the rule); a variable: its exception.,空欄: すべての解析変数（規則）。変数名: その変数の例外。
