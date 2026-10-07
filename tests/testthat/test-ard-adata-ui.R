@@ -17,7 +17,7 @@ adata_planner <- function() {
 
 test_that("analysis data are added, renamed, named from a report and removed", {
   p <- adata_planner()
-  expect_identical(.adata_suggest(p, "ADSL", "SAF"), "adsl_saf")
+  expect_identical(.adata_suggest(p, "DM", "ADSL", "SAF"), "adsl_saf")
   # a report's data given a name: its analyses read it; a condition all of
   # them have (here only AGE's: BIGN has none) stays with the analyses
   q <- name_analysis_data(p, "DM", NA, "SAF", "adsl_saf")
@@ -25,29 +25,29 @@ test_that("analysis data are added, renamed, named from a report and removed", {
   expect_identical(a$data, c("adsl_saf", "adsl_saf"))
   expect_true(all(is.na(a$population_id)))
   expect_identical(a$where, c(NA, "AGE >= 18"))
-  ad <- .adata_rows(q)
+  ad <- .adata_rows(q, "DM")
   expect_identical(ad$from, "ADSL")
   expect_identical(ad$population_id, "SAF")
   expect_identical(.adata_of_report(q, "DM"), "adsl_saf")
   # the same data under a new name: the analyses follow
-  q <- set_analysis_data(q, "adsl_safety", from = "ADSL", population_id = "SAF",
+  q <- set_analysis_data(q, "DM", "adsl_safety", from = "ADSL", population_id = "SAF",
                          old = "adsl_saf")
   expect_identical(q$ard$analyses$data, c("adsl_safety", "adsl_safety"))
   # a data made from it; used ones are not removed
-  q <- set_analysis_data(q, "adsl_old", from = "adsl_safety", where = "AGE >= 65")
-  expect_identical(.adata_pop(.adata_rows(q), "adsl_old"), "SAF")
-  expect_identical(.adata_dataset(.adata_rows(q), "adsl_old"), "ADSL")
-  expect_error(remove_analysis_data(q, "adsl_safety"), "is used")
-  q <- remove_analysis_data(q, "adsl_old")
-  expect_identical(.adata_rows(q)$data_id, "adsl_safety")
-  expect_error(set_analysis_data(q, "adsl_safety", from = "ADSL"), "already")
+  q <- set_analysis_data(q, "DM", "adsl_old", from = "adsl_safety", where = "AGE >= 65")
+  expect_identical(.adata_pop(.adata_rows(q, "DM"), "adsl_old"), "SAF")
+  expect_identical(.adata_dataset(.adata_rows(q, "DM"), "adsl_old"), "ADSL")
+  expect_error(remove_analysis_data(q, "DM", "adsl_safety"), "is used")
+  q <- remove_analysis_data(q, "DM", "adsl_old")
+  expect_identical(.adata_rows(q, "DM")$data_id, "adsl_safety")
+  expect_error(set_analysis_data(q, "DM", "adsl_safety", from = "ADSL"), "already")
   # the engine takes it
   expect_silent(suppressWarnings(.ard_spec(q$ard)))
 })
 
 test_that("the form's data choice: an analysis data first, written as `data`", {
   p <- name_analysis_data(adata_planner(), "DM", NA, "SAF", "adsl_saf")
-  ad <- .adata_rows(p)
+  ad <- .adata_rows(p, "DM")
   r <- p$ard$analyses[2L, ]
   expect_identical(.an_data_value_row(r), "@adsl_saf")
   ch <- .an_data_choices(p$ard$datasets$dataset, p$ard$populations,
@@ -102,10 +102,10 @@ test_that("a suggested name is not the program's own; the choices come in groups
   p$ard$datasets <- .normalize_ard_sheet(data.frame(
     dataset = c("ADSL", "ADVS"), path = c("a.rds", "b.rds")), "datasets")
   # advs_saf is the program's name for ADVS x SAF: not suggested
-  expect_identical(.adata_suggest(p, "ADVS", "SAF"), "advs_saf_1")
-  expect_identical(.adata_suggest(p, "ADVS", "SAF", "AVISIT == \"Week 24\""), "advs_week24")
+  expect_identical(.adata_suggest(p, "DM", "ADVS", "SAF"), "advs_saf_1")
+  expect_identical(.adata_suggest(p, "DM", "ADVS", "SAF", "AVISIT == \"Week 24\""), "advs_week24")
   q <- name_analysis_data(p, "DM", NA, "SAF", "adsl_saf")
-  ad <- .adata_rows(q)
+  ad <- .adata_rows(q, "DM")
   w <- list(with = "%s x %s (%s)", alone = "%s (%s)", none = "(none)",
             groups = c("mine", "others", "rest"))
   ch <- .an_data_choices(q$ard$datasets$dataset, q$ard$populations, now = "@adsl_saf",
@@ -127,19 +127,19 @@ test_that("2-1: a data kept to the subjects of another", {
   p <- adata_planner()
   p$ard$datasets <- .normalize_ard_sheet(data.frame(
     dataset = c("ADSL", "ADAE"), path = c("data/adam/adsl.rds", "data/adam/adae.rds")), "datasets")
-  p <- set_analysis_data(p, "adsl_old", from = "ADSL", population_id = "SAF",
+  p <- set_analysis_data(p, "DM", "adsl_old", from = "ADSL", population_id = "SAF",
                          where = "AGE >= 65")
-  p <- set_analysis_data(p, "adae_old", from = "ADAE", subjects = "adsl_old",
+  p <- set_analysis_data(p, "DM", "adae_old", from = "ADAE", subjects = "adsl_old",
                          where = "TRTEMFL == \"Y\"", add = "TRT01A", keep = "TRT01A | AEDECOD")
-  ad <- .adata_rows(p)
+  ad <- .adata_rows(p, "DM")
   expect_identical(.adata_pop(ad, "adae_old"), "SAF")
   expect_identical(.adata_subjects_of(ad, "adae_old"), "adsl_old")
   # the subjects data is used by the data kept to it: not deleted
-  expect_error(remove_analysis_data(p, "adsl_old"), "is used")
+  expect_error(remove_analysis_data(p, "DM", "adsl_old"), "is used")
   # a new name is followed by the data that keep its subjects
-  q <- set_analysis_data(p, "adsl_65", from = "ADSL", population_id = "SAF",
+  q <- set_analysis_data(p, "DM", "adsl_65", from = "ADSL", population_id = "SAF",
                          where = "AGE >= 65", old = "adsl_old")
-  expect_identical(.adata_rows(q)$subjects[2L], "adsl_65")
+  expect_identical(.adata_rows(q, "DM")$subjects[2L], "adsl_65")
   expect_silent(suppressWarnings(.ard_spec(q$ard)))
   # an analysis set's opposite keeps a blank flag
   expect_identical(.cond_not('SAFFL == "Y"'), '!(SAFFL %in% "Y")')
@@ -152,15 +152,15 @@ test_that("a data of one row a subject made later: the others are kept to it, ab
   p <- adata_planner()
   p$ard$datasets <- .normalize_ard_sheet(data.frame(
     dataset = c("ADSL", "ADAE", "ADLB"), path = c("a.rds", "b.rds", "c.rds")), "datasets")
-  p <- set_analysis_data(p, "adae_teae", from = "ADAE", where = "TRTEMFL == \"Y\"")
-  p <- set_analysis_data(p, "adlb_alt", from = "ADLB", population_id = "SAF")
-  p <- set_analysis_data(p, "adae_ser", from = "adae_teae", where = "AESER == \"Y\"")
-  p <- set_analysis_data(p, "adsl_saf", from = "ADSL", where = "SAFFL == \"Y\"")
-  expect_identical(.adata_subject_level(p), "adsl_saf")
-  q <- .adata_keep_to(p, "adsl_saf", c("adae_teae", "adlb_alt", "adae_ser"))
+  p <- set_analysis_data(p, "DM", "adae_teae", from = "ADAE", where = "TRTEMFL == \"Y\"")
+  p <- set_analysis_data(p, "DM", "adlb_alt", from = "ADLB", population_id = "SAF")
+  p <- set_analysis_data(p, "DM", "adae_ser", from = "adae_teae", where = "AESER == \"Y\"")
+  p <- set_analysis_data(p, "DM", "adsl_saf", from = "ADSL", where = "SAFFL == \"Y\"")
+  expect_identical(.adata_subject_level(p, "DM"), "adsl_saf")
+  q <- .adata_keep_to(p, "DM", "adsl_saf", c("adae_teae", "adlb_alt", "adae_ser"))
   # adlb_alt has its analysis set; adae_ser follows adae_teae (made from it)
   expect_identical(attr(q, "kept"), "adae_teae")
-  ad <- .adata_rows(q)
+  ad <- .adata_rows(q, "DM")
   expect_identical(ad$data_id, c("adsl_saf", "adae_teae", "adlb_alt", "adae_ser"))
   expect_identical(ad$subjects[2L], "adsl_saf")
   expect_identical(.adata_subjects_of(ad, "adae_ser"), "adsl_saf")
@@ -197,7 +197,7 @@ test_that("2-1: one list, a new analysis data, kept to another's subjects", {
     session$setInputs(adata_id = "adsl_saf")
     session$setInputs(adata_save = 1)
     rv <- session$userData$rv
-    ad <- .adata_rows(rv$p)
+    ad <- .adata_rows(rv$p, "DM")
     expect_identical(ad$data_id, "adsl_saf")
     # the analysis set's condition as it is: its population_id
     expect_identical(ad$population_id, "SAF")
@@ -208,7 +208,7 @@ test_that("2-1: one list, a new analysis data, kept to another's subjects", {
                       adata_subj_on = TRUE, adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL)
     session$setInputs(adata_save = 2)
-    ad <- .adata_rows(rv$p)
+    ad <- .adata_rows(rv$p, "DM")
     expect_identical(ad$subjects[ad$data_id == "adsl_old"], "adsl_saf")
     # a click marks it, and the buttons name it
     session$setInputs(ard_adata_pick = "adsl_old")
@@ -222,23 +222,24 @@ test_that("2-1: one list, a new analysis data, kept to another's subjects", {
   })
 })
 
-test_that("2-1's sheet: the report's rows edited in their place; a `from` the form has no choice for is kept", {
-  ad <- .normalize_ard_sheet(data.frame(data_id = c("a", "b", "c", "d"), from = "ADSL"), "analysis_data")
-  d <- .normalize_ard_sheet(data.frame(data_id = c("b", "x"), from = c("ADAE", "ADLB")), "analysis_data")
-  # each in the place it was; the order of the sheet stays
-  out <- .adata_put_report_rows(ad, c("b", "d"), d)
-  expect_identical(out$data_id, c("a", "b", "c", "x"))
-  expect_identical(out$from, c("ADSL", "ADAE", "ADSL", "ADLB"))
-  # one more: added after the last of them; one fewer: removed
-  d3 <- rbind(d, .normalize_ard_sheet(data.frame(data_id = "y", from = "ADVS"), "analysis_data"))
-  expect_identical(.adata_put_report_rows(ad, c("b", "c"), d3)$data_id, c("a", "b", "x", "y", "d"))
-  expect_identical(.adata_put_report_rows(ad, c("b", "c"), d[1L, ])$data_id, c("a", "b", "d"))
-  # none of them yet: added at the end
-  expect_identical(.adata_put_report_rows(ad, character(), d)$data_id, c("a", "b", "c", "d", "b", "x"))
+test_that("2-1's sheet: the report's rows replaced as a whole; a `from` the form has no choice for is kept", {
+  # a report's rows replaced as a whole, in their place in the sheet
+  ad <- .normalize_ard_sheet(data.frame(output_id = c("A", "B", "B", "C"),
+                                        data_id = c("a", "b", "c", "d"), from = "ADSL"), "analysis_data")
+  p <- add_output(new_planner(), "B")
+  p$ard$analysis_data <- ad
+  d <- data.frame(data_id = c("b", "x"), from = c("ADAE", "ADLB"))
+  out <- .adata_rows(.adata_set_rows(p, "B", d))
+  expect_identical(out$data_id, c("a", "b", "x", "d"))
+  expect_identical(out$output_id, c("A", "B", "B", "C"))
+  expect_identical(out$from, c("ADSL", "ADAE", "ADLB", "ADSL"))
+  # a report with none yet: at the end
+  out2 <- .adata_rows(.adata_set_rows(p, "D", d[1L, ]))
+  expect_identical(out2$output_id, c("A", "B", "B", "C", "D"))
   skip_if_not_installed("cards")
   local_home()
   p <- adata_planner()
-  p <- set_analysis_data(p, "adsl_saf", from = "ADSL", where = "SAFFL == \"Y\"")
+  p <- set_analysis_data(p, "DM", "adsl_saf", from = "ADSL", where = "SAFFL == \"Y\"")
   p$ard$analyses$data <- "adsl_saf"
   p$ard$analyses$population_id <- NA
   # written in the sheet by hand: a dataset the catalog does not have
@@ -266,14 +267,14 @@ test_that("a data written as R: the code the program has as a start; saved, the 
   p <- adata_planner()
   p$ard$datasets <- .normalize_ard_sheet(data.frame(
     dataset = c("ADSL", "ADAE"), path = c("data/adam/adsl.rds", "data/adam/adae.rds")), "datasets")
-  p <- set_analysis_data(p, "adsl_saf", from = "ADSL", where = "SAFFL == \"Y\"")
-  p <- set_analysis_data(p, "adae_teae", from = "ADAE", subjects = "adsl_saf",
+  p <- set_analysis_data(p, "DM", "adsl_saf", from = "ADSL", where = "SAFFL == \"Y\"")
+  p <- set_analysis_data(p, "DM", "adae_teae", from = "ADAE", subjects = "adsl_saf",
                          where = "TRTEMFL == \"Y\"")
-  v <- .adata_code_start(p, "adae_teae")
+  v <- .adata_code_start(p, "DM", "adae_teae")
   # (one condition in brackets or not, as tflspec writes it)
   expect_match(v, "^adae_teae <- subset\\(adae, USUBJID %in% adsl_saf\\$USUBJID & \\(?TRTEMFL == \"Y\"\\)?\\)\nadae_teae$")
-  q <- set_analysis_data(p, "adae_teae", from = "ADAE", code = v, old = "adae_teae")
-  ad <- .adata_rows(q)
+  q <- set_analysis_data(p, "DM", "adae_teae", from = "ADAE", code = v, old = "adae_teae")
+  ad <- .adata_rows(q, "DM")
   expect_identical(ad$code[2L], v)
   expect_silent(suppressWarnings(.ard_spec(q$ard)))
   skip_if_not_installed("cards")
@@ -290,14 +291,14 @@ test_that("a data written as R: the code the program has as a start; saved, the 
                       adata_code = "dplyr::filter(adae, AESER == \"Y\")")
     session$setInputs(adata_save = 1)
     rv <- session$userData$rv
-    ad <- .adata_rows(rv$p)
+    ad <- .adata_rows(rv$p, "DM")
     r <- ad[ad$data_id == "adae_teae", ]
     expect_identical(r$code, "dplyr::filter(adae, AESER == \"Y\")")
     # written as R: the fields that make a data are not used
     expect_true(is.na(r$subjects))
     expect_true(is.na(r$where))
     # made by it
-    d <- .adata_make(rv$p, s$path, "adae_teae")
+    d <- .adata_make(rv$p, s$path, "DM", "adae_teae")
     expect_true(all(d$AESER == "Y"))
   })
 })
@@ -337,9 +338,11 @@ test_that("step 2 says the report's analyses and the study's; the Data tab expla
     session$setInputs(nav = "make", step = "ard", target = "DM")
     expect_match(output$ard_check$html, "This report's analyses: 2 (the study's: 3)", fixed = TRUE)
     expect_match(output$ard_2_2_head$html, "2-2 Analyses", fixed = TRUE)
-    for (sh in c("datasets", "populations", "analysis_data")) {
+    for (sh in c("datasets", "populations")) {
       expect_false(is.null(output[[paste0("help_ard_", sh)]]))
     }
+    # the analysis data are each report's (2-1): the Data tab has no grid of them
+    expect_error(output$hot_ard_analysis_data)
   })
 })
 
@@ -391,7 +394,7 @@ test_that("2-1's analysis set: the condition's first row, from the study's sets 
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL, adata_code = "")
     session$flushReact()
     session$setInputs(adata_save = 1)
-    ad <- .adata_rows(session$userData$rv$p)
+    ad <- .adata_rows(session$userData$rv$p, "DM")
     r <- ad[ad$data_id == "adsl_pp", ]
     expect_identical(r$where, 'PPROTFL == "Y"')
     expect_true(is.na(r$population_id))
@@ -405,7 +408,7 @@ test_that("2-1's analysis set: the condition's first row, from the study's sets 
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL, adata_code = "")
     session$flushReact()
     session$setInputs(adata_save = 2)
-    r <- .adata_rows(session$userData$rv$p)
+    r <- .adata_rows(session$userData$rv$p, "DM")
     r <- r[r$data_id == "adsl_65", ]
     expect_identical(r$population_id, "SAF")
     expect_identical(r$where, "AGE >= 65")
@@ -423,7 +426,7 @@ test_that("2-1's analysis set: the condition's first row, from the study's sets 
     session$setInputs(adata_id = "adsl_notsaf")
     session$flushReact()
     session$setInputs(adata_save = 3)
-    r <- .adata_rows(session$userData$rv$p)
+    r <- .adata_rows(session$userData$rv$p, "DM")
     r <- r[r$data_id == "adsl_notsaf", ]
     expect_match(r$where, "SAFFL", fixed = TRUE)
     expect_true(is.na(r$population_id))
@@ -457,7 +460,7 @@ test_that("2-1: a population_id the sheet has is the condition's first row", {
   skip_if_not_installed("cards")
   local_home()
   p <- adata_planner()
-  p <- set_analysis_data(p, "adsl_old", from = "ADSL", population_id = "SAF", where = "AGE >= 65")
+  p <- set_analysis_data(p, "DM", "adsl_old", from = "ADSL", population_id = "SAF", where = "AGE >= 65")
   s <- create_study("PL", planner = p)
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
   shiny::testServer(server_for("PL"), {
@@ -469,7 +472,7 @@ test_that("2-1: a population_id the sheet has is the condition's first row", {
                       adata_add = NULL, adata_derive = "", adata_keep = NULL, adata_distinct = NULL,
                       adata_code = "")
     session$setInputs(adata_save = 1)
-    ad <- .adata_rows(session$userData$rv$p)
+    ad <- .adata_rows(session$userData$rv$p, "DM")
     expect_identical(ad$population_id[ad$data_id == "adsl_old"], "SAF")
     expect_identical(ad$where[ad$data_id == "adsl_old"], "AGE >= 65")
     expect_identical(ad$label[ad$data_id == "adsl_old"], "Old")

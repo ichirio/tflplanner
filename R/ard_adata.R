@@ -7,8 +7,28 @@
 # data, 2. the analyses); an analysis names one in `data`.
 
 # the sheet (no rows when the study has none)
-.adata_rows <- function(x) {
-  .normalize_ard_sheet(x$ard$analysis_data %||% data.frame(), "analysis_data")
+.adata_rows <- function(x, output_id = NULL) {
+  d <- .normalize_ard_sheet(x$ard$analysis_data %||% data.frame(), "analysis_data")
+  if (is.null(output_id)) d else
+    d[!is.na(d$output_id) & d$output_id %in% output_id, , drop = FALSE]
+}
+
+# A report's rows of the sheet replaced by `rows` (in the place of its
+# first row; a report with none yet: at the end).  An analysis data is a
+# report's: its rows name the report.
+.adata_set_rows <- function(x, output_id, rows) {
+  ad <- .adata_rows(x)
+  rows <- .normalize_ard_sheet(as.data.frame(rows, stringsAsFactors = FALSE), "analysis_data")
+  rows$output_id <- rep(output_id, nrow(rows))
+  mine <- !is.na(ad$output_id) & ad$output_id == output_id
+  at <- if (any(mine)) which(mine)[1L] - 1L else nrow(ad)
+  rest <- ad[!mine, , drop = FALSE]
+  before <- sum(!mine[seq_len(at)])
+  out <- rbind(rest[seq_len(before), , drop = FALSE], rows,
+               rest[setdiff(seq_len(nrow(rest)), seq_len(before)), , drop = FALSE])
+  rownames(out) <- NULL
+  x$ard$analysis_data <- out
+  x
 }
 
 # the rows a data is made from, from the first to itself (NULL: none)
@@ -52,8 +72,8 @@
 
 # The analysis data of one row a subject: made from the analysis sets'
 # dataset (ADSL).  The others are kept to their subjects.
-.adata_subject_level <- function(x) {
-  ad <- .adata_rows(x)
+.adata_subject_level <- function(x, output_id) {
+  ad <- .adata_rows(x, output_id)
   if (!nrow(ad)) return(character())
   ds <- unique(stats::na.omit(x$ard$populations$dataset))
   if (!length(ds)) ds <- "ADSL"
@@ -72,8 +92,8 @@
 # `subj` moves above the first of them (`subjects` names a data above),
 # unless what it is made from is below: then only those below it.  The ids
 # kept are in attribute "kept".
-.adata_keep_to <- function(x, subj, ids) {
-  ad <- .adata_rows(x)
+.adata_keep_to <- function(x, output_id, subj, ids) {
+  ad <- .adata_rows(x, output_id)
   k <- match(subj, ad$data_id)
   free <- vapply(ids, function(id) id %in% ad$data_id && id != subj &&
                    !subj %in% .adata_chain(ad, id) && !id %in% .adata_chain(ad, subj) &&
@@ -95,36 +115,11 @@
         ad <- ad[ord, , drop = FALSE]
       }
       rownames(ad) <- NULL
-      x$ard$analysis_data <- ad
+      x <- .adata_set_rows(x, output_id, ad)
     }
   }
   attr(x, "kept") <- ids
   x
-}
-
-# The study's analysis_data with some of its rows (`ids`) as edited in `d`:
-# each edited row in the place of the one it was (the sheet's order stays:
-# `from` and `subjects` name data above), rows added after the last of
-# them, rows taken out removed
-.adata_put_report_rows <- function(ad, ids, d) {
-  for (nm in setdiff(names(ad), names(d))) d[[nm]] <- rep(NA_character_, nrow(d))
-  d <- d[names(ad)]
-  pos <- which(ad$data_id %in% ids)
-  if (!length(pos)) {
-    out <- rbind(ad, d)
-  } else {
-    k <- min(length(pos), nrow(d))
-    out <- ad
-    if (k) out[pos[seq_len(k)], ] <- d[seq_len(k), , drop = FALSE]
-    gone <- if (length(pos) > k) pos[(k + 1L):length(pos)] else integer()
-    add <- if (nrow(d) > k) d[(k + 1L):nrow(d), , drop = FALSE] else d[0L, , drop = FALSE]
-    last <- max(pos)
-    keep <- setdiff(seq_len(nrow(out)), gone)
-    out <- rbind(out[keep[keep <= last], , drop = FALSE], add,
-                 out[keep[keep > last], , drop = FALSE])
-  }
-  rownames(out) <- NULL
-  out
 }
 
 # A name for a data from what it is made from, its analysis set and its
@@ -278,27 +273,18 @@
 # The analysis data a report reads (`data`, `denominator`), with the rows
 # they are made from, in the sheet's order
 .adata_of_report <- function(x, output_id) {
-  ad <- .adata_rows(x)
-  a <- x$ard$analyses
-  a <- a[!is.na(a$output_id) & a$output_id %in% output_id, , drop = FALSE]
-  ids <- intersect(c(a$data %||% character(), a$denominator), ad$data_id)
-  all <- character()
-  while (length(new <- setdiff(unique(unlist(lapply(ids, function(id)
-    .adata_chain(ad, id)))), all))) {
-    all <- c(all, new)
-    ids <- intersect(stats::na.omit(ad$subjects[match(new, ad$data_id)]), ad$data_id)
-  }
-  ad$data_id[ad$data_id %in% all]
+  .adata_rows(x, output_id)$data_id
 }
 
 # Where an analysis data is used: the analyses that read it or divide by it
 # ("T1 / AE"), and the analysis data made from it
-.adata_uses <- function(x, id) {
+.adata_uses <- function(x, output_id, id) {
   a <- x$ard$analyses
+  a <- a[!is.na(a$output_id) & a$output_id == output_id, , drop = FALSE]
   d <- a$data %||% rep(NA_character_, nrow(a))
   hit <- (!is.na(d) & d == id) |
     (!is.na(a$denominator) & a$denominator == id)
-  ad <- .adata_rows(x)
+  ad <- .adata_rows(x, output_id)
   list(analyses = paste(a$output_id[hit], a$analysis_id[hit], sep = " / "),
        data = ad$data_id[(!is.na(ad$from) & ad$from == id) |
                            (!is.na(ad$subjects) & ad$subjects == id)])
@@ -310,24 +296,24 @@
 # population, a dataset x analysis set's own: adae_saf)
 # The names the program has already: the datasets, the analysis sets, the
 # data a dataset x analysis set is read as (adae_saf), the analysis data
-.adata_taken_names <- function(x) {
+.adata_taken_names <- function(x, output_id) {
   rn <- function(v) gsub("[^a-z0-9_.]", "_", tolower(v))
   ds <- x$ard$datasets$dataset
   pops <- x$ard$populations$population_id
   auto <- unlist(lapply(pops, function(p) vapply(ds, function(d)
     .an_data_name(d, p, x$ard$populations), "")))
   c(rn(ds), paste0("pop_", rn(pops)), auto,
-    .adata_rows(x)$data_id, "data", "population", "ard", "ards", "status")
+    .adata_rows(x, output_id)$data_id, "data", "population", "ard", "ards", "status")
 }
 
-.adata_suggest <- function(x, from, population_id = NA, where = NA) {
+.adata_suggest <- function(x, output_id, from, population_id = NA, where = NA) {
   rn <- function(v) gsub("[^a-z0-9_.]", "_", tolower(v))
   val <- if (!.is_blank(where)) regmatches(where, regexpr("\"[^\"]+\"", where))
   val <- if (length(val)) gsub("[^a-z0-9]", "", tolower(val)) else ""
   base <- paste(c(rn(from), if (nzchar(val)) val else
     if (!.is_blank(population_id)) rn(population_id)), collapse = "_")
   if (!grepl("^[a-z]", base)) base <- paste0("d_", base)
-  taken <- .adata_taken_names(x)
+  taken <- .adata_taken_names(x, output_id)
   nm <- base
   k <- 1L
   while (nm %in% taken) {
@@ -368,13 +354,14 @@
 #'   it the other columns but `from` stay blank.
 #' @return The `tflplanner`.
 #' @export
-set_analysis_data <- function(x, data_id, from, population_id = NA,
+set_analysis_data <- function(x, output_id, data_id, from, population_id = NA,
                               where = NA, add = NA, derive = NA,
                               distinct = NA, label = NA, old = NULL,
                               subjects = NA, keep = NA, code = NA) {
-  ad <- .adata_rows(x)
+  if (.is_blank(output_id)) stop("An analysis data is a report's: give the report.", call. = FALSE)
+  ad <- .adata_rows(x, output_id)
   row <- .normalize_ard_sheet(data.frame(
-    data_id = data_id, label = label, from = from,
+    output_id = output_id, data_id = data_id, label = label, from = from,
     population_id = population_id, subjects = subjects, where = where,
     add = add, derive = derive, keep = keep, distinct = distinct,
     code = code, stringsAsFactors = FALSE), "analysis_data")
@@ -393,32 +380,78 @@ set_analysis_data <- function(x, data_id, from, population_id = NA,
       stop("There is an analysis data '", row$data_id, "' already.", call. = FALSE)
     }
     ad[i, ] <- row
-    # a new name: what used the old one uses it
+    # a new name: what used the old one (in this report) uses it
     if (!identical(old, row$data_id)) {
       a <- x$ard$analyses
-      if (!is.null(a$data)) a$data[!is.na(a$data) & a$data == old] <- row$data_id
-      a$denominator[!is.na(a$denominator) & a$denominator == old] <- row$data_id
+      k <- !is.na(a$output_id) & a$output_id == output_id
+      if (!is.null(a$data)) a$data[k & !is.na(a$data) & a$data == old] <- row$data_id
+      a$denominator[k & !is.na(a$denominator) & a$denominator == old] <- row$data_id
       x$ard$analyses <- a
       ad$from[!is.na(ad$from) & ad$from == old] <- row$data_id
       ad$subjects[!is.na(ad$subjects) & ad$subjects == old] <- row$data_id
     }
   }
-  x$ard$analysis_data <- ad
-  x
+  .adata_set_rows(x, output_id, ad)
 }
 
 #' @rdname set_analysis_data
 #' @export
-remove_analysis_data <- function(x, data_id) {
-  ad <- .adata_rows(x)
-  if (!data_id %in% ad$data_id) stop("No analysis data '", data_id, "'.", call. = FALSE)
-  u <- .adata_uses(x, data_id)
+remove_analysis_data <- function(x, output_id, data_id) {
+  ad <- .adata_rows(x, output_id)
+  if (!data_id %in% ad$data_id) {
+    stop("No analysis data '", data_id, "' in ", output_id, ".", call. = FALSE)
+  }
+  u <- .adata_uses(x, output_id, data_id)
   if (length(u$analyses) || length(u$data)) {
     stop("'", data_id, "' is used: ",
          paste(c(u$analyses, u$data), collapse = ", "), call. = FALSE)
   }
-  x$ard$analysis_data <- ad[ad$data_id != data_id, , drop = FALSE]
-  rownames(x$ard$analysis_data) <- NULL
+  .adata_set_rows(x, output_id, ad[ad$data_id != data_id, , drop = FALSE])
+}
+
+#' @rdname set_analysis_data
+#' @param from_output The report whose analysis data are copied.
+#' @param data_ids Which of them (`NULL`: all), with what they are made
+#'   from and kept to, when those are analysis data as well.
+#' @details `import_analysis_data()` copies a report's analysis data into
+#'   another report, under the same names (a name the report has already
+#'   gets `_1`, `_2` ...); attribute `copied` names the rows added.
+#' @export
+import_analysis_data <- function(x, from_output, output_id, data_ids = NULL) {
+  src <- .adata_rows(x, from_output)
+  if (is.null(data_ids)) data_ids <- src$data_id
+  miss <- setdiff(data_ids, src$data_id)
+  if (length(miss)) {
+    stop("No analysis data ", paste(miss, collapse = ", "), " in ", from_output, ".",
+         call. = FALSE)
+  }
+  # with what they are made from and kept to (those of the same report)
+  want <- character()
+  ids <- data_ids
+  while (length(new <- setdiff(unique(unlist(lapply(ids, function(id) .adata_chain(src, id)))),
+                               want))) {
+    want <- c(want, new)
+    ids <- intersect(stats::na.omit(src$subjects[match(new, src$data_id)]), src$data_id)
+  }
+  rows <- src[src$data_id %in% want, , drop = FALSE]
+  # the names: the same, unless the report's program has them
+  taken <- .adata_names_in_use(x, output_id)
+  new_id <- vapply(rows$data_id, function(id) {
+    nm <- id
+    k <- 1L
+    while (nm %in% taken) {
+      nm <- paste0(id, "_", k)
+      k <- k + 1L
+    }
+    taken <<- c(taken, nm)
+    nm
+  }, "")
+  ren <- function(v) ifelse(!is.na(v) & v %in% rows$data_id, new_id[match(v, rows$data_id)], v)
+  rows$from <- ren(rows$from)
+  rows$subjects <- ren(rows$subjects)
+  rows$data_id <- unname(new_id)
+  x <- .adata_set_rows(x, output_id, rbind(.adata_rows(x, output_id), rows))
+  attr(x, "copied") <- unname(new_id)
   x
 }
 
@@ -448,7 +481,7 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
   # a condition every one of them has moves into the data
   w <- unique(a$where[hit])
   common <- if (length(w) == 1L && !is.na(w)) w else NA_character_
-  x <- set_analysis_data(x, data_id, from = ds_now, population_id = population_id,
+  x <- set_analysis_data(x, output_id, data_id, from = ds_now, population_id = population_id,
                          where = common, label = label)
   a$data[hit] <- data_id
   a$dataset[hit] <- NA
@@ -460,9 +493,10 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
 
 # The analysis data `id` as the ARD program makes it (tflspec writes the
 # code), read from the study folder; NULL when it cannot be made
-.adata_make <- function(x, path, id) {
+.adata_make <- function(x, path, output_id, id) {
   a <- x$ard
-  a$analysis_data <- .adata_rows(x)
+  a$analysis_data <- .adata_rows(x, output_id)
+  a$analysis_data$output_id <- rep(".try", nrow(a$analysis_data))
   a$analyses <- .normalize_ard_sheet(data.frame(
     output_id = ".try", analysis_id = "TRY", method = "cards::ard_summary",
     data = id, variables = "TRY_", stringsAsFactors = FALSE), "analyses")
@@ -486,9 +520,10 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
 # The lines the program makes a data with, as R its `code` can start from:
 # the lines that write it, its name last (the value of the code); NA when
 # the program cannot be written yet
-.adata_code_start <- function(x, id) {
+.adata_code_start <- function(x, output_id, id) {
   a <- x$ard
-  a$analysis_data <- .adata_rows(x)
+  a$analysis_data <- .adata_rows(x, output_id)
+  a$analysis_data$output_id <- rep(".try", nrow(a$analysis_data))
   a$analyses <- .normalize_ard_sheet(data.frame(
     output_id = ".try", analysis_id = "TRY", method = "cards::ard_summary",
     data = id, variables = "TRY_", stringsAsFactors = FALSE), "analyses")
@@ -539,17 +574,16 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
 
 #' @rdname set_analysis_data
 #' @export
-copy_analysis_data <- function(x, data_id) {
-  ad <- .adata_rows(x)
+copy_analysis_data <- function(x, output_id, data_id) {
+  ad <- .adata_rows(x, output_id)
   i <- match(data_id, ad$data_id)
-  if (is.na(i)) stop("No analysis data '", data_id, "'.", call. = FALSE)
+  if (is.na(i)) stop("No analysis data '", data_id, "' in ", output_id, ".", call. = FALSE)
   k <- 2L
   while (paste0(data_id, "_", k) %in% ad$data_id) k <- k + 1L
   new <- ad[i, , drop = FALSE]
   new$data_id <- paste0(data_id, "_", k)
-  x$ard$analysis_data <- rbind(ad[seq_len(i), , drop = FALSE], new,
-                               ad[seq_len(nrow(ad)) > i, , drop = FALSE])
-  rownames(x$ard$analysis_data) <- NULL
+  x <- .adata_set_rows(x, output_id, rbind(ad[seq_len(i), , drop = FALSE], new,
+                                           ad[seq_len(nrow(ad)) > i, , drop = FALSE]))
   attr(x, "copied") <- new$data_id
   x
 }
