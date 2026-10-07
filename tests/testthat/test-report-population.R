@@ -207,7 +207,6 @@ test_that("the Add dialog gives a new report its analysis set", {
 })
 
 test_that("a TOC's datasets: kept, a listing's default, a table's analysis data made", {
-  skip_if_not("datasets" %in% tflspec:::.toc_fields)
   f <- tempfile(fileext = ".csv")
   writeLines(c("No.,Kind,Title,Population,Data",
                "N1,Table,AEs,Safety Population,\"ADSL, ADAE\"",
