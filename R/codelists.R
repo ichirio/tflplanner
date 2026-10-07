@@ -295,3 +295,25 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
   })
   invisible(NULL)
 }
+
+# -- a study of the old format ---------------------------------------------
+
+# A study made before analysis data and code lists were a report's: their
+# rows without a report.  There is no migration (tflspec stops on them):
+# the app says so once, in words, and step 2 says why it is empty.
+.old_format <- function(p) {
+  old <- function(d) {
+    if (is.null(d) || !nrow(d)) return(FALSE)
+    if (!"output_id" %in% names(d)) return(TRUE)
+    rest <- d[setdiff(names(d), "output_id")]
+    filled <- rowSums(!is.na(rest) & as.matrix(rest) != "") > 0
+    any(filled & (is.na(d$output_id) | !nzchar(trimws(d$output_id))))
+  }
+  c(if (old(p$ard$analysis_data)) "analysis_data",
+    if (old(p$sheets$codelists)) "codelists")
+}
+
+.old_format_msg <- paste(
+  "This study is in an old format: its analysis data and code lists are the whole study's, not a report's.",
+  "Make it again from the sample, or make a new study.")
+.old_format_line <- "An old format: the analysis data have no report. Make the study again from the sample, or make a new study."

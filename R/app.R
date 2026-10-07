@@ -1220,6 +1220,10 @@ app_server <- function(input, output, session, start) {
     bump()
     rv$status_ver <- rv$status_ver + 1L
     rv$ard_ver <- rv$ard_ver + 1L
+    # a study of the old format: said once, until closed
+    if (length(.old_format(s$planner))) {
+      shiny::showNotification(t(.old_format_msg), type = "warning", duration = NULL)
+    }
     offer_draft(s)
   }
   # a draft left by a session that did not save: take it back, or drop it
@@ -4033,7 +4037,10 @@ app_server <- function(input, output, session, start) {
       # study's others are on the Data tab
       shiny::div(
         class = "border rounded",
-        if (!length(mine) && !length(auto))
+        # a study of the old format: why its analysis data are not here
+        if (length(.old_format(rv$p)))
+          shiny::p(class = "small text-warning m-2", t(.old_format_line))
+        else if (!length(mine) && !length(auto))
           shiny::p(class = "small text-muted m-2", t("None yet: New analysis data makes one.")),
         lapply(mine, row_of),
         lapply(auto, auto_row)))
@@ -4043,7 +4050,9 @@ app_server <- function(input, output, session, start) {
     shiny::tagList(
       shiny::h6(class = "mt-3 mb-1", with_tip(
         t("2-2 Analyses"),
-        t("The report's analyses. Each one's Data: an analysis data of 2-1; the denominator of a percent: chosen with it. ARD: the data of the analyses' results (the tables are made from it). Analysis set: the subjects a percent is of (SAF ...)."))))
+        t("The report's analyses. Each one's Data: an analysis data of 2-1; the denominator of a percent: chosen with it. ARD: the data of the analyses' results (the tables are made from it). Analysis set: the subjects a percent is of (SAF ...)."))),
+      if (length(.old_format(rv$p)))
+        shiny::p(class = "small text-warning mb-1", t(.old_format_line)))
   })
   # the form: what is being made (`old`: the one changed; `name`: a
   # report's data being given a name; `pop`: the analysis set it was kept to)
@@ -5146,6 +5155,14 @@ app_server <- function(input, output, session, start) {
                            mine, n)),
         note))
     }
+    if (length(.old_format(rv$p))) {
+      return(shiny::div(
+        class = "alert alert-warning py-1 small mt-2",
+        shiny::div(t(.old_format_line)),
+        shiny::tags$details(
+          shiny::tags$summary(t("The checks' messages")),
+          shiny::tags$pre(class = "mb-0", msg))))
+    }
     shiny::div(class = "alert alert-warning py-1 small mt-2",
                shiny::tags$pre(class = "mb-0", msg))
   })
@@ -5223,8 +5240,9 @@ app_server <- function(input, output, session, start) {
                                 codelists = .study_codelists(rv$p)),
       setup = ard_setup_code(a),
       autoexec = ard_autoexec_code(a)),
-      error = function(e) msg(paste(t("The code cannot be written yet:"),
-                                    conditionMessage(e))))
+      error = function(e) msg(paste(
+        if (length(.old_format(rv$p))) paste0(t(.old_format_line), "\n\n"),
+        t("The code cannot be written yet:"), conditionMessage(e))))
   })
   output$ard_prog_state <- shiny::renderUI({
     shiny::req(has_study())

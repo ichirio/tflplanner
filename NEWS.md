@@ -10,8 +10,10 @@
   `set_codelist()` takes the report; `import_codelist()` copies another
   report's.  The Data tab's study code lists are gone.  A report's ARD uses
   the code lists of the variables its analyses read; step 1's result says
-  which.  A study made before with study-wide rows: tflspec says so (give
-  the rows their report).  The sample's tables have their own code lists
+  which.  A study of the old format (analysis data or code lists without a
+  report) is said so once when it is opened, in the app's language: make
+  it again from the sample, or make a new study.  Step 2's 2-1 and 2-2 say
+  the same in a line, the checks' messages folded under it.  The sample's tables have their own code lists
   (#248): the arms in each, SEX / AGEGR1 / RACE / ETHNIC in the
   demographics tables (the CRF's values the data have none of print with
   0), EOSSTT in the disposition table; the variables sheet no longer

@@ -107,3 +107,39 @@ test_that("step 1: the report's code lists, the ones it uses, copied in", {
     expect_identical(nrow(sheet_rows(rv$p, "codelists", NA)), 0L)
   })
 })
+
+test_that("a study of the old format: said once, and why step 2 is empty", {
+  skip_on_cran()
+  local_home()
+  p <- cl_planner()
+  p$ard$analysis_data <- .normalize_ard_sheet(data.frame(
+    output_id = "T1", data_id = "adsl_saf", from = "ADSL", population_id = "SAF"),
+    "analysis_data")
+  expect_length(.old_format(p), 0L)
+  old <- p
+  old$ard$analysis_data$output_id <- NA_character_
+  old$sheets$codelists <- .normalize_sheet(data.frame(
+    output_id = NA_character_, variable = "SEX", value = "F"), "codelists")
+  expect_identical(.old_format(old), c("analysis_data", "codelists"))
+  # a sheet of nothing but a blank row is not old
+  blank <- p
+  blank$sheets$codelists <- .normalize_sheet(data.frame(output_id = NA_character_,
+                                                        variable = NA_character_), "codelists")
+  expect_length(.old_format(blank), 0L)
+  # a study saved before: its analysis data without a report
+  create_study("OLD", planner = p)
+  s <- open_study("OLD")
+  s$planner$ard$analysis_data$output_id <- NA_character_
+  .write_state(s, tflplanner_home())
+  shiny::testServer(server_for("OLD"), {
+    rv <- session$userData$rv
+    expect_identical(.old_format(rv$p), "analysis_data")
+    session$setInputs(nav = "make", step = "ard", target = "T1")
+    expect_match(output$ard_adata$html, "An old format", fixed = TRUE)
+    expect_false(grepl("None yet", output$ard_adata$html, fixed = TRUE))
+    expect_match(output$ard_2_2_head$html, "An old format", fixed = TRUE)
+    chk <- output$ard_check$html
+    expect_match(chk, "An old format", fixed = TRUE)
+    expect_match(chk, "<details>", fixed = TRUE)
+  })
+})
