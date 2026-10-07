@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **A user-code report's program, shorter** (#253).  The function that
+  makes its `content` what rtfreporter takes (a ggplot becomes a figure;
+  anything else is said) is `report_content()`, written once in the
+  study's `programs/tfl/fig_setup.R`; each program ends with
+  `content <- report_content(content)` instead of 15 lines of its own.
+  The sample's reports are the same.
+
 - **A session that stops on an error no longer stops the app** (#256).
   With `stop_on_close = TRUE` (the launcher's), a page that went grey on
   an error ended its session, which was taken for a closed tab: the app
