@@ -6,6 +6,9 @@
   R code kept in the spec, shared parts defined once, screens => spec =>
   code.  Docs only.
 
+- **A hex logo, shared with rtfreporter and tflspec** (#230), made with the
+  site's favicons by `data-raw/logo.R`.
+
 - Added a root `CITATION.cff` so GitHub's "Cite this repository" button
   works (#229).
 
