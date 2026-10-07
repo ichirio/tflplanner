@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **2-1's form, in plainer words** (#254).  The condition is a filter:
+  "Filter (a condition)" (2-1) and "This analysis's own filter" (2-2),
+  their help alike.  "Write the condition as R (inside subset())" and
+  "Write this analysis data whole as R (code)" tell the two apart.  The
+  columns added from the subjects' data say what they do (nothing chosen:
+  nothing added) and are not offered while the data is made from the
+  analysis set's own data, which has them all.  The condition builder's
+  variable box is as tall as the others from the first (it took a line of
+  its own until its list was opened).
+
 - **A code list is a report's** (#251; tflspec 0.0.24.9058).  Step 1 edits
   the report's code lists: the variables it uses (its analyses, what its
   data derive, what its table shows; all with a box), [Copy code lists...]

@@ -272,4 +272,8 @@ test_that("the condition builder shows a variable on one line, the whole on hove
   expect_match(.cond_js, "title=", fixed = TRUE)
   h <- as.character(condition_builder_ui("x"))
   expect_match(h, "text-overflow: ellipsis", fixed = TRUE)
+  # the chosen one beside selectize's input (a block took a line of its
+  # own: the box twice as tall until opened); the options still a line each
+  expect_match(h, ".selectize-input .item.tfl-cond-one { display: inline-block;", fixed = TRUE)
+  expect_match(h, ".selectize-dropdown .option.tfl-cond-one { display: block; }", fixed = TRUE)
 })

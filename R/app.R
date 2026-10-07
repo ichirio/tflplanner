@@ -3127,8 +3127,8 @@ app_server <- function(input, output, session, start) {
                              resize = "vertical")),
       if (!inside) shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
-        shiny::tags$summary(class = "small", with_tip(argl("Rows kept (this analysis's own condition)", "where"),
-                                                      t("An R condition for this analysis alone (e.g. AESER == \"Y\"). The data's own condition is 2-1's."))),
+        shiny::tags$summary(class = "small", with_tip(argl("This analysis's own filter", "where"),
+                                                      t("An R condition that filters this analysis's rows alone (e.g. AESER == \"Y\"). The data's own filter is 2-1's."))),
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
                          placeholder = "AESER == \"Y\"")),
       shiny::uiOutput("ard_stat_part"),
@@ -4241,6 +4241,23 @@ app_server <- function(input, output, session, start) {
                                                    r$from)), from_ch)
     }
     more <- !.is_blank(r$add) || !.is_blank(r$derive) || !.is_blank(r$keep) || !.is_blank(r$distinct)
+    # add: columns of the subjects' data joined in -- not offered while it is
+    # made from the analysis set's own data (it has them all), unless the
+    # sheet says some
+    add_ui <- shiny::selectizeInput(
+      "adata_add", with_tip(argl("Columns added from the subjects' data", "add"),
+                            t("Columns of the subjects' data (the analysis set's, or the analysis data its subjects are kept to) joined by the subject key. Nothing chosen: nothing added. A column of the same name takes the subjects' values.")),
+      choices = unique(c(bar(r$add), adata_add_choices(r$from, subj_now))),
+      selected = bar(r$add), multiple = TRUE, width = "100%",
+      options = list(create = TRUE, plugins = list("remove_button")))
+    own <- unname(from_ch)[vapply(unname(from_ch), function(v)
+      adata_root(v) %in% adata_pop_ds(), NA)]
+    if (.is_blank(r$add) && length(own)) {
+      add_ui <- shiny::conditionalPanel(
+        sprintf("[%s].indexOf(input.adata_from) < 0",
+                paste(encodeString(own, quote = "\""), collapse = ", ")),
+        add_ui)
+    }
     step2_focus("adata")
     adata_form_ui(shiny::div(
       class = "rp-b-card mb-2 border-primary",
@@ -4284,15 +4301,12 @@ app_server <- function(input, output, session, start) {
           shiny::selectInput("adata_subj", NULL, stats::setNames(cands, cands),
                              selected = subj_now, width = "100%")),
         NULL),
-      shiny::tags$label(class = "form-label", with_tip(argl("Rows kept (a condition)", "where"), t("The rows the data keeps. The rows are AND (\"+ and\"); \"+ or (another group)\" is OR. A flag: \"= Y\". What the rows cannot say: \"Write as R\"."))),
+      shiny::tags$label(class = "form-label", with_tip(argl("Filter (a condition)", "where"), t("The condition the data's rows are filtered by (subset()). The rows are AND (\"+ and\"); \"+ or (another group)\" is OR. A flag: \"= Y\". What the rows cannot say: \"Write the condition as R\"."))),
       condition_builder_ui("adata_cond", lang),
       shiny::tags$details(
         class = "mb-2", open = if (more) NA,
         shiny::tags$summary(class = "small", t("Columns taken, made, kept; one row per ...")),
-        shiny::selectizeInput("adata_add", argl("Columns taken from the subjects' data", "add"),
-                              choices = unique(c(bar(r$add), adata_add_choices(r$from, subj_now))),
-                              selected = bar(r$add), multiple = TRUE, width = "100%",
-                              options = list(create = TRUE, plugins = list("remove_button"))),
+        add_ui,
         shiny::textInput("adata_derive", argl("Columns made (NAME = R, | between them)", "derive"),
                          blank_na(r$derive), width = "100%",
                          placeholder = sprintf(t("e.g. %s"), "PHASE = APHASE")),
@@ -4307,7 +4321,7 @@ app_server <- function(input, output, session, start) {
       # the way out: R that makes the data itself (the definition keeps it)
       shiny::tags$details(
         class = "mb-2", open = if (!.is_blank(r$code)) NA,
-        shiny::tags$summary(class = "small", with_tip(t("Write it as R (code)"), t("When the fields cannot say it: R whose value is the data (the datasets, pop_<set> and the analysis data above are in reach); written, the fields above are not used. The program is never edited: this R is the definition."))),
+        shiny::tags$summary(class = "small", with_tip(t("Write this analysis data whole as R (code)"), t("When the fields cannot say it: R whose value is the whole data (the datasets, pop_<set> and the analysis data above are in reach); written, none of the fields above is used. Only the filter: \"Write the condition as R\" above. The program is never edited: this R is the definition."))),
         shiny::textAreaInput("adata_code", NULL, blank_na(r$code), width = "100%", rows = 6,
                              resize = "vertical"),
         .btn("adata_code_start", t("Start from the generated code"),
@@ -4856,8 +4870,8 @@ app_server <- function(input, output, session, start) {
                          width = "100%"),
       shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
-        shiny::tags$summary(class = "small", with_tip(argl("Rows kept (this analysis's own condition)", "where"),
-                                                      t("An R condition for this analysis alone (e.g. AESER == \"Y\"). The data's own condition is 2-1's."))),
+        shiny::tags$summary(class = "small", with_tip(argl("This analysis's own filter", "where"),
+                                                      t("An R condition that filters this analysis's rows alone (e.g. AESER == \"Y\"). The data's own filter is 2-1's."))),
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
                          placeholder = "AESER == \"Y\"")),
       shiny::selectizeInput(

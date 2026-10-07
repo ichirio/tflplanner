@@ -187,6 +187,15 @@ test_that("2-1: one list, a new analysis data, kept to another's subjects", {
     expect_lt(regexpr("adata_from", f), regexpr("adata_pop", f))
     expect_lt(regexpr("adata_pop", f), regexpr("adata_id", f))
     expect_match(f, "adata_cond", fixed = TRUE)
+    # the words: a filter; the condition as R, the whole data as R
+    expect_match(f, "Filter (a condition)", fixed = TRUE)
+    expect_match(f, "Write this analysis data whole as R (code)", fixed = TRUE)
+    expect_false(grepl("Rows kept", f, fixed = TRUE))
+    # columns added from the subjects' data: not while it is made from the
+    # analysis set's own data (ADSL), and said what they do
+    expect_match(f, "indexOf(input.adata_from) &lt; 0", fixed = TRUE)
+    expect_match(f, "[&quot;ADSL&quot;]", fixed = TRUE)
+    expect_match(f, "Nothing chosen: nothing added", fixed = TRUE)
     session$setInputs(adata_label = "", adata_from = "ADSL", adata_add = NULL,
                       adata_derive = "", adata_keep = NULL, adata_distinct = NULL)
     # the condition (as the builder gives it): the name after it
