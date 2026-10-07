@@ -1,5 +1,8 @@
 # tflplanner (development version)
 
+- Added a root `CITATION.cff` so GitHub's "Cite this repository" button
+  works (#229).
+
 - **The sample's ADSL has ITTFL, EFFFL and PPROTFL** (#218), derived by
   data-raw/make-sample-study.R (pharmaverseadam's ADSL has SAFFL only of
   the population flags; the sample's README says how), so step 2 has
