@@ -6,7 +6,8 @@
 #   outputs  the report list: output_id, description, data_code (makes
 #            the ARD), process_code (normalizes and reworks it), section
 #            (the TOC's heading it is under; blank: from its ID),
-#            population (its analysis set: the TOC's, step 2's) -- the
+#            population (its analysis set: the TOC's, step 2's),
+#            datasets (the TOC's, "ADSL | ADAE") -- the
 #            part rtfreporter does not read, kept in the report workbook's
 #            `_tflplanner` sheet (a sheet whose name starts with `_` is
 #            not read by rtfreporter)
@@ -195,7 +196,7 @@ sheet_columns <- function(sheet) {
   data.frame(output_id = character(), description = character(),
              data_code = character(), process_code = character(),
              section = character(), population = character(),
-             stringsAsFactors = FALSE)
+             datasets = character(), stringsAsFactors = FALSE)
 }
 
 #' A new, empty study definition
@@ -367,7 +368,7 @@ add_output <- function(x, output_id, description = NA_character_,
     data_code = as.character(data_code),
     process_code = as.character(process_code),
     section = as.character(section), population = as.character(population),
-    stringsAsFactors = FALSE))
+    datasets = NA_character_, stringsAsFactors = FALSE))
   x
 }
 
@@ -561,7 +562,7 @@ write_planner <- function(x, dir, table_file = "table_spec.xlsx",
     data.frame(output_id = NA_character_, description = "(every report)",
                data_code = x$setup, process_code = NA_character_,
                section = NA_character_, population = NA_character_,
-               stringsAsFactors = FALSE),
+               datasets = NA_character_, stringsAsFactors = FALSE),
     x$outputs[names(.empty_outputs())])
   .write_book(.spec_object(x, report_sheets(), .study_keys$report), rp,
               tflspec::tfl_write_report_spec,
