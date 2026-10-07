@@ -4,7 +4,18 @@
   itself (no `fig <- p`, `plot <- fig`), its palette the study's figure
   setup's `tfl_colours()`, and the design's code is in the style of the
   other programs (`|>`, one-line parts: tflspec #164).  The sample's
-  reports are the same.  Needs tflspec 0.0.24.9062.
+  reports are the same.  Needs tflspec 0.0.24.9061.
+
+- **Code lists from 2-1, 2-2 and step 3; a variable's label from them**
+  (#262; tflspec 0.0.24.9060).  [Levels and order (code lists)...] in 2-1
+  (the columns the data makes and adds) and 2-2 (the analysis's groups,
+  variables and strata), and [Code lists of this table...] in step 3, open
+  step 1's editor on those variables; a copy comes back to it.  Step 3's
+  drag lists show each level's code list text, faint.  A variable's label
+  can be the report's code list of `variable` (`variable / AGE / Age
+  (years)`): step 3's label field shows it faint when the variables sheet
+  has none, and writes only a label changed there.  A label is a report's:
+  there is no dictionary across the study or the standards.
 
 - **A user-code report's program, shorter** (#253).  The function that
   makes its `content` what rtfreporter takes (a ggplot becomes a figure;

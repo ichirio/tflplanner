@@ -2339,6 +2339,38 @@ app_server <- function(input, output, session, start) {
                           t = t, notify = notify, guarded = guarded, bump = bump,
                           read_grid = read_grid, grids_drawn = grids_drawn,
                           has_study = has_study)
+  # the same editor in a dialog, from 2-1, 2-2 and step 3: the variables
+  # they are about (R/codelists.R)
+  cl_dialog <- function(prefix, done = function() NULL) {
+    .codelist_dialog_server(input, output, session, prefix, rv, report = current,
+                            t = t, notify = notify, guarded = guarded, bump = bump,
+                            read_grid = read_grid, grids_drawn = grids_drawn,
+                            has_study = has_study, done = done)
+  }
+  cl_21 <- cl_dialog("cl21")
+  cl_22 <- cl_dialog("cl22")
+  # step 3: the builder shows the code lists' text, drawn again
+  cl_3 <- cl_dialog("cl3", done = function() rv$bver <- rv$bver + 1L)
+  shiny::observeEvent(input$cl21_open, {
+    shiny::req(has_study(), current())
+    made <- vapply(.drv_read_all(adata_derive_now()), function(x) x$name, "")
+    cl_21$open(c(made, input$adata_add, input$adata_keep),
+               {
+                 nm <- trimws(input$adata_id %||% "")
+                 if (nzchar(nm)) sprintf(t("Levels and order: the columns of %s"), nm) else
+                   t("Levels and order: the columns of this analysis data")
+               })
+  })
+  shiny::observeEvent(input$cl22_open, {
+    shiny::req(has_study(), current())
+    cl_22$open(c(input[[st_id("by")]], input[[st_id("vars")]], input[[st_id("strata")]]),
+               t("Levels and order: this analysis's groups and variables"))
+  })
+  shiny::observeEvent(input$cl3_open, {
+    shiny::req(has_study(), current())
+    cl_3$open(.codelist_vars(rv$p, current()),
+              sprintf(t("Code lists of %s's table"), current()))
+  })
   output$type_note <- shiny::renderUI({
     id <- current()
     if (is.null(id)) return(NULL)
@@ -3523,6 +3555,8 @@ app_server <- function(input, output, session, start) {
                                       st_arg_default(r, "denominator")),
                                  t("What a % is of. The analysis set: its subjects in the group (the column headers' N; an AE table: the SAF's N per arm). Within a row: the total of the row (the variable's level). Within a column: the total of the group. Of the whole table: all of it. The method's default: blank.")),
           den_choices(den_now), den_now, width = "100%"))),
+      .btn("cl22_open", t("Levels and order (code lists)..."),
+           class = "btn-sm btn-link py-0 px-0 mb-2"),
       if (is.null(d)) shiny::p(
         class = "small text-muted",
         t("The data of this analysis cannot be read (no file in the data catalog): the choices are the row's own.")))
@@ -4333,6 +4367,8 @@ app_server <- function(input, output, session, start) {
         class = "mb-2", open = if (more) NA,
         shiny::tags$summary(class = "small", t("Columns taken, made, kept; one row per ...")),
         add_ui,
+        .btn("cl21_open", t("Levels and order (code lists)..."),
+             class = "btn-sm btn-link py-0 px-0 mb-1"),
         .derive_editor_ui(t, with_tip(argl("Columns made", "derive"),
                                       t("The columns this data makes: split by conditions, cut a number into groups, days between two dates, or any R. The sheet keeps each as NAME = R (derive, | between them); one the form cannot draw is kept as written.")),
                           blank_na(r$derive)),
@@ -7082,26 +7118,39 @@ app_server <- function(input, output, session, start) {
                  class = "btn-sm btn-outline-primary py-0"))),
       shiny::div(
         class = "rp-b-card",
-        shiny::h6(t("Rows: variables in order")),
+        shiny::div(
+          class = "d-flex flex-wrap align-items-baseline gap-2",
+          shiny::h6(t("Rows: variables in order")),
+          .btn("cl3_open", t("Code lists of this table..."),
+               class = "btn-sm btn-link py-0")),
         sortable::rank_list(text = NULL, labels = var_items,
                             input_id = bid("vars")),
         bslib::accordion(
           open = FALSE,
           lapply(seq_len(nrow(v)), function(i) {
+            # blank: the code list's label of the variable (faint), what the
+            # table prints unless one is written here
+            hint <- v$hint[i] %||% NA_character_
             bslib::accordion_panel(
               title = paste0(v$variable[i],
-                             if (!is.na(v$label[i])) paste0(": ", v$label[i])),
+                             if (!is.na(v$label[i])) paste0(": ", v$label[i]) else
+                               if (!is.na(hint)) paste0(": ", hint)),
               value = v$variable[i],
-              shiny::textInput(bid(paste0("lab", i)), t("Label"),
+              shiny::textInput(bid(paste0("lab", i)),
+                               if (is.na(hint)) t("Label") else
+                                 with_tip(t("Label"), t("Blank: the label of this report's code list of variable (faint). What is written here is the table's own.")),
                                value = if (is.na(v$label[i])) "" else
-                                 v$label[i], width = "100%"),
+                                 v$label[i], width = "100%",
+                               placeholder = if (!is.na(hint)) hint),
               if (identical(v$kind[i], "categorical") &&
                   length(st$levels[[v$variable[i]]])) {
                 shiny::tagList(
                   shiny::tags$label(class = "form-label small",
                                     t("Levels (drag to order)")),
                   sortable::rank_list(
-                    text = NULL, labels = st$levels[[v$variable[i]]],
+                    text = NULL,
+                    labels = .levels_with_labels(st$levels[[v$variable[i]]], v$variable[i],
+                                                 sheet_rows(p0, "codelists", id)),
                     input_id = bid(paste0("lv", i)),
                     orientation = "horizontal"))
               })
@@ -7344,7 +7393,10 @@ app_server <- function(input, output, session, start) {
           if (guess) shiny::div(
             class = "small text-warning",
             t("Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.")),
-          sortable::rank_list(text = NULL, labels = key_levels(k),
+          sortable::rank_list(text = NULL,
+                              labels = .levels_with_labels(
+                                key_levels(k), k,
+                                sheet_rows(shiny::isolate(rv$p), "codelists", bform$id)),
                               input_id = arms_id(k),
                               orientation = "horizontal"))
       })))
