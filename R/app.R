@@ -1581,7 +1581,7 @@ app_server <- function(input, output, session, start) {
         with_tip(t("Look for a newer version when tflplanner starts"),
                  sprintf(t("Updates (%s channel) are installed from R, not from the app: update_tflplanner(), or the \"update and launch\" shortcut."),
                          .update_channel())),
-        value = !isFALSE(as.logical(tflplanner_config()$check_updates %||% "true"))),
+        value = isTRUE(as.logical(tflplanner_config()$check_updates %||% "false"))),
       shiny::div(
         class = "mb-2",
         .btn("add_sample", t("Add the sample study"), class = "btn-sm btn-outline-primary"),
@@ -1644,7 +1644,7 @@ app_server <- function(input, output, session, start) {
     notify(sprintf(t("New studies go to %s"), r))
   })
   shiny::observeEvent(input$check_updates, {
-    now <- !isFALSE(as.logical(tflplanner_config()$check_updates %||% "true"))
+    now <- isTRUE(as.logical(tflplanner_config()$check_updates %||% "false"))
     if (!identical(isTRUE(input$check_updates), now)) {
       guarded(suppressMessages(setup_tflplanner(
         check_updates = isTRUE(input$check_updates))))
@@ -1704,7 +1704,7 @@ app_server <- function(input, output, session, start) {
     to_unregister(d$study_id)
     shiny::showModal(shiny::modalDialog(
       title = sprintf(t("Unregister %s"), d$study_id),
-      t("This deletes what tflplanner keeps about the study (definition, data code, history). The study folder (data, spec, programs, outputs) stays, and Register a folder brings it back from spec/."),
+      t("The study goes off the list. Its folder is not deleted; Register a folder brings it back as it was."),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn("unregister_ok", t("Unregister"),
                                    class = "btn-danger"))))
@@ -3101,20 +3101,17 @@ app_server <- function(input, output, session, start) {
       shiny::h6(class = "mb-1", with_tip(
         sprintf(t("Analysis %s"), r$analysis_id),
         t("One analysis is one call: add variables to it. Make another analysis only when the statistics, the condition or the groups differ."))),
-      bslib::layout_columns(
-        col_widths = c(4, 8),
-        shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
-        shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
-                         width = "100%")),
-      # what to compute: one line once chosen, "Change" opens the list (a
-      # category and a search, both narrowing it); a pick closes it again
-      # (the script in app_ui())
+      # what to compute, first and as a heading (the analysis's most
+      # important line): its name and the function it calls; "Change" opens
+      # the list (a category and a search, both narrowing it), a pick
+      # closes it again (the script in app_ui())
       shiny::tags$details(
         class = "ard-fn mb-2",
         open = if (is.na(r$method) || !nzchar(r$method)) NA,
         shiny::tags$summary(
-          class = "d-flex align-items-baseline gap-2 mb-1",
-          shiny::strong(title = t("What to compute"), argl("The method", "method")),
+          class = "d-flex flex-wrap align-items-baseline column-gap-2 mb-1",
+          shiny::strong(class = "small text-muted fw-normal", title = t("What to compute"),
+                        argl("The method", "method")),
           shiny::uiOutput("ard_fn_now", inline = TRUE),
           shiny::span(class = "ard-fn-closed small link-primary", t("Change")),
           shiny::span(class = "ard-fn-open small link-secondary", t("Close"))),
@@ -3145,6 +3142,11 @@ app_server <- function(input, output, session, start) {
                    shiny::uiOutput("ard_fn_list"))),
       shiny::uiOutput("ard_fn_preset"),
       shiny::uiOutput("ard_method_note"),
+      bslib::layout_columns(
+        col_widths = c(4, 8),
+        shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
+        shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
+                         width = "100%")),
       if (!inside) shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 2-1, or a dataset \u00d7 analysis set. The name is the one the program gives it.")),
                                       data_choices(r),
                                       selected = .an_data_value_row(r),
@@ -3201,8 +3203,9 @@ app_server <- function(input, output, session, start) {
     if (is.na(m) || !nzchar(m)) return(shiny::span(class = "text-muted", t("(not chosen)")))
     e <- fn_entries(m)
     k <- match(m, e$value)
-    fn <- if (grepl("::", m, fixed = TRUE)) paste0(" (", sub("^.*::", "", e$call[k]), ")") else ""
-    shiny::span(paste0(e$label[k], fn))
+    shiny::span(
+      shiny::span(class = "fs-5 fw-semibold", if (is.na(k)) m else e$label[k]),
+      fn_code(m, "small text-body-secondary ms-1"))
   })
   output$ard_fn_list <- shiny::renderUI({
     st_drawn()
@@ -3379,8 +3382,19 @@ app_server <- function(input, output, session, start) {
       lab <- with_hint(paste0(a, if (isTRUE(f$required[i])) " *" else ""), hint)
       ph <- if (!is.na(dflt) && nchar(dflt) <= 40) dflt else ""
       ch <- .split_bar(f$choices[i])
-      dflt_lab <- .ard_default_label(f$kind[i], dflt, ch,
-                                     t("(default)"), t("(default: %s)"))
+      # blank: what the program writes for it (the study's subject key, the
+      # company method's), else the function's own default -- said which
+      own <- st_arg_default(r, a)
+      dflt_lab <- if (!is.null(own) && identical(own, "<id>")) {
+        sprintf(t("(default: %s, the study's subject key)"), .adata_subject_key(rv$p))
+      } else if (!is.null(own)) {
+        sprintf(t("(default: %s, the company's method)"), own)
+      } else {
+        .ard_default_label(f$kind[i], dflt, ch,
+                           if (is.na(dflt) || identical(dflt, "NULL")) t("(default: none)") else
+                             sprintf(t("(default: see ?%s)"), sub("^.*::", "", call)),
+                           t("(default: %s)"))
+      }
       w <- switch(f$kind[i],
         choice = {
           shiny::selectInput(id, lab, c(stats::setNames("", dflt_lab),
@@ -3429,12 +3443,26 @@ app_server <- function(input, output, session, start) {
         else shiny::textInput(id, lab, v %||% "", width = "100%", placeholder = ph))
       shiny::div(w)
     }
+    # the ones to fill or filled first; those at their defaults folded
+    given <- vapply(f$arg, function(a) length(pa$values[[a]]) > 0L &&
+                      any(nzchar(pa$values[[a]])), NA)
+    written <- vapply(f$arg, function(a) !is.null(st_arg_default(r, a)), NA)
+    top <- c(which(f$required %in% TRUE & !written), which(written),
+             which(given & !written & !f$required %in% TRUE))
+    top <- unique(top)
+    rest <- setdiff(seq_len(nrow(f)), top)
+    cols2 <- function(i) do.call(bslib::layout_columns,
+                                 c(list(col_widths = if (length(i) > 1L) c(6, 6) else 12),
+                                   lapply(unname(i), field)))
     shiny::div(
       class = "mb-2",
-      shiny::h6(class = "small fw-bold", sprintf(t("Arguments of %s"), sub("^.*::", "", call))),
-      do.call(bslib::layout_columns,
-              c(list(col_widths = if (nrow(f) > 1L) c(6, 6) else 12),
-                lapply(seq_len(nrow(f)), field))),
+      shiny::h6(class = "small fw-bold", with_tip(
+        sprintf(t("Only for %s"), sub("^.*::", "", call)), t("This function's own arguments. The data, groups, variables, strata, denominator and condition above are its arguments too: those every method has."))),
+      if (length(top)) cols2(top),
+      if (length(rest)) shiny::tags$details(
+        class = "mb-2", open = if (!length(top)) NA,
+        shiny::tags$summary(class = "small", sprintf(t("%d more, at their defaults"), length(rest))),
+        cols2(rest)),
       shiny::tags$details(
         class = "mb-2", open = if (nzchar(other)) NA,
         shiny::tags$summary(class = "small", with_tip(argl("Other arguments (R)", "args"), t("cards' arguments, in R (e.g. conf.level = 0.9)."))),
@@ -3488,6 +3516,12 @@ app_server <- function(input, output, session, start) {
                stats::setNames(setdiff(strata_now, rows), setdiff(strata_now, rows)))
       vch <- c(vch, stats::setNames(setdiff(var_now, vch), setdiff(var_now, vch)))
     }
+    # the chosen first, in the definition's order (a field shows them in
+    # the order of its choices): AEBODSYS before AEDECOD, BASE | AVAL | CHG
+    first <- function(ch, now) c(ch[match(now, ch, nomatch = 0L)], ch[!ch %in% now])
+    vch <- first(vch, var_now)
+    bch <- first(bch, by_now)
+    sch <- first(sch, strata_now)
     shiny::tagList(
       if (!in_stack) shiny::selectizeInput(
         st_id("by"), with_tip(argl("Groups (the columns)", "by"), t("The table's columns (e.g. TRT01A). A combination with no records is shown, with 0.")),
@@ -3852,6 +3886,18 @@ app_server <- function(input, output, session, start) {
     l <- e$label[match(m, e$value)]
     if (is.na(l)) m else l
   }
+  # the function a method calls (cards::ard_stack_hierarchical, for the
+  # company's keyword `hierarchical` too); NULL for R of one's own
+  fn_call <- function(m) {
+    if (.is_blank(m)) return(NULL)
+    e <- fn_entries(m)
+    v <- e$call[match(m, e$value)]
+    if (is.na(v) || !nzchar(v) || startsWith(v, "(")) NULL else v
+  }
+  fn_code <- function(m, cls) {
+    v <- fn_call(m)
+    if (!is.null(v)) shiny::tags$code(class = cls, v)
+  }
   # what a report's study ARD said went wrong, by analysis (the ARD as it
   # was last made)
   st_conditions <- shiny::reactive({
@@ -3935,6 +3981,8 @@ app_server <- function(input, output, session, start) {
     ad <- .adata_rows(p)
     po <- p$ard$populations
     mine <- .adata_of_report(p, tg)
+    # and those made here this session, and the one open
+    mine <- c(mine, setdiff(intersect(c(adata_here()[[tg]], adata_pick()), ad$data_id), mine))
     n <- tryCatch(adata_counts(), error = function(e) character())
     w <- data_words_list()
     link <- function(input, value, label, cls = "") shiny::tags$button(
@@ -4001,7 +4049,6 @@ app_server <- function(input, output, session, start) {
                     if (on) "\u25c9" else "\u25cb"),
         shiny::div(class = "flex-grow-1 text-muted", words))
     }
-    others <- setdiff(ad$data_id, mine)
     picked <- !is.na(pick) && pick %in% ad$data_id
     shiny::div(
       class = "rp-b-card mb-2",
@@ -4019,12 +4066,14 @@ app_server <- function(input, output, session, start) {
              class = "btn-sm btn-outline-danger py-0", disabled = if (!picked) NA)),
       shiny::p(class = "small text-muted mb-1",
                t("Choose one in the list (\u25c9): its settings open below it.")),
-      # one list: the report's first, then the study's other analysis data
+      # the report's own: the analysis data its analyses read (and those
+      # they are made from), and the data they read without a name; the
+      # study's others are on the Data tab
       shiny::div(
         class = "border rounded",
-        if (!nrow(ad) && !length(auto))
+        if (!length(mine) && !length(auto))
           shiny::p(class = "small text-muted m-2", t("None yet: New analysis data makes one.")),
-        lapply(c(mine, others), row_of),
+        lapply(mine, row_of),
         lapply(auto, auto_row)))
   })
   output$ard_2_2_head <- shiny::renderUI({
@@ -4548,6 +4597,9 @@ app_server <- function(input, output, session, start) {
                    shiny::tableOutput("adata_preview_tbl")))
     })
   })
+  # analysis data made on a report's 2-1 in this session: listed there
+  # (with the one open) until an analysis of the report reads them
+  adata_here <- shiny::reactiveVal(list())
   shiny::observeEvent(input$adata_save, {
     p <- tryCatch(adata_planner(), error = function(e) e)
     if (inherits(p, "error")) return(notify(conditionMessage(p), "warning"))
@@ -4561,6 +4613,10 @@ app_server <- function(input, output, session, start) {
       attr(p, "kept") <- NULL
     }
     rv$p <- p
+    tg <- ard_target() %||% ""
+    h <- shiny::isolate(adata_here())
+    h[[tg]] <- unique(c(setdiff(h[[tg]], e$old), id))
+    adata_here(h)
     adata_close()
     bump()
     if (length(kept)) {
@@ -4652,6 +4708,7 @@ app_server <- function(input, output, session, start) {
         shiny::div(class = "flex-grow-1",
                    shiny::strong(id), " ",
                    shiny::span(fn_label(r$method)),
+                   fn_code(r$method, "small text-body-secondary"),
                    if (!.is_blank(r$label)) shiny::span(class = "text-muted", paste0(" \u2014 ", r$label)),
                    shiny::div(class = "text-muted", what)),
         if (length(probs)) shiny::span(class = "badge text-bg-danger", title = paste(probs, collapse = "\n"),
