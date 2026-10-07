@@ -2305,6 +2305,15 @@ Analysis data made for the reports' analysis sets: %s.,帳票の解析対象集�
 Make the tables' analysis data from their datasets,表のデータセットから解析データも作る
 "For each dataset of a table (the TOC's datasets column) that is not its analysis set's own: <dataset>_<set>, kept to the subjects of adsl_<set> -- found, or made. Its first analysis starts from it; change or delete it in 2-1.",表のデータセット（TOC のデータセット列）のうち、解析対象集団のもの以外ごとに、adsl_<集団> の被験者に絞った <データセット>_<集団> を作ります（同じものがあればそれを使います）。最初の解析はこれを読みます。2-1 で直したり消したりできます。
 Also for the reports taken in before (made again where deleted),取り込み済みの帳票にも作り直す（消したものはもう一度作られます）
+"The data this report's analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are this report's (another report's adsl_saf may differ: copy one with the button). The denominator of a percent is chosen with each analysis, in 2-2.",この帳票の解析が読むデータ。試験のデータセットから、条件で残す行・別の解析データの被験者・作る列で作ります。この帳票のものです（別の帳票の adsl_saf は中身が違うことがあります。ボタンで写せます）。% の分母は 2-2 で解析ごとに選びます。
+Copy from another report...,ほかの帳票から写す…
+No other report has analysis data.,ほかの帳票に解析データがありません。
+Copy analysis data from another report,ほかの帳票から解析データを写す
+From the report,写す元の帳票
+Its analysis data (what they are made from and kept to come with them),その解析データ（元になるもの・絞る先も一緒に写ります）
+Choose at least one.,1 つ以上選んでください。
+%s copied from %s (save to keep them).,%s を %s から写しました（保存すると残ります）。
+"The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved.",この帳票の analysis_data の行（全列、ブックのまま）。フォームに無い列はここで書きます。新しいデータの行は保存で入ります。
 Report ID as printed (Table 14.1.1),印刷する帳票番号（Table 14.1.1）
 Company,会社名
 Protocol,プロトコール

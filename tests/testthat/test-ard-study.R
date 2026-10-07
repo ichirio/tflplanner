@@ -218,10 +218,11 @@ test_that("the analysis data is saved, reopened and run (tflspec #135)", {
   skip_on_cran()
   local_home2()
   p <- ard_planner()
+  a <- p$ard$analyses
   p$ard$analysis_data <- .normalize_ard_sheet(data.frame(
+    output_id = a$output_id[a$analysis_id == "AGE"][1L],
     data_id = "adsl_saf", from = "ADSL", population_id = "SAF",
     where = "AGE >= 18"), "analysis_data")
-  a <- p$ard$analyses
   a$data[a$analysis_id == "AGE"] <- "adsl_saf"
   a$population_id[a$analysis_id == "AGE"] <- NA
   p$ard$analyses <- .normalize_ard_sheet(a, "analyses")

@@ -474,12 +474,12 @@ toc_snapshot <- function(spec, title_offset = 0L, last = NULL) {
 # with that definition, else one made.  Its set: the report's, else the
 # study's first.  The planner, with attr "made".
 .toc_make_data <- function(x, output_id) {
-  before <- .adata_rows(x)$data_id
+  before <- .adata_rows(x, output_id)$data_id
   po <- x$ard$populations
   pop <- report_population(x, output_id)
   if (is.na(pop)) pop <- po$population_id[!is.na(po$population_id)][1L]
   out <- function(x) {
-    attr(x, "made") <- setdiff(.adata_rows(x)$data_id, before)
+    attr(x, "made") <- setdiff(.adata_rows(x, output_id)$data_id, before)
     x
   }
   if (is.na(pop %||% NA)) return(out(x))
@@ -489,14 +489,14 @@ toc_snapshot <- function(spec, title_offset = 0L, last = NULL) {
   pds <- po$dataset[match(pop, po$population_id)]
   v <- setdiff(v[!is.na(v)], c(pds, "ADSL"))
   if (!length(v)) return(out(x))
-  x <- .ensure_pop_adata(x, pop)
+  x <- .ensure_pop_adata(x, output_id, pop)
   subj <- attr(x, "data_id")
   attr(x, "data_id") <- attr(x, "added") <- NULL
   for (d in v) {
-    if (!is.na(.adata_same_as(.adata_rows(x), d, NA, subj, NA))) next
+    if (!is.na(.adata_same_as(.adata_rows(x, output_id), d, NA, subj, NA))) next
     lo <- function(s) gsub("[^a-z0-9_.]", "_", tolower(s))
-    nm <- .adata_free_name(x, paste0(lo(d), "_", lo(pop)))
-    x <- set_analysis_data(x, nm, from = d, subjects = subj)
+    nm <- .adata_free_name(x, output_id, paste0(lo(d), "_", lo(pop)))
+    x <- set_analysis_data(x, output_id, nm, from = d, subjects = subj)
   }
   out(x)
 }
@@ -506,7 +506,7 @@ toc_snapshot <- function(spec, title_offset = 0L, last = NULL) {
 .report_toc_data <- function(x, output_id) {
   pop <- report_population(x, output_id)
   if (is.na(pop)) return(character())
-  ad <- .adata_rows(x)
+  ad <- .adata_rows(x, output_id)
   po <- x$ard$populations
   pds <- po$dataset[match(pop, po$population_id)]
   subj <- .adata_same_as(ad, if (is.na(pds)) "ADSL" else pds, pop, NA, NA)

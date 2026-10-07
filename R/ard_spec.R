@@ -172,7 +172,7 @@ ard_rows <- function(x, sheet, output_id = "") {
 #' @export
 set_ard_rows <- function(x, sheet, output_id = "", rows) {
   rows <- .drop_blank_rows(as.data.frame(rows, stringsAsFactors = FALSE))
-  whole <- sheet != "analyses" || identical(output_id, "") ||
+  whole <- !sheet %in% c("analyses", "analysis_data") || identical(output_id, "") ||
     is.na(output_id)
   if (!whole) rows$output_id <- rep(output_id, nrow(rows))
   rows <- .normalize_ard_sheet(rows, sheet)
@@ -180,7 +180,7 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
     x$ard[[sheet]] <- rows
     return(x)
   }
-  d <- x$ard$analyses
+  d <- x$ard[[sheet]]
   mine <- !is.na(d$output_id) & d$output_id == output_id
   at <- if (any(mine)) which(mine)[1L] - 1L else nrow(d)
   rest <- d[!mine, , drop = FALSE]
@@ -189,7 +189,7 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
              rest[setdiff(seq_len(nrow(rest)), seq_len(before)), ,
                   drop = FALSE])
   rownames(d) <- NULL
-  x$ard$analyses <- d
+  x$ard[[sheet]] <- d
   x
 }
 

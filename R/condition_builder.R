@@ -294,6 +294,14 @@ window.tflCondNorm = window.tflCondNorm || function(s) {
   }
   return out.replace(/ +/g, ' ').trim();
 };
+window.tflCondRender = {
+  option: function(item, escape) {
+    return '<div class=\"option tfl-cond-one\" title=\"' + escape(item.label) + '\">' + escape(item.label) + '</div>';
+  },
+  item: function(item, escape) {
+    return '<div class=\"item tfl-cond-one\" title=\"' + escape(item.label) + '\">' + escape(item.label) + '</div>';
+  }
+};
 window.tflCondScore = function(search) {
   var words = tflCondNorm(search).split(' ').filter(function(w) { return w.length; });
   return function(item) {
@@ -313,6 +321,12 @@ condition_builder_ui <- function(id, lang = "en") {
   shiny::div(
     class = "tfl-cond",
     shiny::tags$script(shiny::HTML(.cond_js)),
+    # a variable's choice on one line (the name and its label), cut with
+    # ... when the box is narrow; the whole of it on hover (title)
+    shiny::tags$style(shiny::HTML(paste0(
+      ".tfl-cond .selectize-input .item.tfl-cond-one, ",
+      ".tfl-cond .selectize-dropdown .option.tfl-cond-one { white-space: nowrap; ",
+      "overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%; }"))),
     shiny::uiOutput(ns("body")))
 }
 
@@ -436,7 +450,8 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
                                 choices = c(stats::setNames("", t("Variable")), vc,
                                             if (nzchar(v) && !v %in% unlist(vc)) stats::setNames(v, v)),
                                 selected = v,
-                                options = list(score = I("tflCondScore")))
+                                options = list(score = I("tflCondScore"),
+                                               render = I("tflCondRender")))
         }
         ops <- stats::setNames(.cond_ops, t(unname(.cond_op_labels[.cond_ops])))
         if (identical(type, "chr")) ops <- ops[!.cond_ops %in% c("<", "<=", ">", ">=")]
