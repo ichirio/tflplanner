@@ -2298,3 +2298,11 @@ arg-hint:The levels of the hierarchy to report (default: all). Use it to show th
 arg-hint:TRUE (default): also the counts of each group (the column headers' N). FALSE when another analysis of the report gives them.,TRUE（既定）：各群の被験者数（列見出しの N）も出す。同じ帳票のほかの解析が出すなら FALSE。
 "arg-hint:The level whose proportion is estimated, e.g. list(AVALC = ""CR""). Use it for a rate with its CI, e.g. the response rate.","割合を推定する水準。例：list(AVALC = ""CR"")。割合とその信頼区間に使う。例：奏効率。"
 stat-label:Number of non-missing values,欠測でない値の数
+(not taken),（取り込まない）
+"The TOC's population column, as the study's analysis sets: matched by id, label or a usual word (Safety Population: SAF); change it here. Taken in, it is the report's analysis set (the report list's, step 2's): its data is made, and a report whose set changes has its analyses moved.",TOC の Population 列を、試験の解析対象集団に対応づけます（ID・ラベル・よく使う言い方で照合: Safety Population → SAF）。ここで直せます。取り込むと、帳票の解析対象集団（帳票一覧・段 2 と同じ値）になり、そのデータが作られます。集団が変わった帳票は、解析もそちらに移ります。
+%d reports,%d 帳票
+"not matched: choose the analysis set, or leave it",対応する集団が見つかりません。選ぶか、そのままにしてください
+Analysis data made for the reports' analysis sets: %s.,帳票の解析対象集団の解析データを作りました: %s。
+Make the tables' analysis data from their datasets,表のデータセットから解析データも作る
+"For each dataset of a table (the TOC's datasets column) that is not its analysis set's own: <dataset>_<set>, kept to the subjects of adsl_<set> -- found, or made. Its first analysis starts from it; change or delete it in 2-1.",表のデータセット（TOC のデータセット列）のうち、解析対象集団のもの以外ごとに、adsl_<集団> の被験者に絞った <データセット>_<集団> を作ります（同じものがあればそれを使います）。最初の解析はこれを読みます。2-1 で直したり消したりできます。
+Also for the reports taken in before (made again where deleted),取り込み済みの帳票にも作り直す（消したものはもう一度作られます）

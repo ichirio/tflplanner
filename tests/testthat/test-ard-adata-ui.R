@@ -476,3 +476,28 @@ test_that("2-1: a population_id the sheet has is the condition's first row", {
   })
 })
 
+
+test_that("2-1 lists only the analysis data the report's analyses read (every sample report)", {
+  skip_if_not_installed("cards")
+  home <- local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  p <- s$planner
+  ad <- .adata_rows(p)$data_id
+  tabs <- unique(p$ard$analyses$output_id)
+  shiny::testServer(server_for(s$meta$study_id), {
+    session$setInputs(nav = "make", step = "ard")
+    for (id in tabs) {
+      session$setInputs(target = id)
+      h <- output$ard_adata$html
+      # (a row's click names it: Shiny.setInputValue('ard_adata_pick', "<id>"))
+      shown <- ad[vapply(ad, function(d)
+        grepl(paste0("ard_adata_pick&#39;, &quot;", d, "&quot;"), h, fixed = TRUE), NA)]
+      expect_setequal(shown, .adata_of_report(p, id))
+    }
+    # the demographics table reads the safety set only
+    session$setInputs(target = "T-14-1-1")
+    expect_identical(.adata_of_report(p, "T-14-1-1"), "adsl_saf")
+  })
+  # every table reads analysis data, of its analysis set
+  expect_true(all(vapply(tabs, function(id) report_population(p, id) %in% "SAF", NA)))
+})
