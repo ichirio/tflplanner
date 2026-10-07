@@ -94,14 +94,26 @@
                       stringsAsFactors = FALSE))
   }
   type <- vapply(ids, function(id) report_info(x, id)$type, "")
+  # the report's analysis set (the report list's, the TOC's); else those
+  # its analyses have (their own, or their analysis data's)
   a <- x$ard$analyses
+  ad <- .adata_rows(x)
   pop <- vapply(ids, function(id) {
-    v <- a$population_id[!is.na(a$output_id) & a$output_id == id]
+    own <- report_population(x, id)
+    if (!is.na(own)) return(own)
+    k <- !is.na(a$output_id) & a$output_id == id
+    v <- a$population_id[k]
+    d <- if (!is.null(a$data)) a$data[k] else character()
+    v <- c(v, vapply(d[!is.na(d) & d %in% ad$data_id], function(i) .adata_pop(ad, i), ""))
     paste(unique(stats::na.omit(v)), collapse = " | ")
   }, "")
+  # the datasets the report reads; until its definition names them, the
+  # TOC's
+  toc_ds <- x$outputs$datasets %||% rep(NA_character_, length(ids))
   ds <- vapply(seq_along(ids), function(i) {
     v <- tryCatch(.report_datasets(x, ids[i], type[i]), error = function(e) character())
-    paste(unique(stats::na.omit(v)), collapse = " | ")
+    v <- paste(unique(stats::na.omit(v)), collapse = " | ")
+    if (!nzchar(v) && !is.na(toc_ds[i])) toc_ds[i] else v
   }, "")
   st <- .report_state(if (!is.null(ard)) ard$state[match(ids, ard$output_id)] else NA,
                       if (!is.null(run)) run$status[match(ids, run$output_id)] else NA)

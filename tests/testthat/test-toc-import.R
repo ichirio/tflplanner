@@ -297,7 +297,8 @@ test_that("the dialog: the last TOC said, the same file noticed, two rows of one
                      check.names = FALSE)), f3, col_names = FALSE)
   up <- function(f) data.frame(name = basename(f), datapath = f, stringsAsFactors = FALSE)
   map <- function(n) {
-    l <- as.list(c("No.", "Kind", "Title", rep("", length(.toc_items) - 3L)))
+    # the first three items mapped, the rest (however many) not
+    l <- c(list("No.", "Kind", "Title"), as.list(rep("", length(.toc_items) - 3L)))
     names(l) <- paste0("toc", n, "_map_", .toc_items)
     l
   }
