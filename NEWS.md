@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **Unregistering a study loses nothing** (#237).  `unregister_study()`
+  (Unregister) puts what tflplanner kept about the study -- its saved
+  state, history and unsaved changes -- into the study folder
+  (`.tflplanner/`) instead of deleting it, and `register_study()` (Register
+  a folder) takes it back: the study comes back as it was (when `spec/`
+  was changed in between, from `spec/`, the kept state going to its
+  history).  The dialog says the folder is not deleted.  tflplanner never
+  deletes a study folder.
+
 - **Nothing updates on its own** (#226).  `add_shortcut()` no longer makes
   the "update and launch" shortcut unless asked (`update = TRUE`); the
   Start menu entry stays.  The app's check for a newer version is off
