@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **A session that stops on an error no longer stops the app** (#256).
+  With `stop_on_close = TRUE` (the launcher's), a page that went grey on
+  an error ended its session, which was taken for a closed tab: the app
+  stopped 5 seconds later and the page's Reload could not bring it back.
+  Such a session now waits 10 minutes.  The launcher keeps what the app
+  writes to the console (its errors, with the calls) in `app.log`, beside
+  `launcher.log`.  Needs shiny 1.8.1.
+
 - **2-1's columns made, by kind** (#255).  Each column the data makes is
   a line of its own, made by kind: split by conditions (the conditions made
   with the condition builder; one gives `ifelse()`, more give
