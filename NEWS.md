@@ -11,6 +11,21 @@
   has none, and writes only a label changed there.  A label is a report's:
   there is no dictionary across the study or the standards.
 
+- **A user-code report's program, shorter** (#253).  The function that
+  makes its `content` what rtfreporter takes (a ggplot becomes a figure;
+  anything else is said) is `report_content()`, written once in the
+  study's `programs/tfl/fig_setup.R`; each program ends with
+  `content <- report_content(content)` instead of 15 lines of its own.
+  The sample's reports are the same.
+
+- **A session that stops on an error no longer stops the app** (#256).
+  With `stop_on_close = TRUE` (the launcher's), a page that went grey on
+  an error ended its session, which was taken for a closed tab: the app
+  stopped 5 seconds later and the page's Reload could not bring it back.
+  Such a session now waits 10 minutes.  The launcher keeps what the app
+  writes to the console (its errors, with the calls) in `app.log`, beside
+  `launcher.log`.  Needs shiny 1.8.1.
+
 - **2-1's columns made, by kind** (#255).  Each column the data makes is
   a line of its own, made by kind: split by conditions (the conditions made
   with the condition builder; one gives `ifelse()`, more give

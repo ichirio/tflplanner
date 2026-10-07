@@ -185,17 +185,25 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 
 # Stop the app once no browser tab is left: a tab that closes starts a
 # short wait, and the app stops if no tab has come back by then (a reload
-# ends one session and starts the next within it).
+# ends one session and starts the next within it).  A session that an
+# error ended (the page goes grey) waits much longer (`wait_failed`): the
+# tab is still there, and its Reload brings the app back.
 .open_tabs <- new.env()
 .open_tabs$n <- 0L
 
-.stop_when_closed <- function(session, wait = 5) {
+.stop_when_closed <- function(session, wait = 5, wait_failed = 600) {
   .open_tabs$n <- .open_tabs$n + 1L
+  failed <- FALSE
+  session$onUnhandledError(function(e) {
+    failed <<- TRUE
+    message("tflplanner: the session stopped on an error: ",
+            conditionMessage(e))
+  })
   session$onSessionEnded(function() {
     .open_tabs$n <- .open_tabs$n - 1L
     later::later(function() {
       if (.open_tabs$n <= 0L) shiny::stopApp()
-    }, wait)
+    }, if (failed) wait_failed else wait)
   })
 }
 

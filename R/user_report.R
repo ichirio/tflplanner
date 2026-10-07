@@ -12,14 +12,17 @@
   nrow(f) > 0L && "ard" %in% names(f) && isTRUE(as.logical(f$ard[1L]))
 }
 
-# the small function the program makes `content` with: a ggplot (alone or
-# in a list) becomes a figure; anything else than the contract's -- a data
-# frame, rtftable pages, a ggplot, an rtfplot, or a list of them -- stops,
-# saying which item it is and what it was
-.user_content_fun <- c(
-  "# the content as rtfreporter takes it: a ggplot becomes a figure; what",
-  "# the contract does not name stops, saying which item it is",
-  ".user_content <- function(x) {",
+# The small function a report of one's own code makes `content` with,
+# written once in the study's programs/tfl/fig_setup.R (which those reports
+# source): a ggplot (alone or in a list) becomes a figure; anything else
+# than the contract's -- a data frame, rtftable pages, a ggplot, an
+# rtfplot, or a list of them -- stops, saying which item it is and what it
+# was.
+.report_content_fun <- c(
+  "# ---- a report of your own code: its `content` as rtfreporter takes it",
+  "# (a ggplot becomes a figure; what is not a data frame, rtftable pages, a",
+  "# ggplot or an rtfplot, or a list of them, stops, saying which item)",
+  "report_content <- function(x) {",
   "  ok <- function(p) is.data.frame(p) ||",
   "    inherits(p, c(\"rtftable\", \"rtfplot\", \"ggplot\"))",
   "  fig <- function(p) if (inherits(p, \"ggplot\")) rtfplot(p) else p",
@@ -62,13 +65,7 @@
     "# ---- the report's own code: leaves `content`",
     body,
     "",
-    "if (!exists(\"content\", inherits = FALSE)) {",
-    paste0("  stop(\"tflplanner: the code of ", info$program,
-           " leaves no `content` (a data frame, rtftable pages, a ggplot, ",
-           "or a list of them).\")"),
-    "}",
-    .user_content_fun,
-    "content <- .user_content(content)")
+    "content <- report_content(content)")
 }
 
 #' Run a user-code report's code and see what it leaves
@@ -91,6 +88,8 @@ preview_user <- function(study, output_id, timeout = 300) {
   dir.create(tmp)
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
   f_code <- file.path(tmp, "code.R")
+  f_helper <- file.path(tmp, "helper.R")
+  writeLines(.report_content_fun, f_helper)
   f_out <- file.path(tmp, "out.rds")
   writeLines(enc2utf8(code), f_code, useBytes = TRUE)
   q <- function(x) encodeString(normalizePath(x, "/", FALSE), quote = "\"")
@@ -98,6 +97,9 @@ preview_user <- function(study, output_id, timeout = 300) {
     "suppressPackageStartupMessages(library(rtfreporter))",
     "suppressPackageStartupMessages(library(tflspec))",
     ".e <- new.env(parent = globalenv())",
+    # report_content() as the study's next fig_setup.R has it (the one on
+    # disk may be older: written before it was there)
+    paste0("sys.source(", q(f_helper), ", envir = globalenv())"),
     ".res <- list(content = NULL, error = NULL, line = NA_integer_)",
     paste0(".x <- parse(", q(f_code), ", encoding = \"UTF-8\", keep.source = TRUE)"),
     ".res$content <- tryCatch({",

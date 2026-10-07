@@ -520,7 +520,8 @@ test_that("stop_on_close: the app stops once its last tab has been gone a while"
                         .package = "shiny")
   .open_tabs$n <- 0L
   ended <- list()
-  fake <- function() list(onSessionEnded = function(f) ended[[length(ended) + 1L]] <<- f)
+  fake <- function() list(onSessionEnded = function(f) ended[[length(ended) + 1L]] <<- f,
+                          onUnhandledError = function(f) NULL)
   .stop_when_closed(fake(), wait = 0)
   .stop_when_closed(fake(), wait = 0)
   expect_identical(.open_tabs$n, 2L)
@@ -531,6 +532,33 @@ test_that("stop_on_close: the app stops once its last tab has been gone a while"
   later::run_now(0.2)
   expect_identical(stopped, 1L)
   .open_tabs$n <- 0L
+})
+
+test_that("stop_on_close: a session an error ended leaves time for the page's Reload", {
+  stopped <- 0L
+  local_mocked_bindings(stopApp = function(...) stopped <<- stopped + 1L,
+                        .package = "shiny")
+  .open_tabs$n <- 0L
+  ended <- NULL
+  failed <- NULL
+  .stop_when_closed(list(onSessionEnded = function(f) ended <<- f,
+                         onUnhandledError = function(f) failed <<- f),
+                    wait = 0, wait_failed = 1)
+  expect_message(failed(simpleError("boom")), "stopped on an error: boom")
+  ended()
+  later::run_now(0.2)
+  expect_identical(stopped, 0L)               # not at the short wait
+  # the Reload: a new session within the wait keeps the app
+  .open_tabs$n <- 1L
+  later::run_now(1.5)
+  expect_identical(stopped, 0L)
+  .open_tabs$n <- 0L
+})
+
+test_that("the launcher keeps the app's console in app.log", {
+  src <- readLines(system.file("launcher", "launch.R", package = "tflplanner"))
+  expect_true(any(grepl('file.path(here, "app.log")', src, fixed = TRUE)))
+  expect_true(any(grepl('sink(app_log, type = "message")', src, fixed = TRUE)))
 })
 
 test_that("RStudio add-in: Launch tflplanner -> launch_app()", {

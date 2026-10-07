@@ -41,7 +41,7 @@ Imports:
     rhandsontable,
     rtfreporter (>= 0.8.2.9025),
     tflspec (>= 0.0.24.9060),
-    shiny,
+    shiny (>= 1.8.1),
     sortable,
     bslib,
     DT,
