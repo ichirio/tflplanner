@@ -1,5 +1,8 @@
 # tflplanner (development version)
 
+- Added a root `CITATION.cff` so GitHub's "Cite this repository" button
+  works (#229).
+
 - **The TOC's datasets** (#220; tflspec's `tfl_read_toc()` datasets).  A
   `datasets` item of the mapping: kept as the report list's datasets
   (shown until the report's definition names its own), a new listing's
