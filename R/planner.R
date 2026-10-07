@@ -56,19 +56,22 @@ report_types <- function() c("table", "listing", "figure", "user")
   p
 }
 
-#' Read a study's code list into its definition
+#' Read a code list into a report
 #'
 #' `read_codelist()` reads a code list -- one row a value of a variable:
 #' `variable`, `value`, `label` (what it prints as) and `order` (its
 #' place) -- from an `.xlsx` (its first sheet) or a `.csv` file.
-#' `set_codelist()` puts it into the definition's `codelists` sheet as the
-#' study's defaults (every table uses them): a value already there for the
-#' same variable is replaced, the others are kept.  A report's own rows
-#' replace the defaults for that report (tflspec's table spec).
+#' `set_codelist()` puts it into a report's rows of the definition's
+#' `codelists` sheet: a value the report has already for the same variable
+#' is replaced, the others are kept.  A code list is a report's (tflspec:
+#' every row names its report); to use one in several reports, copy it
+#' ([import_codelist()], [standard_codelists()]).
 #'
 #' @param path An `.xlsx` or `.csv` file.
 #' @param x A `tflplanner`.
-#' @param rows What `read_codelist()` returns.
+#' @param output_id The report.
+#' @param rows A data frame with `variable` and `value` (`label` and `order`
+#'   optional): what `read_codelist()` returns.
 #' @return `read_codelist()`: a data frame; `set_codelist()`: the
 #'   `tflplanner`.
 #' @export
@@ -100,12 +103,21 @@ read_codelist <- function(path) {
 
 #' @rdname read_codelist
 #' @export
-set_codelist <- function(x, rows) {
-  old <- sheet_rows(x, "codelists", NA)
+set_codelist <- function(x, output_id, rows) {
+  if (length(output_id) != 1L || is.na(output_id) ||
+      !output_id %in% output_ids(x)) {
+    stop("A code list is a report's: give one of the study's reports, not ",
+         sQuote(paste(output_id, collapse = ", ")), ".", call. = FALSE)
+  }
+  rows <- as.data.frame(rows, stringsAsFactors = FALSE)
+  for (k in c("label", "order")) if (!k %in% names(rows)) rows[[k]] <- NA_character_
+  rows <- rows[c("variable", "value", "label", "order")]
+  rows[] <- lapply(rows, as.character)
+  old <- sheet_rows(x, "codelists", output_id)
   key <- function(d) paste(d$variable, d$value, sep = "\r")
   old <- old[!key(old) %in% key(rows), , drop = FALSE]
   old$output_id <- NULL
-  set_sheet_rows(x, "codelists", NA, rbind(old[names(rows)], rows))
+  set_sheet_rows(x, "codelists", output_id, rbind(old[names(rows)], rows))
 }
 
 .study_keys <- list(table = "rounding",

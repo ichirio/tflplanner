@@ -27,8 +27,11 @@ own) stays as the sheets have it.  \code{NULL} writes the whole description.}
 \code{builder_read()}: a list -- \code{key} (the column variables,
 outermost first), \code{arms} (a named list: each column variable's levels
 in order), \code{variables} (a data frame: \code{variable},
-\code{kind}, \code{label}), \code{levels} (named list), \code{stats} (keys of
-\code{\link[=builder_stats]{builder_stats()}} in order), \code{decimals}, \code{cat_format} (\code{npct},
+\code{kind}, \code{label}), \code{levels} (named list), \code{rows} (a continuous
+variable's row labels in order) and their \code{templates}, \code{value}
+(\code{stat}: the numbers, rounded by \code{digits}; \code{stat_fmt}: the ARD's text),
+\code{digits} (each statistic the rows print: its decimals), \code{exceptions}
+(a variable's own: \code{variable}, \code{statistic}, \code{digits}), \code{cat_format} (\code{npct},
 \code{nNpct}, \code{n}), \code{pct_decimals}, \code{header} (\code{keep} or a name of
 \code{\link[=header_presets]{header_presets()}}).  \code{builder_write()}: the \code{tflplanner}.
 }
