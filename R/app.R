@@ -651,6 +651,7 @@ app_ui <- function(lang = "en") {
   step_page <- shiny::div(
     class = "mt-2",
     pane_head(t("This report's page"), t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
+    shiny::uiOutput("report_font"),
     # SPEC | Code | Result: no form of its own; the program is the Code
     result_tabs_ui(
       "page_right", lang = lang,
@@ -7999,6 +8000,52 @@ app_server <- function(input, output, session, start) {
                         t("ARD and table"), t("table"))
     d$output_id <- NULL
     .dt(d)
+  })
+  # Step 4: this report's font and size.  Blank: every report's (the study
+  # tab, the page sheet's study row), shown greyed; a value is the report's
+  # own row.  Only a field changed from what was drawn is written.
+  rf_drawn <- new.env()
+  output$report_font <- shiny::renderUI({
+    rv$ver
+    id <- target()
+    shiny::req(has_study(), length(id) == 1L, !is.na(id), nzchar(id))
+    p <- shiny::isolate(rv$p)
+    own_font <- page_value(p, "font", id)
+    own_size <- .points(page_value(p, "font_size_half_points", id))
+    all_font <- study_page_value(p, "font")
+    all_size <- .points(study_page_value(p, "font_size_half_points"))
+    if (is.na(all_font)) all_font <- "Courier"
+    if (!nzchar(all_size)) all_size <- "9"
+    rf_drawn$id <- id
+    rf_drawn$font <- if (is.na(own_font)) "" else own_font
+    rf_drawn$size <- own_size
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-end mb-2",
+      shiny::textInput("rp_font", with_tip(t("This report's font"),
+        t("Blank: every report's font and size (the study tab). A value here is this report's own (its row of the page sheet).")),
+        rf_drawn$font, placeholder = all_font),
+      shiny::textInput("rp_font_size", t("Size (pt)"), own_size,
+                       placeholder = all_size, width = "8em"),
+      shiny::span(class = "small text-muted mb-3",
+                  sprintf(t("Every report's: %s, %s pt"), all_font, all_size)))
+  })
+  shiny::observeEvent(input$rp_font, {
+    id <- target()
+    v <- trimws(input$rp_font)
+    if (!identical(rf_drawn$id, id) || identical(v, rf_drawn$font)) return()
+    rf_drawn$font <- v
+    rv$p <- set_page_value(rv$p, "font", v, id)
+  })
+  shiny::observeEvent(input$rp_font_size, {
+    id <- target()
+    v <- trimws(input$rp_font_size)
+    if (!identical(rf_drawn$id, id) || identical(v, rf_drawn$size)) return()
+    hp <- if (nzchar(v)) .half_points(v) else NA_character_
+    if (nzchar(v) && is.na(hp)) {
+      return(notify(t("The size is a number of points (9, 10 ...)."), "warning"))
+    }
+    rf_drawn$size <- v
+    rv$p <- set_page_value(rv$p, "font_size_half_points", hp, id)
   })
   output$program_state <- shiny::renderUI({
     id <- current()

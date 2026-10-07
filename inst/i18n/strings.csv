@@ -2414,3 +2414,6 @@ Code lists of %s's table,%s の表のコードリスト
 Code lists of this table...,この表のコードリスト…
 "This report's code lists: each variable's values, their order and the text they print as. The ARD uses those of the variables its analyses read (a value no record has is counted 0); the table uses them all, in their order unless the variables sheet says another (levels).",この帳票のコードリスト：変数ごとの値、その順番、表示する文字。ARD は解析が読む変数のものを使い（データにない値は 0 と数える）、表はすべてを使います。表の順は、variables シートの levels が無ければこの順です。
 Blank: the label of this report's code list of variable (faint). What is written here is the table's own.,空欄なら、この帳票のコードリスト（variable）の見出し（薄い字）。ここに書くとこの表の見出しになります。
+This report's font,この帳票のフォント
+Blank: every report's font and size (the study tab). A value here is this report's own (its row of the page sheet).,空欄なら全帳票のフォントと大きさ（試験タブ）になります。ここに入れた値はこの帳票だけのものです（page シートのこの帳票の行）。
+"Every report's: %s, %s pt",全帳票: %s、%s pt

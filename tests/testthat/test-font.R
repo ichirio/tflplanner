@@ -85,3 +85,56 @@ test_that("the study tab sets the font and size, the size in points", {
     expect_true(is.na(study_page_value(rv$p, "font_size_half_points")))
   }))
 })
+
+test_that("a report's own font and size are its row of the page sheet", {
+  p <- set_study_page_value(new_planner(), "font", "Courier New")
+  p <- set_page_value(p, "font", "Arial", "T-1")
+  d <- p$sheets$page
+  expect_identical(d$output_id, c(NA, "T-1"))
+  expect_identical(page_value(p, "font", "T-1"), "Arial")
+  expect_true(is.na(page_value(p, "font", "T-2")))
+  expect_identical(study_page_value(p, "font"), "Courier New")
+  # a report's row with other values keeps them; one left empty goes
+  p <- set_page_value(p, "orientation", "landscape", "T-1")
+  p <- set_page_value(p, "font", "", "T-1")
+  expect_identical(page_value(p, "orientation", "T-1"), "landscape")
+  p <- set_page_value(p, "orientation", NA, "T-1")
+  expect_identical(p$sheets$page$output_id, NA_character_)
+})
+
+test_that("step 4 sets this report's font; blank leaves every report's", {
+  local_home()
+  p <- add_output(new_planner(), "T-1", description = "a table")
+  p <- add_output(p, "T-2", description = "another")
+  p <- set_study_page_value(p, "font", "Courier New")
+  p <- set_page_value(p, "orientation", "landscape", "T-2")
+  create_study("S-RF", planner = p)
+  suppressMessages(suppressWarnings(shiny::testServer(server_for("S-RF"), {
+    rv <- session$userData$rv
+    session$setInputs(target = "T-1")
+    out <- output$report_font
+    expect_match(out$html, "Every report's: Courier New, 9 pt", fixed = TRUE)
+    # the fields as drawn: nothing written
+    session$setInputs(rp_font = "", rp_font_size = "")
+    expect_identical(rv$p$sheets$page, p$sheets$page)
+    session$setInputs(rp_font = "Arial", rp_font_size = "8")
+    expect_identical(page_value(rv$p, "font", "T-1"), "Arial")
+    expect_identical(page_value(rv$p, "font_size_half_points", "T-1"), "16")
+    expect_identical(study_page_value(rv$p, "font"), "Courier New")
+    # not a size: said, nothing changed
+    session$setInputs(rp_font_size = "big")
+    expect_identical(page_value(rv$p, "font_size_half_points", "T-1"), "16")
+    # another report: its own row keeps what it had
+    session$setInputs(target = "T-2")
+    out <- output$report_font
+    session$setInputs(rp_font = "", rp_font_size = "")
+    expect_identical(page_value(rv$p, "orientation", "T-2"), "landscape")
+    expect_true(is.na(page_value(rv$p, "font", "T-2")))
+    # back: blank again takes the report's own away
+    session$setInputs(target = "T-1")
+    out <- output$report_font
+    session$setInputs(rp_font = "Arial", rp_font_size = "8")
+    session$setInputs(rp_font = "", rp_font_size = "")
+    expect_false("T-1" %in% rv$p$sheets$page$output_id)
+  })))
+})
