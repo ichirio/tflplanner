@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **A designed figure's program, shorter** (#240).  Its figure is `plot`
+  itself (no `fig <- p`, `plot <- fig`), its palette the study's figure
+  setup's `tfl_colours()`, and the design's code is in the style of the
+  other programs (`|>`, one-line parts: tflspec #164).  The sample's
+  reports are the same.  Needs tflspec 0.0.24.9061.
+
 - **Code lists from 2-1, 2-2 and step 3; a variable's label from them**
   (#262; tflspec 0.0.24.9060).  [Levels and order (code lists)...] in 2-1
   (the columns the data makes and adds) and 2-2 (the analysis's groups,

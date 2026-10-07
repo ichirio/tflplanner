@@ -1039,9 +1039,9 @@
       if (identical(k, "figure")) {
         code
       } else if (i == 1L && !length(grep(sprintf("^# ---- layer %d:", i), code))) {
-        # the base layer has no marker: the first line of step 2
-        from <- grep("^# Step2", code)
-        if (length(from)) block(from[1L] + 2L, "^# ----") else character()
+        # the base layer has no marker: the first line of the figure part
+        from <- grep("^# ---- the figure -", code)
+        if (length(from)) block(from[1L] + 1L, "^# ----") else character()
       } else {
         block(grep(sprintf("^# ---- layer %d:", i), code), "^# ----|^#{5,}")
       }
