@@ -388,11 +388,15 @@ copy_output <- function(x, from, to) {
     rownames(d) <- NULL
     x$sheets[[s]] <- d
   }
-  an <- x$ard$analyses
-  own <- an[!is.na(an$output_id) & an$output_id == from, , drop = FALSE]
-  own$output_id <- rep(to, nrow(own))
-  x$ard$analyses <- rbind(an, own)
-  rownames(x$ard$analyses) <- NULL
+  # its analyses and its analysis data (a report's own)
+  for (sh in c("analyses", "analysis_data")) {
+    an <- x$ard[[sh]]
+    if (is.null(an) || !nrow(an)) next
+    own <- an[!is.na(an$output_id) & an$output_id == from, , drop = FALSE]
+    own$output_id <- rep(to, nrow(own))
+    x$ard[[sh]] <- rbind(an, own)
+    rownames(x$ard[[sh]]) <- NULL
+  }
   for (sh in names(x$lf)) {
     d <- x$lf[[sh]]
     own <- d[!is.na(d$output_id) & d$output_id == from, , drop = FALSE]
@@ -425,8 +429,11 @@ rename_output <- function(x, from, to) {
     x$sheets[[s]]$output_id[i] <- to
   }
   x$outputs$output_id[x$outputs$output_id == from] <- to
-  i <- !is.na(x$ard$analyses$output_id) & x$ard$analyses$output_id == from
-  x$ard$analyses$output_id[i] <- to
+  for (sh in c("analyses", "analysis_data")) {
+    if (is.null(x$ard[[sh]]) || !nrow(x$ard[[sh]])) next
+    i <- !is.na(x$ard[[sh]]$output_id) & x$ard[[sh]]$output_id == from
+    x$ard[[sh]]$output_id[i] <- to
+  }
   for (sh in names(x$lf)) {
     i <- !is.na(x$lf[[sh]]$output_id) & x$lf[[sh]]$output_id == from
     x$lf[[sh]]$output_id[i] <- to
@@ -447,10 +454,12 @@ remove_output <- function(x, output_id) {
   }
   x$outputs <- x$outputs[x$outputs$output_id != output_id, , drop = FALSE]
   rownames(x$outputs) <- NULL
-  an <- x$ard$analyses
-  x$ard$analyses <- an[is.na(an$output_id) | an$output_id != output_id, ,
-                       drop = FALSE]
-  rownames(x$ard$analyses) <- NULL
+  for (sh in c("analyses", "analysis_data")) {
+    an <- x$ard[[sh]]
+    if (is.null(an) || !nrow(an)) next
+    x$ard[[sh]] <- an[is.na(an$output_id) | an$output_id != output_id, , drop = FALSE]
+    rownames(x$ard[[sh]]) <- NULL
+  }
   for (sh in names(x$lf)) {
     d <- x$lf[[sh]]
     x$lf[[sh]] <- d[is.na(d$output_id) | d$output_id != output_id, ,

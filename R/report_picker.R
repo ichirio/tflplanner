@@ -97,8 +97,8 @@
   # the report's analysis set (the report list's, the TOC's); else those
   # its analyses have (their own, or their analysis data's)
   a <- x$ard$analyses
-  ad <- .adata_rows(x)
   pop <- vapply(ids, function(id) {
+    ad <- .adata_rows(x, id)
     own <- report_population(x, id)
     if (!is.na(own)) return(own)
     k <- !is.na(a$output_id) & a$output_id == id

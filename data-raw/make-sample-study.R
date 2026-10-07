@@ -354,18 +354,26 @@ p$ard$analyses <- tbl(
        label = "TEAE by SOC / PT", method = "hierarchical", data = "adae_saf",
        by = "TRT01A", variables = "AEBODSYS | AEDECOD", denominator = "adsl_saf",
        args = "over_variables = TRUE"))
-# every table reads analysis data: the safety set (adsl_saf), and the
-# records of other datasets kept to its subjects
+# every table reads analysis data -- each table's own (an analysis data is
+# a report's): the safety set (adsl_saf) in each, and the records of other
+# datasets kept to its subjects where a table reads them
+saf <- function(o) list(output_id = o, data_id = "adsl_saf", label = "Safety set",
+                        from = "ADSL", population_id = "SAF")
 p$ard$analysis_data <- tbl(
-  list(data_id = "adsl_saf", label = "Safety set", from = "ADSL",
-       population_id = "SAF"),
-  list(data_id = "adae_saf", label = "Treatment-emergent AEs of the safety set",
-       from = "ADAE", subjects = "adsl_saf", where = "TRTEMFL == \"Y\""),
-  list(data_id = "advs_w24", label = "Systolic blood pressure at Week 24, safety set",
+  saf("T-14-1-1"), saf("T-14-1-1S"), saf("T-14-1-2"),
+  saf("T-14-2-1"),
+  list(output_id = "T-14-2-1", data_id = "advs_w24",
+       label = "Systolic blood pressure at Week 24, safety set",
        from = "ADVS", subjects = "adsl_saf",
        where = "PARAMCD == \"SYSBP\" & AVISIT == \"Week 24\""),
-  list(data_id = "adtte_ttde", label = "Time to first dermatologic event, safety set",
-       from = "ADTTE", subjects = "adsl_saf", where = "PARAMCD == \"TTDE\""))
+  saf("T-14-2-2"),
+  list(output_id = "T-14-2-2", data_id = "adtte_ttde",
+       label = "Time to first dermatologic event, safety set",
+       from = "ADTTE", subjects = "adsl_saf", where = "PARAMCD == \"TTDE\""),
+  saf("T-14-3-1"),
+  list(output_id = "T-14-3-1", data_id = "adae_saf",
+       label = "Treatment-emergent AEs of the safety set",
+       from = "ADAE", subjects = "adsl_saf", where = "TRTEMFL == \"Y\""))
 for (sh in names(p$ard)) p$ard[[sh]] <- .normalize_ard_sheet(p$ard[[sh]], sh)
 
 # ------------------------------------------------ the listing, the figure

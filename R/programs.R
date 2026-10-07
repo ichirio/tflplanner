@@ -54,7 +54,7 @@ report_info <- function(x, output_id) {
       po <- x$ard$populations
       pop_ds <- po$dataset[match(a$population_id, po$population_id)]
       # one that reads an analysis data: the datasets it is made from
-      ad <- .adata_rows(x)
+      ad <- .adata_rows(x, output_id)
       own <- unlist(lapply(seq_len(nrow(a)), function(i) {
         d <- c(a$data[i] %||% NA, a$denominator[i] %||% NA)
         if (any(d %in% ad$data_id)) {

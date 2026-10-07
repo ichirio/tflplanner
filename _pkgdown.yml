@@ -74,6 +74,7 @@ reference:
       - remove_analysis
       - copy_analysis
       - set_analysis_data
+      - import_analysis_data
       - set_report_population
       - ard_setup_code
       - run_ard
