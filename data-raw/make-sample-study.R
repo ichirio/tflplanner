@@ -53,6 +53,16 @@ tbl <- function(...) {
         as.character(v)
     }, "")), stringsAsFactors = FALSE)
 }
+
+# A report's code list: its values in order -- "a | b | c", or named by
+# value with the text each prints as
+codelist <- function(output_id, variable, values) {
+  if (is.null(names(values))) values <- trimws(strsplit(values, "|", fixed = TRUE)[[1L]])
+  data.frame(output_id = output_id, variable = variable,
+             value = if (is.null(names(values))) values else names(values),
+             label = if (is.null(names(values))) NA_character_ else unname(values),
+             order = as.character(seq_along(values)), stringsAsFactors = FALSE)
+}
 arms <- "Placebo | Xanomeline Low Dose | Xanomeline High Dose"
 
 # ------------------------------------------------------------ the data
@@ -131,34 +141,52 @@ sheets <- list(
          sort = ".overall | group1 | .depth | -n | label",
          note = "TEAE by SOC / PT, frequency descending")),
   variables = tbl(
-    list(output_id = "T-14-1-1", variable = "TRT01A", levels = arms),
     list(output_id = "T-14-1-1", variable = "AGE", label = "Age (years)",
          order = 1),
     list(output_id = "T-14-1-1", variable = "AGEGR1",
-         label = "Age group, n (%)", order = 2, levels = "18-64 | >64"),
+         label = "Age group, n (%)", order = 2),
     list(output_id = "T-14-1-1", variable = "SEX", label = "Sex, n (%)",
-         order = 3, levels = "F | M"),
+         order = 3),
     list(output_id = "T-14-1-1", variable = "RACE", label = "Race, n (%)",
          order = 4),
     list(output_id = "T-14-1-1", variable = "ETHNIC",
          label = "Ethnicity, n (%)", order = 5),
-    list(output_id = "T-14-1-2", variable = "TRT01A", levels = arms),
     list(output_id = "T-14-1-2", variable = "EOSSTT",
-         label = "Status at end of study, n (%)", order = 1,
-         levels = "COMPLETED | DISCONTINUED"),
-    list(output_id = "T-14-2-1", variable = "TRTA", levels = arms),
+         label = "Status at end of study, n (%)", order = 1),
     list(output_id = "T-14-2-1", variable = "BASE",
          label = "Baseline (mmHg)", order = 1),
     list(output_id = "T-14-2-1", variable = "AVAL",
          label = "Week 24 (mmHg)", order = 2),
     list(output_id = "T-14-2-1", variable = "CHG",
          label = "Change from baseline (mmHg)", order = 3),
-    list(output_id = "T-14-3-1", variable = "TRT01A", levels = arms),
-    list(output_id = "T-14-2-2", variable = "TRT01A", levels = arms),
     list(output_id = "T-14-2-2", variable = "prob",
          label = "Time to first event (days)", order = 1),
     list(output_id = "T-14-2-2", variable = "time",
          label = "Event-free probability (95% CI)", order = 2)),
+  # the code lists: each table's own (a code list is a report's).  The
+  # CRF's values the data have none of are listed too: their rows print
+  # with 0 (RACE's ASIAN ..., ETHNIC's NOT REPORTED / UNKNOWN)
+  codelists = do.call(rbind, c(
+    lapply(c("T-14-1-1", "T-14-1-2", "T-14-2-2", "T-14-3-1"),
+           function(o) codelist(o, "TRT01A", arms)),
+    list(codelist("T-14-2-1", "TRTA", arms),
+         codelist("T-14-1-1", "SEX", c(F = "Female", M = "Male")),
+         codelist("T-14-1-1", "AGEGR1", c("18-64" = "18-64 years",
+                                          ">64" = ">64 years")),
+         codelist("T-14-1-1", "RACE", c(
+           "WHITE" = "White",
+           "BLACK OR AFRICAN AMERICAN" = "Black or African American",
+           "ASIAN" = "Asian",
+           "AMERICAN INDIAN OR ALASKA NATIVE" = "American Indian or Alaska Native",
+           "NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER" =
+             "Native Hawaiian or Other Pacific Islander")),
+         codelist("T-14-1-1", "ETHNIC", c(
+           "HISPANIC OR LATINO" = "Hispanic or Latino",
+           "NOT HISPANIC OR LATINO" = "Not Hispanic or Latino",
+           "NOT REPORTED" = "Not reported", "UNKNOWN" = "Unknown")),
+         # the disposition table's status at the end of the study
+         codelist("T-14-1-2", "EOSSTT", c(COMPLETED = "Completed",
+                                          DISCONTINUED = "Discontinued"))))),
   cells = tbl(
     list(output_id = "T-14-2-2", variable = "prob", when = "is.na(estimate)",
          template = "NE"),
@@ -192,7 +220,7 @@ sheets <- list(
     list(blank_where = "between_groups", blank_first = "TRUE",
          blank_last = "TRUE", blank_counted = "TRUE", stub_name = "row_label",
          stub_before = "TRUE", note = "study default"),
-    list(output_id = "T-14-1-1", pages_max_rows = "24",
+    list(output_id = "T-14-1-1", pages_max_rows = "30",
          pages_split = "group_safe"),
     list(output_id = "T-14-1-2", pages_max_rows = "24"),
     list(output_id = "T-14-2-1", pages_max_rows = "30",
@@ -224,7 +252,7 @@ sheets <- list(
          text = "(N={n})")))
 
 # T-14-1-1S: T-14-1-1's table, row for row (its ARD differs: below)
-for (sh in c("tables", "variables", "cells", "layout")) {
+for (sh in c("tables", "variables", "codelists", "cells", "layout")) {
   d <- sheets[[sh]]
   k <- !is.na(d$output_id) & d$output_id == "T-14-1-1"
   add <- d[k, , drop = FALSE]

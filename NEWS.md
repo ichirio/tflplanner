@@ -11,7 +11,11 @@
   report's.  The Data tab's study code lists are gone.  A report's ARD uses
   the code lists of the variables its analyses read; step 1's result says
   which.  A study made before with study-wide rows: tflspec says so (give
-  the rows their report).
+  the rows their report).  The sample's tables have their own code lists
+  (#248): the arms in each, SEX / AGEGR1 / RACE / ETHNIC in the
+  demographics tables (the CRF's values the data have none of print with
+  0), EOSSTT in the disposition table; the variables sheet no longer
+  says the same order again.
 
 - **The sample study, after an audit** (#238).  T-14-2-2 (KM estimates)
   has no "Characteristic" over its rows.  L-16-2-7 lists the
