@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **The design concept, written down** (#224).  The README has a
+  "Concept" section and the Japanese guide a "設計の考え方" section:
+  code for people to read and finish, the typical analyses kept simple,
+  R code kept in the spec, shared parts defined once, screens => spec =>
+  code.  Docs only.
+
 - **A hex logo, shared with rtfreporter and tflspec** (#230), made with the
   site's favicons by `data-raw/logo.R`.
 
