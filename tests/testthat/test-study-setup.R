@@ -9,7 +9,7 @@ setup_planner <- function() {
   p$ard$populations <- data.frame(population_id = "SAF", dataset = "ADSL",
                                   where = "SAFFL == \"Y\"")
   p$ard$analyses <- data.frame(
-    output_id = c("DM", "DM"), analysis_id = c("BIGN", "AGE"),
+    output_id = c("DM", "DM"), analysis_id = c("GROUPN", "AGE"),
     method = c("categorical", "continuous"), population_id = "SAF",
     by = c(NA, "TRT01A"), variables = c("TRT01A", "AGE"))
   for (s in names(p$ard)) p$ard[[s]] <- .normalize_ard_sheet(p$ard[[s]], s)

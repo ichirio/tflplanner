@@ -13,7 +13,7 @@ ard_planner <- function() {
   p$ard$populations <- data.frame(population_id = "SAF", dataset = "ADSL",
                                   where = "SAFFL == \"Y\"")
   p$ard$analyses <- data.frame(
-    output_id = c("DM", "DM"), analysis_id = c("BIGN", "AGE"),
+    output_id = c("DM", "DM"), analysis_id = c("GROUPN", "AGE"),
     method = c("categorical", "continuous"), population_id = "SAF",
     by = c(NA, "TRT01A"), variables = c("TRT01A", "AGE"))
   for (s in names(p$ard)) p$ard[[s]] <- .normalize_ard_sheet(p$ard[[s]], s)
@@ -70,7 +70,7 @@ test_that("the definition is saved, reopened and run", {
 
   r <- run_ard(o, "DM")
   expect_null(r$error)
-  expect_setequal(unique(r$ard$analysis_id), c("BIGN", "AGE"))
+  expect_setequal(unique(r$ard$analysis_id), c("GROUPN", "AGE"))
   v <- ard_view(r$ard)
   expect_true(all(c("analysis_id", "variable", "stat_name", "stat") %in%
                     names(v)))
@@ -193,10 +193,11 @@ test_that("a report's code lists reach its ARD program", {
   s <- create_study("A2", planner = p)
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
   prog <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
-  expect_true(any(grepl(".codelists <- list(", prog, fixed = TRUE)))
-  # (the code lists put on as tflspec writes it: adsl <- .levels(adsl), or
-  # read in one statement, adsl <- readRDS(...) |> .levels())
-  expect_true(any(grepl("^adsl <- (\\.levels\\(adsl\\)|readRDS\\(.*\\) \\|> \\.levels\\(\\))$", prog)))
+  # (the code lists put on as tflspec writes it: set_levels() on the data
+  # the analyses read)
+  expect_true(any(grepl("set_levels(", prog, fixed = TRUE)))
+  expect_true(any(grepl("AGEGR1 = c(\"<65\", \"65-80\", \">80\", \"unknown\")", prog,
+                        fixed = TRUE)))
   # the ARD counts the value no record has, in the code list's order
   o <- open_study("A2")
   u <- update_study_ard(o, "DM")
@@ -232,7 +233,8 @@ test_that("the analysis data is saved, reopened and run (tflspec #135)", {
   expect_identical(o$planner$ard$analysis_data, p$ard$analysis_data)
   expect_identical(o$planner$ard$analyses$data, p$ard$analyses$data)
   code <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
-  expect_true(any(code == "adsl_saf <- subset(pop_saf, AGE >= 18)"))
+  expect_true(any(code %in% c("adsl_saf <- filter(pop_saf, AGE >= 18)",
+                              "  filter(AGE >= 18) |>")))
   r <- run_ard(o, "DM")
   expect_null(r$error)
   expect_identical(unique(r$ard$population_id), "SAF")
@@ -249,7 +251,7 @@ test_that("a report's ARD program: only the code lists of what its analyses read
   expect_identical(unique(.study_codelists(p)$output_id), "DM")
   s <- create_study("A3", planner = p)
   prog <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
-  expect_true(any(grepl("`TRT01A` = c(\"Placebo\", \"Drug\")", prog, fixed = TRUE)))
+  expect_true(any(grepl("TRT01A = c(\"Placebo\", \"Drug\")", prog, fixed = TRUE)))
   # SEX only prints (DM's analyses do not read it): not in the ARD program
-  expect_false(any(grepl("`SEX`", prog, fixed = TRUE)))
+  expect_false(any(grepl("SEX = ", prog, fixed = TRUE)))
 })

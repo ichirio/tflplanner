@@ -1666,7 +1666,7 @@ Run analyses together (cards::ard_stack),解析をまとめて実行（cards::ar
 Cannot be inside:,入れられないもの:
 Run them together,まとめる
 Choose the analyses.,解析を選んでください。
-%s does not count the subjects per group: the report's BIGN does already (two would break the column headers' N). Delete BIGN and tick it on %s to let the stack count them.,%1$s は群ごとの人数を数えません（帳票の BIGN が数えているため。二重になると列見出しの N が壊れます）。%2$s に数えさせるなら、BIGN を消して %2$s のチェックを入れてください。
+%s does not count the subjects per group: the report's GROUPN does already (two would break the column headers' N). Delete GROUPN and tick it on %s to let the stack count them.,%1$s は群ごとの人数を数えません（帳票の GROUPN が数えているため。二重になると列見出しの N が壊れます）。%2$s に数えさせるなら、GROUPN を消して %2$s のチェックを入れてください。
 Run the analyses together (cards::ard_stack),解析をまとめて実行する（cards::ard_stack）
 "%d subjects of the analysis set have no %s: ard_stack does not count them, so the analyses are made one by one.",解析対象集団に %2$s が空の人が %1$d 人います。ard_stack はこの人たちを数えないので、解析は 1 つずつ作ります。
 One call computes the rows and the subjects per group (the column headers' N).,1 回の呼び出しで、行と群ごとの人数（列見出しの N）を計算します。

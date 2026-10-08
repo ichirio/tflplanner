@@ -504,9 +504,9 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
                                          part = "body"),
                    error = function(e) NULL)
   if (is.null(code)) return(NULL)
-  stop_at <- match("# ---- analyses", code)
+  stop_at <- match("# ---- analyses ----", code)
   if (is.na(stop_at)) return(NULL)
-  env <- new.env(parent = globalenv())
+  env <- new.env(parent = .ard_program_env())
   old <- setwd(path)
   on.exit(setwd(old), add = TRUE)
   tryCatch({
@@ -515,6 +515,19 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
     suppressWarnings(eval(parse(text = code[seq_len(stop_at - 1L)]), envir = env))
     as.data.frame(env[[id]])
   }, error = function(e) structure(list(), error = conditionMessage(e)))
+}
+
+# Where an ARD program's lines run in the app: as under its setup, with
+# cards', dplyr's and tflspec's functions (the setup attaches them), the
+# app's own session left as it is
+.ard_program_env <- function() {
+  e <- globalenv()
+  for (pk in c("tflspec", "dplyr", "cards")) {
+    ns <- asNamespace(pk)
+    e <- list2env(mget(getNamespaceExports(ns), envir = ns, inherits = TRUE),
+                  parent = e)
+  }
+  e
 }
 
 # The lines the program makes a data with, as R its `code` can start from:

@@ -174,9 +174,10 @@ own_function_checks <- function(study) {
     dataset = dataset, population_id = population_id, variables = "TRY_",
     stringsAsFactors = FALSE), "analyses")
   code <- tflspec::tfl_ard_code(structure(a, class = "tfl_ard_spec"), part = "body")
-  stop_at <- match("# ---- analyses", code)
-  call <- code[grep("^ard <- ", code)[1L]]
-  obj <- sub("^ard <- [A-Za-z0-9_.:]+\\(([A-Za-z0-9_.]+).*$", "\\1", call)
+  stop_at <- match("# ---- analyses ----", code)
+  # the analysis pipes its data into the call: `ard_try <- adsl_saf |>`
+  call <- code[grep("^ard_try <- ", code)[1L]]
+  obj <- sub("^ard_try <- ([A-Za-z0-9_.]+).*$", "\\1", call)
   c(code[seq_len(stop_at - 1L)], paste(".data <-", obj))
 }
 
@@ -227,7 +228,8 @@ try_ard_function <- function(study, name, dataset = NA_character_,
   call <- sprintf("tflspec::tfl_check_ard_function(%s, .data%s)", name,
                   if (nzchar(trimws(args))) paste0(", ", args) else "")
   script <- c(
-    "suppressPackageStartupMessages(library(cards))",
+    # as the ARD programs' setup: cards, dplyr, tflspec
+    "suppressPackageStartupMessages({library(cards); library(dplyr); library(tflspec)})",
     "tryCatch({",
     vapply(file.path(study$path, files), function(f) sprintf("  source(%s)", q(f)), ""),
     if (!is.null(extra)) sprintf("  source(%s)", q(extra)),
