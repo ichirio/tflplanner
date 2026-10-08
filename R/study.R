@@ -12,7 +12,8 @@
 #     data/other/                      anything else (formats, lookups)
 #     spec/                table_spec.xlsx, report_spec.xlsx (the report
 #                          programs read them; ard_spec.xlsx only if exported)
-#     programs/            batch.R, autoexec_all.R (official runs)
+#     programs/            study_setup.R (what every program runs first),
+#                          batch.R, autoexec_all.R (official runs)
 #     programs/ard/        one ARD program per output, ard_setup.R,
 #                          autoexec_ard.R
 #     programs/tfl/        one program per report, autoexec_report.R
@@ -453,7 +454,9 @@ print.rtfstudy <- function(x, ...) {
 #' [open_study()] reads; the one before goes to its history), then writes
 #' the study folder from it: the definition workbooks in `spec/` (with
 #' `output_path` and `program_dir` set to the study's own folders), the
-#' report programs, `autoexec_report.R`, and `study.yml`.  The programs
+#' report programs, `autoexec_report.R`, `programs/study_setup.R` (made
+#' when missing; otherwise its tflplanner part only, see
+#' [study_setup_code()]), and `study.yml`.  The programs
 #' are the definition's: each is written from it whenever it changes.  One
 #' edited by hand since (its banner's checksum no longer matches) is
 #' written again too, its edited copy first put in `programs/.edited/`
@@ -514,7 +517,8 @@ save_study <- function(study, home = tflplanner_home(), base = NULL) {
   }
   files <- rbind(files, .save_ard(p, root), .save_lf(p, root),
                  .save_fig_designs(p, root))
-  files <- rbind(files, .save_batch_programs(p, root))
+  files <- rbind(files, .save_study_setup(study$meta, root),
+                 .save_batch_programs(p, root))
   meta <- study$meta[.study_fields]
   old_meta <- tryCatch(.read_meta(root), error = function(e) list())
   meta$created <- old_meta$created %||% format(Sys.Date())
@@ -631,7 +635,9 @@ save_study <- function(study, home = tflplanner_home(), base = NULL) {
 #' * `not run` -- no RTF yet
 #' * `error` -- the last run failed (see its log)
 #' * `outdated` -- the report's program, or a file it sources (the figure
-#'   setup, say), changed after the RTF was made.  The program holds the
+#'   setup, say), changed after the RTF was made; or the report was made
+#'   with another `programs/study_setup.R` than the one there now (its
+#'   program records it in `output/tfl/report_status.csv`).  The program holds the
 #'   report's whole definition, so a change to the definition reaches the
 #'   reports it is about and no others.
 #' * `ok`
@@ -643,6 +649,8 @@ study_status <- function(study) {
   p <- study$planner
   root <- study$path
   lay <- study_layout()
+  setup <- .report_setup_recorded(root, p$outputs$output_id)
+  now <- .study_setup_hash(root)
   rows <- lapply(p$outputs$output_id, function(id) {
     info <- report_info(p, id)
     prog <- file.path(root, lay[["programs_tfl"]], info$program)
@@ -661,7 +669,8 @@ study_status <- function(study) {
       if (pstate == "todo") "todo" else
         if (failed) "error" else
           if (is.na(t_rtf)) "not run" else
-            if (isTRUE(.program_time(prog, root) > t_rtf))
+            if (isTRUE(.program_time(prog, root) > t_rtf) ||
+                .setup_changed(setup[match(id, p$outputs$output_id)], root, now))
               "outdated" else "ok"
     fmt <- function(t) if (is.na(t)) NA_character_ else
       format(t, "%Y-%m-%d %H:%M")
