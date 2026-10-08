@@ -119,9 +119,9 @@ test_that("a row of the analyses grid is edited as a form", {
   shiny::testServer(server_for("AF"), {
     rv <- session$userData$rv
     session$setInputs(nav = "make", step = "ard", target = "T1")
-    # only the list until a row is clicked; a click opens it below
-    expect_match(output$ard_stat_ui$html, "A click on an analysis in the list above opens it here.",
-                 fixed = TRUE)
+    # only the list until a row is clicked (no empty form below it); a
+    # click opens it below
+    expect_null(output$ard_stat_ui)
     session$setInputs(ard_ol_pick = "BIGN")
     expect_match(output$ard_stat_ui$html, "Analysis BIGN")
     expect_match(output$ard_stat_ui$html, "What to compute", fixed = TRUE)

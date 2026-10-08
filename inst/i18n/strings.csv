@@ -2417,3 +2417,6 @@ Blank: the label of this report's code list of variable (faint). What is written
 This report's font,この帳票のフォント
 Blank: every report's font and size (the study tab). A value here is this report's own (its row of the page sheet).,空欄なら全帳票のフォントと大きさ（試験タブ）になります。ここに入れた値はこの帳票だけのものです（page シートのこの帳票の行）。
 "Every report's: %s, %s pt",全帳票: %s、%s pt
+Click a file in the list to see its first rows.,左の一覧でファイルをクリックすると、最初の行がここに出ます。
+The study,試験
+Every report,全帳票
