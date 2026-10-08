@@ -261,11 +261,11 @@ for (sh in c("tables", "variables", "codelists", "cells", "layout")) {
 }
 
 # ----------------------------------------------------------- the report half
-title <- function(oid, number, text, set) {
-  list(list(output_id = oid, line = "3"),
-       list(output_id = oid, line = "4", center = number),
-       list(output_id = oid, line = "5", center = text),
-       list(output_id = oid, line = "6", center = set))
+# each report's title and analysis set: its tokens, which the study's
+# header says once ({OUTPUT_LABEL} is made from the id: Table 14.1.1)
+title <- function(oid, text, set = "Safety Analysis Set") {
+  list(list(output_id = oid, name = "OUTPUT_TITLE", value = text),
+       list(output_id = oid, name = "OUTPUT_POPULATION", value = set))
 }
 sheets$report <- tbl(
   list(type = "table", file = "{output_id}.rtf", program = "{output_id}.R",
@@ -279,37 +279,26 @@ sheets$page <- tbl(
   list(output_id = "F-14-2-1", orientation = "landscape"),
   list(output_id = "F-14-2-2", orientation = "landscape"),
   list(output_id = "F-14-2-3", orientation = "landscape"))
-sheets$header <- do.call(tbl, c(
-  list(list(line = "1", left = "Sample Pharma (tflplanner sample)",
-            right = "DRAFT"),
-       list(line = "2", left = "Protocol: SAMPLE-01 (CDISC pilot data)",
-            right = "Page {PAGE} of {TOTAL_PAGES}")),
-  title("T-14-1-1", "Table 14.1.1", "Demographic Characteristics",
-        "<Safety Analysis Set>"),
-  title("T-14-1-1S", "Table 14.1.1S", "Demographic Characteristics",
-        "<Safety Analysis Set>"),
-  title("T-14-1-2", "Table 14.1.2", "Subject Disposition",
-        "<Safety Analysis Set>"),
-  title("T-14-2-1", "Table 14.2.1",
-        "Systolic Blood Pressure (mmHg): Change from Baseline at Week 24",
-        "<Safety Analysis Set>"),
-  title("T-14-3-1", "Table 14.3.1",
-        "Treatment-Emergent Adverse Events by System Organ Class and Preferred Term",
-        "<Safety Analysis Set>"),
-  title("L-16-2-7", "Listing 16.2.7", "Severe Treatment-Emergent Adverse Events",
-        "<Safety Analysis Set>"),
-  title("F-14-2-1", "Figure 14.2.1",
-        "Mean (SE) Change from Baseline in Systolic Blood Pressure over Time",
-        "<Safety Analysis Set>"),
-  title("T-14-2-2", "Table 14.2.2",
-        "Time to First Dermatologic Event: Kaplan-Meier Estimates",
-        "<Safety Analysis Set>"),
-  title("F-14-2-2", "Figure 14.2.2",
-        "Kaplan-Meier Plot of Time to First Dermatologic Event",
-        "<Safety Analysis Set>"),
-  title("F-14-2-3", "Figure 14.2.3",
-        "Kaplan-Meier Curves of Time to First Dermatologic Event",
-        "<Safety Analysis Set>")))
+sheets$header <- tbl(
+  list(line = "1", left = "Sample Pharma (tflplanner sample)", right = "DRAFT"),
+  list(line = "2", left = "Protocol: SAMPLE-01 (CDISC pilot data)",
+       right = "Page {PAGE} of {TOTAL_PAGES}"),
+  list(line = "3"),
+  list(line = "4", center = "{OUTPUT_LABEL}"),
+  list(line = "5", center = "{OUTPUT_TITLE}"),
+  list(line = "6", center = "<{OUTPUT_POPULATION}>"))
+sheets$tokens <- do.call(tbl, c(
+  title("T-14-1-1", "Demographic Characteristics"),
+  title("T-14-1-1S", "Demographic Characteristics"),
+  title("T-14-1-2", "Subject Disposition"),
+  title("T-14-2-1", "Systolic Blood Pressure (mmHg): Change from Baseline at Week 24"),
+  title("T-14-3-1",
+        "Treatment-Emergent Adverse Events by System Organ Class and Preferred Term"),
+  title("L-16-2-7", "Severe Treatment-Emergent Adverse Events"),
+  title("F-14-2-1", "Mean (SE) Change from Baseline in Systolic Blood Pressure over Time"),
+  title("T-14-2-2", "Time to First Dermatologic Event: Kaplan-Meier Estimates"),
+  title("F-14-2-2", "Kaplan-Meier Plot of Time to First Dermatologic Event"),
+  title("F-14-2-3", "Kaplan-Meier Curves of Time to First Dermatologic Event")))
 sheets$footer <- tbl(
   list(line = "99", left = "{PROGRAM}       Generated on: {DATETIME}"),
   list(output_id = "T-14-1-1", line = "1",

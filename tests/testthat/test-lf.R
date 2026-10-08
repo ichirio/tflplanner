@@ -51,10 +51,14 @@ test_that("a figure reads its data and leaves the plot to its code", {
   expect_true('source("programs/tfl/fig_setup.R")' %in% code)
   p$outputs$data_code[p$outputs$output_id == "F1"] <- "plot <- 1"
   code <- data_lines(p, "F1")
-  expect_true("content <- list(plot)" %in% code)
+  # the plot goes to the report as it is: rtf_figures(doc, plot)
+  expect_false("content <- list(plot)" %in% code)
   expect_true("tfl_check(plot)" %in% code)
+  expect_true("doc <- rtf_figures(doc, plot)" %in% program_code(p, "F1"))
+  # code that makes `content` itself: its content, not checked here
   p$outputs$data_code[p$outputs$output_id == "F1"] <- "content <- list(1)"
-  expect_false("content <- list(plot)" %in% data_lines(p, "F1"))
+  expect_false("tfl_check(plot)" %in% data_lines(p, "F1"))
+  expect_true("doc <- rtf_figures(doc, content)" %in% program_code(p, "F1"))
 })
 
 test_that("listing and figure rows follow the report and are saved", {

@@ -264,11 +264,11 @@ test_that("a change to study_setup.R marks the ARD and the reports outdated", {
   dir.create(dirname(rtf), recursive = TRUE, showWarnings = FALSE)
   writeLines("{\\rtf1}", rtf)
   rec <- report_setup_code(s$planner)
-  rec <- rec[seq(grep("^\\.record_report <- function", rec),
+  rec <- rec[seq(grep("^record_report <- function", rec),
                  length(rec) - 1L)]
   withr::with_dir(s$path, {
     eval(parse(text = rec))
-    .record_report("DM")
+    record_report("DM")
   })
   expect_identical(.report_setup_recorded(s$path, "DM"), h)
   expect_equal(ard_status(s)$state, "built")

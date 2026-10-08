@@ -43,7 +43,7 @@ test_that("a new study's header is the package's, its words tokens", {
   expect_match(prog, "source(\"programs/tfl/report_setup.R\")", fixed = TRUE)
   expect_match(prog, "header = study_header", fixed = TRUE)
   expect_match(prog, "OUTPUT_LABEL = \"Table 14.1.1\"", fixed = TRUE)
-  expect_false(grepl("ABC-1", sub("^.*output_id <-", "", prog), fixed = TRUE))
+  expect_false(grepl("ABC-1", sub("^.*report_id <-", "", prog), fixed = TRUE))
   # a study with no tokens of its own: its header in each program, and
   # report_setup.R sourced all the same (the study setup, #268)
   y <- add_output(new_planner(), "T-1", type = "table")
