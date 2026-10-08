@@ -745,7 +745,12 @@ app_ui <- function(lang = "en") {
                             # a function picked on the ARD form: its list closes
                             shiny::tags$script(shiny::HTML(paste(
                               "$(document).on('change', '.ard-fn-list input[type=radio]',",
-                              "function() { $(this).closest('details.ard-fn').prop('open', false); });"))),
+                              "function() { $(this).closest('details.ard-fn').prop('open', false); });",
+                              # the list is made when it is opened
+                              "document.addEventListener('toggle', function(e) {",
+                              "  if (e.target.matches && e.target.matches('details.ard-fn') && e.target.open)",
+                              "    Shiny.setInputValue('ard_fn_opened', Date.now(), {priority: 'event'});",
+                              "}, true);"))),
                             shiny::tags$script(shiny::HTML(.split_js)),
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
                             shiny::tags$style(shiny::HTML(.study_section_css)),
@@ -1085,6 +1090,20 @@ $(document).on('shiny:value', function(e) {
     $('#builder_preview').css('opacity', 1);
   }
 });
+// Outputs shown just now (a part drawn, a panel opened): shiny resumes a
+// hidden output after the update that shows it and schedules none, so it
+// waited for some unrelated timer (seconds).  A word to the server once
+// they are bound starts that update.
+(function() {
+  var kick = null;
+  $(document).on('shiny:bound', function(e) {
+    if (e.bindingType !== 'output') return;
+    clearTimeout(kick);
+    kick = setTimeout(function() {
+      Shiny.setInputValue('rp_kick', Date.now(), {priority: 'event'});
+    }, 30);
+  });
+})();
 // An analysis opened in step 2 (a click, a new one, a copy): its form, below
 // the list and often below the window's edge, is brought into view -- when
 // another analysis is drawn, not when the same one is drawn again
@@ -3119,8 +3138,27 @@ app_server <- function(input, output, session, start) {
     if (!is.na(m) && nzchar(m)) r$method <- m
     r
   }
-  # the functions an analysis can name, the chosen one kept
+  # the drawing of the form whose function list was opened ("Change")
+  fn_list_open <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(input$ard_fn_opened, {
+    fn_list_open(shiny::isolate(st_drawn()))
+  })
+  # the functions an analysis can name, the chosen one kept.  Made once a
+  # session for each method chosen (tflspec's catalog is read from disk,
+  # and a click called this for each analysis in the outline): made again
+  # when the study's own functions change
+  fn_memo <- new.env(parent = emptyenv())
   fn_entries <- function(current) {
+    own <- tryCatch(own_data(), error = function(e) NULL)
+    if (!identical(own, fn_memo$own)) {
+      rm(list = ls(fn_memo), envir = fn_memo)
+      fn_memo$own <- own
+    }
+    key <- paste0("m:", if (length(current) && !is.na(current[1L])) current[1L] else "")
+    if (is.null(fn_memo[[key]])) fn_memo[[key]] <- fn_entries_make(current, own)
+    fn_memo[[key]]
+  }
+  fn_entries_make <- function(current, own) {
     e <- .ard_fn_entries(.company_keywords(current), tflspec::tfl_ard_functions(),
                          current = current, company = "Company standard")
     k <- e$category == "Company standard"
@@ -3142,7 +3180,6 @@ app_server <- function(input, output, session, start) {
     e <- rbind(e[!mv, , drop = FALSE], e[mv, , drop = FALSE])
     # the study's own functions (its title and description from its file),
     # and the company's it does not load yet (offered from Own functions)
-    own <- tryCatch(own_data(), error = function(e) NULL)
     if (!is.null(own) && nrow(own)) {
       add <- data.frame(
         value = own$name,
@@ -3358,8 +3395,18 @@ app_server <- function(input, output, session, start) {
       fn_code(m, "small text-body-secondary ms-1"))
   })
   output$ard_fn_list <- shiny::renderUI({
-    st_drawn()
+    n <- st_drawn()
     now <- shiny::isolate(st_method())
+    # folded until "Change": made when it is opened, not with every form
+    # (its hundred rows were most of the drawing of a form); a search or a
+    # category chosen (both inside it) says it is open too
+    if (nzchar(input[[st_id("fn_q")]] %||% "") ||
+        !identical(input[[st_id("fn_cat")]] %||% ".all", ".all")) {
+      shiny::isolate(fn_list_open(n))
+    }
+    if (!.is_blank(now) && !identical(fn_list_open(), n)) {
+      return(shiny::div(class = "small text-muted", t("Loading ...")))
+    }
     e <- fn_entries(now)
     # inside a stack: no subjects count, own code or other stacks
     if (identical(st_role(shiny::isolate(st_row())), "inside")) {
@@ -7695,7 +7742,7 @@ app_server <- function(input, output, session, start) {
     output[[paste0("b", n, "_hdr_tok")]] <- shiny::renderUI({
       keys <- input[[bid("key")]] %||% bform$st$key
       toks <- header_token_choices(keys, input[[bid("hdr_n")]] %||% bform$hdr_n)
-      pv <- tryCatch(preview_d(), error = function(e) NULL)
+      pv <- tryCatch(preview_now(), error = function(e) NULL)
       toks <- header_token_labels(toks, attr(pv$pages, "header_tokens"))
       chip <- function(k) shiny::tags$button(
         type = "button", class = "btn btn-sm btn-outline-secondary py-0 me-1 mb-1",
@@ -7853,16 +7900,40 @@ app_server <- function(input, output, session, start) {
         sprintf(t("The ARD has no %s: those cells stay empty. Add them to the ARD code."),
                 paste(miss, collapse = ", "))))
   }))
+  # The table as it will print.  Made again only when what it is made from
+  # changes -- the report's rows of the table sheets, the study's rounding,
+  # its ARD rows -- so going back to a report, or a change elsewhere in the
+  # definition, does not make it again (it took about half a second).
+  pv_cache <- new.env(parent = emptyenv())
+  preview_cached <- function(p, id, d) {
+    from <- list(lapply(p$sheets[table_sheets()], function(s)
+      s[is.na(s$output_id) | s$output_id == id, , drop = FALSE]),
+      p$study["rounding"], d)
+    hit <- pv_cache[[id]]
+    if (!is.null(hit) && identical(hit$from, from)) return(hit$pages)
+    pages <- preview_pages(p, id, d)
+    pv_cache[[id]] <- list(from = from, pages = pages)
+    pages
+  }
   preview <- shiny::reactive({
     id <- current()
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
     rv$ard_ver
     d <- ard_data(rv$study, id)
-    if (is.null(d)) return(list(error = t("No data to show yet: Preview this table's ARD.")))
-    tryCatch(list(pages = preview_pages(rv$p, id, d)),
-             error = function(e) list(error = conditionMessage(e)))
+    if (is.null(d)) return(list(id = id, error = t("No data to show yet: Preview this table's ARD.")))
+    tryCatch(list(id = id, pages = preview_cached(rv$p, id, d)),
+             error = function(e) list(id = id, error = conditionMessage(e)))
   })
+  # a change typed in the builder: drawn once the typing stops; another
+  # report: drawn at once (the waiting is for the typing, and a debounced
+  # value would still be the report before)
   preview_d <- shiny::debounce(preview, 300)
+  preview_now <- shiny::reactive({
+    id <- current()
+    pv <- preview_d()
+    if (!identical(pv$id, id)) pv <- preview()
+    pv
+  })
   # the first page as the report's rows and the study defaults make it:
   # header, titles, the body's start, footnotes, footer
   shiny::observeEvent(input$page_full, {
@@ -7883,7 +7954,7 @@ app_server <- function(input, output, session, start) {
     p <- rv$p
     info <- report_info(p, id)
     body <- if (identical(info$type, "table")) {
-      pv <- tryCatch(preview_d(), error = function(e) NULL)
+      pv <- tryCatch(preview_now(), error = function(e) NULL)
       if (!is.null(pv$pages)) preview_html(pv$pages[1L], max_pages = 1L) else
         shiny::div(class = "text-muted small", pv$error %||% t("(the table)"))
     } else {
@@ -7900,14 +7971,14 @@ app_server <- function(input, output, session, start) {
       return(shiny::div(class = "small text-muted",
                         t("Nothing yet: the button above makes this table's ARD.")))
     }
-    pv <- preview_d()
+    pv <- preview_now()
     if (!is.null(pv$error)) {
       return(shiny::div(class = "small text-muted", pv$error))
     }
     preview_html(pv$pages)
   })
   output$builder_pages <- shiny::renderUI({
-    pv <- preview_d()
+    pv <- preview_now()
     if (is.null(pv$pages)) return(NULL)
     shiny::span(class = "small text-muted",
                 sprintf(t("%d pages"), length(pv$pages)))

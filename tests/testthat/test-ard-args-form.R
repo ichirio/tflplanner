@@ -91,6 +91,9 @@ test_that("the form picks a function, fills its arguments and writes args", {
     id <- function(x) paste0("st", st_env$n, "_", x)
     h <- output$ard_stat_ui$html
     expect_match(h, "Analysis CAT")
+    # the list folded until "Change" (made when it opens)
+    expect_false(grepl("ard_categorical_ci", output$ard_fn_list$html, fixed = TRUE))
+    session$setInputs(ard_fn_opened = 1)
     # its category is open, the function chosen
     expect_match(output$ard_fn_list$html, "ard_categorical_ci", fixed = TRUE)
     g <- output$ard_an_args$html
