@@ -33,7 +33,7 @@
 #' `ard_setup_code()` is `programs/ard/ard_setup.R`, which every ARD program
 #' sources: the study's setup (`programs/study_setup.R`, see
 #' [study_setup_code()]), cards, the statistics tflplanner computes ([tflspec::tfl_ard_statistics()], the company standards' catalog),
-#' the stat_fmt formats, and `.save_output()`, which replaces one output's
+#' the stat_fmt formats, and `save_ard()`, which replaces one output's
 #' rows of the study ARD and records the build (with the fingerprint of
 #' the study setup it was built with).  `ard_program_code()` is one
 #' output's program, `programs/ard/<output_id>.R`.  `ard_autoexec_code()` is
@@ -71,7 +71,7 @@ ard_setup_code <- function(spec, date = Sys.Date()) {
     "# one output's rows into the study ARD, the other outputs' left as they",
     "# are; and what was built, from which definition and study setup",
     "# (tflplanner reads it)",
-    ".save_output <- function(ard, output_id, definition) {",
+    "save_ard <- function(ard, output_id, definition) {",
     paste0("  out <- ", encodeString(out, quote = "\"")),
     "  dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)",
     "  old <- if (file.exists(out)) readRDS(out)",
@@ -113,12 +113,10 @@ ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
                                       .ard_prog_name(output_id))),
       paste0("Output     : ", output_id, " -> its rows of ",
              .study_value(x, "output", "output/ard/ard.rds")),
-      paste("Analyses   :", paste(labels, collapse = ", ")),
+      strwrap(paste(labels, collapse = ", "), width = 74,
+              initial = "Analyses   : ", prefix = strrep(" ", 13)),
       paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
-             ", ", format(date, "%Y-%m-%d")),
-      "",
-      "Made from the study's ARD definition.  Runs from the study folder (open the",
-      "study's .Rproj, or run programs/ard/autoexec_ard.R)."),
+             ", ", format(date, "%Y-%m-%d"))),
     "",
     sprintf("source(%s)", encodeString(file.path(lay[["programs_ard"]],
                                                  .ard_setup_file),
@@ -127,7 +125,8 @@ ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
     .ard_spec_code(x, output_id = output_id, part = "body",
                    codelists = codelists),
     "",
-    sprintf(".save_output(ard, %s, %s)", encodeString(output_id, quote = "\""),
+    "# the definition's fingerprint: tflplanner compares it",
+    sprintf("save_ard(ard, %s, definition = %s)", encodeString(output_id, quote = "\""),
             encodeString(tflspec::tfl_ard_spec_hash(x, output_id, dir = dir,
                                                     codelists = codelists),
                          quote = "\"")),

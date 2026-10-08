@@ -6,7 +6,7 @@ sample_planner <- function() {
 test_that("a table program writes out its plan and report, saves its ARD and parses", {
   p <- sample_planner()
   code <- program_code(p, "PK")
-  expect_true(any(grepl('output_id <- "PK"', code, fixed = TRUE)))
+  expect_true(any(grepl('report_id <- "PK"', code, fixed = TRUE)))
   # the definition written out, not read at run time
   expect_false(any(grepl("tfl_read_report_spec", code, fixed = TRUE)))
   expect_false(any(grepl("spec = spec", code, fixed = TRUE)))
@@ -44,7 +44,8 @@ test_that("listings and figures make `content` and skip the table plan", {
     code <- program_code(p, id)
     expect_silent(parse(text = code))
     expect_true(any(code %in% c("doc <- rtf_tables(doc, content)",
-                                "doc <- rtf_figures(doc, content)")))
+                                "doc <- rtf_figures(doc, content)",
+                                "doc <- rtf_figures(doc, plot)")))
     expect_false(any(grepl("table_plan(", code, fixed = TRUE)))
   }
   expect_error(add_output(p, "X", type = "chart"))

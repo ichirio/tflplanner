@@ -137,9 +137,8 @@ listing_types <- function() company_standards()$listing_types
     plot,
     if (!makes_content) c(
       "",
-      "# the figure checks: dropped rows, colours against the standard (warnings)",
-      "tfl_check(plot)",
-      "content <- list(plot)"))
+      "# the figure checks: dropped rows, colours against the standard",
+      "tfl_check(plot)"))
 }
 
 #' The rows of a listing, as they will print
