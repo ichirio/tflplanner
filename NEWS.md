@@ -1,5 +1,19 @@
 # tflplanner (development version)
 
+- **The screens, easier to follow** (#269).  Step 2: an analysis opened is
+  brought into view (its form opened below the window's edge, and nothing
+  moved); no empty frame when none is chosen.  Steps 1-4: SPEC | Code |
+  Result stays beside the form on a wide screen, so the table as it prints
+  is in view while the builder is changed.  Step 3's column header: a line
+  is a third as tall (its row-header text beside its value columns, the
+  style on one row).  The study tab's settings are four sections -- the
+  study, every report, keys and setup code, files -- the first two open
+  (each kept as the viewer leaves it); the study list shows the ID, the
+  whole title and when it was saved (the compound and phase are in the
+  detail).  The Runs tab's batch list and definition check are as tall as
+  their rows; step 1's box of every variable is on one line; the data
+  tab's empty preview says to click a file.
+
 - **Step 4: this report's font and size** (#266; tflspec 0.0.24.9063).
   Above SPEC | Code | Result, a report may have its own font and size
   (pt); blank, it takes every report's (the study tab), shown greyed.  A
