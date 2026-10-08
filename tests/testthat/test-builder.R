@@ -121,3 +121,30 @@ test_that("several column variables: written as tables$cols A | B, read back in 
   expect_identical(back$arms$SEX, c("M", "F"))
   expect_identical(back$arms$TRT01A, rev(m$keys$TRT01A))
 })
+
+test_that("a categorical format the standards do not have is the table's own", {
+  r <- .cat_read("{n}/{N} ({p:.0f%})")
+  expect_identical(r$key, "own")
+  expect_identical(r$own, "{n}/{N} ({p:.0f%})")
+  expect_identical(.cat_template("own", 1, own = r$own), r$own)
+  f <- .cat_formats()
+  expect_identical(.cat_read(.cat_template(f$key[1], 1))$key, f$key[1])
+})
+
+test_that("one's own categorical format is written; left blank, nothing is", {
+  skip_if_not_installed("cards")
+  p <- dm_study_planner()
+  m <- ard_meta(dm_ard())
+  st <- builder_read(p, "DM", m)
+  st$cat_format <- "own"
+  st$cat_own <- "{n} [{p:.0f%}]"
+  q <- builder_write(p, "DM", st)
+  c <- sheet_rows(q, "cells", "DM")
+  expect_equal(c$template[c$variable %in% "categorical"], "{n} [{p:.0f%}]")
+  back <- builder_read(q, "DM", m)
+  expect_equal(back$cat_format, "own")
+  expect_equal(back$cat_own, "{n} [{p:.0f%}]")
+  st$cat_own <- NA_character_
+  q <- builder_write(p, "DM", st)
+  expect_false(any(is.na(sheet_rows(q, "cells", "DM")$template)))
+})
