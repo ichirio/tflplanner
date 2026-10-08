@@ -7884,7 +7884,7 @@ app_server <- function(input, output, session, start) {
     i <- as.integer(a$i)
     shiny::req(!is.null(lines), i >= 1L, i <= length(lines))
     j <- switch(a$act, up = i - 1L, down = i + 1L, NA_integer_)
-    blank <- function(x) is.null(x) || !length(x) || is.na(x[1L]) || !nzchar(x[1L])
+    no_text <- function(x) is.null(x) || !length(x) || is.na(x[1L]) || !nzchar(x[1L])
     l <- lines[[i]]
     lv <- hdr_levels()
     if (identical(a$act, "del")) {
@@ -7899,11 +7899,11 @@ app_server <- function(input, output, session, start) {
           lapply(lv, function(v) list(levels = v, text = NA_character_)))
         l$key <- (input[[bid("key")]] %||% bform$st$key)[1L]
       } else if (identical(l$mode, "cells") && !identical(to, "cells")) {
-        txt <- Filter(function(x) !blank(x), lapply(l$segments, `[[`, "text"))
+        txt <- Filter(function(x) !no_text(x), lapply(l$segments, `[[`, "text"))
         l$text <- if (length(txt)) txt[[1L]] else NA_character_
         l$segments <- NULL
       }
-      if (identical(to, "key") && blank(l$key)) {
+      if (identical(to, "key") && no_text(l$key)) {
         l$key <- (input[[bid("key")]] %||% bform$st$key)[1L]
       }
       l$mode <- to
@@ -7913,7 +7913,7 @@ app_server <- function(input, output, session, start) {
       sg <- l$segments
       shiny::req(k >= 1L, k < length(sg))
       sg[[k]]$levels <- c(sg[[k]]$levels, sg[[k + 1L]]$levels)
-      if (blank(sg[[k]]$text)) sg[[k]]$text <- sg[[k + 1L]]$text
+      if (no_text(sg[[k]]$text)) sg[[k]]$text <- sg[[k + 1L]]$text
       l$segments <- sg[-(k + 1L)]
       lines[[i]] <- l
     } else if (identical(a$act, "split")) {
