@@ -79,15 +79,17 @@ builder_stats <- function() {
 # the categorical formats: key, label, template with <p> for the decimals
 .cat_formats <- function() company_standards()$categorical_formats
 
-.cat_template <- function(key, pct, value = "stat") {
+.cat_template <- function(key, pct, value = "stat", own = NA_character_) {
   f <- .cat_formats()
-  tpl <- gsub("<p>", as.character(pct), f$template[match(key, f$key)], fixed = TRUE)
+  tpl <- if (identical(key, "own")) own else
+    gsub("<p>", as.character(pct), f$template[match(key, f$key)], fixed = TRUE)
   # the ARD's own text (stat_fmt): the statistics as formatted there
   if (identical(value, "stat_fmt")) tpl <- gsub(":[^}]*}", "}", tpl)
   tpl
 }
 
-# which format, with how many decimals, a template is
+# which format, with how many decimals, a template is; one the standards do
+# not have is the table's own ("own", `own` the template)
 .cat_read <- function(tpl) {
   f <- .cat_formats()
   if (is.na(tpl)) return(list(key = f$key[1L], pct = 1))
@@ -99,7 +101,7 @@ builder_stats <- function() {
       }
     }
   }
-  list(key = f$key[1L], pct = 1)
+  list(key = "own", pct = 1, own = tpl)
 }
 
 .first_seen_chr <- function(x) unique(x[!is.na(x)])
@@ -235,10 +237,11 @@ builder_read <- function(x, output_id, meta = NULL) {
   cr <- .cat_read(cat_row$template[1L])
   cat_format <- cr$key
   pct_decimals <- cr$pct
+  cat_own <- cr$own %||% NA_character_
 
   list(key = key, arms = arms, variables = variables, levels = levels,
        rows = rows, templates = templates, value = value, digits = digits,
-       exceptions = exc, cat_format = cat_format,
+       exceptions = exc, cat_format = cat_format, cat_own = cat_own,
        pct_decimals = pct_decimals, header = "keep", auto_levels = auto)
 }
 
@@ -332,7 +335,10 @@ builder_write <- function(x, output_id, state, was = NULL) {
       !identical(nrow(st$exceptions %||% now$exceptions), nrow(now$exceptions)) ||
       !identical(as.list(st$exceptions), as.list(now$exceptions))
   } else changed("digits") || changed("exceptions")
-  cat_ch <- changed("cat_format") || changed("pct_decimals") || changed("value")
+  # one's own format, left blank, is not a format yet: nothing is written
+  cat_ch <- (changed("cat_format") || changed("pct_decimals") || changed("value") ||
+    changed("cat_own")) &&
+    !(identical(st$cat_format, "own") && is.na(st$cat_own %||% NA_character_))
   if (!cont_ch && !cat_ch && !dig_ch) return(.builder_header(x, id, st))
   ce <- sheet_rows(x, "cells", id)
   ce$output_id <- NULL
@@ -381,7 +387,8 @@ builder_write <- function(x, output_id, state, was = NULL) {
     if (nrow(inh_cont) && same(new, inh_cont)) new <- new[0, , drop = FALSE]
   }
   if (cat_ch) {
-    tpl <- .cat_template(st$cat_format, st$pct_decimals, st$value %||% "stat")
+    tpl <- .cat_template(st$cat_format, st$pct_decimals, st$value %||% "stat",
+                         own = st$cat_own %||% NA_character_)
     inh_cat <- inh[(!is.na(inh$variable) & inh$variable == "categorical") |
                      (is.na(inh$variable) & is.na(inh$row)), , drop = FALSE]
     if (!identical(inh_cat$template[1L], tpl)) {
