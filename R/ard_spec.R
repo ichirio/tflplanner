@@ -319,7 +319,8 @@ study_ard_rows <- function(study, output_id) {
   f <- .ard_status_file(study)
   empty <- data.frame(output_id = character(), definition = character(),
                       built = character(), rows = integer(),
-                      error = character(), stringsAsFactors = FALSE)
+                      error = character(), setup = character(),
+                      stringsAsFactors = FALSE)
   if (!file.exists(f)) return(empty)
   d <- utils::read.csv(f, colClasses = "character")
   for (c in names(empty)) if (!c %in% names(d)) d[[c]] <- NA_character_
@@ -339,7 +340,9 @@ study_ard_rows <- function(study, output_id) {
 #'
 #' For every output the ARD definition has analyses for: `built` (its rows
 #' are in the study ARD, made from the definition as it is now), `outdated`
-#' (made from an earlier definition), `not built`, or `error` (its last
+#' (made from an earlier definition, or with another
+#' `programs/study_setup.R` than the one there now), `not built`, or
+#' `error` (its last
 #' update failed).  Many people may work on one study: the study ARD is
 #' updated output by output ([update_study_ard()]), and a table is made
 #' from whatever of it is there.
@@ -359,7 +362,8 @@ ard_status <- function(study) {
                                       codelists = .study_codelists(study$planner))
     state <- if (is.na(r$output_id)) "not built" else
       if (!is.na(r$error) && nzchar(r$error)) "error" else
-        if (!identical(r$definition, now)) "outdated" else "built"
+        if (!identical(r$definition, now) ||
+            .setup_changed(r$setup, study$path)) "outdated" else "built"
     data.frame(output_id = id, analyses = sum(a$analyses$output_id %in% id),
                state = state, rows = r$rows, built = r$built,
                error = if (is.na(r$error)) "" else r$error,

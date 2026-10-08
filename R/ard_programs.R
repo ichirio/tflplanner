@@ -31,9 +31,11 @@
 #' The ARD programs of a study
 #'
 #' `ard_setup_code()` is `programs/ard/ard_setup.R`, which every ARD program
-#' sources: cards, the statistics tflplanner computes ([tflspec::tfl_ard_statistics()], the company standards' catalog),
+#' sources: the study's setup (`programs/study_setup.R`, see
+#' [study_setup_code()]), cards, the statistics tflplanner computes ([tflspec::tfl_ard_statistics()], the company standards' catalog),
 #' the stat_fmt formats, and `.save_output()`, which replaces one output's
-#' rows of the study ARD and records the build.  `ard_program_code()` is one
+#' rows of the study ARD and records the build (with the fingerprint of
+#' the study setup it was built with).  `ard_program_code()` is one
 #' output's program, `programs/ard/<output_id>.R`.  `ard_autoexec_code()` is
 #' `programs/ard/autoexec_ard.R`, which runs them from the study folder --
 #' all, or the ones named (`Rscript programs/ard/autoexec_ard.R T-14-1-1`)
@@ -62,9 +64,13 @@ ard_setup_code <- function(spec, date = Sys.Date()) {
       paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
              ", ", format(date, "%Y-%m-%d"))),
     "",
+    "# the study's setup: the company's, the study's folders and id, your own",
+    .source_study_setup(),
+    "",
     .ard_spec_code(x, part = "setup"),
     "# one output's rows into the study ARD, the other outputs' left as they",
-    "# are; and what was built, from which definition (tflplanner reads it)",
+    "# are; and what was built, from which definition and study setup",
+    "# (tflplanner reads it)",
     ".save_output <- function(ard, output_id, definition) {",
     paste0("  out <- ", encodeString(out, quote = "\"")),
     "  dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)",
@@ -78,6 +84,7 @@ ard_setup_code <- function(spec, date = Sys.Date()) {
     "  row <- data.frame(output_id = output_id, definition = definition,",
     "                    built = format(Sys.time(), \"%Y-%m-%d %H:%M:%S\"),",
     "                    rows = as.character(nrow(ard)), error = \"\",",
+    paste0("                    setup = ", .setup_hash_code(), ","),
     "                    stringsAsFactors = FALSE)",
     "  st <- if (file.exists(sf)) utils::read.csv(sf, colClasses = \"character\")",
     "  if (!is.null(st) && nrow(st)) {",
@@ -232,7 +239,7 @@ update_study_ard <- function(study, output_id, timeout = 600) {
     st <- .read_ard_status(study)
     st <- st[st$output_id != output_id, , drop = FALSE]
     st[nrow(st) + 1L, ] <- list(output_id, "", format(Sys.time(),
-      "%Y-%m-%d %H:%M:%S"), NA_integer_, note)
+      "%Y-%m-%d %H:%M:%S"), NA_integer_, note, "")
     .write_ard_status(study, st)
   }
   st <- ard_status(study)

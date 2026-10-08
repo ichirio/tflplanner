@@ -272,9 +272,11 @@ output_ids <- function(x) {
 
 # A line break in a cell comes back as "\n" (openxlsx on Windows writes
 # it as "\r\n").
-.read_sheet_text <- function(path, sheet) {
+# `trim_ws = FALSE` keeps a cell's leading and trailing blanks (readxl
+# drops them): a line of code keeps its indentation.
+.read_sheet_text <- function(path, sheet, trim_ws = TRUE) {
   d <- readxl::read_excel(path, sheet, col_types = "text", .name_repair =
-                            "minimal")
+                            "minimal", trim_ws = trim_ws)
   d <- as.data.frame(d, stringsAsFactors = FALSE, check.names = FALSE)
   for (j in seq_along(d)) {
     if (is.character(d[[j]])) d[[j]] <- gsub("\r\n", "\n", d[[j]],

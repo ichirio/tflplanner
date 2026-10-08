@@ -130,8 +130,9 @@ test_that("workbooks export and import", {
 test_that("saving writes the programs from the definition, an edited one too", {
   local_home()
   s <- create_study("S1", planner = sample_planner())
-  # the workbooks, the programs, batch.R, the two autoexec programs, fig_setup.R
-  expect_equal(sum(s$files$status == "written"), 2 + 5 + 4)
+  # the workbooks, the programs, batch.R, the two autoexec programs,
+  # fig_setup.R, report_setup.R, study_setup.R
+  expect_equal(sum(s$files$status == "written"), 2 + 5 + 6)
   s0 <- save_study(s)
   expect_true(all(s0$files$status == "unchanged"))
   f <- file.path(s$path, "programs", "tfl", "DM.R")

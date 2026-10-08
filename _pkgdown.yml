@@ -55,6 +55,7 @@ reference:
     contents:
       - standards_template
       - code_templates
+      - setup_code
       - add_standard_defaults
   - title: Studies
     contents:
@@ -64,6 +65,7 @@ reference:
       - export_spec
       - export_ars
       - study_layout
+      - study_setup_code
       - study_files
       - read_data_head
       - study_status

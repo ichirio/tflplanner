@@ -71,6 +71,7 @@
     built = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
     rows = ifelse(pick[keep] == "error", NA_integer_, 50L),
     error = ifelse(pick[keep] == "error", "Error in cards::ard_summary(): a made-up failure", ""),
+    setup = .study_setup_hash(s$path),
     stringsAsFactors = FALSE))
   # the reports: about half made, a few failed (a log after the RTF)
   run <- .big_mix(length(ids), c(made = 0.5, failed = 0.06, none = 0.44), shift = 13L)

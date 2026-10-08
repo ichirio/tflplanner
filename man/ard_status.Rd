@@ -16,7 +16,9 @@ A data frame: \code{output_id}, \code{analyses}, \code{state}, \code{rows},
 \description{
 For every output the ARD definition has analyses for: \code{built} (its rows
 are in the study ARD, made from the definition as it is now), \code{outdated}
-(made from an earlier definition), \verb{not built}, or \code{error} (its last
+(made from an earlier definition, or with another
+\code{programs/study_setup.R} than the one there now), \verb{not built}, or
+\code{error} (its last
 update failed).  Many people may work on one study: the study ARD is
 updated output by output (\code{\link[=update_study_ard]{update_study_ard()}}), and a table is made
 from whatever of it is there.

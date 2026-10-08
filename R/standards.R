@@ -167,6 +167,13 @@
         "a table's normalization when it has none: after table_data",
         "a figure's plot before it is written (a stop() follows it)",
         "the setup code every report of a new study runs first (blank: none)")),
+    # the code every study's programs/study_setup.R starts with (its part
+    # 1, copied when the study is made): one line of R a row
+    setup_code = .df(
+      code = c("library(cards)", "library(rtfreporter)", "library(tflspec)"),
+      note = c("the ARD programs' cards calls",
+               "the report programs' rtfreporter calls",
+               "the report programs' tflspec calls")),
     listing_types = .df(type = "multiline", label = "multiline",
                         note = "rtfreporter's listing type: / separator, gutters, a blank row per record"),
     # a TOC in the company's layout: which of its columns is what -- the
@@ -281,7 +288,7 @@
                 "header_presets", "statistics", "categorical_formats",
                 "ard_methods", "ard_statistics", "figure_settings",
                 "figure_colors", "figure_markers", "code_templates",
-                "listing_types", "toc_map", "ard_fn_keywords",
+                "setup_code", "listing_types", "toc_map", "ard_fn_keywords",
                 "populations", "datasets", "codelists",
                 "default_<sheet>"),
       description = c(
@@ -298,6 +305,7 @@
         "the figure palettes: a named palette colours the values it names (response: CR, PR ...); one with value blank is used in order (treatment)",
         "the figure markers: event markers by label (Death, Discontinued ...) and the figures' symbols (censor, assessment)",
         "the code written where a report says none: table_data (its rows of the study ARD), table_process (normalize, rework), figure_plot, setup; {OUTPUT_ID} {ARD} {ARD_PROGRAM} {PROGRAM} {STUDY_ID} are filled in",
+        "the code every study's programs/study_setup.R starts with, copied when the study is made: one line of R a row (column code; note optional), indentation kept; {STUDY_ID} is filled in. The programs need cards, rtfreporter and tflspec attached",
         "the listing types a listing may use (rtfreporter's)",
         "a TOC in the company's layout: for each item (output_id, type, title, population, footnote, program, file, note), the column names it may have, | between them",
         "the company's words for the ARD form's function search, added to tflplanner's: fn (cards::ard_tabulate, cardx::ard_stats_t_test, a method keyword), lang (en / ja / sas / r), keyword, rank (1 the function for the word, 2 related, 3 near: say why in the notes), note_ja, note_en, args (the arguments the word means, which the form can start from: method = \"glm\", exponentiate = TRUE); empty by default",
@@ -319,6 +327,7 @@
         "\u56f3\u306e\u30d1\u30ec\u30c3\u30c8\uff1a\u5024\u306e\u540d\u524d\u4ed8\u304d\uff08response\uff1aCR\u3001PR \u306a\u3069\uff09\u306f\u305d\u306e\u5024\u306e\u8272\u3001value \u7a7a\u6b04\uff08treatment\uff09\u306f\u9806\u756a\u306b\u4f7f\u3046",
         "\u56f3\u306e\u8a18\u53f7\uff1a\u30e9\u30d9\u30eb\u3054\u3068\u306e\u30a4\u30d9\u30f3\u30c8\u8a18\u53f7\uff08Death\u3001Discontinued \u306a\u3069\uff09\u3068\u56f3\u306e\u8a18\u53f7\uff08censor\u3001assessment\uff09",
         "\u5e33\u7968\u304c\u4f55\u3082\u66f8\u304b\u306a\u3044\u3068\u304d\u306e\u30b3\u30fc\u30c9\uff1atable_data\uff08ARD \u304b\u3089\u306e\u53d6\u5f97\uff09\u3001table_process\uff08normalize\u30fb\u52a0\u5de5\uff09\u3001figure_plot\u3001setup",
+        "\u5404\u8a66\u9a13\u306e programs/study_setup.R \u306e\u5148\u982d\u306b\u5199\u3059\u30b3\u30fc\u30c9\uff08\u8a66\u9a13\u4f5c\u6210\u6642\u306b\u30b3\u30d4\u30fc\uff09\u30021 \u884c = R \u306e 1 \u884c\uff08code \u5217\u3001note \u306f\u4efb\u610f\uff09\u3002\u30a4\u30f3\u30c7\u30f3\u30c8\u306f\u4fdd\u305f\u308c\u3001{STUDY_ID} \u306f\u8a66\u9a13 ID \u306b\u7f6e\u304d\u63db\u308f\u308b\u3002cards\u3001rtfreporter\u3001tflspec \u306e library() \u304c\u5fc5\u8981",
         "Listing \u306e\u7a2e\u985e\uff08rtfreporter \u306e\u3082\u306e\uff09",
         "\u81ea\u793e\u69d8\u5f0f\u306e TOC\uff1a\u9805\u76ee\uff08output_id\u3001type\u3001title\u3001population\u3001footnote\u3001program\u3001file\u3001note\uff09\u3054\u3068\u306e\u5217\u540d\u306e\u5019\u88dc\uff08| \u533a\u5207\u308a\uff09",
         "\u4f1a\u793e\u72ec\u81ea\u306e\u8a00\u8449\uff08ARD \u753b\u9762\u306e\u95a2\u6570\u691c\u7d22\uff09\u3002tflplanner \u306e\u8f9e\u66f8\u306b\u8db3\u3059\uff1afn\uff08cards::ard_tabulate \u306a\u3069\u3001\u307e\u305f\u306f\u624b\u6cd5\u30ad\u30fc\u30ef\u30fc\u30c9\uff09\u3001lang\uff08en / ja / sas / r\uff09\u3001keyword\u3001rank\uff081 \u672c\u547d\u30fb2 \u95a2\u9023\u30fb3 \u8fd1\u3044\u3082\u306e\uff1d\u6ce8\u8a18\u306b\u7406\u7531\uff09\u3001note_ja\u3001note_en\u3001args\uff08\u305d\u306e\u8a00\u8449\u304c\u610f\u5473\u3059\u308b\u5f15\u6570\u3002\u753b\u9762\u306e\uff3b\u3053\u306e\u8a2d\u5b9a\u3067\u59cb\u3081\u308b\uff3d\u3067\u4f7f\u3046\uff09\u3002\u65e2\u5b9a\u306f\u7a7a",
@@ -362,6 +371,7 @@ read_standards <- function(path) {
   have <- readxl::excel_sheets(path)
   out <- lapply(names(b), function(s) {
     if (!s %in% have) return(b[[s]])
+    if (s == "setup_code") return(.read_setup_code(path, b[[s]]))
     d <- .read_sheet_text(path, s)
     # a column added to the standards later may be left out
     for (k in intersect(.std_optional[[s]], setdiff(names(b[[s]]), names(d)))) {
@@ -384,6 +394,26 @@ read_standards <- function(path) {
     d
   })
   stats::setNames(out, names(b))
+}
+
+# The sheet setup_code: a row a line of R, read as it is -- indentation
+# kept, a blank row a blank line (the ones after the last line dropped) --
+# and checked (.check_setup_code()).
+.read_setup_code <- function(path, builtin) {
+  d <- .read_sheet_text(path, "setup_code", trim_ws = FALSE)
+  if (!"code" %in% names(d)) {
+    stop("Standards sheet `setup_code` lacks column(s): code", call. = FALSE)
+  }
+  if (!"note" %in% names(d)) d$note <- NA_character_
+  d <- d[names(builtin)]
+  d[] <- lapply(d, as.character)
+  d$code[is.na(d$code)] <- ""
+  d$note[!is.na(d$note) & !nzchar(trimws(d$note))] <- NA
+  used <- which(nzchar(trimws(d$code)) | !is.na(d$note))
+  d <- d[seq_len(if (length(used)) max(used) else 0L), , drop = FALSE]
+  rownames(d) <- NULL
+  .check_setup_code(d$code)
+  d
 }
 
 # columns a company's workbook may lack (written before they were added):
