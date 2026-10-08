@@ -22,6 +22,8 @@ navbar:
     articles:
       text: Articles
       menu:
+        - text: "A tour of tflplanner"
+          href: articles/guide.html
         - text: "tflplanner 利用ガイド（日本語）"
           href: articles/ja-guide.html
         - text: "プロットデザイナーで図を作る（日本語）"
@@ -31,6 +33,7 @@ articles:
   - title: Guides
     navbar: ~
     contents:
+      - articles/guide
       - articles/ja-guide
       - articles/ja-figures
 

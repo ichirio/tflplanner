@@ -47,6 +47,8 @@ Official runs   autoexec_*.R  =>  runs/<date>_<time>_<what>/  (logs, results, co
   what it made and the code it ran in a dated batch folder.
 - English (default) or Japanese.
 
+<img src="man/figures/readme-step3.png" alt="Step 3: the table builder's statistics, and the table as it prints" width="100%" />
+
 > **Status: experimental.**  tflplanner is the GUI over
 > [tflspec](https://github.com/ichirio/tflspec) (the specifications and the
 > code written from them) and rtfreporter (the ARD and table engine and the
@@ -138,8 +140,11 @@ folder and makes it: the CDISC pilot ADaM data of
 study ARD, five tables, a listing and two figures written as user code
 -- a study to try everything on.
 
+A tour of the screens: [A tour of tflplanner](https://ichirio.github.io/tflplanner/articles/guide.html).
 A guide in Japanese (provisional):
 [tflplanner 利用ガイド（日本語）](https://ichirio.github.io/tflplanner/articles/ja-guide.html).
+
+<img src="man/figures/readme-step2.png" alt="Step 2: the report's ARD, an analysis opened in its form" width="100%" />
 
 ## Citation
 
