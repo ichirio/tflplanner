@@ -59,7 +59,7 @@ test_that("the sample's T-14-1-1S is T-14-1-1's ARD as one ard_stack", {
   }
   # one ard_stack() call in its program
   code <- readLines(file.path(s$path, "programs/ard/T-14-1-1S.R"))
-  expect_identical(sum(grepl("cards::ard_stack(", code, fixed = TRUE)), 1L)
+  expect_identical(sum(grepl("  ard_stack(", code, fixed = TRUE)), 1L)
   expect_false(any(grepl(".total_n = TRUE", code, fixed = TRUE)))
   # the ARD tab: the stack's own form, an analysis inside says so
   shiny::testServer(server_for("SAMPLE-01"), {
