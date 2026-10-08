@@ -1027,19 +1027,43 @@ $(document).on('shiny:value shiny:error', function(e) {
 });
 "
 
+# A table drawn while hidden has its header columns out of line: fitted
+# again when it shows.  Only the tables inside what was shown (a tab, a
+# folded part opened, an output drawn), once for all that showed at the same
+# time: fitting every table of the app on each of these (a form opens with
+# several folded parts, each a toggle) measured thousands of cells and took
+# seconds.
 .dt_adjust_js <- "
 (function() {
-  function adjust() {
-    setTimeout(function() {
-      if (window.jQuery && jQuery.fn.dataTable) {
-        jQuery.fn.dataTable.tables({visible: true, api: true}).columns.adjust();
+  var roots = [], timer = null;
+  function fit() {
+    timer = null;
+    var rs = roots; roots = [];
+    if (!(window.jQuery && jQuery.fn.dataTable)) return;
+    var all = rs.indexOf(document) >= 0;
+    jQuery.fn.dataTable.tables({visible: true}).forEach(function(tb) {
+      if (all || rs.some(function(r) { return r.contains(tb); })) {
+        jQuery(tb).DataTable().columns.adjust();
       }
-    }, 0);
+    });
   }
-  document.addEventListener('shown.bs.tab', adjust);
-  document.addEventListener('shown.bs.collapse', adjust);
-  document.addEventListener('toggle', adjust, true);
-  if (window.jQuery) jQuery(document).on('shiny:visualchange', adjust);
+  function adjust(root) {
+    if (!root) return;
+    roots.push(root);
+    if (!timer) timer = setTimeout(fit, 0);
+  }
+  function pane(e) {
+    var sel = e.target && e.target.getAttribute &&
+      (e.target.getAttribute('data-bs-target') || e.target.getAttribute('href'));
+    var p = sel && sel.charAt(0) === '#' ? document.querySelector(sel) : null;
+    return p || document;
+  }
+  document.addEventListener('shown.bs.tab', function(e) { adjust(pane(e)); });
+  document.addEventListener('shown.bs.collapse', function(e) { adjust(e.target); });
+  document.addEventListener('toggle', function(e) {
+    if (e.target && e.target.open) adjust(e.target);
+  }, true);
+  if (window.jQuery) jQuery(document).on('shiny:visualchange', function(e) { adjust(e.target); });
 })();
 "
 
@@ -3792,6 +3816,16 @@ app_server <- function(input, output, session, start) {
                          placeholder = st_default(r, s))
       })))
   })
+  # The analysis form's parts are outputs inside the form (ard_stat_ui).
+  # Hidden until the form is drawn, shiny resumes them only after that
+  # update, and nothing schedules another: they came seconds later, when
+  # some unrelated timer woke the session.  Made with the form instead
+  # (they draw nothing until an analysis is chosen).
+  for (o in c("ard_stat_part", "ard_an_vars", "ard_an_args", "ard_method_note",
+              "ard_fn_preset", "ard_fn_list", "ard_fn_now", "ard_an_code",
+              "ard_stat_fmts")) {
+    shiny::outputOptions(output, o, suspendWhenHidden = FALSE)
+  }
   shiny::observeEvent(input$ard_stat_apply, {
     r <- st_row()
     g <- function(x) input[[st_id(x)]]

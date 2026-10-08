@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **Step 2: an analysis opens in a second, not in 3 to 12** (#269).  The
+  parts of its form were made only when some unrelated timer woke the
+  session (shiny resumes an output that was hidden after the update it
+  shows in, and schedules no other); they are made with the form now.  And
+  every DataTable of the app was fitted again each time a folded part
+  opened or an output was drawn -- the form has several -- forcing the
+  page's layout for seconds; only the tables in what was shown are fitted,
+  once.
+
 - **The screens, easier to follow** (#269).  Step 2: an analysis opened is
   brought into view (its form opened below the window's edge, and nothing
   moved); no empty frame when none is chosen.  Steps 1-4: SPEC | Code |
