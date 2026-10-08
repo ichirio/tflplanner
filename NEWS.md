@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **Step 2: an analysis opens in under a second** (#272).  Its function
+  list (a hundred rows, folded until "Change") is made when it is opened,
+  not with every form; the functions an analysis can name are made once a
+  session (again when the study's own functions change), not for each
+  analysis in the outline at each click.  Opening an analysis: 0.6 to 1 s
+  (from 1.5); opening its list: 0.2 to 0.5 s.
+
 - **`programs/study_setup.R`: one setup for every program** (part of
   #268).  Every study has `programs/study_setup.R`, which
   `programs/ard/ard_setup.R`, `programs/tfl/report_setup.R` and

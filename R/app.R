@@ -745,7 +745,12 @@ app_ui <- function(lang = "en") {
                             # a function picked on the ARD form: its list closes
                             shiny::tags$script(shiny::HTML(paste(
                               "$(document).on('change', '.ard-fn-list input[type=radio]',",
-                              "function() { $(this).closest('details.ard-fn').prop('open', false); });"))),
+                              "function() { $(this).closest('details.ard-fn').prop('open', false); });",
+                              # the list is made when it is opened
+                              "document.addEventListener('toggle', function(e) {",
+                              "  if (e.target.matches && e.target.matches('details.ard-fn') && e.target.open)",
+                              "    Shiny.setInputValue('ard_fn_opened', Date.now(), {priority: 'event'});",
+                              "}, true);"))),
                             shiny::tags$script(shiny::HTML(.split_js)),
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
                             shiny::tags$style(shiny::HTML(.study_section_css)),
@@ -3119,8 +3124,27 @@ app_server <- function(input, output, session, start) {
     if (!is.na(m) && nzchar(m)) r$method <- m
     r
   }
-  # the functions an analysis can name, the chosen one kept
+  # the drawing of the form whose function list was opened ("Change")
+  fn_list_open <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(input$ard_fn_opened, {
+    fn_list_open(shiny::isolate(st_drawn()))
+  })
+  # the functions an analysis can name, the chosen one kept.  Made once a
+  # session for each method chosen (tflspec's catalog is read from disk,
+  # and a click called this for each analysis in the outline): made again
+  # when the study's own functions change
+  fn_memo <- new.env(parent = emptyenv())
   fn_entries <- function(current) {
+    own <- tryCatch(own_data(), error = function(e) NULL)
+    if (!identical(own, fn_memo$own)) {
+      rm(list = ls(fn_memo), envir = fn_memo)
+      fn_memo$own <- own
+    }
+    key <- paste0("m:", if (length(current) && !is.na(current[1L])) current[1L] else "")
+    if (is.null(fn_memo[[key]])) fn_memo[[key]] <- fn_entries_make(current, own)
+    fn_memo[[key]]
+  }
+  fn_entries_make <- function(current, own) {
     e <- .ard_fn_entries(.company_keywords(current), tflspec::tfl_ard_functions(),
                          current = current, company = "Company standard")
     k <- e$category == "Company standard"
@@ -3142,7 +3166,6 @@ app_server <- function(input, output, session, start) {
     e <- rbind(e[!mv, , drop = FALSE], e[mv, , drop = FALSE])
     # the study's own functions (its title and description from its file),
     # and the company's it does not load yet (offered from Own functions)
-    own <- tryCatch(own_data(), error = function(e) NULL)
     if (!is.null(own) && nrow(own)) {
       add <- data.frame(
         value = own$name,
@@ -3358,8 +3381,18 @@ app_server <- function(input, output, session, start) {
       fn_code(m, "small text-body-secondary ms-1"))
   })
   output$ard_fn_list <- shiny::renderUI({
-    st_drawn()
+    n <- st_drawn()
     now <- shiny::isolate(st_method())
+    # folded until "Change": made when it is opened, not with every form
+    # (its hundred rows were most of the drawing of a form); a search or a
+    # category chosen (both inside it) says it is open too
+    if (nzchar(input[[st_id("fn_q")]] %||% "") ||
+        !identical(input[[st_id("fn_cat")]] %||% ".all", ".all")) {
+      shiny::isolate(fn_list_open(n))
+    }
+    if (!.is_blank(now) && !identical(fn_list_open(), n)) {
+      return(shiny::div(class = "small text-muted", t("Loading ...")))
+    }
     e <- fn_entries(now)
     # inside a stack: no subjects count, own code or other stacks
     if (identical(st_role(shiny::isolate(st_row())), "inside")) {
