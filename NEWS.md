@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **Step 4: this report's font and size** (#266; tflspec 0.0.24.9063).
+  Above SPEC | Code | Result, a report may have its own font and size
+  (pt); blank, it takes every report's (the study tab), shown greyed.  A
+  value is the report's own row of the page sheet (only the field
+  changed is written), and its program says it.
+
 - **The reports' font and size, set once** (#264; tflspec 0.0.24.9062).
   The company standards' `settings` gain `font` and `font_size` (in
   points; blank: rtfreporter's, Courier 9 pt): a new study gets them, and
