@@ -143,18 +143,13 @@
     code_templates = .df(
       name = c("table_data", "table_process", "figure_plot", "setup"),
       code = c(paste(
-        "# ---- this output's rows of the study ARD ({ARD}, made by {ARD_PROGRAM})",
+        "# this report's rows of the study ARD (made by {ARD_PROGRAM})",
         "ard <- readRDS(\"{ARD}\")",
         "ard <- subset(ard, output_id == \"{OUTPUT_ID}\",",
         "              select = -c(output_id, analysis_id, population_id))",
-        "if (!nrow(ard)) stop(\"The study ARD has no rows for {OUTPUT_ID}: make its ARD first.\")",
+        "if (!nrow(ard)) stop(\"The study ARD has no rows for {OUTPUT_ID}: run {ARD_PROGRAM} first.\")",
         sep = "\n"),
-        paste(
-        "# ---- normalize",
         "data <- normalize_ard(ard)",
-        "# ---- rework as needed, e.g.",
-        "# data <- dplyr::mutate(data, label = dplyr::recode(label, \"Age\" = \"Age (years)\"))",
-        sep = "\n"),
         paste(
         "# TODO: the plot (ggplot2), in the figure style of the company standards, e.g.",
         "#   plot <- ggplot2::ggplot(adsl, ggplot2::aes(AGE, fill = TRT01A)) +",

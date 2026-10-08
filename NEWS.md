@@ -1,5 +1,22 @@
 # tflplanner (development version)
 
+- **The report programs, tidied** (#275).  Their head is the banner and
+  one line (`stopifnot()`) that they run from the study folder; the
+  report's id is `report_id`.  The data part has one heading, and the
+  company's default `table_data` / `table_process` no longer write "Leaves
+  ...", "Input data are in ..." or a commented-out rework; a table's
+  `saveRDS()` ends the data part.  A figure's plot goes to the report as it
+  is (`rtf_figures(doc, plot)`, rtfreporter >= 0.8.2.9029).  The setup's
+  helpers are `save_ard(ard, output_id, definition = )` and
+  `record_report()` (were `.save_output()`, `.record_report()`); the ARD
+  programs' banner is shorter and `batch.R`'s lists are indented.
+  `report_setup.R` now writes the study's header and footer once also when
+  the study has default header or footer rows (before: only with
+  study-wide tokens or a font), and the report programs use them.  The
+  sample's header says `{OUTPUT_LABEL}`, `{OUTPUT_TITLE}` and
+  `<{OUTPUT_POPULATION}>`, each report's title and analysis set its tokens;
+  its reports print as before.
+
 - **`programs/study_setup.R`: one setup for every program** (part of
   #268).  Every study has `programs/study_setup.R`, which
   `programs/ard/ard_setup.R`, `programs/tfl/report_setup.R` and

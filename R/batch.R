@@ -58,11 +58,18 @@ batch_code <- function(x, date = Sys.Date()) {
             wb(c(.table_file, .report_file, .lf_file, .ard_file))),
     all = c(file.path("programs", c(.batch_file, .autoexec_all_file)),
             .study_setup_path(), .study_file))
-  vec <- function(v, names = NULL) {
+  vec <- function(v, names = NULL, indent = "  ") {
     if (!length(v)) return("character()")
     q <- encodeString(v, quote = "\"")
     if (!is.null(names)) q <- paste(encodeString(names, quote = "`"), "=", q)
-    paste0("c(\n", paste0("  ", q, collapse = ",\n"), ")")
+    paste0("c(\n", paste0(indent, q, collapse = ",\n"), ")")
+  }
+  # a list of vectors, its elements indented as the list's
+  vlist <- function(...) {
+    v <- list(...)
+    paste0("list(\n", paste0("  ", names(v), " = ",
+                             vapply(v, vec, "", indent = "    "), collapse = ",\n"),
+           "\n)")
   }
   runner <- readLines(system.file("batch", "runner.R", package = "tflplanner"),
                       warn = FALSE, encoding = "UTF-8")
@@ -78,8 +85,7 @@ batch_code <- function(x, date = Sys.Date()) {
     "# ---- the study's programs, in the order they run ---------------------------",
     paste0(".batch_root <- ", encodeString(lay[["runs"]], quote = "\"")),
     paste0(".batch_ard  <- ", encodeString(ard_out, quote = "\"")),
-    paste0(".batch_programs <- list(\nard = ", vec(ard_progs),
-           ",\ntfl = ", vec(tfl_progs), ")"),
+    paste0(".batch_programs <- ", vlist(ard = ard_progs, tfl = tfl_progs)),
     "# the output each ARD program makes",
     paste0(".batch_ard_outputs <- ", vec(ids, basename(ard_progs))),
     "# what each report program makes",
@@ -89,8 +95,8 @@ batch_code <- function(x, date = Sys.Date()) {
                     encodeString(m, quote = "\""), collapse = ", "), ")"), ""),
                   collapse = ",\n"), ")"),
     "# kept with the code of a run",
-    paste0(".batch_support <- list(\nard = ", vec(support$ard),
-           ",\ntfl = ", vec(support$tfl), ",\nall = ", vec(support$all), ")"),
+    paste0(".batch_support <- ", vlist(ard = support$ard, tfl = support$tfl,
+                                       all = support$all)),
     "",
     runner,
     "")
