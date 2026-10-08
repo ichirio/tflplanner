@@ -42,7 +42,7 @@ The code, one element per line.
 \code{ard_setup_code()} is \code{programs/ard/ard_setup.R}, which every ARD program
 sources: the study's setup (\code{programs/study_setup.R}, see
 \code{\link[=study_setup_code]{study_setup_code()}}), cards, the statistics tflplanner computes (\code{\link[tflspec:tfl_ard_statistics]{tflspec::tfl_ard_statistics()}}, the company standards' catalog),
-the stat_fmt formats, and \code{.save_output()}, which replaces one output's
+the stat_fmt formats, and \code{save_ard()}, which replaces one output's
 rows of the study ARD and records the build (with the fingerprint of
 the study setup it was built with).  \code{ard_program_code()} is one
 output's program, \verb{programs/ard/<output_id>.R}.  \code{ard_autoexec_code()} is

@@ -23,6 +23,6 @@ analysis, the protocol ...), its running header and footer
 (\code{study_header}, \code{study_footer}), written once from \code{report_spec.xlsx}
 (\code{\link[tflspec:tfl_report_setup_code]{tflspec::tfl_report_setup_code()}}).  Each report program then says
 only its own tokens (\code{OUTPUT_LABEL}, \code{OUTPUT_TITLE} ...), and ends with
-\code{.record_report()}, which records the report as made, with the
+\code{record_report()}, which records the report as made, with the
 fingerprint of the study setup, in \code{output/tfl/report_status.csv}.
 }
