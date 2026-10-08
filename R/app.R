@@ -263,12 +263,32 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
 .rp-b-card { border: 1px solid var(--bs-border-color, #dee2e6);
   border-radius: .5rem; padding: .6rem .8rem; margin-bottom: .6rem; }
 .rp-b-card h6 { font-weight: 600; margin-bottom: .4rem; }
+/* a column-header line, compact: its row-header text beside its value
+   columns, small inputs, the style on one row */
+.rp-b-hdr .rp-hdr-grid { display: grid; gap: .5rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+.rp-b-hdr .rp-hdr-stub:empty { display: none; }
+.rp-b-hdr .rp-hdr-grid:has(> .rp-hdr-stub:empty) { grid-template-columns: minmax(0, 1fr); }
+.rp-b-hdr .shiny-input-container { width: auto; margin-bottom: .25rem; }
+.rp-b-hdr label, .rp-b-hdr .control-label { font-size: 12px; margin-bottom: 0; }
+.rp-b-hdr .shiny-options-group { font-size: 12px; line-height: 1.3; }
+.rp-b-hdr .radio-inline { margin-right: .4rem; }
+.rp-b-hdr .form-control { padding: 2px 6px; font-size: 13px; min-height: 0; }
+.rp-b-hdr .selectize-input { padding: 2px 6px; min-height: 0; font-size: 13px; }
+.rp-b-hdr .rp-hdr-style .shiny-input-container,
+.rp-b-hdr .rp-hdr-style .checkbox { margin: 0; }
+/* the code-list editors' box of every variable: its label on one line (not
+   the 300 px of an input) */
+.shiny-input-container:has(> .checkbox input[id$='_all']) { width: auto; margin-bottom: 0; }
+/* none chosen: no empty frame (not display: none -- shiny draws nothing
+   into a hidden output, so the form would never come) */
+.rp-b-card:has(> #ard_stat_ui:empty) { border: 0; padding: 0; margin: 0; }
 .rp-b-card .rank-list-container { margin: 0; }
 .rp-b-card .rank-list-item { padding: 2px 8px !important; font-size: 13px; }
 .rp-b-var { display: flex; gap: .5rem; align-items: center; }
 .rp-b-kind { font-size: 11px; color: #6b7280; }
-#studies td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 22em; }
+#studies td { white-space: nowrap; }
+#studies td:nth-child(2) { white-space: normal; }
 .rp-stat-fmt { display: grid; grid-template-columns: repeat(auto-fill,
   minmax(9.5em, 1fr)); gap: 0 .5rem; }
 .rp-stat-fmt .form-group { margin-bottom: .3rem; }
@@ -291,6 +311,52 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
 .rp-resize .dataTables_scrollBody { resize: vertical; }
 @media (max-width: 991px) {
   .rp-split { grid-template-columns: minmax(0, 1fr); } }
+"
+
+# A section of the study tab's settings: a heading that folds it.  Open or
+# closed as the viewer left it (kept in the browser), else `open`.
+.study_section <- function(name, title, ..., open = FALSE) {
+  shiny::tags$details(
+    class = "rp-sec", `data-sec` = name, open = if (open) NA,
+    shiny::tags$summary(title),
+    shiny::div(class = "rp-sec-body", ...))
+}
+
+.study_section_css <- "
+.rp-sec { border-top: 1px solid var(--bs-border-color, #dee2e6); padding: .35rem 0; }
+.rp-sec > summary { font-weight: 600; font-size: .95rem; cursor: pointer;
+  padding: .25rem 0; }
+.rp-sec > .rp-sec-body { padding-top: .4rem; }
+"
+
+.study_section_js <- "
+(function() {
+  function key(d) { return 'tflplanner.sec.' + d.getAttribute('data-sec'); }
+  function restore() {
+    document.querySelectorAll('details.rp-sec[data-sec]').forEach(function(d) {
+      var v = null;
+      try { v = localStorage.getItem(key(d)); } catch (e) {}
+      if (v === 'open') d.open = true;
+      if (v === 'closed') d.open = false;
+    });
+  }
+  document.addEventListener('toggle', function(e) {
+    var d = e.target;
+    if (!d.matches || !d.matches('details.rp-sec[data-sec]')) return;
+    try { localStorage.setItem(key(d), d.open ? 'open' : 'closed'); } catch (e2) {}
+    // a grid drawn while folded: drawn again at its size
+    if (d.open) setTimeout(function() {
+      $(d).find('.rhandsontable').each(function() {
+        var w = window.HTMLWidgets && HTMLWidgets.find('#' + this.id);
+        if (w && w.hot) w.hot.render();
+      });
+    }, 0);
+  }, true);
+  $(document).on('shiny:value', function(e) {
+    if (e.name === 'study_detail' || e.name === 'study_actions') setTimeout(restore, 0);
+  });
+  $(document).on('shiny:connected', function() { setTimeout(restore, 0); });
+})();
 "
 
 # the ARD tab's panes: side by side, stacked, or one at a time (kept in
@@ -682,6 +748,8 @@ app_ui <- function(lang = "en") {
                               "function() { $(this).closest('details.ard-fn').prop('open', false); });"))),
                             shiny::tags$script(shiny::HTML(.split_js)),
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
+                            shiny::tags$style(shiny::HTML(.study_section_css)),
+                            shiny::tags$script(shiny::HTML(.study_section_js)),
                             shiny::tags$style(shiny::HTML(.help_tip_css)),
                             shiny::tags$script(shiny::HTML(.help_tip_js)),
                             shiny::tags$script(shiny::HTML(.result_tabs_js)),
@@ -734,12 +802,12 @@ app_ui <- function(lang = "en") {
           shiny::uiOutput("study_detail"),
           shiny::conditionalPanel(
             "output.shows_open == 'yes'",
-            shiny::h6(class = "mt-2", with_tip(paste0(t("Keys and setup code"), " (study)"), t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source)."))),
-            rhandsontable::rHandsontableOutput("hot_ard_study"),
-            shiny::textAreaInput(
-              "setup",
-              t("Setup code every report runs first (library(), common data)"),
-              rows = 4, width = "100%", resize = "vertical")),
+            .study_section("keys", with_tip(paste0(t("Keys and setup code"), " (study)"), t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source).")),
+              rhandsontable::rHandsontableOutput("hot_ard_study"),
+              shiny::textAreaInput(
+                "setup",
+                t("Setup code every report runs first (library(), common data)"),
+                rows = 4, width = "100%", resize = "vertical"))),
           shiny::uiOutput("study_actions"))),
       bslib::card(
           bslib::card_header(with_tip(t("Own ARD functions"), t("Your own ARD functions: the company's (every study) and this study's (programs/ard/functions/; it wins over the company's). They are R files, edited outside the app; try one after a change."))),
@@ -901,7 +969,8 @@ app_ui <- function(lang = "en") {
           .btn("batch_run", t("Start the official run"),
                class = "btn-sm btn-primary"),
           .btn("batch_open", t("Open the batch folder"))),
-        DT::DTOutput("batches")),
+        # as tall as its rows (a fill table left a card of empty space)
+        DT::DTOutput("batches", height = "auto", fill = FALSE)),
       bslib::layout_columns(
         col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
         bslib::card(
@@ -909,7 +978,7 @@ app_ui <- function(lang = "en") {
           shiny::div(class = "rp-code", shiny::verbatimTextOutput("log"))),
         bslib::card(
           bslib::card_header(t("Definition check")),
-          DT::DTOutput("check_result")))),
+          DT::DTOutput("check_result", height = "auto", fill = FALSE)))),
 
     bslib::nav_item(shiny::uiOutput("open_study_bar")),
     bslib::nav_spacer(),
@@ -958,19 +1027,43 @@ $(document).on('shiny:value shiny:error', function(e) {
 });
 "
 
+# A table drawn while hidden has its header columns out of line: fitted
+# again when it shows.  Only the tables inside what was shown (a tab, a
+# folded part opened, an output drawn), once for all that showed at the same
+# time: fitting every table of the app on each of these (a form opens with
+# several folded parts, each a toggle) measured thousands of cells and took
+# seconds.
 .dt_adjust_js <- "
 (function() {
-  function adjust() {
-    setTimeout(function() {
-      if (window.jQuery && jQuery.fn.dataTable) {
-        jQuery.fn.dataTable.tables({visible: true, api: true}).columns.adjust();
+  var roots = [], timer = null;
+  function fit() {
+    timer = null;
+    var rs = roots; roots = [];
+    if (!(window.jQuery && jQuery.fn.dataTable)) return;
+    var all = rs.indexOf(document) >= 0;
+    jQuery.fn.dataTable.tables({visible: true}).forEach(function(tb) {
+      if (all || rs.some(function(r) { return r.contains(tb); })) {
+        jQuery(tb).DataTable().columns.adjust();
       }
-    }, 0);
+    });
   }
-  document.addEventListener('shown.bs.tab', adjust);
-  document.addEventListener('shown.bs.collapse', adjust);
-  document.addEventListener('toggle', adjust, true);
-  if (window.jQuery) jQuery(document).on('shiny:visualchange', adjust);
+  function adjust(root) {
+    if (!root) return;
+    roots.push(root);
+    if (!timer) timer = setTimeout(fit, 0);
+  }
+  function pane(e) {
+    var sel = e.target && e.target.getAttribute &&
+      (e.target.getAttribute('data-bs-target') || e.target.getAttribute('href'));
+    var p = sel && sel.charAt(0) === '#' ? document.querySelector(sel) : null;
+    return p || document;
+  }
+  document.addEventListener('shown.bs.tab', function(e) { adjust(pane(e)); });
+  document.addEventListener('shown.bs.collapse', function(e) { adjust(e.target); });
+  document.addEventListener('toggle', function(e) {
+    if (e.target && e.target.open) adjust(e.target);
+  }, true);
+  if (window.jQuery) jQuery(document).on('shiny:visualchange', function(e) { adjust(e.target); });
 })();
 "
 
@@ -992,6 +1085,30 @@ $(document).on('shiny:value', function(e) {
     $('#builder_preview').css('opacity', 1);
   }
 });
+// An analysis opened in step 2 (a click, a new one, a copy): its form, below
+// the list and often below the window's edge, is brought into view -- when
+// another analysis is drawn, not when the same one is drawn again
+(function() {
+  var last = null;
+  $(document).on('shiny:value', function(e) {
+    if (e.name !== 'ard_stat_ui') return;
+    setTimeout(function() {
+      var out = document.getElementById('ard_stat_ui');
+      var h = out && out.querySelector('[data-an]');
+      var id = h ? h.getAttribute('data-an') : null;
+      if (!id || id === last) { last = id; return; }
+      last = id;
+      var el = out;
+      // an output with no box of its own (display: contents): its frame
+      while (el && !el.getClientRects().length) el = el.parentElement;
+      if (!el || !el.offsetParent) return;
+      var top = el.getBoundingClientRect().top;
+      if (top < 0 || top > window.innerHeight * 0.55) {
+        el.scrollIntoView({behavior: 'smooth', block: 'start'});
+      }
+    }, 80);
+  });
+})();
 // The top tabs the chosen report's kind has nothing on: faded
 $(document).on('shiny:connected', function() {
   Shiny.addCustomMessageHandler('rp-idle-tabs', function(x) {
@@ -1370,12 +1487,12 @@ app_server <- function(input, output, session, start) {
     v <- data.frame(
       a = paste0(d$study_id, ifelse(d$folder, "", " \u26a0"),
                  ifelse(d$study_id %in% open_id, " \u25cf", "")),
-      b = d$title, c = d$compound, d = d$phase,
-      r = d$reports, e = substr(d$saved, 1L, 16L),
+      b = d$title, e = substr(d$saved, 1L, 16L),
       stringsAsFactors = FALSE)
     v[is.na(v)] <- ""
-    names(v) <- t(c("Study ID", "Title", "Compound", "Phase", "Reports",
-                    "Last saved"))
+    # what picks a study: its ID, its title (whole, wrapped) and when it was
+    # saved; the compound, phase and reports are in the detail on the right
+    names(v) <- t(c("Study ID", "Title", "Last saved"))
     # the study to show selected: the open one, else the last one opened
     # (none, e.g. just unregistered: nothing selected)
     sel <- if (length(last) == 1L) match(last, d$study_id) else NA_integer_
@@ -1389,7 +1506,7 @@ app_server <- function(input, output, session, start) {
         "  if (i !== undefined) Shiny.setInputValue('studies_dbl', i + 1, {priority: 'event'});",
         "});"),
       options = list(dom = if (nrow(v) > 10L) "ft" else "t", paging = FALSE,
-                     ordering = FALSE, scrollX = TRUE, scrollY = "50vh",
+                     ordering = FALSE, scrollY = "50vh",
                      scrollCollapse = TRUE))
   })
   # the study open, in the bar of the tabs on every tab (a study is chosen
@@ -1958,12 +2075,14 @@ app_server <- function(input, output, session, start) {
     shiny::tagList(
       shiny::p(shiny::strong(m$study_id), shiny::br(),
                shiny::span(class = "small text-muted", rv$study$path)),
+      .study_section("study", t("The study"), open = TRUE,
       shiny::textInput("m_title", t("Title"), v(m$title), width = "100%"),
       shiny::div(class = "d-flex gap-2",
                  shiny::textInput("m_compound", t("Compound"), v(m$compound)),
                  shiny::textInput("m_phase", t("Phase"), v(m$phase))),
       shiny::textAreaInput("m_description", t("Description"),
-                           v(m$description), width = "100%"),
+                           v(m$description), width = "100%")),
+      .study_section("every", t("Every report"), open = TRUE,
       shiny::selectInput(
         "rounding", t("Rounding"),
         stats::setNames(c("", "r", "sas"),
@@ -1990,13 +2109,12 @@ app_server <- function(input, output, session, start) {
         class = "d-flex flex-wrap gap-2 align-items-center mb-2",
         .btn("std_defaults", t("Add the company's study defaults (only what is missing)"),
              class = "btn-sm btn-outline-primary"),
-        help_tip(t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, the font, analysis sets and data catalog. Nothing already there is changed."))))
+        help_tip(t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, the font, analysis sets and data catalog. Nothing already there is changed.")))))
   })
   output$study_actions <- shiny::renderUI({
     shiny::req(shows_open())
     lay <- study_layout()
-    shiny::tagList(
-      shiny::hr(),
+    .study_section("files", t("Files"),
       shiny::tags$details(
         shiny::tags$summary(t("Folders")),
         shiny::tags$pre(class = "small", paste(
@@ -3105,11 +3223,9 @@ app_server <- function(input, output, session, start) {
   }
   output$ard_stat_ui <- shiny::renderUI({
     a <- st_rows()
+    # none chosen: nothing (the list above says a click opens one here)
     if (is.null(a) || !nrow(a) || is.null(an_pick()) || !an_pick() %in% a$analysis_id) {
-      return(shiny::tagList(
-        shiny::h6(t("Analysis")),
-        shiny::p(class = "small text-muted mb-0",
-                 t("A click on an analysis in the list above opens it here."))))
+      return(NULL)
     }
     r <- st_row()
     rv$ver
@@ -3132,7 +3248,7 @@ app_server <- function(input, output, session, start) {
       if (!tg %in% rv$p$outputs$output_id) shiny::div(
         class = "alert alert-info py-1 small",
         sprintf(t("%s is not a report yet: add it to the Report list to make its table."), tg)),
-      shiny::h6(class = "mb-1", with_tip(
+      shiny::h6(class = "mb-1", `data-an` = r$analysis_id, with_tip(
         sprintf(t("Analysis %s"), r$analysis_id),
         t("One analysis is one call: add variables to it. Make another analysis only when the statistics, the condition or the groups differ."))),
       # what to compute, first and as a heading (the analysis's most
@@ -3700,6 +3816,16 @@ app_server <- function(input, output, session, start) {
                          placeholder = st_default(r, s))
       })))
   })
+  # The analysis form's parts are outputs inside the form (ard_stat_ui).
+  # Hidden until the form is drawn, shiny resumes them only after that
+  # update, and nothing schedules another: they came seconds later, when
+  # some unrelated timer woke the session.  Made with the form instead
+  # (they draw nothing until an analysis is chosen).
+  for (o in c("ard_stat_part", "ard_an_vars", "ard_an_args", "ard_method_note",
+              "ard_fn_preset", "ard_fn_list", "ard_fn_now", "ard_an_code",
+              "ard_stat_fmts")) {
+    shiny::outputOptions(output, o, suspendWhenHidden = FALSE)
+  }
   shiny::observeEvent(input$ard_stat_apply, {
     r <- st_row()
     g <- function(x) input[[st_id(x)]]
@@ -4945,7 +5071,7 @@ app_server <- function(input, output, session, start) {
     js <- function(input, value) sprintf(
       "Shiny.setInputValue('%s', %s, {priority: 'event'});", input, value)
     shiny::tagList(
-      shiny::h6(class = "mb-1", with_tip(
+      shiny::h6(class = "mb-1", `data-an` = r$analysis_id, with_tip(
         sprintf(t("Analysis %s"), r$analysis_id),
         t("A stack: it runs the analyses inside it together (cards::ard_stack), in one call (the column headers' N too)."))),
       bslib::layout_columns(
@@ -7498,28 +7624,34 @@ app_server <- function(input, output, session, start) {
                              t("Row-header columns"),
                            if (is.na(st[[k]])) "" else st[[k]], width = "100%",
                            placeholder = t("(empty)")))
+        # one line compact: the row-header text beside the value columns,
+        # the style on one row (the same inputs as before)
         shiny::div(
           class = "rp-b-hdr border rounded p-2 mb-2",
           shiny::div(class = "d-flex align-items-center",
                      shiny::strong(class = "small me-auto", sprintf(t("Line %d"), i)),
                      act(i, "up", "\u2191"), act(i, "down", "\u2193"), act(i, "del", "\u00d7")),
-          stub_ui,
-          shiny::radioButtons(hid(l$uid, "mode"), t("Value columns"), inline = TRUE,
-                              stats::setNames(c("each", "key", "all", "none"),
-                                              c(t("the same on each column"),
-                                                t("one cell per value of a key"),
-                                                t("one cell over them all"),
-                                                t("nothing"))),
-                              selected = l$mode),
-          shiny::conditionalPanel(
-            sprintf("input['%s'] == 'key'", hid(l$uid, "mode")),
-            shiny::selectInput(hid(l$uid, "key"), t("Key"), keys,
-                               selected = if (!is.na(l$key)) l$key)),
-          shiny::textAreaInput(hid(l$uid, "text"), NULL,
-                               if (is.na(l$text)) "" else l$text, rows = 2,
-                               width = "100%"),
           shiny::div(
-            class = "d-flex flex-wrap gap-3 align-items-center small",
+            class = "rp-hdr-grid",
+            shiny::div(class = "rp-hdr-stub", stub_ui),
+            shiny::div(
+              class = "rp-hdr-val",
+              shiny::radioButtons(hid(l$uid, "mode"), t("Value columns"), inline = TRUE,
+                                  stats::setNames(c("each", "key", "all", "none"),
+                                                  c(t("the same on each column"),
+                                                    t("one cell per value of a key"),
+                                                    t("one cell over them all"),
+                                                    t("nothing"))),
+                                  selected = l$mode),
+              shiny::conditionalPanel(
+                sprintf("input['%s'] == 'key'", hid(l$uid, "mode")),
+                shiny::selectInput(hid(l$uid, "key"), t("Key"), keys,
+                                   selected = if (!is.na(l$key)) l$key)),
+              shiny::textAreaInput(hid(l$uid, "text"), NULL,
+                                   if (is.na(l$text)) "" else l$text, rows = 1,
+                                   width = "100%"))),
+          shiny::div(
+            class = "d-flex flex-wrap gap-3 align-items-center small rp-hdr-style",
             shiny::selectInput(hid(l$uid, "align"), NULL, width = "9rem",
                                stats::setNames(c("", "left", "center", "right"),
                                                c(t("(default)"), t("left"), t("center"), t("right"))),
@@ -8410,6 +8542,11 @@ app_server <- function(input, output, session, start) {
                                  scrollY = "420px"))
   })
   output$data_dim <- shiny::renderUI({
+    # nothing chosen yet: say how to see one (a blank card looked broken)
+    if (!length(input$data_files_rows_selected)) {
+      return(shiny::p(class = "small text-muted",
+                      t("Click a file in the list to see its first rows.")))
+    }
     d <- data_head()
     shiny::req(d)
     full <- attr(d, "dim_full")

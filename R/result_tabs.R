@@ -33,6 +33,17 @@ code_view <- function(output_id, lang = "en") {
 }
 
 .result_tabs_css <- "
+@media (min-width: 992px) {
+  /* the page scrolls, not the sidebar layout's main: its overflow (auto)
+     would make it the box a sticky pane sticks in, and it never scrolls */
+  .bslib-sidebar-layout > .main { overflow-x: clip; overflow-y: visible; }
+  /* beside the form, SPEC | Code | Result stays in view as the form scrolls:
+     the table as it prints beside the row being changed */
+  .rp-tabs { position: sticky; top: .5rem; align-self: start;
+    max-height: calc(100vh - 1rem); overflow-y: auto; }
+  .rp-split.rp-lay-stack > .rp-tabs, .rp-split.rp-lay-one > .rp-tabs {
+    position: static; max-height: none; overflow-y: visible; }
+}
 .rp-code-view { position: relative; }
 .rp-code-view .rp-code-tools { position: absolute; right: .5rem; top: .35rem; z-index: 2; }
 .rp-code-view pre { counter-reset: rp-line; padding-top: 1.8rem; }

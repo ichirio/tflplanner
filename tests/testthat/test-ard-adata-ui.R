@@ -332,7 +332,8 @@ test_that("2-2: an analysis written as code (custom) from what its fields make",
     # the definition takes it, and the form shows its code now
     expect_silent(suppressWarnings(.ard_spec(rv$p$ard)))
     session$setInputs(ard_ol_pick = "AGE")
-    expect_false(grepl("ard_an_as_code\"", output$ard_stat_ui$html, fixed = TRUE))
+    # (a second click closes the form: nothing, now -- no empty frame)
+    expect_false(isTRUE(grepl("ard_an_as_code\"", output$ard_stat_ui$html, fixed = TRUE)))
   })
 })
 
