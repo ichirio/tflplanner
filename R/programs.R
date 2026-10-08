@@ -345,16 +345,14 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 
   c(head,
     "",
-    "library(rtfreporter)",
-    "library(tflspec)",
     "if (!file.exists(\"study.yml\")) {",
     "  stop(\"Run this program from the study folder: open the study's .Rproj\",",
     "       \" or setwd() to the folder that holds study.yml.\")",
     "}",
-    if (.uses_report_setup(x)) c(
-      "# the study's header, footer and tokens, every report's",
-      sprintf("source(%s)", .r_string(file.path(lay[["programs_tfl"]],
-                                                 .report_setup_file)))),
+    "# the study's setup (packages, folders, id) and its header, footer and",
+    "# tokens, every report's",
+    sprintf("source(%s)", .r_string(file.path(lay[["programs_tfl"]],
+                                               .report_setup_file))),
     "",
     paste("output_id <-", .r_string(output_id)),
     "",
@@ -400,18 +398,20 @@ program_code <- function(x, output_id, date = Sys.Date()) {
                              content = if (table) "plan" else "content",
                              setup = .uses_report_setup(x)),
     sprintf("generate_rtfreport(doc, %s, overwrite = TRUE)",
-            .r_string(tflspec::tfl_report_path(sp, output_id)))),
+            .r_string(tflspec::tfl_report_path(sp, output_id))),
+    ".record_report(output_id)"),
     error = function(e) sprintf(
       "stop(%s)", .r_string(paste0("tflplanner: the definition of ",
                                    output_id, " does not hold: ",
                                    conditionMessage(e)))))
 }
 
-# The study's tokens, header and footer are written once, in
-# programs/tfl/report_setup.R, when the study has tokens of its own (its
-# default rows: COMPANY, STUDY_ID ...) or a font or size for every report --
-# a new study does; one that has neither writes each report's header in its
-# program, as before
+# programs/tfl/report_setup.R is always written, and every report program
+# sources it (it sources programs/study_setup.R).  The study's tokens,
+# header and footer are written once in it when the study has tokens of its
+# own (its default rows: COMPANY, STUDY_ID ...) or a font or size for every
+# report -- a new study does; one that has neither writes each report's
+# header in its program, as before
 .uses_report_setup <- function(x) {
   d <- x$sheets$tokens
   (!is.null(d) && any(is.na(d$output_id))) ||
@@ -422,12 +422,15 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 #' The study's setup of its report programs
 #'
 #' `programs/tfl/report_setup.R`, which every report program sources: the
+#' study's setup (`programs/study_setup.R`, see [study_setup_code()]), the
 #' reports' font and size (`options(rtfreporter.font = )`), the
 #' study's tokens (`options(rtfreporter.tokens = )`: the company, the
 #' analysis, the protocol ...), its running header and footer
 #' (`study_header`, `study_footer`), written once from `report_spec.xlsx`
 #' ([tflspec::tfl_report_setup_code()]).  Each report program then says
-#' only its own tokens (`OUTPUT_LABEL`, `OUTPUT_TITLE` ...).
+#' only its own tokens (`OUTPUT_LABEL`, `OUTPUT_TITLE` ...), and ends with
+#' `.record_report()`, which records the report as made, with the
+#' fingerprint of the study setup, in `output/tfl/report_status.csv`.
 #'
 #' @param x A `tflplanner`.
 #' @param date The date stamped in the banner.
@@ -446,10 +449,52 @@ report_setup_code <- function(x, date = Sys.Date()) {
       "Written from spec/report_spec.xlsx: change them there (the study tab),",
       "then generate the programs again."),
     "",
-    "library(rtfreporter)",
+    "# the study's setup: the company's, the study's folders and id, your own",
+    .source_study_setup(),
     "",
-    tflspec::tfl_report_setup_code(sp),
+    local({
+      own <- tflspec::tfl_report_setup_code(sp)
+      if (length(own)) c(own, "")
+    }),
+    .record_report_fun(),
     "")
+}
+
+# The small function a report program ends with, written in
+# report_setup.R: what was made, and with which study setup, into
+# output/tfl/report_status.csv (tflplanner reads it: a report made with
+# another programs/study_setup.R than the one there now is outdated).
+.report_status_name <- "report_status.csv"
+.record_report_fun <- function() {
+  sf <- file.path(study_layout()[["tfl"]], .report_status_name)
+  c("# what was made, and with which study setup (tflplanner reads it)",
+    ".record_report <- function(output_id) {",
+    paste0("  sf <- ", .r_string(sf)),
+    "  row <- data.frame(output_id = output_id,",
+    "                    built = format(Sys.time(), \"%Y-%m-%d %H:%M:%S\"),",
+    paste0("                    setup = ", .setup_hash_code(), ","),
+    "                    stringsAsFactors = FALSE)",
+    "  dir.create(dirname(sf), recursive = TRUE, showWarnings = FALSE)",
+    "  st <- if (file.exists(sf)) utils::read.csv(sf, colClasses = \"character\")",
+    "  if (!is.null(st) && nrow(st)) {",
+    "    for (k in setdiff(names(row), names(st))) st[[k]] <- \"\"",
+    "    row <- rbind(st[st$output_id != output_id, names(row), drop = FALSE], row)",
+    "  }",
+    "  utils::write.csv(row, sf, row.names = FALSE)",
+    "  invisible(output_id)",
+    "}")
+}
+
+# the study setup each report was made with, as its program recorded it
+# (NA: not recorded -- made before it was, or by a program of its own)
+.report_setup_recorded <- function(root, output_id) {
+  f <- file.path(root, study_layout()[["tfl"]], .report_status_name)
+  st <- if (file.exists(f)) tryCatch(
+    utils::read.csv(f, colClasses = "character"), error = function(e) NULL)
+  if (is.null(st) || !all(c("output_id", "setup") %in% names(st))) {
+    return(rep(NA_character_, length(output_id)))
+  }
+  st$setup[match(output_id, st$output_id)]
 }
 
 #' The program that runs every report program

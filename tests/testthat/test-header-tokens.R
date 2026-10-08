@@ -44,11 +44,12 @@ test_that("a new study's header is the package's, its words tokens", {
   expect_match(prog, "header = study_header", fixed = TRUE)
   expect_match(prog, "OUTPUT_LABEL = \"Table 14.1.1\"", fixed = TRUE)
   expect_false(grepl("ABC-1", sub("^.*output_id <-", "", prog), fixed = TRUE))
-  # a study with no tokens of its own: no setup, programs as before
+  # a study with no tokens of its own: its header in each program, and
+  # report_setup.R sourced all the same (the study setup, #268)
   y <- add_output(new_planner(), "T-1", type = "table")
   expect_false(.uses_report_setup(y))
-  expect_false(grepl("report_setup", paste(program_code(y, "T-1"), collapse = "\n"),
-                     fixed = TRUE))
+  expect_true(grepl("report_setup", paste(program_code(y, "T-1"), collapse = "\n"),
+                    fixed = TRUE))
 })
 
 test_that("a TOC gives a report its own tokens, not the title lines the header has", {

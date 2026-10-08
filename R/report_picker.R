@@ -35,13 +35,16 @@
 # Each report's run, from its files only (the list's mark, for 200 reports
 # at a glance): "error" (its last preview's log failed after its RTF), "not
 # run" (no RTF), "outdated" (its program, or a file it sources, changed
-# after the RTF), "ok".  study_status() says more (a program edited by
-# hand, a definition not saved yet) by writing every program again, which
-# takes a while for a big study.
+# after the RTF, or it was made with another study setup), "ok".
+# study_status() says more (a program edited by hand, a definition not
+# saved yet) by writing every program again, which takes a while for a big
+# study.
 .report_run_light <- function(study) {
   p <- study$planner
   lay <- study_layout()
   ids <- p$outputs$output_id
+  setup <- .report_setup_recorded(study$path, ids)
+  now <- .study_setup_hash(study$path)
   st <- vapply(ids, function(id) {
     info <- report_info(p, id)
     prog <- file.path(study$path, lay[["programs_tfl"]], info$program)
@@ -52,7 +55,8 @@
     failed <- !is.na(t_log) && (is.na(t_rtf) || t_log > t_rtf) &&
       any(grepl("^Error|Execution halted", readLines(log, warn = FALSE, encoding = "UTF-8")))
     if (failed) "error" else if (is.na(t_rtf)) "not run" else
-      if (isTRUE(.program_time(prog, study$path) > t_rtf)) "outdated" else "ok"
+      if (isTRUE(.program_time(prog, study$path) > t_rtf) ||
+          .setup_changed(setup[match(id, ids)], study$path, now)) "outdated" else "ok"
   }, "")
   data.frame(output_id = ids, status = unname(st), stringsAsFactors = FALSE)
 }
