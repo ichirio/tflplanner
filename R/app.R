@@ -2511,7 +2511,6 @@ app_server <- function(input, output, session, start) {
                             has_study = has_study, done = done)
   }
   cl_21 <- cl_dialog("cl21")
-  cl_22 <- cl_dialog("cl22")
   # step 3: the builder shows the code lists' text, drawn again
   cl_3 <- cl_dialog("cl3", done = function() rv$bver <- rv$bver + 1L)
   shiny::observeEvent(input$cl21_open, {
@@ -2523,11 +2522,6 @@ app_server <- function(input, output, session, start) {
                  if (nzchar(nm)) sprintf(t("Levels and order: the columns of %s"), nm) else
                    t("Levels and order: the columns of this analysis data")
                })
-  })
-  shiny::observeEvent(input$cl22_open, {
-    shiny::req(has_study(), current())
-    cl_22$open(c(input[[st_id("by")]], input[[st_id("vars")]], input[[st_id("strata")]]),
-               t("Levels and order: this analysis's groups and variables"))
   })
   shiny::observeEvent(input$cl3_open, {
     shiny::req(has_study(), current())
@@ -3331,7 +3325,7 @@ app_server <- function(input, output, session, start) {
       shiny::uiOutput("ard_method_note"),
       bslib::layout_columns(
         col_widths = c(4, 8),
-        shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
+        shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
                          width = "100%")),
       if (!inside) shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 2-1, or a dataset \u00d7 analysis set. The name is the one the program gives it.")),
@@ -3721,11 +3715,11 @@ app_server <- function(input, output, session, start) {
     sch <- first(sch, strata_now)
     shiny::tagList(
       if (!in_stack) shiny::selectizeInput(
-        st_id("by"), with_tip(argl("Groups (the columns)", "by"), t("The table's columns (e.g. TRT01A). A combination with no records is shown, with 0.")),
+        st_id("by"), with_tip(argl("Grouping variables", "by"), t("The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step 3's. A combination with no records is shown, with 0.")),
         bch, by_now, multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
       shiny::selectizeInput(
-        st_id("vars"), with_tip(argl("Variables (the rows)", "variables"),
+        st_id("vars"), with_tip(argl("Analysis variables", "variables"),
                                 arg_hint(hcall, "variables")), vch, var_now,
         multiple = TRUE, width = "100%",
         options = list(plugins = list("remove_button", "drag_drop"))),
@@ -3744,8 +3738,6 @@ app_server <- function(input, output, session, start) {
                                       st_arg_default(r, "denominator")),
                                  t("What a % is of. The analysis set: its subjects in the group (the column headers' N; an AE table: the SAF's N per arm). Within a row: the total of the row (the variable's level). Within a column: the total of the group. Of the whole table: all of it. The method's default: blank.")),
           den_choices(den_now), den_now, width = "100%"))),
-      .btn("cl22_open", t("Levels and order (code lists)..."),
-           class = "btn-sm btn-link py-0 px-0 mb-2"),
       if (is.null(d)) shiny::p(
         class = "small text-muted",
         t("The data of this analysis cannot be read (no file in the data catalog): the choices are the row's own.")))
@@ -4566,8 +4558,12 @@ app_server <- function(input, output, session, start) {
         class = "mb-2", open = if (more) NA,
         shiny::tags$summary(class = "small", t("Columns taken, made, kept; one row per ...")),
         add_ui,
-        .btn("cl21_open", t("Levels and order (code lists)..."),
-             class = "btn-sm btn-link py-0 px-0 mb-1"),
+        shiny::div(
+          class = "mb-1",
+          .btn("cl21_open", t("Levels and order (code lists)..."),
+               class = "btn-sm btn-link py-0 px-0"),
+          shiny::span(class = "small text-muted ms-1",
+                      t("the levels and order of this analysis data's columns (for the ARD and the table both)"))),
         .derive_editor_ui(t, with_tip(argl("Columns made", "derive"),
                                       t("The columns this data makes: split by conditions, cut a number into groups, days between two dates, or any R. The sheet keeps each as NAME = R (derive, | between them); one the form cannot draw is kept as written.")),
                           blank_na(r$derive)),
@@ -5123,7 +5119,7 @@ app_server <- function(input, output, session, start) {
         t("A stack: it runs the analyses inside it together (cards::ard_stack), in one call (the column headers' N too)."))),
       bslib::layout_columns(
         col_widths = c(4, 8),
-        shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
+        shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label), width = "100%")),
       shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 2-1, or a dataset \u00d7 analysis set. The name is the one the program gives it.")),
                          data_choices(r),
@@ -5136,7 +5132,7 @@ app_server <- function(input, output, session, start) {
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
                          placeholder = "AESER == \"Y\"")),
       shiny::selectizeInput(
-        st_id("by"), argl("Groups (the columns)", ".by"),
+        st_id("by"), argl("Grouping variables", ".by"),
         an_by_choices(r, .split_bar(r$by)), .split_bar(r$by), multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
       shiny::h6(class = "small fw-bold mt-1", t("What it adds to the analyses inside")),

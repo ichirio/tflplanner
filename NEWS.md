@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **Step 2-2 says what its fields are** (#280).  "Analysis ID (a set of
+  analyses)" (several variables: one row per variable under the same ID in
+  the ARD), "Grouping variables (by)" (whether they are the table's
+  columns, rows or pages is step 3's) and "Analysis variables
+  (variables)".  The levels and order are set in 2-1, for the analysis
+  data's columns (the ARD and the table both), and in step 1; 2-2 has no
+  button of its own for them.
+
 - **Step 3 and the figure designer, faster** (#273).  Step 3's table as it
   prints is made again only when what it is made from changes (the
   report's rows of the table sheets, the rounding, its ARD rows): back to

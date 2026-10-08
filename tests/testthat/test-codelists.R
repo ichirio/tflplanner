@@ -181,10 +181,8 @@ test_that("2-1, 2-2 and step 3 open the report's code lists in a dialog", {
     d <- sheet_rows(rv$p, "codelists", "T1")
     expect_identical(d$value[d$variable == "AESEV"], c("MILD", "MODERATE", "SEVERE"))
     session$setInputs(cl21_done = 1)
-    # 2-2 and step 3: the same report's rows
-    session$setInputs(cl22_open = 1)
-    expect_false(is.null(output$cl22_hot))
-    session$setInputs(cl22_done = 1)
+    # step 3: the same report's rows (2-2 has no button: 2-1 and step 1 set
+    # the levels)
     session$setInputs(cl3_open = 1)
     # the variables the report uses (OLD its data makes), not COUNTRY
     expect_true(grepl("OLD", paste(output$cl3_hot, collapse = ""), fixed = TRUE))
