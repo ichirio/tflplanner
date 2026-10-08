@@ -1090,6 +1090,20 @@ $(document).on('shiny:value', function(e) {
     $('#builder_preview').css('opacity', 1);
   }
 });
+// Outputs shown just now (a part drawn, a panel opened): shiny resumes a
+// hidden output after the update that shows it and schedules none, so it
+// waited for some unrelated timer (seconds).  A word to the server once
+// they are bound starts that update.
+(function() {
+  var kick = null;
+  $(document).on('shiny:bound', function(e) {
+    if (e.bindingType !== 'output') return;
+    clearTimeout(kick);
+    kick = setTimeout(function() {
+      Shiny.setInputValue('rp_kick', Date.now(), {priority: 'event'});
+    }, 30);
+  });
+})();
 // An analysis opened in step 2 (a click, a new one, a copy): its form, below
 // the list and often below the window's edge, is brought into view -- when
 // another analysis is drawn, not when the same one is drawn again
@@ -7728,7 +7742,7 @@ app_server <- function(input, output, session, start) {
     output[[paste0("b", n, "_hdr_tok")]] <- shiny::renderUI({
       keys <- input[[bid("key")]] %||% bform$st$key
       toks <- header_token_choices(keys, input[[bid("hdr_n")]] %||% bform$hdr_n)
-      pv <- tryCatch(preview_d(), error = function(e) NULL)
+      pv <- tryCatch(preview_now(), error = function(e) NULL)
       toks <- header_token_labels(toks, attr(pv$pages, "header_tokens"))
       chip <- function(k) shiny::tags$button(
         type = "button", class = "btn btn-sm btn-outline-secondary py-0 me-1 mb-1",
@@ -7886,16 +7900,40 @@ app_server <- function(input, output, session, start) {
         sprintf(t("The ARD has no %s: those cells stay empty. Add them to the ARD code."),
                 paste(miss, collapse = ", "))))
   }))
+  # The table as it will print.  Made again only when what it is made from
+  # changes -- the report's rows of the table sheets, the study's rounding,
+  # its ARD rows -- so going back to a report, or a change elsewhere in the
+  # definition, does not make it again (it took about half a second).
+  pv_cache <- new.env(parent = emptyenv())
+  preview_cached <- function(p, id, d) {
+    from <- list(lapply(p$sheets[table_sheets()], function(s)
+      s[is.na(s$output_id) | s$output_id == id, , drop = FALSE]),
+      p$study["rounding"], d)
+    hit <- pv_cache[[id]]
+    if (!is.null(hit) && identical(hit$from, from)) return(hit$pages)
+    pages <- preview_pages(p, id, d)
+    pv_cache[[id]] <- list(from = from, pages = pages)
+    pages
+  }
   preview <- shiny::reactive({
     id <- current()
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
     rv$ard_ver
     d <- ard_data(rv$study, id)
-    if (is.null(d)) return(list(error = t("No data to show yet: Preview this table's ARD.")))
-    tryCatch(list(pages = preview_pages(rv$p, id, d)),
-             error = function(e) list(error = conditionMessage(e)))
+    if (is.null(d)) return(list(id = id, error = t("No data to show yet: Preview this table's ARD.")))
+    tryCatch(list(id = id, pages = preview_cached(rv$p, id, d)),
+             error = function(e) list(id = id, error = conditionMessage(e)))
   })
+  # a change typed in the builder: drawn once the typing stops; another
+  # report: drawn at once (the waiting is for the typing, and a debounced
+  # value would still be the report before)
   preview_d <- shiny::debounce(preview, 300)
+  preview_now <- shiny::reactive({
+    id <- current()
+    pv <- preview_d()
+    if (!identical(pv$id, id)) pv <- preview()
+    pv
+  })
   # the first page as the report's rows and the study defaults make it:
   # header, titles, the body's start, footnotes, footer
   shiny::observeEvent(input$page_full, {
@@ -7916,7 +7954,7 @@ app_server <- function(input, output, session, start) {
     p <- rv$p
     info <- report_info(p, id)
     body <- if (identical(info$type, "table")) {
-      pv <- tryCatch(preview_d(), error = function(e) NULL)
+      pv <- tryCatch(preview_now(), error = function(e) NULL)
       if (!is.null(pv$pages)) preview_html(pv$pages[1L], max_pages = 1L) else
         shiny::div(class = "text-muted small", pv$error %||% t("(the table)"))
     } else {
@@ -7933,14 +7971,14 @@ app_server <- function(input, output, session, start) {
       return(shiny::div(class = "small text-muted",
                         t("Nothing yet: the button above makes this table's ARD.")))
     }
-    pv <- preview_d()
+    pv <- preview_now()
     if (!is.null(pv$error)) {
       return(shiny::div(class = "small text-muted", pv$error))
     }
     preview_html(pv$pages)
   })
   output$builder_pages <- shiny::renderUI({
-    pv <- preview_d()
+    pv <- preview_now()
     if (is.null(pv$pages)) return(NULL)
     shiny::span(class = "small text-muted",
                 sprintf(t("%d pages"), length(pv$pages)))
