@@ -165,7 +165,7 @@ stack_group <- function(x, output_id, ids, parent = NULL, label = NA_character_)
   p$label <- label
   p$method <- .stack_fn
   for (cn in .stack_own) p[[cn]] <- first[[cn]]
-  # the report counts the subjects per group already (BIGN): the stack
+  # the report counts the subjects per group already (GROUPN): the stack
   # does not count them again -- the column headers would read two N
   if (length(.stack_group_n(a, first))) p$args <- ".by_stats = FALSE"
   if (!"parent" %in% names(a)) a$parent <- NA_character_
@@ -183,7 +183,7 @@ stack_group <- function(x, output_id, ids, parent = NULL, label = NA_character_)
 }
 
 # The report's analyses that count the subjects per group of `r` (its by
-# variable counted, by nothing, on the same data): BIGN
+# variable counted, by nothing, on the same data): GROUPN
 .stack_group_n <- function(a, r) {
   by <- .split_bar(r$by)
   if (!length(by)) return(integer())
@@ -206,14 +206,14 @@ stack_group <- function(x, output_id, ids, parent = NULL, label = NA_character_)
 }
 
 # The rows that keep what a stack's parent gave the table besides its
-# analyses: the subjects per group (`BIGN`: the group counted) and the
+# analyses: the subjects per group (`GROUPN`: the group counted) and the
 # total N (`TOTAL`), when its switches gave them
 .stack_n_rows <- function(a, p) {
   f <- .stack_flags_of(p$args)$flags
   out <- a[0L, , drop = FALSE]
   # what the report counts already is not made again (two N break the
   # column headers)
-  has_bign <- length(.stack_group_n(a, p)) > 0L
+  has_groupn <- length(.stack_group_n(a, p)) > 0L
   has_total <- any(.method_kw(a$method) %in% "total_n" & .is_blank_v(a$parent) &
                      .same_v(a$dataset, p$dataset) & .same_v(a$population_id, p$population_id))
   add <- function(id, method, variables, by) {
@@ -226,12 +226,12 @@ stack_group <- function(x, output_id, ids, parent = NULL, label = NA_character_)
     r$where <- p$where
     r$variables <- variables
     r$by <- by
-    r$label <- if (id == "BIGN") "Subjects per group" else "Total N"
+    r$label <- if (id == "GROUPN") "Subjects per group" else "Total N"
     out <<- rbind(out, r)
   }
   by <- .split_bar(p$by)
-  if (isTRUE(f[[".by_stats"]]) && length(by) && !has_bign) {
-    add("BIGN", "cards::ard_tabulate", paste(by, collapse = " | "), NA)
+  if (isTRUE(f[[".by_stats"]]) && length(by) && !has_groupn) {
+    add("GROUPN", "cards::ard_tabulate", paste(by, collapse = " | "), NA)
   }
   if (isTRUE(f[[".total_n"]]) && !has_total) add("TOTAL", "cards::ard_total_n", NA, NA)
   out
@@ -244,7 +244,7 @@ stack_group <- function(x, output_id, ids, parent = NULL, label = NA_character_)
 }
 
 # A report's analyses that count the subjects per group twice: for each
-# group, the rows counting it (BIGN: the group counted by nothing; a stack
+# group, the rows counting it (GROUPN: the group counted by nothing; a stack
 # by it that counts them, `.by_stats`), when there are two or more on the
 # same data -- a column header's N reads two and shows none.  One row a
 # report's analysis: `analysis_id`, `with` (the others).

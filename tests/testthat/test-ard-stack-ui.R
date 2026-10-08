@@ -50,15 +50,15 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     session$setInputs(ard_stack_add = 1)
     a <- ard_rows(rv$p, "analyses", "T1")
     expect_identical(a$parent[nrow(a)], "STACK")
-    # ungrouped, keeping the N: BIGN back
+    # ungrouped, keeping the N: GROUPN back
     session$setInputs(ard_ol_pick = "STACK")
     session$setInputs(ard_stack_ungroup = 1)
     session$setInputs(ard_stack_keep_n = TRUE, ard_stack_ungroup_ok = 1)
     a <- ard_rows(rv$p, "analyses", "T1")
     expect_false("STACK" %in% a$analysis_id)
-    expect_true("BIGN" %in% a$analysis_id)
+    expect_true("GROUPN" %in% a$analysis_id)
     expect_identical(a$by[a$analysis_id == "CONT"], "TRT01A")
-    # T2 one by one: grouped again from CONT's form, BIGN left as it is
+    # T2 one by one: grouped again from CONT's form, GROUPN left as it is
     session$setInputs(target = "T2")
     session$setInputs(ard_ol_pick = "CONT")
     expect_match(output$ard_stat_ui$html, "ard_stack_group")
@@ -66,26 +66,26 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     session$setInputs(ard_stack_pick = c("CONT", "CAT"), ard_stack_label = "Demog",
                       ard_stack_group_ok = 1)
     a <- ard_rows(rv$p, "analyses", "T2")
-    expect_identical(a$analysis_id, c("BIGN", "STACK", "CONT", "CAT"))
+    expect_identical(a$analysis_id, c("GROUPN", "STACK", "CONT", "CAT"))
     expect_identical(a$args[a$analysis_id == "STACK"], ".by_stats = FALSE")
     # the stack's form says why it does not count the subjects per group;
     # ticked, it says they would be counted twice, and the outline marks it
     # (the new stack is the one open; a click on it again would close it)
-    expect_match(output$ard_stat_ui$html, "BIGN counts them now", fixed = TRUE)
+    expect_match(output$ard_stat_ui$html, "GROUPN counts them now", fixed = TRUE)
     n <- session$userData$st_env$n
     do.call(session$setInputs, stats::setNames(list(TRUE), paste0("st", n, "_fl.by_stats")))
-    expect_match(output$ard_stack_n_note$html, "so does BIGN", fixed = TRUE)
+    expect_match(output$ard_stack_n_note$html, "so does GROUPN", fixed = TRUE)
     session$setInputs(ard_stat_apply = 3)
-    expect_match(output$ard_outline$html, "so does BIGN", fixed = TRUE)
-    # BIGN deleted from the note: the stack counts them, nothing twice
+    expect_match(output$ard_outline$html, "so does GROUPN", fixed = TRUE)
+    # GROUPN deleted from the note: the stack counts them, nothing twice
     session$setInputs(ard_stack_del_bign = 1)
     a <- ard_rows(rv$p, "analyses", "T2")
-    expect_false("BIGN" %in% a$analysis_id)
+    expect_false("GROUPN" %in% a$analysis_id)
     expect_true(is.na(a$args[a$analysis_id == "STACK"]))
     expect_identical(nrow(stack_n_twice(a)), 0L)
     # the code of one inside: the stack's one call
     session$setInputs(ard_ol_pick = "CAT")
-    expect_match(output$ard_an_code, "cards::ard_stack(", fixed = TRUE)
+    expect_match(output$ard_an_code, "ard_stack(", fixed = TRUE)
     # the stack deleted, its analyses kept
     session$setInputs(ard_ol_pick = "STACK")
     session$setInputs(ard_stack_delete = 1)

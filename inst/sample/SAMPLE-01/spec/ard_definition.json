@@ -31,9 +31,9 @@
   },
   "analyses": {
     "output_id": ["T-14-1-1", "T-14-1-1", "T-14-1-1", "T-14-1-1S", "T-14-1-1S", "T-14-1-1S", "T-14-1-2", "T-14-1-2", "T-14-2-1", "T-14-2-1", "T-14-2-2", "T-14-2-2", "T-14-3-1"],
-    "analysis_id": ["BIGN", "CONT", "CAT", "STACK", "CONT", "CAT", "BIGN", "DISP", "BIGN", "SYSBP", "BIGN", "KM", "TEAE"],
+    "analysis_id": ["GROUPN", "CONT", "CAT", "STACK", "CONT", "CAT", "GROUPN", "DISP", "GROUPN", "SYSBP", "GROUPN", "KM", "TEAE"],
     "parent": [null, null, null, null, "STACK", "STACK", null, null, null, null, null, null, null],
-    "label": ["Subjects per arm", "Continuous", "Categorical", "Demographics, run together", "Continuous", "Categorical", null, "Status at end of study", null, "SYSBP at Week 24", null, "Kaplan-Meier estimates", "TEAE by SOC / PT"],
+    "label": ["Subjects per group", "Continuous", "Categorical", "Demographics, run together", "Continuous", "Categorical", null, "Status at end of study", null, "SYSBP at Week 24", null, "Kaplan-Meier estimates", "TEAE by SOC / PT"],
     "method": ["categorical", "continuous", "categorical", "cards::ard_stack", "continuous", "categorical", "categorical", "categorical", "categorical", "continuous", "categorical", "custom", "hierarchical"],
     "data": ["adsl_saf", "adsl_saf", "adsl_saf", "adsl_saf", null, null, "adsl_saf", "adsl_saf", "adsl_saf", "advs_w24", "adsl_saf", "adtte_ttde", "adae_saf"],
     "dataset": [null, null, null, null, null, null, null, null, null, null, null, null, null],
