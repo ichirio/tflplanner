@@ -1,5 +1,19 @@
 # tflplanner (development version)
 
+- **Step 3 and the figure designer, faster** (#273).  Step 3's table as it
+  prints is made again only when what it is made from changes (the
+  report's rows of the table sheets, the rounding, its ARD rows): back to
+  a report, its table is there in 0.3 s (from 1.7 to 2.4).  Another report
+  shows its table at once (the short wait is for typing).  The figure
+  designer shows its form and code first and the figure when it is drawn
+  ("Drawing ..." meanwhile; the whole page waited for it), and keeps a
+  figure's drawing for the same design, definition and data files: its
+  form in about a second (from 4.4 to 5.7 s), back to a figure in under
+  one.  And everywhere: a part shown just now (a panel, a form) no longer
+  waits seconds for an unrelated timer before it is drawn (shiny resumes a
+  hidden output after the update that shows it and schedules no other; the
+  page now asks for that update).
+
 - **Step 2: an analysis opens in under a second** (#272).  Its function
   list (a hundred rows, folded until "Change") is made when it is opened,
   not with every form; the functions an analysis can name are made once a

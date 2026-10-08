@@ -735,6 +735,11 @@
   output$pd_form <- shiny::renderUI({
     form_ver()
     fig_id()
+    form_on_page$id <- shiny::isolate(current())
+    if (isTRUE(form_on_page$waiting)) {
+      form_on_page$waiting <- FALSE
+      session$onFlushed(draw_after, once = TRUE)
+    }
     d <- shiny::isolate(design())
     shiny::req(d)
     s <- shiny::isolate(sel())
@@ -913,23 +918,50 @@
   # every change at once (it takes a few ms).
   pv <- shiny::reactiveVal(NULL)
   drawn <- shiny::reactiveVal(NULL)          # the design the picture shows
+  fig_drawn <- new.env(parent = emptyenv())  # each figure's last drawing
   on_tab <- shiny::reactive(identical(page(), "designer"))
   draw <- function() {
     id <- shiny::isolate(current())
     d <- shiny::isolate(design())
-    if (is.null(id) || is.null(d) || is.null(rv$study)) {
+    if (is.null(id) || is.null(d) || is.null(shiny::isolate(rv$study))) {
       pv(NULL)
       drawn(NULL)
       return()
     }
-    s <- rv$study
+    s <- shiny::isolate(rv$study)
     s$planner <- shiny::isolate(rv$p)
-    r <- tryCatch(preview_figure(s, id, d, max_px = 1400), error = function(e)
-      list(png = NULL, problems = NULL, warnings = character(),
-           error = conditionMessage(e), code = NULL))
+    # drawn already from the same design, definition and data files (going
+    # back to a figure): that drawing (a drawing takes a second or more)
+    data_at <- file.info(list.files(file.path(s$path, "data"), recursive = TRUE,
+                                    full.names = TRUE))$mtime
+    key <- list(.fig_norm(unclass(d)), s$planner, data_at)
+    hit <- fig_drawn[[id]]
+    if (!is.null(hit) && identical(hit$key, key) &&
+        (is.null(hit$r$png) || file.exists(hit$r$png))) {
+      r <- hit$r
+    } else {
+      r <- tryCatch(preview_figure(s, id, d, max_px = 1400), error = function(e)
+        list(png = NULL, problems = NULL, warnings = character(),
+             error = conditionMessage(e), code = NULL))
+      fig_drawn[[id]] <- list(key = key, r = r)
+    }
     r$id <- id
     pv(r)
     drawn(list(id = id, design = .fig_norm(unclass(d))))
+    drawing(FALSE)
+  }
+  # the form, the code and the checks first: the figure is drawn after the
+  # update that shows them (a drawing takes a second or more, and the whole
+  # page waited for it), "Drawing ..." in its place meanwhile
+  drawing <- shiny::reactiveVal(FALSE)
+  form_on_page <- new.env(parent = emptyenv())   # the figure whose form was sent
+  draw_after <- function() later::later(function() draw(), 0)
+  draw_soon <- function() {
+    drawing(TRUE)
+    # its form on the page already (a change typed): drawn now; else once
+    # the update that sends the form is done (pd_form)
+    if (identical(form_on_page$id, shiny::isolate(current()))) draw_after() else
+      form_on_page$waiting <- TRUE
   }
   stale <- shiny::reactive({
     d <- design()
@@ -944,11 +976,16 @@
     auto <- !identical(input$pd_auto, FALSE)
     if (on_tab() && shiny::isolate(stale()) &&
         (auto || !identical(shiny::isolate(drawn()$id), current()))) {
-      draw()
+      draw_soon()
     }
   })
   shiny::observeEvent(input$pd_redraw, draw())
   output$pd_state <- shiny::renderUI({
+    if (drawing()) {
+      return(shiny::div(class = "small text-muted mb-2",
+                        shiny::span(class = "spinner-border spinner-border-sm me-2"),
+                        t("Drawing ...")))
+    }
     if (!stale() || is.null(pv())) return(NULL)
     shiny::div(class = "alert alert-warning py-1 px-2 small mb-2",
                t("The design has changed since this drawing: press Redraw."))
