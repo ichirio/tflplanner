@@ -10,7 +10,8 @@
   the status still records the study setup each ARD was built with.
 - **The subjects per group are GROUPN** (#281), which clinical reporting
   calls big N (was `BIGN`; "Subjects per group", was "Subjects per arm"):
-  the first table, a stack's switches, `add_group_n()`, the sample studies.
+  the first table, a stack's switches and the ARD tab's messages,
+  `add_group_n()`, the sample studies.
 - **The table builder's column header as a grid** (#278).  The header's
   lines stand under the table's own columns (the row-header columns, then
   one per value of the column variable), each line the same on each column,

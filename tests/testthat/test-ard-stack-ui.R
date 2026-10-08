@@ -78,7 +78,7 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     session$setInputs(ard_stat_apply = 3)
     expect_match(output$ard_outline$html, "so does GROUPN", fixed = TRUE)
     # GROUPN deleted from the note: the stack counts them, nothing twice
-    session$setInputs(ard_stack_del_bign = 1)
+    session$setInputs(ard_stack_del_groupn = 1)
     a <- ard_rows(rv$p, "analyses", "T2")
     expect_false("GROUPN" %in% a$analysis_id)
     expect_true(is.na(a$args[a$analysis_id == "STACK"]))

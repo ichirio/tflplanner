@@ -2869,7 +2869,7 @@ app_server <- function(input, output, session, start) {
     out_id <- paste0("hot_ard_", sh)
     by_report <- sh == "analyses"
     # the analyses of the report chosen, or of every report (an analysis
-    # several reports use, BIGN, seen at once): then the grid is the whole
+    # several reports use, GROUPN, seen at once): then the grid is the whole
     # sheet with its output_id column, edited as such
     tg_of <- function() if (by_report && !isTRUE(input$ard_all)) target() else ""
     key <- shiny::reactive({
@@ -5118,8 +5118,8 @@ app_server <- function(input, output, session, start) {
     a <- shiny::isolate(st_rows())
     kids <- a[.stack_kids(a, r$analysis_id), , drop = FALSE]
     fl <- .stack_flags_of(r$args)
-    # the report's own rows that count the subjects per group (BIGN)
-    bign <- a$analysis_id[.stack_group_n(a, r)]
+    # the report's own rows that count the subjects per group (GROUPN)
+    groupn <- a$analysis_id[.stack_group_n(a, r)]
     js <- function(input, value) sprintf(
       "Shiny.setInputValue('%s', %s, {priority: 'event'});", input, value)
     shiny::tagList(
@@ -5148,8 +5148,8 @@ app_server <- function(input, output, session, start) {
       lapply(names(.stack_flag_words), function(k) shiny::checkboxInput(
         st_id(paste0("fl", k)),
         paste0(t(.stack_flag_words[[k]]), " (", k, ")",
-               if (k == ".by_stats" && length(bign)) sprintf(t(" -- %s counts them now"),
-                                                             paste(bign, collapse = ", ")) else ""),
+               if (k == ".by_stats" && length(groupn)) sprintf(t(" -- %s counts them now"),
+                                                             paste(groupn, collapse = ", ")) else ""),
         isTRUE(fl$flags[[k]]), width = "100%")),
       shiny::uiOutput("ard_stack_n_note"),
       shiny::tags$details(
@@ -5176,7 +5176,7 @@ app_server <- function(input, output, session, start) {
         shiny::tags$summary(class = "small", t("This analysis as code")),
         shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
   })
-  # the stack counting the subjects per group while BIGN does: said at once
+  # the stack counting the subjects per group while GROUPN does: said at once
   output$ard_stack_n_note <- shiny::renderUI({
     st_drawn()
     r <- shiny::isolate(st_row())
@@ -5184,15 +5184,15 @@ app_server <- function(input, output, session, start) {
     on <- input[[st_id("fl.by_stats")]]
     if (!isTRUE(on)) return(NULL)
     a <- shiny::isolate(st_rows())
-    bign <- a$analysis_id[.stack_group_n(a, r)]
-    if (!length(bign)) return(NULL)
+    groupn <- a$analysis_id[.stack_group_n(a, r)]
+    if (!length(groupn)) return(NULL)
     shiny::div(
       class = "alert alert-danger py-1 small",
-      sprintf(t(.n_twice_words), r$analysis_id, paste(bign, collapse = ", ")),
-      " ", .btn("ard_stack_del_bign", sprintf(t("Delete %s"), paste(bign, collapse = ", ")),
+      sprintf(t(.n_twice_words), r$analysis_id, paste(groupn, collapse = ", ")),
+      " ", .btn("ard_stack_del_groupn", sprintf(t("Delete %s"), paste(groupn, collapse = ", ")),
                 class = "btn-sm btn-outline-danger py-0"))
   })
-  shiny::observeEvent(input$ard_stack_del_bign, {
+  shiny::observeEvent(input$ard_stack_del_groupn, {
     r <- st_row()
     tg <- ard_target()
     shiny::req(tg, st_role(r) == "parent")
@@ -5402,7 +5402,7 @@ app_server <- function(input, output, session, start) {
     an_pick(s$analysis_id[1L])
     bump()
     if (isFALSE(.stack_flags_of(s$args[1L])$flags[[".by_stats"]])) {
-      notify(sprintf(t("%s does not count the subjects per group: the report's BIGN does already (two would break the column headers' N). Delete BIGN and tick it on %s to let the stack count them."),
+      notify(sprintf(t("%s does not count the subjects per group: the report's GROUPN does already (two would break the column headers' N). Delete GROUPN and tick it on %s to let the stack count them."),
                      s$analysis_id[1L], s$analysis_id[1L]))
     }
   })
