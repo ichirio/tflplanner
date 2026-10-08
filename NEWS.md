@@ -1,5 +1,9 @@
 # tflplanner (development version)
 
+- **The sample's KM figure (F-14-2-2) reads the study ARD through
+  `path_ard`** (`readRDS(file.path(path_ard, "ard.rds"))`), the folder's
+  variable of the study's setup, as the other programs do (#268).
+
 - **The ARD programs as tflspec now writes them** (#281, tflspec >=
   0.0.24.9066): no function or loop of their own, one pipe an analysis
   from its data, the tidyverse layout, dplyr's verbs, the code lists on
