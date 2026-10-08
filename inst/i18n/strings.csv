@@ -1373,10 +1373,7 @@ Not offered by the builder: kept as written.,画面では扱わない関数で�
 From a preset...,定型から…
 Add a line above,行を上に足す
 "This report's column header is more than the form shows (positions, KEY = value, styled row-header cells): edit it in Details (sheets), col_header.",この帳票の列見出しは、この画面で表せない書き方（列の位置、KEY = 値、行見出しの列の書式）を含みます。詳しく（シート）の col_header で編集してください。
-Row-header column %s,行見出しの列 %s
-Row-header columns,行見出しの列
 Line %d,行 %d
-Value columns,値の列
 the same on each column,各列に同じ
 one cell per value of a key,キーごとにまとめる
 one cell over them all,全部をまとめる
@@ -1387,16 +1384,10 @@ right,右
 bold,太字
 underline,下線
 Insert (into the field last clicked):,差し込み（最後にクリックした欄へ）:
-Whose {n},{n} の母集団
-the default (page),既定（page）
-each page's (page),ページごと（page）
-the analysis set (table),解析対象集団（table）
-"both: {n} page, {N} table",両方：{n} は page、{N} は table
 The header is the preset %s now.,列見出しを定型 %s にしました。
 Replace the column header?,列見出しを置き換えますか？
 The lines below become the preset %s; what they say now is replaced.,下の行が定型 %s の内容になり、今の内容は置き換わります。
 Replace,置き換える
-(empty),（空）
 arg-hint:The analysis data (the data of the analysis row: its dataset and analysis set).,解析のデータ（解析の行のデータ：そのデータセットと解析対象集団）。
 "arg-hint:The group columns, e.g. the treatment (TRT01A); the analysis is done within each group.",群の列。例：投与群（TRT01A）。群ごとに解析する。
 arg-hint:The analysed columns; several may be given (one call analyses each).,解析する列。複数を書ける（1 回の呼び出しでそれぞれを解析する）。
@@ -2356,7 +2347,6 @@ Not shown (drag a row to the left),出さない行（左へドラッグで追加
 A row of your own,自分の行
 Row label,行ラベル
 Add the row,行を足す
-"{statistic} as the ARD names it: N, mean, sd, se, median, p25, p75, min, max ...",{統計量} は ARD の名前で: N、mean、sd、se、median、p25、p75、min、max …
 Decimals of each statistic,統計量ごとの小数桁数
 The same for every analysis variable; a variable of its own below. A row's template that says its own format ({mean:.2f}) keeps it.,すべての解析変数に同じ桁数を使います。変数ごとの例外は下で。テンプレートに書式を書いた行（{mean:.2f}）はその書式のままです。
 A variable of its own (%d),変数ごとの例外（%d）
@@ -2422,3 +2412,21 @@ The study,試験
 Every report,全帳票
 Loading ...,読み込み中 ...
 Drawing ...,描いています ...
+cell by cell (merge with ⇥),セルごと（⇥ で隣とまとめる）
+one cell per value of %s,%s の値ごとに 1 セル
+e.g. Characteristic,例: Characteristic
+One cell a column again,1 列 1 セルに戻す
+One cell with the next column,右の列と 1 つのセルにまとめる
+Align,配置
+default (center),既定（中央）
+the value columns,値の列
+What the header's {n} counts,見出しの {n} が数えるもの
+the subjects of each page's columns (the default),各ページの列の被験者（既定）
+the subjects of each page's columns,各ページの列の被験者
+"the analysis set, the same on every page",解析対象集団（どのページも同じ）
+"both: {n} each page's, {N} the analysis set's",両方: {n} は各ページの、{N} は解析対象集団の
+Own,自分の書式
+"{n} the count, {N} the denominator, {p} the proportion; a format after a colon: {p:.1f%} prints 16.3%, {p:.2f} 0.16. The table on the right shows it.",{n} は度数、{N} は分母、{p} は割合。コロンの後に書式: {p:.1f%} は 16.3%、{p:.2f} は 0.16。右の表に出ます。
+"{statistic} as the ARD names it: N, mean, sd, se, median, p25, p75, min, max ...; a format after a colon: {mean:.2f} two decimals, {p:.1f%} a percent. Blank: the decimals above. The table on the right shows the row once added.",{統計量} は ARD の名前で: N、mean、sd、se、median、p25、p75、min、max など。コロンの後に書式: {mean:.2f} は小数 2 桁、{p:.1f%} は百分率。書かなければ上の桁数。足した行は右の表に出ます。
+Prints (the Statistics card's):,出すもの（統計量のカードの設定）:
+Decimals:,小数桁:

@@ -110,8 +110,8 @@ test_that("the builder's header form writes the report's col_header", {
     expect_match(tk, "{n:sum}", fixed = TRUE)
     # the preview's values beside the tokens
     expect_match(tk, "{col} = ", fixed = TRUE)
-    # {n} is used: whose {n} is asked
-    expect_match(h, "Whose {n}", fixed = TRUE)
+    # {n} is used: what it counts is asked
+    expect_match(h, "What the header's {n} counts", fixed = TRUE)
     # every field as the browser has it, by each line's own number
     fields <- function() {
       v <- list()
@@ -161,4 +161,35 @@ test_that("the builder's header form writes the report's col_header", {
     ch <- eff()
     expect_identical(ch$text[ch$cols == ".values"], c("{col}", "N={n}"))
   })
+})
+
+test_that("a line cell by cell: read, written back, merged and split", {
+  d <- data.frame(line = c("1", "1", "1", "2", "2"),
+                  cols = c("row_label", "TRT01A = Placebo",
+                           "TRT01A = Xanomeline Low Dose | TRT01A = Xanomeline High Dose",
+                           "row_label", ".values"),
+                  span = c(NA, NA, NA, NA, "each"),
+                  text = c(NA, "Control", "Xanomeline", "Characteristic", "{col}"))
+  l <- header_read(d, "TRT01A")
+  expect_identical(l[[1]]$mode, "cells")
+  expect_identical(l[[1]]$key, "TRT01A")
+  expect_length(l[[1]]$segments, 2L)
+  expect_identical(l[[1]]$segments[[2]]$levels,
+                   c("Xanomeline Low Dose", "Xanomeline High Dose"))
+  expect_true(.same_header(d, header_write(l)))
+  expect_true(header_uses_n(l) == FALSE)
+  lv <- c("Placebo", "Xanomeline Low Dose", "Xanomeline High Dose")
+  # every value has its cell, in order
+  s <- header_segments(l[[1]]$segments, lv)
+  expect_identical(lapply(s, `[[`, "levels"),
+                   list("Placebo", c("Xanomeline Low Dose", "Xanomeline High Dose")))
+  # values not side by side are not one cell
+  s <- header_segments(list(list(levels = c("Placebo", "Xanomeline High Dose"),
+                                 text = "x")), lv)
+  expect_length(s, 3L)
+  expect_true(is.na(s[[2]]$text))
+  # a blank cell writes nothing
+  l[[1]]$segments[[1]]$text <- ""
+  w <- header_write(l)
+  expect_false(any(grepl("Placebo", w$cols)))
 })

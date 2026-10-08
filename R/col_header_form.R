@@ -1,9 +1,13 @@
-# The column header as the builder's form (Q14): one form a header line, in
-# two parts -- the row-header columns, and the value columns (the same text
-# on each column, one cell per value of a key, or one cell over them all).
-# The form is a view of the `col_header` sheet's rows; a header the form
-# cannot show (positions, KEY = value, styled row-header cells) is left to
-# the sheet's own grid.
+# The column header as the builder's form: a small table with the table's
+# columns -- the row-header columns, then the value columns -- one row a
+# header line (rtfreporter's plan_col_header(lines = ): one element a line).
+# A line's value columns: the same text on each, one cell per value of a
+# key (a spanner), one cell over them all, nothing -- or cell by cell, each
+# cell over one or more neighbouring values of the first column variable
+# (`TRT01A = Placebo | TRT01A = ...`).  The form is a view of the
+# `col_header` sheet's rows; a header it cannot show (positions, a
+# KEY = value of another variable, styled row-header cells) is left to the
+# sheet's own grid.
 
 # A text cell's spaces (tflspec's rule for its text columns): leading or
 # trailing spaces count only inside quotes ("  Total"), so that the stray
@@ -25,8 +29,9 @@
 # The rows of a report's col_header as the form's lines, or NULL when the
 # form cannot show them.  A line: `line`, `stub` (text per row-header
 # column, named; or one text over them all when `merge`), `merge`, `mode`
-# ("each", "key", "all", "none"), `key`, `text`, `align`, `bold`,
-# `border_bottom` (the value cell's).
+# ("each", "key", "all", "none", "cells"), `key`, `text`, `align`, `bold`,
+# `border_bottom` (the value cells'); for "cells", `segments`: each a list
+# of `levels` (values of `key`, the first column variable) and `text`.
 header_read <- function(rows, keys = character()) {
   if (is.null(rows) || !nrow(rows)) return(list())
   r <- as.data.frame(rows, stringsAsFactors = FALSE)
@@ -35,9 +40,46 @@ header_read <- function(rows, keys = character()) {
   ln <- suppressWarnings(as.integer(r$line))
   if (anyNA(ln) || anyNA(r$cols)) return(NULL)
   simple <- function(x) grepl("^[A-Za-z.][A-Za-z0-9._]*$", x)
+  # a cell over values of the first column variable: "K = a | K = b"
+  key1 <- if (length(keys)) keys[[1L]] else NA_character_
+  kv_levels <- function(cols) {
+    if (is.na(key1)) return(NULL)
+    parts <- trimws(strsplit(cols, "|", fixed = TRUE)[[1L]])
+    pat <- paste0("^", gsub("([.])", "\\\\\\1", key1), "\\s*=\\s*")
+    if (!length(parts) || !all(grepl(pat, parts))) return(NULL)
+    trimws(sub(pat, "", parts))
+  }
   out <- list()
   for (l in sort(unique(ln))) {
     d <- r[ln == l, , drop = FALSE]
+    kv <- lapply(d$cols, kv_levels)
+    is_kv <- !vapply(kv, is.null, NA)
+    if (any(is_kv)) {
+      # cell by cell: no other value cell, no span, one style for them all
+      cells <- d[is_kv, , drop = FALSE]
+      if (any(d$cols == ".values") || any(!is.na(cells$span)) ||
+          any(!is.na(cells$border_top))) return(NULL)
+      sty <- unique(cells[c("align", "bold", "border_bottom")])
+      if (nrow(sty) > 1L) return(NULL)
+      stub <- d[!is_kv, , drop = FALSE]
+      parts <- strsplit(stub$cols, "\\s*\\|\\s*")
+      if (!all(vapply(parts, function(p) all(simple(p)), NA))) return(NULL)
+      if (any(!is.na(stub$span)) ||
+          any(!is.na(unlist(stub[c("align", "bold", "border_top", "border_bottom")]))))
+        return(NULL)
+      merge <- nrow(stub) == 1L && length(parts[[1L]]) > 1L
+      if (!merge && any(lengths(parts) > 1L)) return(NULL)
+      stub_text <- if (merge) stats::setNames(.text_from_cell(stub$text), paste(parts[[1L]], collapse = " | ")) else
+        stats::setNames(.text_from_cell(stub$text), unlist(parts))
+      out[[length(out) + 1L]] <- list(
+        line = l, stub = stub_text, merge = merge, mode = "cells", key = key1,
+        text = NA_character_,
+        segments = lapply(which(is_kv), function(i)
+          list(levels = kv[[i]], text = .text_from_cell(d$text[i]))),
+        align = sty$align[1L], bold = sty$bold[1L],
+        border_bottom = sty$border_bottom[1L])
+      next
+    }
     val <- d[d$cols == ".values", , drop = FALSE]
     stub <- d[d$cols != ".values", , drop = FALSE]
     if (nrow(val) > 1L) return(NULL)
@@ -87,7 +129,21 @@ header_write <- function(lines) {
         border_top = NA_character_, border_bottom = NA_character_,
         stringsAsFactors = FALSE)
     }
-    if (!identical(l$mode, "none")) {
+    if (identical(l$mode, "cells")) {
+      # one row a cell with something to print, over its values
+      for (sg in l$segments %||% list()) {
+        if (blank(sg$text) || !length(sg$levels)) next
+        rows[[length(rows) + 1L]] <- data.frame(
+          line = as.character(i),
+          cols = paste(paste(l$key, "=", sg$levels), collapse = " | "),
+          span = NA_character_, text = .text_to_cell(sg$text),
+          align = if (blank(l$align)) NA_character_ else l$align,
+          bold = if (blank(l$bold)) NA_character_ else l$bold,
+          border_top = NA_character_,
+          border_bottom = if (blank(l$border_bottom)) NA_character_ else l$border_bottom,
+          stringsAsFactors = FALSE)
+      }
+    } else if (!identical(l$mode, "none")) {
       rows[[length(rows) + 1L]] <- data.frame(
         line = as.character(i), cols = ".values",
         span = switch(l$mode, each = "each",
@@ -123,8 +179,38 @@ header_token_choices <- function(keys, header_n = NA) {
     if (!is.na(header_n) && grepl("\\bN\\s*=", header_n)) "{N}")
 }
 
+# A cell-by-cell line's cells over the values `lv` in their order: each
+# value in one cell (those not in any: a cell of their own, blank); a cell's
+# values kept together where they are neighbours, else split
+header_segments <- function(segments, lv) {
+  out <- list()
+  done <- character()
+  for (v in lv) {
+    if (v %in% done) next
+    hit <- Filter(function(sg) v %in% sg$levels, segments %||% list())
+    if (length(hit)) {
+      sg <- hit[[1L]]
+      # its values from here on that come one after another in `lv`
+      at <- match(v, lv)
+      run <- lv[at]
+      while (at + length(run) <= length(lv) && lv[at + length(run)] %in% sg$levels &&
+             !lv[at + length(run)] %in% done) {
+        run <- c(run, lv[at + length(run)])
+      }
+      out[[length(out) + 1L]] <- list(levels = run, text = sg$text)
+      done <- c(done, run)
+    } else {
+      out[[length(out) + 1L]] <- list(levels = v, text = NA_character_)
+      done <- c(done, v)
+    }
+  }
+  out
+}
+
 # Does any line's text use {n} (then the form asks whose n it is)?
 header_uses_n <- function(lines) {
-  txt <- unlist(lapply(lines, function(l) c(l$text, unname(l$stub))))
+  txt <- unlist(lapply(lines, function(l)
+    c(l$text, unname(l$stub), vapply(l$segments %||% list(), function(sg)
+      if (is.null(sg$text)) NA_character_ else sg$text, ""))))
   any(grepl("\\{[nN][0-9]*(:[a-z]+)?\\}", txt[!is.na(txt)]))
 }

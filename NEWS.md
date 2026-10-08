@@ -1,5 +1,19 @@
 # tflplanner (development version)
 
+- **The table builder's column header as a grid** (#278).  The header's
+  lines stand under the table's own columns (the row-header columns, then
+  one per value of the column variable), each line the same on each column,
+  over each value of a key, one cell over all, none, or cell by cell: a
+  text for each value, neighbouring cells merged into one (a spanner such
+  as "Xanomeline" over two arms) or split again.  Cell by cell is written
+  as `cols = "TRT01A = a | TRT01A = b"` and read back.  "What the header's
+  {n} counts" says what is asked.  Categorical variables take a format of
+  one's own beside n (%), n/N (%) and n (it starts from the one chosen; a
+  blank one writes nothing); "A row of your own" is open and says how a
+  format is written; each variable's panel shows, faint, what it prints
+  (the Statistics card's rows and decimals, or the categorical format),
+  written for no variable.
+
 - **Step 3 and the figure designer, faster** (#273).  Step 3's table as it
   prints is made again only when what it is made from changes (the
   report's rows of the table sheets, the rounding, its ARD rows): back to
