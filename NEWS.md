@@ -1,5 +1,25 @@
 # tflplanner (development version)
 
+- **`programs/study_setup.R`: one setup for every program** (part of
+  #268).  Every study has `programs/study_setup.R`, which
+  `programs/ard/ard_setup.R`, `programs/tfl/report_setup.R` and
+  `programs/tfl/fig_setup.R` each source first.  It has three marked
+  parts, run in order: (1) the company standard, copied when the file is
+  made from the standards' new sheet `setup_code` (one line of R a row;
+  by default `library(cards)`, `library(rtfreporter)`,
+  `library(tflspec)`); (2) tflplanner's, written again on every save: the
+  study's folders (`path_adam <- "data/adam"` ...) and what the study is
+  (`study_id`, `study_title` ...); (3) the study's own, never touched.
+  Saving rewrites part 2 only (parts 1 and 3 stay byte for byte); a part 2
+  edited by hand goes to `programs/.edited/` first.  `report_setup.R` is
+  now always written and sourced, and a report program no longer writes
+  its own `library()` lines.  The ARD status (`ard_status.csv`) and the
+  new report record (`output/tfl/report_status.csv`) keep the fingerprint
+  of the study setup an output was built with, so a change to
+  `study_setup.R` marks the outputs outdated.  An existing study gets the
+  file on its next save.  `setup_tflplanner(standards = )` refuses a
+  `setup_code` that does not parse, or has Excel's curly quotes.
+
 - **Step 4: this report's font and size** (#266; tflspec 0.0.24.9063).
   Above SPEC | Code | Result, a report may have its own font and size
   (pt); blank, it takes every report's (the study tab), shown greyed.  A

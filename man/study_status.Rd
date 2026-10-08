@@ -27,7 +27,9 @@ save the study
 \item \verb{not run} -- no RTF yet
 \item \code{error} -- the last run failed (see its log)
 \item \code{outdated} -- the report's program, or a file it sources (the figure
-setup, say), changed after the RTF was made.  The program holds the
+setup, say), changed after the RTF was made; or the report was made
+with another \code{programs/study_setup.R} than the one there now (its
+program records it in \code{output/tfl/report_status.csv}).  The program holds the
 report's whole definition, so a change to the definition reaches the
 reports it is about and no others.
 \item \code{ok}

@@ -54,11 +54,10 @@ batch_code <- function(x, date = Sys.Date()) {
             wb(.ard_file)),
     tfl = c(file.path(lay[["programs_tfl"]], c("autoexec_report.R",
                                                .fig_setup_file,
-                                               if (.uses_report_setup(x))
-                                                 .report_setup_file)),
+                                               .report_setup_file)),
             wb(c(.table_file, .report_file, .lf_file, .ard_file))),
     all = c(file.path("programs", c(.batch_file, .autoexec_all_file)),
-            .study_file))
+            .study_setup_path(), .study_file))
   vec <- function(v, names = NULL) {
     if (!length(v)) return("character()")
     q <- encodeString(v, quote = "\"")
@@ -95,6 +94,24 @@ batch_code <- function(x, date = Sys.Date()) {
     "",
     runner,
     "")
+}
+
+# programs/tfl/fig_setup.R: the study's setup, the figure style of the
+# company standards (tflspec), and report_content()
+.fig_setup_code <- function() {
+  code <- tflspec::tfl_fig_setup_code(.std_fig_style())
+  # after its banner (the comment lines it starts with)
+  at <- match(FALSE, grepl("^#", code), nomatch = length(code) + 1L) - 1L
+  rest <- utils::tail(code, length(code) - at)
+  rest <- rest[cumsum(nzchar(rest)) > 0L]
+  c(utils::head(code, at),
+    if (at) "",
+    "# the study's setup: the company's, the study's folders and id, your own",
+    .source_study_setup(),
+    "",
+    rest,
+    "",
+    .report_content_fun)
 }
 
 .autoexec_banner <- function(file, what, usage, date) {
@@ -146,11 +163,8 @@ autoexec_all_code <- function(date = Sys.Date()) {
   put(batch_code(p), file.path("programs", .batch_file))
   # the figure style, and the one function a report of one's own code ends
   # with (report_content()), written once here
-  put(c(tflspec::tfl_fig_setup_code(.std_fig_style()), "", .report_content_fun),
-      file.path(lay[["programs_tfl"]], .fig_setup_file))
-  if (.uses_report_setup(p)) {
-    put(report_setup_code(p), file.path(lay[["programs_tfl"]], .report_setup_file))
-  }
+  put(.fig_setup_code(), file.path(lay[["programs_tfl"]], .fig_setup_file))
+  put(report_setup_code(p), file.path(lay[["programs_tfl"]], .report_setup_file))
   put(autoexec_all_code(), file.path("programs", .autoexec_all_file))
   put(autoexec_code(p), file.path(lay[["programs_tfl"]], "autoexec_report.R"))
   out
