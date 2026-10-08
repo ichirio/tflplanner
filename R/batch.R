@@ -105,7 +105,7 @@ batch_code <- function(x, date = Sys.Date()) {
 # programs/tfl/fig_setup.R: the study's setup, the figure style of the
 # company standards (tflspec), and report_content()
 .fig_setup_code <- function() {
-  code <- tflspec::tfl_fig_setup_code(.std_fig_style())
+  code <- .with_study_code(tflspec::tfl_fig_setup_code(.std_fig_style()))
   # after its banner (the comment lines it starts with)
   at <- match(FALSE, grepl("^#", code), nomatch = length(code) + 1L) - 1L
   rest <- utils::tail(code, length(code) - at)
