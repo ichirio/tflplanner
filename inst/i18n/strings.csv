@@ -2072,7 +2072,7 @@ No condition: every row.,条件なし: すべての行。
 The rows cannot hold this condition: it stays as R.,この条件は行では書けません。R の式のままにします。
 Values (search),値（検索）
 "Values, comma between",値（カンマ区切り）
-Write the condition as R (inside subset()),条件を R の式で書く（subset の中身）
+Write the condition as R (inside filter()),条件を R の式で書く（filter() の中身）
 The condition written as R (the rows cannot hold it): edit it here.,条件を R の式で書いています（行では書けない条件）。ここで直せます。
 or,または
 is blank,空
@@ -2243,7 +2243,7 @@ This analysis as code,この解析のコード
 "The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (Apply first). The code is part of the definition: the program is never edited.",手法が custom になり、今の定義から書いたこのコードが解析になります（同じ ARD。先に［適用］）。コードは定義の一部で、プログラムは直しません。
 The order inside a stack,スタックの中の順
 "The study's analysis set (SAF ...) or a population flag of the data, put in as the condition's first row (SAFFL = Y). Left as it is, it is saved as the analysis set (population_id); change it there, add others under it.",試験の解析対象集団（SAF など）か、データの集団フラグ。下の条件の 1 行目に入ります（SAFFL = Y）。そのままなら解析対象集団（population_id）として保存。直すのも、ほかの条件を足すのも条件の欄で。
-"The condition the data's rows are filtered by (subset()). The rows are AND (""+ and""); ""+ or (another group)"" is OR. A flag: ""= Y"". What the rows cannot say: ""Write the condition as R"".",データの行を絞り込む条件（subset() の中身）。行どうしは「かつ」（+ かつ）、「+ または（別のまとまり）」は「または」。フラグは「= Y」。行で書けない式は「条件を R の式で書く」。
+"The condition the data's rows are filtered by (filter()). The rows are AND (""+ and""); ""+ or (another group)"" is OR. A flag: ""= Y"". What the rows cannot say: ""Write the condition as R"".",データの行を絞り込む条件（filter() の中身）。行どうしは「かつ」（+ かつ）、「+ または（別のまとまり）」は「または」。フラグは「= Y」。行で書けない式は「条件を R の式で書く」。
 Only the subjects in that analysis data: its condition (its analysis set's too) is not written here again.,その解析データにいる被験者だけを残します。そちらの条件（解析対象集団も）をここに書き直す必要はありません。
 "When the fields cannot say it: R whose value is the whole data (the datasets, pop_<set> and the analysis data above are in reach); written, none of the fields above is used. Only the filter: ""Write the condition as R"" above. The program is never edited: this R is the definition.",欄で書けないとき、値がデータ全体になる R（データセット、pop_<集団>、上の解析データが使えます）。書くと上の欄はどれも使われません。絞り込み条件だけなら、上の「条件を R の式で書く」。プログラムは直しません（この R が定義です）。
 The method,手法
@@ -2387,7 +2387,7 @@ Font,フォント
 Size (pt),大きさ（pt）
 "The size is a number of points (9, 10 ...).",大きさはポイントの数（9、10 など）で入れてください。
 "The document's font (its font table); the study's row (blank output_id) is the company's, written once in the setup code; blank: rtfreporter's option (Courier).",文書のフォント（フォント表）。試験の行（output_id が空欄）は会社の値で、共通の準備のコードに 1 回だけ書かれます。空欄 = rtfreporter の設定（Courier）。
-"This report's code lists: each variable's values, their order and the text they print as. The ARD uses those of the variables its analyses read (a value no record has is counted 0); the table uses them all, in their order unless the variables sheet says another (levels).",この帳票のコードリスト：変数ごとの値、その順番、表示する文字。ARD は解析が読む変数のものを使い（データにない値は 0 と数える）、表はすべてを使います。表の順は、variables シートの levels が無ければこの順です。
+"This report's code lists: each variable's values, their order and what they become in the data (the label). The program puts them on the data where it is made (set_levels()): in the ARD, a listing's or a figure's data each listed column is a factor in the list's order, its values the labels. A value no record has is counted 0; a value the list does not have stops the program. A table's order is the list's unless the variables sheet says another (levels).",この帳票のコードリスト：変数ごとの値、その順番、データの中でなるもの（ラベル）。プログラムはデータを作る所でこれを当てます（set_levels()）：ARD・Listing・図のデータで、リストのある列はリストの順の factor になり、値はラベルになります。データに無い値は 0 と数え、リストに無い値があるとプログラムは止まります。表の順は、variables シートの levels が無ければリストの順です。
 Blank: the label of this report's code list of variable (faint). What is written here is the table's own.,空欄なら、この帳票のコードリスト（variable）の見出し（薄い字）。ここに書くとこの表の見出しになります。
 This report's font,この帳票のフォント
 Blank: every report's font and size (the study tab). A value here is this report's own (its row of the page sheet).,空欄なら全帳票のフォントと大きさ（試験タブ）になります。ここに入れた値はこの帳票だけのものです（page シートのこの帳票の行）。
@@ -2440,6 +2440,8 @@ Add them to the list,リストに加える
 Edit...,編集…
 Copy...,写す…
 "%s's code list of %s: %s added, each printing as itself (edit their text with Edit...).",%s の %s のコードリストに %s を加えました。表示は値そのままです（文字は「編集…」で直せます）。
-A column with a code list (%s) holds its labels here: e.g. %s.,コードリストのある列（%s）は、ここではラベルを持ちます：例 %s。
+"A column with a code list (%s) is compared with its labels here, as the ARD has them: e.g. %s, not %s.",コードリストのある列（%s）は、ここでは ARD と同じくラベルで比べます：例 %s（%s ではありません）。
 Columns made or changed,作る・変える列
 Columns added from the subjects' data: none to add (this data is the subjects' data itself).,症例のデータから加える列：ありません（このデータが症例のデータそのものです）。
+Code lists: %s (Column definitions ④),コードリスト：%s（列定義 ④）
+A value with no arrow prints as it is.,矢印の無い値は、そのまま表示されます。

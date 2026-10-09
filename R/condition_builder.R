@@ -500,7 +500,7 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
           shiny::tags$button(type = "button", class = "btn btn-sm btn-link py-0",
                              onclick = js("add_or", "Math.random()"), t("+ or (another group)")),
           shiny::tags$button(type = "button", class = "btn btn-sm btn-link py-0 text-muted",
-                             onclick = js("to_raw", "Math.random()"), t("Write the condition as R (inside subset())"))))
+                             onclick = js("to_raw", "Math.random()"), t("Write the condition as R (inside filter())"))))
     })
 
     # the rows as the fields have them now

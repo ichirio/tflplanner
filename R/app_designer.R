@@ -1139,8 +1139,10 @@
         block(grep(sprintf("^# ---- layer %d:", i), code), "^# ----|^#{5,}")
       }
     },
-    codelists = c(block(grep("^# ---- code lists", code), "^$"), "",
-                  block(grep("^df <- ", code), "^$")),
+    # (none: no code of its own)
+    codelists = if (length(grep("^# ---- code lists", code)))
+      c(block(grep("^# ---- code lists", code), "^$"), "",
+        block(grep("^df <- ", code), "^$")),
     data = {
       st <- d$data[[s$i]]
       if (identical(st$step, "data_code")) {

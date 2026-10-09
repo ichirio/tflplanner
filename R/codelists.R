@@ -309,7 +309,7 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     shiny::showModal(shiny::modalDialog(
       title = shiny::isolate(title()), size = "l", easyClose = FALSE,
       shiny::p(class = "small text-muted",
-               t("This report's code lists: each variable's values, their order and the text they print as. The ARD uses those of the variables its analyses read (a value no record has is counted 0); the table uses them all, in their order unless the variables sheet says another (levels).")),
+               t("This report's code lists: each variable's values, their order and what they become in the data (the label). The program puts them on the data where it is made (set_levels()): in the ARD, a listing's or a figure's data each listed column is a factor in the list's order, its values the labels. A value no record has is counted 0; a value the list does not have stops the program. A table's order is the list's unless the variables sheet says another (levels).")),
       .codelist_editor_ui(prefix, t),
       footer = .btn(p("done"), t("Close"), class = "btn-primary")))
   }
@@ -469,7 +469,9 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
 # add); `tip`: what the part says of the place.
 .codelist_part_ui <- function(lines, missing, t, ids, tip) {
   shiny::tagList(
-    shiny::div(class = "form-label mb-1", with_tip(t("Code lists"), tip)),
+    shiny::div(class = "form-label mb-1", with_tip(
+      shiny::span(t("Code lists"), shiny::span(class = "text-muted", " (codelists)")),
+      paste(tip, t("A value with no arrow prints as it is.")))),
     if (!length(lines)) shiny::p(class = "small text-muted mb-1",
                                  t("None of these columns has a code list: their values are as the data has them.")) else
       shiny::tags$table(
@@ -532,9 +534,13 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
   if (!nrow(cl)) return(NULL)
   lab <- ifelse(is.na(cl$label), cl$value, cl$label)
   v <- unique(cl$variable)
+  # the example: a value its list changes (SEX's F, as "Female")
+  i <- which(lab != cl$value)[1L]
+  if (is.na(i)) i <- 1L
   shiny::div(
     class = "form-text small mt-n1 mb-2",
-    sprintf(t("A column with a code list (%s) holds its labels here: e.g. %s."),
+    sprintf(t("A column with a code list (%s) is compared with its labels here, as the ARD has them: e.g. %s, not %s."),
             paste(v, collapse = ", "),
-            sprintf("%s == %s", v[1L], encodeString(lab[cl$variable == v[1L]][1L], quote = "\""))))
+            sprintf("%s == %s", cl$variable[i], encodeString(lab[i], quote = "\"")),
+            sprintf("%s == %s", cl$variable[i], encodeString(cl$value[i], quote = "\""))))
 }

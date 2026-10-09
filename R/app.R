@@ -4229,7 +4229,19 @@ app_server <- function(input, output, session, start) {
             class = "text-muted",
             sprintf(t("Read by %s"), paste(sub("^.* / ", "", here), collapse = ", ")),
             if (length(setdiff(u$analyses, here)))
-              sprintf(t("; other reports' analyses: %d"), length(setdiff(u$analyses, here))))))
+              sprintf(t("; other reports' analyses: %d"), length(setdiff(u$analyses, here)))),
+          if (length(cl_of(id))) shiny::div(
+            class = "text-muted",
+            sprintf(t("Code lists: %s (Column definitions \u2463)"), paste(cl_of(id), collapse = ", ")))))
+    }
+    # the columns of a data with a code list of this report: its dataset's,
+    # those it adds and makes
+    cl_rows <- sheet_rows(p, "codelists", tg)
+    cl_of <- function(id) {
+      r <- ad[match(id, ad$data_id), , drop = FALSE]
+      cols <- c(adata_cols(adata_root(r$from)), .split_bar(r$add),
+                vapply(.drv_read_all(r$derive %||% NA_character_), function(x) x$name, ""))
+      vapply(.codelist_lines(cl_rows, cols), `[[`, "", "variable")
     }
     # the data the report's analyses read without a name
     a <- st_rows()
@@ -4575,7 +4587,7 @@ app_server <- function(input, output, session, start) {
           shiny::selectInput("adata_subj", NULL, stats::setNames(cands, cands),
                              selected = subj_now, width = "100%")),
         NULL),
-      shiny::tags$label(class = "form-label", with_tip(argl("Filter (a condition)", "where"), t("The condition the data's rows are filtered by (subset()). The rows are AND (\"+ and\"); \"+ or (another group)\" is OR. A flag: \"= Y\". What the rows cannot say: \"Write the condition as R\"."))),
+      shiny::tags$label(class = "form-label", with_tip(argl("Filter (a condition)", "where"), t("The condition the data's rows are filtered by (filter()). The rows are AND (\"+ and\"); \"+ or (another group)\" is OR. A flag: \"= Y\". What the rows cannot say: \"Write the condition as R\"."))),
       condition_builder_ui("adata_cond", lang),
       # its columns, in the order the program makes them: added, made or
       # changed, kept, and the code lists put on them
@@ -4596,12 +4608,15 @@ app_server <- function(input, output, session, start) {
                                 choices = unique(c(bar(r$keep), adata_cols(adata_root(r$from)))),
                                 selected = bar(r$keep), multiple = TRUE, width = "100%",
                                 options = list(create = TRUE, plugins = list("remove_button")))),
+        # (one row per ...: after the columns kept, before the code lists,
+        # as the program has it)
+        shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", ""),
+          shiny::selectizeInput("adata_distinct", argl("One row per (e.g. subject; subject \u00d7 phase)", "distinct"),
+                                choices = unique(c(bar(r$distinct), adata_cols(adata_root(r$from)))),
+                                selected = bar(r$distinct), multiple = TRUE, width = "100%",
+                                options = list(create = TRUE, plugins = list("remove_button")))),
         shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2463"),
-          shiny::div(shiny::uiOutput("adata_cl"))),
-        shiny::selectizeInput("adata_distinct", argl("One row per (e.g. subject; subject \u00d7 phase)", "distinct"),
-                              choices = unique(c(bar(r$distinct), adata_cols(adata_root(r$from)))),
-                              selected = bar(r$distinct), multiple = TRUE, width = "100%",
-                              options = list(create = TRUE, plugins = list("remove_button"))))),
+          shiny::div(shiny::uiOutput("adata_cl"))))),
       # the way out: R that makes the data itself (the definition keeps it)
       shiny::tags$details(
         class = "mb-2", open = if (!.is_blank(r$code)) NA,

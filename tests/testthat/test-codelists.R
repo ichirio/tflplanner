@@ -180,6 +180,8 @@ test_that("1-1 part 4: the values a list does not have, added from there", {
     session$setInputs(nav = "make", step = "ard", target = "T1")
     session$setInputs(ard_adata_pick = "adsl_saf")
     expect_match(output$adata_detail$html, "Column definitions", fixed = TRUE)
+    # 1-1's list says which of its columns have one, and where
+    expect_match(output$ard_adata$html, "Code lists: SEX, OLD (Column definitions", fixed = TRUE)
     session$setInputs(adata_id = "adsl_saf", adata_from = "ADSL", adata_add = NULL, adata_keep = NULL)
     h <- output$adata_cl$html
     # the columns of this data: SEX (ADSL's) and OLD (made), not COUNTRY
@@ -306,4 +308,14 @@ test_that("a listing's and a figure's data: their code lists, where the data is 
     # the listing's list as it was: each report's own
     expect_identical(nrow(sheet_rows(rv$p, "codelists", "L-AE")), 3L)
   })
+})
+
+test_that("an analysis's own filter: a listed column is compared with its labels", {
+  cl <- data.frame(variable = c("TRT01A", "SEX", "SEX"), value = c("Placebo", "F", "M"),
+                   label = c("Placebo", "Female", NA))
+  h <- as.character(.where_labels_note(cl, identity))
+  expect_match(h, "(TRT01A, SEX)", fixed = TRUE)
+  # the example: a value its list changes
+  expect_match(h, "e.g. SEX == \"Female\", not SEX == \"F\"", fixed = TRUE)
+  expect_null(.where_labels_note(cl[0, ], identity))
 })
