@@ -165,13 +165,18 @@ preview_listing <- function(study, output_id) {
 .lf_file <- "listing_figure_spec.xlsx"
 
 # the workbook, written with the study when it defines a listing or figure
-.save_lf <- function(p, root) {
+# `was`: the listings and figures the file holds when it is known (the last
+# save's, its fingerprint unchanged): compared with, not read (#274)
+.save_lf <- function(p, root, was = NULL) {
   lf <- p$lf %||% .empty_lf()
   f <- file.path(root, study_layout()[["spec"]], .lf_file)
   out <- data.frame(file = character(), status = character(),
                     stringsAsFactors = FALSE)
   if (!sum(vapply(lf, nrow, 1L)) && !file.exists(f)) return(out)
-  old <- if (file.exists(f)) tryCatch(stats::setNames(lapply(.lf_sheet_names,
+  old <- if (!is.null(was)) {
+    stats::setNames(lapply(.lf_sheet_names, function(sh)
+      .normalize_lf_sheet(was[[sh]], sh)), .lf_sheet_names)
+  } else if (file.exists(f)) tryCatch(stats::setNames(lapply(.lf_sheet_names,
     function(sh) .normalize_lf_sheet(.read_sheet_text(f, sh), sh)),
     .lf_sheet_names), error = function(e) NULL)
   new <- stats::setNames(lapply(.lf_sheet_names, function(sh)

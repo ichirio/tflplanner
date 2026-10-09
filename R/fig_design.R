@@ -99,7 +99,10 @@ set_fig_design <- function(x, output_id, design) {
 }
 
 # the designs as YAML files, written with the study
-.save_fig_designs <- function(p, root) {
+# `own`: whether a file is the one tflplanner wrote (its fingerprint the
+# recorded one); only such a file goes when its figure has no design any
+# more -- one made or changed outside tflplanner is kept (#274)
+.save_fig_designs <- function(p, root, own = function(f) FALSE) {
   out <- data.frame(file = character(), status = character(),
                     stringsAsFactors = FALSE)
   designs <- p$fig_designs %||% list()
@@ -121,11 +124,16 @@ set_fig_design <- function(x, output_id, design) {
     }
     unlink(tmp)
   }
-  # a figure no longer designed (or gone): its file goes too
+  # a figure no longer designed (or gone): its file goes too, when it is
+  # the one tflplanner wrote
   gone <- setdiff(have, file.path(dir, paste0(names(designs), ".yml")))
   for (f in gone) {
-    unlink(f)
-    out[nrow(out) + 1L, ] <- list(f, "removed")
+    if (own(f)) {
+      unlink(f)
+      out[nrow(out) + 1L, ] <- list(f, "removed")
+    } else {
+      out[nrow(out) + 1L, ] <- list(f, "kept")
+    }
   }
   out
 }

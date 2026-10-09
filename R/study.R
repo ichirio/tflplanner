@@ -99,8 +99,11 @@ study_layout <- function() {
 #'
 #' * `create_study()` makes the study folder -- layout, `study.yml`, an
 #'   RStudio project -- and saves the study, which registers it.
-#' * `open_study()` returns a study as it was last saved.  Given the folder
-#'   of a study tflplanner does not know yet, it registers it first.
+#' * `open_study()` returns a study as it was last saved, its definition
+#'   files compared with what tflplanner last wrote or read: one changed
+#'   outside tflplanner (edited in Excel, copied in) is read and taken in
+#'   (`$spec` says what changed; see [reload_from_spec()]).  Given the
+#'   folder of a study tflplanner does not know yet, it registers it first.
 #' * `register_study()` adds an existing study folder: its `study.yml`, and
 #'   its definition workbooks when `spec/` has them.  A folder unregistered
 #'   before comes back as it was (its saved state, history and unsaved
@@ -182,14 +185,34 @@ open_study <- function(study, home = tflplanner_home()) {
     stop("No study '", study, "': not registered and not a study folder.",
          call. = FALSE)
   }
-  s <- .study_from_state(st)
   # a registered study whose folder has moved, opened from where it is now
-  if (is_dir && !identical(s$path, normalizePath(study, "/"))) {
-    s$path <- normalizePath(study, "/")
-    .write_state(s, home)
-  }
+  moved <- is_dir && !identical(st$path, normalizePath(study, "/"))
+  if (moved) st$path <- normalizePath(study, "/")
+  # the definition files, compared with what was last written or read: a
+  # file changed outside tflplanner is read and taken in (#274); a state of
+  # an earlier version (no record) reads them all once
+  s <- .adopt_spec(st, home, full = is.null(st$files))
+  if (moved && !identical(s$spec$status, "invalid")) .write_state(s, home)
+  .spec_note(s)
   .set_config("last_study", id, home)
   s
+}
+
+# What open_study() and register_study() say at the console when the
+# definition files were changed outside tflplanner
+.spec_note <- function(s) {
+  sp <- s$spec
+  if (identical(sp$status, "adopted")) {
+    message("The definition files were changed outside tflplanner; the ",
+            "changes were loaded: ", paste(sp$files$file, collapse = ", "), ".")
+  } else if (identical(sp$status, "invalid")) {
+    message("The definition files were changed outside tflplanner but do not ",
+            "read; the study is open as last saved and cannot be saved until ",
+            "they are fixed (reload_from_spec()) or written back (write_spec()):\n",
+            paste0("  ", sp$problems$file, ": ", sp$problems$message,
+                   collapse = "\n"))
+  }
+  invisible(s)
 }
 
 # What tflplanner keeps about a study (its home's studies/<id>/: the saved
@@ -211,9 +234,8 @@ open_study <- function(study, home = tflplanner_home()) {
   invisible(TRUE)
 }
 
-# The kept store back in the home: its history and draft always; its saved
-# state when spec/ has not changed since (else the state read from spec/ is
-# the study's, the kept one goes to its history).  TRUE: the state is back.
+# The kept store back in the home: its saved state, history and draft.
+# TRUE: the state is back.
 .restore_store <- function(id, path, home = tflplanner_home()) {
   from <- .kept_dir(path)
   sf <- file.path(from, "state.json")
@@ -229,17 +251,13 @@ open_study <- function(study, home = tflplanner_home()) {
   if (file.exists(file.path(from, "draft.json"))) {
     file.copy(file.path(from, "draft.json"), to, copy.date = TRUE)
   }
-  spec <- list.files(file.path(path, study_layout()[["spec"]]),
-                     recursive = TRUE, full.names = TRUE)
-  same <- !length(spec) || all(file.mtime(spec) <= file.mtime(sf) + 1)
-  if (same) {
-    file.copy(sf, to, overwrite = TRUE, copy.date = TRUE)
-  } else {
-    stamp <- gsub("[^0-9]", "", st$saved %||% format(file.mtime(sf)))
-    file.copy(sf, file.path(to, "history", paste0(stamp, ".json")))
-  }
+  # the kept state comes back as it was; register_study() then compares
+  # the definition files with its record (#274): an edit made while the
+  # study was off the list is read and taken in, the kept state going to
+  # the history
+  file.copy(sf, to, overwrite = TRUE, copy.date = TRUE)
   unlink(from, recursive = TRUE)
-  same
+  TRUE
 }
 
 #' @rdname create_study
@@ -254,49 +272,36 @@ register_study <- function(path, home = tflplanner_home()) {
     stop("Study '", id, "' is already registered at ", st$path, ".",
          call. = FALSE)
   }
-  # unregistered before: what tflplanner kept comes back as it was
-  if (is.null(st) && .restore_store(id, path, home)) {
-    s <- .study_from_state(.read_state(id, home))
-    s$path <- normalizePath(path, "/")
-    .write_state(s, home)
-    .set_config("last_study", id, home)
-    return(s)
-  }
-  sp <- file.path(path, study_layout()[["spec"]], c(.table_file, .report_file))
-  sp <- sp[file.exists(sp)]
-  p <- if (length(sp)) read_planner(sp) else new_planner()
-  # the ARD definition: the study folder's copy, else an exported workbook
-  aj <- file.path(path, study_layout()[["spec"]], .ard_json)
-  af <- file.path(path, study_layout()[["spec"]], .ard_file)
-  if (file.exists(aj)) {
-    p$ard <- .read_ard_json(aj)
-  } else if (file.exists(af)) {
-    p$ard <- unclass(.read_ard_spec(af, check = FALSE))
-  }
-  lf <- file.path(path, study_layout()[["spec"]], .lf_file)
-  if (file.exists(lf)) {
-    sheets <- readxl::excel_sheets(lf)
-    if ("listings" %in% sheets) {
-      ls <- tflspec::tfl_read_listing_spec(lf, check = FALSE)
-      for (sh in names(ls)) p$lf[[sh]] <- ls[[sh]]
-    }
-    if ("figures" %in% sheets) {
-      p$lf$figures <- .normalize_lf_sheet(.read_sheet_text(lf, "figures"),
-                                          "figures")
+  # unregistered before: what tflplanner kept comes back as it was, the
+  # definition files compared with its record (an edit made while the
+  # study was off the list is taken in, #274)
+  if (is.null(st)) {
+    .restore_store(id, path, home)
+    st <- .read_state(id, home)
+    if (!is.null(st)) {
+      st$path <- normalizePath(path, "/")
+      s <- .adopt_spec(st, home, full = is.null(st$files))
+      if (!identical(s$spec$status, "invalid")) .write_state(s, home)
+      .spec_note(s)
+      .set_config("last_study", id, home)
+      return(s)
     }
   }
-  # the designed figures (spec/figures/<output_id>.yml, written on save):
-  # read back, or the next save would take them away
-  fd <- file.path(path, study_layout()[["spec"]], .fig_design_dir)
-  for (f in list.files(fd, "\\.yml$", full.names = TRUE)) {
-    id <- sub("\\.yml$", "", basename(f))
-    d <- tryCatch(tflspec::tfl_read_fig_design(f), error = function(e) NULL)
-    if (!is.null(d) && id %in% p$outputs$output_id) p <- set_fig_design(p, id, d)
+  # a folder new to tflplanner: its definition files are the study
+  s <- .new_study(path, meta[.study_fields], new_planner())
+  r <- .read_spec(s, path)
+  problems <- attr(r, "problems")
+  attr(r, "problems") <- NULL
+  if (nrow(problems)) stop(.spec_invalid_condition(problems))
+  # a figure design for no report of the study is not taken in
+  fd <- names(r$planner$fig_designs %||% list())
+  for (f in setdiff(fd, r$planner$outputs$output_id)) {
+    r$planner <- set_fig_design(r$planner, f, NULL)
   }
-  s <- .new_study(path, meta[.study_fields], p)
-  .write_state(s, home)
+  .write_state(r, home)
+  r$spec <- list(status = "same", files = .spec_diff(NULL, list()))
   .set_config("last_study", id, home)
-  s
+  r
 }
 
 #' @rdname create_study
@@ -348,9 +353,10 @@ list_studies <- function(home = tflplanner_home()) {
 
 #' Definition workbooks in and out
 #'
-#' The study's definition lives in tflplanner's home and is written to the
-#' study folder's `spec/` on every save (the table and report workbooks the
-#' programs read; the ARD definition as `ard_definition.json`).
+#' The study's definition is its folder's `spec/` (the table and report
+#' workbooks the programs read; the ARD definition as
+#' `ard_definition.json`), written on every save and read back on open when
+#' it changed ([reload_from_spec()]).
 #' `export_spec()` writes the workbooks anywhere else -- with
 #' `ard_spec.xlsx`, the ARD definition, to edit in Excel or keep;
 #' `import_spec()` replaces the study's definition with what a set of
@@ -442,6 +448,12 @@ print.rtfstudy <- function(x, ...) {
   cat("<rtfstudy> ", x$meta$study_id, sep = "")
   if (!is.na(x$meta$title)) cat(" --", x$meta$title)
   cat("\n  ", x$path, "\n  ", sep = "")
+  st <- x$spec$status
+  if (!is.null(st) && st %in% c("adopted", "invalid")) {
+    cat(if (st == "adopted") "definition files changed outside tflplanner: loaded" else
+          "definition files changed outside tflplanner: they do not read (reload_from_spec() / write_spec())",
+        "\n  ", sep = "")
+  }
   print(x$planner)
   invisible(x)
 }
@@ -472,15 +484,50 @@ print.rtfstudy <- function(x, ...) {
 #'   not change keeps what is saved now -- someone else may have changed
 #'   it -- and a part both changed differently is a conflict that stops the
 #'   save (class `tflplanner_conflict`).
+#'
+#' The definition files are the study's source (#274): a save never writes
+#' over one changed outside tflplanner since it last wrote or read them.
+#' Such a save stops (class `tflplanner_spec_changed`, its `files` the
+#' files changed): open the study again, or [reload_from_spec()], to take
+#' the files in; or write them back from the last save ([write_spec()]).
+#'
+#' @param spec `"check"` (the default) stops when a definition file was
+#'   changed outside tflplanner; `"overwrite"` writes over it, after copying
+#'   it to `spec/.rejected/` (what [write_spec()] does).
 #' @return The study, invisibly, with `files`: what was written (status
 #'   `written`, `rewritten` for a program edited by hand, `unchanged`, ...).
 #' @export
-save_study <- function(study, home = tflplanner_home(), base = NULL) {
+save_study <- function(study, home = tflplanner_home(), base = NULL,
+                       spec = c("check", "overwrite")) {
+  spec <- match.arg(spec)
   if (!is.null(base)) study <- .merge_saved(study, base, home)
   p <- .study_spec_keys(study$planner)
   study$planner <- p
   root <- study$path
   lay <- study_layout()
+  # the state now on disk (another session may have saved since) and its
+  # record of the definition files
+  st <- .read_state(study$meta$study_id, home)
+  rec <- st$files
+  if (!is.null(rec)) {
+    diff <- .spec_diff(rec, .spec_fingerprints(root))
+    if (any(diff$status != "same")) {
+      if (spec == "check") stop(.spec_changed_condition(diff))
+      .back_up_rejected(root, diff$file[diff$status %in% c("changed", "added")])
+      # a file added outside tflplanner is not the last save's: it goes
+      # (its copy is in spec/.rejected/)
+      unlink(file.path(root, diff$file[diff$status == "added"]))
+      rec <- rec[names(rec) %in% diff$file[diff$status == "same"]]
+    }
+  }
+  # a file is what the last save wrote when its fingerprint is the one
+  # recorded
+  as_recorded <- function(rel) {
+    f <- file.path(root, rel)
+    !is.null(rec[[rel]]) && file.exists(f) &&
+      identical(unname(tools::md5sum(f)), as.character(rec[[rel]]$md5))
+  }
+  was <- if (!is.null(st)) .study_spec_keys(.planner_from_state(st))
   progs <- vapply(p$outputs$output_id, function(id)
     report_info(p, id)$program, "")
   dup <- unique(progs[duplicated(progs)])
@@ -490,11 +537,18 @@ save_study <- function(study, home = tflplanner_home(), base = NULL) {
   }
   spec_dir <- file.path(root, lay[["spec"]])
   paths <- file.path(spec_dir, c(.table_file, .report_file))
-  on_disk <- if (all(file.exists(paths)))
-    tryCatch(read_planner(paths), error = function(e) NULL)
-  same <- !is.null(on_disk) &&
-    identical(on_disk[c("sheets", "study", "outputs", "setup")],
-              unclass(p)[c("sheets", "study", "outputs", "setup")])
+  keys <- c("sheets", "study", "outputs", "setup")
+  same <- if (!is.null(rec)) {
+    # the workbooks are what the last save wrote: compared with its state,
+    # not read (#274)
+    all(vapply(file.path(lay[["spec"]], c(.table_file, .report_file)),
+               as_recorded, NA)) &&
+      identical(unclass(was)[keys], unclass(p)[keys])
+  } else {
+    on_disk <- if (all(file.exists(paths)))
+      tryCatch(read_planner(paths), error = function(e) NULL)
+    !is.null(on_disk) && identical(on_disk[keys], unclass(p)[keys])
+  }
   # rewriting an unchanged workbook would make every RTF look outdated
   if (!same) write_planner(p, spec_dir)
   files <- data.frame(file = paths,
@@ -515,8 +569,12 @@ save_study <- function(study, home = tflplanner_home(), base = NULL) {
     .write_program(program_code(p, id), f)
     files[nrow(files) + 1L, ] <- list(f, if (state == "edited") "rewritten" else "written")
   }
-  files <- rbind(files, .save_ard(p, root), .save_lf(p, root),
-                 .save_fig_designs(p, root))
+  lf_rel <- file.path(lay[["spec"]], .lf_file)
+  files <- rbind(files, .save_ard(p, root),
+                 .save_lf(p, root, was = if (as_recorded(lf_rel)) was$lf),
+                 .save_fig_designs(p, root, own = function(f)
+                   as_recorded(file.path(lay[["spec"]], .fig_design_dir,
+                                         basename(f)))))
   files <- rbind(files, .save_study_setup(study$meta, root),
                  .save_batch_programs(p, root))
   meta <- study$meta[.study_fields]
@@ -838,7 +896,10 @@ read_data_head <- function(path, n = 50L) {
          `report list` = p$outputs),
     stats::setNames(p$sheets, paste0("sheet:", names(p$sheets))),
     stats::setNames(p$ard, paste0("ard:", names(p$ard))),
-    stats::setNames(p$lf %||% .empty_lf(), paste0("lf:", .lf_sheet_names)))
+    stats::setNames(p$lf %||% .empty_lf(), paste0("lf:", .lf_sheet_names)),
+    # each figure's design (spec/figures/<id>.yml)
+    if (length(p$fig_designs))
+      stats::setNames(p$fig_designs, paste0("fig:", names(p$fig_designs))))
 }
 
 .set_study_part <- function(s, part, value) {
@@ -849,6 +910,7 @@ read_data_head <- function(path, n = 50L) {
     sheet = s$planner$sheets[[name]] <- value,
     ard = s$planner$ard[[name]] <- value,
     lf = s$planner$lf[[name]] <- value,
+    fig = s$planner <- set_fig_design(s$planner, name, value),
     `study keys` = s$planner$study <- value,
     setup = s$planner$setup <- value,
     `report list` = s$planner$outputs <- value)
@@ -865,7 +927,8 @@ read_data_head <- function(path, n = 50L) {
   was <- .study_parts(base)
   now <- .study_parts(disk)
   clash <- character()
-  for (k in names(mine)) {
+  # a figure's design is a part when either side has it
+  for (k in union(names(mine), union(names(was), names(now)))) {
     changed_here <- !identical(mine[[k]], was[[k]])
     changed_there <- !identical(now[[k]], was[[k]])
     if (!changed_here && changed_there) {
