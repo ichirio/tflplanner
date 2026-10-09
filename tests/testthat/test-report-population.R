@@ -28,7 +28,7 @@ test_that("a report's analysis set makes the data of its subjects, once", {
   expect_identical(.adata_rows(p, "T2")$data_id, "adsl_saf")
   expect_identical(.adata_rows(p)$output_id, c("T1", "T2"))
   # one the study has not
-  expect_error(set_report_population(p, "T1", "PP"), "No analysis set")
+  expect_error(set_report_population(p, "T1", "PP"), "No population")
   # none: the value goes, the data stays
   q <- set_report_population(p, "T1", NA)
   expect_true(is.na(report_population(q, "T1")))

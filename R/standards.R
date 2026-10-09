@@ -305,7 +305,7 @@
         "the listing types a listing may use (rtfreporter's)",
         "a TOC in the company's layout: for each item (output_id, type, title, population, footnote, program, file, note), the column names it may have, | between them",
         "the company's words for the ARD form's function search, added to tflplanner's: fn (cards::ard_tabulate, cardx::ard_stats_t_test, a method keyword), lang (en / ja / sas / r), keyword, rank (1 the function for the word, 2 related, 3 near: say why in the notes), note_ja, note_en, args (the arguments the word means, which the form can start from: method = \"glm\", exponentiate = TRUE); empty by default",
-        "the analysis sets (population flags) the company may use, its own too: id, dataset, condition, label (note); a new study gets them all, and a report's set chosen (the TOC's, step 1's) makes its analysis data (adsl_<set>)",
+        "the populations (population flags) the company may use, its own too: id, dataset, condition, label (note); a new study gets them all, and a report's set chosen (the TOC's, step 1's) makes its analysis data (adsl_<set>)",
         "the data catalog a new study starts with: ADaM and SDTM datasets and their files",
         "the company's code lists, one row a value: set (the list's name; blank: the variable), variable, value, label (what it prints as), order, note; a report copies the ones it needs (Copy... where its data is made: 1-1's column definitions, a listing's or a figure's data)",
         "the study-default rows a new study starts with, one sheet per definition sheet (default_header, default_footer, default_cells ...); {STUDY_ID} becomes the study's id"),
