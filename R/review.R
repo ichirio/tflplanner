@@ -69,7 +69,7 @@ study_review <- function(study, output_id = NULL, data = c("cached", "read", "no
     drop <- r$rule == "F03" & grepl("no dataset ", r$message) & toupper(gone) %in% unread
     if (any(drop)) r <- .review_finish(r[!drop, , drop = FALSE])
   }
-  more <- list(.rule_d01(study), .rules_fig_ard(study))
+  more <- list(.rule_d01(study), .rules_fig_ard(study), .rule_p02(study))
   if (inherits(facts, "tfl_data_facts")) {
     more <- c(more, list(.rule_d02(study, attr(facts, "not_read"))))
   }
@@ -403,6 +403,106 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   if (!length(not_read)) return(NULL)
   .review_bind(lapply(not_read, function(g)
     .rv_row("D02", NA_character_, "datasets", g, "", args = g)))
+}
+
+# P02: a study program that calls one of the six functions tflspec no
+# longer has (0.0.24.9066's set_levels() ...: the study's
+# programs/study_helpers.R has them) -- as tflspec::, or after
+# library(tflspec) with no study_helpers.R sourced on the way.  An error
+# when the program would stop; to check when another program sources it
+# (the helpers may come from that one).  The study folder's programs/,
+# not its copies (programs/.edited/)
+.rule_p02 <- function(study) {
+  root <- study$path
+  dir <- file.path(root, "programs")
+  if (is.null(root) || !dir.exists(dir)) return(NULL)
+  files <- list.files(dir, pattern = "[.][Rr]$", recursive = TRUE)
+  files <- files[!grepl("(^|/)[.]", files)]
+  if (!length(files)) return(NULL)
+  rel <- file.path("programs", files)
+  info <- lapply(file.path(root, rel), .p02_file)
+  names(info) <- rel
+  helpers <- file.path("programs", .study_helpers_file)
+  # the files each one sources, on and on (paths from the study folder)
+  reach <- function(f, seen = character()) {
+    for (s in setdiff(info[[f]]$sources, seen)) {
+      seen <- c(seen, s)
+      if (s %in% names(info)) seen <- reach(s, seen)
+    }
+    seen
+  }
+  sourced_by <- unique(unlist(lapply(names(info), function(f) info[[f]]$sources)))
+  p_ids <- study$planner$outputs$output_id
+  out <- list()
+  for (f in names(info)) {
+    x <- info[[f]]
+    if (!length(x$ns) && !length(x$bare)) next
+    up <- reach(f)
+    with_helpers <- helpers %in% up
+    attaches <- x$attaches || any(vapply(intersect(up, names(info)),
+                                         function(s) info[[s]]$attaches, NA))
+    bad <- x$ns
+    if (attaches && !with_helpers) bad <- union(bad, x$bare)
+    if (!length(bad)) next
+    id <- sub("[.][Rr]$", "", basename(f))
+    out[[length(out) + 1L]] <- .rv_row(
+      "P02", if (id %in% p_ids) id else NA_character_, "programs", f, "",
+      args = c(f, paste0(bad, "()", collapse = ", ")),
+      level = if (f %in% sourced_by && !length(x$ns)) "check" else "error")
+  }
+  .review_bind(out)
+}
+
+# the six tflspec gave up to 0.0.24.9066
+.p02_removed <- c("set_levels", "tag_ard", "fmt_ard", "keep_stats", "fmt_pvalue",
+                  "save_ard")
+
+# What a program file says of them: the ones called as tflspec:: (`ns`)
+# and bare (`bare`, less the ones it defines), whether it attaches
+# tflspec, the files it sources (literal paths); kept by the file's time
+# and size
+.p02_file <- function(path) {
+  fi <- file.info(path)
+  key <- paste(path, fi$mtime, fi$size)
+  hit <- .review_memo$p02[[key]]
+  if (!is.null(hit)) return(hit)
+  none <- list(ns = character(), bare = character(), attaches = FALSE,
+               sources = character())
+  pd <- tryCatch(utils::getParseData(parse(path, keep.source = TRUE, encoding = "UTF-8")),
+                 error = function(e) NULL)
+  out <- none
+  if (!is.null(pd) && nrow(pd)) {
+    pd <- pd[pd$terminal, , drop = FALSE]
+    pd <- pd[order(pd$line1, pd$col1), , drop = FALSE]
+    tok <- pd$token
+    txt <- pd$text
+    n <- length(tok)
+    prev <- function(i, k) if (i - k >= 1L) txt[i - k] else ""
+    nxt <- function(i, k) if (i + k <= n) txt[i + k] else ""
+    calls <- which(tok == "SYMBOL_FUNCTION_CALL")
+    six <- calls[txt[calls] %in% .p02_removed]
+    is_ns <- vapply(six, function(i) prev(i, 1L) %in% c("::", ":::") &&
+                      prev(i, 2L) == "tflspec", NA)
+    defined <- unique(txt[which(tok == "FUNCTION")[
+      vapply(which(tok == "FUNCTION"), function(i) i > 2L && tok[i - 1L] %in% c("LEFT_ASSIGN", "EQ_ASSIGN"), NA)
+    ] - 2L])
+    lib <- calls[txt[calls] %in% c("library", "require", "requireNamespace")]
+    attaches <- any(vapply(lib, function(i) {
+      a <- gsub("^[\"']|[\"']$", "", nxt(i, 2L))
+      identical(a, "tflspec") && txt[i] != "requireNamespace"
+    }, NA))
+    src <- calls[txt[calls] %in% c("source", "sys.source")]
+    sources <- vapply(src, function(i) {
+      if (tok[min(i + 2L, n)] == "STR_CONST") gsub("^[\"']|[\"']$", "", nxt(i, 2L)) else NA_character_
+    }, "")
+    out <- list(ns = unique(txt[six[is_ns]]),
+                bare = setdiff(unique(txt[six[!is_ns]]), defined),
+                attaches = attaches,
+                sources = unique(stats::na.omit(sources)))
+  }
+  if (is.null(.review_memo$p02) || length(.review_memo$p02) > 2000L) .review_memo$p02 <- list()
+  .review_memo$p02[[key]] <- out
+  out
 }
 
 # P01: the deep check, the definition read back as the programs read it

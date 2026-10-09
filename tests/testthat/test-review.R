@@ -252,3 +252,41 @@ test_that("a row's own sentence is translated and filled with its values", {
   r$template <- NULL
   expect_identical(.review_language(.review_bind(list(r)), "ja")$message, r$message)
 })
+
+test_that("P02: a program calling a function tflspec no longer has", {
+  skip_if_not("P02" %in% tflspec::tfl_review_rules()$rule)
+  root <- withr_tempdir()
+  dir.create(file.path(root, "programs", "ard"), recursive = TRUE)
+  dir.create(file.path(root, "programs", ".edited"))
+  put <- function(f, ...) writeLines(c(...), file.path(root, "programs", f))
+  put("study_helpers.R", "set_levels <- function(x, ...) x")
+  put("study_setup.R", "library(dplyr)", "source(\"programs/study_helpers.R\")")
+  # generated now: the setup sources the helpers -- nothing to say
+  put("ard/T-1.R", "source(\"programs/study_setup.R\")", "library(tflspec)", "d <- set_levels(d)")
+  # tflspec:: stops whatever is sourced
+  put("ard/T-2.R", "source(\"programs/study_setup.R\")", "tflspec::save_ard(ard, \"T-2\")")
+  # an old program: tflspec attached, no helpers
+  put("old.R", "library(tflspec)", "d <- set_levels(d)", "fmt_ard(a)")
+  # attached, no helpers, but sourced by another: to check
+  put("part.R", "library(\"tflspec\")", "keep_stats(a)")
+  put("run.R", "source(\"programs/part.R\")")
+  # its own function, and copies in .edited: not looked at
+  put("own.R", "library(tflspec)", "tag_ard <- function(x) x", "tag_ard(1)")
+  put(".edited/T-1.R", "library(tflspec)", "set_levels(d)")
+  p <- new_planner()
+  p <- add_output(p, "T-2", type = "table")
+  r <- .rule_p02(list(path = root, planner = p))
+  expect_setequal(r$row, c("programs/ard/T-2.R", "programs/old.R", "programs/part.R"))
+  expect_identical(r$output_id[r$row == "programs/ard/T-2.R"], "T-2")
+  expect_true(is.na(r$output_id[r$row == "programs/old.R"]))
+  expect_identical(r$level[match(c("programs/ard/T-2.R", "programs/old.R", "programs/part.R"), r$row)],
+                   c("error", "error", "check"))
+  expect_identical(r$message[r$row == "programs/old.R"],
+                   "programs/old.R calls set_levels(), fmt_ard(), which tflspec no longer has.")
+  expect_identical(r$area, rep("program", 3L))
+  j <- .review_language(r, "ja")
+  expect_false(any(j$message == j$message_en))
+  # a file that does not parse is passed over
+  put("broken.R", "library(tflspec)", "set_levels(")
+  expect_false("programs/broken.R" %in% .rule_p02(list(path = root, planner = p))$row)
+})

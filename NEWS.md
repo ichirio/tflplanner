@@ -1,5 +1,36 @@
 # tflplanner (development version)
 
+## Upgrading from an earlier version
+
+Update tflplanner and tflspec together, open each study and save it, then
+look at its Review tab.
+
+* **This tflplanner needs tflspec 0.0.24.9079 or later** (0.0.2.9157 and
+  later needed 0.0.24.9077): update both together.
+* **Six functions are no longer tflspec's; the study keeps them in
+  `programs/study_helpers.R`.**  `set_levels()`, `tag_ard()`, `fmt_ard()`,
+  `keep_stats()`, `fmt_pvalue()` and `save_ard()` (tflspec's up to
+  0.0.24.9066) are written there by a save, and the study's setup sources
+  it.  A program that calls them as `tflspec::` or after
+  `library(tflspec)` without it stops; the review says which (P02): write
+  it again (open the study and save) or source
+  `programs/study_helpers.R`.
+* **A figure design written before reads as it is**: its YAML's old form
+  (`stats:`, `data_code`, `stats_code`) is read, and a save writes the new
+  one.
+* **Figure programs have a new shape, and draw the same figures**: a data
+  and a plot section, one `+` chain.  A save writes them again.
+* **The steps:** update both packages; open each study and save it (the
+  programs and `study_helpers.R` are written again; a program edited by
+  hand is copied to `programs/.edited/` first); check the Review tab.
+
+## Changes
+
+- **The review names a program calling a function tflspec no longer
+  has** (P02, area program): one of the six above, as `tflspec::`, or
+  after `library(tflspec)` with `programs/study_helpers.R` not sourced on
+  the way (an error; to check when another program sources it).  The
+  study's `programs/` is looked at, not its copies in `.edited/`.
 - **The review lists a figure's ARD problems** (#288).  A figure that
   prints a table's numbers is reviewed as the catalog's F04-F08: its ARD
   source is not a table of the study (F04), the design reads an ARD but
