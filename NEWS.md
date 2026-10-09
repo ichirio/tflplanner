@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **The sample's F-14-2-3 prints the hazard ratios too** (#311).
+  T-14-2-2's ARD has a Cox model's hazard ratios against placebo (a
+  `custom` analysis `HR`, `cardx::ard_regression(coxph(), exponentiate =
+  TRUE)`), in the ARD and not in the table (its cells name `prob` and
+  `time` only; its RTF is unchanged, byte for byte), and F-14-2-3 prints
+  each with its CI on one line, through tflspec's labels that name
+  several statistics of one address (`HR {estimate} (95% CI {conf.low},
+  {conf.high})`, tflspec #204).
+
 - **A figure prints the numbers of a table's ARD** (#293 phase 3, with
   tflspec #203).  A figure's step 2 (ARD) chooses where its ARD comes
   from: none (it reads its data only), its own analyses (defined as a
