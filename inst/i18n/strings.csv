@@ -2442,3 +2442,4 @@ Copy...,写す…
 "%s's code list of %s: %s added, each printing as itself (edit their text with Edit...).",%s の %s のコードリストに %s を加えました。表示は値そのままです（文字は「編集…」で直せます）。
 A column with a code list (%s) holds its labels here: e.g. %s.,コードリストのある列（%s）は、ここではラベルを持ちます：例 %s。
 Columns made or changed,作る・変える列
+Columns added from the subjects' data: none to add (this data is the subjects' data itself).,症例のデータから加える列：ありません（このデータが症例のデータそのものです）。

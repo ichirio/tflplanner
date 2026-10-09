@@ -438,6 +438,18 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
   out
 }
 
+# The rows of `data` a condition (R, as the definition writes it) keeps:
+# what the code lists meet, for their warning.  A condition that cannot be
+# read on these rows (a column made later, R of its own): all the rows.
+.rows_where <- function(data, where) {
+  if (is.null(data) || is.null(where) || !length(where) || is.na(where) ||
+      !nzchar(trimws(where))) return(data)
+  k <- tryCatch(eval(parse(text = where, keep.source = FALSE)[[1L]], data, baseenv()),
+                error = function(e) NULL)
+  if (!is.logical(k) || length(k) != nrow(data)) return(data)
+  data[k %in% TRUE, , drop = FALSE]
+}
+
 # `values` added to a report's code list of `variable`, after its others,
 # each printing as itself: the planner
 .codelist_add_values <- function(x, output_id, variable, values) {

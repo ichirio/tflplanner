@@ -889,7 +889,6 @@
     d <- design()
     shiny::req(d, current(), !is.null(cl_missing))
     shiny::tagList(
-      shiny::h6(t("Code lists")),
       .codelist_part_ui(
         .codelist_lines(sheet_rows(rv$p, "codelists", current()), design_vars(d)),
         cl_missing(), t, cl_ids,

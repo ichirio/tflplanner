@@ -10,7 +10,7 @@
 
 .all_rows <- "__all__"
 .default_rows <- "__default__"
-.study_tabs <- c("data", "outputs", "ard", "results")
+.study_tabs <- c("data", "outputs", "make", "results")
 
 .sheet_labels <- c(
   tables = "tables: roles", variables = "variables",
@@ -2523,9 +2523,10 @@ app_server <- function(input, output, session, start) {
   adata_cl_ids <- c(edit = "cl21_open", copy = "cl21_copy", add = "adata_cl_add")
   adata_cl_missing <- .codelist_part_server(
     input, rv, current, adata_cl_ids, vars = adata_cl_vars,
+    # the rows its condition keeps (the analysis set's too)
     data = function() {
       ds <- adata_root(input$adata_from %||% "")
-      if (!.is_blank(ds)) an_data(ds)
+      if (!.is_blank(ds)) .rows_where(an_data(ds), adata_where_now())
     },
     title = function() {
       nm <- trimws(input$adata_id %||% "")
@@ -4522,10 +4523,14 @@ app_server <- function(input, output, session, start) {
     own <- unname(from_ch)[vapply(unname(from_ch), function(v)
       adata_root(v) %in% adata_pop_ds(), NA)]
     if (.is_blank(r$add) && length(own)) {
-      add_ui <- shiny::conditionalPanel(
-        sprintf("[%s].indexOf(input.adata_from) < 0",
-                paste(encodeString(own, quote = "\""), collapse = ", ")),
-        add_ui)
+      own_js <- paste(encodeString(own, quote = "\""), collapse = ", ")
+      # (part 1 says why it has nothing to add, rather than stand empty)
+      add_ui <- shiny::tagList(
+        shiny::conditionalPanel(sprintf("[%s].indexOf(input.adata_from) < 0", own_js), add_ui),
+        shiny::conditionalPanel(
+          sprintf("[%s].indexOf(input.adata_from) >= 0", own_js),
+          shiny::p(class = "small text-muted mb-2",
+                   t("Columns added from the subjects' data: none to add (this data is the subjects' data itself)."))))
     }
     step2_focus("adata")
     adata_form_ui(shiny::div(
@@ -4579,7 +4584,7 @@ app_server <- function(input, output, session, start) {
         shiny::tags$summary(class = "small", with_tip(
           t("Column definitions"),
           t("The columns of this analysis data, in the order its program makes them: \u2460 added from the subjects' data, \u2461 made or changed, \u2462 kept, \u2463 the code lists put on them."))),
-        shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2460"), add_ui),
+        shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2460"), shiny::div(add_ui)),
         shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2461"),
           .derive_editor_ui(t, with_tip(argl("Columns made or changed", "derive"),
                                         t("The columns this data makes, or changes when the name is a column it has: split by conditions, cut a number into groups, days between two dates, or any R (mutate()). The sheet keeps each as NAME = R (derive, | between them); one the form cannot draw is kept as written.")),
@@ -4592,7 +4597,7 @@ app_server <- function(input, output, session, start) {
                                 selected = bar(r$keep), multiple = TRUE, width = "100%",
                                 options = list(create = TRUE, plugins = list("remove_button")))),
         shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2463"),
-          shiny::uiOutput("adata_cl")),
+          shiny::div(shiny::uiOutput("adata_cl"))),
         shiny::selectizeInput("adata_distinct", argl("One row per (e.g. subject; subject \u00d7 phase)", "distinct"),
                               choices = unique(c(bar(r$distinct), adata_cols(adata_root(r$from)))),
                               selected = bar(r$distinct), multiple = TRUE, width = "100%",
@@ -7068,8 +7073,9 @@ app_server <- function(input, output, session, start) {
   # them on the data after the condition, before the order)
   lf_cl_ids <- c(edit = "cllf_open", copy = "cllf_copy", add = "lf_cl_add")
   lf_cl_ds <- function() {
-    ds <- lf_rows(rv$p, "listings", current() %||% "")$dataset[1L]
-    if (!.is_blank(ds)) an_data(ds)
+    l <- lf_rows(rv$p, "listings", current() %||% "")
+    if (!nrow(l) || .is_blank(l$dataset[1L])) return(NULL)
+    .rows_where(an_data(l$dataset[1L]), l$where[1L])
   }
   lf_cl_vars <- function() {
     cols <- unlist(lapply(lf_rows(rv$p, "listing_cols", current() %||% "")$vars,
