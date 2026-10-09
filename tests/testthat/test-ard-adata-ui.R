@@ -511,6 +511,9 @@ test_that("2-1 lists only the analysis data the report's analyses read (every sa
     session$setInputs(target = "T-14-1-1")
     expect_identical(.adata_of_report(p, "T-14-1-1"), "adsl_saf")
   })
-  # every table reads analysis data, of its analysis set
-  expect_true(all(vapply(tabs, function(id) report_population(p, id) %in% "SAF", NA)))
+  # every table reads analysis data of its analysis set: the safety set,
+  # the screen failures' (T-14-1-4), none for the study information (T-14-0-1)
+  pops <- vapply(tabs, function(id) report_population(p, id), "")
+  expect_identical(unname(pops[c("T-14-0-1", "T-14-1-4")]), c(NA_character_, "SCRF"))
+  expect_true(all(pops[setdiff(tabs, c("T-14-0-1", "T-14-1-4"))] %in% "SAF"))
 })

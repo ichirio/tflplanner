@@ -992,7 +992,7 @@ How groups print (plan_row_group(mode = )): value / indent / ...; blank: the def
 "TRUE, or the columns (names or positions, | between them) whose repeated values print once (plan_row_group(collapse = )); blank: none.",TRUE、または繰り返す値を 1 度だけ表示する列（名前か位置。| 区切り）（plan_row_group(collapse = )）。空欄 = なし。
 TRUE / FALSE: one page per value of group_col (plan_paginate_group()); blank: FALSE.,TRUE / FALSE：group_col の値ごとに 1 ページ（plan_paginate_group()）。空欄 = FALSE。
 "TRUE / FALSE: with group_page, FALSE leaves the group column unprinted (plan_paginate_group(keep = )); blank: TRUE.",TRUE / FALSE：group_page のとき、FALSE でグループの列を表示しない（plan_paginate_group(keep = )）。空欄 = TRUE。
-Where blank rows go: a named rule such as between_groups (plan_blanks(where = )); blank: none.,空行を入れる場所：between_groups などの名前付きの規則（plan_blanks(where = )）。空欄 = なし。
+"Where blank rows go: a named rule such as between_groups, or row positions -- a blank after each, 0 before the first row, -1 after the last (0 | 5 | -1) (plan_blanks(where = )); blank: none.",空行を入れる場所：between_groups などの名前付きの規則、または行の位置（その行の後に空行。0 は最初の行の前、-1 は最後の行の後。例 0 | 5 | -1）（plan_blanks(where = )）。空欄 = なし。
 TRUE / FALSE: a blank row before the first row (plan_blanks(first = )); blank: the default.,TRUE / FALSE：最初の行の前に空行（plan_blanks(first = )）。空欄 = 既定。
 TRUE / FALSE: a blank row after the last row (plan_blanks(last = )); blank: the default.,TRUE / FALSE：最後の行の後に空行（plan_blanks(last = )）。空欄 = 既定。
 TRUE / FALSE: blank rows count towards pages_max_rows (plan_blanks(counted = )); blank: the default.,TRUE / FALSE：空行を pages_max_rows に数える（plan_blanks(counted = )）。空欄 = 既定。
