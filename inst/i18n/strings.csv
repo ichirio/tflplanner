@@ -2447,6 +2447,41 @@ A value with no arrow prints as it is.,矢印の無い値は、そのまま表�
 "Which population {n} in the column header is, for a table split by page (a lab parameter): page (those with that page's data), table (the population), or both as n = page | N = table for {n} and {N}; blank: page (warns when both exist and differ). Both must be in the ARD.",ページ（検査項目など）で分けた表で、列見出しの {n} がどの母集団か：page（そのページのデータがある人）、table（解析対象集団）、両方なら n = page | N = table で {n} と {N}。空欄 = page（両方あって食い違えば警告）。どちらも ARD に入れておくこと。
 Population flag,解析対象集団フラグ
 "Search: ID, title, population, data",検索: ID・タイトル・解析対象集団・データ
+"A flag (== ""Y"") that selects the analysis set, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"
+Keep an analysis set,解析対象集団で絞る
+"No analysis set: every row of the dataset is used. Keep the analysis set's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。
+(the batch %s),（バッチ %s）
+(%d left out),（%d 件を除く）
+Named batch,名前付きバッチ
+"A named batch is a set of reports an official run takes by name (Topline, Interim Analysis, Final): choosing one ticks its reports. A report's batches are the report list's batches column; the full run is every report and has no name.",名前付きバッチは、正式実行が名前で選べる帳票の組です（Topline、Interim Analysis、Final など）。選ぶと、その帳票にチェックが付きます。帳票がどのバッチに入るかは、帳票一覧の batches 列です。全部の実行はすべての帳票で、名前はありません。
+(every report),（すべての帳票）
+Save the ticks as...,名前を付けて保存…
+Rename...,名前を変える…
+None,なし
+Reports in the run: all %d,実行する帳票：全 %d 件
+Reports in the run: %d of %d (%d left out),実行する帳票：%2$d 件中 %1$d 件（%3$d 件を除く）
+Tick the reports of the batch first.,先にバッチの帳票にチェックを付けてください。
+Save the %d ticked reports as a named batch,チェックした %d 件の帳票を、名前付きバッチとして保存
+"A name the study has already is overwritten: it becomes these reports. Letters, digits, spaces, . _ -",試験にすでにある名前なら上書きします（そのバッチはこれらの帳票になります）。使える文字：英数字、空白、. _ -
+The batch %s: %d reports (save the study to keep it).,バッチ %s：%d 件の帳票（残すには試験を保存してください）。
+Rename the batch %s,バッチ %s の名前を変える
+Its reports stay as they are.,帳票はそのままです。
+Delete the batch %s?,バッチ %s を削除しますか？
+Only the name goes: its reports stay on the report list.,消えるのは名前だけです。帳票は帳票一覧に残ります。
+Choose at least one report for the run.,実行する帳票を 1 つ以上選んでください。
+A report the run makes reads an ARD it leaves out,実行する帳票が、除いた帳票の ARD を読んでいます
+"These reports read the study ARD's rows of a report left out of the run. Its ARD program does not run, so they use those rows as an earlier run left them (or none):",次の帳票は、実行から除いた帳票の試験 ARD の行を読みます。その ARD プログラムは実行しないので、前の実行で残った行を使います（無ければ行がありません）：
+%s reads the ARD of %s,%s は %s の ARD を読みます
+Run anyway,このまま実行する
+Left out,除いたもの
+Choose a named batch first.,先に名前付きバッチを選んでください。
+(not the batch %s any more: the run has no name),（バッチ %s とは違います：名前なしの実行になります）
+", ... (%d)",、…（%d 件）
+Batch name,バッチ名
+Batches,バッチ
+Batches...,バッチ…
+The named batches of %s,%s の名前付きバッチ
+"The official runs that take this report by name (Topline, Final ...): choose the names in use or type a new one. The Runs tab runs a named batch.",この帳票を名前で選ぶ正式実行（Topline、Final など）です。使っている名前から選ぶか、新しい名前を入力します。名前付きバッチは実行タブで実行します。
 "A flag (== ""Y"") that selects the population, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"
 Keep a population,解析対象集団で絞る
 "No population: every row of the dataset is used. Keep the population's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。

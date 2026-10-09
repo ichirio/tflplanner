@@ -88,6 +88,14 @@ batch_code <- function(x, date = Sys.Date()) {
     paste0(".batch_programs <- ", vlist(ard = ard_progs, tfl = tfl_progs)),
     "# the output each ARD program makes",
     paste0(".batch_ard_outputs <- ", vec(ids, basename(ard_progs))),
+    "# the output each report program makes",
+    paste0(".batch_report_ids <- ", vec(out_ids, tfl_progs)),
+    "# the named batches (the report list's `batches`): name -> outputs",
+    paste0(".batch_sets <- ", if (length(sets <- batch_sets(x)))
+      paste0("list(\n", paste0("  ", encodeString(names(sets), quote = "`"), " = ",
+                               vapply(sets, function(v) paste0("c(", paste(
+                                 encodeString(v, quote = "\""), collapse = ", "), ")"), ""),
+                               collapse = ",\n"), ")") else "list()"),
     "# what each report program makes",
     paste0(".batch_outputs <- list(\n",
            paste0("  ", encodeString(tfl_progs, quote = "`"), " = ",
@@ -207,13 +215,19 @@ autoexec_all_code <- function(date = Sys.Date()) {
 #' @param parts `"ard"`, `"tfl"` or both.
 #' @param code Keep the code in the batch folder.
 #' @param only Programs or outputs to run; `NULL` for all.
+#' @param exclude Reports to leave out (their ARD program and their report
+#'   program), by output id or program name; `NULL` for none.  The batch
+#'   folder's `batch.txt` lists the programs left out.
+#' @param batch A named batch ([batch_sets()]): only its reports run, and
+#'   the batch folder (`runs/<date>_<time>_<what>_<batch>/`) and its
+#'   `batch.txt` name it.  `NULL`: every report (or `only` / `exclude`).
 #' @param wait `FALSE` returns the running [processx::process] at once.
 #' @return `run_batch()`: with `wait = TRUE`, a list: `ok`, `batch` (the
 #'   batch folder), `result` (its run.csv), `output` (what the run
 #'   printed); otherwise the process.  `list_batches()`: a data frame.
 #' @export
 run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE,
-                      only = NULL, wait = TRUE) {
+                      only = NULL, exclude = NULL, batch = NULL, wait = TRUE) {
   lay <- study_layout()
   parts <- match.arg(parts, c("ard", "tfl"), several.ok = TRUE)
   prog <- if (length(parts) == 2L) file.path("programs", .autoexec_all_file) else
@@ -222,11 +236,28 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE,
   if (!file.exists(file.path(study$path, prog))) {
     stop("The study has no ", prog, " yet: save it first.", call. = FALSE)
   }
+  if (length(batch) && !batch %in% names(batch_sets(study$planner))) {
+    stop("No batch named ", sQuote(batch), ": the study's are ",
+         paste(sQuote(names(batch_sets(study$planner))), collapse = ", "),
+         ".", call. = FALSE)
+  }
+  # leaving reports out, a named batch: the runner that knows how (a study
+  # saved by an earlier tflplanner has an older programs/batch.R)
+  runner <- readLines(file.path(study$path, "programs", .batch_file), warn = FALSE)
+  if ((length(exclude) && !any(grepl("--exclude=", runner, fixed = TRUE))) ||
+      (length(batch) && !any(grepl("--batch", runner, fixed = TRUE)))) {
+    stop("programs/batch.R was written by an earlier tflplanner and cannot leave ",
+         "reports out or run a named batch: save the study to write it again.",
+         call. = FALSE)
+  }
   before <- list_batches(study)$batch
   out <- tempfile("batch", fileext = ".txt")
   px <- processx::process$new(
     file.path(R.home("bin"), "Rscript"),
-    c(prog, if (!code) "--no-code", only), wd = study$path,
+    c(prog, if (!code) "--no-code", only,
+      if (length(exclude)) paste0("--exclude=", .batch_exclude(study$planner, exclude)),
+      if (length(batch)) c("--batch", batch)),
+    wd = study$path,
     stdout = out, stderr = "2>&1")
   if (!wait) return(px)
   px$wait()
@@ -238,6 +269,47 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE,
        result = if (!is.null(csv) && file.exists(csv))
          utils::read.csv(csv, colClasses = "character"),
        output = txt)
+}
+
+# The programs a report left out of a run is: its ARD program and its report
+# program (an output id), or the program named
+.batch_exclude <- function(x, exclude) {
+  ids <- x$outputs$output_id
+  progs <- unlist(lapply(exclude, function(e) {
+    if (!e %in% ids) return(e)
+    c(.ard_prog_name(e), report_info(x, e)$program)
+  }))
+  unique(progs[!is.na(progs) & nzchar(progs)])
+}
+
+# For each report, the reports whose rows of the study ARD it reads: its own
+# when it has analyses, and any other report with analyses its own code
+# names in quotes ("T-14-1-1").  A named list: output id -> output ids.
+.batch_ard_reads <- function(x) {
+  a <- x$ard$analyses
+  has <- unique(stats::na.omit(a$output_id))
+  ids <- x$outputs$output_id
+  code <- x$outputs$data_code
+  stats::setNames(lapply(seq_along(ids), function(i) {
+    q <- if (!is.na(code[i])) {
+      unlist(regmatches(code[i], gregexpr('"[^"]+"', code[i])))
+    }
+    q <- gsub('"', "", q)
+    unique(c(if (ids[i] %in% has) ids[i], intersect(setdiff(q, ids[i]), has)))
+  }), ids)
+}
+
+# The reports of a run that read an ARD the run leaves out: data frame
+# report (kept) / needs (left out)
+.batch_excluded_needs <- function(x, exclude) {
+  reads <- .batch_ard_reads(x)
+  keep <- setdiff(names(reads), exclude)
+  rows <- lapply(keep, function(k) {
+    n <- intersect(reads[[k]], exclude)
+    if (length(n)) data.frame(report = k, needs = n, stringsAsFactors = FALSE)
+  })
+  out <- do.call(rbind, rows)
+  if (is.null(out)) data.frame(report = character(), needs = character()) else out
 }
 
 #' @rdname run_batch
@@ -252,7 +324,18 @@ list_batches <- function(study) {
     r <- if (file.exists(csv)) tryCatch(
       utils::read.csv(csv, colClasses = "character"),
       error = function(e) NULL)
-    m <- regmatches(d, regexec("^([0-9]{8})_([0-9]{6})_(.*)$", d))[[1L]]
+    # the programs the run left out (batch.txt's "Excluded :")
+    bt <- file.path(root, d, "batch.txt")
+    ex <- if (file.exists(bt)) sub("^Excluded :\\s*", "", grep("^Excluded :",
+      readLines(bt, warn = FALSE), value = TRUE))
+    ex <- if (length(ex) && !identical(ex[1L], "none")) ex[1L] else ""
+    m <- regmatches(d, regexec("^([0-9]{8})_([0-9]{6})_(ard|report|all)(?:_(.*))?$",
+                               d, perl = TRUE))[[1L]]
+    # the named batch: batch.txt's "Batch set :" (the folder carries it too)
+    set <- if (file.exists(bt <- file.path(root, d, "batch.txt"))) sub(
+      "^Batch set :\\s*", "", grep("^Batch set :", readLines(bt, warn = FALSE),
+                                   value = TRUE))
+    set <- if (length(set) && !identical(set[1L], "none")) set[1L] else ""
     data.frame(
       batch = d,
       started = if (length(m)) paste(
@@ -260,15 +343,17 @@ list_batches <- function(study) {
         paste(substring(m[3L], c(1L, 3L, 5L), c(2L, 4L, 6L)), collapse = ":"))
       else NA_character_,
       what = if (length(m)) m[4L] else NA_character_,
+      set = set,
       programs = if (is.null(r)) NA_integer_ else nrow(r),
       errors = if (is.null(r)) NA_integer_ else sum(r$status != "OK"),
       code = dir.exists(file.path(root, d, "code")),
+      excluded = ex,
       path = file.path(root, d), stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, c(list(data.frame(
     batch = character(), started = character(), what = character(),
-    programs = integer(), errors = integer(), code = logical(),
-    path = character())), rows))
+    set = character(), programs = integer(), errors = integer(), code = logical(),
+    excluded = character(), path = character())), rows))
   rownames(out) <- NULL
   out
 }
