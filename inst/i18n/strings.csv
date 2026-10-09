@@ -2619,3 +2619,8 @@ As the programs read the definition.,プログラムが定義を読んだとき�
 Make the data facts (Review with the data).,データの事実を作ってください（データ込みでレビュー）。
 The rule %s could not be run: %s.,ルール %1$s を実行できませんでした：%2$s。
 This is a fault of the review; please report it.,レビュー側の不具合です。報告してください。
+"Choose a table of the study as the figure's ARD source (its step 2), or take the ARD in.",図の ARD の取り出し元に試験の表を選ぶか（その手順 2）、ARD を取り込んでください。
+The design reads an ARD: choose where it comes from (the figure's step 2).,デザインが ARD を読んでいます。取り出し元を選んでください（図の手順 2）。
+"Give the piece an analysis the table still has, or add the analysis again.",部品に、表にまだある解析を指定するか、その解析を加え直してください。
+"Make the ARD (its table's step 2, or take it in): the figure prints from it.",ARD を作ってください（その表の手順 2、または取り込み）。図はそこから値を出します。
+"Correct the piece to a row the ARD has (its analysis, variable, group or statistic).",部品を ARD にある行（解析・変数・群・統計量）に合わせて直してください。
