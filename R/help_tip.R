@@ -2,7 +2,7 @@
 # shows on hover or keyboard focus (a tooltip), instead of a paragraph on
 # the page.  Long explanations made the screens hard to read; what is
 # left on the page is the label, a warning, an error.  One component for
-# every tab (2-1 and 2-2 use it too).
+# every tab (1-1 and 1-2 use it too).
 #
 #   help_tip(text)              the (i) alone
 #   with_tip(label, text)       a heading (text or tags) and its (i)

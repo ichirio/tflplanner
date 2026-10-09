@@ -52,7 +52,7 @@
 # Which of `vars` are population flags (ADaM: SAFFL, ITTFL, FASFL, PPROTFL,
 # RANDFL, ENRLFL, COMPLFL first in that order, then PPSFL, MITTFL, PKFL ...
 # as they come): the names, in that order.  For a form that offers the
-# analysis sets of a data (2-1).
+# analysis sets of a data (1-1).
 .cond_population_flags <- function(vars) {
   vars <- unique(as.character(vars))
   pop <- vars %in% .cond_pop_flags |

@@ -335,7 +335,7 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
     x$outputs <- o
   }
   # the reports' analysis sets, as the TOC says them (one value with the
-  # report list's and step 2's: a change moves the report's analyses)
+  # report list's and step 1's: a change moves the report's analyses)
   made <- character()
   for (id in intersect(names(populations), x$outputs$output_id)) {
     v <- populations[[id]]
