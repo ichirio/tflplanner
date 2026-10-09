@@ -111,6 +111,15 @@
     paste(lines[(ends[i] - n[i] + 1L):ends[i]], collapse = "\n"), "")
 }
 
+# Where the app runs a program's lines itself (a preview): the functions
+# the programs call (programs/study_helpers.R's, tflspec's code), over
+# `parent`
+.helpers_env <- function(parent = globalenv()) {
+  e <- new.env(parent = parent)
+  eval(parse(text = tflspec::tfl_helpers_code(), keep.source = FALSE), envir = e)
+  e
+}
+
 # code without the blank lines it starts with
 .drop_leading_blank <- function(code) {
   code[cumsum(nzchar(code)) > 0L]

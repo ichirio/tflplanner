@@ -123,7 +123,7 @@ test_that("a suggested name is not the program's own; the choices come in groups
                    c("USUBJID", "TRT01A", "AVISIT", "STUDYID", "AVAL"))
 })
 
-test_that("2-1: a data kept to the subjects of another", {
+test_that("1-1: a data kept to the subjects of another", {
   p <- adata_planner()
   p$ard$datasets <- .normalize_ard_sheet(data.frame(
     dataset = c("ADSL", "ADAE"), path = c("data/adam/adsl.rds", "data/adam/adae.rds")), "datasets")
@@ -168,7 +168,7 @@ test_that("a data of one row a subject made later: the others are kept to it, ab
   expect_identical(.adata_subject_key(q), "USUBJID")
 })
 
-test_that("2-1: one list, a new analysis data, kept to another's subjects", {
+test_that("1-1: one list, a new analysis data, kept to another's subjects", {
   skip_if_not_installed("cards")
   local_home()
   p <- adata_planner()
@@ -231,7 +231,7 @@ test_that("2-1: one list, a new analysis data, kept to another's subjects", {
   })
 })
 
-test_that("2-1's sheet: the report's rows replaced as a whole; a `from` the form has no choice for is kept", {
+test_that("1-1's sheet: the report's rows replaced as a whole; a `from` the form has no choice for is kept", {
   # a report's rows replaced as a whole, in their place in the sheet
   ad <- .normalize_ard_sheet(data.frame(output_id = c("A", "B", "B", "C"),
                                         data_id = c("a", "b", "c", "d"), from = "ADSL"), "analysis_data")
@@ -262,8 +262,8 @@ test_that("2-1's sheet: the report's rows replaced as a whole; a `from` the form
     f <- output$adata_detail$html
     expect_match(f, "ADSL2 (as written in the sheet", fixed = TRUE)
     expect_match(f, "<option value=\"ADSL2\" selected>", fixed = TRUE)
-    # the right of step 2 follows what is open: the analysis data's rows and
-    # its preview, then 2-2's again when it closes
+    # the right of step 1 follows what is open: the analysis data's rows and
+    # its preview, then 1-2's again when it closes
     expect_match(output$ard_spec_pane$html, "hot_adata_report", fixed = TRUE)
     expect_match(output$ard_result_pane$html, "adata_preview", fixed = TRUE)
     session$setInputs(adata_close = 1)
@@ -312,7 +312,7 @@ test_that("a data written as R: the code the program has as a start; saved, the 
   })
 })
 
-test_that("2-2: an analysis written as code (custom) from what its fields make", {
+test_that("1-2: an analysis written as code (custom) from what its fields make", {
   skip_if_not_installed("cards")
   local_home()
   p <- adata_planner()
@@ -337,7 +337,7 @@ test_that("2-2: an analysis written as code (custom) from what its fields make",
   })
 })
 
-test_that("step 2 says the report's analyses and the study's; the Data tab explains its sheets", {
+test_that("step 1 says the report's analyses and the study's; the Data tab explains its sheets", {
   skip_if_not_installed("cards")
   local_home()
   p <- adata_planner()
@@ -347,11 +347,11 @@ test_that("step 2 says the report's analyses and the study's; the Data tab expla
   shiny::testServer(server_for("RV"), {
     session$setInputs(nav = "make", step = "ard", target = "DM")
     expect_match(output$ard_check$html, "This report's analyses: 2 (the study's: 3)", fixed = TRUE)
-    expect_match(output$ard_2_2_head$html, "2-2 Analyses", fixed = TRUE)
+    expect_match(output$ard_2_2_head$html, "1-2 Analyses", fixed = TRUE)
     for (sh in c("datasets", "populations")) {
       expect_false(is.null(output[[paste0("help_ard_", sh)]]))
     }
-    # the analysis data are each report's (2-1): the Data tab has no grid of them
+    # the analysis data are each report's (1-1): the Data tab has no grid of them
     expect_error(output$hot_ard_analysis_data)
   })
 })
@@ -365,7 +365,7 @@ test_that("a data's name from what it is made from and its condition", {
   expect_true(is.na(.adata_name_from("ADSL", NA, po)))
 })
 
-test_that("2-1's analysis set: the condition's first row, from the study's sets and the data's flags", {
+test_that("1-1's analysis set: the condition's first row, from the study's sets and the data's flags", {
   expect_identical(.population_id_for("PPROTFL"), "PP")
   expect_identical(.population_id_for("SAFFL", "SAF"), "SAF2")
   expect_identical(.adata_name_from("ADAE", NA, pop = "SAF"), "adae_saf")
@@ -466,7 +466,7 @@ test_that("an analysis set's condition taken out of a condition, and put in", {
   expect_identical(.adata_same_as(ad, "ADAE", "SAF", NA, NA), NA_character_)
 })
 
-test_that("2-1: a population_id the sheet has is the condition's first row", {
+test_that("1-1: a population_id the sheet has is the condition's first row", {
   skip_if_not_installed("cards")
   local_home()
   p <- adata_planner()
@@ -490,7 +490,7 @@ test_that("2-1: a population_id the sheet has is the condition's first row", {
 })
 
 
-test_that("2-1 lists only the analysis data the report's analyses read (every sample report)", {
+test_that("1-1 lists only the analysis data the report's analyses read (every sample report)", {
   skip_if_not_installed("cards")
   home <- local_home()
   s <- suppressMessages(create_sample_study(run = FALSE))
@@ -511,6 +511,9 @@ test_that("2-1 lists only the analysis data the report's analyses read (every sa
     session$setInputs(target = "T-14-1-1")
     expect_identical(.adata_of_report(p, "T-14-1-1"), "adsl_saf")
   })
-  # every table reads analysis data, of its analysis set
-  expect_true(all(vapply(tabs, function(id) report_population(p, id) %in% "SAF", NA)))
+  # every table reads analysis data of its analysis set: the safety set,
+  # the screen failures' (T-14-1-4), none for the study information (T-14-0-1)
+  pops <- vapply(tabs, function(id) report_population(p, id), "")
+  expect_identical(unname(pops[c("T-14-0-1", "T-14-1-4")]), c(NA_character_, "SCRF"))
+  expect_true(all(pops[setdiff(tabs, c("T-14-0-1", "T-14-1-4"))] %in% "SAF"))
 })

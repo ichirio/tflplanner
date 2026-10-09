@@ -1,5 +1,80 @@
 # tflplanner (development version)
 
+- **A report's code lists are where its data is made**: one place on the
+  screen, one in the definition, one in the program.  Step 1 (Code lists)
+  is gone, and the steps are 1 ARD, 2 Content, 3 Page and output (1-1,
+  1-2 as they were 2-1, 2-2).
+  - A table: 1-1's analysis data form has **Column definitions** in the
+    order the program makes them -- ① columns added, ② made or
+    changed, ③ kept (given, the subject key and the columns the
+    analyses read are kept too), ④ the code lists of its columns.
+  - A listing: its data, between the condition and the order (the rows
+    sort in the lists' order).
+  - A figure: the designer's data steps end with **Code lists** (read
+    only, the report's); a step that orders a variable with a code list
+    no longer offers its own values and labels.
+  - Each place shows what the program makes of the values (`F →
+    Female`), warns of the values the data has that a list does not (the
+    program would stop on them) with a button that adds them to this
+    report's list, and opens the editor (Edit...) or the copy (Copy...).
+- An analysis's own filter says that a column with a code list holds its
+  labels there (`SEX == "Female"`); a level field of an analysis offers the
+  labels too.
+- The code lists no longer give a variable's heading in the table (step
+  2): the variables sheet's `label` does.
+- A new study's setup no longer attaches tflspec (the programs call
+  `programs/study_helpers.R`), nor do the app's previews.
+
+- **The definition files are the study's source** (#274, phase 1).  A
+  save records each definition file's fingerprint (`spec/` and
+  `study.yml`, md5 and size) in the study's state; opening the study
+  compares them.  Unchanged, it opens from its state as before.  Changed
+  outside tflplanner (edited in Excel, copied in), the changed files are
+  read and taken in (`$spec` says which files and parts, a history entry
+  keeps the state before).  A file that does not read leaves the study as
+  last saved, and no save writes over it (class
+  `tflplanner_spec_changed`) until it is fixed and read again
+  (`reload_from_spec()`) or written back from the last save
+  (`write_spec()`, the rejected file kept in `spec/.rejected/`);
+  `spec_status()` says which files changed.  A study unregistered and
+  registered again takes in what was edited meanwhile.  A save reads the
+  workbooks no more when their fingerprints are the recorded ones (about
+  3 s less a save).  A figure design file tflplanner did not write is no
+  longer deleted by a save.
+
+- **The code lists put their labels on the data the programs make**
+  (tflspec >= 0.0.24.9068).  A report's program writes its code lists at
+  its head (`cl_race <- c(WHITE = "White", ...)`) and puts them on the
+  columns it reads (`set_levels(RACE = cl_race)`): each a factor in the
+  list's order, its values the labels, so the ARD (and a listing's or a
+  figure's data) holds what prints.  A value the list does not have stops
+  the program, naming the column and the value.  A listing's rows sort in
+  the code lists' order.
+- **`programs/study_helpers.R`**: the functions the programs call
+  (`set_levels()`, `tag_ard()`, `fmt_ard()`, `fmt_pvalue()`,
+  `keep_stats()`, `save_ard()`), written by tflplanner when the study is
+  saved (`study_helpers_code()`, tflspec's `tfl_helpers_code()`) and
+  sourced by `programs/study_setup.R` (its part 2).  The programs run
+  without tflspec.  The app's previews define them too.
+- The code lists' rows of `variable` (an earlier form of the variables'
+  headings) move to the variables sheet's `label` when a study opens, and
+  the app says so once.
+
+- **Four more sample reports** (SAMPLE-01, made by
+  `data-raw/make-sample-study.R`):
+  - T-14-1-3: age group and sex, its ARD cards' default statistics (n, N
+    and p) and its table n (%) -- the N rows the cells do not name are left
+    out;
+  - T-14-2-3: the mean change in systolic blood pressure at Week 24 with
+    its 95% CI and p-value (`cardx::ard_continuous_ci()`, a one-sample
+    t-test), every statistic in the ARD, its method and alternative text;
+  - T-14-0-1: the study's information (dictionary versions, the dates of
+    the data), with no analysis set (`<All Subjects>` under the title);
+  - T-14-1-4: the screen failures' demographics, an analysis set by a
+    condition alone (SCRF: `ARM == "Screen Failure"`, no flag).
+- The Japanese help of the table layout's `blank_where` says it takes row
+  positions too (tflspec >= 0.0.24.9067).
+
 - **The sample's KM figure (F-14-2-2) reads the study ARD through
   `path_ard`** (`readRDS(file.path(path_ard, "ard.rds"))`), the folder's
   variable of the study's setup, as the other programs do (#268).

@@ -18,7 +18,7 @@ The \code{tflplanner}, with attributes \code{made} (the analysis data
 added) and \code{left}.
 }
 \description{
-The one value the report list, the TOC and step 2 share: \code{set_report_population()}
+The one value the report list, the TOC and step 1 share: \code{set_report_population()}
 writes it, makes the analysis data of the set's subjects (\verb{adsl_<set>})
 when there is none, and moves the report's analyses from the set it had
 to the new one: the data of the old set's subjects, and the data kept to

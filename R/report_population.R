@@ -1,6 +1,6 @@
 # A report's analysis set: one value, the report list's `population`
 # (outputs$population, a population_id).  The TOC fills it, the report list
-# and step 2 change it; step 2's defaults read it.  The analysis data of the
+# and step 1 change it; step 1's defaults read it.  The analysis data of the
 # set's subjects (adsl_<set>) is made when a report's set is chosen, and a
 # report whose set changes has its analyses moved to the new set's data.
 
@@ -202,7 +202,7 @@ report_population <- function(x, output_id) {
 
 #' A report's analysis set
 #'
-#' The one value the report list, the TOC and step 2 share: `set_report_population()`
+#' The one value the report list, the TOC and step 1 share: `set_report_population()`
 #' writes it, makes the analysis data of the set's subjects (`adsl_<set>`)
 #' when there is none, and moves the report's analyses from the set it had
 #' to the new one: the data of the old set's subjects, and the data kept to

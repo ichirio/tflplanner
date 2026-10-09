@@ -9,7 +9,9 @@ test_that("the sample study is copied, registered and written", {
   expect_equal(normalizePath(dirname(s$path), "/"),
                normalizePath(root, "/"))
   expect_setequal(s$planner$outputs$output_id,
-                  c("T-14-1-1", "T-14-1-1S", "T-14-1-2", "T-14-2-1", "T-14-2-2",
+                  c("T-14-0-1", "T-14-1-1", "T-14-1-1S", "T-14-1-2", "T-14-1-3",
+                    "T-14-1-4", "T-14-2-1",
+                    "T-14-2-3", "T-14-2-2",
                     "T-14-3-1", "L-16-2-7", "F-14-2-1", "F-14-2-2", "F-14-2-3"))
   expect_true(nrow(s$planner$ard$analyses) > 0)
   # the figure made with the designer: the KM template, one layer added;
@@ -86,6 +88,11 @@ test_that("the sample study makes its ARD and reports", {
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "st"),
                                     sample = TRUE))
   s <- open_study("SAMPLE-01")
+  # its definition files are what its state records (#274)
+  expect_identical(s$spec$status, "same")
+  # and read in full, they are the same study
+  r <- reload_from_spec("SAMPLE-01")
+  expect_identical(r$spec$status, "same")
   expect_equal(unique(study_status(s)$status), "ok")
   expect_equal(unique(ard_status(s)$state), "built")
   b <- list_batches(s)

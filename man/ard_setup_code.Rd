@@ -42,8 +42,9 @@ The code, one element per line.
 \code{ard_setup_code()} is \code{programs/ard/ard_setup.R}, which every ARD program
 sources: the study's setup (\code{programs/study_setup.R}, see
 \code{\link[=study_setup_code]{study_setup_code()}}), cards, the statistics tflplanner computes (\code{\link[tflspec:tfl_ard_statistics]{tflspec::tfl_ard_statistics()}}, the company standards' catalog),
-the stat_fmt formats, and the option that makes tflspec's
-\code{\link[tflspec:save_ard]{tflspec::save_ard()}} record the study setup each ARD was built with.
+the stat_fmt formats, and the option that makes \code{save_ard()} (the
+study's \code{programs/study_helpers.R}, see \code{\link[=study_helpers_code]{study_helpers_code()}}) record
+the study setup each ARD was built with.
 \code{ard_program_code()} is one output's program, \verb{programs/ard/<output_id>.R}.  \code{ard_autoexec_code()} is
 \code{programs/ard/autoexec_ard.R}, which runs them from the study folder --
 all, or the ones named (\verb{Rscript programs/ard/autoexec_ard.R T-14-1-1})
