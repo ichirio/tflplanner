@@ -63,6 +63,7 @@ reference:
       - create_sample_study
       - save_study
       - reload_from_spec
+      - export_spec_files
       - export_spec
       - export_ars
       - study_layout

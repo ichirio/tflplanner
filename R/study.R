@@ -296,7 +296,7 @@ register_study <- function(path, home = tflplanner_home()) {
   r <- .read_spec(s, path)
   problems <- attr(r, "problems")
   attr(r, "problems") <- NULL
-  if (nrow(problems)) stop(.spec_invalid_condition(problems))
+  if (.has_errors(problems)) stop(.spec_invalid_condition(problems))
   # a figure design for no report of the study is not taken in
   fd <- names(r$planner$fig_designs %||% list())
   for (f in setdiff(fd, r$planner$outputs$output_id)) {
