@@ -497,3 +497,36 @@ test_that("the report list's buttons are above the list, the marks have a legend
   for (m in .report_state_marks) expect_true(grepl(m, html, fixed = TRUE))
   expect_match(html, "The marks", fixed = TRUE)
 })
+
+test_that("a copy of the sample is listed at once; its run goes on in the background", {
+  local_home()
+  alive <- TRUE
+  px <- list(is_alive = function() alive, get_exit_status = function() 0L,
+             kill = function() invisible(TRUE))
+  started <- NULL
+  local_mocked_bindings(run_batch = function(study, parts, ...) {
+    started <<- list(id = study$meta$study_id, parts = parts)
+    px
+  })
+  skip_if_not_installed("cards")
+  skip_if_not_installed("cardx")
+  shiny::testServer(function(input, output, session)
+    app_server(input, output, session, NULL), {
+    rv <- session$userData$rv
+    session$setInputs(try_sample = 1L)
+    session$setInputs(ns_from = "sample", ns_id = "TRAIN-01",
+                      ns_root = studies_root(), ns_ok = 1L)
+    # copied and listed, its official run started and not waited for
+    expect_identical(list_studies()$study_id, "TRAIN-01")
+    expect_identical(started, list(id = "TRAIN-01", parts = c("ard", "tfl")))
+    expect_identical(rv$job_study, "TRAIN-01")
+    ids <- function() .study_list_ids(list_studies(), "TRAIN-01",
+                                      if (!is.null(rv$job)) rv$job_study)
+    expect_identical(ids(), "TRAIN-01 \u25cf (running)")
+    # done: the mark goes
+    alive <<- FALSE
+    session$elapse(1500)
+    expect_null(rv$job)
+    expect_identical(ids(), "TRAIN-01 \u25cf")
+  })
+})
