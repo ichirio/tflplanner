@@ -122,6 +122,7 @@ reference:
       - preview_listing
       - fig_design
       - preview_figure
+      - set_fig_ard_source
       - fig_presets
       - copy_fig_to_params
       - make_user_report
