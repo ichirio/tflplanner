@@ -1,5 +1,22 @@
 # tflplanner (development version)
 
+- **The definition files are the study's source** (#274, phase 1).  A
+  save records each definition file's fingerprint (`spec/` and
+  `study.yml`, md5 and size) in the study's state; opening the study
+  compares them.  Unchanged, it opens from its state as before.  Changed
+  outside tflplanner (edited in Excel, copied in), the changed files are
+  read and taken in (`$spec` says which files and parts, a history entry
+  keeps the state before).  A file that does not read leaves the study as
+  last saved, and no save writes over it (class
+  `tflplanner_spec_changed`) until it is fixed and read again
+  (`reload_from_spec()`) or written back from the last save
+  (`write_spec()`, the rejected file kept in `spec/.rejected/`);
+  `spec_status()` says which files changed.  A study unregistered and
+  registered again takes in what was edited meanwhile.  A save reads the
+  workbooks no more when their fingerprints are the recorded ones (about
+  3 s less a save).  A figure design file tflplanner did not write is no
+  longer deleted by a save.
+
 - **Step 2-2 says what its fields are** (#280).  "Analysis ID (a set of
   analyses)" (several variables: one row per variable under the same ID in
   the ARD), "Grouping variables (by)" (whether they are the table's
