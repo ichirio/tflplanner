@@ -973,6 +973,8 @@ app_ui <- function(lang = "en") {
           .btn("batch_run", t("Start the official run"),
                class = "btn-sm btn-primary"),
           .btn("batch_open", t("Open the batch folder"))),
+        # the reports the run takes: all, unless some are left out
+        shiny::uiOutput("batch_reports_ui"),
         # as tall as its rows (a fill table left a card of empty space)
         DT::DTOutput("batches", height = "auto", fill = FALSE)),
       bslib::layout_columns(
@@ -8941,23 +8943,188 @@ app_server <- function(input, output, session, start) {
     rv$job_what <- what
   }
   shiny::observeEvent(input$run_all, start_run(NULL, t("every report")))
-  start_batch <- function(parts, code) {
+  start_batch <- function(parts, code, exclude = NULL, set = NULL) {
     if (!is.null(rv$job)) return(notify(t("A run is going on"), "warning"))
     if (dirty() && !do_save()) return()
     parts <- if (identical(parts, "all")) c("ard", "tfl") else parts
-    px <- guarded(run_batch(rv$study, parts, code = code, wait = FALSE))
+    # the runner that can leave reports out (a study saved by an earlier
+    # tflplanner has an older one)
+    if ((length(exclude) || length(set)) &&
+        is.null(guarded(.save_batch_programs(rv$p, rv$study$path)))) {
+      return()
+    }
+    px <- guarded(run_batch(rv$study, parts, code = code, exclude = exclude,
+                            batch = set, wait = FALSE))
     if (is.null(px)) return()
     rv$job <- px
     rv$job_what <- paste(t("the official run:"),
                          paste(t(c(ard = "ARD", tfl = "Reports")[parts]),
-                               collapse = ", "))
+                               collapse = ", "),
+                         if (length(set)) sprintf(t("(the batch %s)"), set),
+                         if (length(exclude)) sprintf(t("(%d left out)"), length(exclude)))
+  }
+  # the reports of the run: every report, ticked; a report unticked is left
+  # out (its ARD program and its report program)
+  batch_ids <- shiny::reactive({
+    shiny::req(has_study())
+    rv$p$outputs$output_id
+  })
+  output$batch_reports_ui <- shiny::renderUI({
+    ids <- batch_ids()
+    if (!length(ids)) return(NULL)
+    o <- rv$p$outputs
+    lab <- ifelse(is.na(o$description) | !nzchar(o$description), ids,
+                  paste0(ids, "  ", o$description))
+    keep <- shiny::isolate(input$batch_reports)
+    sel <- if (is.null(keep)) ids else intersect(keep, ids)
+    sets <- names(batch_sets(rv$p))
+    now <- shiny::isolate(input$batch_set) %||% ""
+    if (!now %in% sets) now <- ""
+    shiny::tags$details(
+      class = "mb-2", open = if (length(sets) || length(sel) < length(ids)) NA,
+      shiny::tags$summary(class = "small", shiny::textOutput("batch_reports_n", inline = TRUE)),
+      # a named batch: its reports ticked; the ticks saved under a name
+      shiny::div(
+        class = "d-flex flex-wrap gap-2 align-items-end my-1",
+        shiny::selectInput("batch_set", with_tip(
+          t("Named batch"),
+          t("A named batch is a set of reports an official run takes by name (Topline, Interim Analysis, Final): choosing one ticks its reports. A report's batches are the report list's batches column; the full run is every report and has no name.")),
+          c(stats::setNames("", t("(every report)")), stats::setNames(sets, sets)),
+          selected = now, width = "220px"),
+        .btn("batch_save", t("Save the ticks as..."), class = "btn-sm btn-outline-primary"),
+        .btn("batch_rename", t("Rename..."), class = "btn-sm btn-outline-secondary",
+             disabled = if (!nzchar(now)) NA),
+        .btn("batch_delete", t("Delete..."), class = "btn-sm btn-outline-danger",
+             disabled = if (!nzchar(now)) NA)),
+      shiny::div(
+        class = "d-flex gap-2 my-1",
+        .btn("batch_all", t("All"), class = "btn-sm btn-outline-secondary py-0"),
+        .btn("batch_none", t("None"), class = "btn-sm btn-outline-secondary py-0")),
+      shiny::div(
+        class = "border rounded px-2 small", style = "max-height: 16rem; overflow-y: auto;",
+        shiny::checkboxGroupInput("batch_reports", NULL,
+                                  stats::setNames(ids, lab), selected = sel,
+                                  width = "100%")))
+  })
+  output$batch_reports_n <- shiny::renderText({
+    ids <- batch_ids()
+    n <- length(intersect(input$batch_reports %||% ids, ids))
+    if (n == length(ids)) sprintf(t("Reports in the run: all %d"), n) else
+      sprintf(t("Reports in the run: %d of %d (%d left out)"), n, length(ids),
+              length(ids) - n)
+  })
+  shiny::outputOptions(output, "batch_reports_n", suspendWhenHidden = FALSE)
+  # a named batch chosen: its reports ticked (none: every report)
+  shiny::observeEvent(input$batch_set, {
+    s <- input$batch_set %||% ""
+    ids <- if (nzchar(s)) batch_sets(rv$p)[[s]] else batch_ids()
+    shiny::updateCheckboxGroupInput(session, "batch_reports", selected = ids)
+  }, ignoreInit = TRUE)
+  batch_name_dialog <- function(title, id, value, note) {
+    shiny::showModal(shiny::modalDialog(
+      title = title, easyClose = TRUE,
+      shiny::textInput(id, t("Name"), value, width = "100%"),
+      shiny::p(class = "small text-muted", note),
+      footer = shiny::tagList(
+        shiny::modalButton(t("Cancel")),
+        .btn(paste0(id, "_ok"), t("OK"), class = "btn-primary"))))
+  }
+  shiny::observeEvent(input$batch_save, {
+    ticks <- intersect(input$batch_reports %||% character(), batch_ids())
+    if (!length(ticks)) return(notify(t("Tick the reports of the batch first."), "warning"))
+    batch_name_dialog(sprintf(t("Save the %d ticked reports as a named batch"), length(ticks)),
+                      "batch_save_name", input$batch_set %||% "",
+                      t("A name the study has already is overwritten: it becomes these reports. Letters, digits, spaces, . _ -"))
+  })
+  shiny::observeEvent(input$batch_save_name_ok, {
+    name <- trimws(input$batch_save_name %||% "")
+    ticks <- intersect(input$batch_reports %||% character(), batch_ids())
+    p2 <- guarded(set_batch(rv$p, name, ticks))
+    if (is.null(p2)) return()
+    shiny::removeModal()
+    rv$p <- p2
+    bump()
+    shiny::updateSelectInput(session, "batch_set", selected = name)
+    notify(sprintf(t("The batch %s: %d reports (save the study to keep it)."), name, length(ticks)))
+  })
+  shiny::observeEvent(input$batch_rename, {
+    s <- input$batch_set %||% ""
+    shiny::req(nzchar(s))
+    batch_name_dialog(sprintf(t("Rename the batch %s"), s), "batch_rename_name", s,
+                      t("Its reports stay as they are."))
+  })
+  shiny::observeEvent(input$batch_rename_name_ok, {
+    from <- input$batch_set %||% ""
+    to <- trimws(input$batch_rename_name %||% "")
+    p2 <- guarded(rename_batch(rv$p, from, to))
+    if (is.null(p2)) return()
+    shiny::removeModal()
+    rv$p <- p2
+    bump()
+    shiny::updateSelectInput(session, "batch_set", selected = to)
+  })
+  shiny::observeEvent(input$batch_delete, {
+    s <- input$batch_set %||% ""
+    shiny::req(nzchar(s))
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("Delete the batch %s?"), s), easyClose = TRUE,
+      shiny::p(t("Only the name goes: its reports stay on the report list.")),
+      footer = shiny::tagList(
+        shiny::modalButton(t("Cancel")),
+        .btn("batch_delete_ok", t("Delete"), class = "btn-danger"))))
+  })
+  shiny::observeEvent(input$batch_delete_ok, {
+    s <- input$batch_set %||% ""
+    shiny::removeModal()
+    rv$p <- remove_batch(rv$p, s)
+    bump()
+    shiny::updateSelectInput(session, "batch_set", selected = "")
+  })
+  shiny::observeEvent(input$batch_all, shiny::updateCheckboxGroupInput(
+    session, "batch_reports", selected = batch_ids()))
+  shiny::observeEvent(input$batch_none, shiny::updateCheckboxGroupInput(
+    session, "batch_reports", selected = character()))
+  # the run: a named batch when the ticks are its reports; else the ticks
+  # (the reports unticked left out)
+  batch_go <- function() {
+    parts <- input$batch_parts %||% "all"
+    ids <- batch_ids()
+    ticks <- intersect(input$batch_reports %||% ids, ids)
+    s <- input$batch_set %||% ""
+    if (nzchar(s) && setequal(ticks, batch_sets(rv$p)[[s]])) {
+      return(start_batch(parts, isTRUE(input$batch_code), set = s))
+    }
+    start_batch(parts, isTRUE(input$batch_code), setdiff(ids, ticks))
   }
   shiny::observeEvent(input$batch_run, {
     parts <- input$batch_parts %||% "all"
     if (parts %in% c("ard", "all") && !is.null(ard_valid())) {
       return(notify(t("Correct the ARD definition first."), "warning"))
     }
-    start_batch(parts, isTRUE(input$batch_code))
+    ids <- batch_ids()
+    exclude <- setdiff(ids, input$batch_reports %||% ids)
+    if (length(exclude) == length(ids)) {
+      return(notify(t("Choose at least one report for the run."), "warning"))
+    }
+    # a report the run makes that reads the ARD of one it leaves out:
+    # said before the run (its rows are as an earlier run left them)
+    need <- if (identical(parts, "all")) .batch_excluded_needs(rv$p, exclude)
+    if (!is.null(need) && nrow(need)) {
+      return(shiny::showModal(shiny::modalDialog(
+        title = t("A report the run makes reads an ARD it leaves out"),
+        shiny::p(t("These reports read the study ARD's rows of a report left out of the run. Its ARD program does not run, so they use those rows as an earlier run left them (or none):")),
+        shiny::tags$ul(lapply(seq_len(nrow(need)), function(i) shiny::tags$li(
+          sprintf(t("%s reads the ARD of %s"), need$report[i], need$needs[i])))),
+        footer = shiny::tagList(
+          .btn("batch_need_cancel", t("Cancel"), class = "btn-outline-secondary"),
+          .btn("batch_need_go", t("Run anyway"), class = "btn-primary")))))
+    }
+    batch_go()
+  })
+  shiny::observeEvent(input$batch_need_cancel, shiny::removeModal())
+  shiny::observeEvent(input$batch_need_go, {
+    shiny::removeModal()
+    batch_go()
   })
   batches <- shiny::reactive({
     rv$status_ver
@@ -8971,9 +9138,12 @@ app_server <- function(input, output, session, start) {
                             all = "ARD, then reports")[d$what]),
                     d = d$programs, e = d$errors,
                     f = ifelse(d$code, "\u2713", ""),
+                    g = vapply(strsplit(d$excluded, ", ", fixed = TRUE),
+                               function(x) paste(basename(x), collapse = ", "), ""),
+                    h = d$set,
                     stringsAsFactors = FALSE)
     names(v) <- t(c("Batch folder", "Started", "Runs", "Programs", "Errors",
-                    "Code"))
+                    "Code", "Left out", "Named batch"))
     DT::formatStyle(.dt(v, selection = "single"), names(v)[5L],
                     color = DT::styleInterval(0, c("#15803d", "#b91c1c")))
   })

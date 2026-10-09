@@ -208,7 +208,8 @@ sheet_columns <- function(sheet) {
   data.frame(output_id = character(), description = character(),
              data_code = character(), process_code = character(),
              section = character(), population = character(),
-             datasets = character(), stringsAsFactors = FALSE)
+             datasets = character(), batches = character(),
+             stringsAsFactors = FALSE)
 }
 
 #' A new, empty study definition
@@ -382,7 +383,7 @@ add_output <- function(x, output_id, description = NA_character_,
     data_code = as.character(data_code),
     process_code = as.character(process_code),
     section = as.character(section), population = as.character(population),
-    datasets = NA_character_, stringsAsFactors = FALSE))
+    datasets = NA_character_, batches = NA_character_, stringsAsFactors = FALSE))
   x
 }
 
@@ -585,7 +586,8 @@ write_planner <- function(x, dir, table_file = "table_spec.xlsx",
     data.frame(output_id = NA_character_, description = "(every report)",
                data_code = x$setup, process_code = NA_character_,
                section = NA_character_, population = NA_character_,
-               datasets = NA_character_, stringsAsFactors = FALSE),
+               datasets = NA_character_, batches = NA_character_,
+               stringsAsFactors = FALSE),
     x$outputs[names(.empty_outputs())])
   .write_book(.spec_object(x, report_sheets(), .study_keys$report), rp,
               tflspec::tfl_write_report_spec,
