@@ -19,7 +19,10 @@ test_that("the sample study is copied, registered and written", {
   expect_identical(report_info(s$planner, "F-14-2-3")$type, "figure")
   d <- fig_design(s$planner, "F-14-2-3")
   expect_identical(d$template, "km_simple")
-  expect_identical(vapply(d$layers, `[[`, "", "layer"), c("km_curve", "censor_mark", "hline"))
+  # (and the medians of T-14-2-2's ARD, its ARD source)
+  expect_identical(vapply(d$layers, `[[`, "", "layer"),
+                   c("km_curve", "censor_mark", "hline", rep("ard_number", 3L)))
+  expect_identical(.fig_ard_source(s$planner, "F-14-2-3"), list(kind = "table", id = "T-14-2-2"))
   expect_true(file.exists(file.path(s$path, "spec/figures/F-14-2-3.yml")))
   for (f in c("data/adam/adsl.rds", "data/adam/adtte.rds",
               "programs/tfl/fig_setup.R", "programs/batch.R",

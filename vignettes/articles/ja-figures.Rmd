@@ -216,11 +216,13 @@ draw(km)
 ```{r}
 sample_km <- tfl_read_fig_design(
   system.file("sample/SAMPLE-01/spec/figures/F-14-2-3.yml", package = "tflplanner"))
+# サンプルには、表の ARD の中央値を表示するレイヤーもある（3.5 節）
+sample_km$layers <- Filter(function(l) l$layer != "ard_number", sample_km$layers)
 identical(tfl_fig_design_code(km, "F-14-2-4"),
           tfl_fig_design_code(sample_km, "F-14-2-4"))
 ```
 
-画面では、**F-14-2-3** を選んで **内容** を開くと、同じデザイン（レイヤーの最後に水平線）が出ます。
+画面では、**F-14-2-3** を選んで **内容** を開くと、同じデザイン（レイヤーに水平線、そのあとに ARD の中央値）が出ます。
 
 ### 3.4 チェックとアドバイス（ワンクリック修正）
 
@@ -256,6 +258,39 @@ vapply(fixed$layers, `[[`, "", "layer")
 リスク集合数のアドバイス（`km_risk`）を **適用** すると、図の下にリスク集合数の表が加わります（テンプレート `km_risk_table` と同じ形）。
 表は既定では、x 軸の目盛りの時点の数を `summary(fit, times = ...)` で fit から取り、別の図として曲線の下に patchwork でつなぎます。
 リスク集合数のレイヤーの **描き方** を `add_risktable` にすると、ggsurvfit の `add_risktable()` で描きます。
+
+### 3.5 表の ARD の数値を表示する（F-14-2-3）
+
+図に中央値やハザード比などの数値を書き込むときは、図の中で計算し直さず、**表の ARD** の値をそのまま使います。
+表と図で同じ数値になり、ARD から追跡できます。サンプルの F-14-2-3 は、T-14-2-2（KM 推定の表）の ARD から 3 群の中央値を表示しています。
+
+1. F-14-2-3 の **段 2（ARD）** を開き、**この図の ARD** で **表の ARD** を選び、表に **T-14-2-2** を選ぶ。
+   その表の解析と、ARD にある統計量（`KM` なら `prob: estimate` など）が一覧で出る。
+2. **段 3（内容）** で、レイヤーに **ARD の数値を表示** を足す。**解析** `KM`、**変数** `prob`、**水準** `0.5`（中央値）、
+   **統計量** `estimate`、**群** `TRT01A = Placebo`、**ラベル** `Median (days), Placebo: {value}`、**小数** `0`。
+   選べる解析・変数・統計量は、表の ARD にあるものです。
+3. プレビューに、表と同じ中央値が出る。中央値に達していない群は `NE` です。
+
+帳票プログラムは `# ---- data ----` の先頭で表の ARD を `ard` に読み、数値は `ard_value()`（試験の `study_helpers.R`）で取り出します。
+表にない統計量（たとえばハザード比）を図に出したいときは、表の解析（段 2）にその統計量を足します。
+**この図の ARD** を **図自身の解析** にすると、表と同じ画面で図だけの解析を定義することもできます。
+
+R では、図の ARD の出どころを `set_fig_ard_source()` で、表示するレイヤーを `ard_number` で書きます。
+
+```{r, eval = FALSE}
+st$planner <- set_fig_ard_source(st$planner, "F-14-2-3", "table:T-14-2-2")
+```
+
+```{r}
+km_med <- km
+km_med$layers <- c(km_med$layers, list(list(
+  layer = "ard_number", analysis_id = "KM", variable = "prob", level = 0.5,
+  stat = "estimate", group = "TRT01A = Placebo",
+  label = "Median (days), Placebo: {value}", digits = 0,
+  x = 0, y = "-Inf", hjust = 0, vjust = -0.6)))
+code <- tfl_fig_design_code(km_med, "F-14-2-4")
+cat(code[grep("annotate", code):(grep("annotate", code) + 3)], sep = "\n")
+```
 
 ## 4. 空から組み立てる：平均変化量の推移（F-14-2-5）
 

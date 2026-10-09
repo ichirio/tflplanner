@@ -123,12 +123,22 @@
   v <- as.character(v)
   v <- v[!is.na(v) & nzchar(trimws(v))]
   if (!length(v)) return(NULL)
-  if (kind %in% c("variables", "param")) return(paste(v, collapse = ", "))
+  if (kind %in% c("variables", "param", "ard_stats")) return(paste(v, collapse = ", "))
   v[1L]
 }
 
+# the pieces that read the figure's ARD (offered when it has one, #293)
+.pd_ard_pieces <- c("ard_stats", "ard_number")
+
 # a line on what a piece is set to
 .pd_summary <- function(p) {
+  # a piece of the figure's ARD: its address (the analysis, variable,
+  # statistic, group)
+  if (isTRUE(p$step %in% .pd_ard_pieces) || isTRUE(p$layer %in% .pd_ard_pieces)) {
+    g <- if (is.list(p$group)) paste(names(p$group), "=", unlist(p$group)) else p$group
+    x <- paste(c(p$analysis_id, p$variable, p$stat %||% p$stats, g), collapse = " ")
+    return(if (nchar(x) > 40) paste0(substr(x, 1, 38), "..") else x)
+  }
   keys <- c("dataset", "value", "variable", "expr", "vars", "time", "by",
             "x", "y", "yintercept", "xintercept", "geom", "type", "unit")
   v <- unlist(lapply(keys, function(k) {
@@ -171,6 +181,25 @@
     stats::setNames(p$piece, t(p$piece_label))
   }
 
+  # the figure's ARD as it is now (its source's rows; NULL: none, or not made)
+  fig_ard <- shiny::reactive({
+    id <- current()
+    rv$ard_ver
+    if (is.null(id) || is.null(rv$study)) return(NULL)
+    tryCatch(.fig_ard_rows(rv$study, id, rv$p), error = function(e) NULL)
+  })
+  # the pieces offered: those reading an ARD only when the figure has one
+  shiny::observe({
+    id <- current()
+    if (is.null(id) || !identical(report_info(rv$p, id)$type, "figure")) return()
+    has <- .fig_ard_source(rv$p, id)$kind != "none"
+    ch <- lapply(c("data", "layers"), function(sec) {
+      x <- pieces_of(sec)
+      if (has) x else x[!x %in% .pd_ard_pieces]
+    })
+    shiny::updateSelectInput(session, "pd_add", choices = stats::setNames(ch, t(.pd_sections[c("data", "layers")])),
+                             selected = shiny::isolate(input$pd_add))
+  })
   design <- shiny::reactive({
     id <- current()
     if (is.null(id) || !identical(report_info(rv$p, id)$type, "figure")) {
@@ -677,15 +706,34 @@
     sec_ui <- function(sec) {
       items <- if (sec == "plot") list(item("plot", 1L, d$plot, t("Title, axes, colours, legend, size")))
         else lapply(seq_along(d[[sec]]), function(i) item(sec, i, d[[sec]][[i]], label_of(d[[sec]][[i]])))
-      # the code lists go on df: before the first step that makes an object
+      # the figure's ARD, first (read-only: step 1 chooses it); the code
+      # lists go on df: before the first step that makes an object
       if (sec == "data") {
+        items <- c(list(ard_item()), items)
         named <- which(vapply(d$data, function(p) isTRUE(p$step %in% names(.pd_named_steps)), NA))
         items <- append(items, list(cl_item()),
-                        after = if (length(named)) named[1L] - 1L else length(items))
+                        after = 1L + if (length(named)) named[1L] - 1L else length(items) - 1L)
       }
       shiny::div(
         shiny::div(class = "pd-sec", t(.pd_sections[[sec]])),
         if (length(items)) items else shiny::div(class = "small text-muted ps-2", t("(none)")))
+    }
+    # the figure's ARD (#293): what step 1 chose, `ard` in the program; a
+    # click opens step 1
+    ard_item <- function() {
+      src <- .fig_ard_source(rv$p, current() %||% "")
+      what <- switch(src$kind,
+        none = t("(none)"),
+        own = t("its own analyses (step 1)"),
+        table = sprintf(t("of %s -> ard"), src$id),
+        import = sprintf(t("taken in (%s) -> ard"), src$file))
+      bad <- src$kind == "none" && .fig_reads_ard(d, current() %||% "fig")
+      shiny::div(
+        class = "pd-item",
+        onclick = "Shiny.setInputValue('pd_goto_ard', Math.random(), {priority: 'event'})",
+        if (bad) shiny::span(class = "pd-bad", "! "),
+        shiny::span(t("ARD")),
+        shiny::div(class = "pd-sum", what))
     }
     # always there, on df before its first object (#293): the report's
     # code lists put on the columns (not the design's: the report's,
@@ -706,6 +754,7 @@
       lapply(names(.pd_sections), sec_ui))
   })
 
+  shiny::observeEvent(input$pd_goto_ard, bslib::nav_select("step", "ard"))
   # a piece chosen, moved, removed
   shiny::observeEvent(input$pd_act, {
     a <- input$pd_act
@@ -810,6 +859,19 @@
     params <- shiny::isolate(design_params(d))
     objects <- c("df", unlist(lapply(d$data, function(x) if (isTRUE(x$step %in% names(.pd_named_steps)))
       x$name %||% .pd_named_steps[[x$step]])))
+    # the figure's ARD: its analyses; the variables and statistics of the
+    # one chosen (of the ARD made; the analyses sheet's when not made yet)
+    ard <- shiny::isolate(fig_ard())
+    src <- shiny::isolate(.fig_ard_source(rv$p, current() %||% ""))
+    an_ids <- if (!is.null(ard) && nrow(ard)) unique(ard$analysis_id) else
+      if (src$kind %in% c("own", "table")) ard_rows(shiny::isolate(rv$p), "analyses", src$id)$analysis_id
+    an_now <- .ard_ids(pn$p$analysis_id)
+    ard_an <- if (!is.null(ard) && nrow(ard)) ard[ard$analysis_id %in% an_now, , drop = FALSE]
+    ard_vars <- if (!is.null(ard_an)) unique(ard_an$variable)
+    ard_stat <- if (!is.null(ard_an)) {
+      k <- if (!is.null(pn$p$variable)) ard_an$variable %in% pn$p$variable else TRUE
+      unique(ard_an$stat_name[k])
+    }
     cat_ds <- shiny::isolate(catalog())$dataset
     one <- function(r) {
       v <- pn$p[[r$field]]
@@ -835,6 +897,10 @@
         variables = sz(vars, multiple = TRUE),
         param = sz(params, multiple = TRUE),
         object = sz(objects),
+        analysis = sz(an_ids),
+        ard_variable = sz(ard_vars),
+        ard_stat = sz(ard_stat),
+        ard_stats = sz(ard_stat, multiple = TRUE),
         choice = sz(if (!is.na(r$choices)) strsplit(r$choices, " | ", fixed = TRUE)[[1L]], create = FALSE),
         shape = sz(c("circle", "square", "diamond", "triangle", "triangle_down", "x",
                      "plus", "dot", "solid_square", "solid_triangle", "star", "open_circle"),
@@ -999,11 +1065,13 @@
     }
     s <- shiny::isolate(rv$study)
     s$planner <- shiny::isolate(rv$p)
-    # drawn already from the same design, definition and data files (going
+    # drawn already from the same design, definition, data and ARD (going
     # back to a figure): that drawing (a drawing takes a second or more)
     data_at <- file.info(list.files(file.path(s$path, "data"), recursive = TRUE,
                                     full.names = TRUE))$mtime
-    key <- list(.fig_norm(unclass(d)), s$planner, data_at)
+    # (and the study ARD's: a figure may print a table's numbers)
+    ard_at <- file.info(file.path(s$path, study_layout()[["ard"]], "ard.rds"))$mtime
+    key <- list(.fig_norm(unclass(d)), s$planner, data_at, ard_at)
     hit <- fig_drawn[[id]]
     if (!is.null(hit) && identical(hit$key, key) &&
         (is.null(hit$r$png) || file.exists(hit$r$png))) {
@@ -1193,6 +1261,31 @@
     } else {
       added[i] <- TRUE
       i <- i + 1L
+    }
+  }
+  # a run of lines the same at both ends could be put one line up or
+  # down (two terms alike: annotate( ... ) +): put it where it starts
+  # least indented and not on a closing ")" -- a term's first line
+  # (earliest when alike)
+  w0 <- which(added)
+  if (length(w0)) {
+    for (run in split(w0, cumsum(c(1L, diff(w0) > 1L)))) {
+      s <- run[1L]
+      e <- run[length(run)]
+      added[run] <- FALSE
+      while (s > 1L && !added[s - 1L] && identical(a[s - 1L], a[e])) {
+        s <- s - 1L
+        e <- e - 1L
+      }
+      best <- s
+      ind <- function(k) nchar(shown[k]) - nchar(sub("^ +", "", shown[k])) +
+        if (grepl("^[)}]", trimws(shown[k]))) 0.5 else 0
+      while (e < n && !added[e + 1L] && identical(a[e + 1L], a[s])) {
+        s <- s + 1L
+        e <- e + 1L
+        if (ind(s) < ind(best)) best <- s
+      }
+      added[best:(best + length(run) - 1L)] <- TRUE
     }
   }
   # (the packages: the program's setup attaches them)
