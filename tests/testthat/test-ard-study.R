@@ -193,11 +193,11 @@ test_that("a report's code lists reach its ARD program", {
   s <- create_study("A2", planner = p)
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
   prog <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
-  # (the code lists put on as tflspec writes it: set_levels() on the data
-  # the analyses read)
+  # (the code lists put on as tflspec writes it: the list at the head,
+  # set_levels() on the data the analyses read)
+  expect_true("cl_agegr1 <- c(\"<65\", \"65-80\", \">80\", \"unknown\")" %in% prog)
   expect_true(any(grepl("set_levels(", prog, fixed = TRUE)))
-  expect_true(any(grepl("AGEGR1 = c(\"<65\", \"65-80\", \">80\", \"unknown\")", prog,
-                        fixed = TRUE)))
+  expect_true(any(grepl("AGEGR1 = cl_agegr1", prog, fixed = TRUE)))
   # the ARD counts the value no record has, in the code list's order
   o <- open_study("A2")
   u <- update_study_ard(o, "DM")
@@ -251,7 +251,8 @@ test_that("a report's ARD program: only the code lists of what its analyses read
   expect_identical(unique(.study_codelists(p)$output_id), "DM")
   s <- create_study("A3", planner = p)
   prog <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
-  expect_true(any(grepl("TRT01A = c(\"Placebo\", \"Drug\")", prog, fixed = TRUE)))
+  expect_true("cl_trt01a <- c(\"Placebo\", \"Drug\")" %in% prog)
+  expect_true(any(grepl("TRT01A = cl_trt01a", prog, fixed = TRUE)))
   # SEX only prints (DM's analyses do not read it): not in the ARD program
-  expect_false(any(grepl("SEX = ", prog, fixed = TRUE)))
+  expect_false(any(grepl("cl_sex", prog, fixed = TRUE)))
 })
