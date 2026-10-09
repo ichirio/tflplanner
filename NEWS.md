@@ -10,6 +10,13 @@
   `filter()` / `select()`.  A study made before (no `library(dplyr)` in its
   setup) keeps `dplyr::` and runs as it did.  The app's previews (an
   analysis data, a listing) run the code as before.
+- **Step 2-2 says what its fields are** (#280).  "Analysis ID (a set of
+  analyses)" (several variables: one row per variable under the same ID in
+  the ARD), "Grouping variables (by)" (whether they are the table's
+  columns, rows or pages is step 3's) and "Analysis variables
+  (variables)".  The levels and order are set in 2-1, for the analysis
+  data's columns (the ARD and the table both), and in step 1; 2-2 has no
+  button of its own for them.
 
 - **The ARD programs as tflspec now writes them** (#281, tflspec >=
   0.0.24.9066): no function or loop of their own, one pipe an analysis
