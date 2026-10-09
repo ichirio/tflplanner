@@ -209,3 +209,25 @@ test_that("step 3: a variable's label from the code list of `variable`, faint, n
   q <- builder_write(p, "T1", st, was = st)
   expect_identical(sheet_rows(q, "variables", "T1")$label, sheet_rows(p, "variables", "T1")$label)
 })
+
+test_that("the code list of `variable` moves to the variables' labels", {
+  p <- cl_planner()
+  p <- set_sheet_rows(p, "variables", "T1", data.frame(
+    variable = c("SEX", "AGE"), label = c(NA, "Age"), order = c("1", "2")))
+  p <- set_codelist(p, "T1", data.frame(variable = c("variable", "variable", "variable", "SEX"),
+                                        value = c("SEX", "AGE", "RACE", "F"),
+                                        label = c("Sex", "not this", "Race", "Female")))
+  q <- .move_heading_rows(p)
+  v <- sheet_rows(q, "variables", "T1")
+  # a label of its own wins; a variable not on the sheet gets a row
+  expect_identical(v$label[v$variable == "SEX"], "Sex")
+  expect_identical(v$label[v$variable == "AGE"], "Age")
+  expect_identical(v$label[v$variable == "RACE"], "Race")
+  # the code lists keep the values' rows only
+  cl <- sheet_rows(q, "codelists", "T1")
+  expect_identical(cl$variable, "SEX")
+  expect_identical(attr(q, "moved_headings"), 3L)
+  # none to move: the planner as it was
+  expect_identical(.move_heading_rows(q), structure(q, moved_headings = 3L))
+  expect_null(attr(.move_heading_rows(cl_planner()), "moved_headings"))
+})

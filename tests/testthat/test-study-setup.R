@@ -61,7 +61,7 @@ test_that("a new study gets programs/study_setup.R with its three parts", {
   expect_true(any(grepl("^study_compound +<- NA_character_$", p2)))
   # it runs, and defines them
   e <- new.env()
-  sys.source(f, envir = e, toplevel.env = e)
+  withr::with_dir(s$path, sys.source(f, envir = e, toplevel.env = e))
   expect_identical(e$path_adam, "data/adam")
   expect_identical(e$study_id, "ABC-101")
   expect_identical(e$study_title, "A phase 2 study")
@@ -97,7 +97,7 @@ test_that("saving rewrites part 2 only: parts 1 and 3 stay byte for byte", {
   expect_false(dir.exists(file.path(s$path, "programs", ".edited")))
   # the file still runs: part 3 after part 2
   e <- new.env()
-  sys.source(f, envir = e, toplevel.env = e)
+  withr::with_dir(s$path, sys.source(f, envir = e, toplevel.env = e))
   expect_identical(e$my_fun(1), 2)
   expect_identical(e$study_title, "Second")
 })
@@ -310,4 +310,29 @@ test_that("the parts are found with lines before part 1 or a marker repeated", {
   expect_identical(paste0(p$standard, p$study, p$user), txt)
   expect_null(.split_study_setup(paste0(m[1], "\n", m[3], "\n")))
   expect_null(.split_study_setup(""))
+})
+
+test_that("a study gets programs/study_helpers.R, which its setup sources", {
+  local_home()
+  s <- create_study("ABC-107", planner = setup_planner())
+  f <- file.path(s$path, "programs", "study_helpers.R")
+  expect_true(file.exists(f))
+  txt <- readLines(f)
+  # tflspec's functions, after the banner
+  expect_true(all(tflspec::tfl_helpers_code() %in% txt))
+  expect_match(txt[2L], "programs/study_helpers.R", fixed = TRUE)
+  expect_true("source(\"programs/study_helpers.R\")" %in% readLines(setup_file(s)))
+  # the setup defines them, from the study folder (source(): where the
+  # programs run, the global environment)
+  fns <- c("set_levels", "tag_ard", "fmt_ard", "fmt_pvalue", "keep_stats",
+           "save_ard")
+  withr::defer(suppressWarnings(rm(list = fns, envir = globalenv())))
+  e <- new.env()
+  withr::with_dir(s$path, sys.source(setup_file(s), envir = e, toplevel.env = e))
+  for (fn in fns) {
+    expect_true(is.function(get0(fn, globalenv(), inherits = FALSE)), label = fn)
+  }
+  # saved again: unchanged
+  s2 <- save_study(s)
+  expect_identical(s2$files$status[s2$files$file == f], "unchanged")
 })

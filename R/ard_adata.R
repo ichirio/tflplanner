@@ -521,7 +521,8 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
 # cards', dplyr's and tflspec's functions (the setup attaches them), the
 # app's own session left as it is
 .ard_program_env <- function() {
-  e <- globalenv()
+  # the functions the programs call (set_levels() ...), then the packages'
+  e <- .helpers_env(globalenv())
   for (pk in c("tflspec", "dplyr", "cards")) {
     ns <- asNamespace(pk)
     e <- list2env(mget(getNamespaceExports(ns), envir = ns, inherits = TRUE),
