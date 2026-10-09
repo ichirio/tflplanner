@@ -1157,8 +1157,9 @@ $(document).on('shiny:connected', function() {
   // the ARD definition of the chosen report: hidden for a figure that has
   // none of its own (it reads none, or a table's)
   Shiny.addCustomMessageHandler('rp-ard-def', function(x) {
-    $('#ard_split').toggle(!!x);
-    $('#ard_layout').parent().toggle(!!x);
+    // (a class, not display: the row is d-flex !important)
+    $('#ard_split').toggleClass('d-none', !x);
+    $('#ard_layout').parent().toggleClass('d-none', !x);
   });
 });
 // The study ARD's list: a double click on a row opens that report's ARD
