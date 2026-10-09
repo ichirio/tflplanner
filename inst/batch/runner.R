@@ -139,7 +139,9 @@ run_batch <- function(parts, args = character()) {
     if (!is.null(set)) {
       of <- if (part == "ard") .batch_ard_outputs[basename(progs)] else
         .batch_report_ids[progs]
-      progs <- progs[!is.na(of) & of %in% .batch_sets[[set]]]
+      keep <- !is.na(of) & of %in% .batch_sets[[set]]
+      excluded <- c(excluded, progs[!keep])
+      progs <- progs[keep]
     }
     if (length(exclude)) {
       excluded <- c(excluded, progs[named(progs, exclude)])

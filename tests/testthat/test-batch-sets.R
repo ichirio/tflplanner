@@ -91,6 +91,8 @@ test_that("an official run of a named batch, or leaving reports out", {
   expect_identical(basename(b$result$program), "DM.R")
   txt <- readLines(file.path(b$batch, "batch.txt"))
   expect_true("Batch set : Topline" %in% txt)
+  # what the batch left out (VS is not in Topline) is in the record too
+  expect_true(any(grepl("^Excluded : .*VS\\.R", txt)))
   lb <- list_batches(o)
   expect_identical(lb$what[1], "ard")
   expect_identical(lb$set[1], "Topline")
