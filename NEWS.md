@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **A new study from the sample is ready at once** (#297).  The sample
+  is copied (seconds) and opened; its official run, which makes its ARD
+  and reports (a few minutes), runs in the background as the Runs tab
+  starts one.  The study is in the list straight away, marked "(running)"
+  until the run ends, and the app can be used meanwhile (before, it
+  waited for the whole run with a progress note).
+
 - **A study opens in a fifth of a second** (#296, reported by the user).
   Reading a study from its saved state built every sheet's columns with
   `tflspec::tfl_table_spec()` again, sheet by sheet, on every open and
