@@ -191,6 +191,8 @@ open_study <- function(study, home = tflplanner_home()) {
   .set_config("last_study", id, home)
   # its programs as its setup has it (its folders' variables, its packages)
   .use_study(s$path)
+  # the variables' headings of an earlier form, the table's labels now
+  s$planner <- .move_heading_rows(s$planner)
   s
 }
 
@@ -522,6 +524,7 @@ save_study <- function(study, home = tflplanner_home(), base = NULL) {
   files <- rbind(files, .save_ard(p, root), .save_lf(p, root),
                  .save_fig_designs(p, root))
   files <- rbind(files, .save_study_setup(study$meta, root),
+                 .save_study_helpers(root),
                  .save_batch_programs(p, root))
   meta <- study$meta[.study_fields]
   old_meta <- tryCatch(.read_meta(root), error = function(e) list())

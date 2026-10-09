@@ -241,7 +241,8 @@ data_lines <- function(x, output_id, todo = TRUE) {
       .figure_lines(x, output_id, info, plot_code = code)
     } else {
       .figure_lines(x, output_id, info,
-                    plot_code = paste(.fig_design_plot(design, output_id),
+                    plot_code = paste(.fig_design_plot(design, output_id,
+                                                       codelists = .study_codelists(x)),
                                       collapse = "\n"),
                     datasets = .fig_design_datasets(design, output_id))
     }

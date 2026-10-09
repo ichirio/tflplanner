@@ -90,12 +90,16 @@ preview_user <- function(study, output_id, timeout = 300) {
   f_code <- file.path(tmp, "code.R")
   f_helper <- file.path(tmp, "helper.R")
   writeLines(.report_content_fun, f_helper)
+  # the functions the programs call (programs/study_helpers.R's)
+  f_helpers <- file.path(tmp, "study_helpers.R")
+  writeLines(tflspec::tfl_helpers_code(), f_helpers)
   f_out <- file.path(tmp, "out.rds")
   writeLines(enc2utf8(code), f_code, useBytes = TRUE)
   q <- function(x) encodeString(normalizePath(x, "/", FALSE), quote = "\"")
   script <- c(
     "suppressPackageStartupMessages(library(rtfreporter))",
     "suppressPackageStartupMessages(library(tflspec))",
+    paste0("sys.source(", q(f_helpers), ", envir = globalenv())"),
     ".e <- new.env(parent = globalenv())",
     # report_content() as the study's next fig_setup.R has it (the one on
     # disk may be older: written before it was there)

@@ -33,8 +33,9 @@
 #' `ard_setup_code()` is `programs/ard/ard_setup.R`, which every ARD program
 #' sources: the study's setup (`programs/study_setup.R`, see
 #' [study_setup_code()]), cards, the statistics tflplanner computes ([tflspec::tfl_ard_statistics()], the company standards' catalog),
-#' the stat_fmt formats, and the option that makes tflspec's
-#' [tflspec::save_ard()] record the study setup each ARD was built with.
+#' the stat_fmt formats, and the option that makes `save_ard()` (the
+#' study's `programs/study_helpers.R`, see [study_helpers_code()]) record
+#' the study setup each ARD was built with.
 #' `ard_program_code()` is one output's program, `programs/ard/<output_id>.R`.  `ard_autoexec_code()` is
 #' `programs/ard/autoexec_ard.R`, which runs them from the study folder --
 #' all, or the ones named (`Rscript programs/ard/autoexec_ard.R T-14-1-1`)
