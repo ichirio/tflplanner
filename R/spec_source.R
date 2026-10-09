@@ -290,8 +290,45 @@
   .write_state(r, home)
   r$spec <- list(status = "adopted", files = diff[diff$status != "same", ,
                                                   drop = FALSE],
-                 parts = chg, outputs = out)
+                 parts = chg, outputs = out,
+                 # the study before: what a draft or unsaved changes were
+                 # made against (merged with .merge_parts())
+                 was = list(planner = s$planner, meta = s$meta))
   r
+}
+
+# Three-way merge by part (#274 2.6): `mine` (a draft, a session's unsaved
+# changes) and `now` (the definition files taken in) were both made from
+# `base`.  A part only one side changed takes that side's value; a part
+# both changed differently is a conflict, left as `now` has it.  Returns
+# list(study = merged (now's path), mine_parts, conflicts).
+.merge_parts <- function(base, mine, now) {
+  b <- .study_parts(base)
+  m <- .study_parts(mine)
+  n <- .study_parts(now)
+  out <- now
+  conflicts <- character()
+  for (k in union(names(m), union(names(b), names(n)))) {
+    here <- !identical(m[[k]], b[[k]])
+    there <- !identical(n[[k]], b[[k]])
+    if (here && !there) {
+      out <- .set_study_part(out, k, m[[k]])
+    } else if (here && there && !identical(m[[k]], n[[k]])) {
+      conflicts <- c(conflicts, k)
+    }
+  }
+  list(study = out, conflicts = conflicts)
+}
+
+# The parts named for people: "titles (sheet)", "report list", "figure F-1"
+.part_labels <- function(parts) {
+  kind <- sub(":.*$", "", parts)
+  name <- sub("^[^:]*:", "", parts)
+  ifelse(kind == "sheet", paste0(name, " (sheet)"),
+    ifelse(kind == "ard", paste0(name, " (ARD)"),
+      ifelse(kind == "lf", paste0(name, " (listings and figures)"),
+        ifelse(kind == "fig", paste0("figure ", name),
+          ifelse(kind == "meta", name, parts)))))
 }
 
 # ---------------------------------------------------------------- the API

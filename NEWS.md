@@ -1,5 +1,19 @@
 # tflplanner (development version)
 
+- **The app and the definition files edited outside it** (#274, phase
+  2).  A study whose files were changed outside tflplanner opens with a
+  notice and, on the Study tab, "What changed" (the files, the parts, the
+  reports).  Files that do not read show a card on the Study tab (file,
+  sheet, row, problem) with **Load from the definition files** and
+  **Write the files back from the last save**, and a mark beside the
+  study's name in the bar; the study cannot be saved until one is chosen.
+  A save after an outside edit asks to load the files first instead of
+  saving.  Loading keeps the unsaved changes, merged part by part; a part
+  both changed asks which to keep.  A draft made before the files changed
+  is merged the same way when the study opens.  **Load from the definition
+  files** is also in the Study tab's Files.  The Japanese guide says how
+  (section 3.1).
+
 - **The definition files are the study's source** (#274, phase 1).  A
   save records each definition file's fingerprint (`spec/` and
   `study.yml`, md5 and size) in the study's state; opening the study

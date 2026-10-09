@@ -2433,3 +2433,20 @@ Own,自分の書式
 "{statistic} as the ARD names it: N, mean, sd, se, median, p25, p75, min, max ...; a format after a colon: {mean:.2f} two decimals, {p:.1f%} a percent. Blank: the decimals above. The table on the right shows the row once added.",{統計量} は ARD の名前で: N、mean、sd、se、median、p25、p75、min、max など。コロンの後に書式: {mean:.2f} は小数 2 桁、{p:.1f%} は百分率。書かなければ上の桁数。足した行は右の表に出ます。
 Prints (the Statistics card's):,出すもの（統計量のカードの設定）:
 Decimals:,小数桁:
+The definition files were changed outside tflplanner; the changes were loaded.,定義ファイルが tflplanner の外で変更されていたため、その変更を読み込みました。
+"The definition files were changed outside tflplanner but could not be read. The study is open as it was last saved. Fix the files and load them, or write the files back from the last save. Until then the study cannot be saved.",定義ファイルが tflplanner の外で変更されましたが、読み込めませんでした。試験は最後に保存した状態で開いています。ファイルを直して読み込み直すか、最後の保存内容でファイルを書き戻してください。それまで保存はできません。
+Row,行
+Problem,問題
+Load from the definition files,定義ファイルから読み込む
+Write the files back from the last save,最後の保存内容でファイルを書き戻す
+The definition files do not read,定義ファイルが読み込めません
+What changed,変更内容
+Parts,変わった部分
+Both the files and your unsaved changes changed these parts: %s. Keep which?,次の部分は、ファイルと未保存の変更の両方で変わっています: %s。どちらを残しますか?
+Keep the files' version,ファイルの内容を残す
+Keep my unsaved changes,未保存の変更を残す
+Nothing changed in the definition files.,定義ファイルに変更はありません。
+The replaced files were copied to spec/.rejected/.,置き換えたファイルは spec/.rejected/ に残しました。
+The definition files were changed,定義ファイルが変更されています
+The definition files were changed outside tflplanner since this study was opened. Load them first; your unsaved changes are kept and merged.,試験を開いた後に、定義ファイルが tflplanner の外で変更されました。先に読み込んでください。未保存の変更は残り、合わせて取り込まれます。
+"Reads spec/ and study.yml again and takes them in: after editing them outside tflplanner (in Excel), or copying workbooks into spec/. Your unsaved changes are kept and merged.",spec/ と study.yml を読み直して取り込みます。tflplanner の外（Excel など）で直したときや、spec/ にワークブックを置いたときに使います。未保存の変更は残り、合わせて取り込まれます。

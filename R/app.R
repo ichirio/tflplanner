@@ -809,6 +809,7 @@ app_ui <- function(lang = "en") {
         bslib::card(
           bslib::card_header(shiny::uiOutput("study_detail_title",
                                              inline = TRUE)),
+          shiny::uiOutput("spec_card"),
           shiny::uiOutput("study_detail"),
           shiny::conditionalPanel(
             "output.shows_open == 'yes'",
@@ -1283,7 +1284,8 @@ app_server <- function(input, output, session, start) {
   rv <- shiny::reactiveValues(
     study = NULL, p = NULL, saved = NULL, meta = NULL, saved_meta = NULL,
     ver = 0L, want = NULL, job = NULL, job_what = NULL, status_ver = 0L,
-    studies_ver = 0L, ard_ver = 0L, save_ver = 0L)
+    studies_ver = 0L, ard_ver = 0L, save_ver = 0L, spec = NULL,
+    spec_merge = NULL)
   bump <- function() rv$ver <- rv$ver + 1L
   # an ARD method's name and note as the user reads them: the translation
   # kept by the app under "method:<name>" / "method-note:<name>", else
@@ -1379,12 +1381,98 @@ app_server <- function(input, output, session, start) {
     if (!is.null(attr(s$planner, "moved_headings"))) {
       shiny::showNotification(t(.moved_headings_msg), type = "message", duration = NULL)
     }
+    # the definition files changed outside tflplanner (#274): taken in, or
+    # not readable (the study open as last saved, no save until resolved)
+    rv$spec <- s$spec
+    if (identical(s$spec$status, "adopted")) {
+      shiny::showNotification(
+        t("The definition files were changed outside tflplanner; the changes were loaded."),
+        type = "message", duration = 10)
+    } else if (identical(s$spec$status, "invalid")) {
+      spec_modal()
+      return(invisible())
+    }
     offer_draft(s)
   }
+  # the definition files that do not read: what is wrong, and the two ways
+  # out (fix them and load them, or write them back from the last save)
+  spec_problems_ui <- function(sp, sfx = "") {
+    pr <- sp$problems
+    shiny::tagList(
+      shiny::p(t("The definition files were changed outside tflplanner but could not be read. The study is open as it was last saved. Fix the files and load them, or write the files back from the last save. Until then the study cannot be saved.")),
+      if (!is.null(pr) && nrow(pr)) shiny::tags$table(
+        class = "table table-sm small",
+        shiny::tags$thead(shiny::tags$tr(lapply(
+          t(c("File", "Sheet", "Row", "Problem")), shiny::tags$th))),
+        shiny::tags$tbody(lapply(seq_len(nrow(pr)), function(i) shiny::tags$tr(
+          shiny::tags$td(shiny::code(pr$file[i])),
+          shiny::tags$td(if (is.na(pr$sheet[i])) "" else pr$sheet[i]),
+          shiny::tags$td(if (is.na(pr$row[i])) "" else pr$row[i]),
+          shiny::tags$td(pr$message[i]))))),
+      shiny::div(class = "d-flex flex-wrap gap-2",
+        .btn(paste0("spec_reload", sfx), t("Load from the definition files"),
+             class = "btn-sm btn-primary"),
+        .btn(paste0("spec_writeback", sfx), t("Write the files back from the last save"),
+             class = "btn-sm btn-outline-danger")))
+  }
+  spec_modal <- function() {
+    shiny::showModal(shiny::modalDialog(
+      title = t("The definition files do not read"),
+      spec_problems_ui(rv$spec, "_m"), size = "l", easyClose = TRUE,
+      footer = shiny::modalButton(t("Close"))))
+  }
+  # what changed outside tflplanner, and what was taken in
+  spec_changes_ui <- function(sp) {
+    f <- sp$files
+    shiny::tags$details(
+      class = "small mb-2",
+      shiny::tags$summary(t("What changed")),
+      if (!is.null(f) && nrow(f)) shiny::tags$ul(lapply(seq_len(nrow(f)), function(i)
+        shiny::tags$li(shiny::code(f$file[i]), " ",
+                       shiny::span(class = "text-muted",
+                                   sprintf("(%s: %s \u2192 %s)", f$status[i],
+                                           ifelse(is.na(f$size_was[i]), "-", f$size_was[i]),
+                                           ifelse(is.na(f$size_now[i]), "-", f$size_now[i])))))),
+      if (length(sp$parts)) shiny::div(paste0(
+        t("Parts"), ": ", paste(.part_labels(sp$parts), collapse = ", "))),
+      if (length(sp$outputs)) shiny::div(paste0(
+        t("Reports"), ": ", paste(sp$outputs, collapse = ", "))))
+  }
+  output$spec_card <- shiny::renderUI({
+    shiny::req(shows_open())
+    sp <- rv$spec
+    if (is.null(sp)) return(NULL)
+    if (identical(sp$status, "invalid")) {
+      return(shiny::div(class = "alert alert-warning", spec_problems_ui(sp)))
+    }
+    if (identical(sp$status, "adopted")) {
+      return(shiny::div(
+        class = "alert alert-info py-2",
+        shiny::div(t("The definition files were changed outside tflplanner; the changes were loaded.")),
+        spec_changes_ui(sp)))
+    }
+    NULL
+  })
   # a draft left by a session that did not save: take it back, or drop it
   offer_draft <- function(s) {
     d <- .read_draft(s$meta$study_id)
     if (is.null(d)) return(invisible())
+    # the definition files were taken in on this open: the draft was made
+    # against the study before, merged part by part with the files' (#274)
+    if (identical(s$spec$status, "adopted") && !is.null(s$spec$was)) {
+      base <- s
+      base$planner <- s$spec$was$planner
+      base$meta <- s$spec$was$meta
+      m <- .merge_parts(base, d, s)
+      if (length(m$conflicts)) {
+        files <- m$study
+        mine <- files
+        for (k in m$conflicts) mine <- .set_study_part(mine, k, .study_parts(d)[[k]])
+        ask_conflict(m$conflicts, files, mine, draft = TRUE)
+        return(invisible())
+      }
+      d <- m$study
+    }
     if (identical(d$planner, s$planner) &&
         identical(d$meta[.study_fields], s$meta[.study_fields])) {
       .drop_draft(s$meta$study_id)
@@ -1408,6 +1496,105 @@ app_server <- function(input, output, session, start) {
     }
     rv$draft <- NULL
     shiny::removeModal()
+  })
+  # parts both the files and the unsaved changes changed: keep which
+  ask_conflict <- function(parts, files, mine, draft = FALSE) {
+    rv$spec_merge <- list(files = files, mine = mine, draft = draft)
+    shiny::showModal(shiny::modalDialog(
+      title = t("Changes that were not saved"),
+      sprintf(t("Both the files and your unsaved changes changed these parts: %s. Keep which?"),
+              paste(.part_labels(parts), collapse = ", ")),
+      footer = shiny::tagList(
+        .btn("merge_files", t("Keep the files' version"), class = "btn-outline-secondary"),
+        .btn("merge_mine", t("Keep my unsaved changes"), class = "btn-primary")),
+      easyClose = FALSE))
+  }
+  merge_take <- function(which) {
+    m <- rv$spec_merge
+    rv$spec_merge <- NULL
+    shiny::removeModal()
+    if (is.null(m)) return()
+    s <- m[[which]]
+    rv$p <- .study_spec_keys(s$planner)
+    rv$meta <- s$meta[.study_fields]
+    rv$draft <- NULL
+    bump()
+  }
+  shiny::observeEvent(input$merge_files, merge_take("files"))
+  shiny::observeEvent(input$merge_mine, merge_take("mine"))
+  # Load from the definition files: read them all, take them in; unsaved
+  # changes are merged part by part
+  do_reload <- function() {
+    shiny::removeModal()
+    shiny::req(has_study())
+    id <- rv$study$meta$study_id
+    unsaved <- isTRUE(dirty())
+    mine <- current_study()
+    base <- rv$study
+    base$planner <- rv$saved
+    base$meta[.study_fields] <- rv$saved_meta
+    s <- tryCatch(reload_from_spec(id), tflplanner_spec_invalid = function(e) {
+      rv$spec <- list(status = "invalid", problems = e$problems,
+                      files = spec_status(id))
+      spec_modal()
+      NULL
+    }, error = function(e) {
+      notify(.error_view(conditionMessage(e), t), "error")
+      NULL
+    })
+    if (is.null(s)) return()
+    rv$study <- s
+    rv$saved <- .study_spec_keys(s$planner)
+    rv$saved_meta <- s$meta[.study_fields]
+    rv$spec <- s$spec
+    rv$status_ver <- rv$status_ver + 1L
+    rv$ard_ver <- rv$ard_ver + 1L
+    if (unsaved) {
+      m <- .merge_parts(base, mine, s)
+      if (length(m$conflicts)) {
+        mine2 <- m$study
+        for (k in m$conflicts) mine2 <- .set_study_part(mine2, k, .study_parts(mine)[[k]])
+        ask_conflict(m$conflicts, m$study, mine2)
+        return()
+      }
+      rv$p <- .study_spec_keys(m$study$planner)
+      rv$meta <- m$study$meta[.study_fields]
+    } else {
+      rv$p <- rv$saved
+      rv$meta <- rv$saved_meta
+    }
+    bump()
+    notify(if (identical(s$spec$status, "adopted"))
+      t("The definition files were changed outside tflplanner; the changes were loaded.") else
+      t("Nothing changed in the definition files."))
+  }
+  for (b in c("spec_reload", "spec_reload_m", "spec_load")) local({
+    id <- b
+    shiny::observeEvent(input[[id]], do_reload())
+  })
+  # Write the files back from the last save (the replaced ones kept in
+  # spec/.rejected/); unsaved changes stay unsaved
+  do_writeback <- function() {
+    shiny::removeModal()
+    shiny::req(has_study())
+    w <- guarded(write_spec(rv$study$meta$study_id))
+    if (is.null(w)) return()
+    unsaved <- isTRUE(dirty())
+    rv$study <- w
+    rv$saved <- .study_spec_keys(w$planner)
+    rv$saved_meta <- w$meta[.study_fields]
+    if (!unsaved) {
+      rv$p <- rv$saved
+      rv$meta <- rv$saved_meta
+    }
+    rv$spec <- list(status = "same")
+    rv$status_ver <- rv$status_ver + 1L
+    bump()
+    notify(t("The replaced files were copied to spec/.rejected/."))
+  }
+  for (b in c("spec_writeback", "spec_writeback_m")) local({
+    id <- b
+    shiny::observeEvent(input[[id]], do_writeback())
   })
   shiny::observeEvent(input$draft_discard, {
     if (has_study()) .drop_draft(rv$study$meta$study_id)
@@ -1444,6 +1631,21 @@ app_server <- function(input, output, session, start) {
     base$meta[.study_fields] <- rv$saved_meta
     mine <- rv$p
     s <- tryCatch(save_study(current_study(), base = base),
+                  tflplanner_spec_changed = function(e) {
+                    shiny::showModal(shiny::modalDialog(
+                      title = t("The definition files were changed"),
+                      shiny::p(t("The definition files were changed outside tflplanner since this study was opened. Load them first; your unsaved changes are kept and merged.")),
+                      shiny::tags$ul(lapply(e$files$file[e$files$status != "same"], function(f)
+                        shiny::tags$li(shiny::code(f)))),
+                      footer = shiny::tagList(
+                        shiny::modalButton(t("Close")),
+                        .btn("spec_writeback_m", t("Write the files back from the last save"),
+                             class = "btn-outline-danger"),
+                        .btn("spec_reload_m", t("Load from the definition files"),
+                             class = "btn-primary")),
+                      easyClose = TRUE))
+                    NULL
+                  },
                   tflplanner_conflict = function(e) {
                     shiny::showModal(shiny::modalDialog(
                       title = t("Someone else saved the same part"),
@@ -1550,7 +1752,11 @@ app_server <- function(input, output, session, start) {
       class = "small ms-3 d-inline-block text-truncate align-middle text-body text-decoration-none",
       style = "max-width: 32em;",
       title = paste0(m$study_id, " ", ttl, " -- ", t("studies are chosen on the Study tab")),
-      shiny::tagList(shiny::span(class = "badge text-bg-light border me-1", m$study_id), ttl))
+      shiny::tagList(shiny::span(class = "badge text-bg-light border me-1", m$study_id), ttl,
+                     if (identical(rv$spec$status, "invalid"))
+                       shiny::span(class = "badge text-bg-warning ms-1",
+                                   title = t("The definition files do not read"),
+                                   "\u26a0")))
   })
   shiny::observeEvent(input$open_study_go, go("study"))
   output$n_studies <- shiny::renderText(nrow(studies()))
@@ -2149,6 +2355,10 @@ app_server <- function(input, output, session, start) {
           sprintf("%-15s %s", paste0(lay, "/"),
                   .study_folder_notes(names(lay), t)),
           collapse = "\n"))),
+      shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mb-2",
+        .btn("spec_load", t("Load from the definition files"),
+             class = "btn-sm btn-outline-primary"),
+        help_tip(t("Reads spec/ and study.yml again and takes them in: after editing them outside tflplanner (in Excel), or copying workbooks into spec/. Your unsaved changes are kept and merged."))),
       shiny::fileInput(
         "import",
         t("Import definition workbooks (replaces this study's definition)"),
