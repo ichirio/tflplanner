@@ -7,7 +7,7 @@
   `time` only; its RTF is unchanged, byte for byte), and F-14-2-3 prints
   each with its CI on one line, through tflspec's labels that name
   several statistics of one address (`HR {estimate} (95% CI {conf.low},
-  {conf.high})`, tflspec #204).
+  {conf.high})`, tflspec #206).
 
 - **A figure prints the numbers of a table's ARD** (#293 phase 3, with
   tflspec #203).  A figure's step 2 (ARD) chooses where its ARD comes
