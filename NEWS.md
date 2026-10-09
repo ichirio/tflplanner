@@ -1,5 +1,10 @@
 # tflplanner (development version)
 
+- **The launcher's icon is the hex logo** (#291).  The desktop and Start
+  menu shortcut (`add_shortcut()`) shows the package's logo at 128 px and
+  up; at the sizes the desktop and the taskbar use (24 to 64 px) a plain
+  hexagon with a "t", at 16 px the hexagon alone, so it stays clear.
+  `data-raw/launcher-icons.R` makes the `.ico`, `.png` and `.icns`.
 - **The report list shows and edits the named batches** (#301): a Batches
   column, and Batches... for the report chosen -- the names in use to
   choose from, a new one typed.
