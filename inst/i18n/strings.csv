@@ -2411,3 +2411,13 @@ Columns made or changed,作る・変える列
 Columns added from the subjects' data: none to add (this data is the subjects' data itself).,症例のデータから加える列：ありません（このデータが症例のデータそのものです）。
 Code lists: %s (Column definitions ④),コードリスト：%s（列定義 ④）
 A value with no arrow prints as it is.,矢印の無い値は、そのまま表示されます。
+"ARD: the analysis sets, one row a population.",ARD：解析対象集団。1 行 = 1 集団。
+"The analysis data analysed (a data_id of analysis_data), instead of dataset and population_id: the analysis set is its population; blank: dataset and population_id say it.",解析する解析データ（analysis_data の data_id）。dataset と population_id の代わりに使い、解析対象集団はそのデータの集団になる。空欄 = dataset と population_id で指定。
+"The analysis set: the data is restricted to its subjects; blank: no restriction (population is NULL), or the population of `data`.",解析対象集団：データをその被験者に絞る。空欄 = 絞らない（population は NULL）、または `data` の集団。
+"What percentages are of: population (the analysis set; hierarchical and max take it anyway), row / column / cell (cards), another population, a dataset (its records of the analysis set's subjects), or an analysis data (as it is: one row a subject and phase gives the N of each phase); blank: the method's default.",% の分母：population（解析対象集団。hierarchical と max は指定しなくてもこれ）、row / column / cell（cards）、別の集団、データセット（その中の、解析対象集団の被験者の行）、または解析データ（そのまま。被験者 × フェーズで 1 行にすれば、フェーズごとの N）。空欄 = method の既定。
+"Which population {n} in the column header is, for a table split by page (a lab parameter): page (those with that page's data), table (the analysis set), or both as n = page | N = table for {n} and {N}; blank: page (warns when both exist and differ). Both must be in the ARD.",ページ（検査項目など）で分けた表で、列見出しの {n} がどの母集団か：page（そのページのデータがある人）、table（解析対象集団）、両方なら n = page | N = table で {n} と {N}。空欄 = page（両方あって食い違えば警告）。どちらも ARD に入れておくこと。
+Population flag,解析対象集団フラグ
+"Search: ID, title, population, data",検索: ID・タイトル・解析対象集団・データ
+"A flag (== ""Y"") that selects the analysis set, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"
+Keep an analysis set,解析対象集団で絞る
+"No analysis set: every row of the dataset is used. Keep the analysis set's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。
