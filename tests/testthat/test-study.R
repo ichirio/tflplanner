@@ -189,14 +189,12 @@ test_that("a study runs end to end and reports what it produced", {
   p$setup <- "library(cards)"
   p$outputs$data_code[1] <- paste(
     "adsl <- readRDS(\"data/adam/adsl.rds\")",
-    "adsl <- transform(adsl, TRT01P = \"XXXXX\", HTBL = HEIGHTBL)",
     "ard <- ard_stack(",
-    "  adsl, .by = TRT01P,",
-    "  ard_continuous(variables = c(AGE, HTBL),",
+    "  adsl, .by = TRT01A,",
+    "  ard_continuous(variables = c(AGE, WEIGHTBL),",
     "                 statistic = ~ continuous_summary_fns(",
     "                   c(\"N\", \"mean\", \"sd\", \"median\", \"min\", \"max\"))),",
-    "  ard_categorical(variables = c(AGEGR1, SEX, ETHNIC),",
-    "                  statistic = ~ c(\"n\", \"p\")),",
+    "  ard_categorical(variables = c(AGEGR1, SEX, RACE)),",
     "  .total_n = TRUE)",
     "data <- normalize_ard(ard)", sep = "\n")
   p <- add_output(p, "L1", type = "listing")
