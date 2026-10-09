@@ -26,11 +26,11 @@ lf_planner <- function() {
 
 test_that("a listing in rows becomes its program", {
   p <- lf_planner()
-  code <- data_lines(p, "L1")
+  code <- unlist(strsplit(data_lines(p, "L1"), "\n", fixed = TRUE))
   expect_true("adae <- readRDS(\"data/adam/adae.rds\")" %in% code)
-  expect_true("data <- subset(adae, AESEV == \"SEVERE\")" %in% code)
-  expect_true(any(grepl("order(data$TRTA, -xtfrm(data$ASTDT))", code,
-                        fixed = TRUE)))
+  expect_true("data <- adae |>" %in% code)
+  expect_true("  dplyr::filter(AESEV == \"SEVERE\") |>" %in% code)
+  expect_true("  dplyr::arrange(TRTA, dplyr::desc(ASTDT))" %in% code)
   expect_true(any(grepl("collapse_repeats = TRUE", code, fixed = TRUE)))
   expect_true(any(grepl("\"SOC/\\nPT\"", code, fixed = TRUE)))
   expect_true(any(grepl("max_rows = 20", code, fixed = TRUE)))
@@ -39,7 +39,7 @@ test_that("a listing in rows becomes its program", {
   p$outputs$data_code[p$outputs$output_id == "L1"] <- "data$X <- 1"
   code <- data_lines(p, "L1")
   expect_lt(match("data$X <- 1", code),
-            grep("order(", code, fixed = TRUE))
+            grep("arrange(", code, fixed = TRUE))
 })
 
 test_that("a figure reads its data and leaves the plot to its code", {
@@ -51,10 +51,14 @@ test_that("a figure reads its data and leaves the plot to its code", {
   expect_true('source("programs/tfl/fig_setup.R")' %in% code)
   p$outputs$data_code[p$outputs$output_id == "F1"] <- "plot <- 1"
   code <- data_lines(p, "F1")
-  expect_true("content <- list(plot)" %in% code)
+  # the plot goes to the report as it is: rtf_figures(doc, plot)
+  expect_false("content <- list(plot)" %in% code)
   expect_true("tfl_check(plot)" %in% code)
+  expect_true("doc <- rtf_figures(doc, plot)" %in% program_code(p, "F1"))
+  # code that makes `content` itself: its content, not checked here
   p$outputs$data_code[p$outputs$output_id == "F1"] <- "content <- list(1)"
-  expect_false("content <- list(plot)" %in% data_lines(p, "F1"))
+  expect_false("tfl_check(plot)" %in% data_lines(p, "F1"))
+  expect_true("doc <- rtf_figures(doc, content)" %in% program_code(p, "F1"))
 })
 
 test_that("listing and figure rows follow the report and are saved", {

@@ -2,6 +2,494 @@
 
 - R-CMD-check now also runs on R 4.2, the oldest R tested (`Depends: R (>= 4.1)` is kept; cardx, used by the generated ARD code, needs R >= 4.2).
 
+- **The code lists put their labels on the data the programs make**
+  (tflspec >= 0.0.24.9068).  A report's program writes its code lists at
+  its head (`cl_race <- c(WHITE = "White", ...)`) and puts them on the
+  columns it reads (`set_levels(RACE = cl_race)`): each a factor in the
+  list's order, its values the labels, so the ARD (and a listing's or a
+  figure's data) holds what prints.  A value the list does not have stops
+  the program, naming the column and the value.  A listing's rows sort in
+  the code lists' order.
+- **`programs/study_helpers.R`**: the functions the programs call
+  (`set_levels()`, `tag_ard()`, `fmt_ard()`, `fmt_pvalue()`,
+  `keep_stats()`, `save_ard()`), written by tflplanner when the study is
+  saved (`study_helpers_code()`, tflspec's `tfl_helpers_code()`) and
+  sourced by `programs/study_setup.R` (its part 2).  The programs run
+  without tflspec.  The app's previews define them too.
+- The code lists' rows of `variable` (an earlier form of the variables'
+  headings) move to the variables sheet's `label` when a study opens, and
+  the app says so once.
+
+- **Four more sample reports** (SAMPLE-01, made by
+  `data-raw/make-sample-study.R`):
+  - T-14-1-3: age group and sex, its ARD cards' default statistics (n, N
+    and p) and its table n (%) -- the N rows the cells do not name are left
+    out;
+  - T-14-2-3: the mean change in systolic blood pressure at Week 24 with
+    its 95% CI and p-value (`cardx::ard_continuous_ci()`, a one-sample
+    t-test), every statistic in the ARD, its method and alternative text;
+  - T-14-0-1: the study's information (dictionary versions, the dates of
+    the data), with no analysis set (`<All Subjects>` under the title);
+  - T-14-1-4: the screen failures' demographics, an analysis set by a
+    condition alone (SCRF: `ARM == "Screen Failure"`, no flag).
+- The Japanese help of the table layout's `blank_where` says it takes row
+  positions too (tflspec >= 0.0.24.9067).
+
+- **The sample's KM figure (F-14-2-2) reads the study ARD through
+  `path_ard`** (`readRDS(file.path(path_ard, "ard.rds"))`), the folder's
+  variable of the study's setup, as the other programs do (#268).
+- **The programs as the study's setup has them** (#268, its second
+  stage).  A study's programs read its folders through the variables
+  `programs/study_setup.R` defines (`readRDS(file.path(path_adam,
+  "adsl.rds"))`, `file.path(path_ard, ...)`) and call the packages it
+  attaches without `pkg::`; `ard_setup.R` attaches only what the study's
+  setup does not.  The company standards' setup code attaches dplyr too,
+  and a table's default data part takes its rows of the study ARD with
+  `filter()` / `select()`.  A study made before (no `library(dplyr)` in its
+  setup) keeps `dplyr::` and runs as it did.  The app's previews (an
+  analysis data, a listing) run the code as before.
+- **Step 2-2 says what its fields are** (#280).  "Analysis ID (a set of
+  analyses)" (several variables: one row per variable under the same ID in
+  the ARD), "Grouping variables (by)" (whether they are the table's
+  columns, rows or pages is step 3's) and "Analysis variables
+  (variables)".  The levels and order are set in 2-1, for the analysis
+  data's columns (the ARD and the table both), and in step 1; 2-2 has no
+  button of its own for them.
+
+- **The ARD programs as tflspec now writes them** (#281, tflspec >=
+  0.0.24.9066): no function or loop of their own, one pipe an analysis
+  from its data, the tidyverse layout, dplyr's verbs, the code lists on
+  the data the analyses read.  A program ends in tflspec's
+  `bind_rows(...) |> save_ard(output_id, definition = "...")`;
+  `ard_setup.R` no longer defines `save_ard()` and sets
+  `options(tflspec.ard_sources = c(setup = "programs/study_setup.R"))`, so
+  the status still records the study setup each ARD was built with.
+- **The subjects per group are GROUPN** (#281), which clinical reporting
+  calls big N (was `BIGN`; "Subjects per group", was "Subjects per arm"):
+  the first table, a stack's switches and the ARD tab's messages,
+  `add_group_n()`, the sample studies.
+- **The table builder's column header as a grid** (#278).  The header's
+  lines stand under the table's own columns (the row-header columns, then
+  one per value of the column variable), each line the same on each column,
+  over each value of a key, one cell over all, none, or cell by cell: a
+  text for each value, neighbouring cells merged into one (a spanner such
+  as "Xanomeline" over two arms) or split again.  Cell by cell is written
+  as `cols = "TRT01A = a | TRT01A = b"` and read back.  "What the header's
+  {n} counts" says what is asked.  Categorical variables take a format of
+  one's own beside n (%), n/N (%) and n (it starts from the one chosen; a
+  blank one writes nothing); "A row of your own" is open and says how a
+  format is written; each variable's panel shows, faint, what it prints
+  (the Statistics card's rows and decimals, or the categorical format),
+  written for no variable.
+
+- **The report programs, tidied** (#275).  Their head is the banner and
+  one line (`stopifnot()`) that they run from the study folder; the
+  report's id is `report_id`.  The data part has one heading, and the
+  company's default `table_data` / `table_process` no longer write "Leaves
+  ...", "Input data are in ..." or a commented-out rework; a table's
+  `saveRDS()` ends the data part.  A figure's plot goes to the report as it
+  is (`rtf_figures(doc, plot)`, rtfreporter >= 0.8.2.9029).  The setup's
+  helpers are `save_ard(ard, output_id, definition = )` and
+  `record_report()` (were `.save_output()`, `.record_report()`); the ARD
+  programs' banner is shorter and `batch.R`'s lists are indented.
+  `report_setup.R` now writes the study's header and footer once also when
+  the study has default header or footer rows (before: only with
+  study-wide tokens or a font), and the report programs use them.  The
+  sample's header says `{OUTPUT_LABEL}`, `{OUTPUT_TITLE}` and
+  `<{OUTPUT_POPULATION}>`, each report's title and analysis set its tokens;
+  its reports print as before.
+
+- **Step 3 and the figure designer, faster** (#273).  Step 3's table as it
+  prints is made again only when what it is made from changes (the
+  report's rows of the table sheets, the rounding, its ARD rows): back to
+  a report, its table is there in 0.3 s (from 1.7 to 2.4).  Another report
+  shows its table at once (the short wait is for typing).  The figure
+  designer shows its form and code first and the figure when it is drawn
+  ("Drawing ..." meanwhile; the whole page waited for it), and keeps a
+  figure's drawing for the same design, definition and data files: its
+  form in about a second (from 4.4 to 5.7 s), back to a figure in under
+  one.  And everywhere: a part shown just now (a panel, a form) no longer
+  waits seconds for an unrelated timer before it is drawn (shiny resumes a
+  hidden output after the update that shows it and schedules no other; the
+  page now asks for that update).
+
+- **Step 2: an analysis opens in under a second** (#272).  Its function
+  list (a hundred rows, folded until "Change") is made when it is opened,
+  not with every form; the functions an analysis can name are made once a
+  session (again when the study's own functions change), not for each
+  analysis in the outline at each click.  Opening an analysis: 0.6 to 1 s
+  (from 1.5); opening its list: 0.2 to 0.5 s.
+
+- **`programs/study_setup.R`: one setup for every program** (part of
+  #268).  Every study has `programs/study_setup.R`, which
+  `programs/ard/ard_setup.R`, `programs/tfl/report_setup.R` and
+  `programs/tfl/fig_setup.R` each source first.  It has three marked
+  parts, run in order: (1) the company standard, copied when the file is
+  made from the standards' new sheet `setup_code` (one line of R a row;
+  by default `library(cards)`, `library(rtfreporter)`,
+  `library(tflspec)`); (2) tflplanner's, written again on every save: the
+  study's folders (`path_adam <- "data/adam"` ...) and what the study is
+  (`study_id`, `study_title` ...); (3) the study's own, never touched.
+  Saving rewrites part 2 only (parts 1 and 3 stay byte for byte); a part 2
+  edited by hand goes to `programs/.edited/` first.  `report_setup.R` is
+  now always written and sourced, and a report program no longer writes
+  its own `library()` lines.  The ARD status (`ard_status.csv`) and the
+  new report record (`output/tfl/report_status.csv`) keep the fingerprint
+  of the study setup an output was built with, so a change to
+  `study_setup.R` marks the outputs outdated.  An existing study gets the
+  file on its next save.  `setup_tflplanner(standards = )` refuses a
+  `setup_code` that does not parse, or has Excel's curly quotes.
+
+- **Step 2: an analysis opens in a second, not in 3 to 12** (#269).  The
+  parts of its form were made only when some unrelated timer woke the
+  session (shiny resumes an output that was hidden after the update it
+  shows in, and schedules no other); they are made with the form now.  And
+  every DataTable of the app was fitted again each time a folded part
+  opened or an output was drawn -- the form has several -- forcing the
+  page's layout for seconds; only the tables in what was shown are fitted,
+  once.
+
+- **The screens, easier to follow** (#269).  Step 2: an analysis opened is
+  brought into view (its form opened below the window's edge, and nothing
+  moved); no empty frame when none is chosen.  Steps 1-4: SPEC | Code |
+  Result stays beside the form on a wide screen, so the table as it prints
+  is in view while the builder is changed.  Step 3's column header: a line
+  is a third as tall (its row-header text beside its value columns, the
+  style on one row).  The study tab's settings are four sections -- the
+  study, every report, keys and setup code, files -- the first two open
+  (each kept as the viewer leaves it); the study list shows the ID, the
+  whole title and when it was saved (the compound and phase are in the
+  detail).  The Runs tab's batch list and definition check are as tall as
+  their rows; step 1's box of every variable is on one line; the data
+  tab's empty preview says to click a file.
+
+- **Step 4: this report's font and size** (#266; tflspec 0.0.24.9063).
+  Above SPEC | Code | Result, a report may have its own font and size
+  (pt); blank, it takes every report's (the study tab), shown greyed.  A
+  value is the report's own row of the page sheet (only the field
+  changed is written), and its program says it.
+
+- **The reports' font and size, set once** (#264; tflspec 0.0.24.9062).
+  The company standards' `settings` gain `font` and `font_size` (in
+  points; blank: rtfreporter's, Courier 9 pt): a new study gets them, and
+  "Add the company's study defaults" adds them where the study has none.
+  The study tab sets them under the header's words (Font, Size (pt); the
+  page sheet's study row).  `programs/tfl/report_setup.R` says them once,
+  `options(rtfreporter.font = , rtfreporter.font_size_half_points = )`; a
+  study with a font or size uses it even without tokens of its own.
+
+- **A designed figure's program, shorter** (#240).  Its figure is `plot`
+  itself (no `fig <- p`, `plot <- fig`), its palette the study's figure
+  setup's `tfl_colours()`, and the design's code is in the style of the
+  other programs (`|>`, one-line parts: tflspec #164).  The sample's
+  reports are the same.  Needs tflspec 0.0.24.9061.
+
+- **Code lists from 2-1, 2-2 and step 3; a variable's label from them**
+  (#262; tflspec 0.0.24.9060).  [Levels and order (code lists)...] in 2-1
+  (the columns the data makes and adds) and 2-2 (the analysis's groups,
+  variables and strata), and [Code lists of this table...] in step 3, open
+  step 1's editor on those variables; a copy comes back to it.  Step 3's
+  drag lists show each level's code list text, faint.  A variable's label
+  can be the report's code list of `variable` (`variable / AGE / Age
+  (years)`): step 3's label field shows it faint when the variables sheet
+  has none, and writes only a label changed there.  A label is a report's:
+  there is no dictionary across the study or the standards.
+
+- **A user-code report's program, shorter** (#253).  The function that
+  makes its `content` what rtfreporter takes (a ggplot becomes a figure;
+  anything else is said) is `report_content()`, written once in the
+  study's `programs/tfl/fig_setup.R`; each program ends with
+  `content <- report_content(content)` instead of 15 lines of its own.
+  The sample's reports are the same.
+
+- **A session that stops on an error no longer stops the app** (#256).
+  With `stop_on_close = TRUE` (the launcher's), a page that went grey on
+  an error ended its session, which was taken for a closed tab: the app
+  stopped 5 seconds later and the page's Reload could not bring it back.
+  Such a session now waits 10 minutes.  The launcher keeps what the app
+  writes to the console (its errors, with the calls) in `app.log`, beside
+  `launcher.log`.  Needs shiny 1.8.1.
+
+- **2-1's columns made, by kind** (#255).  Each column the data makes is
+  a line of its own, made by kind: split by conditions (the conditions made
+  with the condition builder; one gives `ifelse()`, more give
+  `dplyr::case_when()`), cut a number into groups (`cut(..., right =
+  FALSE)`), the days between two dates (`as.numeric(END - START)`, + 1 if
+  wanted), or an R expression (a variable can be put in).  The sheet keeps
+  `NAME = R | ...` (derive) as before, so the definition and the generated
+  code do not change; the form reads back these four forms only, anything
+  else is an R expression, and a column not opened is saved exactly as
+  written.  The R stays at hand under "As R".
+
+- **2-1's form, in plainer words** (#254).  The condition is a filter:
+  "Filter (a condition)" (2-1) and "This analysis's own filter" (2-2),
+  their help alike.  "Write the condition as R (inside subset())" and
+  "Write this analysis data whole as R (code)" tell the two apart.  The
+  columns added from the subjects' data say what they do (nothing chosen:
+  nothing added) and are not offered while the data is made from the
+  analysis set's own data, which has them all.  The condition builder's
+  variable box is as tall as the others from the first (it took a line of
+  its own until its list was opened).
+
+- **A code list is a report's** (#251; tflspec 0.0.24.9058).  Step 1 edits
+  the report's code lists: the variables it uses (its analyses, what its
+  data derive, what its table shows; all with a box), [Copy code lists...]
+  from the company standards or another report (the rows copied are the
+  report's own), and a file read into the report.  The company standards
+  have a `codelists` sheet (`standard_codelists()`), with CDISC's usual
+  lists by default (SEX, RACE, ETHNIC, AESEV, AESER, AEREL, AEOUT, EOSSTT).
+  `set_codelist()` takes the report; `import_codelist()` copies another
+  report's.  The Data tab's study code lists are gone.  A report's ARD uses
+  the code lists of the variables its analyses read; step 1's result says
+  which.  A study of the old format (analysis data or code lists without a
+  report) is said so once when it is opened, in the app's language: make
+  it again from the sample, or make a new study.  Step 2's 2-1 and 2-2 say
+  the same in a line, the checks' messages folded under it.  The sample's tables have their own code lists
+  (#248): the arms in each, SEX / AGEGR1 / RACE / ETHNIC in the
+  demographics tables (the CRF's values the data have none of print with
+  0), EOSSTT in the disposition table; the variables sheet no longer
+  says the same order again.
+
+- **Step 3: statistics as rows, each statistic's decimals** (#249).  The
+  table builder's Statistics card:
+  - Values: the numbers, rounded here, or the ARD's text as step 2
+    formatted it (`tables$value`; no decimals to set then).
+  - A continuous variable's rows, chosen and ordered by dragging: the
+    company standards' rows (single statistics too: Mean, SD, SE, Q1, Q3,
+    Min, Max) and a row of your own (a label and a template).
+  - The decimals of each statistic, the same for every analysis variable
+    (the `digits` sheet), and a variable's own.  They replace "decimals the
+    data are collected with": a statistic's decimals are fixed numbers now.
+  - Company standards: the `statistics` rows have no digit rules; a new
+    `default_digits` gives a new study each statistic's decimals.
+
+- **The `digits` sheet** (#247; tflspec #168).  A study's definition keeps
+  each statistic's decimals and a variable's exceptions (step 3's SPEC,
+  the tab "digits: decimals"); a table's templates take them where they
+  say no format.  Needs tflspec 0.0.24.9057.
+
+- **The sample study, after an audit** (#238).  T-14-2-2 (KM estimates)
+  has no "Characteristic" over its rows.  L-16-2-7 lists the
+  treatment-emergent severe adverse events (2 of 43 were not), titled so,
+  the arms in their order (sorted by `TRT01AN`, which the sample's ADSL and
+  ADAE now have, as an ADaM does).  F-14-2-1's code says its parameter.
+  The other reports are the same, byte for byte.  The company standards'
+  `table_data` code takes a report's rows of the study ARD with
+  `subset(ard, output_id == ..., select = -c(output_id, analysis_id,
+  population_id))`.
+
+- **An analysis data is a report's** (#244; tflspec 0.0.24.9055).  2-1 lists
+  the report's own rows, all of them; delete, "in use" and the names are
+  the report's; `set_analysis_data()`, `remove_analysis_data()`,
+  `copy_analysis_data()` take the report.  [Copy from another report...]
+  copies a report's analysis data under the same names
+  (`import_analysis_data()`).  The Data tab shows the datasets and the
+  analysis sets only: the analysis data grid is gone (2-1's SPEC tab).  A
+  report's analysis set data, the TOC's, and copy / rename / remove of a
+  report follow.  The condition builder shows a variable on one line, cut
+  with ..., the whole on hover.  The sample's tables each have their own
+  rows; the reports and the ARD are the same.  A study made before has no
+  report on its rows: tflspec says so (make it again from the sample).
+
+- **Every report's header, defined once** (#223).
+  - The package's header for a new study: `{COMPANY}` and
+    `{ANALYSIS_TYPE}`, then `PROTOCOL: {STUDY_ID}` and the page, a blank
+    line, then the report's `{OUTPUT_LABEL}` ("Table 14.1.1"),
+    `{OUTPUT_TITLE}` and `<{OUTPUT_POPULATION}>`.
+  - The study's words are set once, in the study tab (Company, Analysis,
+    Protocol): the tokens sheet's study rows; the company standards'
+    `default_tokens` give a new study's.  A new study's protocol is the
+    `{STUDY_ID}` token, not text put in the header.
+  - Taking in a TOC writes each report's own tokens (its label -- a new
+    item of the map, "Label" / "Display ID" ... --, title, analysis set,
+    section), only those the study's header, footer, titles or footnotes
+    say; a value changed here is kept the next time.  When the header says
+    `{OUTPUT_TITLE}`, the TOC's first title line and its analysis set are
+    not title lines as well.
+  - `programs/tfl/report_setup.R` (`report_setup_code()`) holds the
+    study's tokens, header and footer; each report program sources it and
+    says only its own tokens.  A study with no tokens of its own (the
+    sample) writes its programs as before.
+  - Step 4's header tab says the report has the study's header, with
+    "A header of this report's own" (a copy to edit) and "Back to the
+    study's".
+  - The page sample fills the report's tokens as its program does, and
+    leaves out a line they leave empty.
+  - Needs rtfreporter 0.8.2.9025 and tflspec 0.0.24.9054.
+
+- **Unregistering a study loses nothing** (#237).  `unregister_study()`
+  (Unregister) puts what tflplanner kept about the study -- its saved
+  state, history and unsaved changes -- into the study folder
+  (`.tflplanner/`) instead of deleting it, and `register_study()` (Register
+  a folder) takes it back: the study comes back as it was (when `spec/`
+  was changed in between, from `spec/`, the kept state going to its
+  history).  The dialog says the folder is not deleted.  tflplanner never
+  deletes a study folder.
+
+- **Nothing updates on its own** (#226).  `add_shortcut()` no longer makes
+  the "update and launch" shortcut unless asked (`update = TRUE`); the
+  Start menu entry stays.  The app's check for a newer version is off
+  unless turned on in its settings (or `setup_tflplanner(check_updates =
+  TRUE)`; a setting already made is kept), and it only tells: tflplanner
+  installs or updates nothing unless you ask -- `update_tflplanner()`, or
+  the "update and launch" shortcut.
+
+- **2-2: the method first, as a heading with its function** (#236).  An
+  analysis's form starts with its method, large, and the function it calls
+  (`cards::ard_stack_hierarchical`, a company keyword's too), then its ID
+  and label; the 2-2 list names the function as well.  The arguments under
+  it are "Only for <function> (i)" (the data, groups ... above are those
+  every method has): the required ones, those the method writes and those
+  given first, the rest folded ("n more, at their defaults").  A blank
+  says what it gives: the study's subject key, the company method's value,
+  none, or the function's own default.  The help of the arguments used
+  most says when to use them (tflspec's catalog, translated).  The
+  variables, groups and strata show in the definition's order (a
+  hierarchy's outermost first), not the data's; the statistic N reads
+  "Number of non-missing values".
+
+- **2-1 lists the report's own analysis data** (#235): those its analyses
+  read (and what they are made from), the data they read without a name,
+  and those made on its 2-1 until an analysis reads them; the study's
+  others are on the Data tab.  The sample's tables all read analysis data
+  (adsl_saf, advs_w24, adtte_ttde, adae_saf) and have SAF as their
+  analysis set: the demographics table's 2-1 shows adsl_saf alone.  From
+  S2's look at the sample: T-14-1-1's total N and T-14-1-1S's `.total_n`
+  (no table prints them) are gone, advs_w24 says its parameter
+  (`PARAMCD == "SYSBP"`), and T-14-2-1's decimals are the table's alone
+  (its analysis's `formats` gone).  The reports are the same; the ARD has
+  the same numbers, less the two total N rows.
+
+- **The design concept, written down** (#224).  The README has a
+  "Concept" section and the Japanese guide a "設計の考え方" section:
+  code for people to read and finish, the typical analyses kept simple,
+  R code kept in the spec, shared parts defined once, screens => spec =>
+  code.  Docs only.
+
+- **A hex logo, shared with rtfreporter and tflspec** (#230), made with the
+  site's favicons by `data-raw/logo.R`.
+
+- Added a root `CITATION.cff` so GitHub's "Cite this repository" button
+  works (#229).
+
+- **The TOC's datasets** (#220; tflspec's `tfl_read_toc()` datasets).  A
+  `datasets` item of the mapping: kept as the report list's datasets
+  (shown until the report's definition names its own), a new listing's
+  dataset and a new figure's datasets; with "Make the tables' analysis
+  data from their datasets" (ticked), a new table gets `<dataset>_<set>`
+  kept to `adsl_<set>`'s subjects (found or made), which its first
+  analysis reads.  Taken in again, they are made again only when asked.
+
+- **The TOC's population is the reports' analysis set** (#219).  The TOC
+  dialog shows each text of its population column with the study's set it
+  is -- matched by id, label (the company standards', else the flag's), a
+  usual word for the flag or the id in the text: "Safety Population" is
+  SAF -- and it can be changed there; taken in, each report's set is set
+  as step 2 sets it (`toc_apply(populations =)`, `toc_populations()`).
+  The Add dialog gives a new report its set too.
+
+- **A report's analysis set is one value** (#217).  The report list's
+  `population` (the TOC's, step 2's): `set_report_population()` writes it,
+  makes the data of the set's subjects (`adsl_<set>`) when there is none,
+  and moves the report's analyses to the new set's data (and the data kept
+  to the old set's subjects, found or made with the same definition; data
+  of another kind are left and said).  Step 2 chooses it above 2-1 ("This
+  report's analysis set"); 2-1's new data and 2-2's new analysis start
+  from it.  A set's flag on another dataset (ADAE's SAFFL) is the set only
+  when it agrees with the set's dataset subject by subject; else it is a
+  condition, and the form says so.  The company standards' analysis sets
+  are those the company may use (a new study gets them all).  The report
+  list shows the report's set, else its analyses' (their analysis data's
+  too).
+
+- **The sample's ADSL has ITTFL, EFFFL and PPROTFL** (#218), derived by
+  data-raw/make-sample-study.R (pharmaverseadam's ADSL has SAFFL only of
+  the population flags; the sample's README says how), so step 2 has
+  flags to choose from.  The study's analysis sets stay SAF only; the
+  reports and the ARD are the same.  The script also writes T-14-3-1 with
+  the analysis data the sample has had since #213.
+
+- **2-2's analysis form, after a look at it** (#215).  The card has one
+  heading ("Analysis A1 (i)"; "Analysis" while none is chosen); the method
+  is "The method (method)" and is described once, under it; the formats'
+  (i) is on their heading; the "Write as code" dialog names the button
+  "Apply to the analysis".
+
+- **Help, after a review of every screen** (#211).  A heading's (i) opens
+  on a click or a tap too (a tablet has no hover) and stays open until it
+  is clicked again, something else is clicked or Escape is pressed -- for
+  the (i) of step 2 too.  The "About this (i)" lines are a part's heading
+  with its (i) now (the Data tab's parts, steps 1 and 4, the table
+  builder, a listing), and on the Data tab a sheet's editing note is in
+  the same (i) (no two (i) in a row).  The rest of the paragraphs went into
+  an (i): the analysis sets, step 1's Code and Result (they say what
+  their names say), the data code's labels (their help was a title shown
+  only on hover), Preview, the study settings and "add the company's
+  defaults", the Add dialog's "Start from the data", and the figure
+  designer.  Long tips are shorter (own ARD functions, ARDs taken in); the
+  study ARD's no longer repeats the line on the page.  Japanese: one
+  missing translation, and the statistics catalog's labels (shown in
+  step 2-2).
+
+- **Step 2's help as (i)** (#210).  The paragraphs under the ARD card's
+  heading and an analysis's form head are (i) on their headings now; 2-2's
+  says what ARD and an analysis set are.  Data, the analysis's own
+  condition (now "Rows kept (this analysis's own condition)", the words of
+  2-1), the other arguments, the groups, "Repeated within", the
+  denominator (what each choice is of, an AE table's example) and the
+  format have an (i); so have 2-1's analysis set, condition, subjects tick
+  and "Write it as R".  "Run together with other analyses (one call)".
+  The statistics catalog's labels go through the translations
+  (`stat-label:<label>`).
+
+- **2-1, after trying it** (#206).  What a data is made from and its
+  analysis set come first (the name follows them).  The analysis set is the
+  condition's first row, put in at once (`SAFFL == "Y"`, changeable, other
+  rows under it), chosen from the study's analysis sets and the population
+  flags of the data.  Saved, that row as it is is the sheet's
+  `population_id` (SAF: not in `where`); changed (another value, "!="), it
+  is a condition like the others.  A sheet's `population_id` is shown as
+  that row.  The same data as one already there is said so (use it, no
+  need to make it again).  2-1's and 2-2's explanations are in a
+  tooltip on their headings.  The sample's T-14-3-1 reads two analysis
+  data, adsl_saf (the safety set) and adae_saf (its TEAEs), its
+  denominator adsl_saf: the same tables and ARD.  The report list names
+  the datasets an analysis data is made from (ADAE, ADSL).
+
+- **Long explanations are a heading's (i) now** (#207).  The paragraphs of
+  explanation on the screens made them hard to read; they are a tooltip
+  on the heading they explain (shown on hover or keyboard focus), or an
+  "About this (i)" line where there is no heading: the Study tab (own ARD
+  functions, keys and setup code), the Data tab (the study ARD, ARDs taken
+  in, datasets, analysis data, code lists), the Report list, steps 1, 3
+  (user code, the plot written by hand, a listing's columns, the builder)
+  and 4, the Runs tab, and the note under every sheet ("Editing the sheet
+  (i)").  Short labels, warnings, errors, dialogs and the statistics notes
+  stay on the page.  One component for it (`help_tip()`, `with_tip()`,
+  `about_tip()` in R/help_tip.R): a focusable (i) named by its help.
+
+- **The report list has a section (heading)** (#203).  A TOC's heading
+  rows ("14.1 Demographics") were passed over; now each report taken in is
+  under the heading above it (or the TOC's section column, a new item of
+  the mapping and of the company's `toc_map`; tflspec >= 0.0.24.9050).
+  The section is a column of the report list, given in the Add dialog
+  (the chosen report's by default) or next to the description on step 3's
+  Data code tab; one given here stays when the TOC is taken in again.  The
+  list on the left of Make a report is folded by the sections (a heading,
+  else the ID's numbers as before), headings in the order of the numbers
+  they start with.
+
+- **2-1: the analysis set as a field of its own** (#202).  After "Made
+  from", "Analysis set": the study's analysis sets, each with its
+  condition, or none (written as population_id); the condition builder
+  below for the other conditions.  Kept to another data's subjects, the
+  field shows that data's analysis set instead.  A new data starts with the
+  study's first analysis set and is named after what it is made from and
+  the set (adsl_saf, adae_saf).  A population flag of ADSL that is no
+  analysis set yet is made one in one click ("Make PPROTFL an analysis
+  set": ADSL, `PPROTFL == "Y"`, id PP), chosen at once; the Data tab has
+  it too.
+
 - **The condition builder: variables in ADaM's groups, no shortcuts**
   (#199).  The analysis sets' shortcut buttons (the set, and "not" it) are
   gone: they did what "Keep to the subjects of ..." does, and a study has

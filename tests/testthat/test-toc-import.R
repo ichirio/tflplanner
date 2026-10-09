@@ -297,7 +297,8 @@ test_that("the dialog: the last TOC said, the same file noticed, two rows of one
                      check.names = FALSE)), f3, col_names = FALSE)
   up <- function(f) data.frame(name = basename(f), datapath = f, stringsAsFactors = FALSE)
   map <- function(n) {
-    l <- list("No.", "Kind", "Title", "", "", "", "", "")
+    # the first three items mapped, the rest (however many) not
+    l <- c(list("No.", "Kind", "Title"), as.list(rep("", length(.toc_items) - 3L)))
     names(l) <- paste0("toc", n, "_map_", .toc_items)
     l
   }
@@ -334,4 +335,29 @@ test_that("the dialog: the last TOC said, the same file noticed, two rows of one
     expect_identical(report_info(rv$p, "T-2")$type, "listing")
     expect_identical(sheet_rows(rv$p, "titles", "T-2")$center, "Vital signs")
   })
+})
+
+test_that("the TOC's headings become the reports' sections; one given here is kept", {
+  x <- new_planner()
+  sp <- tflspec::tfl_read_toc(toc_file(c(
+    ",14.1 Demographics,,,",
+    "T-14-1-1,Table,Demographics,Safety Population,",
+    "T-14-1-2,Table,Disposition,All Subjects,",
+    ",14.3 Safety,,,",
+    "T-14-3-1,Table,Overview of TEAEs,Safety Population,")), map = toc_map)
+  y <- toc_apply(x, sp, toc_changes(x, sp))
+  expect_identical(y$outputs$section,
+                   c("14.1 Demographics", "14.1 Demographics", "14.3 Safety"))
+  # the picker's sections are the headings, in the TOC's order
+  r <- .report_rows(y)
+  expect_identical(.section_order(unique(r$section)), c("14.1 Demographics", "14.3 Safety"))
+  # a section written here stays when the TOC is taken in again
+  y$outputs$section[1L] <- "Mine"
+  z <- toc_apply(y, sp, toc_changes(y, sp, last = toc_snapshot(sp, toc_title_offset(y))))
+  expect_identical(z$outputs$section[1L], "Mine")
+  # saved and read back
+  d <- withr_tempdir()
+  write_planner(z, d)
+  back <- read_planner(file.path(d, c("table_spec.xlsx", "report_spec.xlsx")))
+  expect_identical(back$outputs$section, z$outputs$section)
 })

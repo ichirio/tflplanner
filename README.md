@@ -1,6 +1,6 @@
 <!-- README.md is written by hand; keep it short and link to the pkgdown site. -->
 
-# tflplanner
+# tflplanner <img src="man/figures/logo.png" align="right" height="120" alt="tflplanner logo: a planning board" />
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/ichirio/tflplanner/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ichirio/tflplanner/actions/workflows/R-CMD-check.yaml)
@@ -52,6 +52,28 @@ Official runs   autoexec_*.R  =>  runs/<date>_<time>_<what>/  (logs, results, co
 > code written from them) and rtfreporter (the ARD and table engine and the
 > RTF renderer); its screens and functions may change.
 
+## Concept
+
+- **The code is for people to read and finish.**  The programs tflplanner
+  writes are short and plain, close to what a statistical programmer
+  writes by hand, and easy to maintain.  Typically, you build
+  most of an analysis in the app, copy the program it writes and finish
+  it by hand outside the app.
+- **The typical analyses and layouts, in a few steps.**  To keep the code
+  simple, the app covers the analyses and table layouts most studies use,
+  each set with a few simple operations, rather than every possible design.
+- **What the screens cannot say is written as R.**  A condition, a derived
+  column, an argument, a step after the ARD -- or a whole user-code report
+  -- is kept in the spec as R code, and the programs put it where it
+  belongs.
+- **Shared parts are defined once.**  The header, footer, page style and
+  the study's information (company name, analysis type, protocol ID, ...)
+  are set once and reused; each report's program carries only its own
+  values.
+- **Screens => spec => code.**  The app writes the spec (which can also be
+  edited directly), and the programs are written from the spec; a
+  generated program is not edited inside the tool.
+
 ## Installation
 
 Once, at the R console (rtfreporter and tflspec come with it):
@@ -85,8 +107,8 @@ else is done in the app.  Without a shortcut, start it with `launch_app()`
 (in its own R process; also the RStudio add-in *Launch tflplanner*) or
 `run_app()`.
 
-To update rtfreporter, tflspec and tflplanner later, close the app and
-start it from the shortcut **tflplanner (update and launch)**, or run
+tflplanner never updates itself or anything else on its own.  To update
+rtfreporter, tflspec and tflplanner, close the app and run
 
 ```r
 tflplanner::update_tflplanner()          # the released versions
@@ -94,8 +116,10 @@ tflplanner::update_tflplanner("dev")     # the development versions
 tflplanner::update_tflplanner(from = "D:/packages")   # from package files
 ```
 
-The app says when a newer version is out (it looks when it starts; this can
-be turned off in its settings).
+or start it from the shortcut **tflplanner (update and launch)**, made
+only when asked for: `add_shortcut(update = TRUE)`.  The app can say when
+a newer version is out (it looks when it starts): off by default, turned
+on in its settings.
 
 The same steps as code, for scripts:
 

@@ -36,7 +36,8 @@ test_that("a study of many reports, in sections, its states mixed", {
   s <- .make_big_study(60L, root = file.path(home, "ws"), home = home)
   r <- .report_rows(s$planner, ard_status(s), .report_run_light(s))
   expect_identical(nrow(r), 60L)
-  expect_identical(length(unique(r$section)), 10L)
+  # (the sample's reports and their sections, 14.0 the study information's)
+  expect_identical(length(unique(r$section)), 11L)
   expect_true(all(c("ok", "outdated", "not built", "error") %in% r$state))
   expect_true(all(nzchar(r$title)))
   # the light run state reads what study_status() reads from the files
@@ -78,4 +79,19 @@ test_that("the list chooses the report; the tables search the same way", {
   })
   expect_identical(.report_dt_search("T-14-3  \uff21dverse"), "t143 adverse")
   expect_identical(.report_dt_search(""), "")
+})
+
+test_that("a section is the heading when there is one, else the ID's numbers", {
+  expect_identical(.report_section(c("T-14-1-1", "T-14-2-1", "X"), c("table", "table", "listing"),
+                                   c("14.1 Demographics", NA, NA)),
+                   c("14.1 Demographics", "14.2", "listing"))
+  # headings by the number they start with (14.2 before 14.10), then the others
+  expect_identical(.section_order(c("14.10 Labs", "Other", "14.2 Vitals", "14.1")),
+                   c("14.1", "14.2 Vitals", "14.10 Labs", "Other"))
+  # an older study's report list (no section): from the IDs
+  p <- add_output(new_planner(), "T-14-1-1")
+  p$outputs$section <- NULL
+  p <- .renamed_outputs(p)
+  expect_true("section" %in% names(p$outputs))
+  expect_identical(.report_rows(p)$section, "14.1")
 })

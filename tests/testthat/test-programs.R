@@ -6,7 +6,7 @@ sample_planner <- function() {
 test_that("a table program writes out its plan and report, saves its ARD and parses", {
   p <- sample_planner()
   code <- program_code(p, "PK")
-  expect_true(any(grepl('output_id <- "PK"', code, fixed = TRUE)))
+  expect_true(any(grepl('report_id <- "PK"', code, fixed = TRUE)))
   # the definition written out, not read at run time
   expect_false(any(grepl("tfl_read_report_spec", code, fixed = TRUE)))
   expect_false(any(grepl("spec = spec", code, fixed = TRUE)))
@@ -18,7 +18,7 @@ test_that("a table program writes out its plan and report, saves its ARD and par
   expect_true(any(grepl('file.exists("study.yml")', code, fixed = TRUE)))
   expect_true(any(grepl("saveRDS(data", code, fixed = TRUE)))
   # no data code: the company template takes its rows of the study ARD
-  expect_true(any(grepl('ard$output_id == "PK"', code, fixed = TRUE)))
+  expect_true(any(grepl('filter(output_id == "PK")', code, fixed = TRUE)))
   expect_true(any(grepl("data <- normalize_ard(ard)", code, fixed = TRUE)))
   expect_silent(parse(text = code))
   expect_equal(report_info(p, "PK")$file, "output/PK.rtf")
@@ -44,7 +44,8 @@ test_that("listings and figures make `content` and skip the table plan", {
     code <- program_code(p, id)
     expect_silent(parse(text = code))
     expect_true(any(code %in% c("doc <- rtf_tables(doc, content)",
-                                "doc <- rtf_figures(doc, content)")))
+                                "doc <- rtf_figures(doc, content)",
+                                "doc <- rtf_figures(doc, plot)")))
     expect_false(any(grepl("table_plan(", code, fixed = TRUE)))
   }
   expect_error(add_output(p, "X", type = "chart"))

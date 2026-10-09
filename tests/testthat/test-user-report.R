@@ -8,7 +8,9 @@ test_that("a user-code report's program reads its data and leaves content", {
   code <- program_code(p, "U-1")
   expect_true(any(grepl("adsl <- ", code, fixed = TRUE)))
   expect_true(any(code == "content <- adsl"))
-  expect_true(any(code == "content <- .user_content(content)"))
+  expect_true(any(code == "content <- report_content(content)"))
+  # written once in fig_setup.R, not in each program
+  expect_false(any(grepl("report_content <- function", code, fixed = TRUE)))
   expect_true(any(grepl("rtf_tables(doc, content", code, fixed = TRUE)))
   expect_silent(parse(text = code))
   # no ARD unless the report says so
@@ -22,15 +24,15 @@ test_that("a user-code report's program reads its data and leaves content", {
 
 test_that("the program turns a ggplot into a figure, alone or in a list", {
   e <- new.env()
-  eval(parse(text = .user_content_fun), e)
+  eval(parse(text = .report_content_fun), e)
   rtfplot <- function(p) structure(list(), class = "rtfplot")
-  environment(e$.user_content) <- environment()
+  environment(e$report_content) <- environment()
   g <- structure(list(), class = c("gg", "ggplot"))
-  expect_s3_class(e$.user_content(g), "rtfplot")
-  out <- e$.user_content(list(data.frame(a = 1), g))
+  expect_s3_class(e$report_content(g), "rtfplot")
+  out <- e$report_content(list(data.frame(a = 1), g))
   expect_s3_class(out[[2]], "rtfplot")
   expect_s3_class(out[[1]], "data.frame")
-  expect_s3_class(e$.user_content(data.frame(a = 1)), "data.frame")
+  expect_s3_class(e$report_content(data.frame(a = 1)), "data.frame")
 })
 
 test_that("a figure written by hand becomes a user-code report when asked", {
@@ -101,12 +103,12 @@ test_that("a user-code report runs out of the app and its content is shown", {
 
 test_that("content the contract does not name stops, saying which item it is", {
   e <- new.env()
-  eval(parse(text = .user_content_fun), e)
+  eval(parse(text = .report_content_fun), e)
   rtfplot <- function(p) structure(list(), class = "rtfplot")
-  environment(e$.user_content) <- environment()
-  expect_error(e$.user_content(list(data.frame(a = 1), structure(list(), class = "lm"))),
+  environment(e$report_content) <- environment()
+  expect_error(e$report_content(list(data.frame(a = 1), structure(list(), class = "lm"))),
                "`content` (item 2) is lm", fixed = TRUE)
-  expect_error(e$.user_content(1:3), "`content` is integer", fixed = TRUE)
+  expect_error(e$report_content(1:3), "`content` is integer", fixed = TRUE)
 })
 
 test_that("a user-code report's ARD: its analyses, or the one taken in", {
@@ -179,4 +181,14 @@ test_that("converting asks first, and Later holds while the study is open", {
     expect_identical(report_info(rv$p, "F-2")$type, "figure")
     expect_error(output$uc_offer)
   })
+})
+
+test_that("report_content() is written once, in the study's fig_setup.R", {
+  local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  setup <- readLines(file.path(s$path, "programs", "tfl", "fig_setup.R"))
+  expect_true(any(grepl("^report_content <- function", setup)))
+  prog <- readLines(file.path(s$path, "programs", "tfl", "F-14-2-1.R"))
+  expect_true("content <- report_content(content)" %in% prog)
+  expect_false(any(grepl("report_content <- function", prog, fixed = TRUE)))
 })

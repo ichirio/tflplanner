@@ -55,6 +55,7 @@ reference:
     contents:
       - standards_template
       - code_templates
+      - setup_code
       - add_standard_defaults
   - title: Studies
     contents:
@@ -64,6 +65,7 @@ reference:
       - export_spec
       - export_ars
       - study_layout
+      - study_setup_code
       - study_files
       - read_data_head
       - study_status
@@ -74,7 +76,10 @@ reference:
       - remove_analysis
       - copy_analysis
       - set_analysis_data
+      - import_analysis_data
+      - set_report_population
       - ard_setup_code
+      - study_helpers_code
       - run_ard
       - ard_view
       - ard_status
@@ -105,6 +110,7 @@ reference:
       - output_ids
       - table_sheets
       - read_codelist
+      - import_codelist
       - inherited_rows
       - read_planner
       - write_planner
@@ -138,12 +144,14 @@ reference:
     contents:
       - toc_changes
       - toc_apply
+      - toc_populations
       - toc_snapshot
       - toc_imports
   - title: Programs and runs
     contents:
       - data_lines
       - program_code
+      - report_setup_code
       - autoexec_code
       - batch_code
       - run_study

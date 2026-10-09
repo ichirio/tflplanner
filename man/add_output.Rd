@@ -13,7 +13,9 @@ add_output(
   description = NA_character_,
   data_code = NA_character_,
   type = "table",
-  process_code = NA_character_
+  process_code = NA_character_,
+  section = NA_character_,
+  population = NA_character_
 )
 
 copy_output(x, from, to)
@@ -39,6 +41,12 @@ listing or figure: its \code{content}); \code{NA} writes a TODO.}
 \code{\link[rtfreporter:table_plan]{rtfreporter::table_plan()}} is given: \code{\link[rtfreporter:normalize_ard]{rtfreporter::normalize_ard()}}
 and any rework after it (\code{mutate()} ...).  \code{NA} means
 \code{data <- normalize_ard(ard)}, unless \code{data_code} makes \code{data} itself.}
+
+\item{section}{The section of the TOC the report is under (its heading,
+"14.1 Demographics"); \code{NA}: from its ID's numbers.}
+
+\item{population}{The report's analysis set, a population_id (see
+\code{\link[=set_report_population]{set_report_population()}}, which also makes its analysis data).}
 }
 \value{
 The updated \code{tflplanner}.

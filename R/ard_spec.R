@@ -73,11 +73,11 @@
                          methods = .std_ard_methods())
 }
 
-# The study's code lists (the codelists sheet: its study rows and each
-# report's own): the ARD programs make each listed column a factor in their
-# order before the analyses, so the ARD keeps the order and counts a value
-# no record has (0) -- a report's program with its own rows too (tflspec
-# picks them by output_id).  NULL when there are none.
+# The reports' code lists (the codelists sheet: every row a report's): a
+# report's ARD program makes each listed column its analyses read a factor
+# in their order before the analyses, so the ARD keeps the order and counts
+# a value no record has (0) (tflspec picks a report's rows by output_id).
+# NULL when there are none.
 .study_codelists <- function(p) {
   cl <- if (!is.null(p$sheets$codelists)) sheet_rows(p, "codelists", "")
   if (is.null(cl) || !nrow(cl)) return(NULL)
@@ -172,7 +172,7 @@ ard_rows <- function(x, sheet, output_id = "") {
 #' @export
 set_ard_rows <- function(x, sheet, output_id = "", rows) {
   rows <- .drop_blank_rows(as.data.frame(rows, stringsAsFactors = FALSE))
-  whole <- sheet != "analyses" || identical(output_id, "") ||
+  whole <- !sheet %in% c("analyses", "analysis_data") || identical(output_id, "") ||
     is.na(output_id)
   if (!whole) rows$output_id <- rep(output_id, nrow(rows))
   rows <- .normalize_ard_sheet(rows, sheet)
@@ -180,7 +180,7 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
     x$ard[[sheet]] <- rows
     return(x)
   }
-  d <- x$ard$analyses
+  d <- x$ard[[sheet]]
   mine <- !is.na(d$output_id) & d$output_id == output_id
   at <- if (any(mine)) which(mine)[1L] - 1L else nrow(d)
   rest <- d[!mine, , drop = FALSE]
@@ -189,7 +189,7 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
              rest[setdiff(seq_len(nrow(rest)), seq_len(before)), ,
                   drop = FALSE])
   rownames(d) <- NULL
-  x$ard$analyses <- d
+  x$ard[[sheet]] <- d
   x
 }
 
@@ -319,7 +319,8 @@ study_ard_rows <- function(study, output_id) {
   f <- .ard_status_file(study)
   empty <- data.frame(output_id = character(), definition = character(),
                       built = character(), rows = integer(),
-                      error = character(), stringsAsFactors = FALSE)
+                      error = character(), setup = character(),
+                      stringsAsFactors = FALSE)
   if (!file.exists(f)) return(empty)
   d <- utils::read.csv(f, colClasses = "character")
   for (c in names(empty)) if (!c %in% names(d)) d[[c]] <- NA_character_
@@ -339,7 +340,9 @@ study_ard_rows <- function(study, output_id) {
 #'
 #' For every output the ARD definition has analyses for: `built` (its rows
 #' are in the study ARD, made from the definition as it is now), `outdated`
-#' (made from an earlier definition), `not built`, or `error` (its last
+#' (made from an earlier definition, or with another
+#' `programs/study_setup.R` than the one there now), `not built`, or
+#' `error` (its last
 #' update failed).  Many people may work on one study: the study ARD is
 #' updated output by output ([update_study_ard()]), and a table is made
 #' from whatever of it is there.
@@ -359,7 +362,8 @@ ard_status <- function(study) {
                                       codelists = .study_codelists(study$planner))
     state <- if (is.na(r$output_id)) "not built" else
       if (!is.na(r$error) && nzchar(r$error)) "error" else
-        if (!identical(r$definition, now)) "outdated" else "built"
+        if (!identical(r$definition, now) ||
+            .setup_changed(r$setup, study$path)) "outdated" else "built"
     data.frame(output_id = id, analyses = sum(a$analyses$output_id %in% id),
                state = state, rows = r$rows, built = r$built,
                error = if (is.na(r$error)) "" else r$error,

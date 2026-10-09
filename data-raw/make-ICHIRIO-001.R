@@ -183,7 +183,7 @@ p$ard$populations <- tbl(
   list(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"",
        derive = "TRTA = TRT01A"))
 p$ard$analyses <- tbl(
-  list(output_id = "T-14-1-1", analysis_id = "BIGN", label = "Subjects per arm",
+  list(output_id = "T-14-1-1", analysis_id = "GROUPN", label = "Subjects per group",
        method = "categorical", population_id = "SAF", variables = "TRT01A"),
   list(output_id = "T-14-1-1", analysis_id = "TOTAL", method = "total_n",
        population_id = "SAF"),
@@ -194,7 +194,7 @@ p$ard$analyses <- tbl(
   list(output_id = "T-14-1-1", analysis_id = "CAT", label = "Categorical",
        method = "categorical", population_id = "SAF", by = "TRT01A",
        variables = "AGEGR1 | SEX | RACE", statistics = "n | p"),
-  list(output_id = "T-14-1-2", analysis_id = "BIGN", method = "categorical",
+  list(output_id = "T-14-1-2", analysis_id = "GROUPN", method = "categorical",
        population_id = "SAF", variables = "TRT01A"),
   list(output_id = "T-14-1-2", analysis_id = "DISP",
        label = "Status at end of study", method = "categorical",

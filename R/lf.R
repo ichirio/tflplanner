@@ -103,7 +103,8 @@ listing_types <- function() company_standards()$listing_types
   tflspec::tfl_listing_code(
     tflspec::tfl_listing_spec(x$lf, check = FALSE), output_id,
     x$ard$datasets, rework = if (!is.na(rework)) .code_block(rework),
-    type = .std_setting("listing_type", "multiline"))
+    type = .std_setting("listing_type", "multiline"),
+    codelists = .study_codelists(x))
 }
 
 # the part of a figure's program between its setup and its report
@@ -137,9 +138,8 @@ listing_types <- function() company_standards()$listing_types
     plot,
     if (!makes_content) c(
       "",
-      "# the figure checks: dropped rows, colours against the standard (warnings)",
-      "tfl_check(plot)",
-      "content <- list(plot)"))
+      "# the figure checks: dropped rows, colours against the standard",
+      "tfl_check(plot)"))
 }
 
 #' The rows of a listing, as they will print
@@ -156,7 +156,7 @@ preview_listing <- function(study, output_id) {
   if (is.null(code)) stop("The listing has no data yet.", call. = FALSE)
   owd <- setwd(study$path)
   on.exit(setwd(owd), add = TRUE)
-  e <- new.env(parent = asNamespace("rtfreporter"))
+  e <- new.env(parent = .helpers_env(asNamespace("rtfreporter")))
   eval(parse(text = code, encoding = "UTF-8"), envir = e)
   content <- e$content
   if (inherits(content, "rtftable")) content <- list(content)

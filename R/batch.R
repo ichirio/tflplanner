@@ -17,6 +17,7 @@
 
 .batch_file <- "batch.R"
 .fig_setup_file <- "fig_setup.R"
+.report_setup_file <- "report_setup.R"
 .autoexec_all_file <- "autoexec_all.R"
 
 #' The official-run programs of a study
@@ -52,15 +53,23 @@ batch_code <- function(x, date = Sys.Date()) {
                                                .ard_autoexec_file)),
             wb(.ard_file)),
     tfl = c(file.path(lay[["programs_tfl"]], c("autoexec_report.R",
-                                               .fig_setup_file)),
+                                               .fig_setup_file,
+                                               .report_setup_file)),
             wb(c(.table_file, .report_file, .lf_file, .ard_file))),
     all = c(file.path("programs", c(.batch_file, .autoexec_all_file)),
-            .study_file))
-  vec <- function(v, names = NULL) {
+            .study_setup_path(), .study_file))
+  vec <- function(v, names = NULL, indent = "  ") {
     if (!length(v)) return("character()")
     q <- encodeString(v, quote = "\"")
     if (!is.null(names)) q <- paste(encodeString(names, quote = "`"), "=", q)
-    paste0("c(\n", paste0("  ", q, collapse = ",\n"), ")")
+    paste0("c(\n", paste0(indent, q, collapse = ",\n"), ")")
+  }
+  # a list of vectors, its elements indented as the list's
+  vlist <- function(...) {
+    v <- list(...)
+    paste0("list(\n", paste0("  ", names(v), " = ",
+                             vapply(v, vec, "", indent = "    "), collapse = ",\n"),
+           "\n)")
   }
   runner <- readLines(system.file("batch", "runner.R", package = "tflplanner"),
                       warn = FALSE, encoding = "UTF-8")
@@ -76,8 +85,7 @@ batch_code <- function(x, date = Sys.Date()) {
     "# ---- the study's programs, in the order they run ---------------------------",
     paste0(".batch_root <- ", encodeString(lay[["runs"]], quote = "\"")),
     paste0(".batch_ard  <- ", encodeString(ard_out, quote = "\"")),
-    paste0(".batch_programs <- list(\nard = ", vec(ard_progs),
-           ",\ntfl = ", vec(tfl_progs), ")"),
+    paste0(".batch_programs <- ", vlist(ard = ard_progs, tfl = tfl_progs)),
     "# the output each ARD program makes",
     paste0(".batch_ard_outputs <- ", vec(ids, basename(ard_progs))),
     "# what each report program makes",
@@ -87,11 +95,29 @@ batch_code <- function(x, date = Sys.Date()) {
                     encodeString(m, quote = "\""), collapse = ", "), ")"), ""),
                   collapse = ",\n"), ")"),
     "# kept with the code of a run",
-    paste0(".batch_support <- list(\nard = ", vec(support$ard),
-           ",\ntfl = ", vec(support$tfl), ",\nall = ", vec(support$all), ")"),
+    paste0(".batch_support <- ", vlist(ard = support$ard, tfl = support$tfl,
+                                       all = support$all)),
     "",
     runner,
     "")
+}
+
+# programs/tfl/fig_setup.R: the study's setup, the figure style of the
+# company standards (tflspec), and report_content()
+.fig_setup_code <- function() {
+  code <- .with_study_code(tflspec::tfl_fig_setup_code(.std_fig_style()))
+  # after its banner (the comment lines it starts with)
+  at <- match(FALSE, grepl("^#", code), nomatch = length(code) + 1L) - 1L
+  rest <- utils::tail(code, length(code) - at)
+  rest <- rest[cumsum(nzchar(rest)) > 0L]
+  c(utils::head(code, at),
+    if (at) "",
+    "# the study's setup: the company's, the study's folders and id, your own",
+    .source_study_setup(),
+    "",
+    rest,
+    "",
+    .report_content_fun)
 }
 
 .autoexec_banner <- function(file, what, usage, date) {
@@ -141,8 +167,10 @@ autoexec_all_code <- function(date = Sys.Date()) {
     out[nrow(out) + 1L, ] <<- list(f, .put_program(code, f, root))
   }
   put(batch_code(p), file.path("programs", .batch_file))
-  put(tflspec::tfl_fig_setup_code(.std_fig_style()),
-      file.path(lay[["programs_tfl"]], .fig_setup_file))
+  # the figure style, and the one function a report of one's own code ends
+  # with (report_content()), written once here
+  put(.fig_setup_code(), file.path(lay[["programs_tfl"]], .fig_setup_file))
+  put(report_setup_code(p), file.path(lay[["programs_tfl"]], .report_setup_file))
   put(autoexec_all_code(), file.path("programs", .autoexec_all_file))
   put(autoexec_code(p), file.path(lay[["programs_tfl"]], "autoexec_report.R"))
   out

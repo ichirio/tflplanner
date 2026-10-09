@@ -4,7 +4,10 @@
 #            columns tflspec::tfl_table_spec() gives it plus `note`
 #   study    the study sheet's keys, a named character vector
 #   outputs  the report list: output_id, description, data_code (makes
-#            the ARD), process_code (normalizes and reworks it) -- the
+#            the ARD), process_code (normalizes and reworks it), section
+#            (the TOC's heading it is under; blank: from its ID),
+#            population (its analysis set: the TOC's, step 2's),
+#            datasets (the TOC's, "ADSL | ADAE") -- the
 #            part rtfreporter does not read, kept in the report workbook's
 #            `_tflplanner` sheet (a sheet whose name starts with `_` is
 #            not read by rtfreporter)
@@ -21,8 +24,8 @@
 #' @return `table_sheets()` and `report_sheets()` return a character vector.
 #' @export
 table_sheets <- function() {
-  c("tables", "variables", "codelists", "cells", "layout", "columns", "style",
-    "cell_styles", "col_header")
+  c("tables", "variables", "codelists", "cells", "digits", "layout", "columns",
+    "style", "cell_styles", "col_header")
 }
 
 #' @rdname table_sheets
@@ -53,19 +56,22 @@ report_types <- function() c("table", "listing", "figure", "user")
   p
 }
 
-#' Read a study's code list into its definition
+#' Read a code list into a report
 #'
 #' `read_codelist()` reads a code list -- one row a value of a variable:
 #' `variable`, `value`, `label` (what it prints as) and `order` (its
 #' place) -- from an `.xlsx` (its first sheet) or a `.csv` file.
-#' `set_codelist()` puts it into the definition's `codelists` sheet as the
-#' study's defaults (every table uses them): a value already there for the
-#' same variable is replaced, the others are kept.  A report's own rows
-#' replace the defaults for that report (tflspec's table spec).
+#' `set_codelist()` puts it into a report's rows of the definition's
+#' `codelists` sheet: a value the report has already for the same variable
+#' is replaced, the others are kept.  A code list is a report's (tflspec:
+#' every row names its report); to use one in several reports, copy it
+#' ([import_codelist()], [standard_codelists()]).
 #'
 #' @param path An `.xlsx` or `.csv` file.
 #' @param x A `tflplanner`.
-#' @param rows What `read_codelist()` returns.
+#' @param output_id The report.
+#' @param rows A data frame with `variable` and `value` (`label` and `order`
+#'   optional): what `read_codelist()` returns.
 #' @return `read_codelist()`: a data frame; `set_codelist()`: the
 #'   `tflplanner`.
 #' @export
@@ -97,12 +103,21 @@ read_codelist <- function(path) {
 
 #' @rdname read_codelist
 #' @export
-set_codelist <- function(x, rows) {
-  old <- sheet_rows(x, "codelists", NA)
+set_codelist <- function(x, output_id, rows) {
+  if (length(output_id) != 1L || is.na(output_id) ||
+      !output_id %in% output_ids(x)) {
+    stop("A code list is a report's: give one of the study's reports, not ",
+         sQuote(paste(output_id, collapse = ", ")), ".", call. = FALSE)
+  }
+  rows <- as.data.frame(rows, stringsAsFactors = FALSE)
+  for (k in c("label", "order")) if (!k %in% names(rows)) rows[[k]] <- NA_character_
+  rows <- rows[c("variable", "value", "label", "order")]
+  rows[] <- lapply(rows, as.character)
+  old <- sheet_rows(x, "codelists", output_id)
   key <- function(d) paste(d$variable, d$value, sep = "\r")
   old <- old[!key(old) %in% key(rows), , drop = FALSE]
   old$output_id <- NULL
-  set_sheet_rows(x, "codelists", NA, rbind(old[names(rows)], rows))
+  set_sheet_rows(x, "codelists", output_id, rbind(old[names(rows)], rows))
 }
 
 .study_keys <- list(table = "rounding",
@@ -178,6 +193,10 @@ sheet_columns <- function(sheet) {
 }
 
 .renamed_outputs <- function(p) {
+  # a column the report list gained since (section): blank
+  for (cn in setdiff(names(.empty_outputs()), names(p$outputs))) {
+    p$outputs[[cn]] <- rep(NA_character_, nrow(p$outputs))
+  }
   for (cn in c("data_code", "process_code")) {
     p$outputs[[cn]] <- .renamed_calls(p$outputs[[cn]])
   }
@@ -188,7 +207,8 @@ sheet_columns <- function(sheet) {
 .empty_outputs <- function() {
   data.frame(output_id = character(), description = character(),
              data_code = character(), process_code = character(),
-             stringsAsFactors = FALSE)
+             section = character(), population = character(),
+             datasets = character(), stringsAsFactors = FALSE)
 }
 
 #' A new, empty study definition
@@ -252,9 +272,11 @@ output_ids <- function(x) {
 
 # A line break in a cell comes back as "\n" (openxlsx on Windows writes
 # it as "\r\n").
-.read_sheet_text <- function(path, sheet) {
+# `trim_ws = FALSE` keeps a cell's leading and trailing blanks (readxl
+# drops them): a line of code keeps its indentation.
+.read_sheet_text <- function(path, sheet, trim_ws = TRUE) {
   d <- readxl::read_excel(path, sheet, col_types = "text", .name_repair =
-                            "minimal")
+                            "minimal", trim_ws = trim_ws)
   d <- as.data.frame(d, stringsAsFactors = FALSE, check.names = FALSE)
   for (j in seq_along(d)) {
     if (is.character(d[[j]])) d[[j]] <- gsub("\r\n", "\n", d[[j]],
@@ -339,11 +361,16 @@ read_planner <- function(path) {
 #'   `data <- normalize_ard(ard)`, unless `data_code` makes `data` itself.
 #' @param type The report's type, one of [report_types()]; anything but
 #'   `"table"` is written on the `report` sheet.
+#' @param section The section of the TOC the report is under (its heading,
+#'   "14.1 Demographics"); `NA`: from its ID's numbers.
+#' @param population The report's analysis set, a population_id (see
+#'   [set_report_population()], which also makes its analysis data).
 #' @return The updated `tflplanner`.
 #' @export
 add_output <- function(x, output_id, description = NA_character_,
                        data_code = NA_character_, type = "table",
-                       process_code = NA_character_) {
+                       process_code = NA_character_, section = NA_character_,
+                       population = NA_character_) {
   id <- .check_id(output_id)
   if (id %in% x$outputs$output_id) {
     stop("Report '", id, "' is already on the list.", call. = FALSE)
@@ -353,7 +380,9 @@ add_output <- function(x, output_id, description = NA_character_,
   x$outputs <- rbind(x$outputs, data.frame(
     output_id = id, description = as.character(description),
     data_code = as.character(data_code),
-    process_code = as.character(process_code), stringsAsFactors = FALSE))
+    process_code = as.character(process_code),
+    section = as.character(section), population = as.character(population),
+    datasets = NA_character_, stringsAsFactors = FALSE))
   x
 }
 
@@ -373,11 +402,15 @@ copy_output <- function(x, from, to) {
     rownames(d) <- NULL
     x$sheets[[s]] <- d
   }
-  an <- x$ard$analyses
-  own <- an[!is.na(an$output_id) & an$output_id == from, , drop = FALSE]
-  own$output_id <- rep(to, nrow(own))
-  x$ard$analyses <- rbind(an, own)
-  rownames(x$ard$analyses) <- NULL
+  # its analyses and its analysis data (a report's own)
+  for (sh in c("analyses", "analysis_data")) {
+    an <- x$ard[[sh]]
+    if (is.null(an) || !nrow(an)) next
+    own <- an[!is.na(an$output_id) & an$output_id == from, , drop = FALSE]
+    own$output_id <- rep(to, nrow(own))
+    x$ard[[sh]] <- rbind(an, own)
+    rownames(x$ard[[sh]]) <- NULL
+  }
   for (sh in names(x$lf)) {
     d <- x$lf[[sh]]
     own <- d[!is.na(d$output_id) & d$output_id == from, , drop = FALSE]
@@ -392,6 +425,7 @@ copy_output <- function(x, from, to) {
                   description = if (nrow(src)) src$description else NA,
                   data_code = if (nrow(src)) src$data_code else NA,
                   process_code = if (nrow(src)) src$process_code else NA,
+                  population = if (nrow(src)) src$population %||% NA else NA,
                   type = report_info(x, from)$type)
   x
 }
@@ -409,8 +443,11 @@ rename_output <- function(x, from, to) {
     x$sheets[[s]]$output_id[i] <- to
   }
   x$outputs$output_id[x$outputs$output_id == from] <- to
-  i <- !is.na(x$ard$analyses$output_id) & x$ard$analyses$output_id == from
-  x$ard$analyses$output_id[i] <- to
+  for (sh in c("analyses", "analysis_data")) {
+    if (is.null(x$ard[[sh]]) || !nrow(x$ard[[sh]])) next
+    i <- !is.na(x$ard[[sh]]$output_id) & x$ard[[sh]]$output_id == from
+    x$ard[[sh]]$output_id[i] <- to
+  }
   for (sh in names(x$lf)) {
     i <- !is.na(x$lf[[sh]]$output_id) & x$lf[[sh]]$output_id == from
     x$lf[[sh]]$output_id[i] <- to
@@ -431,10 +468,12 @@ remove_output <- function(x, output_id) {
   }
   x$outputs <- x$outputs[x$outputs$output_id != output_id, , drop = FALSE]
   rownames(x$outputs) <- NULL
-  an <- x$ard$analyses
-  x$ard$analyses <- an[is.na(an$output_id) | an$output_id != output_id, ,
-                       drop = FALSE]
-  rownames(x$ard$analyses) <- NULL
+  for (sh in c("analyses", "analysis_data")) {
+    an <- x$ard[[sh]]
+    if (is.null(an) || !nrow(an)) next
+    x$ard[[sh]] <- an[is.na(an$output_id) | an$output_id != output_id, , drop = FALSE]
+    rownames(x$ard[[sh]]) <- NULL
+  }
   for (sh in names(x$lf)) {
     d <- x$lf[[sh]]
     x$lf[[sh]] <- d[is.na(d$output_id) | d$output_id != output_id, ,
@@ -545,8 +584,9 @@ write_planner <- function(x, dir, table_file = "table_spec.xlsx",
   meta <- rbind(
     data.frame(output_id = NA_character_, description = "(every report)",
                data_code = x$setup, process_code = NA_character_,
-               stringsAsFactors = FALSE),
-    x$outputs)
+               section = NA_character_, population = NA_character_,
+               datasets = NA_character_, stringsAsFactors = FALSE),
+    x$outputs[names(.empty_outputs())])
   .write_book(.spec_object(x, report_sheets(), .study_keys$report), rp,
               tflspec::tfl_write_report_spec,
               stats::setNames(list(meta), .planner_sheet))

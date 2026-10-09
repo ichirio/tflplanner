@@ -7,14 +7,19 @@
 # plain functions, so the report list and the runs table search the same
 # way.
 
-# A report's section of the TOC: the numbers of its ID after the letters
-# (T-14-1-1 -> 14.1), else its kind
-.report_section <- function(output_id, type) {
+# A report's section of the TOC: its heading when the report list has one
+# (`section`, from the TOC or written in the app), else the numbers of its
+# ID after the letters (T-14-1-1 -> 14.1), else its kind
+.report_section <- function(output_id, type, heading = NULL) {
   num <- regmatches(output_id, regexpr("[0-9]+([^0-9]+[0-9]+)?", output_id))
   out <- rep(NA_character_, length(output_id))
   has <- regexpr("[0-9]+([^0-9]+[0-9]+)?", output_id) > 0
   out[has] <- gsub("[^0-9]+", ".", num)
   out[!has] <- type[!has]
+  if (!is.null(heading)) {
+    h <- !is.na(heading) & nzchar(trimws(heading))
+    out[h] <- trimws(heading[h])
+  }
   out
 }
 
@@ -30,13 +35,16 @@
 # Each report's run, from its files only (the list's mark, for 200 reports
 # at a glance): "error" (its last preview's log failed after its RTF), "not
 # run" (no RTF), "outdated" (its program, or a file it sources, changed
-# after the RTF), "ok".  study_status() says more (a program edited by
-# hand, a definition not saved yet) by writing every program again, which
-# takes a while for a big study.
+# after the RTF, or it was made with another study setup), "ok".
+# study_status() says more (a program edited by hand, a definition not
+# saved yet) by writing every program again, which takes a while for a big
+# study.
 .report_run_light <- function(study) {
   p <- study$planner
   lay <- study_layout()
   ids <- p$outputs$output_id
+  setup <- .report_setup_recorded(study$path, ids)
+  now <- .study_setup_hash(study$path)
   st <- vapply(ids, function(id) {
     info <- report_info(p, id)
     prog <- file.path(study$path, lay[["programs_tfl"]], info$program)
@@ -47,17 +55,22 @@
     failed <- !is.na(t_log) && (is.na(t_rtf) || t_log > t_rtf) &&
       any(grepl("^Error|Execution halted", readLines(log, warn = FALSE, encoding = "UTF-8")))
     if (failed) "error" else if (is.na(t_rtf)) "not run" else
-      if (isTRUE(.program_time(prog, study$path) > t_rtf)) "outdated" else "ok"
+      if (isTRUE(.program_time(prog, study$path) > t_rtf) ||
+          .setup_changed(setup[match(id, ids)], study$path, now)) "outdated" else "ok"
   }, "")
   data.frame(output_id = ids, status = unname(st), stringsAsFactors = FALSE)
 }
 
-# sections in the TOC's order: by their numbers (14.2 before 14.10), the
-# kinds of reports without numbers after them
+# sections in the TOC's order: by their numbers (14.2 before 14.10; a
+# heading by the number it starts with, "14.1 Demographics"), those
+# without numbers after them
 .section_order <- function(secs) {
-  num <- grepl("^[0-9]+(\\.[0-9]+)*$", secs)
-  key <- vapply(strsplit(secs, ".", fixed = TRUE), function(v)
+  lead <- regmatches(secs, regexpr("^[0-9]+(\\.[0-9]+)*", secs))
+  num <- grepl("^[0-9]+(\\.[0-9]+)*", secs)
+  key <- rep(NA_character_, length(secs))
+  key[num] <- vapply(strsplit(lead, ".", fixed = TRUE), function(v)
     paste(sprintf("%06d", suppressWarnings(as.integer(v))), collapse = "."), "")
+  key[num] <- paste(key[num], secs[num])
   key[!num] <- secs[!num]
   secs[order(!num, key, method = "radix")]
 }
@@ -85,20 +98,33 @@
                       stringsAsFactors = FALSE))
   }
   type <- vapply(ids, function(id) report_info(x, id)$type, "")
+  # the report's analysis set (the report list's, the TOC's); else those
+  # its analyses have (their own, or their analysis data's)
   a <- x$ard$analyses
   pop <- vapply(ids, function(id) {
-    v <- a$population_id[!is.na(a$output_id) & a$output_id == id]
+    ad <- .adata_rows(x, id)
+    own <- report_population(x, id)
+    if (!is.na(own)) return(own)
+    k <- !is.na(a$output_id) & a$output_id == id
+    v <- a$population_id[k]
+    d <- if (!is.null(a$data)) a$data[k] else character()
+    v <- c(v, vapply(d[!is.na(d) & d %in% ad$data_id], function(i) .adata_pop(ad, i), ""))
     paste(unique(stats::na.omit(v)), collapse = " | ")
   }, "")
+  # the datasets the report reads; until its definition names them, the
+  # TOC's
+  toc_ds <- x$outputs$datasets %||% rep(NA_character_, length(ids))
   ds <- vapply(seq_along(ids), function(i) {
     v <- tryCatch(.report_datasets(x, ids[i], type[i]), error = function(e) character())
-    paste(unique(stats::na.omit(v)), collapse = " | ")
+    v <- paste(unique(stats::na.omit(v)), collapse = " | ")
+    if (!nzchar(v) && !is.na(toc_ds[i])) toc_ds[i] else v
   }, "")
   st <- .report_state(if (!is.null(ard)) ard$state[match(ids, ard$output_id)] else NA,
                       if (!is.null(run)) run$status[match(ids, run$output_id)] else NA)
   data.frame(output_id = ids,
              title = vapply(ids, function(id) .report_short_title(x, id), ""),
-             type = unname(type), section = .report_section(ids, unname(type)),
+             type = unname(type),
+             section = .report_section(ids, unname(type), x$outputs$section),
              population = pop, datasets = ds, state = st,
              stringsAsFactors = FALSE, row.names = NULL)
 }

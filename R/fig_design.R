@@ -78,28 +78,26 @@ set_fig_design <- function(x, output_id, design) {
 }
 
 # the design's script, whole (it saves its PNG to `fig_path`)
-.fig_design_script <- function(design, output_id) {
-  code <- as.character(tflspec::tfl_fig_design_code(design, output_id))
+.fig_design_script <- function(design, output_id, codelists = NULL) {
+  code <- as.character(tflspec::tfl_fig_design_code(design, output_id,
+                                                    codelists = codelists))
   # one element a line; a blank line stays (strsplit would drop it)
   unlist(lapply(code, function(l) {
     if (!nzchar(l)) "" else strsplit(l, "\n", fixed = TRUE)[[1L]]
   }))
 }
 
-# the design's plot part of the figure's program: the script up to its
-# figure, which the program keeps as `plot` (the report saves it)
-.fig_design_plot <- function(design, output_id) {
-  code <- .fig_design_script(design, output_id)
-  step3 <- grep("^# Step3", code)
-  if (length(step3)) code <- code[seq_len(max(0L, step3[1L] - 2L))]
-  while (length(code) && code[length(code)] %in% c("", "fig")) {
-    code <- code[-length(code)]
-  }
+# the design's plot part of the figure's program: the figure as `plot`
+# (the report writes it), its palette from the study's figure setup the
+# program has sourced
+.fig_design_plot <- function(design, output_id, codelists = NULL) {
+  code <- as.character(tflspec::tfl_fig_design_code(
+    design, output_id, setup = TRUE, save = FALSE, name = "plot",
+    codelists = codelists))
   c(paste0("# the plot, from the figure's design (spec/", .fig_design_dir, "/",
            output_id, ".yml)", if (!is.null(design$template))
              paste0(", made from the template ", design$template)),
-    "#      edit the design in the Plot Designer, not this code", code,
-    "plot <- fig")
+    "#      edit the design in the Plot Designer, not this code", code)
 }
 
 # the designs as YAML files, written with the study
@@ -193,7 +191,8 @@ preview_figure <- function(study, output_id,
     dpi <- as.numeric(design$plot$dpi %||% 300)
     if (inches * dpi > max_px) design$plot$dpi <- max(72, floor(max_px / inches))
   }
-  code <- .fig_design_script(design, output_id)
+  code <- .fig_design_script(design, output_id,
+                             codelists = .study_codelists(study$planner))
   l <- grep("^# Input data frames:", code, value = TRUE)
   ds <- if (length(l)) toupper(trimws(strsplit(sub("^# Input data frames:", "", l[1L]), ",")[[1L]])) else character()
   ds <- ds[nzchar(ds)]
@@ -205,7 +204,7 @@ preview_figure <- function(study, output_id,
   dir.create(tmp)
   owd <- setwd(tmp)
   on.exit(setwd(owd), add = TRUE)
-  e <- new.env(parent = globalenv())
+  e <- new.env(parent = .helpers_env(globalenv()))
   for (d in names(data)) assign(make.names(tolower(d)), data[[d]], envir = e)
   warns <- character()
   err <- NULL

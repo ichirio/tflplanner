@@ -28,21 +28,24 @@ ard_autoexec_code(spec, date = Sys.Date())
 \item{dir}{The study folder: the fingerprint recorded with the ARD reads
 the study's own analysis functions (its key \code{source}) from it.}
 
-\item{codelists}{The study's code lists (the table definition's
-\code{codelists} sheet, its study rows), or \code{NULL}: each listed column of the
-data becomes a factor in their order before the analyses, so the ARD
-keeps the order and counts a value no record has (0)
-(\code{\link[tflspec:tfl_ard_code]{tflspec::tfl_ard_code()}}).  They are part of the fingerprint.}
+\item{codelists}{The reports' code lists (the table definition's
+\code{codelists} sheet, every row a report's), or \code{NULL}: each column the
+report's analyses read that its code lists list becomes a factor in
+their order before the analyses, so the ARD keeps the order and counts
+a value no record has (0) (\code{\link[tflspec:tfl_ard_code]{tflspec::tfl_ard_code()}}).  They are part of
+the fingerprint.}
 }
 \value{
 The code, one element per line.
 }
 \description{
 \code{ard_setup_code()} is \code{programs/ard/ard_setup.R}, which every ARD program
-sources: cards, the statistics tflplanner computes (\code{\link[tflspec:tfl_ard_statistics]{tflspec::tfl_ard_statistics()}}, the company standards' catalog),
-the stat_fmt formats, and \code{.save_output()}, which replaces one output's
-rows of the study ARD and records the build.  \code{ard_program_code()} is one
-output's program, \verb{programs/ard/<output_id>.R}.  \code{ard_autoexec_code()} is
+sources: the study's setup (\code{programs/study_setup.R}, see
+\code{\link[=study_setup_code]{study_setup_code()}}), cards, the statistics tflplanner computes (\code{\link[tflspec:tfl_ard_statistics]{tflspec::tfl_ard_statistics()}}, the company standards' catalog),
+the stat_fmt formats, and the option that makes \code{save_ard()} (the
+study's \code{programs/study_helpers.R}, see \code{\link[=study_helpers_code]{study_helpers_code()}}) record
+the study setup each ARD was built with.
+\code{ard_program_code()} is one output's program, \verb{programs/ard/<output_id>.R}.  \code{ard_autoexec_code()} is
 \code{programs/ard/autoexec_ard.R}, which runs them from the study folder --
 all, or the ones named (\verb{Rscript programs/ard/autoexec_ard.R T-14-1-1})
 -- each in its own R process with its log in \verb{logs/ard/}.

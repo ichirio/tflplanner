@@ -294,6 +294,14 @@ window.tflCondNorm = window.tflCondNorm || function(s) {
   }
   return out.replace(/ +/g, ' ').trim();
 };
+window.tflCondRender = {
+  option: function(item, escape) {
+    return '<div class=\"option tfl-cond-one\" title=\"' + escape(item.label) + '\">' + escape(item.label) + '</div>';
+  },
+  item: function(item, escape) {
+    return '<div class=\"item tfl-cond-one\" title=\"' + escape(item.label) + '\">' + escape(item.label) + '</div>';
+  }
+};
 window.tflCondScore = function(search) {
   var words = tflCondNorm(search).split(' ').filter(function(w) { return w.length; });
   return function(item) {
@@ -313,6 +321,16 @@ condition_builder_ui <- function(id, lang = "en") {
   shiny::div(
     class = "tfl-cond",
     shiny::tags$script(shiny::HTML(.cond_js)),
+    # a variable's choice on one line (the name and its label), cut with
+    # ... when the box is narrow; the whole of it on hover (title)
+    shiny::tags$style(shiny::HTML(paste0(
+      ".tfl-cond .selectize-input .item.tfl-cond-one, ",
+      ".tfl-cond .selectize-dropdown .option.tfl-cond-one { white-space: nowrap; ",
+      "overflow: hidden; text-overflow: ellipsis; max-width: 100%; }",
+      ".tfl-cond .selectize-dropdown .option.tfl-cond-one { display: block; }",
+      # the chosen one beside selectize's input, not above it
+      ".tfl-cond .selectize-input .item.tfl-cond-one { display: inline-block; ",
+      "vertical-align: top; max-width: calc(100% - 12px); }"))),
     shiny::uiOutput(ns("body")))
 }
 
@@ -412,7 +430,7 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
       if (!is.null(raw)) {
         return(shiny::tagList(
           shiny::p(class = "small text-muted mb-1",
-                   t("Written as R (the rows cannot hold it): edit it here.")),
+                   t("The condition written as R (the rows cannot hold it): edit it here.")),
           shiny::textAreaInput(ns("raw"), NULL, raw, width = "100%", rows = 2),
           shiny::div(class = "d-flex gap-2",
                      shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary",
@@ -436,7 +454,8 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
                                 choices = c(stats::setNames("", t("Variable")), vc,
                                             if (nzchar(v) && !v %in% unlist(vc)) stats::setNames(v, v)),
                                 selected = v,
-                                options = list(score = I("tflCondScore")))
+                                options = list(score = I("tflCondScore"),
+                                               render = I("tflCondRender")))
         }
         ops <- stats::setNames(.cond_ops, t(unname(.cond_op_labels[.cond_ops])))
         if (identical(type, "chr")) ops <- ops[!.cond_ops %in% c("<", "<=", ">", ">=")]
@@ -481,7 +500,7 @@ condition_builder_server <- function(id, data, value, labels = NULL, lang = "en"
           shiny::tags$button(type = "button", class = "btn btn-sm btn-link py-0",
                              onclick = js("add_or", "Math.random()"), t("+ or (another group)")),
           shiny::tags$button(type = "button", class = "btn btn-sm btn-link py-0 text-muted",
-                             onclick = js("to_raw", "Math.random()"), t("Write as R"))))
+                             onclick = js("to_raw", "Math.random()"), t("Write the condition as R (inside subset())"))))
     })
 
     # the rows as the fields have them now

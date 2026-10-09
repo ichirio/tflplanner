@@ -31,10 +31,12 @@
 #' The ARD programs of a study
 #'
 #' `ard_setup_code()` is `programs/ard/ard_setup.R`, which every ARD program
-#' sources: cards, the statistics tflplanner computes ([tflspec::tfl_ard_statistics()], the company standards' catalog),
-#' the stat_fmt formats, and `.save_output()`, which replaces one output's
-#' rows of the study ARD and records the build.  `ard_program_code()` is one
-#' output's program, `programs/ard/<output_id>.R`.  `ard_autoexec_code()` is
+#' sources: the study's setup (`programs/study_setup.R`, see
+#' [study_setup_code()]), cards, the statistics tflplanner computes ([tflspec::tfl_ard_statistics()], the company standards' catalog),
+#' the stat_fmt formats, and the option that makes `save_ard()` (the
+#' study's `programs/study_helpers.R`, see [study_helpers_code()]) record
+#' the study setup each ARD was built with.
+#' `ard_program_code()` is one output's program, `programs/ard/<output_id>.R`.  `ard_autoexec_code()` is
 #' `programs/ard/autoexec_ard.R`, which runs them from the study folder --
 #' all, or the ones named (`Rscript programs/ard/autoexec_ard.R T-14-1-1`)
 #' -- each in its own R process with its log in `logs/ard/`.
@@ -44,49 +46,37 @@
 #' @param date The date stamped in the banner.
 #' @param dir The study folder: the fingerprint recorded with the ARD reads
 #'   the study's own analysis functions (its key `source`) from it.
-#' @param codelists The study's code lists (the table definition's
-#'   `codelists` sheet, its study rows), or `NULL`: each listed column of the
-#'   data becomes a factor in their order before the analyses, so the ARD
-#'   keeps the order and counts a value no record has (0)
-#'   ([tflspec::tfl_ard_code()]).  They are part of the fingerprint.
+#' @param codelists The reports' code lists (the table definition's
+#'   `codelists` sheet, every row a report's), or `NULL`: each column the
+#'   report's analyses read that its code lists list becomes a factor in
+#'   their order before the analyses, so the ARD keeps the order and counts
+#'   a value no record has (0) ([tflspec::tfl_ard_code()]).  They are part of
+#'   the fingerprint.
 #' @return The code, one element per line.
 #' @export
 ard_setup_code <- function(spec, date = Sys.Date()) {
+  .with_study_code(.ard_setup_code(spec, date))
+}
+
+.ard_setup_code <- function(spec, date = Sys.Date()) {
   x <- if (is.character(spec)) .read_ard_spec(spec) else spec
   lay <- study_layout()
-  out <- .study_value(x, "output", "output/ard/ard.rds")
   c(.banner(
       paste("Program    :", file.path(lay[["programs_ard"]], .ard_setup_file)),
       "What every ARD program of the study starts with (it sources this).",
       paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
              ", ", format(date, "%Y-%m-%d"))),
     "",
-    .ard_spec_code(x, part = "setup"),
-    "# one output's rows into the study ARD, the other outputs' left as they",
-    "# are; and what was built, from which definition (tflplanner reads it)",
-    ".save_output <- function(ard, output_id, definition) {",
-    paste0("  out <- ", encodeString(out, quote = "\"")),
-    "  dir.create(dirname(out), recursive = TRUE, showWarnings = FALSE)",
-    "  old <- if (file.exists(out)) readRDS(out)",
-    "  new <- if (is.null(old)) ard else",
-    "    dplyr::bind_rows(old[old$output_id != output_id, , drop = FALSE], ard)",
-    "  tmp <- paste0(out, \".tmp\")",
-    "  saveRDS(new, tmp)",
-    "  file.rename(tmp, out)",
-    "  sf <- file.path(dirname(out), \"ard_status.csv\")",
-    "  row <- data.frame(output_id = output_id, definition = definition,",
-    "                    built = format(Sys.time(), \"%Y-%m-%d %H:%M:%S\"),",
-    "                    rows = as.character(nrow(ard)), error = \"\",",
-    "                    stringsAsFactors = FALSE)",
-    "  st <- if (file.exists(sf)) utils::read.csv(sf, colClasses = \"character\")",
-    "  if (!is.null(st) && nrow(st)) {",
-    "    for (k in setdiff(names(row), names(st))) st[[k]] <- \"\"",
-    "    row <- rbind(st[st$output_id != output_id, names(row), drop = FALSE], row)",
-    "  }",
-    "  utils::write.csv(row, sf, row.names = FALSE)",
-    "  cat(sprintf(\"%s: %d rows into %s\\n\", output_id, nrow(ard), out))",
-    "  invisible(ard)",
-    "}",
+    "# the study's setup: the company's, the study's folders and id, your own",
+    .source_study_setup(),
+    "",
+    # (tflspec's: library() of what the study's setup does not attach, a
+    # blank line, the company's statistics and formats)
+    .drop_leading_blank(.ard_spec_code(x, part = "setup")),
+    "# the files each ARD is built with, recorded with it (tflspec's",
+    "# save_ard(): tflplanner compares the study setup's)",
+    sprintf("options(tflspec.ard_sources = c(setup = %s))",
+            encodeString(.study_setup_path(), quote = "\"")),
     "")
 }
 
@@ -94,6 +84,11 @@ ard_setup_code <- function(spec, date = Sys.Date()) {
 #' @export
 ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
                              codelists = NULL) {
+  .with_study_code(.ard_program_code(spec, output_id, date, dir, codelists))
+}
+
+.ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
+                              codelists = NULL) {
   x <- if (is.character(spec)) .read_ard_spec(spec) else spec
   lay <- study_layout()
   a <- x$analyses[x$analyses$output_id %in% output_id, , drop = FALSE]
@@ -105,25 +100,19 @@ ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
                                       .ard_prog_name(output_id))),
       paste0("Output     : ", output_id, " -> its rows of ",
              .study_value(x, "output", "output/ard/ard.rds")),
-      paste("Analyses   :", paste(labels, collapse = ", ")),
+      strwrap(paste(labels, collapse = ", "), width = 74,
+              initial = "Analyses   : ", prefix = strrep(" ", 13)),
       paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
-             ", ", format(date, "%Y-%m-%d")),
-      "",
-      "Made from the study's ARD definition.  Runs from the study folder (open the",
-      "study's .Rproj, or run programs/ard/autoexec_ard.R)."),
+             ", ", format(date, "%Y-%m-%d"))),
     "",
     sprintf("source(%s)", encodeString(file.path(lay[["programs_ard"]],
                                                  .ard_setup_file),
                                        quote = "\"")),
     "",
-    .ard_spec_code(x, output_id = output_id, part = "body",
-                   codelists = codelists),
-    "",
-    sprintf(".save_output(ard, %s, %s)", encodeString(output_id, quote = "\""),
-            encodeString(tflspec::tfl_ard_spec_hash(x, output_id, dir = dir,
-                                                    codelists = codelists),
-                         quote = "\"")),
-    "")
+    # its rows into the study ARD with its definition's fingerprint
+    # (tflspec's save_ard(); tflplanner compares it)
+    .ard_spec_code(x, output_id = output_id, part = "body", dir = dir,
+                   codelists = codelists))
 }
 
 #' @rdname ard_setup_code
@@ -231,7 +220,7 @@ update_study_ard <- function(study, output_id, timeout = 600) {
     st <- .read_ard_status(study)
     st <- st[st$output_id != output_id, , drop = FALSE]
     st[nrow(st) + 1L, ] <- list(output_id, "", format(Sys.time(),
-      "%Y-%m-%d %H:%M:%S"), NA_integer_, note)
+      "%Y-%m-%d %H:%M:%S"), NA_integer_, note, "")
     .write_ard_status(study, st)
   }
   st <- ard_status(study)

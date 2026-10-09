@@ -154,7 +154,7 @@
 
 # The shortcuts as data: one row per .lnk.
 .windows_shortcuts <- function(dir, dirs, lang, desktop = TRUE,
-                               start_menu = TRUE, update = TRUE,
+                               start_menu = TRUE, update = FALSE,
                                port = NULL) {
   nm <- .shortcut_names(lang)
   extra <- if (!is.null(port)) paste0(" --port=", port) else ""
@@ -285,7 +285,7 @@
 
 # ------------------------------------------------------------- macOS
 
-.mac_app_files <- function(dir, apps, lang, update = TRUE, port = NULL) {
+.mac_app_files <- function(dir, apps, lang, update = FALSE, port = NULL) {
   nm <- .shortcut_names(lang)
   sh <- file.path(dir, "tflplanner.sh")
   one <- function(name, args) {
@@ -334,7 +334,7 @@
 
 # ------------------------------------------------------------- Linux
 
-.desktop_file <- function(dir, lang, update = TRUE, port = NULL) {
+.desktop_file <- function(dir, lang, update = FALSE, port = NULL) {
   # Exec: a quoted path needs no other escaping (it has no " ` $ \ in it)
   q <- function(p) paste0('"', p, '"')
   sh <- file.path(dir, "tflplanner.sh")
@@ -373,7 +373,7 @@
 # (`path`), and whether one is there already (it is then replaced).
 .shortcut_plan <- function(os = .os(), dirs = .shortcut_dirs(os),
                            lang = .console_language(), desktop = TRUE,
-                           start_menu = TRUE, update = TRUE,
+                           start_menu = TRUE, update = FALSE,
                            dir = .launcher_dir()) {
   rows <- switch(os,
     windows = {
@@ -477,7 +477,9 @@
 #'   setting.
 #' @param desktop Make the desktop shortcut (Windows).
 #' @param start_menu Make the Start menu entries (Windows).
-#' @param update Also make "update and launch".
+#' @param update Also make "update and launch" (`FALSE` by default:
+#'   tflplanner is never updated unless you ask -- with this shortcut, made
+#'   when `update = TRUE`, or [update_tflplanner()]).
 #' @param ask Ask before making them.  `FALSE` makes them without asking
 #'   (scripts); outside an interactive session nothing is made unless
 #'   `ask = FALSE`.
@@ -490,7 +492,7 @@
 #' }
 #' @export
 add_shortcut <- function(port = NULL, desktop = TRUE, start_menu = TRUE,
-                         update = TRUE, ask = interactive()) {
+                         update = FALSE, ask = interactive()) {
   lang <- .console_language()
   os <- .os()
   if (!is.null(port)) port <- .check_port(port)

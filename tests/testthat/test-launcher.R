@@ -90,7 +90,7 @@ test_that("the launcher is refreshed when tflplanner's version changes", {
 test_that("the Windows shortcuts: desktop and Start menu, wscript + the VBScript", {
   dirs <- list(desktop = "C:/Users/u/Desktop",
                start_menu = "C:/Users/u/Start Menu/Programs/tflplanner")
-  sc <- .windows_shortcuts("C:/cfg/launcher", dirs, "en")
+  sc <- .windows_shortcuts("C:/cfg/launcher", dirs, "en", update = TRUE)
   expect_identical(basename(sc$path),
                    c("tflplanner.lnk", "tflplanner.lnk",
                      "tflplanner (update and launch).lnk"))
@@ -101,7 +101,8 @@ test_that("the Windows shortcuts: desktop and Start menu, wscript + the VBScript
   expect_identical(endsWith(sc$args, "--update"), c(FALSE, FALSE, TRUE))
   expect_true(all(grepl("tflplanner.ico$", sc$icon)))
   # Japanese names
-  sc_ja <- .windows_shortcuts("C:/cfg/launcher", dirs, "ja", desktop = FALSE)
+  sc_ja <- .windows_shortcuts("C:/cfg/launcher", dirs, "ja", desktop = FALSE,
+                              update = TRUE)
   expect_identical(basename(sc_ja$path),
                    c("tflplanner.lnk", paste0(tr("tflplanner (update and launch)", "ja"), ".lnk")))
   # only the desktop, without update
@@ -119,7 +120,7 @@ test_that("a shortcut the VBScript could not make is made by PowerShell, else sa
   base <- withr::local_tempdir()
   dirs <- list(desktop = file.path(base, "Desktop"),
                start_menu = file.path(base, "Programs", "tflplanner"))
-  sc <- .windows_shortcuts(file.path(base, "launcher"), dirs, "en")
+  sc <- .windows_shortcuts(file.path(base, "launcher"), dirs, "en", update = TRUE)
   make <- function(r) {
     dir.create(dirname(r$path), recursive = TRUE, showWarnings = FALSE)
     writeLines("lnk", r$path)
@@ -178,7 +179,7 @@ test_that("add_shortcut() / remove_shortcut() on Windows make and remove real .l
   skip_if_not(.Platform$OS.type == "windows")
   p <- local_launcher()
   made <- suppressMessages(add_shortcut(ask = FALSE))
-  expect_length(made, 3L)
+  expect_length(made, 2L)
   expect_true(all(file.exists(made)))
   expect_true(all(file.size(made) > 0))
   expect_identical(readLines(file.path(.launcher_dir(), "shortcuts.txt")), made)
@@ -211,7 +212,7 @@ test_that("the Windows launcher finds R and runs launch.R hidden", {
 # ------------------------------------------------------------- macOS
 
 test_that("the macOS apps: a bundle whose executable runs the launcher", {
-  apps <- .mac_app_files("/cfg/launcher", "/Users/u/Applications", "en")
+  apps <- .mac_app_files("/cfg/launcher", "/Users/u/Applications", "en", update = TRUE)
   expect_identical(basename(vapply(apps, `[[`, "", "app")),
                    c("tflplanner.app", "tflplanner (update).app"))
   a <- apps[[2L]]
@@ -238,7 +239,7 @@ test_that("add_shortcut() on macOS writes valid application bundles", {
   skip_if_not(identical(Sys.info()[["sysname"]], "Darwin"))
   p <- local_launcher()
   made <- suppressMessages(add_shortcut(ask = FALSE))
-  expect_length(made, 2L)
+  expect_length(made, 1L)
   for (app in made) {
     exe <- file.path(app, "Contents", "MacOS", "tflplanner")
     expect_true(file.access(exe, 1L) == 0L)
@@ -253,7 +254,7 @@ test_that("add_shortcut() on macOS writes valid application bundles", {
 # ------------------------------------------------------------- Linux
 
 test_that("the Linux menu entry: one .desktop with an update action", {
-  d <- .desktop_file("/home/u/.config/R/tflplanner/launcher", "en")
+  d <- .desktop_file("/home/u/.config/R/tflplanner/launcher", "en", update = TRUE)
   expect_identical(d[[1L]], "[Desktop Entry]")
   expect_true("Type=Application" %in% d)
   expect_true("Terminal=false" %in% d)
@@ -263,7 +264,7 @@ test_that("the Linux menu entry: one .desktop with an update action", {
   expect_true('Exec="/home/u/.config/R/tflplanner/launcher/tflplanner.sh" --update' %in% d)
   expect_true(any(startsWith(d, "Icon=/home/u/.config/R/tflplanner/launcher/tflplanner.png")))
   expect_false(any(grepl("Actions", .desktop_file("/x", "en", update = FALSE))))
-  expect_true(paste0("Name=", tr("Update and launch", "ja")) %in% .desktop_file("/x", "ja"))
+  expect_true(paste0("Name=", tr("Update and launch", "ja")) %in% .desktop_file("/x", "ja", update = TRUE))
 })
 
 test_that("add_shortcut() on Linux writes the menu entry", {
@@ -300,7 +301,7 @@ test_that("add_shortcut() says what it makes, where, and how to undo it", {
   p <- local_launcher()
   local_mocked_bindings(.os = function() "windows")
   dirs <- .shortcut_dirs()
-  plan <- .shortcut_plan(lang = "en")
+  plan <- .shortcut_plan(lang = "en", update = TRUE)
   expect_identical(plan$place, c("Desktop", "Start menu", "Start menu"))
   expect_identical(plan$name, c("tflplanner", "tflplanner",
                                 "tflplanner (update and launch)"))
@@ -316,12 +317,12 @@ test_that("add_shortcut() says what it makes, where, and how to undo it", {
   # one already there is said to be replaced
   dir.create(dirs$desktop, recursive = TRUE)
   file.create(file.path(dirs$desktop, "tflplanner.lnk"))
-  plan <- .shortcut_plan(lang = "en")
+  plan <- .shortcut_plan(lang = "en", update = TRUE)
   expect_identical(plan$exists, c(TRUE, FALSE, FALSE))
   expect_match(paste(.shortcut_plan_text(plan, "en"), collapse = "\n"),
                "already there: it will be replaced", fixed = TRUE)
   # in Japanese: where and what, and a question naming how many
-  ja <- paste(.shortcut_plan_text(.shortcut_plan(lang = "ja"), "ja"),
+  ja <- paste(.shortcut_plan_text(.shortcut_plan(lang = "ja", update = TRUE), "ja"),
               collapse = "\n")
   expect_match(ja, "デスクトップ", fixed = TRUE)
   expect_match(ja, "スタートメニュー", fixed = TRUE)
@@ -337,7 +338,7 @@ test_that("add_shortcut() says what it makes, where, and how to undo it", {
     expect_identical(question, "Make these 3 shortcuts?")
     FALSE
   })
-  out <- capture.output(res <- suppressMessages(add_shortcut(ask = TRUE)))
+  out <- capture.output(res <- suppressMessages(add_shortcut(ask = TRUE, update = TRUE)))
   expect_identical(res, character())
   expect_true(any(grepl("Start menu", out)))
 })
@@ -345,13 +346,13 @@ test_that("add_shortcut() says what it makes, where, and how to undo it", {
 test_that("macOS and Linux name their places", {
   local_launcher()
   local_mocked_bindings(.os = function() "mac")
-  plan <- .shortcut_plan(lang = "en")
+  plan <- .shortcut_plan(lang = "en", update = TRUE)
   expect_identical(plan$name, c("tflplanner.app", "tflplanner (update).app"))
   expect_identical(unique(plan$place), "Applications")
   expect_match(paste(.shortcut_made_text(plan$path, "mac", "en"), collapse = " "),
                "Finder > Applications", fixed = TRUE)
   local_mocked_bindings(.os = function() "linux")
-  plan <- .shortcut_plan(lang = "en")
+  plan <- .shortcut_plan(lang = "en", update = TRUE)
   expect_identical(plan$place, "the application menu")
   expect_match(plan$name, "Update and launch", fixed = TRUE)
 })
@@ -519,7 +520,8 @@ test_that("stop_on_close: the app stops once its last tab has been gone a while"
                         .package = "shiny")
   .open_tabs$n <- 0L
   ended <- list()
-  fake <- function() list(onSessionEnded = function(f) ended[[length(ended) + 1L]] <<- f)
+  fake <- function() list(onSessionEnded = function(f) ended[[length(ended) + 1L]] <<- f,
+                          onUnhandledError = function(f) NULL)
   .stop_when_closed(fake(), wait = 0)
   .stop_when_closed(fake(), wait = 0)
   expect_identical(.open_tabs$n, 2L)
@@ -530,6 +532,33 @@ test_that("stop_on_close: the app stops once its last tab has been gone a while"
   later::run_now(0.2)
   expect_identical(stopped, 1L)
   .open_tabs$n <- 0L
+})
+
+test_that("stop_on_close: a session an error ended leaves time for the page's Reload", {
+  stopped <- 0L
+  local_mocked_bindings(stopApp = function(...) stopped <<- stopped + 1L,
+                        .package = "shiny")
+  .open_tabs$n <- 0L
+  ended <- NULL
+  failed <- NULL
+  .stop_when_closed(list(onSessionEnded = function(f) ended <<- f,
+                         onUnhandledError = function(f) failed <<- f),
+                    wait = 0, wait_failed = 1)
+  expect_message(failed(simpleError("boom")), "stopped on an error: boom")
+  ended()
+  later::run_now(0.2)
+  expect_identical(stopped, 0L)               # not at the short wait
+  # the Reload: a new session within the wait keeps the app
+  .open_tabs$n <- 1L
+  later::run_now(1.5)
+  expect_identical(stopped, 0L)
+  .open_tabs$n <- 0L
+})
+
+test_that("the launcher keeps the app's console in app.log", {
+  src <- readLines(system.file("launcher", "launch.R", package = "tflplanner"))
+  expect_true(any(grepl('file.path(here, "app.log")', src, fixed = TRUE)))
+  expect_true(any(grepl('sink(app_log, type = "message")', src, fixed = TRUE)))
 })
 
 test_that("RStudio add-in: Launch tflplanner -> launch_app()", {
@@ -604,4 +633,26 @@ test_that("a newer version installed while the app runs is said on its page", {
     expect_match(h, "tflplanner 0.0.2.9088", fixed = TRUE)
     expect_match(h, "0.0.2.9070", fixed = TRUE)
   })
+})
+
+test_that("nothing updates on its own: no update shortcut, no update check unless asked", {
+  local_launcher()
+  local_mocked_bindings(.os = function() "windows")
+  expect_identical(.shortcut_plan(lang = "en")$name, c("tflplanner", "tflplanner"))
+  expect_false(formals(add_shortcut)$update)
+  dirs <- list(desktop = "C:/d", start_menu = "C:/s")
+  expect_false(any(endsWith(.windows_shortcuts("C:/x", dirs, "en")$args, "--update")))
+  expect_false(any(grepl("Actions", .desktop_file("/x", "en"))))
+  # the check: off with no setting; a setting given is kept
+  old <- options(tflplanner.check_updates = NULL)
+  on.exit(options(old), add = TRUE)
+  saved <- list(proc = .upd$proc, result = .upd$result, file = .upd$file)
+  on.exit(for (k in names(saved)) assign(k, saved[[k]], envir = .upd), add = TRUE)
+  cfg <- tflplanner_config()
+  expect_null(cfg$check_updates)
+  .upd$proc <- NULL
+  .upd$result <- NULL
+  .start_update_check()
+  expect_null(.upd$proc)
+  expect_identical(.update_check_result(), list())
 })

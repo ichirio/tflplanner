@@ -13,7 +13,7 @@ ard_planner <- function() {
   p$ard$populations <- data.frame(population_id = "SAF", dataset = "ADSL",
                                   where = "SAFFL == \"Y\"")
   p$ard$analyses <- data.frame(
-    output_id = c("DM", "DM"), analysis_id = c("BIGN", "AGE"),
+    output_id = c("DM", "DM"), analysis_id = c("GROUPN", "AGE"),
     method = c("categorical", "continuous"), population_id = "SAF",
     by = c(NA, "TRT01A"), variables = c("TRT01A", "AGE"))
   for (s in names(p$ard)) p$ard[[s]] <- .normalize_ard_sheet(p$ard[[s]], s)
@@ -70,7 +70,7 @@ test_that("the definition is saved, reopened and run", {
 
   r <- run_ard(o, "DM")
   expect_null(r$error)
-  expect_setequal(unique(r$ard$analysis_id), c("BIGN", "AGE"))
+  expect_setequal(unique(r$ard$analysis_id), c("GROUPN", "AGE"))
   v <- ard_view(r$ard)
   expect_true(all(c("analysis_id", "variable", "stat_name", "stat") %in%
                     names(v)))
@@ -176,7 +176,7 @@ test_that("the study's analyses are exported as CDISC ARS", {
   expect_error(export_ars(s, d), "no analyses")
 })
 
-test_that("the study's code lists reach the ARD programs", {
+test_that("a report's code lists reach its ARD program", {
   skip_if_not_installed("cards")
   skip_on_cran()
   skip_if(utils::packageVersion("tflspec") < "0.0.24.9031")
@@ -187,14 +187,17 @@ test_that("the study's code lists reach the ARD programs", {
   p$ard$analyses$analysis_id[3] <- "AGEGR"
   p$ard$analyses$by[3] <- "TRT01A"
   p$ard$analyses$variables[3] <- "AGEGR1"
-  p <- set_codelist(p, data.frame(
+  p <- set_codelist(p, "DM", data.frame(
     variable = "AGEGR1", value = c("<65", "65-80", ">80", "unknown"),
     order = c("1", "2", "3", "4"), stringsAsFactors = FALSE))
   s <- create_study("A2", planner = p)
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
   prog <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
-  expect_true(any(grepl(".codelists <- list(", prog, fixed = TRUE)))
-  expect_true(any(grepl("adsl <- .levels(adsl)", prog, fixed = TRUE)))
+  # (the code lists put on as tflspec writes it: the list at the head,
+  # set_levels() on the data the analyses read)
+  expect_true("cl_agegr1 <- c(\"<65\", \"65-80\", \">80\", \"unknown\")" %in% prog)
+  expect_true(any(grepl("set_levels(", prog, fixed = TRUE)))
+  expect_true(any(grepl("AGEGR1 = cl_agegr1", prog, fixed = TRUE)))
   # the ARD counts the value no record has, in the code list's order
   o <- open_study("A2")
   u <- update_study_ard(o, "DM")
@@ -206,7 +209,7 @@ test_that("the study's code lists reach the ARD programs", {
   expect_true(all(unlist(a$stat[lv == "unknown"]) == 0))
   expect_equal(ard_status(o)$state, "built")
   # a new code list makes the ARD out of date
-  o$planner <- set_codelist(o$planner, data.frame(variable = "AGEGR1",
+  o$planner <- set_codelist(o$planner, "DM", data.frame(variable = "AGEGR1",
     value = "none", order = "5", stringsAsFactors = FALSE))
   expect_equal(ard_status(o)$state, "outdated")
 })
@@ -216,10 +219,11 @@ test_that("the analysis data is saved, reopened and run (tflspec #135)", {
   skip_on_cran()
   local_home2()
   p <- ard_planner()
+  a <- p$ard$analyses
   p$ard$analysis_data <- .normalize_ard_sheet(data.frame(
+    output_id = a$output_id[a$analysis_id == "AGE"][1L],
     data_id = "adsl_saf", from = "ADSL", population_id = "SAF",
     where = "AGE >= 18"), "analysis_data")
-  a <- p$ard$analyses
   a$data[a$analysis_id == "AGE"] <- "adsl_saf"
   a$population_id[a$analysis_id == "AGE"] <- NA
   p$ard$analyses <- .normalize_ard_sheet(a, "analyses")
@@ -229,26 +233,26 @@ test_that("the analysis data is saved, reopened and run (tflspec #135)", {
   expect_identical(o$planner$ard$analysis_data, p$ard$analysis_data)
   expect_identical(o$planner$ard$analyses$data, p$ard$analyses$data)
   code <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
-  expect_true(any(code == "adsl_saf <- subset(pop_saf, AGE >= 18)"))
+  expect_true(any(code %in% c("adsl_saf <- filter(pop_saf, AGE >= 18)",
+                              "  filter(AGE >= 18) |>")))
   r <- run_ard(o, "DM")
   expect_null(r$error)
   expect_identical(unique(r$ard$population_id), "SAF")
 })
 
-test_that("a report's own code list rows reach its ARD program (tflspec #137)", {
+test_that("a report's ARD program: only the code lists of what its analyses read (tflspec #170)", {
   skip_on_cran()
-  skip_if(utils::packageVersion("tflspec") < "0.0.24.9046")
+  skip_if(utils::packageVersion("tflspec") < "0.0.24.9058")
   local_home2()
   p <- ard_planner()
-  p <- set_codelist(p, data.frame(variable = "SEX", value = c("F", "M"),
-                                  order = c("1", "2"), stringsAsFactors = FALSE))
-  # DM's own order of AGEGR1, not the study's
-  p <- set_sheet_rows(p, "codelists", "DM", data.frame(
-    variable = "AGEGR1", value = c(">80", "65-80", "<65"), order = c("1", "2", "3"),
-    stringsAsFactors = FALSE))
-  expect_identical(sort(unique(.study_codelists(p)$output_id), na.last = TRUE), c("DM", NA))
+  p <- set_codelist(p, "DM", data.frame(
+    variable = c("SEX", "SEX", "TRT01A", "TRT01A"), value = c("F", "M", "Drug", "Placebo"),
+    order = c("1", "2", "2", "1"), stringsAsFactors = FALSE))
+  expect_identical(unique(.study_codelists(p)$output_id), "DM")
   s <- create_study("A3", planner = p)
   prog <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
-  expect_true(any(grepl("`AGEGR1` = c(\">80\", \"65-80\", \"<65\")", prog, fixed = TRUE)))
-  expect_true(any(grepl("`SEX` = c(\"F\", \"M\")", prog, fixed = TRUE)))
+  expect_true("cl_trt01a <- c(\"Placebo\", \"Drug\")" %in% prog)
+  expect_true(any(grepl("TRT01A = cl_trt01a", prog, fixed = TRUE)))
+  # SEX only prints (DM's analyses do not read it): not in the ARD program
+  expect_false(any(grepl("cl_sex", prog, fixed = TRUE)))
 })

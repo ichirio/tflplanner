@@ -32,7 +32,7 @@ test_that("the company's list holds what it added or changed", {
 
 test_that("a group's N written as cards::ard_tabulate is found", {
   local_home()
-  a <- data.frame(analysis_id = c("BIGN", "TOTAL"),
+  a <- data.frame(analysis_id = c("GROUPN", "TOTAL"),
                   method = c("cards::ard_tabulate", "cards::ard_total_n"),
                   dataset = "ADSL", population_id = "SAF",
                   variables = c("TRT01A", NA), by = NA, parent = NA,
@@ -44,6 +44,6 @@ test_that("a group's N written as cards::ard_tabulate is found", {
                                    population_id = "SAF", where = NA,
                                    args = ".by_stats = TRUE, .total_n = TRUE",
                                    stringsAsFactors = FALSE))
-  # BIGN and TOTAL are there already: not made again
+  # GROUPN and TOTAL are there already: not made again
   expect_identical(nrow(n), 0L)
 })

@@ -130,8 +130,9 @@ test_that("workbooks export and import", {
 test_that("saving writes the programs from the definition, an edited one too", {
   local_home()
   s <- create_study("S1", planner = sample_planner())
-  # the workbooks, the programs, batch.R, the two autoexec programs, fig_setup.R
-  expect_equal(sum(s$files$status == "written"), 2 + 5 + 4)
+  # the workbooks, the programs, batch.R, the two autoexec programs,
+  # fig_setup.R, report_setup.R, study_setup.R, study_helpers.R
+  expect_equal(sum(s$files$status == "written"), 2 + 5 + 7)
   s0 <- save_study(s)
   expect_true(all(s0$files$status == "unchanged"))
   f <- file.path(s$path, "programs", "tfl", "DM.R")
@@ -279,4 +280,56 @@ test_that("a study folder registered again keeps its designed figures", {
   # saved again: the design file stays
   save_study(s2)
   expect_true(file.exists(file.path(s$path, "spec/figures/F-1.yml")))
+})
+
+test_that("unregistering and registering again gives the study back as it was", {
+  home <- local_home()
+  body <- function(id) {
+    st <- .read_state(id, home)
+    st$saved <- NULL
+    st$tflplanner <- NULL
+    .json(st)
+  }
+  s <- suppressMessages(create_study("UR-1", title = "Kept"))
+  s$planner <- add_output(s$planner, "T-1", type = "table")
+  s$planner <- set_sheet_rows(s$planner, "titles", "T-1",
+                              data.frame(line = "1", center = "My title"))
+  s$planner$setup <- "library(dplyr)"
+  s <- suppressMessages(save_study(s, home = home))
+  s$planner$outputs$description[1] <- "second save"
+  s <- suppressMessages(save_study(s, home = home))
+  before <- body("UR-1")
+  hist <- list.files(file.path(.store_dir("UR-1", home), "history"))
+  expect_true(length(hist) >= 1L)
+  # an unsaved change, kept as a draft
+  d <- s
+  d$planner$outputs$description[1] <- "not saved yet"
+  .write_draft(d, home)
+  unregister_study("UR-1")
+  expect_false(dir.exists(.store_dir("UR-1", home)))
+  expect_true(file.exists(file.path(s$path, ".tflplanner", "state.json")))
+  expect_true(dir.exists(s$path))
+  r <- register_study(s$path)
+  expect_identical(body("UR-1"), before)
+  expect_identical(list.files(file.path(.store_dir("UR-1", home), "history")),
+                   hist)
+  expect_identical(.read_draft("UR-1", home)$planner$outputs$description[1],
+                   "not saved yet")
+  expect_false(dir.exists(file.path(s$path, ".tflplanner")))
+  expect_identical(r$planner$setup, "library(dplyr)")
+})
+
+test_that("a study whose spec/ changed after unregistering comes back from spec/", {
+  home <- local_home()
+  s <- suppressMessages(create_study("UR-2"))
+  s$planner <- add_output(s$planner, "T-1", type = "table")
+  s <- suppressMessages(save_study(s, home = home))
+  unregister_study("UR-2")
+  kept <- file.path(s$path, ".tflplanner", "state.json")
+  Sys.setFileTime(kept, Sys.time() - 3600)
+  r <- register_study(s$path)
+  expect_identical(r$planner$outputs$output_id, "T-1")
+  # the kept state is in the history, not lost
+  expect_true(length(list.files(file.path(.store_dir("UR-2", home), "history"))) >= 1L)
+  expect_false(dir.exists(file.path(s$path, ".tflplanner")))
 })

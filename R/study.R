@@ -12,7 +12,8 @@
 #     data/other/                      anything else (formats, lookups)
 #     spec/                table_spec.xlsx, report_spec.xlsx (the report
 #                          programs read them; ard_spec.xlsx only if exported)
-#     programs/            batch.R, autoexec_all.R (official runs)
+#     programs/            study_setup.R (what every program runs first),
+#                          batch.R, autoexec_all.R (official runs)
 #     programs/ard/        one ARD program per output, ard_setup.R,
 #                          autoexec_ard.R
 #     programs/tfl/        one program per report, autoexec_report.R
@@ -101,8 +102,14 @@ study_layout <- function() {
 #' * `open_study()` returns a study as it was last saved.  Given the folder
 #'   of a study tflplanner does not know yet, it registers it first.
 #' * `register_study()` adds an existing study folder: its `study.yml`, and
-#'   its definition workbooks when `spec/` has them.
-#' * `unregister_study()` forgets a study; its folder is left alone.
+#'   its definition workbooks when `spec/` has them.  A folder unregistered
+#'   before comes back as it was (its saved state, history and unsaved
+#'   changes).
+#' * `unregister_study()` takes a study off the list.  Its folder is not
+#'   deleted: what tflplanner kept about it goes into the folder
+#'   (`.tflplanner/`), for `register_study()` to take back.  tflplanner
+#'   never deletes a study folder; to delete one, delete it yourself (in the
+#'   file manager it goes to the recycle bin).
 #' * `list_studies()` lists the registered studies.
 #'
 #' @param study_id The study's id, which is also its folder name.
@@ -182,7 +189,61 @@ open_study <- function(study, home = tflplanner_home()) {
     .write_state(s, home)
   }
   .set_config("last_study", id, home)
+  # its programs as its setup has it (its folders' variables, its packages)
+  .use_study(s$path)
+  # the variables' headings of an earlier form, the table's labels now
+  s$planner <- .move_heading_rows(s$planner)
   s
+}
+
+# What tflplanner keeps about a study (its home's studies/<id>/: the saved
+# state, its history, an unsaved draft) goes into the study folder when the
+# study is unregistered, and comes back when the folder is registered again:
+# taking a study off the list loses nothing.
+.kept_dir <- function(path) file.path(path, ".tflplanner")
+
+.keep_store <- function(id, path, home = tflplanner_home()) {
+  from <- .store_dir(id, home)
+  if (!dir.exists(from) || !dir.exists(path)) return(invisible(FALSE))
+  to <- .kept_dir(path)
+  unlink(to, recursive = TRUE)
+  dir.create(to, showWarnings = FALSE)
+  # the ARD fetched for input assistance (ard/) is made again when needed
+  for (f in setdiff(list.files(from), "ard")) {
+    file.copy(file.path(from, f), to, recursive = TRUE, copy.date = TRUE)
+  }
+  invisible(TRUE)
+}
+
+# The kept store back in the home: its history and draft always; its saved
+# state when spec/ has not changed since (else the state read from spec/ is
+# the study's, the kept one goes to its history).  TRUE: the state is back.
+.restore_store <- function(id, path, home = tflplanner_home()) {
+  from <- .kept_dir(path)
+  sf <- file.path(from, "state.json")
+  if (!file.exists(sf)) return(FALSE)
+  st <- tryCatch(jsonlite::fromJSON(sf, simplifyVector = FALSE),
+                 error = function(e) NULL)
+  if (is.null(st) || !identical(st$meta$study_id, id)) return(FALSE)
+  to <- .store_dir(id, home)
+  dir.create(file.path(to, "history"), recursive = TRUE, showWarnings = FALSE)
+  for (f in list.files(file.path(from, "history"), full.names = TRUE)) {
+    file.copy(f, file.path(to, "history"), copy.date = TRUE)
+  }
+  if (file.exists(file.path(from, "draft.json"))) {
+    file.copy(file.path(from, "draft.json"), to, copy.date = TRUE)
+  }
+  spec <- list.files(file.path(path, study_layout()[["spec"]]),
+                     recursive = TRUE, full.names = TRUE)
+  same <- !length(spec) || all(file.mtime(spec) <= file.mtime(sf) + 1)
+  if (same) {
+    file.copy(sf, to, overwrite = TRUE, copy.date = TRUE)
+  } else {
+    stamp <- gsub("[^0-9]", "", st$saved %||% format(file.mtime(sf)))
+    file.copy(sf, file.path(to, "history", paste0(stamp, ".json")))
+  }
+  unlink(from, recursive = TRUE)
+  same
 }
 
 #' @rdname create_study
@@ -196,6 +257,14 @@ register_study <- function(path, home = tflplanner_home()) {
                  normalizePath(path, "/"))) {
     stop("Study '", id, "' is already registered at ", st$path, ".",
          call. = FALSE)
+  }
+  # unregistered before: what tflplanner kept comes back as it was
+  if (is.null(st) && .restore_store(id, path, home)) {
+    s <- .study_from_state(.read_state(id, home))
+    s$path <- normalizePath(path, "/")
+    .write_state(s, home)
+    .set_config("last_study", id, home)
+    return(s)
   }
   sp <- file.path(path, study_layout()[["spec"]], c(.table_file, .report_file))
   sp <- sp[file.exists(sp)]
@@ -241,9 +310,13 @@ unregister_study <- function(study_id, home = tflplanner_home()) {
     stop("unregister_study() takes one study ID.", call. = FALSE)
   }
   study_id <- .check_study_id(study_id)
-  if (is.null(.read_state(study_id, home))) {
+  st <- .read_state(study_id, home)
+  if (is.null(st)) {
     stop("Study '", study_id, "' is not registered.", call. = FALSE)
   }
+  # the folder is not touched but for what tflplanner kept, put in it
+  # (.tflplanner/): register_study() takes it back
+  .keep_store(study_id, st$path %||% "", home)
   unlink(.store_dir(study_id, home), recursive = TRUE)
   if (identical(tflplanner_config(home)$last_study, study_id)) {
     .set_config("last_study", NULL, home)
@@ -385,7 +458,9 @@ print.rtfstudy <- function(x, ...) {
 #' [open_study()] reads; the one before goes to its history), then writes
 #' the study folder from it: the definition workbooks in `spec/` (with
 #' `output_path` and `program_dir` set to the study's own folders), the
-#' report programs, `autoexec_report.R`, and `study.yml`.  The programs
+#' report programs, `autoexec_report.R`, `programs/study_setup.R` (made
+#' when missing; otherwise its tflplanner part only, see
+#' [study_setup_code()]), and `study.yml`.  The programs
 #' are the definition's: each is written from it whenever it changes.  One
 #' edited by hand since (its banner's checksum no longer matches) is
 #' written again too, its edited copy first put in `programs/.edited/`
@@ -409,6 +484,8 @@ save_study <- function(study, home = tflplanner_home(), base = NULL) {
   p <- .study_spec_keys(study$planner)
   study$planner <- p
   root <- study$path
+  # its programs as its setup has it (its folders' variables, its packages)
+  .use_study(root)
   lay <- study_layout()
   progs <- vapply(p$outputs$output_id, function(id)
     report_info(p, id)$program, "")
@@ -446,7 +523,9 @@ save_study <- function(study, home = tflplanner_home(), base = NULL) {
   }
   files <- rbind(files, .save_ard(p, root), .save_lf(p, root),
                  .save_fig_designs(p, root))
-  files <- rbind(files, .save_batch_programs(p, root))
+  files <- rbind(files, .save_study_setup(study$meta, root),
+                 .save_study_helpers(root),
+                 .save_batch_programs(p, root))
   meta <- study$meta[.study_fields]
   old_meta <- tryCatch(.read_meta(root), error = function(e) list())
   meta$created <- old_meta$created %||% format(Sys.Date())
@@ -521,9 +600,11 @@ save_study <- function(study, home = tflplanner_home(), base = NULL) {
 # each refresh (study_status()), and the definition rarely changed between
 .program_cache <- new.env()
 .program_code_last <- function(p, id) {
-  if (!identical(.program_cache$p, p) || !identical(.program_cache$date, Sys.Date())) {
+  if (!identical(.program_cache$p, p) || !identical(.program_cache$date, Sys.Date()) ||
+      !identical(.program_cache$opts, .code_context$opts)) {
     .program_cache$p <- p
     .program_cache$date <- Sys.Date()
+    .program_cache$opts <- .code_context$opts
     .program_cache$code <- list()
   }
   if (is.null(.program_cache$code[[id]])) .program_cache$code[[id]] <- program_code(p, id)
@@ -563,7 +644,9 @@ save_study <- function(study, home = tflplanner_home(), base = NULL) {
 #' * `not run` -- no RTF yet
 #' * `error` -- the last run failed (see its log)
 #' * `outdated` -- the report's program, or a file it sources (the figure
-#'   setup, say), changed after the RTF was made.  The program holds the
+#'   setup, say), changed after the RTF was made; or the report was made
+#'   with another `programs/study_setup.R` than the one there now (its
+#'   program records it in `output/tfl/report_status.csv`).  The program holds the
 #'   report's whole definition, so a change to the definition reaches the
 #'   reports it is about and no others.
 #' * `ok`
@@ -574,7 +657,10 @@ save_study <- function(study, home = tflplanner_home(), base = NULL) {
 study_status <- function(study) {
   p <- study$planner
   root <- study$path
+  .use_study(root)
   lay <- study_layout()
+  setup <- .report_setup_recorded(root, p$outputs$output_id)
+  now <- .study_setup_hash(root)
   rows <- lapply(p$outputs$output_id, function(id) {
     info <- report_info(p, id)
     prog <- file.path(root, lay[["programs_tfl"]], info$program)
@@ -593,7 +679,8 @@ study_status <- function(study) {
       if (pstate == "todo") "todo" else
         if (failed) "error" else
           if (is.na(t_rtf)) "not run" else
-            if (isTRUE(.program_time(prog, root) > t_rtf))
+            if (isTRUE(.program_time(prog, root) > t_rtf) ||
+                .setup_changed(setup[match(id, p$outputs$output_id)], root, now))
               "outdated" else "ok"
     fmt <- function(t) if (is.na(t)) NA_character_ else
       format(t, "%Y-%m-%d %H:%M")

@@ -42,7 +42,8 @@ report_info <- function(x, output_id) {
 }
 
 # The datasets a report reads, as the report list shows them: a table the
-# data of its ARD analyses (each analysis's dataset, and its population's),
+# data of its ARD analyses (each analysis's dataset, and its population's;
+# an analysis data's: those it is made from),
 # a listing its dataset, a figure the datasets its design reads (or, without
 # a design, the ones its row names).  In the order first used.
 .report_datasets <- function(x, output_id, type = report_info(x, output_id)$type) {
@@ -52,7 +53,15 @@ report_info <- function(x, output_id) {
       a <- a[!is.na(a$output_id) & a$output_id == output_id, , drop = FALSE]
       po <- x$ard$populations
       pop_ds <- po$dataset[match(a$population_id, po$population_id)]
-      c(ifelse(is.na(a$dataset), pop_ds, a$dataset), pop_ds)
+      # one that reads an analysis data: the datasets it is made from
+      ad <- .adata_rows(x, output_id)
+      own <- unlist(lapply(seq_len(nrow(a)), function(i) {
+        d <- c(a$data[i] %||% NA, a$denominator[i] %||% NA)
+        if (any(d %in% ad$data_id)) {
+          unlist(lapply(d[d %in% ad$data_id], .adata_datasets, ad = ad, po = po))
+        } else c(if (is.na(a$dataset[i])) pop_ds[i] else a$dataset[i], pop_ds[i])
+      }))
+      own %||% character()
     },
     listing = {
       l <- x$lf$listings
@@ -117,7 +126,7 @@ report_info <- function(x, output_id) {
 }
 
 .section <- function(title) {
-  paste0("# ---- ", title, " ", strrep("-", max(3L, 70L - nchar(title))))
+  paste0("# ---- ", title, " ----")
 }
 
 # Does this code assign `data` itself?  (Then it needs no default
@@ -187,8 +196,11 @@ code_templates <- function(name = NULL) {
     `{PROGRAM}` = if (is.na(output_id)) "" else
       file.path(lay[["programs_tfl"]], report_info(x, output_id)$program),
     `{STUDY_ID}` = if (is.na(study_id)) "" else study_id)
+  # the study ARD as a string of R: through its folder's variable while a
+  # program is written
+  code <- gsub("\"{ARD}\"", .path_lit(sub[["{ARD}"]]), code, fixed = TRUE)
   for (k in names(sub)) code <- gsub(k, sub[[k]], code, fixed = TRUE)
-  unname(code)
+  .drop_attached(unname(code))
 }
 
 #' The data part of a report's program
@@ -229,7 +241,8 @@ data_lines <- function(x, output_id, todo = TRUE) {
       .figure_lines(x, output_id, info, plot_code = code)
     } else {
       .figure_lines(x, output_id, info,
-                    plot_code = paste(.fig_design_plot(design, output_id),
+                    plot_code = paste(.fig_design_plot(design, output_id,
+                                                       codelists = .study_codelists(x)),
                                       collapse = "\n"),
                     datasets = .fig_design_datasets(design, output_id))
     }
@@ -247,11 +260,11 @@ data_lines <- function(x, output_id, todo = TRUE) {
         stop_todo),
       listing = c(
         "# TODO: make the listing pages, e.g.",
-        paste0("#   adae    <- readRDS(\"", lay[["adam"]], "/adae.rds\")"),
+        paste0("#   adae    <- readRDS(", .path_lit(file.path(lay[["adam"]], "adae.rds")), ")"),
         "#   content <- as_rtftables(adae[, c(\"USUBJID\", \"AEDECOD\")])",
         stop_todo),
       c("# TODO: build the ARD, e.g.",
-        paste0("#   adsl <- readRDS(\"", lay[["adam"]], "/adsl.rds\")"),
+        paste0("#   adsl <- readRDS(", .path_lit(file.path(lay[["adam"]], "adsl.rds")), ")"),
         "#   ard  <- cards::ard_stack(adsl, .by = TRT01A, ...)",
         stop_todo))
     return(c(if (!is.na(x$setup)) c(.code_block(x$setup), ""), body))
@@ -292,6 +305,11 @@ data_lines <- function(x, output_id, todo = TRUE) {
 #' @return The program, one element per line.
 #' @export
 program_code <- function(x, output_id, date = Sys.Date()) {
+  # as the study's setup has it: its folders' variables, its packages
+  .with_study_code(.program_code(x, output_id, date))
+}
+
+.program_code <- function(x, output_id, date = Sys.Date()) {
   lay <- study_layout()
   info <- report_info(x, output_id)
   o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
@@ -308,42 +326,39 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     if (length(titles)) paste("Title      :", titles),
     paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
            ", ", format(date, "%Y-%m-%d")),
-    "",
-    "Runs from the study folder (open the study's .Rproj, or run",
-    "programs/tfl/autoexec_report.R).  How the report looks comes from",
-    "spec/ and is written out in the Report part: generate the program again",
-    paste0("after changing the workbooks.  This program makes `", obj,
-           "`; edit the data part freely."))
+    paste0("The data part makes `", obj, "`; the report part is written from ",
+           lay[["spec"]], "/."))
 
+  data <- data_lines(x, output_id)
   data_part <- c(
-    .section("Data"),
-    paste0("# Leaves `", obj, "`: ", switch(type,
-      figure = "the figure(s) of the report.",
-      user = "what the report's own code made (tables, figures).",
-      listing = "the listing's rtftable pages.",
-      "the normalized ARD (normalize_ard()) the table is built from.")),
-    paste0("# Input data are in ", lay[["adam"]], "/, ", lay[["sdtm"]],
-           "/ and ", lay[["other"]], "/."),
-    data_lines(x, output_id))
-
-  report_part <- c(
-    .section("Report"),
+    .section(paste0("data: ", switch(type,
+      figure = "the figure",
+      user = "the report's own code",
+      listing = "the listing's pages",
+      "this report's normalized ARD"))),
+    data,
     if (table) c(
-      paste0("saveRDS(data, file.path(\"", lay[["ard"]],
-             "\", paste0(output_id, \".rds\")))"),
-      ""),
-    .report_code_lines(x, output_id, table))
+      "",
+      "# the table's data, kept beside the study ARD",
+      paste0("saveRDS(data, file.path(", .path_lit(lay[["ard"]]),
+             ", paste0(report_id, \".rds\")))")))
+
+  # a figure's plot goes to the report as it is (rtf_figures(doc, plot)),
+  # unless its code makes `content` itself
+  content <- if (table) "plan" else if (identical(type, "figure") &&
+    !any(grepl("^[[:space:]]*content[[:space:]]*(<-|=)[^=]", data))) "plot" else "content"
+  report_part <- c(
+    .section("report"),
+    .report_code_lines(x, output_id, table, content))
 
   c(head,
     "",
-    "library(rtfreporter)",
-    "library(tflspec)",
-    "if (!file.exists(\"study.yml\")) {",
-    "  stop(\"Run this program from the study folder: open the study's .Rproj\",",
-    "       \" or setwd() to the folder that holds study.yml.\")",
-    "}",
+    "stopifnot(\"run it from the study folder (the one with study.yml)\" = file.exists(\"study.yml\"))",
+    "# the study's setup, and the header, footer and tokens of every report",
+    sprintf("source(%s)", .r_string(file.path(lay[["programs_tfl"]],
+                                               .report_setup_file))),
     "",
-    paste("output_id <-", .r_string(output_id)),
+    paste("report_id <-", .r_string(output_id)),
     "",
     data_part,
     "",
@@ -370,7 +385,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   sp
 }
 
-.report_code_lines <- function(x, output_id, table) {
+.report_code_lines <- function(x, output_id, table,
+                               content = if (table) "plan" else "content") {
   lay <- study_layout()
   sp <- .spec_object_last(x, c(table_sheets(), report_sheets()),
                           unique(c(.study_keys$table, .study_keys$report)))
@@ -383,14 +399,114 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     paste0("# the report -- page, running header and footer, titles and ",
            "footnotes -- as"),
     paste0("# ", file.path(lay[["spec"]], .report_file), " defines it"),
-    tflspec::tfl_report_code(sp, output_id,
-                             content = if (table) "plan" else "content"),
+    tflspec::tfl_report_code(sp, output_id, content = content,
+                             setup = .uses_report_setup(x)),
     sprintf("generate_rtfreport(doc, %s, overwrite = TRUE)",
-            .r_string(tflspec::tfl_report_path(sp, output_id)))),
+            .r_string(tflspec::tfl_report_path(sp, output_id))),
+    "record_report(report_id)"),
     error = function(e) sprintf(
       "stop(%s)", .r_string(paste0("tflplanner: the definition of ",
                                    output_id, " does not hold: ",
                                    conditionMessage(e)))))
+}
+
+# programs/tfl/report_setup.R is always written, and every report program
+# sources it (it sources programs/study_setup.R).  The study's tokens,
+# header and footer are written once in it when the study has default rows
+# of them (COMPANY, STUDY_ID ...; a header every report has) or a font or
+# size for every report -- a new study does, and a report's program then
+# says only its own; one that has none writes each report's header in its
+# program, as before
+.uses_report_setup <- function(x) {
+  study_rows <- function(sh) {
+    d <- x$sheets[[sh]]
+    !is.null(d) && any(is.na(d$output_id))
+  }
+  study_rows("tokens") || study_rows("header") || study_rows("footer") ||
+    !is.na(study_page_value(x, "font")) ||
+    !is.na(study_page_value(x, "font_size_half_points"))
+}
+
+#' The study's setup of its report programs
+#'
+#' `programs/tfl/report_setup.R`, which every report program sources: the
+#' study's setup (`programs/study_setup.R`, see [study_setup_code()]), the
+#' reports' font and size (`options(rtfreporter.font = )`), the
+#' study's tokens (`options(rtfreporter.tokens = )`: the company, the
+#' analysis, the protocol ...), its running header and footer
+#' (`study_header`, `study_footer`), written once from `report_spec.xlsx`
+#' ([tflspec::tfl_report_setup_code()]).  Each report program then says
+#' only its own tokens (`OUTPUT_LABEL`, `OUTPUT_TITLE` ...), and ends with
+#' `record_report()`, which records the report as made, with the
+#' fingerprint of the study setup, in `output/tfl/report_status.csv`.
+#'
+#' @param x A `tflplanner`.
+#' @param date The date stamped in the banner.
+#' @return The program, one element per line.
+#' @export
+report_setup_code <- function(x, date = Sys.Date()) {
+  .with_study_code(.report_setup_code(x, date))
+}
+
+.report_setup_code <- function(x, date = Sys.Date()) {
+  lay <- study_layout()
+  sp <- .spec_object_last(x, c(table_sheets(), report_sheets()),
+                          unique(c(.study_keys$table, .study_keys$report)))
+  c(.banner(
+      paste("Program    :", file.path(lay[["programs_tfl"]], .report_setup_file)),
+      "The study's font, header, footer and tokens: every report program sources it.",
+      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
+             ", ", format(date, "%Y-%m-%d")),
+      "",
+      "Written from spec/report_spec.xlsx: change them there (the study tab),",
+      "then generate the programs again."),
+    "",
+    "# the study's setup: the company's, the study's folders and id, your own",
+    .source_study_setup(),
+    "",
+    local({
+      own <- tflspec::tfl_report_setup_code(sp)
+      if (length(own)) c(own, "")
+    }),
+    .record_report_fun(),
+    "")
+}
+
+# The small function a report program ends with, written in
+# report_setup.R: what was made, and with which study setup, into
+# output/tfl/report_status.csv (tflplanner reads it: a report made with
+# another programs/study_setup.R than the one there now is outdated).
+.report_status_name <- "report_status.csv"
+.record_report_fun <- function() {
+  sf <- file.path(study_layout()[["tfl"]], .report_status_name)
+  c("# what was made, and with which study setup (tflplanner reads it)",
+    "record_report <- function(output_id) {",
+    paste0("  sf <- ", .r_string(sf)),
+    "  row <- data.frame(output_id = output_id,",
+    "                    built = format(Sys.time(), \"%Y-%m-%d %H:%M:%S\"),",
+    paste0("                    setup = ", .setup_hash_code(), ","),
+    "                    stringsAsFactors = FALSE)",
+    "  dir.create(dirname(sf), recursive = TRUE, showWarnings = FALSE)",
+    "  st <- if (file.exists(sf)) utils::read.csv(sf, colClasses = \"character\")",
+    "  if (!is.null(st) && nrow(st)) {",
+    "    for (k in setdiff(names(row), names(st))) st[[k]] <- \"\"",
+    "    row <- rbind(st[st$output_id != output_id, names(row), drop = FALSE], row)",
+    "  }",
+    "  utils::write.csv(row, sf, row.names = FALSE)",
+    "  invisible(output_id)",
+    "}")
+}
+
+# the study setup each report was made with, as its program recorded it
+# (NA: not recorded -- made before it was, or by a program of its own)
+.report_setup_recorded <- function(root, output_id) {
+  f <- file.path(root, study_layout()[["tfl"]], .report_status_name)
+  st <- if (file.exists(f)) tryCatch(
+    utils::read.csv(f, colClasses = "character"), error = function(e) NULL)
+  if (is.null(st) || !all(c("output_id", "setup") %in% names(st))) {
+    return(rep(NA_character_, length(output_id)))
+  }
+  st$setup[match(output_id, st$output_id)]
 }
 
 #' The program that runs every report program

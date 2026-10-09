@@ -31,7 +31,7 @@ test_that("first_table() writes every sheet a summary table needs", {
   an <- ard_rows(p, "analyses", "T-DM")
   # the N per group first (column headers), then one analysis per call:
   # the numbers together, the counts together
-  expect_identical(an$analysis_id, c("BIGN", "CONT", "CAT"))
+  expect_identical(an$analysis_id, c("GROUPN", "CONT", "CAT"))
   # written as the cards functions (the same analyses as the keywords)
   expect_identical(an$method, c("cards::ard_tabulate", "cards::ard_summary",
                                 "cards::ard_tabulate"))
@@ -119,16 +119,16 @@ test_that("a row of the analyses grid is edited as a form", {
   shiny::testServer(server_for("AF"), {
     rv <- session$userData$rv
     session$setInputs(nav = "make", step = "ard", target = "T1")
-    # only the list until a row is clicked; a click opens it below
-    expect_match(output$ard_stat_ui$html, "A click on an analysis in the list above opens it here.",
-                 fixed = TRUE)
-    session$setInputs(ard_ol_pick = "BIGN")
-    expect_match(output$ard_stat_ui$html, "Analysis BIGN of T1")
+    # only the list until a row is clicked (no empty form below it); a
+    # click opens it below
+    expect_null(output$ard_stat_ui)
+    session$setInputs(ard_ol_pick = "GROUPN")
+    expect_match(output$ard_stat_ui$html, "Analysis GROUPN")
     expect_match(output$ard_stat_ui$html, "What to compute", fixed = TRUE)
     # a click on the grid's second row: CONT (AGE)
     session$setInputs(hot_ard_analyses_select = list(select = list(r = 2L)))
     h <- output$ard_stat_ui$html
-    expect_match(h, "Analysis CONT of T1")
+    expect_match(h, "Analysis CONT")
     st_env <- session$userData$st_env
     id <- function(x) paste0("st", st_env$n, "_", x)
     v <- output$ard_an_vars$html
@@ -360,7 +360,7 @@ test_that("a report's ARD can be given the subjects per group", {
   expect_false(.has_group_n(p, "T1", "TRT01A"))
   p <- add_group_n(p, "T1", "TRT01A")
   a <- ard_rows(p, "analyses", "T1")
-  expect_identical(a$analysis_id, c("BIGN", "AGE"))
+  expect_identical(a$analysis_id, c("GROUPN", "AGE"))
   expect_identical(a$variables[1], "TRT01A")
   expect_true(is.na(a$by[1]))
   expect_identical(a$population_id[1], "SAF")
@@ -394,7 +394,7 @@ test_that("the wizard puts the numbers in one analysis and the counts in another
   p <- first_table(new_planner(), "T-M", "data/adam/adsl.rds", d, "SAFFL",
                    "TRT01A", c("AGE", "SEX", "BMIBL", "RACE"), stack = FALSE)
   an <- ard_rows(p, "analyses", "T-M")
-  expect_identical(an$analysis_id, c("BIGN", "CONT", "CAT"))
+  expect_identical(an$analysis_id, c("GROUPN", "CONT", "CAT"))
   expect_identical(an$variables, c("TRT01A", "AGE | BMIBL", "SEX | RACE"))
   # the rows keep the order they were chosen in
   vr <- sheet_rows(p, "variables", "T-M")
@@ -403,7 +403,7 @@ test_that("the wizard puts the numbers in one analysis and the counts in another
   # only counts: no CONT
   p2 <- first_table(new_planner(), "T-C", "data/adam/adsl.rds", d, "SAFFL",
                     "TRT01A", c("SEX", "RACE"), stack = FALSE)
-  expect_identical(ard_rows(p2, "analyses", "T-C")$analysis_id, c("BIGN", "CAT"))
+  expect_identical(ard_rows(p2, "analyses", "T-C")$analysis_id, c("GROUPN", "CAT"))
 })
 
 test_that("the wizard runs the analyses together (ard_stack), unless a subject has no group", {
@@ -426,6 +426,6 @@ test_that("the wizard runs the analyses together (ard_stack), unless a subject h
   d$TRT01A[2] <- NA
   p2 <- first_table(new_planner(), "T-S", "data/adam/adsl.rds", d, "SAFFL",
                     "TRT01A", c("AGE", "SEX"))
-  expect_identical(ard_rows(p2, "analyses", "T-S")$analysis_id, c("BIGN", "CONT", "CAT"))
+  expect_identical(ard_rows(p2, "analyses", "T-S")$analysis_id, c("GROUPN", "CONT", "CAT"))
   expect_identical(attr(p2, "group_missing"), 1L)
 })

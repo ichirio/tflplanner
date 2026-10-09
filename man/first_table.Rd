@@ -36,7 +36,7 @@ first_table(
 \item{stack}{Run the analyses together, with \code{cards::ard_stack()} (a
 \code{STACK} analysis with the data, analysis set and group, the numeric and
 the other variables inside it; it counts the subjects per group and in
-all), rather than one by one (\code{BIGN}, \code{CONT}, \code{CAT}).  Not when a
+all), rather than one by one (\code{GROUPN}, \code{CONT}, \code{CAT}).  Not when a
 subject of the analysis set has no group: \code{ard_stack()} leaves them
 out (the result's attribute \code{group_missing} says how many).}
 }
