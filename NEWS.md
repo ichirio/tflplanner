@@ -1,5 +1,7 @@
 # tflplanner (development version)
 
+- R-CMD-check now also runs on R 4.2, the oldest R tested (`Depends: R (>= 4.1)` is kept; cardx, used by the generated ARD code, needs R >= 4.2).
+
 - **A study opens in a fifth of a second** (#296, reported by the user).
   Reading a study from its saved state built every sheet's columns with
   `tflspec::tfl_table_spec()` again, sheet by sheet, on every open and
