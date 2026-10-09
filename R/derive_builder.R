@@ -1,5 +1,5 @@
 # The columns an analysis data makes (analysis_data$derive: `NAME = R | NAME
-# = R`), made by kind in 2-1's form: split by conditions (ifelse() /
+# = R`), made by kind in 1-1's form: split by conditions (ifelse() /
 # dplyr::case_when()), cut a number into groups (cut()), days between two
 # dates, or any R.  The sheet keeps the R as it is: the form reads back these
 # four forms only, the rest is an R expression -- and a column not opened in
@@ -207,7 +207,7 @@
 .drv_kind_labels <- c(cond = "Split by conditions", cut = "Cut a number into groups",
                       days = "Days between two dates", r = "R expression")
 
-# The derive field of 2-1's form: the columns made, one a line, the one being
+# The derive field of 1-1's form: the columns made, one a line, the one being
 # made, and the sheet's text (to read or write as R)
 .derive_editor_ui <- function(t, label, derive) {
   shiny::div(

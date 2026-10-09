@@ -45,8 +45,10 @@ test_that("a new study gets programs/study_setup.R with its three parts", {
   expect_identical(m[1], 1L)
   expect_identical(m[3], length(txt))         # part 3 empty
   # part 1: the standard's library() lines
-  expect_true(all(c("library(cards)", "library(rtfreporter)", "library(tflspec)")
+  expect_true(all(c("library(cards)", "library(dplyr)", "library(rtfreporter)")
                   %in% txt[seq(m[1], m[2])]))
+  # the programs call programs/study_helpers.R, not tflspec
+  expect_false("library(tflspec)" %in% txt)
   # part 2: the layout and the study, as variables
   p2 <- txt[seq(m[2], m[3])]
   expect_true(any(grepl("^#  Checksum   : [0-9a-f]{32}$", p2)))

@@ -114,7 +114,7 @@ test_that("a report's analysis set is saved with the study", {
   expect_identical(.adata_rows(s2$planner)$data_id, "adsl_saf")
 })
 
-test_that("step 2: the report's analysis set chosen, its data made, 2-1 starts from it", {
+test_that("step 1: the report's analysis set chosen, its data made, 1-1 starts from it", {
   skip_if_not_installed("cards")
   local_home()
   p <- pop_planner()
