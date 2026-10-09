@@ -2587,3 +2587,29 @@ As the programs read the definition.,プログラムが定義を読んだとき�
 Make the data facts (Review with the data).,データの事実を作ってください（データ込みでレビュー）。
 The rule %s could not be run: %s.,ルール %1$s を実行できませんでした：%2$s。
 This is a fault of the review; please report it.,レビュー側の不具合です。報告してください。
+Review,レビュー
+%s: the advice applied (save to keep it).,%s：助言を当てました（残すには保存してください）。
+Reading the data for the review,レビューのためにデータを読んでいます
+Reading the definition as the programs do,プログラムと同じように定義を読んでいます
+The definition has errors (see the Review tab),定義にエラーがあります（レビュータブを見てください）
+The review of this report: a click shows its items,この帳票のレビュー：クリックで項目を表示
+to check,要確認
+"%d errors, %d to check, %d to set by hand",エラー %d・要確認 %d・手で設定 %d
+Review with the data,データ込みでレビュー
+Check as the programs read it,プログラムが読むとおりに確認
+Every area,すべての範囲
+Search the items,項目を検索
+(all),（すべて）
+(the study),（試験全体）
+Item,項目
+Hint,ヒント
+Nothing to review.,レビューする項目はありません。
+Open a study to review it.,試験を開くとレビューできます。
+"Nothing to review: no error, nothing to check, nothing to set by hand.",レビューする項目はありません：エラーも、要確認も、手で設定するものもありません。
+Not reviewed against the data yet: Review with the data reads it once (it is kept).,まだデータと照らし合わせていません：「データ込みでレビュー」で一度読みます（結果は保存されます）。
+Against the data as read %s (%s),%s に読んだデータと照合（%s）
+Rules off in the company standards: %s,会社標準で止めているルール：%s
+errors,エラー
+to set by hand,手で設定
+ARD run,ARD の作成
+Definition files,定義ファイル
