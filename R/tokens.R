@@ -25,7 +25,7 @@ study_page_value <- function(x, col) page_value(x, col)
 set_study_page_value <- function(x, col, value) set_page_value(x, col, value)
 
 # A value of the page sheet: the study's row (`output_id` NA) or a
-# report's own (the report's row: step 4's font and size).  NA: none.
+# report's own (the report's row: step 3's font and size).  NA: none.
 page_value <- function(x, col, output_id = NA_character_) {
   d <- x$sheets$page
   if (is.null(d) || !nrow(d) || is.null(d[[col]])) return(NA_character_)

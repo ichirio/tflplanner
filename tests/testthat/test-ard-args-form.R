@@ -62,11 +62,15 @@ test_that("a field's empty choice names the default when it is one value", {
   expect_identical(.ard_default_label("code", "NULL", character(), "(d)", "(d: %s)"), "(d)")
 })
 
-test_that("a level field offers the code lists first, then the data's values", {
+test_that("a level field offers the code lists (as the ARD has them), else the data's values", {
   cl <- data.frame(variable = "SEX", value = c("M", "F"), label = NA, order = c("2", "1"))
-  d <- data.frame(SEX = c("F", "M", "U"))
-  expect_identical(.level_choices("SEX", cl, d), c("F", "M", "U"))
+  d <- data.frame(SEX = c("F", "M", "U"), RACE = c("B", "A", "A"))
+  # a listed variable: its list alone (the program stops on a value not in it)
+  expect_identical(.level_choices("SEX", cl, d), c("F", "M"))
   expect_identical(.level_choices("SEX", NULL, d), c("F", "M", "U"))
+  # the labels, which the ARD holds
+  cl$label <- c("Male", "Female")
+  expect_identical(.level_choices(c("SEX", "RACE"), cl, d), c("Female", "Male", "A", "B"))
 })
 
 test_that("the form picks a function, fills its arguments and writes args", {

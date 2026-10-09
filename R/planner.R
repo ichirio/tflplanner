@@ -6,7 +6,7 @@
 #   outputs  the report list: output_id, description, data_code (makes
 #            the ARD), process_code (normalizes and reworks it), section
 #            (the TOC's heading it is under; blank: from its ID),
-#            population (its analysis set: the TOC's, step 2's),
+#            population (its analysis set: the TOC's, step 1's),
 #            datasets (the TOC's, "ADSL | ADAE") -- the
 #            part rtfreporter does not read, kept in the report workbook's
 #            `_tflplanner` sheet (a sheet whose name starts with `_` is
@@ -127,7 +127,19 @@ set_codelist <- function(x, output_id, rows) {
 
 # The columns a sheet has, straight from rtfreporter, plus the free `note`.
 sheet_columns <- function(sheet) {
-  c(names(tflspec::tfl_table_spec()[[sheet]]), "note")
+  .sheet_columns_all()[[sheet]]
+}
+
+# Every sheet's columns, made once a session (the tflspec loaded does not
+# change): tfl_table_spec() builds every sheet each call, and a study read
+# from its state asks for them sheet by sheet (most of open_study()'s time)
+.sheet_cols_cache <- new.env(parent = emptyenv())
+.sheet_columns_all <- function() {
+  if (is.null(.sheet_cols_cache$cols)) {
+    sp <- tflspec::tfl_table_spec()
+    .sheet_cols_cache$cols <- lapply(sp, function(d) c(names(d), "note"))
+  }
+  .sheet_cols_cache$cols
 }
 
 .empty_sheet <- function(sheet) {

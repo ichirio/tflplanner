@@ -172,17 +172,21 @@
   identical(norm(a), norm(b))
 }
 
-# The levels a level field offers for the analysis's variables: the study's
-# code lists first (in their order), then the data's factor levels, then the
-# values the data has
+# The levels a level field offers for the analysis's variables: the
+# report's code lists first (in their order, as the ARD has them: the
+# labels), then, for a variable without one, the data's factor levels or
+# the values the data has
 .level_choices <- function(vars, codelists, data) {
   out <- character()
+  listed <- character()
   if (!is.null(codelists) && nrow(codelists)) {
-    cl <- codelists[codelists$variable %in% vars, , drop = FALSE]
+    cl <- codelists[codelists$variable %in% vars & !is.na(codelists$value), , drop = FALSE]
     ord <- suppressWarnings(as.numeric(cl$order))
-    out <- c(out, cl$value[order(cl$variable, is.na(ord), ord)])
+    cl <- cl[order(cl$variable, is.na(ord), ord), , drop = FALSE]
+    out <- c(out, ifelse(is.na(cl$label), cl$value, cl$label))
+    listed <- unique(cl$variable)
   }
-  for (v in intersect(vars, names(data %||% list()))) {
+  for (v in setdiff(intersect(vars, names(data %||% list())), listed)) {
     x <- data[[v]]
     out <- c(out, if (is.factor(x)) levels(x) else
       sort(unique(as.character(x[!is.na(x)]))))

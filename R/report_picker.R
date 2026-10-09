@@ -189,7 +189,7 @@ report_search_ui <- function(id, lang = "en") {
   shiny::div(
     class = "rp-search mb-1", style = "max-width: 22rem",
     shiny::textInput(id, NULL, "", width = "100%",
-                     placeholder = tr("Search: ID, title, analysis set, data", lang)))
+                     placeholder = tr("Search: ID, title, population, data", lang)))
 }
 
 .report_picker_css <- "
@@ -274,7 +274,7 @@ report_picker_ui <- function(id, lang = "en") {
     shiny::tags$style(shiny::HTML(.report_picker_css)),
     shiny::tags$script(shiny::HTML(.report_picker_js)),
     shiny::textInput(ns("q"), NULL, "", width = "100%",
-                     placeholder = tr("Search: ID, title, analysis set, data", lang)),
+                     placeholder = tr("Search: ID, title, population, data", lang)),
     shiny::selectInput(ns("state"), NULL, width = "100%", selectize = FALSE,
                        stats::setNames(c("all", "outdated", "not built", "error"),
                                        tr(c("All", "To make again", "Not made yet", "Error"), lang))),
@@ -286,7 +286,7 @@ report_picker_compact_ui <- function(id, lang = "en") {
   ns <- shiny::NS(id)
   shiny::div(class = "rp-compact mb-2", style = "max-width: 32rem",
              shiny::selectizeInput(ns("compact"), NULL, choices = NULL, width = "100%",
-                                   options = list(placeholder = tr("Search: ID, title, analysis set, data", lang))))
+                                   options = list(placeholder = tr("Search: ID, title, population, data", lang))))
 }
 
 # `rows` a reactive of .report_rows(), `now` the value chosen (an output id,

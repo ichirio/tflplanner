@@ -10,7 +10,7 @@
 
 .all_rows <- "__all__"
 .default_rows <- "__default__"
-.study_tabs <- c("data", "outputs", "ard", "results")
+.study_tabs <- c("data", "outputs", "make", "results")
 
 .sheet_labels <- c(
   tables = "tables: roles", variables = "variables",
@@ -24,8 +24,7 @@
 
 # The steps of making a report (the Make a report tab), by their tab values:
 # their names here only, so a name changes in one place (and its Japanese)
-.step_labels <- c(codelist = "1 Code lists", ard = "2 ARD",
-                  content = "3 Content", page = "4 Page and output")
+.step_labels <- c(ard = "1 ARD", content = "2 Content", page = "3 Page and output")
 
 .type_labels <- c(table = "Table", listing = "Listing", figure = "Figure",
                   user = "User code")
@@ -263,6 +262,12 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
 .rp-b-card { border: 1px solid var(--bs-border-color, #dee2e6);
   border-radius: .5rem; padding: .6rem .8rem; margin-bottom: .6rem; }
 .rp-b-card h6 { font-weight: 600; margin-bottom: .4rem; }
+/* a numbered part of a form (1-1's column definitions): its number in the
+   margin, the field beside it */
+.rp-num-part { display: flex; gap: .4rem; align-items: flex-start; }
+.rp-num-part > .rp-num { color: var(--bs-primary, #0d6efd); font-weight: 600;
+  padding-top: .1rem; min-width: 1.1em; }
+.rp-num-part > :not(.rp-num) { flex: 1 1 auto; min-width: 0; }
 /* the column header as a grid with the table's columns: the names on
    top, a row of fields a header line, a line's tools under it */
 .rp-hgrid-wrap { overflow-x: auto; }
@@ -534,16 +539,6 @@ app_ui <- function(lang = "en") {
                  " ", t(.report_state_words[[k]]))))))
 
   # -- the steps of making a report ----------------------------------------
-  step_codelist <- shiny::div(
-    class = "mt-2",
-    pane_head(t("This report's code lists"), t("This report's code lists: each variable's values, their order and the text they print as. A code list is a report's: copy one from the company standards or another report (Copy code lists...), or read a file, and change it here. The ARD uses those of the variables its analyses read (a value no record has is counted 0); the table uses them all. Optional: a report that needs none skips this step.")),
-    # SPEC | Code | Result (R/result_tabs.R); the editor: R/codelists.R
-    result_tabs_ui(
-      "codelist_right", lang = lang,
-      spec = shiny::tagList(grid_note, .codelist_editor_ui("cl", t)),
-      code = code_view("codelist_code", lang),
-      result = DT::DTOutput("codelist_effective", height = "auto", fill = FALSE)))
-
   step_ard <- shiny::div(
     class = "mt-2",
     shiny::uiOutput("ard_kind_note"),
@@ -562,11 +557,11 @@ app_ui <- function(lang = "en") {
     shiny::div(
       id = "ard_split", class = "rp-split rp-lay-side rp-show-def",
       bslib::card(
-        bslib::card_header(with_tip(t("ARD definition"), t("This report's analyses (the ARD): the data in 2-1, the analyses in 2-2."))),
+        bslib::card_header(with_tip(t("ARD definition"), t("This report's analyses (the ARD): the data in 1-1, the analyses in 1-2."))),
         bslib::navset_underline(
           id = "ard_sheet",
           bslib::nav_panel(paste0(t("The analyses"), " (analyses)"), value = "analyses",
-                           # 2-1 the analysis data (its form below it), then 2-2
+                           # 1-1 the analysis data (its form below it), then 1-2
                            # the analyses
                            shiny::uiOutput("ard_report_pop"),
                            shiny::uiOutput("ard_adata"),
@@ -589,7 +584,7 @@ app_ui <- function(lang = "en") {
           DT::DTOutput("ard_stat_catalog"))),
       # SPEC | Code | Result (R/result_tabs.R).  SPEC and Result are
       # filled by the server (ard_spec_pane, ard_result_pane): what is
-      # chosen on the left decides what they show (2-2 an analysis; 2-1
+      # chosen on the left decides what they show (1-2 an analysis; 1-1
       # an analysis data, S1's)
       result_tabs_ui(
         "ard_right", lang = lang, selected = "code",
@@ -665,7 +660,7 @@ app_ui <- function(lang = "en") {
         bslib::layout_columns(
           col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
           bslib::card(
-            bslib::card_header(with_tip(t("Your code"), paste(t("Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them; they print in that order. The report's titles, footnotes, header and page come from its settings (step 4, Page), as for any report."), t("Only an analysis to write yourself? That is the custom method of step 2 (ARD) (or a company ard_*() function). This kind is for a report whose whole content is your code.")))),
+            bslib::card_header(with_tip(t("Your code"), paste(t("Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them; they print in that order. The report's titles, footnotes, header and page come from its settings (step 3, Page), as for any report."), t("Only an analysis to write yourself? That is the custom method of step 1 (ARD) (or a company ard_*() function). This kind is for a report whose whole content is your code.")))),
             shiny::uiOutput("uc_inputs"),
             shiny::div(class = "rp-code",
                        shiny::textAreaInput("uc_code", t("Code"), rows = 14,
@@ -674,7 +669,7 @@ app_ui <- function(lang = "en") {
           result_tabs_ui(
             "uc_right", lang = lang, selected = "result",
             spec = shiny::p(class = "small text-muted",
-                            t("A user-code report's definition is its code, on the left, and its page (step 4).")),
+                            t("A user-code report's definition is its code, on the left, and its page (step 3).")),
             code = code_view("program_uc", lang),
             result = shiny::tagList(
               shiny::div(class = "d-flex gap-2 align-items-center mb-1",
@@ -716,7 +711,7 @@ app_ui <- function(lang = "en") {
             class = "d-flex gap-2 align-items-center mb-2",
             .btn("fetch", t("Preview"),
                  class = "btn-sm btn-outline-primary"),
-            help_tip(t("Makes this report's ARD (as Preview in step 2), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
+            help_tip(t("Makes this report's ARD (as Preview in step 1), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
           shiny::uiOutput("ard_summary")))))
 
   step_page <- shiny::div(
@@ -892,9 +887,9 @@ app_ui <- function(lang = "en") {
             shiny::tags$summary(t("Column help")),
             DT::DTOutput("help_ard_datasets"))),
         bslib::nav_panel(
-          paste0(t("Analysis sets"), " (populations)"), value = "populations",
-          pane_head(paste0(t("Analysis sets"), " (populations)"),
-                    paste(t("The analysis sets: the subjects of a dataset a condition keeps (SAFFL == \"Y\")."), edit_note)),
+          paste0(t("Populations"), " (populations)"), value = "populations",
+          pane_head(paste0(t("Populations"), " (populations)"),
+                    paste(t("The populations: the subjects of a dataset a condition keeps (SAFFL == \"Y\")."), edit_note)),
           rhandsontable::rHandsontableOutput("hot_ard_populations"),
           shiny::tags$details(
             class = "rp-help mt-2",
@@ -938,7 +933,6 @@ app_ui <- function(lang = "en") {
                    t("Choose a report above, or in the list on the left (> opens it)."))),
         bslib::navset_pill(
           id = "step",
-          bslib::nav_panel(step_title("codelist"), value = "codelist", step_codelist),
           bslib::nav_panel(step_title("ard"), value = "ard", step_ard),
           bslib::nav_panel(step_title("content"), value = "content", step_content),
           bslib::nav_panel(step_title("page"), value = "page", step_page)))),
@@ -1110,7 +1104,7 @@ $(document).on('shiny:value', function(e) {
     }, 30);
   });
 })();
-// An analysis opened in step 2 (a click, a new one, a copy): its form, below
+// An analysis opened in step 1 (a click, a new one, a copy): its form, below
 // the list and often below the window's edge, is brought into view -- when
 // another analysis is drawn, not when the same one is drawn again
 (function() {
@@ -1722,9 +1716,10 @@ app_server <- function(input, output, session, start) {
     last <- shiny::isolate(if (has_study()) rv$study$meta$study_id else
       tflplanner_config()$last_study)
     open_id <- shiny::isolate(if (has_study()) rv$study$meta$study_id)
+    # a study whose run is going on (the sample's, made in the background)
+    running <- if (!is.null(rv$job)) rv$job_study
     v <- data.frame(
-      a = paste0(d$study_id, ifelse(d$folder, "", " \u26a0"),
-                 ifelse(d$study_id %in% open_id, " \u25cf", "")),
+      a = .study_list_ids(d, open_id, running, t),
       b = d$title, e = substr(d$saved, 1L, 16L),
       stringsAsFactors = FALSE)
     v[is.na(v)] <- ""
@@ -1747,6 +1742,11 @@ app_server <- function(input, output, session, start) {
                      ordering = FALSE, scrollY = "50vh",
                      scrollCollapse = TRUE))
   })
+  # drawn also while the Study tab is hidden: a study made or copied from
+  # another tab (the new study's step moves to the report list) is in the
+  # list when the tab is shown again -- a hidden output invalidated waits for
+  # an update that showing a tab does not send (the list is cheap, 0.07 s)
+  shiny::outputOptions(output, "studies", suspendWhenHidden = FALSE)
   # the study open, in the bar of the tabs on every tab (a study is chosen
   # on the Study tab)
   output$open_study_bar <- shiny::renderUI({
@@ -2197,16 +2197,17 @@ app_server <- function(input, output, session, start) {
     blank <- function(v) if (is.null(v) || !nzchar(trimws(v))) NA else v
     s <- if (identical(input$ns_from, "sample")) {
       # the sample study under this ID: its data, ARD definition, tables,
-      # listing and figures, made at once by an official run
+      # listing and figures copied (seconds); its official run, which makes
+      # the ARD and the reports (minutes), runs in the background below
       nz <- function(v) { v <- blank(v); if (is.na(v)) NULL else v }
       out <- NULL
       shiny::withProgress(
-        message = t("Copying the sample study and making its ARD and reports ..."),
+        message = t("Copying the sample study ..."),
         out <- guarded(suppressMessages(create_sample_study(
           root = trimws(input$ns_root), study_id = trimws(input$ns_id),
           title = nz(input$ns_title), compound = nz(input$ns_compound),
           phase = nz(input$ns_phase),
-          description = nz(input$ns_description)))))
+          description = nz(input$ns_description), run = FALSE))))
       out
     } else {
       # "empty": no reports, but the company's study defaults, analysis
@@ -2226,7 +2227,10 @@ app_server <- function(input, output, session, start) {
     shiny::removeModal()
     rv$studies_ver <- rv$studies_ver + 1L
     set_study(s)
-    if (identical(input$ns_from, "sample")) rv$next_steps <- TRUE
+    if (identical(input$ns_from, "sample")) {
+      rv$next_steps <- TRUE
+      start_sample_run(s)
+    }
     notify(sprintf(t("Created %s"), s$meta$study_id))
     bslib::nav_select("nav", "outputs")
   })
@@ -2332,7 +2336,7 @@ app_server <- function(input, output, session, start) {
                             "r (half to even)", "sas (half away from zero)"))),
         selected = v(r)),
       shiny::h6(with_tip(t("Every report's header"),
-                         t("The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}, {STUDY_ID}. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, analysis set)."))),
+                         t("The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}, {STUDY_ID}. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, population)."))),
       shiny::div(class = "d-flex flex-wrap gap-2",
         shiny::textInput("tok_COMPANY", t("Company"), v(study_token(rv$p, "COMPANY"))),
         shiny::textInput("tok_ANALYSIS_TYPE", t("Analysis"),
@@ -2351,7 +2355,7 @@ app_server <- function(input, output, session, start) {
         class = "d-flex flex-wrap gap-2 align-items-center mb-2",
         .btn("std_defaults", t("Add the company's study defaults (only what is missing)"),
              class = "btn-sm btn-outline-primary"),
-        help_tip(t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, the font, analysis sets and data catalog. Nothing already there is changed.")))))
+        help_tip(t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, the font, populations and data catalog. Nothing already there is changed.")))))
   })
   output$study_actions <- shiny::renderUI({
     shiny::req(shows_open())
@@ -2580,8 +2584,8 @@ app_server <- function(input, output, session, start) {
   page <- shiny::reactive({
     nav <- input$nav %||% ""
     if (!identical(nav, "make")) return(nav)
-    switch(input$step %||% "codelist",
-      codelist = "codelist", ard = "ard",
+    switch(input$step %||% "ard",
+      ard = "ard",
       content = if (identical(input$content_nav, "code")) "code" else
         switch(report_kind(), table = "tables", listing = "lf",
                figure = "designer", user = "usercode", "outputs"),
@@ -2590,7 +2594,7 @@ app_server <- function(input, output, session, start) {
   })
   # a page: its top tab, and for a report's, its step (and the step's tab)
   go <- function(where) {
-    step <- switch(where, codelist = "codelist", ard = "ard",
+    step <- switch(where, ard = "ard",
                    tables = , lf = , designer = , usercode = , code = "content",
                    report_spec = "page", NULL)
     if (is.null(step)) return(bslib::nav_select("nav", where))
@@ -2625,7 +2629,7 @@ app_server <- function(input, output, session, start) {
     k <- report_kind()
     if (identical(k, "user") && !.user_reads_ard(rv$p, current())) {
       return(shiny::div(class = "alert alert-info py-1 small",
-                        sprintf(t("%s does not read an ARD: \"Use this report's ARD\" in its step 3 (Content) makes it read one (these analyses, or an ARD taken in)."),
+                        sprintf(t("%s does not read an ARD: \"Use this report's ARD\" in its step 2 (Content) makes it read one (these analyses, or an ARD taken in)."),
                                 current())))
     }
     # a report whose ARD was taken in: its analyses here are not used
@@ -2772,14 +2776,9 @@ app_server <- function(input, output, session, start) {
       .help_table(sheet), rownames = FALSE,
       options = list(dom = "t", paging = FALSE, ordering = FALSE))
   })
-  # step 1: the report's code lists (R/codelists.R)
-  .codelist_editor_server(input, output, session, "cl", rv, report = current,
-                          vars = shiny::reactive(.codelist_vars(rv$p, current())),
-                          t = t, notify = notify, guarded = guarded, bump = bump,
-                          read_grid = read_grid, grids_drawn = grids_drawn,
-                          has_study = has_study)
-  # the same editor in a dialog, from 2-1, 2-2 and step 3: the variables
-  # they are about (R/codelists.R)
+  # a report's code lists, in a dialog, where its data is made (1-1's
+  # column definitions, a listing's data, a figure's data): the variables
+  # it is about (R/codelists.R)
   cl_dialog <- function(prefix, done = function() NULL) {
     .codelist_dialog_server(input, output, session, prefix, rv, report = current,
                             t = t, notify = notify, guarded = guarded, bump = bump,
@@ -2787,23 +2786,41 @@ app_server <- function(input, output, session, start) {
                             has_study = has_study, done = done)
   }
   cl_21 <- cl_dialog("cl21")
-  # step 3: the builder shows the code lists' text, drawn again
-  cl_3 <- cl_dialog("cl3", done = function() rv$bver <- rv$bver + 1L)
-  shiny::observeEvent(input$cl21_open, {
-    shiny::req(has_study(), current())
+  cl_lf <- cl_dialog("cllf")
+  cl_fig <- cl_dialog("clfig")
+  # 1-1's column definitions, part 4: the code lists of the analysis data's
+  # columns -- what its program makes of their values -- the values its
+  # data has that a list does not (the program would stop on them), and
+  # the dialogs (R/codelists.R)
+  adata_cl_vars <- function() {
     made <- vapply(.drv_read_all(adata_derive_now()), function(x) x$name, "")
-    cl_21$open(c(made, input$adata_add, input$adata_keep),
-               {
-                 nm <- trimws(input$adata_id %||% "")
-                 if (nzchar(nm)) sprintf(t("Levels and order: the columns of %s"), nm) else
-                   t("Levels and order: the columns of this analysis data")
-               })
+    unique(c(adata_cols(adata_root(input$adata_from %||% "")), made,
+             input$adata_add, input$adata_keep))
+  }
+  adata_cl_ids <- c(edit = "cl21_open", copy = "cl21_copy", add = "adata_cl_add")
+  adata_cl_missing <- .codelist_part_server(
+    input, rv, current, adata_cl_ids, vars = adata_cl_vars,
+    # the rows its condition keeps (the analysis set's too)
+    data = function() {
+      ds <- adata_root(input$adata_from %||% "")
+      if (!.is_blank(ds)) .rows_where(an_data(ds), adata_where_now())
+    },
+    title = function() {
+      nm <- trimws(input$adata_id %||% "")
+      if (nzchar(nm)) sprintf(t("Code lists: the columns of %s"), nm) else
+        t("Code lists: the columns of this analysis data")
+    },
+    dialog = cl_21, t = t, notify = notify, guarded = guarded, bump = bump,
+    has_study = has_study)
+  output$adata_cl <- shiny::renderUI({
+    shiny::req(has_study(), current(), !is.null(adata_edit()))
+    .codelist_part_ui(
+      .codelist_lines(sheet_rows(rv$p, "codelists", current()), adata_cl_vars()),
+      adata_cl_missing(), t, adata_cl_ids,
+      t("This report's code lists of these columns: the program puts them on the data (set_levels()), each column a factor in the list's order, its values the labels -- so the ARD holds what the table prints. A value a list does not have stops the program."))
   })
-  shiny::observeEvent(input$cl3_open, {
-    shiny::req(has_study(), current())
-    cl_3$open(.codelist_vars(rv$p, current()),
-              sprintf(t("Code lists of %s's table"), current()))
-  })
+  # step 2's table: its code lists are where its data is made (1-1)
+  shiny::observeEvent(input$cl3_open, go("ard"))
   output$type_note <- shiny::renderUI({
     id <- current()
     if (is.null(id)) return(NULL)
@@ -2930,7 +2947,7 @@ app_server <- function(input, output, session, start) {
     bump()
     notify(if (is.null(n)) sprintf(t("%s: done"), what) else
       sprintf(t("%s: %d rows added or filled"), what, n))
-    if (identical(sheet, "codelists")) go("codelist") else
+    if (identical(sheet, "codelists")) go("ard") else
       bslib::nav_select("table_sheet", sheet)
   }
   need_meta <- function() {
@@ -3128,7 +3145,7 @@ app_server <- function(input, output, session, start) {
       study = list(key = c("id", "output", "source")),
       list())
   }
-  # (the analysis data are each report's: 2-1's sheet, not the Data tab's)
+  # (the analysis data are each report's: 1-1's sheet, not the Data tab's)
   for (sheet in setdiff(names(.ard_sheets()), "analysis_data")) local({
     sh <- sheet
     out_id <- paste0("hot_ard_", sh)
@@ -3161,9 +3178,9 @@ app_server <- function(input, output, session, start) {
       guarded(rv$p <- set_ard_rows(rv$p, sh, tg, d))
     })
   })
-  # 2-1's sheet: the analysis data the report reads, edited in their place
+  # 1-1's sheet: the analysis data the report reads, edited in their place
   # in the study's sheet (rows added go after them)
-  # the report's analysis data and the one open in 2-1 (not read yet by an
+  # the report's analysis data and the one open in 1-1 (not read yet by an
   # analysis, a new one for one)
   adata_grid_ids <- function() .adata_of_report(rv$p, ard_target())
   adata_grid_key <- shiny::reactive(paste("adata_report", input$target, adata_pick() %||% "",
@@ -3319,14 +3336,14 @@ app_server <- function(input, output, session, start) {
     ch
   }
   data_words_list <- function() list(with = t("%s \u00d7 %s (%s)"),
-                                     alone = t("%s, no analysis set (%s)"),
+                                     alone = t("%s, no population (%s)"),
                                      none = t("(no data)"), count = t("%s: %s"),
                                      added = t("+ %s"), per = t("one row per %s"),
                                      subj = t("%s's subjects"),
                                      named = t("%s (%s)"),
                                      groups = c(t("This report's analysis data"),
                                                 t("The study's other analysis data"),
-                                                t("Dataset \u00d7 analysis set (named by the program)")))
+                                                t("Dataset \u00d7 population (named by the program)")))
   adata_count_words <- list(records = t("%d records, %d subjects"),
                             one_row = t("%d subjects, one row a subject"))
   # the records and subjects of each analysis data, made as the ARD
@@ -3502,7 +3519,7 @@ app_server <- function(input, output, session, start) {
   den_choices <- function(now = "") {
     p <- rv$p$ard
     ch <- c(stats::setNames("", t("the method's default")),
-            stats::setNames("population", t("the analysis set")),
+            stats::setNames("population", t("the population")),
             stats::setNames("row", t("within a row")),
             stats::setNames("column", t("within a column")),
             stats::setNames("cell", t("of the whole table")))
@@ -3520,8 +3537,8 @@ app_server <- function(input, output, session, start) {
     dss <- setdiff(more, pops)
     out <- list()
     out[[t("The method's own, or cards'")]] <- ch
-    if (length(pops)) out[[t("Analysis sets")]] <- unlist(lapply(pops, function(v)
-      lab(v, t("analysis set"), n[.an_data_value(NA, v)])))
+    if (length(pops)) out[[t("Populations")]] <- unlist(lapply(pops, function(v)
+      lab(v, t("population"), n[.an_data_value(NA, v)])))
     if (length(dss)) out[[t("Datasets")]] <- unlist(lapply(dss, function(v)
       lab(v, t("dataset"), n[.an_data_value(v, NA)])))
     if (length(ad)) out[[t("Analysis data")]] <- unlist(lapply(ad, function(v)
@@ -3604,22 +3621,24 @@ app_server <- function(input, output, session, start) {
         shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
                          width = "100%")),
-      if (!inside) shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 2-1, or a dataset \u00d7 analysis set. The name is the one the program gives it.")),
+      if (!inside) shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 1-1, or a dataset \u00d7 population. The name is the one the program gives it.")),
                                       data_choices(r),
                                       selected = .an_data_value_row(r),
                                       width = "100%"),
       shiny::uiOutput("ard_an_vars"),
       shiny::uiOutput("ard_an_args"),
       if (identical(r$method, "custom")) shiny::tagList(
-        shiny::tags$label(class = "form-label", argl("The code (R: `data` and `population` are the analysis's data and analysis set)", "code")),
+        shiny::tags$label(class = "form-label", argl("The code (R: `data` and `population` are the analysis's data and population)", "code")),
         shiny::textAreaInput(st_id("code"), NULL, blank_na(r$code), width = "100%", rows = 8,
                              resize = "vertical")),
       if (!inside) shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
         shiny::tags$summary(class = "small", with_tip(argl("This analysis's own filter", "where"),
-                                                      t("An R condition that filters this analysis's rows alone (e.g. AESER == \"Y\"). The data's own filter is 2-1's."))),
+                                                      t("An R condition that filters this analysis's rows alone (e.g. AESER == \"Y\"). The data's own filter is 1-1's."))),
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
-                         placeholder = "AESER == \"Y\"")),
+                         placeholder = "AESER == \"Y\""),
+        .where_labels_note(sheet_rows(shiny::isolate(rv$p), "codelists",
+                                      shiny::isolate(current()) %||% ""), t)),
       shiny::uiOutput("ard_stat_part"),
       shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-center",
@@ -3991,7 +4010,7 @@ app_server <- function(input, output, session, start) {
     sch <- first(sch, strata_now)
     shiny::tagList(
       if (!in_stack) shiny::selectizeInput(
-        st_id("by"), with_tip(argl("Grouping variables", "by"), t("The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step 3's. A combination with no records is shown, with 0.")),
+        st_id("by"), with_tip(argl("Grouping variables", "by"), t("The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step 2's. A combination with no records is shown, with 0.")),
         bch, by_now, multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
       shiny::selectizeInput(
@@ -4012,7 +4031,7 @@ app_server <- function(input, output, session, start) {
         shiny::div(class = "flex-grow-1", shiny::selectInput(
           st_id("den"), with_tip(argl("Percentages of", "denominator",
                                       st_arg_default(r, "denominator")),
-                                 t("What a % is of. The analysis set: its subjects in the group (the column headers' N; an AE table: the SAF's N per arm). Within a row: the total of the row (the variable's level). Within a column: the total of the group. Of the whole table: all of it. The method's default: blank.")),
+                                 t("What a % is of. The population: its subjects in the group (the column headers' N; an AE table: the SAF's N per arm). Within a row: the total of the row (the variable's level). Within a column: the total of the group. Of the whole table: all of it. The method's default: blank.")),
           den_choices(den_now), den_now, width = "100%"))),
       if (is.null(d)) shiny::p(
         class = "small text-muted",
@@ -4396,7 +4415,7 @@ app_server <- function(input, output, session, start) {
     if (!is.na(k)) out <- c(out, sprintf(t(.n_twice_words), id, tw$with[k]))
     out
   }
-  # -- 2-1. the analysis data a report reads -------------------------------
+  # -- 1-1. the analysis data a report reads -------------------------------
   # Named data (tflspec's sheet analysis_data), the study's.  The report's
   # in two groups, made in this order: its subjects (an analysis set's own
   # data, kept to the report's subjects: one row a subject, the
@@ -4404,7 +4423,7 @@ app_server <- function(input, output, session, start) {
   # subjects, the rows a condition keeps, columns taken and made).  Each
   # with what it is, its records and subjects and the analyses on it; the
   # data the report's analyses read without a name (a dataset x analysis
-  # set) can be given one.  2-2 below: the analyses.
+  # set) can be given one.  1-2 below: the analyses.
   adata_js <- function(input, value) sprintf(
     "Shiny.setInputValue('%s', %s, {priority: 'event'});", input,
     jsonlite::toJSON(value, auto_unbox = TRUE))
@@ -4429,7 +4448,7 @@ app_server <- function(input, output, session, start) {
     shiny::div(
       class = "d-flex flex-wrap align-items-baseline gap-2 mb-2",
       shiny::tags$label(`for` = "ard_report_pop_pick", class = "small fw-bold mb-0",
-                        with_tip(t("This report's analysis set"), t("The report list's analysis set (the TOC's): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 2-1 and 2-2 start from it."))),
+                        with_tip(t("This report's population"), t("The report list's population (the TOC's): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 1-1 and 1-2 start from it."))),
       shiny::div(style = "min-width: 16rem",
                  shiny::selectInput("ard_report_pop_pick", NULL, pop_choices(),
                                     selected = if (is.na(now)) "" else now, width = "100%")))
@@ -4448,7 +4467,7 @@ app_server <- function(input, output, session, start) {
     rv$p <- p
     bump()
     if (length(made)) notify(sprintf(t("%s made (save to keep it)."), paste(made, collapse = ", ")))
-    if (length(left)) notify(sprintf(t("%s left as it is: change it in 2-1 if it should follow the analysis set."),
+    if (length(left)) notify(sprintf(t("%s left as it is: change it in 1-1 if it should follow the population."),
                                      paste(left, collapse = ", ")), "warning")
   }, ignoreInit = TRUE)
   output$ard_adata <- shiny::renderUI({
@@ -4487,7 +4506,19 @@ app_server <- function(input, output, session, start) {
             class = "text-muted",
             sprintf(t("Read by %s"), paste(sub("^.* / ", "", here), collapse = ", ")),
             if (length(setdiff(u$analyses, here)))
-              sprintf(t("; other reports' analyses: %d"), length(setdiff(u$analyses, here))))))
+              sprintf(t("; other reports' analyses: %d"), length(setdiff(u$analyses, here)))),
+          if (length(cl_of(id))) shiny::div(
+            class = "text-muted",
+            sprintf(t("Code lists: %s (Column definitions \u2463)"), paste(cl_of(id), collapse = ", ")))))
+    }
+    # the columns of a data with a code list of this report: its dataset's,
+    # those it adds and makes
+    cl_rows <- sheet_rows(p, "codelists", tg)
+    cl_of <- function(id) {
+      r <- ad[match(id, ad$data_id), , drop = FALSE]
+      cols <- c(adata_cols(adata_root(r$from)), .split_bar(r$add),
+                vapply(.drv_read_all(r$derive %||% NA_character_), function(x) x$name, ""))
+      vapply(.codelist_lines(cl_rows, cols), `[[`, "", "variable")
     }
     # the data the report's analyses read without a name
     a <- st_rows()
@@ -4528,8 +4559,8 @@ app_server <- function(input, output, session, start) {
     shiny::div(
       class = "rp-b-card mb-2",
       shiny::h6(class = "mb-2", with_tip(
-        t("2-1 Analysis data"),
-        t("The data this report's analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are this report's (another report's adsl_saf may differ: copy one with the button). The denominator of a percent is chosen with each analysis, in 2-2."))),
+        t("1-1 Analysis data"),
+        t("The data this report's analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are this report's (another report's adsl_saf may differ: copy one with the button). The denominator of a percent is chosen with each analysis, in 1-2."))),
       shiny::div(
         class = "d-flex flex-wrap gap-1 align-items-center mb-1",
         .btn("ard_adata_new", t("New analysis data"), class = "btn-sm btn-outline-primary py-0"),
@@ -4559,19 +4590,19 @@ app_server <- function(input, output, session, start) {
     shiny::req(has_study(), ard_target())
     shiny::tagList(
       shiny::h6(class = "mt-3 mb-1", with_tip(
-        t("2-2 Analyses"),
-        t("The report's analyses. Each one's Data: an analysis data of 2-1; the denominator of a percent: chosen with it. ARD: the data of the analyses' results (the tables are made from it). Analysis set: the subjects a percent is of (SAF ...)."))),
+        t("1-2 Analyses"),
+        t("The report's analyses. Each one's Data: an analysis data of 1-1; the denominator of a percent: chosen with it. ARD: the data of the analyses' results (the tables are made from it). Population: the subjects a percent is of (SAF ...)."))),
       if (length(.old_format(rv$p)))
         shiny::p(class = "small text-warning mb-1", t(.old_format_line)))
   })
   # the form: what is being made (`old`: the one changed; `name`: a
   # report's data being given a name; `pop`: the analysis set it was kept to)
   adata_edit <- shiny::reactiveVal(NULL)
-  # the analysis data clicked in 2-1 (its form open below)
+  # the analysis data clicked in 1-1 (its form open below)
   adata_pick <- shiny::reactiveVal(NULL)
   adata_form_ui <- shiny::reactiveVal(NULL)
-  # the right of step 2 (SPEC | Code | Result) follows what is open on the
-  # left: an analysis data of 2-1, else 2-2's analyses
+  # the right of step 1 (SPEC | Code | Result) follows what is open on the
+  # left: an analysis data of 1-1, else 1-2's analyses
   step2_focus <- shiny::reactiveVal("analysis")
   output$adata_detail <- shiny::renderUI(adata_form_ui())
   adata_close <- function() {
@@ -4767,23 +4798,28 @@ app_server <- function(input, output, session, start) {
                                                    r$from)), from_ch)
     }
     more <- !.is_blank(r$add) || !.is_blank(r$derive) || !.is_blank(r$keep) || !.is_blank(r$distinct)
+    has_cl <- nrow(sheet_rows(p, "codelists", ard_target() %||% "") %||% data.frame()) > 0L
     adata_drv$load(r$derive)
     # add: columns of the subjects' data joined in -- not offered while it is
     # made from the analysis set's own data (it has them all), unless the
     # sheet says some
     add_ui <- shiny::selectizeInput(
       "adata_add", with_tip(argl("Columns added from the subjects' data", "add"),
-                            t("Columns of the subjects' data (the analysis set's, or the analysis data its subjects are kept to) joined by the subject key. Nothing chosen: nothing added. A column of the same name takes the subjects' values.")),
+                            t("Columns of the subjects' data (the population's, or the analysis data its subjects are kept to) joined by the subject key. Nothing chosen: nothing added. A column of the same name takes the subjects' values.")),
       choices = unique(c(bar(r$add), adata_add_choices(r$from, subj_now))),
       selected = bar(r$add), multiple = TRUE, width = "100%",
       options = list(create = TRUE, plugins = list("remove_button")))
     own <- unname(from_ch)[vapply(unname(from_ch), function(v)
       adata_root(v) %in% adata_pop_ds(), NA)]
     if (.is_blank(r$add) && length(own)) {
-      add_ui <- shiny::conditionalPanel(
-        sprintf("[%s].indexOf(input.adata_from) < 0",
-                paste(encodeString(own, quote = "\""), collapse = ", ")),
-        add_ui)
+      own_js <- paste(encodeString(own, quote = "\""), collapse = ", ")
+      # (part 1 says why it has nothing to add, rather than stand empty)
+      add_ui <- shiny::tagList(
+        shiny::conditionalPanel(sprintf("[%s].indexOf(input.adata_from) < 0", own_js), add_ui),
+        shiny::conditionalPanel(
+          sprintf("[%s].indexOf(input.adata_from) >= 0", own_js),
+          shiny::p(class = "small text-muted mb-2",
+                   t("Columns added from the subjects' data: none to add (this data is the subjects' data itself)."))))
     }
     step2_focus("adata")
     adata_form_ui(shiny::div(
@@ -4796,13 +4832,13 @@ app_server <- function(input, output, session, start) {
         shiny::selectInput("adata_from", argl("Made from", "from"), from_ch,
                            selected = blank_na(r$from), width = "100%"),
         shiny::selectInput("adata_pop", with_tip(
-          t("Analysis set"),
-          t("The study's analysis set (SAF ...) or a population flag of the data, put in as the condition's first row (SAFFL = Y). Left as it is, it is saved as the analysis set (population_id); change it there, add others under it.")),
+          t("Population"),
+          t("The study's population (SAF ...) or a population flag of the data, put in as the condition's first row (SAFFL = Y). Left as it is, it is saved as the population (population_id); change it there, add others under it.")),
           pop_ch, selected = pop_now, width = "100%")),
       shiny::uiOutput("adata_pop_note"),
       if (nzchar(e$legacy_pop)) shiny::p(
         class = "small text-muted mb-2",
-        sprintf(t("Also kept to the analysis set %s (population_id, as the sheet has it: SPEC shows it)."),
+        sprintf(t("Also kept to the population %s (population_id, as the sheet has it: SPEC shows it)."),
                 e$legacy_pop)),
       bslib::layout_columns(
         col_widths = c(5, 7),
@@ -4822,35 +4858,42 @@ app_server <- function(input, output, session, start) {
               t("Keep to the subjects of an analysis data of one row a subject"),
               shiny::span(class = "text-muted small", "(subjects)")),
             subj_on),
-          help_tip(t("Only the subjects in that analysis data: its condition (its analysis set's too) is not written here again."))),
+          help_tip(t("Only the subjects in that analysis data: its condition (its population's too) is not written here again."))),
         if (length(cands) > 1L) shiny::conditionalPanel(
           "input.adata_subj_on",
           shiny::selectInput("adata_subj", NULL, stats::setNames(cands, cands),
                              selected = subj_now, width = "100%")),
         NULL),
-      shiny::tags$label(class = "form-label", with_tip(argl("Filter (a condition)", "where"), t("The condition the data's rows are filtered by (subset()). The rows are AND (\"+ and\"); \"+ or (another group)\" is OR. A flag: \"= Y\". What the rows cannot say: \"Write the condition as R\"."))),
+      shiny::tags$label(class = "form-label", with_tip(argl("Filter (a condition)", "where"), t("The condition the data's rows are filtered by (filter()). The rows are AND (\"+ and\"); \"+ or (another group)\" is OR. A flag: \"= Y\". What the rows cannot say: \"Write the condition as R\"."))),
       condition_builder_ui("adata_cond", lang),
+      # its columns, in the order the program makes them: added, made or
+      # changed, kept, and the code lists put on them
       shiny::tags$details(
-        class = "mb-2", open = if (more) NA,
-        shiny::tags$summary(class = "small", t("Columns taken, made, kept; one row per ...")),
-        add_ui,
-        shiny::div(
-          class = "mb-1",
-          .btn("cl21_open", t("Levels and order (code lists)..."),
-               class = "btn-sm btn-link py-0 px-0"),
-          shiny::span(class = "small text-muted ms-1",
-                      t("the levels and order of this analysis data's columns (for the ARD and the table both)"))),
-        .derive_editor_ui(t, with_tip(argl("Columns made", "derive"),
-                                      t("The columns this data makes: split by conditions, cut a number into groups, days between two dates, or any R. The sheet keeps each as NAME = R (derive, | between them); one the form cannot draw is kept as written.")),
-                          blank_na(r$derive)),
-        shiny::selectizeInput("adata_keep", argl("Columns kept (blank: all)", "keep"),
-                              choices = unique(c(bar(r$keep), adata_cols(adata_root(r$from)))),
-                              selected = bar(r$keep), multiple = TRUE, width = "100%",
-                              options = list(create = TRUE, plugins = list("remove_button"))),
-        shiny::selectizeInput("adata_distinct", argl("One row per (e.g. subject; subject \u00d7 phase)", "distinct"),
-                              choices = unique(c(bar(r$distinct), adata_cols(adata_root(r$from)))),
-                              selected = bar(r$distinct), multiple = TRUE, width = "100%",
-                              options = list(create = TRUE, plugins = list("remove_button"))))),
+        class = "mb-2", open = if (more || has_cl) NA,
+        shiny::tags$summary(class = "small", with_tip(
+          t("Column definitions"),
+          t("The columns of this analysis data, in the order its program makes them: \u2460 added from the subjects' data, \u2461 made or changed, \u2462 kept, \u2463 the code lists put on them."))),
+        shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2460"), shiny::div(add_ui)),
+        shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2461"),
+          .derive_editor_ui(t, with_tip(argl("Columns made or changed", "derive"),
+                                        t("The columns this data makes, or changes when the name is a column it has: split by conditions, cut a number into groups, days between two dates, or any R (mutate()). The sheet keeps each as NAME = R (derive, | between them); one the form cannot draw is kept as written.")),
+                            blank_na(r$derive))),
+        shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2462"),
+          shiny::selectizeInput("adata_keep", with_tip(
+            argl("Columns kept (blank: all)", "keep"),
+            t("The columns kept (select()). Given, the subject key and the columns this report's analyses read are kept too, without naming them.")),
+                                choices = unique(c(bar(r$keep), adata_cols(adata_root(r$from)))),
+                                selected = bar(r$keep), multiple = TRUE, width = "100%",
+                                options = list(create = TRUE, plugins = list("remove_button")))),
+        # (one row per ...: after the columns kept, before the code lists,
+        # as the program has it)
+        shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", ""),
+          shiny::selectizeInput("adata_distinct", argl("One row per (e.g. subject; subject \u00d7 phase)", "distinct"),
+                                choices = unique(c(bar(r$distinct), adata_cols(adata_root(r$from)))),
+                                selected = bar(r$distinct), multiple = TRUE, width = "100%",
+                                options = list(create = TRUE, plugins = list("remove_button")))),
+        shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2463"),
+          shiny::div(shiny::uiOutput("adata_cl"))))),
       # the way out: R that makes the data itself (the definition keeps it)
       shiny::tags$details(
         class = "mb-2", open = if (!.is_blank(r$code)) NA,
@@ -4951,8 +4994,8 @@ app_server <- function(input, output, session, start) {
     k <- match(pop, po$population_id)
     root <- adata_root(input$adata_from %||% "")
     shiny::div(class = "alert alert-warning small py-1 mb-2",
-               if (n < 0L) sprintf(t("%s has no %s: its condition is not taken as the analysis set %s (written as a condition)."), root, .pop_flag(po$where[k]), pop) else
-                 sprintf(t("%s's %s is not %s's for %d subjects: its condition is not taken as the analysis set %s (written as a condition)."), root, .pop_flag(po$where[k]), po$dataset[k], n, pop))
+               if (n < 0L) sprintf(t("%s has no %s: its condition is not taken as the population %s (written as a condition)."), root, .pop_flag(po$where[k]), pop) else
+                 sprintf(t("%s's %s is not %s's for %d subjects: its condition is not taken as the population %s (written as a condition)."), root, .pop_flag(po$where[k]), po$dataset[k], n, pop))
   })
   # the same data already there: said, so it is not made twice
   output$adata_same <- shiny::renderUI({
@@ -4966,7 +5009,7 @@ app_server <- function(input, output, session, start) {
     same <- .adata_same_as(.adata_rows(rv$p, ard_target()), one_of(input$adata_from), ps$pop, subjects, ps$where)
     if (is.na(same)) return(NULL)
     shiny::div(class = "alert alert-info small py-1 mb-2",
-               sprintf(t("%s, already there, is this same data: no need to make it again (in 2-2, choose %s)."),
+               sprintf(t("%s, already there, is this same data: no need to make it again (in 1-2, choose %s)."),
                        same, same))
   })
   # the form's values as a planner with them (an error, said, when it is
@@ -5292,7 +5335,7 @@ app_server <- function(input, output, session, start) {
         `not built` = t("not made yet (nothing to show)"),
         t(.ard_state_labels[[s0]]))
       why <- switch(s0,
-        outdated = t("Since this report's ARD was made, something it is made from has changed: its analyses, their analysis sets or datasets, the study's settings, the study's own ARD functions or the code lists. Make it again to see the tables as the definition is now."),
+        outdated = t("Since this report's ARD was made, something it is made from has changed: its analyses, their populations or datasets, the study's settings, the study's own ARD functions or the code lists. Make it again to see the tables as the definition is now."),
         `not built` = t("This report's ARD has not been made yet: make it to see its tables."),
         error = t("Its ARD program failed: see what it printed (Data > Study ARD), fix it and make it again."),
         NULL)
@@ -5397,16 +5440,18 @@ app_server <- function(input, output, session, start) {
         col_widths = c(4, 8),
         shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label), width = "100%")),
-      shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 2-1, or a dataset \u00d7 analysis set. The name is the one the program gives it.")),
+      shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 1-1, or a dataset \u00d7 population. The name is the one the program gives it.")),
                          data_choices(r),
                          selected = .an_data_value_row(r),
                          width = "100%"),
       shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
         shiny::tags$summary(class = "small", with_tip(argl("This analysis's own filter", "where"),
-                                                      t("An R condition that filters this analysis's rows alone (e.g. AESER == \"Y\"). The data's own filter is 2-1's."))),
+                                                      t("An R condition that filters this analysis's rows alone (e.g. AESER == \"Y\"). The data's own filter is 1-1's."))),
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
-                         placeholder = "AESER == \"Y\"")),
+                         placeholder = "AESER == \"Y\""),
+        .where_labels_note(sheet_rows(shiny::isolate(rv$p), "codelists",
+                                      shiny::isolate(current()) %||% ""), t)),
       shiny::selectizeInput(
         st_id("by"), argl("Grouping variables", ".by"),
         an_by_choices(r, .split_bar(r$by)), .split_bar(r$by), multiple = TRUE,
@@ -5622,7 +5667,7 @@ app_server <- function(input, output, session, start) {
   # that cannot, listed faint with the reason
   stack_reason_words <- c(
     inside = "inside another already", method = "this kind cannot run inside one",
-    data = "other data or analysis set", where = "another condition",
+    data = "other data or population", where = "another condition",
     by = "other groups", strata = "other strata", denominator = "another denominator",
     variable = "a variable it has already",
     group_n = "the stack can count the subjects per group itself (this analysis counts them now)",
@@ -5637,7 +5682,7 @@ app_server <- function(input, output, session, start) {
     desc <- rv$p$outputs$description[match(tg, rv$p$outputs$output_id)]
     shiny::showModal(shiny::modalDialog(
       title = t("Run analyses together (cards::ard_stack)"), easyClose = TRUE,
-      shiny::p(class = "small", t("One call on the same data, analysis set, condition and groups: it also counts the subjects per group (the column headers' N). Subjects with no group are not counted.")),
+      shiny::p(class = "small", t("One call on the same data, population, condition and groups: it also counts the subjects per group (the column headers' N). Subjects with no group are not counted.")),
       shiny::checkboxGroupInput("ard_stack_pick", t("The analyses inside"), ok, selected = ok,
                                 width = "100%"),
       if (nrow(no)) shiny::div(
@@ -5735,7 +5780,7 @@ app_server <- function(input, output, session, start) {
     }
     paste(code, collapse = "\n")
   })
-  # SPEC | Code | Result of step 2 (R/result_tabs.R): SPEC the analyses
+  # SPEC | Code | Result of step 1 (R/result_tabs.R): SPEC the analyses
   # sheet (this report's, or every report's), Result this report's ARD
   shiny::observeEvent(an_pick(), {
     if (!is.null(an_pick())) adata_close()
@@ -6177,7 +6222,7 @@ app_server <- function(input, output, session, start) {
     names(ch)[1L] <- t("(not taken)")
     shiny::div(
       class = "mb-2",
-      shiny::h6(with_tip(t("Analysis sets"), t("The TOC's population column, as the study's analysis sets: matched by id, label or a usual word (Safety Population: SAF); change it here. Taken in, it is the report's analysis set (the report list's, step 2's): its data is made, and a report whose set changes has its analyses moved."))),
+      shiny::h6(with_tip(t("Populations"), t("The TOC's population column, as the study's populations: matched by id, label or a usual word (Safety Population: SAF); change it here. Taken in, it is the report's population (the report list's, step 1's): its data is made, and a report whose set changes has its analyses moved."))),
       lapply(seq_along(u), function(k) {
         ids <- tp$output_id[tp$text == u[k]]
         now <- tp$population_id[match(u[k], tp$text)]
@@ -6188,7 +6233,7 @@ app_server <- function(input, output, session, start) {
           shiny::div(style = "min-width: 14rem",
                      shiny::selectInput(toc_id(paste0("pop_", k)), NULL, ch,
                                         selected = if (is.na(now)) "" else now, width = "100%")),
-          if (is.na(now)) shiny::span(class = "text-warning", t("not matched: choose the analysis set, or leave it")))
+          if (is.na(now)) shiny::span(class = "text-warning", t("not matched: choose the population, or leave it")))
       }))
   }
   # the analysis data of the tables' datasets: made for the new reports
@@ -6200,7 +6245,7 @@ app_server <- function(input, output, session, start) {
     before <- any(ch$reports$status %in% c("changed", "same"))
     shiny::div(
       class = "mb-2",
-      shiny::checkboxInput(toc_id("make_data"), with_tip(t("Make the tables' analysis data from their datasets"), t("For each dataset of a table (the TOC's datasets column) that is not its analysis set's own: <dataset>_<set>, kept to the subjects of adsl_<set> -- found, or made. Its first analysis starts from it; change or delete it in 2-1.")), TRUE,
+      shiny::checkboxInput(toc_id("make_data"), with_tip(t("Make the tables' analysis data from their datasets"), t("For each dataset of a table (the TOC's datasets column) that is not its population's own: <dataset>_<set>, kept to the subjects of adsl_<set> -- found, or made. Its first analysis starts from it; change or delete it in 1-1.")), TRUE,
                            width = "100%"),
       if (before) shiny::conditionalPanel(
         sprintf("input['%s']", toc_id("make_data")),
@@ -6399,7 +6444,7 @@ app_server <- function(input, output, session, start) {
         t("New reports: %s. Make their content from the list's buttons."),
         paste(new_ids, collapse = ", "))),
       if (length(made)) shiny::tagList(shiny::br(), sprintf(
-        t("Analysis data made for the reports' analysis sets: %s."), paste(made, collapse = ", ")))))
+        t("Analysis data made for the reports' populations: %s."), paste(made, collapse = ", ")))))
   })
 
   # ---- ARD functions of one's own ------------------------------------------
@@ -7070,12 +7115,13 @@ app_server <- function(input, output, session, start) {
   }
   .designer_server(input, output, session, rv, current, t, notify, guarded,
                    catalog, fig_is_new = function() fig_is_new(),
-                   page = function() page())
+                   page = function() page(), codelists_dialog = cl_fig,
+                   bump = bump, has_study = has_study)
   output$lf_note <- shiny::renderUI({
     msg <- switch(lf_type(),
       none = t("Choose a Listing report on the left."),
       table = t("This is a Table: it is made in Table (builder) and Details (sheets)."),
-      listing = t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 3, Data code), if any, changes the data after the condition."),
+      listing = t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 2, Data code), if any, changes the data after the condition."),
       figure = t("This is a Figure: it is made in Make the figure."))
     # a listing's: the (i) of its form's heading
     if (identical(lf_type(), "listing")) return(NULL)
@@ -7119,10 +7165,10 @@ app_server <- function(input, output, session, start) {
                           sprintf(t("It reads the ARD taken in (%s)."), st$file)),
       own = shiny::div(class = if (st$built) "small text-success" else "small text-warning",
                        sprintf(if (st$built) t("Its ARD definition has %d analyses (built).") else
-                         t("Its ARD definition has %d analyses, not built yet: build them in step 2 (ARD)."), st$n)),
+                         t("Its ARD definition has %d analyses, not built yet: build them in step 1 (ARD)."), st$n)),
       none = shiny::div(class = "small text-danger d-flex flex-wrap gap-2 align-items-center",
-                        shiny::span(t("No ARD yet: add analyses in step 2 (ARD), or take an ARD in (Data > ARDs taken in).")),
-                        .btn("uc_to_ard", t("To step 2 (ARD)"), class = "btn-sm btn-outline-primary py-0")))
+                        shiny::span(t("No ARD yet: add analyses in step 1 (ARD), or take an ARD in (Data > ARDs taken in).")),
+                        .btn("uc_to_ard", t("To step 1 (ARD)"), class = "btn-sm btn-outline-primary py-0")))
     shiny::tagList(line, shiny::div(
       class = "small text-muted mb-2",
       t("`ard` is this report's rows of the ARD (a cards ARD); normalize_ard(ard) makes it a table's shape.")))
@@ -7261,12 +7307,12 @@ app_server <- function(input, output, session, start) {
     lf_env$fig_last <- list(datasets = paste(have, collapse = " | "))
     bslib::card(
       bslib::card_header(with_tip(t("The plot written by hand (ggplot2)"),
-                                  t("This figure's plot is its data code (step 3, Data code), written with ggplot2: it leaves `plot`. Its program reads these datasets first."))),
+                                  t("This figure's plot is its data code (step 2, Data code), written with ggplot2: it leaves `plot`. Its program reads these datasets first."))),
       shiny::h6(t("Data the figure reads")),
       shiny::selectizeInput(lf_id("fig_ds"), NULL, ds_choices,
                             selected = have, multiple = TRUE,
                             width = "100%"),
-      shiny::h6(t("The code that makes the plot (edit it in step 3, Data code)")),
+      shiny::h6(t("The code that makes the plot (edit it in step 2, Data code)")),
       shiny::div(class = "rp-code", shiny::verbatimTextOutput("lf_fig_code")))
   }
   output$lf_form <- shiny::renderUI({
@@ -7296,7 +7342,7 @@ app_server <- function(input, output, session, start) {
                         max_rows = if (is.na(mr)) "" else as.character(mr))
     shiny::div(
       class = "rp-b-card",
-      shiny::h6(with_tip(t("Listing"), t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 3, Data code), if any, changes the data after the condition."))),
+      shiny::h6(with_tip(t("Listing"), t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 2, Data code), if any, changes the data after the condition."))),
       shiny::div(
         class = "d-flex flex-wrap gap-2",
         shiny::selectInput(lf_id("type"), t("Type"), type_ch,
@@ -7309,9 +7355,36 @@ app_server <- function(input, output, session, start) {
       shiny::textInput(lf_id("where"), t("Condition (R)"), value = lv("where"),
                        width = "100%",
                        placeholder = paste(t("e.g."), "AESEV == \"SEVERE\"")),
-      shiny::textInput(lf_id("sort"), t("Order (| between variables, - for descending)"),
+      # as its program has them: the condition, the code lists, the order
+      shiny::div(class = "mb-2", shiny::uiOutput("lf_cl")),
+      shiny::textInput(lf_id("sort"), t("Order (| between variables, - for descending; a column with a code list sorts in the list's order)"),
                        value = lv("sort"), width = "100%",
                        placeholder = paste(t("e.g."), "TRTA | USUBJID | ASTDT")))
+  })
+  # a listing's code lists: those of its dataset's columns (its program puts
+  # them on the data after the condition, before the order)
+  lf_cl_ids <- c(edit = "cllf_open", copy = "cllf_copy", add = "lf_cl_add")
+  lf_cl_ds <- function() {
+    l <- lf_rows(rv$p, "listings", current() %||% "")
+    if (!nrow(l) || .is_blank(l$dataset[1L])) return(NULL)
+    .rows_where(an_data(l$dataset[1L]), l$where[1L])
+  }
+  lf_cl_vars <- function() {
+    cols <- unlist(lapply(lf_rows(rv$p, "listing_cols", current() %||% "")$vars,
+                          .split_bar))
+    unique(c(names(lf_cl_ds()), cols))
+  }
+  lf_cl_missing <- .codelist_part_server(
+    input, rv, current, lf_cl_ids, vars = lf_cl_vars, data = lf_cl_ds,
+    title = function() sprintf(t("Code lists: the columns of %s's data"), current()),
+    dialog = cl_lf, t = t, notify = notify, guarded = guarded, bump = bump,
+    has_study = has_study)
+  output$lf_cl <- shiny::renderUI({
+    shiny::req(has_study(), current(), identical(lf_type(), "listing"))
+    .codelist_part_ui(
+      .codelist_lines(sheet_rows(rv$p, "codelists", current()), lf_cl_vars()),
+      lf_cl_missing(), t, lf_cl_ids,
+      t("This report's code lists of the listing's columns: its program puts them on the data after the condition (set_levels()), each column a factor in the list's order, its values the labels, and the rows sort in that order. A value a list does not have stops the program."))
   })
   # the form's values back to the listing / figure rows
   lf_values <- shiny::reactive({
@@ -7592,7 +7665,7 @@ app_server <- function(input, output, session, start) {
         shiny::div(
           class = "d-flex flex-wrap align-items-baseline gap-2",
           shiny::h6(t("Rows: variables in order")),
-          .btn("cl3_open", t("Code lists of this table..."),
+          .btn("cl3_open", t("Code lists: in step 1 (1-1, column definitions)"),
                class = "btn-sm btn-link py-0")),
         sortable::rank_list(text = NULL, labels = var_items,
                             input_id = bid("vars")),
@@ -7633,9 +7706,9 @@ app_server <- function(input, output, session, start) {
         shiny::h6(t("Statistics")),
         shiny::radioButtons(
           bid("value"),
-          with_tip(t("Values"), t("Numbers: the ARD's values (stat), rounded here to the decimals below. The ARD's text: the values as step 2 formatted them (stat_fmt), printed as they are; a row may still put two in one (Mean (SD)).")),
+          with_tip(t("Values"), t("Numbers: the ARD's values (stat), rounded here to the decimals below. The ARD's text: the values as step 1 formatted them (stat_fmt), printed as they are; a row may still put two in one (Mean (SD)).")),
           stats::setNames(c("stat", "stat_fmt"),
-                          t(c("Numbers, rounded here", "The ARD's text (as formatted in step 2)"))),
+                          t(c("Numbers, rounded here", "The ARD's text (as formatted in step 1)"))),
           selected = st$value, inline = TRUE),
         builder_rows_ui(bs, st, m$stats),
         shiny::conditionalPanel(
@@ -8104,8 +8177,8 @@ app_server <- function(input, output, session, start) {
           stats::setNames(c("", "page", "table", "n = page | N = table"),
                           c(t("the subjects of each page's columns (the default)"),
                             t("the subjects of each page's columns"),
-                            t("the analysis set, the same on every page"),
-                            t("both: {n} each page's, {N} the analysis set's"))),
+                            t("the population, the same on every page"),
+                            t("both: {n} each page's, {N} the population's"))),
           selected = if (is.na(bform$hdr_n)) "" else bform$hdr_n),
         shiny::tags$script(shiny::HTML(paste0(
           "if (!window.tflHdrInsert) {",
@@ -8408,8 +8481,8 @@ app_server <- function(input, output, session, start) {
         shiny::div(class = "text-muted small", pv$error %||% t("(the table)"))
     } else {
       shiny::div(class = "text-muted small text-center py-4",
-                 if (identical(info$type, "figure")) t("(the figure: see step 3)") else
-                   t("(the listing: see step 3)"))
+                 if (identical(info$type, "figure")) t("(the figure: see step 2)") else
+                   t("(the listing: see step 2)"))
     }
     .page_sample_html(p, id, rv$meta$study_id %||% "", body,
                       program = info$program)
@@ -8628,32 +8701,7 @@ app_server <- function(input, output, session, start) {
   output$program_table <- shiny::renderText(program_text())
   output$program_lf <- shiny::renderText(program_text())
   output$program_uc <- shiny::renderText(program_text())
-  # step 1: the report's ARD program (where the code lists reach), and the
-  # code list it uses
-  output$codelist_code <- shiny::renderText({
-    id <- current()
-    if (is.null(id) || !has_study()) return("")
-    a <- structure(rv$p$ard, class = "tfl_ard_spec")
-    if (!any(a$analyses$output_id %in% id)) {
-      return(sprintf(t("%s has no analyses in the ARD definition."), id))
-    }
-    tryCatch(paste(ard_program_code(a, id, dir = rv$study$path,
-                                    codelists = .study_codelists(rv$p)),
-                   collapse = "\n"),
-             error = function(e) conditionMessage(e))
-  })
-  output$codelist_effective <- DT::renderDT({
-    id <- current()
-    shiny::req(has_study(), !is.null(id))
-    d <- sheet_rows(rv$p, "codelists", id)
-    d <- d[!is.na(d$variable) & !is.na(d$value), , drop = FALSE]
-    shiny::validate(shiny::need(nrow(d) > 0L, t("No code list yet.")))
-    d$used_by <- ifelse(d$variable %in% .codelist_ard_vars(rv$p, id),
-                        t("ARD and table"), t("table"))
-    d$output_id <- NULL
-    .dt(d)
-  })
-  # Step 4: this report's font and size.  Blank: every report's (the study
+  # Step 3: this report's font and size.  Blank: every report's (the study
   # tab, the page sheet's study row), shown greyed; a value is the report's
   # own row.  Only a field changed from what was drawn is written.
   rf_drawn <- new.env()
@@ -8738,7 +8786,7 @@ app_server <- function(input, output, session, start) {
         },
         placeholder = t("blank: from the ID")),
       if (type && nrow(rv$p$ard$populations)) shiny::selectInput(
-        "modal_pop", t("This report's analysis set"), pop_choices(), width = "100%",
+        "modal_pop", t("This report's population"), pop_choices(), width = "100%",
         selected = {
           v <- report_population(rv$p, current() %||% "")
           if (is.na(v)) "" else v
@@ -8856,7 +8904,7 @@ app_server <- function(input, output, session, start) {
         width = "100%",
         options = list(plugins = list("remove_button", "drag_drop"))),
       shiny::p(class = "small text-muted",
-               t("Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards in step 3 (Content).")))
+               t("Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards in step 2 (Content).")))
   })
   start_first_listing <- function(id, desc) {
     d <- first_data_l()
@@ -8903,7 +8951,7 @@ app_server <- function(input, output, session, start) {
     vars <- .row_choices(cols, c(continuous = t("numbers"),
                                  categorical = t("counts")))
     shiny::tagList(
-      shiny::selectInput("mf_pop", t("Analysis set (its flag = \"Y\")"),
+      shiny::selectInput("mf_pop", t("Population (its flag = \"Y\")"),
                          .labelled(fl, cols),
                          selected = c(intersect(c("SAFFL", "ITTFL", "FASFL"), fl),
                                       fl)[1L], width = "100%"),
@@ -8919,7 +8967,7 @@ app_server <- function(input, output, session, start) {
       shiny::checkboxInput("mf_stack", t("Run the analyses together (cards::ard_stack)"), TRUE),
       shiny::uiOutput("mf_stack_note"),
       shiny::p(class = "small text-muted",
-               t("Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (steps 2 and 3).")))
+               t("Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (steps 1 and 2).")))
   })
   # a subject of the analysis set with no group: ard_stack() leaves them
   # out, so the wizard makes the analyses one by one -- said before
@@ -8931,7 +8979,7 @@ app_server <- function(input, output, session, start) {
     if (!isTRUE(input$mf_stack)) return(NULL)
     if (n > 0L) {
       shiny::div(class = "alert alert-warning py-1 small", sprintf(
-        t("%d subjects of the analysis set have no %s: ard_stack does not count them, so the analyses are made one by one."),
+        t("%d subjects of the population have no %s: ard_stack does not count them, so the analyses are made one by one."),
         n, input$mf_group))
     } else {
       shiny::p(class = "small text-muted mt-n2",
@@ -9168,6 +9216,28 @@ app_server <- function(input, output, session, start) {
     if (is.null(px)) return()
     rv$job <- px
     rv$job_what <- what
+    rv$job_study <- rv$study$meta$study_id
+  }
+  # a new copy of the sample: its official run (the ARD and the reports)
+  # in the background, as the Runs tab starts one; the app stays usable and
+  # the study list says it is running
+  start_sample_run <- function(s) {
+    miss <- c("cards", "cardx")[!vapply(c("cards", "cardx"), requireNamespace,
+                                        NA, quietly = TRUE)]
+    if (length(miss)) {
+      return(notify(sprintf(
+        t("The sample study is in place; to make its ARD and reports, install %s and start an official run (Runs)."),
+        paste(miss, collapse = ", ")), "warning"))
+    }
+    if (!is.null(rv$job)) return(notify(t("A run is going on"), "warning"))
+    px <- guarded(run_batch(s, c("ard", "tfl"), wait = FALSE))
+    if (is.null(px)) return()
+    rv$job <- px
+    rv$job_what <- sprintf(t("the official run of %s (its ARD and reports)"),
+                           s$meta$study_id)
+    rv$job_study <- s$meta$study_id
+    notify(sprintf(t("%s is copied; its ARD and reports are being made in the background (a few minutes). You can use the app meanwhile."),
+                   s$meta$study_id))
   }
   shiny::observeEvent(input$run_all, start_run(NULL, t("every report")))
   start_batch <- function(parts, code) {
@@ -9177,6 +9247,7 @@ app_server <- function(input, output, session, start) {
     px <- guarded(run_batch(rv$study, parts, code = code, wait = FALSE))
     if (is.null(px)) return()
     rv$job <- px
+    rv$job_study <- rv$study$meta$study_id
     rv$job_what <- paste(t("the official run:"),
                          paste(t(c(ard = "ARD", tfl = "Reports")[parts]),
                                collapse = ", "))
@@ -9231,7 +9302,9 @@ app_server <- function(input, output, session, start) {
                        t("Finished with errors: %s"), rv$job_what),
              if (identical(rc, 0L)) "message" else "warning")
       rv$job <- NULL
+      rv$job_study <- NULL
       rv$status_ver <- rv$status_ver + 1L
+      rv$ard_ver <- rv$ard_ver + 1L
     })
   })
   output$job <- shiny::renderUI({
@@ -9244,4 +9317,12 @@ app_server <- function(input, output, session, start) {
     px <- shiny::isolate(rv$job)
     if (!is.null(px) && px$is_alive()) px$kill()
   })
+}
+
+# The study list's first column: the ID, a mark when its folder is not
+# found, when it is the study open, and when its run is going on
+.study_list_ids <- function(d, open_id = NULL, running = NULL, t = identity) {
+  paste0(d$study_id, ifelse(d$folder, "", " \u26a0"),
+         ifelse(d$study_id %in% open_id, " \u25cf", ""),
+         ifelse(d$study_id %in% running, paste0(" (", t("running"), ")"), ""))
 }

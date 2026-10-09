@@ -4,13 +4,14 @@
 # study uses again is copied into a report -- from the company standards
 # (their codelists sheet) or from another report -- and edited there.  One
 # editor (the grid of a report's rows, the variables it uses or all, the
-# copy dialog, a file read in) serves step 1 and the places that call it.
+# copy dialog, a file read in) serves the places where a report's data is
+# made: 1-1 (an analysis data's column definitions), a listing's data, a
+# figure's data -- where the program puts them on the data.
 
 # The variables a report uses, for its code lists: what its ARD analyses
 # read (by, strata, variables), the columns its analysis data, datasets and
 # populations derive, what its table shows (tables rows / cols, the
-# variables sheet), and `variable` (the variables' labels, tflspec #172).
-# A superset is fine: it only narrows the grid.
+# variables sheet).  A superset is fine: it only narrows the grid.
 .codelist_vars <- function(x, output_id) {
   if (is.null(output_id)) return(character())
   bar <- function(v) unlist(lapply(v[!is.na(v)], .split_bar))
@@ -26,19 +27,10 @@
   tb <- tb[is.na(tb$output_id) | tb$output_id == output_id, , drop = FALSE]
   vs <- sheet_rows(x, "variables", "")
   vs <- vs[is.na(vs$output_id) | vs$output_id == output_id, , drop = FALSE]
-  v <- unique(c("variable", bar(a$by), bar(a$strata), bar(a$variables),
+  v <- unique(c(bar(a$by), bar(a$strata), bar(a$variables),
                 made(ad), made(x$ard$datasets), made(x$ard$populations),
                 words(tb$rows), words(tb$cols), vs$variable))
   v[!is.na(v) & nzchar(v)]
-}
-
-# The variables a report's ARD reads (tflspec makes factors of their code
-# lists: a value no record has is counted 0); the rest only print
-.codelist_ard_vars <- function(x, output_id) {
-  a <- x$ard$analyses
-  a <- a[!is.na(a$output_id) & a$output_id == output_id, , drop = FALSE]
-  bar <- function(v) unlist(lapply(v[!is.na(v)], .split_bar))
-  unique(c(bar(a$by), bar(a$strata), bar(a$variables)))
 }
 
 #' A report's code lists: copy one in
@@ -228,7 +220,7 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
                    nrow(rows), length(unique(rows$variable)), id))
   })
   # copy: from the company standards or another report
-  shiny::observeEvent(input[[p("copy")]], {
+  open_copy <- function() {
     id <- report()
     shiny::req(has_study(), id)
     cl <- sheet_rows(rv$p, "codelists", "")
@@ -245,7 +237,8 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
                t("The rows copied are this report's own: change them here, and the source stays as it is. A value this report has already is replaced.")),
       footer = shiny::tagList(.btn(p("copy_cancel"), t("Cancel"), class = "btn-outline-secondary"),
                               .btn(p("copy_ok"), t("Copy"), class = "btn-primary"))))
-  })
+  }
+  shiny::observeEvent(input[[p("copy")]], open_copy())
   shiny::observeEvent(input[[p("copy_cancel")]], back())
   # what can be copied: list(choices (named: what shows), the rows of each)
   source_rows <- function(f) {
@@ -298,10 +291,11 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     notify(sprintf(t("%s's code lists: %s copied (save to keep them)."), id,
                    paste(unique(rows$variable), collapse = ", ")))
   })
-  invisible(NULL)
+  invisible(list(copy = open_copy))
 }
 
-# The editor in a dialog, for the places that call it (2-1, 2-2, step 3):
+# The editor in a dialog, for the places that call it (1-1's column
+# definitions, a listing's data, a figure's data):
 # `open(vars, title)` shows the code lists of those variables (all with the
 # box ticked); `done()` runs when it is closed (what reads the code lists
 # draws again)
@@ -315,23 +309,30 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     shiny::showModal(shiny::modalDialog(
       title = shiny::isolate(title()), size = "l", easyClose = FALSE,
       shiny::p(class = "small text-muted",
-               t("This report's code lists: each variable's values, their order and the text they print as. The ARD uses those of the variables its analyses read (a value no record has is counted 0); the table uses them all, in their order unless the variables sheet says another (levels).")),
+               t("This report's code lists: each variable's values, their order and what they become in the data (the label). The program puts them on the data where it is made (set_levels()): in the ARD, a listing's or a figure's data each listed column is a factor in the list's order, its values the labels. A value no record has is counted 0; a value the list does not have stops the program. A table's order is the list's unless the variables sheet says another (levels).")),
       .codelist_editor_ui(prefix, t),
       footer = .btn(p("done"), t("Close"), class = "btn-primary")))
   }
-  .codelist_editor_server(input, output, session, prefix, rv, report = report,
-                          vars = vars, t = t, notify = notify, guarded = guarded,
-                          bump = bump, read_grid = read_grid,
-                          grids_drawn = grids_drawn, has_study = has_study,
-                          reopen = show)
+  ed <- .codelist_editor_server(input, output, session, prefix, rv, report = report,
+                                vars = vars, t = t, notify = notify, guarded = guarded,
+                                bump = bump, read_grid = read_grid,
+                                grids_drawn = grids_drawn, has_study = has_study,
+                                reopen = show)
   shiny::observeEvent(input[[p("done")]], {
     shiny::removeModal()
     done()
   })
-  list(open = function(v, heading) {
+  set <- function(v, heading) {
     vars(unique(v[!is.na(v) & nzchar(v)]))
     title(heading)
+  }
+  # open: the editor; copy: the copy dialog first (the editor after it)
+  list(open = function(v, heading) {
+    set(v, heading)
     show()
+  }, copy = function(v, heading) {
+    set(v, heading)
+    ed$copy()
   })
 }
 
@@ -339,7 +340,7 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
 
 # A study made before analysis data and code lists were a report's: their
 # rows without a report.  There is no migration (tflspec stops on them):
-# the app says so once, in words, and step 2 says why it is empty.
+# the app says so once, in words, and step 1 says why it is empty.
 .old_format <- function(p) {
   old <- function(d) {
     if (is.null(d) || !nrow(d)) return(FALSE)
@@ -381,7 +382,7 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
 
 .moved_headings_msg <- paste(
   "The code lists' rows of `variable` (the variables' headings) are the table's labels now",
-  "(step 3, a variable's label): moved there.  Save the study to keep it.")
+  "(step 2, a variable's label): moved there.  Save the study to keep it.")
 
 .old_format_msg <- paste(
   "This study is in an old format: its analysis data and code lists are the whole study's, not a report's.",
@@ -400,4 +401,146 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     values[i],
     if (!is.na(lab[i]) && !identical(lab[i], values[i]))
       shiny::span(class = "text-muted small ms-1", lab[i]))), values)
+}
+
+# -- a report's code lists where its data is made (1-1, a listing's data,
+# a figure's data) --------------------------------------------------------
+
+# The code lists of `vars` (a report's rows of the codelists sheet), each a
+# line of what it makes of the data: "F -> Female, M -> Male" (a value the
+# list prints as it is, alone); list(variable, text), in the lists' order
+.codelist_lines <- function(cl, vars = NULL) {
+  if (is.null(cl) || !nrow(cl)) return(list())
+  cl <- cl[!is.na(cl$variable) & !is.na(cl$value), , drop = FALSE]
+  if (!is.null(vars)) cl <- cl[cl$variable %in% vars, , drop = FALSE]
+  lapply(split(cl, factor(cl$variable, levels = unique(cl$variable))), function(r) {
+    o <- suppressWarnings(as.numeric(r$order))
+    r <- r[order(is.na(o), o, seq_len(nrow(r))), , drop = FALSE]
+    lab <- ifelse(is.na(r$label) | r$label == r$value, "",
+                  paste0(" \u2192 ", r$label))
+    list(variable = r$variable[1L], text = paste0(r$value, lab, collapse = ", "))
+  })
+}
+
+# The values of `data` its code lists do not have, by variable (the
+# variables with a list that the data has; a blank is no value): a named
+# list of character vectors, only those with some
+.codelist_missing <- function(cl, data) {
+  if (is.null(cl) || !nrow(cl) || is.null(data)) return(list())
+  out <- list()
+  for (v in intersect(unique(cl$variable[!is.na(cl$variable)]), names(data))) {
+    x <- data[[v]]
+    x <- unique(as.character(if (is.factor(x)) levels(droplevels(x)) else x))
+    x <- x[!is.na(x) & nzchar(x)]
+    miss <- setdiff(x, cl$value[cl$variable == v])
+    if (length(miss)) out[[v]] <- sort(miss)
+  }
+  out
+}
+
+# The rows of `data` a condition (R, as the definition writes it) keeps:
+# what the code lists meet, for their warning.  A condition that cannot be
+# read on these rows (a column made later, R of its own): all the rows.
+.rows_where <- function(data, where) {
+  if (is.null(data) || is.null(where) || !length(where) || is.na(where) ||
+      !nzchar(trimws(where))) return(data)
+  k <- tryCatch(eval(parse(text = where, keep.source = FALSE)[[1L]], data, baseenv()),
+                error = function(e) NULL)
+  if (!is.logical(k) || length(k) != nrow(data)) return(data)
+  data[k %in% TRUE, , drop = FALSE]
+}
+
+# `values` added to a report's code list of `variable`, after its others,
+# each printing as itself: the planner
+.codelist_add_values <- function(x, output_id, variable, values) {
+  old <- sheet_rows(x, "codelists", output_id)
+  o <- suppressWarnings(as.numeric(old$order[old$variable %in% variable]))
+  start <- if (any(!is.na(o))) max(o, na.rm = TRUE) else
+    sum(old$variable %in% variable)
+  set_codelist(x, output_id, data.frame(
+    variable = variable, value = values, label = values,
+    order = as.character(start + seq_along(values)), stringsAsFactors = FALSE))
+}
+
+# The code lists' part of a place where a report's data is made: what the
+# program makes of the columns' values (.codelist_lines()), the values the
+# data has that a list does not, each with a button that adds them, and
+# the buttons of the dialog (edit, copy).  `ids`: the inputs (edit, copy,
+# add); `tip`: what the part says of the place.
+.codelist_part_ui <- function(lines, missing, t, ids, tip) {
+  shiny::tagList(
+    shiny::div(class = "form-label mb-1", with_tip(
+      shiny::span(t("Code lists"), shiny::span(class = "text-muted", " (codelists)")),
+      paste(tip, t("A value with no arrow prints as it is.")))),
+    if (!length(lines)) shiny::p(class = "small text-muted mb-1",
+                                 t("None of these columns has a code list: their values are as the data has them.")) else
+      shiny::tags$table(
+        class = "table table-sm small mb-1",
+        shiny::tags$tbody(lapply(lines, function(l) shiny::tags$tr(
+          shiny::tags$td(class = "fw-semibold text-nowrap", l$variable),
+          shiny::tags$td(l$text))))),
+    lapply(names(missing), function(v) shiny::div(
+      class = "alert alert-warning small py-1 px-2 mb-1 d-flex flex-wrap gap-2 align-items-center",
+      shiny::span(sprintf(t("%s: the data has values its code list does not (the program would stop): %s"),
+                          v, paste(missing[[v]], collapse = ", "))),
+      shiny::tags$button(
+        type = "button", class = "btn btn-sm btn-outline-primary py-0",
+        onclick = sprintf("Shiny.setInputValue('%s', %s, {priority: 'event'})",
+                          ids[["add"]], encodeString(v, quote = "'")),
+        t("Add them to the list")))),
+    shiny::div(
+      class = "d-flex gap-2",
+      .btn(ids[["edit"]], t("Edit..."), class = "btn-sm btn-outline-secondary py-0"),
+      .btn(ids[["copy"]], t("Copy..."), class = "btn-sm btn-outline-secondary py-0")))
+}
+
+# Its server: `vars()` the place's columns, `data()` its data (or NULL),
+# `title()` the dialog's; `dialog` a .codelist_dialog_server().  Adding
+# the values a list lacks adds them to this report's list, each printing
+# as itself.  Gives the reactive of those values.
+.codelist_part_server <- function(input, rv, report, ids, vars, data, title, dialog,
+                                  t, notify, guarded, bump, has_study) {
+  missing <- shiny::reactive({
+    shiny::req(has_study(), report())
+    .codelist_missing(sheet_rows(rv$p, "codelists", report()), data())
+  })
+  shiny::observeEvent(input[[ids[["add"]]]], {
+    v <- input[[ids[["add"]]]]
+    miss <- missing()[[v]]
+    shiny::req(length(miss), report())
+    p2 <- guarded(.codelist_add_values(rv$p, report(), v, miss))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    bump()
+    notify(sprintf(t("%s's code list of %s: %s added, each printing as itself (edit their text with Edit...)."),
+                   report(), v, paste(miss, collapse = ", ")))
+  })
+  shiny::observeEvent(input[[ids[["edit"]]]], {
+    shiny::req(has_study(), report())
+    dialog$open(vars(), title())
+  })
+  shiny::observeEvent(input[[ids[["copy"]]]], {
+    shiny::req(has_study(), report())
+    dialog$copy(vars(), title())
+  })
+  missing
+}
+
+# Under an analysis's own filter: it reads the data after the code lists
+# are put on, so a listed column is compared with its labels -- said, with
+# the report's listed columns and one example (SEX == "Female")
+.where_labels_note <- function(cl, t) {
+  cl <- cl[!is.na(cl$variable) & !is.na(cl$value), , drop = FALSE]
+  if (!nrow(cl)) return(NULL)
+  lab <- ifelse(is.na(cl$label), cl$value, cl$label)
+  v <- unique(cl$variable)
+  # the example: a value its list changes (SEX's F, as "Female")
+  i <- which(lab != cl$value)[1L]
+  if (is.na(i)) i <- 1L
+  shiny::div(
+    class = "form-text small mt-n1 mb-2",
+    sprintf(t("A column with a code list (%s) is compared with its labels here, as the ARD has them: e.g. %s, not %s."),
+            paste(v, collapse = ", "),
+            sprintf("%s == %s", cl$variable[i], encodeString(lab[i], quote = "\"")),
+            sprintf("%s == %s", cl$variable[i], encodeString(cl$value[i], quote = "\""))))
 }

@@ -22,7 +22,59 @@
   saved until one is chosen; a save after an outside edit asks to load
   first; loading keeps unsaved changes and a draft, merged part by part
   (a part both changed asks which to keep).  The Japanese guide's 3.1
-  says how.
+  says how.  The Japanese of tflspec's texts that now say "population"
+  (tflspec #197: the figure designer, figure advice, five column
+  descriptions) follows them.
+
+- **A new study from the sample is ready at once** (#297).  The sample
+  is copied (seconds) and opened; its official run, which makes its ARD
+  and reports (a few minutes), runs in the background as the Runs tab
+  starts one.  The study is in the list straight away, marked "(running)"
+  until the run ends, and the app can be used meanwhile (before, it
+  waited for the whole run with a progress note).
+
+- **A study opens in a fifth of a second** (#296, reported by the user).
+  Reading a study from its saved state built every sheet's columns with
+  `tflspec::tfl_table_spec()` again, sheet by sheet, on every open and
+  twice on every save; they are made once a session now.
+  `open_study()`: 1.8 s to 0.15 s (the sample study); a save that changes
+  nothing 5.6 s to 2.0 s; copying the sample (without its run) 9 s to 5
+  s.  The study list is drawn while the Study tab is hidden too, so a
+  study made from another tab is in it when the tab is shown.
+
+- **The English screens say "population"** (tflspec #191).  "Analysis set"
+  and "population" were mixed; the screens, messages and the company
+  standards' sheet description now say population (the Japanese stays
+  解析対象集団).  The argument hints follow tflspec's new wording, so their
+  Japanese is found again.  The Japanese guide says that a population is
+  ICH E9 / CDISC ARS's analysis set (`analysisSetId` in ARS).  The SPEC,
+  the ARD and the tokens (`population_id`, the `populations` sheet,
+  `{OUTPUT_POPULATION}`) are as they were.
+
+- **A report's code lists are where its data is made**: one place on the
+  screen, one in the definition, one in the program.  Step 1 (Code lists)
+  is gone, and the steps are 1 ARD, 2 Content, 3 Page and output (1-1,
+  1-2 as they were 2-1, 2-2).
+  - A table: 1-1's analysis data form has **Column definitions** in the
+    order the program makes them -- ① columns added, ② made or
+    changed, ③ kept (given, the subject key and the columns the
+    analyses read are kept too), ④ the code lists of its columns.
+  - A listing: its data, between the condition and the order (the rows
+    sort in the lists' order).
+  - A figure: the designer's data steps end with **Code lists** (read
+    only, the report's); a step that orders a variable with a code list
+    no longer offers its own values and labels.
+  - Each place shows what the program makes of the values (`F →
+    Female`), warns of the values the data has that a list does not (the
+    program would stop on them) with a button that adds them to this
+    report's list, and opens the editor (Edit...) or the copy (Copy...).
+- An analysis's own filter says that a column with a code list holds its
+  labels there (`SEX == "Female"`); a level field of an analysis offers the
+  labels too.
+- The code lists no longer give a variable's heading in the table (step
+  2): the variables sheet's `label` does.
+- A new study's setup no longer attaches tflspec (the programs call
+  `programs/study_helpers.R`), nor do the app's previews.
 
 - **The definition files are the study's source** (#274, phase 1).  A
   save records each definition file's fingerprint (`spec/` and

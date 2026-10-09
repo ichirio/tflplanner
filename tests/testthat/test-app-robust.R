@@ -301,7 +301,7 @@ test_that("a step's right is SPEC | Code | Result, the form on its left", {
     v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
     unname(v[nzchar(v)])
   }
-  for (id in c("codelist_right", "ard_right", "table_right", "lf_right", "uc_right", "page_right")) {
+  for (id in c("ard_right", "table_right", "lf_right", "uc_right", "page_right")) {
     expect_identical(vals(id), c("spec", "code", "result"), info = id)
   }
   # the table: the sheets in SPEC, the preview in Result, the builder beside
@@ -326,11 +326,11 @@ test_that("the top tabs are the flow, and a report is made in its steps", {
     unname(v[nzchar(v)])
   }
   expect_identical(vals("nav"), c("study", "data", "outputs", "make", "results"))
-  expect_identical(vals("step"), c("codelist", "ard", "content", "page"))
+  expect_identical(vals("step"), c("ard", "content", "page"))
   expect_identical(vals("content_nav"), c("content", "code"))
   expect_identical(vals("page_right"), c("spec", "code", "result"))
   # the steps' names are in one place
-  expect_identical(names(.step_labels), c("codelist", "ard", "content", "page"))
+  expect_identical(names(.step_labels), c("ard", "content", "page"))
   html <- as.character(app_ui())
   # each kind's content shows for its kind only
   for (k in c("table", "listing", "figure")) {
@@ -496,4 +496,37 @@ test_that("the report list's buttons are above the list, the marks have a legend
   # what the marks after a report's title mean
   for (m in .report_state_marks) expect_true(grepl(m, html, fixed = TRUE))
   expect_match(html, "The marks", fixed = TRUE)
+})
+
+test_that("a copy of the sample is listed at once; its run goes on in the background", {
+  local_home()
+  alive <- TRUE
+  px <- list(is_alive = function() alive, get_exit_status = function() 0L,
+             kill = function() invisible(TRUE))
+  started <- NULL
+  local_mocked_bindings(run_batch = function(study, parts, ...) {
+    started <<- list(id = study$meta$study_id, parts = parts)
+    px
+  })
+  skip_if_not_installed("cards")
+  skip_if_not_installed("cardx")
+  shiny::testServer(function(input, output, session)
+    app_server(input, output, session, NULL), {
+    rv <- session$userData$rv
+    session$setInputs(try_sample = 1L)
+    session$setInputs(ns_from = "sample", ns_id = "TRAIN-01",
+                      ns_root = studies_root(), ns_ok = 1L)
+    # copied and listed, its official run started and not waited for
+    expect_identical(list_studies()$study_id, "TRAIN-01")
+    expect_identical(started, list(id = "TRAIN-01", parts = c("ard", "tfl")))
+    expect_identical(rv$job_study, "TRAIN-01")
+    ids <- function() .study_list_ids(list_studies(), "TRAIN-01",
+                                      if (!is.null(rv$job)) rv$job_study)
+    expect_identical(ids(), "TRAIN-01 \u25cf (running)")
+    # done: the mark goes
+    alive <<- FALSE
+    session$elapse(1500)
+    expect_null(rv$job)
+    expect_identical(ids(), "TRAIN-01 \u25cf")
+  })
 })
