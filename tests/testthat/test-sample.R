@@ -88,6 +88,11 @@ test_that("the sample study makes its ARD and reports", {
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "st"),
                                     sample = TRUE))
   s <- open_study("SAMPLE-01")
+  # its definition files are what its state records (#274)
+  expect_identical(s$spec$status, "same")
+  # and read in full, they are the same study
+  r <- reload_from_spec("SAMPLE-01")
+  expect_identical(r$spec$status, "same")
   expect_equal(unique(study_status(s)$status), "ok")
   expect_equal(unique(ard_status(s)$state), "built")
   b <- list_batches(s)

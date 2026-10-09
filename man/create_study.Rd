@@ -59,8 +59,11 @@ deliverables.
 \itemize{
 \item \code{create_study()} makes the study folder -- layout, \code{study.yml}, an
 RStudio project -- and saves the study, which registers it.
-\item \code{open_study()} returns a study as it was last saved.  Given the folder
-of a study tflplanner does not know yet, it registers it first.
+\item \code{open_study()} returns a study as it was last saved, its definition
+files compared with what tflplanner last wrote or read: one changed
+outside tflplanner (edited in Excel, copied in) is read and taken in
+(\verb{$spec} says what changed; see \code{\link[=reload_from_spec]{reload_from_spec()}}).  Given the
+folder of a study tflplanner does not know yet, it registers it first.
 \item \code{register_study()} adds an existing study folder: its \code{study.yml}, and
 its definition workbooks when \verb{spec/} has them.  A folder unregistered
 before comes back as it was (its saved state, history and unsaved

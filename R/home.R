@@ -7,12 +7,15 @@
 #     studies/<STUDY_ID>/
 #       state.json               the study as last saved: study.yml fields,
 #                                its folder, every sheet, the report list,
-#                                the data code -- the master copy
+#                                the data code -- a copy of the study
+#                                folder's definition files, with each file's
+#                                fingerprint (#274)
 #       history/<time>.json      each earlier saved state
 #
-# The definition workbooks in a study folder's spec/ are written from this
-# state on every save (the programs read them), and can be exported or
-# imported on request; the app itself opens a study from its state.
+# The definition files in a study folder (spec/, study.yml) are the study's
+# source: written on every save, and read back on open when they changed
+# outside tflplanner (R/spec_source.R); unchanged, the study opens from its
+# state.
 #
 # Where the home is: option(tflplanner.home), else the environment variable
 # TFLPLANNER_HOME, else the folder setup_tflplanner() was last given (kept
@@ -255,7 +258,7 @@ studies_root <- function(home = tflplanner_home()) {
 
 .state_of <- function(study) {
   p <- study$planner
-  list(format = 1L,
+  list(format = 2L,
        tflplanner = as.character(utils::packageVersion("tflplanner")),
        saved = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
        path = study$path,
@@ -323,6 +326,10 @@ studies_root <- function(home = tflplanner_home()) {
   jsonlite::fromJSON(f, simplifyVector = FALSE)
 }
 
+# The state with the fingerprint of each definition file as it is now
+# (#274): written after the files, so what is recorded is what is on disk.
+# A change of the fingerprints only (a workbook saved again unchanged) is
+# written without a history entry.
 .write_state <- function(study, home = tflplanner_home()) {
   id <- study$meta$study_id
   dir <- .store_dir(id, home)
@@ -330,14 +337,23 @@ studies_root <- function(home = tflplanner_home()) {
              showWarnings = FALSE)
   f <- .state_file(id, home)
   new <- .state_of(study)
+  new$files <- .spec_fingerprints(study$path)
   body <- function(x) {
     x$saved <- NULL
     x$tflplanner <- NULL
+    x$files <- NULL
+    x$format <- NULL
     x
   }
   if (file.exists(f)) {
     old <- jsonlite::fromJSON(f, simplifyVector = FALSE)
     if (identical(.json(body(old)), .json(body(.from_json(.json(new)))))) {
+      if (identical(.json(old$files), .json(.from_json(.json(new))$files)) &&
+          identical(old$format, new$format)) {
+        return(invisible(FALSE))
+      }
+      new$saved <- old$saved %||% new$saved
+      writeLines(enc2utf8(.json(new)), f, useBytes = TRUE)
       return(invisible(FALSE))
     }
     stamp <- gsub("[^0-9]", "", old$saved %||% format(file.mtime(f)))
