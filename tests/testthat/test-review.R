@@ -28,12 +28,12 @@ test_that("the sample study has no error and nothing to set by hand", {
   expect_false(any(r$level %in% c("error", "hand")),
                info = paste(r$rule, r$output_id, r$message, collapse = "\n"))
   # its checks, seen: the code list values no record has, the KM figure's
-  # advice
-  expect_identical(as.integer(table(r$rule)[c("C02", "F02")]), c(9L, 2L))
-  expect_identical(sort(unique(r$rule)), c("C02", "F02"))
+  # advice, the medians figure's ARD (T-14-2-2's) not made yet
+  expect_identical(as.integer(table(r$rule)[c("C02", "F02", "F07")]), c(9L, 2L, 1L))
+  expect_identical(sort(unique(r$rule)), c("C02", "F02", "F07"))
   # without the data: no data rule, and no row it would not have with them
   r0 <- study_review(s, data = "none", lang = "en")
-  expect_identical(sort(unique(r0$rule)), "F02")
+  expect_identical(sort(unique(r0$rule)), c("F02", "F07"))
 })
 
 test_that("the report list's rules (R01-R08) and the analyses' (A11-A13)", {
@@ -212,10 +212,43 @@ test_that("a figure's advice is in the app's language, by its sentence", {
 test_that("the review takes rows with a column more or less than its own", {
   a <- .rv_row("R01", "T1", args = "T1")
   b <- .rv_row("R02", "T2", args = "T2")
-  b$template <- "The report id %s is given twice."
+  b$extra <- "more"
   r <- .review_bind(list(a, b))
   expect_identical(nrow(r), 2L)
-  expect_true("template" %in% names(r))
-  expect_true(is.na(r$template[r$rule == "R01"]))
-  expect_identical(r$template[r$rule == "R02"], "The report id %s is given twice.")
+  expect_true("extra" %in% names(r))
+  expect_true(is.na(r$extra[r$rule == "R01"]))
+  expect_identical(r$extra[r$rule == "R02"], "more")
+})
+
+test_that("every sentence a review row can carry beyond its rule's has its Japanese", {
+  skip_if_not("tfl_review_templates" %in% getNamespaceExports("tflspec"))
+  tp <- tflspec::tfl_review_templates()
+  ja <- vapply(tp$template, tr, "", lang = "ja")
+  expect_identical(tp$template[ja == tp$template], character(0))
+  # each one's values go in: as many as the English takes
+  for (i in seq_len(nrow(tp))) {
+    n <- lengths(regmatches(tp$template[i], gregexpr("%s", tp$template[i], fixed = TRUE)))
+    a <- paste0("v", seq_len(n))
+    m <- do.call(sprintf, c(list(ja[[i]]), as.list(a)))
+    expect_true(all(vapply(a, grepl, NA, x = m, fixed = TRUE)), info = tp$template[i])
+  }
+  # and the app's own (the figure's ARD, F04-F07)
+  own <- c("%s is not a table of the study",
+           "%s is not a table of the study (deleted, or renamed by hand)",
+           "the design reads an ARD, but the figure has none: choose it in step 2",
+           "%s has no analysis %s (any more): the figure prints from it",
+           "the ARD of %s is not made yet: make it first (its step 2)")
+  expect_false(any(vapply(own, tr, "", lang = "ja") == own))
+})
+
+test_that("a row's own sentence is translated and filled with its values", {
+  r <- .rv_row("F06", "F-1", "report", "", "analysis_id", args = c("T-1", "KM"),
+               template = "%s has no analysis %s (any more): the figure prints from it")
+  expect_identical(r$message, "T-1 has no analysis KM (any more): the figure prints from it")
+  j <- .review_language(.review_bind(list(r)), "ja")
+  expect_match(j$message, "^T-1 \u306b\u89e3\u6790 KM")
+  expect_identical(j$message_en, r$message)
+  # a row without the column (tflspec before 0.0.24.9078): the rule's
+  r$template <- NULL
+  expect_identical(.review_language(.review_bind(list(r)), "ja")$message, r$message)
 })

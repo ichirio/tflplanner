@@ -69,7 +69,7 @@ study_review <- function(study, output_id = NULL, data = c("cached", "read", "no
     drop <- r$rule == "F03" & grepl("no dataset ", r$message) & toupper(gone) %in% unread
     if (any(drop)) r <- .review_finish(r[!drop, , drop = FALSE])
   }
-  more <- list(.rule_d01(study))
+  more <- list(.rule_d01(study), .rules_fig_ard(study))
   if (inherits(facts, "tfl_data_facts")) {
     more <- c(more, list(.rule_d02(study, attr(facts, "not_read"))))
   }
@@ -122,17 +122,18 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
 # rows of the review (tflspec's .rv() shape), with the catalog's level,
 # area and hint
 .rv_row <- function(rule, output_id = NA_character_, sheet = "", row = "",
-                    field = "", args = character(), level = NULL) {
+                    field = "", args = character(), level = NULL, template = NULL) {
   cat <- .review_catalog()
   k <- match(rule, cat$rule)
   args <- as.character(args)
-  msg <- tryCatch(do.call(sprintf, c(list(cat$message[k]), as.list(args))),
+  template <- template %||% cat$message[k]
+  msg <- tryCatch(do.call(sprintf, c(list(template), as.list(args))),
                   error = function(e) paste(args, collapse = " "))
   out <- data.frame(output_id = as.character(output_id),
                     level = level %||% cat$level[k], area = cat$area[k],
                     sheet = sheet, row = row, field = field, message = msg,
-                    hint = cat$hint[k], rule = rule, draft = FALSE,
-                    stringsAsFactors = FALSE)
+                    template = template, hint = cat$hint[k], rule = rule,
+                    draft = FALSE, stringsAsFactors = FALSE)
   out$args <- list(args)
   out$fix <- list(NULL)
   out
@@ -186,8 +187,11 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   if (!nrow(r) || identical(lang, "en")) return(r)
   cat <- .review_catalog()
   k <- match(r$rule, cat$rule)
+  # the row's own sentence (tflspec 0.0.24.9078 and the app's rows carry
+  # it), else its rule's
+  own <- if ("template" %in% names(r)) r$template else rep(NA_character_, nrow(r))
   for (i in seq_len(nrow(r))) {
-    tpl <- cat$message[k[i]]
+    tpl <- if (!is.na(own[i])) own[i] else cat$message[k[i]]
     if (is.na(tpl)) next
     # a rule whose message is another's words (a figure's advice, the
     # constructors' problems): those words, where the app has them
@@ -208,6 +212,30 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
     if (!is.na(h) && nzchar(h)) r$hint[i] <- tr(h, lang)
   }
   r
+}
+
+# ---- a figure that prints a table's numbers (F04-F08) ----------------------
+
+# Each figure's ARD problems (.fig_ard_problems()): its source on the
+# report row (step 2 of the figure: F04, F05, F07), an analysis its
+# pieces name (F06), a piece the ARD cannot answer (F08: in the designer)
+.rules_fig_ard <- function(study) {
+  x <- study$planner
+  o <- x$outputs
+  if (is.null(o) || !nrow(o)) return(NULL)
+  out <- list()
+  for (id in o$output_id) {
+    if (!identical(report_info(x, id)$type, "figure")) next
+    pr <- tryCatch(.fig_ard_problems(study, id), error = function(e) NULL)
+    for (i in seq_len(NROW(pr))) {
+      src <- identical(pr$part[i], "ard")
+      out[[length(out) + 1L]] <- .rv_row(
+        pr$rule[i], id, if (src) "report" else "design",
+        if (src) "" else pr$part[i], pr$field[i],
+        args = pr$args[[i]], template = pr$template[i])
+    }
+  }
+  .review_bind(out)
 }
 
 # ---- the report list (R01-R08) ----------------------------------------------

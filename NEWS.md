@@ -1,5 +1,18 @@
 # tflplanner (development version)
 
+- **The review lists a figure's ARD problems** (#288).  A figure that
+  prints a table's numbers is reviewed as the catalog's F04-F08: its ARD
+  source is not a table of the study (F04), the design reads an ARD but
+  the figure has none (F05), a piece names an analysis the table no
+  longer has (F06), the ARD is not made yet (F07), a piece the ARD cannot
+  answer (F08).  A click on one opens the figure's step 2, or the piece in
+  the designer.
+- **The review's sentences in Japanese, values and all.**  A row carries
+  its sentence (`template`) and values (`args`); the app translates the
+  sentence and puts the values in.  With tflspec 0.0.24.9078 that covers
+  a table against its ARD (T06, T07), a listing's columns (L01, L02) and a
+  figure against the data (F03); the app's own figure rules (F04-F07) too.
+
 - **The Review tab** (#288, phase 2).  A tab between Make a report and
   Runs lists the study's review (`study_review()`): what cannot be used,
   what is probably wrong, what to set by hand, report by report (the
