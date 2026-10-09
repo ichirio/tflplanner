@@ -87,6 +87,19 @@ batch_set_problems <- function(x) {
   out
 }
 
+# One report's batches, as the report list's column holds them (" | "
+# between them; none: NA); each name checked
+.set_report_batches <- function(x, output_id, names) {
+  names <- unique(trimws(as.character(names)))
+  names <- names[!is.na(names) & nzchar(names)]
+  for (n in names) .check_batch_name(n)
+  i <- match(output_id, x$outputs$output_id)
+  if (is.na(i)) stop("No report ", sQuote(output_id), ".", call. = FALSE)
+  if (is.null(x$outputs$batches)) x$outputs$batches <- NA_character_
+  x$outputs$batches[i] <- if (length(names)) paste(names, collapse = " | ") else NA_character_
+  x
+}
+
 # a batch's name: what a batch folder can carry (runs/<stamp>_all_<name>)
 .check_batch_name <- function(name) {
   name <- trimws(as.character(name))

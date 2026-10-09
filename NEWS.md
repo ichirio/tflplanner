@@ -1,5 +1,9 @@
 # tflplanner (development version)
 
+- **The report list shows and edits the named batches** (#301): a Batches
+  column, and Batches... for the report chosen -- the names in use to
+  choose from, a new one typed.
+
 - **An official run of some of the reports** (#301).  The Runs tab lists
   the reports of a run, all ticked (All / None); a report unticked is left
   out -- its ARD program and its report program -- and a report the run
