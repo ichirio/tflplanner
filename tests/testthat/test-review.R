@@ -208,3 +208,14 @@ test_that("a figure's advice is in the app's language, by its sentence", {
   expect_match(r$message_en[i[1L]], "number at risk", fixed = TRUE)
   expect_match(r$hint[i[1L]], "提案", fixed = TRUE)
 })
+
+test_that("the review takes rows with a column more or less than its own", {
+  a <- .rv_row("R01", "T1", args = "T1")
+  b <- .rv_row("R02", "T2", args = "T2")
+  b$template <- "The report id %s is given twice."
+  r <- .review_bind(list(a, b))
+  expect_identical(nrow(r), 2L)
+  expect_true("template" %in% names(r))
+  expect_true(is.na(r$template[r$rule == "R01"]))
+  expect_identical(r$template[r$rule == "R02"], "The report id %s is given twice.")
+})
