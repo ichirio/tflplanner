@@ -141,14 +141,14 @@
 
 # The programs of the reports `outputs` written (in memory) and parsed: the
 # report program, and the ARD program when the report has analyses
-.check_programs <- function(p, outputs) {
+.check_programs <- function(p, outputs, ard_file = .ard_json) {
   out <- .problem_rows(character(), character(), character(), character(),
                        character())
   spec <- NULL
   a <- p$ard
   if (!is.null(a) && nrow(a$analyses)) {
     spec <- tryCatch(.ard_spec(a), error = function(e) {
-      out <<- rbind(out, .problem_rows(.sheet_file("ard", ""), "", "", "",
+      out <<- rbind(out, .problem_rows(.sheet_file("ard", "", ard_file), "", "", "",
                                        conditionMessage(e)))
       NULL
     })
@@ -156,25 +156,26 @@
   for (id in intersect(outputs, output_ids(p))) {
     code <- tryCatch(program_code(p, id), error = function(e) e)
     if (inherits(code, "error")) {
-      out <- rbind(out, .problem_rows(.sheet_file("outputs", ""), "", id, "",
-        paste("The report's program cannot be written:", conditionMessage(code))))
+      # (the report named in the message: the row and column are a cell's)
+      out <- rbind(out, .problem_rows(.sheet_file("outputs", ""), "", "", "",
+        paste0(id, ": the report's program cannot be written: ", conditionMessage(code))))
     } else {
       msg <- .parse_problem(paste(code, collapse = "\n"), "program")
       if (!is.null(msg)) out <- rbind(out, .problem_rows(
-        .sheet_file("outputs", ""), "", id, "",
-        paste("The report's program does not read as R:", trimws(msg))))
+        .sheet_file("outputs", ""), "", "", "",
+        paste0(id, ": the report's program does not read as R: ", trimws(msg))))
     }
     if (!is.null(spec) && id %in% a$analyses$output_id) {
       code <- tryCatch(ard_program_code(spec, id, codelists = .study_codelists(p)),
                        error = function(e) e)
       if (inherits(code, "error")) {
-        out <- rbind(out, .problem_rows(.sheet_file("ard", ""), "analyses", id, "",
-          paste("The ARD program cannot be written:", conditionMessage(code))))
+        out <- rbind(out, .problem_rows(.sheet_file("ard", "", ard_file), "analyses", "", "",
+          paste0(id, ": the ARD program cannot be written: ", conditionMessage(code))))
       } else {
         msg <- .parse_problem(paste(code, collapse = "\n"), "program")
         if (!is.null(msg)) out <- rbind(out, .problem_rows(
-          .sheet_file("ard", ""), "analyses", id, "",
-          paste("The ARD program does not read as R:", trimws(msg))))
+          .sheet_file("ard", "", ard_file), "analyses", "", "",
+          paste0(id, ": the ARD program does not read as R: ", trimws(msg))))
       }
     }
   }
@@ -193,7 +194,7 @@
                                                    character(), character(),
                                                    character())),
                                 lapply(figs, function(f) .check_fig(f, p$fig_designs[[f]])))),
-               .check_programs(p, ids))
+               .check_programs(p, ids, af))
   rownames(out) <- NULL
   unique(out)
 }

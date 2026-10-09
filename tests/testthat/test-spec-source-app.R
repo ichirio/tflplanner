@@ -116,6 +116,9 @@ test_that("Import in the app: the parts shown, the ones checked taken in, a brok
     expect_identical(rv$import$preview$parts, "sheet:titles")
     session$setInputs(import_parts = "sheet:titles", import_ok = 1)
     expect_identical(sheet_rows(rv$p, "titles", "T-1")$center, "From the copy")
+    # what was taken in stays on the Study tab
+    expect_identical(rv$spec$status, "imported")
+    expect_match(rv$spec$backup, "^spec/[.]backup/")
     expect_identical(open_study("SA-1")$spec$status, "same")
     expect_true(dir.exists(file.path(s$path, "spec", ".backup")))
     # a copy that does not read: nothing changes

@@ -2402,13 +2402,8 @@ The definition files were changed outside tflplanner since this study was opened
 Export the definition files,定義ファイルを書き出す
 "A copy of spec/ and study.yml as a zip (the ARD definition as an Excel workbook): edit the copy, rename it as you like, and bring it back with Import.",spec/ と study.yml の写しを zip で書き出します（ARD の定義は Excel のワークブック）。写しを直し、名前も好きに変えてから、取り込みで戻します。
 "Import definition files (an edited copy: workbooks, .yml, .json or the zip)",定義ファイルを取り込む（直した写し：ワークブック、.yml、.json、または zip）
-The files cannot be imported,このファイルは取り込めません
 Nothing was changed. Fix the copy and import it again.,何も変えていません。写しを直して、もう一度取り込んでください。
-The files are the same as the study's: nothing to import.,ファイルは試験と同じです。取り込むものはありません。
-Import definition files,定義ファイルを取り込む
-Parts that differ (take in the ones checked),違う部分（チェックしたものを取り込む）
 Warnings (the import is not stopped by them):,警告（取り込みは止まりません）：
-The study's files as they are now are copied to spec/.backup/<date>-<time>/ first; then the study is saved.,今の試験のファイルを先に spec/.backup/<日付>-<時刻>/ に残し、そのあと試験を保存します。
 Import the parts checked,チェックした部分を取り込む
 Check a part to import,取り込む部分をチェックしてください
 Imported: %s. The files before are in %s.,取り込みました：%s。取り込む前のファイルは %s にあります。
@@ -2453,3 +2448,14 @@ Population flag,解析対象集団フラグ
 "A flag (== ""Y"") that selects the population, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"
 Keep a population,解析対象集団で絞る
 "No population: every row of the dataset is used. Keep the population's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。
+"To edit the definition outside the app: export the files, edit the copy (in Excel; rename it as you like), and import it back.",定義をアプリの外で直すには：ファイルを書き出し、写しを直して（Excel で。名前は変えてよい）、取り込みで戻します。
+"There are unsaved changes. Save first, then choose the file again.",未保存の変更があります。先に保存してから、ファイルを選び直してください。
+The files cannot be imported: %s,取り込めません：%s
+%s is the same as the study's definition: nothing to import.,%s は試験の定義と同じです。取り込むものはありません。
+Import definition files: %s,定義ファイルを取り込む：%s
+Read as %s.,%s として読みました。
+A part checked is replaced whole by the copy's version; a part not checked stays as the study has it.,チェックした部分は、写しの内容で丸ごと置き換えます。チェックしない部分は、試験のままです。
+"Before anything changes, the study's files as they are now are kept in spec/.backup/<date>-<time>/; then the study is saved. Cancel changes nothing.",変える前に、今の試験のファイルを spec/.backup/<日付>-<時刻>/ に残し、そのあと試験を保存します。キャンセルすると何も変わりません。
+Imported from %s.,%s から取り込みました。
+The files before the import are kept in %s.,取り込む前のファイルは %s に残しています。
+Parts that differ (take in the ones checked): the study's → the copy's,違う部分（チェックしたものを取り込む）：試験 → 写し

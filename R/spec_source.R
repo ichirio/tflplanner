@@ -631,8 +631,28 @@ preview_spec_import <- function(study, path, home = tflplanner_home()) {
     if (length(parts)) problems <- rbind(problems, .check_spec(r, outputs))
   }
   list(parts = parts, labels = .part_labels(parts), outputs = outputs,
+       summary = .part_summary(s, r, parts),
        problems = problems, ok = !.has_errors(problems),
        files = attr(stage, "placed"), incoming = r, current = s)
+}
+
+# What a part is on each side, in a few words -- the rows of a sheet, a
+# value -- so the person importing can tell what taking the copy's version
+# would do (the copy may be older than the study)
+.part_summary <- function(cur, inc, parts) {
+  a <- .study_parts(cur)
+  b <- .study_parts(inc)
+  one <- function(x) {
+    if (is.data.frame(x)) return(paste(nrow(x), if (nrow(x) == 1L) "row" else "rows"))
+    if (is.null(x) || (length(x) == 1L && is.na(x))) return("none")
+    if (is.character(x) && length(x) == 1L) {
+      return(if (nchar(x) > 40L) paste0(substr(x, 1L, 37L), "...") else x)
+    }
+    if (is.list(x)) return("a design")
+    paste(x, collapse = ", ")
+  }
+  vapply(parts, function(k) sprintf("%s \u2192 %s", one(a[[k]]), one(b[[k]])),
+         "", USE.NAMES = FALSE)
 }
 
 #' @rdname export_spec_files
