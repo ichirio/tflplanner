@@ -1353,7 +1353,37 @@ app_server <- function(input, output, session, start) {
     }
     d
   }
-  has_study <- shiny::reactive(!is.null(rv$study))
+  # whether a study is open: what changes is the answer, not each copy of
+  # the study a save makes (as a reactive(), a save made every output that
+  # asks -- most of them -- be drawn again)
+  has_study_v <- shiny::reactiveVal(FALSE)
+  shiny::observe(has_study_v(!is.null(rv$study)), priority = 10000)
+  # (the answer as of now: a handler that has just opened a study asks
+  # before the observer above has run)
+  has_study <- function() {
+    has_study_v()
+    !is.null(shiny::isolate(rv$study))
+  }
+  # Parts of the definition, each changing only when that part does: an
+  # edit of a table's cell does not make the ARD's state, the report list
+  # or the own functions be worked out again (each read the whole study
+  # before, at every keystroke).  A reactiveVal set to what it holds
+  # already tells no one.
+  p_part <- function(get) {
+    v <- shiny::reactiveVal(NULL)
+    shiny::observe(v(get(rv$p)), priority = 10000)
+    v
+  }
+  # what the ARD definitions (and their state) are made from
+  p_ard <- p_part(function(p) list(p$ard, p$sheets$codelists, p$setup, p$study))
+  # the study open (its folder and id), not each copy of it a save makes
+  study_open <- shiny::reactiveVal(NULL)
+  shiny::observe(study_open(list(rv$study$path, rv$study$meta$study_id)),
+                 priority = 10000)
+  # what the report list shows: the reports, their analyses, listings,
+  # figures, report rows and titles
+  p_list <- p_part(function(p) list(p$outputs, p$ard, p$lf, p$fig_designs,
+                                    p$sheets$report, p$sheets$titles, p$study))
   dirty <- shiny::reactive({
     has_study() && (!identical(rv$p, rv$saved) ||
                        !identical(rv$meta, rv$saved_meta))
@@ -1362,6 +1392,7 @@ app_server <- function(input, output, session, start) {
   session$userData$rv <- rv
   session$userData$grids_drawn <- grids_drawn
   session$userData$dirty <- dirty
+  session$userData$has_study <- has_study
   # unsaved changes: the page asks before it is left, and a draft keeps
   # them (written once the edits pause) until they are saved or discarded
   shiny::observe(session$sendCustomMessage("tflplanner-dirty", isTRUE(dirty())))
@@ -2587,12 +2618,15 @@ app_server <- function(input, output, session, start) {
   picker_rows <- shiny::reactive({
     rv$ver
     rv$status_ver
-    p <- rv$p
+    # what the list shows changed (not a table's cell, say)
+    p_list()
+    p <- shiny::isolate(rv$p)
     if (is.null(p) || !has_study()) return(.report_rows(new_planner()))
     # the ARD's state as the ARD step has it; the runs' from their files
     # (study_status() writes every program again: slow for a big study)
     .report_rows(p, tryCatch(ard_state(), error = function(e) NULL),
-                 tryCatch(.report_run_light(current_study()), error = function(e) NULL))
+                 tryCatch(.report_run_light(shiny::isolate(current_study())),
+                          error = function(e) NULL))
   })
   report_picker_server(
     "rp", picker_rows, now = shiny::reactive(input$target),
@@ -2716,8 +2750,10 @@ app_server <- function(input, output, session, start) {
   # -- what the ARD says ---------------------------------------------------
   meta_of <- function(id) {
     rv$ard_ver
+    # the study it is (a save gives rv$study anew: the same study)
+    study_open()
     if (!has_study() || is.null(id)) return(NULL)
-    ard_info(rv$study, id)
+    ard_info(shiny::isolate(rv$study), id)
   }
   meta_now <- shiny::reactive({
     rv$ard_ver
@@ -5966,9 +6002,11 @@ app_server <- function(input, output, session, start) {
   ard_state <- shiny::reactive({
     ard_state_ver()
     rv$status_ver
-    rv$p
+    # the ARD definitions and what their state is made from: an edit of a
+    # table, a title or a listing does not hash every report's again
+    p_ard()
     shiny::req(has_study())
-    ard_status(current_study())
+    ard_status(shiny::isolate(current_study()))
   })
   # each step's mark for the report chosen (Make a report): its state at a
   # glance -- a step its kind does not use is faded instead
@@ -6510,9 +6548,11 @@ app_server <- function(input, output, session, start) {
     own_pick()
     input$ard_right
     input$own_refresh
-    rv$p
+    # the study's ARD definition (its `source`, its functions): not every
+    # edit of the study
+    p_ard()
     shiny::req(has_study())
-    d <- tryCatch(own_ard_functions(imp_study()), error = function(e) {
+    d <- tryCatch(own_ard_functions(shiny::isolate(imp_study())), error = function(e) {
       notify(conditionMessage(e), "error")
       NULL
     })
@@ -8621,7 +8661,10 @@ app_server <- function(input, output, session, start) {
 
   # -- report list -------------------------------------------------------
   outputs_view <- shiny::reactive({
-    p <- rv$p
+    # what the list shows changed (not a table's cell, say)
+    p_list()
+    rv$ver
+    p <- shiny::isolate(rv$p)
     empty <- data.frame(output_id = character(), section = character(),
                         batches = character(), type = character(),
                         program = character(), rtf = character(),
@@ -8630,7 +8673,8 @@ app_server <- function(input, output, session, start) {
     o <- p$outputs
     info <- lapply(o$output_id, function(id) report_info(p, id))
     type <- vapply(info, `[[`, "", "type")
-    st <- tryCatch(ard_status(current_study()), error = function(e) NULL)
+    # the ARD's state as the ARD step has it (worked out once, for both)
+    st <- tryCatch(ard_state(), error = function(e) NULL)
     ard_of <- if (!is.null(st)) st$state[match(o$output_id, st$output_id)] else
       rep(NA_character_, nrow(o))
     # the datasets the report reads (lower case, as the files are named);

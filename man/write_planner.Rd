@@ -8,7 +8,8 @@ write_planner(
   x,
   dir,
   table_file = "table_spec.xlsx",
-  report_file = "report_spec.xlsx"
+  report_file = "report_spec.xlsx",
+  books = c("table", "report")
 )
 }
 \arguments{
@@ -17,6 +18,8 @@ write_planner(
 \item{dir}{Destination folder.}
 
 \item{table_file, report_file}{File names.}
+
+\item{books}{Which to write: \code{"table"}, \code{"report"} (both by default).}
 }
 \value{
 The two paths, invisibly.
