@@ -675,13 +675,19 @@
     sec_ui <- function(sec) {
       items <- if (sec == "plot") list(item("plot", 1L, d$plot, t("Title, axes, colours, legend, size")))
         else lapply(seq_along(d[[sec]]), function(i) item(sec, i, d[[sec]][[i]], label_of(d[[sec]][[i]])))
+      # the code lists go on df: before the first step that makes an object
+      if (sec == "data") {
+        named <- which(vapply(d$data, function(p) isTRUE(p$step %in% names(.pd_named_steps)), NA))
+        items <- append(items, list(cl_item()),
+                        after = if (length(named)) named[1L] - 1L else length(items))
+      }
       shiny::div(
         shiny::div(class = "pd-sec", t(.pd_sections[[sec]])),
-        if (length(items)) items else if (sec != "data") shiny::div(class = "small text-muted ps-2", t("(none)")),
-        if (sec == "data") cl_item())
+        if (length(items)) items else shiny::div(class = "small text-muted ps-2", t("(none)")))
     }
-    # the data's last step, always there: the report's code lists put on
-    # the columns (not the design's: the report's, edited in a dialog)
+    # always there, on df before its first object (#293): the report's
+    # code lists put on the columns (not the design's: the report's,
+    # edited in a dialog)
     cl_item <- function() {
       on <- identical(s$sec, "codelists")
       used <- vapply(.codelist_lines(sheet_rows(rv$p, "codelists", current() %||% ""),
@@ -1118,16 +1124,23 @@
 # step that makes an object of its own last, a step on df before the first
 # such step (#293)
 .pd_add_at <- function(x, k, sec, s) {
-  if (identical(s$sec, sec) && isTRUE(s$i >= 1L && s$i <= length(x))) return(s$i)
-  if (sec == "layers") return(if (identical(k, "km_curve")) 0L else length(x))
+  at <- if (identical(s$sec, sec) && isTRUE(s$i >= 1L && s$i <= length(x))) s$i
+  if (sec == "layers") return(at %||% if (identical(k, "km_curve")) 0L else length(x))
   named <- which(vapply(x, function(p) isTRUE(p$step %in% names(.pd_named_steps)), NA))
-  if (k %in% names(.pd_named_steps) || !length(named)) length(x) else named[1L] - 1L
+  df_end <- if (length(named)) named[1L] - 1L else length(x)
+  # a step that reads or keeps ADaM rows is a step on df, whatever is
+  # chosen; a step that makes an object goes among those; the others
+  # (derive, filter ...) after the step chosen, so on its object
+  if (k %in% .pd_source_steps) return(if (isTRUE(at <= df_end)) at else df_end)
+  if (k %in% names(.pd_named_steps)) return(if (isTRUE(at > df_end)) at else length(x))
+  at %||% df_end
 }
+.pd_source_steps <- c("read", "join", "param", "flag", "time_unit")
 
 # The lines of a design's script that one piece makes: the lines the
 # script has with it and not without it (`make(d)` writes a design's
 # script; for the code lists, `make(d, codelists = FALSE)`), its parts
-# apart by "  ..."; the figure settings: the plot section; a whole-script
+# apart by "# ..."; the figure settings: the plot section; a whole-script
 # layer: the script.
 .piece_code <- function(code, d, s, make) {
   whole <- identical(s$sec, "layers") &&
@@ -1182,7 +1195,7 @@
   if (!length(w)) return(character())
   runs <- split(w, cumsum(c(1L, diff(w) > 1L)))
   unlist(lapply(seq_along(runs), function(r)
-    c(if (r > 1L) "  ...", shown[runs[[r]]])), use.names = FALSE)
+    c(if (r > 1L) "# ...", shown[runs[[r]]])), use.names = FALSE)
 }
 t_static <- function(x) x
 

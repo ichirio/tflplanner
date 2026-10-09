@@ -220,5 +220,9 @@ test_that("a design saved before #293 (its statistics apart) reads as one data l
   expect_identical(.pd_add_at(x, "filter", "data", list(sec = "plot", i = 1L)), 2L)
   expect_identical(.pd_add_at(x, "summary", "data", list(sec = "plot", i = 1L)), 3L)
   expect_identical(.pd_add_at(x, "filter", "data", list(sec = "data", i = 1L)), 1L)
+  # with the fit chosen: a derive goes on it, a flag stays on df
+  expect_identical(.pd_add_at(x, "derive", "data", list(sec = "data", i = 3L)), 3L)
+  expect_identical(.pd_add_at(x, "flag", "data", list(sec = "data", i = 3L)), 2L)
   expect_identical(.pd_add_at(d$layers, "km_curve", "layers", list(sec = "plot", i = 1L)), 0L)
+  expect_identical(.pd_add_at(d$layers, "hline", "layers", list(sec = "layers", i = 1L)), 1L)
 })

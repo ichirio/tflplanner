@@ -446,7 +446,7 @@ KM curves,KM 曲線
 KM confidence bands,KM 信頼帯
 Censor marks,打ち切りマーク
 Reference line labels,参照線のラベル
-Number at risk (panel),リスク集合数（下段）
+Number at risk,リスク集合数
 Drawn as,描き方
 "panel: a plot of its own below the curves, the counts from the fit at the x axis's breaks; add_risktable: ggsurvfit's risk table.","panel：曲線の下に別の図として描きます（数は fit から、x 軸の目盛りの時点で）。add_risktable：ggsurvfit のリスク表です。"
 n by visit (panel),来院ごとの n（下段）
