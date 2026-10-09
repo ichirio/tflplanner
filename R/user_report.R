@@ -98,7 +98,6 @@ preview_user <- function(study, output_id, timeout = 300) {
   q <- function(x) encodeString(normalizePath(x, "/", FALSE), quote = "\"")
   script <- c(
     "suppressPackageStartupMessages(library(rtfreporter))",
-    "suppressPackageStartupMessages(library(tflspec))",
     paste0("sys.source(", q(f_helpers), ", envir = globalenv())"),
     ".e <- new.env(parent = globalenv())",
     # report_content() as the study's next fig_setup.R has it (the one on

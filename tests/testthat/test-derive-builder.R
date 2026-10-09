@@ -1,4 +1,4 @@
-# 2-1's columns made (analysis_data$derive), by kind: R/derive_builder.R
+# 1-1's columns made (analysis_data$derive), by kind: R/derive_builder.R
 
 test_that("the four kinds read back and are written as they were", {
   same <- function(x) {
@@ -71,7 +71,7 @@ test_that("a column the form makes: the errors in words", {
                    "X = cut(AGE, c(-Inf, 65, Inf), right = FALSE)")
 })
 
-test_that("2-1: a column made in the form, saved as the sheet's derive", {
+test_that("1-1: a column made in the form, saved as the sheet's derive", {
   skip_if_not_installed("cards")
   local_home()
   p <- add_output(new_planner(), "DM")

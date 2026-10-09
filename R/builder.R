@@ -181,14 +181,12 @@ builder_read <- function(x, output_id, meta = NULL) {
   ord <- suppressWarnings(as.numeric(vr$order[match(vars, vr$variable)]))
   vars <- vars[order(is.na(ord), ord, match(vars, mv$variable))]
   label <- vr$label[match(vars, vr$variable)]
-  # the report's code list of `variable` (a variable's name -> its label):
-  # what prints where the variables sheet says none -- shown faint, written
-  # only when changed (tflspec #172); else the ARD's own label
-  cl <- sheet_rows(x, "codelists", id)
-  cl <- cl[!is.na(cl$variable) & cl$variable == "variable" & !is.na(cl$label), , drop = FALSE]
-  hint <- cl$label[match(vars, cl$value)]
+  # where the variables sheet says none: the ARD's own label (a hint shown
+  # faint: none now -- the code lists say what the data's values become,
+  # not the variables' headings)
+  hint <- rep(NA_character_, length(vars))
   mlab <- mv$label[match(vars, mv$variable)]
-  use_m <- is.na(label) & is.na(hint)
+  use_m <- is.na(label)
   label[use_m] <- mlab[use_m]
   kind <- mv$kind[match(vars, mv$variable)]
   kind[is.na(kind)] <- ifelse(

@@ -102,7 +102,7 @@ test_that("a report's own font and size are its row of the page sheet", {
   expect_identical(p$sheets$page$output_id, NA_character_)
 })
 
-test_that("step 4 sets this report's font; blank leaves every report's", {
+test_that("step 3 sets this report's font; blank leaves every report's", {
   local_home()
   p <- add_output(new_planner(), "T-1", description = "a table")
   p <- add_output(p, "T-2", description = "another")

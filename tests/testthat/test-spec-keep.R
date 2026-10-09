@@ -27,7 +27,7 @@ grid_edit <- function(session, output, id, row, col, value) {
 # like a number or a logical, a line break, a bar, a token, a blank cell
 .odd <- c("007", "TRUE", "a\nb", "x | y", "{STUDY}", "1.50", NA)
 
-test_that("steps 1 and 4: a grid edit changes that cell and nothing else", {
+test_that("the code lists' dialog and step 2: a grid edit changes that cell and nothing else", {
   local_home()
   p <- add_output(new_planner(), "T1", type = "table", description = "one")
   p <- add_output(p, "T2", type = "table", description = "other")
@@ -55,11 +55,12 @@ test_that("steps 1 and 4: a grid edit changes that cell and nothing else", {
   create_study("S1", planner = p)
   shiny::testServer(server_for("S1"), {
     rv <- session$userData$rv
-    # step 1's editor: every variable (T1 has no analyses to narrow it)
-    session$setInputs(target = "T1", nav = "make", step = "page", cl_all = TRUE)
+    # the code lists' editor (1-1's dialog): every variable
+    session$setInputs(target = "T1", nav = "make", step = "page")
+    session$setInputs(cl21_open = 1, cl21_all = TRUE)
     for (sh in c(names(text_sheets), "page", "report")) {
       before <- rv$p
-      grid_id <- if (sh == "codelists") "cl_hot" else paste0("hot_", sh)
+      grid_id <- if (sh == "codelists") "cl21_hot" else paste0("hot_", sh)
       d <- sheet_rows(before, sh, "T1")
       # one cell changed: the last column of the first row (the page and
       # the report: a setting of the right type)
@@ -126,7 +127,7 @@ builder_show <- function(session, bform) {
   session$elapse(1000)
 }
 
-test_that("step 3, the table builder: what it cannot show stays as written", {
+test_that("step 2, the table builder: what it cannot show stays as written", {
   skip_on_cran()
   skip_if_not_installed("cards")
   local_home()
@@ -197,7 +198,7 @@ test_that("step 3, the table builder: what it cannot show stays as written", {
   })
 })
 
-test_that("step 3, the listing form: what it cannot show stays as written", {
+test_that("step 2, the listing form: what it cannot show stays as written", {
   local_home()
   p <- add_output(new_planner(), "L1", type = "listing")
   # a dataset the catalog does not have; columns the form has no field for
@@ -241,7 +242,7 @@ test_that("step 3, the listing form: what it cannot show stays as written", {
   })
 })
 
-test_that("step 3, the figure designer: what it cannot show stays as written", {
+test_that("step 2, the figure designer: what it cannot show stays as written", {
   local_home()
   p <- add_output(new_planner(), "F1", type = "figure")
   d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP")
