@@ -357,7 +357,6 @@ Adding the sample study and making its ARD and reports ...,サンプル試験を
 Added %s: double-click it in the list to open it.,%s を追加しました。一覧でダブルクリックすると開きます。
 "No studies yet. Create one with New study (the sample study is one of its choices), or register a study folder.",試験がまだありません。「新規試験」で作成するか（サンプル試験のコピーも選べます）、試験フォルダを登録してください。
 "The sample study: data, ARD definition, tables, listing and figures (made at once)",サンプル試験をコピー：データ・ARD 定義・表・Listing・図（作成まで一括）
-Copying the sample study and making its ARD and reports ...,サンプル試験をコピーし、ARD と帳票を作成しています ...
 Plot Designer,プロットデザイナー
 Mapping (variables),マッピング（変数）
 Style,スタイル
@@ -2386,6 +2385,11 @@ Own,自分の書式
 "{statistic} as the ARD names it: N, mean, sd, se, median, p25, p75, min, max ...; a format after a colon: {mean:.2f} two decimals, {p:.1f%} a percent. Blank: the decimals above. The table on the right shows the row once added.",{統計量} は ARD の名前で: N、mean、sd、se、median、p25、p75、min、max など。コロンの後に書式: {mean:.2f} は小数 2 桁、{p:.1f%} は百分率。書かなければ上の桁数。足した行は右の表に出ます。
 Prints (the Statistics card's):,出すもの（統計量のカードの設定）:
 Decimals:,小数桁:
+Copying the sample study ...,サンプル試験を写しています ...
+"The sample study is in place; to make its ARD and reports, install %s and start an official run (Runs).",サンプル試験を写しました。ARD と帳票を作るには、%s を入れてから正式実行（実行タブ）をしてください。
+the official run of %s (its ARD and reports),%s の正式実行（ARD と帳票）
+%s is copied; its ARD and reports are being made in the background (a few minutes). You can use the app meanwhile.,%s を写しました。ARD と帳票は裏で作っています（数分）。その間もアプリは使えます。
+running,実行中
 Code lists: the columns of %s,コードリスト：%s の列
 Code lists: the columns of this analysis data,コードリスト：この解析データの列
 "This report's code lists of these columns: the program puts them on the data (set_levels()), each column a factor in the list's order, its values the labels -- so the ARD holds what the table prints. A value a list does not have stops the program.",これらの列の、この帳票のコードリストです。プログラムはこれをデータに当てます（set_levels()）。各列はリストの順の factor になり、値はラベルになります。そのため ARD は表に出す文字を持ちます。リストに無い値があるとプログラムは止まります。

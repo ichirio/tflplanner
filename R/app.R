@@ -1506,9 +1506,10 @@ app_server <- function(input, output, session, start) {
     last <- shiny::isolate(if (has_study()) rv$study$meta$study_id else
       tflplanner_config()$last_study)
     open_id <- shiny::isolate(if (has_study()) rv$study$meta$study_id)
+    # a study whose run is going on (the sample's, made in the background)
+    running <- if (!is.null(rv$job)) rv$job_study
     v <- data.frame(
-      a = paste0(d$study_id, ifelse(d$folder, "", " \u26a0"),
-                 ifelse(d$study_id %in% open_id, " \u25cf", "")),
+      a = .study_list_ids(d, open_id, running, t),
       b = d$title, e = substr(d$saved, 1L, 16L),
       stringsAsFactors = FALSE)
     v[is.na(v)] <- ""
@@ -1982,16 +1983,17 @@ app_server <- function(input, output, session, start) {
     blank <- function(v) if (is.null(v) || !nzchar(trimws(v))) NA else v
     s <- if (identical(input$ns_from, "sample")) {
       # the sample study under this ID: its data, ARD definition, tables,
-      # listing and figures, made at once by an official run
+      # listing and figures copied (seconds); its official run, which makes
+      # the ARD and the reports (minutes), runs in the background below
       nz <- function(v) { v <- blank(v); if (is.na(v)) NULL else v }
       out <- NULL
       shiny::withProgress(
-        message = t("Copying the sample study and making its ARD and reports ..."),
+        message = t("Copying the sample study ..."),
         out <- guarded(suppressMessages(create_sample_study(
           root = trimws(input$ns_root), study_id = trimws(input$ns_id),
           title = nz(input$ns_title), compound = nz(input$ns_compound),
           phase = nz(input$ns_phase),
-          description = nz(input$ns_description)))))
+          description = nz(input$ns_description), run = FALSE))))
       out
     } else {
       # "empty": no reports, but the company's study defaults, analysis
@@ -2011,7 +2013,10 @@ app_server <- function(input, output, session, start) {
     shiny::removeModal()
     rv$studies_ver <- rv$studies_ver + 1L
     set_study(s)
-    if (identical(input$ns_from, "sample")) rv$next_steps <- TRUE
+    if (identical(input$ns_from, "sample")) {
+      rv$next_steps <- TRUE
+      start_sample_run(s)
+    }
     notify(sprintf(t("Created %s"), s$meta$study_id))
     bslib::nav_select("nav", "outputs")
   })
@@ -8944,6 +8949,28 @@ app_server <- function(input, output, session, start) {
     if (is.null(px)) return()
     rv$job <- px
     rv$job_what <- what
+    rv$job_study <- rv$study$meta$study_id
+  }
+  # a new copy of the sample: its official run (the ARD and the reports)
+  # in the background, as the Runs tab starts one; the app stays usable and
+  # the study list says it is running
+  start_sample_run <- function(s) {
+    miss <- c("cards", "cardx")[!vapply(c("cards", "cardx"), requireNamespace,
+                                        NA, quietly = TRUE)]
+    if (length(miss)) {
+      return(notify(sprintf(
+        t("The sample study is in place; to make its ARD and reports, install %s and start an official run (Runs)."),
+        paste(miss, collapse = ", ")), "warning"))
+    }
+    if (!is.null(rv$job)) return(notify(t("A run is going on"), "warning"))
+    px <- guarded(run_batch(s, c("ard", "tfl"), wait = FALSE))
+    if (is.null(px)) return()
+    rv$job <- px
+    rv$job_what <- sprintf(t("the official run of %s (its ARD and reports)"),
+                           s$meta$study_id)
+    rv$job_study <- s$meta$study_id
+    notify(sprintf(t("%s is copied; its ARD and reports are being made in the background (a few minutes). You can use the app meanwhile."),
+                   s$meta$study_id))
   }
   shiny::observeEvent(input$run_all, start_run(NULL, t("every report")))
   start_batch <- function(parts, code) {
@@ -8953,6 +8980,7 @@ app_server <- function(input, output, session, start) {
     px <- guarded(run_batch(rv$study, parts, code = code, wait = FALSE))
     if (is.null(px)) return()
     rv$job <- px
+    rv$job_study <- rv$study$meta$study_id
     rv$job_what <- paste(t("the official run:"),
                          paste(t(c(ard = "ARD", tfl = "Reports")[parts]),
                                collapse = ", "))
@@ -9007,7 +9035,9 @@ app_server <- function(input, output, session, start) {
                        t("Finished with errors: %s"), rv$job_what),
              if (identical(rc, 0L)) "message" else "warning")
       rv$job <- NULL
+      rv$job_study <- NULL
       rv$status_ver <- rv$status_ver + 1L
+      rv$ard_ver <- rv$ard_ver + 1L
     })
   })
   output$job <- shiny::renderUI({
@@ -9020,4 +9050,12 @@ app_server <- function(input, output, session, start) {
     px <- shiny::isolate(rv$job)
     if (!is.null(px) && px$is_alive()) px$kill()
   })
+}
+
+# The study list's first column: the ID, a mark when its folder is not
+# found, when it is the study open, and when its run is going on
+.study_list_ids <- function(d, open_id = NULL, running = NULL, t = identity) {
+  paste0(d$study_id, ifelse(d$folder, "", " \u26a0"),
+         ifelse(d$study_id %in% open_id, " \u25cf", ""),
+         ifelse(d$study_id %in% running, paste0(" (", t("running"), ")"), ""))
 }

@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **A new study from the sample is ready at once** (#297).  The sample
+  is copied (seconds) and opened; its official run, which makes its ARD
+  and reports (a few minutes), runs in the background as the Runs tab
+  starts one.  The study is in the list straight away, marked "(running)"
+  until the run ends, and the app can be used meanwhile (before, it
+  waited for the whole run with a progress note).
+
 - R-CMD-check now also runs on R 4.2, the oldest R tested (`Depends: R (>= 4.1)` is kept; cardx, used by the generated ARD code, needs R >= 4.2).
 
 - **A study opens in a fifth of a second** (#296, reported by the user).
