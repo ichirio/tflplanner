@@ -1,5 +1,20 @@
 # tflplanner (development version)
 
+- **Four more sample reports** (SAMPLE-01, made by
+  `data-raw/make-sample-study.R`):
+  - T-14-1-3: age group and sex, its ARD cards' default statistics (n, N
+    and p) and its table n (%) -- the N rows the cells do not name are left
+    out;
+  - T-14-2-3: the mean change in systolic blood pressure at Week 24 with
+    its 95% CI and p-value (`cardx::ard_continuous_ci()`, a one-sample
+    t-test), every statistic in the ARD, its method and alternative text;
+  - T-14-0-1: the study's information (dictionary versions, the dates of
+    the data), with no analysis set (`<All Subjects>` under the title);
+  - T-14-1-4: the screen failures' demographics, an analysis set by a
+    condition alone (SCRF: `ARM == "Screen Failure"`, no flag).
+- The Japanese help of the table layout's `blank_where` says it takes row
+  positions too (tflspec >= 0.0.24.9067).
+
 - **The sample's KM figure (F-14-2-2) reads the study ARD through
   `path_ard`** (`readRDS(file.path(path_ard, "ard.rds"))`), the folder's
   variable of the study's setup, as the other programs do (#268).

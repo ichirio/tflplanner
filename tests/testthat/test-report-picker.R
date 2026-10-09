@@ -36,7 +36,8 @@ test_that("a study of many reports, in sections, its states mixed", {
   s <- .make_big_study(60L, root = file.path(home, "ws"), home = home)
   r <- .report_rows(s$planner, ard_status(s), .report_run_light(s))
   expect_identical(nrow(r), 60L)
-  expect_identical(length(unique(r$section)), 10L)
+  # (the sample's reports and their sections, 14.0 the study information's)
+  expect_identical(length(unique(r$section)), 11L)
   expect_true(all(c("ok", "outdated", "not built", "error") %in% r$state))
   expect_true(all(nzchar(r$title)))
   # the light run state reads what study_status() reads from the files

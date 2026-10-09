@@ -2,13 +2,26 @@
 # one of each kind of report, on the CDISC pilot ADaM data of
 # {pharmaverseadam} (Apache License 2.0).
 #
+#   T-14-0-1  Table    Study information (dictionary versions, the dates
+#                      of the data): no analysis set -- its ARD is the
+#                      study's own facts, made by code
 #   T-14-1-1  Table    Demographic characteristics
 #   T-14-1-1S Table    The same table, its ARD one cards::ard_stack() call
 #                      (the continuous and the categorical analyses inside
 #                      it, and the column N it makes itself)
 #   T-14-1-2  Table    Subject disposition
+#   T-14-1-4  Table    Demographic characteristics of the screen failures:
+#                      an analysis set by a condition alone (SCRF, ARM is
+#                      Screen Failure), no flag
+#   T-14-1-3  Table    Age group and sex: the ARD keeps cards' default
+#                      statistics (n, N, p), the table prints n (%) -- the
+#                      N rows the cells do not name are left out
 #   T-14-2-1  Table    Change from baseline in systolic blood pressure,
 #                      Week 24 (with SE and the mean's 95% CI)
+#   T-14-2-3  Table    Change from baseline in systolic blood pressure at
+#                      Week 24: mean (95% CI) and p-value of a one-sample
+#                      t-test -- the ARD also holds the test's method and
+#                      alternative as text
 #   T-14-2-2  Table    Time to first dermatologic event: Kaplan-Meier
 #                      estimates (median, event-free probability by day)
 #   T-14-3-1  Table    TEAEs by SOC / PT, frequency descending
@@ -136,6 +149,14 @@ sheets <- list(
          note = "KM estimates"),
     list(output_id = "T-14-2-1", cols = "TRTA", rows = "group = variable",
          note = "SYSBP at Week 24: baseline, value, change"),
+    list(output_id = "T-14-0-1", cols = "context", rows = "group = variable",
+         note = "Study information: one row a fact, its value text"),
+    list(output_id = "T-14-1-4", cols = "ARM", rows = "group = variable",
+         note = "The screen failures' demographics"),
+    list(output_id = "T-14-1-3", cols = "TRT01A", rows = "group = variable",
+         note = "Age group and sex: the ARD's n, N and p, the table's n (%)"),
+    list(output_id = "T-14-2-3", cols = "TRTA", rows = "group = variable",
+         note = "SYSBP change at Week 24: mean (95% CI), p-value"),
     list(output_id = "T-14-3-1", cols = "TRT01A", rows = "group1 = AEBODSYS",
          label = "label = AEDECOD",
          sort = ".overall | group1 | .depth | -n | label",
@@ -159,6 +180,22 @@ sheets <- list(
          label = "Week 24 (mmHg)", order = 2),
     list(output_id = "T-14-2-1", variable = "CHG",
          label = "Change from baseline (mmHg)", order = 3),
+    list(output_id = "T-14-0-1", variable = "INFO",
+         label = "Dictionaries and dates of the data", order = 1),
+    list(output_id = "T-14-1-4", variable = "AGE", label = "Age (years)",
+         order = 1),
+    list(output_id = "T-14-1-4", variable = "AGEGR1",
+         label = "Age group, n (%)", order = 2),
+    list(output_id = "T-14-1-4", variable = "SEX", label = "Sex, n (%)",
+         order = 3),
+    list(output_id = "T-14-1-4", variable = "RACE", label = "Race, n (%)",
+         order = 4),
+    list(output_id = "T-14-1-3", variable = "AGEGR1",
+         label = "Age group, n (%)", order = 1),
+    list(output_id = "T-14-1-3", variable = "SEX", label = "Sex, n (%)",
+         order = 2),
+    list(output_id = "T-14-2-3", variable = "CHG",
+         label = "Change from baseline at Week 24 (mmHg)", order = 1),
     list(output_id = "T-14-2-2", variable = "prob",
          label = "Time to first event (days)", order = 1),
     list(output_id = "T-14-2-2", variable = "time",
@@ -167,9 +204,24 @@ sheets <- list(
   # CRF's values the data have none of are listed too: their rows print
   # with 0 (RACE's ASIAN ..., ETHNIC's NOT REPORTED / UNKNOWN)
   codelists = do.call(rbind, c(
-    lapply(c("T-14-1-1", "T-14-1-2", "T-14-2-2", "T-14-3-1"),
+    lapply(c("T-14-1-1", "T-14-1-2", "T-14-1-3", "T-14-2-2", "T-14-3-1"),
            function(o) codelist(o, "TRT01A", arms)),
     list(codelist("T-14-2-1", "TRTA", arms),
+         codelist("T-14-2-3", "TRTA", arms),
+         codelist("T-14-1-3", "SEX", c(F = "Female", M = "Male")),
+         codelist("T-14-1-4", "ARM", "Screen Failure"),
+         codelist("T-14-1-4", "SEX", c(F = "Female", M = "Male")),
+         codelist("T-14-1-4", "AGEGR1", c("18-64" = "18-64 years",
+                                          ">64" = ">64 years")),
+         codelist("T-14-1-4", "RACE", c(
+           "WHITE" = "White",
+           "BLACK OR AFRICAN AMERICAN" = "Black or African American",
+           "ASIAN" = "Asian",
+           "AMERICAN INDIAN OR ALASKA NATIVE" = "American Indian or Alaska Native",
+           "NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER" =
+             "Native Hawaiian or Other Pacific Islander")),
+         codelist("T-14-1-3", "AGEGR1", c("18-64" = "18-64 years",
+                                          ">64" = ">64 years")),
          codelist("T-14-1-1", "SEX", c(F = "Female", M = "Male")),
          codelist("T-14-1-1", "AGEGR1", c("18-64" = "18-64 years",
                                           ">64" = ">64 years")),
@@ -215,7 +267,27 @@ sheets <- list(
     list(output_id = "T-14-2-1", variable = "continuous", row = "Median",
          template = "{median}", digits = "1"),
     list(output_id = "T-14-2-1", variable = "continuous", row = "Min, Max",
-         template = "{min}, {max}", digits = "0")),
+         template = "{min}, {max}", digits = "0"),
+    # T-14-0-1: each fact's value as the ARD has it (text)
+    list(output_id = "T-14-0-1", template = "{value}"),
+    # T-14-1-4: the screen failures' age, as T-14-1-1's
+    list(output_id = "T-14-1-4", variable = "continuous", row = "n",
+         template = "{N}", digits = "0"),
+    list(output_id = "T-14-1-4", variable = "continuous", row = "Mean (SD)",
+         template = "{mean} ({sd})", digits = "1,2"),
+    list(output_id = "T-14-1-4", variable = "continuous", row = "Median",
+         template = "{median}", digits = "1"),
+    list(output_id = "T-14-1-4", variable = "continuous", row = "Min, Max",
+         template = "{min}, {max}", digits = "0"),
+    # T-14-2-3: the CI analysis's numbers (its method and alternative, text
+    # in the ARD, are not asked for)
+    list(output_id = "T-14-2-3", variable = "continuous", row = "n",
+         template = "{N}", digits = "0"),
+    list(output_id = "T-14-2-3", variable = "continuous",
+         row = "Mean (95% CI)", template = "{estimate} ({conf.low}, {conf.high})",
+         digits = "1,1,1"),
+    list(output_id = "T-14-2-3", variable = "continuous",
+         row = "p-value", template = "{p.value}", digits = "3")),
   layout = tbl(
     list(blank_where = "between_groups", blank_first = "TRUE",
          blank_last = "TRUE", blank_counted = "TRUE", stub_name = "row_label",
@@ -225,6 +297,11 @@ sheets <- list(
     list(output_id = "T-14-1-2", pages_max_rows = "24"),
     list(output_id = "T-14-2-1", pages_max_rows = "30",
          pages_split = "group_safe"),
+    list(output_id = "T-14-0-1", pages_max_rows = "24"),
+    list(output_id = "T-14-1-4", pages_max_rows = "30",
+         pages_split = "group_safe"),
+    list(output_id = "T-14-1-3", pages_max_rows = "24"),
+    list(output_id = "T-14-2-3", pages_max_rows = "24"),
     list(output_id = "T-14-3-1", pages_max_rows = "22",
          pages_split = "group_force")),
   columns = tbl(
@@ -243,6 +320,11 @@ sheets <- list(
     list(output_id = "T-14-3-1", line = "2", cols = "row_label",
          text = "System Organ Class\n   Preferred Term"),
     list(output_id = "T-14-3-1", line = "2", cols = ".values"),
+    # T-14-0-1: no arms and no N -- the facts and their values
+    list(output_id = "T-14-0-1", line = "1", cols = "row_label"),
+    list(output_id = "T-14-0-1", line = "1", cols = ".values"),
+    list(output_id = "T-14-0-1", line = "2", cols = "row_label", text = "Item"),
+    list(output_id = "T-14-0-1", line = "2", cols = ".values", text = "Value"),
     # T-14-2-2: the arms over a blank stub (no "Characteristic" over KM rows)
     list(output_id = "T-14-2-2", line = "1", cols = "row_label"),
     list(output_id = "T-14-2-2", line = "1", cols = ".values", span = "each",
@@ -292,6 +374,12 @@ sheets$tokens <- do.call(tbl, c(
   title("T-14-1-1S", "Demographic Characteristics"),
   title("T-14-1-2", "Subject Disposition"),
   title("T-14-2-1", "Systolic Blood Pressure (mmHg): Change from Baseline at Week 24"),
+  title("T-14-1-3", "Age Group and Sex"),
+  title("T-14-0-1", "Study Information", set = "All Subjects"),
+  title("T-14-1-4", "Demographic Characteristics of Screen Failures",
+        set = "All Screen Failures"),
+  title("T-14-2-3",
+        "Systolic Blood Pressure (mmHg): Mean Change from Baseline at Week 24 (95% CI)"),
   title("T-14-3-1",
         "Treatment-Emergent Adverse Events by System Organ Class and Preferred Term"),
   title("L-16-2-7", "Severe Treatment-Emergent Adverse Events"),
@@ -307,6 +395,14 @@ sheets$footer <- tbl(
        left = "SD = Standard Deviation."),
   list(output_id = "T-14-2-1", line = "1",
        left = "SD = Standard Deviation; SE = Standard Error; CI = Confidence Interval (t distribution)."),
+  list(output_id = "T-14-0-1", line = "1",
+       left = "The dictionary versions are the study's (data management plan); the dates are those of ADSL."),
+  list(output_id = "T-14-1-4", line = "1",
+       left = "SD = Standard Deviation.  Screen failures: subjects not randomized (ARM is Screen Failure)."),
+  list(output_id = "T-14-2-3", line = "1",
+       left = "CI = Confidence Interval.  95% CI and p-value: one-sample t-test of the change from baseline (H0: mean change = 0)."),
+  list(output_id = "T-14-2-3", line = "2",
+       left = "Systolic blood pressure after 5 minutes lying down."),
   list(output_id = "T-14-3-1", line = "1",
        left = "Subjects are counted once per system organ class and once per preferred term."),
   list(output_id = "F-14-2-1", line = "1",
@@ -335,7 +431,11 @@ p$ard$datasets <- tbl(
   list(dataset = "ADTTE", level = "ADaM", path = "data/adam/adtte.rds"))
 p$ard$populations <- tbl(
   list(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"",
-       derive = "TRTA = TRT01A"))
+       derive = "TRTA = TRT01A"),
+  # the screen failures: an analysis set by a condition alone (ADSL has no
+  # flag for them)
+  list(population_id = "SCRF", dataset = "ADSL",
+       where = "ARM == \"Screen Failure\""))
 p$ard$analyses <- tbl(
   list(output_id = "T-14-1-1", analysis_id = "GROUPN", label = "Subjects per group",
        method = "categorical", data = "adsl_saf", variables = "TRT01A"),
@@ -369,6 +469,52 @@ p$ard$analyses <- tbl(
        label = "SYSBP at Week 24", method = "continuous", data = "advs_w24", by = "TRTA",
        variables = "BASE | AVAL | CHG",
        statistics = "N | mean | sd | se | mean_lcl | mean_ucl | median | min | max"),
+  # T-14-0-1: the study's information -- no analysis set (it counts no
+  # subjects): the dictionary versions, written here, and the dates of the
+  # data, from ADSL; a fact a level of one variable (INFO), its value text
+  list(output_id = "T-14-0-1", analysis_id = "INFO",
+       label = "Study information", method = "custom", dataset = "ADSL",
+       code = paste(
+         "facts <- c(",
+         "  \"MedDRA version\" = \"Version 26.1\",",
+         "  \"WHODrug version\" = \"Global B3 March 2023\",",
+         "  \"First dose\" = format(min(data$TRTSDT, na.rm = TRUE)),",
+         "  \"Last dose\" = format(max(data$TRTEDT, na.rm = TRUE)),",
+         "  \"Data cut-off\" = format(max(data$LSTALVDT, na.rm = TRUE))",
+         ")",
+         "cards::as_card(dplyr::tibble(",
+         "  variable = \"INFO\", variable_level = as.list(names(facts)),",
+         "  context = \"study_info\", stat_name = \"value\", stat_label = \"Value\",",
+         "  stat = as.list(unname(facts)), fmt_fun = list(NULL),",
+         "  warning = list(NULL), error = list(NULL)",
+         "))", sep = "\n")),
+  # T-14-1-4: the screen failures (SCRF, an analysis set by a condition)
+  list(output_id = "T-14-1-4", analysis_id = "GROUPN", method = "categorical",
+       data = "adsl_scrf", variables = "ARM"),
+  list(output_id = "T-14-1-4", analysis_id = "CONT", label = "Continuous",
+       method = "continuous", data = "adsl_scrf", by = "ARM",
+       variables = "AGE", statistics = "N | mean | sd | median | min | max"),
+  list(output_id = "T-14-1-4", analysis_id = "CAT", label = "Categorical",
+       method = "categorical", data = "adsl_scrf", by = "ARM",
+       variables = "AGEGR1 | SEX | RACE", statistics = "n | p"),
+  # T-14-1-3: cards' default statistics of a count (n, N and p) -- the
+  # table's cells print n (%) and leave the N rows out
+  list(output_id = "T-14-1-3", analysis_id = "GROUPN", method = "categorical",
+       data = "adsl_saf", variables = "TRT01A"),
+  list(output_id = "T-14-1-3", analysis_id = "CAT",
+       label = "Age group and sex", method = "categorical",
+       data = "adsl_saf", by = "TRT01A", variables = "AGEGR1 | SEX"),
+  # T-14-2-3: the mean change and its 95% CI by a one-sample t-test, every
+  # statistic the function gives (the test's method and alternative are
+  # text in the ARD)
+  list(output_id = "T-14-2-3", analysis_id = "GROUPN", method = "categorical",
+       data = "adsl_saf", variables = "TRTA"),
+  list(output_id = "T-14-2-3", analysis_id = "N", label = "Subjects",
+       method = "continuous", data = "advs_w24", by = "TRTA",
+       variables = "CHG", statistics = "N"),
+  list(output_id = "T-14-2-3", analysis_id = "CI",
+       label = "Mean change (95% CI), one-sample t-test", method = "mean_ci",
+       data = "advs_w24", by = "TRTA", variables = "CHG"),
   list(output_id = "T-14-2-2", analysis_id = "GROUPN", method = "categorical",
        data = "adsl_saf", variables = "TRT01A"),
   list(output_id = "T-14-2-2", analysis_id = "KM",
@@ -391,9 +537,16 @@ p$ard$analyses <- tbl(
 saf <- function(o) list(output_id = o, data_id = "adsl_saf", label = "Safety set",
                         from = "ADSL", population_id = "SAF")
 p$ard$analysis_data <- tbl(
-  saf("T-14-1-1"), saf("T-14-1-1S"), saf("T-14-1-2"),
+  saf("T-14-1-1"), saf("T-14-1-1S"), saf("T-14-1-2"), saf("T-14-1-3"),
+  list(output_id = "T-14-1-4", data_id = "adsl_scrf", label = "Screen failures",
+       from = "ADSL", population_id = "SCRF"),
   saf("T-14-2-1"),
   list(output_id = "T-14-2-1", data_id = "advs_w24",
+       label = "Systolic blood pressure at Week 24, safety set",
+       from = "ADVS", subjects = "adsl_saf",
+       where = "PARAMCD == \"SYSBP\" & AVISIT == \"Week 24\""),
+  saf("T-14-2-3"),
+  list(output_id = "T-14-2-3", data_id = "advs_w24",
        label = "Systolic blood pressure at Week 24, safety set",
        from = "ADVS", subjects = "adsl_saf",
        where = "PARAMCD == \"SYSBP\" & AVISIT == \"Week 24\""),
@@ -511,18 +664,25 @@ km_code <- c(
   "tfl_check(plot)",
   "content <- plot")
 
-desc <- c("T-14-1-1" = "Demographic characteristics",
+desc <- c("T-14-0-1" = "Study information: dictionary versions and the dates of the data (no analysis set)",
+          "T-14-1-4" = "Demographic characteristics of the screen failures (an analysis set by a condition alone)",
+          "T-14-1-1" = "Demographic characteristics",
           "T-14-1-1S" = "Demographic characteristics (its ARD one ard_stack call)",
           "T-14-1-2" = "Subject disposition",
           "T-14-2-1" = "Systolic blood pressure: change from baseline at Week 24",
+          "T-14-1-3" = paste("Age group and sex: the ARD keeps cards' default n, N",
+                             "and p; the table prints n (%) and leaves the N rows out"),
+          "T-14-2-3" = paste("Systolic blood pressure: mean change at Week 24 (95% CI),",
+                             "p-value; the ARD also holds the test's method and",
+                             "alternative as text"),
           "T-14-3-1" = "TEAEs by SOC / PT",
           "T-14-2-2" = "Time to first dermatologic event: KM estimates",
           "L-16-2-7" = "Listing of severe treatment-emergent adverse events",
           "F-14-2-1" = "Mean change from baseline in systolic blood pressure",
           "F-14-2-2" = "KM plot of the time to first dermatologic event",
           "F-14-2-3" = "KM curves of the time to first dermatologic event (designed)")
-types <- c("T-14-1-1" = "table", "T-14-1-1S" = "table", "T-14-1-2" = "table",
-           "T-14-2-1" = "table", "T-14-3-1" = "table", "T-14-2-2" = "table", "L-16-2-7" = "listing",
+types <- c("T-14-0-1" = "table", "T-14-1-4" = "table", "T-14-1-1" = "table", "T-14-1-1S" = "table", "T-14-1-2" = "table",
+           "T-14-1-3" = "table", "T-14-2-3" = "table", "T-14-2-1" = "table", "T-14-3-1" = "table", "T-14-2-2" = "table", "L-16-2-7" = "listing",
            "F-14-2-1" = "user", "F-14-2-2" = "user", "F-14-2-3" = "figure")
 process <- list(
   "T-14-2-2" = c(
@@ -546,7 +706,10 @@ for (o in names(desc)) {
 }
 p <- set_fig_design(p, "F-14-2-3", km_design)
 # the tables' analysis set (the report list's), as step 2 sets it
-for (o in unique(p$ard$analyses$output_id)) p <- set_report_population(p, o, "SAF")
+for (o in setdiff(unique(p$ard$analyses$output_id), c("T-14-0-1", "T-14-1-4"))) {
+  p <- set_report_population(p, o, "SAF")
+}
+p <- set_report_population(p, "T-14-1-4", "SCRF")
 
 # ------------------------------------------------------------ the study
 s <- create_study(id, title = "Sample study (CDISC pilot data, pharmaverseadam)",
@@ -605,15 +768,20 @@ writeLines(c(
   "| EFFFL | Efficacy Population Flag | SAFFL is Y and a post-baseline systolic blood pressure (CHG) in ADVS | 230 |",
   "| PPROTFL | Per-Protocol Population Flag | SAFFL is Y and EOSSTT is COMPLETED | 110 |",
   "",
-  "They are not analysis sets of the study (its populations sheet has SAF",
-  "only): in step 2-1 they are offered as flags of ADSL, to make one.",
+  "They are not analysis sets of the study (its populations sheet has SAF,",
+  "and SCRF -- the screen failures, by ARM alone): in step 2-1 they are",
+  "offered as flags of ADSL, to make one.",
   "",
   "| Output | Type | |",
   "|---|---|---|",
+  "| T-14-0-1 | Table | Study information: dictionary versions and the dates of the data -- no analysis set (it counts no subjects) |",
   "| T-14-1-1 | Table | Demographic characteristics |",
   "| T-14-1-1S | Table | The same table, its ARD one `cards::ard_stack()` call (the analyses inside it, and the column N it makes) |",
   "| T-14-1-2 | Table | Subject disposition |",
+  "| T-14-1-4 | Table | Demographic characteristics of the screen failures: an analysis set by a condition alone (SCRF, ARM is Screen Failure; ADSL has no flag for it) |",
+  "| T-14-1-3 | Table | Age group and sex: the ARD keeps cards' default n, N and p, the table prints n (%) (the N rows its cells do not name are left out) |",
   "| T-14-2-1 | Table | Systolic blood pressure: change from baseline at Week 24 (SE, 95% CI of the mean) |",
+  "| T-14-2-3 | Table | Systolic blood pressure: mean change at Week 24 (95% CI) and p-value of a one-sample t-test (the ARD also holds the test's method and alternative as text) |",
   "| T-14-2-2 | Table | Time to first dermatologic event: Kaplan-Meier estimates |",
   "| T-14-3-1 | Table | TEAEs by SOC / PT |",
   "| L-16-2-7 | Listing | Severe treatment-emergent adverse events |",
