@@ -1,5 +1,40 @@
 # tflplanner (development version)
 
+- **A review of the whole study** (#288, phase 1: the R functions; the
+  Review tab comes next).  `study_review(study)` lists, report by report,
+  what cannot be used (`error`), what is valid but probably wrong
+  (`check`) and what is missing and has to be set by hand (`hand`), each
+  with where it is (sheet, the row's key, column), a hint and its rule:
+  tflspec's rules (`tflspec::tfl_review_rules()`) on the study's
+  definition, and the report list's and the study folder's own -- a
+  report with no title (no title line, no `OUTPUT_TITLE`), no analysis
+  set (a table whose analyses name none; its own code chooses itself), an
+  analysis set the populations do not have, nothing that makes it (no
+  analyses or data code, no listing columns, no figure design), an id
+  twice or one a file name cannot hold, two reports writing one file or
+  program, a dataset the list names that the catalog lacks (R01-R08);
+  analyses of no report, an analysis reading another analysis set than
+  its report's, the subjects per group counted twice (A11-A13); a
+  dataset with no file, for the study and under each report reading it
+  (D01); and, with `deep = TRUE`, the definition read back as the
+  programs read it (`check_planner()`, P01).
+  - `data = "read"` checks against the data too: the facts of the data
+    (`review_facts()`: each column's class and values, each analysis
+    set's subjects, each condition's rows -- no records) are kept in the
+    store, one file a dataset, and made again only for a dataset whose
+    file (path, time, size) or definition (its analysis data, analyses,
+    listings) changed.  `data = "cached"` uses them and reads no file (a
+    dataset not read yet says so, D02); `"none"`, the definition alone.
+  - `ard = TRUE` checks each table against what the study ARD holds and
+    lists what went wrong while it was made (kept while `ard.rds` does
+    not change).
+  - The messages are in the app's language, made from each rule's
+    template (one line a rule in `strings.csv`); `message_en` keeps the
+    English.  `review_problems(x)` reviews a definition with no study
+    (an import's draft).
+  - On the sample study: no error and nothing to set by hand; 11 checks
+    (9 code list values no record has, the KM figure's two advices).
+
 - **An edit makes the app work out only what depends on it; a save is
   quicker.**  Measured on the sample study (the profile of each action):
   - An edit of a table's cell no longer hashes every report's ARD
