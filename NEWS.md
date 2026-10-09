@@ -1,5 +1,25 @@
 # tflplanner (development version)
 
+- **Step 2-2 says what its fields are** (#280).  "Analysis ID (a set of
+  analyses)" (several variables: one row per variable under the same ID in
+  the ARD), "Grouping variables (by)" (whether they are the table's
+  columns, rows or pages is step 3's) and "Analysis variables
+  (variables)".  The levels and order are set in 2-1, for the analysis
+  data's columns (the ARD and the table both), and in step 1; 2-2 has no
+  button of its own for them.
+
+- **The ARD programs as tflspec now writes them** (#281, tflspec >=
+  0.0.24.9066): no function or loop of their own, one pipe an analysis
+  from its data, the tidyverse layout, dplyr's verbs, the code lists on
+  the data the analyses read.  A program ends in tflspec's
+  `bind_rows(...) |> save_ard(output_id, definition = "...")`;
+  `ard_setup.R` no longer defines `save_ard()` and sets
+  `options(tflspec.ard_sources = c(setup = "programs/study_setup.R"))`, so
+  the status still records the study setup each ARD was built with.
+- **The subjects per group are GROUPN** (#281), which clinical reporting
+  calls big N (was `BIGN`; "Subjects per group", was "Subjects per arm"):
+  the first table, a stack's switches and the ARD tab's messages,
+  `add_group_n()`, the sample studies.
 - **The table builder's column header as a grid** (#278).  The header's
   lines stand under the table's own columns (the row-header columns, then
   one per value of the column variable), each line the same on each column,

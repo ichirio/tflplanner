@@ -2516,7 +2516,6 @@ app_server <- function(input, output, session, start) {
                             has_study = has_study, done = done)
   }
   cl_21 <- cl_dialog("cl21")
-  cl_22 <- cl_dialog("cl22")
   # step 3: the builder shows the code lists' text, drawn again
   cl_3 <- cl_dialog("cl3", done = function() rv$bver <- rv$bver + 1L)
   shiny::observeEvent(input$cl21_open, {
@@ -2528,11 +2527,6 @@ app_server <- function(input, output, session, start) {
                  if (nzchar(nm)) sprintf(t("Levels and order: the columns of %s"), nm) else
                    t("Levels and order: the columns of this analysis data")
                })
-  })
-  shiny::observeEvent(input$cl22_open, {
-    shiny::req(has_study(), current())
-    cl_22$open(c(input[[st_id("by")]], input[[st_id("vars")]], input[[st_id("strata")]]),
-               t("Levels and order: this analysis's groups and variables"))
   })
   shiny::observeEvent(input$cl3_open, {
     shiny::req(has_study(), current())
@@ -2869,7 +2863,7 @@ app_server <- function(input, output, session, start) {
     out_id <- paste0("hot_ard_", sh)
     by_report <- sh == "analyses"
     # the analyses of the report chosen, or of every report (an analysis
-    # several reports use, BIGN, seen at once): then the grid is the whole
+    # several reports use, GROUPN, seen at once): then the grid is the whole
     # sheet with its output_id column, edited as such
     tg_of <- function() if (by_report && !isTRUE(input$ard_all)) target() else ""
     key <- shiny::reactive({
@@ -3336,7 +3330,7 @@ app_server <- function(input, output, session, start) {
       shiny::uiOutput("ard_method_note"),
       bslib::layout_columns(
         col_widths = c(4, 8),
-        shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
+        shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
                          width = "100%")),
       if (!inside) shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 2-1, or a dataset \u00d7 analysis set. The name is the one the program gives it.")),
@@ -3726,11 +3720,11 @@ app_server <- function(input, output, session, start) {
     sch <- first(sch, strata_now)
     shiny::tagList(
       if (!in_stack) shiny::selectizeInput(
-        st_id("by"), with_tip(argl("Groups (the columns)", "by"), t("The table's columns (e.g. TRT01A). A combination with no records is shown, with 0.")),
+        st_id("by"), with_tip(argl("Grouping variables", "by"), t("The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step 3's. A combination with no records is shown, with 0.")),
         bch, by_now, multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
       shiny::selectizeInput(
-        st_id("vars"), with_tip(argl("Variables (the rows)", "variables"),
+        st_id("vars"), with_tip(argl("Analysis variables", "variables"),
                                 arg_hint(hcall, "variables")), vch, var_now,
         multiple = TRUE, width = "100%",
         options = list(plugins = list("remove_button", "drag_drop"))),
@@ -3749,8 +3743,6 @@ app_server <- function(input, output, session, start) {
                                       st_arg_default(r, "denominator")),
                                  t("What a % is of. The analysis set: its subjects in the group (the column headers' N; an AE table: the SAF's N per arm). Within a row: the total of the row (the variable's level). Within a column: the total of the group. Of the whole table: all of it. The method's default: blank.")),
           den_choices(den_now), den_now, width = "100%"))),
-      .btn("cl22_open", t("Levels and order (code lists)..."),
-           class = "btn-sm btn-link py-0 px-0 mb-2"),
       if (is.null(d)) shiny::p(
         class = "small text-muted",
         t("The data of this analysis cannot be read (no file in the data catalog): the choices are the row's own.")))
@@ -4571,8 +4563,12 @@ app_server <- function(input, output, session, start) {
         class = "mb-2", open = if (more) NA,
         shiny::tags$summary(class = "small", t("Columns taken, made, kept; one row per ...")),
         add_ui,
-        .btn("cl21_open", t("Levels and order (code lists)..."),
-             class = "btn-sm btn-link py-0 px-0 mb-1"),
+        shiny::div(
+          class = "mb-1",
+          .btn("cl21_open", t("Levels and order (code lists)..."),
+               class = "btn-sm btn-link py-0 px-0"),
+          shiny::span(class = "small text-muted ms-1",
+                      t("the levels and order of this analysis data's columns (for the ARD and the table both)"))),
         .derive_editor_ui(t, with_tip(argl("Columns made", "derive"),
                                       t("The columns this data makes: split by conditions, cut a number into groups, days between two dates, or any R. The sheet keeps each as NAME = R (derive, | between them); one the form cannot draw is kept as written.")),
                           blank_na(r$derive)),
@@ -5118,8 +5114,8 @@ app_server <- function(input, output, session, start) {
     a <- shiny::isolate(st_rows())
     kids <- a[.stack_kids(a, r$analysis_id), , drop = FALSE]
     fl <- .stack_flags_of(r$args)
-    # the report's own rows that count the subjects per group (BIGN)
-    bign <- a$analysis_id[.stack_group_n(a, r)]
+    # the report's own rows that count the subjects per group (GROUPN)
+    groupn <- a$analysis_id[.stack_group_n(a, r)]
     js <- function(input, value) sprintf(
       "Shiny.setInputValue('%s', %s, {priority: 'event'});", input, value)
     shiny::tagList(
@@ -5128,7 +5124,7 @@ app_server <- function(input, output, session, start) {
         t("A stack: it runs the analyses inside it together (cards::ard_stack), in one call (the column headers' N too)."))),
       bslib::layout_columns(
         col_widths = c(4, 8),
-        shiny::textInput(st_id("id"), t("Analysis ID"), r$analysis_id),
+        shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label), width = "100%")),
       shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 2-1, or a dataset \u00d7 analysis set. The name is the one the program gives it.")),
                          data_choices(r),
@@ -5141,15 +5137,15 @@ app_server <- function(input, output, session, start) {
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
                          placeholder = "AESER == \"Y\"")),
       shiny::selectizeInput(
-        st_id("by"), argl("Groups (the columns)", ".by"),
+        st_id("by"), argl("Grouping variables", ".by"),
         an_by_choices(r, .split_bar(r$by)), .split_bar(r$by), multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
       shiny::h6(class = "small fw-bold mt-1", t("What it adds to the analyses inside")),
       lapply(names(.stack_flag_words), function(k) shiny::checkboxInput(
         st_id(paste0("fl", k)),
         paste0(t(.stack_flag_words[[k]]), " (", k, ")",
-               if (k == ".by_stats" && length(bign)) sprintf(t(" -- %s counts them now"),
-                                                             paste(bign, collapse = ", ")) else ""),
+               if (k == ".by_stats" && length(groupn)) sprintf(t(" -- %s counts them now"),
+                                                             paste(groupn, collapse = ", ")) else ""),
         isTRUE(fl$flags[[k]]), width = "100%")),
       shiny::uiOutput("ard_stack_n_note"),
       shiny::tags$details(
@@ -5176,7 +5172,7 @@ app_server <- function(input, output, session, start) {
         shiny::tags$summary(class = "small", t("This analysis as code")),
         shiny::div(class = "rp-code", shiny::verbatimTextOutput("ard_an_code"))))
   })
-  # the stack counting the subjects per group while BIGN does: said at once
+  # the stack counting the subjects per group while GROUPN does: said at once
   output$ard_stack_n_note <- shiny::renderUI({
     st_drawn()
     r <- shiny::isolate(st_row())
@@ -5184,15 +5180,15 @@ app_server <- function(input, output, session, start) {
     on <- input[[st_id("fl.by_stats")]]
     if (!isTRUE(on)) return(NULL)
     a <- shiny::isolate(st_rows())
-    bign <- a$analysis_id[.stack_group_n(a, r)]
-    if (!length(bign)) return(NULL)
+    groupn <- a$analysis_id[.stack_group_n(a, r)]
+    if (!length(groupn)) return(NULL)
     shiny::div(
       class = "alert alert-danger py-1 small",
-      sprintf(t(.n_twice_words), r$analysis_id, paste(bign, collapse = ", ")),
-      " ", .btn("ard_stack_del_bign", sprintf(t("Delete %s"), paste(bign, collapse = ", ")),
+      sprintf(t(.n_twice_words), r$analysis_id, paste(groupn, collapse = ", ")),
+      " ", .btn("ard_stack_del_groupn", sprintf(t("Delete %s"), paste(groupn, collapse = ", ")),
                 class = "btn-sm btn-outline-danger py-0"))
   })
-  shiny::observeEvent(input$ard_stack_del_bign, {
+  shiny::observeEvent(input$ard_stack_del_groupn, {
     r <- st_row()
     tg <- ard_target()
     shiny::req(tg, st_role(r) == "parent")
@@ -5402,7 +5398,7 @@ app_server <- function(input, output, session, start) {
     an_pick(s$analysis_id[1L])
     bump()
     if (isFALSE(.stack_flags_of(s$args[1L])$flags[[".by_stats"]])) {
-      notify(sprintf(t("%s does not count the subjects per group: the report's BIGN does already (two would break the column headers' N). Delete BIGN and tick it on %s to let the stack count them."),
+      notify(sprintf(t("%s does not count the subjects per group: the report's GROUPN does already (two would break the column headers' N). Delete GROUPN and tick it on %s to let the stack count them."),
                      s$analysis_id[1L], s$analysis_id[1L]))
     }
   })

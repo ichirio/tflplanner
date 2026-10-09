@@ -73,7 +73,7 @@ spec <- list(
   analyses = tbl(list(
     # ---- subjects
     A("T-POP", "N", "categorical", population_id = "ALL", variables = "TRT01A",
-      label = "Subjects per arm"),
+      label = "Subjects per group"),
     A("T-POP", "SAF", "dichotomous", population_id = "ALL", by = "TRT01A",
       variables = "SAFFL", args = "value = list(SAFFL = \"Y\")",
       label = "In the safety set"),
