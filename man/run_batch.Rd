@@ -10,6 +10,8 @@ run_batch(
   parts = c("ard", "tfl"),
   code = TRUE,
   only = NULL,
+  exclude = NULL,
+  batch = NULL,
   wait = TRUE
 )
 
@@ -23,6 +25,14 @@ list_batches(study)
 \item{code}{Keep the code in the batch folder.}
 
 \item{only}{Programs or outputs to run; \code{NULL} for all.}
+
+\item{exclude}{Reports to leave out (their ARD program and their report
+program), by output id or program name; \code{NULL} for none.  The batch
+folder's \code{batch.txt} lists the programs left out.}
+
+\item{batch}{A named batch (\code{\link[=batch_sets]{batch_sets()}}): only its reports run, and
+the batch folder (\verb{runs/<date>_<time>_<what>_<batch>/}) and its
+\code{batch.txt} name it.  \code{NULL}: every report (or \code{only} / \code{exclude}).}
 
 \item{wait}{\code{FALSE} returns the running \link[processx:process]{processx::process} at once.}
 }

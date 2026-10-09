@@ -19,6 +19,53 @@
 - The builder's form, drawn again after an edit that changes its shape
   (a heading or the order above, a row of one's own), keeps the page
   where it was instead of jumping to the top.
+- **The report list shows and edits the named batches** (#301): a Batches
+  column, and Batches... for the report chosen -- the names in use to
+  choose from, a new one typed.
+
+- **An official run of some of the reports** (#301).  The Runs tab lists
+  the reports of a run, all ticked (All / None); a report unticked is left
+  out -- its ARD program and its report program -- and a report the run
+  makes that reads the ARD of one left out is said before the run.
+  `run_batch(exclude = )` does it in R (`only =` stays), the runner takes
+  `--exclude=<program>`, and the batch folder's `batch.txt` lists what
+  was left out (the runs table too).
+- **Named batches** (#301; #299 D6): a set of reports an official run
+  takes by name -- Topline, Interim Analysis, Final.  A report's batches
+  are the report list's new `batches` column (` | ` between several), so
+  a later TOC import can fill it; `batch_sets()`, `set_batch()`,
+  `rename_batch()`, `remove_batch()`.  `programs/batch.R` carries them as
+  `.batch_sets`; `Rscript programs/autoexec_all.R --batch Topline` and
+  `run_batch(batch = "Topline")` run one, into
+  `runs/<date>_<time>_all_Topline/`, its `batch.txt` naming it.  In the
+  Runs tab: choose a named batch (its reports ticked), save the ticks
+  under a name (or over one), rename, delete.  The full run is every
+  report and has no name.
+- **Edit the definition outside the app: export, edit the copy, import**
+  (#274, phase 2).  **Export the definition files** (Study tab, Files)
+  gives a zip of `spec/` and `study.yml`, the ARD definition as an Excel
+  workbook; **Import definition files** takes an edited copy back
+  (workbooks known by their sheets, so a renamed copy works; `.yml`,
+  `.json` or the zip).  Before anything changes, the copy is checked in a
+  temporary folder: every reader, every cell that holds R (conditions,
+  derived columns, `args`, `post`, code, figure-design code) parsed, the
+  ARD definition and figure designs checked, and the programs of the
+  reports it touches written and parsed.  Errors list file, sheet, row,
+  column and problem and change nothing; warnings are shown and do not
+  stop it.  The parts that differ are listed to choose from; the study's
+  files are copied to `spec/.backup/<date>-<time>/` first, then the study
+  is saved.  R: `export_spec_files()`, `preview_spec_import()`,
+  `import_spec_files()`.  A direct edit of `spec/` is still found on open
+  and goes through the same checks: a study whose files changed opens
+  with a notice and "What changed"; files that do not read show a card
+  (and a mark in the bar) with **Load from the definition files** and
+  **Write the files back from the last save**, and the study cannot be
+  saved until one is chosen; a save after an outside edit asks to load
+  first; loading keeps unsaved changes and a draft, merged part by part
+  (a part both changed asks which to keep).  The Japanese guide's 3.1
+  says how.  The Japanese of tflspec's texts that now say "population"
+  (tflspec #197: the figure designer, figure advice, five column
+  descriptions) follows them.
 
 - **A new study from the sample is ready at once** (#297).  The sample
   is copied (seconds) and opened; its official run, which makes its ARD

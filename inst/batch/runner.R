@@ -81,15 +81,50 @@
 #              --no-code)
 #   run.csv    one row per program: status, errors, warnings, time, md5
 #   batch.txt  who, where, when, which R
-# `args`: --no-code, and program or output names to run only those.
+# `args`: --no-code; program or output names to run only those;
+# --exclude=<name> (again for another) to leave a program out; --batch <name>
+# (or --batch=<name>) to run a named batch of `.batch_sets`.
 run_batch <- function(parts, args = character()) {
   if (!file.exists("study.yml")) {
     stop("Run it from the study folder (the one with study.yml).")
   }
   code <- !"--no-code" %in% args
-  only <- setdiff(args, "--no-code")
+  ex_args <- grep("^--exclude=", args, value = TRUE)
+  exclude <- sub("^--exclude=", "", ex_args)
+  # a named batch: --batch Topline, or --batch=Topline
+  set <- NULL
+  b <- match("--batch", args)
+  if (!is.na(b)) {
+    set <- args[b + 1L]
+    args <- args[-c(b, b + 1L)]
+  }
+  b <- grep("^--batch=", args)
+  if (length(b)) {
+    set <- sub("^--batch=", "", args[b[1L]])
+    args <- args[-b]
+  }
+  if (!is.null(set)) {
+    if (is.na(set) || !set %in% names(.batch_sets)) {
+      stop("No batch named '", set, "': the study's are ",
+           paste(names(.batch_sets), collapse = ", "), ".")
+    }
+    # its reports without a program to run (not saved yet, or none of the
+    # parts run): said, and run what there is
+    progs_of <- c(.batch_ard_outputs, .batch_report_ids)
+    gone <- setdiff(.batch_sets[[set]], progs_of)
+    if (length(gone)) {
+      message("Batch '", set, "': no program for ", paste(gone, collapse = ", "),
+              " (save the study to write them); the rest runs.")
+    }
+  }
+  only <- setdiff(args, c("--no-code", ex_args))
+  named <- function(progs, names) {
+    basename(progs) %in% names | sub("[.][Rr]$", "", basename(progs)) %in% names
+  }
+  excluded <- character()
   what <- if (length(parts) > 1L) "all" else
     c(ard = "ard", tfl = "report")[[parts]]
+  if (!is.null(set)) what <- paste0(what, "_", gsub("[^A-Za-z0-9._-]", "_", set))
   started <- Sys.time()
   dir <- file.path(.batch_root, paste0(format(started, "%Y%m%d_%H%M%S"), "_",
                                        what))
@@ -100,9 +135,17 @@ run_batch <- function(parts, args = character()) {
   rows <- list()
   for (part in parts) {
     progs <- .batch_programs[[part]]
-    if (length(only)) {
-      progs <- progs[basename(progs) %in% only |
-                       sub("[.][Rr]$", "", basename(progs)) %in% only]
+    if (length(only)) progs <- progs[named(progs, only)]
+    if (!is.null(set)) {
+      of <- if (part == "ard") .batch_ard_outputs[basename(progs)] else
+        .batch_report_ids[progs]
+      keep <- !is.na(of) & of %in% .batch_sets[[set]]
+      excluded <- c(excluded, progs[!keep])
+      progs <- progs[keep]
+    }
+    if (length(exclude)) {
+      excluded <- c(excluded, progs[named(progs, exclude)])
+      progs <- progs[!named(progs, exclude)]
     }
     if (!length(progs)) next
     log_dir <- file.path(dir, "logs", part)
@@ -117,6 +160,9 @@ run_batch <- function(parts, args = character()) {
   }
   result <- do.call(rbind, rows)
   if (is.null(result)) stop("Nothing to run.")
+  if (length(excluded)) {
+    cat("\nLeft out:", paste(basename(excluded), collapse = ", "), "\n")
+  }
 
   # what the run made (and, for the reports, the study ARD they read)
   ok <- result$program[result$status == "OK"]
@@ -132,6 +178,7 @@ run_batch <- function(parts, args = character()) {
     paste("Batch    :", basename(dir)),
     paste("Runs     :", paste(parts, collapse = ", "),
           if (length(only)) paste0("(", paste(only, collapse = ", "), ")")),
+    paste("Batch set :", if (is.null(set)) "none" else set),
     paste("Started  :", format(started, "%Y-%m-%d %H:%M:%S")),
     paste("Finished :", format(Sys.time(), "%Y-%m-%d %H:%M:%S")),
     paste("User     :", Sys.info()[["user"]]),
@@ -139,6 +186,8 @@ run_batch <- function(parts, args = character()) {
     paste("R        :", R.version.string),
     paste("Logs     :", if (engine == "logrx") "logrx" else "R CMD BATCH"),
     paste("Code     :", if (code) "kept (code/)" else "not kept"),
+    paste("Excluded :", if (length(excluded))
+      paste(excluded, collapse = ", ") else "none"),
     paste("Result   :", sum(result$status == "OK"), "of", nrow(result),
           "program(s) without error")),
     file.path(dir, "batch.txt"))
