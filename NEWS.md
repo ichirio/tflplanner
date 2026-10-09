@@ -2,6 +2,15 @@
 
 - R-CMD-check now also runs on R 4.2, the oldest R tested (`Depends: R (>= 4.1)` is kept; cardx, used by the generated ARD code, needs R >= 4.2).
 
+- **The English screens say "population"** (tflspec #191).  "Analysis set"
+  and "population" were mixed; the screens, messages and the company
+  standards' sheet description now say population (the Japanese stays
+  解析対象集団).  The argument hints follow tflspec's new wording, so their
+  Japanese is found again.  The Japanese guide says that a population is
+  ICH E9 / CDISC ARS's analysis set (`analysisSetId` in ARS).  The SPEC,
+  the ARD and the tokens (`population_id`, the `populations` sheet,
+  `{OUTPUT_POPULATION}`) are as they were.
+
 - **A report's code lists are where its data is made**: one place on the
   screen, one in the definition, one in the program.  Step 1 (Code lists)
   is gone, and the steps are 1 ARD, 2 Content, 3 Page and output (1-1,

@@ -398,7 +398,7 @@
     whole <- !templates$parts[templates$template == tp]
     shiny::tagList(
       if (kind != "swimmer") sz("pd_tpl_param", t("Parameter (PARAMCD)"), prm),
-      sz("pd_tpl_pop", t("Analysis set flag"),
+      sz("pd_tpl_pop", t("Population flag"),
          .labelled(grep("FL$", names(cols), value = TRUE), cols)),
       if (!tp %in% c("km_single_arm", "individual_spider") && !kind %in% c("waterfall", "swimmer"))
         sz("pd_tpl_group", t("Group (treatment)"), .group_choices(cols)),

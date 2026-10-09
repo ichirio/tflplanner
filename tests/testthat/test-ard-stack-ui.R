@@ -106,7 +106,7 @@ test_that("the new-table dialog says when a subject has no group (then one by on
   shiny::testServer(server_for("SM"), {
     session$setInputs(mf_data = "data/adam/adsl.rds", mf_pop = "SAFFL",
                       mf_group = "TRT01A", mf_stack = TRUE)
-    expect_match(output$mf_stack_note$html, "3 subjects of the analysis set have no TRT01A",
+    expect_match(output$mf_stack_note$html, "3 subjects of the population have no TRT01A",
                  fixed = TRUE)
     session$setInputs(mf_group = "ARM")
     expect_match(output$mf_stack_note$html, "One call computes", fixed = TRUE)

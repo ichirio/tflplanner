@@ -44,7 +44,7 @@ report_population <- function(x, output_id) {
 .ensure_pop_adata <- function(x, output_id, pop) {
   po <- x$ard$populations
   k <- match(pop, po$population_id)
-  if (is.na(k)) stop("No analysis set '", pop, "'.", call. = FALSE)
+  if (is.na(k)) stop("No population '", pop, "'.", call. = FALSE)
   from <- po$dataset[k]
   if (.is_blank(from)) from <- "ADSL"
   have <- .adata_same_as(.adata_rows(x, output_id), from, pop, NA, NA)
@@ -224,7 +224,7 @@ set_report_population <- function(x, output_id, population) {
   if (is.na(i)) stop("No report '", output_id, "'.", call. = FALSE)
   new <- if (.is_blank(population)) NA_character_ else population
   if (!is.na(new) && !new %in% x$ard$populations$population_id) {
-    stop("No analysis set '", new, "' in the study.", call. = FALSE)
+    stop("No population '", new, "' in the study.", call. = FALSE)
   }
   old <- report_population(x, output_id)
   if (is.null(o$population)) o$population <- rep(NA_character_, nrow(o))
