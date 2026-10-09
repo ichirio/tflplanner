@@ -102,9 +102,10 @@ batch_code <- function(x, date = Sys.Date()) {
     "")
 }
 
-# programs/tfl/fig_setup.R: the study's setup, the figure style of the
-# company standards (tflspec), and report_content()
-.fig_setup_code <- function() {
+# programs/tfl/fig_setup.R: the study's setup, the packages the figures'
+# code uses (the designed figures': ggsurvfit for a KM ...), the figure
+# style of the company standards (tflspec), and report_content()
+.fig_setup_code <- function(p = NULL) {
   code <- .with_study_code(tflspec::tfl_fig_setup_code(.std_fig_style()))
   # after its banner (the comment lines it starts with)
   at <- match(FALSE, grepl("^#", code), nomatch = length(code) + 1L) - 1L
@@ -115,9 +116,23 @@ batch_code <- function(x, date = Sys.Date()) {
     "# the study's setup: the company's, the study's folders and id, your own",
     .source_study_setup(),
     "",
+    "# the packages the figures' code uses",
+    paste0("library(", .fig_setup_libs(p), ")"),
+    "",
     rest,
     "",
     .report_content_fun)
+}
+
+# ggplot2, patchwork, dplyr, and what the study's designed figures use
+.fig_setup_libs <- function(p = NULL) {
+  base <- c("ggplot2", "patchwork", "dplyr")
+  ids <- names(p$fig_designs %||% list())
+  libs <- unlist(lapply(ids, function(id) tryCatch(
+    attr(tflspec::tfl_fig_design_code(fig_design(p, id), id, setup = TRUE,
+                                      save = FALSE), "libs"),
+    error = function(e) NULL)))
+  c(base, sort(setdiff(unique(libs), base)))
 }
 
 .autoexec_banner <- function(file, what, usage, date) {
@@ -169,7 +184,7 @@ autoexec_all_code <- function(date = Sys.Date()) {
   put(batch_code(p), file.path("programs", .batch_file))
   # the figure style, and the one function a report of one's own code ends
   # with (report_content()), written once here
-  put(.fig_setup_code(), file.path(lay[["programs_tfl"]], .fig_setup_file))
+  put(.fig_setup_code(p), file.path(lay[["programs_tfl"]], .fig_setup_file))
   put(report_setup_code(p), file.path(lay[["programs_tfl"]], .report_setup_file))
   put(autoexec_all_code(), file.path("programs", .autoexec_all_file))
   put(autoexec_code(p), file.path(lay[["programs_tfl"]], "autoexec_report.R"))

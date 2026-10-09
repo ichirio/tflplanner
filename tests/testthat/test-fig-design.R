@@ -17,10 +17,14 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   expect_true(any(grepl("advs <- ", code, fixed = TRUE)))
   expect_true(any(grepl("adsl <- ", code, fixed = TRUE)))
   lines <- unlist(strsplit(code, "\n", fixed = TRUE))
-  # the design's figure is the program's `plot` itself, its palette the
-  # study's figure setup's
-  expect_true(any(grepl("^plot <- p$", lines)))
-  expect_false(any(grepl("^plot <- fig$|^fig <- p$", lines)))
+  # the design's figure is the program's `plot` itself (one chain into it,
+  # #293), its palette the study's figure setup's; its two sections, the
+  # datasets read in the data one
+  expect_true(any(startsWith(lines, "plot <- ggplot(")))
+  expect_false(any(grepl("^plot <- fig$|^fig <- p$|^library[(]", lines)))
+  expect_identical(sum(startsWith(lines, "# ---- data ")), 1L)
+  expect_lt(which(startsWith(lines, "advs <- ")), which(startsWith(lines, "# ---- plot ")))
+  expect_identical(lines[[length(lines)]], "tfl_check(plot)")
   expect_true(any(grepl("tfl_colours(", lines, fixed = TRUE)))
   expect_false(any(grepl("ggsave(", code, fixed = TRUE)))
 
@@ -84,7 +88,7 @@ test_that("presets are kept with the company standards, and start a design", {
   expect_equal(p$template, "km_risk_table")
   d2 <- read_fig_preset("KM standard")
   expect_equal(d2$plot$x_max, 26)
-  expect_equal(unclass(d2)[c("data", "stats", "layers")], .fig_norm(unclass(d))[c("data", "stats", "layers")])
+  expect_equal(unclass(d2)[c("data", "layers")], .fig_norm(unclass(d))[c("data", "layers")])
   expect_error(save_fig_preset(d, "a/b"), "name")
   remove_fig_preset("KM standard")
   expect_equal(nrow(fig_presets()), 0L)
@@ -180,10 +184,41 @@ test_that("a template's defaults the data has not got are replaced by the data's
 test_that("the designer shows a piece's own lines of the design's code", {
   d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTDE",
                                  pop = "SAFFL", group = "TRT01A")
-  code <- .fig_design_script(d, "F-1")
-  base <- .piece_code(code, d, list(sec = "layers", i = 1L))
-  expect_true(startsWith(base[1L], "p <- ggsurvfit("))
-  expect_false(any(grepl("^# ----", base)))
-  df <- .piece_code(code, d, list(sec = "data", i = 1L))
-  expect_true(startsWith(df[1L], "df <- adtte |>"))
+  make <- function(d, codelists = TRUE) .fig_design_script(d, "F-1")
+  code <- make(d)
+  # the lines the script has with the piece and not without it
+  lines_of <- function(s) strsplit(.piece_code(code, d, s, make), "\n", fixed = TRUE)[[1L]]
+  base <- lines_of(list(sec = "layers", i = 1L))
+  expect_true(startsWith(base[1L], "fig <- ggsurvfit("))
+  expect_false(any(grepl("^# ----|^library", base)))
+  # the flag: the filter line it is in
+  fl <- lines_of(list(sec = "data", i = 3L))
+  expect_identical(trimws(fl), "filter(PARAMCD == \"TTDE\", SAFFL == \"Y\") |>")
+  fit <- .piece_code(code, d, list(sec = "data", i = length(d$data)), make)
+  expect_match(fit, "^fit <- survfit2[(]")
+  plot <- .piece_code(code, d, list(sec = "plot", i = 1L), make)
+  expect_match(plot, "^# ---- plot ")
+})
+
+test_that("a design saved before #293 (its statistics apart) reads as one data list", {
+  old <- list(
+    template = "km_simple",
+    data = list(list(step = "read", dataset = "ADTTE"),
+                list(step = "data_code", code = "df <- df[df$AVAL > 0, ]")),
+    stats = list(list(step = "survfit", name = "fit", time = "AVAL",
+                      censor = "CNSR", by = "TRT01A")),
+    plot = list(colour_by = "TRT01A"),
+    layers = list(list(layer = "km_curve")))
+  d <- .fig_designs_from_state(list(`F-1` = old))[["F-1"]]
+  expect_null(d$stats)
+  expect_identical(vapply(d$data, `[[`, "", "step"), c("read", "code", "survfit"))
+  p <- set_fig_design(new_planner(), "F-2", old)
+  expect_identical(vapply(p$fig_designs[["F-2"]]$data, `[[`, "", "step"),
+                   c("read", "code", "survfit"))
+  # a step added: after the one chosen; else a df step before the fit
+  x <- d$data
+  expect_identical(.pd_add_at(x, "filter", "data", list(sec = "plot", i = 1L)), 2L)
+  expect_identical(.pd_add_at(x, "summary", "data", list(sec = "plot", i = 1L)), 3L)
+  expect_identical(.pd_add_at(x, "filter", "data", list(sec = "data", i = 1L)), 1L)
+  expect_identical(.pd_add_at(d$layers, "km_curve", "layers", list(sec = "plot", i = 1L)), 0L)
 })
