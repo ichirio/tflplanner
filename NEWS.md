@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **The programs as the study's setup has them** (#268, its second
+  stage).  A study's programs read its folders through the variables
+  `programs/study_setup.R` defines (`readRDS(file.path(path_adam,
+  "adsl.rds"))`, `file.path(path_ard, ...)`) and call the packages it
+  attaches without `pkg::`; `ard_setup.R` attaches only what the study's
+  setup does not.  The company standards' setup code attaches dplyr too,
+  and a table's default data part takes its rows of the study ARD with
+  `filter()` / `select()`.  A study made before (no `library(dplyr)` in its
+  setup) keeps `dplyr::` and runs as it did.  The app's previews (an
+  analysis data, a listing) run the code as before.
 - **Step 2-2 says what its fields are** (#280).  "Analysis ID (a set of
   analyses)" (several variables: one row per variable under the same ID in
   the ARD), "Grouping variables (by)" (whether they are the table's

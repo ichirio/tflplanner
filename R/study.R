@@ -189,6 +189,8 @@ open_study <- function(study, home = tflplanner_home()) {
     .write_state(s, home)
   }
   .set_config("last_study", id, home)
+  # its programs as its setup has it (its folders' variables, its packages)
+  .use_study(s$path)
   s
 }
 
@@ -480,6 +482,8 @@ save_study <- function(study, home = tflplanner_home(), base = NULL) {
   p <- .study_spec_keys(study$planner)
   study$planner <- p
   root <- study$path
+  # its programs as its setup has it (its folders' variables, its packages)
+  .use_study(root)
   lay <- study_layout()
   progs <- vapply(p$outputs$output_id, function(id)
     report_info(p, id)$program, "")
@@ -593,9 +597,11 @@ save_study <- function(study, home = tflplanner_home(), base = NULL) {
 # each refresh (study_status()), and the definition rarely changed between
 .program_cache <- new.env()
 .program_code_last <- function(p, id) {
-  if (!identical(.program_cache$p, p) || !identical(.program_cache$date, Sys.Date())) {
+  if (!identical(.program_cache$p, p) || !identical(.program_cache$date, Sys.Date()) ||
+      !identical(.program_cache$opts, .code_context$opts)) {
     .program_cache$p <- p
     .program_cache$date <- Sys.Date()
+    .program_cache$opts <- .code_context$opts
     .program_cache$code <- list()
   }
   if (is.null(.program_cache$code[[id]])) .program_cache$code[[id]] <- program_code(p, id)
@@ -648,6 +654,7 @@ save_study <- function(study, home = tflplanner_home(), base = NULL) {
 study_status <- function(study) {
   p <- study$planner
   root <- study$path
+  .use_study(root)
   lay <- study_layout()
   setup <- .report_setup_recorded(root, p$outputs$output_id)
   now <- .study_setup_hash(root)
