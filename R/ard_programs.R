@@ -54,6 +54,10 @@
 #' @return The code, one element per line.
 #' @export
 ard_setup_code <- function(spec, date = Sys.Date()) {
+  .with_study_code(.ard_setup_code(spec, date))
+}
+
+.ard_setup_code <- function(spec, date = Sys.Date()) {
   x <- if (is.character(spec)) .read_ard_spec(spec) else spec
   lay <- study_layout()
   c(.banner(
@@ -65,7 +69,9 @@ ard_setup_code <- function(spec, date = Sys.Date()) {
     "# the study's setup: the company's, the study's folders and id, your own",
     .source_study_setup(),
     "",
-    .ard_spec_code(x, part = "setup"),
+    # (tflspec's: library() of what the study's setup does not attach, a
+    # blank line, the company's statistics and formats)
+    .drop_leading_blank(.ard_spec_code(x, part = "setup")),
     "# the files each ARD is built with, recorded with it (tflspec's",
     "# save_ard(): tflplanner compares the study setup's)",
     sprintf("options(tflspec.ard_sources = c(setup = %s))",
@@ -77,6 +83,11 @@ ard_setup_code <- function(spec, date = Sys.Date()) {
 #' @export
 ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
                              codelists = NULL) {
+  .with_study_code(.ard_program_code(spec, output_id, date, dir, codelists))
+}
+
+.ard_program_code <- function(spec, output_id, date = Sys.Date(), dir = ".",
+                              codelists = NULL) {
   x <- if (is.character(spec)) .read_ard_spec(spec) else spec
   lay <- study_layout()
   a <- x$analyses[x$analyses$output_id %in% output_id, , drop = FALSE]

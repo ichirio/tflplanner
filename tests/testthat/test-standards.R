@@ -103,7 +103,7 @@ test_that("a table without data code starts from the company's template", {
   suppressMessages(setup_tflplanner(standards = f))
   p <- add_output(new_planner(), "T1")
   code <- data_lines(p, "T1")
-  expect_true(any(grepl('subset(ard, output_id == "T1",', code, fixed = TRUE)))
+  expect_true(any(grepl('filter(output_id == "T1")', code, fixed = TRUE)))
   expect_true(any(grepl("acme_rework(data)", code, fixed = TRUE)))
   # a template saved with the former name is read with the new one
   expect_true(any(grepl("data <- normalize_ard(ard)", code, fixed = TRUE)))

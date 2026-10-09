@@ -196,8 +196,11 @@ code_templates <- function(name = NULL) {
     `{PROGRAM}` = if (is.na(output_id)) "" else
       file.path(lay[["programs_tfl"]], report_info(x, output_id)$program),
     `{STUDY_ID}` = if (is.na(study_id)) "" else study_id)
+  # the study ARD as a string of R: through its folder's variable while a
+  # program is written
+  code <- gsub("\"{ARD}\"", .path_lit(sub[["{ARD}"]]), code, fixed = TRUE)
   for (k in names(sub)) code <- gsub(k, sub[[k]], code, fixed = TRUE)
-  unname(code)
+  .drop_attached(unname(code))
 }
 
 #' The data part of a report's program
@@ -256,11 +259,11 @@ data_lines <- function(x, output_id, todo = TRUE) {
         stop_todo),
       listing = c(
         "# TODO: make the listing pages, e.g.",
-        paste0("#   adae    <- readRDS(\"", lay[["adam"]], "/adae.rds\")"),
+        paste0("#   adae    <- readRDS(", .path_lit(file.path(lay[["adam"]], "adae.rds")), ")"),
         "#   content <- as_rtftables(adae[, c(\"USUBJID\", \"AEDECOD\")])",
         stop_todo),
       c("# TODO: build the ARD, e.g.",
-        paste0("#   adsl <- readRDS(\"", lay[["adam"]], "/adsl.rds\")"),
+        paste0("#   adsl <- readRDS(", .path_lit(file.path(lay[["adam"]], "adsl.rds")), ")"),
         "#   ard  <- cards::ard_stack(adsl, .by = TRT01A, ...)",
         stop_todo))
     return(c(if (!is.na(x$setup)) c(.code_block(x$setup), ""), body))
@@ -301,6 +304,11 @@ data_lines <- function(x, output_id, todo = TRUE) {
 #' @return The program, one element per line.
 #' @export
 program_code <- function(x, output_id, date = Sys.Date()) {
+  # as the study's setup has it: its folders' variables, its packages
+  .with_study_code(.program_code(x, output_id, date))
+}
+
+.program_code <- function(x, output_id, date = Sys.Date()) {
   lay <- study_layout()
   info <- report_info(x, output_id)
   o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
@@ -331,8 +339,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     if (table) c(
       "",
       "# the table's data, kept beside the study ARD",
-      paste0("saveRDS(data, file.path(\"", lay[["ard"]],
-             "\", paste0(report_id, \".rds\")))")))
+      paste0("saveRDS(data, file.path(", .path_lit(lay[["ard"]]),
+             ", paste0(report_id, \".rds\")))")))
 
   # a figure's plot goes to the report as it is (rtf_figures(doc, plot)),
   # unless its code makes `content` itself
@@ -436,6 +444,10 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 #' @return The program, one element per line.
 #' @export
 report_setup_code <- function(x, date = Sys.Date()) {
+  .with_study_code(.report_setup_code(x, date))
+}
+
+.report_setup_code <- function(x, date = Sys.Date()) {
   lay <- study_layout()
   sp <- .spec_object_last(x, c(table_sheets(), report_sheets()),
                           unique(c(.study_keys$table, .study_keys$report)))

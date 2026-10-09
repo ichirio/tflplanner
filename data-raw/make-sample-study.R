@@ -477,7 +477,7 @@ km_code <- c(
   "",
   "# the number at risk: the KM table's (T-14-2-2), from the study ARD --",
   "# checked against the curve's own count",
-  "km_ard <- readRDS(\"output/ard/ard.rds\")",
+  "km_ard <- readRDS(file.path(path_ard, \"ard.rds\"))",
   "risk_df <- tfl_km_risk(km_ard[km_ard$output_id == \"T-14-2-2\", ], km_fit)",
   "x_breaks <- sort(unique(risk_df$time))",
   "",
