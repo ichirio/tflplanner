@@ -1,5 +1,24 @@
 # tflplanner (development version)
 
+- **An edit makes the app work out only what depends on it; a save is
+  quicker.**  Measured on the sample study (the profile of each action):
+  - An edit of a table's cell no longer hashes every report's ARD
+    definition again (the ARD's state), rebuilds the report list, or reads
+    the own ARD functions' files: each now follows its part of the
+    definition (the ARD definition and code lists; what the report list
+    shows), not every change of it.  The report list tab used the ARD's
+    state worked out a second time: it shares the one.
+  - A save gave the study anew, and every output that asks whether a
+    study is open -- most -- was drawn again (the table builder's form
+    among them, about a second): now only what the save changed is (the
+    study list, the marks).
+  - A save writes only the workbook whose half changed: a table's cell
+    edited, `table_spec.xlsx` alone (and the reports whose definition did
+    not change no longer look outdated for the other).  A program's
+    checksum is worked out once a program, in one file of the session's
+    (each was a new file, made and deleted, two or three times a program).
+  - `write_planner(books = )`: `"table"`, `"report"` or both (the default).
+
 - **An official run of some of the reports** (#301).  The Runs tab lists
   the reports of a run, all ticked (All / None); a report unticked is left
   out -- its ARD program and its report program -- and a report the run

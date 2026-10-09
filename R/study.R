@@ -543,22 +543,26 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
   }
   spec_dir <- file.path(root, lay[["spec"]])
   paths <- file.path(spec_dir, c(.table_file, .report_file))
-  keys <- c("sheets", "study", "outputs", "setup")
   same <- if (!is.null(rec)) {
     # the workbooks are what the last save wrote: compared with its state,
-    # not read (#274)
-    all(vapply(file.path(lay[["spec"]], c(.table_file, .report_file)),
-               as_recorded, NA)) &&
-      identical(unclass(was)[keys], unclass(p)[keys])
+    # not read (#274) -- each with its half of the definition
+    c(table = as_recorded(file.path(lay[["spec"]], .table_file)) &&
+        identical(.book_half(was, "table"), .book_half(p, "table")),
+      report = as_recorded(file.path(lay[["spec"]], .report_file)) &&
+        identical(.book_half(was, "report"), .book_half(p, "report")))
   } else {
     on_disk <- if (all(file.exists(paths)))
       tryCatch(read_planner(paths), error = function(e) NULL)
-    !is.null(on_disk) && identical(on_disk[keys], unclass(p)[keys])
+    one <- !is.null(on_disk) &&
+      identical(on_disk[c("sheets", "study", "outputs", "setup")],
+                unclass(p)[c("sheets", "study", "outputs", "setup")])
+    c(table = one, report = one)
   }
-  # rewriting an unchanged workbook would make every RTF look outdated
-  if (!same) write_planner(p, spec_dir)
+  # rewriting an unchanged workbook would make every RTF look outdated (and
+  # writing one takes a while): each is written only when its half changed
+  if (!all(same)) write_planner(p, spec_dir, books = names(same)[!same])
   files <- data.frame(file = paths,
-                      status = if (same) "unchanged" else "written",
+                      status = ifelse(same, "unchanged", "written"),
                       stringsAsFactors = FALSE)
   for (d in lay) dir.create(file.path(root, d), recursive = TRUE,
                             showWarnings = FALSE)
@@ -619,9 +623,12 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
 # edited one first copied to programs/.edited/.
 .gen_line <- "^#  (Generated|Checksum)  *:"
 
+# (md5sum() reads a file: one file of the session's, written over each
+# time -- a new file made and deleted for each program made a save slow)
+.hash_file <- new.env()
 .body_hash <- function(lines) {
-  f <- tempfile()
-  on.exit(unlink(f))
+  f <- .hash_file$path
+  if (is.null(f)) f <- .hash_file$path <- tempfile("tflplanner-hash-")
   writeLines(enc2utf8(lines[!grepl(.gen_line, lines)]), f, useBytes = TRUE)
   unname(tools::md5sum(f))
 }
@@ -669,13 +676,25 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
   .program_cache$code[[id]]
 }
 
+# its checksum, kept with it
+.program_hash_last <- function(p, id) {
+  code <- .program_code_last(p, id)
+  if (is.null(.program_cache$hash)) .program_cache$hash <- list()
+  if (is.null(.program_cache$hash[[id]]) ||
+      !identical(.program_cache$hash[[id]]$code, code)) {
+    .program_cache$hash[[id]] <- list(code = code, hash = .body_hash(code))
+  }
+  .program_cache$hash[[id]]$hash
+}
+
 .program_state <- function(p, id, f) {
   if (!file.exists(f)) return("missing")
   have <- readLines(f, warn = FALSE, encoding = "UTF-8")
   chk <- sub("^#  Checksum   : *", "",
              grep("^#  Checksum   :", have, value = TRUE))
-  if (!length(chk) || !identical(chk[1L], .body_hash(have))) return("edited")
-  if (identical(.body_hash(have), .body_hash(.program_code_last(p, id)))) {
+  h <- .body_hash(have)
+  if (!length(chk) || !identical(chk[1L], h)) return("edited")
+  if (identical(h, .program_hash_last(p, id))) {
     if (any(grepl("tflplanner: the data part of", have, fixed = TRUE))) {
       return("todo")
     }

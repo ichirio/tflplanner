@@ -135,8 +135,9 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
   if (!length(chk) && any(grepl("^#  Generated  : tflplanner", have))) {
     return("generated")
   }
-  if (!length(chk) || !identical(chk[1L], .body_hash(have))) return("edited")
-  if (identical(.body_hash(have), .body_hash(code))) "current" else "generated"
+  h <- .body_hash(have)
+  if (!length(chk) || !identical(chk[1L], h)) return("edited")
+  if (identical(h, .body_hash(code))) "current" else "generated"
 }
 
 # write a generated program (one edited by hand copied to

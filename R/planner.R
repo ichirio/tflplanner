@@ -572,6 +572,19 @@ set_sheet_rows <- function(x, sheet, output_id = "", rows) {
   invisible(path)
 }
 
+# What one workbook is written from: the table half (its sheets and the
+# rounding) or the report half (its sheets, the paths, the report list and
+# the data code)
+.book_half <- function(x, book) {
+  x <- unclass(x)
+  if (identical(book, "table")) {
+    list(x$sheets[table_sheets()], x$study[.study_keys$table])
+  } else {
+    list(x$sheets[report_sheets()], x$study[.study_keys$report], x$outputs,
+         x$setup)
+  }
+}
+
 #' Write the two definition workbooks
 #'
 #' `table_spec.xlsx` gets the table sheets and `rounding`
@@ -585,15 +598,21 @@ set_sheet_rows <- function(x, sheet, output_id = "", rows) {
 #' @param x An `tflplanner`.
 #' @param dir Destination folder.
 #' @param table_file,report_file File names.
+#' @param books Which to write: `"table"`, `"report"` (both by default).
 #' @return The two paths, invisibly.
 #' @export
 write_planner <- function(x, dir, table_file = "table_spec.xlsx",
-                          report_file = "report_spec.xlsx") {
+                          report_file = "report_spec.xlsx",
+                          books = c("table", "report")) {
+  books <- match.arg(books, several.ok = TRUE)
   dir.create(dir, showWarnings = FALSE, recursive = TRUE)
   tp <- file.path(dir, table_file)
   rp <- file.path(dir, report_file)
-  .write_book(.spec_object(x, table_sheets(), .study_keys$table), tp,
-              tflspec::tfl_write_table_spec)
+  if ("table" %in% books) {
+    .write_book(.spec_object(x, table_sheets(), .study_keys$table), tp,
+                tflspec::tfl_write_table_spec)
+  }
+  if (!"report" %in% books) return(invisible(c(table = tp, report = rp)))
   meta <- rbind(
     data.frame(output_id = NA_character_, description = "(every report)",
                data_code = x$setup, process_code = NA_character_,
