@@ -1378,12 +1378,12 @@ The header is the preset %s now.,列見出しを定型 %s にしました。
 Replace the column header?,列見出しを置き換えますか？
 The lines below become the preset %s; what they say now is replaced.,下の行が定型 %s の内容になり、今の内容は置き換わります。
 Replace,置き換える
-arg-hint:The analysis data (the data of the analysis row: its dataset and analysis set).,解析のデータ（解析の行のデータ：そのデータセットと解析対象集団）。
+arg-hint:The analysis data (the data of the analysis row: its dataset and population).,解析のデータ（解析の行のデータ：そのデータセットと解析対象集団）。
 "arg-hint:The group columns, e.g. the treatment (TRT01A); the analysis is done within each group.",群の列。例：投与群（TRT01A）。群ごとに解析する。
 arg-hint:The analysed columns; several may be given (one call analyses each).,解析する列。複数を書ける（1 回の呼び出しでそれぞれを解析する）。
 "arg-hint:Columns whose levels form strata, analysed within each but only for the combinations present.",水準で層を作る列。層ごとに解析する（あり得る組み合わせのうち、データにあるものだけ）。
 "arg-hint:The subject key, e.g. USUBJID; subjects are counted once.",被験者のキー。例：USUBJID。被験者は 1 回だけ数える。
-"arg-hint:What a percentage divides by: the analysis set (population), or cards' row / column / cell.",割合の分母：解析対象集団（population）、または cards の row / column / cell。
+"arg-hint:What a percentage divides by: the population, or cards' row / column / cell.",割合の分母：解析対象集団（population）、または cards の row / column / cell。
 arg-hint:The statistics to keep or compute.,残す・計算する統計量。
 "arg-hint:Confidence level, a number between 0 and 1 (0.95).",信頼水準。0 と 1 の間の数（0.95）。
 arg-hint:How each statistic is formatted in stat_fmt (the analysis row's formats column writes it).,stat_fmt での各統計量の書式（解析の行の formats 列が書く）。
@@ -1402,7 +1402,7 @@ arg-hint:TRUE: also each variable's label.,TRUE：各変数のラベルも出す
 "arg-hint:TRUE: also the total number of rows (subjects), for a ""(N=...)"" header.",TRUE：総行数（被験者数）も出す。「(N=...)」の見出し用。
 arg-hint:TRUE (default): also the counts of each group (the N of the column headers).,TRUE（既定）：各群の度数も出す（列見出しの N）。
 "arg-hint:The levels of the hierarchy, outermost first: AEBODSYS then AEDECOD.",階層の水準。外側から：AEBODSYS、次に AEDECOD。
-"arg-hint:The subjects the rates divide by: the analysis set (population), with the by columns.",率の分母にする被験者：解析対象集団（population）。by の列つき。
+"arg-hint:The subjects the rates divide by: the population, with the by columns.",率の分母にする被験者：解析対象集団（population）。by の列つき。
 "arg-hint:TRUE: also ""any event"" rows over the whole hierarchy.",TRUE：階層全体の「いずれかの事象」の行も出す。
 "arg-hint:TRUE: also each level over all groups (an ""Overall"" column).",TRUE：各水準を全群でも出す（「全体」の列）。
 arg-hint:The levels of the hierarchy to report (default: all).,報告する階層の水準（既定：すべて）。
@@ -2234,7 +2234,7 @@ This report's population,この帳票の解析対象集団
 Only for %s,%s だけの指定
 "This function's own arguments. The data, groups, variables, strata, denominator and condition above are its arguments too: those every method has.",この関数だけの引数です。上のデータ・群・変数・層・分母・条件も引数ですが、どの手法にもある共通の指定です。
 "arg-hint:The subject key, e.g. USUBJID; subjects are counted once. Leave it blank: the study's subject key is written for you.",被験者のキー。例：USUBJID。被験者は 1 回だけ数える。空欄なら試験の被験者キーが自動で入る。
-"arg-hint:What a percentage divides by: the analysis set (population), or cards' row / column / cell. The analysis set gives the usual ""n (%) of the subjects of the group"".",% を何で割るか：解析対象集団（population）、または cards の row / column / cell。よくある「群の被験者のうち n (%)」は解析対象集団。
+"arg-hint:What a percentage divides by: the population, or cards' row / column / cell. The population gives the usual ""n (%) of the subjects of the group"".",% を何で割るか：解析対象集団（population）、または cards の row / column / cell。よくある「群の被験者のうち n (%)」は解析対象集団。
 "arg-hint:Which of the variables to report (default: all of them). Use it to compute a variable without showing its rows, e.g. only the PTs of a SOC / PT hierarchy.",報告する変数（既定：すべて）。計算はするが行は出さない変数があるときに使う。例：SOC / PT の階層で PT の行だけ出す。
 "arg-hint:Columns to analyse within, like by, but only the combinations the data have (e.g. a parameter by visit). Use it for ""repeat for each visit"" tables; for 0 rows of missing combinations use by.",by と同じく、その中で解析を繰り返す列。ただしデータにある組み合わせだけ（例：パラメータ×来院）。「来院ごとに繰り返す」表に使う。無い組み合わせを 0 で出したいときは by。
 "arg-hint:The level counted for each variable, e.g. list(AESER = ""Y""); blank: the variable's maximum level (TRUE, ""Y"", the highest). Use it to count one level only, e.g. subjects with a serious AE.","各変数で数える水準。例：list(AESER = ""Y"")。空欄なら変数の最大の水準（TRUE、""Y""、いちばん大きいもの）。1 つの水準だけ数えるときに使う。例：重篤な有害事象のある被験者。"
