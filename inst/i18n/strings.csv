@@ -2530,3 +2530,9 @@ used by this figure,この図が使用
 In its ARD (variable: statistic),ARD にあるもの（変数：統計量）
 The statistics are %s's: add one to its analysis (its step 2) to print it here.,統計量は %s のものです。ここに表示したい統計量は、その表の解析（段 2）に加えてください。
 The study has no table yet.,試験にまだ表がありません。
+%s (not in the study),%s（試験にありません）
+"%s is not a table of the study (deleted, or renamed by hand): choose another, or the figure's program stops.",%s は試験の表ではありません（削除されたか、手で名前が変わりました）。別の表を選んでください。そのままでは図のプログラムが止まります。
+%s print numbers from its ARD: they will have none until their step 1 names another table.,%s はこの表の ARD の数値を表示しています。段 1 で別の表を選ぶまで、数値の出どころがなくなります。
+its own analyses (step 1),図自身の解析（段 1）
+of %s -> ard,%s の ARD -> ard
+taken in (%s) -> ard,取り込んだ ARD（%s）-> ard

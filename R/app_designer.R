@@ -706,15 +706,34 @@
     sec_ui <- function(sec) {
       items <- if (sec == "plot") list(item("plot", 1L, d$plot, t("Title, axes, colours, legend, size")))
         else lapply(seq_along(d[[sec]]), function(i) item(sec, i, d[[sec]][[i]], label_of(d[[sec]][[i]])))
-      # the code lists go on df: before the first step that makes an object
+      # the figure's ARD, first (read-only: step 1 chooses it); the code
+      # lists go on df: before the first step that makes an object
       if (sec == "data") {
+        items <- c(list(ard_item()), items)
         named <- which(vapply(d$data, function(p) isTRUE(p$step %in% names(.pd_named_steps)), NA))
         items <- append(items, list(cl_item()),
-                        after = if (length(named)) named[1L] - 1L else length(items))
+                        after = 1L + if (length(named)) named[1L] - 1L else length(items) - 1L)
       }
       shiny::div(
         shiny::div(class = "pd-sec", t(.pd_sections[[sec]])),
         if (length(items)) items else shiny::div(class = "small text-muted ps-2", t("(none)")))
+    }
+    # the figure's ARD (#293): what step 1 chose, `ard` in the program; a
+    # click opens step 1
+    ard_item <- function() {
+      src <- .fig_ard_source(rv$p, current() %||% "")
+      what <- switch(src$kind,
+        none = t("(none)"),
+        own = t("its own analyses (step 1)"),
+        table = sprintf(t("of %s -> ard"), src$id),
+        import = sprintf(t("taken in (%s) -> ard"), src$file))
+      bad <- src$kind == "none" && .fig_reads_ard(d, current() %||% "fig")
+      shiny::div(
+        class = "pd-item",
+        onclick = "Shiny.setInputValue('pd_goto_ard', Math.random(), {priority: 'event'})",
+        if (bad) shiny::span(class = "pd-bad", "! "),
+        shiny::span(t("ARD")),
+        shiny::div(class = "pd-sum", what))
     }
     # always there, on df before its first object (#293): the report's
     # code lists put on the columns (not the design's: the report's,
@@ -735,6 +754,7 @@
       lapply(names(.pd_sections), sec_ui))
   })
 
+  shiny::observeEvent(input$pd_goto_ard, bslib::nav_select("step", "ard"))
   # a piece chosen, moved, removed
   shiny::observeEvent(input$pd_act, {
     a <- input$pd_act

@@ -2755,6 +2755,8 @@ app_server <- function(input, output, session, start) {
     tabs <- o$output_id[vapply(o$output_id, function(x) identical(report_info(rv$p, x)$type, "table"), NA)]
     tab_lab <- stats::setNames(tabs, ifelse(is.na(o$description[match(tabs, o$output_id)]), tabs,
                                             paste(tabs, o$description[match(tabs, o$output_id)], sep = "  ")))
+    gone <- src$kind == "table" && !.is_table(rv$p, src$id)
+    if (gone) tab_lab <- c(stats::setNames(src$id, sprintf(t("%s (not in the study)"), src$id)), tab_lab)
     if (src$kind == "import") {
       return(shiny::div(class = "alert alert-warning py-1 small",
                         sprintf(t("%s uses an ARD taken in (%s): the analyses here are not used for it."),
@@ -2774,7 +2776,9 @@ app_server <- function(input, output, session, start) {
         if (src$kind == "table") shiny::selectInput(
           "fig_ard_table", t("The table"), choices = tab_lab,
           selected = src$id, width = "26rem")),
-      if (src$kind == "table") fig_ard_table_view(id, src$id))
+      if (gone) shiny::div(class = "alert alert-danger py-1 small mt-2",
+        sprintf(t("%s is not a table of the study (deleted, or renamed by hand): choose another, or the figure's program stops."), src$id))
+      else if (src$kind == "table") fig_ard_table_view(id, src$id))
   }
   # a table's ARD as the figure reads it: its analyses, the statistics its
   # ARD has (made), and which the figure's design uses
@@ -9324,9 +9328,13 @@ app_server <- function(input, output, session, start) {
   })
   shiny::observeEvent(input$remove, {
     if (!need_current()) return()
+    readers <- .figs_reading_table(rv$p, current())
     shiny::showModal(shiny::modalDialog(
       title = sprintf(t("Delete %s"), current()),
       t("The report's rows are deleted from every sheet (on save; its program and outputs stay on disk)."),
+      if (length(readers)) shiny::p(class = "text-danger mt-2 mb-0",
+        sprintf(t("%s print numbers from its ARD: they will have none until their step 1 names another table."),
+                paste(readers, collapse = ", "))),
       footer = shiny::tagList(
         shiny::modalButton(t("Cancel")),
         .btn("remove_ok", t("Delete"), class = "btn-danger"))))

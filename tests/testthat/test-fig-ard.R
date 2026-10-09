@@ -117,3 +117,30 @@ test_that("the designer: an ARD piece's code is its whole term, its summary its 
   }
   expect_identical(.pd_summary(d$layers[[k[1L]]]), "KM prob estimate TRT01A = Placebo")
 })
+
+test_that("a table deleted, or an analysis dropped from it: the figure's checks say so", {
+  s <- fig_ard_study()
+  p <- s$planner
+  # deleted: report_info() of a missing id is the default row (a table), so
+  # the id itself is looked for
+  expect_false(.is_table(p, "T-99"))
+  expect_error(set_fig_ard_source(p, "F-14-2-3", "table:T-99"), "not a table")
+  s$planner <- remove_output(p, "T-14-2-2")
+  pr <- .fig_ard_problems(s, "F-14-2-3")
+  expect_identical(pr$severity, "error")
+  expect_match(pr$problem, "T-14-2-2 is not a table of the study [(]deleted")
+  # the figures reading a table, for the delete dialog
+  expect_identical(.figs_reading_table(p, "T-14-2-2"), "F-14-2-3")
+  # its KM analysis dropped from the definition: an error even while the
+  # ARD made before still has the rows
+  skip_if_not_installed("cardx")
+  s$planner <- p
+  suppressMessages(update_study_ard(s, "T-14-2-2"))
+  an <- p$ard$analyses
+  p2 <- p
+  p2$ard$analyses <- an[!(an$output_id %in% "T-14-2-2" & an$analysis_id == "KM"), , drop = FALSE]
+  s$planner <- p2
+  pr <- .fig_ard_problems(s, "F-14-2-3")
+  expect_identical(unique(pr$severity), "error")
+  expect_match(pr$problem[1], "T-14-2-2 has no analysis KM")
+})

@@ -32,7 +32,7 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
     source <- trimws(source)
     if (startsWith(source, "table:")) {
       tb <- sub("^table:", "", source)
-      if (!identical(report_info(x, tb)$type, "table")) {
+      if (!.is_table(x, tb)) {
         stop(sprintf("%s is not a table of the study.", tb), call. = FALSE)
       }
     } else if (!identical(source, "own")) {
@@ -50,6 +50,18 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   r$ard_source[i] <- if (is.null(source)) NA_character_ else source
   x$sheets$report <- r
   x
+}
+
+# a table of the study (report_info() of an id the study does not have is
+# the default row's: a table)
+.is_table <- function(x, id) {
+  id %in% output_ids(x) && identical(report_info(x, id)$type, "table")
+}
+
+# the analyses a design's ARD pieces name
+.fig_ard_analyses <- function(design) {
+  unique(c(unlist(lapply(design$data, function(s) if (identical(s$step, "ard_stats")) .ard_ids(s$analysis_id))),
+           unlist(lapply(design$layers, function(l) if (identical(l$layer, "ard_number")) .ard_ids(l$analysis_id)))))
 }
 
 # A figure's ARD source: kind (none, own, table, import) and its report
@@ -154,8 +166,9 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   x <- study$planner
   src <- .fig_ard_source(x, output_id)
   reads <- .fig_reads_ard(design, output_id)
-  if (src$kind == "table" && !identical(report_info(x, src$id)$type, "table")) {
-    add("ard", "ard_source", sprintf("%s is not a table of the study", src$id))
+  if (src$kind == "table" && !.is_table(x, src$id)) {
+    add("ard", "ard_source", sprintf("%s is not a table of the study%s", src$id,
+                                     if (src$id %in% output_ids(x)) "" else " (deleted, or renamed by hand)"))
     return(out)
   }
   if (src$kind == "none") {
@@ -163,6 +176,15 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
     return(out)
   }
   if (!reads) return(out)
+  # the analyses the pieces name are the source's definition's (its ARD
+  # made before a change still has the old ones)
+  if (src$kind %in% c("own", "table")) {
+    defined <- ard_rows(x, "analyses", src$id)$analysis_id
+    for (a in setdiff(.fig_ard_analyses(design), defined)) {
+      add("ard", "analysis_id", sprintf("%s has no analysis %s (any more): the figure prints from it", src$id, a))
+    }
+    if (nrow(out)) return(out)
+  }
   rows <- .fig_ard_rows(study, output_id)
   if (is.null(rows) || !nrow(rows)) {
     add("ard", "ard_source", sprintf("the ARD of %s is not made yet: make it first (its step 2)",
