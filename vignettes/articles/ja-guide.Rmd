@@ -281,6 +281,10 @@ ARD タブを開くと、サイドバーで選んだ帳票の解析が **見取�
 | `args` / `code` | 追加の引数、custom 手法のコード |
 | `post` | ARD を作った後の処理（`add_calculated_row()` で計算した行を足す、`filter_ard_hierarchical()` で 5% 以上だけ残す など） |
 
+解析対象集団（SPEC の `populations` シート・`population_id`、英語の画面では Population）は、
+ICH E9 と CDISC ARS でいう analysis set のことです。CDISC ARS に書き出すと、
+集団は `AnalysisSet`、解析の `population_id` は `analysisSetId` になります。
+
 - 見取り図かグリッドの行を押すと、下の **解析** フォームにその行が出ます。計算するもの（分類ごとの
   一覧から関数を選ぶ。日本語の見出しと説明つき）、データ、解析対象集団、群（列）、変数（行、関数に合う型だけ、
   ラベル付き）、部分集団、統計量と書式、関数の引数（引数ごとの欄とヒント）を編集して「解析に反映」で

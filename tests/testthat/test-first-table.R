@@ -144,7 +144,7 @@ test_that("a row of the analyses grid is edited as a form", {
     # the data: one choice of dataset x analysis set, named as the program
     # names it
     expect_match(h, "ADSL × SAF (pop_saf: ", fixed = TRUE)
-    expect_false(grepl("(the analysis set's", h, fixed = TRUE))
+    expect_false(grepl("(the population's", h, fixed = TRUE))
     # the wizard wrote the dataset out: the same data as the analysis set's
     expect_match(h, 'value="ADSL|SAF" selected', fixed = TRUE)
     expect_false(grepl('value="|SAF"', h, fixed = TRUE))
