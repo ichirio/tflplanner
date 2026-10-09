@@ -9,7 +9,6 @@ data:
 - step: time_unit
   variable: AVAL
   unit: days
-stats:
 - step: survfit
   name: fit
   time: AVAL

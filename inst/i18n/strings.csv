@@ -446,7 +446,9 @@ KM curves,KM 曲線
 KM confidence bands,KM 信頼帯
 Censor marks,打ち切りマーク
 Reference line labels,参照線のラベル
-Number at risk (panel),リスク集合数（下段）
+Number at risk,リスク集合数
+Drawn as,描き方
+"panel: a plot of its own below the curves, the counts from the fit at the x axis's breaks; add_risktable: ggsurvfit's risk table.","panel：曲線の下に別の図として描きます（数は fit から、x 軸の目盛りの時点で）。add_risktable：ggsurvfit のリスク表です。"
 n by visit (panel),来院ごとの n（下段）
 Any ggplot2 layer,任意の ggplot2 レイヤー
 Whole figure (type),図全体（種類）
@@ -538,7 +540,7 @@ The rows of one (or more) PARAMCD.,指定した PARAMCD の行だけにします
 "A time in days, shown in weeks, months or years.",日単位の時間を、週・月・年で表示します。
 "The order of groups or visits on the axis and in the legend: by another variable (AVISIT by AVISITN), or listed.",軸と凡例での群や来院の並び順：別の変数で（AVISIT を AVISITN で）、または列挙して。
 "A row number after sorting, e.g. the bars of a waterfall.",並べ替えた後の行番号（Waterfall の棒など）。
-What no step does: code that changes `df` (the datasets are there by their lower-case names).,ステップでできない加工：`df` を変えるコード（データセットは小文字名で使えます）。
+What no step does: code that changes `df` or makes an object of its own (the datasets are there by their lower-case names).,ステップでできない加工：`df` を変えるコード、または独自のオブジェクトを作るコード（データセットは小文字名で使えます）。
 "survfit2(Surv(time, censor == 0) ~ group).","survfit2(Surv(時間, 打ち切り == 0) ~ 群)。"
 "n, mean, SD, SE and an interval (lo, hi) of a value, by group and visit.","群・来院ごとの n、平均、SD、SE と区間（lo, hi）。"
 "Code that computes what the layers draw, from `df`.",レイヤーが描くものを `df` から計算するコード。
