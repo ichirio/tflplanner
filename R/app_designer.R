@@ -17,8 +17,13 @@
 # tfl_fig_parts(); the design is the figure's (fig_design()), saved with
 # the study.
 
-.pd_sections <- c(data = "Data steps", stats = "Statistics",
-                  plot = "Figure settings", layers = "Layers")
+.pd_sections <- c(data = "Data steps", plot = "Figure settings",
+                  layers = "Layers")
+
+# the data steps that make an object of their own (a KM fit, summary
+# statistics ...): the steps after one go on in its pipe (#293)
+.pd_named_steps <- c(survfit = "fit", summary = "sm", summary_by = "sg",
+                     rate = "rt", count = "ct", subset = "sub")
 
 .designer_ui <- function(t) {
   shiny::conditionalPanel(
@@ -223,7 +228,7 @@
     made <- unlist(lapply(d$data, function(s) switch(s$step %||% "",
       derive = s$variable, rank = s$variable %||% "INDEX",
       join = sub("\\s*=.*$", "", trimws(strsplit(s$vars %||% "", ",")[[1L]])))))
-    stat <- unlist(lapply(d$stats, function(s) if (identical(s$step, "summary"))
+    stat <- unlist(lapply(d$data, function(s) if (identical(s$step, "summary"))
       c("n", "mean", "sd", "se", "lo", "hi")))
     sort(unique(c(v, made, stat)))
   }
@@ -346,8 +351,8 @@
           class = "d-flex gap-1 mt-2 align-items-start",
           shiny::div(style = "flex: 1", shiny::selectInput(
             "pd_add", NULL, width = "100%",
-            stats::setNames(lapply(c("data", "stats", "layers"), pieces_of),
-                            t(.pd_sections[c("data", "stats", "layers")])))),
+            stats::setNames(lapply(c("data", "layers"), pieces_of),
+                            t(.pd_sections[c("data", "layers")])))),
           .btn("pd_addbtn", t("Add"), class = "btn-sm btn-outline-primary"))),
       bslib::card(
         full_screen = TRUE,
@@ -672,13 +677,19 @@
     sec_ui <- function(sec) {
       items <- if (sec == "plot") list(item("plot", 1L, d$plot, t("Title, axes, colours, legend, size")))
         else lapply(seq_along(d[[sec]]), function(i) item(sec, i, d[[sec]][[i]], label_of(d[[sec]][[i]])))
+      # the code lists go on df: before the first step that makes an object
+      if (sec == "data") {
+        named <- which(vapply(d$data, function(p) isTRUE(p$step %in% names(.pd_named_steps)), NA))
+        items <- append(items, list(cl_item()),
+                        after = if (length(named)) named[1L] - 1L else length(items))
+      }
       shiny::div(
         shiny::div(class = "pd-sec", t(.pd_sections[[sec]])),
-        if (length(items)) items else if (sec != "data") shiny::div(class = "small text-muted ps-2", t("(none)")),
-        if (sec == "data") cl_item())
+        if (length(items)) items else shiny::div(class = "small text-muted ps-2", t("(none)")))
     }
-    # the data's last step, always there: the report's code lists put on
-    # the columns (not the design's: the report's, edited in a dialog)
+    # always there, on df before its first object (#293): the report's
+    # code lists put on the columns (not the design's: the report's,
+    # edited in a dialog)
     cl_item <- function() {
       on <- identical(s$sec, "codelists")
       used <- vapply(.codelist_lines(sheet_rows(rv$p, "codelists", current() %||% ""),
@@ -732,11 +743,11 @@
       req_def <- f$required & !is.na(f$default)
       p <- c(stats::setNames(list(k), if (sec == "layers") "layer" else "step"),
              stats::setNames(as.list(f$default[req_def]), f$field[req_def]))
-      # the first layer of a KM figure is its curves
-      first <- identical(k, "km_curve")
-      d[[sec]] <- if (first) c(list(p), d[[sec]]) else c(d[[sec]], list(p))
+      x <- d[[sec]]
+      at <- .pd_add_at(x, k, sec, sel())
+      d[[sec]] <- append(x, list(p), after = at)
       set_design(d)
-      sel(list(sec = sec, i = if (first) 1L else length(d[[sec]])))
+      sel(list(sec = sec, i = at + 1L))
       redraw_form()
   })
 
@@ -797,8 +808,8 @@
     pd$raw <- list()
     vars <- shiny::isolate(design_vars(d))
     params <- shiny::isolate(design_params(d))
-    objects <- c("df", unlist(lapply(d$stats, function(x) x$name %||%
-      if (identical(x$step, "survfit")) "fit" else if (identical(x$step, "summary")) "sm")))
+    objects <- c("df", unlist(lapply(d$data, function(x) if (isTRUE(x$step %in% names(.pd_named_steps)))
+      x$name %||% .pd_named_steps[[x$step]])))
     cat_ds <- shiny::isolate(catalog())$dataset
     one <- function(r) {
       v <- pn$p[[r$field]]
@@ -1088,16 +1099,18 @@
     d <- design()
     s <- sel()
     shiny::req(id, d)
-    code <- tryCatch(.fig_design_script(d, id, codelists = .study_codelists(rv$p)),
+    cl <- .study_codelists(rv$p)
+    code <- tryCatch(.fig_design_script(d, id, codelists = cl),
                      error = function(e) conditionMessage(e))
     if (length(code) == 1L && !grepl("\n", code)) return(code)
-    .piece_code(code, d, s)
+    .piece_code(code, d, s, function(d, codelists = TRUE)
+      .fig_design_script(d, id, codelists = if (codelists) cl))
   })
   output$pd_code <- shiny::renderText({
     id <- current()
     d <- design()
     shiny::req(id, d)
-    paste(tryCatch(.fig_design_plot(d, id, codelists = .study_codelists(rv$p)),
+    paste(tryCatch(.fig_design_lines(rv$p, id, d),
                    error = function(e) conditionMessage(e)),
           collapse = "\n")
   })
@@ -1111,66 +1124,83 @@
   })
 }
 
-# The lines of a design's script that one piece makes: for a layer, from
-# its "# ---- layer i:" marker to the next marker; for the figure settings,
-# their block; for a data step, the df pipeline (its steps in order) or its
-# own code block; for the code lists, the lists at the head and the pipe
-# that puts them on; for a statistic, the block that makes its object.
-.piece_code <- function(code, d, s) {
-  block <- function(from, to_pattern) {
-    if (!length(from)) return(character())
-    rest <- code[seq(from[1L], length(code))]
-    end <- grep(to_pattern, rest)
-    end <- end[end > 1L]
-    if (length(end)) rest[seq_len(end[1L] - 1L)] else rest
+# Where a piece added goes (after its index; 0 = first): after the piece
+# chosen in its section; else a layer last (a KM figure's curves first), a
+# step that makes an object of its own last, a step on df before the first
+# such step (#293)
+.pd_add_at <- function(x, k, sec, s) {
+  at <- if (identical(s$sec, sec) && isTRUE(s$i >= 1L && s$i <= length(x))) s$i
+  if (sec == "layers") return(at %||% if (identical(k, "km_curve")) 0L else length(x))
+  named <- which(vapply(x, function(p) isTRUE(p$step %in% names(.pd_named_steps)), NA))
+  df_end <- if (length(named)) named[1L] - 1L else length(x)
+  # a step that reads or keeps ADaM rows is a step on df, whatever is
+  # chosen; a step that makes an object goes among those; the others
+  # (derive, filter ...) after the step chosen, so on its object
+  if (k %in% .pd_source_steps) return(if (isTRUE(at <= df_end)) at else df_end)
+  if (k %in% names(.pd_named_steps)) return(if (isTRUE(at > df_end)) at else length(x))
+  at %||% df_end
+}
+.pd_source_steps <- c("read", "join", "param", "flag", "time_unit")
+
+# The lines of a design's script that one piece makes: the lines the
+# script has with it and not without it (`make(d)` writes a design's
+# script; for the code lists, `make(d, codelists = FALSE)`), its parts
+# apart by "# ..."; the figure settings: the plot section; a whole-script
+# layer: the script.
+.piece_code <- function(code, d, s, make) {
+  whole <- identical(s$sec, "layers") &&
+    identical(d$layers[[s$i]]$layer %||% "", "figure")
+  out <- if (whole) code else if (identical(s$sec, "plot")) {
+    from <- grep("^# ---- plot ", code)
+    if (length(from)) code[seq(from[1L], length(code))] else character()
+  } else {
+    other <- tryCatch(switch(s$sec,
+      layers = { d$layers <- d$layers[-s$i]; make(d) },
+      data = { d$data <- d$data[-s$i]; make(d) },
+      codelists = make(d, codelists = FALSE),
+      NULL), error = function(e) NULL)
+    if (is.null(other)) character() else .lines_added(code, other)
   }
-  trim <- function(x) {
-    while (length(x) && !nzchar(trimws(x[length(x)]))) x <- x[-length(x)]
-    x
-  }
-  out <- switch(s$sec,
-    plot = block(grep("^# ---- the figure's settings ----", code), "^# ----|^#{5,}"),
-    layers = {
-      i <- s$i
-      l <- d$layers[[i]]
-      k <- l$layer %||% ""
-      if (identical(k, "figure")) {
-        code
-      } else if (i == 1L && !length(grep(sprintf("^# ---- layer %d:", i), code))) {
-        # the base layer has no marker: the first line of the figure part
-        from <- grep("^# ---- the figure -", code)
-        if (length(from)) block(from[1L] + 1L, "^# ----") else character()
-      } else {
-        block(grep(sprintf("^# ---- layer %d:", i), code), "^# ----|^#{5,}")
-      }
-    },
-    # (none: no code of its own)
-    codelists = if (length(grep("^# ---- code lists", code)))
-      c(block(grep("^# ---- code lists", code), "^$"), "",
-        block(grep("^df <- ", code), "^$")),
-    data = {
-      st <- d$data[[s$i]]
-      if (identical(st$step, "data_code")) {
-        from <- grep("^# your code", code)
-        block(from, "^$")
-      } else {
-        block(grep("^df <- ", code), "^$")
-      }
-    },
-    stats = {
-      st <- d$stats[[s$i]]
-      if (identical(st$step, "stats_code")) {
-        block(grep("^# your code", code), "^$")
-      } else {
-        nm <- st$name %||% switch(st$step %||% "", survfit = "fit", summary = "sm",
-                                  summary_by = "sg", rate = "rt", count = "ct", "")
-        block(grep(sprintf("^%s <- ", nm), code), "^$")
-      }
-    },
-    character())
-  out <- trim(out)
+  while (length(out) && !nzchar(trimws(out[length(out)]))) out <- out[-length(out)]
   if (!length(out)) return(t_static("(nothing yet: this piece writes no line on its own)"))
   paste(out, collapse = "\n")
+}
+
+# The lines of `a` that are not in `b` (the longest common lines apart), a
+# "  ..." between two runs of them
+.lines_added <- function(a, b) {
+  shown <- a
+  # a line the same but for its "+" or "|>" at the end is the same line
+  end <- "[[:space:]]*([+]|[|]>)[[:space:]]*$"
+  a <- sub(end, "", a)
+  b <- sub(end, "", b)
+  n <- length(a)
+  m <- length(b)
+  L <- matrix(0L, n + 1L, m + 1L)
+  for (i in rev(seq_len(n))) for (j in rev(seq_len(m))) {
+    L[i, j] <- if (identical(a[i], b[j])) L[i + 1L, j + 1L] + 1L
+               else max(L[i + 1L, j], L[i, j + 1L])
+  }
+  added <- logical(n)
+  i <- 1L
+  j <- 1L
+  while (i <= n) {
+    if (j <= m && identical(a[i], b[j])) {
+      i <- i + 1L
+      j <- j + 1L
+    } else if (j <= m && L[i, j + 1L] >= L[i + 1L, j]) {
+      j <- j + 1L
+    } else {
+      added[i] <- TRUE
+      i <- i + 1L
+    }
+  }
+  # (the packages: the program's setup attaches them)
+  w <- which(added & nzchar(trimws(a)) & !grepl("^library[(]", a))
+  if (!length(w)) return(character())
+  runs <- split(w, cumsum(c(1L, diff(w) > 1L)))
+  unlist(lapply(seq_along(runs), function(r)
+    c(if (r > 1L) "# ...", shown[runs[[r]]])), use.names = FALSE)
 }
 t_static <- function(x) x
 

@@ -18,6 +18,24 @@
     checksum is worked out once a program, in one file of the session's
     (each was a new file, made and deleted, two or three times a program).
   - `write_planner(books = )`: `"table"`, `"report"` or both (the default).
+- **A designed figure's program reads as one written by hand** (#293,
+  with tflspec #201).  Its code has two sections, `# ---- data ----`
+  (the code lists, the datasets read, the steps' pipes) and
+  `# ---- plot ----` (the palette, then one `+` chain into `plot`), before
+  the report's.  The study's `fig_setup.R` attaches the packages the
+  figures use (ggplot2, patchwork, dplyr, and ggsurvfit for a KM), so a
+  program has no library() of its own; it is sourced at the program's top,
+  beside the report setup, and the banner says the design is the place to
+  edit.  The number at risk is, by default, a plot of its own below the
+  curves, its counts from the fit at the x axis's breaks
+  (`summary(fit, times = ...)`), joined with patchwork; its new "Drawn as"
+  choice gives ggsurvfit's `add_risktable()` instead.
+  The Plot Designer's data steps are one list: a KM fit, summary
+  statistics ... are steps that make an object of their own, and the
+  steps after one go on in its pipe (the "Statistics" part is gone; a
+  design saved before reads as one list).  A step added goes after the
+  one chosen, a step on `df` before the first object.  "This piece's
+  code" shows the lines the script has with the piece and not without it.
 - **A code list edited where it is used.**  The code lists' part of
   1-1's column definitions (part 4), of a listing's data and of a
   figure's data lists each column with a list; a click opens that

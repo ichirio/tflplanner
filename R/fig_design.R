@@ -1,10 +1,11 @@
 # Figure designs: the Plot Designer's figures.
 #
 # A figure can be designed instead of written by hand, as tflspec's figure
-# design: the data steps from ADaM (read, join, keep a PARAMCD or an
-# analysis set, derive ... or code), the statistics (a KM fit, summary
-# statistics ... or code), the figure-wide settings and the layers, in
-# order.  A template fills them at once; each is then edited on its own.
+# design: one ordered list of data steps from ADaM (read, join, keep a
+# PARAMCD or a population, derive ...; the steps that make an object of
+# their own: a KM fit, summary statistics ...; or code), the figure-wide
+# settings and the layers, in order (#293).  A template fills them at once;
+# each is then edited on its own.
 # The design is kept with the study (its state) and written as
 # spec/figures/<output_id>.yml, one file a figure, to read and to diff.  The
 # figure's program then has the design's code as its plot part, in place of
@@ -30,8 +31,13 @@
 fig_design <- function(x, output_id) {
   d <- (x$fig_designs %||% list())[[output_id]]
   if (is.null(d)) return(NULL)
-  # every part the design has that this tflspec takes (composed figures,
-  # the ggplot2 version ... are kept, not dropped)
+  .fig_rebuild(d)
+}
+
+# a design as tflspec makes it: every part the design has that this
+# tflspec takes (composed figures, the ggplot2 version ... are kept, not
+# dropped); a design of before #293 (its `stats` apart) as one data list
+.fig_rebuild <- function(d) {
   args <- c(list(data = d$data %||% list(), stats = d$stats %||% list(),
                  plot = d$plot %||% list(), layers = d$layers %||% list()),
             d[setdiff(names(d), c("data", "stats", "plot", "layers"))])
@@ -46,6 +52,8 @@ set_fig_design <- function(x, output_id, design) {
   if (is.null(design)) {
     x$fig_designs[[output_id]] <- NULL
   } else {
+    # (a list of before #293, its `stats` apart: as one data list)
+    if (length(design$stats)) design <- .fig_rebuild(unclass(design))
     x$fig_designs[[output_id]] <- .fig_norm(unclass(design))
   }
   x
@@ -67,37 +75,51 @@ set_fig_design <- function(x, output_id, design) {
   if (is.integer(x)) as.numeric(x) else x
 }
 
-# the datasets a design's script reads (its "Input data frames" line)
+# the datasets a design's script reads (tflspec says: its `reads`)
 .fig_design_datasets <- function(design, output_id = "fig") {
   if (is.null(design)) return(character())
-  code <- .fig_design_script(design, output_id)
-  l <- grep("^# Input data frames:", code, value = TRUE)
-  if (!length(l)) return(character())
-  ds <- trimws(strsplit(sub("^# Input data frames:", "", l[1L]), ",")[[1L]])
-  unique(toupper(ds[nzchar(ds)]))
+  code <- tflspec::tfl_fig_design_code(design, output_id, setup = TRUE, save = FALSE)
+  unique(toupper(attr(code, "reads") %||% character()))
 }
 
 # the design's script, whole (it saves its PNG to `fig_path`)
 .fig_design_script <- function(design, output_id, codelists = NULL) {
-  code <- as.character(tflspec::tfl_fig_design_code(design, output_id,
-                                                    codelists = codelists))
-  # one element a line; a blank line stays (strsplit would drop it)
+  .split_lines(as.character(tflspec::tfl_fig_design_code(
+    design, output_id, codelists = codelists)))
+}
+
+# A designed figure's data and plot sections, as its program has them
+# (#293): `# ---- data ----` -- the code lists, the datasets read (the
+# data catalog), the steps' pipes -- and `# ---- plot ----` -- the palette,
+# the chain into `plot` (the report writes it) -- then the figure checks.
+# The study's figure setup (sourced at the program's top) attaches the
+# packages and gives the palette.
+.fig_design_plot <- function(design, output_id, codelists, x) {
+  code <- tflspec::tfl_fig_design_code(
+    design, output_id, setup = TRUE, save = FALSE, name = "plot",
+    codelists = codelists)
+  reads <- attr(code, "reads") %||% character()
+  lines <- .split_lines(as.character(code))
+  read <- if (length(reads)) c(
+    paste0("# the data: ", paste(reads, collapse = ", "), " (data catalog)"),
+    unlist(lapply(reads, function(d) .read_dataset_lines(x, d))),
+    "")
+  # after the section's line and the code lists (when there are)
+  at <- 1L
+  if (length(lines) > 1L && startsWith(lines[[2L]], "# ---- code lists")) {
+    blank <- which(lines == "")
+    at <- blank[blank > 2L][1L]
+  }
+  c(utils::head(lines, at), read, utils::tail(lines, -at),
+    "", "# the figure checks: dropped rows, colours against the standard",
+    "tfl_check(plot)")
+}
+
+# one element a line; a blank line stays (strsplit would drop it)
+.split_lines <- function(code) {
   unlist(lapply(code, function(l) {
     if (!nzchar(l)) "" else strsplit(l, "\n", fixed = TRUE)[[1L]]
   }))
-}
-
-# the design's plot part of the figure's program: the figure as `plot`
-# (the report writes it), its palette from the study's figure setup the
-# program has sourced
-.fig_design_plot <- function(design, output_id, codelists = NULL) {
-  code <- as.character(tflspec::tfl_fig_design_code(
-    design, output_id, setup = TRUE, save = FALSE, name = "plot",
-    codelists = codelists))
-  c(paste0("# the plot, from the figure's design (spec/", .fig_design_dir, "/",
-           output_id, ".yml)", if (!is.null(design$template))
-             paste0(", made from the template ", design$template)),
-    "#      edit the design in the Plot Designer, not this code", code)
 }
 
 # the designs as YAML files, written with the study
@@ -143,7 +165,15 @@ set_fig_design <- function(x, output_id, design) {
 # the designs from the study's state (JSON), as fig_designs
 .fig_designs_from_state <- function(x) {
   if (!length(x)) return(list())
-  lapply(x, .fig_norm)
+  # one data list (a state of before #293 kept `stats` apart)
+  lapply(x, function(d) {
+    d <- .fig_norm(d)
+    if (length(d$stats) || any(vapply(d$data %||% list(), function(s)
+      identical(s$step, "data_code") || identical(s$step, "stats_code"), NA))) {
+      d <- .fig_norm(unclass(.fig_rebuild(d)))
+    }
+    d
+  })
 }
 
 # the study's data a design reads, read as its programs read it
@@ -201,9 +231,7 @@ preview_figure <- function(study, output_id,
   }
   code <- .fig_design_script(design, output_id,
                              codelists = .study_codelists(study$planner))
-  l <- grep("^# Input data frames:", code, value = TRUE)
-  ds <- if (length(l)) toupper(trimws(strsplit(sub("^# Input data frames:", "", l[1L]), ",")[[1L]])) else character()
-  ds <- ds[nzchar(ds)]
+  ds <- .fig_design_datasets(design, output_id)
   # ADSL too: the advice counts the groups, which may be joined from it
   data <- .study_data(study, union(ds, "ADSL"))
   problems <- tflspec::tfl_check_fig_design(saved, data)
@@ -401,7 +429,7 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
     if (!is.na(v)) out[["pop"]] <- v
   }
   if (!"group" %in% given) {
-    g <- d$plot$colour_by %||% unlist(lapply(d$stats, `[[`, "by"))[1L]
+    g <- d$plot$colour_by %||% unlist(lapply(d$data, `[[`, "by"))[1L]
     v <- fit_var(g, c("TRT01P", "TRT01A", "TRTP", "TRTA", "ARM", "ACTARM"))
     if (!is.na(v)) out[["group"]] <- v
   }

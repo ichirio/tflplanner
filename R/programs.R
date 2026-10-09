@@ -125,8 +125,11 @@ report_info <- function(x, output_id) {
     paste("#", bar))
 }
 
+# a program's section line, as tflspec writes its own (a designed figure's
+# `# ---- data ----` and `# ---- plot ----`): to the 78th column
 .section <- function(title) {
-  paste0("# ---- ", title, " ----")
+  head <- paste("# ----", title, "")
+  paste0(head, strrep("-", max(3L, 78L - nchar(head))))
 }
 
 # Does this code assign `data` itself?  (Then it needs no default
@@ -240,11 +243,7 @@ data_lines <- function(x, output_id, todo = TRUE) {
     f <- if (is.null(design)) {
       .figure_lines(x, output_id, info, plot_code = code)
     } else {
-      .figure_lines(x, output_id, info,
-                    plot_code = paste(.fig_design_plot(design, output_id,
-                                                       codelists = .study_codelists(x)),
-                                      collapse = "\n"),
-                    datasets = .fig_design_datasets(design, output_id))
+      .fig_design_lines(x, output_id, design)
     }
     if (!is.null(f)) return(c(setup, f))
   }
@@ -318,6 +317,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   type <- info$type
   table <- identical(type, "table")
   obj <- if (table) "data" else "content"
+  # a designed figure: its code is the design's (#293)
+  design <- if (identical(type, "figure")) fig_design(x, output_id)
 
   head <- .banner(
     paste("Program    :", file.path(lay[["programs_tfl"]], info$program)),
@@ -326,11 +327,18 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     if (length(titles)) paste("Title      :", titles),
     paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
            ", ", format(date, "%Y-%m-%d")),
-    paste0("The data part makes `", obj, "`; the report part is written from ",
-           lay[["spec"]], "/."))
+    if (is.null(design)) paste0(
+      "The data part makes `", obj, "`; the report part is written from ",
+      lay[["spec"]], "/.") else c(
+      paste0("The data and plot parts make `plot`; the report part is written from ",
+             lay[["spec"]], "/."),
+      paste0("Edit the design in the Plot Designer (", lay[["spec"]], "/",
+             .fig_design_dir, "/", output_id, ".yml), not this code.")))
 
-  data <- data_lines(x, output_id)
-  data_part <- c(
+  data <- if (is.null(design)) data_lines(x, output_id) else c(
+    if (!is.na(x$setup)) c(.code_block(x$setup), ""),
+    .fig_design_lines(x, output_id, design, source = FALSE))
+  data_part <- if (!is.null(design)) data else c(
     .section(paste0("data: ", switch(type,
       figure = "the figure",
       user = "the report's own code",
@@ -357,6 +365,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     "# the study's setup, and the header, footer and tokens of every report",
     sprintf("source(%s)", .r_string(file.path(lay[["programs_tfl"]],
                                                .report_setup_file))),
+    if (!is.null(design)) .fig_source_lines(),
     "",
     paste("report_id <-", .r_string(output_id)),
     "",
