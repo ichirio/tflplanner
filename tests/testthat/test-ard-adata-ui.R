@@ -476,7 +476,7 @@ test_that("2-1: a population_id the sheet has is the condition's first row", {
   shiny::testServer(server_for("PL"), {
     session$setInputs(nav = "make", step = "ard", target = "DM")
     session$setInputs(ard_adata_pick = "adsl_old")
-    expect_false(grepl("Also kept to the analysis set", output$adata_detail$html, fixed = TRUE))
+    expect_false(grepl("Also kept to the population", output$adata_detail$html, fixed = TRUE))
     expect_identical(shiny::isolate(session$userData$adata_cond$value()), 'SAFFL == "Y" & AGE >= 65')
     session$setInputs(adata_id = "adsl_old", adata_label = "Old", adata_from = "ADSL", adata_subj = "",
                       adata_add = NULL, adata_derive = "", adata_keep = NULL, adata_distinct = NULL,
