@@ -98,13 +98,10 @@ Definition workbooks (written on save),定義ブック（保存時に書き出�
 Deliverable data: each Table's ARD (.rds),成果物データ: 各 Table の ARD (.rds)
 Deliverable reports: RTF,成果物帳票: RTF
 Run logs,実行ログ
-Import definition workbooks (replaces this study's definition),Excel の定義ブックを取り込む（この試験の定義を置き換え）
-Export the definition (Excel),定義ブックを書き出す (Excel)
 Export the analyses as CDISC ARS,解析を CDISC ARS で書き出す
 Download the study (zip),試験を zip でダウンロード
 with data,データも含める
 Open the study folder,試験フォルダを開く
-Imported %d reports (not saved yet),%d 帳票を取り込みました（未保存）
 ALL (every row),ALL（全帳票の全行）
 Inherited from the study defaults (%d rows; edit them under Study defaults),試験共通の既定から引き継ぐ行（%d 行。編集は「試験共通の既定」で）
 %s is a %s: the table definition is for Tables (a %s is made in its data code).,%s は %s です。表の定義は Table 用です（%s はデータ準備コードで作ります）。
@@ -2387,6 +2384,32 @@ Own,自分の書式
 "{statistic} as the ARD names it: N, mean, sd, se, median, p25, p75, min, max ...; a format after a colon: {mean:.2f} two decimals, {p:.1f%} a percent. Blank: the decimals above. The table on the right shows the row once added.",{統計量} は ARD の名前で: N、mean、sd、se、median、p25、p75、min、max など。コロンの後に書式: {mean:.2f} は小数 2 桁、{p:.1f%} は百分率。書かなければ上の桁数。足した行は右の表に出ます。
 Prints (the Statistics card's):,出すもの（統計量のカードの設定）:
 Decimals:,小数桁:
+The definition files were changed outside tflplanner; the changes were loaded.,定義ファイルが tflplanner の外で変更されていたため、その変更を読み込みました。
+"The definition files were changed outside tflplanner but could not be read. The study is open as it was last saved. Fix the files and load them, or write the files back from the last save. Until then the study cannot be saved.",定義ファイルが tflplanner の外で変更されましたが、読み込めませんでした。試験は最後に保存した状態で開いています。ファイルを直して読み込み直すか、最後の保存内容でファイルを書き戻してください。それまで保存はできません。
+Row,行
+Problem,問題
+Load from the definition files,定義ファイルから読み込む
+Write the files back from the last save,最後の保存内容でファイルを書き戻す
+The definition files do not read,定義ファイルが読み込めません
+What changed,変更内容
+Parts,変わった部分
+Both the files and your unsaved changes changed these parts: %s. Keep which?,次の部分は、ファイルと未保存の変更の両方で変わっています: %s。どちらを残しますか?
+Keep the files' version,ファイルの内容を残す
+Keep my unsaved changes,未保存の変更を残す
+Nothing changed in the definition files.,定義ファイルに変更はありません。
+The replaced files were copied to spec/.rejected/.,置き換えたファイルは spec/.rejected/ に残しました。
+The definition files were changed,定義ファイルが変更されています
+The definition files were changed outside tflplanner since this study was opened. Load them first; your unsaved changes are kept and merged.,試験を開いた後に、定義ファイルが tflplanner の外で変更されました。先に読み込んでください。未保存の変更は残り、合わせて取り込まれます。
+"Reads spec/ and study.yml again and takes them in: after editing them outside tflplanner (in Excel), or copying workbooks into spec/. Your unsaved changes are kept and merged.",spec/ と study.yml を読み直して取り込みます。tflplanner の外（Excel など）で直したときや、spec/ にワークブックを置いたときに使います。未保存の変更は残り、合わせて取り込まれます。
+Export the definition files,定義ファイルを書き出す
+"A copy of spec/ and study.yml as a zip (the ARD definition as an Excel workbook): edit the copy, rename it as you like, and bring it back with Import.",spec/ と study.yml の写しを zip で書き出します（ARD の定義は Excel のワークブック）。写しを直し、名前も好きに変えてから、取り込みで戻します。
+"Import definition files (an edited copy: workbooks, .yml, .json or the zip)",定義ファイルを取り込む（直した写し：ワークブック、.yml、.json、または zip）
+Nothing was changed. Fix the copy and import it again.,何も変えていません。写しを直して、もう一度取り込んでください。
+Warnings (the import is not stopped by them):,警告（取り込みは止まりません）：
+Import the parts checked,チェックした部分を取り込む
+Check a part to import,取り込む部分をチェックしてください
+Imported: %s. The files before are in %s.,取り込みました：%s。取り込む前のファイルは %s にあります。
+Column,列
 Copying the sample study ...,サンプル試験を写しています ...
 "The sample study is in place; to make its ARD and reports, install %s and start an official run (Runs).",サンプル試験を写しました。ARD と帳票を作るには、%s を入れてから正式実行（実行タブ）をしてください。
 the official run of %s (its ARD and reports),%s の正式実行（ARD と帳票）
@@ -2417,13 +2440,24 @@ Columns made or changed,作る・変える列
 Columns added from the subjects' data: none to add (this data is the subjects' data itself).,症例のデータから加える列：ありません（このデータが症例のデータそのものです）。
 Code lists: %s (Column definitions ④),コードリスト：%s（列定義 ④）
 A value with no arrow prints as it is.,矢印の無い値は、そのまま表示されます。
-"ARD: the analysis sets, one row a population.",ARD：解析対象集団。1 行 = 1 集団。
-"The analysis data analysed (a data_id of analysis_data), instead of dataset and population_id: the analysis set is its population; blank: dataset and population_id say it.",解析する解析データ（analysis_data の data_id）。dataset と population_id の代わりに使い、解析対象集団はそのデータの集団になる。空欄 = dataset と population_id で指定。
-"The analysis set: the data is restricted to its subjects; blank: no restriction (population is NULL), or the population of `data`.",解析対象集団：データをその被験者に絞る。空欄 = 絞らない（population は NULL）、または `data` の集団。
-"What percentages are of: population (the analysis set; hierarchical and max take it anyway), row / column / cell (cards), another population, a dataset (its records of the analysis set's subjects), or an analysis data (as it is: one row a subject and phase gives the N of each phase); blank: the method's default.",% の分母：population（解析対象集団。hierarchical と max は指定しなくてもこれ）、row / column / cell（cards）、別の集団、データセット（その中の、解析対象集団の被験者の行）、または解析データ（そのまま。被験者 × フェーズで 1 行にすれば、フェーズごとの N）。空欄 = method の既定。
-"Which population {n} in the column header is, for a table split by page (a lab parameter): page (those with that page's data), table (the analysis set), or both as n = page | N = table for {n} and {N}; blank: page (warns when both exist and differ). Both must be in the ARD.",ページ（検査項目など）で分けた表で、列見出しの {n} がどの母集団か：page（そのページのデータがある人）、table（解析対象集団）、両方なら n = page | N = table で {n} と {N}。空欄 = page（両方あって食い違えば警告）。どちらも ARD に入れておくこと。
+"ARD: the populations, one row a population.",ARD：解析対象集団。1 行 = 1 集団。
+"The analysis data analysed (a data_id of analysis_data), instead of dataset and population_id: the population is its population; blank: dataset and population_id say it.",解析する解析データ（analysis_data の data_id）。dataset と population_id の代わりに使い、解析対象集団はそのデータの集団になる。空欄 = dataset と population_id で指定。
+"The population: the data is restricted to its subjects; blank: no restriction (population is NULL), or the population of `data`.",解析対象集団：データをその被験者に絞る。空欄 = 絞らない（population は NULL）、または `data` の集団。
+"What percentages are of: population (hierarchical and max take it anyway), row / column / cell (cards), another population, a dataset (its records of the population's subjects), or an analysis data (as it is: one row a subject and phase gives the N of each phase); blank: the method's default.",% の分母：population（解析対象集団。hierarchical と max は指定しなくてもこれ）、row / column / cell（cards）、別の集団、データセット（その中の、解析対象集団の被験者の行）、または解析データ（そのまま。被験者 × フェーズで 1 行にすれば、フェーズごとの N）。空欄 = method の既定。
+"Which population {n} in the column header is, for a table split by page (a lab parameter): page (those with that page's data), table (the population), or both as n = page | N = table for {n} and {N}; blank: page (warns when both exist and differ). Both must be in the ARD.",ページ（検査項目など）で分けた表で、列見出しの {n} がどの母集団か：page（そのページのデータがある人）、table（解析対象集団）、両方なら n = page | N = table で {n} と {N}。空欄 = page（両方あって食い違えば警告）。どちらも ARD に入れておくこと。
 Population flag,解析対象集団フラグ
 "Search: ID, title, population, data",検索: ID・タイトル・解析対象集団・データ
-"A flag (== ""Y"") that selects the analysis set, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"
-Keep an analysis set,解析対象集団で絞る
-"No analysis set: every row of the dataset is used. Keep the analysis set's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。
+"A flag (== ""Y"") that selects the population, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"
+Keep a population,解析対象集団で絞る
+"No population: every row of the dataset is used. Keep the population's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。
+"To edit the definition outside the app: export the files, edit the copy (in Excel; rename it as you like), and import it back.",定義をアプリの外で直すには：ファイルを書き出し、写しを直して（Excel で。名前は変えてよい）、取り込みで戻します。
+"There are unsaved changes. Save first, then choose the file again.",未保存の変更があります。先に保存してから、ファイルを選び直してください。
+The files cannot be imported: %s,取り込めません：%s
+%s is the same as the study's definition: nothing to import.,%s は試験の定義と同じです。取り込むものはありません。
+Import definition files: %s,定義ファイルを取り込む：%s
+Read as %s.,%s として読みました。
+A part checked is replaced whole by the copy's version; a part not checked stays as the study has it.,チェックした部分は、写しの内容で丸ごと置き換えます。チェックしない部分は、試験のままです。
+"Before anything changes, the study's files as they are now are kept in spec/.backup/<date>-<time>/; then the study is saved. Cancel changes nothing.",変える前に、今の試験のファイルを spec/.backup/<日付>-<時刻>/ に残し、そのあと試験を保存します。キャンセルすると何も変わりません。
+Imported from %s.,%s から取り込みました。
+The files before the import are kept in %s.,取り込む前のファイルは %s に残しています。
+Parts that differ (take in the ones checked): the study's → the copy's,違う部分（チェックしたものを取り込む）：試験 → 写し

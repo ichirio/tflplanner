@@ -18,6 +18,31 @@
   design saved before reads as one list).  A step added goes after the
   one chosen, a step on `df` before the first object.  "This piece's
   code" shows the lines the script has with the piece and not without it.
+- **Edit the definition outside the app: export, edit the copy, import**
+  (#274, phase 2).  **Export the definition files** (Study tab, Files)
+  gives a zip of `spec/` and `study.yml`, the ARD definition as an Excel
+  workbook; **Import definition files** takes an edited copy back
+  (workbooks known by their sheets, so a renamed copy works; `.yml`,
+  `.json` or the zip).  Before anything changes, the copy is checked in a
+  temporary folder: every reader, every cell that holds R (conditions,
+  derived columns, `args`, `post`, code, figure-design code) parsed, the
+  ARD definition and figure designs checked, and the programs of the
+  reports it touches written and parsed.  Errors list file, sheet, row,
+  column and problem and change nothing; warnings are shown and do not
+  stop it.  The parts that differ are listed to choose from; the study's
+  files are copied to `spec/.backup/<date>-<time>/` first, then the study
+  is saved.  R: `export_spec_files()`, `preview_spec_import()`,
+  `import_spec_files()`.  A direct edit of `spec/` is still found on open
+  and goes through the same checks: a study whose files changed opens
+  with a notice and "What changed"; files that do not read show a card
+  (and a mark in the bar) with **Load from the definition files** and
+  **Write the files back from the last save**, and the study cannot be
+  saved until one is chosen; a save after an outside edit asks to load
+  first; loading keeps unsaved changes and a draft, merged part by part
+  (a part both changed asks which to keep).  The Japanese guide's 3.1
+  says how.  The Japanese of tflspec's texts that now say "population"
+  (tflspec #197: the figure designer, figure advice, five column
+  descriptions) follows them.
 
 - **A new study from the sample is ready at once** (#297).  The sample
   is copied (seconds) and opened; its official run, which makes its ARD

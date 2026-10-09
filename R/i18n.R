@@ -75,7 +75,9 @@ app_languages <- function() c(English = "en", "\u65e5\u672c\u8a9e" = "ja")
   c("^The company has no ARD function", "The company standards have no such ARD function"),
   c("^No ARD function ", "There is no such ARD function"),
   c("^No dataset .+ in the ARD definition", "The ARD definition has no such dataset"),
-  c("^The report has no code yet", "The report has no code yet"))
+  c("^The report has no code yet", "The report has no code yet"),
+  c("^The definition files were changed outside tflplanner", "The definition files were changed"),
+  c("^The definition files do not read", "The definition files do not read"))
 
 .error_view <- function(msg, t = identity) {
   for (p in .error_leads) {
