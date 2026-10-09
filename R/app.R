@@ -1093,6 +1093,22 @@ $(document).on('shiny:value', function(e) {
     $('#builder_preview').css('opacity', 1);
   }
 });
+// The builder's form is drawn again after an edit that changes its
+// shape (a heading or the order in the code list of variable, a row of
+// one's own): the page keeps its place instead of jumping to the top.
+(function() {
+  var y = null;
+  $(document).on('shiny:outputinvalidated', function(e) {
+    if (e.name === 'builder_form') y = window.scrollY;
+  });
+  $(document).on('shiny:value', function(e) {
+    if (e.name !== 'builder_form' || y === null) return;
+    var at = y;
+    y = null;
+    setTimeout(function() { window.scrollTo(0, at); }, 0);
+    setTimeout(function() { window.scrollTo(0, at); }, 150);
+  });
+})();
 // Outputs shown just now (a part drawn, a panel opened): shiny resumes a
 // hidden output after the update that shows it and schedules none, so it
 // waited for some unrelated timer (seconds).  A word to the server once
@@ -2827,9 +2843,9 @@ app_server <- function(input, output, session, start) {
     unique(c(adata_cols(adata_root(input$adata_from %||% "")), made,
              input$adata_add, input$adata_keep))
   }
-  adata_cl_ids <- c(edit = "cl21_open", copy = "cl21_copy", add = "adata_cl_add")
-  adata_cl_missing <- .codelist_part_server(
-    input, rv, current, adata_cl_ids, vars = adata_cl_vars,
+  adata_cl_ids <- .codelist_part_ids("adata_cl", "cl21")
+  adata_cl_part <- .codelist_part_server(
+    input, output, rv, current, adata_cl_ids, vars = adata_cl_vars,
     # the rows its condition keeps (the analysis set's too)
     data = function() {
       ds <- adata_root(input$adata_from %||% "")
@@ -2841,13 +2857,15 @@ app_server <- function(input, output, session, start) {
         t("Code lists: the columns of this analysis data")
     },
     dialog = cl_21, t = t, notify = notify, guarded = guarded, bump = bump,
-    has_study = has_study)
+    has_study = has_study, read_grid = read_grid, grids_drawn = grids_drawn)
   output$adata_cl <- shiny::renderUI({
     shiny::req(has_study(), current(), !is.null(adata_edit()))
+    cl <- sheet_rows(rv$p, "codelists", current())
     .codelist_part_ui(
-      .codelist_lines(sheet_rows(rv$p, "codelists", current()), adata_cl_vars()),
-      adata_cl_missing(), t, adata_cl_ids,
-      t("This report's code lists of these columns: the program puts them on the data (set_levels()), each column a factor in the list's order, its values the labels -- so the ARD holds what the table prints. A value a list does not have stops the program."))
+      .codelist_lines(cl, adata_cl_vars()),
+      adata_cl_part$missing(), t, adata_cl_ids,
+      t("This report's code lists of these columns: the program puts them on the data (set_levels()), each column a factor in the list's order, its values the labels -- so the ARD holds what the table prints. A value a list does not have stops the program."),
+      open = adata_cl_part$open(), others = .codelist_others(cl, adata_cl_vars()))
   })
   # step 2's table: its code lists are where its data is made (1-1)
   shiny::observeEvent(input$cl3_open, go("ard"))
@@ -4923,7 +4941,7 @@ app_server <- function(input, output, session, start) {
                                 selected = bar(r$distinct), multiple = TRUE, width = "100%",
                                 options = list(create = TRUE, plugins = list("remove_button")))),
         shiny::div(class = "rp-num-part", shiny::span(class = "rp-num", "\u2463"),
-          shiny::div(shiny::uiOutput("adata_cl"))))),
+          shiny::div(shiny::uiOutput("adata_cl"), shiny::uiOutput("adata_cl_detail"))))),
       # the way out: R that makes the data itself (the definition keeps it)
       shiny::tags$details(
         class = "mb-2", open = if (!.is_blank(r$code)) NA,
@@ -7146,7 +7164,8 @@ app_server <- function(input, output, session, start) {
   .designer_server(input, output, session, rv, current, t, notify, guarded,
                    catalog, fig_is_new = function() fig_is_new(),
                    page = function() page(), codelists_dialog = cl_fig,
-                   bump = bump, has_study = has_study)
+                   bump = bump, has_study = has_study, read_grid = read_grid,
+                   grids_drawn = grids_drawn)
   output$lf_note <- shiny::renderUI({
     msg <- switch(lf_type(),
       none = t("Choose a Listing report on the left."),
@@ -7386,14 +7405,14 @@ app_server <- function(input, output, session, start) {
                        width = "100%",
                        placeholder = paste(t("e.g."), "AESEV == \"SEVERE\"")),
       # as its program has them: the condition, the code lists, the order
-      shiny::div(class = "mb-2", shiny::uiOutput("lf_cl")),
+      shiny::div(class = "mb-2", shiny::uiOutput("lf_cl"), shiny::uiOutput("lf_cl_detail")),
       shiny::textInput(lf_id("sort"), t("Order (| between variables, - for descending; a column with a code list sorts in the list's order)"),
                        value = lv("sort"), width = "100%",
                        placeholder = paste(t("e.g."), "TRTA | USUBJID | ASTDT")))
   })
   # a listing's code lists: those of its dataset's columns (its program puts
   # them on the data after the condition, before the order)
-  lf_cl_ids <- c(edit = "cllf_open", copy = "cllf_copy", add = "lf_cl_add")
+  lf_cl_ids <- .codelist_part_ids("lf_cl", "cllf")
   lf_cl_ds <- function() {
     l <- lf_rows(rv$p, "listings", current() %||% "")
     if (!nrow(l) || .is_blank(l$dataset[1L])) return(NULL)
@@ -7404,17 +7423,19 @@ app_server <- function(input, output, session, start) {
                           .split_bar))
     unique(c(names(lf_cl_ds()), cols))
   }
-  lf_cl_missing <- .codelist_part_server(
-    input, rv, current, lf_cl_ids, vars = lf_cl_vars, data = lf_cl_ds,
+  lf_cl_part <- .codelist_part_server(
+    input, output, rv, current, lf_cl_ids, vars = lf_cl_vars, data = lf_cl_ds,
     title = function() sprintf(t("Code lists: the columns of %s's data"), current()),
     dialog = cl_lf, t = t, notify = notify, guarded = guarded, bump = bump,
-    has_study = has_study)
+    has_study = has_study, read_grid = read_grid, grids_drawn = grids_drawn)
   output$lf_cl <- shiny::renderUI({
     shiny::req(has_study(), current(), identical(lf_type(), "listing"))
+    cl <- sheet_rows(rv$p, "codelists", current())
     .codelist_part_ui(
-      .codelist_lines(sheet_rows(rv$p, "codelists", current()), lf_cl_vars()),
-      lf_cl_missing(), t, lf_cl_ids,
-      t("This report's code lists of the listing's columns: its program puts them on the data after the condition (set_levels()), each column a factor in the list's order, its values the labels, and the rows sort in that order. A value a list does not have stops the program."))
+      .codelist_lines(cl, lf_cl_vars()),
+      lf_cl_part$missing(), t, lf_cl_ids,
+      t("This report's code lists of the listing's columns: its program puts them on the data after the condition (set_levels()), each column a factor in the list's order, its values the labels, and the rows sort in that order. A value a list does not have stops the program."),
+      open = lf_cl_part$open(), others = .codelist_others(cl, lf_cl_vars()))
   })
   # the form's values back to the listing / figure rows
   lf_values <- shiny::reactive({
@@ -7699,6 +7720,8 @@ app_server <- function(input, output, session, start) {
                class = "btn-sm btn-link py-0")),
         sortable::rank_list(text = NULL, labels = var_items,
                             input_id = bid("vars")),
+        # the same, as the code list of `variable`: value -> label, in order
+        shiny::uiOutput("b_vcl"),
         bslib::accordion(
           open = FALSE,
           lapply(seq_len(nrow(v)), function(i) {
@@ -7766,6 +7789,66 @@ app_server <- function(input, output, session, start) {
                               value = st$pct_decimals, min = 0, max = 3,
                               width = "260px")),
         shiny::uiOutput(bid("warn"))))
+  })
+  # The rows' variables as the code list of `variable`: each variable (the
+  # value), the heading the table prints for it (the label) and its place
+  # (the order) -- a grid like the code lists', opened under the list.  It
+  # is the same thing as the list and the labels above: an edit writes the
+  # variables sheet (label, order), and the form is drawn again from it.
+  vcl_open <- shiny::reactiveVal(FALSE)
+  shiny::observeEvent(input$b_vcl_toggle, vcl_open(!vcl_open()))
+  output$b_vcl <- shiny::renderUI({
+    bform_drawn()
+    shiny::req(identical(builder_case(), "ok"))
+    on <- vcl_open()
+    shiny::tagList(
+      shiny::tags$button(
+        type = "button", class = "btn btn-sm btn-link py-0 px-0 mb-1",
+        onclick = "Shiny.setInputValue('b_vcl_toggle', Math.random(), {priority: 'event'})",
+        shiny::span(class = "text-muted me-1", if (on) "\u25be" else "\u25b8"),
+        t("As the code list of variable: value, label, order")),
+      if (on) shiny::div(
+        class = "border rounded p-2 mb-2 bg-body-tertiary",
+        shiny::p(class = "small text-muted mb-1",
+                 t("Each variable (value), the heading the table prints for it (label; blank: as the ARD names it) and its place (order). The same as the list above and its labels: the program writes them as plan_labels(variable = ...).")),
+        rhandsontable::rHandsontableOutput("b_vcl_hot")))
+  })
+  vcl_key <- shiny::reactive(paste("vcl", bform_drawn(), sep = "|"))
+  output$b_vcl_hot <- rhandsontable::renderRHandsontable({
+    shiny::req(vcl_open(), identical(builder_case(), "ok"))
+    vcl_key()
+    v <- bform$st$variables
+    d <- data.frame(value = v$variable,
+                    label = ifelse(is.na(v$label), "", v$label),
+                    order = as.character(seq_len(nrow(v))),
+                    stringsAsFactors = FALSE)
+    h <- rhandsontable::rhandsontable(
+      d, rowHeaders = TRUE, useTypes = FALSE, stretchH = "all",
+      height = .grid_height(nrow(d)), planner_key = vcl_key())
+    h <- rhandsontable::hot_context_menu(h, allowRowEdit = FALSE,
+                                         allowColEdit = FALSE)
+    suppressWarnings(rhandsontable::hot_col(h, "value", readOnly = TRUE))
+  })
+  shiny::observeEvent(input$b_vcl_hot, {
+    h <- input$b_vcl_hot
+    if (is.null(h$changes$changes)) return()
+    if (!identical(h$params$planner_key, vcl_key())) return()
+    d <- read_grid(h)
+    st <- shiny::isolate(bstate())
+    if (is.null(d) || is.null(st)) return()
+    d <- as.data.frame(d, stringsAsFactors = FALSE)
+    o <- suppressWarnings(as.numeric(d$order))
+    d <- d[order(is.na(o), o, seq_len(nrow(d))), , drop = FALSE]
+    if (!setequal(d$value, st$variables$variable)) return()
+    v <- st$variables[match(d$value, st$variables$variable), , drop = FALSE]
+    lab <- trimws(as.character(d$label))
+    v$label <- ifelse(is.na(lab) | !nzchar(lab), NA_character_, lab)
+    rownames(v) <- NULL
+    st$variables <- v
+    p2 <- guarded(builder_write(rv$p, bform$id, st, was = bform$last))
+    shiny::req(!is.null(p2))
+    rv$p <- p2
+    rv$bver <- rv$bver + 1L
   })
   # A variable's own decimals: the list (each with x to take it away) and a
   # line to add one

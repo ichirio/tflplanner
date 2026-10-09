@@ -150,7 +150,9 @@
 .designer_server <- function(input, output, session, rv, current, t, notify,
                              guarded, catalog, fig_is_new = function() FALSE,
                              page = function() input$nav, codelists_dialog = NULL,
-                             bump = function() NULL, has_study = function() TRUE) {
+                             bump = function() NULL, has_study = function() TRUE,
+                             read_grid = function(h) rhandsontable::hot_to_r(h),
+                             grids_drawn = function() 0L) {
   pd <- new.env()
   session$userData$pd <- pd
   pd$n <- 0L
@@ -774,7 +776,7 @@
     if (identical(pn$kind, "codelists")) {
       pd$fields <- NULL
       pd$fig_args <- NULL
-      return(shiny::uiOutput("pd_cl"))
+      return(shiny::tagList(shiny::uiOutput("pd_cl"), shiny::uiOutput("pd_cl_detail")))
     }
     f <- parts[parts$piece == pn$kind, , drop = FALSE]
     # a variable with a code list: its values' order and text are the code
@@ -884,26 +886,29 @@
   })
   # the code lists' step: the report's code lists of the design's columns
   # (R/codelists.R), its dialog the app's
-  cl_ids <- c(edit = "clfig_open_btn", copy = "clfig_copy_btn", add = "pd_cl_add")
+  cl_ids <- .codelist_part_ids("pd_cl", "clfig", edit = "clfig_open_btn",
+                               copy = "clfig_copy_btn")
   cl_data <- function() {
     d <- design()
     ds <- unique(toupper(unlist(lapply(d$data, function(s) s$dataset))))
     dat <- study_data(ds)
     if (length(dat)) do.call(c, lapply(unname(dat), as.list))
   }
-  cl_missing <- if (!is.null(codelists_dialog)) .codelist_part_server(
-    input, rv, current, cl_ids, vars = function() design_vars(design()), data = cl_data,
+  cl_part <- if (!is.null(codelists_dialog)) .codelist_part_server(
+    input, output, rv, current, cl_ids, vars = function() design_vars(design()), data = cl_data,
     title = function() sprintf(t("Code lists: the columns of %s's data"), current()),
     dialog = codelists_dialog, t = t, notify = notify, guarded = guarded, bump = bump,
-    has_study = has_study)
+    has_study = has_study, read_grid = read_grid, grids_drawn = grids_drawn)
   output$pd_cl <- shiny::renderUI({
     d <- design()
-    shiny::req(d, current(), !is.null(cl_missing))
+    shiny::req(d, current(), !is.null(cl_part))
+    cl <- sheet_rows(rv$p, "codelists", current())
     shiny::tagList(
       .codelist_part_ui(
-        .codelist_lines(sheet_rows(rv$p, "codelists", current()), design_vars(d)),
-        cl_missing(), t, cl_ids,
-        t("This report's code lists of the figure's columns: its program puts them on the data as the data steps' last (set_levels()), each column a factor in the list's order, its values the labels -- the order and text of the legend and the axis. A value a list does not have stops the program.")))
+        .codelist_lines(cl, design_vars(d)),
+        cl_part$missing(), t, cl_ids,
+        t("This report's code lists of the figure's columns: its program puts them on the data as the data steps' last (set_levels()), each column a factor in the list's order, its values the labels -- the order and text of the legend and the axis. A value a list does not have stops the program."),
+        open = cl_part$open(), others = .codelist_others(cl, design_vars(d))))
   })
 
   # the form, read back into the piece
