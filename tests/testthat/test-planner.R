@@ -167,3 +167,18 @@ test_that("a code list file is read into a report's code lists", {
   writeLines(c("name,label", "SEX,Sex"), bad)
   expect_error(read_codelist(bad), "variable and value")
 })
+
+test_that("a sheet's columns are tflspec's, made once a session", {
+  sp <- tflspec::tfl_table_spec()
+  for (s in names(sp)) {
+    expect_identical(sheet_columns(s), c(names(sp[[s]]), "note"), info = s)
+  }
+  # opening a study builds no table spec of tflspec's again
+  n <- 0L
+  local_mocked_bindings(tfl_table_spec = function(...) {
+    n <<- n + 1L
+    stop("built again")
+  }, .package = "tflspec")
+  expect_identical(sheet_columns("titles"), c(names(sp$titles), "note"))
+  expect_identical(n, 0L)
+})
