@@ -144,7 +144,8 @@
 
 .designer_server <- function(input, output, session, rv, current, t, notify,
                              guarded, catalog, fig_is_new = function() FALSE,
-                             page = function() input$nav) {
+                             page = function() input$nav, codelists_dialog = NULL,
+                             bump = function() NULL, has_study = function() TRUE) {
   pd <- new.env()
   session$userData$pd <- pd
   pd$n <- 0L
@@ -623,7 +624,7 @@
   shiny::observeEvent(input$pd_drop, {
     shiny::showModal(shiny::modalDialog(
       title = t("Remove the design?"),
-      t("The figure's plot is then its data code again (step 3, Data code), written by hand."),
+      t("The figure's plot is then its data code again (step 2, Data code), written by hand."),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn("pd_drop_ok", t("Remove"), class = "btn-danger"))))
   })
@@ -671,7 +672,20 @@
         else lapply(seq_along(d[[sec]]), function(i) item(sec, i, d[[sec]][[i]], label_of(d[[sec]][[i]])))
       shiny::div(
         shiny::div(class = "pd-sec", t(.pd_sections[[sec]])),
-        if (length(items)) items else shiny::div(class = "small text-muted ps-2", t("(none)")))
+        if (length(items)) items else if (sec != "data") shiny::div(class = "small text-muted ps-2", t("(none)")),
+        if (sec == "data") cl_item())
+    }
+    # the data's last step, always there: the report's code lists put on
+    # the columns (not the design's: the report's, edited in a dialog)
+    cl_item <- function() {
+      on <- identical(s$sec, "codelists")
+      used <- vapply(.codelist_lines(sheet_rows(rv$p, "codelists", current() %||% ""),
+                                     design_vars(d)), `[[`, "", "variable")
+      shiny::div(
+        class = paste("pd-item", if (on) "active"),
+        onclick = .pd_act("sel", "codelists", 1L),
+        shiny::span(t("Code lists")),
+        shiny::div(class = "pd-sum", if (length(used)) paste(used, collapse = ", ") else t("(none)")))
     }
     shiny::tagList(
       if (!is.null(d$template)) shiny::p(class = "small text-muted mb-1",
@@ -727,6 +741,7 @@
   # ---- the form of the chosen piece -----------------------------------------
   piece_now <- function(d, s) {
     if (s$sec == "plot") return(list(kind = "plot", p = d$plot))
+    if (s$sec == "codelists") return(list(kind = "codelists", p = list()))
     x <- d[[s$sec]]
     if (s$i > length(x)) return(NULL)
     p <- x[[s$i]]
@@ -745,7 +760,19 @@
     s <- shiny::isolate(sel())
     pn <- piece_now(d, s)
     shiny::req(pn)
+    if (identical(pn$kind, "codelists")) {
+      pd$fields <- NULL
+      pd$fig_args <- NULL
+      return(shiny::uiOutput("pd_cl"))
+    }
     f <- parts[parts$piece == pn$kind, , drop = FALSE]
+    # a variable with a code list: its values' order and text are the code
+    # list's (the data's last step), not a field here
+    listed <- unique(sheet_rows(shiny::isolate(rv$p), "codelists",
+                                shiny::isolate(current()) %||% "")$variable)
+    cl_var <- switch(pn$kind, levels = pn$p$variable, count = pn$p$category, NULL)
+    by_cl <- !is.null(cl_var) && cl_var %in% listed
+    if (by_cl) f <- f[!f$field %in% c("levels", "labels", "order_by"), , drop = FALSE]
     # a whole-script layer: the type's own arguments, from its schema
     fig_args <- NULL
     if (identical(pn$kind, "figure")) {
@@ -839,7 +866,33 @@
     shiny::tagList(
       shiny::h6(head),
       if (nzchar(f$piece_help[1L] %||% "")) shiny::p(class = "small text-muted", t(f$piece_help[1L])),
-      lapply(seq_len(nrow(f)), function(i) one(f[i, ])))
+      lapply(seq_len(nrow(f)), function(i) one(f[i, ])),
+      if (by_cl) shiny::p(class = "small text-muted",
+                          sprintf(t("%s has a code list: its values' order and text are the code list's (the data steps' last, Code lists)."),
+                                  cl_var)))
+  })
+  # the code lists' step: the report's code lists of the design's columns
+  # (R/codelists.R), its dialog the app's
+  cl_ids <- c(edit = "clfig_open_btn", copy = "clfig_copy_btn", add = "pd_cl_add")
+  cl_data <- function() {
+    d <- design()
+    ds <- unique(toupper(unlist(lapply(d$data, function(s) s$dataset))))
+    dat <- study_data(ds)
+    if (length(dat)) do.call(c, lapply(unname(dat), as.list))
+  }
+  cl_missing <- if (!is.null(codelists_dialog)) .codelist_part_server(
+    input, rv, current, cl_ids, vars = function() design_vars(design()), data = cl_data,
+    title = function() sprintf(t("Code lists: the columns of %s's data"), current()),
+    dialog = codelists_dialog, t = t, notify = notify, guarded = guarded, bump = bump,
+    has_study = has_study)
+  output$pd_cl <- shiny::renderUI({
+    d <- design()
+    shiny::req(d, current(), !is.null(cl_missing))
+    shiny::tagList(
+      .codelist_part_ui(
+        .codelist_lines(sheet_rows(rv$p, "codelists", current()), design_vars(d)),
+        cl_missing(), t, cl_ids,
+        t("This report's code lists of the figure's columns: its program puts them on the data as the data steps' last (set_levels()), each column a factor in the list's order, its values the labels -- the order and text of the legend and the axis. A value a list does not have stops the program.")))
   })
 
   # the form, read back into the piece
@@ -1030,7 +1083,8 @@
     d <- design()
     s <- sel()
     shiny::req(id, d)
-    code <- tryCatch(.fig_design_script(d, id), error = function(e) conditionMessage(e))
+    code <- tryCatch(.fig_design_script(d, id, codelists = .study_codelists(rv$p)),
+                     error = function(e) conditionMessage(e))
     if (length(code) == 1L && !grepl("\n", code)) return(code)
     .piece_code(code, d, s)
   })
@@ -1038,7 +1092,8 @@
     id <- current()
     d <- design()
     shiny::req(id, d)
-    paste(tryCatch(.fig_design_plot(d, id), error = function(e) conditionMessage(e)),
+    paste(tryCatch(.fig_design_plot(d, id, codelists = .study_codelists(rv$p)),
+                   error = function(e) conditionMessage(e)),
           collapse = "\n")
   })
   output$pd_yaml <- shiny::renderText({
@@ -1054,7 +1109,8 @@
 # The lines of a design's script that one piece makes: for a layer, from
 # its "# ---- layer i:" marker to the next marker; for the figure settings,
 # their block; for a data step, the df pipeline (its steps in order) or its
-# own code block; for a statistic, the block that makes its object.
+# own code block; for the code lists, the lists at the head and the pipe
+# that puts them on; for a statistic, the block that makes its object.
 .piece_code <- function(code, d, s) {
   block <- function(from, to_pattern) {
     if (!length(from)) return(character())
@@ -1083,6 +1139,10 @@
         block(grep(sprintf("^# ---- layer %d:", i), code), "^# ----|^#{5,}")
       }
     },
+    # (none: no code of its own)
+    codelists = if (length(grep("^# ---- code lists", code)))
+      c(block(grep("^# ---- code lists", code), "^$"), "",
+        block(grep("^df <- ", code), "^$")),
     data = {
       st <- d$data[[s$i]]
       if (identical(st$step, "data_code")) {

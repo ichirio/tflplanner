@@ -1,7 +1,7 @@
-# The forms of step 2 keep what they cannot show (design 13-2): a value the
+# The forms of step 1 keep what they cannot show (design 13-2): a value the
 # fields have no place for is shown and written back as it was
 
-test_that("2-2: arguments the fields cannot show come back as they were", {
+test_that("1-2: arguments the fields cannot show come back as they were", {
   f <- .ard_form_fields(.ard_method_call("cards::ard_tabulate", .std_ard_methods()))
   args <- "denominator = dplyr::filter(population, AGE > 65), fmt_fn = list(n = 0)"
   pa <- .ard_args_parse(args, f)
@@ -10,14 +10,14 @@ test_that("2-2: arguments the fields cannot show come back as they were", {
   expect_true(.ard_args_same(back, args))
 })
 
-test_that("2-2: a data the study has no choice for is a choice, as it is", {
+test_that("1-2: a data the study has no choice for is a choice, as it is", {
   w <- list(with = "%s x %s (%s)", alone = "%s (%s)", none = "(none)")
   po <- data.frame(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"")
   ch <- .an_data_choices("ADSL", po, now = "ADXX|SAF", words = w)
   expect_true("ADXX|SAF" %in% unlist(ch))
 })
 
-test_that("2-1: an analysis data the form cannot show is saved back unchanged", {
+test_that("1-1: an analysis data the form cannot show is saved back unchanged", {
   skip_if_not_installed("cards")
   local_home()
   p <- add_output(new_planner(), "DM")
