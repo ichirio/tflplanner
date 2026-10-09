@@ -7,9 +7,11 @@
 # Run data-raw/logo.R first if the logo itself changed: the large sizes are
 # rendered from man/figures/logo.svg.
 #
-#   48 px and up   the logo as it is: hexagon, card and name
-#   16, 24, 32 px  a simplified mark: the hexagon and its light border only
-#                  (no card, no text), so it stays clean at taskbar size
+#   128 px and up  the logo as it is: hexagon, card and name
+#   24 to 64 px    a simplified mark: the hexagon, its light border and a
+#                  "t" (no card, no name), so it stays clear on the desktop
+#                  (48 / 64 px at 100-150 %) and the taskbar
+#   16 px          the hexagon and its border only (a letter smudges)
 #
 #   tflplanner.ico    16, 24, 32, 48, 64, 128 and 256 px
 #   tflplanner.png    256 px (the large logo)
@@ -38,15 +40,18 @@ for (fam in c("Liberation Serif", "Liberation Mono")) {
 out <- file.path("inst", "launcher")
 dir.create(out, recursive = TRUE, showWarnings = FALSE)
 sizes <- c(16, 24, 32, 48, 64, 128, 256)
-small <- sizes < 48
+small <- sizes < 128
 
 # -- the sources ----------------------------------------------------------------
 
 # The hexagon, its gradient and gloss, its dark border and a light border
-# (the logo's own inner highlight, drawn stronger so that it shows at 16 px).
-# The colours are the logo's (data-raw/logo.R, family$tflplanner).
+# (the logo's own inner highlight, drawn stronger so that it shows at 16 px),
+# and from 24 px a "t" in the border's colour.  The colours are the logo's
+# (data-raw/logo.R, family$tflplanner).
 hex   <- "280,28 512,163 512,431 280,566 48,431 48,163"
 inner <- "280,66 476,180 476,414 280,528 84,414 84,180"
+mark_t <- paste0('<text x="280" y="372" font-family="Liberation Serif, Georgia, serif" ',
+                 'font-size="250" font-weight="700" text-anchor="middle" fill="#f7e2bf">t</text>')
 mark_svg <- c(
   '<?xml version="1.0" encoding="UTF-8"?>',
   '<svg xmlns="http://www.w3.org/2000/svg" width="560" height="620" viewBox="0 0 560 620">',
@@ -83,7 +88,10 @@ render <- function(svg_lines, px) {
 }
 
 logo_svg <- readLines("man/figures/logo.svg", warn = FALSE)
-icon <- function(px) render(if (px < 48) mark_svg else logo_svg, px)
+with_t <- append(mark_svg, mark_t, after = length(mark_svg) - 1L)
+icon <- function(px) {
+  render(if (px >= 128) logo_svg else if (px >= 24) with_t else mark_svg, px)
+}
 imgs <- lapply(sizes, icon)
 names(imgs) <- sizes
 

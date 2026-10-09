@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **The launcher's icon is the hex logo** (#291).  The desktop and Start
+  menu shortcut (`add_shortcut()`) shows the package's logo at 128 px and
+  up; at the sizes the desktop and the taskbar use (24 to 64 px) a plain
+  hexagon with a "t", at 16 px the hexagon alone, so it stays clear.
+  `data-raw/launcher-icons.R` makes the `.ico`, `.png` and `.icns`.
+
 - No links to discussions by number, and no code copied from one (#298):
   the tests that run the example workbooks of tflspec (>= 0.0.24.9071)
   follow their new contents.
