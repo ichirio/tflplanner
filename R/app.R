@@ -1531,6 +1531,11 @@ app_server <- function(input, output, session, start) {
                      ordering = FALSE, scrollY = "50vh",
                      scrollCollapse = TRUE))
   })
+  # drawn also while the Study tab is hidden: a study made or copied from
+  # another tab (the new study's step moves to the report list) is in the
+  # list when the tab is shown again -- a hidden output invalidated waits for
+  # an update that showing a tab does not send (the list is cheap, 0.07 s)
+  shiny::outputOptions(output, "studies", suspendWhenHidden = FALSE)
   # the study open, in the bar of the tabs on every tab (a study is chosen
   # on the Study tab)
   output$open_study_bar <- shiny::renderUI({

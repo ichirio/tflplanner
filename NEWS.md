@@ -2,6 +2,15 @@
 
 - R-CMD-check now also runs on R 4.2, the oldest R tested (`Depends: R (>= 4.1)` is kept; cardx, used by the generated ARD code, needs R >= 4.2).
 
+- **A study opens in a fifth of a second** (#296, reported by the user).
+  Reading a study from its saved state built every sheet's columns with
+  `tflspec::tfl_table_spec()` again, sheet by sheet, on every open and
+  twice on every save; they are made once a session now.
+  `open_study()`: 1.8 s to 0.15 s (the sample study); a save that changes
+  nothing 5.6 s to 2.0 s; copying the sample (without its run) 9 s to 5
+  s.  The study list is drawn while the Study tab is hidden too, so a
+  study made from another tab is in it when the tab is shown.
+
 - No links to discussions by number, and no code copied from one (#298):
   the tests that run the example workbooks of tflspec (>= 0.0.24.9071)
   follow their new contents.
