@@ -126,6 +126,9 @@ reference:
       - copy_fig_to_params
       - make_user_report
       - preview_user
+  - title: Reviewing a study
+    contents:
+      - study_review
   - title: Input assistance and the table builder
     contents:
       - fetch_ard
