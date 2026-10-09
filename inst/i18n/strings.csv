@@ -2449,3 +2449,7 @@ Choose a named batch first.,先に名前付きバッチを選んでください�
 (not the batch %s any more: the run has no name),（バッチ %s とは違います：名前なしの実行になります）
 ", ... (%d)",、…（%d 件）
 Batch name,バッチ名
+Batches,バッチ
+Batches...,バッチ…
+The named batches of %s,%s の名前付きバッチ
+"The official runs that take this report by name (Topline, Final ...): choose the names in use or type a new one. The Runs tab runs a named batch.",この帳票を名前で選ぶ正式実行（Topline、Final など）です。使っている名前から選ぶか、新しい名前を入力します。名前付きバッチは実行タブで実行します。
