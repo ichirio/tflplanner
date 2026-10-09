@@ -183,6 +183,15 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   for (i in seq_len(nrow(r))) {
     tpl <- cat$message[k[i]]
     if (is.na(tpl)) next
+    # a rule whose message is another's words (a figure's advice, the
+    # constructors' problems): those words, where the app has them
+    if (identical(tpl, "%s")) {
+      loc <- tr(r$message[i], lang)
+      if (!identical(loc, r$message[i])) r$message[i] <- loc
+      h <- cat$hint[k[i]]
+      if (!is.na(h) && nzchar(h)) r$hint[i] <- tr(h, lang)
+      next
+    }
     loc <- tr(tpl, lang)
     a <- r$args[[i]]
     if (!identical(loc, tpl)) {

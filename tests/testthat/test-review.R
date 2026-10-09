@@ -196,3 +196,15 @@ test_that("a study of 200 reports is reviewed without its data in a few seconds"
   expect_s3_class(r, "tfl_review")
   expect_lt(dt, 8)
 })
+
+test_that("a figure's advice is in the app's language, by its sentence", {
+  local_home()
+  p <- add_output(new_planner(), "F1", type = "figure")
+  p <- set_fig_design(p, "F1", tflspec::tfl_fig_template("km_simple"))
+  r <- review_problems(p, lang = "ja")
+  i <- which(r$rule == "F02")
+  expect_true(length(i) >= 1L)
+  expect_match(r$message[i[1L]], "リスク集合", fixed = TRUE)
+  expect_match(r$message_en[i[1L]], "number at risk", fixed = TRUE)
+  expect_match(r$hint[i[1L]], "提案", fixed = TRUE)
+})

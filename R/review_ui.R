@@ -122,7 +122,7 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
                       hint = sprintf('<span class="text-muted small">%s</span>',
                                      htmltools::htmlEscape(r$hint)),
                       fix = fix, stringsAsFactors = FALSE)
-      names(d) <- c("", t("Report"), t("Where"), t("Item"), t("Hint"), "")
+      names(d) <- c("", t("Report"), t("Location"), t("Item"), t("Hint"), "")
       DT::datatable(d, rownames = FALSE, escape = FALSE, selection = "single",
                     options = list(dom = "tip", pageLength = 50, ordering = FALSE,
                                    autoWidth = FALSE,
@@ -133,7 +133,11 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
                                      list(width = "38%", targets = 3),
                                      list(width = "28%", targets = 4),
                                      list(width = "4em", targets = 5)),
-                                   language = list(emptyTable = t("Nothing to review."))))
+                                   language = list(
+                                     emptyTable = t("Nothing to review."),
+                                     info = t("_START_ to _END_ of _TOTAL_ items"),
+                                     infoEmpty = "", infoFiltered = "",
+                                     paginate = list(previous = t("Previous"), `next` = t("Next")))))
     }, server = FALSE)
     output$empty <- shiny::renderUI({
       r <- review()
@@ -333,4 +337,5 @@ $(document).on('shiny:connected', function() {
 .rp-flash { animation: rp-flash 1.5s ease-out; }
 .rp-review-bar .shiny-input-container { margin-bottom: 0; }
 .rp-review-bar .checkbox-inline { margin-right: .8rem; }
+#review-table tbody tr { cursor: pointer; }
 "

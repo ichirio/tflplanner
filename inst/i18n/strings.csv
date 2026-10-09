@@ -2613,3 +2613,7 @@ errors,エラー
 to set by hand,手で設定
 ARD run,ARD の作成
 Definition files,定義ファイル
+Location,場所
+_START_ to _END_ of _TOTAL_ items,_TOTAL_ 件中 _START_〜_END_
+Previous,前へ
+Next,次へ
