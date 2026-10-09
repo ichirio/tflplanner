@@ -91,6 +91,8 @@ install.packages(c("rtfreporter_0.8.2.tar.gz", "tflspec_0.0.24.tar.gz",
                    "tflplanner_0.0.2.tar.gz"), repos = NULL, type = "source")
 ```
 
+R 4.1 or later; analyses that use cardx (e.g. t-tests, confidence intervals) need R 4.2 or later.
+
 ## Getting started
 
 ```r
