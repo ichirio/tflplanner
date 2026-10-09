@@ -102,6 +102,8 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
         sprintf("  filter(output_id == %s)", id),
         sprintf("if (!nrow(ard)) stop(\"The study ARD has no rows for %s: run %s first.\")",
                 src$id, prog),
+        "# (the definition it was made from: the report records it, #293)",
+        sprintf("ard_built <- ard_fingerprint(%s)", id),
         "")
     },
     import = {
@@ -113,6 +115,17 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
         sprintf("if (\"output_id\" %%in%% names(ard)) ard <- ard[ard$output_id == %s, , drop = FALSE]", id),
         "")
     })
+}
+
+# The report whose ARD a figure reads from the study ARD (its own id, or
+# the table's), when its design reads one; NA otherwise (none, or an ARD
+# taken in: no definition to follow)
+.fig_ard_need <- function(x, output_id) {
+  if (!identical(report_info(x, output_id)$type, "figure")) return(NA_character_)
+  src <- .fig_ard_source(x, output_id)
+  if (!src$kind %in% c("own", "table")) return(NA_character_)
+  if (!.fig_reads_ard(fig_design(x, output_id), output_id)) return(NA_character_)
+  src$id
 }
 
 # The rows a figure's ARD has now (its source's; NULL when there is none

@@ -1,5 +1,20 @@
 # tflplanner (development version)
 
+- **A figure printing a table's numbers follows that table's ARD**
+  (#293 phase 4).  Its program records the definition of the ARD it read
+  (`ard_built <- ard_fingerprint("T-14-2-2")`, then
+  `record_report(report_id, ard = ard_built)`: a column `ard` in
+  `output/tfl/report_status.csv`).  `study_status()` marks it `outdated`
+  when the table's ARD is not made from the table's definition now, or
+  when it was made from another definition than the figure; its new
+  column `why` says why a report is to be made again (`program`, `setup`,
+  `ard:<id>`), shown in the runs table.  The official run of the reports
+  (`programs/batch.R`: `.batch_needs`, `.batch_needs_hash`) and the
+  preview (`run_study()`) make the table's ARD first when it is not made
+  from its definition -- logged in the same batch under `ard` -- and
+  leave it alone when it is.  After this update every report program is
+  rewritten once (`record_report()` changed in `report_setup.R`).
+
 - **A figure prints the numbers of a table's ARD** (#293 phase 3, with
   tflspec #203).  A figure's step 2 (ARD) chooses where its ARD comes
   from: none (it reads its data only), its own analyses (defined as a

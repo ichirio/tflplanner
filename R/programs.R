@@ -412,7 +412,9 @@ program_code <- function(x, output_id, date = Sys.Date()) {
                              setup = .uses_report_setup(x)),
     sprintf("generate_rtfreport(doc, %s, overwrite = TRUE)",
             .r_string(tflspec::tfl_report_path(sp, output_id))),
-    "record_report(report_id)"),
+    # a figure from an ARD: the definition of that ARD it was made from
+    if (!is.na(.fig_ard_need(x, output_id))) "record_report(report_id, ard = ard_built)"
+    else "record_report(report_id)"),
     error = function(e) sprintf(
       "stop(%s)", .r_string(paste0("tflplanner: the definition of ",
                                    output_id, " does not hold: ",
@@ -488,12 +490,14 @@ report_setup_code <- function(x, date = Sys.Date()) {
 .report_status_name <- "report_status.csv"
 .record_report_fun <- function() {
   sf <- file.path(study_layout()[["tfl"]], .report_status_name)
-  c("# what was made, and with which study setup (tflplanner reads it)",
-    "record_report <- function(output_id) {",
+  c("# what was made, with which study setup, and -- a figure printing an",
+    "# ARD's numbers -- from which definition of that ARD (tflplanner reads it)",
+    "record_report <- function(output_id, ard = \"\") {",
     paste0("  sf <- ", .r_string(sf)),
     "  row <- data.frame(output_id = output_id,",
     "                    built = format(Sys.time(), \"%Y-%m-%d %H:%M:%S\"),",
     paste0("                    setup = ", .setup_hash_code(), ","),
+    "                    ard = ard,",
     "                    stringsAsFactors = FALSE)",
     "  dir.create(dirname(sf), recursive = TRUE, showWarnings = FALSE)",
     "  st <- if (file.exists(sf)) utils::read.csv(sf, colClasses = \"character\")",
@@ -504,6 +508,18 @@ report_setup_code <- function(x, date = Sys.Date()) {
     "  utils::write.csv(row, sf, row.names = FALSE)",
     "  invisible(output_id)",
     "}")
+}
+
+# the definition of the ARD each figure was made from, as its program
+# recorded it (NA: none recorded)
+.report_ard_recorded <- function(root, output_id) {
+  f <- file.path(root, study_layout()[["tfl"]], .report_status_name)
+  st <- if (file.exists(f)) tryCatch(
+    utils::read.csv(f, colClasses = "character"), error = function(e) NULL)
+  if (is.null(st) || !all(c("output_id", "ard") %in% names(st))) {
+    return(rep(NA_character_, length(output_id)))
+  }
+  st$ard[match(output_id, st$output_id)]
 }
 
 # the study setup each report was made with, as its program recorded it
