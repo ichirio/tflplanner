@@ -2624,3 +2624,5 @@ The design reads an ARD: choose where it comes from (the figure's step 2).,デ�
 "Give the piece an analysis the table still has, or add the analysis again.",部品に、表にまだある解析を指定するか、その解析を加え直してください。
 "Make the ARD (its table's step 2, or take it in): the figure prints from it.",ARD を作ってください（その表の手順 2、または取り込み）。図はそこから値を出します。
 "Correct the piece to a row the ARD has (its analysis, variable, group or statistic).",部品を ARD にある行（解析・変数・群・統計量）に合わせて直してください。
+"%s calls %s, which tflspec no longer has.",%s が %s を呼んでいますが、tflspec にはもうありません。
+"Write it again (open the study and save), or source programs/study_helpers.R.",書き直してください（試験を開いて保存）。または programs/study_helpers.R を source してください。

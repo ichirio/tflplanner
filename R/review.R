@@ -128,9 +128,15 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   if (!length(parts)) {
     return(.review_finish(.rv_row("R01")[0, , drop = FALSE]))
   }
-  cols <- names(parts[[1L]])
+  # every part's columns (tflspec's rows may have one this package's do
+  # not, or not yet): a column a part lacks is blank in it
+  cols <- unique(unlist(lapply(parts, names)))
   .review_finish(do.call(rbind, lapply(parts, function(d) {
     class(d) <- "data.frame"
+    for (cn in setdiff(cols, names(d))) {
+      d[[cn]] <- if (cn %in% c("args", "fix")) rep(list(NULL), nrow(d)) else
+        rep(NA_character_, nrow(d))
+    }
     d[cols]
   })))
 }
