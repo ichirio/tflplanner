@@ -1,0 +1,198 @@
+# The review of a study (#288 phase 1): tflspec's rules on the study's
+# definition, the report list's and the study folder's own, the facts of
+# the data kept in the store, the messages in the app's language.
+
+.rv_sample <- function(env = parent.frame()) {
+  home <- withr_tempdir(env)
+  old <- options(tflplanner.home = home)
+  do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
+  suppressMessages(create_sample_study(run = FALSE))
+}
+
+.has <- function(r, rule, output_id = NULL, sheet = NULL, row = NULL, field = NULL) {
+  k <- r$rule == rule
+  if (!is.null(output_id)) k <- k & (if (is.na(output_id)) is.na(r$output_id) else
+    r$output_id %in% output_id)
+  if (!is.null(sheet)) k <- k & r$sheet == sheet
+  if (!is.null(row)) k <- k & r$row == row
+  if (!is.null(field)) k <- k & r$field == field
+  any(k)
+}
+
+test_that("the sample study has no error and nothing to set by hand", {
+  skip_on_cran()
+  s <- .rv_sample()
+  r <- study_review(s, data = "read", lang = "en")
+  expect_s3_class(r, "tfl_review")
+  expect_false(any(r$level %in% c("error", "hand")),
+               info = paste(r$rule, r$output_id, r$message, collapse = "\n"))
+  # its checks, seen: the code list values no record has, the KM figure's
+  # advice
+  expect_identical(as.integer(table(r$rule)[c("C02", "F02")]), c(9L, 2L))
+  expect_identical(sort(unique(r$rule)), c("C02", "F02"))
+  # without the data: no data rule, and no row it would not have with them
+  r0 <- study_review(s, data = "none", lang = "en")
+  expect_identical(sort(unique(r0$rule)), "F02")
+})
+
+test_that("the report list's rules (R01-R08) and the analyses' (A11-A13)", {
+  local_home()
+  p <- add_output(new_planner(), "T1", type = "table", description = "one",
+                  population = "SAF")
+  p <- add_output(p, "T2", type = "table", description = "two", population = "FAS")
+  p <- add_output(p, "L1", type = "listing", description = "a listing")
+  p <- add_output(p, "F1", type = "figure", description = "a figure")
+  p$ard$populations <- .normalize_ard_sheet(
+    data.frame(population_id = c("SAF", "ENR"), dataset = "ADSL",
+               where = c("SAFFL == \"Y\"", "ENRLFL == \"Y\"")), "populations")
+  p$ard$datasets <- .normalize_ard_sheet(
+    data.frame(dataset = "ADSL", path = "data/adam/adsl.rds"), "datasets")
+  p$ard$analyses <- .normalize_ard_sheet(data.frame(
+    output_id = c("T1", "T1", "T9"), analysis_id = c("AGE", "SEX", "X"),
+    method = "continuous", dataset = "ADSL",
+    population_id = c("SAF", "ENR", "SAF"), by = "TRT01A",
+    variables = c("AGE", "AGE", "AGE")), "analyses")
+  p$outputs$datasets[p$outputs$output_id == "T1"] <- "ADSL | ADXX"
+  p <- set_sheet_rows(p, "tokens", "T1", data.frame(name = "OUTPUT_TITLE", value = "Age"))
+  r <- review_problems(p, lang = "en")
+  # T2: no title, no analyses, its analysis set unknown
+  expect_true(.has(r, "R01", "T2", "titles"))
+  expect_false(.has(r, "R01", "T1"))
+  expect_true(.has(r, "R05", "T2", "_tflplanner", "T2", "population"))
+  expect_true(.has(r, "R06", "T2", "analyses"))
+  # a listing with no columns, a figure with no design
+  expect_true(.has(r, "R06", "L1", "listing_cols"))
+  expect_true(.has(r, "R06", "F1", "design"))
+  # a dataset the list names that the catalog does not have
+  expect_true(.has(r, "R08", "T1", "_tflplanner", "T1", "datasets"))
+  expect_match(r$message[r$rule == "R08"], "ADXX", fixed = TRUE)
+  # analyses of a report the list does not have; another analysis set
+  expect_true(.has(r, "A11", "T9", "analyses", "X"))
+  expect_true(.has(r, "A12", "T1", "analyses", "SEX", "population_id"))
+  # R04: a table with no analysis set and analyses that name none
+  p2 <- p
+  p2$outputs$population[p2$outputs$output_id == "T1"] <- NA
+  p2$ard$analyses$population_id <- NA
+  expect_true(.has(review_problems(p2, lang = "en"), "R04", "T1"))
+  # ... unless its analyses are its own code (it reads what it needs)
+  p2$ard$analyses$method <- "custom"
+  p2$ard$analyses$code <- "x"
+  expect_false(.has(review_problems(p2, lang = "en"), "R04", "T1"))
+  # R02 / R07: an id twice; two reports writing one file
+  p3 <- p
+  p3$outputs <- rbind(p3$outputs, p3$outputs[1L, ])
+  expect_true(.has(review_problems(p3, lang = "en"), "R02", "T1"))
+  p4 <- set_sheet_rows(p, "report", "T2", data.frame(file = "T1.rtf"))
+  expect_true(.has(review_problems(p4, lang = "en"), "R07", "T2", "report", "T2", "file"))
+  # output_id narrows
+  expect_true(all(review_problems(p, output_id = "T2", lang = "en")$output_id == "T2"))
+})
+
+test_that("a dataset with no file: once for the study and under each report reading it", {
+  skip_on_cran()
+  s <- .rv_sample()
+  file.remove(file.path(s$path, "data", "adam", "adae.rds"))
+  r <- study_review(s, data = "none", lang = "en")
+  expect_true(.has(r, "D01", NA, "datasets", "ADAE", "path"))
+  expect_true(.has(r, "D01", "T-14-3-1", "datasets", "ADAE"))
+  expect_true(.has(r, "D01", "L-16-2-7", "datasets", "ADAE"))
+  expect_false(.has(r, "D01", "T-14-1-1"))
+  expect_identical(unique(r$level[r$rule == "D01"]), "error")
+})
+
+test_that("the data rules on the sample: a misspelt column, a value the code list lacks", {
+  skip_on_cran()
+  s <- .rv_sample()
+  a <- s$planner$ard$analyses
+  a$by[a$output_id == "T-14-1-1" & a$analysis_id == "CONT"] <- "TRT01X"
+  s$planner$ard$analyses <- a
+  cl <- s$planner$sheets$codelists
+  s$planner$sheets$codelists <- cl[!(cl$output_id %in% "T-14-1-1" & cl$variable %in% "SEX" &
+                                       cl$value %in% "M"), , drop = FALSE]
+  r <- study_review(s, data = "read", lang = "en")
+  expect_true(.has(r, "A01", "T-14-1-1", "analyses", "CONT", "by"))
+  expect_true(.has(r, "C03", "T-14-1-1", "codelists", "SEX", "value"))
+  expect_identical(r$level[r$rule == "C03"][1L], "error")
+  expect_match(r$hint[r$rule == "C03"][1L], "program will stop", fixed = TRUE)
+})
+
+test_that("the facts are kept: read once, a changed file or condition read again alone", {
+  skip_on_cran()
+  s <- .rv_sample()
+  # cached, nothing kept yet: no file read, each dataset not reviewed yet
+  local({
+    local_mocked_bindings(read_data_head = function(...) stop("read"))
+    r <- study_review(s, data = "cached", lang = "en")
+    expect_setequal(r$row[r$rule == "D02"], c("ADSL", "ADAE", "ADVS", "ADTTE"))
+    expect_false(.has(r, "F03"))
+    expect_identical(nrow(study_review(s, data = "none", lang = "en")[0, ]), 0L)
+  })
+  f1 <- review_facts(s)
+  expect_s3_class(f1, "tfl_data_facts")
+  expect_setequal(names(f1$datasets), c("ADSL", "ADAE", "ADVS", "ADTTE"))
+  expect_identical(attr(f1, "not_read"), character())
+  # the second time: no file read
+  read <- character()
+  real <- read_data_head
+  local_mocked_bindings(read_data_head = function(path, ...) {
+    read <<- c(read, basename(path))
+    real(path, ...)
+  })
+  f2 <- review_facts(s)
+  expect_identical(read, character())
+  expect_identical(f2$datasets, f1$datasets)
+  # a file changed: that dataset again (and the analysis set's, for its
+  # subjects), the others not
+  advs <- file.path(s$path, "data", "adam", "advs.rds")
+  d <- readRDS(advs)
+  saveRDS(d[-1L, ], advs)
+  review_facts(s)
+  expect_true("advs.rds" %in% read)
+  expect_false(any(c("adae.rds", "adtte.rds") %in% read))
+  # a new condition on ADAE: ADAE again, not ADVS
+  read <- character()
+  ad <- s$planner$ard$analysis_data
+  ad$where[ad$output_id %in% "T-14-3-1" & ad$data_id %in% "adae_saf"] <- "TRTEMFL == \"Y\" & AESER == \"Y\""
+  s$planner$ard$analysis_data <- ad
+  review_facts(s)
+  expect_true("adae.rds" %in% read)
+  expect_false(any(c("advs.rds", "adtte.rds") %in% read))
+  # refresh: everything again
+  read <- character()
+  review_facts(s, refresh = TRUE)
+  expect_true(all(c("adsl.rds", "adae.rds", "advs.rds", "adtte.rds") %in% read))
+})
+
+test_that("each rule has its words in Japanese, with as many values", {
+  cat <- tflspec::tfl_review_rules()
+  d <- utils::read.csv(system.file("i18n", "strings.csv", package = "tflplanner"),
+                       stringsAsFactors = FALSE, encoding = "UTF-8")
+  n_args <- function(x) lengths(regmatches(x, gregexpr("%([0-9]+[$])?s", x)))
+  for (k in c(cat$message, cat$hint[nzchar(cat$hint)])) {
+    i <- match(k, d$en)
+    expect_false(is.na(i), info = k)
+    if (!is.na(i)) expect_identical(n_args(d$ja[i]), n_args(k), info = k)
+  }
+  # a message in Japanese, its English kept
+  p <- add_output(new_planner(), "T2", type = "table")
+  r <- review_problems(p, lang = "ja")
+  i <- which(r$rule == "R01")
+  expect_match(r$message[i], "T2 にタイトルがありません", fixed = TRUE)
+  expect_identical(r$message_en[i], "T2 has no title.")
+  expect_match(r$hint[i], "タイトル", fixed = TRUE)
+})
+
+test_that("a study of 200 reports is reviewed without its data in a few seconds", {
+  skip_on_cran()
+  home <- withr_tempdir()
+  old <- options(tflplanner.home = home)
+  on.exit(options(old), add = TRUE)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "ws")))
+  s <- .make_big_study(200L, root = file.path(home, "ws"), home = home)
+  t0 <- Sys.time()
+  r <- study_review(s, data = "none", ard = FALSE, lang = "en")
+  dt <- as.numeric(Sys.time() - t0, units = "secs")
+  expect_s3_class(r, "tfl_review")
+  expect_lt(dt, 8)
+})

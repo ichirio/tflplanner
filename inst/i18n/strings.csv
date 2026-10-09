@@ -2536,3 +2536,86 @@ The study has no table yet.,試験にまだ表がありません。
 its own analyses (step 1),図自身の解析（段 1）
 of %s -> ard,%s の ARD -> ard
 taken in (%s) -> ard,取り込んだ ARD（%s）-> ard
+%s,%s
+The definition cannot be used until this is put right.,これを直すまで、この定義は使えません。
+%s has no title.,%s にタイトルがありません。
+Give the report a title line.,帳票にタイトルの行を入れてください。
+The report id %s is given twice.,帳票 ID %s が 2 回あります。
+Each report has one row; merge or rename one of them.,帳票は 1 行です。まとめるか、どちらかの名前を変えてください。
+The report id %s cannot name a file.,帳票 ID %s はファイル名に使えません。
+"Use letters, digits and - _ . only.",英字・数字と - _ . だけを使ってください。
+%s has no analysis set.,%s に解析対象集団がありません。
+Set the report's analysis set (population).,帳票の解析対象集団（population）を設定してください。
+The analysis set %s of %s is not in the populations.,%2$s の解析対象集団 %1$s が populations にありません。
+Add the population or choose one that is defined.,集団を足すか、定義済みのものを選んでください。
+%s has nothing that makes it: %s.,%1$s を作るものがありません（%2$s）。
+Add what the report is made from.,帳票の作り方（解析・データ準備コードなど）を加えてください。
+%s and %s write the same %s %s.,%1$s と %2$s が同じ %3$s（%4$s）を書きます。
+Give each report its own file and program.,帳票ごとに別のファイルとプログラムにしてください。
+%s names the dataset %s that the catalog does not have.,%1$s が、カタログにないデータセット %2$s を挙げています。
+Add the dataset to the catalog or correct the name.,データセットをカタログに足すか、名前を直してください。
+The code list of %s is not used by %s.,%1$s のコードリストを %2$s は使っていません。
+Fine when the variable is read by code the review cannot see; else remove the list.,レビューから見えないコードで読む変数なら問題ありません。そうでなければリストを外してください。
+The code list value %s of %s never occurs in the data of %s.,%2$s のコードリストの値 %1$s は、%3$s のデータに一度も出てきません。
+"The row prints n = 0; fine when the level is expected, else drop it.",その行は n = 0 と出ます。想定内の水準なら問題ありません。そうでなければ外してください。
+The data value %s of %s is not in the code list of %s.,%2$s のデータの値 %1$s が、%3$s のコードリストにありません。
+The program will stop: add the value to the code list.,プログラムが止まります。値をコードリストに加えてください。
+The code list of %s in %s differs from the standards.,%2$s の %1$s のコードリストが会社標準と違います。
+Copy the code list again from the standards.,会社標準からコードリストを写し直してください。
+"%s reads the column %s, which %s does not have.",%1$s が読む列 %2$s が %3$s にありません。
+Correct the name or add the column (derive / add).,名前を直すか、列を加えてください（derive / add）。
+The condition %s on %s cannot be evaluated: %s.,%2$s での条件 %1$s を評価できません：%3$s。
+Correct the condition so it names columns the data have and gives TRUE / FALSE.,データにある列を使い、TRUE / FALSE を返す条件に直してください。
+The condition %s on %s keeps no %s.,%2$s での条件 %1$s で残る %3$s がありません。
+Fine when nothing is expected yet; else check the values the condition compares with.,まだ該当がないのが想定内なら問題ありません。そうでなければ条件が比べる値を確かめてください。
+"The population flag %s of %s has the values %s, not Y / N.",%2$s の集団フラグ %1$s の値が Y / N ではなく %3$s です。
+Compare with the values the flag has.,フラグが実際に持つ値と比べてください。
+"%s is a %s analysis of %s, a %s column.",%1$s は %3$s の %2$s の解析ですが、%4$s の列です。
+"A mean of a character column, or percentages of a numeric one, is usually the wrong method.",文字の列の平均や、数値の列の割合は、たいてい手法の選び間違いです。
+%s groups by %s and also analyses it.,%1$s が %2$s で群を分け、同時にそれを解析しています。
+Fine for a count of the groups themselves; else drop it from one of them.,群そのものを数えるなら問題ありません。そうでなければどちらかから外してください。
+"%s asks a %s method for %s, which it does not give.",%1$s が %2$s の手法に、出せない %3$s を求めています。
+Choose statistics of the method's kind (tfl_ard_statistics()).,手法の種類に合う統計量を選んでください（tfl_ard_statistics()）。
+The analyses of %s are not on the report list.,%s の解析が、帳票一覧にない帳票のものです。
+Add the report or delete its analyses.,帳票を足すか、その解析を消してください。
+%s reads the analysis set %s; the report's is %s.,%1$s は解析対象集団 %2$s を読みますが、帳票のものは %3$s です。
+Fine when the report mixes sets on purpose.,帳票が意図して集団を混ぜているなら問題ありません。
+%s counts the subjects per group twice.,%s が群ごとの被験者数を 2 回数えています。
+Keep one count of the subjects per group.,群ごとの被験者数の集計は 1 つにしてください。
+"%s is named %s, a name the ARD program or the ARD uses itself.",%1$s の名前 %2$s は、ARD プログラムか ARD 自身が使う名前です。
+Rename it.,名前を変えてください。
+The derived column %s replaces the column of %s of the same name.,作る列 %1$s が、%2$s の同じ名前の列を置き換えます。
+Fine when the column is meant to be replaced; else give it a new name.,置き換えるつもりなら問題ありません。そうでなければ別の名前にしてください。
+What the last ARD run said went wrong for this analysis.,前回の ARD 作成で、この解析について出たエラー・警告です。
+"The table's %s name %s, which no analysis of %s groups by or analyses.",表の %1$s が挙げる %2$s で、%3$s のどの解析も群を分けておらず、解析もしていません。
+"Correct the key, or group an analysis by it.",キーを直すか、それで群を分ける解析を作ってください。
+The variables row %s is for a variable no analysis of %s analyses or groups by.,variables の行 %1$s は、%2$s のどの解析も扱わない変数のものです。
+Fine when the ARD is made elsewhere; else remove the row.,ARD をほかで作るなら問題ありません。そうでなければ行を消してください。
+"The template of %s reads {%s}, a %s statistic, for %s analyses.",%1$s のテンプレートが {%2$s}（%3$s の統計量）を読んでいますが、解析は %4$s です。
+Use a statistic of the variable's kind.,変数の種類に合う統計量を使ってください。
+The cells rows of %s are for a variable %s has no analysis of.,%1$s の cells の行は、%2$s に解析のない変数のものです。
+Correct the variable or add its analysis.,変数を直すか、その解析を加えてください。
+"The digits of %s are for {%s}, which no template of %s reads.",%1$s の digits は {%2$s} のものですが、%3$s のどのテンプレートも読んでいません。
+Remove the row or correct the statistic.,行を消すか、統計量を直してください。
+Correct the template or ask the analysis for the statistic.,テンプレートを直すか、解析にその統計量を出させてください。
+Correct the table definition to what the ARD has.,表の定義を ARD にあるものに合わせてください。
+"The levels of %s name %s, which the ARD has no row for.",%1$s の levels が挙げる %2$s の行が ARD にありません。
+Correct the level or remove it.,水準を直すか、消してください。
+%s has no column key (tables$cols).,%s に列のキー（tables$cols）がありません。
+Set what the columns are (the treatment variable).,列にするもの（投与群の変数など）を設定してください。
+%s has analyses but no cells row.,%s には解析がありますが、cells の行がありません。
+Add the cells rows (templates) of the table.,表の cells の行（テンプレート）を加えてください。
+Set the listing's columns.,Listing の列を設定してください。
+Correct the dataset or the column names.,データセットか列の名前を直してください。
+%s: %s is required.,%1$s：%2$s は必須です。
+Set the field.,項目を設定してください。
+Apply the suggested fix or leave it as it is.,提案された直し方を当てるか、そのままにしてください。
+Correct the dataset or variable the design names.,デザインが挙げるデータセットか変数を直してください。
+The dataset %s has no file.,データセット %s のファイルがありません。
+Put the file in place or correct its path.,ファイルを置くか、パスを直してください。
+As the programs read the definition.,プログラムが定義を読んだときの結果です。
+%s has more than %s values; its code list is not reviewed against the data.,%1$s は値が %2$s を超えるため、コードリストをデータと照らし合わせていません。
+%s is not reviewed against the data yet.,%s はまだデータと照らし合わせていません。
+Make the data facts (Review with the data).,データの事実を作ってください（データ込みでレビュー）。
+The rule %s could not be run: %s.,ルール %1$s を実行できませんでした：%2$s。
+This is a fault of the review; please report it.,レビュー側の不具合です。報告してください。
