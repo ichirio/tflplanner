@@ -23,8 +23,10 @@ test_that("the packages a study's setup attaches: library() and require(), anywh
              file.path(d, "programs", "study_setup.R"))
   expect_identical(.study_setup_packages(d), c("cards", "dplyr", "tidyr", "gt"))
   # not written yet: the company's setup code it will start with
-  expect_true(all(c("cards", "dplyr", "tflspec") %in%
-                    .study_setup_packages(file.path(d, "none"))))
+  std <- .study_setup_packages(file.path(d, "none"))
+  expect_true(all(c("cards", "dplyr", "rtfreporter") %in% std))
+  # (the programs call programs/study_helpers.R, not tflspec)
+  expect_false("tflspec" %in% std)
 })
 
 test_that("a study's programs read its folders by their variables; previews as they are", {
@@ -33,7 +35,7 @@ test_that("a study's programs read its folders by their variables; previews as t
   ard <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
   expect_true(any(grepl("readRDS(file.path(path_adam, \"adsl.rds\"))", ard,
                         fixed = TRUE)))
-  # the setup attaches cards, dplyr and tflspec: no pkg::, no library() again
+  # the setup attaches cards and dplyr: no pkg::, no library() again
   expect_false(any(grepl("cards::|dplyr::|tflspec::", ard[!startsWith(ard, "#")])))
   setup <- readLines(file.path(s$path, "programs", "ard", "ard_setup.R"))
   expect_false(any(grepl("^library\\(", setup)))
