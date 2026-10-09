@@ -7,7 +7,9 @@
   `time` only; its RTF is unchanged, byte for byte), and F-14-2-3 prints
   each with its CI on one line, through tflspec's labels that name
   several statistics of one address (`HR {estimate} (95% CI {conf.low},
-  {conf.high})`, tflspec #206).
+  {conf.high})`, tflspec #206).  `cardx::ard_regression()` needs
+  broom.helpers: it is in Suggests, and the sample's official run names
+  it among what to install when it is missing.
 
 - **A figure prints the numbers of a table's ARD** (#293 phase 3, with
   tflspec #203).  A figure's step 2 (ARD) chooses where its ARD comes
