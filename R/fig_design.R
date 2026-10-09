@@ -110,7 +110,7 @@ set_fig_design <- function(x, output_id, design) {
     blank <- which(lines == "")
     at <- blank[blank > 2L][1L]
   }
-  c(utils::head(lines, at), read, utils::tail(lines, -at),
+  c(utils::head(lines, at), .fig_ard_lines(x, output_id, design), read, utils::tail(lines, -at),
     "", "# the figure checks: dropped rows, colours against the standard",
     "tfl_check(plot)")
 }
@@ -235,6 +235,14 @@ preview_figure <- function(study, output_id,
   # ADSL too: the advice counts the groups, which may be joined from it
   data <- .study_data(study, union(ds, "ADSL"))
   problems <- tflspec::tfl_check_fig_design(saved, data)
+  # its ARD (#293): the rows of its source, in `ard`; their problems
+  reads_ard <- isTRUE(attr(tflspec::tfl_fig_design_code(saved, output_id, setup = TRUE,
+                                                         save = FALSE), "ard"))
+  ard <- if (reads_ard) .fig_ard_rows(study, output_id)
+  if (reads_ard) {
+    ap <- .fig_ard_problems(study, output_id, saved)
+    if (nrow(ap)) problems <- rbind(problems, ap[c("part", "field", "problem")])
+  }
   advice <- tryCatch(tflspec::tfl_fig_advice(saved, data), error = function(e) NULL)
   tmp <- tempfile("tflplanner-fig-")
   dir.create(tmp)
@@ -242,6 +250,7 @@ preview_figure <- function(study, output_id,
   on.exit(setwd(owd), add = TRUE)
   e <- new.env(parent = .helpers_env(globalenv()))
   for (d in names(data)) assign(make.names(tolower(d)), data[[d]], envir = e)
+  if (!is.null(ard)) assign("ard", ard, envir = e)
   warns <- character()
   err <- NULL
   grDevices::pdf(NULL)

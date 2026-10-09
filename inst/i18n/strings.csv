@@ -1213,7 +1213,7 @@ Left indent of the cell text in twips (not on the header); blank: unchanged.,セ
 %s × %s (%s),%s × %s（%s）
 "%s, no population (%s)",%s、解析対象集団なし（%s）
 (no data),（データなし）
-"Where the report's ARD comes from: blank, its own ARD definition (the analyses rows of its output_id); import:<file>, an ARD made elsewhere and taken in (the file in the study's input/ard/ folder, read with tfl_read_ard()).",帳票の ARD の出どころ：空欄 = その帳票の ARD 定義（output_id の analyses の行）。import:<ファイル> = ほかで作って取り込んだ ARD（試験の input/ard/ フォルダのファイル。tfl_read_ard() で読む）。
+"Where the report's ARD comes from: blank (a figure: none), its own ARD definition (the analyses rows of its output_id; a figure: own); import:<file>, an ARD made elsewhere and taken in (the file in the study's input/ard/ folder, read with tfl_read_ard()); table:<output_id>, a figure's: that table's ARD.",帳票の ARD の出どころ：空欄 = その帳票の ARD 定義（output_id の analyses の行。図では「なし」）、own = 図自身の ARD 定義。import:<ファイル> = ほかで作って取り込んだ ARD（試験の input/ard/ フォルダのファイル。tfl_read_ard() で読む）。table:<output_id> = 図が読む、その表の ARD。
 "One analysis is one call: add variables to it. Make another analysis only when the statistics, the condition or the groups differ.",1 つの解析は 1 回の呼び出しです。変数はこの解析に足してください。解析を分けるのは、統計量・条件・群が違うときだけです。
 Company standard,★ 会社の定型
 Summaries,要約（基本）
@@ -2504,6 +2504,38 @@ A part checked is replaced whole by the copy's version; a part not checked stays
 Imported from %s.,%s から取り込みました。
 The files before the import are kept in %s.,取り込む前のファイルは %s に残しています。
 Parts that differ (take in the ones checked): the study's → the copy's,違う部分（チェックしたものを取り込む）：試験 → 写し
+Statistics from the ARD,ARD の統計量
+A number from the ARD,ARD の数値を表示
+"Statistics of the figure's ARD (its own, or a table's) as a data frame: a row per group, a column per statistic.",図の ARD（図自身の ARD、または表の ARD）の統計量をデータフレームにします。群ごとに 1 行、統計量ごとに 1 列です。
+"One statistic of the figure's ARD printed on the plot: a median, a hazard ratio ... as the ARD has it.",図の ARD の統計量を 1 つ、図の上に表示します（中央値、ハザード比など。ARD にある値のまま）。
+Groups kept,残す群
+x,x
+y,y
+Horizontal justification,横位置の揃え（hjust）
+Vertical justification,縦位置の揃え（vjust）
+"Several: n.risk, estimate","複数可：n.risk, estimate"
+"Their columns, by name: TRT01A",群の列の名前：TRT01A
+"The variable's level, e.g. 0.5 for a KM's median",変数の水準（KM の中央値なら 0.5）
+TRT01A = Placebo (several: | between them),TRT01A = Placebo（複数は | で区切る）
+"{value} = the number, e.g. Median: {value} days",{value} = その数値（例：Median: {value} days）
+Empty: the text the ARD has (stat_fmt),空欄：ARD にある書式の文字（stat_fmt）
+This figure's ARD,この図の ARD
+"Where the numbers it prints come from (step 3: ""A number from the ARD"", ""Statistics from the ARD""). The program puts it in `ard`.",図に表示する数値の出どころです（段 3 の「ARD の数値を表示」「ARD の統計量」）。プログラムはこれを `ard` に読み込みます。
+None: the figure reads its data,なし：図はデータだけを読む
+"Its own analyses (below, as a table's)",図自身の解析（下で、表と同じように定義）
+A table's ARD,表の ARD
+The table,表
+(not made yet),（まだ作られていません）
+used by this figure,この図が使用
+In its ARD (variable: statistic),ARD にあるもの（変数：統計量）
+The statistics are %s's: add one to its analysis (its step 2) to print it here.,統計量は %s のものです。ここに表示したい統計量は、その表の解析（段 2）に加えてください。
+The study has no table yet.,試験にまだ表がありません。
+%s (not in the study),%s（試験にありません）
+"%s is not a table of the study (deleted, or renamed by hand): choose another, or the figure's program stops.",%s は試験の表ではありません（削除されたか、手で名前が変わりました）。別の表を選んでください。そのままでは図のプログラムが止まります。
+%s print numbers from its ARD: they will have none until their step 1 names another table.,%s はこの表の ARD の数値を表示しています。段 1 で別の表を選ぶまで、数値の出どころがなくなります。
+its own analyses (step 1),図自身の解析（段 1）
+of %s -> ard,%s の ARD -> ard
+taken in (%s) -> ard,取り込んだ ARD（%s）-> ard
 %s,%s
 The definition cannot be used until this is put right.,これを直すまで、この定義は使えません。
 %s has no title.,%s にタイトルがありません。

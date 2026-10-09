@@ -30,7 +30,8 @@
 #   F-14-2-2  User code  Kaplan-Meier plot of the time to first dermatologic
 #                      event; its number at risk is T-14-2-2's ARD
 #   F-14-2-3  Figure   The same KM curves, designed: the designer's KM
-#                      template, and one layer added (the median line)
+#                      template, the median line, and the medians printed
+#                      from T-14-2-2's ARD (its ARD source: table:T-14-2-2)
 #
 # The figures use the company standards' figure style (programs/tfl/
 # fig_setup.R: theme_tfl(), scale_colour_tfl(), tfl_km_risk() ...) and end
@@ -355,7 +356,8 @@ sheets$report <- tbl(
   list(output_id = "L-16-2-7", type = "listing"),
   list(output_id = "F-14-2-1", type = "user"),
   list(output_id = "F-14-2-2", type = "user"),
-  list(output_id = "F-14-2-3", type = "figure"))
+  # its ARD is T-14-2-2's: it prints the medians that table has
+  list(output_id = "F-14-2-3", type = "figure", ard_source = "table:T-14-2-2"))
 sheets$page <- tbl(
   list(output_id = "L-16-2-7", orientation = "landscape"),
   list(output_id = "F-14-2-1", orientation = "landscape"),
@@ -416,7 +418,7 @@ sheets$footer <- tbl(
   list(output_id = "F-14-2-2", line = "1",
        left = "x = censored.  The number at risk is that of Table 14.2.2."),
   list(output_id = "F-14-2-3", line = "1",
-       left = "x = censored.  Dashed line: the median (probability 0.5)."),
+       left = "x = censored.  Dashed line: the median (probability 0.5).  The medians are those of Table 14.2.2."),
   list(line = "98",
        left = "Source: CDISC pilot study ADaM data of the pharmaverseadam R package."))
 
@@ -584,8 +586,9 @@ p$lf$figures <- .normalize_lf_sheet(tbl(
   list(output_id = "F-14-2-2", datasets = "ADTTE")), "figures")
 
 # F-14-2-3, as the designer makes it: the KM template on the study's ADTTE
-# (its parameter, analysis set, group and time unit), then one layer added
-# -- the median line
+# (its parameter, analysis set, group and time unit), then layers added --
+# the median line, and the medians printed from T-14-2-2's ARD (its KM
+# analysis: prob 0.5, the estimate by arm; NE when not reached)
 km_design <- tflspec::tfl_fig_template("km_simple", data = "ADTTE",
                                        param = "TTDE", pop = "SAFFL",
                                        group = "TRT01A", time_unit = "days")
@@ -593,6 +596,12 @@ km_design$plot$y_label <- "Probability of No Dermatologic Event"
 km_design$layers <- c(km_design$layers, list(list(
   layer = "hline", yintercept = 0.5, linetype = "dashed", colour = "grey50",
   linewidth = 0.3)))
+arms <- c("Placebo", "Xanomeline Low Dose", "Xanomeline High Dose")
+km_design$layers <- c(km_design$layers, lapply(seq_along(arms), function(i) list(
+  layer = "ard_number", analysis_id = "KM", variable = "prob", level = 0.5,
+  stat = "estimate", group = paste("TRT01A =", arms[i]),
+  label = paste0("Median (days), ", arms[i], ": {value}"), digits = 0,
+  x = 0, y = "-Inf", hjust = 0, vjust = -0.6 - 1.5 * (length(arms) - i))))
 
 plot_code <- c(
   "library(ggplot2)",
