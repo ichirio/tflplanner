@@ -1,0 +1,103 @@
+# A figure's ARD (#293): where it comes from (the report row's
+# ard_source: own, table:<id>, import:<file>), the program's lines that put
+# it in `ard`, the checks of the design's ARD pieces, and the sample's
+# F-14-2-3, which prints T-14-2-2's medians.
+
+fig_ard_study <- function(env = parent.frame()) {
+  home <- withr_tempdir(env)
+  withr::local_options(tflplanner.home = home, .local_envir = env)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
+  suppressMessages(create_sample_study(run = FALSE))
+}
+
+test_that("a figure's ARD source: own, a table's, none; nothing else", {
+  p <- new_planner()
+  p <- add_output(p, "T-1", type = "table")
+  p <- add_output(p, "F-1", type = "figure")
+  p <- add_output(p, "L-1", type = "listing")
+  expect_identical(.fig_ard_source(p, "F-1")$kind, "none")
+  p <- set_fig_ard_source(p, "F-1", "table:T-1")
+  expect_identical(.fig_ard_source(p, "F-1"), list(kind = "table", id = "T-1"))
+  expect_identical(.figs_reading_table(p, "T-1"), "F-1")
+  p <- set_fig_ard_source(p, "F-1", "own")
+  expect_identical(.fig_ard_source(p, "F-1"), list(kind = "own", id = "F-1"))
+  expect_error(set_fig_ard_source(p, "F-1", "table:L-1"), "not a table")
+  expect_error(set_fig_ard_source(p, "F-1", "T-1"), "own")
+  p <- set_fig_ard_source(p, "F-1", NULL)
+  expect_identical(.fig_ard_source(p, "F-1")$kind, "none")
+  # a table renamed: the figure reads it under its new id
+  p <- set_fig_ard_source(p, "F-1", "table:T-1")
+  p <- rename_output(p, "T-1", "T-2")
+  expect_identical(.fig_ard_source(p, "F-1"), list(kind = "table", id = "T-2"))
+  expect_identical(.ard_ids("KM, HR | X"), c("KM", "HR", "X"))
+})
+
+test_that("the sample's F-14-2-3 reads T-14-2-2's ARD in its data section", {
+  s <- fig_ard_study()
+  p <- s$planner
+  expect_identical(.fig_ard_source(p, "F-14-2-3"), list(kind = "table", id = "T-14-2-2"))
+  d <- fig_design(p, "F-14-2-3")
+  expect_true(.fig_reads_ard(d, "F-14-2-3"))
+  code <- program_code(p, "F-14-2-3")
+  i_data <- grep("^# ---- data ", code)
+  i_ard <- which(code == "ard <- readRDS(file.path(path_ard, \"ard.rds\")) |>")
+  i_adam <- grep("^adtte <- readRDS", code)
+  expect_length(i_ard, 1L)
+  expect_true(i_data < i_ard && i_ard < i_adam)
+  expect_identical(code[i_ard + 1L], "  filter(output_id == \"T-14-2-2\")")
+  expect_match(code[i_ard + 2L], "run programs/ard/T-14-2-2.R first", fixed = TRUE)
+  # the medians: one annotate a arm, its number the ARD's
+  expect_identical(sum(grepl("ard_value(ard, \"KM\", \"prob\", \"estimate\", TRT01A = ",
+                             code, fixed = TRUE)), 3L)
+  expect_false(inherits(tryCatch(parse(text = code), error = function(e) e), "error"))
+  # no source: the program stops, saying where to choose it
+  p0 <- set_fig_ard_source(p, "F-14-2-3", NULL)
+  code0 <- program_code(p0, "F-14-2-3")
+  expect_true(any(grepl("stop(\"F-14-2-3 reads an ARD: choose it in the figure's step 2 (ARD).\")",
+                        code0, fixed = TRUE)))
+  expect_false(any(grepl("^ard <- ", code0)))
+  # its own: its rows
+  po <- set_fig_ard_source(p, "F-14-2-3", "own")
+  expect_true("  filter(output_id == \"F-14-2-3\")" %in% program_code(po, "F-14-2-3"))
+  # a figure that reads no ARD and has none: no lines at all
+  expect_null(.fig_ard_lines(p, "F-14-2-1"))
+})
+
+test_that("the checks: no source, not made yet, then each piece against the rows", {
+  s <- fig_ard_study()
+  s0 <- s
+  s0$planner <- set_fig_ard_source(s$planner, "F-14-2-3", NULL)
+  pr <- .fig_ard_problems(s0, "F-14-2-3")
+  expect_identical(pr$severity, "error")
+  expect_match(pr$problem, "has none: choose it in step 2")
+  # T-14-2-2's ARD not made yet: a warning, not an error
+  pr <- .fig_ard_problems(s, "F-14-2-3")
+  expect_identical(pr$severity, "warning")
+  expect_match(pr$problem, "not made yet")
+  # made: the design's pieces are in it
+  skip_if_not_installed("cardx")
+  u <- suppressMessages(update_study_ard(s, "T-14-2-2"))
+  expect_true(u$ok)
+  expect_identical(nrow(.fig_ard_problems(s, "F-14-2-3")), 0L)
+  d <- fig_design(s$planner, "F-14-2-3")
+  k <- which(vapply(d$layers, function(l) identical(l$layer, "ard_number"), NA))[1L]
+  d$layers[[k]]$group <- "TRT01A = Nobody"
+  s$planner <- set_fig_design(s$planner, "F-14-2-3", d)
+  pr <- .fig_ard_problems(s, "F-14-2-3")
+  expect_identical(pr$severity, "error")
+  expect_match(pr$problem, "no TRT01A = Nobody")
+  # the study's spec check names them too
+  ck <- .check_fig_ards(s, "F-14-2-3")
+  expect_match(ck$message, "F-14-2-3: no TRT01A = Nobody")
+})
+
+test_that("the preview prints the table's medians", {
+  skip_if_not_installed("cardx")
+  skip_if_not_installed("ggsurvfit")
+  s <- fig_ard_study()
+  suppressMessages(update_study_ard(s, "T-14-2-2"))
+  r <- preview_figure(s, "F-14-2-3", max_px = 600)
+  expect_null(r$error)
+  expect_true(file.exists(r$png))
+  expect_identical(nrow(r$problems), 0L)
+})

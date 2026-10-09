@@ -139,6 +139,26 @@
   out
 }
 
+# The figures' ARDs (#293): the source each names, and the design's ARD
+# pieces against the rows that source has (a study read from its files)
+.check_fig_ards <- function(s, ids) {
+  p <- s$planner
+  out <- .problem_rows(character(), character(), character(), character(), character())
+  for (id in ids) {
+    if (!identical(report_info(p, id)$type, "figure")) next
+    pr <- tryCatch(.fig_ard_problems(s, id), error = function(e) NULL)
+    if (is.null(pr) || !nrow(pr)) next
+    # the source: the report sheet's; a piece: the design's file
+    out <- rbind(out, .problem_rows(
+      ifelse(pr$part == "ard", .sheet_file("report", ""),
+             file.path(study_layout()[["spec"]], .fig_design_dir, paste0(id, ".yml"))),
+      ifelse(pr$part == "ard", "report", ""), "",
+      ifelse(pr$part == "ard", "ard_source", paste(pr$part, pr$field)),
+      paste0(id, ": ", pr$problem), pr$severity))
+  }
+  out
+}
+
 # The programs of the reports `outputs` written (in memory) and parsed: the
 # report program, and the ARD program when the report has analyses
 .check_programs <- function(p, outputs, ard_file = .ard_json) {
@@ -194,7 +214,8 @@
                                                    character(), character(),
                                                    character())),
                                 lapply(figs, function(f) .check_fig(f, p$fig_designs[[f]])))),
-               .check_programs(p, ids, af))
+               .check_programs(p, ids, af),
+               .check_fig_ards(s, ids))
   rownames(out) <- NULL
   unique(out)
 }

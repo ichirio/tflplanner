@@ -1,5 +1,22 @@
 # tflplanner (development version)
 
+- **A figure prints the numbers of a table's ARD** (#293 phase 3, with
+  tflspec #203).  A figure's step 2 (ARD) chooses where its ARD comes
+  from: none (it reads its data only), its own analyses (defined as a
+  table's), or a table's ARD (`ard_source = table:<id>` on the report
+  row; `set_fig_ard_source()`), shown with the table's analyses, the
+  statistics its ARD has and which the figure uses.  The program reads
+  it as `ard` at the top of `# ---- data ----`; the Plot Designer offers
+  "A number from the ARD" (a median, a hazard ratio ... printed on the
+  plot) and "Statistics from the ARD" (a data frame of them) when the
+  figure has one, with the analyses, variables and statistics of that ARD
+  to choose from, and the preview draws them.  The study's check names a
+  source that is not a table, a design that reads an ARD without one, an
+  ARD not made yet (a warning), and a piece whose analysis, statistic,
+  level or group the ARD does not have.  Renaming a table renames its
+  figures' `table:` references.  The sample's F-14-2-3 prints the three
+  medians of T-14-2-2's ARD; the number at risk stays the fit's.
+
 - **An edit makes the app work out only what depends on it; a save is
   quicker.**  Measured on the sample study (the profile of each action):
   - An edit of a table's cell no longer hashes every report's ARD

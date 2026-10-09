@@ -42,4 +42,40 @@ layers:
   linetype: dashed
   colour: grey50
   linewidth: 0.3
+- layer: ard_number
+  analysis_id: KM
+  variable: prob
+  level: 0.5
+  stat: estimate
+  group: TRT01A = Placebo
+  label: 'Median (days), Placebo: {value}'
+  digits: 0.0
+  x: 0.0
+  'y': -Inf
+  hjust: 0.0
+  vjust: -3.6
+- layer: ard_number
+  analysis_id: KM
+  variable: prob
+  level: 0.5
+  stat: estimate
+  group: TRT01A = Xanomeline Low Dose
+  label: 'Median (days), Xanomeline Low Dose: {value}'
+  digits: 0.0
+  x: 0.0
+  'y': -Inf
+  hjust: 0.0
+  vjust: -2.1
+- layer: ard_number
+  analysis_id: KM
+  variable: prob
+  level: 0.5
+  stat: estimate
+  group: TRT01A = Xanomeline High Dose
+  label: 'Median (days), Xanomeline High Dose: {value}'
+  digits: 0.0
+  x: 0.0
+  'y': -Inf
+  hjust: 0.0
+  vjust: -0.6
 
