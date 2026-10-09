@@ -2409,7 +2409,7 @@ None of these columns has a code list: their values are as the data has them.,�
 Add them to the list,リストに加える
 Edit...,編集…
 Copy...,写す…
-"%s's code list of %s: %s added, each printing as itself (edit their text with Edit...).",%s の %s のコードリストに %s を加えました。表示は値そのままです（文字は「編集…」で直せます）。
+"%s's code list of %s: %s added, each printing as itself (edit their text in the grid).",%s の %s のコードリストに %s を加えました。表示は値そのままです（文字は表で直せます）。
 "A column with a code list (%s) is compared with its labels here, as the ARD has them: e.g. %s, not %s.",コードリストのある列（%s）は、ここでは ARD と同じくラベルで比べます：例 %s（%s ではありません）。
 Columns made or changed,作る・変える列
 Columns added from the subjects' data: none to add (this data is the subjects' data itself).,症例のデータから加える列：ありません（このデータが症例のデータそのものです）。
@@ -2425,3 +2425,11 @@ Population flag,解析対象集団フラグ
 "A flag (== ""Y"") that selects the analysis set, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"
 Keep an analysis set,解析対象集団で絞る
 "No analysis set: every row of the dataset is used. Keep the analysis set's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。
+Click a column to edit its values and labels.,列をクリックすると、その値とラベルをこの場で直せます。
+Click to edit this code list,クリックしてこのコードリストを直す
+A code list for another column...,別の列のコードリストを作る…
+All code lists...,すべてのコードリスト…
+Code list of %s,%s のコードリスト
+value: as the data has it; label: what it prints as (blank: itself); order: its place,value：データの値、label：表示する文字（空欄なら値のまま）、order：並び順
+"As the code list of variable: value, label, order",variable のコードリストとして：値・ラベル・並び順
+"Each variable (value), the heading the table prints for it (label; blank: as the ARD names it) and its place (order). The same as the list above and its labels: the program writes them as plan_labels(variable = ...).",各変数（value）、表に出す見出し（label。空欄なら ARD の名前のまま）、並び順（order）です。上の並びとラベルと同じもので、プログラムには plan_labels(variable = ...) として書かれます。
