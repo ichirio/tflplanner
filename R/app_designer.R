@@ -132,6 +132,13 @@
 
 # a line on what a piece is set to
 .pd_summary <- function(p) {
+  # a piece of the figure's ARD: its address (the analysis, variable,
+  # statistic, group)
+  if (isTRUE(p$step %in% .pd_ard_pieces) || isTRUE(p$layer %in% .pd_ard_pieces)) {
+    g <- if (is.list(p$group)) paste(names(p$group), "=", unlist(p$group)) else p$group
+    x <- paste(c(p$analysis_id, p$variable, p$stat %||% p$stats, g), collapse = " ")
+    return(if (nchar(x) > 40) paste0(substr(x, 1, 38), "..") else x)
+  }
   keys <- c("dataset", "value", "variable", "expr", "vars", "time", "by",
             "x", "y", "yintercept", "xintercept", "geom", "type", "unit")
   v <- unlist(lapply(keys, function(k) {
@@ -1234,6 +1241,31 @@
     } else {
       added[i] <- TRUE
       i <- i + 1L
+    }
+  }
+  # a run of lines the same at both ends could be put one line up or
+  # down (two terms alike: annotate( ... ) +): put it where it starts
+  # least indented and not on a closing ")" -- a term's first line
+  # (earliest when alike)
+  w0 <- which(added)
+  if (length(w0)) {
+    for (run in split(w0, cumsum(c(1L, diff(w0) > 1L)))) {
+      s <- run[1L]
+      e <- run[length(run)]
+      added[run] <- FALSE
+      while (s > 1L && !added[s - 1L] && identical(a[s - 1L], a[e])) {
+        s <- s - 1L
+        e <- e - 1L
+      }
+      best <- s
+      ind <- function(k) nchar(shown[k]) - nchar(sub("^ +", "", shown[k])) +
+        if (grepl("^[)}]", trimws(shown[k]))) 0.5 else 0
+      while (e < n && !added[e + 1L] && identical(a[e + 1L], a[s])) {
+        s <- s + 1L
+        e <- e + 1L
+        if (ind(s) < ind(best)) best <- s
+      }
+      added[best:(best + length(run) - 1L)] <- TRUE
     }
   }
   # (the packages: the program's setup attaches them)

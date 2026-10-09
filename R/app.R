@@ -1157,7 +1157,8 @@ $(document).on('shiny:connected', function() {
   // the ARD definition of the chosen report: hidden for a figure that has
   // none of its own (it reads none, or a table's)
   Shiny.addCustomMessageHandler('rp-ard-def', function(x) {
-    $('#ard_split, #ard_layout, #ard_pane').toggle(!!x);
+    $('#ard_split').toggle(!!x);
+    $('#ard_layout').parent().toggle(!!x);
   });
 });
 // The study ARD's list: a double click on a row opens that report's ARD
@@ -2788,8 +2789,12 @@ app_server <- function(input, output, session, start) {
       label = ifelse(is.na(an$label), "", an$label),
       statistics = vapply(an$analysis_id, function(a) {
         if (is.null(rows) || !nrow(rows)) return(t("(not made yet)"))
-        k <- rows$analysis_id == a
-        paste(unique(paste0(rows$variable[k], ": ", rows$stat_name[k])), collapse = ", ")
+        # by variable (not cards' own ..name.. rows)
+        k <- rows$analysis_id == a & !grepl("^[.][.]", rows$variable)
+        v <- unique(rows$variable[k])
+        paste(vapply(v, function(x) paste0(x, ": ", paste(unique(rows$stat_name[k & rows$variable == x]),
+                                                            collapse = ", ")), ""),
+              collapse = "; ")
       }, ""),
       used = ifelse(an$analysis_id %in% used, t("used by this figure"), ""),
       stringsAsFactors = FALSE) else NULL

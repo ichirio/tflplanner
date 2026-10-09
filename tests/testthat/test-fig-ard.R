@@ -101,3 +101,19 @@ test_that("the preview prints the table's medians", {
   expect_true(file.exists(r$png))
   expect_identical(nrow(r$problems), 0L)
 })
+
+test_that("the designer: an ARD piece's code is its whole term, its summary its address", {
+  d <- tflspec::tfl_read_fig_design(system.file("sample/SAMPLE-01/spec/figures/F-14-2-3.yml",
+                                                package = "tflplanner"))
+  make <- function(d, codelists = TRUE) .fig_design_script(d, "F-14-2-3")
+  code <- make(d)
+  k <- which(vapply(d$layers, function(l) identical(l$layer, "ard_number"), NA))
+  for (i in k) {
+    x <- strsplit(.piece_code(code, d, list(sec = "layers", i = i), make), "\n", fixed = TRUE)[[1L]]
+    expect_identical(x[[1L]], "  annotate(")
+    expect_match(x[[length(x)]], "^  [)]")
+    expect_match(x[[3L]], d$layers[[i]]$label |> sub(pattern = "[{]value[}]", replacement = "") |>
+                   sub(pattern = ": $", replacement = ""), fixed = TRUE)
+  }
+  expect_identical(.pd_summary(d$layers[[k[1L]]]), "KM prob estimate TRT01A = Placebo")
+})
