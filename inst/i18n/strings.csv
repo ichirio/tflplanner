@@ -2661,3 +2661,8 @@ listing %s: no columns in `listing_cols`,Listing %s: `listing_cols` に列があ
 "Column %s of the listing %s shows %s, which %s does not have.",Listing %2$s の %1$s 列目は %3$s を表示しますが、%4$s にその列がありません。
 %s %s no dataset %s,%s %s: データセット %s がありません
 %s %s no variable %s in %s,%1$s %2$s: %4$s に変数 %3$s がありません
+"Choose a table of the study as the figure's ARD source (its step 2), or take the ARD in.",図の ARD の取り出し元に試験の表を選ぶか（その手順 2）、ARD を取り込んでください。
+The design reads an ARD: choose where it comes from (the figure's step 2).,デザインが ARD を読んでいます。取り出し元を選んでください（図の手順 2）。
+"Give the piece an analysis the table still has, or add the analysis again.",部品に、表にまだある解析を指定するか、その解析を加え直してください。
+"Make the ARD (its table's step 2, or take it in): the figure prints from it.",ARD を作ってください（その表の手順 2、または取り込み）。図はそこから値を出します。
+"Correct the piece to a row the ARD has (its analysis, variable, group or statistic).",部品を ARD にある行（解析・変数・群・統計量）に合わせて直してください。
