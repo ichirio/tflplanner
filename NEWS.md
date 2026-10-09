@@ -1,5 +1,9 @@
 # tflplanner (development version)
 
+- No links to discussions by number, and no code copied from one (#298):
+  the tests that run the example workbooks of tflspec (>= 0.0.24.9071)
+  follow their new contents.
+
 - **The English screens say "population"** (tflspec #191).  "Analysis set"
   and "population" were mixed; the screens, messages and the company
   standards' sheet description now say population (the Japanese stays
@@ -1537,8 +1541,7 @@
 
 ## tflplanner 0.0.1.9000
 
-- **The table engine is rtfreporter's** (plan E, ichirio/tflspec
-  Discussion #23): tflspec 0.0.23.9000 keeps the specifications only, and
+- **The table engine is rtfreporter's** (plan E): tflspec 0.0.23.9000 keeps the specifications only, and
   the ARD functions and the plan moved to rtfreporter (0.8.1.9001, as
   experimental) under new names, with no aliases: `tfl_ard_normalize()`
   is now `normalize_ard()`, `tfl_plan()` `table_plan()`, `tfl_plan_*()`
