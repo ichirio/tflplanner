@@ -127,3 +127,26 @@ test_that("the batches column survives the SPEC round trip", {
   q <- read_planner(paths)
   expect_identical(batch_sets(q), batch_sets(p))
 })
+
+test_that("the report list shows a report's batches and edits them", {
+  skip_on_cran()
+  bs_home()
+  p <- set_batch(bs_planner(), "Topline", "DM")
+  create_study("B2", planner = p)
+  # one report's names: checked, " | " between them, none NA
+  q <- .set_report_batches(p, "VS", c("Final", " Topline ", ""))
+  expect_identical(q$outputs$batches[q$outputs$output_id == "VS"], "Final | Topline")
+  expect_identical(batch_sets(q)$Topline, c("DM", "VS"))
+  expect_true(is.na(.set_report_batches(q, "VS", character())$outputs$batches[2]))
+  expect_error(.set_report_batches(p, "VS", "Top/line"), "letters, digits")
+  shiny::testServer(server_for("B2"), {
+    rv <- session$userData$rv
+    session$setInputs(nav = "outputs", target = "VS")
+    # the list's column (the table is drawn server side: its data here)
+    expect_match(paste(output$outputs, collapse = ""), "Batches", fixed = TRUE)
+    session$setInputs(report_batches = 1)
+    session$setInputs(report_batches_pick = c("Topline", "Interim"), report_batches_ok = 1)
+    expect_identical(rv$p$outputs$batches[rv$p$outputs$output_id == "VS"], "Topline | Interim")
+    expect_identical(batch_sets(rv$p)$Interim, "VS")
+  })
+})
