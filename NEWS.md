@@ -1,5 +1,8 @@
 # tflplanner (development version)
 
+- **The sample's KM figure (F-14-2-2) reads the study ARD through
+  `path_ard`** (`readRDS(file.path(path_ard, "ard.rds"))`), the folder's
+  variable of the study's setup, as the other programs do (#268).
 - **The programs as the study's setup has them** (#268, its second
   stage).  A study's programs read its folders through the variables
   `programs/study_setup.R` defines (`readRDS(file.path(path_adam,
