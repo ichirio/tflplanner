@@ -6,7 +6,7 @@
 #   outputs  the report list: output_id, description, data_code (makes
 #            the ARD), process_code (normalizes and reworks it), section
 #            (the TOC's heading it is under; blank: from its ID),
-#            population (its analysis set: the TOC's, step 2's),
+#            population (its analysis set: the TOC's, step 1's),
 #            datasets (the TOC's, "ADSL | ADAE") -- the
 #            part rtfreporter does not read, kept in the report workbook's
 #            `_tflplanner` sheet (a sheet whose name starts with `_` is
