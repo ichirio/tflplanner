@@ -18,6 +18,9 @@
     checksum is worked out once a program, in one file of the session's
     (each was a new file, made and deleted, two or three times a program).
   - `write_planner(books = )`: `"table"`, `"report"` or both (the default).
+- **The report list shows and edits the named batches** (#301): a Batches
+  column, and Batches... for the report chosen -- the names in use to
+  choose from, a new one typed.
 
 - **An official run of some of the reports** (#301).  The Runs tab lists
   the reports of a run, all ticked (All / None); a report unticked is left

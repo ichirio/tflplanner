@@ -912,6 +912,7 @@ app_ui <- function(lang = "en") {
             class = "d-flex flex-wrap gap-1 ms-2",
             .btn("add", t("Add")), .btn("copy", t("Copy")),
             .btn("rename", t("Rename")),
+            .btn("report_batches", t("Batches...")),
             .btn("remove", t("Delete"), class = "btn-sm btn-outline-danger"),
             .btn("up", "\u2191"), .btn("down", "\u2193")),
           .btn("toc_new", t("Take in a TOC..."), class = "btn-sm btn-outline-primary ms-auto")),
@@ -8581,7 +8582,8 @@ app_server <- function(input, output, session, start) {
     p_list()
     rv$ver
     p <- shiny::isolate(rv$p)
-    empty <- data.frame(output_id = character(), section = character(), type = character(),
+    empty <- data.frame(output_id = character(), section = character(),
+                        batches = character(), type = character(),
                         program = character(), rtf = character(),
                         data = character(), title = character())
     if (is.null(p) || !nrow(p$outputs)) return(empty)
@@ -8616,6 +8618,7 @@ app_server <- function(input, output, session, start) {
     data.frame(
       output_id = o$output_id,
       section = .report_section(o$output_id, type, o$section),
+      batches = ifelse(is.na(o$batches %||% NA_character_), "", o$batches %||% ""),
       type = t(unname(.type_labels[type])),
       program = vapply(info, `[[`, "", "program"),
       rtf = vapply(info, `[[`, "", "file"),
@@ -8628,10 +8631,11 @@ app_server <- function(input, output, session, start) {
     sel <- match(shiny::isolate(input$target), v$output_id)
     v$output_id <- htmltools::htmlEscape(v$output_id)
     v$section <- htmltools::htmlEscape(v$section)
+    v$batches <- htmltools::htmlEscape(v$batches)
     v$program <- htmltools::htmlEscape(v$program)
     v$rtf <- htmltools::htmlEscape(v$rtf)
     # "Title" here is the report's title; t("Title") is the study's
-    names(v) <- c(t(c("output_id", "Section", "Type", "Program", "RTF", "Data")),
+    names(v) <- c(t(c("output_id", "Section", "Batches", "Type", "Program", "RTF", "Data")),
                   if (identical(lang, "en")) "Title" else t("Report title"))
     v$.key <- .report_search_keys(shiny::isolate(picker_rows()), outputs_view()$output_id)
     DT::datatable(v, rownames = FALSE, escape = FALSE,
@@ -8655,6 +8659,35 @@ app_server <- function(input, output, session, start) {
       DT::selectRows(DT::dataTableProxy("outputs"), if (!is.na(sel)) sel)
     }
   })
+  # a report's named batches (the report list's batches column): the names
+  # in use to choose from, a new one typed
+  shiny::observeEvent(input$report_batches, {
+    id <- input$target
+    if (is.null(id) || !id %in% rv$p$outputs$output_id) {
+      return(notify(t("Choose a report"), "warning"))
+    }
+    own <- .split_bar(rv$p$outputs$batches[rv$p$outputs$output_id == id] %||% NA)
+    own <- own[!is.na(own)]
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("The named batches of %s"), id), easyClose = TRUE,
+      shiny::selectizeInput("report_batches_pick", NULL,
+                            unique(c(names(batch_sets(rv$p)), own)), selected = own,
+                            multiple = TRUE, width = "100%",
+                            options = list(create = TRUE, plugins = list("remove_button"))),
+      shiny::p(class = "small text-muted",
+               t("The official runs that take this report by name (Topline, Final ...): choose the names in use or type a new one. The Runs tab runs a named batch.")),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("report_batches_ok", t("OK"), class = "btn-primary"))))
+  })
+  shiny::observeEvent(input$report_batches_ok, {
+    id <- input$target
+    p2 <- guarded(.set_report_batches(rv$p, id, input$report_batches_pick %||% character()))
+    if (is.null(p2)) return()
+    shiny::removeModal()
+    rv$p <- p2
+    bump()
+  })
+
   # a double click on a report: open its Content
   shiny::observeEvent(input$outputs_dbl, {
     v <- shiny::isolate(outputs_view())
