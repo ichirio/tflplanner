@@ -463,22 +463,46 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
 }
 
 # The code lists' part of a place where a report's data is made: what the
-# program makes of the columns' values (.codelist_lines()), the values the
-# data has that a list does not, each with a button that adds them, and
-# the buttons of the dialog (edit, copy).  `ids`: the inputs (edit, copy,
-# add); `tip`: what the part says of the place.
-.codelist_part_ui <- function(lines, missing, t, ids, tip) {
+# program makes of the columns' values (.codelist_lines()), one line per
+# column with a list -- a click opens that column's values and labels in a
+# grid right below, in place (one grid at a time) -- a column without one
+# to start a list for, the values the data has that a list does not, each
+# with a button that adds them, and the copy dialog.  `ids`: the inputs
+# and outputs (pick, new, close, detail, hot, edit, copy, add); `open`: the
+# column whose grid is open; `others`: the place's columns without a list;
+# `tip`: what the part says of the place.
+.codelist_part_ui <- function(lines, missing, t, ids, tip, open = NULL,
+                              others = character()) {
+  pick_js <- function(v) sprintf("Shiny.setInputValue('%s', %s, {priority: 'event'})",
+                                 ids[["pick"]], encodeString(v, quote = "'"))
   shiny::tagList(
     shiny::div(class = "form-label mb-1", with_tip(
       shiny::span(t("Code lists"), shiny::span(class = "text-muted", " (codelists)")),
-      paste(tip, t("A value with no arrow prints as it is.")))),
+      paste(tip, t("A value with no arrow prints as it is."),
+            t("Click a column to edit its values and labels.")))),
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-center mb-1",
+      if (length(others)) shiny::div(
+        class = "rp-cl-new", style = "min-width: 14rem;",
+        shiny::selectizeInput(ids[["new"]], NULL, c("", others), width = "100%",
+                              options = list(placeholder = t("A code list for another column...")))),
+      .btn(ids[["copy"]], t("Copy..."), class = "btn-sm btn-outline-secondary py-0"),
+      .btn(ids[["edit"]], t("All code lists..."), class = "btn-sm btn-link py-0")),
     if (!length(lines)) shiny::p(class = "small text-muted mb-1",
                                  t("None of these columns has a code list: their values are as the data has them.")) else
       shiny::tags$table(
-        class = "table table-sm small mb-1",
-        shiny::tags$tbody(lapply(lines, function(l) shiny::tags$tr(
-          shiny::tags$td(class = "fw-semibold text-nowrap", l$variable),
-          shiny::tags$td(l$text))))),
+        class = "table table-sm table-hover small mb-1 rp-cl-list",
+        shiny::tags$tbody(lapply(lines, function(l) {
+          on <- identical(l$variable, open)
+          shiny::tags$tr(
+            class = if (on) "table-active", style = "cursor: pointer;",
+            title = t("Click to edit this code list"),
+            onclick = pick_js(l$variable),
+            shiny::tags$td(class = "fw-semibold text-nowrap",
+                           shiny::span(class = "text-muted me-1", if (on) "\u25be" else "\u25b8"),
+                           l$variable),
+            shiny::tags$td(l$text))
+        }))),
     lapply(names(missing), function(v) shiny::div(
       class = "alert alert-warning small py-1 px-2 mb-1 d-flex flex-wrap gap-2 align-items-center",
       shiny::span(sprintf(t("%s: the data has values its code list does not (the program would stop): %s"),
@@ -487,22 +511,90 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
         type = "button", class = "btn btn-sm btn-outline-primary py-0",
         onclick = sprintf("Shiny.setInputValue('%s', %s, {priority: 'event'})",
                           ids[["add"]], encodeString(v, quote = "'")),
-        t("Add them to the list")))),
+        t("Add them to the list")))))
+}
+
+# The open column's grid: its values, labels and order, written back to
+# the report's code list of that column as they are edited
+.codelist_detail_ui <- function(variable, t, ids) {
+  shiny::div(
+    class = "border rounded p-2 mb-2 bg-body-tertiary",
     shiny::div(
-      class = "d-flex gap-2",
-      .btn(ids[["edit"]], t("Edit..."), class = "btn-sm btn-outline-secondary py-0"),
-      .btn(ids[["copy"]], t("Copy..."), class = "btn-sm btn-outline-secondary py-0")))
+      class = "d-flex align-items-center gap-2",
+      shiny::strong(class = "small", sprintf(t("Code list of %s"), variable)),
+      shiny::div(class = "ms-auto",
+                 .btn(ids[["close"]], t("Close"), class = "btn-sm btn-outline-secondary py-0"))),
+    shiny::div(class = "small text-muted mb-1",
+               t("value: as the data has it; label: what it prints as (blank: itself); order: its place")),
+    rhandsontable::rHandsontableOutput(ids[["hot"]]))
 }
 
 # Its server: `vars()` the place's columns, `data()` its data (or NULL),
-# `title()` the dialog's; `dialog` a .codelist_dialog_server().  Adding
-# the values a list lacks adds them to this report's list, each printing
-# as itself.  Gives the reactive of those values.
-.codelist_part_server <- function(input, rv, report, ids, vars, data, title, dialog,
-                                  t, notify, guarded, bump, has_study) {
+# `title()` the dialog's; `dialog` a .codelist_dialog_server() (copy, and
+# every code list of the report).  Adding the values a list lacks adds them
+# to this report's list, each printing as itself.  Draws the open column's
+# grid (`ids[["detail"]]`, `ids[["hot"]]`).  Gives list(missing = the
+# reactive of those values, open = the open column's reactiveVal).
+.codelist_part_server <- function(input, output, rv, report, ids, vars, data, title,
+                                  dialog, t, notify, guarded, bump, has_study,
+                                  read_grid, grids_drawn) {
   missing <- shiny::reactive({
     shiny::req(has_study(), report())
     .codelist_missing(sheet_rows(rv$p, "codelists", report()), data())
+  })
+  open <- shiny::reactiveVal(NULL)
+  # another report: nothing open
+  shiny::observeEvent(report(), open(NULL), ignoreNULL = FALSE)
+  # a click on the open one closes it
+  shiny::observeEvent(input[[ids[["pick"]]]], {
+    v <- input[[ids[["pick"]]]]
+    open(if (identical(v, open())) NULL else v)
+  })
+  shiny::observeEvent(input[[ids[["new"]]]], {
+    v <- input[[ids[["new"]]]]
+    if (!.is_blank(v)) open(v)
+  })
+  shiny::observeEvent(input[[ids[["close"]]]], open(NULL))
+  output[[ids[["detail"]]]] <- shiny::renderUI({
+    v <- open()
+    shiny::req(has_study(), report(), v)
+    .codelist_detail_ui(v, t, ids)
+  })
+  key <- shiny::reactive(paste(ids[["hot"]], report() %||% "", open() %||% "",
+                               rv$ver, sep = "|"))
+  output[[ids[["hot"]]]] <- rhandsontable::renderRHandsontable({
+    v <- open()
+    shiny::req(has_study(), report(), v)
+    key()
+    grids_drawn()
+    d <- sheet_rows(shiny::isolate(rv$p), "codelists", report())
+    d <- d[d$variable %in% v, c("value", "label", "order"), drop = FALSE]
+    .grid(d, "codelists", key(), list())
+  })
+  shiny::observeEvent(input[[ids[["hot"]]]], {
+    h <- input[[ids[["hot"]]]]
+    if (is.null(h$changes$changes) &&
+        !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
+    if (!identical(h$params$planner_key, key())) return()
+    d <- read_grid(h)
+    id <- report()
+    v <- open()
+    if (is.null(d) || is.null(id) || is.null(v)) return()
+    d <- .drop_blank_rows(as.data.frame(d, stringsAsFactors = FALSE))
+    old <- sheet_rows(rv$p, "codelists", id)
+    keep <- old[!old$variable %in% v, , drop = FALSE]
+    keep$output_id <- NULL
+    mine <- data.frame(variable = rep(v, nrow(d)), stringsAsFactors = FALSE)
+    for (cn in setdiff(names(keep), "variable")) {
+      mine[[cn]] <- if (cn %in% names(d)) as.character(d[[cn]]) else
+        rep(NA_character_, nrow(d))
+    }
+    # the column's rows where they were (a new list after the others)
+    at <- which(old$variable %in% v)
+    n_before <- if (length(at)) at[1L] - 1L else nrow(keep)
+    rows <- rbind(keep[seq_len(n_before), , drop = FALSE], mine[names(keep)],
+                  keep[setdiff(seq_len(nrow(keep)), seq_len(n_before)), , drop = FALSE])
+    guarded(rv$p <- set_sheet_rows(rv$p, "codelists", id, rows))
   })
   shiny::observeEvent(input[[ids[["add"]]]], {
     v <- input[[ids[["add"]]]]
@@ -512,7 +604,8 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     if (is.null(p2)) return()
     rv$p <- p2
     bump()
-    notify(sprintf(t("%s's code list of %s: %s added, each printing as itself (edit their text with Edit...)."),
+    open(v)
+    notify(sprintf(t("%s's code list of %s: %s added, each printing as itself (edit their text in the grid)."),
                    report(), v, paste(miss, collapse = ", ")))
   })
   shiny::observeEvent(input[[ids[["edit"]]]], {
@@ -523,7 +616,22 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     shiny::req(has_study(), report())
     dialog$copy(vars(), title())
   })
-  missing
+  list(missing = missing, open = open)
+}
+
+# The ids of a place's code lists part, from its stem (`adata_cl`) and
+# its dialog's prefix (`cl21`)
+.codelist_part_ids <- function(stem, prefix, edit = paste0(prefix, "_open"),
+                               copy = paste0(prefix, "_copy")) {
+  c(edit = edit, copy = copy, add = paste0(stem, "_add"),
+    pick = paste0(stem, "_pick"), new = paste0(stem, "_new"),
+    close = paste0(stem, "_close"), detail = paste0(stem, "_detail"),
+    hot = paste0(stem, "_hot"))
+}
+
+# The place's columns that have no code list yet (to start one)
+.codelist_others <- function(cl, vars) {
+  setdiff(vars[!is.na(vars) & nzchar(vars)], cl$variable)
 }
 
 # Under an analysis's own filter: it reads the data after the code lists

@@ -18,6 +18,30 @@
     checksum is worked out once a program, in one file of the session's
     (each was a new file, made and deleted, two or three times a program).
   - `write_planner(books = )`: `"table"`, `"report"` or both (the default).
+- **A code list edited where it is used.**  The code lists' part of
+  1-1's column definitions (part 4), of a listing's data and of a
+  figure's data lists each column with a list; a click opens that
+  column's values, labels and order in a grid right below, in place --
+  one grid at a time (a click on another column moves it, on the same
+  one closes it).  A column without a list starts one from the select
+  beside the buttons; "Add them to the list" opens the list it adds to;
+  Copy... and the dialog of every code list (All code lists..., with
+  reading a file) stay.
+- **The table builder's rows as the code list of `variable`.**  Under
+  the variables in order, "As the code list of variable" opens a grid
+  like the code lists': each variable (value), the heading the table
+  prints (label) and its place (order).  It is the same thing as the
+  list and its labels above, kept in one place -- the variables sheet's
+  `label` and `order` -- and the program still writes
+  `plan_labels(variable = c(...))`: no new sheet or column.
+- The builder's form, drawn again after an edit that changes its shape
+  (a heading or the order above, a row of one's own), keeps the page
+  where it was instead of jumping to the top.
+- **The launcher's icon is the hex logo** (#291).  The desktop and Start
+  menu shortcut (`add_shortcut()`) shows the package's logo at 128 px and
+  up; at the sizes the desktop and the taskbar use (24 to 64 px) a plain
+  hexagon with a "t", at 16 px the hexagon alone, so it stays clear.
+  `data-raw/launcher-icons.R` makes the `.ico`, `.png` and `.icns`.
 - **The report list shows and edits the named batches** (#301): a Batches
   column, and Batches... for the report chosen -- the names in use to
   choose from, a new one typed.
