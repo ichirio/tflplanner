@@ -780,8 +780,6 @@ Analysis ID,解析 ID
 What to compute,計算するもの
 Analysis set,解析対象集団
 Subset (an R condition),部分集団（R の条件式）
-Groups (the columns),群（列）
-Variables (the rows),変数（行）
 The data of this analysis cannot be read (no file in the data catalog): the choices are the row's own.,この解析のデータを読めません（データカタログにファイルがありません）。候補は行にある値だけです。
 Give the analysis an ID.,解析 ID を入れてください。
 %s already has an analysis %s.,%s にはすでに解析 %s があります。
@@ -2240,7 +2238,6 @@ Analysis %s,解析 %s
 "An R condition that filters this analysis's rows alone (e.g. AESER == ""Y""). The data's own filter is 2-1's.","この解析だけの行の絞り込み条件（R の式。例 AESER == ""Y""）。データそのものの絞り込み条件は 2-1 で。"
 This analysis's own filter,この解析だけの絞り込み条件
 "cards' arguments, in R (e.g. conf.level = 0.9).",cards の引数を R で（例: conf.level = 0.9）。
-"The table's columns (e.g. TRT01A). A combination with no records is shown, with 0.",表の列（例: TRT01A）。記録の無い組み合わせも 0 で出ます。
 "Repeated within each combination the data has (e.g. PARAMCD × AVISIT). Unlike the groups (by), a combination with no records is not shown: for 0s, use the groups.",データにある組み合わせごとに繰り返します（例: PARAMCD × AVISIT）。群（by）と違い、記録の無い組み合わせは出ません。0 を出したいときは群に。
 What a % is of. The analysis set: its subjects in the group (the column headers' N; an AE table: the SAF's N per arm). Within a row: the total of the row (the variable's level). Within a column: the total of the group. Of the whole table: all of it. The method's default: blank.,% を何で割るか。解析対象集団: その群の解析対象集団の人数（列見出しの N。AE の表なら群ごとの SAF の N）。行の中: 同じ行（変数の水準）の合計。列の中: 同じ群の合計。表全体: すべての合計。手法の既定: 空欄。
 Run together with other analyses (one call)...,ほかの解析とまとめる（1 回で計算）…
@@ -2399,7 +2396,6 @@ Size (pt),大きさ（pt）
 Levels and order (code lists)...,水準と順序（コードリスト）…
 Levels and order: the columns of %s,水準と順序：%s の列
 Levels and order: the columns of this analysis data,水準と順序：この解析データの列
-Levels and order: this analysis's groups and variables,水準と順序：この解析の群と変数
 Code lists of %s's table,%s の表のコードリスト
 Code lists of this table...,この表のコードリスト…
 "This report's code lists: each variable's values, their order and the text they print as. The ARD uses those of the variables its analyses read (a value no record has is counted 0); the table uses them all, in their order unless the variables sheet says another (levels).",この帳票のコードリスト：変数ごとの値、その順番、表示する文字。ARD は解析が読む変数のものを使い（データにない値は 0 と数える）、表はすべてを使います。表の順は、variables シートの levels が無ければこの順です。
@@ -2412,6 +2408,12 @@ The study,試験
 Every report,全帳票
 Loading ...,読み込み中 ...
 Drawing ...,描いています ...
+Analysis ID (a set of analyses),解析 ID（解析のまとまり）
+"Several variables: in the ARD, one row per variable under the same ID.",変数が複数なら、ARD では同じ ID の下に変数ごとの行が並びます。
+Grouping variables,グループ変数
+Analysis variables,解析変数
+"The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step 3's. A combination with no records is shown, with 0.",解析をグループ分けする変数（例: TRT01A）。列・行・ページのどこに出すかは手順 3 で決めます。記録の無い組み合わせも 0 で出ます。
+the levels and order of this analysis data's columns (for the ARD and the table both),この解析データの列の水準と並び順（ARD と表の両方に効く）
 cell by cell (merge with ⇥),セルごと（⇥ で隣とまとめる）
 one cell per value of %s,%s の値ごとに 1 セル
 e.g. Characteristic,例: Characteristic

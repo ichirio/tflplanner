@@ -144,9 +144,9 @@
       name = c("table_data", "table_process", "figure_plot", "setup"),
       code = c(paste(
         "# this report's rows of the study ARD (made by {ARD_PROGRAM})",
-        "ard <- readRDS(\"{ARD}\")",
-        "ard <- subset(ard, output_id == \"{OUTPUT_ID}\",",
-        "              select = -c(output_id, analysis_id, population_id))",
+        "ard <- readRDS(\"{ARD}\") |>",
+        "  dplyr::filter(output_id == \"{OUTPUT_ID}\") |>",
+        "  dplyr::select(-c(output_id, analysis_id, population_id))",
         "if (!nrow(ard)) stop(\"The study ARD has no rows for {OUTPUT_ID}: run {ARD_PROGRAM} first.\")",
         sep = "\n"),
         "data <- normalize_ard(ard)",
@@ -165,10 +165,12 @@
     # the code every study's programs/study_setup.R starts with (its part
     # 1, copied when the study is made): one line of R a row
     setup_code = .df(
-      code = c("library(cards)", "library(rtfreporter)", "library(tflspec)"),
+      code = c("library(cards)", "library(dplyr)", "library(rtfreporter)",
+               "library(tflspec)"),
       note = c("the ARD programs' cards calls",
+               "the programs' data steps (filter(), mutate() ...)",
                "the report programs' rtfreporter calls",
-               "the report programs' tflspec calls")),
+               "the programs' tflspec calls")),
     listing_types = .df(type = "multiline", label = "multiline",
                         note = "rtfreporter's listing type: / separator, gutters, a blank row per record"),
     # a TOC in the company's layout: which of its columns is what -- the
