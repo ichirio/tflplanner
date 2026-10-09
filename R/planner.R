@@ -467,7 +467,8 @@ rename_output <- function(x, from, to) {
   }
   d <- fig_design(x, from)
   x <- set_fig_design(set_fig_design(x, from, NULL), to, d)
-  x
+  # a table renamed: the figures that read its ARD read it under the new id
+  .rename_fig_ard_refs(x, from, to)
 }
 
 #' @rdname add_output

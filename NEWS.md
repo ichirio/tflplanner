@@ -25,6 +25,22 @@
     dataset each time one is read.
   - The guide (Japanese) has a section on the review.
 
+- **A figure prints the numbers of a table's ARD** (#293 phase 3, with
+  tflspec #203).  A figure's step 2 (ARD) chooses where its ARD comes
+  from: none (it reads its data only), its own analyses (defined as a
+  table's), or a table's ARD (`ard_source = table:<id>` on the report
+  row; `set_fig_ard_source()`), shown with the table's analyses, the
+  statistics its ARD has and which the figure uses.  The program reads
+  it as `ard` at the top of `# ---- data ----`; the Plot Designer offers
+  "A number from the ARD" (a median, a hazard ratio ... printed on the
+  plot) and "Statistics from the ARD" (a data frame of them) when the
+  figure has one, with the analyses, variables and statistics of that ARD
+  to choose from, and the preview draws them.  The study's check names a
+  source that is not a table, a design that reads an ARD without one, an
+  ARD not made yet (a warning), and a piece whose analysis, statistic,
+  level or group the ARD does not have.  Renaming a table renames its
+  figures' `table:` references.  The sample's F-14-2-3 prints the three
+  medians of T-14-2-2's ARD; the number at risk stays the fit's.
 - **A review of the whole study** (#288, phase 1: the R functions; the
   Review tab comes next).  `study_review(study)` lists, report by report,
   what cannot be used (`error`), what is valid but probably wrong

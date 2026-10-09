@@ -1158,6 +1158,13 @@ $(document).on('shiny:connected', function() {
       $(this).toggleClass('rp-idle', x.indexOf($(this).attr('data-value')) >= 0);
     });
   });
+  // the ARD definition of the chosen report: hidden for a figure that has
+  // none of its own (it reads none, or a table's)
+  Shiny.addCustomMessageHandler('rp-ard-def', function(x) {
+    // (a class, not display: the row is d-flex !important)
+    $('#ard_split').toggleClass('d-none', !x);
+    $('#ard_layout').parent().toggleClass('d-none', !x);
+  });
 });
 // The study ARD's list: a double click on a row opens that report's ARD
 $(document).on('dblclick', '#ard_state tbody tr', function() {
@@ -2813,11 +2820,18 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$report_move, go(input$report_move))
   # the tabs this kind of report has nothing on, faded (still clickable)
   shiny::observe({
-    idle <- .type_idle_tabs[[report_kind()]] %||% character()
+    k <- report_kind()
+    idle <- .type_idle_tabs[[k]] %||% character()
+    src <- if (identical(k, "figure") && !is.null(current())) .fig_ard_source(rv$p, current())
+    if (!is.null(src) && src$kind != "none") idle <- setdiff(idle, "ard")
     session$sendCustomMessage("rp-idle-tabs", as.list(idle))
+    # the ARD definition: a figure's only when it has its own analyses
+    session$sendCustomMessage("rp-ard-def", !identical(k, "figure") ||
+                                identical(src$kind, "own"))
   })
   output$ard_kind_note <- shiny::renderUI({
     k <- report_kind()
+    if (identical(k, "figure") && !is.null(current())) return(fig_ard_ui(current()))
     if (identical(k, "user") && !.user_reads_ard(rv$p, current())) {
       return(shiny::div(class = "alert alert-info py-1 small",
                         sprintf(t("%s does not read an ARD: \"Use this report's ARD\" in its step 2 (Content) makes it read one (these analyses, or an ARD taken in)."),
@@ -2845,6 +2859,111 @@ app_server <- function(input, output, session, start) {
                sprintf(t("%s is a %s: it has no ARD (its program reads its data). The ARD here is the tables'."),
                        current(), t(.type_labels[[k]])))
   })
+  # -- a figure's ARD (#293): none, its own analyses, or a table's ----------
+  fig_ard_ui <- function(id) {
+    src <- .fig_ard_source(rv$p, id)
+    o <- rv$p$outputs
+    tabs <- o$output_id[vapply(o$output_id, function(x) identical(report_info(rv$p, x)$type, "table"), NA)]
+    tab_lab <- stats::setNames(tabs, ifelse(is.na(o$description[match(tabs, o$output_id)]), tabs,
+                                            paste(tabs, o$description[match(tabs, o$output_id)], sep = "  ")))
+    gone <- src$kind == "table" && !.is_table(rv$p, src$id)
+    if (gone) tab_lab <- c(stats::setNames(src$id, sprintf(t("%s (not in the study)"), src$id)), tab_lab)
+    if (src$kind == "import") {
+      return(shiny::div(class = "alert alert-warning py-1 small",
+                        sprintf(t("%s uses an ARD taken in (%s): the analyses here are not used for it."),
+                                id, src$file)))
+    }
+    shiny::div(
+      class = "card card-body py-2 mb-2",
+      shiny::div(class = "d-flex flex-wrap gap-3 align-items-end",
+        shiny::radioButtons(
+          "fig_ard_kind", with_tip(t("This figure's ARD"),
+            t("Where the numbers it prints come from (step 3: \"A number from the ARD\", \"Statistics from the ARD\"). The program puts it in `ard`.")),
+          inline = TRUE, selected = src$kind,
+          choices = stats::setNames(c("none", "own", "table"),
+                                    c(t("None: the figure reads its data"),
+                                      t("Its own analyses (below, as a table's)"),
+                                      t("A table's ARD")))),
+        if (src$kind == "table") shiny::selectInput(
+          "fig_ard_table", t("The table"), choices = tab_lab,
+          selected = src$id, width = "26rem")),
+      if (gone) shiny::div(class = "alert alert-danger py-1 small mt-2",
+        sprintf(t("%s is not a table of the study (deleted, or renamed by hand): choose another, or the figure's program stops."), src$id))
+      else if (src$kind == "table") fig_ard_table_view(id, src$id))
+  }
+  # a table's ARD as the figure reads it: its analyses, the statistics its
+  # ARD has (made), and which the figure's design uses
+  fig_ard_table_view <- function(id, tb) {
+    rv$ard_ver
+    an <- ard_rows(rv$p, "analyses", tb)
+    rows <- tryCatch(study_ard_rows(rv$study, tb), error = function(e) NULL)
+    d <- fig_design(rv$p, id)
+    used <- unique(c(unlist(lapply(d$data, function(s) if (identical(s$step, "ard_stats")) .ard_ids(s$analysis_id))),
+                     unlist(lapply(d$layers, function(l) if (identical(l$layer, "ard_number")) l$analysis_id))))
+    tbl <- if (nrow(an)) data.frame(
+      analysis = an$analysis_id,
+      label = ifelse(is.na(an$label), "", an$label),
+      statistics = vapply(an$analysis_id, function(a) {
+        if (is.null(rows) || !nrow(rows)) return(t("(not made yet)"))
+        # by variable (not cards' own ..name.. rows)
+        k <- rows$analysis_id == a & !grepl("^[.][.]", rows$variable)
+        v <- unique(rows$variable[k])
+        paste(vapply(v, function(x) paste0(x, ": ", paste(unique(rows$stat_name[k & rows$variable == x]),
+                                                            collapse = ", ")), ""),
+              collapse = "; ")
+      }, ""),
+      used = ifelse(an$analysis_id %in% used, t("used by this figure"), ""),
+      stringsAsFactors = FALSE) else NULL
+    shiny::div(
+      class = "small mt-1",
+      if (is.null(tbl)) shiny::p(class = "text-muted mb-1", sprintf(t("%s has no analyses yet."), tb))
+      else shiny::tags$table(
+        class = "table table-sm mb-1",
+        shiny::tags$thead(shiny::tags$tr(lapply(c(t("Analysis"), t("Label"), t("In its ARD (variable: statistic)"), ""),
+                                               shiny::tags$th))),
+        shiny::tags$tbody(lapply(seq_len(nrow(tbl)), function(i) shiny::tags$tr(
+          shiny::tags$td(tbl$analysis[i]), shiny::tags$td(tbl$label[i]),
+          shiny::tags$td(class = "text-break", tbl$statistics[i]),
+          shiny::tags$td(class = "text-success text-nowrap", tbl$used[i]))))),
+      shiny::div(class = "d-flex gap-2 align-items-center",
+        shiny::span(class = "text-muted", sprintf(t("The statistics are %s's: add one to its analysis (its step 2) to print it here."), tb)),
+        .btn("fig_ard_open", sprintf(t("Open %s"), tb), class = "btn-sm btn-outline-secondary py-0")))
+  }
+  shiny::observeEvent(input$fig_ard_kind, {
+    id <- current()
+    shiny::req(id, identical(report_kind(), "figure"))
+    src <- .fig_ard_source(rv$p, id)
+    k <- input$fig_ard_kind
+    if (identical(k, src$kind)) return()
+    if (identical(k, "table")) {
+      o <- rv$p$outputs$output_id
+      tabs <- o[vapply(o, function(x) identical(report_info(rv$p, x)$type, "table"), NA)]
+      if (!length(tabs)) {
+        shiny::showNotification(t("The study has no table yet."), type = "warning")
+        return()
+      }
+      # a table whose ARD has a KM fit first, for a KM figure; else the first
+      an <- rv$p$ard$analyses
+      km <- an$output_id[!is.na(an$code) & grepl("ard_survival_survfit", an$code, fixed = TRUE)]
+      tb <- c(intersect(km, tabs), tabs)[1L]
+      rv$p <- set_fig_ard_source(rv$p, id, paste0("table:", tb))
+    } else {
+      rv$p <- set_fig_ard_source(rv$p, id, if (identical(k, "none")) NULL else k)
+    }
+  }, ignoreInit = TRUE)
+  shiny::observeEvent(input$fig_ard_table, {
+    id <- current()
+    shiny::req(id, identical(report_kind(), "figure"))
+    src <- .fig_ard_source(rv$p, id)
+    if (identical(src$kind, "table") && !identical(src$id, input$fig_ard_table)) {
+      rv$p <- set_fig_ard_source(rv$p, id, paste0("table:", input$fig_ard_table))
+    }
+  }, ignoreInit = TRUE)
+  shiny::observeEvent(input$fig_ard_open, {
+    src <- .fig_ard_source(rv$p, current())
+    if (identical(src$kind, "table")) shiny::updateSelectInput(session, "target", selected = src$id)
+  })
+
   output$report_head <- shiny::renderUI({
     id <- current()
     if (is.null(id)) return(NULL)
@@ -9343,9 +9462,13 @@ app_server <- function(input, output, session, start) {
   })
   shiny::observeEvent(input$remove, {
     if (!need_current()) return()
+    readers <- .figs_reading_table(rv$p, current())
     shiny::showModal(shiny::modalDialog(
       title = sprintf(t("Delete %s"), current()),
       t("The report's rows are deleted from every sheet (on save; its program and outputs stay on disk)."),
+      if (length(readers)) shiny::p(class = "text-danger mt-2 mb-0",
+        sprintf(t("%s print numbers from its ARD: they will have none until their step 1 names another table."),
+                paste(readers, collapse = ", "))),
       footer = shiny::tagList(
         shiny::modalButton(t("Cancel")),
         .btn("remove_ok", t("Delete"), class = "btn-danger"))))
