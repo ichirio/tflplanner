@@ -1,5 +1,7 @@
 # tflplanner (development version)
 
+- R-CMD-check now also runs on R 4.2, the oldest R tested (`Depends: R (>= 4.1)` is kept; cardx, used by the generated ARD code, needs R >= 4.2).
+
 - **The condition builder: variables in ADaM's groups, no shortcuts**
   (#199).  The analysis sets' shortcut buttons (the set, and "not" it) are
   gone: they did what "Keep to the subjects of ..." does, and a study has
