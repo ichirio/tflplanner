@@ -25,6 +25,23 @@
 - A new study's setup no longer attaches tflspec (the programs call
   `programs/study_helpers.R`), nor do the app's previews.
 
+- **The definition files are the study's source** (#274, phase 1).  A
+  save records each definition file's fingerprint (`spec/` and
+  `study.yml`, md5 and size) in the study's state; opening the study
+  compares them.  Unchanged, it opens from its state as before.  Changed
+  outside tflplanner (edited in Excel, copied in), the changed files are
+  read and taken in (`$spec` says which files and parts, a history entry
+  keeps the state before).  A file that does not read leaves the study as
+  last saved, and no save writes over it (class
+  `tflplanner_spec_changed`) until it is fixed and read again
+  (`reload_from_spec()`) or written back from the last save
+  (`write_spec()`, the rejected file kept in `spec/.rejected/`);
+  `spec_status()` says which files changed.  A study unregistered and
+  registered again takes in what was edited meanwhile.  A save reads the
+  workbooks no more when their fingerprints are the recorded ones (about
+  3 s less a save).  A figure design file tflplanner did not write is no
+  longer deleted by a save.
+
 - **The code lists put their labels on the data the programs make**
   (tflspec >= 0.0.24.9068).  A report's program writes its code lists at
   its head (`cl_race <- c(WHITE = "White", ...)`) and puts them on the
