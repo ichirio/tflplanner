@@ -98,13 +98,10 @@ Definition workbooks (written on save),定義ブック（保存時に書き出�
 Deliverable data: each Table's ARD (.rds),成果物データ: 各 Table の ARD (.rds)
 Deliverable reports: RTF,成果物帳票: RTF
 Run logs,実行ログ
-Import definition workbooks (replaces this study's definition),Excel の定義ブックを取り込む（この試験の定義を置き換え）
-Export the definition (Excel),定義ブックを書き出す (Excel)
 Export the analyses as CDISC ARS,解析を CDISC ARS で書き出す
 Download the study (zip),試験を zip でダウンロード
 with data,データも含める
 Open the study folder,試験フォルダを開く
-Imported %d reports (not saved yet),%d 帳票を取り込みました（未保存）
 ALL (every row),ALL（全帳票の全行）
 Inherited from the study defaults (%d rows; edit them under Study defaults),試験共通の既定から引き継ぐ行（%d 行。編集は「試験共通の既定」で）
 %s is a %s: the table definition is for Tables (a %s is made in its data code).,%s は %s です。表の定義は Table 用です（%s はデータ準備コードで作ります）。
@@ -2450,3 +2447,17 @@ The replaced files were copied to spec/.rejected/.,置き換えたファイル�
 The definition files were changed,定義ファイルが変更されています
 The definition files were changed outside tflplanner since this study was opened. Load them first; your unsaved changes are kept and merged.,試験を開いた後に、定義ファイルが tflplanner の外で変更されました。先に読み込んでください。未保存の変更は残り、合わせて取り込まれます。
 "Reads spec/ and study.yml again and takes them in: after editing them outside tflplanner (in Excel), or copying workbooks into spec/. Your unsaved changes are kept and merged.",spec/ と study.yml を読み直して取り込みます。tflplanner の外（Excel など）で直したときや、spec/ にワークブックを置いたときに使います。未保存の変更は残り、合わせて取り込まれます。
+Export the definition files,定義ファイルを書き出す
+"A copy of spec/ and study.yml as a zip (the ARD definition as an Excel workbook): edit the copy, rename it as you like, and bring it back with Import.",spec/ と study.yml の写しを zip で書き出します（ARD の定義は Excel のワークブック）。写しを直し、名前も好きに変えてから、取り込みで戻します。
+"Import definition files (an edited copy: workbooks, .yml, .json or the zip)",定義ファイルを取り込む（直した写し：ワークブック、.yml、.json、または zip）
+The files cannot be imported,このファイルは取り込めません
+Nothing was changed. Fix the copy and import it again.,何も変えていません。写しを直して、もう一度取り込んでください。
+The files are the same as the study's: nothing to import.,ファイルは試験と同じです。取り込むものはありません。
+Import definition files,定義ファイルを取り込む
+Parts that differ (take in the ones checked),違う部分（チェックしたものを取り込む）
+Warnings (the import is not stopped by them):,警告（取り込みは止まりません）：
+The study's files as they are now are copied to spec/.backup/<date>-<time>/ first; then the study is saved.,今の試験のファイルを先に spec/.backup/<日付>-<時刻>/ に残し、そのあと試験を保存します。
+Import the parts checked,チェックした部分を取り込む
+Check a part to import,取り込む部分をチェックしてください
+Imported: %s. The files before are in %s.,取り込みました：%s。取り込む前のファイルは %s にあります。
+Column,列

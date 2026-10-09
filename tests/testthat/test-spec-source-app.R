@@ -99,3 +99,31 @@ test_that("a draft made before the files changed is merged on open", {
     expect_identical(sheet_rows(rv$p, "titles", "T-1")$center, "Edited while closed")
   })
 })
+
+test_that("Import in the app: the parts shown, the ones checked taken in, a broken copy refused", {
+  home <- local_home()
+  s <- spec_app_study()
+  out <- file.path(home, "copy")
+  export_spec_files("SA-1", out)
+  g <- file.path(out, "spec", "report_spec.xlsx")
+  set_title(out, "From the copy")
+  up <- function(f) data.frame(name = basename(f), size = file.size(f),
+                               type = "", datapath = f, stringsAsFactors = FALSE)
+  shiny::testServer(server_for("SA-1"), {
+    rv <- session$userData$rv
+    session$setInputs(spec_import = up(g))
+    expect_true(rv$import$preview$ok)
+    expect_identical(rv$import$preview$parts, "sheet:titles")
+    session$setInputs(import_parts = "sheet:titles", import_ok = 1)
+    expect_identical(sheet_rows(rv$p, "titles", "T-1")$center, "From the copy")
+    expect_identical(open_study("SA-1")$spec$status, "same")
+    expect_true(dir.exists(file.path(s$path, "spec", ".backup")))
+    # a copy that does not read: nothing changes
+    bad <- file.path(home, "report_spec.xlsx")
+    writeLines("not a workbook", bad)
+    rec <- .read_state("SA-1")$files
+    session$setInputs(spec_import = up(bad))
+    expect_false(rv$import$preview$ok)
+    expect_identical(.read_state("SA-1")$files, rec)
+  })
+})

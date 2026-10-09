@@ -1396,19 +1396,27 @@ app_server <- function(input, output, session, start) {
   }
   # the definition files that do not read: what is wrong, and the two ways
   # out (fix them and load them, or write them back from the last save)
+  spec_problems_table <- function(pr) {
+    if (is.null(pr) || !nrow(pr)) return(NULL)
+    v <- function(x) if (is.null(x) || is.na(x)) "" else x
+    shiny::tags$table(
+      class = "table table-sm small",
+      shiny::tags$thead(shiny::tags$tr(lapply(
+        t(c("File", "Sheet", "Row", "Column", "Problem")), shiny::tags$th))),
+      shiny::tags$tbody(lapply(seq_len(nrow(pr)), function(i) shiny::tags$tr(
+        class = if (identical(pr$severity[i], "warning")) "table-warning",
+        shiny::tags$td(shiny::code(pr$file[i])),
+        shiny::tags$td(v(pr$sheet[i])), shiny::tags$td(v(pr$row[i])),
+        shiny::tags$td(v(pr$column[i] %||% NA)),
+        shiny::tags$td(shiny::tags$pre(class = "mb-0 small",
+                                       style = "white-space: pre-wrap;",
+                                       pr$message[i]))))))
+  }
   spec_problems_ui <- function(sp, sfx = "") {
     pr <- sp$problems
     shiny::tagList(
       shiny::p(t("The definition files were changed outside tflplanner but could not be read. The study is open as it was last saved. Fix the files and load them, or write the files back from the last save. Until then the study cannot be saved.")),
-      if (!is.null(pr) && nrow(pr)) shiny::tags$table(
-        class = "table table-sm small",
-        shiny::tags$thead(shiny::tags$tr(lapply(
-          t(c("File", "Sheet", "Row", "Problem")), shiny::tags$th))),
-        shiny::tags$tbody(lapply(seq_len(nrow(pr)), function(i) shiny::tags$tr(
-          shiny::tags$td(shiny::code(pr$file[i])),
-          shiny::tags$td(if (is.na(pr$sheet[i])) "" else pr$sheet[i]),
-          shiny::tags$td(if (is.na(pr$row[i])) "" else pr$row[i]),
-          shiny::tags$td(pr$message[i]))))),
+      spec_problems_table(pr),
       shiny::div(class = "d-flex flex-wrap gap-2",
         .btn(paste0("spec_reload", sfx), t("Load from the definition files"),
              class = "btn-sm btn-primary"),
@@ -2359,14 +2367,16 @@ app_server <- function(input, output, session, start) {
         .btn("spec_load", t("Load from the definition files"),
              class = "btn-sm btn-outline-primary"),
         help_tip(t("Reads spec/ and study.yml again and takes them in: after editing them outside tflplanner (in Excel), or copying workbooks into spec/. Your unsaved changes are kept and merged."))),
+      shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mb-1",
+        shiny::downloadButton("spec_files_zip", t("Export the definition files"),
+                              class = "btn-sm"),
+        help_tip(t("A copy of spec/ and study.yml as a zip (the ARD definition as an Excel workbook): edit the copy, rename it as you like, and bring it back with Import."))),
       shiny::fileInput(
-        "import",
-        t("Import definition workbooks (replaces this study's definition)"),
-        multiple = TRUE, accept = ".xlsx", width = "100%"),
+        "spec_import",
+        t("Import definition files (an edited copy: workbooks, .yml, .json or the zip)"),
+        multiple = TRUE, accept = c(".xlsx", ".yml", ".yaml", ".json", ".zip"),
+        width = "100%"),
       shiny::div(class = "d-flex flex-wrap gap-2 align-items-center rp-upload mb-2",
-                 shiny::downloadButton("spec_xlsx",
-                                       t("Export the definition (Excel)"),
-                                       class = "btn-sm"),
                  shiny::downloadButton("ars_zip",
                                        t("Export the analyses as CDISC ARS"),
                                        class = "btn-sm"),
@@ -2418,27 +2428,74 @@ app_server <- function(input, output, session, start) {
     }
   }, ignoreInit = TRUE)
   shiny::observeEvent(input$study_folder, .open_folder(rv$study$path))
-  shiny::observeEvent(input$import, {
-    f <- input$import
-    tmp <- file.path(tempfile("import"), f$name)
-    dir.create(dirname(tmp[1L]))
+  # Export: a copy of the definition files to edit; Import: an edited copy
+  # back, checked in a temporary folder first, taken in part by part
+  output$spec_files_zip <- shiny::downloadHandler(
+    filename = function() paste0(rv$study$meta$study_id, "_definition_",
+                                 format(Sys.time(), "%Y%m%d-%H%M"), ".zip"),
+    content = function(file) export_spec_files(rv$study$meta$study_id, file))
+  shiny::observeEvent(input$spec_import, {
+    shiny::req(has_study())
+    f <- input$spec_import
+    dir <- tempfile("import")
+    dir.create(dir)
+    tmp <- file.path(dir, f$name)
     file.copy(f$datapath, tmp)
-    s <- guarded(import_spec(current_study(), tmp))
-    if (is.null(s)) return()
-    p <- s$planner
-    rv$p <- p
-    rv$want <- output_ids(p)[1L]
-    bump()
-    notify(sprintf(t("Imported %d reports (not saved yet)"),
-                   nrow(p$outputs)))
+    src <- if (length(tmp) == 1L) tmp else dir
+    pv <- guarded(preview_spec_import(rv$study$meta$study_id, src))
+    if (is.null(pv)) return()
+    rv$import <- list(path = src, preview = pv)
+    if (!pv$ok) {
+      return(shiny::showModal(shiny::modalDialog(
+        title = t("The files cannot be imported"),
+        shiny::p(t("Nothing was changed. Fix the copy and import it again.")),
+        spec_problems_table(pv$problems),
+        size = "l", easyClose = TRUE, footer = shiny::modalButton(t("Close")))))
+    }
+    if (!length(pv$parts)) {
+      return(notify(t("The files are the same as the study's: nothing to import.")))
+    }
+    shiny::showModal(shiny::modalDialog(
+      title = t("Import definition files"),
+      shiny::checkboxGroupInput("import_parts", t("Parts that differ (take in the ones checked)"),
+                                stats::setNames(pv$parts, pv$labels),
+                                selected = pv$parts, width = "100%"),
+      if (length(pv$outputs)) shiny::p(class = "small",
+        paste0(t("Reports"), ": ", paste(pv$outputs, collapse = ", "))),
+      if (!is.null(pv$problems) && nrow(pv$problems)) shiny::tagList(
+        shiny::p(class = "small text-warning", t("Warnings (the import is not stopped by them):")),
+        spec_problems_table(pv$problems)),
+      shiny::p(class = "small text-muted",
+               t("The study's files as they are now are copied to spec/.backup/<date>-<time>/ first; then the study is saved.")),
+      size = "l", easyClose = FALSE,
+      footer = shiny::tagList(
+        shiny::modalButton(t("Cancel")),
+        .btn("import_ok", t("Import the parts checked"), class = "btn-primary"))))
   })
-  output$spec_xlsx <- shiny::downloadHandler(
-    filename = function() paste0(rv$study$meta$study_id, "_spec.zip"),
-    content = function(file) {
-      d <- tempfile("spec")
-      export_spec(current_study(), d)
-      zip::zipr(file, list.files(d, full.names = TRUE))
-    })
+  shiny::observeEvent(input$import_ok, {
+    im <- rv$import
+    shiny::req(has_study(), !is.null(im))
+    parts <- input$import_parts
+    if (!length(parts)) return(notify(t("Check a part to import"), "warning"))
+    if (isTRUE(dirty())) {
+      return(notify(t("There are unsaved changes. Save first."), "warning"))
+    }
+    shiny::removeModal()
+    s <- guarded(import_spec_files(rv$study$meta$study_id, im$path, parts = parts))
+    rv$import <- NULL
+    if (is.null(s)) return()
+    rv$study <- s
+    rv$p <- rv$saved <- .study_spec_keys(s$planner)
+    rv$meta <- rv$saved_meta <- s$meta[.study_fields]
+    rv$spec <- list(status = "same")
+    rv$status_ver <- rv$status_ver + 1L
+    rv$ard_ver <- rv$ard_ver + 1L
+    rv$studies_ver <- rv$studies_ver + 1L
+    bump()
+    notify(sprintf(t("Imported: %s. The files before are in %s."),
+                   paste(.part_labels(parts), collapse = ", "),
+                   sub(paste0("^", s$path, "/"), "", s$backup)))
+  })
   output$ars_zip <- shiny::downloadHandler(
     filename = function() paste0(rv$study$meta$study_id, "_ars.zip"),
     content = function(file) {

@@ -1,18 +1,28 @@
 # tflplanner (development version)
 
-- **The app and the definition files edited outside it** (#274, phase
-  2).  A study whose files were changed outside tflplanner opens with a
-  notice and, on the Study tab, "What changed" (the files, the parts, the
-  reports).  Files that do not read show a card on the Study tab (file,
-  sheet, row, problem) with **Load from the definition files** and
-  **Write the files back from the last save**, and a mark beside the
-  study's name in the bar; the study cannot be saved until one is chosen.
-  A save after an outside edit asks to load the files first instead of
-  saving.  Loading keeps the unsaved changes, merged part by part; a part
-  both changed asks which to keep.  A draft made before the files changed
-  is merged the same way when the study opens.  **Load from the definition
-  files** is also in the Study tab's Files.  The Japanese guide says how
-  (section 3.1).
+- **Edit the definition outside the app: export, edit the copy, import**
+  (#274, phase 2).  **Export the definition files** (Study tab, Files)
+  gives a zip of `spec/` and `study.yml`, the ARD definition as an Excel
+  workbook; **Import definition files** takes an edited copy back
+  (workbooks known by their sheets, so a renamed copy works; `.yml`,
+  `.json` or the zip).  Before anything changes, the copy is checked in a
+  temporary folder: every reader, every cell that holds R (conditions,
+  derived columns, `args`, `post`, code, figure-design code) parsed, the
+  ARD definition and figure designs checked, and the programs of the
+  reports it touches written and parsed.  Errors list file, sheet, row,
+  column and problem and change nothing; warnings are shown and do not
+  stop it.  The parts that differ are listed to choose from; the study's
+  files are copied to `spec/.backup/<date>-<time>/` first, then the study
+  is saved.  R: `export_spec_files()`, `preview_spec_import()`,
+  `import_spec_files()`.  A direct edit of `spec/` is still found on open
+  and goes through the same checks: a study whose files changed opens
+  with a notice and "What changed"; files that do not read show a card
+  (and a mark in the bar) with **Load from the definition files** and
+  **Write the files back from the last save**, and the study cannot be
+  saved until one is chosen; a save after an outside edit asks to load
+  first; loading keeps unsaved changes and a draft, merged part by part
+  (a part both changed asks which to keep).  The Japanese guide's 3.1
+  says how.
 
 - **The definition files are the study's source** (#274, phase 1).  A
   save records each definition file's fingerprint (`spec/` and
