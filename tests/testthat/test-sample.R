@@ -9,7 +9,9 @@ test_that("the sample study is copied, registered and written", {
   expect_equal(normalizePath(dirname(s$path), "/"),
                normalizePath(root, "/"))
   expect_setequal(s$planner$outputs$output_id,
-                  c("T-14-1-1", "T-14-1-1S", "T-14-1-2", "T-14-2-1", "T-14-2-2",
+                  c("T-14-0-1", "T-14-1-1", "T-14-1-1S", "T-14-1-2", "T-14-1-3",
+                    "T-14-1-4", "T-14-2-1",
+                    "T-14-2-3", "T-14-2-2",
                     "T-14-3-1", "L-16-2-7", "F-14-2-1", "F-14-2-2", "F-14-2-3"))
   expect_true(nrow(s$planner$ard$analyses) > 0)
   # the figure made with the designer: the KM template, one layer added;
