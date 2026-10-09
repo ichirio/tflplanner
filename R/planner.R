@@ -127,7 +127,19 @@ set_codelist <- function(x, output_id, rows) {
 
 # The columns a sheet has, straight from rtfreporter, plus the free `note`.
 sheet_columns <- function(sheet) {
-  c(names(tflspec::tfl_table_spec()[[sheet]]), "note")
+  .sheet_columns_all()[[sheet]]
+}
+
+# Every sheet's columns, made once a session (the tflspec loaded does not
+# change): tfl_table_spec() builds every sheet each call, and a study read
+# from its state asks for them sheet by sheet (most of open_study()'s time)
+.sheet_cols_cache <- new.env(parent = emptyenv())
+.sheet_columns_all <- function() {
+  if (is.null(.sheet_cols_cache$cols)) {
+    sp <- tflspec::tfl_table_spec()
+    .sheet_cols_cache$cols <- lapply(sp, function(d) c(names(d), "note"))
+  }
+  .sheet_cols_cache$cols
 }
 
 .empty_sheet <- function(sheet) {

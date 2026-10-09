@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **A study opens in a fifth of a second** (#296, reported by the user).
+  Reading a study from its saved state built every sheet's columns with
+  `tflspec::tfl_table_spec()` again, sheet by sheet, on every open and
+  twice on every save; they are made once a session now.
+  `open_study()`: 1.8 s to 0.15 s (the sample study); a save that changes
+  nothing 5.6 s to 2.0 s; copying the sample (without its run) 9 s to 5
+  s.  The study list is drawn while the Study tab is hidden too, so a
+  study made from another tab is in it when the tab is shown.
+
 - **The definition files are the study's source** (#274, phase 1).  A
   save records each definition file's fingerprint (`spec/` and
   `study.yml`, md5 and size) in the study's state; opening the study
