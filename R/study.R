@@ -745,16 +745,8 @@ study_status <- function(study) {
   lay <- study_layout()
   setup <- .report_setup_recorded(root, p$outputs$output_id)
   now <- .study_setup_hash(root)
-  # the figures printing an ARD's numbers: the definition each was made
-  # from, that ARD's definition now, and whether it is made from it
-  need <- vapply(p$outputs$output_id, function(id)
-    tryCatch(.fig_ard_need(p, id), error = function(e) NA_character_), "")
-  ard_from <- .report_ard_recorded(root, p$outputs$output_id)
-  ard_st <- if (any(!is.na(need))) tryCatch(ard_status(study), error = function(e) NULL)
-  ard_now <- vapply(unique(stats::na.omit(need)), function(id) tryCatch(
-    tflspec::tfl_ard_spec_hash(structure(p$ard, class = "tfl_ard_spec"), id,
-                               dir = root, codelists = .study_codelists(p)),
-    error = function(e) NA_character_), "")
+  # the figures printing an ARD's numbers: to be made again because of it
+  ard_why <- .fig_ard_why(study, p$outputs$output_id)
   rows <- lapply(p$outputs$output_id, function(id) {
     info <- report_info(p, id)
     prog <- file.path(root, lay[["programs_tfl"]], info$program)
@@ -772,16 +764,7 @@ study_status <- function(study) {
     why <- c(
       if (isTRUE(.program_time(prog, root) > t_rtf)) "program",
       if (.setup_changed(setup[k], root, now)) "setup",
-      if (!is.na(need[k])) {
-        tb <- need[k]
-        built <- if (!is.null(ard_st)) ard_st$state[match(tb, ard_st$output_id)]
-        # not made from its definition now, or made from another one than
-        # the figure was
-        if (!identical(built, "built") ||
-            (!is.na(ard_from[k]) && nzchar(ard_from[k]) && !identical(ard_from[k], ard_now[[tb]]))) {
-          paste0("ard:", tb)
-        }
-      })
+      if (nzchar(ard_why[[k]])) ard_why[[k]])
     status <- if (pstate == "missing") "no program" else
       if (pstate == "generated") "unsaved" else
       if (pstate == "todo") "todo" else
