@@ -17,6 +17,24 @@
   3 s less a save).  A figure design file tflplanner did not write is no
   longer deleted by a save.
 
+- **The code lists put their labels on the data the programs make**
+  (tflspec >= 0.0.24.9068).  A report's program writes its code lists at
+  its head (`cl_race <- c(WHITE = "White", ...)`) and puts them on the
+  columns it reads (`set_levels(RACE = cl_race)`): each a factor in the
+  list's order, its values the labels, so the ARD (and a listing's or a
+  figure's data) holds what prints.  A value the list does not have stops
+  the program, naming the column and the value.  A listing's rows sort in
+  the code lists' order.
+- **`programs/study_helpers.R`**: the functions the programs call
+  (`set_levels()`, `tag_ard()`, `fmt_ard()`, `fmt_pvalue()`,
+  `keep_stats()`, `save_ard()`), written by tflplanner when the study is
+  saved (`study_helpers_code()`, tflspec's `tfl_helpers_code()`) and
+  sourced by `programs/study_setup.R` (its part 2).  The programs run
+  without tflspec.  The app's previews define them too.
+- The code lists' rows of `variable` (an earlier form of the variables'
+  headings) move to the variables sheet's `label` when a study opens, and
+  the app says so once.
+
 - **Four more sample reports** (SAMPLE-01, made by
   `data-raw/make-sample-study.R`):
   - T-14-1-3: age group and sex, its ARD cards' default statistics (n, N

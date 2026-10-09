@@ -228,8 +228,10 @@ try_ard_function <- function(study, name, dataset = NA_character_,
   call <- sprintf("tflspec::tfl_check_ard_function(%s, .data%s)", name,
                   if (nzchar(trimws(args))) paste0(", ", args) else "")
   script <- c(
-    # as the ARD programs' setup: cards, dplyr, tflspec
-    "suppressPackageStartupMessages({library(cards); library(dplyr); library(tflspec)})",
+    # as the ARD programs' setup: cards, dplyr, and the functions the
+    # programs call (programs/study_helpers.R's)
+    "suppressPackageStartupMessages({library(cards); library(dplyr)})",
+    tflspec::tfl_helpers_code(),
     "tryCatch({",
     vapply(file.path(study$path, files), function(f) sprintf("  source(%s)", q(f)), ""),
     if (!is.null(extra)) sprintf("  source(%s)", q(extra)),

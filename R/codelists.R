@@ -352,6 +352,37 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     if (old(p$sheets$codelists)) "codelists")
 }
 
+# The code list of `variable` (an earlier form of the variables' headings:
+# its values the variables' names): the variables sheet's labels now (a
+# label there wins), and out of the code lists -- the code lists say what
+# the data's values become.  The planner keeps how many it moved
+# (attribute "moved_headings"), for the app to say so once.
+.move_heading_rows <- function(p) {
+  cl <- p$sheets$codelists
+  if (is.null(cl) || !nrow(cl)) return(p)
+  k <- !is.na(cl$variable) & cl$variable == "variable"
+  if (!any(k)) return(p)
+  v <- p$sheets$variables
+  for (i in which(k & !is.na(cl$label))) {
+    hit <- which(v$variable %in% cl$value[i] & v$output_id %in% cl$output_id[i])
+    if (!length(hit)) {
+      v[nrow(v) + 1L, ] <- NA
+      hit <- nrow(v)
+      v$output_id[hit] <- cl$output_id[i]
+      v$variable[hit] <- cl$value[i]
+    }
+    if (is.na(v$label[hit[1L]])) v$label[hit[1L]] <- cl$label[i]
+  }
+  p$sheets$variables <- v
+  p$sheets$codelists <- cl[!k, , drop = FALSE]
+  attr(p, "moved_headings") <- sum(k)
+  p
+}
+
+.moved_headings_msg <- paste(
+  "The code lists' rows of `variable` (the variables' headings) are the table's labels now",
+  "(step 3, a variable's label): moved there.  Save the study to keep it.")
+
 .old_format_msg <- paste(
   "This study is in an old format: its analysis data and code lists are the whole study's, not a report's.",
   "Make it again from the sample, or make a new study.")

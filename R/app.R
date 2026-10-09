@@ -1375,6 +1375,10 @@ app_server <- function(input, output, session, start) {
     if (length(.old_format(s$planner))) {
       shiny::showNotification(t(.old_format_msg), type = "warning", duration = NULL)
     }
+    # the variables' headings moved from the code lists: said once
+    if (!is.null(attr(s$planner, "moved_headings"))) {
+      shiny::showNotification(t(.moved_headings_msg), type = "message", duration = NULL)
+    }
     offer_draft(s)
   }
   # a draft left by a session that did not save: take it back, or drop it

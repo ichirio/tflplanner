@@ -1174,7 +1174,7 @@ codelists: code list,コードリスト (codelists)
 "Table: the study's code list, one row a value of a variable -- the text it prints as and its place (plan_labels(), plan_levels()). A report's own rows replace the defaults of the same variable and value. A variable's `levels` on the variables sheet, when given, is the order instead.",表: 試験のコードリスト。1 行 = 変数の 1 つの値 -- 表示する文字と並び順（plan_labels()、plan_levels()）。帳票の行は、同じ変数・値の既定の行を置き換える。variables シートの `levels` があれば、そちらが順序になる。
 The variable (an analysis variable or a column key).,変数（解析変数か列のキー）。
 A value as the data have it.,データにある値。
-What prints for the value; blank: the value.,その値の表示; 空欄 = 値そのもの。
+"What the value is in the data the program makes, and so what prints; blank: the value.",プログラムが作るデータの中でその値がなるもの（そのまま表示にもなる）; 空欄 = 値そのもの。
 "Its place among the variable's values (a number); blank: after the numbered ones, in the sheet's order.",その変数の値の中での位置（数字）; 空欄 = 番号付きの後、シートの順。
 Make the table,表を作る
 Make the figure,図を作る
@@ -2325,7 +2325,8 @@ Its code lists,そのコードリスト
 As the variable (its name in this report's data),変数名（この帳票のデータでの名前）
 %s's code lists: %s copied (save to keep them).,%s のコードリスト：%s を写しました（保存すると残ります）。
 ARD and table,ARD と表
-"A report's code lists, one row a value of a variable -- the text it prints as and its place (plan_labels(), plan_levels()). Every row names its report in `output_id` (a blank one is an error: copy the rows into each report that uses them). A variable's `levels` on the variables sheet, when given, is the order in the table instead. The code list of `variable` (its values the variables' names) gives the variables' labels, where the variables sheet's `label` gives none. The ARD too: a report's ARD program makes factors of the columns it lists that its analyses read (by, strata, variables) before any analysis.",帳票のコードリスト。1 行 = 変数の 1 つの値で、表示する文字と順番（plan_labels()、plan_levels()）。どの行も output_id に帳票を書く（空欄はエラー：使う帳票ごとに行を写す）。variables シートの levels を書いたときは、表ではそちらの順になる。variable のコードリスト（値は変数名）は、variables シートの label が無い変数の見出しになる。ARD でも使う：帳票の ARD プログラムは、解析が読む列（by、strata、variables）のうちここにあるものを、解析の前に factor にする。
+"A report's code lists, one row a value of a variable -- its place and what it is in the data the report's program makes (the ARD, a listing's or a figure's data): the program puts them on the columns it reads (cl_<variable>, set_levels()), each a factor in the list's order, its values the labels. A value the list does not have stops the program. Every row names its report in `output_id` (a blank one is an error: copy the rows into each report that uses them). A variable's `levels` on the variables sheet, when given, is the order in the table instead; a variable's heading is the variables sheet's `label`.",帳票のコードリスト。1 行が変数の 1 つの値で、その並びの位置と、帳票のプログラムが作るデータ（ARD、Listing や図のデータ）の中でその値がなるもの（ラベル）。プログラムは読む列にこれを当てます（cl_<変数>、set_levels()）。各列はリストの順の factor になり、値はラベルになります。リストに無い値があるとプログラムは止まります。どの行も output_id に帳票を書きます（空欄はエラー。使う帳票ごとに行を写してください）。variables シートの levels があれば、表の中の順はそちらです。変数の見出しは variables シートの label です。
+"The code lists' rows of `variable` (the variables' headings) are the table's labels now (step 3, a variable's label): moved there.  Save the study to keep it.",コードリストの variable の行（変数の見出し）は、表のラベル（手順 3 の変数のラベル）に移しました。残すには試験を保存してください。
 "This study is in an old format: its analysis data and code lists are the whole study's, not a report's. Make it again from the sample, or make a new study.",この試験は古い形式です（解析データ・コードリストが帳票のものではなく、試験全体のものです）。サンプルから新しく作り直すか、新しい試験を作ってください。
 "An old format: the analysis data have no report. Make the study again from the sample, or make a new study.",古い形式の試験です（解析データが帳票のものではありません）。サンプルから作り直すか、新しい試験を作ってください。
 The checks' messages,検査のメッセージ（詳細）
