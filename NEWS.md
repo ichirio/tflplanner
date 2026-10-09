@@ -1,5 +1,23 @@
 # tflplanner (development version)
 
+- **An official run of some of the reports** (#301).  The Runs tab lists
+  the reports of a run, all ticked (All / None); a report unticked is left
+  out -- its ARD program and its report program -- and a report the run
+  makes that reads the ARD of one left out is said before the run.
+  `run_batch(exclude = )` does it in R (`only =` stays), the runner takes
+  `--exclude=<program>`, and the batch folder's `batch.txt` lists what
+  was left out (the runs table too).
+- **Named batches** (#301; #299 D6): a set of reports an official run
+  takes by name -- Topline, Interim Analysis, Final.  A report's batches
+  are the report list's new `batches` column (` | ` between several), so
+  a later TOC import can fill it; `batch_sets()`, `set_batch()`,
+  `rename_batch()`, `remove_batch()`.  `programs/batch.R` carries them as
+  `.batch_sets`; `Rscript programs/autoexec_all.R --batch Topline` and
+  `run_batch(batch = "Topline")` run one, into
+  `runs/<date>_<time>_all_Topline/`, its `batch.txt` naming it.  In the
+  Runs tab: choose a named batch (its reports ticked), save the ticks
+  under a name (or over one), rename, delete.  The full run is every
+  report and has no name.
 - **Edit the definition outside the app: export, edit the copy, import**
   (#274, phase 2).  **Export the definition files** (Study tab, Files)
   gives a zip of `spec/` and `study.yml`, the ARD definition as an Excel
