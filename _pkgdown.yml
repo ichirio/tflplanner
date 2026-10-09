@@ -62,6 +62,7 @@ reference:
       - create_study
       - create_sample_study
       - save_study
+      - reload_from_spec
       - export_spec
       - export_ars
       - study_layout
@@ -79,6 +80,7 @@ reference:
       - import_analysis_data
       - set_report_population
       - ard_setup_code
+      - study_helpers_code
       - run_ard
       - ard_view
       - ard_status

@@ -191,7 +191,7 @@ fetch_ard <- function(study, output_id, timeout = 300,
     have <- file.exists(out) && any(readRDS(out)$output_id == output_id)
     if (!have) {
       stop("The study ARD has nothing for '", output_id,
-           "' yet: build it in step 2 (ARD) first.", call. = FALSE)
+           "' yet: build it in step 1 (ARD) first.", call. = FALSE)
     }
   }
   tmp <- tempfile("fetch")
@@ -205,10 +205,13 @@ fetch_ard <- function(study, output_id, timeout = 300,
   proc <- if (!is.na(o$process_code)) .code_block(o$process_code) else
     if (!.makes_data(ard_code)) "data <- normalize_ard(ard)" else ""
   writeLines(enc2utf8(proc), f_proc, useBytes = TRUE)
+  # the functions the programs call (programs/study_helpers.R's)
+  f_helpers <- file.path(tmp, "study_helpers.R")
+  writeLines(tflspec::tfl_helpers_code(), f_helpers)
   q <- function(x) encodeString(normalizePath(x, "/", FALSE), quote = "\"")
   script <- c(
     "suppressPackageStartupMessages(library(rtfreporter))",
-    "suppressPackageStartupMessages(library(tflspec))",
+    paste0("sys.source(", q(f_helpers), ", envir = globalenv())"),
     ".e <- new.env(parent = globalenv())",
     paste0("eval(parse(", q(f_ard), ", encoding = \"UTF-8\"), envir = .e)"),
     ".res <- list(ard = get0(\"ard\", .e, inherits = FALSE), data = NULL,",

@@ -19,6 +19,47 @@
 # part 2 is written again.
 
 .study_setup_file <- "study_setup.R"
+.study_helpers_file <- "study_helpers.R"
+
+# programs/study_helpers.R, relative to the study folder: next to the setup
+# that sources it
+.study_helpers_path <- function() {
+  file.path(dirname(study_layout()[["programs_ard"]]), .study_helpers_file)
+}
+
+#' The functions a study's programs call
+#'
+#' `programs/study_helpers.R`: the code of the functions the generated
+#' programs call as they run -- `set_levels()` (a report's code lists on its
+#' data: each listed column a factor in the list's order, its values the
+#' labels; a value not listed stops the program), `tag_ard()`, `fmt_ard()`,
+#' `fmt_pvalue()`, `keep_stats()` and `save_ard()` -- as tflspec gives them
+#' ([tflspec::tfl_helpers_code()]).  The study's setup sources it, so its
+#' programs run without tflspec.  Saving the study writes it again when
+#' tflspec's have changed (one edited by hand is copied to
+#' `programs/.edited/` first).
+#'
+#' @param date The date stamped in the banner.
+#' @return The code, one element per line.
+#' @export
+study_helpers_code <- function(date = Sys.Date()) {
+  c(.banner(
+      paste("Program    :", .study_helpers_path()),
+      "The functions the study's programs call: the code lists on a data,",
+      "the ARD's ids and formats, the study ARD.  The study's setup sources it.",
+      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
+             " (tflspec ", utils::packageVersion("tflspec"), "), ",
+             format(date, "%Y-%m-%d"))),
+    "",
+    tflspec::tfl_helpers_code())
+}
+
+# write programs/study_helpers.R (its row of what the save did)
+.save_study_helpers <- function(root) {
+  f <- file.path(root, .study_helpers_path())
+  data.frame(file = f, status = .put_program(study_helpers_code(), f, root),
+             stringsAsFactors = FALSE)
+}
 
 # programs/study_setup.R, relative to the study folder: next to the
 # folders of the ARD and report programs
@@ -114,6 +155,9 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
     paste(nm(paths), "<-", vapply(lay, val, "")),
     "",
     paste(nm(ids), "<-", vapply(.study_fields, function(k) val(meta[[k]]), "")),
+    "",
+    "# the functions the programs call (tflplanner writes them)",
+    sprintf("source(%s)", encodeString(.study_helpers_path(), quote = "\"")),
     "")
   c(.setup_marker_study,
     paste("#  Checksum   :", .body_hash(code)),

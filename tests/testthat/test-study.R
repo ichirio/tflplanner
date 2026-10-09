@@ -63,7 +63,7 @@ test_that("a new study has its layout and is registered", {
   expect_equal(tflplanner_config()$last_study, "ABC-101")
 })
 
-test_that("a study opens as it was last saved, not from its workbooks", {
+test_that("a study whose workbooks are gone opens as it was last saved", {
   local_home()
   s <- create_study("S1", planner = sample_planner())
   s$planner$outputs$data_code[1] <- "data <- normalize_ard(my_ard)\n# 2"
@@ -73,9 +73,11 @@ test_that("a study opens as it was last saved, not from its workbooks", {
   s$meta$title <- "Title"
   s <- save_study(s)
 
-  # the workbooks in spec/ are an output: editing them changes nothing
+  # the workbooks gone: they do not read, so the study opens as last saved
+  # (and cannot be saved until they are written back, #274)
   unlink(file.path(s$path, "spec"), recursive = TRUE)
-  o <- open_study("S1")
+  o <- suppressMessages(open_study("S1"))
+  expect_identical(o$spec$status, "invalid")
   expect_identical(o$planner$sheets, s$planner$sheets)
   expect_identical(o$planner$outputs, s$planner$outputs)
   expect_identical(o$planner$setup, s$planner$setup)
@@ -131,8 +133,8 @@ test_that("saving writes the programs from the definition, an edited one too", {
   local_home()
   s <- create_study("S1", planner = sample_planner())
   # the workbooks, the programs, batch.R, the two autoexec programs,
-  # fig_setup.R, report_setup.R, study_setup.R
-  expect_equal(sum(s$files$status == "written"), 2 + 5 + 6)
+  # fig_setup.R, report_setup.R, study_setup.R, study_helpers.R
+  expect_equal(sum(s$files$status == "written"), 2 + 5 + 7)
   s0 <- save_study(s)
   expect_true(all(s0$files$status == "unchanged"))
   f <- file.path(s$path, "programs", "tfl", "DM.R")
@@ -187,14 +189,12 @@ test_that("a study runs end to end and reports what it produced", {
   p$setup <- "library(cards)"
   p$outputs$data_code[1] <- paste(
     "adsl <- readRDS(\"data/adam/adsl.rds\")",
-    "adsl <- transform(adsl, TRT01P = \"XXXXX\", HTBL = HEIGHTBL)",
     "ard <- ard_stack(",
-    "  adsl, .by = TRT01P,",
-    "  ard_continuous(variables = c(AGE, HTBL),",
+    "  adsl, .by = TRT01A,",
+    "  ard_continuous(variables = c(AGE, WEIGHTBL),",
     "                 statistic = ~ continuous_summary_fns(",
     "                   c(\"N\", \"mean\", \"sd\", \"median\", \"min\", \"max\"))),",
-    "  ard_categorical(variables = c(AGEGR1, SEX, ETHNIC),",
-    "                  statistic = ~ c(\"n\", \"p\")),",
+    "  ard_categorical(variables = c(AGEGR1, SEX, RACE)),",
     "  .total_n = TRUE)",
     "data <- normalize_ard(ard)", sep = "\n")
   p <- add_output(p, "L1", type = "listing")
@@ -322,13 +322,19 @@ test_that("unregistering and registering again gives the study back as it was", 
 test_that("a study whose spec/ changed after unregistering comes back from spec/", {
   home <- local_home()
   s <- suppressMessages(create_study("UR-2"))
-  s$planner <- add_output(s$planner, "T-1", type = "table")
+  s$planner <- add_output(s$planner, "T-1", type = "table", description = "kept")
   s <- suppressMessages(save_study(s, home = home))
   unregister_study("UR-2")
-  kept <- file.path(s$path, ".tflplanner", "state.json")
-  Sys.setFileTime(kept, Sys.time() - 3600)
-  r <- register_study(s$path)
+  # the report list edited in Excel while the study was off the list
+  f <- file.path(s$path, "spec", "report_spec.xlsx")
+  wb <- openxlsx::loadWorkbook(f)
+  d <- openxlsx::read.xlsx(wb, "_tflplanner")
+  d$description[d$output_id %in% "T-1"] <- "edited"
+  openxlsx::writeData(wb, "_tflplanner", d)
+  openxlsx::saveWorkbook(wb, f, overwrite = TRUE)
+  r <- suppressMessages(register_study(s$path))
   expect_identical(r$planner$outputs$output_id, "T-1")
+  expect_identical(r$planner$outputs$description, "edited")
   # the kept state is in the history, not lost
   expect_true(length(list.files(file.path(.store_dir("UR-2", home), "history"))) >= 1L)
   expect_false(dir.exists(file.path(s$path, ".tflplanner")))

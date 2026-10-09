@@ -375,7 +375,7 @@ Preview (as saved),プレビュー（保存される図）
 Redraw,再描画
 Checks,チェック
 Remove the design?,デザインを削除しますか？
-"The figure's plot is then its data code again (step 3, Data code), written by hand.",図のプロットは再び手書きのデータ準備コード（段 3）になります。
+"The figure's plot is then its data code again (step 2, Data code), written by hand.",図のプロットは再び手書きのデータ準備コード（段 2）になります。
 Remove,削除
 default,デフォルト
 figure type,図の種類
@@ -385,7 +385,6 @@ Not drawn yet.,まだ描画していません。
 No problems found.,問題は見つかりませんでした。
 Parameter (PARAMCD),パラメータ（PARAMCD）
 Group (treatment),群（投与群）
-Analysis set flag,解析対象集団フラグ
 Time,時間
 Censor (1 = censored),打ち切り（1 = 打ち切り）
 Time unit,時間の単位
@@ -439,7 +438,6 @@ Show advanced settings,詳細設定も表示
 Read a dataset,データセットを読む
 Join variables,変数を結合
 Keep a parameter,パラメータで絞る
-Keep an analysis set,解析対象集団で絞る
 Keep rows (condition),条件で絞る
 Derive a variable,変数を作る
 Change a time's unit,時間の単位を変える
@@ -633,7 +631,6 @@ A waterfall usually marks +20% (progression) and -30% (response).,Waterfall で�
 The bars' numbers on the x axis say nothing; they are usually hidden.,X 軸の棒の番号は意味がないので、通常は非表示にします。
 No layer: nothing is drawn.,レイヤーがありません。何も描かれません。
 No dataset is read.,データセットを読んでいません。
-"No analysis set: every row of the dataset is used. Keep the analysis set's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。
 The figure is taller than wide; a landscape page usually wants the reverse.,図が縦長です。横向きのページでは通常、横長にします。
 Nominal time,名目時間
 Counted as response,奏効とする反応
@@ -710,7 +707,7 @@ Choose a Listing report on the left.,左で Listing の帳票を選んでくだ�
 This is a Table: it is made in Table (builder) and Details (sheets).,これは表です。「表（ビルダー）」と「詳細（シート）」で作ります。
 This is a Figure: it is made in Make the figure.,これは図です。「図を作る」で作ります。
 Written by hand,手書きの図
-"This figure's plot is its data code (step 3, Data code), written with ggplot2: it leaves `plot`. Its program reads these datasets first.",この図のプロットは段 3 のデータ準備コード（ggplot2 で書き、`plot` を残す）です。プログラムは先にこれらのデータセットを読みます。
+"This figure's plot is its data code (step 2, Data code), written with ggplot2: it leaves `plot`. Its program reads these datasets first.",この図のプロットは段 2 のデータ準備コード（ggplot2 で書き、`plot` を残す）です。プログラムは先にこれらのデータセットを読みます。
 Figures are designed here: choose a Figure report on the left.,ここでは図を設計します。左で図の帳票を選んでください。
 "This figure's plot is written by hand (its data code, Reports tab). To design it here instead, start a design from a template: its data steps, statistics, settings and layers are filled at once, then each can be changed.",この図のプロットは手書きのコードです（帳票タブのデータコード）。ここで設計するには、テンプレートからデザインを開始してください。データ加工・統計量・設定・レイヤーが一括で入り、その後 1 つずつ変更できます。
 Redraw on change,変更したら再描画
@@ -724,15 +721,15 @@ Changes that were not saved,保存されていない変更
 Discard,捨てる
 Take them back,戻す
 "The last time this study was open, some changes were not saved. Take them back (they are not saved until you save), or discard them?",前回この試験を開いていたとき、保存されていない変更がありました。戻しますか（戻しても、保存するまでは保存されません）、それとも捨てますか？
-Not in this report's ARD: add %s to its analysis in step 2 (ARD).,この帳票の ARD にありません。段 2（ARD）で、この解析に %s を足してください。
+Not in this report's ARD: add %s to its analysis in step 1 (ARD).,この帳票の ARD にありません。段 1（ARD）で、この解析に %s を足してください。
 (the ARD has no %s),（ARD に %s がありません）
-"Greyed statistics are not in this report's ARD: add them to its analysis in step 2 (ARD), then read the ARD again.",グレーの統計量は、この帳票の ARD にありません。段 2（ARD）でこの解析に足してから、ARD を読み直してください。
+"Greyed statistics are not in this report's ARD: add them to its analysis in step 1 (ARD), then read the ARD again.",グレーの統計量は、この帳票の ARD にありません。段 1（ARD）でこの解析に足してから、ARD を読み直してください。
 Time shown in (the data's time is in days),表示する時間の単位（データの時間は日数として読みます）
 The builder could not read the form: %s,Builder がフォームを読めませんでした: %s
 "Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Runs tab. Choose a row to see its log in the latest official run.",プレビュー（この帳票の ARD）は、1 つの帳票を作業用の試験 ARD に入れ、ログは残しません。試験 ARD 全体の正式実行（ログ logrx 付き）は「実行」タブにあります。行を選ぶと、最新の正式実行でのログを表示します。
 ARD (this report),この帳票の ARD
 "Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills.",保存し、この帳票の ARD プログラムを実行して試験 ARD に入れ、表ビルダーと入力支援のために読み取ります。
-"Makes this report's ARD (as Preview in step 2), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance.",この帳票の ARD を作り（段 2 のプレビューと同じ）、試験フォルダから 1 と 2 を実行して、入力支援のために変数・水準・統計量を読み取ります。
+"Makes this report's ARD (as Preview in step 1), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance.",この帳票の ARD を作り（段 1 のプレビューと同じ）、試験フォルダから 1 と 2 を実行して、入力支援のために変数・水準・統計量を読み取ります。
 Preview this table's ARD,この表の ARD をプレビュー
 not made yet,未作成
 outdated: the ARD definition has changed since it was made,古い：作成後に ARD の定義が変わりました
@@ -753,10 +750,10 @@ Start the table from the data (writes its ARD definition and opens the builder),
 "No data files yet: put them on the Data tab (data/adam), then add the table.",データファイルがまだありません。「データ」タブに置いて（data/adam）から、表を追加してください。
 numbers,数値
 counts,度数
-"Analysis set (its flag = ""Y"")","解析対象集団（フラグ = ""Y""）"
+"Population (its flag = ""Y"")","解析対象集団（フラグ = ""Y""）"
 Group (the columns),群（列）
 "Variables (the rows, in order)",変数（行、この順）
-"Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (steps 2 and 3).",数値は要約統計量、それ以外は度数と割合になります。あとからすべて変えられます（段 2・段 3）。
+"Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (steps 1 and 2).",数値は要約統計量、それ以外は度数と割合になります。あとからすべて変えられます（段 1・段 2）。
 Choose the data,データを選んでください
 In the data catalog now: %s,データカタログに入りました: %s
 %s: analyses of no report yet. Add the report to the Report list to make its table.,%s: まだ帳票の無い解析です。表を作るには、帳票一覧で帳票を追加してください。
@@ -778,7 +775,7 @@ New analysis,新しい解析
 Analysis %s of %s. A click on another analysis above edits that one.,%2$s の解析 %1$s。上の一覧で別の解析を押すと、その解析を編集します。
 Analysis ID,解析 ID
 What to compute,計算するもの
-Analysis set,解析対象集団
+Population,解析対象集団
 Subset (an R condition),部分集団（R の条件式）
 The data of this analysis cannot be read (no file in the data catalog): the choices are the row's own.,この解析のデータを読めません（データカタログにファイルがありません）。候補は行にある値だけです。
 Give the analysis an ID.,解析 ID を入れてください。
@@ -795,7 +792,7 @@ This table has a hierarchy (SOC / PT): the builder handles summary tables for no
 Open without saving,保存せずに開く
 Save and open,保存して開く
 Add the company's study defaults (only what is missing),会社標準の既定を入れる（無い項目だけ）
-"For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, the font, analysis sets and data catalog. Nothing already there is changed.",既定なしで作られた試験のために: 表の見た目（見出し列、空行、列見出し、幅）、ヘッダー・フッター、フォント、解析対象集団、データカタログ。すでにあるものは変えません。
+"For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, the font, populations and data catalog. Nothing already there is changed.",既定なしで作られた試験のために: 表の見た目（見出し列、空行、列見出し、幅）、ヘッダー・フッター、フォント、解析対象集団、データカタログ。すでにあるものは変えません。
 The study has every company default already.,会社標準の既定はすべて入っています。
 Added the company's defaults: %s (save to keep them),会社標準の既定を入れました: %s（保存すると残ります）
 the method's default (below),メソッドの既定（下）
@@ -809,7 +806,7 @@ Start the listing from the data (writes its columns and shows it),データか�
 "No data files yet: put them on the Data tab (data/adam), then add the listing.",データファイルがまだありません。「データ」タブに置いて（data/adam）から、Listing を追加してください。
 Group (ordered by first; optional),群（最初に並べる、任意）
 Columns (in order),列（この順）
-"Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards in step 3 (Content).",各列の見出しはデータのラベルです。並べ順は群・被験者・開始日です。あとから段 3（コンテンツ）ですべて変えられます。
+"Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards in step 2 (Content).",各列の見出しはデータのラベルです。並べ順は群・被験者・開始日です。あとから段 2（コンテンツ）ですべて変えられます。
 "The listing has no columns yet: add them to the table of columns (below the form), or add the listing again with 'Start the listing from the data'.",Listing にまだ列がありません。フォームの下の列の表に足すか、「データから Listing を始める」で追加し直してください。
 e.g.,例:
 The ARD has no subjects per %s: a header's (N=n) prints NA.,ARD に %s ごとの被験者数がありません。見出しの (N=n) は NA になります。
@@ -822,8 +819,8 @@ When,日時
 Why,理由
 First page (sample),1 ページ目（見本）
 (the table),（表）
-(the figure: see step 3),（図: 段 3 で）
-(the listing: see step 3),（Listing: 段 3 で）
+(the figure: see step 2),（図: 段 2 で）
+(the listing: see step 2),（Listing: 段 2 で）
 Report,帳票
 "Rows for every report (ARD, Page)",すべての帳票の行（ARD・ページ）
 Getting started,はじめに
@@ -882,7 +879,7 @@ method-note:wilcox,by の 2 群の Wilcoxon 順位和検定
 method-note:chisq,と by のカイ二乗検定 (variables)
 method-note:fisher,と by の Fisher の正確検定 (variables)
 method-note:custom,code に書いた任意の R コード。data と population が使えます
-"A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 3, Data code), if any, changes the data after the condition.",Listing を定義します：データ（カタログのデータセット・条件・並び順）と列。段 3 のデータ準備コードがあれば、条件の後にデータを加工します。
+"A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 2, Data code), if any, changes the data after the condition.",Listing を定義します：データ（カタログのデータセット・条件・並び順）と列。段 2 のデータ準備コードがあれば、条件の後にデータを加工します。
 Done. Restart R (in RStudio: Session > Restart R) before using tflplanner again.,完了しました。tflplanner を使う前に R を再起動してください（RStudio では Session > Restart R）。
 Install from %s:,%s から入れます:
 "R was not found. Install R, then try again.",R が見つかりません。R をインストールしてから、もう一度試してください。
@@ -914,7 +911,7 @@ Look for a newer version when tflplanner starts,起動時に新しい版を確�
 Repeated within (strata),層（この中で繰り返す）
 Percentages of (denominator),% の分母
 the method's default,メソッドの既定
-the analysis set,解析対象集団
+the population,解析対象集団
 within a row,行の中で
 within a column,列の中で
 of the whole table,表全体
@@ -934,7 +931,6 @@ A whole number.,整数。
 SDTM or ADaM (for people and ARS; not read by the program).,SDTM か ADaM（人と ARS のため。プログラムは読まない）。
 "Its file, relative to the study folder; the reader follows the extension: .rds, .xpt, .sas7bdat, .csv, .parquet.",ファイル（試験フォルダからの相対パス）。拡張子で読み方が決まる：.rds、.xpt、.sas7bdat、.csv、.parquet。
 "New columns, NAME = R expression, | between them (transform()); blank: none.",新しい列。NAME = R の式 を | 区切りで（transform()）。空欄 = なし。
-"ARD: the analysis sets, one row a population.",ARD：解析対象集団。1 行 = 1 集団。
 "The population's name, used by analyses.",集団の名前。analyses から使う。
 The dataset its subjects come from.,被験者を取るデータセット。
 An R condition on that dataset choosing the subjects; blank: every row.,そのデータセットで被験者を選ぶ R の条件。空欄 = すべての行。
@@ -944,13 +940,11 @@ The analysis's id within its report; an ARD column.,帳票の中での解析の 
 A name a person reads (for ARS and the GUI); blank: none.,人が読む名前（ARS と GUI 用）。空欄 = なし。
 "What is computed: a keyword of tfl_ard_methods() (continuous, categorical, hierarchical ...), any pkg::function (cards::, cardx::), or a function of the study's own that the study key source loads.",何を計算するか：tfl_ard_methods() のキーワード（continuous、categorical、hierarchical など）、任意の pkg::function（cards::、cardx::）、または study のキー source が読み込む試験独自の関数。
 The data analysed; blank: the population's own dataset. Blank when `data` is given.,解析するデータ。空欄 = 集団のデータセット。`data` を指定したときは空欄。
-"The analysis set: the data is restricted to its subjects; blank: no restriction (population is NULL), or the population of `data`.",解析対象集団：データをその被験者に絞る。空欄 = 絞らない（population は NULL）、または `data` の集団。
 "An R condition on the data, applied after the population (on an analysis data: after its own conditions); blank: every row.",データに対する R の条件。集団で絞った後に効く（解析データでは、その条件の後）。空欄 = すべての行。
 "Grouping variables (cards' by), | between them; blank: none.",群の変数（cards の by）。| 区切り。空欄 = なし。
 "Variables the analysis is repeated within (cards' strata: a subgroup, a parameter by visit), | between them; blank: none.",この中で解析を繰り返す変数（cards の strata：部分集団、検査項目×時点など）。| 区切り。空欄 = なし。
 "The variables analysed (cards' variables), | between them.",解析する変数（cards の variables）。| 区切り。
 "For continuous / categorical / missing: the statistics computed, in order (tfl_ard_statistics()); for other methods: the statistics kept of what the method gives; | between them; blank: the method's default.",continuous / categorical / missing では計算する統計量（この順。tfl_ard_statistics()）、ほかの method では結果のうち残す統計量。| 区切り。空欄 = method の既定。
-"What percentages are of: population (the analysis set; hierarchical and max take it anyway), row / column / cell (cards), another population, a dataset (its records of the analysis set's subjects), or an analysis data (as it is: one row a subject and phase gives the N of each phase); blank: the method's default.",% の分母：population（解析対象集団。hierarchical と max は指定しなくてもこれ）、row / column / cell（cards）、別の集団、データセット（その中の、解析対象集団の被験者の行）、または解析データ（そのまま。被験者 × フェーズで 1 行にすれば、フェーズごとの N）。空欄 = method の既定。
 "Display formats, statistic=format, | between them; VAR:statistic=format for one variable. xx.x = one decimal (the x's count only after the point), xx.x% = a proportion as a percent, a number = decimals, pvalue = <0.001 or 3 decimals; blank: the statistic's default.",表示書式。統計量=書式 を | 区切りで。変数ごとは VAR:統計量=書式。xx.x = 小数 1 桁（小数点より後の x の数だけが効く）、xx.x% = 割合を % で、数字 = 小数の桁数、pvalue = <0.001 か小数 3 桁。空欄 = 統計量の既定。
 "More arguments of the call, as R (data and population are bound), in any order; refused if not R. An argument a column gives (by, variables, strata, denominator, statistic) may not be given here too; blank: none.",呼び出しに足す引数（R で書く。data と population が使える）。順序は自由。R として読めなければエラー。列で書ける引数（by、variables、strata、denominator、statistic）はここに重ねて書けない。空欄 = なし。
 method = custom only: the R code that gives the ARD (data and population are bound).,method = custom のときだけ：ARD を返す R のコード（data と population が使える）。
@@ -965,7 +959,6 @@ What joins several column keys into a column name (plan_columns(sep = )); the co
 "TRUE, FALSE, or the sort keys in order, - in front for descending (plan_sort()); blank: the data's order.",TRUE、FALSE、または並べ替えキーを順に（降順は前に -）（plan_sort()）。空欄 = データの順。
 The statistic totalled across columns for a frequency order (plan_sort(stat = )).,頻度順に並べるとき列方向に合計する統計量（plan_sort(stat = )）。
 What a cell no template could fill prints (plan_cells(na = )); blank: empty.,どのテンプレートも埋められなかったセルの表示（plan_cells(na = )）。空欄 = 空。
-"Which population {n} in the column header is, for a table split by page (a lab parameter): page (those with that page's data), table (the analysis set), or both as n = page | N = table for {n} and {N}; blank: page (warns when both exist and differ). Both must be in the ARD.",ページ（検査項目など）で分けた表で、列見出しの {n} がどの母集団か：page（そのページのデータがある人）、table（解析対象集団）、両方なら n = page | N = table で {n} と {N}。空欄 = page（両方あって食い違えば警告）。どちらも ARD に入れておくこと。
 "Table: one row a variable (an analysis variable, a column key or the label column).",表：1 行 = 1 変数（解析変数、列キー、ラベル列）。
 The variable's name.,変数名。
 What prints for its name (plan_labels()); blank: the name.,変数名の代わりに表示する文字（plan_labels()）。空欄 = 変数名。
@@ -990,7 +983,7 @@ How groups print (plan_row_group(mode = )): value / indent / ...; blank: the def
 "TRUE, or the columns (names or positions, | between them) whose repeated values print once (plan_row_group(collapse = )); blank: none.",TRUE、または繰り返す値を 1 度だけ表示する列（名前か位置。| 区切り）（plan_row_group(collapse = )）。空欄 = なし。
 TRUE / FALSE: one page per value of group_col (plan_paginate_group()); blank: FALSE.,TRUE / FALSE：group_col の値ごとに 1 ページ（plan_paginate_group()）。空欄 = FALSE。
 "TRUE / FALSE: with group_page, FALSE leaves the group column unprinted (plan_paginate_group(keep = )); blank: TRUE.",TRUE / FALSE：group_page のとき、FALSE でグループの列を表示しない（plan_paginate_group(keep = )）。空欄 = TRUE。
-Where blank rows go: a named rule such as between_groups (plan_blanks(where = )); blank: none.,空行を入れる場所：between_groups などの名前付きの規則（plan_blanks(where = )）。空欄 = なし。
+"Where blank rows go: a named rule such as between_groups, or row positions -- a blank after each, 0 before the first row, -1 after the last (0 | 5 | -1) (plan_blanks(where = )); blank: none.",空行を入れる場所：between_groups などの名前付きの規則、または行の位置（その行の後に空行。0 は最初の行の前、-1 は最後の行の後。例 0 | 5 | -1）（plan_blanks(where = )）。空欄 = なし。
 TRUE / FALSE: a blank row before the first row (plan_blanks(first = )); blank: the default.,TRUE / FALSE：最初の行の前に空行（plan_blanks(first = )）。空欄 = 既定。
 TRUE / FALSE: a blank row after the last row (plan_blanks(last = )); blank: the default.,TRUE / FALSE：最後の行の後に空行（plan_blanks(last = )）。空欄 = 既定。
 TRUE / FALSE: blank rows count towards pages_max_rows (plan_blanks(counted = )); blank: the default.,TRUE / FALSE：空行を pages_max_rows に数える（plan_blanks(counted = )）。空欄 = 既定。
@@ -1154,7 +1147,7 @@ Your studies and tflplanner's settings are not touched.,試験と tflplanner の
 Report title,タイトル
 Saving...,保存中…
 The plot written by hand (ggplot2),手書きのプロット（ggplot2）
-"The code that makes the plot (edit it in step 3, Data code)",プロットを作るコード（段 3 のデータ準備コードで編集します）
+"The code that makes the plot (edit it in step 2, Data code)",プロットを作るコード（段 2 のデータ準備コードで編集します）
 Column variables,列の変数
 "Order of the column variables, outermost first (drag)",列の変数の順序（外側から。ドラッグ）
 Order of the columns of %s (drag),%s の列の順序（ドラッグ）
@@ -1165,7 +1158,7 @@ Formats,書式
 This analysis as code (after Apply),この解析のコード（反映後）
 Every report's analyses (with output_id),すべての帳票の解析（output_id つき）
 Datasets,データセット
-Analysis sets,解析対象集団
+Populations,解析対象集団
 Study keys,試験の設定
 The analyses,解析
 codelists: code list,コードリスト (codelists)
@@ -1174,7 +1167,7 @@ codelists: code list,コードリスト (codelists)
 "Table: the study's code list, one row a value of a variable -- the text it prints as and its place (plan_labels(), plan_levels()). A report's own rows replace the defaults of the same variable and value. A variable's `levels` on the variables sheet, when given, is the order instead.",表: 試験のコードリスト。1 行 = 変数の 1 つの値 -- 表示する文字と並び順（plan_labels()、plan_levels()）。帳票の行は、同じ変数・値の既定の行を置き換える。variables シートの `levels` があれば、そちらが順序になる。
 The variable (an analysis variable or a column key).,変数（解析変数か列のキー）。
 A value as the data have it.,データにある値。
-What prints for the value; blank: the value.,その値の表示; 空欄 = 値そのもの。
+"What the value is in the data the program makes, and so what prints; blank: the value.",プログラムが作るデータの中でその値がなるもの（そのまま表示にもなる）; 空欄 = 値そのもの。
 "Its place among the variable's values (a number); blank: after the numbered ones, in the sheet's order.",その変数の値の中での位置（数字）; 空欄 = 番号付きの後、シートの順。
 Make the table,表を作る
 Make the figure,図を作る
@@ -1220,10 +1213,8 @@ Left indent of the cell text in twips (not on the header); blank: unchanged.,セ
 "The analysis this one runs inside: an analysis of the same report whose method is cards::ard_stack (several analyses on the same data and by, with the by counts and the total N), cards::ard_strata (within subgroups) or cards::ard_pairwise (each pair of groups). It takes the parent's dataset, population_id and where (and in a stack its by), so leave those blank; blank: an analysis of its own.",この解析を中で実行する親の解析：同じ帳票の解析で、method が cards::ard_stack（同じデータと by で複数の解析をまとめて実行し、by の集計と総数も付ける）、cards::ard_strata（サブグループごと）、cards::ard_pairwise（群の組ごと）のもの。データ・解析対象集団・条件は親のものを使う（stack では by も）ので、それらは空欄に。空欄 = 単独の解析。
 "Steps on the ARD after the call, each a call with the ARD left out, | between them: cards::add_calculated_row() (a statistic computed from others), cards::filter_ard_hierarchical() (only the rows that pass), cards::sort_ard_hierarchical(), cards::diff_ard_hierarchical(), or a function of your own that takes an ARD and gives one; blank: none.",呼び出しの後に ARD にかける処理。ARD を省いた関数の呼び出しを | 区切りで：cards::add_calculated_row()（ほかの統計量から計算する統計量）、cards::filter_ard_hierarchical()（条件を満たす行だけ）、cards::sort_ard_hierarchical()、cards::diff_ard_hierarchical()、または ARD を受けて ARD を返す自作の関数。空欄 = なし。
 %s × %s (%s),%s × %s（%s）
-"%s, no analysis set (%s)",%s、解析対象集団なし（%s）
+"%s, no population (%s)",%s、解析対象集団なし（%s）
 (no data),（データなし）
-Data (dataset × analysis set),データ（データセット × 解析対象集団）
-The rows the analysis reads: the dataset's records of the analysis set's subjects. The name is the one the program gives the data.,解析が読む行：データセットのうち、解析対象集団の被験者の行。（）内は、プログラムでのこのデータの名前です。
 "Where the report's ARD comes from: blank, its own ARD definition (the analyses rows of its output_id); import:<file>, an ARD made elsewhere and taken in (the file in the study's input/ard/ folder, read with tfl_read_ard()).",帳票の ARD の出どころ：空欄 = その帳票の ARD 定義（output_id の analyses の行）。import:<ファイル> = ほかで作って取り込んだ ARD（試験の input/ard/ フォルダのファイル。tfl_read_ard() で読む）。
 "One analysis is one call: add variables to it. Make another analysis only when the statistics, the condition or the groups differ.",1 つの解析は 1 回の呼び出しです。変数はこの解析に足してください。解析を分けるのは、統計量・条件・群が違うときだけです。
 Company standard,★ 会社の定型
@@ -1386,12 +1377,12 @@ The header is the preset %s now.,列見出しを定型 %s にしました。
 Replace the column header?,列見出しを置き換えますか？
 The lines below become the preset %s; what they say now is replaced.,下の行が定型 %s の内容になり、今の内容は置き換わります。
 Replace,置き換える
-arg-hint:The analysis data (the data of the analysis row: its dataset and analysis set).,解析のデータ（解析の行のデータ：そのデータセットと解析対象集団）。
+arg-hint:The analysis data (the data of the analysis row: its dataset and population).,解析のデータ（解析の行のデータ：そのデータセットと解析対象集団）。
 "arg-hint:The group columns, e.g. the treatment (TRT01A); the analysis is done within each group.",群の列。例：投与群（TRT01A）。群ごとに解析する。
 arg-hint:The analysed columns; several may be given (one call analyses each).,解析する列。複数を書ける（1 回の呼び出しでそれぞれを解析する）。
 "arg-hint:Columns whose levels form strata, analysed within each but only for the combinations present.",水準で層を作る列。層ごとに解析する（あり得る組み合わせのうち、データにあるものだけ）。
 "arg-hint:The subject key, e.g. USUBJID; subjects are counted once.",被験者のキー。例：USUBJID。被験者は 1 回だけ数える。
-"arg-hint:What a percentage divides by: the analysis set (population), or cards' row / column / cell.",割合の分母：解析対象集団（population）、または cards の row / column / cell。
+"arg-hint:What a percentage divides by: the population, or cards' row / column / cell.",割合の分母：解析対象集団（population）、または cards の row / column / cell。
 arg-hint:The statistics to keep or compute.,残す・計算する統計量。
 "arg-hint:Confidence level, a number between 0 and 1 (0.95).",信頼水準。0 と 1 の間の数（0.95）。
 arg-hint:How each statistic is formatted in stat_fmt (the analysis row's formats column writes it).,stat_fmt での各統計量の書式（解析の行の formats 列が書く）。
@@ -1410,7 +1401,7 @@ arg-hint:TRUE: also each variable's label.,TRUE：各変数のラベルも出す
 "arg-hint:TRUE: also the total number of rows (subjects), for a ""(N=...)"" header.",TRUE：総行数（被験者数）も出す。「(N=...)」の見出し用。
 arg-hint:TRUE (default): also the counts of each group (the N of the column headers).,TRUE（既定）：各群の度数も出す（列見出しの N）。
 "arg-hint:The levels of the hierarchy, outermost first: AEBODSYS then AEDECOD.",階層の水準。外側から：AEBODSYS、次に AEDECOD。
-"arg-hint:The subjects the rates divide by: the analysis set (population), with the by columns.",率の分母にする被験者：解析対象集団（population）。by の列つき。
+"arg-hint:The subjects the rates divide by: the population, with the by columns.",率の分母にする被験者：解析対象集団（population）。by の列つき。
 "arg-hint:TRUE: also ""any event"" rows over the whole hierarchy.",TRUE：階層全体の「いずれかの事象」の行も出す。
 "arg-hint:TRUE: also each level over all groups (an ""Overall"" column).",TRUE：各水準を全群でも出す（「全体」の列）。
 arg-hint:The levels of the hierarchy to report (default: all).,報告する階層の水準（既定：すべて）。
@@ -1550,15 +1541,15 @@ Later,あとで
 This figure is written by hand: it can be a user-code report.,この図は手書きのコードです。ユーザーコードの帳票にできます。
 Make it a user-code report,ユーザーコードの帳票にする
 Your code,ユーザーコード
-"Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them; they print in that order. The report's titles, footnotes, header and page come from its settings (step 4, Page), as for any report.",あなたのコードが `content` を残します（data.frame、rtftable のページ、ggplot、またはそれらのリスト。その順に出ます）。タイトル・脚注・ヘッダー・ページは、ほかの帳票と同じく帳票の設定（段 4 ページ）から付きます。
-Only an analysis to write yourself? That is the custom method of step 2 (ARD) (or a company ard_*() function). This kind is for a report whose whole content is your code.,解析だけを自分で書くなら、段 2（ARD）の custom（または会社の独自 ard_*()）です。この型は、帳票の中身をまるごと自分のコードで作るときに使います。
+"Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them; they print in that order. The report's titles, footnotes, header and page come from its settings (step 3, Page), as for any report.",あなたのコードが `content` を残します（data.frame、rtftable のページ、ggplot、またはそれらのリスト。その順に出ます）。タイトル・脚注・ヘッダー・ページは、ほかの帳票と同じく帳票の設定（段 3 ページ）から付きます。
+Only an analysis to write yourself? That is the custom method of step 1 (ARD) (or a company ard_*() function). This kind is for a report whose whole content is your code.,解析だけを自分で書くなら、段 1（ARD）の custom（または会社の独自 ard_*()）です。この型は、帳票の中身をまるごと自分のコードで作るときに使います。
 A user-code report: this code leaves `content` (the same field as its Content). Nothing else here is used for it.,ユーザーコードの帳票です。このコードが `content` を残します（内容 (content) と同じ欄）。ここのほかの欄は使われません。
-"%s does not read an ARD: ""Use this report's ARD"" in its step 3 (Content) makes it read one (these analyses, or an ARD taken in).",%s は ARD を読みません。段 3（コンテンツ）の「この帳票の ARD を使う」で読むようになります（ここの解析、または取り込んだ ARD）。
+"%s does not read an ARD: ""Use this report's ARD"" in its step 2 (Content) makes it read one (these analyses, or an ARD taken in).",%s は ARD を読みません。段 2（コンテンツ）の「この帳票の ARD を使う」で読むようになります（ここの解析、または取り込んだ ARD）。
 It reads the ARD taken in (%s).,取り込んだ ARD（%s）を読みます。
 Its ARD definition has %d analyses (built).,ARD の定義に解析が %d 件あります（作成済み）。
-"Its ARD definition has %d analyses, not built yet: build them in step 2 (ARD).",ARD の定義に解析が %d 件ありますが、まだ作っていません。段 2（ARD）で作ってください。
-"No ARD yet: add analyses in step 2 (ARD), or take an ARD in (Data > ARDs taken in).",まだ ARD がありません。段 2（ARD）で解析を足すか、ARD を取り込んでください（データ > 取り込んだ ARD）。
-To step 2 (ARD),段 2（ARD）へ
+"Its ARD definition has %d analyses, not built yet: build them in step 1 (ARD).",ARD の定義に解析が %d 件ありますが、まだ作っていません。段 1（ARD）で作ってください。
+"No ARD yet: add analyses in step 1 (ARD), or take an ARD in (Data > ARDs taken in).",まだ ARD がありません。段 1（ARD）で解析を足すか、ARD を取り込んでください（データ > 取り込んだ ARD）。
+To step 1 (ARD),段 1（ARD）へ
 `ard` is this report's rows of the ARD (a cards ARD); normalize_ard(ard) makes it a table's shape.,`ard` は、この帳票の行だけの ARD（cards の形）です。normalize_ard(ard) で表の形になります。
 Add %s to the data it reads.,読むデータに %s を足してください。
 Line %d of the code: ,コードの %d 行目: 
@@ -1585,7 +1576,6 @@ Rows above the header,見出しの上の行数
 The file cannot be read: %s,ファイルを読めません: %s
 Report ID,帳票 ID
 Title lines,タイトルの行
-Population,集団
 Footnote lines,脚注の行
 Remarks,備考
 Which column is what,列の対応づけ
@@ -1662,13 +1652,13 @@ Delete %s.,%s を削除します。
 "Keep the analyses inside, as analyses of their own",中の解析は単独の解析として残す
 Delete them too,中の解析も削除する
 Run analyses together (cards::ard_stack),解析をまとめて実行（cards::ard_stack）
-"One call on the same data, analysis set, condition and groups: it also counts the subjects per group (the column headers' N). Subjects with no group are not counted.",同じデータ・解析対象集団・条件・群の解析を 1 回の呼び出しにします。群ごとの人数（列見出しの N）も数えます。群が空の人は数えません。
+"One call on the same data, population, condition and groups: it also counts the subjects per group (the column headers' N). Subjects with no group are not counted.",同じデータ・解析対象集団・条件・群の解析を 1 回の呼び出しにします。群ごとの人数（列見出しの N）も数えます。群が空の人は数えません。
 Cannot be inside:,入れられないもの:
 Run them together,まとめる
 Choose the analyses.,解析を選んでください。
 %s does not count the subjects per group: the report's GROUPN does already (two would break the column headers' N). Delete GROUPN and tick it on %s to let the stack count them.,%1$s は群ごとの人数を数えません（帳票の GROUPN が数えているため。二重になると列見出しの N が壊れます）。%2$s に数えさせるなら、GROUPN を消して %2$s のチェックを入れてください。
 Run the analyses together (cards::ard_stack),解析をまとめて実行する（cards::ard_stack）
-"%d subjects of the analysis set have no %s: ard_stack does not count them, so the analyses are made one by one.",解析対象集団に %2$s が空の人が %1$d 人います。ard_stack はこの人たちを数えないので、解析は 1 つずつ作ります。
+"%d subjects of the population have no %s: ard_stack does not count them, so the analyses are made one by one.",解析対象集団に %2$s が空の人が %1$d 人います。ard_stack はこの人たちを数えないので、解析は 1 つずつ作ります。
 One call computes the rows and the subjects per group (the column headers' N).,1 回の呼び出しで、行と群ごとの人数（列見出しの N）を計算します。
 The subjects per group (the column headers' N),群ごとの人数（列見出しの N）
 The subjects in all,全体の人数
@@ -1676,7 +1666,7 @@ Rows for the missing values,欠測の件数の行
 The variables' labels and types,変数のラベルと型
 inside another already,既に別のまとまりの中
 this kind cannot run inside one,この種類はまとまりに入れられない
-other data or analysis set,データか解析対象集団が違う
+other data or population,データか解析対象集団が違う
 another condition,条件が違う
 other groups,群が違う
 other strata,層が違う
@@ -1736,7 +1726,6 @@ The PARAMCD of the dataset to plot.,図にするデータの PARAMCD。
 "The variable of the groups compared, e.g. TRT01A.",比べる群の変数（例：TRT01A）。
 The figure's style (what it draws).,図の型（何を描くか）。
 Where the legend goes (panel*: a legend drawn from an item table).,凡例の位置（panel*：項目の表から描く凡例）。
-"A flag (== ""Y"") that selects the analysis set, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"
 The analysis dataset the figure reads.,図が読む解析データセット。
 The time variable (AVAL of ADTTE; the time of a PK sample).,時間の変数（ADTTE の AVAL、PK の採血時点など）。
 "CNSR: 1 = censored, 0 = event.",CNSR：1 = 打ち切り、0 = イベント。
@@ -1915,7 +1904,7 @@ All categories,すべての分類
 Keywords:,キーワード:
 "none: the words the ARD form's search finds it by go in a comment line right above the function, # tflplanner-keywords: odds ratio, PROC LOGISTIC","なし。ARD 画面の検索で見つけるための言葉は、関数のすぐ上のコメント行に書きます: # tflplanner-keywords: オッズ比, PROC LOGISTIC"
 needs making again (its definition has changed),作り直しが必要（定義が変わりました）
-"Since this report's ARD was made, something it is made from has changed: its analyses, their analysis sets or datasets, the study's settings, the study's own ARD functions or the code lists. Make it again to see the tables as the definition is now.",この帳票の ARD を作った後で、元になるもの（この帳票の解析、その解析対象集団やデータセット、試験の設定、試験独自の ARD 関数、コードリスト）のどれかが変わりました。今の定義の表を見るには作り直してください。
+"Since this report's ARD was made, something it is made from has changed: its analyses, their populations or datasets, the study's settings, the study's own ARD functions or the code lists. Make it again to see the tables as the definition is now.",この帳票の ARD を作った後で、元になるもの（この帳票の解析、その解析対象集団やデータセット、試験の設定、試験独自の ARD 関数、コードリスト）のどれかが変わりました。今の定義の表を見るには作り直してください。
 This report's ARD has not been made yet: make it to see its tables.,この帳票の ARD はまだ作っていません。表を見るには作ってください。
 "Its ARD program failed: see what it printed (Data > Study ARD), fix it and make it again.",ARD プログラムが失敗しました。出力（データ > 試験 ARD）を見て直し、作り直してください。
 Make the ARD,ARD を作る
@@ -1937,12 +1926,10 @@ Keeps the subjects of this population; blank: no restriction here (made from an 
 An R condition on the records (the numerator's filter); blank: every record.,レコードに対する R の条件（分子の絞り込み）。空欄 = すべてのレコード。
 "Columns of the population's data (its dataset, ADSL) added by the subject key, | between them; a column of the same name is replaced. Needs a population, here or above; blank: none.",集団のデータ（そのデータセット、ADSL）から被験者キーで足す列。複数は | で区切る。同じ名前の列は置き換える。この行か上の行に集団が必要。空欄 = なし。
 "One row for each set of values of these columns, | between them (dplyr::distinct(), the first row kept): a denominator per subject and phase; blank: every row.",これらの列の値の組ごとに 1 行にする。複数は | で区切る（dplyr::distinct()、最初の行を残す）。被験者 × フェーズの分母などに。空欄 = すべての行。
-"The analysis data analysed (a data_id of analysis_data), instead of dataset and population_id: the analysis set is its population; blank: dataset and population_id say it.",解析する解析データ（analysis_data の data_id）。dataset と population_id の代わりに使い、解析対象集団はそのデータの集団になる。空欄 = dataset と population_id で指定。
 Analysis data,解析データ
-1 Code lists,1 コードリスト
-2 ARD,2 ARD
-3 Content,3 コンテンツ（表・図・Listing）
-4 Page and output,4 ページと出力
+1 ARD,1 ARD
+2 Content,2 コンテンツ（表・図・Listing）
+3 Page and output,3 ページと出力
 "Choose a report above, or in the list on the left (> opens it).",上の選択か、左の一覧（＞で開く）で帳票を選んでください。
 The marks,印
 Reading the state of %d reports...,%d 帳票の状態を読み込んでいます…
@@ -1950,21 +1937,17 @@ Make a report,帳票の作成
 Report list,帳票一覧
 Not used,使わない
 Optional,任意
-"One row per analysis: the data, the population, the subset, the grouping, the variables and the method (a keyword or any cards / cardx function). The datasets, analysis sets and analysis data are defined on the Data tab.",1 行 = 1 解析：データ・解析対象集団・部分集合・グループ・変数・手法（キーワード、または cards / cardx の任意の関数）。データセット・解析対象集団・解析データは「データ」タブで定義します。
 Reports are made in this order (the official run too). Copy makes a new report with all of this one's definition. A double click makes the report (Make a report).,帳票はこの順に作られます（正式実行も）。複製は、この帳票の定義をすべて持った新しい帳票を作ります。ダブルクリックで「帳票の作成」に移ります。
 "The code lists this report uses: each variable's values, their order and the text they print as. The study's rows (blank output_id) apply to every report; this report's own rows replace them. Optional: a report that needs none skips this step.",この帳票が使うコードリスト：変数ごとの値・順番・表示する文字。試験の行（output_id が空欄）はすべての帳票に効き、この帳票の行はそれを置き換えます。任意：要らない帳票はこの段を飛ばせます。
 The data's definitions,データの定義
-"The datasets the study's programs read (the data catalog), the analysis sets, and the analysis data: defined once for the study, used by every report's ARD.",試験のプログラムが読むデータセット（データカタログ）、解析対象集団、解析データ。試験で 1 回定義し、すべての帳票の ARD で使います。
 "The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source).",被験者キー（id）、試験 ARD の出力先（output）、試験の独自の解析関数の R ファイル（source）。
 This report's own code list: %d rows,この帳票のコードリスト：%d 行
-The rows the analysis reads: an analysis data as 1. above makes it, or the dataset's records of the analysis set's subjects. The name is the one the program gives the data.
 %s (analysis data),%s（解析データ）
 (none here),（ここでは絞らない）
 + %s,＋%s
 1. The analysis data,① 解析データ
 2. The analyses,② 解析
 Analysis data %s,解析データ %s
-"Data (an analysis data, or dataset × analysis set)",データ（解析データ、またはデータセット × 解析対象集団）
 Delete %s? No analysis reads it.,%s を削除しますか？ 使っている解析はありません。
 Delete the analysis data,解析データの削除
 Give it a name...,名前を付ける…
@@ -1985,41 +1968,34 @@ one row per %s,%s ごとに 1 行
 ; other reports' analyses: %d,。ほかの帳票の解析：%d 件
 A change makes these reports' ARD need making again.,変えると、これらの帳票の ARD は作り直しになります。
 Analysis data (the sheet),解析データ（シート）
-Analysis set (keeps its subjects),解析対象集団（その被験者に絞る）
 "Columns made (NAME = R, | between them)",作る列（名前 = R の式、複数は | で区切る）
-Columns taken from the analysis set's data,解析対象集団のデータ（ADSL など）から持ってくる列
-Dataset × analysis set (named by the program),データセット × 解析対象集団（名前はプログラムが付ける）
+Dataset × population (named by the program),データセット × 解析対象集団（名前はプログラムが付ける）
 Give %s a name,%s に名前を付ける
 Name (used in the program),名前（プログラムでも使う）
 "On saving, this report's analyses %s read this data.",保存すると、この帳票の解析 %s はこのデータを読むようになります。
 One row per (e.g. subject; subject × phase),1 行にする組（例: 被験者、被験者 × フェーズ）
 Rows kept (an R condition),絞り込み条件（R の式）
 "The condition they all have, %s, moves from them to the data (each one's own conditions stay).",これらの解析すべてに共通の条件 %s は、解析からこのデータに移します（解析ごとの条件は残ります）。
-"The data the analyses read: a dataset kept to an analysis set and the rows a condition keeps, with columns added. Named, the study's other reports can use it under the same name. Not needed: an analysis can read a dataset × analysis set chosen in 2. (its Data), and this can stay empty.",解析が読むデータです。登録したデータセットを、解析対象集団と条件で絞り、列を足して作ります。名前を付けると、試験のほかの帳票でも同じ名前で使えます。作らなくても進めます：② の「データ」でデータセット × 解析対象集団を選ぶだけなら、ここは空のままで構いません。
 "The method's own, or cards'",メソッドの既定、または cards の指定
-"The report's analyses. Each one's Data: an analysis data of 1., or a dataset × analysis set.",この帳票の解析です。それぞれの「データ」で、① の解析データか、データセット × 解析対象集団を選びます。
 The study's other analysis data,試験のほかの解析データ
 This report's analysis data,この帳票の解析データ
 Used by: %s.,使っている解析：%s。
 analysis data,解析データ
-analysis set,解析対象集団
+population,解析対象集団
 dataset,データセット
 e.g. %s,例: %s
-2-1 The analysis data — what is analysed,2-1 解析データ — 何を対象にするか
-2-2 The analyses — what is computed,2-2 解析 — 何を計算するか
-%s (the analysis set as it is),%s（解析対象集団のまま）
+1-1 The analysis data — what is analysed,1-1 解析データ — 何を対象にするか
+1-2 The analyses — what is computed,1-2 解析 — 何を計算するか
 (no restriction),（絞らない）
 %s's subjects,%s の症例
 "A dataset (ADAE, ADLB ...) kept to the subjects above, the rows a condition keeps, with columns taken from the subjects' data or made.",データセット（ADAE、ADLB など）を上の症例に絞り、条件で行を絞り、症例のデータから列を持ってくる・作る。
 Add data to analyse...,解析するデータを足す…
-"An analysis set's own data (ADSL × SAF), kept to this report's subjects (a phase ...): one row a subject.",解析対象集団のデータ（ADSL × SAF）を、この帳票の症例（フェーズなど）に絞ったもの。1 人 1 行。
 Choose the subjects...,対象の症例を決める…
 Columns kept (blank: all),残す列（空欄 = すべて）
 "Columns kept, one row per ...",残す列・1 行にする組
-"First the report's subjects: %s × %s (%s), as 2-1's subjects? The analyses then read it, and it can be changed (a phase ...) in 2-1.",先にこの帳票の対象の症例を決めます：%s × %s（%s）を 2-1 の対象の症例にしますか？ 解析はこのデータを読みます。フェーズなどは 2-1 で後から変えられます。
-"Named data the analyses read, made from the study's datasets, the study's to use in other reports too. First the subjects (the denominator), then the data analysed, kept to those subjects. Not needed for a report that reads a dataset × analysis set as it is.",解析が読む、名前つきのデータ。試験のデータセットから作り、ほかの帳票でも使えます。先に対象の症例（分母）、次にその症例に絞った解析するデータ。データセット × 解析対象集団をそのまま読む帳票では要りません。
+"First the report's subjects: %s × %s (%s), as 1-1's subjects? The analyses then read it, and it can be changed (a phase ...) in 1-1.",先にこの帳票の対象の症例を決めます：%s × %s（%s）を 1-1 の対象の症例にしますか？ 解析はこのデータを読みます。フェーズなどは 1-1 で後から変えられます。
 The data analysed (the numerator),解析するデータ（分子）
-The report's analyses. Each one's Data: an analysis data of 2-1; the denominator: its subjects.,この帳票の解析。それぞれの「データ」は 2-1 の解析データ、「% の分母」はその対象の症例です。
+The report's analyses. Each one's Data: an analysis data of 1-1; the denominator: its subjects.,この帳票の解析。それぞれの「データ」は 1-1 の解析データ、「% の分母」はその対象の症例です。
 The subjects (the denominator),対象の症例（分母）
 This report's subjects among them (an R condition),その中のこの帳票の症例（R の条件式）
 Use the study's other analysis data (%d),試験のほかの解析データから使う（%d）
@@ -2029,7 +2005,6 @@ Make the subjects,対象の症例を作る
 Go on without,作らずに続ける
 Data to analyse,解析するデータ
 The subjects of this report,この帳票の対象の症例
-"The rows the analysis reads: an analysis data as 2-1 above makes it, or the dataset's records of the analysis set's subjects. The name is the one the program gives the data.",解析が読む行：上の 2-1 で作る解析データ、またはデータセットのうち解析対象集団の被験者の行。（）内は、プログラムでのこのデータの名前です。
 Keeps the subjects of an analysis data above (a report's own subjects: the safety set in phase 1 ...): the numerator kept to the denominator's subjects. Instead of population_id; blank: no restriction here.,上の行の解析データの被験者に絞る（帳票の対象の症例：フェーズ 1 の安全性解析対象集団など）。分子を分母の症例に絞るときに使う。population_id の代わり。空欄 = ここでは絞らない。
 "Columns of the population's data (its dataset, ADSL) -- or of the data of `subjects` -- added by the subject key, | between them; a column of the same name is replaced. Needs a population or subjects, here or above; blank: none.",集団のデータ（そのデータセット、ADSL）または `subjects` のデータから、被験者キーで持ってくる列。複数は | で区切る。同じ名前の列は置き換える。この行か上の行に集団か subjects が必要。空欄 = なし。
 "New columns, NAME = R expression, | between them (transform()); a column the code lists list becomes a factor in their order; blank: none.",作る列。名前 = R の式、複数は | で区切る（transform()）。コードリストにある列は、その順の factor になる。空欄 = なし。
@@ -2040,7 +2015,6 @@ Keeps the subjects of an analysis data above (a report's own subjects: the safet
 "arg-hint:Columns to analyse within, like by, but only the combinations the data have (e.g. a parameter by visit).",群と同じく分けて集計しますが、データにある組み合わせだけを出します（例: パラメータ × 時点）。
 "arg-hint:The strata of the stratified Wilson interval (method = strat_wilson / strat_wilsoncc): one interval over them, not one per stratum.",層別 Wilson 信頼区間（method = strat_wilson / strat_wilsoncc）の層。層ごとではなく、層をまとめた 1 つの区間を出します。
 "arg-hint:The strata of the Cochran-Mantel-Haenszel test: the by x variables association is tested controlling for them (one test, not one per stratum).",Cochran-Mantel-Haenszel 検定の層。層を調整して、群と変数の関連を検定します（層ごとではなく 1 つの検定）。
-"Search: ID, title, analysis set, data",検索: ID・タイトル・解析対象集団・データ
 To make again,作り直しが必要
 Not made yet,未作成
 No report matches.,当てはまる帳票はありません。
@@ -2056,11 +2030,11 @@ A click on an analysis in the list above opens it here.,上の一覧で解析を
 A click on an analysis opens it below; another click closes it.,解析をクリックすると下に開きます。もう一度クリックで閉じます。
 Code lists (the study's),コードリスト（試験全体）
 Definitions,定義
-"Every report's analysis data, as a sheet: made and changed in each report's step 2-1.",すべての帳票の解析データ（シートの形）。作る・直すのは、各帳票の段 2-1 です。
+"Every report's analysis data, as a sheet: made and changed in each report's step 1-1.",すべての帳票の解析データ（シートの形）。作る・直すのは、各帳票の段 1-1 です。
 Files,ファイル
 No file for: %s,ファイルがありません：%s
 SDTM / ADaM / other,SDTM・ADaM・その他
-"The analysis sets: the subjects of a dataset a condition keeps (SAFFL == ""Y"").","解析対象集団：データセットのうち、条件（SAFFL == ""Y""）で残る被験者。"
+"The populations: the subjects of a dataset a condition keeps (SAFFL == ""Y"").","解析対象集団：データセットのうち、条件（SAFFL == ""Y""）で残る被験者。"
 "The datasets the study's programs read (the data catalog): a name, its level, its file in the study folder, columns derived. Defined once for the study, used by every report.",試験のプログラムが読むデータセット（データカタログ）：名前・区分・試験フォルダの中のファイル・作る列。試験で 1 回定義し、すべての帳票で使います。
 "The study's code lists: each variable's values, their order and the text they print as, for every report (a report's own rows, in its step 1, replace them).",試験のコードリスト：変数ごとの値・順番・表示する文字。すべての帳票に効きます（帳票の段 1 の行がそれを置き換えます）。
 %s chosen: the form below,%s を選択中：下のフォーム
@@ -2073,7 +2047,7 @@ No condition: every row.,条件なし: すべての行。
 The rows cannot hold this condition: it stays as R.,この条件は行では書けません。R の式のままにします。
 Values (search),値（検索）
 "Values, comma between",値（カンマ区切り）
-Write the condition as R (inside subset()),条件を R の式で書く（subset の中身）
+Write the condition as R (inside filter()),条件を R の式で書く（filter() の中身）
 The condition written as R (the rows cannot hold it): edit it here.,条件を R の式で書いています（行では書けない条件）。ここで直せます。
 or,または
 is blank,空
@@ -2092,27 +2066,22 @@ this study's,この試験の関数
 No study open,試験を開いていません
 studies are chosen on the Study tab,試験は「試験」タブで選びます
 Keys and setup code,キーとセットアップコード
-2-1 Analysis data,2-1 解析データ
-"The data the analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are the study's, to use in other reports too. The denominator of a percent is chosen with each analysis, in 2-2.",解析が読むデータです。試験のデータセットから作ります（絞り込み条件で絞った行、ほかの解析データの被験者への絞り込み、作る列）。試験のものなので、ほかの帳票でも使えます。% の分母は、2-2 で解析ごとに選びます。
+1-1 Analysis data,1-1 解析データ
+"The data the analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are the study's, to use in other reports too. The denominator of a percent is chosen with each analysis, in 1-2.",解析が読むデータです。試験のデータセットから作ります（絞り込み条件で絞った行、ほかの解析データの被験者への絞り込み、作る列）。試験のものなので、ほかの帳票でも使えます。% の分母は、1-2 で解析ごとに選びます。
 Copy the one chosen,選んだ解析データを複製
 Delete %s...,%s を削除...
 Delete the one chosen...,選んだ解析データを削除...
 Choose one in the list (◉): its settings open below it.,一覧の行をクリックして選ぶと（◉）、その下に設定が開きます。
 None yet: New analysis data makes one.,まだありません。［新しい解析データ］で作ります。
-The report's analyses. Each one's Data: an analysis data of 2-1; the denominator of a percent: chosen with it.,この帳票の解析です。データは 2-1 の解析データから、% の分母は解析ごとに選びます。
+The report's analyses. Each one's Data: an analysis data of 1-1; the denominator of a percent: chosen with it.,この帳票の解析です。データは 1-1 の解析データから、% の分母は解析ごとに選びます。
 (not kept to other subjects),（絞らない）
-Put in an analysis set's condition:,解析対象集団の条件を入れる：
 Keep the subjects of,被験者を絞る：この解析データの被験者だけ
-"Only the subjects in that analysis data (as an inner join on the subject key): a condition written there, the analysis set's for one, need not be written here again.",選んだ解析データにいる被験者だけを残します（被験者キーでの inner join）。そちらに書いた条件（解析対象集団など）を、ここにもう一度書く必要はありません。
-Kept to the analysis set %s too (as it was made: population_id),解析対象集団 %s でも絞る（作ったときの指定：population_id）
-"Columns taken, made, kept; one row per ...",持ってくる列・作る列・残す列、1 行の単位 ...
 Details (the sheet): this report's analysis data,詳細（シート）：この帳票の解析データ
 "The rows of analysis_data this report reads, every column, as in the workbook: what the form above does not show is written here. The whole study's: the Data tab.",この帳票が読む analysis_data の行を、ブックと同じくすべての列で表示します。上のフォームに出ない列はここで書きます。試験全体の表は「データ」タブです。
 %s (as written in the sheet: not a dataset nor an analysis data above),%s（シートに書かれたまま：データセットでも上の解析データでもありません）
 Filter (a condition),絞り込み条件
 Keep to the subjects of %s,%s の症例に絞る
 Keep to the subjects of an analysis data of one row a subject,1 人 1 行の解析データの症例に絞る
-"Only the subjects in it (an inner join on %s): its condition, the analysis set's for one, is not written here again.",その解析データにいる症例だけを残します（%s での inner join）。そちらの条件（解析対象集団など）を、ここにもう一度書く必要はありません。
 %s are kept to the subjects of %s now (untick it in their form if one should not be).,%s を %s の症例に絞りました（不要なものは、そのフォームでチェックを外してください）。
 "On the right: SPEC, the sheet's rows; Result, the data it makes (Preview).",右の［SPEC］にシートの行、［結果］に作られるデータ（プレビュー）があります。
 "The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. The whole study's: the Data tab.",この帳票が読む analysis_data の行を、ブックと同じくすべての列で表示します。フォームに出ない列はここで書きます。試験全体の表は「データ」タブです。
@@ -2121,8 +2090,7 @@ Keep to the subjects of an analysis data of one row a subject,1 人 1 行の解�
 "The code list this report uses: the study's rows, this report's own in their place.",この帳票が使うコードリスト（試験共通の行。この帳票だけの行があればそちらを使う）。
 The table as it will print,印刷される表
 The listing's row of the definition (listings); its columns are the grid on the left.,この Listing の定義の行（listings）。列は左の表で決めます。
-"A user-code report's definition is its code, on the left, and its page (step 4).",ユーザーコードの帳票の定義は、左のコードとページ（段 4）です。
-No code list yet.,コードリストはまだありません。
+"A user-code report's definition is its code, on the left, and its page (step 3).",ユーザーコードの帳票の定義は、左のコードとページ（段 3）です。
 the study,試験共通
 this report,この帳票
 Result,結果
@@ -2132,7 +2100,7 @@ Write this analysis data whole as R (code),この解析データを R のコー�
 Start from the generated code,生成されたコードから始める
 The code cannot be written yet: give the data a name and what it is made from.,まだコードを作れません。データの名前と元のデータを入れてください。
 "R that makes the data itself, when the columns cannot say it: its value is the data; the datasets (adae), pop_<population> and the analysis data above are in reach. With it, the columns but from are left blank; blank: the columns make the data.",列で書けないときに、データそのものを作る R：値がそのデータになります。データセット（adae）・pop_<集団>・上の行の解析データを使えます。書いたときは from 以外の列は空欄にします。空欄 = 列でデータを作る。
-The code (R: `data` and `population` are the analysis's data and analysis set),コード（R：`data` と `population` がこの解析のデータと解析対象集団）
+The code (R: `data` and `population` are the analysis's data and population),コード（R：`data` と `population` がこの解析のデータと解析対象集団）
 Write this analysis as code...,この解析をコードで書く...
 This analysis cannot be written as code from here (one run with others: write the stack's).,この解析はここからコードにできません（ほかの解析と一緒に実行するもの：まとめの側を書いてください）。
 Write %s as code,%s をコードで書く
@@ -2141,9 +2109,9 @@ Formats written out (its method's defaults with its own): %s,書き出した書�
 Write it as code,コードにする
 %s is written as code (custom).,%s をコード（custom）にしました。
 This report's analyses: %d (the study's: %d). The definition reads without errors.,この帳票の解析 %d 件（試験全体 %d 件）。定義にエラーはありません。
-2-2 Analyses,2-2 解析
+1-2 Analyses,1-2 解析
 "This analysis alone as code, after Apply (the report's program: Code on the right)",この解析だけのコード（反映後。帳票のプログラム全体は右の［コード］）
-"Every report's analysis data, as a sheet: made in each report's step 2-1, and changed there or here (the study's sheet).",すべての帳票の解析データ（シートの形）。作るのは各帳票の段 2-1 です。直すのはそこでも、ここ（試験全体の表）でもできます。
+"Every report's analysis data, as a sheet: made in each report's step 1-1, and changed there or here (the study's sheet).",すべての帳票の解析データ（シートの形）。作るのは各帳票の段 1-1 です。直すのはそこでも、ここ（試験全体の表）でもできます。
 "The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved. The whole study's: the Data tab.",この帳票が読む analysis_data の行を、ブックと同じくすべての列で表示します。フォームに出ない列はここで書きます。新しい解析データの行は、保存すると入ります。試験全体の表は「データ」タブです。
 Population flags,集団フラグ
 Analysis flags,解析フラグ
@@ -2159,17 +2127,11 @@ Section (heading),節（見出し）
 blank: from the ID,空欄：ID から
 Section,節
 "A report's section: this column, else the heading row above it (a row with no ID); a section given here is kept.",帳票の節：この列、無ければその上の見出しの行（ID の無い行）。ここで付けた節はそのまま残ります。
-%s (not an analysis set of the study),%s（試験の解析対象集団にありません）
-Flags of the data that are no analysis set yet:,まだ解析対象集団になっていないデータのフラグ：
-Make %s an analysis set,%s を解析対象集団にする
-Analysis set (population_id): that of %s (%s).,解析対象集団（population_id）：%s のもの（%s）。
-%s is an analysis set now: %s of %s (the Data tab has it too).,%s を解析対象集団にしました：%s の %s（データタブにも入りました）。
 "The first row of the condition below, put in at once (SAFFL = Y); change it there, add others under it.",下の条件の 1 行目をまとめて入れます（SAFFL = Y）。直すのも、2 行目からほかの条件を足すのも条件の欄で。
-"Also kept to the analysis set %s (population_id, as the sheet has it: SPEC shows it).",解析対象集団 %s でも絞られています（シートの population_id のまま。SPEC タブで見られます）。
-"%s, already there, is this same data: no need to make it again (in 2-2, choose %s).",すでにある %s が同じ解析データです。作り直す必要はありません（2-2 では %s を選んでください）。
+"Also kept to the population %s (population_id, as the sheet has it: SPEC shows it).",解析対象集団 %s でも絞られています（シートの population_id のまま。SPEC タブで見られます）。
+"%s, already there, is this same data: no need to make it again (in 1-2, choose %s).",すでにある %s が同じ解析データです。作り直す必要はありません（1-2 では %s を選んでください）。
 About this,この画面について
 Editing the sheet,シートの編集
-This report's code lists,この帳票のコードリスト
 This report's page,この帳票のページ
 Table builder,表ビルダー
 A new figure,新しい図
@@ -2230,34 +2192,34 @@ stat-label:p-value,p 値
 stat-label:Confidence level,信頼水準
 stat-label:Number at risk,リスク集合の数
 stat-label:Number of events,イベント数
-"This report's analyses (the ARD): the data in 2-1, the analyses in 2-2.",この帳票の解析（ARD）の定義。データは 2-1、解析は 2-2。
-The report's analyses. Each one's Data: an analysis data of 2-1; the denominator of a percent: chosen with it. ARD: the data of the analyses' results (the tables are made from it). Analysis set: the subjects a percent is of (SAF ...).,帳票の解析。各解析のデータは 2-1 の解析データ、% の分母は解析と一緒に選びます。ARD = 解析結果のデータ（表はここから作ります）。解析対象集団 = 分母になる被験者の集まり（SAF など）。
+"This report's analyses (the ARD): the data in 1-1, the analyses in 1-2.",この帳票の解析（ARD）の定義。データは 1-1、解析は 1-2。
+The report's analyses. Each one's Data: an analysis data of 1-1; the denominator of a percent: chosen with it. ARD: the data of the analyses' results (the tables are made from it). Population: the subjects a percent is of (SAF ...).,帳票の解析。各解析のデータは 1-1 の解析データ、% の分母は解析と一緒に選びます。ARD = 解析結果のデータ（表はここから作ります）。解析対象集団 = 分母になる被験者の集まり（SAF など）。
 Analysis %s,解析 %s
 "A stack: it runs the analyses inside it together (cards::ard_stack), in one call (the column headers' N too).",スタック: 中の解析をまとめて 1 回で計算します（cards::ard_stack。列見出しの N も）。
-"The rows the analysis reads: an analysis data of 2-1, or a dataset × analysis set. The name is the one the program gives it.",解析が読む行。2-1 の解析データ、またはデータセット × 解析対象集団。名前はプログラムでの名前です。
-"An R condition that filters this analysis's rows alone (e.g. AESER == ""Y""). The data's own filter is 2-1's.","この解析だけの行の絞り込み条件（R の式。例 AESER == ""Y""）。データそのものの絞り込み条件は 2-1 で。"
+"The rows the analysis reads: an analysis data of 1-1, or a dataset × population. The name is the one the program gives it.",解析が読む行。1-1 の解析データ、またはデータセット × 解析対象集団。名前はプログラムでの名前です。
+"An R condition that filters this analysis's rows alone (e.g. AESER == ""Y""). The data's own filter is 1-1's.","この解析だけの行の絞り込み条件（R の式。例 AESER == ""Y""）。データそのものの絞り込み条件は 1-1 で。"
 This analysis's own filter,この解析だけの絞り込み条件
 "cards' arguments, in R (e.g. conf.level = 0.9).",cards の引数を R で（例: conf.level = 0.9）。
 "Repeated within each combination the data has (e.g. PARAMCD × AVISIT). Unlike the groups (by), a combination with no records is not shown: for 0s, use the groups.",データにある組み合わせごとに繰り返します（例: PARAMCD × AVISIT）。群（by）と違い、記録の無い組み合わせは出ません。0 を出したいときは群に。
-What a % is of. The analysis set: its subjects in the group (the column headers' N; an AE table: the SAF's N per arm). Within a row: the total of the row (the variable's level). Within a column: the total of the group. Of the whole table: all of it. The method's default: blank.,% を何で割るか。解析対象集団: その群の解析対象集団の人数（列見出しの N。AE の表なら群ごとの SAF の N）。行の中: 同じ行（変数の水準）の合計。列の中: 同じ群の合計。表全体: すべての合計。手法の既定: 空欄。
+What a % is of. The population: its subjects in the group (the column headers' N; an AE table: the SAF's N per arm). Within a row: the total of the row (the variable's level). Within a column: the total of the group. Of the whole table: all of it. The method's default: blank.,% を何で割るか。解析対象集団: その群の解析対象集団の人数（列見出しの N。AE の表なら群ごとの SAF の N）。行の中: 同じ行（変数の水準）の合計。列の中: 同じ群の合計。表全体: すべての合計。手法の既定: 空欄。
 Run together with other analyses (one call)...,ほかの解析とまとめる（1 回で計算）…
 "xx.x = 1 decimal, xx.x% = a proportion as a percent, 2 = 2 decimals, pvalue = <0.001 or 3 decimals. Blank = the default shown.",xx.x = 小数 1 桁、xx.x% = 割合を % で、2 = 小数 2 桁、pvalue = <0.001 か 3 桁。空欄 = 表示の既定。
 Format,書式
 This analysis as code,この解析のコード
 "The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (Apply first). The code is part of the definition: the program is never edited.",手法が custom になり、今の定義から書いたこのコードが解析になります（同じ ARD。先に［適用］）。コードは定義の一部で、プログラムは直しません。
 The order inside a stack,スタックの中の順
-"The study's analysis set (SAF ...) or a population flag of the data, put in as the condition's first row (SAFFL = Y). Left as it is, it is saved as the analysis set (population_id); change it there, add others under it.",試験の解析対象集団（SAF など）か、データの集団フラグ。下の条件の 1 行目に入ります（SAFFL = Y）。そのままなら解析対象集団（population_id）として保存。直すのも、ほかの条件を足すのも条件の欄で。
-"The condition the data's rows are filtered by (subset()). The rows are AND (""+ and""); ""+ or (another group)"" is OR. A flag: ""= Y"". What the rows cannot say: ""Write the condition as R"".",データの行を絞り込む条件（subset() の中身）。行どうしは「かつ」（+ かつ）、「+ または（別のまとまり）」は「または」。フラグは「= Y」。行で書けない式は「条件を R の式で書く」。
-Only the subjects in that analysis data: its condition (its analysis set's too) is not written here again.,その解析データにいる被験者だけを残します。そちらの条件（解析対象集団も）をここに書き直す必要はありません。
+"The study's population (SAF ...) or a population flag of the data, put in as the condition's first row (SAFFL = Y). Left as it is, it is saved as the population (population_id); change it there, add others under it.",試験の解析対象集団（SAF など）か、データの集団フラグ。下の条件の 1 行目に入ります（SAFFL = Y）。そのままなら解析対象集団（population_id）として保存。直すのも、ほかの条件を足すのも条件の欄で。
+"The condition the data's rows are filtered by (filter()). The rows are AND (""+ and""); ""+ or (another group)"" is OR. A flag: ""= Y"". What the rows cannot say: ""Write the condition as R"".",データの行を絞り込む条件（filter() の中身）。行どうしは「かつ」（+ かつ）、「+ または（別のまとまり）」は「または」。フラグは「= Y」。行で書けない式は「条件を R の式で書く」。
+Only the subjects in that analysis data: its condition (its population's too) is not written here again.,その解析データにいる被験者だけを残します。そちらの条件（解析対象集団も）をここに書き直す必要はありません。
 "When the fields cannot say it: R whose value is the whole data (the datasets, pop_<set> and the analysis data above are in reach); written, none of the fields above is used. Only the filter: ""Write the condition as R"" above. The program is never edited: this R is the definition.",欄で書けないとき、値がデータ全体になる R（データセット、pop_<集団>、上の解析データが使えます）。書くと上の欄はどれも使われません。絞り込み条件だけなら、上の「条件を R の式で書く」。プログラムは直しません（この R が定義です）。
 The method,手法
 "The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (press Apply to the analysis first). The code is part of the definition: the program is never edited.",手法が custom になり、今の定義から書いたこのコードが解析になります（同じ ARD。先に［解析に反映］を押してください）。コードは定義の一部で、プログラムは直しません。
-This report's analysis set,この帳票の解析対象集団
-"The report list's analysis set (the TOC's): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 2-1 and 2-2 start from it.",帳票一覧（TOC）の解析対象集団と同じ 1 つの値です。選ぶと、その集団の被験者のデータ（adsl_<集団>）が作られ、この帳票の解析もそちらに移ります。2-1・2-2 の既定もこれです。
+This report's population,この帳票の解析対象集団
+"The report list's population (the TOC's): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 1-1 and 1-2 start from it.",帳票一覧（TOC）の解析対象集団と同じ 1 つの値です。選ぶと、その集団の被験者のデータ（adsl_<集団>）が作られ、この帳票の解析もそちらに移ります。1-1・1-2 の既定もこれです。
 %s made (save to keep it).,%s を作りました（保存すると残ります）。
-%s left as it is: change it in 2-1 if it should follow the analysis set.,%s はそのままです。解析対象集団に合わせるなら 2-1 で直してください。
-%s has no %s: its condition is not taken as the analysis set %s (written as a condition).,%s に %s がありません。条件は解析対象集団 %s とみなさず、ただの条件として書きます。
-%s's %s is not %s's for %d subjects: its condition is not taken as the analysis set %s (written as a condition).,%s の %s は %s と %d 例で違います。条件は解析対象集団 %s とみなさず、ただの条件として書きます。
+%s left as it is: change it in 1-1 if it should follow the population.,%s はそのままです。解析対象集団に合わせるなら 1-1 で直してください。
+%s has no %s: its condition is not taken as the population %s (written as a condition).,%s に %s がありません。条件は解析対象集団 %s とみなさず、ただの条件として書きます。
+%s's %s is not %s's for %d subjects: its condition is not taken as the population %s (written as a condition).,%s の %s は %s と %d 例で違います。条件は解析対象集団 %s とみなさず、ただの条件として書きます。
 "%d more, at their defaults",ほか %d 個（既定のまま）
 "(default: %s, the study's subject key)",（既定: %s＝試験の被験者キー）
 "(default: %s, the company's method)",（既定: %s＝会社の手法の既定）
@@ -2266,7 +2228,7 @@ This report's analysis set,この帳票の解析対象集団
 Only for %s,%s だけの指定
 "This function's own arguments. The data, groups, variables, strata, denominator and condition above are its arguments too: those every method has.",この関数だけの引数です。上のデータ・群・変数・層・分母・条件も引数ですが、どの手法にもある共通の指定です。
 "arg-hint:The subject key, e.g. USUBJID; subjects are counted once. Leave it blank: the study's subject key is written for you.",被験者のキー。例：USUBJID。被験者は 1 回だけ数える。空欄なら試験の被験者キーが自動で入る。
-"arg-hint:What a percentage divides by: the analysis set (population), or cards' row / column / cell. The analysis set gives the usual ""n (%) of the subjects of the group"".",% を何で割るか：解析対象集団（population）、または cards の row / column / cell。よくある「群の被験者のうち n (%)」は解析対象集団。
+"arg-hint:What a percentage divides by: the population, or cards' row / column / cell. The population gives the usual ""n (%) of the subjects of the group"".",% を何で割るか：解析対象集団（population）、または cards の row / column / cell。よくある「群の被験者のうち n (%)」は解析対象集団。
 "arg-hint:Which of the variables to report (default: all of them). Use it to compute a variable without showing its rows, e.g. only the PTs of a SOC / PT hierarchy.",報告する変数（既定：すべて）。計算はするが行は出さない変数があるときに使う。例：SOC / PT の階層で PT の行だけ出す。
 "arg-hint:Columns to analyse within, like by, but only the combinations the data have (e.g. a parameter by visit). Use it for ""repeat for each visit"" tables; for 0 rows of missing combinations use by.",by と同じく、その中で解析を繰り返す列。ただしデータにある組み合わせだけ（例：パラメータ×来院）。「来院ごとに繰り返す」表に使う。無い組み合わせを 0 で出したいときは by。
 "arg-hint:The level counted for each variable, e.g. list(AESER = ""Y""); blank: the variable's maximum level (TRUE, ""Y"", the highest). Use it to count one level only, e.g. subjects with a serious AE.","各変数で数える水準。例：list(AESER = ""Y"")。空欄なら変数の最大の水準（TRUE、""Y""、いちばん大きいもの）。1 つの水準だけ数えるときに使う。例：重篤な有害事象のある被験者。"
@@ -2284,14 +2246,14 @@ arg-hint:TRUE (default): also the counts of each group (the column headers' N). 
 "arg-hint:The level whose proportion is estimated, e.g. list(AVALC = ""CR""). Use it for a rate with its CI, e.g. the response rate.","割合を推定する水準。例：list(AVALC = ""CR"")。割合とその信頼区間に使う。例：奏効率。"
 stat-label:Number of non-missing values,欠測でない値の数
 (not taken),（取り込まない）
-"The TOC's population column, as the study's analysis sets: matched by id, label or a usual word (Safety Population: SAF); change it here. Taken in, it is the report's analysis set (the report list's, step 2's): its data is made, and a report whose set changes has its analyses moved.",TOC の Population 列を、試験の解析対象集団に対応づけます（ID・ラベル・よく使う言い方で照合: Safety Population → SAF）。ここで直せます。取り込むと、帳票の解析対象集団（帳票一覧・段 2 と同じ値）になり、そのデータが作られます。集団が変わった帳票は、解析もそちらに移ります。
+"The TOC's population column, as the study's populations: matched by id, label or a usual word (Safety Population: SAF); change it here. Taken in, it is the report's population (the report list's, step 1's): its data is made, and a report whose set changes has its analyses moved.",TOC の Population 列を、試験の解析対象集団に対応づけます（ID・ラベル・よく使う言い方で照合: Safety Population → SAF）。ここで直せます。取り込むと、帳票の解析対象集団（帳票一覧・段 1 と同じ値）になり、そのデータが作られます。集団が変わった帳票は、解析もそちらに移ります。
 %d reports,%d 帳票
-"not matched: choose the analysis set, or leave it",対応する集団が見つかりません。選ぶか、そのままにしてください
-Analysis data made for the reports' analysis sets: %s.,帳票の解析対象集団の解析データを作りました: %s。
+"not matched: choose the population, or leave it",対応する集団が見つかりません。選ぶか、そのままにしてください
+Analysis data made for the reports' populations: %s.,帳票の解析対象集団の解析データを作りました: %s。
 Make the tables' analysis data from their datasets,表のデータセットから解析データも作る
-"For each dataset of a table (the TOC's datasets column) that is not its analysis set's own: <dataset>_<set>, kept to the subjects of adsl_<set> -- found, or made. Its first analysis starts from it; change or delete it in 2-1.",表のデータセット（TOC のデータセット列）のうち、解析対象集団のもの以外ごとに、adsl_<集団> の被験者に絞った <データセット>_<集団> を作ります（同じものがあればそれを使います）。最初の解析はこれを読みます。2-1 で直したり消したりできます。
+"For each dataset of a table (the TOC's datasets column) that is not its population's own: <dataset>_<set>, kept to the subjects of adsl_<set> -- found, or made. Its first analysis starts from it; change or delete it in 1-1.",表のデータセット（TOC のデータセット列）のうち、解析対象集団のもの以外ごとに、adsl_<集団> の被験者に絞った <データセット>_<集団> を作ります（同じものがあればそれを使います）。最初の解析はこれを読みます。1-1 で直したり消したりできます。
 Also for the reports taken in before (made again where deleted),取り込み済みの帳票にも作り直す（消したものはもう一度作られます）
-"The data this report's analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are this report's (another report's adsl_saf may differ: copy one with the button). The denominator of a percent is chosen with each analysis, in 2-2.",この帳票の解析が読むデータ。試験のデータセットから、絞り込み条件で絞った行・別の解析データの被験者・作る列で作ります。この帳票のものです（別の帳票の adsl_saf は中身が違うことがあります。ボタンで写せます）。% の分母は 2-2 で解析ごとに選びます。
+"The data this report's analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are this report's (another report's adsl_saf may differ: copy one with the button). The denominator of a percent is chosen with each analysis, in 1-2.",この帳票の解析が読むデータ。試験のデータセットから、絞り込み条件で絞った行・別の解析データの被験者・作る列で作ります。この帳票のものです（別の帳票の adsl_saf は中身が違うことがあります。ボタンで写せます）。% の分母は 1-2 で解析ごとに選びます。
 Copy from another report...,ほかの帳票から写す…
 No other report has analysis data.,ほかの帳票に解析データがありません。
 Copy analysis data from another report,ほかの帳票から解析データを写す
@@ -2304,13 +2266,12 @@ Report ID as printed (Table 14.1.1),印刷する帳票番号（Table 14.1.1）
 Company,会社名
 Protocol,プロトコール
 Every report's header,全帳票のヘッダー
-"The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}, {STUDY_ID}. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, analysis set).",全帳票のヘッダーに入る試験の値: {COMPANY}（会社名）、{ANALYSIS_TYPE}（解析）、{STUDY_ID}（プロトコール）。ここで 1 回だけ設定します（tokens シートの試験の行）。帳票ごとに書くのは、その帳票の値（番号・題・解析対象集団）だけです。
+"The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}, {STUDY_ID}. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, population).",全帳票のヘッダーに入る試験の値: {COMPANY}（会社名）、{ANALYSIS_TYPE}（解析）、{STUDY_ID}（プロトコール）。ここで 1 回だけ設定します（tokens シートの試験の行）。帳票ごとに書くのは、その帳票の値（番号・題・解析対象集団）だけです。
 This report has a header of its own.,この帳票だけのヘッダーです。
 Back to the study's,試験の既定に戻す
 The study's (its values: this report's tokens),試験の既定のヘッダー（値はこの帳票の tokens）
 "Every report has the study's header; what changes from report to report ({OUTPUT_LABEL}, {OUTPUT_TITLE}, {OUTPUT_POPULATION}) is in the tokens tab.",どの帳票も試験の既定のヘッダーを使います。帳票ごとに変わる値（{OUTPUT_LABEL}、{OUTPUT_TITLE}、{OUTPUT_POPULATION}）は tokens のタブにあります。
 A header of this report's own,この帳票だけのヘッダーにする
-"This report's code lists: each variable's values, their order and the text they print as. A code list is a report's: copy one from the company standards or another report (Copy code lists...), or read a file, and change it here. The ARD uses those of the variables its analyses read (a value no record has is counted 0); the table uses them all. Optional: a report that needs none skips this step.",この帳票のコードリスト：変数ごとの値、その順番、表示する文字。コードリストは帳票のもの：会社標準やほかの帳票から写す（［コードリストを写す…］）か、ファイルを読み込み、ここで直す。ARD は解析が読む変数のものを使う（データにない値は 0 と数える）。表はすべてを使う。任意：要らない帳票はこの手順を飛ばしてよい。
 Copy code lists...,コードリストを写す…
 "Every variable, not only those this report uses",この帳票が使う変数だけでなく、すべての変数
 Read a file into this report,ファイルからこの帳票へ読み込む
@@ -2324,8 +2285,8 @@ Copy code lists into %s,コードリストを %s に写す
 Its code lists,そのコードリスト
 As the variable (its name in this report's data),変数名（この帳票のデータでの名前）
 %s's code lists: %s copied (save to keep them).,%s のコードリスト：%s を写しました（保存すると残ります）。
-ARD and table,ARD と表
-"A report's code lists, one row a value of a variable -- the text it prints as and its place (plan_labels(), plan_levels()). Every row names its report in `output_id` (a blank one is an error: copy the rows into each report that uses them). A variable's `levels` on the variables sheet, when given, is the order in the table instead. The code list of `variable` (its values the variables' names) gives the variables' labels, where the variables sheet's `label` gives none. The ARD too: a report's ARD program makes factors of the columns it lists that its analyses read (by, strata, variables) before any analysis.",帳票のコードリスト。1 行 = 変数の 1 つの値で、表示する文字と順番（plan_labels()、plan_levels()）。どの行も output_id に帳票を書く（空欄はエラー：使う帳票ごとに行を写す）。variables シートの levels を書いたときは、表ではそちらの順になる。variable のコードリスト（値は変数名）は、variables シートの label が無い変数の見出しになる。ARD でも使う：帳票の ARD プログラムは、解析が読む列（by、strata、variables）のうちここにあるものを、解析の前に factor にする。
+"A report's code lists, one row a value of a variable -- its place and what it is in the data the report's program makes (the ARD, a listing's or a figure's data): the program puts them on the columns it reads (cl_<variable>, set_levels()), each a factor in the list's order, its values the labels. A value the list does not have stops the program. Every row names its report in `output_id` (a blank one is an error: copy the rows into each report that uses them). A variable's `levels` on the variables sheet, when given, is the order in the table instead; a variable's heading is the variables sheet's `label`.",帳票のコードリスト。1 行が変数の 1 つの値で、その並びの位置と、帳票のプログラムが作るデータ（ARD、Listing や図のデータ）の中でその値がなるもの（ラベル）。プログラムは読む列にこれを当てます（cl_<変数>、set_levels()）。各列はリストの順の factor になり、値はラベルになります。リストに無い値があるとプログラムは止まります。どの行も output_id に帳票を書きます（空欄はエラー。使う帳票ごとに行を写してください）。variables シートの levels があれば、表の中の順はそちらです。変数の見出しは variables シートの label です。
+"The code lists' rows of `variable` (the variables' headings) are the table's labels now (step 2, a variable's label): moved there.  Save the study to keep it.",コードリストの variable の行（変数の見出し）は、表のラベル（手順 2 の変数のラベル）に移しました。残すには試験を保存してください。
 "This study is in an old format: its analysis data and code lists are the whole study's, not a report's. Make it again from the sample, or make a new study.",この試験は古い形式です（解析データ・コードリストが帳票のものではなく、試験全体のものです）。サンプルから新しく作り直すか、新しい試験を作ってください。
 "An old format: the analysis data have no report. Make the study again from the sample, or make a new study.",古い形式の試験です（解析データが帳票のものではありません）。サンプルから作り直すか、新しい試験を作ってください。
 The checks' messages,検査のメッセージ（詳細）
@@ -2336,9 +2297,9 @@ Blank: every analysis variable (the rule); a variable: its exception.,空欄: �
 "Its decimals, a whole number (p, a percent: 1 prints 61.6).",小数桁数（整数）。p（割合）は 1 で 61.6 と出る。
 digits: decimals,小数桁数 (digits)
 Values,値
-"Numbers: the ARD's values (stat), rounded here to the decimals below. The ARD's text: the values as step 2 formatted them (stat_fmt), printed as they are; a row may still put two in one (Mean (SD)).",数値: ARD の値（stat）を、下の桁数でここで丸めます。ARD の文字: 段 2 で書式を付けた値（stat_fmt）をそのまま出します。2 つを 1 行にまとめること（Mean (SD)）はできます。
+"Numbers: the ARD's values (stat), rounded here to the decimals below. The ARD's text: the values as step 1 formatted them (stat_fmt), printed as they are; a row may still put two in one (Mean (SD)).",数値: ARD の値（stat）を、下の桁数でここで丸めます。ARD の文字: 段 1 で書式を付けた値（stat_fmt）をそのまま出します。2 つを 1 行にまとめること（Mean (SD)）はできます。
 "Numbers, rounded here",数値（ここで丸める）
-The ARD's text (as formatted in step 2),ARD の文字（段 2 の書式のまま）
+The ARD's text (as formatted in step 1),ARD の文字（段 1 の書式のまま）
 Continuous variables: the rows (drag to order),連続変数: 出す行（ドラッグで並べ替え）
 Not shown (drag a row to the left),出さない行（左へドラッグで追加）
 A row of your own,自分の行
@@ -2351,8 +2312,7 @@ Take it away,取り除く
 Statistic,統計量
 Decimals,小数桁数
 A row of your own needs a label and a template with a {statistic}.,自分の行には、行ラベルと {統計量} を含むテンプレートが要ります。
-"Columns of the subjects' data (the analysis set's, or the analysis data its subjects are kept to) joined by the subject key. Nothing chosen: nothing added. A column of the same name takes the subjects' values.",症例側のデータ（解析対象集団のデータ、または症例を絞った解析データ）の列を被験者 ID で結合して足します。選ばなければ何も足しません。同じ名前の列は症例側の値に置き換わります。
-Columns made,作る列
+"Columns of the subjects' data (the population's, or the analysis data its subjects are kept to) joined by the subject key. Nothing chosen: nothing added. A column of the same name takes the subjects' values.",症例側のデータ（解析対象集団のデータ、または症例を絞った解析データ）の列を被験者 ID で結合して足します。選ばなければ何も足しません。同じ名前の列は症例側の値に置き換わります。
 "The columns this data makes: split by conditions, cut a number into groups, days between two dates, or any R. The sheet keeps each as NAME = R (derive, | between them); one the form cannot draw is kept as written.",このデータで作る列：条件で分ける、数値を区分に区切る、2 つの日付の日数の差、または任意の R。シートには NAME = R の形で残ります（derive、| 区切り）。フォームで描けないものは書いたまま残します。
 Split by conditions,条件で分ける
 Cut a number into groups,区切る（数値を区分に）
@@ -2393,12 +2353,7 @@ Font,フォント
 Size (pt),大きさ（pt）
 "The size is a number of points (9, 10 ...).",大きさはポイントの数（9、10 など）で入れてください。
 "The document's font (its font table); the study's row (blank output_id) is the company's, written once in the setup code; blank: rtfreporter's option (Courier).",文書のフォント（フォント表）。試験の行（output_id が空欄）は会社の値で、共通の準備のコードに 1 回だけ書かれます。空欄 = rtfreporter の設定（Courier）。
-Levels and order (code lists)...,水準と順序（コードリスト）…
-Levels and order: the columns of %s,水準と順序：%s の列
-Levels and order: the columns of this analysis data,水準と順序：この解析データの列
-Code lists of %s's table,%s の表のコードリスト
-Code lists of this table...,この表のコードリスト…
-"This report's code lists: each variable's values, their order and the text they print as. The ARD uses those of the variables its analyses read (a value no record has is counted 0); the table uses them all, in their order unless the variables sheet says another (levels).",この帳票のコードリスト：変数ごとの値、その順番、表示する文字。ARD は解析が読む変数のものを使い（データにない値は 0 と数える）、表はすべてを使います。表の順は、variables シートの levels が無ければこの順です。
+"This report's code lists: each variable's values, their order and what they become in the data (the label). The program puts them on the data where it is made (set_levels()): in the ARD, a listing's or a figure's data each listed column is a factor in the list's order, its values the labels. A value no record has is counted 0; a value the list does not have stops the program. A table's order is the list's unless the variables sheet says another (levels).",この帳票のコードリスト：変数ごとの値、その順番、データの中でなるもの（ラベル）。プログラムはデータを作る所でこれを当てます（set_levels()）：ARD・Listing・図のデータで、リストのある列はリストの順の factor になり、値はラベルになります。データに無い値は 0 と数え、リストに無い値があるとプログラムは止まります。表の順は、variables シートの levels が無ければリストの順です。
 Blank: the label of this report's code list of variable (faint). What is written here is the table's own.,空欄なら、この帳票のコードリスト（variable）の見出し（薄い字）。ここに書くとこの表の見出しになります。
 This report's font,この帳票のフォント
 Blank: every report's font and size (the study tab). A value here is this report's own (its row of the page sheet).,空欄なら全帳票のフォントと大きさ（試験タブ）になります。ここに入れた値はこの帳票だけのものです（page シートのこの帳票の行）。
@@ -2412,8 +2367,7 @@ Analysis ID (a set of analyses),解析 ID（解析のまとまり）
 "Several variables: in the ARD, one row per variable under the same ID.",変数が複数なら、ARD では同じ ID の下に変数ごとの行が並びます。
 Grouping variables,グループ変数
 Analysis variables,解析変数
-"The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step 3's. A combination with no records is shown, with 0.",解析をグループ分けする変数（例: TRT01A）。列・行・ページのどこに出すかは手順 3 で決めます。記録の無い組み合わせも 0 で出ます。
-the levels and order of this analysis data's columns (for the ARD and the table both),この解析データの列の水準と並び順（ARD と表の両方に効く）
+"The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step 2's. A combination with no records is shown, with 0.",解析をグループ分けする変数（例: TRT01A）。列・行・ページのどこに出すかは手順 2 で決めます。記録の無い組み合わせも 0 で出ます。
 cell by cell (merge with ⇥),セルごと（⇥ で隣とまとめる）
 one cell per value of %s,%s の値ごとに 1 セル
 e.g. Characteristic,例: Characteristic
@@ -2425,10 +2379,45 @@ the value columns,値の列
 What the header's {n} counts,見出しの {n} が数えるもの
 the subjects of each page's columns (the default),各ページの列の被験者（既定）
 the subjects of each page's columns,各ページの列の被験者
-"the analysis set, the same on every page",解析対象集団（どのページも同じ）
-"both: {n} each page's, {N} the analysis set's",両方: {n} は各ページの、{N} は解析対象集団の
+"the population, the same on every page",解析対象集団（どのページも同じ）
+"both: {n} each page's, {N} the population's",両方: {n} は各ページの、{N} は解析対象集団の
 Own,自分の書式
 "{n} the count, {N} the denominator, {p} the proportion; a format after a colon: {p:.1f%} prints 16.3%, {p:.2f} 0.16. The table on the right shows it.",{n} は度数、{N} は分母、{p} は割合。コロンの後に書式: {p:.1f%} は 16.3%、{p:.2f} は 0.16。右の表に出ます。
 "{statistic} as the ARD names it: N, mean, sd, se, median, p25, p75, min, max ...; a format after a colon: {mean:.2f} two decimals, {p:.1f%} a percent. Blank: the decimals above. The table on the right shows the row once added.",{統計量} は ARD の名前で: N、mean、sd、se、median、p25、p75、min、max など。コロンの後に書式: {mean:.2f} は小数 2 桁、{p:.1f%} は百分率。書かなければ上の桁数。足した行は右の表に出ます。
 Prints (the Statistics card's):,出すもの（統計量のカードの設定）:
 Decimals:,小数桁:
+Code lists: the columns of %s,コードリスト：%s の列
+Code lists: the columns of this analysis data,コードリスト：この解析データの列
+"This report's code lists of these columns: the program puts them on the data (set_levels()), each column a factor in the list's order, its values the labels -- so the ARD holds what the table prints. A value a list does not have stops the program.",これらの列の、この帳票のコードリストです。プログラムはこれをデータに当てます（set_levels()）。各列はリストの順の factor になり、値はラベルになります。そのため ARD は表に出す文字を持ちます。リストに無い値があるとプログラムは止まります。
+Column definitions,列定義
+"The columns of this analysis data, in the order its program makes them: ① added from the subjects' data, ② made or changed, ③ kept, ④ the code lists put on them.",この解析データの列を、プログラムが作る順に定義します：① 症例のデータから加える列、② 作る・変える列、③ 残す列、④ 列に当てるコードリスト。
+"The columns this data makes, or changes when the name is a column it has: split by conditions, cut a number into groups, days between two dates, or any R (mutate()). The sheet keeps each as NAME = R (derive, | between them); one the form cannot draw is kept as written.",このデータで作る列です。名前がすでにある列なら、その列を変えます。条件で分ける、数値を区切る、2 つの日付の間の日数、または任意の R（mutate()）。シートには 名前 = R の形で残ります（derive。| で区切る）。フォームで描けないものは書いたまま残ります。
+"The columns kept (select()). Given, the subject key and the columns this report's analyses read are kept too, without naming them.",残す列です（select()）。指定したときも、症例のキーと、この帳票の解析が読む列は書かなくても残ります。
+"Order (| between variables, - for descending; a column with a code list sorts in the list's order)",並べ順（変数は | で区切る。- で降順。コードリストのある列はリストの順）
+Code lists: the columns of %s's data,コードリスト：%s のデータの列
+"This report's code lists of the listing's columns: its program puts them on the data after the condition (set_levels()), each column a factor in the list's order, its values the labels, and the rows sort in that order. A value a list does not have stops the program.",Listing の列の、この帳票のコードリストです。プログラムは絞り込みの後にこれをデータに当てます（set_levels()）。各列はリストの順の factor になり、値はラベルになり、行はその順に並びます。リストに無い値があるとプログラムは止まります。
+"Code lists: in step 1 (1-1, column definitions)",コードリスト：段 1（1-1 の列定義）で
+Code lists,コードリスト
+"%s has a code list: its values' order and text are the code list's (the data steps' last, Code lists).",%s にはコードリストがあります。値の順と文字はコードリストのものです（データの手順の最後の「コードリスト」）。
+"This report's code lists of the figure's columns: its program puts them on the data as the data steps' last (set_levels()), each column a factor in the list's order, its values the labels -- the order and text of the legend and the axis. A value a list does not have stops the program.",図の列の、この帳票のコードリストです。プログラムはデータの手順の最後にこれをデータに当てます（set_levels()）。各列はリストの順の factor になり、値はラベルになります。凡例や軸の順と文字になります。リストに無い値があるとプログラムは止まります。
+None of these columns has a code list: their values are as the data has them.,これらの列にはコードリストがありません。値はデータのままです。
+%s: the data has values its code list does not (the program would stop): %s,%s：コードリストに無い値がデータにあります（このままではプログラムが止まります）：%s
+Add them to the list,リストに加える
+Edit...,編集…
+Copy...,写す…
+"%s's code list of %s: %s added, each printing as itself (edit their text with Edit...).",%s の %s のコードリストに %s を加えました。表示は値そのままです（文字は「編集…」で直せます）。
+"A column with a code list (%s) is compared with its labels here, as the ARD has them: e.g. %s, not %s.",コードリストのある列（%s）は、ここでは ARD と同じくラベルで比べます：例 %s（%s ではありません）。
+Columns made or changed,作る・変える列
+Columns added from the subjects' data: none to add (this data is the subjects' data itself).,症例のデータから加える列：ありません（このデータが症例のデータそのものです）。
+Code lists: %s (Column definitions ④),コードリスト：%s（列定義 ④）
+A value with no arrow prints as it is.,矢印の無い値は、そのまま表示されます。
+"ARD: the analysis sets, one row a population.",ARD：解析対象集団。1 行 = 1 集団。
+"The analysis data analysed (a data_id of analysis_data), instead of dataset and population_id: the analysis set is its population; blank: dataset and population_id say it.",解析する解析データ（analysis_data の data_id）。dataset と population_id の代わりに使い、解析対象集団はそのデータの集団になる。空欄 = dataset と population_id で指定。
+"The analysis set: the data is restricted to its subjects; blank: no restriction (population is NULL), or the population of `data`.",解析対象集団：データをその被験者に絞る。空欄 = 絞らない（population は NULL）、または `data` の集団。
+"What percentages are of: population (the analysis set; hierarchical and max take it anyway), row / column / cell (cards), another population, a dataset (its records of the analysis set's subjects), or an analysis data (as it is: one row a subject and phase gives the N of each phase); blank: the method's default.",% の分母：population（解析対象集団。hierarchical と max は指定しなくてもこれ）、row / column / cell（cards）、別の集団、データセット（その中の、解析対象集団の被験者の行）、または解析データ（そのまま。被験者 × フェーズで 1 行にすれば、フェーズごとの N）。空欄 = method の既定。
+"Which population {n} in the column header is, for a table split by page (a lab parameter): page (those with that page's data), table (the analysis set), or both as n = page | N = table for {n} and {N}; blank: page (warns when both exist and differ). Both must be in the ARD.",ページ（検査項目など）で分けた表で、列見出しの {n} がどの母集団か：page（そのページのデータがある人）、table（解析対象集団）、両方なら n = page | N = table で {n} と {N}。空欄 = page（両方あって食い違えば警告）。どちらも ARD に入れておくこと。
+Population flag,解析対象集団フラグ
+"Search: ID, title, population, data",検索: ID・タイトル・解析対象集団・データ
+"A flag (== ""Y"") that selects the analysis set, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"
+Keep an analysis set,解析対象集団で絞る
+"No analysis set: every row of the dataset is used. Keep the analysis set's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。

@@ -4,7 +4,12 @@
 \alias{save_study}
 \title{Save a study}
 \usage{
-save_study(study, home = tflplanner_home(), base = NULL)
+save_study(
+  study,
+  home = tflplanner_home(),
+  base = NULL,
+  spec = c("check", "overwrite")
+)
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
@@ -16,7 +21,17 @@ now.  Given it, the save merges: a part (the study fields, the report
 list, each sheet, each sheet of the ARD definition ...) this person did
 not change keeps what is saved now -- someone else may have changed
 it -- and a part both changed differently is a conflict that stops the
-save (class \code{tflplanner_conflict}).}
+save (class \code{tflplanner_conflict}).
+
+The definition files are the study's source (#274): a save never writes
+over one changed outside tflplanner since it last wrote or read them.
+Such a save stops (class \code{tflplanner_spec_changed}, its \code{files} the
+files changed): open the study again, or \code{\link[=reload_from_spec]{reload_from_spec()}}, to take
+the files in; or write them back from the last save (\code{\link[=write_spec]{write_spec()}}).}
+
+\item{spec}{\code{"check"} (the default) stops when a definition file was
+changed outside tflplanner; \code{"overwrite"} writes over it, after copying
+it to \verb{spec/.rejected/} (what \code{\link[=write_spec]{write_spec()}} does).}
 }
 \value{
 The study, invisibly, with \code{files}: what was written (status

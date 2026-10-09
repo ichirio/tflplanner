@@ -1,6 +1,6 @@
 # A report's analysis set: one value, the report list's `population`
 # (outputs$population, a population_id).  The TOC fills it, the report list
-# and step 2 change it; step 2's defaults read it.  The analysis data of the
+# and step 1 change it; step 1's defaults read it.  The analysis data of the
 # set's subjects (adsl_<set>) is made when a report's set is chosen, and a
 # report whose set changes has its analyses moved to the new set's data.
 
@@ -44,7 +44,7 @@ report_population <- function(x, output_id) {
 .ensure_pop_adata <- function(x, output_id, pop) {
   po <- x$ard$populations
   k <- match(pop, po$population_id)
-  if (is.na(k)) stop("No analysis set '", pop, "'.", call. = FALSE)
+  if (is.na(k)) stop("No population '", pop, "'.", call. = FALSE)
   from <- po$dataset[k]
   if (.is_blank(from)) from <- "ADSL"
   have <- .adata_same_as(.adata_rows(x, output_id), from, pop, NA, NA)
@@ -202,7 +202,7 @@ report_population <- function(x, output_id) {
 
 #' A report's analysis set
 #'
-#' The one value the report list, the TOC and step 2 share: `set_report_population()`
+#' The one value the report list, the TOC and step 1 share: `set_report_population()`
 #' writes it, makes the analysis data of the set's subjects (`adsl_<set>`)
 #' when there is none, and moves the report's analyses from the set it had
 #' to the new one: the data of the old set's subjects, and the data kept to
@@ -224,7 +224,7 @@ set_report_population <- function(x, output_id, population) {
   if (is.na(i)) stop("No report '", output_id, "'.", call. = FALSE)
   new <- if (.is_blank(population)) NA_character_ else population
   if (!is.na(new) && !new %in% x$ard$populations$population_id) {
-    stop("No analysis set '", new, "' in the study.", call. = FALSE)
+    stop("No population '", new, "' in the study.", call. = FALSE)
   }
   old <- report_population(x, output_id)
   if (is.null(o$population)) o$population <- rep(NA_character_, nrow(o))

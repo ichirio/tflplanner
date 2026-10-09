@@ -53,7 +53,7 @@
 # The choices: each analysis set's own data, then every other dataset with
 # it, then every dataset alone; the analysis's present choice is kept when
 # it is none of these.  `words`: `with` ("%s x %s (%s)"), `alone`
-# ("%s, no analysis set (%s)"), `none`; `counts` (from .an_data_counts(),
+# ("%s, no population (%s)"), `none`; `counts` (from .an_data_counts(),
 # named by value) are put after the name when given: `words$count`
 # ("%s: %s").
 .an_data_choices <- function(datasets, populations, now = "|", words, counts = NULL,
