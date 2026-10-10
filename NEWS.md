@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **The preview shows a column header line's bold and underline.**  Ticked
+  in the table builder (a line's "bold", "underline"), they were in the
+  definition, the program and the RTF, but the Result tab's preview drew
+  every header cell plain.  It now draws a header cell bold, with its rule
+  above or below and its alignment, as the RTF prints it.
+
 - **The Review tab** (#288, phase 2).  A tab between Make a report and
   Runs lists the study's review (`study_review()`): what cannot be used,
   what is probably wrong, what to set by hand, report by report (the
