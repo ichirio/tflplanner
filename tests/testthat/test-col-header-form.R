@@ -160,6 +160,35 @@ test_that("the builder's header form writes the report's col_header", {
     session$elapse(1000)
     ch <- eff()
     expect_identical(ch$text[ch$cols == ".values"], c("{col}", "N={n}"))
+    # bold and underline ticked on line 1 (its value cells): in the sheet,
+    # the preview, the RTF
+    u1 <- bform$hdr[[1]]$uid
+    v8 <- list()
+    v8[[paste0(b(paste0("h", u1)), "_bold")]] <- TRUE
+    v8[[paste0(b(paste0("h", u1)), "_ul")]] <- TRUE
+    do.call(session$setInputs, v8)
+    session$elapse(1000)
+    ch <- eff()
+    expect_identical(ch$bold[ch$line == "1" & ch$cols == ".values"], "TRUE")
+    expect_identical(ch$border_bottom[ch$line == "1" & ch$cols == ".values"], "single")
+    expect_true(all(is.na(ch$bold[ch$line == "2"])))
+    pages <- preview_pages(rv$p, "T-DM", data)
+    hd <- pages[[1]]$col_header[[1]]
+    val <- hd[vapply(hd, function(x) as.integer(x$from) > 1L, NA)]
+    expect_true(all(vapply(val, function(x) isTRUE(x$bold), NA)))
+    pv <- as.character(preview_html(pages))
+    th <- regmatches(pv, gregexpr("<th[^>]*>[^<]*", pv))[[1L]]
+    lab <- val[[1L]]$label
+    one <- th[grepl(sub("\n.*$", "", lab), th, fixed = TRUE)][1L]
+    expect_match(one, "font-weight: bold;", fixed = TRUE)
+    expect_match(one, "border-bottom: 1px solid", fixed = TRUE)
+    expect_false(any(grepl("font-weight: bold", th[grepl("N=", th, fixed = TRUE)], fixed = TRUE)))
+    f <- tempfile(fileext = ".rtf")
+    rtfreporter::generate_rtfreport(
+      rtfreporter::rtf_tables(rtfreporter::rtf_document(), pages), f)
+    rtf <- paste(readLines(f, warn = FALSE), collapse = "\n")
+    expect_match(rtf, paste0("\\b ", sub("\n.*$", "", lab)), fixed = TRUE)
+    expect_match(rtf, "\\clbrdrb", fixed = TRUE)
   })
 })
 

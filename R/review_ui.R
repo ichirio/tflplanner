@@ -152,7 +152,7 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
       of <- attr(r, "facts_of") %||% character()
       if (is.null(made) || all(is.na(made)) || !length(of)) {
         return(shiny::span(class = "small text-muted",
-                           t("Not reviewed against the data yet: Review with the data reads it once (it is kept).")))
+                           t("The checks against the data have not run yet. Press [Review with the data] to read the datasets once (not again until a file changes).")))
       }
       shiny::span(class = "small text-muted",
                   sprintf(t("Against the data as read %s (%s)"),
