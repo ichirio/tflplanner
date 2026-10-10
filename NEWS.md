@@ -127,6 +127,18 @@ look at its Review tab.
   choice is the `tables` sheet's `header_n`, as before.  Needs rtfreporter
   0.8.2.9033.
 
+- **A new report goes where its id sorts; the list can be sorted by ID.**
+  The report list's order is still the order the reports are made in.  A
+  report added (Add, Copy, `add_output()`, `copy_output()`) goes where its
+  id sorts among the others -- by the numbers in the id, as numbers
+  (T-14-1-2 after T-14-1-1 and before T-14-1-10; T-14-0-1 before F-14-2-1,
+  the sections' order), then its letters -- instead of last; one ordered
+  by hand keeps its order.  A TOC's reports come in the TOC's order
+  (`add_output(at = "end")`).  The report list's new "Sort by ID" puts the
+  whole list in that order, after asking how many move; the up and down
+  arrows still move one.
+  `sort_outputs()` does the same in R.
+
 - **The review names a program calling a function tflspec no longer
   has** (P02, area program): one of the six above, as `tflspec::`, or
   after `library(tflspec)` with `programs/study_helpers.R` not sourced on
