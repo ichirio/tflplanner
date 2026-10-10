@@ -7939,7 +7939,12 @@ app_server <- function(input, output, session, start) {
   # can never be read as one of this form's.  Its edits write the sheets
   # (builder_write()), and the grids redraw when their tab is opened.
   bform <- new.env()
-  bform$n <- 0L
+  # numbered from a different start in each session: a browser that
+  # reconnects to a new session (the app restarted) still holds the inputs
+  # of the session before -- b3_total_on = TRUE, drawn for another report
+  # -- and sends them; with the same numbers they would be read as this
+  # session's form (a Total column switched on for a report without one)
+  bform$n <- sample.int(1e6L, 1L) * 10L
   session$userData$bform <- bform
   bform_drawn <- shiny::reactiveVal(0L)
   # a variable's own decimals, as the form edits them (bform$exc)
