@@ -2709,3 +2709,4 @@ The numbers are not known yet: the preview has not been made.,数はまだわか
 "%d analyses are run over all subjects too: update the ARD, then Preview.",%d 本の解析を全体でも走らせる：ARD を更新してから Preview。
 "Also over all subjects",全体でも計算する
 and over all,全体でも
+"The ARD definition does not hold, so no ARD program was written (the rest is saved). See the Review tab.",ARD 定義が成り立たないため、ARD プログラムは書いていません（他は保存済み）。Review タブを見てください。

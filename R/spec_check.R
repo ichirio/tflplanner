@@ -169,7 +169,8 @@
   if (!is.null(a) && nrow(a$analyses)) {
     spec <- tryCatch(.ard_spec(a), error = function(e) {
       out <<- rbind(out, .problem_rows(.sheet_file("ard", "", ard_file), "", "", "",
-                                       conditionMessage(e)))
+        paste0("The ARD definition does not hold, so saving writes no ARD ",
+               "program: ", conditionMessage(e))))
       NULL
     })
   }

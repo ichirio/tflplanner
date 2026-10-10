@@ -250,7 +250,9 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE,
     if (parts == "ard") file.path(lay[["programs_ard"]], .ard_autoexec_file) else
       file.path(lay[["programs_tfl"]], "autoexec_report.R")
   if (!file.exists(file.path(study$path, prog))) {
-    stop("The study has no ", prog, " yet: save it first.", call. = FALSE)
+    stop("The study has no ", prog, " yet: save it first (an ARD definition ",
+         "that does not hold writes no ARD program; see the Review tab).",
+         call. = FALSE)
   }
   if (length(batch) && !batch %in% names(batch_sets(study$planner))) {
     stop("No batch named ", sQuote(batch), ": the study's are ",

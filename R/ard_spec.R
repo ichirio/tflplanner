@@ -219,10 +219,17 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
     if (!same) writeLines(enc2utf8(as.character(txt)), j, useBytes = TRUE)
     out[nrow(out) + 1L, ] <- list(j, if (same) "unchanged" else "written")
   }
-  spec <- tryCatch(.ard_spec(a), error = function(e) NULL)
+  # a definition that does not hold writes no ARD program: said, not
+  # passed over (#323) -- the rest of the save is still worth keeping
+  problem <- NULL
+  spec <- tryCatch(.ard_spec(a), error = function(e) {
+    problem <<- conditionMessage(e)
+    NULL
+  })
   if (!is.null(spec) && nrow(a$analyses)) {
     out <- rbind(out, .save_ard_programs(spec, root, .study_codelists(p)))
   }
+  if (nrow(a$analyses)) attr(out, "problem") <- problem
   out
 }
 
