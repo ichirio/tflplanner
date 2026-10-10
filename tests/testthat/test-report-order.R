@@ -12,9 +12,12 @@ test_that("ids in natural order: numbers as numbers", {
   y <- c("T-14-2-1", "F-14-2-1", "T-14-0-1", "L-16-2-7", "T-14-3-1")
   expect_identical(y[order(.natural_key(y), method = "radix")],
                    c("T-14-0-1", "F-14-2-1", "T-14-2-1", "T-14-3-1", "L-16-2-7"))
-  # no number: after the numbered, in their letters' order
+  # no number: before the numbered, in their letters' order
   z <- c("VS", "T-1", "AE")
-  expect_identical(z[order(.natural_key(z), method = "radix")], c("T-1", "AE", "VS"))
+  expect_identical(z[order(.natural_key(z), method = "radix")], c("AE", "VS", "T-1"))
+  # so a simple list keeps its letters: L1 after DM
+  p <- add_output(add_output(new_planner(), "DM"), "L1")
+  expect_identical(ids(p), c("DM", "L1"))
   expect_identical(.natural_key(NA), "")
 })
 
