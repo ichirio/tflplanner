@@ -8034,6 +8034,20 @@ app_server <- function(input, output, session, start) {
                                placeholder = if (!is.na(hint)) hint),
               # what the table prints for it (the Statistics card's), faint
               shiny::uiOutput(bid(paste0("vdef", i))),
+              # its rows under one level of another categorical variable
+              # (RACE: Asian; plan_nest())
+              if (identical(v$kind[i], "categorical")) {
+                others <- v$variable[v$kind == "categorical" & v$variable != v$variable[i]]
+                ch <- unlist(lapply(others, function(o) paste0(o, ": ", st$levels[[o]])))
+                cur <- v$under[i] %||% NA_character_
+                shiny::selectInput(
+                  bid(paste0("under", i)),
+                  with_tip(t("Rows under a level of another variable"),
+                           t("Its rows go right after that level's row, one step deeper, without its own heading: Chinese / Japanese / Korean under Race's Asian. Blank: a block of its own.")),
+                  choices = c(stats::setNames("", t("(its own block)")),
+                              unique(c(ch, if (!is.na(cur)) cur))),
+                  selected = if (is.na(cur)) "" else cur, width = "100%")
+              },
               if (identical(v$kind[i], "categorical") &&
                   length(st$levels[[v$variable[i]]])) {
                 shiny::tagList(
@@ -8747,6 +8761,11 @@ app_server <- function(input, output, session, start) {
     }, "")
     lev <- stats::setNames(lapply(seq_along(vars), function(k)
       get(paste0("lv", idx[k])) %||% st$levels[[vars[k]]]), vars)
+    v$under <- vapply(seq_along(vars), function(k) {
+      u <- get(paste0("under", idx[k]))
+      if (is.null(u)) as.character(v$under[k] %||% NA_character_) else
+        if (nzchar(u)) u else NA_character_
+    }, "")
     num <- function(x, d) {
       x <- suppressWarnings(as.numeric(get(x)))
       if (length(x) != 1L || is.na(x)) d else max(0, round(x))
