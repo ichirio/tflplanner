@@ -17,14 +17,14 @@ test_that("the one line: columns, rows, statistics, when read", {
   x <- ard_card_summary(card_meta())
   expect_identical(x$line, paste0(
     "ARD: columns TRT01A (3 groups) | 3 variables (2 categorical, 1 continuous) | ",
-    "statistics n, N, p, mean, sd, median … | read 10/11 09:05"))
+    "statistics n, N, p, mean, sd, median \u2026 | read 10/11 09:05"))
   r <- x$rows
   expect_identical(r$role, c("column", "row: variable", "row: variable", "row: variable"))
   expect_identical(r$variable, c("TRT01A", "AGE", "SEX", "RACE"))
   expect_identical(r$kind, c("group", "continuous", "categorical", "categorical"))
   expect_identical(r$detail[1L], "3 levels: Placebo, Low, High")
   expect_identical(r$detail[2L], "N, mean, sd, median, min, max, p25")
-  expect_identical(r$detail[4L], "5 levels: A, B, C, D, …")
+  expect_identical(r$detail[4L], "5 levels: A, B, C, D, \u2026")
   # a label only where it says more than the name
   expect_identical(r$label, c(NA, "Age (years)", NA, NA))
 })
@@ -37,7 +37,7 @@ test_that("pages, a hierarchy, two column keys; no meta", {
   m$keys$AEBODSYS <- c("SOC1", "SOC2")
   m$keys$AEDECOD <- c("PT1", "PT2", "PT3")
   x <- ard_card_summary(m, page_by = "AEBODSYS")
-  expect_match(x$line, "columns TRT01A × SEX (3 × 2 groups)", fixed = TRUE)
+  expect_match(x$line, "columns TRT01A \u00d7 SEX (3 \u00d7 2 groups)", fixed = TRUE)
   expect_match(x$line, "pages AEBODSYS | rows AEDECOD", fixed = TRUE)
   expect_identical(x$rows$role[1:4], c("column", "column", "page split", "row: hierarchy"))
   # the column keys are not counted among the variables
@@ -51,8 +51,8 @@ test_that("pages, a hierarchy, two column keys; no meta", {
   expect_match(none$line, "not read yet", fixed = TRUE)
   # in Japanese
   ja <- ard_card_summary(card_meta(), tr = function(x) tr(x, lang = "ja"))
-  expect_match(ja$line, "列 TRT01A（3 群）", fixed = TRUE)
-  expect_identical(ja$rows$role[1L], "列")
+  expect_match(ja$line, "\u5217 TRT01A\uff083 \u7fa4\uff09", fixed = TRUE)
+  expect_identical(ja$rows$role[1L], "\u5217")
 })
 
 test_that("the builder shows the card, and the whole ARD on its button", {
