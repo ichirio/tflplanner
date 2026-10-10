@@ -931,7 +931,8 @@ app_ui <- function(lang = "en") {
             .btn("rename", t("Rename")),
             .btn("report_batches", t("Batches...")),
             .btn("remove", t("Delete"), class = "btn-sm btn-outline-danger"),
-            .btn("up", "\u2191"), .btn("down", "\u2193")),
+            .btn("up", "\u2191"), .btn("down", "\u2193"),
+            .btn("sort_ids", t("Sort by ID"))),
           .btn("toc_new", t("Take in a TOC..."), class = "btn-sm btn-outline-primary ms-auto")),
         shiny::uiOutput("report_moves"),
         # its own height (a fixed one let a long list cover the buttons)
@@ -9538,6 +9539,28 @@ app_server <- function(input, output, session, start) {
   }
   shiny::observeEvent(input$up, move(-1L))
   shiny::observeEvent(input$down, move(1L))
+  # the whole list in its ids' natural order, asked first (the order is the
+  # order the reports are made in)
+  shiny::observeEvent(input$sort_ids, {
+    o <- rv$p$outputs
+    to <- sort_outputs(rv$p)$outputs$output_id
+    moved <- sum(o$output_id != to)
+    if (!moved) {
+      notify(t("The reports are in their ids' order already."))
+      return()
+    }
+    shiny::showModal(shiny::modalDialog(
+      title = t("Sort the reports by ID?"),
+      sprintf(t("%d of %d reports move: the list goes in its ids' natural order (T-14-1-2 before T-14-1-10). The list's order is the order the reports are made in; the up and down arrows still move one."),
+              moved, nrow(o)),
+      footer = shiny::tagList(
+        shiny::modalButton(t("Cancel")),
+        .btn("sort_ids_ok", t("Sort"), class = "btn-primary"))))
+  })
+  shiny::observeEvent(input$sort_ids_ok, {
+    shiny::removeModal()
+    rv$p <- sort_outputs(rv$p)
+  })
 
   # -- data ----------------------------------------------------------------
   data_ver <- shiny::reactiveVal(0L)

@@ -2679,3 +2679,8 @@ No heading of its own: its rows go under %s.,独自の見出しはありませ�
 The checks against the data have not run yet. Press [Review with the data] to read the datasets once (not again until a file changes).,データと照らし合わせたチェックはまだです。［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。
 %s: the checks against the data have not run yet.,%s：データと照らし合わせたチェックはまだです。
 Press [Review with the data]: it reads the datasets once (not again until a file changes).,［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。
+Sort by ID,ID 順に並べる
+The reports are in their ids' order already.,帳票はすでに ID 順に並んでいます。
+Sort the reports by ID?,帳票を ID 順に並べ替えますか？
+%d of %d reports move: the list goes in its ids' natural order (T-14-1-2 before T-14-1-10). The list's order is the order the reports are made in; the up and down arrows still move one.,%2$d 帳票のうち %1$d が動きます。一覧を ID の自然な順（T-14-1-2 は T-14-1-10 より前）に並べます。一覧の順は帳票を作る順です。↑ ↓ で 1 つずつ動かすこともできます。
+Sort,並べ替える

@@ -2,6 +2,7 @@
 % Please edit documentation in R/planner.R
 \name{add_output}
 \alias{add_output}
+\alias{sort_outputs}
 \alias{copy_output}
 \alias{rename_output}
 \alias{remove_output}
@@ -15,8 +16,11 @@ add_output(
   type = "table",
   process_code = NA_character_,
   section = NA_character_,
-  population = NA_character_
+  population = NA_character_,
+  at = c("natural", "end")
 )
+
+sort_outputs(x)
 
 copy_output(x, from, to)
 
@@ -47,6 +51,9 @@ and any rework after it (\code{mutate()} ...).  \code{NA} means
 
 \item{population}{The report's analysis set, a population_id (see
 \code{\link[=set_report_population]{set_report_population()}}, which also makes its analysis data).}
+
+\item{at}{Where the new report goes: \code{"natural"} (where its id sorts
+among the others) or \code{"end"}.}
 }
 \value{
 The updated \code{tflplanner}.
@@ -55,5 +62,20 @@ The updated \code{tflplanner}.
 \code{add_output()} puts a report on the list; \code{copy_output()} gives a new
 report every row of an existing one (the quickest start for a report
 like one already defined); \code{rename_output()} changes an id everywhere;
-\code{remove_output()} takes a report and all its rows out.
+\code{remove_output()} takes a report and all its rows out;
+\code{sort_outputs()} puts the list in its ids' natural order.
+}
+\details{
+The list's order is the order the reports are made in (the official run
+too).  A new report goes where its id sorts among the others, in natural
+order -- \code{T-14-1-2} after \code{T-14-1-1} and before \code{T-14-1-10}, before the
+first report whose id sorts after it -- so a list kept in id order stays
+so; one ordered by hand keeps that order.  \code{at = "end"} puts it last (a
+TOC's reports come in the TOC's order).
+}
+\examples{
+p <- add_output(add_output(new_planner(), "T-14-1-10"), "T-14-1-1")
+p <- add_output(p, "T-14-1-2")
+p$outputs$output_id
+sort_outputs(add_output(p, "T-14-0-1", at = "end"))$outputs$output_id
 }
