@@ -2678,7 +2678,6 @@ Insert (into the field last clicked),差し込み（最後にクリックした�
 Subjects of each page (the default),各ページの被験者数（既定）
 "The analysis set, the same on every page",解析対象集団の被験者数（全ページ同じ）
 "Both: {n} each page's, {N} the analysis set's",両方を使う：{n} = 各ページ、{N} = 解析対象集団
-Make the ARD to see the numbers.,ARD を作ると、数が表示されます。
 "Subjects, by %s: %s",被験者数（%s 別）：%s
 the page,ページ
 "Subjects on each page (per %s, by %s): %s",各ページの被験者（%s ごと、%s 別）：%s
@@ -2686,3 +2685,4 @@ the page,ページ
 "Analysis set (by %s, the same on every page): %s",解析対象集団（%s 別、全ページ同じ）：%s
 (the pages and the analysis set have the same numbers),（ページと解析対象集団は同じ数）
 "The pages and the analysis set have different numbers: choose which one {n} says (until then, making the report warns).",ページと解析対象集団で数が違います。{n} にどちらを使うか選んでください（選ぶまで、帳票を作るときに警告が出ます）。
+The numbers are not known yet: the preview has not been made.,数はまだわかりません（プレビューが作られていません）。

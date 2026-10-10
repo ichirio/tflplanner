@@ -8526,9 +8526,12 @@ app_server <- function(input, output, session, start) {
       head <- shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-end mb-2",
         shiny::h6(class = "me-auto mb-0", t("Column header")),
-        .btn(bid("hdr_load"), t("Load a standard column header..."),
-             class = "btn-sm btn-outline-primary"),
-        .btn(bid("hdr_add"), t("Add a line above"), class = "btn-sm btn-outline-primary"))
+        # the two together, so a narrow form wraps them as one
+        shiny::div(
+          class = "d-flex flex-wrap gap-1",
+          .btn(bid("hdr_load"), t("Load a standard column header..."),
+               class = "btn-sm btn-outline-primary"),
+          .btn(bid("hdr_add"), t("Add a line above"), class = "btn-sm btn-outline-primary")))
       if (is.null(lines)) {
         return(shiny::tagList(head, shiny::div(
           class = "small text-muted",
@@ -8788,10 +8791,14 @@ app_server <- function(input, output, session, start) {
     pr <- input[[bid("hdr_preset")]]
     shiny::req(length(pr) == 1L, nzchar(pr), pr %in% names(header_presets()))
     shiny::removeModal()
-    bform$hdr <- hdr_uid(header_read(header_presets()[[pr]],
-                                     input[[bid("key")]] %||% bform$st$key))
+    keys <- input[[bid("key")]] %||% bform$st$key
+    bform$hdr <- hdr_uid(header_read(header_presets()[[pr]], keys))
     hdr_ver(hdr_ver() + 1L)
-    notify(sprintf(t("The header is the preset %s now."), pr))
+    # named as the list showed it (the key's name for "Arm")
+    hp <- .header_preset_choices(length(bform$meta$hierarchy) > 0L,
+                                 .key_label(bform$meta, keys[1L]))
+    shown <- names(hp)[match(pr, hp)]
+    notify(sprintf(t("The header is the preset %s now."), if (is.na(shown)) pr else shown))
   })
   bstate <- shiny::reactive(builder_guard({
     bform_drawn()

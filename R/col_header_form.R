@@ -184,7 +184,8 @@ header_token_choices <- function(keys, header_n = NA) {
 # value of each is what tables$header_n holds.  `now`: header_n as it is.
 # One population (or two with the same numbers): it alone, chosen, and
 # header_n as it is; two that differ: each, both, nothing chosen unless
-# header_n says, and a warning then; no ARD yet: the three in words.
+# header_n says, and a warning then; no preview (the builder needs an
+# ARD, so only when it could not be made): the three in words.
 header_n_choices <- function(cand, keys, now = NA_character_, tr = function(x) x) {
   keep <- if (is.na(now %||% NA_character_)) "" else now
   by <- paste(keys, collapse = " \u00d7 ")
@@ -207,7 +208,7 @@ header_n_choices <- function(cand, keys, now = NA_character_, tr = function(x) x
                             tr("The analysis set, the same on every page"),
                             tr("Both: {n} each page's, {N} the analysis set's")))
     return(list(choices = ch, selected = keep,
-                note = tr("Make the ARD to see the numbers."), warn = NULL))
+                note = tr("The numbers are not known yet: the preview has not been made."), warn = NULL))
   }
   if (all(cand$scope == "all")) {
     ch <- stats::setNames(keep, sprintf(tr("Subjects, by %s: %s"), by, vals(cand)))

@@ -243,7 +243,7 @@ test_that("what {n} counts: the ARD's populations, each with its values", {
   ch <- header_n_choices(NULL, "TRT01A")
   expect_identical(unname(ch$choices), c("", "table", "n = page | N = table"))
   expect_identical(ch$selected, "")
-  expect_match(ch$note, "Make the ARD")
+  expect_match(ch$note, "not known yet")
   expect_identical(header_n_choices(NULL, "TRT01A", "page")$choices[[1L]], "page")
   # one population: it alone, chosen, header_n as it is
   one <- data.frame(scope = "all", page = NA, column = c("A", "B", NA),
