@@ -15,7 +15,7 @@ bs_home <- function(env = parent.frame()) {
 bs_planner <- function() {
   p <- add_output(new_planner(), "DM")
   p <- add_output(p, "VS")
-  p <- add_output(p, "L1", type = "listing")
+  p <- add_output(p, "L1", type = "listing", at = "end")
   p$ard$datasets <- data.frame(dataset = "ADSL", path = "data/adam/adsl.rds")
   p$ard$populations <- data.frame(population_id = "SAF", dataset = "ADSL",
                                   where = "SAFFL == \"Y\"")

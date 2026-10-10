@@ -11,6 +11,16 @@
   the arm compared chosen on its form.  The sample gains **F-14-2-4**, the
   hazard ratio of the time to first dermatologic event by sex and age
   group.  Needs tflspec >= 0.0.24.9084.
+- **An ARD definition that does not hold is said, not passed over**
+  (#323).  Saving writes no ARD program then (a blank `from` of an
+  analysis data made by code, for one); it used to say nothing, and the
+  official run failed on every ARD program with "cannot open the
+  connection".  Now `save_study()` says so in a message and keeps it as
+  `$ard_problem` (the app shows it after Save, the rest still saved), the
+  Review tab's error row says that no ARD program is written, the runner
+  says "no program ...: save the study" for a program that is not there
+  instead of running it, and `run_batch()` on a study with no ARD
+  programs names the likely cause.
 
 - **A Total column, without a "Total" arm in the data** (tflspec #212,
   rtfreporter `plan_total()`).  `set_total_column(x, output_id, label,
@@ -127,6 +137,18 @@ look at its Review tab.
   the report warns until then); with no ARD yet the three in words.  The
   choice is the `tables` sheet's `header_n`, as before.  Needs rtfreporter
   0.8.2.9033.
+
+- **A new report goes where its id sorts; the list can be sorted by ID.**
+  The report list's order is still the order the reports are made in.  A
+  report added (Add, Copy, `add_output()`, `copy_output()`) goes where its
+  id sorts among the others -- by the numbers in the id, as numbers
+  (T-14-1-2 after T-14-1-1 and before T-14-1-10; T-14-0-1 before F-14-2-1,
+  the sections' order), then its letters -- instead of last; one ordered
+  by hand keeps its order.  A TOC's reports come in the TOC's order
+  (`add_output(at = "end")`).  The report list's new "Sort by ID" puts the
+  whole list in that order, after asking how many move; the up and down
+  arrows still move one.
+  `sort_outputs()` does the same in R.
 
 - **The review names a program calling a function tflspec no longer
   has** (P02, area program): one of the six above, as `tflspec::`, or

@@ -2671,6 +2671,11 @@ No heading of its own: its rows go under %s.,独自の見出しはありませ�
 The checks against the data have not run yet. Press [Review with the data] to read the datasets once (not again until a file changes).,データと照らし合わせたチェックはまだです。［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。
 %s: the checks against the data have not run yet.,%s：データと照らし合わせたチェックはまだです。
 Press [Review with the data]: it reads the datasets once (not again until a file changes).,［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。
+Sort by ID,ID 順に並べる
+The reports are in their ids' order already.,帳票はすでに ID 順に並んでいます。
+Sort the reports by ID?,帳票を ID 順に並べ替えますか？
+"%d of %d reports move: the list goes in its ids' order, by the numbers in the id (T-14-1-2 before T-14-1-10, T-14-0-1 before F-14-2-1), then its letters. The list's order is the order the reports are made in; the up and down arrows still move one.",%2$d 帳票のうち %1$d が動きます。一覧を ID の順に並べます。ID の中の数を数として並べ（T-14-1-2 は T-14-1-10 より前、T-14-0-1 は F-14-2-1 より前）、同じなら文字の順です。一覧の順は帳票を作る順です。↑ ↓ で 1 つずつ動かすこともできます。
+Sort,並べ替える
 Fit to width,幅に合わせる
 "%s's own rows, as written to %s (edit them on the left). Study defaults fill what they leave out.",%s 自身の行（%s に書かれる内容。編集は左で）。足りないところは試験の既定が補います。
 No rows of its own: the study defaults make its page.,この帳票自身の行はありません。試験の既定でページができます。
@@ -2704,6 +2709,7 @@ The numbers are not known yet: the preview has not been made.,数はまだわか
 "%d analyses are run over all subjects too: update the ARD, then Preview.",%d 本の解析を全体でも走らせる：ARD を更新してから Preview。
 "Also over all subjects",全体でも計算する
 and over all,全体でも
+"The ARD definition does not hold, so no ARD program was written (the rest is saved). See the Review tab.",ARD 定義が成り立たないため、ARD プログラムは書いていません（他は保存済み）。Review タブを見てください。
 Arm compared with the reference (the first),基準群（先頭）と比べる群
 "Added analyses %s to step 1 (remove them there if not wanted): update the ARD, then Preview.",解析 %s を段 1 に追加しました（不要ならそこで削除）。ARD を更新してから Preview してください。
 No analysis set of the study is the flag %s: choose the analysis data's set in step 1.,フラグ %s に当たる解析対象集団が試験にありません。段 1 で解析データの集団を選んでください。
