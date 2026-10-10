@@ -10,7 +10,7 @@ test_that("the sample study is copied, registered and written", {
                normalizePath(root, "/"))
   expect_setequal(s$planner$outputs$output_id,
                   c("T-14-0-1", "T-14-1-1", "T-14-1-1S", "T-14-1-2", "T-14-1-3",
-                    "T-14-1-4", "T-14-2-1",
+                    "T-14-1-4", "T-14-1-5", "T-14-1-6", "T-14-2-1",
                     "T-14-2-3", "T-14-2-2",
                     "T-14-3-1", "L-16-2-7", "F-14-2-1", "F-14-2-2", "F-14-2-3"))
   expect_true(nrow(s$planner$ard$analyses) > 0)
