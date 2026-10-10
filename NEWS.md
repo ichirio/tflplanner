@@ -11,6 +11,16 @@
   instead of running it, and `run_batch()` on a study with no ARD
   programs names the likely cause.
 
+- **A Total column, without a "Total" arm in the data** (tflspec #212,
+  rtfreporter `plan_total()`).  `set_total_column(x, output_id, label,
+  position)` switches it on in both halves of a table's definition: the
+  `tables` sheet's `total` / `total_position` (written as `plan_total()`),
+  and `overall = TRUE` on the report's own analyses grouped by the column
+  variable (not the rows inside a stack, not `custom` / `subjects`), which
+  makes each ARD program run them again without their `by` -- cards' own
+  overall rows, with no group.  The ARS then has an analysis over all
+  subjects without the grouping, not a `"Total"` group the ADaM does not
+  have.  Needs tflspec >= 0.0.24.9083 and rtfreporter >= 0.8.2.9034.
 - **Logistic and Poisson regressions on R before 4.4 need MASS** (#319).
   Before R 4.4, `confint()` of a `glm` comes from MASS, and without it
   `cardx::ard_regression()` stops with "Unable to tidy x".  MASS is
