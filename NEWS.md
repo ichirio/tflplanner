@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **The app follows a run that ends, without a reload** (#305 area).
+  After a background official run (the sample's, for one), the report
+  list kept every report "not made" and a table's builder said "no ARD
+  yet" until the browser was reloaded.  The app now watches what a run
+  writes in the study folder -- the study ARD's status, a batch's
+  run.csv, a preview's log -- every few seconds, and refreshes the marks
+  and the ARD state when they change, whoever ran it (this session,
+  another, the app before a restart, R); and the builder reads a table's
+  ARD for itself again then.
 - **A report's Total column switched itself on after a reconnect**
   (#331 follow-up).  The table builder's inputs are numbered by the form
   drawn (`b3_total_on`), from 0 in each session; a browser reconnecting

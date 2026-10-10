@@ -7994,6 +7994,8 @@ app_server <- function(input, output, session, start) {
   # builder is opened -- no new ARD, only the reading (once a report).
   auto_read <- new.env()
   shiny::observe({
+    # (again when a run ends: the ARD it made is read then)
+    rv$status_ver
     shiny::req(identical(active_page(), "builder"),
                identical(builder_case(), "meta"))
     id <- current()
@@ -10167,6 +10169,34 @@ app_server <- function(input, output, session, start) {
     d <- selected_status()
     if (!nrow(d)) return(notify(t("Choose a report"), "warning"))
     start_run(d$output_id, paste(d$output_id, collapse = ", "))
+  })
+  # A run this session did not start, or lost (the app restarted, another
+  # session, R): what it writes -- the study ARD's status, a batch's
+  # run.csv, a preview's log -- is watched, and the report list's marks
+  # and the builder's ARD follow it without a reload
+  run_files <- shiny::reactivePoll(3000, session, checkFunc = function() {
+    s <- shiny::isolate(rv$study)
+    if (is.null(s)) return(NULL)
+    .run_files_stamp(s$path)
+  }, valueFunc = function() {
+    s <- shiny::isolate(rv$study)
+    if (is.null(s)) NULL else .run_files_stamp(s$path)
+  })
+  run_files_seen <- new.env()
+  shiny::observe({
+    stamp <- run_files()
+    s <- shiny::isolate(rv$study)
+    if (is.null(stamp) || is.null(s)) return()
+    key <- s$path
+    before <- run_files_seen[[key]]
+    run_files_seen[[key]] <- stamp
+    # the first look at a study is no change
+    if (is.null(before) || identical(before, stamp)) return()
+    shiny::isolate({
+      rv$status_ver <- rv$status_ver + 1L
+      rv$ard_ver <- rv$ard_ver + 1L
+      ard_state_ver(ard_state_ver() + 1L)
+    })
   })
   shiny::observe({
     px <- rv$job
