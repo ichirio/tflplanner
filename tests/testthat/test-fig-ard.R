@@ -171,6 +171,7 @@ test_that("the ARS: F-14-2-3 is an output naming T-14-2-2's analyses it prints (
   expect_true(all(got %in% vapply(tab$sublist$listItems, `[[`, "", "analysisId")))
   ck <- utils::read.csv(f[["check"]], stringsAsFactors = FALSE)
   expect_false("F-14-2-3" %in% ck$where[ck$kind == "not in ARS"])
+})
 
 test_that("the study review lists a figure's ARD problems as F04-F08, each with its place", {
   s <- fig_ard_study()
