@@ -325,7 +325,7 @@ test_that("the top tabs are the flow, and a report is made in its steps", {
     v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
     unname(v[nzchar(v)])
   }
-  expect_identical(vals("nav"), c("study", "data", "outputs", "make", "results"))
+  expect_identical(vals("nav"), c("study", "data", "outputs", "make", "review", "results"))
   expect_identical(vals("step"), c("ard", "content", "page"))
   expect_identical(vals("content_nav"), c("content", "code"))
   expect_identical(vals("page_right"), c("spec", "code", "result"))

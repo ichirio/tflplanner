@@ -13,7 +13,8 @@ study_review(
   ard = TRUE,
   deep = FALSE,
   home = tflplanner_home(),
-  lang = tflplanner_language()
+  lang = tflplanner_language(),
+  progress = NULL
 )
 
 review_problems(
@@ -23,7 +24,13 @@ review_problems(
   lang = tflplanner_language()
 )
 
-review_facts(study, refresh = FALSE, read = TRUE, home = tflplanner_home())
+review_facts(
+  study,
+  refresh = FALSE,
+  read = TRUE,
+  home = tflplanner_home(),
+  progress = NULL
+)
 }
 \arguments{
 \item{study}{An \code{rtfstudy} (\code{\link[=open_study]{open_study()}}).}
@@ -43,6 +50,9 @@ will (\code{\link[=check_planner]{check_planner()}}): slow, one read a report.}
 
 \item{lang}{The language of the messages (the app's by default).}
 
+\item{progress}{A function called with each dataset's name before its
+file is read (\code{data = "read"}), or \code{NULL}.}
+
 \item{x}{A planner (\code{\link[=new_planner]{new_planner()}}, \code{\link[=read_planner]{read_planner()}}).}
 
 \item{facts}{The facts of the data (\code{\link[=review_facts]{review_facts()}}), or \code{NULL}.}
@@ -55,7 +65,9 @@ listed in \code{attr(, "not_read")}.}
 \value{
 A \code{tflspec::tfl_review}, its \code{message} in the app's language and
 \code{message_en} in English; \code{attr(, "facts_made")}: when the facts of the
-data were made (\code{NA}: none were used).
+data were made (\code{NA}: none were used); \code{attr(, "off")}: the rules the
+company standards leave out (their settings' \code{review_off}, \code{A12 | C02}),
+whose rows are not there.
 }
 \description{
 \code{study_review()} lists, for the whole study or some reports, what is

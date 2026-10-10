@@ -6,6 +6,30 @@
   `tflspec::tfl_ars(references =)`: the sample's F-14-2-3 is an ARS
   `Output` (its titles and RTF) whose list of contents names T-14-2-2's
   KM and HR analyses, no longer "no analyses in the ARD definition".
+- **The Review tab** (#288, phase 2).  A tab between Make a report and
+  Runs lists the study's review (`study_review()`): what cannot be used,
+  what is probably wrong, what to set by hand, report by report (the
+  picker on the left, each report with its three counts), filtered by
+  level, area and a search.  A click on an item goes to it: the report
+  chosen, its step and tab, the analysis, analysis data, code list or
+  figure piece opened, and the grid's row and cell flashed.
+  - The review is the app's one: made when a study is opened, 2 s after
+    edits pause and after a save (no file read: the facts of the data
+    kept from the last read); **Review with the data** reads the files
+    whose facts are stale; **Check as the programs read it** is the
+    former Runs tab's definition check (its card is gone).
+  - Its counts where one works: the report head (each a link to the tab,
+    that report and level), the report picker (errors / to check / by
+    hand after each title, the run's mark as it was), and the analyses'
+    badges (an error, or something to check: the subjects per group
+    counted twice among them) read the review instead of the ARD
+    definition's message.
+  - A figure's advice with a one-step fix has an Apply button.
+  - The company standards' settings key `review_off` (`A12 | C02`) leaves
+    rules out of every study's review; the tab says which.
+  - `study_review(progress = )` / `review_facts(progress = )`: told the
+    dataset each time one is read.
+  - The guide (Japanese) has a section on the review.
 
 - **The sample's F-14-2-3 prints the hazard ratios too** (#311).
   T-14-2-2's ARD has a Cox model's hazard ratios against placebo (a

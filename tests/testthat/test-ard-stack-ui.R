@@ -76,7 +76,9 @@ test_that("the ARD tab: the outline, a stack's form, one inside it, grouping and
     do.call(session$setInputs, stats::setNames(list(TRUE), paste0("st", n, "_fl.by_stats")))
     expect_match(output$ard_stack_n_note$html, "so does GROUPN", fixed = TRUE)
     session$setInputs(ard_stat_apply = 3)
-    expect_match(output$ard_outline$html, "so does GROUPN", fixed = TRUE)
+    # the outline's badge reads the review (made 2 s after the edits pause)
+    session$elapse(2100)
+    expect_match(output$ard_outline$html, "counts the subjects per group twice", fixed = TRUE)
     # GROUPN deleted from the note: the stack counts them, nothing twice
     session$setInputs(ard_stack_del_groupn = 1)
     a <- ard_rows(rv$p, "analyses", "T2")
