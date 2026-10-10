@@ -137,6 +137,15 @@ look at its Review tab.
   choice is the `tables` sheet's `header_n`, as before.  Needs rtfreporter
   0.8.2.9033.
 
+- **The table builder says only what fits the table** (#324).  The note
+  "Check this order: the data do not give one ..." under a column
+  variable's order no longer shows when the report has a code list for that
+  variable (its ARD program puts the columns in the list's order); the form
+  says the order is the code list's instead.  A table with no continuous
+  variable no longer shows the continuous rows, "A row of your own" and the
+  decimals of their statistics, nor warns that the ARD has no mean, sd ...;
+  what the definition says of them is kept as it is.
+
 - **A new report goes where its id sorts; the list can be sorted by ID.**
   The report list's order is still the order the reports are made in.  A
   report added (Add, Copy, `add_output()`, `copy_output()`) goes where its
