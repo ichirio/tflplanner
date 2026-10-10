@@ -6432,11 +6432,12 @@ app_server <- function(input, output, session, start) {
     shiny::showModal(shiny::modalDialog(
       title = t("Take in a TOC"), size = "xl",
       shiny::uiOutput(toc_id("prev")),
-      shiny::fileInput(toc_id("file"), t("TOC file (xlsx, xls, csv)"),
-                       accept = c(".xlsx", ".xls", ".csv")),
+      shiny::fileInput(toc_id("file"), t("TOC files (xlsx, xls, csv): the TFL workbook, and the listing workbook when it is another"),
+                       accept = c(".xlsx", ".xls", ".csv"), multiple = TRUE, width = "100%"),
       shiny::uiOutput(toc_id("same_file")),
       shiny::uiOutput(toc_id("where")),
       shiny::uiOutput(toc_id("map")),
+      shiny::uiOutput(toc_id("preview")),
       shiny::uiOutput(toc_id("changes")),
       shiny::uiOutput(toc_id("result")),
       footer = shiny::tagList(shiny::modalButton(t("Close")),
@@ -6445,6 +6446,7 @@ app_server <- function(input, output, session, start) {
     output[[paste0("toc", n, "_same_file")]] <- shiny::renderUI(toc_same_file_ui())
     output[[paste0("toc", n, "_where")]] <- shiny::renderUI(toc_where_ui())
     output[[paste0("toc", n, "_map")]] <- shiny::renderUI(toc_map_ui())
+    output[[paste0("toc", n, "_preview")]] <- shiny::renderUI(toc_preview_ui())
     output[[paste0("toc", n, "_changes")]] <- shiny::renderUI({
       parts <- list(toc_pop_ui(), toc_data_ui(), toc_changes_ui())
       # taken in: nothing (not an empty list)
@@ -6469,7 +6471,8 @@ app_server <- function(input, output, session, start) {
     log <- toc_log()
     if (!nrow(log)) return(NULL)
     md5 <- unname(tools::md5sum(p))
-    i <- which(log$md5 == md5)
+    # an import of several files keeps their md5s " | " between them
+    i <- which(vapply(strsplit(log$md5, " | ", fixed = TRUE), function(v) md5 %in% v, NA))
     if (!length(i)) return(NULL)
     i <- i[length(i)]
     shiny::div(class = "alert alert-warning py-1 small",
@@ -6489,8 +6492,9 @@ app_server <- function(input, output, session, start) {
     if (!ok) args$disabled <- TRUE
     do.call(.btn, args)
   }
-  # the file under the name it was chosen by (the record keeps that name)
-  toc_path <- shiny::reactive({
+  # the files under the names they were chosen by (the record keeps those
+  # names): the TFL workbook, and the listing workbook when it is another
+  toc_paths <- shiny::reactive({
     f <- input[[toc_id("file")]]
     shiny::req(f)
     d <- tempfile("toc")
@@ -6499,82 +6503,271 @@ app_server <- function(input, output, session, start) {
     file.copy(f$datapath, p, overwrite = TRUE)
     p
   })
+  toc_path <- function() toc_paths()[1L]
   toc_is_csv <- function(p) tolower(tools::file_ext(p)) == "csv"
+  # the company's rule sets (#299) and the study's profile (what the last
+  # import chose)
+  toc_rules_now <- shiny::reactive({
+    toc_n()   # read again for each dialog: "remember" may have changed them
+    toc_rules()
+  })
+  toc_profile_now <- shiny::reactive({
+    rv$ver
+    tryCatch(toc_profile(rv$study), error = function(e) NULL)
+  })
+  # each file read once while the dialog is open
+  toc_srcs <- shiny::reactive({
+    ps <- toc_paths()
+    hr <- max(vapply(toc_rules_now(), function(s) s$settings$header_rows, 1L))
+    lapply(ps, function(p) toc_source(p, hr))
+  })
+  # what is found with no choice made (what the dialog starts from, and the
+  # reasons it shows) and what the choices made of it
+  toc_found <- shiny::reactive({
+    tryCatch(toc_import_read(toc_srcs(), toc_rules_now(), profile = toc_profile_now()),
+             error = function(e) e)
+  })
+  toc_where_id <- function(what, k) if (k == 1L) toc_id(what) else toc_id(paste0(what, "_", k))
+  toc_choices <- shiny::reactive({
+    fd <- toc_found()
+    if (inherits(fd, "error")) return(NULL)
+    det <- fd$detection
+    ch <- list()
+    for (k in seq_len(nrow(det))) {
+      nm <- det$file[k]
+      sh <- input[[toc_where_id("sheet", k)]]
+      if (!.is_blank(sh) && !identical(sh, det$sheet[k])) ch$sheet[[nm]] <- sh
+      sk <- suppressWarnings(as.integer(input[[toc_where_id("skip", k)]] %||% NA))
+      if (!is.na(sk) && sk >= 0L && (!identical(sk + 1L, det$header_row[k]) || !is.null(.toc_pick(ch$sheet, nm)))) {
+        ch$header_row[[nm]] <- sk + 1L
+      }
+    }
+    rs <- input[[toc_id("rule_set")]]
+    if (!.is_blank(rs) && !identical(rs, fd$rule_set$name)) ch$rule_set <- rs
+    ir <- input[[toc_id("id_rule")]]
+    if (!.is_blank(ir) && !identical(ir, fd$id_rule)) ch$id_rule <- ir
+    items <- c(.toc_items, .toc_extra_items)
+    m <- lapply(stats::setNames(items, items), function(it) input[[toc_id(paste0("map_", it))]])
+    m <- m[!vapply(m, is.null, NA)]
+    if (length(m)) ch$map <- lapply(m, function(v) v[!is.na(v) & nzchar(v)])
+    ov <- list()
+    for (k in c("number_suffix", "title_suffix", "title_line")) {
+      v <- input[[toc_id(paste0("ov_", k))]]
+      if (!is.null(v) && !identical(v, fd$rule_set$settings[[k]])) ov[[k]] <- v
+    }
+    if (length(ov)) ch$overrides <- ov
+    ch
+  })
+  toc_result <- shiny::reactive({
+    fd <- toc_found()
+    ch <- toc_choices()
+    if (inherits(fd, "error") || !length(ch)) return(fd)
+    tryCatch(toc_import_read(toc_srcs(), toc_rules_now(), profile = toc_profile_now(),
+                             choices = ch), error = function(e) e)
+  })
+  toc_why <- function(how, n_cols) {
+    switch(how,
+           name = t("found by its name"),
+           score = sprintf(t("most column names matched (%d)"), n_cols),
+           rows = t("most rows of the sheets that look like the TOC"),
+           profile = t("as the last time"),
+           chosen = t("chosen here"),
+           "")
+  }
+  # the sources: each file's TOC sheet and header row as found (why), each
+  # can be changed; the shells and the Topline sheet said
   toc_where_ui <- function() {
-    p <- toc_path()
-    sheets <- if (!toc_is_csv(p)) tryCatch(readxl::excel_sheets(p), error = function(e) NULL)
+    srcs <- toc_srcs()
+    fd <- toc_found()
+    if (inherits(fd, "error")) {
+      return(shiny::div(class = "alert alert-danger py-1 small",
+                        sprintf(t("The file cannot be read: %s"), conditionMessage(fd))))
+    }
+    det <- fd$detection
+    shiny::tagList(
+      shiny::h6(t("Sources")),
+      lapply(seq_along(srcs), function(k) {
+        s <- srcs[[k]]
+        d <- det[k, ]
+        fs <- fd$sheets[[s$name]]
+        n_cols <- if (!is.na(d$sheet)) fs$score[match(d$sheet, fs$sheet)] else 0L
+        line <- if (d$kind %in% c("other", "none") || (d$kind == "shells" && is.na(d$sheet))) {
+          shiny::span(class = "text-warning", if (d$kind == "shells") {
+            t("No TOC sheet: shells only. Their links are made from the TOC's file.")
+          } else t("Not a table this app can read by rules: take it in from a TOC workbook, or draft one from this document with an AI chat (Assist)."))
+        } else {
+          shiny::tagList(
+            sprintf(t("TOC: %s (header on row %d), %d rows"), dQuote(d$sheet, FALSE),
+                    d$header_row, d$rows),
+            " — ", shiny::span(class = "text-muted", toc_why(d$how, n_cols)))
+        }
+        extra <- c(if (d$shells) sprintf(t("shells: %d sheets"), d$shells),
+                   if (!is.na(d$topline_sheet)) sprintf(t("Topline sheet: %s (a cross-check)"),
+                                                        dQuote(d$topline_sheet, FALSE)))
+        shiny::div(
+          class = "mb-2",
+          shiny::div(class = "small", shiny::span(class = "fw-bold", s$name), " ", line,
+                     if (length(extra)) shiny::span(class = "text-muted",
+                                                    paste0(" · ", extra, collapse = ""))),
+          if (s$kind != "other") shiny::div(
+            class = "d-flex flex-wrap gap-3",
+            if (!toc_is_csv(s$path) && length(s$sheets)) {
+              shiny::selectInput(toc_where_id("sheet", k), t("Sheet"), s$sheets,
+                                 selected = if (!is.na(d$sheet)) d$sheet else s$sheets[1L])
+            },
+            shiny::numericInput(toc_where_id("skip", k), t("Rows above the header"),
+                                if (!is.na(d$header_row)) d$header_row - 1L else 0L,
+                                min = 0L, step = 1L, width = "12em")))
+      }),
+      toc_rules_ui(fd))
+  }
+  # the rule set (scored) and how the report IDs are made (each way with
+  # the IDs it gives)
+  toc_rules_ui <- function(fd) {
+    rs <- fd$rule_sets
+    if (!nrow(rs)) return(NULL)
+    set_lab <- sprintf(t("%s: %d of %d items"), rs$label, rs$matched, rs$named)
+    rule_lab <- c(column = t("the ID column as it is"),
+                  normalised = t("the ID column, normalised"),
+                  type_number = t("type column + number column"),
+                  title = t("the number in the first title"))
+    ca <- fd$id_candidates
+    id_ch <- if (nrow(ca)) stats::setNames(ca$rule, sprintf(
+      t("%s: %d of %d rows (%s)"), rule_lab[ca$rule], ca$ok, nrow(fd$rows), ca$preview))
     shiny::div(
       class = "d-flex flex-wrap gap-3",
-      if (length(sheets)) shiny::selectInput(toc_id("sheet"), t("Sheet"), sheets),
-      shiny::numericInput(toc_id("skip"), t("Rows above the header"), 0L,
-                          min = 0L, step = 1L, width = "12em"))
+      shiny::div(style = "min-width: 18rem",
+                 shiny::selectInput(toc_id("rule_set"), with_tip(t("Rule set"), t("The company's rule sets (company standards: toc_map, toc_rules), scored on the TOC's column names: the best match is chosen.")),
+                                    stats::setNames(rs$rule_set, set_lab),
+                                    selected = fd$rule_set$name, width = "100%")),
+      if (length(id_ch)) shiny::div(
+        style = "min-width: 24rem",
+        shiny::selectInput(toc_id("id_rule"), with_tip(t("Report IDs from"), t("The way that gives unique IDs for the most rows is proposed; the labels (Table 14.1.1) come from the label column or the first title.")),
+                           id_ch, selected = fd$id_rule, width = "100%")))
   }
-  toc_where <- shiny::reactive({
-    p <- toc_path()
-    skip <- suppressWarnings(as.integer(input[[toc_id("skip")]] %||% 0L))
-    list(path = p, sheet = if (!toc_is_csv(p)) input[[toc_id("sheet")]],
-         skip = if (is.na(skip) || skip < 0L) 0L else skip)
-  })
-  toc_cols <- shiny::reactive({
-    w <- toc_where()
-    tryCatch(toc_headers(w$path, w$sheet, w$skip), error = function(e) e)
-  })
-  # which column is what: the company's toc_map put on the TOC's header,
-  # each one can be changed
+  # which column is what: the rule set's map put on the first TOC's header,
+  # each one can be changed; the items the set names that the TOC lacks
   toc_map_ui <- function() {
-    h <- toc_cols()
-    if (inherits(h, "error")) {
-      return(shiny::div(class = "alert alert-danger py-1 small",
-                        sprintf(t("The file cannot be read: %s"), conditionMessage(h))))
-    }
-    m <- toc_map_for(h)
+    fd <- toc_found()
+    if (inherits(fd, "error")) return(NULL)
+    res <- toc_result()
+    if (inherits(res, "error")) res <- fd
+    det <- res$detection
+    k <- which(!is.na(det$sheet))[1L]
+    if (is.na(k)) return(NULL)
+    h <- .toc_header_names(res$sources[[k]], det$sheet[k], det$header_row[k])
+    m <- res$maps[[k]]
     labs <- c(output_id = t("Report ID"), type = t("Type"), title = t("Title lines"),
               population = t("Population"), footnote = t("Footnote lines"),
               program = t("Program"), file = t("File"), note = t("Remarks"),
               section = t("Section (heading)"), datasets = t("Datasets"),
-              label = t("Report ID as printed (Table 14.1.1)"))
+              label = t("Report ID as printed (Table 14.1.1)"),
+              phase = t("Phase"), topline = t("Topline flag"), sap_no = t("SAP number"),
+              std_shell = t("Standard shell"), reference = t("Reference"),
+              shell = t("Shell sheet"), number = t("Number"))
+    items <- c(.toc_items, intersect(.toc_extra_items, res$rule_set$map$item))
     choices <- c(stats::setNames("", t("(none)")), stats::setNames(h, h))
+    miss <- attr(res$map, "missing") %||% character()
+    miss <- intersect(miss, c("phase", "topline", "sap_no"))
     shiny::tagList(
       shiny::h6(t("Which column is what")),
       shiny::div(
         class = "d-flex flex-wrap gap-2",
-        lapply(.toc_items, function(it) {
+        lapply(items, function(it) {
           many <- it %in% c("title", "footnote")
           shiny::selectizeInput(toc_id(paste0("map_", it)), labs[[it]],
                                 if (many) stats::setNames(h, h) else choices,
                                 selected = m[[it]] %||% if (!many) "",
                                 multiple = many, width = if (many) "24em" else "12em")
         })),
+      if (length(miss)) shiny::p(class = "small text-warning mb-1", sprintf(
+        t("Not in this TOC, skipped: %s."), paste(labs[miss], collapse = ", "))),
       shiny::p(class = "small text-muted mb-1",
                t("The population becomes the last title line.")),
       shiny::p(class = "small text-muted mb-1",
                t("A report's section: this column, else the heading row above it (a row with no ID); a section given here is kept.")),
+      if (!is.null(res$map$phase)) toc_overrides_ui(res),
       shiny::checkboxInput(toc_id("remember"),
                            t("Remember this mapping in the company standards"), FALSE,
                            width = "100%"))
   }
+  # a phase's suffixes for this study (the rule set's by default; kept in
+  # the study's TOC profile)
+  toc_overrides_ui <- function(res) {
+    st <- res$rule_set$settings
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-end",
+      shiny::span(class = "small fw-bold", t("Phase suffixes for this study")),
+      shiny::textInput(toc_id("ov_number_suffix"), t("On the ID and label"), st$number_suffix,
+                       width = "12em"),
+      shiny::textInput(toc_id("ov_title_suffix"), t("On a title line"), st$title_suffix,
+                       width = "22em"),
+      shiny::textInput(toc_id("ov_title_line"), t("Title line (1, 2, last)"), st$title_line,
+                       width = "10em"))
+  }
   toc_map_now <- shiny::reactive({
-    toc_cols()
-    m <- lapply(stats::setNames(.toc_items, .toc_items),
-                function(it) input[[toc_id(paste0("map_", it))]])
-    m <- lapply(m, function(v) v[!is.na(v) & nzchar(v)])
-    m[lengths(m) > 0L]
+    res <- toc_result()
+    if (inherits(res, "error")) return(list())
+    m <- res$map
+    m[intersect(names(m), .toc_items)]
   })
-  # the TOC as tflspec reads it; a report ID on two rows is said with the
-  # rows it is on
+  # the reports as the rules make them: a row a report, its phase, label,
+  # titles, shell and batches; the rows not read and the warnings under it
+  toc_preview_ui <- function() {
+    if (toc_done()) return(NULL)
+    res <- toc_result()
+    if (inherits(res, "error") || !nrow(res$rows)) return(NULL)
+    r <- res$reports
+    p <- toc_problems(res, tflplanner_language())
+    hand <- p[p$level == "hand", , drop = FALSE]
+    chk <- p[p$level == "check", , drop = FALSE]
+    nb <- nrow(res$batches)
+    show <- seq_len(min(nrow(r), if (isTRUE(input[[toc_id("show_all")]])) nrow(r) else 8L))
+    titles <- vapply(r$titles, function(v) paste(v[!is.na(v)], collapse = " / "), "")
+    shell <- ifelse(is.na(r$shell_sheet), "—", paste0(r$shell_file, ": ", r$shell_sheet))
+    shiny::div(
+      class = "mb-2",
+      shiny::h6(t("The reports")),
+      shiny::p(class = "small mb-1", sprintf(t("%d reports from %d rows."), nrow(r), nrow(res$rows)),
+               if (nb) paste0(" ", sprintf(t("%s batch: %d reports."),
+                                           res$rule_set$settings$topline_batch, nb))),
+      shiny::tags$table(
+        class = "table table-sm small",
+        shiny::tags$thead(shiny::tags$tr(lapply(
+          t(c("output_id", "Phase", "Label", "Titles", "Shell", "Batches")), shiny::tags$th))),
+        shiny::tags$tbody(lapply(show, function(i) shiny::tags$tr(
+          shiny::tags$td(r$output_id[i]),
+          shiny::tags$td(if (is.na(r$phase[i])) "—" else r$phase[i]),
+          shiny::tags$td(.or_na(r$label[i], "")), shiny::tags$td(titles[i]),
+          shiny::tags$td(shell[i]), shiny::tags$td(.or_na(r$batches[i], "")))))),
+      if (nrow(r) > 8L) shiny::checkboxInput(toc_id("show_all"), sprintf(t("Show all %d reports"), nrow(r)),
+                                             isTRUE(input[[toc_id("show_all")]])),
+      if (nrow(hand)) shiny::div(
+        class = "small", shiny::span(class = "fw-bold", sprintf(t("Rows not read (%d):"), nrow(hand))),
+        " ", paste(hand$message, collapse = " · "), " ",
+        shiny::span(class = "text-muted", t("Set them by hand after taking it in, or fix the TOC."))),
+      if (nrow(chk)) shiny::div(
+        class = "small text-warning", shiny::span(class = "fw-bold", sprintf(t("Warnings (%d):"), nrow(chk))),
+        " ", paste(chk$message, collapse = " · ")),
+      if (nrow(res$notes)) shiny::div(class = "small text-muted", paste(
+        sprintf(t(res$notes$template), res$notes$file, res$notes$sheet), collapse = " ")))
+  }
+  # the TOC as tflspec reads it (the reports the rules made); an error of
+  # the rules (no title column, an ID twice ...) stops it
   toc_read <- shiny::reactive({
-    w <- toc_where()
-    m <- toc_map_now()
-    shiny::req(length(m$output_id) == 1L)
-    dups <- .toc_dups(w$path, w$sheet, w$skip, m$output_id)
-    if (!is.null(dups)) {
-      msg <- paste(sprintf(t("Report ID %s is on more than one row (rows %s)."),
-                           dups$output_id, dups$rows), collapse = " ")
-      return(structure(class = c("error", "condition"),
-                       list(message = msg, call = NULL)))
+    res <- toc_result()
+    if (inherits(res, "error")) return(res)
+    err <- res$problems[res$problems$level == "error", , drop = FALSE]
+    if (nrow(err)) {
+      msg <- paste(toc_problems(res, tflplanner_language())$message[res$problems$level == "error"],
+                   collapse = " ")
+      return(structure(class = c("error", "condition"), list(message = msg, call = NULL)))
     }
-    tryCatch(tflspec::tfl_read_toc(w$path, map = m, sheet = w$sheet, skip = w$skip),
-             error = function(e) e)
+    if (!nrow(res$reports)) {
+      return(structure(class = c("error", "condition"),
+                       list(message = t("No report could be read from it."), call = NULL)))
+    }
+    tryCatch(toc_import_spec(res), error = function(e) e)
   })
   # the TOC as the study takes it: a header that says {OUTPUT_TITLE} has
   # the title and analysis set, not the title lines
@@ -6586,13 +6779,11 @@ app_server <- function(input, output, session, start) {
   # the TOC's analysis sets: each text it uses, the study's set it is
   # (matched; changed here), the reports it names
   toc_pops <- shiny::reactive({
-    w <- toc_where()
-    m <- toc_map_now()
-    if (!length(m$output_id) || !length(m$population)) return(NULL)
+    res <- toc_result()
+    if (inherits(res, "error") || is.null(res$map$population) || !nrow(res$reports)) return(NULL)
     po <- rv$p$ard$populations
     adsl <- tryCatch(an_data(po$dataset[1L] %||% "ADSL"), error = function(e) NULL)
-    tryCatch(toc_populations(rv$p, w$path, m$output_id, m$population, w$sheet, w$skip,
-                             data = adsl), error = function(e) NULL)
+    tryCatch(toc_populations(rv$p, res$reports, data = adsl), error = function(e) NULL)
   })
   toc_pop_ui <- function() {
     if (toc_done()) return(NULL)
@@ -6665,11 +6856,7 @@ app_server <- function(input, output, session, start) {
   toc_changes_ui <- function() {
     # taken in: the result says what was done (what is left to change is
     # nothing, until the TOC changes again)
-    if (toc_done() || is.null(input[[toc_id("map_output_id")]])) return(NULL)
-    if (!length(toc_map_now()$output_id)) {
-      return(shiny::div(class = "alert alert-warning py-1 small",
-                        t("Choose the column holding the report IDs.")))
-    }
+    if (toc_done() || is.null(input[[toc_id("file")]])) return(NULL)
     ch <- toc_ch()
     if (inherits(ch, "error")) {
       return(shiny::div(class = "alert alert-danger py-1 small",
@@ -6796,9 +6983,13 @@ app_server <- function(input, output, session, start) {
     made <- attr(p, "made")
     if (!is.null(p)) attr(p, "made") <- NULL
     if (is.null(p)) return(toc_btn_ver(toc_btn_ver() + 1L))
-    w <- toc_where()
-    rec <- guarded(.toc_record(rv$study, w$path, basename(w$path), ch,
-                               toc_snapshot(sp, off, last)))
+    res <- toc_result()
+    # the Topline batch into the report list's batches
+    p <- guarded(toc_apply_extras(p, res, last))
+    if (is.null(p)) return(toc_btn_ver(toc_btn_ver() + 1L))
+    paths <- toc_paths()
+    rec <- guarded(.toc_record(rv$study, paths, basename(paths), ch,
+                               .toc_snapshot_rules(sp, off, last, res), res))
     if (is.null(rec)) return(toc_btn_ver(toc_btn_ver() + 1L))
     was_dirty <- isTRUE(shiny::isolate(dirty()))
     rv$p <- p
@@ -6807,7 +6998,13 @@ app_server <- function(input, output, session, start) {
     }
     do_save()
     if (isTRUE(input[[toc_id("remember")]])) {
-      f <- guarded(remember_toc_map(toc_map_now()))
+      det <- res$detection
+      k <- which(!is.na(det$sheet))[1L]
+      f <- guarded(remember_toc_map(
+        res$map[!vapply(res$map, is.null, NA)], rule_set = res$rule_set$name,
+        sheet = if (!is.na(k) && !toc_is_csv(paths[k])) det$sheet[k],
+        topline_sheet = if (!is.na(k)) .or_na(det$topline_sheet[k], NULL),
+        header_row = if (!is.na(k)) det$header_row[k], id_rule = res$id_rule))
       if (!is.null(f)) notify(sprintf(t("The mapping is remembered in %s."), f))
     }
     toc_done(TRUE)
@@ -6817,8 +7014,14 @@ app_server <- function(input, output, session, start) {
     output[[toc_id("result")]] <- shiny::renderUI(shiny::div(
       class = "alert alert-success py-1 small",
       sprintf(t("%s is taken in as %s: new %d, changed %d, not in the TOC %d."),
-              basename(w$path), rec$import_id, length(new_ids), sum(r$status == "changed"),
-              sum(r$status == "missing")),
+              paste(basename(paths), collapse = ", "), rec$import_id, length(new_ids),
+              sum(r$status == "changed"), sum(r$status == "missing")),
+      if (nrow(res$batches)) shiny::tagList(shiny::br(), sprintf(
+        t("%s batch: %d reports."), res$rule_set$settings$topline_batch, nrow(res$batches))),
+      if (any(!is.na(res$reports$shell_sheet))) shiny::tagList(shiny::br(), sprintf(
+        t("%d shells linked."), sum(!is.na(res$reports$shell_sheet)))),
+      if (any(res$problems$level == "hand")) shiny::tagList(shiny::br(), sprintf(
+        t("%d rows to set by hand."), sum(res$problems$level == "hand"))),
       if (n_ask) shiny::tagList(shiny::br(), sprintf(
         t("%d lines edited here were kept instead of the TOC's text."), n_ask)),
       if (length(new_ids)) shiny::tagList(shiny::br(), sprintf(

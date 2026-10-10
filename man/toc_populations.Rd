@@ -4,12 +4,22 @@
 \alias{toc_populations}
 \title{The analysis set each report of a TOC names}
 \usage{
-toc_populations(x, path, id_col, pop_col, sheet = NULL, skip = 0L, data = NULL)
+toc_populations(
+  x,
+  path,
+  id_col = "output_id",
+  pop_col = "population",
+  sheet = NULL,
+  skip = 0L,
+  data = NULL
+)
 }
 \arguments{
 \item{x}{A \code{tflplanner}.}
 
-\item{path, sheet, skip}{The TOC, as \code{\link[tflspec:tfl_read_toc]{tflspec::tfl_read_toc()}} reads it.}
+\item{path, sheet, skip}{The TOC, as \code{\link[tflspec:tfl_read_toc]{tflspec::tfl_read_toc()}} reads it;
+or, \code{path}, the TOC's rows as a data frame (the \code{reports} of
+\code{\link[=toc_import_read]{toc_import_read()}}: nothing is read again).}
 
 \item{id_col, pop_col}{Its columns of the report IDs and the populations.}
 

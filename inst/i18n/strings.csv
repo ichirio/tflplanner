@@ -2689,3 +2689,63 @@ the page,ページ
 (the pages and the analysis set have the same numbers),（ページと解析対象集団は同じ数）
 "The pages and the analysis set have different numbers: choose which one {n} says (until then, making the report warns).",ページと解析対象集団で数が違います。{n} にどちらを使うか選んでください（選ぶまで、帳票を作るときに警告が出ます）。
 The numbers are not known yet: the preview has not been made.,数はまだわかりません（プレビューが作られていません）。
+No column for %s in %s: no report can be read.,%2$s に %1$s の列がありません：帳票を読めません。
+"No report ID can be made in %s: no ID column, and the titles do not start with one (Table 14.1.1).",%s では帳票 ID を作れません：ID の列がなく、タイトルも番号（Table 14.1.1）で始まっていません。
+Report ID %s has a character a file name cannot hold.,帳票 ID %s にはファイル名に使えない文字があります。
+Row %s has no report ID: not taken in.,%s 行目に帳票 ID がありません：取り込みません。
+Row %s (%s) has no title: not taken in.,%s 行目（%s）にタイトルがありません：取り込みません。
+Row %s: phase value %s is not in the rules (%s): not taken in.,%s 行目：相の値 %s はルール（%s）にありません：取り込みません。
+%s has no SAP number.,%s に SAP 番号がありません。
+SAP number %s is on more than one report: %s.,SAP 番号 %s が複数の帳票にあります：%s。
+No shell sheet for %s.,%s のシェルのシートがありません。
+Shell sheet %s is linked to no report.,シェルのシート %s はどの帳票にも結び付いていません。
+%s is flagged for %s but is not on the sheet %s.,%s は %s の印がありますが、シート %s にありません。
+%s is on the sheet %s but is not flagged for %s.,%s はシート %s にありますが、%s の印がありません。
+Sheets %s look like the TOC in %s: %s was taken (more rows).,%2$s では %1$s が TOC のように見えます：%3$s を使いました（行が多いため）。
+"The rule set names %s, but the TOC has no column for it: skipped.",ルールセットには %s がありますが、TOC にその列がありません：使いません。
+"TOC files (xlsx, xls, csv): the TFL workbook, and the listing workbook when it is another",TOC のファイル（xlsx、xls、csv）：TFL のブックと、別にあれば Listing のブック
+found by its name,名前で見つけました
+most column names matched (%d),列名が最も多く一致（%d）
+most rows of the sheets that look like the TOC,TOC に見えるシートのうち行が最も多い
+as the last time,前回と同じ
+chosen here,ここで選択
+Sources,取り込むファイル
+No TOC sheet: shells only. Their links are made from the TOC's file.,TOC のシートがありません：シェルだけです。シェルとの結び付けは TOC のファイルから作ります。
+"Not a table this app can read by rules: take it in from a TOC workbook, or draft one from this document with an AI chat (Assist).",ルールで読める表ではありません：TOC のブックから取り込むか、この文書から AI チャット（Assist）で下書きしてください。
+"TOC: %s (header on row %d), %d rows",TOC：%s（見出しは %d 行目）、%d 行
+shells: %d sheets,シェル：%d シート
+Topline sheet: %s (a cross-check),Topline シート：%s（照合用）
+%s: %d of %d items,%s：%3$d 項目中 %2$d
+the ID column as it is,ID の列をそのまま
+"the ID column, normalised",ID の列を整えて
+type column + number column,種類の列 + 番号の列
+the number in the first title,最初のタイトルの番号
+%s: %d of %d rows (%s),%1$s：%3$d 行中 %2$d（%4$s）
+Rule set,ルールセット
+"The company's rule sets (company standards: toc_map, toc_rules), scored on the TOC's column names: the best match is chosen.",会社のルールセット（会社標準の toc_map、toc_rules）を TOC の列名で採点し、最も合うものを選びます。
+Report IDs from,帳票 ID の作り方
+The way that gives unique IDs for the most rows is proposed; the labels (Table 14.1.1) come from the label column or the first title.,最も多くの行で一意な ID になる方法を提案します。ラベル（Table 14.1.1）はラベルの列か最初のタイトルから取ります。
+Topline flag,Topline の印
+SAP number,SAP 番号
+Standard shell,標準シェル
+Reference,参照
+Shell sheet,シェルのシート
+Number,番号
+"Not in this TOC, skipped: %s.",この TOC にないため使いません：%s。
+Phase suffixes for this study,この試験の相の接尾辞
+On the ID and label,ID とラベルに
+On a title line,タイトル行に
+"Title line (1, 2, last)",タイトル行（1、2、last）
+The reports,帳票
+%d reports from %d rows.,%2$d 行から %1$d 帳票。
+%s batch: %d reports.,%s バッチ：%d 帳票。
+Show all %d reports,%d 帳票すべてを表示
+Rows not read (%d):,読めなかった行（%d）：
+"Set them by hand after taking it in, or fix the TOC.",取り込み後に手で設定するか、TOC を直してください。
+Warnings (%d):,警告（%d）：
+No report could be read from it.,帳票を 1 つも読めませんでした。
+%d shells linked.,%d 件のシェルを結び付けました。
+%d rows to set by hand.,%d 行は手で設定してください。
+Titles,タイトル
+Shell,シェル
+%s: the sheet %s is not in the file any more: found again.,%s：シート %s がファイルにもうないため、探し直しました。

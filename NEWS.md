@@ -35,6 +35,60 @@ look at its Review tab.
 
 ## Changes
 
+- **A TOC taken in by the company's rules** (#299, phases 1 and 2 of its
+  plan).  The company standards keep one rule set or several for TOCs:
+  `toc_map` gains a `rule_set` column (blank: `standard`) and the new
+  sheet `toc_rules` holds a set's settings -- TOC and Topline sheet names,
+  header rows, phase values and suffixes, the Topline flag's values and
+  batch, the phase-specific shell sheet names, how the output id is made.
+  A workbook written before reads as one set, `standard`, as today.  The
+  built-in draft has `standard` and `two-phase`.
+  - **Found, not chosen**: each file is read once; its TOC sheet is the one
+    named as the set names it, else the one whose rows match the most
+    column names (more rows on a tie); the header row is found in the
+    first rows (a heading above it is fine).  A second TOC-like sheet (a
+    Topline sheet) is a cross-check, never the source.  A cover sheet, a
+    shells-only workbook and a document that is no table are said.
+  - **The rule set picked** on the TOC's column names (the most items
+    matched), shown with its score and changeable.
+  - **The output id built by a rule chosen per set** (the maintainer's
+    decision on D3): an id column as it is, normalised (`{type}.{number}`,
+    `{TYPE}-{number-}`: prefix `t.`/`f.`/`l.` added or removed, `.` and
+    `-`), a type column and a number column, or the number in the first
+    title ("Table 14.1.1").  The one that gives unique ids for the most
+    rows is proposed with a preview of its ids, and can be changed;
+    "remember" keeps the choice in the set.  The type comes from a type
+    column, the id's prefix or the first title's first word; the label
+    ("Table 14.1.1") from a label column or the first title.
+  - **One report a phase**: a `both` row gives two reports, the phase's
+    suffix on the id and label (`.a` / `.b`) and on a title line
+    (" - Phase 1 Part"); a study's own suffixes are kept in its profile.
+  - **Shell sheets linked** across every file (a phase's `-1` / `-2`
+    first), only the link: `input/toc/shells.csv` (`toc_shell_links()`).
+  - **The Topline batch** from the flag column into the report list's
+    `batches` column; the Topline sheet is compared with it (warnings).
+  - **The problems table** (#288's shape, `area = "toc"`, rules
+    TOC01-TOC12): errors stop "Take it in", rows not read are listed to
+    set by hand, the rest are warnings.  Kept as `input/toc/problems.csv`.
+  - The record (`input/toc/imports.csv`) gains `rule_set`,
+    `standards_md5`, `sources`, `unread`, `warnings`; every file is copied;
+    the study's choices go to `input/toc/profile.yml` and pre-fill the next
+    import.
+  - **The dialog** (Take in a TOC...) takes several files, shows each one's
+    sheet and header row with the reason, the rule set, how the ids are
+    made, the phase suffixes, a preview of the reports (phase, label,
+    titles, shell, batch), the rows not read and the warnings; the
+    analysis sets, datasets and "what would change" are as before.
+  - In R: `toc_rules()`, `toc_source()`, `toc_find_sheet()`,
+    `toc_find_header()`, `toc_pick_rules()`, `toc_map_for(rule_set =)`,
+    `toc_id_candidates()`, `toc_rows()`, `toc_expand_phases()`,
+    `toc_link_shells()`, `toc_batches()`, `toc_import_read()`,
+    `toc_import_spec()`, `toc_problems()`, `toc_apply_extras()`,
+    `toc_profile()`, `toc_shell_links()`.  With tflspec's
+    `tfl_read_toc()` on a data frame (tflspec #217) the reports are read
+    without a temporary file; with an older tflspec a temporary `.csv` is
+    used.
+
 - **Race with its Asian sub-categories, nested or in two blocks** (the
   sample's T-14-1-5 and T-14-1-6, with rtfreporter #599 and tflspec
   #213).  The table builder's variable form gets "Rows under a level of

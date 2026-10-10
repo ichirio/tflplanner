@@ -526,14 +526,16 @@ toc_snapshot <- function(spec, title_offset = 0L, last = NULL) {
 #' none).
 #'
 #' @param x A `tflplanner`.
-#' @param path,sheet,skip The TOC, as [tflspec::tfl_read_toc()] reads it.
+#' @param path,sheet,skip The TOC, as [tflspec::tfl_read_toc()] reads it;
+#'   or, `path`, the TOC's rows as a data frame (the `reports` of
+#'   [toc_import_read()]: nothing is read again).
 #' @param id_col,pop_col Its columns of the report IDs and the populations.
 #' @param data The data of the analysis sets (ADSL), for its flags' labels.
 #' @return A data frame: output_id, text, population_id.
 #' @export
-toc_populations <- function(x, path, id_col, pop_col, sheet = NULL, skip = 0L,
-                            data = NULL) {
-  d <- .toc_raw(path, sheet, skip)
+toc_populations <- function(x, path, id_col = "output_id", pop_col = "population",
+                            sheet = NULL, skip = 0L, data = NULL) {
+  d <- if (is.data.frame(path)) path else .toc_raw(path, sheet, skip)
   if (is.null(d) || !all(c(id_col, pop_col) %in% names(d))) {
     return(data.frame(output_id = character(), text = character(),
                       population_id = character(), stringsAsFactors = FALSE))
@@ -566,36 +568,25 @@ toc_populations <- function(x, path, id_col, pop_col, sheet = NULL, skip = 0L,
 .toc_items <- c("output_id", "type", "title", "population", "footnote",
                 "program", "file", "note", "section", "datasets", "label")
 
-# The map tflspec::tfl_read_toc() takes, from a TOC's column names and the
-# company's toc_map (an item: the first of its names the TOC has; title and
-# footnote: every one, in the TOC's order)
-toc_map_for <- function(headers, std = company_standards()$toc_map) {
-  norm <- function(x) tolower(trimws(x))
-  out <- list()
-  for (it in .toc_items) {
-    cand <- std$columns[match(it, std$item)]
-    if (is.na(cand)) next
-    names_ <- trimws(strsplit(cand, "|", fixed = TRUE)[[1L]])
-    hit <- headers[norm(headers) %in% norm(names_)]
-    if (!length(hit)) next
-    out[[it]] <- if (it %in% c("title", "footnote")) hit else
-      hit[order(match(norm(hit), norm(names_)))][1L]
-  }
-  out
-}
-
 # The company's toc_map with a TOC's column names added to its items'
-# candidates (what "remember this mapping" writes)
-.toc_map_learn <- function(std, map) {
+# candidates in one rule set (what "remember this mapping" writes; by
+# default the set `standard`, or the sheet's only set)
+.toc_map_learn <- function(std, map, rule_set = NULL) {
+  if (!"rule_set" %in% names(std)) std$rule_set <- NA_character_
+  rs <- ifelse(is.na(std$rule_set) | !nzchar(trimws(std$rule_set)), "standard",
+               trimws(std$rule_set))
+  set <- rule_set %||% "standard"
   for (it in names(map)) {
     cols <- map[[it]]
     cols <- cols[!is.na(cols) & nzchar(cols)]
     if (!length(cols)) next
-    i <- match(it, std$item)
+    i <- which(std$item == it & rs == set)[1L]
     if (is.na(i)) {
       std[nrow(std) + 1L, ] <- NA
       i <- nrow(std)
       std$item[i] <- it
+      std$rule_set[i] <- set
+      rs[i] <- set
     }
     have <- if (is.na(std$columns[i])) character() else
       trimws(strsplit(std$columns[i], "|", fixed = TRUE)[[1L]])
@@ -605,11 +596,46 @@ toc_map_for <- function(headers, std = company_standards()$toc_map) {
   std
 }
 
+# A rule set's settings with what an import learnt: a sheet's name a TOC
+# sheet's candidate, the Topline sheet's too, a header row beyond the rows
+# scanned raises them, the id rule chosen (D13)
+.toc_rules_learn <- function(tr, rule_set, sheet = NULL, topline_sheet = NULL,
+                             header_row = NULL, id_rule = NULL) {
+  i <- match(rule_set, trimws(tr$rule_set))
+  if (is.na(i)) {
+    tr[nrow(tr) + 1L, ] <- NA
+    i <- nrow(tr)
+    tr$rule_set[i] <- rule_set
+  }
+  add <- function(col, v) {
+    if (is.null(v) || is.na(v) || !nzchar(v)) return()
+    have <- .toc_cands(.or_na(tr[[col]][i], .toc_rule_defaults[[col]]))
+    if (!.toc_name_hit(v, have)) tr[[col]][i] <<- paste(c(have, v), collapse = " | ")
+  }
+  add("sheet_names", sheet)
+  add("topline_sheet_names", topline_sheet)
+  hr <- suppressWarnings(as.integer(header_row %||% NA))
+  now <- suppressWarnings(as.integer(.or_na(tr$header_rows[i], .toc_rule_defaults$header_rows)))
+  if (!is.na(hr) && !is.na(now) && hr > now) tr$header_rows[i] <- as.character(hr)
+  if (!is.null(id_rule) && !is.na(id_rule) && id_rule %in% .toc_id_rules) tr$id_rule[i] <- id_rule
+  tr
+}
+
 # Remember a mapping in the company standards in tflplanner's home (the
-# workbook is written there, from the standards in use, when there is none)
-remember_toc_map <- function(map, home = tflplanner_home()) {
+# workbook is written there, from the standards in use, when there is none):
+# the columns into the rule set's toc_map rows, and with `sheet` /
+# `topline_sheet` / `header_row` / `id_rule` what the import found or was
+# told, into its toc_rules row
+remember_toc_map <- function(map, home = tflplanner_home(), rule_set = NULL,
+                             sheet = NULL, topline_sheet = NULL, header_row = NULL,
+                             id_rule = NULL) {
   s <- company_standards(home)
-  s$toc_map <- .toc_map_learn(s$toc_map, map)
+  s$toc_map <- .toc_map_learn(s$toc_map, map, rule_set)
+  if (!is.null(rule_set) || !is.null(sheet) || !is.null(header_row) || !is.null(id_rule)) {
+    s$toc_rules <- .toc_rules_learn(s$toc_rules %||% .builtin_standards()$toc_rules,
+                                    rule_set %||% "standard", sheet, topline_sheet,
+                                    header_row, id_rule)
+  }
   f <- .standards_file(home)
   dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
   writexl::write_xlsx(c(list(`_README` = .standards_readme()), s), f)
@@ -636,22 +662,36 @@ toc_headers <- function(path, sheet = NULL, skip = 0L) {
 #'
 #' `toc_imports()`: the record of every TOC taken in (`input/toc/imports.csv`:
 #' `import_id`, `file`, `original`, `imported`, `user`, `md5`, `reports`,
-#' `new`, `changed`, `missing`).  `toc_last()`: what the last TOC taken in
-#' said, by report ([toc_snapshot()]), or `NULL`.
+#' `new`, `changed`, `missing`; for one taken in by the company's rules
+#' also `rule_set`, `standards_md5` -- the company standards' md5 then,
+#' blank for the built-in ones --, `sources`, `unread`, `warnings`; several
+#' files ` | ` between them).  `toc_last()`: what the last TOC taken in
+#' said, by report ([toc_snapshot()]), or `NULL`.  `toc_shell_links()`:
+#' each report's shell sheet (`input/toc/shells.csv`: `output_id`, `file`
+#' -- the copy in `input/toc` --, `original`, `sheet`, `phase`, `md5`,
+#' `import_id`).  `toc_profile()`: what the study's last import chose
+#' (`input/toc/profile.yml`: the rule set, the id rule, the overrides, each
+#' source's sheet and header row), or `NULL`.
 #'
 #' @param study An `rtfstudy`.
 #' @return A data frame; a list or `NULL`.
 #' @export
 toc_imports <- function(study) {
   f <- file.path(.toc_dir(study), "imports.csv")
-  cols <- c("import_id", "file", "original", "imported", "user", "md5",
-            "reports", "new", "changed", "missing")
+  cols <- .toc_import_cols
   if (!file.exists(f)) {
     return(as.data.frame(stats::setNames(
       replicate(length(cols), character(), simplify = FALSE), cols)))
   }
-  utils::read.csv(f, colClasses = "character", na.strings = "")
+  d <- utils::read.csv(f, colClasses = "character", na.strings = "")
+  # a record written before a column was added: blank
+  for (cn in setdiff(cols, names(d))) d[[cn]] <- rep(NA_character_, nrow(d))
+  d[c(cols, setdiff(names(d), cols))]
 }
+
+.toc_import_cols <- c("import_id", "file", "original", "imported", "user", "md5",
+                      "reports", "new", "changed", "missing", "rule_set",
+                      "standards_md5", "sources", "unread", "warnings")
 
 #' @rdname toc_imports
 #' @export
@@ -674,29 +714,136 @@ toc_last <- function(study) {
   })
 }
 
-# Keep a TOC taken in: its copy (read-only), the record's row, and what it
-# said (for the next time)
-.toc_record <- function(study, path, original, changes, snapshot) {
+#' @rdname toc_imports
+#' @export
+toc_shell_links <- function(study) {
+  f <- file.path(.toc_dir(study), "shells.csv")
+  if (!file.exists(f)) {
+    return(data.frame(output_id = character(), file = character(), original = character(),
+                      sheet = character(), phase = character(), md5 = character(),
+                      import_id = character(), stringsAsFactors = FALSE))
+  }
+  utils::read.csv(f, colClasses = "character", na.strings = "")
+}
+
+#' @rdname toc_imports
+#' @export
+toc_profile <- function(study) {
+  f <- file.path(.toc_dir(study), "profile.yml")
+  if (!file.exists(f)) return(NULL)
+  yaml::read_yaml(f)
+}
+
+# Keep a TOC taken in: its copies (read-only), the record's row, and what it
+# said (for the next time).  `path` and `original`: one file or several.
+# With `result` (a toc_import): its rule set, the shell links, the profile,
+# the problems and each report's TOC facts besides the spec
+.toc_record <- function(study, path, original, changes, snapshot, result = NULL) {
   dir <- .toc_dir(study)
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   log <- toc_imports(study)
   id <- paste0("TOC", formatC(nrow(log) + 1L, width = 3L, flag = "0"))
   nm <- paste0(id, "_", basename(original))
   dest <- file.path(dir, nm)
-  file.copy(path, dest, overwrite = TRUE)
-  Sys.chmod(dest, "0444")
+  for (k in seq_along(path)) {
+    if (file.exists(dest[k])) Sys.chmod(dest[k], "0644")
+    file.copy(path[k], dest[k], overwrite = TRUE)
+    Sys.chmod(dest[k], "0444")
+  }
+  md5 <- unname(tools::md5sum(dest))
   st <- changes$reports$status
+  bar <- function(v) paste(v, collapse = " | ")
+  std <- .standards_file()
   row <- data.frame(
-    import_id = id, file = nm, original = basename(original),
+    import_id = id, file = bar(nm), original = bar(basename(original)),
     imported = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-    user = Sys.info()[["user"]], md5 = unname(tools::md5sum(dest)),
+    user = Sys.info()[["user"]], md5 = bar(md5),
     reports = as.character(sum(st != "missing")), new = as.character(sum(st == "new")),
     changed = as.character(sum(st == "changed")), missing = as.character(sum(st == "missing")),
+    rule_set = if (!is.null(result)) result$rule_set$name else NA_character_,
+    standards_md5 = if (!is.null(result) && file.exists(std)) unname(tools::md5sum(std)) else
+      NA_character_,
+    sources = as.character(length(path)),
+    unread = if (!is.null(result)) as.character(sum(result$problems$level == "hand")) else
+      NA_character_,
+    warnings = if (!is.null(result)) as.character(sum(result$problems$level == "check")) else
+      NA_character_,
     stringsAsFactors = FALSE)
+  log <- log[intersect(names(log), names(row))]
   utils::write.csv(rbind(log, row), file.path(dir, "imports.csv"), row.names = FALSE, na = "")
   jsonlite::write_json(snapshot, file.path(dir, "last.json"), auto_unbox = TRUE,
                        null = "null", na = "null", pretty = TRUE)
+  if (!is.null(result)) .toc_record_result(dir, id, result, nm, basename(original), md5)
   invisible(row)
+}
+
+# What an import by the rules adds to the record: shells.csv, profile.yml,
+# problems.csv and reports.csv (each report's phase, SAP number, standard
+# shell, reference and where it is in the TOC)
+.toc_record_result <- function(dir, id, result, copies, originals, md5) {
+  r <- result$reports
+  # a report's shell is in the source of that name: its copy, its name as
+  # chosen
+  k <- match(r$shell_file, vapply(result$sources, function(s) s$name, ""))
+  links <- data.frame(output_id = r$output_id, file = copies[k], original = originals[k],
+                      sheet = r$shell_sheet, phase = as.character(r$phase), md5 = md5[k],
+                      import_id = id, stringsAsFactors = FALSE)
+  links <- links[!is.na(links$sheet), , drop = FALSE]
+  utils::write.csv(links, file.path(dir, "shells.csv"), row.names = FALSE, na = "")
+  yaml::write_yaml(result$profile, file.path(dir, "profile.yml"))
+  p <- result$problems
+  p$args <- NULL
+  utils::write.csv(p, file.path(dir, "problems.csv"), row.names = FALSE, na = "")
+  ex <- data.frame(output_id = r$output_id, base_id = r$base_id,
+                   phase = as.character(r$phase), sap_no = r$sap_no,
+                   std_shell = r$std_shell, reference = r$reference,
+                   batches = r$batches, source = r$.source, sheet = r$.sheet,
+                   row = as.character(r$.row), import_id = id, stringsAsFactors = FALSE)
+  utils::write.csv(ex, file.path(dir, "reports.csv"), row.names = FALSE, na = "")
+  invisible(NULL)
+}
+
+#' Put what a TOC read by the rules says besides the spec into a study
+#'
+#' The reports' batches (the Topline flag, [toc_batches()]) go into the
+#' report list's `batches` column: a report flagged gets the batch, one the
+#' last TOC flagged and this one does not loses it; a batch given here is
+#' kept, and nothing changes when the TOC has no flag column.
+#'
+#' @param x A `tflplanner`, after [toc_apply()].
+#' @param result What [toc_import_read()] returned.
+#' @param last The snapshot of the TOCs taken in before ([toc_last()]).
+#' @return The `tflplanner`.
+#' @export
+toc_apply_extras <- function(x, result, last = NULL) {
+  r <- result$reports
+  if (!nrow(r) || is.null(result$map$topline)) return(x)
+  name <- result$rule_set$settings$topline_batch
+  on <- result$batches$output_id
+  for (id in intersect(r$output_id, x$outputs$output_id)) {
+    i <- match(id, x$outputs$output_id)
+    have <- .split_bar(x$outputs$batches[i] %||% NA_character_)
+    was <- name %in% unlist(last[[id]]$batches)
+    if (id %in% on) {
+      have <- union(have, name)
+    } else if (was) {
+      have <- setdiff(have, name)
+    } else next
+    x <- .set_report_batches(x, id, have)
+  }
+  x
+}
+
+# The snapshot of a TOC read by the rules: toc_snapshot()'s, with each
+# report's batches (so a flag dropped by the next TOC is seen)
+.toc_snapshot_rules <- function(spec, title_offset, last, result) {
+  snap <- toc_snapshot(spec, title_offset, last)
+  b <- result$batches
+  for (id in intersect(names(snap), result$reports$output_id)) {
+    v <- b$batch[b$output_id == id]
+    snap[[id]]$batches <- if (length(v)) as.list(v) else list()
+  }
+  snap
 }
 
 # A TOC's report IDs given on more than one row: one row an ID, with the
