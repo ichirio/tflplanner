@@ -2,6 +2,10 @@
 # where the user is, the filters, a click going to the item, the data read
 # on demand, the deep check moved here from the Runs tab.
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 .rv_ui_study <- function() {
   p <- add_output(new_planner(), "T1", type = "table", description = "one",
                   population = "SAF")

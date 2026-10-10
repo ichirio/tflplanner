@@ -2,6 +2,10 @@
 # edit, a tab that stays blank, an R error message instead of a sentence.
 # (GUI review iter01: P0-1, P0-2, P1-4.)
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 ard_study <- function() {
   p <- add_output(new_planner(), "T1", description = "a table")
   p$ard$analyses <- .normalize_ard_sheet(data.frame(

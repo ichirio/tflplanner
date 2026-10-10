@@ -3,6 +3,10 @@
 # values the form does not draw is read, shown, one other field changed
 # and saved -- and those values are as they were.
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 # what rhandsontable sends when one cell of a grid drawn by the app is
 # changed: the grid's own rows (as the browser has them), one cell new
 grid_edit <- function(session, output, id, row, col, value) {

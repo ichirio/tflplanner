@@ -1,9 +1,14 @@
 # tflplanner (development version)
 
 - **Ready for CRAN's checks, the parts that do not wait for the
-  submission** (#334).  The app-server tests (each starts the whole app,
-  5-10 s) skip on CRAN and run on CI and locally (`NOT_CRAN=true`), so
-  the CRAN test run takes a few minutes, not 15; `app_server()`'s three
+  submission** (#334).  The tests that start the app or write study
+  folders (5-10 s a test: the spec workbooks) skip on CRAN -- 16 files,
+  skipped as a whole, and every app-server block -- and still run on CI
+  and locally (`NOT_CRAN=true`): CRAN's test run, measured as CRAN runs
+  it, takes 5 minutes on a Windows laptop instead of 16 (the pure-function
+  tests stay: planner, standards, spec import, figure design, ...), and
+  its one warning (the ARS reader's, on the sample) is gone;
+  `app_server()`'s three
   local `one()` helpers have names of their own (`one_val`, `toc_row`,
   `header_line`: no "multiple local function definitions" NOTE); the
   examples of `setup_tflplanner()`, `create_study()`,

@@ -3,6 +3,10 @@
 # it in `ard`, the checks of the design's ARD pieces, and the sample's
 # F-14-2-3, which prints T-14-2-2's medians.
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 fig_ard_study <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
   withr::local_options(tflplanner.home = home, .local_envir = env)
@@ -159,7 +163,9 @@ test_that("the ARS: F-14-2-3 is an output naming T-14-2-2's analyses it prints (
   expect_setequal(r$analysis_id, c("KM", "HR"))
   d <- withr::local_tempdir()
   f <- export_ars(s, d)
-  ars <- tflspec::tfl_read_ars_json(f[["json"]])
+  # (the sample's analyses say no CDISC purpose or reason: a warning of
+  # the reader, not of this test)
+  ars <- suppressWarnings(tflspec::tfl_read_ars_json(f[["json"]]))
   expect_true("F-14-2-3" %in% vapply(ars$outputs, `[[`, "", "id"))
   it <- Filter(function(z) identical(z$outputId, "F-14-2-3"),
                ars$mainListOfContents$contentsList$listItems)[[1L]]
