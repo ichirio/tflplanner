@@ -88,8 +88,10 @@ test_that("a filtered edit puts the rows back where they were", {
   ae <- sheet_rows(p, "variables", "AE")
   ae$output_id <- NULL
   ae$label[1] <- "Arm"
-  ae <- rbind(ae, data.frame(variable = "NEW", label = NA, order = NA,
-                             levels = NA, empty_levels = NA, note = NA))
+  new <- ae[1L, , drop = FALSE]
+  new[1L, ] <- NA
+  new$variable <- "NEW"
+  ae <- rbind(ae, new)
   q <- set_sheet_rows(p, "variables", "AE", ae)
   v <- q$sheets$variables
   expect_equal(nrow(v), nrow(before) + 1)

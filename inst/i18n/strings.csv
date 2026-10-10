@@ -2670,6 +2670,12 @@ The design reads an ARD: choose where it comes from (the figure's step 2).,デ�
 "Correct the piece to a row the ARD has (its analysis, variable, group or statistic).",部品を ARD にある行（解析・変数・群・統計量）に合わせて直してください。
 "%s calls %s, which tflspec no longer has.",%s が %s を呼んでいますが、tflspec にはもうありません。
 "Write it again (open the study and save), or source programs/study_helpers.R.",書き直してください（試験を開いて保存）。または programs/study_helpers.R を source してください。
+Rows under a level of another variable,別の変数の水準の下に入れる
+"Its rows go right after that level's row, one step deeper, without its own heading: Chinese / Japanese / Korean under Race's Asian. Blank: a block of its own.",この変数の行を、選んだ水準の行のすぐ後に、1 段深く、見出しなしで入れます（Race の Asian の下に Chinese / Japanese / Korean）。空欄：独立したブロック。
+(its own block),（独立したブロック）
+"Its rows under one level of another variable: that variable, a colon, the level as the table shows it (plan_nest()); after that row, one indent deeper, its own heading dropped; blank: its own block.",この変数の行を、別の変数の 1 つの水準の下に入れます：その変数、コロン、表に出る水準（plan_nest()）。その行の後に 1 段深く、見出しなしで入ります。空欄：独立したブロック。
+under,の下：
+No heading of its own: its rows go under %s.,独自の見出しはありません。この変数の行は %s の下に入ります。
 The checks against the data have not run yet. Press [Review with the data] to read the datasets once (not again until a file changes).,データと照らし合わせたチェックはまだです。［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。
 %s: the checks against the data have not run yet.,%s：データと照らし合わせたチェックはまだです。
 Press [Review with the data]: it reads the datasets once (not again until a file changes).,［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。
