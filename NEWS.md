@@ -11,6 +11,12 @@
   instead of running it, and `run_batch()` on a study with no ARD
   programs names the likely cause.
 
+- **Logistic and Poisson regressions on R before 4.4 need MASS** (#319).
+  Before R 4.4, `confint()` of a `glm` comes from MASS, and without it
+  `cardx::ard_regression()` stops with "Unable to tidy x".  MASS is
+  installed with R, so this concerns only an R where it was removed: the
+  ARD dictionary's help for these two models says so, and its test skips
+  them only where MASS cannot be loaded.
 - **Step 3 (page and output): the input on the left again, the page at
   its actual size** (the user's request).  The report's page sheets
   (report, page, header, footer, titles, footnotes, your tokens) are the
