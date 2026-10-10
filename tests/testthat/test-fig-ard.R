@@ -262,3 +262,13 @@ test_that("a template's population flag is the study's analysis set", {
   expect_identical(.population_of_flag(p, "FASFL"), NA_character_)
   expect_identical(.population_of_flag(new_planner(), "SAFFL"), NA_character_)
 })
+
+test_that("the forest template's arm compared defaults to the group's second level", {
+  dat <- list(ADTTE = data.frame(USUBJID = 1:4, TRT01A = c("B", "A", "C", "A")),
+              ADSL = data.frame(USUBJID = 1:4, TRT01P = factor(c("Hi", "Lo", "Pbo", "Lo"),
+                                                               levels = c("Pbo", "Lo", "Hi"))))
+  expect_identical(.second_level(dat, "TRT01P"), "Lo")
+  expect_identical(.second_level(dat, "TRT01A"), "B")
+  expect_null(.second_level(dat, "NOPE"))
+  expect_null(.second_level(list(), NULL))
+})

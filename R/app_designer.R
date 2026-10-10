@@ -553,7 +553,10 @@
                    at_visit = nz(input$pd_tpl_at_visit),
                    subgroups = if (length(input$pd_tpl_subgroups))
                      paste(input$pd_tpl_subgroups, collapse = ", "),
-                   comparison = nz(input$pd_tpl_comparison))
+                   # the arm compared: the one chosen, else the group's second
+                   # level (the first is the reference)
+                   comparison = nz(input$pd_tpl_comparison) %||%
+                     .second_level(study_data(c(ds, "ADSL")), grp))
       if (!is.null(nz(input$pd_tpl_unit))) args$time_unit <- input$pd_tpl_unit
       make <- function(a) guarded(do.call(tflspec::tfl_fig_template,
                                           a[!vapply(a, is.null, logical(1))]))
@@ -1341,6 +1344,16 @@ t_static <- function(x) x
   cols <- list()
   for (d in dat) for (nm in names(d)) if (is.null(cols[[nm]])) cols[[nm]] <- d[[nm]]
   cols
+}
+
+# The second level of a group column (the first is the reference), or NULL
+.second_level <- function(dat, group) {
+  cols <- .data_columns(dat)
+  g <- group %||% .group_choices(cols)[1L]
+  if (is.null(g) || is.na(g) || is.null(cols[[g]])) return(NULL)
+  v <- cols[[g]]
+  lv <- if (is.factor(v)) levels(v) else sort(unique(stats::na.omit(as.character(v))))
+  if (length(lv) >= 2L) lv[[2L]] else NULL
 }
 
 # Choices shown as "NAME \u2014 label" when the column has a label.
