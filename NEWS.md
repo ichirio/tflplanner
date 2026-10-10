@@ -21,6 +21,15 @@
   `spelling` flags; `inst/COPYRIGHTS` links the licence instead of the
   build-ignored LICENSE.md; the package help says where to start.
 
+- **The sample's race tables are demographics tables, with ASIANSUB**
+  (the user's request on #326).  T-14-1-5 and T-14-1-6 show age (n,
+  mean (SD), median, min and max), age group, sex and ethnicity as well,
+  so RACE is the one variable with rows nested under one of its levels.
+  The derived sub-category is `ASIANSUB`, one column per race as an EDC
+  collects it (White's would be `WHTSUB`, nested under "White": each its
+  own analysis, `plan_nest()` takes several), still footnoted as derived
+  for demonstration.  The other reports' programs and RTFs are
+  byte-identical.
 - **The app follows a run that ends, without a reload** (#305 area).
   After a background official run (the sample's, for one), the report
   list kept every report "not made" and a table's builder said "no ARD
