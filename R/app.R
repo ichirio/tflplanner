@@ -9047,7 +9047,7 @@ app_server <- function(input, output, session, start) {
         sprintf(t("The ARD has no %s: those cells stay empty. Add them to the ARD code."),
                 paste(miss, collapse = ", "))))
   }))
-  # What the report's ARD holds (#335): folded to one line above the
+  # What the report's ARD holds (#343): folded to one line above the
   # right-hand tabs, a small table when opened, the whole normalized ARD on
   # a button (read only then).  From what "read the ARD" saved (meta_of()).
   output$builder_ard_card <- shiny::renderUI({

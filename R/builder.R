@@ -514,7 +514,7 @@ builder_write <- function(x, output_id, state, was = NULL) {
   identical(norm(a), norm(b))
 }
 
-# What a report's ARD holds, as the builder's card says it (#335): `meta`
+# What a report's ARD holds, as the builder's card says it (#343): `meta`
 # is ard_info()'s (the keys, the variables and their statistics, when it
 # was read); `page_by`: the layout's page variables.  `line`: the one-line
 # summary; `rows`: role, variable, kind, the levels or statistics, the

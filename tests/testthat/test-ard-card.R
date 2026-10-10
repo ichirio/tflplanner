@@ -1,4 +1,4 @@
-# The table builder's card of what the report's ARD holds (#335): one line,
+# The table builder's card of what the report's ARD holds (#343): one line,
 # a small table when opened, the whole normalized ARD on a button.
 
 card_meta <- function() {
