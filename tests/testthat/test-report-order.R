@@ -6,9 +6,16 @@ ids <- function(p) p$outputs$output_id
 
 test_that("ids in natural order: numbers as numbers", {
   x <- c("T-14-1-10", "T-14-1-2", "T-14-1-1S", "T-14-1-1", "L-16-2-7", "F-14-2-1")
+  # the numbers first (the sections' order), then the letters
   expect_identical(x[order(.natural_key(x), method = "radix")],
-                   c("F-14-2-1", "L-16-2-7", "T-14-1-1", "T-14-1-1S", "T-14-1-2", "T-14-1-10"))
-  expect_identical(.natural_key(c("AE", NA)), c("AE", ""))
+                   c("T-14-1-1", "T-14-1-1S", "T-14-1-2", "T-14-1-10", "F-14-2-1", "L-16-2-7"))
+  y <- c("T-14-2-1", "F-14-2-1", "T-14-0-1", "L-16-2-7", "T-14-3-1")
+  expect_identical(y[order(.natural_key(y), method = "radix")],
+                   c("T-14-0-1", "F-14-2-1", "T-14-2-1", "T-14-3-1", "L-16-2-7"))
+  # no number: after the numbered, in their letters' order
+  z <- c("VS", "T-1", "AE")
+  expect_identical(z[order(.natural_key(z), method = "radix")], c("T-1", "AE", "VS"))
+  expect_identical(.natural_key(NA), "")
 })
 
 test_that("a new report goes where its id sorts; at = 'end' puts it last", {
@@ -18,6 +25,9 @@ test_that("a new report goes where its id sorts; at = 'end' puts it last", {
   expect_identical(ids(p), c("T-14-1-1", "T-14-1-2", "T-14-1-10"))
   p <- add_output(p, "T-14-0-1")
   expect_identical(ids(p)[1L], "T-14-0-1")
+  # a figure of section 14.1: among its tables, by its numbers
+  p <- add_output(p, "F-14-1-3", type = "figure")
+  expect_identical(ids(p), c("T-14-0-1", "T-14-1-1", "T-14-1-2", "F-14-1-3", "T-14-1-10"))
   p <- add_output(p, "A-1", at = "end")
   expect_identical(ids(p)[nrow(p$outputs)], "A-1")
   # a list ordered by hand keeps its order: before the first that sorts after

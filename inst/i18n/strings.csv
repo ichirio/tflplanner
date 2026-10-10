@@ -2682,5 +2682,5 @@ Press [Review with the data]: it reads the datasets once (not again until a file
 Sort by ID,ID 順に並べる
 The reports are in their ids' order already.,帳票はすでに ID 順に並んでいます。
 Sort the reports by ID?,帳票を ID 順に並べ替えますか？
-%d of %d reports move: the list goes in its ids' natural order (T-14-1-2 before T-14-1-10). The list's order is the order the reports are made in; the up and down arrows still move one.,%2$d 帳票のうち %1$d が動きます。一覧を ID の自然な順（T-14-1-2 は T-14-1-10 より前）に並べます。一覧の順は帳票を作る順です。↑ ↓ で 1 つずつ動かすこともできます。
+"%d of %d reports move: the list goes in its ids' order, by the numbers in the id (T-14-1-2 before T-14-1-10, T-14-0-1 before F-14-2-1), then its letters. The list's order is the order the reports are made in; the up and down arrows still move one.",%2$d 帳票のうち %1$d が動きます。一覧を ID の順に並べます。ID の中の数を数として並べ（T-14-1-2 は T-14-1-10 より前、T-14-0-1 は F-14-2-1 より前）、同じなら文字の順です。一覧の順は帳票を作る順です。↑ ↓ で 1 つずつ動かすこともできます。
 Sort,並べ替える

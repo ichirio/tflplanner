@@ -9539,8 +9539,8 @@ app_server <- function(input, output, session, start) {
   }
   shiny::observeEvent(input$up, move(-1L))
   shiny::observeEvent(input$down, move(1L))
-  # the whole list in its ids' natural order, asked first (the order is the
-  # order the reports are made in)
+  # the whole list in its ids' order, asked first (the order is the order
+  # the reports are made in)
   shiny::observeEvent(input$sort_ids, {
     o <- rv$p$outputs
     to <- sort_outputs(rv$p)$outputs$output_id
@@ -9551,7 +9551,7 @@ app_server <- function(input, output, session, start) {
     }
     shiny::showModal(shiny::modalDialog(
       title = t("Sort the reports by ID?"),
-      sprintf(t("%d of %d reports move: the list goes in its ids' natural order (T-14-1-2 before T-14-1-10). The list's order is the order the reports are made in; the up and down arrows still move one."),
+      sprintf(t("%d of %d reports move: the list goes in its ids' order, by the numbers in the id (T-14-1-2 before T-14-1-10, T-14-0-1 before F-14-2-1), then its letters. The list's order is the order the reports are made in; the up and down arrows still move one."),
               moved, nrow(o)),
       footer = shiny::tagList(
         shiny::modalButton(t("Cancel")),

@@ -362,14 +362,16 @@ read_planner <- function(path) {
 #' report every row of an existing one (the quickest start for a report
 #' like one already defined); `rename_output()` changes an id everywhere;
 #' `remove_output()` takes a report and all its rows out;
-#' `sort_outputs()` puts the list in its ids' natural order.
+#' `sort_outputs()` puts the list in its ids' order.
 #'
 #' The list's order is the order the reports are made in (the official run
-#' too).  A new report goes where its id sorts among the others, in natural
-#' order -- `T-14-1-2` after `T-14-1-1` and before `T-14-1-10`, before the
-#' first report whose id sorts after it -- so a list kept in id order stays
-#' so; one ordered by hand keeps that order.  `at = "end"` puts it last (a
-#' TOC's reports come in the TOC's order).
+#' too).  A new report goes where its id sorts among the others -- by the
+#' numbers in the id, as numbers (`T-14-1-2` after `T-14-1-1` and before
+#' `T-14-1-10`; `T-14-0-1` before `F-14-2-1`, the sections' order), then
+#' its letters (`T-14-1-1` before `T-14-1-1S`) -- before the first report
+#' whose id sorts after it, so a list kept in id order stays so; one
+#' ordered by hand keeps that order.  `at = "end"` puts it last (a TOC's
+#' reports come in the TOC's order).
 #'
 #' @param x An `tflplanner`.
 #' @param output_id,from,to Report ids.
@@ -431,16 +433,18 @@ sort_outputs <- function(x) {
   x
 }
 
-# An id's key for a natural order: each run of digits padded to 12, so
-# "T-14-1-2" sorts before "T-14-1-10" (the rest compared as it is)
+# An id's key for its natural order: the numbers in it first, as numbers
+# ("T-14-1-2" before "T-14-1-10", and "T-14-0-1" before "F-14-2-1": the
+# sections' order, as a TOC has it), then the id's letters ("T-14-1-1"
+# before "T-14-1-1S"); an id with no number after the numbered ones
 .natural_key <- function(ids) {
   vapply(as.character(ids), function(s) {
     if (is.na(s)) return("")
     m <- gregexpr("[0-9]+", s)[[1L]]
-    if (m[1L] < 0L) return(s)
-    d <- regmatches(s, list(m))[[1L]]
-    regmatches(s, list(m)) <- list(formatC(d, width = 12L, flag = "0"))
-    s
+    if (m[1L] < 0L) return(paste0("\u007f", s))
+    d <- formatC(regmatches(s, list(m))[[1L]], width = 12L, flag = "0")
+    regmatches(s, list(m)) <- list(d)
+    paste(paste(d, collapse = "."), s, sep = "\r")
   }, "", USE.NAMES = FALSE)
 }
 

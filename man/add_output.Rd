@@ -63,15 +63,17 @@ The updated \code{tflplanner}.
 report every row of an existing one (the quickest start for a report
 like one already defined); \code{rename_output()} changes an id everywhere;
 \code{remove_output()} takes a report and all its rows out;
-\code{sort_outputs()} puts the list in its ids' natural order.
+\code{sort_outputs()} puts the list in its ids' order.
 }
 \details{
 The list's order is the order the reports are made in (the official run
-too).  A new report goes where its id sorts among the others, in natural
-order -- \code{T-14-1-2} after \code{T-14-1-1} and before \code{T-14-1-10}, before the
-first report whose id sorts after it -- so a list kept in id order stays
-so; one ordered by hand keeps that order.  \code{at = "end"} puts it last (a
-TOC's reports come in the TOC's order).
+too).  A new report goes where its id sorts among the others -- by the
+numbers in the id, as numbers (\code{T-14-1-2} after \code{T-14-1-1} and before
+\code{T-14-1-10}; \code{T-14-0-1} before \code{F-14-2-1}, the sections' order), then
+its letters (\code{T-14-1-1} before \verb{T-14-1-1S}) -- before the first report
+whose id sorts after it, so a list kept in id order stays so; one
+ordered by hand keeps that order.  \code{at = "end"} puts it last (a TOC's
+reports come in the TOC's order).
 }
 \examples{
 p <- add_output(add_output(new_planner(), "T-14-1-10"), "T-14-1-1")
