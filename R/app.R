@@ -8941,7 +8941,7 @@ app_server <- function(input, output, session, start) {
     if (is.null(id)) return(NULL)
     rv$ver
     p <- rv$p
-    one <- function(sh) {
+    sheet_table <- function(sh) {
       d <- sheet_rows(p, sh, id)
       d$output_id <- NULL
       d <- d[, vapply(d, function(v) any(!is.na(v) & nzchar(as.character(v))), NA), drop = FALSE]
@@ -8954,7 +8954,7 @@ app_server <- function(input, output, session, start) {
           shiny::tags$tbody(lapply(seq_len(nrow(d)), function(i) shiny::tags$tr(
             lapply(d[i, ], function(v) shiny::tags$td(if (is.na(v)) "" else as.character(v))))))))
     }
-    out <- Filter(Negate(is.null), lapply(report_sheets(), one))
+    out <- Filter(Negate(is.null), lapply(report_sheets(), sheet_table))
     shiny::tagList(
       shiny::p(class = "small text-muted mb-1",
                sprintf(t("%s's own rows, as written to %s (edit them on the left). Study defaults fill what they leave out."),
