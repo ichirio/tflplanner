@@ -6,6 +6,31 @@
   installed with R, so this concerns only an R where it was removed: the
   ARD dictionary's help for these two models says so, and its test skips
   them only where MASS cannot be loaded.
+## Upgrading from an earlier version
+
+Update tflplanner and tflspec together, open each study and save it, then
+look at its Review tab.
+
+* **This tflplanner needs tflspec 0.0.24.9079 or later** (0.0.2.9157 and
+  later needed 0.0.24.9077): update both together.
+* **Six functions are no longer tflspec's; the study keeps them in
+  `programs/study_helpers.R`.**  `set_levels()`, `tag_ard()`, `fmt_ard()`,
+  `keep_stats()`, `fmt_pvalue()` and `save_ard()` (tflspec's up to
+  0.0.24.9066) are written there by a save, and the study's setup sources
+  it.  A program that calls them as `tflspec::` or after
+  `library(tflspec)` without it stops; the review says which (P02): write
+  it again (open the study and save) or source
+  `programs/study_helpers.R`.
+* **A figure design written before reads as it is**: its YAML's old form
+  (`stats:`, `data_code`, `stats_code`) is read, and a save writes the new
+  one.
+* **Figure programs have a new shape, and draw the same figures**: a data
+  and a plot section, one `+` chain.  A save writes them again.
+* **The steps:** update both packages; open each study and save it (the
+  programs and `study_helpers.R` are written again; a program edited by
+  hand is copied to `programs/.edited/` first); check the Review tab.
+
+## Changes
 
 - **Race with its Asian sub-categories, nested or in two blocks** (the
   sample's T-14-1-5 and T-14-1-6, with rtfreporter #599 and tflspec
@@ -53,31 +78,24 @@
   from its definition -- logged in the same batch under `ard` -- and
   leave it alone when it is.  After this update every report program is
   rewritten once (`record_report()` changed in `report_setup.R`).
-## Upgrading from an earlier version
-
-Update tflplanner and tflspec together, open each study and save it, then
-look at its Review tab.
-
-* **This tflplanner needs tflspec 0.0.24.9079 or later** (0.0.2.9157 and
-  later needed 0.0.24.9077): update both together.
-* **Six functions are no longer tflspec's; the study keeps them in
-  `programs/study_helpers.R`.**  `set_levels()`, `tag_ard()`, `fmt_ard()`,
-  `keep_stats()`, `fmt_pvalue()` and `save_ard()` (tflspec's up to
-  0.0.24.9066) are written there by a save, and the study's setup sources
-  it.  A program that calls them as `tflspec::` or after
-  `library(tflspec)` without it stops; the review says which (P02): write
-  it again (open the study and save) or source
-  `programs/study_helpers.R`.
-* **A figure design written before reads as it is**: its YAML's old form
-  (`stats:`, `data_code`, `stats_code`) is read, and a save writes the new
-  one.
-* **Figure programs have a new shape, and draw the same figures**: a data
-  and a plot section, one `+` chain.  A save writes them again.
-* **The steps:** update both packages; open each study and save it (the
-  programs and `study_helpers.R` are written again; a program edited by
-  hand is copied to `programs/.edited/` first); check the Review tab.
-
-## Changes
+- **The column header form, easier to read and to use** (step 2, the
+  table builder).  Each line's tools (its number, its shape, alignment,
+  bold, underline, the arrows) are on top of its fields, on a grey band
+  with a rule above, so where one line ends and the next starts is plain;
+  the insert chips and "what the header's {n} counts" are in boxes of their
+  own.  "From a preset..." is a button the size of the others, "Load a
+  standard column header...", next to "Add a line above"; it opens a list
+  of the standard headers, each with its lines in short.
+- **What the header's {n} counts, chosen among the ARD's numbers.**  The
+  choices are the populations the ARD states for the table's columns
+  (rtfreporter's `plan_n_candidates()`), each with its values: one ("Subjects,
+  by TRT01A: 86 / 84 / 84", chosen); on pages split by a lab parameter two,
+  "Subjects on each page (per PARAMCD, by TRT01A): 22 / 24 / 23" and
+  "Analysis set (by TRT01A, the same on every page): 25 / 26 / 24", and
+  both.  When the two differ and none is chosen the form says so (making
+  the report warns until then); with no ARD yet the three in words.  The
+  choice is the `tables` sheet's `header_n`, as before.  Needs rtfreporter
+  0.8.2.9033.
 
 - **The review names a program calling a function tflspec no longer
   has** (P02, area program): one of the six above, as `tflspec::`, or
