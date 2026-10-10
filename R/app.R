@@ -9662,8 +9662,7 @@ app_server <- function(input, output, session, start) {
   # in the background, as the Runs tab starts one; the app stays usable and
   # the study list says it is running
   start_sample_run <- function(s) {
-    miss <- c("cards", "cardx")[!vapply(c("cards", "cardx"), requireNamespace,
-                                        NA, quietly = TRUE)]
+    miss <- .sample_missing()
     if (length(miss)) {
       return(notify(sprintf(
         t("The sample study is in place; to make its ARD and reports, install %s and start an official run (Runs)."),

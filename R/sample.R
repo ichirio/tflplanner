@@ -80,12 +80,10 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
   .write_ard_spec(s$planner$ard,
                   file.path(path, study_layout()[["spec"]], .ard_file))
   if (run) {
-    miss <- c("cards", "cardx")[!vapply(c("cards", "cardx"),
-                                        requireNamespace, NA,
-                                        quietly = TRUE)]
+    miss <- .sample_missing()
     if (length(miss)) {
       message("The sample study is in place; to make its ARD and reports, ",
-              "install ", paste(miss, collapse = " and "),
+              "install ", paste(miss, collapse = ", "),
               " and run it from the app (Results: official run).")
     } else {
       message("Making the sample study's ARD and reports (about a minute) ...")
@@ -97,4 +95,12 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
   }
   message("The sample study: ", path)
   invisible(s)
+}
+
+# The packages the sample's ARD programs need beyond tflplanner's own:
+# cards and cardx, and broom.helpers for cardx::ard_regression() (T-14-2-2's
+# hazard ratios, #311); the ones not installed
+.sample_pkgs <- c("cards", "cardx", "broom.helpers")
+.sample_missing <- function() {
+  .sample_pkgs[!vapply(.sample_pkgs, requireNamespace, NA, quietly = TRUE)]
 }

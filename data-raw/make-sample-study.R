@@ -23,15 +23,18 @@
 #                      t-test -- the ARD also holds the test's method and
 #                      alternative as text
 #   T-14-2-2  Table    Time to first dermatologic event: Kaplan-Meier
-#                      estimates (median, event-free probability by day)
+#                      estimates (median, event-free probability by day);
+#                      its ARD also has the hazard ratios of a Cox model,
+#                      which the table does not print (F-14-2-3 does)
 #   T-14-3-1  Table    TEAEs by SOC / PT, frequency descending
 #   L-16-2-7  Listing  Severe treatment-emergent adverse events
 #   F-14-2-1  User code  Mean change from baseline in systolic blood pressure
 #   F-14-2-2  User code  Kaplan-Meier plot of the time to first dermatologic
 #                      event; its number at risk is T-14-2-2's ARD
 #   F-14-2-3  Figure   The same KM curves, designed: the designer's KM
-#                      template, the median line, and the medians printed
-#                      from T-14-2-2's ARD (its ARD source: table:T-14-2-2)
+#                      template, the median line, and the medians and
+#                      hazard ratios printed from T-14-2-2's ARD (its ARD
+#                      source: table:T-14-2-2)
 #
 # The figures use the company standards' figure style (programs/tfl/
 # fig_setup.R: theme_tfl(), scale_colour_tfl(), tfl_km_risk() ...) and end
@@ -418,7 +421,7 @@ sheets$footer <- tbl(
   list(output_id = "F-14-2-2", line = "1",
        left = "x = censored.  The number at risk is that of Table 14.2.2."),
   list(output_id = "F-14-2-3", line = "1",
-       left = "x = censored.  Dashed line: the median (probability 0.5).  The medians are those of Table 14.2.2."),
+       left = "x = censored.  Dashed line: the median (probability 0.5).  The medians are those of Table 14.2.2; the hazard ratios (Cox model) are in its ARD."),
   list(line = "98",
        left = "Source: CDISC pilot study ADaM data of the pharmaverseadam R package."))
 
@@ -527,6 +530,15 @@ p$ard$analyses <- tbl(
          "  cardx::ard_survival_survfit(fit, probs = 0.5),",
          "  cardx::ard_survival_survfit(fit, times = c(0, 30, 60, 90, 120, 150, 180)),",
          "  .quiet = TRUE)", sep = "\n")),
+  # in the ARD, not in the table (its cells name prob and time only): the
+  # hazard ratios against placebo, which F-14-2-3 prints (#311)
+  list(output_id = "T-14-2-2", analysis_id = "HR",
+       label = "Hazard ratio vs placebo (Cox), not printed in the table",
+       method = "custom", data = "adtte_ttde",
+       code = paste(
+         "cardx::ard_regression(",
+         "  survival::coxph(survival::Surv(AVAL, 1 - CNSR) ~ TRT01A, data = data),",
+         "  exponentiate = TRUE)", sep = "\n")),
   # T-14-3-1 reads analysis data: the TEAEs of the safety set (adae_saf,
   # kept to adsl_saf's subjects), its percents of adsl_saf
   list(output_id = "T-14-3-1", analysis_id = "TEAE",
@@ -602,6 +614,12 @@ km_design$layers <- c(km_design$layers, lapply(seq_along(arms), function(i) list
   stat = "estimate", group = paste("TRT01A =", arms[i]),
   label = paste0("Median (days), ", arms[i], ": {value}"), digits = 0,
   x = 0, y = "-Inf", hjust = 0, vjust = -0.6 - 1.5 * (length(arms) - i))))
+# and the hazard ratios (T-14-2-2's HR analysis, in its ARD and not in the
+# table), each with its CI on one line, right, between the curves
+km_design$layers <- c(km_design$layers, lapply(2:3, function(i) list(
+  layer = "ard_number", analysis_id = "HR", variable = "TRT01A", level = arms[i],
+  stat = "estimate", label = paste0("HR, ", arms[i], " vs Placebo: {value} (95% CI {conf.low}, {conf.high})"),
+  digits = 2, x = "Inf", y = 0.3, hjust = 1.02, vjust = -0.6 - 1.5 * (3 - i))))
 
 plot_code <- c(
   "library(ggplot2)",

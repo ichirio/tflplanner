@@ -46,9 +46,12 @@ test_that("the sample's F-14-2-3 reads T-14-2-2's ARD in its data section", {
   expect_true(i_data < i_ard && i_ard < i_adam)
   expect_identical(code[i_ard + 1L], "  filter(output_id == \"T-14-2-2\")")
   expect_match(code[i_ard + 2L], "run programs/ard/T-14-2-2.R first", fixed = TRUE)
-  # the medians: one annotate a arm, its number the ARD's
+  # the medians: one annotate a arm, its number the ARD's; the hazard
+  # ratios: the estimate and its CI on one line (#311)
   expect_identical(sum(grepl("ard_value(ard, \"KM\", \"prob\", \"estimate\", TRT01A = ",
                              code, fixed = TRUE)), 3L)
+  expect_identical(sum(grepl("ard_value(ard, \"HR\", \"TRT01A\", \"conf.high\", level = ",
+                             code, fixed = TRUE)), 2L)
   expect_false(inherits(tryCatch(parse(text = code), error = function(e) e), "error"))
   # no source: the program stops, saying where to choose it
   p0 <- set_fig_ard_source(p, "F-14-2-3", NULL)
@@ -112,8 +115,11 @@ test_that("the designer: an ARD piece's code is its whole term, its summary its 
     x <- strsplit(.piece_code(code, d, list(sec = "layers", i = i), make), "\n", fixed = TRUE)[[1L]]
     expect_identical(x[[1L]], "  annotate(")
     expect_match(x[[length(x)]], "^  [)]")
-    expect_match(x[[3L]], d$layers[[i]]$label |> sub(pattern = "[{]value[}]", replacement = "") |>
-                   sub(pattern = ": $", replacement = ""), fixed = TRUE)
+    # (a median's label: its text, then the number)
+    if (identical(d$layers[[i]]$analysis_id, "KM")) {
+      expect_match(x[[3L]], d$layers[[i]]$label |> sub(pattern = "[{]value[}]", replacement = "") |>
+                     sub(pattern = ": $", replacement = ""), fixed = TRUE)
+    }
   }
   expect_identical(.pd_summary(d$layers[[k[1L]]]), "KM prob estimate TRT01A = Placebo")
 })
