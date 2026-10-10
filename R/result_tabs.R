@@ -80,6 +80,32 @@ $(document).on('shown.bs.tab', '.rp-tabs', function() {
     });
   }, 0);
 });
+// the first page (step 3): actual size (100%) by default; fit to the
+// pane's width when asked, remembered in this browser
+function rpPageFitOn() {
+  try { return window.localStorage.getItem('rp-page-fit') === '1'; } catch (e) { return false; }
+}
+function rpPageFitApply() {
+  var on = rpPageFitOn();
+  $('.rp-page-wrap').each(function() {
+    var page = $(this).find('.rp-page')[0];
+    if (!page) return;
+    page.style.zoom = 1;
+    if (on && page.scrollWidth > 0) {
+      page.style.zoom = Math.min(1, this.clientWidth / page.scrollWidth);
+    }
+  });
+  $('#page_fit').toggleClass('active', on);
+}
+function rpPageFit(on) {
+  try { window.localStorage.setItem('rp-page-fit', on ? '1' : '0'); } catch (e) {}
+  rpPageFitApply();
+}
+$(document).on('shiny:value', function(e) {
+  if (e.name === 'page_sample') setTimeout(rpPageFitApply, 0);
+});
+$(window).on('resize', function() { rpPageFitApply(); });
+$(document).on('shown.bs.tab', '.rp-tabs', function() { setTimeout(rpPageFitApply, 0); });
 $(document).on('click', '.rp-code-view [data-copy]', function() {
   var pre = document.getElementById($(this).data('copy'));
   if (!pre) return;

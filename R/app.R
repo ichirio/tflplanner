@@ -733,22 +733,38 @@ app_ui <- function(lang = "en") {
     class = "mt-2",
     pane_head(t("This report's page"), t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
     shiny::uiOutput("report_font"),
-    # SPEC | Code | Result: no form of its own; the program is the Code
-    result_tabs_ui(
-      "page_right", lang = lang,
-      spec = shiny::tagList(
+    # the input on the left -- the page's sheets, edited -- and on the right
+    # what they make: the first page, the program, the rows as they are
+    # written (SPEC, read only: the grid on the left is where they change)
+    bslib::layout_columns(
+      col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
+      shiny::div(
         grid_note,
         do.call(bslib::navset_card_underline,
                 c(list(id = "page_sheet"), lapply(report_sheets(), sheet_panel)))),
-      code = shiny::tagList(
-        shiny::uiOutput("program_state"),
-        code_view("program", lang)),
-      result = shiny::tagList(
-        shiny::div(class = "d-flex justify-content-between align-items-center mb-1 small",
-                   shiny::span(t("First page (sample)")),
-                   .btn("page_full", t("Full size"),
-                        class = "btn-sm btn-outline-secondary py-0")),
-        shiny::uiOutput("page_sample"))))
+      # (min-width 0: a grid item may then be narrower than the page it
+      # holds, which scrolls inside it at its actual size)
+      shiny::div(style = "min-width: 0", result_tabs_ui(
+        "page_right", lang = lang, selected = "result",
+        spec = shiny::uiOutput("page_spec_view"),
+        code = shiny::tagList(
+          shiny::uiOutput("program_state"),
+          code_view("program", lang)),
+        result = shiny::tagList(
+          shiny::div(class = "d-flex justify-content-between align-items-center gap-2 mb-1 small",
+                     shiny::span(t("First page (sample)")),
+                     shiny::div(
+                       class = "d-flex gap-1",
+                       # actual size (100%) by default; fit to the pane's
+                       # width on a click, remembered in this browser
+                       shiny::tags$button(
+                         type = "button", id = "page_fit",
+                         class = "btn btn-sm btn-outline-secondary py-0",
+                         onclick = "rpPageFit(!rpPageFitOn());",
+                         t("Fit to width")),
+                       .btn("page_full", t("Full size"),
+                            class = "btn-sm btn-outline-secondary py-0"))),
+          shiny::div(class = "rp-page-wrap", shiny::uiOutput("page_sample")))))))
 
   bslib::page_navbar(
     id = "nav",
@@ -8886,6 +8902,34 @@ app_server <- function(input, output, session, start) {
       footer = shiny::modalButton(t("Close"))))
   })
   output$page_sample_full <- shiny::renderUI(page_sample_ui())
+  # SPEC (read only): this report's own rows of the page's sheets, as they
+  # are written to the report workbook; the study defaults fill the rest
+  output$page_spec_view <- shiny::renderUI({
+    id <- current()
+    if (is.null(id)) return(NULL)
+    rv$ver
+    p <- rv$p
+    one <- function(sh) {
+      d <- sheet_rows(p, sh, id)
+      d$output_id <- NULL
+      d <- d[, vapply(d, function(v) any(!is.na(v) & nzchar(as.character(v))), NA), drop = FALSE]
+      if (!nrow(d) || !ncol(d)) return(NULL)
+      shiny::tagList(
+        shiny::h6(class = "mt-2 mb-1", sh),
+        shiny::tags$table(
+          class = "table table-sm small mb-1",
+          shiny::tags$thead(shiny::tags$tr(lapply(names(d), shiny::tags$th))),
+          shiny::tags$tbody(lapply(seq_len(nrow(d)), function(i) shiny::tags$tr(
+            lapply(d[i, ], function(v) shiny::tags$td(if (is.na(v)) "" else as.character(v))))))))
+    }
+    out <- Filter(Negate(is.null), lapply(report_sheets(), one))
+    shiny::tagList(
+      shiny::p(class = "small text-muted mb-1",
+               sprintf(t("%s's own rows, as written to %s (edit them on the left). Study defaults fill what they leave out."),
+                       id, file.path(study_layout()[["spec"]], .report_file))),
+      if (length(out)) out else
+        shiny::p(class = "small text-muted", t("No rows of its own: the study defaults make its page.")))
+  })
   output$page_sample <- shiny::renderUI(page_sample_ui())
   page_sample_ui <- function() {
     id <- current()

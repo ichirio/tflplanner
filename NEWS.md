@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **Step 3 (page and output): the input on the left again, the page at
+  its actual size** (the user's request).  The report's page sheets
+  (report, page, header, footer, titles, footnotes, your tokens) are the
+  form on the left, as before the SPEC | Code | Result tabs came (that
+  change had put them inside the SPEC tab); on the right the tabs open on
+  Result: the first page at 100%, scrolling in its pane, with a "Fit to
+  width" button (remembered in the browser) and "Full size" as before.
+  SPEC shows the report's own rows as they are written to
+  `spec/report_spec.xlsx`, read only.  The report's font stays above.
+
 - **The Review tab says in plain words what reading the data does.**  The
   internal "data facts" are gone from the screen and the guide: the button
   is "Review with the data" (データも使って見直す) everywhere, and the tab

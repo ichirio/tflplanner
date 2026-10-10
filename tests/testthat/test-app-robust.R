@@ -530,3 +530,15 @@ test_that("a copy of the sample is listed at once; its run goes on in the backgr
     expect_identical(ids(), "TRAIN-01 \u25cf")
   })
 })
+
+test_that("step 3: the page's sheets on the left, Result first, SPEC read only", {
+  ui <- as.character(app_ui())
+  # the sheets are the input (left), not a tab of the right
+  i_sheet <- regexpr("page_sheet", ui, fixed = TRUE)
+  i_tabs <- regexpr("page_right", ui, fixed = TRUE)
+  expect_true(i_sheet > 0 && i_tabs > i_sheet)
+  # Result shown first; the page at its actual size with a fit toggle
+  expect_match(ui, "page_fit", fixed = TRUE)
+  expect_match(ui, "rp-page-wrap", fixed = TRUE)
+  expect_match(ui, "page_spec_view", fixed = TRUE)
+})
