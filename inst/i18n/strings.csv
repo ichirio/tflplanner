@@ -2693,3 +2693,4 @@ Press [Review with the data]: it reads the datasets once (not again until a file
 "No analysis of this report is grouped by %s: the ARD has no overall rows to show.",この帳票に %s で分けた解析がない：ARD に見せる overall 行がない。
 "%d analyses are run over all subjects too: update the ARD, then Preview.",%d 本の解析を全体でも走らせる：ARD を更新してから Preview。
 "Also over all subjects",全体でも計算する
+and over all,全体でも

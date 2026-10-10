@@ -5644,11 +5644,13 @@ app_server <- function(input, output, session, start) {
       what <- if (role == "parent") {
         paste0(data_words(r$dataset, r$population_id, r$data),
                if (!.is_blank(r$by)) paste0(" \u00b7 ", t("by"), " ",
-                                            gsub(" | ", ", ", r$by, fixed = TRUE)) else "")
+                                            gsub(" | ", ", ", r$by, fixed = TRUE)) else "",
+               if (.overall_on(r$overall)) paste0(" · ", t("and over all")) else "")
       } else paste(.split_bar(r$variables), collapse = ", ")
       own <- if (role == "single") {
         c(data_words(r$dataset, r$population_id, r$data),
           if (!.is_blank(r$by)) paste(t("by"), gsub(" | ", ", ", r$by, fixed = TRUE)),
+          if (.overall_on(r$overall)) t("and over all"),
           if (!.is_blank(r$where)) r$where)
       }
       what <- paste(c(if (nzchar(what)) what, own), collapse = " \u00b7 ")
