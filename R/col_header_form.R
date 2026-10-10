@@ -179,6 +179,72 @@ header_token_choices <- function(keys, header_n = NA) {
     if (!is.na(header_n) && grepl("\\bN\\s*=", header_n)) "{N}")
 }
 
+# What the header's {n} counts, as choices: the populations the ARD states
+# (`cand`: rtfreporter::plan_n_candidates()), each with its values; the
+# value of each is what tables$header_n holds.  `now`: header_n as it is.
+# One population (or two with the same numbers): it alone, chosen, and
+# header_n as it is; two that differ: each, both, nothing chosen unless
+# header_n says, and a warning then; no preview (the builder needs an
+# ARD, so only when it could not be made): the three in words.
+header_n_choices <- function(cand, keys, now = NA_character_, tr = function(x) x) {
+  keep <- if (is.na(now %||% NA_character_)) "" else now
+  by <- paste(keys, collapse = " \u00d7 ")
+  both <- "n = page | N = table"
+  vals <- function(d) {
+    d <- d[!is.na(d$value), , drop = FALSE]
+    col <- d[!is.na(d$column), , drop = FALSE]
+    # the columns of the first key (a key's own values, not joined ones)
+    top <- col[!grepl("____", col$column, fixed = TRUE), , drop = FALSE]
+    if (nrow(top)) col <- top
+    v <- if (nrow(col)) col$value else d$value[is.na(d$column)]
+    if (!length(v)) return("\u2014")
+    v <- format(v, trim = TRUE)
+    if (length(v) > 4L) v <- c(utils::head(v, 4L), "\u2026")
+    paste(v, collapse = " / ")
+  }
+  if (is.null(cand) || !nrow(cand)) {
+    ch <- stats::setNames(c(if (identical(keep, "page")) "page" else "", "table", both),
+                          c(tr("Subjects of each page (the default)"),
+                            tr("The analysis set, the same on every page"),
+                            tr("Both: {n} each page's, {N} the analysis set's")))
+    return(list(choices = ch, selected = keep,
+                note = tr("The numbers are not known yet: the preview has not been made."), warn = NULL))
+  }
+  if (all(cand$scope == "all")) {
+    ch <- stats::setNames(keep, sprintf(tr("Subjects, by %s: %s"), by, vals(cand)))
+    return(list(choices = ch, selected = keep, note = NULL, warn = NULL))
+  }
+  pages <- unique(cand$page[cand$scope == "page"])
+  first <- cand[cand$scope == "page" & cand$page %in% pages[1L], , drop = FALSE]
+  pcol <- attr(cand, "page_col") %||% tr("the page")
+  page_lab <- paste0(sprintf(tr("Subjects on each page (per %s, by %s): %s"), pcol, by, vals(first)),
+                     " ", sprintf(tr("(the first page, %s)"), pages[1L]))
+  tbl_lab <- sprintf(tr("Analysis set (by %s, the same on every page): %s"), by,
+                     vals(cand[cand$scope == "table", , drop = FALSE]))
+  if (!isTRUE(attr(cand, "differ"))) {
+    ch <- stats::setNames(keep, paste(page_lab,
+                                      tr("(the pages and the analysis set have the same numbers)")))
+    return(list(choices = ch, selected = keep, note = NULL, warn = NULL))
+  }
+  ch <- stats::setNames(c("page", "table", both),
+                        c(page_lab, tbl_lab, tr("Both: {n} each page's, {N} the analysis set's")))
+  sel <- if (keep %in% ch) keep else NULL
+  list(choices = ch, selected = sel, note = NULL,
+       warn = if (is.null(sel)) tr("The pages and the analysis set have different numbers: choose which one {n} says (until then, making the report warns)."))
+}
+
+# A preset's lines in short, for the list it is chosen from:
+# "{col} / (N={n})" (each line's value text, the lines joined)
+header_preset_sample <- function(d) {
+  if (is.null(d) || !nrow(d)) return("")
+  d <- d[order(suppressWarnings(as.numeric(d$line))), , drop = FALSE]
+  one <- vapply(split(d$text, factor(d$line, unique(d$line))), function(x) {
+    x <- x[!is.na(x) & nzchar(x)]
+    if (length(x)) gsub("\n", " ", x[length(x)], fixed = TRUE) else ""
+  }, "")
+  paste(one[nzchar(one)], collapse = "  /  ")
+}
+
 # A cell-by-cell line's cells over the values `lv` in their order: each
 # value in one cell (those not in any: a cell of their own, blank); a cell's
 # values kept together where they are neighbours, else split

@@ -1357,7 +1357,6 @@ fn-note:cardx::ard_survey_svyttest,サーベイデザインのオブジェクト
 See ?%s for this argument.,この引数は ?%s を見てください。
 Not offered by the builder: kept as written.,画面では扱わない関数です。書いたまま残します。
 "ARDs made elsewhere, taken in (imports.csv lists them)",よそで作った ARD の取り込み（imports.csv に一覧）
-From a preset...,定型から…
 Add a line above,行を上に足す
 "This report's column header is more than the form shows (positions, KEY = value, styled row-header cells): edit it in Details (sheets), col_header.",この帳票の列見出しは、この画面で表せない書き方（列の位置、KEY = 値、行見出しの列の書式）を含みます。詳しく（シート）の col_header で編集してください。
 Line %d,行 %d
@@ -1370,10 +1369,7 @@ center,中央
 right,右
 bold,太字
 underline,下線
-Insert (into the field last clicked):,差し込み（最後にクリックした欄へ）:
 The header is the preset %s now.,列見出しを定型 %s にしました。
-Replace the column header?,列見出しを置き換えますか？
-The lines below become the preset %s; what they say now is replaced.,下の行が定型 %s の内容になり、今の内容は置き換わります。
 Replace,置き換える
 arg-hint:The analysis data (the data of the analysis row: its dataset and population).,解析のデータ（解析の行のデータ：そのデータセットと解析対象集団）。
 "arg-hint:The group columns, e.g. the treatment (TRT01A); the analysis is done within each group.",群の列。例：投与群（TRT01A）。群ごとに解析する。
@@ -2375,10 +2371,6 @@ Align,配置
 default (center),既定（中央）
 the value columns,値の列
 What the header's {n} counts,見出しの {n} が数えるもの
-the subjects of each page's columns (the default),各ページの列の被験者（既定）
-the subjects of each page's columns,各ページの列の被験者
-"the population, the same on every page",解析対象集団（どのページも同じ）
-"both: {n} each page's, {N} the population's",両方: {n} は各ページの、{N} は解析対象集団の
 Own,自分の書式
 "{n} the count, {N} the denominator, {p} the proportion; a format after a colon: {p:.1f%} prints 16.3%, {p:.2f} 0.16. The table on the right shows it.",{n} は度数、{N} は分母、{p} は割合。コロンの後に書式: {p:.1f%} は 16.3%、{p:.2f} は 0.16。右の表に出ます。
 "{statistic} as the ARD names it: N, mean, sd, se, median, p25, p75, min, max ...; a format after a colon: {mean:.2f} two decimals, {p:.1f%} a percent. Blank: the decimals above. The table on the right shows the row once added.",{統計量} は ARD の名前で: N、mean、sd、se、median、p25、p75、min、max など。コロンの後に書式: {mean:.2f} は小数 2 桁、{p:.1f%} は百分率。書かなければ上の桁数。足した行は右の表に出ます。
@@ -2682,3 +2674,18 @@ Press [Review with the data]: it reads the datasets once (not again until a file
 Fit to width,幅に合わせる
 "%s's own rows, as written to %s (edit them on the left). Study defaults fill what they leave out.",%s 自身の行（%s に書かれる内容。編集は左で）。足りないところは試験の既定が補います。
 No rows of its own: the study defaults make its page.,この帳票自身の行はありません。試験の既定でページができます。
+Load a standard column header...,定型の列見出しを読み込む…
+Load a standard column header,定型の列見出しを読み込む
+The lines of the column header become the chosen one's; what they say now is replaced.,列見出しの行が、選んだ定型の行になります。いまの内容は置き換わります。
+Insert (into the field last clicked),差し込み（最後にクリックした欄へ）
+Subjects of each page (the default),各ページの被験者数（既定）
+"The analysis set, the same on every page",解析対象集団の被験者数（全ページ同じ）
+"Both: {n} each page's, {N} the analysis set's",両方を使う：{n} = 各ページ、{N} = 解析対象集団
+"Subjects, by %s: %s",被験者数（%s 別）：%s
+the page,ページ
+"Subjects on each page (per %s, by %s): %s",各ページの被験者（%s ごと、%s 別）：%s
+"(the first page, %s)",（最初のページ %s の値）
+"Analysis set (by %s, the same on every page): %s",解析対象集団（%s 別、全ページ同じ）：%s
+(the pages and the analysis set have the same numbers),（ページと解析対象集団は同じ数）
+"The pages and the analysis set have different numbers: choose which one {n} says (until then, making the report warns).",ページと解析対象集団で数が違います。{n} にどちらを使うか選んでください（選ぶまで、帳票を作るときに警告が出ます）。
+The numbers are not known yet: the preview has not been made.,数はまだわかりません（プレビューが作られていません）。
