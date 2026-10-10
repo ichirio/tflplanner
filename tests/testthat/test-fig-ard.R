@@ -224,16 +224,23 @@ test_that("the study review lists a figure's ARD problems as F04-F08, each with 
 test_that("set_fig_own_analyses() writes a design's analyses to the figure's ARD definition (#293 P6)", {
   skip_if(!"tfl_fig_forest_analyses" %in% getNamespaceExports("tflspec"), "tflspec has no tfl_fig_forest_analyses()")
   p <- add_output(new_planner(), "F-FOR", type = "figure")
+  # another report's analysis data: left alone
+  p$ard$analysis_data <- .normalize_ard_sheet(data.frame(
+    output_id = "T1", data_id = "adsl_saf", from = "ADSL", population_id = "SAF"), "analysis_data")
   p$ard$datasets <- .normalize_ard_sheet(data.frame(dataset = c("ADSL", "ADTTE"),
     path = c("data/adam/adsl.rds", "data/adam/adtte.rds")), "datasets")
   p$ard$populations <- .normalize_ard_sheet(data.frame(population_id = "SAF", dataset = "ADSL",
     where = "SAFFL == \"Y\""), "populations")
   an <- tflspec::tfl_fig_forest_analyses("ADTTE", "TTDE", "SAFFL", "TRT01A", c("SEX", "AGEGR1"))
   p <- set_fig_own_analyses(p, "F-FOR", an, population_id = "SAF")
-  expect_identical(ard_rows(p, "analysis_data", "F-FOR")$population_id, "SAF")
+  ad0 <- p$ard$analysis_data
+  expect_identical(ad0$population_id[ad0$output_id == "F-FOR"], "SAF")
   expect_identical(attr(p, "written"), c("HR", "HR_SEX", "HR_AGEGR1"))
   expect_identical(ard_rows(p, "analyses", "F-FOR")$analysis_id, c("HR", "HR_SEX", "HR_AGEGR1"))
-  expect_identical(ard_rows(p, "analysis_data", "F-FOR")$data_id, "adtte_ttde")
+  ad <- p$ard$analysis_data
+  expect_identical(ad$data_id[ad$output_id == "F-FOR"], "adtte_ttde")
+  expect_identical(ad$data_id[ad$output_id == "T1"], "adsl_saf")
+  expect_identical(nrow(ad), 2L)
   expect_identical(sheet_rows(p, "report", "F-FOR")$ard_source, "own")
   # the definition holds, and writes the figure's ARD program
   expect_silent(.ard_spec(p$ard))

@@ -312,7 +312,9 @@ set_fig_own_analyses <- function(x, output_id, analyses, population_id = NULL) {
   put <- function(sheet, key, new) {
     if (is.null(new) || !nrow(new)) return()
     new$output_id <- NULL
-    have <- ard_rows(x, sheet, output_id)
+    # the report's own rows (ard_rows() filters the analyses sheet only)
+    have <- x$ard[[sheet]]
+    have <- have[!is.na(have$output_id) & have$output_id == output_id, , drop = FALSE]
     have$output_id <- NULL
     have <- have[!have[[key]] %in% new[[key]], , drop = FALSE]
     new <- .normalize_ard_sheet(new, sheet)

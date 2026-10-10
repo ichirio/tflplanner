@@ -852,7 +852,7 @@ p <- set_fig_design(p, "F-14-2-4", forest_design)
 p <- set_fig_own_analyses(p, "F-14-2-4", attr(forest_design, "analyses"),
                           population_id = "SAF")
 # the tables' analysis set (the report list's), as step 2 sets it
-for (o in setdiff(unique(p$ard$analyses$output_id), c("T-14-0-1", "T-14-1-4", "T-14-1-5", "T-14-1-6"))) {
+for (o in setdiff(unique(p$ard$analyses$output_id), c("T-14-0-1", "T-14-1-4", "T-14-1-5", "T-14-1-6", "F-14-2-4"))) {
   p <- set_report_population(p, o, "SAF")
 }
 p <- set_report_population(p, "T-14-1-4", "SCRF")
