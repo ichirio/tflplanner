@@ -300,6 +300,79 @@ add_group_n <- function(x, output_id, group) {
   set_ard_rows(x, "analyses", output_id, rbind(new, a))
 }
 
+#' A Total column for a report
+#'
+#' Switches a table's Total column on or off, in both halves of its
+#' definition at once: the `tables` sheet's `total` (the heading) and
+#' `total_position`, written as `plan_total()`; and `overall = TRUE` on the
+#' report's own analyses grouped by the column variable, which makes each
+#' ARD program run those analyses again without their `by` -- cards' own
+#' overall rows, with no group, which the table reads as the column and
+#' the ARS writes as an analysis without the grouping.  No `"Total"` value
+#' of the arm is made up in the data.
+#'
+#' @param x A `tflplanner`.
+#' @param output_id The report.
+#' @param label The column's heading (`"Total"`); `NULL` or `""` switches
+#'   the column off.
+#' @param position Where it goes among the column variable's values.
+#' @return The `tflplanner`.
+#' @export
+set_total_column <- function(x, output_id, label = "Total",
+                             position = c("last", "first")) {
+  position <- match.arg(position)
+  on <- !is.null(label) && !is.na(label) && nzchar(trimws(label))
+  key <- .report_cols(x, output_id)[1L]
+  if (on && is.na(key)) {
+    stop("'", output_id, "' has no column variable yet (tables$cols).",
+         call. = FALSE)
+  }
+  # the table's half
+  tb <- sheet_rows(x, "tables", output_id)
+  tb$output_id <- NULL
+  if (!nrow(tb)) tb[1L, ] <- NA
+  tb$total[1L] <- if (on) trimws(label) else NA_character_
+  tb$total_position[1L] <- if (on && position == "first") "first" else NA_character_
+  x <- set_sheet_rows(x, "tables", output_id, tb)
+  # the ARD's half: the report's own analyses by the column variable (a
+  # stack's row, not the rows inside it; not what has no by to leave out)
+  a <- ard_rows(x, "analyses", output_id)
+  if (!nrow(a)) return(x)
+  if (is.null(a$overall)) a$overall <- NA_character_
+  a$overall[.total_rows(a, key)] <- if (on) "TRUE" else NA_character_
+  a$output_id <- NULL
+  set_ard_rows(x, "analyses", output_id, a)
+}
+
+# Which of a report's analyses a Total column runs over all subjects too:
+# those grouped by the column variable, a stack's own row (not the rows
+# inside it), not a subject count, own code, strata or pairwise (no by to
+# leave out)
+.total_rows <- function(a, key) {
+  if (!nrow(a) || is.na(key)) return(logical(nrow(a)))
+  par <- a$parent %||% rep(NA_character_, nrow(a))
+  kw <- .method_kw(a$method)
+  grouped <- vapply(a$by, function(b) key %in% .split_bar(b), NA)
+  grouped & is.na(par) & !kw %in% c("custom", "subjects") &
+    !a$method %in% c("cards::ard_strata", "cards::ard_pairwise")
+}
+
+# A yes in the definition's `overall` column
+.overall_on <- function(x) {
+  !is.null(x) && !is.na(x) && toupper(trimws(x)) %in% c("TRUE", "YES", "Y", "1")
+}
+
+# A report's column variables, its own `tables$cols` or the inherited one
+.report_cols <- function(x, output_id) {
+  tb <- sheet_rows(x, "tables", output_id)
+  v <- if (nrow(tb)) tb$cols[1L] else NA_character_
+  if (is.na(v)) {
+    inh <- inherited_rows(x, "tables", output_id)
+    v <- if (nrow(inh)) inh$cols[1L] else NA_character_
+  }
+  if (is.na(v)) NA_character_ else .split_bar(v)
+}
+
 # The dataset of a data file in the catalog, added when missing:
 # list(x, dataset).
 .catalog_dataset <- function(x, path) {

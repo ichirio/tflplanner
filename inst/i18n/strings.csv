@@ -2689,3 +2689,18 @@ the page,ページ
 (the pages and the analysis set have the same numbers),（ページと解析対象集団は同じ数）
 "The pages and the analysis set have different numbers: choose which one {n} says (until then, making the report warns).",ページと解析対象集団で数が違います。{n} にどちらを使うか選んでください（選ぶまで、帳票を作るときに警告が出ます）。
 The numbers are not known yet: the preview has not been made.,数はまだわかりません（プレビューが作られていません）。
+"TRUE: the analysis again without its by, over all its subjects (cards' overall rows, no group): what a table shows as its Total column (tables$total). On a cards::ard_stack row: .overall = TRUE. Blank: by groups only.",TRUE：同じ解析を by なしでもう一度、全被験者で（cards の overall 行、群なし）。表の Total 列（tables$total）になる。cards::ard_stack の行なら .overall = TRUE。空欄 = 群ごとだけ。
+"The heading of a Total column (plan_total()): the ARD's overall rows, its analyses run again without their by (analyses$overall), as one more column; its {n} is the study total. Blank: none.",Total 列の見出し（plan_total()）：ARD の overall 行（analyses$overall で by なしにもう一度走らせた解析）をもう 1 列に。その {n} は試験全体の人数。空欄 = なし。
+"Where the Total column goes among the column key's values: last or first; blank: last.",Total 列の位置（列変数の値の中で）：last か first。空欄 = last。
+"The analysis once more without its grouping variables, over all its subjects: the Total column of a table (step 3's switch sets it for every analysis by the column variable). Needs grouping variables.",同じ解析をグループ変数なしでもう一度、全被験者で：表の Total 列になる（段 3 のスイッチが列変数で分けた解析すべてに入れる）。グループ変数が必要。
+"The stack once more without its grouping variables (.overall = TRUE): the Total column of a table.",スタックをグループ変数なしでもう一度（.overall = TRUE）：表の Total 列になる。
+"Total column",Total 列
+"One more column over all subjects, read from the ARD's overall rows: the analyses by the column variable are run once more without it (step 1, 'Also over all subjects'). No 'Total' arm is made up in the data.",全被験者の列を 1 つ足す。ARD の overall 行（列変数で分けた解析を、それなしでもう一度走らせたもの：段 1 の「全体でも計算する」）から読む。データに「Total」という群は作らない。
+"Heading",見出し
+"Place",位置
+"last",末尾
+"first",先頭
+"No analysis of this report is grouped by %s: the ARD has no overall rows to show.",この帳票に %s で分けた解析がない：ARD に見せる overall 行がない。
+"%d analyses are run over all subjects too: update the ARD, then Preview.",%d 本の解析を全体でも走らせる：ARD を更新してから Preview。
+"Also over all subjects",全体でも計算する
+and over all,全体でも

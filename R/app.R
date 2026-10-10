@@ -4391,6 +4391,14 @@ app_server <- function(input, output, session, start) {
         st_id("by"), with_tip(argl("Grouping variables", "by"), t("The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step 2's. A combination with no records is shown, with 0.")),
         bch, by_now, multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
+      # the same analysis once more without its groups: cards' overall rows,
+      # which a table shows as its Total column (step 3 switches it for
+      # every analysis by the column variable)
+      if (!in_stack) shiny::checkboxInput(
+        st_id("overall"),
+        with_tip(argl("Also over all subjects", "overall"),
+                 t("The analysis once more without its grouping variables, over all its subjects: the Total column of a table (step 3's switch sets it for every analysis by the column variable). Needs grouping variables.")),
+        .overall_on(r$overall), width = "100%"),
       shiny::selectizeInput(
         st_id("vars"), with_tip(argl("Analysis variables", "variables"),
                                 arg_hint(hcall, "variables")), vch, var_now,
@@ -4571,6 +4579,10 @@ app_server <- function(input, output, session, start) {
       # a field not on screen (yet) keeps the row's value
       if (!is.null(g("where"))) a$where[i] <- one(where)
       if (!is.null(g("by"))) a$by[i] <- one(g("by"))
+      if (!is.null(g("overall"))) {
+        if (is.null(a$overall)) a$overall <- NA_character_
+        a$overall[i] <- if (isTRUE(g("overall"))) "TRUE" else NA_character_
+      }
       old <- .stack_flags_of(r$args)$flags
       flags <- vapply(names(.stack_flag_words), function(k) {
         v <- g(paste0("fl", k))
@@ -4630,6 +4642,10 @@ app_server <- function(input, output, session, start) {
     a <- .an_data_write(a, i, fd)
     a$where[i] <- one(where)
     a$by[i] <- one(g("by"))
+    if (!is.null(g("overall"))) {
+      if (is.null(a$overall)) a$overall <- NA_character_
+      a$overall[i] <- if (isTRUE(g("overall"))) "TRUE" else NA_character_
+    }
     if (!is.null(g("strata"))) a$strata[i] <- one(g("strata"))
     if (!is.null(g("den"))) a$denominator[i] <- one(g("den"))
     a$variables[i] <- one(g("vars"))
@@ -5655,11 +5671,13 @@ app_server <- function(input, output, session, start) {
       what <- if (role == "parent") {
         paste0(data_words(r$dataset, r$population_id, r$data),
                if (!.is_blank(r$by)) paste0(" \u00b7 ", t("by"), " ",
-                                            gsub(" | ", ", ", r$by, fixed = TRUE)) else "")
+                                            gsub(" | ", ", ", r$by, fixed = TRUE)) else "",
+               if (.overall_on(r$overall)) paste0(" \u00b7 ", t("and over all")) else "")
       } else paste(.split_bar(r$variables), collapse = ", ")
       own <- if (role == "single") {
         c(data_words(r$dataset, r$population_id, r$data),
           if (!.is_blank(r$by)) paste(t("by"), gsub(" | ", ", ", r$by, fixed = TRUE)),
+          if (.overall_on(r$overall)) t("and over all"),
           if (!.is_blank(r$where)) r$where)
       }
       what <- paste(c(if (nzchar(what)) what, own), collapse = " \u00b7 ")
@@ -5835,6 +5853,11 @@ app_server <- function(input, output, session, start) {
         st_id("by"), argl("Grouping variables", ".by"),
         an_by_choices(r, .split_bar(r$by)), .split_bar(r$by), multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
+      shiny::checkboxInput(
+        st_id("overall"),
+        with_tip(argl("Also over all subjects", "overall"),
+                 t("The stack once more without its grouping variables (.overall = TRUE): the Total column of a table.")),
+        .overall_on(r$overall), width = "100%"),
       shiny::h6(class = "small fw-bold mt-1", t("What it adds to the analyses inside")),
       lapply(names(.stack_flag_words), function(k) shiny::checkboxInput(
         st_id(paste0("fl", k)),
@@ -8044,6 +8067,7 @@ app_server <- function(input, output, session, start) {
                               selected = if (!anyNA(st$key)) st$key,
                               multiple = TRUE, width = "100%"),
         shiny::uiOutput(bid("arms_ui")),
+        shiny::uiOutput(bid("total_ui")),
         shiny::uiOutput(bid("hdr_ui")),
         if (!anyNA(st$key) &&
             !.has_group_n(shiny::isolate(rv$p), id, st$key[1L]))
@@ -8432,6 +8456,68 @@ app_server <- function(input, output, session, start) {
                               input_id = arms_id(k),
                               orientation = "horizontal"))
       })))
+  }))
+  # the Total column: a switch, its heading and place; it sets `overall` on
+  # the analyses by the column variable too (set_total_column()), which
+  # the ARD then needs to run again
+  total_now <- function(p0, id) {
+    tb <- sheet_rows(p0, "tables", id)
+    on <- nrow(tb) > 0L && !is.na(tb$total[1L] %||% NA)
+    list(on = on,
+         label = if (on) tb$total[1L] else NA_character_,
+         position = if (on && identical(tb$total_position[1L] %||% NA, "first"))
+           "first" else "last")
+  }
+  shiny::observe(builder_guard({
+    bform_drawn()
+    ks <- input[[bid("key")]]
+    shiny::req(identical(builder_case(), "ok"), length(ks) > 0L)
+    n <- bform$n
+    id <- bform$id
+    p0 <- shiny::isolate(rv$p)
+    now <- total_now(p0, id)
+    runs <- sum(.total_rows(ard_rows(p0, "analyses", id), ks[1L]))
+    output[[paste0("b", n, "_total_ui")]] <- shiny::renderUI(shiny::tagList(
+      shiny::checkboxInput(
+        bid("total_on"),
+        with_tip(t("Total column"),
+                 t("One more column over all subjects, read from the ARD's overall rows: the analyses by the column variable are run once more without it (step 1, 'Also over all subjects'). No 'Total' arm is made up in the data.")),
+        now$on, width = "100%"),
+      if (now$on) shiny::div(
+        class = "d-flex flex-wrap gap-2 align-items-end mb-2",
+        shiny::textInput(bid("total_label"), t("Heading"), now$label, width = "160px"),
+        shiny::radioButtons(bid("total_pos"), t("Place"),
+                            stats::setNames(c("last", "first"), c(t("last"), t("first"))),
+                            now$position, inline = TRUE)),
+      if (now$on && runs == 0L) shiny::div(
+        class = "small text-warning",
+        sprintf(t("No analysis of this report is grouped by %s: the ARD has no overall rows to show."), ks[1L]))
+      else if (now$on) shiny::div(
+        class = "small text-muted",
+        sprintf(t("%d analyses are run over all subjects too: update the ARD, then Preview."), runs))))
+  }))
+  shiny::observe(builder_guard({
+    bform_drawn()
+    on <- input[[bid("total_on")]]
+    lbl <- input[[bid("total_label")]]
+    pos <- input[[bid("total_pos")]]
+    shiny::req(!is.null(on), identical(builder_case(), "ok"))
+    id <- bform$id
+    p0 <- shiny::isolate(rv$p)
+    now <- total_now(p0, id)
+    want_lbl <- if (!isTRUE(on)) NULL else
+      if (is.null(lbl) || !nzchar(trimws(lbl))) {
+        if (is.na(now$label)) "Total" else now$label
+      } else trimws(lbl)
+    want_pos <- pos %||% now$position
+    same <- identical(isTRUE(on), now$on) &&
+      (!isTRUE(on) || (identical(want_lbl, now$label) && identical(want_pos, now$position)))
+    if (same) return()
+    p2 <- guarded(set_total_column(p0, id, want_lbl, want_pos))
+    if (!is.null(p2)) {
+      rv$p <- p2
+      rv$btouched <- TRUE
+    }
   }))
   # ---- what a variable prints, as the Statistics card says (with the
   # variable's own decimals): shown, never written for it
