@@ -35,17 +35,22 @@
 #'   will ([check_planner()]): slow, one read a report.
 #' @param home The tflplanner home.
 #' @param lang The language of the messages (the app's by default).
+#' @param progress A function called with each dataset's name before its
+#'   file is read (`data = "read"`), or `NULL`.
 #' @return A `tflspec::tfl_review`, its `message` in the app's language and
 #'   `message_en` in English; `attr(, "facts_made")`: when the facts of the
-#'   data were made (`NA`: none were used).
+#'   data were made (`NA`: none were used); `attr(, "off")`: the rules the
+#'   company standards leave out (their settings' `review_off`, `A12 | C02`),
+#'   whose rows are not there.
 #' @seealso [tflspec::tfl_review_spec()], [tflspec::tfl_review_rules()]
 #' @export
 study_review <- function(study, output_id = NULL, data = c("cached", "read", "none"),
                          ard = TRUE, deep = FALSE, home = tflplanner_home(),
-                         lang = tflplanner_language()) {
+                         lang = tflplanner_language(), progress = NULL) {
   data <- match.arg(data)
   facts <- if (!identical(data, "none")) {
-    review_facts(study, read = identical(data, "read"), home = home)
+    review_facts(study, read = identical(data, "read"), home = home,
+                 progress = progress)
   }
   if (isTRUE(ard)) {
     a <- tryCatch(.review_ard_facts(study, home), error = function(e) NULL)
@@ -71,8 +76,24 @@ study_review <- function(study, output_id = NULL, data = c("cached", "read", "no
   if (isTRUE(deep)) more <- c(more, list(.rule_p01(p)))
   r <- .review_bind(c(list(r), more))
   r <- .review_narrow(r, output_id)
+  r <- .review_off(r)
   r <- .review_language(r, lang)
   attr(r, "facts_made") <- if (inherits(facts, "tfl_data_facts")) facts$made else NA
+  attr(r, "facts_of") <- if (inherits(facts, "tfl_data_facts")) names(facts$datasets) else character()
+  r
+}
+
+# The rules the company standards leave out (settings `review_off`:
+# `A12 | C02`): their rows dropped, said in attr(, "off")
+.review_off <- function(r) {
+  off <- toupper(.split_bar(.std_setting("review_off", "")))
+  if (length(off)) {
+    keep <- attributes(r)
+    keep <- keep[intersect(names(keep), c("facts_made", "facts_of"))]
+    r <- .review_finish(r[!toupper(r$rule) %in% off, , drop = FALSE])
+    for (k in names(keep)) attr(r, k) <- keep[[k]]
+  }
+  attr(r, "off") <- off
   r
 }
 
@@ -84,7 +105,7 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
                             lang = tflplanner_language()) {
   r <- .review_planner(x, facts)
   r <- .review_narrow(r, output_id)
-  .review_language(r, lang)
+  .review_language(.review_off(r), lang)
 }
 
 # The review of a planner: tflspec's rules on its sheets, and the report
@@ -168,6 +189,15 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   for (i in seq_len(nrow(r))) {
     tpl <- cat$message[k[i]]
     if (is.na(tpl)) next
+    # a rule whose message is another's words (a figure's advice, the
+    # constructors' problems): those words, where the app has them
+    if (identical(tpl, "%s")) {
+      loc <- tr(r$message[i], lang)
+      if (!identical(loc, r$message[i])) r$message[i] <- loc
+      h <- cat$hint[k[i]]
+      if (!is.na(h) && nzchar(h)) r$hint[i] <- tr(h, lang)
+      next
+    }
     loc <- tr(tpl, lang)
     a <- r$args[[i]]
     if (!identical(loc, tpl)) {
@@ -365,7 +395,7 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
 #'   listed in `attr(, "not_read")`.
 #' @export
 review_facts <- function(study, refresh = FALSE, read = TRUE,
-                         home = tflplanner_home()) {
+                         home = tflplanner_home(), progress = NULL) {
   p <- study$planner
   dir <- file.path(.store_dir(study$meta$study_id, home), "facts")
   if (isTRUE(refresh)) unlink(dir, recursive = TRUE)
@@ -402,6 +432,7 @@ review_facts <- function(study, refresh = FALSE, read = TRUE,
       not_read <- c(not_read, d)
       next
     }
+    if (is.function(progress)) progress(d)
     u <- .facts_unit(p, d, path_of, pop_ds)
     if (is.null(u)) next
     dir.create(dir, recursive = TRUE, showWarnings = FALSE)
