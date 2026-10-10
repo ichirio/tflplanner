@@ -256,3 +256,36 @@ test_that("a report's ARD program: only the code lists of what its analyses read
   # SEX only prints (DM's analyses do not read it): not in the ARD program
   expect_false(any(grepl("cl_sex", prog, fixed = TRUE)))
 })
+
+test_that("an ARD definition that does not hold is said: on save, in the Review, by the runner (#323)", {
+  skip_on_cran()
+  local_home2()
+  p <- ard_planner()
+  # an analysis data made by code, `from` left blank: not a valid definition
+  p$ard$analysis_data <- .normalize_ard_sheet(data.frame(
+    output_id = "DM", data_id = "adsl_x", code = "adsl"), "analysis_data")
+  s <- create_study("A2", planner = p)
+  # saving: no ARD program, and a message that says why (the rest is saved)
+  expect_message(s2 <- save_study(s), "no ARD program was written")
+  expect_match(s2$ard_problem, "from", fixed = TRUE)
+  expect_false(file.exists(file.path(s$path, "programs", "ard", "DM.R")))
+  expect_true(file.exists(file.path(s$path, "programs", "tfl", "DM.R")))
+  # the Review: an error row saying no ARD program is written
+  pr <- .check_spec(open_study("A2"))
+  hit <- grepl("saving writes no ARD program", pr$message, fixed = TRUE)
+  expect_true(any(hit))
+  expect_identical(unique(pr$severity[hit]), "error")
+  # an official run of a study never saved with a valid one: says why
+  expect_error(run_batch(open_study("A2"), "ard"), "does not hold writes no ARD program")
+  # a valid definition saves without the message
+  s3 <- create_study("A3", planner = ard_planner())
+  expect_null(suppressMessages(save_study(s3))$ard_problem)
+  # the runner: a program it is to run that is not there is said as such,
+  # not failed on a log never written
+  unlink(file.path(s3$path, "programs", "ard", "DM.R"))
+  b <- run_batch(open_study("A3"), "ard", code = FALSE)
+  expect_false(b$ok)
+  r <- b$result[b$result$program == "programs/ard/DM.R", ]
+  expect_identical(r$status, "ERROR")
+  expect_match(r$note, "no program programs/ard/DM.R: save the study", fixed = TRUE)
+})

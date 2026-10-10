@@ -2689,3 +2689,4 @@ the page,ページ
 (the pages and the analysis set have the same numbers),（ページと解析対象集団は同じ数）
 "The pages and the analysis set have different numbers: choose which one {n} says (until then, making the report warns).",ページと解析対象集団で数が違います。{n} にどちらを使うか選んでください（選ぶまで、帳票を作るときに警告が出ます）。
 The numbers are not known yet: the preview has not been made.,数はまだわかりません（プレビューが作られていません）。
+"The ARD definition does not hold, so no ARD program was written (the rest is saved). See the Review tab.",ARD 定義が成り立たないため、ARD プログラムは書いていません（他は保存済み）。Review タブを見てください。

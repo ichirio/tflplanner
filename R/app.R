@@ -1785,6 +1785,9 @@ app_server <- function(input, output, session, start) {
     n <- sum(s$files$status %in% c("written", "rewritten"))
     re <- sum(s$files$status == "rewritten")
     notify(sprintf(t("Saved (%d files written)"), n))
+    if (!is.null(s$ard_problem)) notify(paste(
+      t("The ARD definition does not hold, so no ARD program was written (the rest is saved). See the Review tab."),
+      s$ard_problem), "error")
     # a program edited by hand: written again from the definition (a
     # program is never edited -- the definition is), the edited one kept
     if (re) notify(sprintf(

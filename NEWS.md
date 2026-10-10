@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **An ARD definition that does not hold is said, not passed over**
+  (#323).  Saving writes no ARD program then (a blank `from` of an
+  analysis data made by code, for one); it used to say nothing, and the
+  official run failed on every ARD program with "cannot open the
+  connection".  Now `save_study()` says so in a message and keeps it as
+  `$ard_problem` (the app shows it after Save, the rest still saved), the
+  Review tab's error row says that no ARD program is written, the runner
+  says "no program ...: save the study" for a program that is not there
+  instead of running it, and `run_batch()` on a study with no ARD
+  programs names the likely cause.
+
 - **Step 3 (page and output): the input on the left again, the page at
   its actual size** (the user's request).  The report's page sheets
   (report, page, header, footer, titles, footnotes, your tokens) are the
