@@ -4,7 +4,7 @@
 \alias{set_fig_own_analyses}
 \title{A figure's own analyses, written from its design}
 \usage{
-set_fig_own_analyses(x, output_id, analyses)
+set_fig_own_analyses(x, output_id, analyses, population_id = NULL)
 }
 \arguments{
 \item{x}{A \code{tflplanner}.}
@@ -13,6 +13,10 @@ set_fig_own_analyses(x, output_id, analyses)
 
 \item{analyses}{A list of two data frames, \code{analysis_data} and
 \code{analyses} (without \code{output_id}), as a design's attribute \code{analyses}.}
+
+\item{population_id}{The report's population, by its id, put on the
+analysis data (a template names the population's flag, not the study's
+id for it); \code{NULL} keeps what \code{analyses} says.}
 }
 \value{
 The \code{tflplanner}, with attribute \code{written}: the ids of the

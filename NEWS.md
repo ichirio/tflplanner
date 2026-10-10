@@ -1,5 +1,17 @@
 # tflplanner (development version)
 
+- **The forest plot from the figure's own ARD** (#293 phase 6, with
+  tflspec's `forest_hr` in parts).  The hazard ratios, intervals and N a
+  forest plot prints are statistics of the figure's own ARD -- a Cox
+  model of all subjects and one within each subgroup variable, by cards /
+  cardx -- not fitted inside the figure program.  `set_fig_own_analyses()`
+  writes the analyses a design brings (`attr(design, "analyses")`) to the
+  figure's ARD definition and sets its source to `own`; the Plot
+  Designer's forest template does so when applied, with the subgroups and
+  the arm compared chosen on its form.  The sample gains **F-14-2-4**, the
+  hazard ratio of the time to first dermatologic event by sex and age
+  group.  Needs tflspec >= 0.0.24.9084.
+
 - **Logistic and Poisson regressions on R before 4.4 need MASS** (#319).
   Before R 4.4, `confint()` of a `glm` comes from MASS, and without it
   `cardx::ard_regression()` stops with "Unable to tidy x".  MASS is

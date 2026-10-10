@@ -228,8 +228,9 @@ test_that("set_fig_own_analyses() writes a design's analyses to the figure's ARD
     path = c("data/adam/adsl.rds", "data/adam/adtte.rds")), "datasets")
   p$ard$populations <- .normalize_ard_sheet(data.frame(population_id = "SAF", dataset = "ADSL",
     where = "SAFFL == \"Y\""), "populations")
-  an <- tflspec::tfl_fig_forest_analyses("ADTTE", "TTDE", "SAF", "TRT01A", c("SEX", "AGEGR1"))
-  p <- set_fig_own_analyses(p, "F-FOR", an)
+  an <- tflspec::tfl_fig_forest_analyses("ADTTE", "TTDE", "SAFFL", "TRT01A", c("SEX", "AGEGR1"))
+  p <- set_fig_own_analyses(p, "F-FOR", an, population_id = "SAF")
+  expect_identical(ard_rows(p, "analysis_data", "F-FOR")$population_id, "SAF")
   expect_identical(attr(p, "written"), c("HR", "HR_SEX", "HR_AGEGR1"))
   expect_identical(ard_rows(p, "analyses", "F-FOR")$analysis_id, c("HR", "HR_SEX", "HR_AGEGR1"))
   expect_identical(ard_rows(p, "analysis_data", "F-FOR")$data_id, "adtte_ttde")
