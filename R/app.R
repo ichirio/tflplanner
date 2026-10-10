@@ -6599,7 +6599,7 @@ app_server <- function(input, output, session, start) {
           shiny::tagList(
             sprintf(t("TOC: %s (header on row %d), %d rows"), dQuote(d$sheet, FALSE),
                     d$header_row, d$rows),
-            " — ", shiny::span(class = "text-muted", toc_why(d$how, n_cols)))
+            " \u2014 ", shiny::span(class = "text-muted", toc_why(d$how, n_cols)))
         }
         extra <- c(if (d$shells) sprintf(t("shells: %d sheets"), d$shells),
                    if (!is.na(d$topline_sheet)) sprintf(t("Topline sheet: %s (a cross-check)"),
@@ -6608,7 +6608,7 @@ app_server <- function(input, output, session, start) {
           class = "mb-2",
           shiny::div(class = "small", shiny::span(class = "fw-bold", s$name), " ", line,
                      if (length(extra)) shiny::span(class = "text-muted",
-                                                    paste0(" · ", extra, collapse = ""))),
+                                                    paste0(" \u00b7 ", extra, collapse = ""))),
           if (s$kind != "other") shiny::div(
             class = "d-flex flex-wrap gap-3",
             if (!toc_is_csv(s$path) && length(s$sheets)) {
@@ -6724,7 +6724,7 @@ app_server <- function(input, output, session, start) {
     nb <- nrow(res$batches)
     show <- seq_len(min(nrow(r), if (isTRUE(input[[toc_id("show_all")]])) nrow(r) else 8L))
     titles <- vapply(r$titles, function(v) paste(v[!is.na(v)], collapse = " / "), "")
-    shell <- ifelse(is.na(r$shell_sheet), "—", paste0(r$shell_file, ": ", r$shell_sheet))
+    shell <- ifelse(is.na(r$shell_sheet), "\u2014", paste0(r$shell_file, ": ", r$shell_sheet))
     shiny::div(
       class = "mb-2",
       shiny::h6(t("The reports")),
@@ -6737,18 +6737,18 @@ app_server <- function(input, output, session, start) {
           t(c("output_id", "Phase", "Label", "Titles", "Shell", "Batches")), shiny::tags$th))),
         shiny::tags$tbody(lapply(show, function(i) shiny::tags$tr(
           shiny::tags$td(r$output_id[i]),
-          shiny::tags$td(if (is.na(r$phase[i])) "—" else r$phase[i]),
+          shiny::tags$td(if (is.na(r$phase[i])) "\u2014" else r$phase[i]),
           shiny::tags$td(.or_na(r$label[i], "")), shiny::tags$td(titles[i]),
           shiny::tags$td(shell[i]), shiny::tags$td(.or_na(r$batches[i], "")))))),
       if (nrow(r) > 8L) shiny::checkboxInput(toc_id("show_all"), sprintf(t("Show all %d reports"), nrow(r)),
                                              isTRUE(input[[toc_id("show_all")]])),
       if (nrow(hand)) shiny::div(
         class = "small", shiny::span(class = "fw-bold", sprintf(t("Rows not read (%d):"), nrow(hand))),
-        " ", paste(hand$message, collapse = " · "), " ",
+        " ", paste(hand$message, collapse = " \u00b7 "), " ",
         shiny::span(class = "text-muted", t("Set them by hand after taking it in, or fix the TOC."))),
       if (nrow(chk)) shiny::div(
         class = "small text-warning", shiny::span(class = "fw-bold", sprintf(t("Warnings (%d):"), nrow(chk))),
-        " ", paste(chk$message, collapse = " · ")),
+        " ", paste(chk$message, collapse = " \u00b7 ")),
       if (nrow(res$notes)) shiny::div(class = "small text-muted", paste(
         sprintf(t(res$notes$template), res$notes$file, res$notes$sheet), collapse = " ")))
   }
