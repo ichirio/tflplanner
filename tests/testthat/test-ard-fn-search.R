@@ -394,9 +394,11 @@ test_that("every setting in the dictionary runs as written", {
     # a glm's confidence interval before R 4.4 is MASS's profile method
     # (stats' own since 4.4): broom.helpers' table of it fails on the
     # oldest R tested (4.2); the main jobs check these cases
-    # (#319: run on every R, to see the error on the oldest; not to merge)
-    if (FALSE && fn == "cardx::ard_regression" && grepl("\"glm\"", a, fixed = TRUE) &&
-        getRversion() < "4.4.0") next
+    # a glm's confidence interval is MASS's before R 4.4 (stats' own since):
+    # as glm.nb, a glm case needs MASS loadable (#319: a CI job's library
+    # may lack it; a user's R has it, a recommended package)
+    if (fn == "cardx::ard_regression" && grepl("\"glm\"", a, fixed = TRUE) &&
+        getRversion() < "4.4.0" && !has("MASS")) next
     if (grepl("MASS", a, fixed = TRUE) && !has("MASS")) next
     b <- if (fn == "cardx::ard_regression") regression[[a]] else base[[fn]]
     expect_false(is.null(b), info = paste(fn, a))
