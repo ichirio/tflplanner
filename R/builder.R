@@ -544,7 +544,9 @@ ard_card_summary <- function(meta, page_by = character(), tr = function(x) x) {
                             paste(lengths(meta$keys[by]), collapse = " \u00d7 ")),
     if (length(page_by)) sprintf(tr("pages %s"), paste(page_by, collapse = ", ")),
     if (length(hier)) sprintf(tr("rows %s"), paste(hier, collapse = " \u203a ")),
-    sprintf(tr("%d variables (%d categorical, %d continuous)"), nrow(v), n_cat, n_con),
+    # a hierarchy table with no analysis variable says nothing of them
+    if (nrow(v) || !length(hier))
+      sprintf(tr("%d variables (%d categorical, %d continuous)"), nrow(v), n_cat, n_con),
     if (length(st)) sprintf(tr("statistics %s"), paste0(
       paste(utils::head(st, 6L), collapse = ", "), if (length(st) > 6L) " \u2026")),
     if (!is.null(when) && !all(is.na(when)))

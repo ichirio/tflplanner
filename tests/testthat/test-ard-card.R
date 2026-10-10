@@ -42,6 +42,10 @@ test_that("pages, a hierarchy, two column keys; no meta", {
   expect_identical(x$rows$role[1:4], c("column", "column", "page split", "row: hierarchy"))
   # the column keys are not counted among the variables
   expect_match(x$line, "2 variables (1 categorical, 1 continuous)", fixed = TRUE)
+  # a hierarchy table with no analysis variable: nothing said of variables
+  m2 <- m
+  m2$variables <- m2$variables[0, ]
+  expect_false(grepl("variables", ard_card_summary(m2)$line, fixed = TRUE))
   none <- ard_card_summary(NULL)
   expect_null(none$rows)
   expect_match(none$line, "not read yet", fixed = TRUE)
