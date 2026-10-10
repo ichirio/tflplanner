@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **A figure printing a table's numbers is in the ARS export** (#293
+  phase 5, with tflspec #211).  `export_ars()` passes the figures whose
+  ARD is a table's, with the analyses their designs print, to
+  `tflspec::tfl_ars(references =)`: the sample's F-14-2-3 is an ARS
+  `Output` (its titles and RTF) whose list of contents names T-14-2-2's
+  KM and HR analyses, no longer "no analyses in the ARD definition".
+
 - **The sample's F-14-2-3 prints the hazard ratios too** (#311).
   T-14-2-2's ARD has a Cox model's hazard ratios against placebo (a
   `custom` analysis `HR`, `cardx::ard_regression(coxph(), exponentiate =

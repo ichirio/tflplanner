@@ -150,3 +150,25 @@ test_that("a table deleted, or an analysis dropped from it: the figure's checks 
   expect_identical(unique(pr$severity), "error")
   expect_match(pr$problem[1], "T-14-2-2 has no analysis KM")
 })
+
+test_that("the ARS: F-14-2-3 is an output naming T-14-2-2's analyses it prints (#293 phase 5)", {
+  s <- fig_ard_study()
+  r <- .fig_ars_references(s$planner)
+  expect_identical(unique(r$output_id), "F-14-2-3")
+  expect_identical(unique(r$source), "T-14-2-2")
+  expect_setequal(r$analysis_id, c("KM", "HR"))
+  d <- withr::local_tempdir()
+  f <- export_ars(s, d)
+  ars <- tflspec::tfl_read_ars_json(f[["json"]])
+  expect_true("F-14-2-3" %in% vapply(ars$outputs, `[[`, "", "id"))
+  it <- Filter(function(z) identical(z$outputId, "F-14-2-3"),
+               ars$mainListOfContents$contentsList$listItems)[[1L]]
+  got <- vapply(it$sublist$listItems, `[[`, "", "analysisId")
+  # the table's own analyses, the same ids its list item has
+  tab <- Filter(function(z) identical(z$outputId, "T-14-2-2"),
+                ars$mainListOfContents$contentsList$listItems)[[1L]]
+  expect_true(length(got) > 0L)
+  expect_true(all(got %in% vapply(tab$sublist$listItems, `[[`, "", "analysisId")))
+  ck <- utils::read.csv(f[["check"]], stringsAsFactors = FALSE)
+  expect_false("F-14-2-3" %in% ck$where[ck$kind == "not in ARS"])
+})

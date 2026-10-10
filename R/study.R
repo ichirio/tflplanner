@@ -410,7 +410,9 @@ export_ars <- function(study, dir, profile = c("cdisc", "siera")) {
     .ard_spec(a), table_spec = .spec_object(p, table_sheets(),
                                             .study_keys$table),
     report_spec = .spec_object(p, report_sheets(), .study_keys$report),
-    profile = profile, study_id = id, dir = study$path)
+    profile = profile, study_id = id, dir = study$path,
+    # a figure printing a table's analyses is an output that names them
+    references = .fig_ars_references(p))
   dir.create(dir, showWarnings = FALSE, recursive = TRUE)
   base <- file.path(dir, paste0(id, "_ars", if (profile == "siera") "_siera"))
   json <- tflspec::tfl_write_ars_json(ars, paste0(base, ".json"))

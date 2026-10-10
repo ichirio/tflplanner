@@ -64,6 +64,23 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
            unlist(lapply(design$layers, function(l) if (identical(l$layer, "ard_number")) .ard_ids(l$analysis_id)))))
 }
 
+# The figures printing a table's analyses, for the ARS (#293): output_id
+# (the figure), source (the table), analysis_id (each analysis its design's
+# ARD pieces name); a figure with its own analyses is an ARS output of its
+# own already
+.fig_ars_references <- function(x) {
+  out <- data.frame(output_id = character(), source = character(),
+                    analysis_id = character(), stringsAsFactors = FALSE)
+  for (id in names(x$fig_designs %||% list())) {
+    src <- .fig_ard_source(x, id)
+    if (!identical(src$kind, "table")) next
+    an <- .fig_ard_analyses(fig_design(x, id))
+    if (length(an)) out <- rbind(out, data.frame(output_id = id, source = src$id,
+                                                 analysis_id = an, stringsAsFactors = FALSE))
+  }
+  out
+}
+
 # A figure's ARD source: kind (none, own, table, import) and its report
 # (own: the figure; table: the table) or file (import)
 .fig_ard_source <- function(x, output_id) {
