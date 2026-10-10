@@ -271,7 +271,7 @@ studies_root <- function(home = tflplanner_home()) {
          sheets = lapply(p$sheets, .cols_df),
          ard = lapply(p$ard %||% .empty_ard_spec(), .cols_df),
          lf = lapply(p$lf %||% .empty_lf(), .cols_df),
-         fig_designs = if (length(p$fig_designs)) p$fig_designs))
+         fig_designs = if (length(p$fig_designs)) .fig_r_to_state(p$fig_designs)))
 }
 
 .json <- function(x) {
