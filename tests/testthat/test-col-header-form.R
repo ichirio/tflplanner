@@ -110,8 +110,23 @@ test_that("the builder's header form writes the report's col_header", {
     expect_match(tk, "{n:sum}", fixed = TRUE)
     # the preview's values beside the tokens
     expect_match(tk, "{col} = ", fixed = TRUE)
-    # {n} is used: what it counts is asked
+    # {n} is used: what it counts is asked, in a box of its own
     expect_match(h, "What the header's {n} counts", fixed = TRUE)
+    expect_match(h, "rp-hdr-box", fixed = TRUE)
+    # a line's tools come before its fields (its number on top of it)
+    u1 <- bform$hdr[[1]]$uid
+    at_tools <- regexpr("Line 1", h, fixed = TRUE)
+    at_field <- regexpr(paste0(b(paste0("h", u1)), "_"), h, fixed = TRUE)
+    expect_true(at_tools > 0 && at_field > 0 && at_tools < at_field)
+    # the head: one button to load a standard header, no select
+    expect_match(h, b("hdr_load"), fixed = TRUE)
+    expect_false(grepl("From a preset", h, fixed = TRUE))
+    # the insert chips in their box
+    expect_match(tk, "rp-hdr-box", fixed = TRUE)
+    # {n}: the ARD states one population here, chosen, with its values
+    nh <- output[[b("hdr_n_ui")]]$html
+    expect_match(nh, "Subjects, by TRT01A: ", fixed = TRUE)
+    expect_match(nh, "checked", fixed = TRUE)
     # every field as the browser has it, by each line's own number
     fields <- function() {
       v <- list()
@@ -221,4 +236,89 @@ test_that("a line cell by cell: read, written back, merged and split", {
   l[[1]]$segments[[1]]$text <- ""
   w <- header_write(l)
   expect_false(any(grepl("Placebo", w$cols)))
+})
+
+test_that("what {n} counts: the ARD's populations, each with its values", {
+  # no ARD yet: the three in words
+  ch <- header_n_choices(NULL, "TRT01A")
+  expect_identical(unname(ch$choices), c("", "table", "n = page | N = table"))
+  expect_identical(ch$selected, "")
+  expect_match(ch$note, "Make the ARD")
+  expect_identical(header_n_choices(NULL, "TRT01A", "page")$choices[[1L]], "page")
+  # one population: it alone, chosen, header_n as it is
+  one <- data.frame(scope = "all", page = NA, column = c("A", "B", NA),
+                    value = c(86, 84, 170), stringsAsFactors = FALSE)
+  attr(one, "differ") <- FALSE
+  ch <- header_n_choices(one, "TRT01A")
+  expect_identical(names(ch$choices), "Subjects, by TRT01A: 86 / 84")
+  expect_identical(unname(ch$choices), "")
+  expect_identical(header_n_choices(one, "TRT01A", "table")$selected, "table")
+  # only the total stated: it
+  tot <- one[3L, ]
+  attr(tot, "differ") <- FALSE
+  expect_match(names(header_n_choices(tot, "TRT01A")$choices), ": 170$")
+  # a joined key's columns are not shown: the first key's
+  two <- data.frame(scope = "all", page = NA,
+                    column = c("A", "A____F", "A____M", "B"),
+                    value = c(86, 40, 46, 84), stringsAsFactors = FALSE)
+  attr(two, "differ") <- FALSE
+  expect_match(names(header_n_choices(two, c("TRT01A", "SEX"))$choices),
+               "by TRT01A \u00d7 SEX: 86 / 84$")
+  # two populations that differ: each, both, nothing chosen and a warning
+  pg <- data.frame(scope = c("page", "page", "page", "page", "table", "table"),
+                   page = c("ALT", "ALT", "HGB", "HGB", NA, NA),
+                   column = c("A", "B", "A", "B", "A", "B"),
+                   value = c(22, 24, 20, 21, 25, 26), stringsAsFactors = FALSE)
+  attr(pg, "differ") <- TRUE
+  attr(pg, "page_col") <- "PARAMCD"
+  ch <- header_n_choices(pg, "TRT01A")
+  expect_identical(unname(ch$choices), c("page", "table", "n = page | N = table"))
+  expect_identical(names(ch$choices)[1:2], c(
+    "Subjects on each page (per PARAMCD, by TRT01A): 22 / 24 (the first page, ALT)",
+    "Analysis set (by TRT01A, the same on every page): 25 / 26"))
+  expect_null(ch$selected)
+  expect_match(ch$warn, "different numbers")
+  ch <- header_n_choices(pg, "TRT01A", "table")
+  expect_identical(ch$selected, "table")
+  expect_null(ch$warn)
+  # the same numbers: one choice
+  attr(pg, "differ") <- FALSE
+  ch <- header_n_choices(pg, "TRT01A")
+  expect_length(ch$choices, 1L)
+  expect_match(names(ch$choices), "the same numbers", fixed = TRUE)
+  # in Japanese
+  ja <- function(x) tr(x, lang = "ja")
+  expect_match(names(header_n_choices(one, "TRT01A", tr = ja)$choices), "\u88ab\u9a13\u8005\u6570")
+})
+
+test_that("what {n} counts, read from a page-split ARD as rtfreporter prints it", {
+  skip_if_not_installed("cards")
+  set.seed(1)
+  lb <- expand.grid(USUBJID = cards::ADSL$USUBJID, PARAM = c("ALT", "HGB"),
+                    stringsAsFactors = FALSE)
+  lb$BASEGR <- sample(c("G0", "G1"), nrow(lb), TRUE)
+  lb$WORSTGR <- sample(c("G0", "G1", "G2"), nrow(lb), TRUE)
+  lb <- lb[!(lb$PARAM == "HGB" & seq_len(nrow(lb)) %% 10 == 0), ]
+  d <- rtfreporter::normalize_ard(cards::bind_ard(
+    cards::ard_categorical(lb, by = c(PARAM, BASEGR), variables = WORSTGR),
+    cards::ard_categorical(lb, by = PARAM, variables = BASEGR),
+    cards::ard_total_n(cards::ADSL)), drop_contexts = "attributes")
+  plan <- rtfreporter::table_plan(d, cols = "BASEGR", rows = c(PARAM = "PARAM"),
+                                  label = c(label = ".label")) |>
+    rtfreporter::plan_cells("{n}") |>
+    rtfreporter::plan_paginate_group(keep = FALSE)
+  ch <- header_n_choices(rtfreporter::plan_n_candidates(plan), "BASEGR")
+  expect_identical(unname(ch$choices), c("page", "table", "n = page | N = table"))
+  expect_match(names(ch$choices)[1L], "per PARAM, by BASEGR", fixed = TRUE)
+  expect_match(names(ch$choices)[1L], "(the first page, ALT)", fixed = TRUE)
+  expect_match(ch$warn, "different numbers")
+})
+
+test_that("a preset's lines in short, for the list it is chosen from", {
+  pr <- header_presets()
+  smp <- vapply(pr, header_preset_sample, "")
+  expect_true(all(nzchar(smp)))
+  expect_false(any(grepl("\n", smp, fixed = TRUE)))
+  expect_match(smp[["Arm / (N=n)"]], "{n}", fixed = TRUE)
+  expect_identical(header_preset_sample(NULL), "")
 })

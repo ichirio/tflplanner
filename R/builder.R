@@ -548,6 +548,9 @@ preview_pages <- function(x, output_id, data) {
   }
   if (inherits(res, "rtftable")) res <- list(res)
   attr(res, "header_tokens") <- tokens
+  # the populations a header's {n} can say, for the builder's choice
+  attr(res, "n_candidates") <- tryCatch(rtfreporter::plan_n_candidates(plan),
+                                        error = function(e) NULL)
   res
 }
 
