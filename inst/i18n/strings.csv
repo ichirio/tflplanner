@@ -2689,3 +2689,6 @@ the page,ページ
 (the pages and the analysis set have the same numbers),（ページと解析対象集団は同じ数）
 "The pages and the analysis set have different numbers: choose which one {n} says (until then, making the report warns).",ページと解析対象集団で数が違います。{n} にどちらを使うか選んでください（選ぶまで、帳票を作るときに警告が出ます）。
 The numbers are not known yet: the preview has not been made.,数はまだわかりません（プレビューが作られていません）。
+Arm compared with the reference (the first),基準群（先頭）と比べる群
+"Added analyses %s to step 1 (remove them there if not wanted): update the ARD, then Preview.",解析 %s を段 1 に追加しました（不要ならそこで削除）。ARD を更新してから Preview してください。
+No analysis set of the study is the flag %s: choose the analysis data's set in step 1.,フラグ %s に当たる解析対象集団が試験にありません。段 1 で解析データの集団を選んでください。

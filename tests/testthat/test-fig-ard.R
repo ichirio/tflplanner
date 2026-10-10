@@ -244,3 +244,14 @@ test_that("set_fig_own_analyses() writes a design's analyses to the figure's ARD
   expect_match(ard_rows(p2, "analyses", "F-FOR")$code[3], "data = data", fixed = TRUE)
   expect_error(set_fig_own_analyses(p, "F-FOR", list()), "two data frames")
 })
+
+test_that("a template's population flag is the study's analysis set", {
+  p <- new_planner()
+  p$ard$populations <- .normalize_ard_sheet(data.frame(
+    population_id = c("SAF", "ITT"), dataset = "ADSL",
+    where = c("SAFFL == \"Y\"", "ITTFL == \"Y\"")), "populations")
+  expect_identical(.population_of_flag(p, "SAFFL"), "SAF")
+  expect_identical(.population_of_flag(p, "ITT"), "ITT")
+  expect_identical(.population_of_flag(p, "FASFL"), NA_character_)
+  expect_identical(.population_of_flag(new_planner(), "SAFFL"), NA_character_)
+})

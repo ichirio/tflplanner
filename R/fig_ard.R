@@ -272,6 +272,16 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   done()
 }
 
+# The study's analysis set whose condition is a flag (SAFFL: the set
+# `SAFFL == "Y"`), or NA
+.population_of_flag <- function(x, flag) {
+  po <- x$ard$populations
+  if (is.null(flag) || is.na(flag) || is.null(po) || !nrow(po)) return(NA_character_)
+  if (flag %in% po$population_id) return(flag)
+  k <- which(vapply(po$where, function(w) identical(.pop_flag(w), flag), NA))
+  if (length(k)) po$population_id[k[1L]] else NA_character_
+}
+
 #' A figure's own analyses, written from its design
 #'
 #' A design made from a template that brings its analyses -- the forest
@@ -296,7 +306,7 @@ set_fig_own_analyses <- function(x, output_id, analyses, population_id = NULL) {
     stop("`analyses` is a list of two data frames, analysis_data and analyses.",
          call. = FALSE)
   }
-  if (!is.null(population_id) && nrow(analyses$analysis_data)) {
+  if (!is.null(population_id) && !is.na(population_id) && nrow(analyses$analysis_data)) {
     analyses$analysis_data$population_id <- population_id
   }
   put <- function(sheet, key, new) {

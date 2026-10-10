@@ -449,6 +449,24 @@
       if (kind == "bar") sz("pd_tpl_category", t("Category"), vars),
       if (tp == "bar_rate_ci") shiny::textInput("pd_tpl_responders", t("Counted as response"), "CR, PR"),
       if (kind == "swimmer") sz("pd_tpl_duration", t("Duration (days)"), vars),
+      # a forest plot: its subgroups (ADSL's categorical columns) and the arm
+      # compared with the reference (the group's first level)
+      if (kind == "forest" && !whole) {
+        cat_cols <- names(cols)[vapply(cols, function(v)
+          (is.character(v) || is.factor(v)) && length(unique(stats::na.omit(v))) <= 12L, NA)]
+        cat_cols <- setdiff(cat_cols, c(.group_choices(cols), grep("FL$", cat_cols, value = TRUE)))
+        shiny::selectizeInput("pd_tpl_subgroups", t("Subgroups"), .labelled(cat_cols, cols),
+                              intersect(c("SEX", "AGEGR1"), cat_cols), multiple = TRUE,
+                              options = list(plugins = list("remove_button")))
+      },
+      if (kind == "forest" && !whole) {
+        g <- .group_choices(cols)
+        lv <- if (length(g)) {
+          v <- cols[[g[[1L]]]]
+          if (is.factor(v)) levels(v) else sort(unique(stats::na.omit(as.character(v))))
+        }
+        sz("pd_tpl_comparison", t("Arm compared with the reference (the first)"), lv[-1L])
+      },
       if (tp %in% c("box_by_group", "scatter_shift")) sz("pd_tpl_at_visit", t("At visit"),
         if (!is.null(x) && "AVISIT" %in% names(x)) unique(x$AVISIT)),
       if (whole) shiny::p(class = "small text-muted",
@@ -464,6 +482,22 @@
     if (is.null(d)) return()
     set_design(d)
     notify(t("The template is applied: add to and change its layers in the designer."))
+    # its numbers are the figure's own ARD (a forest plot's hazard ratios):
+    # the analyses it needs go to step 1, and the figure's ARD is its own
+    an <- attr(d, "analyses")
+    id <- current()
+    if (!is.null(an) && !is.null(id)) {
+      pop <- .population_of_flag(rv$p, an$analysis_data$population_id[1L])
+      p2 <- guarded(set_fig_own_analyses(rv$p, id, an, population_id = pop))
+      if (!is.null(p2)) {
+        rv$p <- p2
+        notify(sprintf(t("Added analyses %s to step 1 (remove them there if not wanted): update the ARD, then Preview."),
+                       paste(attr(p2, "written"), collapse = ", ")))
+        if (is.na(pop %||% NA)) notify(sprintf(
+          t("No analysis set of the study is the flag %s: choose the analysis data's set in step 1."),
+          an$analysis_data$population_id[1L]), "warning")
+      }
+    }
   }
   shiny::observeEvent(input$pd_start, {
     shiny::req(current())
@@ -516,7 +550,10 @@
                    value = nz(input$pd_tpl_value), x = nz(input$pd_tpl_x), y = nz(input$pd_tpl_y),
                    time = nz(input$pd_tpl_time), category = nz(input$pd_tpl_category),
                    responders = nz(input$pd_tpl_responders), duration = nz(input$pd_tpl_duration),
-                   at_visit = nz(input$pd_tpl_at_visit))
+                   at_visit = nz(input$pd_tpl_at_visit),
+                   subgroups = if (length(input$pd_tpl_subgroups))
+                     paste(input$pd_tpl_subgroups, collapse = ", "),
+                   comparison = nz(input$pd_tpl_comparison))
       if (!is.null(nz(input$pd_tpl_unit))) args$time_unit <- input$pd_tpl_unit
       make <- function(a) guarded(do.call(tflspec::tfl_fig_template,
                                           a[!vapply(a, is.null, logical(1))]))
