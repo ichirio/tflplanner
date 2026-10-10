@@ -448,7 +448,7 @@ Censor marks,打ち切りマーク
 Reference line labels,参照線のラベル
 Number at risk,リスク集合数
 Drawn as,描き方
-"panel: a plot of its own below the curves, the counts from the fit at the x axis's breaks; add_risktable: ggsurvfit's risk table.","panel：曲線の下に別の図として描きます（数は fit から、x 軸の目盛りの時点で）。add_risktable：ggsurvfit のリスク表です。"
+"panel: a plot of its own below the curves, the counts from the fit at the x axis's breaks; add_risktable: ggsurvfit's risk table.",panel：曲線の下に別の図として描きます（数は fit から、x 軸の目盛りの時点で）。add_risktable：ggsurvfit のリスク表です。
 n by visit (panel),来院ごとの n（下段）
 Any ggplot2 layer,任意の ggplot2 レイヤー
 Whole figure (type),図全体（種類）
@@ -918,7 +918,7 @@ The report a row belongs to. Blank: a study-wide default; a row naming a report 
 "A column for people, on any sheet; never read. Any other column a sheet does not read is an error (a mistyped header).",人のためのメモ列。どのシートにも置けて、読まれない。それ以外の、シートが読まない列はエラー（見出しの打ち間違い防止）。
 Several values in one cell: | between them.,1 セルに複数書くときは | で区切る。
 "In titles, footnotes, header and footer cells: {PAGE} {TOTAL_PAGES} {AUTO_PAGE} {AUTO_TOTAL_PAGES} (page numbers), {PROGRAM} {PROGRAM_FULL} {PROGRAM_NAME} {PROGRAM_DIR} (the program; {PROGRAM_FULL} its absolute path), {DATETIME} {DATETIME:%Y-%m-%d} (the run), the report's own: {OUTPUT_ID}, {OUTPUT_LABEL} (Table 14.1.1, made from the ID; the tokens rows OUTPUT_KIND_TABLE / _LISTING / _FIGURE change the words), {OUTPUT_TITLE} {OUTPUT_POPULATION} {OUTPUT_SECTION} {STUDY_ID} (blank unless the tokens sheet says them; a line left with nothing but them is not printed), and your own from the tokens sheet ({STUDY} ...).",タイトル・脚注・ヘッダー・フッターのセルで使えます: {PAGE} {TOTAL_PAGES} {AUTO_PAGE} {AUTO_TOTAL_PAGES}（ページ番号）、{PROGRAM} {PROGRAM_FULL} {PROGRAM_NAME} {PROGRAM_DIR}（プログラム。{PROGRAM_FULL} は絶対パス）、{DATETIME} {DATETIME:%Y-%m-%d}（実行日時）、帳票自身のもの: {OUTPUT_ID}、{OUTPUT_LABEL}（Table 14.1.1。ID から作ります。tokens シートの OUTPUT_KIND_TABLE／_LISTING／_FIGURE の行で語を変えられます）、{OUTPUT_TITLE} {OUTPUT_POPULATION} {OUTPUT_SECTION} {STUDY_ID}（tokens シートに行が無ければ空。これらだけの行で値が空なら、その行は出しません）、そして tokens シートの自分のトークン（{STUDY} …）。
-"What is one for the whole study: one row a key. Table / report keys: rounding, output_path, program_dir. ARD keys: id, output, source. No output_id.",試験で 1 つに決まる事実。1 行 = 1 キー。表・帳票のキー：rounding、output_path、program_dir。ARD のキー：id、output、source。output_id は無い。
+"What is one for the whole study: one row a key. Table / report keys: rounding, output_path, program_dir. ARD keys: id, output, source. No output_id.",試験で 1 つに決まる設定。1 行 = 1 キー。表・帳票のキー：rounding、output_path、program_dir。ARD のキー：id、output、source。output_id は無い。
 "The fact: rounding (r: round half to even; sas: round half away from zero; blank: options(rtfreporter.rounding)); output_path (the folder of the RTF files); program_dir (the folder of the programs, for {PROGRAM}); ARD: id (the subject key; default USUBJID), output (the study ARD's file; default output/ard/ard.rds), source (R files of the study's own analysis functions, relative to the study folder, | between them).",項目：rounding（r = 偶数丸め、sas = 四捨五入、空欄 = options(rtfreporter.rounding)）、output_path（RTF の出力フォルダ）、program_dir（プログラムのフォルダ。{PROGRAM} に使う）。ARD：id（被験者キー。既定 USUBJID）、output（試験 ARD のファイル。既定 output/ard/ard.rds）、source（試験独自の解析関数の R ファイル。試験フォルダからの相対パス、| 区切り）。
 "Its value, as text.",その値（文字）。
 key / value: spec_version (a workbook of a newer version is refused by an older tflspec).,key / value：spec_version（新しい版のワークブックを古い tflspec で読むとエラー）。
@@ -2615,8 +2615,8 @@ The dataset %s has no file.,データセット %s のファイルがありませ
 Put the file in place or correct its path.,ファイルを置くか、パスを直してください。
 As the programs read the definition.,プログラムが定義を読んだときの結果です。
 %s has more than %s values; its code list is not reviewed against the data.,%1$s は値が %2$s を超えるため、コードリストをデータと照らし合わせていません。
-%s is not reviewed against the data yet.,%s はまだデータと照らし合わせていません。
-Make the data facts (Review with the data).,データの事実を作ってください（データ込みでレビュー）。
+%s is not reviewed against the data yet.,%s：データと照らし合わせたチェックはまだです。
+Make the data facts (Review with the data).,［データも使って見直す］を押すと、データセットを読んで確かめます（2 回目からは、ファイルが変わらない限り読み直しません）。
 The rule %s could not be run: %s.,ルール %1$s を実行できませんでした：%2$s。
 This is a fault of the review; please report it.,レビュー側の不具合です。報告してください。
 %s's ARD changed,%s の ARD が変わった
@@ -2630,7 +2630,7 @@ The definition has errors (see the Review tab),定義にエラーがあります
 The review of this report: a click shows its items,この帳票のレビュー：クリックで項目を表示
 to check,要確認
 "%d errors, %d to check, %d to set by hand",エラー %d・要確認 %d・手で設定 %d
-Review with the data,データ込みでレビュー
+Review with the data,データも使って見直す
 Check as the programs read it,プログラムが読むとおりに確認
 Every area,すべての範囲
 Search the items,項目を検索
@@ -2641,7 +2641,6 @@ Hint,ヒント
 Nothing to review.,レビューする項目はありません。
 Open a study to review it.,試験を開くとレビューできます。
 "Nothing to review: no error, nothing to check, nothing to set by hand.",レビューする項目はありません：エラーも、要確認も、手で設定するものもありません。
-Not reviewed against the data yet: Review with the data reads it once (it is kept).,まだデータと照らし合わせていません：「データ込みでレビュー」で一度読みます（結果は保存されます）。
 Against the data as read %s (%s),%s に読んだデータと照合（%s）
 Rules off in the company standards: %s,会社標準で止めているルール：%s
 errors,エラー
@@ -2677,3 +2676,6 @@ Rows under a level of another variable,別の変数の水準の下に入れる
 "Its rows under one level of another variable: that variable, a colon, the level as the table shows it (plan_nest()); after that row, one indent deeper, its own heading dropped; blank: its own block.",この変数の行を、別の変数の 1 つの水準の下に入れます：その変数、コロン、表に出る水準（plan_nest()）。その行の後に 1 段深く、見出しなしで入ります。空欄：独立したブロック。
 under,の下：
 No heading of its own: its rows go under %s.,独自の見出しはありません。この変数の行は %s の下に入ります。
+The checks against the data have not run yet. Press [Review with the data] to read the datasets once (not again until a file changes).,データと照らし合わせたチェックはまだです。［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。
+%s: the checks against the data have not run yet.,%s：データと照らし合わせたチェックはまだです。
+Press [Review with the data]: it reads the datasets once (not again until a file changes).,［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。

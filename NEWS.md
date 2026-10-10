@@ -15,6 +15,17 @@
   column. The Asian sub-categories are derived for demonstration (a
   footnote says so; RACE is not changed). The other tables' programs and
   RTFs are byte-identical.
+- **The Review tab says in plain words what reading the data does.**  The
+  internal "data facts" are gone from the screen and the guide: the button
+  is "Review with the data" (データも使って見直す) everywhere, and the tab
+  says "The checks against the data have not run yet. Press [Review with
+  the data] to read the datasets once (not again until a file changes)."
+
+- **The preview shows a column header line's bold and underline.**  Ticked
+  in the table builder (a line's "bold", "underline"), they were in the
+  definition, the program and the RTF, but the Result tab's preview drew
+  every header cell plain.  It now draws a header cell bold, with its rule
+  above or below and its alignment, as the RTF prints it.
 - **A figure printing a table's numbers is in the ARS export** (#293
   phase 5, with tflspec #211).  `export_ars()` passes the figures whose
   ARD is a table's, with the analyses their designs print, to
