@@ -168,8 +168,10 @@ sheets <- list(
     list(output_id = "T-14-1-3", cols = "TRT01A", rows = "group = variable",
          note = "Age group and sex: the ARD's n, N and p, the table's n (%)"),
     list(output_id = "T-14-1-5", cols = "ARM", rows = "group = variable",
+         total = "Total",
          note = "Race, its Asian sub-categories nested under Asian: one block"),
     list(output_id = "T-14-1-6", cols = "ARM", rows = "group = variable",
+         total = "Total",
          note = "Race, then its Asian sub-categories: two blocks"),
     list(output_id = "T-14-2-3", cols = "TRTA", rows = "group = variable",
          note = "SYSBP change at Week 24: mean (95% CI), p-value"),
@@ -261,10 +263,10 @@ sheets <- list(
            "HISPANIC OR LATINO" = "Hispanic or Latino",
            "NOT HISPANIC OR LATINO" = "Not Hispanic or Latino",
            "NOT REPORTED" = "Not reported", "UNKNOWN" = "Unknown")),
-         # T-14-1-6: the enrolled subjects' arms (screen failures too), and
-         # a Total column; race as the other tables; the demonstration
-         # sub-categories of Asian
-         codelist("T-14-1-5", "ARM", paste(arms, "| Screen Failure | Total")),
+         # T-14-1-5/6: the enrolled subjects' arms (screen failures too;
+         # the Total column is tables$total, not a value); race as the
+         # other tables; the demonstration sub-categories of Asian
+         codelist("T-14-1-5", "ARM", paste(arms, "| Screen Failure")),
          codelist("T-14-1-5", "RACE", c(
            "WHITE" = "White",
            "BLACK OR AFRICAN AMERICAN" = "Black or African American",
@@ -274,7 +276,7 @@ sheets <- list(
              "Native Hawaiian or Other Pacific Islander")),
          codelist("T-14-1-5", "RACESUB", c(CHINESE = "Chinese", JAPANESE = "Japanese",
                                            KOREAN = "Korean")),
-         codelist("T-14-1-6", "ARM", paste(arms, "| Screen Failure | Total")),
+         codelist("T-14-1-6", "ARM", paste(arms, "| Screen Failure")),
          codelist("T-14-1-6", "RACE", c(
            "WHITE" = "White",
            "BLACK OR AFRICAN AMERICAN" = "Black or African American",
@@ -603,24 +605,24 @@ p$ard$analyses <- tbl(
   # enrolled subjects -- the same analyses, laid out nested (T-14-1-5) or
   # in two blocks (T-14-1-6)
   list(output_id = "T-14-1-5", analysis_id = "GROUPN", method = "categorical",
-       data = "adsl_enr_tot", variables = "ARM"),
+       data = "adsl_enr", variables = "ARM"),
   list(output_id = "T-14-1-5", analysis_id = "RACE", label = "Race",
-       method = "categorical", data = "adsl_enr_tot", by = "ARM",
-       variables = "RACE", denominator = "adsl_enr_tot", statistics = "n | p"),
+       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       variables = "RACE", denominator = "adsl_enr", statistics = "n | p"),
   list(output_id = "T-14-1-5", analysis_id = "RACESUB", label = "Race Sub Asian",
-       method = "categorical", data = "adsl_enr_tot", by = "ARM",
-       variables = "RACESUB", denominator = "adsl_enr_tot", statistics = "n | p"),
-  # T-14-1-6: race and its Asian sub-categories of the enrolled subjects
-  # (adsl_enr_tot: each subject in their arm and in Total), percentages of
-  # the column's subjects
+       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       variables = "RACESUB", denominator = "adsl_enr", statistics = "n | p"),
+  # T-14-1-6: race and its Asian sub-categories of the enrolled subjects,
+  # percentages of the column's subjects; `overall` runs each analysis
+  # again over all of them (cards' overall rows: the Total column)
   list(output_id = "T-14-1-6", analysis_id = "GROUPN", method = "categorical",
-       data = "adsl_enr_tot", variables = "ARM"),
+       data = "adsl_enr", variables = "ARM"),
   list(output_id = "T-14-1-6", analysis_id = "RACE", label = "Race",
-       method = "categorical", data = "adsl_enr_tot", by = "ARM",
-       variables = "RACE", denominator = "adsl_enr_tot", statistics = "n | p"),
+       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       variables = "RACE", denominator = "adsl_enr", statistics = "n | p"),
   list(output_id = "T-14-1-6", analysis_id = "RACESUB", label = "Race Sub Asian",
-       method = "categorical", data = "adsl_enr_tot", by = "ARM",
-       variables = "RACESUB", denominator = "adsl_enr_tot", statistics = "n | p"),
+       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       variables = "RACESUB", denominator = "adsl_enr", statistics = "n | p"),
   # T-14-3-1 reads analysis data: the TEAEs of the safety set (adae_saf,
   # kept to adsl_saf's subjects), its percents of adsl_saf
   list(output_id = "T-14-3-1", analysis_id = "TEAE",
@@ -641,22 +643,13 @@ p$ard$analysis_data <- tbl(
        derive = paste0(
          "RACESUB = dplyr::case_when(USUBJID == \"01-703-1396\" ~ \"CHINESE\", ",
          "USUBJID == \"01-708-1104\" ~ \"JAPANESE\")")),
-  list(output_id = "T-14-1-5", data_id = "adsl_enr_tot",
-       label = "Enrolled subjects, and all of them again as Total",
-       from = "adsl_enr",
-       code = "dplyr::bind_rows(adsl_enr, dplyr::mutate(adsl_enr, ARM = \"Total\"))"),
   # T-14-1-6: the enrolled subjects with a demonstration sub-race of Asian
-  # (the pilot data has none: derived, by subject, for the sample only),
-  # then each subject again in a Total column
+  # (the pilot data has none: derived, by subject, for the sample only)
   list(output_id = "T-14-1-6", data_id = "adsl_enr", label = "Enrolled subjects",
        from = "ADSL", population_id = "ENR",
        derive = paste0(
          "RACESUB = dplyr::case_when(USUBJID == \"01-703-1396\" ~ \"CHINESE\", ",
          "USUBJID == \"01-708-1104\" ~ \"JAPANESE\")")),
-  list(output_id = "T-14-1-6", data_id = "adsl_enr_tot",
-       label = "Enrolled subjects, and all of them again as Total",
-       from = "adsl_enr",
-       code = "dplyr::bind_rows(adsl_enr, dplyr::mutate(adsl_enr, ARM = \"Total\"))"),
   saf("T-14-2-1"),
   list(output_id = "T-14-2-1", data_id = "advs_w24",
        label = "Systolic blood pressure at Week 24, safety set",
