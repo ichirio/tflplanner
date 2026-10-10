@@ -81,7 +81,7 @@ test_that("the report list's rules (R01-R08) and the analyses' (A11-A13)", {
   expect_false(.has(review_problems(p2, lang = "en"), "R04", "T1"))
   # R02 / R07: an id twice; two reports writing one file
   p3 <- p
-  p3$outputs <- rbind(p3$outputs, p3$outputs[1L, ])
+  p3$outputs <- rbind(p3$outputs, p3$outputs[p3$outputs$output_id == "T1", ])
   expect_true(.has(review_problems(p3, lang = "en"), "R02", "T1"))
   p4 <- set_sheet_rows(p, "report", "T2", data.frame(file = "T1.rtf"))
   expect_true(.has(review_problems(p4, lang = "en"), "R07", "T2", "report", "T2", "file"))

@@ -6,7 +6,7 @@
   p <- add_output(new_planner(), "T1", type = "table", description = "one",
                   population = "SAF")
   p <- add_output(p, "T2", type = "table", description = "two")
-  p <- add_output(p, "L1", type = "listing", description = "a listing")
+  p <- add_output(p, "L1", type = "listing", description = "a listing", at = "end")
   p$ard$populations <- .normalize_ard_sheet(
     data.frame(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\""),
     "populations")
