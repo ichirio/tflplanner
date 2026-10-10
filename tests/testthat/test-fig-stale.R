@@ -40,8 +40,8 @@ test_that("a figure from an ARD records the definition it read; batch.R knows it
   h <- grep("^[.]batch_needs_hash <- ", b)
   expect_match(b[h + 1L], "^  `T-14-2-2` = \"[0-9a-f]{32}\",$")
   expect_match(b[h + 2L], "^  `F-14-2-4` = \"[0-9a-f]{32}\"[)]$")
-  # no figure from an ARD: empty
-  p0 <- set_fig_ard_source(p, "F-14-2-3", NULL)
+  # no figure from an ARD (the forest plot's own taken away too): empty
+  p0 <- set_fig_ard_source(set_fig_ard_source(p, "F-14-2-3", NULL), "F-14-2-4", NULL)
   b0 <- lines_of(batch_code(p0, root = s$path))
   expect_true(".batch_needs <- character()" %in% b0)
 })
