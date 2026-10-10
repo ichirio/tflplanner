@@ -40,7 +40,7 @@ Imports:
     readxl,
     rhandsontable,
     rtfreporter (>= 0.8.2.9029),
-    tflspec (>= 0.0.24.9075),
+    tflspec (>= 0.0.24.9077),
     shiny (>= 1.8.1),
     sortable,
     bslib,
@@ -55,6 +55,7 @@ Imports:
 Suggests:
     arrow,
     broom,
+    broom.helpers,
     cards,
     cardx,
     dplyr,
