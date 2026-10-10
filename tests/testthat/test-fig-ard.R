@@ -220,3 +220,26 @@ test_that("the study review lists a figure's ARD problems as F04-F08, each with 
   expect_identical(r$row, sprintf("layers[%d] ard_number", k))
   expect_identical(.review_target(r, s$planner)$go, "designer")
 })
+
+test_that("set_fig_own_analyses() writes a design's analyses to the figure's ARD definition (#293 P6)", {
+  skip_if(!"tfl_fig_forest_analyses" %in% getNamespaceExports("tflspec"), "tflspec has no tfl_fig_forest_analyses()")
+  p <- add_output(new_planner(), "F-FOR", type = "figure")
+  p$ard$datasets <- .normalize_ard_sheet(data.frame(dataset = c("ADSL", "ADTTE"),
+    path = c("data/adam/adsl.rds", "data/adam/adtte.rds")), "datasets")
+  p$ard$populations <- .normalize_ard_sheet(data.frame(population_id = "SAF", dataset = "ADSL",
+    where = "SAFFL == \"Y\""), "populations")
+  an <- tflspec::tfl_fig_forest_analyses("ADTTE", "TTDE", "SAF", "TRT01A", c("SEX", "AGEGR1"))
+  p <- set_fig_own_analyses(p, "F-FOR", an)
+  expect_identical(attr(p, "written"), c("HR", "HR_SEX", "HR_AGEGR1"))
+  expect_identical(ard_rows(p, "analyses", "F-FOR")$analysis_id, c("HR", "HR_SEX", "HR_AGEGR1"))
+  expect_identical(ard_rows(p, "analysis_data", "F-FOR")$data_id, "adtte_ttde")
+  expect_identical(sheet_rows(p, "report", "F-FOR")$ard_source, "own")
+  # the definition holds, and writes the figure's ARD program
+  expect_silent(.ard_spec(p$ard))
+  # applied again (another subgroup): the same ids replaced, the rest kept
+  an2 <- tflspec::tfl_fig_forest_analyses("ADTTE", "TTDE", "SAF", "TRT01A", "RACE")
+  p2 <- set_fig_own_analyses(p, "F-FOR", an2)
+  expect_identical(ard_rows(p2, "analyses", "F-FOR")$analysis_id, c("HR_SEX", "HR_AGEGR1", "HR", "HR_RACE"))
+  expect_match(ard_rows(p2, "analyses", "F-FOR")$code[3], "data = data", fixed = TRUE)
+  expect_error(set_fig_own_analyses(p, "F-FOR", list()), "two data frames")
+})
