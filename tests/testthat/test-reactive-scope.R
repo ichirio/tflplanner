@@ -4,6 +4,10 @@
 # not redraw every output (it gives the study anew, the same study); and
 # a save writes only the workbook whose half changed.
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 test_that("a table's cell edited: the ARD state and the report list are not worked out again", {
   local_home()
   p <- add_output(new_planner(), "T1", type = "table", description = "one")

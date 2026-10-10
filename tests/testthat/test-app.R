@@ -1,3 +1,7 @@
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 test_that("switching studies does not write one report's editor into another", {
   local_home()
   two_studies()

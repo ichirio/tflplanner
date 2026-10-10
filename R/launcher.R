@@ -487,6 +487,7 @@
 #' @seealso [remove_shortcut()], [launch_app()], [setup_tflplanner()].
 #' @examples
 #' \dontrun{
+#' # not run: writes a shortcut on your desktop and in the start menu
 #' add_shortcut()
 #' add_shortcut(port = 7480)
 #' }

@@ -1,6 +1,10 @@
 # The SPEC is the source (#274): the definition files are read on open when
 # they changed outside tflplanner, a save never writes over such a change.
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 spec_home <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
   old <- options(tflplanner.home = home)

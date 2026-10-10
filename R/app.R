@@ -4553,7 +4553,7 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$ard_stat_apply, {
     r <- st_row()
     g <- function(x) input[[st_id(x)]]
-    one <- function(v) {
+    one_val <- function(v) {
       v <- trimws(paste(v %||% character(), collapse = " | "))
       if (nzchar(v)) v else NA_character_
     }
@@ -4577,12 +4577,12 @@ app_server <- function(input, output, session, start) {
     if (role == "parent") {
       a <- rv$p$ard$analyses
       i <- which(mine & a$analysis_id == r$analysis_id)[1L]
-      a$label[i] <- one(g("label"))
+      a$label[i] <- one_val(g("label"))
       fd <- form_data(r)
       a <- .an_data_write(a, i, fd)
       # a field not on screen (yet) keeps the row's value
-      if (!is.null(g("where"))) a$where[i] <- one(where)
-      if (!is.null(g("by"))) a$by[i] <- one(g("by"))
+      if (!is.null(g("where"))) a$where[i] <- one_val(where)
+      if (!is.null(g("by"))) a$by[i] <- one_val(g("by"))
       if (!is.null(g("overall"))) {
         if (is.null(a$overall)) a$overall <- NA_character_
         a$overall[i] <- if (isTRUE(g("overall"))) "TRUE" else NA_character_
@@ -4632,8 +4632,8 @@ app_server <- function(input, output, session, start) {
     fm <- c(fm, old[grepl(":", names(old), fixed = TRUE)])
     i <- which(mine & a$analysis_id == r$analysis_id)[1L]
     a$analysis_id[i] <- new_id
-    a$label[i] <- one(g("label"))
-    a$method[i] <- one(st_method())
+    a$label[i] <- one_val(g("label"))
+    a$method[i] <- one_val(st_method())
     call <- .ard_method_call(a$method[i], .std_ard_methods())
     f <- .ard_form_fields(call)
     # a field not on screen (yet) keeps the row's value
@@ -4644,19 +4644,19 @@ app_server <- function(input, output, session, start) {
     if (!.ard_args_same(new_args, r$args)) a$args[i] <- new_args
     fd <- form_data(r)
     a <- .an_data_write(a, i, fd)
-    a$where[i] <- one(where)
-    a$by[i] <- one(g("by"))
+    a$where[i] <- one_val(where)
+    a$by[i] <- one_val(g("by"))
     if (!is.null(g("overall"))) {
       if (is.null(a$overall)) a$overall <- NA_character_
       a$overall[i] <- if (isTRUE(g("overall"))) "TRUE" else NA_character_
     }
-    if (!is.null(g("strata"))) a$strata[i] <- one(g("strata"))
-    if (!is.null(g("den"))) a$denominator[i] <- one(g("den"))
-    a$variables[i] <- one(g("vars"))
-    a$statistics[i] <- one(pick)
+    if (!is.null(g("strata"))) a$strata[i] <- one_val(g("strata"))
+    if (!is.null(g("den"))) a$denominator[i] <- one_val(g("den"))
+    a$variables[i] <- one_val(g("vars"))
+    a$statistics[i] <- one_val(pick)
     a$formats[i] <- if (length(fm))
       paste(paste0(names(fm), "=", fm), collapse = " | ") else NA
-    if (identical(a$method[i], "custom") && !is.null(g("code"))) a$code[i] <- one(g("code"))
+    if (identical(a$method[i], "custom") && !is.null(g("code"))) a$code[i] <- one_val(g("code"))
     # it becomes a stack: what it computed goes into one inside it
     to_stack <- identical(a$method[i], .stack_fn) && !identical(r$method, .stack_fn)
     if (to_stack) {
@@ -6713,7 +6713,7 @@ app_server <- function(input, output, session, start) {
                  move = t("added here: moves after the TOC's lines"))
     types <- stats::setNames(names(.type_labels), t(unname(.type_labels)))
     show_same <- isTRUE(input[[toc_id("show_same")]])
-    one <- function(i) {
+    toc_row <- function(i) {
       id <- r$output_id[i]
       st <- r$status[i]
       type_cell <- if (st == "new") {
@@ -6791,7 +6791,7 @@ app_server <- function(input, output, session, start) {
         class = "table table-sm align-middle",
         shiny::tags$thead(shiny::tags$tr(lapply(
           t(c("output_id", "State", "Type", "Titles and footnotes")), shiny::tags$th))),
-        shiny::tags$tbody(lapply(shown, one))),
+        shiny::tags$tbody(lapply(shown, toc_row))),
       if (any(r$guessed)) shiny::p(class = "small text-muted",
                                    t("* = the type is guessed from the ID: check it before taking it in.")))
   }
@@ -8681,7 +8681,7 @@ app_server <- function(input, output, session, start) {
         all = t("one cell over them all"),
         key = sprintf(t("one cell per value of %s"), l$key %||% ""),
         "")
-      one <- function(i) {
+      header_line <- function(i) {
         l <- lines[[i]]
         st <- l$stub
         # the row-header cells, each under its column (one over them all
@@ -8750,7 +8750,7 @@ app_server <- function(input, output, session, start) {
         lapply(stub_cols, function(cn) shiny::div(class = "rp-hcol", cn)),
         if (length(lv)) lapply(lv, function(v) shiny::div(class = "rp-hcol", v)) else
           shiny::div(class = "rp-hcol", t("the value columns")),
-        unlist(lapply(seq_along(lines), one), recursive = FALSE))
+        unlist(lapply(seq_along(lines), header_line), recursive = FALSE))
       shiny::tagList(
         head,
         shiny::div(class = "rp-hgrid-wrap", grid),
