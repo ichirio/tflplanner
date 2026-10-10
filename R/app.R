@@ -96,6 +96,21 @@
                 todo = "not built", "not run" = "not built",
                 "no program" = "not built", error = "error")
 
+# why a report is to be made again (study_status()'s `why`), for the runs
+# table: ": its program changed; T-14-2-2's ARD changed"
+.why_text <- function(why, t = identity) {
+  vapply(why, function(w) {
+    w <- strsplit(w %||% "", " ", fixed = TRUE)[[1L]]
+    w <- w[nzchar(w)]
+    if (!length(w)) return("")
+    txt <- vapply(w, function(k) {
+      if (startsWith(k, "ard:")) sprintf(t("%s's ARD changed"), sub("^ard:", "", k)) else
+        switch(k, program = t("its program changed"), setup = t("the study setup changed"), k)
+    }, "")
+    paste0(": ", paste(txt, collapse = "; "))
+  }, "", USE.NAMES = FALSE)
+}
+
 .status_labels <- c(
   "no program" = "Not written (save)", unsaved = "Unsaved (save)",
   todo = "TODO (data part)", "not run" = "Not run", error = "Error",
@@ -9588,7 +9603,8 @@ app_server <- function(input, output, session, start) {
       a = d$output_id, b = t(unname(.type_labels[d$type])),
       c = t(unname(.ard_state_labels[word])),
       d = ifelse(word == "built" & !is.na(d$rtf), d$rtf, ""),
-      e = ifelse(word == "built", "", t(unname(.status_labels[d$status]))),
+      e = ifelse(word == "built", "", paste0(t(unname(.status_labels[d$status])),
+                                             .why_text(d$why %||% rep("", nrow(d)), t))),
       f = paste0(d$program, ifelse(d$program_state %in% "edited",
                                    paste0(" (", t("edited by hand"), ")"), "")),
       stringsAsFactors = FALSE)

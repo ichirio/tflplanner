@@ -219,6 +219,9 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
     out$nav <- list(table_right = "spec", table_sheet = sheet)
     out$grid <- paste0("hot_", sheet)
     out$keycols <- keys[[sheet]] %||% character()
+  } else if (identical(area, "figure") && identical(sheet, "report")) {
+    # a figure's ARD source and its analyses: the figure's step 2
+    out$go <- "ard"
   } else if (sheet %in% report_sheets()) {
     out$go <- "report_spec"
     out$nav <- list(page_right = "spec", page_sheet = sheet)
