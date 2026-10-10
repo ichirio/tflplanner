@@ -554,6 +554,9 @@ preview_pages <- function(x, output_id, data) {
   }
   if (inherits(res, "rtftable")) res <- list(res)
   attr(res, "header_tokens") <- tokens
+  # the populations a header's {n} can say, for the builder's choice
+  attr(res, "n_candidates") <- tryCatch(rtfreporter::plan_n_candidates(plan),
+                                        error = function(e) NULL)
   res
 }
 
@@ -634,9 +637,11 @@ header_token_labels <- function(choices, tokens = NULL) {
     class = paste("rp-page", if (land) "rp-landscape"),
     htmltools::tags$style(htmltools::HTML("
       .rp-page { border: 1px solid #ccc; padding: .6rem .8rem; font-size: .7rem;
-                 font-family: 'Courier New', monospace; background: #fff;
-                 zoom: .6; }
-      .rp-page-full .rp-page { zoom: 1; }
+                 font-family: 'Courier New', monospace; background: #fff; }
+      .rp-page-wrap { overflow-x: auto; max-width: 100%; }
+      .rp-page-wrap .rp-page { width: max-content; min-width: 100%; }
+      .rp-page-wrap .rp-page-body { overflow-x: visible; }
+      .rp-page-full .rp-page { zoom: 1 !important; }
       .rp-page.rp-landscape { min-width: 60rem; }
       .rp-page-line { display: grid; grid-template-columns: 1fr auto 1fr; gap: .5rem; }
       .rp-page-line .c { text-align: center; } .rp-page-line .r { text-align: right; }

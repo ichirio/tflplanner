@@ -291,7 +291,18 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
   overflow: hidden; text-overflow: ellipsis; border-bottom: 1px solid #e5e7eb; }
 .rp-hgrid .rp-hdr-tools { grid-column: 1 / -1; display: flex; flex-wrap: wrap;
   gap: .25rem .6rem; align-items: center; font-size: 12px;
-  padding-bottom: .35rem; margin-bottom: .2rem; border-bottom: 1px dashed #d1d5db; }
+  padding: .2rem .4rem; margin-top: .45rem;
+  background: var(--bs-tertiary-bg, #f3f4f6); border-top: 1px solid #9ca3af;
+  border-radius: .2rem .2rem 0 0; }
+.rp-hgrid .rp-hdr-tools > strong { font-size: 13px; }
+/* a part of the header form of its own: the insert chips, what {n} counts */
+.rp-hdr-box { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: .375rem;
+  padding: .35rem .55rem; margin-top: .6rem; }
+.rp-hdr-box-title { font-size: 12px; font-weight: 600; color: #4b5563; margin-bottom: .25rem; }
+.rp-hdr-box .shiny-input-container { margin-bottom: 0; width: auto; }
+.rp-hdr-box .radio label, .rp-hdr-box .shiny-options-group { font-size: 13px; }
+.rp-hdr-preset-sample { font-family: Consolas, 'Courier New', monospace; font-size: 11px;
+  color: #6b7280; margin-left: .4rem; }
 .rp-hgrid .rp-hdr-cell { display: flex; flex-direction: column; min-width: 0; }
 .rp-hgrid .rp-hdr-cell-tools { display: flex; justify-content: flex-end; line-height: 1; }
 .rp-hgrid .rp-hdr-cap { font-size: 11px; color: #6b7280; text-align: center; }
@@ -733,22 +744,38 @@ app_ui <- function(lang = "en") {
     class = "mt-2",
     pane_head(t("This report's page"), t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
     shiny::uiOutput("report_font"),
-    # SPEC | Code | Result: no form of its own; the program is the Code
-    result_tabs_ui(
-      "page_right", lang = lang,
-      spec = shiny::tagList(
+    # the input on the left -- the page's sheets, edited -- and on the right
+    # what they make: the first page, the program, the rows as they are
+    # written (SPEC, read only: the grid on the left is where they change)
+    bslib::layout_columns(
+      col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
+      shiny::div(
         grid_note,
         do.call(bslib::navset_card_underline,
                 c(list(id = "page_sheet"), lapply(report_sheets(), sheet_panel)))),
-      code = shiny::tagList(
-        shiny::uiOutput("program_state"),
-        code_view("program", lang)),
-      result = shiny::tagList(
-        shiny::div(class = "d-flex justify-content-between align-items-center mb-1 small",
-                   shiny::span(t("First page (sample)")),
-                   .btn("page_full", t("Full size"),
-                        class = "btn-sm btn-outline-secondary py-0")),
-        shiny::uiOutput("page_sample"))))
+      # (min-width 0: a grid item may then be narrower than the page it
+      # holds, which scrolls inside it at its actual size)
+      shiny::div(style = "min-width: 0", result_tabs_ui(
+        "page_right", lang = lang, selected = "result",
+        spec = shiny::uiOutput("page_spec_view"),
+        code = shiny::tagList(
+          shiny::uiOutput("program_state"),
+          code_view("program", lang)),
+        result = shiny::tagList(
+          shiny::div(class = "d-flex justify-content-between align-items-center gap-2 mb-1 small",
+                     shiny::span(t("First page (sample)")),
+                     shiny::div(
+                       class = "d-flex gap-1",
+                       # actual size (100%) by default; fit to the pane's
+                       # width on a click, remembered in this browser
+                       shiny::tags$button(
+                         type = "button", id = "page_fit",
+                         class = "btn btn-sm btn-outline-secondary py-0",
+                         onclick = "rpPageFit(!rpPageFitOn());",
+                         t("Fit to width")),
+                       .btn("page_full", t("Full size"),
+                            class = "btn-sm btn-outline-secondary py-0"))),
+          shiny::div(class = "rp-page-wrap", shiny::uiOutput("page_sample")))))))
 
   bslib::page_navbar(
     id = "nav",
@@ -1759,6 +1786,9 @@ app_server <- function(input, output, session, start) {
     n <- sum(s$files$status %in% c("written", "rewritten"))
     re <- sum(s$files$status == "rewritten")
     notify(sprintf(t("Saved (%d files written)"), n))
+    if (!is.null(s$ard_problem)) notify(paste(
+      t("The ARD definition does not hold, so no ARD program was written (the rest is saved). See the Review tab."),
+      s$ard_problem), "error")
     # a program edited by hand: written again from the definition (a
     # program is never edited -- the definition is), the edited one kept
     if (re) notify(sprintf(
@@ -4365,6 +4395,14 @@ app_server <- function(input, output, session, start) {
         st_id("by"), with_tip(argl("Grouping variables", "by"), t("The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step 2's. A combination with no records is shown, with 0.")),
         bch, by_now, multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
+      # the same analysis once more without its groups: cards' overall rows,
+      # which a table shows as its Total column (step 3 switches it for
+      # every analysis by the column variable)
+      if (!in_stack) shiny::checkboxInput(
+        st_id("overall"),
+        with_tip(argl("Also over all subjects", "overall"),
+                 t("The analysis once more without its grouping variables, over all its subjects: the Total column of a table (step 3's switch sets it for every analysis by the column variable). Needs grouping variables.")),
+        .overall_on(r$overall), width = "100%"),
       shiny::selectizeInput(
         st_id("vars"), with_tip(argl("Analysis variables", "variables"),
                                 arg_hint(hcall, "variables")), vch, var_now,
@@ -4545,6 +4583,10 @@ app_server <- function(input, output, session, start) {
       # a field not on screen (yet) keeps the row's value
       if (!is.null(g("where"))) a$where[i] <- one(where)
       if (!is.null(g("by"))) a$by[i] <- one(g("by"))
+      if (!is.null(g("overall"))) {
+        if (is.null(a$overall)) a$overall <- NA_character_
+        a$overall[i] <- if (isTRUE(g("overall"))) "TRUE" else NA_character_
+      }
       old <- .stack_flags_of(r$args)$flags
       flags <- vapply(names(.stack_flag_words), function(k) {
         v <- g(paste0("fl", k))
@@ -4604,6 +4646,10 @@ app_server <- function(input, output, session, start) {
     a <- .an_data_write(a, i, fd)
     a$where[i] <- one(where)
     a$by[i] <- one(g("by"))
+    if (!is.null(g("overall"))) {
+      if (is.null(a$overall)) a$overall <- NA_character_
+      a$overall[i] <- if (isTRUE(g("overall"))) "TRUE" else NA_character_
+    }
     if (!is.null(g("strata"))) a$strata[i] <- one(g("strata"))
     if (!is.null(g("den"))) a$denominator[i] <- one(g("den"))
     a$variables[i] <- one(g("vars"))
@@ -5629,11 +5675,13 @@ app_server <- function(input, output, session, start) {
       what <- if (role == "parent") {
         paste0(data_words(r$dataset, r$population_id, r$data),
                if (!.is_blank(r$by)) paste0(" \u00b7 ", t("by"), " ",
-                                            gsub(" | ", ", ", r$by, fixed = TRUE)) else "")
+                                            gsub(" | ", ", ", r$by, fixed = TRUE)) else "",
+               if (.overall_on(r$overall)) paste0(" \u00b7 ", t("and over all")) else "")
       } else paste(.split_bar(r$variables), collapse = ", ")
       own <- if (role == "single") {
         c(data_words(r$dataset, r$population_id, r$data),
           if (!.is_blank(r$by)) paste(t("by"), gsub(" | ", ", ", r$by, fixed = TRUE)),
+          if (.overall_on(r$overall)) t("and over all"),
           if (!.is_blank(r$where)) r$where)
       }
       what <- paste(c(if (nzchar(what)) what, own), collapse = " \u00b7 ")
@@ -5809,6 +5857,11 @@ app_server <- function(input, output, session, start) {
         st_id("by"), argl("Grouping variables", ".by"),
         an_by_choices(r, .split_bar(r$by)), .split_bar(r$by), multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
+      shiny::checkboxInput(
+        st_id("overall"),
+        with_tip(argl("Also over all subjects", "overall"),
+                 t("The stack once more without its grouping variables (.overall = TRUE): the Total column of a table.")),
+        .overall_on(r$overall), width = "100%"),
       shiny::h6(class = "small fw-bold mt-1", t("What it adds to the analyses inside")),
       lapply(names(.stack_flag_words), function(k) shiny::checkboxInput(
         st_id(paste0("fl", k)),
@@ -8018,6 +8071,7 @@ app_server <- function(input, output, session, start) {
                               selected = if (!anyNA(st$key)) st$key,
                               multiple = TRUE, width = "100%"),
         shiny::uiOutput(bid("arms_ui")),
+        shiny::uiOutput(bid("total_ui")),
         shiny::uiOutput(bid("hdr_ui")),
         if (!anyNA(st$key) &&
             !.has_group_n(shiny::isolate(rv$p), id, st$key[1L]))
@@ -8416,6 +8470,68 @@ app_server <- function(input, output, session, start) {
                               orientation = "horizontal"))
       })))
   }))
+  # the Total column: a switch, its heading and place; it sets `overall` on
+  # the analyses by the column variable too (set_total_column()), which
+  # the ARD then needs to run again
+  total_now <- function(p0, id) {
+    tb <- sheet_rows(p0, "tables", id)
+    on <- nrow(tb) > 0L && !is.na(tb$total[1L] %||% NA)
+    list(on = on,
+         label = if (on) tb$total[1L] else NA_character_,
+         position = if (on && identical(tb$total_position[1L] %||% NA, "first"))
+           "first" else "last")
+  }
+  shiny::observe(builder_guard({
+    bform_drawn()
+    ks <- input[[bid("key")]]
+    shiny::req(identical(builder_case(), "ok"), length(ks) > 0L)
+    n <- bform$n
+    id <- bform$id
+    p0 <- shiny::isolate(rv$p)
+    now <- total_now(p0, id)
+    runs <- sum(.total_rows(ard_rows(p0, "analyses", id), ks[1L]))
+    output[[paste0("b", n, "_total_ui")]] <- shiny::renderUI(shiny::tagList(
+      shiny::checkboxInput(
+        bid("total_on"),
+        with_tip(t("Total column"),
+                 t("One more column over all subjects, read from the ARD's overall rows: the analyses by the column variable are run once more without it (step 1, 'Also over all subjects'). No 'Total' arm is made up in the data.")),
+        now$on, width = "100%"),
+      if (now$on) shiny::div(
+        class = "d-flex flex-wrap gap-2 align-items-end mb-2",
+        shiny::textInput(bid("total_label"), t("Heading"), now$label, width = "160px"),
+        shiny::radioButtons(bid("total_pos"), t("Place"),
+                            stats::setNames(c("last", "first"), c(t("last"), t("first"))),
+                            now$position, inline = TRUE)),
+      if (now$on && runs == 0L) shiny::div(
+        class = "small text-warning",
+        sprintf(t("No analysis of this report is grouped by %s: the ARD has no overall rows to show."), ks[1L]))
+      else if (now$on) shiny::div(
+        class = "small text-muted",
+        sprintf(t("%d analyses are run over all subjects too: update the ARD, then Preview."), runs))))
+  }))
+  shiny::observe(builder_guard({
+    bform_drawn()
+    on <- input[[bid("total_on")]]
+    lbl <- input[[bid("total_label")]]
+    pos <- input[[bid("total_pos")]]
+    shiny::req(!is.null(on), identical(builder_case(), "ok"))
+    id <- bform$id
+    p0 <- shiny::isolate(rv$p)
+    now <- total_now(p0, id)
+    want_lbl <- if (!isTRUE(on)) NULL else
+      if (is.null(lbl) || !nzchar(trimws(lbl))) {
+        if (is.na(now$label)) "Total" else now$label
+      } else trimws(lbl)
+    want_pos <- pos %||% now$position
+    same <- identical(isTRUE(on), now$on) &&
+      (!isTRUE(on) || (identical(want_lbl, now$label) && identical(want_pos, now$position)))
+    if (same) return()
+    p2 <- guarded(set_total_column(p0, id, want_lbl, want_pos))
+    if (!is.null(p2)) {
+      rv$p <- p2
+      rv$btouched <- TRUE
+    }
+  }))
   # ---- what a variable prints, as the Statistics card says (with the
   # variable's own decimals): shown, never written for it
   builder_var_defaults <- function(var, kind, st) {
@@ -8525,10 +8641,12 @@ app_server <- function(input, output, session, start) {
       head <- shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-end mb-2",
         shiny::h6(class = "me-auto mb-0", t("Column header")),
-        shiny::div(style = "width: 14rem",
-                   shiny::selectInput(bid("hdr_preset"), NULL,
-                                      c(stats::setNames("", t("From a preset...")), hp))),
-        .btn(bid("hdr_add"), t("Add a line above"), class = "btn-sm btn-outline-primary"))
+        # the two together, so a narrow form wraps them as one
+        shiny::div(
+          class = "d-flex flex-wrap gap-1",
+          .btn(bid("hdr_load"), t("Load a standard column header..."),
+               class = "btn-sm btn-outline-primary"),
+          .btn(bid("hdr_add"), t("Add a line above"), class = "btn-sm btn-outline-primary")))
       if (is.null(lines)) {
         return(shiny::tagList(head, shiny::div(
           class = "small text-muted",
@@ -8616,7 +8734,7 @@ app_server <- function(input, output, session, start) {
                                !is.na(l$border_bottom) && l$border_bottom != "none"),
           shiny::span(class = "ms-auto",
                       act(i, "up", "\u2191"), act(i, "down", "\u2193"), act(i, "del", "\u00d7")))
-        c(stub_ui, val_ui, list(tools))
+        c(list(tools), stub_ui, val_ui)
       }
       grid <- shiny::div(
         class = "rp-b-hdr rp-hgrid",
@@ -8630,14 +8748,10 @@ app_server <- function(input, output, session, start) {
         head,
         shiny::div(class = "rp-hgrid-wrap", grid),
         shiny::uiOutput(bid("hdr_tok")),
-        if (header_uses_n(lines)) shiny::selectInput(
-          bid("hdr_n"), t("What the header's {n} counts"), width = "24rem",
-          stats::setNames(c("", "page", "table", "n = page | N = table"),
-                          c(t("the subjects of each page's columns (the default)"),
-                            t("the subjects of each page's columns"),
-                            t("the population, the same on every page"),
-                            t("both: {n} each page's, {N} the population's"))),
-          selected = if (is.na(bform$hdr_n)) "" else bform$hdr_n),
+        if (header_uses_n(lines)) shiny::div(
+          class = "rp-hdr-box",
+          shiny::div(class = "rp-hdr-box-title", t("What the header's {n} counts")),
+          shiny::uiOutput(bid("hdr_n_ui"))),
         shiny::tags$script(shiny::HTML(paste0(
           "if (!window.tflHdrInsert) {",
           " document.addEventListener('focusin', function(e) {",
@@ -8668,8 +8782,24 @@ app_server <- function(input, output, session, start) {
       chip <- function(k) shiny::tags$button(
         type = "button", class = "btn btn-sm btn-outline-secondary py-0 me-1 mb-1",
         names(toks)[k], onclick = sprintf("tflHdrInsert('%s')", toks[[k]]))
-      shiny::div(class = "small", t("Insert (into the field last clicked):"), " ",
-                 lapply(seq_along(toks), chip))
+      shiny::div(class = "rp-hdr-box",
+                 shiny::div(class = "rp-hdr-box-title", t("Insert (into the field last clicked)")),
+                 shiny::div(class = "small", lapply(seq_along(toks), chip)))
+    })
+    # what {n} counts: the populations the ARD states (the preview's), each
+    # with its values; the choice kept while the preview is made again
+    output[[paste0("b", n, "_hdr_n_ui")]] <- shiny::renderUI({
+      keys <- input[[bid("key")]] %||% bform$st$key
+      pv <- tryCatch(preview_now(), error = function(e) NULL)
+      cur <- shiny::isolate(input[[bid("hdr_n")]])
+      now <- if (is.null(cur)) bform$hdr_n else if (nzchar(cur)) cur else NA_character_
+      ch <- header_n_choices(attr(pv$pages, "n_candidates"), keys, now, tr = t)
+      shiny::tagList(
+        shiny::radioButtons(bid("hdr_n"), NULL, choiceNames = unname(as.list(names(ch$choices))),
+                            choiceValues = unname(as.list(ch$choices)),
+                            selected = ch$selected %||% character(0)),
+        if (!is.null(ch$warn)) shiny::div(class = "alert alert-warning py-1 px-2 my-1 small", ch$warn),
+        if (!is.null(ch$note)) shiny::div(class = "small text-muted", ch$note))
     })
   }))
   # moving, removing, adding a line; a preset into the lines
@@ -8744,13 +8874,21 @@ app_server <- function(input, output, session, start) {
   })
   shiny::observeEvent({
     bform_drawn()
-    input[[bid("hdr_preset")]]
+    input[[bid("hdr_load")]]
   }, {
-    pr <- input[[bid("hdr_preset")]]
-    shiny::req(nzchar(pr), pr %in% names(header_presets()))
+    keys <- input[[bid("key")]] %||% bform$st$key
+    hp <- .header_preset_choices(length(bform$meta$hierarchy) > 0L,
+                                 .key_label(bform$meta, keys[1L]))
     shiny::showModal(shiny::modalDialog(
-      title = t("Replace the column header?"),
-      sprintf(t("The lines below become the preset %s; what they say now is replaced."), pr),
+      title = t("Load a standard column header"),
+      shiny::p(class = "small text-muted",
+               t("The lines of the column header become the chosen one's; what they say now is replaced.")),
+      shiny::radioButtons(
+        bid("hdr_preset"), NULL, selected = character(0),
+        choiceNames = lapply(seq_along(hp), function(k) shiny::span(
+          names(hp)[k],
+          shiny::span(class = "rp-hdr-preset-sample", header_preset_sample(header_presets()[[hp[[k]]]])))),
+        choiceValues = unname(as.list(hp))),
       footer = shiny::tagList(
         .btn(bid("hdr_preset_no"), t("Cancel"), class = "btn-secondary"),
         .btn(bid("hdr_preset_ok"), t("Replace"), class = "btn-primary"))))
@@ -8760,20 +8898,22 @@ app_server <- function(input, output, session, start) {
     input[[bid("hdr_preset_no")]]
   }, {
     shiny::removeModal()
-    shiny::updateSelectInput(session, bid("hdr_preset"), selected = "")
   })
   shiny::observeEvent({
     bform_drawn()
     input[[bid("hdr_preset_ok")]]
   }, {
-    shiny::removeModal()
     pr <- input[[bid("hdr_preset")]]
-    shiny::req(nzchar(pr), pr %in% names(header_presets()))
-    shiny::updateSelectInput(session, bid("hdr_preset"), selected = "")
-    bform$hdr <- hdr_uid(header_read(header_presets()[[pr]],
-                                     input[[bid("key")]] %||% bform$st$key))
+    shiny::req(length(pr) == 1L, nzchar(pr), pr %in% names(header_presets()))
+    shiny::removeModal()
+    keys <- input[[bid("key")]] %||% bform$st$key
+    bform$hdr <- hdr_uid(header_read(header_presets()[[pr]], keys))
     hdr_ver(hdr_ver() + 1L)
-    notify(sprintf(t("The header is the preset %s now."), pr))
+    # named as the list showed it (the key's name for "Arm")
+    hp <- .header_preset_choices(length(bform$meta$hierarchy) > 0L,
+                                 .key_label(bform$meta, keys[1L]))
+    shown <- names(hp)[match(pr, hp)]
+    notify(sprintf(t("The header is the preset %s now."), if (is.na(shown)) pr else shown))
   })
   bstate <- shiny::reactive(builder_guard({
     bform_drawn()
@@ -8932,6 +9072,34 @@ app_server <- function(input, output, session, start) {
       footer = shiny::modalButton(t("Close"))))
   })
   output$page_sample_full <- shiny::renderUI(page_sample_ui())
+  # SPEC (read only): this report's own rows of the page's sheets, as they
+  # are written to the report workbook; the study defaults fill the rest
+  output$page_spec_view <- shiny::renderUI({
+    id <- current()
+    if (is.null(id)) return(NULL)
+    rv$ver
+    p <- rv$p
+    sheet_table <- function(sh) {
+      d <- sheet_rows(p, sh, id)
+      d$output_id <- NULL
+      d <- d[, vapply(d, function(v) any(!is.na(v) & nzchar(as.character(v))), NA), drop = FALSE]
+      if (!nrow(d) || !ncol(d)) return(NULL)
+      shiny::tagList(
+        shiny::h6(class = "mt-2 mb-1", sh),
+        shiny::tags$table(
+          class = "table table-sm small mb-1",
+          shiny::tags$thead(shiny::tags$tr(lapply(names(d), shiny::tags$th))),
+          shiny::tags$tbody(lapply(seq_len(nrow(d)), function(i) shiny::tags$tr(
+            lapply(d[i, ], function(v) shiny::tags$td(if (is.na(v)) "" else as.character(v))))))))
+    }
+    out <- Filter(Negate(is.null), lapply(report_sheets(), sheet_table))
+    shiny::tagList(
+      shiny::p(class = "small text-muted mb-1",
+               sprintf(t("%s's own rows, as written to %s (edit them on the left). Study defaults fill what they leave out."),
+                       id, file.path(study_layout()[["spec"]], .report_file))),
+      if (length(out)) out else
+        shiny::p(class = "small text-muted", t("No rows of its own: the study defaults make its page.")))
+  })
   output$page_sample <- shiny::renderUI(page_sample_ui())
   page_sample_ui <- function() {
     id <- current()
