@@ -7983,9 +7983,16 @@ app_server <- function(input, output, session, start) {
     v <- st$variables
     bs <- builder_stats()
     keys <- unique(c(m$by, names(m$keys)))
+    under_of <- function(i) {
+      u <- v$under[i] %||% NA_character_
+      if (is.na(u) || !nzchar(u)) NULL else u
+    }
     var_items <- stats::setNames(lapply(seq_len(nrow(v)), function(i)
       shiny::span(class = "rp-b-var", shiny::strong(v$variable[i]),
-                  shiny::span(class = "rp-b-kind", v$kind[i]))), v$variable)
+                  shiny::span(class = "rp-b-kind", v$kind[i]),
+                  if (!is.null(under_of(i))) shiny::span(
+                    class = "rp-b-kind", paste0("\u2192 ", t("under"), " ", under_of(i))))),
+      v$variable)
     shiny::tagList(
       shiny::div(
         class = "rp-b-card",
@@ -8023,10 +8030,16 @@ app_server <- function(input, output, session, start) {
             hint <- v$hint[i] %||% NA_character_
             bslib::accordion_panel(
               title = paste0(v$variable[i],
-                             if (!is.na(v$label[i])) paste0(": ", v$label[i]) else
-                               if (!is.na(hint)) paste0(": ", hint)),
+                             if (!is.null(under_of(i))) paste0(" \u2192 ", t("under"), " ", under_of(i)) else
+                               if (!is.na(v$label[i])) paste0(": ", v$label[i]) else
+                                 if (!is.na(hint)) paste0(": ", hint)),
               value = v$variable[i],
-              shiny::textInput(bid(paste0("lab", i)),
+              # nested under another's level: no heading of its own, so no
+              # label to write (the field would mislead)
+              if (!is.null(under_of(i))) shiny::p(
+                class = "small text-muted mb-1",
+                sprintf(t("No heading of its own: its rows go under %s."), under_of(i)))
+              else shiny::textInput(bid(paste0("lab", i)),
                                if (is.na(hint)) t("Label") else
                                  with_tip(t("Label"), t("Blank: the label of this report's code list of variable (faint). What is written here is the table's own.")),
                                value = if (is.na(v$label[i])) "" else
