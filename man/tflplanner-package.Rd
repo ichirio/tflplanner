@@ -9,6 +9,15 @@
 The GUI over tflspec (the Excel specifications, ARD and plan engine) and
 rtfreporter (the RTF renderer).
 }
+\section{Start here}{
+
+\code{setup_tflplanner()} once: where the app keeps its settings and where
+new study folders go (its home, under \code{\link[tools:userdir]{tools::R_user_dir()}} unless you
+choose another).  Then \code{run_app()} opens the app.  \code{create_sample_study()}
+makes a study to try it on: CDISC pilot data with tables, a listing
+and figures, ready to run.
+}
+
 \seealso{
 Useful links:
 \itemize{

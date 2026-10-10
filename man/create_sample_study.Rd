@@ -46,7 +46,14 @@ programs, as an official run with its batch folder (see \code{\link[=run_batch]{
 \emph{New study} dialog under a study ID of your own.
 }
 \examples{
-\dontrun{
-create_sample_study()
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_sample_study(run = FALSE)  # run = TRUE makes its ARD and reports too
+list_studies()
 }
+options(old)
 }

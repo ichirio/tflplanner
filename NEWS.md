@@ -1,5 +1,21 @@
 # tflplanner (development version)
 
+- **Ready for CRAN's checks, the parts that do not wait for the
+  submission** (#334).  The app-server tests (each starts the whole app,
+  5-10 s) skip on CRAN and run on CI and locally (`NOT_CRAN=true`), so
+  the CRAN test run takes a few minutes, not 15; `app_server()`'s three
+  local `one()` helpers have names of their own (`one_val`, `toc_row`,
+  `header_line`: no "multiple local function definitions" NOTE); the
+  examples of `setup_tflplanner()`, `create_study()`,
+  `reload_from_spec()` and `create_sample_study()` run, with a home in
+  the temporary folder (the study-writing ones in `\donttest{}`, a few
+  seconds each), and `add_shortcut()` / `update_tflplanner()` say why
+  theirs are not run.  The title is "'shiny' Study Manager for Clinical
+  Tables, Listings and Figures"; the language en-GB, as rtfreporter's
+  and tflspec's; the word list has the CDISC names and the rest
+  `spelling` flags; `inst/COPYRIGHTS` links the licence instead of the
+  build-ignored LICENSE.md; the package help says where to start.
+
 - **The app follows a run that ends, without a reload** (#305 area).
   After a background official run (the sample's, for one), the report
   list kept every report "not made" and a table's builder said "no ARD

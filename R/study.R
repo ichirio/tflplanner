@@ -129,11 +129,17 @@ study_layout <- function() {
 #'   an `rtfstudy`: `path`, `meta` (the study.yml fields) and `planner`.
 #'   `list_studies()` returns a data frame.
 #' @examples
-#' \dontrun{
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
 #' s <- create_study("ABC-101", title = "A phase 2 study")
 #' list_studies()
 #' s <- open_study("ABC-101")
 #' }
+#' options(old)
 #' @export
 create_study <- function(study_id, title = NA, compound = NA, phase = NA,
                          description = NA, planner = NULL,

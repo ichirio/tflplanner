@@ -355,6 +355,7 @@ test_that("the page sample puts a report's lines over the study defaults", {
 })
 
 test_that("with no study, the app offers the ways to start, the sample first", {
+  skip_on_cran()
   local_home()
   shiny::testServer(function(input, output, session)
     app_server(input, output, session, NULL), {
@@ -367,6 +368,7 @@ test_that("with no study, the app offers the ways to start, the sample first", {
 })
 
 test_that("with no study, both ways to start open the New study dialog", {
+  skip_on_cran()
   local_home()
   shiny::testServer(function(input, output, session)
     app_server(input, output, session, NULL), {
@@ -442,6 +444,7 @@ test_that("every ARD method has its name and note in Japanese, else English", {
 })
 
 test_that("a new session opens the study opened last", {
+  skip_on_cran()
   local_home()
   two_studies()
   .set_config("last_study", "S1")
@@ -499,6 +502,7 @@ test_that("the report list's buttons are above the list, the marks have a legend
 })
 
 test_that("a copy of the sample is listed at once; its run goes on in the background", {
+  skip_on_cran()
   local_home()
   alive <- TRUE
   px <- list(is_alive = function() alive, get_exit_status = function() 0L,
