@@ -339,15 +339,27 @@ set_total_column <- function(x, output_id, label = "Total",
   a <- ard_rows(x, "analyses", output_id)
   if (!nrow(a)) return(x)
   if (is.null(a$overall)) a$overall <- NA_character_
-  par <- a$parent %||% rep(NA_character_, nrow(a))
-  kw <- .method_kw(a$method)
-  grouped <- vapply(a$by, function(b) !is.na(key) && key %in% .split_bar(b), NA)
-  mine <- grouped & is.na(par) &
-    !kw %in% c("custom", "subjects") &
-    !a$method %in% c("cards::ard_strata", "cards::ard_pairwise")
-  a$overall[mine] <- if (on) "TRUE" else NA_character_
+  a$overall[.total_rows(a, key)] <- if (on) "TRUE" else NA_character_
   a$output_id <- NULL
   set_ard_rows(x, "analyses", output_id, a)
+}
+
+# Which of a report's analyses a Total column runs over all subjects too:
+# those grouped by the column variable, a stack's own row (not the rows
+# inside it), not a subject count, own code, strata or pairwise (no by to
+# leave out)
+.total_rows <- function(a, key) {
+  if (!nrow(a) || is.na(key)) return(logical(nrow(a)))
+  par <- a$parent %||% rep(NA_character_, nrow(a))
+  kw <- .method_kw(a$method)
+  grouped <- vapply(a$by, function(b) key %in% .split_bar(b), NA)
+  grouped & is.na(par) & !kw %in% c("custom", "subjects") &
+    !a$method %in% c("cards::ard_strata", "cards::ard_pairwise")
+}
+
+# A yes in the definition's `overall` column
+.overall_on <- function(x) {
+  !is.null(x) && !is.na(x) && toupper(trimws(x)) %in% c("TRUE", "YES", "Y", "1")
 }
 
 # A report's column variables, its own `tables$cols` or the inherited one
