@@ -277,6 +277,13 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
 .rp-b-card { border: 1px solid var(--bs-border-color, #dee2e6);
   border-radius: .5rem; padding: .6rem .8rem; margin-bottom: .6rem; }
 .rp-b-card h6 { font-weight: 600; margin-bottom: .4rem; }
+/* the builder's card of what the ARD holds: one line, its table when opened */
+.rp-ard-card { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: .375rem;
+  padding: .3rem .6rem; margin-bottom: .5rem; font-size: 12.5px; }
+.rp-ard-card > summary { cursor: pointer; color: #374151; }
+.rp-ard-card table { font-size: 12px; margin: .4rem 0; }
+.rp-ard-card td, .rp-ard-card th { padding: 1px 8px 1px 0; vertical-align: top; }
+.rp-ard-card th { color: #6b7280; font-weight: 600; }
 /* a numbered part of a form (1-1's column definitions): its number in the
    margin, the field beside it */
 .rp-num-part { display: flex; gap: .4rem; align-items: flex-start; }
@@ -639,7 +646,11 @@ app_ui <- function(lang = "en") {
           bslib::layout_columns(
             col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
             shiny::uiOutput("builder_form"),
-            result_tabs_ui(
+            # what the report's ARD holds, folded to one line, above the tabs
+            shiny::div(
+              style = "min-width: 0",
+              shiny::uiOutput("builder_ard_card"),
+              result_tabs_ui(
               "table_right", lang = lang, selected = "result",
               spec = shiny::tagList(
                 shiny::uiOutput("type_note"),
@@ -658,7 +669,7 @@ app_ui <- function(lang = "en") {
                                           class = "badge text-bg-warning ms-2 d-none",
                                           t("Updating ..."))),
                   shiny::uiOutput("builder_pages", inline = TRUE)),
-                shiny::uiOutput("builder_preview")))))),
+                shiny::uiOutput("builder_preview"))))))),
       shiny::conditionalPanel(
         "output.report_kind == 'listing'",
         shiny::uiOutput("lf_note"),
@@ -9036,6 +9047,61 @@ app_server <- function(input, output, session, start) {
         sprintf(t("The ARD has no %s: those cells stay empty. Add them to the ARD code."),
                 paste(miss, collapse = ", "))))
   }))
+  # What the report's ARD holds (#335): folded to one line above the
+  # right-hand tabs, a small table when opened, the whole normalized ARD on
+  # a button (read only then).  From what "read the ARD" saved (meta_of()).
+  output$builder_ard_card <- shiny::renderUI({
+    id <- current()
+    shiny::req(!is.null(id), identical(report_kind(), "table"))
+    m <- meta_of(id)
+    pb <- sheet_rows(rv$p, "layout", id)$pages_page_by
+    pb <- .split_list(pb[!is.na(pb)][1L] %||% NA_character_)
+    card <- ard_card_summary(m, page_by = pb, tr = t)
+    if (is.null(card$rows)) {
+      return(shiny::div(class = "rp-ard-card text-muted", card$line))
+    }
+    r <- card$rows
+    shiny::tags$details(
+      class = "rp-ard-card",
+      shiny::tags$summary(card$line),
+      shiny::tags$table(
+        shiny::tags$thead(shiny::tags$tr(lapply(
+          t(c("Role", "Variable", "Kind", "Levels / statistics", "Label")), shiny::tags$th))),
+        shiny::tags$tbody(lapply(seq_len(nrow(r)), function(i) shiny::tags$tr(
+          shiny::tags$td(r$role[i]), shiny::tags$td(shiny::tags$code(r$variable[i])),
+          shiny::tags$td(r$kind[i]), shiny::tags$td(r$detail[i]),
+          shiny::tags$td(if (is.na(r$label[i])) "" else r$label[i]))))),
+      .btn("ard_card_all", t("Show the whole normalized ARD"),
+           class = "btn-sm btn-outline-secondary mb-1"))
+  })
+  shiny::observeEvent(input$ard_card_all, {
+    id <- current()
+    shiny::req(!is.null(id))
+    d <- tryCatch(ard_data(rv$study, id), error = function(e) NULL)
+    if (is.null(d) || !nrow(d)) {
+      notify(t("This report's ARD has not been read yet."))
+      return()
+    }
+    m <- meta_of(id)
+    main <- intersect(c(m$by, m$hierarchy, "variable", "variable_level", "context",
+                        "stat_name", "stat_fmt", "stat"), names(d))
+    show <- function(all) {
+      x <- as.data.frame(d)[if (isTRUE(all)) names(d) else main]
+      x[] <- lapply(x, function(v) {
+        if (is.list(v)) v <- vapply(v, function(z) paste(format(z), collapse = ", "), "")
+        if (is.numeric(v)) signif(v, 4) else v
+      })
+      DT::datatable(x, rownames = FALSE, filter = "top", selection = "none",
+                    options = list(pageLength = 25, scrollX = TRUE, dom = "tip"))
+    }
+    output$ard_card_dt <- DT::renderDT(show(input$ard_card_allcols), server = TRUE)
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("The normalized ARD: %s (%d rows)"), id, nrow(d)),
+      shiny::checkboxInput("ard_card_allcols", sprintf(t("All the columns (%d)"), ncol(d)), FALSE),
+      DT::DTOutput("ard_card_dt"),
+      size = "xl", easyClose = TRUE, footer = shiny::modalButton(t("Close"))))
+  })
+
   # The table as it will print.  Made again only when what it is made from
   # changes -- the report's rows of the table sheets, the study's rounding,
   # its ARD rows -- so going back to a report, or a change elsewhere in the
