@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **A figure printing a table's numbers is in the ARS export** (#293
+  phase 5, with tflspec #211).  `export_ars()` passes the figures whose
+  ARD is a table's, with the analyses their designs print, to
+  `tflspec::tfl_ars(references =)`: the sample's F-14-2-3 is an ARS
+  `Output` (its titles and RTF) whose list of contents names T-14-2-2's
+  KM and HR analyses, no longer "no analyses in the ARD definition".
 - **A figure printing a table's numbers follows that table's ARD**
   (#293 phase 4).  Its program records the definition of the ARD it read
   (`ard_built <- ard_fingerprint("T-14-2-2")`, then
