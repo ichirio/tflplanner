@@ -725,10 +725,17 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
 #' * `outdated` -- the report's program, or a file it sources (the figure
 #'   setup, say), changed after the RTF was made; or the report was made
 #'   with another `programs/study_setup.R` than the one there now (its
-#'   program records it in `output/tfl/report_status.csv`).  The program holds the
+#'   program records it in `output/tfl/report_status.csv`); or -- a figure
+#'   printing the numbers of an ARD (its own, or a table's) -- that ARD's
+#'   definition is not the one it was made from, or that ARD is not made
+#'   from its definition now.  The program holds the
 #'   report's whole definition, so a change to the definition reaches the
 #'   reports it is about and no others.
 #' * `ok`
+#'
+#' `why` says what made a report `outdated`: `program` (its program or a
+#' file it sources is newer), `setup` (the study setup changed), or
+#' `ard:<id>` (the ARD of `<id>` changed, or is to be made again).
 #'
 #' @param study An `rtfstudy`.
 #' @return A data frame.
@@ -740,6 +747,8 @@ study_status <- function(study) {
   lay <- study_layout()
   setup <- .report_setup_recorded(root, p$outputs$output_id)
   now <- .study_setup_hash(root)
+  # the figures printing an ARD's numbers: to be made again because of it
+  ard_why <- .fig_ard_why(study, p$outputs$output_id)
   rows <- lapply(p$outputs$output_id, function(id) {
     info <- report_info(p, id)
     prog <- file.path(root, lay[["programs_tfl"]], info$program)
@@ -753,27 +762,33 @@ study_status <- function(study) {
     failed <- !is.na(t_log) && (is.na(t_rtf) || t_log > t_rtf) &&
       any(grepl("^Error|Execution halted",
                 readLines(log, warn = FALSE, encoding = "UTF-8")))
+    k <- match(id, p$outputs$output_id)
+    why <- c(
+      if (isTRUE(.program_time(prog, root) > t_rtf)) "program",
+      if (.setup_changed(setup[k], root, now)) "setup",
+      if (nzchar(ard_why[[k]])) ard_why[[k]])
     status <- if (pstate == "missing") "no program" else
       if (pstate == "generated") "unsaved" else
       if (pstate == "todo") "todo" else
         if (failed) "error" else
           if (is.na(t_rtf)) "not run" else
-            if (isTRUE(.program_time(prog, root) > t_rtf) ||
-                .setup_changed(setup[match(id, p$outputs$output_id)], root, now))
-              "outdated" else "ok"
+            if (length(why)) "outdated" else "ok"
+    if (status != "outdated") why <- character()
     fmt <- function(t) if (is.na(t)) NA_character_ else
       format(t, "%Y-%m-%d %H:%M")
     data.frame(output_id = id, type = info$type, program = info$program,
                program_state = pstate,
                ard = if (file.exists(ard)) fmt(.mtime(ard)) else NA,
                rtf = fmt(t_rtf), status = status,
+               why = paste(why, collapse = " "),
                log = if (file.exists(log)) log else NA_character_,
                rtf_path = rtf, stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, c(list(data.frame(
     output_id = character(), type = character(), program = character(),
     program_state = character(), ard = character(), rtf = character(),
-    status = character(), log = character(), rtf_path = character())),
+    status = character(), why = character(), log = character(),
+    rtf_path = character())),
     rows))
   rownames(out) <- NULL
   out
@@ -812,6 +827,16 @@ study_status <- function(study) {
 run_study <- function(study, output_id = NULL, wait = TRUE) {
   p <- study$planner
   ids <- output_id %||% p$outputs$output_id
+  # a figure printing an ARD's numbers: that ARD first, when it is not made
+  # from its definition now (as the official run does, #293)
+  need <- unique(stats::na.omit(vapply(ids, function(id)
+    tryCatch(.fig_ard_need(p, id), error = function(e) NA_character_), "")))
+  if (length(need)) {
+    st <- tryCatch(ard_status(study), error = function(e) NULL)
+    for (tb in need) {
+      if (!identical(st$state[match(tb, st$output_id)], "built")) update_study_ard(study, tb)
+    }
+  }
   progs <- vapply(ids, function(id) report_info(p, id)$program, "")
   lay <- study_layout()
   # a small runner: each program in its own Rscript, what it prints kept

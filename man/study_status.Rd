@@ -29,9 +29,16 @@ save the study
 \item \code{outdated} -- the report's program, or a file it sources (the figure
 setup, say), changed after the RTF was made; or the report was made
 with another \code{programs/study_setup.R} than the one there now (its
-program records it in \code{output/tfl/report_status.csv}).  The program holds the
+program records it in \code{output/tfl/report_status.csv}); or -- a figure
+printing the numbers of an ARD (its own, or a table's) -- that ARD's
+definition is not the one it was made from, or that ARD is not made
+from its definition now.  The program holds the
 report's whole definition, so a change to the definition reaches the
 reports it is about and no others.
 \item \code{ok}
 }
+
+\code{why} says what made a report \code{outdated}: \code{program} (its program or a
+file it sources is newer), \code{setup} (the study setup changed), or
+\verb{ard:<id>} (the ARD of \verb{<id>} changed, or is to be made again).
 }

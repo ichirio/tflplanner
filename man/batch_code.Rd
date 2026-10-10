@@ -5,7 +5,7 @@
 \alias{autoexec_all_code}
 \title{The official-run programs of a study}
 \usage{
-batch_code(x, date = Sys.Date())
+batch_code(x, date = Sys.Date(), root = ".")
 
 autoexec_all_code(date = Sys.Date())
 }
@@ -13,6 +13,9 @@ autoexec_all_code(date = Sys.Date())
 \item{x}{A \code{tflplanner}.}
 
 \item{date}{The date stamped in the banner.}
+
+\item{root}{The study folder (the definitions' fingerprints read the
+files the ARD programs name from it).}
 }
 \value{
 The program, one element per line.
