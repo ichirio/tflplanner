@@ -148,3 +148,42 @@ test_that("one's own categorical format is written; left blank, nothing is", {
   q <- builder_write(p, "DM", st)
   expect_false(any(is.na(sheet_rows(q, "cells", "DM")$template)))
 })
+
+test_that("a variable's rows under a level of another: read, written, unchanged when untouched", {
+  skip_if_not_installed("cards")
+  p <- dm_study_planner()
+  m <- ard_meta(dm_ard())
+  st <- builder_read(p, "DM", m)
+  expect_true(all(is.na(st$variables$under)))
+  # SEX's rows under AGEGR1's first level (a layout test, not a sensible table)
+  st$variables$under[st$variables$variable == "SEX"] <- "AGEGR1: <65"
+  q <- builder_write(p, "DM", st)
+  vr <- sheet_rows(q, "variables", "DM")
+  expect_identical(vr$under[vr$variable == "SEX"], "AGEGR1: <65")
+  st2 <- builder_read(q, "DM", m)
+  expect_identical(st2$variables$under[st2$variables$variable == "SEX"], "AGEGR1: <65")
+  # read and written back unchanged: nothing changes
+  expect_identical(builder_write(q, "DM", st2)$sheets, q$sheets)
+  # blank again: the column is cleared
+  st2$variables$under[st2$variables$variable == "SEX"] <- NA_character_
+  vr3 <- sheet_rows(builder_write(q, "DM", st2), "variables", "DM")
+  expect_true(is.na(vr3$under[vr3$variable == "SEX"]))
+})
+
+test_that("the sample's T-14-1-5 nests the Asian sub-categories; T-14-1-6 has two blocks", {
+  home <- withr_tempdir()
+  withr::local_options(tflplanner.home = home)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  v5 <- sheet_rows(s$planner, "variables", "T-14-1-5")
+  expect_identical(v5$under[v5$variable == "RACESUB"], "RACE: Asian")
+  expect_true(any(grepl("plan_nest(RACESUB = c(RACE = \"Asian\"))",
+                        program_code(s$planner, "T-14-1-5"), fixed = TRUE)))
+  v6 <- sheet_rows(s$planner, "variables", "T-14-1-6")
+  expect_true(all(is.na(v6$under)))
+  expect_false(any(grepl("plan_nest", program_code(s$planner, "T-14-1-6"), fixed = TRUE)))
+  # the same data: the sub-race derived for demonstration, a Total column
+  ad <- s$planner$ard$analysis_data
+  d5 <- ad[ad$output_id %in% "T-14-1-5" & ad$data_id == "adsl_enr", ]
+  expect_match(d5$derive, "RACESUB = dplyr::case_when(", fixed = TRUE)
+})
