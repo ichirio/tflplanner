@@ -2517,7 +2517,7 @@ Vertical justification,縦位置の揃え（vjust）
 "Their columns, by name: TRT01A",群の列の名前：TRT01A
 "The variable's level, e.g. 0.5 for a KM's median",変数の水準（KM の中央値なら 0.5）
 TRT01A = Placebo (several: | between them),TRT01A = Placebo（複数は | で区切る）
-"{value} = the number, e.g. Median: {value} days",{value} = その数値（例：Median: {value} days）
+"{value} = the number; {conf.low}, {conf.high} ... other statistics of the same row, e.g. HR {estimate} (95% CI {conf.low}, {conf.high})","{value} = その数値。{conf.low}、{conf.high} など = 同じ行のほかの統計量（例：HR {estimate} (95% CI {conf.low}, {conf.high})）"
 Empty: the text the ARD has (stat_fmt),空欄：ARD にある書式の文字（stat_fmt）
 This figure's ARD,この図の ARD
 "Where the numbers it prints come from (step 3: ""A number from the ARD"", ""Statistics from the ARD""). The program puts it in `ard`.",図に表示する数値の出どころです（段 3 の「ARD の数値を表示」「ARD の統計量」）。プログラムはこれを `ard` に読み込みます。
