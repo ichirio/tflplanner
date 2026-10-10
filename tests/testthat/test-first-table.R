@@ -367,6 +367,52 @@ test_that("a report's ARD can be given the subjects per group", {
   expect_true(.has_group_n(p, "T1", "TRT01A"))
 })
 
+test_that("set_total_column() switches a Total column on and off in both halves (#212)", {
+  skip_if(!"total" %in% names(tflspec::tfl_table_spec()$tables), "tflspec has no tables$total")
+  p <- set_ard_rows(new_planner(), "analyses", "T1", data.frame(
+    analysis_id = c("GROUPN", "AGE", "SEX", "DEMO", "RACE", "OWN", "AEBY"),
+    parent = c(NA, NA, NA, NA, "DEMO", NA, NA),
+    method = c("categorical", "continuous", "categorical", "cards::ard_stack",
+               "categorical", "custom", "categorical"),
+    dataset = c("ADSL", "ADSL", "ADSL", "ADSL", NA, "ADSL", "ADSL"),
+    population_id = c("SAF", "SAF", "SAF", "SAF", NA, "SAF", "SAF"),
+    by = c(NA, "TRT01A", "TRT01A", "TRT01A", NA, "TRT01A", "SEX"),
+    variables = c("TRT01A", "AGE", "SEX", NA, "RACE", NA, "RACE"),
+    code = c(NA, NA, NA, NA, NA, "cards::ard_tabulate(data, variables = SEX)", NA)))
+  # no column variable yet
+  expect_error(set_total_column(p, "T1"), "no column variable")
+  p <- set_sheet_rows(p, "tables", "T1", data.frame(cols = "TRT01A"))
+  p <- set_total_column(p, "T1")
+  tb <- sheet_rows(p, "tables", "T1")
+  expect_identical(tb$total, "Total")
+  expect_true(is.na(tb$total_position))
+  a <- ard_rows(p, "analyses", "T1")
+  # the rows by the column variable: the stack's own row, not the one
+  # inside it; not GROUPN (no by), not custom, not a row by something else
+  expect_identical(a$overall, c(NA, "TRUE", "TRUE", "TRUE", NA, NA, NA))
+  # first, under another heading
+  p <- set_total_column(p, "T1", "All", "first")
+  tb <- sheet_rows(p, "tables", "T1")
+  expect_identical(c(tb$total, tb$total_position), c("All", "first"))
+  # the programs say it
+  code <- .report_code_lines(p, "T1", table = TRUE)
+  expect_true(any(grepl('plan_total(label = "All", position = "first")', code, fixed = TRUE)))
+  # off: both halves cleared, nothing else touched
+  p <- set_total_column(p, "T1", NULL)
+  tb <- sheet_rows(p, "tables", "T1")
+  expect_true(is.na(tb$total) && is.na(tb$total_position))
+  expect_identical(tb$cols, "TRT01A")
+  a <- ard_rows(p, "analyses", "T1")
+  expect_true(all(is.na(a$overall)))
+  expect_identical(a$analysis_id, c("GROUPN", "AGE", "SEX", "DEMO", "RACE", "OWN", "AEBY"))
+  # the column variable inherited from the study defaults counts too
+  p2 <- set_sheet_rows(p, "tables", "T1", data.frame(cols = NA_character_))
+  p2 <- set_sheet_rows(p2, "tables", NA, data.frame(cols = "TRT01A"))
+  p2 <- set_total_column(p2, "T1")
+  expect_identical(sheet_rows(p2, "tables", "T1")$total, "Total")
+  expect_identical(ard_rows(p2, "analyses", "T1")$overall[2], "TRUE")
+})
+
 test_that("the data of an analysis is one choice of dataset and analysis set", {
   po <- data.frame(population_id = c("SAF", "ITT"), dataset = c("ADSL", "ADSL"))
   w <- list(with = "%s x %s (%s)", alone = "%s alone (%s)", none = "(none)")

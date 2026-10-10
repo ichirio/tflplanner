@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **A Total column, without a "Total" arm in the data** (tflspec #212,
+  rtfreporter `plan_total()`).  `set_total_column(x, output_id, label,
+  position)` switches it on in both halves of a table's definition: the
+  `tables` sheet's `total` / `total_position` (written as `plan_total()`),
+  and `overall = TRUE` on the report's own analyses grouped by the column
+  variable (not the rows inside a stack, not `custom` / `subjects`), which
+  makes each ARD program run them again without their `by` -- cards' own
+  overall rows, with no group.  The ARS then has an analysis over all
+  subjects without the grouping, not a `"Total"` group the ADaM does not
+  have.  Needs tflspec >= 0.0.24.9083 and rtfreporter >= 0.8.2.9034.
+
 - **Race with its Asian sub-categories, nested or in two blocks** (the
   sample's T-14-1-5 and T-14-1-6, with rtfreporter #599 and tflspec
   #213).  The table builder's variable form gets "Rows under a level of
