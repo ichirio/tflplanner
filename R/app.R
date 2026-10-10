@@ -5645,7 +5645,7 @@ app_server <- function(input, output, session, start) {
         paste0(data_words(r$dataset, r$population_id, r$data),
                if (!.is_blank(r$by)) paste0(" \u00b7 ", t("by"), " ",
                                             gsub(" | ", ", ", r$by, fixed = TRUE)) else "",
-               if (.overall_on(r$overall)) paste0(" · ", t("and over all")) else "")
+               if (.overall_on(r$overall)) paste0(" \u00b7 ", t("and over all")) else "")
       } else paste(.split_bar(r$variables), collapse = ", ")
       own <- if (role == "single") {
         c(data_words(r$dataset, r$population_id, r$data),
