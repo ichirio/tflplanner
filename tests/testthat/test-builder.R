@@ -176,8 +176,8 @@ test_that("the sample's T-14-1-5 nests the Asian sub-categories; T-14-1-6 has tw
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(create_sample_study(run = FALSE))
   v5 <- sheet_rows(s$planner, "variables", "T-14-1-5")
-  expect_identical(v5$under[v5$variable == "RACESUB"], "RACE: Asian")
-  expect_true(any(grepl("plan_nest(RACESUB = c(RACE = \"Asian\"))",
+  expect_identical(v5$under[v5$variable == "ASIANSUB"], "RACE: Asian")
+  expect_true(any(grepl("plan_nest(ASIANSUB = c(RACE = \"Asian\"))",
                         program_code(s$planner, "T-14-1-5"), fixed = TRUE)))
   v6 <- sheet_rows(s$planner, "variables", "T-14-1-6")
   expect_true(all(is.na(v6$under)))
@@ -185,5 +185,14 @@ test_that("the sample's T-14-1-5 nests the Asian sub-categories; T-14-1-6 has tw
   # the same data: the sub-race derived for demonstration, a Total column
   ad <- s$planner$ard$analysis_data
   d5 <- ad[ad$output_id %in% "T-14-1-5" & ad$data_id == "adsl_enr", ]
-  expect_match(d5$derive, "RACESUB = dplyr::case_when(", fixed = TRUE)
+  expect_match(d5$derive, "ASIANSUB = dplyr::case_when(", fixed = TRUE)
+  # the other demographics too: only RACE has more than two levels with
+  # rows under one of them
+  for (v in list(v5, v6)) {
+    expect_identical(v$variable[order(as.integer(v$order))],
+                     c("AGE", "AGEGR1", "SEX", "RACE", "ASIANSUB", "ETHNIC"))
+  }
+  a5 <- ard_rows(s$planner, "analyses", "T-14-1-5")
+  expect_setequal(a5$analysis_id, c("GROUPN", "RACE", "ASIANSUB", "CONT", "CAT"))
+  expect_true(all(a5$overall[a5$analysis_id != "GROUPN"] %in% "TRUE"))
 })
