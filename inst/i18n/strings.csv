@@ -2671,6 +2671,9 @@ No heading of its own: its rows go under %s.,独自の見出しはありませ�
 The checks against the data have not run yet. Press [Review with the data] to read the datasets once (not again until a file changes).,データと照らし合わせたチェックはまだです。［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。
 %s: the checks against the data have not run yet.,%s：データと照らし合わせたチェックはまだです。
 Press [Review with the data]: it reads the datasets once (not again until a file changes).,［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。
+Fit to width,幅に合わせる
+"%s's own rows, as written to %s (edit them on the left). Study defaults fill what they leave out.",%s 自身の行（%s に書かれる内容。編集は左で）。足りないところは試験の既定が補います。
+No rows of its own: the study defaults make its page.,この帳票自身の行はありません。試験の既定でページができます。
 Load a standard column header...,定型の列見出しを読み込む…
 Load a standard column header,定型の列見出しを読み込む
 The lines of the column header become the chosen one's; what they say now is replaced.,列見出しの行が、選んだ定型の行になります。いまの内容は置き換わります。
