@@ -5,5 +5,5 @@ phase: '2'
 description: 'The sample study of tflplanner: the CDISC pilot ADaM data of the pharmaverseadam
   package; one study ARD and tables, a listing and a figure made from it.'
 created: '2026-10-10'
-updated: 2026-10-10 18:16:04
-tflplanner: 0.0.2.9168
+updated: 2026-10-10 22:32:44
+tflplanner: 0.0.2.9172
