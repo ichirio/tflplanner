@@ -192,8 +192,11 @@ builder_read <- function(x, output_id, meta = NULL) {
   kind[is.na(kind)] <- ifelse(
     vapply(vars[is.na(kind)], function(v) length(lev_of(v)) > 0, NA),
     "categorical", "continuous")
+  # under: its rows under a level of another variable (RACE: Asian)
+  under <- if (!is.null(vr$under)) vr$under[match(vars, vr$variable)] else
+    rep(NA_character_, length(vars))
   variables <- data.frame(variable = vars, kind = kind, label = label,
-                          hint = hint, stringsAsFactors = FALSE)
+                          hint = hint, under = under, stringsAsFactors = FALSE)
   levels <- stats::setNames(lapply(vars, function(v)
     if (identical(kind[match(v, vars)], "categorical")) lev_of(v) else
       character()), vars)
@@ -310,6 +313,9 @@ builder_write <- function(x, output_id, state, was = NULL) {
     lab <- if (is.na(v$label[i]) || !nzchar(v$label[i])) NA_character_ else v$label[i]
     if (is.na(w) || !identical(v$label[i], wv$label[w])) val$label <- lab
     if (moved) val$order <- as.character(i)
+    un <- v$under[i] %||% NA_character_
+    if (!is.na(un) && !nzchar(un)) un <- NA_character_
+    if (is.na(w) || !identical(un, wv$under[w] %||% NA_character_)) val$under <- un
     cat_v <- identical(v$kind[i], "categorical")
     if (is.na(w) || !identical(st$levels[[nm]], was$levels[[nm]]) ||
         !identical(v$kind[i], wv$kind[w])) {

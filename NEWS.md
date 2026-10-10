@@ -26,6 +26,21 @@ look at its Review tab.
 
 ## Changes
 
+- **Race with its Asian sub-categories, nested or in two blocks** (the
+  sample's T-14-1-5 and T-14-1-6, with rtfreporter #599 and tflspec
+  #213).  The table builder's variable form gets "Rows under a level of
+  another variable": a categorical variable's rows go right after the
+  chosen level's row of another, one step deeper, without their own
+  heading (the `variables` sheet's `under`, written as `plan_nest()`).
+  The sample gains the two tables from the same data and analyses:
+  - **T-14-1-5:** Race, n (%) with Chinese / Japanese / Korean under Asian.
+  - **T-14-1-6:** Race, n (%), then Race Sub Asian.
+
+  They count the enrolled subjects (a new analysis set ENR, all of ADSL:
+  the pilot's two Asian subjects are screen failures) by ARM, with a Total
+  column. The Asian sub-categories are derived for demonstration (a
+  footnote says so; RACE is not changed). The other tables' programs and
+  RTFs are byte-identical.
 - **The Review tab says in plain words what reading the data does.**  The
   internal "data facts" are gone from the screen and the guide: the button
   is "Review with the data" (データも使って見直す) everywhere, and the tab
