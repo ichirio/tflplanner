@@ -2517,7 +2517,7 @@ Vertical justification,縦位置の揃え（vjust）
 "Their columns, by name: TRT01A",群の列の名前：TRT01A
 "The variable's level, e.g. 0.5 for a KM's median",変数の水準（KM の中央値なら 0.5）
 TRT01A = Placebo (several: | between them),TRT01A = Placebo（複数は | で区切る）
-"{value} = the number, e.g. Median: {value} days",{value} = その数値（例：Median: {value} days）
+"{value} = the number; {conf.low}, {conf.high} ... other statistics of the same row, e.g. HR {estimate} (95% CI {conf.low}, {conf.high})","{value} = その数値。{conf.low}、{conf.high} など = 同じ行のほかの統計量（例：HR {estimate} (95% CI {conf.low}, {conf.high})）"
 Empty: the text the ARD has (stat_fmt),空欄：ARD にある書式の文字（stat_fmt）
 This figure's ARD,この図の ARD
 "Where the numbers it prints come from (step 3: ""A number from the ARD"", ""Statistics from the ARD""). The program puts it in `ard`.",図に表示する数値の出どころです（段 3 の「ARD の数値を表示」「ARD の統計量」）。プログラムはこれを `ard` に読み込みます。
@@ -2622,8 +2622,52 @@ This is a fault of the review; please report it.,レビュー側の不具合で�
 %s's ARD changed,%s の ARD が変わった
 its program changed,プログラムが変わった
 the study setup changed,試験のセットアップが変わった
+Review,レビュー
+%s: the advice applied (save to keep it).,%s：助言を当てました（残すには保存してください）。
+Reading the data for the review,レビューのためにデータを読んでいます
+Reading the definition as the programs do,プログラムと同じように定義を読んでいます
+The definition has errors (see the Review tab),定義にエラーがあります（レビュータブを見てください）
+The review of this report: a click shows its items,この帳票のレビュー：クリックで項目を表示
+to check,要確認
+"%d errors, %d to check, %d to set by hand",エラー %d・要確認 %d・手で設定 %d
+Review with the data,データ込みでレビュー
+Check as the programs read it,プログラムが読むとおりに確認
+Every area,すべての範囲
+Search the items,項目を検索
+(all),（すべて）
+(the study),（試験全体）
+Item,項目
+Hint,ヒント
+Nothing to review.,レビューする項目はありません。
+Open a study to review it.,試験を開くとレビューできます。
+"Nothing to review: no error, nothing to check, nothing to set by hand.",レビューする項目はありません：エラーも、要確認も、手で設定するものもありません。
+Not reviewed against the data yet: Review with the data reads it once (it is kept).,まだデータと照らし合わせていません：「データ込みでレビュー」で一度読みます（結果は保存されます）。
+Against the data as read %s (%s),%s に読んだデータと照合（%s）
+Rules off in the company standards: %s,会社標準で止めているルール：%s
+errors,エラー
+to set by hand,手で設定
+ARD run,ARD の作成
+Definition files,定義ファイル
+Location,場所
+_START_ to _END_ of _TOTAL_ items,_TOTAL_ 件中 _START_〜_END_
+Previous,前へ
+Next,次へ
+%s is not a table of the study,%s は試験の表ではありません
+"%s is not a table of the study (deleted, or renamed by hand)",%s は試験の表ではありません（削除されたか、手で名前が変えられています）
+"the design reads an ARD, but the figure has none: choose it in step 2",デザインは ARD を読みますが、図に ARD がありません。ステップ 2 で選んでください
+%s has no analysis %s (any more): the figure prints from it,%s に解析 %s が（もう）ありません。図はその数値を出します
+the ARD of %s is not made yet: make it first (its step 2),%s の ARD はまだ作られていません。先に作ってください（そのステップ 2）
+listing %s: no columns in `listing_cols`,Listing %s: `listing_cols` に列がありません
+"listing %s, column %s: no `vars`",Listing %s の %s 列目: `vars` がありません
+"The listing %s reads the dataset %s, which is not in the catalog.",Listing %s はデータセット %s を読みますが、カタログにありません。
+"The listing %s sorts by %s, which %s does not have.",Listing %s は %s で並べますが、%s にその列がありません。
+"Column %s of the listing %s shows %s, which %s does not have.",Listing %2$s の %1$s 列目は %3$s を表示しますが、%4$s にその列がありません。
+%s %s no dataset %s,%s %s: データセット %s がありません
+%s %s no variable %s in %s,%1$s %2$s: %4$s に変数 %3$s がありません
 "Choose a table of the study as the figure's ARD source (its step 2), or take the ARD in.",図の ARD の取り出し元に試験の表を選ぶか（その手順 2）、ARD を取り込んでください。
 The design reads an ARD: choose where it comes from (the figure's step 2).,デザインが ARD を読んでいます。取り出し元を選んでください（図の手順 2）。
 "Give the piece an analysis the table still has, or add the analysis again.",部品に、表にまだある解析を指定するか、その解析を加え直してください。
 "Make the ARD (its table's step 2, or take it in): the figure prints from it.",ARD を作ってください（その表の手順 2、または取り込み）。図はそこから値を出します。
 "Correct the piece to a row the ARD has (its analysis, variable, group or statistic).",部品を ARD にある行（解析・変数・群・統計量）に合わせて直してください。
+"%s calls %s, which tflspec no longer has.",%s が %s を呼んでいますが、tflspec にはもうありません。
+"Write it again (open the study and save), or source programs/study_helpers.R.",書き直してください（試験を開いて保存）。または programs/study_helpers.R を source してください。

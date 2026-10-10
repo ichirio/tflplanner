@@ -199,42 +199,58 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
 
 # A figure's ARD problems, for the study review and the designer: its
 # source (a table that is not one; a design that reads an ARD without a
-# source; an ARD not made yet) and its pieces against the rows it has
+# source; an ARD not made yet) and its pieces against the rows it has.
+# `rule` (the review's, F04-F08), and each problem's sentence (`template`)
+# and values (`args`), for a translation
 .fig_ard_problems <- function(study, output_id, design = fig_design(study$planner, output_id)) {
-  out <- data.frame(part = character(), field = character(), problem = character(),
-                    severity = character(), stringsAsFactors = FALSE)
-  add <- function(p, f, m, sev = "error") out[nrow(out) + 1L, ] <<- list(p, f, m, sev)
+  rows <- list()
+  add <- function(p, f, rule, tpl, args = character(), sev = "error") {
+    rows[[length(rows) + 1L]] <<- list(
+      part = p, field = f, problem = do.call(sprintf, c(list(tpl), as.list(args))),
+      severity = sev, rule = rule, template = tpl, args = as.character(args))
+  }
+  done <- function() {
+    col <- function(nm) vapply(rows, function(r) as.character(r[[nm]]), "")
+    out <- data.frame(part = col("part"), field = col("field"), problem = col("problem"),
+                      severity = col("severity"), rule = col("rule"),
+                      template = col("template"), stringsAsFactors = FALSE)
+    out$args <- lapply(rows, `[[`, "args")
+    out
+  }
   x <- study$planner
   src <- .fig_ard_source(x, output_id)
   reads <- .fig_reads_ard(design, output_id)
   if (src$kind == "table" && !.is_table(x, src$id)) {
-    add("ard", "ard_source", sprintf("%s is not a table of the study%s", src$id,
-                                     if (src$id %in% output_ids(x)) "" else " (deleted, or renamed by hand)"))
-    return(out)
+    add("ard", "ard_source", "F04",
+        if (src$id %in% output_ids(x)) "%s is not a table of the study"
+        else "%s is not a table of the study (deleted, or renamed by hand)", src$id)
+    return(done())
   }
   if (src$kind == "none") {
-    if (reads) add("ard", "ard_source", "the design reads an ARD, but the figure has none: choose it in step 2")
-    return(out)
+    if (reads) add("ard", "ard_source", "F05",
+                   "the design reads an ARD, but the figure has none: choose it in step 2")
+    return(done())
   }
-  if (!reads) return(out)
+  if (!reads) return(done())
   # the analyses the pieces name are the source's definition's (its ARD
   # made before a change still has the old ones)
   if (src$kind %in% c("own", "table")) {
     defined <- ard_rows(x, "analyses", src$id)$analysis_id
     for (a in setdiff(.fig_ard_analyses(design), defined)) {
-      add("ard", "analysis_id", sprintf("%s has no analysis %s (any more): the figure prints from it", src$id, a))
+      add("ard", "analysis_id", "F06",
+          "%s has no analysis %s (any more): the figure prints from it", c(src$id, a))
     }
-    if (nrow(out)) return(out)
+    if (length(rows)) return(done())
   }
-  rows <- .fig_ard_rows(study, output_id)
-  if (is.null(rows) || !nrow(rows)) {
-    add("ard", "ard_source", sprintf("the ARD of %s is not made yet: make it first (its step 2)",
-                                     if (src$kind == "import") src$file else src$id), "warning")
-    return(out)
+  ard <- .fig_ard_rows(study, output_id)
+  if (is.null(ard) || !nrow(ard)) {
+    add("ard", "ard_source", "F07", "the ARD of %s is not made yet: make it first (its step 2)",
+        if (src$kind == "import") src$file else src$id, "warning")
+    return(done())
   }
-  ck <- tflspec::tfl_check_fig_design(design, ard = rows)
+  ck <- tflspec::tfl_check_fig_design(design, ard = ard)
   ck <- ck[grepl("ard_", ck$part, fixed = TRUE), , drop = FALSE]
-  if (nrow(ck)) out <- rbind(out, data.frame(part = ck$part, field = ck$field, problem = ck$problem,
-                                             severity = "error", stringsAsFactors = FALSE))
-  out
+  # tflspec's words about the ARD's rows (no analysis, no statistic ...)
+  for (i in seq_len(nrow(ck))) add(ck$part[i], ck$field[i], "F08", "%s", ck$problem[i])
+  done()
 }

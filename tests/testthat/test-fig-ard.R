@@ -46,9 +46,12 @@ test_that("the sample's F-14-2-3 reads T-14-2-2's ARD in its data section", {
   expect_true(i_data < i_ard && i_ard < i_adam)
   expect_identical(code[i_ard + 1L], "  filter(output_id == \"T-14-2-2\")")
   expect_match(code[i_ard + 2L], "run programs/ard/T-14-2-2.R first", fixed = TRUE)
-  # the medians: one annotate a arm, its number the ARD's
+  # the medians: one annotate a arm, its number the ARD's; the hazard
+  # ratios: the estimate and its CI on one line (#311)
   expect_identical(sum(grepl("ard_value(ard, \"KM\", \"prob\", \"estimate\", TRT01A = ",
                              code, fixed = TRUE)), 3L)
+  expect_identical(sum(grepl("ard_value(ard, \"HR\", \"TRT01A\", \"conf.high\", level = ",
+                             code, fixed = TRUE)), 2L)
   expect_false(inherits(tryCatch(parse(text = code), error = function(e) e), "error"))
   # no source: the program stops, saying where to choose it
   p0 <- set_fig_ard_source(p, "F-14-2-3", NULL)
@@ -112,8 +115,11 @@ test_that("the designer: an ARD piece's code is its whole term, its summary its 
     x <- strsplit(.piece_code(code, d, list(sec = "layers", i = i), make), "\n", fixed = TRUE)[[1L]]
     expect_identical(x[[1L]], "  annotate(")
     expect_match(x[[length(x)]], "^  [)]")
-    expect_match(x[[3L]], d$layers[[i]]$label |> sub(pattern = "[{]value[}]", replacement = "") |>
-                   sub(pattern = ": $", replacement = ""), fixed = TRUE)
+    # (a median's label: its text, then the number)
+    if (identical(d$layers[[i]]$analysis_id, "KM")) {
+      expect_match(x[[3L]], d$layers[[i]]$label |> sub(pattern = "[{]value[}]", replacement = "") |>
+                     sub(pattern = ": $", replacement = ""), fixed = TRUE)
+    }
   }
   expect_identical(.pd_summary(d$layers[[k[1L]]]), "KM prob estimate TRT01A = Placebo")
 })
@@ -143,4 +149,52 @@ test_that("a table deleted, or an analysis dropped from it: the figure's checks 
   pr <- .fig_ard_problems(s, "F-14-2-3")
   expect_identical(unique(pr$severity), "error")
   expect_match(pr$problem[1], "T-14-2-2 has no analysis KM")
+})
+
+test_that("the study review lists a figure's ARD problems as F04-F08, each with its place", {
+  s <- fig_ard_study()
+  rv <- function(s, lang = "en") {
+    r <- study_review(s, "F-14-2-3", data = "none", lang = lang)
+    r[r$rule %in% c("F04", "F05", "F06", "F07", "F08"), , drop = FALSE]
+  }
+  # T-14-2-2's ARD not made yet: F07, to check, on the report row
+  r <- rv(s)
+  expect_identical(r$rule, "F07")
+  expect_identical(r$level, "check")
+  expect_identical(c(r$sheet, r$field), c("report", "ard_source"))
+  expect_identical(r$message, "the ARD of T-14-2-2 is not made yet: make it first (its step 2)")
+  expect_identical(r$template, "the ARD of %s is not made yet: make it first (its step 2)")
+  expect_identical(.review_target(r, s$planner)$go, "ard")
+  # in Japanese: the sentence translated, the value put in
+  expect_identical(rv(s, "ja")$message,
+                   "T-14-2-2 \u306e ARD \u306f\u307e\u3060\u4f5c\u3089\u308c\u3066\u3044\u307e\u305b\u3093\u3002\u5148\u306b\u4f5c\u3063\u3066\u304f\u3060\u3055\u3044\uff08\u305d\u306e\u30b9\u30c6\u30c3\u30d7 2\uff09")
+  # no source: F05, by hand
+  s0 <- s
+  s0$planner <- set_fig_ard_source(s$planner, "F-14-2-3", NULL)
+  r <- rv(s0)
+  expect_identical(r$rule, "F05")
+  expect_identical(r$level, "hand")
+  # a table that is gone: F04
+  s4 <- s
+  rep <- s4$planner$sheets$report
+  rep$ard_source[rep$output_id %in% "F-14-2-3"] <- "table:T-GONE"
+  s4$planner$sheets$report <- rep
+  r <- rv(s4)
+  expect_identical(r$rule, "F04")
+  expect_identical(r$args[[1L]], "T-GONE")
+  expect_match(r$message, "(deleted, or renamed by hand)", fixed = TRUE)
+  # made, then a piece the ARD cannot answer: F08, in the designer
+  skip_if_not_installed("cardx")
+  expect_true(suppressMessages(update_study_ard(s, "T-14-2-2"))$ok)
+  expect_identical(nrow(rv(s)), 0L)
+  d <- fig_design(s$planner, "F-14-2-3")
+  k <- which(vapply(d$layers, function(l) identical(l$layer, "ard_number"), NA))[1L]
+  d$layers[[k]]$group <- "TRT01A = Nobody"
+  s$planner <- set_fig_design(s$planner, "F-14-2-3", d)
+  r <- rv(s)
+  expect_identical(r$rule, "F08")
+  expect_identical(r$level, "error")
+  expect_identical(r$sheet, "design")
+  expect_identical(r$row, sprintf("layers[%d] ard_number", k))
+  expect_identical(.review_target(r, s$planner)$go, "designer")
 })

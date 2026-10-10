@@ -35,17 +35,22 @@
 #'   will ([check_planner()]): slow, one read a report.
 #' @param home The tflplanner home.
 #' @param lang The language of the messages (the app's by default).
+#' @param progress A function called with each dataset's name before its
+#'   file is read (`data = "read"`), or `NULL`.
 #' @return A `tflspec::tfl_review`, its `message` in the app's language and
 #'   `message_en` in English; `attr(, "facts_made")`: when the facts of the
-#'   data were made (`NA`: none were used).
+#'   data were made (`NA`: none were used); `attr(, "off")`: the rules the
+#'   company standards leave out (their settings' `review_off`, `A12 | C02`),
+#'   whose rows are not there.
 #' @seealso [tflspec::tfl_review_spec()], [tflspec::tfl_review_rules()]
 #' @export
 study_review <- function(study, output_id = NULL, data = c("cached", "read", "none"),
                          ard = TRUE, deep = FALSE, home = tflplanner_home(),
-                         lang = tflplanner_language()) {
+                         lang = tflplanner_language(), progress = NULL) {
   data <- match.arg(data)
   facts <- if (!identical(data, "none")) {
-    review_facts(study, read = identical(data, "read"), home = home)
+    review_facts(study, read = identical(data, "read"), home = home,
+                 progress = progress)
   }
   if (isTRUE(ard)) {
     a <- tryCatch(.review_ard_facts(study, home), error = function(e) NULL)
@@ -64,15 +69,31 @@ study_review <- function(study, output_id = NULL, data = c("cached", "read", "no
     drop <- r$rule == "F03" & grepl("no dataset ", r$message) & toupper(gone) %in% unread
     if (any(drop)) r <- .review_finish(r[!drop, , drop = FALSE])
   }
-  more <- list(.rule_d01(study))
+  more <- list(.rule_d01(study), .rules_fig_ard(study), .rule_p02(study))
   if (inherits(facts, "tfl_data_facts")) {
     more <- c(more, list(.rule_d02(study, attr(facts, "not_read"))))
   }
   if (isTRUE(deep)) more <- c(more, list(.rule_p01(p)))
   r <- .review_bind(c(list(r), more))
   r <- .review_narrow(r, output_id)
+  r <- .review_off(r)
   r <- .review_language(r, lang)
   attr(r, "facts_made") <- if (inherits(facts, "tfl_data_facts")) facts$made else NA
+  attr(r, "facts_of") <- if (inherits(facts, "tfl_data_facts")) names(facts$datasets) else character()
+  r
+}
+
+# The rules the company standards leave out (settings `review_off`:
+# `A12 | C02`): their rows dropped, said in attr(, "off")
+.review_off <- function(r) {
+  off <- toupper(.split_bar(.std_setting("review_off", "")))
+  if (length(off)) {
+    keep <- attributes(r)
+    keep <- keep[intersect(names(keep), c("facts_made", "facts_of"))]
+    r <- .review_finish(r[!toupper(r$rule) %in% off, , drop = FALSE])
+    for (k in names(keep)) attr(r, k) <- keep[[k]]
+  }
+  attr(r, "off") <- off
   r
 }
 
@@ -84,7 +105,7 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
                             lang = tflplanner_language()) {
   r <- .review_planner(x, facts)
   r <- .review_narrow(r, output_id)
-  .review_language(r, lang)
+  .review_language(.review_off(r), lang)
 }
 
 # The review of a planner: tflspec's rules on its sheets, and the report
@@ -101,17 +122,18 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
 # rows of the review (tflspec's .rv() shape), with the catalog's level,
 # area and hint
 .rv_row <- function(rule, output_id = NA_character_, sheet = "", row = "",
-                    field = "", args = character(), level = NULL) {
+                    field = "", args = character(), level = NULL, template = NULL) {
   cat <- .review_catalog()
   k <- match(rule, cat$rule)
   args <- as.character(args)
-  msg <- tryCatch(do.call(sprintf, c(list(cat$message[k]), as.list(args))),
+  template <- template %||% cat$message[k]
+  msg <- tryCatch(do.call(sprintf, c(list(template), as.list(args))),
                   error = function(e) paste(args, collapse = " "))
   out <- data.frame(output_id = as.character(output_id),
                     level = level %||% cat$level[k], area = cat$area[k],
                     sheet = sheet, row = row, field = field, message = msg,
-                    hint = cat$hint[k], rule = rule, draft = FALSE,
-                    stringsAsFactors = FALSE)
+                    template = template, hint = cat$hint[k], rule = rule,
+                    draft = FALSE, stringsAsFactors = FALSE)
   out$args <- list(args)
   out$fix <- list(NULL)
   out
@@ -128,9 +150,15 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   if (!length(parts)) {
     return(.review_finish(.rv_row("R01")[0, , drop = FALSE]))
   }
-  cols <- names(parts[[1L]])
+  # every part's columns (tflspec's rows may have one this package's do
+  # not, or not yet): a column a part lacks is blank in it
+  cols <- unique(unlist(lapply(parts, names)))
   .review_finish(do.call(rbind, lapply(parts, function(d) {
     class(d) <- "data.frame"
+    for (cn in setdiff(cols, names(d))) {
+      d[[cn]] <- if (cn %in% c("args", "fix")) rep(list(NULL), nrow(d)) else
+        rep(NA_character_, nrow(d))
+    }
     d[cols]
   })))
 }
@@ -159,9 +187,21 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   if (!nrow(r) || identical(lang, "en")) return(r)
   cat <- .review_catalog()
   k <- match(r$rule, cat$rule)
+  # the row's own sentence (tflspec 0.0.24.9078 and the app's rows carry
+  # it), else its rule's
+  own <- if ("template" %in% names(r)) r$template else rep(NA_character_, nrow(r))
   for (i in seq_len(nrow(r))) {
-    tpl <- cat$message[k[i]]
+    tpl <- if (!is.na(own[i])) own[i] else cat$message[k[i]]
     if (is.na(tpl)) next
+    # a rule whose message is another's words (a figure's advice, the
+    # constructors' problems): those words, where the app has them
+    if (identical(tpl, "%s")) {
+      loc <- tr(r$message[i], lang)
+      if (!identical(loc, r$message[i])) r$message[i] <- loc
+      h <- cat$hint[k[i]]
+      if (!is.na(h) && nzchar(h)) r$hint[i] <- tr(h, lang)
+      next
+    }
     loc <- tr(tpl, lang)
     a <- r$args[[i]]
     if (!identical(loc, tpl)) {
@@ -172,6 +212,30 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
     if (!is.na(h) && nzchar(h)) r$hint[i] <- tr(h, lang)
   }
   r
+}
+
+# ---- a figure that prints a table's numbers (F04-F08) ----------------------
+
+# Each figure's ARD problems (.fig_ard_problems()): its source on the
+# report row (step 2 of the figure: F04, F05, F07), an analysis its
+# pieces name (F06), a piece the ARD cannot answer (F08: in the designer)
+.rules_fig_ard <- function(study) {
+  x <- study$planner
+  o <- x$outputs
+  if (is.null(o) || !nrow(o)) return(NULL)
+  out <- list()
+  for (id in o$output_id) {
+    if (!identical(report_info(x, id)$type, "figure")) next
+    pr <- tryCatch(.fig_ard_problems(study, id), error = function(e) NULL)
+    for (i in seq_len(NROW(pr))) {
+      src <- identical(pr$part[i], "ard")
+      out[[length(out) + 1L]] <- .rv_row(
+        pr$rule[i], id, if (src) "report" else "design",
+        if (src) "" else pr$part[i], pr$field[i],
+        args = pr$args[[i]], template = pr$template[i])
+    }
+  }
+  .review_bind(out)
 }
 
 # ---- the report list (R01-R08) ----------------------------------------------
@@ -341,6 +405,106 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
     .rv_row("D02", NA_character_, "datasets", g, "", args = g)))
 }
 
+# P02: a study program that calls one of the six functions tflspec no
+# longer has (0.0.24.9066's set_levels() ...: the study's
+# programs/study_helpers.R has them) -- as tflspec::, or after
+# library(tflspec) with no study_helpers.R sourced on the way.  An error
+# when the program would stop; to check when another program sources it
+# (the helpers may come from that one).  The study folder's programs/,
+# not its copies (programs/.edited/)
+.rule_p02 <- function(study) {
+  root <- study$path
+  dir <- file.path(root, "programs")
+  if (is.null(root) || !dir.exists(dir)) return(NULL)
+  files <- list.files(dir, pattern = "[.][Rr]$", recursive = TRUE)
+  files <- files[!grepl("(^|/)[.]", files)]
+  if (!length(files)) return(NULL)
+  rel <- file.path("programs", files)
+  info <- lapply(file.path(root, rel), .p02_file)
+  names(info) <- rel
+  helpers <- file.path("programs", .study_helpers_file)
+  # the files each one sources, on and on (paths from the study folder)
+  reach <- function(f, seen = character()) {
+    for (s in setdiff(info[[f]]$sources, seen)) {
+      seen <- c(seen, s)
+      if (s %in% names(info)) seen <- reach(s, seen)
+    }
+    seen
+  }
+  sourced_by <- unique(unlist(lapply(names(info), function(f) info[[f]]$sources)))
+  p_ids <- study$planner$outputs$output_id
+  out <- list()
+  for (f in names(info)) {
+    x <- info[[f]]
+    if (!length(x$ns) && !length(x$bare)) next
+    up <- reach(f)
+    with_helpers <- helpers %in% up
+    attaches <- x$attaches || any(vapply(intersect(up, names(info)),
+                                         function(s) info[[s]]$attaches, NA))
+    bad <- x$ns
+    if (attaches && !with_helpers) bad <- union(bad, x$bare)
+    if (!length(bad)) next
+    id <- sub("[.][Rr]$", "", basename(f))
+    out[[length(out) + 1L]] <- .rv_row(
+      "P02", if (id %in% p_ids) id else NA_character_, "programs", f, "",
+      args = c(f, paste0(bad, "()", collapse = ", ")),
+      level = if (f %in% sourced_by && !length(x$ns)) "check" else "error")
+  }
+  .review_bind(out)
+}
+
+# the six tflspec gave up to 0.0.24.9066
+.p02_removed <- c("set_levels", "tag_ard", "fmt_ard", "keep_stats", "fmt_pvalue",
+                  "save_ard")
+
+# What a program file says of them: the ones called as tflspec:: (`ns`)
+# and bare (`bare`, less the ones it defines), whether it attaches
+# tflspec, the files it sources (literal paths); kept by the file's time
+# and size
+.p02_file <- function(path) {
+  fi <- file.info(path)
+  key <- paste(path, fi$mtime, fi$size)
+  hit <- .review_memo$p02[[key]]
+  if (!is.null(hit)) return(hit)
+  none <- list(ns = character(), bare = character(), attaches = FALSE,
+               sources = character())
+  pd <- tryCatch(utils::getParseData(parse(path, keep.source = TRUE, encoding = "UTF-8")),
+                 error = function(e) NULL)
+  out <- none
+  if (!is.null(pd) && nrow(pd)) {
+    pd <- pd[pd$terminal, , drop = FALSE]
+    pd <- pd[order(pd$line1, pd$col1), , drop = FALSE]
+    tok <- pd$token
+    txt <- pd$text
+    n <- length(tok)
+    prev <- function(i, k) if (i - k >= 1L) txt[i - k] else ""
+    nxt <- function(i, k) if (i + k <= n) txt[i + k] else ""
+    calls <- which(tok == "SYMBOL_FUNCTION_CALL")
+    six <- calls[txt[calls] %in% .p02_removed]
+    is_ns <- vapply(six, function(i) prev(i, 1L) %in% c("::", ":::") &&
+                      prev(i, 2L) == "tflspec", NA)
+    defined <- unique(txt[which(tok == "FUNCTION")[
+      vapply(which(tok == "FUNCTION"), function(i) i > 2L && tok[i - 1L] %in% c("LEFT_ASSIGN", "EQ_ASSIGN"), NA)
+    ] - 2L])
+    lib <- calls[txt[calls] %in% c("library", "require", "requireNamespace")]
+    attaches <- any(vapply(lib, function(i) {
+      a <- gsub("^[\"']|[\"']$", "", nxt(i, 2L))
+      identical(a, "tflspec") && txt[i] != "requireNamespace"
+    }, NA))
+    src <- calls[txt[calls] %in% c("source", "sys.source")]
+    sources <- vapply(src, function(i) {
+      if (tok[min(i + 2L, n)] == "STR_CONST") gsub("^[\"']|[\"']$", "", nxt(i, 2L)) else NA_character_
+    }, "")
+    out <- list(ns = unique(txt[six[is_ns]]),
+                bare = setdiff(unique(txt[six[!is_ns]]), defined),
+                attaches = attaches,
+                sources = unique(stats::na.omit(sources)))
+  }
+  if (is.null(.review_memo$p02) || length(.review_memo$p02) > 2000L) .review_memo$p02 <- list()
+  .review_memo$p02[[key]] <- out
+  out
+}
+
 # P01: the deep check, the definition read back as the programs read it
 .rule_p01 <- function(p) {
   ck <- tryCatch(check_planner(p), error = function(e) NULL)
@@ -359,7 +523,7 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
 #'   listed in `attr(, "not_read")`.
 #' @export
 review_facts <- function(study, refresh = FALSE, read = TRUE,
-                         home = tflplanner_home()) {
+                         home = tflplanner_home(), progress = NULL) {
   p <- study$planner
   dir <- file.path(.store_dir(study$meta$study_id, home), "facts")
   if (isTRUE(refresh)) unlink(dir, recursive = TRUE)
@@ -396,6 +560,7 @@ review_facts <- function(study, refresh = FALSE, read = TRUE,
       not_read <- c(not_read, d)
       next
     }
+    if (is.function(progress)) progress(d)
     u <- .facts_unit(p, d, path_of, pop_ds)
     if (is.null(u)) next
     dir.create(dir, recursive = TRUE, showWarnings = FALSE)

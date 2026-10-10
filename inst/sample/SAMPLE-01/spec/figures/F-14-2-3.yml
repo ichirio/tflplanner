@@ -78,4 +78,26 @@ layers:
   'y': -Inf
   hjust: 0.0
   vjust: -0.6
+- layer: ard_number
+  analysis_id: HR
+  variable: TRT01A
+  level: Xanomeline Low Dose
+  stat: estimate
+  label: 'HR, Xanomeline Low Dose vs Placebo: {value} (95% CI {conf.low}, {conf.high})'
+  digits: 2.0
+  x: Inf
+  'y': 0.3
+  hjust: 1.02
+  vjust: -2.1
+- layer: ard_number
+  analysis_id: HR
+  variable: TRT01A
+  level: Xanomeline High Dose
+  stat: estimate
+  label: 'HR, Xanomeline High Dose vs Placebo: {value} (95% CI {conf.low}, {conf.high})'
+  digits: 2.0
+  x: Inf
+  'y': 0.3
+  hjust: 1.02
+  vjust: -0.6
 

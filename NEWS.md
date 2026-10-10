@@ -14,6 +14,85 @@
   from its definition -- logged in the same batch under `ard` -- and
   leave it alone when it is.  After this update every report program is
   rewritten once (`record_report()` changed in `report_setup.R`).
+## Upgrading from an earlier version
+
+Update tflplanner and tflspec together, open each study and save it, then
+look at its Review tab.
+
+* **This tflplanner needs tflspec 0.0.24.9079 or later** (0.0.2.9157 and
+  later needed 0.0.24.9077): update both together.
+* **Six functions are no longer tflspec's; the study keeps them in
+  `programs/study_helpers.R`.**  `set_levels()`, `tag_ard()`, `fmt_ard()`,
+  `keep_stats()`, `fmt_pvalue()` and `save_ard()` (tflspec's up to
+  0.0.24.9066) are written there by a save, and the study's setup sources
+  it.  A program that calls them as `tflspec::` or after
+  `library(tflspec)` without it stops; the review says which (P02): write
+  it again (open the study and save) or source
+  `programs/study_helpers.R`.
+* **A figure design written before reads as it is**: its YAML's old form
+  (`stats:`, `data_code`, `stats_code`) is read, and a save writes the new
+  one.
+* **Figure programs have a new shape, and draw the same figures**: a data
+  and a plot section, one `+` chain.  A save writes them again.
+* **The steps:** update both packages; open each study and save it (the
+  programs and `study_helpers.R` are written again; a program edited by
+  hand is copied to `programs/.edited/` first); check the Review tab.
+
+## Changes
+
+- **The review names a program calling a function tflspec no longer
+  has** (P02, area program): one of the six above, as `tflspec::`, or
+  after `library(tflspec)` with `programs/study_helpers.R` not sourced on
+  the way (an error; to check when another program sources it).  The
+  study's `programs/` is looked at, not its copies in `.edited/`.
+- **The review lists a figure's ARD problems** (#288).  A figure that
+  prints a table's numbers is reviewed as the catalog's F04-F08: its ARD
+  source is not a table of the study (F04), the design reads an ARD but
+  the figure has none (F05), a piece names an analysis the table no
+  longer has (F06), the ARD is not made yet (F07), a piece the ARD cannot
+  answer (F08).  A click on one opens the figure's step 2, or the piece in
+  the designer.
+- **The review's sentences in Japanese, values and all.**  A row carries
+  its sentence (`template`) and values (`args`); the app translates the
+  sentence and puts the values in.  With tflspec 0.0.24.9078 that covers
+  a table against its ARD (T06, T07), a listing's columns (L01, L02) and a
+  figure against the data (F03); the app's own figure rules (F04-F07) too.
+
+- **The Review tab** (#288, phase 2).  A tab between Make a report and
+  Runs lists the study's review (`study_review()`): what cannot be used,
+  what is probably wrong, what to set by hand, report by report (the
+  picker on the left, each report with its three counts), filtered by
+  level, area and a search.  A click on an item goes to it: the report
+  chosen, its step and tab, the analysis, analysis data, code list or
+  figure piece opened, and the grid's row and cell flashed.
+  - The review is the app's one: made when a study is opened, 2 s after
+    edits pause and after a save (no file read: the facts of the data
+    kept from the last read); **Review with the data** reads the files
+    whose facts are stale; **Check as the programs read it** is the
+    former Runs tab's definition check (its card is gone).
+  - Its counts where one works: the report head (each a link to the tab,
+    that report and level), the report picker (errors / to check / by
+    hand after each title, the run's mark as it was), and the analyses'
+    badges (an error, or something to check: the subjects per group
+    counted twice among them) read the review instead of the ARD
+    definition's message.
+  - A figure's advice with a one-step fix has an Apply button.
+  - The company standards' settings key `review_off` (`A12 | C02`) leaves
+    rules out of every study's review; the tab says which.
+  - `study_review(progress = )` / `review_facts(progress = )`: told the
+    dataset each time one is read.
+  - The guide (Japanese) has a section on the review.
+
+- **The sample's F-14-2-3 prints the hazard ratios too** (#311).
+  T-14-2-2's ARD has a Cox model's hazard ratios against placebo (a
+  `custom` analysis `HR`, `cardx::ard_regression(coxph(), exponentiate =
+  TRUE)`), in the ARD and not in the table (its cells name `prob` and
+  `time` only; its RTF is unchanged, byte for byte), and F-14-2-3 prints
+  each with its CI on one line, through tflspec's labels that name
+  several statistics of one address (`HR {estimate} (95% CI {conf.low},
+  {conf.high})`, tflspec #206).  `cardx::ard_regression()` needs
+  broom.helpers: it is in Suggests, and the sample's official run names
+  it among what to install when it is missing.
 
 - **A figure prints the numbers of a table's ARD** (#293 phase 3, with
   tflspec #203).  A figure's step 2 (ARD) chooses where its ARD comes
