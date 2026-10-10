@@ -16,18 +16,18 @@
     "derive": ["TRTA = TRT01A", null, null]
   },
   "analysis_data": {
-    "output_id": ["T-14-1-1", "T-14-1-1S", "T-14-1-2", "T-14-1-3", "T-14-1-4", "T-14-1-5", "T-14-1-5", "T-14-1-6", "T-14-1-6", "T-14-2-1", "T-14-2-1", "T-14-2-3", "T-14-2-3", "T-14-2-2", "T-14-2-2", "T-14-3-1", "T-14-3-1", "F-14-2-4"],
-    "data_id": ["adsl_saf", "adsl_saf", "adsl_saf", "adsl_saf", "adsl_scrf", "adsl_enr", "adsl_enr_1", "adsl_enr", "adsl_enr_1", "adsl_saf", "advs_w24", "adsl_saf", "advs_w24", "adsl_saf", "adtte_ttde", "adsl_saf", "adae_saf", "adtte_ttde"],
-    "label": ["Safety set", "Safety set", "Safety set", "Safety set", "Screen failures", "Enrolled subjects", "Enrolled", "Enrolled subjects", "Enrolled", "Safety set", "Systolic blood pressure at Week 24, safety set", "Safety set", "Systolic blood pressure at Week 24, safety set", "Safety set", "Time to first dermatologic event, safety set", "Safety set", "Treatment-emergent AEs of the safety set", "TTDE of the SAFFL, with the subgroups"],
-    "from": ["ADSL", "ADSL", "ADSL", "ADSL", "ADSL", "ADSL", "ADSL", "ADSL", "ADSL", "ADSL", "ADVS", "ADSL", "ADVS", "ADSL", "ADTTE", "ADSL", "ADAE", "ADTTE"],
-    "population_id": ["SAF", "SAF", "SAF", "SAF", "SCRF", "ENR", "ENR", "ENR", "ENR", "SAF", null, "SAF", null, "SAF", null, "SAF", null, "SAF"],
-    "subjects": [null, null, null, null, null, null, null, null, null, null, "adsl_saf", null, "adsl_saf", null, "adsl_saf", null, "adsl_saf", null],
-    "where": [null, null, null, null, null, null, null, null, null, null, "PARAMCD == \"SYSBP\" & AVISIT == \"Week 24\"", null, "PARAMCD == \"SYSBP\" & AVISIT == \"Week 24\"", null, "PARAMCD == \"TTDE\"", null, "TRTEMFL == \"Y\"", "PARAMCD == \"TTDE\""],
-    "add": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "SEX | AGEGR1"],
-    "derive": [null, null, null, null, null, "RACESUB = dplyr::case_when(USUBJID == \"01-703-1396\" ~ \"CHINESE\", USUBJID == \"01-708-1104\" ~ \"JAPANESE\")", null, "RACESUB = dplyr::case_when(USUBJID == \"01-703-1396\" ~ \"CHINESE\", USUBJID == \"01-708-1104\" ~ \"JAPANESE\")", null, null, null, null, null, null, null, null, null, null],
-    "keep": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-    "distinct": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
-    "code": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
+    "output_id": ["T-14-1-1", "T-14-1-1S", "T-14-1-2", "T-14-1-3", "T-14-1-4", "T-14-1-5", "T-14-1-5", "T-14-1-6", "T-14-1-6", "T-14-2-1", "T-14-2-1", "T-14-2-3", "T-14-2-3", "T-14-2-2", "T-14-2-2", "T-14-3-1", "T-14-3-1", "F-14-2-4", "F-14-2-4"],
+    "data_id": ["adsl_saf", "adsl_saf", "adsl_saf", "adsl_saf", "adsl_scrf", "adsl_enr", "adsl_enr_1", "adsl_enr", "adsl_enr_1", "adsl_saf", "advs_w24", "adsl_saf", "advs_w24", "adsl_saf", "adtte_ttde", "adsl_saf", "adae_saf", "adtte_ttde", "adsl_saf"],
+    "label": ["Safety set", "Safety set", "Safety set", "Safety set", "Screen failures", "Enrolled subjects", "Enrolled", "Enrolled subjects", "Enrolled", "Safety set", "Systolic blood pressure at Week 24, safety set", "Safety set", "Systolic blood pressure at Week 24, safety set", "Safety set", "Time to first dermatologic event, safety set", "Safety set", "Treatment-emergent AEs of the safety set", "TTDE of the SAFFL, with the subgroups", "Safety set"],
+    "from": ["ADSL", "ADSL", "ADSL", "ADSL", "ADSL", "ADSL", "ADSL", "ADSL", "ADSL", "ADSL", "ADVS", "ADSL", "ADVS", "ADSL", "ADTTE", "ADSL", "ADAE", "ADTTE", "ADSL"],
+    "population_id": ["SAF", "SAF", "SAF", "SAF", "SCRF", "ENR", "ENR", "ENR", "ENR", "SAF", null, "SAF", null, "SAF", null, "SAF", null, "SAF", "SAF"],
+    "subjects": [null, null, null, null, null, null, null, null, null, null, "adsl_saf", null, "adsl_saf", null, "adsl_saf", null, "adsl_saf", null, null],
+    "where": [null, null, null, null, null, null, null, null, null, null, "PARAMCD == \"SYSBP\" & AVISIT == \"Week 24\"", null, "PARAMCD == \"SYSBP\" & AVISIT == \"Week 24\"", null, "PARAMCD == \"TTDE\"", null, "TRTEMFL == \"Y\"", "PARAMCD == \"TTDE\"", null],
+    "add": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "SEX | AGEGR1", null],
+    "derive": [null, null, null, null, null, "RACESUB = dplyr::case_when(USUBJID == \"01-703-1396\" ~ \"CHINESE\", USUBJID == \"01-708-1104\" ~ \"JAPANESE\")", null, "RACESUB = dplyr::case_when(USUBJID == \"01-703-1396\" ~ \"CHINESE\", USUBJID == \"01-708-1104\" ~ \"JAPANESE\")", null, null, null, null, null, null, null, null, null, null, null],
+    "keep": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    "distinct": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    "code": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]
   },
   "analyses": {
     "output_id": ["T-14-1-1", "T-14-1-1", "T-14-1-1", "T-14-1-1S", "T-14-1-1S", "T-14-1-1S", "T-14-1-2", "T-14-1-2", "T-14-2-1", "T-14-2-1", "T-14-0-1", "T-14-1-4", "T-14-1-4", "T-14-1-4", "T-14-1-3", "T-14-1-3", "T-14-2-3", "T-14-2-3", "T-14-2-3", "T-14-2-2", "T-14-2-2", "T-14-2-2", "T-14-1-5", "T-14-1-5", "T-14-1-5", "T-14-1-6", "T-14-1-6", "T-14-1-6", "T-14-3-1", "F-14-2-4", "F-14-2-4", "F-14-2-4"],
