@@ -9,6 +9,15 @@
   and the ARD state when they change, whoever ran it (this session,
   another, the app before a restart, R); and the builder reads a table's
   ARD for itself again then.
+- **A report's Total column switched itself on after a reconnect**
+  (#331 follow-up).  The table builder's inputs are numbered by the form
+  drawn (`b3_total_on`), from 0 in each session; a browser reconnecting
+  to a new session (the app restarted) sends the inputs it still holds,
+  and an earlier form's switch, on, was read as this form's: the Total
+  column turned on for a report without one, unsaved, and its preview
+  stopped in `plan_total()`.  The numbering now starts at a random point
+  in each session, so no input of a session before is read as one of
+  this session's form -- for every builder field, not only the switch.
 
 - **An ARD definition that does not hold is said, not passed over**
   (#323).  Saving writes no ARD program then (a blank `from` of an
