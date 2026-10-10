@@ -17,6 +17,19 @@
 }
 
 # one program in its own R process, from the study folder, with its log
+# whether a report's rows of the study ARD are not made from the definition
+# batch.R was written with: none, an error, or another fingerprint
+.batch_ard_stale <- function(output_id) {
+  sf <- file.path(dirname(.batch_ard), "ard_status.csv")
+  if (!file.exists(sf)) return(TRUE)
+  st <- utils::read.csv(sf, colClasses = "character")
+  r <- st[st$output_id == output_id, , drop = FALSE]
+  if (!nrow(r)) return(TRUE)
+  if (!is.na(r$error[1L]) && nzchar(r$error[1L])) return(TRUE)
+  want <- unname(.batch_needs_hash[output_id])
+  !is.na(want) && nzchar(want) && !identical(r$definition[1L], want)
+}
+
 .batch_run <- function(part, prog, log_dir, engine) {
   log <- file.path(log_dir, sub("[.][Rr]$", ".log", basename(prog)))
   t0 <- Sys.time()
@@ -151,6 +164,22 @@ run_batch <- function(parts, args = character()) {
     log_dir <- file.path(dir, "logs", part)
     dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
     for (p in progs) {
+      # a figure printing an ARD's numbers: that ARD first, when it is not
+      # made from the definition it has now (#293)
+      need <- if (part == "tfl") unname(.batch_needs[p]) else NA_character_
+      if (length(need) && !is.na(need) && .batch_ard_stale(need)) {
+        ap <- .batch_programs$ard[.batch_ard_outputs[basename(.batch_programs$ard)] %in% need]
+        if (length(ap)) {
+          cat(sprintf("(%s prints %s's ARD, which is not made from its definition: made first)
+",
+                      basename(p), need))
+          ard_dir <- file.path(dir, "logs", "ard")
+          dir.create(ard_dir, recursive = TRUE, showWarnings = FALSE)
+          ra <- .batch_run("ard", ap[1L], ard_dir, engine)
+          if (ra$status != "OK") .batch_ard_error(need, ra$note)
+          rows[[length(rows) + 1L]] <- ra
+        }
+      }
       r <- .batch_run(part, p, log_dir, engine)
       if (part == "ard" && r$status != "OK") {
         .batch_ard_error(.batch_ard_outputs[[basename(p)]], r$note)

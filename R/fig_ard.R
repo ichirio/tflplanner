@@ -102,6 +102,8 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
         sprintf("  filter(output_id == %s)", id),
         sprintf("if (!nrow(ard)) stop(\"The study ARD has no rows for %s: run %s first.\")",
                 src$id, prog),
+        "# (the definition it was made from: the report records it, #293)",
+        sprintf("ard_built <- ard_fingerprint(%s)", id),
         "")
     },
     import = {
@@ -113,6 +115,45 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
         sprintf("if (\"output_id\" %%in%% names(ard)) ard <- ard[ard$output_id == %s, , drop = FALSE]", id),
         "")
     })
+}
+
+# The report whose ARD a figure reads from the study ARD (its own id, or
+# the table's), when its design reads one; NA otherwise (none, or an ARD
+# taken in: no definition to follow)
+.fig_ard_need <- function(x, output_id) {
+  if (!identical(report_info(x, output_id)$type, "figure")) return(NA_character_)
+  src <- .fig_ard_source(x, output_id)
+  if (!src$kind %in% c("own", "table")) return(NA_character_)
+  if (!.fig_reads_ard(fig_design(x, output_id), output_id)) return(NA_character_)
+  src$id
+}
+
+# The figures printing an ARD's numbers that are to be made again because
+# of that ARD (#293): "ard:<id>" when the ARD is not made from its
+# definition now (not made, an error, another definition or study setup),
+# or the figure was made from another definition than the one now; "" for
+# the others.  Read from ard_status.csv and report_status.csv, the
+# fingerprint worked out once a table: for study_status() and the report
+# list's lighter state alike.
+.fig_ard_why <- function(study, ids) {
+  p <- study$planner
+  out <- stats::setNames(rep("", length(ids)), ids)
+  need <- vapply(ids, function(id) tryCatch(.fig_ard_need(p, id), error = function(e) NA_character_), "")
+  if (all(is.na(need))) return(out)
+  st <- .read_ard_status(study)
+  from <- .report_ard_recorded(study$path, ids)
+  for (tb in unique(stats::na.omit(need))) {
+    now <- tryCatch(tflspec::tfl_ard_spec_hash(structure(p$ard, class = "tfl_ard_spec"), tb,
+                                               dir = study$path, codelists = .study_codelists(p)),
+                    error = function(e) NA_character_)
+    r <- st[st$output_id == tb, , drop = FALSE]
+    made <- nrow(r) > 0L && (is.na(r$error[1L]) || !nzchar(r$error[1L])) &&
+      identical(r$definition[1L], now) && !isTRUE(.setup_changed(r$setup[1L], study$path))
+    k <- which(need %in% tb)
+    stale <- !made | (!is.na(from[k]) & nzchar(from[k]) & !(from[k] %in% now))
+    out[k[stale]] <- paste0("ard:", tb)
+  }
+  out
 }
 
 # The rows a figure's ARD has now (its source's; NULL when there is none

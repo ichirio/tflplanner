@@ -2619,6 +2619,9 @@ As the programs read the definition.,プログラムが定義を読んだとき�
 Make the data facts (Review with the data).,データの事実を作ってください（データ込みでレビュー）。
 The rule %s could not be run: %s.,ルール %1$s を実行できませんでした：%2$s。
 This is a fault of the review; please report it.,レビュー側の不具合です。報告してください。
+%s's ARD changed,%s の ARD が変わった
+its program changed,プログラムが変わった
+the study setup changed,試験のセットアップが変わった
 Review,レビュー
 %s: the advice applied (save to keep it).,%s：助言を当てました（残すには保存してください）。
 Reading the data for the review,レビューのためにデータを読んでいます
