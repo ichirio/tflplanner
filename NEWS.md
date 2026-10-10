@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **The app follows a run that ends, without a reload** (#305 area).
+  After a background official run (the sample's, for one), the report
+  list kept every report "not made" and a table's builder said "no ARD
+  yet" until the browser was reloaded.  The app now watches what a run
+  writes in the study folder -- the study ARD's status, a batch's
+  run.csv, a preview's log -- every few seconds, and refreshes the marks
+  and the ARD state when they change, whoever ran it (this session,
+  another, the app before a restart, R); and the builder reads a table's
+  ARD for itself again then.
+
 - **An ARD definition that does not hold is said, not passed over**
   (#323).  Saving writes no ARD program then (a blank `from` of an
   analysis data made by code, for one); it used to say nothing, and the
