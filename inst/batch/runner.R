@@ -33,6 +33,18 @@
 .batch_run <- function(part, prog, log_dir, engine) {
   log <- file.path(log_dir, sub("[.][Rr]$", ".log", basename(prog)))
   t0 <- Sys.time()
+  # no program to run: the study was not saved since, or its ARD
+  # definition does not hold (saving then writes no ARD program)
+  if (!file.exists(prog)) {
+    note <- paste0("no program ", prog, ": save the study (an ARD definition ",
+                   "that does not hold writes none; see the Review tab)")
+    cat(sprintf("%-5s %-4s %-32s %s\n", "ERROR", part, basename(prog), note))
+    return(data.frame(part = part, program = prog, status = "ERROR",
+                      errors = 1L, warnings = 0L, note = note,
+                      started = format(t0, "%Y-%m-%d %H:%M:%S"), seconds = 0,
+                      md5 = NA_character_, log = NA_character_,
+                      stringsAsFactors = FALSE))
+  }
   if (engine == "logrx") {
     expr <- sprintf("logrx::axecute('%s', log_name = '%s', log_path = '%s')",
                     prog, basename(log), log_dir)

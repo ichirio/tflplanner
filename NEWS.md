@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **An ARD definition that does not hold is said, not passed over**
+  (#323).  Saving writes no ARD program then (a blank `from` of an
+  analysis data made by code, for one); it used to say nothing, and the
+  official run failed on every ARD program with "cannot open the
+  connection".  Now `save_study()` says so in a message and keeps it as
+  `$ard_problem` (the app shows it after Save, the rest still saved), the
+  Review tab's error row says that no ARD program is written, the runner
+  says "no program ...: save the study" for a program that is not there
+  instead of running it, and `run_batch()` on a study with no ARD
+  programs names the likely cause.
+
 - **A Total column, without a "Total" arm in the data** (tflspec #212,
   rtfreporter `plan_total()`).  `set_total_column(x, output_id, label,
   position)` switches it on in both halves of a table's definition: the
