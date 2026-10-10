@@ -448,7 +448,7 @@ Censor marks,打ち切りマーク
 Reference line labels,参照線のラベル
 Number at risk,リスク集合数
 Drawn as,描き方
-"panel: a plot of its own below the curves, the counts from the fit at the x axis's breaks; add_risktable: ggsurvfit's risk table.","panel：曲線の下に別の図として描きます（数は fit から、x 軸の目盛りの時点で）。add_risktable：ggsurvfit のリスク表です。"
+"panel: a plot of its own below the curves, the counts from the fit at the x axis's breaks; add_risktable: ggsurvfit's risk table.",panel：曲線の下に別の図として描きます（数は fit から、x 軸の目盛りの時点で）。add_risktable：ggsurvfit のリスク表です。
 n by visit (panel),来院ごとの n（下段）
 Any ggplot2 layer,任意の ggplot2 レイヤー
 Whole figure (type),図全体（種類）
@@ -918,7 +918,7 @@ The report a row belongs to. Blank: a study-wide default; a row naming a report 
 "A column for people, on any sheet; never read. Any other column a sheet does not read is an error (a mistyped header).",人のためのメモ列。どのシートにも置けて、読まれない。それ以外の、シートが読まない列はエラー（見出しの打ち間違い防止）。
 Several values in one cell: | between them.,1 セルに複数書くときは | で区切る。
 "In titles, footnotes, header and footer cells: {PAGE} {TOTAL_PAGES} {AUTO_PAGE} {AUTO_TOTAL_PAGES} (page numbers), {PROGRAM} {PROGRAM_FULL} {PROGRAM_NAME} {PROGRAM_DIR} (the program; {PROGRAM_FULL} its absolute path), {DATETIME} {DATETIME:%Y-%m-%d} (the run), the report's own: {OUTPUT_ID}, {OUTPUT_LABEL} (Table 14.1.1, made from the ID; the tokens rows OUTPUT_KIND_TABLE / _LISTING / _FIGURE change the words), {OUTPUT_TITLE} {OUTPUT_POPULATION} {OUTPUT_SECTION} {STUDY_ID} (blank unless the tokens sheet says them; a line left with nothing but them is not printed), and your own from the tokens sheet ({STUDY} ...).",タイトル・脚注・ヘッダー・フッターのセルで使えます: {PAGE} {TOTAL_PAGES} {AUTO_PAGE} {AUTO_TOTAL_PAGES}（ページ番号）、{PROGRAM} {PROGRAM_FULL} {PROGRAM_NAME} {PROGRAM_DIR}（プログラム。{PROGRAM_FULL} は絶対パス）、{DATETIME} {DATETIME:%Y-%m-%d}（実行日時）、帳票自身のもの: {OUTPUT_ID}、{OUTPUT_LABEL}（Table 14.1.1。ID から作ります。tokens シートの OUTPUT_KIND_TABLE／_LISTING／_FIGURE の行で語を変えられます）、{OUTPUT_TITLE} {OUTPUT_POPULATION} {OUTPUT_SECTION} {STUDY_ID}（tokens シートに行が無ければ空。これらだけの行で値が空なら、その行は出しません）、そして tokens シートの自分のトークン（{STUDY} …）。
-"What is one for the whole study: one row a key. Table / report keys: rounding, output_path, program_dir. ARD keys: id, output, source. No output_id.",試験で 1 つに決まる事実。1 行 = 1 キー。表・帳票のキー：rounding、output_path、program_dir。ARD のキー：id、output、source。output_id は無い。
+"What is one for the whole study: one row a key. Table / report keys: rounding, output_path, program_dir. ARD keys: id, output, source. No output_id.",試験で 1 つに決まる設定。1 行 = 1 キー。表・帳票のキー：rounding、output_path、program_dir。ARD のキー：id、output、source。output_id は無い。
 "The fact: rounding (r: round half to even; sas: round half away from zero; blank: options(rtfreporter.rounding)); output_path (the folder of the RTF files); program_dir (the folder of the programs, for {PROGRAM}); ARD: id (the subject key; default USUBJID), output (the study ARD's file; default output/ard/ard.rds), source (R files of the study's own analysis functions, relative to the study folder, | between them).",項目：rounding（r = 偶数丸め、sas = 四捨五入、空欄 = options(rtfreporter.rounding)）、output_path（RTF の出力フォルダ）、program_dir（プログラムのフォルダ。{PROGRAM} に使う）。ARD：id（被験者キー。既定 USUBJID）、output（試験 ARD のファイル。既定 output/ard/ard.rds）、source（試験独自の解析関数の R ファイル。試験フォルダからの相対パス、| 区切り）。
 "Its value, as text.",その値（文字）。
 key / value: spec_version (a workbook of a newer version is refused by an older tflspec).,key / value：spec_version（新しい版のワークブックを古い tflspec で読むとエラー）。
@@ -2615,10 +2615,54 @@ The dataset %s has no file.,データセット %s のファイルがありませ
 Put the file in place or correct its path.,ファイルを置くか、パスを直してください。
 As the programs read the definition.,プログラムが定義を読んだときの結果です。
 %s has more than %s values; its code list is not reviewed against the data.,%1$s は値が %2$s を超えるため、コードリストをデータと照らし合わせていません。
-%s is not reviewed against the data yet.,%s はまだデータと照らし合わせていません。
-Make the data facts (Review with the data).,データの事実を作ってください（データ込みでレビュー）。
+%s is not reviewed against the data yet.,%s：データと照らし合わせたチェックはまだです。
+Make the data facts (Review with the data).,［データも使って見直す］を押すと、データセットを読んで確かめます（2 回目からは、ファイルが変わらない限り読み直しません）。
 The rule %s could not be run: %s.,ルール %1$s を実行できませんでした：%2$s。
 This is a fault of the review; please report it.,レビュー側の不具合です。報告してください。
+%s's ARD changed,%s の ARD が変わった
+its program changed,プログラムが変わった
+the study setup changed,試験のセットアップが変わった
+Review,レビュー
+%s: the advice applied (save to keep it).,%s：助言を当てました（残すには保存してください）。
+Reading the data for the review,レビューのためにデータを読んでいます
+Reading the definition as the programs do,プログラムと同じように定義を読んでいます
+The definition has errors (see the Review tab),定義にエラーがあります（レビュータブを見てください）
+The review of this report: a click shows its items,この帳票のレビュー：クリックで項目を表示
+to check,要確認
+"%d errors, %d to check, %d to set by hand",エラー %d・要確認 %d・手で設定 %d
+Review with the data,データも使って見直す
+Check as the programs read it,プログラムが読むとおりに確認
+Every area,すべての範囲
+Search the items,項目を検索
+(all),（すべて）
+(the study),（試験全体）
+Item,項目
+Hint,ヒント
+Nothing to review.,レビューする項目はありません。
+Open a study to review it.,試験を開くとレビューできます。
+"Nothing to review: no error, nothing to check, nothing to set by hand.",レビューする項目はありません：エラーも、要確認も、手で設定するものもありません。
+Against the data as read %s (%s),%s に読んだデータと照合（%s）
+Rules off in the company standards: %s,会社標準で止めているルール：%s
+errors,エラー
+to set by hand,手で設定
+ARD run,ARD の作成
+Definition files,定義ファイル
+Location,場所
+_START_ to _END_ of _TOTAL_ items,_TOTAL_ 件中 _START_〜_END_
+Previous,前へ
+Next,次へ
+%s is not a table of the study,%s は試験の表ではありません
+"%s is not a table of the study (deleted, or renamed by hand)",%s は試験の表ではありません（削除されたか、手で名前が変えられています）
+"the design reads an ARD, but the figure has none: choose it in step 2",デザインは ARD を読みますが、図に ARD がありません。ステップ 2 で選んでください
+%s has no analysis %s (any more): the figure prints from it,%s に解析 %s が（もう）ありません。図はその数値を出します
+the ARD of %s is not made yet: make it first (its step 2),%s の ARD はまだ作られていません。先に作ってください（そのステップ 2）
+listing %s: no columns in `listing_cols`,Listing %s: `listing_cols` に列がありません
+"listing %s, column %s: no `vars`",Listing %s の %s 列目: `vars` がありません
+"The listing %s reads the dataset %s, which is not in the catalog.",Listing %s はデータセット %s を読みますが、カタログにありません。
+"The listing %s sorts by %s, which %s does not have.",Listing %s は %s で並べますが、%s にその列がありません。
+"Column %s of the listing %s shows %s, which %s does not have.",Listing %2$s の %1$s 列目は %3$s を表示しますが、%4$s にその列がありません。
+%s %s no dataset %s,%s %s: データセット %s がありません
+%s %s no variable %s in %s,%1$s %2$s: %4$s に変数 %3$s がありません
 "Choose a table of the study as the figure's ARD source (its step 2), or take the ARD in.",図の ARD の取り出し元に試験の表を選ぶか（その手順 2）、ARD を取り込んでください。
 The design reads an ARD: choose where it comes from (the figure's step 2).,デザインが ARD を読んでいます。取り出し元を選んでください（図の手順 2）。
 "Give the piece an analysis the table still has, or add the analysis again.",部品に、表にまだある解析を指定するか、その解析を加え直してください。
@@ -2626,3 +2670,6 @@ The design reads an ARD: choose where it comes from (the figure's step 2).,デ�
 "Correct the piece to a row the ARD has (its analysis, variable, group or statistic).",部品を ARD にある行（解析・変数・群・統計量）に合わせて直してください。
 "%s calls %s, which tflspec no longer has.",%s が %s を呼んでいますが、tflspec にはもうありません。
 "Write it again (open the study and save), or source programs/study_helpers.R.",書き直してください（試験を開いて保存）。または programs/study_helpers.R を source してください。
+The checks against the data have not run yet. Press [Review with the data] to read the datasets once (not again until a file changes).,データと照らし合わせたチェックはまだです。［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。
+%s: the checks against the data have not run yet.,%s：データと照らし合わせたチェックはまだです。
+Press [Review with the data]: it reads the datasets once (not again until a file changes).,［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。

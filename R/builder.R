@@ -654,6 +654,17 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
     val <- function(v) if (is.na(v)) "" else as.character(v)
     text <- function(x) htmltools::HTML(gsub("\n", "<br>", htmltools::htmlEscape(
       val(x)), fixed = TRUE))
+    # a header cell's own look, as the RTF prints it: bold, a rule above or
+    # below it (the builder's "underline"), its alignment
+    look <- function(x) {
+      line <- function(b) !is.null(b) && !identical(b$style, "none")
+      css <- c(if (isTRUE(x$bold)) "font-weight: bold;",
+               if (line(x$border$top)) "border-top: 1px solid #333;",
+               if (line(x$border$bottom)) "border-bottom: 1px solid #333;",
+               if (!is.null(x$align) && x$align %in% c("left", "center", "right"))
+                 paste0("text-align: ", x$align, ";"))
+      if (length(css)) paste(css, collapse = " ")
+    }
     head <- lapply(pg$col_header, function(line) {
       # a line of spanning cells (list(from, to, label)): each over its
       # columns, the columns no cell covers left empty
@@ -673,6 +684,7 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
           cells <- c(cells, list(htmltools::tags$th(
             colspan = to - from + 1L,
             class = if (from == 1L) "rp-pv-stub" else "rp-pv-val rp-pv-span",
+            style = look(x),
             text(x$label %||% ""))))
           at <- to + 1L
         }

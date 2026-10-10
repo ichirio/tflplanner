@@ -39,9 +39,10 @@
                           "2026-09-27")),
     settings = .df(
       key = c("language", "rounding", "font", "font_size", "subject_id",
-              "ard_output", "listing_type", "listing_max_rows", "max_levels"),
+              "ard_output", "listing_type", "listing_max_rows", "max_levels",
+              "review_off"),
       value = c("en", "", "", "", "USUBJID", "output/ard/ard.rds",
-                "multiline", "", "30"),
+                "multiline", "", "30", ""),
       note = c("the app's language: en or ja",
                "a new study's rounding: r, sas, or blank (rtfreporter's)",
                "the reports' font (Courier New, Arial ...); blank: rtfreporter's (Courier)",
@@ -50,7 +51,8 @@
                "where the study ARD goes (relative to the study folder)",
                "the listing type a new listing starts with",
                "the rows per page a new listing starts with (blank: as many as fit, rtfreporter's)",
-               "a key with more levels gets no levels list when filled from the ARD")),
+               "a key with more levels gets no levels list when filled from the ARD",
+               "rules the study review leaves out, | between them (A12 | C02): see tflspec::tfl_review_rules()")),
     choices = rbind(
       ch("tables", "stats", c("cells", "rows")),
       ch("tables", "value", c("stat", "stat_fmt")),

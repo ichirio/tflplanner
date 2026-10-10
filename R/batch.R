@@ -30,9 +30,11 @@
 #'
 #' @param x A `tflplanner`.
 #' @param date The date stamped in the banner.
+#' @param root The study folder (the definitions' fingerprints read the
+#'   files the ARD programs name from it).
 #' @return The program, one element per line.
 #' @export
-batch_code <- function(x, date = Sys.Date()) {
+batch_code <- function(x, date = Sys.Date(), root = ".") {
   lay <- study_layout()
   spec <- x$ard %||% .empty_ard_spec()
   ids <- unique(stats::na.omit(spec$analyses$output_id))
@@ -47,6 +49,15 @@ batch_code <- function(x, date = Sys.Date()) {
     if (identical(infos[[i]]$type, "table"))
       file.path(lay[["ard"]], paste0(out_ids[i], ".rds"))))
   ard_out <- .study_value(spec, "output", "output/ard/ard.rds")
+  # the figures printing an ARD's numbers (#293)
+  need <- vapply(out_ids, function(id)
+    tryCatch(.fig_ard_need(x, id), error = function(e) NA_character_), "")
+  need_progs <- tfl_progs[!is.na(need)]
+  need_ids <- unname(need[!is.na(need)])
+  need_hash <- vapply(unique(need_ids), function(id) tryCatch(
+    tflspec::tfl_ard_spec_hash(structure(spec, class = "tfl_ard_spec"), id, dir = root,
+                               codelists = .study_codelists(x)),
+    error = function(e) ""), "")
   wb <- function(f) file.path(lay[["spec"]], f)
   support <- list(
     ard = c(file.path(lay[["programs_ard"]], c(.ard_setup_file,
@@ -90,6 +101,11 @@ batch_code <- function(x, date = Sys.Date()) {
     paste0(".batch_ard_outputs <- ", vec(ids, basename(ard_progs))),
     "# the output each report program makes",
     paste0(".batch_report_ids <- ", vec(out_ids, tfl_progs)),
+    "# a figure printing an ARD's numbers: the report whose ARD it reads, and",
+    "# the fingerprint of that ARD's definition when this file was written",
+    "# (made again first when the ARD is not made from it)",
+    paste0(".batch_needs <- ", vec(need_ids, need_progs)),
+    paste0(".batch_needs_hash <- ", vec(need_hash, names(need_hash))),
     "# the named batches (the report list's `batches`): name -> outputs",
     paste0(".batch_sets <- ", if (length(sets <- batch_sets(x)))
       paste0("list(\n", paste0("  ", encodeString(names(sets), quote = "`"), " = ",
@@ -189,7 +205,7 @@ autoexec_all_code <- function(date = Sys.Date()) {
     f <- file.path(root, f)
     out[nrow(out) + 1L, ] <<- list(f, .put_program(code, f, root))
   }
-  put(batch_code(p), file.path("programs", .batch_file))
+  put(batch_code(p, root = root), file.path("programs", .batch_file))
   # the figure style, and the one function a report of one's own code ends
   # with (report_content()), written once here
   put(.fig_setup_code(p), file.path(lay[["programs_tfl"]], .fig_setup_file))

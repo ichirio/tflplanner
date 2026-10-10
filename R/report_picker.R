@@ -45,6 +45,8 @@
   ids <- p$outputs$output_id
   setup <- .report_setup_recorded(study$path, ids)
   now <- .study_setup_hash(study$path)
+  # (as study_status(): a figure printing an ARD's numbers turns with it)
+  ard_why <- .fig_ard_why(study, ids)
   st <- vapply(ids, function(id) {
     info <- report_info(p, id)
     prog <- file.path(study$path, lay[["programs_tfl"]], info$program)
@@ -56,7 +58,8 @@
       any(grepl("^Error|Execution halted", readLines(log, warn = FALSE, encoding = "UTF-8")))
     if (failed) "error" else if (is.na(t_rtf)) "not run" else
       if (isTRUE(.program_time(prog, study$path) > t_rtf) ||
-          .setup_changed(setup[match(id, ids)], study$path, now)) "outdated" else "ok"
+          .setup_changed(setup[match(id, ids)], study$path, now) ||
+          nzchar(ard_why[[id]])) "outdated" else "ok"
   }, "")
   data.frame(output_id = ids, status = unname(st), stringsAsFactors = FALSE)
 }
@@ -201,6 +204,7 @@ report_search_ui <- function(id, lang = "en") {
 .rp-picker .rp-item.rp-now { font-weight: 600; background: var(--bs-primary-bg-subtle, #dbe7ff); }
 .rp-picker .rp-id { flex: none; }
 .rp-picker .rp-title { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; color: var(--bs-secondary-color, #6b7280); }
+.rp-picker .rp-review-n { flex: 0 0 auto; margin-left: .3rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rp-picker .rp-mark { flex: none; }
 .rp-picker details > summary { font-size: .8rem; color: var(--bs-secondary-color, #6b7280); cursor: pointer; }
 .rp-picker .rp-fixed { border-bottom: 1px solid var(--bs-border-color, #dee2e6); margin-bottom: .25rem; padding-bottom: .25rem; }
@@ -294,10 +298,27 @@ report_picker_compact_ui <- function(id, lang = "en") {
 # value the user chose; `fixed` the two rows always first (value = label);
 # `folded` whether the list is folded away (its small chooser shown)
 report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
-                                 folded = shiny::reactive(FALSE)) {
+                                 folded = shiny::reactive(FALSE),
+                                 counts = shiny::reactive(NULL)) {
   shiny::moduleServer(id, function(input, output, session) {
     t <- function(x) tr(x, lang)
-    item <- function(value, label, title = "", state = NA, now_v = "") {
+    # a report's review: its errors, checks and what to set by hand (a
+    # dash for none), apart from the run's mark
+    review_n <- function(value, cn) {
+      if (is.null(cn) || !nrow(cn)) return(NULL)
+      k <- match(value, cn$output_id)
+      if (is.na(k)) return(NULL)
+      n <- c(cn$error[k], cn$check[k], cn$hand[k])
+      if (!any(n > 0L)) return(NULL)
+      txt <- ifelse(n > 0L, as.character(n), "-")
+      shiny::span(
+        class = "rp-review-n small",
+        title = sprintf(t("%d errors, %d to check, %d to set by hand"), n[1L], n[2L], n[3L]),
+        shiny::span(class = if (n[1L]) "text-danger fw-bold" else "text-muted", txt[1L]), "/",
+        shiny::span(class = if (n[2L]) "text-warning" else "text-muted", txt[2L]), "/",
+        shiny::span(class = "text-muted", txt[3L]))
+    }
+    item <- function(value, label, title = "", state = NA, now_v = "", cn = NULL) {
       mark <- if (!is.na(state)) shiny::span(
         class = paste("rp-mark", .report_state_class[[state]]),
         title = t(.report_state_words[[state]]), .report_state_marks[[state]])
@@ -305,15 +326,16 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
         type = "button", class = paste("rp-item", if (identical(value, now_v)) "rp-now"),
         `data-id` = value, title = if (nzchar(title)) paste(label, title) else label,
         shiny::span(class = "rp-id", label),
-        shiny::span(class = "rp-title", title), mark)
+        shiny::span(class = "rp-title", title), review_n(value, cn), mark)
     }
     output$list <- shiny::renderUI({
       d <- rows()
+      cn <- counts()
       now_v <- now() %||% ""
       f <- .report_filter(d, input$q, input$state %||% "all")
       fixed_rows <- shiny::div(
         class = "rp-fixed",
-        lapply(names(fixed), function(v) item(v, fixed[[v]], now_v = now_v)))
+        lapply(names(fixed), function(v) item(v, fixed[[v]], now_v = now_v, cn = cn)))
       if (!nrow(f)) {
         return(shiny::tagList(fixed_rows, shiny::p(class = "small text-muted",
                                                    t("No report matches."))))
@@ -330,7 +352,7 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
               open = NA,
               shiny::tags$summary(sprintf("%s (%d)", t(s), nrow(g))),
               lapply(seq_len(nrow(g)), function(i)
-                item(g$output_id[i], g$output_id[i], g$title[i], g$state[i], now_v)))
+                item(g$output_id[i], g$output_id[i], g$title[i], g$state[i], now_v, cn)))
           })),
         if (searching) shiny::p(class = "small text-muted mt-1",
                                 sprintf(t("%d of %d reports"), nrow(f), nrow(d))))

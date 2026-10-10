@@ -28,12 +28,12 @@ test_that("the sample study has no error and nothing to set by hand", {
   expect_false(any(r$level %in% c("error", "hand")),
                info = paste(r$rule, r$output_id, r$message, collapse = "\n"))
   # its checks, seen: the code list values no record has, the KM figure's
-  # advice
-  expect_identical(as.integer(table(r$rule)[c("C02", "F02")]), c(9L, 2L))
-  expect_identical(sort(unique(r$rule)), c("C02", "F02"))
+  # advice, the medians figure's ARD (T-14-2-2's) not made yet
+  expect_identical(as.integer(table(r$rule)[c("C02", "F02", "F07")]), c(9L, 2L, 1L))
+  expect_identical(sort(unique(r$rule)), c("C02", "F02", "F07"))
   # without the data: no data rule, and no row it would not have with them
   r0 <- study_review(s, data = "none", lang = "en")
-  expect_identical(sort(unique(r0$rule)), "F02")
+  expect_identical(sort(unique(r0$rule)), c("F02", "F07"))
 })
 
 test_that("the report list's rules (R01-R08) and the analyses' (A11-A13)", {
@@ -195,4 +195,98 @@ test_that("a study of 200 reports is reviewed without its data in a few seconds"
   dt <- as.numeric(Sys.time() - t0, units = "secs")
   expect_s3_class(r, "tfl_review")
   expect_lt(dt, 8)
+})
+
+test_that("a figure's advice is in the app's language, by its sentence", {
+  local_home()
+  p <- add_output(new_planner(), "F1", type = "figure")
+  p <- set_fig_design(p, "F1", tflspec::tfl_fig_template("km_simple"))
+  r <- review_problems(p, lang = "ja")
+  i <- which(r$rule == "F02")
+  expect_true(length(i) >= 1L)
+  expect_match(r$message[i[1L]], "リスク集合", fixed = TRUE)
+  expect_match(r$message_en[i[1L]], "number at risk", fixed = TRUE)
+  expect_match(r$hint[i[1L]], "提案", fixed = TRUE)
+})
+
+test_that("the review takes rows with a column more or less than its own", {
+  a <- .rv_row("R01", "T1", args = "T1")
+  b <- .rv_row("R02", "T2", args = "T2")
+  b$extra <- "more"
+  r <- .review_bind(list(a, b))
+  expect_identical(nrow(r), 2L)
+  expect_true("extra" %in% names(r))
+  expect_true(is.na(r$extra[r$rule == "R01"]))
+  expect_identical(r$extra[r$rule == "R02"], "more")
+})
+
+test_that("every sentence a review row can carry beyond its rule's has its Japanese", {
+  skip_if_not("tfl_review_templates" %in% getNamespaceExports("tflspec"))
+  tp <- tflspec::tfl_review_templates()
+  ja <- vapply(tp$template, tr, "", lang = "ja")
+  expect_identical(tp$template[ja == tp$template], character(0))
+  # each one's values go in: as many as the English takes
+  for (i in seq_len(nrow(tp))) {
+    n <- lengths(regmatches(tp$template[i], gregexpr("%s", tp$template[i], fixed = TRUE)))
+    a <- paste0("v", seq_len(n))
+    m <- do.call(sprintf, c(list(ja[[i]]), as.list(a)))
+    expect_true(all(vapply(a, grepl, NA, x = m, fixed = TRUE)), info = tp$template[i])
+  }
+  # and the app's own (the figure's ARD, F04-F07)
+  own <- c("%s is not a table of the study",
+           "%s is not a table of the study (deleted, or renamed by hand)",
+           "the design reads an ARD, but the figure has none: choose it in step 2",
+           "%s has no analysis %s (any more): the figure prints from it",
+           "the ARD of %s is not made yet: make it first (its step 2)")
+  expect_false(any(vapply(own, tr, "", lang = "ja") == own))
+})
+
+test_that("a row's own sentence is translated and filled with its values", {
+  r <- .rv_row("F06", "F-1", "report", "", "analysis_id", args = c("T-1", "KM"),
+               template = "%s has no analysis %s (any more): the figure prints from it")
+  expect_identical(r$message, "T-1 has no analysis KM (any more): the figure prints from it")
+  j <- .review_language(.review_bind(list(r)), "ja")
+  expect_match(j$message, "^T-1 \u306b\u89e3\u6790 KM")
+  expect_identical(j$message_en, r$message)
+  # a row without the column (tflspec before 0.0.24.9078): the rule's
+  r$template <- NULL
+  expect_identical(.review_language(.review_bind(list(r)), "ja")$message, r$message)
+})
+
+test_that("P02: a program calling a function tflspec no longer has", {
+  skip_if_not("P02" %in% tflspec::tfl_review_rules()$rule)
+  root <- withr_tempdir()
+  dir.create(file.path(root, "programs", "ard"), recursive = TRUE)
+  dir.create(file.path(root, "programs", ".edited"))
+  put <- function(f, ...) writeLines(c(...), file.path(root, "programs", f))
+  put("study_helpers.R", "set_levels <- function(x, ...) x")
+  put("study_setup.R", "library(dplyr)", "source(\"programs/study_helpers.R\")")
+  # generated now: the setup sources the helpers -- nothing to say
+  put("ard/T-1.R", "source(\"programs/study_setup.R\")", "library(tflspec)", "d <- set_levels(d)")
+  # tflspec:: stops whatever is sourced
+  put("ard/T-2.R", "source(\"programs/study_setup.R\")", "tflspec::save_ard(ard, \"T-2\")")
+  # an old program: tflspec attached, no helpers
+  put("old.R", "library(tflspec)", "d <- set_levels(d)", "fmt_ard(a)")
+  # attached, no helpers, but sourced by another: to check
+  put("part.R", "library(\"tflspec\")", "keep_stats(a)")
+  put("run.R", "source(\"programs/part.R\")")
+  # its own function, and copies in .edited: not looked at
+  put("own.R", "library(tflspec)", "tag_ard <- function(x) x", "tag_ard(1)")
+  put(".edited/T-1.R", "library(tflspec)", "set_levels(d)")
+  p <- new_planner()
+  p <- add_output(p, "T-2", type = "table")
+  r <- .rule_p02(list(path = root, planner = p))
+  expect_setequal(r$row, c("programs/ard/T-2.R", "programs/old.R", "programs/part.R"))
+  expect_identical(r$output_id[r$row == "programs/ard/T-2.R"], "T-2")
+  expect_true(is.na(r$output_id[r$row == "programs/old.R"]))
+  expect_identical(r$level[match(c("programs/ard/T-2.R", "programs/old.R", "programs/part.R"), r$row)],
+                   c("error", "error", "check"))
+  expect_identical(r$message[r$row == "programs/old.R"],
+                   "programs/old.R calls set_levels(), fmt_ard(), which tflspec no longer has.")
+  expect_identical(r$area, rep("program", 3L))
+  j <- .review_language(r, "ja")
+  expect_false(any(j$message == j$message_en))
+  # a file that does not parse is passed over
+  put("broken.R", "library(tflspec)", "set_levels(")
+  expect_false("programs/broken.R" %in% .rule_p02(list(path = root, planner = p))$row)
 })

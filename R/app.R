@@ -96,6 +96,21 @@
                 todo = "not built", "not run" = "not built",
                 "no program" = "not built", error = "error")
 
+# why a report is to be made again (study_status()'s `why`), for the runs
+# table: ": its program changed; T-14-2-2's ARD changed"
+.why_text <- function(why, t = identity) {
+  vapply(why, function(w) {
+    w <- strsplit(w %||% "", " ", fixed = TRUE)[[1L]]
+    w <- w[nzchar(w)]
+    if (!length(w)) return("")
+    txt <- vapply(w, function(k) {
+      if (startsWith(k, "ard:")) sprintf(t("%s's ARD changed"), sub("^ard:", "", k)) else
+        switch(k, program = t("its program changed"), setup = t("the study setup changed"), k)
+    }, "")
+    paste0(": ", paste(txt, collapse = "; "))
+  }, "", USE.NAMES = FALSE)
+}
+
 .status_labels <- c(
   "no program" = "Not written (save)", unsaved = "Unsaved (save)",
   todo = "TODO (data part)", "not run" = "Not run", error = "Error",
@@ -724,7 +739,7 @@ app_ui <- function(lang = "en") {
       spec = shiny::tagList(
         grid_note,
         do.call(bslib::navset_card_underline,
-                lapply(report_sheets(), sheet_panel))),
+                c(list(id = "page_sheet"), lapply(report_sheets(), sheet_panel)))),
       code = shiny::tagList(
         shiny::uiOutput("program_state"),
         code_view("program", lang)),
@@ -762,6 +777,8 @@ app_ui <- function(lang = "en") {
                             shiny::tags$script(shiny::HTML(.updating_js)),
                             shiny::tags$script(shiny::HTML(.dt_adjust_js)),
                             shiny::tags$script(shiny::HTML(.adata_code_js)),
+                            shiny::tags$style(shiny::HTML(.review_css)),
+                            shiny::tags$script(shiny::HTML(.review_js)),
                             shiny::uiOutput("update_note")),
 
     bslib::nav_panel(
@@ -938,6 +955,12 @@ app_ui <- function(lang = "en") {
           bslib::nav_panel(step_title("content"), value = "content", step_content),
           bslib::nav_panel(step_title("page"), value = "page", step_page)))),
 
+    # the review of the whole definition (#288): what cannot be used, what
+    # is probably wrong, what to set by hand -- a click goes to it
+    bslib::nav_panel(
+      t("Review"), value = "review",
+      review_ui("review", lang)),
+
     bslib::nav_panel(
       t("Runs"), value = "results",
       bslib::card(
@@ -948,7 +971,6 @@ app_ui <- function(lang = "en") {
                class = "btn-sm btn-primary"),
           .btn("run_all", t("Preview all"), class = "btn-sm btn-primary"),
           .btn("status_refresh", t("Refresh")),
-          .btn("check", t("Check the definition")),
           .btn("tfl_open", t("Open output/tfl")),
           shiny::downloadButton("rtf_download", t("Download the RTF"),
                                 class = "btn-sm")),
@@ -979,14 +1001,11 @@ app_ui <- function(lang = "en") {
         shiny::uiOutput("batch_reports_ui"),
         # as tall as its rows (a fill table left a card of empty space)
         DT::DTOutput("batches", height = "auto", fill = FALSE)),
-      bslib::layout_columns(
-        col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
-        bslib::card(
-          bslib::card_header(t("Log")),
-          shiny::div(class = "rp-code", shiny::verbatimTextOutput("log"))),
-        bslib::card(
-          bslib::card_header(t("Definition check")),
-          DT::DTOutput("check_result", height = "auto", fill = FALSE)))),
+      # (the definition's check, as the programs read it, is the Review
+      # tab's now)
+      bslib::card(
+        bslib::card_header(t("Log")),
+        shiny::div(class = "rp-code", shiny::verbatimTextOutput("log")))),
 
     bslib::nav_item(shiny::uiOutput("open_study_bar")),
     bslib::nav_spacer(),
@@ -2635,12 +2654,119 @@ app_server <- function(input, output, session, start) {
                  tryCatch(.report_run_light(shiny::isolate(current_study())),
                           error = function(e) NULL))
   })
+  # -- the review (#288) -----------------------------------------------------
+  # One review the whole app reads: the Review tab, the report head's
+  # counts, the picker's numbers, the analyses' badge.  The light one --
+  # the definition, the catalogs, the facts of the data kept from the last
+  # read, no file read -- made when a study is opened, 2 s after edits
+  # pause, after a save or an ARD made; "Review with the data" reads the
+  # files whose facts are stale, "Check as the programs read it" adds the
+  # deep check's rows (kept while the definition is the one checked).
+  review_ver <- shiny::reactiveVal(0L)
+  review_deep <- shiny::reactiveVal(NULL)
+  review_p <- shiny::debounce(shiny::reactive(rv$p), 2000)
+  review_now <- shiny::reactive({
+    if (!has_study()) return(NULL)
+    review_p()
+    review_ver()
+    rv$status_ver
+    rv$ard_ver
+    study_open()
+    s <- shiny::isolate(current_study())
+    r <- tryCatch(study_review(s, data = "cached", ard = TRUE, lang = lang),
+                  error = function(e) {
+                    message("tflplanner: the review: ", conditionMessage(e))
+                    NULL
+                  })
+    if (is.null(r)) return(NULL)
+    dp <- review_deep()
+    if (!is.null(dp) && identical(dp$p, s$planner) && nrow(dp$rows)) {
+      keep <- attributes(r)
+      keep <- keep[intersect(names(keep), c("facts_made", "facts_of", "off"))]
+      r <- .review_bind(list(r, dp$rows))
+      for (k in names(keep)) attr(r, k) <- keep[[k]]
+    }
+    r
+  })
+  session$userData$review_now <- review_now
+  review_counts <- shiny::reactive({
+    r <- review_now()
+    if (is.null(r) || !nrow(r)) NULL else .review_counts(r)
+  })
+  # a row of the review, gone to: the report chosen, its page, the tabs,
+  # the inputs (an analysis, an analysis data, a code list, a figure's
+  # piece) and the grid's row flashed (R/review_ui.R)
+  # (called from the Review tab's module: run in the app's own session, so
+  # the tabs it chooses are the app's, not ids inside the module)
+  review_jump <- function(row) shiny::withReactiveDomain(session, {
+    id <- row$output_id
+    if (!is.na(id) && id %in% rv$p$outputs$output_id) {
+      shiny::updateSelectInput(session, "target", selected = id)
+    }
+    tg <- .review_target(row, rv$p)
+    if (!is.null(tg$go)) go(tg$go)
+    for (n in names(tg$nav)) bslib::nav_select(n, tg$nav[[n]])
+    msg <- list(inputs = tg$inputs, grid = tg$grid, keycols = as.list(tg$keycols),
+                key = tg$key, field = tg$field,
+                row_index = if (is.na(tg$row_index)) NULL else tg$row_index)
+    session$onFlushed(function() session$sendCustomMessage("review-focus", msg),
+                      once = TRUE)
+  })
+  session$userData$review_jump <- review_jump
+  # a figure's advice applied (its one-step fix)
+  review_fix <- function(row) {
+    fx <- row$fix[[1L]]
+    id <- row$output_id
+    d <- fig_design(rv$p, id)
+    if (is.null(fx) || is.null(d)) return()
+    d2 <- guarded(tflspec::tfl_fig_apply_fix(d, fx))
+    if (is.null(d2)) return()
+    p2 <- guarded(set_fig_design(rv$p, id, d2))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    bump()
+    notify(sprintf(t("%s: the advice applied (save to keep it)."), id))
+  }
+  review_mod <- review_server(
+    "review", review = review_now, rows = picker_rows,
+    jump = review_jump, apply_fix = review_fix,
+    run_light = function() review_ver(review_ver() + 1L),
+    run_data = function() {
+      s <- current_study()
+      n <- max(1L, nrow(rv$p$ard$datasets))
+      shiny::withProgress(message = t("Reading the data for the review"), value = 0, {
+        guarded(review_facts(s, progress = function(d)
+          shiny::incProgress(1 / n, detail = d)))
+      })
+      review_ver(review_ver() + 1L)
+    },
+    run_deep = function() {
+      p <- rv$p
+      rows <- NULL
+      shiny::withProgress(message = t("Reading the definition as the programs do"), {
+        rows <- guarded(.rule_p01(p))
+      })
+      rows <- .review_language(rows %||% .review_bind(list()), lang)
+      review_deep(list(p = p, rows = rows))
+      if (!nrow(rows)) notify(t("The definition reads without errors")) else
+        notify(t("The definition has errors (see the Review tab)"), "error")
+      review_ver(review_ver() + 1L)
+    },
+    lang = lang)
+  # the report head's counts: to the Review tab, that report and level
+  shiny::observeEvent(input$review_goto, {
+    g <- input$review_goto
+    bslib::nav_select("nav", "review")
+    review_mod$set_filter(g$id, g$level)
+  })
+
   report_picker_server(
     "rp", picker_rows, now = shiny::reactive(input$target),
     pick = function(v) shiny::updateSelectInput(session, "target", selected = v),
     fixed = stats::setNames(list(t("Study defaults"), t("ALL (every row)")),
                             c(.default_rows, .all_rows)),
-    lang = lang, folded = shiny::reactive(identical(input$side, FALSE)))
+    lang = lang, folded = shiny::reactive(identical(input$side, FALSE)),
+    counts = review_counts)
   # the report list's and the runs' search: DT's own, on a hidden column
   # of the normalized text (the rows keep their numbers)
   shiny::observeEvent(input$outputs_q, .report_dt_set_search(session, "outputs", input$outputs_q))
@@ -2858,12 +2984,34 @@ app_server <- function(input, output, session, start) {
     if (is.null(id)) return(NULL)
     o <- rv$p$outputs
     d <- o$description[match(id, o$output_id)]
+    # its review's counts, each a way to the Review tab (that report, that
+    # level)
+    cn <- review_counts()
+    k <- if (!is.null(cn)) match(id, cn$output_id) else NA
+    counts <- if (!is.na(k)) {
+      parts <- lapply(names(.review_level_words), function(l) {
+        n <- cn[[l]][k]
+        if (!n) return(NULL)
+        shiny::tags$a(
+          href = "#", class = paste("small", .review_level_class[[l]]),
+          onclick = sprintf("Shiny.setInputValue('review_goto', {id: %s, level: '%s', n: Math.random()}, {priority: 'event'}); return false;",
+                            jsonlite::toJSON(id, auto_unbox = TRUE), l),
+          sprintf("%d %s", n, t(.review_level_words[[l]])))
+      })
+      parts <- Filter(Negate(is.null), parts)
+      if (length(parts)) shiny::span(
+        class = "ms-2", title = t("The review of this report: a click shows its items"),
+        lapply(seq_along(parts), function(i)
+          if (i > 1L) shiny::tagList(shiny::span(class = "text-muted small", " \u00b7 "),
+                                     parts[[i]]) else parts[[i]]))
+    }
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-baseline my-2",
       shiny::strong(id),
       shiny::span(class = "badge text-bg-light border",
                   t(unname(.type_labels[report_kind()]))),
-      if (!is.na(d)) shiny::span(class = "text-muted small", d))
+      if (!is.na(d)) shiny::span(class = "text-muted small", d),
+      counts)
   })
 
   # -- what the ARD says ---------------------------------------------------
@@ -4607,16 +4755,14 @@ app_server <- function(input, output, session, start) {
     if (is.null(a) || !nrow(a)) return(NULL)
     tryCatch(tflspec::tfl_ard_conditions(a), error = function(e) NULL)
   })
-  # the definition's check, by analysis: the messages that name it
-  st_problems <- function(tg, id) {
-    msg <- ard_valid()
-    l <- if (is.null(msg)) character() else strsplit(msg, "\n", fixed = TRUE)[[1L]]
-    out <- trimws(l[grepl(paste0(tg, " / ", id, ":"), l, fixed = TRUE)])
-    # the subjects per group counted twice: a column header's N shows none
-    tw <- stack_n_twice(shiny::isolate(st_rows()))
-    k <- match(id, tw$analysis_id)
-    if (!is.na(k)) out <- c(out, sprintf(t(.n_twice_words), id, tw$with[k]))
-    out
+  # an analysis's items of the review (its row of `analyses`): its errors,
+  # and what to check (the subjects per group counted twice among them)
+  st_problems <- function(tg, id, level = "error") {
+    r <- review_now()
+    if (is.null(r) || !nrow(r)) return(character())
+    k <- r$sheet == "analyses" & !is.na(r$output_id) & r$output_id == tg &
+      r$row == id & r$level %in% level
+    unique(r$message[k])
   }
   # -- 1-1. the analysis data a report reads -------------------------------
   # Named data (tflspec's sheet analysis_data), the study's.  The report's
@@ -5509,6 +5655,9 @@ app_server <- function(input, output, session, start) {
                    shiny::div(class = "text-muted", what)),
         if (length(probs)) shiny::span(class = "badge text-bg-danger", title = paste(probs, collapse = "\n"),
                                        t("definition error")),
+        if (length(chk <- st_problems(tg, id, c("check", "hand")))) shiny::span(
+          class = "badge text-bg-warning", title = paste(chk, collapse = "\n"),
+          t("to check")),
         if (!is.null(cn) && nrow(cn)) shiny::span(
           class = paste("badge", if (any(cn$level == "error")) "text-bg-danger" else "text-bg-warning"),
           title = paste(unique(cn$message), collapse = "\n"),
@@ -9454,7 +9603,8 @@ app_server <- function(input, output, session, start) {
       a = d$output_id, b = t(unname(.type_labels[d$type])),
       c = t(unname(.ard_state_labels[word])),
       d = ifelse(word == "built" & !is.na(d$rtf), d$rtf, ""),
-      e = ifelse(word == "built", "", t(unname(.status_labels[d$status]))),
+      e = ifelse(word == "built", "", paste0(t(unname(.status_labels[d$status])),
+                                             .why_text(d$why %||% rep("", nrow(d)), t))),
       f = paste0(d$program, ifelse(d$program_state %in% "edited",
                                    paste0(" (", t("edited by hand"), ")"), "")),
       stringsAsFactors = FALSE)
@@ -9514,12 +9664,6 @@ app_server <- function(input, output, session, start) {
     })
   shiny::observeEvent(input$tfl_open, .open_folder(
     file.path(rv$study$path, study_layout()[["tfl"]])))
-  shiny::observeEvent(input$check, {
-    r <- check_planner(rv$p)
-    output$check_result <- DT::renderDT(.dt(r, selection = "none"))
-    if (all(r$ok)) notify(t("The definition reads without errors")) else
-      notify(t("The definition has errors (see Definition check)"), "error")
-  })
 
   start_run <- function(ids, what) {
     if (!is.null(rv$job)) return(notify(t("A run is going on"), "warning"))
