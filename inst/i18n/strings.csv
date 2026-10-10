@@ -2649,6 +2649,18 @@ Location,場所
 _START_ to _END_ of _TOTAL_ items,_TOTAL_ 件中 _START_〜_END_
 Previous,前へ
 Next,次へ
+%s is not a table of the study,%s は試験の表ではありません
+"%s is not a table of the study (deleted, or renamed by hand)",%s は試験の表ではありません（削除されたか、手で名前が変えられています）
+"the design reads an ARD, but the figure has none: choose it in step 2",デザインは ARD を読みますが、図に ARD がありません。ステップ 2 で選んでください
+%s has no analysis %s (any more): the figure prints from it,%s に解析 %s が（もう）ありません。図はその数値を出します
+the ARD of %s is not made yet: make it first (its step 2),%s の ARD はまだ作られていません。先に作ってください（そのステップ 2）
+listing %s: no columns in `listing_cols`,Listing %s: `listing_cols` に列がありません
+"listing %s, column %s: no `vars`",Listing %s の %s 列目: `vars` がありません
+"The listing %s reads the dataset %s, which is not in the catalog.",Listing %s はデータセット %s を読みますが、カタログにありません。
+"The listing %s sorts by %s, which %s does not have.",Listing %s は %s で並べますが、%s にその列がありません。
+"Column %s of the listing %s shows %s, which %s does not have.",Listing %2$s の %1$s 列目は %3$s を表示しますが、%4$s にその列がありません。
+%s %s no dataset %s,%s %s: データセット %s がありません
+%s %s no variable %s in %s,%1$s %2$s: %4$s に変数 %3$s がありません
 "Choose a table of the study as the figure's ARD source (its step 2), or take the ARD in.",図の ARD の取り出し元に試験の表を選ぶか（その手順 2）、ARD を取り込んでください。
 The design reads an ARD: choose where it comes from (the figure's step 2).,デザインが ARD を読んでいます。取り出し元を選んでください（図の手順 2）。
 "Give the piece an analysis the table still has, or add the analysis again.",部品に、表にまだある解析を指定するか、その解析を加え直してください。

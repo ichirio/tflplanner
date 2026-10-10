@@ -615,3 +615,13 @@ ARD プログラムと帳票プログラムは、定義（SPEC）から生成さ
 - 会社標準の settings シートの `review_off` に `A12 | C02` のようにルール ID を書くと、そのルールを全試験で止められます（止めているルールはタブに表示されます）。ルールの一覧は `tflspec::tfl_review_rules()` です。
 
 R からは `study_review(study)` で同じものが得られます（`data = "read"` でデータ込み、`deep = TRUE` でプログラムが読むとおりの確認）。
+
+### 前の版から上げるとき
+
+1. tflplanner と tflspec を**両方まとめて**更新します（この tflplanner は tflspec 0.0.24.9079 以降が必要です）。
+2. 試験を 1 つずつ開いて**保存**します。プログラムと `programs/study_helpers.R` が書き直されます（手で直したプログラムは先に `programs/.edited/` へ写されます）。
+3. **レビュー**タブを見ます。
+
+- `set_levels()` などの 6 つの関数（`tag_ard()`、`fmt_ard()`、`keep_stats()`、`fmt_pvalue()`、`save_ard()`）は tflspec から外れ、試験の `programs/study_helpers.R` に入りました。`tflspec::` を付けて呼んでいたり、`library(tflspec)` のあと `study_helpers.R` を読まずに呼んでいたりするプログラムは、レビューに P02 として出ます。保存し直すか、`programs/study_helpers.R` を `source()` してください。
+- 図の YAML は前の形のまま読めます。保存すると新しい形で書かれます。
+- 図のプログラムの形が変わります（データとプロットの 2 つの部分）。描かれる図は同じです。
