@@ -436,12 +436,13 @@ sort_outputs <- function(x) {
 # An id's key for its natural order: the numbers in it first, as numbers
 # ("T-14-1-2" before "T-14-1-10", and "T-14-0-1" before "F-14-2-1": the
 # sections' order, as a TOC has it), then the id's letters ("T-14-1-1"
-# before "T-14-1-1S"); an id with no number after the numbered ones
+# before "T-14-1-1S"); ids with no number first, by their letters
+# ("AE", "DM", then "L1")
 .natural_key <- function(ids) {
   vapply(as.character(ids), function(s) {
     if (is.na(s)) return("")
     m <- gregexpr("[0-9]+", s)[[1L]]
-    if (m[1L] < 0L) return(paste0("\u007f", s))
+    if (m[1L] < 0L) return(paste0("\r", s))
     d <- formatC(regmatches(s, list(m))[[1L]], width = 12L, flag = "0")
     regmatches(s, list(m)) <- list(d)
     paste(paste(d, collapse = "."), s, sep = "\r")
