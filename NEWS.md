@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **The Review tab says in plain words what reading the data does.**  The
+  internal "data facts" are gone from the screen and the guide: the button
+  is "Review with the data" (データも使って見直す) everywhere, and the tab
+  says "The checks against the data have not run yet. Press [Review with
+  the data] to read the datasets once (not again until a file changes)."
+
 - **The preview shows a column header line's bold and underline.**  Ticked
   in the table builder (a line's "bold", "underline"), they were in the
   definition, the program and the RTF, but the Result tab's preview drew
