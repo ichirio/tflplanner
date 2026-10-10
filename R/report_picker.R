@@ -389,3 +389,16 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
     }, ignoreInit = TRUE)
   })
 }
+
+# What a run leaves in a study folder, as one stamp: the study ARD's status
+# (each ARD program writes it), the batches' run.csv and the previews'
+# logs, by modification time -- a change of it is a run that ended
+.run_files_stamp <- function(path) {
+  lay <- study_layout()
+  f <- c(file.path(path, lay[["ard"]], "ard_status.csv"),
+         Sys.glob(file.path(path, "runs", "*", "run.csv")),
+         Sys.glob(file.path(path, lay[["logs_preview"]], "*.log")))
+  f <- f[file.exists(f)]
+  if (!length(f)) return("")
+  paste(length(f), format(max(file.mtime(f)), "%Y%m%d%H%M%OS3"))
+}
