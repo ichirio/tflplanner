@@ -3,6 +3,10 @@
 # user's (never touched) -- sourced by ard_setup.R, report_setup.R and
 # fig_setup.R.
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 setup_planner <- function() {
   p <- add_output(new_planner(), "DM")
   p$ard$datasets <- data.frame(dataset = "ADSL", path = "data/adam/adsl.rds")

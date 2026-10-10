@@ -70,6 +70,7 @@ says how to allow it or to make the shortcut by hand.
 }
 \examples{
 \dontrun{
+# not run: writes a shortcut on your desktop and in the start menu
 add_shortcut()
 add_shortcut(port = 7480)
 }

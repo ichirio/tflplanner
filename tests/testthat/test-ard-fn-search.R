@@ -1,6 +1,10 @@
 # The ARD form's function search (R/ard_fn_search.R): the dictionary, the
 # text both sides are compared in, and what a query finds first.
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 fn_find <- function(q, lang = "en") {
   m <- .std_ard_methods()
   f <- tflspec::tfl_ard_functions()

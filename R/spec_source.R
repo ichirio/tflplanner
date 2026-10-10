@@ -388,10 +388,17 @@
 #'   says what was read).  `spec_status()`: a data frame, `file`, `status`
 #'   (`same`, `changed`, `added`, `removed`), `size_was`, `size_now`.
 #' @examples
-#' \dontrun{
-#' spec_status("ABC-101")
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_study("ABC-101", title = "A phase 2 study")
+#' spec_status("ABC-101")               # nothing changed outside tflplanner
 #' s <- reload_from_spec("ABC-101")
 #' }
+#' options(old)
 #' @export
 reload_from_spec <- function(study, home = tflplanner_home()) {
   st <- .read_state(.study_id_of(study), home)

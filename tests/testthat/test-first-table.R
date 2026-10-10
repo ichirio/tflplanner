@@ -1,3 +1,7 @@
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 test_that("data files go into the data catalog once, with name and level", {
   p <- new_planner()
   files <- data.frame(folder = c("data/adam", "data/adam", "data/sdtm", "data/other"),

@@ -32,9 +32,16 @@
 #' @param home tflplanner's home.
 #' @return The study, invisibly.
 #' @examples
-#' \dontrun{
-#' create_sample_study()
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_sample_study(run = FALSE)  # run = TRUE makes its ARD and reports too
+#' list_studies()
 #' }
+#' options(old)
 #' @export
 create_sample_study <- function(root = studies_root(home), run = TRUE,
                                 study_id = .sample_id, title = NULL,

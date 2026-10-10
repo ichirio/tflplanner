@@ -1,3 +1,7 @@
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 sample_planner <- function() {
   d <- system.file("extdata", "ard-spec", package = "tflspec")
   read_planner(file.path(d, c("report.xlsx", "study.xlsx")))

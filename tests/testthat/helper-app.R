@@ -18,7 +18,10 @@ two_studies <- function() {
   create_study("S2", planner = p2)
 }
 
+# The whole app's server, started on a study.  5-10 s a block: off on CRAN
+# (its check time), run on CI and locally (NOT_CRAN=true)
 server_for <- function(study) {
+  testthat::skip_on_cran()
   start <- open_study(study)
   function(input, output, session) app_server(input, output, session, start)
 }

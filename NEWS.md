@@ -1,5 +1,26 @@
 # tflplanner (development version)
 
+- **Ready for CRAN's checks, the parts that do not wait for the
+  submission** (#334).  The tests that start the app or write study
+  folders (5-10 s a test: the spec workbooks) skip on CRAN -- 16 files,
+  skipped as a whole, and every app-server block -- and still run on CI
+  and locally (`NOT_CRAN=true`): CRAN's test run, measured as CRAN runs
+  it, takes 5 minutes on a Windows laptop instead of 16 (the pure-function
+  tests stay: planner, standards, spec import, figure design, ...), and
+  its one warning (the ARS reader's, on the sample) is gone;
+  `app_server()`'s three
+  local `one()` helpers have names of their own (`one_val`, `toc_row`,
+  `header_line`: no "multiple local function definitions" NOTE); the
+  examples of `setup_tflplanner()`, `create_study()`,
+  `reload_from_spec()` and `create_sample_study()` run, with a home in
+  the temporary folder (the study-writing ones in `\donttest{}`, a few
+  seconds each), and `add_shortcut()` / `update_tflplanner()` say why
+  theirs are not run.  The title is "'shiny' Study Manager for Clinical
+  Tables, Listings and Figures"; the language en-GB, as rtfreporter's
+  and tflspec's; the word list has the CDISC names and the rest
+  `spelling` flags; `inst/COPYRIGHTS` links the licence instead of the
+  build-ignored LICENSE.md; the package help says where to start.
+
 - **The sample's race tables are demographics tables, with ASIANSUB**
   (the user's request on #326).  T-14-1-5 and T-14-1-6 show age (n,
   mean (SD), median, min and max), age group, sex and ethnicity as well,
