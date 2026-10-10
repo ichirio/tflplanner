@@ -542,3 +542,47 @@ test_that("step 3: the page's sheets on the left, Result first, SPEC read only",
   expect_match(ui, "rp-page-wrap", fixed = TRUE)
   expect_match(ui, "page_spec_view", fixed = TRUE)
 })
+
+test_that("an input left by an earlier session is not read as this form's (the Total switch, #331)", {
+  skip_if_not_installed("cards")
+  local_home()
+  p <- add_output(new_planner(), "T-DM", type = "table")
+  s <- create_study("B2", planner = p)
+  ard <- cards::ard_stack(cards::ADSL, .by = TRT01A,
+                          cards::ard_continuous(variables = AGE))
+  data <- rtfreporter::normalize_ard(ard)
+  m <- ard_meta(ard, data)
+  f <- .meta_file(s, "T-DM")
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(m, f)
+  saveRDS(data, sub("[.]rds$", "_data.rds", f))
+  shiny::testServer(server_for("B2"), {
+    rv <- session$userData$rv
+    bform <- session$userData$bform
+    session$setInputs(target = "T-DM", nav = "make", step = "content",
+                      content_nav = "content", table_nav = "builder")
+    # the numbers start apart from a session's before (1, 2, 3 ...)
+    expect_gt(bform$n, 100L)
+    b <- function(x) paste0("b", bform$n, "_", x)
+    v <- list()
+    v[[b("key")]] <- "TRT01A"
+    v[[b("vars")]] <- "AGE"
+    do.call(session$setInputs, v)
+    session$elapse(1000)
+    total <- function() sheet_rows(rv$p, "tables", "T-DM")$total
+    expect_true(is.na(total()))
+    # a reconnecting browser sends the inputs of the session before: an
+    # earlier form's switch, on -- not this form's, nothing changes
+    old <- list(TRUE, TRUE, TRUE)
+    names(old) <- paste0("b", 1:3, "_total_on")
+    do.call(session$setInputs, old)
+    session$elapse(1000)
+    expect_true(is.na(total()))
+    # this form's own switch does
+    on <- list(TRUE)
+    names(on) <- b("total_on")
+    do.call(session$setInputs, on)
+    session$elapse(1000)
+    expect_identical(total(), "Total")
+  })
+})

@@ -29,9 +29,9 @@ test_that("the sample study has no error and nothing to set by hand", {
                info = paste(r$rule, r$output_id, r$message, collapse = "\n"))
   # its checks, seen: the code list values no record has (T-14-1-5/6
   # count too since they read the enrolled set itself, not a data made by
-  # code), the KM figure's advice, the medians figure's ARD (T-14-2-2's)
+  # code; their ETHNIC's NOT REPORTED / UNKNOWN as T-14-1-1's), the KM figure's advice, the medians figure's ARD (T-14-2-2's)
   # and the forest plot's own (#293 P6) not made yet
-  expect_identical(as.integer(table(r$rule)[c("C02", "F02", "F07")]), c(11L, 2L, 2L))
+  expect_identical(as.integer(table(r$rule)[c("C02", "F02", "F07")]), c(15L, 2L, 2L))
   expect_identical(sort(unique(r$rule)), c("C02", "F02", "F07"))
   # without the data: no data rule, and no row it would not have with them
   r0 <- study_review(s, data = "none", lang = "en")

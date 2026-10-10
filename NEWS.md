@@ -11,6 +11,34 @@
   the arm compared chosen on its form.  The sample gains **F-14-2-4**, the
   hazard ratio of the time to first dermatologic event by sex and age
   group.  Needs tflspec >= 0.0.24.9084.
+- **The sample's race tables are demographics tables, with ASIANSUB**
+  (the user's request on #326).  T-14-1-5 and T-14-1-6 show age (n,
+  mean (SD), median, min and max), age group, sex and ethnicity as well,
+  so RACE is the one variable with rows nested under one of its levels.
+  The derived sub-category is `ASIANSUB`, one column per race as an EDC
+  collects it (White's would be `WHTSUB`, nested under "White": each its
+  own analysis, `plan_nest()` takes several), still footnoted as derived
+  for demonstration.  The other reports' programs and RTFs are
+  byte-identical.
+- **The app follows a run that ends, without a reload** (#305 area).
+  After a background official run (the sample's, for one), the report
+  list kept every report "not made" and a table's builder said "no ARD
+  yet" until the browser was reloaded.  The app now watches what a run
+  writes in the study folder -- the study ARD's status, a batch's
+  run.csv, a preview's log -- every few seconds, and refreshes the marks
+  and the ARD state when they change, whoever ran it (this session,
+  another, the app before a restart, R); and the builder reads a table's
+  ARD for itself again then.
+- **A report's Total column switched itself on after a reconnect**
+  (#331 follow-up).  The table builder's inputs are numbered by the form
+  drawn (`b3_total_on`), from 0 in each session; a browser reconnecting
+  to a new session (the app restarted) sends the inputs it still holds,
+  and an earlier form's switch, on, was read as this form's: the Total
+  column turned on for a report without one, unsaved, and its preview
+  stopped in `plan_total()`.  The numbering now starts at a random point
+  in each session, so no input of a session before is read as one of
+  this session's form -- for every builder field, not only the switch.
+
 - **An ARD definition that does not hold is said, not passed over**
   (#323).  Saving writes no ARD program then (a blank `from` of an
   analysis data made by code, for one); it used to say nothing, and the
@@ -137,6 +165,15 @@ look at its Review tab.
   the report warns until then); with no ARD yet the three in words.  The
   choice is the `tables` sheet's `header_n`, as before.  Needs rtfreporter
   0.8.2.9033.
+
+- **The table builder says only what fits the table** (#324).  The note
+  "Check this order: the data do not give one ..." under a column
+  variable's order no longer shows when the report has a code list for that
+  variable (its ARD program puts the columns in the list's order); the form
+  says the order is the code list's instead.  A table with no continuous
+  variable no longer shows the continuous rows, "A row of your own" and the
+  decimals of their statistics, nor warns that the ARD has no mean, sd ...;
+  what the definition says of them is kept as it is.
 
 - **A new report goes where its id sorts; the list can be sorted by ID.**
   The report list's order is still the order the reports are made in.  A

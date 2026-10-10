@@ -7939,7 +7939,12 @@ app_server <- function(input, output, session, start) {
   # can never be read as one of this form's.  Its edits write the sheets
   # (builder_write()), and the grids redraw when their tab is opened.
   bform <- new.env()
-  bform$n <- 0L
+  # numbered from a different start in each session: a browser that
+  # reconnects to a new session (the app restarted) still holds the inputs
+  # of the session before -- b3_total_on = TRUE, drawn for another report
+  # -- and sends them; with the same numbers they would be read as this
+  # session's form (a Total column switched on for a report without one)
+  bform$n <- sample.int(1e6L, 1L) * 10L
   session$userData$bform <- bform
   bform_drawn <- shiny::reactiveVal(0L)
   # a variable's own decimals, as the form edits them (bform$exc)
@@ -7989,6 +7994,8 @@ app_server <- function(input, output, session, start) {
   # builder is opened -- no new ARD, only the reading (once a report).
   auto_read <- new.env()
   shiny::observe({
+    # (again when a run ends: the ARD it made is read then)
+    rv$status_ver
     shiny::req(identical(active_page(), "builder"),
                identical(builder_case(), "meta"))
     id <- current()
@@ -8153,11 +8160,14 @@ app_server <- function(input, output, session, start) {
           stats::setNames(c("stat", "stat_fmt"),
                           t(c("Numbers, rounded here", "The ARD's text (as formatted in step 1)"))),
           selected = st$value, inline = TRUE),
-        builder_rows_ui(bs, st, m$stats),
-        shiny::conditionalPanel(
-          sprintf("input['%s'] == 'stat'", bid("value")),
-          shiny::uiOutput(bid("digits_ui")),
-          shiny::uiOutput(bid("exc_ui"))),
+        # the rows of a continuous variable, their decimals: only when the
+        # table has one (left out, what the definition says is kept)
+        if (any(st$variables$kind %in% "continuous")) shiny::tagList(
+          builder_rows_ui(bs, st, m$stats),
+          shiny::conditionalPanel(
+            sprintf("input['%s'] == 'stat'", bid("value")),
+            shiny::uiOutput(bid("digits_ui")),
+            shiny::uiOutput(bid("exc_ui")))),
         shiny::radioButtons(
           bid("cat"), t("Categorical variables"),
           c(stats::setNames(.cat_formats()$key, .cat_formats()$label),
@@ -8446,13 +8456,19 @@ app_server <- function(input, output, session, start) {
         sortable::rank_list(text = NULL, labels = ks, input_id = bid("keyorder"),
                             orientation = "horizontal")),
       lapply(ks, function(k) {
-        guess <- k %in% names(bform$st$auto_levels) && k %in% bform$st$key
+        # a column variable the report's code list has: the ARD program
+        # puts it in the list's order (set_levels()), so the order is known
+        listed <- k %in% sheet_rows(shiny::isolate(rv$p), "codelists", bform$id)$variable
+        guess <- !listed && k %in% names(bform$st$auto_levels) && k %in% bform$st$key
         shiny::tagList(
           shiny::tags$label(class = "form-label small",
                             sprintf(t("Order of the columns of %s (drag)"), k)),
           if (guess) shiny::div(
             class = "small text-warning",
             t("Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.")),
+          if (listed) shiny::div(
+            class = "small text-muted",
+            t("The order is the report's code list's (step 1).")),
           sortable::rank_list(text = NULL,
                               labels = .levels_with_labels(
                                 key_levels(k), k,
@@ -8994,8 +9010,12 @@ app_server <- function(input, output, session, start) {
     st <- bstate()
     m <- bform$meta
     n <- bform$n
-    tpl <- c(unlist(st$templates), .cat_template(st$cat_format, st$pct_decimals))
-    miss <- if (!is.null(m)) .missing_stats(tpl, m$stats) else character()
+    # the statistics the table prints: a continuous variable's rows, a
+    # categorical one's template -- each only when the table has one
+    kinds <- st$variables$kind
+    tpl <- c(if (any(kinds %in% "continuous")) unlist(st$templates),
+             if (any(kinds %in% "categorical")) .cat_template(st$cat_format, st$pct_decimals))
+    miss <- if (!is.null(m) && length(tpl)) .missing_stats(tpl, m$stats) else character()
     # the decimals' fields: drawn again only when the statistics change (a
     # number typed is not drawn over), the variables' own when they change
     rows_now <- input[[paste0("b", n, "_rows")]] %||% st$rows
@@ -10149,6 +10169,34 @@ app_server <- function(input, output, session, start) {
     d <- selected_status()
     if (!nrow(d)) return(notify(t("Choose a report"), "warning"))
     start_run(d$output_id, paste(d$output_id, collapse = ", "))
+  })
+  # A run this session did not start, or lost (the app restarted, another
+  # session, R): what it writes -- the study ARD's status, a batch's
+  # run.csv, a preview's log -- is watched, and the report list's marks
+  # and the builder's ARD follow it without a reload
+  run_files <- shiny::reactivePoll(3000, session, checkFunc = function() {
+    s <- shiny::isolate(rv$study)
+    if (is.null(s)) return(NULL)
+    .run_files_stamp(s$path)
+  }, valueFunc = function() {
+    s <- shiny::isolate(rv$study)
+    if (is.null(s)) NULL else .run_files_stamp(s$path)
+  })
+  run_files_seen <- new.env()
+  shiny::observe({
+    stamp <- run_files()
+    s <- shiny::isolate(rv$study)
+    if (is.null(stamp) || is.null(s)) return()
+    key <- s$path
+    before <- run_files_seen[[key]]
+    run_files_seen[[key]] <- stamp
+    # the first look at a study is no change
+    if (is.null(before) || identical(before, stamp)) return()
+    shiny::isolate({
+      rv$status_ver <- rv$status_ver + 1L
+      rv$ard_ver <- rv$ard_ver + 1L
+      ard_state_ver(ard_state_ver() + 1L)
+    })
   })
   shiny::observe({
     px <- rv$job
