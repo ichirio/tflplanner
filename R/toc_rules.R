@@ -841,7 +841,20 @@ toc_import_read <- function(sources, rules = toc_rules(), profile = NULL,
   type_from <- choices$type_from %||% profile$type_from
   types <- .toc_types(rows, set, type_from)
   cands <- toc_id_candidates(rows, set, types$from)
-  id_rule <- choices$id_rule %||% profile$id_rule %||% set$settings$id_rule
+  # the way chosen here; else the last time's, while it gives unique ids
+  # to as many rows as the best way (a TOC of another layout: the best is
+  # proposed, and said); else the rule set's; else the best
+  id_rule <- choices$id_rule
+  last_rule <- profile$id_rule
+  if (is.null(id_rule) && !is.null(last_rule) && last_rule %in% cands$rule &&
+      cands$ok[match(last_rule, cands$rule)] < cands$ok[1L]) {
+    tpl <- "The report IDs as the last time (%s) are unique for fewer rows of this TOC: %s is proposed."
+    notes <- rbind(notes, data.frame(message = sprintf(tpl, last_rule, cands$rule[1L]), template = tpl,
+                                     file = last_rule, sheet = cands$rule[1L],
+                                     stringsAsFactors = FALSE))
+    last_rule <- cands$rule[1L]
+  }
+  id_rule <- id_rule %||% last_rule %||% set$settings$id_rule
   if (is.null(id_rule) || is.na(id_rule) || !id_rule %in% cands$rule) {
     id_rule <- if (nrow(cands)) cands$rule[1L] else "column"
   }

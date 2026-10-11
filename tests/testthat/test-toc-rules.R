@@ -566,3 +566,24 @@ test_that("an item only a second source has is still there for the dialog", {
   expect_false(.toc_has_item(x, "datasets"))
   expect_true(.toc_has_item(toc_import_read(tfl, builtin_rules()), "phase"))
 })
+
+test_that("the last time's ID rule gives way when it makes fewer unique IDs here", {
+  f <- toc_workbook(list(Contents = list(
+    c("No.", "Type", "Title", "Analysis Set"),
+    c("14.1.1", "Table", "Demographic Characteristics", "Safety Analysis Set"),
+    c("14.2.1", "Table", "Primary Endpoint", "Full Analysis Set"),
+    c("14.2.1", "Figure", "Kaplan-Meier Plot", "Full Analysis Set"))))
+  x <- toc_import_read(f, builtin_rules(), profile = list(id_rule = "column"))
+  expect_false(identical(x$id_rule, "column"))
+  expect_false(anyDuplicated(x$reports$output_id) > 0L)
+  expect_match(x$notes$message, "as the last time (column)", fixed = TRUE)
+  # chosen here, it is kept, duplicates and all
+  y <- toc_import_read(f, builtin_rules(), profile = list(id_rule = "column"),
+                       choices = list(id_rule = "column"))
+  expect_identical(y$id_rule, "column")
+  # as good as the best: kept, nothing said
+  g <- two_phase_book(topline = FALSE)
+  z <- toc_import_read(g, builtin_rules(), profile = list(id_rule = "column"))
+  expect_identical(z$id_rule, "column")
+  expect_false(any(grepl("as the last time", z$notes$message, fixed = TRUE)))
+})

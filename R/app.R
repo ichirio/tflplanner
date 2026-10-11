@@ -6674,14 +6674,21 @@ app_server <- function(input, output, session, start) {
   }
   # the rule set (scored) and how the report IDs are made (each way with
   # the IDs it gives)
+  toc_id_rule_lab <- function() {
+    c(column = t("the ID column as it is"),
+      normalised = t("the ID column, normalised"),
+      type_number = t("type column + number column"),
+      title = t("the number in the first title"))
+  }
+  toc_note_arg <- function(v) {
+    lab <- toc_id_rule_lab()
+    ifelse(v %in% names(lab), lab[v], v)
+  }
   toc_rules_ui <- function(fd) {
     rs <- fd$rule_sets
     if (!nrow(rs)) return(NULL)
     set_lab <- sprintf(t("%s: %d of %d items"), rs$label, rs$matched, rs$named)
-    rule_lab <- c(column = t("the ID column as it is"),
-                  normalised = t("the ID column, normalised"),
-                  type_number = t("type column + number column"),
-                  title = t("the number in the first title"))
+    rule_lab <- toc_id_rule_lab()
     ca <- fd$id_candidates
     id_ch <- if (nrow(ca)) stats::setNames(ca$rule, sprintf(
       t("%s: %d of %d rows (%s)"), rule_lab[ca$rule], ca$ok, nrow(fd$rows), ca$preview))
@@ -6795,7 +6802,9 @@ app_server <- function(input, output, session, start) {
         class = "small text-warning", shiny::span(class = "fw-bold", sprintf(t("Warnings (%d):"), nrow(chk))),
         " ", paste(chk$message, collapse = " \u00b7 ")),
       if (nrow(res$notes)) shiny::div(class = "small text-muted", paste(
-        sprintf(t(res$notes$template), res$notes$file, res$notes$sheet), collapse = " ")))
+        # a way of making the IDs is said by its label
+        sprintf(t(res$notes$template), toc_note_arg(res$notes$file), toc_note_arg(res$notes$sheet)),
+        collapse = " ")))
   }
   # the TOC as tflspec reads it (the reports the rules made); an error of
   # the rules (no title column, an ID twice ...) stops it
