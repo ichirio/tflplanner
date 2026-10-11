@@ -111,6 +111,16 @@ look at its Review tab.
 
 ## Changes
 
+- **The table builder says what the report's ARD holds.**  Above the
+  SPEC / Code / Result tabs, one line: the column variables and their
+  groups, the pages, the rows, the analysis variables (categorical,
+  continuous), the statistics and when the ARD was read ("ARD: columns
+  TRT01A (3 groups) | 6 variables ..."); opened, a small table of each
+  one's role, kind, levels or statistics and label.  "Show the whole
+  normalized ARD" opens it in a dialog -- paged, filterable, the main
+  columns or all -- read only then.  From what reading the ARD saved:
+  nothing more is read to draw the card.
+
 - **Race with its Asian sub-categories, nested or in two blocks** (the
   sample's T-14-1-5 and T-14-1-6, with rtfreporter #599 and tflspec
   #213).  The table builder's variable form gets "Rows under a level of
