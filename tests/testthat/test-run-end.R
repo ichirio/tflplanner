@@ -3,6 +3,7 @@
 # table builder's ARD follow it without a reload.
 
 run_end_server <- function() {
+  skip_on_cran()
   function(input, output, session) app_server(input, output, session, open_study("SAMPLE-01"))
 }
 run_end_marks <- function(h) {

@@ -11,6 +11,27 @@
   the arm compared chosen on its form.  The sample gains **F-14-2-4**, the
   hazard ratio of the time to first dermatologic event by sex and age
   group.  Needs tflspec >= 0.0.24.9084.
+- **Ready for CRAN's checks, the parts that do not wait for the
+  submission** (#334).  The tests that start the app or write study
+  folders (5-10 s a test: the spec workbooks) skip on CRAN -- 16 files,
+  skipped as a whole, and every app-server block -- and still run on CI
+  and locally (`NOT_CRAN=true`): CRAN's test run, measured as CRAN runs
+  it, takes 5 minutes on a Windows laptop instead of 16 (the pure-function
+  tests stay: planner, standards, spec import, figure design, ...), and
+  its one warning (the ARS reader's, on the sample) is gone;
+  `app_server()`'s three
+  local `one()` helpers have names of their own (`one_val`, `toc_row`,
+  `header_line`: no "multiple local function definitions" NOTE); the
+  examples of `setup_tflplanner()`, `create_study()`,
+  `reload_from_spec()` and `create_sample_study()` run, with a home in
+  the temporary folder (the study-writing ones in `\donttest{}`, a few
+  seconds each), and `add_shortcut()` / `update_tflplanner()` say why
+  theirs are not run.  The title is "'shiny' Study Manager for Clinical
+  Tables, Listings and Figures"; the language en-GB, as rtfreporter's
+  and tflspec's; the word list has the CDISC names and the rest
+  `spelling` flags; `inst/COPYRIGHTS` links the licence instead of the
+  build-ignored LICENSE.md; the package help says where to start.
+
 - **The sample's race tables are demographics tables, with ASIANSUB**
   (the user's request on #326).  T-14-1-5 and T-14-1-6 show age (n,
   mean (SD), median, min and max), age group, sex and ethnicity as well,
@@ -100,6 +121,16 @@ look at its Review tab.
   hand is copied to `programs/.edited/` first); check the Review tab.
 
 ## Changes
+
+- **The table builder says what the report's ARD holds.**  Above the
+  SPEC / Code / Result tabs, one line: the column variables and their
+  groups, the pages, the rows, the analysis variables (categorical,
+  continuous), the statistics and when the ARD was read ("ARD: columns
+  TRT01A (3 groups) | 6 variables ..."); opened, a small table of each
+  one's role, kind, levels or statistics and label.  "Show the whole
+  normalized ARD" opens it in a dialog -- paged, filterable, the main
+  columns or all -- read only then.  From what reading the ARD saved:
+  nothing more is read to draw the card.
 
 - **Race with its Asian sub-categories, nested or in two blocks** (the
   sample's T-14-1-5 and T-14-1-6, with rtfreporter #599 and tflspec

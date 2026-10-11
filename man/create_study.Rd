@@ -77,9 +77,15 @@ file manager it goes to the recycle bin).
 }
 }
 \examples{
-\dontrun{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
 s <- create_study("ABC-101", title = "A phase 2 study")
 list_studies()
 s <- open_study("ABC-101")
 }
+options(old)
 }

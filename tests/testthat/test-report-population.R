@@ -1,6 +1,10 @@
 # A report's analysis set: one value (the report list's, the TOC's, step
 # 2's), the data of its subjects made, the analyses moved with it
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 pop_planner <- function() {
   p <- add_output(new_planner(), "T1")
   p$ard$datasets <- .normalize_ard_sheet(data.frame(

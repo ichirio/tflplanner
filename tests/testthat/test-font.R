@@ -1,6 +1,10 @@
 # The reports' font and size: the page sheet's study row, set once (the
 # study tab, the company standards), written once in report_setup.R
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 test_that("the study's font and size are the page sheet's study row", {
   p <- new_planner()
   expect_true(is.na(study_page_value(p, "font")))

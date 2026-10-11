@@ -110,8 +110,17 @@ tflplanner_home <- function() {
 #'   (`add_shortcut(update = TRUE)`).
 #' @return The settings, invisibly.
 #' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' tflplanner_config()
+#' options(old)
+#'
 #' \dontrun{
-#' setup_tflplanner()            # step by step
+#' # not run: these remember the home and the study folder for every later
+#' # session (and the first one asks, step by step)
+#' setup_tflplanner()
 #' setup_tflplanner(studies_root = "C:/studies", sample = TRUE)
 #' }
 #' @export

@@ -1,3 +1,7 @@
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 toc_file <- function(rows) {
   f <- tempfile(fileext = ".csv")
   writeLines(c("No.,Kind,Title,Population,Footnotes", rows), f)
