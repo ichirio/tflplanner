@@ -122,13 +122,29 @@
   x
 }
 
+# The names tflplanner gives an analysis data, one rule:
+# <dataset>_<population>[_<PARAMCD>] -- adsl_saf, adae_saf,
+# adtte_saf_ttde.  The parameter only when the condition keeps one
+# (PARAMCD == "TTDE"); no other condition is in the name (its label says
+# it).  A name the user gave is never changed.
+.adata_param_part <- function(where) {
+  if (.is_blank(where)) return(character())
+  m <- regmatches(where, regexec('\\bPARAMCD\\s*(==|%in%)\\s*"([^"]+)"', where))[[1L]]
+  if (length(m)) gsub("[^a-z0-9]", "", tolower(m[3L])) else character()
+}
+.adata_default_name <- function(from, population_id = NA, where = NA) {
+  rn <- function(v) gsub("[^a-z0-9_.]", "_", tolower(v))
+  paste(c(rn(from), if (!.is_blank(population_id)) rn(population_id),
+          .adata_param_part(where)), collapse = "_")
+}
+
 # A name for a data from what it is made from, its analysis set and its
-# condition: adsl_saf for ADSL of the analysis set SAF, or kept to an
-# analysis set's condition, or to a flag set to "Y" (SAFFL == "Y"); NA
-# when they say no such thing
+# condition (the rule above): adsl_saf for ADSL of the analysis set SAF, or
+# kept to an analysis set's condition, or to a flag set to "Y" (SAFFL ==
+# "Y"); NA when they say no such thing
 .adata_name_from <- function(root, where, populations = NULL, pop = NA) {
   if (.is_blank(root)) return(NA_character_)
-  if (!.is_blank(pop)) return(paste0(tolower(root), "_", tolower(pop)))
+  if (!.is_blank(pop)) return(.adata_default_name(root, pop, where))
   if (.is_blank(where)) return(NA_character_)
   w <- trimws(where)
   k <- if (!is.null(populations)) match(w, trimws(populations$where)) else NA
@@ -136,7 +152,7 @@
     m <- regmatches(w, regexec('^([A-Za-z0-9_]+)FL\\s*(==|%in%)\\s*"Y"$', w))[[1L]]
     if (length(m)) m[2L] else NA_character_
   }
-  if (is.na(suf)) NA_character_ else paste0(tolower(root), "_", tolower(suf))
+  if (is.na(suf)) NA_character_ else .adata_default_name(root, suf)
 }
 
 # A condition's terms: what `&` joins, outermost first (NULL when it does
@@ -307,11 +323,7 @@
 }
 
 .adata_suggest <- function(x, output_id, from, population_id = NA, where = NA) {
-  rn <- function(v) gsub("[^a-z0-9_.]", "_", tolower(v))
-  val <- if (!.is_blank(where)) regmatches(where, regexpr("\"[^\"]+\"", where))
-  val <- if (length(val)) gsub("[^a-z0-9]", "", tolower(val)) else ""
-  base <- paste(c(rn(from), if (nzchar(val)) val else
-    if (!.is_blank(population_id)) rn(population_id)), collapse = "_")
+  base <- .adata_default_name(from, population_id, where)
   if (!grepl("^[a-z]", base)) base <- paste0("d_", base)
   taken <- .adata_taken_names(x, output_id)
   nm <- base

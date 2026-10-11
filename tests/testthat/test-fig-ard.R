@@ -244,7 +244,7 @@ test_that("set_fig_own_analyses() writes a design's analyses to the figure's ARD
   expect_identical(attr(p, "written"), c("HR", "HR_SEX", "HR_AGEGR1"))
   expect_identical(ard_rows(p, "analyses", "F-FOR")$analysis_id, c("HR", "HR_SEX", "HR_AGEGR1"))
   ad <- p$ard$analysis_data
-  expect_identical(ad$data_id[ad$output_id == "F-FOR"], "adtte_ttde")
+  expect_identical(ad$data_id[ad$output_id == "F-FOR"], "adtte_saf_ttde")
   expect_identical(ad$data_id[ad$output_id == "T1"], "adsl_saf")
   expect_identical(nrow(ad), 2L)
   expect_identical(sheet_rows(p, "report", "F-FOR")$ard_source, "own")

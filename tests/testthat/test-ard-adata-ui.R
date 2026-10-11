@@ -107,7 +107,8 @@ test_that("a suggested name is not the program's own; the choices come in groups
     dataset = c("ADSL", "ADVS"), path = c("a.rds", "b.rds")), "datasets")
   # advs_saf is the program's name for ADVS x SAF: not suggested
   expect_identical(.adata_suggest(p, "DM", "ADVS", "SAF"), "advs_saf_1")
-  expect_identical(.adata_suggest(p, "DM", "ADVS", "SAF", "AVISIT == \"Week 24\""), "advs_week24")
+  # (the visit is the label's, not the name's)
+  expect_identical(.adata_suggest(p, "DM", "ADVS", "SAF", "AVISIT == \"Week 24\""), "advs_saf_1")
   q <- name_analysis_data(p, "DM", NA, "SAF", "adsl_saf")
   ad <- .adata_rows(q, "DM")
   w <- list(with = "%s x %s (%s)", alone = "%s (%s)", none = "(none)",
@@ -367,6 +368,20 @@ test_that("a data's name from what it is made from and its condition", {
   expect_identical(.adata_name_from("ADAE", "TRTEMFL == \"Y\""), "adae_trtem")
   expect_true(is.na(.adata_name_from("ADSL", "AGE >= 65", po)))
   expect_true(is.na(.adata_name_from("ADSL", NA, po)))
+})
+
+test_that("the names tflplanner gives: <dataset>_<population>[_<PARAMCD>], one rule", {
+  expect_identical(.adata_default_name("ADTTE", "SAF", 'PARAMCD == "TTDE"'), "adtte_saf_ttde")
+  # only the parameter of a condition is in the name (the visit is the label's)
+  expect_identical(.adata_default_name("ADVS", "SAF", 'PARAMCD == "SYSBP" & AVISIT == "Week 24"'),
+                   "advs_saf_sysbp")
+  expect_identical(.adata_default_name("ADVS", "SAF", 'AVISIT == "Week 24"'), "advs_saf")
+  expect_identical(.adata_default_name("ADSL"), "adsl")
+  expect_identical(.adata_name_from("ADTTE", 'PARAMCD %in% "OS"', pop = "FAS"), "adtte_fas_os")
+  p <- adata_planner()
+  expect_identical(.adata_suggest(p, "DM", "ADVS", "SAF", 'PARAMCD == "SYSBP"'), "advs_saf_sysbp")
+  # (a condition's other value is not taken for the name any more)
+  expect_identical(.adata_suggest(p, "DM", "ADAE", NA, 'AESER == "Y"'), "adae")
 })
 
 test_that("1-1's analysis set: the condition's first row, from the study's sets and the data's flags", {

@@ -53,9 +53,7 @@ report_population <- function(x, output_id) {
     attr(x, "added") <- FALSE
     return(x)
   }
-  nm <- paste0(gsub("[^a-z0-9_.]", "_", tolower(from)), "_",
-               gsub("[^a-z0-9_.]", "_", tolower(pop)))
-  nm <- .adata_free_name(x, output_id, nm)
+  nm <- .adata_free_name(x, output_id, .adata_default_name(from, pop))
   lab <- .pop_label(x, pop)
   x <- set_analysis_data(x, output_id, nm, from = from, population_id = pop,
                          label = if (identical(lab, pop)) NA else lab)

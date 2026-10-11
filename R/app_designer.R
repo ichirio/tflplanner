@@ -4,13 +4,16 @@
 # A figure's design (tflspec's figure design) is four lists of pieces: the
 # data steps from ADaM, the statistics, the figure-wide settings and the
 # layers.  A template fills them at once (KM with the number at risk, mean
-# over time, waterfall ...).  Then:
+# over time, waterfall ...).  The data steps are the figure's step 1 ("1
+# Data", with the numbers from an ARD below them); the figure settings and
+# the layers its step 2 ("2 Figure").  Each as a table's step 2, input at
+# the left, the result at the right:
 #   left    the pieces, as a stack: add, move up or down, remove; a piece
 #           with a problem is marked;
-#   middle  the figure as its program saves it (the PNG, at its size),
-#           redrawn on each change, and the checks;
-#   right   the piece chosen, on a form: its fields, the default shown, the
+#   middle  the piece chosen, on a form: its fields, the default shown, the
 #           data's datasets, variables and PARAMCDs to pick from;
+#   right   (step 2) the figure as its program saves it (the PNG, at its
+#           size), redrawn on each change, and the checks;
 #   below   the code the design makes and the design itself (YAML).
 #
 # What the pieces and their fields are comes from tflspec's
@@ -50,6 +53,17 @@
     shiny::uiOutput("pd_body"),
     shiny::uiOutput("lf_fig_box"))
 }
+
+# A figure's step 1 (#293): the data steps of its design, their form
+.designer_data_ui <- function() {
+  shiny::conditionalPanel(
+    "output.report_kind == 'figure'",
+    shiny::uiOutput("pd_data_body"))
+}
+
+# the sections of a design each step shows (the code lists go with the data)
+.pd_step_secs <- list(data = c("data", "codelists"), figure = c("plot", "layers"))
+.pd_in_step <- function(s, step) isTRUE(s$sec %in% .pd_step_secs[[step]])
 
 # A select input with some of its options disabled (selectize keeps them
 # listed but not choosable)
@@ -152,6 +166,36 @@
   paste(utils::head(v, 3), collapse = "  ")
 }
 
+# One object the data steps made, in short: a data frame's size, columns
+# and first rows; anything else, the first lines it prints
+.pd_object_ui <- function(name, o, t = identity) {
+  if (identical(o$class, "data frame")) {
+    h <- o$head
+    cells <- lapply(h, function(v) {
+      v <- format(v, digits = 4L)
+      ifelse(nchar(v) > 24L, paste0(substr(v, 1L, 22L), ".."), v)
+    })
+    return(shiny::div(
+      class = "mb-2 small",
+      shiny::strong(shiny::code(name)), " ",
+      shiny::span(class = "text-muted", sprintf(t("data frame, %d rows x %d columns"),
+                                                o$rows, length(o$columns))),
+      shiny::tags$details(
+        shiny::tags$summary(class = "text-muted", t("its first rows")),
+        shiny::div(
+          style = "overflow-x: auto",
+          shiny::tags$table(
+            class = "table table-sm table-bordered mb-0 small",
+            shiny::tags$thead(shiny::tags$tr(lapply(o$columns, shiny::tags$th))),
+            shiny::tags$tbody(lapply(seq_len(nrow(h)), function(i)
+              shiny::tags$tr(lapply(cells, function(v) shiny::tags$td(v[i]))))))))))
+  }
+  shiny::div(
+    class = "mb-2 small",
+    shiny::strong(shiny::code(name)), " ", shiny::span(class = "text-muted", o$class),
+    shiny::tags$pre(class = "small mb-0", paste(o$text, collapse = "\n")))
+}
+
 .pd_act <- function(op, sec, i) {
   sprintf("event.stopPropagation(); Shiny.setInputValue('pd_act', {op: '%s', sec: '%s', i: %d, n: Math.random()}, {priority: 'event'})",
           op, sec, i)
@@ -193,12 +237,14 @@
     id <- current()
     if (is.null(id) || !identical(report_info(rv$p, id)$type, "figure")) return()
     has <- .fig_ard_source(rv$p, id)$kind != "none"
-    ch <- lapply(c("data", "layers"), function(sec) {
+    ch <- lapply(c(data = "data", layers = "layers"), function(sec) {
       x <- pieces_of(sec)
       if (has) x else x[!x %in% .pd_ard_pieces]
     })
-    shiny::updateSelectInput(session, "pd_add", choices = stats::setNames(ch, t(.pd_sections[c("data", "layers")])),
+    shiny::updateSelectInput(session, "pd_add", choices = ch$layers,
                              selected = shiny::isolate(input$pd_add))
+    shiny::updateSelectInput(session, "pd_add_data", choices = ch$data,
+                             selected = shiny::isolate(input$pd_add_data))
   })
   design <- shiny::reactive({
     id <- current()
@@ -364,7 +410,7 @@
       shiny::span(class = "text-muted",
                   t("-- the designer's result; the same whether started from a template or empty."))),
     bslib::layout_columns(
-      col_widths = bslib::breakpoints(sm = 12, lg = c(3, 5, 4, 12)),
+      col_widths = bslib::breakpoints(sm = 12, lg = c(3, 4, 5, 12)),
       bslib::card(
         bslib::card_header(t("Design")),
         # the actions on their own row, so they wrap instead of crowding the title
@@ -379,10 +425,13 @@
         shiny::div(
           class = "d-flex gap-1 mt-2 align-items-start",
           shiny::div(style = "flex: 1", shiny::selectInput(
-            "pd_add", NULL, width = "100%",
-            stats::setNames(lapply(c("data", "layers"), pieces_of),
-                            t(.pd_sections[c("data", "layers")])))),
-          .btn("pd_addbtn", t("Add"), class = "btn-sm btn-outline-primary"))),
+            "pd_add", NULL, width = "100%", pieces_of("layers"))),
+          .btn("pd_addbtn", t("Add"), class = "btn-sm btn-outline-primary")),
+        shiny::div(class = "small text-muted mt-2",
+                   t("The data steps are in step 1 (Data)."))),
+      bslib::card(
+        bslib::card_header(t("Edit")),
+        shiny::uiOutput("pd_form")),
       bslib::card(
         full_screen = TRUE,
         bslib::card_header(shiny::div(
@@ -397,12 +446,6 @@
         shiny::uiOutput("pd_overlay"),
         shiny::imageOutput("pd_img", height = "auto"),
         shiny::uiOutput("pd_checks")),
-      bslib::card(
-        bslib::card_header(t("Edit")),
-        shiny::uiOutput("pd_form"),
-        shiny::h6(class = "mt-3", with_tip(t("Code of this piece"),
-                                           t("What this piece writes into the program; it follows every change."))),
-        shiny::div(class = "rp-code pd-piece-code", shiny::verbatimTextOutput("pd_piece_code"))),
       bslib::navset_card_tab(
         bslib::nav_panel(t("Code"), shiny::div(
           class = "rp-code", shiny::verbatimTextOutput("pd_code"))),
@@ -712,7 +755,9 @@
   })
 
   # ---- the stack ------------------------------------------------------------
-  output$pd_stack <- shiny::renderUI({
+  # (step 1 the data steps and the code lists, step 2 the settings and the
+  # layers)
+  stack_ui <- function(step) {
     d <- design()
     shiny::req(d)
     s <- sel()
@@ -746,34 +791,15 @@
     sec_ui <- function(sec) {
       items <- if (sec == "plot") list(item("plot", 1L, d$plot, t("Title, axes, colours, legend, size")))
         else lapply(seq_along(d[[sec]]), function(i) item(sec, i, d[[sec]][[i]], label_of(d[[sec]][[i]])))
-      # the figure's ARD, first (read-only: step 1 chooses it); the code
-      # lists go on df: before the first step that makes an object
+      # the code lists go on df: before the first step that makes an object
       if (sec == "data") {
-        items <- c(list(ard_item()), items)
         named <- which(vapply(d$data, function(p) isTRUE(p$step %in% names(.pd_named_steps)), NA))
         items <- append(items, list(cl_item()),
-                        after = 1L + if (length(named)) named[1L] - 1L else length(items) - 1L)
+                        after = if (length(named)) named[1L] - 1L else length(items))
       }
       shiny::div(
         shiny::div(class = "pd-sec", t(.pd_sections[[sec]])),
         if (length(items)) items else shiny::div(class = "small text-muted ps-2", t("(none)")))
-    }
-    # the figure's ARD (#293): what step 1 chose, `ard` in the program; a
-    # click opens step 1
-    ard_item <- function() {
-      src <- .fig_ard_source(rv$p, current() %||% "")
-      what <- switch(src$kind,
-        none = t("(none)"),
-        own = t("its own analyses (step 1)"),
-        table = sprintf(t("of %s -> ard"), src$id),
-        import = sprintf(t("taken in (%s) -> ard"), src$file))
-      bad <- src$kind == "none" && .fig_reads_ard(d, current() %||% "fig")
-      shiny::div(
-        class = "pd-item",
-        onclick = "Shiny.setInputValue('pd_goto_ard', Math.random(), {priority: 'event'})",
-        if (bad) shiny::span(class = "pd-bad", "! "),
-        shiny::span(t("ARD")),
-        shiny::div(class = "pd-sum", what))
     }
     # always there, on df before its first object (#293): the report's
     # code lists put on the columns (not the design's: the report's,
@@ -788,13 +814,71 @@
         shiny::span(t("Code lists")),
         shiny::div(class = "pd-sum", if (length(used)) paste(used, collapse = ", ") else t("(none)")))
     }
+    secs <- intersect(names(.pd_sections), .pd_step_secs[[step]])
     shiny::tagList(
-      if (!is.null(d$template)) shiny::p(class = "small text-muted mb-1",
+      if (!is.null(d$template) && step == "figure") shiny::p(class = "small text-muted mb-1",
                                          paste0(t("Template"), ": ", d$template)),
-      lapply(names(.pd_sections), sec_ui))
-  })
+      lapply(secs, sec_ui))
+  }
+  output$pd_stack <- shiny::renderUI(stack_ui("figure"))
+  output$pd_stack_data <- shiny::renderUI(stack_ui("data"))
 
-  shiny::observeEvent(input$pd_goto_ard, bslib::nav_select("step", "ard"))
+  # A figure's step 1: its data steps (as step 2 draws the rest) -- or,
+  # with no design yet, where to start it
+  output$pd_data_body <- shiny::renderUI({
+    m <- mode()
+    shiny::req(m %in% c("hand", "design"))
+    if (m == "hand") {
+      return(shiny::div(
+        class = "alert alert-info py-2 small",
+        t("The figure's data steps come with its design: start it in step 2 (Figure), from a template or empty; they are then here."),
+        " ", .btn("pd_goto_figure", t("Go to step 2"), class = "btn-sm btn-outline-primary py-0")))
+    }
+    bslib::card(
+      bslib::card_header(with_tip(t("The data the figure reads"),
+        t("The figure's data steps, in their order: the dataset read, the rows kept, the variables joined or derived, the objects made (a KM fit, summary statistics ...). The figure (step 2) draws what they make."))),
+      bslib::layout_columns(
+        col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
+        shiny::div(
+          shiny::uiOutput("pd_stack_data"),
+          shiny::div(
+            class = "d-flex gap-1 mt-2 align-items-start",
+            shiny::div(style = "flex: 1", shiny::selectInput(
+              "pd_add_data", NULL, width = "100%", pieces_of("data"))),
+            .btn("pd_addbtn_data", t("Add"), class = "btn-sm btn-outline-primary"))),
+        shiny::uiOutput("pd_form_data")),
+      shiny::div(
+        class = "border-top pt-2 mt-2",
+        shiny::div(
+          class = "d-flex flex-wrap gap-2 align-items-center mb-1",
+          shiny::h6(class = "mb-0", with_tip(t("What the steps make"),
+            t("The data frames and objects the data steps leave (df, a KM fit, the ARD's statistics ...), made from the study's data as the program makes them: their size, columns and first rows."))),
+          .btn("pd_data_preview", t("Preview the data"), class = "btn-sm btn-outline-primary py-0")),
+        shiny::uiOutput("pd_objects")))
+  })
+  shiny::observeEvent(input$pd_data_preview, draw())
+  # what the steps made, from the last drawing of this figure
+  output$pd_objects <- shiny::renderUI({
+    r <- pv()
+    if (drawing()) {
+      return(shiny::div(class = "small text-muted",
+                        shiny::span(class = "spinner-border spinner-border-sm me-2"),
+                        t("Making the data ...")))
+    }
+    if (is.null(r) || !identical(r$id, current())) {
+      return(shiny::p(class = "small text-muted mb-0",
+                      t("Not made yet: press Preview the data (or draw the figure in step 2).")))
+    }
+    ob <- r$objects %||% list()
+    shiny::tagList(
+      if (stale()) shiny::div(class = "alert alert-warning py-1 px-2 small mb-2",
+                              t("The steps have changed since: press Preview the data again.")),
+      if (!is.null(r$error)) shiny::div(class = "alert alert-danger py-1 px-2 small mb-2",
+                                        shiny::strong(t("The steps stopped: ")), r$error),
+      if (!length(ob)) shiny::p(class = "small text-muted mb-0", t("(nothing made)")),
+      lapply(names(ob), function(nm) .pd_object_ui(nm, ob[[nm]], t)))
+  })
+  shiny::observeEvent(input$pd_goto_figure, bslib::nav_select("step", "content"))
   # a piece chosen, moved, removed
   shiny::observeEvent(input$pd_act, {
     a <- input$pd_act
@@ -823,9 +907,8 @@
     redraw_form()
   })
   # a piece added: its fields' defaults, then it is the one edited
-  shiny::observeEvent(input$pd_addbtn, {
+  add_piece <- function(k) {
       d <- design()
-      k <- input$pd_add
       shiny::req(d, k)
       sec <- parts$section[parts$piece == k][1L]
       f <- parts[parts$piece == k, , drop = FALSE]
@@ -838,7 +921,9 @@
       set_design(d)
       sel(list(sec = sec, i = at + 1L))
       redraw_form()
-  })
+  }
+  shiny::observeEvent(input$pd_addbtn, add_piece(input$pd_add))
+  shiny::observeEvent(input$pd_addbtn_data, add_piece(input$pd_add_data))
 
   # ---- the form of the chosen piece -----------------------------------------
   piece_now <- function(d, s) {
@@ -849,9 +934,31 @@
     p <- x[[s$i]]
     list(kind = p$step %||% p$layer, p = p)
   }
+  # the form of the chosen piece, with the code it makes, in the step it
+  # belongs to; the other step's says where to choose one (no code box)
+  code_box <- function(id) shiny::tagList(
+    shiny::h6(class = "mt-3", with_tip(t("Code of this piece"),
+                                       t("What this piece writes into the program; it follows every change."))),
+    shiny::div(class = "rp-code pd-piece-code", shiny::verbatimTextOutput(id)))
   output$pd_form <- shiny::renderUI({
     form_ver()
     fig_id()
+    if (!.pd_in_step(shiny::isolate(sel()), "figure")) {
+      return(shiny::p(class = "small text-muted",
+                      t("Choose the figure settings or a layer on the left.")))
+    }
+    shiny::tagList(form_ui(), code_box("pd_piece_code"))
+  })
+  output$pd_form_data <- shiny::renderUI({
+    form_ver()
+    fig_id()
+    if (!.pd_in_step(shiny::isolate(sel()), "data")) {
+      return(shiny::p(class = "small text-muted",
+                      t("Choose a data step on the left, or add one.")))
+    }
+    shiny::tagList(form_ui(), code_box("pd_piece_code_data"))
+  })
+  form_ui <- function() {
     form_on_page$id <- shiny::isolate(current())
     if (isTRUE(form_on_page$waiting)) {
       form_on_page$waiting <- FALSE
@@ -989,7 +1096,7 @@
       if (by_cl) shiny::p(class = "small text-muted",
                           sprintf(t("%s has a code list: its values' order and text are the code list's (the data steps' last, Code lists)."),
                                   cl_var)))
-  })
+  }
   # the code lists' step: the report's code lists of the design's columns
   # (R/codelists.R), its dialog the app's
   cl_ids <- .codelist_part_ids("pd_cl", "clfig", edit = "clfig_open_btn",
@@ -1201,19 +1308,22 @@
       if (!length(items)) shiny::p(class = "text-success small", t("No problems found."))
       else shiny::tags$ul(class = "small ps-3", items))
   })
-  # the lines of the script that the chosen piece makes
-  output$pd_piece_code <- shiny::renderText({
+  # the lines of the script that the chosen piece makes (in its step)
+  piece_code <- function(step) {
     id <- current()
     d <- design()
     s <- sel()
     shiny::req(id, d)
+    if (!.pd_in_step(s, step)) return("")
     cl <- .study_codelists(rv$p)
     code <- tryCatch(.fig_design_script(d, id, codelists = cl),
                      error = function(e) conditionMessage(e))
     if (length(code) == 1L && !grepl("\n", code)) return(code)
     .piece_code(code, d, s, function(d, codelists = TRUE)
       .fig_design_script(d, id, codelists = if (codelists) cl))
-  })
+  }
+  output$pd_piece_code <- shiny::renderText(piece_code("figure"))
+  output$pd_piece_code_data <- shiny::renderText(piece_code("data"))
   output$pd_code <- shiny::renderText({
     id <- current()
     d <- design()

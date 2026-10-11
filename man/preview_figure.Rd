@@ -27,7 +27,14 @@ A list: \code{png} (the file, \code{NULL} when it failed), \code{size} (its
 wanted and missing, see \code{\link[tflspec:tfl_fig_advice]{tflspec::tfl_fig_advice()}}), \code{problems} (the
 design against the schema and the data, see
 \code{\link[tflspec:tfl_fig_design]{tflspec::tfl_check_fig_design()}}), \code{warnings} (the figure checks and
-the plot's own warnings), \code{error} (\code{NULL} or the message), \code{code}.
+the plot's own warnings), \code{error} (\code{NULL} or the message), \code{code},
+\code{objects} (what the data steps made, each in short: see below).
+
+\code{objects} is a list by name (\code{df}, then each object a step makes: a
+KM fit, summary statistics, the ARD's statistics ...), each a list:
+\code{class}; for a data frame \code{rows}, \code{columns} and \code{head} (its first 6
+rows), for anything else \code{text} (the first lines it prints).  Those
+made before an error are there.
 }
 \description{
 Runs a design's script on the study's data, as the figure's program will

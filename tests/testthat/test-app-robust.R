@@ -485,7 +485,9 @@ test_that("a report's kind says where it is made, and the tabs it has nothing on
   expect_identical(names(.type_moves$table), c("ard", "tables"))
   expect_true(all(unlist(lapply(.type_moves, names)) %in%
                     c("ard", "tables", "designer", "lf", "usercode")))
-  expect_identical(.type_idle_tabs$figure, "ard")
+  # (a figure's step 1 is its data: never idle)
+  expect_length(.type_idle_tabs$figure, 0L)
+  expect_identical(.type_idle_tabs$listing, "ard")
   expect_length(.type_idle_tabs$table, 0L)
   # every kind of report has its moves and its idle tabs
   expect_setequal(names(.type_moves), report_types())

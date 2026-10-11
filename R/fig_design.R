@@ -234,7 +234,14 @@ set_fig_design <- function(x, output_id, design) {
 #'   wanted and missing, see [tflspec::tfl_fig_advice()]), `problems` (the
 #'   design against the schema and the data, see
 #'   [tflspec::tfl_check_fig_design()]), `warnings` (the figure checks and
-#'   the plot's own warnings), `error` (`NULL` or the message), `code`.
+#'   the plot's own warnings), `error` (`NULL` or the message), `code`,
+#'   `objects` (what the data steps made, each in short: see below).
+#'
+#'   `objects` is a list by name (`df`, then each object a step makes: a
+#'   KM fit, summary statistics, the ARD's statistics ...), each a list:
+#'   `class`; for a data frame `rows`, `columns` and `head` (its first 6
+#'   rows), for anything else `text` (the first lines it prints).  Those
+#'   made before an error are there.
 #' @export
 preview_figure <- function(study, output_id,
                            design = fig_design(study$planner, output_id),
@@ -308,7 +315,36 @@ preview_figure <- function(study, output_id,
          dpi = as.numeric(saved$plot$dpi %||% 300))
   }
   list(png = png, size = size, problems = problems, advice = advice, warnings = warns,
-       error = err, code = code)
+       error = err, code = code,
+       objects = .fig_objects_glance(e, .fig_design_objects(saved)))
+}
+
+# The objects a design's data steps leave, in their order: df, then each
+# step's own (a KM fit, summary statistics, the ARD's statistics ...)
+.fig_design_objects <- function(design) {
+  own <- unlist(lapply(design$data, function(p) {
+    k <- p$step %||% ""
+    if (!is.null(p$name)) return(p$name)
+    if (k %in% names(.pd_named_steps)) return(.pd_named_steps[[k]])
+    if (identical(k, "ard_stats")) return("st")
+    NULL
+  }))
+  unique(c("df", own))
+}
+
+# Each object in short, as the preview keeps it (not the object: a data
+# frame's first rows, the first lines anything else prints)
+.fig_objects_glance <- function(env, names) {
+  names <- names[vapply(names, exists, NA, envir = env, inherits = FALSE)]
+  lapply(stats::setNames(names, names), function(nm) {
+    x <- get(nm, envir = env, inherits = FALSE)
+    if (is.data.frame(x)) {
+      return(list(class = "data frame", rows = nrow(x), columns = names(x),
+                  head = as.data.frame(utils::head(x, 6L))))
+    }
+    out <- tryCatch(utils::capture.output(print(x)), error = function(e) conditionMessage(e))
+    list(class = class(x)[1L], text = utils::head(out, 12L))
+  })
 }
 
 #' The same figure for other parameters
