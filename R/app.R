@@ -9491,8 +9491,17 @@ app_server <- function(input, output, session, start) {
     id <- target()
     if (is.null(rv$p) || is.na(id) || !id %in% rv$p$outputs$output_id) NULL else id
   })
-  output$page_pattern_bar <- shiny::renderUI({
+  # the patterns' names: the bar is drawn again only when they change (or
+  # the report does) -- a select drawn again while one edits would send its
+  # first choice and change the report's pattern
+  pat_names <- shiny::reactiveVal(character())
+  shiny::observe({
     page_sheets()
+    v <- if (!is.null(rv$p)) page_patterns(shiny::isolate(rv$p)) else character()
+    if (!identical(v, shiny::isolate(pat_names()))) pat_names(v)
+  })
+  output$page_pattern_bar <- shiny::renderUI({
+    pat_names()
     id <- page_report()
     if (is.null(id)) {
       return(shiny::p(class = "small text-muted",
@@ -9506,7 +9515,7 @@ app_server <- function(input, output, session, start) {
       shiny::tags$label(`for` = "page_pattern", class = "small mb-0",
                         with_tip(t("Page pattern"), t("The set of page defaults this report starts from: Standard (every report's) or a pattern of the study (Compact for the PK tables ...), which changes only what differs from Standard. What this report changes goes over it."))),
       shiny::div(style = "width: 14rem", shiny::selectInput(
-        "page_pattern", NULL, width = "100%",
+        "page_pattern", NULL, width = "100%", selectize = FALSE,
         choices = c(stats::setNames("Standard", t("Standard")), stats::setNames(pats, pats)),
         selected = if (is.na(now)) "Standard" else now)),
       if (!length(pats)) shiny::span(class = "small text-muted",

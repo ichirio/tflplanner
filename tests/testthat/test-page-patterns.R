@@ -133,4 +133,21 @@ test_that("titles and footnotes: the heading is the header's {OUTPUT_TITLE}, lin
   expect_identical(d$from, c("own", "standard"))
   code <- tflspec::tfl_report_code(.spec_object(q, report_sheets(), character()), "T1")
   expect_true(any(grepl("n (%) of the subjects", code, fixed = TRUE)))
+test_that("an edit on the form does not draw the pattern's select again", {
+  local_home()
+  p <- set_report_pattern(pat_planner(), "T1", "Compact")
+  create_study("S1", planner = p)
+  shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    session$setInputs(target = "T1", nav = "make", step = "page")
+    bar <- output$page_pattern_bar$html
+    session$setInputs(pg_act = list(act = "addline", sheet = "footnotes", col = "", line = "",
+                                    name = "", n = 1))
+    session$setInputs(pg_edit = list(kind = "line", sheet = "footnotes", col = "", line = "1",
+                                     part = "left", name = "", value = "A note", n = 2))
+    # the bar is the same drawing: its select sends nothing new
+    expect_identical(output$page_pattern_bar$html, bar)
+    expect_identical(report_pattern(rv$p, "T1"), "Compact")
+    expect_identical(page_lines_from(rv$p, "footnotes", "T1")$left, "A note")
+  })
 })
