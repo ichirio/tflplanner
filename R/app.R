@@ -9534,31 +9534,38 @@ app_server <- function(input, output, session, start) {
       shiny::uiOutput("pat_form"),
       footer = shiny::modalButton(t("Close"))))
   })
+  # (drawn again when the patterns or the one shown change, not on an edit:
+  # its select would send its first choice)
   output$pat_head <- shiny::renderUI({
-    page_sheets()
-    p <- shiny::isolate(rv$p)
-    pats <- page_patterns(p)
+    pats <- pat_names()
     now <- pat_now()
-    n <- if (identical(now, "Standard")) {
-      length(setdiff(p$outputs$output_id, unlist(lapply(pats, pattern_reports, x = p))))
-    } else length(pattern_reports(p, now))
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-end mb-2",
       shiny::div(style = "width: 14rem", shiny::selectInput(
-        "pat_pick", t("Pattern"), width = "100%", selected = now,
+        "pat_pick", t("Pattern"), width = "100%", selected = now, selectize = FALSE,
         choices = c(stats::setNames("Standard", t("Standard")), stats::setNames(pats, pats)))),
       shiny::textInput("pat_name", t("Name"), placeholder = "Compact", width = "12rem"),
       .btn("pat_new", t("New pattern"), class = "btn-sm btn-outline-primary mb-3"),
       if (!identical(now, "Standard")) shiny::tagList(
         .btn("pat_rename", t("Rename"), class = "btn-sm btn-outline-secondary mb-3"),
         .btn("pat_remove", t("Remove"), class = "btn-sm btn-outline-danger mb-3")),
-      shiny::span(class = "small text-muted mb-3",
-                  sprintf(t("Reports using it: %d"), n)),
+      shiny::uiOutput("pat_count", inline = TRUE),
       shiny::p(class = "small text-muted w-100 mb-0",
                if (identical(now, "Standard")) t("Standard: every report's page, unless its pattern or the report changes it.")
                else sprintf(t("%s: only what differs from Standard; each value says where it comes from."), now)))
   })
-  shiny::observeEvent(input$pat_pick, pat_now(input$pat_pick), ignoreInit = TRUE)
+  output$pat_count <- shiny::renderUI({
+    page_sheets()
+    p <- shiny::isolate(rv$p)
+    now <- pat_now()
+    n <- if (identical(now, "Standard")) {
+      length(setdiff(p$outputs$output_id, unlist(lapply(page_patterns(p), pattern_reports, x = p))))
+    } else length(pattern_reports(p, now))
+    shiny::span(class = "small text-muted mb-3", sprintf(t("Reports using it: %d"), n))
+  })
+  shiny::observeEvent(input$pat_pick, {
+    if (input$pat_pick %in% c("Standard", pat_names())) pat_now(input$pat_pick)
+  }, ignoreInit = TRUE)
   output$pat_form <- shiny::renderUI({
     page_sheets()
     now <- pat_now()

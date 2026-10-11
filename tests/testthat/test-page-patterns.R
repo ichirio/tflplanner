@@ -133,6 +133,8 @@ test_that("titles and footnotes: the heading is the header's {OUTPUT_TITLE}, lin
   expect_identical(d$from, c("own", "standard"))
   code <- tflspec::tfl_report_code(.spec_object(q, report_sheets(), character()), "T1")
   expect_true(any(grepl("n (%) of the subjects", code, fixed = TRUE)))
+})
+
 test_that("an edit on the form does not draw the pattern's select again", {
   local_home()
   p <- set_report_pattern(pat_planner(), "T1", "Compact")
@@ -207,6 +209,9 @@ test_that("the pattern dialog: a new pattern, edited by its target, renamed", {
                                      col = "orientation", line = "", part = "", name = "",
                                      value = "portrait", n = 1))
     expect_identical(sheet_rows(rv$p, "page", "@Wide")$orientation, "portrait")
+    # the dialog stays on the pattern edited, and counts its reports
+    expect_match(output$pat_form$html, 'data-pg-target="@Wide"', fixed = TRUE)
+    expect_match(output$pat_count$html, "Reports using it: 0", fixed = TRUE)
     # Standard, from the dialog
     session$setInputs(pat_pick = "Standard")
     session$setInputs(pg_edit = list(target = "", kind = "cell", sheet = "page",
