@@ -5074,7 +5074,7 @@ app_server <- function(input, output, session, start) {
                            pop = adata_pop_name())
     # taken, or nothing to name it after: the usual suggestion for its data
     if ((is.na(nm) || nm %in% .adata_taken_names(rv$p, ard_target())) && !.is_blank(root)) {
-      nm <- .adata_suggest(rv$p, ard_target(), root, adata_pop_name())
+      nm <- .adata_suggest(rv$p, ard_target(), root, adata_pop_name(), adata_where_now())
     }
     if (!is.na(nm) && !identical(nm, input$adata_id)) {
       shiny::updateTextInput(session, "adata_id", value = nm)
@@ -5455,7 +5455,7 @@ app_server <- function(input, output, session, start) {
     mine <- .adata_of_report(p, tg)
     s1 <- c(intersect(mine, subj), subj)[1L]
     suf <- if (!is.na(s1) && grepl("_", s1)) sub("^[^_]*_", "", s1) else NA
-    nm <- if (!is.na(suf) && !from %in% pop_ds) paste0(tolower(from), "_", suf) else NA
+    nm <- if (!is.na(suf) && !from %in% pop_ds) .adata_default_name(from, suf) else NA
     # not a name the program has already (adae_saf for ADAE x SAF read as it is)
     if (is.na(nm) || nm %in% .adata_taken_names(p, ard_target())) nm <- .adata_suggest(p, ard_target(), from, NA)
     adata_edit(list(old = NULL, suggested = nm))
