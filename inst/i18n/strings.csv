@@ -1578,7 +1578,7 @@ Choose the column holding the report IDs.,帳票 ID の列を選んでくださ�
 The TOC cannot be read: %s,TOC を読めません: %s
 Title line,タイトル
 Footnote line,脚注
-Guessed from the ID: check it,ID から推測しました。確かめてください
+Guessed from the ID or the title: check it,ID やタイトルから推測しました。確かめてください
 (the TOC says %s: not changed),（TOC では %s。変えません）
 Kept: delete it yourself if it is no longer needed.,消さずに残します。要らなければ自分で削除してください。
 Use the TOC's text,TOC の文にする
@@ -1610,7 +1610,7 @@ added here: moves after the TOC's lines,ここで足した行。TOC の行の後
 %d heading rows (no report ID) are skipped.,帳票 ID の無い見出しの行 %d 行を飛ばしました。
 %d lines edited here are kept: the TOC did not change them.,ここで直した行 %d 行は、TOC が変わっていないのでそのままにします。
 Show the reports with no change,変更なしの帳票も表示
-* = the type is guessed from the ID: check it before taking it in.,* = 種別は ID から推測しました。取り込む前に確かめてください。
+* = the type is guessed from the ID or the title: check it before taking it in.,* = 種別は ID やタイトルから推測しました。取り込む前に確かめてください。
 %d lines edited here were kept instead of the TOC's text.,ここで直した行 %d 行は、TOC の文にせずそのままにしました。
 New reports: %s. Make their content from the list's buttons.,新しい帳票: %s。一覧のボタンから中身を作ってください。
 it does not give %s,宣言した統計量 %s を出していません
@@ -2797,3 +2797,7 @@ Arm compared with the reference (the first),基準群（先頭）と比べる群
 "Added analyses %s to step 1 (remove them there if not wanted): update the ARD, then Preview.",解析 %s を段 1 に追加しました（不要ならそこで削除）。ARD を更新してから Preview してください。
 No analysis set of the study is the flag %s: choose the analysis data's set in step 1.,フラグ %s に当たる解析対象集団が試験にありません。段 1 で解析データの集団を選んでください。
 "The report IDs as the last time (%s) are unique for fewer rows of this TOC: %s is proposed.",前回の帳票 ID の作り方（%s）では、この TOC で ID が重ならない行が少なくなります。「%s」を提案します。
+(in the header),（見出しに）
+"The study's header prints each report's title and analysis set ({OUTPUT_TITLE}): the TOC's first title and population go there, not in the title lines.",試験の見出しが帳票ごとのタイトルと解析対象集団を印字します（{OUTPUT_TITLE}）。TOC のタイトル 1 行目と集団はそこに入り、タイトルの行には入りません。
+Columns of %s: %s.,%s の列：%s。
+"The population goes in the header ({OUTPUT_TITLE}), after the first title.",解析対象集団は見出し（{OUTPUT_TITLE}）にタイトル 1 行目と一緒に入ります。

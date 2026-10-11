@@ -286,8 +286,9 @@ test_that("a titles-only TOC: the id and the label from Title 1", {
   # the label is not a title line; what follows it in the cell is
   expect_identical(r$titles[[1]][!is.na(r$titles[[1]])], "Demographic Characteristics")
   expect_identical(r$titles[[2]][!is.na(r$titles[[2]])], "Mean SBP by visit")
-  # the heading row is the reports' section
+  # the heading row is the reports' section, and marked (not a row lost)
   expect_identical(r$section, rep("14.1 Demographics", 3))
+  expect_identical(sum(x$rows$heading), 1L)
   sp <- toc_import_spec(x)
   expect_identical(sp$report$output_id, r$output_id)
   expect_identical(sp$titles$center[sp$titles$output_id == "t.14.1.1"],

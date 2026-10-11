@@ -893,6 +893,7 @@ toc_import_read <- function(sources, rules = toc_rules(), profile = NULL,
     sec[i] <- if (!is.na(rows$section[i])) rows$section[i] else cur
   }
   rows$section <- sec
+  rows$heading <- heading
   detection$rows <- vapply(detection$file, function(f) sum(rows$.source == f), 1L,
                            USE.NAMES = FALSE)
   has_title <- vapply(rows$titles, function(v) any(!is.na(v)), NA)

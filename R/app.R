@@ -6690,8 +6690,11 @@ app_server <- function(input, output, session, start) {
     set_lab <- sprintf(t("%s: %d of %d items"), rs$label, rs$matched, rs$named)
     rule_lab <- toc_id_rule_lab()
     ca <- fd$id_candidates
+    # of the rows that are not section headings (a heading has no id by
+    # any way: it would look like a row lost)
+    n_rows <- sum(!(fd$rows$heading %||% FALSE))
     id_ch <- if (nrow(ca)) stats::setNames(ca$rule, sprintf(
-      t("%s: %d of %d rows (%s)"), rule_lab[ca$rule], ca$ok, nrow(fd$rows), ca$preview))
+      t("%s: %d of %d rows (%s)"), rule_lab[ca$rule], ca$ok, n_rows, ca$preview))
     shiny::div(
       class = "d-flex flex-wrap gap-3",
       shiny::div(style = "min-width: 18rem",
@@ -6740,8 +6743,22 @@ app_server <- function(input, output, session, start) {
         })),
       if (length(miss)) shiny::p(class = "small text-warning mb-1", sprintf(
         t("Not in this TOC, skipped: %s."), paste(labs[miss], collapse = ", "))),
+      # another workbook's columns are mapped on its own header: said, so
+      # a "(none)" above (the TFL TOC has no population) is not taken for
+      # the listing's
+      lapply(setdiff(which(!is.na(det$sheet)), k), function(k2) {
+        m2 <- res$maps[[k2]]
+        m2 <- m2[intersect(names(labs), names(m2))]
+        if (!length(m2)) return(NULL)
+        shiny::p(class = "small text-muted mb-1", sprintf(
+          t("Columns of %s: %s."), det$file[k2],
+          paste(sprintf("%s = %s", labs[names(m2)],
+                        vapply(m2, paste, "", collapse = ", ")), collapse = "; ")))
+      }),
       shiny::p(class = "small text-muted mb-1",
-               t("The population becomes the last title line.")),
+               if (.study_header_says(rv$p, "OUTPUT_TITLE")) {
+                 t("The population goes in the header ({OUTPUT_TITLE}), after the first title.")
+               } else t("The population becomes the last title line.")),
       shiny::p(class = "small text-muted mb-1",
                t("A report's section: this column, else the heading row above it (a row with no ID); a section given here is kept.")),
       if (.toc_has_item(res, "phase")) toc_overrides_ui(res),
@@ -6929,6 +6946,7 @@ app_server <- function(input, output, session, start) {
                  move = t("added here: moves after the TOC's lines"))
     types <- stats::setNames(names(.type_labels), t(unname(.type_labels)))
     show_same <- isTRUE(input[[toc_id("show_same")]])
+    in_header <- isTRUE(attr(sp, "titles_in_header"))
     toc_row <- function(i) {
       id <- r$output_id[i]
       st <- r$status[i]
@@ -6939,7 +6957,7 @@ app_server <- function(input, output, session, start) {
                              selected = if (is.na(r$type_toc[i])) "table" else r$type_toc[i],
                              width = "10em"),
           if (isTRUE(r$guessed[i])) shiny::span(
-            class = "small text-warning", title = t("Guessed from the ID: check it"), "*"))
+            class = "small text-warning", title = t("Guessed from the ID or the title: check it"), "*"))
       } else if (st == "missing") {
         "\u2014"
       } else {
@@ -6954,13 +6972,17 @@ app_server <- function(input, output, session, start) {
       what <- if (st == "missing") {
         shiny::span(class = "small text-muted", t("Kept: delete it yourself if it is no longer needed."))
       } else if (st == "new") {
-        # what it will hold: the TOC's lines
-        shiny::tagList(lapply(c("titles", "footnotes"), function(sh) {
+        # what it will hold: the TOC's lines; none when the header prints
+        # the title and population (said once above the table)
+        parts <- lapply(c("titles", "footnotes"), function(sh) {
           v <- .toc_text(.toc_lines(sp, sh, id, toc_offset()))
           lapply(seq_along(v), function(k) shiny::div(
             class = "small", sprintf("%s %s: ", sheet_lab[[sh]], names(v)[k]),
             toc_line_text(v[[k]])))
-        }))
+        })
+        if (!length(unlist(parts, recursive = FALSE)) && in_header) {
+          shiny::span(class = "small text-muted", t("(in the header)"))
+        } else shiny::tagList(parts)
       } else if (length(li) && all(l$action[li] == "add")) {
         # only lines to add: said shortly
         shiny::span(class = "small", sprintf(
@@ -6999,6 +7021,8 @@ app_server <- function(input, output, session, start) {
                " ", t("Only what the TOC holds is changed: tables, ARDs, pages and lines added here stay; lines added here go after the TOC's lines.")),
       if (n_skip) shiny::p(class = "small text-muted mb-1",
                            sprintf(t("%d heading rows (no report ID) are skipped."), n_skip)),
+      if (in_header) shiny::p(class = "small text-muted mb-1",
+                              t("The study's header prints each report's title and analysis set ({OUTPUT_TITLE}): the TOC's first title and population go there, not in the title lines.")),
       if (n_kept) shiny::p(class = "small text-muted mb-1",
                            sprintf(t("%d lines edited here are kept: the TOC did not change them."), n_kept)),
       if (n[["same"]]) shiny::checkboxInput(toc_id("show_same"),
@@ -7008,8 +7032,9 @@ app_server <- function(input, output, session, start) {
         shiny::tags$thead(shiny::tags$tr(lapply(
           t(c("output_id", "State", "Type", "Titles and footnotes")), shiny::tags$th))),
         shiny::tags$tbody(lapply(shown, toc_row))),
-      if (any(r$guessed)) shiny::p(class = "small text-muted",
-                                   t("* = the type is guessed from the ID: check it before taking it in.")))
+      if (any(r$guessed[shown] & r$status[shown] == "new")) shiny::p(
+        class = "small text-muted",
+        t("* = the type is guessed from the ID or the title: check it before taking it in.")))
   }
   shiny::observeEvent(input[[toc_id("do")]], {
     shiny::req(!toc_done())
