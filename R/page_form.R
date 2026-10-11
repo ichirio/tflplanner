@@ -345,8 +345,9 @@ $(document).on('shiny:value', function(e) {
          shiny::div(class = "pg-grid", lapply(.page_fields, .page_field_ui, x = x, id = id,
                                               pattern = pattern, t = t))),
     card(t("Tokens"),
+         # (side by side only where the form is wide enough)
          bslib::layout_columns(
-           col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
+           col_widths = bslib::breakpoints(sm = 12, xxl = c(7, 5)),
            shiny::div(
              shiny::div(class = "pg-from mb-1", t("This page's tokens: change, add, remove.")),
              .page_tokens_ui(x, id, pattern, t, skip = if (!is.null(heading)) "OUTPUT_TITLE")),
