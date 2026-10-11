@@ -1007,7 +1007,7 @@ print.toc_import <- function(x, ...) {
   }
   miss <- attr(x$map, "missing") %||% character()
   # SAP numbers: blank, or on two reports (the phases of one row are one)
-  if (!"sap_no" %in% miss && "sap_no" %in% set$map$item && !is.null(x$map$sap_no)) {
+  if (!"sap_no" %in% miss && "sap_no" %in% set$map$item && .toc_has_item(x, "sap_no")) {
     # only the rows of a source whose TOC has the column: a listing workbook
     # with no SAP column says nothing of SAP numbers (#299: an optional item
     # whose column is absent is skipped silently)
@@ -1070,6 +1070,12 @@ print.toc_import <- function(x, ...) {
          if (!is.na(det$topline_sheet[k])) s$topline_sheet <- det$topline_sheet[k]
          s
        }))
+}
+
+# Whether any source's TOC has the item's column (x$map is the first
+# source's: a listing workbook's Population when the TFL TOC has none)
+.toc_has_item <- function(x, item) {
+  any(vapply(x$maps %||% list(x$map), function(m) !is.null(m[[item]]), NA))
 }
 
 # The fixed map of the table toc_import_spec() hands to tfl_read_toc()

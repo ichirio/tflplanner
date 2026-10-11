@@ -817,7 +817,7 @@ toc_profile <- function(study) {
 #' @export
 toc_apply_extras <- function(x, result, last = NULL) {
   r <- result$reports
-  if (!nrow(r) || is.null(result$map$topline)) return(x)
+  if (!nrow(r) || !.toc_has_item(result, "topline")) return(x)
   name <- result$rule_set$settings$topline_batch
   on <- result$batches$output_id
   for (id in intersect(r$output_id, x$outputs$output_id)) {

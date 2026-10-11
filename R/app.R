@@ -6737,7 +6737,7 @@ app_server <- function(input, output, session, start) {
                t("The population becomes the last title line.")),
       shiny::p(class = "small text-muted mb-1",
                t("A report's section: this column, else the heading row above it (a row with no ID); a section given here is kept.")),
-      if (!is.null(res$map$phase)) toc_overrides_ui(res),
+      if (.toc_has_item(res, "phase")) toc_overrides_ui(res),
       shiny::checkboxInput(toc_id("remember"),
                            t("Remember this mapping in the company standards"), FALSE,
                            width = "100%"))
@@ -6756,12 +6756,6 @@ app_server <- function(input, output, session, start) {
       shiny::textInput(toc_id("ov_title_line"), t("Title line (1, 2, last)"), st$title_line,
                        width = "10em"))
   }
-  toc_map_now <- shiny::reactive({
-    res <- toc_result()
-    if (inherits(res, "error")) return(list())
-    m <- res$map
-    m[intersect(names(m), .toc_items)]
-  })
   # the reports as the rules make them: a row a report, its phase, label,
   # titles, shell and batches; the rows not read and the warnings under it
   toc_preview_ui <- function() {
@@ -6831,7 +6825,7 @@ app_server <- function(input, output, session, start) {
   # (matched; changed here), the reports it names
   toc_pops <- shiny::reactive({
     res <- toc_result()
-    if (inherits(res, "error") || is.null(res$map$population) || !nrow(res$reports)) return(NULL)
+    if (inherits(res, "error") || !.toc_has_item(res, "population") || !nrow(res$reports)) return(NULL)
     po <- rv$p$ard$populations
     adsl <- tryCatch(an_data(po$dataset[1L] %||% "ADSL"), error = function(e) NULL)
     tryCatch(toc_populations(rv$p, res$reports, data = adsl), error = function(e) NULL)
@@ -6862,7 +6856,9 @@ app_server <- function(input, output, session, start) {
   # the analysis data of the tables' datasets: made for the new reports
   # (ticked by default), for those taken in before only when asked
   toc_data_ui <- function() {
-    if (toc_done() || !length(toc_map_now()$datasets)) return(NULL)
+    if (toc_done()) return(NULL)
+    res <- toc_result()
+    if (inherits(res, "error") || !.toc_has_item(res, "datasets")) return(NULL)
     ch <- toc_ch()
     if (inherits(ch, "error")) return(NULL)
     before <- any(ch$reports$status %in% c("changed", "same"))

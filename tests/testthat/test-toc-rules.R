@@ -552,3 +552,17 @@ test_that("a blank in the dialog's map leaves out the first source's column, not
   y <- toc_import_read(c(tfl, lis), builtin_rules(), choices = list(map = list(sap_no = "")))
   expect_true(all(is.na(y$reports$sap_no[startsWith(y$reports$output_id, "t.")])))
 })
+
+test_that("an item only a second source has is still there for the dialog", {
+  tfl <- two_phase_book(topline = FALSE)
+  lis <- toc_workbook(list(TOC_listing = list(
+    c("ABC listings"),
+    c("Output", "Title 1", "Title 2", "Population"),
+    c("l.16.2.1", "Listing 16.2.1", "Subject Disposition", "All Subjects"))))
+  x <- toc_import_read(c(tfl, lis), builtin_rules())
+  # the first source's map has no population: the listing's has
+  expect_null(x$map$population)
+  expect_true(.toc_has_item(x, "population"))
+  expect_false(.toc_has_item(x, "datasets"))
+  expect_true(.toc_has_item(toc_import_read(tfl, builtin_rules()), "phase"))
+})
