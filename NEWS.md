@@ -1,5 +1,18 @@
 # tflplanner (development version)
 
+- **A run in the background no longer greys the page** (the user's
+  report on 0.0.2.9175).  Following a run the app did not start made the
+  whole page be drawn again every few seconds (each ARD program, each
+  preview log), greyed and not taking clicks for a moment.  Now only what
+  changed follows it: the report list's marks are changed in place (the
+  list is not drawn again), the ARD's state is worked out again only when
+  the report chosen has its ARD made, and every report's once when the
+  run has ended; the Runs tab's tables when a batch ends.  The logs are
+  not watched any more.  Checked on R 4.6.1: the sample's official run,
+  160 s, sitting on Make a report and on the report list -- nothing
+  faded, the marks from "not made" to "made" without a reload.  (Steps 2
+  and 3's marks, never drawn, no longer stay "recalculating" either.)
+
 - **Ready for CRAN's checks, the parts that do not wait for the
   submission** (#334).  The tests that start the app or write study
   folders (5-10 s a test: the spec workbooks) skip on CRAN -- 16 files,
