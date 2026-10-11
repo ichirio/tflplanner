@@ -359,6 +359,21 @@ test_that("the TOC's headings become the reports' sections; one given here is ke
   y$outputs$section[1L] <- "Mine"
   z <- toc_apply(y, sp, toc_changes(y, sp, last = toc_snapshot(sp, toc_title_offset(y))))
   expect_identical(z$outputs$section[1L], "Mine")
+  # one cleared here stays clear; one as the TOC said follows a new TOC
+  last <- toc_snapshot(sp, toc_title_offset(y))
+  y$outputs$section[2L] <- NA
+  z <- toc_apply(y, sp, toc_changes(y, sp, last = last))
+  expect_true(is.na(z$outputs$section[2L]))
+  sp2 <- tflspec::tfl_read_toc(toc_file(c(
+    ",14.1 Demographics,,,",
+    "T-14-1-1,Table,Demographics,Safety Population,",
+    "T-14-1-2,Table,Disposition,All Subjects,",
+    ",14.3 Safety Summary,,,",
+    "T-14-3-1,Table,Overview of TEAEs,Safety Population,")), map = toc_map)
+  z2 <- toc_apply(y, sp2, toc_changes(y, sp2, last = last))
+  expect_identical(z2$outputs$section[3L], "14.3 Safety Summary")
+  # the section is not a row of the tokens sheet
+  expect_false("OUTPUT_SECTION" %in% .normalize_sheet(z2$sheets$tokens, "tokens")$name)
   # saved and read back
   d <- withr_tempdir()
   write_planner(z, d)

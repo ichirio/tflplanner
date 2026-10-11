@@ -323,15 +323,22 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
     }
   }
   # the section each report is under (the TOC's heading row above it, or
-  # its section column): written where the report has none yet -- one
-  # given in the app is kept
+  # its section column), the report list's: written where the report has
+  # none and the last TOC said another, or has what the last TOC said -- one
+  # changed or cleared in the app is kept
   sec <- attr(spec, "sections")
   if (length(sec)) {
     o <- x$outputs
     if (!"section" %in% names(o)) o$section <- NA_character_
-    k <- match(names(sec), o$output_id)
-    put <- !is.na(k) & !is.na(sec) & is.na(o$section[k])
-    o$section[k[put]] <- unname(sec[put])
+    for (n in seq_along(sec)) {
+      k <- match(names(sec)[n], o$output_id)
+      if (is.na(k) || is.na(sec[[n]])) next
+      was <- last[[names(sec)[n]]]$tokens$OUTPUT_SECTION
+      now <- o$section[k]
+      if ((is.na(now) && !identical(sec[[n]], was)) || identical(now, was)) {
+        o$section[k] <- unname(sec[[n]])
+      }
+    }
     x$outputs <- o
   }
   # the reports' analysis sets, as the TOC says them (one value with the
@@ -419,8 +426,9 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
   # the report's own tokens ({OUTPUT_TITLE} ...) the study says: written
   # where the report has none, or has what the last TOC gave (a value
   # changed here is kept)
-  says <- names(.toc_token_items)[vapply(names(.toc_token_items),
-                                         function(k) .study_says(x, k), NA)]
+  # (the section: the report list's, above)
+  says <- setdiff(names(.toc_token_items), "OUTPUT_SECTION")
+  says <- says[vapply(says, function(k) .study_says(x, k), NA)]
   tk <- x$sheets$tokens
   for (id in rep$output_id[rep$status %in% c("new", "changed", "same")]) {
     vals <- .toc_tokens(spec, id)
@@ -429,6 +437,8 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
     for (k in names(vals)) {
       i <- which(!is.na(tk$output_id) & tk$output_id == id & tk$name == k)
       if (length(i) && !identical(tk$value[i[1L]], was[[k]])) next
+      # (cleared in the app: the same TOC does not give it back)
+      if (!length(i) && identical(vals[[k]], was[[k]])) next
       if (!length(i)) {
         tk[nrow(tk) + 1L, ] <- NA
         i <- nrow(tk)

@@ -9903,7 +9903,9 @@ app_server <- function(input, output, session, start) {
     page_sheets()
     id <- page_report()
     if (is.null(id)) return(NULL)
-    .page_form_ui(shiny::isolate(rv$p), id, t)
+    # what the last TOC taken in said of the report: where its values come from
+    toc <- tryCatch(toc_last(rv$study)[[id]]$tokens, error = function(e) NULL)
+    .page_form_ui(shiny::isolate(rv$p), id, t, toc)
   })
   page_write <- function(p2) {
     if (is.null(p2)) return()
@@ -9940,11 +9942,12 @@ app_server <- function(input, output, session, start) {
       parts[[e$part]] <- v
       page_write(guarded(set_page_line(p, e$sheet, id, e$line, parts$left, parts$center, parts$right)))
     } else if (identical(e$kind, "token")) {
-      # (the title: its one field, Titles' heading)
-      if (!identical(e$name, "OUTPUT_TITLE") && .pg_token_taken(e$name)) {
+      if (.pg_token_taken(e$name)) {
         return(notify(.pg_token_taken_msg(e$name, t), "warning"))
       }
       page_write(guarded(set_page_token(p, id, e$name, if (is.na(v)) "" else v)))
+    } else if (identical(e$kind, "info") && !is.na(id) && !.is_pattern_id(id)) {
+      page_write(guarded(.set_report_info(p, id, e$name, v)))
     }
   })
   shiny::observeEvent(input$pg_act, {
@@ -9978,6 +9981,7 @@ app_server <- function(input, output, session, start) {
         set_page_token(p, id, a$name, r$value[r$name %in% a$name][1L] %||% "")
       },
       token_reset = set_page_token(p, id, a$name, NA_character_),
+      info_reset = .set_report_info(p, id, a$name, NA_character_),
       token_add = {
         nm <- toupper(trimws(a$name %||% ""))
         if (!grepl("^[A-Z][A-Z0-9_]*$", nm)) {

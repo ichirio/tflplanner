@@ -1,5 +1,26 @@
 # tflplanner (development version)
 
+- **Step 3: one card, "Report information and tokens"** (the user's
+  direction; first in the page form).  The report list can only rename a
+  report or take in a TOC, so the TOC's information about a report is
+  edited here: its label, title, analysis set text ({OUTPUT_LABEL},
+  {OUTPUT_TITLE}, {OUTPUT_POPULATION} -- the report's rows of the tokens
+  sheet) and section ({OUTPUT_SECTION}, the report list's section).  Each
+  field shows its default when blank (the label made from the ID, step 1's
+  analysis set, empty), where its value comes from ("from the TOC",
+  "edited here (the TOC said: ...)", a pattern, Standard), whether the page
+  prints it, and goes back to its default.  The ID is read only, with a
+  link to the report list.  Below: the report's own tokens (add, change,
+  remove; a name of the report's information or of rtfreporter's is
+  refused) and, folded, every token of rtfreporter's with what it is, as
+  `rtfreporter::rtf_text_tokens()` lists them ({AUTO_PAGE},
+  {AUTO_TOTAL_PAGES}, {BOOK_PAGE}, {PROGRAM_NAME} ...).  The Titles card
+  says the title its header prints and where it changes; the titles' and
+  footnotes' tokens are inserted from one list.
+- **A TOC taken in again keeps what was changed here**: a value changed,
+  or cleared, in the app stays; one as the last TOC said follows the new
+  TOC.  The section is one value, the report list's (the TOC no longer
+  writes an OUTPUT_SECTION row of the tokens sheet).
 - **A run in the background never veils the page** (the user's report on
   this version).  While its ARD programs ran, the page went white for an
   instant every few seconds with the busy cursor: the poll's work (the
