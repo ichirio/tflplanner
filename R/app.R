@@ -9500,9 +9500,16 @@ app_server <- function(input, output, session, start) {
     v <- if (!is.null(rv$p)) page_patterns(shiny::isolate(rv$p)) else character()
     if (!identical(v, shiny::isolate(pat_names()))) pat_names(v)
   })
+  # (the report, passed on only when it changes: page_report() is worked out
+  # again on every edit of the planner)
+  page_report_now <- shiny::reactiveVal(NULL)
+  shiny::observe({
+    id <- page_report()
+    if (!identical(id, shiny::isolate(page_report_now()))) page_report_now(id)
+  })
   output$page_pattern_bar <- shiny::renderUI({
     pat_names()
-    id <- page_report()
+    id <- page_report_now()
     if (is.null(id)) {
       return(shiny::p(class = "small text-muted",
                       t("Standard (every report's page) and the page patterns are the sheets' blank and @<name> rows: Details, below.")))
