@@ -313,7 +313,7 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
     type <- if (id %in% names(types)) types[[id]] else
       spec$report$type[match(id, spec$report$output_id)]
     if (is.na(type) || !type %in% report_types()) type <- "table"
-    x <- add_output(x, id, type = type)
+    x <- add_output(x, id, type = type, at = "end")
     for (sh in .toc_sheets) {
       d <- .toc_lines(spec, sh, id, title_offset)
       if (!is.null(d) && nrow(d)) {

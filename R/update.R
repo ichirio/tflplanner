@@ -156,6 +156,7 @@ tflplanner_packages <- function(check = TRUE, channel = NULL) {
 #' @seealso [tflplanner_packages()], [add_shortcut()].
 #' @examples
 #' \dontrun{
+#' # not run: installs packages
 #' update_tflplanner()                    # the released versions
 #' update_tflplanner("dev")               # the development versions
 #' update_tflplanner(from = "D:/tflplanner-packages")

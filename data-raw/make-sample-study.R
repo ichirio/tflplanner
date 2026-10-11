@@ -13,14 +13,16 @@
 #   T-14-1-4  Table    Demographic characteristics of the screen failures:
 #                      an analysis set by a condition alone (SCRF, ARM is
 #                      Screen Failure), no flag
-#   T-14-1-5  Table    Race with its Asian sub-categories nested under Asian
-#                      in one block (variables$under, plan_nest()): the
+#   T-14-1-5  Table    Demographics with race's Asian sub-categories nested
+#                      under Asian (variables$under, plan_nest()): the
 #                      same data and analyses as T-14-1-6
-#   T-14-1-6  Table    Race with its Asian sub-categories, two blocks (Race;
-#                      Race Sub Asian): the enrolled subjects (screen
+#   T-14-1-6  Table    Demographics with race's Asian sub-categories as a
+#                      block of their own: the enrolled subjects (screen
 #                      failures too: the pilot's two Asian subjects are
-#                      screen failures) by ARM, with a Total column; the
-#                      sub-categories are derived for demonstration
+#                      screen failures) by ARM, with a Total column.  The
+#                      sub-categories are one column per race, as an EDC
+#                      collects them (ASIANSUB; WHTSUB would be White's),
+#                      derived for demonstration
 #   T-14-1-3  Table    Age group and sex: the ARD keeps cards' default
 #                      statistics (n, N, p), the table prints n (%) -- the
 #                      N rows the cells do not name are left out
@@ -43,6 +45,10 @@
 #                      template, the median line, and the medians and
 #                      hazard ratios printed from T-14-2-2's ARD (its ARD
 #                      source: table:T-14-2-2)
+#   F-14-2-4  Figure   Forest plot of the hazard ratio by subgroup from the
+#                      designer's forest template: the figure's own ARD (a
+#                      Cox model of all subjects and within each subgroup,
+#                      cards / cardx; ard_source: own)
 #
 # The figures use the company standards' figure style (programs/tfl/
 # fig_setup.R: theme_tfl(), scale_colour_tfl(), tfl_km_risk() ...) and end
@@ -168,9 +174,11 @@ sheets <- list(
     list(output_id = "T-14-1-3", cols = "TRT01A", rows = "group = variable",
          note = "Age group and sex: the ARD's n, N and p, the table's n (%)"),
     list(output_id = "T-14-1-5", cols = "ARM", rows = "group = variable",
-         note = "Race, its Asian sub-categories nested under Asian: one block"),
+         total = "Total",
+         note = "Demographics; race's Asian sub-categories nested under Asian"),
     list(output_id = "T-14-1-6", cols = "ARM", rows = "group = variable",
-         note = "Race, then its Asian sub-categories: two blocks"),
+         total = "Total",
+         note = "Demographics; race's Asian sub-categories as a block of their own"),
     list(output_id = "T-14-2-3", cols = "TRTA", rows = "group = variable",
          note = "SYSBP change at Week 24: mean (95% CI), p-value"),
     list(output_id = "T-14-3-1", cols = "TRT01A", rows = "group1 = AEBODSYS",
@@ -216,15 +224,32 @@ sheets <- list(
          label = "Time to first event (days)", order = 1),
     list(output_id = "T-14-2-2", variable = "time",
          label = "Event-free probability (95% CI)", order = 2),
+    list(output_id = "T-14-1-5", variable = "AGE", label = "Age (years)",
+         order = 1),
+    list(output_id = "T-14-1-5", variable = "AGEGR1",
+         label = "Age group, n (%)", order = 2),
+    list(output_id = "T-14-1-5", variable = "SEX", label = "Sex, n (%)",
+         order = 3),
     list(output_id = "T-14-1-5", variable = "RACE", label = "Race, n (%)",
-         order = 1),
-    # its rows under RACE's "Asian" row (the level as the table prints it)
-    list(output_id = "T-14-1-5", variable = "RACESUB", order = 2,
+         order = 4),
+    # its rows under RACE's "Asian" row (the level as the table prints it);
+    # another race's sub-categories (WHTSUB) would go under its own level
+    list(output_id = "T-14-1-5", variable = "ASIANSUB", order = 5,
          under = "RACE: Asian"),
-    list(output_id = "T-14-1-6", variable = "RACE", label = "Race, n (%)",
+    list(output_id = "T-14-1-5", variable = "ETHNIC",
+         label = "Ethnicity, n (%)", order = 6),
+    list(output_id = "T-14-1-6", variable = "AGE", label = "Age (years)",
          order = 1),
-    list(output_id = "T-14-1-6", variable = "RACESUB", label = "Race Sub Asian",
-         order = 2)),
+    list(output_id = "T-14-1-6", variable = "AGEGR1",
+         label = "Age group, n (%)", order = 2),
+    list(output_id = "T-14-1-6", variable = "SEX", label = "Sex, n (%)",
+         order = 3),
+    list(output_id = "T-14-1-6", variable = "RACE", label = "Race, n (%)",
+         order = 4),
+    list(output_id = "T-14-1-6", variable = "ASIANSUB",
+         label = "Asian sub-category, n (%)", order = 5),
+    list(output_id = "T-14-1-6", variable = "ETHNIC",
+         label = "Ethnicity, n (%)", order = 6)),
   # the code lists: each table's own (a code list is a report's).  The
   # CRF's values the data have none of are listed too: their rows print
   # with 0 (RACE's ASIAN ..., ETHNIC's NOT REPORTED / UNKNOWN)
@@ -261,10 +286,10 @@ sheets <- list(
            "HISPANIC OR LATINO" = "Hispanic or Latino",
            "NOT HISPANIC OR LATINO" = "Not Hispanic or Latino",
            "NOT REPORTED" = "Not reported", "UNKNOWN" = "Unknown")),
-         # T-14-1-6: the enrolled subjects' arms (screen failures too), and
-         # a Total column; race as the other tables; the demonstration
-         # sub-categories of Asian
-         codelist("T-14-1-5", "ARM", paste(arms, "| Screen Failure | Total")),
+         # T-14-1-5/6: the enrolled subjects' arms (screen failures too;
+         # the Total column is tables$total, not a value); race as the
+         # other tables; the demonstration sub-categories of Asian
+         codelist("T-14-1-5", "ARM", paste(arms, "| Screen Failure")),
          codelist("T-14-1-5", "RACE", c(
            "WHITE" = "White",
            "BLACK OR AFRICAN AMERICAN" = "Black or African American",
@@ -272,9 +297,16 @@ sheets <- list(
            "AMERICAN INDIAN OR ALASKA NATIVE" = "American Indian or Alaska Native",
            "NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER" =
              "Native Hawaiian or Other Pacific Islander")),
-         codelist("T-14-1-5", "RACESUB", c(CHINESE = "Chinese", JAPANESE = "Japanese",
-                                           KOREAN = "Korean")),
-         codelist("T-14-1-6", "ARM", paste(arms, "| Screen Failure | Total")),
+         codelist("T-14-1-5", "ASIANSUB", c(CHINESE = "Chinese", JAPANESE = "Japanese",
+                                            KOREAN = "Korean")),
+         codelist("T-14-1-5", "SEX", c(F = "Female", M = "Male")),
+         codelist("T-14-1-5", "AGEGR1", c("18-64" = "18-64 years",
+                                          ">64" = ">64 years")),
+         codelist("T-14-1-5", "ETHNIC", c(
+           "HISPANIC OR LATINO" = "Hispanic or Latino",
+           "NOT HISPANIC OR LATINO" = "Not Hispanic or Latino",
+           "NOT REPORTED" = "Not reported", "UNKNOWN" = "Unknown")),
+         codelist("T-14-1-6", "ARM", paste(arms, "| Screen Failure")),
          codelist("T-14-1-6", "RACE", c(
            "WHITE" = "White",
            "BLACK OR AFRICAN AMERICAN" = "Black or African American",
@@ -282,8 +314,15 @@ sheets <- list(
            "AMERICAN INDIAN OR ALASKA NATIVE" = "American Indian or Alaska Native",
            "NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER" =
              "Native Hawaiian or Other Pacific Islander")),
-         codelist("T-14-1-6", "RACESUB", c(CHINESE = "Chinese", JAPANESE = "Japanese",
-                                           KOREAN = "Korean")),
+         codelist("T-14-1-6", "ASIANSUB", c(CHINESE = "Chinese", JAPANESE = "Japanese",
+                                            KOREAN = "Korean")),
+         codelist("T-14-1-6", "SEX", c(F = "Female", M = "Male")),
+         codelist("T-14-1-6", "AGEGR1", c("18-64" = "18-64 years",
+                                          ">64" = ">64 years")),
+         codelist("T-14-1-6", "ETHNIC", c(
+           "HISPANIC OR LATINO" = "Hispanic or Latino",
+           "NOT HISPANIC OR LATINO" = "Not Hispanic or Latino",
+           "NOT REPORTED" = "Not reported", "UNKNOWN" = "Unknown")),
          # the disposition table's status at the end of the study
          codelist("T-14-1-2", "EOSSTT", c(COMPLETED = "Completed",
                                           DISCONTINUED = "Discontinued"))))),
@@ -302,6 +341,22 @@ sheets <- list(
     list(output_id = "T-14-1-1", variable = "continuous", row = "Median",
          template = "{median}", digits = "1"),
     list(output_id = "T-14-1-1", variable = "continuous", row = "Min, Max",
+         template = "{min}, {max}", digits = "0"),
+    list(output_id = "T-14-1-5", variable = "continuous", row = "n",
+         template = "{N}", digits = "0"),
+    list(output_id = "T-14-1-5", variable = "continuous", row = "Mean (SD)",
+         template = "{mean} ({sd})", digits = "1,2"),
+    list(output_id = "T-14-1-5", variable = "continuous", row = "Median",
+         template = "{median}", digits = "1"),
+    list(output_id = "T-14-1-5", variable = "continuous", row = "Min, Max",
+         template = "{min}, {max}", digits = "0"),
+    list(output_id = "T-14-1-6", variable = "continuous", row = "n",
+         template = "{N}", digits = "0"),
+    list(output_id = "T-14-1-6", variable = "continuous", row = "Mean (SD)",
+         template = "{mean} ({sd})", digits = "1,2"),
+    list(output_id = "T-14-1-6", variable = "continuous", row = "Median",
+         template = "{median}", digits = "1"),
+    list(output_id = "T-14-1-6", variable = "continuous", row = "Min, Max",
          template = "{min}, {max}", digits = "0"),
     list(output_id = "T-14-2-1", variable = "continuous", row = "n",
          template = "{N}", digits = "0"),
@@ -349,8 +404,8 @@ sheets <- list(
     list(output_id = "T-14-1-4", pages_max_rows = "30",
          pages_split = "group_safe"),
     list(output_id = "T-14-1-3", pages_max_rows = "24"),
-    list(output_id = "T-14-1-5", pages_max_rows = "30"),
-    list(output_id = "T-14-1-6", pages_max_rows = "30"),
+    list(output_id = "T-14-1-5", pages_max_rows = "45"),
+    list(output_id = "T-14-1-6", pages_max_rows = "45"),
     list(output_id = "T-14-2-3", pages_max_rows = "24"),
     list(output_id = "T-14-3-1", pages_max_rows = "22",
          pages_split = "group_force")),
@@ -406,12 +461,15 @@ sheets$report <- tbl(
   list(output_id = "F-14-2-1", type = "user"),
   list(output_id = "F-14-2-2", type = "user"),
   # its ARD is T-14-2-2's: it prints the medians that table has
-  list(output_id = "F-14-2-3", type = "figure", ard_source = "table:T-14-2-2"))
+  list(output_id = "F-14-2-3", type = "figure", ard_source = "table:T-14-2-2"),
+  # its ARD is its own: the hazard ratios by subgroup (#293 phase 6)
+  list(output_id = "F-14-2-4", type = "figure", ard_source = "own"))
 sheets$page <- tbl(
   list(output_id = "L-16-2-7", orientation = "landscape"),
   list(output_id = "F-14-2-1", orientation = "landscape"),
   list(output_id = "F-14-2-2", orientation = "landscape"),
-  list(output_id = "F-14-2-3", orientation = "landscape"))
+  list(output_id = "F-14-2-3", orientation = "landscape"),
+  list(output_id = "F-14-2-4", orientation = "landscape"))
 sheets$header <- tbl(
   list(line = "1", left = "Sample Pharma (tflplanner sample)", right = "DRAFT"),
   list(line = "2", left = "Protocol: SAMPLE-01 (CDISC pilot data)",
@@ -429,9 +487,9 @@ sheets$tokens <- do.call(tbl, c(
   title("T-14-0-1", "Study Information", set = "All Subjects"),
   title("T-14-1-4", "Demographic Characteristics of Screen Failures",
         set = "All Screen Failures"),
-  title("T-14-1-5", "Race, with the Asian Sub-categories",
+  title("T-14-1-5", "Demographic Characteristics, with the Asian Sub-categories of Race",
         set = "All Enrolled Subjects"),
-  title("T-14-1-6", "Race and Asian Sub-categories",
+  title("T-14-1-6", "Demographic Characteristics and the Asian Sub-categories of Race",
         set = "All Enrolled Subjects"),
   title("T-14-2-3",
         "Systolic Blood Pressure (mmHg): Mean Change from Baseline at Week 24 (95% CI)"),
@@ -441,7 +499,8 @@ sheets$tokens <- do.call(tbl, c(
   title("F-14-2-1", "Mean (SE) Change from Baseline in Systolic Blood Pressure over Time"),
   title("T-14-2-2", "Time to First Dermatologic Event: Kaplan-Meier Estimates"),
   title("F-14-2-2", "Kaplan-Meier Plot of Time to First Dermatologic Event"),
-  title("F-14-2-3", "Kaplan-Meier Curves of Time to First Dermatologic Event")))
+  title("F-14-2-3", "Kaplan-Meier Curves of Time to First Dermatologic Event"),
+  title("F-14-2-4", "Hazard Ratio of Time to First Dermatologic Event by Subgroup")))
 sheets$footer <- tbl(
   list(line = "99", left = "{PROGRAM}       Generated on: {DATETIME}"),
   list(output_id = "T-14-1-1", line = "1",
@@ -457,11 +516,11 @@ sheets$footer <- tbl(
   list(output_id = "T-14-1-5", line = "1",
        left = "Enrolled subjects: all subjects of ADSL, screen failures included.  Percentages of the column's subjects."),
   list(output_id = "T-14-1-5", line = "2",
-       left = "Asian sub-categories (Chinese, Japanese, Korean) are derived for demonstration; they are not in the source data."),
+       left = "Asian sub-categories (ASIANSUB: Chinese, Japanese, Korean) are derived for demonstration; they are not in the source data.  As an EDC collects them, each race has its own sub-category column."),
   list(output_id = "T-14-1-6", line = "1",
        left = "Enrolled subjects: all subjects of ADSL, screen failures included.  Percentages of the column's subjects."),
   list(output_id = "T-14-1-6", line = "2",
-       left = "Asian sub-categories (Chinese, Japanese, Korean) are derived for demonstration; they are not in the source data."),
+       left = "Asian sub-categories (ASIANSUB: Chinese, Japanese, Korean) are derived for demonstration; they are not in the source data.  As an EDC collects them, each race has its own sub-category column."),
   list(output_id = "T-14-2-3", line = "1",
        left = "CI = Confidence Interval.  95% CI and p-value: one-sample t-test of the change from baseline (H0: mean change = 0)."),
   list(output_id = "T-14-2-3", line = "2",
@@ -480,6 +539,8 @@ sheets$footer <- tbl(
        left = "x = censored.  The number at risk is that of Table 14.2.2."),
   list(output_id = "F-14-2-3", line = "1",
        left = "x = censored.  Dashed line: the median (probability 0.5).  The medians are those of Table 14.2.2; the hazard ratios (Cox model) are in its ARD."),
+  list(output_id = "F-14-2-4", line = "1",
+       left = "Hazard ratio of Xanomeline High Dose vs Placebo (Cox model, unstratified) with its 95% CI, overall and within each subgroup; the figure's own ARD.  NE = not estimable."),
   list(line = "98",
        left = "Source: CDISC pilot study ADaM data of the pharmaverseadam R package."))
 
@@ -599,28 +660,42 @@ p$ard$analyses <- tbl(
          "cardx::ard_regression(",
          "  survival::coxph(survival::Surv(AVAL, 1 - CNSR) ~ TRT01A, data = data),",
          "  exponentiate = TRUE)", sep = "\n")),
-  # T-14-1-5 and T-14-1-6: race and its Asian sub-categories of the
-  # enrolled subjects -- the same analyses, laid out nested (T-14-1-5) or
-  # in two blocks (T-14-1-6)
+  # T-14-1-5 and T-14-1-6: the demographics of the enrolled subjects, race
+  # with its Asian sub-categories -- the same analyses, laid out nested
+  # (T-14-1-5) or as a block of their own (T-14-1-6)
   list(output_id = "T-14-1-5", analysis_id = "GROUPN", method = "categorical",
-       data = "adsl_enr_tot", variables = "ARM"),
+       data = "adsl_enr", variables = "ARM"),
   list(output_id = "T-14-1-5", analysis_id = "RACE", label = "Race",
-       method = "categorical", data = "adsl_enr_tot", by = "ARM",
-       variables = "RACE", denominator = "adsl_enr_tot", statistics = "n | p"),
-  list(output_id = "T-14-1-5", analysis_id = "RACESUB", label = "Race Sub Asian",
-       method = "categorical", data = "adsl_enr_tot", by = "ARM",
-       variables = "RACESUB", denominator = "adsl_enr_tot", statistics = "n | p"),
-  # T-14-1-6: race and its Asian sub-categories of the enrolled subjects
-  # (adsl_enr_tot: each subject in their arm and in Total), percentages of
-  # the column's subjects
+       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       variables = "RACE", denominator = "adsl_enr", statistics = "n | p"),
+  list(output_id = "T-14-1-5", analysis_id = "ASIANSUB", label = "Asian sub-category",
+       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       variables = "ASIANSUB", denominator = "adsl_enr", statistics = "n | p"),
+  list(output_id = "T-14-1-5", analysis_id = "CONT", label = "Continuous",
+       method = "continuous", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       variables = "AGE", statistics = "N | mean | sd | median | min | max"),
+  list(output_id = "T-14-1-5", analysis_id = "CAT", label = "Categorical",
+       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       variables = "AGEGR1 | SEX | ETHNIC", denominator = "adsl_enr",
+       statistics = "n | p"),
+  # T-14-1-6: the demographics of the enrolled subjects,
+  # percentages of the column's subjects; `overall` runs each analysis
+  # again over all of them (cards' overall rows: the Total column)
   list(output_id = "T-14-1-6", analysis_id = "GROUPN", method = "categorical",
-       data = "adsl_enr_tot", variables = "ARM"),
+       data = "adsl_enr", variables = "ARM"),
   list(output_id = "T-14-1-6", analysis_id = "RACE", label = "Race",
-       method = "categorical", data = "adsl_enr_tot", by = "ARM",
-       variables = "RACE", denominator = "adsl_enr_tot", statistics = "n | p"),
-  list(output_id = "T-14-1-6", analysis_id = "RACESUB", label = "Race Sub Asian",
-       method = "categorical", data = "adsl_enr_tot", by = "ARM",
-       variables = "RACESUB", denominator = "adsl_enr_tot", statistics = "n | p"),
+       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       variables = "RACE", denominator = "adsl_enr", statistics = "n | p"),
+  list(output_id = "T-14-1-6", analysis_id = "ASIANSUB", label = "Asian sub-category",
+       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       variables = "ASIANSUB", denominator = "adsl_enr", statistics = "n | p"),
+  list(output_id = "T-14-1-6", analysis_id = "CONT", label = "Continuous",
+       method = "continuous", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       variables = "AGE", statistics = "N | mean | sd | median | min | max"),
+  list(output_id = "T-14-1-6", analysis_id = "CAT", label = "Categorical",
+       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       variables = "AGEGR1 | SEX | ETHNIC", denominator = "adsl_enr",
+       statistics = "n | p"),
   # T-14-3-1 reads analysis data: the TEAEs of the safety set (adae_saf,
   # kept to adsl_saf's subjects), its percents of adsl_saf
   list(output_id = "T-14-3-1", analysis_id = "TEAE",
@@ -639,24 +714,15 @@ p$ard$analysis_data <- tbl(
   list(output_id = "T-14-1-5", data_id = "adsl_enr", label = "Enrolled subjects",
        from = "ADSL", population_id = "ENR",
        derive = paste0(
-         "RACESUB = dplyr::case_when(USUBJID == \"01-703-1396\" ~ \"CHINESE\", ",
+         "ASIANSUB = dplyr::case_when(USUBJID == \"01-703-1396\" ~ \"CHINESE\", ",
          "USUBJID == \"01-708-1104\" ~ \"JAPANESE\")")),
-  list(output_id = "T-14-1-5", data_id = "adsl_enr_tot",
-       label = "Enrolled subjects, and all of them again as Total",
-       from = "adsl_enr",
-       code = "dplyr::bind_rows(adsl_enr, dplyr::mutate(adsl_enr, ARM = \"Total\"))"),
   # T-14-1-6: the enrolled subjects with a demonstration sub-race of Asian
-  # (the pilot data has none: derived, by subject, for the sample only),
-  # then each subject again in a Total column
+  # (the pilot data has none: derived, by subject, for the sample only)
   list(output_id = "T-14-1-6", data_id = "adsl_enr", label = "Enrolled subjects",
        from = "ADSL", population_id = "ENR",
        derive = paste0(
-         "RACESUB = dplyr::case_when(USUBJID == \"01-703-1396\" ~ \"CHINESE\", ",
+         "ASIANSUB = dplyr::case_when(USUBJID == \"01-703-1396\" ~ \"CHINESE\", ",
          "USUBJID == \"01-708-1104\" ~ \"JAPANESE\")")),
-  list(output_id = "T-14-1-6", data_id = "adsl_enr_tot",
-       label = "Enrolled subjects, and all of them again as Total",
-       from = "adsl_enr",
-       code = "dplyr::bind_rows(adsl_enr, dplyr::mutate(adsl_enr, ARM = \"Total\"))"),
   saf("T-14-2-1"),
   list(output_id = "T-14-2-1", data_id = "advs_w24",
        label = "Systolic blood pressure at Week 24, safety set",
@@ -796,8 +862,8 @@ km_code <- c(
 
 desc <- c("T-14-0-1" = "Study information: dictionary versions and the dates of the data (no analysis set)",
           "T-14-1-4" = "Demographic characteristics of the screen failures (an analysis set by a condition alone)",
-          "T-14-1-5" = "Race with its Asian sub-categories nested under Asian, one block (enrolled subjects by arm, Total; the sub-categories derived for demonstration)",
-          "T-14-1-6" = "Race and its Asian sub-categories, two blocks (enrolled subjects by arm, Total; the sub-categories derived for demonstration)",
+          "T-14-1-5" = "Demographics, race's Asian sub-categories nested under Asian (enrolled subjects by arm, Total; ASIANSUB derived for demonstration)",
+          "T-14-1-6" = "Demographics, race's Asian sub-categories as a block of their own (enrolled subjects by arm, Total; ASIANSUB derived for demonstration)",
           "T-14-1-1" = "Demographic characteristics",
           "T-14-1-1S" = "Demographic characteristics (its ARD one ard_stack call)",
           "T-14-1-2" = "Subject disposition",
@@ -812,10 +878,11 @@ desc <- c("T-14-0-1" = "Study information: dictionary versions and the dates of 
           "L-16-2-7" = "Listing of severe treatment-emergent adverse events",
           "F-14-2-1" = "Mean change from baseline in systolic blood pressure",
           "F-14-2-2" = "KM plot of the time to first dermatologic event",
-          "F-14-2-3" = "KM curves of the time to first dermatologic event (designed)")
+          "F-14-2-3" = "KM curves of the time to first dermatologic event (designed)",
+          "F-14-2-4" = "Hazard ratio of the time to first dermatologic event by subgroup (forest plot, its own ARD)")
 types <- c("T-14-0-1" = "table", "T-14-1-4" = "table", "T-14-1-5" = "table", "T-14-1-6" = "table", "T-14-1-1" = "table", "T-14-1-1S" = "table", "T-14-1-2" = "table",
            "T-14-1-3" = "table", "T-14-2-3" = "table", "T-14-2-1" = "table", "T-14-3-1" = "table", "T-14-2-2" = "table", "L-16-2-7" = "listing",
-           "F-14-2-1" = "user", "F-14-2-2" = "user", "F-14-2-3" = "figure")
+           "F-14-2-1" = "user", "F-14-2-2" = "user", "F-14-2-3" = "figure", "F-14-2-4" = "figure")
 process <- list(
   "T-14-2-2" = c(
     "data <- normalize_ard(ard)",
@@ -837,6 +904,16 @@ for (o in names(desc)) {
                   type = types[[o]])
 }
 p <- set_fig_design(p, "F-14-2-3", km_design)
+# F-14-2-4: the forest template, whose numbers are the figure's own ARD --
+# a Cox model of all subjects and one within each subgroup (its analyses
+# come with the design; the population is the study's SAF)
+forest_design <- tflspec::tfl_fig_template(
+  "forest_hr", data = "ADTTE", param = "TTDE", pop = "SAFFL", group = "TRT01A",
+  subgroups = "SEX, AGEGR1", comparison = "Xanomeline High Dose")
+forest_design$plot$x_label <- "Hazard Ratio (95% CI), Xanomeline High Dose vs Placebo"
+p <- set_fig_design(p, "F-14-2-4", forest_design)
+p <- set_fig_own_analyses(p, "F-14-2-4", attr(forest_design, "analyses"),
+                          population_id = "SAF")
 # the tables' analysis set (the report list's), as step 2 sets it
 for (o in setdiff(unique(p$ard$analyses$output_id), c("T-14-0-1", "T-14-1-4", "T-14-1-5", "T-14-1-6"))) {
   p <- set_report_population(p, o, "SAF")
@@ -876,7 +953,7 @@ dir.create(out, recursive = TRUE)
 keep <- c(.study_file, paste0(id, ".Rproj"),
           file.path(study_layout()[["spec"]],
                     c(.table_file, .report_file, .ard_json, .lf_file,
-                      file.path(.fig_design_dir, "F-14-2-3.yml"))),
+                      file.path(.fig_design_dir, c("F-14-2-3.yml", "F-14-2-4.yml")))),
           file.path(study_layout()[["adam"]],
                     c("adsl.rds", "adae.rds", "advs.rds", "adtte.rds")))
 for (f in keep) {
@@ -922,6 +999,7 @@ writeLines(c(
   "| F-14-2-1 | User code (a figure) | Mean change from baseline in systolic blood pressure |",
   "| F-14-2-2 | User code (a figure) | Kaplan-Meier plot of the time to first dermatologic event (number at risk from T-14-2-2's ARD) |",
   "| F-14-2-3 | Figure (designed) | The same KM curves from the designer's KM template, with a median line added |",
+  "| F-14-2-4 | Figure (designed) | Forest plot of the hazard ratio by subgroup from the figure's own ARD (a Cox model overall and within each subgroup, cards / cardx) |",
   "",
   "The tables are made from one study ARD (programs/ard/), the listing and",
   "the figures from the ADaM data, in the figure style of the company",

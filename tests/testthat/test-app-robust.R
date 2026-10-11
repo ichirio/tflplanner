@@ -2,6 +2,10 @@
 # edit, a tab that stays blank, an R error message instead of a sentence.
 # (GUI review iter01: P0-1, P0-2, P1-4.)
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 ard_study <- function() {
   p <- add_output(new_planner(), "T1", description = "a table")
   p$ard$analyses <- .normalize_ard_sheet(data.frame(
@@ -355,6 +359,7 @@ test_that("the page sample puts a report's lines over the study defaults", {
 })
 
 test_that("with no study, the app offers the ways to start, the sample first", {
+  skip_on_cran()
   local_home()
   shiny::testServer(function(input, output, session)
     app_server(input, output, session, NULL), {
@@ -367,6 +372,7 @@ test_that("with no study, the app offers the ways to start, the sample first", {
 })
 
 test_that("with no study, both ways to start open the New study dialog", {
+  skip_on_cran()
   local_home()
   shiny::testServer(function(input, output, session)
     app_server(input, output, session, NULL), {
@@ -442,6 +448,7 @@ test_that("every ARD method has its name and note in Japanese, else English", {
 })
 
 test_that("a new session opens the study opened last", {
+  skip_on_cran()
   local_home()
   two_studies()
   .set_config("last_study", "S1")
@@ -499,6 +506,7 @@ test_that("the report list's buttons are above the list, the marks have a legend
 })
 
 test_that("a copy of the sample is listed at once; its run goes on in the background", {
+  skip_on_cran()
   local_home()
   alive <- TRUE
   px <- list(is_alive = function() alive, get_exit_status = function() 0L,
@@ -541,4 +549,48 @@ test_that("step 3: the page's sheets on the left, Result first, SPEC read only",
   expect_match(ui, "page_fit", fixed = TRUE)
   expect_match(ui, "rp-page-wrap", fixed = TRUE)
   expect_match(ui, "page_spec_view", fixed = TRUE)
+})
+
+test_that("an input left by an earlier session is not read as this form's (the Total switch, #331)", {
+  skip_if_not_installed("cards")
+  local_home()
+  p <- add_output(new_planner(), "T-DM", type = "table")
+  s <- create_study("B2", planner = p)
+  ard <- cards::ard_stack(cards::ADSL, .by = TRT01A,
+                          cards::ard_continuous(variables = AGE))
+  data <- rtfreporter::normalize_ard(ard)
+  m <- ard_meta(ard, data)
+  f <- .meta_file(s, "T-DM")
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(m, f)
+  saveRDS(data, sub("[.]rds$", "_data.rds", f))
+  shiny::testServer(server_for("B2"), {
+    rv <- session$userData$rv
+    bform <- session$userData$bform
+    session$setInputs(target = "T-DM", nav = "make", step = "content",
+                      content_nav = "content", table_nav = "builder")
+    # the numbers start apart from a session's before (1, 2, 3 ...)
+    expect_gt(bform$n, 100L)
+    b <- function(x) paste0("b", bform$n, "_", x)
+    v <- list()
+    v[[b("key")]] <- "TRT01A"
+    v[[b("vars")]] <- "AGE"
+    do.call(session$setInputs, v)
+    session$elapse(1000)
+    total <- function() sheet_rows(rv$p, "tables", "T-DM")$total
+    expect_true(is.na(total()))
+    # a reconnecting browser sends the inputs of the session before: an
+    # earlier form's switch, on -- not this form's, nothing changes
+    old <- list(TRUE, TRUE, TRUE)
+    names(old) <- paste0("b", 1:3, "_total_on")
+    do.call(session$setInputs, old)
+    session$elapse(1000)
+    expect_true(is.na(total()))
+    # this form's own switch does
+    on <- list(TRUE)
+    names(on) <- b("total_on")
+    do.call(session$setInputs, on)
+    session$elapse(1000)
+    expect_identical(total(), "Total")
+  })
 })

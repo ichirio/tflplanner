@@ -1,40 +1,5 @@
 # tflplanner (development version)
 
-- **Step 3 (page and output): the input on the left again, the page at
-  its actual size** (the user's request).  The report's page sheets
-  (report, page, header, footer, titles, footnotes, your tokens) are the
-  form on the left, as before the SPEC | Code | Result tabs came (that
-  change had put them inside the SPEC tab); on the right the tabs open on
-  Result: the first page at 100%, scrolling in its pane, with a "Fit to
-  width" button (remembered in the browser) and "Full size" as before.
-  SPEC shows the report's own rows as they are written to
-  `spec/report_spec.xlsx`, read only.  The report's font stays above.
-## Upgrading from an earlier version
-
-Update tflplanner and tflspec together, open each study and save it, then
-look at its Review tab.
-
-* **This tflplanner needs tflspec 0.0.24.9079 or later** (0.0.2.9157 and
-  later needed 0.0.24.9077): update both together.
-* **Six functions are no longer tflspec's; the study keeps them in
-  `programs/study_helpers.R`.**  `set_levels()`, `tag_ard()`, `fmt_ard()`,
-  `keep_stats()`, `fmt_pvalue()` and `save_ard()` (tflspec's up to
-  0.0.24.9066) are written there by a save, and the study's setup sources
-  it.  A program that calls them as `tflspec::` or after
-  `library(tflspec)` without it stops; the review says which (P02): write
-  it again (open the study and save) or source
-  `programs/study_helpers.R`.
-* **A figure design written before reads as it is**: its YAML's old form
-  (`stats:`, `data_code`, `stats_code`) is read, and a save writes the new
-  one.
-* **Figure programs have a new shape, and draw the same figures**: a data
-  and a plot section, one `+` chain.  A save writes them again.
-* **The steps:** update both packages; open each study and save it (the
-  programs and `study_helpers.R` are written again; a program edited by
-  hand is copied to `programs/.edited/` first); check the Review tab.
-
-## Changes
-
 - **A TOC taken in by the company's rules** (#299, phases 1 and 2 of its
   plan).  The company standards keep one rule set or several for TOCs:
   `toc_map` gains a `rule_set` column (blank: `standard`) and the new
@@ -88,6 +53,151 @@ look at its Review tab.
     `tfl_read_toc()` on a data frame (tflspec #217) the reports are read
     without a temporary file; with an older tflspec a temporary `.csv` is
     used.
+
+- **A run in the background no longer greys the page** (the user's
+  report on 0.0.2.9175).  Following a run the app did not start made the
+  whole page be drawn again every few seconds (each ARD program, each
+  preview log), greyed and not taking clicks for a moment.  Now only what
+  changed follows it: the report list's marks are changed in place (the
+  list is not drawn again), the ARD's state is worked out again only when
+  the report chosen has its ARD made, and every report's once when the
+  run has ended; the Runs tab's tables when a batch ends.  The logs are
+  not watched any more.  Checked on R 4.6.1: the sample's official run,
+  160 s, sitting on Make a report and on the report list -- nothing
+  faded, the marks from "not made" to "made" without a reload.  (Steps 2
+  and 3's marks, never drawn, no longer stay "recalculating" either.)
+
+- **The forest plot from the figure's own ARD** (#293 phase 6, with
+  tflspec's `forest_hr` in parts).  The hazard ratios, intervals and N a
+  forest plot prints are statistics of the figure's own ARD -- a Cox
+  model of all subjects and one within each subgroup variable, by cards /
+  cardx -- not fitted inside the figure program.  `set_fig_own_analyses()`
+  writes the analyses a design brings (`attr(design, "analyses")`) to the
+  figure's ARD definition and sets its source to `own`; the Plot
+  Designer's forest template does so when applied, with the subgroups and
+  the arm compared chosen on its form.  The sample gains **F-14-2-4**, the
+  hazard ratio of the time to first dermatologic event by sex and age
+  group.  Needs tflspec >= 0.0.24.9084.
+- **Ready for CRAN's checks, the parts that do not wait for the
+  submission** (#334).  The tests that start the app or write study
+  folders (5-10 s a test: the spec workbooks) skip on CRAN -- 16 files,
+  skipped as a whole, and every app-server block -- and still run on CI
+  and locally (`NOT_CRAN=true`): CRAN's test run, measured as CRAN runs
+  it, takes 5 minutes on a Windows laptop instead of 16 (the pure-function
+  tests stay: planner, standards, spec import, figure design, ...), and
+  its one warning (the ARS reader's, on the sample) is gone;
+  `app_server()`'s three
+  local `one()` helpers have names of their own (`one_val`, `toc_row`,
+  `header_line`: no "multiple local function definitions" NOTE); the
+  examples of `setup_tflplanner()`, `create_study()`,
+  `reload_from_spec()` and `create_sample_study()` run, with a home in
+  the temporary folder (the study-writing ones in `\donttest{}`, a few
+  seconds each), and `add_shortcut()` / `update_tflplanner()` say why
+  theirs are not run.  The title is "'shiny' Study Manager for Clinical
+  Tables, Listings and Figures"; the language en-GB, as rtfreporter's
+  and tflspec's; the word list has the CDISC names and the rest
+  `spelling` flags; `inst/COPYRIGHTS` links the licence instead of the
+  build-ignored LICENSE.md; the package help says where to start.
+
+- **The sample's race tables are demographics tables, with ASIANSUB**
+  (the user's request on #326).  T-14-1-5 and T-14-1-6 show age (n,
+  mean (SD), median, min and max), age group, sex and ethnicity as well,
+  so RACE is the one variable with rows nested under one of its levels.
+  The derived sub-category is `ASIANSUB`, one column per race as an EDC
+  collects it (White's would be `WHTSUB`, nested under "White": each its
+  own analysis, `plan_nest()` takes several), still footnoted as derived
+  for demonstration.  The other reports' programs and RTFs are
+  byte-identical.
+- **The app follows a run that ends, without a reload** (#305 area).
+  After a background official run (the sample's, for one), the report
+  list kept every report "not made" and a table's builder said "no ARD
+  yet" until the browser was reloaded.  The app now watches what a run
+  writes in the study folder -- the study ARD's status, a batch's
+  run.csv, a preview's log -- every few seconds, and refreshes the marks
+  and the ARD state when they change, whoever ran it (this session,
+  another, the app before a restart, R); and the builder reads a table's
+  ARD for itself again then.
+- **A report's Total column switched itself on after a reconnect**
+  (#331 follow-up).  The table builder's inputs are numbered by the form
+  drawn (`b3_total_on`), from 0 in each session; a browser reconnecting
+  to a new session (the app restarted) sends the inputs it still holds,
+  and an earlier form's switch, on, was read as this form's: the Total
+  column turned on for a report without one, unsaved, and its preview
+  stopped in `plan_total()`.  The numbering now starts at a random point
+  in each session, so no input of a session before is read as one of
+  this session's form -- for every builder field, not only the switch.
+
+- **An ARD definition that does not hold is said, not passed over**
+  (#323).  Saving writes no ARD program then (a blank `from` of an
+  analysis data made by code, for one); it used to say nothing, and the
+  official run failed on every ARD program with "cannot open the
+  connection".  Now `save_study()` says so in a message and keeps it as
+  `$ard_problem` (the app shows it after Save, the rest still saved), the
+  Review tab's error row says that no ARD program is written, the runner
+  says "no program ...: save the study" for a program that is not there
+  instead of running it, and `run_batch()` on a study with no ARD
+  programs names the likely cause.
+
+- **A Total column, without a "Total" arm in the data** (tflspec #212,
+  rtfreporter `plan_total()`).  `set_total_column(x, output_id, label,
+  position)` switches it on in both halves of a table's definition: the
+  `tables` sheet's `total` / `total_position` (written as `plan_total()`),
+  and `overall = TRUE` on the report's own analyses grouped by the column
+  variable (not the rows inside a stack, not `custom` / `subjects`), which
+  makes each ARD program run them again without their `by` -- cards' own
+  overall rows, with no group.  The ARS then has an analysis over all
+  subjects without the grouping, not a `"Total"` group the ADaM does not
+  have.  Needs tflspec >= 0.0.24.9083 and rtfreporter >= 0.8.2.9034.
+- **Logistic and Poisson regressions on R before 4.4 need MASS** (#319).
+  Before R 4.4, `confint()` of a `glm` comes from MASS, and without it
+  `cardx::ard_regression()` stops with "Unable to tidy x".  MASS is
+  installed with R, so this concerns only an R where it was removed: the
+  ARD dictionary's help for these two models says so, and its test skips
+  them only where MASS cannot be loaded.
+- **Step 3 (page and output): the input on the left again, the page at
+  its actual size** (the user's request).  The report's page sheets
+  (report, page, header, footer, titles, footnotes, your tokens) are the
+  form on the left, as before the SPEC | Code | Result tabs came (that
+  change had put them inside the SPEC tab); on the right the tabs open on
+  Result: the first page at 100%, scrolling in its pane, with a "Fit to
+  width" button (remembered in the browser) and "Full size" as before.
+  SPEC shows the report's own rows as they are written to
+  `spec/report_spec.xlsx`, read only.  The report's font stays above.
+## Upgrading from an earlier version
+
+Update tflplanner and tflspec together, open each study and save it, then
+look at its Review tab.
+
+* **This tflplanner needs tflspec 0.0.24.9079 or later** (0.0.2.9157 and
+  later needed 0.0.24.9077): update both together.
+* **Six functions are no longer tflspec's; the study keeps them in
+  `programs/study_helpers.R`.**  `set_levels()`, `tag_ard()`, `fmt_ard()`,
+  `keep_stats()`, `fmt_pvalue()` and `save_ard()` (tflspec's up to
+  0.0.24.9066) are written there by a save, and the study's setup sources
+  it.  A program that calls them as `tflspec::` or after
+  `library(tflspec)` without it stops; the review says which (P02): write
+  it again (open the study and save) or source
+  `programs/study_helpers.R`.
+* **A figure design written before reads as it is**: its YAML's old form
+  (`stats:`, `data_code`, `stats_code`) is read, and a save writes the new
+  one.
+* **Figure programs have a new shape, and draw the same figures**: a data
+  and a plot section, one `+` chain.  A save writes them again.
+* **The steps:** update both packages; open each study and save it (the
+  programs and `study_helpers.R` are written again; a program edited by
+  hand is copied to `programs/.edited/` first); check the Review tab.
+
+## Changes
+
+- **The table builder says what the report's ARD holds.**  Above the
+  SPEC / Code / Result tabs, one line: the column variables and their
+  groups, the pages, the rows, the analysis variables (categorical,
+  continuous), the statistics and when the ARD was read ("ARD: columns
+  TRT01A (3 groups) | 6 variables ..."); opened, a small table of each
+  one's role, kind, levels or statistics and label.  "Show the whole
+  normalized ARD" opens it in a dialog -- paged, filterable, the main
+  columns or all -- read only then.  From what reading the ARD saved:
+  nothing more is read to draw the card.
 
 - **Race with its Asian sub-categories, nested or in two blocks** (the
   sample's T-14-1-5 and T-14-1-6, with rtfreporter #599 and tflspec
@@ -153,6 +263,27 @@ look at its Review tab.
   the report warns until then); with no ARD yet the three in words.  The
   choice is the `tables` sheet's `header_n`, as before.  Needs rtfreporter
   0.8.2.9033.
+
+- **The table builder says only what fits the table** (#324).  The note
+  "Check this order: the data do not give one ..." under a column
+  variable's order no longer shows when the report has a code list for that
+  variable (its ARD program puts the columns in the list's order); the form
+  says the order is the code list's instead.  A table with no continuous
+  variable no longer shows the continuous rows, "A row of your own" and the
+  decimals of their statistics, nor warns that the ARD has no mean, sd ...;
+  what the definition says of them is kept as it is.
+
+- **A new report goes where its id sorts; the list can be sorted by ID.**
+  The report list's order is still the order the reports are made in.  A
+  report added (Add, Copy, `add_output()`, `copy_output()`) goes where its
+  id sorts among the others -- by the numbers in the id, as numbers
+  (T-14-1-2 after T-14-1-1 and before T-14-1-10; T-14-0-1 before F-14-2-1,
+  the sections' order), then its letters -- instead of last; one ordered
+  by hand keeps its order.  A TOC's reports come in the TOC's order
+  (`add_output(at = "end")`).  The report list's new "Sort by ID" puts the
+  whole list in that order, after asking how many move; the up and down
+  arrows still move one.
+  `sort_outputs()` does the same in R.
 
 - **The review names a program calling a function tflspec no longer
   has** (P02, area program): one of the six above, as `tflspec::`, or

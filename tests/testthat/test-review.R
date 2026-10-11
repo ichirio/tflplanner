@@ -27,9 +27,11 @@ test_that("the sample study has no error and nothing to set by hand", {
   expect_s3_class(r, "tfl_review")
   expect_false(any(r$level %in% c("error", "hand")),
                info = paste(r$rule, r$output_id, r$message, collapse = "\n"))
-  # its checks, seen: the code list values no record has, the KM figure's
-  # advice, the medians figure's ARD (T-14-2-2's) not made yet
-  expect_identical(as.integer(table(r$rule)[c("C02", "F02", "F07")]), c(9L, 2L, 1L))
+  # its checks, seen: the code list values no record has (T-14-1-5/6
+  # count too since they read the enrolled set itself, not a data made by
+  # code; their ETHNIC's NOT REPORTED / UNKNOWN as T-14-1-1's), the KM figure's advice, the medians figure's ARD (T-14-2-2's)
+  # and the forest plot's own (#293 P6) not made yet
+  expect_identical(as.integer(table(r$rule)[c("C02", "F02", "F07")]), c(15L, 2L, 2L))
   expect_identical(sort(unique(r$rule)), c("C02", "F02", "F07"))
   # without the data: no data rule, and no row it would not have with them
   r0 <- study_review(s, data = "none", lang = "en")
@@ -81,7 +83,7 @@ test_that("the report list's rules (R01-R08) and the analyses' (A11-A13)", {
   expect_false(.has(review_problems(p2, lang = "en"), "R04", "T1"))
   # R02 / R07: an id twice; two reports writing one file
   p3 <- p
-  p3$outputs <- rbind(p3$outputs, p3$outputs[1L, ])
+  p3$outputs <- rbind(p3$outputs, p3$outputs[p3$outputs$output_id == "T1", ])
   expect_true(.has(review_problems(p3, lang = "en"), "R02", "T1"))
   p4 <- set_sheet_rows(p, "report", "T2", data.frame(file = "T1.rtf"))
   expect_true(.has(review_problems(p4, lang = "en"), "R07", "T2", "report", "T2", "file"))

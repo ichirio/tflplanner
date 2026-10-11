@@ -129,11 +129,17 @@ study_layout <- function() {
 #'   an `rtfstudy`: `path`, `meta` (the study.yml fields) and `planner`.
 #'   `list_studies()` returns a data frame.
 #' @examples
-#' \dontrun{
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
 #' s <- create_study("ABC-101", title = "A phase 2 study")
 #' list_studies()
 #' s <- open_study("ABC-101")
 #' }
+#' options(old)
 #' @export
 create_study <- function(study_id, title = NA, compound = NA, phase = NA,
                          description = NA, planner = NULL,
@@ -582,7 +588,13 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
     files[nrow(files) + 1L, ] <- list(f, if (state == "edited") "rewritten" else "written")
   }
   lf_rel <- file.path(lay[["spec"]], .lf_file)
-  files <- rbind(files, .save_ard(p, root),
+  ard_files <- .save_ard(p, root)
+  ard_problem <- attr(ard_files, "problem")
+  if (!is.null(ard_problem)) {
+    message("The ARD definition does not hold, so no ARD program was written ",
+            "(the rest is saved):\n", ard_problem)
+  }
+  files <- rbind(files, ard_files,
                  .save_lf(p, root, was = if (as_recorded(lf_rel)) was$lf),
                  .save_fig_designs(p, root, own = function(f)
                    as_recorded(file.path(lay[["spec"]], .fig_design_dir,
@@ -598,6 +610,8 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
   .write_state(study, home)
   .set_config("last_study", study$meta$study_id, home)
   study$files <- files
+  # why no ARD program was written, or NULL (the app says it)
+  study$ard_problem <- ard_problem
   invisible(study)
 }
 

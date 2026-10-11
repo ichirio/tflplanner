@@ -1,5 +1,9 @@
 # The app and the definition files changed outside it (#274 phase 2)
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 spec_app_study <- function() {
   p <- add_output(new_planner(), "T-1", type = "table", description = "one")
   p <- add_output(p, "T-2", type = "table", description = "two")

@@ -123,6 +123,7 @@ reference:
       - fig_design
       - preview_figure
       - set_fig_ard_source
+      - set_fig_own_analyses
       - fig_presets
       - copy_fig_to_params
       - make_user_report
@@ -146,6 +147,7 @@ reference:
       - first_listing
       - catalog_add_files
       - add_group_n
+      - set_total_column
   - title: A TOC taken in
     contents:
       - toc_changes

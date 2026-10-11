@@ -1,5 +1,5 @@
 tflplanner is copyright (c) 2026 Yoichi Masui and licensed under the Apache
-License, Version 2.0 (see LICENSE.md).
+License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
 
 It includes data from others' work:
 
@@ -12,5 +12,5 @@ inst/sample/SAMPLE-01/data/adam/{adsl,adae,advs}.rds and adtte.rds
   repository.
   Copyright (c) Cytel Inc., F. Hoffmann-La Roche AG and GlaxoSmithKline LLC
   (the copyright holders named by pharmaverseadam). Licensed under the
-  Apache License, Version 2.0 -- the same licence as tflplanner, whose text
-  is in LICENSE.md. Changes made here: the subsets and the derivation above.
+  Apache License, Version 2.0 -- the same licence as tflplanner
+  (https://www.apache.org/licenses/LICENSE-2.0). Changes made here: the subsets and the derivation above.

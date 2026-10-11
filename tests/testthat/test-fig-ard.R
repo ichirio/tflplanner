@@ -3,6 +3,10 @@
 # it in `ard`, the checks of the design's ARD pieces, and the sample's
 # F-14-2-3, which prints T-14-2-2's medians.
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 fig_ard_study <- function(env = parent.frame()) {
   home <- withr_tempdir(env)
   withr::local_options(tflplanner.home = home, .local_envir = env)
@@ -159,7 +163,9 @@ test_that("the ARS: F-14-2-3 is an output naming T-14-2-2's analyses it prints (
   expect_setequal(r$analysis_id, c("KM", "HR"))
   d <- withr::local_tempdir()
   f <- export_ars(s, d)
-  ars <- tflspec::tfl_read_ars_json(f[["json"]])
+  # (the sample's analyses say no CDISC purpose or reason: a warning of
+  # the reader, not of this test)
+  ars <- suppressWarnings(tflspec::tfl_read_ars_json(f[["json"]]))
   expect_true("F-14-2-3" %in% vapply(ars$outputs, `[[`, "", "id"))
   it <- Filter(function(z) identical(z$outputId, "F-14-2-3"),
                ars$mainListOfContents$contentsList$listItems)[[1L]]
@@ -219,4 +225,56 @@ test_that("the study review lists a figure's ARD problems as F04-F08, each with 
   expect_identical(r$sheet, "design")
   expect_identical(r$row, sprintf("layers[%d] ard_number", k))
   expect_identical(.review_target(r, s$planner)$go, "designer")
+})
+
+test_that("set_fig_own_analyses() writes a design's analyses to the figure's ARD definition (#293 P6)", {
+  skip_if(!"tfl_fig_forest_analyses" %in% getNamespaceExports("tflspec"), "tflspec has no tfl_fig_forest_analyses()")
+  p <- add_output(new_planner(), "F-FOR", type = "figure")
+  # another report's analysis data: left alone
+  p$ard$analysis_data <- .normalize_ard_sheet(data.frame(
+    output_id = "T1", data_id = "adsl_saf", from = "ADSL", population_id = "SAF"), "analysis_data")
+  p$ard$datasets <- .normalize_ard_sheet(data.frame(dataset = c("ADSL", "ADTTE"),
+    path = c("data/adam/adsl.rds", "data/adam/adtte.rds")), "datasets")
+  p$ard$populations <- .normalize_ard_sheet(data.frame(population_id = "SAF", dataset = "ADSL",
+    where = "SAFFL == \"Y\""), "populations")
+  an <- tflspec::tfl_fig_forest_analyses("ADTTE", "TTDE", "SAFFL", "TRT01A", c("SEX", "AGEGR1"))
+  p <- set_fig_own_analyses(p, "F-FOR", an, population_id = "SAF")
+  ad0 <- p$ard$analysis_data
+  expect_identical(ad0$population_id[ad0$output_id == "F-FOR"], "SAF")
+  expect_identical(attr(p, "written"), c("HR", "HR_SEX", "HR_AGEGR1"))
+  expect_identical(ard_rows(p, "analyses", "F-FOR")$analysis_id, c("HR", "HR_SEX", "HR_AGEGR1"))
+  ad <- p$ard$analysis_data
+  expect_identical(ad$data_id[ad$output_id == "F-FOR"], "adtte_ttde")
+  expect_identical(ad$data_id[ad$output_id == "T1"], "adsl_saf")
+  expect_identical(nrow(ad), 2L)
+  expect_identical(sheet_rows(p, "report", "F-FOR")$ard_source, "own")
+  # the definition holds, and writes the figure's ARD program
+  expect_silent(.ard_spec(p$ard))
+  # applied again (another subgroup): the same ids replaced, the rest kept
+  an2 <- tflspec::tfl_fig_forest_analyses("ADTTE", "TTDE", "SAF", "TRT01A", "RACE")
+  p2 <- set_fig_own_analyses(p, "F-FOR", an2)
+  expect_identical(ard_rows(p2, "analyses", "F-FOR")$analysis_id, c("HR_SEX", "HR_AGEGR1", "HR", "HR_RACE"))
+  expect_match(ard_rows(p2, "analyses", "F-FOR")$code[3], "data = data", fixed = TRUE)
+  expect_error(set_fig_own_analyses(p, "F-FOR", list()), "two data frames")
+})
+
+test_that("a template's population flag is the study's analysis set", {
+  p <- new_planner()
+  p$ard$populations <- .normalize_ard_sheet(data.frame(
+    population_id = c("SAF", "ITT"), dataset = "ADSL",
+    where = c("SAFFL == \"Y\"", "ITTFL == \"Y\"")), "populations")
+  expect_identical(.population_of_flag(p, "SAFFL"), "SAF")
+  expect_identical(.population_of_flag(p, "ITT"), "ITT")
+  expect_identical(.population_of_flag(p, "FASFL"), NA_character_)
+  expect_identical(.population_of_flag(new_planner(), "SAFFL"), NA_character_)
+})
+
+test_that("the forest template's arm compared defaults to the group's second level", {
+  dat <- list(ADTTE = data.frame(USUBJID = 1:4, TRT01A = c("B", "A", "C", "A")),
+              ADSL = data.frame(USUBJID = 1:4, TRT01P = factor(c("Hi", "Lo", "Pbo", "Lo"),
+                                                               levels = c("Pbo", "Lo", "Hi"))))
+  expect_identical(.second_level(dat, "TRT01P"), "Lo")
+  expect_identical(.second_level(dat, "TRT01A"), "B")
+  expect_null(.second_level(dat, "NOPE"))
+  expect_null(.second_level(list(), NULL))
 })

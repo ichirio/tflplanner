@@ -36,6 +36,7 @@ offered as flags of ADSL, to make one.
 | F-14-2-1 | User code (a figure) | Mean change from baseline in systolic blood pressure |
 | F-14-2-2 | User code (a figure) | Kaplan-Meier plot of the time to first dermatologic event (number at risk from T-14-2-2's ARD) |
 | F-14-2-3 | Figure (designed) | The same KM curves from the designer's KM template, with a median line added |
+| F-14-2-4 | Figure (designed) | Forest plot of the hazard ratio by subgroup from the figure's own ARD (a Cox model overall and within each subgroup, cards / cardx) |
 
 The tables are made from one study ARD (programs/ard/), the listing and
 the figures from the ADaM data, in the figure style of the company

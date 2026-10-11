@@ -2671,6 +2671,11 @@ No heading of its own: its rows go under %s.,独自の見出しはありませ�
 The checks against the data have not run yet. Press [Review with the data] to read the datasets once (not again until a file changes).,データと照らし合わせたチェックはまだです。［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。
 %s: the checks against the data have not run yet.,%s：データと照らし合わせたチェックはまだです。
 Press [Review with the data]: it reads the datasets once (not again until a file changes).,［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。
+Sort by ID,ID 順に並べる
+The reports are in their ids' order already.,帳票はすでに ID 順に並んでいます。
+Sort the reports by ID?,帳票を ID 順に並べ替えますか？
+"%d of %d reports move: the list goes in its ids' order, by the numbers in the id (T-14-1-2 before T-14-1-10, T-14-0-1 before F-14-2-1), then its letters. The list's order is the order the reports are made in; the up and down arrows still move one.",%2$d 帳票のうち %1$d が動きます。一覧を ID の順に並べます。ID の中の数を数として並べ（T-14-1-2 は T-14-1-10 より前、T-14-0-1 は F-14-2-1 より前）、同じなら文字の順です。一覧の順は帳票を作る順です。↑ ↓ で 1 つずつ動かすこともできます。
+Sort,並べ替える
 Fit to width,幅に合わせる
 "%s's own rows, as written to %s (edit them on the left). Study defaults fill what they leave out.",%s 自身の行（%s に書かれる内容。編集は左で）。足りないところは試験の既定が補います。
 No rows of its own: the study defaults make its page.,この帳票自身の行はありません。試験の既定でページができます。
@@ -2749,3 +2754,45 @@ No report could be read from it.,帳票を 1 つも読めませんでした。
 Titles,タイトル
 Shell,シェル
 %s: the sheet %s is not in the file any more: found again.,%s：シート %s がファイルにもうないため、探し直しました。
+"TRUE: the analysis again without its by, over all its subjects (cards' overall rows, no group): what a table shows as its Total column (tables$total). On a cards::ard_stack row: .overall = TRUE. Blank: by groups only.",TRUE：同じ解析を by なしでもう一度、全被験者で（cards の overall 行、群なし）。表の Total 列（tables$total）になる。cards::ard_stack の行なら .overall = TRUE。空欄 = 群ごとだけ。
+"The heading of a Total column (plan_total()): the ARD's overall rows, its analyses run again without their by (analyses$overall), as one more column; its {n} is the study total. Blank: none.",Total 列の見出し（plan_total()）：ARD の overall 行（analyses$overall で by なしにもう一度走らせた解析）をもう 1 列に。その {n} は試験全体の人数。空欄 = なし。
+Where the Total column goes among the column key's values: last or first; blank: last.,Total 列の位置（列変数の値の中で）：last か first。空欄 = last。
+"The analysis once more without its grouping variables, over all its subjects: the Total column of a table (step 3's switch sets it for every analysis by the column variable). Needs grouping variables.",同じ解析をグループ変数なしでもう一度、全被験者で：表の Total 列になる（段 3 のスイッチが列変数で分けた解析すべてに入れる）。グループ変数が必要。
+The stack once more without its grouping variables (.overall = TRUE): the Total column of a table.,スタックをグループ変数なしでもう一度（.overall = TRUE）：表の Total 列になる。
+Total column,Total 列
+"One more column over all subjects, read from the ARD's overall rows: the analyses by the column variable are run once more without it (step 1, 'Also over all subjects'). No 'Total' arm is made up in the data.",全被験者の列を 1 つ足す。ARD の overall 行（列変数で分けた解析を、それなしでもう一度走らせたもの：段 1 の「全体でも計算する」）から読む。データに「Total」という群は作らない。
+Heading,見出し
+Place,位置
+last,末尾
+first,先頭
+No analysis of this report is grouped by %s: the ARD has no overall rows to show.,この帳票に %s で分けた解析がない：ARD に見せる overall 行がない。
+"%d analyses are run over all subjects too: update the ARD, then Preview.",%d 本の解析を全体でも走らせる：ARD を更新してから Preview。
+Also over all subjects,全体でも計算する
+and over all,全体でも
+"The ARD definition does not hold, so no ARD program was written (the rest is saved). See the Review tab.",ARD 定義が成り立たないため、ARD プログラムは書いていません（他は保存済み）。Review タブを見てください。
+The order is the report's code list's (step 1).,並びは、この帳票のコードリストの順です（段 1）。
+"ARD: not read yet (step 1, ""Preview this table's ARD"")",ARD: まだ読み込んでいません（段 1 の「この表の ARD をプレビュー」）
+%d levels: %s,%d 水準: %s
+columns %s (%s groups),列 %s（%s 群）
+pages %s,ページ %s
+rows %s,行 %s
+"%d variables (%d categorical, %d continuous)",変数 %d（カテゴリ %d・連続 %d）
+statistics %s,統計量 %s
+read %s,読み込み %s
+column,列
+group,群
+page split,ページ分け
+row: hierarchy,行: 階層
+hierarchy,階層
+row: variable,行: 変数
+continuous,連続
+categorical,カテゴリ
+Role,役割
+Levels / statistics,水準・統計量
+Show the whole normalized ARD,正規化した ARD をすべて見る
+This report's ARD has not been read yet.,この帳票の ARD はまだ読み込まれていません。
+The normalized ARD: %s (%d rows),正規化した ARD: %s（%d 行）
+All the columns (%d),すべての列（%d）
+Arm compared with the reference (the first),基準群（先頭）と比べる群
+"Added analyses %s to step 1 (remove them there if not wanted): update the ARD, then Preview.",解析 %s を段 1 に追加しました（不要ならそこで削除）。ARD を更新してから Preview してください。
+No analysis set of the study is the flag %s: choose the analysis data's set in step 1.,フラグ %s に当たる解析対象集団が試験にありません。段 1 で解析データの集団を選んでください。

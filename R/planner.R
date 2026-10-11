@@ -337,7 +337,7 @@ read_planner <- function(path) {
       p$outputs <- d[!duplicated(d$output_id), , drop = FALSE]
     }
   }
-  for (id in setdiff(output_ids(p), p$outputs$output_id)) p <- add_output(p, id)
+  for (id in setdiff(output_ids(p), p$outputs$output_id)) p <- add_output(p, id, at = "end")
   rownames(p$outputs) <- NULL
   .renamed_outputs(p)
 }
@@ -361,7 +361,17 @@ read_planner <- function(path) {
 #' `add_output()` puts a report on the list; `copy_output()` gives a new
 #' report every row of an existing one (the quickest start for a report
 #' like one already defined); `rename_output()` changes an id everywhere;
-#' `remove_output()` takes a report and all its rows out.
+#' `remove_output()` takes a report and all its rows out;
+#' `sort_outputs()` puts the list in its ids' order.
+#'
+#' The list's order is the order the reports are made in (the official run
+#' too).  A new report goes where its id sorts among the others -- by the
+#' numbers in the id, as numbers (`T-14-1-2` after `T-14-1-1` and before
+#' `T-14-1-10`; `T-14-0-1` before `F-14-2-1`, the sections' order), then
+#' its letters (`T-14-1-1` before `T-14-1-1S`) -- before the first report
+#' whose id sorts after it, so a list kept in id order stays so; one
+#' ordered by hand keeps that order.  `at = "end"` puts it last (a TOC's
+#' reports come in the TOC's order).
 #'
 #' @param x An `tflplanner`.
 #' @param output_id,from,to Report ids.
@@ -378,25 +388,72 @@ read_planner <- function(path) {
 #'   "14.1 Demographics"); `NA`: from its ID's numbers.
 #' @param population The report's analysis set, a population_id (see
 #'   [set_report_population()], which also makes its analysis data).
+#' @param at Where the new report goes: `"natural"` (where its id sorts
+#'   among the others) or `"end"`.
 #' @return The updated `tflplanner`.
+#' @examples
+#' p <- add_output(add_output(new_planner(), "T-14-1-10"), "T-14-1-1")
+#' p <- add_output(p, "T-14-1-2")
+#' p$outputs$output_id
+#' sort_outputs(add_output(p, "T-14-0-1", at = "end"))$outputs$output_id
 #' @export
 add_output <- function(x, output_id, description = NA_character_,
                        data_code = NA_character_, type = "table",
                        process_code = NA_character_, section = NA_character_,
-                       population = NA_character_) {
+                       population = NA_character_, at = c("natural", "end")) {
+  at <- match.arg(at)
   id <- .check_id(output_id)
   if (id %in% x$outputs$output_id) {
     stop("Report '", id, "' is already on the list.", call. = FALSE)
   }
   type <- match.arg(type, report_types())
   if (!identical(report_info(x, id)$type, type)) x <- .set_report_type(x, id, type)
-  x$outputs <- rbind(x$outputs, data.frame(
+  row <- data.frame(
     output_id = id, description = as.character(description),
     data_code = as.character(data_code),
     process_code = as.character(process_code),
     section = as.character(section), population = as.character(population),
-    datasets = NA_character_, batches = NA_character_, stringsAsFactors = FALSE))
+    datasets = NA_character_, batches = NA_character_, stringsAsFactors = FALSE)
+  o <- x$outputs
+  k <- if (identical(at, "natural")) .natural_slot(o$output_id, id) else nrow(o) + 1L
+  x$outputs <- rbind(o[seq_len(k - 1L), , drop = FALSE], row,
+                     o[seq_len(nrow(o)) >= k, , drop = FALSE])
+  rownames(x$outputs) <- NULL
   x
+}
+
+#' @rdname add_output
+#' @export
+sort_outputs <- function(x) {
+  o <- x$outputs
+  if (NROW(o) < 2L) return(x)
+  o <- o[order(.natural_key(o$output_id), method = "radix"), , drop = FALSE]
+  rownames(o) <- NULL
+  x$outputs <- o
+  x
+}
+
+# An id's key for its natural order: the numbers in it first, as numbers
+# ("T-14-1-2" before "T-14-1-10", and "T-14-0-1" before "F-14-2-1": the
+# sections' order, as a TOC has it), then the id's letters ("T-14-1-1"
+# before "T-14-1-1S"); ids with no number first, by their letters
+# ("AE", "DM", then "L1")
+.natural_key <- function(ids) {
+  vapply(as.character(ids), function(s) {
+    if (is.na(s)) return("")
+    m <- gregexpr("[0-9]+", s)[[1L]]
+    if (m[1L] < 0L) return(paste0("\r", s))
+    d <- formatC(regmatches(s, list(m))[[1L]], width = 12L, flag = "0")
+    regmatches(s, list(m)) <- list(d)
+    paste(paste(d, collapse = "."), s, sep = "\r")
+  }, "", USE.NAMES = FALSE)
+}
+
+# Where a new id goes among `ids`: before the first that sorts after it
+.natural_slot <- function(ids, id) {
+  if (!length(ids)) return(1L)
+  later <- which(.natural_key(ids) > .natural_key(id))
+  if (length(later)) later[1L] else length(ids) + 1L
 }
 
 #' @rdname add_output

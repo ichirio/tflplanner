@@ -110,8 +110,17 @@ tflplanner_home <- function() {
 #'   (`add_shortcut(update = TRUE)`).
 #' @return The settings, invisibly.
 #' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' tflplanner_config()
+#' options(old)
+#'
 #' \dontrun{
-#' setup_tflplanner()            # step by step
+#' # not run: these remember the home and the study folder for every later
+#' # session (and the first one asks, step by step)
+#' setup_tflplanner()
 #' setup_tflplanner(studies_root = "C:/studies", sample = TRUE)
 #' }
 #' @export
@@ -271,7 +280,7 @@ studies_root <- function(home = tflplanner_home()) {
          sheets = lapply(p$sheets, .cols_df),
          ard = lapply(p$ard %||% .empty_ard_spec(), .cols_df),
          lf = lapply(p$lf %||% .empty_lf(), .cols_df),
-         fig_designs = if (length(p$fig_designs)) p$fig_designs))
+         fig_designs = if (length(p$fig_designs)) .fig_r_to_state(p$fig_designs)))
 }
 
 .json <- function(x) {

@@ -238,6 +238,8 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 .rp-greyed { opacity: .45; pointer-events: none; }
 /* a top tab the chosen report has nothing on */
 .nav-link.rp-idle { opacity: .45; }
+/* a step's mark worked out again (a run in the background): not faded */
+[id^='step_mark_'].recalculating { opacity: 1 !important; }
 /* While the server works (opening a study, switching a tab or a report,
    saving) the page takes no clicks: a veil, after 0.4 s so that the
    short updates (the builder's preview, a poll) do not flicker or block. */
@@ -277,6 +279,13 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
 .rp-b-card { border: 1px solid var(--bs-border-color, #dee2e6);
   border-radius: .5rem; padding: .6rem .8rem; margin-bottom: .6rem; }
 .rp-b-card h6 { font-weight: 600; margin-bottom: .4rem; }
+/* the builder's card of what the ARD holds: one line, its table when opened */
+.rp-ard-card { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: .375rem;
+  padding: .3rem .6rem; margin-bottom: .5rem; font-size: 12.5px; }
+.rp-ard-card > summary { cursor: pointer; color: #374151; }
+.rp-ard-card table { font-size: 12px; margin: .4rem 0; }
+.rp-ard-card td, .rp-ard-card th { padding: 1px 8px 1px 0; vertical-align: top; }
+.rp-ard-card th { color: #6b7280; font-weight: 600; }
 /* a numbered part of a form (1-1's column definitions): its number in the
    margin, the field beside it */
 .rp-num-part { display: flex; gap: .4rem; align-items: flex-start; }
@@ -639,7 +648,11 @@ app_ui <- function(lang = "en") {
           bslib::layout_columns(
             col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
             shiny::uiOutput("builder_form"),
-            result_tabs_ui(
+            # what the report's ARD holds, folded to one line, above the tabs
+            shiny::div(
+              style = "min-width: 0",
+              shiny::uiOutput("builder_ard_card"),
+              result_tabs_ui(
               "table_right", lang = lang, selected = "result",
               spec = shiny::tagList(
                 shiny::uiOutput("type_note"),
@@ -658,7 +671,7 @@ app_ui <- function(lang = "en") {
                                           class = "badge text-bg-warning ms-2 d-none",
                                           t("Updating ..."))),
                   shiny::uiOutput("builder_pages", inline = TRUE)),
-                shiny::uiOutput("builder_preview")))))),
+                shiny::uiOutput("builder_preview"))))))),
       shiny::conditionalPanel(
         "output.report_kind == 'listing'",
         shiny::uiOutput("lf_note"),
@@ -958,7 +971,8 @@ app_ui <- function(lang = "en") {
             .btn("rename", t("Rename")),
             .btn("report_batches", t("Batches...")),
             .btn("remove", t("Delete"), class = "btn-sm btn-outline-danger"),
-            .btn("up", "\u2191"), .btn("down", "\u2193")),
+            .btn("up", "\u2191"), .btn("down", "\u2193"),
+            .btn("sort_ids", t("Sort by ID"))),
           .btn("toc_new", t("Take in a TOC..."), class = "btn-sm btn-outline-primary ms-auto")),
         shiny::uiOutput("report_moves"),
         # its own height (a fixed one let a long list cover the buttons)
@@ -1785,6 +1799,9 @@ app_server <- function(input, output, session, start) {
     n <- sum(s$files$status %in% c("written", "rewritten"))
     re <- sum(s$files$status == "rewritten")
     notify(sprintf(t("Saved (%d files written)"), n))
+    if (!is.null(s$ard_problem)) notify(paste(
+      t("The ARD definition does not hold, so no ARD program was written (the rest is saved). See the Review tab."),
+      s$ard_problem), "error")
     # a program edited by hand: written again from the definition (a
     # program is never edited -- the definition is), the edited one kept
     if (re) notify(sprintf(
@@ -2668,6 +2685,10 @@ app_server <- function(input, output, session, start) {
     shiny::updateSelectInput(session, "target", choices = ch, selected = sel)
   })
   # the list to choose a report from: searched, by section, by state
+  # (the marks a run in the background changed come as run_marks(), put in
+  # place: the list is not drawn again for them; `seq` says which is newer)
+  mark_clock <- new.env()
+  mark_clock$n <- 0
   picker_rows <- shiny::reactive({
     rv$ver
     rv$status_ver
@@ -2677,10 +2698,14 @@ app_server <- function(input, output, session, start) {
     if (is.null(p) || !has_study()) return(.report_rows(new_planner()))
     # the ARD's state as the ARD step has it; the runs' from their files
     # (study_status() writes every program again: slow for a big study)
-    .report_rows(p, tryCatch(ard_state(), error = function(e) NULL),
-                 tryCatch(.report_run_light(shiny::isolate(current_study())),
-                          error = function(e) NULL))
+    d <- .report_rows(p, tryCatch(shiny::isolate(ard_state()), error = function(e) NULL),
+                      tryCatch(.report_run_light(shiny::isolate(current_study())),
+                               error = function(e) NULL))
+    mark_clock$n <- mark_clock$n + 1
+    attr(d, "seq") <- mark_clock$n
+    d
   })
+  run_marks <- shiny::reactiveVal(NULL)
   # -- the review (#288) -----------------------------------------------------
   # One review the whole app reads: the Review tab, the report head's
   # counts, the picker's numbers, the analyses' badge.  The light one --
@@ -2793,7 +2818,7 @@ app_server <- function(input, output, session, start) {
     fixed = stats::setNames(list(t("Study defaults"), t("ALL (every row)")),
                             c(.default_rows, .all_rows)),
     lang = lang, folded = shiny::reactive(identical(input$side, FALSE)),
-    counts = review_counts)
+    counts = review_counts, marks = run_marks)
   # the report list's and the runs' search: DT's own, on a hidden column
   # of the normalized text (the rows keep their numbers)
   shiny::observeEvent(input$outputs_q, .report_dt_set_search(session, "outputs", input$outputs_q))
@@ -4391,6 +4416,14 @@ app_server <- function(input, output, session, start) {
         st_id("by"), with_tip(argl("Grouping variables", "by"), t("The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step 2's. A combination with no records is shown, with 0.")),
         bch, by_now, multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
+      # the same analysis once more without its groups: cards' overall rows,
+      # which a table shows as its Total column (step 3 switches it for
+      # every analysis by the column variable)
+      if (!in_stack) shiny::checkboxInput(
+        st_id("overall"),
+        with_tip(argl("Also over all subjects", "overall"),
+                 t("The analysis once more without its grouping variables, over all its subjects: the Total column of a table (step 3's switch sets it for every analysis by the column variable). Needs grouping variables.")),
+        .overall_on(r$overall), width = "100%"),
       shiny::selectizeInput(
         st_id("vars"), with_tip(argl("Analysis variables", "variables"),
                                 arg_hint(hcall, "variables")), vch, var_now,
@@ -4541,7 +4574,7 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$ard_stat_apply, {
     r <- st_row()
     g <- function(x) input[[st_id(x)]]
-    one <- function(v) {
+    one_val <- function(v) {
       v <- trimws(paste(v %||% character(), collapse = " | "))
       if (nzchar(v)) v else NA_character_
     }
@@ -4565,12 +4598,16 @@ app_server <- function(input, output, session, start) {
     if (role == "parent") {
       a <- rv$p$ard$analyses
       i <- which(mine & a$analysis_id == r$analysis_id)[1L]
-      a$label[i] <- one(g("label"))
+      a$label[i] <- one_val(g("label"))
       fd <- form_data(r)
       a <- .an_data_write(a, i, fd)
       # a field not on screen (yet) keeps the row's value
-      if (!is.null(g("where"))) a$where[i] <- one(where)
-      if (!is.null(g("by"))) a$by[i] <- one(g("by"))
+      if (!is.null(g("where"))) a$where[i] <- one_val(where)
+      if (!is.null(g("by"))) a$by[i] <- one_val(g("by"))
+      if (!is.null(g("overall"))) {
+        if (is.null(a$overall)) a$overall <- NA_character_
+        a$overall[i] <- if (isTRUE(g("overall"))) "TRUE" else NA_character_
+      }
       old <- .stack_flags_of(r$args)$flags
       flags <- vapply(names(.stack_flag_words), function(k) {
         v <- g(paste0("fl", k))
@@ -4616,8 +4653,8 @@ app_server <- function(input, output, session, start) {
     fm <- c(fm, old[grepl(":", names(old), fixed = TRUE)])
     i <- which(mine & a$analysis_id == r$analysis_id)[1L]
     a$analysis_id[i] <- new_id
-    a$label[i] <- one(g("label"))
-    a$method[i] <- one(st_method())
+    a$label[i] <- one_val(g("label"))
+    a$method[i] <- one_val(st_method())
     call <- .ard_method_call(a$method[i], .std_ard_methods())
     f <- .ard_form_fields(call)
     # a field not on screen (yet) keeps the row's value
@@ -4628,15 +4665,19 @@ app_server <- function(input, output, session, start) {
     if (!.ard_args_same(new_args, r$args)) a$args[i] <- new_args
     fd <- form_data(r)
     a <- .an_data_write(a, i, fd)
-    a$where[i] <- one(where)
-    a$by[i] <- one(g("by"))
-    if (!is.null(g("strata"))) a$strata[i] <- one(g("strata"))
-    if (!is.null(g("den"))) a$denominator[i] <- one(g("den"))
-    a$variables[i] <- one(g("vars"))
-    a$statistics[i] <- one(pick)
+    a$where[i] <- one_val(where)
+    a$by[i] <- one_val(g("by"))
+    if (!is.null(g("overall"))) {
+      if (is.null(a$overall)) a$overall <- NA_character_
+      a$overall[i] <- if (isTRUE(g("overall"))) "TRUE" else NA_character_
+    }
+    if (!is.null(g("strata"))) a$strata[i] <- one_val(g("strata"))
+    if (!is.null(g("den"))) a$denominator[i] <- one_val(g("den"))
+    a$variables[i] <- one_val(g("vars"))
+    a$statistics[i] <- one_val(pick)
     a$formats[i] <- if (length(fm))
       paste(paste0(names(fm), "=", fm), collapse = " | ") else NA
-    if (identical(a$method[i], "custom") && !is.null(g("code"))) a$code[i] <- one(g("code"))
+    if (identical(a$method[i], "custom") && !is.null(g("code"))) a$code[i] <- one_val(g("code"))
     # it becomes a stack: what it computed goes into one inside it
     to_stack <- identical(a$method[i], .stack_fn) && !identical(r$method, .stack_fn)
     if (to_stack) {
@@ -5655,11 +5696,13 @@ app_server <- function(input, output, session, start) {
       what <- if (role == "parent") {
         paste0(data_words(r$dataset, r$population_id, r$data),
                if (!.is_blank(r$by)) paste0(" \u00b7 ", t("by"), " ",
-                                            gsub(" | ", ", ", r$by, fixed = TRUE)) else "")
+                                            gsub(" | ", ", ", r$by, fixed = TRUE)) else "",
+               if (.overall_on(r$overall)) paste0(" \u00b7 ", t("and over all")) else "")
       } else paste(.split_bar(r$variables), collapse = ", ")
       own <- if (role == "single") {
         c(data_words(r$dataset, r$population_id, r$data),
           if (!.is_blank(r$by)) paste(t("by"), gsub(" | ", ", ", r$by, fixed = TRUE)),
+          if (.overall_on(r$overall)) t("and over all"),
           if (!.is_blank(r$where)) r$where)
       }
       what <- paste(c(if (nzchar(what)) what, own), collapse = " \u00b7 ")
@@ -5835,6 +5878,11 @@ app_server <- function(input, output, session, start) {
         st_id("by"), argl("Grouping variables", ".by"),
         an_by_choices(r, .split_bar(r$by)), .split_bar(r$by), multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button"))),
+      shiny::checkboxInput(
+        st_id("overall"),
+        with_tip(argl("Also over all subjects", "overall"),
+                 t("The stack once more without its grouping variables (.overall = TRUE): the Total column of a table.")),
+        .overall_on(r$overall), width = "100%"),
       shiny::h6(class = "small fw-bold mt-1", t("What it adds to the analyses inside")),
       lapply(names(.stack_flag_words), function(k) shiny::checkboxInput(
         st_id(paste0("fl", k)),
@@ -6308,6 +6356,9 @@ app_server <- function(input, output, session, start) {
   step_mark <- function(sym, title, cls) {
     shiny::span(class = paste("ms-1", cls), title = title, sym)
   }
+  # (steps 2 and 3 have no mark yet: drawn empty, not left waiting)
+  output$step_mark_content <- shiny::renderUI(NULL)
+  output$step_mark_page <- shiny::renderUI(NULL)
   output$step_mark_codelist <- shiny::renderUI({
     id <- current()
     if (is.null(id) || !has_study()) return(NULL)
@@ -6873,7 +6924,7 @@ app_server <- function(input, output, session, start) {
                  move = t("added here: moves after the TOC's lines"))
     types <- stats::setNames(names(.type_labels), t(unname(.type_labels)))
     show_same <- isTRUE(input[[toc_id("show_same")]])
-    one <- function(i) {
+    toc_row <- function(i) {
       id <- r$output_id[i]
       st <- r$status[i]
       type_cell <- if (st == "new") {
@@ -6951,7 +7002,7 @@ app_server <- function(input, output, session, start) {
         class = "table table-sm align-middle",
         shiny::tags$thead(shiny::tags$tr(lapply(
           t(c("output_id", "State", "Type", "Titles and footnotes")), shiny::tags$th))),
-        shiny::tags$tbody(lapply(shown, one))),
+        shiny::tags$tbody(lapply(shown, toc_row))),
       if (any(r$guessed)) shiny::p(class = "small text-muted",
                                    t("* = the type is guessed from the ID: check it before taking it in.")))
   }
@@ -8115,7 +8166,12 @@ app_server <- function(input, output, session, start) {
   # can never be read as one of this form's.  Its edits write the sheets
   # (builder_write()), and the grids redraw when their tab is opened.
   bform <- new.env()
-  bform$n <- 0L
+  # numbered from a different start in each session: a browser that
+  # reconnects to a new session (the app restarted) still holds the inputs
+  # of the session before -- b3_total_on = TRUE, drawn for another report
+  # -- and sends them; with the same numbers they would be read as this
+  # session's form (a Total column switched on for a report without one)
+  bform$n <- sample.int(1e6L, 1L) * 10L
   session$userData$bform <- bform
   bform_drawn <- shiny::reactiveVal(0L)
   # a variable's own decimals, as the form edits them (bform$exc)
@@ -8165,6 +8221,10 @@ app_server <- function(input, output, session, start) {
   # builder is opened -- no new ARD, only the reading (once a report).
   auto_read <- new.env()
   shiny::observe({
+    # (again when a run ends, or the study ARD's status changes in one: the
+    # ARD it made is read then)
+    rv$status_ver
+    ard_state_ver()
     shiny::req(identical(active_page(), "builder"),
                identical(builder_case(), "meta"))
     id <- current()
@@ -8247,6 +8307,7 @@ app_server <- function(input, output, session, start) {
                               selected = if (!anyNA(st$key)) st$key,
                               multiple = TRUE, width = "100%"),
         shiny::uiOutput(bid("arms_ui")),
+        shiny::uiOutput(bid("total_ui")),
         shiny::uiOutput(bid("hdr_ui")),
         if (!anyNA(st$key) &&
             !.has_group_n(shiny::isolate(rv$p), id, st$key[1L]))
@@ -8328,11 +8389,14 @@ app_server <- function(input, output, session, start) {
           stats::setNames(c("stat", "stat_fmt"),
                           t(c("Numbers, rounded here", "The ARD's text (as formatted in step 1)"))),
           selected = st$value, inline = TRUE),
-        builder_rows_ui(bs, st, m$stats),
-        shiny::conditionalPanel(
-          sprintf("input['%s'] == 'stat'", bid("value")),
-          shiny::uiOutput(bid("digits_ui")),
-          shiny::uiOutput(bid("exc_ui"))),
+        # the rows of a continuous variable, their decimals: only when the
+        # table has one (left out, what the definition says is kept)
+        if (any(st$variables$kind %in% "continuous")) shiny::tagList(
+          builder_rows_ui(bs, st, m$stats),
+          shiny::conditionalPanel(
+            sprintf("input['%s'] == 'stat'", bid("value")),
+            shiny::uiOutput(bid("digits_ui")),
+            shiny::uiOutput(bid("exc_ui")))),
         shiny::radioButtons(
           bid("cat"), t("Categorical variables"),
           c(stats::setNames(.cat_formats()$key, .cat_formats()$label),
@@ -8621,13 +8685,19 @@ app_server <- function(input, output, session, start) {
         sortable::rank_list(text = NULL, labels = ks, input_id = bid("keyorder"),
                             orientation = "horizontal")),
       lapply(ks, function(k) {
-        guess <- k %in% names(bform$st$auto_levels) && k %in% bform$st$key
+        # a column variable the report's code list has: the ARD program
+        # puts it in the list's order (set_levels()), so the order is known
+        listed <- k %in% sheet_rows(shiny::isolate(rv$p), "codelists", bform$id)$variable
+        guess <- !listed && k %in% names(bform$st$auto_levels) && k %in% bform$st$key
         shiny::tagList(
           shiny::tags$label(class = "form-label small",
                             sprintf(t("Order of the columns of %s (drag)"), k)),
           if (guess) shiny::div(
             class = "small text-warning",
             t("Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.")),
+          if (listed) shiny::div(
+            class = "small text-muted",
+            t("The order is the report's code list's (step 1).")),
           sortable::rank_list(text = NULL,
                               labels = .levels_with_labels(
                                 key_levels(k), k,
@@ -8635,6 +8705,68 @@ app_server <- function(input, output, session, start) {
                               input_id = arms_id(k),
                               orientation = "horizontal"))
       })))
+  }))
+  # the Total column: a switch, its heading and place; it sets `overall` on
+  # the analyses by the column variable too (set_total_column()), which
+  # the ARD then needs to run again
+  total_now <- function(p0, id) {
+    tb <- sheet_rows(p0, "tables", id)
+    on <- nrow(tb) > 0L && !is.na(tb$total[1L] %||% NA)
+    list(on = on,
+         label = if (on) tb$total[1L] else NA_character_,
+         position = if (on && identical(tb$total_position[1L] %||% NA, "first"))
+           "first" else "last")
+  }
+  shiny::observe(builder_guard({
+    bform_drawn()
+    ks <- input[[bid("key")]]
+    shiny::req(identical(builder_case(), "ok"), length(ks) > 0L)
+    n <- bform$n
+    id <- bform$id
+    p0 <- shiny::isolate(rv$p)
+    now <- total_now(p0, id)
+    runs <- sum(.total_rows(ard_rows(p0, "analyses", id), ks[1L]))
+    output[[paste0("b", n, "_total_ui")]] <- shiny::renderUI(shiny::tagList(
+      shiny::checkboxInput(
+        bid("total_on"),
+        with_tip(t("Total column"),
+                 t("One more column over all subjects, read from the ARD's overall rows: the analyses by the column variable are run once more without it (step 1, 'Also over all subjects'). No 'Total' arm is made up in the data.")),
+        now$on, width = "100%"),
+      if (now$on) shiny::div(
+        class = "d-flex flex-wrap gap-2 align-items-end mb-2",
+        shiny::textInput(bid("total_label"), t("Heading"), now$label, width = "160px"),
+        shiny::radioButtons(bid("total_pos"), t("Place"),
+                            stats::setNames(c("last", "first"), c(t("last"), t("first"))),
+                            now$position, inline = TRUE)),
+      if (now$on && runs == 0L) shiny::div(
+        class = "small text-warning",
+        sprintf(t("No analysis of this report is grouped by %s: the ARD has no overall rows to show."), ks[1L]))
+      else if (now$on) shiny::div(
+        class = "small text-muted",
+        sprintf(t("%d analyses are run over all subjects too: update the ARD, then Preview."), runs))))
+  }))
+  shiny::observe(builder_guard({
+    bform_drawn()
+    on <- input[[bid("total_on")]]
+    lbl <- input[[bid("total_label")]]
+    pos <- input[[bid("total_pos")]]
+    shiny::req(!is.null(on), identical(builder_case(), "ok"))
+    id <- bform$id
+    p0 <- shiny::isolate(rv$p)
+    now <- total_now(p0, id)
+    want_lbl <- if (!isTRUE(on)) NULL else
+      if (is.null(lbl) || !nzchar(trimws(lbl))) {
+        if (is.na(now$label)) "Total" else now$label
+      } else trimws(lbl)
+    want_pos <- pos %||% now$position
+    same <- identical(isTRUE(on), now$on) &&
+      (!isTRUE(on) || (identical(want_lbl, now$label) && identical(want_pos, now$position)))
+    if (same) return()
+    p2 <- guarded(set_total_column(p0, id, want_lbl, want_pos))
+    if (!is.null(p2)) {
+      rv$p <- p2
+      rv$btouched <- TRUE
+    }
   }))
   # ---- what a variable prints, as the Statistics card says (with the
   # variable's own decimals): shown, never written for it
@@ -8778,7 +8910,7 @@ app_server <- function(input, output, session, start) {
         all = t("one cell over them all"),
         key = sprintf(t("one cell per value of %s"), l$key %||% ""),
         "")
-      one <- function(i) {
+      header_line <- function(i) {
         l <- lines[[i]]
         st <- l$stub
         # the row-header cells, each under its column (one over them all
@@ -8847,7 +8979,7 @@ app_server <- function(input, output, session, start) {
         lapply(stub_cols, function(cn) shiny::div(class = "rp-hcol", cn)),
         if (length(lv)) lapply(lv, function(v) shiny::div(class = "rp-hcol", v)) else
           shiny::div(class = "rp-hcol", t("the value columns")),
-        unlist(lapply(seq_along(lines), one), recursive = FALSE))
+        unlist(lapply(seq_along(lines), header_line), recursive = FALSE))
       shiny::tagList(
         head,
         shiny::div(class = "rp-hgrid-wrap", grid),
@@ -9107,8 +9239,12 @@ app_server <- function(input, output, session, start) {
     st <- bstate()
     m <- bform$meta
     n <- bform$n
-    tpl <- c(unlist(st$templates), .cat_template(st$cat_format, st$pct_decimals))
-    miss <- if (!is.null(m)) .missing_stats(tpl, m$stats) else character()
+    # the statistics the table prints: a continuous variable's rows, a
+    # categorical one's template -- each only when the table has one
+    kinds <- st$variables$kind
+    tpl <- c(if (any(kinds %in% "continuous")) unlist(st$templates),
+             if (any(kinds %in% "categorical")) .cat_template(st$cat_format, st$pct_decimals))
+    miss <- if (!is.null(m) && length(tpl)) .missing_stats(tpl, m$stats) else character()
     # the decimals' fields: drawn again only when the statistics change (a
     # number typed is not drawn over), the variables' own when they change
     rows_now <- input[[paste0("b", n, "_rows")]] %||% st$rows
@@ -9129,6 +9265,61 @@ app_server <- function(input, output, session, start) {
         sprintf(t("The ARD has no %s: those cells stay empty. Add them to the ARD code."),
                 paste(miss, collapse = ", "))))
   }))
+  # What the report's ARD holds (#343): folded to one line above the
+  # right-hand tabs, a small table when opened, the whole normalized ARD on
+  # a button (read only then).  From what "read the ARD" saved (meta_of()).
+  output$builder_ard_card <- shiny::renderUI({
+    id <- current()
+    shiny::req(!is.null(id), identical(report_kind(), "table"))
+    m <- meta_of(id)
+    pb <- sheet_rows(rv$p, "layout", id)$pages_page_by
+    pb <- .split_list(pb[!is.na(pb)][1L] %||% NA_character_)
+    card <- ard_card_summary(m, page_by = pb, tr = t)
+    if (is.null(card$rows)) {
+      return(shiny::div(class = "rp-ard-card text-muted", card$line))
+    }
+    r <- card$rows
+    shiny::tags$details(
+      class = "rp-ard-card",
+      shiny::tags$summary(card$line),
+      shiny::tags$table(
+        shiny::tags$thead(shiny::tags$tr(lapply(
+          t(c("Role", "Variable", "Kind", "Levels / statistics", "Label")), shiny::tags$th))),
+        shiny::tags$tbody(lapply(seq_len(nrow(r)), function(i) shiny::tags$tr(
+          shiny::tags$td(r$role[i]), shiny::tags$td(shiny::tags$code(r$variable[i])),
+          shiny::tags$td(r$kind[i]), shiny::tags$td(r$detail[i]),
+          shiny::tags$td(if (is.na(r$label[i])) "" else r$label[i]))))),
+      .btn("ard_card_all", t("Show the whole normalized ARD"),
+           class = "btn-sm btn-outline-secondary mb-1"))
+  })
+  shiny::observeEvent(input$ard_card_all, {
+    id <- current()
+    shiny::req(!is.null(id))
+    d <- tryCatch(ard_data(rv$study, id), error = function(e) NULL)
+    if (is.null(d) || !nrow(d)) {
+      notify(t("This report's ARD has not been read yet."))
+      return()
+    }
+    m <- meta_of(id)
+    main <- intersect(c(m$by, m$hierarchy, "variable", "variable_level", "context",
+                        "stat_name", "stat_fmt", "stat"), names(d))
+    show <- function(all) {
+      x <- as.data.frame(d)[if (isTRUE(all)) names(d) else main]
+      x[] <- lapply(x, function(v) {
+        if (is.list(v)) v <- vapply(v, function(z) paste(format(z), collapse = ", "), "")
+        if (is.numeric(v)) signif(v, 4) else v
+      })
+      DT::datatable(x, rownames = FALSE, filter = "top", selection = "none",
+                    options = list(pageLength = 25, scrollX = TRUE, dom = "tip"))
+    }
+    output$ard_card_dt <- DT::renderDT(show(input$ard_card_allcols), server = TRUE)
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("The normalized ARD: %s (%d rows)"), id, nrow(d)),
+      shiny::checkboxInput("ard_card_allcols", sprintf(t("All the columns (%d)"), ncol(d)), FALSE),
+      DT::DTOutput("ard_card_dt"),
+      size = "xl", easyClose = TRUE, footer = shiny::modalButton(t("Close"))))
+  })
+
   # The table as it will print.  Made again only when what it is made from
   # changes -- the report's rows of the table sheets, the study's rounding,
   # its ARD rows -- so going back to a report, or a change elsewhere in the
@@ -9246,6 +9437,7 @@ app_server <- function(input, output, session, start) {
     # what the list shows changed (not a table's cell, say)
     p_list()
     rv$ver
+    rv$status_ver
     p <- shiny::isolate(rv$p)
     empty <- data.frame(output_id = character(), section = character(),
                         batches = character(), type = character(),
@@ -9255,8 +9447,9 @@ app_server <- function(input, output, session, start) {
     o <- p$outputs
     info <- lapply(o$output_id, function(id) report_info(p, id))
     type <- vapply(info, `[[`, "", "type")
-    # the ARD's state as the ARD step has it (worked out once, for both)
-    st <- tryCatch(ard_state(), error = function(e) NULL)
+    # the ARD's state as the ARD step has it (worked out once, for both;
+    # a run in the background does not draw the table again for it)
+    st <- tryCatch(shiny::isolate(ard_state()), error = function(e) NULL)
     ard_of <- if (!is.null(st)) st$state[match(o$output_id, st$output_id)] else
       rep(NA_character_, nrow(o))
     # the datasets the report reads (lower case, as the files are named);
@@ -9820,6 +10013,28 @@ app_server <- function(input, output, session, start) {
   }
   shiny::observeEvent(input$up, move(-1L))
   shiny::observeEvent(input$down, move(1L))
+  # the whole list in its ids' order, asked first (the order is the order
+  # the reports are made in)
+  shiny::observeEvent(input$sort_ids, {
+    o <- rv$p$outputs
+    to <- sort_outputs(rv$p)$outputs$output_id
+    moved <- sum(o$output_id != to)
+    if (!moved) {
+      notify(t("The reports are in their ids' order already."))
+      return()
+    }
+    shiny::showModal(shiny::modalDialog(
+      title = t("Sort the reports by ID?"),
+      sprintf(t("%d of %d reports move: the list goes in its ids' order, by the numbers in the id (T-14-1-2 before T-14-1-10, T-14-0-1 before F-14-2-1), then its letters. The list's order is the order the reports are made in; the up and down arrows still move one."),
+              moved, nrow(o)),
+      footer = shiny::tagList(
+        shiny::modalButton(t("Cancel")),
+        .btn("sort_ids_ok", t("Sort"), class = "btn-primary"))))
+  })
+  shiny::observeEvent(input$sort_ids_ok, {
+    shiny::removeModal()
+    rv$p <- sort_outputs(rv$p)
+  })
 
   # -- data ----------------------------------------------------------------
   data_ver <- shiny::reactiveVal(0L)
@@ -9901,6 +10116,7 @@ app_server <- function(input, output, session, start) {
   # -- results -------------------------------------------------------------
   status <- shiny::reactive({
     rv$status_ver
+    runs_ver()
     input$status_refresh
     shiny::req(has_study())
     study_status(current_study())
@@ -10205,6 +10421,7 @@ app_server <- function(input, output, session, start) {
   })
   batches <- shiny::reactive({
     rv$status_ver
+    runs_ver()
     shiny::req(has_study())
     list_batches(current_study())
   })
@@ -10241,6 +10458,60 @@ app_server <- function(input, output, session, start) {
     if (!nrow(d)) return(notify(t("Choose a report"), "warning"))
     start_run(d$output_id, paste(d$output_id, collapse = ", "))
   })
+  # A run this session did not start, or lost (the app restarted, another
+  # session, R): what it writes -- the study ARD's status, a batch's
+  # run.csv -- is watched, and only what changed follows it, without a
+  # reload and without drawing the page again (#9184): the report list's
+  # marks in place, the ARD's state when the study ARD's status changed
+  # (the builder reads a table's ARD then), the Runs tab when a batch ended
+  runs_ver <- shiny::reactiveVal(0L)
+  run_files <- shiny::reactivePoll(3000, session, checkFunc = function() {
+    s <- shiny::isolate(rv$study)
+    if (is.null(s)) return(NULL)
+    .run_files_stamp(s$path)
+  }, valueFunc = function() {
+    s <- shiny::isolate(rv$study)
+    if (is.null(s)) NULL else .run_files_stamp(s$path)
+  })
+  run_files_seen <- new.env()
+  shiny::observe({
+    stamp <- run_files()
+    s <- shiny::isolate(rv$study)
+    if (is.null(stamp) || is.null(s)) return()
+    key <- s$path
+    before <- run_files_seen[[key]]
+    run_files_seen[[key]] <- stamp
+    # the first look at a study is no change
+    if (is.null(before) || identical(before, stamp)) return()
+    shiny::isolate({
+      # the ARD's state again: while a run goes on, only when the report
+      # chosen has its ARD made or changed (its builder reads it then);
+      # every report's once, when the run has ended
+      ended <- !identical(before[["runs"]], stamp[["runs"]])
+      if (!identical(before[["ard"]], stamp[["ard"]]) || ended) {
+        st <- tryCatch(ard_status(current_study()), error = function(e) NULL)
+        now <- if (!is.null(st)) stats::setNames(paste(st$state, st$built), st$output_id)
+        was <- run_files_seen[[paste0(key, "|ard")]]
+        run_files_seen[[paste0(key, "|ard")]] <- now
+        id <- current() %||% ""
+        if (ended || !identical(now[id], was[id])) ard_state_ver(ard_state_ver() + 1L)
+      }
+      if (ended) runs_ver(runs_ver() + 1L)
+      p <- rv$p
+      if (!is.null(p)) {
+        m <- tryCatch(.report_marks(p, current_study()), error = function(e) NULL)
+        old <- run_marks()
+        if (!is.null(m) && !identical(m, old$marks)) {
+          mark_clock$n <- mark_clock$n + 1
+          run_marks(list(seq = mark_clock$n, marks = m))
+        }
+      }
+    })
+  })
+  # (for the tests: what a run in the background changes, and what it must not)
+  session$userData$run_end <- list(marks = run_marks, rows = picker_rows,
+                                   view = outputs_view, runs_ver = runs_ver,
+                                   ard_state_ver = ard_state_ver)
   shiny::observe({
     px <- rv$job
     if (is.null(px)) return()

@@ -45,8 +45,15 @@ or read them, without reading them.
 }
 }
 \examples{
-\dontrun{
-spec_status("ABC-101")
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_study("ABC-101", title = "A phase 2 study")
+spec_status("ABC-101")               # nothing changed outside tflplanner
 s <- reload_from_spec("ABC-101")
 }
+options(old)
 }

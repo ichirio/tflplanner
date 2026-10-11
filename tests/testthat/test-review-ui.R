@@ -2,11 +2,15 @@
 # where the user is, the filters, a click going to the item, the data read
 # on demand, the deep check moved here from the Runs tab.
 
+# (slow: its tests write study folders or start the app -- run on CI
+# and locally with NOT_CRAN=true, not in CRAN's check)
+skip_on_cran()
+
 .rv_ui_study <- function() {
   p <- add_output(new_planner(), "T1", type = "table", description = "one",
                   population = "SAF")
   p <- add_output(p, "T2", type = "table", description = "two")
-  p <- add_output(p, "L1", type = "listing", description = "a listing")
+  p <- add_output(p, "L1", type = "listing", description = "a listing", at = "end")
   p$ard$populations <- .normalize_ard_sheet(
     data.frame(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\""),
     "populations")

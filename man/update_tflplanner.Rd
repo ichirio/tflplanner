@@ -33,6 +33,7 @@ update itself: it says when a newer version is out.
 }
 \examples{
 \dontrun{
+# not run: installs packages
 update_tflplanner()                    # the released versions
 update_tflplanner("dev")               # the development versions
 update_tflplanner(from = "D:/tflplanner-packages")
