@@ -115,7 +115,7 @@ $(document).on('shiny:value', function(e) {
     shiny::tags$label(t(f$label)),
     input,
     if (own) shiny::div(
-      shiny::span(class = "pg-own", "● ", t("this report")),
+      shiny::span(class = "pg-own", "\u25cf ", t("this report")),
       shiny::tags$button(type = "button", class = "pg-act btn btn-link",
                          `data-act` = "reset", `data-sheet` = f$sheet, `data-col` = f$col,
                          if (is.na(pattern)) t("Back to Standard") else t("Back to the pattern")))
@@ -150,7 +150,7 @@ $(document).on('shiny:value', function(e) {
       return(shiny::tags$tr(
         shiny::tags$td(r$line),
         shiny::tags$td(colspan = 3, class = "pg-omit", t("(left out in this report)")),
-        shiny::tags$td(shiny::span(class = "pg-own", "● ", t("this report"))),
+        shiny::tags$td(shiny::span(class = "pg-own", "\u25cf ", t("this report"))),
         shiny::tags$td(btn("drop", r$line, t("Print it again")))))
     }
     shiny::tags$tr(
@@ -158,7 +158,7 @@ $(document).on('shiny:value', function(e) {
       shiny::tags$td(r$line),
       shiny::tags$td(cell(r, "left", own)), shiny::tags$td(cell(r, "center", own)),
       shiny::tags$td(cell(r, "right", own)),
-      shiny::tags$td(if (own) shiny::span(class = "pg-own", "● ", t("this report"))
+      shiny::tags$td(if (own) shiny::span(class = "pg-own", "\u25cf ", t("this report"))
                      else shiny::span(class = "pg-from", .page_from_label(r$from, pattern, t))),
       shiny::tags$td(class = "text-nowrap",
         if (own) btn("drop", r$line, if (is.na(pattern)) t("Back to Standard") else t("Back to the pattern"))
@@ -195,7 +195,7 @@ $(document).on('shiny:value', function(e) {
           type = "text", class = "pg-in form-control form-control-sm", value = v,
           `data-kind` = "token", `data-name` = r$name, `data-key` = paste("token", r$name, sep = ":"))
           else shiny::span(v)),
-        shiny::tags$td(if (own) shiny::span(class = "pg-own", "● ", t("this report"))
+        shiny::tags$td(if (own) shiny::span(class = "pg-own", "\u25cf ", t("this report"))
                        else shiny::span(class = "pg-from", .page_from_label(r$from, pattern, t))),
         shiny::tags$td(class = "text-nowrap",
           if (own) btn("token_reset", r$name, if (is.na(pattern)) t("Back to Standard") else t("Back to the pattern"))
