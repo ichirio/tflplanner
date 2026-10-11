@@ -1,5 +1,17 @@
 # tflplanner (development version)
 
+- **The days in a week, a month and a year come from the company
+  standards** (the user's request).  A figure's time unit divides by
+  named constants -- `days_per_week`, `days_per_month`, `days_per_year` --
+  not by numbers in each program (tflspec >= 0.0.24.9090 writes
+  `mutate(AVAL = AVAL / .env$days_per_month)`; `.env$` so a data column of
+  the same name is never taken).  The built-in standards' `setup_code`
+  sets them (7, 30.4375, 365.25), so a new study's
+  `programs/study_setup.R` part 1 has them, and a company changes them
+  there.  A study made before has none: the figure setup defines each with
+  tflspec's value when the study's setup does not.  The Plot Designer's
+  preview divides by the study's own values (read from its setup file).
+
 - **The page patterns edited in a dialog** (the page-patterns design,
   part C).  "Edit the patterns..." on step 3 opens Standard and each
   pattern on the same form as a report's page: a pattern's values marked
