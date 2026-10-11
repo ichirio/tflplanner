@@ -25,13 +25,13 @@
 #' @param x An `tflplanner`.
 #' @param output_id A report.
 #' @param pattern A pattern's name, or `NA` / `"Standard"` for Standard.
-#' @return `page_patterns()`: the names, in the order the sheets give them
-#'   (Standard not among them).  `report_pattern()`: one name, or `NA`.
+#' @return `page_patterns()`: the names, in alphabetical order (Standard
+#'   not among them).  `report_pattern()`: one name, or `NA`.
 #'   `set_report_pattern()`: `x`.
 #' @export
 page_patterns <- function(x) {
   ids <- unlist(lapply(x$sheets[.pattern_sheets], `[[`, "output_id"), use.names = FALSE)
-  unique(substring(ids[.is_pattern_id(ids)], 2L))
+  sort(unique(substring(ids[.is_pattern_id(ids)], 2L)))
 }
 
 #' @rdname page_patterns
@@ -81,9 +81,14 @@ set_report_pattern <- function(x, output_id, pattern) {
   x
 }
 
+# The rows of one output_id: a report's, a pattern's ("@name"), Standard's (NA)
+.is_id <- function(ids, id) if (is.na(id)) is.na(ids) else !is.na(ids) & ids == id
+
 # The levels a report's page is read from, nearest first: its own rows,
-# its pattern's, Standard's (a pattern itself: its own, then Standard's)
+# its pattern's, Standard's (a pattern itself: its own, then Standard's;
+# Standard: its own only)
 .page_levels <- function(x, output_id) {
+  if (is.na(output_id)) return(c(own = NA_character_))
   if (.is_pattern_id(output_id)) return(c(own = output_id, standard = NA))
   pat <- report_pattern(x, output_id)
   c(own = output_id, pattern = if (!is.na(pat)) paste0("@", pat), standard = NA)
@@ -163,7 +168,7 @@ page_lines_from <- function(x, sheet, output_id) {
 set_page_line <- function(x, sheet, output_id, line, left = NA, center = NA,
                           right = NA) {
   d <- .normalize_sheet(x$sheets[[sheet]], sheet)
-  mine <- !is.na(d$output_id) & d$output_id == output_id & d$line %in% line
+  mine <- .is_id(d$output_id, output_id) & d$line %in% line
   row <- d[0L, , drop = FALSE]
   row[1L, ] <- NA
   row$output_id <- output_id
@@ -187,7 +192,7 @@ omit_page_line <- function(x, sheet, output_id, line) {
 
 drop_page_line <- function(x, sheet, output_id, line) {
   d <- x$sheets[[sheet]]
-  keep <- !(!is.na(d$output_id) & d$output_id == output_id & d$line %in% line)
+  keep <- !(.is_id(d$output_id, output_id) & d$line %in% line)
   d <- d[keep, , drop = FALSE]
   rownames(d) <- NULL
   x$sheets[[sheet]] <- d
@@ -215,7 +220,7 @@ page_tokens_from <- function(x, output_id) {
 # A report's own token value (NA: back to its pattern's or Standard's)
 set_page_token <- function(x, output_id, name, value) {
   d <- .normalize_sheet(x$sheets$tokens, "tokens")
-  mine <- !is.na(d$output_id) & d$output_id == output_id & trimws(d$name) == name
+  mine <- .is_id(d$output_id, output_id) & trimws(d$name) == name
   if (is.na(value)) {
     d <- d[!mine, , drop = FALSE]
   } else if (any(mine)) {
@@ -227,4 +232,79 @@ set_page_token <- function(x, output_id, name, value) {
   rownames(d) <- NULL
   x$sheets$tokens <- d
   x
+}
+
+#' Make, rename or remove a page pattern
+#'
+#' A new pattern starts as Standard (no difference: one empty row of the
+#' report sheet, `output_id` `@<name>`).  Renaming moves its rows and the
+#' reports' choice of it; a pattern a report uses is not removed.
+#'
+#' @param x An `tflplanner`.
+#' @param name,new A pattern's name: a letter, then letters, digits or `_`.
+#' @return `x`.
+#' @export
+add_page_pattern <- function(x, name) {
+  name <- .check_pattern_name(x, name)
+  d <- .normalize_sheet(x$sheets$report, "report")
+  row <- d[0L, , drop = FALSE]
+  row[1L, ] <- NA
+  row$output_id <- paste0("@", name)
+  x$sheets$report <- rbind(d, row)
+  x
+}
+
+#' @rdname add_page_pattern
+#' @export
+rename_page_pattern <- function(x, name, new) {
+  if (!name %in% page_patterns(x)) stop("No page pattern '", name, "'.", call. = FALSE)
+  new <- .check_pattern_name(x, new)
+  for (sh in .pattern_sheets) {
+    d <- x$sheets[[sh]]
+    d$output_id[d$output_id %in% paste0("@", name)] <- paste0("@", new)
+    x$sheets[[sh]] <- d
+  }
+  p <- x$sheets$report$pattern
+  if (!is.null(p)) {
+    p[!is.na(p) & sub("^@", "", trimws(p)) == name] <- new
+    x$sheets$report$pattern <- p
+  }
+  x
+}
+
+#' @rdname add_page_pattern
+#' @export
+remove_page_pattern <- function(x, name) {
+  used <- pattern_reports(x, name)
+  if (length(used)) {
+    stop("The page pattern '", name, "' is used by ", paste(used, collapse = ", "),
+         ": choose another for them first.", call. = FALSE)
+  }
+  for (sh in .pattern_sheets) {
+    d <- x$sheets[[sh]]
+    x$sheets[[sh]] <- d[!d$output_id %in% paste0("@", name), , drop = FALSE]
+  }
+  x
+}
+
+# The reports that use a pattern
+pattern_reports <- function(x, name) {
+  d <- x$sheets$report
+  if (is.null(d$pattern)) return(character())
+  p <- sub("^@", "", trimws(d$pattern))
+  ids <- d$output_id[!is.na(p) & p == name & !.is_pattern_id(d$output_id) & !is.na(d$output_id)]
+  unique(ids)
+}
+
+.check_pattern_name <- function(x, name) {
+  name <- trimws(sub("^@", "", name %||% ""))
+  if (!grepl(.pattern_rx, name)) {
+    stop("A page pattern's name is a letter, then letters, digits or _ (Compact): not '",
+         name, "'.", call. = FALSE)
+  }
+  if (identical(tolower(name), "standard")) {
+    stop("Standard is the blank rows: give the pattern another name.", call. = FALSE)
+  }
+  if (name %in% page_patterns(x)) stop("There is a page pattern '", name, "' already.", call. = FALSE)
+  name
 }

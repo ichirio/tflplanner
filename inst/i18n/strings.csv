@@ -2772,3 +2772,12 @@ Insert (into the field last clicked):,差し込み（最後にクリックした
 "The title the header prints: its {OUTPUT_TITLE}, this report's token.",ヘッダーが印字するタイトル：その {OUTPUT_TITLE}（この帳票のトークン）。
 Titles,タイトル
 Footnotes,脚注
+Edit the patterns...,型を編集...
+(no other pattern yet: Edit the patterns... makes one),（ほかの型はまだありません：「型を編集...」で作れます）
+Page patterns,ページの型
+Pattern,型
+New pattern,新しい型
+Reports using it: %d,この型を使う帳票: %d
+"Standard: every report's page, unless its pattern or the report changes it.",Standard：全帳票のページ（型や帳票が変えたところを除く）。
+%s: only what differs from Standard; each value says where it comes from.,%s：Standard と違うところだけ。各値に出どころが出ます。
+this pattern,この型

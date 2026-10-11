@@ -20,6 +20,19 @@
   list(sheet = "page", col = "font", label = "Font", kind = "text", default = "Courier"),
   list(sheet = "page", col = "font_size_half_points", label = "Size (pt)", kind = "pt", default = "9"))
 
+# whose value the form edits, as its marker and its button say it: the
+# report's, the pattern's (in the pattern dialog), Standard's
+.pg_own_word <- function(id, t) {
+  if (is.na(id)) t("Standard") else if (.is_pattern_id(id)) t("this pattern") else t("this report")
+}
+.pg_back_word <- function(id, pattern, t) {
+  if (is.na(id)) t("Clear") else if (.is_pattern_id(id) || is.na(pattern)) t("Back to Standard") else
+    t("Back to the pattern")
+}
+# the form's target in the browser: a report's id, @name, or "" (Standard)
+.pg_target <- function(id) if (is.na(id)) "" else id
+.pg_target_id <- function(v) if (is.null(v) || !nzchar(v)) NA_character_ else v
+
 # where a value comes from, as the form says it
 .page_from_label <- function(from, pattern, t) {
   switch(from %||% "",
@@ -35,13 +48,15 @@
 // form is drawn again (its markers change with what is typed).
 $(document).on('change', '.pg-in', function() {
   var d = $(this).data();
-  Shiny.setInputValue('pg_edit', {kind: d.kind, sheet: d.sheet || '', col: d.col || '',
+  Shiny.setInputValue('pg_edit', {target: $(this).closest('[data-pg-target]').attr('data-pg-target'),
+    kind: d.kind, sheet: d.sheet || '', col: d.col || '',
     line: String(d.line || ''), part: d.part || '', name: d.name || '',
     value: $(this).val(), n: Math.random()}, {priority: 'event'});
 });
 $(document).on('click', '.pg-act', function() {
   var d = $(this).data();
-  Shiny.setInputValue('pg_act', {act: d.act, sheet: d.sheet || '', col: d.col || '',
+  Shiny.setInputValue('pg_act', {target: $(this).closest('[data-pg-target]').attr('data-pg-target'),
+    act: d.act, sheet: d.sheet || '', col: d.col || '',
     line: String(d.line || ''), name: d.name || '', n: Math.random()}, {priority: 'event'});
 });
 $(document).on('focusin', '.pg-in', function() {
@@ -115,10 +130,10 @@ $(document).on('shiny:value', function(e) {
     shiny::tags$label(t(f$label)),
     input,
     if (own) shiny::div(
-      shiny::span(class = "pg-own", "\u25cf ", t("this report")),
+      shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t)),
       shiny::tags$button(type = "button", class = "pg-act btn btn-link",
                          `data-act` = "reset", `data-sheet` = f$sheet, `data-col` = f$col,
-                         if (is.na(pattern)) t("Back to Standard") else t("Back to the pattern")))
+                         .pg_back_word(id, pattern, t)))
     else if (!is.na(v$from)) shiny::div(class = "pg-from", .page_from_label(v$from, pattern, t)))
 }
 
@@ -150,7 +165,7 @@ $(document).on('shiny:value', function(e) {
       return(shiny::tags$tr(
         shiny::tags$td(r$line),
         shiny::tags$td(colspan = 3, class = "pg-omit", t("(left out in this report)")),
-        shiny::tags$td(shiny::span(class = "pg-own", "\u25cf ", t("this report"))),
+        shiny::tags$td(shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t))),
         shiny::tags$td(btn("drop", r$line, t("Print it again")))))
     }
     shiny::tags$tr(
@@ -158,10 +173,10 @@ $(document).on('shiny:value', function(e) {
       shiny::tags$td(r$line),
       shiny::tags$td(cell(r, "left", own)), shiny::tags$td(cell(r, "center", own)),
       shiny::tags$td(cell(r, "right", own)),
-      shiny::tags$td(if (own) shiny::span(class = "pg-own", "\u25cf ", t("this report"))
+      shiny::tags$td(if (own) shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t))
                      else shiny::span(class = "pg-from", .page_from_label(r$from, pattern, t))),
       shiny::tags$td(class = "text-nowrap",
-        if (own) btn("drop", r$line, if (is.na(pattern)) t("Back to Standard") else t("Back to the pattern"))
+        if (own) btn("drop", r$line, .pg_back_word(id, pattern, t))
         else shiny::tagList(btn("own", r$line, t("Change here")),
                             btn("omit", r$line, t("Leave out here")))))
   })
@@ -195,10 +210,10 @@ $(document).on('shiny:value', function(e) {
           type = "text", class = "pg-in form-control form-control-sm", value = v,
           `data-kind` = "token", `data-name` = r$name, `data-key` = paste("token", r$name, sep = ":"))
           else shiny::span(v)),
-        shiny::tags$td(if (own) shiny::span(class = "pg-own", "\u25cf ", t("this report"))
+        shiny::tags$td(if (own) shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t))
                        else shiny::span(class = "pg-from", .page_from_label(r$from, pattern, t))),
         shiny::tags$td(class = "text-nowrap",
-          if (own) btn("token_reset", r$name, if (is.na(pattern)) t("Back to Standard") else t("Back to the pattern"))
+          if (own) btn("token_reset", r$name, .pg_back_word(id, pattern, t))
           else btn("token_own", r$name, t("Change here"))))
     })))
 }
@@ -244,7 +259,8 @@ $(document).on('shiny:value', function(e) {
   # (the heading edits {OUTPUT_TITLE}: not listed again with the tokens)
   heading <- .page_heading_ui(x, id, t)
   card <- function(title, ...) shiny::div(class = "pg-card", shiny::h6(title), ...)
-  shiny::tagList(
+  shiny::div(
+    `data-pg-target` = .pg_target(id),
     card(t("Paper, margins and font"),
          shiny::div(class = "pg-grid", lapply(.page_fields, .page_field_ui, x = x, id = id,
                                               pattern = pattern, t = t))),

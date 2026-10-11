@@ -115,6 +115,7 @@ reference:
       - import_codelist
       - inherited_rows
       - page_patterns
+      - add_page_pattern
       - read_planner
       - write_planner
       - check_planner

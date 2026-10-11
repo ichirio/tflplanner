@@ -20,8 +20,8 @@ set_report_pattern(x, output_id, pattern)
 \item{pattern}{A pattern's name, or \code{NA} / \code{"Standard"} for Standard.}
 }
 \value{
-\code{page_patterns()}: the names, in the order the sheets give them
-(Standard not among them).  \code{report_pattern()}: one name, or \code{NA}.
+\code{page_patterns()}: the names, in alphabetical order (Standard
+not among them).  \code{report_pattern()}: one name, or \code{NA}.
 \code{set_report_pattern()}: \code{x}.
 }
 \description{

@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **The page patterns edited in a dialog** (the page-patterns design,
+  part C).  "Edit the patterns..." on step 3 opens Standard and each
+  pattern on the same form as a report's page: a pattern's values marked
+  "this pattern" with "Back to Standard", Standard's own with "Clear".
+  New pattern (from Standard, no difference), Rename (the reports' choice
+  follows), Remove (refused while a report uses it, naming them);
+  `add_page_pattern()`, `rename_page_pattern()`, `remove_page_pattern()`.
+  The sample has one: **Compact** (A4, 8 pt, half-inch margins), used by
+  T-14-3-1, the long AE table.
+
 - **Titles and footnotes on step 3's form** (the page-patterns design,
   part B).  The titles card has the heading -- the report's
   `{OUTPUT_TITLE}`, shown when its header prints one, as the sample's and

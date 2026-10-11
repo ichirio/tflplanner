@@ -134,3 +134,76 @@ test_that("titles and footnotes: the heading is the header's {OUTPUT_TITLE}, lin
   code <- tflspec::tfl_report_code(.spec_object(q, report_sheets(), character()), "T1")
   expect_true(any(grepl("n (%) of the subjects", code, fixed = TRUE)))
 })
+
+test_that("a pattern made, renamed, removed; one used is not removed", {
+  p <- add_page_pattern(pat_planner(), "Wide")
+  expect_identical(page_patterns(p), c("Compact", "Wide"))
+  expect_error(add_page_pattern(p, "Wide"), "already")
+  expect_error(add_page_pattern(p, "standard"), "Standard is the blank rows")
+  expect_error(add_page_pattern(p, "2col"), "a letter, then")
+  p <- set_report_pattern(p, "T1", "Compact")
+  q <- rename_page_pattern(p, "Compact", "PK")
+  expect_identical(page_patterns(q), c("PK", "Wide"))
+  expect_identical(report_pattern(q, "T1"), "PK")
+  expect_identical(page_value_from(q, "page", "paper_size", "T1")$from, "pattern")
+  expect_error(remove_page_pattern(q, "PK"), "used by T1")
+  expect_identical(page_patterns(remove_page_pattern(q, "Wide")), "PK")
+  # the workbook reads: tflspec takes the patterns as written
+  sp <- .spec_object(q, report_sheets(), character())
+  expect_true(any(grepl("ABC PK", tflspec::tfl_report_code(sp, "T1"), fixed = TRUE)))
+})
+
+test_that("the form edits a pattern (its own over Standard) or Standard itself", {
+  p <- pat_planner()
+  # a pattern: its values its own, the rest Standard's
+  expect_identical(page_value_from(p, "page", "paper_size", "@Compact"), list(value = "A4", from = "own"))
+  expect_identical(page_value_from(p, "page", "orientation", "@Compact")$from, "standard")
+  q <- set_page_cell(p, "page", "orientation", "@Compact", "portrait")
+  expect_identical(sheet_rows(q, "page", "@Compact")$orientation, "portrait")
+  q <- omit_page_line(q, "header", "@Compact", "1")
+  expect_true(page_lines_from(q, "header", "@Compact")$omitted[1])
+  # Standard: the blank rows themselves
+  expect_identical(page_value_from(p, "page", "paper_size", NA), list(value = "letter", from = "own"))
+  q <- set_page_cell(p, "page", "paper_size", NA, "legal")
+  expect_identical(sheet_rows(q, "page", NA)$paper_size, "legal")
+  q <- set_page_line(p, "header", NA, "3", left = "{OUTPUT_LABEL}")
+  expect_identical(sheet_rows(q, "header", NA)$line, c("1", "2", "3"))
+  q <- drop_page_line(q, "header", NA, "1")
+  expect_identical(sheet_rows(q, "header", NA)$line, c("2", "3"))
+  # the form's words
+  h <- as.character(.page_form_ui(p, "@Compact", identity))
+  expect_match(h, 'data-pg-target="@Compact"', fixed = TRUE)
+  expect_match(h, "this pattern", fixed = TRUE)
+  expect_match(as.character(.page_form_ui(p, NA, identity)), 'data-pg-target=""', fixed = TRUE)
+})
+
+test_that("the pattern dialog: a new pattern, edited by its target, renamed", {
+  local_home()
+  create_study("S1", planner = pat_planner())
+  shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    session$setInputs(target = "T1", nav = "make", step = "page", pat_edit = 1)
+    session$setInputs(pat_name = "Wide", pat_new = 1)
+    expect_true("Wide" %in% page_patterns(rv$p))
+    expect_match(output$pat_form$html, 'data-pg-target="@Wide"', fixed = TRUE)
+    session$setInputs(pg_edit = list(target = "@Wide", kind = "cell", sheet = "page",
+                                     col = "orientation", line = "", part = "", name = "",
+                                     value = "portrait", n = 1))
+    expect_identical(sheet_rows(rv$p, "page", "@Wide")$orientation, "portrait")
+    # Standard, from the dialog
+    session$setInputs(pat_pick = "Standard")
+    session$setInputs(pg_edit = list(target = "", kind = "cell", sheet = "page",
+                                     col = "margin_top_in", line = "", part = "", name = "",
+                                     value = "1", n = 2))
+    expect_identical(sheet_rows(rv$p, "page", NA)$margin_top_in, "1")
+    # another report's id is not a target here
+    session$setInputs(pg_edit = list(target = "T2", kind = "cell", sheet = "page",
+                                     col = "font", line = "", part = "", name = "",
+                                     value = "Arial", n = 3))
+    expect_identical(nrow(sheet_rows(rv$p, "page", "T2")), 0L)
+    session$setInputs(pat_pick = "Wide", pat_name = "Landscape", pat_rename = 1)
+    expect_true("Landscape" %in% page_patterns(rv$p))
+    session$setInputs(pat_remove = 1)
+    expect_false("Landscape" %in% page_patterns(rv$p))
+  })
+})
