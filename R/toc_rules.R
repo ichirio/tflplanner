@@ -813,7 +813,10 @@ toc_import_read <- function(sources, rules = toc_rules(), profile = NULL,
   set_name <- pick_set %||% scores$rule_set[1L]
   set <- toc_rule_set(rules, set_name, overrides = c(choices$overrides, profile$overrides))
   # the columns: the set's map on each source's header; the user's map
-  # where the source has its columns
+  # where the source has its columns.  The dialog's selects show the first
+  # source: a blank there ("none") leaves that source's column out, and
+  # says nothing of another source's (a listing workbook's Population when
+  # the TFL TOC has none)
   maps <- lapply(seq_along(srcs), function(k) {
     if (!k %in% readable) return(list())
     h <- headers[[match(k, readable)]]
@@ -823,7 +826,7 @@ toc_import_read <- function(sources, rules = toc_rules(), profile = NULL,
       v <- choices$map[[it]]
       v <- v[!is.na(v) & nzchar(v)]
       if (!length(v)) {
-        m[[it]] <- NULL
+        if (identical(k, readable[1L])) m[[it]] <- NULL
       } else if (all(.toc_norm(v) %in% .toc_norm(h))) {
         m[[it]] <- v
       }
@@ -1005,8 +1008,14 @@ print.toc_import <- function(x, ...) {
   miss <- attr(x$map, "missing") %||% character()
   # SAP numbers: blank, or on two reports (the phases of one row are one)
   if (!"sap_no" %in% miss && "sap_no" %in% set$map$item && !is.null(x$map$sap_no)) {
-    for (i in which(is.na(r$sap_no))) add("TOC06", r$output_id[i], field = "sap_no",
-                                          args = r$output_id[i])
+    # only the rows of a source whose TOC has the column: a listing workbook
+    # with no SAP column says nothing of SAP numbers (#299: an optional item
+    # whose column is absent is skipped silently)
+    has <- vapply(x$maps %||% list(x$map), function(m) !is.null(m$sap_no), NA)
+    from <- if (length(x$maps)) x$detection$file[has] else unique(r$.source)
+    for (i in which(is.na(r$sap_no) & r$.source %in% from)) {
+      add("TOC06", r$output_id[i], field = "sap_no", args = r$output_id[i])
+    }
     key <- paste(r$.source, r$.sheet, r$.row)
     s <- r$sap_no
     for (v in unique(stats::na.omit(s))) {

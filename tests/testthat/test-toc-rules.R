@@ -524,3 +524,31 @@ test_that("the dialog: two files found, a sheet switched, the id rule, Take it i
     expect_match(output$toc3_do_btn$html, "disabled", fixed = TRUE)
   })
 })
+
+test_that("a second source with no SAP column says nothing of SAP numbers", {
+  tfl <- two_phase_book(topline = FALSE)
+  lis <- toc_workbook(list(TOC_listing = list(
+    c("ABC listings"),
+    c("Output", "Title 1", "Title 2", "Population"),
+    c("l.16.2.1", "Listing 16.2.1", "Subject Disposition", "All Subjects"))))
+  x <- toc_import_read(c(tfl, lis), builtin_rules())
+  p <- x$problems
+  expect_false(any(p$rule == "TOC06" & p$output_id %in% "l.16.2.1"))
+  # the TFL TOC's own blank SAP number is still said
+  expect_true(any(p$rule == "TOC06" & grepl("^t[.]14[.]2[.]1", p$output_id)))
+})
+
+test_that("a blank in the dialog's map leaves out the first source's column, not another's", {
+  tfl <- two_phase_book(topline = FALSE)
+  lis <- toc_workbook(list(TOC_listing = list(
+    c("ABC listings"),
+    c("Output", "Title 1", "Title 2", "Population"),
+    c("l.16.2.1", "Listing 16.2.1", "Subject Disposition", "All Subjects"))))
+  # the TFL TOC has no population column: the dialog sends it blank
+  x <- toc_import_read(c(tfl, lis), builtin_rules(), choices = list(map = list(population = "")))
+  r <- x$reports
+  expect_identical(r$population[r$output_id == "l.16.2.1"], "All Subjects")
+  # a blank for a column the first source has does leave it out there
+  y <- toc_import_read(c(tfl, lis), builtin_rules(), choices = list(map = list(sap_no = "")))
+  expect_true(all(is.na(y$reports$sap_no[startsWith(y$reports$output_id, "t.")])))
+})
