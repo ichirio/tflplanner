@@ -24,6 +24,18 @@
   and wins.  It is not written to the sheets: the programs, the page's
   sample and step 3's list of tokens (which says where it comes from) see
   it.  The same for tables, listings and figures.
+- **The report list's tokens are not set in the page form** (the user's
+  rule).  {OUTPUT_ID}, {OUTPUT_LABEL}, {OUTPUT_TITLE},
+  {OUTPUT_POPULATION} and {OUTPUT_SECTION} are listed read only under
+  step 3's tokens, each with where it comes from and a link to where it
+  changes: the ID and label in the report list (Rename), the analysis set
+  in step 1, the section in the report's section (Data code).  The title
+  has one place: the Titles card's "The header's {OUTPUT_TITLE}" (a TOC
+  taken in writes it), and the report list's Title column now shows it
+  first.  The tokens card's own rows are the page's own tokens only; a
+  token of a report list's or rtfreporter's name ({PAGE} ...) is refused
+  with a message.  {OUTPUT_SECTION} is by default the report's section, as
+  {OUTPUT_POPULATION} its analysis set's label.
 - **The built-in standards name the analysis sets in full**, by ICH E9's
   names: Safety Analysis Set, Full Analysis Set, Per Protocol Set,
   Enrolled Set, Randomized Set, Pharmacokinetic Analysis Set (was "Safety

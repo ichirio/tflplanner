@@ -2879,16 +2879,28 @@ Standard (= %s),Standard（%s も同じ）
 NAME,名前
 its text,その文
 (empty),（空）
-Made from the report's ID,帳票の ID から作られるもの
-"The report's, from the TOC taken in (or typed on the left)",帳票のもの：取り込んだ TOC から（または左で入力）
 "The study's (its tokens sheet, Standard)",試験のもの（tokens シートの Standard）
 "rtfreporter's, as the RTF is written",rtfreporter のもの（RTF を書くときに入る）
 the pages,総ページ数
 the program's path,プログラムのパス
 the date and time,日時
 The header's {OUTPUT_TITLE},ヘッダーの {OUTPUT_TITLE} に入る文
-The text the header prints where it says {OUTPUT_TITLE}: this report's title. A TOC taken in writes it; it is not a title line of its own (the lines below are).,ヘッダーが {OUTPUT_TITLE} と書いた所に印字する文（この帳票のタイトル）。TOC を取り込むと入ります。別のタイトル行ではありません（タイトル行は下の行です）。
-"This page's tokens: change, add, remove.",このページのトークン：変更・追加・削除。
 "What a header, footer, title or footnote can say:",ヘッダー・フッター・タイトル・脚注で使えるもの：
-"{OUTPUT_POPULATION}: the label of the report's analysis set (%s, step 1); type one on the left to change it.",{OUTPUT_POPULATION}：帳票の解析対象集団（%s、段 1）のラベル。変えるときは左で入力します。
 The paper is the page's first property: a pattern that changes it says so in its name (A4_Compact).,用紙はページのいちばん基本の設定です。用紙を変える型は、名前でそれを言ってください（A4_Compact）。
+"This report's title, which the header prints where it says {OUTPUT_TITLE}: changed here only (a TOC taken in writes it; the report list shows it). It is not a title line of its own (the lines below are).",この帳票のタイトル。ヘッダーが {OUTPUT_TITLE} と書いた所に印字します。変えるのはここだけです（TOC を取り込むと入り、帳票リストにも出ます）。別のタイトル行ではありません（タイトル行は下の行です）。
+"This page's own tokens: add, change, remove. The report list's (its ID, title, analysis set, section) are below, with where each is changed.",このページ独自のトークン：追加・変更・削除。帳票リストのもの（ID・タイトル・解析対象集団・セクション）は下にあり、それぞれ変える場所が書いてあります。
+The report list's (changed where they come from),帳票リストのもの（元の場所で変えます）
+the report's ID,帳票の ID
+the TOC taken in,取り込んだ TOC
+made from the ID,ID から作られます
+the report's title,帳票のタイトル
+"Change it in Titles, below",下の「タイトル」で変えます
+the label of the report's analysis set (%s),帳票の解析対象集団（%s）のラベル
+no analysis set chosen,解析対象集団は未選択
+Change it in step 1,段 1 で変える
+the report's section,帳票のセクション
+no section,セクションなし
+Change it in the report's section (Data code),帳票のセクションで変える（データコード）
+Change it in the report list (Rename),帳票リストで変える（名前の変更）
+"{%s} is rtfreporter's, filled as the RTF is written: give your token another name.",{%s} は rtfreporter のもので、RTF を書くときに入ります。自分のトークンには別の名前を付けてください。
+"{%s} is the report list's: change it where it comes from (the list below says where), or give your token another name.",{%s} は帳票リストのものです。元の場所で変えるか（下の一覧に場所があります）、自分のトークンに別の名前を付けてください。

@@ -216,9 +216,23 @@ $(document).on('shiny:value', function(e) {
                          t("Add a line to this pattern") else t("Add a line for this report")))
 }
 
-.page_tokens_ui <- function(x, id, pattern, t, skip = character()) {
+# The tokens a page says but does not set: the report list's (its ID and
+# label, its title, analysis set and section -- each changed where it comes
+# from) and rtfreporter's.  A page's own token has another name.
+.pg_report_tokens <- c("OUTPUT_ID", "OUTPUT_LABEL", "OUTPUT_TITLE",
+                       "OUTPUT_POPULATION", "OUTPUT_SECTION")
+.pg_builtin_tokens <- c("PAGE", "TOTAL_PAGES", "PROGRAM", "DATETIME")
+.pg_token_taken <- function(name) name %in% c(.pg_report_tokens, .pg_builtin_tokens)
+.pg_token_taken_msg <- function(name, t) {
+  sprintf(if (name %in% .pg_builtin_tokens)
+    t("{%s} is rtfreporter's, filled as the RTF is written: give your token another name.")
+    else t("{%s} is the report list's: change it where it comes from (the list below says where), or give your token another name."),
+    name)
+}
+
+.page_tokens_ui <- function(x, id, pattern, t) {
   d <- page_tokens_from(x, id)
-  d <- d[!d$name %in% skip, , drop = FALSE]
+  d <- d[!d$name %in% c(.pg_report_tokens, .pg_builtin_tokens), , drop = FALSE]
   # the names a level below has: "back" there, else the token goes
   below <- if (!is.na(id)) {
     lv <- .page_levels(x, id)[-1L]
@@ -278,16 +292,37 @@ $(document).on('shiny:value', function(e) {
       lapply(keys, function(k) shiny::tags$tr(
         shiny::tags$td(shiny::code(paste0("{", k, "}"))),
         shiny::tags$td(class = "pg-inh", if (is.null(names(keys))) val(k) else names(keys)[keys == k]))))))
-  report_own <- c("OUTPUT_TITLE", "OUTPUT_POPULATION", "OUTPUT_SECTION")
-  # {OUTPUT_POPULATION}: a row's (the TOC's, typed), else the analysis set's
-  pop <- x$outputs$population[match(id, x$outputs$output_id)]
-  pop_note <- if (!"OUTPUT_POPULATION" %in% page_tokens_from(x, id)$name && !.is_blank(pop)) {
-    sprintf(t("{OUTPUT_POPULATION}: the label of the report's analysis set (%s, step 1); type one on the left to change it."), pop)
-  }
-  study <- setdiff(names(tok), c(report_own, "OUTPUT_ID", "OUTPUT_LABEL", "STUDY_ID"))
+  # the report list's: each with where it comes from, and where it changes
+  # (a row of the tokens sheet is the TOC's, taken in)
+  row <- page_tokens_from(x, id)$name
+  o <- x$outputs
+  pop <- o$population[match(id, o$output_id)]
+  sec <- if (!is.null(o$section)) o$section[match(id, o$output_id)] else NA_character_
+  go <- function(where, label) shiny::tags$button(
+    type = "button", class = "pg-act btn btn-link", `data-act` = "goto", `data-name` = where, label)
+  to_list <- go("outputs", t("Change it in the report list (Rename)"))
+  src <- list(
+    OUTPUT_ID = list(t("the report's ID"), to_list),
+    OUTPUT_LABEL = list(if ("OUTPUT_LABEL" %in% row) t("the TOC taken in") else t("made from the ID"),
+                        to_list),
+    OUTPUT_TITLE = list(t("the report's title"), t("Change it in Titles, below")),
+    OUTPUT_POPULATION = list(
+      if ("OUTPUT_POPULATION" %in% row) t("the TOC taken in")
+      else if (!.is_blank(pop)) sprintf(t("the label of the report's analysis set (%s)"), pop)
+      else t("no analysis set chosen"),
+      go("ard", t("Change it in step 1"))),
+    OUTPUT_SECTION = list(
+      if ("OUTPUT_SECTION" %in% row) t("the TOC taken in")
+      else if (!.is_blank(sec)) t("the report's section") else t("no section"),
+      go("code", t("Change it in the report's section (Data code)"))))
+  study <- setdiff(names(tok), c(.pg_report_tokens, .pg_builtin_tokens))
   shiny::tagList(
-    group(t("Made from the report's ID"), c("OUTPUT_ID", "OUTPUT_LABEL")),
-    group(t("The report's, from the TOC taken in (or typed on the left)"), report_own, note = pop_note),
+    shiny::div(class = "small fw-semibold mt-1", t("The report list's (changed where they come from)")),
+    shiny::tags$table(class = "table table-sm pg-lines mb-1", shiny::tags$tbody(
+      lapply(.pg_report_tokens, function(k) shiny::tags$tr(
+        shiny::tags$td(shiny::code(paste0("{", k, "}"))),
+        shiny::tags$td(class = "pg-inh", val(k)),
+        shiny::tags$td(class = "pg-from", src[[k]][[1L]], " \u2014 ", src[[k]][[2L]]))))),
     if (length(study)) group(t("The study's (its tokens sheet, Standard)"), study),
     group(t("rtfreporter's, as the RTF is written"),
           stats::setNames(c("PAGE", "TOTAL_PAGES", "PROGRAM", "DATETIME"),
@@ -325,7 +360,7 @@ $(document).on('shiny:value', function(e) {
   shiny::div(
     class = "pg-field mb-2",
     shiny::tags$label(with_tip(t("The header's {OUTPUT_TITLE}"),
-      t("The text the header prints where it says {OUTPUT_TITLE}: this report's title. A TOC taken in writes it; it is not a title line of its own (the lines below are)."))),
+      t("This report's title, which the header prints where it says {OUTPUT_TITLE}: changed here only (a TOC taken in writes it; the report list shows it). It is not a title line of its own (the lines below are)."))),
     shiny::tags$input(
       type = "text", class = "pg-in form-control form-control-sm",
       value = if (own) tk$value[k] else "",
@@ -336,7 +371,7 @@ $(document).on('shiny:value', function(e) {
 # the whole form of a report's page
 .page_form_ui <- function(x, id, t) {
   pattern <- report_pattern(x, id)
-  # (the heading edits {OUTPUT_TITLE}: not listed again with the tokens)
+  # (the heading edits {OUTPUT_TITLE}, the one place it is changed)
   heading <- .page_heading_ui(x, id, t)
   card <- function(title, ...) shiny::div(class = "pg-card", shiny::h6(title), ...)
   shiny::div(
@@ -345,15 +380,13 @@ $(document).on('shiny:value', function(e) {
          shiny::div(class = "pg-grid", lapply(.page_fields, .page_field_ui, x = x, id = id,
                                               pattern = pattern, t = t))),
     card(t("Tokens"),
-         # (side by side only where the form is wide enough)
-         bslib::layout_columns(
-           col_widths = bslib::breakpoints(sm = 12, xxl = c(7, 5)),
-           shiny::div(
-             shiny::div(class = "pg-from mb-1", t("This page's tokens: change, add, remove.")),
-             .page_tokens_ui(x, id, pattern, t, skip = if (!is.null(heading)) "OUTPUT_TITLE")),
-           if (!is.na(id) && !.is_pattern_id(id)) shiny::div(
-             shiny::div(class = "pg-from mb-1", t("What a header, footer, title or footnote can say:")),
-             .page_token_ref_ui(x, id, t)))),
+         shiny::div(class = "pg-from mb-1", t("This page's own tokens: add, change, remove. The report list's (its ID, title, analysis set, section) are below, with where each is changed.")),
+         .page_tokens_ui(x, id, pattern, t),
+         # below, the whole width: what the page can say, and from where
+         if (!is.na(id) && !.is_pattern_id(id)) shiny::div(
+           class = "mt-2",
+           shiny::div(class = "pg-from mb-1", t("What a header, footer, title or footnote can say:")),
+           .page_token_ref_ui(x, id, t))),
     card(t("Header"), .page_lines_ui(x, id, "header", pattern, t)),
     card(t("Titles"), heading,
          .page_lines_ui(x, id, "titles", pattern, t), .page_insert_ui(x, id, t)),

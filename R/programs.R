@@ -395,22 +395,25 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   sp
 }
 
-# {OUTPUT_POPULATION} by default: the label of the report's analysis set
-# (the report list's population, step 1), for a report no row of the tokens
-# sheet -- its own, its pattern's, Standard's -- says one for.  A TOC taken
-# in, or a value typed in step 3, is a row and wins.  Not written to the
-# sheets: the programs, the page's sample and step 3 see it.
+# {OUTPUT_POPULATION} and {OUTPUT_SECTION} by default: the label of the
+# report's analysis set (step 1) and its section (the report list's), for a
+# report no row of the tokens sheet -- its own, its pattern's, Standard's --
+# says one for.  A TOC taken in is a row and wins.  Not written to the
+# sheets: the programs, the page's sample and step 3 see them.
 .with_population_tokens <- function(x) {
   o <- x$outputs
-  if (is.null(o) || !nrow(o) || is.null(o$population)) return(x)
+  if (is.null(o) || !nrow(o)) return(x)
   add <- list()
+  put <- function(id, name, value) {
+    if (.is_blank(value) || name %in% page_tokens_from(x, id)$name) return()
+    add[[length(add) + 1L]] <<- data.frame(output_id = id, name = name, value = value,
+                                           stringsAsFactors = FALSE)
+  }
   for (i in seq_len(nrow(o))) {
-    pop <- o$population[i]
-    if (.is_blank(pop)) next
     id <- o$output_id[i]
-    if ("OUTPUT_POPULATION" %in% page_tokens_from(x, id)$name) next
-    add[[length(add) + 1L]] <- data.frame(output_id = id, name = "OUTPUT_POPULATION",
-                                          value = .pop_label(x, pop), stringsAsFactors = FALSE)
+    pop <- if (!is.null(o$population)) o$population[i] else NA_character_
+    if (!.is_blank(pop)) put(id, "OUTPUT_POPULATION", .pop_label(x, pop))
+    if (!is.null(o$section)) put(id, "OUTPUT_SECTION", o$section[i])
   }
   if (!length(add)) return(x)
   x$sheets$tokens <- rbind(.normalize_sheet(x$sheets$tokens, "tokens"),

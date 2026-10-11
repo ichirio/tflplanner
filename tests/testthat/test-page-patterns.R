@@ -244,7 +244,12 @@ test_that("the user's notes: Standard under a pattern, the tokens card, the head
   expect_match(h, "The header's {OUTPUT_TITLE}", fixed = TRUE)
   # the tokens: an add row, the reference with the report's label
   expect_match(h, "pg-token-add", fixed = TRUE)
-  expect_match(h, "Made from the report's ID", fixed = TRUE)
+  expect_match(h, "The report list's (changed where they come from)", fixed = TRUE)
+  # the report list's tokens: not on the left (no field of theirs but the
+  # title's), each with where it changes
+  expect_false(grepl('data-name="OUTPUT_POPULATION"', h, fixed = TRUE))
+  expect_match(h, 'data-act="goto" data-name="ard"', fixed = TRUE)
+  expect_match(h, "Change it in Titles, below", fixed = TRUE)
   # the font: Courier or Courier New to choose, any typed
   expect_match(h, '<option value="Courier New">', fixed = TRUE)
   # the tokens card above the header
@@ -264,6 +269,20 @@ test_that("a token added and removed from the form; the veil only for the user's
     session$setInputs(pg_act = list(act = "token_reset", sheet = "", col = "", line = "",
                                     name = "DATA_CUTOFF", n = 2))
     expect_false("DATA_CUTOFF" %in% page_tokens_from(rv$p, "T1")$name)
+    # a report list's name, or rtfreporter's: not a page's token
+    for (nm in c("output_population", "PAGE")) {
+      session$setInputs(pg_act = list(act = "token_add", sheet = "", col = "", line = "",
+                                      name = nm, value = "x", n = runif(1)))
+      expect_false(toupper(nm) %in% page_tokens_from(rv$p, "T1")$name)
+    }
+    session$setInputs(pg_edit = list(target = NULL, kind = "token", name = "OUTPUT_SECTION",
+                                     value = "x", n = 3))
+    expect_false("OUTPUT_SECTION" %in% page_tokens_from(rv$p, "T1")$name)
+    # the title: its field
+    session$setInputs(pg_edit = list(kind = "token", name = "OUTPUT_TITLE",
+                                     value = "Demographics", n = 4))
+    expect_identical(page_tokens_from(rv$p, "T1")$value[page_tokens_from(rv$p, "T1")$name == "OUTPUT_TITLE"],
+                     "Demographics")
   })
   html <- as.character(app_ui())
   expect_match(html, "html.shiny-busy.rp-user-busy body::after", fixed = TRUE)
@@ -287,4 +306,14 @@ test_that("{OUTPUT_POPULATION} by default the label of the report's analysis set
   tok <- tflspec::tfl_report_tokens(.spec_object_last(p, c(table_sheets(), report_sheets()),
                                                       unique(c(.study_keys$table, .study_keys$report))), "T1")
   expect_identical(tok[["OUTPUT_POPULATION"]], .pop_label(p, "SAF"))
+})
+
+test_that("{OUTPUT_SECTION} by default the report's section; a row wins", {
+  p <- add_output(new_planner(), "T1", section = "14.1 Demographics")
+  q <- .with_population_tokens(p)
+  d <- page_tokens_from(q, "T1")
+  expect_identical(d$value[d$name == "OUTPUT_SECTION"], "14.1 Demographics")
+  r <- .with_population_tokens(set_page_token(p, "T1", "OUTPUT_SECTION", "14.1"))
+  d <- page_tokens_from(r, "T1")
+  expect_identical(d$value[d$name == "OUTPUT_SECTION"], "14.1")
 })

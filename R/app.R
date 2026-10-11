@@ -9559,6 +9559,14 @@ app_server <- function(input, output, session, start) {
     # description), cut short in the list; whole on hover
     titles <- vapply(o$output_id, function(id) .report_title(p, id), "",
                      USE.NAMES = FALSE)
+    # the report's title its header prints ({OUTPUT_TITLE}, step 3), first
+    tk <- .normalize_sheet(p$sheets$tokens, "tokens")
+    head_title <- tk$value[match(paste(o$output_id, "OUTPUT_TITLE"),
+                                 paste(tk$output_id, trimws(tk$name)))]
+    has_head <- !is.na(head_title) & nzchar(trimws(head_title))
+    titles[has_head] <- ifelse(nzchar(titles[has_head]),
+                               paste(head_title[has_head], titles[has_head], sep = " / "),
+                               head_title[has_head])
     titles <- ifelse(nzchar(titles) | is.na(o$description), titles,
                      o$description)
     data.frame(
@@ -9932,14 +9940,28 @@ app_server <- function(input, output, session, start) {
       parts[[e$part]] <- v
       page_write(guarded(set_page_line(p, e$sheet, id, e$line, parts$left, parts$center, parts$right)))
     } else if (identical(e$kind, "token")) {
+      # (the title: its one field, Titles' heading)
+      if (!identical(e$name, "OUTPUT_TITLE") && .pg_token_taken(e$name)) {
+        return(notify(.pg_token_taken_msg(e$name, t), "warning"))
+      }
       page_write(guarded(set_page_token(p, id, e$name, if (is.na(v)) "" else v)))
     }
   })
   shiny::observeEvent(input$pg_act, {
     a <- input$pg_act
+    # where a report list's token changes: the report list, step 1, the
+    # report's section (Data code)
+    if (identical(a$act, "goto")) {
+      if (a$name %in% c("outputs", "ard", "code")) go(a$name)
+      return()
+    }
     id <- pg_id(a$target)
     shiny::req(!is.null(id))
     p <- rv$p
+    if (a$act %in% c("token_own", "token_add") &&
+        .pg_token_taken(toupper(trimws(a$name %||% "")))) {
+      return(notify(.pg_token_taken_msg(toupper(trimws(a$name)), t), "warning"))
+    }
     page_write(guarded(switch(a$act,
       reset = set_page_cell(p, a$sheet, a$col, id, NA_character_),
       # a line of the pattern's (or Standard's) made the report's own, to change
