@@ -52,6 +52,11 @@ test_that("a band's lines: changed, left out and back, over the pattern's", {
   code <- tflspec::tfl_report_code(.spec_object(q, report_sheets(), character()), "T1")
   expect_false(any(grepl("ACME", code, fixed = TRUE)))
   expect_true(any(grepl("{STUDY} (PK)", code, fixed = TRUE)))
+  # the first page's sample prints no "(none)": the line is left out
+  h <- as.character(.page_sample_html(q, "T1", "S", htmltools::div()))
+  expect_false(grepl("(none)", h, fixed = TRUE))
+  expect_false(grepl("ACME", h, fixed = TRUE))
+  expect_match(h, "(PK)", fixed = TRUE)
   q <- drop_page_line(q, "header", "T1", "1")
   expect_identical(page_lines_from(q, "header", "T1")$from, c("standard", "pattern"))
   q <- set_page_line(p, "header", "T1", "3", left = "PK only")

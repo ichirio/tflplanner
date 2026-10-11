@@ -9,9 +9,9 @@
 
 .page_fields <- list(
   list(sheet = "page", col = "paper_size", label = "Paper", kind = "choice",
-       choices = c("letter", "legal", "A4", "A3", "A5")),
+       choices = c("letter", "legal", "A4", "A3", "A5"), default = "letter"),
   list(sheet = "page", col = "orientation", label = "Orientation", kind = "choice",
-       choices = c("landscape", "portrait")),
+       choices = c("landscape", "portrait"), default = "landscape"),
   list(sheet = "page", col = "margin_top_in", label = "Top (in)", kind = "number"),
   list(sheet = "page", col = "margin_bottom_in", label = "Bottom (in)", kind = "number"),
   list(sheet = "page", col = "margin_left_in", label = "Left (in)", kind = "number"),
@@ -81,7 +81,8 @@ $(document).on('shiny:value', function(e) {
   inh_txt <- if (!is.na(inh)) shown(inh) else ""
   input <- if (identical(f$kind, "choice")) {
     opts <- c(list(shiny::tags$option(value = "", if (nzchar(inh_txt))
-      sprintf(t("(%s: %s)"), .page_from_label(ih$from, pattern, t), inh_txt) else "")),
+      sprintf(t("(%s: %s)"), .page_from_label(ih$from, pattern, t), inh_txt) else
+        if (!is.null(f$default)) sprintf(t("(default: %s)"), f$default) else "")),
       lapply(f$choices, function(ch) shiny::tags$option(
         value = ch, selected = if (own && identical(tolower(v$value), tolower(ch))) NA, ch)))
     do.call(shiny::tags$select, c(attrs, list(class = "pg-in form-select form-select-sm"), opts))
