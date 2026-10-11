@@ -22,6 +22,18 @@
   `adtte_saf_ttde`, `advs_w24` is `advs_saf_sysbp` (its programs change by
   the names only).  Needs tflspec >=
   0.0.24.9087 (the forest template's data named so).
+- **A run in the background no longer greys the page** (the user's
+  report on 0.0.2.9175).  Following a run the app did not start made the
+  whole page be drawn again every few seconds (each ARD program, each
+  preview log), greyed and not taking clicks for a moment.  Now only what
+  changed follows it: the report list's marks are changed in place (the
+  list is not drawn again), the ARD's state is worked out again only when
+  the report chosen has its ARD made, and every report's once when the
+  run has ended; the Runs tab's tables when a batch ends.  The logs are
+  not watched any more.  Checked on R 4.6.1: the sample's official run,
+  160 s, sitting on Make a report and on the report list -- nothing
+  faded, the marks from "not made" to "made" without a reload.  (Steps 2
+  and 3's marks, never drawn, no longer stay "recalculating" either.)
 
 - **The forest plot from the figure's own ARD** (#293 phase 6, with
   tflspec's `forest_hr` in parts).  The hazard ratios, intervals and N a

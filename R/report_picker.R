@@ -236,6 +236,17 @@ $(document).on('click', '.rp-picker .rp-item', function() {
     if (lay.length && !lay.hasClass('sidebar-collapsed')) lay.children('.collapse-toggle').click();
   });
 })();
+// the marks of a run that went on in the background: changed in place, the
+// list not drawn again (the page never greys while a run goes on)
+Shiny.addCustomMessageHandler('rp-marks', function(m) {
+  $('.rp-picker .rp-item').each(function() {
+    var k = m[$(this).attr('data-id')];
+    if (!k) return;
+    var el = $(this).children('.rp-mark');
+    if (!el.length) el = $('<span></span>').appendTo(this);
+    el.attr('class', k.cls).attr('title', k.title).text(k.mark);
+  });
+});
 // a table's search (the report list, the runs), set without a search box
 Shiny.addCustomMessageHandler('rp-dt-search', function(m) {
   var el = $('#' + m.id + ' table.dataTable');
@@ -296,10 +307,14 @@ report_picker_compact_ui <- function(id, lang = "en") {
 # `rows` a reactive of .report_rows(), `now` the value chosen (an output id,
 # or the study defaults / every report's rows), `pick` called with the
 # value the user chose; `fixed` the two rows always first (value = label);
-# `folded` whether the list is folded away (its small chooser shown)
+# `folded` whether the list is folded away (its small chooser shown);
+# `marks` the marks a run in the background changed since `rows` was made
+# (a list: `seq`, `marks` by output id), put in place without drawing the
+# list again
 report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
                                  folded = shiny::reactive(FALSE),
-                                 counts = shiny::reactive(NULL)) {
+                                 counts = shiny::reactive(NULL),
+                                 marks = shiny::reactive(NULL)) {
   shiny::moduleServer(id, function(input, output, session) {
     t <- function(x) tr(x, lang)
     # a report's review: its errors, checks and what to set by hand (a
@@ -330,6 +345,12 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
     }
     output$list <- shiny::renderUI({
       d <- rows()
+      # a run's marks newer than the rows: theirs
+      mk <- shiny::isolate(marks())
+      if (!is.null(mk) && mk$seq > (attr(d, "seq") %||% 0)) {
+        k <- match(names(mk$marks), d$output_id)
+        d$state[k[!is.na(k)]] <- unname(mk$marks[!is.na(k)])
+      }
       cn <- counts()
       now_v <- now() %||% ""
       f <- .report_filter(d, input$q, input$state %||% "all")
@@ -358,6 +379,9 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
                                 sprintf(t("%d of %d reports"), nrow(f), nrow(d))))
     })
     shiny::observeEvent(input$pick, pick(input$pick))
+    shiny::observeEvent(marks(), {
+      session$sendCustomMessage("rp-marks", .report_mark_msg(marks()$marks, t))
+    })
     # the folded chooser: the same values, its search selectize's own.  A
     # value the server set comes back as input$compact too, maybe after the
     # report changed: only a value the user chose is passed on
@@ -390,15 +414,35 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
   })
 }
 
-# What a run leaves in a study folder, as one stamp: the study ARD's status
-# (each ARD program writes it), the batches' run.csv and the previews'
-# logs, by modification time -- a change of it is a run that ended
+# What a run leaves in a study folder, by modification time, in two parts:
+# `ard`, the study ARD's status (each ARD program writes it); `runs`, the
+# batches' run.csv (written once, when a batch ends).  Not the logs: they
+# change all through a run, and a change of them says nothing new.
 .run_files_stamp <- function(path) {
   lay <- study_layout()
-  f <- c(file.path(path, lay[["ard"]], "ard_status.csv"),
-         Sys.glob(file.path(path, "runs", "*", "run.csv")),
-         Sys.glob(file.path(path, lay[["logs_preview"]], "*.log")))
-  f <- f[file.exists(f)]
-  if (!length(f)) return("")
-  paste(length(f), format(max(file.mtime(f)), "%Y%m%d%H%M%OS3"))
+  one <- function(f) {
+    f <- f[file.exists(f)]
+    if (!length(f)) return("")
+    paste(length(f), format(max(file.mtime(f)), "%Y%m%d%H%M%OS3"))
+  }
+  c(ard = one(file.path(path, lay[["ard"]], "ard_status.csv")),
+    runs = one(Sys.glob(file.path(path, "runs", "*", "run.csv"))))
+}
+
+# The marks of the report list as `.report_rows()` makes them, by output id
+# (a run's result read without a reactive: the poll's)
+.report_marks <- function(p, study) {
+  d <- .report_rows(p, tryCatch(ard_status(study), error = function(e) NULL),
+                    tryCatch(.report_run_light(study), error = function(e) NULL))
+  stats::setNames(d$state, d$output_id)
+}
+
+# what the browser puts in a report's place in the list, for each mark
+.report_mark_msg <- function(marks, t = identity) {
+  marks <- marks[!is.na(marks) & marks %in% names(.report_state_marks)]
+  lapply(stats::setNames(nm = names(marks)), function(id) {
+    k <- marks[[id]]
+    list(cls = paste("rp-mark", .report_state_class[[k]]),
+         title = t(.report_state_words[[k]]), mark = .report_state_marks[[k]])
+  })
 }
