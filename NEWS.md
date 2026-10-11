@@ -8,8 +8,7 @@
   The veil now comes only for a busy state that begins right after a
   click, a key or a changed field; the poll's updates go by unseen.
 - **Step 3's form, the user's notes** (page patterns, 0.0.2.9187): a line
-  a report of a pattern inherits from Standard says "Standard (the same in
-  Compact)"; the font is Courier or Courier New to choose, or any typed
+  a report of a pattern inherits from Standard says "Standard (= Compact)"; the font is Courier or Courier New to choose, or any typed
   (the defaults are rtfreporter's: Letter, landscape, Courier 9 pt, 0.75
   in margins); the titles' heading says what it is -- "The header's
   {OUTPUT_TITLE}", the text the header prints there, not a title line;

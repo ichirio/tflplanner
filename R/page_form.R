@@ -41,7 +41,7 @@
          pattern = sprintf(t("pattern %s"), pattern),
          # (a report of a pattern: the pattern says the same as Standard)
          standard = if (is.na(pattern %||% NA)) t("Standard") else
-           sprintf(t("Standard (the same in %s)"), pattern),
+           sprintf(t("Standard (= %s)"), pattern),
          "")
 }
 
@@ -108,6 +108,9 @@ $(document).on('shiny:value', function(e) {
 .pg-lines td { padding: .15rem .3rem; vertical-align: middle; font-size: .8rem; }
 .pg-lines .pg-inh { color: var(--bs-secondary-color, #6b7280); }
 .pg-lines .pg-omit { color: var(--bs-secondary-color, #6b7280); font-style: italic; }
+.pg-lines td.pg-src { white-space: normal; max-width: 8rem; line-height: 1.2; }
+.pg-tokens { width: 100%; }
+.pg-tokens td.pg-val { width: 100%; }
 "
 
 # one field of a one-row sheet: its own value in the input, the value it
@@ -188,7 +191,7 @@ $(document).on('shiny:value', function(e) {
       shiny::tags$td(r$line),
       shiny::tags$td(cell(r, "left", own)), shiny::tags$td(cell(r, "center", own)),
       shiny::tags$td(cell(r, "right", own)),
-      shiny::tags$td(class = "text-nowrap",
+      shiny::tags$td(class = if (own) "text-nowrap" else "pg-src",
                      if (own) shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t))
                      else shiny::span(class = "pg-from", .page_from_label(r$from, pattern, t))),
       shiny::tags$td(class = "text-nowrap",
@@ -227,7 +230,7 @@ $(document).on('shiny:value', function(e) {
     shiny::tags$tr(
       class = if (!own) "pg-inh",
       shiny::tags$td(shiny::code(paste0("{", r$name, "}"))),
-      shiny::tags$td(if (own) shiny::tags$input(
+      shiny::tags$td(class = "pg-val", if (own) shiny::tags$input(
         type = "text", class = "pg-in form-control form-control-sm", value = v,
         `data-kind` = "token", `data-name` = r$name, `data-key` = paste("token", r$name, sep = ":"))
         else shiny::span(v)),
@@ -240,7 +243,7 @@ $(document).on('shiny:value', function(e) {
         else btn("token_own", r$name, t("Change here"))))
   })
   shiny::tagList(
-    if (length(rows)) shiny::tags$table(class = "table table-sm pg-lines mb-1",
+    if (length(rows)) shiny::tags$table(class = "table table-sm pg-lines pg-tokens mb-1",
                                         shiny::tags$tbody(rows))
     else shiny::p(class = "small text-muted mb-1", t("(no tokens)")),
     # a token of one's own: its name (upper case) and its text
@@ -262,6 +265,7 @@ $(document).on('shiny:value', function(e) {
     .spec_object_last(x, c(table_sheets(), report_sheets()),
                       unique(c(.study_keys$table, .study_keys$report))), id),
     error = function(e) character())
+  tok[["OUTPUT_ID"]] <- id
   val <- function(k) if (k %in% names(tok) && nzchar(tok[[k]])) tok[[k]] else t("(empty)")
   group <- function(title, keys, note = NULL) shiny::tagList(
     shiny::div(class = "small fw-semibold mt-1", title),

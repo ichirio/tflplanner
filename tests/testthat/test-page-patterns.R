@@ -239,7 +239,7 @@ test_that("the user's notes: Standard under a pattern, the tokens card, the head
   p <- set_page_token(p, "T1", "OUTPUT_TITLE", "Demographics")
   h <- as.character(.page_form_ui(p, "T1", identity))
   # Standard's line 1 under Compact: Compact says the same
-  expect_match(h, "Standard (the same in Compact)", fixed = TRUE)
+  expect_match(h, "Standard (= Compact)", fixed = TRUE)
   # the heading says what it is
   expect_match(h, "The header's {OUTPUT_TITLE}", fixed = TRUE)
   # the tokens: an add row, the reference with the report's label
