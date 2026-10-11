@@ -45,6 +45,10 @@
 #                      template, the median line, and the medians and
 #                      hazard ratios printed from T-14-2-2's ARD (its ARD
 #                      source: table:T-14-2-2)
+#   F-14-2-4  Figure   Forest plot of the hazard ratio by subgroup from the
+#                      designer's forest template: the figure's own ARD (a
+#                      Cox model of all subjects and within each subgroup,
+#                      cards / cardx; ard_source: own)
 #
 # The figures use the company standards' figure style (programs/tfl/
 # fig_setup.R: theme_tfl(), scale_colour_tfl(), tfl_km_risk() ...) and end
@@ -457,12 +461,15 @@ sheets$report <- tbl(
   list(output_id = "F-14-2-1", type = "user"),
   list(output_id = "F-14-2-2", type = "user"),
   # its ARD is T-14-2-2's: it prints the medians that table has
-  list(output_id = "F-14-2-3", type = "figure", ard_source = "table:T-14-2-2"))
+  list(output_id = "F-14-2-3", type = "figure", ard_source = "table:T-14-2-2"),
+  # its ARD is its own: the hazard ratios by subgroup (#293 phase 6)
+  list(output_id = "F-14-2-4", type = "figure", ard_source = "own"))
 sheets$page <- tbl(
   list(output_id = "L-16-2-7", orientation = "landscape"),
   list(output_id = "F-14-2-1", orientation = "landscape"),
   list(output_id = "F-14-2-2", orientation = "landscape"),
-  list(output_id = "F-14-2-3", orientation = "landscape"))
+  list(output_id = "F-14-2-3", orientation = "landscape"),
+  list(output_id = "F-14-2-4", orientation = "landscape"))
 sheets$header <- tbl(
   list(line = "1", left = "Sample Pharma (tflplanner sample)", right = "DRAFT"),
   list(line = "2", left = "Protocol: SAMPLE-01 (CDISC pilot data)",
@@ -492,7 +499,8 @@ sheets$tokens <- do.call(tbl, c(
   title("F-14-2-1", "Mean (SE) Change from Baseline in Systolic Blood Pressure over Time"),
   title("T-14-2-2", "Time to First Dermatologic Event: Kaplan-Meier Estimates"),
   title("F-14-2-2", "Kaplan-Meier Plot of Time to First Dermatologic Event"),
-  title("F-14-2-3", "Kaplan-Meier Curves of Time to First Dermatologic Event")))
+  title("F-14-2-3", "Kaplan-Meier Curves of Time to First Dermatologic Event"),
+  title("F-14-2-4", "Hazard Ratio of Time to First Dermatologic Event by Subgroup")))
 sheets$footer <- tbl(
   list(line = "99", left = "{PROGRAM}       Generated on: {DATETIME}"),
   list(output_id = "T-14-1-1", line = "1",
@@ -531,6 +539,8 @@ sheets$footer <- tbl(
        left = "x = censored.  The number at risk is that of Table 14.2.2."),
   list(output_id = "F-14-2-3", line = "1",
        left = "x = censored.  Dashed line: the median (probability 0.5).  The medians are those of Table 14.2.2; the hazard ratios (Cox model) are in its ARD."),
+  list(output_id = "F-14-2-4", line = "1",
+       left = "Hazard ratio of Xanomeline High Dose vs Placebo (Cox model, unstratified) with its 95% CI, overall and within each subgroup; the figure's own ARD.  NE = not estimable."),
   list(line = "98",
        left = "Source: CDISC pilot study ADaM data of the pharmaverseadam R package."))
 
@@ -868,10 +878,11 @@ desc <- c("T-14-0-1" = "Study information: dictionary versions and the dates of 
           "L-16-2-7" = "Listing of severe treatment-emergent adverse events",
           "F-14-2-1" = "Mean change from baseline in systolic blood pressure",
           "F-14-2-2" = "KM plot of the time to first dermatologic event",
-          "F-14-2-3" = "KM curves of the time to first dermatologic event (designed)")
+          "F-14-2-3" = "KM curves of the time to first dermatologic event (designed)",
+          "F-14-2-4" = "Hazard ratio of the time to first dermatologic event by subgroup (forest plot, its own ARD)")
 types <- c("T-14-0-1" = "table", "T-14-1-4" = "table", "T-14-1-5" = "table", "T-14-1-6" = "table", "T-14-1-1" = "table", "T-14-1-1S" = "table", "T-14-1-2" = "table",
            "T-14-1-3" = "table", "T-14-2-3" = "table", "T-14-2-1" = "table", "T-14-3-1" = "table", "T-14-2-2" = "table", "L-16-2-7" = "listing",
-           "F-14-2-1" = "user", "F-14-2-2" = "user", "F-14-2-3" = "figure")
+           "F-14-2-1" = "user", "F-14-2-2" = "user", "F-14-2-3" = "figure", "F-14-2-4" = "figure")
 process <- list(
   "T-14-2-2" = c(
     "data <- normalize_ard(ard)",
@@ -893,6 +904,16 @@ for (o in names(desc)) {
                   type = types[[o]])
 }
 p <- set_fig_design(p, "F-14-2-3", km_design)
+# F-14-2-4: the forest template, whose numbers are the figure's own ARD --
+# a Cox model of all subjects and one within each subgroup (its analyses
+# come with the design; the population is the study's SAF)
+forest_design <- tflspec::tfl_fig_template(
+  "forest_hr", data = "ADTTE", param = "TTDE", pop = "SAFFL", group = "TRT01A",
+  subgroups = "SEX, AGEGR1", comparison = "Xanomeline High Dose")
+forest_design$plot$x_label <- "Hazard Ratio (95% CI), Xanomeline High Dose vs Placebo"
+p <- set_fig_design(p, "F-14-2-4", forest_design)
+p <- set_fig_own_analyses(p, "F-14-2-4", attr(forest_design, "analyses"),
+                          population_id = "SAF")
 # the tables' analysis set (the report list's), as step 2 sets it
 for (o in setdiff(unique(p$ard$analyses$output_id), c("T-14-0-1", "T-14-1-4", "T-14-1-5", "T-14-1-6"))) {
   p <- set_report_population(p, o, "SAF")
@@ -932,7 +953,7 @@ dir.create(out, recursive = TRUE)
 keep <- c(.study_file, paste0(id, ".Rproj"),
           file.path(study_layout()[["spec"]],
                     c(.table_file, .report_file, .ard_json, .lf_file,
-                      file.path(.fig_design_dir, "F-14-2-3.yml"))),
+                      file.path(.fig_design_dir, c("F-14-2-3.yml", "F-14-2-4.yml")))),
           file.path(study_layout()[["adam"]],
                     c("adsl.rds", "adae.rds", "advs.rds", "adtte.rds")))
 for (f in keep) {
@@ -978,6 +999,7 @@ writeLines(c(
   "| F-14-2-1 | User code (a figure) | Mean change from baseline in systolic blood pressure |",
   "| F-14-2-2 | User code (a figure) | Kaplan-Meier plot of the time to first dermatologic event (number at risk from T-14-2-2's ARD) |",
   "| F-14-2-3 | Figure (designed) | The same KM curves from the designer's KM template, with a median line added |",
+  "| F-14-2-4 | Figure (designed) | Forest plot of the hazard ratio by subgroup from the figure's own ARD (a Cox model overall and within each subgroup, cards / cardx) |",
   "",
   "The tables are made from one study ARD (programs/ard/), the listing and",
   "the figures from the ADaM data, in the figure style of the company",

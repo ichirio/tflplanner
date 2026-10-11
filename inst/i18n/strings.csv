@@ -2733,3 +2733,6 @@ Show the whole normalized ARD,正規化した ARD をすべて見る
 This report's ARD has not been read yet.,この帳票の ARD はまだ読み込まれていません。
 The normalized ARD: %s (%d rows),正規化した ARD: %s（%d 行）
 All the columns (%d),すべての列（%d）
+Arm compared with the reference (the first),基準群（先頭）と比べる群
+"Added analyses %s to step 1 (remove them there if not wanted): update the ARD, then Preview.",解析 %s を段 1 に追加しました（不要ならそこで削除）。ARD を更新してから Preview してください。
+No analysis set of the study is the flag %s: choose the analysis data's set in step 1.,フラグ %s に当たる解析対象集団が試験にありません。段 1 で解析データの集団を選んでください。
