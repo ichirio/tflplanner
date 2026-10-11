@@ -13,7 +13,8 @@
 # the setup code's lines, with tflspec's values
 .time_unit_lines <- function() {
   d <- tflspec::tfl_time_unit_days()
-  sprintf("%s <- %s", names(d), vapply(unname(d), format, ""))
+  # (as.character: not format(), which follows options(digits))
+  sprintf("%s <- %s", names(d), as.character(unname(d)))
 }
 
 # The values a study's programs use: its programs/study_setup.R's lines
