@@ -238,6 +238,8 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 .rp-greyed { opacity: .45; pointer-events: none; }
 /* a top tab the chosen report has nothing on */
 .nav-link.rp-idle { opacity: .45; }
+/* a step's mark worked out again (a run in the background): not faded */
+[id^='step_mark_'].recalculating { opacity: 1 !important; }
 /* While the server works (opening a study, switching a tab or a report,
    saving) the page takes no clicks: a veil, after 0.4 s so that the
    short updates (the builder's preview, a poll) do not flicker or block. */
@@ -2683,6 +2685,10 @@ app_server <- function(input, output, session, start) {
     shiny::updateSelectInput(session, "target", choices = ch, selected = sel)
   })
   # the list to choose a report from: searched, by section, by state
+  # (the marks a run in the background changed come as run_marks(), put in
+  # place: the list is not drawn again for them; `seq` says which is newer)
+  mark_clock <- new.env()
+  mark_clock$n <- 0
   picker_rows <- shiny::reactive({
     rv$ver
     rv$status_ver
@@ -2692,10 +2698,14 @@ app_server <- function(input, output, session, start) {
     if (is.null(p) || !has_study()) return(.report_rows(new_planner()))
     # the ARD's state as the ARD step has it; the runs' from their files
     # (study_status() writes every program again: slow for a big study)
-    .report_rows(p, tryCatch(ard_state(), error = function(e) NULL),
-                 tryCatch(.report_run_light(shiny::isolate(current_study())),
-                          error = function(e) NULL))
+    d <- .report_rows(p, tryCatch(shiny::isolate(ard_state()), error = function(e) NULL),
+                      tryCatch(.report_run_light(shiny::isolate(current_study())),
+                               error = function(e) NULL))
+    mark_clock$n <- mark_clock$n + 1
+    attr(d, "seq") <- mark_clock$n
+    d
   })
+  run_marks <- shiny::reactiveVal(NULL)
   # -- the review (#288) -----------------------------------------------------
   # One review the whole app reads: the Review tab, the report head's
   # counts, the picker's numbers, the analyses' badge.  The light one --
@@ -2808,7 +2818,7 @@ app_server <- function(input, output, session, start) {
     fixed = stats::setNames(list(t("Study defaults"), t("ALL (every row)")),
                             c(.default_rows, .all_rows)),
     lang = lang, folded = shiny::reactive(identical(input$side, FALSE)),
-    counts = review_counts)
+    counts = review_counts, marks = run_marks)
   # the report list's and the runs' search: DT's own, on a hidden column
   # of the normalized text (the rows keep their numbers)
   shiny::observeEvent(input$outputs_q, .report_dt_set_search(session, "outputs", input$outputs_q))
@@ -6346,6 +6356,9 @@ app_server <- function(input, output, session, start) {
   step_mark <- function(sym, title, cls) {
     shiny::span(class = paste("ms-1", cls), title = title, sym)
   }
+  # (steps 2 and 3 have no mark yet: drawn empty, not left waiting)
+  output$step_mark_content <- shiny::renderUI(NULL)
+  output$step_mark_page <- shiny::renderUI(NULL)
   output$step_mark_codelist <- shiny::renderUI({
     id <- current()
     if (is.null(id) || !has_study()) return(NULL)
@@ -8005,8 +8018,10 @@ app_server <- function(input, output, session, start) {
   # builder is opened -- no new ARD, only the reading (once a report).
   auto_read <- new.env()
   shiny::observe({
-    # (again when a run ends: the ARD it made is read then)
+    # (again when a run ends, or the study ARD's status changes in one: the
+    # ARD it made is read then)
     rv$status_ver
+    ard_state_ver()
     shiny::req(identical(active_page(), "builder"),
                identical(builder_case(), "meta"))
     id <- current()
@@ -9219,6 +9234,7 @@ app_server <- function(input, output, session, start) {
     # what the list shows changed (not a table's cell, say)
     p_list()
     rv$ver
+    rv$status_ver
     p <- shiny::isolate(rv$p)
     empty <- data.frame(output_id = character(), section = character(),
                         batches = character(), type = character(),
@@ -9228,8 +9244,9 @@ app_server <- function(input, output, session, start) {
     o <- p$outputs
     info <- lapply(o$output_id, function(id) report_info(p, id))
     type <- vapply(info, `[[`, "", "type")
-    # the ARD's state as the ARD step has it (worked out once, for both)
-    st <- tryCatch(ard_state(), error = function(e) NULL)
+    # the ARD's state as the ARD step has it (worked out once, for both;
+    # a run in the background does not draw the table again for it)
+    st <- tryCatch(shiny::isolate(ard_state()), error = function(e) NULL)
     ard_of <- if (!is.null(st)) st$state[match(o$output_id, st$output_id)] else
       rep(NA_character_, nrow(o))
     # the datasets the report reads (lower case, as the files are named);
@@ -9896,6 +9913,7 @@ app_server <- function(input, output, session, start) {
   # -- results -------------------------------------------------------------
   status <- shiny::reactive({
     rv$status_ver
+    runs_ver()
     input$status_refresh
     shiny::req(has_study())
     study_status(current_study())
@@ -10200,6 +10218,7 @@ app_server <- function(input, output, session, start) {
   })
   batches <- shiny::reactive({
     rv$status_ver
+    runs_ver()
     shiny::req(has_study())
     list_batches(current_study())
   })
@@ -10238,8 +10257,11 @@ app_server <- function(input, output, session, start) {
   })
   # A run this session did not start, or lost (the app restarted, another
   # session, R): what it writes -- the study ARD's status, a batch's
-  # run.csv, a preview's log -- is watched, and the report list's marks
-  # and the builder's ARD follow it without a reload
+  # run.csv -- is watched, and only what changed follows it, without a
+  # reload and without drawing the page again (#9184): the report list's
+  # marks in place, the ARD's state when the study ARD's status changed
+  # (the builder reads a table's ARD then), the Runs tab when a batch ended
+  runs_ver <- shiny::reactiveVal(0L)
   run_files <- shiny::reactivePoll(3000, session, checkFunc = function() {
     s <- shiny::isolate(rv$study)
     if (is.null(s)) return(NULL)
@@ -10259,11 +10281,34 @@ app_server <- function(input, output, session, start) {
     # the first look at a study is no change
     if (is.null(before) || identical(before, stamp)) return()
     shiny::isolate({
-      rv$status_ver <- rv$status_ver + 1L
-      rv$ard_ver <- rv$ard_ver + 1L
-      ard_state_ver(ard_state_ver() + 1L)
+      # the ARD's state again: while a run goes on, only when the report
+      # chosen has its ARD made or changed (its builder reads it then);
+      # every report's once, when the run has ended
+      ended <- !identical(before[["runs"]], stamp[["runs"]])
+      if (!identical(before[["ard"]], stamp[["ard"]]) || ended) {
+        st <- tryCatch(ard_status(current_study()), error = function(e) NULL)
+        now <- if (!is.null(st)) stats::setNames(paste(st$state, st$built), st$output_id)
+        was <- run_files_seen[[paste0(key, "|ard")]]
+        run_files_seen[[paste0(key, "|ard")]] <- now
+        id <- current() %||% ""
+        if (ended || !identical(now[id], was[id])) ard_state_ver(ard_state_ver() + 1L)
+      }
+      if (ended) runs_ver(runs_ver() + 1L)
+      p <- rv$p
+      if (!is.null(p)) {
+        m <- tryCatch(.report_marks(p, current_study()), error = function(e) NULL)
+        old <- run_marks()
+        if (!is.null(m) && !identical(m, old$marks)) {
+          mark_clock$n <- mark_clock$n + 1
+          run_marks(list(seq = mark_clock$n, marks = m))
+        }
+      }
     })
   })
+  # (for the tests: what a run in the background changes, and what it must not)
+  session$userData$run_end <- list(marks = run_marks, rows = picker_rows,
+                                   view = outputs_view, runs_ver = runs_ver,
+                                   ard_state_ver = ard_state_ver)
   shiny::observe({
     px <- rv$job
     if (is.null(px)) return()
