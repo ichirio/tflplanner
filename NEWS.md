@@ -1,5 +1,18 @@
 # tflplanner (development version)
 
+- **The report marks follow a run report by report again** (the user's
+  report on 0.0.2.9186).  Since 0.0.2.9184 the marks of a run in the
+  background changed only when the run had ended: a report's mark needs
+  its file, and the files were not watched.  The reports' output folder is
+  watched now too (each report program writes its file once, so no churn):
+  each mark turns as its report is made, still in place, the page never
+  greyed.
+- **A time-unit step in days says why it writes no line** (the user's
+  report): the time is in days already (ADTTE's `AVAL`), so step 1's "Code
+  of this piece" said "(nothing yet)"; it says so now, and months, weeks or
+  years write the division (`mutate(AVAL = AVAL / 30.4375)`).  The notes
+  of that pane are in the app's language.
+
 - **The page patterns edited in a dialog** (the page-patterns design,
   part C).  "Edit the patterns..." on step 3 opens Standard and each
   pattern on the same form as a report's page: a pattern's values marked

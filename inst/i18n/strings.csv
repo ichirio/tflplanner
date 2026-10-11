@@ -2873,3 +2873,5 @@ Add a line,行を足す
 Add a line to this pattern,この型に行を足す
 Remove the line,行を削除
 Remove the token,トークンを削除
+"(no line: the time is in days already; months, weeks or years divide it)",（行なし：時間はもう日単位です。月・週・年にすると割り算の行が入ります）
+(nothing yet: this piece writes no line on its own),（まだ何もありません：この部品だけで書く行はありません）
