@@ -1,9 +1,14 @@
 # The days in a week, a month and a year: the figure programs divide a time
 # in days by these named constants (tflspec writes
-# `mutate(AVAL = AVAL / .env$days_per_month)`).  A company sets them once,
+# `mutate(AVAL = AVAL / days_per_month)`; no data column has such a name:
+# the review says so, rule D03).  A company sets them once,
 # in its standards' setup code (copied into each new study's
 # programs/study_setup.R, part 1); a study without them gets tflspec's
 # values (its figure setup defines a constant only when it is not defined).
+
+# the names of the programs' constants: no data column may have one
+# (review rule D03)
+.program_constants <- function() names(tflspec::tfl_time_unit_days())
 
 # the setup code's lines, with tflspec's values
 .time_unit_lines <- function() {

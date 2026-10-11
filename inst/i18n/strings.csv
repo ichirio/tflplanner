@@ -2873,3 +2873,5 @@ Add a line,行を足す
 Add a line to this pattern,この型に行を足す
 Remove the line,行を削除
 Remove the token,トークンを削除
+"The dataset %s has a column %s, the name of a constant of the programs (the days in a week, a month, a year).",データセット %s に列 %s があります。プログラムの定数（1 週・1 か月・1 年の日数）と同じ名前です。
+Rename the column in the data: a program would read it instead of the constant.,データの列名を変えてください：プログラムが定数の代わりにその列を読んでしまいます。

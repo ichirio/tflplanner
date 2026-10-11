@@ -33,3 +33,24 @@ test_that("the preview divides by the study's value", {
   # divided by 1: the same times as in days
   expect_identical(r$objects$df$head$AVAL, days$objects$df$head$AVAL)
 })
+
+test_that("a dataset column named like a program constant is an error of the review (D03)", {
+  local_home()
+  s <- suppressMessages(create_study("S1", planner = add_output(new_planner(), "T1")))
+  dir.create(file.path(s$path, "data", "adam"), recursive = TRUE, showWarnings = FALSE)
+  # the clash the programs' bare name would meet: AVAL / days_per_month
+  saveRDS(data.frame(USUBJID = 1:2, AVAL = c(30, 60), days_per_month = 1),
+          file.path(s$path, "data", "adam", "adtte.rds"))
+  saveRDS(data.frame(USUBJID = 1:2, SAFFL = "Y"), file.path(s$path, "data", "adam", "adsl.rds"))
+  s$planner$ard$datasets <- .normalize_ard_sheet(data.frame(
+    dataset = c("ADSL", "ADTTE"), path = c("data/adam/adsl.rds", "data/adam/adtte.rds")), "datasets")
+  r <- study_review(s, data = "read", lang = "en")
+  d3 <- r[r$rule == "D03", , drop = FALSE]
+  expect_identical(nrow(d3), 1L)
+  expect_identical(d3$level, "error")
+  expect_match(d3$message, "ADTTE has a column days_per_month", fixed = TRUE)
+  expect_match(d3$hint, "Rename the column", fixed = TRUE)
+  # and none when no column clashes
+  saveRDS(data.frame(USUBJID = 1:2, AVAL = c(30, 60)), file.path(s$path, "data", "adam", "adtte.rds"))
+  expect_false("D03" %in% study_review(s, data = "read", lang = "en")$rule)
+})
