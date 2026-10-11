@@ -276,6 +276,8 @@ print.tflplanner <- function(x, ...) {
 #' @export
 output_ids <- function(x) {
   seen <- unlist(lapply(x$sheets, `[[`, "output_id"), use.names = FALSE)
+  # (a page pattern's rows, @<name>, are not a report's)
+  seen <- seen[!.is_pattern_id(seen)]
   # an output may be defined in the ARD before it is on the report list
   unique(c(x$outputs$output_id, stats::na.omit(seen),
            stats::na.omit(x$ard$analyses$output_id)))
@@ -348,6 +350,10 @@ read_planner <- function(path) {
   if (!is.character(id) || length(id) != 1L || is.na(id) ||
       !nzchar(trimws(id))) {
     stop("An output_id is a single non-blank string.", call. = FALSE)
+  }
+  if (startsWith(trimws(id), "@")) {
+    stop("output_id '", id, "': an @ starts a page pattern's name, not a report's ID.",
+         call. = FALSE)
   }
   if (grepl("[\\\\/:*?\"<>|]", id)) {
     stop("output_id '", id, "' has a character a file name cannot hold.",

@@ -36,7 +36,8 @@
 #                      estimates (median, event-free probability by day);
 #                      its ARD also has the hazard ratios of a Cox model,
 #                      which the table does not print (F-14-2-3 does)
-#   T-14-3-1  Table    TEAEs by SOC / PT, frequency descending
+#   T-14-3-1  Table    TEAEs by SOC / PT, frequency descending,
+#                      on the Compact page pattern (A4, 8 pt, narrow margins)
 #   L-16-2-7  Listing  Severe treatment-emergent adverse events
 #   F-14-2-1  User code  Mean change from baseline in systolic blood pressure
 #   F-14-2-2  User code  Kaplan-Meier plot of the time to first dermatologic
@@ -463,13 +464,21 @@ sheets$report <- tbl(
   # its ARD is T-14-2-2's: it prints the medians that table has
   list(output_id = "F-14-2-3", type = "figure", ard_source = "table:T-14-2-2"),
   # its ARD is its own: the hazard ratios by subgroup (#293 phase 6)
-  list(output_id = "F-14-2-4", type = "figure", ard_source = "own"))
+  list(output_id = "F-14-2-4", type = "figure", ard_source = "own"),
+  # the long AE table on the study's Compact page (its pattern, below)
+  list(output_id = "T-14-3-1", pattern = "Compact"),
+  # a page pattern: only what differs from Standard (the blank rows)
+  list(output_id = "@Compact", note = "page pattern: A4, smaller type, narrower margins"))
 sheets$page <- tbl(
   list(output_id = "L-16-2-7", orientation = "landscape"),
   list(output_id = "F-14-2-1", orientation = "landscape"),
   list(output_id = "F-14-2-2", orientation = "landscape"),
   list(output_id = "F-14-2-3", orientation = "landscape"),
-  list(output_id = "F-14-2-4", orientation = "landscape"))
+  list(output_id = "F-14-2-4", orientation = "landscape"),
+  # the Compact pattern: A4, 8 pt, half-inch margins
+  list(output_id = "@Compact", paper_size = "A4", margin_top_in = "0.5",
+       margin_bottom_in = "0.5", margin_left_in = "0.5", margin_right_in = "0.5",
+       font_size_half_points = "16"))
 sheets$header <- tbl(
   list(line = "1", left = "Sample Pharma (tflplanner sample)", right = "DRAFT"),
   list(line = "2", left = "Protocol: SAMPLE-01 (CDISC pilot data)",

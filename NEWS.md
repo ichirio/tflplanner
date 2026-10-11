@@ -1,5 +1,44 @@
 # tflplanner (development version)
 
+- **The page patterns edited in a dialog** (the page-patterns design,
+  part C).  "Edit the patterns..." on step 3 opens Standard and each
+  pattern on the same form as a report's page: a pattern's values marked
+  "this pattern" with "Back to Standard", Standard's own with "Clear".
+  New pattern (from Standard, no difference), Rename (the reports' choice
+  follows), Remove (refused while a report uses it, naming them);
+  `add_page_pattern()`, `rename_page_pattern()`, `remove_page_pattern()`.
+  The sample has one: **Compact** (A4, 8 pt, half-inch margins), used by
+  T-14-3-1, the long AE table.
+
+- **Titles and footnotes on step 3's form** (the page-patterns design,
+  part B).  The titles card has the heading -- the report's
+  `{OUTPUT_TITLE}`, shown when its header prints one, as the sample's and
+  the company standards' do -- and the titles sheet's lines; the
+  footnotes card the footnotes' lines.  Each line as the header's and
+  footer's: the report's own to edit, its pattern's or Standard's to
+  change here or leave out here.  Insert buttons put a token -- the
+  report's (`{OUTPUT_LABEL}`, `{OUTPUT_TITLE}`, `{OUTPUT_POPULATION}`),
+  the study's, rtfreporter's (`{PAGE}`, `{PROGRAM}`, `{DATETIME}` ...) --
+  into the field last clicked, at the cursor.
+
+- **Page patterns, and step 3 as a form** (the page-patterns design,
+  part A; `_archive/tflplanner-page-patterns-design.md`).  A study keeps
+  named page patterns besides Standard -- rows of the report half's
+  sheets whose `output_id` is `@` and a name (`@Compact`), saying only
+  what differs from Standard (tflspec >= 0.0.24.9089 reads them) -- and a
+  report chooses one in step 3 ("Page pattern"; the new `report$pattern`
+  column).  Step 3 is a form now: the paper, margins and font, the
+  header and footer lines and the tokens, each value with where it comes
+  from -- this report, its pattern, Standard -- and "Back to the pattern"
+  where the report has its own.  A value the pattern already gives is no
+  difference (no own cell is written); a line of the pattern's can be
+  changed here or left out here (`(none)`), or added for this report.
+  The form writes only the report's own rows; the sheets themselves are
+  under "Details: edit the sheets" (the same rows).  A pattern's rows
+  (`@...`) are not a report (`output_ids()`); an `@` starts no report's
+  ID.  Patterns are written in the sheets for now; editing them in a
+  dialog, and titles / footnotes as a form, come next.
+
 - **A TOC taken in by the company's rules** (#299, phases 1 and 2 of its
   plan).  The company standards keep one rule set or several for TOCs:
   `toc_map` gains a `rule_set` column (blank: `standard`) and the new

@@ -761,16 +761,25 @@ app_ui <- function(lang = "en") {
   step_page <- shiny::div(
     class = "mt-2",
     pane_head(t("This report's page"), t("The page of the report chosen on the left: its titles, footnotes, its own header or footer, and tokens of your own ({STUDY} ...). Study defaults = every report's.")),
-    shiny::uiOutput("report_font"),
+    shiny::tags$style(shiny::HTML(.page_form_css)),
+    shiny::tags$script(shiny::HTML(.page_form_js)),
+    # its page pattern (Standard, Compact ...): what it inherits
+    shiny::uiOutput("page_pattern_bar"),
     # the input on the left -- the page's sheets, edited -- and on the right
     # what they make: the first page, the program, the rows as they are
     # written (SPEC, read only: the grid on the left is where they change)
     bslib::layout_columns(
       col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
       shiny::div(
-        grid_note,
-        do.call(bslib::navset_card_underline,
-                c(list(id = "page_sheet"), lapply(report_sheets(), sheet_panel)))),
+        # the page as a form: each value with where it comes from
+        shiny::uiOutput("page_form"),
+        # the sheets themselves, the same rows
+        shiny::tags$details(
+          class = "rp-help mt-2", id = "page_sheets_box",
+          shiny::tags$summary(t("Details: edit the sheets")),
+          grid_note,
+          do.call(bslib::navset_card_underline,
+                  c(list(id = "page_sheet"), lapply(report_sheets(), sheet_panel))))),
       # (min-width 0: a grid item may then be narrower than the page it
       # holds, which scrolls inside it at its actual size)
       shiny::div(style = "min-width: 0", result_tabs_ui(
@@ -3105,10 +3114,14 @@ app_server <- function(input, output, session, start) {
   })
 
   # -- sheet grids -------------------------------------------------------
+  # (the report sheets' grids again when step 3's form writes them: a grid
+  # drawn before cannot write over it)
+  page_ver <- shiny::reactiveVal(0L)
   for (sheet in setdiff(c(table_sheets(), report_sheets()), "codelists")) local({
     sh <- sheet
     out_id <- paste0("hot_", sh)
     key <- shiny::reactive(paste(sh, input$target, rv$ver, rv$ard_ver,
+                                 if (sh %in% report_sheets()) page_ver(),
                                  sep = "|"))
     output[[out_id]] <- rhandsontable::renderRHandsontable({
       shiny::req(has_study())
@@ -9726,6 +9739,207 @@ app_server <- function(input, output, session, start) {
   # tab, the page sheet's study row), shown greyed; a value is the report's
   # own row.  Only a field changed from what was drawn is written.
   rf_drawn <- new.env()
+  # -- step 3: the page pattern and the form (R/page_patterns.R, R/page_form.R)
+  # the report half's sheets, a value that changes only when they do (an
+  # edit of a table's cell does not draw the form again)
+  page_sheets <- shiny::reactiveVal(NULL)
+  shiny::observe({
+    s <- if (!is.null(rv$p)) rv$p$sheets[.pattern_sheets]
+    if (!identical(s, shiny::isolate(page_sheets()))) page_sheets(s)
+  })
+  page_report <- shiny::reactive({
+    id <- target()
+    if (is.null(rv$p) || is.na(id) || !id %in% rv$p$outputs$output_id) NULL else id
+  })
+  # the patterns' names: the bar is drawn again only when they change (or
+  # the report does) -- a select drawn again while one edits would send its
+  # first choice and change the report's pattern
+  pat_names <- shiny::reactiveVal(character())
+  shiny::observe({
+    page_sheets()
+    v <- if (!is.null(rv$p)) page_patterns(shiny::isolate(rv$p)) else character()
+    if (!identical(v, shiny::isolate(pat_names()))) pat_names(v)
+  })
+  # (the report, passed on only when it changes: page_report() is worked out
+  # again on every edit of the planner)
+  page_report_now <- shiny::reactiveVal(NULL)
+  shiny::observe({
+    id <- page_report()
+    if (!identical(id, shiny::isolate(page_report_now()))) page_report_now(id)
+  })
+  output$page_pattern_bar <- shiny::renderUI({
+    pat_names()
+    id <- page_report_now()
+    if (is.null(id)) {
+      return(shiny::p(class = "small text-muted",
+                      t("Standard (every report's page) and the page patterns are the sheets' blank and @<name> rows: Details, below.")))
+    }
+    p <- shiny::isolate(rv$p)
+    pats <- page_patterns(p)
+    now <- report_pattern(p, id)
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-center mb-2",
+      shiny::tags$label(`for` = "page_pattern", class = "small mb-0",
+                        with_tip(t("Page pattern"), t("The set of page defaults this report starts from: Standard (every report's) or a pattern of the study (Compact for the PK tables ...), which changes only what differs from Standard. What this report changes goes over it."))),
+      shiny::div(style = "width: 14rem", shiny::selectInput(
+        "page_pattern", NULL, width = "100%", selectize = FALSE,
+        choices = c(stats::setNames("Standard", t("Standard")), stats::setNames(pats, pats)),
+        selected = if (is.na(now)) "Standard" else now)),
+      .btn("pat_edit", t("Edit the patterns..."), class = "btn-sm btn-outline-secondary"),
+      if (!length(pats)) shiny::span(class = "small text-muted",
+        t("(no other pattern yet: Edit the patterns... makes one)")))
+  })
+  # -- the pattern dialog: Standard and each pattern, on the same form
+  pat_now <- shiny::reactiveVal("Standard")
+  shiny::observeEvent(input$pat_edit, {
+    id <- page_report()
+    cur <- if (!is.null(id)) report_pattern(rv$p, id) else NA
+    pat_now(if (is.na(cur)) "Standard" else cur)
+    shiny::showModal(shiny::modalDialog(
+      title = t("Page patterns"), size = "xl", easyClose = TRUE,
+      shiny::uiOutput("pat_head"),
+      shiny::uiOutput("pat_form"),
+      footer = shiny::modalButton(t("Close"))))
+  })
+  # (drawn again when the patterns or the one shown change, not on an edit:
+  # its select would send its first choice)
+  output$pat_head <- shiny::renderUI({
+    pats <- pat_names()
+    now <- pat_now()
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-end mb-2",
+      shiny::div(style = "width: 14rem", shiny::selectInput(
+        "pat_pick", t("Pattern"), width = "100%", selected = now, selectize = FALSE,
+        choices = c(stats::setNames("Standard", t("Standard")), stats::setNames(pats, pats)))),
+      shiny::textInput("pat_name", t("Name"), placeholder = "Compact", width = "12rem"),
+      .btn("pat_new", t("New pattern"), class = "btn-sm btn-outline-primary mb-3"),
+      if (!identical(now, "Standard")) shiny::tagList(
+        .btn("pat_rename", t("Rename"), class = "btn-sm btn-outline-secondary mb-3"),
+        .btn("pat_remove", t("Remove"), class = "btn-sm btn-outline-danger mb-3")),
+      shiny::uiOutput("pat_count", inline = TRUE),
+      shiny::p(class = "small text-muted w-100 mb-0",
+               if (identical(now, "Standard")) t("Standard: every report's page, unless its pattern or the report changes it.")
+               else sprintf(t("%s: only what differs from Standard; each value says where it comes from."), now)))
+  })
+  output$pat_count <- shiny::renderUI({
+    page_sheets()
+    p <- shiny::isolate(rv$p)
+    now <- pat_now()
+    n <- if (identical(now, "Standard")) {
+      length(setdiff(p$outputs$output_id, unlist(lapply(page_patterns(p), pattern_reports, x = p))))
+    } else length(pattern_reports(p, now))
+    shiny::span(class = "small text-muted mb-3", sprintf(t("Reports using it: %d"), n))
+  })
+  shiny::observeEvent(input$pat_pick, {
+    if (input$pat_pick %in% c("Standard", pat_names())) pat_now(input$pat_pick)
+  }, ignoreInit = TRUE)
+  output$pat_form <- shiny::renderUI({
+    page_sheets()
+    now <- pat_now()
+    id <- if (identical(now, "Standard")) NA_character_ else paste0("@", now)
+    .page_form_ui(shiny::isolate(rv$p), id, t)
+  })
+  shiny::observeEvent(input$pat_new, {
+    p2 <- guarded(add_page_pattern(rv$p, input$pat_name))
+    if (is.null(p2)) return()
+    nm <- trimws(sub("^@", "", input$pat_name))
+    page_write(p2)
+    pat_now(nm)
+    shiny::updateTextInput(session, "pat_name", value = "")
+  })
+  shiny::observeEvent(input$pat_rename, {
+    now <- pat_now()
+    p2 <- guarded(rename_page_pattern(rv$p, now, input$pat_name))
+    if (is.null(p2)) return()
+    page_write(p2)
+    pat_now(trimws(sub("^@", "", input$pat_name)))
+    shiny::updateTextInput(session, "pat_name", value = "")
+  })
+  shiny::observeEvent(input$pat_remove, {
+    p2 <- guarded(remove_page_pattern(rv$p, pat_now()))
+    if (is.null(p2)) return()
+    page_write(p2)
+    pat_now("Standard")
+  })
+  shiny::observeEvent(input$page_pattern, {
+    id <- page_report()
+    shiny::req(id)
+    v <- input$page_pattern
+    now <- report_pattern(rv$p, id)
+    if (identical(v, if (is.na(now)) "Standard" else now)) return()
+    p2 <- guarded(set_report_pattern(rv$p, id, v))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    page_ver(page_ver() + 1L)
+  }, ignoreInit = TRUE)
+  output$page_form <- shiny::renderUI({
+    page_sheets()
+    id <- page_report()
+    if (is.null(id)) return(NULL)
+    .page_form_ui(shiny::isolate(rv$p), id, t)
+  })
+  page_write <- function(p2) {
+    if (is.null(p2)) return()
+    rv$p <- p2
+    page_ver(page_ver() + 1L)
+  }
+  # the form's target: the report chosen, or -- in the pattern dialog -- a
+  # pattern (@name) or Standard
+  pg_id <- function(v) {
+    if (is.null(v)) return(page_report())
+    id <- .pg_target_id(v)
+    if (!is.na(id) && !.is_pattern_id(id) && !identical(id, page_report())) return(NULL)
+    id
+  }
+  shiny::observeEvent(input$pg_edit, {
+    e <- input$pg_edit
+    id <- pg_id(e$target)
+    shiny::req(!is.null(id))
+    v <- trimws(e$value %||% "")
+    if (!nzchar(v)) v <- NA_character_
+    p <- rv$p
+    if (identical(e$kind, "cell")) {
+      if (identical(e$col, "font_size_half_points") && !is.na(v)) {
+        hp <- .half_points(v)
+        if (is.na(hp)) return(notify(t("The size is a number of points (9, 10 ...)."), "warning"))
+        v <- hp
+      }
+      page_write(guarded(set_page_cell(p, e$sheet, e$col, id, v)))
+    } else if (identical(e$kind, "line")) {
+      own <- sheet_rows(p, e$sheet, id)
+      r <- own[own$line %in% e$line, , drop = FALSE]
+      parts <- list(left = NA_character_, center = NA_character_, right = NA_character_)
+      if (nrow(r)) for (k in names(parts)) parts[[k]] <- r[[k]][1L]
+      parts[[e$part]] <- v
+      page_write(guarded(set_page_line(p, e$sheet, id, e$line, parts$left, parts$center, parts$right)))
+    } else if (identical(e$kind, "token")) {
+      page_write(guarded(set_page_token(p, id, e$name, if (is.na(v)) "" else v)))
+    }
+  })
+  shiny::observeEvent(input$pg_act, {
+    a <- input$pg_act
+    id <- pg_id(a$target)
+    shiny::req(!is.null(id))
+    p <- rv$p
+    page_write(guarded(switch(a$act,
+      reset = set_page_cell(p, a$sheet, a$col, id, NA_character_),
+      # a line of the pattern's (or Standard's) made the report's own, to change
+      own = {
+        r <- page_lines_from(p, a$sheet, id)
+        r <- r[r$line %in% a$line, , drop = FALSE]
+        set_page_line(p, a$sheet, id, a$line, r$left, r$center, r$right)
+      },
+      omit = omit_page_line(p, a$sheet, id, a$line),
+      drop = drop_page_line(p, a$sheet, id, a$line),
+      addline = set_page_line(p, a$sheet, id, .page_new_line(p, a$sheet, id), left = ""),
+      token_own = {
+        r <- page_tokens_from(p, id)
+        set_page_token(p, id, a$name, r$value[r$name %in% a$name][1L] %||% "")
+      },
+      token_reset = set_page_token(p, id, a$name, NA_character_),
+      NULL)))
+  })
+
   output$report_font <- shiny::renderUI({
     rv$ver
     id <- target()

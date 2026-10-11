@@ -641,11 +641,12 @@ header_token_labels <- function(choices, tokens = NULL) {
 # The lines of a report's header / titles / footnotes / footer: its own,
 # and the study defaults for the lines it has not (by line number).
 .page_lines <- function(x, sheet, output_id) {
-  own <- sheet_rows(x, sheet, output_id)
-  inh <- inherited_rows(x, sheet, output_id)
-  inh <- inh[!inh$line %in% own$line, , drop = FALSE]
-  d <- rbind(own, inh)
-  d[order(suppressWarnings(as.numeric(d$line))), , drop = FALSE]
+  # the report's own over its pattern's over Standard's; a "(none)" line
+  # prints nothing (the line of that number below is left out)
+  d <- page_lines_from(x, sheet, output_id)
+  d <- d[!d$omitted, setdiff(names(d), c("from", "omitted")), drop = FALSE]
+  rownames(d) <- NULL
+  d
 }
 
 # A page's sample in HTML: each line in three parts (left, centre, right),
