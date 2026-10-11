@@ -39,6 +39,9 @@ test_that("the data steps are step 1's, the settings and layers step 2's", {
     expect_false(grepl("Choose a data step", output$pd_form_data$html, fixed = TRUE))
     expect_true(nzchar(output$pd_piece_code_data))
     expect_identical(output$pd_piece_code, "")
+    # the code box only with the piece's form, not where nothing is chosen
+    expect_match(output$pd_form_data$html, "pd_piece_code_data", fixed = TRUE)
+    expect_false(grepl("pd_piece_code", output$pd_form$html, fixed = TRUE))
     # a data step added in step 1
     n0 <- length(fig_design(rv$p, "F1")$data)
     session$setInputs(pd_add_data = "filter", pd_addbtn_data = 1)

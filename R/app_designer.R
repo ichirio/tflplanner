@@ -431,10 +431,7 @@
                    t("The data steps are in step 1 (Data)."))),
       bslib::card(
         bslib::card_header(t("Edit")),
-        shiny::uiOutput("pd_form"),
-        shiny::h6(class = "mt-3", with_tip(t("Code of this piece"),
-                                           t("What this piece writes into the program; it follows every change."))),
-        shiny::div(class = "rp-code pd-piece-code", shiny::verbatimTextOutput("pd_piece_code"))),
+        shiny::uiOutput("pd_form")),
       bslib::card(
         full_screen = TRUE,
         bslib::card_header(shiny::div(
@@ -849,11 +846,7 @@
             shiny::div(style = "flex: 1", shiny::selectInput(
               "pd_add_data", NULL, width = "100%", pieces_of("data"))),
             .btn("pd_addbtn_data", t("Add"), class = "btn-sm btn-outline-primary"))),
-        shiny::div(
-          shiny::uiOutput("pd_form_data"),
-          shiny::h6(class = "mt-3", with_tip(t("Code of this piece"),
-                                             t("What this piece writes into the program; it follows every change."))),
-          shiny::div(class = "rp-code pd-piece-code", shiny::verbatimTextOutput("pd_piece_code_data")))),
+        shiny::uiOutput("pd_form_data")),
       shiny::div(
         class = "border-top pt-2 mt-2",
         shiny::div(
@@ -941,8 +934,12 @@
     p <- x[[s$i]]
     list(kind = p$step %||% p$layer, p = p)
   }
-  # the form of the chosen piece, in the step it belongs to; the other
-  # step's says where to choose one
+  # the form of the chosen piece, with the code it makes, in the step it
+  # belongs to; the other step's says where to choose one (no code box)
+  code_box <- function(id) shiny::tagList(
+    shiny::h6(class = "mt-3", with_tip(t("Code of this piece"),
+                                       t("What this piece writes into the program; it follows every change."))),
+    shiny::div(class = "rp-code pd-piece-code", shiny::verbatimTextOutput(id)))
   output$pd_form <- shiny::renderUI({
     form_ver()
     fig_id()
@@ -950,7 +947,7 @@
       return(shiny::p(class = "small text-muted",
                       t("Choose the figure settings or a layer on the left.")))
     }
-    form_ui()
+    shiny::tagList(form_ui(), code_box("pd_piece_code"))
   })
   output$pd_form_data <- shiny::renderUI({
     form_ver()
@@ -959,7 +956,7 @@
       return(shiny::p(class = "small text-muted",
                       t("Choose a data step on the left, or add one.")))
     }
-    form_ui()
+    shiny::tagList(form_ui(), code_box("pd_piece_code_data"))
   })
   form_ui <- function() {
     form_on_page$id <- shiny::isolate(current())
