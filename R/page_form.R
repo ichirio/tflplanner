@@ -165,7 +165,7 @@ $(document).on('shiny:value', function(e) {
       return(shiny::tags$tr(
         shiny::tags$td(r$line),
         shiny::tags$td(colspan = 3, class = "pg-omit", t("(left out in this report)")),
-        shiny::tags$td(shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t))),
+        shiny::tags$td(class = "text-nowrap", shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t))),
         shiny::tags$td(btn("drop", r$line, t("Print it again")))))
     }
     shiny::tags$tr(
@@ -173,10 +173,11 @@ $(document).on('shiny:value', function(e) {
       shiny::tags$td(r$line),
       shiny::tags$td(cell(r, "left", own)), shiny::tags$td(cell(r, "center", own)),
       shiny::tags$td(cell(r, "right", own)),
-      shiny::tags$td(if (own) shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t))
+      shiny::tags$td(class = "text-nowrap",
+                     if (own) shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t))
                      else shiny::span(class = "pg-from", .page_from_label(r$from, pattern, t))),
       shiny::tags$td(class = "text-nowrap",
-        if (own) btn("drop", r$line, .pg_back_word(id, pattern, t))
+        if (own) btn("drop", r$line, if (is.na(id)) t("Remove the line") else .pg_back_word(id, pattern, t))
         else shiny::tagList(btn("own", r$line, t("Change here")),
                             btn("omit", r$line, t("Leave out here")))))
   })
@@ -212,10 +213,11 @@ $(document).on('shiny:value', function(e) {
           type = "text", class = "pg-in form-control form-control-sm", value = v,
           `data-kind` = "token", `data-name` = r$name, `data-key` = paste("token", r$name, sep = ":"))
           else shiny::span(v)),
-        shiny::tags$td(if (own) shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t))
+        shiny::tags$td(class = "text-nowrap",
+                       if (own) shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t))
                        else shiny::span(class = "pg-from", .page_from_label(r$from, pattern, t))),
         shiny::tags$td(class = "text-nowrap",
-          if (own) btn("token_reset", r$name, .pg_back_word(id, pattern, t))
+          if (own) btn("token_reset", r$name, if (is.na(id)) t("Remove the token") else .pg_back_word(id, pattern, t))
           else btn("token_own", r$name, t("Change here"))))
     })))
 }
