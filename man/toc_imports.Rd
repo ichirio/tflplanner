@@ -3,11 +3,17 @@
 \name{toc_imports}
 \alias{toc_imports}
 \alias{toc_last}
+\alias{toc_shell_links}
+\alias{toc_profile}
 \title{TOCs taken into a study}
 \usage{
 toc_imports(study)
 
 toc_last(study)
+
+toc_shell_links(study)
+
+toc_profile(study)
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
@@ -18,6 +24,14 @@ A data frame; a list or \code{NULL}.
 \description{
 \code{toc_imports()}: the record of every TOC taken in (\code{input/toc/imports.csv}:
 \code{import_id}, \code{file}, \code{original}, \code{imported}, \code{user}, \code{md5}, \code{reports},
-\code{new}, \code{changed}, \code{missing}).  \code{toc_last()}: what the last TOC taken in
-said, by report (\code{\link[=toc_snapshot]{toc_snapshot()}}), or \code{NULL}.
+\code{new}, \code{changed}, \code{missing}; for one taken in by the company's rules
+also \code{rule_set}, \code{standards_md5} -- the company standards' md5 then,
+blank for the built-in ones --, \code{sources}, \code{unread}, \code{warnings}; several
+files \code{|} between them).  \code{toc_last()}: what the last TOC taken in
+said, by report (\code{\link[=toc_snapshot]{toc_snapshot()}}), or \code{NULL}.  \code{toc_shell_links()}:
+each report's shell sheet (\code{input/toc/shells.csv}: \code{output_id}, \code{file}
+-- the copy in \code{input/toc} --, \code{original}, \code{sheet}, \code{phase}, \code{md5},
+\code{import_id}).  \code{toc_profile()}: what the study's last import chose
+(\code{input/toc/profile.yml}: the rule set, the id rule, the overrides, each
+source's sheet and header row), or \code{NULL}.
 }

@@ -155,6 +155,16 @@ reference:
       - toc_populations
       - toc_snapshot
       - toc_imports
+  - title: A TOC taken in by the company's rules
+    contents:
+      - toc_rules
+      - toc_source
+      - toc_import_read
+      - toc_id_candidates
+      - toc_expand_phases
+      - toc_link_shells
+      - toc_batches
+      - toc_apply_extras
   - title: Programs and runs
     contents:
       - data_lines
