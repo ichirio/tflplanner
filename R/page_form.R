@@ -111,6 +111,7 @@ $(document).on('shiny:value', function(e) {
 .pg-lines td.pg-src { white-space: normal; max-width: 8rem; line-height: 1.2; }
 .pg-tokens { width: 100%; }
 .pg-tokens td.pg-val { width: 100%; }
+.pg-tokens td.pg-val input { min-width: 12rem; }
 "
 
 # one field of a one-row sheet: its own value in the input, the value it
