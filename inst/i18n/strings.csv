@@ -1578,7 +1578,7 @@ Choose the column holding the report IDs.,帳票 ID の列を選んでくださ�
 The TOC cannot be read: %s,TOC を読めません: %s
 Title line,タイトル
 Footnote line,脚注
-Guessed from the ID: check it,ID から推測しました。確かめてください
+Guessed from the ID or the title: check it,ID やタイトルから推測しました。確かめてください
 (the TOC says %s: not changed),（TOC では %s。変えません）
 Kept: delete it yourself if it is no longer needed.,消さずに残します。要らなければ自分で削除してください。
 Use the TOC's text,TOC の文にする
@@ -1610,7 +1610,7 @@ added here: moves after the TOC's lines,ここで足した行。TOC の行の後
 %d heading rows (no report ID) are skipped.,帳票 ID の無い見出しの行 %d 行を飛ばしました。
 %d lines edited here are kept: the TOC did not change them.,ここで直した行 %d 行は、TOC が変わっていないのでそのままにします。
 Show the reports with no change,変更なしの帳票も表示
-* = the type is guessed from the ID: check it before taking it in.,* = 種別は ID から推測しました。取り込む前に確かめてください。
+* = the type is guessed from the ID or the title: check it before taking it in.,* = 種別は ID やタイトルから推測しました。取り込む前に確かめてください。
 %d lines edited here were kept instead of the TOC's text.,ここで直した行 %d 行は、TOC の文にせずそのままにしました。
 New reports: %s. Make their content from the list's buttons.,新しい帳票: %s。一覧のボタンから中身を作ってください。
 it does not give %s,宣言した統計量 %s を出していません
@@ -2694,6 +2694,66 @@ the page,ページ
 (the pages and the analysis set have the same numbers),（ページと解析対象集団は同じ数）
 "The pages and the analysis set have different numbers: choose which one {n} says (until then, making the report warns).",ページと解析対象集団で数が違います。{n} にどちらを使うか選んでください（選ぶまで、帳票を作るときに警告が出ます）。
 The numbers are not known yet: the preview has not been made.,数はまだわかりません（プレビューが作られていません）。
+No column for %s in %s: no report can be read.,%2$s に %1$s の列がありません：帳票を読めません。
+"No report ID can be made in %s: no ID column, and the titles do not start with one (Table 14.1.1).",%s では帳票 ID を作れません：ID の列がなく、タイトルも番号（Table 14.1.1）で始まっていません。
+Report ID %s has a character a file name cannot hold.,帳票 ID %s にはファイル名に使えない文字があります。
+Row %s has no report ID: not taken in.,%s 行目に帳票 ID がありません：取り込みません。
+Row %s (%s) has no title: not taken in.,%s 行目（%s）にタイトルがありません：取り込みません。
+Row %s: phase value %s is not in the rules (%s): not taken in.,%s 行目：相の値 %s はルール（%s）にありません：取り込みません。
+%s has no SAP number.,%s に SAP 番号がありません。
+SAP number %s is on more than one report: %s.,SAP 番号 %s が複数の帳票にあります：%s。
+No shell sheet for %s.,%s のシェルのシートがありません。
+Shell sheet %s is linked to no report.,シェルのシート %s はどの帳票にも結び付いていません。
+%s is flagged for %s but is not on the sheet %s.,%s は %s の印がありますが、シート %s にありません。
+%s is on the sheet %s but is not flagged for %s.,%s はシート %s にありますが、%s の印がありません。
+Sheets %s look like the TOC in %s: %s was taken (more rows).,%2$s では %1$s が TOC のように見えます：%3$s を使いました（行が多いため）。
+"The rule set names %s, but the TOC has no column for it: skipped.",ルールセットには %s がありますが、TOC にその列がありません：使いません。
+"TOC files (xlsx, xls, csv): the TFL workbook, and the listing workbook when it is another",TOC のファイル（xlsx、xls、csv）：TFL のブックと、別にあれば Listing のブック
+found by its name,名前で見つけました
+most column names matched (%d),列名が最も多く一致（%d）
+most rows of the sheets that look like the TOC,TOC に見えるシートのうち行が最も多い
+as the last time,前回と同じ
+chosen here,ここで選択
+Sources,取り込むファイル
+No TOC sheet: shells only. Their links are made from the TOC's file.,TOC のシートがありません：シェルだけです。シェルとの結び付けは TOC のファイルから作ります。
+"Not a table this app can read by rules: take it in from a TOC workbook, or draft one from this document with an AI chat (Assist).",ルールで読める表ではありません：TOC のブックから取り込むか、この文書から AI チャット（Assist）で下書きしてください。
+"TOC: %s (header on row %d), %d rows",TOC：%s（見出しは %d 行目）、%d 行
+shells: %d sheets,シェル：%d シート
+Topline sheet: %s (a cross-check),Topline シート：%s（照合用）
+%s: %d of %d items,%s：%3$d 項目中 %2$d
+the ID column as it is,ID の列をそのまま
+"the ID column, normalised",ID の列を整えて
+type column + number column,種類の列 + 番号の列
+the number in the first title,最初のタイトルの番号
+%s: %d of %d rows (%s),%1$s：%3$d 行中 %2$d（%4$s）
+Rule set,ルールセット
+"The company's rule sets (company standards: toc_map, toc_rules), scored on the TOC's column names: the best match is chosen.",会社のルールセット（会社標準の toc_map、toc_rules）を TOC の列名で採点し、最も合うものを選びます。
+Report IDs from,帳票 ID の作り方
+The way that gives unique IDs for the most rows is proposed; the labels (Table 14.1.1) come from the label column or the first title.,最も多くの行で一意な ID になる方法を提案します。ラベル（Table 14.1.1）はラベルの列か最初のタイトルから取ります。
+Topline flag,Topline の印
+SAP number,SAP 番号
+Standard shell,標準シェル
+Reference,参照
+Shell sheet,シェルのシート
+Number,番号
+"Not in this TOC, skipped: %s.",この TOC にないため使いません：%s。
+Phase suffixes for this study,この試験の相の接尾辞
+On the ID and label,ID とラベルに
+On a title line,タイトル行に
+"Title line (1, 2, last)",タイトル行（1、2、last）
+The reports,帳票
+%d reports from %d rows.,%2$d 行から %1$d 帳票。
+%s batch: %d reports.,%s バッチ：%d 帳票。
+Show all %d reports,%d 帳票すべてを表示
+Rows not read (%d):,読めなかった行（%d）：
+"Set them by hand after taking it in, or fix the TOC.",取り込み後に手で設定するか、TOC を直してください。
+Warnings (%d):,警告（%d）：
+No report could be read from it.,帳票を 1 つも読めませんでした。
+%d shells linked.,%d 件のシェルを結び付けました。
+%d rows to set by hand.,%d 行は手で設定してください。
+Titles,タイトル
+Shell,シェル
+%s: the sheet %s is not in the file any more: found again.,%s：シート %s がファイルにもうないため、探し直しました。
 "TRUE: the analysis again without its by, over all its subjects (cards' overall rows, no group): what a table shows as its Total column (tables$total). On a cards::ard_stack row: .overall = TRUE. Blank: by groups only.",TRUE：同じ解析を by なしでもう一度、全被験者で（cards の overall 行、群なし）。表の Total 列（tables$total）になる。cards::ard_stack の行なら .overall = TRUE。空欄 = 群ごとだけ。
 "The heading of a Total column (plan_total()): the ARD's overall rows, its analyses run again without their by (analyses$overall), as one more column; its {n} is the study total. Blank: none.",Total 列の見出し（plan_total()）：ARD の overall 行（analyses$overall で by なしにもう一度走らせた解析）をもう 1 列に。その {n} は試験全体の人数。空欄 = なし。
 Where the Total column goes among the column key's values: last or first; blank: last.,Total 列の位置（列変数の値の中で）：last か first。空欄 = last。
@@ -2736,6 +2796,11 @@ All the columns (%d),すべての列（%d）
 Arm compared with the reference (the first),基準群（先頭）と比べる群
 "Added analyses %s to step 1 (remove them there if not wanted): update the ARD, then Preview.",解析 %s を段 1 に追加しました（不要ならそこで削除）。ARD を更新してから Preview してください。
 No analysis set of the study is the flag %s: choose the analysis data's set in step 1.,フラグ %s に当たる解析対象集団が試験にありません。段 1 で解析データの集団を選んでください。
+"The report IDs as the last time (%s) are unique for fewer rows of this TOC: %s is proposed.",前回の帳票 ID の作り方（%s）では、この TOC で ID が重ならない行が少なくなります。「%s」を提案します。
+(in the header),（見出しに）
+"The study's header prints each report's title and analysis set ({OUTPUT_TITLE}): the TOC's first title and population go there, not in the title lines.",試験の見出しが帳票ごとのタイトルと解析対象集団を印字します（{OUTPUT_TITLE}）。TOC のタイトル 1 行目と集団はそこに入り、タイトルの行には入りません。
+Columns of %s: %s.,%s の列：%s。
+"The population goes in the header ({OUTPUT_TITLE}), after the first title.",解析対象集団は見出し（{OUTPUT_TITLE}）にタイトル 1 行目と一緒に入ります。
 1 Data,1 データ
 2 Figure,2 図
 Numbers from an ARD (optional),ARD からの数値（任意）
