@@ -2890,3 +2890,5 @@ The header's {OUTPUT_TITLE},ヘッダーの {OUTPUT_TITLE} に入る文
 The text the header prints where it says {OUTPUT_TITLE}: this report's title. A TOC taken in writes it; it is not a title line of its own (the lines below are).,ヘッダーが {OUTPUT_TITLE} と書いた所に印字する文（この帳票のタイトル）。TOC を取り込むと入ります。別のタイトル行ではありません（タイトル行は下の行です）。
 "This page's tokens: change, add, remove.",このページのトークン：変更・追加・削除。
 "What a header, footer, title or footnote can say:",ヘッダー・フッター・タイトル・脚注で使えるもの：
+"{OUTPUT_POPULATION}: the label of the report's analysis set (%s, step 1); type one on the left to change it.",{OUTPUT_POPULATION}：帳票の解析対象集団（%s、段 1）のラベル。変えるときは左で入力します。
+The paper is the page's first property: a pattern that changes it says so in its name (A4_Compact).,用紙はページのいちばん基本の設定です。用紙を変える型は、名前でそれを言ってください（A4_Compact）。

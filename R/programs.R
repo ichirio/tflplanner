@@ -388,10 +388,34 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 .spec_object_last <- function(x, sheets, keys) {
   key <- list(x, sheets, keys)
   if (!is.null(.spec_cache$key) && identical(.spec_cache$key, key)) return(.spec_cache$sp)
+  if ("tokens" %in% sheets) x <- .with_population_tokens(x)
   sp <- .spec_object(x, sheets, keys)
   .spec_cache$key <- key
   .spec_cache$sp <- sp
   sp
+}
+
+# {OUTPUT_POPULATION} by default: the label of the report's analysis set
+# (the report list's population, step 1), for a report no row of the tokens
+# sheet -- its own, its pattern's, Standard's -- says one for.  A TOC taken
+# in, or a value typed in step 3, is a row and wins.  Not written to the
+# sheets: the programs, the page's sample and step 3 see it.
+.with_population_tokens <- function(x) {
+  o <- x$outputs
+  if (is.null(o) || !nrow(o) || is.null(o$population)) return(x)
+  add <- list()
+  for (i in seq_len(nrow(o))) {
+    pop <- o$population[i]
+    if (.is_blank(pop)) next
+    id <- o$output_id[i]
+    if ("OUTPUT_POPULATION" %in% page_tokens_from(x, id)$name) next
+    add[[length(add) + 1L]] <- data.frame(output_id = id, name = "OUTPUT_POPULATION",
+                                          value = .pop_label(x, pop), stringsAsFactors = FALSE)
+  }
+  if (!length(add)) return(x)
+  x$sheets$tokens <- rbind(.normalize_sheet(x$sheets$tokens, "tokens"),
+                           .normalize_sheet(do.call(rbind, add), "tokens"))
+  x
 }
 
 .report_code_lines <- function(x, output_id, table,

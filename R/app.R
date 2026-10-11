@@ -9796,7 +9796,7 @@ app_server <- function(input, output, session, start) {
     pats <- page_patterns(p)
     now <- report_pattern(p, id)
     shiny::div(
-      class = "d-flex flex-wrap gap-2 align-items-center mb-2",
+      class = "d-flex flex-wrap gap-2 align-items-center mb-2 pg-bar",
       shiny::tags$label(`for` = "page_pattern", class = "small mb-0",
                         with_tip(t("Page pattern"), t("The set of page defaults this report starts from: Standard (every report's) or a pattern of the study (Compact for the PK tables ...), which changes only what differs from Standard. What this report changes goes over it."))),
       shiny::div(style = "width: 14rem", shiny::selectInput(
@@ -9837,7 +9837,8 @@ app_server <- function(input, output, session, start) {
       shiny::uiOutput("pat_count", inline = TRUE),
       shiny::p(class = "small text-muted w-100 mb-0",
                if (identical(now, "Standard")) t("Standard: every report's page, unless its pattern or the report changes it.")
-               else sprintf(t("%s: only what differs from Standard; each value says where it comes from."), now)))
+               else sprintf(t("%s: only what differs from Standard; each value says where it comes from."), now),
+               " ", t("The paper is the page's first property: a pattern that changes it says so in its name (A4_Compact).")))
   })
   output$pat_count <- shiny::renderUI({
     page_sheets()

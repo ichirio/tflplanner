@@ -269,3 +269,22 @@ test_that("a token added and removed from the form; the veil only for the user's
   expect_match(html, "html.shiny-busy.rp-user-busy body::after", fixed = TRUE)
   expect_false(grepl("html.shiny-busy body::after", html, fixed = TRUE))
 })
+
+test_that("{OUTPUT_POPULATION} by default the label of the report's analysis set; a row wins", {
+  p <- add_output(new_planner(), "T1", population = "SAF")
+  p$ard$populations <- .normalize_ard_sheet(data.frame(
+    population_id = "SAF", dataset = "ADSL", where = 'SAFFL == "Y"'), "populations")
+  q <- .with_population_tokens(p)
+  expect_identical(page_tokens_from(q, "T1")$value, .pop_label(p, "SAF"))
+  # not written to the planner's sheets
+  expect_false("OUTPUT_POPULATION" %in% page_tokens_from(p, "T1")$name)
+  # a row (the TOC's, typed) wins
+  r <- .with_population_tokens(set_page_token(p, "T1", "OUTPUT_POPULATION", "Safety Analysis Set"))
+  expect_identical(page_tokens_from(r, "T1")$value, "Safety Analysis Set")
+  # the report's tokens as the program has them
+  p$sheets$header <- .normalize_sheet(data.frame(output_id = NA, line = "1",
+                                                 center = "<{OUTPUT_POPULATION}>"), "header")
+  tok <- tflspec::tfl_report_tokens(.spec_object_last(p, c(table_sheets(), report_sheets()),
+                                                      unique(c(.study_keys$table, .study_keys$report))), "T1")
+  expect_identical(tok[["OUTPUT_POPULATION"]], .pop_label(p, "SAF"))
+})

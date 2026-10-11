@@ -97,6 +97,9 @@ $(document).on('shiny:value', function(e) {
 "
 
 .page_form_css <- "
+.pg-bar .form-group { margin-bottom: 0; }
+.pg-bar select { height: calc(1.5em + .5rem + 2px); padding-top: .25rem; padding-bottom: .25rem;
+  font-size: .875rem; }
 .pg-card { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: .375rem;
   padding: .5rem .75rem; margin-bottom: .75rem; }
 .pg-card h6 { font-size: .85rem; font-weight: 600; margin-bottom: .4rem; }
@@ -276,10 +279,15 @@ $(document).on('shiny:value', function(e) {
         shiny::tags$td(shiny::code(paste0("{", k, "}"))),
         shiny::tags$td(class = "pg-inh", if (is.null(names(keys))) val(k) else names(keys)[keys == k]))))))
   report_own <- c("OUTPUT_TITLE", "OUTPUT_POPULATION", "OUTPUT_SECTION")
+  # {OUTPUT_POPULATION}: a row's (the TOC's, typed), else the analysis set's
+  pop <- x$outputs$population[match(id, x$outputs$output_id)]
+  pop_note <- if (!"OUTPUT_POPULATION" %in% page_tokens_from(x, id)$name && !.is_blank(pop)) {
+    sprintf(t("{OUTPUT_POPULATION}: the label of the report's analysis set (%s, step 1); type one on the left to change it."), pop)
+  }
   study <- setdiff(names(tok), c(report_own, "OUTPUT_ID", "OUTPUT_LABEL", "STUDY_ID"))
   shiny::tagList(
     group(t("Made from the report's ID"), c("OUTPUT_ID", "OUTPUT_LABEL")),
-    group(t("The report's, from the TOC taken in (or typed on the left)"), report_own),
+    group(t("The report's, from the TOC taken in (or typed on the left)"), report_own, note = pop_note),
     if (length(study)) group(t("The study's (its tokens sheet, Standard)"), study),
     group(t("rtfreporter's, as the RTF is written"),
           stats::setNames(c("PAGE", "TOTAL_PAGES", "PROGRAM", "DATETIME"),

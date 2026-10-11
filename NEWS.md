@@ -16,7 +16,17 @@
   text) or removed, and beside it what a header, footer, title or
   footnote can say, and where each comes from (made from the report's ID,
   the TOC taken in, the study's tokens, rtfreporter's).  The first page's
-  sample is fitted to the pane's width by default.
+  sample is fitted to the pane's width by default.  The pattern's select
+  and its button on one line, the same height.
+- **{OUTPUT_POPULATION} by default the label of the report's analysis
+  set** (step 1's population), for a report no row of the tokens sheet
+  says one for; a TOC taken in, or a value typed in step 3, is such a row
+  and wins.  It is not written to the sheets: the programs, the page's
+  sample and step 3's list of tokens (which says where it comes from) see
+  it.  The same for tables, listings and figures.
+- **The sample's Compact keeps Standard's paper (Letter)**: only the type
+  (8 pt) and the margins (0.5 in) differ.  The pattern dialog says that a
+  pattern that changes the paper should say so in its name (A4_Compact).
 
 - **The report marks follow a run report by report again** (the user's
   report on 0.0.2.9186).  Since 0.0.2.9184 the marks of a run in the
