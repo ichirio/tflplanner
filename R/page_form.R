@@ -188,7 +188,9 @@ $(document).on('shiny:value', function(e) {
       shiny::tags$tbody(rows))
     else shiny::p(class = "small text-muted mb-1", t("(no lines)")),
     shiny::tags$button(type = "button", class = "pg-act btn btn-sm btn-outline-secondary py-0",
-                       `data-act` = "addline", `data-sheet` = sheet, t("Add a line for this report")))
+                       `data-act` = "addline", `data-sheet` = sheet,
+                       if (is.na(id)) t("Add a line") else if (.is_pattern_id(id))
+                         t("Add a line to this pattern") else t("Add a line for this report")))
 }
 
 .page_tokens_ui <- function(x, id, pattern, t, skip = character()) {
@@ -236,6 +238,8 @@ $(document).on('shiny:value', function(e) {
 # The heading: the report's {OUTPUT_TITLE}, when its header prints one (the
 # sample's and the company standards' do: their titles are the header's)
 .page_heading_ui <- function(x, id, t) {
+  # (a report's own token: not a pattern's or Standard's)
+  if (is.na(id) || .is_pattern_id(id)) return(NULL)
   hdr <- page_lines_from(x, "header", id)
   hdr <- hdr[!hdr$omitted, , drop = FALSE]
   uses <- any(grepl("{OUTPUT_TITLE}", unlist(hdr[c("left", "center", "right")]), fixed = TRUE))

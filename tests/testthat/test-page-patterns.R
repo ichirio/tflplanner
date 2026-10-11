@@ -194,6 +194,8 @@ test_that("the form edits a pattern (its own over Standard) or Standard itself",
   expect_match(h, 'data-pg-target="@Compact"', fixed = TRUE)
   expect_match(h, "this pattern", fixed = TRUE)
   expect_match(as.character(.page_form_ui(p, NA, identity)), 'data-pg-target=""', fixed = TRUE)
+  expect_match(h, "Add a line to this pattern", fixed = TRUE)
+  expect_false(grepl("Heading", h, fixed = TRUE))
 })
 
 test_that("the pattern dialog: a new pattern, edited by its target, renamed", {

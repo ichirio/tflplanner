@@ -2781,3 +2781,5 @@ Reports using it: %d,この型を使う帳票: %d
 "Standard: every report's page, unless its pattern or the report changes it.",Standard：全帳票のページ（型や帳票が変えたところを除く）。
 %s: only what differs from Standard; each value says where it comes from.,%s：Standard と違うところだけ。各値に出どころが出ます。
 this pattern,この型
+Add a line,行を足す
+Add a line to this pattern,この型に行を足す
