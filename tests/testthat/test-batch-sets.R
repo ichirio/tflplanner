@@ -218,3 +218,24 @@ test_that("an official run keeps the data its programs read, and the versions", 
   writeLines(gsub("--data", "--d-a-t-a", readLines(bf), fixed = TRUE), bf)
   expect_error(run_batch(o, "ard", data = TRUE), "keep the data")
 })
+
+test_that("the Runs tab says the data a run would keep, and warns when large", {
+  skip_on_cran()
+  bs_home()
+  s <- create_study("BS", planner = bs_planner())
+  saveRDS(data.frame(x = 1:10), file.path(s$path, "data", "adam", "adsl.rds"))
+  old <- options(tflplanner.batch_data_warn_mb = 0)
+  on.exit(options(old), add = TRUE)
+  shiny::testServer(server_for("BS"), {
+    session$setInputs(nav = "runs", batch_parts = "ard", batch_data = FALSE)
+    expect_null(output$batch_data_size)
+    session$setInputs(batch_data = TRUE)
+    txt <- paste(output$batch_data_size$html, collapse = "")
+    expect_match(txt, "Data kept: 1 files", fixed = TRUE)
+    # over the limit (0 MB here): said
+    expect_match(txt, "every run keeps its own copy", fixed = TRUE)
+  })
+  expect_identical(.mb_text(0.04), "0.0 MB")
+  expect_identical(.mb_text(12.3), "12 MB")
+  expect_identical(.mb_text(2048), "2.0 GB")
+})

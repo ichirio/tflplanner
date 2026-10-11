@@ -126,22 +126,31 @@
 # The packages the run's programs name (library(), require(), pkg::), with
 # the versions installed here, and sessionInfo() once they are loaded:
 # session_info.txt.  The study's renv.lock, when it has one, is kept too.
+# Never the end of a run: what cannot be read is said in the file.
 .batch_session_info <- function(progs, dir) {
-  code <- unlist(lapply(progs[file.exists(progs)], readLines, warn = FALSE))
-  code <- sub("#.*$", "", code)
-  lib <- unlist(regmatches(code, gregexpr(
-    "(library|require|requireNamespace)\\(\\s*['\"]?[A-Za-z][A-Za-z0-9.]*", code, perl = TRUE)))
-  lib <- sub("^.*\\(\\s*['\"]?", "", lib)
-  ns <- unlist(regmatches(code, gregexpr("[A-Za-z][A-Za-z0-9.]*(?=:::?)", code, perl = TRUE)))
-  pkgs <- sort(unique(c(lib, ns)))
-  pkgs <- pkgs[vapply(pkgs, function(p) nzchar(system.file(package = p)), NA)]
-  for (p in pkgs) try(suppressPackageStartupMessages(loadNamespace(p)), silent = TRUE)
-  ver <- vapply(pkgs, function(p) as.character(utils::packageVersion(p)), "")
+  ver <- tryCatch({
+    # the R files only (the support files are workbooks too)
+    progs <- progs[grepl("[.][Rr]$", progs) & file.exists(progs)]
+    code <- unlist(lapply(progs, readLines, warn = FALSE, encoding = "UTF-8"))
+    code <- sub("#.*$", "", code, useBytes = TRUE)
+    lib <- unlist(regmatches(code, gregexpr(
+      "(library|require|requireNamespace)\\(\\s*['\"]?[A-Za-z][A-Za-z0-9.]*", code,
+      perl = TRUE, useBytes = TRUE)))
+    lib <- sub("^.*\\(\\s*['\"]?", "", lib, useBytes = TRUE)
+    ns <- unlist(regmatches(code, gregexpr("[A-Za-z][A-Za-z0-9.]*(?=:::?)", code,
+                                           perl = TRUE, useBytes = TRUE)))
+    pkgs <- sort(unique(c(lib, ns)))
+    pkgs <- pkgs[vapply(pkgs, function(p) nzchar(system.file(package = p)), NA)]
+    for (p in pkgs) try(suppressPackageStartupMessages(loadNamespace(p)), silent = TRUE)
+    vapply(pkgs, function(p) as.character(utils::packageVersion(p)), "")
+  }, error = function(e) structure(character(), note = conditionMessage(e)))
   writeLines(c(
     "The R and packages of the run: the packages its programs name, with",
     "the versions installed where it ran, then sessionInfo() once they are loaded.",
     "",
     sprintf("%-24s %s", c("package", names(ver)), c("version", ver)),
+    if (!is.null(attr(ver, "note"))) paste("(the programs could not be read:",
+                                           attr(ver, "note"), ")"),
     "",
     utils::capture.output(print(utils::sessionInfo()))),
     file.path(dir, "session_info.txt"))
@@ -291,8 +300,8 @@ run_batch <- function(parts, args = character()) {
     paste("Data     :", if (data) sprintf(
       "kept (data/, %d file(s), %.1f MB; data_manifest.csv)", nrow(man),
       sum(man$size) / 1024^2) else "not kept"),
-    paste("Session  :", "session_info.txt",
-          if (file.exists(file.path(dir, "renv.lock"))) "and renv.lock" else ""),
+    paste("Session  :", if (file.exists(file.path(dir, "renv.lock")))
+      "session_info.txt and renv.lock" else "session_info.txt"),
     paste("Excluded :", if (length(excluded))
       paste(excluded, collapse = ", ") else "none"),
     paste("Result   :", sum(result$status == "OK"), "of", nrow(result),
