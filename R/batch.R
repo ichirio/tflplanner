@@ -472,8 +472,9 @@ list_batches <- function(study) {
   out
 }
 
-# a size in MB as people read it: 0.4 MB, 12 MB, 1.3 GB
+# a size in MB as people read it: 41 KB, 1.4 MB, 12 MB, 1.3 GB
 .mb_text <- function(mb) {
   if (mb >= 1024) sprintf("%.1f GB", mb / 1024) else
-    if (mb >= 10) sprintf("%.0f MB", mb) else sprintf("%.1f MB", mb)
+    if (mb >= 10) sprintf("%.0f MB", mb) else
+      if (mb >= 1) sprintf("%.1f MB", mb) else sprintf("%.0f KB", mb * 1024)
 }

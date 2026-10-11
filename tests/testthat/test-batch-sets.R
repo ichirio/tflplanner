@@ -235,7 +235,8 @@ test_that("the Runs tab says the data a run would keep, and warns when large", {
     # over the limit (0 MB here): said
     expect_match(txt, "every run keeps its own copy", fixed = TRUE)
   })
-  expect_identical(.mb_text(0.04), "0.0 MB")
+  expect_identical(.mb_text(0.04), "41 KB")
+  expect_identical(.mb_text(1.44), "1.4 MB")
   expect_identical(.mb_text(12.3), "12 MB")
   expect_identical(.mb_text(2048), "2.0 GB")
 })
