@@ -79,7 +79,7 @@ test_that("an analysis set's label, flag and a flag that disagrees", {
   expect_identical(.pop_flag("EFFFL %in% \"Y\""), "EFFFL")
   expect_true(is.na(.pop_flag("SAFFL == \"Y\" & AGE > 65")))
   # the company standards' label (their note), else the flag's
-  expect_identical(.pop_label(p, "SAF"), "Safety set")
+  expect_identical(.pop_label(p, "SAF"), "Safety Analysis Set")
   d <- data.frame(ITTFL = structure("Y", label = "Intent-To-Treat Population Flag"))
   expect_identical(.pop_label(p, "ITT", d), "Intent-To-Treat Population Flag")
   expect_identical(.pop_label(p, "ITT"), "ITT")
@@ -165,7 +165,7 @@ test_that("a TOC's population, matched to the study's analysis sets", {
     where = c("SAFFL == \"Y\"", "ITTFL == \"Y\"", "EFFFL == \"Y\"")), "populations")
   expect_identical(.pop_match(p, "saf"), "SAF")
   expect_identical(.pop_match(p, "Safety Population"), "SAF")
-  expect_identical(.pop_match(p, "Safety set"), "SAF")
+  expect_identical(.pop_match(p, "Safety Analysis Set"), "SAF")
   expect_identical(.pop_match(p, "Intent-to-Treat Population"), "ITT")
   expect_identical(.pop_match(p, "Efficacy Population (EFF)"), "EFF")
   # a flag's label (the data's)

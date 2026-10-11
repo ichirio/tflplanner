@@ -24,6 +24,11 @@
   and wins.  It is not written to the sheets: the programs, the page's
   sample and step 3's list of tokens (which says where it comes from) see
   it.  The same for tables, listings and figures.
+- **The built-in standards name the analysis sets in full**, by ICH E9's
+  names: Safety Analysis Set, Full Analysis Set, Per Protocol Set,
+  Enrolled Set, Randomized Set, Pharmacokinetic Analysis Set (was "Safety
+  set" and the like), so a report's {OUTPUT_POPULATION} reads well by
+  default.  A study's own populations sheet keeps its own labels.
 - **The sample's Compact keeps Standard's paper (Letter)**: only the type
   (8 pt) and the margins (0.5 in) differ.  The pattern dialog says that a
   pattern that changes the paper should say so in its name (A4_Compact).
