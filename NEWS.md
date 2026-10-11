@@ -1,5 +1,23 @@
 # tflplanner (development version)
 
+- **Page patterns, and step 3 as a form** (the page-patterns design,
+  part A; `_archive/tflplanner-page-patterns-design.md`).  A study keeps
+  named page patterns besides Standard -- rows of the report half's
+  sheets whose `output_id` is `@` and a name (`@Compact`), saying only
+  what differs from Standard (tflspec >= 0.0.24.9089 reads them) -- and a
+  report chooses one in step 3 ("Page pattern"; the new `report$pattern`
+  column).  Step 3 is a form now: the paper, margins and font, the
+  header and footer lines and the tokens, each value with where it comes
+  from -- this report, its pattern, Standard -- and "Back to the pattern"
+  where the report has its own.  A value the pattern already gives is no
+  difference (no own cell is written); a line of the pattern's can be
+  changed here or left out here (`(none)`), or added for this report.
+  The form writes only the report's own rows; the sheets themselves are
+  under "Details: edit the sheets" (the same rows).  A pattern's rows
+  (`@...`) are not a report (`output_ids()`); an `@` starts no report's
+  ID.  Patterns are written in the sheets for now; editing them in a
+  dialog, and titles / footnotes as a form, come next.
+
 - **A run in the background no longer greys the page** (the user's
   report on 0.0.2.9175).  Following a run the app did not start made the
   whole page be drawn again every few seconds (each ARD program, each

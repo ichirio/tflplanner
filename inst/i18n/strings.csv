@@ -2736,3 +2736,34 @@ All the columns (%d),すべての列（%d）
 Arm compared with the reference (the first),基準群（先頭）と比べる群
 "Added analyses %s to step 1 (remove them there if not wanted): update the ARD, then Preview.",解析 %s を段 1 に追加しました（不要ならそこで削除）。ARD を更新してから Preview してください。
 No analysis set of the study is the flag %s: choose the analysis data's set in step 1.,フラグ %s に当たる解析対象集団が試験にありません。段 1 で解析データの集団を選んでください。
+Details: edit the sheets,詳細：シートを編集
+"Standard (every report's page) and the page patterns are the sheets' blank and @<name> rows: Details, below.",Standard（全帳票のページ）とページの型は、シートの空欄の行と @<名前> の行です：下の「詳細」で。
+Page pattern,ページの型
+"The set of page defaults this report starts from: Standard (every report's) or a pattern of the study (Compact for the PK tables ...), which changes only what differs from Standard. What this report changes goes over it.",この帳票が出発点にするページの既定の組：Standard（全帳票の）か、試験の型（PK 表の Compact など。Standard と違うところだけを持つ）。この帳票で変えたものはその上に重なります。
+Standard,Standard
+"(no other pattern yet: a pattern is the sheets' rows with output_id @<name>, in Details below)",（ほかの型はまだありません：型は output_id が @<名前> のシートの行です。下の「詳細」で）
+pattern %s,型 %s
+(%s: %s),（%s：%s）
+Back to Standard,Standard に戻す
+Back to the pattern,型に戻す
+(left out in this report),（この帳票では出さない）
+Print it again,また出す
+Change here,ここで変える
+Leave out here,この帳票では出さない
+Left,左
+Center,中央
+Right,右
+(no lines),（行なし）
+Add a line for this report,この帳票だけの行を足す
+(no tokens),（トークンなし）
+"Paper, margins and font",用紙・余白・フォント
+Header,ヘッダー
+Footer,フッター
+Tokens,トークン
+Paper,用紙
+Orientation,向き
+Top (in),上 (in)
+Bottom (in),下 (in)
+Left (in),左 (in)
+Right (in),右 (in)
+"The page pattern the report uses: blank, Standard (the blank rows of report, page, header, footer, titles, footnotes and tokens); a name, that pattern -- the rows whose output_id is @<name>, which say only what differs from Standard. The report's own rows go over its pattern's.",帳票が使うページの型：空欄は Standard（report・page・header・footer・titles・footnotes・tokens の空欄の行）、名前はその型（output_id が @<名前> の行。Standard と違うところだけを書く）。帳票自身の行は型の行の上に重なります。

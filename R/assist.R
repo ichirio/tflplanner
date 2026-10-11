@@ -577,6 +577,25 @@ inherited_rows <- function(x, sheet, output_id) {
   d <- x$sheets[[sheet]]
   def <- d[is.na(d$output_id), , drop = FALSE]
   own <- d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
+  # a report's page pattern: its rows over Standard's are what it inherits
+  pat <- if (sheet %in% .pattern_sheets) report_pattern(x, output_id) else NA
+  if (!is.na(pat)) {
+    prow <- d[d$output_id %in% paste0("@", pat), , drop = FALSE]
+    k0 <- .default_keys[[sheet]]
+    if (nrow(prow)) {
+      if (is.null(k0)) {
+        row <- if (nrow(def)) def[1L, , drop = FALSE] else prow[1L, , drop = FALSE]
+        for (cn in setdiff(names(prow), "output_id")) {
+          if (!is.na(prow[[cn]][1L])) row[[cn]] <- prow[[cn]][1L]
+        }
+        row$output_id <- NA_character_
+        def <- row
+      } else {
+        kk <- function(z) do.call(paste, c(lapply(k0, function(c) z[[c]]), sep = "\r"))
+        def <- rbind(prow, def[!kk(def) %in% kk(prow), , drop = FALSE])
+      }
+    }
+  }
   k <- .default_keys[[sheet]]
   if (is.null(k) || !nrow(own)) return(def)
   if (identical(k, NA)) return(def[0, , drop = FALSE])
