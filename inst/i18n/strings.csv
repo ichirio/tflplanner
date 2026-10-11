@@ -2767,3 +2767,4 @@ Bottom (in),下 (in)
 Left (in),左 (in)
 Right (in),右 (in)
 "The page pattern the report uses: blank, Standard (the blank rows of report, page, header, footer, titles, footnotes and tokens); a name, that pattern -- the rows whose output_id is @<name>, which say only what differs from Standard. The report's own rows go over its pattern's.",帳票が使うページの型：空欄は Standard（report・page・header・footer・titles・footnotes・tokens の空欄の行）、名前はその型（output_id が @<名前> の行。Standard と違うところだけを書く）。帳票自身の行は型の行の上に重なります。
+(blank line),（空行）

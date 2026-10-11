@@ -12,12 +12,13 @@
        choices = c("letter", "legal", "A4", "A3", "A5"), default = "letter"),
   list(sheet = "page", col = "orientation", label = "Orientation", kind = "choice",
        choices = c("landscape", "portrait"), default = "landscape"),
-  list(sheet = "page", col = "margin_top_in", label = "Top (in)", kind = "number"),
-  list(sheet = "page", col = "margin_bottom_in", label = "Bottom (in)", kind = "number"),
-  list(sheet = "page", col = "margin_left_in", label = "Left (in)", kind = "number"),
-  list(sheet = "page", col = "margin_right_in", label = "Right (in)", kind = "number"),
-  list(sheet = "page", col = "font", label = "Font", kind = "text"),
-  list(sheet = "page", col = "font_size_half_points", label = "Size (pt)", kind = "pt"))
+  # (the defaults are rtfreporter's: rtf_page(), Courier 9 pt)
+  list(sheet = "page", col = "margin_top_in", label = "Top (in)", kind = "number", default = "0.75"),
+  list(sheet = "page", col = "margin_bottom_in", label = "Bottom (in)", kind = "number", default = "0.75"),
+  list(sheet = "page", col = "margin_left_in", label = "Left (in)", kind = "number", default = "0.75"),
+  list(sheet = "page", col = "margin_right_in", label = "Right (in)", kind = "number", default = "0.75"),
+  list(sheet = "page", col = "font", label = "Font", kind = "text", default = "Courier"),
+  list(sheet = "page", col = "font_size_half_points", label = "Size (pt)", kind = "pt", default = "9"))
 
 # where a value comes from, as the form says it
 .page_from_label <- function(from, pattern, t) {
@@ -89,7 +90,8 @@ $(document).on('shiny:value', function(e) {
   } else {
     do.call(shiny::tags$input, c(attrs, list(
       type = "text", value = if (own) shown(v$value) else "",
-      placeholder = inh_txt)))
+      placeholder = if (nzchar(inh_txt)) inh_txt else
+        if (!is.null(f$default)) sprintf(t("(default: %s)"), f$default) else "")))
   }
   shiny::div(
     class = "pg-field",
@@ -106,9 +108,15 @@ $(document).on('shiny:value', function(e) {
 # a band's lines: the report's own editable, the others read and acted on
 .page_lines_ui <- function(x, id, sheet, pattern, t) {
   d <- page_lines_from(x, sheet, id)
+  blank_line <- function(r) all(is.na(r[c("left", "center", "right")]) |
+                                  !nzchar(trimws(unlist(r[c("left", "center", "right")]))))
   cell <- function(r, part, own) {
     v <- r[[part]]
     v <- if (is.na(v)) "" else v
+    # a line with nothing in it is a blank line: spacing, said so
+    if (!own && identical(part, "center") && blank_line(r)) {
+      return(shiny::span(class = "text-muted fst-italic", t("(blank line)")))
+    }
     if (own) shiny::tags$input(
       type = "text", class = "pg-in form-control form-control-sm", value = v,
       `data-kind` = "line", `data-sheet` = sheet, `data-line` = r$line, `data-part` = part,
