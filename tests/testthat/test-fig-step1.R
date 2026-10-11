@@ -55,3 +55,24 @@ test_that("a figure without a design: step 1 says where to start it", {
     expect_match(output$pd_data_body$html, "start it in step 2", fixed = TRUE)
   })
 })
+
+test_that("what the steps make: kept short by the preview, shown in step 1 on demand", {
+  local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  r <- preview_figure(s, "F-14-2-3", max_px = 600)
+  # (its ARD not made yet: the steps before the ARD's still there)
+  expect_identical(names(r$objects)[1:2], c("df", "fit"))
+  expect_identical(r$objects$df$class, "data frame")
+  expect_true(r$objects$df$rows > 0L)
+  expect_lte(nrow(r$objects$df$head), 6L)
+  expect_true(length(r$objects$fit$text) > 0L)
+  expect_identical(.fig_design_objects(fig_design(s$planner, "F-14-2-4"))[1:2], c("df", "est"))
+  shiny::testServer(server_for("SAMPLE-01"), {
+    session$setInputs(target = "F-14-2-3", nav = "make", step = "ard")
+    expect_match(output$pd_objects$html, "Not made yet", fixed = TRUE)
+    session$setInputs(pd_data_preview = 1)
+    h <- output$pd_objects$html
+    expect_match(h, "data frame, ", fixed = TRUE)
+    expect_match(h, "<code>fit</code>", fixed = TRUE)
+  })
+})

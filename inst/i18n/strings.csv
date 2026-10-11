@@ -2736,3 +2736,26 @@ All the columns (%d),すべての列（%d）
 Arm compared with the reference (the first),基準群（先頭）と比べる群
 "Added analyses %s to step 1 (remove them there if not wanted): update the ARD, then Preview.",解析 %s を段 1 に追加しました（不要ならそこで削除）。ARD を更新してから Preview してください。
 No analysis set of the study is the flag %s: choose the analysis data's set in step 1.,フラグ %s に当たる解析対象集団が試験にありません。段 1 で解析データの集団を選んでください。
+1 Data,1 データ
+2 Figure,2 図
+Numbers from an ARD (optional),ARD からの数値（任意）
+"Only when the figure prints numbers of an analysis -- a KM median, a forest plot's hazard ratios: its own analyses, or a table's ARD. Most figures need none.",図が解析の数値（KM の中央値、フォレストプロットのハザード比など）を載せるときだけ：図自身の解析か、表の ARD。たいていの図には不要です。
+Data steps: %d,データの手順: %d
+No data step yet: start the figure in step 2,データの手順はまだありません：段 2 で図を始めてください
+"data frame, %d rows x %d columns",データフレーム、%d 行 × %d 列
+its first rows,先頭の行
+The data steps are in step 1 (Data).,データの手順は段 1（データ）にあります。
+"The figure's data steps come with its design: start it in step 2 (Figure), from a template or empty; they are then here.",図のデータの手順はデザインと一緒にできます。段 2（図）でテンプレートか空から始めると、ここに出ます。
+Go to step 2,段 2 へ
+The data the figure reads,図が読むデータ
+"The figure's data steps, in their order: the dataset read, the rows kept, the variables joined or derived, the objects made (a KM fit, summary statistics ...). The figure (step 2) draws what they make.",図のデータの手順（順番どおり）：読むデータセット、残す行、結合・導出する変数、作るオブジェクト（KM の fit、要約統計量など）。段 2 の図は、これらが作ったものを描きます。
+What the steps make,手順が作るもの
+"The data frames and objects the data steps leave (df, a KM fit, the ARD's statistics ...), made from the study's data as the program makes them: their size, columns and first rows.",データの手順が残すデータフレームとオブジェクト（df、KM の fit、ARD の統計量など）を、プログラムと同じように試験のデータから作ったもの：大きさ、列、先頭の行。
+Preview the data,データをプレビュー
+Making the data ...,データを作成中 ...
+Not made yet: press Preview the data (or draw the figure in step 2).,まだ作っていません：「データをプレビュー」を押してください（段 2 で図を描いても作られます）。
+The steps have changed since: press Preview the data again.,その後、手順が変わりました：もう一度「データをプレビュー」を押してください。
+The steps stopped: ,手順が止まりました: 
+(nothing made),（何も作られていません）
+Choose the figure settings or a layer on the left.,左で図の設定かレイヤーを選んでください。
+"Choose a data step on the left, or add one.",左でデータの手順を選ぶか、追加してください。

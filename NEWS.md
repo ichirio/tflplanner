@@ -1,5 +1,28 @@
 # tflplanner (development version)
 
+- **A figure's steps: "1 Data" and "2 Figure"** (#293, the user's
+  figure feedback; design note
+  `_archive/fig-step1-design-2026-10-11.md`).  A figure's step 1 is
+  mostly preparing its data, an ARD only sometimes: it is named "1 Data"
+  (a table's stays "1 ARD") and holds the figure's data steps -- their
+  list and form, moved from the designer -- with "Numbers from an ARD
+  (optional)" below them.  Step 2, "2 Figure", keeps the figure settings
+  and the layers, laid out as a table's step 2: the pieces and the form at
+  the left, the figure at the right (Design | Edit | Preview).  Step 1
+  also shows what the steps make -- `df`, a KM fit, the ARD's statistics
+  -- each in short (its size, columns, first rows; or the first lines it
+  prints), made on demand ("Preview the data") or kept from the last
+  drawing; `preview_figure()` returns them as `objects`.
+- **One rule for the names tflplanner gives an analysis data**:
+  `<dataset>_<population>[_<PARAMCD>]` -- `adsl_saf`, `adae_saf`,
+  `adtte_saf_ttde` (was `adtte_ttde`: the parameter alone, in one name,
+  the population in the next).  Only a condition's parameter is in the
+  name; a visit or another condition is the label's.  Only the defaults:
+  a name given stays.  The sample follows it: `adtte_ttde` is
+  `adtte_saf_ttde`, `advs_w24` is `advs_saf_sysbp` (its programs change by
+  the names only).  Needs tflspec >=
+  0.0.24.9087 (the forest template's data named so).
+
 - **The forest plot from the figure's own ARD** (#293 phase 6, with
   tflspec's `forest_hr` in parts).  The hazard ratios, intervals and N a
   forest plot prints are statistics of the figure's own ARD -- a Cox

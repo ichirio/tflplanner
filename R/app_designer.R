@@ -166,6 +166,36 @@
   paste(utils::head(v, 3), collapse = "  ")
 }
 
+# One object the data steps made, in short: a data frame's size, columns
+# and first rows; anything else, the first lines it prints
+.pd_object_ui <- function(name, o, t = identity) {
+  if (identical(o$class, "data frame")) {
+    h <- o$head
+    cells <- lapply(h, function(v) {
+      v <- format(v, digits = 4L)
+      ifelse(nchar(v) > 24L, paste0(substr(v, 1L, 22L), ".."), v)
+    })
+    return(shiny::div(
+      class = "mb-2 small",
+      shiny::strong(shiny::code(name)), " ",
+      shiny::span(class = "text-muted", sprintf(t("data frame, %d rows x %d columns"),
+                                                o$rows, length(o$columns))),
+      shiny::tags$details(
+        shiny::tags$summary(class = "text-muted", t("its first rows")),
+        shiny::div(
+          style = "overflow-x: auto",
+          shiny::tags$table(
+            class = "table table-sm table-bordered mb-0 small",
+            shiny::tags$thead(shiny::tags$tr(lapply(o$columns, shiny::tags$th))),
+            shiny::tags$tbody(lapply(seq_len(nrow(h)), function(i)
+              shiny::tags$tr(lapply(cells, function(v) shiny::tags$td(v[i]))))))))))
+  }
+  shiny::div(
+    class = "mb-2 small",
+    shiny::strong(shiny::code(name)), " ", shiny::span(class = "text-muted", o$class),
+    shiny::tags$pre(class = "small mb-0", paste(o$text, collapse = "\n")))
+}
+
 .pd_act <- function(op, sec, i) {
   sprintf("event.stopPropagation(); Shiny.setInputValue('pd_act', {op: '%s', sec: '%s', i: %d, n: Math.random()}, {priority: 'event'})",
           op, sec, i)
@@ -823,7 +853,37 @@
           shiny::uiOutput("pd_form_data"),
           shiny::h6(class = "mt-3", with_tip(t("Code of this piece"),
                                              t("What this piece writes into the program; it follows every change."))),
-          shiny::div(class = "rp-code pd-piece-code", shiny::verbatimTextOutput("pd_piece_code_data")))))
+          shiny::div(class = "rp-code pd-piece-code", shiny::verbatimTextOutput("pd_piece_code_data")))),
+      shiny::div(
+        class = "border-top pt-2 mt-2",
+        shiny::div(
+          class = "d-flex flex-wrap gap-2 align-items-center mb-1",
+          shiny::h6(class = "mb-0", with_tip(t("What the steps make"),
+            t("The data frames and objects the data steps leave (df, a KM fit, the ARD's statistics ...), made from the study's data as the program makes them: their size, columns and first rows."))),
+          .btn("pd_data_preview", t("Preview the data"), class = "btn-sm btn-outline-primary py-0")),
+        shiny::uiOutput("pd_objects")))
+  })
+  shiny::observeEvent(input$pd_data_preview, draw())
+  # what the steps made, from the last drawing of this figure
+  output$pd_objects <- shiny::renderUI({
+    r <- pv()
+    if (drawing()) {
+      return(shiny::div(class = "small text-muted",
+                        shiny::span(class = "spinner-border spinner-border-sm me-2"),
+                        t("Making the data ...")))
+    }
+    if (is.null(r) || !identical(r$id, current())) {
+      return(shiny::p(class = "small text-muted mb-0",
+                      t("Not made yet: press Preview the data (or draw the figure in step 2).")))
+    }
+    ob <- r$objects %||% list()
+    shiny::tagList(
+      if (stale()) shiny::div(class = "alert alert-warning py-1 px-2 small mb-2",
+                              t("The steps have changed since: press Preview the data again.")),
+      if (!is.null(r$error)) shiny::div(class = "alert alert-danger py-1 px-2 small mb-2",
+                                        shiny::strong(t("The steps stopped: ")), r$error),
+      if (!length(ob)) shiny::p(class = "small text-muted mb-0", t("(nothing made)")),
+      lapply(names(ob), function(nm) .pd_object_ui(nm, ob[[nm]], t)))
   })
   shiny::observeEvent(input$pd_goto_figure, bslib::nav_select("step", "content"))
   # a piece chosen, moved, removed
