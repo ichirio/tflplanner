@@ -325,7 +325,7 @@ keep the code in the batch folder,バッチフォルダにコードを含める
 Preview selected,選択をプレビュー
 Preview all,すべてプレビュー
 Official runs (batch folders),正式実行（バッチフォルダ）
-"An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs) and, if kept, the programs and definition workbooks it ran.",正式実行は runs/<日付>_<時刻>_<内容>/ のバッチフォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、指定すれば実行したプログラムと定義ブックを格納します。
+"An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read.",正式実行は runs/<日付>_<時刻>_<内容>/ のバッチフォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、R とパッケージの版（session_info.txt）、指定すれば実行したプログラムと定義ブック、読んだデータを格納します。
 "ARD, then reports",ARD → 帳票
 Start the official run,正式実行を開始
 Open the batch folder,バッチフォルダを開く
@@ -2873,3 +2873,9 @@ Add a line,行を足す
 Add a line to this pattern,この型に行を足す
 Remove the line,行を削除
 Remove the token,トークンを削除
+keep the data in the batch folder,バッチフォルダにデータを含める
+"The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the run can be made again.",実行するプログラムが読むデータファイル（データカタログのもの：表のデータセット、リスト・図のデータセット、取り込んだ ARD）を md5 付きで写します（data_manifest.csv）。コード・ログ・R とパッケージの版（session_info.txt）と合わせて、同じ実行をやり直せます。
+The run's programs read no data file of the data catalog.,実行するプログラムが読むデータカタログのファイルはありません。
+"Data kept: %d files, %s.",含めるデータ：%d ファイル、%s。
+"Over %s: every run keeps its own copy, so the runs folder grows by this much each time.",%s を超えます。実行ごとに写しを持つので、runs フォルダは毎回この分だけ大きくなります。
+"Not found, not kept: %s.",見つからないため含めません：%s。

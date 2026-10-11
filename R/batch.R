@@ -8,7 +8,8 @@
 # folder stamped with the date and time (runs/20260927_143000_all/) and
 # keeps in it everything of the run: each program's log (logrx), what it
 # made (the study ARD, the RTFs), and -- unless asked not to -- the programs
-# and definition workbooks it ran.
+# and definition workbooks it ran; asked, the data files its programs read
+# (by the data catalog), with their md5 -- a run that can be made again.
 #
 #   programs/batch.R               the runner every autoexec sources
 #   programs/ard/autoexec_ard.R    official run of the ARD programs
@@ -121,6 +122,13 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
     "# kept with the code of a run",
     paste0(".batch_support <- ", vlist(ard = support$ard, tfl = support$tfl,
                                        all = support$all)),
+    "# the data files each program reads (the data catalog's; --data keeps them)",
+    paste0(".batch_data <- ", if (length(dat <- .batch_data_files(x))) paste0(
+      "list(\n", paste0("  ", encodeString(names(dat), quote = "`"), " = ",
+                        vapply(dat, function(v) if (length(v)) paste0("c(", paste(
+                          encodeString(v, quote = "\""), collapse = ", "), ")") else
+                            "character()", ""),
+                        collapse = ",\n"), ")") else "list()"),
     "",
     runner,
     "")
@@ -166,9 +174,11 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
     paste("  Rscript", file, "                 every program"),
     paste("  Rscript", file, usage),
     paste("  Rscript", file, "--no-code        the batch folder without the code"),
+    paste("  Rscript", file, "--data           with the data files the programs read"),
     "Run it from the study folder.  It makes a batch folder",
     "runs/<date>_<time>_<what>/: each program's log (logrx), what the run",
-    "made, and the programs and definition workbooks it ran.",
+    "made, the programs and definition workbooks it ran, the R and package",
+    "versions (session_info.txt) and, with --data, the data it read.",
     paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
            ", ", format(date, "%Y-%m-%d")))
 }
@@ -196,6 +206,77 @@ autoexec_all_code <- function(date = Sys.Date()) {
     .autoexec_body(c("ard", "tfl")))
 }
 
+# The data files each program reads, by the data catalog: an ARD program
+# its report's datasets (an analysis data's: those it is made from); a
+# report program its datasets (a listing, a figure, a report of one's own
+# code), or the ARD taken in it reads (input/ard/<file>).  A table's
+# report program reads the study ARD, which the run keeps anyway.  A named
+# list, program -> paths as the catalog gives them (relative to the study
+# folder).  A dataset not in the catalog, or a file one's own code reads
+# without naming it in the report list, is not known here.
+.batch_data_files <- function(x) {
+  lay <- study_layout()
+  cat_ds <- ard_rows(x, "datasets")
+  path_of <- function(ds) {
+    p <- cat_ds$path[match(ds, cat_ds$dataset)]
+    unique(p[!is.na(p) & nzchar(p)])
+  }
+  spec <- x$ard %||% .empty_ard_spec()
+  a_ids <- unique(stats::na.omit(spec$analyses$output_id))
+  ard <- lapply(a_ids, function(id) path_of(.report_datasets(x, id, "table")))
+  names(ard) <- file.path(lay[["programs_ard"]], vapply(a_ids, .ard_prog_name, ""))
+  ids <- x$outputs$output_id
+  infos <- lapply(ids, function(id) report_info(x, id))
+  tfl <- lapply(seq_along(ids), function(i) {
+    imp <- .ard_import_of(x, ids[i])
+    unique(c(if (!identical(infos[[i]]$type, "table"))
+      path_of(.report_datasets(x, ids[i], infos[[i]]$type)),
+      if (!is.null(imp)) file.path(lay[["ard_import"]], imp)))
+  })
+  names(tfl) <- file.path(lay[["programs_tfl"]], vapply(infos, `[[`, "", "program"))
+  c(ard, tfl)
+}
+
+#' The data an official run would keep
+#'
+#' The data files the programs of a run read (by the data catalog, see
+#' [run_batch()]'s `data`), with their size, as the study folder has them
+#' now: what `run_batch(data = TRUE)` would copy into the batch folder.
+#'
+#' @param study An `rtfstudy`.
+#' @param parts `"ard"`, `"tfl"` or both.
+#' @param output_ids The reports of the run; `NULL` for every report.
+#' @return A data frame: `path` (as the catalog gives it), `size` (bytes;
+#'   `NA` when the file is not there), `programs` (the run's programs that
+#'   read it, one string).
+#' @export
+batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
+  parts <- match.arg(parts, c("ard", "tfl"), several.ok = TRUE)
+  x <- study$planner
+  lay <- study_layout()
+  dat <- .batch_data_files(x)
+  ids <- output_ids %||% x$outputs$output_id
+  progs <- c(
+    if ("ard" %in% parts) file.path(lay[["programs_ard"]], vapply(ids, .ard_prog_name, "")),
+    if ("tfl" %in% parts) file.path(lay[["programs_tfl"]], vapply(ids, function(id)
+      report_info(x, id)$program, "")))
+  dat <- dat[intersect(names(dat), progs)]
+  files <- unique(unlist(dat, use.names = FALSE))
+  if (!length(files)) {
+    return(data.frame(path = character(), size = numeric(), programs = character(),
+                      stringsAsFactors = FALSE))
+  }
+  full <- ifelse(.is_abs_path(files), files, file.path(study$path, files))
+  data.frame(
+    path = files,
+    size = unname(file.size(full)),
+    programs = vapply(files, function(f) paste(basename(names(dat)[vapply(dat, function(v)
+      f %in% v, NA)]), collapse = ", "), "", USE.NAMES = FALSE),
+    stringsAsFactors = FALSE)
+}
+
+.is_abs_path <- function(p) grepl("^([A-Za-z]:)?[/\\\\]", p)
+
 # the runner and the autoexec programs, written with the study
 .save_batch_programs <- function(p, root) {
   lay <- study_layout()
@@ -221,15 +302,27 @@ autoexec_all_code <- function(date = Sys.Date()) {
 #' (`programs/ard/autoexec_ard.R`), the reports
 #' (`programs/tfl/autoexec_report.R`) or both (`programs/autoexec_all.R`)
 #' -- which makes a batch folder `runs/<date>_<time>_<what>/` with each
-#' program's log, what the run made and, with `code = TRUE`, the programs
-#' and definition workbooks it ran.  `list_batches()` lists a study's
-#' batch folders.
+#' program's log, what the run made, the R and package versions
+#' (`session_info.txt`, and the study's `renv.lock` when it has one), with
+#' `code = TRUE` the programs and definition workbooks it ran, and with
+#' `data = TRUE` the data files its programs read.  `list_batches()` lists
+#' a study's batch folders.
+#'
+#' The data kept are the files of the data catalog the run's programs read
+#' ([batch_data_plan()]): each ARD program its report's datasets, each
+#' report program its own (a listing's, a figure's) or the ARD taken in it
+#' reads.  They go to the batch folder's `data/` under the path they have
+#' in the study folder (`data/data/adam/adsl.rds`; a file outside it under
+#' `data/external/`), listed in `data_manifest.csv` with their size, md5
+#' and time.  With the code and the logs, that is everything the run read:
+#' a run that can be made again.
 #'
 #' The programs are the saved ones: save the study first.
 #'
 #' @param study An `rtfstudy`.
 #' @param parts `"ard"`, `"tfl"` or both.
 #' @param code Keep the code in the batch folder.
+#' @param data Keep the data files the programs read in the batch folder.
 #' @param only Programs or outputs to run; `NULL` for all.
 #' @param exclude Reports to leave out (their ARD program and their report
 #'   program), by output id or program name; `NULL` for none.  The batch
@@ -242,7 +335,7 @@ autoexec_all_code <- function(date = Sys.Date()) {
 #'   batch folder), `result` (its run.csv), `output` (what the run
 #'   printed); otherwise the process.  `list_batches()`: a data frame.
 #' @export
-run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE,
+run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
                       only = NULL, exclude = NULL, batch = NULL, wait = TRUE) {
   lay <- study_layout()
   parts <- match.arg(parts, c("ard", "tfl"), several.ok = TRUE)
@@ -263,16 +356,17 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE,
   # saved by an earlier tflplanner has an older programs/batch.R)
   runner <- readLines(file.path(study$path, "programs", .batch_file), warn = FALSE)
   if ((length(exclude) && !any(grepl("--exclude=", runner, fixed = TRUE))) ||
-      (length(batch) && !any(grepl("--batch", runner, fixed = TRUE)))) {
+      (length(batch) && !any(grepl("--batch", runner, fixed = TRUE))) ||
+      (isTRUE(data) && !any(grepl("--data", runner, fixed = TRUE)))) {
     stop("programs/batch.R was written by an earlier tflplanner and cannot leave ",
-         "reports out or run a named batch: save the study to write it again.",
-         call. = FALSE)
+         "reports out, run a named batch or keep the data: save the study to ",
+         "write it again.", call. = FALSE)
   }
   before <- list_batches(study)$batch
   out <- tempfile("batch", fileext = ".txt")
   px <- processx::process$new(
     file.path(R.home("bin"), "Rscript"),
-    c(prog, if (!code) "--no-code", only,
+    c(prog, if (!code) "--no-code", if (isTRUE(data)) "--data", only,
       if (length(exclude)) paste0("--exclude=", .batch_exclude(study$planner, exclude)),
       if (length(batch)) c("--batch", batch)),
     wd = study$path,
@@ -365,13 +459,21 @@ list_batches <- function(study) {
       programs = if (is.null(r)) NA_integer_ else nrow(r),
       errors = if (is.null(r)) NA_integer_ else sum(r$status != "OK"),
       code = dir.exists(file.path(root, d, "code")),
+      data = dir.exists(file.path(root, d, "data")),
       excluded = ex,
       path = file.path(root, d), stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, c(list(data.frame(
     batch = character(), started = character(), what = character(),
     set = character(), programs = integer(), errors = integer(), code = logical(),
+    data = logical(),
     excluded = character(), path = character())), rows))
   rownames(out) <- NULL
   out
+}
+
+# a size in MB as people read it: 0.4 MB, 12 MB, 1.3 GB
+.mb_text <- function(mb) {
+  if (mb >= 1024) sprintf("%.1f GB", mb / 1024) else
+    if (mb >= 10) sprintf("%.0f MB", mb) else sprintf("%.1f MB", mb)
 }

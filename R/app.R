@@ -1039,7 +1039,7 @@ app_ui <- function(lang = "en") {
         DT::DTOutput("status"),
         shiny::tags$script(shiny::HTML(.status_loading_js))),
       bslib::card(
-        bslib::card_header(with_tip(t("Official runs (batch folders)"), t("An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs) and, if kept, the programs and definition workbooks it ran."))),
+        bslib::card_header(with_tip(t("Official runs (batch folders)"), t("An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read."))),
         shiny::div(
           class = "d-flex flex-wrap gap-3 align-items-center",
           shiny::radioButtons(
@@ -1049,9 +1049,15 @@ app_ui <- function(lang = "en") {
           shiny::checkboxInput("batch_code",
                                t("keep the code in the batch folder"),
                                value = TRUE),
+          shiny::checkboxInput("batch_data",
+                               with_tip(t("keep the data in the batch folder"),
+                                        t("The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the run can be made again.")),
+                               value = FALSE),
           .btn("batch_run", t("Start the official run"),
                class = "btn-sm btn-primary"),
           .btn("batch_open", t("Open the batch folder"))),
+        # the data the run would keep: its size, before the run
+        shiny::uiOutput("batch_data_size"),
         # the reports the run takes: all, unless some are left out
         shiny::uiOutput("batch_reports_ui"),
         # as tall as its rows (a fill table left a card of empty space)
@@ -10496,18 +10502,18 @@ app_server <- function(input, output, session, start) {
                    s$meta$study_id))
   }
   shiny::observeEvent(input$run_all, start_run(NULL, t("every report")))
-  start_batch <- function(parts, code, exclude = NULL, set = NULL) {
+  start_batch <- function(parts, code, exclude = NULL, set = NULL, data = FALSE) {
     if (!is.null(rv$job)) return(notify(t("A run is going on"), "warning"))
     if (dirty() && !do_save()) return()
     parts <- if (identical(parts, "all")) c("ard", "tfl") else parts
     # the runner that can leave reports out (a study saved by an earlier
     # tflplanner has an older one)
-    if ((length(exclude) || length(set)) &&
+    if ((length(exclude) || length(set) || isTRUE(data)) &&
         is.null(guarded(.save_batch_programs(rv$p, rv$study$path)))) {
       return()
     }
-    px <- guarded(run_batch(rv$study, parts, code = code, exclude = exclude,
-                            batch = set, wait = FALSE))
+    px <- guarded(run_batch(rv$study, parts, code = code, data = isTRUE(data),
+                            exclude = exclude, batch = set, wait = FALSE))
     if (is.null(px)) return()
     rv$job <- px
     rv$job_study <- rv$study$meta$study_id
@@ -10655,11 +10661,41 @@ app_server <- function(input, output, session, start) {
     ids <- batch_ids()
     ticks <- intersect(input$batch_reports %||% ids, ids)
     s <- chosen_set()
+    data <- isTRUE(input$batch_data)
     if (nzchar(s) && setequal(ticks, batch_sets(rv$p)[[s]])) {
-      return(start_batch(parts, isTRUE(input$batch_code), set = s))
+      return(start_batch(parts, isTRUE(input$batch_code), set = s, data = data))
     }
-    start_batch(parts, isTRUE(input$batch_code), setdiff(ids, ticks))
+    start_batch(parts, isTRUE(input$batch_code), setdiff(ids, ticks), data = data)
   }
+  # the data the run would keep, ticked: how many files, how large (a
+  # warning over tflplanner.batch_data_warn_mb, 500 MB), and those the
+  # catalog names that are not there
+  output$batch_data_size <- shiny::renderUI({
+    if (!isTRUE(input$batch_data)) return(NULL)
+    shiny::req(has_study())
+    parts <- input$batch_parts %||% "all"
+    parts <- if (identical(parts, "all")) c("ard", "tfl") else parts
+    ids <- batch_ids()
+    ticks <- intersect(input$batch_reports %||% ids, ids)
+    d <- tryCatch(batch_data_plan(list(path = rv$study$path, planner = rv$p), parts, ticks),
+                  error = function(e) NULL)
+    if (is.null(d)) return(NULL)
+    if (!nrow(d)) {
+      return(shiny::p(class = "small text-muted mb-1",
+                      t("The run's programs read no data file of the data catalog.")))
+    }
+    mb <- sum(d$size, na.rm = TRUE) / 1024^2
+    lim <- getOption("tflplanner.batch_data_warn_mb", 500)
+    gone <- d$path[is.na(d$size)]
+    shiny::tagList(
+      shiny::p(class = "small text-muted mb-1", title = paste(d$path, collapse = "\n"),
+               sprintf(t("Data kept: %d files, %s."), sum(!is.na(d$size)), .mb_text(mb))),
+      if (mb > lim) shiny::p(class = "small text-warning mb-1", sprintf(
+        t("Over %s: every run keeps its own copy, so the runs folder grows by this much each time."),
+        .mb_text(lim))),
+      if (length(gone)) shiny::p(class = "small text-warning mb-1", sprintf(
+        t("Not found, not kept: %s."), paste(gone, collapse = ", "))))
+  })
   shiny::observeEvent(input$batch_run, {
     parts <- input$batch_parts %||% "all"
     if (parts %in% c("ard", "all") && !is.null(ard_valid())) {
@@ -10703,6 +10739,7 @@ app_server <- function(input, output, session, start) {
                             all = "ARD, then reports")[d$what]),
                     d = d$programs, e = d$errors,
                     f = ifelse(d$code, "\u2713", ""),
+                    f2 = ifelse(d$data, "\u2713", ""),
                     # the programs left out, the first few when many
                     g = vapply(strsplit(d$excluded, ", ", fixed = TRUE), function(x) {
                       x <- basename(x)
@@ -10713,7 +10750,7 @@ app_server <- function(input, output, session, start) {
                     h = d$set,
                     stringsAsFactors = FALSE)
     names(v) <- t(c("Batch folder", "Started", "Runs", "Programs", "Errors",
-                    "Code", "Left out", "Batch name"))
+                    "Code", "Data", "Left out", "Batch name"))
     DT::formatStyle(.dt(v, selection = "single"), names(v)[5L],
                     color = DT::styleInterval(0, c("#15803d", "#b91c1c")))
   })

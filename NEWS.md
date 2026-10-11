@@ -1,5 +1,24 @@
 # tflplanner (development version)
 
+- **An official run can keep its data** (the Runs tab's "keep the data in
+  the batch folder", off by default; `run_batch(data = TRUE)`, the
+  autoexec programs' `--data`).  The data files the run's programs read
+  -- by the data catalog: each table's datasets (an analysis data's, those
+  it is made from), a listing's, a figure's, an ARD taken in -- are copied
+  into the batch folder's `data/` under their path in the study folder,
+  and listed with their size, md5 and time in `data_manifest.csv`.  Ticked,
+  the tab says how many files and how large before the run, and warns
+  above 500 MB (`options(tflplanner.batch_data_warn_mb)`);
+  `batch_data_plan()` gives the same list.  Every official run now also
+  writes `session_info.txt` -- the packages its programs name with their
+  versions, and `sessionInfo()` -- and keeps the study's `renv.lock` when
+  it has one; `batch.txt` says whether the code and the data were kept,
+  and the runs table has a Data column.  With the code, the logs and the
+  versions, a batch folder is everything the run read: the first step of
+  the official-run snapshot (a run made again as it was, though the data
+  change after).  Save the study once so `programs/batch.R` knows the
+  data.
+
 - **The page patterns edited in a dialog** (the page-patterns design,
   part C).  "Edit the patterns..." on step 3 opens Standard and each
   pattern on the same form as a report's page: a pattern's values marked

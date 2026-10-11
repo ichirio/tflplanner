@@ -150,3 +150,71 @@ test_that("the report list shows a report's batches and edits them", {
     expect_identical(batch_sets(rv$p)$Interim, "VS")
   })
 })
+
+test_that("the data each program reads, by the data catalog", {
+  p <- bs_planner()
+  p$ard$datasets <- .normalize_ard_sheet(data.frame(
+    dataset = c("ADSL", "ADAE"), path = c("data/adam/adsl.rds", "data/adam/adae.rds")),
+    "datasets")
+  p$lf$listings <- data.frame(output_id = "L1", dataset = "ADAE")
+  p <- use_imported_ard(p, "VS", "vs_cro.rds")
+  d <- .batch_data_files(p)
+  expect_identical(d[["programs/ard/DM.R"]], "data/adam/adsl.rds")
+  # a listing reads its dataset; a table's report program the study ARD
+  # (kept anyway), or the ARD taken in it reads
+  expect_identical(d[["programs/tfl/L1.R"]], "data/adam/adae.rds")
+  expect_length(d[["programs/tfl/DM.R"]], 0L)
+  expect_identical(d[["programs/tfl/VS.R"]], "input/ard/vs_cro.rds")
+  # batch.R carries them
+  code <- batch_code(p)
+  expect_true(any(startsWith(code, ".batch_data <- list(")))
+  expect_true(any(grepl("`programs/tfl/L1.R` = c(\"data/adam/adae.rds\")", code, fixed = TRUE)))
+})
+
+test_that("an official run keeps the data its programs read, and the versions", {
+  skip_if_not_installed("cards")
+  skip_on_cran()
+  bs_home()
+  s <- create_study("BD", planner = bs_planner())
+  adsl <- file.path(s$path, "data", "adam", "adsl.rds")
+  saveRDS(cards::ADSL, adsl)
+  o <- open_study("BD")
+  # what would be kept, before the run
+  plan <- batch_data_plan(o, "ard")
+  expect_identical(plan$path, "data/adam/adsl.rds")
+  expect_identical(plan$size, file.size(adsl))
+  expect_identical(plan$programs, "DM.R, VS.R")
+  expect_identical(nrow(batch_data_plan(o, "tfl")), 0L)
+
+  # off by default: no data, but the R and package versions
+  b <- run_batch(o, "ard")
+  expect_true(b$ok)
+  expect_false(dir.exists(file.path(b$batch, "data")))
+  txt <- readLines(file.path(b$batch, "batch.txt"))
+  expect_true("Data     : not kept" %in% txt)
+  si <- readLines(file.path(b$batch, "session_info.txt"))
+  expect_true(any(grepl("^cards +[0-9]", si)))
+  expect_true(any(grepl("R version", si, fixed = TRUE)))
+  expect_false(list_batches(o)$data[1])
+  Sys.sleep(1.1)
+
+  # kept: under its path in the study folder, its md5 in the manifest; the
+  # study's renv.lock with the versions
+  writeLines("{}", file.path(s$path, "renv.lock"))
+  b2 <- run_batch(o, "ard", data = TRUE)
+  expect_true(b2$ok)
+  expect_true(file.exists(file.path(b2$batch, "data", "data", "adam", "adsl.rds")))
+  man <- utils::read.csv(file.path(b2$batch, "data_manifest.csv"), colClasses = "character")
+  expect_identical(man$path, "data/adam/adsl.rds")
+  expect_identical(man$md5, unname(tools::md5sum(adsl)))
+  expect_identical(as.numeric(man$size), file.size(adsl))
+  txt <- readLines(file.path(b2$batch, "batch.txt"))
+  expect_match(grep("^Data", txt, value = TRUE), "kept (data/, 1 file(s)", fixed = TRUE)
+  expect_true(file.exists(file.path(b2$batch, "renv.lock")))
+  expect_true(list_batches(o)$data[1])
+
+  # a batch.R written before: said, not run
+  bf <- file.path(s$path, "programs", "batch.R")
+  writeLines(gsub("--data", "--d-a-t-a", readLines(bf), fixed = TRUE), bf)
+  expect_error(run_batch(o, "ard", data = TRUE), "keep the data")
+})
