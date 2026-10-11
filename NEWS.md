@@ -13,6 +13,17 @@
   faded, the marks from "not made" to "made" without a reload.  (Steps 2
   and 3's marks, never drawn, no longer stay "recalculating" either.)
 
+- **The forest plot from the figure's own ARD** (#293 phase 6, with
+  tflspec's `forest_hr` in parts).  The hazard ratios, intervals and N a
+  forest plot prints are statistics of the figure's own ARD -- a Cox
+  model of all subjects and one within each subgroup variable, by cards /
+  cardx -- not fitted inside the figure program.  `set_fig_own_analyses()`
+  writes the analyses a design brings (`attr(design, "analyses")`) to the
+  figure's ARD definition and sets its source to `own`; the Plot
+  Designer's forest template does so when applied, with the subgroups and
+  the arm compared chosen on its form.  The sample gains **F-14-2-4**, the
+  hazard ratio of the time to first dermatologic event by sex and age
+  group.  Needs tflspec >= 0.0.24.9084.
 - **Ready for CRAN's checks, the parts that do not wait for the
   submission** (#334).  The tests that start the app or write study
   folders (5-10 s a test: the spec workbooks) skip on CRAN -- 16 files,
@@ -123,6 +134,16 @@ look at its Review tab.
   hand is copied to `programs/.edited/` first); check the Review tab.
 
 ## Changes
+
+- **The table builder says what the report's ARD holds.**  Above the
+  SPEC / Code / Result tabs, one line: the column variables and their
+  groups, the pages, the rows, the analysis variables (categorical,
+  continuous), the statistics and when the ARD was read ("ARD: columns
+  TRT01A (3 groups) | 6 variables ..."); opened, a small table of each
+  one's role, kind, levels or statistics and label.  "Show the whole
+  normalized ARD" opens it in a dialog -- paged, filterable, the main
+  columns or all -- read only then.  From what reading the ARD saved:
+  nothing more is read to draw the card.
 
 - **Race with its Asian sub-categories, nested or in two blocks** (the
   sample's T-14-1-5 and T-14-1-6, with rtfreporter #599 and tflspec

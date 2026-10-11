@@ -163,8 +163,29 @@ set_fig_design <- function(x, output_id, design) {
 }
 
 # the designs from the study's state (JSON), as fig_designs
+# R code in a design (tflspec::tfl_fig_r(), YAML's `!r`) as JSON keeps it:
+# list(`!r` = "code") in the state, the code again when it is read
+.fig_r_to_state <- function(x) {
+  if (inherits(x, "tfl_fig_r")) return(list(`!r` = as.character(x)[1L]))
+  if (is.list(x)) {
+    a <- attributes(x)
+    x[] <- lapply(x, .fig_r_to_state)
+    attributes(x) <- a
+  }
+  x
+}
+.fig_r_from_state <- function(x) {
+  if (!is.list(x)) return(x)
+  if (identical(names(x), "!r") && length(x) == 1L) return(tflspec::tfl_fig_r(x[[1L]]))
+  a <- attributes(x)
+  x[] <- lapply(x, .fig_r_from_state)
+  attributes(x) <- a
+  x
+}
+
 .fig_designs_from_state <- function(x) {
   if (!length(x)) return(list())
+  x <- .fig_r_from_state(x)
   # one data list (a state of before #293 kept `stats` apart)
   lapply(x, function(d) {
     d <- .fig_norm(d)
