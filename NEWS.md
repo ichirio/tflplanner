@@ -1,5 +1,24 @@
 # tflplanner (development version)
 
+- **A run in the background never veils the page** (the user's report on
+  this version).  While its ARD programs ran, the page went white for an
+  instant every few seconds with the busy cursor: the poll's work (the
+  marks worked out again) made the server busy, and the page's veil --
+  meant for the user's own waits (opening a study, saving) -- came up.
+  The veil now comes only for a busy state that begins right after a
+  click, a key or a changed field; the poll's updates go by unseen.
+- **Step 3's form, the user's notes** (page patterns, 0.0.2.9187): a line
+  a report of a pattern inherits from Standard says "Standard (the same in
+  Compact)"; the font is Courier or Courier New to choose, or any typed
+  (the defaults are rtfreporter's: Letter, landscape, Courier 9 pt, 0.75
+  in margins); the titles' heading says what it is -- "The header's
+  {OUTPUT_TITLE}", the text the header prints there, not a title line;
+  the tokens card is above the header, with a token added (its name and
+  text) or removed, and beside it what a header, footer, title or
+  footnote can say, and where each comes from (made from the report's ID,
+  the TOC taken in, the study's tokens, rtfreporter's).  The first page's
+  sample is fitted to the pane's width by default.
+
 - **The report marks follow a run report by report again** (the user's
   report on 0.0.2.9186).  Since 0.0.2.9184 the marks of a run in the
   background changed only when the run had ended: a report's mark needs

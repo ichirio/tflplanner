@@ -231,3 +231,41 @@ test_that("the pattern dialog: a new pattern, edited by its target, renamed", {
     expect_false("Landscape" %in% page_patterns(rv$p))
   })
 })
+
+test_that("the user's notes: Standard under a pattern, the tokens card, the heading's words", {
+  p <- set_report_pattern(pat_planner(), "T1", "Compact")
+  p$sheets$header <- rbind(p$sheets$header, .normalize_sheet(data.frame(
+    output_id = NA, line = "5", center = "{OUTPUT_TITLE}"), "header"))
+  p <- set_page_token(p, "T1", "OUTPUT_TITLE", "Demographics")
+  h <- as.character(.page_form_ui(p, "T1", identity))
+  # Standard's line 1 under Compact: Compact says the same
+  expect_match(h, "Standard (the same in Compact)", fixed = TRUE)
+  # the heading says what it is
+  expect_match(h, "The header's {OUTPUT_TITLE}", fixed = TRUE)
+  # the tokens: an add row, the reference with the report's label
+  expect_match(h, "pg-token-add", fixed = TRUE)
+  expect_match(h, "Made from the report's ID", fixed = TRUE)
+  # the font: Courier or Courier New to choose, any typed
+  expect_match(h, '<option value="Courier New">', fixed = TRUE)
+  # the tokens card above the header
+  expect_lt(regexpr(">Tokens<", h, fixed = TRUE), regexpr(">Header<", h, fixed = TRUE))
+})
+
+test_that("a token added and removed from the form; the veil only for the user's work", {
+  local_home()
+  create_study("S1", planner = pat_planner())
+  shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    session$setInputs(target = "T1", nav = "make", step = "page")
+    session$setInputs(pg_act = list(act = "token_add", sheet = "", col = "", line = "",
+                                    name = "data_cutoff", value = "2026-09-30", n = 1))
+    d <- page_tokens_from(rv$p, "T1")
+    expect_identical(d$value[d$name == "DATA_CUTOFF"], "2026-09-30")
+    session$setInputs(pg_act = list(act = "token_reset", sheet = "", col = "", line = "",
+                                    name = "DATA_CUTOFF", n = 2))
+    expect_false("DATA_CUTOFF" %in% page_tokens_from(rv$p, "T1")$name)
+  })
+  html <- as.character(app_ui())
+  expect_match(html, "html.shiny-busy.rp-user-busy body::after", fixed = TRUE)
+  expect_false(grepl("html.shiny-busy body::after", html, fixed = TRUE))
+})

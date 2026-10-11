@@ -2875,3 +2875,18 @@ Remove the line,行を削除
 Remove the token,トークンを削除
 "(no line: the time is in days already; months, weeks or years divide it)",（行なし：時間はもう日単位です。月・週・年にすると割り算の行が入ります）
 (nothing yet: this piece writes no line on its own),（まだ何もありません：この部品だけで書く行はありません）
+Standard (the same in %s),Standard（%s も同じ）
+NAME,名前
+its text,その文
+(empty),（空）
+Made from the report's ID,帳票の ID から作られるもの
+"The report's, from the TOC taken in (or typed on the left)",帳票のもの：取り込んだ TOC から（または左で入力）
+"The study's (its tokens sheet, Standard)",試験のもの（tokens シートの Standard）
+"rtfreporter's, as the RTF is written",rtfreporter のもの（RTF を書くときに入る）
+the pages,総ページ数
+the program's path,プログラムのパス
+the date and time,日時
+The header's {OUTPUT_TITLE},ヘッダーの {OUTPUT_TITLE} に入る文
+The text the header prints where it says {OUTPUT_TITLE}: this report's title. A TOC taken in writes it; it is not a title line of its own (the lines below are).,ヘッダーが {OUTPUT_TITLE} と書いた所に印字する文（この帳票のタイトル）。TOC を取り込むと入ります。別のタイトル行ではありません（タイトル行は下の行です）。
+"This page's tokens: change, add, remove.",このページのトークン：変更・追加・削除。
+"What a header, footer, title or footnote can say:",ヘッダー・フッター・タイトル・脚注で使えるもの：

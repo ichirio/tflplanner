@@ -243,13 +243,16 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 .nav-link.rp-idle { opacity: .45; }
 /* a step's mark worked out again (a run in the background): not faded */
 [id^='step_mark_'].recalculating { opacity: 1 !important; }
-/* While the server works (opening a study, switching a tab or a report,
-   saving) the page takes no clicks: a veil, after 0.4 s so that the
-   short updates (the builder's preview, a poll) do not flicker or block. */
+/* While the server works on what the user did (opening a study, switching
+   a tab or a report, saving) the page takes no clicks: a veil, after 0.4 s
+   so that the short updates (the builder's preview) do not flicker or
+   block.  Work the user did not start -- a run in the background
+   followed by the poll -- never veils the page (rp-user-busy: a busy state
+   that began right after a click or a key). */
 body::after { content: ''; position: fixed; inset: 0; z-index: 2000;
   visibility: hidden; background: rgba(255,255,255,0); cursor: progress;
   transition: visibility 0s, background 0s; }
-html.shiny-busy body::after { visibility: visible;
+html.shiny-busy.rp-user-busy body::after { visibility: visible;
   background: rgba(255,255,255,.35);
   transition: visibility 0s .4s, background .2s .4s; }
 .rp-code textarea, .rp-code pre { font-family: Consolas, 'Courier New',
@@ -793,8 +796,8 @@ app_ui <- function(lang = "en") {
                      shiny::span(t("First page (sample)")),
                      shiny::div(
                        class = "d-flex gap-1",
-                       # actual size (100%) by default; fit to the pane's
-                       # width on a click, remembered in this browser
+                       # fit to the pane's width by default; actual size
+                       # on a click, remembered in this browser
                        shiny::tags$button(
                          type = "button", id = "page_fit",
                          class = "btn btn-sm btn-outline-secondary py-0",
@@ -1150,6 +1153,21 @@ $(document).on('shiny:value shiny:error', function(e) {
 "
 
 .updating_js <- "
+// The veil (the page's busy state, CSS rp-user-busy) only for work the
+// user started: a busy state that begins within 1.5 s of a click, a key or
+// a changed field.  A run in the background followed by the poll is not.
+(function() {
+  var last = 0;
+  ['mousedown', 'keydown', 'change'].forEach(function(ev) {
+    document.addEventListener(ev, function() { last = Date.now(); }, true);
+  });
+  $(document).on('shiny:busy', function() {
+    if (Date.now() - last < 1500) document.documentElement.classList.add('rp-user-busy');
+  });
+  $(document).on('shiny:idle', function() {
+    document.documentElement.classList.remove('rp-user-busy');
+  });
+})();
 $(document).on('shiny:connected', function() {
   Shiny.addCustomMessageHandler('builder-updating', function(x) {
     $('#builder_updating').removeClass('d-none');
@@ -9937,6 +9955,14 @@ app_server <- function(input, output, session, start) {
         set_page_token(p, id, a$name, r$value[r$name %in% a$name][1L] %||% "")
       },
       token_reset = set_page_token(p, id, a$name, NA_character_),
+      token_add = {
+        nm <- toupper(trimws(a$name %||% ""))
+        if (!grepl("^[A-Z][A-Z0-9_]*$", nm)) {
+          stop("A token's name is upper case: a letter, then letters, digits or _ (DATA_CUTOFF).",
+               call. = FALSE)
+        }
+        set_page_token(p, id, nm, trimws(a$value %||% ""))
+      },
       NULL)))
   })
 
