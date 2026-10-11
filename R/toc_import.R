@@ -494,8 +494,7 @@ toc_snapshot <- function(spec, title_offset = 0L, last = NULL) {
   attr(x, "data_id") <- attr(x, "added") <- NULL
   for (d in v) {
     if (!is.na(.adata_same_as(.adata_rows(x, output_id), d, NA, subj, NA))) next
-    lo <- function(s) gsub("[^a-z0-9_.]", "_", tolower(s))
-    nm <- .adata_free_name(x, output_id, paste0(lo(d), "_", lo(pop)))
+    nm <- .adata_free_name(x, output_id, .adata_default_name(d, pop))
     x <- set_analysis_data(x, output_id, nm, from = d, subjects = subj)
   }
   out(x)

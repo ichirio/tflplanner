@@ -25,6 +25,9 @@
 # The steps of making a report (the Make a report tab), by their tab values:
 # their names here only, so a name changes in one place (and its Japanese)
 .step_labels <- c(ard = "1 ARD", content = "2 Content", page = "3 Page and output")
+# a kind's own names of the steps (a figure's step 1 is mostly its data; an
+# ARD only sometimes, as a part of it)
+.step_labels_of <- list(figure = c(ard = "1 Data", content = "2 Figure"))
 
 .type_labels <- c(table = "Table", listing = "Listing", figure = "Figure",
                   user = "User code")
@@ -45,7 +48,7 @@
 
 # The top tabs a kind of report has nothing on: shown faded while such a
 # report is chosen (still open to click; the tab then says why).
-.type_idle_tabs <- list(table = character(), figure = "ard", listing = "ard",
+.type_idle_tabs <- list(table = character(), figure = character(), listing = "ard",
                         user = character())
 
 # Text cut to `n` characters, with an ellipsis.
@@ -543,7 +546,7 @@ app_ui <- function(lang = "en") {
   # a step of making a report: its name (one place: .step_labels) and its
   # state's mark
   step_title <- function(step) {
-    shiny::span(t(.step_labels[[step]]),
+    shiny::span(shiny::span(class = "rp-step-name", `data-step` = step, t(.step_labels[[step]])),
                 shiny::uiOutput(paste0("step_mark_", step), inline = TRUE))
   }
 
@@ -576,6 +579,8 @@ app_ui <- function(lang = "en") {
   # -- the steps of making a report ----------------------------------------
   step_ard <- shiny::div(
     class = "mt-2",
+    # a figure's: its data steps first, the numbers from an ARD below
+    .designer_data_ui(),
     shiny::uiOutput("ard_kind_note"),
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center mb-2 small",
@@ -1216,6 +1221,13 @@ $(document).on('shiny:connected', function() {
   });
   // the ARD definition of the chosen report: hidden for a figure that has
   // none of its own (it reads none, or a table's)
+  // the steps' names, the kind of report's own (a figure's 1 Data, 2 Figure)
+  Shiny.addCustomMessageHandler('rp-step-names', function(x) {
+    $('.rp-step-name').each(function() {
+      var k = $(this).attr('data-step');
+      if (x[k]) $(this).text(x[k]);
+    });
+  });
   Shiny.addCustomMessageHandler('rp-ard-def', function(x) {
     // (a class, not display: the row is d-flex !important)
     $('#ard_split').toggleClass('d-none', !x);
@@ -2885,6 +2897,14 @@ app_server <- function(input, output, session, start) {
         t(moves[[to]]))))
   })
   shiny::observeEvent(input$report_move, go(input$report_move))
+  # the steps' names: the kind's own (a figure's "1 Data", "2 Figure")
+  shiny::observe({
+    k <- report_kind()
+    own <- .step_labels_of[[k]] %||% character()
+    nm <- .step_labels
+    nm[names(own)] <- own
+    session$sendCustomMessage("rp-step-names", stats::setNames(as.list(t(unname(nm))), names(nm)))
+  })
   # the tabs this kind of report has nothing on, faded (still clickable)
   shiny::observe({
     k <- report_kind()
@@ -2942,6 +2962,8 @@ app_server <- function(input, output, session, start) {
     }
     shiny::div(
       class = "card card-body py-2 mb-2",
+      shiny::h6(class = "mb-1", with_tip(t("Numbers from an ARD (optional)"),
+        t("Only when the figure prints numbers of an analysis -- a KM median, a forest plot's hazard ratios: its own analyses, or a table's ARD. Most figures need none."))),
       shiny::div(class = "d-flex flex-wrap gap-3 align-items-end",
         shiny::radioButtons(
           "fig_ard_kind", with_tip(t("This figure's ARD"),
@@ -5095,7 +5117,7 @@ app_server <- function(input, output, session, start) {
                            pop = adata_pop_name())
     # taken, or nothing to name it after: the usual suggestion for its data
     if ((is.na(nm) || nm %in% .adata_taken_names(rv$p, ard_target())) && !.is_blank(root)) {
-      nm <- .adata_suggest(rv$p, ard_target(), root, adata_pop_name())
+      nm <- .adata_suggest(rv$p, ard_target(), root, adata_pop_name(), adata_where_now())
     }
     if (!is.na(nm) && !identical(nm, input$adata_id)) {
       shiny::updateTextInput(session, "adata_id", value = nm)
@@ -5476,7 +5498,7 @@ app_server <- function(input, output, session, start) {
     mine <- .adata_of_report(p, tg)
     s1 <- c(intersect(mine, subj), subj)[1L]
     suf <- if (!is.na(s1) && grepl("_", s1)) sub("^[^_]*_", "", s1) else NA
-    nm <- if (!is.na(suf) && !from %in% pop_ds) paste0(tolower(from), "_", suf) else NA
+    nm <- if (!is.na(suf) && !from %in% pop_ds) .adata_default_name(from, suf) else NA
     # not a name the program has already (adae_saf for ADAE x SAF read as it is)
     if (is.na(nm) || nm %in% .adata_taken_names(p, ard_target())) nm <- .adata_suggest(p, ard_target(), from, NA)
     adata_edit(list(old = NULL, suggested = nm))
@@ -6369,6 +6391,11 @@ app_server <- function(input, output, session, start) {
   output$step_mark_ard <- shiny::renderUI({
     id <- current()
     if (is.null(id) || !has_study()) return(NULL)
+    if (identical(report_kind(), "figure")) {
+      n <- length(fig_design(rv$p, id)$data)
+      return(if (n) step_mark("\u25cf", sprintf(t("Data steps: %d"), n), "text-success") else
+        step_mark("\u25cb", t("No data step yet: start the figure in step 2"), "text-muted"))
+    }
     if ("ard" %in% (.type_idle_tabs[[report_kind()]] %||% character())) {
       return(step_mark("\u2013", t("Not used"), "text-muted"))
     }

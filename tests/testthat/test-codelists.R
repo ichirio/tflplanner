@@ -294,11 +294,11 @@ test_that("a listing's and a figure's data: their code lists, where the data is 
     session$setInputs(lf_cl_add = "AESEV")
     expect_identical(sheet_rows(rv$p, "codelists", "L-AE")$value,
                      c("MILD", "MODERATE", "SEVERE"))
-    # the figure: the data steps' last, the code lists
+    # the figure: the data steps' last (step 1, Data), the code lists
     session$setInputs(target = "F-AE")
-    expect_match(output$pd_stack$html, "Code lists", fixed = TRUE)
+    expect_match(output$pd_stack_data$html, "Code lists", fixed = TRUE)
     session$setInputs(pd_act = list(op = "sel", sec = "codelists", i = 1L, n = 1))
-    expect_match(output$pd_form$html, "pd_cl", fixed = TRUE)
+    expect_match(output$pd_form_data$html, "pd_cl", fixed = TRUE)
     h <- output$pd_cl$html
     expect_match(h, "MILD \u2192 Mild", fixed = TRUE)
     expect_match(h, "would stop): SEVERE", fixed = TRUE)
