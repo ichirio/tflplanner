@@ -271,3 +271,60 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   for (i in seq_len(nrow(ck))) add(ck$part[i], ck$field[i], "F08", "%s", ck$problem[i])
   done()
 }
+
+# The study's analysis set whose condition is a flag (SAFFL: the set
+# `SAFFL == "Y"`), or NA
+.population_of_flag <- function(x, flag) {
+  po <- x$ard$populations
+  if (is.null(flag) || is.na(flag) || is.null(po) || !nrow(po)) return(NA_character_)
+  if (flag %in% po$population_id) return(flag)
+  k <- which(vapply(po$where, function(w) identical(.pop_flag(w), flag), NA))
+  if (length(k)) po$population_id[k[1L]] else NA_character_
+}
+
+#' A figure's own analyses, written from its design
+#'
+#' A design made from a template that brings its analyses -- the forest
+#' plot's hazard ratios, `attr(design, "analyses")` from
+#' [tflspec::tfl_fig_forest_analyses()] -- writes them to the figure's ARD
+#' definition: its `analysis_data` and `analyses` rows (a row of the same
+#' id is replaced, the others kept) and the report row's `ard_source =
+#' "own"`.  The study's ARD then has to be made again for the figure.
+#'
+#' @param x A `tflplanner`.
+#' @param output_id The figure.
+#' @param analyses A list of two data frames, `analysis_data` and
+#'   `analyses` (without `output_id`), as a design's attribute `analyses`.
+#' @param population_id The report's population, by its id, put on the
+#'   analysis data (a template names the population's flag, not the study's
+#'   id for it); `NULL` keeps what `analyses` says.
+#' @return The `tflplanner`, with attribute `written`: the ids of the
+#'   analyses written.
+#' @export
+set_fig_own_analyses <- function(x, output_id, analyses, population_id = NULL) {
+  if (!is.list(analyses) || !all(c("analysis_data", "analyses") %in% names(analyses))) {
+    stop("`analyses` is a list of two data frames, analysis_data and analyses.",
+         call. = FALSE)
+  }
+  if (!is.null(population_id) && !is.na(population_id) && nrow(analyses$analysis_data)) {
+    analyses$analysis_data$population_id <- population_id
+  }
+  put <- function(sheet, key, new) {
+    if (is.null(new) || !nrow(new)) return()
+    new$output_id <- NULL
+    # the report's own rows (ard_rows() filters the analyses sheet only)
+    have <- x$ard[[sheet]]
+    have <- have[!is.na(have$output_id) & have$output_id == output_id, , drop = FALSE]
+    have$output_id <- NULL
+    have <- have[!have[[key]] %in% new[[key]], , drop = FALSE]
+    new <- .normalize_ard_sheet(new, sheet)
+    new$output_id <- NULL
+    rows <- rbind(have, new[names(have)])
+    x <<- set_ard_rows(x, sheet, output_id, rows)
+  }
+  put("analysis_data", "data_id", analyses$analysis_data)
+  put("analyses", "analysis_id", analyses$analyses)
+  x <- set_fig_ard_source(x, output_id, "own")
+  attr(x, "written") <- analyses$analyses$analysis_id
+  x
+}

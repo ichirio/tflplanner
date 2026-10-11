@@ -514,6 +514,68 @@ builder_write <- function(x, output_id, state, was = NULL) {
   identical(norm(a), norm(b))
 }
 
+# What a report's ARD holds, as the builder's card says it (#343): `meta`
+# is ard_info()'s (the keys, the variables and their statistics, when it
+# was read); `page_by`: the layout's page variables.  `line`: the one-line
+# summary; `rows`: role, variable, kind, the levels or statistics, the
+# label (NULL with no meta).  `tr`: the app's translation.
+ard_card_summary <- function(meta, page_by = character(), tr = function(x) x) {
+  if (is.null(meta) || (!length(meta$by) && !NROW(meta$variables))) {
+    return(list(line = tr("ARD: not read yet (step 1, \"Preview this table's ARD\")"),
+                rows = NULL))
+  }
+  cut <- function(x, k) if (length(x) > k) c(utils::head(x, k), "\u2026") else x
+  levels_of <- function(l) {
+    l <- as.character(l)
+    if (!length(l)) return("")
+    sprintf(tr("%d levels: %s"), length(l), paste(cut(l, 4L), collapse = ", "))
+  }
+  by <- meta$by
+  hier <- setdiff(meta$hierarchy %||% character(), page_by)
+  v <- meta$variables
+  if (is.null(v)) v <- data.frame(variable = character(), kind = character())
+  v <- v[!v$variable %in% c(by, hier, page_by), , drop = FALSE]
+  n_cat <- sum(v$kind %in% "categorical")
+  n_con <- sum(v$kind %in% "continuous")
+  st <- unique(stats::na.omit(as.character(meta$stats %||% character())))
+  when <- meta$fetched %||% NULL
+  parts <- c(
+    if (length(by)) sprintf(tr("columns %s (%s groups)"), paste(by, collapse = " \u00d7 "),
+                            paste(lengths(meta$keys[by]), collapse = " \u00d7 ")),
+    if (length(page_by)) sprintf(tr("pages %s"), paste(page_by, collapse = ", ")),
+    if (length(hier)) sprintf(tr("rows %s"), paste(hier, collapse = " \u203a ")),
+    # a hierarchy table with no analysis variable says nothing of them
+    if (nrow(v) || !length(hier))
+      sprintf(tr("%d variables (%d categorical, %d continuous)"), nrow(v), n_cat, n_con),
+    if (length(st)) sprintf(tr("statistics %s"), paste0(
+      paste(utils::head(st, 6L), collapse = ", "), if (length(st) > 6L) " \u2026")),
+    if (!is.null(when) && !all(is.na(when)))
+      sprintf(tr("read %s"), format(as.POSIXct(when), "%m/%d %H:%M")))
+  line <- paste0("ARD: ", paste(parts, collapse = " | "))
+  row <- function(role, var, kind, detail, label = NA_character_) {
+    data.frame(role = role, variable = var, kind = kind, detail = detail,
+               label = label, stringsAsFactors = FALSE)
+  }
+  lab <- function(x) {
+    if (!"label" %in% names(v)) return(NA_character_)
+    l <- v$label[match(x, v$variable)]
+    if (is.na(l) || identical(l, x)) NA_character_ else l
+  }
+  rows <- c(
+    lapply(by, function(k) row(tr("column"), k, tr("group"), levels_of(meta$keys[[k]]))),
+    lapply(page_by, function(k) row(tr("page split"), k, tr("group"), levels_of(meta$keys[[k]]))),
+    lapply(hier, function(k) row(tr("row: hierarchy"), k, tr("hierarchy"),
+                                 levels_of(meta$keys[[k]]))),
+    lapply(seq_len(nrow(v)), function(i) {
+      cont <- identical(v$kind[i], "continuous")
+      det <- if (cont) gsub(" | ", ", ", v$stats[i] %||% "", fixed = TRUE) else
+        levels_of(.split_list(v$levels[i] %||% NA_character_))
+      row(tr("row: variable"), v$variable[i],
+          tr(if (cont) "continuous" else "categorical"), det, lab(v$variable[i]))
+    }))
+  list(line = line, rows = do.call(rbind, rows))
+}
+
 # ------------------------------------------------------------ preview
 
 #' The table as it will print
