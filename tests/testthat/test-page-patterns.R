@@ -110,3 +110,27 @@ test_that("step 3: the pattern chosen, a value written, a line left out, from th
     expect_identical(nrow(sheet_rows(rv$p, "header", "T2")), 0L)
   })
 })
+
+test_that("titles and footnotes: the heading is the header's {OUTPUT_TITLE}, lines as the bands", {
+  p <- pat_planner()
+  p$sheets$header <- rbind(p$sheets$header, .normalize_sheet(data.frame(
+    output_id = NA, line = "5", center = "{OUTPUT_TITLE}"), "header"))
+  p <- set_page_token(p, "T1", "OUTPUT_TITLE", "Demographics")
+  h <- as.character(.page_form_ui(p, "T1", identity))
+  expect_match(h, 'data-name="OUTPUT_TITLE"', fixed = TRUE)
+  expect_match(h, 'value="Demographics"', fixed = TRUE)
+  # listed once: in the heading, not again with the tokens
+  expect_identical(lengths(regmatches(h, gregexpr("token:OUTPUT_TITLE", h, fixed = TRUE))), 1L)
+  expect_match(h, 'data-token="{PROGRAM}"', fixed = TRUE)
+  # a header without {OUTPUT_TITLE}: no heading
+  expect_false(grepl("Heading", as.character(.page_form_ui(pat_planner(), "T1", identity)), fixed = TRUE))
+  # a footnote of this report, over Standard's of the same number
+  p$sheets$footnotes <- .normalize_sheet(data.frame(output_id = NA, line = "99",
+                                                    left = "Program: {PROGRAM}"), "footnotes")
+  q <- set_page_line(p, "footnotes", "T1", "1", left = "n (%) of the subjects")
+  d <- page_lines_from(q, "footnotes", "T1")
+  expect_identical(d$line, c("1", "99"))
+  expect_identical(d$from, c("own", "standard"))
+  code <- tflspec::tfl_report_code(.spec_object(q, report_sheets(), character()), "T1")
+  expect_true(any(grepl("n (%) of the subjects", code, fixed = TRUE)))
+})

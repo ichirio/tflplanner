@@ -44,7 +44,24 @@ $(document).on('click', '.pg-act', function() {
   Shiny.setInputValue('pg_act', {act: d.act, sheet: d.sheet || '', col: d.col || '',
     line: String(d.line || ''), name: d.name || '', n: Math.random()}, {priority: 'event'});
 });
-$(document).on('focusin', '.pg-in', function() { window.pgFocus = $(this).data('key'); });
+$(document).on('focusin', '.pg-in', function() {
+  window.pgFocus = $(this).data('key');
+  if (this.tagName === 'INPUT') {
+    $('.pg-in.border-primary').removeClass('border-primary');
+    window.pgLast = $(this).data('key'); $(this).addClass('border-primary');
+  }
+});
+// an insert button: its token into the field last clicked, at the cursor
+$(document).on('mousedown', '.pg-ins', function(e) { e.preventDefault(); });
+$(document).on('click', '.pg-ins', function() {
+  var tk = $(this).data('token');
+  var f = $('.pg-in').filter(function() { return $(this).data('key') === window.pgLast; })[0];
+  if (!f) return;
+  var a = f.selectionStart || f.value.length, b = f.selectionEnd || a;
+  f.value = f.value.slice(0, a) + tk + f.value.slice(b);
+  f.focus(); f.selectionStart = f.selectionEnd = a + tk.length;
+  $(f).trigger('change');
+});
 $(document).on('shiny:value', function(e) {
   if (e.name !== 'page_form' || !window.pgFocus) return;
   setTimeout(function() {
@@ -159,8 +176,9 @@ $(document).on('shiny:value', function(e) {
                        `data-act` = "addline", `data-sheet` = sheet, t("Add a line for this report")))
 }
 
-.page_tokens_ui <- function(x, id, pattern, t) {
+.page_tokens_ui <- function(x, id, pattern, t, skip = character()) {
   d <- page_tokens_from(x, id)
+  d <- d[!d$name %in% skip, , drop = FALSE]
   if (!nrow(d)) return(shiny::p(class = "small text-muted mb-1", t("(no tokens)")))
   btn <- function(act, name, label) shiny::tags$button(
     type = "button", class = "pg-act btn btn-link", `data-act` = act, `data-name` = name, label)
@@ -185,17 +203,59 @@ $(document).on('shiny:value', function(e) {
     })))
 }
 
+# the tokens a title or footnote may say, as insert buttons: the report's,
+# the study's (its tokens sheet), rtfreporter's
+.page_insert_ui <- function(x, id, t) {
+  study <- setdiff(page_tokens_from(x, id)$name, c("OUTPUT_TITLE", "OUTPUT_POPULATION",
+                                                     "OUTPUT_LABEL"))
+  toks <- c("OUTPUT_LABEL", "OUTPUT_TITLE", "OUTPUT_POPULATION", study,
+            "PAGE", "TOTAL_PAGES", "PROGRAM", "DATETIME")
+  shiny::div(
+    class = "small mt-1",
+    shiny::span(class = "text-muted me-1", t("Insert (into the field last clicked):")),
+    lapply(unique(toks), function(k) shiny::tags$button(
+      type = "button", class = "pg-ins btn btn-sm btn-outline-secondary py-0 me-1 mb-1",
+      `data-token` = paste0("{", k, "}"), paste0("{", k, "}"))))
+}
+
+# The heading: the report's {OUTPUT_TITLE}, when its header prints one (the
+# sample's and the company standards' do: their titles are the header's)
+.page_heading_ui <- function(x, id, t) {
+  hdr <- page_lines_from(x, "header", id)
+  hdr <- hdr[!hdr$omitted, , drop = FALSE]
+  uses <- any(grepl("{OUTPUT_TITLE}", unlist(hdr[c("left", "center", "right")]), fixed = TRUE))
+  if (!uses) return(NULL)
+  tk <- page_tokens_from(x, id)
+  k <- match("OUTPUT_TITLE", tk$name)
+  own <- !is.na(k) && identical(tk$from[k], "own")
+  shiny::div(
+    class = "pg-field mb-2",
+    shiny::tags$label(with_tip(t("Heading"), t("The title the header prints: its {OUTPUT_TITLE}, this report's token."))),
+    shiny::tags$input(
+      type = "text", class = "pg-in form-control form-control-sm",
+      value = if (own) tk$value[k] else "",
+      placeholder = if (!is.na(k)) tk$value[k] %||% "" else "",
+      `data-kind` = "token", `data-name` = "OUTPUT_TITLE", `data-key` = "token:OUTPUT_TITLE"))
+}
+
 # the whole form of a report's page
 .page_form_ui <- function(x, id, t) {
   pattern <- report_pattern(x, id)
+  # (the heading edits {OUTPUT_TITLE}: not listed again with the tokens)
+  heading <- .page_heading_ui(x, id, t)
   card <- function(title, ...) shiny::div(class = "pg-card", shiny::h6(title), ...)
   shiny::tagList(
     card(t("Paper, margins and font"),
          shiny::div(class = "pg-grid", lapply(.page_fields, .page_field_ui, x = x, id = id,
                                               pattern = pattern, t = t))),
     card(t("Header"), .page_lines_ui(x, id, "header", pattern, t)),
+    card(t("Titles"), heading,
+         .page_lines_ui(x, id, "titles", pattern, t), .page_insert_ui(x, id, t)),
+    card(t("Footnotes"), .page_lines_ui(x, id, "footnotes", pattern, t),
+         .page_insert_ui(x, id, t)),
     card(t("Footer"), .page_lines_ui(x, id, "footer", pattern, t)),
-    card(t("Tokens"), .page_tokens_ui(x, id, pattern, t)))
+    card(t("Tokens"), .page_tokens_ui(x, id, pattern, t,
+                                      skip = if (!is.null(heading)) "OUTPUT_TITLE")))
 }
 
 # A line number for a report's new line: after the last line its page has

@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **Titles and footnotes on step 3's form** (the page-patterns design,
+  part B).  The titles card has the heading -- the report's
+  `{OUTPUT_TITLE}`, shown when its header prints one, as the sample's and
+  the company standards' do -- and the titles sheet's lines; the
+  footnotes card the footnotes' lines.  Each line as the header's and
+  footer's: the report's own to edit, its pattern's or Standard's to
+  change here or leave out here.  Insert buttons put a token -- the
+  report's (`{OUTPUT_LABEL}`, `{OUTPUT_TITLE}`, `{OUTPUT_POPULATION}`),
+  the study's, rtfreporter's (`{PAGE}`, `{PROGRAM}`, `{DATETIME}` ...) --
+  into the field last clicked, at the cursor.
+
 - **Page patterns, and step 3 as a form** (the page-patterns design,
   part A; `_archive/tflplanner-page-patterns-design.md`).  A study keeps
   named page patterns besides Standard -- rows of the report half's
