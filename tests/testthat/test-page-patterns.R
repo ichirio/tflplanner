@@ -133,6 +133,8 @@ test_that("titles and footnotes: the heading is the header's {OUTPUT_TITLE}, lin
   expect_identical(d$from, c("own", "standard"))
   code <- tflspec::tfl_report_code(.spec_object(q, report_sheets(), character()), "T1")
   expect_true(any(grepl("n (%) of the subjects", code, fixed = TRUE)))
+})
+
 test_that("an edit on the form does not draw the pattern's select again", {
   local_home()
   p <- set_report_pattern(pat_planner(), "T1", "Compact")
