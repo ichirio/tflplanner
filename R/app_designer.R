@@ -66,8 +66,7 @@
     shiny::uiOutput("pd_note"),
     # one way to make a figure: the designer (its first step a template or
     # empty); the plot written by hand, user code, apart below
-    shiny::uiOutput("pd_body"),
-    shiny::uiOutput("lf_fig_box"))
+    shiny::uiOutput("pd_body"))
 }
 
 # A figure's step 1 (#293): the data steps of its design, their form
@@ -222,7 +221,7 @@
 }
 
 .designer_server <- function(input, output, session, rv, current, t, notify,
-                             guarded, catalog, fig_is_new = function() FALSE,
+                             guarded, catalog,
                              page = function() input$nav, codelists_dialog = NULL,
                              bump = function() NULL, has_study = function() TRUE,
                              read_grid = function(h) rhandsontable::hot_to_r(h),
@@ -339,15 +338,7 @@
     msg <- switch(m,
       none = t("Choose a Figure report on the left."),
       other = t("Figures are designed here: choose a Figure report on the left."),
-      hand = if (fig_is_new()) pane_head(t("A new figure"), t("A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead, open User code at the bottom.")) else
-        shiny::tagList(
-          shiny::div(t("This figure is written by hand. Two ways:")),
-          shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mt-1",
-                     shiny::span(t("Keep the code:")),
-                     .btn("fig_to_user", t("Make it a user-code report..."),
-                          class = "btn-sm btn-primary py-0")),
-          shiny::div(class = "mt-1",
-                     t("Make it again with the designer: the first step below (a template or empty)."))),
+      hand = pane_head(t("A new figure"), t("A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead: R program at the top of this step.")),
       pane_head(t("The figure's design"),
                 t("Choose a piece on the left to change it on the right; the figure is redrawn as its program will save it. Empty = the default (shown grey).")))
     # a heading (its (i) the explanation) as it is; a note in a box

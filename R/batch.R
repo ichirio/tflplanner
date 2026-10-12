@@ -400,13 +400,17 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
 }
 
 # For each report, the reports whose rows of the study ARD it reads: its own
-# when it has analyses, and any other report with analyses its own code
-# names in quotes ("T-14-1-1").  A named list: output id -> output ids.
+# when it has analyses, a figure's ARD source's table, and any other report
+# with analyses its own code (its steps') names in quotes ("T-14-1-1").  A
+# named list: output id -> output ids.
 .batch_ard_reads <- function(x) {
   a <- x$ard$analyses
   has <- unique(stats::na.omit(a$output_id))
   ids <- x$outputs$output_id
-  code <- x$outputs$data_code
+  code <- vapply(ids, function(id) {
+    v <- stats::na.omit(c(step_code(x, id, "data"), step_code(x, id, "content")))
+    if (length(v)) paste(v, collapse = "\n") else NA_character_
+  }, "", USE.NAMES = FALSE)
   stats::setNames(lapply(seq_along(ids), function(i) {
     q <- if (!is.na(code[i])) {
       unlist(regmatches(code[i], gregexpr('"[^"]+"', code[i])))

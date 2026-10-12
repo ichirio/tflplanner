@@ -12,7 +12,6 @@ add_output(
   x,
   output_id,
   description = NA_character_,
-  data_code = NA_character_,
   type = "table",
   process_code = NA_character_,
   section = NA_character_,
@@ -35,16 +34,15 @@ remove_output(x, output_id)
 
 \item{description}{A short description shown in the report list.}
 
-\item{data_code}{R code that makes the report's ARD, \code{ard} (for a
-listing or figure: its \code{content}); \code{NA} writes a TODO.}
-
 \item{type}{The report's type, one of \code{\link[=report_types]{report_types()}}; anything but
 \code{"table"} is written on the \code{report} sheet.}
 
-\item{process_code}{R code that turns \code{ard} into \code{data}, what
-\code{\link[rtfreporter:table_plan]{rtfreporter::table_plan()}} is given: \code{\link[rtfreporter:normalize_ard]{rtfreporter::normalize_ard()}}
-and any rework after it (\code{mutate()} ...).  \code{NA} means
-\code{data <- normalize_ard(ard)}, unless \code{data_code} makes \code{data} itself.}
+\item{process_code}{A table's: R code that turns \code{ard} into \code{data},
+what \code{\link[rtfreporter:table_plan]{rtfreporter::table_plan()}} is given: \code{\link[rtfreporter:normalize_ard]{rtfreporter::normalize_ard()}}
+and any rework after it (\code{mutate()} ...); \code{NA} means
+\code{data <- normalize_ard(ard)}.  A listing's: a rework of its \code{data}
+before it is sorted.  (A step that is the report's own code instead:
+\code{\link[=set_step_code]{set_step_code()}}.)}
 
 \item{section}{The section of the TOC the report is under (its heading,
 "14.1 Demographics"); \code{NA}: from its ID's numbers.}

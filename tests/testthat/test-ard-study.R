@@ -45,8 +45,10 @@ test_that("a table the ARD definition serves reads its part of the study ARD", {
   expect_true(any(grepl("readRDS(\"output/ard/ard.rds\")", code, fixed = TRUE)))
   expect_true(any(grepl("data <- normalize_ard(ard)", code, fixed = TRUE)))
   expect_true(any(grepl("still to be written", data_lines(p, "L1"))))
-  p$outputs$data_code[1] <- "ard <- my_ard()"
-  expect_false(any(grepl("ard.rds", data_lines(p, "DM"))))
+  # its data step its own code: that code (the study ARD's rows still in
+  # reach as `ard` while it has analyses)
+  p <- set_step_code(p, "DM", "data", "ard <- my_ard()")
+  expect_true("ard <- my_ard()" %in% data_lines(p, "DM"))
   expect_false(any(grepl("make_ard", autoexec_code(p))))
 })
 

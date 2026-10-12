@@ -32,10 +32,13 @@ test_that("the sample study has no error and nothing to set by hand", {
   # code; their ETHNIC's NOT REPORTED / UNKNOWN as T-14-1-1's), the KM figure's advice, the medians figure's ARD (T-14-2-2's)
   # and the forest plot's own (#293 P6) not made yet
   expect_identical(as.integer(table(r$rule)[c("C02", "F02", "F07")]), c(15L, 2L, 2L))
-  expect_identical(sort(unique(r$rule)), c("C02", "F02", "F07"))
+  # (and U04: F-14-2-2's own code reads the study ARD itself -- until the
+  # sample's code reads it as `ard`, pair B of the user-program design)
+  expect_identical(r$output_id[r$rule == "U04"], "F-14-2-2")
+  expect_identical(sort(unique(r$rule)), c("C02", "F02", "F07", "U04"))
   # without the data: no data rule, and no row it would not have with them
   r0 <- study_review(s, data = "none", lang = "en")
-  expect_identical(sort(unique(r0$rule)), c("F02", "F07"))
+  expect_identical(sort(unique(r0$rule)), c("F02", "F07", "U04"))
 })
 
 test_that("the report list's rules (R01-R08) and the analyses' (A11-A13)", {

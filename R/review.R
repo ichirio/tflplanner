@@ -69,7 +69,8 @@ study_review <- function(study, output_id = NULL, data = c("cached", "read", "no
     drop <- r$rule == "F03" & grepl("no dataset ", r$message) & toupper(gone) %in% unread
     if (any(drop)) r <- .review_finish(r[!drop, , drop = FALSE])
   }
-  more <- list(.rule_d01(study), .rules_fig_ard(study), .rule_p02(study))
+  more <- list(.rule_d01(study), .rules_fig_ard(study), .rule_p02(study),
+               .rules_step_code(study$planner))
   if (inherits(facts, "tfl_data_facts")) {
     more <- c(more, list(.rule_d02(study, attr(facts, "not_read")),
                          .rule_d03(facts)))
@@ -292,18 +293,18 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
         add("R04", id, "_tflplanner", id, "population", args = id)
       }
       # R06: nothing makes its ARD
-      if (!nrow(ao) && .is_blank(o$data_code[match(id, o$output_id)]) &&
+      if (!nrow(ao) && !.is_code_step(p, id, "data") && !.is_code_step(p, id, "content") &&
           is.null(.ard_import_of(p, id))) {
-        add("R06", id, "analyses", "", "", args = c(id, "no analyses and no data code"))
+        add("R06", id, "analyses", "", "", args = c(id, "no analyses and no code of its own"))
       }
     } else if (identical(type, "listing")) {
       cl <- p$lf$listing_cols
-      if (!any(cl$output_id %in% id)) {
+      if (!any(cl$output_id %in% id) && !.is_code_step(p, id, "content")) {
         add("R06", id, "listing_cols", "", "", args = c(id, "no listing columns"))
       }
     } else if (identical(type, "figure")) {
-      if (is.null(p$fig_designs[[id]])) {
-        add("R06", id, "design", "", "", args = c(id, "no figure design"))
+      if (is.null(p$fig_designs[[id]]) && !.is_code_step(p, id, "content")) {
+        add("R06", id, "design", "", "", args = c(id, "no figure design and no code of its own"))
       }
     }
     # R08: a dataset the report list names that the catalog does not have

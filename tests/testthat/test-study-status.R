@@ -22,8 +22,7 @@ test_that("study_status() says the same with its caches as without them", {
   # a definition changed (not saved): that report's program is to write
   # again, the others are as they were
   p2 <- s$planner
-  k <- which(p2$outputs$output_id == "T-14-1-2")
-  p2$outputs$data_code[k] <- "adsl <- adsl[adsl$SAFFL == \"Y\", ]"
+  p2 <- set_step_code(p2, "T-14-1-2", "data", "adsl <- adsl[adsl$SAFFL == \"Y\", ]")
   s2 <- s
   s2$planner <- p2
   c2 <- study_status(s2)

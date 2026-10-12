@@ -52,11 +52,6 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   x
 }
 
-# What a user-code report makes, as its ID says: `F...` a figure, else a
-# table (its steps are named as theirs, a TOC's type is compared with it)
-.user_makes <- function(output_id) {
-  if (grepl("^F", output_id, ignore.case = TRUE)) "figure" else "table"
-}
 
 # a table of the study (report_info() of an id the study does not have is
 # the default row's: a table)

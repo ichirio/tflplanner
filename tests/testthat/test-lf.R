@@ -20,7 +20,7 @@ lf_planner <- function() {
     vars = c("TRTA", "USUBJID", "AEBODSYS | AEDECOD"),
     label = c("Treatment", "Subject", "SOC/\\nPT"),
     width = c("20", "14", "40"), collapse_repeats = c(NA, "TRUE", NA)))
-  p <- set_lf_rows(p, "figures", "F1", data.frame(datasets = "ADSL"))
+  p <- set_report_datasets(p, "F1", "ADSL")
   p
 }
 
@@ -35,29 +35,25 @@ test_that("a listing in rows becomes its program", {
   expect_true(any(grepl("\"SOC/\\nPT\"", code, fixed = TRUE)))
   expect_true(any(grepl("max_rows = 20", code, fixed = TRUE)))
   expect_silent(parse(text = program_code(p, "L1")))
-  # its data code reworks `data` after the condition
-  p$outputs$data_code[p$outputs$output_id == "L1"] <- "data$X <- 1"
+  # its rework (process code) changes `data` after the condition
+  p$outputs$process_code[p$outputs$output_id == "L1"] <- "data$X <- 1"
   code <- data_lines(p, "L1")
   expect_lt(match("data$X <- 1", code),
             grep("arrange(", code, fixed = TRUE))
 })
 
-test_that("a figure reads its data and leaves the plot to its code", {
+test_that("a figure with no design reads its data; its content its code", {
   p <- lf_planner()
   code <- data_lines(p, "F1")
   expect_true("adsl <- readRDS(\"data/adam/adsl.rds\")" %in% code)
   expect_true(any(grepl("still to be written", code)))
   # the figure style of the company standards, and the checks
   expect_true('source("programs/tfl/fig_setup.R")' %in% code)
-  p$outputs$data_code[p$outputs$output_id == "F1"] <- "plot <- 1"
+  # its content step its own code: what it leaves goes to the report
+  p <- set_step_code(p, "F1", "content", "content <- list(1)")
   code <- data_lines(p, "F1")
-  # the plot goes to the report as it is: rtf_figures(doc, plot)
-  expect_false("content <- list(plot)" %in% code)
-  expect_true("tfl_check(plot)" %in% code)
-  expect_true("doc <- rtf_figures(doc, plot)" %in% program_code(p, "F1"))
-  # code that makes `content` itself: its content, not checked here
-  p$outputs$data_code[p$outputs$output_id == "F1"] <- "content <- list(1)"
-  expect_false("tfl_check(plot)" %in% data_lines(p, "F1"))
+  expect_true("adsl <- readRDS(\"data/adam/adsl.rds\")" %in% code)
+  expect_true("content <- report_content(content)" %in% code)
   expect_true("doc <- rtf_figures(doc, content)" %in% program_code(p, "F1"))
 })
 

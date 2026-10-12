@@ -1,5 +1,38 @@
 # tflplanner (development version)
 
+- **A report is a table, a listing or a figure; its data step and its
+  content step may each be your own R** (0.0.2.9204, tflspec >=
+  0.0.24.9097; the user's direction on 9191:
+  "user code" was a fourth type forced into line; the design
+  `user-program-per-step-design-2026-10-12`, D1-D7 as recommended).  At
+  the top of step 1 and step 2, **GUI | R program**: R program makes the
+  whole step your code (the report sheet's `data_code` / `content_code`,
+  tflspec), instead of the definition; a step whose code is not blank is
+  that code, and [GUI] again asks before the code goes.  The data step
+  leaves `data` (a figure: `df`), the content step `content`; the datasets
+  it reads are registered above its code (the report's `datasets`: the
+  program reads them first, by their names in lower case), and its ARD is
+  `ard` when the report reads one (a table's own analyses or one taken in;
+  a figure's as its ARD source says).  The code is checked as you write
+  it (`tflspec::tfl_check_code()`: rules U01-U05 in the review too -- a
+  dataset it reads that is not registered, nothing left for the next
+  step, files read or packages attached by the code itself, `ard` where
+  the report reads none), and [Run the code] runs the program up to its
+  report out of the app, naming the step and the line of an error.  Code
+  inside the definition stays where it was (a table's rework, a listing's
+  -- its process code now --, a figure's code step).
+  **Existing studies are moved on opening, nothing lost**: a report of
+  type `user` becomes the type its ID says (`F...` a figure, `L...` a
+  listing, else a table) with its code its content step's, its datasets
+  (and those its code names) the report's and its ARD switch its ARD
+  source; a table's data code becomes its data step's code; a figure
+  written by hand, its content step's (`plot` given as `content`, as its
+  program did).  The workbooks are read from a copy and written as they
+  now are on the next save.  `step_code()`, `set_step_code()`,
+  `report_datasets()`, `set_report_datasets()`, `preview_code()` (was
+  `preview_user()`); `make_user_report()` and the offer to convert
+  figures written by hand are gone; `add_output()` has no `data_code`.
+
 - **A figure's data steps on any object** (the user's questions Q1-Q3 on
   0.0.2.9186; tflspec >= 0.0.24.9095).  A data step's form has **In** and
   **Out** on one line at its foot: the object it reads and the one it

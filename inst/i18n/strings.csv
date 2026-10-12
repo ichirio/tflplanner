@@ -3021,3 +3021,33 @@ Its row of the ARD definition (the figure's ARD program):,ARD 定義の行（図
 "%s is going on: closing stops it, and its ARD and reports are left unfinished. Wait for it to end, or run it again later (Runs).",%sが動いています。閉じると止まり、ARD と帳票は途中までになります。終わるのを待つか、あとで実行タブからもう一度実行してください。
 A run,実行
 "The ARD of %s has no rows yet: make it (step 1, or an official run in Runs).",%s の ARD にまだ行がありません。作ってください（段 1、または実行タブの正式実行）。
+The %s code of %s does not read as R (line %s): %s.,%2$s の %1$s のコードが R として読めません（%3$s 行目）: %4$s。
+Correct the code where R says.,R が示す場所でコードを直してください。
+"The %s code of %s reads %s, which the report does not register.",%2$s の %1$s のコードが %3$s を読んでいますが、帳票に登録されていません。
+Add the dataset to the report's data (its step 1) or correct the name: the program reads only the datasets the report registers.,データセットを帳票のデータ（手順 1）に足すか、名前を直してください。プログラムは帳票に登録したデータセットだけを読みます。
+The %s code of %s leaves no %s.,%2$s の %1$s のコードが %3$s を残していません。
+"Assign what the next step reads: the data step data (a figure: df), the content step content.",次の手順が読むものに代入してください: データの手順は data（図は df）、内容の手順は content。
+The %s code of %s calls %s.,%2$s の %1$s のコードが %3$s を呼んでいます。
+"Read data through the report's datasets and its ARD switch, and call packages as pkg::fn(): the program reads the data and owns the session.",データは帳票のデータセットと ARD のスイッチで読み、パッケージは pkg::fn() で呼んでください。データを読むのもセッションを整えるのもプログラムの役目です。
+"The %s code of %s uses ard, but the report does not read its ARD.",%2$s の %1$s のコードが ard を使っていますが、帳票が ARD を読んでいません。
+Turn its ARD on (step 1) or take ard out of the code.,ARD を使う設定にする（手順 1）か、コードから ard を外してください。
+R program,R プログラム
+R program: this step is your own R code instead of the definition.,R プログラム: この手順を、定義の代わりに自分の R コードにします。
+"The rules: register the datasets it reads (above its data step's code: the program reads them first, by their names in lower case); this report's ARD is `ard` when the report reads one; the data step leaves `data` (a figure: `df`), the content step `content` (a table plan, a data frame, rtftable pages, a ggplot or rtfplot, or a list of them); no files read by the code itself, no library(), setwd() or options(): call packages as pkg::fn(). Code inside the definition (a table's rework, a listing's, a figure's code step) stays there: R program makes the whole step your code.",決まり: 読むデータセットは登録します（データの手順のコードの上。プログラムが最初に小文字の名前で読みます）。帳票が ARD を読むときは、この帳票の ARD が `ard` です。データの手順は `data`（図は `df`）を、内容の手順は `content`（表の plan、データフレーム、rtftable のページ、ggplot か rtfplot、またはそれらの list）を残します。コードの中でファイルを読まず、library()・setwd()・options() も使いません（パッケージは pkg::fn() で）。定義の中のコード（表や一覧の手直し、図の code 段）はそのまま。R プログラムは手順全体を自分のコードにします。
+Back to the definition?,定義に戻しますか？
+"%s's %s step is your code: it goes, and the definition makes the step again.",%s の %s の手順は自分のコードです。コードを消して、定義でこの手順を作り直します。
+Keep the code,コードを残す
+Remove the code,コードを消す
+"Data it reads (the program reads them first, by their names in lower case)",読むデータ（プログラムが最初に、小文字の名前で読みます）
+It reads %s's ARD.,%s の ARD を読みます。
+"No ARD: `ard` is not in reach (add analyses, or take an ARD in, to have it).",ARD はありません。`ard` は使えません（使うには解析を足すか、ARD を取り込んでください）。
+Line %d of the %s step's code: ,%2$s の手順のコードの %1$d 行目: 
+Your code: the data,自分のコード: データ
+Your code: the content,自分のコード: 内容
+"This step is its code, on the left: the definition does not make it.",この手順は左のコードです。定義では作りません。
+"Runs the report's program up to its report in a fresh R process from the study folder, as its official run will, and shows what it left: the first table page, the first figure.",帳票のプログラムを帳票の手前まで、正式実行と同じく試験フォルダーから新しい R で動かし、残したものを見せます（最初の表のページ、最初の図）。
+(your code),（自分のコード）
+Rework,手直し
+Rework: usually blank (the standard one). Write code to change the data before the table is made.,手直し: ふつうは空欄（標準のもの）。表を作る前にデータを変えるコードを書きます。
+"A table: make `data` from `ard` (normalize_ard(), then mutate() ...); blank = the company template (normalize). A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step 1 or 2.)",表: `ard` から `data` を作ります（normalize_ard() のあと mutate() など）。空欄 = 会社の雛形（正規化）。一覧: 条件のあと、並べる前に `data` を変えます。（手順全体を自分のコードにするときは、手順 1 か 2 の上の R プログラムで）
+A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead: R program at the top of this step.,新しい図: 最初の一歩を選んでください（テンプレートか空から。どちらもデザイナーの層になります）。ggplot のコードを自分で書くときは、この手順の上の R プログラムで。

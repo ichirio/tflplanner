@@ -29,27 +29,23 @@
 # ARD only sometimes, as a part of it)
 .step_labels_of <- list(figure = c(ard = "1 Data", content = "2 Figure"))
 
-.type_labels <- c(table = "Table", listing = "Listing", figure = "Figure",
-                  user = "User code")
+.type_labels <- c(table = "Table", listing = "Listing", figure = "Figure")
 # one line on each kind, where a report's kind is chosen
 .type_notes <- list(
   table = "Table: made from the ARD and the table definition.",
   listing = "Listing: the records of a dataset, in columns you define.",
-  figure = "Figure: made with the designer (layers on ggplot()), from a template or empty.",
-  user = "User code: your own R code makes the content (tables, figures); the report dresses it.")
+  figure = "Figure: made with the designer (layers on ggplot()), from a template or empty.")
 
 # Where each kind of report is made, in the order of the work: the page
-# (go()'s name) and the button's words.  A fourth kind adds its row here.
+# (go()'s name) and the button's words.
 .type_moves <- list(
   table = c(ard = "Go to ARD", tables = "Make the table"),
   figure = c(designer = "Make the figure"),
-  listing = c(lf = "Make the listing"),
-  user = c(usercode = "Write the code"))
+  listing = c(lf = "Make the listing"))
 
 # The top tabs a kind of report has nothing on: shown faded while such a
 # report is chosen (still open to click; the tab then says why).
-.type_idle_tabs <- list(table = character(), figure = character(), listing = "ard",
-                        user = character())
+.type_idle_tabs <- list(table = character(), figure = character(), listing = "ard")
 
 # Text cut to `n` characters, with an ellipsis.
 # What each study folder holds, by its study_layout() name (a folder with no
@@ -582,6 +578,13 @@ app_ui <- function(lang = "en") {
   # -- the steps of making a report ----------------------------------------
   step_ard <- shiny::div(
     class = "mt-2",
+    # the definition or the report's own code (R/step_code.R)
+    shiny::uiOutput("data_mode_bar"),
+    # what a step of its own code reads: its datasets, its ARD
+    shiny::conditionalPanel("output.data_inputs == 'yes'", shiny::uiOutput("uc_inputs")),
+    shiny::conditionalPanel("output.data_is_code == 'yes'", code_step_ui("dc", t, lang)),
+    shiny::conditionalPanel(
+    "output.data_is_code != 'yes'",
     # a figure's: its data steps first, the numbers from an ARD below
     .designer_data_ui(),
     shiny::uiOutput("ard_kind_note"),
@@ -641,14 +644,16 @@ app_ui <- function(lang = "en") {
             inline = TRUE),
           shiny::uiOutput("ard_prog_state"),
           code_view("ard_code", lang)),
-        result = shiny::uiOutput("ard_result_pane"))))
+        result = shiny::uiOutput("ard_result_pane")))))
 
   step_content <- bslib::navset_underline(
     id = "content_nav",
     bslib::nav_panel(
       t("Content"), value = "content",
+      shiny::uiOutput("content_mode_bar"),
+      shiny::conditionalPanel("output.content_is_code == 'yes'", code_step_ui("cc", t, lang)),
       shiny::conditionalPanel(
-        "output.report_kind == 'table'",
+        "output.report_kind == 'table' && output.content_is_code != 'yes'",
         # not a card: a card around the sheets' own card makes the inner one a
         # fill item of a box with no height, and every grid in it 0 px high
         shiny::div(
@@ -681,7 +686,7 @@ app_ui <- function(lang = "en") {
                   shiny::uiOutput("builder_pages", inline = TRUE)),
                 shiny::uiOutput("builder_preview"))))))),
       shiny::conditionalPanel(
-        "output.report_kind == 'listing'",
+        "output.report_kind == 'listing' && output.content_is_code != 'yes'",
         shiny::uiOutput("lf_note"),
         bslib::layout_columns(
           col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
@@ -700,29 +705,7 @@ app_ui <- function(lang = "en") {
                          .btn("lf_preview", t("Preview the listing"),
                               class = "btn-sm btn-outline-primary")),
               shiny::uiOutput("lf_preview_out"))))),
-      .designer_ui(t),
-      shiny::conditionalPanel(
-        "output.report_kind == 'user'",
-        shiny::uiOutput("uc_note"),
-        bslib::layout_columns(
-          col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
-          bslib::card(
-            bslib::card_header(with_tip(t("Your code"), paste(t("Your code leaves `content`: a data frame, rtftable pages, a ggplot, or a list of them; they print in that order. The report's titles, footnotes, header and page come from its settings (step 3, Page), as for any report."), t("Only an analysis to write yourself? That is the custom method of step 1 (ARD) (or a company ard_*() function). This kind is for a report whose whole content is your code.")))),
-            shiny::uiOutput("uc_inputs"),
-            shiny::div(class = "rp-code",
-                       shiny::textAreaInput("uc_code", t("Code"), rows = 14,
-                                            width = "100%", resize = "vertical",
-                                            placeholder = "content <- adsl[, c(\"USUBJID\", \"AGE\")]"))),
-          result_tabs_ui(
-            "uc_right", lang = lang, selected = "result",
-            spec = shiny::p(class = "small text-muted",
-                            t("A user-code report's definition is its code, on the left, and its page (step 3).")),
-            code = code_view("program_uc", lang),
-            result = shiny::tagList(
-              shiny::div(class = "d-flex gap-2 align-items-center mb-1",
-                         .btn("uc_run", t("Run the code"), class = "btn-sm btn-outline-primary")),
-              help_tip(t("Runs the report's code in a fresh R process from the study folder, as its program will, and shows what it left: the first table page, the first figure.")),
-              shiny::div(style = "overflow-x: auto;", shiny::uiOutput("uc_result"))))))),
+      shiny::conditionalPanel("output.content_is_code != 'yes'", .designer_ui(t))),
     bslib::nav_panel(
       t("Data code"), value = "code",
       shiny::uiOutput("current_label"),
@@ -736,22 +719,12 @@ app_ui <- function(lang = "en") {
       shiny::div(
         class = "rp-code",
         shiny::conditionalPanel(
-          "output.report_kind == 'user'",
-          shiny::div(class = "alert alert-info py-1 small",
-                     t("A user-code report: this code leaves `content` (the same field as its Content). Nothing else here is used for it."))),
-        shiny::textAreaInput(
-          "data_code",
-          with_tip(t("1. Data code"),
-                   paste(t("1. Data code: usually blank (the company's standard code is used). Write code here to make the data yourself; for a figure, the plot."),
-                         t("1. ARD: make `ard` (Listing: rework `data`; Figure: the plot). Blank for a table = the company template: its rows of the study ARD."))),
-          rows = 10, width = "100%", resize = "vertical"),
-        shiny::conditionalPanel(
-          "output.report_kind != 'user'",
+          "output.report_kind == 'table' || output.report_kind == 'listing'",
           shiny::textAreaInput(
             "process_code",
-            with_tip(t("2. Rework"),
-                     paste(t("2. Rework: usually blank (the standard one). Write code to change the data before the table is made."),
-                           t("2. Normalize and rework: make `data` from `ard` (normalize_ard(), then mutate() ...). Blank = the company template (normalize)."))),
+            with_tip(t("Rework"),
+                     paste(t("Rework: usually blank (the standard one). Write code to change the data before the table is made."),
+                           t("A table: make `data` from `ard` (normalize_ard(), then mutate() ...); blank = the company template (normalize). A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step 1 or 2.)"))),
             rows = 5, width = "100%", resize = "vertical",
             placeholder = "data <- normalize_ard(ard)"),
           shiny::div(
@@ -976,7 +949,6 @@ app_ui <- function(lang = "en") {
       shiny::uiOutput("next_steps"),
       bslib::card(
         bslib::card_header(with_tip(t("Reports (TFL)"), t("Reports are made in this order (the official run too). Copy makes a new report with all of this one's definition. A double click makes the report (Make a report)."))),
-        shiny::uiOutput("uc_offer"),
         # the search and the buttons above the list: below 200 reports no
         # one found them
         shiny::div(
@@ -2936,14 +2908,14 @@ app_server <- function(input, output, session, start) {
       ard = "ard",
       content = if (identical(input$content_nav, "code")) "code" else
         switch(report_kind(), table = "tables", listing = "lf",
-               figure = "designer", user = "usercode", "outputs"),
+               figure = "designer", "outputs"),
       page = if (identical(input$page_right, "code")) "code" else "report_spec",
       "outputs")
   })
   # a page: its top tab, and for a report's, its step (and the step's tab)
   go <- function(where) {
     step <- switch(where, ard = "ard",
-                   tables = , lf = , designer = , usercode = , code = "content",
+                   tables = , lf = , designer = , code = "content",
                    report_spec = "page", NULL)
     if (is.null(step)) return(bslib::nav_select("nav", where))
     bslib::nav_select("nav", "make")
@@ -2971,9 +2943,6 @@ app_server <- function(input, output, session, start) {
   # the steps' names: the kind's own (a figure's "1 Data", "2 Figure")
   shiny::observe({
     k <- report_kind()
-    # (a user-code figure: a figure's steps)
-    if (identical(k, "user") && !is.null(current()) &&
-        identical(.user_makes(current()), "figure")) k <- "figure"
     own <- .step_labels_of[[k]] %||% character()
     nm <- .step_labels
     nm[names(own)] <- own
@@ -2993,11 +2962,6 @@ app_server <- function(input, output, session, start) {
   output$ard_kind_note <- shiny::renderUI({
     k <- report_kind()
     if (identical(k, "figure") && !is.null(current())) return(fig_ard_ui(current()))
-    if (identical(k, "user") && !.user_reads_ard(rv$p, current())) {
-      return(shiny::div(class = "alert alert-info py-1 small",
-                        sprintf(t("%s does not read an ARD: \"Use this report's ARD\" in its step 2 (Content) makes it read one (these analyses, or an ARD taken in)."),
-                                current())))
-    }
     # a report whose ARD was taken in: its analyses here are not used
     f <- if (!is.null(current())) .ard_import_of(rv$p, current())
     if (!is.null(f)) {
@@ -7101,11 +7065,7 @@ app_server <- function(input, output, session, start) {
       } else {
         now <- t(.type_labels[[r$type_now[i]]] %||% r$type_now[i])
         # (a user-code report: compared with what it makes)
-        same_as <- if (identical(r$type_now[i], "user")) .user_makes(id) else r$type_now[i]
-        if (identical(r$type_now[i], "user")) {
-          now <- sprintf("%s (%s)", now, t(.type_labels[[same_as]]))
-        }
-        if (.toc_type_differs(same_as, r$type_toc[i], r$guessed[i])) {
+        if (.toc_type_differs(r$type_now[i], r$type_toc[i], r$guessed[i])) {
           shiny::span(now, shiny::span(class = "small text-warning",
                                        sprintf(t("(the TOC says %s: not changed)"),
                                                t(.type_labels[[r$type_toc[i]]]))))
@@ -7943,7 +7903,7 @@ app_server <- function(input, output, session, start) {
     ard_cols[[k]]
   }
   .designer_server(input, output, session, rv, current, t, notify, guarded,
-                   catalog, fig_is_new = function() fig_is_new(),
+                   catalog,
                    page = function() page(), codelists_dialog = cl_fig,
                    bump = bump, has_study = has_study, read_grid = read_grid,
                    grids_drawn = grids_drawn)
@@ -7957,94 +7917,180 @@ app_server <- function(input, output, session, start) {
     if (identical(lf_type(), "listing")) return(NULL)
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
-  # a figure without a design: its user code (the plot written by hand) --
-  # on the Figures tab, apart from the designer, below it; open when the
-  # figure has that code
-  fig_is_new <- function() {
+  # ---- a step of the report's own code (R/step_code.R) -----------------------
+  # Each of the data step and the content step is the definition (GUI) or
+  # the report's own R: a step whose code is not blank is that code.  The
+  # switch at the top of each step shows the code's editor; [GUI] again
+  # with code there asks before the code goes.
+  code_wanted <- shiny::reactiveValues()
+  step_is_code <- function(step) {
     id <- current()
-    if (is.null(id)) return(FALSE)
-    o <- rv$p$outputs
-    code <- o$data_code[match(id, o$output_id)]
-    is.na(code) || !nzchar(trimws(code))
+    if (is.null(id) || !has_study()) return(FALSE)
+    .is_code_step(rv$p, id, step) || isTRUE(code_wanted[[paste(id, step)]])
   }
-  # ---- user-code reports ------------------------------------------------------
+  yes <- function(x) if (isTRUE(x)) "yes" else "no"
+  output$data_is_code <- shiny::renderText(yes(step_is_code("data")))
+  output$content_is_code <- shiny::renderText(yes(step_is_code("content")))
+  # what a step of its own code reads (its datasets, its ARD): above the
+  # data step's code; a figure with no design reads them for its content
+  output$data_inputs <- shiny::renderText({
+    id <- current()
+    yes(step_is_code("data") ||
+          (identical(report_kind(), "figure") && !is.null(id) &&
+             is.null(fig_design(rv$p, id)) && step_is_code("content")))
+  })
+  for (o in c("data_is_code", "content_is_code", "data_inputs")) {
+    shiny::outputOptions(output, o, suspendWhenHidden = FALSE)
+  }
+  mode_bar <- function(step) {
+    id <- current()
+    shiny::req(!is.null(id), has_study())
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-center mb-2 small",
+      shiny::radioButtons(paste0(step, "_mode"), NULL,
+                          stats::setNames(c("gui", "code"), c("GUI", t("R program"))),
+                          selected = if (step_is_code(step)) "code" else "gui",
+                          inline = TRUE),
+      help_tip(paste(t("R program: this step is your own R code instead of the definition."),
+                     t(.code_rules_tip))))
+  }
+  output$data_mode_bar <- shiny::renderUI({
+    rv$ver
+    mode_bar("data")
+  })
+  output$content_mode_bar <- shiny::renderUI({
+    rv$ver
+    mode_bar("content")
+  })
+  mode_pending <- shiny::reactiveVal(NULL)
+  for (st in c("data", "content")) local({
+    step <- st
+    shiny::observeEvent(input[[paste0(step, "_mode")]], {
+      id <- current()
+      shiny::req(!is.null(id))
+      key <- paste(id, step)
+      want <- input[[paste0(step, "_mode")]]
+      if (identical(want, "code")) {
+        code_wanted[[key]] <- TRUE
+        return()
+      }
+      code_wanted[[key]] <- FALSE
+      # code there: it goes only when asked
+      if (.is_code_step(rv$p, id, step)) {
+        mode_pending(list(id = id, step = step))
+        shiny::showModal(shiny::modalDialog(
+          title = t("Back to the definition?"),
+          shiny::p(sprintf(t("%s's %s step is your code: it goes, and the definition makes the step again."),
+                           id, t(step))),
+          footer = shiny::tagList(.btn("mode_keep", t("Keep the code")),
+                                  .btn("mode_drop", t("Remove the code"), class = "btn-danger"))))
+      }
+    }, ignoreInit = TRUE)
+  })
+  shiny::observeEvent(input$mode_keep, {
+    shiny::removeModal()
+    m <- mode_pending()
+    if (!is.null(m)) {
+      code_wanted[[paste(m$id, m$step)]] <- TRUE
+      shiny::updateRadioButtons(session, paste0(m$step, "_mode"), selected = "code")
+    }
+  })
+  shiny::observeEvent(input$mode_drop, {
+    shiny::removeModal()
+    m <- mode_pending()
+    shiny::req(!is.null(m))
+    rv$p <- set_step_code(rv$p, m$id, m$step, NA)
+    bump()
+  })
+  # the datasets a step of its own code reads, and its ARD
   output$uc_inputs <- shiny::renderUI({
     rv$ver
     id <- current()
-    shiny::req(!is.null(id), identical(report_kind(), "user"))
+    shiny::req(!is.null(id), has_study())
     p <- shiny::isolate(rv$p)
     cat_ds <- shiny::isolate(catalog())
-    f <- lf_rows(p, "figures", id)
-    have <- if (nrow(f)) .split_bar(f$datasets[1L]) else character()
-    shiny::tagList(
-      shiny::selectizeInput("uc_ds", t("Data it reads (the program reads them first)"),
+    have <- report_datasets(p, id)
+    k <- report_kind()
+    shiny::div(
+      class = "rp-b-card mb-2",
+      shiny::selectizeInput("uc_ds", t("Data it reads (the program reads them first, by their names in lower case)"),
                             .ds_choices(cat_ds, have),
                             selected = have, multiple = TRUE, width = "100%"),
-      shiny::checkboxInput("uc_ard", t("Use this report's ARD (`ard`): its ARD definition's rows, or the ARD taken in for it"),
-                           .user_reads_ard(p, id)),
+      # a figure: its ARD as its source says (own here; a table's or one
+      # taken in in the figure's ARD settings)
+      if (identical(k, "figure")) shiny::checkboxInput(
+        "uc_ard", t("Use this report's ARD (`ard`): its ARD definition's rows, or the ARD taken in for it"),
+        !identical(.fig_ard_source(p, id)$kind, "none")),
       shiny::uiOutput("uc_ard_state"))
   })
   output$uc_ard_state <- shiny::renderUI({
-    shiny::req(isTRUE(input$uc_ard), !is.null(current()))
+    id <- current()
+    shiny::req(!is.null(id), has_study())
     rv$ard_ver
+    rv$ver
+    if (identical(report_kind(), "listing") ||
+        (identical(report_kind(), "figure") && !isTRUE(input$uc_ard))) return(NULL)
     s <- rv$study
     s$planner <- rv$p
-    st <- .user_ard_state(s, current())
+    st <- .code_ard_state(s, id)
     line <- switch(st$kind,
       import = shiny::div(class = "small text-success",
                           sprintf(t("It reads the ARD taken in (%s)."), st$file)),
+      table = shiny::div(class = "small text-success",
+                         sprintf(t("It reads %s's ARD."), st$id)),
       own = shiny::div(class = if (st$built) "small text-success" else "small text-warning",
                        sprintf(if (st$built) t("Its ARD definition has %d analyses (built).") else
                          t("Its ARD definition has %d analyses, not built yet: build them in step 1 (ARD)."), st$n)),
-      none = shiny::div(class = "small text-danger d-flex flex-wrap gap-2 align-items-center",
-                        shiny::span(t("No ARD yet: add analyses in step 1 (ARD), or take an ARD in (Data > ARDs taken in).")),
-                        .btn("uc_to_ard", t("To step 1 (ARD)"), class = "btn-sm btn-outline-primary py-0")))
-    shiny::tagList(line, shiny::div(
-      class = "small text-muted mb-2",
+      none = shiny::div(class = "small text-muted",
+                        t("No ARD: `ard` is not in reach (add analyses, or take an ARD in, to have it).")))
+    shiny::tagList(line, if (!identical(st$kind, "none")) shiny::div(
+      class = "small text-muted",
       t("`ard` is this report's rows of the ARD (a cards ARD); normalize_ard(ard) makes it a table's shape.")))
   })
-  shiny::observeEvent(input$uc_to_ard, go("ard"))
-  # the datasets and the ARD switch onto the report's figures row
-  uc_write <- function(from_ds = FALSE) {
+  shiny::observeEvent(input$uc_ds, {
     id <- current()
-    shiny::req(!is.null(id), identical(report_kind(), "user"))
-    old <- lf_rows(rv$p, "figures", id)
-    # an empty datasets field is a choice only when it was the field that
-    # changed; otherwise the datasets are kept
-    ds <- if (from_ds || !is.null(input$uc_ds)) input$uc_ds %||% character() else
-      if (nrow(old)) .split_bar(old$datasets[1L]) else character()
-    ard <- isTRUE(input$uc_ard)
-    row <- data.frame(datasets = if (length(ds)) paste(ds, collapse = " | ") else NA_character_,
-                      ard = if (ard) "TRUE" else NA_character_,
-                      stringsAsFactors = FALSE)
-    same <- nrow(old) && identical(old$datasets[1L] %||% NA, row$datasets) &&
-      identical((old$ard %||% NA)[1L], row$ard)
-    if (!same) rv$p <- set_lf_rows(rv$p, "figures", id, row)
+    shiny::req(!is.null(id), has_study())
+    ds <- input$uc_ds %||% character()
+    if (!identical(sort(toupper(ds)), sort(report_datasets(rv$p, id)))) {
+      rv$p <- set_report_datasets(rv$p, id, ds)
+    }
+  }, ignoreInit = TRUE, ignoreNULL = FALSE)
+  shiny::observeEvent(input$uc_ard, {
+    id <- current()
+    shiny::req(!is.null(id), identical(report_kind(), "figure"))
+    src <- .fig_ard_source(rv$p, id)$kind
+    if (isTRUE(input$uc_ard) && identical(src, "none")) {
+      rv$p <- set_fig_ard_source(rv$p, id, "own")
+    } else if (!isTRUE(input$uc_ard) && identical(src, "own")) {
+      rv$p <- set_fig_ard_source(rv$p, id, NULL)
+    }
+  }, ignoreInit = TRUE)
+  # the rules' check of a step's code (tflspec::tfl_check_code()), under it
+  code_check_ui <- function(step) {
+    id <- current()
+    shiny::req(!is.null(id), has_study())
+    r <- tryCatch(.check_step_code(rv$p, id, step), error = function(e) NULL)
+    if (!NROW(r)) return(NULL)
+    r <- .review_language(r, lang)
+    shiny::tagList(lapply(seq_len(nrow(r)), function(i) shiny::div(
+      class = paste("small", if (identical(r$level[i], "error")) "text-danger" else "text-warning"),
+      r$message[i])))
   }
-  shiny::observeEvent(input$uc_ds, uc_write(from_ds = TRUE), ignoreInit = TRUE,
-                      ignoreNULL = FALSE)
-  shiny::observeEvent(input$uc_ard, uc_write(), ignoreInit = TRUE)
-  output$uc_note <- shiny::renderUI({
-    id <- current()
-    shiny::req(!is.null(id), identical(report_kind(), "user"))
-    # a user-code report's table sheets are not used
-    used <- vapply(table_sheets(), function(sh) nrow(sheet_rows(rv$p, sh, id)) > 0L, NA)
-    if (!any(used)) return(NULL)
-    shiny::div(class = "alert alert-info py-1 small",
-               sprintf(t("%s is a user-code report: its own rows of the table sheets (%s) are not used."),
-                       id, paste(names(used)[used], collapse = ", ")))
-  })
+  output$dc_check <- shiny::renderUI(code_check_ui("data"))
+  output$cc_check <- shiny::renderUI(code_check_ui("content"))
+  # the code run as its program runs it, up to the report: what it left
   uc_res <- shiny::reactiveVal(NULL)
   shiny::observeEvent(current(), uc_res(NULL))
-  shiny::observeEvent(input$uc_run, {
+  uc_run <- function() {
     id <- current()
     shiny::req(!is.null(id))
     s <- rv$study
     s$planner <- rv$p
-    res <- guarded(preview_user(s, id))
-    uc_res(res)
-  })
-  output$uc_result <- shiny::renderUI({
+    uc_res(guarded(preview_code(s, id)))
+  }
+  shiny::observeEvent(input$dc_run, uc_run())
+  shiny::observeEvent(input$cc_run, uc_run())
+  uc_result <- function() {
     res <- uc_res()
     if (is.null(res)) return(shiny::p(class = "small text-muted", t("Not run yet.")))
     if (!is.null(res$error)) {
@@ -8052,14 +8098,16 @@ app_server <- function(input, output, session, start) {
       ds <- catalog()$dataset
       hint <- if (length(miss) == 2L && toupper(miss[2L]) %in% toupper(ds))
         sprintf(t("Add %s to the data it reads."), toupper(miss[2L]))
+      where <- if (!is.na(res$code_line %||% NA)) sprintf(
+        t("Line %d of the %s step's code: "), res$code_line, t(res$code_step))
       return(shiny::tagList(
         shiny::div(class = "alert alert-danger py-1 small",
-                   if (!is.na(res$code_line %||% NA)) shiny::strong(sprintf(t("Line %d of the code: "), res$code_line)),
+                   if (!is.null(where)) shiny::strong(where),
                    res$error, if (!is.null(hint)) shiny::div(hint)),
         shiny::tags$details(shiny::tags$summary(class = "small", t("Log")),
                             shiny::div(class = "rp-code", shiny::pre(res$log)))))
     }
-    parts <- .user_preview_parts(res$content)
+    parts <- .code_preview_parts(res$content)
     shiny::tagList(
       shiny::div(class = "alert alert-success py-1 small",
                  sprintf(t("It ran: %d table page(s), %d figure(s)."),
@@ -8068,83 +8116,9 @@ app_server <- function(input, output, session, start) {
       if (length(parts$figures)) shiny::tags$img(
         src = paste0("data:image/png;base64,", jsonlite::base64_enc(parts$figures[[1L]])),
         style = "max-width: 100%; height: auto; display: block;"))
-  })
-  # figures written by hand: offered once, when the study is opened, to be
-  # made user-code reports (nothing is changed unless asked)
-  # "Later" holds while this study is open
-  uc_later_for <- shiny::reactiveVal(NA_character_)
-  output$uc_offer <- shiny::renderUI({
-    shiny::req(has_study(), !identical(uc_later_for(), study_key()))
-    ids <- .hand_figures(rv$p)
-    if (!length(ids)) return(NULL)
-    shiny::div(
-      class = "alert alert-info py-1 small",
-      shiny::div(sprintf(t("These figures are written by hand: %s."), paste(ids, collapse = ", "))),
-      shiny::div(t("A figure is now made with the designer (layers); code written by hand belongs to a user-code report, the fourth kind. Converting keeps the code and its datasets, and makes it leave `content`; the RTF is the same. After Save the reports are to be run again.")),
-      shiny::div(class = "d-flex gap-2 mt-1",
-                 .btn("uc_convert_all", t("Convert..."), class = "btn-sm btn-primary py-0"),
-                 .btn("uc_later", t("Later"), class = "btn-sm btn-outline-secondary py-0")))
-  })
-  shiny::observeEvent(input$uc_later, uc_later_for(study_key()))
-  uc_pending <- shiny::reactiveVal(character())
-  uc_ask <- function(ids) {
-    uc_pending(ids)
-    shiny::showModal(shiny::modalDialog(
-      title = t("Make them user-code reports?"),
-      shiny::p(sprintf(t("%s become user-code reports: the same code and datasets, leaving `content`."),
-                       paste(ids, collapse = ", "))),
-      shiny::p(class = "small text-muted",
-               t("Until you save, discarding the unsaved changes undoes it. After Save their programs are made again, and the reports are to be run again.")),
-      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
-                              .btn("uc_convert_ok", t("Convert"), class = "btn-primary"))))
   }
-  shiny::observeEvent(input$uc_convert_ok, {
-    shiny::removeModal()
-    ids <- intersect(uc_pending(), .hand_figures(rv$p))
-    shiny::req(length(ids))
-    for (id in ids) rv$p <- make_user_report(rv$p, id)
-    bump()
-    notify(sprintf(t("%s: now user-code reports. Save to keep it; until then, discarding the unsaved changes undoes it."),
-                   paste(ids, collapse = ", ")))
-  })
-  shiny::observeEvent(input$uc_convert_all, uc_ask(.hand_figures(rv$p)))
-  shiny::observeEvent(input$fig_to_user, {
-    id <- current()
-    shiny::req(!is.null(id), id %in% .hand_figures(rv$p))
-    uc_ask(id)
-  })
-  output$lf_fig_box <- shiny::renderUI({
-    rv$ver
-    shiny::req(identical(lf_type(), "figure"),
-               is.null(fig_design(shiny::isolate(rv$p), current())))
-    shiny::tagList(
-      shiny::tags$details(
-        class = "mt-3", open = if (!fig_is_new()) NA,
-        shiny::tags$summary(t("User code (write the ggplot yourself)")),
-        fig_hand_box()))
-  })
-  fig_hand_box <- function() {
-    id <- current()
-    p <- shiny::isolate(rv$p)
-    shiny::req(is.null(fig_design(p, id)))
-    lf_env$n <- lf_env$n + 1L
-    lf_drawn(lf_env$n)
-    lf_env$id <- id
-    f <- lf_rows(p, "figures", id)
-    have <- if (nrow(f)) .split_bar(f$datasets[1L]) else character()
-    # datasets not in the catalog are offered as they are, not dropped
-    ds_choices <- .ds_choices(shiny::isolate(catalog()), have)
-    lf_env$fig_last <- list(datasets = paste(have, collapse = " | "))
-    bslib::card(
-      bslib::card_header(with_tip(t("The plot written by hand (ggplot2)"),
-                                  t("This figure's plot is its data code (step 2, Data code), written with ggplot2: it leaves `plot`. Its program reads these datasets first."))),
-      shiny::h6(t("Data the figure reads")),
-      shiny::selectizeInput(lf_id("fig_ds"), NULL, ds_choices,
-                            selected = have, multiple = TRUE,
-                            width = "100%"),
-      shiny::h6(t("The code that makes the plot (edit it in step 2, Data code)")),
-      shiny::div(class = "rp-code", shiny::verbatimTextOutput("lf_fig_code")))
-  }
+  output$dc_result <- shiny::renderUI(uc_result())
+  output$cc_result <- shiny::renderUI(uc_result())
   output$lf_form <- shiny::renderUI({
     rv$ver
     type <- lf_type()
@@ -8218,15 +8192,11 @@ app_server <- function(input, output, session, start) {
       t("This report's code lists of the listing's columns: its program puts them on the data after the condition (set_levels()), each column a factor in the list's order, its values the labels, and the rows sort in that order. A value a list does not have stops the program."),
       open = lf_cl_part$open(), others = .codelist_others(cl, lf_cl_vars()))
   })
-  # the form's values back to the listing / figure rows
+  # the form's values back to the listing's row
   lf_values <- shiny::reactive({
     lf_drawn()
-    shiny::req(identical(lf_env$id, current()))
+    shiny::req(identical(lf_env$id, current()), identical(lf_type(), "listing"))
     get <- function(x) input[[lf_id(x)]]
-    if (identical(lf_type(), "figure")) {
-      return(list(sheet = "figures", values = list(
-        datasets = paste(get("fig_ds") %||% character(), collapse = " | "))))
-    }
     shiny::req(!is.null(get("type")))
     mr <- get("max_rows")
     list(sheet = "listings", values = list(
@@ -8245,18 +8215,13 @@ app_server <- function(input, output, session, start) {
     row$output_id <- NULL
     if (!nrow(row)) row[1L, ] <- NA
     row <- row[1L, , drop = FALSE]
-    last <- if (identical(v$sheet, "listings")) lf_env$last else lf_env$fig_last
+    last <- lf_env$last
     for (k in names(v$values)) {
       if (!identical(v$values[[k]], last[[k]])) row[[k]] <- v$values[[k]]
     }
-    if (identical(v$sheet, "listings")) lf_env$last <- v$values else lf_env$fig_last <- v$values
+    lf_env$last <- v$values
     p2 <- set_lf_rows(rv$p, v$sheet, id, row)
     if (!identical(p2$lf, rv$p$lf)) rv$p <- p2
-  })
-  output$lf_fig_code <- shiny::renderText({
-    id <- current()
-    shiny::req(identical(lf_type(), "figure"))
-    paste(data_lines(rv$p, id), collapse = "\n")
   })
   output$lf_cols_box <- shiny::renderUI({
     shiny::req(identical(lf_type(), "listing"))
@@ -9645,12 +9610,12 @@ app_server <- function(input, output, session, start) {
     ard_of <- if (!is.null(st)) st$state[match(o$output_id, st$output_id)] else
       rep(NA_character_, nrow(o))
     # the datasets the report reads (lower case, as the files are named);
-    # reworked by the report's own data code, said after them
+    # a step of its own code, said after them
     data <- vapply(seq_len(nrow(o)), function(i) {
       ds <- tolower(.report_datasets(p, o$output_id[i], type[i]))
       txt <- if (length(ds)) paste(ds, collapse = " / ") else "-"
-      if (!is.na(o$data_code[i])) {
-        note <- t("(reworked by its own code)")
+      if (.is_code_step(p, o$output_id[i], "data") || .is_code_step(p, o$output_id[i], "content")) {
+        note <- t("(your code)")
         # a full-width bracket brings its own space
         txt <- paste0(txt, if (startsWith(note, "\uff08")) "" else " ", note)
       }
@@ -9677,11 +9642,7 @@ app_server <- function(input, output, session, start) {
       output_id = o$output_id,
       section = .report_section(o$output_id, type, o$section),
       batches = ifelse(is.na(o$batches %||% NA_character_), "", o$batches %||% ""),
-      # (a user-code report: what it makes too)
-      type = ifelse(type == "user",
-                    sprintf("%s (%s)", t("User code"),
-                            t(unname(.type_labels[vapply(o$output_id, .user_makes, "")]))),
-                    t(unname(.type_labels[type]))),
+      type = t(unname(.type_labels[type])),
       program = vapply(info, `[[`, "", "program"),
       rtf = vapply(info, `[[`, "", "file"),
       data = .cell_tip(data, data_tip),
@@ -9757,7 +9718,7 @@ app_server <- function(input, output, session, start) {
     if (!length(id) || is.na(id)) return()
     shiny::updateSelectInput(session, "target", selected = id)
     go(switch(report_info(rv$p, id)$type, listing = "lf", figure = "designer",
-              user = "usercode", "tables"))
+              "tables"))
   })
   shiny::observeEvent(input$outputs_rows_selected, {
     v <- shiny::isolate(outputs_view())
@@ -9798,19 +9759,22 @@ app_server <- function(input, output, session, start) {
   }
   study_key <- function() if (has_study()) rv$study$meta$study_id
 
-  editors <- c(description = "text", section = "text", data_code = "area",
-               process_code = "area", uc_code = "area")
-  # an editor and the field it edits (a user-code report's code is its
-  # data code, edited on its content tab as well as on the Code tab)
-  editor_field <- c(uc_code = "data_code")
+  editors <- c(description = "text", section = "text", process_code = "area",
+               dc_code = "area", cc_code = "area")
+  # an editor and the field it edits: the report list's, or a step's own
+  # code (the report sheet's, step_code())
+  editor_field <- c(dc_code = "step:data", cc_code = "step:content")
   field_of <- function(e) if (e %in% names(editor_field)) editor_field[[e]] else e
+  field_value <- function(id, field) {
+    if (startsWith(field, "step:")) return(step_code(rv$p, id, sub("^step:", "", field)))
+    rv$p$outputs[[field]][match(id, rv$p$outputs$output_id)]
+  }
   shiny::observeEvent(list(current(), rv$ver), {
     id <- current()
-    o <- rv$p$outputs[rv$p$outputs$output_id %in% id, , drop = FALSE]
     val <- function(v) if (length(v) && !is.na(v)) v else ""
     owner <- if (!is.null(id)) list(study = study_key(), id = id)
     for (e in names(editors)) {
-      fill(e, val(o[[field_of(e)]]), owner,
+      fill(e, if (is.null(id)) "" else val(field_value(id, field_of(e))), owner,
            if (editors[[e]] == "text") shiny::updateTextInput else
              shiny::updateTextAreaInput)
     }
@@ -9832,6 +9796,13 @@ app_server <- function(input, output, session, start) {
     value <- if (is.null(value) || !nzchar(trimws(value))) NA_character_ else
       value
     i <- which(rv$p$outputs$output_id == owner$id)
+    if (length(i) && startsWith(field, "step:")) {
+      step <- sub("^step:", "", field)
+      if (!identical(step_code(rv$p, owner$id, step), value)) {
+        rv$p <- set_step_code(rv$p, owner$id, step, value)
+      }
+      return()
+    }
     if (length(i) && !identical(rv$p$outputs[[field]][i], value)) {
       rv$p$outputs[[field]][i] <- value
       # the other editors of the same field show it too
@@ -9868,7 +9839,8 @@ app_server <- function(input, output, session, start) {
   output$program <- shiny::renderText(program_text())
   output$program_table <- shiny::renderText(program_text())
   output$program_lf <- shiny::renderText(program_text())
-  output$program_uc <- shiny::renderText(program_text())
+  output$program_dc <- shiny::renderText(program_text())
+  output$program_cc <- shiny::renderText(program_text())
   # Step 3: this report's font and size.  Blank: every report's (the study
   # tab, the page sheet's study row), shown greyed; a value is the report's
   # own row.  Only a field changed from what was drawn is written.
