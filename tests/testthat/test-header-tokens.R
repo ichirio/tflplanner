@@ -75,15 +75,7 @@ test_that("a TOC gives a report its own tokens, not the title lines the header h
     "T-14-1-1,Table,Table 14.1.1,Demographics and baseline,Safety Analysis Set",
     "T-14-2-1,Table,,Vital signs by visit,")), map = hdr_toc_map))
   ch2 <- toc_changes(y, sp2, last)
-  # what would change says it: the title that follows the TOC, not the one
-  # edited here
-  expect_identical(ch2$tokens$output_id, "T-14-1-1")
-  expect_identical(ch2$tokens$name, "OUTPUT_TITLE")
-  expect_identical(c(ch2$tokens$now, ch2$tokens$toc), c("Demographics", "Demographics and baseline"))
   expect_identical(ch2$reports$status[ch2$reports$output_id == "T-14-1-1"], "changed")
-  expect_identical(ch2$reports$status[ch2$reports$output_id == "T-14-2-1"], "same")
-  # the same TOC again: no change
-  expect_identical(nrow(toc_changes(y, sp, last)$tokens), 0L)
   z <- toc_apply(y, sp2, ch2, last = last)
   v <- function(id, k) {
     d <- sheet_rows(z, "tokens", id)
@@ -91,6 +83,14 @@ test_that("a TOC gives a report its own tokens, not the title lines the header h
   }
   expect_identical(v("T-14-1-1", "OUTPUT_TITLE"), "Demographics and baseline")
   expect_identical(v("T-14-2-1", "OUTPUT_TITLE"), "Vital signs (edited)")
+  # the edited one is offered (edited here, and changed in the TOC); chosen,
+  # the TOC's text
+  ch <- toc_changes(y, sp2, last)
+  expect_identical(ch$info$action[ch$info$output_id == "T-14-2-1" & ch$info$name == "OUTPUT_TITLE"],
+                   "ask")
+  z2 <- toc_apply(y, sp2, ch, last = last, use_toc = "T-14-2-1|info|OUTPUT_TITLE")
+  d <- sheet_rows(z2, "tokens", "T-14-2-1")
+  expect_identical(d$value[d$name == "OUTPUT_TITLE"], "Vital signs by visit")
 })
 
 test_that("a study whose header says no report tokens gets none from a TOC", {
@@ -103,4 +103,22 @@ test_that("a study whose header says no report tokens gets none from a TOC", {
   expect_identical(nrow(sheet_rows(y, "tokens", "T-1")), 0L)
   expect_identical(sheet_rows(y, "titles", "T-1")$center,
                    c("Demographics", "Safety Analysis Set"))
+})
+
+test_that("a TOC's label the report prints all the same (no value of its own) is no change", {
+  x <- add_output(.standard_planner("ABC-1"), "T-14-1-1")
+  # no label of its own: it prints the one made from its id
+  printed <- .toc_printed(x)("T-14-1-1")[["OUTPUT_LABEL"]]
+  expect_identical(printed, "Table 14.1.1")
+  same <- .toc_titles_in_header(x, tflspec::tfl_read_toc(hdr_toc_file(
+    "T-14-1-1,Table,Table 14.1.1,,"), map = hdr_toc_map))
+  ch <- toc_changes(x, same)
+  expect_false(any(ch$info$name == "OUTPUT_LABEL"))
+  expect_identical(ch$reports$status, "same")
+  # another label: added
+  other <- .toc_titles_in_header(x, tflspec::tfl_read_toc(hdr_toc_file(
+    "T-14-1-1,Table,Table 14.1.1a,,"), map = hdr_toc_map))
+  ch2 <- toc_changes(x, other)
+  expect_identical(ch2$info$action[ch2$info$name == "OUTPUT_LABEL"], "add")
+  expect_identical(ch2$reports$status, "changed")
 })

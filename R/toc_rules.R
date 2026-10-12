@@ -727,8 +727,9 @@ toc_problems <- function(x, lang = "en") {
 #' section heading rows, Shell Number, Phase, Topline, Title1-3,
 #' Population, Footnote1-2, a shell sheet per report) -- and
 #' `SAMPLE-01_TOC_changed.xlsx`, the same with two rows changed (a title,
-#' a footnote).  Taken into the sample study, the first changes nothing but
-#' the Topline batch; the second, taken in after it, shows those two.
+#' a footnote).  Taken into the sample study, the first gives its reports
+#' their sections (and the Topline batch) and, taken in again, changes
+#' nothing; the second, taken in after it, shows those two.
 #'
 #' @param sources The TOC files (paths) or `toc_source`s.
 #' @param rules What [toc_rules()] returned.

@@ -112,9 +112,11 @@ toc_title_offset <- function(x) {
 #' (the lines the last TOC had; the first time, the lines where this TOC
 #' has one) and those added here.  The TOC's lines are compared line by
 #' line: one not edited here takes the TOC's new text; one edited here keeps
-#' its text when the TOC did not change it, and is asked about when the TOC
-#' changed it too.  The lines added here are not compared: they stay, after
-#' the TOC's lines.
+#' its text unless the TOC's is chosen (`use_toc` of [toc_apply()]), when
+#' the TOC did not change it as when it did.  The lines added here are not
+#' compared: they stay, after the TOC's lines.  The report's information --
+#' its label, title and analysis set text (those the study's pages say) and
+#' its section -- is compared the same way.
 #'
 #' @param x A `tflplanner`.
 #' @param spec What [tflspec::tfl_read_toc()] returned.
@@ -131,14 +133,12 @@ toc_title_offset <- function(x) {
 #'   edited here), `"ask"` (edited here and changed in the TOC) or `"move"`
 #'   (a line added here, now after the TOC's lines: `to`) -- and `to`, the
 #'   line it will be), `kept` (the lines edited here the TOC did not
-#'   change: kept, not asked about) and `tokens` (one row a report's own
-#'   token the TOC changes -- `{OUTPUT_TITLE}`, `{OUTPUT_POPULATION}` ...
-#'   where the study's header prints them: `output_id`, `name`, `now`,
-#'   `toc`); and the `last` and `title_offset` it was given.
-#'
-#' A report's type is not changed by a TOC: a type the TOC only guessed
-#' (from the ID or the title), or a figure for a report of one's own code
-#' (a TOC has no word for it), is no change.
+#'   change: kept unless chosen), `info` (one row an item of a report's
+#'   information that differs: `output_id`, `name` (`"OUTPUT_LABEL"`,
+#'   `"OUTPUT_TITLE"`, `"OUTPUT_POPULATION"`, `"OUTPUT_SECTION"`), `now`,
+#'   `toc`, `action` -- `"add"`, `"update"`, `"keep"` (edited or cleared
+#'   here, the TOC unchanged) or `"ask"`); and the `last` and
+#'   `title_offset` it was given.
 #' @export
 toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)) {
   ids <- unique(stats::na.omit(spec$report$output_id))
@@ -146,14 +146,8 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
   guessed <- attr(spec, "guessed") %||% character()
   lines <- list()
   kept <- list()
-  toks <- list()
-  says <- .toc_tokens_said(x)
-  # a report with no token of its own prints the one its program gives it
-  # ({OUTPUT_LABEL} "Table 14.1.1" from its id): the TOC's is compared
-  # with that
-  tok_spec <- if (length(says)) tryCatch(.spec_object_last(
-    x, c(table_sheets(), report_sheets()),
-    unique(c(.study_keys$table, .study_keys$report))), error = function(e) NULL)
+  info <- list()
+  printed <- .toc_printed(x)
   status <- character()
   for (id in ids) {
     if (!id %in% have) {
@@ -169,16 +163,12 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
       }
       if (nrow(m$kept)) kept[[length(kept) + 1L]] <- m$kept
     }
-    eff <- if (!is.null(tok_spec)) tryCatch(tflspec::tfl_report_tokens(tok_spec, id),
-                                            error = function(e) character())
-    tc <- .toc_token_changes(x, spec, last, id, says, eff)
-    if (nrow(tc)) {
-      changed <- TRUE
-      toks[[length(toks) + 1L]] <- tc
-    }
     tn <- report_info(x, id)$type
     tt <- spec$report$type[match(id, spec$report$output_id)]
     if (.toc_type_differs(tn, tt, id %in% guessed)) changed <- TRUE
+    inf <- .toc_info_changes(x, spec, last, id, printed(id))
+    if (any(inf$action %in% c("add", "update", "ask"))) changed <- TRUE
+    if (nrow(inf)) info[[length(info) + 1L]] <- inf
     status[[id]] <- if (changed) "changed" else "same"
   }
   # every report a TOC gave before that this one has not (still there)
@@ -195,48 +185,77 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
   list(reports = reports,
        lines = if (length(lines)) do.call(rbind, lines) else .toc_no_lines(),
        kept = if (length(kept)) do.call(rbind, kept) else .toc_no_lines(),
-       tokens = if (length(toks)) do.call(rbind, toks) else .toc_no_tokens(),
+       info = if (length(info)) do.call(rbind, info) else .toc_no_info(),
        last = last, title_offset = title_offset)
 }
 
+.toc_no_info <- function() {
+  data.frame(output_id = character(), name = character(), now = character(),
+             toc = character(), action = character(), stringsAsFactors = FALSE)
+}
+
+# The report's information the TOC gives -- its label, title and analysis
+# set text (those the study's pages say) and its section -- against what
+# the report has (its rows of the tokens sheet; the section, the report
+# list's): a row an item, with `action` "add" (none here, and the TOC gives
+# another than the last time), "update" (here as the last TOC said), "keep"
+# (edited or cleared here, the TOC unchanged) or "ask" (edited here, and
+# changed in the TOC).  "keep" and "ask" stay unless chosen.
+.toc_info_changes <- function(x, spec, last, id, printed = character()) {
+  vals <- .toc_tokens(spec, id)
+  items <- setdiff(names(.toc_token_items), "OUTPUT_SECTION")
+  items <- c(items[vapply(items, function(k) .study_says(x, k), NA)], "OUTPUT_SECTION")
+  tk <- .normalize_sheet(x$sheets$tokens, "tokens")
+  was <- last[[id]]$tokens
+  out <- list()
+  for (k in items) {
+    t_ <- vals[[k]]
+    if (is.null(t_) || .is_blank(t_)) next
+    n_ <- if (identical(k, "OUTPUT_SECTION")) {
+      if (is.null(x$outputs$section)) NA_character_ else x$outputs$section[match(id, x$outputs$output_id)]
+    } else {
+      v <- tk$value[!is.na(tk$output_id) & tk$output_id == id & trimws(tk$name) == k]
+      if (length(v)) v[1L] else NA_character_
+    }
+    if (.is_blank(n_)) n_ <- NA_character_
+    # no value of its own: the report prints one all the same ({OUTPUT_LABEL}
+    # "Table 14.1.1" from its id); the TOC's the same is no change to say
+    # (`printed`, what would change; toc_apply() writes it all the same)
+    if (is.na(n_) && !identical(k, "OUTPUT_SECTION") &&
+        identical(unname(printed[k]), t_)) next
+    w_ <- was[[k]]
+    w_ <- if (is.null(w_) || .is_blank(w_)) NA_character_ else as.character(w_)
+    a <- if (identical(n_, t_)) NA_character_
+      else if (is.na(n_)) { if (identical(t_, w_)) "keep" else "add" }
+      else if (identical(n_, w_)) "update"
+      else if (identical(t_, w_)) "keep"
+      else "ask"
+    if (is.na(a)) next
+    out[[length(out) + 1L]] <- data.frame(output_id = id, name = k, now = n_, toc = t_,
+                                          action = a, stringsAsFactors = FALSE)
+  }
+  if (length(out)) do.call(rbind, out) else .toc_no_info()
+}
+
+# The tokens each report prints now, by its id (as its program gives them:
+# a value of its own, else the study's default); none when they cannot be
+# read
+.toc_printed <- function(x) {
+  sp <- tryCatch(.spec_object_last(x, c(table_sheets(), report_sheets()),
+                                   unique(c(.study_keys$table, .study_keys$report))),
+                 error = function(e) NULL)
+  function(id) {
+    if (is.null(sp)) return(character())
+    tryCatch(tflspec::tfl_report_tokens(sp, id), error = function(e) character())
+  }
+}
+
 # Whether a report's type and the TOC's differ in a way to say: not when
-# the TOC only guessed it, nor a figure for a report of one's own code
+# the TOC only guessed it, nor a figure for a report of one's own code (a
+# TOC has no word for it).  A TOC does not change a report's type.
 .toc_type_differs <- function(now, toc, guessed = FALSE) {
   !is.na(toc) && !identical(now, toc) && !isTRUE(guessed) &&
     !(identical(now, "user") && identical(toc, "figure"))
-}
-
-# The report's own tokens the study's bands print ({OUTPUT_TITLE} ...)
-.toc_tokens_said <- function(x) {
-  names(.toc_token_items)[vapply(names(.toc_token_items),
-                                 function(k) .study_says(x, k), NA)]
-}
-
-# A report's own tokens a TOC changes, as toc_apply() writes them: where
-# the report has none, or has what the last TOC gave (a value changed here
-# is kept, and is no change).  `effective`: the tokens the report prints
-# now (named); one it has no row for is compared with that.
-.toc_token_changes <- function(x, spec, last, id, says = .toc_tokens_said(x),
-                               effective = character()) {
-  out <- .toc_no_tokens()
-  vals <- .toc_tokens(spec, id)
-  vals <- vals[intersect(names(vals), says)]
-  tk <- x$sheets$tokens
-  was <- last[[id]]$tokens
-  for (k in names(vals)) {
-    i <- which(!is.na(tk$output_id) & tk$output_id == id & tk$name == k)
-    now <- if (length(i)) tk$value[i[1L]] else NA_character_
-    if (length(i) && !identical(now, was[[k]])) next
-    if (identical(now, vals[[k]])) next
-    if (!length(i) && identical(unname(effective[k]), vals[[k]])) next
-    out[nrow(out) + 1L, ] <- list(id, k, now, vals[[k]])
-  }
-  out
-}
-
-.toc_no_tokens <- function() {
-  data.frame(output_id = character(), name = character(), now = character(),
-             toc = character(), stringsAsFactors = FALSE)
 }
 
 .toc_no_lines <- function() {
@@ -295,8 +314,9 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
         out[[k]] <- cells(toc, k)
         note(k, n_, t_, "update")
       } else if (!is.na(w_) && identical(t_, w_)) {
-        # edited here, the TOC unchanged: kept, not asked again
+        # edited here, the TOC unchanged: kept unless the TOC's is chosen
         out[[k]] <- cells(now, k)
+        alt[[k]] <- cells(toc, k)
         note(k, n_, t_, "keep", "kept")
       } else {
         out[[k]] <- cells(now, k)
@@ -348,8 +368,9 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
 #' @param x A `tflplanner`.
 #' @param spec What [tflspec::tfl_read_toc()] returned.
 #' @param changes What [toc_changes()] returned.
-#' @param use_toc The `"ask"` lines to take from the TOC, as
-#'   `"<output_id>|<sheet>|<line>"`.
+#' @param use_toc What was edited here to take from the TOC: the `"ask"`
+#'   and `kept` lines, as `"<output_id>|<sheet>|<line>"`, and the `"keep"`
+#'   and `"ask"` items of the information, as `"<output_id>|info|<name>"`.
 #' @param types The types of new reports, named by output id (a guessed
 #'   type corrected); the TOC's otherwise.
 #' @param last,title_offset As [toc_changes()] was given them (kept in
@@ -383,18 +404,6 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
         x <- set_sheet_rows(x, sh, id, d)
       }
     }
-  }
-  # the section each report is under (the TOC's heading row above it, or
-  # its section column): written where the report has none yet -- one
-  # given in the app is kept
-  sec <- attr(spec, "sections")
-  if (length(sec)) {
-    o <- x$outputs
-    if (!"section" %in% names(o)) o$section <- NA_character_
-    k <- match(names(sec), o$output_id)
-    put <- !is.na(k) & !is.na(sec) & is.na(o$section[k])
-    o$section[k[put]] <- unname(sec[put])
-    x$outputs <- o
   }
   # the reports' analysis sets, as the TOC says them (one value with the
   # report list's and step 1's: a change moves the report's analyses)
@@ -464,7 +473,7 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
   }
   x$sheets$report <- r
   # the lines of the reports already there
-  ln <- changes$lines
+  ln <- rbind(changes$lines, changes$kept)
   for (id in unique(ln$output_id)) {
     for (sh in unique(ln$sheet[ln$output_id == id])) {
       m <- .toc_merge(x, spec, last, id, sh, title_offset)
@@ -478,28 +487,21 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
       x <- set_sheet_rows(x, sh, id, rows)
     }
   }
-  # the report's own tokens ({OUTPUT_TITLE} ...) the study says: written
-  # where the report has none, or has what the last TOC gave (a value
-  # changed here is kept)
-  says <- .toc_tokens_said(x)
-  tk <- x$sheets$tokens
+  # the report's information (its label, title, analysis set text, section):
+  # the TOC's where the report has none or what the last TOC said; edited
+  # or cleared here, it stays unless chosen (`use_toc`: "<id>|info|<name>")
+  # (written where the report has none, even when it prints the same from
+  # its default: the TOC's information is the report's from now on)
   for (id in rep$output_id[rep$status %in% c("new", "changed", "same")]) {
-    vals <- .toc_tokens(spec, id)
-    vals <- vals[intersect(names(vals), says)]
-    was <- last[[id]]$tokens
-    for (k in names(vals)) {
-      i <- which(!is.na(tk$output_id) & tk$output_id == id & tk$name == k)
-      if (length(i) && !identical(tk$value[i[1L]], was[[k]])) next
-      if (!length(i)) {
-        tk[nrow(tk) + 1L, ] <- NA
-        i <- nrow(tk)
-        tk$output_id[i] <- id
-        tk$name[i] <- k
+    inf <- .toc_info_changes(x, spec, last, id)
+    for (j in seq_len(nrow(inf))) {
+      k <- inf$name[j]
+      if (inf$action[j] %in% c("add", "update") ||
+          paste(id, "info", k, sep = "|") %in% use_toc) {
+        x <- .set_report_info(x, id, k, inf$toc[j])
       }
-      tk$value[i[1L]] <- vals[[k]]
     }
   }
-  x$sheets$tokens <- tk
   x
 }
 

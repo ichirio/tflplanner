@@ -24,8 +24,9 @@ toc_apply(
 
 \item{changes}{What \code{\link[=toc_changes]{toc_changes()}} returned.}
 
-\item{use_toc}{The \code{"ask"} lines to take from the TOC, as
-\code{"<output_id>|<sheet>|<line>"}.}
+\item{use_toc}{What was edited here to take from the TOC: the \code{"ask"}
+and \code{kept} lines, as \code{"<output_id>|<sheet>|<line>"}, and the \code{"keep"}
+and \code{"ask"} items of the information, as \code{"<output_id>|info|<name>"}.}
 
 \item{types}{The types of new reports, named by output id (a guessed
 type corrected); the TOC's otherwise.}

@@ -79,8 +79,9 @@ Two example TOCs come with the package, made from the sample study
 section heading rows, Shell Number, Phase, Topline, Title1-3,
 Population, Footnote1-2, a shell sheet per report) -- and
 \verb{SAMPLE-01_TOC_changed.xlsx}, the same with two rows changed (a title,
-a footnote).  Taken into the sample study, the first changes nothing but
-the Topline batch; the second, taken in after it, shows those two.
+a footnote).  Taken into the sample study, the first gives its reports
+their sections (and the Topline batch) and, taken in again, changes
+nothing; the second, taken in after it, shows those two.
 }
 \examples{
 f <- tempfile(fileext = ".csv")

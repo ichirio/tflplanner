@@ -1,28 +1,96 @@
 # tflplanner (development version)
 
-- **A TOC taken in again says every change** (the TOC import's "What
-  would change").  A study whose header prints the report's title,
-  label and analysis set (`{OUTPUT_TITLE}` ...) keeps them as the
-  report's tokens; a TOC that changes them was taken in without saying
-  so, the report marked "No change".  The tokens are compared now, as the
-  import writes them (one edited here is kept, and is no change), and
-  each is listed under its report.  A report of one's own code that the
-  TOC calls a figure, or a type the TOC only guessed, is no change any
-  more (the type was never changed; every import again said two reports
-  of the sample changed).
+- **A TOC taken in again: a report's label, title or analysis set it
+  prints all the same is no change.**  A report with no value of its own
+  prints the study's default (`{OUTPUT_LABEL}` "Table 14.1.1" from its
+  id): a TOC saying the same was counted as a change ("add") for every
+  report of the sample.  It is compared with what the report prints now.
+  A report of one's own code that the TOC calls a figure, or a type the
+  TOC only guessed, is no change either (the type was never changed;
+  every import again said two reports of the sample changed).
 - **Two example TOCs** made from the sample study, in
   `system.file("extdata", package = "tflplanner")`:
   `SAMPLE-01_TOC.xlsx` (its 17 reports with titles, analysis sets,
   sections, a Topline column and a shell sheet each) and
   `SAMPLE-01_TOC_changed.xlsx` (two rows changed), to try the import on
-  the sample study: the first changes nothing, the second then shows two
-  reports changed.  `data-raw/make-toc-sample.R` makes them.
+  the sample study: the first gives its reports their sections (and the
+  Topline batch) and, taken in again, changes nothing; the second, taken
+  in after it, shows two reports changed (a title, a footnote).  `data-raw/make-toc-sample.R` makes them.
 - **A study copied takes how it reads its TOC** (`input/toc/profile.yml`:
   the rule set, the way the IDs are made, the sheets): the next study of
   the same company layout reads its TOC the same way.  Not the TOCs taken
   in nor what they said: the copy's TOC is its own.
   `toc_copy_profile()`.
 
+- **Step 3: one card, "Report information and tokens"** (the user's
+  direction; first in the page form).  The report list can only rename a
+  report or take in a TOC, so the TOC's information about a report is
+  edited here: its label, title, analysis set text ({OUTPUT_LABEL},
+  {OUTPUT_TITLE}, {OUTPUT_POPULATION} -- the report's rows of the tokens
+  sheet) and section ({OUTPUT_SECTION}, the report list's section).  Each
+  field shows what a blank gives in its placeholder (the label made from
+  the ID, step 1's analysis set), and nothing under it: where a value came
+  from is what a TOC taken in again lists (below), and the page's sample
+  shows what it prints; no reset button.  The ID is read only, with a
+  link to the report list.  Below: the report's own tokens (add, change,
+  remove; a name of the report's information or of rtfreporter's is
+  refused) and, folded, every token of rtfreporter's with what it is, as
+  `rtfreporter::rtf_text_tokens()` lists them ({AUTO_PAGE},
+  {AUTO_TOTAL_PAGES}, {BOOK_PAGE}, {PROGRAM_NAME} ...).  The Titles card
+  says the title its header prints and where it changes; the titles' and
+  footnotes' tokens are inserted from one list.  The report picker of
+  "Make a report" follows the title and section at once (the title of the
+  report's information first).
+- **A TOC taken in again: what was edited here, kept or overwritten as
+  chosen**.  A line or a report's information (label, title, analysis set
+  text, section) as the last TOC said follows the new TOC.  One edited, or
+  cleared, here is listed in "What would change" with the TOC's text and
+  "Use the TOC's text" -- unticked by default, so it stays -- and one box
+  takes the TOC's text for everything edited here.  (Before, a line edited
+  here and not changed in the TOC was kept with no choice, and the
+  information was not listed.)  The section is one value, the report
+  list's (the TOC no longer writes an OUTPUT_SECTION row of the tokens
+  sheet).
+- **Two official runs compared** (the Runs tab's "Compare...";
+  `compare_batches()`).  A run chosen in the runs table (else the newest)
+  against the run of the same kind before it, or any two: the inputs that
+  changed -- the data by the md5 `data_manifest.csv` records, the code by
+  the md5 of the kept `code/`; "not kept" when a run did not keep them --
+  and the results that changed (identical, the same but the date and time
+  a report prints, the same object, different, not made, new), said in
+  two lines ("Inputs changed: ... / Results changed: 2 of 30: ...") over
+  a table of what changed, with a CSV.  After a fix to the data or the
+  programs, it shows that only what was fixed changed.  The kept code now
+  has `programs/study_helpers.R` (the study setup sources it), and a run
+  keeps the reports' status (`output/tfl/report_status.csv`) as it keeps
+  the ARD's.
+
+- **An official run can keep its data** (the Runs tab's "keep the data in
+  the batch folder", off by default; `run_batch(data = TRUE)`, the
+  autoexec programs' `--data`).  The data files the run's programs read
+  -- by the data catalog: each table's datasets (an analysis data's, those
+  it is made from), a listing's, a figure's, an ARD taken in -- are copied
+  into the batch folder's `data/` under their path in the study folder,
+  and listed with their size, md5 and time in `data_manifest.csv`.  Ticked,
+  the tab says how many files and how large before the run, and warns
+  above 500 MB (`options(tflplanner.batch_data_warn_mb)`);
+  `batch_data_plan()` gives the same list.  Every official run now also
+  writes `session_info.txt` -- the packages its programs name with their
+  versions, and `sessionInfo()` -- and keeps the study's `renv.lock` when
+  it has one; `batch.txt` says whether the code and the data were kept,
+  and the runs table has a Data column.  With the code, the logs and the
+  versions, a batch folder is everything the run read: the first step of
+  the official-run snapshot (a run made again as it was, though the data
+  change after).  Save the study once so `programs/batch.R` knows the
+  data.
+
+- **The runs table says how each official run went** (its State column,
+  in place of Programs and Errors): running and for how long, done (when;
+  every program without error), its errors, or not finished (stopped).
+  The end of a run says the same in its message, with the time it took.
+  A folder icon on each row opens the batch folder in Explorer, Finder or
+  the file manager; it and "Open the batch folder" are shown only when the
+  app runs on this computer.  `list_batches()` has `state` and `finished`.
 - **The days in a week, a month and a year come from the company
   standards** (the user's request).  A figure's time unit divides by
   named constants -- `days_per_week`, `days_per_month`, `days_per_year` --

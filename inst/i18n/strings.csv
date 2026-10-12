@@ -325,7 +325,7 @@ keep the code in the batch folder,バッチフォルダにコードを含める
 Preview selected,選択をプレビュー
 Preview all,すべてプレビュー
 Official runs (batch folders),正式実行（バッチフォルダ）
-"An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs) and, if kept, the programs and definition workbooks it ran.",正式実行は runs/<日付>_<時刻>_<内容>/ のバッチフォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、指定すれば実行したプログラムと定義ブックを格納します。
+"An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read.",正式実行は runs/<日付>_<時刻>_<内容>/ のバッチフォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、R とパッケージの版（session_info.txt）、指定すれば実行したプログラムと定義ブック、読んだデータを格納します。
 "ARD, then reports",ARD → 帳票
 Start the official run,正式実行を開始
 Open the batch folder,バッチフォルダを開く
@@ -2858,7 +2858,6 @@ Right (in),右 (in)
 (blank line),（空行）
 Insert (into the field last clicked):,差し込み（最後にクリックした欄へ）：
 "The title the header prints: its {OUTPUT_TITLE}, this report's token.",ヘッダーが印字するタイトル：その {OUTPUT_TITLE}（この帳票のトークン）。
-Titles,タイトル
 Footnotes,脚注
 Edit the patterns...,型を編集...
 (no other pattern yet: Edit the patterns... makes one),（ほかの型はまだありません：「型を編集...」で作れます）
@@ -2873,6 +2872,12 @@ Add a line,行を足す
 Add a line to this pattern,この型に行を足す
 Remove the line,行を削除
 Remove the token,トークンを削除
+keep the data in the batch folder,バッチフォルダにデータを含める
+"The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the run can be made again.",実行するプログラムが読むデータファイル（データカタログのもの：表のデータセット、リスト・図のデータセット、取り込んだ ARD）を md5 付きで写します（data_manifest.csv）。コード・ログ・R とパッケージの版（session_info.txt）と合わせて、同じ実行をやり直せます。
+The run's programs read no data file of the data catalog.,実行するプログラムが読むデータカタログのファイルはありません。
+"Data kept: %d files, %s.",含めるデータ：%d ファイル、%s。
+"Over %s: every run keeps its own copy, so the runs folder grows by this much each time.",%s を超えます。実行ごとに写しを持つので、runs フォルダは毎回この分だけ大きくなります。
+"Not found, not kept: %s.",見つからないため含めません：%s。
 "The dataset %s has a column %s, the name of a constant of the programs (the days in a week, a month, a year).",データセット %s に列 %s があります。プログラムの定数（1 週・1 か月・1 年の日数）と同じ名前です。
 Rename the column in the data: a program would read it instead of the constant.,データの列名を変えてください：プログラムが定数の代わりにその列を読んでしまいます。
 "(no line: the time is in days already; months, weeks or years divide it)",（行なし：時間はもう日単位です。月・週・年にすると割り算の行が入ります）
@@ -2906,3 +2911,80 @@ Change it in the report's section (Data code),帳票のセクションで変え�
 Change it in the report list (Rename),帳票リストで変える（名前の変更）
 "{%s} is rtfreporter's, filled as the RTF is written: give your token another name.",{%s} は rtfreporter のもので、RTF を書くときに入ります。自分のトークンには別の名前を付けてください。
 "{%s} is the report list's: change it where it comes from (the list below says where), or give your token another name.",{%s} は帳票リストのものです。元の場所で変えるか（下の一覧に場所があります）、自分のトークンに別の名前を付けてください。
+Report information and tokens,帳票の情報とトークン
+"The report's information is the TOC's, edited here (the report list shows the same). Each is a {TOKEN} a header, footer, title or footnote can say.",帳票の情報は TOC のもので、ここで編集します（帳票リストにも同じ値が出ます）。どれもヘッダー・フッター・タイトル・脚注で {TOKEN} として使えます。
+This report's own tokens,この帳票独自のトークン
+from the TOC,TOC から
+edited here (the TOC said: %s),ここで編集（TOC では %s）
+edited here,ここで編集
+default: made from the ID,既定：ID から作る
+default: step 1's analysis set (%s),既定：段 1 の解析対象集団（%s）
+default: empty (no analysis set chosen in step 1),既定：空（段 1 で解析対象集団が未選択）
+default: empty,既定：空
+Back to the default,既定に戻す
+printed on this page,このページに出ます
+not printed: no line of this page says {%s},出ません：このページのどの行も {%s} を使っていません
+The analysis set: step 1,解析対象集団は段 1 で
+Analysis set text,解析対象集団の文
+Rename it in the report list,帳票リストで名前を変える
+"rtfreporter's tokens (%d), filled as the RTF is written",rtfreporter のトークン（%d 個、RTF を書くときに入る）
+(a token),（トークンを選ぶ）
+"The header prints {OUTPUT_TITLE}: %s (changed in ""Report information and tokens"", above).",ヘッダーは {OUTPUT_TITLE} を印字します：%s（上の「帳票の情報とトークン」で変えます）。
+"Page number, written into the file (the first page of the section)",ページ番号（ファイルに書き込む。セクションの最初のページから）
+"Total pages of this file, written into the file",このファイルの総ページ数（ファイルに書き込む）
+Page number the word processor shows (right after assemble_rtf()),ワープロが表示するページ番号（assemble_rtf() の直後から）
+Total pages the word processor counts (the whole document),ワープロが数える総ページ数（文書全体）
+Page number in the assembled book; empty until assemble_rtf(book_page =),まとめた冊子でのページ番号（assemble_rtf(book_page =) までは空）
+"Path of the program that wrote the file, as given",ファイルを書いたプログラムのパス（指定のまま）
+"The same path, absolute (the system's separator)",同じパスの絶対パス（OS の区切り文字）
+File name of that program,そのプログラムのファイル名
+Folder of that program,そのプログラムのフォルダー
+Date and time the file was written; {DATETIME:<format>} for another format,ファイルを書いた日時（{DATETIME:<書式>} で別の書式）
+Back to the text made from the ID,ID から作る文に戻す
+Back to the label of step 1's analysis set,段 1 の集団のラベルに戻す
+Removed from the report's information,帳票の情報から消します
+"(blank: the text made from the ID, %s)",（空欄なら ID から作る文：%s）
+"(blank: step 1's analysis set, %s)",（空欄なら段 1 の集団のラベル：%s）
+"(blank: step 1's analysis set, none chosen)",（空欄なら段 1 の集団のラベル：未選択）
+edited here; the TOC's is the same as the last time,ここで編集。TOC は前回と同じ
+(the TOC's: all chosen above),（TOC の文：上で全部を選択）
+"%d lines or items were edited here. Unticked, they stay as edited; tick a line's ""Use the TOC's text"", or all of them here, to take the TOC's.",%d 個の行・項目がここで編集されています。チェックしなければ編集したまま残ります。TOC の文にするときは、行ごとの「TOC の文を使う」か、ここで全部をチェックします。
+Use the TOC's text for everything edited here,ここで編集したものを全部 TOC の文にする
+Running %s,実行中 %s
+"Done %s: %d of %d without error",完了 %s：%d / %d 本エラーなし
+"%d errors (of %d), %s",エラー %d 本（%d 本中）%s
+Not finished (stopped),未完了（途中で止まりました）
+Open its folder,フォルダを開く
+"The official run is done: %d of %d programs without error (%s, %s).",正式実行が終わりました：%d / %d 本エラーなし（%s、%s）。
+"The official run ended with errors: %d of %d programs failed (%s, %s).",正式実行がエラーで終わりました：%d / %d 本でエラー（%s、%s）。
+"Opened the folder %s (a window behind the browser? see the taskbar).",フォルダ %s を開きました（ブラウザの後ろに開いたときは、タスクバーから）。
+Compare...,比べる…
+Two official runs are needed to compare.,比べるには正式実行が 2 回必要です。
+Compare official runs,正式実行を比べる
+Earlier run,前の実行
+Later run,後の実行
+Show everything compared (not only what changed),比べたものをすべて表示（変わったものだけでなく）
+Download (CSV),ダウンロード（CSV）
+Choose two different runs.,違う 2 つの実行を選んでください。
+Inputs changed:,変わった入力：
+Results changed:,変わった出力：
+" (%s not kept by both runs)",（%sは両方の実行に残っていません）
+%d of %d: %s,%2$d 件中 %1$d 件：%3$s
+none of %d,%d 件中 0 件
+identical,同じ
+same but the time,時刻だけ違う
+same object,同じ内容
+different,違う
+not made,作られなかった
+new,新しい
+added,追加
+removed,削除
+changed,変更
+not kept,残していない
+data,データ
+code,コード
+result,結果
+Compared,判定
+output,出力
+done,完了
+stopped,中断

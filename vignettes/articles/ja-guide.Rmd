@@ -562,7 +562,7 @@ system.file("extdata", "SAMPLE-01_TOC_changed.xlsx", package = "tflplanner")
 ```
 
 1 つ目は見本の 17 帳票（見出しは 2 行目、節の見出し行、Shell Number・Phase・Topline・Title1〜3・Population・Footnote1〜2、帳票ごとのシェルのシート）。
-見本の試験に取り込むと、変わるのは Topline バッチだけです。
+見本の試験に取り込むと、各帳票に節が付き（Topline バッチも）、もう一度取り込むと「変更なし」です。
 2 つ目は 2 行を変えたもの（T-14-1-2 のタイトル、T-14-2-1 の脚注）で、1 つ目の後に取り込むと、その 2 帳票が「変更あり」になります。
 
 試験を「別の試験をコピー」で作ると、TOC の読み方（`input/toc/profile.yml`：ルールセット・ID の作り方・シート）も写ります。取り込んだ TOC とその記録は写りません。
