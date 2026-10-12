@@ -4,47 +4,48 @@
 #  A row's report is a link: it goes there as a Review item does.
 # ============================================================================
 
-# The dialog's body: one line of facts, one of counts, the table.
+# The dialog's body: one line of facts; the errors, always shown; what is
+# not in the ARS (by the model: a table's look, a derived column ...) folded
+# under its count, for whoever wants to read it.
 .ars_summary_ui <- function(b, t) {
   a <- b$ars
   facts <- sprintf(t("%d analyses \u00b7 %d outputs \u00b7 %d analysis sets \u00b7 %d data subsets"),
                    length(a$analyses), length(a$outputs),
                    length(a$analysisSets), length(a$dataSubsets))
   pr <- b$problems
-  n_err <- sum(pr$kind == "check")
-  n_out <- sum(pr$kind == "not in ARS")
-  counts <- if (!nrow(pr)) {
-    shiny::p(class = "small text-success mb-1", t("No problems found."))
-  } else {
-    shiny::p(class = "small mb-1",
-      shiny::span(class = if (n_err) "text-danger" else "text-muted",
-                  sprintf(t("%d errors"), n_err)), " \u00b7 ",
-      shiny::span(class = "text-secondary",
-                  sprintf(t("%d not in the ARS"), n_out)))
-  }
+  err <- which(pr$kind == "check")
+  out <- which(pr$kind == "not in ARS")
   shiny::tagList(
     shiny::p(class = "small text-muted mb-1", facts),
-    counts,
-    if (nrow(pr)) shiny::div(
-      style = "max-height: 50vh; overflow: auto;",
-      .ars_problem_table(pr, t)))
+    shiny::p(class = paste("small mb-1", if (length(err)) "text-danger" else "text-success"),
+             sprintf(t("%d errors"), length(err))),
+    if (length(err)) shiny::div(style = "max-height: 40vh; overflow: auto;",
+                                .ars_problem_table(pr, err, t)),
+    if (length(out)) shiny::tags$details(
+      class = "small mt-2",
+      shiny::tags$summary(class = "text-secondary",
+                          sprintf(t("%d not in the ARS"), length(out))),
+      shiny::div(style = "max-height: 40vh; overflow: auto;",
+                 .ars_problem_table(pr, out, t))))
 }
 
 # One row a problem and its report: the same problem on many analyses of a
 # report (a blank purpose on each) is one row, with how many; the link goes
-# to the first of them.  ars_check.csv keeps every row.
-.ars_problem_groups <- function(pr) {
-  key <- paste(pr$kind, pr$output_id, pr$item, pr$note, sep = "\r")
+# to the first of them, by its row in the whole table.  ars_check.csv keeps
+# every row.
+.ars_problem_groups <- function(pr, idx = seq_len(nrow(pr))) {
+  sub <- pr[idx, , drop = FALSE]
+  key <- paste(sub$kind, sub$output_id, sub$item, sub$note, sep = "\r")
   first <- !duplicated(key)
-  out <- pr[first, , drop = FALSE]
+  out <- sub[first, , drop = FALSE]
   out$n <- as.integer(table(factor(key, levels = unique(key))))
-  out$row <- which(first)
+  out$row <- idx[first]
   out
 }
 
-.ars_problem_table <- function(pr, t) {
+.ars_problem_table <- function(pr, idx, t) {
   kind <- c(check = t("an error"), "not in ARS" = t("not in the ARS"))
-  g <- .ars_problem_groups(pr)
+  g <- .ars_problem_groups(pr, idx)
   rows <- lapply(seq_len(nrow(g)), function(k) {
     r <- g[k, ]
     i <- r$row
