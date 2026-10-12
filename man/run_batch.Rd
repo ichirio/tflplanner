@@ -9,6 +9,7 @@ run_batch(
   study,
   parts = c("ard", "tfl"),
   code = TRUE,
+  data = FALSE,
   only = NULL,
   exclude = NULL,
   batch = NULL,
@@ -23,6 +24,8 @@ list_batches(study)
 \item{parts}{\code{"ard"}, \code{"tfl"} or both.}
 
 \item{code}{Keep the code in the batch folder.}
+
+\item{data}{Keep the data files the programs read in the batch folder.}
 
 \item{only}{Programs or outputs to run; \code{NULL} for all.}
 
@@ -39,17 +42,32 @@ the batch folder (\verb{runs/<date>_<time>_<what>_<batch>/}) and its
 \value{
 \code{run_batch()}: with \code{wait = TRUE}, a list: \code{ok}, \code{batch} (the
 batch folder), \code{result} (its run.csv), \code{output} (what the run
-printed); otherwise the process.  \code{list_batches()}: a data frame.
+printed); otherwise the process.  \code{list_batches()}: a data frame, one
+row a batch folder, the newest first, with its \code{state} -- \code{"done"}
+(every program without error), \code{"failed"} (\code{errors} of \code{programs}),
+or \code{"incomplete"} (no record of its end yet: still running, or
+stopped) -- and when it \code{finished}.
 }
 \description{
 \code{run_batch()} runs the study's official-run program -- the ARD
 (\code{programs/ard/autoexec_ard.R}), the reports
 (\code{programs/tfl/autoexec_report.R}) or both (\code{programs/autoexec_all.R})
 -- which makes a batch folder \verb{runs/<date>_<time>_<what>/} with each
-program's log, what the run made and, with \code{code = TRUE}, the programs
-and definition workbooks it ran.  \code{list_batches()} lists a study's
-batch folders.
+program's log, what the run made, the R and package versions
+(\code{session_info.txt}, and the study's \code{renv.lock} when it has one), with
+\code{code = TRUE} the programs and definition workbooks it ran, and with
+\code{data = TRUE} the data files its programs read.  \code{list_batches()} lists
+a study's batch folders.
 }
 \details{
+The data kept are the files of the data catalog the run's programs read
+(\code{\link[=batch_data_plan]{batch_data_plan()}}): each ARD program its report's datasets, each
+report program its own (a listing's, a figure's) or the ARD taken in it
+reads.  They go to the batch folder's \verb{data/} under the path they have
+in the study folder (\code{data/data/adam/adsl.rds}; a file outside it under
+\verb{data/external/}), listed in \code{data_manifest.csv} with their size, md5
+and time.  With the code and the logs, that is everything the run read:
+a run that can be made again.
+
 The programs are the saved ones: save the study first.
 }

@@ -97,6 +97,67 @@
   }
 }
 
+# The data files the run's programs read (.batch_data, by the data
+# catalog), copied into the batch folder's data/ under their path in the
+# study folder (a file outside it: data/external/<name>), and listed with
+# their size, md5 and time in data_manifest.csv.  Returns the manifest.
+.batch_keep_data <- function(progs, dir) {
+  files <- unique(unlist(.batch_data[intersect(names(.batch_data), progs)],
+                         use.names = FALSE))
+  files <- files[file.exists(files)]
+  to <- ifelse(grepl("^([A-Za-z]:)?[/\\\\]", files) | startsWith(files, ".."),
+               file.path("external", basename(files)), files)
+  for (i in seq_along(files)) {
+    dir.create(file.path(dir, "data", dirname(to[i])), recursive = TRUE,
+               showWarnings = FALSE)
+    file.copy(files[i], file.path(dir, "data", to[i]), overwrite = TRUE,
+              copy.date = TRUE)
+  }
+  man <- data.frame(
+    path = files, kept = file.path("data", to),
+    size = unname(file.size(files)),
+    md5 = unname(tools::md5sum(file.path(dir, "data", to))),
+    modified = format(file.mtime(files), "%Y-%m-%d %H:%M:%S"),
+    stringsAsFactors = FALSE)
+  utils::write.csv(man, file.path(dir, "data_manifest.csv"), row.names = FALSE)
+  man
+}
+
+# The packages the run's programs name (library(), require(), pkg::), with
+# the versions installed here, and sessionInfo() once they are loaded:
+# session_info.txt.  The study's renv.lock, when it has one, is kept too.
+# Never the end of a run: what cannot be read is said in the file.
+.batch_session_info <- function(progs, dir) {
+  ver <- tryCatch({
+    # the R files only (the support files are workbooks too)
+    progs <- progs[grepl("[.][Rr]$", progs) & file.exists(progs)]
+    code <- unlist(lapply(progs, readLines, warn = FALSE, encoding = "UTF-8"))
+    code <- sub("#.*$", "", code, useBytes = TRUE)
+    lib <- unlist(regmatches(code, gregexpr(
+      "(library|require|requireNamespace)\\(\\s*['\"]?[A-Za-z][A-Za-z0-9.]*", code,
+      perl = TRUE, useBytes = TRUE)))
+    lib <- sub("^.*\\(\\s*['\"]?", "", lib, useBytes = TRUE)
+    ns <- unlist(regmatches(code, gregexpr("[A-Za-z][A-Za-z0-9.]*(?=:::?)", code,
+                                           perl = TRUE, useBytes = TRUE)))
+    pkgs <- sort(unique(c(lib, ns)))
+    pkgs <- pkgs[vapply(pkgs, function(p) nzchar(system.file(package = p)), NA)]
+    for (p in pkgs) try(suppressPackageStartupMessages(loadNamespace(p)), silent = TRUE)
+    vapply(pkgs, function(p) as.character(utils::packageVersion(p)), "")
+  }, error = function(e) structure(character(), note = conditionMessage(e)))
+  writeLines(c(
+    "The R and packages of the run: the packages its programs name, with",
+    "the versions installed where it ran, then sessionInfo() once they are loaded.",
+    "",
+    sprintf("%-24s %s", c("package", names(ver)), c("version", ver)),
+    if (!is.null(attr(ver, "note"))) paste("(the programs could not be read:",
+                                           attr(ver, "note"), ")"),
+    "",
+    utils::capture.output(print(utils::sessionInfo()))),
+    file.path(dir, "session_info.txt"))
+  if (file.exists("renv.lock")) file.copy("renv.lock", file.path(dir, "renv.lock"))
+  invisible(ver)
+}
+
 # An official run: the programs of `parts` ("ard", "tfl"), each logged, and
 # a batch folder runs/<date>_<time>_<what>/ that keeps what the run used
 # and made:
@@ -104,9 +165,14 @@
 #   output/    the study ARD the run made or read, the reports it made
 #   code/      the programs and definition workbooks it ran (not with
 #              --no-code)
+#   data/      with --data: the data files the programs read, under their
+#              path in the study folder; data_manifest.csv lists them
+#              (size, md5, time)
 #   run.csv    one row per program: status, errors, warnings, time, md5
-#   batch.txt  who, where, when, which R
-# `args`: --no-code; program or output names to run only those;
+#   session_info.txt  the R and package versions (renv.lock when the study
+#              has one)
+#   batch.txt  who, where, when, which R, what was kept
+# `args`: --no-code; --data; program or output names to run only those;
 # --exclude=<name> (again for another) to leave a program out; --batch <name>
 # (or --batch=<name>) to run a named batch of `.batch_sets`.
 run_batch <- function(parts, args = character()) {
@@ -114,6 +180,7 @@ run_batch <- function(parts, args = character()) {
     stop("Run it from the study folder (the one with study.yml).")
   }
   code <- !"--no-code" %in% args
+  data <- "--data" %in% args
   ex_args <- grep("^--exclude=", args, value = TRUE)
   exclude <- sub("^--exclude=", "", ex_args)
   # a named batch: --batch Topline, or --batch=Topline
@@ -142,7 +209,7 @@ run_batch <- function(parts, args = character()) {
               " (save the study to write them); the rest runs.")
     }
   }
-  only <- setdiff(args, c("--no-code", ex_args))
+  only <- setdiff(args, c("--no-code", "--data", ex_args))
   named <- function(progs, names) {
     basename(progs) %in% names | sub("[.][Rr]$", "", basename(progs)) %in% names
   }
@@ -213,6 +280,9 @@ run_batch <- function(parts, args = character()) {
   if (code) .batch_copy(unique(c(result$program,
                                  unlist(.batch_support[c(parts, "all")]))),
                         file.path(dir, "code"))
+  man <- if (data) .batch_keep_data(result$program, dir)
+  .batch_session_info(unique(c(result$program,
+                               unlist(.batch_support[c(parts, "all")]))), dir)
   result$log <- substring(result$log, nchar(dir) + 2L)
   utils::write.csv(result, file.path(dir, "run.csv"), row.names = FALSE)
   writeLines(c(
@@ -227,6 +297,11 @@ run_batch <- function(parts, args = character()) {
     paste("R        :", R.version.string),
     paste("Logs     :", if (engine == "logrx") "logrx" else "R CMD BATCH"),
     paste("Code     :", if (code) "kept (code/)" else "not kept"),
+    paste("Data     :", if (data) sprintf(
+      "kept (data/, %d file(s), %.1f MB; data_manifest.csv)", nrow(man),
+      sum(man$size) / 1024^2) else "not kept"),
+    paste("Session  :", if (file.exists(file.path(dir, "renv.lock")))
+      "session_info.txt and renv.lock" else "session_info.txt"),
     paste("Excluded :", if (length(excluded))
       paste(excluded, collapse = ", ") else "none"),
     paste("Result   :", sum(result$status == "OK"), "of", nrow(result),
