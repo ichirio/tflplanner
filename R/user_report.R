@@ -84,6 +84,7 @@
 preview_user <- function(study, output_id, timeout = 300) {
   code <- data_lines(study$planner, output_id, todo = FALSE)
   if (is.null(code)) stop("The report has no code yet.", call. = FALSE)
+  code <- c(.report_id_line(output_id), code)
   tmp <- tempfile("user")
   dir.create(tmp)
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)

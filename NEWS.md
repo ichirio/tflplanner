@@ -1,5 +1,36 @@
 # tflplanner (development version)
 
+- **The generated programs, reviewed again** (#347, with tflspec 0.0.24.9097).
+  The sample's tables and listing are the same RTF byte for byte; the two
+  designed figures change on purpose:
+  - *A figure printing a table's numbers shares its code lists*
+    (`ard_source` `table:<id>`): the KM figure F-14-2-3 shows Placebo, Low
+    Dose, High Dose in the table's order and colours (it was alphabetical,
+    High Dose second).  The forest plot F-14-2-4 has code lists of its own:
+    its subgroups print as Female / Male, 18-64 years, and its subgroup axis
+    has no title.
+  - *A failed program says why in the run's record*: R's error output is kept
+    beside the log (`<program>.err`) and, when logrx logged no error, its last
+    `Error` line is the note of `run.csv` and of `ard_status.csv` (a package
+    too old stopped a program with an empty note).  `broom (>= 1.0.8)` and
+    `broom.helpers (>= 1.17.0)` are required (what cardx's models need), and
+    the sample's check says a version too old.
+  - *A report's program names itself `report_id`*: the study ARD's rows, the
+    program's own path and the RTF's (`file.path(path_tfl, paste0(report_id,
+    ".rtf"))`); a program copied for another report changes one line.
+  - Every program, ARD programs too, starts with a short check that it runs
+    from the study folder (under 80 columns; a check in the setup could not
+    run before the setup's own `source()` fails); the banner's description is
+    wrapped; `record_report()`'s setup fingerprint is on lines of its own; a
+    program ends on its last line.
+  - *The figure designer* names the figure's data as the program does
+    (`adtte_ttde`, from `tflspec::tfl_fig_data_name()`) in step 1's objects
+    and the layers' object choices, and a piece's own lines of an
+    `ard_number` layer are its label (`ard_label_<k>`) and its `annotate()`,
+    not the later labels renumbered.
+  - The sample: its stacked analysis is `DEMOG` (`ard_demog`, not a name of a
+    cards function), its survival code writes the event `CNSR == 0` and names
+    the Cox model.
 - **A study opens faster** (#367; the user's report: tens of seconds to
   minutes after opening a study or taking in a TOC).  The report list and the
   review did the same work again for every report: the analysis data

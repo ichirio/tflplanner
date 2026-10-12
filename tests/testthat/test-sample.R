@@ -49,9 +49,9 @@ test_that("the sample's T-14-1-1S is T-14-1-1's ARD as one ard_stack", {
   a <- ard_rows(s$planner, "analyses", "T-14-1-1S")
   # the stack and the analyses inside it, read as the ARD tab reads them
   ol <- .an_outline(a)
-  expect_identical(ol$analysis_id, c("STACK", "CONT", "CAT"))
+  expect_identical(ol$analysis_id, c("DEMOG", "CONT", "CAT"))
   expect_identical(ol$depth, c(0L, 1L, 1L))
-  st <- a[a$analysis_id == "STACK", ]
+  st <- a[a$analysis_id == "DEMOG", ]
   expect_identical(st$method, "cards::ard_stack")
   fl <- .stack_flags_of(st$args)$flags
   expect_true(isTRUE(fl[[".by_stats"]]))
@@ -69,16 +69,18 @@ test_that("the sample's T-14-1-1S is T-14-1-1's ARD as one ard_stack", {
   # one ard_stack() call in its program
   code <- readLines(file.path(s$path, "programs/ard/T-14-1-1S.R"))
   expect_identical(sum(grepl("  ard_stack(", code, fixed = TRUE)), 1L)
+  # its ARD under a name that is not a function's (ard_demog, not ard_stack)
+  expect_true(any(startsWith(code, "ard_demog <- ")))
   expect_false(any(grepl(".total_n = TRUE", code, fixed = TRUE)))
   # the ARD tab: the stack's own form, an analysis inside says so
   shiny::testServer(server_for("SAMPLE-01"), {
     session$setInputs(nav = "make", step = "ard", target = "T-14-1-1S")
-    session$setInputs(ard_ol_pick = "STACK")
+    session$setInputs(ard_ol_pick = "DEMOG")
     h <- output$ard_stat_ui$html
     expect_match(h, "CONT", fixed = TRUE)
     expect_match(h, "CAT", fixed = TRUE)
     session$setInputs(ard_ol_pick = "CAT")
-    expect_match(output$ard_stat_ui$html, "STACK", fixed = TRUE)
+    expect_match(output$ard_stat_ui$html, "DEMOG", fixed = TRUE)
   })
 })
 
