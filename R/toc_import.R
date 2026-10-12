@@ -112,9 +112,11 @@ toc_title_offset <- function(x) {
 #' (the lines the last TOC had; the first time, the lines where this TOC
 #' has one) and those added here.  The TOC's lines are compared line by
 #' line: one not edited here takes the TOC's new text; one edited here keeps
-#' its text when the TOC did not change it, and is asked about when the TOC
-#' changed it too.  The lines added here are not compared: they stay, after
-#' the TOC's lines.
+#' its text unless the TOC's is chosen (`use_toc` of [toc_apply()]), when
+#' the TOC did not change it as when it did.  The lines added here are not
+#' compared: they stay, after the TOC's lines.  The report's information --
+#' its label, title and analysis set text (those the study's pages say) and
+#' its section -- is compared the same way.
 #'
 #' @param x A `tflplanner`.
 #' @param spec What [tflspec::tfl_read_toc()] returned.
@@ -130,9 +132,13 @@ toc_title_offset <- function(x) {
 #'   `action` -- `"add"`, `"update"`, `"remove"` (the TOC dropped a line not
 #'   edited here), `"ask"` (edited here and changed in the TOC) or `"move"`
 #'   (a line added here, now after the TOC's lines: `to`) -- and `to`, the
-#'   line it will be) and `kept` (the lines edited here the TOC did not
-#'   change: kept, not asked about); and the `last` and `title_offset` it
-#'   was given.
+#'   line it will be), `kept` (the lines edited here the TOC did not
+#'   change: kept unless chosen), `info` (one row an item of a report's
+#'   information that differs: `output_id`, `name` (`"OUTPUT_LABEL"`,
+#'   `"OUTPUT_TITLE"`, `"OUTPUT_POPULATION"`, `"OUTPUT_SECTION"`), `now`,
+#'   `toc`, `action` -- `"add"`, `"update"`, `"keep"` (edited or cleared
+#'   here, the TOC unchanged) or `"ask"`); and the `last` and
+#'   `title_offset` it was given.
 #' @export
 toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)) {
   ids <- unique(stats::na.omit(spec$report$output_id))
@@ -335,8 +341,9 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
 #' @param x A `tflplanner`.
 #' @param spec What [tflspec::tfl_read_toc()] returned.
 #' @param changes What [toc_changes()] returned.
-#' @param use_toc The `"ask"` lines to take from the TOC, as
-#'   `"<output_id>|<sheet>|<line>"`.
+#' @param use_toc What was edited here to take from the TOC: the `"ask"`
+#'   and `kept` lines, as `"<output_id>|<sheet>|<line>"`, and the `"keep"`
+#'   and `"ask"` items of the information, as `"<output_id>|info|<name>"`.
 #' @param types The types of new reports, named by output id (a guessed
 #'   type corrected); the TOC's otherwise.
 #' @param last,title_offset As [toc_changes()] was given them (kept in
