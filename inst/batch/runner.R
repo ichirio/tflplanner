@@ -274,8 +274,11 @@ run_batch <- function(parts, args = character()) {
 
   # what the run made (and, for the reports, the study ARD they read)
   ok <- result$program[result$status == "OK"]
-  .batch_copy(c(.batch_ard, file.path(dirname(.batch_ard), "ard_status.csv"),
-                unlist(.batch_outputs[intersect(names(.batch_outputs), ok)])),
+  made <- as.character(unlist(.batch_outputs[intersect(names(.batch_outputs), ok)]))
+  # (with the reports' status, as the ARD's)
+  .batch_copy(c(.batch_ard, file.path(dirname(.batch_ard), "ard_status.csv"), made,
+                unique(file.path(dirname(made[grepl("[.]rtf$", made)]),
+                                 "report_status.csv"))),
               file.path(dir))
   if (code) .batch_copy(unique(c(result$program,
                                  unlist(.batch_support[c(parts, "all")]))),

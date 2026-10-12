@@ -68,7 +68,8 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
                                                .fig_setup_file,
                                                .report_setup_file)),
             wb(c(.table_file, .report_file, .lf_file, .ard_file))),
-    all = c(file.path("programs", c(.batch_file, .autoexec_all_file)),
+    all = c(file.path("programs", c(.batch_file, .autoexec_all_file,
+                                    .study_helpers_file)),
             .study_setup_path(), .study_file))
   vec <- function(v, names = NULL, indent = "  ") {
     if (!length(v)) return("character()")
@@ -493,6 +494,140 @@ list_batches <- function(study) {
   m <- (secs %% 3600) %/% 60
   s <- secs %% 60
   if (h > 0) sprintf("%d:%02d:%02d", h, m, s) else sprintf("%d:%02d", m, s)
+}
+
+#' Compare two official runs
+#'
+#' What changed between two batch folders of a study ([list_batches()]):
+#' their inputs -- the data, by the md5 `data_manifest.csv` records, and
+#' the code, by the md5 of the files of `code/`, where both runs kept them
+#' -- and their results (`output/`).  After a fix to the data or the
+#' programs, it says whether only what was fixed changed.
+#'
+#' A result is `"identical"` (the same bytes), `"same but the time"` (a
+#' report or a status file the same but the date and time it prints or
+#' records), `"same object"` (an `.rds` read the same), `"different"`,
+#' `"not made"` (the earlier run made it, this one did not) or `"new"`.
+#' An input is `"added"`, `"removed"` or `"changed"` (one the same is not
+#' listed); `"not kept"` when either run did not keep that input.
+#'
+#' @param study An `rtfstudy`.
+#' @param batch A batch folder's name (`list_batches()$batch`): the later
+#'   run.
+#' @param against The earlier one; `NULL`: the run of the same kind (ARD,
+#'   reports, both) before `batch`.
+#' @return A data frame, `kind` (`"data"`, `"code"`, `"output"`), `file`,
+#'   `result`; with `attr(, "batches")` (`against`, `batch`) and
+#'   `attr(, "changed")` (a list: the `inputs` and the `outputs` that
+#'   changed).
+#' @examples
+#' \donttest{
+#' home <- tempfile()
+#' old <- options(tflplanner.home = home)
+#' setup_tflplanner(studies_root = file.path(home, "studies"))
+#' s <- create_study("CMP", planner = add_output(new_planner(), "T-1"))
+#' d <- file.path(s$path, "runs")
+#' # two batch folders as two official runs leave them (the second made a
+#' # different RTF)
+#' for (b in c("20260101_100000_report", "20260102_100000_report")) {
+#'   dir.create(file.path(d, b, "output", "tfl"), recursive = TRUE)
+#'   writeLines(b, file.path(d, b, "output", "tfl", "T-1.rtf"))
+#'   writeLines(c("part,program,status", "tfl,programs/tfl/T-1.R,OK"),
+#'              file.path(d, b, "run.csv"))
+#' }
+#' compare_batches(s, "20260102_100000_report")
+#' options(old)
+#' }
+#' @export
+compare_batches <- function(study, batch, against = NULL) {
+  lb <- list_batches(study)
+  if (!batch %in% lb$batch) stop("No batch folder ", sQuote(batch), ".", call. = FALSE)
+  against <- against %||% .batch_previous(lb, batch)
+  if (is.na(against) || !against %in% lb$batch) {
+    stop("No earlier official run to compare ", sQuote(batch), " with.", call. = FALSE)
+  }
+  a <- lb$path[match(against, lb$batch)]
+  b <- lb$path[match(batch, lb$batch)]
+  row <- function(kind, file, result) {
+    data.frame(kind = rep(kind, length(file)), file = file, result = result,
+               stringsAsFactors = FALSE)
+  }
+  # an input: by md5, where both runs kept it
+  inputs <- function(kind, md5_of) {
+    x <- md5_of(a)
+    y <- md5_of(b)
+    if (is.null(x) || is.null(y)) return(row(kind, "", "not kept"))
+    f <- sort(union(names(x), names(y)))
+    res <- vapply(f, function(k) {
+      if (!k %in% names(x)) "added" else if (!k %in% names(y)) "removed" else
+        if (identical(x[[k]], y[[k]])) "same" else "changed"
+    }, "")
+    row(kind, f, unname(res))[res != "same", , drop = FALSE]
+  }
+  data_md5 <- function(dir) {
+    f <- file.path(dir, "data_manifest.csv")
+    if (!file.exists(f)) return(NULL)
+    m <- utils::read.csv(f, colClasses = "character")
+    stats::setNames(m$md5, m$path)
+  }
+  code_md5 <- function(dir) {
+    d <- file.path(dir, "code")
+    if (!dir.exists(d)) return(NULL)
+    f <- list.files(d, recursive = TRUE)
+    stats::setNames(unname(tools::md5sum(file.path(d, f))), f)
+  }
+  outs <- sort(union(list.files(file.path(a, "output"), recursive = TRUE),
+                     list.files(file.path(b, "output"), recursive = TRUE)))
+  out_res <- vapply(outs, function(f) .batch_compare_file(file.path(a, "output", f),
+                                                          file.path(b, "output", f)), "")
+  out <- rbind(inputs("data", data_md5), inputs("code", code_md5),
+               row("output", file.path("output", outs), unname(out_res)))
+  rownames(out) <- NULL
+  attr(out, "batches") <- c(against = against, batch = batch)
+  attr(out, "changed") <- list(
+    inputs = out$file[out$kind != "output" & out$result != "not kept"],
+    outputs = out$file[out$kind == "output" &
+                         out$result %in% c("different", "not made", "new")])
+  out
+}
+
+# The official run of the same kind (ARD, reports, both) before a batch
+# folder; NA when there is none
+.batch_previous <- function(lb, batch) {
+  i <- match(batch, lb$batch)
+  # (newest first)
+  later <- seq_along(lb$batch) > i
+  same <- later & lb$what %in% lb$what[i]
+  k <- c(which(same), which(later))[1L]
+  if (is.na(k)) NA_character_ else lb$batch[k]
+}
+
+# One result of two runs: the same bytes; else the same but the date and
+# time a report prints ({DATETIME}) or a status file records; else (an
+# .rds) the same R object; else different
+.batch_compare_file <- function(x, y) {
+  if (!file.exists(y)) return("not made")
+  if (!file.exists(x)) return("new")
+  if (identical(unname(tools::md5sum(x)), unname(tools::md5sum(y)))) return("identical")
+  if (grepl("[.]rds$", x, ignore.case = TRUE)) {
+    same <- tryCatch(identical(readRDS(x), readRDS(y)), error = function(e) FALSE)
+    return(if (same) "same object" else "different")
+  }
+  if (grepl("[.](rtf|csv|txt)$", x, ignore.case = TRUE) &&
+      identical(.batch_untimed(x), .batch_untimed(y))) return("same but the time")
+  "different"
+}
+
+# a text file with its dates and times put aside: 2026-10-12 08:49:26,
+# 12Oct2026  08:49 (a report's {DATETIME}), an RTF's \creatim ...
+.batch_untimed <- function(f) {
+  x <- readLines(f, warn = FALSE, encoding = "UTF-8")
+  for (p in c("[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}(:[0-9]{2})?",
+              "[0-9]{1,2}[A-Za-z]{3}[0-9]{4} +[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?",
+              "\\\\(creatim|revtim|printim)[^}]*")) {
+    x <- gsub(p, "<time>", x, perl = TRUE, useBytes = TRUE)
+  }
+  x
 }
 
 # A batch folder's state, short, for the runs table: running (and for how
