@@ -10859,14 +10859,19 @@ app_server <- function(input, output, session, start) {
   })
   # two official runs compared: the one chosen (else the newest) with the
   # run of the same kind before it, or any two; what changed only
+  # a run as the list shows it: its folder, what it ran, how it ended
   cmp_labels <- function(d) {
-    stats::setNames(d$batch, paste0(d$batch, "  (", d$started, ")"))
+    what <- t(c(ard = "ARD", report = "Reports", all = "ARD, then reports")[d$what])
+    st <- t(c(done = "done", failed = "errors", incomplete = "stopped", running = "running")[d$state])
+    stats::setNames(d$batch, paste0(d$batch, "  \u00b7 ", what, " \u00b7 ", st))
   }
   shiny::observeEvent(input$batch_compare, {
     d <- batches()
     if (nrow(d) < 2L) return(notify(t("Two official runs are needed to compare."), "warning"))
     i <- input$batches_rows_selected
-    b <- d$batch[if (length(i)) i[1L] else 1L]
+    # the run chosen; else the newest that ended
+    ended <- which(d$state %in% c("done", "failed"))
+    b <- d$batch[if (length(i)) i[1L] else if (length(ended)) ended[1L] else 1L]
     a <- .batch_previous(d, b)
     if (is.na(a)) a <- setdiff(d$batch, b)[1L]
     ch <- cmp_labels(d)
@@ -10924,10 +10929,13 @@ app_server <- function(input, output, session, start) {
   output$cmp_table <- DT::renderDT({
     r <- cmp_result()
     shiny::req(is.data.frame(r))
+    # what changed only (an input not kept is said above the table)
     if (!isTRUE(input$cmp_all)) {
-      r <- r[!r$result %in% c("identical", "same but the time", "same object"), , drop = FALSE]
+      r <- r[!r$result %in% c("identical", "same but the time", "same object", "not kept"), ,
+             drop = FALSE]
     }
-    v <- data.frame(a = t(c(data = "data", code = "code", output = "result")[r$kind]),
+    shiny::validate(shiny::need(nrow(r) > 0L, ""))
+    v <- data.frame(a = t(c(data = "data", code = "code", output = "output")[r$kind]),
                     b = r$file, c = cmp_result_labels(r$result), stringsAsFactors = FALSE)
     names(v) <- t(c("Kind", "File", "Compared"))
     .dt(v, selection = "none")

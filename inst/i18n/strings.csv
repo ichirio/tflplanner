@@ -2928,10 +2928,10 @@ Show everything compared (not only what changed),比べたものをすべて表�
 Download (CSV),ダウンロード（CSV）
 Choose two different runs.,違う 2 つの実行を選んでください。
 Inputs changed:,変わった入力：
-Results changed:,変わった結果：
+Results changed:,変わった出力：
 " (%s not kept by both runs)",（%sは両方の実行に残っていません）
 %d of %d: %s,%2$d 件中 %1$d 件：%3$s
-none of %d,%d 件中なし
+none of %d,%d 件中 0 件
 identical,同じ
 same but the time,時刻だけ違う
 same object,同じ内容
@@ -2945,4 +2945,7 @@ not kept,残していない
 data,データ
 code,コード
 result,結果
-Compared,比べた結果
+Compared,判定
+output,出力
+done,完了
+stopped,中断
