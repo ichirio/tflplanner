@@ -69,16 +69,5 @@ in the study folder (\code{data/data/adam/adsl.rds}; a file outside it under
 and time.  With the code and the logs, that is everything the run read:
 a run that can be made again.
 
-A batch folder that keeps both its code and its data runs again on its
-own, wherever it is copied: it has \code{rerun.R}, an RStudio project and a
-\code{README.txt}.  \code{rerun.R}, run from the batch folder, builds
-\verb{rerun_<date>_<time>/} from \verb{code/} and \verb{data/} (a run of the reports
-alone: with the study ARD it kept), runs the same programs there, and
-compares what they make with what the run kept (\code{compare.csv}: the same
-bytes, the same but the date and time a report prints, the same R
-object, or different).  Nothing kept is written over.  The programs
-read the study's folders relative to it (\code{study_setup.R}): no path of
-the computer that ran them.
-
 The programs are the saved ones: save the study first.
 }
