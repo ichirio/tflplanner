@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **A figure's data steps on any object** (the user's questions Q1-Q3 on
-  0.0.2.9186; tflspec >= 0.0.24.9091).  A data step's form has **In** and
+  0.0.2.9186; tflspec >= 0.0.24.9095).  A data step's form has **In** and
   **Out** on one line at its foot: the object it reads and the one it
   leaves, each shown as it is when left empty (`df`, the object above,
   the step's own name).  Typed, a step works on another object
@@ -25,7 +25,7 @@
 - **A user-code report makes a table or a figure** (the user's report on
   F-14-2-1).  It is set in the Add dialog and at the top of the report's
   content step (*It makes: Table / Figure*), kept in the report sheet's
-  `user_output` (tflspec >= 0.0.24.9091); blank, the ID says it (`F...` a
+  `user_output` (tflspec >= 0.0.24.9095); blank, the ID says it (`F...` a
   figure, else a table), so existing studies need nothing.  A user-code
   figure's steps are a figure's ("1 Data", "2 Figure"); the report list
   says "User code (Figure)"; a TOC's type is compared with what it makes
