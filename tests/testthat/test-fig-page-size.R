@@ -15,7 +15,7 @@ test_that("a figure's program draws it at its size on the page", {
   q <- set_page_cell(p, "report", "figure_width_in", "F-1", "6")
   expect_identical(.fig_size_of(q, "F-1")$width_in, 6)
   expect_true(any(grepl("content <- fig_sized(content, width_in = 6,", program_code(q, "F-1"), fixed = TRUE)))
-  expect_true(any(grepl("rtf_figures(content, width_twips = 8640L", program_code(q, "F-1"), fixed = TRUE)))
+  expect_true(any(grepl("rtf_figures(content, width_twips = 8640", program_code(q, "F-1"), fixed = TRUE)))
   expect_silent(parse(text = program_code(q, "F-1")))
 })
 
