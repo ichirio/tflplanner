@@ -2918,3 +2918,4 @@ Not finished (stopped),未完了（途中で止まりました）
 Open its folder,フォルダを開く
 "The official run is done: %d of %d programs without error (%s, %s).",正式実行が終わりました：%d / %d 本エラーなし（%s、%s）。
 "The official run ended with errors: %d of %d programs failed (%s, %s).",正式実行がエラーで終わりました：%d / %d 本でエラー（%s、%s）。
+"Opened the folder %s (a window behind the browser? see the taskbar).",フォルダ %s を開きました（ブラウザの後ろに開いたときは、タスクバーから）。

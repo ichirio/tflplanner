@@ -265,3 +265,12 @@ test_that("a time taken, and a failed run's state", {
                   finished = "2026-10-12 08:02:00", programs = 13L, errors = 2L)
   expect_identical(.batch_state_text(d), "2 errors (of 13), 08:02")
 })
+
+test_that("a batch folder is opened by the system's opener", {
+  got <- NULL
+  old <- options(tflplanner.open_folder = function(p) got <<- p)
+  on.exit(options(old), add = TRUE)
+  d <- withr_tempdir()
+  expect_true(.open_folder(file.path(d, "runs", "20261012_000000_ard")))
+  expect_identical(got, normalizePath(file.path(d, "runs", "20261012_000000_ard")))
+})

@@ -1379,7 +1379,10 @@ $(document).on('click', '#save', function() {
 # server)
 .open_folder <- function(path) {
   dir.create(path, recursive = TRUE, showWarnings = FALSE)
-  .external_browser(normalizePath(path))
+  # (the tests put their own opener here: no window)
+  opener <- getOption("tflplanner.open_folder", .external_browser)
+  opener(normalizePath(path))
+  invisible(TRUE)
 }
 
 .dt <- function(d, ..., selection = "single") {
@@ -10811,7 +10814,9 @@ app_server <- function(input, output, session, start) {
                   esc(.batch_state_text(d, t = t)))
     v <- data.frame(a = paste0(esc(d$batch), if (local) sprintf(
                       paste0(' <a href="#" class="ms-1 text-decoration-none" title="%s" ',
-                             'onclick="Shiny.setInputValue(\'batch_open_row\', \'%s\', ',
+                             'onmousedown="event.stopPropagation();" ',
+                             'onclick="event.stopPropagation(); ',
+                             "Shiny.setInputValue('batch_open_row', '%s', ",
                              '{priority: \'event\'}); return false;">\U0001F4C2</a>'),
                       esc(t("Open its folder")), esc(d$batch)) else ""),
                     b = d$started,
@@ -10839,11 +10844,17 @@ app_server <- function(input, output, session, start) {
                   options = list(dom = "t", paging = FALSE, ordering = FALSE,
                                  scrollX = TRUE))
   })
+  # a row's folder icon: the folder opened (not the row chosen: DT chooses
+  # on mousedown, which the icon keeps to itself), and said
+  # -- a window a background R opens may come up behind the browser
   shiny::observeEvent(input$batch_open_row, {
     if (!isTRUE(app_local())) return()
     d <- batches()
     i <- match(input$batch_open_row, d$batch)
-    if (!is.na(i)) .open_folder(d$path[i])
+    if (is.na(i)) return()
+    ok <- !is.null(guarded(.open_folder(d$path[i])))
+    if (ok) notify(sprintf(t("Opened the folder %s (a window behind the browser? see the taskbar)."),
+                           d$batch[i]))
   })
   shiny::observeEvent(input$batch_open, {
     if (!isTRUE(app_local())) return()
