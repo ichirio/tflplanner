@@ -74,7 +74,17 @@ test_that("a TOC gives a report its own tokens, not the title lines the header h
   sp2 <- .toc_titles_in_header(y, tflspec::tfl_read_toc(hdr_toc_file(c(
     "T-14-1-1,Table,Table 14.1.1,Demographics and baseline,Safety Analysis Set",
     "T-14-2-1,Table,,Vital signs by visit,")), map = hdr_toc_map))
-  z <- toc_apply(y, sp2, toc_changes(y, sp2, last), last = last)
+  ch2 <- toc_changes(y, sp2, last)
+  # what would change says it: the title that follows the TOC, not the one
+  # edited here
+  expect_identical(ch2$tokens$output_id, "T-14-1-1")
+  expect_identical(ch2$tokens$name, "OUTPUT_TITLE")
+  expect_identical(c(ch2$tokens$now, ch2$tokens$toc), c("Demographics", "Demographics and baseline"))
+  expect_identical(ch2$reports$status[ch2$reports$output_id == "T-14-1-1"], "changed")
+  expect_identical(ch2$reports$status[ch2$reports$output_id == "T-14-2-1"], "same")
+  # the same TOC again: no change
+  expect_identical(nrow(toc_changes(y, sp, last)$tokens), 0L)
+  z <- toc_apply(y, sp2, ch2, last = last)
   v <- function(id, k) {
     d <- sheet_rows(z, "tokens", id)
     d$value[d$name == k]

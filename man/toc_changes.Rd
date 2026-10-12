@@ -26,9 +26,15 @@ before, not in this one) --, \code{type_now}, \code{type_toc}, \code{guessed}),
 \code{action} -- \code{"add"}, \code{"update"}, \code{"remove"} (the TOC dropped a line not
 edited here), \code{"ask"} (edited here and changed in the TOC) or \code{"move"}
 (a line added here, now after the TOC's lines: \code{to}) -- and \code{to}, the
-line it will be) and \code{kept} (the lines edited here the TOC did not
-change: kept, not asked about); and the \code{last} and \code{title_offset} it
-was given.
+line it will be), \code{kept} (the lines edited here the TOC did not
+change: kept, not asked about) and \code{tokens} (one row a report's own
+token the TOC changes -- \code{{OUTPUT_TITLE}}, \code{{OUTPUT_POPULATION}} ...
+where the study's header prints them: \code{output_id}, \code{name}, \code{now},
+\code{toc}); and the \code{last} and \code{title_offset} it was given.
+
+A report's type is not changed by a TOC: a type the TOC only guessed
+(from the ID or the title), or a figure for a report of one's own code
+(a TOC has no word for it), is no change.
 }
 \description{
 Compares the report sheets a TOC gives (\code{\link[tflspec:tfl_read_toc]{tflspec::tfl_read_toc()}}) with

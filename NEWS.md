@@ -1,5 +1,28 @@
 # tflplanner (development version)
 
+- **A TOC taken in again says every change** (the TOC import's "What
+  would change").  A study whose header prints the report's title,
+  label and analysis set (`{OUTPUT_TITLE}` ...) keeps them as the
+  report's tokens; a TOC that changes them was taken in without saying
+  so, the report marked "No change".  The tokens are compared now, as the
+  import writes them (one edited here is kept, and is no change), and
+  each is listed under its report.  A report of one's own code that the
+  TOC calls a figure, or a type the TOC only guessed, is no change any
+  more (the type was never changed; every import again said two reports
+  of the sample changed).
+- **Two example TOCs** made from the sample study, in
+  `system.file("extdata", package = "tflplanner")`:
+  `SAMPLE-01_TOC.xlsx` (its 17 reports with titles, analysis sets,
+  sections, a Topline column and a shell sheet each) and
+  `SAMPLE-01_TOC_changed.xlsx` (two rows changed), to try the import on
+  the sample study: the first changes nothing, the second then shows two
+  reports changed.  `data-raw/make-toc-sample.R` makes them.
+- **A study copied takes how it reads its TOC** (`input/toc/profile.yml`:
+  the rule set, the way the IDs are made, the sheets): the next study of
+  the same company layout reads its TOC the same way.  Not the TOCs taken
+  in nor what they said: the copy's TOC is its own.
+  `toc_copy_profile()`.
+
 - **The days in a week, a month and a year come from the company
   standards** (the user's request).  A figure's time unit divides by
   named constants -- `days_per_week`, `days_per_month`, `days_per_year` --

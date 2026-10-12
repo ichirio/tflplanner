@@ -86,13 +86,56 @@ test_that("taken in again: the TOC's lines updated, lines edited here asked abou
 
 test_that("a report's type is not changed by a TOC taken in again", {
   x <- add_output(new_planner(), "F-1", type = "user")
-  sp <- tflspec::tfl_read_toc(toc_file("F-1,Figure,KM plot,Safety Population,"),
-                              map = toc_map)
-  ch <- toc_changes(x, sp)
-  expect_identical(ch$reports$status, "changed")
-  expect_identical(ch$reports$type_toc, "figure")
-  y <- toc_apply(x, sp, ch)
+  x <- add_output(x, "T-2", type = "listing")
+  x <- add_output(x, "L-3", type = "table")
+  sp <- tflspec::tfl_read_toc(toc_file(c(
+    "F-1,Figure,KM plot,Safety Population,",
+    "T-2,,Demographics,Safety Population,",
+    "L-3,Listing,Deaths,Safety Population,")), map = toc_map)
+  y <- toc_apply(x, sp, toc_changes(x, sp))
+  # taken in again: a figure for one's own code (a TOC has no word for it),
+  # or a type the TOC only guessed, is no change; a type the TOC's column
+  # says otherwise is
+  ch <- toc_changes(y, sp, toc_snapshot(sp, 0L))
+  st <- stats::setNames(ch$reports$status, ch$reports$output_id)
+  expect_identical(unname(st[c("F-1", "T-2", "L-3")]), c("same", "same", "changed"))
+  expect_identical(ch$reports$type_toc[1], "figure")
+  y <- toc_apply(y, sp, ch)
   expect_identical(report_info(y, "F-1")$type, "user")
+  expect_identical(report_info(y, "L-3")$type, "table")
+  expect_identical(report_info(y, "T-2")$type, "listing")
+})
+
+test_that("the example TOCs: the sample's reports, and the same with two rows changed", {
+  f <- system.file("extdata", c("SAMPLE-01_TOC.xlsx", "SAMPLE-01_TOC_changed.xlsx"),
+                   package = "tflplanner")
+  expect_true(all(file.exists(f)))
+  r <- toc_import_read(f[1], toc_rules(home = tempfile()))
+  expect_identical(r$id_rule, "column")
+  expect_identical(nrow(r$reports), 17L)
+  expect_true(all(!is.na(r$reports$shell_sheet)))
+  expect_identical(r$batches$output_id, c("T-14-1-1", "T-14-2-1", "T-14-3-1"))
+  r2 <- toc_import_read(f[2], toc_rules(home = tempfile()))
+  d <- merge(r$reports[c("output_id", "label")], r2$reports[c("output_id", "label")],
+             by = "output_id")
+  expect_identical(d$label.x, d$label.y)
+})
+
+test_that("a study copied takes how it reads its TOC, not the TOCs it took in", {
+  home <- withr_tempdir()
+  old <- options(tflplanner.home = home)
+  on.exit(options(old), add = TRUE)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "ws")))
+  a <- create_study("CP-A", planner = add_output(new_planner(), "T-1"))
+  expect_false(toc_copy_profile(a, a))
+  d <- file.path(a$path, "input", "toc")
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  yaml::write_yaml(list(rule_set = "two-phase", id_rule = "column"), file.path(d, "profile.yml"))
+  writeLines("{}", file.path(d, "last.json"))
+  b <- create_study("CP-B", planner = a$planner)
+  expect_true(toc_copy_profile(a, b))
+  expect_identical(toc_profile(b)$id_rule, "column")
+  expect_false(file.exists(file.path(b$path, "input", "toc", "last.json")))
 })
 
 test_that("a TOC's columns are mapped from the company's toc_map, and a mapping can be remembered", {

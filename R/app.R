@@ -2382,16 +2382,18 @@ app_server <- function(input, output, session, start) {
     } else {
       # "empty": no reports, but the company's study defaults, analysis
       # sets and data catalog (create_study() with no planner)
-      p <- switch(input$ns_from,
-        study = guarded(open_study(input$ns_src)$planner),
-        NULL)
-      if (identical(input$ns_from, "study") && is.null(p)) return()
-      guarded(create_study(
+      src <- if (identical(input$ns_from, "study")) guarded(open_study(input$ns_src))
+      if (identical(input$ns_from, "study") && is.null(src)) return()
+      made <- guarded(create_study(
         trimws(input$ns_id),
         title = blank(input$ns_title), compound = blank(input$ns_compound),
         phase = blank(input$ns_phase),
-        description = blank(input$ns_description), planner = p,
+        description = blank(input$ns_description), planner = src$planner,
         root = trimws(input$ns_root)))
+      # a copy: how the study reads its TOC comes too (input/toc/profile.yml),
+      # not the TOCs it took in (the copy's TOC is its own)
+      if (!is.null(made) && !is.null(src)) toc_copy_profile(src, made)
+      made
     }
     if (is.null(s)) return()
     shiny::removeModal()
@@ -6996,6 +6998,7 @@ app_server <- function(input, output, session, start) {
     sp <- toc_spec()
     r <- ch$reports
     l <- ch$lines
+    tok <- ch$tokens %||% .toc_no_tokens()
     n <- table(factor(r$status, names(toc_status_labels)))
     sheet_lab <- c(titles = t("Title line"), footnotes = t("Footnote line"))
     act_lab <- c(add = t("will be added"), update = t("will be updated"),
@@ -7020,13 +7023,21 @@ app_server <- function(input, output, session, start) {
         "\u2014"
       } else {
         now <- t(.type_labels[[r$type_now[i]]] %||% r$type_now[i])
-        if (!is.na(r$type_toc[i]) && !identical(r$type_toc[i], r$type_now[i])) {
+        if (.toc_type_differs(r$type_now[i], r$type_toc[i], r$guessed[i])) {
           shiny::span(now, shiny::span(class = "small text-warning",
                                        sprintf(t("(the TOC says %s: not changed)"),
                                                t(.type_labels[[r$type_toc[i]]]))))
         } else now
       }
       li <- which(l$output_id == id)
+      # the report's own tokens the TOC changes (the header's title ...)
+      ti <- which(tok$output_id == id)
+      tok_rows <- lapply(ti, function(k) shiny::div(
+        class = "small", sprintf("{%s} (%s): ", tok$name[k],
+                                 if (is.na(tok$now[k])) act_lab[["add"]] else act_lab[["update"]]),
+        if (!is.na(tok$now[k])) shiny::tagList(
+          shiny::span(class = "text-muted", toc_line_text(tok$now[k])), " \u2192 "),
+        toc_line_text(tok$toc[k])))
       what <- if (st == "missing") {
         shiny::span(class = "small text-muted", t("Kept: delete it yourself if it is no longer needed."))
       } else if (st == "new") {
@@ -7041,12 +7052,12 @@ app_server <- function(input, output, session, start) {
         if (!length(unlist(parts, recursive = FALSE)) && in_header) {
           shiny::span(class = "small text-muted", t("(in the header)"))
         } else shiny::tagList(parts)
-      } else if (length(li) && all(l$action[li] == "add")) {
+      } else if (!length(ti) && length(li) && all(l$action[li] == "add")) {
         # only lines to add: said shortly
         shiny::span(class = "small", sprintf(
           t("%d title lines and %d footnote lines will be added."),
           sum(l$sheet[li] == "titles"), sum(l$sheet[li] == "footnotes")))
-      } else shiny::tagList(lapply(li, function(k) {
+      } else shiny::tagList(tok_rows, lapply(li, function(k) {
         a <- l$action[k]
         head <- if (a == "move") {
           sprintf("%s %s \u2192 %s (%s): ", sheet_lab[[l$sheet[k]]], l$line[k], l$to[k], act_lab[[a]])
