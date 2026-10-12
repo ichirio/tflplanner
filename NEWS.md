@@ -22,15 +22,12 @@
   steps (Kaplan-Meier fit, summary statistics, rate, counts) stay.  The
   ARD analysis step's code box shows its row (`KM: fn(data, args)`), and
   its note on a figure reading a table's ARD has a button to read its own.
-- **A user-code report makes a table or a figure** (the user's report on
-  F-14-2-1).  It is set in the Add dialog and at the top of the report's
-  content step (*It makes: Table / Figure*), kept in the report sheet's
-  `user_output` (tflspec >= 0.0.24.9095); blank, the ID says it (`F...` a
-  figure, else a table), so existing studies need nothing.  A user-code
+- **A user-code report makes a table or a figure, as its ID says** (the
+  user's report on F-14-2-1): `F...` a figure, else a table.  A user-code
   figure's steps are a figure's ("1 Data", "2 Figure"); the report list
   says "User code (Figure)"; a TOC's type is compared with what it makes
-  (a TOC's Figure on a user-code figure is no change).  `user_output()`,
-  `set_user_output()`.
+  (a TOC's Figure on a user-code figure is no change).  (Until the report
+  types become table, listing and figure, each step's code its own.)
 - **A figure that cannot be drawn says why, and the app's log keeps it**
   (the user's F-14-2-3 / F-14-2-4 on a sample whose official run had
   stopped when the app closed).  A figure whose ARD has no rows yet says

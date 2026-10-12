@@ -469,15 +469,11 @@ test_that("the TOC's headings become the reports' sections; one given here is ke
   expect_identical(back$outputs$section, z$outputs$section)
 })
 
-test_that("a user-code report makes a table or a figure: from its ID unless set; the TOC compares with it", {
+test_that("a user-code report makes a table or a figure, as its ID says; the TOC compares with it", {
   x <- add_output(new_planner(), "F-1", type = "user")
   x <- add_output(x, "T-1", type = "user")
-  expect_identical(user_output(x, "F-1"), "figure")
-  expect_identical(user_output(x, "T-1"), "table")
-  x <- set_user_output(x, "T-1", "figure")
-  expect_identical(user_output(x, "T-1"), "figure")
-  expect_identical(user_output(set_user_output(x, "T-1", NA), "T-1"), "table")
-  expect_error(set_user_output(x, "T-1", "listing"), "table")
+  expect_identical(.user_makes("F-1"), "figure")
+  expect_identical(.user_makes("T-1"), "table")
   # a TOC that says Figure: no change for a user-code figure
   sp <- tflspec::tfl_read_toc(toc_file("F-1,Figure,KM curves,Safety Population,"), map = toc_map)
   y <- toc_apply(x, sp, toc_changes(x, sp))

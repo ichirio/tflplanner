@@ -161,10 +161,8 @@ test_that("a user-code figure's steps are a figure's", {
   shiny::testServer(server_for("S1"), {
     rv <- session$userData$rv
     session$setInputs(target = "F-9", nav = "make", step = "content")
-    expect_identical(user_output(rv$p, "F-9"), "figure")
-    expect_match(output$uc_inputs$html, 'value="figure" checked', fixed = TRUE)
-    # made a table: written to the report row
-    session$setInputs(uc_output = "table")
-    expect_identical(user_output(rv$p, "F-9"), "table")
+    # (an F ID: a figure; nothing asks what it makes)
+    expect_identical(.user_makes("F-9"), "figure")
+    expect_no_match(output$uc_inputs$html, "uc_output", fixed = TRUE)
   })
 })

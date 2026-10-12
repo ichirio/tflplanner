@@ -165,7 +165,7 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
     }
     tn <- report_info(x, id)$type
     # (a user-code report: compared with what it makes)
-    if (identical(tn, "user")) tn <- user_output(x, id)
+    if (identical(tn, "user")) tn <- .user_makes(id)
     tt <- spec$report$type[match(id, spec$report$output_id)]
     if (.toc_type_differs(tn, tt, id %in% guessed)) changed <- TRUE
     inf <- .toc_info_changes(x, spec, last, id, printed(id))

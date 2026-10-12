@@ -2973,7 +2973,7 @@ app_server <- function(input, output, session, start) {
     k <- report_kind()
     # (a user-code figure: a figure's steps)
     if (identical(k, "user") && !is.null(current()) &&
-        identical(user_output(rv$p, current()), "figure")) k <- "figure"
+        identical(.user_makes(current()), "figure")) k <- "figure"
     own <- .step_labels_of[[k]] %||% character()
     nm <- .step_labels
     nm[names(own)] <- own
@@ -7101,7 +7101,7 @@ app_server <- function(input, output, session, start) {
       } else {
         now <- t(.type_labels[[r$type_now[i]]] %||% r$type_now[i])
         # (a user-code report: compared with what it makes)
-        same_as <- if (identical(r$type_now[i], "user")) user_output(rv$p, id) else r$type_now[i]
+        same_as <- if (identical(r$type_now[i], "user")) .user_makes(id) else r$type_now[i]
         if (identical(r$type_now[i], "user")) {
           now <- sprintf("%s (%s)", now, t(.type_labels[[same_as]]))
         }
@@ -7977,9 +7977,6 @@ app_server <- function(input, output, session, start) {
     f <- lf_rows(p, "figures", id)
     have <- if (nrow(f)) .split_bar(f$datasets[1L]) else character()
     shiny::tagList(
-      shiny::radioButtons("uc_output", t("It makes"),
-                          stats::setNames(c("table", "figure"), t(c("Table", "Figure"))),
-                          selected = user_output(p, id), inline = TRUE),
       shiny::selectizeInput("uc_ds", t("Data it reads (the program reads them first)"),
                             .ds_choices(cat_ds, have),
                             selected = have, multiple = TRUE, width = "100%"),
@@ -8027,17 +8024,6 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$uc_ds, uc_write(from_ds = TRUE), ignoreInit = TRUE,
                       ignoreNULL = FALSE)
   shiny::observeEvent(input$uc_ard, uc_write(), ignoreInit = TRUE)
-  shiny::observeEvent(input$uc_output, {
-    id <- current()
-    shiny::req(!is.null(id), identical(report_kind(), "user"))
-    if (!identical(input$uc_output, user_output(rv$p, id))) {
-      p2 <- guarded(set_user_output(rv$p, id, input$uc_output))
-      if (!is.null(p2)) {
-        rv$p <- p2
-        bump()
-      }
-    }
-  }, ignoreInit = TRUE)
   output$uc_note <- shiny::renderUI({
     id <- current()
     shiny::req(!is.null(id), identical(report_kind(), "user"))
@@ -9694,7 +9680,7 @@ app_server <- function(input, output, session, start) {
       # (a user-code report: what it makes too)
       type = ifelse(type == "user",
                     sprintf("%s (%s)", t("User code"),
-                            t(unname(.type_labels[vapply(o$output_id, user_output, "", x = p)]))),
+                            t(unname(.type_labels[vapply(o$output_id, .user_makes, "")]))),
                     t(unname(.type_labels[type]))),
       program = vapply(info, `[[`, "", "program"),
       rtf = vapply(info, `[[`, "", "file"),
@@ -10182,11 +10168,6 @@ app_server <- function(input, output, session, start) {
       if (type) lapply(report_types(), function(k) shiny::conditionalPanel(
         sprintf("input.modal_type == '%s'", k),
         shiny::p(class = "small text-muted mt-n2", t(.type_notes[[k]])))),
-      if (type) shiny::conditionalPanel(
-        "input.modal_type == 'user'",
-        shiny::radioButtons("modal_user_output", t("It makes"),
-                            stats::setNames(c("table", "figure"), t(c("Table", "Figure"))),
-                            selected = "table", inline = TRUE)),
       if (type) shiny::textInput("modal_desc", t("Description"),
                                  width = "100%"),
       # the section: the chosen report's, as a new one usually goes beside it
@@ -10273,11 +10254,6 @@ app_server <- function(input, output, session, start) {
     if (!is.null(p2) && nzchar(pop)) {
       p2 <- guarded(set_report_population(p2, id, pop))
       if (!is.null(p2)) attr(p2, "made") <- attr(p2, "left") <- NULL
-    }
-    # a user-code report: what it makes (as its ID says, unless chosen)
-    if (!is.null(p2) && identical(input$modal_type, "user")) {
-      uo <- input$modal_user_output %||% "table"
-      if (!identical(uo, user_output(p2, id))) p2 <- set_user_output(p2, id, uo)
     }
     after_id_change(p2, id)
     # the new report's own tab

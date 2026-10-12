@@ -3021,5 +3021,3 @@ Its row of the ARD definition (the figure's ARD program):,ARD 定義の行（図
 "%s is going on: closing stops it, and its ARD and reports are left unfinished. Wait for it to end, or run it again later (Runs).",%sが動いています。閉じると止まり、ARD と帳票は途中までになります。終わるのを待つか、あとで実行タブからもう一度実行してください。
 A run,実行
 "The ARD of %s has no rows yet: make it (step 1, or an official run in Runs).",%s の ARD にまだ行がありません。作ってください（段 1、または実行タブの正式実行）。
-It makes,作るもの
-"A user-code report (type user): what it makes, table or figure -- the names of its steps and the type a TOC is compared with; blank: from its output_id (F... a figure, else a table).",ユーザーコードの帳票（type user）が作るもの（table か figure）。段の名前と、TOC と比べる種類に使います。空欄なら output_id から（F… は図、それ以外は表）。

@@ -52,46 +52,10 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   x
 }
 
-#' What a user-code report makes: a table or a figure
-#'
-#' A user-code report (type `user`) makes a table or a figure: its steps are
-#' named as theirs ("1 Data", "2 Figure" for a figure), and a TOC's type is
-#' compared with it.  Kept in the report sheet's `user_output`; blank, the
-#' report's ID says it (`F...` a figure, else a table).
-#'
-#' @param x A `tflplanner`.
-#' @param output_id A report.
-#' @param output `"table"`, `"figure"`, or `NA` (back to what the ID says).
-#' @return `user_output()`: `"table"` or `"figure"`; `set_user_output()`:
-#'   `x`.
-#' @export
-user_output <- function(x, output_id) {
-  r <- x$sheets$report
-  v <- if (!is.null(r) && "user_output" %in% names(r)) {
-    r$user_output[match(output_id, r$output_id)]
-  } else NA_character_
-  v <- tolower(trimws(v %||% NA_character_))
-  if (!is.na(v) && v %in% c("table", "figure")) v
-  else if (grepl("^F", output_id, ignore.case = TRUE)) "figure" else "table"
-}
-
-#' @rdname user_output
-#' @export
-set_user_output <- function(x, output_id, output) {
-  if (!is.na(output) && !output %in% c("table", "figure")) {
-    stop("A user-code report makes a \"table\" or a \"figure\".", call. = FALSE)
-  }
-  r <- x$sheets$report
-  if (!"user_output" %in% names(r)) r$user_output <- NA_character_
-  i <- which(!is.na(r$output_id) & r$output_id == output_id)
-  if (!length(i)) {
-    r[nrow(r) + 1L, ] <- NA
-    i <- nrow(r)
-    r$output_id[i] <- output_id
-  }
-  r$user_output[i] <- output
-  x$sheets$report <- r
-  x
+# What a user-code report makes, as its ID says: `F...` a figure, else a
+# table (its steps are named as theirs, a TOC's type is compared with it)
+.user_makes <- function(output_id) {
+  if (grepl("^F", output_id, ignore.case = TRUE)) "figure" else "table"
 }
 
 # a table of the study (report_info() of an id the study does not have is
