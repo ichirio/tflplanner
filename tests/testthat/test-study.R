@@ -422,3 +422,54 @@ test_that("one call makes the whole layout; a home that uses workspace keeps it"
   suppressMessages(setup_tflplanner(home = h2, language = "ja"))
   expect_match(studies_root(h2), "workspace$")
 })
+
+test_that("a new study's place: never one the home is in; a drive's root joined right", {
+  home <- local_home()
+  # the joins: a drive's root, a drive alone, a trailing slash
+  expect_identical(.study_path("Q:/", "S-1", home = home), "Q:/S-1")
+  expect_identical(.study_path("Q:", "S-1", home = home), "Q:/S-1")
+  expect_identical(.study_path("Q:/work/", "S-1", home = home), "Q:/work/S-1")
+  # blank: the one set up
+  expect_identical(.study_path("", "S-1", home = home), file.path(studies_root(home), "S-1"))
+  # the home inside the place: refused, nothing made
+  up <- dirname(home)
+  expect_error(create_study("S-2", root = up), "the home .+ is inside it")
+  expect_false(dir.exists(file.path(up, "S-2")))
+  expect_error(create_sample_study(root = up, run = FALSE, study_id = "SAMPLE-09"),
+               "the home .+ is inside it")
+  expect_false(dir.exists(file.path(up, "SAMPLE-09")))
+  # inside a study's folder: refused
+  s <- create_study("S-3")
+  expect_error(create_study("S-4", root = s$path), "inside the study folder")
+  # a study folder the home is in: not registered
+  fake <- dirname(home)
+  writeLines("study_id: FAKE", file.path(fake, "study.yml"))
+  on.exit(unlink(file.path(fake, "study.yml")), add = TRUE)
+  expect_error(register_study(fake), "is inside the study folder")
+})
+
+test_that("a folder that cannot be made says which and why; the app says it in its words", {
+  f <- tempfile()
+  writeLines("x", f)
+  expect_error(.make_dir(file.path(f, "sub")), "^Could not make the folder .+sub \\(.+\\)\\.$")
+  ja <- function(x) tr(x, "ja")
+  expect_identical(.error_view("Could not make the folder C:/x/y (Permission denied).", ja),
+                   "\u30d5\u30a9\u30eb\u30c0\u3092\u4f5c\u308c\u307e\u305b\u3093\u3067\u3057\u305f\uff1aC:/x/y\uff08Permission denied\uff09")
+  m <- tryCatch(.study_path("C:/", "S", home = "C:/tflplanner_home"), error = conditionMessage)
+  expect_match(.error_view(m, ja), "^C:/ ")
+  expect_match(.error_view(m, ja), "C:/tflplanner_home", fixed = TRUE)
+  # the English app: the message as it is
+  expect_identical(.error_view(m), m)
+})
+
+test_that("the new-study dialog says a place the home is in, under the field", {
+  local_home()
+  create_study("S1")
+  shiny::testServer(server_for("S1"), {
+    session$setInputs(new_study = 1)
+    session$setInputs(ns_id = "NEW-1", ns_root = dirname(tflplanner_home()))
+    expect_match(output$ns_id_check$html, "is inside it", fixed = TRUE)
+    session$setInputs(ns_ok = 1)
+    expect_false("NEW-1" %in% list_studies()$study_id)
+  })
+})

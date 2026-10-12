@@ -8,7 +8,15 @@
   studies go to, equal to it, or inside a study's folder (the app says the
   place is not saved, and why).  A home already there (set by an earlier
   version) is said on the Study tab, with how to move it in its (i);
-  nothing is moved.
+  nothing is moved.  The same for a new study's place: `create_study()`,
+  `create_sample_study()` and the new-study dialog (empty, a copy, the
+  sample) refuse a place the home is in, or one inside a study's folder --
+  the dialog says so under the field, as for the ID -- and
+  `register_study()` a study folder the home is in.
+- **A study folder at a drive's root**: `C:/` and an ID give `C:/ABC-101`
+  (was `C://ABC-101`, which could not be written).  A folder that cannot be
+  made says which and why ("Could not make the folder ... (reason)", in the
+  app's language), not R's "cannot open the connection".
 - **A study's saved state is at `<home>/state/<STUDY_ID>`** (was
   `<home>/studies/<STUDY_ID>`, now a new home's study folders).  An old one
   is moved on first use -- moved, never deleted; an item already at the

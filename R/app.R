@@ -2359,9 +2359,12 @@ app_server <- function(input, output, session, start) {
     }
     if (id %in% studies()$study_id) return(t("A study with this ID is already registered."))
     root <- trimws(input$ns_root %||% "")
-    if (nzchar(root) && dir.exists(file.path(root, id))) {
+    # the place: never one the home is in, nor inside a study (#359)
+    path <- tryCatch(.study_path(root, id), error = function(e) e)
+    if (inherits(path, "error")) return(.error_view(conditionMessage(path), t))
+    if (nzchar(root) && dir.exists(path)) {
       return(sprintf(t("A folder %s is already there: choose another ID, or register that folder (Studies > Register a folder)."),
-                     file.path(root, id)))
+                     path))
     }
     NULL
   }

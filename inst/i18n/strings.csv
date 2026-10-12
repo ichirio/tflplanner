@@ -2912,3 +2912,6 @@ Keep the study folders inside the home (<home>/studies) or beside it (C:/tflplan
 The home %s is inside the study folder %s.,ホーム %s が、試験フォルダ %s の中にあります。
 "The home %s is inside %s, where new study folders go: tidying the studies would delete it.",ホーム %s が、新規試験のフォルダを作る場所 %s の中にあります。試験を片付けるときにホームまで消えるおそれがあります。
 This place cannot be set (nothing saved): the home %s is inside it.,この場所には設定できません（保存していません）。ホーム %s がこの中にあるためです。
+A study folder cannot go in %s: the home %s is inside it.,%s には試験フォルダを作れません。ホーム %s がこの中にあるためです。
+A study folder cannot go in %s: it is inside the study folder %s.,%s には試験フォルダを作れません。試験フォルダ %s の中にあるためです。
+Could not make the folder %s (%s).,フォルダを作れませんでした：%s（%s）

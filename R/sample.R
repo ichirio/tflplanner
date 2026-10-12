@@ -54,12 +54,12 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
   if (!is.null(.read_state(study_id, home))) {
     stop("Study '", study_id, "' is already registered.", call. = FALSE)
   }
-  path <- file.path(root, study_id)
+  path <- .study_path(root, study_id, home)
   if (file.exists(path)) {
     stop("A folder '", study_id, "' is already there: ", path,
          call. = FALSE)
   }
-  dir.create(path, recursive = TRUE)
+  .make_dir(path)
   for (f in list.files(src, recursive = TRUE, all.files = TRUE)) {
     to <- if (identical(f, paste0(.sample_id, ".Rproj"))) {
       paste0(study_id, ".Rproj")

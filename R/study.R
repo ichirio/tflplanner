@@ -149,10 +149,11 @@ create_study <- function(study_id, title = NA, compound = NA, phase = NA,
   if (!is.null(.read_state(study_id, home))) {
     stop("Study '", study_id, "' is already registered.", call. = FALSE)
   }
-  path <- file.path(root, study_id)
+  path <- .study_path(root, study_id, home)
   if (file.exists(path)) {
     stop("A folder '", study_id, "' is already there: ", path, call. = FALSE)
   }
+  .make_dir(path)
   for (d in study_layout()) {
     dir.create(file.path(path, d), recursive = TRUE, showWarnings = FALSE)
   }
@@ -273,6 +274,11 @@ open_study <- function(study, home = tflplanner_home()) {
 #' @rdname create_study
 #' @export
 register_study <- function(path, home = tflplanner_home()) {
+  # never a study folder the home is in (#359)
+  if (dir.exists(path) && .under(home, path)) {
+    stop(sprintf("The home %s is inside the study folder %s.", home,
+                 normalizePath(path, "/", mustWork = FALSE)), call. = FALSE)
+  }
   meta <- .read_meta(path)
   id <- .check_study_id(meta$study_id)
   st <- .read_state(id, home)

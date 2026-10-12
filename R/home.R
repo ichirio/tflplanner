@@ -277,6 +277,46 @@ studies_root <- function(home = tflplanner_home()) {
 .home_layouts <- paste("Keep the study folders inside the home (<home>/studies)",
                        "or beside it (C:/tflplanner_home and C:/studies).")
 
+# A new study's folder: <root>/<id>, the root checked -- never one the home
+# is in, nor one inside a study's folder -- and joined so that a drive's
+# root gives C:/ABC-101 (file.path("C:/", id) is "C://ABC-101").  A blank
+# root is the one set up.
+.study_path <- function(root, id, home = tflplanner_home()) {
+  root <- trimws(root %||% "")
+  if (!nzchar(root)) root <- studies_root(home)
+  root <- sub("[/\\\\]+$", "", root)
+  # (a drive alone, "C:", is its root, not the drive's current folder)
+  check <- if (!nzchar(root) || grepl("^[A-Za-z]:$", root)) paste0(root, "/") else root
+  if (.under(home, check)) {
+    stop(sprintf("A study folder cannot go in %s: the home %s is inside it.", check, home),
+         call. = FALSE)
+  }
+  s <- .study_folder_above(check)
+  if (!is.na(s)) {
+    stop(sprintf("A study folder cannot go in %s: it is inside the study folder %s.", check, s),
+         call. = FALSE)
+  }
+  file.path(if (nzchar(root)) root else "", id)
+}
+
+# A folder made (with the folders above it), or an error that says which
+# and why -- not a later "cannot open the connection"
+.make_dir <- function(path) {
+  why <- NULL
+  withCallingHandlers(
+    dir.create(path, recursive = TRUE, showWarnings = TRUE),
+    warning = function(w) {
+      why <<- conditionMessage(w)
+      invokeRestart("muffleWarning")
+    })
+  if (!dir.exists(path)) {
+    stop(sprintf("Could not make the folder %s (%s).", path,
+                 sub("^cannot create dir '[^']*', reason '(.*)'$", "\\1", why %||% "no reason given")),
+         call. = FALSE)
+  }
+  invisible(path)
+}
+
 # ------------------------------------------------------------- the store
 
 .store_dir <- function(id, home = tflplanner_home()) {
