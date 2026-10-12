@@ -29,6 +29,32 @@
   information was not listed.)  The section is one value, the report
   list's (the TOC no longer writes an OUTPUT_SECTION row of the tokens
   sheet).
+- **An official run can keep its data** (the Runs tab's "keep the data in
+  the batch folder", off by default; `run_batch(data = TRUE)`, the
+  autoexec programs' `--data`).  The data files the run's programs read
+  -- by the data catalog: each table's datasets (an analysis data's, those
+  it is made from), a listing's, a figure's, an ARD taken in -- are copied
+  into the batch folder's `data/` under their path in the study folder,
+  and listed with their size, md5 and time in `data_manifest.csv`.  Ticked,
+  the tab says how many files and how large before the run, and warns
+  above 500 MB (`options(tflplanner.batch_data_warn_mb)`);
+  `batch_data_plan()` gives the same list.  Every official run now also
+  writes `session_info.txt` -- the packages its programs name with their
+  versions, and `sessionInfo()` -- and keeps the study's `renv.lock` when
+  it has one; `batch.txt` says whether the code and the data were kept,
+  and the runs table has a Data column.  With the code, the logs and the
+  versions, a batch folder is everything the run read: the first step of
+  the official-run snapshot (a run made again as it was, though the data
+  change after).  Save the study once so `programs/batch.R` knows the
+  data.
+
+- **The runs table says how each official run went** (its State column,
+  in place of Programs and Errors): running and for how long, done (when;
+  every program without error), its errors, or not finished (stopped).
+  The end of a run says the same in its message, with the time it took.
+  A folder icon on each row opens the batch folder in Explorer, Finder or
+  the file manager; it and "Open the batch folder" are shown only when the
+  app runs on this computer.  `list_batches()` has `state` and `finished`.
 - **The days in a week, a month and a year come from the company
   standards** (the user's request).  A figure's time unit divides by
   named constants -- `days_per_week`, `days_per_month`, `days_per_year` --

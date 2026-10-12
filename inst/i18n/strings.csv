@@ -325,7 +325,7 @@ keep the code in the batch folder,バッチフォルダにコードを含める
 Preview selected,選択をプレビュー
 Preview all,すべてプレビュー
 Official runs (batch folders),正式実行（バッチフォルダ）
-"An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs) and, if kept, the programs and definition workbooks it ran.",正式実行は runs/<日付>_<時刻>_<内容>/ のバッチフォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、指定すれば実行したプログラムと定義ブックを格納します。
+"An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read.",正式実行は runs/<日付>_<時刻>_<内容>/ のバッチフォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、R とパッケージの版（session_info.txt）、指定すれば実行したプログラムと定義ブック、読んだデータを格納します。
 "ARD, then reports",ARD → 帳票
 Start the official run,正式実行を開始
 Open the batch folder,バッチフォルダを開く
@@ -2858,7 +2858,6 @@ Right (in),右 (in)
 (blank line),（空行）
 Insert (into the field last clicked):,差し込み（最後にクリックした欄へ）：
 "The title the header prints: its {OUTPUT_TITLE}, this report's token.",ヘッダーが印字するタイトル：その {OUTPUT_TITLE}（この帳票のトークン）。
-Titles,タイトル
 Footnotes,脚注
 Edit the patterns...,型を編集...
 (no other pattern yet: Edit the patterns... makes one),（ほかの型はまだありません：「型を編集...」で作れます）
@@ -2873,6 +2872,12 @@ Add a line,行を足す
 Add a line to this pattern,この型に行を足す
 Remove the line,行を削除
 Remove the token,トークンを削除
+keep the data in the batch folder,バッチフォルダにデータを含める
+"The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the run can be made again.",実行するプログラムが読むデータファイル（データカタログのもの：表のデータセット、リスト・図のデータセット、取り込んだ ARD）を md5 付きで写します（data_manifest.csv）。コード・ログ・R とパッケージの版（session_info.txt）と合わせて、同じ実行をやり直せます。
+The run's programs read no data file of the data catalog.,実行するプログラムが読むデータカタログのファイルはありません。
+"Data kept: %d files, %s.",含めるデータ：%d ファイル、%s。
+"Over %s: every run keeps its own copy, so the runs folder grows by this much each time.",%s を超えます。実行ごとに写しを持つので、runs フォルダは毎回この分だけ大きくなります。
+"Not found, not kept: %s.",見つからないため含めません：%s。
 "The dataset %s has a column %s, the name of a constant of the programs (the days in a week, a month, a year).",データセット %s に列 %s があります。プログラムの定数（1 週・1 か月・1 年の日数）と同じ名前です。
 Rename the column in the data: a program would read it instead of the constant.,データの列名を変えてください：プログラムが定数の代わりにその列を読んでしまいます。
 "(no line: the time is in days already; months, weeks or years divide it)",（行なし：時間はもう日単位です。月・週・年にすると割り算の行が入ります）
@@ -2945,3 +2950,11 @@ edited here; the TOC's is the same as the last time,ここで編集。TOC は前
 (the TOC's: all chosen above),（TOC の文：上で全部を選択）
 "%d lines or items were edited here. Unticked, they stay as edited; tick a line's ""Use the TOC's text"", or all of them here, to take the TOC's.",%d 個の行・項目がここで編集されています。チェックしなければ編集したまま残ります。TOC の文にするときは、行ごとの「TOC の文を使う」か、ここで全部をチェックします。
 Use the TOC's text for everything edited here,ここで編集したものを全部 TOC の文にする
+Running %s,実行中 %s
+"Done %s: %d of %d without error",完了 %s：%d / %d 本エラーなし
+"%d errors (of %d), %s",エラー %d 本（%d 本中）%s
+Not finished (stopped),未完了（途中で止まりました）
+Open its folder,フォルダを開く
+"The official run is done: %d of %d programs without error (%s, %s).",正式実行が終わりました：%d / %d 本エラーなし（%s、%s）。
+"The official run ended with errors: %d of %d programs failed (%s, %s).",正式実行がエラーで終わりました：%d / %d 本でエラー（%s、%s）。
+"Opened the folder %s (a window behind the browser? see the taskbar).",フォルダ %s を開きました（ブラウザの後ろに開いたときは、タスクバーから）。
