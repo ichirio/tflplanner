@@ -24,6 +24,18 @@
   home <- .ask_path(t("Home folder"), tflplanner_home())
   root <- studies_root(home)
   root <- .ask_path(t("New study folders go to"), root)
+  # never the home inside the study folders (#359): asked again
+  for (i in 1:3) {
+    problem <- .home_problem(home, root, t)
+    if (is.null(problem)) break
+    say(problem, " ", t(.home_layouts))
+    if (i == 3L) {
+      say(t("Nothing was changed."))
+      return(invisible(NULL))
+    }
+    home <- .ask_path(t("Home folder"), home)
+    root <- .ask_path(t("New study folders go to"), root)
+  }
   lng <- tflplanner_config(home)$language %||% lang
   a <- trimws(.ask_line(sprintf("%s (en / ja) [%s]: ", t("Language of the app"), lng)))
   if (a %in% app_languages()) lng <- a

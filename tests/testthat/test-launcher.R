@@ -512,6 +512,22 @@ test_that("the setup wizard: home, packages, shortcut -- each asked", {
   expect_null(res)
 })
 
+test_that("the setup wizard asks again for a home inside the study folders", {
+  p <- local_launcher()
+  root <- file.path(withr_tempdir(), "studies")
+  bad <- file.path(root, "tflplanner_home")
+  good <- file.path(withr_tempdir(), "home")
+  answers <- c(bad, root, good, root, "en")
+  i <- 0L
+  local_mocked_bindings(
+    .ask_line = function(prompt) { i <<- i + 1L; answers[[i]] },
+    .ask_yes = function(question) grepl("Save|保存", question))
+  out <- capture.output(cfg <- .setup_wizard())
+  expect_true(any(grepl("where new study folders go", out, fixed = TRUE)))
+  expect_identical(normalizePath(cfg$home, "/"), normalizePath(good, "/"))
+  expect_false(dir.exists(bad))
+})
+
 # ------------------------------------------------------------- the app
 
 test_that("stop_on_close: the app stops once its last tab has been gone a while", {

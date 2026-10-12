@@ -58,6 +58,7 @@ app_languages <- function() c(English = "en", "\u65e5\u672c\u8a9e" = "ja")
   c("^Study '.+' is already registered", "The study is already registered"),
   c("^A folder '.+' is already there", "A folder of that name is already there"),
   c("^Not a study folder", "This is not a study folder"),
+  c("^The home .+ is inside ", "The home cannot be inside the study folders"),
   c("^No study '.+': not registered", "There is no such study"),
   c("^Report '.+' is already on the list", "A report of that ID is already on the list"),
   c("^Report '.+' already exists", "A report of that ID is already on the list"),
@@ -79,7 +80,27 @@ app_languages <- function() c(English = "en", "\u65e5\u672c\u8a9e" = "ja")
   c("^The definition files were changed outside tflplanner", "The definition files were changed"),
   c("^The definition files do not read", "The definition files do not read"))
 
+# Errors said whole in the app's language: their English form (sprintf's,
+# each %s a name), and after it an English sentence the app also knows
+.error_templates <- c(
+  "A study folder cannot go in %s: the home %s is inside it.",
+  "A study folder cannot go in %s: it is inside the study folder %s.",
+  "Could not make the folder %s (%s).",
+  "The home %s is inside %s, where new study folders go: tidying the studies would delete it.",
+  "The home %s is inside the study folder %s.")
+
 .error_view <- function(msg, t = identity) {
+  for (tp in .error_templates) {
+    rx <- gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", tp)
+    rx <- paste0("^", gsub("%s", "(.+?)", rx, fixed = TRUE), "(.*)$")
+    m <- regmatches(msg, regexec(rx, msg))[[1L]]
+    if (length(m)) {
+      n <- lengths(regmatches(tp, gregexpr("%s", tp, fixed = TRUE)))
+      out <- do.call(sprintf, c(list(t(tp)), as.list(m[seq_len(n) + 1L])))
+      rest <- trimws(m[n + 2L])
+      return(if (nzchar(rest)) paste(out, t(rest)) else out)
+    }
+  }
   for (p in .error_leads) {
     if (grepl(p[1L], msg)) {
       lead <- t(p[2L])

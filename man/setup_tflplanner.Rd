@@ -20,7 +20,9 @@ setup_tflplanner(
 sessions -- one in the temporary folder only for this session.}
 
 \item{studies_root}{Where new study folders are created.  \code{NULL} keeps
-the current setting, or on a first setup uses \verb{<home>/workspace}.}
+the current setting, or on a first setup uses \verb{<home>/studies}.  The
+home holds the study folders or sits beside them, never inside them
+(nor inside a study's folder): such a setting is refused.}
 
 \item{language}{The app's language, \code{"en"} (the default) or \code{"ja"};
 \code{NULL} keeps the current setting.}
@@ -79,6 +81,10 @@ options(old)
 # not run: these remember the home and the study folder for every later
 # session (and the first one asks, step by step)
 setup_tflplanner()
-setup_tflplanner(studies_root = "C:/studies", sample = TRUE)
+# the whole layout in one call: C:/tflplanner_home, its study folders in
+# C:/tflplanner_home/studies, the sample study among them
+setup_tflplanner(home = "C:/tflplanner_home", sample = TRUE)
+# or the study folders beside the home
+setup_tflplanner(home = "C:/tflplanner_home", studies_root = "C:/studies")
 }
 }
