@@ -88,5 +88,5 @@ test_that("a time-unit step in days says why it writes no line; in months it wri
   d$data[[i]]$unit <- "days"
   expect_match(.piece_code(make(d), d, list(sec = "data", i = i), make), "in days already", fixed = TRUE)
   d$data[[i]]$unit <- "months"
-  expect_match(.piece_code(make(d), d, list(sec = "data", i = i), make), "AVAL / 30.4375", fixed = TRUE)
+  expect_match(.piece_code(make(d), d, list(sec = "data", i = i), make), "AVAL / days_per_month", fixed = TRUE)
 })

@@ -29,6 +29,19 @@
   information was not listed.)  The section is one value, the report
   list's (the TOC no longer writes an OUTPUT_SECTION row of the tokens
   sheet).
+- **The days in a week, a month and a year come from the company
+  standards** (the user's request).  A figure's time unit divides by
+  named constants -- `days_per_week`, `days_per_month`, `days_per_year` --
+  not by numbers in each program (tflspec >= 0.0.24.9090 writes
+  `mutate(AVAL = AVAL / days_per_month)`).  The built-in standards' `setup_code`
+  sets them (7, 30.4375, 365.25), so a new study's
+  `programs/study_setup.R` part 1 has them, and a company changes them
+  there.  A study made before has none: the figure setup defines each with
+  tflspec's value when the study's setup does not.  The Plot Designer's
+  preview divides by the study's own values (read from its setup file).
+  No data column may share a constant's name -- the naming rule of the
+  programs -- and the review says so: rule **D03**, an error naming the
+  dataset and the column, with the hint to rename it.
 - **A run in the background never veils the page** (the user's report on
   this version).  While its ARD programs ran, the page went white for an
   instant every few seconds with the busy cursor: the poll's work (the
