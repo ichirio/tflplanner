@@ -194,7 +194,8 @@ test_that("an official run keeps the data its programs read, and the versions", 
   expect_true("Data     : not kept" %in% txt)
   si <- readLines(file.path(b$batch, "session_info.txt"))
   expect_true(any(grepl("^cards +[0-9]", si)))
-  expect_true(any(grepl("R version", si, fixed = TRUE)))
+  # sessionInfo()'s first line ("R version 4.6.1 ...", "R Under development ...")
+  expect_true(R.version.string %in% si)
   expect_false(list_batches(o)$data[1])
   Sys.sleep(1.1)
 
