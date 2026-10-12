@@ -197,6 +197,21 @@ test_that("an official run keeps the data its programs read, and the versions", 
   # sessionInfo()'s first line ("R version 4.6.1 ...", "R Under development ...")
   expect_true(R.version.string %in% si)
   expect_false(list_batches(o)$data[1])
+  # its state: done, when, every program without error
+  lb <- list_batches(o)
+  expect_identical(lb$state[1], "done")
+  expect_match(lb$finished[1], "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:]{8}$")
+  expect_match(.batch_state_text(lb[1, ]), "^Done [0-9]{2}:[0-9]{2}: 2 of 2 without error$")
+  # a folder with no record of its end: not finished (the app says running
+  # while its run goes on)
+  dir.create(file.path(s$path, "runs", "20200101_000000_ard"))
+  lb <- list_batches(o)
+  expect_identical(lb$state[lb$batch == "20200101_000000_ard"], "incomplete")
+  lb$state[lb$batch == "20200101_000000_ard"] <- "running"
+  expect_identical(.batch_state_text(lb[lb$batch == "20200101_000000_ard", ],
+                                     now = as.POSIXct("2020-01-01 00:01:05")),
+                   "Running 1:05")
+  unlink(file.path(s$path, "runs", "20200101_000000_ard"), recursive = TRUE)
   Sys.sleep(1.1)
 
   # kept: under its path in the study folder, its md5 in the manifest; the
@@ -240,4 +255,13 @@ test_that("the Runs tab says the data a run would keep, and warns when large", {
   expect_identical(.mb_text(1.44), "1.4 MB")
   expect_identical(.mb_text(12.3), "12 MB")
   expect_identical(.mb_text(2048), "2.0 GB")
+})
+
+test_that("a time taken, and a failed run's state", {
+  expect_identical(.elapsed_text(42), "0:42")
+  expect_identical(.elapsed_text(725), "12:05")
+  expect_identical(.elapsed_text(3729), "1:02:09")
+  d <- data.frame(state = "failed", started = "2026-10-12 08:00:00",
+                  finished = "2026-10-12 08:02:00", programs = 13L, errors = 2L)
+  expect_identical(.batch_state_text(d), "2 errors (of 13), 08:02")
 })

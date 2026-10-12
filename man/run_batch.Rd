@@ -42,7 +42,11 @@ the batch folder (\verb{runs/<date>_<time>_<what>_<batch>/}) and its
 \value{
 \code{run_batch()}: with \code{wait = TRUE}, a list: \code{ok}, \code{batch} (the
 batch folder), \code{result} (its run.csv), \code{output} (what the run
-printed); otherwise the process.  \code{list_batches()}: a data frame.
+printed); otherwise the process.  \code{list_batches()}: a data frame, one
+row a batch folder, the newest first, with its \code{state} -- \code{"done"}
+(every program without error), \code{"failed"} (\code{errors} of \code{programs}),
+or \code{"incomplete"} (no record of its end yet: still running, or
+stopped) -- and when it \code{finished}.
 }
 \description{
 \code{run_batch()} runs the study's official-run program -- the ARD

@@ -18,6 +18,14 @@
   the official-run snapshot (a run made again as it was, though the data
   change after).  Save the study once so `programs/batch.R` knows the
   data.
+
+- **The runs table says how each official run went** (its State column,
+  in place of Programs and Errors): running and for how long, done (when;
+  every program without error), its errors, or not finished (stopped).
+  The end of a run says the same in its message, with the time it took.
+  A folder icon on each row opens the batch folder in Explorer, Finder or
+  the file manager; it and "Open the batch folder" are shown only when the
+  app runs on this computer.  `list_batches()` has `state` and `finished`.
 - **The days in a week, a month and a year come from the company
   standards** (the user's request).  A figure's time unit divides by
   named constants -- `days_per_week`, `days_per_month`, `days_per_year` --

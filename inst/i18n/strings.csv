@@ -2911,3 +2911,10 @@ Change it in the report's section (Data code),帳票のセクションで変え�
 Change it in the report list (Rename),帳票リストで変える（名前の変更）
 "{%s} is rtfreporter's, filled as the RTF is written: give your token another name.",{%s} は rtfreporter のもので、RTF を書くときに入ります。自分のトークンには別の名前を付けてください。
 "{%s} is the report list's: change it where it comes from (the list below says where), or give your token another name.",{%s} は帳票リストのものです。元の場所で変えるか（下の一覧に場所があります）、自分のトークンに別の名前を付けてください。
+Running %s,実行中 %s
+"Done %s: %d of %d without error",完了 %s：%d / %d 本エラーなし
+"%d errors (of %d), %s",エラー %d 本（%d 本中）%s
+Not finished (stopped),未完了（途中で止まりました）
+Open its folder,フォルダを開く
+"The official run is done: %d of %d programs without error (%s, %s).",正式実行が終わりました：%d / %d 本エラーなし（%s、%s）。
+"The official run ended with errors: %d of %d programs failed (%s, %s).",正式実行がエラーで終わりました：%d / %d 本でエラー（%s、%s）。

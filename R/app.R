@@ -1058,7 +1058,7 @@ app_ui <- function(lang = "en") {
                                value = FALSE),
           .btn("batch_run", t("Start the official run"),
                class = "btn-sm btn-primary"),
-          .btn("batch_open", t("Open the batch folder"))),
+          shiny::uiOutput("batch_open_ui", inline = TRUE)),
         # the data the run would keep: its size, before the run
         shiny::uiOutput("batch_data_size"),
         # the reports the run takes: all, unless some are left out
@@ -1374,9 +1374,12 @@ $(document).on('click', '#save', function() {
   rd
 }
 
+# A folder opened in the system's file manager (Explorer, Finder,
+# xdg-open): the app runs on this computer (the button is not shown on a
+# server)
 .open_folder <- function(path) {
   dir.create(path, recursive = TRUE, showWarnings = FALSE)
-  utils::browseURL(normalizePath(path))
+  .external_browser(normalizePath(path))
 }
 
 .dt <- function(d, ..., selection = "single") {
@@ -10561,9 +10564,13 @@ app_server <- function(input, output, session, start) {
         is.null(guarded(.save_batch_programs(rv$p, rv$study$path)))) {
       return()
     }
+    before <- list_batches(rv$study)$batch
     px <- guarded(run_batch(rv$study, parts, code = code, data = isTRUE(data),
                             exclude = exclude, batch = set, wait = FALSE))
     if (is.null(px)) return()
+    # the batch folder of this run: the one that was not there before (the
+    # runs table says it is running, and the end says how it went)
+    rv$job_batches_before <- before
     rv$job <- px
     rv$job_study <- rv$study$meta$study_id
     rv$job_what <- paste(t("the official run:"),
@@ -10779,14 +10786,38 @@ app_server <- function(input, output, session, start) {
     rv$status_ver
     runs_ver()
     shiny::req(has_study())
-    list_batches(current_study())
+    d <- list_batches(current_study())
+    # the official run going on: its folder (one not there when it started)
+    px <- rv$job
+    if (!is.null(px) && !is.null(rv$job_batches_before) && px$is_alive()) {
+      new <- !d$batch %in% rv$job_batches_before & d$state == "incomplete"
+      d$state[new] <- "running"
+      # its folder as soon as it is made, and its time taken, kept up to
+      # date while it goes on
+      shiny::invalidateLater(5000)
+    }
+    d
+  })
+  output$batch_open_ui <- shiny::renderUI({
+    if (isTRUE(app_local())) .btn("batch_open", t("Open the batch folder"))
   })
   output$batches <- DT::renderDT({
     d <- batches()
-    v <- data.frame(a = d$batch, b = d$started,
+    local <- isTRUE(app_local())
+    esc <- function(x) htmltools::htmlEscape(ifelse(is.na(x), "", x))
+    col <- c(running = "#1d4ed8", done = "#15803d", failed = "#b91c1c",
+             incomplete = "#6b7280")[d$state]
+    st <- sprintf('<span style="color:%s;white-space:nowrap">%s</span>', col,
+                  esc(.batch_state_text(d, t = t)))
+    v <- data.frame(a = paste0(esc(d$batch), if (local) sprintf(
+                      paste0(' <a href="#" class="ms-1 text-decoration-none" title="%s" ',
+                             'onclick="Shiny.setInputValue(\'batch_open_row\', \'%s\', ',
+                             '{priority: \'event\'}); return false;">\U0001F4C2</a>'),
+                      esc(t("Open its folder")), esc(d$batch)) else ""),
+                    b = d$started,
                     c = t(c(ard = "ARD", report = "Reports",
                             all = "ARD, then reports")[d$what]),
-                    d = d$programs, e = d$errors,
+                    d = st,
                     f = ifelse(d$code, "\u2713", ""),
                     f2 = ifelse(d$data, "\u2713", ""),
                     # the programs left out, the first few when many
@@ -10796,14 +10827,26 @@ app_server <- function(input, output, session, start) {
                                                  sprintf(t(", ... (%d)"), length(x)))
                       else paste(x, collapse = ", ")
                     }, ""),
-                    h = d$set,
+                    h = esc(d$set),
                     stringsAsFactors = FALSE)
-    names(v) <- t(c("Batch folder", "Started", "Runs", "Programs", "Errors",
+    v$g <- esc(v$g)
+    names(v) <- t(c("Batch folder", "Started", "Runs", "State",
                     "Code", "Data", "Left out", "Batch name"))
-    DT::formatStyle(.dt(v, selection = "single"), names(v)[5L],
-                    color = DT::styleInterval(0, c("#15803d", "#b91c1c")))
+    # the row chosen stays chosen while a running one's time is drawn again
+    sel <- shiny::isolate(input$batches_rows_selected)
+    DT::datatable(v, rownames = FALSE, escape = FALSE,
+                  selection = list(mode = "single", selected = sel),
+                  options = list(dom = "t", paging = FALSE, ordering = FALSE,
+                                 scrollX = TRUE))
+  })
+  shiny::observeEvent(input$batch_open_row, {
+    if (!isTRUE(app_local())) return()
+    d <- batches()
+    i <- match(input$batch_open_row, d$batch)
+    if (!is.na(i)) .open_folder(d$path[i])
   })
   shiny::observeEvent(input$batch_open, {
+    if (!isTRUE(app_local())) return()
     d <- batches()
     i <- input$batches_rows_selected
     if (!length(i)) {
@@ -10878,9 +10921,28 @@ app_server <- function(input, output, session, start) {
     }
     rc <- px$get_exit_status()
     shiny::isolate({
-      notify(sprintf(if (identical(rc, 0L)) t("Finished: %s") else
-                       t("Finished with errors: %s"), rv$job_what),
-             if (identical(rc, 0L)) "message" else "warning")
+      # an official run: how it went, from its batch folder
+      b <- if (!is.null(rv$job_batches_before) && !is.null(rv$study)) {
+        d <- tryCatch(list_batches(rv$study), error = function(e) NULL)
+        if (!is.null(d)) d[!d$batch %in% rv$job_batches_before, , drop = FALSE][1L, ]
+      }
+      if (!is.null(b) && !is.na(b$batch) && b$state %in% c("done", "failed")) {
+        took <- .elapsed_text(difftime(as.POSIXct(b$finished, format = "%Y-%m-%d %H:%M:%S"),
+                                       as.POSIXct(b$started, format = "%Y-%m-%d %H:%M:%S"),
+                                       units = "secs"))
+        notify(if (b$state == "done") {
+          sprintf(t("The official run is done: %d of %d programs without error (%s, %s)."),
+                  b$programs, b$programs, took, b$batch)
+        } else {
+          sprintf(t("The official run ended with errors: %d of %d programs failed (%s, %s)."),
+                  b$errors, b$programs, took, b$batch)
+        }, if (b$state == "done") "message" else "warning")
+      } else {
+        notify(sprintf(if (identical(rc, 0L)) t("Finished: %s") else
+                         t("Finished with errors: %s"), rv$job_what),
+               if (identical(rc, 0L)) "message" else "warning")
+      }
+      rv$job_batches_before <- NULL
       rv$job <- NULL
       rv$job_study <- NULL
       rv$status_ver <- rv$status_ver + 1L

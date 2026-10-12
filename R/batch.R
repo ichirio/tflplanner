@@ -333,7 +333,11 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 #' @param wait `FALSE` returns the running [processx::process] at once.
 #' @return `run_batch()`: with `wait = TRUE`, a list: `ok`, `batch` (the
 #'   batch folder), `result` (its run.csv), `output` (what the run
-#'   printed); otherwise the process.  `list_batches()`: a data frame.
+#'   printed); otherwise the process.  `list_batches()`: a data frame, one
+#'   row a batch folder, the newest first, with its `state` -- `"done"`
+#'   (every program without error), `"failed"` (`errors` of `programs`),
+#'   or `"incomplete"` (no record of its end yet: still running, or
+#'   stopped) -- and when it `finished`.
 #' @export
 run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
                       only = NULL, exclude = NULL, batch = NULL, wait = TRUE) {
@@ -448,6 +452,12 @@ list_batches <- function(study) {
       "^Batch set :\\s*", "", grep("^Batch set :", readLines(bt, warn = FALSE),
                                    value = TRUE))
     set <- if (length(set) && !identical(set[1L], "none")) set[1L] else ""
+    # its end: batch.txt's "Finished :" (written last); none yet, the run
+    # goes on or was stopped
+    fin <- if (file.exists(bt)) sub("^Finished :\\s*", "", grep(
+      "^Finished :", readLines(bt, warn = FALSE), value = TRUE))
+    fin <- if (length(fin)) fin[1L] else NA_character_
+    errs <- if (is.null(r)) NA_integer_ else sum(r$status != "OK")
     data.frame(
       batch = d,
       started = if (length(m)) paste(
@@ -457,7 +467,10 @@ list_batches <- function(study) {
       what = if (length(m)) m[4L] else NA_character_,
       set = set,
       programs = if (is.null(r)) NA_integer_ else nrow(r),
-      errors = if (is.null(r)) NA_integer_ else sum(r$status != "OK"),
+      errors = errs,
+      state = if (is.na(fin) || is.null(r)) "incomplete" else
+        if (errs > 0L) "failed" else "done",
+      finished = fin,
       code = dir.exists(file.path(root, d, "code")),
       data = dir.exists(file.path(root, d, "data")),
       excluded = ex,
@@ -465,11 +478,38 @@ list_batches <- function(study) {
   })
   out <- do.call(rbind, c(list(data.frame(
     batch = character(), started = character(), what = character(),
-    set = character(), programs = integer(), errors = integer(), code = logical(),
+    set = character(), programs = integer(), errors = integer(),
+    state = character(), finished = character(), code = logical(),
     data = logical(),
     excluded = character(), path = character())), rows))
   rownames(out) <- NULL
   out
+}
+
+# a time taken as people read it: 0:42, 12:05, 1:02:09
+.elapsed_text <- function(secs) {
+  secs <- max(0, round(as.numeric(secs)))
+  h <- secs %/% 3600
+  m <- (secs %% 3600) %/% 60
+  s <- secs %% 60
+  if (h > 0) sprintf("%d:%02d:%02d", h, m, s) else sprintf("%d:%02d", m, s)
+}
+
+# A batch folder's state, short, for the runs table: running (and for how
+# long), done (when; how many without error), failed (how many errors),
+# not finished.  `now`: the time it is (a running one's time taken).
+.batch_state_text <- function(d, now = Sys.time(), t = identity) {
+  started <- as.POSIXct(d$started, format = "%Y-%m-%d %H:%M:%S")
+  fin <- as.POSIXct(d$finished, format = "%Y-%m-%d %H:%M:%S")
+  vapply(seq_len(nrow(d)), function(i) switch(
+    d$state[i],
+    running = sprintf(t("Running %s"),
+                      .elapsed_text(difftime(now, started[i], units = "secs"))),
+    done = sprintf(t("Done %s: %d of %d without error"), format(fin[i], "%H:%M"),
+                   d$programs[i], d$programs[i]),
+    failed = sprintf(t("%d errors (of %d), %s"), d$errors[i], d$programs[i],
+                     format(fin[i], "%H:%M")),
+    t("Not finished (stopped)")), "")
 }
 
 # a size in MB as people read it: 41 KB, 1.4 MB, 12 MB, 1.3 GB
