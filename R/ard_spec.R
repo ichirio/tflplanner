@@ -310,11 +310,25 @@ ard_view <- function(ard) {
 # One output's rows of the study's working ARD (NULL when there are none).
 study_ard_rows <- function(study, output_id) {
   out <- .ard_study_value(study$planner$ard, "output", "output/ard/ard.rds")
-  f <- file.path(study$path, out)
-  if (!file.exists(f)) return(NULL)
-  a <- readRDS(f)
-  if (!"output_id" %in% names(a)) return(NULL)
+  a <- .read_study_ard(file.path(study$path, out))
+  if (is.null(a) || !"output_id" %in% names(a)) return(NULL)
   a[a$output_id %in% output_id, , drop = FALSE]
+}
+
+# The study ARD read once per file: every report asks for its rows as a
+# study opens (the report list, the review, the figures), and the file is
+# the same.  Its path, time and size are the key: a run writes a new file,
+# and it is read again.  One file is kept (the study shown).
+.ard_memo <- new.env(parent = emptyenv())
+.read_study_ard <- function(f) {
+  if (!file.exists(f)) return(NULL)
+  i <- file.info(f)
+  key <- paste(normalizePath(f, "/"), as.numeric(i$mtime), i$size)
+  hit <- .ard_memo$ard
+  if (!is.null(hit) && identical(hit$key, key)) return(hit$ard)
+  a <- readRDS(f)
+  .ard_memo$ard <- list(key = key, ard = a)
+  a
 }
 
 .ard_status_file <- function(study) {

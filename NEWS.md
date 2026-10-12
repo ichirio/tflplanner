@@ -8,8 +8,10 @@
   0.0.24.9092) instead of writing its program.  With tflspec 0.0.24.9092's
   faster figure checks, on a study of 170 reports: the reports' run state
   2.4 -> 0.5 s, the report list 2.5 -> 0.6 s, the review 10.9 -> 6.6 s;
-  the app is idle about 20 s sooner after opening.  The same results
-  (compared row for row).
+  the app is idle about 20 s sooner after opening.  The study ARD
+  (`output/ard/ard.rds`) is read once while it is the same file (its
+  time and size): every report's rows, the figures' and the conditions
+  read it, once each.  The same results (compared row for row).
 
 - **Step 3: one card, "Report information and tokens"** (the user's
   direction; first in the page form).  The report list can only rename a
