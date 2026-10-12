@@ -26,9 +26,13 @@ before, not in this one) --, \code{type_now}, \code{type_toc}, \code{guessed}),
 \code{action} -- \code{"add"}, \code{"update"}, \code{"remove"} (the TOC dropped a line not
 edited here), \code{"ask"} (edited here and changed in the TOC) or \code{"move"}
 (a line added here, now after the TOC's lines: \code{to}) -- and \code{to}, the
-line it will be) and \code{kept} (the lines edited here the TOC did not
-change: kept, not asked about); and the \code{last} and \code{title_offset} it
-was given.
+line it will be), \code{kept} (the lines edited here the TOC did not
+change: kept unless chosen), \code{info} (one row an item of a report's
+information that differs: \code{output_id}, \code{name} (\code{"OUTPUT_LABEL"},
+\code{"OUTPUT_TITLE"}, \code{"OUTPUT_POPULATION"}, \code{"OUTPUT_SECTION"}), \code{now},
+\code{toc}, \code{action} -- \code{"add"}, \code{"update"}, \code{"keep"} (edited or cleared
+here, the TOC unchanged) or \code{"ask"}); and the \code{last} and
+\code{title_offset} it was given.
 }
 \description{
 Compares the report sheets a TOC gives (\code{\link[tflspec:tfl_read_toc]{tflspec::tfl_read_toc()}}) with
@@ -40,7 +44,9 @@ A report's title and footnote lines are of two kinds: those the TOC gave
 (the lines the last TOC had; the first time, the lines where this TOC
 has one) and those added here.  The TOC's lines are compared line by
 line: one not edited here takes the TOC's new text; one edited here keeps
-its text when the TOC did not change it, and is asked about when the TOC
-changed it too.  The lines added here are not compared: they stay, after
-the TOC's lines.
+its text unless the TOC's is chosen (\code{use_toc} of \code{\link[=toc_apply]{toc_apply()}}), when
+the TOC did not change it as when it did.  The lines added here are not
+compared: they stay, after the TOC's lines.  The report's information --
+its label, title and analysis set text (those the study's pages say) and
+its section -- is compared the same way.
 }

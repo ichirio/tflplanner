@@ -242,6 +242,9 @@ test_that("lines added here stay, after the TOC's lines, when the TOC gets more 
                      "Our own third line"))
   expect_identical(sheet_rows(y, "footnotes", "T-1")$left,
                    c("Note A", "Percentages use N", "Our own footnote"))
+  # the line edited here can take the TOC's text, chosen
+  expect_identical(sheet_rows(toc_apply(x, sp2, ch, use_toc = "T-1|titles|1"),
+                              "titles", "T-1")$center[1L], "Demographics")
   # again with the same TOC: nothing changes, nothing asked
   last2 <- toc_snapshot(sp2, toc_title_offset(y), last)
   ch2 <- toc_changes(y, sp2, last2)
@@ -341,6 +344,40 @@ test_that("the dialog: the last TOC said, the same file noticed, two rows of one
   })
 })
 
+test_that("the dialog: what was edited here is offered the TOC's text, line by line or all", {
+  local_home()
+  create_study("TE", planner = new_planner())
+  f1 <- file.path(tempdir(), "toc_e.csv")
+  writeLines(c("No.,Kind,Title", "T-1,Table,Demographics"), f1)
+  up <- function(f) data.frame(name = basename(f), datapath = f, stringsAsFactors = FALSE)
+  map <- function(n) {
+    l <- c(list("No.", "Kind", "Title"), as.list(rep("", length(.toc_items) - 3L)))
+    names(l) <- paste0("toc", n, "_map_", .toc_items)
+    l
+  }
+  shiny::testServer(server_for("TE"), {
+    rv <- session$userData$rv
+    session$setInputs(toc_new = 1)
+    session$setInputs(toc1_file = up(f1), toc1_skip = 0)
+    do.call(session$setInputs, map(1))
+    session$setInputs(toc1_do = 1)
+    # edited here
+    r <- sheet_rows(rv$p, "titles", "T-1")
+    rv$p <- set_page_line(rv$p, "titles", "T-1", r$line[1L], center = "Demographics (edited)")
+    # the same TOC again: the edit offered, unticked by default
+    session$setInputs(toc_new = 2)
+    session$setInputs(toc2_file = up(f1), toc2_skip = 0)
+    do.call(session$setInputs, map(2))
+    h <- output$toc2_changes$html
+    expect_match(h, "were edited here", fixed = TRUE)
+    expect_match(h, "toc2_use_all", fixed = TRUE)
+    expect_match(h, "toc2_kept_1", fixed = TRUE)
+    # all: the TOC's text
+    session$setInputs(toc2_use_all = TRUE, toc2_do = 1)
+    expect_identical(sheet_rows(rv$p, "titles", "T-1")$center[1L], "Demographics")
+  })
+})
+
 test_that("the TOC's headings become the reports' sections; one given here is kept", {
   x <- new_planner()
   sp <- tflspec::tfl_read_toc(toc_file(c(
@@ -359,6 +396,29 @@ test_that("the TOC's headings become the reports' sections; one given here is ke
   y$outputs$section[1L] <- "Mine"
   z <- toc_apply(y, sp, toc_changes(y, sp, last = toc_snapshot(sp, toc_title_offset(y))))
   expect_identical(z$outputs$section[1L], "Mine")
+  # one cleared here stays clear; one as the TOC said follows a new TOC
+  last <- toc_snapshot(sp, toc_title_offset(y))
+  y$outputs$section[2L] <- NA
+  z <- toc_apply(y, sp, toc_changes(y, sp, last = last))
+  expect_true(is.na(z$outputs$section[2L]))
+  sp2 <- tflspec::tfl_read_toc(toc_file(c(
+    ",14.1 Demographics,,,",
+    "T-14-1-1,Table,Demographics,Safety Population,",
+    "T-14-1-2,Table,Disposition,All Subjects,",
+    ",14.3 Safety Summary,,,",
+    "T-14-3-1,Table,Overview of TEAEs,Safety Population,")), map = toc_map)
+  z2 <- toc_apply(y, sp2, toc_changes(y, sp2, last = last))
+  expect_identical(z2$outputs$section[3L], "14.3 Safety Summary")
+  # the section is not a row of the tokens sheet
+  expect_false("OUTPUT_SECTION" %in% .normalize_sheet(z2$sheets$tokens, "tokens")$name)
+  # edited or cleared here: offered (kept unless chosen); chosen, the TOC's
+  ch <- toc_changes(y, sp, last = last)
+  inf <- ch$info[ch$info$name == "OUTPUT_SECTION", ]
+  expect_identical(inf$action[inf$output_id == "T-14-1-1"], "keep")
+  expect_identical(inf$action[inf$output_id == "T-14-1-2"], "keep")
+  w <- toc_apply(y, sp, ch, use_toc = c("T-14-1-1|info|OUTPUT_SECTION",
+                                        "T-14-1-2|info|OUTPUT_SECTION"))
+  expect_identical(w$outputs$section[1:2], c("14.1 Demographics", "14.1 Demographics"))
   # saved and read back
   d <- withr_tempdir()
   write_planner(z, d)

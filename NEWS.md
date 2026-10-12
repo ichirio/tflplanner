@@ -1,5 +1,34 @@
 # tflplanner (development version)
 
+- **Step 3: one card, "Report information and tokens"** (the user's
+  direction; first in the page form).  The report list can only rename a
+  report or take in a TOC, so the TOC's information about a report is
+  edited here: its label, title, analysis set text ({OUTPUT_LABEL},
+  {OUTPUT_TITLE}, {OUTPUT_POPULATION} -- the report's rows of the tokens
+  sheet) and section ({OUTPUT_SECTION}, the report list's section).  Each
+  field shows what a blank gives in its placeholder (the label made from
+  the ID, step 1's analysis set), and nothing under it: where a value came
+  from is what a TOC taken in again lists (below), and the page's sample
+  shows what it prints; no reset button.  The ID is read only, with a
+  link to the report list.  Below: the report's own tokens (add, change,
+  remove; a name of the report's information or of rtfreporter's is
+  refused) and, folded, every token of rtfreporter's with what it is, as
+  `rtfreporter::rtf_text_tokens()` lists them ({AUTO_PAGE},
+  {AUTO_TOTAL_PAGES}, {BOOK_PAGE}, {PROGRAM_NAME} ...).  The Titles card
+  says the title its header prints and where it changes; the titles' and
+  footnotes' tokens are inserted from one list.  The report picker of
+  "Make a report" follows the title and section at once (the title of the
+  report's information first).
+- **A TOC taken in again: what was edited here, kept or overwritten as
+  chosen**.  A line or a report's information (label, title, analysis set
+  text, section) as the last TOC said follows the new TOC.  One edited, or
+  cleared, here is listed in "What would change" with the TOC's text and
+  "Use the TOC's text" -- unticked by default, so it stays -- and one box
+  takes the TOC's text for everything edited here.  (Before, a line edited
+  here and not changed in the TOC was kept with no choice, and the
+  information was not listed.)  The section is one value, the report
+  list's (the TOC no longer writes an OUTPUT_SECTION row of the tokens
+  sheet).
 - **Two official runs compared** (the Runs tab's "Compare...";
   `compare_batches()`).  A run chosen in the runs table (else the newest)
   against the run of the same kind before it, or any two: the inputs that

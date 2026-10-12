@@ -119,9 +119,10 @@ test_that("titles and footnotes: the heading is the header's {OUTPUT_TITLE}, lin
   h <- as.character(.page_form_ui(p, "T1", identity))
   expect_match(h, 'data-name="OUTPUT_TITLE"', fixed = TRUE)
   expect_match(h, 'value="Demographics"', fixed = TRUE)
-  # listed once: in the heading, not again with the tokens
-  expect_identical(lengths(regmatches(h, gregexpr("token:OUTPUT_TITLE", h, fixed = TRUE))), 1L)
-  expect_match(h, 'data-token="{PROGRAM}"', fixed = TRUE)
+  # one field: the report's information, not again with the tokens
+  expect_identical(lengths(regmatches(h, gregexpr("info:OUTPUT_TITLE", h, fixed = TRUE))), 1L)
+  expect_false(grepl("token:OUTPUT_TITLE", h, fixed = TRUE))
+  expect_match(h, '<option value="{PROGRAM}">', fixed = TRUE)
   # a header without {OUTPUT_TITLE}: no heading
   expect_false(grepl("Heading", as.character(.page_form_ui(pat_planner(), "T1", identity)), fixed = TRUE))
   # a footnote of this report, over Standard's of the same number
@@ -240,20 +241,46 @@ test_that("the user's notes: Standard under a pattern, the tokens card, the head
   h <- as.character(.page_form_ui(p, "T1", identity))
   # Standard's line 1 under Compact: Compact says the same
   expect_match(h, "Standard (= Compact)", fixed = TRUE)
-  # the heading says what it is
-  expect_match(h, "The header's {OUTPUT_TITLE}", fixed = TRUE)
-  # the tokens: an add row, the reference with the report's label
+  # the Titles card: the title the header prints, changed in the card above
+  expect_match(h, "The header prints {OUTPUT_TITLE}: Demographics", fixed = TRUE)
+  # one card first: the report's information (a field each), its own
+  # tokens, rtfreporter's
+  expect_lt(regexpr(">Report information and tokens<", h, fixed = TRUE),
+            regexpr(">Paper, margins and font<", h, fixed = TRUE))
+  for (k in .pg_info_items) expect_match(h, sprintf('data-kind="info" data-name="%s"', k), fixed = TRUE)
+  # no reset buttons (a TOC taken in again overwrites); an empty label is
+  # its default, said by the placeholder
+  expect_false(grepl("info_reset", h, fixed = TRUE))
+  expect_match(h, "(blank: the text made from the ID, Table", fixed = TRUE)
+  # nothing under the fields (where a value came from: the TOC import says)
+  expect_false(grepl(">edited here<", h, fixed = TRUE))
+  expect_false(grepl("printed on this page", h, fixed = TRUE))
   expect_match(h, "pg-token-add", fixed = TRUE)
-  expect_match(h, "The report list's (changed where they come from)", fixed = TRUE)
-  # the report list's tokens: not on the left (no field of theirs but the
-  # title's), each with where it changes
-  expect_false(grepl('data-name="OUTPUT_POPULATION"', h, fixed = TRUE))
   expect_match(h, 'data-act="goto" data-name="ard"', fixed = TRUE)
-  expect_match(h, "Change it in Titles, below", fixed = TRUE)
+  # rtfreporter's, as it lists them
+  for (k in .pg_builtin_names()) expect_match(h, paste0("{", k, "}"), fixed = TRUE)
+  expect_match(h, "{AUTO_TOTAL_PAGES}", fixed = TRUE)
+  # one list to insert from
+  expect_match(h, "pg-ins-sel", fixed = TRUE)
   # the font: Courier or Courier New to choose, any typed
   expect_match(h, '<option value="Courier New">', fixed = TRUE)
-  # the tokens card above the header
-  expect_lt(regexpr(">Tokens<", h, fixed = TRUE), regexpr(">Header<", h, fixed = TRUE))
+  # a pattern: its tokens and rtfreporter's, no report information
+  h4 <- as.character(.page_form_ui(p, "@Compact", identity))
+  expect_false(grepl('data-kind="info"', h4, fixed = TRUE))
+})
+
+test_that("a report's information: one store each, back to its default", {
+  p <- add_output(new_planner(), "T1", population = "SAF")
+  p <- .set_report_info(p, "T1", "OUTPUT_TITLE", "Demographics")
+  expect_identical(page_tokens_from(p, "T1")$value, "Demographics")
+  p <- .set_report_info(p, "T1", "OUTPUT_TITLE", "")
+  expect_false("OUTPUT_TITLE" %in% page_tokens_from(p, "T1")$name)
+  # the section: the report list's; a row the TOC wrote before goes
+  p <- set_page_token(p, "T1", "OUTPUT_SECTION", "14.1")
+  p <- .set_report_info(p, "T1", "OUTPUT_SECTION", "14.1 Demographics")
+  expect_identical(p$outputs$section, "14.1 Demographics")
+  expect_false("OUTPUT_SECTION" %in% page_tokens_from(p, "T1")$name)
+  expect_error(.set_report_info(p, "T1", "PAGE", "1"), "Not a report's information")
 })
 
 test_that("a token added and removed from the form; the veil only for the user's work", {
@@ -278,11 +305,17 @@ test_that("a token added and removed from the form; the veil only for the user's
     session$setInputs(pg_edit = list(target = NULL, kind = "token", name = "OUTPUT_SECTION",
                                      value = "x", n = 3))
     expect_false("OUTPUT_SECTION" %in% page_tokens_from(rv$p, "T1")$name)
-    # the title: its field
-    session$setInputs(pg_edit = list(kind = "token", name = "OUTPUT_TITLE",
+    # the title: the report's information
+    session$setInputs(pg_edit = list(kind = "info", name = "OUTPUT_TITLE",
                                      value = "Demographics", n = 4))
     expect_identical(page_tokens_from(rv$p, "T1")$value[page_tokens_from(rv$p, "T1")$name == "OUTPUT_TITLE"],
                      "Demographics")
+    # the report picker follows it, and the section
+    rows <- session$userData$run_end$rows
+    expect_identical(rows()$title[rows()$output_id == "T1"], "Demographics")
+    session$setInputs(pg_edit = list(kind = "info", name = "OUTPUT_SECTION",
+                                     value = "14.1 Demographics", n = 5))
+    expect_identical(rows()$section[rows()$output_id == "T1"], "14.1 Demographics")
   })
   html <- as.character(app_ui())
   expect_match(html, "html.shiny-busy.rp-user-busy body::after", fixed = TRUE)
