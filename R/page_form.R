@@ -355,7 +355,7 @@ $(document).on('shiny:value', function(e) {
     r <- match(k, rows$name)
     own_row <- !is.na(r) && identical(rows$from[r], "own")
     # the value: the report's row; the section, the report list's (a row the
-    # TOC wrote before 0.0.2.9190 wins, as it prints)
+    # TOC wrote before 0.0.2.9196 wins, as it prints)
     v <- if (own_row) rows$value[r] else if (identical(k, "OUTPUT_SECTION") && !.is_blank(sec)) sec else
       NA_character_
     own <- !is.na(v)
