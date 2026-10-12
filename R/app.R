@@ -8028,7 +8028,8 @@ app_server <- function(input, output, session, start) {
     shiny::req(!is.null(id), has_study())
     rv$ard_ver
     rv$ver
-    if (identical(report_kind(), "listing")) return(NULL)
+    # (a figure's: a table's data code makes its data itself)
+    if (!identical(report_kind(), "figure")) return(NULL)
     s <- rv$study
     s$planner <- rv$p
     st <- .code_ard_state(s, id)

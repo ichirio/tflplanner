@@ -5,8 +5,8 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(create_sample_study(run = FALSE))
   expect_null(fig_design(s$planner, "F-14-2-1"))
-  # the sample's F-14-2-1 is user code: a figure again, to be designed
-  s$planner <- .set_report_type(s$planner, "F-14-2-1", "figure")
+  # the sample's F-14-2-1 is a figure of its own code: the code goes, to be designed
+  s$planner <- set_step_code(s$planner, "F-14-2-1", "content", NA)
   d <- tflspec::tfl_fig_template("mean_ci", data = "ADVS", param = "SYSBP",
                                   value = "CHG", title = "SBP: mean change")
   d$plot$width <- 7L
