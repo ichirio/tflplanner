@@ -931,6 +931,11 @@ for (o in setdiff(unique(p$ard$analyses$output_id), c("T-14-0-1", "T-14-1-4", "T
 p <- set_report_population(p, "T-14-1-4", "SCRF")
 p <- set_report_population(p, "T-14-1-5", "ENR")
 p <- set_report_population(p, "T-14-1-6", "ENR")
+# each analysis's purpose, as the CDISC ARS export needs it: the CI of the
+# mean and the hazard ratios secondary, the rest primary
+p$ard$analyses$purpose <- ifelse(
+  p$ard$analyses$analysis_id %in% c("CI", "HR", "HR_SEX", "HR_AGEGR1"),
+  "SECONDARY OUTCOME MEASURE", "PRIMARY OUTCOME MEASURE")
 
 # ------------------------------------------------------------ the study
 s <- create_study(id, title = "Sample study (CDISC pilot data, pharmaverseadam)",
