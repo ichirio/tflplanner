@@ -384,7 +384,7 @@ $(document).on('shiny:value', function(e) {
                         readonly = NA),
       shiny::div(class = "pg-from", go("outputs", t("Rename it in the report list")))),
     field("OUTPUT_LABEL", t("Label")),
-    field("OUTPUT_TITLE", t("Title")),
+    field("OUTPUT_TITLE", t("Report title")),   # (t("Title") is the study's)
     field("OUTPUT_POPULATION", t("Analysis set text")),
     field("OUTPUT_SECTION", t("Section")))
 }

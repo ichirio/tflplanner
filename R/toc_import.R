@@ -147,6 +147,7 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
   lines <- list()
   kept <- list()
   info <- list()
+  printed <- .toc_printed(x)
   status <- character()
   for (id in ids) {
     if (!id %in% have) {
@@ -164,8 +165,8 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
     }
     tn <- report_info(x, id)$type
     tt <- spec$report$type[match(id, spec$report$output_id)]
-    if (!is.na(tt) && !identical(tn, tt)) changed <- TRUE
-    inf <- .toc_info_changes(x, spec, last, id)
+    if (.toc_type_differs(tn, tt, id %in% guessed)) changed <- TRUE
+    inf <- .toc_info_changes(x, spec, last, id, printed(id))
     if (any(inf$action %in% c("add", "update", "ask"))) changed <- TRUE
     if (nrow(inf)) info[[length(info) + 1L]] <- inf
     status[[id]] <- if (changed) "changed" else "same"
@@ -200,7 +201,7 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
 # another than the last time), "update" (here as the last TOC said), "keep"
 # (edited or cleared here, the TOC unchanged) or "ask" (edited here, and
 # changed in the TOC).  "keep" and "ask" stay unless chosen.
-.toc_info_changes <- function(x, spec, last, id) {
+.toc_info_changes <- function(x, spec, last, id, printed = character()) {
   vals <- .toc_tokens(spec, id)
   items <- setdiff(names(.toc_token_items), "OUTPUT_SECTION")
   items <- c(items[vapply(items, function(k) .study_says(x, k), NA)], "OUTPUT_SECTION")
@@ -217,6 +218,11 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
       if (length(v)) v[1L] else NA_character_
     }
     if (.is_blank(n_)) n_ <- NA_character_
+    # no value of its own: the report prints one all the same ({OUTPUT_LABEL}
+    # "Table 14.1.1" from its id); the TOC's the same is no change to say
+    # (`printed`, what would change; toc_apply() writes it all the same)
+    if (is.na(n_) && !identical(k, "OUTPUT_SECTION") &&
+        identical(unname(printed[k]), t_)) next
     w_ <- was[[k]]
     w_ <- if (is.null(w_) || .is_blank(w_)) NA_character_ else as.character(w_)
     a <- if (identical(n_, t_)) NA_character_
@@ -229,6 +235,27 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
                                           action = a, stringsAsFactors = FALSE)
   }
   if (length(out)) do.call(rbind, out) else .toc_no_info()
+}
+
+# The tokens each report prints now, by its id (as its program gives them:
+# a value of its own, else the study's default); none when they cannot be
+# read
+.toc_printed <- function(x) {
+  sp <- tryCatch(.spec_object_last(x, c(table_sheets(), report_sheets()),
+                                   unique(c(.study_keys$table, .study_keys$report))),
+                 error = function(e) NULL)
+  function(id) {
+    if (is.null(sp)) return(character())
+    tryCatch(tflspec::tfl_report_tokens(sp, id), error = function(e) character())
+  }
+}
+
+# Whether a report's type and the TOC's differ in a way to say: not when
+# the TOC only guessed it, nor a figure for a report of one's own code (a
+# TOC has no word for it).  A TOC does not change a report's type.
+.toc_type_differs <- function(now, toc, guessed = FALSE) {
+  !is.na(toc) && !identical(now, toc) && !isTRUE(guessed) &&
+    !(identical(now, "user") && identical(toc, "figure"))
 }
 
 .toc_no_lines <- function() {
@@ -463,6 +490,8 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
   # the report's information (its label, title, analysis set text, section):
   # the TOC's where the report has none or what the last TOC said; edited
   # or cleared here, it stays unless chosen (`use_toc`: "<id>|info|<name>")
+  # (written where the report has none, even when it prints the same from
+  # its default: the TOC's information is the report's from now on)
   for (id in rep$output_id[rep$status %in% c("new", "changed", "same")]) {
     inf <- .toc_info_changes(x, spec, last, id)
     for (j in seq_len(nrow(inf))) {
@@ -690,6 +719,25 @@ toc_headers <- function(path, sheet = NULL, skip = 0L) {
 # ---- the record: input/toc/ ---------------------------------------------------
 
 .toc_dir <- function(study) file.path(study$path, study_layout()[["toc_import"]])
+
+#' Copy how a study reads its TOC to another study
+#'
+#' Copies the study's TOC profile (`input/toc/profile.yml`: the rule set,
+#' the way the report IDs are made, the sheets and header rows, the
+#' phase settings) to another study, as copying a study in the app does.
+#' Not the TOCs it took in nor what they said (`last.json`): the other
+#' study's TOC is its own, and its first one is compared with its own
+#' lines.
+#'
+#' @param from,to `rtfstudy` objects ([open_study()]).
+#' @return `TRUE` when there was a profile to copy, invisibly.
+#' @export
+toc_copy_profile <- function(from, to) {
+  f <- file.path(.toc_dir(from), "profile.yml")
+  if (!file.exists(f)) return(invisible(FALSE))
+  dir.create(.toc_dir(to), recursive = TRUE, showWarnings = FALSE)
+  invisible(file.copy(f, file.path(.toc_dir(to), "profile.yml"), overwrite = TRUE))
+}
 
 #' TOCs taken into a study
 #'

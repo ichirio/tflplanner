@@ -378,7 +378,7 @@ test_that("the home is never inside the study folders, nor inside a study", {
 test_that("a study's state at the old place is moved to <home>/state, never deleted", {
   home <- local_home()
   s <- create_study("S1", planner = sample_planner())
-  # as before 0.0.2.9197: <home>/studies/<ID>
+  # as before 0.0.2.9200: <home>/studies/<ID>
   old <- file.path(home, "studies", "S1")
   dir.create(dirname(old), showWarnings = FALSE)
   file.rename(file.path(home, "state", "S1"), old)
