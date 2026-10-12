@@ -33,8 +33,8 @@ offered as flags of ADSL, to make one.
 | T-14-2-2 | Table | Time to first dermatologic event: Kaplan-Meier estimates |
 | T-14-3-1 | Table | TEAEs by SOC / PT |
 | L-16-2-7 | Listing | Severe treatment-emergent adverse events |
-| F-14-2-1 | User code (a figure) | Mean change from baseline in systolic blood pressure |
-| F-14-2-2 | User code (a figure) | Kaplan-Meier plot of the time to first dermatologic event (number at risk from T-14-2-2's ARD) |
+| F-14-2-1 | Figure (R program) | Mean change from baseline in systolic blood pressure: its content step is its own R |
+| F-14-2-2 | Figure (R program) | Kaplan-Meier plot of the time to first dermatologic event, its own R; the number at risk from T-14-2-2's ARD (`ard`) |
 | F-14-2-3 | Figure (designed) | The same KM curves from the designer's KM template, with a median line added |
 | F-14-2-4 | Figure (designed) | Forest plot of the hazard ratio by subgroup from the figure's own ARD (a Cox model overall and within each subgroup, cards / cardx) |
 

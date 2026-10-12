@@ -128,13 +128,25 @@ set_report_datasets <- function(x, output_id, datasets) {
 
 # ---- the screen of a step of the report's own code ------------------------
 
-# The rules, said where the switch is (the help page has them in full)
-.code_rules_tip <- paste(
-  "The rules: register the datasets it reads (above its data step's code: the program reads them first, by their names in lower case);",
-  "this report's ARD is `ard` when the report reads one;",
-  "the data step leaves `data` (a figure: `df`), the content step `content` (a table plan, a data frame, rtftable pages, a ggplot or rtfplot, or a list of them);",
-  "no files read by the code itself, no library(), setwd() or options(): call packages as pkg::fn().",
-  "Code inside the definition (a table's rework, a listing's, a figure's code step) stays there: R program makes the whole step your code.")
+# The rules a step of the report's own code follows (the help the switch
+# opens; the ja guide says the same).  What the review checks of them:
+# tflspec::tfl_check_code() (U01-U05).
+.code_rules <- c(
+  "Register the datasets it reads (above the data step's code). The program reads them first, by their names in lower case (adsl, advs); the code does not read files itself (readRDS(), read_xpt() ...).",
+  "Its ARD through the report: a table's ARD definition or the ARD taken in, a figure's ARD source (step 1). This report's ARD rows are `ard`; the code does not read ard.rds itself.",
+  "Each step leaves what the next one reads: the data step `data` (a figure: `df`; a table may leave `ard`, normalized for it), the content step `content` -- a table plan, a data frame, rtftable pages, a ggplot or rtfplot, or a list of them.",
+  "Code inside the definition stays there: a table's or a listing's rework, a figure's code step or code layer. R program makes the whole step your code.",
+  "No library(): the study's setup attaches its packages (the figures': ggplot2, patchwork, dplyr and those of its designs); call others as pkg::fn().",
+  "No side effects: it writes no files and does not change the session (setwd(), options()); the program writes the report.",
+  "One report: it does not read another report's outputs. Another report's ARD comes through the ARD source.")
+
+# The rules, as the help dialog shows them
+.code_rules_ui <- function(t = identity) {
+  shiny::tagList(
+    shiny::tags$ol(class = "small", lapply(.code_rules, function(r) shiny::tags$li(t(r)))),
+    shiny::p(class = "small text-muted",
+             t("The code is checked as you write it (under the code) and in Review: a dataset it reads that is not registered, nothing left for the next step, files read or packages attached, `ard` where the report reads none (rules U01-U05).")))
+}
 
 # A step's code: its editor and its check (left), the program and its run
 # (right).  `prefix` dc (the data step) or cc (the content step).
@@ -145,7 +157,8 @@ code_step_ui <- function(prefix, t = identity, lang = "en") {
     bslib::card(
       bslib::card_header(with_tip(
         if (identical(step, "data")) t("Your code: the data") else t("Your code: the content"),
-        t(.code_rules_tip))),
+        if (identical(step, "data")) t("It leaves `data` (a figure: `df`). The rules: at the top of this step.")
+        else t("It leaves `content`. The rules: at the top of this step."))),
       shiny::div(class = "rp-code",
                  shiny::textAreaInput(paste0(prefix, "_code"), NULL, rows = 14,
                                       width = "100%", resize = "vertical",
@@ -178,9 +191,14 @@ code_step_ui <- function(prefix, t = identity, lang = "en") {
     ard)
 }
 
-# this report's ARD rows as `ard`: taken in, or the study ARD's (a figure
-# that reads a table's: that table's)
+# this report's ARD rows as `ard`: a figure's as a designed figure's
+# (its own, a table's, or taken in -- with the definition it was made
+# from, which the report records); else taken in, or the study ARD's
 .code_ard_lines <- function(x, output_id) {
+  if (identical(report_info(x, output_id)$type, "figure")) {
+    a <- .fig_ard_lines(x, output_id)
+    return(if (length(a)) a)
+  }
   imp <- .ard_import_of(x, output_id)
   src <- .fig_ard_source(x, output_id)
   of <- if (identical(src$kind, "table")) src$id else output_id

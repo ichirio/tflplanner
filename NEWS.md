@@ -1,5 +1,20 @@
 # tflplanner (development version)
 
+- **A step of your own R: its rules in full, and the sample in that form**
+  (0.0.2.9206, pair B of the user-program design).  **The rules** next to
+  the GUI | R program switch opens the seven rules (the datasets
+  registered, the ARD through the report, what each step leaves, code
+  inside the definition stays there, no `library()`, no side effects, one
+  report), and the ja guide's chapter 11 "自分の R の手順" says the same;
+  the code cards' tips point to them.  The sample study's two figures of
+  their own code are figures whose content step is R: F-14-2-2 reads
+  T-14-2-2's ARD as `ard` (its ARD source) instead of the ARD file, and
+  neither attaches packages -- the review has nothing to say of them.  A
+  figure whose code reads an ARD records the definition it was made from
+  and is to be made again when that ARD changes, as a designed one.  The
+  articles (ja guide, ja figures) and the README say three kinds of report,
+  each step on screen or in R.
+
 - **A figure's size is set on its page (step 3), and the first page shows
   it** (0.0.2.9205, tflspec >= 0.0.24.9098; the user's request on F-14-2-1:
   the result pane showed no plot, and its size was in step 2).  Step 3 of

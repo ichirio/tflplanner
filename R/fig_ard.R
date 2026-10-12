@@ -142,7 +142,9 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   if (!identical(report_info(x, output_id)$type, "figure")) return(NA_character_)
   src <- .fig_ard_source(x, output_id)
   if (!src$kind %in% c("own", "table")) return(NA_character_)
-  if (!.fig_reads_ard(fig_design(x, output_id), output_id)) return(NA_character_)
+  # its design reads it, or a step of its own code has it in reach
+  own_code <- .is_code_step(x, output_id, "data") || .is_code_step(x, output_id, "content")
+  if (!own_code && !.fig_reads_ard(fig_design(x, output_id), output_id)) return(NA_character_)
   src$id
 }
 

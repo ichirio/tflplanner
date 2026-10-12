@@ -39,7 +39,7 @@ test_that("a figure whose content is its code: its datasets read, its code, repo
   # no ARD unless the report reads one; its own analyses as `ard`
   expect_false(any(grepl("this report's ARD", code, fixed = TRUE)))
   q <- set_fig_ard_source(p, "F-1", "own")
-  expect_true(any(grepl("this report's ARD", program_code(q, "F-1"), fixed = TRUE)))
+  expect_true(any(grepl("this figure's ARD", program_code(q, "F-1"), fixed = TRUE)))
   q <- use_imported_ard(p, "F-1", "f1.rds")
   expect_true(any(grepl("input/ard/f1.rds", program_code(q, "F-1"), fixed = TRUE)))
 })
@@ -246,6 +246,30 @@ test_that("a report's own code runs out of the app; the line of an error is said
     session$setInputs(target = "F-1", step = "ard", data_mode = "code")
     expect_identical(output$data_is_code, "yes")
   })
+})
+
+test_that("the rules are seven, said in full where the switch is", {
+  expect_length(.code_rules, 7L)
+  h <- as.character(.code_rules_ui())
+  expect_identical(lengths(regmatches(h, gregexpr("<li>", h))), 7L)
+  expect_match(h, "U01-U05", fixed = TRUE)
+})
+
+test_that("the sample's figures of their own code: F-14-2-2 reads T-14-2-2's ARD as `ard`", {
+  local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  p <- s$planner
+  expect_identical(.fig_ard_source(p, "F-14-2-2"), list(kind = "table", id = "T-14-2-2"))
+  code <- unlist(strsplit(program_code(p, "F-14-2-2"), "
+", fixed = TRUE))
+  expect_true("risk_df <- tfl_km_risk(ard, km_fit)" %in% code)
+  # the ARD read by the program (its source's rows), not by the code
+  expect_true(any(grepl("filter(output_id == \"T-14-2-2\")", code, fixed = TRUE)))
+  expect_false(any(grepl("km_ard", code, fixed = TRUE)))
+  expect_true(any(grepl("ard_built <- ard_fingerprint", code, fixed = TRUE)))
+  expect_true("record_report(report_id, ard = ard_built)" %in% code)
+  expect_identical(.fig_ard_need(p, "F-14-2-2"), "T-14-2-2")
+  expect_identical(nrow(.rules_step_code(p)), 0L)
 })
 
 test_that("report_content() is written once, in the study's fig_setup.R", {

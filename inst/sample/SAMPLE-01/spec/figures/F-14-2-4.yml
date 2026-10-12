@@ -54,10 +54,7 @@ plot:
         fn: element_text
         args:
           hjust: 0.0
-  width: 7.3
-  height: 4.2
   dpi: 300.0
-  units: in
   base_size: 10.0
   theme: boxed
 layers:

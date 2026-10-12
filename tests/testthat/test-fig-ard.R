@@ -149,7 +149,8 @@ test_that("a table deleted, or an analysis dropped from it: the figure's checks 
   expect_identical(pr$severity, "error")
   expect_match(pr$problem, "T-14-2-2 is not a table of the study [(]deleted")
   # the figures reading a table, for the delete dialog
-  expect_identical(.figs_reading_table(p, "T-14-2-2"), "F-14-2-3")
+  # (F-14-2-2's own code reads it too)
+  expect_identical(.figs_reading_table(p, "T-14-2-2"), c("F-14-2-2", "F-14-2-3"))
   # its KM analysis dropped from the definition: an error even while the
   # ARD made before still has the rows
   skip_if_not_installed("cardx")

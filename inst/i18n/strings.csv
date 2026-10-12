@@ -3033,7 +3033,6 @@ The %s code of %s calls %s.,%2$s の %1$s のコードが %3$s を呼んでい�
 Turn its ARD on (step 1) or take ard out of the code.,ARD を使う設定にする（手順 1）か、コードから ard を外してください。
 R program,R プログラム
 R program: this step is your own R code instead of the definition.,R プログラム: この手順を、定義の代わりに自分の R コードにします。
-"The rules: register the datasets it reads (above its data step's code: the program reads them first, by their names in lower case); this report's ARD is `ard` when the report reads one; the data step leaves `data` (a figure: `df`), the content step `content` (a table plan, a data frame, rtftable pages, a ggplot or rtfplot, or a list of them); no files read by the code itself, no library(), setwd() or options(): call packages as pkg::fn(). Code inside the definition (a table's rework, a listing's, a figure's code step) stays there: R program makes the whole step your code.",決まり: 読むデータセットは登録します（データの手順のコードの上。プログラムが最初に小文字の名前で読みます）。帳票が ARD を読むときは、この帳票の ARD が `ard` です。データの手順は `data`（図は `df`）を、内容の手順は `content`（表の plan、データフレーム、rtftable のページ、ggplot か rtfplot、またはそれらの list）を残します。コードの中でファイルを読まず、library()・setwd()・options() も使いません（パッケージは pkg::fn() で）。定義の中のコード（表や一覧の手直し、図の code 段）はそのまま。R プログラムは手順全体を自分のコードにします。
 Back to the definition?,定義に戻しますか？
 "%s's %s step is your code: it goes, and the definition makes the step again.",%s の %s の手順は自分のコードです。コードを消して、定義でこの手順を作り直します。
 Keep the code,コードを残す
@@ -3063,3 +3062,15 @@ Fit to the page,ページに合わせる
 (the figure: [Run the code] in step 2 draws it here),（図: 手順 2 の［試しに実行］でここに描かれます）
 (the figure: its design in step 2 draws it here),（図: 手順 2 のデザインからここに描かれます）
 The resolution it is drawn at; its size is its report's (the page step).,描く解像度。大きさは帳票のもの（ページの手順）です。
+"Register the datasets it reads (above the data step's code). The program reads them first, by their names in lower case (adsl, advs); the code does not read files itself (readRDS(), read_xpt() ...).",読むデータセットを登録します（データの手順のコードの上）。プログラムが最初に小文字の名前（adsl、advs）で読みます。コードの中でファイルを読みません（readRDS()、read_xpt() など）。
+"Its ARD through the report: a table's ARD definition or the ARD taken in, a figure's ARD source (step 1). This report's ARD rows are `ard`; the code does not read ard.rds itself.",ARD は帳票の設定で: 表は ARD 定義か取り込んだ ARD、図は ARD の元（手順 1）。この帳票の ARD の行が `ard` です。コードの中で ard.rds を読みません。
+"Each step leaves what the next one reads: the data step `data` (a figure: `df`; a table may leave `ard`, normalized for it), the content step `content` -- a table plan, a data frame, rtftable pages, a ggplot or rtfplot, or a list of them.",各手順は次の手順が読むものを残します: データの手順は `data`（図は `df`。表は `ard` だけでもよく、正規化はプログラムが行います）、内容の手順は `content`（表の plan、データフレーム、rtftable のページ、ggplot か rtfplot、またはそれらの list）。
+"Code inside the definition stays there: a table's or a listing's rework, a figure's code step or code layer. R program makes the whole step your code.",定義の中のコードはそのまま: 表や一覧の手直し、図の code 段やコードの層。R プログラムは手順全体を自分のコードにします。
+"No library(): the study's setup attaches its packages (the figures': ggplot2, patchwork, dplyr and those of its designs); call others as pkg::fn().",library() は使いません: 試験の setup がパッケージを読み込みます（図は ggplot2・patchwork・dplyr とデザインが使うもの）。ほかは pkg::fn() で呼びます。
+"No side effects: it writes no files and does not change the session (setwd(), options()); the program writes the report.",副作用はなし: ファイルを書かず、セッションも変えません（setwd()、options()）。帳票を書くのはプログラムです。
+One report: it does not read another report's outputs. Another report's ARD comes through the ARD source.,帳票ひとつで完結: ほかの帳票の出力を読みません。ほかの帳票の ARD は ARD の元で選びます。
+"The code is checked as you write it (under the code) and in Review: a dataset it reads that is not registered, nothing left for the next step, files read or packages attached, `ard` where the report reads none (rules U01-U05).",コードは書いている間（コードの下）とレビューで確かめます: 登録していないデータセットを読んでいないか、次の手順に残すものがあるか、ファイルを読んだりパッケージを読み込んだりしていないか、帳票が読まない `ard` を使っていないか（ルール U01〜U05）。
+The rules,決まり
+A step of your own R: the rules,自分の R の手順: 決まり
+It leaves `data` (a figure: `df`). The rules: at the top of this step.,`data`（図は `df`）を残します。決まりはこの手順の上にあります。
+It leaves `content`. The rules: at the top of this step.,`content` を残します。決まりはこの手順の上にあります。

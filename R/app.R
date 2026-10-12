@@ -7954,9 +7954,15 @@ app_server <- function(input, output, session, start) {
                           stats::setNames(c("gui", "code"), c("GUI", t("R program"))),
                           selected = if (step_is_code(step)) "code" else "gui",
                           inline = TRUE),
-      help_tip(paste(t("R program: this step is your own R code instead of the definition."),
-                     t(.code_rules_tip))))
+      help_tip(t("R program: this step is your own R code instead of the definition.")),
+      # the rules the code follows, in full
+      shiny::actionLink(paste0(step, "_rules"), t("The rules"), class = "small"))
   }
+  rules_dialog <- function() shiny::showModal(shiny::modalDialog(
+    title = t("A step of your own R: the rules"), .code_rules_ui(t),
+    easyClose = TRUE, footer = shiny::modalButton(t("Close"))))
+  shiny::observeEvent(input$data_rules, rules_dialog())
+  shiny::observeEvent(input$content_rules, rules_dialog())
   output$data_mode_bar <- shiny::renderUI({
     rv$ver
     mode_bar("data")
