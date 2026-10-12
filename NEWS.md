@@ -41,6 +41,27 @@
   principle): a piece's lead text is in its heading's (i), a field's help
   is its placeholder and tooltip (no line under it), and a named step's
   name is its **Out**, beside **In**.
+- **A TOC taken in again: a report's label, title or analysis set it
+  prints all the same is no change.**  A report with no value of its own
+  prints the study's default (`{OUTPUT_LABEL}` "Table 14.1.1" from its
+  id): a TOC saying the same was counted as a change ("add") for every
+  report of the sample.  It is compared with what the report prints now.
+  A report of one's own code that the TOC calls a figure, or a type the
+  TOC only guessed, is no change either (the type was never changed;
+  every import again said two reports of the sample changed).
+- **Two example TOCs** made from the sample study, in
+  `system.file("extdata", package = "tflplanner")`:
+  `SAMPLE-01_TOC.xlsx` (its 17 reports with titles, analysis sets,
+  sections, a Topline column and a shell sheet each) and
+  `SAMPLE-01_TOC_changed.xlsx` (two rows changed), to try the import on
+  the sample study: the first gives its reports their sections (and the
+  Topline batch) and, taken in again, changes nothing; the second, taken
+  in after it, shows two reports changed (a title, a footnote).  `data-raw/make-toc-sample.R` makes them.
+- **A study copied takes how it reads its TOC** (`input/toc/profile.yml`:
+  the rule set, the way the IDs are made, the sheets): the next study of
+  the same company layout reads its TOC the same way.  Not the TOCs taken
+  in nor what they said: the copy's TOC is its own.
+  `toc_copy_profile()`.
 
 - **Step 3: one card, "Report information and tokens"** (the user's
   direction; first in the page form).  The report list can only rename a
