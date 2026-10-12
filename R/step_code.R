@@ -95,15 +95,12 @@ set_report_datasets <- function(x, output_id, datasets) {
   if (identical(step, "content")) "content" else if (identical(type, "figure")) "df" else "data"
 }
 
-# Does a report's own code have its ARD (`ard`) in reach?  A table reads its
-# ARD unless it has none (no analyses, nothing taken in); a figure as its
-# ARD source says; a listing has none.
+# Does a report's own code have its ARD (`ard`) in reach?  A figure's as its
+# ARD source says.  A table's data step of its own code makes its data
+# itself (its ARD, when it has one, is what its definition's data step
+# reads); a listing has none.
 .code_reads_ard <- function(x, output_id, type = report_info(x, output_id)$type) {
-  switch(type,
-    table = !is.null(.ard_import_of(x, output_id)) ||
-      nrow(ard_rows(x, "analyses", output_id)) > 0L,
-    figure = !identical(.fig_ard_source(x, output_id)$kind, "none"),
-    FALSE)
+  identical(type, "figure") && !identical(.fig_ard_source(x, output_id)$kind, "none")
 }
 
 # A step's code checked against the rules (tflspec::tfl_check_code()): the

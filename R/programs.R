@@ -320,9 +320,6 @@ data_lines <- function(x, output_id, todo = TRUE) {
                  .code_inputs(x, output_id)))
   content <- if (cc) {
     c("", .section("content: your code"),
-      # (the figure style, report_content() and report_data(); a designed
-      # figure's program sources it at its top)
-      if (is.null(design)) c(.fig_source_lines(), ""),
       .code_step_lines(x, output_id, "content"))
   } else switch(type,
     table = NULL,
@@ -333,7 +330,9 @@ data_lines <- function(x, output_id, todo = TRUE) {
                  todo("figure")))
   # (one blank line between the two)
   while (length(data) && identical(data[[length(data)]], "")) data <- data[-length(data)]
-  c(data, content)
+  # the figure style, report_content() and report_data() first (a designed
+  # figure's program sources them at its top)
+  c(if (is.null(design)) c(.fig_source_lines(), ""), data, content)
 }
 
 #' The R program for one report
