@@ -29,6 +29,20 @@
   information was not listed.)  The section is one value, the report
   list's (the TOC no longer writes an OUTPUT_SECTION row of the tokens
   sheet).
+- **Two official runs compared** (the Runs tab's "Compare...";
+  `compare_batches()`).  A run chosen in the runs table (else the newest)
+  against the run of the same kind before it, or any two: the inputs that
+  changed -- the data by the md5 `data_manifest.csv` records, the code by
+  the md5 of the kept `code/`; "not kept" when a run did not keep them --
+  and the results that changed (identical, the same but the date and time
+  a report prints, the same object, different, not made, new), said in
+  two lines ("Inputs changed: ... / Results changed: 2 of 30: ...") over
+  a table of what changed, with a CSV.  After a fix to the data or the
+  programs, it shows that only what was fixed changed.  The kept code now
+  has `programs/study_helpers.R` (the study setup sources it), and a run
+  keeps the reports' status (`output/tfl/report_status.csv`) as it keeps
+  the ARD's.
+
 - **An official run can keep its data** (the Runs tab's "keep the data in
   the batch folder", off by default; `run_batch(data = TRUE)`, the
   autoexec programs' `--data`).  The data files the run's programs read

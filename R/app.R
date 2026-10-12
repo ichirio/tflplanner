@@ -1058,7 +1058,8 @@ app_ui <- function(lang = "en") {
                                value = FALSE),
           .btn("batch_run", t("Start the official run"),
                class = "btn-sm btn-primary"),
-          shiny::uiOutput("batch_open_ui", inline = TRUE)),
+          shiny::uiOutput("batch_open_ui", inline = TRUE),
+          .btn("batch_compare", t("Compare..."))),
         # the data the run would keep: its size, before the run
         shiny::uiOutput("batch_data_size"),
         # the reports the run takes: all, unless some are left out
@@ -10909,6 +10910,97 @@ app_server <- function(input, output, session, start) {
     if (ok) notify(sprintf(t("Opened the folder %s (a window behind the browser? see the taskbar)."),
                            d$batch[i]))
   })
+  # two official runs compared: the one chosen (else the newest) with the
+  # run of the same kind before it, or any two; what changed only
+  # a run as the list shows it: its folder, what it ran, how it ended
+  cmp_labels <- function(d) {
+    what <- t(c(ard = "ARD", report = "Reports", all = "ARD, then reports")[d$what])
+    st <- t(c(done = "done", failed = "errors", incomplete = "stopped", running = "running")[d$state])
+    stats::setNames(d$batch, paste0(d$batch, "  \u00b7 ", what, " \u00b7 ", st))
+  }
+  shiny::observeEvent(input$batch_compare, {
+    d <- batches()
+    if (nrow(d) < 2L) return(notify(t("Two official runs are needed to compare."), "warning"))
+    i <- input$batches_rows_selected
+    # the run chosen; else the newest that ended
+    ended <- which(d$state %in% c("done", "failed"))
+    b <- d$batch[if (length(i)) i[1L] else if (length(ended)) ended[1L] else 1L]
+    a <- .batch_previous(d, b)
+    if (is.na(a)) a <- setdiff(d$batch, b)[1L]
+    ch <- cmp_labels(d)
+    shiny::showModal(shiny::modalDialog(
+      title = t("Compare official runs"), size = "l", easyClose = TRUE,
+      shiny::div(
+        class = "d-flex flex-wrap gap-3 align-items-end",
+        shiny::selectInput("cmp_against", t("Earlier run"), ch, a, width = "22rem"),
+        shiny::span(class = "pb-3", "\u2192"),
+        shiny::selectInput("cmp_batch", t("Later run"), ch, b, width = "22rem")),
+      shiny::uiOutput("cmp_summary"),
+      shiny::checkboxInput("cmp_all", t("Show everything compared (not only what changed)"), FALSE),
+      DT::DTOutput("cmp_table"),
+      footer = shiny::tagList(
+        shiny::downloadButton("cmp_csv", t("Download (CSV)"), class = "btn-sm"),
+        shiny::modalButton(t("Close")))))
+  })
+  cmp_result <- shiny::reactive({
+    shiny::req(input$cmp_batch, input$cmp_against)
+    if (identical(input$cmp_batch, input$cmp_against)) return(NULL)
+    tryCatch(compare_batches(current_study(), input$cmp_batch, input$cmp_against),
+             error = function(e) e)
+  })
+  cmp_result_labels <- function(x) {
+    lab <- c(identical = t("identical"), `same but the time` = t("same but the time"),
+             `same object` = t("same object"), different = t("different"),
+             `not made` = t("not made"), new = t("new"), added = t("added"),
+             removed = t("removed"), changed = t("changed"), `not kept` = t("not kept"))
+    ifelse(x %in% names(lab), lab[x], x)
+  }
+  output$cmp_summary <- shiny::renderUI({
+    r <- cmp_result()
+    if (is.null(r)) return(shiny::p(class = "small text-muted", t("Choose two different runs.")))
+    if (inherits(r, "error")) return(shiny::p(class = "small text-danger", conditionMessage(r)))
+    ch <- attr(r, "changed")
+    nk <- unique(r$kind[r$result == "not kept"])
+    kind_lab <- c(data = t("data"), code = t("code"))
+    few <- function(v) {
+      v <- basename(v)
+      if (length(v) > 4L) paste0(paste(v[1:3], collapse = ", "), sprintf(t(", ... (%d)"), length(v)))
+      else paste(v, collapse = ", ")
+    }
+    n_out <- sum(r$kind == "output")
+    shiny::div(
+      class = "small mb-2",
+      shiny::div(shiny::strong(t("Inputs changed:")), " ",
+                 if (length(ch$inputs)) few(ch$inputs) else t("none"),
+                 if (length(nk)) shiny::span(class = "text-muted", sprintf(
+                   t(" (%s not kept by both runs)"), paste(kind_lab[nk], collapse = ", ")))),
+      shiny::div(shiny::strong(t("Results changed:")), " ",
+                 if (length(ch$outputs)) sprintf(t("%d of %d: %s"), length(ch$outputs), n_out,
+                                                 few(ch$outputs))
+                 else sprintf(t("none of %d"), n_out)))
+  })
+  output$cmp_table <- DT::renderDT({
+    r <- cmp_result()
+    shiny::req(is.data.frame(r))
+    # what changed only (an input not kept is said above the table)
+    if (!isTRUE(input$cmp_all)) {
+      r <- r[!r$result %in% c("identical", "same but the time", "same object", "not kept"), ,
+             drop = FALSE]
+    }
+    shiny::validate(shiny::need(nrow(r) > 0L, ""))
+    v <- data.frame(a = t(c(data = "data", code = "code", output = "output")[r$kind]),
+                    b = r$file, c = cmp_result_labels(r$result), stringsAsFactors = FALSE)
+    names(v) <- t(c("Kind", "File", "Compared"))
+    .dt(v, selection = "none")
+  })
+  output$cmp_csv <- shiny::downloadHandler(
+    filename = function() paste0("compare_", input$cmp_against, "_", input$cmp_batch, ".csv"),
+    content = function(file) {
+      r <- cmp_result()
+      if (!is.data.frame(r)) r <- data.frame(kind = character(), file = character(),
+                                             result = character())
+      utils::write.csv(r, file, row.names = FALSE)
+    })
   shiny::observeEvent(input$batch_open, {
     if (!isTRUE(app_local())) return()
     d <- batches()

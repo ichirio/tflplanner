@@ -274,3 +274,100 @@ test_that("a batch folder is opened by the system's opener", {
   expect_true(.open_folder(file.path(d, "runs", "20261012_000000_ard")))
   expect_identical(got, normalizePath(file.path(d, "runs", "20261012_000000_ard")))
 })
+
+# two batch folders as official runs leave them
+cmp_runs <- function(d) {
+  mk <- function(b, rtf, ard, data_md5 = NULL, code = NULL) {
+    dir.create(file.path(d, b, "output", "tfl"), recursive = TRUE)
+    dir.create(file.path(d, b, "output", "ard"), recursive = TRUE)
+    writeLines(rtf, file.path(d, b, "output", "tfl", "T-1.rtf"))
+    saveRDS(ard, file.path(d, b, "output", "ard", "T-1.rds"))
+    writeLines(c("part,program,status", "tfl,programs/tfl/T-1.R,OK"),
+               file.path(d, b, "run.csv"))
+    writeLines("Finished : 2026-01-01 10:00:00", file.path(d, b, "batch.txt"))
+    if (!is.null(data_md5)) {
+      utils::write.csv(data.frame(path = names(data_md5), md5 = unname(data_md5)),
+                       file.path(d, b, "data_manifest.csv"), row.names = FALSE)
+    }
+    for (f in names(code)) {
+      dir.create(dirname(file.path(d, b, "code", f)), recursive = TRUE, showWarnings = FALSE)
+      writeLines(code[[f]], file.path(d, b, "code", f))
+    }
+  }
+  mk("20260101_100000_all", c("{\\rtf1", "Generated on: 01Jan2026  10:00", "}"), 1:3,
+     c("data/adam/adsl.rds" = "aaa", "data/adam/adae.rds" = "bbb"),
+     list("programs/tfl/T-1.R" = "x <- 1", "programs/tfl/T-2.R" = "y <- 2"))
+  mk("20260102_100000_all", c("{\\rtf1", "Generated on: 02Jan2026  11:30", "}"), 1:4,
+     c("data/adam/adsl.rds" = "aaa", "data/adam/adae.rds" = "ccc"),
+     list("programs/tfl/T-1.R" = "x <- 1", "programs/tfl/T-2.R" = "y <- 3"))
+  # a run of the reports alone, keeping nothing
+  mk("20260103_100000_report", c("{\\rtf1", "Generated on: 03Jan2026  09:00", "}"), 1:4)
+}
+
+test_that("two official runs compared: their inputs where kept, their results", {
+  bs_home()
+  s <- create_study("CMP", planner = add_output(new_planner(), "T-1"))
+  cmp_runs(file.path(s$path, "runs"))
+  # a run that stopped in between (no record of its end): not compared with
+  dir.create(file.path(s$path, "runs", "20260101_120000_all", "output"), recursive = TRUE)
+  r <- compare_batches(s, "20260102_100000_all")
+  # the run before of the same kind
+  expect_identical(attr(r, "batches")[["against"]], "20260101_100000_all")
+  res <- stats::setNames(r$result, paste(r$kind, r$file))
+  expect_identical(res[["data data/adam/adae.rds"]], "changed")
+  expect_false("data data/adam/adsl.rds" %in% names(res))
+  expect_identical(res[["code programs/tfl/T-2.R"]], "changed")
+  expect_identical(res[["output output/tfl/T-1.rtf"]], "same but the time")
+  expect_identical(res[["output output/ard/T-1.rds"]], "different")
+  expect_identical(attr(r, "changed")$inputs, c("data/adam/adae.rds", "programs/tfl/T-2.R"))
+  expect_identical(attr(r, "changed")$outputs, "output/ard/T-1.rds")
+  # a run that kept no data nor code: its inputs are not compared
+  r2 <- compare_batches(s, "20260103_100000_report", "20260102_100000_all")
+  expect_identical(r2$result[r2$kind %in% c("data", "code")], c("not kept", "not kept"))
+  expect_identical(r2$result[r2$file == "output/ard/T-1.rds"], "identical")
+  # no run of its kind before it: the one before
+  expect_identical(.batch_previous(list_batches(s), "20260103_100000_report"),
+                   "20260102_100000_all")
+  expect_error(compare_batches(s, "20260101_100000_all"), "No earlier official run")
+  expect_identical(.batch_compare_file(tempfile(), file.path(s$path, "runs", "20260101_100000_all",
+                                                             "run.csv")), "new")
+
+  # the Runs tab: the dialog says what changed, the table only that
+  shiny::testServer(server_for("CMP"), {
+    session$setInputs(nav = "results", batch_compare = 1)
+    session$setInputs(cmp_batch = "20260102_100000_all", cmp_against = "20260101_100000_all",
+                      cmp_all = FALSE)
+    txt <- paste(output$cmp_summary$html, collapse = "")
+    expect_match(txt, "adae.rds, T-2.R", fixed = TRUE)
+    expect_match(txt, "1 of 2: T-1.rds", fixed = TRUE)
+    session$setInputs(cmp_against = "20260102_100000_all")
+    expect_match(paste(output$cmp_summary$html, collapse = ""), "Choose two different runs",
+                 fixed = TRUE)
+  })
+})
+
+test_that("two official runs of the sample compared after a data fix", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  home <- withr_tempdir()
+  withr::local_options(tflplanner.home = home)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  b1 <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
+  expect_true(file.exists(file.path(b1$batch, "code", "programs", "study_helpers.R")))
+  expect_true(file.exists(file.path(b1$batch, "output", "tfl", "report_status.csv")))
+  Sys.sleep(1.1)
+  # as it is: nothing changed
+  b2 <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
+  r <- compare_batches(s, basename(b2$batch))
+  expect_length(attr(r, "changed")$inputs, 0L)
+  expect_length(attr(r, "changed")$outputs, 0L)
+  Sys.sleep(1.1)
+  # a data fix: that input, and the results that read it
+  adsl <- file.path(s$path, "data", "adam", "adsl.rds")
+  saveRDS(readRDS(adsl)[-1, ], adsl)
+  b3 <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
+  r3 <- compare_batches(s, basename(b3$batch))
+  expect_identical(attr(r3, "changed")$inputs, "data/adam/adsl.rds")
+  expect_true("output/ard/T-14-1-1.rds" %in% attr(r3, "changed")$outputs)
+})
