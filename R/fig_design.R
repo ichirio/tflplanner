@@ -282,6 +282,14 @@ preview_figure <- function(study, output_id,
   u <- .study_time_units(study$path)
   for (k in names(u)) assign(k, u[[k]], envir = e)
   if (!is.null(ard)) assign("ard", ard, envir = e)
+  # an ARD the figure reads that has no rows yet (not made, or a run that
+  # stopped half way): said so, not as the first statistic it misses
+  no_ard <- if (reads_ard && (is.null(ard) || !NROW(ard))) {
+    src <- .fig_ard_source(study$planner, output_id)
+    if (src$kind %in% c("own", "table")) {
+      sprintf("The ARD of %s has no rows yet: make it (step 1, or an official run in Runs).", src$id)
+    }
+  }
   warns <- character()
   err <- NULL
   grDevices::pdf(NULL)
@@ -296,6 +304,7 @@ preview_figure <- function(study, output_id,
       warns <<- c(warns, conditionMessage(w))
       invokeRestart("muffleWarning")
     })
+  if (!is.null(err) && !is.null(no_ard)) err <- paste(no_ard, err)
   png <- if (is.null(err) && !is.null(e$fig_path) &&
              file.exists(file.path(tmp, e$fig_path))) {
     normalizePath(file.path(tmp, e$fig_path), winslash = "/")

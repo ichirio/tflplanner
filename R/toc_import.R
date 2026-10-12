@@ -163,6 +163,8 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
       if (nrow(m$kept)) kept[[length(kept) + 1L]] <- m$kept
     }
     tn <- report_info(x, id)$type
+    # (a user-code report: compared with what it makes)
+    if (identical(tn, "user")) tn <- user_output(x, id)
     tt <- spec$report$type[match(id, spec$report$output_id)]
     if (!is.na(tt) && !identical(tn, tt)) changed <- TRUE
     inf <- .toc_info_changes(x, spec, last, id)

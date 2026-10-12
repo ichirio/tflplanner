@@ -125,6 +125,7 @@ reference:
       - fig_design
       - preview_figure
       - set_fig_ard_source
+      - user_output
       - set_fig_own_analyses
       - fig_presets
       - copy_fig_to_params

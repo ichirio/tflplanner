@@ -98,6 +98,15 @@ test_that("the checks: no source, not made yet, then each piece against the rows
   expect_match(ck$message, "F-14-2-3: no TRT01A = Nobody")
 })
 
+test_that("a figure whose ARD has no rows yet says which and how to make it", {
+  skip_if_not_installed("cardx")
+  skip_if_not_installed("ggsurvfit")
+  s <- fig_ard_study()
+  # (its table's ARD not made: an official run stopped half way, say)
+  r <- suppressMessages(preview_figure(s, "F-14-2-3", max_px = 600))
+  expect_match(r$error, "The ARD of T-14-2-2 has no rows yet: make it", fixed = TRUE)
+})
+
 test_that("the preview prints the table's medians", {
   skip_if_not_installed("cardx")
   skip_if_not_installed("ggsurvfit")

@@ -1289,6 +1289,8 @@
       r <- tryCatch(preview_figure(s, id, d, max_px = 1400), error = function(e)
         list(png = NULL, problems = NULL, warnings = character(),
              error = conditionMessage(e), code = NULL))
+      # (the app's log keeps why: a drawing that fails can be looked into)
+      if (!is.null(r$error)) message("tflplanner: ", id, " could not be drawn: ", r$error)
       fig_drawn[[id]] <- list(key = key, r = r)
     }
     r$id <- id

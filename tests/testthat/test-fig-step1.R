@@ -153,3 +153,18 @@ test_that("an ARD analysis step is the figure's row of the ARD definition", {
   d0 <- tflspec::tfl_fig_design(data = list(list(step = "ard", analysis_id = "X")))
   expect_identical(.fig_ard_steps_rows(p, "F1", d0), p)
 })
+
+test_that("a user-code figure's steps are a figure's", {
+  local_home()
+  p <- add_output(new_planner(), "F-9", type = "user")
+  create_study("S1", planner = p)
+  shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    session$setInputs(target = "F-9", nav = "make", step = "content")
+    expect_identical(user_output(rv$p, "F-9"), "figure")
+    expect_match(output$uc_inputs$html, 'value="figure" checked', fixed = TRUE)
+    # made a table: written to the report row
+    session$setInputs(uc_output = "table")
+    expect_identical(user_output(rv$p, "F-9"), "table")
+  })
+})
