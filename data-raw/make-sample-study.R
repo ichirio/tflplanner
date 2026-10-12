@@ -37,7 +37,7 @@
 #                      its ARD also has the hazard ratios of a Cox model,
 #                      which the table does not print (F-14-2-3 does)
 #   T-14-3-1  Table    TEAEs by SOC / PT, frequency descending,
-#                      on the Compact page pattern (A4, 8 pt, narrow margins)
+#                      on the Compact page pattern (8 pt, narrow margins)
 #   L-16-2-7  Listing  Severe treatment-emergent adverse events
 #   F-14-2-1  User code  Mean change from baseline in systolic blood pressure
 #   F-14-2-2  User code  Kaplan-Meier plot of the time to first dermatologic
@@ -468,15 +468,16 @@ sheets$report <- tbl(
   # the long AE table on the study's Compact page (its pattern, below)
   list(output_id = "T-14-3-1", pattern = "Compact"),
   # a page pattern: only what differs from Standard (the blank rows)
-  list(output_id = "@Compact", note = "page pattern: A4, smaller type, narrower margins"))
+  list(output_id = "@Compact", note = "page pattern: smaller type, narrower margins"))
 sheets$page <- tbl(
   list(output_id = "L-16-2-7", orientation = "landscape"),
   list(output_id = "F-14-2-1", orientation = "landscape"),
   list(output_id = "F-14-2-2", orientation = "landscape"),
   list(output_id = "F-14-2-3", orientation = "landscape"),
   list(output_id = "F-14-2-4", orientation = "landscape"),
-  # the Compact pattern: A4, 8 pt, half-inch margins
-  list(output_id = "@Compact", paper_size = "A4", margin_top_in = "0.5",
+  # the Compact pattern: Standard's paper, 8 pt, half-inch margins (a
+  # pattern that changed the paper would say so: A4_Compact)
+  list(output_id = "@Compact", margin_top_in = "0.5",
        margin_bottom_in = "0.5", margin_left_in = "0.5", margin_right_in = "0.5",
        font_size_half_points = "16"))
 sheets$header <- tbl(

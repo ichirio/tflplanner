@@ -243,13 +243,16 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 .nav-link.rp-idle { opacity: .45; }
 /* a step's mark worked out again (a run in the background): not faded */
 [id^='step_mark_'].recalculating { opacity: 1 !important; }
-/* While the server works (opening a study, switching a tab or a report,
-   saving) the page takes no clicks: a veil, after 0.4 s so that the
-   short updates (the builder's preview, a poll) do not flicker or block. */
+/* While the server works on what the user did (opening a study, switching
+   a tab or a report, saving) the page takes no clicks: a veil, after 0.4 s
+   so that the short updates (the builder's preview) do not flicker or
+   block.  Work the user did not start -- a run in the background
+   followed by the poll -- never veils the page (rp-user-busy: a busy state
+   that began right after a click or a key). */
 body::after { content: ''; position: fixed; inset: 0; z-index: 2000;
   visibility: hidden; background: rgba(255,255,255,0); cursor: progress;
   transition: visibility 0s, background 0s; }
-html.shiny-busy body::after { visibility: visible;
+html.shiny-busy.rp-user-busy body::after { visibility: visible;
   background: rgba(255,255,255,.35);
   transition: visibility 0s .4s, background .2s .4s; }
 .rp-code textarea, .rp-code pre { font-family: Consolas, 'Courier New',
@@ -793,8 +796,8 @@ app_ui <- function(lang = "en") {
                      shiny::span(t("First page (sample)")),
                      shiny::div(
                        class = "d-flex gap-1",
-                       # actual size (100%) by default; fit to the pane's
-                       # width on a click, remembered in this browser
+                       # fit to the pane's width by default; actual size
+                       # on a click, remembered in this browser
                        shiny::tags$button(
                          type = "button", id = "page_fit",
                          class = "btn btn-sm btn-outline-secondary py-0",
@@ -1150,6 +1153,21 @@ $(document).on('shiny:value shiny:error', function(e) {
 "
 
 .updating_js <- "
+// The veil (the page's busy state, CSS rp-user-busy) only for work the
+// user started: a busy state that begins within 1.5 s of a click, a key or
+// a changed field.  A run in the background followed by the poll is not.
+(function() {
+  var last = 0;
+  ['mousedown', 'keydown', 'change'].forEach(function(ev) {
+    document.addEventListener(ev, function() { last = Date.now(); }, true);
+  });
+  $(document).on('shiny:busy', function() {
+    if (Date.now() - last < 1500) document.documentElement.classList.add('rp-user-busy');
+  });
+  $(document).on('shiny:idle', function() {
+    document.documentElement.classList.remove('rp-user-busy');
+  });
+})();
 $(document).on('shiny:connected', function() {
   Shiny.addCustomMessageHandler('builder-updating', function(x) {
     $('#builder_updating').removeClass('d-none');
@@ -9541,6 +9559,14 @@ app_server <- function(input, output, session, start) {
     # description), cut short in the list; whole on hover
     titles <- vapply(o$output_id, function(id) .report_title(p, id), "",
                      USE.NAMES = FALSE)
+    # the report's title its header prints ({OUTPUT_TITLE}, step 3), first
+    tk <- .normalize_sheet(p$sheets$tokens, "tokens")
+    head_title <- tk$value[match(paste(o$output_id, "OUTPUT_TITLE"),
+                                 paste(tk$output_id, trimws(tk$name)))]
+    has_head <- !is.na(head_title) & nzchar(trimws(head_title))
+    titles[has_head] <- ifelse(nzchar(titles[has_head]),
+                               paste(head_title[has_head], titles[has_head], sep = " / "),
+                               head_title[has_head])
     titles <- ifelse(nzchar(titles) | is.na(o$description), titles,
                      o$description)
     data.frame(
@@ -9778,7 +9804,7 @@ app_server <- function(input, output, session, start) {
     pats <- page_patterns(p)
     now <- report_pattern(p, id)
     shiny::div(
-      class = "d-flex flex-wrap gap-2 align-items-center mb-2",
+      class = "d-flex flex-wrap gap-2 align-items-center mb-2 pg-bar",
       shiny::tags$label(`for` = "page_pattern", class = "small mb-0",
                         with_tip(t("Page pattern"), t("The set of page defaults this report starts from: Standard (every report's) or a pattern of the study (Compact for the PK tables ...), which changes only what differs from Standard. What this report changes goes over it."))),
       shiny::div(style = "width: 14rem", shiny::selectInput(
@@ -9819,7 +9845,8 @@ app_server <- function(input, output, session, start) {
       shiny::uiOutput("pat_count", inline = TRUE),
       shiny::p(class = "small text-muted w-100 mb-0",
                if (identical(now, "Standard")) t("Standard: every report's page, unless its pattern or the report changes it.")
-               else sprintf(t("%s: only what differs from Standard; each value says where it comes from."), now)))
+               else sprintf(t("%s: only what differs from Standard; each value says where it comes from."), now),
+               " ", t("The paper is the page's first property: a pattern that changes it says so in its name (A4_Compact).")))
   })
   output$pat_count <- shiny::renderUI({
     page_sheets()
@@ -9913,14 +9940,28 @@ app_server <- function(input, output, session, start) {
       parts[[e$part]] <- v
       page_write(guarded(set_page_line(p, e$sheet, id, e$line, parts$left, parts$center, parts$right)))
     } else if (identical(e$kind, "token")) {
+      # (the title: its one field, Titles' heading)
+      if (!identical(e$name, "OUTPUT_TITLE") && .pg_token_taken(e$name)) {
+        return(notify(.pg_token_taken_msg(e$name, t), "warning"))
+      }
       page_write(guarded(set_page_token(p, id, e$name, if (is.na(v)) "" else v)))
     }
   })
   shiny::observeEvent(input$pg_act, {
     a <- input$pg_act
+    # where a report list's token changes: the report list, step 1, the
+    # report's section (Data code)
+    if (identical(a$act, "goto")) {
+      if (a$name %in% c("outputs", "ard", "code")) go(a$name)
+      return()
+    }
     id <- pg_id(a$target)
     shiny::req(!is.null(id))
     p <- rv$p
+    if (a$act %in% c("token_own", "token_add") &&
+        .pg_token_taken(toupper(trimws(a$name %||% "")))) {
+      return(notify(.pg_token_taken_msg(toupper(trimws(a$name)), t), "warning"))
+    }
     page_write(guarded(switch(a$act,
       reset = set_page_cell(p, a$sheet, a$col, id, NA_character_),
       # a line of the pattern's (or Standard's) made the report's own, to change
@@ -9937,6 +9978,14 @@ app_server <- function(input, output, session, start) {
         set_page_token(p, id, a$name, r$value[r$name %in% a$name][1L] %||% "")
       },
       token_reset = set_page_token(p, id, a$name, NA_character_),
+      token_add = {
+        nm <- toupper(trimws(a$name %||% ""))
+        if (!grepl("^[A-Z][A-Z0-9_]*$", nm)) {
+          stop("A token's name is upper case: a letter, then letters, digits or _ (DATA_CUTOFF).",
+               call. = FALSE)
+        }
+        set_page_token(p, id, nm, trimws(a$value %||% ""))
+      },
       NULL)))
   })
 
