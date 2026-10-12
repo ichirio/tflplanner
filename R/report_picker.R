@@ -23,9 +23,14 @@
   out
 }
 
-# A report's short title: its own title line that is not its number nor
-# its analysis set, else its description
+# A report's short title: the title of its information ({OUTPUT_TITLE},
+# step 3), else its own title line that is not its number nor its analysis
+# set, else its description
 .report_short_title <- function(x, output_id) {
+  tk <- .normalize_sheet(x$sheets$tokens, "tokens")
+  own <- tk$value[!is.na(tk$output_id) & tk$output_id == output_id &
+                    trimws(tk$name) == "OUTPUT_TITLE"]
+  if (length(own) && !is.na(own[1L]) && nzchar(trimws(own[1L]))) return(trimws(own[1L]))
   lines <- .title_lines(x, output_id)
   lines <- trimws(lines[!grepl("^(Table|Figure|Listing)\\s|^<.*>$", trimws(lines))])
   d <- x$outputs$description[match(output_id, x$outputs$output_id)]

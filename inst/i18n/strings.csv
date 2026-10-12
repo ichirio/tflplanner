@@ -2933,3 +2933,6 @@ Page number in the assembled book; empty until assemble_rtf(book_page =),まと�
 File name of that program,そのプログラムのファイル名
 Folder of that program,そのプログラムのフォルダー
 Date and time the file was written; {DATETIME:<format>} for another format,ファイルを書いた日時（{DATETIME:<書式>} で別の書式）
+Back to the text made from the ID,ID から作る文に戻す
+Back to the label of step 1's analysis set,段 1 の集団のラベルに戻す
+Removed from the report's information,帳票の情報から消します

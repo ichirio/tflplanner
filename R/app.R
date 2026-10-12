@@ -1489,7 +1489,8 @@ app_server <- function(input, output, session, start) {
   # what the report list shows: the reports, their analyses, listings,
   # figures, report rows and titles
   p_list <- p_part(function(p) list(p$outputs, p$ard, p$lf, p$fig_designs,
-                                    p$sheets$report, p$sheets$titles, p$study))
+                                    p$sheets$report, p$sheets$titles, p$sheets$tokens,
+                                    p$study))
   dirty <- shiny::reactive({
     has_study() && (!identical(rv$p, rv$saved) ||
                        !identical(rv$meta, rv$saved_meta))

@@ -16,7 +16,11 @@
   `rtfreporter::rtf_text_tokens()` lists them ({AUTO_PAGE},
   {AUTO_TOTAL_PAGES}, {BOOK_PAGE}, {PROGRAM_NAME} ...).  The Titles card
   says the title its header prints and where it changes; the titles' and
-  footnotes' tokens are inserted from one list.
+  footnotes' tokens are inserted from one list.  The report picker of
+  "Make a report" follows the title and section at once (the title of the
+  report's information first).  The label and the analysis set text go
+  "Back to the default" (the text made from the ID, step 1's label); the
+  title and section have no default: "Clear".
 - **A TOC taken in again keeps what was changed here**: a value changed,
   or cleared, in the app stays; one as the last TOC said follows the new
   TOC.  The section is one value, the report list's (the TOC no longer

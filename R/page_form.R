@@ -385,8 +385,16 @@ $(document).on('shiny:value', function(e) {
         `data-kind` = "info", `data-name` = k, `data-key` = paste0("info:", k)),
       shiny::div(
         class = "pg-from", src,
-        if (own) shiny::tags$button(type = "button", class = "pg-act btn btn-link",
-                                    `data-act` = "info_reset", `data-name` = k, t("Back to the default")),
+        # back to a default (the label, the analysis set's); the title and
+        # the section have none: cleared
+        if (own) shiny::tags$button(
+          type = "button", class = "pg-act btn btn-link",
+          `data-act` = "info_reset", `data-name` = k,
+          title = switch(k,
+            OUTPUT_LABEL = t("Back to the text made from the ID"),
+            OUTPUT_POPULATION = t("Back to the label of step 1's analysis set"),
+            t("Removed from the report's information")),
+          if (k %in% c("OUTPUT_LABEL", "OUTPUT_POPULATION")) t("Back to the default") else t("Clear")),
         shiny::br(),
         if (k %in% said) t("printed on this page") else
           sprintf(t("not printed: no line of this page says {%s}"), k),
