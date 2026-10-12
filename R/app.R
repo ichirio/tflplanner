@@ -836,6 +836,7 @@ app_ui <- function(lang = "en") {
                             shiny::tags$script(shiny::HTML(.adata_code_js)),
                             shiny::tags$style(shiny::HTML(.review_css)),
                             shiny::tags$script(shiny::HTML(.review_js)),
+                            shiny::uiOutput("home_note"),
                             shiny::uiOutput("update_note")),
 
     bslib::nav_panel(
@@ -2052,6 +2053,19 @@ app_server <- function(input, output, session, start) {
         type = "button", class = "btn-close",
         onclick = "Shiny.setInputValue('update_note_hide', true);"))
   })
+  # a home inside the study folders (set before 0.0.2.9194, #359): said,
+  # nothing moved -- the user moves it
+  output$home_note <- shiny::renderUI({
+    rv$studies_ver
+    problem <- tryCatch(.home_problem(tflplanner_home(), studies_root(), t),
+                        error = function(e) NULL)
+    if (is.null(problem)) return(NULL)
+    shiny::div(
+      class = "alert alert-warning small py-2 mb-2",
+      problem, " ",
+      help_tip(paste(t("To move it: close tflplanner, move the home folder, then run setup_tflplanner(home = \"<its new place>\") in R."),
+                     t(.home_layouts))))
+  })
   output$studies_root_note <- shiny::renderUI({
     rv$studies_ver
     shiny::p(class = "small text-muted mb-1",
@@ -2163,7 +2177,12 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$save_settings, {
     r <- trimws(input$studies_root)
     if (!nzchar(r)) return()
-    guarded(suppressMessages(setup_tflplanner(studies_root = r)))
+    # never the home inside the study folders (#359): said in the app's words
+    if (!is.null(.home_problem(tflplanner_home(), r))) {
+      return(notify(sprintf(t("This place cannot be set (nothing saved): the home %s is inside it."),
+                            tflplanner_home()), "error"))
+    }
+    if (is.null(guarded(suppressMessages(setup_tflplanner(studies_root = r))))) return()
     rv$studies_ver <- rv$studies_ver + 1L
     notify(sprintf(t("New studies go to %s"), r))
   })

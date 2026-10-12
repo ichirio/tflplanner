@@ -20,7 +20,9 @@ setup_tflplanner(
 sessions -- one in the temporary folder only for this session.}
 
 \item{studies_root}{Where new study folders are created.  \code{NULL} keeps
-the current setting, or on a first setup uses \verb{<home>/workspace}.}
+the current setting, or on a first setup uses \verb{<home>/studies}.  The
+home holds the study folders or sits beside them, never inside them
+(nor inside a study's folder): such a setting is refused.}
 
 \item{language}{The app's language, \code{"en"} (the default) or \code{"ja"};
 \code{NULL} keeps the current setting.}

@@ -1,5 +1,21 @@
 # tflplanner (development version)
 
+- **The home is never inside the study folders** (#359, the user's
+  requirement): tidying the studies would delete it.  The home holds the
+  study folders (`<home>/studies`, a new home's default) or sits beside
+  them (`C:/tflplanner_home` and `C:/studies`).  `setup_tflplanner()`, the
+  setup wizard and the app's settings refuse a home inside the folder new
+  studies go to, equal to it, or inside a study's folder (the app says the
+  place is not saved, and why).  A home already there (set by an earlier
+  version) is said on the Study tab, with how to move it in its (i);
+  nothing is moved.
+- **A study's saved state is at `<home>/state/<STUDY_ID>`** (was
+  `<home>/studies/<STUDY_ID>`, now a new home's study folders).  An old one
+  is moved on first use -- moved, never deleted; an item already at the
+  new place stays where it was.  (Before, with the study folders at
+  `<home>/studies`, a study's folder was its state's folder too, and
+  unregistering the study removed it.)
+
 - **The days in a week, a month and a year come from the company
   standards** (the user's request).  A figure's time unit divides by
   named constants -- `days_per_week`, `days_per_month`, `days_per_year` --

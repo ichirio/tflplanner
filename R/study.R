@@ -338,7 +338,8 @@ unregister_study <- function(study_id, home = tflplanner_home()) {
 #' @rdname create_study
 #' @export
 list_studies <- function(home = tflplanner_home()) {
-  ids <- basename(list.dirs(file.path(home, "studies"), recursive = FALSE))
+  .move_old_stores(home)
+  ids <- basename(list.dirs(file.path(home, "state"), recursive = FALSE))
   rows <- lapply(ids, function(id) {
     st <- tryCatch(.read_state(id, home), error = function(e) NULL)
     if (is.null(st)) return(NULL)

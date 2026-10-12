@@ -58,6 +58,7 @@ app_languages <- function() c(English = "en", "\u65e5\u672c\u8a9e" = "ja")
   c("^Study '.+' is already registered", "The study is already registered"),
   c("^A folder '.+' is already there", "A folder of that name is already there"),
   c("^Not a study folder", "This is not a study folder"),
+  c("^The home .+ is inside ", "The home cannot be inside the study folders"),
   c("^No study '.+': not registered", "There is no such study"),
   c("^Report '.+' is already on the list", "A report of that ID is already on the list"),
   c("^Report '.+' already exists", "A report of that ID is already on the list"),
