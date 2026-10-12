@@ -5,10 +5,13 @@
   review did the same work again for every report: the analysis data
   sheet is normalized once while it is the same, and whether a figure
   reads an ARD comes from its design (tflspec's `tfl_fig_uses_ard()`, >=
-  0.0.24.9092) instead of writing its program.  With tflspec 0.0.24.9092's
-  faster figure checks, on a study of 170 reports: the reports' run state
-  2.4 -> 0.5 s, the report list 2.5 -> 0.6 s, the review 10.9 -> 6.6 s;
-  the app is idle about 20 s sooner after opening.  The study ARD
+  0.0.24.9092) instead of writing its program.  The review's check of
+  the programs (P02) asks the files' times once, as numbers.  With
+  tflspec 0.0.24.9092's faster figure checks and ARD fingerprints, on a
+  study of 170 reports (a fresh R): the reports' run state 2.3 -> 0.4 s,
+  the report list 2.6 -> 0.7 s, the review 8.9 -> 7.2 s the first time
+  and 4.2 s again; the app is idle about 20 s sooner after opening.  The
+  study ARD
   (`output/ard/ard.rds`) is read once while it is the same file (its
   time and size): every report's rows, the figures' and the conditions
   read it, once each.  The same results (compared row for row).
