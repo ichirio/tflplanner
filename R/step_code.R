@@ -142,10 +142,12 @@ set_report_datasets <- function(x, output_id, datasets) {
 
 # The rules, as the help dialog shows them
 .code_rules_ui <- function(t = identity) {
+  # (`name`: code)
+  coded <- function(x) shiny::HTML(gsub("`([^`]+)`", "<code>\\1</code>", htmltools::htmlEscape(x)))
   shiny::tagList(
-    shiny::tags$ol(class = "small", lapply(.code_rules, function(r) shiny::tags$li(t(r)))),
+    shiny::tags$ol(class = "small", lapply(.code_rules, function(r) shiny::tags$li(coded(t(r))))),
     shiny::p(class = "small text-muted",
-             t("The code is checked as you write it (under the code) and in Review: a dataset it reads that is not registered, nothing left for the next step, files read or packages attached, `ard` where the report reads none (rules U01-U05).")))
+             coded(t("The code is checked as you write it (under the code) and in Review: a dataset it reads that is not registered, nothing left for the next step, files read or packages attached, `ard` where the report reads none (rules U01-U05)."))))
 }
 
 # A step's code: its editor and its check (left), the program and its run
