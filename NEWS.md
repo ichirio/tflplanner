@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **A step of your own R: its rules in full, and the sample in that form**
-  (0.0.2.9205, pair B of the user-program design).  **The rules** next to
+  (0.0.2.9206, pair B of the user-program design).  **The rules** next to
   the GUI | R program switch opens the seven rules (the datasets
   registered, the ARD through the report, what each step leaves, code
   inside the definition stays there, no `library()`, no side effects, one
@@ -16,7 +16,7 @@
   each step on screen or in R.
 
 - **A figure's size is set on its page (step 3), and the first page shows
-  it** (0.0.2.9205, tflspec >= 0.0.24.9098; the user's request on F-14-2-1:
+  it** (0.0.2.9206, tflspec >= 0.0.24.9099; the user's request on F-14-2-1:
   the result pane showed no plot, and its size was in step 2).  Step 3 of
   a figure has **Figure size**: width and height in inches, the report
   sheet's `figure_width_in` / `figure_height_in`; blank fits the page's
@@ -30,8 +30,8 @@
   never reached the RTF: a figure was drawn at 6.5 x 4.5 in) go.
 
 - **A report is a table, a listing or a figure; its data step and its
-  content step may each be your own R** (0.0.2.9205, tflspec >=
-  0.0.24.9098; the user's direction on 9191:
+  content step may each be your own R** (0.0.2.9206, tflspec >=
+  0.0.24.9099; the user's direction on 9191:
   "user code" was a fourth type forced into line; the design
   `user-program-per-step-design-2026-10-12`, D1-D7 as recommended).  At
   the top of step 1 and step 2, **GUI | R program**: R program makes the
@@ -63,7 +63,7 @@
   figures written by hand are gone; `add_output()` has no `data_code`.
 
 - **A figure's data steps on any object** (the user's questions Q1-Q3 on
-  0.0.2.9186; tflspec >= 0.0.24.9098).  A data step's form has **In** and
+  0.0.2.9186; tflspec >= 0.0.24.9099).  A data step's form has **In** and
   **Out** on one line at its foot: the object it reads and the one it
   leaves, each shown as it is when left empty (`df`, the object above,
   the step's own name).  Typed, a step works on another object
@@ -100,6 +100,17 @@
   principle): a piece's lead text is in its heading's (i), a field's help
   is its placeholder and tooltip (no line under it), and a named step's
   name is its **Out**, beside **In**.
+
+- **The treatment colours** (tflspec #233, with tflspec 0.0.24.9098): the
+  figures' first arm is Okabe-Ito blue `#0072B2` (was `"blue"`), so the
+  sample's KM and forest figures change colour slightly; more arms than the
+  standard's colours repeat them with a warning, and the figure check names
+  the arms that share one.  The company standards' README says that the
+  order of the `treatment` rows of `figure_colors` is the arms' colour order
+  (reorder the rows in the workbook to reorder the colours), and describes
+  the optional `treatment_shapes` / `treatment_linetypes` of
+  `figure_settings` (blank: not used), which give the arms point shapes and
+  line types for print in black and white.
 
 - **The generated programs, reviewed again** (#347, with tflspec 0.0.24.9097).
   The sample's tables and listing are the same RTF byte for byte; the two

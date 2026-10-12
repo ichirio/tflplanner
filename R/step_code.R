@@ -267,7 +267,7 @@ code_step_ui <- function(prefix, t = identity, lang = "en") {
     if (grepl("^L", id, ignore.case = TRUE)) "listing" else "table"
 }
 
-# The report list's old `data_code` (before 0.0.2.9205), named by report
+# The report list's old `data_code` (before 0.0.2.9206), named by report
 .old_data_code <- function(d) {
   if (is.null(d) || !"data_code" %in% names(d) || !"output_id" %in% names(d)) {
     return(stats::setNames(character(), character()))
