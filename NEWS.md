@@ -41,6 +41,29 @@
   principle): a piece's lead text is in its heading's (i), a field's help
   is its placeholder and tooltip (no line under it), and a named step's
   name is its **Out**, beside **In**.
+- **The home is never inside the study folders** (#359, the user's
+  requirement): tidying the studies would delete it.  The home holds the
+  study folders (`<home>/studies`, a new home's default) or sits beside
+  them (`C:/tflplanner_home` and `C:/studies`).  `setup_tflplanner()`, the
+  setup wizard and the app's settings refuse a home inside the folder new
+  studies go to, equal to it, or inside a study's folder (the app says the
+  place is not saved, and why).  A home already there (set by an earlier
+  version) is said on the Study tab, with how to move it in its (i);
+  nothing is moved.  The same for a new study's place: `create_study()`,
+  `create_sample_study()` and the new-study dialog (empty, a copy, the
+  sample) refuse a place the home is in, or one inside a study's folder --
+  the dialog says so under the field, as for the ID -- and
+  `register_study()` a study folder the home is in.
+- **A study folder at a drive's root**: `C:/` and an ID give `C:/ABC-101`
+  (was `C://ABC-101`, which could not be written).  A folder that cannot be
+  made says which and why ("Could not make the folder ... (reason)", in the
+  app's language), not R's "cannot open the connection".
+- **A study's saved state is at `<home>/state/<STUDY_ID>`** (was
+  `<home>/studies/<STUDY_ID>`, now a new home's study folders).  An old one
+  is moved on first use -- moved, never deleted; an item already at the
+  new place stays where it was.  (Before, with the study folders at
+  `<home>/studies`, a study's folder was its state's folder too, and
+  unregistering the study removed it.)
 - **A TOC taken in again: a report's label, title or analysis set it
   prints all the same is no change.**  A report with no value of its own
   prints the study's default (`{OUTPUT_LABEL}` "Table 14.1.1" from its

@@ -18,7 +18,7 @@ local_home <- function(env = parent.frame()) {
 
 test_that("setup makes the home and remembers where studies go", {
   home <- local_home()
-  expect_true(dir.exists(file.path(home, "studies")))
+  expect_true(dir.exists(file.path(home, "state")))
   expect_equal(studies_root(), normalizePath(file.path(home, "ws"), "/"))
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "ws2")))
   expect_match(studies_root(), "ws2$")
@@ -55,7 +55,7 @@ test_that("a new study has its layout and is registered", {
   expect_true(file.exists(file.path(s$path, "study.yml")))
   expect_true(file.exists(file.path(s$path, "ABC-101.Rproj")))
   expect_true(file.exists(file.path(s$path, "spec", "table_spec.xlsx")))
-  expect_true(file.exists(file.path(home, "studies", "ABC-101",
+  expect_true(file.exists(file.path(home, "state", "ABC-101",
                                     "state.json")))
   expect_error(create_study("ABC-101"), "already registered")
   expect_error(create_study("bad id"), "study id")
@@ -93,7 +93,7 @@ test_that("a study whose workbooks are gone opens as it was last saved", {
 test_that("each save that changes the study keeps the previous state", {
   home <- local_home()
   s <- create_study("S1", planner = sample_planner())
-  hist <- file.path(home, "studies", "S1", "history")
+  hist <- file.path(home, "state", "S1", "history")
   expect_length(list.files(hist), 0)
   s <- save_study(s)
   expect_length(list.files(hist), 0)              # nothing changed
@@ -342,4 +342,134 @@ test_that("a study whose spec/ changed after unregistering comes back from spec/
   # the kept state is in the history, not lost
   expect_true(length(list.files(file.path(.store_dir("UR-2", home), "history"))) >= 1L)
   expect_false(dir.exists(file.path(s$path, ".tflplanner")))
+})
+
+# --- the home and the study folders (#359) -----------------------------
+
+test_that("the home is never inside the study folders, nor inside a study", {
+  home <- withr_tempdir()
+  old <- options(tflplanner.home = NULL)
+  on.exit(options(old), add = TRUE)
+  # a new home: its study folders inside it
+  h1 <- file.path(home, "h1")
+  suppressMessages(setup_tflplanner(home = h1))
+  expect_identical(studies_root(h1), normalizePath(file.path(h1, "studies"), "/"))
+  # the home inside the study folders: refused, nothing written
+  h2 <- file.path(home, "studies", "tflplanner_home")
+  expect_error(setup_tflplanner(home = h2, studies_root = file.path(home, "studies")),
+               "inside .+ where new study folders go")
+  expect_false(dir.exists(h2))
+  # nor the same folder
+  expect_error(setup_tflplanner(home = h1, studies_root = h1), "where new study folders go")
+  # beside each other: kept
+  suppressMessages(setup_tflplanner(home = h1, studies_root = file.path(home, "elsewhere")))
+  expect_match(studies_root(h1), "elsewhere$")
+  # inside a study's folder
+  st <- file.path(home, "ST")
+  dir.create(st)
+  writeLines("study_id: ST", file.path(st, "study.yml"))
+  expect_error(setup_tflplanner(home = file.path(st, "app"), studies_root = file.path(home, "s2")),
+               "inside the study folder")
+  # the problem as the app says it
+  expect_match(.error_view(.home_problem(h2, file.path(home, "studies")), identity),
+               "^The home ")
+})
+
+test_that("a study's state at the old place is moved to <home>/state, never deleted", {
+  home <- local_home()
+  s <- create_study("S1", planner = sample_planner())
+  # as before 0.0.2.9200: <home>/studies/<ID>
+  old <- file.path(home, "studies", "S1")
+  dir.create(dirname(old), showWarnings = FALSE)
+  file.rename(file.path(home, "state", "S1"), old)
+  # a study folder that was its own state's folder keeps its files
+  both <- file.path(home, "studies", "S2")
+  dir.create(both)
+  file.copy(file.path(old, "state.json"), both)
+  writeLines("study_id: S2", file.path(both, "study.yml"))
+  rm(list = ls(.moved_homes), envir = .moved_homes)
+  expect_true("S1" %in% list_studies()$study_id)
+  expect_true(file.exists(file.path(home, "state", "S1", "state.json")))
+  expect_false(dir.exists(old))
+  expect_true(file.exists(file.path(home, "state", "S2", "state.json")))
+  expect_true(file.exists(file.path(both, "study.yml")))
+  # one already at the new place stays where it was
+  dir.create(file.path(home, "studies", "S3"))
+  dir.create(file.path(home, "state", "S3"))
+  writeLines("{}", file.path(home, "studies", "S3", "state.json"))
+  writeLines("{}", file.path(home, "state", "S3", "state.json"))
+  rm(list = ls(.moved_homes), envir = .moved_homes)
+  expect_message(.move_old_stores(home), "is not moved")
+  expect_true(file.exists(file.path(home, "studies", "S3", "state.json")))
+})
+
+test_that("one call makes the whole layout; a home that uses workspace keeps it", {
+  old <- options(tflplanner.home = NULL)
+  on.exit(options(old), add = TRUE)
+  h <- file.path(withr_tempdir(), "tflplanner_home")
+  local_mocked_bindings(create_sample_study = function(root, home) {
+    dir.create(file.path(root, "SAMPLE-01"), recursive = TRUE)
+    invisible(NULL)
+  })
+  suppressMessages(setup_tflplanner(home = h, sample = TRUE))
+  expect_true(dir.exists(file.path(h, "state")))
+  expect_true(dir.exists(file.path(h, "studies", "SAMPLE-01")))
+  expect_identical(studies_root(h), normalizePath(file.path(h, "studies"), "/"))
+  # a home set up before, its study folders at <home>/workspace: kept
+  h2 <- file.path(withr_tempdir(), "older")
+  dir.create(h2)
+  yaml::write_yaml(list(studies_root = file.path(h2, "workspace")), file.path(h2, "config.yml"))
+  suppressMessages(setup_tflplanner(home = h2, language = "ja"))
+  expect_match(studies_root(h2), "workspace$")
+})
+
+test_that("a new study's place: never one the home is in; a drive's root joined right", {
+  home <- local_home()
+  # the joins: a drive's root, a drive alone, a trailing slash
+  expect_identical(.study_path("Q:/", "S-1", home = home), "Q:/S-1")
+  expect_identical(.study_path("Q:", "S-1", home = home), "Q:/S-1")
+  expect_identical(.study_path("Q:/work/", "S-1", home = home), "Q:/work/S-1")
+  # blank: the one set up
+  expect_identical(.study_path("", "S-1", home = home), file.path(studies_root(home), "S-1"))
+  # the home inside the place: refused, nothing made
+  up <- dirname(home)
+  expect_error(create_study("S-2", root = up), "the home .+ is inside it")
+  expect_false(dir.exists(file.path(up, "S-2")))
+  expect_error(create_sample_study(root = up, run = FALSE, study_id = "SAMPLE-09"),
+               "the home .+ is inside it")
+  expect_false(dir.exists(file.path(up, "SAMPLE-09")))
+  # inside a study's folder: refused
+  s <- create_study("S-3")
+  expect_error(create_study("S-4", root = s$path), "inside the study folder")
+  # a study folder the home is in: not registered
+  fake <- dirname(home)
+  writeLines("study_id: FAKE", file.path(fake, "study.yml"))
+  on.exit(unlink(file.path(fake, "study.yml")), add = TRUE)
+  expect_error(register_study(fake), "is inside the study folder")
+})
+
+test_that("a folder that cannot be made says which and why; the app says it in its words", {
+  f <- tempfile()
+  writeLines("x", f)
+  expect_error(.make_dir(file.path(f, "sub")), "^Could not make the folder .+sub \\(.+\\)\\.$")
+  ja <- function(x) tr(x, "ja")
+  expect_identical(.error_view("Could not make the folder C:/x/y (Permission denied).", ja),
+                   "\u30d5\u30a9\u30eb\u30c0\u3092\u4f5c\u308c\u307e\u305b\u3093\u3067\u3057\u305f\uff1aC:/x/y\uff08Permission denied\uff09")
+  m <- tryCatch(.study_path("C:/", "S", home = "C:/tflplanner_home"), error = conditionMessage)
+  expect_match(.error_view(m, ja), "^C:/ ")
+  expect_match(.error_view(m, ja), "C:/tflplanner_home", fixed = TRUE)
+  # the English app: the message as it is
+  expect_identical(.error_view(m), m)
+})
+
+test_that("the new-study dialog says a place the home is in, under the field", {
+  local_home()
+  create_study("S1")
+  shiny::testServer(server_for("S1"), {
+    session$setInputs(new_study = 1)
+    session$setInputs(ns_id = "NEW-1", ns_root = dirname(tflplanner_home()))
+    expect_match(output$ns_id_check$html, "is inside it", fixed = TRUE)
+    session$setInputs(ns_ok = 1)
+    expect_false("NEW-1" %in% list_studies()$study_id)
+  })
 })

@@ -128,16 +128,33 @@ tflplanner は、試験フォルダとは別に「ホーム」を持ちます。
 ```{r}
 library(tflplanner)
 setup_tflplanner(
-  studies_root = "C:/studies",   # 新しい試験フォルダを作る場所
-  language     = "ja",           # 画面の言語（既定は "en"）
-  sample       = TRUE            # サンプル試験 SAMPLE-01 を追加する
+  home     = "C:/tflplanner_home",  # ホーム（試験フォルダは C:/tflplanner_home/studies）
+  language = "ja",                  # 画面の言語（既定は "en"）
+  sample   = TRUE                   # サンプル試験 SAMPLE-01 を追加する
 )
-tflplanner_home()                # ホームの場所
+tflplanner_home()                   # ホームの場所
+studies_root()                      # 新しい試験フォルダを作る場所
 ```
+
+これ 1 回で、ホーム・試験フォルダの置き場所・サンプル試験がそろいます。
+試験フォルダをホームとは別の場所に置くときは、`studies_root = "C:/studies"` を足します。
 
 ホームの既定の場所は `tools::R_user_dir("tflplanner", "data")` です。
 別の場所にしたい場合は `setup_tflplanner(home = "D:/tflplanner")` とするか、
 オプション `tflplanner.home` を使います。
+
+ホームと試験フォルダの置き方は、次の 2 つのどちらかです。
+
+- (A) ホームの中に試験フォルダ：`<ホーム>/studies/<試験>`（`studies_root` を指定しないときの既定）
+- (B) 別々の場所：例 `C:/tflplanner_home` と `C:/studies`
+
+**ホームを試験フォルダの置き場所（`studies_root`）や試験フォルダの中に置くことはできません。**
+試験を片付けるときに、ホームまで消してしまうおそれがあるためです。
+そのような設定は `setup_tflplanner()` もアプリの設定も受け付けません。
+以前の版でそう置いていた場合は、アプリの試験タブに注意が出ます。
+tflplanner を閉じてホームのフォルダを移し、`setup_tflplanner(home = "<新しい場所>")` を実行してください。
+
+各試験の保存状態は `<ホーム>/state/<試験 ID>/` にあります（0.0.2.9200 より前は `<ホーム>/studies/<試験 ID>/`。最初に使うときに自動で移します。移すだけで、消しません）。
 
 試験の一覧から外す（［登録解除］、`unregister_study()`）、もう一度載せる（［既存フォルダを登録］、`register_study()`）、フォルダを開く、はアプリと R のどちらでもできます。登録解除しても試験フォルダは消えません。ホームに置いていた保存状態・履歴・保存前の変更は試験フォルダの `.tflplanner/` に移り、再登録で元どおりに戻ります。tflplanner は試験フォルダを削除しません。消したいときは、エクスプローラーなどで自分で消してください（ごみ箱に入ります）。
 
