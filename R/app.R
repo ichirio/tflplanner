@@ -7022,7 +7022,8 @@ app_server <- function(input, output, session, start) {
                  ask = t("edited here, and changed in the TOC"),
                  keep = t("edited here; the TOC's is the same as the last time"),
                  move = t("added here: moves after the TOC's lines"))
-    info_lab <- c(OUTPUT_LABEL = t("Label"), OUTPUT_TITLE = t("Title"),
+    # (the report's title: t("Title") is the study's)
+    info_lab <- c(OUTPUT_LABEL = t("Label"), OUTPUT_TITLE = t("Report title"),
                   OUTPUT_POPULATION = t("Analysis set text"), OUTPUT_SECTION = t("Section"))
     # an item edited here: the TOC's taken only when ticked (or all)
     choose <- function(input_id) {
