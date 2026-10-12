@@ -721,6 +721,16 @@ toc_problems <- function(x, lang = "en") {
 #' `sheet` and `header_row` (named by the file's name), `map`, `id_rule`,
 #' `type_from`, `overrides` (the set's settings changed for the study).
 #'
+#' Two example TOCs come with the package, made from the sample study
+#' (SAMPLE-01): `system.file("extdata", "SAMPLE-01_TOC.xlsx", package =
+#' "tflplanner")` -- its reports as a company TOC (the header on row 2,
+#' section heading rows, Shell Number, Phase, Topline, Title1-3,
+#' Population, Footnote1-2, a shell sheet per report) -- and
+#' `SAMPLE-01_TOC_changed.xlsx`, the same with two rows changed (a title,
+#' a footnote).  Taken into the sample study, the first gives its reports
+#' their sections (and the Topline batch) and, taken in again, changes
+#' nothing; the second, taken in after it, shows those two.
+#'
 #' @param sources The TOC files (paths) or `toc_source`s.
 #' @param rules What [toc_rules()] returned.
 #' @param profile The study's TOC profile ([toc_profile()]) or `NULL`.
@@ -743,6 +753,12 @@ toc_problems <- function(x, lang = "en") {
 #' r <- toc_import_read(f, toc_rules(home = tempfile()))
 #' r$reports[c("output_id", "label")]
 #' toc_import_spec(r)$report
+#'
+#' # the example TOC made from the sample study
+#' f <- system.file("extdata", "SAMPLE-01_TOC.xlsx", package = "tflplanner")
+#' r <- toc_import_read(f, toc_rules(home = tempfile()))
+#' r$id_rule
+#' utils::head(r$reports[c("output_id", "label", "shell_sheet")])
 #' @export
 toc_import_read <- function(sources, rules = toc_rules(), profile = NULL,
                             choices = NULL, names = NULL) {

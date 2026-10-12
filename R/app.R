@@ -2396,16 +2396,18 @@ app_server <- function(input, output, session, start) {
     } else {
       # "empty": no reports, but the company's study defaults, analysis
       # sets and data catalog (create_study() with no planner)
-      p <- switch(input$ns_from,
-        study = guarded(open_study(input$ns_src)$planner),
-        NULL)
-      if (identical(input$ns_from, "study") && is.null(p)) return()
-      guarded(create_study(
+      src <- if (identical(input$ns_from, "study")) guarded(open_study(input$ns_src))
+      if (identical(input$ns_from, "study") && is.null(src)) return()
+      made <- guarded(create_study(
         trimws(input$ns_id),
         title = blank(input$ns_title), compound = blank(input$ns_compound),
         phase = blank(input$ns_phase),
-        description = blank(input$ns_description), planner = p,
+        description = blank(input$ns_description), planner = src$planner,
         root = trimws(input$ns_root)))
+      # a copy: how the study reads its TOC comes too (input/toc/profile.yml),
+      # not the TOCs it took in (the copy's TOC is its own)
+      if (!is.null(made) && !is.null(src)) toc_copy_profile(src, made)
+      made
     }
     if (is.null(s)) return()
     shiny::removeModal()
@@ -7020,7 +7022,8 @@ app_server <- function(input, output, session, start) {
                  ask = t("edited here, and changed in the TOC"),
                  keep = t("edited here; the TOC's is the same as the last time"),
                  move = t("added here: moves after the TOC's lines"))
-    info_lab <- c(OUTPUT_LABEL = t("Label"), OUTPUT_TITLE = t("Title"),
+    # (the report's title: t("Title") is the study's)
+    info_lab <- c(OUTPUT_LABEL = t("Label"), OUTPUT_TITLE = t("Report title"),
                   OUTPUT_POPULATION = t("Analysis set text"), OUTPUT_SECTION = t("Section"))
     # an item edited here: the TOC's taken only when ticked (or all)
     choose <- function(input_id) {
@@ -7066,7 +7069,7 @@ app_server <- function(input, output, session, start) {
         "\u2014"
       } else {
         now <- t(.type_labels[[r$type_now[i]]] %||% r$type_now[i])
-        if (!is.na(r$type_toc[i]) && !identical(r$type_toc[i], r$type_now[i])) {
+        if (.toc_type_differs(r$type_now[i], r$type_toc[i], r$guessed[i])) {
           shiny::span(now, shiny::span(class = "small text-warning",
                                        sprintf(t("(the TOC says %s: not changed)"),
                                                t(.type_labels[[r$type_toc[i]]]))))
