@@ -328,3 +328,64 @@ set_fig_own_analyses <- function(x, output_id, analyses, population_id = NULL) {
   attr(x, "written") <- analyses$analyses$analysis_id
   x
 }
+
+# A figure's ARD analysis steps (`ard`, tflspec >= 0.0.24.9091) as its rows
+# of the ARD definition: each step's ID, function (method), analysis data
+# (data) and arguments, over the figure's row of that ID (its other
+# columns kept) or a new one; the figure's other rows (a template's) stay,
+# and a figure with no ARD reads its own.  An analysis data of another
+# report is copied into the figure.  A step without an ID or a function
+# writes nothing yet; rows already so are not written again.
+.fig_ard_steps_rows <- function(x, output_id, design) {
+  steps <- Filter(function(s) identical(s$step, "ard"), design$data %||% list())
+  one <- function(v) if (is.null(v) || !length(v) || all(is.na(v))) NA_character_ else
+    if (is.list(v) || !is.null(names(v))) paste(names(v), "=", unlist(v), collapse = ", ") else
+      paste(as.character(v), collapse = ", ")
+  new <- do.call(rbind, lapply(steps, function(s) {
+    id <- trimws(one(s$analysis_id))
+    fn <- trimws(one(s$fn))
+    if (is.na(id) || !nzchar(id) || is.na(fn) || !nzchar(fn)) return(NULL)
+    data.frame(analysis_id = id, method = fn, data = one(s[["in"]]), args = one(s$args),
+               stringsAsFactors = FALSE)
+  }))
+  if (is.null(new) || !nrow(new)) return(x)
+  # an analysis data of another report: copied into the figure (with what
+  # it is made from), as "Copy from another report" does
+  for (d in unique(stats::na.omit(new$data))) {
+    if (d %in% .adata_rows(x, output_id)$data_id) next
+    all <- x$ard$analysis_data
+    from <- all$output_id[!is.na(all$output_id) & all$data_id %in% d][1L]
+    if (is.na(from)) next
+    x <- import_analysis_data(x, from, output_id, d)
+    cp <- attr(x, "copied")
+    attr(x, "copied") <- NULL
+    if (!d %in% cp) new$data[new$data %in% d] <- cp[1L]
+  }
+  rows <- ard_rows(x, "analyses", output_id)
+  rows$output_id <- NULL
+  changed <- FALSE
+  for (i in seq_len(nrow(new))) {
+    k <- match(new$analysis_id[i], rows$analysis_id)
+    if (is.na(k)) {
+      add <- .normalize_ard_sheet(new[i, , drop = FALSE], "analyses")
+      add$output_id <- NULL
+      rows <- rbind(rows, add[names(rows)])
+      changed <- TRUE
+      next
+    }
+    for (cn in c("method", "data", "args")) {
+      if (!identical(rows[[cn]][k], new[[cn]][i])) {
+        rows[[cn]][k] <- new[[cn]][i]
+        changed <- TRUE
+      }
+    }
+  }
+  if (!changed) return(x)
+  x <- set_ard_rows(x, "analyses", output_id, rows)
+  # a figure with no ARD reads its own now; one that reads a table's keeps
+  # it (its numbers are that table's) -- the step's form says so
+  if (.fig_ard_source(x, output_id)$kind %in% c("none", "own")) {
+    x <- set_fig_ard_source(x, output_id, "own")
+  }
+  x
+}

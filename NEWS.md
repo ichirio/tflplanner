@@ -1,5 +1,32 @@
 # tflplanner (development version)
 
+- **A figure's data steps on any object** (the user's questions Q1-Q3 on
+  0.0.2.9186; tflspec >= 0.0.24.9091).  A data step's form has **In** and
+  **Out** on one line at its foot: the object it reads and the one it
+  leaves, each shown as it is when left empty (`df`, the object above,
+  the step's own name).  Typed, a step works on another object
+  (`In: df`, `Out: df_ev` makes `df_ev` and keeps `df`), a named step
+  reads it (`In: df_ev`), or reads a dataset by its name (`adsl`).  A
+  second read makes `df2` (was `df` again).  The objects offered are those
+  made before the step (`tflspec::tfl_fig_objects()`).
+- **Two data steps**: *Any function* (`survival::survfit`,
+  `ggsurvfit::survfit2` ... suggested, any `pkg::fn` typed; its
+  arguments in R, their names listed under the field; the object it reads
+  given as its data) and *ARD analysis* (an `ard_*()` function of the
+  catalog on an analysis data of the ARD definition): the step is the
+  figure's row of the ARD definition (its ID, function, data, arguments;
+  the row's other columns kept), made by its ARD program.  A figure with
+  no ARD then reads its own; one that reads a table's keeps it (the step
+  says its analysis is used once the figure reads its own).  An analysis
+  data of another report chosen is copied into the figure.  The specific
+  steps (Kaplan-Meier fit, summary statistics, rate, counts) stay.  The
+  ARD analysis step's code box shows its row (`KM: fn(data, args)`), and
+  its note on a figure reading a table's ARD has a button to read its own.
+- **The figure designer's forms, for the expert** (the standard-screen
+  principle): a piece's lead text is in its heading's (i), a field's help
+  is its placeholder and tooltip (no line under it), and a named step's
+  name is its **Out**, beside **In**.
+
 - **Step 3: one card, "Report information and tokens"** (the user's
   direction; first in the page form).  The report list can only rename a
   report or take in a TOC, so the TOC's information about a report is

@@ -2988,3 +2988,24 @@ Compared,判定
 output,出力
 done,完了
 stopped,中断
+Any function,任意の関数
+"An object any function makes: survival::survfit, stats::quantile ... (its arguments in R).",任意の関数が作るオブジェクト：survival::survfit、stats::quantile など（引数は R で書く）。
+ARD analysis,ARD の解析
+"An analysis of the figure's ARD: a row of the study's ARD definition, made by the figure's ARD program (no line of the figure's program); ard_stats and ard_number read it.",図の ARD の解析：試験の ARD 定義の 1 行で、図の ARD プログラムが作ります（図のプログラムには行を書きません）。ard_stats と ard_number が読みます。
+The object it reads; empty: the one above,読むオブジェクト。空欄なら上の手順のもの
+The object it leaves; empty: the one it reads,残すオブジェクト。空欄なら読んだもの
+The data it reads; empty: df (or the data a step put into an object of its own),読むデータ。空欄なら df（または手順が別のオブジェクトに入れたデータ）
+"The data frame it makes; empty: df, then df2, df3 ...",作るデータフレーム。空欄なら df、次から df2、df3 …
+Arguments (R),引数（R）
+"pkg::fn, e.g. survival::survfit",pkg::fn。例：survival::survfit
+"formula = Surv(AVAL, CNSR == 0) ~ TRT01A | conf.type = ""log-log""","formula = Surv(AVAL, CNSR == 0) ~ TRT01A | conf.type = ""log-log"""
+Data argument,データの引数
+The argument the object it reads goes to,読むオブジェクトを渡す引数
+An analysis data of the ARD definition: the ARD is made from the definition alone,ARD 定義の解析データ（ARD は定義だけから作られます）
+e.g. cardx::ard_survival_survfit,例：cardx::ard_survival_survfit
+Its arguments: %s,引数：%s
+In,入力
+Out,出力
+This figure reads %s's ARD: its own analyses are used once it reads its own.,この図は %s の ARD を読んでいます。図自身の解析は、図が自身の ARD を読むと使われます。
+Read its own ARD,自身の ARD を読む
+Its row of the ARD definition (the figure's ARD program):,ARD 定義の行（図の ARD プログラムが作ります）：

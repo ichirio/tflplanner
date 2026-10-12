@@ -90,3 +90,66 @@ test_that("a time-unit step in days says why it writes no line; in months it wri
   d$data[[i]]$unit <- "months"
   expect_match(.piece_code(make(d), d, list(sec = "data", i = i), make), "AVAL / days_per_month", fixed = TRUE)
 })
+
+test_that("a step's In and Out: on one line, what they are when not said as placeholders", {
+  local_home()
+  p <- add_output(new_planner(), "F1", type = "figure")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP")
+  d$data <- c(d$data, list(list(step = "function", fn = "survival::survfit")))
+  p <- set_fig_design(p, "F1", d)
+  create_study("S1", planner = p)
+  shiny::testServer(server_for("S1"), {
+    session$setInputs(target = "F1", nav = "make", step = "ard")
+    # the PARAMCD step: In df, Out df (the object above it, changed)
+    session$setInputs(pd_act = list(op = "sel", sec = "data", i = 2L, n = 1))
+    h <- output$pd_form_data$html
+    expect_match(h, ">In<", fixed = TRUE)
+    expect_match(h, ">Out<", fixed = TRUE)
+    expect_match(h, 'class="d-flex gap-2"', fixed = TRUE)
+    expect_match(h, '"placeholder":"df"', fixed = TRUE)
+    # any function: suggested functions, its arguments named under the field
+    k <- length(fig_design(session$userData$rv$p, "F1")$data)
+    session$setInputs(pd_act = list(op = "sel", sec = "data", i = k, n = 2))
+    h2 <- output$pd_form_data$html
+    expect_match(h2, "ggsurvfit::survfit2", fixed = TRUE)
+    expect_match(h2, "Its arguments: formula*", fixed = TRUE)
+  })
+})
+
+test_that("an ARD analysis step is the figure's row of the ARD definition", {
+  p <- add_output(new_planner(), "F1", type = "figure")
+  d <- tflspec::tfl_fig_design(data = list(
+    list(step = "read", dataset = "ADTTE"),
+    list(step = "ard", analysis_id = "KM", fn = "cardx::ard_survival_survfit",
+         `in` = "adtte_saf", args = "times = c(90, 180)")))
+  q <- .fig_ard_steps_rows(set_fig_design(p, "F1", d), "F1", d)
+  r <- ard_rows(q, "analyses", "F1")
+  expect_identical(r$analysis_id, "KM")
+  expect_identical(r$method, "cardx::ard_survival_survfit")
+  expect_identical(r$data, "adtte_saf")
+  expect_identical(r$args, "times = c(90, 180)")
+  expect_identical(.fig_ard_source(q, "F1")$kind, "own")
+  # the row's other columns kept; the same steps write nothing again
+  q$ard$analyses$label[q$ard$analyses$analysis_id %in% "KM"] <- "KM estimates"
+  d$data[[2]]$args <- "times = c(90, 180, 365)"
+  q2 <- .fig_ard_steps_rows(q, "F1", d)
+  r2 <- ard_rows(q2, "analyses", "F1")
+  expect_identical(r2$label, "KM estimates")
+  expect_identical(r2$args, "times = c(90, 180, 365)")
+  expect_identical(.fig_ard_steps_rows(q2, "F1", d), q2)
+  # an analysis data of another report: copied into the figure
+  p2 <- add_output(p, "T1")
+  p2$ard$analysis_data <- .normalize_ard_sheet(
+    data.frame(output_id = "T1", data_id = "adtte_saf", from = "ADTTE"), "analysis_data")
+  q3 <- .fig_ard_steps_rows(set_fig_design(p2, "F1", d), "F1", d)
+  expect_true("adtte_saf" %in% .adata_rows(q3, "F1")$data_id)
+  expect_identical(ard_rows(q3, "analyses", "F1")$data, "adtte_saf")
+  # a figure that reads a table's ARD keeps it
+  pt <- set_fig_ard_source(add_output(p, "T9"), "F1", "table:T9")
+  qt <- .fig_ard_steps_rows(set_fig_design(pt, "F1", d), "F1", d)
+  expect_identical(.fig_ard_source(qt, "F1")$kind, "table")
+  expect_identical(ard_rows(qt, "analyses", "F1")$analysis_id, "KM")
+  # a step without its function yet: nothing written
+  d0 <- tflspec::tfl_fig_design(data = list(list(step = "ard", analysis_id = "X")))
+  expect_identical(.fig_ard_steps_rows(p, "F1", d0), p)
+})
