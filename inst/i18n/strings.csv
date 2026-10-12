@@ -2997,3 +2997,15 @@ Compared,判定
 output,出力
 done,完了
 stopped,中断
+The study has no analyses in its ARD definition.,試験の ARD 定義に分析がありません。
+CDISC ARS: %s,CDISC ARS：%s
+CDISC (to exchange),CDISC（交換用）
+siera (to run with siera),siera（siera で実行する形）
+JSON only,JSON だけ
+"JSON, Excel and the checks (zip)",JSON・Excel・検査結果（zip）
+%d analyses · %d outputs · %d analysis sets · %d data subsets,分析 %d · 出力 %d · 解析対象集団 %d · データの部分集合 %d
+%d errors,エラー %d 件
+%d not in the ARS,ARS に入らないもの %d 件
+not in the ARS,ARS に入らない
+an error,エラー
+Go to it,そこへ移動

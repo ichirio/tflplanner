@@ -413,6 +413,15 @@ export_spec <- function(study, dir) {
 #' @export
 export_ars <- function(study, dir, profile = c("cdisc", "siera")) {
   profile <- match.arg(profile)
+  b <- .ars_build(study, profile)
+  .ars_write(b, dir)
+}
+
+# The study's ARS and what is wrong with it or left out of it, one table:
+# kind ("check" / "not in ARS"), output_id (the report a row is about, NA
+# for a population or the study), where, item, note.  The ARS export
+# dialog shows it; export_ars() writes it as ars_check.csv.
+.ars_build <- function(study, profile = "cdisc") {
   a <- study$planner$ard
   if (is.null(a) || !nrow(a$analyses)) {
     stop("The study has no analyses in its ARD definition.", call. = FALSE)
@@ -426,22 +435,55 @@ export_ars <- function(study, dir, profile = c("cdisc", "siera")) {
     profile = profile, study_id = id, dir = study$path,
     # a figure printing a table's analyses is an output that names them
     references = .fig_ars_references(p))
-  dir.create(dir, showWarnings = FALSE, recursive = TRUE)
-  base <- file.path(dir, paste0(id, "_ars", if (profile == "siera") "_siera"))
-  json <- tflspec::tfl_write_ars_json(ars, paste0(base, ".json"))
-  xlsx <- tflspec::tfl_write_ars_xlsx(ars, paste0(base, ".xlsx"),
-                                      overwrite = TRUE)
   ck <- suppressMessages(tflspec::tfl_check_ars(ars))
   un <- tflspec::tfl_ars_unmapped(ars)
-  rep <- rbind(
-    data.frame(kind = rep("check", nrow(ck)), where = ck$part,
+  ids <- p$outputs$output_id
+  problems <- rbind(
+    data.frame(kind = rep("check", nrow(ck)),
+               output_id = .ars_output_of(ck$part, ids), where = ck$part,
                item = ck$field, note = ck$problem, stringsAsFactors = FALSE),
-    data.frame(kind = rep("not in ARS", nrow(un)), where = un$where,
+    data.frame(kind = rep("not in ARS", nrow(un)),
+               output_id = .ars_output_of(un$where, ids), where = un$where,
                item = un$item, note = un$reason, stringsAsFactors = FALSE))
-  csv <- file.path(dir, "ars_check.csv")
-  utils::write.csv(rep, csv, row.names = FALSE, na = "",
-                   fileEncoding = "UTF-8")
-  invisible(c(json = json, xlsx = xlsx, check = csv))
+  list(ars = ars, problems = problems, profile = profile, study_id = id)
+}
+
+# The report a check or an unmapped row is about: an analysis's id is
+# An_<output>_<analysis>, an unmapped place "<output> / <analysis>" or the
+# output itself; the longest output id that fits (one id may begin another).
+.ars_output_of <- function(x, ids) {
+  ids <- ids[order(-nchar(ids))]
+  vapply(x, function(s) {
+    if (is.na(s)) return(NA_character_)
+    for (o in ids) {
+      if (identical(s, o) || startsWith(s, paste0(o, " /")) ||
+          grepl(paste0("An_", o, "_"), s, fixed = TRUE)) return(o)
+    }
+    NA_character_
+  }, character(1L), USE.NAMES = FALSE)
+}
+
+# Write a built ARS: the JSON, CDISC's Excel template of it, and the
+# problems as ars_check.csv.  `parts` chooses what is written.
+.ars_write <- function(b, dir, parts = c("json", "xlsx", "check")) {
+  dir.create(dir, showWarnings = FALSE, recursive = TRUE)
+  base <- file.path(dir, paste0(b$study_id, "_ars",
+                                if (b$profile == "siera") "_siera"))
+  out <- character()
+  if ("json" %in% parts) {
+    out[["json"]] <- tflspec::tfl_write_ars_json(b$ars, paste0(base, ".json"))
+  }
+  if ("xlsx" %in% parts) {
+    out[["xlsx"]] <- tflspec::tfl_write_ars_xlsx(b$ars, paste0(base, ".xlsx"),
+                                                 overwrite = TRUE)
+  }
+  if ("check" %in% parts) {
+    csv <- file.path(dir, "ars_check.csv")
+    utils::write.csv(b$problems[c("kind", "where", "item", "note")], csv,
+                     row.names = FALSE, na = "", fileEncoding = "UTF-8")
+    out[["check"]] <- csv
+  }
+  invisible(out)
 }
 
 #' @rdname export_spec
