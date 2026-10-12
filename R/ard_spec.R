@@ -377,10 +377,10 @@ ard_status <- function(study) {
   ids <- unique(stats::na.omit(a$analyses$output_id))
   st <- .read_ard_status(study)
   spec <- structure(a, class = "tfl_ard_spec")
+  cl <- .study_codelists(study$planner)
   rows <- lapply(ids, function(id) {
     r <- st[st$output_id == id, , drop = FALSE][1L, ]
-    now <- tflspec::tfl_ard_spec_hash(spec, id, dir = study$path,
-                                      codelists = .study_codelists(study$planner))
+    now <- tflspec::tfl_ard_spec_hash(spec, id, dir = study$path, codelists = cl)
     state <- if (is.na(r$output_id)) "not built" else
       if (!is.na(r$error) && nzchar(r$error)) "error" else
         if (!identical(r$definition, now) ||
