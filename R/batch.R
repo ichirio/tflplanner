@@ -534,6 +534,7 @@ list_batches <- function(study) {
 #'   writeLines(b, file.path(d, b, "output", "tfl", "T-1.rtf"))
 #'   writeLines(c("part,program,status", "tfl,programs/tfl/T-1.R,OK"),
 #'              file.path(d, b, "run.csv"))
+#'   writeLines("Finished : 2026-01-01 10:00:00", file.path(d, b, "batch.txt"))
 #' }
 #' compare_batches(s, "20260102_100000_report")
 #' options(old)
@@ -592,11 +593,12 @@ compare_batches <- function(study, batch, against = NULL) {
 }
 
 # The official run of the same kind (ARD, reports, both) before a batch
-# folder; NA when there is none
+# folder that ended (one that stopped has no results to compare); NA when
+# there is none
 .batch_previous <- function(lb, batch) {
   i <- match(batch, lb$batch)
   # (newest first)
-  later <- seq_along(lb$batch) > i
+  later <- seq_along(lb$batch) > i & lb$state %in% c("done", "failed")
   same <- later & lb$what %in% lb$what[i]
   k <- c(which(same), which(later))[1L]
   if (is.na(k)) NA_character_ else lb$batch[k]

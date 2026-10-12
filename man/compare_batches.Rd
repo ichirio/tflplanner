@@ -50,6 +50,7 @@ for (b in c("20260101_100000_report", "20260102_100000_report")) {
   writeLines(b, file.path(d, b, "output", "tfl", "T-1.rtf"))
   writeLines(c("part,program,status", "tfl,programs/tfl/T-1.R,OK"),
              file.path(d, b, "run.csv"))
+  writeLines("Finished : 2026-01-01 10:00:00", file.path(d, b, "batch.txt"))
 }
 compare_batches(s, "20260102_100000_report")
 options(old)

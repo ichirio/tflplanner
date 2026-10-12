@@ -284,6 +284,7 @@ cmp_runs <- function(d) {
     saveRDS(ard, file.path(d, b, "output", "ard", "T-1.rds"))
     writeLines(c("part,program,status", "tfl,programs/tfl/T-1.R,OK"),
                file.path(d, b, "run.csv"))
+    writeLines("Finished : 2026-01-01 10:00:00", file.path(d, b, "batch.txt"))
     if (!is.null(data_md5)) {
       utils::write.csv(data.frame(path = names(data_md5), md5 = unname(data_md5)),
                        file.path(d, b, "data_manifest.csv"), row.names = FALSE)
@@ -307,6 +308,8 @@ test_that("two official runs compared: their inputs where kept, their results", 
   bs_home()
   s <- create_study("CMP", planner = add_output(new_planner(), "T-1"))
   cmp_runs(file.path(s$path, "runs"))
+  # a run that stopped in between (no record of its end): not compared with
+  dir.create(file.path(s$path, "runs", "20260101_120000_all", "output"), recursive = TRUE)
   r <- compare_batches(s, "20260102_100000_all")
   # the run before of the same kind
   expect_identical(attr(r, "batches")[["against"]], "20260101_100000_all")
