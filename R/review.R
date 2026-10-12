@@ -436,7 +436,10 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   files <- files[!grepl("(^|/)[.]", files)]
   if (!length(files)) return(NULL)
   rel <- file.path("programs", files)
-  info <- lapply(file.path(root, rel), .p02_file)
+  # (one file.info() of them all: one call a file is slow on Windows)
+  full <- file.path(root, rel)
+  fi <- file.info(full)
+  info <- Map(.p02_file, full, fi$mtime, fi$size)
   names(info) <- rel
   helpers <- file.path("programs", .study_helpers_file)
   # the files each one sources, on and on (paths from the study folder)
@@ -477,9 +480,14 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
 # and bare (`bare`, less the ones it defines), whether it attaches
 # tflspec, the files it sources (literal paths); kept by the file's time
 # and size
-.p02_file <- function(path) {
-  fi <- file.info(path)
-  key <- paste(path, fi$mtime, fi$size)
+.p02_file <- function(path, mtime = NULL, size = NULL) {
+  if (is.null(mtime)) {
+    fi <- file.info(path)
+    mtime <- fi$mtime
+    size <- fi$size
+  }
+  # (the time as a number: printing a time is slow, done for every file)
+  key <- paste(path, as.numeric(mtime), size)
   hit <- .review_memo$p02[[key]]
   if (!is.null(hit)) return(hit)
   none <- list(ns = character(), bare = character(), attaches = FALSE,

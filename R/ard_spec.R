@@ -310,11 +310,25 @@ ard_view <- function(ard) {
 # One output's rows of the study's working ARD (NULL when there are none).
 study_ard_rows <- function(study, output_id) {
   out <- .ard_study_value(study$planner$ard, "output", "output/ard/ard.rds")
-  f <- file.path(study$path, out)
-  if (!file.exists(f)) return(NULL)
-  a <- readRDS(f)
-  if (!"output_id" %in% names(a)) return(NULL)
+  a <- .read_study_ard(file.path(study$path, out))
+  if (is.null(a) || !"output_id" %in% names(a)) return(NULL)
   a[a$output_id %in% output_id, , drop = FALSE]
+}
+
+# The study ARD read once per file: every report asks for its rows as a
+# study opens (the report list, the review, the figures), and the file is
+# the same.  Its path, time and size are the key: a run writes a new file,
+# and it is read again.  One file is kept (the study shown).
+.ard_memo <- new.env(parent = emptyenv())
+.read_study_ard <- function(f) {
+  if (!file.exists(f)) return(NULL)
+  i <- file.info(f)
+  key <- paste(normalizePath(f, "/"), as.numeric(i$mtime), i$size)
+  hit <- .ard_memo$ard
+  if (!is.null(hit) && identical(hit$key, key)) return(hit$ard)
+  a <- readRDS(f)
+  .ard_memo$ard <- list(key = key, ard = a)
+  a
 }
 
 .ard_status_file <- function(study) {
@@ -363,10 +377,10 @@ ard_status <- function(study) {
   ids <- unique(stats::na.omit(a$analyses$output_id))
   st <- .read_ard_status(study)
   spec <- structure(a, class = "tfl_ard_spec")
+  cl <- .study_codelists(study$planner)
   rows <- lapply(ids, function(id) {
     r <- st[st$output_id == id, , drop = FALSE][1L, ]
-    now <- tflspec::tfl_ard_spec_hash(spec, id, dir = study$path,
-                                      codelists = .study_codelists(study$planner))
+    now <- tflspec::tfl_ard_spec_hash(spec, id, dir = study$path, codelists = cl)
     state <- if (is.na(r$output_id)) "not built" else
       if (!is.na(r$error) && nzchar(r$error)) "error" else
         if (!identical(r$definition, now) ||
