@@ -1004,7 +1004,9 @@
     pd$raw <- list()
     vars <- shiny::isolate(design_vars(d))
     params <- shiny::isolate(design_params(d))
-    objects <- c("df", unlist(lapply(d$data, function(x) if (isTRUE(x$step %in% names(.pd_named_steps)))
+    # the figure's data: kept as `df`, shown by the name the program writes
+    # (adtte_ttde: the program renames df)
+    objects <- c(stats::setNames("df", tflspec::tfl_fig_data_name(d) %||% "df"), unlist(lapply(d$data, function(x) if (isTRUE(x$step %in% names(.pd_named_steps)))
       x$name %||% .pd_named_steps[[x$step]])))
     # the figure's ARD: its analyses; the variables and statistics of the
     # one chosen (of the ARD made; the analyses sheet's when not made yet)
@@ -1032,7 +1034,8 @@
       sz <- function(ch, multiple = FALSE, create = TRUE) {
         sel_v <- if (multiple) trimws(strsplit(paste(v %||% "", collapse = ","), ",")[[1L]]) else v %||% ""
         sel_v <- sel_v[nzchar(sel_v)]
-        shiny::selectizeInput(id, lab, unique(c(if (!multiple) "", ch, sel_v)),
+        ch <- c(if (!multiple) "", ch, sel_v)
+        shiny::selectizeInput(id, lab, ch[!duplicated(ch)],
                               selected = if (length(sel_v)) sel_v else if (!multiple) "",
                               multiple = multiple, width = "100%",
                               options = list(placeholder = ph, create = create))
@@ -1377,7 +1380,21 @@
     if (length(from)) code[seq(from[1L], length(code))] else character()
   } else {
     other <- tryCatch(switch(s$sec,
-      layers = { d$layers <- d$layers[-s$i]; make(d) },
+      layers = {
+        num <- which(vapply(d$layers, function(l) identical(l$layer, "ard_number"), NA))
+        d$layers <- d$layers[-s$i]
+        out <- make(d)
+        # an ARD number's label is ard_label_<k>, k its place among them:
+        # the code without it numbers the later ones back as they were
+        r <- match(s$i, num)
+        if (!is.na(r)) {
+          for (j in rev(seq_len(length(num) - r) + r - 1L)) {
+            out <- gsub(paste0("\\bard_label_", j, "\\b"), paste0("ard_label_", j + 1L), out,
+                        perl = TRUE)
+          }
+        }
+        out
+      },
       data = { d$data <- d$data[-s$i]; make(d) },
       codelists = make(d, codelists = FALSE),
       NULL), error = function(e) NULL)

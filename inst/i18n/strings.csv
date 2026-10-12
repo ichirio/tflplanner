@@ -1417,12 +1417,12 @@ arg-hint:The baseline range indicator (BNRIND).,ベースラインの基準範�
 "arg-hint:The model function, e.g. lm, glm, survival::coxph.",モデルの関数。例：lm、glm、survival::coxph。
 "arg-hint:The model function, e.g. lm, glm.",モデルの関数。例：lm、glm。
 "arg-hint:The name of the column whose LS means are reported, e.g. TRT01P (default: the first term of the formula).",最小二乗平均を出す列の名前。例：TRT01P（既定：式の最初の項）。
-"arg-hint:The survival outcome, e.g. survival::Surv(AVAL, 1 - CNSR).","生存時間の結果。例：survival::Surv(AVAL, 1 - CNSR)。"
+"arg-hint:The survival outcome, e.g. survival::Surv(AVAL, CNSR == 0).","生存時間の結果。例：survival::Surv(AVAL, CNSR == 0)。"
 "arg-hint:The group columns of the Kaplan-Meier fit, e.g. TRT01P.",Kaplan-Meier の当てはめの群の列。例：TRT01P。
 "arg-hint:The times survival is estimated at, e.g. c(180, 365).","生存率を推定する時点。例：c(180, 365)。"
 "arg-hint:The survival quantiles, e.g. 0.5 for the median.",生存時間の分位点。例：中央値なら 0.5。
 "arg-hint:What is estimated at the times: survival, risk (1 - survival) or cumhaz.",時点で推定するもの：survival（生存率）、risk（1 - 生存率）、cumhaz（累積ハザード）。
-"arg-hint:The model, e.g. survival::Surv(AVAL, 1 - CNSR) ~ TRT01P.","モデル。例：survival::Surv(AVAL, 1 - CNSR) ~ TRT01P。"
+"arg-hint:The model, e.g. survival::Surv(AVAL, CNSR == 0) ~ TRT01P.","モデル。例：survival::Surv(AVAL, CNSR == 0) ~ TRT01P。"
 "arg-hint:The times the difference is estimated at, e.g. c(180, 365).","差を推定する時点。例：c(180, 365)。"
 arg-hint:Columns whose levels form the subgroups (all combinations).,水準で部分集団を作る列（すべての組み合わせ）。
 arg-hint:Columns whose levels form the subgroups (only the combinations present).,水準で部分集団を作る列（データにある組み合わせだけ）。

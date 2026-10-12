@@ -323,7 +323,9 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   head <- .banner(
     paste("Program    :", file.path(lay[["programs_tfl"]], info$program)),
     paste0("Output     : ", output_id, " (", type, ") -> ", info$file),
-    if (!is.null(desc)) paste("Description:", desc),
+    # wrapped as the ARD banner's Analyses: are
+    if (!is.null(desc)) strwrap(desc, width = 74, initial = "Description: ",
+                                prefix = strrep(" ", 13)),
     if (length(titles)) paste("Title      :", titles),
     paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
            ", ", format(date, "%Y-%m-%d")),
@@ -361,18 +363,18 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 
   c(head,
     "",
-    "stopifnot(\"run it from the study folder (the one with study.yml)\" = file.exists(\"study.yml\"))",
+    .study_guard,
     "# the study's setup, and the header, footer and tokens of every report",
     sprintf("source(%s)", .r_string(file.path(lay[["programs_tfl"]],
                                                .report_setup_file))),
     if (!is.null(design)) .fig_source_lines(),
     "",
-    paste("report_id <-", .r_string(output_id)),
+    .report_id_line(output_id),
     "",
     data_part,
     "",
-    report_part,
-    "")
+    # (no blank line at the end: a file ends on its last line)
+    report_part)
 }
 
 # The report part of a report program, written out from its definition by
@@ -432,13 +434,11 @@ program_code <- function(x, output_id, date = Sys.Date()) {
              " defines it"),
       tflspec::tfl_table_code(sp, output_id, pipe = "|>"),
       ""),
-    paste0("# the report -- page, running header and footer, titles and ",
-           "footnotes -- as"),
-    paste0("# ", file.path(lay[["spec"]], .report_file), " defines it"),
-    tflspec::tfl_report_code(sp, output_id, content = content,
-                             setup = .uses_report_setup(x)),
+    paste0("# the report, as ", file.path(lay[["spec"]], .report_file), " defines it"),
+    .report_id_code(tflspec::tfl_report_code(sp, output_id, content = content,
+                                             setup = .uses_report_setup(x)), output_id),
     sprintf("generate_rtfreport(doc, %s, overwrite = TRUE)",
-            .r_string(tflspec::tfl_report_path(sp, output_id))),
+            .report_path_code(tflspec::tfl_report_path(sp, output_id), output_id)),
     # a figure from an ARD: the definition of that ARD it was made from
     if (!is.na(.fig_ard_need(x, output_id))) "record_report(report_id, ard = ard_built)"
     else "record_report(report_id)"),
@@ -446,6 +446,29 @@ program_code <- function(x, output_id, date = Sys.Date()) {
       "stop(%s)", .r_string(paste0("tflplanner: the definition of ",
                                    output_id, " does not hold: ",
                                    conditionMessage(e)))))
+}
+
+# `report_id <- "<id>"`: what a report's program sets at its head, and a
+# preview of its data part sets first (the data templates read it)
+.report_id_line <- function(output_id) paste("report_id <-", .r_string(output_id))
+
+# The first line of every program: it runs from the study folder (its
+# setup's source() would fail with a less clear message); under 80 columns
+.study_guard <- "stopifnot(\"run it from the study folder\" = file.exists(\"study.yml\"))"
+
+# The report's own id in its program is `report_id` (set at its head): a
+# program copied for another report changes it in one place.  The RTF's
+# path through its folder's variable; its name, when it is the report's id,
+# made from report_id.
+.report_id_code <- function(code, output_id) {
+  lit <- encodeString(output_id, quote = "\"")
+  gsub(sprintf("file.path(path_programs_tfl, %s)", lit),
+       "file.path(path_programs_tfl, report_id)", code, fixed = TRUE)
+}
+.report_path_code <- function(path, output_id) {
+  if (!identical(basename(path), paste0(output_id, ".rtf"))) return(.path_lit(path))
+  dir <- .path_lit(dirname(path))
+  sprintf("file.path(%s, paste0(report_id, \".rtf\"))", dir)
 }
 
 # programs/tfl/report_setup.R is always written, and every report program
@@ -521,9 +544,11 @@ report_setup_code <- function(x, date = Sys.Date()) {
     "# ARD's numbers -- from which definition of that ARD (tflplanner reads it)",
     "record_report <- function(output_id, ard = \"\") {",
     paste0("  sf <- ", .r_string(sf)),
+    # the study setup's fingerprint on a line of its own
+    paste0("  setup <- ", .setup_hash_code()),
     "  row <- data.frame(output_id = output_id,",
     "                    built = format(Sys.time(), \"%Y-%m-%d %H:%M:%S\"),",
-    paste0("                    setup = ", .setup_hash_code(), ","),
+    "                    setup = setup,",
     "                    ard = ard,",
     "                    stringsAsFactors = FALSE)",
     "  dir.create(dirname(sf), recursive = TRUE, showWarnings = FALSE)",

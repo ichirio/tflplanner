@@ -11,7 +11,7 @@ test_that("a user-code report's program reads its data and leaves content", {
   expect_true(any(code == "content <- report_content(content)"))
   # written once in fig_setup.R, not in each program
   expect_false(any(grepl("report_content <- function", code, fixed = TRUE)))
-  expect_true(any(grepl("rtf_tables(doc, content", code, fixed = TRUE)))
+  expect_true(any(grepl("  rtf_tables(content", code, fixed = TRUE)))
   expect_silent(parse(text = code))
   # no ARD unless the report says so
   expect_false(any(grepl("this report's ARD", code, fixed = TRUE)))

@@ -189,7 +189,9 @@ test_that("the designer shows a piece's own lines of the design's code", {
   # the lines the script has with the piece and not without it
   lines_of <- function(s) strsplit(.piece_code(code, d, s, make), "\n", fixed = TRUE)[[1L]]
   base <- lines_of(list(sec = "layers", i = 1L))
-  expect_true(startsWith(base[1L], "fig <- ggsurvfit("))
+  # (and the palette: the code without the layer has no colours to use)
+  expect_true(startsWith(base[1L], "pal <- setNames("))
+  expect_true(any(startsWith(base, "fig <- ggsurvfit(")))
   expect_false(any(grepl("^# ----|^library", base)))
   # the flag: the filter line it is in
   fl <- lines_of(list(sec = "data", i = 3L))
