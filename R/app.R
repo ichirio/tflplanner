@@ -2053,7 +2053,7 @@ app_server <- function(input, output, session, start) {
         type = "button", class = "btn-close",
         onclick = "Shiny.setInputValue('update_note_hide', true);"))
   })
-  # a home inside the study folders (set before 0.0.2.9194, #359): said,
+  # a home inside the study folders (set before 0.0.2.9197, #359): said,
   # nothing moved -- the user moves it
   output$home_note <- shiny::renderUI({
     rv$studies_ver

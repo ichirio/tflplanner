@@ -18,7 +18,7 @@
 # The home and the study folders: the home holds them (<home>/studies, a
 # new home's) or sits beside them (C:/tflplanner_home and C:/studies), never
 # inside them -- tidying the studies would delete it (#359).  Before
-# 0.0.2.9194 the state was at <home>/studies/<STUDY_ID>: moved on first use.
+# 0.0.2.9197 the state was at <home>/studies/<STUDY_ID>: moved on first use.
 #
 # The definition files in a study folder (spec/, study.yml) are the study's
 # source: written on every save, and read back on open when they changed
@@ -284,7 +284,7 @@ studies_root <- function(home = tflplanner_home()) {
   file.path(home, "state", id)
 }
 
-# Before 0.0.2.9194 a study's state was at <home>/studies/<ID>, the name a
+# Before 0.0.2.9197 a study's state was at <home>/studies/<ID>, the name a
 # new home's study folders have now: moved to <home>/state/<ID>, once a
 # session -- moved, never deleted; an item already at the new place stays
 # where it was (said); a folder left empty goes.  A study folder that was
