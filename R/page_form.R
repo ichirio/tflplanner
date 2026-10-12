@@ -451,7 +451,9 @@ $(document).on('shiny:value', function(e) {
                                               pattern = pattern, t = t))),
     # a figure's size on the page: its own, or (blank) the page's body
     if (report && identical(report_info(x, id)$type, "figure")) card(
-      t("Figure size"), .page_fig_size_ui(x, id, pattern, t)),
+      with_tip(t("Figure size"),
+               t("Blank: the page's body (its width; its height less the titles and footnotes). The figure is drawn at this size, its text as its theme says.")),
+      .page_fig_size_ui(x, id, pattern, t)),
     card(t("Header"), .page_lines_ui(x, id, "header", pattern, t)),
     card(t("Titles"), .page_heading_ui(x, id, t),
          .page_lines_ui(x, id, "titles", pattern, t), .page_insert_ui(x, id, t)),
@@ -487,8 +489,7 @@ $(document).on('shiny:value', function(e) {
           shiny::tags$button(type = "button", class = "pg-act btn btn-link",
                              `data-act` = "reset", `data-sheet` = f$sheet, `data-col` = f$col,
                              t("Fit to the page"))))
-    })),
-    shiny::div(class = "pg-from", t("Blank: the page's body (its width; its height less the titles and footnotes). The figure is drawn at this size, its text as its theme says.")))
+    })))
 }
 
 # A line number for a report's new line: after the last line its page has
