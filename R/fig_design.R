@@ -278,6 +278,9 @@ preview_figure <- function(study, output_id,
   on.exit(setwd(owd), add = TRUE)
   e <- new.env(parent = .helpers_env(globalenv()))
   for (d in names(data)) assign(make.names(tolower(d)), data[[d]], envir = e)
+  # the days in a month ... as the study's setup sets them
+  u <- .study_time_units(study$path)
+  for (k in names(u)) assign(k, u[[k]], envir = e)
   if (!is.null(ard)) assign("ard", ard, envir = e)
   warns <- character()
   err <- NULL

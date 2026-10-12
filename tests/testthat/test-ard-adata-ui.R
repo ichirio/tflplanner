@@ -89,7 +89,7 @@ test_that("the ARD tab shows a report's analysis data and makes one", {
     expect_match(output$adata_detail$html, "adata_id", fixed = TRUE)
     session$setInputs(adata_from = "ADSL", adata_pop = "SAF", adata_subj = "",
                       adata_add = NULL, adata_derive = "", adata_distinct = NULL,
-                      adata_id = "adsl_saf", adata_label = "Safety set")
+                      adata_id = "adsl_saf", adata_label = "Safety Analysis Set")
     session$setInputs(adata_preview = 1)
     expect_match(output$adata_preview_out$html, "subjects", fixed = TRUE)
     session$setInputs(adata_save = 1)

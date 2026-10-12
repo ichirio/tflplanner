@@ -168,10 +168,13 @@
     # 1, copied when the study is made): one line of R a row
     # (no tflspec: the programs call the study's programs/study_helpers.R)
     setup_code = .df(
-      code = c("library(cards)", "library(dplyr)", "library(rtfreporter)"),
+      code = c("library(cards)", "library(dplyr)", "library(rtfreporter)",
+               .time_unit_lines()),
       note = c("the ARD programs' cards calls",
                "the programs' data steps (filter(), mutate() ...)",
-               "the report programs' rtfreporter calls")),
+               "the report programs' rtfreporter calls",
+               "the days in a week, a month, a year: a figure's time unit divides by them",
+               NA, NA)),
     listing_types = .df(type = "multiline", label = "multiline",
                         note = "rtfreporter's listing type: / separator, gutters, a blank row per record"),
     # a TOC in the company's layout: which of its columns is what -- the
@@ -190,15 +193,17 @@
                           keyword = character(), rank = character(),
                           note_ja = character(), note_en = character(),
                           args = character()),
+    # the analysis sets, by ICH E9's names (a report's {OUTPUT_POPULATION}
+    # is its set's name when no row of the tokens sheet says one)
     populations = .df(
-      population_id = c("SAF", "FAS", "PPS", "ENR"),
+      population_id = c("SAF", "FAS", "PPS", "ENR", "RAND", "PK"),
       dataset = "ADSL",
       where = c("SAFFL == \"Y\"", "FASFL == \"Y\"", "PPROTFL == \"Y\"",
-                "ENRLFL == \"Y\""),
+                "ENRLFL == \"Y\"", "RANDFL == \"Y\"", "PKFL == \"Y\""),
       derive = c("TRTA = TRT01A", "TRTP = TRT01P", "TRTP = TRT01P",
-                 "TRTP = TRT01P"),
-      note = c("Safety set", "Full analysis set", "Per-protocol set",
-               "Enrolled")),
+                 "TRTP = TRT01P", "TRTP = TRT01P", "TRTA = TRT01A"),
+      note = c("Safety Analysis Set", "Full Analysis Set", "Per Protocol Set",
+               "Enrolled Set", "Randomized Set", "Pharmacokinetic Analysis Set")),
     datasets = .df(
       dataset = c("ADSL", "ADAE", "ADLB", "ADVS", "ADEG", "ADEX", "ADCM",
                   "ADMH", "ADTTE", "ADRS", "DM", "AE", "CM", "MH", "EX",

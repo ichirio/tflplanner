@@ -71,7 +71,8 @@ study_review <- function(study, output_id = NULL, data = c("cached", "read", "no
   }
   more <- list(.rule_d01(study), .rules_fig_ard(study), .rule_p02(study))
   if (inherits(facts, "tfl_data_facts")) {
-    more <- c(more, list(.rule_d02(study, attr(facts, "not_read"))))
+    more <- c(more, list(.rule_d02(study, attr(facts, "not_read")),
+                         .rule_d03(facts)))
   }
   if (isTRUE(deep)) more <- c(more, list(.rule_p01(p)))
   r <- .review_bind(c(list(r), more))
@@ -403,6 +404,21 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   if (!length(not_read)) return(NULL)
   .review_bind(lapply(not_read, function(g)
     .rv_row("D02", NA_character_, "datasets", g, "", args = g)))
+}
+
+# D03: a dataset column named like a constant of the programs (the days in
+# a week, a month, a year: days_per_month ...).  The programs say the
+# constant's name as it is (AVAL / days_per_month); a column of that name
+# would be read instead -- the naming rule: no program name is a column's
+.rule_d03 <- function(facts) {
+  ds <- facts$datasets
+  if (!length(ds)) return(NULL)
+  const <- .program_constants()
+  .review_bind(unlist(lapply(names(ds), function(g) {
+    cols <- ds[[g]]$columns$name %||% character()
+    lapply(intersect(cols, const), function(cn)
+      .rv_row("D03", NA_character_, "datasets", g, "", args = c(g, cn)))
+  }), recursive = FALSE))
 }
 
 # P02: a study program that calls one of the six functions tflspec no

@@ -1319,8 +1319,10 @@
     code <- tryCatch(.fig_design_script(d, id, codelists = cl),
                      error = function(e) conditionMessage(e))
     if (length(code) == 1L && !grepl("\n", code)) return(code)
-    .piece_code(code, d, s, function(d, codelists = TRUE)
+    out <- .piece_code(code, d, s, function(d, codelists = TRUE)
       .fig_design_script(d, id, codelists = if (codelists) cl))
+    # (a note, not code: in the app's language)
+    if (startsWith(out, "(")) t(out) else out
   }
   output$pd_piece_code <- shiny::renderText(piece_code("figure"))
   output$pd_piece_code_data <- shiny::renderText(piece_code("data"))
@@ -1366,6 +1368,8 @@
 # apart by "# ..."; the figure settings: the plot section; a whole-script
 # layer: the script.
 .piece_code <- function(code, d, s, make) {
+  # (the piece itself: `d` loses it below, to make the code without it)
+  p <- if (identical(s$sec, "data") && s$i <= length(d$data)) d$data[[s$i]]
   whole <- identical(s$sec, "layers") &&
     identical(d$layers[[s$i]]$layer %||% "", "figure")
   out <- if (whole) code else if (identical(s$sec, "plot")) {
@@ -1380,6 +1384,10 @@
     if (is.null(other)) character() else .lines_added(code, other)
   }
   while (length(out) && !nzchar(trimws(out[length(out)]))) out <- out[-length(out)]
+  # a time already in days: nothing to change (ADTTE's AVAL is in days)
+  if (!length(out) && identical(p$step, "time_unit") && identical(p$unit %||% "days", "days")) {
+    return(t_static("(no line: the time is in days already; months, weeks or years divide it)"))
+  }
   if (!length(out)) return(t_static("(nothing yet: this piece writes no line on its own)"))
   paste(out, collapse = "\n")
 }

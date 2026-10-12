@@ -2858,7 +2858,6 @@ Right (in),右 (in)
 (blank line),（空行）
 Insert (into the field last clicked):,差し込み（最後にクリックした欄へ）：
 "The title the header prints: its {OUTPUT_TITLE}, this report's token.",ヘッダーが印字するタイトル：その {OUTPUT_TITLE}（この帳票のトークン）。
-Titles,タイトル
 Footnotes,脚注
 Edit the patterns...,型を編集...
 (no other pattern yet: Edit the patterns... makes one),（ほかの型はまだありません：「型を編集...」で作れます）
@@ -2879,3 +2878,36 @@ The run's programs read no data file of the data catalog.,実行するプログ�
 "Data kept: %d files, %s.",含めるデータ：%d ファイル、%s。
 "Over %s: every run keeps its own copy, so the runs folder grows by this much each time.",%s を超えます。実行ごとに写しを持つので、runs フォルダは毎回この分だけ大きくなります。
 "Not found, not kept: %s.",見つからないため含めません：%s。
+"The dataset %s has a column %s, the name of a constant of the programs (the days in a week, a month, a year).",データセット %s に列 %s があります。プログラムの定数（1 週・1 か月・1 年の日数）と同じ名前です。
+Rename the column in the data: a program would read it instead of the constant.,データの列名を変えてください：プログラムが定数の代わりにその列を読んでしまいます。
+"(no line: the time is in days already; months, weeks or years divide it)",（行なし：時間はもう日単位です。月・週・年にすると割り算の行が入ります）
+(nothing yet: this piece writes no line on its own),（まだ何もありません：この部品だけで書く行はありません）
+Standard (= %s),Standard（%s も同じ）
+NAME,名前
+its text,その文
+(empty),（空）
+"The study's (its tokens sheet, Standard)",試験のもの（tokens シートの Standard）
+"rtfreporter's, as the RTF is written",rtfreporter のもの（RTF を書くときに入る）
+the pages,総ページ数
+the program's path,プログラムのパス
+the date and time,日時
+The header's {OUTPUT_TITLE},ヘッダーの {OUTPUT_TITLE} に入る文
+"What a header, footer, title or footnote can say:",ヘッダー・フッター・タイトル・脚注で使えるもの：
+The paper is the page's first property: a pattern that changes it says so in its name (A4_Compact).,用紙はページのいちばん基本の設定です。用紙を変える型は、名前でそれを言ってください（A4_Compact）。
+"This report's title, which the header prints where it says {OUTPUT_TITLE}: changed here only (a TOC taken in writes it; the report list shows it). It is not a title line of its own (the lines below are).",この帳票のタイトル。ヘッダーが {OUTPUT_TITLE} と書いた所に印字します。変えるのはここだけです（TOC を取り込むと入り、帳票リストにも出ます）。別のタイトル行ではありません（タイトル行は下の行です）。
+"This page's own tokens: add, change, remove. The report list's (its ID, title, analysis set, section) are below, with where each is changed.",このページ独自のトークン：追加・変更・削除。帳票リストのもの（ID・タイトル・解析対象集団・セクション）は下にあり、それぞれ変える場所が書いてあります。
+The report list's (changed where they come from),帳票リストのもの（元の場所で変えます）
+the report's ID,帳票の ID
+the TOC taken in,取り込んだ TOC
+made from the ID,ID から作られます
+the report's title,帳票のタイトル
+"Change it in Titles, below",下の「タイトル」で変えます
+the label of the report's analysis set (%s),帳票の解析対象集団（%s）のラベル
+no analysis set chosen,解析対象集団は未選択
+Change it in step 1,段 1 で変える
+the report's section,帳票のセクション
+no section,セクションなし
+Change it in the report's section (Data code),帳票のセクションで変える（データコード）
+Change it in the report list (Rename),帳票リストで変える（名前の変更）
+"{%s} is rtfreporter's, filled as the RTF is written: give your token another name.",{%s} は rtfreporter のもので、RTF を書くときに入ります。自分のトークンには別の名前を付けてください。
+"{%s} is the report list's: change it where it comes from (the list below says where), or give your token another name.",{%s} は帳票リストのものです。元の場所で変えるか（下の一覧に場所があります）、自分のトークンに別の名前を付けてください。

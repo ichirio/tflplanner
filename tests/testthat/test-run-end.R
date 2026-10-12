@@ -79,7 +79,7 @@ test_that("the marks a run sent are the browser's: one span a report", {
 
 test_that("the stamp of a study's run results: the ARD's status and the batches, not the logs", {
   d <- withr_tempdir()
-  expect_identical(.run_files_stamp(d), c(ard = "", runs = ""))
+  expect_identical(.run_files_stamp(d), c(ard = "", out = "", runs = ""))
   dir.create(file.path(d, study_layout()[["ard"]]), recursive = TRUE)
   f <- file.path(d, study_layout()[["ard"]], "ard_status.csv")
   writeLines("output_id", f)
@@ -95,4 +95,11 @@ test_that("the stamp of a study's run results: the ARD's status and the batches,
   s2 <- .run_files_stamp(d)
   expect_identical(s2[["ard"]], s1[["ard"]])
   expect_match(s2[["runs"]], "^1 ")
+  # a report's RTF made (each report program, during the run): its mark
+  # follows at once, not at the run's end
+  dir.create(file.path(d, study_layout()[["tfl"]]), recursive = TRUE)
+  writeLines("x", file.path(d, study_layout()[["tfl"]], "T1.rtf"))
+  s3 <- .run_files_stamp(d)
+  expect_match(s3[["out"]], "^1 ")
+  expect_identical(s3[c("ard", "runs")], s2[c("ard", "runs")])
 })
