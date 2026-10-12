@@ -3051,3 +3051,15 @@ Rework,手直し
 Rework: usually blank (the standard one). Write code to change the data before the table is made.,手直し: ふつうは空欄（標準のもの）。表を作る前にデータを変えるコードを書きます。
 "A table: make `data` from `ard` (normalize_ard(), then mutate() ...); blank = the company template (normalize). A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step 1 or 2.)",表: `ard` から `data` を作ります（normalize_ard() のあと mutate() など）。空欄 = 会社の雛形（正規化）。一覧: 条件のあと、並べる前に `data` を変えます。（手順全体を自分のコードにするときは、手順 1 か 2 の上の R プログラムで）
 A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead: R program at the top of this step.,新しい図: 最初の一歩を選んでください（テンプレートか空から。どちらもデザイナーの層になります）。ggplot のコードを自分で書くときは、この手順の上の R プログラムで。
+"On the page %s x %s in (step 3), %s dpi (shown at screen resolution)",ページ上で %s x %s インチ（手順 3）、%s dpi（画面の解像度で表示）
+Figure size,図の大きさ
+Width (in),幅（インチ）
+Height (in),高さ（インチ）
+(fit: %s),（ページに合わせる: %s）
+Fit to the page,ページに合わせる
+"Blank: the page's body (its width; its height less the titles and footnotes). The figure is drawn at this size, its text as its theme says.",空欄: ページの本文の大きさ（幅はそのまま、高さはタイトルと脚注を除いた分）。図はこの大きさで描かれ、文字の大きさはテーマのとおりです。
+%s x %s in%s,%s x %s インチ%s
+ (the page's body),（ページの本文）
+(the figure: [Run the code] in step 2 draws it here),（図: 手順 2 の［試しに実行］でここに描かれます）
+(the figure: its design in step 2 draws it here),（図: 手順 2 のデザインからここに描かれます）
+The resolution it is drawn at; its size is its report's (the page step).,描く解像度。大きさは帳票のもの（ページの手順）です。

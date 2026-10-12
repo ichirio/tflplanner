@@ -9551,13 +9551,53 @@ app_server <- function(input, output, session, start) {
       pv <- tryCatch(preview_now(), error = function(e) NULL)
       if (!is.null(pv$pages)) preview_html(pv$pages[1L], max_pages = 1L) else
         shiny::div(class = "text-muted small", pv$error %||% t("(the table)"))
+    } else if (identical(info$type, "figure")) {
+      page_sample_figure(p, id)
     } else {
-      shiny::div(class = "text-muted small text-center py-4",
-                 if (identical(info$type, "figure")) t("(the figure: see step 2)") else
-                   t("(the listing: see step 2)"))
+      shiny::div(class = "text-muted small text-center py-4", t("(the listing: see step 2)"))
     }
     .page_sample_html(p, id, rv$meta$study_id %||% "", body,
                       program = info$program)
+  }
+  # a figure on its page: drawn at its size (a design's, drawn once for a
+  # design and size; one of its own code's, its last run in step 2), as
+  # wide on the sample as on the page
+  page_fig_memo <- new.env(parent = emptyenv())
+  page_sample_figure <- function(p, id) {
+    sz <- .fig_size_of(p, id)
+    body_w <- .fig_size_of(set_page_cell(p, "report", "figure_width_in", id, NA), id)$width_in
+    pct <- if (isTRUE(sz$fit[["width"]])) 100 else round(min(100, 100 * sz$width_in / body_w))
+    caption <- shiny::div(class = "text-muted small text-center",
+                          sprintf(t("%s x %s in%s"), sz$width_in, sz$height_in,
+                                  if (any(sz$fit)) t(" (the page's body)") else ""))
+    img <- function(bytes) shiny::tags$img(
+      src = paste0("data:image/png;base64,", jsonlite::base64_enc(bytes)),
+      style = sprintf("width: %s%%; height: auto; display: block; margin: 0 auto;", pct))
+    png <- if (.is_code_step(p, id, "content")) {
+      res <- uc_res()
+      figs <- if (!is.null(res) && is.null(res$error)) .code_preview_parts(res$content)$figures
+      if (length(figs)) figs[[1L]]
+    } else {
+      design <- fig_design(p, id)
+      if (!is.null(design)) {
+        key <- list(design, sz, id)
+        if (!identical(page_fig_memo$key, key)) {
+          s <- rv$study
+          s$planner <- p
+          r <- tryCatch(preview_figure(s, id, design, max_px = 1000), error = function(e) NULL)
+          page_fig_memo$key <- key
+          page_fig_memo$png <- if (!is.null(r$png) && file.exists(r$png))
+            readBin(r$png, "raw", file.size(r$png))
+        }
+        page_fig_memo$png
+      }
+    }
+    if (is.null(png)) {
+      return(shiny::div(class = "text-muted small text-center py-4",
+                        if (.is_code_step(p, id, "content")) t("(the figure: [Run the code] in step 2 draws it here)")
+                        else t("(the figure: its design in step 2 draws it here)")))
+    }
+    shiny::tagList(img(png), caption)
   }
   output$builder_preview <- shiny::renderUI({
     # no ARD yet: the note above says it, with its button; here only a word

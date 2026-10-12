@@ -449,12 +449,46 @@ $(document).on('shiny:value', function(e) {
     card(t("Paper, margins and font"),
          shiny::div(class = "pg-grid", lapply(.page_fields, .page_field_ui, x = x, id = id,
                                               pattern = pattern, t = t))),
+    # a figure's size on the page: its own, or (blank) the page's body
+    if (report && identical(report_info(x, id)$type, "figure")) card(
+      t("Figure size"), .page_fig_size_ui(x, id, pattern, t)),
     card(t("Header"), .page_lines_ui(x, id, "header", pattern, t)),
     card(t("Titles"), .page_heading_ui(x, id, t),
          .page_lines_ui(x, id, "titles", pattern, t), .page_insert_ui(x, id, t)),
     card(t("Footnotes"), .page_lines_ui(x, id, "footnotes", pattern, t),
          .page_insert_ui(x, id, t)),
     card(t("Footer"), .page_lines_ui(x, id, "footer", pattern, t)))
+}
+
+# A figure's width and height on the page (the report sheet's
+# figure_width_in / figure_height_in): a number its own, blank the page's
+# body -- shown in the placeholder (tflspec::tfl_fig_page_size())
+.page_fig_size_ui <- function(x, id, pattern, t) {
+  sz <- .fig_size_of(x, id)
+  fields <- list(
+    list(sheet = "report", col = "figure_width_in", label = "Width (in)", kind = "number",
+         default = sz$width_in, fit = sz$fit[["width"]]),
+    list(sheet = "report", col = "figure_height_in", label = "Height (in)", kind = "number",
+         default = sz$height_in, fit = sz$fit[["height"]]))
+  shiny::tagList(
+    shiny::div(class = "pg-grid", lapply(fields, function(f) {
+      v <- page_value_from(x, f$sheet, f$col, id)
+      own <- identical(v$from, "own")
+      shiny::div(
+        class = "pg-field",
+        shiny::tags$label(t(f$label)),
+        shiny::tags$input(class = "pg-in form-control form-control-sm", `data-kind` = "cell",
+                          `data-sheet` = f$sheet, `data-col` = f$col,
+                          `data-key` = paste(f$sheet, f$col, sep = ":"), type = "text",
+                          value = if (own) v$value else "",
+                          placeholder = sprintf(t("(fit: %s)"), f$default)),
+        if (own) shiny::div(
+          shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t)),
+          shiny::tags$button(type = "button", class = "pg-act btn btn-link",
+                             `data-act` = "reset", `data-sheet` = f$sheet, `data-col` = f$col,
+                             t("Fit to the page"))))
+    })),
+    shiny::div(class = "pg-from", t("Blank: the page's body (its width; its height less the titles and footnotes). The figure is drawn at this size, its text as its theme says.")))
 }
 
 # A line number for a report's new line: after the last line its page has

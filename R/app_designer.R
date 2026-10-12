@@ -1346,8 +1346,8 @@
     z <- r$size
     if (is.null(z)) return(NULL)
     shiny::p(class = "text-muted small mb-1",
-             sprintf(t("Saved as %s x %s %s, %s dpi (shown at screen resolution)"),
-                     z$width, z$height, z$units, z$dpi))
+             sprintf(t("On the page %s x %s in (step 3), %s dpi (shown at screen resolution)"),
+                     z$width, z$height, z$dpi))
   })
   output$pd_checks <- shiny::renderUI({
     r <- pv()

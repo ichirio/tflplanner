@@ -54,7 +54,8 @@ test_that("a figure with no design reads its data; its content its code", {
   code <- data_lines(p, "F1")
   expect_true("adsl <- readRDS(\"data/adam/adsl.rds\")" %in% code)
   expect_true("content <- report_content(content)" %in% code)
-  expect_true("doc <- rtf_figures(doc, content)" %in% program_code(p, "F1"))
+  expect_true(any(startsWith(program_code(p, "F1"), "doc <- rtf_figures(doc, content, width_twips = ")))
+  expect_true(any(startsWith(data_lines(p, "F1"), "content <- fig_sized(content, ")))
 })
 
 test_that("listing and figure rows follow the report and are saved", {

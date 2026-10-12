@@ -9,7 +9,7 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   s$planner <- .set_report_type(s$planner, "F-14-2-1", "figure")
   d <- tflspec::tfl_fig_template("mean_ci", data = "ADVS", param = "SYSBP",
                                   value = "CHG", title = "SBP: mean change")
-  d$plot$width <- 7L
+  d$plot$dpi <- 150
   s$planner <- set_fig_design(s$planner, "F-14-2-1", d)
 
   # the program's plot is the design's code, reading what it needs
@@ -24,7 +24,11 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   expect_false(any(grepl("^plot <- fig$|^fig <- p$|^library[(]", lines)))
   expect_identical(sum(startsWith(lines, "# ---- data ")), 1L)
   expect_lt(which(startsWith(lines, "advs <- ")), which(startsWith(lines, "# ---- plot ")))
-  expect_identical(lines[[length(lines)]], "tfl_check(plot)")
+  expect_true("tfl_check(plot)" %in% lines)
+  # then drawn at its size on the page (step 3), the design's dpi
+  last <- lines[[length(lines)]]
+  expect_true(startsWith(last, "plot <- fig_sized(plot, width_in = "))
+  expect_true(endsWith(last, ", dpi = 150)"))
   expect_true(any(grepl("tfl_colours(", lines, fixed = TRUE)))
   expect_false(any(grepl("ggsave(", code, fixed = TRUE)))
 

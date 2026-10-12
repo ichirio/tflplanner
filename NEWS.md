@@ -1,5 +1,19 @@
 # tflplanner (development version)
 
+- **A figure's size is set on its page (step 3), and the first page shows
+  it** (0.0.2.9205, tflspec >= 0.0.24.9098; the user's request on F-14-2-1:
+  the result pane showed no plot, and its size was in step 2).  Step 3 of
+  a figure has **Figure size**: width and height in inches, the report
+  sheet's `figure_width_in` / `figure_height_in`; blank fits the page's
+  body (its width; its height less the titles and footnotes), the value
+  shown in the field.  The figure is drawn at that size -- its text the
+  size its theme says -- and placed so (`fig_sized()`, written once in
+  `programs/tfl/fig_setup.R`); step 2 keeps only its dpi.  The first page
+  (sample) draws the figure in its body, as wide as on the page: a
+  design's, or one of your own code's last run.  The designer's preview is
+  drawn at the same size.  A design's old width, height and units (which
+  never reached the RTF: a figure was drawn at 6.5 x 4.5 in) go.
+
 - **A report is a table, a listing or a figure; its data step and its
   content step may each be your own R** (0.0.2.9204, tflspec >=
   0.0.24.9097; the user's direction on 9191:

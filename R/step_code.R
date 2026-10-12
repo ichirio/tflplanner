@@ -200,9 +200,15 @@ code_step_ui <- function(prefix, t = identity, lang = "en") {
 .code_step_lines <- function(x, output_id, step) {
   code <- step_code(x, output_id, step)
   leaves <- .step_leaves(report_info(x, output_id)$type, step)
+  # (a figure's content: drawn at its size on the page first)
+  sized <- if (identical(step, "content") &&
+               identical(report_info(x, output_id)$type, "figure")) {
+    utils::tail(.fig_sized_lines(x, output_id, "content"), -1L)
+  }
   c(paste0("# your code: leaves `", leaves, "`"),
     .code_block(code),
     "",
+    sized,
     if (identical(step, "content")) "content <- report_content(content)" else
       sprintf("%s <- report_data(%s, \"%s\")", leaves, leaves, leaves))
 }
