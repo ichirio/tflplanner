@@ -81,6 +81,14 @@ test_that("a TOC gives a report its own tokens, not the title lines the header h
   }
   expect_identical(v("T-14-1-1", "OUTPUT_TITLE"), "Demographics and baseline")
   expect_identical(v("T-14-2-1", "OUTPUT_TITLE"), "Vital signs (edited)")
+  # the edited one is offered (edited here, and changed in the TOC); chosen,
+  # the TOC's text
+  ch <- toc_changes(y, sp2, last)
+  expect_identical(ch$info$action[ch$info$output_id == "T-14-2-1" & ch$info$name == "OUTPUT_TITLE"],
+                   "ask")
+  z2 <- toc_apply(y, sp2, ch, last = last, use_toc = "T-14-2-1|info|OUTPUT_TITLE")
+  d <- sheet_rows(z2, "tokens", "T-14-2-1")
+  expect_identical(d$value[d$name == "OUTPUT_TITLE"], "Vital signs by visit")
 })
 
 test_that("a study whose header says no report tokens gets none from a TOC", {

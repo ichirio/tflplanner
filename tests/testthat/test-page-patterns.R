@@ -249,9 +249,10 @@ test_that("the user's notes: Standard under a pattern, the tokens card, the head
             regexpr(">Paper, margins and font<", h, fixed = TRUE))
   for (k in .pg_info_items) expect_match(h, sprintf('data-kind="info" data-name="%s"', k), fixed = TRUE)
   expect_match(h, "edited here", fixed = TRUE)
-  # the title has no default: its button clears it; the label goes back
-  expect_match(h, 'data-name="OUTPUT_TITLE" title="Removed from the report', fixed = TRUE)
-  expect_match(h, ">Clear<", fixed = TRUE)
+  # no reset buttons (a TOC taken in again overwrites); an empty label is
+  # its default, said by the placeholder
+  expect_false(grepl("info_reset", h, fixed = TRUE))
+  expect_match(h, "(blank: the text made from the ID, Table", fixed = TRUE)
   expect_match(h, "printed on this page", fixed = TRUE)
   expect_match(h, "not printed: no line of this page says {OUTPUT_SECTION}", fixed = TRUE)
   expect_match(h, "pg-token-add", fixed = TRUE)

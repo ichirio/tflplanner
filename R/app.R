@@ -6997,12 +6997,44 @@ app_server <- function(input, output, session, start) {
     sp <- toc_spec()
     r <- ch$reports
     l <- ch$lines
+    kp <- ch$kept
+    inf <- ch$info %||% .toc_no_info()
+    use_all <- isTRUE(input[[toc_id("use_all")]])
     n <- table(factor(r$status, names(toc_status_labels)))
     sheet_lab <- c(titles = t("Title line"), footnotes = t("Footnote line"))
     act_lab <- c(add = t("will be added"), update = t("will be updated"),
                  remove = t("will be taken out (the TOC dropped it)"),
                  ask = t("edited here, and changed in the TOC"),
+                 keep = t("edited here; the TOC's is the same as the last time"),
                  move = t("added here: moves after the TOC's lines"))
+    info_lab <- c(OUTPUT_LABEL = t("Label"), OUTPUT_TITLE = t("Title"),
+                  OUTPUT_POPULATION = t("Analysis set text"), OUTPUT_SECTION = t("Section"))
+    # an item edited here: the TOC's taken only when ticked (or all)
+    choose <- function(input_id) {
+      if (use_all) shiny::span(class = "text-primary", t("(the TOC's: all chosen above)"))
+      else shiny::checkboxInput(input_id, t("Use the TOC's text"), FALSE)
+    }
+    # what was edited here, and what the TOC gives: lines kept, information
+    edited_rows <- function(id) {
+      ki <- which(kp$output_id == id & !is.na(kp$toc))
+      ii <- which(inf$output_id == id)
+      shiny::tagList(
+        lapply(ki, function(k) shiny::div(
+          class = "small", sprintf("%s %s (%s): ", sheet_lab[[kp$sheet[k]]], kp$line[k], act_lab[["keep"]]),
+          shiny::span(class = "text-muted", toc_line_text(kp$now[k])), " \u2192 ",
+          toc_line_text(kp$toc[k]), choose(toc_id(paste0("kept_", k))))),
+        lapply(ii, function(j) {
+          a <- inf$action[j]
+          now <- if (is.na(inf$now[j])) t("(none)") else inf$now[j]
+          shiny::div(
+            class = "small", sprintf("%s (%s): ", info_lab[[inf$name[j]]], act_lab[[a]]),
+            if (a %in% c("keep", "ask")) shiny::tagList(
+              shiny::span(class = "text-muted", now), " \u2192 ", inf$toc[j],
+              choose(toc_id(paste0("info_", j))))
+            else if (a == "add") inf$toc[j]
+            else shiny::tagList(shiny::span(class = "text-muted", now), " \u2192 ", inf$toc[j]))
+        }))
+    }
     types <- stats::setNames(names(.type_labels), t(unname(.type_labels)))
     show_same <- isTRUE(input[[toc_id("show_same")]])
     in_header <- isTRUE(attr(sp, "titles_in_header"))
@@ -7056,8 +7088,7 @@ app_server <- function(input, output, session, start) {
           class = "small", head,
           if (a == "ask") shiny::tagList(
             shiny::span(class = "text-muted", toc_line_text(l$now[k])), " \u2192 ",
-            toc_line_text(l$toc[k]),
-            shiny::checkboxInput(toc_id(paste0("ask_", k)), t("Use the TOC's text"), FALSE))
+            toc_line_text(l$toc[k]), choose(toc_id(paste0("ask_", k))))
           else if (a == "move") shiny::span(class = "text-muted", toc_line_text(l$now[k]))
           else if (a == "add") toc_line_text(l$toc[k])
           else shiny::tagList(shiny::span(class = "text-muted", toc_line_text(l$now[k])),
@@ -7066,12 +7097,17 @@ app_server <- function(input, output, session, start) {
       shiny::tags$tr(
         class = if (st == "missing") "table-warning",
         shiny::tags$td(id), shiny::tags$td(t(toc_status_labels[[st]])),
-        shiny::tags$td(type_cell), shiny::tags$td(what))
+        shiny::tags$td(type_cell),
+        shiny::tags$td(if (st == "new") what else shiny::tagList(what, edited_rows(id))))
     }
-    shown <- which(r$status != "same" | show_same)
+    # edited here: the reports with lines or information to choose for
+    n_edit <- sum(!is.na(kp$toc)) + sum(inf$action %in% c("keep", "ask")) +
+      sum(l$action == "ask")
+    has_edit <- r$output_id %in% c(kp$output_id[!is.na(kp$toc)],
+                                   inf$output_id[inf$action %in% c("keep", "ask")])
+    shown <- which(r$status != "same" | show_same | has_edit)
     skipped <- attr(sp, "skipped")
     n_skip <- if (is.null(skipped)) 0L else NROW(skipped)
-    n_kept <- nrow(ch$kept)
     shiny::tagList(
       shiny::h6(t("What would change")),
       shiny::p(class = "small mb-1",
@@ -7082,8 +7118,12 @@ app_server <- function(input, output, session, start) {
                            sprintf(t("%d heading rows (no report ID) are skipped."), n_skip)),
       if (in_header) shiny::p(class = "small text-muted mb-1",
                               t("The study's header prints each report's title and analysis set ({OUTPUT_TITLE}): the TOC's first title and population go there, not in the title lines.")),
-      if (n_kept) shiny::p(class = "small text-muted mb-1",
-                           sprintf(t("%d lines edited here are kept: the TOC did not change them."), n_kept)),
+      # what was edited here: kept unless the TOC's is chosen, line by
+      # line or all at once
+      if (n_edit) shiny::div(
+        class = "alert alert-info py-1 small mb-1",
+        sprintf(t("%d lines or items were edited here. Unticked, they stay as edited; tick a line's \"Use the TOC's text\", or all of them here, to take the TOC's."), n_edit),
+        shiny::checkboxInput(toc_id("use_all"), t("Use the TOC's text for everything edited here"), use_all)),
       if (n[["same"]]) shiny::checkboxInput(toc_id("show_same"),
                                             t("Show the reports with no change"), show_same),
       shiny::tags$table(
@@ -7110,9 +7150,20 @@ app_server <- function(input, output, session, start) {
     types <- vapply(which(r$status == "new"), function(i)
       input[[toc_id(paste0("type_", i))]] %||% NA_character_, "")
     names(types) <- r$output_id[r$status == "new"]
+    # the TOC's text for what was edited here: ticked, or all
+    all_toc <- isTRUE(input[[toc_id("use_all")]])
+    ticked <- function(prefix, k) all_toc || isTRUE(input[[toc_id(paste0(prefix, k))]])
     ask <- which(l$action == "ask")
-    use <- ask[vapply(ask, function(k) isTRUE(input[[toc_id(paste0("ask_", k))]]), NA)]
-    use_toc <- paste(l$output_id[use], l$sheet[use], l$line[use], sep = "|")
+    use <- ask[vapply(ask, function(k) ticked("ask_", k), NA)]
+    kp <- ch$kept
+    kk <- which(!is.na(kp$toc))
+    kuse <- kk[vapply(kk, function(k) ticked("kept_", k), NA)]
+    inf <- ch$info %||% .toc_no_info()
+    ii <- which(inf$action %in% c("keep", "ask"))
+    iuse <- ii[vapply(ii, function(j) ticked("info_", j), NA)]
+    use_toc <- c(paste(l$output_id[use], l$sheet[use], l$line[use], sep = "|"),
+                 paste(kp$output_id[kuse], kp$sheet[kuse], kp$line[kuse], sep = "|"),
+                 paste(inf$output_id[iuse], "info", inf$name[iuse], sep = "|"))
     off <- toc_offset()
     last <- toc_last_now()
     p <- guarded(toc_apply(rv$p, sp, ch, use_toc = use_toc,
@@ -9982,7 +10033,6 @@ app_server <- function(input, output, session, start) {
         set_page_token(p, id, a$name, r$value[r$name %in% a$name][1L] %||% "")
       },
       token_reset = set_page_token(p, id, a$name, NA_character_),
-      info_reset = .set_report_info(p, id, a$name, NA_character_),
       token_add = {
         nm <- toupper(trimws(a$name %||% ""))
         if (!grepl("^[A-Z][A-Z0-9_]*$", nm)) {

@@ -2936,3 +2936,10 @@ Date and time the file was written; {DATETIME:<format>} for another format,フ�
 Back to the text made from the ID,ID から作る文に戻す
 Back to the label of step 1's analysis set,段 1 の集団のラベルに戻す
 Removed from the report's information,帳票の情報から消します
+"(blank: the text made from the ID, %s)",（空欄なら ID から作る文：%s）
+"(blank: step 1's analysis set, %s)",（空欄なら段 1 の集団のラベル：%s）
+"(blank: step 1's analysis set, none chosen)",（空欄なら段 1 の集団のラベル：未選択）
+edited here; the TOC's is the same as the last time,ここで編集。TOC は前回と同じ
+(the TOC's: all chosen above),（TOC の文：上で全部を選択）
+"%d lines or items were edited here. Unticked, they stay as edited; tick a line's ""Use the TOC's text"", or all of them here, to take the TOC's.",%d 個の行・項目がここで編集されています。チェックしなければ編集したまま残ります。TOC の文にするときは、行ごとの「TOC の文を使う」か、ここで全部をチェックします。
+Use the TOC's text for everything edited here,ここで編集したものを全部 TOC の文にする
