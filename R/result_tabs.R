@@ -80,10 +80,10 @@ $(document).on('shown.bs.tab', '.rp-tabs', function() {
     });
   }, 0);
 });
-// the first page (step 3): actual size (100%) by default; fit to the
-// pane's width when asked, remembered in this browser
+// the first page (step 3): fit to the pane's width by default; actual
+// size (100%) when asked, remembered in this browser
 function rpPageFitOn() {
-  try { return window.localStorage.getItem('rp-page-fit') === '1'; } catch (e) { return false; }
+  try { return window.localStorage.getItem('rp-page-fit') !== '0'; } catch (e) { return true; }
 }
 function rpPageFitApply() {
   var on = rpPageFitOn();

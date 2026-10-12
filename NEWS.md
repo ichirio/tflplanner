@@ -1,5 +1,63 @@
 # tflplanner (development version)
 
+- **A run in the background never veils the page** (the user's report on
+  this version).  While its ARD programs ran, the page went white for an
+  instant every few seconds with the busy cursor: the poll's work (the
+  marks worked out again) made the server busy, and the page's veil --
+  meant for the user's own waits (opening a study, saving) -- came up.
+  The veil now comes only for a busy state that begins right after a
+  click, a key or a changed field; the poll's updates go by unseen.
+- **Step 3's form, the user's notes** (page patterns, 0.0.2.9187): a line
+  a report of a pattern inherits from Standard says "Standard (= Compact)"; the font is Courier or Courier New to choose, or any typed
+  (the defaults are rtfreporter's: Letter, landscape, Courier 9 pt, 0.75
+  in margins); the titles' heading says what it is -- "The header's
+  {OUTPUT_TITLE}", the text the header prints there, not a title line;
+  the tokens card is above the header, with a token added (its name and
+  text) or removed, and beside it what a header, footer, title or
+  footnote can say, and where each comes from (made from the report's ID,
+  the TOC taken in, the study's tokens, rtfreporter's).  The first page's
+  sample is fitted to the pane's width by default.  The pattern's select
+  and its button on one line, the same height.
+- **{OUTPUT_POPULATION} by default the label of the report's analysis
+  set** (step 1's population), for a report no row of the tokens sheet
+  says one for; a TOC taken in, or a value typed in step 3, is such a row
+  and wins.  It is not written to the sheets: the programs, the page's
+  sample and step 3's list of tokens (which says where it comes from) see
+  it.  The same for tables, listings and figures.
+- **The report list's tokens are not set in the page form** (the user's
+  rule).  {OUTPUT_ID}, {OUTPUT_LABEL}, {OUTPUT_TITLE},
+  {OUTPUT_POPULATION} and {OUTPUT_SECTION} are listed read only under
+  step 3's tokens, each with where it comes from and a link to where it
+  changes: the ID and label in the report list (Rename), the analysis set
+  in step 1, the section in the report's section (Data code).  The title
+  has one place: the Titles card's "The header's {OUTPUT_TITLE}" (a TOC
+  taken in writes it), and the report list's Title column now shows it
+  first.  The tokens card's own rows are the page's own tokens only; a
+  token of a report list's or rtfreporter's name ({PAGE} ...) is refused
+  with a message.  {OUTPUT_SECTION} is by default the report's section, as
+  {OUTPUT_POPULATION} its analysis set's label.
+- **The built-in standards name the analysis sets in full**, by ICH E9's
+  names: Safety Analysis Set, Full Analysis Set, Per Protocol Set,
+  Enrolled Set, Randomized Set, Pharmacokinetic Analysis Set (was "Safety
+  set" and the like), so a report's {OUTPUT_POPULATION} reads well by
+  default.  A study's own populations sheet keeps its own labels.
+- **The sample's Compact keeps Standard's paper (Letter)**: only the type
+  (8 pt) and the margins (0.5 in) differ.  The pattern dialog says that a
+  pattern that changes the paper should say so in its name (A4_Compact).
+
+- **The report marks follow a run report by report again** (the user's
+  report on 0.0.2.9186).  Since 0.0.2.9184 the marks of a run in the
+  background changed only when the run had ended: a report's mark needs
+  its file, and the files were not watched.  The reports' output folder is
+  watched now too (each report program writes its file once, so no churn):
+  each mark turns as its report is made, still in place, the page never
+  greyed.
+- **A time-unit step in days says why it writes no line** (the user's
+  report): the time is in days already (ADTTE's `AVAL`), so step 1's "Code
+  of this piece" said "(nothing yet)"; it says so now, and months, weeks or
+  years write the division (`mutate(AVAL = AVAL / 30.4375)`).  The notes
+  of that pane are in the app's language.
+
 - **The page patterns edited in a dialog** (the page-patterns design,
   part C).  "Edit the patterns..." on step 3 opens Standard and each
   pattern on the same form as a report's page: a pattern's values marked

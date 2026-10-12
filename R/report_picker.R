@@ -414,8 +414,9 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
   })
 }
 
-# What a run leaves in a study folder, by modification time, in two parts:
-# `ard`, the study ARD's status (each ARD program writes it); `runs`, the
+# What a run leaves in a study folder, by modification time, in three
+# parts: `ard`, the study ARD's status (each ARD program writes it); `out`,
+# the reports' files (each report program writes its own, once); `runs`, the
 # batches' run.csv (written once, when a batch ends).  Not the logs: they
 # change all through a run, and a change of them says nothing new.
 .run_files_stamp <- function(path) {
@@ -426,6 +427,7 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
     paste(length(f), format(max(file.mtime(f)), "%Y%m%d%H%M%OS3"))
   }
   c(ard = one(file.path(path, lay[["ard"]], "ard_status.csv")),
+    out = one(list.files(file.path(path, lay[["tfl"]]), full.names = TRUE)),
     runs = one(Sys.glob(file.path(path, "runs", "*", "run.csv"))))
 }
 
