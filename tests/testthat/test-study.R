@@ -402,3 +402,23 @@ test_that("a study's state at the old place is moved to <home>/state, never dele
   expect_message(.move_old_stores(home), "is not moved")
   expect_true(file.exists(file.path(home, "studies", "S3", "state.json")))
 })
+
+test_that("one call makes the whole layout; a home that uses workspace keeps it", {
+  old <- options(tflplanner.home = NULL)
+  on.exit(options(old), add = TRUE)
+  h <- file.path(withr_tempdir(), "tflplanner_home")
+  local_mocked_bindings(create_sample_study = function(root, home) {
+    dir.create(file.path(root, "SAMPLE-01"), recursive = TRUE)
+    invisible(NULL)
+  })
+  suppressMessages(setup_tflplanner(home = h, sample = TRUE))
+  expect_true(dir.exists(file.path(h, "state")))
+  expect_true(dir.exists(file.path(h, "studies", "SAMPLE-01")))
+  expect_identical(studies_root(h), normalizePath(file.path(h, "studies"), "/"))
+  # a home set up before, its study folders at <home>/workspace: kept
+  h2 <- file.path(withr_tempdir(), "older")
+  dir.create(h2)
+  yaml::write_yaml(list(studies_root = file.path(h2, "workspace")), file.path(h2, "config.yml"))
+  suppressMessages(setup_tflplanner(home = h2, language = "ja"))
+  expect_match(studies_root(h2), "workspace$")
+})

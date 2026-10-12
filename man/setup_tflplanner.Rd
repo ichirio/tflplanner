@@ -81,6 +81,10 @@ options(old)
 # not run: these remember the home and the study folder for every later
 # session (and the first one asks, step by step)
 setup_tflplanner()
-setup_tflplanner(studies_root = "C:/studies", sample = TRUE)
+# the whole layout in one call: C:/tflplanner_home, its study folders in
+# C:/tflplanner_home/studies, the sample study among them
+setup_tflplanner(home = "C:/tflplanner_home", sample = TRUE)
+# or the study folders beside the home
+setup_tflplanner(home = "C:/tflplanner_home", studies_root = "C:/studies")
 }
 }

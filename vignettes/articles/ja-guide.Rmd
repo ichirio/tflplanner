@@ -128,12 +128,16 @@ tflplanner は、試験フォルダとは別に「ホーム」を持ちます。
 ```{r}
 library(tflplanner)
 setup_tflplanner(
-  studies_root = "C:/studies",   # 新しい試験フォルダを作る場所
-  language     = "ja",           # 画面の言語（既定は "en"）
-  sample       = TRUE            # サンプル試験 SAMPLE-01 を追加する
+  home     = "C:/tflplanner_home",  # ホーム（試験フォルダは C:/tflplanner_home/studies）
+  language = "ja",                  # 画面の言語（既定は "en"）
+  sample   = TRUE                   # サンプル試験 SAMPLE-01 を追加する
 )
-tflplanner_home()                # ホームの場所
+tflplanner_home()                   # ホームの場所
+studies_root()                      # 新しい試験フォルダを作る場所
 ```
+
+これ 1 回で、ホーム・試験フォルダの置き場所・サンプル試験がそろいます。
+試験フォルダをホームとは別の場所に置くときは、`studies_root = "C:/studies"` を足します。
 
 ホームの既定の場所は `tools::R_user_dir("tflplanner", "data")` です。
 別の場所にしたい場合は `setup_tflplanner(home = "D:/tflplanner")` とするか、
