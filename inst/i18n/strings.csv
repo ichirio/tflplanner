@@ -3074,3 +3074,8 @@ The rules,決まり
 A step of your own R: the rules,自分の R の手順: 決まり
 It leaves `data` (a figure: `df`). The rules: at the top of this step.,`data`（図は `df`）を残します。決まりはこの手順の上にあります。
 It leaves `content`. The rules: at the top of this step.,`content` を残します。決まりはこの手順の上にあります。
+"table / listing / figure; blank: table. A step of the report may be its own code instead (data_code, content_code).",table / listing / figure。空欄: table。帳票の手順は、代わりに自分のコードにもできます（data_code、content_code）。
+"A figure report: the figure's width in inches, drawn and placed so (rtf_figures(width_twips = )); blank: the page's body width (tfl_fig_page_size()).",図の帳票: 図の幅（インチ）。この幅で描いて置きます（rtf_figures(width_twips = )）。空欄: ページの本文の幅（tfl_fig_page_size()）。
+"A figure report: the figure's height in inches, drawn and placed so; blank: the page's body height less its title and footnote lines (tfl_fig_page_size()).",図の帳票: 図の高さ（インチ）。この高さで描いて置きます。空欄: ページの本文の高さからタイトルと脚注の行を除いた分（tfl_fig_page_size()）。
+"The report's own code for its data step, instead of the definition: R that leaves data (a table, a listing) or df (a figure); the datasets the report registers and, when it reads its ARD, ard are in reach (tfl_check_code()). Blank: the definition makes the data.",データの手順を定義の代わりに作る帳票自身のコード: data（表・Listing）または df（図）を残す R。帳票が登録したデータセットと、ARD を読むときは ard が使えます（tfl_check_code()）。空欄: 定義がデータを作る。
+"The report's own code for its content step, instead of the definition: R that leaves content -- a table plan, a data frame, rtftable pages, a ggplot or rtfplot figure, or a list of them -- for the report step to dress. Blank: the definition makes the content.",内容の手順を定義の代わりに作る帳票自身のコード: content（表の plan、データフレーム、rtftable のページ、ggplot か rtfplot の図、またはそれらのリスト）を残す R。ページと出力の手順がそれを整えます。空欄: 定義が内容を作る。
