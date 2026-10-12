@@ -144,7 +144,21 @@ listing_types <- function() company_standards()$listing_types
 # `# ---- data ----` and `# ---- plot ----` -- and the figure checks
 .fig_design_lines <- function(x, output_id, design, source = TRUE) {
   c(if (source) c(.fig_source_lines(), ""),
-    .fig_design_plot(design, output_id, codelists = .study_codelists(x), x = x))
+    .fig_design_plot(design, output_id, codelists = .fig_codelists(x, output_id), x = x))
+}
+
+# A figure's code lists: its own rows, and -- a figure printing a table's
+# numbers (ard_source table:<id>) -- that table's for the variables it has
+# none of: the figure shows its arms in the table's order and colours
+.fig_codelists <- function(x, output_id) {
+  cl <- .study_codelists(x)
+  src <- .fig_ard_source(x, output_id)
+  if (is.null(cl) || !identical(src$kind, "table")) return(cl)
+  tb <- cl[cl$output_id %in% src$id & !cl$variable %in%
+             cl$variable[cl$output_id %in% output_id], , drop = FALSE]
+  if (!nrow(tb)) return(cl)
+  tb$output_id <- output_id
+  rbind(cl, tb)
 }
 
 # A designed figure's code in its two steps: `data` (its ARD, the datasets
@@ -175,6 +189,7 @@ listing_types <- function() company_standards()$listing_types
 preview_listing <- function(study, output_id) {
   code <- data_lines(study$planner, output_id, todo = FALSE)
   if (is.null(code)) stop("The listing has no data yet.", call. = FALSE)
+  code <- c(.report_id_line(output_id), code)
   owd <- setwd(study$path)
   on.exit(setwd(owd), add = TRUE)
   e <- new.env(parent = .helpers_env(asNamespace("rtfreporter")))

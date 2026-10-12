@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **A step of your own R: its rules in full, and the sample in that form**
-  (0.0.2.9206, pair B of the user-program design).  **The rules** next to
+  (0.0.2.9205, pair B of the user-program design).  **The rules** next to
   the GUI | R program switch opens the seven rules (the datasets
   registered, the ARD through the report, what each step leaves, code
   inside the definition stays there, no `library()`, no side effects, one
@@ -30,8 +30,8 @@
   never reached the RTF: a figure was drawn at 6.5 x 4.5 in) go.
 
 - **A report is a table, a listing or a figure; its data step and its
-  content step may each be your own R** (0.0.2.9204, tflspec >=
-  0.0.24.9097; the user's direction on 9191:
+  content step may each be your own R** (0.0.2.9205, tflspec >=
+  0.0.24.9098; the user's direction on 9191:
   "user code" was a fourth type forced into line; the design
   `user-program-per-step-design-2026-10-12`, D1-D7 as recommended).  At
   the top of step 1 and step 2, **GUI | R program**: R program makes the
@@ -63,7 +63,7 @@
   figures written by hand are gone; `add_output()` has no `data_code`.
 
 - **A figure's data steps on any object** (the user's questions Q1-Q3 on
-  0.0.2.9186; tflspec >= 0.0.24.9095).  A data step's form has **In** and
+  0.0.2.9186; tflspec >= 0.0.24.9098).  A data step's form has **In** and
   **Out** on one line at its foot: the object it reads and the one it
   leaves, each shown as it is when left empty (`df`, the object above,
   the step's own name).  Typed, a step works on another object
@@ -100,6 +100,54 @@
   principle): a piece's lead text is in its heading's (i), a field's help
   is its placeholder and tooltip (no line under it), and a named step's
   name is its **Out**, beside **In**.
+
+- **The generated programs, reviewed again** (#347, with tflspec 0.0.24.9097).
+  The sample's tables and listing are the same RTF byte for byte; the two
+  designed figures change on purpose:
+  - *A figure printing a table's numbers shares its code lists*
+    (`ard_source` `table:<id>`): the KM figure F-14-2-3 shows Placebo, Low
+    Dose, High Dose in the table's order and colours (it was alphabetical,
+    High Dose second).  The forest plot F-14-2-4 has code lists of its own:
+    its subgroups print as Female / Male, 18-64 years, and its subgroup axis
+    has no title.
+  - *A failed program says why in the run's record*: R's error output is kept
+    beside the log (`<program>.err`) and, when logrx logged no error, its last
+    `Error` line is the note of `run.csv` and of `ard_status.csv` (a package
+    too old stopped a program with an empty note).  `broom (>= 1.0.8)` and
+    `broom.helpers (>= 1.17.0)` are required (what cardx's models need), and
+    the sample's check says a version too old.
+  - *A report's program names itself `report_id`*: the study ARD's rows, the
+    program's own path and the RTF's (`file.path(path_tfl, paste0(report_id,
+    ".rtf"))`); a program copied for another report changes one line.
+  - Every program, ARD programs too, starts with a short check that it runs
+    from the study folder (under 80 columns; a check in the setup could not
+    run before the setup's own `source()` fails); the banner's description is
+    wrapped; `record_report()`'s setup fingerprint is on lines of its own; a
+    program ends on its last line.
+  - *The figure designer* names the figure's data as the program does
+    (`adtte_ttde`, from `tflspec::tfl_fig_data_name()`) in step 1's objects
+    and the layers' object choices, and a piece's own lines of an
+    `ard_number` layer are its label (`ard_label_<k>`) and its `annotate()`,
+    not the later labels renumbered.
+  - The sample: its stacked analysis is `DEMOG` (`ard_demog`, not a name of a
+    cards function), its survival code writes the event `CNSR == 0` and names
+    the Cox model.
+- **A study opens faster** (#367; the user's report: tens of seconds to
+  minutes after opening a study or taking in a TOC).  The report list and the
+  review did the same work again for every report: the analysis data
+  sheet is normalized once while it is the same, and whether a figure
+  reads an ARD comes from its design (tflspec's `tfl_fig_uses_ard()`, >=
+  0.0.24.9096) instead of writing its program.  The review's check of
+  the programs (P02) asks the files' times once, as numbers.  With
+  tflspec 0.0.24.9096's faster figure checks and ARD fingerprints, on a
+  study of 170 reports (a fresh R): the reports' run state 2.3 -> 0.4 s,
+  the report list 2.6 -> 0.7 s, the review 8.9 -> 7.2 s the first time
+  and 4.2 s again; the app is idle about 20 s sooner after opening.  The
+  study ARD (`output/ard/ard.rds`) is read once while it is the same file
+  (its time and size): every report's rows, the figures' and the
+  conditions read it, once each.  The same results (compared row for
+  row).
+
 - **The home is never inside the study folders** (#359, the user's
   requirement): tidying the studies would delete it.  The home holds the
   study folders (`<home>/studies`, a new home's default) or sits beside

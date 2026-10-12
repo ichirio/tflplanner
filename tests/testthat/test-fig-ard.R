@@ -126,11 +126,13 @@ test_that("the designer: an ARD piece's code is its whole term, its summary its 
   k <- which(vapply(d$layers, function(l) identical(l$layer, "ard_number"), NA))
   for (i in k) {
     x <- strsplit(.piece_code(code, d, list(sec = "layers", i = i), make), "\n", fixed = TRUE)[[1L]]
-    expect_identical(x[[1L]], "  annotate(")
+    # its label made before the plot, then its annotate (#347)
+    expect_match(x[[1L]], "^ard_label_[0-9]+ <- paste0[(]$")
+    expect_true("  annotate(" %in% x)
     expect_match(x[[length(x)]], "^  [)]")
     # (a median's label: its text, then the number)
     if (identical(d$layers[[i]]$analysis_id, "KM")) {
-      expect_match(x[[3L]], d$layers[[i]]$label |> sub(pattern = "[{]value[}]", replacement = "") |>
+      expect_match(x[[2L]], d$layers[[i]]$label |> sub(pattern = "[{]value[}]", replacement = "") |>
                      sub(pattern = ": $", replacement = ""), fixed = TRUE)
     }
   }

@@ -297,5 +297,6 @@ study_setup_code <- function(meta, date = Sys.Date(),
 # the line of a generated program that works out the setup's fingerprint
 .setup_hash_code <- function() {
   p <- encodeString(.study_setup_path(), quote = "\"")
-  sprintf("if (file.exists(%s)) unname(tools::md5sum(%s)) else \"\"", p, p)
+  # over three lines, as `setup <- ` in record_report() (under 80)
+  sprintf("if (file.exists(%s)) {\n    unname(tools::md5sum(%s))\n  } else \"\"", p, p)
 }

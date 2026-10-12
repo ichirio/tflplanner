@@ -260,6 +260,12 @@ sheets <- list(
     lapply(c("T-14-1-1", "T-14-1-2", "T-14-1-3", "T-14-2-2", "T-14-3-1"),
            function(o) codelist(o, "TRT01A", arms)),
     list(codelist("T-14-2-1", "TRTA", arms),
+         # the forest plot's own ARD: its arms and its subgroups' values
+         # decoded, as the tables print them
+         codelist("F-14-2-4", "TRT01A", arms),
+         codelist("F-14-2-4", "SEX", c(F = "Female", M = "Male")),
+         codelist("F-14-2-4", "AGEGR1", c("18-64" = "18-64 years",
+                                          ">64" = ">64 years")),
          codelist("T-14-2-3", "TRTA", arms),
          codelist("T-14-1-3", "SEX", c(F = "Female", M = "Male")),
          codelist("T-14-1-4", "ARM", "Screen Failure"),
@@ -587,13 +593,13 @@ p$ard$analyses <- tbl(
   # T-14-1-1's analyses as one cards::ard_stack() call: its data, analysis
   # set and groups once, the analyses inside it (`parent`); the column N
   # (.by_stats, cards' default) is its own
-  list(output_id = "T-14-1-1S", analysis_id = "STACK",
+  list(output_id = "T-14-1-1S", analysis_id = "DEMOG",
        label = "Demographics, run together", method = "cards::ard_stack",
        data = "adsl_saf", by = "TRT01A"),
-  list(output_id = "T-14-1-1S", analysis_id = "CONT", parent = "STACK",
+  list(output_id = "T-14-1-1S", analysis_id = "CONT", parent = "DEMOG",
        label = "Continuous", method = "continuous", variables = "AGE",
        statistics = "N | mean | sd | median | min | max"),
-  list(output_id = "T-14-1-1S", analysis_id = "CAT", parent = "STACK",
+  list(output_id = "T-14-1-1S", analysis_id = "CAT", parent = "DEMOG",
        label = "Categorical", method = "categorical",
        variables = "AGEGR1 | SEX | RACE | ETHNIC", statistics = "n | p"),
   list(output_id = "T-14-1-2", analysis_id = "GROUPN", method = "categorical",
@@ -659,20 +665,20 @@ p$ard$analyses <- tbl(
   list(output_id = "T-14-2-2", analysis_id = "KM",
        label = "Kaplan-Meier estimates", method = "custom", data = "adtte_saf_ttde",
        code = paste(
-         "fit <- survival::survfit(survival::Surv(AVAL, 1 - CNSR) ~ TRT01A, data = data)",
+         "fit <- survival::survfit(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = data)",
          "cards::bind_ard(",
          "  cardx::ard_survival_survfit(fit, probs = 0.5),",
          "  cardx::ard_survival_survfit(fit, times = c(0, 30, 60, 90, 120, 150, 180)),",
-         "  .quiet = TRUE)", sep = "\n")),
+         "  .quiet = TRUE",
+         ")", sep = "\n")),
   # in the ARD, not in the table (its cells name prob and time only): the
   # hazard ratios against placebo, which F-14-2-3 prints (#311)
   list(output_id = "T-14-2-2", analysis_id = "HR",
        label = "Hazard ratio vs placebo (Cox), not printed in the table",
        method = "custom", data = "adtte_saf_ttde",
        code = paste(
-         "cardx::ard_regression(",
-         "  survival::coxph(survival::Surv(AVAL, 1 - CNSR) ~ TRT01A, data = data),",
-         "  exponentiate = TRUE)", sep = "\n")),
+         "cox <- survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = data)",
+         "cardx::ard_regression(cox, exponentiate = TRUE)", sep = "\n")),
   # T-14-1-5 and T-14-1-6: the demographics of the enrolled subjects, race
   # with its Asian sub-categories -- the same analyses, laid out nested
   # (T-14-1-5) or as a block of their own (T-14-1-6)

@@ -93,11 +93,11 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   list(kind = "none")
 }
 
-# whether a figure's design reads an ARD (its ard_stats / ard_number pieces)
+# whether a figure's design reads an ARD (its ard_stats / ard_number pieces):
+# what its script's attr(, "ard") says, from the design alone
 .fig_reads_ard <- function(design, output_id = "fig") {
   if (is.null(design)) return(FALSE)
-  isTRUE(attr(tflspec::tfl_fig_design_code(design, output_id, setup = TRUE, save = FALSE),
-              "ard"))
+  isTRUE(tflspec::tfl_fig_uses_ard(design))
 }
 
 # The lines of a figure's program that put its ARD in `ard` (none without a
@@ -332,7 +332,7 @@ set_fig_own_analyses <- function(x, output_id, analyses, population_id = NULL) {
   x
 }
 
-# A figure's ARD analysis steps (`ard`, tflspec >= 0.0.24.9095) as its rows
+# A figure's ARD analysis steps (`ard`, tflspec >= 0.0.24.9098) as its rows
 # of the ARD definition: each step's ID, function (method), analysis data
 # (data) and arguments, over the figure's row of that ID (its other
 # columns kept) or a new one; the figure's other rows (a template's) stay,

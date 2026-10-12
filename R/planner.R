@@ -344,7 +344,7 @@ read_planner <- function(path) {
       }
       d$output_id <- trimws(d$output_id)
       d$output_id[!is.na(d$output_id) & !nzchar(d$output_id)] <- NA
-      # the setup: its own column (before 0.0.2.9204, the data code's)
+      # the setup: its own column (before 0.0.2.9205, the data code's)
       setup_col <- if ("setup_code" %in% names(d)) "setup_code" else "data_code"
       setup <- d[[setup_col]][is.na(d$output_id)] %||% character()
       if (length(setup)) p$setup <- setup[1L]

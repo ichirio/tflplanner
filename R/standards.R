@@ -147,9 +147,11 @@
       code = c(paste(
         "# this report's rows of the study ARD (made by {ARD_PROGRAM})",
         "ard <- readRDS(\"{ARD}\") |>",
-        "  dplyr::filter(output_id == \"{OUTPUT_ID}\") |>",
+        "  dplyr::filter(output_id == report_id) |>",
         "  dplyr::select(-c(output_id, analysis_id, population_id))",
-        "if (!nrow(ard)) stop(\"The study ARD has no rows for {OUTPUT_ID}: run {ARD_PROGRAM} first.\")",
+        "if (!nrow(ard)) {",
+        "  stop(\"The study ARD has no rows for \", report_id, \": run {ARD_PROGRAM} first.\")",
+        "}",
         sep = "\n"),
         "data <- normalize_ard(ard)",
         paste(

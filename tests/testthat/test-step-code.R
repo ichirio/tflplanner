@@ -32,7 +32,7 @@ test_that("a figure whose content is its code: its datasets read, its code, repo
   expect_true("content <- ggplot2::ggplot(advs)" %in% code)
   expect_true("content <- report_content(content)" %in% code)
   expect_true(any(grepl("source(\"programs/tfl/fig_setup.R\")", code, fixed = TRUE)))
-  expect_true(any(grepl("rtf_figures(doc, content", code, fixed = TRUE)))
+  expect_true(any(grepl("rtf_figures(content", code, fixed = TRUE)))
   # report_content() is fig_setup.R's, not each program's
   expect_false(any(grepl("report_content <- function", code, fixed = TRUE)))
   expect_silent(parse(text = code))
@@ -60,7 +60,7 @@ test_that("a table: its data step's code (ard normalized), its content step's co
   p <- set_step_code(p, "T-1", "content", "content <- head(data)")
   code <- program_code(p, "T-1")
   expect_false(any(grepl("table_plan(", code, fixed = TRUE)))
-  expect_true(any(grepl("rtf_tables(doc, content", code, fixed = TRUE)))
+  expect_true(any(grepl("rtf_tables(content", code, fixed = TRUE)))
   expect_silent(parse(text = code))
 })
 

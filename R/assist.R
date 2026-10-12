@@ -204,7 +204,9 @@ fetch_ard <- function(study, output_id, timeout = 300,
   f_ard <- file.path(tmp, "ard.R")
   f_proc <- file.path(tmp, "process.R")
   f_out <- file.path(tmp, "out.rds")
-  writeLines(enc2utf8(c(if (!is.na(p$setup)) .code_block(p$setup),
+  # the report's id first, as its program has it (a template reads it)
+  writeLines(enc2utf8(c(.report_id_line(output_id),
+                        if (!is.na(p$setup)) .code_block(p$setup),
                         .code_block(ard_code))), f_ard, useBytes = TRUE)
   proc <- if (!is.na(o$process_code)) .code_block(o$process_code) else
     if (!.makes_data(ard_code)) "data <- normalize_ard(ard)" else ""

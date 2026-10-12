@@ -7,8 +7,16 @@
 # data, 2. the analyses); an analysis names one in `data`.
 
 # the sheet (no rows when the study has none)
+# (the sheet normalized once while it is the same: the report list asks
+# for every report's rows)
+.adata_memo <- new.env(parent = emptyenv())
 .adata_rows <- function(x, output_id = NULL) {
-  d <- .normalize_ard_sheet(x$ard$analysis_data %||% data.frame(), "analysis_data")
+  raw <- x$ard$analysis_data %||% data.frame()
+  if (!identical(.adata_memo$raw, raw)) {
+    .adata_memo$d <- .normalize_ard_sheet(raw, "analysis_data")
+    .adata_memo$raw <- raw
+  }
+  d <- .adata_memo$d
   if (is.null(output_id)) d else
     d[!is.na(d$output_id) & d$output_id %in% output_id, , drop = FALSE]
 }

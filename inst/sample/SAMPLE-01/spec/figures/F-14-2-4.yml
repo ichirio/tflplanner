@@ -13,6 +13,7 @@ data:
   stats: n_obs, estimate, conf.low, conf.high
   by: SEX, AGEGR1
 - step: code
+  label: 'the rows to draw: the comparison arm, a heading row per subgroup'
   code: |-
     est <- est |>
       # the reference arm has no interval; a subgroup whose model did not
@@ -27,15 +28,20 @@ data:
              txt = ifelse(ok, sprintf("%.2f (%.2f, %.2f)", estimate, conf.low, conf.high), "NE"),
              across(c(estimate, conf.low, conf.high), ~ ifelse(ok, .x, NA)))
     # a heading row above each subgroup's levels, the levels indented
-    est <- split(est, factor(est$subgroup, levels = unique(est$subgroup))) |>
-      lapply(function(g) if (g$subgroup[1] == "All subjects") mutate(g, head = FALSE) else
-        bind_rows(tibble(subgroup = g$subgroup[1], level = g$subgroup[1], head = TRUE),
-                  mutate(g, head = FALSE))) |>
-      bind_rows() |>
-      mutate(label = ifelse(head | subgroup == "All subjects", level, paste0("    ", level)),
-             n = ifelse(head, "", as.character(n_obs)),
-             txt = ifelse(head, "", txt),
-             y = rev(row_number()))
+    heads <- est |>
+      filter(subgroup != "All subjects") |>
+      distinct(subgroup) |>
+      mutate(level = subgroup, head = TRUE)
+    est <- est |>
+      mutate(head = FALSE) |>
+      bind_rows(heads) |>
+      arrange(factor(subgroup, levels = unique(est$subgroup)), desc(head)) |>
+      mutate(
+        label = ifelse(head | subgroup == "All subjects", level, paste0("    ", level)),
+        n = ifelse(head, "", as.character(n_obs)),
+        txt = ifelse(head, "", txt),
+        y = rev(row_number())
+      )
 plot:
   x_label: Hazard Ratio (95% CI), Xanomeline High Dose vs Placebo
   legend: none
@@ -47,7 +53,8 @@ plot:
       labels: !r est$label
       expand: !r expansion(add = 0.6)
   - fn: labs
-    args: {}
+    args:
+      'y': !r 'NULL'
   - fn: theme
     args:
       axis.text.y:

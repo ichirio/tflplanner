@@ -30,7 +30,7 @@ test_that("a listing in rows becomes its program", {
   expect_true("adae <- readRDS(\"data/adam/adae.rds\")" %in% code)
   expect_true("data <- adae |>" %in% code)
   expect_true("  dplyr::filter(AESEV == \"SEVERE\") |>" %in% code)
-  expect_true("  dplyr::arrange(TRTA, dplyr::desc(ASTDT))" %in% code)
+  expect_true("  dplyr::arrange(TRTA, dplyr::desc(ASTDT)) |>" %in% code)
   expect_true(any(grepl("collapse_repeats = TRUE", code, fixed = TRUE)))
   expect_true(any(grepl("\"SOC/\\nPT\"", code, fixed = TRUE)))
   expect_true(any(grepl("max_rows = 20", code, fixed = TRUE)))
@@ -54,7 +54,7 @@ test_that("a figure with no design reads its data; its content its code", {
   code <- data_lines(p, "F1")
   expect_true("adsl <- readRDS(\"data/adam/adsl.rds\")" %in% code)
   expect_true("content <- report_content(content)" %in% code)
-  expect_true(any(startsWith(program_code(p, "F1"), "doc <- rtf_figures(doc, content, width_twips = ")))
+  expect_true(any(startsWith(program_code(p, "F1"), "  rtf_figures(content, width_twips = ")))
   expect_true(any(startsWith(data_lines(p, "F1"), "content <- fig_sized(content, ")))
 })
 

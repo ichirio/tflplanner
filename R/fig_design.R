@@ -359,7 +359,8 @@ preview_figure <- function(study, output_id,
        objects = .fig_objects_glance(e, .fig_design_objects(saved)))
 }
 
-# The objects a design's data steps leave, in their order: df, then each
+# The objects a design's data steps leave, in their order: the figure's
+# data (by the name the program gives it, adtte_ttde, else df), then each
 # step's own (a KM fit, summary statistics, the ARD's statistics ...)
 .fig_design_objects <- function(design) {
   own <- unlist(lapply(design$data, function(p) {
@@ -369,7 +370,7 @@ preview_figure <- function(study, output_id,
     if (identical(k, "ard_stats")) return("st")
     NULL
   }))
-  unique(c("df", own))
+  unique(c(tflspec::tfl_fig_data_name(design) %||% "df", own))
 }
 
 # Each object in short, as the preview keeps it (not the object: a data

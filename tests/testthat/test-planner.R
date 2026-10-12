@@ -45,7 +45,7 @@ test_that("code saved with tflspec's former engine names is read with rtfreporte
   q <- read_planner(write_planner(p, withr_tempdir()))
   expect_equal(q$outputs$process_code[1], "data <- normalize_ard(ard)")
   expect_equal(q$setup, "x <- rtfreporter::normalize_ard(y)")
-  # a state of before 0.0.2.9204: its data code the table's data step
+  # a state of before 0.0.2.9205: its data code the table's data step
   st <- .planner_from_state(list(planner = list(
     outputs = list(output_id = "T1", description = NA,
                    data_code = "data <- tfl_ard_normalize(ard)",
