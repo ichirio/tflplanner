@@ -7,10 +7,9 @@
   {OUTPUT_TITLE}, {OUTPUT_POPULATION} -- the report's rows of the tokens
   sheet) and section ({OUTPUT_SECTION}, the report list's section).  Each
   field shows what a blank gives in its placeholder (the label made from
-  the ID, step 1's analysis set), where its value comes from ("from the
-  TOC", "edited here (the TOC said: ...)", a pattern, Standard) and whether
-  the page prints it; no reset button (a TOC taken in again overwrites, as
-  chosen -- below).  The ID is read only, with a
+  the ID, step 1's analysis set), and nothing under it: where a value came
+  from is what a TOC taken in again lists (below), and the page's sample
+  shows what it prints; no reset button.  The ID is read only, with a
   link to the report list.  Below: the report's own tokens (add, change,
   remove; a name of the report's information or of rtfreporter's is
   refused) and, folded, every token of rtfreporter's with what it is, as

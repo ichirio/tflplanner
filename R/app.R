@@ -9955,9 +9955,7 @@ app_server <- function(input, output, session, start) {
     page_sheets()
     id <- page_report()
     if (is.null(id)) return(NULL)
-    # what the last TOC taken in said of the report: where its values come from
-    toc <- tryCatch(toc_last(rv$study)[[id]]$tokens, error = function(e) NULL)
-    .page_form_ui(shiny::isolate(rv$p), id, t, toc)
+    .page_form_ui(shiny::isolate(rv$p), id, t)
   })
   page_write <- function(p2) {
     if (is.null(p2)) return()

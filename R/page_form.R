@@ -324,18 +324,16 @@ $(document).on('shiny:value', function(e) {
 
 # The report's information -- the TOC's, edited here, one value each: its
 # label, title and analysis set text (the report's rows of the tokens sheet)
-# and its section (the report list's).  Each with its default when blank,
-# where its value comes from (`toc`: what the last TOC taken in said of the
-# report), and whether the page prints it.
+# and its section (the report list's).  Each field says what a blank gives
+# (its placeholder); where a value came from is the TOC import's to say.
 .pg_info_items <- c("OUTPUT_LABEL", "OUTPUT_TITLE", "OUTPUT_POPULATION", "OUTPUT_SECTION")
 
-.page_report_info_ui <- function(x, id, t, toc = NULL) {
+.page_report_info_ui <- function(x, id, t) {
   o <- x$outputs
   i <- match(id, o$output_id)
   pop <- if (!is.null(o$population)) o$population[i] else NA_character_
   sec <- if (!is.null(o$section)) o$section[i] else NA_character_
   rows <- page_tokens_from(x, id)
-  pattern <- report_pattern(x, id)
   # the defaults: the tokens as the program has them, without the report's
   # own values (a line saying them all, for the copy only)
   x0 <- x
@@ -351,7 +349,6 @@ $(document).on('shiny:value', function(e) {
     .spec_object(.with_population_tokens(x0), c(table_sheets(), report_sheets()),
                  unique(c(.study_keys$table, .study_keys$report))), id),
     error = function(e) list())
-  said <- .page_said(x, id)
   go <- function(where, label) shiny::tags$button(
     type = "button", class = "pg-act btn btn-link", `data-act` = "goto", `data-name` = where, label)
   field <- function(k, label) {
@@ -362,20 +359,7 @@ $(document).on('shiny:value', function(e) {
     v <- if (own_row) rows$value[r] else if (identical(k, "OUTPUT_SECTION") && !.is_blank(sec)) sec else
       NA_character_
     own <- !is.na(v)
-    tv <- toc[[k]]
-    tv <- if (is.null(tv) || .is_blank(tv)) NA_character_ else as.character(tv)
     d <- dflt[[k]] %||% ""
-    src <- if (own) {
-      if (!is.na(tv) && identical(v, tv)) t("from the TOC")
-      else if (!is.na(tv)) sprintf(t("edited here (the TOC said: %s)"), tv)
-      else t("edited here")
-    } else if (!is.na(r) && rows$from[r] %in% c("pattern", "standard")) {
-      .page_from_label(rows$from[r], pattern, t)
-    } else switch(k,
-      OUTPUT_LABEL = t("default: made from the ID"),
-      OUTPUT_POPULATION = if (!.is_blank(pop)) sprintf(t("default: step 1's analysis set (%s)"), pop)
-                          else t("default: empty (no analysis set chosen in step 1)"),
-      t("default: empty"))
     shiny::div(
       class = "pg-field",
       shiny::tags$label(shiny::code(paste0("{", k, "}")), " ", label),
@@ -388,13 +372,8 @@ $(document).on('shiny:value', function(e) {
                               else t("(blank: step 1's analysis set, none chosen)"),
           if (nzchar(d)) d else ""),
         `data-kind` = "info", `data-name` = k, `data-key` = paste0("info:", k)),
-      shiny::div(
-        class = "pg-from", src,
-        shiny::br(),
-        if (k %in% said) t("printed on this page") else
-          sprintf(t("not printed: no line of this page says {%s}"), k),
-        if (identical(k, "OUTPUT_POPULATION"))
-          shiny::tagList(" ", go("ard", t("The analysis set: step 1")))))
+      if (identical(k, "OUTPUT_POPULATION"))
+        shiny::div(class = "pg-from", go("ard", t("The analysis set: step 1"))))
   }
   shiny::div(
     class = "pg-grid pg-info",
@@ -452,7 +431,7 @@ $(document).on('shiny:value', function(e) {
 }
 
 # the whole form of a report's page
-.page_form_ui <- function(x, id, t, toc = NULL) {
+.page_form_ui <- function(x, id, t) {
   pattern <- report_pattern(x, id)
   report <- !is.na(id) && !.is_pattern_id(id)
   card <- function(title, ...) shiny::div(class = "pg-card", shiny::h6(title), ...)
@@ -462,7 +441,7 @@ $(document).on('shiny:value', function(e) {
     # (the TOC's, edited here), its own tokens, rtfreporter's
     if (report) card(t("Report information and tokens"),
       shiny::div(class = "pg-from mb-1", t("The report's information is the TOC's, edited here (the report list shows the same). Each is a {TOKEN} a header, footer, title or footnote can say.")),
-      .page_report_info_ui(x, id, t, toc),
+      .page_report_info_ui(x, id, t),
       shiny::div(class = "small fw-semibold mt-2", t("This report's own tokens")),
       .page_tokens_ui(x, id, pattern, t),
       .page_builtins_ui(t))

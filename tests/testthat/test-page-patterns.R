@@ -243,18 +243,18 @@ test_that("the user's notes: Standard under a pattern, the tokens card, the head
   expect_match(h, "Standard (= Compact)", fixed = TRUE)
   # the Titles card: the title the header prints, changed in the card above
   expect_match(h, "The header prints {OUTPUT_TITLE}: Demographics", fixed = TRUE)
-  # one card first: the report's information (each a field, with where it
-  # comes from and whether it prints), its own tokens, rtfreporter's
+  # one card first: the report's information (a field each), its own
+  # tokens, rtfreporter's
   expect_lt(regexpr(">Report information and tokens<", h, fixed = TRUE),
             regexpr(">Paper, margins and font<", h, fixed = TRUE))
   for (k in .pg_info_items) expect_match(h, sprintf('data-kind="info" data-name="%s"', k), fixed = TRUE)
-  expect_match(h, "edited here", fixed = TRUE)
   # no reset buttons (a TOC taken in again overwrites); an empty label is
   # its default, said by the placeholder
   expect_false(grepl("info_reset", h, fixed = TRUE))
   expect_match(h, "(blank: the text made from the ID, Table", fixed = TRUE)
-  expect_match(h, "printed on this page", fixed = TRUE)
-  expect_match(h, "not printed: no line of this page says {OUTPUT_SECTION}", fixed = TRUE)
+  # nothing under the fields (where a value came from: the TOC import says)
+  expect_false(grepl(">edited here<", h, fixed = TRUE))
+  expect_false(grepl("printed on this page", h, fixed = TRUE))
   expect_match(h, "pg-token-add", fixed = TRUE)
   expect_match(h, 'data-act="goto" data-name="ard"', fixed = TRUE)
   # rtfreporter's, as it lists them
@@ -264,11 +264,6 @@ test_that("the user's notes: Standard under a pattern, the tokens card, the head
   expect_match(h, "pg-ins-sel", fixed = TRUE)
   # the font: Courier or Courier New to choose, any typed
   expect_match(h, '<option value="Courier New">', fixed = TRUE)
-  # where a value comes from: the TOC's, or edited here
-  h2 <- as.character(.page_form_ui(p, "T1", identity, toc = list(OUTPUT_TITLE = "Demographics")))
-  expect_match(h2, "from the TOC", fixed = TRUE)
-  h3 <- as.character(.page_form_ui(p, "T1", identity, toc = list(OUTPUT_TITLE = "Demog")))
-  expect_match(h3, "edited here (the TOC said: Demog)", fixed = TRUE)
   # a pattern: its tokens and rtfreporter's, no report information
   h4 <- as.character(.page_form_ui(p, "@Compact", identity))
   expect_false(grepl('data-kind="info"', h4, fixed = TRUE))
