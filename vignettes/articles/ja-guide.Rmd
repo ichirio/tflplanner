@@ -191,7 +191,7 @@ setup_tflplanner(standards = "builtin")
 | `code_templates` | 帳票プログラムに埋め込むコードのテンプレート（後述） |
 | `listing_types` | 選べる Listing の種類（現在は rtfreporter の `multiline`） |
 | `toc_map` | 会社の TOC（帳票の一覧の Excel / CSV）のどの列が何か（帳票 ID・種別・タイトル・集団・脚注など）。TOC を取り込むときに自動で当てる（10 章） |
-| `figure_settings` / `figure_colors` / `figure_markers` | 図の会社の体裁（`theme_tfl()`、群の色・記号） |
+| `figure_settings` / `figure_colors` / `figure_markers` | 図の会社の体裁（`theme_tfl()`、群の色・記号）。`figure_colors` の `treatment` の行の順番が群の色の順番（1 行目が 1 番目の群）。白黒印刷向けに、`figure_settings` の `treatment_shapes` / `treatment_linetypes` で群ごとの点の形・線種も決められる（既定は空欄 = 使わない） |
 | `populations` / `datasets` | 新規試験が最初に持つ解析対象集団とデータカタログ |
 | `default_<シート>` | 新規試験の「試験共通の既定」（ヘッダー・フッターなど）。`{STUDY_ID}` は試験 ID に置き換わる |
 

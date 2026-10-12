@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **The treatment colours** (tflspec #233, with tflspec 0.0.24.9098): the
+  figures' first arm is Okabe-Ito blue `#0072B2` (was `"blue"`), so the
+  sample's KM and forest figures change colour slightly; more arms than the
+  standard's colours repeat them with a warning, and the figure check names
+  the arms that share one.  The company standards' README says that the
+  order of the `treatment` rows of `figure_colors` is the arms' colour order
+  (reorder the rows in the workbook to reorder the colours), and describes
+  the optional `treatment_shapes` / `treatment_linetypes` of
+  `figure_settings` (blank: not used), which give the arms point shapes and
+  line types for print in black and white.
+
 - **The generated programs, reviewed again** (#347, with tflspec 0.0.24.9097).
   The sample's tables and listing are the same RTF byte for byte; the two
   designed figures change on purpose:
