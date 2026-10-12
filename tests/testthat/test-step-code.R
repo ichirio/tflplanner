@@ -214,17 +214,21 @@ test_that("a report's own code runs out of the app; the line of an error is said
     session$setInputs(target = "F-1", nav = "make", step = "content", content_nav = "content")
     expect_identical(output$content_is_code, "yes")
     expect_identical(output$data_is_code, "no")
-    # a figure with no design: its datasets above the data step
+    # a figure with no design: its datasets above the data step; its ARD in
+    # one place, the figure's ARD source
     expect_identical(output$data_inputs, "yes")
-    expect_match(output$uc_inputs$html, "uc_ard", fixed = TRUE)
+    expect_match(output$uc_inputs$html, "uc_ds", fixed = TRUE)
+    expect_no_match(output$uc_inputs$html, "uc_ard\"", fixed = TRUE)
+    expect_match(output$ard_kind_note$html, "fig_ard_kind", fixed = TRUE)
     # the editor writes the step's code
     session$setInputs(cc_code = "content <- adsl[1:5, ]")
     expect_identical(step_code(rv$p, "F-1", "content"), "content <- adsl[1:5, ]")
     session$setInputs(uc_ds = c("ADSL"))
     expect_identical(report_datasets(rv$p, "F-1"), "ADSL")
-    session$setInputs(uc_ard = TRUE)
+    session$setInputs(fig_ard_kind = "own")
     expect_identical(.fig_ard_source(rv$p, "F-1")$kind, "own")
-    session$setInputs(uc_ard = FALSE, cc_run = 1)
+    expect_match(output$uc_ard_state$html, "analyses", fixed = TRUE)
+    session$setInputs(fig_ard_kind = "none", cc_run = 1)
     expect_match(output$cc_result$html, "It ran", fixed = TRUE)
     # the other report: its error's line, and the dataset to add
     session$setInputs(target = "F-2")

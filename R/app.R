@@ -582,12 +582,15 @@ app_ui <- function(lang = "en") {
     shiny::uiOutput("data_mode_bar"),
     # what a step of its own code reads: its datasets, its ARD
     shiny::conditionalPanel("output.data_inputs == 'yes'", shiny::uiOutput("uc_inputs")),
+    # the report's ARD: a figure's source (one place, either way), a table's
+    # taken in
+    shiny::uiOutput("ard_kind_note"),
     shiny::conditionalPanel("output.data_is_code == 'yes'", code_step_ui("dc", t, lang)),
     shiny::conditionalPanel(
     "output.data_is_code != 'yes'",
-    # a figure's: its data steps first, the numbers from an ARD below
-    .designer_data_ui(),
-    shiny::uiOutput("ard_kind_note"),
+    # a figure's: its data steps first (its design's; none while its
+    # content is its own code), the numbers from an ARD below
+    shiny::conditionalPanel("output.content_is_code != 'yes'", .designer_data_ui()),
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center mb-2 small",
       shiny::span(class = "text-muted", t("Layout")),
@@ -8016,11 +8019,8 @@ app_server <- function(input, output, session, start) {
       shiny::selectizeInput("uc_ds", t("Data it reads (the program reads them first, by their names in lower case)"),
                             .ds_choices(cat_ds, have),
                             selected = have, multiple = TRUE, width = "100%"),
-      # a figure: its ARD as its source says (own here; a table's or one
-      # taken in in the figure's ARD settings)
-      if (identical(k, "figure")) shiny::checkboxInput(
-        "uc_ard", t("Use this report's ARD (`ard`): its ARD definition's rows, or the ARD taken in for it"),
-        !identical(.fig_ard_source(p, id)$kind, "none")),
+      # its ARD as `ard`: a table's own or taken in; a figure's as its ARD
+      # source says (below)
       shiny::uiOutput("uc_ard_state"))
   })
   output$uc_ard_state <- shiny::renderUI({
@@ -8028,8 +8028,7 @@ app_server <- function(input, output, session, start) {
     shiny::req(!is.null(id), has_study())
     rv$ard_ver
     rv$ver
-    if (identical(report_kind(), "listing") ||
-        (identical(report_kind(), "figure") && !isTRUE(input$uc_ard))) return(NULL)
+    if (identical(report_kind(), "listing")) return(NULL)
     s <- rv$study
     s$planner <- rv$p
     st <- .code_ard_state(s, id)
@@ -8055,16 +8054,6 @@ app_server <- function(input, output, session, start) {
       rv$p <- set_report_datasets(rv$p, id, ds)
     }
   }, ignoreInit = TRUE, ignoreNULL = FALSE)
-  shiny::observeEvent(input$uc_ard, {
-    id <- current()
-    shiny::req(!is.null(id), identical(report_kind(), "figure"))
-    src <- .fig_ard_source(rv$p, id)$kind
-    if (isTRUE(input$uc_ard) && identical(src, "none")) {
-      rv$p <- set_fig_ard_source(rv$p, id, "own")
-    } else if (!isTRUE(input$uc_ard) && identical(src, "own")) {
-      rv$p <- set_fig_ard_source(rv$p, id, NULL)
-    }
-  }, ignoreInit = TRUE)
   # the rules' check of a step's code (tflspec::tfl_check_code()), under it
   code_check_ui <- function(step) {
     id <- current()
