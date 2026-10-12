@@ -46,7 +46,7 @@ study_ard_conditions <- function(study) {
   out <- .ard_study_value(study$planner$ard, "output", "output/ard/ard.rds")
   f <- file.path(study$path, out)
   own <- if (file.exists(f)) {
-    a <- tryCatch(readRDS(f), error = function(e) NULL)
+    a <- tryCatch(.read_study_ard(f), error = function(e) NULL)
     .ard_conditions_of(a)
   } else .no_conditions()
   # the reports that take in an ARD: their rows come from that file
