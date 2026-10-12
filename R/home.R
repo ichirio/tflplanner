@@ -4,13 +4,21 @@
 #   <home>/
 #     config.yml                 studies_root (where new study folders go),
 #                                last_study
-#     studies/<STUDY_ID>/
+#     state/<STUDY_ID>/
 #       state.json               the study as last saved: study.yml fields,
 #                                its folder, every sheet, the report list,
 #                                the data code -- a copy of the study
 #                                folder's definition files, with each file's
 #                                fingerprint (#274)
 #       history/<time>.json      each earlier saved state
+#       draft.json, ard/, facts/ unsaved changes; what input assistance and
+#                                the review read
+#     studies/                   a new home's study folders (studies_root)
+#
+# The home and the study folders: the home holds them (<home>/studies, a
+# new home's) or sits beside them (C:/tflplanner_home and C:/studies), never
+# inside them -- tidying the studies would delete it (#359).  Before
+# 0.0.2.9200 the state was at <home>/studies/<STUDY_ID>: moved on first use.
 #
 # The definition files in a study folder (spec/, study.yml) are the study's
 # source: written on every save, and read back on open when they changed
@@ -92,7 +100,9 @@ tflplanner_home <- function() {
 #'   [tflplanner_home()]); a folder given here is remembered for later
 #'   sessions -- one in the temporary folder only for this session.
 #' @param studies_root Where new study folders are created.  `NULL` keeps
-#'   the current setting, or on a first setup uses `<home>/workspace`.
+#'   the current setting, or on a first setup uses `<home>/studies`.  The
+#'   home holds the study folders or sits beside them, never inside them
+#'   (nor inside a study's folder): such a setting is refused.
 #' @param language The app's language, `"en"` (the default) or `"ja"`;
 #'   `NULL` keeps the current setting.
 #' @param standards A company standards workbook ([standards_template()])
@@ -121,7 +131,11 @@ tflplanner_home <- function() {
 #' # not run: these remember the home and the study folder for every later
 #' # session (and the first one asks, step by step)
 #' setup_tflplanner()
-#' setup_tflplanner(studies_root = "C:/studies", sample = TRUE)
+#' # the whole layout in one call: C:/tflplanner_home, its study folders in
+#' # C:/tflplanner_home/studies, the sample study among them
+#' setup_tflplanner(home = "C:/tflplanner_home", sample = TRUE)
+#' # or the study folders beside the home
+#' setup_tflplanner(home = "C:/tflplanner_home", studies_root = "C:/studies")
 #' }
 #' @export
 setup_tflplanner <- function(home = NULL, studies_root = NULL,
@@ -130,6 +144,14 @@ setup_tflplanner <- function(home = NULL, studies_root = NULL,
                              check_updates = NULL) {
   if (nargs() == 0L && interactive()) return(.setup_wizard())
   if (!is.null(port)) port <- .check_port(port)
+  # the home and the study folders: never the home inside the studies
+  # (checked when either is set, or on a first setup)
+  h <- if (is.null(home)) tflplanner_home() else normalizePath(home, "/", mustWork = FALSE)
+  if (!is.null(home) || !is.null(studies_root) || !.is_set_up(h)) {
+    root <- studies_root %||% tflplanner_config(h)$studies_root %||% file.path(h, "studies")
+    problem <- .home_problem(h, root)
+    if (!is.null(problem)) stop(problem, " ", .home_layouts, call. = FALSE)
+  }
   if (!is.null(home)) {
     home <- normalizePath(home, "/", mustWork = FALSE)
     if (.in_temp(home)) {
@@ -147,12 +169,12 @@ setup_tflplanner <- function(home = NULL, studies_root = NULL,
   } else {
     home <- tflplanner_home()
   }
-  dir.create(file.path(home, "studies"), recursive = TRUE,
+  dir.create(file.path(home, "state"), recursive = TRUE,
              showWarnings = FALSE)
   cfg <- tflplanner_config(home)
   if (!is.null(studies_root)) cfg$studies_root <- studies_root
   if (is.null(cfg$studies_root) || !nzchar(cfg$studies_root)) {
-    cfg$studies_root <- file.path(home, "workspace")
+    cfg$studies_root <- file.path(home, "studies")
   }
   # made before it is normalized, so the path is the resolved one
   # (symbolic links, short names)
@@ -217,13 +239,123 @@ tflplanner_config <- function(home = tflplanner_home()) {
 #' @export
 studies_root <- function(home = tflplanner_home()) {
   r <- tflplanner_config(home)$studies_root
-  if (is.null(r)) file.path(home, "workspace") else r
+  if (is.null(r)) file.path(home, "studies") else r
+}
+
+# ------------------------------------------------- the home and the studies
+
+# Is `path` the folder `root`, or inside it?
+.under <- function(path, root) {
+  p <- .real_path(path)
+  r <- sub("/$", "", .real_path(root))
+  identical(p, r) || startsWith(p, paste0(r, "/"))
+}
+
+# The study folder (one with a study.yml) a path is in, or NA
+.study_folder_above <- function(path) {
+  p <- normalizePath(path, "/", mustWork = FALSE)
+  repeat {
+    if (file.exists(file.path(p, "study.yml"))) return(p)
+    up <- dirname(p)
+    if (identical(up, p)) return(NA_character_)
+    p <- up
+  }
+}
+
+# What is wrong with a home and the study folders, or NULL: the home is
+# never inside the studies (tidying them would delete it), nor inside a
+# study's folder (`t`: the app's words)
+.home_problem <- function(home, root, t = identity) {
+  if (!is.null(root) && nzchar(root) && .under(home, root)) {
+    return(sprintf(t("The home %s is inside %s, where new study folders go: tidying the studies would delete it."),
+                   home, normalizePath(root, "/", mustWork = FALSE)))
+  }
+  s <- .study_folder_above(home)
+  if (!is.na(s)) return(sprintf(t("The home %s is inside the study folder %s."), home, s))
+  NULL
+}
+.home_layouts <- paste("Keep the study folders inside the home (<home>/studies)",
+                       "or beside it (C:/tflplanner_home and C:/studies).")
+
+# A new study's folder: <root>/<id>, the root checked -- never one the home
+# is in, nor one inside a study's folder -- and joined so that a drive's
+# root gives C:/ABC-101 (file.path("C:/", id) is "C://ABC-101").  A blank
+# root is the one set up.
+.study_path <- function(root, id, home = tflplanner_home()) {
+  root <- trimws(root %||% "")
+  if (!nzchar(root)) root <- studies_root(home)
+  root <- sub("[/\\\\]+$", "", root)
+  # (a drive alone, "C:", is its root, not the drive's current folder)
+  check <- if (!nzchar(root) || grepl("^[A-Za-z]:$", root)) paste0(root, "/") else root
+  if (.under(home, check)) {
+    stop(sprintf("A study folder cannot go in %s: the home %s is inside it.", check, home),
+         call. = FALSE)
+  }
+  s <- .study_folder_above(check)
+  if (!is.na(s)) {
+    stop(sprintf("A study folder cannot go in %s: it is inside the study folder %s.", check, s),
+         call. = FALSE)
+  }
+  file.path(if (nzchar(root)) root else "", id)
+}
+
+# A folder made (with the folders above it), or an error that says which
+# and why -- not a later "cannot open the connection"
+.make_dir <- function(path) {
+  why <- NULL
+  withCallingHandlers(
+    dir.create(path, recursive = TRUE, showWarnings = TRUE),
+    warning = function(w) {
+      why <<- conditionMessage(w)
+      invokeRestart("muffleWarning")
+    })
+  if (!dir.exists(path)) {
+    stop(sprintf("Could not make the folder %s (%s).", path,
+                 sub("^cannot create dir '[^']*', reason '(.*)'$", "\\1", why %||% "no reason given")),
+         call. = FALSE)
+  }
+  invisible(path)
 }
 
 # ------------------------------------------------------------- the store
 
 .store_dir <- function(id, home = tflplanner_home()) {
-  file.path(home, "studies", id)
+  .move_old_stores(home)
+  file.path(home, "state", id)
+}
+
+# Before 0.0.2.9200 a study's state was at <home>/studies/<ID>, the name a
+# new home's study folders have now: moved to <home>/state/<ID>, once a
+# session -- moved, never deleted; an item already at the new place stays
+# where it was (said); a folder left empty goes.  A study folder that was
+# its own state's folder (studies_root at <home>/studies) keeps its files.
+.moved_homes <- new.env()
+.move_old_stores <- function(home) {
+  key <- .real_path(home)
+  if (isTRUE(.moved_homes[[key]])) return(invisible())
+  .moved_homes[[key]] <- TRUE
+  old <- file.path(home, "studies")
+  if (!dir.exists(old)) return(invisible())
+  items <- c("state.json", "draft.json", "history", "ard", "facts")
+  for (d in list.dirs(old, recursive = FALSE)) {
+    if (!file.exists(file.path(d, "state.json"))) next
+    to <- file.path(home, "state", basename(d))
+    dir.create(to, recursive = TRUE, showWarnings = FALSE)
+    for (f in intersect(items, list.files(d))) {
+      if (file.exists(file.path(to, f))) {
+        message("tflplanner: ", file.path(d, f), " is not moved: ",
+                file.path(to, f), " is already there.")
+        next
+      }
+      file.rename(file.path(d, f), file.path(to, f))
+    }
+    if (!length(list.files(d, all.files = TRUE, no.. = TRUE))) unlink(d, recursive = TRUE)
+  }
+  if (!length(list.files(old, all.files = TRUE, no.. = TRUE)) &&
+      !identical(.real_path(old), .real_path(studies_root(home)))) {
+    unlink(old, recursive = TRUE)
+  }
+  invisible()
 }
 
 # The draft: what a session changed and has not saved yet, kept beside the

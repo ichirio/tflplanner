@@ -1,20 +1,65 @@
 # tflplanner (development version)
 
-- **A study opens faster** (the user's report: tens of seconds to minutes
-  after opening a study or taking in a TOC).  The report list and the
+- **A study opens faster** (#367; the user's report: tens of seconds to
+  minutes after opening a study or taking in a TOC).  The report list and the
   review did the same work again for every report: the analysis data
   sheet is normalized once while it is the same, and whether a figure
   reads an ARD comes from its design (tflspec's `tfl_fig_uses_ard()`, >=
-  0.0.24.9092) instead of writing its program.  The review's check of
+  0.0.24.9096) instead of writing its program.  The review's check of
   the programs (P02) asks the files' times once, as numbers.  With
-  tflspec 0.0.24.9092's faster figure checks and ARD fingerprints, on a
+  tflspec 0.0.24.9096's faster figure checks and ARD fingerprints, on a
   study of 170 reports (a fresh R): the reports' run state 2.3 -> 0.4 s,
   the report list 2.6 -> 0.7 s, the review 8.9 -> 7.2 s the first time
   and 4.2 s again; the app is idle about 20 s sooner after opening.  The
-  study ARD
-  (`output/ard/ard.rds`) is read once while it is the same file (its
-  time and size): every report's rows, the figures' and the conditions
-  read it, once each.  The same results (compared row for row).
+  study ARD (`output/ard/ard.rds`) is read once while it is the same file
+  (its time and size): every report's rows, the figures' and the
+  conditions read it, once each.  The same results (compared row for
+  row).
+
+- **The home is never inside the study folders** (#359, the user's
+  requirement): tidying the studies would delete it.  The home holds the
+  study folders (`<home>/studies`, a new home's default) or sits beside
+  them (`C:/tflplanner_home` and `C:/studies`).  `setup_tflplanner()`, the
+  setup wizard and the app's settings refuse a home inside the folder new
+  studies go to, equal to it, or inside a study's folder (the app says the
+  place is not saved, and why).  A home already there (set by an earlier
+  version) is said on the Study tab, with how to move it in its (i);
+  nothing is moved.  The same for a new study's place: `create_study()`,
+  `create_sample_study()` and the new-study dialog (empty, a copy, the
+  sample) refuse a place the home is in, or one inside a study's folder --
+  the dialog says so under the field, as for the ID -- and
+  `register_study()` a study folder the home is in.
+- **A study folder at a drive's root**: `C:/` and an ID give `C:/ABC-101`
+  (was `C://ABC-101`, which could not be written).  A folder that cannot be
+  made says which and why ("Could not make the folder ... (reason)", in the
+  app's language), not R's "cannot open the connection".
+- **A study's saved state is at `<home>/state/<STUDY_ID>`** (was
+  `<home>/studies/<STUDY_ID>`, now a new home's study folders).  An old one
+  is moved on first use -- moved, never deleted; an item already at the
+  new place stays where it was.  (Before, with the study folders at
+  `<home>/studies`, a study's folder was its state's folder too, and
+  unregistering the study removed it.)
+- **A TOC taken in again: a report's label, title or analysis set it
+  prints all the same is no change.**  A report with no value of its own
+  prints the study's default (`{OUTPUT_LABEL}` "Table 14.1.1" from its
+  id): a TOC saying the same was counted as a change ("add") for every
+  report of the sample.  It is compared with what the report prints now.
+  A report of one's own code that the TOC calls a figure, or a type the
+  TOC only guessed, is no change either (the type was never changed;
+  every import again said two reports of the sample changed).
+- **Two example TOCs** made from the sample study, in
+  `system.file("extdata", package = "tflplanner")`:
+  `SAMPLE-01_TOC.xlsx` (its 17 reports with titles, analysis sets,
+  sections, a Topline column and a shell sheet each) and
+  `SAMPLE-01_TOC_changed.xlsx` (two rows changed), to try the import on
+  the sample study: the first gives its reports their sections (and the
+  Topline batch) and, taken in again, changes nothing; the second, taken
+  in after it, shows two reports changed (a title, a footnote).  `data-raw/make-toc-sample.R` makes them.
+- **A study copied takes how it reads its TOC** (`input/toc/profile.yml`:
+  the rule set, the way the IDs are made, the sheets): the next study of
+  the same company layout reads its TOC the same way.  Not the TOCs taken
+  in nor what they said: the copy's TOC is its own.
+  `toc_copy_profile()`.
 
 - **Step 3: one card, "Report information and tokens"** (the user's
   direction; first in the page form).  The report list can only rename a

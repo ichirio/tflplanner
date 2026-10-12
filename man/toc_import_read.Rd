@@ -73,6 +73,15 @@ What the user chose in the dialog (\code{choices}), else what the study's
 profile remembers (\code{profile}), wins over what is found: \code{rule_set},
 \code{sheet} and \code{header_row} (named by the file's name), \code{map}, \code{id_rule},
 \code{type_from}, \code{overrides} (the set's settings changed for the study).
+
+Two example TOCs come with the package, made from the sample study
+(SAMPLE-01): \code{system.file("extdata", "SAMPLE-01_TOC.xlsx", package = "tflplanner")} -- its reports as a company TOC (the header on row 2,
+section heading rows, Shell Number, Phase, Topline, Title1-3,
+Population, Footnote1-2, a shell sheet per report) -- and
+\verb{SAMPLE-01_TOC_changed.xlsx}, the same with two rows changed (a title,
+a footnote).  Taken into the sample study, the first gives its reports
+their sections (and the Topline batch) and, taken in again, changes
+nothing; the second, taken in after it, shows those two.
 }
 \examples{
 f <- tempfile(fileext = ".csv")
@@ -82,4 +91,10 @@ writeLines(c("Output ID,Title 1,Title 2,Population",
 r <- toc_import_read(f, toc_rules(home = tempfile()))
 r$reports[c("output_id", "label")]
 toc_import_spec(r)$report
+
+# the example TOC made from the sample study
+f <- system.file("extdata", "SAMPLE-01_TOC.xlsx", package = "tflplanner")
+r <- toc_import_read(f, toc_rules(home = tempfile()))
+r$id_rule
+utils::head(r$reports[c("output_id", "label", "shell_sheet")])
 }
