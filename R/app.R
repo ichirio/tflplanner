@@ -1054,7 +1054,7 @@ app_ui <- function(lang = "en") {
                                value = TRUE),
           shiny::checkboxInput("batch_data",
                                with_tip(t("keep the data in the batch folder"),
-                                        t("The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the run can be made again.")),
+                                        t("The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the batch folder runs again on its own (rerun.R in it).")),
                                value = FALSE),
           .btn("batch_run", t("Start the official run"),
                class = "btn-sm btn-primary"),

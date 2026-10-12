@@ -1,5 +1,18 @@
 # tflplanner (development version)
 
+- **A batch folder that keeps its code and data runs again on its own**
+  (the next step of the official-run snapshot).  Copied anywhere and
+  opened (its `.Rproj`, or `Rscript rerun.R` there), `rerun.R` builds
+  `rerun_<date>_<time>/` from its `code/` and `data/`, runs the same
+  programs, and compares what they make with the results it kept
+  (`compare.csv`): on the sample, the ARD comes out with the same bytes
+  and the RTF the same but the date and time it prints.  The kept results
+  are never written over; `README.txt` says how, and which R and package
+  versions (`session_info.txt`).  The programs read every folder relative
+  to the study (`study_setup.R`): there is no path of the computer that
+  ran them.  The kept code now has `programs/study_helpers.R`, which the
+  study setup sources, and the study's `programs/rerun.R`.
+
 - **An official run can keep its data** (the Runs tab's "keep the data in
   the batch folder", off by default; `run_batch(data = TRUE)`, the
   autoexec programs' `--data`).  The data files the run's programs read

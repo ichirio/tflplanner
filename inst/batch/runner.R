@@ -158,6 +158,38 @@
   invisible(ver)
 }
 
+# What a batch folder needs to run again on its own (it keeps its code and
+# data): rerun.R (programs/rerun.R), an RStudio project (it sets the
+# working folder) and a README
+.batch_rerun_kit <- function(dir) {
+  if (file.exists(file.path("programs", "rerun.R"))) {
+    file.copy(file.path("programs", "rerun.R"), file.path(dir, "rerun.R"), overwrite = TRUE)
+  }
+  writeLines(c("Version: 1.0", "", "RestoreWorkspace: No", "SaveWorkspace: No",
+               "AlwaysSaveHistory: No", "", "Encoding: UTF-8"),
+             file.path(dir, paste0(basename(dir), ".Rproj")))
+  writeLines(c(
+    paste("Batch folder", basename(dir), "-- an official run that can be made again."),
+    "",
+    "  code/              the programs, definition workbooks and study.yml it ran",
+    "  data/              the data files they read (data_manifest.csv: their md5)",
+    "  output/            what the run made: the study ARD, the RTFs",
+    "  logs/, run.csv     each program's log; one row a program",
+    "  session_info.txt   the R and package versions it ran with (renv.lock too,",
+    "                     when the study had one)",
+    "",
+    "To make it again: open the .Rproj (or go to this folder), then",
+    "",
+    "  source(\"rerun.R\")        or, in a shell:  Rscript rerun.R",
+    "",
+    "It builds rerun_<date>_<time>/ here from code/ and data/, runs the same",
+    "programs there, and compares what they make with output/ (compare.csv).",
+    "Nothing kept here is written over.  Install the versions in",
+    "session_info.txt for the same results (renv::restore() with renv.lock)."),
+    file.path(dir, "README.txt"))
+  invisible(TRUE)
+}
+
 # An official run: the programs of `parts` ("ard", "tfl"), each logged, and
 # a batch folder runs/<date>_<time>_<what>/ that keeps what the run used
 # and made:
@@ -172,6 +204,8 @@
 #   session_info.txt  the R and package versions (renv.lock when the study
 #              has one)
 #   batch.txt  who, where, when, which R, what was kept
+#   rerun.R, <batch>.Rproj, README.txt  with the code and the data: the
+#              batch folder runs again on its own (rerun.R)
 # `args`: --no-code; --data; program or output names to run only those;
 # --exclude=<name> (again for another) to leave a program out; --batch <name>
 # (or --batch=<name>) to run a named batch of `.batch_sets`.
@@ -281,6 +315,8 @@ run_batch <- function(parts, args = character()) {
                                  unlist(.batch_support[c(parts, "all")]))),
                         file.path(dir, "code"))
   man <- if (data) .batch_keep_data(result$program, dir)
+  # with its code and its data, the batch folder runs again on its own
+  if (code && data) .batch_rerun_kit(dir)
   .batch_session_info(unique(c(result$program,
                                unlist(.batch_support[c(parts, "all")]))), dir)
   result$log <- substring(result$log, nchar(dir) + 2L)
@@ -313,7 +349,8 @@ run_batch <- function(parts, args = character()) {
   if (any(result$status != "OK")) {
     print(result[result$status != "OK", c("program", "note")],
           right = FALSE, row.names = FALSE)
-    if (!interactive()) quit(status = 1L)
+    # (rerun.R goes on to compare what was made: it asks not to quit)
+    if (!interactive() && !isTRUE(getOption("tflplanner.rerun"))) quit(status = 1L)
   }
   invisible(result)
 }

@@ -2873,7 +2873,7 @@ Add a line to this pattern,この型に行を足す
 Remove the line,行を削除
 Remove the token,トークンを削除
 keep the data in the batch folder,バッチフォルダにデータを含める
-"The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the run can be made again.",実行するプログラムが読むデータファイル（データカタログのもの：表のデータセット、リスト・図のデータセット、取り込んだ ARD）を md5 付きで写します（data_manifest.csv）。コード・ログ・R とパッケージの版（session_info.txt）と合わせて、同じ実行をやり直せます。
+"The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the batch folder runs again on its own (rerun.R in it).",実行するプログラムが読むデータファイル（データカタログのもの：表のデータセット、リスト・図のデータセット、取り込んだ ARD）を md5 付きで写します（data_manifest.csv）。コード・ログ・R とパッケージの版（session_info.txt）と合わせて、バッチフォルダだけで同じ実行をやり直せます（中の rerun.R）。
 The run's programs read no data file of the data catalog.,実行するプログラムが読むデータカタログのファイルはありません。
 "Data kept: %d files, %s.",含めるデータ：%d ファイル、%s。
 "Over %s: every run keeps its own copy, so the runs folder grows by this much each time.",%s を超えます。実行ごとに写しを持つので、runs フォルダは毎回この分だけ大きくなります。

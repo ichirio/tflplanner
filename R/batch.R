@@ -17,6 +17,7 @@
 #   programs/autoexec_all.R        both, the ARD first, into one batch folder
 
 .batch_file <- "batch.R"
+.rerun_file <- "rerun.R"
 .fig_setup_file <- "fig_setup.R"
 .report_setup_file <- "report_setup.R"
 .autoexec_all_file <- "autoexec_all.R"
@@ -68,7 +69,8 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
                                                .fig_setup_file,
                                                .report_setup_file)),
             wb(c(.table_file, .report_file, .lf_file, .ard_file))),
-    all = c(file.path("programs", c(.batch_file, .autoexec_all_file)),
+    all = c(file.path("programs", c(.batch_file, .autoexec_all_file, .rerun_file,
+                                    .study_helpers_file)),
             .study_setup_path(), .study_file))
   vec <- function(v, names = NULL, indent = "  ") {
     if (!length(v)) return("character()")
@@ -277,6 +279,20 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 
 .is_abs_path <- function(p) grepl("^([A-Za-z]:)?[/\\\\]", p)
 
+# programs/rerun.R: copied into a batch folder that keeps its code and
+# data, to run it again from there (inst/batch/rerun.R)
+.rerun_code <- function(date = Sys.Date()) {
+  c(.banner(
+      paste("Program    :", file.path("programs", .rerun_file)),
+      "Runs an official run again from its batch folder: the official run",
+      "copies it there when it keeps the code and the data (rerun.R).",
+      paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
+             ", ", format(date, "%Y-%m-%d"))),
+    "",
+    readLines(system.file("batch", "rerun.R", package = "tflplanner"),
+              warn = FALSE, encoding = "UTF-8"))
+}
+
 # the runner and the autoexec programs, written with the study
 .save_batch_programs <- function(p, root) {
   lay <- study_layout()
@@ -292,6 +308,8 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
   put(.fig_setup_code(p), file.path(lay[["programs_tfl"]], .fig_setup_file))
   put(report_setup_code(p), file.path(lay[["programs_tfl"]], .report_setup_file))
   put(autoexec_all_code(), file.path("programs", .autoexec_all_file))
+  # a batch folder that keeps its code and data runs again on its own
+  put(.rerun_code(), file.path("programs", .rerun_file))
   put(autoexec_code(p), file.path(lay[["programs_tfl"]], "autoexec_report.R"))
   out
 }
@@ -316,6 +334,17 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 #' `data/external/`), listed in `data_manifest.csv` with their size, md5
 #' and time.  With the code and the logs, that is everything the run read:
 #' a run that can be made again.
+#'
+#' A batch folder that keeps both its code and its data runs again on its
+#' own, wherever it is copied: it has `rerun.R`, an RStudio project and a
+#' `README.txt`.  `rerun.R`, run from the batch folder, builds
+#' `rerun_<date>_<time>/` from `code/` and `data/` (a run of the reports
+#' alone: with the study ARD it kept), runs the same programs there, and
+#' compares what they make with what the run kept (`compare.csv`: the same
+#' bytes, the same but the date and time a report prints, the same R
+#' object, or different).  Nothing kept is written over.  The programs
+#' read the study's folders relative to it (`study_setup.R`): no path of
+#' the computer that ran them.
 #'
 #' The programs are the saved ones: save the study first.
 #'

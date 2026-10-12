@@ -274,3 +274,39 @@ test_that("a batch folder is opened by the system's opener", {
   expect_true(.open_folder(file.path(d, "runs", "20261012_000000_ard")))
   expect_identical(got, normalizePath(file.path(d, "runs", "20261012_000000_ard")))
 })
+
+test_that("a batch folder with its code and data runs again on its own, elsewhere", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  home <- withr_tempdir()
+  withr::local_options(tflplanner.home = home)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  # without the data: nothing to run again from
+  b0 <- run_batch(s, "ard", only = "T-14-1-1")
+  expect_false(file.exists(file.path(b0$batch, "rerun.R")))
+  Sys.sleep(1.1)
+  b <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
+  expect_true(b$ok)
+  kit <- c("rerun.R", "README.txt", paste0(basename(b$batch), ".Rproj"))
+  expect_true(all(file.exists(file.path(b$batch, kit))))
+  # what study_setup.R sources is kept too
+  expect_true(file.exists(file.path(b$batch, "code", "programs", "study_helpers.R")))
+  # the folder copied elsewhere, run again there
+  to <- file.path(withr_tempdir(), basename(b$batch))
+  file.copy(b$batch, dirname(to), recursive = TRUE)
+  r <- processx::run(file.path(R.home("bin"), "Rscript"), "rerun.R", wd = to,
+                     error_on_status = FALSE)
+  expect_identical(r$status, 0L)
+  rr <- list.files(to, pattern = "^rerun_", full.names = TRUE)
+  expect_length(rr, 1L)
+  cmp <- utils::read.csv(file.path(rr, "compare.csv"), colClasses = "character")
+  expect_setequal(cmp$file, c("output/ard/ard.rds", "output/ard/ard_status.csv",
+                              "output/ard/T-14-1-1.rds", "output/tfl/T-14-1-1.rtf"))
+  # the ARD the same bytes; the report and the status but the time they print
+  expect_identical(cmp$result[cmp$file == "output/ard/T-14-1-1.rds"], "identical")
+  expect_true(all(cmp$result %in% c("identical", "same but the time")))
+  # what the run kept is as it was
+  expect_identical(unname(tools::md5sum(file.path(to, "output", "tfl", "T-14-1-1.rtf"))),
+                   unname(tools::md5sum(file.path(b$batch, "output", "tfl", "T-14-1-1.rtf"))))
+})
