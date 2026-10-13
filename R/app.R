@@ -9572,11 +9572,9 @@ app_server <- function(input, output, session, start) {
   page_fig_memo <- new.env(parent = emptyenv())
   page_sample_figure <- function(p, id) {
     sz <- .fig_size_of(p, id)
-    body_w <- .fig_size_of(set_page_cell(p, "report", "figure_width_in", id, NA), id)$width_in
-    pct <- if (isTRUE(sz$fit[["width"]])) 100 else round(min(100, 100 * sz$width_in / body_w))
-    caption <- shiny::div(class = "text-muted small text-center",
-                          sprintf(t("%s x %s in%s"), sz$width_in, sz$height_in,
-                                  if (any(sz$fit)) t(" (the page's body)") else ""))
+    body_w <- .fig_size_of(set_page_cell(p, "report", "figure_width_in", id, "fit"), id)$width_in
+    pct <- round(min(100, 100 * sz$width_in / body_w))
+    caption <- shiny::div(class = "text-muted small text-center", .fig_size_words(sz, t))
     img <- function(bytes) shiny::tags$img(
       src = paste0("data:image/png;base64,", jsonlite::base64_enc(bytes)),
       style = sprintf("width: %s%%; height: auto; display: block; margin: 0 auto;", pct))
@@ -10081,6 +10079,11 @@ app_server <- function(input, output, session, start) {
     }
     page_write(guarded(switch(a$act,
       reset = set_page_cell(p, a$sheet, a$col, id, NA_character_),
+      # a figure's size: both fit to the page, or both its own (blank)
+      fig_fit = set_page_cell(set_page_cell(p, "report", "figure_width_in", id, "fit"),
+                              "report", "figure_height_in", id, "fit"),
+      fig_native = set_page_cell(set_page_cell(p, "report", "figure_width_in", id, NA_character_),
+                                 "report", "figure_height_in", id, NA_character_),
       # a line of the pattern's (or Standard's) made the report's own, to change
       own = {
         r <- page_lines_from(p, a$sheet, id)

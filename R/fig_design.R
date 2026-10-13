@@ -91,13 +91,44 @@ set_fig_design <- function(x, output_id, design) {
 }
 
 # A figure report's size on its page (tflspec::tfl_fig_page_size()): its
-# report row's figure_width_in / figure_height_in, blank the page's body
+# report row's figure_width_in / figure_height_in -- inches, fit (the
+# page's body), or blank: the figure's own size (.fig_native_size())
 .fig_size_of <- function(x, output_id) {
   sp <- .spec_object_last(x, c(table_sheets(), report_sheets()),
                           unique(c(.study_keys$table, .study_keys$report)))
-  tryCatch(tflspec::tfl_fig_page_size(sp, output_id),
-           error = function(e) list(width_in = 7.5, height_in = 4.5,
-                                    fit = c(width = TRUE, height = TRUE)))
+  native <- .fig_native_size(x, output_id)
+  tryCatch(tflspec::tfl_fig_page_size(sp, output_id, native = native),
+           error = function(e) list(width_in = native[1L], height_in = native[2L],
+                                    mode = c(width = "native", height = "native")))
+}
+
+# A figure's own size (inches): a designed figure's, the company's figure
+# style for its kind (figure_settings: width / height, a kind's own -- km,
+# swimmer ... -- else every figure's); one of its own code's, the size
+# rtfreporter draws a plot at (6.5 x 4.5)
+.fig_native_size <- function(x, output_id) {
+  rtf <- c(6.5, 4.5)
+  design <- fig_design(x, output_id)
+  if (is.null(design) || .is_code_step(x, output_id, "content")) return(rtf)
+  st <- tryCatch(.std_fig_style()$settings, error = function(e) NULL)
+  if (is.null(st) || !nrow(st)) return(rtf)
+  tp <- tryCatch(tflspec::tfl_fig_templates(), error = function(e) NULL)
+  kind <- if (!is.null(tp) && !is.null(design$template)) tp$kind[match(design$template, tp$template)]
+  one <- function(key, d) {
+    v <- st$value[st$key %in% key & !is.na(st$type) & st$type %in% kind]
+    if (!length(v)) v <- st$value[st$key %in% key & (is.na(st$type) | !nzchar(st$type))]
+    v <- suppressWarnings(as.numeric(v[1L]))
+    if (length(v) && !is.na(v) && v > 0) v else d
+  }
+  c(one("width", rtf[1L]), one("height", rtf[2L]))
+}
+
+# the size said in words (the program's comment, the sample's caption)
+.fig_size_words <- function(sz, t = identity) {
+  m <- sz$mode %||% c(width = "native", height = "native")
+  w <- if (all(m == "native")) t(" (its own size)") else
+    if (all(m == "fit")) t(" (the page's body)") else ""
+  sprintf(t("%s x %s in%s"), sz$width_in, sz$height_in, w)
 }
 
 # the lines that draw a figure at its size on the page (step 3), its
@@ -106,9 +137,8 @@ set_fig_design <- function(x, output_id, design) {
   sz <- .fig_size_of(x, output_id)
   dpi <- as.numeric((fig_design(x, output_id)$plot$dpi %||% 300)[1L])
   c("",
-    sprintf("# the figure drawn at its size on the page: %s x %s in%s, %s dpi",
-            sz$width_in, sz$height_in,
-            if (any(sz$fit)) " (the page's body)" else "", dpi),
+    sprintf("# the figure drawn at its size on the page: %s, %s dpi",
+            .fig_size_words(sz), dpi),
     sprintf("%s <- fig_sized(%s, width_in = %s, height_in = %s, dpi = %s)",
             obj, obj, sz$width_in, sz$height_in, dpi))
 }

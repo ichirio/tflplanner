@@ -452,7 +452,7 @@ $(document).on('shiny:value', function(e) {
     # a figure's size on the page: its own, or (blank) the page's body
     if (report && identical(report_info(x, id)$type, "figure")) card(
       with_tip(t("Figure size"),
-               t("Blank: the page's body (its width; its height less the titles and footnotes). The figure is drawn at this size, its text as its theme says.")),
+               t("Blank: the figure's own size (the company's figure style for its kind; a figure of your own code, 6.5 x 4.5 in), as rtfreporter places an image. A number: that size in inches. fit: the page's body (its width; its height less the titles and footnotes). The figure is drawn at this size, its text as its theme says; the dpi (step 2) changes only its pixels.")),
       .page_fig_size_ui(x, id, pattern, t)),
     card(t("Header"), .page_lines_ui(x, id, "header", pattern, t)),
     card(t("Titles"), .page_heading_ui(x, id, t),
@@ -463,33 +463,36 @@ $(document).on('shiny:value', function(e) {
 }
 
 # A figure's width and height on the page (the report sheet's
-# figure_width_in / figure_height_in): a number its own, blank the page's
-# body -- shown in the placeholder (tflspec::tfl_fig_page_size())
+# figure_width_in / figure_height_in): inches, fit (the page's body), or
+# blank -- its own size, shown in the placeholder
+# (tflspec::tfl_fig_page_size()); the buttons set both
 .page_fig_size_ui <- function(x, id, pattern, t) {
-  sz <- .fig_size_of(x, id)
+  native <- .fig_native_size(x, id)
   fields <- list(
-    list(sheet = "report", col = "figure_width_in", label = "Width (in)", kind = "number",
-         default = sz$width_in, fit = sz$fit[["width"]]),
-    list(sheet = "report", col = "figure_height_in", label = "Height (in)", kind = "number",
-         default = sz$height_in, fit = sz$fit[["height"]]))
+    list(sheet = "report", col = "figure_width_in", label = "Width (in)", own = native[1L]),
+    list(sheet = "report", col = "figure_height_in", label = "Height (in)", own = native[2L]))
+  vals <- lapply(fields, function(f) page_value_from(x, f$sheet, f$col, id))
+  said <- vapply(vals, function(v) identical(v$from, "own"), NA)
+  fit <- vapply(vals, function(v) identical(tolower(v$value %||% ""), "fit"), NA)
+  act <- function(a, label) shiny::tags$button(
+    type = "button", class = "pg-act btn btn-link", `data-act` = a, `data-sheet` = "report",
+    `data-col` = "", label)
   shiny::tagList(
-    shiny::div(class = "pg-grid", lapply(fields, function(f) {
-      v <- page_value_from(x, f$sheet, f$col, id)
-      own <- identical(v$from, "own")
+    shiny::div(class = "pg-grid", lapply(seq_along(fields), function(k) {
+      f <- fields[[k]]
       shiny::div(
         class = "pg-field",
         shiny::tags$label(t(f$label)),
         shiny::tags$input(class = "pg-in form-control form-control-sm", `data-kind` = "cell",
                           `data-sheet` = f$sheet, `data-col` = f$col,
                           `data-key` = paste(f$sheet, f$col, sep = ":"), type = "text",
-                          value = if (own) v$value else "",
-                          placeholder = sprintf(t("(fit: %s)"), f$default)),
-        if (own) shiny::div(
-          shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t)),
-          shiny::tags$button(type = "button", class = "pg-act btn btn-link",
-                             `data-act` = "reset", `data-sheet` = f$sheet, `data-col` = f$col,
-                             t("Fit to the page"))))
-    })))
+                          value = if (said[k]) vals[[k]]$value else "",
+                          placeholder = sprintf(t("(its own: %s)"), f$own)),
+        if (said[k]) shiny::div(shiny::span(class = "pg-own", "\u25cf ", .pg_own_word(id, t))))
+    })),
+    shiny::div(class = "d-flex flex-wrap gap-2",
+               if (!all(fit)) act("fig_fit", t("Fit to the page")),
+               if (any(said)) act("fig_native", t("Its own size"))))
 }
 
 # A line number for a report's new line: after the last line its page has
