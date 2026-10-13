@@ -2,11 +2,18 @@
 # home, found again by an app opened later, one at a time in a study, and
 # no update while one goes on
 
-# a process standing in for a run: an Rscript that waits
+# a process standing in for a run: an Rscript that waits.  It is killed, so
+# what an R process leaves in its temporary folder stays: a script file
+# (not -e, which Rscript writes to a file of its own) and its temporary
+# folder inside this session's, which goes with it
 sleeper <- function(secs = 60) {
-  processx::process$new(file.path(R.home("bin"), "Rscript"),
-                        c("-e", sprintf("Sys.sleep(%d)", secs)),
-                        stdout = NULL, stderr = NULL, cleanup = TRUE)
+  tmp <- file.path(tempdir(), "sleepers")
+  dir.create(tmp, showWarnings = FALSE)
+  f <- tempfile("sleep", tmpdir = tmp, fileext = ".R")
+  writeLines(sprintf("Sys.sleep(%d)", secs), f)
+  processx::process$new(file.path(R.home("bin"), "Rscript"), f,
+                        stdout = NULL, stderr = NULL, cleanup = TRUE,
+                        env = c("current", TMPDIR = tmp, TMP = tmp, TEMP = tmp))
 }
 fake_study <- function(id = "S1", path = tempdir()) list(meta = list(study_id = id), path = path)
 
@@ -54,7 +61,12 @@ test_that("an official run is detached: it goes on when the R process that start
     "p <- processx::process$new(file.path(R.home('bin'), 'Rscript'), ",
     "c('-e', 'Sys.sleep(4); writeLines(\"done\", \"%s\")'), cleanup = FALSE); ",
     "cat(p$get_pid())"), gsub("\\\\", "/", out))
-  pid <- as.integer(processx::run(file.path(R.home("bin"), "Rscript"), c("-e", code))$stdout)
+  tmp <- file.path(tempdir(), "sleepers")
+  dir.create(tmp, showWarnings = FALSE)
+  f <- tempfile("detach", tmpdir = tmp, fileext = ".R")
+  writeLines(code, f)
+  pid <- as.integer(processx::run(file.path(R.home("bin"), "Rscript"), f,
+                                  env = c("current", TMPDIR = tmp, TMP = tmp, TEMP = tmp))$stdout)
   # the parent has ended; the child goes on and finishes
   for (i in 1:40) if (!file.exists(out)) Sys.sleep(0.25)
   expect_true(file.exists(out))
