@@ -38,10 +38,9 @@ test_that("the starter writes the rows of the sample's T-14-3-1", {
   # the ARD read as a hierarchy, its "Any TEAE" row: from the table's
   # overall_label, the very line the sample's rework writes by hand
   expect_true(is.na(r$p$outputs$process_code[match("T-14-3-1", r$p$outputs$output_id)]))
-  expect_identical(sheet_rows(r$p, "tables", "T-14-3-1")$overall_label, "Any TEAE")
-  norm <- function(x) gsub("\\s+", " ", paste(x, collapse = " "))
-  expect_identical(norm(.normalize_line(r$p, "T-14-3-1")),
-                   norm(r$sample$outputs$process_code[match("T-14-3-1", r$sample$outputs$output_id)]))
+  same("sheet", "tables", "overall_label")
+  expect_identical(.normalize_line(r$p, "T-14-3-1"), .normalize_line(r$sample, "T-14-3-1"))
+  expect_match(.normalize_line(r$p, "T-14-3-1"), "overall = \"Any TEAE\"", fixed = TRUE)
   # the analysis set, as the sample's
   po <- r$p$ard$populations
   expect_identical(po$population_id, "SAF")
