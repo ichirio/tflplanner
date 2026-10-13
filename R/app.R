@@ -2596,9 +2596,8 @@ app_server <- function(input, output, session, start) {
              class = "btn-sm btn-outline-primary"),
         help_tip(t("Reads spec/ and study.yml again and takes them in: after editing them outside tflplanner (in Excel), or copying workbooks into spec/. Your unsaved changes are kept and merged."))),
       shiny::div(class = "d-flex flex-wrap gap-2 align-items-center rp-upload mb-2",
-                 shiny::downloadButton("ars_zip",
-                                       t("Export the analyses as CDISC ARS"),
-                                       class = "btn-sm"),
+                 .btn("ars_open", t("Export the analyses as CDISC ARS"),
+                      class = "btn-sm btn-outline-secondary"),
                  shiny::downloadButton("study_zip",
                                        t("Download the study (zip)"),
                                        class = "btn-sm"),
@@ -2726,11 +2725,70 @@ app_server <- function(input, output, session, start) {
     notify(sprintf(t("Imported: %s. The files before are in %s."),
                    paste(.part_labels(parts), collapse = ", "), backup))
   })
-  output$ars_zip <- shiny::downloadHandler(
-    filename = function() paste0(rv$study$meta$study_id, "_ars.zip"),
+  # -- CDISC ARS: a dialog with the checks, then the files ----------------
+  # built once when the dialog opens and again when the profile changes;
+  # both downloads write what is shown
+  ars_built <- shiny::reactiveVal(NULL)
+  ars_build_now <- function(profile) {
+    b <- guarded(.ars_build(current_study(), profile))
+    ars_built(b)
+    b
+  }
+  shiny::observeEvent(input$ars_open, {
+    shiny::req(has_study())
+    if (!nrow(rv$p$ard$analyses)) {
+      return(notify(t("The study has no analyses in its ARD definition."), "warning"))
+    }
+    if (is.null(ars_build_now("cdisc"))) return()
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("CDISC ARS: %s"), rv$study$meta$study_id),
+      shiny::radioButtons("ars_profile", NULL, inline = TRUE,
+                          choiceNames = c(t("CDISC (to exchange)"),
+                                          t("siera (to run with siera)")),
+                          choiceValues = c("cdisc", "siera")),
+      shiny::uiOutput("ars_summary"),
+      size = "l", easyClose = TRUE,
+      footer = shiny::tagList(
+        # the three the same size: modalButton() has no class of its own
+        shiny::tags$button(type = "button", class = "btn btn-sm btn-default",
+                           `data-dismiss` = "modal", `data-bs-dismiss` = "modal",
+                           t("Close")),
+        shiny::downloadButton("ars_json", t("JSON only"), class = "btn-sm"),
+        shiny::downloadButton("ars_zip", t("JSON, Excel and the checks (zip)"),
+                              class = "btn-sm btn-primary"))))
+  })
+  shiny::observeEvent(input$ars_profile, {
+    b <- ars_built()
+    if (!is.null(b) && !identical(b$profile, input$ars_profile)) {
+      ars_build_now(input$ars_profile)
+    }
+  }, ignoreInit = TRUE)
+  output$ars_summary <- shiny::renderUI({
+    b <- ars_built()
+    shiny::req(b)
+    .ars_summary_ui(b, t)
+  })
+  shiny::observeEvent(input$ars_goto, {
+    b <- ars_built()
+    i <- suppressWarnings(as.integer(input$ars_goto))
+    shiny::req(b, !is.na(i), i >= 1L, i <= nrow(b$problems))
+    shiny::removeModal()
+    review_jump(.ars_jump_row(b$problems[i, ]))
+  })
+  ars_file <- function(ext) paste0(rv$study$meta$study_id, "_ars",
+                                   if (identical(input$ars_profile, "siera")) "_siera", ext)
+  output$ars_json <- shiny::downloadHandler(
+    filename = function() ars_file(".json"),
     content = function(file) {
       d <- tempfile("ars")
-      export_ars(current_study(), d)
+      f <- .ars_write(ars_built(), d, parts = "json")
+      file.copy(f[["json"]], file, overwrite = TRUE)
+    })
+  output$ars_zip <- shiny::downloadHandler(
+    filename = function() ars_file(".zip"),
+    content = function(file) {
+      d <- tempfile("ars")
+      .ars_write(ars_built(), d)
       zip::zipr(file, list.files(d, full.names = TRUE))
     })
   output$study_zip <- shiny::downloadHandler(
