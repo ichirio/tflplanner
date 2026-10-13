@@ -108,9 +108,9 @@ test_that("the builder opens on a hierarchy table, and writes its order", {
                       table_nav = "builder")
     expect_no_match(output$builder_note$html %||% "", "summary tables for now", fixed = TRUE)
     h <- output$builder_form$html
-    expect_match(h, "Rows: a hierarchy", fixed = TRUE)
+    expect_match(h, "Row variables (outermost first; drag)", fixed = TRUE)
     # one order a term; an outer term's count waits for rtfreporter
-    expect_match(h, "Ties by name.", fixed = TRUE)
+    expect_match(h, "Most frequent first (ties by name)", fixed = TRUE)
     expect_match(h, "Counted in", fixed = TRUE)
     expect_no_match(h, "Rows: variables in order", fixed = TRUE)
     # no warning about the subjects per group: the denominator counts them
@@ -162,4 +162,42 @@ test_that("an order of the sheets' own is kept, and the card's order is one clic
     session$setInputs(b_sort_reset = 1)
     expect_identical(sheet_rows(rv$p, "tables", "T-AE")$sort, ".overall | group1 | .depth | -n | label")
   })
+})
+
+test_that("the rows are the table's: the ARD's keys by default, a group outermost, a page each", {
+  p <- hier_planner()
+  m <- hier_meta()
+  m$keys$SEX <- c("F", "M")
+  st <- builder_read(p, "T-AE", m)
+  # the starter's rows; the keys it may take (not the column's)
+  expect_identical(st$row_keys, c("AEBODSYS", "AEDECOD"))
+  expect_setequal(st$row_choices, c("AEBODSYS", "AEDECOD", "SEX"))
+  expect_false(st$row_pages)
+  # a group (an ARD's stratum) outermost: the rows and a new order
+  sx <- st
+  sx$row_keys <- c("SEX", "AEBODSYS", "AEDECOD")
+  q <- builder_write(p, "T-AE", sx, was = st)
+  tb <- sheet_rows(q, "tables", "T-AE")
+  expect_identical(tb$rows, "group1 = SEX | group2 = AEBODSYS")
+  expect_identical(tb$label, "label = AEDECOD")
+  # (the group before the any-event row, with no summary row of its own)
+  expect_identical(tb$sort, "group1 | .overall | group2 | .depth | -n | label")
+  expect_identical(builder_read(q, "T-AE", m)$row_keys, c("SEX", "AEBODSYS", "AEDECOD"))
+  expect_identical(as.vector(builder_read(q, "T-AE", m)$sort), c("alpha", "alpha", "freq"))
+  # a page each
+  pg <- builder_read(q, "T-AE", m)
+  pg2 <- pg
+  pg2$row_pages <- TRUE
+  r <- builder_write(q, "T-AE", pg2, was = pg)
+  ly <- sheet_rows(r, "layout", "T-AE")
+  expect_identical(c(ly$group_page, ly$group_col), c("TRUE", "group1"))
+  expect_true(builder_read(r, "T-AE", m)$row_pages)
+  # a hierarchy level left out: nothing written (the card says why)
+  drop <- st
+  drop$row_keys <- "AEDECOD"
+  expect_identical(sheet_rows(builder_write(p, "T-AE", drop, was = st), "tables", "T-AE"),
+                   sheet_rows(p, "tables", "T-AE"))
+  # the rows read back: constants and .label are not keys
+  expect_identical(.row_keys_read('PARAM = PARAM | group1 = "Worst"', "label = .label"), "PARAM")
+  expect_identical(.row_keys_read(NA, "label = AEDECOD"), "AEDECOD")
 })

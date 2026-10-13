@@ -34,7 +34,10 @@ variable's row labels in order) and their \code{templates}, \code{value}
 (a variable's own: \code{variable}, \code{statistic}, \code{digits}), \code{cat_format} (\code{npct},
 \code{nNpct}, \code{n}), \code{pct_decimals}, \code{header} (\code{keep} or a name of
 \code{\link[=header_presets]{header_presets()}}), and for a hierarchy table (SOC / PT) its
-\code{hierarchy} (the terms, outermost first) and \code{sort} (each term's
+\code{hierarchy} (the ARD's terms, outermost first), \code{row_keys} (the
+table's rows, outermost first: by default the ARD's other groups, then
+its hierarchy), \code{row_choices} (the keys it may take), \code{row_pages} (the
+outermost a page each), \code{sort} (each row key's
 order, outermost first -- \code{"alpha"} by name, or a code list's order;
 \code{"freq"} most frequent first, ties by name -- or \code{"own"}: an order of
 the sheets' own, left as it is) and \code{overall_label} (the "any event"

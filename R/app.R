@@ -8532,11 +8532,25 @@ app_server <- function(input, output, session, start) {
                  class = "btn-sm btn-outline-primary py-0"))),
       if (length(st$hierarchy)) shiny::div(
         class = "rp-b-card",
-        shiny::h6(t("Rows: a hierarchy")),
+        shiny::h6(t("Rows")),
+        # the table's rows: the ARD's keys (its groups, its hierarchy),
+        # outermost first -- the layout is the table's; the ARD only
+        # offers them
+        shiny::selectizeInput(
+          bid("rowkeys"),
+          with_tip(t("Row variables (outermost first; drag)"),
+                   t("Row and column variables are the ARD's groups and hierarchy; to add one, add it to the analysis's by in step 1.")),
+          c(st$row_keys, setdiff(st$row_choices, st$row_keys)), selected = st$row_keys,
+          multiple = TRUE, width = "100%",
+          options = list(plugins = list("remove_button", "drag_drop"))),
+        shiny::uiOutput("b_rows_gap"),
+        if (length(st$row_keys) > 1L) shiny::checkboxInput(
+          bid("rowpages"), t("The outermost row variable a page each"), isTRUE(st$row_pages)),
         shiny::textInput(bid("overall"), with_tip(t("The any-event row"),
-                                                  t("Its name in the table (tables$overall_label); blank: no such row.")),
+                                                  t("tables$overall_label; blank: no such row.")),
                          value = st$overall_label %||% "", width = "18em",
                          placeholder = "Any TEAE"),
+        shiny::h6(class = "mt-2", t("Order")),
         hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
                      total = .rows_for(p0, "tables", id)$total[1L])),
       if (!length(st$hierarchy)) shiny::div(
@@ -8647,7 +8661,7 @@ app_server <- function(input, output, session, start) {
   # in one (the Total, an arm).  An order of the sheets' own is said, with
   # a way back to the card's.
   hier_sort_ui <- function(st, coded, total = NA) {
-    n <- length(st$hierarchy)
+    n <- length(st$row_keys)
     if (identical(st$sort, "own")) {
       return(shiny::div(
         class = "small",
@@ -8661,34 +8675,59 @@ app_server <- function(input, output, session, start) {
               stats::setNames(st$arms[[key]] %||% character(), st$arms[[key]] %||% character()))
     shiny::tagList(
       lapply(seq_len(n), function(i) {
-        v <- st$hierarchy[i]
-        opt <- function(value, label, off = FALSE) shiny::tags$option(
-          value = value, selected = if (identical(st$sort[i], value)) NA,
-          disabled = if (off) NA, label)
+        v <- st$row_keys[i]
+        opt <- function(value, label) shiny::tags$option(
+          value = value, selected = if (identical(st$sort[i], value)) NA, label)
+        cl <- v %in% coded
         shiny::div(
           class = "d-flex align-items-center gap-2 mb-1",
           shiny::span(class = "rp-b-var", style = "min-width: 9em;", v),
           shiny::tags$select(
             id = bid(paste0("sort", i)), class = "form-select form-select-sm",
-            style = "width: 18em;",
-            opt("alpha", if (v %in% coded) t("Code list's order") else t("By name")),
-            opt("freq", t("Most frequent first"))))
+            style = "width: 22em;",
+            # (a code list is the order a factor sorts in: no name order
+            # beside it; a group of the ARD is not ordered by its count)
+            opt("alpha", if (cl) t("Code list's order") else t("By name")),
+            if (v %in% st$hierarchy) opt("freq", if (cl)
+              t("Most frequent first (ties in the code list's order)") else
+                t("Most frequent first (ties by name)"))))
       }),
       shiny::div(
         class = "d-flex align-items-center gap-2 mb-1",
         shiny::span(class = "small", style = "min-width: 9em;", t("Counted in")),
         shiny::selectInput(bid("sort_col"), NULL, cols,
-                           selected = if (is.na(col_now)) "" else col_now, width = "18em")),
-      shiny::p(class = "small text-muted mb-0", t("Ties by name.")))
+                           selected = if (is.na(col_now)) "" else col_now, width = "22em")))
   }
+  # a hierarchy level left out of the rows: this ARD cannot make that table
+  # (the level's rows would land in another's cells) -- said, with the way
+  # back and the way to step 1; nothing is written meanwhile
+  output$b_rows_gap <- shiny::renderUI({
+    bform_drawn()
+    st <- bform$st
+    shiny::req(length(st$hierarchy) > 0L)
+    rk <- input[[bid("rowkeys")]]
+    shiny::req(!is.null(rk))
+    miss <- setdiff(st$hierarchy, rk)
+    if (!length(miss)) return(NULL)
+    shiny::div(
+      class = "alert alert-warning py-1 px-2 small",
+      sprintf(t("Without %s this ARD cannot make the table (its rows would land in another level's cells)."),
+              paste(miss, collapse = ", ")), " ",
+      shiny::actionLink("b_rows_back", t("Put it back")), " \u00b7 ",
+      shiny::actionLink("b_rows_step1", t("Step 1's analysis")))
+  })
+  shiny::observeEvent(input$b_rows_back, {
+    shiny::updateSelectizeInput(session, bid("rowkeys"), selected = bform$st$row_keys)
+  })
+  shiny::observeEvent(input$b_rows_step1, go("ard"))
   shiny::observeEvent(input$b_sort_reset, {
     id <- bform$id
     st <- bform$st
     shiny::req(!is.null(id), length(st$hierarchy) > 0L)
-    n <- length(st$hierarchy)
+    n <- length(st$row_keys)
     tb <- sheet_rows(rv$p, "tables", id)
     tb$output_id <- NULL
-    tb$sort[1L] <- .hier_sort(c(rep("alpha", n - 1L), "freq"))
+    tb$sort[1L] <- .hier_sort(c(rep("alpha", n - 1L), "freq"), hier = st$row_keys %in% st$hierarchy)
     p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
     if (is.null(p2)) return()
     rv$p <- p2
@@ -9500,6 +9539,16 @@ app_server <- function(input, output, session, start) {
          },
          auto_levels = st$auto_levels,
          hierarchy = st$hierarchy,
+         row_keys = if (hier) {
+           rk <- get("rowkeys")
+           # a hierarchy level left out: not written (the card says why)
+           if (is.null(rk) || !length(rk) || !all(st$hierarchy %in% rk)) st$row_keys else rk
+         },
+         row_choices = st$row_choices,
+         row_pages = if (hier) {
+           pg <- get("rowpages")
+           if (is.null(pg)) st$row_pages else isTRUE(pg)
+         },
          overall_label = if (hier) {
            o <- get("overall")
            if (is.null(o)) st$overall_label %||% NA_character_ else
@@ -9507,7 +9556,7 @@ app_server <- function(input, output, session, start) {
          },
          sort = if (hier) {
            if (identical(st$sort, "own")) "own" else {
-             lv <- vapply(seq_along(st$hierarchy), function(i)
+             lv <- vapply(seq_along(st$row_keys), function(i)
                get(paste0("sort", i)) %||% st$sort[i], "")
              cc <- get("sort_col")
              attr(lv, "col") <- if (is.null(cc)) attr(st$sort, "col") %||% NA_character_ else
@@ -9520,8 +9569,15 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(bstate_d(), {
     st <- bstate_d()
     id <- bform$id
+    rows_new <- length(st$hierarchy) > 0L && !identical(st$row_keys, bform$last$row_keys)
     p2 <- guarded(builder_write(rv$p, id, st, was = bform$last))
     if (!is.null(p2)) bform$last <- st
+    if (!is.null(p2) && isTRUE(rows_new)) {
+      rv$p <- p2
+      rv$btouched <- TRUE
+      rv$bver <- rv$bver + 1L
+      return()
+    }
     if (!is.null(p2) && !identical(p2, rv$p)) {
       session$sendCustomMessage("builder-updating", TRUE)
       rv$p <- p2

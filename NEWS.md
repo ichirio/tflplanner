@@ -1,5 +1,22 @@
 # tflplanner (development version)
 
+- **A hierarchy table's rows are the table's** (the user's principle: the
+  ARD's variables are defaults; the layout belongs to the content step).
+  The builder's "Rows" card mirrors "Columns": the row variables,
+  outermost first, among the ARD's groups and hierarchy (by default its
+  other groups, then the hierarchy; drag to reorder; a group of the ARD
+  -- a stratum -- outermost), written to `tables$rows` / `tables$label`
+  only, never to the ARD's analysis; the outermost a page each
+  (`layout$group_page`); "The any-event row" (`tables$overall_label`);
+  and "Order", one a row variable: by name, or the code list's order when
+  it has one (a factor sorts by its levels), or most frequent first with
+  the tie in the choice ("ties by name" / "ties in the code list's
+  order"; a stratum is not ordered by its count), "Counted in" beside
+  them.  A stratum comes before the any-event row and has no summary row
+  of its own.  A hierarchy level left out is not written: the card says
+  this ARD cannot make that table, with "Put it back" and a link to step
+  1's analysis.
+
 - **A shift table started from the data** (#378, 0.0.2.9213; core
   gap #2 as corrected: tflspec's LB example shows the engine does it).
   "Apply a template" has a third kind, Shift (baseline x worst after):

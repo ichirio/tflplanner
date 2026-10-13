@@ -146,7 +146,10 @@ builder_stats <- function() {
 #'   (a variable's own: `variable`, `statistic`, `digits`), `cat_format` (`npct`,
 #'   `nNpct`, `n`), `pct_decimals`, `header` (`keep` or a name of
 #'   [header_presets()]), and for a hierarchy table (SOC / PT) its
-#'   `hierarchy` (the terms, outermost first) and `sort` (each term's
+#'   `hierarchy` (the ARD's terms, outermost first), `row_keys` (the
+#'   table's rows, outermost first: by default the ARD's other groups, then
+#'   its hierarchy), `row_choices` (the keys it may take), `row_pages` (the
+#'   outermost a page each), `sort` (each row key's
 #'   order, outermost first -- `"alpha"` by name, or a code list's order;
 #'   `"freq"` most frequent first, ties by name -- or `"own"`: an order of
 #'   the sheets' own, left as it is) and `overall_label` (the "any event"
@@ -246,15 +249,36 @@ builder_read <- function(x, output_id, meta = NULL) {
   pct_decimals <- cr$pct
   cat_own <- cr$own %||% NA_character_
 
-  # a hierarchy table (SOC / PT): its terms, outermost first, and their order
+  # a hierarchy table (SOC / PT): its terms (the ARD's), the table's rows
+  # -- the layout is the table's: the ARD's keys, by default its other
+  # groups then its hierarchy -- their order, and a page for the outermost
   hier <- if (!is.null(meta)) meta$hierarchy %||% character() else character()
+  rk <- if (length(hier)) .row_keys_read(tb$rows[1L], tb$label[1L]) else character()
+  if (length(hier) && !length(rk)) rk <- c(setdiff(meta$by %||% character(), key), hier)
+  ly <- .rows_for(x, "layout", id)
   list(key = key, arms = arms, variables = variables, levels = levels,
        rows = rows, templates = templates, value = value, digits = digits,
        exceptions = exc, cat_format = cat_format, cat_own = cat_own,
        pct_decimals = pct_decimals, header = "keep", auto_levels = auto,
-       hierarchy = hier,
-       sort = if (length(hier)) .hier_sort_read(tb$sort[1L], length(hier)),
+       hierarchy = hier, row_keys = rk,
+       row_choices = if (length(hier)) setdiff(names(meta$keys), key) else character(),
+       row_pages = length(hier) > 0L && isTRUE(as.logical(ly$group_page[1L])) &&
+         identical(ly$group_col[1L] %||% NA_character_, "group1"),
+       sort = if (length(hier)) .hier_sort_read(tb$sort[1L], length(rk)),
        overall_label = if (length(hier)) tb$overall_label[1L] %||% NA_character_)
+}
+
+# A table's row keys, outermost first, from its tables$rows and
+# tables$label ("group1 = AEBODSYS", "label = AEDECOD"): the columns named
+# (not a constant heading, not .label)
+.row_keys_read <- function(rows, label) {
+  part <- function(x) {
+    if (.is_blank(x)) return(character())
+    v <- trimws(sub("^[^=]*=", "", trimws(strsplit(x, "|", fixed = TRUE)[[1L]])))
+    v[nzchar(v) & !grepl("^[\"'~]", v)]
+  }
+  lab <- part(label)
+  c(part(rows), lab[lab != ".label"])
 }
 
 # A hierarchy table's order (tables$sort), written as plan_sort() takes
@@ -265,15 +289,25 @@ builder_read <- function(x, output_id, meta = NULL) {
 # counts (a level of the outer column key, or the Total column's
 # heading: -n[Total]); NA every column's together.  The "any event" row
 # first, and each group's own row above the rows under it.
-.hier_sort <- function(levels = c("alpha", "freq"), col = NA_character_) {
+# `hier`: which row keys are the hierarchy's levels -- a group of the ARD
+# outside it (a stratum, outermost) comes before the "any event" row and
+# has no summary row of its own.
+.hier_sort <- function(levels = c("alpha", "freq"), col = NA_character_,
+                       hier = rep(TRUE, length(levels))) {
   n <- length(levels)
   at <- if (!is.na(col) && nzchar(col)) sprintf("[%s]", col) else ""
-  out <- ".overall"
-  for (i in seq_len(n - 1L)) {
-    g <- sprintf("group%d", i)
-    out <- c(out, if (identical(levels[i], "freq")) paste0("-n@", g, at), g, ".depth")
+  out <- character()
+  overall <- FALSE
+  for (i in seq_len(n)) {
+    g <- if (i < n) sprintf("group%d", i) else "label"
+    if (hier[i] && !overall) {
+      out <- c(out, ".overall")
+      overall <- TRUE
+    }
+    count <- if (identical(levels[i], "freq")) paste0(if (i < n) paste0("-n@", g) else "-n", at)
+    out <- c(out, count, g, if (hier[i] && i < n) ".depth")
   }
-  out <- c(out, if (identical(levels[n], "freq")) paste0("-n", at), "label")
+  if (!overall) out <- c(".overall", out)
   paste(out, collapse = " | ")
 }
 
@@ -283,9 +317,8 @@ builder_read <- function(x, output_id, meta = NULL) {
 .hier_sort_read <- function(sort, n = 2L) {
   if (length(sort) != 1L || is.na(sort) || !nzchar(trimws(sort))) return("own")
   tk <- trimws(strsplit(sort, "|", fixed = TRUE)[[1L]])
-  if (!identical(tk[1L], ".overall")) return("own")
-  tk <- tk[-1L]
-  tk <- tk[tk != ".depth"]
+  if (!".overall" %in% tk) return("own")
+  tk <- tk[!tk %in% c(".overall", ".depth")]
   lv <- character(n)
   cols <- character()
   for (i in seq_len(n)) {
@@ -332,10 +365,27 @@ builder_write <- function(x, output_id, state, was = NULL) {
     tb$value[1L] <- if (identical(st$value, "stat_fmt")) "stat_fmt" else NA_character_
   }
   # a hierarchy table's order (the form's: by frequency or by name)
-  if (length(st$hierarchy) && changed("sort") && !identical(st$sort, "own") &&
-      length(st$sort) == length(st$hierarchy)) {
+  # the rows: the keys, outermost first (a hierarchy's every level among
+  # them: a level left out would put its rows in another's cells); a new
+  # set of rows takes the card's order
+  rk <- st$row_keys %||% character()
+  new_rows <- length(st$hierarchy) && changed("row_keys") && length(rk) &&
+    all(st$hierarchy %in% rk)
+  if (new_rows) {
+    n <- length(rk)
+    tb$rows[1L] <- if (n > 1L) paste(sprintf("group%d = %s", seq_len(n - 1L), rk[-n]),
+                                     collapse = " | ") else NA_character_
+    tb$label[1L] <- paste("label =", rk[n])
+    if (!identical(st$sort, "own")) {
+      if (!"sort" %in% names(tb)) tb$sort <- NA_character_
+      tb$sort[1L] <- .hier_sort(c(rep("alpha", n - 1L), "freq"), hier = rk %in% st$hierarchy)
+    }
+  }
+  if (length(st$hierarchy) && !new_rows && changed("sort") && !identical(st$sort, "own") &&
+      length(st$sort) == length(rk)) {
     if (!"sort" %in% names(tb)) tb$sort <- NA_character_
-    tb$sort[1L] <- .hier_sort(st$sort, attr(st$sort, "col") %||% NA_character_)
+    tb$sort[1L] <- .hier_sort(st$sort, attr(st$sort, "col") %||% NA_character_,
+                              hier = rk %in% st$hierarchy)
   }
   # a hierarchy table's "any event" row's name
   if (length(st$hierarchy) && changed("overall_label")) {
@@ -350,6 +400,16 @@ builder_write <- function(x, output_id, state, was = NULL) {
     if (!nrow(inh) || is.na(inh$rows[1L])) tb$rows[1L] <- "group = variable"
   }
   x <- set_sheet_rows(x, "tables", id, tb)
+
+  # a hierarchy table's outermost row key a page each (layout)
+  if (length(st$hierarchy) && changed("row_pages") && !is.null(st$row_pages)) {
+    ly <- sheet_rows(x, "layout", id)
+    ly$output_id <- NULL
+    if (!nrow(ly)) ly[1L, ] <- NA
+    ly$group_page[1L] <- if (isTRUE(st$row_pages)) "TRUE" else NA_character_
+    ly$group_col[1L] <- if (isTRUE(st$row_pages)) "group1" else NA_character_
+    x <- set_sheet_rows(x, "layout", id, ly)
+  }
 
   # variables: the arms' order, each variable's label, order and levels
   vr <- sheet_rows(x, "variables", id)
