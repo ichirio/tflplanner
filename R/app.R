@@ -2747,7 +2747,10 @@ app_server <- function(input, output, session, start) {
       shiny::uiOutput("ars_summary"),
       size = "l", easyClose = TRUE,
       footer = shiny::tagList(
-        shiny::modalButton(t("Close")),
+        # the three the same size: modalButton() has no class of its own
+        shiny::tags$button(type = "button", class = "btn btn-sm btn-default",
+                           `data-dismiss` = "modal", `data-bs-dismiss` = "modal",
+                           t("Close")),
         shiny::downloadButton("ars_json", t("JSON only"), class = "btn-sm"),
         shiny::downloadButton("ars_zip", t("JSON, Excel and the checks (zip)"),
                               class = "btn-sm btn-primary"))))

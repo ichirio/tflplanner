@@ -4,9 +4,10 @@
 #  A row's report is a link: it goes there as a Review item does.
 # ============================================================================
 
-# The dialog's body: one line of facts; the errors, always shown; what is
-# not in the ARS (by the model: a table's look, a derived column ...) folded
-# under its count, for whoever wants to read it.
+# The dialog's body: one line of facts; the errors, always shown; folded
+# under their counts, the outputs siera cannot run (the siera profile: fewer
+# than three analyses) and what is not in the ARS (by the model: a table's
+# look, a derived column ...), each a group of its own.
 .ars_summary_ui <- function(b, t) {
   a <- b$ars
   facts <- sprintf(t("%d analyses \u00b7 %d outputs \u00b7 %d analysis sets \u00b7 %d data subsets"),
@@ -14,19 +15,28 @@
                    length(a$analysisSets), length(a$dataSubsets))
   pr <- b$problems
   err <- which(pr$kind == "check")
+  sie <- which(pr$kind == "siera")
   out <- which(pr$kind == "not in ARS")
+  n_sie <- length(unique(pr$where[sie]))
+  head_of <- c(if (n_sie) sprintf(t("%d outputs siera cannot run"), n_sie),
+               if (length(out)) sprintf(t("%d not in the ARS"), length(out)))
+  group <- function(title, idx) shiny::tagList(
+    shiny::p(class = "small fw-semibold mt-2 mb-1", title),
+    .ars_problem_table(pr, idx, t))
   shiny::tagList(
     shiny::p(class = "small text-muted mb-1", facts),
     shiny::p(class = paste("small mb-1", if (length(err)) "text-danger" else "text-success"),
-             sprintf(t("%d errors"), length(err))),
+             sprintf(t("%d errors"), length(err)),
+             if (n_sie) shiny::span(class = "text-warning ms-2",
+                                    sprintf(t("%d outputs siera cannot run"), n_sie))),
     if (length(err)) shiny::div(style = "max-height: 40vh; overflow: auto;",
                                 .ars_problem_table(pr, err, t)),
-    if (length(out)) shiny::tags$details(
+    if (length(head_of)) shiny::tags$details(
       class = "small mt-2",
-      shiny::tags$summary(class = "text-secondary",
-                          sprintf(t("%d not in the ARS"), length(out))),
+      shiny::tags$summary(class = "text-secondary", paste(head_of, collapse = " \u00b7 ")),
       shiny::div(style = "max-height: 40vh; overflow: auto;",
-                 .ars_problem_table(pr, out, t))))
+                 if (length(sie)) group(t("Outputs siera cannot run (fewer than three analyses)"), sie),
+                 if (length(out)) group(t("Not in the ARS"), out))))
 }
 
 # One row a problem and its report: the same problem on many analyses of a
@@ -44,14 +54,16 @@
 }
 
 .ars_problem_table <- function(pr, idx, t) {
-  kind <- c(check = t("an error"), "not in ARS" = t("not in the ARS"))
+  kind <- c(check = t("an error"), siera = t("siera cannot run it"),
+            "not in ARS" = t("not in the ARS"))
   g <- .ars_problem_groups(pr, idx)
   rows <- lapply(seq_len(nrow(g)), function(k) {
     r <- g[k, ]
     i <- r$row
     id <- if (is.na(r$output_id)) "" else r$output_id
     shiny::tags$tr(
-      shiny::tags$td(class = if (r$kind == "check") "text-danger" else "text-secondary",
+      shiny::tags$td(class = switch(r$kind, check = "text-danger", siera = "text-warning",
+                                    "text-secondary"),
                      kind[[r$kind]]),
       shiny::tags$td(shiny::tags$a(
         href = "#", title = t("Go to it"),

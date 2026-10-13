@@ -438,8 +438,13 @@ export_ars <- function(study, dir, profile = c("cdisc", "siera")) {
   ck <- suppressMessages(tflspec::tfl_check_ars(ars))
   un <- tflspec::tfl_ars_unmapped(ars)
   ids <- p$outputs$output_id
+  # siera takes an output's analysis set from its third analysis: an output
+  # with fewer is one siera cannot run -- a limit of siera, not a fault of
+  # the definition, so not an error
+  short <- profile == "siera" & ck$field == "analyses" &
+    grepl("third analysis", ck$problem, fixed = TRUE)
   problems <- rbind(
-    data.frame(kind = rep("check", nrow(ck)),
+    data.frame(kind = ifelse(short, "siera", "check"),
                output_id = .ars_output_of(ck$part, ids), where = ck$part,
                item = ck$field, note = ck$problem, stringsAsFactors = FALSE),
     data.frame(kind = rep("not in ARS", nrow(un)),
@@ -453,11 +458,16 @@ export_ars <- function(study, dir, profile = c("cdisc", "siera")) {
 # output itself; the longest output id that fits (one id may begin another).
 .ars_output_of <- function(x, ids) {
   ids <- ids[order(-nchar(ids))]
+  # the ARS's ids have letters, digits and _ only (T-14-1-2 is T_14_1_2)
+  safe <- gsub("[^A-Za-z0-9]", "_", ids)
   vapply(x, function(s) {
     if (is.na(s)) return(NA_character_)
-    for (o in ids) {
+    for (k in seq_along(ids)) {
+      o <- ids[k]
       if (identical(s, o) || startsWith(s, paste0(o, " /")) ||
-          grepl(paste0("An_", o, "_"), s, fixed = TRUE)) return(o)
+          grepl(paste0("An_", o, "_"), s, fixed = TRUE) ||
+          identical(s, paste("Output", safe[k])) ||
+          grepl(paste0("An_", safe[k], "_"), s, fixed = TRUE)) return(o)
     }
     NA_character_
   }, character(1L), USE.NAMES = FALSE)

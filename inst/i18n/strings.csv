@@ -3009,3 +3009,7 @@ JSON only,JSON だけ
 not in the ARS,ARS に入らない
 an error,エラー
 Go to it,そこへ移動
+%d outputs siera cannot run,siera で実行できない帳票 %d 本
+Outputs siera cannot run (fewer than three analyses),siera では実行できない帳票（解析が 3 つ未満）
+Not in the ARS,ARS に入らないもの
+siera cannot run it,siera では実行できない
