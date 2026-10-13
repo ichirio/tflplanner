@@ -294,10 +294,10 @@ test_that("a step's code editor and the whole app UI build (in English and Japan
       html <- as.character(ui)
       expect_match(html, "rp-code-step", fixed = TRUE)
       expect_match(html, paste0("id=\"", prefix, "_code\""), fixed = TRUE)
-      expect_match(html, "rows=\"26\"", fixed = TRUE)
+      expect_match(html, "rows=\"12\"", fixed = TRUE)
     }
     expect_no_error(as.character(app_ui(lang)))
   }
   # the editor's height: the app's style
-  expect_match(as.character(app_ui()), ".rp-code-step textarea { height: max(", fixed = TRUE)
+  expect_match(as.character(app_ui()), ".rp-code-step textarea { height: clamp(", fixed = TRUE)
 })

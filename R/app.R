@@ -254,8 +254,9 @@ html.shiny-busy.rp-user-busy body::after { visibility: visible;
 .rp-code textarea, .rp-code pre { font-family: Consolas, 'Courier New',
   monospace; font-size: 12.5px; }
 .rp-code pre { max-height: 520px; overflow: auto; white-space: pre; }
-/* a step's own code: 26 rows at least, down to the window's foot */
-.rp-code-step textarea { height: max(26em, calc(100vh - 300px)); }
+/* a step's own code: the header, the editor and its check on a laptop's screen
+   (above it 320px, below ~90px: measured at 1366x640 and 1536x730) */
+.rp-code-step textarea { height: clamp(12em, calc(100vh - 410px), 36em); }
 .rp-help { font-size: 12.5px; }
 /* the ARD form's function chooser: one line once chosen (Change opens
    it); a near match of the search faint */

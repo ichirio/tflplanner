@@ -161,9 +161,9 @@ code_step_ui <- function(prefix, t = identity, lang = "en") {
         if (identical(step, "data")) t("Your code: the data") else t("Your code: the content"),
         if (identical(step, "data")) t("It leaves `data` (a figure: `df`). The rules: at the top of this step.")
         else t("It leaves `content`. The rules: at the top of this step."))),
-      # taller to the window's foot (.rp-code-step, the app's style)
+      # its height to the window (.rp-code-step, the app's style)
       shiny::div(class = "rp-code rp-code-step",
-                 shiny::textAreaInput(paste0(prefix, "_code"), NULL, rows = 26,
+                 shiny::textAreaInput(paste0(prefix, "_code"), NULL, rows = 12,
                                       width = "100%", resize = "vertical",
                                       placeholder = if (identical(step, "data"))
                                         "df <- advs |> dplyr::filter(PARAMCD == \"SYSBP\")" else

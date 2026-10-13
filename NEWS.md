@@ -30,7 +30,8 @@
   `programs/tfl/fig_setup.R`; `rtf_figures()` gets a size only when it is
   not the figure's own).  Step 2 keeps only its dpi (company 300): the
   resolution, pixels = inches x dpi, never the size on the page.  A step's
-  code editor is taller (at least 26 rows, down to the window's foot).  The first page
+  code editor fits a laptop's screen with its header and check (and is
+  dragged taller).  The first page
   (sample) draws the figure in its body, as wide as on the page: a
   design's, or one of your own code's last run.  The designer's preview is
   drawn at the same size.  A design's old width, height and units (which
