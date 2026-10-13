@@ -125,21 +125,8 @@ first_table <- function(x, output_id, path, data, population, group,
   dsn <- cd$dataset
 
   # the analysis set
-  pop <- sub("FL$", "", population)
-  po <- ard_rows(x, "populations")
-  where <- sprintf("%s == \"Y\"", population)
-  have <- po$population_id[!is.na(po$where) & po$where == where &
-                             !is.na(po$dataset) & po$dataset == dsn]
-  if (length(have)) {
-    pop <- have[1L]
-  } else {
-    while (pop %in% po$population_id) pop <- paste0(pop, "_", dsn)
-    po[nrow(po) + 1L, ] <- NA
-    po$population_id[nrow(po)] <- pop
-    po$dataset[nrow(po)] <- dsn
-    po$where[nrow(po)] <- where
-    x <- set_ard_rows(x, "populations", "", po)
-  }
+  x <- .first_population(x, dsn, population)
+  pop <- attr(x, "population_id")
 
   # the report; the subjects per group (the N of the column headers), then
   # one analysis per call: the numeric variables together (CONT), the
@@ -251,6 +238,181 @@ first_table <- function(x, output_id, path, data, population, group,
     }
   }
   attr(x, "group_missing") <- miss
+  x
+}
+
+# The analysis set of a flag (SAFFL == "Y") on a dataset: the one there,
+# else added (SAF, named after the flag).  The planner, with attribute
+# "population_id".
+.first_population <- function(x, dataset, flag) {
+  pop <- sub("FL$", "", flag)
+  po <- ard_rows(x, "populations")
+  where <- sprintf("%s == \"Y\"", flag)
+  have <- po$population_id[!is.na(po$where) & po$where == where &
+                             !is.na(po$dataset) & po$dataset == dataset]
+  if (length(have)) {
+    pop <- have[1L]
+  } else {
+    while (pop %in% po$population_id) pop <- paste0(pop, "_", dataset)
+    po[nrow(po) + 1L, ] <- NA
+    po$population_id[nrow(po)] <- pop
+    po$dataset[nrow(po)] <- dataset
+    po$where[nrow(po)] <- where
+    x <- set_ard_rows(x, "populations", "", po)
+  }
+  attr(x, "population_id") <- pop
+  x
+}
+
+#' Start a hierarchical table from the data
+#'
+#' The other kind of table the app's "first table" form starts: counts of
+#' subjects by a hierarchy of terms -- adverse events by system organ class
+#' and preferred term (`AEBODSYS | AEDECOD`), and the same for medications
+#' or medical history by their own -- in the columns of a group, the
+#' percents of the analysis set's subjects.  It writes the rows every sheet
+#' says them in, as a table made by hand has them:
+#'
+#' * the datasets (added to the data catalog when missing) and the analysis
+#'   set (`population` flag `== "Y"` of the subject-level data);
+#' * two analysis data of the report: the analysis set's subjects
+#'   (`adsl_saf`), and the records kept to them and to `where` (`adae_saf`);
+#' * one `hierarchical` analysis by the group, over the hierarchy, its
+#'   denominator the analysis set (`over_variables = TRUE`: the "any event"
+#'   row), and the report's rework that reads it as a hierarchy and names
+#'   that row (`"Any TEAE"`);
+#' * the table: the group as columns, the outer terms as groups and the
+#'   innermost as rows, by frequency (most first) within each group;
+#' * the column header (the standards' `"Arm (N=n) n (%), SOC / PT"`), a
+#'   page not splitting a group (22 rows a page, unless the study says),
+#'   and a Total column when `total` is given.
+#'
+#' @param x A `tflplanner`.
+#' @param output_id The report.
+#' @param path The records' data file (`data/adam/adae.rds`), relative to
+#'   the study folder.
+#' @param data Its data.
+#' @param subjects_path The subject-level data file (`data/adam/adsl.rds`).
+#' @param subjects Its data.
+#' @param population The analysis set flag column of the subject-level data
+#'   (`SAFFL`).
+#' @param group The column of the groups (`TRT01A`).
+#' @param hierarchy The terms, outermost first (`c("AEBODSYS", "AEDECOD")`).
+#' @param where The records counted (`TRTEMFL == "Y"`); `NA` all of them.
+#' @param total The heading of a Total column (`"Total"`); `NA` none.
+#' @param description The report's description.
+#' @return The `tflplanner`.
+#' @export
+first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subjects,
+                                  population, group,
+                                  hierarchy = c("AEBODSYS", "AEDECOD"),
+                                  where = NA_character_, total = NA_character_,
+                                  description = NA_character_) {
+  id <- output_id
+  hierarchy <- hierarchy[!is.na(hierarchy) & nzchar(hierarchy)]
+  if (length(hierarchy) < 2L) {
+    stop("A hierarchy has two terms or more (AEBODSYS | AEDECOD).", call. = FALSE)
+  }
+  miss <- setdiff(c(group, hierarchy), names(data))
+  if (length(miss)) stop("The data have no ", paste(miss, collapse = ", "), ".", call. = FALSE)
+  miss <- setdiff(c(population, group), names(subjects))
+  if (length(miss)) {
+    stop("The subject-level data have no ", paste(miss, collapse = ", "), ".", call. = FALSE)
+  }
+  if (nrow(ard_rows(x, "analyses", id))) {
+    stop("'", id, "' has analyses already: edit them in step 1 (ARD).", call. = FALSE)
+  }
+  if (.is_blank(where)) where <- NA_character_
+  if (!is.na(where) && inherits(try(str2lang(where), silent = TRUE), "try-error")) {
+    stop("The condition is not R: ", where, call. = FALSE)
+  }
+
+  # the datasets and the analysis set (of the subject-level data)
+  cd <- .catalog_dataset(x, subjects_path)
+  x <- cd$x
+  sl <- cd$dataset
+  cd <- .catalog_dataset(x, path)
+  x <- cd$x
+  dsn <- cd$dataset
+  x <- .first_population(x, sl, population)
+  pop <- attr(x, "population_id")
+
+  if (!id %in% x$outputs$output_id) {
+    x <- add_output(x, id, description = description, type = "table")
+  }
+  # the analysis data: the set's subjects, and the records kept to them
+  x <- .ensure_pop_adata(x, id, pop)
+  subj <- attr(x, "data_id")
+  rec <- .adata_free_name(x, id, .adata_default_name(dsn, pop))
+  x <- set_analysis_data(x, id, rec, from = dsn, subjects = subj, where = where)
+
+  # the analysis: the hierarchy by the group, percents of the set's subjects
+  # (its name: the records' -- AE; TEAE for the treatment-emergent ones)
+  aid <- sub("^AD", "", dsn)
+  if (!nzchar(aid)) aid <- "HIER"
+  if (!is.na(where) && grepl("\\bTRTEMFL\\b", where)) aid <- paste0("TE", aid)
+  an <- data.frame(
+    analysis_id = aid,
+    label = if (is.na(description)) paste(hierarchy, collapse = " / ") else description,
+    method = "hierarchical", data = rec, by = group,
+    variables = paste(hierarchy, collapse = " | "), denominator = subj,
+    args = "over_variables = TRUE", stringsAsFactors = FALSE)
+  x <- set_ard_rows(x, "analyses", id, an)
+
+  # the ARD read as a hierarchy, its "any event" row named (the report's
+  # rework, unless it has one)
+  i <- match(id, x$outputs$output_id)
+  if (.is_blank(x$outputs$process_code[i])) {
+    x$outputs$process_code[i] <- sprintf(
+      "data <- normalize_ard(ard, hierarchy = c(%s),\n                      overall = \"Any %s\")",
+      paste0("\"", hierarchy, "\"", collapse = ", "), aid)
+  }
+
+  # the table: the outer terms as groups, the innermost as rows, by
+  # frequency within each group
+  n <- length(hierarchy)
+  tb <- sheet_rows(x, "tables", id)
+  tb$output_id <- NULL
+  if (!nrow(tb)) tb[1L, ] <- NA
+  tb$cols[1L] <- group
+  tb$rows[1L] <- paste(sprintf("group%d = %s", seq_len(n - 1L), hierarchy[-n]),
+                       collapse = " | ")
+  tb$label[1L] <- paste("label =", hierarchy[n])
+  tb$sort[1L] <- paste(c(".overall", sprintf("group%d", seq_len(n - 1L)),
+                         ".depth", "-n", "label"), collapse = " | ")
+  x <- set_sheet_rows(x, "tables", id, tb)
+
+  # the groups' order (the columns): the analysis set's, from the
+  # subject-level data
+  arms <- .group_order(subjects[subjects[[population]] %in% "Y", , drop = FALSE], group)
+  if (length(arms)) {
+    vr <- sheet_rows(x, "variables", id)
+    vr$output_id <- NULL
+    i <- match(group, vr$variable)
+    if (is.na(i)) {
+      vr[nrow(vr) + 1L, ] <- NA
+      i <- nrow(vr)
+      vr$variable[i] <- group
+    }
+    if (is.na(vr$levels[i])) vr$levels[i] <- paste(arms, collapse = " | ")
+    x <- set_sheet_rows(x, "variables", id, vr)
+  }
+
+  # the column header, and a page that does not split a group
+  hp <- "Arm (N=n) n (%), SOC / PT"
+  if (hp %in% names(header_presets())) x <- add_preset(x, id, hp)
+  ly <- sheet_rows(x, "layout", id)
+  ly$output_id <- NULL
+  if (!nrow(ly)) ly[1L, ] <- NA
+  ly$pages_split[1L] <- "group_force"
+  # (which needs the rows a page: the study's, else as the sample's SOC /
+  # PT table)
+  inh <- inherited_rows(x, "layout", id)
+  if (.is_blank(ly$pages_max_rows[1L]) &&
+      (!nrow(inh) || .is_blank(inh$pages_max_rows[1L]))) ly$pages_max_rows[1L] <- "22"
+  x <- set_sheet_rows(x, "layout", id, ly)
+
+  if (!is.na(total) && nzchar(trimws(total))) x <- set_total_column(x, id, total)
   x
 }
 

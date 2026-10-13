@@ -10337,6 +10337,18 @@ app_server <- function(input, output, session, start) {
     shiny::req(input$mf_data %in% first_files())
     guarded(read_data_head(file.path(rv$study$path, input$mf_data), n = Inf))
   })
+  # a hierarchical table's subject-level data: the study's ADSL
+  first_subjects_file <- shiny::reactive({
+    f <- first_files()
+    c(f[grepl("(^|/)adsl[.][^/]+$", f, ignore.case = TRUE)], NA_character_)[1L]
+  })
+  first_subjects <- shiny::reactive({
+    f <- first_subjects_file()
+    shiny::req(!is.na(f))
+    guarded(read_data_head(file.path(rv$study$path, f), n = Inf))
+  })
+  # the kind of table: a summary (variables as rows) or a hierarchy of terms
+  # (SOC / PT); chosen, never switched by the data
   output$modal_first_ui <- shiny::renderUI({
     f <- first_files()
     if (!length(f)) {
@@ -10344,12 +10356,23 @@ app_server <- function(input, output, session, start) {
         t("No data files yet: put them on the Data tab (data/adam), then add the table.")))
     }
     shiny::tagList(
-      shiny::selectInput("mf_data", t("Data"), f,
-                         selected = c(grep("adsl", f, value = TRUE), f)[1L],
-                         width = "100%"),
+      shiny::radioButtons("mf_kind", NULL,
+                          stats::setNames(c("summary", "hierarchy"),
+                                          c(t("Summary (variables as rows)"),
+                                            t("Hierarchy (SOC / PT)"))),
+                          inline = TRUE),
+      shiny::uiOutput("mf_data_ui"),
       shiny::uiOutput("mf_cols"))
   })
+  output$mf_data_ui <- shiny::renderUI({
+    f <- first_files()
+    hier <- identical(input$mf_kind, "hierarchy")
+    shiny::selectInput("mf_data", t("Data"), f,
+                       selected = c(grep(if (hier) "adae" else "adsl", f, value = TRUE), f)[1L],
+                       width = "100%")
+  })
   output$mf_cols <- shiny::renderUI({
+    if (identical(input$mf_kind, "hierarchy")) return(mf_hier_ui())
     d <- first_data()
     shiny::req(d)
     cols <- as.list(d)
@@ -10393,9 +10416,66 @@ app_server <- function(input, output, session, start) {
                t("One call computes the rows and the subjects per group (the column headers' N)."))
     }
   })
+  # a hierarchical table: the analysis set (of ADSL), the group, the terms,
+  # the records counted, a Total column
+  mf_hier_ui <- function() {
+    d <- first_data()
+    shiny::req(d)
+    sl <- first_subjects_file()
+    if (is.na(sl)) {
+      return(shiny::div(class = "alert alert-warning py-1 small",
+        t("A hierarchical table counts the subjects of an analysis set: put the subject-level data (adsl) on the Data tab.")))
+    }
+    a <- first_subjects()
+    shiny::req(a)
+    cols <- as.list(d)
+    fl <- grep("FL$", names(a), value = TRUE)
+    grp <- intersect(.group_choices(cols), names(a))
+    terms <- names(cols)[vapply(cols, function(v) is.character(v) || is.factor(v), NA)]
+    # (the selected keep the choices' order: the usual terms first, outermost
+    # first)
+    usual <- intersect(c("AEBODSYS", "AEDECOD"), terms)
+    terms <- c(usual, setdiff(terms, usual))
+    shiny::tagList(
+      shiny::selectInput("mf_pop", t("Population (its flag = \"Y\")"),
+                         .labelled(fl, as.list(a)),
+                         selected = c(intersect(c("SAFFL", "ITTFL", "FASFL"), fl), fl)[1L],
+                         width = "100%"),
+      shiny::selectInput("mf_group", t("Group (the columns)"), grp,
+                         selected = c(intersect(c("TRT01A", "TRT01P", "ARM"), grp), grp)[1L],
+                         width = "100%"),
+      shiny::selectizeInput(
+        "mf_hier", t("Hierarchy (outermost first)"), .labelled(terms, cols),
+        selected = usual,
+        multiple = TRUE, width = "100%",
+        options = list(plugins = list("remove_button", "drag_drop"))),
+      shiny::textInput("mf_where", t("Records counted (R; blank: all)"),
+                       value = if ("TRTEMFL" %in% names(cols)) "TRTEMFL == \"Y\"" else "",
+                       width = "100%"),
+      shiny::checkboxInput("mf_total", t("Total column"), FALSE),
+      shiny::p(class = "small text-muted",
+               sprintf(t("Subjects counted once at each level, percents of the population's subjects in %s; most frequent first. Everything can be changed afterwards (steps 1 and 2)."),
+                       sl)))
+  }
   start_first_table <- function(id, desc) {
     d <- first_data()
     if (is.null(d)) return(notify(t("Choose the data"), "warning"))
+    if (identical(input$mf_kind, "hierarchy")) {
+      a <- first_subjects()
+      if (is.null(a)) return(notify(t("Choose the data"), "warning"))
+      p2 <- guarded(first_hierarchy_table(
+        rv$p, id, input$mf_data, d, first_subjects_file(), a,
+        population = input$mf_pop, group = input$mf_group,
+        hierarchy = input$mf_hier, where = input$mf_where %||% NA_character_,
+        total = if (isTRUE(input$mf_total)) "Total" else NA_character_,
+        description = desc))
+      if (is.null(p2)) return()
+      after_id_change(p2, id)
+      go("tables")
+      bslib::nav_select("table_right", "result")
+      do_preview(id)
+      return()
+    }
     p2 <- guarded(first_table(rv$p, id, input$mf_data, d,
                               population = input$mf_pop,
                               group = input$mf_group,

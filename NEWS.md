@@ -1,5 +1,21 @@
 # tflplanner (development version)
 
+- **A hierarchical table started from the data** (#374, 0.0.2.9210; the
+  user's decision after the template evaluation, dev-rep #5).  "Start
+  from the data" in Add a report now asks which kind of table: a summary
+  (variables as rows, as before) or a hierarchy (SOC / PT).  The kind is
+  chosen, never switched by the data.  The hierarchy asks the data (ADAE),
+  the population flag (of ADSL), the group, the terms (AEBODSYS | AEDECOD;
+  CMCLAS | CMDECOD for medications), the records counted (`TRTEMFL ==
+  "Y"`) and a Total column, and writes what a table made by hand has
+  (`first_hierarchy_table()`): the analysis set and its subjects
+  (`adsl_saf`), the records kept to them (`adae_saf`), one hierarchical
+  analysis (`over_variables = TRUE`, percents of the set's subjects), the
+  table (most frequent first within each group), the SOC / PT column
+  header and a page that does not split a group -- the rows of the
+  sample's T-14-3-1.  Before, choosing ADAE in "Start from the data" wrote
+  a summary of its columns, and a first SOC / PT table took seven screens.
+
 - **A step of your own R: its rules in full, and the sample in that form**
   (0.0.2.9206, pair B of the user-program design).  **The rules** next to
   the GUI | R program switch opens the seven rules (the datasets
