@@ -25,7 +25,8 @@ test_that("a hierarchy table reads its terms and its order", {
   p <- hier_planner()
   st <- builder_read(p, "T-AE", hier_meta())
   expect_identical(st$hierarchy, c("AEBODSYS", "AEDECOD"))
-  expect_identical(st$sort, c("alpha", "freq"))
+  expect_identical(as.vector(st$sort), c("alpha", "freq"))
+  expect_identical(attr(st$sort, "col"), NA_character_)
   expect_identical(nrow(st$variables), 0L)
   expect_identical(st$key, "TRT01A")
   # an order of the sheets' own is "own", and kept
@@ -41,7 +42,7 @@ test_that("written back unchanged, nothing changes; the order is all it writes o
   st <- builder_read(p, "T-AE", hier_meta())
   expect_identical(builder_write(p, "T-AE", st, was = st), p)
   alpha <- st
-  alpha$sort <- c("alpha", "alpha")
+  alpha$sort <- structure(c("alpha", "alpha"), col = NA_character_)
   q <- builder_write(p, "T-AE", alpha, was = st)
   expect_identical(sheet_rows(q, "tables", "T-AE")$sort,
                    ".overall | group1 | .depth | label")
@@ -60,10 +61,17 @@ test_that("written back unchanged, nothing changes; the order is all it writes o
                    ".overall | group1 | .depth | group2 | .depth | -n | label")
   for (lv in list(c("alpha", "freq"), c("alpha", "alpha"), c("freq", "freq"),
                   c("alpha", "alpha", "freq"), c("freq", "alpha", "freq"))) {
-    expect_identical(.hier_sort_read(.hier_sort(lv), length(lv)), lv)
+    for (col in c(NA, "Total", "Placebo")) {
+      back <- .hier_sort_read(.hier_sort(lv, col), length(lv))
+      expect_identical(as.vector(back), lv)
+      if ("freq" %in% lv) expect_identical(attr(back, "col"), col)
+    }
   }
-  # (an outer level by its own count: -n@group1, once rtfreporter sorts on it)
-  expect_identical(.hier_sort(c("freq", "freq")), ".overall | -n@group1 | group1 | .depth | -n | label")
+  # an outer level by its own count (-n@group1), counted in one column
+  expect_identical(.hier_sort(c("freq", "freq"), "Total"),
+                   ".overall | -n@group1[Total] | group1 | .depth | -n[Total] | label")
+  # two levels counted in two columns: not the card's
+  expect_identical(.hier_sort_read(".overall | -n@group1[Total] | group1 | .depth | -n | label", 2L), "own")
   # what the card does not write is the sheets' own
   for (own in c("group1 | -n", ".overall | -n | group1 | label", ".overall | group1 | label | x", NA)) {
     expect_identical(.hier_sort_read(own, 2L), "own", info = own)
@@ -95,7 +103,7 @@ test_that("the builder opens on a hierarchy table, and writes its order", {
     expect_match(h, "Rows: a hierarchy", fixed = TRUE)
     # one order a term; an outer term's count waits for rtfreporter
     expect_match(h, "Ties by name.", fixed = TRUE)
-    expect_match(h, "next version)", fixed = TRUE)
+    expect_match(h, "Counted in", fixed = TRUE)
     expect_no_match(h, "Rows: variables in order", fixed = TRUE)
     # no warning about the subjects per group: the denominator counts them
     expect_no_match(h, "a header's (N=n) prints NA", fixed = TRUE)
@@ -115,6 +123,14 @@ test_that("the builder opens on a hierarchy table, and writes its order", {
     session$elapse(1000)
     expect_identical(sheet_rows(rv$p, "tables", "T-AE")$sort, ".overall | group1 | .depth | label")
     expect_identical(sheet_rows(rv$p, "variables", "T-AE"), sheet_rows(before, "variables", "T-AE"))
+    # SOC by its own count too, counted in Placebo's column
+    v[[b("sort1")]] <- "freq"
+    v[[b("sort2")]] <- "freq"
+    v[[b("sort_col")]] <- "Placebo"
+    do.call(session$setInputs, v)
+    session$elapse(1000)
+    expect_identical(sheet_rows(rv$p, "tables", "T-AE")$sort,
+                     ".overall | -n@group1[Placebo] | group1 | .depth | -n[Placebo] | label")
   })
 })
 

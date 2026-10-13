@@ -258,23 +258,26 @@ builder_read <- function(x, output_id, meta = NULL) {
 # A hierarchy table's order (tables$sort), written as plan_sort() takes
 # it, one order a level, outermost first: "alpha" (by name -- a code
 # list's order when the report has one: a factor sorts by its levels) or
-# "freq" (most frequent first: the statistic n totalled across the
-# columns; ties by name).  The "any event" row first, and each group's own
-# row above the rows under it.  (Most frequent first for an outer level --
-# its own n, -n@group1 -- needs rtfreporter's sort to know it.)
-.hier_sort <- function(levels = c("alpha", "freq")) {
+# "freq" (most frequent first, ties by name: an outer level by its own
+# row's n, -n@group1; the innermost by its n).  `col`: the column whose n
+# counts (a level of the outer column key, or the Total column's
+# heading: -n[Total]); NA every column's together.  The "any event" row
+# first, and each group's own row above the rows under it.
+.hier_sort <- function(levels = c("alpha", "freq"), col = NA_character_) {
   n <- length(levels)
+  at <- if (!is.na(col) && nzchar(col)) sprintf("[%s]", col) else ""
   out <- ".overall"
   for (i in seq_len(n - 1L)) {
     g <- sprintf("group%d", i)
-    out <- c(out, if (identical(levels[i], "freq")) paste0("-n@", g), g, ".depth")
+    out <- c(out, if (identical(levels[i], "freq")) paste0("-n@", g, at), g, ".depth")
   }
-  out <- c(out, if (identical(levels[n], "freq")) "-n", "label")
+  out <- c(out, if (identical(levels[n], "freq")) paste0("-n", at), "label")
   paste(out, collapse = " | ")
 }
 
-# ... and read back: the order of each level, or "own" (an order the
-# builder does not write: kept as it is).  n: the terms.
+# ... and read back: the order of each level (attribute "col": the column
+# that counts, NA all of them), or "own" (an order the builder does not
+# write: kept as it is).  n: the terms.
 .hier_sort_read <- function(sort, n = 2L) {
   if (length(sort) != 1L || is.na(sort) || !nzchar(trimws(sort))) return("own")
   tk <- trimws(strsplit(sort, "|", fixed = TRUE)[[1L]])
@@ -282,11 +285,14 @@ builder_read <- function(x, output_id, meta = NULL) {
   tk <- tk[-1L]
   tk <- tk[tk != ".depth"]
   lv <- character(n)
+  cols <- character()
   for (i in seq_len(n)) {
     name <- if (i < n) sprintf("group%d", i) else "label"
-    count <- if (i < n) paste0("-n@", name) else "-n"
-    if (length(tk) && identical(tk[1L], count)) {
+    count <- if (i < n) paste0("^-n@", name) else "^-n"
+    m <- if (length(tk)) regmatches(tk[1L], regexec(paste0(count, "(\\[(.+)\\])?$"), tk[1L]))[[1L]]
+    if (length(m)) {
       lv[i] <- "freq"
+      cols <- c(cols, if (nzchar(m[3L])) m[3L] else NA_character_)
       tk <- tk[-1L]
     } else {
       lv[i] <- "alpha"
@@ -294,7 +300,10 @@ builder_read <- function(x, output_id, meta = NULL) {
     if (!length(tk) || !identical(tk[1L], name)) return("own")
     tk <- tk[-1L]
   }
-  if (length(tk)) "own" else lv
+  # one column counts for every level, or the order is the sheets' own
+  if (length(tk) || length(unique(cols)) > 1L) return("own")
+  attr(lv, "col") <- if (length(cols)) cols[1L] else NA_character_
+  lv
 }
 
 #' @rdname builder_read
@@ -324,7 +333,7 @@ builder_write <- function(x, output_id, state, was = NULL) {
   if (length(st$hierarchy) && changed("sort") && !identical(st$sort, "own") &&
       length(st$sort) == length(st$hierarchy)) {
     if (!"sort" %in% names(tb)) tb$sort <- NA_character_
-    tb$sort[1L] <- .hier_sort(st$sort)
+    tb$sort[1L] <- .hier_sort(st$sort, attr(st$sort, "col") %||% NA_character_)
   }
   # whose {n} the header prints (the form asks only when a cell uses {n})
   if (!is.null(st$header_n) && "header_n" %in% names(tb)) tb$header_n[1L] <- st$header_n

@@ -8475,7 +8475,8 @@ app_server <- function(input, output, session, start) {
       if (length(st$hierarchy)) shiny::div(
         class = "rp-b-card",
         shiny::h6(t("Rows: a hierarchy")),
-        hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable)),
+        hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
+                     total = .rows_for(p0, "tables", id)$total[1L])),
       if (!length(st$hierarchy)) shiny::div(
         class = "rp-b-card",
         shiny::div(
@@ -8580,9 +8581,10 @@ app_server <- function(input, output, session, start) {
   })
   # A hierarchy's order, one a term (outermost first): by name -- the code
   # list's order when the report has one for it -- or most frequent first
-  # (the innermost term; an outer one's own count waits for rtfreporter).
-  # An order of the sheets' own is said, with a way back to the card's.
-  hier_sort_ui <- function(st, coded) {
+  # (an outer term by its own count), counted in every column together or
+  # in one (the Total, an arm).  An order of the sheets' own is said, with
+  # a way back to the card's.
+  hier_sort_ui <- function(st, coded, total = NA) {
     n <- length(st$hierarchy)
     if (identical(st$sort, "own")) {
       return(shiny::div(
@@ -8590,7 +8592,11 @@ app_server <- function(input, output, session, start) {
         t("Order: as the sheets say (tables$sort)."), " ",
         shiny::actionLink("b_sort_reset", t("Use the card's order"))))
     }
-    later <- t("rtfreporter's next version")
+    key <- st$key[1L]
+    col_now <- attr(st$sort, "col") %||% NA_character_
+    cols <- c(stats::setNames("", t("All columns together")),
+              if (!is.na(total) && nzchar(total)) stats::setNames(total, total),
+              stats::setNames(st$arms[[key]] %||% character(), st$arms[[key]] %||% character()))
     shiny::tagList(
       lapply(seq_len(n), function(i) {
         v <- st$hierarchy[i]
@@ -8604,9 +8610,13 @@ app_server <- function(input, output, session, start) {
             id = bid(paste0("sort", i)), class = "form-select form-select-sm",
             style = "width: 18em;",
             opt("alpha", if (v %in% coded) t("Code list's order") else t("By name")),
-            opt("freq", if (i < n) sprintf("%s (%s)", t("Most frequent first"), later) else
-              t("Most frequent first"), off = i < n)))
+            opt("freq", t("Most frequent first"))))
       }),
+      shiny::div(
+        class = "d-flex align-items-center gap-2 mb-1",
+        shiny::span(class = "small", style = "min-width: 9em;", t("Counted in")),
+        shiny::selectInput(bid("sort_col"), NULL, cols,
+                           selected = if (is.na(col_now)) "" else col_now, width = "18em")),
       shiny::p(class = "small text-muted mb-0", t("Ties by name.")))
   }
   shiny::observeEvent(input$b_sort_reset, {
@@ -9429,9 +9439,14 @@ app_server <- function(input, output, session, start) {
          auto_levels = st$auto_levels,
          hierarchy = st$hierarchy,
          sort = if (hier) {
-           if (identical(st$sort, "own")) "own" else
-             vapply(seq_along(st$hierarchy), function(i)
+           if (identical(st$sort, "own")) "own" else {
+             lv <- vapply(seq_along(st$hierarchy), function(i)
                get(paste0("sort", i)) %||% st$sort[i], "")
+             cc <- get("sort_col")
+             attr(lv, "col") <- if (is.null(cc)) attr(st$sort, "col") %||% NA_character_ else
+               if (nzchar(cc)) cc else NA_character_
+             lv
+           }
          })
   }))
   bstate_d <- shiny::debounce(bstate, 400)

@@ -35,9 +35,10 @@
   order when the report has one for it) or most frequent first, ties by
   name -- written as `tables$sort`.  An order of the sheets' own shows as
   such, with a link back to the card's (SOC by name, PT most frequent
-  first).  An outer term most frequent first, and counting in one column
-  (Total, an arm), wait for rtfreporter's sort (shown, not yet chosen).
-  The starter writes the same per-level order.  A summary
+  first).  An outer term most frequent first is its own row's count
+  (`-n@group1`), and "Counted in" says whose count: every column
+  together, the Total column or one arm (`-n[Total]`; rtfreporter >=
+  0.8.2.9046, #624).  The starter writes the same per-level order.  A summary
   table's rows are never written into it, and a hierarchy counted of a
   denominator has the subjects per group of its header.  (The "Any TEAE"
   row's name follows once `tables$overall_label` is on main.)

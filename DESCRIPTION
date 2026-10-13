@@ -39,7 +39,7 @@ Imports:
     processx,
     readxl,
     rhandsontable,
-    rtfreporter (>= 0.8.2.9040),
+    rtfreporter (>= 0.8.2.9046),
     tflspec (>= 0.0.24.9102),
     shiny (>= 1.8.1),
     sortable,
