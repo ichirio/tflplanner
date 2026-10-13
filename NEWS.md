@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **An AE table's "Subjects with at least one TEAE" row from the
+  definition** (tflspec #236, with tflspec 0.0.24.9102).  A table without
+  normalization of its own (and the company's template the built-in
+  `data <- normalize_ard(ard)`) now gets the line its definitions say,
+  `tflspec::tfl_normalize_code()`: the hierarchy of its `hierarchical`
+  analysis -- each SOC row with its counts -- and the any-event row of the
+  `tables` sheet's new `overall_label`.  A table without either is as
+  before; the sample's AE table keeps its own line.
+
 - **The treatment colours** (tflspec #233, with tflspec 0.0.24.9098): the
   figures' first arm is Okabe-Ito blue `#0072B2` (was `"blue"`), so the
   sample's KM and forest figures change colour slightly; more arms than the

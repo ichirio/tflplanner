@@ -273,7 +273,8 @@ data_lines <- function(x, output_id, todo = TRUE) {
     c("", "# normalize and rework", .code_block(proc))
   } else if (!.makes_data(code)) {
     tp <- .fill_template("table_process", x, output_id)
-    c("", if (is.na(tp)) "data <- normalize_ard(ard)" else .code_block(tp))
+    c("", if (is.na(tp) || identical(trimws(tp), "data <- normalize_ard(ard)"))
+      .normalize_line(x, output_id) else .code_block(tp))
   }
   c(if (!is.na(x$setup)) c(.code_block(x$setup), ""),
     .code_block(code),
@@ -382,6 +383,16 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 # (tfl_report_code()) and where it goes (tfl_report_path()).  A definition
 # that does not hold yet (a half-filled sheet) gives a stop() line saying
 # why, so the program is still written and says what to fix when run.
+# A table's normalization when it says none and the company's template is
+# the built-in one: the line its definitions say -- the hierarchy of its
+# hierarchical analysis, the any-event row (tables$overall_label):
+# tflspec::tfl_normalize_code()
+.normalize_line <- function(x, output_id) {
+  sp <- .spec_object_last(x, table_sheets(), .study_keys$table)
+  tryCatch(tflspec::tfl_normalize_code(sp, .ard_spec(x$ard), output_id),
+           error = function(e) "data <- normalize_ard(ard)")
+}
+
 # The whole study's table and report spec, kept for the next report of
 # the same definition: writing or checking every report's program (saving
 # a study, study_status()) built it once per report -- 0.2 s each, a minute

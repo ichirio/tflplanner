@@ -105,3 +105,20 @@ test_that("the report types stay English in the Japanese app", {
                    c("Table", "Listing", "Figure"))
   expect_identical(tr("Report title", "ja"), "タイトル")
 })
+
+test_that("a table's normalization is what its definitions say: the hierarchy, the any-event row (tflspec #236)", {
+  p <- add_output(new_planner(), "AE")
+  p$ard$datasets <- .normalize_ard_sheet(data.frame(dataset = "ADAE", path = "data/adam/adae.rds"), "datasets")
+  p <- set_ard_rows(p, "analyses", "AE", data.frame(
+    analysis_id = "TEAE", method = "hierarchical", dataset = "ADAE", by = "TRTA",
+    variables = "AEBODSYS | AEDECOD", args = "over_variables = TRUE"))
+  p <- set_sheet_rows(p, "tables", "AE", data.frame(
+    cols = "TRTA", rows = "group1 = AEBODSYS",
+    overall_label = "Subjects with at least one TEAE"))
+  code <- program_code(p, "AE")
+  expect_true(any(grepl(paste0("data <- normalize_ard(ard, hierarchy = c(\"AEBODSYS\", \"AEDECOD\"), ",
+                               "overall = \"Subjects with at least one TEAE\")"), code, fixed = TRUE)))
+  # a table without them: as before
+  q <- add_output(new_planner(), "T1")
+  expect_true("data <- normalize_ard(ard)" %in% program_code(q, "T1"))
+})
