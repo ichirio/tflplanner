@@ -954,7 +954,7 @@ Table: one row a report. Its roles (table_plan()) and the table-wide options; a 
 "Where the row label comes from (table_plan(label = )); blank: .label; NA: used to tell rows apart, not printed; NULL: not used.",行ラベルの元（table_plan(label = )）。空欄 = .label、NA = 行の区別にだけ使い表示しない、NULL = 使わない。
 "cells (cells built from templates) or rows (one statistic a row, the raw values) (plan_cells(stats = )); blank: cells.",cells（テンプレートでセルを作る）か rows（1 行 = 1 統計量、生の値）（plan_cells(stats = )）。空欄 = cells。
 What joins several column keys into a column name (plan_columns(sep = )); the columns sheet names value columns with it; blank: ____.,列キーが複数のとき値の列名をつなぐ文字（plan_columns(sep = )）。columns シートはこの名前で値の列を指す。空欄 = ____。
-"TRUE, FALSE, or the sort keys in order, - in front for descending (plan_sort()); blank: the data's order.",TRUE、FALSE、または並べ替えキーを順に（降順は前に -）（plan_sort()）。空欄 = データの順。
+"TRUE, FALSE, or the sort keys in order, - in front for descending (plan_sort()): a column, .overall, .depth, a statistic (summed over the columns), stat[col] for one column (-n[Total]), stat@key for a group's own count carried to its rows (-n@group1: SOCs by their own count); blank: the data's order.",TRUE、FALSE、または並べ替えのキーを順に（降順は前に -）（plan_sort()）：列、.overall、.depth、統計量（列を合計）、1 列だけの stat[列]（-n[Total]）、グループ自身の値を行に配る stat@キー（-n@group1：SOC を自身の件数の順に）。空欄 = データの順。
 The statistic totalled across columns for a frequency order (plan_sort(stat = )).,頻度順に並べるとき列方向に合計する統計量（plan_sort(stat = )）。
 What a cell no template could fill prints (plan_cells(na = )); blank: empty.,どのテンプレートも埋められなかったセルの表示（plan_cells(na = )）。空欄 = 空。
 "Table: one row a variable (an analysis variable, a column key or the label column).",表：1 行 = 1 変数（解析変数、列キー、ラベル列）。
