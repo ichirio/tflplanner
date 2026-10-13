@@ -83,9 +83,64 @@ set_fig_design <- function(x, output_id, design) {
 }
 
 # the design's script, whole (it saves its PNG to `fig_path`)
-.fig_design_script <- function(design, output_id, codelists = NULL) {
+.fig_design_script <- function(design, output_id, codelists = NULL,
+                               size = list(width_in = 7.5, height_in = 4.5)) {
   .split_lines(as.character(tflspec::tfl_fig_design_code(
-    design, output_id, codelists = codelists)))
+    design, output_id, codelists = codelists,
+    width_in = size$width_in, height_in = size$height_in)))
+}
+
+# A figure report's size on its page (tflspec::tfl_fig_page_size()): its
+# report row's figure_width_in / figure_height_in -- inches, fit (the
+# page's body), or blank: the figure's own size (.fig_native_size())
+.fig_size_of <- function(x, output_id) {
+  sp <- .spec_object_last(x, c(table_sheets(), report_sheets()),
+                          unique(c(.study_keys$table, .study_keys$report)))
+  native <- .fig_native_size(x, output_id)
+  tryCatch(tflspec::tfl_fig_page_size(sp, output_id, native = native),
+           error = function(e) list(width_in = native[1L], height_in = native[2L],
+                                    mode = c(width = "native", height = "native")))
+}
+
+# A figure's own size (inches): a designed figure's, the company's figure
+# style for its kind (figure_settings: width / height, a kind's own -- km,
+# swimmer ... -- else every figure's); one of its own code's, the size
+# rtfreporter draws a plot at (6.5 x 4.5)
+.fig_native_size <- function(x, output_id) {
+  rtf <- c(6.5, 4.5)
+  design <- fig_design(x, output_id)
+  if (is.null(design) || .is_code_step(x, output_id, "content")) return(rtf)
+  st <- tryCatch(.std_fig_style()$settings, error = function(e) NULL)
+  if (is.null(st) || !nrow(st)) return(rtf)
+  tp <- tryCatch(tflspec::tfl_fig_templates(), error = function(e) NULL)
+  kind <- if (!is.null(tp) && !is.null(design$template)) tp$kind[match(design$template, tp$template)]
+  one <- function(key, d) {
+    v <- st$value[st$key %in% key & !is.na(st$type) & st$type %in% kind]
+    if (!length(v)) v <- st$value[st$key %in% key & (is.na(st$type) | !nzchar(st$type))]
+    v <- suppressWarnings(as.numeric(v[1L]))
+    if (length(v) && !is.na(v) && v > 0) v else d
+  }
+  c(one("width", rtf[1L]), one("height", rtf[2L]))
+}
+
+# the size said in words (the program's comment, the sample's caption)
+.fig_size_words <- function(sz, t = identity) {
+  m <- sz$mode %||% c(width = "native", height = "native")
+  w <- if (all(m == "native")) t(" (its own size)") else
+    if (all(m == "fit")) t(" (the page's body)") else ""
+  sprintf(t("%s x %s in%s"), sz$width_in, sz$height_in, w)
+}
+
+# the lines that draw a figure at its size on the page (step 3), its
+# design's dpi: `obj` becomes the figure the report places
+.fig_sized_lines <- function(x, output_id, obj = "plot") {
+  sz <- .fig_size_of(x, output_id)
+  dpi <- as.numeric((fig_design(x, output_id)$plot$dpi %||% 300)[1L])
+  c("",
+    sprintf("# the figure drawn at its size on the page: %s, %s dpi",
+            .fig_size_words(sz), dpi),
+    sprintf("%s <- fig_sized(%s, width_in = %s, height_in = %s, dpi = %s)",
+            obj, obj, sz$width_in, sz$height_in, dpi))
 }
 
 # A designed figure's data and plot sections, as its program has them
@@ -112,7 +167,8 @@ set_fig_design <- function(x, output_id, design) {
   }
   c(utils::head(lines, at), .fig_ard_lines(x, output_id, design), read, utils::tail(lines, -at),
     "", "# the figure checks: dropped rows, colours against the standard",
-    "tfl_check(plot)")
+    "tfl_check(plot)",
+    .fig_sized_lines(x, output_id, "plot"))
 }
 
 # one element a line; a blank line stays (strsplit would drop it)
@@ -189,6 +245,8 @@ set_fig_design <- function(x, output_id, design) {
   # one data list (a state of before #293 kept `stats` apart)
   lapply(x, function(d) {
     d <- .fig_norm(d)
+    # (its size before 0.0.2.9206: its report's now, step 3)
+    if (!is.null(d$plot)) d$plot[c("width", "height", "units")] <- NULL
     if (length(d$stats) || any(vapply(d$data %||% list(), function(s)
       identical(s$step, "data_code") || identical(s$step, "stats_code"), NA))) {
       d <- .fig_norm(unclass(.fig_rebuild(d)))
@@ -221,7 +279,7 @@ set_fig_design <- function(x, output_id, design) {
 #'
 #' Runs a design's script on the study's data, as the figure's program will
 #' (in a temporary folder, so nothing of the study changes), and gives the
-#' PNG it saves -- at the figure's own size -- with the design's problems
+#' PNG it saves -- at its size on the page (step 3) -- with the design's problems
 #' and the figure checks.  The Plot Designer's preview.
 #'
 #' @param study An `rtfstudy`.
@@ -248,17 +306,17 @@ preview_figure <- function(study, output_id,
                            max_px = NULL) {
   if (is.null(design)) stop("The figure has no design.", call. = FALSE)
   saved <- design
-  # a preview for the screen: the saved size, fewer dots (much faster);
-  # the size reported is still the saved one
+  # its size on the page (step 3)
+  sz <- .fig_size_of(study$planner, output_id)
+  # a preview for the screen: that size, fewer dots (much faster); the
+  # size reported is still the saved one
   if (!is.null(max_px)) {
-    w <- as.numeric(design$plot$width %||% 7.5)
-    u <- design$plot$units %||% "in"
-    inches <- switch(u, cm = w / 2.54, px = w / 300, w)
+    inches <- sz$width_in
     dpi <- as.numeric(design$plot$dpi %||% 300)
     if (inches * dpi > max_px) design$plot$dpi <- max(72, floor(max_px / inches))
   }
   code <- .fig_design_script(design, output_id,
-                             codelists = .study_codelists(study$planner))
+                             codelists = .study_codelists(study$planner), size = sz)
   ds <- .fig_design_datasets(design, output_id)
   # ADSL too: the advice counts the groups, which may be joined from it
   data <- .study_data(study, union(ds, "ADSL"))
@@ -282,6 +340,14 @@ preview_figure <- function(study, output_id,
   u <- .study_time_units(study$path)
   for (k in names(u)) assign(k, u[[k]], envir = e)
   if (!is.null(ard)) assign("ard", ard, envir = e)
+  # an ARD the figure reads that has no rows yet (not made, or a run that
+  # stopped half way): said so, not as the first statistic it misses
+  no_ard <- if (reads_ard && (is.null(ard) || !NROW(ard))) {
+    src <- .fig_ard_source(study$planner, output_id)
+    if (src$kind %in% c("own", "table")) {
+      sprintf("The ARD of %s has no rows yet: make it (step 1, or an official run in Runs).", src$id)
+    }
+  }
   warns <- character()
   err <- NULL
   grDevices::pdf(NULL)
@@ -296,6 +362,7 @@ preview_figure <- function(study, output_id,
       warns <<- c(warns, conditionMessage(w))
       invokeRestart("muffleWarning")
     })
+  if (!is.null(err) && !is.null(no_ard)) err <- paste(no_ard, err)
   png <- if (is.null(err) && !is.null(e$fig_path) &&
              file.exists(file.path(tmp, e$fig_path))) {
     normalizePath(file.path(tmp, e$fig_path), winslash = "/")

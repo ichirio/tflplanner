@@ -97,31 +97,31 @@ listing_types <- function() company_standards()$listing_types
   tflspec::tfl_read_data_code(x$ard$datasets, dataset)
 }
 
-# the part of a listing's program between its setup and its report
-.listing_lines <- function(x, output_id, rework = NA) {
+# the part of a listing's program between its setup and its report (part
+# "data": its data only; "content": laid out from a `data` made before)
+.listing_lines <- function(x, output_id, rework = NA, part = "all") {
   if (!nrow(lf_rows(x, "listings", output_id))) return(NULL)
   tflspec::tfl_listing_code(
     tflspec::tfl_listing_spec(x$lf, check = FALSE), output_id,
     x$ard$datasets, rework = if (!is.na(rework)) .code_block(rework),
     type = .std_setting("listing_type", "multiline"),
-    codelists = .study_codelists(x))
+    codelists = .study_codelists(x), part = part)
 }
 
-# the part of a figure's program between its setup and its report
-.figure_lines <- function(x, output_id, info, plot_code = NA) {
-  f <- lf_rows(x, "figures", output_id)
-  ds <- if (nrow(f)) .split_bar(f$datasets[1L]) else character()
-  if (!length(ds) && is.na(plot_code)) return(NULL)
+# the part of a figure's program between its setup and its report: a
+# figure with no design and no code of its own yet -- its datasets read,
+# the company's plot template or a TODO
+.figure_lines <- function(x, output_id, info) {
+  ds <- report_datasets(x, output_id)
+  if (!length(ds)) return(NULL)
   tpl <- .fill_template("figure_plot", x, output_id)
-  plot <- if (is.na(plot_code)) c(
+  plot <- c(
     if (!is.na(tpl)) .code_block(tpl) else c(
       "# TODO: the plot, e.g.",
       "#   plot <- ggplot2::ggplot(adsl, ggplot2::aes(AGE)) + ggplot2::geom_histogram()"),
     paste0("stop(\"tflplanner: the plot of ", info$program,
-           " is still to be written.\")")) else .code_block(plot_code)
-  makes_content <- !is.na(plot_code) &&
-    any(grepl("(^|[^A-Za-z0-9_.])content[[:space:]]*(<-|=)[^=]",
-              strsplit(plot_code, "\n", fixed = TRUE)[[1L]]))
+           " is still to be written.\")"))
+  makes_content <- FALSE
   setup <- file.path(study_layout()[["programs_tfl"]], .fig_setup_file)
   c(if (length(ds)) c(paste0("# the data: ", paste(ds, collapse = ", "),
                              " (data catalog)"),
@@ -159,6 +159,16 @@ listing_types <- function() company_standards()$listing_types
   if (!nrow(tb)) return(cl)
   tb$output_id <- output_id
   rbind(cl, tb)
+}
+
+# A designed figure's code in its two steps: `data` (its ARD, the datasets
+# it reads, its `# ---- data ----`) and `plot` (its `# ---- plot ----` and
+# the figure checks) -- for a report whose other step is its own code
+.fig_design_parts <- function(x, output_id, design) {
+  lines <- .fig_design_plot(design, output_id, codelists = .study_codelists(x), x = x)
+  at <- match(TRUE, startsWith(lines, "# ---- plot"), nomatch = length(lines) + 1L)
+  list(data = utils::head(lines, at - 1L),
+       plot = utils::tail(lines, length(lines) - at + 1L))
 }
 
 .fig_source_lines <- function() {

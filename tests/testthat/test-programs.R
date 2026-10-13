@@ -25,7 +25,7 @@ test_that("a table program writes out its plan and report, saves its ARD and par
   expect_equal(report_info(p, "PK")$file, "output/PK.rtf")
   expect_silent(parse(text = autoexec_code(p)))
 
-  p$outputs$data_code[p$outputs$output_id == "PK"] <- "data <- my_pk()"
+  p <- set_step_code(p, "PK", "data", "data <- my_pk()")
   code <- program_code(p, "PK")
   expect_true("data <- my_pk()" %in% code)
   expect_false(any(grepl("TODO", code)))
@@ -44,9 +44,9 @@ test_that("listings and figures make `content` and skip the table plan", {
   for (id in c("L1", "F1")) {
     code <- program_code(p, id)
     expect_silent(parse(text = code))
-    expect_true(any(code %in% c("  rtf_tables(content)",
-                                "  rtf_figures(content)",
-                                "  rtf_figures(plot)")))
+    expect_true(any(code == "  rtf_tables(content)" |
+                      startsWith(code, "  rtf_figures(content") |
+                      startsWith(code, "  rtf_figures(plot")))
     expect_false(any(grepl("table_plan(", code, fixed = TRUE)))
   }
   expect_error(add_output(p, "X", type = "chart"))
