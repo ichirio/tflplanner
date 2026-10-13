@@ -283,3 +283,21 @@ test_that("report_content() is written once, in the study's fig_setup.R", {
   expect_false(any(grepl("report_content <- function", prog, fixed = TRUE)))
   expect_identical(report_info(s$planner, "F-14-2-1")$type, "figure")
 })
+
+test_that("a step's code editor and the whole app UI build (in English and Japanese)", {
+  # a start-up error (an argument shiny rejects, as an invalid CSS unit)
+  # stops the app before anything is shown
+  for (lang in c("en", "ja")) {
+    t <- function(x) tr(x, lang)
+    for (prefix in c("dc", "cc")) {
+      ui <- expect_no_error(code_step_ui(prefix, t, lang))
+      html <- as.character(ui)
+      expect_match(html, "rp-code-step", fixed = TRUE)
+      expect_match(html, paste0("id=\"", prefix, "_code\""), fixed = TRUE)
+      expect_match(html, "rows=\"26\"", fixed = TRUE)
+    }
+    expect_no_error(as.character(app_ui(lang)))
+  }
+  # the editor's height: the app's style
+  expect_match(as.character(app_ui()), ".rp-code-step textarea { height: max(", fixed = TRUE)
+})
