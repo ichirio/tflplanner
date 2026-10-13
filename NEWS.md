@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **An official run keeps going when the app closes; the launcher when
-  its port is taken** (#373, 0.0.2.9217; the user's request).  An
+  its port is taken** (#373, 0.0.2.9219; the user's request).  An
   official run (`run_batch()`) used to stop with the app's R process --
   closing the browser, [Close], an update -- and leave its ARD and
   reports half made.  It now runs detached, recorded in the home
