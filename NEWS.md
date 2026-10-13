@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **An AE table's "Subjects with at least one TEAE" row from the
-  definition** (tflspec #236, with tflspec 0.0.24.9102).  A table without
+  definition** (tflspec #236, with tflspec 0.0.24.9104).  A table without
   normalization of its own (and the company's template the built-in
   `data <- normalize_ard(ard)`) now gets the line its definitions say,
   `tflspec::tfl_normalize_code()`: the hierarchy of its `hierarchical`
