@@ -279,8 +279,7 @@ first_table <- function(x, output_id, path, data, population, group,
 #'   (`adsl_saf`), and the records kept to them and to `where` (`adae_saf`);
 #' * one `hierarchical` analysis by the group, over the hierarchy, its
 #'   denominator the analysis set (`over_variables = TRUE`: the "any event"
-#'   row), and the report's rework that reads it as a hierarchy and names
-#'   that row (`"Any TEAE"`);
+#'   row, named in the table's `overall_label`: `"Any TEAE"`);
 #' * the table: the group as columns, the outer terms as groups and the
 #'   innermost as rows, by frequency (most first) within each group;
 #' * the column header (the standards' `"Arm (N=n) n (%), SOC / PT"`), a
@@ -378,15 +377,6 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
     args = "over_variables = TRUE", stringsAsFactors = FALSE)
   x <- set_ard_rows(x, "analyses", id, an)
 
-  # the ARD read as a hierarchy, its "any event" row named (the report's
-  # rework, unless it has one)
-  i <- match(id, x$outputs$output_id)
-  if (.is_blank(x$outputs$process_code[i])) {
-    x$outputs$process_code[i] <- sprintf(
-      "data <- normalize_ard(ard, hierarchy = c(%s),\n                      overall = \"Any %s\")",
-      paste0("\"", hierarchy, "\"", collapse = ", "), aid)
-  }
-
   # the table: the outer terms as groups, the innermost as rows, by
   # frequency within each group
   n <- length(hierarchy)
@@ -397,6 +387,9 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
   tb$rows[1L] <- paste(sprintf("group%d = %s", seq_len(n - 1L), hierarchy[-n]),
                        collapse = " | ")
   tb$label[1L] <- paste("label =", hierarchy[n])
+  # the "any event" row's name: the program reads the ARD as a hierarchy
+  # with it (tflspec::tfl_normalize_code())
+  tb$overall_label[1L] <- paste("Any", aid)
   tb$sort[1L] <- .hier_sort(c(rep("alpha", n - 1L), "freq"))
   x <- set_sheet_rows(x, "tables", id, tb)
 

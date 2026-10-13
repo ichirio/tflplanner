@@ -73,8 +73,7 @@ set (\code{population} flag \verb{== "Y"} of the subject-level data);
 (\code{adsl_saf}), and the records kept to them and to \code{where} (\code{adae_saf});
 \item one \code{hierarchical} analysis by the group, over the hierarchy, its
 denominator the analysis set (\code{over_variables = TRUE}: the "any event"
-row), and the report's rework that reads it as a hierarchy and names
-that row (\code{"Any TEAE"});
+row, named in the table's \code{overall_label}: \code{"Any TEAE"});
 \item the table: the group as columns, the outer terms as groups and the
 innermost as rows, by frequency (most first) within each group;
 \item the column header (the standards' \code{"Arm (N=n) n (\%), SOC / PT"}), a

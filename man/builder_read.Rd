@@ -37,7 +37,8 @@ variable's row labels in order) and their \code{templates}, \code{value}
 \code{hierarchy} (the terms, outermost first) and \code{sort} (each term's
 order, outermost first -- \code{"alpha"} by name, or a code list's order;
 \code{"freq"} most frequent first, ties by name -- or \code{"own"}: an order of
-the sheets' own, left as it is).  \code{builder_write()}: the
+the sheets' own, left as it is) and \code{overall_label} (the "any event"
+row's name, \code{tables$overall_label}).  \code{builder_write()}: the
 \code{tflplanner}.
 }
 \description{

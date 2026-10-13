@@ -8533,6 +8533,10 @@ app_server <- function(input, output, session, start) {
       if (length(st$hierarchy)) shiny::div(
         class = "rp-b-card",
         shiny::h6(t("Rows: a hierarchy")),
+        shiny::textInput(bid("overall"), with_tip(t("The any-event row"),
+                                                  t("Its name in the table (tables$overall_label); blank: no such row.")),
+                         value = st$overall_label %||% "", width = "18em",
+                         placeholder = "Any TEAE"),
         hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
                      total = .rows_for(p0, "tables", id)$total[1L])),
       if (!length(st$hierarchy)) shiny::div(
@@ -9496,6 +9500,11 @@ app_server <- function(input, output, session, start) {
          },
          auto_levels = st$auto_levels,
          hierarchy = st$hierarchy,
+         overall_label = if (hier) {
+           o <- get("overall")
+           if (is.null(o)) st$overall_label %||% NA_character_ else
+             if (nzchar(trimws(o))) trimws(o) else NA_character_
+         },
          sort = if (hier) {
            if (identical(st$sort, "own")) "own" else {
              lv <- vapply(seq_along(st$hierarchy), function(i)

@@ -38,7 +38,10 @@
   first).  An outer term most frequent first is its own row's count
   (`-n@group1`), and "Counted in" says whose count: every column
   together, the Total column or one arm (`-n[Total]`; rtfreporter >=
-  0.8.2.9046, #624).  The starter writes the same per-level order.  A summary
+  0.8.2.9046, #624).  The card also names the "any event" row (the
+  table's `overall_label`, #379; blank: no such row).  The starter writes
+  the same per-level order, and its "Any TEAE" in `overall_label` rather
+  than a rework line of its own.  A summary
   table's rows are never written into it, and a hierarchy counted of a
   denominator has the subjects per group of its header.  (The "Any TEAE"
   row's name follows once `tables$overall_label` is on main.)

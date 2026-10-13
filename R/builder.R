@@ -149,7 +149,8 @@ builder_stats <- function() {
 #'   `hierarchy` (the terms, outermost first) and `sort` (each term's
 #'   order, outermost first -- `"alpha"` by name, or a code list's order;
 #'   `"freq"` most frequent first, ties by name -- or `"own"`: an order of
-#'   the sheets' own, left as it is).  `builder_write()`: the
+#'   the sheets' own, left as it is) and `overall_label` (the "any event"
+#'   row's name, `tables$overall_label`).  `builder_write()`: the
 #'   `tflplanner`.
 #' @export
 builder_read <- function(x, output_id, meta = NULL) {
@@ -252,7 +253,8 @@ builder_read <- function(x, output_id, meta = NULL) {
        exceptions = exc, cat_format = cat_format, cat_own = cat_own,
        pct_decimals = pct_decimals, header = "keep", auto_levels = auto,
        hierarchy = hier,
-       sort = if (length(hier)) .hier_sort_read(tb$sort[1L], length(hier)))
+       sort = if (length(hier)) .hier_sort_read(tb$sort[1L], length(hier)),
+       overall_label = if (length(hier)) tb$overall_label[1L] %||% NA_character_)
 }
 
 # A hierarchy table's order (tables$sort), written as plan_sort() takes
@@ -334,6 +336,12 @@ builder_write <- function(x, output_id, state, was = NULL) {
       length(st$sort) == length(st$hierarchy)) {
     if (!"sort" %in% names(tb)) tb$sort <- NA_character_
     tb$sort[1L] <- .hier_sort(st$sort, attr(st$sort, "col") %||% NA_character_)
+  }
+  # a hierarchy table's "any event" row's name
+  if (length(st$hierarchy) && changed("overall_label")) {
+    if (!"overall_label" %in% names(tb)) tb$overall_label <- NA_character_
+    ol <- st$overall_label %||% NA_character_
+    tb$overall_label[1L] <- if (is.na(ol) || !nzchar(trimws(ol))) NA_character_ else trimws(ol)
   }
   # whose {n} the header prints (the form asks only when a cell uses {n})
   if (!is.null(st$header_n) && "header_n" %in% names(tb)) tb$header_n[1L] <- st$header_n

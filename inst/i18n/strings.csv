@@ -3123,3 +3123,5 @@ A subject's record of a parameter after baseline is the last of these it has; | 
 "Each subject once a parameter, at the worst category after baseline; percents of each column's subjects. Everything can be changed afterwards (steps 1 and 2).",被験者はパラメータごとに 1 回、投与後の最悪の区分で数えます。割合は各列の被験者数に対してです。あとから何でも変えられます（手順 1 と 2）。
 All columns together,全列の合計
 Counted in,数える列
+The any-event row,全体の行
+Its name in the table (tables$overall_label); blank: no such row.,表での名前（tables$overall_label）。空欄: その行なし。

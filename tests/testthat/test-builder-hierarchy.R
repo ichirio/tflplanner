@@ -27,6 +27,14 @@ test_that("a hierarchy table reads its terms and its order", {
   expect_identical(st$hierarchy, c("AEBODSYS", "AEDECOD"))
   expect_identical(as.vector(st$sort), c("alpha", "freq"))
   expect_identical(attr(st$sort, "col"), NA_character_)
+  expect_identical(st$overall_label, "Any TEAE")
+  # its name, changed: written to tables$overall_label, and nothing else
+  renamed <- st
+  renamed$overall_label <- "Subjects with any TEAE"
+  q2 <- builder_write(p, "T-AE", renamed, was = st)
+  expect_identical(sheet_rows(q2, "tables", "T-AE")$overall_label, "Subjects with any TEAE")
+  expect_identical(sheet_rows(q2, "tables", "T-AE")[, setdiff(names(sheet_rows(q2, "tables", "T-AE")), "overall_label")],
+                   sheet_rows(p, "tables", "T-AE")[, setdiff(names(sheet_rows(p, "tables", "T-AE")), "overall_label")])
   expect_identical(nrow(st$variables), 0L)
   expect_identical(st$key, "TRT01A")
   # an order of the sheets' own is "own", and kept

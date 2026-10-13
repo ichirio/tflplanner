@@ -35,9 +35,13 @@ test_that("the starter writes the rows of the sample's T-14-3-1", {
   same("sheet", "tables", c("cols", "rows", "label", "sort", "total"))
   same("sheet", "col_header", c("line", "cols", "span", "text"))
   same("sheet", "layout", c("pages_split", "pages_max_rows"))
-  # the ARD read as a hierarchy, its "Any TEAE" row: the sample's rework
-  pc <- function(x) x$outputs$process_code[match("T-14-3-1", x$outputs$output_id)]
-  expect_identical(pc(r$p), pc(r$sample))
+  # the ARD read as a hierarchy, its "Any TEAE" row: from the table's
+  # overall_label, the very line the sample's rework writes by hand
+  expect_true(is.na(r$p$outputs$process_code[match("T-14-3-1", r$p$outputs$output_id)]))
+  expect_identical(sheet_rows(r$p, "tables", "T-14-3-1")$overall_label, "Any TEAE")
+  norm <- function(x) gsub("\\s+", " ", paste(x, collapse = " "))
+  expect_identical(norm(.normalize_line(r$p, "T-14-3-1")),
+                   norm(r$sample$outputs$process_code[match("T-14-3-1", r$sample$outputs$output_id)]))
   # the analysis set, as the sample's
   po <- r$p$ard$populations
   expect_identical(po$population_id, "SAF")
@@ -64,8 +68,10 @@ test_that("its own hierarchy (medications), all records, a Total column", {
   expect_identical(an$analysis_id, "CM")
   expect_identical(an$variables, "CMCLAS | CMDECOD")
   expect_identical(an$overall, "TRUE")
-  expect_match(p$outputs$process_code, "hierarchy = c(\"CMCLAS\", \"CMDECOD\")", fixed = TRUE)
-  expect_match(p$outputs$process_code, "overall = \"Any CM\"", fixed = TRUE)
+  expect_identical(sheet_rows(p, "tables", "T-CM")$overall_label, "Any CM")
+  expect_match(norm_line <- paste(.normalize_line(p, "T-CM"), collapse = " "),
+               "hierarchy = c(\"CMCLAS\", \"CMDECOD\")", fixed = TRUE)
+  expect_match(norm_line, "overall = \"Any CM\"", fixed = TRUE)
   ad <- ard_rows(p, "analysis_data", "T-CM")
   expect_identical(ad$data_id, c("adsl_saf", "adcm_saf"))
   expect_true(is.na(ad$where[2L]))
