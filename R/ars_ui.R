@@ -5,8 +5,8 @@
 # ============================================================================
 
 # The dialog's body: one line of facts; the errors, always shown; folded
-# under their counts, the outputs siera cannot run (the siera profile: fewer
-# than three analyses) and what is not in the ARS (by the model: a table's
+# under their counts, the outputs siera cannot run (the siera profile: left
+# out of its file, each with why) and what is not in the ARS (by the model: a table's
 # look, a derived column ...), each a group of its own.
 .ars_summary_ui <- function(b, t) {
   a <- b$ars
@@ -35,7 +35,7 @@
       class = "small mt-2",
       shiny::tags$summary(class = "text-secondary", paste(head_of, collapse = " \u00b7 ")),
       shiny::div(style = "max-height: 40vh; overflow: auto;",
-                 if (length(sie)) group(t("Outputs siera cannot run (fewer than three analyses)"), sie),
+                 if (length(sie)) group(t("Outputs siera cannot run"), sie),
                  if (length(out)) group(t("Not in the ARS"), out))))
 }
 
@@ -69,7 +69,7 @@
         href = "#", title = t("Go to it"),
         onclick = sprintf("Shiny.setInputValue('ars_goto', %d, {priority: 'event'}); return false;", i),
         if (nzchar(id)) id else r$where)),
-      shiny::tags$td(r$item, if (r$n > 1L) shiny::span(class = "text-muted",
+      shiny::tags$td(if (r$kind != "siera") r$item, if (r$n > 1L) shiny::span(class = "text-muted",
                                                          sprintf(" \u00d7%d", r$n))),
       shiny::tags$td(r$note))
   })

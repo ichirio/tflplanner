@@ -434,23 +434,45 @@ export_ars <- function(study, dir, profile = c("cdisc", "siera")) {
     report_spec = .spec_object(p, report_sheets(), .study_keys$report),
     profile = profile, study_id = id, dir = study$path,
     # a figure printing a table's analyses is an output that names them
-    references = .fig_ars_references(p))
+    references = .fig_ars_references(p),
+    # siera: what each dataset has, for the groupings on a derived column
+    columns = if (profile == "siera") .ars_columns(study, a))
   ck <- suppressMessages(tflspec::tfl_check_ars(ars))
   un <- tflspec::tfl_ars_unmapped(ars)
   ids <- p$outputs$output_id
-  # siera takes an output's analysis set from its third analysis: an output
-  # with fewer is one siera cannot run -- a limit of siera, not a fault of
-  # the definition, so not an error
-  short <- profile == "siera" & ck$field == "analyses" &
-    grepl("third analysis", ck$problem, fixed = TRUE)
+  # the outputs siera cannot run (fewer than three analyses, an analysis
+  # without a grouping, a grouping on a derived column): left out of the
+  # siera file, each with why -- a limit of siera, not a fault of the
+  # definition, so not an error
+  sie <- un$item == "siera"
   problems <- rbind(
-    data.frame(kind = ifelse(short, "siera", "check"),
+    data.frame(kind = rep("check", nrow(ck)),
                output_id = .ars_output_of(ck$part, ids), where = ck$part,
                item = ck$field, note = ck$problem, stringsAsFactors = FALSE),
-    data.frame(kind = rep("not in ARS", nrow(un)),
+    data.frame(kind = ifelse(sie, "siera", "not in ARS"),
                output_id = .ars_output_of(un$where, ids), where = un$where,
                item = un$item, note = un$reason, stringsAsFactors = FALSE))
   list(ars = ars, problems = problems, profile = profile, study_id = id)
+}
+
+# Each dataset's columns, for tfl_ars(columns = ): the files of the data
+# catalog that are there (a file not there: its dataset is not checked)
+.ars_columns <- function(study, a) {
+  ds <- a$datasets
+  out <- list()
+  for (i in seq_len(nrow(ds))) {
+    f <- file.path(study$path, ds$path[i])
+    if (is.na(ds$path[i]) || !file.exists(f)) next
+    ext <- tolower(tools::file_ext(f))
+    d <- tryCatch(switch(ext,
+      rds = readRDS(f),
+      xpt = haven::read_xpt(f, n_max = 0L),
+      sas7bdat = haven::read_sas(f, n_max = 0L),
+      csv = utils::read.csv(f, nrows = 1L, check.names = FALSE),
+      NULL), error = function(e) NULL)
+    if (is.data.frame(d)) out[[ds$dataset[i]]] <- names(d)
+  }
+  out
 }
 
 # The report a check or an unmapped row is about: an analysis's id is

@@ -27,12 +27,13 @@ test_that("the ARS dialog shows the checks, switches profile and writes what it 
     # an output of fewer than three analyses: siera cannot run it -- a group
     # of its own under the fold, not an error
     h <- output$ars_summary$html
-    expect_match(h, "Outputs siera cannot run (fewer than three analyses)", fixed = TRUE)
+    expect_match(h, "Outputs siera cannot run", fixed = TRUE)
     expect_match(h, "1 outputs siera cannot run", fixed = TRUE)
     b <- .ars_build(open_study("AR"), "siera")
     expect_false(any(b$problems$kind == "check" &
                        grepl("third analysis", b$problems$note, fixed = TRUE)))
     expect_identical(unique(b$problems$output_id[b$problems$kind == "siera"]), "DM")
+    expect_match(b$problems$note[b$problems$kind == "siera"], "third analysis", fixed = TRUE)
     z <- output$ars_zip
     expect_setequal(zip::zip_list(z)$filename,
                     c("AR_ars_siera.json", "AR_ars_siera.xlsx", "ars_check.csv"))
