@@ -454,6 +454,180 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
   x
 }
 
+#' Start a shift table from the data
+#'
+#' The third kind of table the app's "first table" form starts: subjects by
+#' their baseline category (columns, under each group) and their worst
+#' category after baseline (rows) -- a laboratory normal range (`BNRIND` /
+#' `ANRIND`) or toxicity grade (`BTOXGR` / `ATOXGR`) -- one page a
+#' parameter, the percents of each column's subjects.  It writes what such
+#' a table made by hand has (tflspec's LB example):
+#'
+#' * the analysis set and its subjects (`adsl_saf`), and the parameters'
+#'   records counted, kept to them (`adlb_saf`);
+#' * each subject's worst record of a parameter (`adlb_saf_worst`, R of its
+#'   own): the last of `worst`, the post-baseline categories from best to
+#'   worst;
+#' * one categorical analysis by parameter, group and baseline; with
+#'   `total`, over the records and the same again with every baseline as
+#'   `total` (a column of all the group's subjects);
+#' * the categories' order (code lists), the table (one page a
+#'   parameter), and the column header (each group over its baselines; no
+#'   N, which differs from one parameter's page to the next).
+#'
+#' @inheritParams first_hierarchy_table
+#' @param path The records' data file (`data/adam/adlb.rds`).
+#' @param params The parameters (`PARAMCD` values), one page each.
+#' @param baseline,post The baseline and the post-baseline category
+#'   columns (`BNRIND`, `ANRIND`).
+#' @param worst The post-baseline categories from best to worst; `NULL`:
+#'   normal ranges `NORMAL, LOW, HIGH`, else the categories' order.
+#' @param where The records counted (`ONTRTFL == "Y"`); `NA` all of them.
+#' @param total The heading of a column of each group's subjects whatever
+#'   their baseline (`"Total"`); `NA` none.
+#' @return The `tflplanner`.
+#' @export
+first_shift_table <- function(x, output_id, path, data, subjects_path, subjects,
+                              population, group, params, baseline = "BNRIND",
+                              post = "ANRIND", worst = NULL,
+                              where = NA_character_, total = NA_character_,
+                              description = NA_character_) {
+  id <- output_id
+  miss <- setdiff(c(group, "PARAMCD", baseline, post), names(data))
+  if (length(miss)) stop("The data have no ", paste(miss, collapse = ", "), ".", call. = FALSE)
+  miss <- setdiff(c(population, group), names(subjects))
+  if (length(miss)) {
+    stop("The subject-level data have no ", paste(miss, collapse = ", "), ".", call. = FALSE)
+  }
+  params <- params[!is.na(params) & nzchar(params)]
+  if (!length(params)) stop("Choose the parameters.", call. = FALSE)
+  if (nrow(ard_rows(x, "analyses", id))) {
+    stop("'", id, "' has analyses already: edit them in step 1 (ARD).", call. = FALSE)
+  }
+  if (.is_blank(where)) where <- NA_character_
+  if (!is.na(where) && inherits(try(str2lang(where), silent = TRUE), "try-error")) {
+    stop("The condition is not R: ", where, call. = FALSE)
+  }
+  if (.is_blank(total)) total <- NA_character_
+
+  # the categories: as the table shows them, and from best to worst
+  shown <- .shift_levels(c(as.character(data[[baseline]]), as.character(data[[post]])))
+  if (is.null(worst)) {
+    worst <- if (all(c("LOW", "NORMAL", "HIGH") %in% toupper(shown))) {
+      c(shown[toupper(shown) == "NORMAL"], shown[toupper(shown) == "LOW"],
+        shown[toupper(shown) == "HIGH"], setdiff(shown, shown[toupper(shown) %in% c("NORMAL", "LOW", "HIGH")]))
+    } else shown
+  }
+
+  # the datasets and the analysis set (of the subject-level data)
+  cd <- .catalog_dataset(x, subjects_path)
+  x <- cd$x
+  sl <- cd$dataset
+  cd <- .catalog_dataset(x, path)
+  x <- cd$x
+  dsn <- cd$dataset
+  x <- .first_population(x, sl, population)
+  pop <- attr(x, "population_id")
+  if (!id %in% x$outputs$output_id) {
+    x <- add_output(x, id, description = description, type = "table")
+  }
+
+  # the analysis data: the subjects; the parameters' records counted; each
+  # subject's worst record of a parameter; the same as a Total baseline
+  x <- .ensure_pop_adata(x, id, pop)
+  subj <- attr(x, "data_id")
+  rec <- .adata_free_name(x, id, .adata_default_name(dsn, pop))
+  cond <- paste(c(sprintf("PARAMCD %%in%% c(%s)", paste0("\"", params, "\"", collapse = ", ")),
+                  stats::na.omit(where)), collapse = " & ")
+  x <- set_analysis_data(x, id, rec, from = dsn, subjects = subj, where = cond)
+  wst <- .adata_free_name(x, id, paste0(rec, "_worst"))
+  code <- sprintf(paste0(
+    "%s |>\n  dplyr::filter(!is.na(%s), !is.na(%s)) |>\n",
+    "  dplyr::slice_max(match(%s, c(%s)), n = 1, with_ties = FALSE,\n",
+    "                   by = c(USUBJID, PARAMCD))"),
+    rec, baseline, post, post, paste0("\"", worst, "\"", collapse = ", "))
+  x <- set_analysis_data(x, id, wst, from = rec, code = code,
+                         label = "Each subject's worst record of a parameter")
+  # a Total column: the same records again, every baseline the total --
+  # one analysis over both (two would each state the other's columns as 0)
+  counted <- wst
+  if (!is.na(total)) {
+    counted <- .adata_free_name(x, id, paste0(wst, "_all"))
+    x <- set_analysis_data(x, id, counted, from = wst, label = "With a total of the baselines",
+                           code = sprintf(
+                             "dplyr::bind_rows(\n  dplyr::mutate(%s, %s = as.character(%s)),\n  dplyr::mutate(%s, %s = \"%s\")\n)",
+                             wst, baseline, baseline, wst, baseline, total))
+  }
+
+  # the analyses: the post-baseline category by parameter, group and
+  # baseline (percents of each column's subjects)
+  by <- paste("PARAMCD", group, baseline, sep = " | ")
+  an <- data.frame(analysis_id = "SHIFT",
+                   label = if (is.na(description)) "Shift from baseline" else description,
+                   method = "categorical", data = counted, by = by, variables = post,
+                   stringsAsFactors = FALSE)
+  # (no N in the header: a group's subjects differ from one parameter --
+  # one page -- to the next, and a header's {n} is one number a column)
+  x <- set_ard_rows(x, "analyses", id, an)
+
+  # the categories' order: the code lists
+  base_lv <- c(shown, stats::na.omit(total))
+  x <- set_codelist(x, id, rbind(
+    data.frame(variable = baseline, value = base_lv, order = as.character(seq_along(base_lv))),
+    data.frame(variable = post, value = shown, order = as.character(seq_along(shown)))))
+
+  # the table: each group over its baselines; the worst category down; a
+  # page a parameter
+  tb <- sheet_rows(x, "tables", id)
+  tb$output_id <- NULL
+  if (!nrow(tb)) tb[1L, ] <- NA
+  tb$cols[1L] <- paste(group, baseline, sep = " | ")
+  tb$rows[1L] <- "PARAMCD = PARAMCD"
+  tb$label[1L] <- "label = .label"
+  x <- set_sheet_rows(x, "tables", id, tb)
+  arms <- .group_order(subjects[subjects[[population]] %in% "Y", , drop = FALSE], group)
+  if (length(arms)) {
+    vr <- sheet_rows(x, "variables", id)
+    vr$output_id <- NULL
+    vr[nrow(vr) + 1L, ] <- NA
+    vr$variable[nrow(vr)] <- group
+    vr$levels[nrow(vr)] <- paste(arms, collapse = " | ")
+    x <- set_sheet_rows(x, "variables", id, vr)
+  }
+  x <- set_sheet_rows(x, "col_header", id, data.frame(
+    line = c("1", "1", "2", "2"), cols = c("row_label", ".values", "row_label", ".values"),
+    span = c(NA, group, NA, "each"),
+    text = c("Baseline:", "{col1}", "Worst after baseline", "{col}"),
+    stringsAsFactors = FALSE))
+  ly <- sheet_rows(x, "layout", id)
+  ly$output_id <- NULL
+  if (!nrow(ly)) ly[1L, ] <- NA
+  ly$group_page[1L] <- "TRUE"
+  # (the parameter heads its page)
+  ly$group_keep[1L] <- "TRUE"
+  # (the headings in the row-label column, not on rows of their own above
+  # it: those would each start a page of their own)
+  ly$stub_before[1L] <- "FALSE"
+  x <- set_sheet_rows(x, "layout", id, ly)
+  # a group a baseline (and a total): many narrow columns, at 8 points
+  x <- set_sheet_rows(x, "columns", id, data.frame(
+    column = c("row_label", ".values"), rel_width = c("20", "9"),
+    stringsAsFactors = FALSE))
+  x <- set_page_cell(x, "report", "table_font_size_half_points", id, "16")
+  x
+}
+
+# The categories of a shift table in the order it shows them: normal ranges
+# LOW, NORMAL, HIGH; grades by number; else by name
+.shift_levels <- function(v) {
+  u <- unique(v[!is.na(v) & nzchar(trimws(v))])
+  nr <- c("LOW", "NORMAL", "HIGH")
+  if (length(u) && all(toupper(u) %in% c(nr, "LOW LOW", "HIGH HIGH", "ABNORMAL"))) {
+    return(u[order(match(toupper(u), c("LOW LOW", "LOW", "NORMAL", "HIGH", "HIGH HIGH", "ABNORMAL")))])
+  }
+  .grade_levels(u)
+}
+
 # A grade's levels, mildest first: a factor's own, the usual severities
 # (MILD < MODERATE < SEVERE, LIFE THREATENING, FATAL), numbers by value,
 # else by name

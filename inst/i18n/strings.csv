@@ -3097,3 +3097,11 @@ Order: as the sheets say (tables$sort).,並び順: シートのとおり（table
 Use the card's order,カードの並び順にする
 By severity / grade (columns),重症度・Grade 別（列）
 "Each subject counted once, at the worst: the grade's levels in order (a code list), of the SOC for the SOC row, of the PT for the PT row.",被験者は最悪の重症度・Grade で 1 回だけ数えます（並び順はコードリスト）。SOC の行は SOC の中での最悪、PT の行は PT の中での最悪です。
+Shift (baseline x worst after),シフト表（ベースライン × 投与後の最悪）
+A shift table reads a data with parameters (PARAMCD): choose one (adlb).,シフト表はパラメータ（PARAMCD）を持つデータを読みます。そのデータ（adlb）を選んでください。
+Parameters (a page each),パラメータ（それぞれ 1 ページ）
+Baseline category,ベースラインの区分
+Category after baseline,投与後の区分
+Worst: from best to worst,最悪の決め方: よい → 悪い の順
+A subject's record of a parameter after baseline is the last of these it has; | between them.,被験者のパラメータごとの投与後の記録は、この並びで最も後ろのものを取ります。| で区切ります。
+"Each subject once a parameter, at the worst category after baseline; percents of each column's subjects. Everything can be changed afterwards (steps 1 and 2).",被験者はパラメータごとに 1 回、投与後の最悪の区分で数えます。割合は各列の被験者数に対してです。あとから何でも変えられます（手順 1 と 2）。

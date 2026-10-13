@@ -1,5 +1,21 @@
 # tflplanner (development version)
 
+- **A shift table started from the data** (#378, 0.0.2.9213; core
+  gap #2 as corrected: tflspec's LB example shows the engine does it).
+  "Start from the data" has a third kind, Shift (baseline x worst after):
+  the data (ADLB), the population (ADSL), the group, the parameters (a page
+  each), the baseline and the post-baseline category (BNRIND / ANRIND,
+  BTOXGR / ATOXGR), the records counted (`ONTRTFL == "Y"`), the worst
+  order (best to worst; normal ranges NORMAL, LOW, HIGH) and a Total
+  column.  `first_shift_table()` writes each subject's worst record of a
+  parameter (an analysis data of R of its own), one categorical analysis
+  by parameter, group and baseline -- with a Total, over the records and
+  the same again as the total, so no column is stated twice -- the
+  categories' code lists, and a table with each group over its baselines,
+  the parameter heading its page, at 8 points.  The header prints no N:
+  a group's subjects differ from one parameter's page to the next, and a
+  header's {n} is one number a column.
+
 - **SOC / PT by worst severity or grade, from the data** (#376,
   0.0.2.9212; core gap #2 as corrected: the engine does it, the GUI did
   not).  The hierarchy starter has an optional "By severity / grade
