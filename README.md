@@ -24,7 +24,7 @@ ARD      web GUI  =>  (Excel, optional)  =>  ARD programs  =>  the study ARD
          (or an ARD made elsewhere, taken in)
 Tables   the study ARD, by output_id  =>  normalize, rework  =>  RTF
 Listings, Figures   SDTM / ADaM  =>  report programs  =>  RTF
-User code   your own R code makes the content; the report's page wraps it  =>  RTF
+Your own R   a report's data or content step as R code; the report's page wraps it  =>  RTF
 Official runs   autoexec_*.R  =>  runs/<date>_<time>_<what>/  (logs, results, code)
 ```
 
@@ -36,9 +36,11 @@ Official runs   autoexec_*.R  =>  runs/<date>_<time>_<what>/  (logs, results, co
   steps after the ARD (`add_calculated_row()` ...), the study's code lists
   applied before it, the company's own ARD functions, and ARDs made
   elsewhere taken in, checked and compared.
-- **Four kinds of report**: tables, listings, figures (a plot designer)
-  and user code (your R code makes a table, a figure or both; tflplanner
-  adds the page, titles and footnotes).
+- **Three kinds of report, each step on screen or in your own R**: tables,
+  listings and figures (a plot designer); a report's data step and its
+  content step are each defined on screen or written as an R program
+  (checked against a few rules), and tflplanner adds the page, titles
+  and footnotes.
 - **Company standards**: every default and code list the app offers --
   dropdowns, presets, ARD methods and statistics, code templates, the rows
   a new study starts with -- comes from one workbook, set up once.
@@ -137,8 +139,8 @@ run_app()
 the app's settings) copies the sample study **SAMPLE-01** into the studies
 folder and makes it: the CDISC pilot ADaM data of
 [pharmaverseadam](https://pharmaverse.github.io/pharmaverseadam/), one
-study ARD, five tables, a listing and two figures written as user code
--- a study to try everything on.
+study ARD, tables, a listing, two designed figures and two whose content
+is their own R code -- a study to try everything on.
 
 A guide in Japanese (provisional):
 [tflplanner 利用ガイド（日本語）](https://ichirio.github.io/tflplanner/articles/ja-guide.html).

@@ -45,7 +45,10 @@ test_that("a table the ARD definition serves reads its part of the study ARD", {
   expect_true(any(grepl("readRDS(\"output/ard/ard.rds\")", code, fixed = TRUE)))
   expect_true(any(grepl("data <- normalize_ard(ard)", code, fixed = TRUE)))
   expect_true(any(grepl("still to be written", data_lines(p, "L1"))))
-  p$outputs$data_code[1] <- "ard <- my_ard()"
+  # its data step its own code: that code, which makes the data itself (no
+  # study ARD read for it)
+  p <- set_step_code(p, "DM", "data", "ard <- my_ard()")
+  expect_true("ard <- my_ard()" %in% data_lines(p, "DM"))
   expect_false(any(grepl("ard.rds", data_lines(p, "DM"))))
   expect_false(any(grepl("make_ard", autoexec_code(p))))
 })
@@ -174,6 +177,50 @@ test_that("the study's analyses are exported as CDISC ARS", {
   expect_true(any(grepl("ard_mine(data", code, fixed = TRUE)))
   s$planner$ard$analyses <- s$planner$ard$analyses[0, ]
   expect_error(export_ars(s, d), "no analyses")
+})
+
+test_that("the ARS is built once with its problems, each with its report", {
+  local_home2()
+  p <- ard_planner()
+  s <- create_study("A3", planner = p)
+  b <- .ars_build(s)
+  expect_identical(b$profile, "cdisc")
+  expect_identical(names(b$problems), c("kind", "output_id", "where", "item", "note"))
+  # a blank purpose: a check on each analysis, about its report
+  pu <- b$problems[b$problems$kind == "check" & b$problems$item %in% "purpose", ]
+  expect_gt(nrow(pu), 0L)
+  expect_true(all(pu$output_id == "DM"))
+  # the row, as a Review item: the report's analyses, the analysis, the field
+  j <- .ars_jump_row(pu[pu$where == "Analysis An_DM_AGE", ])
+  expect_identical(j[c("output_id", "sheet", "row", "field")],
+                   list(output_id = "DM", sheet = "analyses", row = "AGE",
+                        field = "purpose"))
+  # what it writes is what it built; the files as export_ars() wrote them
+  d <- withr_tempdir()
+  f <- .ars_write(b, d, parts = "json")
+  expect_identical(names(f), "json")
+  expect_identical(basename(f[["json"]]), "A3_ars.json")
+  expect_identical(names(export_ars(s, d)), c("json", "xlsx", "check"))
+  # the siera profile, built again
+  expect_identical(.ars_build(s, "siera")$profile, "siera")
+  expect_match(basename(.ars_write(.ars_build(s, "siera"), d, "json")[["json"]]),
+               "_siera.json$")
+})
+
+test_that("an ARS row names its report: the longest output id that fits", {
+  ids <- c("T-1", "T-1-1", "F-2")
+  expect_identical(
+    .ars_output_of(c("Analysis An_T-1-1_AGE", "Analysis An_T-1_AGE",
+                     "F-2 / KM", "F-2", "SAF", NA), ids),
+    c("T-1-1", "T-1", "F-2", "F-2", NA, NA))
+  # a population and an analysis data are found in their own sheets
+  expect_identical(.ars_jump_row(list(output_id = NA, where = "SAF",
+                                      item = "populations$derive", note = "x"))$sheet,
+                   "populations")
+  j <- .ars_jump_row(list(output_id = "T-1", where = "T-1 / SYSBP",
+                          item = "analysis_data$subjects",
+                          note = "advs_saf: `adsl_saf` -- ..."))
+  expect_identical(j[c("sheet", "row")], list(sheet = "analysis_data", row = "advs_saf"))
 })
 
 test_that("a report's code lists reach its ARD program", {

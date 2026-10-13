@@ -7,20 +7,20 @@ test_that("switching studies does not write one report's editor into another", {
   two_studies()
   suppressWarnings(shiny::testServer(server_for("S1"), {
     rv <- session$userData$rv
-    session$setInputs(target = "A", data_code = "a <- 1",
+    session$setInputs(target = "A", process_code = "a <- 1",
                       description = "first")
     session$setInputs(studies_rows_selected = 2L, open_study = 1L)
     expect_equal(rv$study$meta$study_id, "S2")
     # the sidebar moves to B first; the text box's echo of what the server
     # put there while no report was chosen arrives after it (debounced)
     session$setInputs(target = "B")
-    session$setInputs(data_code = "", description = "")
-    session$setInputs(data_code = "b <- 2", description = "second")
-    expect_equal(rv$p$outputs$data_code, "b <- 2")
+    session$setInputs(process_code = "", description = "")
+    session$setInputs(process_code = "b <- 2", description = "second")
+    expect_equal(rv$p$outputs$process_code, "b <- 2")
     expect_equal(rv$p$outputs$description, "second")
     expect_false(session$userData$dirty())
   }))
-  expect_equal(open_study("S2")$planner$outputs$data_code, "b <- 2")
+  expect_equal(open_study("S2")$planner$outputs$process_code, "b <- 2")
 })
 
 test_that("an edit in the editor changes the chosen report and is saved", {
@@ -28,14 +28,14 @@ test_that("an edit in the editor changes the chosen report and is saved", {
   two_studies()
   suppressWarnings(shiny::testServer(server_for("S1"), {
     rv <- session$userData$rv
-    session$setInputs(target = "A", data_code = "a <- 1")
-    session$setInputs(data_code = "a <- 10")
-    expect_equal(rv$p$outputs$data_code, "a <- 10")
+    session$setInputs(target = "A", process_code = "a <- 1")
+    session$setInputs(process_code = "a <- 10")
+    expect_equal(rv$p$outputs$process_code, "a <- 10")
     expect_true(session$userData$dirty())
     session$setInputs(save = 1L)
     expect_false(session$userData$dirty())
   }))
-  expect_equal(open_study("S1")$planner$outputs$data_code, "a <- 10")
+  expect_equal(open_study("S1")$planner$outputs$process_code, "a <- 10")
 })
 
 test_that("unregistering removes the chosen study only, and the list still draws", {
@@ -85,7 +85,7 @@ test_that("each session opens the study as last saved, not as at start", {
   app <- planner_app("S1")
   # saved after the app started (by an earlier session, or outside it)
   s1 <- open_study("S1")
-  s1$planner <- add_output(s1$planner, "C", data_code = "c <- 3")
+  s1$planner <- add_output(s1$planner, "C", process_code = "c <- 3")
   save_study(s1)
   # a new session (a reload, a new tab) sees it
   shiny::testServer(app, {

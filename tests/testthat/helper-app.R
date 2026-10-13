@@ -10,9 +10,9 @@ local_home <- function(env = parent.frame()) {
 }
 
 two_studies <- function() {
-  p1 <- add_output(new_planner(), "A", data_code = "a <- 1",
+  p1 <- add_output(new_planner(), "A", process_code = "a <- 1",
                    description = "first")
-  p2 <- add_output(new_planner(), "B", data_code = "b <- 2",
+  p2 <- add_output(new_planner(), "B", process_code = "b <- 2",
                    description = "second")
   create_study("S1", planner = p1)
   create_study("S2", planner = p2)

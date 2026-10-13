@@ -26,7 +26,23 @@
 # the data steps that make an object of their own (a KM fit, summary
 # statistics ...): the steps after one go on in its pipe (#293)
 .pd_named_steps <- c(survfit = "fit", summary = "sm", summary_by = "sg",
-                     rate = "rt", count = "ct", subset = "sub")
+                     rate = "rt", count = "ct", subset = "sub", `function` = "res")
+
+# the functions a figure's "Any function" step suggests (any pkg::fn can be
+# typed)
+.pd_fn_suggest <- c("survival::survfit", "ggsurvfit::survfit2", "survival::coxph",
+                    "stats::quantile", "stats::lm", "stats::glm")
+
+# A function's arguments in short, for its "Arguments (R)" field: their
+# names (a required one starred), not the data (the step's From)
+.pd_fn_args_hint <- function(fn) {
+  if (is.null(fn) || !nzchar(fn %||% "")) return(NULL)
+  a <- tryCatch(tflspec::tfl_ard_args(fn), error = function(e) NULL)
+  if (is.null(a) || !nrow(a)) return(NULL)
+  a <- a[!a$kind %in% c("data", "statistics", "denominator") & a$arg != "...", , drop = FALSE]
+  if (!nrow(a)) return(NULL)
+  paste(paste0(a$arg, ifelse(a$required, "*", "")), collapse = ", ")
+}
 
 .designer_ui <- function(t) {
   shiny::conditionalPanel(
@@ -50,8 +66,7 @@
     shiny::uiOutput("pd_note"),
     # one way to make a figure: the designer (its first step a template or
     # empty); the plot written by hand, user code, apart below
-    shiny::uiOutput("pd_body"),
-    shiny::uiOutput("lf_fig_box"))
+    shiny::uiOutput("pd_body"))
 }
 
 # A figure's step 1 (#293): the data steps of its design, their form
@@ -153,6 +168,10 @@
     x <- paste(c(p$analysis_id, p$variable, p$stat %||% p$stats, g), collapse = " ")
     return(if (nchar(x) > 40) paste0(substr(x, 1, 38), "..") else x)
   }
+  if (isTRUE(p$step %in% c("ard", "function"))) {
+    x <- paste(c(p$analysis_id %||% p$name, sub("^.*::", "", p$fn %||% "")), collapse = " ")
+    return(if (nchar(x) > 40) paste0(substr(x, 1, 38), "..") else x)
+  }
   keys <- c("dataset", "value", "variable", "expr", "vars", "time", "by",
             "x", "y", "yintercept", "xintercept", "geom", "type", "unit")
   v <- unlist(lapply(keys, function(k) {
@@ -202,7 +221,7 @@
 }
 
 .designer_server <- function(input, output, session, rv, current, t, notify,
-                             guarded, catalog, fig_is_new = function() FALSE,
+                             guarded, catalog,
                              page = function() input$nav, codelists_dialog = NULL,
                              bump = function() NULL, has_study = function() TRUE,
                              read_grid = function(h) rhandsontable::hot_to_r(h),
@@ -272,7 +291,7 @@
   set_design <- function(d) {
     id <- current()
     if (is.null(id) || is.null(d)) return()
-    rv$p <- set_fig_design(rv$p, id, d)
+    rv$p <- .fig_ard_steps_rows(set_fig_design(rv$p, id, d), id, d)
   }
 
   # the study's data, read once a file (and again when it changes)
@@ -319,15 +338,7 @@
     msg <- switch(m,
       none = t("Choose a Figure report on the left."),
       other = t("Figures are designed here: choose a Figure report on the left."),
-      hand = if (fig_is_new()) pane_head(t("A new figure"), t("A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead, open User code at the bottom.")) else
-        shiny::tagList(
-          shiny::div(t("This figure is written by hand. Two ways:")),
-          shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mt-1",
-                     shiny::span(t("Keep the code:")),
-                     .btn("fig_to_user", t("Make it a user-code report..."),
-                          class = "btn-sm btn-primary py-0")),
-          shiny::div(class = "mt-1",
-                     t("Make it again with the designer: the first step below (a template or empty)."))),
+      hand = pane_head(t("A new figure"), t("A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead: R program at the top of this step.")),
       pane_head(t("The figure's design"),
                 t("Choose a piece on the left to change it on the right; the figure is redrawn as its program will save it. Empty = the default (shown grey).")))
     # a heading (its (i) the explanation) as it is; a note in a box
@@ -1004,10 +1015,21 @@
     pd$raw <- list()
     vars <- shiny::isolate(design_vars(d))
     params <- shiny::isolate(design_params(d))
+    io <- tryCatch(tflspec::tfl_fig_objects(d), error = function(e) NULL)
+    upto <- if (identical(s$sec, "data") && !is.null(io)) seq_len(s$i - 1L) else seq_len(NROW(io))
+    objs <- unique(c(if (!is.null(io)) stats::na.omit(io$out[upto]), "df"))
     # the figure's data: kept as `df`, shown by the name the program writes
     # (adtte_ttde: the program renames df)
-    objects <- c(stats::setNames("df", tflspec::tfl_fig_data_name(d) %||% "df"), unlist(lapply(d$data, function(x) if (isTRUE(x$step %in% names(.pd_named_steps)))
-      x$name %||% .pd_named_steps[[x$step]])))
+    objects <- stats::setNames(objs, ifelse(objs == "df", tflspec::tfl_fig_data_name(d) %||% "df", objs))
+    io_now <- if (identical(s$sec, "data") && !is.null(io) && s$i <= nrow(io)) io[s$i, ]
+    # an ARD analysis: the study's analysis data and ARD functions
+    # (the figure's own first; another report's is copied into it)
+    an_data <- unique(c(.adata_rows(shiny::isolate(rv$p), shiny::isolate(current()) %||% "")$data_id,
+                        stats::na.omit(shiny::isolate(rv$p)$ard$analysis_data$data_id)))
+    ard_fns <- tryCatch({
+      fx <- tflspec::tfl_ard_functions()
+      fx$call[fx$installed %in% TRUE & !fx$offered %in% FALSE]
+    }, error = function(e) character())
     # the figure's ARD: its analyses; the variables and statistics of the
     # one chosen (of the ARD made; the analyses sheet's when not made yet)
     ard <- shiny::isolate(fig_ard())
@@ -1025,12 +1047,22 @@
     one <- function(r) {
       v <- pn$p[[r$field]]
       def <- r$default
+      # a named step's name: its Out
+      as_out <- identical(r$field, "name") && pn$kind %in% names(.pd_named_steps)
       lab <- shiny::tags$span(
-        title = r$help,
-        t(r$label), if (isTRUE(r$required)) shiny::span(class = "text-danger", " *"),
-        if (!is.na(def)) shiny::tags$small(class = "text-muted", paste0(" (", t("default"), ": ", def, ")")))
+        title = if (!is.na(r$help) && nzchar(r$help)) t(r$help),
+        if (as_out) t("Out") else t(r$label),
+        if (isTRUE(r$required)) shiny::span(class = "text-danger", " *"),
+        if (!is.na(def) && !as_out) shiny::tags$small(class = "text-muted", paste0(" (", t("default"), ": ", def, ")")))
       id <- pd_id(r$field)
-      ph <- if (is.na(def)) "" else def
+      # the placeholder: the default, else what the field takes (its help)
+      ph <- if (!is.na(def)) def else if (!is.na(r$help) && nzchar(r$help)) t(r$help) else ""
+      # From / Into: what they are when not said, as their placeholder
+      if (r$field %in% c("in", "out") && !is.null(io_now) && !identical(pn$kind, "ard")) {
+        ph <- io_now[[r$field]] %||% ""
+        if (is.na(ph)) ph <- ""
+        lab <- shiny::tags$span(title = t(r$help), t(r$label))
+      }
       sz <- function(ch, multiple = FALSE, create = TRUE) {
         sel_v <- if (multiple) trimws(strsplit(paste(v %||% "", collapse = ","), ",")[[1L]]) else v %||% ""
         sel_v <- sel_v[nzchar(sel_v)]
@@ -1046,8 +1078,10 @@
         flag = sz(grep("FL$", vars, value = TRUE)),
         variables = sz(vars, multiple = TRUE),
         param = sz(params, multiple = TRUE),
-        object = sz(objects),
+        object = sz(if (identical(r$field, "in")) c(objects, tolower(cat_ds)) else objects),
         analysis = sz(an_ids),
+        analysis_data = sz(an_data),
+        ard_function = sz(ard_fns),
         ard_variable = sz(ard_vars),
         ard_stat = sz(ard_stat),
         ard_stats = sz(ard_stat, multiple = TRUE),
@@ -1060,10 +1094,14 @@
         code = shiny::div(class = "pd-code",
           shiny::textAreaInput(id, lab, value = paste(v %||% "", collapse = "\n"),
                                rows = 6, width = "100%")),
-        shiny::textInput(id, lab, value = paste(v %||% "", collapse = ", "),
-                         placeholder = ph, width = "100%"))
-      if (!is.na(r$help) && nzchar(r$help) && r$kind != "logical")
-        shiny::tagList(el, shiny::div(class = "form-text small mt-n2 mb-2", t(r$help)))
+        if (identical(r$field, "fn") && identical(pn$kind, "function")) sz(.pd_fn_suggest)
+        else shiny::textInput(id, lab, value = paste(v %||% "", collapse = ", "),
+                              placeholder = ph, width = "100%"))
+      # a function's arguments: their names, under the field
+      # a function's arguments, named under its arguments' field
+      h <- if (identical(r$field, "args") && pn$kind %in% c("function", "ard")) .pd_fn_args_hint(pn$p$fn)
+      if (!is.null(h))
+        shiny::tagList(el, shiny::div(class = "form-text small mt-n2 mb-2", sprintf(t("Its arguments: %s"), h)))
       else el
     }
     head <- if (pn$kind == "plot") t("Figure settings") else t(f$piece_label[1L])
@@ -1092,10 +1130,25 @@
         shiny::p(class = "small text-muted", t(f$piece_help[1L])),
         lapply(seq_len(nrow(fig_args)), function(i) one_arg(fig_args[i, ]))))
     }
+    # the objects it reads and leaves, on one line at its foot (a named
+    # step's name is its Out); an ARD analysis reads an analysis data
+    foot <- if (!identical(pn$kind, "ard")) c(which(f$field == "in"),
+      which(f$field == "out" | (f$field == "name" & pn$kind %in% names(.pd_named_steps))))
+    lead <- f$piece_help[1L] %||% ""
     shiny::tagList(
-      shiny::h6(head),
-      if (nzchar(f$piece_help[1L] %||% "")) shiny::p(class = "small text-muted", t(f$piece_help[1L])),
-      lapply(seq_len(nrow(f)), function(i) one(f[i, ])),
+      shiny::h6(if (nzchar(lead)) with_tip(head, t(lead)) else head),
+      lapply(setdiff(seq_len(nrow(f)), foot), function(i) one(f[i, ])),
+      if (length(foot)) shiny::div(
+        class = "d-flex gap-2",
+        lapply(foot, function(i) shiny::div(style = "flex: 1 1 0; min-width: 0", one(f[i, ])))),
+      # an ARD analysis of a figure that reads a table's ARD: not used yet
+      if (identical(pn$kind, "ard") && identical(src$kind, "table")) shiny::p(
+        class = "small text-warning",
+        sprintf(t("This figure reads %s's ARD: its own analyses are used once it reads its own."), src$id), " ",
+        shiny::tags$button(
+          type = "button", class = "btn btn-sm btn-outline-secondary py-0",
+          onclick = "$('input[name=fig_ard_kind][value=own]').click();",
+          t("Read its own ARD"))),
       if (by_cl) shiny::p(class = "small text-muted",
                           sprintf(t("%s has a code list: its values' order and text are the code list's (the data steps' last, Code lists)."),
                                   cl_var)))
@@ -1192,8 +1245,9 @@
     if (s$sec == "plot") d$plot <- new else d[[s$sec]][[s$i]] <- new
     if (identical(.fig_norm(unclass(d)), .fig_norm(unclass(design())))) return()
     set_design(d)
-    # another dataset changes what the forms offer
-    if (!identical(old$dataset, new$dataset)) redraw_form()
+    # another dataset changes what the forms offer; another function, the
+    # arguments its form names
+    if (!identical(old$dataset, new$dataset) || !identical(old$fn, new$fn)) redraw_form()
   })
 
   # ---- the drawing ----------------------------------------------------------
@@ -1230,6 +1284,8 @@
       r <- tryCatch(preview_figure(s, id, d, max_px = 1400), error = function(e)
         list(png = NULL, problems = NULL, warnings = character(),
              error = conditionMessage(e), code = NULL))
+      # (the app's log keeps why: a drawing that fails can be looked into)
+      if (!is.null(r$error)) message("tflplanner: ", id, " could not be drawn: ", r$error)
       fig_drawn[[id]] <- list(key = key, r = r)
     }
     r$id <- id
@@ -1294,8 +1350,8 @@
     z <- r$size
     if (is.null(z)) return(NULL)
     shiny::p(class = "text-muted small mb-1",
-             sprintf(t("Saved as %s x %s %s, %s dpi (shown at screen resolution)"),
-                     z$width, z$height, z$units, z$dpi))
+             sprintf(t("On the page %s x %s in (step 3), %s dpi (shown at screen resolution)"),
+                     z$width, z$height, z$dpi))
   })
   output$pd_checks <- shiny::renderUI({
     r <- pv()
@@ -1318,6 +1374,16 @@
     s <- sel()
     shiny::req(id, d)
     if (!.pd_in_step(s, step)) return("")
+    # an ARD analysis: no line of the figure's program, its row of the ARD
+    # definition (the figure's ARD program makes it)
+    p <- if (identical(s$sec, "data") && s$i <= length(d$data)) d$data[[s$i]]
+    if (identical(p$step, "ard")) {
+      if (is.null(p$fn) || is.null(p$analysis_id)) return(t("(nothing yet: this piece writes no line on its own)"))
+      return(paste0("# ", t("Its row of the ARD definition (the figure's ARD program):"), "\n",
+                    p$analysis_id, ": ", p$fn, "(",
+                    paste(c(p[["in"]] %||% "<data>", if (!is.null(p$args)) paste(p$args, collapse = ", ")),
+                          collapse = ", "), ")"))
+    }
     cl <- .study_codelists(rv$p)
     code <- tryCatch(.fig_design_script(d, id, codelists = cl),
                      error = function(e) conditionMessage(e))

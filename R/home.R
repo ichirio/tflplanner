@@ -442,6 +442,9 @@ studies_root <- function(home = tflplanner_home()) {
   }
   if (!is.null(ps$setup)) p$setup <- as.character(ps$setup)
   p$outputs <- .df_from(ps$outputs, .empty_outputs())
+  # (the report list's data code before 0.0.2.9206: a step's code now)
+  old <- .old_data_code(.df_from(ps$outputs, data.frame(output_id = character(),
+                                                        data_code = character())))
   for (s in names(p$sheets)) {
     p$sheets[[s]] <- .normalize_sheet(.df_from(ps$sheets[[s]],
                                                p$sheets[[s]]), s)
@@ -458,6 +461,7 @@ studies_root <- function(home = tflplanner_home()) {
       p$ard[[s]] <- .normalize_ard_sheet(.df_from(ps$ard[[s]], p$ard[[s]]), s)
     }
   }
+  p <- .migrate_step_code(p, old)
   .renamed_outputs(p)
 }
 
