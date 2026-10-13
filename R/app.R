@@ -10348,8 +10348,8 @@ app_server <- function(input, output, session, start) {
         "input.modal_type == 'table'",
         shiny::checkboxInput(
           "modal_first",
-          with_tip(t("Start from the data"),
-                   t("Start the table from the data (writes its ARD definition and opens the builder)")),
+          with_tip(t("Apply a template"),
+                   t("A kind of table: a few questions about the data, then its ARD definition and its table are written -- all of it editable afterwards.")),
           value = !nrow(rv$p$ard$analyses), width = "100%"),
         shiny::conditionalPanel("input.modal_first",
                                 shiny::uiOutput("modal_first_ui"))),
@@ -10493,12 +10493,12 @@ app_server <- function(input, output, session, start) {
         t("No data files yet: put them on the Data tab (data/adam), then add the table.")))
     }
     shiny::tagList(
+      # the templates, one a line (more to come: AE overview, subgroups)
       shiny::radioButtons("mf_kind", NULL,
                           stats::setNames(c("summary", "hierarchy", "shift"),
-                                          c(t("Summary (variables as rows)"),
-                                            t("Hierarchy (SOC / PT)"),
-                                            t("Shift (baseline x worst after)"))),
-                          inline = TRUE),
+                                          c(t("Summary table (demographics ...)"),
+                                            t("Hierarchical table (SOC / PT, ATC / drug ...)"),
+                                            t("Shift table (baseline x worst after)")))),
       shiny::uiOutput("mf_data_ui"),
       shiny::uiOutput("mf_cols"))
   })
@@ -10537,7 +10537,7 @@ app_server <- function(input, output, session, start) {
       shiny::checkboxInput("mf_stack", t("Run the analyses together (cards::ard_stack)"), TRUE),
       shiny::uiOutput("mf_stack_note"),
       shiny::p(class = "small text-muted",
-               t("Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (steps 1 and 2).")))
+               t("Numbers get summary statistics; the others, counts and percents.")))
   })
   # a subject of the analysis set with no group: ard_stack() leaves them
   # out, so the wizard makes the analyses one by one -- said before
@@ -10551,9 +10551,6 @@ app_server <- function(input, output, session, start) {
       shiny::div(class = "alert alert-warning py-1 small", sprintf(
         t("%d subjects of the population have no %s: ard_stack does not count them, so the analyses are made one by one."),
         n, input$mf_group))
-    } else {
-      shiny::p(class = "small text-muted mt-n2",
-               t("One call computes the rows and the subjects per group (the column headers' N)."))
     }
   })
   # a hierarchical table: the analysis set (of ADSL), the group, the terms,
@@ -10595,7 +10592,7 @@ app_server <- function(input, output, session, start) {
       # by severity or grade too: the usual names first
       shiny::selectInput(
         "mf_grade", with_tip(t("By severity / grade (columns)"),
-                             t("Each subject counted once, at the worst: the grade's levels in order (a code list), of the SOC for the SOC row, of the PT for the PT row.")),
+                             t("Each subject counted once, at the worst: the grade's levels in order (a code list); each level's row, the worst within that level.")),
         c(stats::setNames("", t("(none)")),
           c(intersect(c("AESEV", "ASEV", "AETOXGR", "ATOXGR"), terms),
             setdiff(terms, c("AESEV", "ASEV", "AETOXGR", "ATOXGR")))),
@@ -10604,7 +10601,7 @@ app_server <- function(input, output, session, start) {
         "!input.mf_grade",
         shiny::checkboxInput("mf_total", t("Total column"), FALSE)),
       shiny::p(class = "small text-muted",
-               sprintf(t("Subjects counted once at each level, percents of the population's subjects in %s; most frequent first. Everything can be changed afterwards (steps 1 and 2)."),
+               sprintf(t("Subjects counted once at each level, percents of the population's subjects in %s; most frequent first."),
                        sl)))
   }
   # a shift table: the analysis set (of ADSL), the group, the parameters
@@ -10616,7 +10613,7 @@ app_server <- function(input, output, session, start) {
     sl <- first_subjects_file()
     if (is.na(sl)) {
       return(shiny::div(class = "alert alert-warning py-1 small",
-        t("A hierarchical table counts the subjects of an analysis set: put the subject-level data (adsl) on the Data tab.")))
+        t("A shift table counts the subjects of an analysis set: put the subject-level data (adsl) on the Data tab.")))
     }
     if (!"PARAMCD" %in% names(d)) {
       return(shiny::div(class = "alert alert-warning py-1 small",
@@ -10653,7 +10650,7 @@ app_server <- function(input, output, session, start) {
       shiny::uiOutput("mf_worst_ui"),
       shiny::checkboxInput("mf_total", t("Total column"), TRUE),
       shiny::p(class = "small text-muted",
-               t("Each subject once a parameter, at the worst category after baseline; percents of each column's subjects. Everything can be changed afterwards (steps 1 and 2).")))
+               t("Each subject once a parameter, at the worst category after baseline; percents of each column's subjects.")))
   }
   # the worst order: the post-baseline categories from best to worst
   output$mf_worst_ui <- shiny::renderUI({

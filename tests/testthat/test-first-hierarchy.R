@@ -1,5 +1,5 @@
 # A hierarchical table started from the data (first_hierarchy_table(), the
-# "Start from the data" form's Hierarchy): the rows a table made by hand
+# "Apply a template" form's hierarchical table): the rows a table made by hand
 # has -- the sample's T-14-3-1, but for what is the study's own (its page
 # pattern and rows a page, titles, labels)
 
@@ -116,7 +116,7 @@ test_that("the form: Hierarchy is chosen (never switched by the data) and starts
     session$setInputs(add = 1)
     # a summary by default, its data ADSL
     session$setInputs(modal_type = "table", modal_first = TRUE)
-    expect_match(output$modal_first_ui$html, "Hierarchy (SOC / PT)", fixed = TRUE)
+    expect_match(output$modal_first_ui$html, "Hierarchical table (SOC / PT, ATC / drug ...)", fixed = TRUE)
     expect_match(output$mf_data_ui$html, "selected>data/adam/adsl", fixed = TRUE)
     session$setInputs(mf_kind = "hierarchy")
     expect_match(output$mf_data_ui$html, "selected>data/adam/adae", fixed = TRUE)

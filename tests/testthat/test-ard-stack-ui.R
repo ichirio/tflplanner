@@ -111,6 +111,7 @@ test_that("the new-table dialog says when a subject has no group (then one by on
     expect_match(output$mf_stack_note$html, "3 subjects of the population have no TRT01A",
                  fixed = TRUE)
     session$setInputs(mf_group = "ARM")
-    expect_match(output$mf_stack_note$html, "One call computes", fixed = TRUE)
+    # every subject has a group: nothing to say
+    expect_no_match(output$mf_stack_note$html %||% "", "have no", fixed = TRUE)
   })
 })

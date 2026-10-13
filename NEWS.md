@@ -2,7 +2,7 @@
 
 - **A shift table started from the data** (#378, 0.0.2.9213; core
   gap #2 as corrected: tflspec's LB example shows the engine does it).
-  "Start from the data" has a third kind, Shift (baseline x worst after):
+  "Apply a template" has a third kind, Shift (baseline x worst after):
   the data (ADLB), the population (ADSL), the group, the parameters (a page
   each), the baseline and the post-baseline category (BNRIND / ANRIND,
   BTOXGR / ATOXGR), the records counted (`ONTRTFL == "Y"`), the worst
@@ -47,9 +47,11 @@
   row's name follows once `tables$overall_label` is on main.)
 
 - **A hierarchical table started from the data** (#374, 0.0.2.9210; the
-  user's decision after the template evaluation, dev-rep #5).  "Start
-  from the data" in Add a report now asks which kind of table: a summary
-  (variables as rows, as before) or a hierarchy (SOC / PT).  The kind is
+  user's decision after the template evaluation, dev-rep #5).  A
+  table's "Start from the data" in Add a report is "Apply a template"
+  now (the user's choice; the figure designer's word), a list of kinds:
+  a summary table (demographics ...) as before, or a hierarchical table
+  (SOC / PT, ATC / drug ... -- its terms are chosen).  The kind is
   chosen, never switched by the data.  The hierarchy asks the data (ADAE),
   the population flag (of ADSL), the group, the terms (AEBODSYS | AEDECOD;
   CMCLAS | CMDECOD for medications), the records counted (`TRTEMFL ==
