@@ -10507,7 +10507,17 @@ app_server <- function(input, output, session, start) {
       shiny::textInput("mf_where", t("Records counted (R; blank: all)"),
                        value = if ("TRTEMFL" %in% names(cols)) "TRTEMFL == \"Y\"" else "",
                        width = "100%"),
-      shiny::checkboxInput("mf_total", t("Total column"), FALSE),
+      # by severity or grade too: the usual names first
+      shiny::selectInput(
+        "mf_grade", with_tip(t("By severity / grade (columns)"),
+                             t("Each subject counted once, at the worst: the grade's levels in order (a code list), of the SOC for the SOC row, of the PT for the PT row.")),
+        c(stats::setNames("", t("(none)")),
+          c(intersect(c("AESEV", "ASEV", "AETOXGR", "ATOXGR"), terms),
+            setdiff(terms, c("AESEV", "ASEV", "AETOXGR", "ATOXGR")))),
+        width = "100%"),
+      shiny::conditionalPanel(
+        "!input.mf_grade",
+        shiny::checkboxInput("mf_total", t("Total column"), FALSE)),
       shiny::p(class = "small text-muted",
                sprintf(t("Subjects counted once at each level, percents of the population's subjects in %s; most frequent first. Everything can be changed afterwards (steps 1 and 2)."),
                        sl)))
@@ -10522,7 +10532,9 @@ app_server <- function(input, output, session, start) {
         rv$p, id, input$mf_data, d, first_subjects_file(), a,
         population = input$mf_pop, group = input$mf_group,
         hierarchy = input$mf_hier, where = input$mf_where %||% NA_character_,
-        total = if (isTRUE(input$mf_total)) "Total" else NA_character_,
+        grade = input$mf_grade %||% NA_character_,
+        total = if (isTRUE(input$mf_total) && !nzchar(input$mf_grade %||% "")) "Total" else
+          NA_character_,
         description = desc))
       if (is.null(p2)) return()
       after_id_change(p2, id)

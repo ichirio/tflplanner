@@ -16,6 +16,7 @@ first_hierarchy_table(
   hierarchy = c("AEBODSYS", "AEDECOD"),
   where = NA_character_,
   total = NA_character_,
+  grade = NA_character_,
   description = NA_character_
 )
 }
@@ -43,6 +44,13 @@ the study folder.}
 \item{where}{The records counted (\code{TRTEMFL == "Y"}); \code{NA} all of them.}
 
 \item{total}{The heading of a Total column (\code{"Total"}); \code{NA} none.}
+
+\item{grade}{A severity or grade column (\code{AESEV}, \code{ATOXGR}) to count by
+too, in the columns under each group; \code{NA} none.  Each subject is
+counted once, at the worst: the grade's levels are written in order
+(a code list), and cards counts a subject at the last level it has --
+of the SOC for the SOC row, of the PT for the PT row.  Not with a Total
+column.}
 
 \item{description}{The report's description.}
 }

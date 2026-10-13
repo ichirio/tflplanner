@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **SOC / PT by worst severity or grade, from the data** (#376,
+  0.0.2.9212; core gap #2 as corrected: the engine does it, the GUI did
+  not).  The hierarchy starter has an optional "By severity / grade
+  (columns)" (AESEV, ATOXGR ...): the grade joins the analysis's `by` and
+  the table's columns, under each group with its N, and its levels are
+  written in order as the report's code list -- cards counts each subject
+  once, at the last level it has, so at its worst: of the SOC for the SOC
+  row, of the PT for the PT row.  Not with a Total column (it would
+  drop the grade too).  `first_hierarchy_table(grade = )`.
+
 - **The table builder edits a hierarchy table (SOC / PT)** (#375,
   0.0.2.9211).  It used to send such a table to the sheets (Details).  It
   now opens with what such a table has: its columns (the variable, the

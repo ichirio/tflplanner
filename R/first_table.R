@@ -300,6 +300,12 @@ first_table <- function(x, output_id, path, data, population, group,
 #' @param hierarchy The terms, outermost first (`c("AEBODSYS", "AEDECOD")`).
 #' @param where The records counted (`TRTEMFL == "Y"`); `NA` all of them.
 #' @param total The heading of a Total column (`"Total"`); `NA` none.
+#' @param grade A severity or grade column (`AESEV`, `ATOXGR`) to count by
+#'   too, in the columns under each group; `NA` none.  Each subject is
+#'   counted once, at the worst: the grade's levels are written in order
+#'   (a code list), and cards counts a subject at the last level it has --
+#'   of the SOC for the SOC row, of the PT for the PT row.  Not with a Total
+#'   column.
 #' @param description The report's description.
 #' @return The `tflplanner`.
 #' @export
@@ -307,6 +313,7 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
                                   population, group,
                                   hierarchy = c("AEBODSYS", "AEDECOD"),
                                   where = NA_character_, total = NA_character_,
+                                  grade = NA_character_,
                                   description = NA_character_) {
   id <- output_id
   hierarchy <- hierarchy[!is.na(hierarchy) & nzchar(hierarchy)]
@@ -323,6 +330,17 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
     stop("'", id, "' has analyses already: edit them in step 1 (ARD).", call. = FALSE)
   }
   if (.is_blank(where)) where <- NA_character_
+  if (.is_blank(grade)) grade <- NA_character_
+  if (!is.na(grade)) {
+    if (!grade %in% names(data)) stop("The data have no ", grade, ".", call. = FALSE)
+    if (grade %in% c(group, hierarchy)) {
+      stop("The grade is a column of its own, not the group or a term.", call. = FALSE)
+    }
+    if (!is.na(total) && nzchar(trimws(total))) {
+      stop("A Total column and a grade together are not made here: add the Total ",
+           "column afterwards in the sheets.", call. = FALSE)
+    }
+  }
   if (!is.na(where) && inherits(try(str2lang(where), silent = TRUE), "try-error")) {
     stop("The condition is not R: ", where, call. = FALSE)
   }
@@ -354,7 +372,8 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
   an <- data.frame(
     analysis_id = aid,
     label = if (is.na(description)) paste(hierarchy, collapse = " / ") else description,
-    method = "hierarchical", data = rec, by = group,
+    method = "hierarchical", data = rec,
+    by = paste(c(group, stats::na.omit(grade)), collapse = " | "),
     variables = paste(hierarchy, collapse = " | "), denominator = subj,
     args = "over_variables = TRUE", stringsAsFactors = FALSE)
   x <- set_ard_rows(x, "analyses", id, an)
@@ -374,7 +393,7 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
   tb <- sheet_rows(x, "tables", id)
   tb$output_id <- NULL
   if (!nrow(tb)) tb[1L, ] <- NA
-  tb$cols[1L] <- group
+  tb$cols[1L] <- paste(c(group, stats::na.omit(grade)), collapse = " | ")
   tb$rows[1L] <- paste(sprintf("group%d = %s", seq_len(n - 1L), hierarchy[-n]),
                        collapse = " | ")
   tb$label[1L] <- paste("label =", hierarchy[n])
@@ -397,9 +416,29 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
     x <- set_sheet_rows(x, "variables", id, vr)
   }
 
+  # the grade's levels in order: its code list (cards counts a subject at
+  # the last level it has -- its worst)
+  if (!is.na(grade)) {
+    lv <- .grade_levels(data[[grade]])
+    x <- set_codelist(x, id, data.frame(variable = grade, value = lv,
+                                        order = as.character(seq_along(lv))))
+  }
+
   # the column header, and a page that does not split a group
   hp <- "Arm (N=n) n (%), SOC / PT"
-  if (hp %in% names(header_presets())) x <- add_preset(x, id, hp)
+  if (is.na(grade) && hp %in% names(header_presets())) x <- add_preset(x, id, hp)
+  if (!is.na(grade)) {
+    # each group over its grades: the group and its N, then each grade
+    x <- set_sheet_rows(x, "col_header", id, data.frame(
+      line = c("1", "1", "2", "2"), cols = c("row_label", ".values", "row_label", ".values"),
+      span = c(NA, group, NA, "each"),
+      text = c(NA, "{col1}\n(N={n})", "System Organ Class\n   Preferred Term", "{col}"),
+      stringsAsFactors = FALSE))
+    # (a group a grade: narrower value columns, room for the terms)
+    x <- set_sheet_rows(x, "columns", id, data.frame(
+      column = c("row_label", ".values"), rel_width = c("34", "10"),
+      stringsAsFactors = FALSE))
+  }
   ly <- sheet_rows(x, "layout", id)
   ly$output_id <- NULL
   if (!nrow(ly)) ly[1L, ] <- NA
@@ -413,6 +452,19 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
 
   if (!is.na(total) && nzchar(trimws(total))) x <- set_total_column(x, id, total)
   x
+}
+
+# A grade's levels, mildest first: a factor's own, the usual severities
+# (MILD < MODERATE < SEVERE, LIFE THREATENING, FATAL), numbers by value,
+# else by name
+.grade_levels <- function(v) {
+  if (is.factor(v)) return(levels(droplevels(v)))
+  u <- unique(as.character(v[!is.na(v) & nzchar(trimws(as.character(v)))]))
+  sev <- c("MILD", "MODERATE", "SEVERE", "LIFE THREATENING", "FATAL", "DEATH")
+  if (length(u) && all(toupper(u) %in% sev)) return(u[order(match(toupper(u), sev))])
+  num <- suppressWarnings(as.numeric(sub("^[^0-9]*", "", u)))
+  if (length(u) && !anyNA(num)) return(u[order(num)])
+  sort(u)
 }
 
 # Does a report's ARD count the subjects per group (the N of the column
@@ -429,7 +481,7 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
   # denominator's subjects per group too)
   den <- if (is.null(a$denominator)) rep(NA_character_, nrow(a)) else a$denominator
   hier <- kw %in% c("hierarchical", "cards::ard_stack_hierarchical") &
-    a$by %in% group & !is.na(den) & nzchar(den)
+    vapply(a$by, function(b) group %in% .split_bar(b), NA) & !is.na(den) & nzchar(den)
   any((kw %in% c("categorical", "subjects") & a$variables %in% group &
          is.na(a$by)) |
         (kw %in% "total_n" & a$by %in% group) | stacks | hier)

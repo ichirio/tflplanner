@@ -130,3 +130,39 @@ test_that("the form: Hierarchy is chosen (never switched by the data) and starts
     expect_identical(sheet_rows(rv$p, "layout", "T-AE")$pages_split, "group_force")
   })
 })
+
+test_that("by severity too: each subject at the worst, the grade in the columns under each group", {
+  skip_on_cran()
+  local_home()
+  r <- starter_from_sample(grade = "AESEV")
+  an <- ard_rows(r$p, "analyses", "T-14-3-1")
+  expect_identical(an$by, "TRT01A | AESEV")
+  expect_identical(an$denominator, "adsl_saf")
+  tb <- sheet_rows(r$p, "tables", "T-14-3-1")
+  expect_identical(tb$cols, "TRT01A | AESEV")
+  # the grade's levels in order: its code list (the worst is the last)
+  cl <- sheet_rows(r$p, "codelists", "T-14-3-1")
+  expect_identical(cl$value[cl$variable == "AESEV"], c("MILD", "MODERATE", "SEVERE"))
+  # the group (and its N) over its grades
+  ch <- sheet_rows(r$p, "col_header", "T-14-3-1")
+  expect_identical(ch$span, c(NA, "TRT01A", NA, "each"))
+  expect_identical(ch$text[2L], "{col1}\n(N={n})")
+  expect_true(.has_group_n(r$p, "T-14-3-1", "TRT01A"))
+  # not with a Total column
+  expect_error(first_hierarchy_table(new_planner(), "T-X", "data/adam/adae.rds", r$adae,
+                                     "data/adam/adsl.rds", r$adsl, population = "SAFFL",
+                                     group = "TRT01A", grade = "AESEV", total = "Total"),
+               "Total column and a grade")
+  expect_error(first_hierarchy_table(new_planner(), "T-X", "data/adam/adae.rds", r$adae,
+                                     "data/adam/adsl.rds", r$adsl, population = "SAFFL",
+                                     group = "TRT01A", grade = "NOPE"), "no NOPE")
+})
+
+test_that("a grade's levels, mildest first", {
+  expect_identical(.grade_levels(c("SEVERE", "MILD", NA, "MODERATE")), c("MILD", "MODERATE", "SEVERE"))
+  expect_identical(.grade_levels(c("Grade 3", "Grade 1", "Grade 10", "Grade 2")),
+                   c("Grade 1", "Grade 2", "Grade 3", "Grade 10"))
+  expect_identical(.grade_levels(c("3", "1", "2")), c("1", "2", "3"))
+  expect_identical(.grade_levels(factor(c("b", "a"), c("b", "a"))), c("b", "a"))
+  expect_identical(.grade_levels(c("y", "x")), c("x", "y"))
+})

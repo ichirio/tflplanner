@@ -3095,3 +3095,5 @@ rtfreporter's next version,rtfreporter の次の版で
 Ties by name.,同数は名前順。
 Order: as the sheets say (tables$sort).,並び順: シートのとおり（tables$sort）。
 Use the card's order,カードの並び順にする
+By severity / grade (columns),重症度・Grade 別（列）
+"Each subject counted once, at the worst: the grade's levels in order (a code list), of the SOC for the SOC row, of the PT for the PT row.",被験者は最悪の重症度・Grade で 1 回だけ数えます（並び順はコードリスト）。SOC の行は SOC の中での最悪、PT の行は PT の中での最悪です。
