@@ -1,5 +1,10 @@
 # tflplanner (development version)
 
+- The `tables` sheet's new column `stat_groups` (tflspec 0.0.24.9105,
+  rtfreporter #619): one record's statistics in two columns, N in one and
+  the rate and its CI in the next, with no `mutate()` in the table's code.
+  Its help is translated.
+
 - **An AE table's "Subjects with at least one TEAE" row from the
   definition** (tflspec #236, with tflspec 0.0.24.9104).  A table without
   normalization of its own (and the company's template the built-in
