@@ -245,7 +245,7 @@ set_fig_design <- function(x, output_id, design) {
   # one data list (a state of before #293 kept `stats` apart)
   lapply(x, function(d) {
     d <- .fig_norm(d)
-    # (its size before 0.0.2.9206: its report's now, step 3)
+    # (its size before 0.0.2.9208: its report's now, step 3)
     if (!is.null(d$plot)) d$plot[c("width", "height", "units")] <- NULL
     if (length(d$stats) || any(vapply(d$data %||% list(), function(s)
       identical(s$step, "data_code") || identical(s$step, "stats_code"), NA))) {

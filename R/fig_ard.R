@@ -332,7 +332,7 @@ set_fig_own_analyses <- function(x, output_id, analyses, population_id = NULL) {
   x
 }
 
-# A figure's ARD analysis steps (`ard`, tflspec >= 0.0.24.9099) as its rows
+# A figure's ARD analysis steps (`ard`, tflspec >= 0.0.24.9101) as its rows
 # of the ARD definition: each step's ID, function (method), analysis data
 # (data) and arguments, over the figure's row of that ID (its other
 # columns kept) or a new one; the figure's other rows (a template's) stay,
