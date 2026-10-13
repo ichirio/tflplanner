@@ -79,7 +79,7 @@ test_that("its own hierarchy (medications), all records, a Total column", {
                               group = "TRT01A", hierarchy = c("CMCAT", "CMCLAS", "CMDECOD"))
   tb3 <- sheet_rows(p3, "tables", "T-3")
   expect_identical(tb3$rows, "group1 = CMCAT | group2 = CMCLAS")
-  expect_identical(tb3$sort, ".overall | group1 | group2 | .depth | -n | label")
+  expect_identical(tb3$sort, ".overall | group1 | .depth | group2 | .depth | -n | label")
 })
 
 test_that("what the starter cannot do, it says", {

@@ -25,7 +25,7 @@ test_that("a hierarchy table reads its terms and its order", {
   p <- hier_planner()
   st <- builder_read(p, "T-AE", hier_meta())
   expect_identical(st$hierarchy, c("AEBODSYS", "AEDECOD"))
-  expect_identical(st$sort, "freq")
+  expect_identical(st$sort, c("alpha", "freq"))
   expect_identical(nrow(st$variables), 0L)
   expect_identical(st$key, "TRT01A")
   # an order of the sheets' own is "own", and kept
@@ -41,7 +41,7 @@ test_that("written back unchanged, nothing changes; the order is all it writes o
   st <- builder_read(p, "T-AE", hier_meta())
   expect_identical(builder_write(p, "T-AE", st, was = st), p)
   alpha <- st
-  alpha$sort <- "alpha"
+  alpha$sort <- c("alpha", "alpha")
   q <- builder_write(p, "T-AE", alpha, was = st)
   expect_identical(sheet_rows(q, "tables", "T-AE")$sort,
                    ".overall | group1 | .depth | label")
@@ -55,9 +55,19 @@ test_that("written back unchanged, nothing changes; the order is all it writes o
   # and back
   r <- builder_write(q, "T-AE", st, was = alpha)
   expect_identical(sheet_rows(r, "tables", "T-AE")$sort, sheet_rows(p, "tables", "T-AE")$sort)
-  # three terms: two groups
-  expect_identical(.hier_sort("freq", 3L), ".overall | group1 | group2 | .depth | -n | label")
-  expect_identical(.hier_sort_read(".overall | group1 | group2 | .depth | label", 3L), "alpha")
+  # one order a level: written and read back, three terms too
+  expect_identical(.hier_sort(c("alpha", "alpha", "freq")),
+                   ".overall | group1 | .depth | group2 | .depth | -n | label")
+  for (lv in list(c("alpha", "freq"), c("alpha", "alpha"), c("freq", "freq"),
+                  c("alpha", "alpha", "freq"), c("freq", "alpha", "freq"))) {
+    expect_identical(.hier_sort_read(.hier_sort(lv), length(lv)), lv)
+  }
+  # (an outer level by its own count: -n@group1, once rtfreporter sorts on it)
+  expect_identical(.hier_sort(c("freq", "freq")), ".overall | -n@group1 | group1 | .depth | -n | label")
+  # what the card does not write is the sheets' own
+  for (own in c("group1 | -n", ".overall | -n | group1 | label", ".overall | group1 | label | x", NA)) {
+    expect_identical(.hier_sort_read(own, 2L), "own", info = own)
+  }
 })
 
 test_that("a hierarchy counted of a denominator has the subjects per group", {
@@ -83,7 +93,9 @@ test_that("the builder opens on a hierarchy table, and writes its order", {
     expect_no_match(output$builder_note$html %||% "", "summary tables for now", fixed = TRUE)
     h <- output$builder_form$html
     expect_match(h, "Rows: a hierarchy", fixed = TRUE)
-    expect_match(h, "AEBODSYS \u203a AEDECOD", fixed = TRUE)
+    # one order a term; an outer term's count waits for rtfreporter
+    expect_match(h, "Ties by name.", fixed = TRUE)
+    expect_match(h, "next version)", fixed = TRUE)
     expect_no_match(h, "Rows: variables in order", fixed = TRUE)
     # no warning about the subjects per group: the denominator counts them
     expect_no_match(h, "a header's (N=n) prints NA", fixed = TRUE)
@@ -93,14 +105,37 @@ test_that("the builder opens on a hierarchy table, and writes its order", {
     v[[b("key")]] <- "TRT01A"
     v[[b("value")]] <- "stat"
     v[[b("cat")]] <- bf$st$cat_format
-    v[[b("sort")]] <- "freq"
+    v[[b("sort1")]] <- "alpha"
+    v[[b("sort2")]] <- "freq"
     do.call(session$setInputs, v)
     session$elapse(1000)
     before <- rv$p
-    v[[b("sort")]] <- "alpha"
+    v[[b("sort2")]] <- "alpha"
     do.call(session$setInputs, v)
     session$elapse(1000)
     expect_identical(sheet_rows(rv$p, "tables", "T-AE")$sort, ".overall | group1 | .depth | label")
     expect_identical(sheet_rows(rv$p, "variables", "T-AE"), sheet_rows(before, "variables", "T-AE"))
+  })
+})
+
+test_that("an order of the sheets' own is kept, and the card's order is one click away", {
+  skip_on_cran()
+  local_home()
+  p <- hier_planner()
+  tb <- sheet_rows(p, "tables", "T-AE")
+  tb$output_id <- NULL
+  tb$sort <- "group1 | -n"
+  s <- create_study("BO", planner = set_sheet_rows(p, "tables", "T-AE", tb))
+  f <- .meta_file(s, "T-AE")
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(hier_meta(), f)
+  shiny::testServer(server_for("BO"), {
+    rv <- session$userData$rv
+    session$setInputs(target = "T-AE", nav = "make", step = "content", content_nav = "content",
+                      table_nav = "builder")
+    h <- output$builder_form$html
+    expect_match(h, "Order: as the sheets say", fixed = TRUE)
+    session$setInputs(b_sort_reset = 1)
+    expect_identical(sheet_rows(rv$p, "tables", "T-AE")$sort, ".overall | group1 | .depth | -n | label")
   })
 })

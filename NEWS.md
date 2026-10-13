@@ -4,9 +4,14 @@
   0.0.2.9211).  It used to send such a table to the sheets (Details).  It
   now opens with what such a table has: its columns (the variable, the
   arms' order, Total), its column header, its statistics (n (%) and the
-  decimals), and a Rows card of its own -- the terms (AEBODSYS ›
-  AEDECOD) and their order: most frequent first in each group, or by name
-  (`tables$sort`; an order of the sheets' own is kept).  A summary
+  decimals), and a Rows card of its own: the order of each term (the
+  user's request: rules are set per level) -- by name (the code list's
+  order when the report has one for it) or most frequent first, ties by
+  name -- written as `tables$sort`.  An order of the sheets' own shows as
+  such, with a link back to the card's (SOC by name, PT most frequent
+  first).  An outer term most frequent first, and counting in one column
+  (Total, an arm), wait for rtfreporter's sort (shown, not yet chosen).
+  The starter writes the same per-level order.  A summary
   table's rows are never written into it, and a hierarchy counted of a
   denominator has the subjects per group of its header.  (The "Any TEAE"
   row's name follows once `tables$overall_label` is on main.)

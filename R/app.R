@@ -8475,13 +8475,7 @@ app_server <- function(input, output, session, start) {
       if (length(st$hierarchy)) shiny::div(
         class = "rp-b-card",
         shiny::h6(t("Rows: a hierarchy")),
-        shiny::p(class = "mb-1", paste(st$hierarchy, collapse = " \u203a ")),
-        shiny::radioButtons(
-          bid("sort"), t("Order"),
-          c(stats::setNames(c("freq", "alpha"),
-                            t(c("Most frequent first, in each group", "By name"))),
-            if (identical(st$sort, "own")) stats::setNames("own", t("The sheets' own (tables$sort)"))),
-          selected = st$sort, inline = TRUE)),
+        hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable)),
       if (!length(st$hierarchy)) shiny::div(
         class = "rp-b-card",
         shiny::div(
@@ -8583,6 +8577,51 @@ app_server <- function(input, output, session, start) {
                               value = st$pct_decimals, min = 0, max = 3,
                               width = "260px")),
         shiny::uiOutput(bid("warn"))))
+  })
+  # A hierarchy's order, one a term (outermost first): by name -- the code
+  # list's order when the report has one for it -- or most frequent first
+  # (the innermost term; an outer one's own count waits for rtfreporter).
+  # An order of the sheets' own is said, with a way back to the card's.
+  hier_sort_ui <- function(st, coded) {
+    n <- length(st$hierarchy)
+    if (identical(st$sort, "own")) {
+      return(shiny::div(
+        class = "small",
+        t("Order: as the sheets say (tables$sort)."), " ",
+        shiny::actionLink("b_sort_reset", t("Use the card's order"))))
+    }
+    later <- t("rtfreporter's next version")
+    shiny::tagList(
+      lapply(seq_len(n), function(i) {
+        v <- st$hierarchy[i]
+        opt <- function(value, label, off = FALSE) shiny::tags$option(
+          value = value, selected = if (identical(st$sort[i], value)) NA,
+          disabled = if (off) NA, label)
+        shiny::div(
+          class = "d-flex align-items-center gap-2 mb-1",
+          shiny::span(class = "rp-b-var", style = "min-width: 9em;", v),
+          shiny::tags$select(
+            id = bid(paste0("sort", i)), class = "form-select form-select-sm",
+            style = "width: 18em;",
+            opt("alpha", if (v %in% coded) t("Code list's order") else t("By name")),
+            opt("freq", if (i < n) sprintf("%s (%s)", t("Most frequent first"), later) else
+              t("Most frequent first"), off = i < n)))
+      }),
+      shiny::p(class = "small text-muted mb-0", t("Ties by name.")))
+  }
+  shiny::observeEvent(input$b_sort_reset, {
+    id <- bform$id
+    st <- bform$st
+    shiny::req(!is.null(id), length(st$hierarchy) > 0L)
+    n <- length(st$hierarchy)
+    tb <- sheet_rows(rv$p, "tables", id)
+    tb$output_id <- NULL
+    tb$sort[1L] <- .hier_sort(c(rep("alpha", n - 1L), "freq"))
+    p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    rv$bver <- rv$bver + 1L
   })
   # The rows' variables as the code list of `variable`: each variable (the
   # value), the heading the table prints for it (the label) and its place
@@ -9389,7 +9428,11 @@ app_server <- function(input, output, session, start) {
          },
          auto_levels = st$auto_levels,
          hierarchy = st$hierarchy,
-         sort = if (hier) get("sort") %||% st$sort)
+         sort = if (hier) {
+           if (identical(st$sort, "own")) "own" else
+             vapply(seq_along(st$hierarchy), function(i)
+               get(paste0("sort", i)) %||% st$sort[i], "")
+         })
   }))
   bstate_d <- shiny::debounce(bstate, 400)
   shiny::observeEvent(bstate_d(), {

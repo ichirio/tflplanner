@@ -34,9 +34,10 @@ variable's row labels in order) and their \code{templates}, \code{value}
 (a variable's own: \code{variable}, \code{statistic}, \code{digits}), \code{cat_format} (\code{npct},
 \code{nNpct}, \code{n}), \code{pct_decimals}, \code{header} (\code{keep} or a name of
 \code{\link[=header_presets]{header_presets()}}), and for a hierarchy table (SOC / PT) its
-\code{hierarchy} (the terms, outermost first) and \code{sort} (\code{freq}: the
-innermost terms most frequent first; \code{alpha}: by name; \code{own}: an
-order of the sheets' own, left as it is).  \code{builder_write()}: the
+\code{hierarchy} (the terms, outermost first) and \code{sort} (each term's
+order, outermost first -- \code{"alpha"} by name, or a code list's order;
+\code{"freq"} most frequent first, ties by name -- or \code{"own"}: an order of
+the sheets' own, left as it is).  \code{builder_write()}: the
 \code{tflplanner}.
 }
 \description{

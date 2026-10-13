@@ -3088,7 +3088,10 @@ Records counted (R; blank: all),数えるレコード（R。空欄: すべて）
 A hierarchical table counts the subjects of an analysis set: put the subject-level data (adsl) on the Data tab.,階層表は解析対象集団の被験者を数えます。被験者単位のデータ（adsl）をデータタブに置いてください。
 "Subjects counted once at each level, percents of the population's subjects in %s; most frequent first. Everything can be changed afterwards (steps 1 and 2).",各階層で被験者を 1 回ずつ数え、割合は %s の集団の被験者数に対してです。多い順に並びます。あとから何でも変えられます（手順 1 と 2）。
 Rows: a hierarchy,行: 階層
-Order,並べ方
-"Most frequent first, in each group",各グループの中で多い順
 By name,名前順
-The sheets' own (tables$sort),シートのとおり（tables$sort）
+Code list's order,コードリストの順
+Most frequent first,多い順
+rtfreporter's next version,rtfreporter の次の版で
+Ties by name.,同数は名前順。
+Order: as the sheets say (tables$sort).,並び順: シートのとおり（tables$sort）。
+Use the card's order,カードの並び順にする

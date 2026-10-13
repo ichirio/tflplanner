@@ -146,9 +146,10 @@ builder_stats <- function() {
 #'   (a variable's own: `variable`, `statistic`, `digits`), `cat_format` (`npct`,
 #'   `nNpct`, `n`), `pct_decimals`, `header` (`keep` or a name of
 #'   [header_presets()]), and for a hierarchy table (SOC / PT) its
-#'   `hierarchy` (the terms, outermost first) and `sort` (`freq`: the
-#'   innermost terms most frequent first; `alpha`: by name; `own`: an
-#'   order of the sheets' own, left as it is).  `builder_write()`: the
+#'   `hierarchy` (the terms, outermost first) and `sort` (each term's
+#'   order, outermost first -- `"alpha"` by name, or a code list's order;
+#'   `"freq"` most frequent first, ties by name -- or `"own"`: an order of
+#'   the sheets' own, left as it is).  `builder_write()`: the
 #'   `tflplanner`.
 #' @export
 builder_read <- function(x, output_id, meta = NULL) {
@@ -255,21 +256,45 @@ builder_read <- function(x, output_id, meta = NULL) {
 }
 
 # A hierarchy table's order (tables$sort), written as plan_sort() takes
-# it: the "any event" row first, each group's terms in their groups, the
-# innermost terms by frequency (most first) or by name.  n: the terms.
-.hier_sort <- function(kind = c("freq", "alpha"), n = 2L) {
-  kind <- match.arg(kind)
-  paste(c(".overall", sprintf("group%d", seq_len(n - 1L)), ".depth",
-          if (kind == "freq") "-n", "label"), collapse = " | ")
+# it, one order a level, outermost first: "alpha" (by name -- a code
+# list's order when the report has one: a factor sorts by its levels) or
+# "freq" (most frequent first: the statistic n totalled across the
+# columns; ties by name).  The "any event" row first, and each group's own
+# row above the rows under it.  (Most frequent first for an outer level --
+# its own n, -n@group1 -- needs rtfreporter's sort to know it.)
+.hier_sort <- function(levels = c("alpha", "freq")) {
+  n <- length(levels)
+  out <- ".overall"
+  for (i in seq_len(n - 1L)) {
+    g <- sprintf("group%d", i)
+    out <- c(out, if (identical(levels[i], "freq")) paste0("-n@", g), g, ".depth")
+  }
+  out <- c(out, if (identical(levels[n], "freq")) "-n", "label")
+  paste(out, collapse = " | ")
 }
 
-# ... and read back: "freq", "alpha", or "own" (what the builder does not
-# write: kept as it is)
+# ... and read back: the order of each level, or "own" (an order the
+# builder does not write: kept as it is).  n: the terms.
 .hier_sort_read <- function(sort, n = 2L) {
   if (length(sort) != 1L || is.na(sort) || !nzchar(trimws(sort))) return("own")
-  norm <- function(x) gsub("\\s+", "", x)
-  for (k in c("freq", "alpha")) if (identical(norm(sort), norm(.hier_sort(k, n)))) return(k)
-  "own"
+  tk <- trimws(strsplit(sort, "|", fixed = TRUE)[[1L]])
+  if (!identical(tk[1L], ".overall")) return("own")
+  tk <- tk[-1L]
+  tk <- tk[tk != ".depth"]
+  lv <- character(n)
+  for (i in seq_len(n)) {
+    name <- if (i < n) sprintf("group%d", i) else "label"
+    count <- if (i < n) paste0("-n@", name) else "-n"
+    if (length(tk) && identical(tk[1L], count)) {
+      lv[i] <- "freq"
+      tk <- tk[-1L]
+    } else {
+      lv[i] <- "alpha"
+    }
+    if (!length(tk) || !identical(tk[1L], name)) return("own")
+    tk <- tk[-1L]
+  }
+  if (length(tk)) "own" else lv
 }
 
 #' @rdname builder_read
@@ -296,9 +321,10 @@ builder_write <- function(x, output_id, state, was = NULL) {
     tb$value[1L] <- if (identical(st$value, "stat_fmt")) "stat_fmt" else NA_character_
   }
   # a hierarchy table's order (the form's: by frequency or by name)
-  if (length(st$hierarchy) && changed("sort") && st$sort %in% c("freq", "alpha")) {
+  if (length(st$hierarchy) && changed("sort") && !identical(st$sort, "own") &&
+      length(st$sort) == length(st$hierarchy)) {
     if (!"sort" %in% names(tb)) tb$sort <- NA_character_
-    tb$sort[1L] <- .hier_sort(st$sort, length(st$hierarchy))
+    tb$sort[1L] <- .hier_sort(st$sort)
   }
   # whose {n} the header prints (the form asks only when a cell uses {n})
   if (!is.null(st$header_n) && "header_n" %in% names(tb)) tb$header_n[1L] <- st$header_n

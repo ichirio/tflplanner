@@ -378,7 +378,7 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
   tb$rows[1L] <- paste(sprintf("group%d = %s", seq_len(n - 1L), hierarchy[-n]),
                        collapse = " | ")
   tb$label[1L] <- paste("label =", hierarchy[n])
-  tb$sort[1L] <- .hier_sort("freq", n)
+  tb$sort[1L] <- .hier_sort(c(rep("alpha", n - 1L), "freq"))
   x <- set_sheet_rows(x, "tables", id, tb)
 
   # the groups' order (the columns): the analysis set's, from the
