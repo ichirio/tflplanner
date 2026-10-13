@@ -1,0 +1,106 @@
+# The builder with a hierarchy table (SOC / PT): read and written back, it
+# changes nothing; its order (tables$sort) is the one thing of its own it
+# writes; a summary table's rows are never written into it
+
+hier_meta <- function(arms = c("Placebo", "Xanomeline Low Dose", "Xanomeline High Dose")) {
+  list(keys = list(TRT01A = arms, AEBODSYS = "CARDIAC DISORDERS", AEDECOD = "SINUS BRADYCARDIA"),
+       by = "TRT01A", hierarchy = c("AEBODSYS", "AEDECOD"),
+       variables = data.frame(variable = character(), kind = character(), levels = character(),
+                              n_levels = integer(), stats = character(), label = character()),
+       stats = c("n", "N", "p"))
+}
+hier_planner <- function() {
+  adae <- data.frame(USUBJID = c("1", "2"), TRT01A = c("Placebo", "Placebo"),
+                     AEBODSYS = "CARDIAC DISORDERS", AEDECOD = "SINUS BRADYCARDIA",
+                     TRTEMFL = "Y")
+  adsl <- data.frame(USUBJID = c("1", "2", "3"), SAFFL = "Y",
+                     TRT01A = c("Placebo", "Xanomeline Low Dose", "Xanomeline High Dose"),
+                     TRT01AN = c(0, 54, 81))
+  first_hierarchy_table(new_planner(), "T-AE", "data/adam/adae.rds", adae,
+                        "data/adam/adsl.rds", adsl, population = "SAFFL",
+                        group = "TRT01A", where = "TRTEMFL == \"Y\"")
+}
+
+test_that("a hierarchy table reads its terms and its order", {
+  p <- hier_planner()
+  st <- builder_read(p, "T-AE", hier_meta())
+  expect_identical(st$hierarchy, c("AEBODSYS", "AEDECOD"))
+  expect_identical(st$sort, "freq")
+  expect_identical(nrow(st$variables), 0L)
+  expect_identical(st$key, "TRT01A")
+  # an order of the sheets' own is "own", and kept
+  q <- set_sheet_rows(p, "tables", "T-AE", transform(
+    sheet_rows(p, "tables", "T-AE")[, -1L], sort = "group1 | -n"))
+  expect_identical(builder_read(q, "T-AE", hier_meta())$sort, "own")
+  # a summary table has neither
+  expect_null(builder_read(new_planner(), "X", NULL)$sort)
+})
+
+test_that("written back unchanged, nothing changes; the order is all it writes of its own", {
+  p <- hier_planner()
+  st <- builder_read(p, "T-AE", hier_meta())
+  expect_identical(builder_write(p, "T-AE", st, was = st), p)
+  alpha <- st
+  alpha$sort <- "alpha"
+  q <- builder_write(p, "T-AE", alpha, was = st)
+  expect_identical(sheet_rows(q, "tables", "T-AE")$sort,
+                   ".overall | group1 | .depth | label")
+  # nothing of a summary table: its rows, its variables, its cells
+  for (sh in c("variables", "cells", "col_header", "layout")) {
+    expect_identical(sheet_rows(q, sh, "T-AE"), sheet_rows(p, sh, "T-AE"), info = sh)
+  }
+  tb <- sheet_rows(q, "tables", "T-AE")
+  expect_identical(tb$rows, "group1 = AEBODSYS")
+  expect_identical(tb$label, "label = AEDECOD")
+  # and back
+  r <- builder_write(q, "T-AE", st, was = alpha)
+  expect_identical(sheet_rows(r, "tables", "T-AE")$sort, sheet_rows(p, "tables", "T-AE")$sort)
+  # three terms: two groups
+  expect_identical(.hier_sort("freq", 3L), ".overall | group1 | group2 | .depth | -n | label")
+  expect_identical(.hier_sort_read(".overall | group1 | group2 | .depth | label", 3L), "alpha")
+})
+
+test_that("a hierarchy counted of a denominator has the subjects per group", {
+  p <- hier_planner()
+  expect_true(.has_group_n(p, "T-AE", "TRT01A"))
+  a <- ard_rows(p, "analyses", "T-AE")
+  a$denominator <- NA
+  a$output_id <- NULL
+  expect_false(.has_group_n(set_ard_rows(p, "analyses", "T-AE", a), "T-AE", "TRT01A"))
+})
+
+test_that("the builder opens on a hierarchy table, and writes its order", {
+  skip_on_cran()
+  local_home()
+  s <- create_study("BH", planner = hier_planner())
+  f <- .meta_file(s, "T-AE")
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(hier_meta(), f)
+  shiny::testServer(server_for("BH"), {
+    rv <- session$userData$rv
+    session$setInputs(target = "T-AE", nav = "make", step = "content", content_nav = "content",
+                      table_nav = "builder")
+    expect_no_match(output$builder_note$html %||% "", "summary tables for now", fixed = TRUE)
+    h <- output$builder_form$html
+    expect_match(h, "Rows: a hierarchy", fixed = TRUE)
+    expect_match(h, "AEBODSYS \u203a AEDECOD", fixed = TRUE)
+    expect_no_match(h, "Rows: variables in order", fixed = TRUE)
+    # no warning about the subjects per group: the denominator counts them
+    expect_no_match(h, "a header's (N=n) prints NA", fixed = TRUE)
+    bf <- session$userData$bform
+    b <- function(x) paste0("b", bf$n, "_", x)
+    v <- list()
+    v[[b("key")]] <- "TRT01A"
+    v[[b("value")]] <- "stat"
+    v[[b("cat")]] <- bf$st$cat_format
+    v[[b("sort")]] <- "freq"
+    do.call(session$setInputs, v)
+    session$elapse(1000)
+    before <- rv$p
+    v[[b("sort")]] <- "alpha"
+    do.call(session$setInputs, v)
+    session$elapse(1000)
+    expect_identical(sheet_rows(rv$p, "tables", "T-AE")$sort, ".overall | group1 | .depth | label")
+    expect_identical(sheet_rows(rv$p, "variables", "T-AE"), sheet_rows(before, "variables", "T-AE"))
+  })
+})

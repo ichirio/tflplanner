@@ -33,7 +33,11 @@ variable's row labels in order) and their \code{templates}, \code{value}
 \code{digits} (each statistic the rows print: its decimals), \code{exceptions}
 (a variable's own: \code{variable}, \code{statistic}, \code{digits}), \code{cat_format} (\code{npct},
 \code{nNpct}, \code{n}), \code{pct_decimals}, \code{header} (\code{keep} or a name of
-\code{\link[=header_presets]{header_presets()}}).  \code{builder_write()}: the \code{tflplanner}.
+\code{\link[=header_presets]{header_presets()}}), and for a hierarchy table (SOC / PT) its
+\code{hierarchy} (the terms, outermost first) and \code{sort} (\code{freq}: the
+innermost terms most frequent first; \code{alpha}: by name; \code{own}: an
+order of the sheets' own, left as it is).  \code{builder_write()}: the
+\code{tflplanner}.
 }
 \description{
 \code{builder_read()} describes a report's summary table from its sheets (and

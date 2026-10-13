@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **The table builder edits a hierarchy table (SOC / PT)** (#375,
+  0.0.2.9211).  It used to send such a table to the sheets (Details).  It
+  now opens with what such a table has: its columns (the variable, the
+  arms' order, Total), its column header, its statistics (n (%) and the
+  decimals), and a Rows card of its own -- the terms (AEBODSYS ›
+  AEDECOD) and their order: most frequent first in each group, or by name
+  (`tables$sort`; an order of the sheets' own is kept).  A summary
+  table's rows are never written into it, and a hierarchy counted of a
+  denominator has the subjects per group of its header.  (The "Any TEAE"
+  row's name follows once `tables$overall_label` is on main.)
+
 - **A hierarchical table started from the data** (#374, 0.0.2.9210; the
   user's decision after the template evaluation, dev-rep #5).  "Start
   from the data" in Add a report now asks which kind of table: a summary

@@ -8401,7 +8401,6 @@ app_server <- function(input, output, session, start) {
         t("This table has no ARD yet: the builder is built from it."), " ",
         .btn("fetch3", t("Preview this table's ARD"),
              class = "btn-sm btn-primary ms-1")),
-      hierarchy = t("This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Edit it in Details (sheets); the preview works."),
       NULL)
     if (is.null(msg)) return(pane_head(
       t("Table builder"),
@@ -8412,7 +8411,7 @@ app_server <- function(input, output, session, start) {
   output$builder_form <- shiny::renderUI({
     rv$bver
     rv$ard_ver
-    shiny::req(identical(builder_case(), "ok"))
+    shiny::req(builder_case() %in% c("ok", "hierarchy"))
     id <- current()
     m <- meta_of(id)
     st <- builder_read(shiny::isolate(rv$p), id, m)
@@ -8473,7 +8472,17 @@ app_server <- function(input, output, session, start) {
                                 st$key[1L])),
             .btn("b_add_n", t("Count them (then Preview)"),
                  class = "btn-sm btn-outline-primary py-0"))),
-      shiny::div(
+      if (length(st$hierarchy)) shiny::div(
+        class = "rp-b-card",
+        shiny::h6(t("Rows: a hierarchy")),
+        shiny::p(class = "mb-1", paste(st$hierarchy, collapse = " \u203a ")),
+        shiny::radioButtons(
+          bid("sort"), t("Order"),
+          c(stats::setNames(c("freq", "alpha"),
+                            t(c("Most frequent first, in each group", "By name"))),
+            if (identical(st$sort, "own")) stats::setNames("own", t("The sheets' own (tables$sort)"))),
+          selected = st$sort, inline = TRUE)),
+      if (!length(st$hierarchy)) shiny::div(
         class = "rp-b-card",
         shiny::div(
           class = "d-flex flex-wrap align-items-baseline gap-2",
@@ -8832,7 +8841,7 @@ app_server <- function(input, output, session, start) {
   shiny::observe(builder_guard({
     bform_drawn()
     ks <- input[[bid("key")]]
-    shiny::req(identical(builder_case(), "ok"), length(ks) > 0L)
+    shiny::req(builder_case() %in% c("ok", "hierarchy"), length(ks) > 0L)
     n <- bform$n
     output[[paste0("b", n, "_arms_ui")]] <- shiny::renderUI(shiny::tagList(
       if (length(ks) > 1L) shiny::tagList(
@@ -8876,7 +8885,7 @@ app_server <- function(input, output, session, start) {
   shiny::observe(builder_guard({
     bform_drawn()
     ks <- input[[bid("key")]]
-    shiny::req(identical(builder_case(), "ok"), length(ks) > 0L)
+    shiny::req(builder_case() %in% c("ok", "hierarchy"), length(ks) > 0L)
     n <- bform$n
     id <- bform$id
     p0 <- shiny::isolate(rv$p)
@@ -8906,7 +8915,7 @@ app_server <- function(input, output, session, start) {
     on <- input[[bid("total_on")]]
     lbl <- input[[bid("total_label")]]
     pos <- input[[bid("total_pos")]]
-    shiny::req(!is.null(on), identical(builder_case(), "ok"))
+    shiny::req(!is.null(on), builder_case() %in% c("ok", "hierarchy"))
     id <- bform$id
     p0 <- shiny::isolate(rv$p)
     now <- total_now(p0, id)
@@ -9309,11 +9318,12 @@ app_server <- function(input, output, session, start) {
   })
   bstate <- shiny::reactive(builder_guard({
     bform_drawn()
-    shiny::req(identical(builder_case(), "ok"),
+    shiny::req(builder_case() %in% c("ok", "hierarchy"),
                identical(bform$id, current()))
     st <- bform$st
     get <- function(x) input[[bid(x)]]
-    vars <- get("vars")
+    hier <- length(st$hierarchy) > 0L
+    vars <- if (hier) st$variables$variable else get("vars")
     ks <- get("key")
     shiny::req(!is.null(vars), length(ks) > 0L,
                setequal(vars, st$variables$variable))
@@ -9377,7 +9387,9 @@ app_server <- function(input, output, session, start) {
            v <- get("hdr_n")
            if (nzchar(v)) v else NA_character_
          },
-         auto_levels = st$auto_levels)
+         auto_levels = st$auto_levels,
+         hierarchy = st$hierarchy,
+         sort = if (hier) get("sort") %||% st$sort)
   }))
   bstate_d <- shiny::debounce(bstate, 400)
   shiny::observeEvent(bstate_d(), {

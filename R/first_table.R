@@ -378,8 +378,7 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
   tb$rows[1L] <- paste(sprintf("group%d = %s", seq_len(n - 1L), hierarchy[-n]),
                        collapse = " | ")
   tb$label[1L] <- paste("label =", hierarchy[n])
-  tb$sort[1L] <- paste(c(".overall", sprintf("group%d", seq_len(n - 1L)),
-                         ".depth", "-n", "label"), collapse = " | ")
+  tb$sort[1L] <- .hier_sort("freq", n)
   x <- set_sheet_rows(x, "tables", id, tb)
 
   # the groups' order (the columns): the analysis set's, from the
@@ -426,9 +425,14 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
   stacks[stacks] <- vapply(a$args[stacks], function(g)
     isTRUE(.stack_flags_of(g)$flags[[".by_stats"]]), NA)
   kw <- .method_kw(a$method)
+  # (a hierarchy counted of a denominator: its rows count the
+  # denominator's subjects per group too)
+  den <- if (is.null(a$denominator)) rep(NA_character_, nrow(a)) else a$denominator
+  hier <- kw %in% c("hierarchical", "cards::ard_stack_hierarchical") &
+    a$by %in% group & !is.na(den) & nzchar(den)
   any((kw %in% c("categorical", "subjects") & a$variables %in% group &
          is.na(a$by)) |
-        (kw %in% "total_n" & a$by %in% group) | stacks)
+        (kw %in% "total_n" & a$by %in% group) | stacks | hier)
 }
 
 #' Count the subjects per group for a report's column headers
