@@ -60,8 +60,8 @@ test_that("left out of a run: a report's ARD and report programs; who reads them
   expect_setequal(.batch_exclude(p, "DM"), c("DM.R", report_info(p, "DM")$program))
   expect_identical(.batch_exclude(p, "other.R"), "other.R")
   # a report whose own code reads another report's rows of the study ARD
-  p$outputs$data_code[p$outputs$output_id == "L1"] <-
-    "data <- readRDS(file.path(path_ard, \"ard.rds\")) |> filter(output_id == \"DM\")"
+  p <- set_step_code(p, "L1", "data",
+    "data <- readRDS(file.path(path_ard, \"ard.rds\")) |> filter(output_id == \"DM\")")
   reads <- .batch_ard_reads(p)
   expect_identical(reads$DM, "DM")
   expect_identical(reads$L1, "DM")

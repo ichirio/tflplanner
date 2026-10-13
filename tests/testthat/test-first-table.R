@@ -310,10 +310,9 @@ test_that("a new figure starts from a template the study's data can draw", {
     # the first step: a template or empty, both the designer's layers
     expect_match(h, "First step")
     expect_match(h, "pd_empty")
-    # the note of a new figure, and the user code below, folded
+    # the note of a new figure (its own code: R program at the top)
     expect_match(output$pd_note$html, "A new figure")
-    expect_match(output$lf_fig_box$html, "User code")
-    expect_false(grepl("<details[^>]*open", output$lf_fig_box$html))
+    expect_match(output$pd_note$html, "R program", fixed = TRUE)
     # a drawable template's form: no R error
     session$setInputs(pd_from = "template", pd_tpl = "ae_dot_incidence",
                       pd_tpl_data = "ADAE")
@@ -326,7 +325,6 @@ test_that("a new figure starts from a template the study's data can draw", {
     expect_match(h, "spec/figures/F-AGE.yml", fixed = TRUE)
     expect_match(h, "Spec (YAML)", fixed = TRUE)
     expect_match(h, "pd_retpl")
-    expect_error(output$lf_fig_box)
     # a template again: asked first, then the design is replaced
     session$setInputs(pd_retpl = 1)
     session$setInputs(pd_tpl = "", pd_retpl_ok = 1)
@@ -334,22 +332,20 @@ test_that("a new figure starts from a template the study's data can draw", {
   })
 })
 
-test_that("a figure starts empty, and a figure written by hand shows its two ways", {
+test_that("a figure starts empty; one whose content is its code shows the code", {
   skip_on_cran()
   local_home()
   s <- create_study("G2")
   s$planner <- add_output(s$planner, "F-E", type = "figure")
   s$planner <- add_output(s$planner, "F-U", type = "figure")
-  s$planner$outputs$data_code[s$planner$outputs$output_id == "F-U"] <-
-    "plot <- ggplot2::ggplot(adsl, ggplot2::aes(AGE)) + ggplot2::geom_histogram()"
+  s$planner <- set_step_code(s$planner, "F-U", "content",
+    "content <- ggplot2::ggplot(adsl, ggplot2::aes(AGE)) + ggplot2::geom_histogram()")
   save_study(s)
   shiny::testServer(server_for("G2"), {
     session$setInputs(target = "F-U", nav = "make", step = "content", content_nav = "content")
-    # written by hand: keep the code (a user-code report) or the designer
-    expect_match(output$pd_note$html, "written by hand. Two ways", fixed = TRUE)
-    expect_match(output$pd_note$html, "fig_to_user", fixed = TRUE)
-    expect_match(output$lf_fig_box$html, "<details[^>]*open")
+    expect_identical(output$content_is_code, "yes")
     session$setInputs(target = "F-E")
+    expect_identical(output$content_is_code, "no")
     session$setInputs(pd_empty = 1)
     d <- fig_design(session$userData$rv$p, "F-E")
     expect_identical(d$data[[1L]]$step, "read")

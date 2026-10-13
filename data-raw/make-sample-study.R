@@ -39,9 +39,11 @@
 #   T-14-3-1  Table    TEAEs by SOC / PT, frequency descending,
 #                      on the Compact page pattern (8 pt, narrow margins)
 #   L-16-2-7  Listing  Severe treatment-emergent adverse events
-#   F-14-2-1  User code  Mean change from baseline in systolic blood pressure
-#   F-14-2-2  User code  Kaplan-Meier plot of the time to first dermatologic
-#                      event; its number at risk is T-14-2-2's ARD
+#   F-14-2-1  Figure   Mean change from baseline in systolic blood pressure;
+#                      its content step is its own R (R program)
+#   F-14-2-2  Figure   Kaplan-Meier plot of the time to first dermatologic
+#                      event, its content step its own R; its number at
+#                      risk is T-14-2-2's ARD (its ARD source, `ard`)
 #   F-14-2-3  Figure   The same KM curves, designed: the designer's KM
 #                      template, the median line, and the medians and
 #                      hazard ratios printed from T-14-2-2's ARD (its ARD
@@ -465,8 +467,9 @@ sheets$report <- tbl(
   list(type = "table", file = "{output_id}.rtf", program = "{output_id}.R",
        note = "study default"),
   list(output_id = "L-16-2-7", type = "listing"),
-  list(output_id = "F-14-2-1", type = "user"),
-  list(output_id = "F-14-2-2", type = "user"),
+  list(output_id = "F-14-2-1", type = "figure"),
+  # its own code reads T-14-2-2's ARD (`ard`): the number at risk
+  list(output_id = "F-14-2-2", type = "figure", ard_source = "table:T-14-2-2"),
   # its ARD is T-14-2-2's: it prints the medians that table has
   list(output_id = "F-14-2-3", type = "figure", ard_source = "table:T-14-2-2"),
   # its ARD is its own: the hazard ratios by subgroup (#293 phase 6)
@@ -778,9 +781,6 @@ p$lf$listing_cols <- .normalize_lf_sheet(tbl(
   list(output_id = "L-16-2-7", vars = "AEREL", label = "Relation", width = "9"),
   list(output_id = "L-16-2-7", vars = "AEOUT", label = "Outcome", width = "24")),
   "listing_cols")
-p$lf$figures <- .normalize_lf_sheet(tbl(
-  list(output_id = "F-14-2-1", datasets = "ADSL | ADVS"),
-  list(output_id = "F-14-2-2", datasets = "ADTTE")), "figures")
 
 # F-14-2-3, as the designer makes it: the KM template on the study's ADTTE
 # (its parameter, analysis set, group and time unit), then layers added --
@@ -807,7 +807,6 @@ km_design$layers <- c(km_design$layers, lapply(2:3, function(i) list(
   digits = 2, x = "Inf", y = 0.3, hjust = 1.02, vjust = -0.6 - 1.5 * (3 - i))))
 
 plot_code <- c(
-  "library(ggplot2)",
   "saf <- adsl$USUBJID[adsl$SAFFL == \"Y\"]",
   "d <- advs[advs$PARAMCD == \"SYSBP\" & advs$USUBJID %in% saf &",
   "            advs$AVISITN > 0 & !is.na(advs$CHG), ]",
@@ -832,18 +831,14 @@ plot_code <- c(
   "content <- plot")
 
 km_code <- c(
-  "library(ggplot2)",
-  "library(ggsurvfit)",
-  "library(patchwork)",
   "arms <- c(\"Placebo\", \"Xanomeline Low Dose\", \"Xanomeline High Dose\")",
   "km_df <- adtte[adtte$PARAMCD == \"TTDE\" & adtte$SAFFL == \"Y\", ]",
   "km_df$TRT01A <- factor(km_df$TRT01A, levels = arms)",
   "km_fit <- survfit2(Surv(AVAL, 1 - CNSR) ~ TRT01A, data = km_df)",
   "",
-  "# the number at risk: the KM table's (T-14-2-2), from the study ARD --",
-  "# checked against the curve's own count",
-  "km_ard <- readRDS(file.path(path_ard, \"ard.rds\"))",
-  "risk_df <- tfl_km_risk(km_ard[km_ard$output_id == \"T-14-2-2\", ], km_fit)",
+  "# the number at risk: the KM table's (T-14-2-2's ARD, `ard`: the",
+  "# figure's ARD source) -- checked against the curve's own count",
+  "risk_df <- tfl_km_risk(ard, km_fit)",
   "x_breaks <- sort(unique(risk_df$time))",
   "",
   "pal <- tfl_colours(\"treatment\", arms)",
@@ -898,7 +893,7 @@ desc <- c("T-14-0-1" = "Study information: dictionary versions and the dates of 
           "F-14-2-4" = "Hazard ratio of the time to first dermatologic event by subgroup (forest plot, its own ARD)")
 types <- c("T-14-0-1" = "table", "T-14-1-4" = "table", "T-14-1-5" = "table", "T-14-1-6" = "table", "T-14-1-1" = "table", "T-14-1-1S" = "table", "T-14-1-2" = "table",
            "T-14-1-3" = "table", "T-14-2-3" = "table", "T-14-2-1" = "table", "T-14-3-1" = "table", "T-14-2-2" = "table", "L-16-2-7" = "listing",
-           "F-14-2-1" = "user", "F-14-2-2" = "user", "F-14-2-3" = "figure", "F-14-2-4" = "figure")
+           "F-14-2-1" = "figure", "F-14-2-2" = "figure", "F-14-2-3" = "figure", "F-14-2-4" = "figure")
 process <- list(
   "T-14-2-2" = c(
     "data <- normalize_ard(ard)",
@@ -912,13 +907,16 @@ process <- list(
     "                      overall = \"Any TEAE\")"))
 for (o in names(desc)) {
   p <- add_output(p, o, description = desc[[o]],
-                  data_code = if (o == "F-14-2-1")
-                    paste(plot_code, collapse = "\n") else if (o == "F-14-2-2")
-                    paste(km_code, collapse = "\n") else NA,
                   process_code = if (!is.null(process[[o]]))
                     paste(process[[o]], collapse = "\n") else NA,
                   type = types[[o]])
 }
+# the two figures of their own code (R program in step 2): the datasets
+# they read, registered in step 1, and the code
+p <- set_report_datasets(p, "F-14-2-1", c("ADSL", "ADVS"))
+p <- set_step_code(p, "F-14-2-1", "content", paste(plot_code, collapse = "\n"))
+p <- set_report_datasets(p, "F-14-2-2", "ADTTE")
+p <- set_step_code(p, "F-14-2-2", "content", paste(km_code, collapse = "\n"))
 p <- set_fig_design(p, "F-14-2-3", km_design)
 # F-14-2-4: the forest template, whose numbers are the figure's own ARD --
 # a Cox model of all subjects and one within each subgroup (its analyses
@@ -1012,8 +1010,8 @@ writeLines(c(
   "| T-14-2-2 | Table | Time to first dermatologic event: Kaplan-Meier estimates |",
   "| T-14-3-1 | Table | TEAEs by SOC / PT |",
   "| L-16-2-7 | Listing | Severe treatment-emergent adverse events |",
-  "| F-14-2-1 | User code (a figure) | Mean change from baseline in systolic blood pressure |",
-  "| F-14-2-2 | User code (a figure) | Kaplan-Meier plot of the time to first dermatologic event (number at risk from T-14-2-2's ARD) |",
+  "| F-14-2-1 | Figure (R program) | Mean change from baseline in systolic blood pressure: its content step is its own R |",
+  "| F-14-2-2 | Figure (R program) | Kaplan-Meier plot of the time to first dermatologic event, its own R; the number at risk from T-14-2-2's ARD (`ard`) |",
   "| F-14-2-3 | Figure (designed) | The same KM curves from the designer's KM template, with a median line added |",
   "| F-14-2-4 | Figure (designed) | Forest plot of the hazard ratio by subgroup from the figure's own ARD (a Cox model overall and within each subgroup, cards / cardx) |",
   "",

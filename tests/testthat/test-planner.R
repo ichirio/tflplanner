@@ -6,7 +6,8 @@ sample_paths <- function() {
 test_that("the sample reads, writes and reads back unchanged", {
   p <- read_planner(sample_paths())
   expect_equal(p$outputs$output_id, c("DM", "AE", "ORR", "LB", "PK"))
-  p$outputs$data_code[1] <- "data <- normalize_ard(ard)\n# two lines"
+  p$outputs$process_code[1] <- "data <- normalize_ard(ard)\n# two lines"
+  p <- set_step_code(p, "AE", "content", "content <- 1\n# two lines")
   p$outputs$description[2] <- "有害事象"
   p$setup <- "library(cards)"
 
@@ -44,11 +45,13 @@ test_that("code saved with tflspec's former engine names is read with rtfreporte
   q <- read_planner(write_planner(p, withr_tempdir()))
   expect_equal(q$outputs$process_code[1], "data <- normalize_ard(ard)")
   expect_equal(q$setup, "x <- rtfreporter::normalize_ard(y)")
+  # a state of before 0.0.2.9206: its data code the table's data step
   st <- .planner_from_state(list(planner = list(
     outputs = list(output_id = "T1", description = NA,
                    data_code = "data <- tfl_ard_normalize(ard)",
                    process_code = NA))))
-  expect_equal(st$outputs$data_code, "data <- normalize_ard(ard)")
+  expect_equal(step_code(st, "T1", "data"), "data <- normalize_ard(ard)")
+  expect_false("data_code" %in% names(st$outputs))
 })
 
 test_that("each workbook carries its half and tflspec reads each alone", {
