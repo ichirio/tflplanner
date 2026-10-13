@@ -70,7 +70,7 @@ test_that("a new study has its layout and is registered", {
 test_that("a study whose workbooks are gone opens as it was last saved", {
   local_home()
   s <- create_study("S1", planner = sample_planner())
-  s$planner$outputs$data_code[1] <- "data <- normalize_ard(my_ard)\n# 2"
+  s$planner <- set_step_code(s$planner, "DM", "data", "data <- normalize_ard(my_ard)\n# 2")
   s$planner$outputs$description[2] <- "有害事象"
   s$planner$setup <- "library(cards)"
   s$planner$sheets$variables$label[1] <- "Age"
@@ -145,7 +145,7 @@ test_that("saving writes the programs from the definition, an edited one too", {
   expect_equal(study_status(s)$program_state, rep("current", 5))
 
   # an untouched program follows the definition
-  s$planner$outputs$data_code[1] <- "data <- normalize_ard(my_ard)"
+  s$planner <- set_step_code(s$planner, "DM", "data", "data <- normalize_ard(my_ard)")
   expect_equal(study_status(s)$program_state[1], "generated")
   expect_equal(study_status(s)$status[1], "unsaved")
   s <- save_study(s)
@@ -191,7 +191,7 @@ test_that("a study runs end to end and reports what it produced", {
   p <- sample_planner()
   for (id in c("AE", "ORR", "LB", "PK")) p <- remove_output(p, id)
   p$setup <- "library(cards)"
-  p$outputs$data_code[1] <- paste(
+  p <- set_step_code(p, "DM", "data", paste(
     "adsl <- readRDS(\"data/adam/adsl.rds\")",
     "ard <- ard_stack(",
     "  adsl, .by = TRT01A,",
@@ -200,7 +200,7 @@ test_that("a study runs end to end and reports what it produced", {
     "                   c(\"N\", \"mean\", \"sd\", \"median\", \"min\", \"max\"))),",
     "  ard_categorical(variables = c(AGEGR1, SEX, RACE)),",
     "  .total_n = TRUE)",
-    "data <- normalize_ard(ard)", sep = "\n")
+    "data <- normalize_ard(ard)", sep = "\n"))
   p <- add_output(p, "L1", type = "listing")
   s <- create_study("S2", planner = p)
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))

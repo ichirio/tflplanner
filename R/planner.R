@@ -3,11 +3,13 @@
 #   sheets   every rtfreporter sheet as an all-character data frame, the
 #            columns tflspec::tfl_table_spec() gives it plus `note`
 #   study    the study sheet's keys, a named character vector
-#   outputs  the report list: output_id, description, data_code (makes
-#            the ARD), process_code (normalizes and reworks it), section
+#   outputs  the report list: output_id, description, process_code (a
+#            table's normalization and rework of its ARD, a listing's
+#            rework of its data: code inside the definition), section
 #            (the TOC's heading it is under; blank: from its ID),
 #            population (its analysis set: the TOC's, step 1's),
-#            datasets (the TOC's, "ADSL | ADAE") -- the
+#            datasets (the report's: the TOC's, and those a step of its
+#            own code reads, "ADSL | ADAE") -- the
 #            part rtfreporter does not read, kept in the report workbook's
 #            `_tflplanner` sheet (a sheet whose name starts with `_` is
 #            not read by rtfreporter)
@@ -36,7 +38,7 @@ report_sheets <- function() {
 
 #' @rdname table_sheets
 #' @export
-report_types <- function() c("table", "listing", "figure", "user")
+report_types <- function() c("table", "listing", "figure")
 
 # tflplanner wrote `program = {output_id}.R` on every study's default report
 # row (and the company standards' default) up to 0.0.2.9057.  That was its
@@ -209,16 +211,19 @@ sheet_columns <- function(sheet) {
   for (cn in setdiff(names(.empty_outputs()), names(p$outputs))) {
     p$outputs[[cn]] <- rep(NA_character_, nrow(p$outputs))
   }
-  for (cn in c("data_code", "process_code")) {
-    p$outputs[[cn]] <- .renamed_calls(p$outputs[[cn]])
+  p$outputs$process_code <- .renamed_calls(p$outputs$process_code)
+  r <- p$sheets$report
+  for (cn in intersect(c("data_code", "content_code"), names(r))) {
+    r[[cn]] <- .renamed_calls(r[[cn]])
   }
+  p$sheets$report <- r
   p$setup <- .renamed_calls(p$setup)
   p
 }
 
 .empty_outputs <- function() {
   data.frame(output_id = character(), description = character(),
-             data_code = character(), process_code = character(),
+             process_code = character(),
              section = character(), population = character(),
              datasets = character(), batches = character(),
              stringsAsFactors = FALSE)
@@ -313,6 +318,12 @@ output_ids <- function(x) {
 #' @return An `tflplanner` object.
 #' @export
 read_planner <- function(path) {
+  # a report sheet that says type user is read from a copy that does not
+  # (.migrate_step_code() then makes its code a step's)
+  path0 <- path
+  path <- .old_user_type_copies(path0)
+  user <- attr(path, "user")
+  path <- as.character(path)
   sp <- tflspec::tfl_read_report_spec(path)
   p <- new_planner()
   for (s in names(p$sheets)) p$sheets[[s]] <- .normalize_sheet(sp[[s]], s)
@@ -333,14 +344,21 @@ read_planner <- function(path) {
       }
       d$output_id <- trimws(d$output_id)
       d$output_id[!is.na(d$output_id) & !nzchar(d$output_id)] <- NA
-      setup <- d$data_code[is.na(d$output_id)]
+      # the setup: its own column (before 0.0.2.9206, the data code's)
+      setup_col <- if ("setup_code" %in% names(d)) "setup_code" else "data_code"
+      setup <- d[[setup_col]][is.na(d$output_id)] %||% character()
       if (length(setup)) p$setup <- setup[1L]
+      old <- .old_data_code(d)
       d <- d[!is.na(d$output_id), names(.empty_outputs()), drop = FALSE]
       p$outputs <- d[!duplicated(d$output_id), , drop = FALSE]
     }
   }
   for (id in setdiff(output_ids(p), p$outputs$output_id)) p <- add_output(p, id, at = "end")
   rownames(p$outputs) <- NULL
+  # (a figure has a design when its file is beside the workbooks)
+  fig_dir <- file.path(dirname(path0[1L]), .fig_design_dir)
+  p <- .migrate_step_code(p, if (exists("old", inherits = FALSE)) old else NULL, user,
+                          has_design = function(id) file.exists(file.path(fig_dir, paste0(id, ".yml"))))
   .renamed_outputs(p)
 }
 
@@ -382,12 +400,12 @@ read_planner <- function(path) {
 #' @param x An `tflplanner`.
 #' @param output_id,from,to Report ids.
 #' @param description A short description shown in the report list.
-#' @param data_code R code that makes the report's ARD, `ard` (for a
-#'   listing or figure: its `content`); `NA` writes a TODO.
-#' @param process_code R code that turns `ard` into `data`, what
-#'   [rtfreporter::table_plan()] is given: [rtfreporter::normalize_ard()]
-#'   and any rework after it (`mutate()` ...).  `NA` means
-#'   `data <- normalize_ard(ard)`, unless `data_code` makes `data` itself.
+#' @param process_code A table's: R code that turns `ard` into `data`,
+#'   what [rtfreporter::table_plan()] is given: [rtfreporter::normalize_ard()]
+#'   and any rework after it (`mutate()` ...); `NA` means
+#'   `data <- normalize_ard(ard)`.  A listing's: a rework of its `data`
+#'   before it is sorted.  (A step that is the report's own code instead:
+#'   [set_step_code()].)
 #' @param type The report's type, one of [report_types()]; anything but
 #'   `"table"` is written on the `report` sheet.
 #' @param section The section of the TOC the report is under (its heading,
@@ -404,7 +422,7 @@ read_planner <- function(path) {
 #' sort_outputs(add_output(p, "T-14-0-1", at = "end"))$outputs$output_id
 #' @export
 add_output <- function(x, output_id, description = NA_character_,
-                       data_code = NA_character_, type = "table",
+                       type = "table",
                        process_code = NA_character_, section = NA_character_,
                        population = NA_character_, at = c("natural", "end")) {
   at <- match.arg(at)
@@ -416,7 +434,6 @@ add_output <- function(x, output_id, description = NA_character_,
   if (!identical(report_info(x, id)$type, type)) x <- .set_report_type(x, id, type)
   row <- data.frame(
     output_id = id, description = as.character(description),
-    data_code = as.character(data_code),
     process_code = as.character(process_code),
     section = as.character(section), population = as.character(population),
     datasets = NA_character_, batches = NA_character_, stringsAsFactors = FALSE)
@@ -499,10 +516,11 @@ copy_output <- function(x, from, to) {
   # the copy is the same kind of report (its report row was copied above)
   x <- add_output(x, to,
                   description = if (nrow(src)) src$description else NA,
-                  data_code = if (nrow(src)) src$data_code else NA,
                   process_code = if (nrow(src)) src$process_code else NA,
                   population = if (nrow(src)) src$population %||% NA else NA,
                   type = report_info(x, from)$type)
+  # (and its datasets: those a step of its own code reads)
+  if (nrow(src)) x$outputs$datasets[match(to, x$outputs$output_id)] <- src$datasets
   x
 }
 
@@ -677,13 +695,16 @@ write_planner <- function(x, dir, table_file = "table_spec.xlsx",
                 tflspec::tfl_write_table_spec)
   }
   if (!"report" %in% books) return(invisible(c(table = tp, report = rp)))
+  # the report list, and the setup on a row of its own
+  o <- x$outputs[names(.empty_outputs())]
+  o$setup_code <- rep(NA_character_, nrow(o))
   meta <- rbind(
     data.frame(output_id = NA_character_, description = "(every report)",
-               data_code = x$setup, process_code = NA_character_,
+               setup_code = x$setup, process_code = NA_character_,
                section = NA_character_, population = NA_character_,
                datasets = NA_character_, batches = NA_character_,
                stringsAsFactors = FALSE),
-    x$outputs[names(.empty_outputs())])
+    o)
   .write_book(.spec_object(x, report_sheets(), .study_keys$report), rp,
               tflspec::tfl_write_report_spec,
               stats::setNames(list(meta), .planner_sheet))

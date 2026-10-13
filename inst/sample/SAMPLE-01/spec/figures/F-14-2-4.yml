@@ -20,13 +20,19 @@ data:
       # converge (no events in an arm) has no point: NE
       filter(!is.na(conf.low)) |>
       filter(TRT01A == "Xanomeline High Dose") |>
-      mutate(subgroup = case_when(!is.na(SEX) ~ "SEX",
-                               !is.na(AGEGR1) ~ "AGEGR1",
-                               TRUE ~ "All subjects"),
-             level = coalesce(SEX, AGEGR1, "All subjects"),
-             ok = is.finite(estimate) & is.finite(conf.low) & is.finite(conf.high) & conf.high < 1000,
-             txt = ifelse(ok, sprintf("%.2f (%.2f, %.2f)", estimate, conf.low, conf.high), "NE"),
-             across(c(estimate, conf.low, conf.high), ~ ifelse(ok, .x, NA)))
+      mutate(
+        subgroup = case_when(
+          !is.na(SEX) ~ "SEX",
+          !is.na(AGEGR1) ~ "AGEGR1",
+          TRUE ~ "All subjects"
+        ),
+        level = coalesce(SEX, AGEGR1, "All subjects"),
+        ok = is.finite(estimate) & is.finite(conf.low) & is.finite(conf.high) &
+          conf.high < 1000,
+        txt = ifelse(ok, sprintf("%.2f (%.2f, %.2f)", estimate, conf.low, conf.high),
+                     "NE"),
+        across(c(estimate, conf.low, conf.high), ~ ifelse(ok, .x, NA))
+      )
     # a heading row above each subgroup's levels, the levels indented
     heads <- est |>
       filter(subgroup != "All subjects") |>
@@ -61,10 +67,7 @@ plot:
         fn: element_text
         args:
           hjust: 0.0
-  width: 7.3
-  height: 4.2
   dpi: 300.0
-  units: in
   base_size: 10.0
   theme: boxed
 layers:

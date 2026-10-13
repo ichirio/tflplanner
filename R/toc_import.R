@@ -251,11 +251,9 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
 }
 
 # Whether a report's type and the TOC's differ in a way to say: not when
-# the TOC only guessed it, nor a figure for a report of one's own code (a
-# TOC has no word for it).  A TOC does not change a report's type.
+# the TOC only guessed it.  A TOC does not change a report's type.
 .toc_type_differs <- function(now, toc, guessed = FALSE) {
-  !is.na(toc) && !identical(now, toc) && !isTRUE(guessed) &&
-    !(identical(now, "user") && identical(toc, "figure"))
+  !is.na(toc) && !identical(now, toc) && !isTRUE(guessed)
 }
 
 .toc_no_lines <- function() {
@@ -436,11 +434,6 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
         if (!nrow(r)) r <- data.frame(dataset = v[1L])
         if (.is_blank(r$dataset[1L])) r$dataset[1L] <- v[1L]
         x <- set_lf_rows(x, "listings", id, r)
-      } else if (type %in% c("figure", "user")) {
-        r <- lf_rows(x, "figures", id)
-        if (!nrow(r)) r <- data.frame(datasets = ds[[id]])
-        if (.is_blank(r$datasets[1L])) r$datasets[1L] <- ds[[id]]
-        x <- set_lf_rows(x, "figures", id, r)
       }
     }
     if (isTRUE(make_data)) {

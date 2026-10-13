@@ -3,8 +3,8 @@
 
 test_that("a report's section, state and search", {
   expect_identical(.report_section(c("T-14-1-1", "L-16-2-7", "F-14-2-3", "T-14", "X"),
-                                   c("table", "listing", "figure", "table", "user")),
-                   c("14.1", "16.2", "14.2", "14", "user"))
+                                   c("table", "listing", "figure", "table", "listing")),
+                   c("14.1", "16.2", "14.2", "14", "listing"))
   expect_identical(.section_order(c("14.4", "15.2", "14.10", "14.3", "listing", "9.1")),
                    c("9.1", "14.3", "14.4", "14.10", "15.2", "listing"))
   expect_identical(.report_state(c("built", "outdated", "not built", "error", NA, "built"),

@@ -205,6 +205,10 @@
     d <- read(rel, tflspec::tfl_read_fig_design(f))
     if (!is.null(d)) p <- set_fig_design(p, id, d)
   }
+  # the figure workbook's and the designs' part of the move to steps of
+  # one's own code (a figures row of a figure with no design: its datasets
+  # the report's), now that they are read
+  p <- .migrate_step_code(p, stats::setNames(character(), character()))
   s$planner <- p
   s$meta <- meta
   attr(s, "problems") <- problems

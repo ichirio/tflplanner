@@ -3006,3 +3006,103 @@ stopped,中断
 "Comparison columns: their names, | between them (plan_compare()). Each reads the ARD's comparison records (a test's p-value, a difference and its CI: the column key with no value) and puts them on the row of their variable; its templates are the cells rows whose variable is the column's name. Blank: none.",比較の列：列の名前（間は |）（plan_compare()）。それぞれ ARD の比較のレコード（検定の p 値、群の差とその CI。列キーに値のないもの）を読み、その変数の行に置く。列のテンプレートは、variable が列の名前の cells の行。空欄 = なし。
 "The column that splits the comparisons into columns, one a level (plan_compare(by = )): each active arm against placebo. Blank: one comparison a variable.",比較を列に分ける列。水準ごとに 1 列（plan_compare(by = )）：実薬それぞれとプラセボ。空欄 = 変数ごとに比較 1 つ。
 "Where the comparison columns go: last (blank) or first (plan_compare(position = )).",比較の列の位置：last（空欄）または first（plan_compare(position = )）。
+The study has no analyses in its ARD definition.,試験の ARD 定義に分析がありません。
+CDISC ARS: %s,CDISC ARS：%s
+CDISC (to exchange),CDISC（交換用）
+siera (to run with siera),siera（siera で実行する形）
+JSON only,JSON だけ
+"JSON, Excel and the checks (zip)",JSON・Excel・検査結果（zip）
+%d analyses · %d outputs · %d analysis sets · %d data subsets,分析 %d · 出力 %d · 解析対象集団 %d · データの部分集合 %d
+%d errors,エラー %d 件
+%d not in the ARS,ARS に入らないもの %d 件
+not in the ARS,ARS に入らない
+an error,エラー
+Go to it,そこへ移動
+%d outputs siera cannot run,siera で実行できない帳票 %d 本
+Outputs siera cannot run,siera では実行できない帳票（siera 用のファイルから外したもの）
+Not in the ARS,ARS に入らないもの
+siera cannot run it,siera では実行できない
+Any function,任意の関数
+"An object any function makes: survival::survfit, stats::quantile ... (its arguments in R).",任意の関数が作るオブジェクト：survival::survfit、stats::quantile など（引数は R で書く）。
+ARD analysis,ARD の解析
+"An analysis of the figure's ARD: a row of the study's ARD definition, made by the figure's ARD program (no line of the figure's program); ard_stats and ard_number read it.",図の ARD の解析：試験の ARD 定義の 1 行で、図の ARD プログラムが作ります（図のプログラムには行を書きません）。ard_stats と ard_number が読みます。
+The object it reads; empty: the one above,読むオブジェクト。空欄なら上の手順のもの
+The object it leaves; empty: the one it reads,残すオブジェクト。空欄なら読んだもの
+The data it reads; empty: df (or the data a step put into an object of its own),読むデータ。空欄なら df（または手順が別のオブジェクトに入れたデータ）
+"The data frame it makes; empty: df, then df2, df3 ...",作るデータフレーム。空欄なら df、次から df2、df3 …
+Arguments (R),引数（R）
+"pkg::fn, e.g. survival::survfit",pkg::fn。例：survival::survfit
+"formula = Surv(AVAL, CNSR == 0) ~ TRT01A | conf.type = ""log-log""","formula = Surv(AVAL, CNSR == 0) ~ TRT01A | conf.type = ""log-log"""
+Data argument,データの引数
+The argument the object it reads goes to,読むオブジェクトを渡す引数
+An analysis data of the ARD definition: the ARD is made from the definition alone,ARD 定義の解析データ（ARD は定義だけから作られます）
+e.g. cardx::ard_survival_survfit,例：cardx::ard_survival_survfit
+Its arguments: %s,引数：%s
+In,入力
+Out,出力
+This figure reads %s's ARD: its own analyses are used once it reads its own.,この図は %s の ARD を読んでいます。図自身の解析は、図が自身の ARD を読むと使われます。
+Read its own ARD,自身の ARD を読む
+Its row of the ARD definition (the figure's ARD program):,ARD 定義の行（図の ARD プログラムが作ります）：
+"%s is going on: closing stops it, and its ARD and reports are left unfinished. Wait for it to end, or run it again later (Runs).",%sが動いています。閉じると止まり、ARD と帳票は途中までになります。終わるのを待つか、あとで実行タブからもう一度実行してください。
+A run,実行
+"The ARD of %s has no rows yet: make it (step 1, or an official run in Runs).",%s の ARD にまだ行がありません。作ってください（段 1、または実行タブの正式実行）。
+The %s code of %s does not read as R (line %s): %s.,%2$s の %1$s のコードが R として読めません（%3$s 行目）: %4$s。
+Correct the code where R says.,R が示す場所でコードを直してください。
+"The %s code of %s reads %s, which the report does not register.",%2$s の %1$s のコードが %3$s を読んでいますが、帳票に登録されていません。
+Add the dataset to the report's data (its step 1) or correct the name: the program reads only the datasets the report registers.,データセットを帳票のデータ（手順 1）に足すか、名前を直してください。プログラムは帳票に登録したデータセットだけを読みます。
+The %s code of %s leaves no %s.,%2$s の %1$s のコードが %3$s を残していません。
+"Assign what the next step reads: the data step data (a figure: df), the content step content.",次の手順が読むものに代入してください: データの手順は data（図は df）、内容の手順は content。
+The %s code of %s calls %s.,%2$s の %1$s のコードが %3$s を呼んでいます。
+"Read data through the report's datasets and its ARD switch, and call packages as pkg::fn(): the program reads the data and owns the session.",データは帳票のデータセットと ARD のスイッチで読み、パッケージは pkg::fn() で呼んでください。データを読むのもセッションを整えるのもプログラムの役目です。
+"The %s code of %s uses ard, but the report does not read its ARD.",%2$s の %1$s のコードが ard を使っていますが、帳票が ARD を読んでいません。
+Turn its ARD on (step 1) or take ard out of the code.,ARD を使う設定にする（手順 1）か、コードから ard を外してください。
+R program,R プログラム
+R program: this step is your own R code instead of the definition.,R プログラム: この手順を、定義の代わりに自分の R コードにします。
+Back to the definition?,定義に戻しますか？
+"%s's %s step is your code: it goes, and the definition makes the step again.",%s の %s の手順は自分のコードです。コードを消して、定義でこの手順を作り直します。
+Keep the code,コードを残す
+Remove the code,コードを消す
+"Data it reads (the program reads them first, by their names in lower case)",読むデータ（プログラムが最初に、小文字の名前で読みます）
+It reads %s's ARD.,%s の ARD を読みます。
+"No ARD: `ard` is not in reach (add analyses, or take an ARD in, to have it).",ARD はありません。`ard` は使えません（使うには解析を足すか、ARD を取り込んでください）。
+Line %d of the %s step's code: ,%2$s の手順のコードの %1$d 行目: 
+Your code: the data,自分のコード: データ
+Your code: the content,自分のコード: 内容
+"This step is its code, on the left: the definition does not make it.",この手順は左のコードです。定義では作りません。
+"Runs the report's program up to its report in a fresh R process from the study folder, as its official run will, and shows what it left: the first table page, the first figure.",帳票のプログラムを帳票の手前まで、正式実行と同じく試験フォルダーから新しい R で動かし、残したものを見せます（最初の表のページ、最初の図）。
+(your code),（自分のコード）
+Rework,手直し
+Rework: usually blank (the standard one). Write code to change the data before the table is made.,手直し: ふつうは空欄（標準のもの）。表を作る前にデータを変えるコードを書きます。
+"A table: make `data` from `ard` (normalize_ard(), then mutate() ...); blank = the company template (normalize). A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step 1 or 2.)",表: `ard` から `data` を作ります（normalize_ard() のあと mutate() など）。空欄 = 会社の雛形（正規化）。一覧: 条件のあと、並べる前に `data` を変えます。（手順全体を自分のコードにするときは、手順 1 か 2 の上の R プログラムで）
+A new figure: take the first step -- from a template or empty; both become the designer's layers. To write the ggplot code yourself instead: R program at the top of this step.,新しい図: 最初の一歩を選んでください（テンプレートか空から。どちらもデザイナーの層になります）。ggplot のコードを自分で書くときは、この手順の上の R プログラムで。
+"On the page %s x %s in (step 3), %s dpi (shown at screen resolution)",ページ上で %s x %s インチ（手順 3）、%s dpi（画面の解像度で表示）
+Figure size,図の大きさ
+Width (in),幅（インチ）
+Height (in),高さ（インチ）
+(its own: %s),（図そのもの: %s）
+Fit to the page,ページに合わせる
+"Blank: the figure's own size (the company's figure style for its kind; a figure of your own code, 6.5 x 4.5 in), as rtfreporter places an image. A number: that size in inches. fit: the page's body (its width; its height less the titles and footnotes). The figure is drawn at this size, its text as its theme says; the dpi (step 2) changes only its pixels.",空欄: 図そのものの大きさ（会社の図のスタイルの、その種類の大きさ。自分のコードの図は 6.5 x 4.5 インチ）。rtfreporter が画像を置くときと同じです。数字: その大きさ（インチ）。fit: ページの本文の大きさ（幅はそのまま、高さはタイトルと脚注を除いた分）。図はこの大きさで描かれ、文字の大きさはテーマのとおりです。dpi（手順 2）が変えるのは画素数だけです。
+%s x %s in%s,%s x %s インチ%s
+ (the page's body),（ページの本文）
+(the figure: [Run the code] in step 2 draws it here),（図: 手順 2 の［試しに実行］でここに描かれます）
+(the figure: its design in step 2 draws it here),（図: 手順 2 のデザインからここに描かれます）
+"The resolution only: pixels = inches x dpi. Its size on the page is step 3's (its own size, fit to the page, or inches); the dpi does not change it.",解像度だけです: 画素数 = インチ x dpi。ページ上の大きさは手順 3 のもの（図そのもの、ページに合わせる、またはインチ）で、dpi では変わりません。
+"Register the datasets it reads (above the data step's code). The program reads them first, by their names in lower case (adsl, advs); the code does not read files itself (readRDS(), read_xpt() ...).",読むデータセットを登録します（データの手順のコードの上）。プログラムが最初に小文字の名前（adsl、advs）で読みます。コードの中でファイルを読みません（readRDS()、read_xpt() など）。
+"Its ARD through the report: a table's ARD definition or the ARD taken in, a figure's ARD source (step 1). This report's ARD rows are `ard`; the code does not read ard.rds itself.",ARD は帳票の設定で: 表は ARD 定義か取り込んだ ARD、図は ARD の元（手順 1）。この帳票の ARD の行が `ard` です。コードの中で ard.rds を読みません。
+"Each step leaves what the next one reads: the data step `data` (a figure: `df`; a table may leave `ard`, normalized for it), the content step `content` -- a table plan, a data frame, rtftable pages, a ggplot or rtfplot, or a list of them.",各手順は次の手順が読むものを残します: データの手順は `data`（図は `df`。表は `ard` だけでもよく、正規化はプログラムが行います）、内容の手順は `content`（表の plan、データフレーム、rtftable のページ、ggplot か rtfplot、またはそれらの list）。
+"Code inside the definition stays there: a table's or a listing's rework, a figure's code step or code layer. R program makes the whole step your code.",定義の中のコードはそのまま: 表や一覧の手直し、図の code 段やコードの層。R プログラムは手順全体を自分のコードにします。
+"No library(): the study's setup attaches its packages (the figures': ggplot2, patchwork, dplyr and those of its designs); call others as pkg::fn().",library() は使いません: 試験の setup がパッケージを読み込みます（図は ggplot2・patchwork・dplyr とデザインが使うもの）。ほかは pkg::fn() で呼びます。
+"No side effects: it writes no files and does not change the session (setwd(), options()); the program writes the report.",副作用はなし: ファイルを書かず、セッションも変えません（setwd()、options()）。帳票を書くのはプログラムです。
+One report: it does not read another report's outputs. Another report's ARD comes through the ARD source.,帳票ひとつで完結: ほかの帳票の出力を読みません。ほかの帳票の ARD は ARD の元で選びます。
+"The code is checked as you write it (under the code) and in Review: a dataset it reads that is not registered, nothing left for the next step, files read or packages attached, `ard` where the report reads none (rules U01-U05).",コードは書いている間（コードの下）とレビューで確かめます: 登録していないデータセットを読んでいないか、次の手順に残すものがあるか、ファイルを読んだりパッケージを読み込んだりしていないか、帳票が読まない `ard` を使っていないか（ルール U01〜U05）。
+The rules,決まり
+A step of your own R: the rules,自分の R の手順: 決まり
+It leaves `data` (a figure: `df`). The rules: at the top of this step.,`data`（図は `df`）を残します。決まりはこの手順の上にあります。
+It leaves `content`. The rules: at the top of this step.,`content` を残します。決まりはこの手順の上にあります。
+"table / listing / figure; blank: table. A step of the report may be its own code instead (data_code, content_code).",table / listing / figure。空欄: table。帳票の手順は、代わりに自分のコードにもできます（data_code、content_code）。
+"A figure report: the figure's width on the page -- a number of inches, or fit (the page's body); drawn and placed so (rtf_figures(width_twips = )). Blank: the figure's own size, as rtfreporter places it (tfl_fig_page_size()).",図の帳票: ページ上の図の幅。インチの数字か fit（ページの本文）。この幅で描いて置きます（rtf_figures(width_twips = )）。空欄: 図そのものの大きさ（rtfreporter が置くとおり。tfl_fig_page_size()）。
+"A figure report: the figure's height on the page -- a number of inches, or fit (the page's body less its title and footnote lines); drawn and placed so. Blank: the figure's own size (tfl_fig_page_size()).",図の帳票: ページ上の図の高さ。インチの数字か fit（ページの本文からタイトルと脚注の行を除いた分）。この高さで描いて置きます。空欄: 図そのものの大きさ（tfl_fig_page_size()）。
+"The report's own code for its data step, instead of the definition: R that leaves data (a table, a listing) or df (a figure); the datasets the report registers and, when it reads its ARD, ard are in reach (tfl_check_code()). Blank: the definition makes the data.",データの手順を定義の代わりに作る帳票自身のコード: data（表・Listing）または df（図）を残す R。帳票が登録したデータセットと、ARD を読むときは ard が使えます（tfl_check_code()）。空欄: 定義がデータを作る。
+"The report's own code for its content step, instead of the definition: R that leaves content -- a table plan, a data frame, rtftable pages, a ggplot or rtfplot figure, or a list of them -- for the report step to dress. Blank: the definition makes the content.",内容の手順を定義の代わりに作る帳票自身のコード: content（表の plan、データフレーム、rtftable のページ、ggplot か rtfplot の図、またはそれらのリスト）を残す R。ページと出力の手順がそれを整えます。空欄: 定義が内容を作る。
+ (its own size),（図そのもの）
+Its own size,図そのものの大きさ

@@ -24,10 +24,7 @@ plot:
   y_min: 0.0
   y_max: 1.0
   y_by: 0.2
-  width: 8.33
-  height: 4.79
   dpi: 300.0
-  units: in
   base_size: 10.0
   theme: boxed
 layers:

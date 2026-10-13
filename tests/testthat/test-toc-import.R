@@ -29,8 +29,8 @@ test_that("a TOC taken in the first time adds its reports, after the study's tit
   expect_identical(t1$center, c("Demographics", "Safety Population"))
   expect_identical(sheet_rows(y, "footnotes", "T-14-1-1")$left, "N: subjects")
   # a guessed type corrected before taking it in
-  y2 <- toc_apply(x, sp, ch, types = c("F-14-2-1" = "user"))
-  expect_identical(report_info(y2, "F-14-2-1")$type, "user")
+  y2 <- toc_apply(x, sp, ch, types = c("F-14-2-1" = "listing"))
+  expect_identical(report_info(y2, "F-14-2-1")$type, "listing")
 })
 
 test_that("taken in again: the TOC's lines updated, lines edited here asked about, a dropped report marked", {
@@ -85,7 +85,8 @@ test_that("taken in again: the TOC's lines updated, lines edited here asked abou
 })
 
 test_that("a report's type is not changed by a TOC taken in again", {
-  x <- add_output(new_planner(), "F-1", type = "user")
+  x <- add_output(new_planner(), "F-1", type = "figure")
+  x <- set_step_code(x, "F-1", "content", "content <- 1")
   x <- add_output(x, "T-2", type = "listing")
   x <- add_output(x, "L-3", type = "table")
   sp <- tflspec::tfl_read_toc(toc_file(c(
@@ -93,15 +94,15 @@ test_that("a report's type is not changed by a TOC taken in again", {
     "T-2,,Demographics,Safety Population,",
     "L-3,Listing,Deaths,Safety Population,")), map = toc_map)
   y <- toc_apply(x, sp, toc_changes(x, sp))
-  # taken in again: a figure for one's own code (a TOC has no word for it),
-  # or a type the TOC only guessed, is no change; a type the TOC's column
-  # says otherwise is
+  # taken in again: a figure of one's own code is a figure; a type the
+  # TOC only guessed is no change; a type the TOC's column says otherwise
+  # is
   ch <- toc_changes(y, sp, toc_snapshot(sp, 0L))
   st <- stats::setNames(ch$reports$status, ch$reports$output_id)
   expect_identical(unname(st[c("F-1", "T-2", "L-3")]), c("same", "same", "changed"))
   expect_identical(ch$reports$type_toc[1], "figure")
   y <- toc_apply(y, sp, ch)
-  expect_identical(report_info(y, "F-1")$type, "user")
+  expect_identical(report_info(y, "F-1")$type, "figure")
   expect_identical(report_info(y, "L-3")$type, "table")
   expect_identical(report_info(y, "T-2")$type, "listing")
 })
@@ -210,11 +211,11 @@ test_that("the app takes a TOC in: mapped, previewed, taken in, saved at once; a
     h <- output$toc1_changes$html
     expect_match(h, "New 2, changed 0", fixed = TRUE)
     expect_match(h, "toc1_type_2", fixed = TRUE)
-    # the guessed figure taken in as user code
-    session$setInputs(toc1_type_1 = "table", toc1_type_2 = "user", toc1_remember = TRUE)
+    # the guessed figure taken in as a listing
+    session$setInputs(toc1_type_1 = "table", toc1_type_2 = "listing", toc1_remember = TRUE)
     session$setInputs(toc1_do = 1)
     expect_identical(rv$p$outputs$output_id, c("T-1", "F-1"))
-    expect_identical(report_info(rv$p, "F-1")$type, "user")
+    expect_identical(report_info(rv$p, "F-1")$type, "listing")
     expect_match(output$toc1_result$html, "TOC001", fixed = TRUE)
     expect_null(output$toc1_do_btn$html)
     expect_null(output$toc1_changes$html)
