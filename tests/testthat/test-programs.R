@@ -13,12 +13,13 @@ test_that("a table program writes out its plan and report, saves its ARD and par
   expect_true(any(startsWith(code, "plan <- table_plan(")))
   expect_true(any(startsWith(trimws(code), "plan_digits(")))
   expect_true(any(startsWith(code, "doc <- rtf_document(")))
-  expect_true(any(startsWith(code, "doc <- rtf_tables(doc, plan")))
-  expect_true('generate_rtfreport(doc, "output/PK.rtf", overwrite = TRUE)' %in% code)
+  # one pipe: the document, its tables
+  expect_true(any(startsWith(trimws(code), "rtf_tables(plan")))
+  expect_true('generate_rtfreport(doc, file.path("output", paste0(report_id, ".rtf")), overwrite = TRUE)' %in% code)
   expect_true(any(grepl('file.exists("study.yml")', code, fixed = TRUE)))
   expect_true(any(grepl("saveRDS(data", code, fixed = TRUE)))
   # no data code: the company template takes its rows of the study ARD
-  expect_true(any(grepl('filter(output_id == "PK")', code, fixed = TRUE)))
+  expect_true(any(grepl("filter(output_id == report_id)", code, fixed = TRUE)))
   expect_true(any(grepl("data <- normalize_ard(ard)", code, fixed = TRUE)))
   expect_silent(parse(text = code))
   expect_equal(report_info(p, "PK")$file, "output/PK.rtf")
@@ -43,9 +44,9 @@ test_that("listings and figures make `content` and skip the table plan", {
   for (id in c("L1", "F1")) {
     code <- program_code(p, id)
     expect_silent(parse(text = code))
-    expect_true(any(code %in% c("doc <- rtf_tables(doc, content)",
-                                "doc <- rtf_figures(doc, content)",
-                                "doc <- rtf_figures(doc, plot)")))
+    expect_true(any(code %in% c("  rtf_tables(content)",
+                                "  rtf_figures(content)",
+                                "  rtf_figures(plot)")))
     expect_false(any(grepl("table_plan(", code, fixed = TRUE)))
   }
   expect_error(add_output(p, "X", type = "chart"))

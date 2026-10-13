@@ -9,6 +9,63 @@
   JSON only or the zip of JSON, CDISC's Excel template and `ars_check.csv`
   is downloaded; an error does not stop it.  `export_ars()` writes the same
   files as before.
+- **The treatment colours** (tflspec #233, with tflspec 0.0.24.9098): the
+  figures' first arm is Okabe-Ito blue `#0072B2` (was `"blue"`), so the
+  sample's KM and forest figures change colour slightly; more arms than the
+  standard's colours repeat them with a warning, and the figure check names
+  the arms that share one.  The company standards' README says that the
+  order of the `treatment` rows of `figure_colors` is the arms' colour order
+  (reorder the rows in the workbook to reorder the colours), and describes
+  the optional `treatment_shapes` / `treatment_linetypes` of
+  `figure_settings` (blank: not used), which give the arms point shapes and
+  line types for print in black and white.
+
+- **The generated programs, reviewed again** (#347, with tflspec 0.0.24.9097).
+  The sample's tables and listing are the same RTF byte for byte; the two
+  designed figures change on purpose:
+  - *A figure printing a table's numbers shares its code lists*
+    (`ard_source` `table:<id>`): the KM figure F-14-2-3 shows Placebo, Low
+    Dose, High Dose in the table's order and colours (it was alphabetical,
+    High Dose second).  The forest plot F-14-2-4 has code lists of its own:
+    its subgroups print as Female / Male, 18-64 years, and its subgroup axis
+    has no title.
+  - *A failed program says why in the run's record*: R's error output is kept
+    beside the log (`<program>.err`) and, when logrx logged no error, its last
+    `Error` line is the note of `run.csv` and of `ard_status.csv` (a package
+    too old stopped a program with an empty note).  `broom (>= 1.0.8)` and
+    `broom.helpers (>= 1.17.0)` are required (what cardx's models need), and
+    the sample's check says a version too old.
+  - *A report's program names itself `report_id`*: the study ARD's rows, the
+    program's own path and the RTF's (`file.path(path_tfl, paste0(report_id,
+    ".rtf"))`); a program copied for another report changes one line.
+  - Every program, ARD programs too, starts with a short check that it runs
+    from the study folder (under 80 columns; a check in the setup could not
+    run before the setup's own `source()` fails); the banner's description is
+    wrapped; `record_report()`'s setup fingerprint is on lines of its own; a
+    program ends on its last line.
+  - *The figure designer* names the figure's data as the program does
+    (`adtte_ttde`, from `tflspec::tfl_fig_data_name()`) in step 1's objects
+    and the layers' object choices, and a piece's own lines of an
+    `ard_number` layer are its label (`ard_label_<k>`) and its `annotate()`,
+    not the later labels renumbered.
+  - The sample: its stacked analysis is `DEMOG` (`ard_demog`, not a name of a
+    cards function), its survival code writes the event `CNSR == 0` and names
+    the Cox model.
+- **A study opens faster** (#367; the user's report: tens of seconds to
+  minutes after opening a study or taking in a TOC).  The report list and the
+  review did the same work again for every report: the analysis data
+  sheet is normalized once while it is the same, and whether a figure
+  reads an ARD comes from its design (tflspec's `tfl_fig_uses_ard()`, >=
+  0.0.24.9096) instead of writing its program.  The review's check of
+  the programs (P02) asks the files' times once, as numbers.  With
+  tflspec 0.0.24.9096's faster figure checks and ARD fingerprints, on a
+  study of 170 reports (a fresh R): the reports' run state 2.3 -> 0.4 s,
+  the report list 2.6 -> 0.7 s, the review 8.9 -> 7.2 s the first time
+  and 4.2 s again; the app is idle about 20 s sooner after opening.  The
+  study ARD (`output/ard/ard.rds`) is read once while it is the same file
+  (its time and size): every report's rows, the figures' and the
+  conditions read it, once each.  The same results (compared row for
+  row).
 
 - **The home is never inside the study folders** (#359, the user's
   requirement): tidying the studies would delete it.  The home holds the

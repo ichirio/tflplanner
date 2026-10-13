@@ -52,7 +52,7 @@ test_that("the company's font and size: a new study's, and added where missing",
   # every report's program sources the setup that says them, once
   set <- report_setup_code(st$planner)
   expect_true(any(grepl('rtfreporter.font = "Courier New"', set, fixed = TRUE)))
-  expect_true(any(grepl("rtfreporter.font_size_half_points = 20L", set, fixed = TRUE)))
+  expect_true(any(grepl("rtfreporter.font_size_half_points = 20", set, fixed = TRUE)))
   # a study without them gets them; one with its own keeps its own
   p <- set_study_page_value(new_planner(), "orientation", "landscape")
   p2 <- add_standard_defaults(p, "X1")

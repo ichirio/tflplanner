@@ -48,11 +48,19 @@
   if (engine == "logrx") {
     expr <- sprintf("logrx::axecute('%s', log_name = '%s', log_path = '%s')",
                     prog, basename(log), log_dir)
+    # what R says on stderr is kept beside the log: an error that stops the
+    # program before logrx can log it (a package too old) is only there
+    err <- sub("[.]log$", ".err", log)
     rc <- system2(.rscript, c("-e", shQuote(expr)), stdout = FALSE,
-                  stderr = FALSE)
+                  stderr = err)
     lines <- if (file.exists(log)) readLines(log, warn = FALSE) else character()
     errs <- .batch_section(lines, "Errors:")
     warns <- .batch_section(lines, "Warnings:")
+    if (!identical(rc, 0L) && !length(errs) && file.exists(err)) {
+      e <- grep("^Error", readLines(err, warn = FALSE), value = TRUE)
+      if (length(e)) errs <- e[length(e)]
+    }
+    if (file.exists(err) && !file.size(err)) unlink(err)
   } else {
     rc <- system2(file.path(R.home("bin"), "R"),
                   c("CMD", "BATCH", "--no-save", "--no-restore", "--quiet",
