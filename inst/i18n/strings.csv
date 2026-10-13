@@ -2997,6 +2997,7 @@ Compared,判定
 output,出力
 done,完了
 stopped,中断
+"The row of a hierarchy's overall counts (a hierarchical analysis with args over_variables = TRUE) and what it prints: normalize_ard(overall = ), written by tfl_normalize_code(). Blank: no such row.",階層の全体の行（args に over_variables = TRUE を持つ hierarchical の解析）と、その行に出す文字：normalize_ard(overall = )。tfl_normalize_code() が書く。空欄 = その行なし。
 The study has no analyses in its ARD definition.,試験の ARD 定義に分析がありません。
 CDISC ARS: %s,CDISC ARS：%s
 CDISC (to exchange),CDISC（交換用）

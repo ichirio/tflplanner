@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **An AE table's "Subjects with at least one TEAE" row from the
+  definition** (tflspec #236, with tflspec 0.0.24.9104).  A table without
+  normalization of its own (and the company's template the built-in
+  `data <- normalize_ard(ard)`) now gets the line its definitions say,
+  `tflspec::tfl_normalize_code()`: the hierarchy of its `hierarchical`
+  analysis -- each SOC row with its counts -- and the any-event row of the
+  `tables` sheet's new `overall_label`.  A table without either is as
+  before; the sample's AE table keeps its own line.
+
 - **The CDISC ARS export opens a dialog** (Study tab, Files): what the ARS
   holds (its analyses, outputs, analysis sets and data subsets), its checks
   and what it leaves out, one row each, before anything is written; a
