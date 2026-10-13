@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **The CDISC ARS export opens a dialog** (Study tab, Files): what the ARS
+  holds (its analyses, outputs, analysis sets and data subsets), its checks
+  and what it leaves out, one row each, before anything is written; a
+  row's report is a link that goes to it, as a Review item does.  The
+  profile is chosen there -- CDISC (to exchange, the default) or siera (to
+  run with siera), which the screen could not export before -- and either
+  JSON only or the zip of JSON, CDISC's Excel template and `ars_check.csv`
+  is downloaded; an error does not stop it.  `export_ars()` writes the same
+  files as before.
+
 - **A step of your own R: its rules in full, and the sample in that form**
   (0.0.2.9206, pair B of the user-program design).  **The rules** next to
   the GUI | R program switch opens the seven rules (the datasets

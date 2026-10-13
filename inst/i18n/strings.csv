@@ -2997,6 +2997,22 @@ Compared,判定
 output,出力
 done,完了
 stopped,中断
+The study has no analyses in its ARD definition.,試験の ARD 定義に分析がありません。
+CDISC ARS: %s,CDISC ARS：%s
+CDISC (to exchange),CDISC（交換用）
+siera (to run with siera),siera（siera で実行する形）
+JSON only,JSON だけ
+"JSON, Excel and the checks (zip)",JSON・Excel・検査結果（zip）
+%d analyses · %d outputs · %d analysis sets · %d data subsets,分析 %d · 出力 %d · 解析対象集団 %d · データの部分集合 %d
+%d errors,エラー %d 件
+%d not in the ARS,ARS に入らないもの %d 件
+not in the ARS,ARS に入らない
+an error,エラー
+Go to it,そこへ移動
+%d outputs siera cannot run,siera で実行できない帳票 %d 本
+Outputs siera cannot run,siera では実行できない帳票（siera 用のファイルから外したもの）
+Not in the ARS,ARS に入らないもの
+siera cannot run it,siera では実行できない
 Any function,任意の関数
 "An object any function makes: survival::survfit, stats::quantile ... (its arguments in R).",任意の関数が作るオブジェクト：survival::survfit、stats::quantile など（引数は R で書く）。
 ARD analysis,ARD の解析
