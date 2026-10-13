@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **An official run keeps going when the app closes; the launcher when
-  its port is taken** (#373, 0.0.2.9216; the user's request).  An
+  its port is taken** (#373, 0.0.2.9217; the user's request).  An
   official run (`run_batch()`) used to stop with the app's R process --
   closing the browser, [Close], an update -- and leave its ARD and
   reports half made.  It now runs detached, recorded in the home
@@ -18,6 +18,11 @@
   it leaves it and starts on the next free port.  Each case is written to
   `launcher.log`.  The app serves its version and process at
   `/tflplanner-health/health.txt` for this.
+- The `tables` sheet's new column `stat_groups` (tflspec 0.0.24.9105,
+  rtfreporter #619): one record's statistics in two columns, N in one and
+  the rate and its CI in the next, with no `mutate()` in the table's code.
+  Its help is translated.
+
 - **An AE table's "Subjects with at least one TEAE" row from the
   definition** (tflspec #236, with tflspec 0.0.24.9104).  A table without
   normalization of its own (and the company's template the built-in
