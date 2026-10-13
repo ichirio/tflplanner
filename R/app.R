@@ -8532,7 +8532,7 @@ app_server <- function(input, output, session, start) {
                  class = "btn-sm btn-outline-primary py-0"))),
       if (length(st$hierarchy)) shiny::div(
         class = "rp-b-card",
-        shiny::h6(t("Rows")),
+        shiny::h6(t("Rows of the table")),
         # the table's rows: the ARD's keys (its groups, its hierarchy),
         # outermost first -- the layout is the table's; the ARD only
         # offers them
