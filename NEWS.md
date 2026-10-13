@@ -1,5 +1,24 @@
 # tflplanner (development version)
 
+- **An official run keeps going when the app closes; the launcher when
+  its port is taken** (#373, 0.0.2.9209; the user's request).  An
+  official run (`run_batch()`) used to stop with the app's R process --
+  closing the browser, [Close], an update -- and leave its ARD and
+  reports half made.  It now runs detached, recorded in the home
+  (`live_runs/`); an app opened later shows it running (the Runs tab, the
+  study list) and says how it went; a study runs one official run at a
+  time, and [Close] says the run goes on.  A preview still stops with the
+  app.  No update installs packages while an official run goes on
+  (`update_tflplanner()`, the "update and launch" shortcut).  When the
+  shortcut finds its port taken: this version answering -- it opens it; a
+  tflplanner the launcher started that is another version or does not
+  answer -- it asks 「古いアプリが動いています。止めて起動し直しますか？」
+  (saying that an official run goes on), and stops it only on yes; a
+  tflplanner in an R session of its own (RStudio) or another program --
+  it leaves it and starts on the next free port.  Each case is written to
+  `launcher.log`.  The app serves its version and process at
+  `/tflplanner-health/health.txt` for this.
+
 - **A step of your own R: its rules in full, and the sample in that form**
   (0.0.2.9206, pair B of the user-program design).  **The rules** next to
   the GUI | R program switch opens the seven rules (the datasets

@@ -140,7 +140,9 @@ tflplanner_packages <- function(check = TRUE, channel = NULL) {
 #' done in a separate R process, since this session cannot replace a
 #' package it has loaded; afterwards, restart R (in RStudio: *Session >
 #' Restart R*) before using tflplanner again.  The running app does not
-#' update itself: it says when a newer version is out.
+#' update itself: it says when a newer version is out.  Nothing is
+#' installed while an official run ([run_batch()]) goes on: the run has
+#' loaded the packages.
 #'
 #' @param channel `"release"`: CRAN when the package is there, else its
 #'   latest GitHub release.  `"dev"`: the development version on GitHub
@@ -169,6 +171,14 @@ update_tflplanner <- function(channel = NULL, from = NULL,
   channel <- channel %||% .update_channel()
   if (!is.null(from) && !dir.exists(from)) {
     stop("`from` must be a folder with the package files.", call. = FALSE)
+  }
+  # an official run going on has loaded the packages: replacing them would
+  # fail, or break the run (live_runs.R)
+  runs <- tryCatch(.live_runs(), error = function(e) NULL)
+  if (!is.null(runs) && nrow(runs)) {
+    stop(paste(.live_runs_text(runs, function(x) tr(x, lang)),
+               tr("Update when it has finished.", lang),
+               sep = if (identical(lang, "ja")) "" else " "), call. = FALSE)
   }
   lib <- dirname(system.file(package = "tflplanner"))
   if (file.access(lib, 2L) != 0L) {

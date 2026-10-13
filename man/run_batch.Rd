@@ -37,7 +37,9 @@ folder's \code{batch.txt} lists the programs left out.}
 the batch folder (\verb{runs/<date>_<time>_<what>_<batch>/}) and its
 \code{batch.txt} name it.  \code{NULL}: every report (or \code{only} / \code{exclude}).}
 
-\item{wait}{\code{FALSE} returns the running \link[processx:process]{processx::process} at once.}
+\item{wait}{\code{FALSE} returns the running \link[processx:process]{processx::process} at once.
+The run goes on by itself: closing the app, or R, does not stop it,
+and a study runs one official run at a time.}
 }
 \value{
 \code{run_batch()}: with \code{wait = TRUE}, a list: \code{ok}, \code{batch} (the
