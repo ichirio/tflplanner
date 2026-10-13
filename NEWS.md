@@ -9,6 +9,125 @@
   `tables` sheet's new `overall_label`.  A table without either is as
   before; the sample's AE table keeps its own line.
 
+- **The CDISC ARS export opens a dialog** (Study tab, Files): what the ARS
+  holds (its analyses, outputs, analysis sets and data subsets), its checks
+  and what it leaves out, one row each, before anything is written; a
+  row's report is a link that goes to it, as a Review item does.  The
+  profile is chosen there -- CDISC (to exchange, the default) or siera (to
+  run with siera), which the screen could not export before -- and either
+  JSON only or the zip of JSON, CDISC's Excel template and `ars_check.csv`
+  is downloaded; an error does not stop it.  `export_ars()` writes the same
+  files as before.
+
+- **A step of your own R: its rules in full, and the sample in that form**
+  (0.0.2.9206, pair B of the user-program design).  **The rules** next to
+  the GUI | R program switch opens the seven rules (the datasets
+  registered, the ARD through the report, what each step leaves, code
+  inside the definition stays there, no `library()`, no side effects, one
+  report), and the ja guide's chapter 11 "自分の R の手順" says the same;
+  the code cards' tips point to them.  The sample study's two figures of
+  their own code are figures whose content step is R: F-14-2-2 reads
+  T-14-2-2's ARD as `ard` (its ARD source) instead of the ARD file, and
+  neither attaches packages -- the review has nothing to say of them.  A
+  figure whose code reads an ARD records the definition it was made from
+  and is to be made again when that ARD changes, as a designed one.  The
+  articles (ja guide, ja figures) and the README say three kinds of report,
+  each step on screen or in R.
+
+- **A figure's size is set on its page (step 3), and the first page shows
+  it** (0.0.2.9206, tflspec >= 0.0.24.9102; the user's request on F-14-2-1:
+  the result pane showed no plot, and its size was in step 2).  Step 3 of
+  a figure has **Figure size**, the report sheet's `figure_width_in` /
+  `figure_height_in` (the user's decisions): blank is the figure's own
+  size, as rtfreporter places an image -- a design's, the company's figure
+  style for its kind (`figure_settings` width / height), one of your own
+  code's 6.5 x 4.5 in -- shown in the field; a number is that many inches;
+  `fit` (the button **Fit to the page**) is the page's body (its width;
+  its height less the titles and footnotes); **Its own size** blanks both
+  again.  The figure is drawn at that size -- its text the size its theme
+  says -- and placed so (`fig_sized()`, written once in
+  `programs/tfl/fig_setup.R`; `rtf_figures()` gets a size only when it is
+  not the figure's own).  Step 2 keeps only its dpi (company 300): the
+  resolution, pixels = inches x dpi, never the size on the page.  A step's
+  code editor fits a laptop's screen with its header and check (and is
+  dragged taller).  The first page
+  (sample) draws the figure in its body, as wide as on the page: a
+  design's, or one of your own code's last run.  The designer's preview is
+  drawn at the same size.  A design's old width, height and units (which
+  never reached the RTF: a figure was drawn at 6.5 x 4.5 in) go.
+
+- **A report is a table, a listing or a figure; its data step and its
+  content step may each be your own R** (0.0.2.9206, tflspec >=
+  0.0.24.9102; the user's direction on 9191:
+  "user code" was a fourth type forced into line; the design
+  `user-program-per-step-design-2026-10-12`, D1-D7 as recommended).  At
+  the top of step 1 and step 2, **GUI | R program**: R program makes the
+  whole step your code (the report sheet's `data_code` / `content_code`,
+  tflspec), instead of the definition; a step whose code is not blank is
+  that code, and [GUI] again asks before the code goes.  The data step
+  leaves `data` (a figure: `df`), the content step `content`; the datasets
+  it reads are registered above its code (the report's `datasets`: the
+  program reads them first, by their names in lower case), and its ARD is
+  `ard` when the report reads one (a table's own analyses or one taken in;
+  a figure's as its ARD source says).  The code is checked as you write
+  it (`tflspec::tfl_check_code()`: rules U01-U05 in the review too -- a
+  dataset it reads that is not registered, nothing left for the next
+  step, files read or packages attached by the code itself, `ard` where
+  the report reads none), and [Run the code] runs the program up to its
+  report out of the app, naming the step and the line of an error.  Code
+  inside the definition stays where it was (a table's rework, a listing's
+  -- its process code now --, a figure's code step).
+  **Existing studies are moved on opening, nothing lost**: a report of
+  type `user` becomes the type its ID says (`F...` a figure, `L...` a
+  listing, else a table) with its code its content step's, its datasets
+  (and those its code names) the report's and its ARD switch its ARD
+  source; a table's data code becomes its data step's code; a figure
+  written by hand, its content step's (`plot` given as `content`, as its
+  program did).  The workbooks are read from a copy and written as they
+  now are on the next save.  `step_code()`, `set_step_code()`,
+  `report_datasets()`, `set_report_datasets()`, `preview_code()` (was
+  `preview_user()`); `make_user_report()` and the offer to convert
+  figures written by hand are gone; `add_output()` has no `data_code`.
+
+- **A figure's data steps on any object** (the user's questions Q1-Q3 on
+  0.0.2.9186; tflspec >= 0.0.24.9102).  A data step's form has **In** and
+  **Out** on one line at its foot: the object it reads and the one it
+  leaves, each shown as it is when left empty (`df`, the object above,
+  the step's own name).  Typed, a step works on another object
+  (`In: df`, `Out: df_ev` makes `df_ev` and keeps `df`), a named step
+  reads it (`In: df_ev`), or reads a dataset by its name (`adsl`).  A
+  second read makes `df2` (was `df` again).  The objects offered are those
+  made before the step (`tflspec::tfl_fig_objects()`).
+- **Two data steps**: *Any function* (`survival::survfit`,
+  `ggsurvfit::survfit2` ... suggested, any `pkg::fn` typed; its
+  arguments in R, their names listed under the field; the object it reads
+  given as its data) and *ARD analysis* (an `ard_*()` function of the
+  catalog on an analysis data of the ARD definition): the step is the
+  figure's row of the ARD definition (its ID, function, data, arguments;
+  the row's other columns kept), made by its ARD program.  A figure with
+  no ARD then reads its own; one that reads a table's keeps it (the step
+  says its analysis is used once the figure reads its own).  An analysis
+  data of another report chosen is copied into the figure.  The specific
+  steps (Kaplan-Meier fit, summary statistics, rate, counts) stay.  The
+  ARD analysis step's code box shows its row (`KM: fn(data, args)`), and
+  its note on a figure reading a table's ARD has a button to read its own.
+- **A user-code report makes a table or a figure, as its ID says** (the
+  user's report on F-14-2-1): `F...` a figure, else a table.  A user-code
+  figure's steps are a figure's ("1 Data", "2 Figure"); the report list
+  says "User code (Figure)"; a TOC's type is compared with what it makes
+  (a TOC's Figure on a user-code figure is no change).  (Until the report
+  types become table, listing and figure, each step's code its own.)
+- **A figure that cannot be drawn says why, and the app's log keeps it**
+  (the user's F-14-2-3 / F-14-2-4 on a sample whose official run had
+  stopped when the app closed).  A figure whose ARD has no rows yet says
+  which ARD and how to make it (step 1, or an official run); every drawing
+  error goes to the app's log.  [Close] says when a run is going on: it
+  stops with the app, its ARD and reports left unfinished.
+- **The figure designer's forms, for the expert** (the standard-screen
+  principle): a piece's lead text is in its heading's (i), a field's help
+  is its placeholder and tooltip (no line under it), and a named step's
+  name is its **Out**, beside **In**.
+
 - **The treatment colours** (tflspec #233, with tflspec 0.0.24.9098): the
   figures' first arm is Okabe-Ito blue `#0072B2` (was `"blue"`), so the
   sample's KM and forest figures change colour slightly; more arms than the

@@ -180,11 +180,15 @@ fetch_ard <- function(study, output_id, timeout = 300,
                       home = tflplanner_home()) {
   p <- study$planner
   o <- p$outputs[p$outputs$output_id == output_id, , drop = FALSE]
-  ard_code <- .ard_code_of(p, output_id)
+  # its data step's own code (its datasets and its ARD read first), or the
+  # ARD its definition makes
+  ard_code <- if (.is_code_step(p, output_id, "data")) {
+    paste(c(.code_inputs(p, output_id), step_code(p, output_id, "data")), collapse = "\n")
+  } else .ard_code_of(p, output_id)
   if (!nrow(o) || is.na(ard_code)) {
     stop("Report '", output_id, "' has no ARD code yet.", call. = FALSE)
   }
-  if (is.na(o$data_code) && any(p$ard$analyses$output_id %in% output_id)) {
+  if (!.is_code_step(p, output_id, "data") && any(p$ard$analyses$output_id %in% output_id)) {
     # its data is its part of the study ARD: there must be one
     out <- file.path(study$path, .ard_study_value(p$ard, "output",
                                                   "output/ard/ard.rds"))

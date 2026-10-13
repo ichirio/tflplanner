@@ -1,23 +1,16 @@
-# The fourth kind of report: user code (k-3).  The report's own code
-# leaves `content` -- a data frame, rtftable pages, a ggplot (made an
-# rtfplot here), rtfplot figures, or a list of them -- and the report spec
-# dresses it as any other report: page, running header and footer, titles,
-# footnotes.  It reads the datasets the report names (the data catalog),
-# and, when the report says so, its ARD (`ard`: the study ARD's rows for
-# it, or the ARD taken in for it), as a table does.
+# A report's steps of its own code at run time (R/step_code.R says what
+# they are): the content step leaves `content` -- a data frame, rtftable
+# pages, a ggplot (made an rtfplot here), rtfplot figures, or a list of
+# them -- and the report spec dresses it as any other report: page,
+# running header and footer, titles, footnotes.  The data step leaves
+# `data` (a figure: `df`).
 
-# Does a user-code report read its ARD?
-.user_reads_ard <- function(x, output_id) {
-  f <- lf_rows(x, "figures", output_id)
-  nrow(f) > 0L && "ard" %in% names(f) && isTRUE(as.logical(f$ard[1L]))
-}
-
-# The small function a report of one's own code makes `content` with,
-# written once in the study's programs/tfl/fig_setup.R (which those reports
-# source): a ggplot (alone or in a list) becomes a figure; anything else
-# than the contract's -- a data frame, rtftable pages, a ggplot, an
-# rtfplot, or a list of them -- stops, saying which item it is and what it
-# was.
+# The small functions a report's own code is checked with, written once in
+# the study's programs/tfl/fig_setup.R (which those reports source):
+# report_content() -- a ggplot (alone or in a list) becomes a figure;
+# anything else than the contract's -- a data frame, rtftable pages, a
+# ggplot, an rtfplot, or a list of them -- stops, saying which item it is
+# and what it was; report_data() -- the data step left a data frame.
 .report_content_fun <- c(
   "# ---- a report of your own code: its `content` as rtfreporter takes it",
   "# (a ggplot becomes a figure; what is not a data frame, rtftable pages, a",
@@ -34,54 +27,42 @@
   "                 class(items[[i]])[1L]), call. = FALSE)",
   "  }",
   "  if (one) fig(x) else lapply(items, fig)",
+  "}",
+  "",
+  "# ---- a figure at its size on the page (the report's, step 3): drawn so,",
+  "# its text the size its theme says (a ggplot; anything else as it is)",
+  "fig_sized <- function(x, width_in, height_in, dpi = 300) {",
+  "  one <- function(p) if (inherits(p, \"ggplot\")) rtfplot(p,",
+  "    width_twips = round(width_in * 1440), height_twips = round(height_in * 1440),",
+  "    render_width = width_in, render_height = height_in, render_dpi = dpi) else p",
+  "  if (inherits(x, \"ggplot\") || !is.list(x) || is.data.frame(x)) one(x) else lapply(x, one)",
+  "}",
+  "",
+  "# ---- a data step of your own code: it left a data frame",
+  "report_data <- function(x, what = \"data\") {",
+  "  if (!is.data.frame(x)) {",
+  "    stop(sprintf(\"The data step's code leaves `%s` as %s: make it a data frame.\",",
+  "                 what, class(x)[1L]), call. = FALSE)",
+  "  }",
+  "  x",
   "}")
 
-# the part of a user-code report's program between its setup and its report
-.user_lines <- function(x, output_id, info) {
-  f <- lf_rows(x, "figures", output_id)
-  ds <- if (nrow(f)) .split_bar(f$datasets[1L]) else character()
-  o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
-  code <- if (nrow(o) && !is.na(o$data_code)) o$data_code else NA_character_
-  ard <- if (.user_reads_ard(x, output_id)) {
-    imp <- .ard_import_of(x, output_id)
-    a <- if (is.null(imp)) .fill_template("table_data", x, output_id) else
-      .imported_ard_code(imp, output_id)
-    if (!is.na(a)) c("# ---- this report's ARD (`ard`)", .code_block(a), "")
-  }
-  body <- if (is.na(code)) c(
-    "# TODO: your code, leaving `content`, e.g.",
-    "#   content <- adsl[, c(\"USUBJID\", \"AGE\")]",
-    paste0("stop(\"tflplanner: the code of ", info$program,
-           " is still to be written.\")")) else .code_block(code)
-  c(if (length(ds)) c(paste0("# the data: ", paste(ds, collapse = ", "),
-                             " (data catalog)"),
-                      unlist(lapply(ds, function(d) .read_dataset_lines(x, d))),
-                      ""),
-    ard,
-    "# the figure style of the company standards (theme_tfl(), tfl_check() ...)",
-    sprintf("source(%s)", encodeString(file.path(study_layout()[["programs_tfl"]],
-                                                 .fig_setup_file), quote = "\"")),
-    "",
-    "# ---- the report's own code: leaves `content`",
-    body,
-    "",
-    "content <- report_content(content)")
-}
-
-#' Run a user-code report's code and see what it leaves
+#' Run a report's own code and see what it leaves
 #'
-#' Runs the report's data part ([data_lines()]: the datasets it reads, its
-#' ARD when it reads one, its own code) in a fresh R process from the study
-#' folder -- the app does not run the code itself -- and gives what it left
-#' as `content`, for a preview.
+#' Runs the report's program up to its report ([data_lines()]: the datasets
+#' it registers and its ARD read, its data step and its content step, each
+#' its own code or as its definition makes it) in a fresh R process from
+#' the study folder -- the app does not run the code itself -- and gives
+#' what it left as `content`, for a preview.
 #'
 #' @param study An `rtfstudy`.
-#' @param output_id The report (type `user`).
+#' @param output_id The report (a step of it its own code, [step_code()]).
 #' @param timeout Seconds to allow.
 #' @return A list: `content` (or `NULL`), `error` (the code's error, or
-#'   `NULL`) and `log`.
+#'   `NULL`), `code_step` and `code_line` (the step and the line of its
+#'   code the error is on, when it is in the report's own code) and `log`.
 #' @export
-preview_user <- function(study, output_id, timeout = 300) {
+preview_code <- function(study, output_id, timeout = 300) {
   code <- data_lines(study$planner, output_id, todo = FALSE)
   if (is.null(code)) stop("The report has no code yet.", call. = FALSE)
   code <- c(.report_id_line(output_id), code)
@@ -133,40 +114,46 @@ preview_user <- function(study, output_id, timeout = 300) {
   res <- if (file.exists(f_out)) readRDS(f_out) else
     list(content = NULL, error = .first_error(px$stdout) %||% "The code did not run.")
   res$log <- px$stdout
-  # the line of the report's own code the error is on (the program's line,
-  # less the lines before the code)
-  start <- match("# ---- the report's own code: leaves `content`", code)
-  n_own <- length(strsplit(.user_code_of(study$planner, output_id) %||% "", "\n",
-                           fixed = TRUE)[[1L]])
+  # the step and the line of the report's own code the error is on (the
+  # program's line, less the lines before the code)
+  res$code_step <- NA_character_
+  res$code_line <- NA_integer_
   ln <- res$line %||% NA_integer_
-  res$code_line <- if (!is.na(start) && !is.na(ln) && ln > start &&
-                       ln <= start + n_own) ln - start else NA_integer_
+  x <- study$planner
+  for (step in c("data", "content")) {
+    own <- step_code(x, output_id, step)
+    if (is.na(own)) next
+    start <- which(startsWith(code, "# your code: leaves `"))
+    start <- start[if (identical(step, "data")) 1L else length(start)]
+    n_own <- length(strsplit(own, "\n", fixed = TRUE)[[1L]])
+    if (length(start) && !is.na(start) && !is.na(ln) && ln > start && ln <= start + n_own) {
+      res$code_step <- step
+      res$code_line <- ln - start
+    }
+  }
   res
 }
 
-# a user-code report's own code (its data code), or NULL
-.user_code_of <- function(x, output_id) {
-  o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
-  if (nrow(o) && !is.na(o$data_code)) o$data_code
-}
-
-# What a user-code report's ARD switch reads: "import" (the ARD taken in,
-# `file`), "own" (its analyses, `n` of them, `built` when the study ARD has
-# its rows) or "none"
-.user_ard_state <- function(study, output_id) {
+# What a report's ARD reads, for the switch above its code: "import" (the
+# ARD taken in, `file`), "own" (its analyses, `n` of them, `built` when the
+# study ARD has its rows), "table" (a figure's: that table's, `id`) or
+# "none"
+.code_ard_state <- function(study, output_id) {
   x <- study$planner
   f <- .ard_import_of(x, output_id)
   if (!is.null(f)) return(list(kind = "import", file = f))
+  src <- .fig_ard_source(x, output_id)
+  if (identical(src$kind, "table")) return(list(kind = "table", id = src$id))
   n <- nrow(ard_rows(x, "analyses", output_id))
   if (!n) return(list(kind = "none"))
   rows <- tryCatch(study_ard_rows(study, output_id), error = function(e) NULL)
   list(kind = "own", n = n, built = !is.null(rows) && nrow(rows) > 0L)
 }
 
-# What a preview shows of a user-code report's content: its table pages
-# (rtftable; a data frame laid out as rtfreporter does by default) and its
-# figures (each one's PNG bytes, kept by preview_user())
-.user_preview_parts <- function(content) {
+# What a preview shows of a report's content: its table pages (rtftable; a
+# data frame laid out as rtfreporter does by default) and its figures (each
+# one's PNG bytes, kept by preview_code())
+.code_preview_parts <- function(content) {
   items <- if (inherits(content, c("rtftable", "rtfplot", "uc_png", "data.frame")) ||
                !is.list(content)) list(content) else content
   pages <- list()
@@ -179,42 +166,4 @@ preview_user <- function(study, output_id, timeout = 300) {
     else if (inherits(it, "uc_png")) figs <- c(figs, list(it$png))
   }
   list(pages = pages, figures = figs)
-}
-
-#' Make a figure written by hand a user-code report
-#'
-#' A figure with no design whose plot is its data code becomes a report of
-#' the type `user`: the same datasets, the same code, with
-#' `content <- plot` added when the code leaves `plot` (and no `content`).
-#' Its program is then written again (it is "to be made again").
-#'
-#' @param x A `tflplanner`.
-#' @param output_id The figure.
-#' @return The `tflplanner`.
-#' @export
-make_user_report <- function(x, output_id) {
-  info <- report_info(x, output_id)
-  if (!identical(info$type, "figure") || !is.null(fig_design(x, output_id))) {
-    stop(output_id, " is not a figure written by hand.", call. = FALSE)
-  }
-  i <- match(output_id, x$outputs$output_id)
-  code <- x$outputs$data_code[i]
-  if (!is.na(code)) {
-    lines <- strsplit(code, "\n", fixed = TRUE)[[1L]]
-    leaves <- function(nm) any(grepl(sprintf("(^|[^A-Za-z0-9_.])%s[[:space:]]*(<-|=)[^=]", nm), lines))
-    if (!leaves("content") && leaves("plot")) {
-      # as its figure program did: the figure checks, then the plot
-      x$outputs$data_code[i] <- paste(c(sub("\n+$", "", code), "tfl_check(plot)",
-                                        "content <- plot"), collapse = "\n")
-    }
-  }
-  .set_report_type(x, output_id, "user")
-}
-
-# The figures written by hand that could be user-code reports
-.hand_figures <- function(x) {
-  o <- x$outputs
-  ids <- o$output_id[!is.na(o$data_code)]
-  ids[vapply(ids, function(id) identical(report_info(x, id)$type, "figure") &&
-                is.null(fig_design(x, id)), NA)]
 }

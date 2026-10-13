@@ -128,8 +128,8 @@ reference:
       - set_fig_own_analyses
       - fig_presets
       - copy_fig_to_params
-      - make_user_report
-      - preview_user
+      - step_code
+      - preview_code
   - title: Reviewing a study
     contents:
       - study_review

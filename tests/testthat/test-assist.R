@@ -124,14 +124,15 @@ test_that("fetch_ard() runs the data part from the study folder", {
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "ws")))
-  p <- add_output(new_planner(), "DM", data_code = paste(
-    "adsl <- readRDS(\"data/adam/adsl.rds\")",
-    "ard <- cards::ard_stack(adsl, .by = TRT01A,",
-    "  cards::ard_categorical(variables = SEX))", sep = "\n"),
+  p <- add_output(new_planner(), "DM",
     process_code = paste(
       "data <- normalize_ard(ard)",
       "data$variable_level[data$variable == \"SEX\"] <- \"Any\"",
       sep = "\n"))
+  p <- set_step_code(p, "DM", "data", paste(
+    "adsl <- readRDS(\"data/adam/adsl.rds\")",
+    "ard <- cards::ard_stack(adsl, .by = TRT01A,",
+    "  cards::ard_categorical(variables = SEX))", sep = "\n"))
   s <- create_study("S1", planner = p)
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
   m <- fetch_ard(s, "DM")
@@ -146,11 +147,11 @@ test_that("fetch_ard() runs the data part from the study folder", {
   attr(adsl$SEX, "label") <- "Sex at birth"
   saveRDS(adsl, file.path(s$path, "data", "adam", "adsl.rds"))
   s$planner$outputs$process_code <- NA
-  s$planner$outputs$data_code <- paste(
+  s$planner <- set_step_code(s$planner, "DM", "data", paste(
     "adsl <- readRDS(\"data/adam/adsl.rds\")",
     "ard <- cards::ard_stack(adsl, .by = TRT01A,",
     "  cards::ard_categorical(variables = SEX))", sep = "
-")
+"))
   m <- fetch_ard(s, "DM")
   expect_equal(m$keys$TRT01A, c("Placebo", "Xanomeline Low Dose",
                                 "Xanomeline High Dose"))   # by TRT01AN
@@ -163,7 +164,7 @@ test_that("fetch_ard() runs the data part from the study folder", {
   expect_match(m$error, "rework failed")
   expect_equal(m$variables$variable, "SEX")
 
-  s$planner$outputs$data_code <- "stop('no data')"
+  s$planner <- set_step_code(s$planner, "DM", "data", "stop('no data')")
   expect_error(fetch_ard(s, "DM"), "no data")
 })
 

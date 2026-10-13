@@ -79,8 +79,8 @@ test_that("R's error output becomes one line and, when known, the next step", {
 
 test_that("a failed ARD run is one sentence on screen and the output in the detail", {
   local_home()
-  p <- add_output(new_planner(), "T1",
-                  data_code = "stop(\"no ADSL here\")")
+  p <- set_step_code(add_output(new_planner(), "T1"), "T1", "data",
+                     "stop(\"no ADSL here\")")
   s <- create_study("S1", planner = p)
   e <- tryCatch(fetch_ard(s, "T1"), error = function(e) e)
   expect_s3_class(e, "tflplanner_problem")
@@ -305,7 +305,7 @@ test_that("a step's right is SPEC | Code | Result, the form on its left", {
     v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
     unname(v[nzchar(v)])
   }
-  for (id in c("ard_right", "table_right", "lf_right", "uc_right", "page_right")) {
+  for (id in c("ard_right", "table_right", "lf_right", "dc_right", "cc_right", "page_right")) {
     expect_identical(vals(id), c("spec", "code", "result"), info = id)
   }
   # the table: the sheets in SPEC, the preview in Result, the builder beside
@@ -481,7 +481,7 @@ test_that("tflspec's column help (English) is shown in the app's language", {
 })
 
 test_that("a report's kind says where it is made, and the tabs it has nothing on", {
-  expect_identical(names(.type_moves), c("table", "figure", "listing", "user"))
+  expect_identical(names(.type_moves), c("table", "figure", "listing"))
   expect_identical(names(.type_moves$table), c("ard", "tables"))
   expect_true(all(unlist(lapply(.type_moves, names)) %in%
                     c("ard", "tables", "designer", "lf", "usercode")))
