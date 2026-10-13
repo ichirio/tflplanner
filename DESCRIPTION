@@ -40,7 +40,7 @@ Imports:
     readxl,
     rhandsontable,
     rtfreporter (>= 0.8.2.9046),
-    tflspec (>= 0.0.24.9102),
+    tflspec (>= 0.0.24.9104),
     shiny (>= 1.8.1),
     sortable,
     bslib,
