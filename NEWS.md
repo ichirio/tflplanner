@@ -14,7 +14,13 @@
   `catalog_name_clashes()` is new.  Files and rows with no counterpart are
   said, nothing is dropped.  The `datasets` sheet and the generated
   programs are unchanged (no migration).  ARDs taken in stay on their own
-  panel, with a note under the grid.
+  panel, with a note under the grid.  The population is said where it is
+  chosen (part 2 of #388): one short line at each place -- an analysis's
+  Data, 1-1's Population, the report's population, the Populations tab and
+  the denominator's group ("Analysis sets (their subjects)") -- and an
+  analysis data that is only a dataset kept to a set is the one line for
+  it in an analysis's Data list (its "dataset x population" twin is left
+  out, unless the analysis reads it).
 
 - **An official run keeps going when the app closes; the launcher when
   its port is taken** (#373, 0.0.2.9219; the user's request).  An

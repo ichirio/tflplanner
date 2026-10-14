@@ -959,7 +959,7 @@ app_ui <- function(lang = "en") {
         bslib::nav_panel(
           paste0(t("Populations"), " (populations)"), value = "populations",
           pane_head(paste0(t("Populations"), " (populations)"),
-                    paste(t("The populations: the subjects of a dataset a condition keeps (SAFFL == \"Y\")."), edit_note)),
+                    paste(t("An analysis set: the subjects of a dataset that a condition keeps (SAFFL == \"Y\"). The Data of an analysis, 1-1\'s Population and a percent\'s denominator choose from here."), edit_note)),
           rhandsontable::rHandsontableOutput("hot_ard_populations"),
           shiny::tags$details(
             class = "rp-help mt-2",
@@ -3882,6 +3882,10 @@ app_server <- function(input, output, session, start) {
                            words = data_words_list(), counts = shiny::isolate(data_counts()),
                            adata = .adata_rows(rv$p, ard_target()), first = .adata_of_report(rv$p, ard_target()),
                            adata_counts = shiny::isolate(adata_counts()))
+    # a dataset x analysis set that a plain analysis data of the report is
+    # too: the analysis data is its one line
+    ch <- .an_data_drop_same(ch, .an_data_value_row(r), .adata_rows(rv$p, ard_target()),
+                             rv$p$ard$populations, data_words_list()$groups[[3L]])
     # on an analysis data: the analysis data only (a dataset x analysis set
     # stays for an analysis that reads one)
     if (is.list(ch) && startsWith(.an_data_value_row(r), "@")) ch[[length(ch)]] <- NULL
@@ -4089,7 +4093,7 @@ app_server <- function(input, output, session, start) {
     dss <- setdiff(more, pops)
     out <- list()
     out[[t("The method's own, or cards'")]] <- ch
-    if (length(pops)) out[[t("Populations")]] <- unlist(lapply(pops, function(v)
+    if (length(pops)) out[[t("Analysis sets (their subjects)")]] <- unlist(lapply(pops, function(v)
       lab(v, t("population"), n[.an_data_value(NA, v)])))
     if (length(dss)) out[[t("Datasets")]] <- unlist(lapply(dss, function(v)
       lab(v, t("dataset"), n[.an_data_value(v, NA)])))
@@ -4173,7 +4177,7 @@ app_server <- function(input, output, session, start) {
         shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
                          width = "100%")),
-      if (!inside) shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 1-1, or a dataset \u00d7 population. The name is the one the program gives it.")),
+      if (!inside) shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data of 1-1 (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
                                       data_choices(r),
                                       selected = .an_data_value_row(r),
                                       width = "100%"),
@@ -5014,7 +5018,7 @@ app_server <- function(input, output, session, start) {
     shiny::div(
       class = "d-flex flex-wrap align-items-baseline gap-2 mb-2",
       shiny::tags$label(`for` = "ard_report_pop_pick", class = "small fw-bold mb-0",
-                        with_tip(t("This report's population"), t("The report list's population (the TOC's): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 1-1 and 1-2 start from it."))),
+                        with_tip(t("This report's population"), t("The report's analysis set (the TOC's; also the header's <OUTPUT_POPULATION> text): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 1-1 and 1-2 start from it. An analysis may still read another."))),
       shiny::div(style = "min-width: 16rem",
                  shiny::selectInput("ard_report_pop_pick", NULL, pop_choices(),
                                     selected = if (is.na(now)) "" else now, width = "100%")))
@@ -5399,7 +5403,7 @@ app_server <- function(input, output, session, start) {
                            selected = blank_na(r$from), width = "100%"),
         shiny::selectInput("adata_pop", with_tip(
           t("Population"),
-          t("The study's population (SAF ...) or a population flag of the data, put in as the condition's first row (SAFFL = Y). Left as it is, it is saved as the population (population_id); change it there, add others under it.")),
+          t("The analysis set (Populations tab) this data is kept to, or a population flag of the data (SAFFL = Y). Make an analysis data only when the report needs more than a dataset kept to a set.")),
           pop_ch, selected = pop_now, width = "100%")),
       shiny::uiOutput("adata_pop_note"),
       if (nzchar(e$legacy_pop)) shiny::p(
@@ -6011,7 +6015,7 @@ app_server <- function(input, output, session, start) {
         col_widths = c(4, 8),
         shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label), width = "100%")),
-      shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 1-1, or a dataset \u00d7 population. The name is the one the program gives it.")),
+      shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data of 1-1 (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
                          data_choices(r),
                          selected = .an_data_value_row(r),
                          width = "100%"),
