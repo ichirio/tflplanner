@@ -875,7 +875,7 @@ app_ui <- function(lang = "en") {
           shiny::uiOutput("study_detail"),
           shiny::conditionalPanel(
             "output.shows_open == 'yes'",
-            .study_section("keys", with_tip(paste0(t("Keys and setup code"), " (study)"), t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source).")),
+            .study_section("keys", with_tip(paste0(t("Keys and setup code"), " (study)"), t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source). (source is added when a function is made in Own ARD functions.)")),
               rhandsontable::rHandsontableOutput("hot_ard_study"),
               shiny::textAreaInput(
                 "setup",

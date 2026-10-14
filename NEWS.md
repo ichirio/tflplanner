@@ -22,6 +22,10 @@
   `{STUDY_PHASE}`, `{STUDY_DESCRIPTION}`, with `{STUDY_SHORT_TITLE}`; named
   as study_setup.R's variables), filled from study.yml for a header, footer,
   title or footnote that says one, and shown after each field's label.
+  The company standards' setup code gains `options(warn = 1)` (a run's log
+  shows where a warning came from; nothing in the numbers changes), and
+  the keys' help says `source` is added when a function is made in Own
+  ARD functions.
 
 - **An official run keeps going when the app closes; the launcher when
   its port is taken** (#373, 0.0.2.9219; the user's request).  An
