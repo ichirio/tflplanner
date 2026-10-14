@@ -1,6 +1,6 @@
 # tflplanner (development version)
 
-- **Report sets and official runs are two things, named so** (#387, 0.0.2.9221; the user's request).  What the app called a "batch" was two
+- **Report sets and official runs are two things, named so** (#387, 0.0.2.9220; the user's request).  What the app called a "batch" was two
   things: the choice of reports (a named set of them) and the run that makes
   the results.  The set is now a **report set** (the Runs tab's "Report
   set", the report list's "Report sets" column), the run an **official run**
