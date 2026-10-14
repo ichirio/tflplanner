@@ -11,7 +11,10 @@
   (the report list's `batches` column, `batch_sets()`, `run_batch()`): no
   migration.  The ids' order: a new report goes to its numeric place, a
   TOC's reports come in the TOC's order, and "Sort by ID" (its hint says
-  numbers as numbers) sorts the whole list.
+  numbers as numbers) sorts the whole list.  The report set's box and its
+  buttons stay in view when the run's report list is folded; the inputs,
+  selects and buttons of a row (the Runs tab's set row and filter, the
+  report list's search) are one height.
 
 - **An official run keeps going when the app closes; the launcher when
   its port is taken** (#373, 0.0.2.9219; the user's request).  An

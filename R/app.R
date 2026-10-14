@@ -248,6 +248,13 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 .rp-upload select { appearance: auto; }
 /* fields that are not used (a data written as R) */
 .rp-greyed { opacity: .45; pointer-events: none; }
+/* a row of inputs, selects and buttons: the same height (the small size),
+   no space under an input, the label beside it */
+.rp-inline { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.rp-inline .shiny-input-container, .rp-inline .form-group { margin-bottom: 0; width: auto; }
+.rp-inline .form-control, .rp-inline .form-select { height: calc(1.5em + .5rem + 2px);
+  padding: .25rem .5rem; font-size: .875rem; }
+.rp-inline .btn { padding-top: .25rem; padding-bottom: .25rem; }
 /* a top tab the chosen report has nothing on */
 .nav-link.rp-idle { opacity: .45; }
 /* a step's mark worked out again (a run in the background): not faded */
@@ -971,7 +978,7 @@ app_ui <- function(lang = "en") {
         # the search and the buttons above the list: below 200 reports no
         # one found them
         shiny::div(
-          class = "d-flex flex-wrap gap-1 align-items-start",
+          class = "rp-inline",
           shiny::div(style = "flex: 0 1 22rem; min-width: 14rem;",
                      report_search_ui("outputs_q", lang)),
           shiny::div(
@@ -10789,39 +10796,43 @@ app_server <- function(input, output, session, start) {
     sets <- names(batch_sets(rv$p))
     now <- shiny::isolate(chosen_set())
     if (!now %in% sets) now <- ""
-    shiny::tags$details(
-      class = "mb-2", open = if (length(sets) || length(sel) < length(ids)) NA,
-      shiny::tags$summary(class = "small", shiny::textOutput("batch_reports_n", inline = TRUE)),
-      # a named batch: its reports ticked; the ticks saved under a name
+    shiny::div(
+      class = "mb-2",
+      # the report set: always at hand (choosing one ticks its reports and
+      # the count below follows); the list of reports is folded
       shiny::div(
-        class = "d-flex flex-wrap gap-2 align-items-end my-1",
-        shiny::selectInput("batch_set", with_tip(
+        class = "rp-inline my-1",
+        shiny::span(class = "small", with_tip(
           t("Report set"),
-          t("A report set is a group of reports an official run takes by name (Topline, Interim Analysis, Final): choosing one ticks its reports. Which sets a report is in shows in the report list's Report sets column; the full run is every report and has no name.")),
-          # (the full run: a value of its own -- selectize hides an empty one)
+          t("A report set is a group of reports an official run takes by name (Topline, Interim Analysis, Final): choosing one ticks its reports. Which sets a report is in shows in the report list's Report sets column; the full run is every report and has no name."))),
+        # (the full run: a value of its own -- selectize hides an empty one)
+        shiny::selectInput("batch_set", NULL,
           c(stats::setNames(".all", t("(every report)")), stats::setNames(sets, sets)),
-          selected = if (nzchar(now)) now else ".all", width = "220px"),
+          selected = if (nzchar(now)) now else ".all", width = "220px", selectize = FALSE),
         .btn("batch_save", t("Save the ticks as..."), class = "btn-sm btn-outline-primary"),
         .btn("batch_rename", t("Rename..."), class = "btn-sm btn-outline-secondary"),
         .btn("batch_delete", t("Delete..."), class = "btn-sm btn-outline-danger")),
-      shiny::div(
-        class = "d-flex flex-wrap gap-2 my-1 align-items-center",
-        .btn("batch_all", t("All"), class = "btn-sm btn-outline-secondary py-0"),
-        .btn("batch_none", t("None"), class = "btn-sm btn-outline-secondary py-0"),
-        shiny::tags$input(id = "batch_q", type = "search", class = "form-control form-control-sm",
-                          style = "max-width: 16rem;",
-                          placeholder = t("Filter the reports (ID, description)"),
-                          oninput = "rpBatchFilter()"),
-        shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary py-0",
-                           onclick = "rpBatchShown('add')", t("Tick the shown")),
-        shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary py-0",
-                           onclick = "rpBatchShown('remove')", t("Untick the shown")),
-        shiny::tags$script(shiny::HTML(.batch_filter_js))),
-      shiny::div(
-        class = "border rounded px-2 small", style = "max-height: 16rem; overflow-y: auto;",
-        shiny::checkboxGroupInput("batch_reports", NULL,
-                                  stats::setNames(ids, lab), selected = sel,
-                                  width = "100%")))
+      shiny::tags$details(
+        open = if (length(sets) || length(sel) < length(ids)) NA,
+        shiny::tags$summary(class = "small", shiny::textOutput("batch_reports_n", inline = TRUE)),
+        shiny::div(
+          class = "rp-inline my-1",
+          .btn("batch_all", t("All"), class = "btn-sm btn-outline-secondary"),
+          .btn("batch_none", t("None"), class = "btn-sm btn-outline-secondary"),
+          shiny::tags$input(id = "batch_q", type = "search", class = "form-control form-control-sm",
+                            style = "max-width: 16rem;",
+                            placeholder = t("Filter the reports (ID, description)"),
+                            oninput = "rpBatchFilter()"),
+          shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary",
+                             onclick = "rpBatchShown('add')", t("Tick the shown")),
+          shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary",
+                             onclick = "rpBatchShown('remove')", t("Untick the shown")),
+          shiny::tags$script(shiny::HTML(.batch_filter_js))),
+        shiny::div(
+          class = "border rounded px-2 small", style = "max-height: 16rem; overflow-y: auto;",
+          shiny::checkboxGroupInput("batch_reports", NULL,
+                                    stats::setNames(ids, lab), selected = sel,
+                                    width = "100%"))))
   })
   output$batch_reports_n <- shiny::renderText({
     ids <- batch_ids()
