@@ -320,31 +320,31 @@ An ARD program failed: see its log (Study ARD).,ARD プログラムがエラー�
 Choose a row to see its log.,行を選ぶとログを表示します。
 Preview: put this output into the study ARD,プレビュー：この帳票を試験 ARD に入れる
 Official run: the whole study ARD,正式実行：試験 ARD 全体
-keep the code in the batch folder,バッチフォルダにコードを含める
-"Both run the saved programs (programs/ard/): unsaved changes are saved first. A preview updates the working ARD and keeps no log; an official run makes a batch folder (runs/) with the logs (logrx), the ARD and the code. Choose a row to see its log in the latest official run.",どちらも保存済みのプログラム（programs/ard/）を実行します（未保存の変更は先に保存）。プレビューは作業用 ARD を更新しログは残しません。正式実行はバッチフォルダ（runs/）を作り、ログ（logrx）・ARD・コードを格納します。行を選ぶと最新の正式実行でのログを表示します。
+keep the code in the run folder,実行フォルダにコードを含める
+"Both run the saved programs (programs/ard/): unsaved changes are saved first. A preview updates the working ARD and keeps no log; an official run makes a run folder (runs/) with the logs (logrx), the ARD and the code. Choose a row to see its log in the latest official run.",どちらも保存済みのプログラム（programs/ard/）を実行します（未保存の変更は先に保存）。プレビューは作業用 ARD を更新しログは残しません。正式実行は実行フォルダ（runs/）を作り、ログ（logrx）・ARD・コードを格納します。行を選ぶと最新の正式実行でのログを表示します。
 Preview selected,選択をプレビュー
 Preview all,すべてプレビュー
-Official runs (batch folders),正式実行（バッチフォルダ）
-"An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read.",正式実行は runs/<日付>_<時刻>_<内容>/ のバッチフォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、R とパッケージの版（session_info.txt）、指定すれば実行したプログラムと定義ブック、読んだデータを格納します。
+Official runs (run folders),正式実行（実行フォルダ）
+"An official run makes a run folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read.",正式実行は runs/<日付>_<時刻>_<内容>/ の実行フォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、R とパッケージの版（session_info.txt）、指定すれば実行したプログラムと定義ブック、読んだデータを格納します。
 "ARD, then reports",ARD → 帳票
 Start the official run,正式実行を開始
-Open the batch folder,バッチフォルダを開く
+Open the run folder,実行フォルダを開く
 Running the ARD program,ARD プログラムを実行中
 The ARD program failed: see what it printed below.,ARD プログラムがエラーになりました。下の出力を確認してください。
 Choose a row to see its log in the latest official run.,行を選ぶと最新の正式実行でのログを表示します。
 # Preview of %s (not kept),# %s のプレビュー（保存されません）
 %s has no official run yet.,%s はまだ正式実行されていません。
 the official run:,正式実行：
-Batch folder,バッチフォルダ
+Run folder,実行フォルダ
 Started,開始
 Runs,実行
 Programs,プログラム数
 Errors,エラー
 Code,コード
-"Choose a report to see what its last preview printed, or a batch folder to see its run.",帳票を選ぶと直近のプレビューの出力を、バッチフォルダを選ぶとその実行内容を表示します。
+"Choose a report to see what its last preview printed, or a run folder to see its run.",帳票を選ぶと直近のプレビューの出力を、実行フォルダを選ぶとその実行内容を表示します。
 Working data: the study ARD (ard.rds),作業用データ：試験 ARD（ard.rds）
 Working reports: RTF,作業用帳票：RTF
-"Official runs: one batch folder each (logs, results, code)",正式実行：1 回ごとのバッチフォルダ（ログ・結果・コード）
+"Official runs: one run folder each (logs, results, code)",正式実行：1 回ごとの実行フォルダ（ログ・結果・コード）
 What a report program printed in its last preview,帳票プログラムの直近プレビューの出力
 1. ARD: make `ard` (Listing: rework `data`; Figure: the plot). Blank for a table = the company template: its rows of the study ARD.,1. ARD：`ard` を作る（Listing：`data` の加工、Figure：プロット）。表で空欄なら会社テンプレート（試験 ARD から自分の行を取得）。
 "2. Normalize and rework: make `data` from `ard` (normalize_ard(), then mutate() ...). Blank = the company template (normalize).",2. normalize と加工：`ard` から `data` を作る（normalize_ard() の後に mutate() など）。空欄なら会社テンプレート（normalize）。
@@ -2450,23 +2450,23 @@ Code list of %s,%s のコードリスト
 value: as the data has it; label: what it prints as (blank: itself); order: its place,value：データの値、label：表示する文字（空欄なら値のまま）、order：並び順
 "As the code list of variable: value, label, order",variable のコードリストとして：値・ラベル・並び順
 "Each variable (value), the heading the table prints for it (label; blank: as the ARD names it) and its place (order). The same as the list above and its labels: the program writes them as plan_labels(variable = ...).",各変数（value）、表に出す見出し（label。空欄なら ARD の名前のまま）、並び順（order）です。上の並びとラベルと同じもので、プログラムには plan_labels(variable = ...) として書かれます。
-(the batch %s),（バッチ %s）
+(the report set %s),（帳票セット %s）
 (%d left out),（%d 件を除く）
-Named batch,名前付きバッチ
-"A named batch is a set of reports an official run takes by name (Topline, Interim Analysis, Final): choosing one ticks its reports. A report's batches are the report list's batches column; the full run is every report and has no name.",名前付きバッチは、正式実行が名前で選べる帳票の組です（Topline、Interim Analysis、Final など）。選ぶと、その帳票にチェックが付きます。帳票がどのバッチに入るかは、帳票一覧の batches 列です。全部の実行はすべての帳票で、名前はありません。
+Report set,帳票セット
+"A report set is a group of reports an official run takes by name (Topline, Interim Analysis, Final): choosing one ticks its reports. Which sets a report is in shows in the report list's Report sets column; the full run is every report and has no name.",帳票セットは、正式実行が名前で選べる帳票の組です（Topline、Interim Analysis、Final など）。選ぶと、その帳票にチェックが付きます。帳票がどのセットに入っているかは、帳票一覧の「帳票セット」列で見られます。全部の実行はすべての帳票で、名前はありません。
 (every report),（すべての帳票）
 Save the ticks as...,名前を付けて保存…
 Rename...,名前を変える…
 None,なし
 Reports in the run: all %d,実行する帳票：全 %d 件
 Reports in the run: %d of %d (%d left out),実行する帳票：%2$d 件中 %1$d 件（%3$d 件を除く）
-Tick the reports of the batch first.,先にバッチの帳票にチェックを付けてください。
-Save the %d ticked reports as a named batch,チェックした %d 件の帳票を、名前付きバッチとして保存
+Tick the reports of the report set first.,先に帳票セットの帳票にチェックを付けてください。
+Save the %d ticked reports as a report set,チェックした %d 件の帳票を、帳票セットとして保存
 "A name the study has already is overwritten: it becomes these reports. Letters, digits, spaces, . _ -",試験にすでにある名前なら上書きします（そのバッチはこれらの帳票になります）。使える文字：英数字、空白、. _ -
-The batch %s: %d reports (save the study to keep it).,バッチ %s：%d 件の帳票（残すには試験を保存してください）。
-Rename the batch %s,バッチ %s の名前を変える
+The report set %s: %d reports (save the study to keep it).,帳票セット %s：%d 件の帳票（残すには試験を保存してください）。
+Rename the report set %s,帳票セット %s の名前を変える
 Its reports stay as they are.,帳票はそのままです。
-Delete the batch %s?,バッチ %s を削除しますか？
+Delete the report set %s?,帳票セット %s を削除しますか？
 Only the name goes: its reports stay on the report list.,消えるのは名前だけです。帳票は帳票一覧に残ります。
 Choose at least one report for the run.,実行する帳票を 1 つ以上選んでください。
 A report the run makes reads an ARD it leaves out,実行する帳票が、除いた帳票の ARD を読んでいます
@@ -2474,14 +2474,10 @@ A report the run makes reads an ARD it leaves out,実行する帳票が、除い
 %s reads the ARD of %s,%s は %s の ARD を読みます
 Run anyway,このまま実行する
 Left out,除いたもの
-Choose a named batch first.,先に名前付きバッチを選んでください。
-(not the batch %s any more: the run has no name),（バッチ %s とは違います：名前なしの実行になります）
+Choose a report set first.,先に帳票セットを選んでください。
+(not the report set %s any more: the run has no name),（帳票セット %s とは違います：名前なしの実行になります）
 ", ... (%d)",、…（%d 件）
-Batch name,バッチ名
-Batches,バッチ
-Batches...,バッチ…
-The named batches of %s,%s の名前付きバッチ
-"The official runs that take this report by name (Topline, Final ...): choose the names in use or type a new one. The Runs tab runs a named batch.",この帳票を名前で選ぶ正式実行（Topline、Final など）です。使っている名前から選ぶか、新しい名前を入力します。名前付きバッチは実行タブで実行します。
+Report sets,帳票セット
 "A flag (== ""Y"") that selects the population, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"
 Keep a population,解析対象集団で絞る
 "No population: every row of the dataset is used. Keep the population's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。
@@ -2743,7 +2739,7 @@ On a title line,タイトル行に
 "Title line (1, 2, last)",タイトル行（1、2、last）
 The reports,帳票
 %d reports from %d rows.,%2$d 行から %1$d 帳票。
-%s batch: %d reports.,%s バッチ：%d 帳票。
+%s report set: %d reports.,%s 帳票セット：%d 帳票。
 Show all %d reports,%d 帳票すべてを表示
 Rows not read (%d):,読めなかった行（%d）：
 "Set them by hand after taking it in, or fix the TOC.",取り込み後に手で設定するか、TOC を直してください。
@@ -2872,7 +2868,7 @@ Add a line,行を足す
 Add a line to this pattern,この型に行を足す
 Remove the line,行を削除
 Remove the token,トークンを削除
-keep the data in the batch folder,バッチフォルダにデータを含める
+keep the data in the run folder,実行フォルダにデータを含める
 "The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the run can be made again.",実行するプログラムが読むデータファイル（データカタログのもの：表のデータセット、リスト・図のデータセット、取り込んだ ARD）を md5 付きで写します（data_manifest.csv）。コード・ログ・R とパッケージの版（session_info.txt）と合わせて、同じ実行をやり直せます。
 The run's programs read no data file of the data catalog.,実行するプログラムが読むデータカタログのファイルはありません。
 "Data kept: %d files, %s.",含めるデータ：%d ファイル、%s。
@@ -3115,3 +3111,9 @@ Update when it has finished.,終わってから更新してください。
 "Rows kept by a condition over the record (plan_filter()): one R condition over its statistics and keys, as a cells row's when (p >= 0.05); several joined by &. A SOC stays when one of its PTs does; the overall row always stays. Blank: every row.",レコードの条件で残す行（plan_filter()）：統計量とキーについての R の条件を 1 つ、cells の行の when と同じ書き方で（p >= 0.05）。複数なら & でつなぐ。SOC はその PT が 1 つでも残れば残る。全体の行はいつも残る。空欄 = 全部の行。
 "TRUE / FALSE: the condition in any column (TRUE, blank) or every column (FALSE) (plan_filter(any = )).",TRUE / FALSE：条件をどれかの列で満たせばよい（TRUE、空欄）か、全部の列で満たす（FALSE）か（plan_filter(any = )）。
 "keep (blank): a parent row (a SOC) stays exactly when one of its children does; drop: judged by its own counts (plan_filter(parents = )).",keep（空欄）：親の行（SOC）は子の行が 1 つでも残るときだけ残る。drop：親の行自身の数で判定する（plan_filter(parents = )）。
+Report sets...,帳票セット…
+Report sets are made and chosen on the Runs tab: this opens it,帳票セットは実行タブで作り、選びます。ここから実行タブを開きます
+Puts the whole list in the order of the numbers in the ids (T-14-1-2 before T-14-1-10),リスト全体を、ID の数字の順に並べます（T-14-1-2 が T-14-1-10 より前）
+"Filter the reports (ID, description)",帳票を絞り込む（ID・説明）
+Tick the shown,表示中をチェック
+Untick the shown,表示中のチェックを外す

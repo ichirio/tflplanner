@@ -1,5 +1,18 @@
 # tflplanner (development version)
 
+- **Report sets and official runs are two things, named so** (#387, 0.0.2.9221; the user's request).  What the app called a "batch" was two
+  things: the choice of reports (a named set of them) and the run that makes
+  the results.  The set is now a **report set** (the Runs tab's "Report
+  set", the report list's "Report sets" column), the run an **official run**
+  and its record a **run folder** (`runs/<date>_<time>_<name>/`).  Report
+  sets are made on the Runs tab only: filter the reports, tick the shown (or
+  untick them), save the ticks under a name; the per-report "Batches..."
+  box is gone (the button opens the Runs tab).  What is stored is unchanged
+  (the report list's `batches` column, `batch_sets()`, `run_batch()`): no
+  migration.  The ids' order: a new report goes to its numeric place, a
+  TOC's reports come in the TOC's order, and "Sort by ID" (its hint says
+  numbers as numbers) sorts the whole list.
+
 - **An official run keeps going when the app closes; the launcher when
   its port is taken** (#373, 0.0.2.9219; the user's request).  An
   official run (`run_batch()`) used to stop with the app's R process --
