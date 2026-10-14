@@ -215,6 +215,8 @@ test_that("the form: Shift asks the parameters, the categories and the worst ord
   skip_on_cran()
   skip_if_not_installed("pharmaverseadam")
   local_home()
+  # (hidden in the list until the unified builder; the option shows it)
+  withr::local_options(tflplanner.shift_template = TRUE)
   s <- suppressMessages(create_sample_study(run = FALSE))
   saveRDS(pharmaverseadam::adlb[pharmaverseadam::adlb$PARAMCD %in% c("ALT", "AST"), ],
           file.path(s$path, "data/adam/adlb.rds"))
@@ -236,5 +238,18 @@ test_that("the form: Shift asks the parameters, the categories and the worst ord
     an <- ard_rows(rv$p, "analyses", "T-LB")
     expect_identical(an$by, "PARAMCD | TRT01A | BNRIND")
     expect_identical(sheet_rows(rv$p, "tables", "T-LB")$cols, "TRT01A | BNRIND")
+  })
+})
+
+test_that("the template list has no shift table unless the option says so", {
+  skip_on_cran()
+  local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  shiny::testServer(server_for(s$meta$study_id), {
+    session$setInputs(add = 1)
+    session$setInputs(modal_type = "table", modal_first = TRUE)
+    h <- output$modal_first_ui$html
+    expect_match(h, "value=\"hierarchy\"", fixed = TRUE)
+    expect_false(grepl("value=\"shift\"", h, fixed = TRUE))
   })
 })

@@ -1,5 +1,10 @@
 # tflplanner (development version)
 
+- **The shift table returns with the unified builder.**  Its template is
+  hidden from the list for now (`options(tflplanner.shift_template = TRUE)`
+  shows it): it is to choose its data among the study's datasets, its
+  parameters from the data, and to check BNRIND / ANRIND first.
+
 - **A hierarchy table's rows are the table's** (the user's principle: the
   ARD's variables are defaults; the layout belongs to the content step).
   The builder's "Rows" card mirrors "Columns": the row variables,
