@@ -1155,10 +1155,16 @@ $(document).on('shiny:value shiny:error', function(e) {
 // The veil (the page's busy state, CSS rp-user-busy) only for work the
 // user started: a busy state that begins within 1.5 s of a click, a key or
 // a changed field.  A run in the background followed by the poll is not.
+// Editing a field (text, text area, select) and Save do not veil either: the
+// page stays as it is while the server takes the value in and saves (#51).
 (function() {
   var last = 0;
+  var quiet = 'input:not([type=button]):not([type=submit]):not([type=radio]):not([type=checkbox]), textarea, select, .selectize-control, .form-control, #save';
   ['mousedown', 'keydown', 'change'].forEach(function(ev) {
-    document.addEventListener(ev, function() { last = Date.now(); }, true);
+    document.addEventListener(ev, function(e) {
+      if (e.target && e.target.closest && e.target.closest(quiet)) return;
+      last = Date.now();
+    }, true);
   });
   $(document).on('shiny:busy', function() {
     if (Date.now() - last < 1500) document.documentElement.classList.add('rp-user-busy');
@@ -2533,6 +2539,16 @@ app_server <- function(input, output, session, start) {
                shiny::span(class = "small text-muted", rv$study$path)),
       .study_section("study", t("The study"), open = TRUE,
       shiny::textInput("m_title", t("Title"), v(m$title), width = "100%"),
+      shiny::div(class = "d-flex flex-wrap gap-2",
+                 shiny::textInput("m_short_title", with_tip(
+                   t("Short title"),
+                   t("The title for a header or footer: {STUDY_SHORT_TITLE}.")),
+                   v(m$short_title)),
+                 shiny::div(class = "shiny-input-container",
+                   shiny::tags$label(class = "control-label",
+                                     with_tip(t("Study ID"), t("The study's number: the folder's name and {STUDY_ID} in the header. Set when the study is made; it cannot be changed here."))),
+                   shiny::tags$input(type = "text", class = "form-control",
+                                     value = m$study_id, readonly = NA))),
       shiny::div(class = "d-flex gap-2",
                  shiny::textInput("m_compound", t("Compound"), v(m$compound)),
                  shiny::textInput("m_phase", t("Phase"), v(m$phase))),
@@ -2546,13 +2562,13 @@ app_server <- function(input, output, session, start) {
                             "r (half to even)", "sas (half away from zero)"))),
         selected = v(r)),
       shiny::h6(with_tip(t("Every report's header"),
-                         t("The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}, {STUDY_ID}. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, population)."))),
+                         t("The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}; {STUDY_ID} is the Study ID above. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, population)."))),
       shiny::div(class = "d-flex flex-wrap gap-2",
         shiny::textInput("tok_COMPANY", t("Company"), v(study_token(rv$p, "COMPANY"))),
         shiny::textInput("tok_ANALYSIS_TYPE", t("Analysis"),
                          v(study_token(rv$p, "ANALYSIS_TYPE")),
-                         placeholder = "Final Analysis"),
-        shiny::textInput("tok_STUDY_ID", t("Protocol"), v(study_token(rv$p, "STUDY_ID")))),
+                         placeholder = "Final Analysis")),
+      .study_id_token_note(rv$p, m$study_id, t),
       shiny::h6(with_tip(t("Every report's font"),
                          t("The font and size every report is written in, set once here (the page sheet's study row; programs/tfl/report_setup.R says them as options()). Blank: rtfreporter's, Courier 9 pt. The company standards give a new study theirs."))),
       shiny::div(class = "d-flex flex-wrap gap-2",
@@ -2604,12 +2620,17 @@ app_server <- function(input, output, session, start) {
                  shiny::checkboxInput("zip_data", t("with data"))),
       .btn("study_folder", t("Open the study folder")))
   })
-  for (k in c("title", "compound", "phase", "description")) local({
+  for (k in c("title", "short_title", "compound", "phase", "description")) local({
     key <- k
     shiny::observeEvent(input[[paste0("m_", key)]], {
       v <- trimws(input[[paste0("m_", key)]])
       v <- if (nzchar(v)) v else NA_character_
       if (!identical(rv$meta[[key]], v)) rv$meta[[key]] <- v
+      # the header says it as a token (the tokens sheet's study row)
+      if (key == "short_title" &&
+          !identical(study_token(rv$p, "STUDY_SHORT_TITLE"), v)) {
+        rv$p <- set_study_token(rv$p, "STUDY_SHORT_TITLE", v)
+      }
     }, ignoreInit = TRUE)
   })
   for (k in .study_token_names) local({
@@ -2621,6 +2642,10 @@ app_server <- function(input, output, session, start) {
         rv$p <- set_study_token(rv$p, key, v)
       }
     }, ignoreInit = TRUE)
+  })
+  shiny::observeEvent(input$tok_study_id_use, {
+    rv$p <- set_study_token(rv$p, "STUDY_ID", rv$study$meta$study_id)
+    rv$ver <- rv$ver + 1L
   })
   shiny::observeEvent(input$pg_font, {
     v <- trimws(input$pg_font)

@@ -5,7 +5,7 @@
 # are its rows of the same sheet.
 
 # the study's words the study tab sets, in the order it shows them
-.study_token_names <- c("COMPANY", "ANALYSIS_TYPE", "STUDY_ID")
+.study_token_names <- c("COMPANY", "ANALYSIS_TYPE")
 
 # A study token's value (NA: none)
 study_token <- function(x, name) {
@@ -96,4 +96,17 @@ set_study_token <- function(x, name, value) {
   rownames(d) <- NULL
   x$sheets$tokens <- d
   x
+}
+
+# The study tab shows the Study ID read-only ({STUDY_ID} in a header is
+# it).  A study made before may have a STUDY_ID token that says something
+# else: that value is kept (the headers stay as they were) and the tab
+# says so, with a button to use the Study ID.
+.study_id_token_note <- function(x, study_id, t) {
+  tok <- study_token(x, "STUDY_ID")
+  if (is.na(tok) || !nzchar(tok) || identical(tok, study_id) ||
+      identical(tok, "{STUDY_ID}")) return(NULL)
+  shiny::div(class = "small text-muted mb-2",
+             sprintf(t("The headers say {STUDY_ID} = %s (the tokens sheet), not the Study ID."), tok),
+             shiny::actionLink("tok_study_id_use", t("Use the Study ID")))
 }

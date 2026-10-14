@@ -227,7 +227,7 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
 #'    (its marker line says when, and which standards); tflplanner does
 #'    not change it after.
 #' 2. the study: its folders ([study_layout()]: `path_adam`, `path_sdtm`
-#'    ...) and what it is (`study_id`, `study_title`, `study_compound`,
+#'    ...) and what it is (`study_id`, `study_title`, `study_short_title`, `study_compound`,
 #'    `study_phase`, `study_description` from `study.yml`).  tflplanner
 #'    writes it again on every save.
 #' 3. the study's own code: tflplanner never touches it.

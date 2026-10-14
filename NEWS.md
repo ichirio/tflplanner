@@ -1,5 +1,19 @@
 # tflplanner (development version)
 
+- **The study tab: Title, Short title, Study ID; no veil while a field is
+  edited** (#386, 0.0.2.9220; the user's request).  The "Protocol" box was
+  a second copy of the Study ID, and "protocol" usually means the long
+  title.  The tab now has the Title, a Short title (new `short_title` in
+  `study.yml`; `{STUDY_SHORT_TITLE}` in a header or footer;
+  `study_short_title` in `programs/study_setup.R`; `create_study(short_title
+  = )`) and the Study ID, read-only (it is the folder's name and cannot be
+  changed here; `{STUDY_ID}` in a header is it).  A study whose `STUDY_ID`
+  token says something else keeps that value, so its headers do not change;
+  the tab says so and offers "Use the Study ID".  Editing a field (text,
+  text area, select) or pressing Save no longer greys the page and shows
+  the hourglass after 0.4 s (#51); the veil stays for opening a study and
+  switching a tab or a report.
+
 - **An official run keeps going when the app closes; the launcher when
   its port is taken** (#373, 0.0.2.9219; the user's request).  An
   official run (`run_batch()`) used to stop with the app's R process --

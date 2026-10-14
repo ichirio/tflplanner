@@ -27,7 +27,7 @@
 #'   [setup_tflplanner()]).
 #' @param run Make the ARD and the reports (needs 'cards' and 'cardx').
 #' @param study_id The new study's ID (default `SAMPLE-01`).
-#' @param title,compound,phase,description The study's fields; `NULL`
+#' @param title,short_title,compound,phase,description The study's fields; `NULL`
 #'   keeps the sample's.
 #' @param home tflplanner's home.
 #' @return The study, invisibly.
@@ -46,7 +46,7 @@
 create_sample_study <- function(root = studies_root(home), run = TRUE,
                                 study_id = .sample_id, title = NULL,
                                 compound = NULL, phase = NULL,
-                                description = NULL,
+                                description = NULL, short_title = NULL,
                                 home = tflplanner_home()) {
   src <- system.file("sample", .sample_id, package = "tflplanner")
   if (!nzchar(src)) stop("The sample study is not installed.", call. = FALSE)
@@ -76,7 +76,7 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
   # the study's own ID and fields
   meta <- .read_meta(path)
   meta$study_id <- study_id
-  given <- list(title = title, compound = compound, phase = phase,
+  given <- list(title = title, short_title = short_title, compound = compound, phase = phase,
                 description = description)
   for (k in names(given)) if (!is.null(given[[k]])) meta[[k]] <- given[[k]]
   meta$created <- format(Sys.Date())

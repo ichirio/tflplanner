@@ -47,7 +47,8 @@ study_layout <- function() {
 .table_file <- "table_spec.xlsx"
 .report_file <- "report_spec.xlsx"
 
-.study_fields <- c("study_id", "title", "compound", "phase", "description")
+.study_fields <- c("study_id", "title", "short_title", "compound", "phase",
+                   "description")
 
 .check_study_id <- function(id) {
   if (!is.character(id) || length(id) != 1L || is.na(id) ||
@@ -116,7 +117,8 @@ study_layout <- function() {
 #' * `list_studies()` lists the registered studies.
 #'
 #' @param study_id The study's id, which is also its folder name.
-#' @param title,compound,phase,description What the study is.
+#' @param title,short_title,compound,phase,description What the study is
+#'   (`short_title`: the title for a header or footer, `{STUDY_SHORT_TITLE}`).
 #' @param planner An `tflplanner` to start from (e.g. an earlier study's
 #'   `open_study(...)$planner`); `NULL` starts from the company standards:
 #'   their study-default rows, analysis sets and data catalog.
@@ -142,7 +144,7 @@ study_layout <- function() {
 #' options(old)
 #' @export
 create_study <- function(study_id, title = NA, compound = NA, phase = NA,
-                         description = NA, planner = NULL,
+                         description = NA, short_title = NA, planner = NULL,
                          root = studies_root(home),
                          home = tflplanner_home()) {
   study_id <- .check_study_id(study_id)
@@ -158,6 +160,7 @@ create_study <- function(study_id, title = NA, compound = NA, phase = NA,
     dir.create(file.path(path, d), recursive = TRUE, showWarnings = FALSE)
   }
   meta <- list(study_id = study_id, title = as.character(title),
+               short_title = as.character(short_title),
                compound = as.character(compound), phase = as.character(phase),
                description = as.character(description),
                created = format(Sys.Date()))
@@ -351,7 +354,8 @@ list_studies <- function(home = tflplanner_home()) {
     if (is.null(st)) return(NULL)
     v <- function(k) as.character(st$meta[[k]] %||% NA_character_)
     n <- function(x) length(x$output_id %||% list())
-    data.frame(study_id = id, title = v("title"), compound = v("compound"),
+    data.frame(study_id = id, title = v("title"),
+               short_title = v("short_title"), compound = v("compound"),
                phase = v("phase"), saved = as.character(st$saved %||% NA),
                path = st$path, folder = dir.exists(st$path),
                description = v("description"),
@@ -360,7 +364,8 @@ list_studies <- function(home = tflplanner_home()) {
                stringsAsFactors = FALSE)
   })
   out <- do.call(rbind, c(list(data.frame(
-    study_id = character(), title = character(), compound = character(),
+    study_id = character(), title = character(),
+    short_title = character(), compound = character(),
     phase = character(), saved = character(), path = character(),
     folder = logical(), description = character(), reports = integer(),
     analyses = integer())), rows))
