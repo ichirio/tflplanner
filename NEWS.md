@@ -1,5 +1,10 @@
 # tflplanner (development version)
 
+- **tflspec 0.0.24.9112: `tfl_fig_r()` is `tfl_r()`** (0.0.2.9221; the YAML
+  spec's one class for R code in a definition, every kind).  A figure
+  design's R code is read, kept and written as before.  (Pair of
+  ichirio/tflspec#254: merge that first.)
+
 - **An official run keeps going when the app closes; the launcher when
   its port is taken** (#373, 0.0.2.9219; the user's request).  An
   official run (`run_batch()`) used to stop with the app's R process --
