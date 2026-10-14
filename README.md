@@ -46,7 +46,7 @@ Official runs   autoexec_*.R  =>  runs/<date>_<time>_<what>/  (logs, results, co
   a new study starts with -- comes from one workbook, set up once.
 - **Previews and official runs**: a program run on its own is a preview;
   an official run keeps each program's log ([logrx](https://github.com/pharmaverse/logrx)),
-  what it made and the code it ran in a dated batch folder.
+  what it made and the code it ran in a dated run folder.
 - English (default) or Japanese.
 
 > **Status: experimental.**  tflplanner is the GUI over

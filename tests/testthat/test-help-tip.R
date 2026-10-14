@@ -16,7 +16,7 @@ test_that("the (i) is focusable, named by its help, and carries a tooltip", {
 test_that("the long explanations are help now, not paragraphs", {
   html <- as.character(app_ui())
   for (x in c("Reports are made in this order", "Your own ARD functions",
-              "Right-click to add or delete rows", "An official run makes a batch folder")) {
+              "Right-click to add or delete rows", "An official run makes a run folder")) {
     # in an (i)'s help (its aria-label), not in a paragraph of its own
     expect_match(html, paste0('aria-label="', x), fixed = TRUE, info = x)
     expect_false(grepl(paste0("<p class=\"[^\"]*text-muted[^\"]*\">", x), html), info = x)

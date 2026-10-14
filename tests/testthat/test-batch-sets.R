@@ -128,7 +128,7 @@ test_that("the batches column survives the SPEC round trip", {
   expect_identical(batch_sets(q), batch_sets(p))
 })
 
-test_that("the report list shows a report's batches and edits them", {
+test_that("the report list shows a report's report sets; they are made on the Runs tab", {
   skip_on_cran()
   bs_home()
   p <- set_batch(bs_planner(), "Topline", "DM")
@@ -143,10 +143,14 @@ test_that("the report list shows a report's batches and edits them", {
     rv <- session$userData$rv
     session$setInputs(nav = "outputs", target = "VS")
     # the list's column (the table is drawn server side: its data here)
-    expect_match(paste(output$outputs, collapse = ""), "Batches", fixed = TRUE)
-    session$setInputs(report_batches = 1)
-    session$setInputs(report_batches_pick = c("Topline", "Interim"), report_batches_ok = 1)
-    expect_identical(rv$p$outputs$batches[rv$p$outputs$output_id == "VS"], "Topline | Interim")
+    expect_match(paste(output$outputs, collapse = ""), "Report sets", fixed = TRUE)
+    # the Runs tab makes a set: the shown reports ticked together (a filter),
+    # saved under a name
+    expect_setequal(.batch_ticks("DM", "VS", "add"), c("DM", "VS"))
+    expect_identical(.batch_ticks(c("DM", "VS"), "DM", "remove"), "VS")
+    session$setInputs(batch_shown = list(mode = "add", ids = list("VS"), n = 1))
+    session$setInputs(batch_reports = "VS")
+    session$setInputs(batch_save_name = "Interim", batch_save_name_ok = 1)
     expect_identical(batch_sets(rv$p)$Interim, "VS")
   })
 })
