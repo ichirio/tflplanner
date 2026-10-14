@@ -22,13 +22,22 @@
   toupper(tools::file_path_sans_ext(basename(file)))
 }
 
+# The formats a dataset's file may be in, the one to use first: the file R
+# reads whole and fastest first
+.data_pref <- c("rds", "rda", "rdata", "parquet", "csv", "xpt", "sas7bdat")
+
 #' Put a study's data files into its data catalog
 #'
-#' Every data file of the ADaM and SDTM folders ([study_files()]) that the
-#' ARD definition's `datasets` sheet does not have yet -- by path, or by
-#' name -- gets a row: `dataset` the file name in capitals, `level` the
-#' folder's (`ADaM`, `SDTM`), `path` relative to the study folder.  Rows
-#' already there are left as they are.
+#' Every data file of the data folders (`data/adam`, `data/sdtm`,
+#' `data/other`, subfolders too; [study_files()]) that the ARD definition's
+#' `datasets` sheet does not have yet -- by path, or by name -- gets a row:
+#' `dataset` the file name in capitals, `level` the folder's (`ADaM`,
+#' `SDTM`; blank for `other`), `path` relative to the study folder.  Rows
+#' already there are left as they are.  When one name has files in several
+#' formats (`adsl.rds`, `adsl.xpt`), the row is made for the format read
+#' first (`rds`, `rda`, `parquet`, `csv`, `xpt`, `sas7bdat`); the others
+#' stay files with no row of their own, and [catalog_name_clashes()] says
+#' which names have more than one file.
 #'
 #' @param x A `tflplanner`.
 #' @param files [study_files()] of the study.
@@ -36,11 +45,19 @@
 #' @export
 catalog_add_files <- function(x, files) {
   ds <- ard_rows(x, "datasets")
+  lay <- study_layout()
+  folders <- unname(lay[c("adam", "sdtm", "other")])
   lvl <- vapply(files$folder, .folder_level, "", USE.NAMES = FALSE)
+  ext <- tolower(tools::file_ext(files$file))
   rel <- file.path(files$folder, files$file)
-  ok <- !is.na(lvl) & tolower(tools::file_ext(files$file)) %in% .data_exts
+  ok <- files$folder %in% folders & ext %in% .data_exts
+  # one file a name: the format read first, then the folder's order (ADaM,
+  # SDTM, other); the rows are made in the files' order
+  rank <- order(match(ext, .data_pref), match(files$folder, folders))
+  best <- rank[ok[rank]]
+  best <- best[!duplicated(.dataset_name(files$file[best]))]
   added <- character()
-  for (i in which(ok)) {
+  for (i in sort(best)) {
     nm <- .dataset_name(files$file[i])
     if (rel[i] %in% ds$path || nm %in% ds$dataset) next
     ds[nrow(ds) + 1L, ] <- NA
@@ -52,6 +69,33 @@ catalog_add_files <- function(x, files) {
   if (length(added)) x <- set_ard_rows(x, "datasets", "", ds)
   attr(x, "added") <- added
   x
+}
+
+#' The dataset names with more than one data file
+#'
+#' A name several files make (`adsl.rds` and `adsl.xpt`, or `adam/adsl.rds`
+#' and `other/adsl.rds`): the catalog's row uses one, and this says which
+#' others there are.
+#'
+#' @param x A `tflplanner`.
+#' @param files [study_files()] of the study.
+#' @return A data frame: `dataset`, `path` (every file of that name),
+#'   `used` (the catalog's row's path, `NA` when it has none).
+#' @export
+catalog_name_clashes <- function(x, files) {
+  ds <- ard_rows(x, "datasets")
+  lay <- study_layout()
+  keep <- files$folder %in% unname(lay[c("adam", "sdtm", "other")]) &
+    tolower(tools::file_ext(files$file)) %in% .data_exts
+  f <- files[keep, , drop = FALSE]
+  nm <- .dataset_name(f$file)
+  rel <- file.path(f$folder, f$file)
+  out <- lapply(unique(nm[duplicated(nm)]), function(n) data.frame(
+    dataset = n, path = rel[nm == n],
+    used = ds$path[match(n, ds$dataset)], stringsAsFactors = FALSE))
+  if (!length(out)) return(data.frame(dataset = character(), path = character(),
+                                      used = character(), stringsAsFactors = FALSE))
+  do.call(rbind, out)
 }
 
 # The groups in the order the data give them: a factor's levels, else the
@@ -455,4 +499,35 @@ first_listing <- function(x, output_id, path, data, columns, group = NULL,
   words <- strsplit(label %||% "", "\\s+")[[1L]]
   lw <- if (length(words)) max(nchar(words, type = "width")) else 0
   as.integer(max(6, min(40, max(w, lw))))
+}
+
+# The folder (the pill of the Data tab) each catalog row is shown under: the
+# folder its file is in; a row with no file, by its level (ADaM, SDTM); a
+# file outside the three folders, or a row of neither level: "other"
+.dataset_pill <- function(path, level) {
+  lay <- study_layout()
+  vapply(seq_along(path), function(i) {
+    p <- path[i]
+    if (!is.na(p) && nzchar(p)) {
+      for (k in c("adam", "sdtm", "other")) {
+        if (startsWith(p, paste0(lay[[k]], "/"))) return(k)
+      }
+      return("other")
+    }
+    switch(if (is.na(level[i])) "" else toupper(level[i]),
+           ADAM = "adam", SDTM = "sdtm", "other")
+  }, "")
+}
+
+# The catalog's rows with a folder's rows (`now`, as edited) put back in
+# the place the folder's first row was; the other folders' rows as they were
+.datasets_put_back <- function(full, now, pill) {
+  mine <- .dataset_pill(full$path, full$level) == pill
+  at <- if (any(mine)) which(mine)[1L] else nrow(full) + 1L
+  rest <- seq_len(nrow(full))[!mine]
+  now <- now[, names(full), drop = FALSE]
+  out <- rbind(full[rest[rest < at], , drop = FALSE], now,
+               full[rest[rest > at], , drop = FALSE])
+  rownames(out) <- NULL
+  out
 }

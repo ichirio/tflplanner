@@ -613,7 +613,10 @@ add_standard_defaults <- function(x, study_id) {
                                                              "USUBJID")
   p$ard$study$value[p$ard$study$key == "output"] <-
     .std_setting("ard_output", "output/ard/ard.rds")
-  p$ard$populations <- .normalize_ard_sheet(s$populations, "populations")
+  # the company's note on a set is its label in the new study's sheet
+  po <- s$populations
+  if (is.null(po$label) && !is.null(po$note)) po$label <- po$note
+  p$ard$populations <- .normalize_ard_sheet(po, "populations")
   p$ard$datasets <- .normalize_ard_sheet(s$datasets, "datasets")
   p
 }

@@ -320,31 +320,31 @@ An ARD program failed: see its log (Study ARD).,ARD プログラムがエラー�
 Choose a row to see its log.,行を選ぶとログを表示します。
 Preview: put this output into the study ARD,プレビュー：この帳票を試験 ARD に入れる
 Official run: the whole study ARD,正式実行：試験 ARD 全体
-keep the code in the batch folder,バッチフォルダにコードを含める
-"Both run the saved programs (programs/ard/): unsaved changes are saved first. A preview updates the working ARD and keeps no log; an official run makes a batch folder (runs/) with the logs (logrx), the ARD and the code. Choose a row to see its log in the latest official run.",どちらも保存済みのプログラム（programs/ard/）を実行します（未保存の変更は先に保存）。プレビューは作業用 ARD を更新しログは残しません。正式実行はバッチフォルダ（runs/）を作り、ログ（logrx）・ARD・コードを格納します。行を選ぶと最新の正式実行でのログを表示します。
+keep the code in the run folder,実行フォルダにコードを含める
+"Both run the saved programs (programs/ard/): unsaved changes are saved first. A preview updates the working ARD and keeps no log; an official run makes a run folder (runs/) with the logs (logrx), the ARD and the code. Choose a row to see its log in the latest official run.",どちらも保存済みのプログラム（programs/ard/）を実行します（未保存の変更は先に保存）。プレビューは作業用 ARD を更新しログは残しません。正式実行は実行フォルダ（runs/）を作り、ログ（logrx）・ARD・コードを格納します。行を選ぶと最新の正式実行でのログを表示します。
 Preview selected,選択をプレビュー
 Preview all,すべてプレビュー
-Official runs (batch folders),正式実行（バッチフォルダ）
-"An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read.",正式実行は runs/<日付>_<時刻>_<内容>/ のバッチフォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、R とパッケージの版（session_info.txt）、指定すれば実行したプログラムと定義ブック、読んだデータを格納します。
+Official runs (run folders),正式実行（実行フォルダ）
+"An official run makes a run folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read.",正式実行は runs/<日付>_<時刻>_<内容>/ の実行フォルダを作り、各プログラムのログ（logrx）、作成物（試験 ARD、RTF）、R とパッケージの版（session_info.txt）、指定すれば実行したプログラムと定義ブック、読んだデータを格納します。
 "ARD, then reports",ARD → 帳票
 Start the official run,正式実行を開始
-Open the batch folder,バッチフォルダを開く
+Open the run folder,実行フォルダを開く
 Running the ARD program,ARD プログラムを実行中
 The ARD program failed: see what it printed below.,ARD プログラムがエラーになりました。下の出力を確認してください。
 Choose a row to see its log in the latest official run.,行を選ぶと最新の正式実行でのログを表示します。
 # Preview of %s (not kept),# %s のプレビュー（保存されません）
 %s has no official run yet.,%s はまだ正式実行されていません。
 the official run:,正式実行：
-Batch folder,バッチフォルダ
+Run folder,実行フォルダ
 Started,開始
 Runs,実行
 Programs,プログラム数
 Errors,エラー
 Code,コード
-"Choose a report to see what its last preview printed, or a batch folder to see its run.",帳票を選ぶと直近のプレビューの出力を、バッチフォルダを選ぶとその実行内容を表示します。
+"Choose a report to see what its last preview printed, or a run folder to see its run.",帳票を選ぶと直近のプレビューの出力を、実行フォルダを選ぶとその実行内容を表示します。
 Working data: the study ARD (ard.rds),作業用データ：試験 ARD（ard.rds）
 Working reports: RTF,作業用帳票：RTF
-"Official runs: one batch folder each (logs, results, code)",正式実行：1 回ごとのバッチフォルダ（ログ・結果・コード）
+"Official runs: one run folder each (logs, results, code)",正式実行：1 回ごとの実行フォルダ（ログ・結果・コード）
 What a report program printed in its last preview,帳票プログラムの直近プレビューの出力
 1. ARD: make `ard` (Listing: rework `data`; Figure: the plot). Blank for a table = the company template: its rows of the study ARD.,1. ARD：`ard` を作る（Listing：`data` の加工、Figure：プロット）。表で空欄なら会社テンプレート（試験 ARD から自分の行を取得）。
 "2. Normalize and rework: make `data` from `ard` (normalize_ard(), then mutate() ...). Blank = the company template (normalize).",2. normalize と加工：`ard` から `data` を作る（normalize_ard() の後に mutate() など）。空欄なら会社テンプレート（normalize）。
@@ -2028,7 +2028,7 @@ Definitions,定義
 Files,ファイル
 No file for: %s,ファイルがありません：%s
 SDTM / ADaM / other,SDTM・ADaM・その他
-"The populations: the subjects of a dataset a condition keeps (SAFFL == ""Y"").","解析対象集団：データセットのうち、条件（SAFFL == ""Y""）で残る被験者。"
+"An analysis set: the subjects of a dataset that a condition keeps (SAFFL == ""Y""). The Data of an analysis, 1-1's Population and a percent's denominator choose from here.","解析対象集団：データセットのうち、条件（SAFFL == ""Y""）で残る被験者。解析の Data、1-1 の Population、% の分母は、ここから選びます。"
 "The datasets the study's programs read (the data catalog): a name, its level, its file in the study folder, columns derived. Defined once for the study, used by every report.",試験のプログラムが読むデータセット（データカタログ）：名前・区分・試験フォルダの中のファイル・作る列。試験で 1 回定義し、すべての帳票で使います。
 "The study's code lists: each variable's values, their order and the text they print as, for every report (a report's own rows, in its step 1, replace them).",試験のコードリスト：変数ごとの値・順番・表示する文字。すべての帳票に効きます（帳票の段 1 の行がそれを置き換えます）。
 %s chosen: the form below,%s を選択中：下のフォーム
@@ -2190,7 +2190,7 @@ stat-label:Number of events,イベント数
 The report's analyses. Each one's Data: an analysis data of 1-1; the denominator of a percent: chosen with it. ARD: the data of the analyses' results (the tables are made from it). Population: the subjects a percent is of (SAF ...).,帳票の解析。各解析のデータは 1-1 の解析データ、% の分母は解析と一緒に選びます。ARD = 解析結果のデータ（表はここから作ります）。解析対象集団 = 分母になる被験者の集まり（SAF など）。
 Analysis %s,解析 %s
 "A stack: it runs the analyses inside it together (cards::ard_stack), in one call (the column headers' N too).",スタック: 中の解析をまとめて 1 回で計算します（cards::ard_stack。列見出しの N も）。
-"The rows the analysis reads: an analysis data of 1-1, or a dataset × population. The name is the one the program gives it.",解析が読む行。1-1 の解析データ、またはデータセット × 解析対象集団。名前はプログラムでの名前です。
+"The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data of 1-1 (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.",解析が読む行を、定義から選びます：データセット（Data タブ）を解析対象集団（Populations）で絞ったもの、または 1-1 の解析データ（同じものに加工を足したもの）。集団は選択の一部です。名前はプログラムでの名前です。
 "An R condition that filters this analysis's rows alone (e.g. AESER == ""Y""). The data's own filter is 1-1's.","この解析だけの行の絞り込み条件（R の式。例 AESER == ""Y""）。データそのものの絞り込み条件は 1-1 で。"
 This analysis's own filter,この解析だけの絞り込み条件
 "cards' arguments, in R (e.g. conf.level = 0.9).",cards の引数を R で（例: conf.level = 0.9）。
@@ -2202,14 +2202,14 @@ Format,書式
 This analysis as code,この解析のコード
 "The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (Apply first). The code is part of the definition: the program is never edited.",手法が custom になり、今の定義から書いたこのコードが解析になります（同じ ARD。先に［適用］）。コードは定義の一部で、プログラムは直しません。
 The order inside a stack,スタックの中の順
-"The study's population (SAF ...) or a population flag of the data, put in as the condition's first row (SAFFL = Y). Left as it is, it is saved as the population (population_id); change it there, add others under it.",試験の解析対象集団（SAF など）か、データの集団フラグ。下の条件の 1 行目に入ります（SAFFL = Y）。そのままなら解析対象集団（population_id）として保存。直すのも、ほかの条件を足すのも条件の欄で。
+"The analysis set (Populations tab) this data is kept to, or a population flag of the data (SAFFL = Y). Make an analysis data only when the report needs more than a dataset kept to a set.",このデータを絞る解析対象集団（Populations タブ）、またはデータの集団フラグ（SAFFL = Y）。データセットを集団で絞るだけで足りないときだけ、解析データを作ります。
 "The condition the data's rows are filtered by (filter()). The rows are AND (""+ and""); ""+ or (another group)"" is OR. A flag: ""= Y"". What the rows cannot say: ""Write the condition as R"".",データの行を絞り込む条件（filter() の中身）。行どうしは「かつ」（+ かつ）、「+ または（別のまとまり）」は「または」。フラグは「= Y」。行で書けない式は「条件を R の式で書く」。
 Only the subjects in that analysis data: its condition (its population's too) is not written here again.,その解析データにいる被験者だけを残します。そちらの条件（解析対象集団も）をここに書き直す必要はありません。
 "When the fields cannot say it: R whose value is the whole data (the datasets, pop_<set> and the analysis data above are in reach); written, none of the fields above is used. Only the filter: ""Write the condition as R"" above. The program is never edited: this R is the definition.",欄で書けないとき、値がデータ全体になる R（データセット、pop_<集団>、上の解析データが使えます）。書くと上の欄はどれも使われません。絞り込み条件だけなら、上の「条件を R の式で書く」。プログラムは直しません（この R が定義です）。
 The method,手法
 "The method becomes custom and this code, written from the definition as it is now, is the analysis: the same ARD (press Apply to the analysis first). The code is part of the definition: the program is never edited.",手法が custom になり、今の定義から書いたこのコードが解析になります（同じ ARD。先に［解析に反映］を押してください）。コードは定義の一部で、プログラムは直しません。
 This report's population,この帳票の解析対象集団
-"The report list's population (the TOC's): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 1-1 and 1-2 start from it.",帳票一覧（TOC）の解析対象集団と同じ 1 つの値です。選ぶと、その集団の被験者のデータ（adsl_<集団>）が作られ、この帳票の解析もそちらに移ります。1-1・1-2 の既定もこれです。
+"The report's analysis set (the TOC's; also the header's <OUTPUT_POPULATION> text): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 1-1 and 1-2 start from it. An analysis may still read another.",帳票の解析対象集団（TOC の値。ヘッダーの <OUTPUT_POPULATION> の文にもなります）：帳票に 1 つの値です。選ぶと、その集団の被験者のデータ（adsl_<集団>）ができ、帳票の解析はそちらに移ります。1-1・1-2 の既定値でもあります。解析ごとに別の集団を読むこともできます。
 %s made (save to keep it).,%s を作りました（保存すると残ります）。
 %s left as it is: change it in 1-1 if it should follow the population.,%s はそのままです。解析対象集団に合わせるなら 1-1 で直してください。
 %s has no %s: its condition is not taken as the population %s (written as a condition).,%s に %s がありません。条件は解析対象集団 %s とみなさず、ただの条件として書きます。
@@ -2450,23 +2450,23 @@ Code list of %s,%s のコードリスト
 value: as the data has it; label: what it prints as (blank: itself); order: its place,value：データの値、label：表示する文字（空欄なら値のまま）、order：並び順
 "As the code list of variable: value, label, order",variable のコードリストとして：値・ラベル・並び順
 "Each variable (value), the heading the table prints for it (label; blank: as the ARD names it) and its place (order). The same as the list above and its labels: the program writes them as plan_labels(variable = ...).",各変数（value）、表に出す見出し（label。空欄なら ARD の名前のまま）、並び順（order）です。上の並びとラベルと同じもので、プログラムには plan_labels(variable = ...) として書かれます。
-(the batch %s),（バッチ %s）
+(the report set %s),（帳票セット %s）
 (%d left out),（%d 件を除く）
-Named batch,名前付きバッチ
-"A named batch is a set of reports an official run takes by name (Topline, Interim Analysis, Final): choosing one ticks its reports. A report's batches are the report list's batches column; the full run is every report and has no name.",名前付きバッチは、正式実行が名前で選べる帳票の組です（Topline、Interim Analysis、Final など）。選ぶと、その帳票にチェックが付きます。帳票がどのバッチに入るかは、帳票一覧の batches 列です。全部の実行はすべての帳票で、名前はありません。
+Report set,帳票セット
+"A report set is a group of reports an official run takes by name (Topline, Interim Analysis, Final): choosing one ticks its reports. Which sets a report is in shows in the report list's Report sets column; the full run is every report and has no name.",帳票セットは、正式実行が名前で選べる帳票の組です（Topline、Interim Analysis、Final など）。選ぶと、その帳票にチェックが付きます。帳票がどのセットに入っているかは、帳票一覧の「帳票セット」列で見られます。全部の実行はすべての帳票で、名前はありません。
 (every report),（すべての帳票）
 Save the ticks as...,名前を付けて保存…
 Rename...,名前を変える…
 None,なし
 Reports in the run: all %d,実行する帳票：全 %d 件
 Reports in the run: %d of %d (%d left out),実行する帳票：%2$d 件中 %1$d 件（%3$d 件を除く）
-Tick the reports of the batch first.,先にバッチの帳票にチェックを付けてください。
-Save the %d ticked reports as a named batch,チェックした %d 件の帳票を、名前付きバッチとして保存
+Tick the reports of the report set first.,先に帳票セットの帳票にチェックを付けてください。
+Save the %d ticked reports as a report set,チェックした %d 件の帳票を、帳票セットとして保存
 "A name the study has already is overwritten: it becomes these reports. Letters, digits, spaces, . _ -",試験にすでにある名前なら上書きします（そのバッチはこれらの帳票になります）。使える文字：英数字、空白、. _ -
-The batch %s: %d reports (save the study to keep it).,バッチ %s：%d 件の帳票（残すには試験を保存してください）。
-Rename the batch %s,バッチ %s の名前を変える
+The report set %s: %d reports (save the study to keep it).,帳票セット %s：%d 件の帳票（残すには試験を保存してください）。
+Rename the report set %s,帳票セット %s の名前を変える
 Its reports stay as they are.,帳票はそのままです。
-Delete the batch %s?,バッチ %s を削除しますか？
+Delete the report set %s?,帳票セット %s を削除しますか？
 Only the name goes: its reports stay on the report list.,消えるのは名前だけです。帳票は帳票一覧に残ります。
 Choose at least one report for the run.,実行する帳票を 1 つ以上選んでください。
 A report the run makes reads an ARD it leaves out,実行する帳票が、除いた帳票の ARD を読んでいます
@@ -2474,14 +2474,10 @@ A report the run makes reads an ARD it leaves out,実行する帳票が、除い
 %s reads the ARD of %s,%s は %s の ARD を読みます
 Run anyway,このまま実行する
 Left out,除いたもの
-Choose a named batch first.,先に名前付きバッチを選んでください。
-(not the batch %s any more: the run has no name),（バッチ %s とは違います：名前なしの実行になります）
+Choose a report set first.,先に帳票セットを選んでください。
+(not the report set %s any more: the run has no name),（帳票セット %s とは違います：名前なしの実行になります）
 ", ... (%d)",、…（%d 件）
-Batch name,バッチ名
-Batches,バッチ
-Batches...,バッチ…
-The named batches of %s,%s の名前付きバッチ
-"The official runs that take this report by name (Topline, Final ...): choose the names in use or type a new one. The Runs tab runs a named batch.",この帳票を名前で選ぶ正式実行（Topline、Final など）です。使っている名前から選ぶか、新しい名前を入力します。名前付きバッチは実行タブで実行します。
+Report sets,帳票セット
 "A flag (== ""Y"") that selects the population, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"
 Keep a population,解析対象集団で絞る
 "No population: every row of the dataset is used. Keep the population's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。
@@ -2743,7 +2739,7 @@ On a title line,タイトル行に
 "Title line (1, 2, last)",タイトル行（1、2、last）
 The reports,帳票
 %d reports from %d rows.,%2$d 行から %1$d 帳票。
-%s batch: %d reports.,%s バッチ：%d 帳票。
+%s report set: %d reports.,%s 帳票セット：%d 帳票。
 Show all %d reports,%d 帳票すべてを表示
 Rows not read (%d):,読めなかった行（%d）：
 "Set them by hand after taking it in, or fix the TOC.",取り込み後に手で設定するか、TOC を直してください。
@@ -2872,7 +2868,7 @@ Add a line,行を足す
 Add a line to this pattern,この型に行を足す
 Remove the line,行を削除
 Remove the token,トークンを削除
-keep the data in the batch folder,バッチフォルダにデータを含める
+keep the data in the run folder,実行フォルダにデータを含める
 "The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the run can be made again.",実行するプログラムが読むデータファイル（データカタログのもの：表のデータセット、リスト・図のデータセット、取り込んだ ARD）を md5 付きで写します（data_manifest.csv）。コード・ログ・R とパッケージの版（session_info.txt）と合わせて、同じ実行をやり直せます。
 The run's programs read no data file of the data catalog.,実行するプログラムが読むデータカタログのファイルはありません。
 "Data kept: %d files, %s.",含めるデータ：%d ファイル、%s。
@@ -3142,3 +3138,20 @@ The backup was read. Choose the parts to bring back.,バックアップを読み
 Export,書き出し
 Import definition files,定義ファイルを取り込む
 "(an edited copy: workbooks, .yml, .json or the zip)",（直した写し：ワークブック、.yml、.json、または zip）
+Files and datasets,ファイルとデータセット
+"The data files of the folder (data/) and what the study's programs read of them (the data catalog): a name, its level, its file, columns derived. A file put in the folder gets a row; a row with no file is a dataset made on the way. Defined once for the study, used by every report.",フォルダ（data/）のデータファイルと、試験のプログラムがそのうち何を読むか（データカタログ）：名前、レベル、ファイル、作る列。フォルダに入れたファイルには行ができます。ファイルのない行は、途中で作るデータセットです。試験で 1 回だけ定義し、すべての帳票で使います。
+"ARDs made elsewhere are in ""ARDs taken in"" (input/ard/).",別の場所で作った ARD は「取り込んだ ARD」（input/ard/）にあります。
+no file,ファイルなし
+Files with no row yet: %s (Refresh makes the rows).,まだ行のないファイル：%s（更新すると行ができます）。
+More than one file of a name: %s. The row uses the file in its path; choose another there.,同じ名前のファイルが複数あります：%s。行は path のファイルを使います。変えるときは path で選んでください。
+A dataset name is in the catalog twice: %s. Only the first row is read.,データセット名がカタログに重複しています：%s。最初の行だけが読まれます。
+Click a dataset in the list to see its first rows.,一覧のデータセットをクリックすると、先頭の行を表示します。
+Analysis sets (their subjects),解析対象集団（その被験者）
+"The population as a header or footnote prints it, and its name in CDISC ARS; blank: the population_id.",ヘッダーや脚注に出す解析対象集団の文言。CDISC ARS では解析対象集団の名前になります。空欄は population_id。
+"The population as a header or footnote prints it, and its name in CDISC ARS; blank: the population_id.",ヘッダーや脚注に出す解析対象集団の文言。CDISC ARS では解析対象集団の名前になります。空欄は population_id。
+Report sets...,帳票セット…
+Report sets are made and chosen on the Runs tab: this opens it,帳票セットは実行タブで作り、選びます。ここから実行タブを開きます
+Puts the whole list in the order of the numbers in the ids (T-14-1-2 before T-14-1-10),リスト全体を、ID の数字の順に並べます（T-14-1-2 が T-14-1-10 より前）
+"Filter the reports (ID, description)",帳票を絞り込む（ID・説明）
+Tick the shown,表示中をチェック
+Untick the shown,表示中のチェックを外す

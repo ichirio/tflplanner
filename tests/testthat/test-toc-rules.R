@@ -476,7 +476,7 @@ test_that("the dialog: two files found, a sheet switched, the id rule, Take it i
     p <- output$toc1_preview$html
     expect_match(p, "t.14.1.1.a", fixed = TRUE)
     expect_match(p, "t.14.1.1-1", fixed = TRUE)
-    expect_match(p, "Topline batch: 3 reports", fixed = TRUE)
+    expect_match(p, "Topline report set: 3 reports", fixed = TRUE)
     expect_match(p, "Rows not read (2)", fixed = TRUE)
     expect_match(output$toc1_map$html, "Phase suffixes for this study", fixed = TRUE)
     expect_match(output$toc1_changes$html, "New 7", fixed = TRUE)
@@ -502,7 +502,7 @@ test_that("the dialog: two files found, a sheet switched, the id rule, Take it i
     expect_identical(batch_sets(rv$p)$Topline, c("t.14.1.1.a", "t.14.1.1.b", "t.14.2.1.b"))
     res <- output$toc1_result$html
     expect_match(res, "TOC001", fixed = TRUE)
-    expect_match(res, "Topline batch: 3 reports", fixed = TRUE)
+    expect_match(res, "Topline report set: 3 reports", fixed = TRUE)
     expect_match(res, "shells linked", fixed = TRUE)
     expect_identical(toc_imports(rv$study)$sources, "2")
     expect_identical(nrow(toc_shell_links(rv$study)), 6L)

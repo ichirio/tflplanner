@@ -198,3 +198,23 @@
   }
   a
 }
+
+# The "dataset x population" entries of the list that are the same data as a
+# plain analysis data of the report (made from that dataset, kept to that
+# set, nothing more) are left out: the analysis data is the one line for it
+# (`group`: the list's group of those entries).  The one the analysis
+# reads now stays.
+.an_data_drop_same <- function(ch, now, ad, populations, group) {
+  if (!is.list(ch) || is.null(ad) || !nrow(ad) || !group %in% names(ch)) return(ch)
+  g <- ch[[group]]
+  keep <- vapply(g, function(v) {
+    if (identical(v, now) || !nzchar(v) || startsWith(v, "@")) return(TRUE)
+    x <- .an_data_split(v)
+    if (is.na(x$pop)) return(TRUE)
+    from <- if (is.na(x$dataset)) populations$dataset[match(x$pop, populations$population_id)] else
+      x$dataset
+    is.na(.adata_same_as(ad, from, x$pop, NA, NA))
+  }, NA)
+  ch[[group]] <- g[keep]
+  ch
+}

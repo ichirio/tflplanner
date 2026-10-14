@@ -129,3 +129,9 @@ batch_set_problems <- function(x) {
 
 # a batch's name as a batch folder carries it (runs/<stamp>_all_Topline)
 .batch_folder_name <- function(name) gsub("[^A-Za-z0-9._-]", "_", name)
+
+# The ticks of the Runs tab's report list after "Tick the shown" (`mode`
+# "add") or "Untick the shown" (`"remove"`) on the reports a filter shows
+.batch_ticks <- function(now, shown, mode) {
+  if (identical(mode, "add")) union(now, shown) else setdiff(now, shown)
+}
