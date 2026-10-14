@@ -1,5 +1,21 @@
 # tflplanner (development version)
 
+- **The Data tab: files and datasets on one screen** (#388, 0.0.2.9222; the
+  user's request).  The file list (All / SDTM / ADaM / Other, an "Into"
+  folder) and the Datasets definition were two places.  Now the Datasets
+  grid has folder pills (ADaM | SDTM | Other) over it: the rows of the
+  folder you are in (a row with no file by its level), the file's size
+  beside, and Add files puts files into the open folder.  A file put in a
+  folder gets a row when the Data tab is opened, on Refresh and on upload --
+  now the `other` folder and subfolders too, and when a name has several
+  files (`adsl.rds`, `adsl.xpt`) the row uses the one read first (`rds`,
+  `parquet`, `csv`, `xpt`, `sas7bdat`); the note under the grid says the
+  names with several files and the dataset names the catalog has twice.
+  `catalog_name_clashes()` is new.  Files and rows with no counterpart are
+  said, nothing is dropped.  The `datasets` sheet and the generated
+  programs are unchanged (no migration).  ARDs taken in stay on their own
+  panel, with a note under the grid.
+
 - **An official run keeps going when the app closes; the launcher when
   its port is taken** (#373, 0.0.2.9219; the user's request).  An
   official run (`run_batch()`) used to stop with the app's R process --
