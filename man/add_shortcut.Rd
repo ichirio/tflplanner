@@ -57,11 +57,22 @@ A shortcut runs a small launcher that tflplanner keeps in
 \code{tools::R_user_dir("tflplanner", "config")}.  The launcher finds R each
 time it starts (on Windows from the registry entry the R installer
 writes), so updating R does not break the shortcut, and it shows no
-console window.  If tflplanner already runs on the port, the shortcut
-opens it; otherwise it starts it, and closing the browser stops it.
+console window.  It starts the app, and closing the browser stops it.
+When the port is taken:
+\itemize{
+\item by this version of tflplanner, it opens that one;
+\item by another version, or a tflplanner that does not answer, it asks
+whether to stop that one and start again (an official run goes on by
+itself: \code{\link[=run_batch]{run_batch()}});
+\item by another program, it starts on the next free port.
+}
+
+Each start is noted in the launcher's \code{launcher.log}.
 
 "Update and launch" first updates rtfreporter, tflspec and tflplanner
-(\code{\link[=update_tflplanner]{update_tflplanner()}}, on the channel last used), then starts the app.
+(\code{\link[=update_tflplanner]{update_tflplanner()}}, on the channel last used), then starts the app;
+while an official run goes on it does not update (the run has loaded
+the packages) and starts the app as it is.
 
 On Windows the shortcuts are written by a VBScript, and one it could not
 write again by PowerShell: security software may stop a script from

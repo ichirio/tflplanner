@@ -177,6 +177,7 @@ run_app <- function(study = NULL, ..., stop_on_close = FALSE,
 planner_app <- function(study = NULL, stop_on_close = FALSE) {
   if (!.is_set_up()) setup_tflplanner(home = NULL)
   .refresh_launcher()
+  .serve_health()
   # the study is checked here, once; each session (a new tab, a reload)
   # opens it again from its folder -- as last saved, not as it was when the
   # app started (a copy taken at start would be written back by a save)
@@ -187,6 +188,18 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
                     start <- .session_study(start_path)
                     app_server(input, output, session, start)
                   })
+}
+
+# What the launcher asks a running app, at /tflplanner-health/health.txt:
+# its version and its process, so a second start can open the same version
+# and offer to stop an older one (inst/launcher/launch.R)
+.serve_health <- function() {
+  d <- file.path(tempdir(), "tflplanner-health")
+  dir.create(d, showWarnings = FALSE)
+  writeLines(c(paste("tflplanner", as.character(utils::packageVersion("tflplanner"))),
+               paste("pid", Sys.getpid())), file.path(d, "health.txt"))
+  shiny::addResourcePath("tflplanner-health", d)
+  invisible(d)
 }
 
 # the study a session starts on, read from its folder now; NULL (the last
@@ -1879,8 +1892,10 @@ app_server <- function(input, output, session, start) {
     last <- shiny::isolate(if (has_study()) rv$study$meta$study_id else
       tflplanner_config()$last_study)
     open_id <- shiny::isolate(if (has_study()) rv$study$meta$study_id)
-    # a study whose run is going on (the sample's, made in the background)
-    running <- if (!is.null(rv$job)) rv$job_study
+    # a study whose run is going on (the sample's, made in the background;
+    # an official run started before this app, which goes on by itself)
+    running <- unique(c(if (!is.null(rv$job)) rv$job_study,
+                        tryCatch(.live_runs()$study_id, error = function(e) NULL)))
     v <- data.frame(
       a = .study_list_ids(d, open_id, running, t),
       b = d$title, e = substr(d$saved, 1L, 16L),
@@ -1952,11 +1967,14 @@ app_server <- function(input, output, session, start) {
     unsaved <- isTRUE(dirty())
     shiny::showModal(shiny::modalDialog(
       title = t("Close tflplanner"), easyClose = TRUE,
-      # a run in the background stops with tflplanner: its ARD and reports
-      # are left half made
+      # an official run goes on by itself (its batch folder, when the study
+      # is opened again); a preview stops with tflplanner
       if (!is.null(rv$job)) shiny::div(
-        class = "alert alert-warning py-2 small",
-        sprintf(t("%s is going on: closing stops it, and its ARD and reports are left unfinished. Wait for it to end, or run it again later (Runs)."),
+        class = if (identical(rv$job_kind, "official")) "alert alert-info py-2 small" else
+          "alert alert-warning py-2 small",
+        sprintf(if (identical(rv$job_kind, "official"))
+                  t("%s goes on after tflplanner closes; open the study again to see how it went (Runs).") else
+                  t("%s is going on: closing stops it, and its ARD and reports are left unfinished. Wait for it to end, or run it again later (Runs)."),
                 sub("^(.)", "\\U\\1", rv$job_what %||% t("A run"), perl = TRUE))),
       shiny::p(if (unsaved) t("There are unsaved changes. Save them before tflplanner stops?") else
         t("tflplanner stops; then its window can be closed.")),
@@ -10702,6 +10720,7 @@ app_server <- function(input, output, session, start) {
     px <- guarded(run_study(rv$study, ids, wait = FALSE))
     if (is.null(px)) return()
     rv$job <- px
+    rv$job_kind <- "preview"
     rv$job_what <- what
     rv$job_study <- rv$study$meta$study_id
   }
@@ -10719,6 +10738,7 @@ app_server <- function(input, output, session, start) {
     px <- guarded(run_batch(s, c("ard", "tfl"), wait = FALSE))
     if (is.null(px)) return()
     rv$job <- px
+    rv$job_kind <- "official"
     rv$job_what <- sprintf(t("the official run of %s (its ARD and reports)"),
                            s$meta$study_id)
     rv$job_study <- s$meta$study_id
@@ -10744,6 +10764,7 @@ app_server <- function(input, output, session, start) {
     # runs table says it is running, and the end says how it went)
     rv$job_batches_before <- before
     rv$job <- px
+    rv$job_kind <- "official"
     rv$job_study <- rv$study$meta$study_id
     rv$job_what <- paste(t("the official run:"),
                          paste(t(c(ard = "ARD", tfl = "Reports")[parts]),
@@ -11215,6 +11236,7 @@ app_server <- function(input, output, session, start) {
       }
       rv$job_batches_before <- NULL
       rv$job <- NULL
+      rv$job_kind <- NULL
       rv$job_study <- NULL
       rv$status_ver <- rv$status_ver + 1L
       rv$ard_ver <- rv$ard_ver + 1L
@@ -11226,9 +11248,23 @@ app_server <- function(input, output, session, start) {
                shiny::span(class = "spinner-border spinner-border-sm me-2"),
                sprintf(t("Running %s ..."), rv$job_what))
   })
+  # a study opened with its official run going on (started before this
+  # app, or by another): the app follows it as one it started
+  shiny::observeEvent(rv$study, {
+    if (!is.null(rv$job) || is.null(rv$study)) return()
+    rec <- tryCatch(.live_run(rv$study$meta$study_id), error = function(e) NULL)
+    if (is.null(rec)) return()
+    rv$job_batches_before <- strsplit(rec$before %||% "", "|", fixed = TRUE)[[1L]]
+    rv$job <- .attach_run(rec)
+    rv$job_kind <- "official"
+    rv$job_study <- rec$study_id
+    rv$job_what <- sprintf(t("the official run (started %s)"), substr(rec$started, 12L, 16L))
+  }, ignoreNULL = TRUE)
+  # a preview stops with the session; an official run goes on by itself
   session$onSessionEnded(function() {
     px <- shiny::isolate(rv$job)
-    if (!is.null(px) && px$is_alive()) px$kill()
+    if (!is.null(px) && !identical(shiny::isolate(rv$job_kind), "official") &&
+        px$is_alive()) px$kill()
   })
 }
 

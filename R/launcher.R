@@ -461,11 +461,21 @@
 #' `tools::R_user_dir("tflplanner", "config")`.  The launcher finds R each
 #' time it starts (on Windows from the registry entry the R installer
 #' writes), so updating R does not break the shortcut, and it shows no
-#' console window.  If tflplanner already runs on the port, the shortcut
-#' opens it; otherwise it starts it, and closing the browser stops it.
+#' console window.  It starts the app, and closing the browser stops it.
+#' When the port is taken:
+#'
+#' * by this version of tflplanner, it opens that one;
+#' * by another version, or a tflplanner that does not answer, it asks
+#'   whether to stop that one and start again (an official run goes on by
+#'   itself: [run_batch()]);
+#' * by another program, it starts on the next free port.
+#'
+#' Each start is noted in the launcher's `launcher.log`.
 #'
 #' "Update and launch" first updates rtfreporter, tflspec and tflplanner
-#' ([update_tflplanner()], on the channel last used), then starts the app.
+#' ([update_tflplanner()], on the channel last used), then starts the app;
+#' while an official run goes on it does not update (the run has loaded
+#' the packages) and starts the app as it is.
 #'
 #' On Windows the shortcuts are written by a VBScript, and one it could not
 #' write again by PowerShell: security software may stop a script from
@@ -598,8 +608,9 @@ remove_shortcut <- function(launcher = TRUE, ask = interactive()) {
 #' Starts the app the way its shortcut does ([add_shortcut()]) -- in a
 #' separate R process -- and opens it in the browser, so the R console (or
 #' RStudio) stays free.  If the app already runs on the port, it opens that
-#' one.  Closing the browser stops it.  This is the RStudio add-in "Launch
-#' tflplanner".
+#' one (another version: it asks whether to stop it; another program: the
+#' next free port, see [add_shortcut()]).  Closing the browser stops it.
+#' This is the RStudio add-in "Launch tflplanner".
 #'
 #' @param port The port; `NULL` uses the setting (default 7470).
 #' @return The app's address, invisibly.

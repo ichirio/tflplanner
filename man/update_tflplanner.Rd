@@ -29,7 +29,9 @@ each finds the version of the one before it that it needs.  The work is
 done in a separate R process, since this session cannot replace a
 package it has loaded; afterwards, restart R (in RStudio: \emph{Session >
 Restart R}) before using tflplanner again.  The running app does not
-update itself: it says when a newer version is out.
+update itself: it says when a newer version is out.  Nothing is
+installed while an official run (\code{\link[=run_batch]{run_batch()}}) goes on: the run has
+loaded the packages.
 }
 \examples{
 \dontrun{

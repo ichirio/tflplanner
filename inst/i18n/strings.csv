@@ -3106,6 +3106,10 @@ It leaves `content`. The rules: at the top of this step.,`content` を残しま�
 "The report's own code for its content step, instead of the definition: R that leaves content -- a table plan, a data frame, rtftable pages, a ggplot or rtfplot figure, or a list of them -- for the report step to dress. Blank: the definition makes the content.",内容の手順を定義の代わりに作る帳票自身のコード: content（表の plan、データフレーム、rtftable のページ、ggplot か rtfplot の図、またはそれらのリスト）を残す R。ページと出力の手順がそれを整えます。空欄: 定義が内容を作る。
  (its own size),（図そのもの）
 Its own size,図そのものの大きさ
+%s goes on after tflplanner closes; open the study again to see how it went (Runs).,%sは tflplanner を閉じても続きます。結果は試験をもう一度開くと見られます（実行）。
+the official run (started %s),正式実行（%s 開始）
+The official run of %s is going on (started %s).,%s の正式実行が動いています（%s 開始）。
+Update when it has finished.,終わってから更新してください。
 "TRUE: a crossed layer's outer levels in a key of their own, subgroup_outer, its innermost in subgroup_level, so rows grp = subgroup | outer = subgroup_outer | lvl = subgroup_level with a stub prints the outer level as a heading (normalize_ard(stack_nest = )). Blank: FALSE.",TRUE：交差した層の外側の水準を別のキー subgroup_outer に、いちばん内側を subgroup_level に分ける。rows を grp = subgroup | outer = subgroup_outer | lvl = subgroup_level にしてスタブを使うと、外側の水準が見出しの行になる（normalize_ard(stack_nest = )）。空欄 = FALSE。
 "Row keys the table also shows as variables, | between them: their own counts (the subgroup variable tabulated by arm) stay in the body, a block of their own beside the subgroup layer of another analysis (table_plan(show_keys = )). Blank: none.",この表で変数としても出す行キー（間は |）：その変数そのものの集計（群ごとのサブグループ変数の集計）を本体に残し、別の解析のサブグループの層の横に、自分のブロックとして出す（table_plan(show_keys = )）。空欄 = なし。
 "Rows kept by a condition over the record (plan_filter()): one R condition over its statistics and keys, as a cells row's when (p >= 0.05); several joined by &. A SOC stays when one of its PTs does; the overall row always stays. Blank: every row.",レコードの条件で残す行（plan_filter()）：統計量とキーについての R の条件を 1 つ、cells の行の when と同じ書き方で（p >= 0.05）。複数なら & でつなぐ。SOC はその PT が 1 つでも残れば残る。全体の行はいつも残る。空欄 = 全部の行。
