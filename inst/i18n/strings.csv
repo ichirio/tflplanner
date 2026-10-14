@@ -3124,3 +3124,4 @@ More than one file of a name: %s. The row uses the file in its path; choose anot
 A dataset name is in the catalog twice: %s. Only the first row is read.,データセット名がカタログに重複しています：%s。最初の行だけが読まれます。
 Click a dataset in the list to see its first rows.,一覧のデータセットをクリックすると、先頭の行を表示します。
 Analysis sets (their subjects),解析対象集団（その被験者）
+"The population as a header or footnote prints it, and its name in CDISC ARS; blank: the population_id.",ヘッダーや脚注に出す解析対象集団の文言。CDISC ARS では解析対象集団の名前になります。空欄は population_id。

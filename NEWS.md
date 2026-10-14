@@ -20,7 +20,14 @@
   the denominator's group ("Analysis sets (their subjects)") -- and an
   analysis data that is only a dataset kept to a set is the one line for
   it in an analysis's Data list (its "dataset x population" twin is left
-  out, unless the analysis reads it).
+  out, unless the analysis reads it).  Part 3: the Populations grid has a
+  `label` column (tflspec 0.0.24.9111, ichirio/tflspec#252: the text a
+  header prints, also the analysis set's name in ARS): `{OUTPUT_POPULATION}`
+  reads the sheet's label first, then the company standards' note, the
+  flag's label, the id, as before; a new study copies the company's note
+  into it.  Blank: nothing changes.  A workbook written with `label` does
+  not read on an earlier tflspec, so DESCRIPTION asks for 0.0.24.9111 --
+  merge tflspec#252 first, tflplanner right after.
 
 - **An official run keeps going when the app closes; the launcher when
   its port is taken** (#373, 0.0.2.9219; the user's request).  An
