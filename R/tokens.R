@@ -110,3 +110,12 @@ set_study_token <- function(x, name, value) {
              sprintf(t("The headers say {STUDY_ID} = %s (the tokens sheet), not the Study ID."), tok),
              shiny::actionLink("tok_study_id_use", t("Use the Study ID")))
 }
+
+# A field's label with the token it fills, small and pale after it (fixed,
+# not translated): for the study's words a header or footer can say.
+with_token <- function(label, token) {
+  shiny::tagList(label, shiny::span(
+    class = "text-muted ms-1 fw-normal",
+    style = "font-family: monospace; font-size: .8em;",
+    sprintf("{%s}", token)))
+}

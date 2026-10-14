@@ -3116,7 +3116,7 @@ Update when it has finished.,終わってから更新してください。
 "TRUE / FALSE: the condition in any column (TRUE, blank) or every column (FALSE) (plan_filter(any = )).",TRUE / FALSE：条件をどれかの列で満たせばよい（TRUE、空欄）か、全部の列で満たす（FALSE）か（plan_filter(any = )）。
 "keep (blank): a parent row (a SOC) stays exactly when one of its children does; drop: judged by its own counts (plan_filter(parents = )).",keep（空欄）：親の行（SOC）は子の行が 1 つでも残るときだけ残る。drop：親の行自身の数で判定する（plan_filter(parents = )）。
 Short title,短いタイトル
-The title for a header or footer: {STUDY_SHORT_TITLE}.,ヘッダー・フッターに入れる短いタイトル: {STUDY_SHORT_TITLE}。
-The study's number: the folder's name and {STUDY_ID} in the header. Set when the study is made; it cannot be changed here.,試験の番号。フォルダ名とヘッダーの {STUDY_ID} になります。試験を作るときに決め、ここでは変えられません。
+The title for a header or footer.,ヘッダー・フッターに入れる短いタイトル。
+The study's number: the folder's name and the header's. Set when the study is made; it cannot be changed here.,試験の番号。フォルダ名とヘッダーの値になります。試験を作るときに決め、ここでは変えられません。
 "The headers say {STUDY_ID} = %s (the tokens sheet), not the Study ID.",ヘッダーの {STUDY_ID} は %s です（tokens シートの値）。試験 ID とは異なります。
 Use the Study ID,試験 ID にする
