@@ -27,7 +27,9 @@
   flag's label, the id, as before; a new study copies the company's note
   into it.  Blank: nothing changes.  A workbook written with `label` does
   not read on an earlier tflspec, so DESCRIPTION asks for 0.0.24.9111 --
-  merge tflspec#252 first, tflplanner right after.
+  merge tflspec#252 first, tflplanner right after.  The sample study's
+  populations carry labels (Safety Analysis Set, Screen Failures, Enrolled
+  Set); its reports are byte for byte as before.
 
 - **An official run keeps going when the app closes; the launcher when
   its port is taken** (#373, 0.0.2.9219; the user's request).  An

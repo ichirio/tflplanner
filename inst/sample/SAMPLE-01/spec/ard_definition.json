@@ -13,7 +13,8 @@
     "population_id": ["SAF", "SCRF", "ENR"],
     "dataset": ["ADSL", "ADSL", "ADSL"],
     "where": ["SAFFL == \"Y\"", "ARM == \"Screen Failure\"", null],
-    "derive": ["TRTA = TRT01A", null, null]
+    "derive": ["TRTA = TRT01A", null, null],
+    "label": ["Safety Analysis Set", "Screen Failures", "Enrolled Set"]
   },
   "analysis_data": {
     "output_id": ["T-14-1-1", "T-14-1-1S", "T-14-1-2", "T-14-1-3", "T-14-1-4", "T-14-1-5", "T-14-1-5", "T-14-1-6", "T-14-1-6", "T-14-2-1", "T-14-2-1", "T-14-2-3", "T-14-2-3", "T-14-2-2", "T-14-2-2", "T-14-3-1", "T-14-3-1", "F-14-2-4", "F-14-2-4"],
