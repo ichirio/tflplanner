@@ -1,5 +1,36 @@
 # tflplanner (development version)
 
+- **The Data tab: files and datasets on one screen** (#388, 0.0.2.9222; the
+  user's request).  The file list (All / SDTM / ADaM / Other, an "Into"
+  folder) and the Datasets definition were two places.  Now the Datasets
+  grid has folder pills (ADaM | SDTM | Other) over it: the rows of the
+  folder you are in (a row with no file by its level), the file's size
+  beside, and Add files puts files into the open folder.  A file put in a
+  folder gets a row when the Data tab is opened, on Refresh and on upload --
+  now the `other` folder and subfolders too, and when a name has several
+  files (`adsl.rds`, `adsl.xpt`) the row uses the one read first (`rds`,
+  `parquet`, `csv`, `xpt`, `sas7bdat`); the note under the grid says the
+  names with several files and the dataset names the catalog has twice.
+  `catalog_name_clashes()` is new.  Files and rows with no counterpart are
+  said, nothing is dropped.  The `datasets` sheet and the generated
+  programs are unchanged (no migration).  ARDs taken in stay on their own
+  panel, with a note under the grid.  The population is said where it is
+  chosen (part 2 of #388): one short line at each place -- an analysis's
+  Data, 1-1's Population, the report's population, the Populations tab and
+  the denominator's group ("Analysis sets (their subjects)") -- and an
+  analysis data that is only a dataset kept to a set is the one line for
+  it in an analysis's Data list (its "dataset x population" twin is left
+  out, unless the analysis reads it).  Part 3: the Populations grid has a
+  `label` column (tflspec 0.0.24.9111, ichirio/tflspec#252: the text a
+  header prints, also the analysis set's name in ARS): `{OUTPUT_POPULATION}`
+  reads the sheet's label first, then the company standards' note, the
+  flag's label, the id, as before; a new study copies the company's note
+  into it.  Blank: nothing changes.  A workbook written with `label` does
+  not read on an earlier tflspec, so DESCRIPTION asks for 0.0.24.9111 --
+  merge tflspec#252 first, tflplanner right after.  The sample study's
+  populations carry labels (Safety Analysis Set, Screen Failures, Enrolled
+  Set); its reports are byte for byte as before.
+
 - **tflspec 0.0.24.9112: `tfl_fig_r()` is `tfl_r()`** (#390, 0.0.2.9221; the YAML
   spec's one class for R code in a definition, every kind).  A figure
   design's R code is read, kept and written as before.  (Pair of

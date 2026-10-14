@@ -15,9 +15,14 @@ catalog_add_files(x, files)
 The \code{tflplanner}, with attribute \code{added} (the names added).
 }
 \description{
-Every data file of the ADaM and SDTM folders (\code{\link[=study_files]{study_files()}}) that the
-ARD definition's \code{datasets} sheet does not have yet -- by path, or by
-name -- gets a row: \code{dataset} the file name in capitals, \code{level} the
-folder's (\code{ADaM}, \code{SDTM}), \code{path} relative to the study folder.  Rows
-already there are left as they are.
+Every data file of the data folders (\code{data/adam}, \code{data/sdtm},
+\code{data/other}, subfolders too; \code{\link[=study_files]{study_files()}}) that the ARD definition's
+\code{datasets} sheet does not have yet -- by path, or by name -- gets a row:
+\code{dataset} the file name in capitals, \code{level} the folder's (\code{ADaM},
+\code{SDTM}; blank for \code{other}), \code{path} relative to the study folder.  Rows
+already there are left as they are.  When one name has files in several
+formats (\code{adsl.rds}, \code{adsl.xpt}), the row is made for the format read
+first (\code{rds}, \code{rda}, \code{parquet}, \code{csv}, \code{xpt}, \code{sas7bdat}); the others
+stay files with no row of their own, and \code{\link[=catalog_name_clashes]{catalog_name_clashes()}} says
+which names have more than one file.
 }

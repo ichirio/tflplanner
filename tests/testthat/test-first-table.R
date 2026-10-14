@@ -8,12 +8,42 @@ test_that("data files go into the data catalog once, with name and level", {
                       file = c("adsl.rds", "notes.txt", "dm.xpt", "x.rds"),
                       stringsAsFactors = FALSE)
   p2 <- catalog_add_files(p, files)
-  expect_identical(attr(p2, "added"), c("ADSL", "DM"))
+  # the other folder's files too (no level)
+  expect_identical(attr(p2, "added"), c("ADSL", "DM", "X"))
   ds <- ard_rows(p2, "datasets")
-  expect_identical(ds$level, c("ADaM", "SDTM"))
-  expect_identical(ds$path, c("data/adam/adsl.rds", "data/sdtm/dm.xpt"))
+  expect_identical(ds$level, c("ADaM", "SDTM", NA))
+  expect_identical(ds$path, c("data/adam/adsl.rds", "data/sdtm/dm.xpt", "data/other/x.rds"))
   # again: nothing more
   expect_length(attr(catalog_add_files(p2, files), "added"), 0L)
+})
+
+test_that("one name in several formats or folders: the format read first gets the row, the rest are said", {
+  files <- data.frame(folder = c("data/adam", "data/adam", "data/other", "data/adam"),
+                      file = c("adsl.xpt", "adsl.rds", "adsl.csv", "x/adae.rds"),
+                      stringsAsFactors = FALSE)
+  p <- catalog_add_files(new_planner(), files)
+  ds <- ard_rows(p, "datasets")
+  expect_identical(ds$dataset, c("ADSL", "ADAE"))
+  expect_identical(ds$path, c("data/adam/adsl.rds", "data/adam/x/adae.rds"))
+  cl <- catalog_name_clashes(p, files)
+  expect_identical(cl$dataset, rep("ADSL", 3L))
+  expect_setequal(cl$path, c("data/adam/adsl.xpt", "data/adam/adsl.rds", "data/other/adsl.csv"))
+  expect_true(all(cl$used == "data/adam/adsl.rds"))
+})
+
+test_that("a catalog row is shown under its file's folder, a row with no file under its level", {
+  expect_identical(
+    .dataset_pill(c("data/adam/adsl.rds", "data/sdtm/x/dm.xpt", "data/other/a.csv", "elsewhere/b.rds", NA, NA, NA),
+                  c("ADaM", NA, NA, NA, "ADaM", "SDTM", NA)),
+    c("adam", "sdtm", "other", "other", "adam", "sdtm", "other"))
+  full <- data.frame(dataset = c("A", "B", "C"), level = c("ADaM", "SDTM", "ADaM"),
+                     path = c("data/adam/a.rds", "data/sdtm/b.rds", "data/adam/c.rds"),
+                     derive = NA_character_, stringsAsFactors = FALSE)
+  # the ADaM rows edited (one gone, one added): the SDTM row stays where it was
+  now <- data.frame(dataset = c("A", "N"), level = "ADaM", path = c("data/adam/a.rds", NA),
+                    derive = NA_character_, stringsAsFactors = FALSE)
+  out <- .datasets_put_back(full, now, "adam")
+  expect_identical(out$dataset, c("A", "N", "B"))
 })
 
 test_that("first_table() writes every sheet a summary table needs", {

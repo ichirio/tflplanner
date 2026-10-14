@@ -538,3 +538,24 @@ test_that("1-1 lists only the analysis data the report's analyses read (every sa
   expect_identical(unname(pops[own]), c(NA_character_, "SCRF", "ENR", "ENR"))
   expect_true(all(pops[setdiff(tabs, own)] %in% "SAF"))
 })
+
+test_that("a dataset x population that a plain analysis data is too is not listed twice", {
+  po <- data.frame(population_id = c("SAF", "ITT"), dataset = "ADSL",
+                   where = c("SAFFL == \"Y\"", "ITTFL == \"Y\""), stringsAsFactors = FALSE)
+  ad <- data.frame(data_id = "adsl_saf", from = "ADSL", population_id = "SAF",
+                   subjects = NA_character_, where = NA_character_, add = NA_character_,
+                   derive = NA_character_, keep = NA_character_, distinct = NA_character_,
+                   code = NA_character_, stringsAsFactors = FALSE)
+  words <- list(with = "%s x %s (%s)", alone = "%s, no population (%s)", none = "(none)",
+                count = "%s: %s", added = "+ %s", per = "one row per %s",
+                subj = "%s's subjects", named = "%s (%s)",
+                groups = c("report", "study", "pairs"))
+  ch <- .an_data_choices(c("ADSL", "ADAE"), po, now = "|", words = words, adata = ad, first = "adsl_saf")
+  expect_true(any(c("|SAF", "ADSL|SAF") %in% ch$pairs))
+  out <- .an_data_drop_same(ch, "|", ad, po, "pairs")
+  expect_false(any(c("|SAF", "ADSL|SAF") %in% out$pairs))
+  # the other set and the other dataset stay; so does the one an analysis reads now
+  expect_true("|ITT" %in% out$pairs)
+  expect_true("ADAE|SAF" %in% out$pairs)
+  expect_true("|SAF" %in% .an_data_drop_same(ch, "|SAF", ad, po, "pairs")$pairs)
+})

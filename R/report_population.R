@@ -12,13 +12,16 @@ report_population <- function(x, output_id) {
   if (length(v) != 1L || .is_blank(v)) NA_character_ else v
 }
 
-# An analysis set's label: the company standards' (their populations
-# sheet's note), else the label of its flag in `data` (SAFFL: "Safety
+# An analysis set's label: the populations sheet's `label`, else the company
+# standards' (their populations sheet's note), else the label of its flag in `data` (SAFFL: "Safety
 # Population Flag"), else its id
 .pop_label <- function(x, pop, data = NULL) {
   po <- x$ard$populations
   k <- match(pop, po$population_id)
   if (is.na(k)) return(pop)
+  # the sheet's own label first, then the company standards' note
+  lab <- if (!is.null(po$label)) po$label[k] else NA_character_
+  if (!.is_blank(lab)) return(lab)
   std <- tryCatch(company_standards()$populations, error = function(e) NULL)
   note <- if (!is.null(std$note)) std$note[match(pop, std$population_id)] else NA
   if (length(note) == 1L && !.is_blank(note)) return(note)
