@@ -281,3 +281,18 @@ test_that("the condition builder shows a variable on one line, the whole on hove
   expect_match(h, ".selectize-input .item.tfl-cond-one { display: inline-block;", fixed = TRUE)
   expect_match(h, ".selectize-dropdown .option.tfl-cond-one { display: block; }", fixed = TRUE)
 })
+
+test_that("an analysis set's label: the sheet's own first, then the company standards' note", {
+  p <- .standard_planner("LB-1")
+  expect_true("label" %in% names(p$ard$populations))
+  # a new study copies the company's note into the label
+  expect_identical(p$ard$populations$label[p$ard$populations$population_id == "SAF"],
+                   "Safety Analysis Set")
+  expect_identical(.pop_label(p, "SAF"), "Safety Analysis Set")
+  # the sheet's label wins
+  p$ard$populations$label[p$ard$populations$population_id == "SAF"] <- "Safety Population"
+  expect_identical(.pop_label(p, "SAF"), "Safety Population")
+  # a blank label: the note as before
+  p$ard$populations$label[p$ard$populations$population_id == "SAF"] <- NA
+  expect_identical(.pop_label(p, "SAF"), "Safety Analysis Set")
+})

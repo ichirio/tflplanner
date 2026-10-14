@@ -5,7 +5,7 @@
 # are its rows of the same sheet.
 
 # the study's words the study tab sets, in the order it shows them
-.study_token_names <- c("COMPANY", "ANALYSIS_TYPE", "STUDY_ID")
+.study_token_names <- c("COMPANY", "ANALYSIS_TYPE")
 
 # A study token's value (NA: none)
 study_token <- function(x, name) {
@@ -95,5 +95,55 @@ set_study_token <- function(x, name, value) {
   }
   rownames(d) <- NULL
   x$sheets$tokens <- d
+  x
+}
+
+# The study tab shows the Study ID read-only ({STUDY_ID} in a header is
+# it).  A study made before may have a STUDY_ID token that says something
+# else: that value is kept (the headers stay as they were) and the tab
+# says so, with a button to use the Study ID.
+.study_id_token_note <- function(x, study_id, t) {
+  tok <- study_token(x, "STUDY_ID")
+  if (is.na(tok) || !nzchar(tok) || identical(tok, study_id) ||
+      identical(tok, "{STUDY_ID}")) return(NULL)
+  shiny::div(class = "small text-muted mb-2",
+             sprintf(t("The headers say {STUDY_ID} = %s (the tokens sheet), not the Study ID."), tok),
+             shiny::actionLink("tok_study_id_use", t("Use the Study ID")))
+}
+
+# A field's label with the token it fills, small and pale after it (fixed,
+# not translated): for the study's words a header or footer can say.
+with_token <- function(label, token) {
+  shiny::tagList(label, shiny::span(
+    class = "text-muted ms-1 fw-normal",
+    style = "font-family: monospace; font-size: .8em;",
+    sprintf("{%s}", token)))
+}
+
+# The study's fields (study.yml: title, short title, compound, phase,
+# description) as tokens a header, footer, title or footnote may say
+# ({STUDY_TITLE} ...), named as study_setup.R's variables are
+.meta_token_fields <- c(title = "STUDY_TITLE", short_title = "STUDY_SHORT_TITLE",
+                        compound = "STUDY_COMPOUND", phase = "STUDY_PHASE",
+                        description = "STUDY_DESCRIPTION")
+
+# The tokens sheet's study rows for the fields a page says: each one a
+# line of the header, footer, titles or footnotes holds as {TOKEN} has its
+# row with the field's value (no row when the field is blank), kept up to
+# date as the field changes.  A field no line says adds nothing: a study
+# that does not use them is written as it was.
+.meta_tokens <- function(x, meta) {
+  text <- unlist(lapply(c("header", "footer", "titles", "footnotes"), function(sh) {
+    d <- x$sheets[[sh]]
+    if (is.null(d) || !nrow(d)) return(NULL)
+    unlist(d[intersect(c("left", "center", "right"), names(d))])
+  }))
+  for (k in names(.meta_token_fields)) {
+    tok <- .meta_token_fields[[k]]
+    if (!any(grepl(paste0("{", tok, "}"), text, fixed = TRUE))) next
+    v <- meta[[k]]
+    v <- if (is.null(v) || length(v) != 1L || is.na(v) || !nzchar(v)) NA_character_ else v
+    if (!identical(study_token(x, tok), v)) x <- set_study_token(x, tok, v)
+  }
   x
 }

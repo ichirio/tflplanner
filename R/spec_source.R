@@ -676,14 +676,7 @@ import_spec_files <- function(study, path, parts = NULL,
   s <- pv$current
   if (!length(take)) return(invisible(s))
   # the files as they are, kept before anything changes
-  root <- s$path
-  backup <- file.path(root, study_layout()[["spec"]], ".backup",
-                      format(Sys.time(), "%Y%m%d-%H%M%S"))
-  for (f in .spec_files(root)) {
-    dir.create(file.path(backup, dirname(f)), recursive = TRUE,
-               showWarnings = FALSE)
-    file.copy(file.path(root, f), file.path(backup, f), copy.date = TRUE)
-  }
+  backup <- .back_up_spec(s$path)
   inc <- .study_parts(pv$incoming)
   for (k in take) s <- .set_study_part(s, k, inc[[k]])
   out <- save_study(s, home = home, spec = "overwrite")
@@ -692,4 +685,105 @@ import_spec_files <- function(study, path, parts = NULL,
                    outputs = .changed_outputs(pv$current, out, take),
                    problems = pv$problems)
   invisible(out)
+}
+
+# The definition files as they are, copied to spec/.backup/<time>/ (the
+# same relative paths); the folder
+.back_up_spec <- function(root) {
+  backup <- file.path(root, study_layout()[["spec"]], ".backup",
+                      format(Sys.time(), "%Y%m%d-%H%M%S"))
+  for (f in .spec_files(root)) {
+    dir.create(file.path(backup, dirname(f)), recursive = TRUE,
+               showWarnings = FALSE)
+    file.copy(file.path(root, f), file.path(backup, f), copy.date = TRUE)
+  }
+  backup
+}
+
+# Definition files changed outside tflplanner and taken in when the study
+# was opened (status "adopted"): the parts `take` stay, the others go back
+# to what the study was.  The files as they are (the changed ones) are
+# kept in spec/.backup/ first, so nothing is lost either way.  All parts
+# taken: nothing to do.
+.apply_adoption <- function(s, take, home = tflplanner_home()) {
+  was <- s$spec$was
+  parts <- s$spec$parts
+  if (is.null(was) || !length(setdiff(parts, take))) return(s)
+  backup <- .back_up_spec(s$path)
+  base <- s
+  base$spec <- NULL
+  base$planner <- was$planner
+  base$meta <- was$meta
+  inc <- .study_parts(s)
+  for (k in intersect(take, parts)) base <- .set_study_part(base, k, inc[[k]])
+  out <- save_study(base, home = home, spec = "overwrite")
+  out$backup <- backup
+  out$spec <- list(status = "imported", parts = intersect(take, parts),
+                   outputs = s$spec$outputs)
+  out
+}
+
+#' Restore a study's definition from a backup
+#'
+#' Every import (and a change taken in when a study is opened) keeps the
+#' definition files as they were in `spec/.backup/<date>-<time>/`.
+#' `list_spec_backups()` lists them, newest first; `restore_spec_backup()`
+#' reads one like an import (so the same checks, and the study as it is now
+#' is kept in `spec/.backup/` first) -- the way to undo a wrong edit.
+#' `preview_spec_backup()` says what restoring would change, taking nothing in.
+#'
+#' @param study A registered study's id, or an `rtfstudy`.
+#' @param backup The backup's name (`list_spec_backups()$name`).
+#' @param parts The parts to take in; `NULL`: every part that differs.
+#' @param home tflplanner's home.
+#' @return `list_spec_backups()`: a data frame (`name`, `time`, `files`).
+#'   `preview_spec_backup()`: as [preview_spec_import()].
+#'   `restore_spec_backup()`: as [import_spec_files()].
+#' @export
+list_spec_backups <- function(study, home = tflplanner_home()) {
+  st <- .read_state(.study_id_of(study), home)
+  if (is.null(st)) stop("No study '", .study_id_of(study), "' is registered.",
+                        call. = FALSE)
+  dir <- file.path(st$path, study_layout()[["spec"]], ".backup")
+  nm <- sort(list.dirs(dir, recursive = FALSE, full.names = FALSE),
+             decreasing = TRUE)
+  data.frame(
+    name = nm,
+    time = as.POSIXct(nm, format = "%Y%m%d-%H%M%S"),
+    files = vapply(nm, function(n) length(list.files(
+      file.path(dir, n), recursive = TRUE)), 1L, USE.NAMES = FALSE),
+    stringsAsFactors = FALSE)
+}
+
+# a backup copied out of spec/.backup/ (an import ignores that folder)
+.backup_copy <- function(study, backup, home) {
+  st <- .read_state(.study_id_of(study), home)
+  if (is.null(st)) stop("No study '", .study_id_of(study), "' is registered.",
+                        call. = FALSE)
+  from <- file.path(st$path, study_layout()[["spec"]], ".backup", backup)
+  if (length(backup) != 1L || !nzchar(backup) || !dir.exists(from)) {
+    stop("No backup '", backup, "'.", call. = FALSE)
+  }
+  tmp <- tempfile("tflplanner-backup")
+  dir.create(tmp)
+  file.copy(list.files(from, full.names = TRUE, all.files = TRUE, no.. = TRUE),
+            tmp, recursive = TRUE)
+  tmp
+}
+
+#' @rdname list_spec_backups
+#' @export
+preview_spec_backup <- function(study, backup, home = tflplanner_home()) {
+  tmp <- .backup_copy(study, backup, home)
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+  preview_spec_import(study, tmp, home)
+}
+
+#' @rdname list_spec_backups
+#' @export
+restore_spec_backup <- function(study, backup, parts = NULL,
+                                home = tflplanner_home()) {
+  tmp <- .backup_copy(study, backup, home)
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+  import_spec_files(study, tmp, parts = parts, home = home)
 }

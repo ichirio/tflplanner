@@ -574,14 +574,16 @@ p$ard$datasets <- tbl(
   list(dataset = "ADVS", level = "ADaM", path = "data/adam/advs.rds"),
   list(dataset = "ADTTE", level = "ADaM", path = "data/adam/adtte.rds"))
 p$ard$populations <- tbl(
+  # label: what a header prints for the set ({OUTPUT_POPULATION}), and the
+  # set's name in CDISC ARS
   list(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"",
-       derive = "TRTA = TRT01A"),
+       derive = "TRTA = TRT01A", label = "Safety Analysis Set"),
   # the screen failures: an analysis set by a condition alone (ADSL has no
   # flag for them)
   list(population_id = "SCRF", dataset = "ADSL",
-       where = "ARM == \"Screen Failure\""),
+       where = "ARM == \"Screen Failure\"", label = "Screen Failures"),
   # every subject of ADSL (no condition): the enrolled subjects
-  list(population_id = "ENR", dataset = "ADSL"))
+  list(population_id = "ENR", dataset = "ADSL", label = "Enrolled Set"))
 p$ard$analyses <- tbl(
   list(output_id = "T-14-1-1", analysis_id = "GROUPN", label = "Subjects per group",
        method = "categorical", data = "adsl_saf", variables = "TRT01A"),

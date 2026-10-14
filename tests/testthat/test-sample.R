@@ -128,3 +128,24 @@ test_that("the sample study copies under another ID, with every definition as Ex
   expect_equal(suppressMessages(create_sample_study(run = FALSE))$meta$study_id,
                "SAMPLE-01")
 })
+
+test_that("the sample's Study tab has keys and a setup code of its own", {
+  skip_on_cran()
+  local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  st <- s$planner$ard$study
+  expect_identical(st$value[st$key == "id"], "USUBJID")
+  expect_identical(st$value[st$key == "output"], "output/ard/ard.rds")
+  # an ARD function of its own, named by the `source` key, written in the study
+  src <- st$value[st$key == "source"]
+  expect_identical(src, "programs/ard/functions/ard_cv_geomean.R")
+  expect_true(file.exists(file.path(s$path, src)))
+  # the setup code: the libraries, a commented option; it parses
+  expect_match(s$planner$setup, "library(cards)", fixed = TRUE)
+  expect_match(s$planner$setup, "# options(rtfreporter.rounding", fixed = TRUE)
+  expect_silent(parse(text = s$planner$setup))
+  # saved: it is what the study opens with
+  o <- open_study(s$meta$study_id)
+  expect_identical(o$planner$setup, s$planner$setup)
+  expect_identical(o$planner$ard$study$value[o$planner$ard$study$key == "source"], src)
+})

@@ -61,7 +61,7 @@
     tfl = "Working reports: RTF",
     ard_import = "ARDs made elsewhere, taken in (imports.csv lists them)",
     toc_import = "TOCs taken in (imports.csv lists them; last.json: what the last one said)",
-    runs = "Official runs: one batch folder each (logs, results, code)",
+    runs = "Official runs: one run folder each (logs, results, code)",
     logs_preview = "What a report program printed in its last preview")
   out <- unname(notes[nm])
   has <- !is.na(out)
@@ -248,6 +248,13 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 .rp-upload select { appearance: auto; }
 /* fields that are not used (a data written as R) */
 .rp-greyed { opacity: .45; pointer-events: none; }
+/* a row of inputs, selects and buttons: the same height (the small size),
+   no space under an input, the label beside it */
+.rp-inline { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.rp-inline .shiny-input-container, .rp-inline .form-group { margin-bottom: 0; width: auto; }
+.rp-inline .form-control, .rp-inline .form-select { height: calc(1.5em + .5rem + 2px);
+  padding: .25rem .5rem; font-size: .875rem; }
+.rp-inline .btn { padding-top: .25rem; padding-bottom: .25rem; }
 /* a top tab the chosen report has nothing on */
 .nav-link.rp-idle { opacity: .45; }
 /* a step's mark worked out again (a run in the background): not faded */
@@ -875,7 +882,7 @@ app_ui <- function(lang = "en") {
           shiny::uiOutput("study_detail"),
           shiny::conditionalPanel(
             "output.shows_open == 'yes'",
-            .study_section("keys", with_tip(paste0(t("Keys and setup code"), " (study)"), t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source).")),
+            .study_section("keys", with_tip(paste0(t("Keys and setup code"), " (study)"), t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source). (source is added when a function is made in Own ARD functions.)")),
               rhandsontable::rHandsontableOutput("hot_ard_study"),
               shiny::textAreaInput(
                 "setup",
@@ -897,26 +904,38 @@ app_ui <- function(lang = "en") {
       t("Data"), value = "data",
       bslib::navset_pill_list(
         id = "data_nav", widths = c(2, 10), well = FALSE,
-        bslib::nav_item(shiny::div(class = "small text-muted fw-bold mt-2 px-2", t("Files"))),
+        bslib::nav_item(shiny::div(class = "small text-muted fw-bold mt-2 px-2", t("Files and datasets"))),
         bslib::nav_panel(
-          t("SDTM / ADaM / other"), value = "files",
+          t("Datasets"), value = "datasets",
           bslib::layout_columns(
             col_widths = two,
             bslib::card(
-              bslib::card_header(t("Input data (data/)")),
-              shiny::radioButtons("data_kind", NULL, inline = TRUE,
-                                  stats::setNames(c("all", "sdtm", "adam", "other"),
-                                                  c(t("All"), "SDTM", "ADaM", t("Other")))),
-              DT::DTOutput("data_files"),
+              bslib::card_header(with_tip(
+                paste0(t("Datasets"), " (datasets)"),
+                paste(t("The data files of the folder (data/) and what the study's programs read of them (the data catalog): a name, its level, its file, columns derived. A file put in the folder gets a row; a row with no file is a dataset made on the way. Defined once for the study, used by every report."), edit_note))),
+              # the folder you are in: where Add files puts them
+              bslib::navset_pill(
+                id = "data_pill",
+                bslib::nav_panel("ADaM", value = "adam"),
+                bslib::nav_panel("SDTM", value = "sdtm"),
+                bslib::nav_panel(t("Other"), value = "other")),
+              shiny::uiOutput("catalog_missing"),
+              rhandsontable::rHandsontableOutput("hot_ard_datasets"),
+              shiny::uiOutput("catalog_files_note"),
               shiny::div(
                 class = "d-flex gap-2 align-items-end mt-2 rp-upload",
-                shiny::selectInput("data_folder", t("Into"),
-                                   c("adam", "sdtm", "other"), width = "110px",
-                                   selectize = FALSE),
                 shiny::fileInput("data_upload", t("Add files"), multiple = TRUE)),
-              shiny::div(class = "d-flex gap-2",
+              shiny::div(class = "d-flex gap-2 align-items-center",
                          .btn("data_refresh", t("Refresh")),
-                         .btn("data_open", t("Open folder")))),
+                         .btn("data_open", t("Open folder")),
+                         shiny::span(class = "small text-muted",
+                                     shiny::uiOutput("data_folder_where", inline = TRUE))),
+              shiny::tags$details(
+                class = "rp-help mt-2",
+                shiny::tags$summary(t("Column help")),
+                DT::DTOutput("help_ard_datasets")),
+              shiny::p(class = "small text-muted mt-2",
+                       t("ARDs made elsewhere are in \"ARDs taken in\" (input/ard/)."))),
             bslib::card(
               bslib::card_header(t("Preview")),
               shiny::uiOutput("data_dim"),
@@ -945,18 +964,9 @@ app_ui <- function(lang = "en") {
           shiny::uiOutput("imp_actions")),
         bslib::nav_item(shiny::div(class = "small text-muted fw-bold mt-3 px-2", t("Definitions"))),
         bslib::nav_panel(
-          paste0(t("Datasets"), " (datasets)"), value = "datasets",
-          pane_head(paste0(t("Datasets"), " (datasets)"), paste(t("The datasets the study's programs read (the data catalog): a name, its level, its file in the study folder, columns derived. Defined once for the study, used by every report."), edit_note)),
-          shiny::uiOutput("catalog_missing"),
-          rhandsontable::rHandsontableOutput("hot_ard_datasets"),
-          shiny::tags$details(
-            class = "rp-help mt-2",
-            shiny::tags$summary(t("Column help")),
-            DT::DTOutput("help_ard_datasets"))),
-        bslib::nav_panel(
           paste0(t("Populations"), " (populations)"), value = "populations",
           pane_head(paste0(t("Populations"), " (populations)"),
-                    paste(t("The populations: the subjects of a dataset a condition keeps (SAFFL == \"Y\")."), edit_note)),
+                    paste(t("An analysis set: the subjects of a dataset that a condition keeps (SAFFL == \"Y\"). The Data of an analysis, 1-1\'s Population and a percent\'s denominator choose from here."), edit_note)),
           rhandsontable::rHandsontableOutput("hot_ard_populations"),
           shiny::tags$details(
             class = "rp-help mt-2",
@@ -971,17 +981,19 @@ app_ui <- function(lang = "en") {
         # the search and the buttons above the list: below 200 reports no
         # one found them
         shiny::div(
-          class = "d-flex flex-wrap gap-1 align-items-start",
+          class = "rp-inline",
           shiny::div(style = "flex: 0 1 22rem; min-width: 14rem;",
                      report_search_ui("outputs_q", lang)),
           shiny::div(
             class = "d-flex flex-wrap gap-1 ms-2",
             .btn("add", t("Add")), .btn("copy", t("Copy")),
             .btn("rename", t("Rename")),
-            .btn("report_batches", t("Batches...")),
+            .btn("report_batches", t("Report sets..."),
+                  title = t("Report sets are made and chosen on the Runs tab: this opens it")),
             .btn("remove", t("Delete"), class = "btn-sm btn-outline-danger"),
             .btn("up", "\u2191"), .btn("down", "\u2193"),
-            .btn("sort_ids", t("Sort by ID"))),
+            .btn("sort_ids", t("Sort by ID"),
+                  title = t("Puts the whole list in the order of the numbers in the ids (T-14-1-2 before T-14-1-10)"))),
           .btn("toc_new", t("Take in a TOC..."), class = "btn-sm btn-outline-primary ms-auto")),
         shiny::uiOutput("report_moves"),
         # its own height (a fixed one let a long list cover the buttons)
@@ -1034,7 +1046,7 @@ app_ui <- function(lang = "en") {
         DT::DTOutput("status"),
         shiny::tags$script(shiny::HTML(.status_loading_js))),
       bslib::card(
-        bslib::card_header(with_tip(t("Official runs (batch folders)"), t("An official run makes a batch folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read."))),
+        bslib::card_header(with_tip(t("Official runs (run folders)"), t("An official run makes a run folder runs/<date>_<time>_<what>/ with each program's log (logrx), what the run made (the study ARD, the RTFs), the R and package versions (session_info.txt) and, if kept, the programs and definition workbooks it ran and the data they read."))),
         shiny::div(
           class = "d-flex flex-wrap gap-3 align-items-center",
           shiny::radioButtons(
@@ -1042,10 +1054,10 @@ app_ui <- function(lang = "en") {
             stats::setNames(c("ard", "tfl", "all"),
                             t(c("ARD", "Reports", "ARD, then reports")))),
           shiny::checkboxInput("batch_code",
-                               t("keep the code in the batch folder"),
+                               t("keep the code in the run folder"),
                                value = TRUE),
           shiny::checkboxInput("batch_data",
-                               with_tip(t("keep the data in the batch folder"),
+                               with_tip(t("keep the data in the run folder"),
                                         t("The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the run can be made again.")),
                                value = FALSE),
           .btn("batch_run", t("Start the official run"),
@@ -1151,14 +1163,42 @@ $(document).on('shiny:value shiny:error', function(e) {
 })();
 "
 
+# The Runs tab's list of reports of a run (or a report set): the filter hides
+# the reports whose ID or description does not hold the words typed; "Tick
+# the shown" / "Untick the shown" then tick or untick just those, so a set is
+# made from the reports a filter picks.
+.batch_filter_js <- "
+function rpBatchBoxes() {
+  return Array.prototype.slice.call(document.querySelectorAll('#batch_reports .checkbox'));
+}
+function rpBatchFilter() {
+  var q = (document.getElementById('batch_q').value || '').toLowerCase().split(/ +/).filter(Boolean);
+  rpBatchBoxes().forEach(function(b) {
+    var s = (b.textContent || '').toLowerCase();
+    b.style.display = q.every(function(w) { return s.indexOf(w) >= 0; }) ? '' : 'none';
+  });
+}
+function rpBatchShown(mode) {
+  var ids = rpBatchBoxes().filter(function(b) { return b.style.display !== 'none'; })
+    .map(function(b) { return b.querySelector('input').value; });
+  Shiny.setInputValue('batch_shown', {mode: mode, ids: ids, n: Math.random()}, {priority: 'event'});
+}
+"
+
 .updating_js <- "
 // The veil (the page's busy state, CSS rp-user-busy) only for work the
 // user started: a busy state that begins within 1.5 s of a click, a key or
 // a changed field.  A run in the background followed by the poll is not.
+// Editing a field (text, text area, select) and Save do not veil either: the
+// page stays as it is while the server takes the value in and saves (#51).
 (function() {
   var last = 0;
+  var quiet = 'input:not([type=button]):not([type=submit]):not([type=radio]):not([type=checkbox]), textarea, select, .selectize-control, .form-control, #save';
   ['mousedown', 'keydown', 'change'].forEach(function(ev) {
-    document.addEventListener(ev, function() { last = Date.now(); }, true);
+    document.addEventListener(ev, function(e) {
+      if (e.target && e.target.closest && e.target.closest(quiet)) return;
+      last = Date.now();
+    }, true);
   });
   $(document).on('shiny:busy', function() {
     if (Date.now() - last < 1500) document.documentElement.classList.add('rp-user-busy');
@@ -1409,7 +1449,7 @@ app_server <- function(input, output, session, start) {
     study = NULL, p = NULL, saved = NULL, meta = NULL, saved_meta = NULL,
     ver = 0L, want = NULL, job = NULL, job_what = NULL, status_ver = 0L,
     studies_ver = 0L, ard_ver = 0L, save_ver = 0L, spec = NULL,
-    spec_merge = NULL)
+    spec_merge = NULL, adopting = FALSE)
   bump <- function() rv$ver <- rv$ver + 1L
   # an ARD method's name and note as the user reads them: the translation
   # kept by the app under "method:<name>" / "method-note:<name>", else
@@ -1513,14 +1553,69 @@ app_server <- function(input, output, session, start) {
   shiny::observe({
     unsaved <- isTRUE(draft_due()[[1L]])
     shiny::isolate({
-      if (!has_study() || !is.null(rv$draft)) return()
+      # (while the dialog of a change made outside the app is up, the
+      # draft waits: it is offered once that is decided)
+      if (!has_study() || !is.null(rv$draft) || isTRUE(rv$adopting)) return()
       if (unsaved) .write_draft(current_study())
       else .drop_draft(rv$study$meta$study_id)
     })
   })
 
   # -- the study ---------------------------------------------------------
+  # The definition files were changed outside the app (spec/, study.yml):
+  # the same screen as an import asks which parts to take in.  The files
+  # as they are go to spec/.backup/ if any part is left out.
+  adopt_modal <- function(s) {
+    rv$adopting <- TRUE
+    sp <- s$spec
+    was <- list(planner = sp$was$planner, meta = sp$was$meta)
+    sm <- tryCatch(.part_summary(was, s, sp$parts), error = function(e)
+      rep("", length(sp$parts)))
+    shiny::showModal(shiny::modalDialog(
+      title = t("The definition files were changed outside the app"),
+      shiny::p(class = "small mb-1",
+               t("spec/ or study.yml is not as the app saved it. Choose the parts to take in; the rest stay as the study was.")),
+      if (!is.null(sp$files) && nrow(sp$files)) shiny::p(
+        class = "small text-muted mb-2",
+        paste(sp$files$file, collapse = ", ")),
+      shiny::checkboxGroupInput("adopt_parts", t("Parts that differ (take in the ones checked): the study's \u2192 the files'"),
+                                stats::setNames(sp$parts, paste0(.part_labels(sp$parts), ": ", sm)),
+                                selected = sp$parts, width = "100%"),
+      shiny::p(class = "small text-muted",
+               t("The files as they are now are kept in spec/.backup/<date>-<time>/ if a part is left out. To change the definition, export it, edit the copy and import it back (Import definition files).")),
+      size = "l", easyClose = FALSE,
+      footer = shiny::tagList(
+        .btn("adopt_leave", t("Leave the study as it was"), class = "btn-outline-secondary"),
+        .btn("adopt_ok", t("Take in the parts checked"), class = "btn-primary"))))
+  }
+  adopt_done <- function(take) {
+    s <- rv$study
+    rv$adopting <- FALSE
+    shiny::removeModal()
+    out <- guarded(.apply_adoption(s, take))
+    if (is.null(out)) return()
+    if (!identical(out, s)) {
+      rv$study <- out
+      rv$p <- rv$saved <- .study_spec_keys(out$planner)
+      rv$meta <- rv$saved_meta <- out$meta[.study_fields]
+      rv$spec <- out$spec
+      rv$status_ver <- rv$status_ver + 1L
+      rv$ard_ver <- rv$ard_ver + 1L
+      rv$studies_ver <- rv$studies_ver + 1L
+      bump()
+      notify(sprintf(t("Taken in: %s. The files before are in %s."),
+                     if (length(take)) paste(.part_labels(take), collapse = ", ") else "-",
+                     sub(paste0("^", out$path, "/"), "", out$backup)))
+    } else {
+      rv$spec <- s$spec
+      notify(t("The definition files were changed outside tflplanner; the changes were loaded."))
+    }
+    offer_draft(rv$study)
+  }
+  shiny::observeEvent(input$adopt_ok, adopt_done(input$adopt_parts %||% character()))
+  shiny::observeEvent(input$adopt_leave, adopt_done(character()))
   set_study <- function(s) {
+    rv$adopting <- FALSE
     s$planner <- .study_spec_keys(s$planner)
     rv$study <- s
     rv$p <- rv$saved <- s$planner
@@ -1541,9 +1636,9 @@ app_server <- function(input, output, session, start) {
     # not readable (the study open as last saved, no save until resolved)
     rv$spec <- s$spec
     if (identical(s$spec$status, "adopted")) {
-      shiny::showNotification(
-        t("The definition files were changed outside tflplanner; the changes were loaded."),
-        type = "message", duration = 10)
+      # never silently: what changed, the parts to take in (#274)
+      adopt_modal(s)
+      return(invisible())
     } else if (identical(s$spec$status, "invalid")) {
       spec_modal()
       return(invisible())
@@ -1743,7 +1838,7 @@ app_server <- function(input, output, session, start) {
       t("The definition files were changed outside tflplanner; the changes were loaded.") else
       t("Nothing changed in the definition files."))
   }
-  for (b in c("spec_reload", "spec_reload_m", "spec_load")) local({
+  for (b in c("spec_reload", "spec_reload_m")) local({
     id <- b
     shiny::observeEvent(input[[id]], do_reload())
   })
@@ -2532,11 +2627,21 @@ app_server <- function(input, output, session, start) {
       shiny::p(shiny::strong(m$study_id), shiny::br(),
                shiny::span(class = "small text-muted", rv$study$path)),
       .study_section("study", t("The study"), open = TRUE,
-      shiny::textInput("m_title", t("Title"), v(m$title), width = "100%"),
+      shiny::textInput("m_title", with_token(t("Title"), "STUDY_TITLE"), v(m$title), width = "100%"),
+      shiny::div(class = "d-flex flex-wrap gap-2",
+                 shiny::textInput("m_short_title", with_token(with_tip(
+                   t("Short title"),
+                   t("The title for a header or footer.")), "STUDY_SHORT_TITLE"),
+                   v(m$short_title)),
+                 shiny::div(class = "shiny-input-container",
+                   shiny::tags$label(class = "control-label",
+                                     with_token(with_tip(t("Study ID"), t("The study's number: the folder's name and the header's. Set when the study is made; it cannot be changed here.")), "STUDY_ID")),
+                   shiny::tags$input(type = "text", class = "form-control",
+                                     value = m$study_id, readonly = NA))),
       shiny::div(class = "d-flex gap-2",
-                 shiny::textInput("m_compound", t("Compound"), v(m$compound)),
-                 shiny::textInput("m_phase", t("Phase"), v(m$phase))),
-      shiny::textAreaInput("m_description", t("Description"),
+                 shiny::textInput("m_compound", with_token(t("Compound"), "STUDY_COMPOUND"), v(m$compound)),
+                 shiny::textInput("m_phase", with_token(t("Phase"), "STUDY_PHASE"), v(m$phase))),
+      shiny::textAreaInput("m_description", with_token(t("Description"), "STUDY_DESCRIPTION"),
                            v(m$description), width = "100%")),
       .study_section("every", t("Every report"), open = TRUE,
       shiny::selectInput(
@@ -2546,13 +2651,13 @@ app_server <- function(input, output, session, start) {
                             "r (half to even)", "sas (half away from zero)"))),
         selected = v(r)),
       shiny::h6(with_tip(t("Every report's header"),
-                         t("The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}, {STUDY_ID}. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, population)."))),
+                         t("The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}; {STUDY_ID} is the Study ID above. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, population)."))),
       shiny::div(class = "d-flex flex-wrap gap-2",
-        shiny::textInput("tok_COMPANY", t("Company"), v(study_token(rv$p, "COMPANY"))),
-        shiny::textInput("tok_ANALYSIS_TYPE", t("Analysis"),
+        shiny::textInput("tok_COMPANY", with_token(t("Company"), "COMPANY"), v(study_token(rv$p, "COMPANY"))),
+        shiny::textInput("tok_ANALYSIS_TYPE", with_token(t("Analysis"), "ANALYSIS_TYPE"),
                          v(study_token(rv$p, "ANALYSIS_TYPE")),
-                         placeholder = "Final Analysis"),
-        shiny::textInput("tok_STUDY_ID", t("Protocol"), v(study_token(rv$p, "STUDY_ID")))),
+                         placeholder = "Final Analysis")),
+      .study_id_token_note(rv$p, m$study_id, t),
       shiny::h6(with_tip(t("Every report's font"),
                          t("The font and size every report is written in, set once here (the page sheet's study row; programs/tfl/report_setup.R says them as options()). Blank: rtfreporter's, Courier 9 pt. The company standards give a new study theirs."))),
       shiny::div(class = "d-flex flex-wrap gap-2",
@@ -2570,31 +2675,30 @@ app_server <- function(input, output, session, start) {
   output$study_actions <- shiny::renderUI({
     shiny::req(shows_open())
     lay <- study_layout()
-    .study_section("files", t("Files"),
+    # one group each: Export, Import, Restore -- a name and a ? (the long
+    # text is the help), nothing between them that reads as another's note
+    grp <- function(title, tip, ...) shiny::div(
+      class = "border rounded px-2 pt-1 pb-2 mb-2",
+      shiny::div(class = "small fw-bold mb-1", with_tip(title, tip)),
+      ...)
+    .study_section("files", with_tip(t("Files"), t("To edit the definition outside the app: export the files, edit the copy (in Excel; rename it as you like), and import it back. Do not edit spec/ in place: if you do, the app asks before it takes the change in.")),
       shiny::tags$details(
         shiny::tags$summary(t("Folders")),
         shiny::tags$pre(class = "small", paste(
           sprintf("%-15s %s", paste0(lay, "/"),
                   .study_folder_notes(names(lay), t)),
           collapse = "\n"))),
-      # editing the definition outside the app: export a copy, edit it,
-      # import it back (the usual way); a direct edit of spec/ is taken in
-      # with Load, or on the next open
-      shiny::p(class = "small text-muted mb-1",
-               t("To edit the definition outside the app: export the files, edit the copy (in Excel; rename it as you like), and import it back.")),
-      shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mb-1",
+      grp(t("Export"), t("A copy of spec/ and study.yml as a zip (the ARD definition as an Excel workbook): edit the copy, rename it as you like, and bring it back with Import."),
         shiny::downloadButton("spec_files_zip", t("Export the definition files"),
-                              class = "btn-sm"),
-        help_tip(t("A copy of spec/ and study.yml as a zip (the ARD definition as an Excel workbook): edit the copy, rename it as you like, and bring it back with Import."))),
-      shiny::fileInput(
-        "spec_import",
-        t("Import definition files (an edited copy: workbooks, .yml, .json or the zip)"),
-        multiple = TRUE, accept = c(".xlsx", ".yml", ".yaml", ".json", ".zip"),
-        width = "100%"),
-      shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mb-2",
-        .btn("spec_load", t("Load from the definition files"),
-             class = "btn-sm btn-outline-primary"),
-        help_tip(t("Reads spec/ and study.yml again and takes them in: after editing them outside tflplanner (in Excel), or copying workbooks into spec/. Your unsaved changes are kept and merged."))),
+                              class = "btn-sm")),
+      grp(t("Import definition files"), t("Edit the exported copy in Excel, then choose it here: a screen shows what differs, and only the parts you check are taken in; the files before are kept in spec/.backup. This is the study's definition, not the company standards."),
+        shiny::fileInput(
+          "spec_import", NULL, placeholder = t("(an edited copy: workbooks, .yml, .json or the zip)"),
+          multiple = TRUE, accept = c(".xlsx", ".yml", ".yaml", ".json", ".zip"),
+          width = "100%")),
+      grp(t("Restore from a backup"), t("Every import keeps the files as they were in spec/.backup/. Choose one to bring the study back to it (the study as it is now is kept first): the way to undo a wrong edit."),
+        .btn("restore_open", t("Restore from a backup ..."),
+             class = "btn-sm btn-outline-secondary")),
       shiny::div(class = "d-flex flex-wrap gap-2 align-items-center rp-upload mb-2",
                  .btn("ars_open", t("Export the analyses as CDISC ARS"),
                       class = "btn-sm btn-outline-secondary"),
@@ -2604,7 +2708,7 @@ app_server <- function(input, output, session, start) {
                  shiny::checkboxInput("zip_data", t("with data"))),
       .btn("study_folder", t("Open the study folder")))
   })
-  for (k in c("title", "compound", "phase", "description")) local({
+  for (k in c("title", "short_title", "compound", "phase", "description")) local({
     key <- k
     shiny::observeEvent(input[[paste0("m_", key)]], {
       v <- trimws(input[[paste0("m_", key)]])
@@ -2621,6 +2725,18 @@ app_server <- function(input, output, session, start) {
         rv$p <- set_study_token(rv$p, key, v)
       }
     }, ignoreInit = TRUE)
+  })
+  # a field a header, footer, title or footnote says ({STUDY_TITLE} ...) has
+  # its token row with the field's value, as the field changes
+  shiny::observe({
+    shiny::req(has_study())
+    p <- rv$p
+    p2 <- .meta_tokens(p, rv$meta)
+    if (!identical(p2, p)) rv$p <- p2
+  })
+  shiny::observeEvent(input$tok_study_id_use, {
+    rv$p <- set_study_token(rv$p, "STUDY_ID", rv$study$meta$study_id)
+    rv$ver <- rv$ver + 1L
   })
   shiny::observeEvent(input$pg_font, {
     v <- trimws(input$pg_font)
@@ -2652,22 +2768,9 @@ app_server <- function(input, output, session, start) {
     filename = function() paste0(rv$study$meta$study_id, "_definition_",
                                  format(Sys.time(), "%Y%m%d-%H%M"), ".zip"),
     content = function(file) export_spec_files(rv$study$meta$study_id, file))
-  shiny::observeEvent(input$spec_import, {
-    shiny::req(has_study())
-    f <- input$spec_import
-    # an import saves the study: unsaved changes would go in with it
-    if (isTRUE(dirty())) {
-      return(notify(t("There are unsaved changes. Save first, then choose the file again."), "warning"))
-    }
-    dir <- tempfile("import")
-    dir.create(dir)
-    tmp <- file.path(dir, f$name)
-    file.copy(f$datapath, tmp)
-    src <- if (length(tmp) == 1L) tmp else dir
-    pv <- guarded(preview_spec_import(rv$study$meta$study_id, src))
-    if (is.null(pv)) return()
-    names <- paste(f$name, collapse = ", ")
-    rv$import <- list(path = src, preview = pv, names = names)
+  # the dialog that follows an import (or a restore): what differs, the
+  # parts to take in
+  show_import_modal <- function(pv, names) {
     if (!pv$ok) {
       return(shiny::showModal(shiny::modalDialog(
         title = sprintf(t("The files cannot be imported: %s"), names),
@@ -2679,9 +2782,12 @@ app_server <- function(input, output, session, start) {
       return(notify(sprintf(t("%s is the same as the study's definition: nothing to import."), names)))
     }
     shiny::showModal(shiny::modalDialog(
-      title = sprintf(t("Import definition files: %s"), names),
+      title = sprintf(if (!is.null(rv$import$backup)) t("Restore a backup: %s") else t("Import definition files: %s"), names),
       # which file was read, and as which of the study's
-      shiny::p(class = "small text-muted mb-2",
+      shiny::p(class = "small mb-1",
+               if (!is.null(rv$import$backup)) t("The backup was read. Choose the parts to bring back.") else
+                 t("The chosen files were read. Choose the parts to take in.")),
+      if (is.null(rv$import$backup)) shiny::p(class = "small text-muted mb-2",
                sprintf(t("Read as %s."), paste(pv$files, collapse = ", "))),
       shiny::checkboxGroupInput("import_parts", t("Parts that differ (take in the ones checked): the study's \u2192 the copy's"),
                                 stats::setNames(pv$parts, paste0(pv$labels, ": ", pv$summary)),
@@ -2699,6 +2805,52 @@ app_server <- function(input, output, session, start) {
       footer = shiny::tagList(
         shiny::modalButton(t("Cancel")),
         .btn("import_ok", t("Import the parts checked"), class = "btn-primary"))))
+  }
+  shiny::observeEvent(input$spec_import, {
+    shiny::req(has_study())
+    f <- input$spec_import
+    # an import saves the study: unsaved changes would go in with it
+    if (isTRUE(dirty())) {
+      return(notify(t("There are unsaved changes. Save first, then choose the file again."), "warning"))
+    }
+    dir <- tempfile("import")
+    dir.create(dir)
+    tmp <- file.path(dir, f$name)
+    file.copy(f$datapath, tmp)
+    src <- if (length(tmp) == 1L) tmp else dir
+    pv <- guarded(preview_spec_import(rv$study$meta$study_id, src))
+    if (is.null(pv)) return()
+    names <- paste(f$name, collapse = ", ")
+    rv$import <- list(path = src, preview = pv, names = names)
+    show_import_modal(pv, names)
+  })
+  shiny::observeEvent(input$restore_open, {
+    shiny::req(has_study())
+    b <- list_spec_backups(rv$study$meta$study_id)
+    if (!nrow(b)) {
+      return(notify(t("There is no backup yet: an import keeps the files as they were.")))
+    }
+    shiny::showModal(shiny::modalDialog(
+      title = t("Restore from a backup"),
+      shiny::selectInput("restore_pick", t("Backup (the files as they were before an import)"),
+                         stats::setNames(b$name, sprintf("%s (%d)",
+                           format(b$time, "%Y-%m-%d %H:%M:%S"), b$files)),
+                         width = "100%"),
+      shiny::p(class = "small text-muted",
+               t("Next you see what would change; nothing is taken in until you choose.")),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("restore_show", t("Show what would change"),
+                                   class = "btn-primary"))))
+  })
+  shiny::observeEvent(input$restore_show, {
+    shiny::req(has_study(), nzchar(input$restore_pick %||% ""))
+    id <- rv$study$meta$study_id
+    pv <- guarded(preview_spec_backup(id, input$restore_pick))
+    if (is.null(pv)) return()
+    rv$import <- list(path = NULL, preview = pv, backup = input$restore_pick,
+                      names = input$restore_pick)
+    shiny::removeModal()
+    show_import_modal(pv, input$restore_pick)
   })
   shiny::observeEvent(input$import_ok, {
     im <- rv$import
@@ -2709,7 +2861,9 @@ app_server <- function(input, output, session, start) {
       return(notify(t("There are unsaved changes. Save first."), "warning"))
     }
     shiny::removeModal()
-    s <- guarded(import_spec_files(rv$study$meta$study_id, im$path, parts = parts))
+    s <- guarded(if (!is.null(im$backup)) {
+      restore_spec_backup(rv$study$meta$study_id, im$backup, parts = parts)
+    } else import_spec_files(rv$study$meta$study_id, im$path, parts = parts))
     rv$import <- NULL
     if (is.null(s)) return()
     rv$study <- s
@@ -3695,7 +3849,7 @@ app_server <- function(input, output, session, start) {
       list())
   }
   # (the analysis data are each report's: 1-1's sheet, not the Data tab's)
-  for (sheet in setdiff(names(.ard_sheets()), "analysis_data")) local({
+  for (sheet in setdiff(names(.ard_sheets()), c("analysis_data", "datasets"))) local({
     sh <- sheet
     out_id <- paste0("hot_ard_", sh)
     by_report <- sh == "analyses"
@@ -3879,6 +4033,10 @@ app_server <- function(input, output, session, start) {
                            words = data_words_list(), counts = shiny::isolate(data_counts()),
                            adata = .adata_rows(rv$p, ard_target()), first = .adata_of_report(rv$p, ard_target()),
                            adata_counts = shiny::isolate(adata_counts()))
+    # a dataset x analysis set that a plain analysis data of the report is
+    # too: the analysis data is its one line
+    ch <- .an_data_drop_same(ch, .an_data_value_row(r), .adata_rows(rv$p, ard_target()),
+                             rv$p$ard$populations, data_words_list()$groups[[3L]])
     # on an analysis data: the analysis data only (a dataset x analysis set
     # stays for an analysis that reads one)
     if (is.list(ch) && startsWith(.an_data_value_row(r), "@")) ch[[length(ch)]] <- NULL
@@ -4086,7 +4244,7 @@ app_server <- function(input, output, session, start) {
     dss <- setdiff(more, pops)
     out <- list()
     out[[t("The method's own, or cards'")]] <- ch
-    if (length(pops)) out[[t("Populations")]] <- unlist(lapply(pops, function(v)
+    if (length(pops)) out[[t("Analysis sets (their subjects)")]] <- unlist(lapply(pops, function(v)
       lab(v, t("population"), n[.an_data_value(NA, v)])))
     if (length(dss)) out[[t("Datasets")]] <- unlist(lapply(dss, function(v)
       lab(v, t("dataset"), n[.an_data_value(v, NA)])))
@@ -4170,7 +4328,7 @@ app_server <- function(input, output, session, start) {
         shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
                          width = "100%")),
-      if (!inside) shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 1-1, or a dataset \u00d7 population. The name is the one the program gives it.")),
+      if (!inside) shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data of 1-1 (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
                                       data_choices(r),
                                       selected = .an_data_value_row(r),
                                       width = "100%"),
@@ -5011,7 +5169,7 @@ app_server <- function(input, output, session, start) {
     shiny::div(
       class = "d-flex flex-wrap align-items-baseline gap-2 mb-2",
       shiny::tags$label(`for` = "ard_report_pop_pick", class = "small fw-bold mb-0",
-                        with_tip(t("This report's population"), t("The report list's population (the TOC's): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 1-1 and 1-2 start from it."))),
+                        with_tip(t("This report's population"), t("The report's analysis set (the TOC's; also the header's <OUTPUT_POPULATION> text): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 1-1 and 1-2 start from it. An analysis may still read another."))),
       shiny::div(style = "min-width: 16rem",
                  shiny::selectInput("ard_report_pop_pick", NULL, pop_choices(),
                                     selected = if (is.na(now)) "" else now, width = "100%")))
@@ -5396,7 +5554,7 @@ app_server <- function(input, output, session, start) {
                            selected = blank_na(r$from), width = "100%"),
         shiny::selectInput("adata_pop", with_tip(
           t("Population"),
-          t("The study's population (SAF ...) or a population flag of the data, put in as the condition's first row (SAFFL = Y). Left as it is, it is saved as the population (population_id); change it there, add others under it.")),
+          t("The analysis set (Populations tab) this data is kept to, or a population flag of the data (SAFFL = Y). Make an analysis data only when the report needs more than a dataset kept to a set.")),
           pop_ch, selected = pop_now, width = "100%")),
       shiny::uiOutput("adata_pop_note"),
       if (nzchar(e$legacy_pop)) shiny::p(
@@ -6008,7 +6166,7 @@ app_server <- function(input, output, session, start) {
         col_widths = c(4, 8),
         shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label), width = "100%")),
-      shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads: an analysis data of 1-1, or a dataset \u00d7 population. The name is the one the program gives it.")),
+      shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data of 1-1 (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
                          data_choices(r),
                          selected = .an_data_value_row(r),
                          width = "100%"),
@@ -6949,12 +7107,12 @@ app_server <- function(input, output, session, start) {
       class = "mb-2",
       shiny::h6(t("The reports")),
       shiny::p(class = "small mb-1", sprintf(t("%d reports from %d rows."), nrow(r), nrow(res$rows)),
-               if (nb) paste0(" ", sprintf(t("%s batch: %d reports."),
+               if (nb) paste0(" ", sprintf(t("%s report set: %d reports."),
                                            res$rule_set$settings$topline_batch, nb))),
       shiny::tags$table(
         class = "table table-sm small",
         shiny::tags$thead(shiny::tags$tr(lapply(
-          t(c("output_id", "Phase", "Label", "Titles", "Shell", "Batches")), shiny::tags$th))),
+          t(c("output_id", "Phase", "Label", "Titles", "Shell", "Report sets")), shiny::tags$th))),
         shiny::tags$tbody(lapply(show, function(i) shiny::tags$tr(
           shiny::tags$td(r$output_id[i]),
           shiny::tags$td(if (is.na(r$phase[i])) "\u2014" else r$phase[i]),
@@ -7302,7 +7460,7 @@ app_server <- function(input, output, session, start) {
               paste(basename(paths), collapse = ", "), rec$import_id, length(new_ids),
               sum(r$status == "changed"), sum(r$status == "missing")),
       if (nrow(res$batches)) shiny::tagList(shiny::br(), sprintf(
-        t("%s batch: %d reports."), res$rule_set$settings$topline_batch, nrow(res$batches))),
+        t("%s report set: %d reports."), res$rule_set$settings$topline_batch, nrow(res$batches))),
       if (any(!is.na(res$reports$shell_sheet))) shiny::tagList(shiny::br(), sprintf(
         t("%d shells linked."), sum(!is.na(res$reports$shell_sheet)))),
       if (any(res$problems$level == "hand")) shiny::tagList(shiny::br(), sprintf(
@@ -9906,7 +10064,7 @@ app_server <- function(input, output, session, start) {
     v$program <- htmltools::htmlEscape(v$program)
     v$rtf <- htmltools::htmlEscape(v$rtf)
     # "Title" here is the report's title; t("Title") is the study's
-    names(v) <- c(t(c("output_id", "Section", "Batches", "Type", "Program", "RTF", "Data")),
+    names(v) <- c(t(c("output_id", "Section", "Report sets", "Type", "Program", "RTF", "Data")),
                   if (identical(lang, "en")) "Title" else t("Report title"))
     v$.key <- .report_search_keys(shiny::isolate(picker_rows()), outputs_view()$output_id)
     DT::datatable(v, rownames = FALSE, escape = FALSE,
@@ -9930,34 +10088,10 @@ app_server <- function(input, output, session, start) {
       DT::selectRows(DT::dataTableProxy("outputs"), if (!is.na(sel)) sel)
     }
   })
-  # a report's named batches (the report list's batches column): the names
-  # in use to choose from, a new one typed
-  shiny::observeEvent(input$report_batches, {
-    id <- input$target
-    if (is.null(id) || !id %in% rv$p$outputs$output_id) {
-      return(notify(t("Choose a report"), "warning"))
-    }
-    own <- .split_bar(rv$p$outputs$batches[rv$p$outputs$output_id == id] %||% NA)
-    own <- own[!is.na(own)]
-    shiny::showModal(shiny::modalDialog(
-      title = sprintf(t("The named batches of %s"), id), easyClose = TRUE,
-      shiny::selectizeInput("report_batches_pick", NULL,
-                            unique(c(names(batch_sets(rv$p)), own)), selected = own,
-                            multiple = TRUE, width = "100%",
-                            options = list(create = TRUE, plugins = list("remove_button"))),
-      shiny::p(class = "small text-muted",
-               t("The official runs that take this report by name (Topline, Final ...): choose the names in use or type a new one. The Runs tab runs a named batch.")),
-      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
-                              .btn("report_batches_ok", t("OK"), class = "btn-primary"))))
-  })
-  shiny::observeEvent(input$report_batches_ok, {
-    id <- input$target
-    p2 <- guarded(.set_report_batches(rv$p, id, input$report_batches_pick %||% character()))
-    if (is.null(p2)) return()
-    shiny::removeModal()
-    rv$p <- p2
-    bump()
-  })
+  # the report sets are defined on the Runs tab (a set is chosen there for
+  # an official run); the report list only shows them (its Report sets
+  # column), and this button goes there
+  shiny::observeEvent(input$report_batches, bslib::nav_select("nav", "results"))
 
   # a double click on a report: open its Content
   shiny::observeEvent(input$outputs_dbl, {
@@ -10874,27 +11008,89 @@ app_server <- function(input, output, session, start) {
     shiny::req(has_study())
     study_files(rv$study, "data")
   })
-  # the files of the kind chosen (SDTM, ADaM, other, or all)
-  data_files_shown <- shiny::reactive({
-    d <- data_files()
-    k <- input$data_kind %||% "all"
-    if (identical(k, "all")) return(d)
-    d[d$folder %in% c(k, study_layout()[[k]]) |
-        startsWith(as.character(d$folder), study_layout()[[k]]), , drop = FALSE]
+  # the folder open (the pill): where Add files puts them
+  data_pill <- shiny::reactive(input$data_pill %||% "adam")
+  # the catalog's rows of the folder open: by their file's folder, a row
+  # with no file by its level
+  ds_sub <- shiny::reactive({
+    shiny::req(has_study())
+    d <- ard_rows(rv$p, "datasets", "")
+    d[.dataset_pill(d$path, d$level) == data_pill(), , drop = FALSE]
   })
-  output$data_files <- DT::renderDT({
-    d <- data_files_shown()[c("folder", "file", "size_kb", "modified")]
-    names(d) <- t(c("Folder", "File", "KB", "Modified"))
-    .dt(d, scrollY = "360px")
+  # the grid is the catalog's rows of the folder, with the file's size beside
+  # (display only: it is not written back)
+  ds_key <- shiny::reactive(paste("datasets", data_pill(), rv$ver, data_ver(), sep = "|"))
+  output$hot_ard_datasets <- rhandsontable::renderRHandsontable({
+    shiny::req(has_study())
+    grids_drawn()
+    key <- ds_key()
+    d <- shiny::isolate(ds_sub())
+    lay <- study_layout()
+    f <- shiny::isolate(data_files())
+    mine <- f[f$folder == lay[[data_pill()]], , drop = FALSE]
+    p <- file.path(rv$study$path, d$path)
+    d$size_kb <- ifelse(is.na(d$path), NA_character_,
+                        ifelse(file.exists(p), sprintf("%.1f", file.size(p) / 1024),
+                               t("no file")))
+    h <- .grid(d, "datasets", key,
+               list(path = file.path(mine$folder, mine$file)),
+               closed = character(), select = TRUE)
+    suppressWarnings(rhandsontable::hot_col(h, "size_kb", readOnly = TRUE))
   })
+  shiny::observeEvent(input$hot_ard_datasets, {
+    h <- input$hot_ard_datasets
+    if (is.null(h$changes$changes) &&
+        !h$changes$event %in% c("afterCreateRow", "afterRemoveRow")) return()
+    if (!identical(h$params$planner_key, ds_key())) return()
+    d <- read_grid(h)
+    if (is.null(d)) return()
+    d$size_kb <- NULL
+    # a new row of ADaM / SDTM is of that level (it stays under its pill)
+    lv <- c(adam = "ADaM", sdtm = "SDTM")[data_pill()]
+    if (!is.na(lv)) {
+      blank <- (is.na(d$path) | !nzchar(d$path)) & (is.na(d$level) | !nzchar(d$level))
+      d$level[blank] <- lv
+    }
+    full <- ard_rows(rv$p, "datasets", "")
+    guarded(rv$p <- set_ard_rows(rv$p, "datasets", "",
+                                 .datasets_put_back(full, d, data_pill())))
+  })
+  # the files of the folder that have no row, and the names that have
+  # several files (the row uses one)
+  output$catalog_files_note <- shiny::renderUI({
+    shiny::req(has_study())
+    f <- data_files()
+    lay <- study_layout()
+    f <- f[f$folder == lay[[data_pill()]] &
+             tolower(tools::file_ext(f$file)) %in% .data_exts, , drop = FALSE]
+    rel <- file.path(f$folder, f$file)
+    d <- rv$p$ard$datasets
+    bare <- rel[!rel %in% d$path & !.dataset_name(f$file) %in% d$dataset]
+    cl <- catalog_name_clashes(rv$p, data_files())
+    cl <- cl[cl$dataset %in% .dataset_name(f$file), , drop = FALSE]
+    shiny::tagList(
+      if (length(bare)) shiny::p(
+        class = "small text-muted mt-1 mb-0",
+        sprintf(t("Files with no row yet: %s (Refresh makes the rows)."),
+                paste(bare, collapse = ", "))),
+      if (nrow(cl)) shiny::p(
+        class = "small text-warning mt-1 mb-0",
+        sprintf(t("More than one file of a name: %s. The row uses the file in its path; choose another there."),
+                paste(unique(cl$dataset), collapse = ", "))),
+      if (anyDuplicated(d$dataset[!is.na(d$dataset)])) shiny::p(
+        class = "small text-warning mt-1 mb-0",
+        sprintf(t("A dataset name is in the catalog twice: %s. Only the first row is read."),
+                paste(unique(d$dataset[duplicated(d$dataset)]), collapse = ", "))))
+  })
+  output$data_folder_where <- shiny::renderUI(shiny::code(paste0(study_layout()[[data_pill()]], "/")))
   shiny::observeEvent(input$data_upload, {
     f <- input$data_upload
-    dest <- file.path(rv$study$path, study_layout()[[input$data_folder]])
+    dest <- file.path(rv$study$path, study_layout()[[data_pill()]])
     dir.create(dest, recursive = TRUE, showWarnings = FALSE)
     ok <- file.copy(f$datapath, file.path(dest, f$name), overwrite = TRUE)
     data_ver(data_ver() + 1L)
     notify(sprintf(t("%d files added to %s"), sum(ok),
-                   study_layout()[[input$data_folder]]))
+                   study_layout()[[data_pill()]]))
     to_catalog()
   })
   shiny::observeEvent(input$data_refresh, to_catalog(), ignoreInit = TRUE)
@@ -10913,13 +11109,26 @@ app_server <- function(input, output, session, start) {
     notify(sprintf(t("In the data catalog now: %s"), paste(added, collapse = ", ")))
   }
   shiny::observeEvent(input$data_open, .open_folder(
-    file.path(rv$study$path, "data")))
+    file.path(rv$study$path, study_layout()[[data_pill()]])))
+  # the Data tab opened: the files that have no row get one (once a study)
+  data_seen <- shiny::reactiveVal("")
+  shiny::observeEvent(list(input$nav, study_open()), {
+    if (!identical(input$nav, "data") || !has_study()) return()
+    id <- rv$study$meta$study_id
+    if (identical(data_seen(), id)) return()
+    data_seen(id)
+    to_catalog()
+  })
   data_head <- shiny::reactive({
     # a row selection can outlive the list it was made in (the list is
     # drawn again when the study or the folder changes): read only a file
     # that is there
-    path <- data_files_shown()$path[input$data_files_rows_selected]
-    shiny::req(length(path) == 1L, !is.na(path), file.exists(path))
+    r <- input$hot_ard_datasets_select$select$r
+    shiny::req(length(r) == 1L)
+    d <- ds_sub()
+    shiny::req(r >= 1L, r <= nrow(d), !is.na(d$path[r]))
+    path <- file.path(rv$study$path, d$path[r])
+    shiny::req(file.exists(path))
     guarded(read_data_head(path, n = Inf))
   })
   output$data_head <- DT::renderDT({
@@ -10931,9 +11140,9 @@ app_server <- function(input, output, session, start) {
   })
   output$data_dim <- shiny::renderUI({
     # nothing chosen yet: say how to see one (a blank card looked broken)
-    if (!length(input$data_files_rows_selected)) {
+    if (length(input$hot_ard_datasets_select$select$r) != 1L) {
       return(shiny::p(class = "small text-muted",
-                      t("Click a file in the list to see its first rows.")))
+                      t("Click a dataset in the list to see its first rows.")))
     }
     d <- data_head()
     shiny::req(d)
@@ -11003,7 +11212,7 @@ app_server <- function(input, output, session, start) {
     d <- selected_status()
     rv$status_ver
     if (!nrow(d)) {
-      return(t("Choose a report to see what its last preview printed, or a batch folder to see its run."))
+      return(t("Choose a report to see what its last preview printed, or a run folder to see its run."))
     } else {
       f <- d$log[1L]
       if (is.na(f)) return(sprintf(t("%s has not been run yet."),
@@ -11080,7 +11289,7 @@ app_server <- function(input, output, session, start) {
     rv$job_what <- paste(t("the official run:"),
                          paste(t(c(ard = "ARD", tfl = "Reports")[parts]),
                                collapse = ", "),
-                         if (length(set)) sprintf(t("(the batch %s)"), set),
+                         if (length(set)) sprintf(t("(the report set %s)"), set),
                          if (length(exclude)) sprintf(t("(%d left out)"), length(exclude)))
   }
   # the reports of the run: every report, ticked; a report unticked is left
@@ -11100,30 +11309,43 @@ app_server <- function(input, output, session, start) {
     sets <- names(batch_sets(rv$p))
     now <- shiny::isolate(chosen_set())
     if (!now %in% sets) now <- ""
-    shiny::tags$details(
-      class = "mb-2", open = if (length(sets) || length(sel) < length(ids)) NA,
-      shiny::tags$summary(class = "small", shiny::textOutput("batch_reports_n", inline = TRUE)),
-      # a named batch: its reports ticked; the ticks saved under a name
+    shiny::div(
+      class = "mb-2",
+      # the report set: always at hand (choosing one ticks its reports and
+      # the count below follows); the list of reports is folded
       shiny::div(
-        class = "d-flex flex-wrap gap-2 align-items-end my-1",
-        shiny::selectInput("batch_set", with_tip(
-          t("Named batch"),
-          t("A named batch is a set of reports an official run takes by name (Topline, Interim Analysis, Final): choosing one ticks its reports. A report's batches are the report list's batches column; the full run is every report and has no name.")),
-          # (the full run: a value of its own -- selectize hides an empty one)
+        class = "rp-inline my-1",
+        shiny::span(class = "small", with_tip(
+          t("Report set"),
+          t("A report set is a group of reports an official run takes by name (Topline, Interim Analysis, Final): choosing one ticks its reports. Which sets a report is in shows in the report list's Report sets column; the full run is every report and has no name."))),
+        # (the full run: a value of its own -- selectize hides an empty one)
+        shiny::selectInput("batch_set", NULL,
           c(stats::setNames(".all", t("(every report)")), stats::setNames(sets, sets)),
-          selected = if (nzchar(now)) now else ".all", width = "220px"),
+          selected = if (nzchar(now)) now else ".all", width = "220px", selectize = FALSE),
         .btn("batch_save", t("Save the ticks as..."), class = "btn-sm btn-outline-primary"),
         .btn("batch_rename", t("Rename..."), class = "btn-sm btn-outline-secondary"),
         .btn("batch_delete", t("Delete..."), class = "btn-sm btn-outline-danger")),
-      shiny::div(
-        class = "d-flex gap-2 my-1",
-        .btn("batch_all", t("All"), class = "btn-sm btn-outline-secondary py-0"),
-        .btn("batch_none", t("None"), class = "btn-sm btn-outline-secondary py-0")),
-      shiny::div(
-        class = "border rounded px-2 small", style = "max-height: 16rem; overflow-y: auto;",
-        shiny::checkboxGroupInput("batch_reports", NULL,
-                                  stats::setNames(ids, lab), selected = sel,
-                                  width = "100%")))
+      shiny::tags$details(
+        open = if (length(sets) || length(sel) < length(ids)) NA,
+        shiny::tags$summary(class = "small", shiny::textOutput("batch_reports_n", inline = TRUE)),
+        shiny::div(
+          class = "rp-inline my-1",
+          .btn("batch_all", t("All"), class = "btn-sm btn-outline-secondary"),
+          .btn("batch_none", t("None"), class = "btn-sm btn-outline-secondary"),
+          shiny::tags$input(id = "batch_q", type = "search", class = "form-control form-control-sm",
+                            style = "max-width: 16rem;",
+                            placeholder = t("Filter the reports (ID, description)"),
+                            oninput = "rpBatchFilter()"),
+          shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary",
+                             onclick = "rpBatchShown('add')", t("Tick the shown")),
+          shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary",
+                             onclick = "rpBatchShown('remove')", t("Untick the shown")),
+          shiny::tags$script(shiny::HTML(.batch_filter_js))),
+        shiny::div(
+          class = "border rounded px-2 small", style = "max-height: 16rem; overflow-y: auto;",
+          shiny::checkboxGroupInput("batch_reports", NULL,
+                                    stats::setNames(ids, lab), selected = sel,
+                                    width = "100%"))))
   })
   output$batch_reports_n <- shiny::renderText({
     ids <- batch_ids()
@@ -11136,7 +11358,7 @@ app_server <- function(input, output, session, start) {
                 length(ids) - n),
       # the ticks changed since the batch was chosen: the run has no name
       if (nzchar(s) && !setequal(ticks, batch_sets(rv$p)[[s]]))
-        paste0(" ", sprintf(t("(not the batch %s any more: the run has no name)"), s)))
+        paste0(" ", sprintf(t("(not the report set %s any more: the run has no name)"), s)))
   })
   shiny::outputOptions(output, "batch_reports_n", suspendWhenHidden = FALSE)
   # the named batch chosen ("": none, the full run)
@@ -11161,8 +11383,8 @@ app_server <- function(input, output, session, start) {
   }
   shiny::observeEvent(input$batch_save, {
     ticks <- intersect(input$batch_reports %||% character(), batch_ids())
-    if (!length(ticks)) return(notify(t("Tick the reports of the batch first."), "warning"))
-    batch_name_dialog(sprintf(t("Save the %d ticked reports as a named batch"), length(ticks)),
+    if (!length(ticks)) return(notify(t("Tick the reports of the report set first."), "warning"))
+    batch_name_dialog(sprintf(t("Save the %d ticked reports as a report set"), length(ticks)),
                       "batch_save_name", chosen_set(),
                       t("A name the study has already is overwritten: it becomes these reports. Letters, digits, spaces, . _ -"))
   })
@@ -11175,12 +11397,12 @@ app_server <- function(input, output, session, start) {
     rv$p <- p2
     bump()
     shiny::updateSelectInput(session, "batch_set", selected = name)
-    notify(sprintf(t("The batch %s: %d reports (save the study to keep it)."), name, length(ticks)))
+    notify(sprintf(t("The report set %s: %d reports (save the study to keep it)."), name, length(ticks)))
   })
   shiny::observeEvent(input$batch_rename, {
     s <- chosen_set()
-    if (!nzchar(s)) return(notify(t("Choose a named batch first."), "warning"))
-    batch_name_dialog(sprintf(t("Rename the batch %s"), s), "batch_rename_name", s,
+    if (!nzchar(s)) return(notify(t("Choose a report set first."), "warning"))
+    batch_name_dialog(sprintf(t("Rename the report set %s"), s), "batch_rename_name", s,
                       t("Its reports stay as they are."))
   })
   shiny::observeEvent(input$batch_rename_name_ok, {
@@ -11195,9 +11417,9 @@ app_server <- function(input, output, session, start) {
   })
   shiny::observeEvent(input$batch_delete, {
     s <- chosen_set()
-    if (!nzchar(s)) return(notify(t("Choose a named batch first."), "warning"))
+    if (!nzchar(s)) return(notify(t("Choose a report set first."), "warning"))
     shiny::showModal(shiny::modalDialog(
-      title = sprintf(t("Delete the batch %s?"), s), easyClose = TRUE,
+      title = sprintf(t("Delete the report set %s?"), s), easyClose = TRUE,
       shiny::p(t("Only the name goes: its reports stay on the report list.")),
       footer = shiny::tagList(
         shiny::modalButton(t("Cancel")),
@@ -11214,6 +11436,14 @@ app_server <- function(input, output, session, start) {
     session, "batch_reports", selected = batch_ids()))
   shiny::observeEvent(input$batch_none, shiny::updateCheckboxGroupInput(
     session, "batch_reports", selected = character()))
+  # the reports a filter shows, ticked or unticked together
+  shiny::observeEvent(input$batch_shown, {
+    s <- input$batch_shown
+    ids <- intersect(as.character(unlist(s$ids)), batch_ids())
+    now <- intersect(input$batch_reports %||% batch_ids(), batch_ids())
+    shiny::updateCheckboxGroupInput(session, "batch_reports",
+                                    selected = .batch_ticks(now, ids, s$mode))
+  })
   # the run: a named batch when the ticks are its reports; else the ticks
   # (the reports unticked left out)
   batch_go <- function() {
@@ -11303,7 +11533,7 @@ app_server <- function(input, output, session, start) {
     d
   })
   output$batch_open_ui <- shiny::renderUI({
-    if (isTRUE(app_local())) .btn("batch_open", t("Open the batch folder"))
+    if (isTRUE(app_local())) .btn("batch_open", t("Open the run folder"))
   })
   output$batches <- DT::renderDT({
     d <- batches()
@@ -11336,8 +11566,8 @@ app_server <- function(input, output, session, start) {
                     h = esc(d$set),
                     stringsAsFactors = FALSE)
     v$g <- esc(v$g)
-    names(v) <- t(c("Batch folder", "Started", "Runs", "State",
-                    "Code", "Data", "Left out", "Batch name"))
+    names(v) <- t(c("Run folder", "Started", "Runs", "State",
+                    "Code", "Data", "Left out", "Report set"))
     # the row chosen stays chosen while a running one's time is drawn again
     sel <- shiny::isolate(input$batches_rows_selected)
     DT::datatable(v, rownames = FALSE, escape = FALSE,
