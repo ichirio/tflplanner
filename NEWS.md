@@ -1,6 +1,6 @@
 # tflplanner (development version)
 
-- **tflspec 0.0.24.9112: `tfl_fig_r()` is `tfl_r()`** (0.0.2.9221; the YAML
+- **tflspec 0.0.24.9112: `tfl_fig_r()` is `tfl_r()`** (#390, 0.0.2.9221; the YAML
   spec's one class for R code in a definition, every kind).  A figure
   design's R code is read, kept and written as before.  (Pair of
   ichirio/tflspec#254: merge that first.)
