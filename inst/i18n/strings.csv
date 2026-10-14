@@ -3111,6 +3111,7 @@ Update when it has finished.,終わってから更新してください。
 "Rows kept by a condition over the record (plan_filter()): one R condition over its statistics and keys, as a cells row's when (p >= 0.05); several joined by &. A SOC stays when one of its PTs does; the overall row always stays. Blank: every row.",レコードの条件で残す行（plan_filter()）：統計量とキーについての R の条件を 1 つ、cells の行の when と同じ書き方で（p >= 0.05）。複数なら & でつなぐ。SOC はその PT が 1 つでも残れば残る。全体の行はいつも残る。空欄 = 全部の行。
 "TRUE / FALSE: the condition in any column (TRUE, blank) or every column (FALSE) (plan_filter(any = )).",TRUE / FALSE：条件をどれかの列で満たせばよい（TRUE、空欄）か、全部の列で満たす（FALSE）か（plan_filter(any = )）。
 "keep (blank): a parent row (a SOC) stays exactly when one of its children does; drop: judged by its own counts (plan_filter(parents = )).",keep（空欄）：親の行（SOC）は子の行が 1 つでも残るときだけ残る。drop：親の行自身の数で判定する（plan_filter(parents = )）。
+"The population as a header or footnote prints it, and its name in CDISC ARS; blank: the population_id.",ヘッダーや脚注に出す解析対象集団の文言。CDISC ARS では解析対象集団の名前になります。空欄は population_id。
 Report sets...,帳票セット…
 Report sets are made and chosen on the Runs tab: this opens it,帳票セットは実行タブで作り、選びます。ここから実行タブを開きます
 Puts the whole list in the order of the numbers in the ids (T-14-1-2 before T-14-1-10),リスト全体を、ID の数字の順に並べます（T-14-1-2 が T-14-1-10 より前）

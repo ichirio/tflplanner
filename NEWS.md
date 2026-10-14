@@ -1,5 +1,10 @@
 # tflplanner (development version)
 
+- **tflspec 0.0.24.9112: `tfl_fig_r()` is `tfl_r()`** (#390, 0.0.2.9221; the YAML
+  spec's one class for R code in a definition, every kind).  A figure
+  design's R code is read, kept and written as before.  (Pair of
+  ichirio/tflspec#254: merge that first.)
+
 - **Report sets and official runs are two things, named so** (#387, 0.0.2.9220; the user's request).  What the app called a "batch" was two
   things: the choice of reports (a named set of them) and the run that makes
   the results.  The set is now a **report set** (the Runs tab's "Report

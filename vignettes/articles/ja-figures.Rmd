@@ -467,7 +467,7 @@ fn: scale_x_discrete
 args:
   labels: !r function(x) sub("Week ", "W", x)
 '
-spec <- yaml::yaml.load(yaml_text, handlers = list(r = tfl_fig_r))
+spec <- yaml::yaml.load(yaml_text, handlers = list(r = tfl_r))
 mean_fig2 <- mean_fig
 mean_fig2$plot$add <- list(spec)
 cat(grep("scale_x_discrete", tfl_fig_design_code(mean_fig2), value = TRUE), sep = "\n")
@@ -626,7 +626,7 @@ bad$layers <- c(bad$layers, list(
   list(layer = "call", fn = "geom_text", args = list(sise = 3)),   # 引数のつづり
   list(layer = "call", fn = "theme")                               # 図全体の関数を layers に
 ))
-bad$plot$add <- list(list(fn = "facet_wrap", args = list(facets = tfl_fig_r("vars(PARAM)"))))
+bad$plot$add <- list(list(fn = "facet_wrap", args = list(facets = tfl_r("vars(PARAM)"))))
 bad$plot$facet_by <- "PARAM"
 probs <- tfl_check_fig_design(bad, adam)
 ex <- function(pat) {

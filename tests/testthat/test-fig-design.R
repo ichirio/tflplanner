@@ -233,10 +233,10 @@ test_that("a design saved before #293 (its statistics apart) reads as one data l
   expect_identical(.pd_add_at(d$layers, "hline", "layers", list(sec = "layers", i = 1L)), 1L)
 })
 
-test_that("a design with R code in it (tfl_fig_r, !r) is saved in the state and read back", {
+test_that("a design with R code in it (tfl_r, !r) is saved in the state and read back", {
   d <- tflspec::tfl_fig_template("km_simple")
   d$plot$add <- list(list(fn = "scale_y_continuous",
-                          args = list(labels = tflspec::tfl_fig_r("scales::label_percent()"))))
+                          args = list(labels = tflspec::tfl_r("scales::label_percent()"))))
   # as the study keeps it (set_fig_design())
   p <- set_fig_design(add_output(new_planner(), "F1", type = "figure"), "F1", d)
   st <- .fig_r_to_state(p$fig_designs)
@@ -244,7 +244,7 @@ test_that("a design with R code in it (tfl_fig_r, !r) is saved in the state and 
   js <- jsonlite::toJSON(st, auto_unbox = TRUE, null = "null", na = "null")
   back <- .fig_designs_from_state(jsonlite::fromJSON(js, simplifyVector = FALSE))
   lab <- back$F1$plot$add[[1L]]$args$labels
-  expect_s3_class(lab, "tfl_fig_r")
+  expect_s3_class(lab, "tfl_r")
   expect_identical(as.character(lab), "scales::label_percent()")
   # the code it writes is the same
   expect_identical(tflspec::tfl_fig_design_code(back$F1, "F1", save = FALSE),
