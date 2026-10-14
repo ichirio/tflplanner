@@ -31,7 +31,7 @@ test_that("a part's heading carries its help; a click or a tap pins the (i) open
   # no "About this" lines left: each part has a heading with its (i)
   expect_false(grepl(">About this<", html, fixed = TRUE))
   # the sheet note is in a part's (i) on the Data tab, not a line of its own
-  expect_match(html, 'aria-label="The datasets the study', fixed = TRUE)
+  expect_match(html, 'aria-label="The data files of the folder', fixed = TRUE)
   # the pinning script is on the page, for 2-x's (i) too
   expect_match(html, "rp-pinned", fixed = TRUE)
   expect_match(html, ".rp-tip, .rp-hint", fixed = TRUE)
