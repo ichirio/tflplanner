@@ -1415,7 +1415,7 @@ app_server <- function(input, output, session, start) {
     study = NULL, p = NULL, saved = NULL, meta = NULL, saved_meta = NULL,
     ver = 0L, want = NULL, job = NULL, job_what = NULL, status_ver = 0L,
     studies_ver = 0L, ard_ver = 0L, save_ver = 0L, spec = NULL,
-    spec_merge = NULL)
+    spec_merge = NULL, adopting = FALSE)
   bump <- function() rv$ver <- rv$ver + 1L
   # an ARD method's name and note as the user reads them: the translation
   # kept by the app under "method:<name>" / "method-note:<name>", else
@@ -1519,14 +1519,69 @@ app_server <- function(input, output, session, start) {
   shiny::observe({
     unsaved <- isTRUE(draft_due()[[1L]])
     shiny::isolate({
-      if (!has_study() || !is.null(rv$draft)) return()
+      # (while the dialog of a change made outside the app is up, the
+      # draft waits: it is offered once that is decided)
+      if (!has_study() || !is.null(rv$draft) || isTRUE(rv$adopting)) return()
       if (unsaved) .write_draft(current_study())
       else .drop_draft(rv$study$meta$study_id)
     })
   })
 
   # -- the study ---------------------------------------------------------
+  # The definition files were changed outside the app (spec/, study.yml):
+  # the same screen as an import asks which parts to take in.  The files
+  # as they are go to spec/.backup/ if any part is left out.
+  adopt_modal <- function(s) {
+    rv$adopting <- TRUE
+    sp <- s$spec
+    was <- list(planner = sp$was$planner, meta = sp$was$meta)
+    sm <- tryCatch(.part_summary(was, s, sp$parts), error = function(e)
+      rep("", length(sp$parts)))
+    shiny::showModal(shiny::modalDialog(
+      title = t("The definition files were changed outside the app"),
+      shiny::p(class = "small mb-1",
+               t("spec/ or study.yml is not as the app saved it. Choose the parts to take in; the rest stay as the study was.")),
+      if (!is.null(sp$files) && nrow(sp$files)) shiny::p(
+        class = "small text-muted mb-2",
+        paste(sp$files$file, collapse = ", ")),
+      shiny::checkboxGroupInput("adopt_parts", t("Parts that differ (take in the ones checked): the study's \u2192 the files'"),
+                                stats::setNames(sp$parts, paste0(.part_labels(sp$parts), ": ", sm)),
+                                selected = sp$parts, width = "100%"),
+      shiny::p(class = "small text-muted",
+               t("The files as they are now are kept in spec/.backup/<date>-<time>/ if a part is left out. To change the definition, export it, edit the copy and import it back (Import definition files).")),
+      size = "l", easyClose = FALSE,
+      footer = shiny::tagList(
+        .btn("adopt_leave", t("Leave the study as it was"), class = "btn-outline-secondary"),
+        .btn("adopt_ok", t("Take in the parts checked"), class = "btn-primary"))))
+  }
+  adopt_done <- function(take) {
+    s <- rv$study
+    rv$adopting <- FALSE
+    shiny::removeModal()
+    out <- guarded(.apply_adoption(s, take))
+    if (is.null(out)) return()
+    if (!identical(out, s)) {
+      rv$study <- out
+      rv$p <- rv$saved <- .study_spec_keys(out$planner)
+      rv$meta <- rv$saved_meta <- out$meta[.study_fields]
+      rv$spec <- out$spec
+      rv$status_ver <- rv$status_ver + 1L
+      rv$ard_ver <- rv$ard_ver + 1L
+      rv$studies_ver <- rv$studies_ver + 1L
+      bump()
+      notify(sprintf(t("Taken in: %s. The files before are in %s."),
+                     if (length(take)) paste(.part_labels(take), collapse = ", ") else "-",
+                     sub(paste0("^", out$path, "/"), "", out$backup)))
+    } else {
+      rv$spec <- s$spec
+      notify(t("The definition files were changed outside tflplanner; the changes were loaded."))
+    }
+    offer_draft(rv$study)
+  }
+  shiny::observeEvent(input$adopt_ok, adopt_done(input$adopt_parts %||% character()))
+  shiny::observeEvent(input$adopt_leave, adopt_done(character()))
   set_study <- function(s) {
+    rv$adopting <- FALSE
     s$planner <- .study_spec_keys(s$planner)
     rv$study <- s
     rv$p <- rv$saved <- s$planner
@@ -1547,9 +1602,9 @@ app_server <- function(input, output, session, start) {
     # not readable (the study open as last saved, no save until resolved)
     rv$spec <- s$spec
     if (identical(s$spec$status, "adopted")) {
-      shiny::showNotification(
-        t("The definition files were changed outside tflplanner; the changes were loaded."),
-        type = "message", duration = 10)
+      # never silently: what changed, the parts to take in (#274)
+      adopt_modal(s)
+      return(invisible())
     } else if (identical(s$spec$status, "invalid")) {
       spec_modal()
       return(invisible())
@@ -1749,7 +1804,7 @@ app_server <- function(input, output, session, start) {
       t("The definition files were changed outside tflplanner; the changes were loaded.") else
       t("Nothing changed in the definition files."))
   }
-  for (b in c("spec_reload", "spec_reload_m", "spec_load")) local({
+  for (b in c("spec_reload", "spec_reload_m")) local({
     id <- b
     shiny::observeEvent(input[[id]], do_reload())
   })
@@ -2597,20 +2652,22 @@ app_server <- function(input, output, session, start) {
       # import it back (the usual way); a direct edit of spec/ is taken in
       # with Load, or on the next open
       shiny::p(class = "small text-muted mb-1",
-               t("To edit the definition outside the app: export the files, edit the copy (in Excel; rename it as you like), and import it back.")),
+               t("To edit the definition outside the app: export the files, edit the copy (in Excel; rename it as you like), and import it back. Do not edit spec/ in place: if you do, the app asks before it takes the change in.")),
       shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mb-1",
         shiny::downloadButton("spec_files_zip", t("Export the definition files"),
                               class = "btn-sm"),
         help_tip(t("A copy of spec/ and study.yml as a zip (the ARD definition as an Excel workbook): edit the copy, rename it as you like, and bring it back with Import."))),
       shiny::fileInput(
         "spec_import",
-        t("Import definition files (an edited copy: workbooks, .yml, .json or the zip)"),
+        t("Import definition files (this study's definition: spec workbooks, study.yml, or the zip)"),
         multiple = TRUE, accept = c(".xlsx", ".yml", ".yaml", ".json", ".zip"),
         width = "100%"),
+      shiny::p(class = "small text-muted mb-2",
+               t("Edit the exported copy in Excel, then choose it here: a screen shows what differs, and only the parts you check are taken in; the files before are kept in spec/.backup. This is the study's definition, not the company standards.")),
       shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mb-2",
-        .btn("spec_load", t("Load from the definition files"),
-             class = "btn-sm btn-outline-primary"),
-        help_tip(t("Reads spec/ and study.yml again and takes them in: after editing them outside tflplanner (in Excel), or copying workbooks into spec/. Your unsaved changes are kept and merged."))),
+        .btn("restore_open", t("Restore from a backup ..."),
+             class = "btn-sm btn-outline-secondary"),
+        help_tip(t("Every import keeps the files as they were in spec/.backup/. Choose one to bring the study back to it (the study as it is now is kept first): the way to undo a wrong edit."))),
       shiny::div(class = "d-flex flex-wrap gap-2 align-items-center rp-upload mb-2",
                  .btn("ars_open", t("Export the analyses as CDISC ARS"),
                       class = "btn-sm btn-outline-secondary"),
@@ -2677,22 +2734,9 @@ app_server <- function(input, output, session, start) {
     filename = function() paste0(rv$study$meta$study_id, "_definition_",
                                  format(Sys.time(), "%Y%m%d-%H%M"), ".zip"),
     content = function(file) export_spec_files(rv$study$meta$study_id, file))
-  shiny::observeEvent(input$spec_import, {
-    shiny::req(has_study())
-    f <- input$spec_import
-    # an import saves the study: unsaved changes would go in with it
-    if (isTRUE(dirty())) {
-      return(notify(t("There are unsaved changes. Save first, then choose the file again."), "warning"))
-    }
-    dir <- tempfile("import")
-    dir.create(dir)
-    tmp <- file.path(dir, f$name)
-    file.copy(f$datapath, tmp)
-    src <- if (length(tmp) == 1L) tmp else dir
-    pv <- guarded(preview_spec_import(rv$study$meta$study_id, src))
-    if (is.null(pv)) return()
-    names <- paste(f$name, collapse = ", ")
-    rv$import <- list(path = src, preview = pv, names = names)
+  # the dialog that follows an import (or a restore): what differs, the
+  # parts to take in
+  show_import_modal <- function(pv, names) {
     if (!pv$ok) {
       return(shiny::showModal(shiny::modalDialog(
         title = sprintf(t("The files cannot be imported: %s"), names),
@@ -2704,9 +2748,12 @@ app_server <- function(input, output, session, start) {
       return(notify(sprintf(t("%s is the same as the study's definition: nothing to import."), names)))
     }
     shiny::showModal(shiny::modalDialog(
-      title = sprintf(t("Import definition files: %s"), names),
+      title = sprintf(if (!is.null(rv$import$backup)) t("Restore a backup: %s") else t("Import definition files: %s"), names),
       # which file was read, and as which of the study's
-      shiny::p(class = "small text-muted mb-2",
+      shiny::p(class = "small mb-1",
+               if (!is.null(rv$import$backup)) t("The backup was read. Choose the parts to bring back.") else
+                 t("The chosen files were read. Choose the parts to take in.")),
+      if (is.null(rv$import$backup)) shiny::p(class = "small text-muted mb-2",
                sprintf(t("Read as %s."), paste(pv$files, collapse = ", "))),
       shiny::checkboxGroupInput("import_parts", t("Parts that differ (take in the ones checked): the study's \u2192 the copy's"),
                                 stats::setNames(pv$parts, paste0(pv$labels, ": ", pv$summary)),
@@ -2724,6 +2771,52 @@ app_server <- function(input, output, session, start) {
       footer = shiny::tagList(
         shiny::modalButton(t("Cancel")),
         .btn("import_ok", t("Import the parts checked"), class = "btn-primary"))))
+  }
+  shiny::observeEvent(input$spec_import, {
+    shiny::req(has_study())
+    f <- input$spec_import
+    # an import saves the study: unsaved changes would go in with it
+    if (isTRUE(dirty())) {
+      return(notify(t("There are unsaved changes. Save first, then choose the file again."), "warning"))
+    }
+    dir <- tempfile("import")
+    dir.create(dir)
+    tmp <- file.path(dir, f$name)
+    file.copy(f$datapath, tmp)
+    src <- if (length(tmp) == 1L) tmp else dir
+    pv <- guarded(preview_spec_import(rv$study$meta$study_id, src))
+    if (is.null(pv)) return()
+    names <- paste(f$name, collapse = ", ")
+    rv$import <- list(path = src, preview = pv, names = names)
+    show_import_modal(pv, names)
+  })
+  shiny::observeEvent(input$restore_open, {
+    shiny::req(has_study())
+    b <- list_spec_backups(rv$study$meta$study_id)
+    if (!nrow(b)) {
+      return(notify(t("There is no backup yet: an import keeps the files as they were.")))
+    }
+    shiny::showModal(shiny::modalDialog(
+      title = t("Restore from a backup"),
+      shiny::selectInput("restore_pick", t("Backup (the files as they were before an import)"),
+                         stats::setNames(b$name, sprintf("%s (%d)",
+                           format(b$time, "%Y-%m-%d %H:%M:%S"), b$files)),
+                         width = "100%"),
+      shiny::p(class = "small text-muted",
+               t("Next you see what would change; nothing is taken in until you choose.")),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("restore_show", t("Show what would change"),
+                                   class = "btn-primary"))))
+  })
+  shiny::observeEvent(input$restore_show, {
+    shiny::req(has_study(), nzchar(input$restore_pick %||% ""))
+    id <- rv$study$meta$study_id
+    pv <- guarded(preview_spec_backup(id, input$restore_pick))
+    if (is.null(pv)) return()
+    rv$import <- list(path = NULL, preview = pv, backup = input$restore_pick,
+                      names = input$restore_pick)
+    shiny::removeModal()
+    show_import_modal(pv, input$restore_pick)
   })
   shiny::observeEvent(input$import_ok, {
     im <- rv$import
@@ -2734,7 +2827,9 @@ app_server <- function(input, output, session, start) {
       return(notify(t("There are unsaved changes. Save first."), "warning"))
     }
     shiny::removeModal()
-    s <- guarded(import_spec_files(rv$study$meta$study_id, im$path, parts = parts))
+    s <- guarded(if (!is.null(im$backup)) {
+      restore_spec_backup(rv$study$meta$study_id, im$backup, parts = parts)
+    } else import_spec_files(rv$study$meta$study_id, im$path, parts = parts))
     rv$import <- NULL
     if (is.null(s)) return()
     rv$study <- s

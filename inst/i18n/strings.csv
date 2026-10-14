@@ -2380,7 +2380,7 @@ The definition files were changed outside tflplanner; the changes were loaded.,�
 "The definition files were changed outside tflplanner but could not be read. The study is open as it was last saved. Fix the files and load them, or write the files back from the last save. Until then the study cannot be saved.",定義ファイルが tflplanner の外で変更されましたが、読み込めませんでした。試験は最後に保存した状態で開いています。ファイルを直して読み込み直すか、最後の保存内容でファイルを書き戻してください。それまで保存はできません。
 Row,行
 Problem,問題
-Load from the definition files,定義ファイルから読み込む
+Re-read spec/ and study.yml (after editing them outside the app),spec/ と study.yml を読み直す（アプリの外で編集した後）
 Write the files back from the last save,最後の保存内容でファイルを書き戻す
 The definition files do not read,定義ファイルが読み込めません
 What changed,変更内容
@@ -2395,7 +2395,7 @@ The definition files were changed outside tflplanner since this study was opened
 "Reads spec/ and study.yml again and takes them in: after editing them outside tflplanner (in Excel), or copying workbooks into spec/. Your unsaved changes are kept and merged.",spec/ と study.yml を読み直して取り込みます。tflplanner の外（Excel など）で直したときや、spec/ にワークブックを置いたときに使います。未保存の変更は残り、合わせて取り込まれます。
 Export the definition files,定義ファイルを書き出す
 "A copy of spec/ and study.yml as a zip (the ARD definition as an Excel workbook): edit the copy, rename it as you like, and bring it back with Import.",spec/ と study.yml の写しを zip で書き出します（ARD の定義は Excel のワークブック）。写しを直し、名前も好きに変えてから、取り込みで戻します。
-"Import definition files (an edited copy: workbooks, .yml, .json or the zip)",定義ファイルを取り込む（直した写し：ワークブック、.yml、.json、または zip）
+"Import definition files (this study's definition: spec workbooks, study.yml, or the zip)",定義ファイルを取り込む（この試験の定義：spec のワークブック、study.yml、または zip）
 Nothing was changed. Fix the copy and import it again.,何も変えていません。写しを直して、もう一度取り込んでください。
 Warnings (the import is not stopped by them):,警告（取り込みは止まりません）：
 Import the parts checked,チェックした部分を取り込む
@@ -2485,7 +2485,7 @@ The named batches of %s,%s の名前付きバッチ
 "A flag (== ""Y"") that selects the population, e.g. FASFL, SAFFL.","解析対象集団を選ぶフラグ（== ""Y""。例：FASFL、SAFFL）。"
 Keep a population,解析対象集団で絞る
 "No population: every row of the dataset is used. Keep the population's flag (FASFL, SAFFL ...).",解析対象集団を指定していないので、データセットの全行が使われます。フラグ（FASFL、SAFFL など）で絞ってください。
-"To edit the definition outside the app: export the files, edit the copy (in Excel; rename it as you like), and import it back.",定義をアプリの外で直すには：ファイルを書き出し、写しを直して（Excel で。名前は変えてよい）、取り込みで戻します。
+"To edit the definition outside the app: export the files, edit the copy (in Excel; rename it as you like), and import it back. Do not edit spec/ in place: if you do, the app asks before it takes the change in.",定義をアプリの外で直すには：ファイルを書き出し、写しを直して（Excel で。名前は変えてよい）、取り込みで戻します。spec/ を直接直さないでください（直した場合は、取り込む前にアプリが確認します）。
 "There are unsaved changes. Save first, then choose the file again.",未保存の変更があります。先に保存してから、ファイルを選び直してください。
 The files cannot be imported: %s,取り込めません：%s
 %s is the same as the study's definition: nothing to import.,%s は試験の定義と同じです。取り込むものはありません。
@@ -3120,3 +3120,22 @@ The title for a header or footer.,ヘッダー・フッターに入れる短い�
 The study's number: the folder's name and the header's. Set when the study is made; it cannot be changed here.,試験の番号。フォルダ名とヘッダーの値になります。試験を作るときに決め、ここでは変えられません。
 "The headers say {STUDY_ID} = %s (the tokens sheet), not the Study ID.",ヘッダーの {STUDY_ID} は %s です（tokens シートの値）。試験 ID とは異なります。
 Use the Study ID,試験 ID にする
+"Edit the exported copy in Excel, then choose it here: a screen shows what differs, and only the parts you check are taken in; the files before are kept in spec/.backup. This is the study's definition, not the company standards.",書き出した写しを Excel で直し、ここで選びます。違う部分の確認画面が出て、チェックした部分だけ取り込まれ、前のファイルは spec/.backup に残ります。会社標準の設定ではなく、この試験の定義です。
+The chosen files were read. Choose the parts to take in.,選んだファイルを読みました。取り込む部分を選んでください。
+Load from the definition files,定義ファイルから読み込む
+The definition files were changed outside the app,定義ファイルがアプリの外で変更されています
+spec/ or study.yml is not as the app saved it. Choose the parts to take in; the rest stay as the study was.,spec/ や study.yml が、アプリが保存した状態と違っています。取り込む部分を選んでください。選ばなかった部分は、試験のままです。
+Parts that differ (take in the ones checked): the study's → the files',違う部分（チェックしたものを取り込む）：試験 → ファイル
+"The files as they are now are kept in spec/.backup/<date>-<time>/ if a part is left out. To change the definition, export it, edit the copy and import it back (Import definition files).",取り込まない部分があると、今のファイルは spec/.backup/<日付>-<時刻>/ に残ります。定義を変えるときは、書き出して写しを直し、「定義ファイルを取り込む」で戻してください。
+Leave the study as it was,試験はそのままにする
+Take in the parts checked,チェックした部分を取り込む
+Taken in: %s. The files before are in %s.,取り込みました：%s。前のファイルは %s にあります。
+Restore from a backup ...,バックアップから戻す ...
+Every import keeps the files as they were in spec/.backup/. Choose one to bring the study back to it (the study as it is now is kept first): the way to undo a wrong edit.,取り込みのたびに、その前のファイルが spec/.backup/ に残ります。1 つ選ぶと試験をその状態に戻します（今の状態は先に残します）。間違えた編集の取り消し用です。
+There is no backup yet: an import keeps the files as they were.,まだバックアップがありません。取り込むと、その前のファイルが残ります。
+Restore from a backup,バックアップから戻す
+Backup (the files as they were before an import),バックアップ（取り込む前のファイル）
+Next you see what would change; nothing is taken in until you choose.,次に、何が変わるかを表示します。選ぶまで何も取り込みません。
+Show what would change,変わる内容を見る
+Restore a backup: %s,バックアップから戻す：%s
+The backup was read. Choose the parts to bring back.,バックアップを読みました。戻す部分を選んでください。

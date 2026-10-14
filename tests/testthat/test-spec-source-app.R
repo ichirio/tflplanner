@@ -45,7 +45,7 @@ test_that("files that do not read: the card, no save, write back", {
   })
 })
 
-test_that("Load from the definition files takes them in, unsaved changes merged", {
+test_that("Reading the definition files again takes them in, unsaved changes merged", {
   local_home()
   s <- spec_app_study()
   shiny::testServer(server_for("SA-1"), {
@@ -54,7 +54,7 @@ test_that("Load from the definition files takes them in, unsaved changes merged"
     # an unsaved change of another part, then an Excel edit
     rv$p$outputs$description[2] <- "mine"
     set_title(s$path, "From Excel")
-    session$setInputs(spec_load = 1)
+    session$setInputs(spec_reload = 1)
     expect_identical(rv$spec$status, "adopted")
     expect_identical(sheet_rows(rv$p, "titles", "T-1")$center, "From Excel")
     expect_identical(rv$p$outputs$description[2], "mine")
@@ -96,6 +96,9 @@ test_that("a draft made before the files changed is merged on open", {
   shiny::testServer(server_for("SA-1"), {
     rv <- session$userData$rv
     expect_identical(rv$spec$status, "adopted")
+    # asked first (never silently); all parts taken in, then the draft offered
+    expect_null(rv$draft)
+    session$setInputs(adopt_parts = rv$spec$parts, adopt_ok = 1)
     # offered back: the draft over the files' version
     expect_false(is.null(rv$draft))
     session$setInputs(draft_restore = 1)
@@ -132,5 +135,49 @@ test_that("Import in the app: the parts shown, the ones checked taken in, a brok
     session$setInputs(spec_import = up(bad))
     expect_false(rv$import$preview$ok)
     expect_identical(.read_state("SA-1")$files, rec)
+  })
+})
+
+test_that("a change made outside the app is asked about on open: leave it, or take parts in", {
+  local_home()
+  s <- spec_app_study()
+  set_title(s$path, "Outside")
+  shiny::testServer(server_for("SA-1"), {
+    rv <- session$userData$rv
+    expect_identical(rv$spec$status, "adopted")
+    # nothing decided yet: the dialog is up, the files untouched
+    expect_length(list.files(file.path(s$path, "spec", ".backup")), 0L)
+    # leave the study as it was: the title is the old one again, and the
+    # changed file is kept in spec/.backup
+    session$setInputs(adopt_leave = 1)
+    expect_identical(sheet_rows(rv$p, "titles", "T-1")$center, "Old title")
+    expect_identical(rv$spec$status, "imported")
+    expect_length(list.files(file.path(s$path, "spec", ".backup")), 1L)
+    expect_identical(spec_status("SA-1")$status, rep("same", 3L))
+  })
+  expect_identical(sheet_rows(open_study("SA-1")$planner, "titles", "T-1")$center,
+                   "Old title")
+})
+
+test_that("Restore from a backup: listed, shown, the study as it is now kept first", {
+  home <- local_home()
+  s <- spec_app_study()
+  out <- file.path(home, "copy")
+  export_spec_files("SA-1", out)
+  set_title(out, "Second")
+  import_spec_files("SA-1", out)
+  expect_identical(nrow(list_spec_backups("SA-1")), 1L)
+  b <- list_spec_backups("SA-1")$name
+  shiny::testServer(server_for("SA-1"), {
+    rv <- session$userData$rv
+    expect_identical(sheet_rows(rv$p, "titles", "T-1")$center, "Second")
+    session$setInputs(restore_open = 1)
+    session$setInputs(restore_pick = b, restore_show = 1)
+    expect_identical(rv$import$backup, b)
+    expect_identical(rv$import$preview$parts, "sheet:titles")
+    session$setInputs(import_parts = "sheet:titles", import_ok = 1)
+    expect_identical(sheet_rows(rv$p, "titles", "T-1")$center, "Old title")
+    # the study before the restore is kept too
+    expect_identical(nrow(list_spec_backups("SA-1")), 2L)
   })
 })
