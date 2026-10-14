@@ -599,7 +599,7 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
                        spec = c("check", "overwrite")) {
   spec <- match.arg(spec)
   if (!is.null(base)) study <- .merge_saved(study, base, home)
-  p <- .study_spec_keys(study$planner)
+  p <- .meta_tokens(.study_spec_keys(study$planner), study$meta)
   study$planner <- p
   root <- study$path
   # its programs as its setup has it (its folders' variables, its packages)

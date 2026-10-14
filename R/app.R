@@ -2593,7 +2593,7 @@ app_server <- function(input, output, session, start) {
       shiny::p(shiny::strong(m$study_id), shiny::br(),
                shiny::span(class = "small text-muted", rv$study$path)),
       .study_section("study", t("The study"), open = TRUE,
-      shiny::textInput("m_title", t("Title"), v(m$title), width = "100%"),
+      shiny::textInput("m_title", with_token(t("Title"), "STUDY_TITLE"), v(m$title), width = "100%"),
       shiny::div(class = "d-flex flex-wrap gap-2",
                  shiny::textInput("m_short_title", with_token(with_tip(
                    t("Short title"),
@@ -2605,9 +2605,9 @@ app_server <- function(input, output, session, start) {
                    shiny::tags$input(type = "text", class = "form-control",
                                      value = m$study_id, readonly = NA))),
       shiny::div(class = "d-flex gap-2",
-                 shiny::textInput("m_compound", t("Compound"), v(m$compound)),
-                 shiny::textInput("m_phase", t("Phase"), v(m$phase))),
-      shiny::textAreaInput("m_description", t("Description"),
+                 shiny::textInput("m_compound", with_token(t("Compound"), "STUDY_COMPOUND"), v(m$compound)),
+                 shiny::textInput("m_phase", with_token(t("Phase"), "STUDY_PHASE"), v(m$phase))),
+      shiny::textAreaInput("m_description", with_token(t("Description"), "STUDY_DESCRIPTION"),
                            v(m$description), width = "100%")),
       .study_section("every", t("Every report"), open = TRUE,
       shiny::selectInput(
@@ -2641,33 +2641,30 @@ app_server <- function(input, output, session, start) {
   output$study_actions <- shiny::renderUI({
     shiny::req(shows_open())
     lay <- study_layout()
-    .study_section("files", t("Files"),
+    # one group each: Export, Import, Restore -- a name and a ? (the long
+    # text is the help), nothing between them that reads as another's note
+    grp <- function(title, tip, ...) shiny::div(
+      class = "border rounded px-2 pt-1 pb-2 mb-2",
+      shiny::div(class = "small fw-bold mb-1", with_tip(title, tip)),
+      ...)
+    .study_section("files", with_tip(t("Files"), t("To edit the definition outside the app: export the files, edit the copy (in Excel; rename it as you like), and import it back. Do not edit spec/ in place: if you do, the app asks before it takes the change in.")),
       shiny::tags$details(
         shiny::tags$summary(t("Folders")),
         shiny::tags$pre(class = "small", paste(
           sprintf("%-15s %s", paste0(lay, "/"),
                   .study_folder_notes(names(lay), t)),
           collapse = "\n"))),
-      # editing the definition outside the app: export a copy, edit it,
-      # import it back (the usual way); a direct edit of spec/ is taken in
-      # with Load, or on the next open
-      shiny::p(class = "small text-muted mb-1",
-               t("To edit the definition outside the app: export the files, edit the copy (in Excel; rename it as you like), and import it back. Do not edit spec/ in place: if you do, the app asks before it takes the change in.")),
-      shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mb-1",
+      grp(t("Export"), t("A copy of spec/ and study.yml as a zip (the ARD definition as an Excel workbook): edit the copy, rename it as you like, and bring it back with Import."),
         shiny::downloadButton("spec_files_zip", t("Export the definition files"),
-                              class = "btn-sm"),
-        help_tip(t("A copy of spec/ and study.yml as a zip (the ARD definition as an Excel workbook): edit the copy, rename it as you like, and bring it back with Import."))),
-      shiny::fileInput(
-        "spec_import",
-        t("Import definition files (this study's definition: spec workbooks, study.yml, or the zip)"),
-        multiple = TRUE, accept = c(".xlsx", ".yml", ".yaml", ".json", ".zip"),
-        width = "100%"),
-      shiny::p(class = "small text-muted mb-2",
-               t("Edit the exported copy in Excel, then choose it here: a screen shows what differs, and only the parts you check are taken in; the files before are kept in spec/.backup. This is the study's definition, not the company standards.")),
-      shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mb-2",
+                              class = "btn-sm")),
+      grp(t("Import definition files"), t("Edit the exported copy in Excel, then choose it here: a screen shows what differs, and only the parts you check are taken in; the files before are kept in spec/.backup. This is the study's definition, not the company standards."),
+        shiny::fileInput(
+          "spec_import", NULL, placeholder = t("(an edited copy: workbooks, .yml, .json or the zip)"),
+          multiple = TRUE, accept = c(".xlsx", ".yml", ".yaml", ".json", ".zip"),
+          width = "100%")),
+      grp(t("Restore from a backup"), t("Every import keeps the files as they were in spec/.backup/. Choose one to bring the study back to it (the study as it is now is kept first): the way to undo a wrong edit."),
         .btn("restore_open", t("Restore from a backup ..."),
-             class = "btn-sm btn-outline-secondary"),
-        help_tip(t("Every import keeps the files as they were in spec/.backup/. Choose one to bring the study back to it (the study as it is now is kept first): the way to undo a wrong edit."))),
+             class = "btn-sm btn-outline-secondary")),
       shiny::div(class = "d-flex flex-wrap gap-2 align-items-center rp-upload mb-2",
                  .btn("ars_open", t("Export the analyses as CDISC ARS"),
                       class = "btn-sm btn-outline-secondary"),
@@ -2683,11 +2680,6 @@ app_server <- function(input, output, session, start) {
       v <- trimws(input[[paste0("m_", key)]])
       v <- if (nzchar(v)) v else NA_character_
       if (!identical(rv$meta[[key]], v)) rv$meta[[key]] <- v
-      # the header says it as a token (the tokens sheet's study row)
-      if (key == "short_title" &&
-          !identical(study_token(rv$p, "STUDY_SHORT_TITLE"), v)) {
-        rv$p <- set_study_token(rv$p, "STUDY_SHORT_TITLE", v)
-      }
     }, ignoreInit = TRUE)
   })
   for (k in .study_token_names) local({
@@ -2699,6 +2691,14 @@ app_server <- function(input, output, session, start) {
         rv$p <- set_study_token(rv$p, key, v)
       }
     }, ignoreInit = TRUE)
+  })
+  # a field a header, footer, title or footnote says ({STUDY_TITLE} ...) has
+  # its token row with the field's value, as the field changes
+  shiny::observe({
+    shiny::req(has_study())
+    p <- rv$p
+    p2 <- .meta_tokens(p, rv$meta)
+    if (!identical(p2, p)) rv$p <- p2
   })
   shiny::observeEvent(input$tok_study_id_use, {
     rv$p <- set_study_token(rv$p, "STUDY_ID", rv$study$meta$study_id)

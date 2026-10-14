@@ -119,3 +119,31 @@ with_token <- function(label, token) {
     style = "font-family: monospace; font-size: .8em;",
     sprintf("{%s}", token)))
 }
+
+# The study's fields (study.yml: title, short title, compound, phase,
+# description) as tokens a header, footer, title or footnote may say
+# ({STUDY_TITLE} ...), named as study_setup.R's variables are
+.meta_token_fields <- c(title = "STUDY_TITLE", short_title = "STUDY_SHORT_TITLE",
+                        compound = "STUDY_COMPOUND", phase = "STUDY_PHASE",
+                        description = "STUDY_DESCRIPTION")
+
+# The tokens sheet's study rows for the fields a page says: each one a
+# line of the header, footer, titles or footnotes holds as {TOKEN} has its
+# row with the field's value (no row when the field is blank), kept up to
+# date as the field changes.  A field no line says adds nothing: a study
+# that does not use them is written as it was.
+.meta_tokens <- function(x, meta) {
+  text <- unlist(lapply(c("header", "footer", "titles", "footnotes"), function(sh) {
+    d <- x$sheets[[sh]]
+    if (is.null(d) || !nrow(d)) return(NULL)
+    unlist(d[intersect(c("left", "center", "right"), names(d))])
+  }))
+  for (k in names(.meta_token_fields)) {
+    tok <- .meta_token_fields[[k]]
+    if (!any(grepl(paste0("{", tok, "}"), text, fixed = TRUE))) next
+    v <- meta[[k]]
+    v <- if (is.null(v) || length(v) != 1L || is.na(v) || !nzchar(v)) NA_character_ else v
+    if (!identical(study_token(x, tok), v)) x <- set_study_token(x, tok, v)
+  }
+  x
+}

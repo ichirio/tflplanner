@@ -82,6 +82,7 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
   meta$created <- format(Sys.Date())
   .write_meta(meta, path)
   s <- register_study(path, home)
+  s <- .sample_study_words(s)
   s <- save_study(s, home = home)
   # every definition as Excel, to read: the ARD definition's export too
   .write_ard_spec(s$planner$ard,
@@ -121,3 +122,47 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
   min <- .sample_min[out]
   ifelse(is.na(min), out, sprintf("%s (>= %s)", out, min))
 }
+
+# What the Study tab's "Keys and setup code" shows for the sample: the keys
+# (the subject key `id`, the study ARD's file `output`, and `source`, the R
+# files of an ARD function of its own -- one is written, a pattern the
+# sample's analyses do not use), and a setup code with the libraries and
+# the options a study shares, commented.
+.sample_study_words <- function(s) {
+  own <- file.path(.study_fun_dir, "ard_cv_geomean.R")
+  f <- file.path(s$path, own)
+  if (!file.exists(f)) {
+    dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+    tflspec::tfl_ard_function_template("ard_cv_geomean", type = "summary", file = f)
+  }
+  st <- s$planner$ard$study
+  k <- match("source", st$key)
+  if (is.na(k)) {
+    st[nrow(st) + 1L, ] <- NA
+    k <- nrow(st)
+    st$key[k] <- "source"
+  }
+  st$value[k] <- own
+  s$planner$ard$study <- st
+  if (is.na(s$planner$setup)) s$planner$setup <- .sample_setup_code
+  s
+}
+
+.sample_setup_code <- paste(c(
+  "# Setup code: runs first in every ARD and report program of this study.",
+  "# What every program needs: the packages, and the options the study shares.",
+  "library(cards)",
+  "library(dplyr)",
+  "library(rtfreporter)",
+  "",
+  "# Warnings are printed as they happen, so the run's log shows where",
+  "options(warn = 1)",
+  "",
+  "# Rounding every table uses: \"sas\" rounds half away from zero (as SAS),",
+  "# \"r\" half to even.  Left out, the Study tab's rounding is used.",
+  "# options(rtfreporter.rounding = \"sas\")",
+  "",
+  "# The font of every RTF page (the Study tab's font sets it for you):",
+  "# options(rtfreporter.font = \"Courier New\", rtfreporter.font_size = 9)"),
+  collapse = "
+")

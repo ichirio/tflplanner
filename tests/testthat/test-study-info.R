@@ -37,3 +37,26 @@ test_that("editing a field or Save does not put up the busy veil", {
   expect_match(js, "if (e.target && e.target.closest && e.target.closest(quiet)) return;",
                fixed = TRUE)
 })
+
+test_that("the study's fields are tokens a page may say, set only when one does", {
+  meta <- list(title = "A long, formal title", short_title = NA, compound = "ABC-1",
+               phase = "3", description = "")
+  x <- new_planner()
+  # no line says one: nothing is added (a study that does not use them is as it was)
+  expect_identical(.meta_tokens(x, meta)$sheets$tokens, x$sheets$tokens)
+  x <- set_sheet_rows(x, "header", NA, data.frame(line = "1", left = "{STUDY_TITLE}",
+                                                  right = "{STUDY_COMPOUND} / {STUDY_SHORT_TITLE}"))
+  y <- .meta_tokens(x, meta)
+  expect_identical(study_token(y, "STUDY_TITLE"), "A long, formal title")
+  expect_identical(study_token(y, "STUDY_COMPOUND"), "ABC-1")
+  # a blank field has no row; one no line says is not added
+  expect_identical(study_token(y, "STUDY_SHORT_TITLE"), NA_character_)
+  expect_identical(study_token(y, "STUDY_PHASE"), NA_character_)
+  # it follows the field
+  meta$title <- "Another title"
+  expect_identical(study_token(.meta_tokens(y, meta), "STUDY_TITLE"), "Another title")
+  # named as study_setup.R's variables (study_title ...)
+  expect_identical(unname(.meta_token_fields),
+                   c("STUDY_TITLE", "STUDY_SHORT_TITLE", "STUDY_COMPOUND", "STUDY_PHASE",
+                     "STUDY_DESCRIPTION"))
+})

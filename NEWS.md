@@ -12,7 +12,16 @@
   the tab says so and offers "Use the Study ID".  Editing a field (text,
   text area, select) or pressing Save no longer greys the page and shows
   the hourglass after 0.4 s (#51); the veil stays for opening a study and
-  switching a tab or a report.
+  switching a tab or a report.  More on the study tab: the Files section
+  is three groups (Export, Import definition files, Restore from a backup),
+  each a name and a "?" (the long text is the help); the sample study has
+  keys (`id`, `output`, `source`: an ARD function of its own it does not
+  use, `programs/ard/functions/ard_cv_geomean.R`) and a setup code with the
+  libraries and commented options; and the study's Title, Compound, Phase
+  and Description are tokens too (`{STUDY_TITLE}`, `{STUDY_COMPOUND}`,
+  `{STUDY_PHASE}`, `{STUDY_DESCRIPTION}`, with `{STUDY_SHORT_TITLE}`; named
+  as study_setup.R's variables), filled from study.yml for a header, footer,
+  title or footnote that says one, and shown after each field's label.
 
 - **An official run keeps going when the app closes; the launcher when
   its port is taken** (#373, 0.0.2.9219; the user's request).  An

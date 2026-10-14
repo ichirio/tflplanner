@@ -3139,3 +3139,6 @@ Next you see what would change; nothing is taken in until you choose.,次に、�
 Show what would change,変わる内容を見る
 Restore a backup: %s,バックアップから戻す：%s
 The backup was read. Choose the parts to bring back.,バックアップを読みました。戻す部分を選んでください。
+Export,書き出し
+Import definition files,定義ファイルを取り込む
+"(an edited copy: workbooks, .yml, .json or the zip)",（直した写し：ワークブック、.yml、.json、または zip）
