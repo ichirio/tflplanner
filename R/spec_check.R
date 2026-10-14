@@ -120,7 +120,7 @@
       }
     } else if (is.character(x) && length(x) == 1L) {
       leaf <- sub("^.*[.]", "", path)
-      code <- inherits(x, "tfl_fig_r") ||
+      code <- inherits(x, "tfl_r") ||
         leaf %in% c("code", "layer_code", "data_code", "expr", "where",
                     "condition", "derive")
       if (code) {
