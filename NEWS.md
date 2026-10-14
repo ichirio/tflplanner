@@ -80,6 +80,29 @@
   header and a page that does not split a group -- the rows of the
   sample's T-14-3-1.  Before, choosing ADAE in "Start from the data" wrote
   a summary of its columns, and a first SOC / PT table took seven screens.
+- **An official run keeps going when the app closes; the launcher when
+  its port is taken** (#373, 0.0.2.9219; the user's request).  An
+  official run (`run_batch()`) used to stop with the app's R process --
+  closing the browser, [Close], an update -- and leave its ARD and
+  reports half made.  It now runs detached, recorded in the home
+  (`live_runs/`); an app opened later shows it running (the Runs tab, the
+  study list) and says how it went; a study runs one official run at a
+  time, and [Close] says the run goes on.  A preview still stops with the
+  app.  No update installs packages while an official run goes on
+  (`update_tflplanner()`, the "update and launch" shortcut).  When the
+  shortcut finds its port taken: this version answering -- it opens it; a
+  tflplanner the launcher started that is another version or does not
+  answer -- it asks 「古いアプリが動いています。止めて起動し直しますか？」
+  (saying that an official run goes on), and stops it only on yes; a
+  tflplanner in an R session of its own (RStudio) or another program --
+  it leaves it and starts on the next free port.  Each case is written to
+  `launcher.log`.  The app serves its version and process at
+  `/tflplanner-health/health.txt` for this.
+- The `tables` sheet's new column `stat_groups` (tflspec 0.0.24.9105,
+  rtfreporter #619): one record's statistics in two columns, N in one and
+  the rate and its CI in the next, with no `mutate()` in the table's code.
+  Its help is translated.
+
 - **An AE table's "Subjects with at least one TEAE" row from the
   definition** (tflspec #236, with tflspec 0.0.24.9104).  A table without
   normalization of its own (and the company's template the built-in

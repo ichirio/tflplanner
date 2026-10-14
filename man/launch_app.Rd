@@ -16,8 +16,9 @@ The app's address, invisibly.
 Starts the app the way its shortcut does (\code{\link[=add_shortcut]{add_shortcut()}}) -- in a
 separate R process -- and opens it in the browser, so the R console (or
 RStudio) stays free.  If the app already runs on the port, it opens that
-one.  Closing the browser stops it.  This is the RStudio add-in "Launch
-tflplanner".
+one (another version: it asks whether to stop it; another program: the
+next free port, see \code{\link[=add_shortcut]{add_shortcut()}}).  Closing the browser stops it.
+This is the RStudio add-in "Launch tflplanner".
 }
 \examples{
 if (interactive()) {

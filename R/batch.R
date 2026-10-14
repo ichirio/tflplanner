@@ -332,6 +332,8 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 #'   the batch folder (`runs/<date>_<time>_<what>_<batch>/`) and its
 #'   `batch.txt` name it.  `NULL`: every report (or `only` / `exclude`).
 #' @param wait `FALSE` returns the running [processx::process] at once.
+#'   The run goes on by itself: closing the app, or R, does not stop it,
+#'   and a study runs one official run at a time.
 #' @return `run_batch()`: with `wait = TRUE`, a list: `ok`, `batch` (the
 #'   batch folder), `result` (its run.csv), `output` (what the run
 #'   printed); otherwise the process.  `list_batches()`: a data frame, one
@@ -342,6 +344,12 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 #' @export
 run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
                       only = NULL, exclude = NULL, batch = NULL, wait = TRUE) {
+  # one official run at a time in a study, whoever started it
+  live <- .live_run(study$meta$study_id)
+  if (!is.null(live)) {
+    stop("An official run of ", study$meta$study_id, " is going on (started ",
+         live$started, "): wait until it has finished.", call. = FALSE)
+  }
   lay <- study_layout()
   parts <- match.arg(parts, c("ard", "tfl"), several.ok = TRUE)
   prog <- if (length(parts) == 2L) file.path("programs", .autoexec_all_file) else
@@ -369,15 +377,21 @@ run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
   }
   before <- list_batches(study)$batch
   out <- tempfile("batch", fileext = ".txt")
+  # detached: the run goes on when the app (this R process) ends -- closing
+  # the browser, [Close], starting the app again -- and is recorded in the
+  # home so an app opened later finds it (live_runs.R)
   px <- processx::process$new(
     file.path(R.home("bin"), "Rscript"),
     c(prog, if (!code) "--no-code", if (isTRUE(data)) "--data", only,
       if (length(exclude)) paste0("--exclude=", .batch_exclude(study$planner, exclude)),
       if (length(batch)) c("--batch", batch)),
     wd = study$path,
-    stdout = out, stderr = "2>&1")
+    stdout = out, stderr = "2>&1", cleanup = FALSE)
+  rec <- tryCatch(.record_run(px, study, paste(parts, collapse = "+"), before),
+                  error = function(e) NULL)
   if (!wait) return(px)
   px$wait()
+  if (!is.null(rec)) unlink(rec)
   txt <- if (file.exists(out)) readLines(out, warn = FALSE) else character()
   b <- setdiff(list_batches(study)$batch, before)
   dir <- if (length(b)) file.path(study$path, lay[["runs"]], b[1L])
