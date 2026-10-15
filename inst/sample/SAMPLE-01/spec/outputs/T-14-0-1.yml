@@ -1,0 +1,63 @@
+id: T-14-0-1
+kind: table
+label: 'Study information: dictionary versions and the dates of the data (no analysis
+  set)'
+extends:
+  - defaults
+ard:
+  analyses:
+    - id: INFO
+      label: Study information
+      method: custom
+      dataset: ADSL
+      code: !r |-
+        facts <- c(
+          "MedDRA version" = "Version 26.1",
+          "WHODrug version" = "Global B3 March 2023",
+          "First dose" = format(min(data$TRTSDT, na.rm = TRUE)),
+          "Last dose" = format(max(data$TRTEDT, na.rm = TRUE)),
+          "Data cut-off" = format(max(data$LSTALVDT, na.rm = TRUE))
+        )
+        cards::as_card(dplyr::tibble(
+          variable = "INFO", variable_level = as.list(names(facts)),
+          context = "study_info", stat_name = "value", stat_label = "Value",
+          stat = as.list(unname(facts)), fmt_fun = list(NULL),
+          warning = list(NULL), error = list(NULL)
+        ))
+      purpose: PRIMARY OUTCOME MEASURE
+data:
+  source: ard
+  object: ard
+content:
+  - table_plan:
+      cols: context
+      rows:
+        group: variable
+  - plan_labels:
+      INFO: Dictionaries and dates of the data
+  - plan_cells:
+      default: '{value}'
+  - plan_paginate_rows:
+      max_rows: 24
+  - plan_col_header:
+      header:
+        - line: '1'
+          cols: row_label
+        - line: '1'
+          cols: .values
+        - line: '2'
+          cols: row_label
+          text: Item
+        - line: '2'
+          cols: .values
+          text: Value
+page:
+  footer:
+    '1':
+      left: The dictionary versions are the study's (data management plan); the dates
+        are those of ADSL.
+  tokens:
+    OUTPUT_TITLE: Study Information
+    OUTPUT_POPULATION: All Subjects
+note: 'Study information: one row a fact, its value text'
+

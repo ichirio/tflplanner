@@ -1,0 +1,95 @@
+id: T-14-3-1
+kind: table
+label: TEAEs by SOC / PT
+population: SAF
+extends:
+  - patterns/Compact
+  - defaults
+ard:
+  analysis_data:
+    - id: adsl_saf
+      label: Safety set
+      from: ADSL
+      population: SAF
+    - id: adae_saf
+      label: Treatment-emergent AEs of the safety set
+      from: ADAE
+      subjects: adsl_saf
+      where: !r TRTEMFL == "Y"
+  analyses:
+    - id: TEAE
+      label: TEAE by SOC / PT
+      method: hierarchical
+      data: adae_saf
+      by:
+        - TRT01A
+      variables:
+        - AEBODSYS
+        - AEDECOD
+      denominator: adsl_saf
+      args: !r over_variables = TRUE
+      purpose: PRIMARY OUTCOME MEASURE
+data:
+  source: ard
+  object: ard
+codelists:
+  TRT01A:
+    - value: Placebo
+    - value: Xanomeline Low Dose
+    - value: Xanomeline High Dose
+content:
+  - normalize_ard:
+      hierarchy:
+        - AEBODSYS
+        - AEDECOD
+      overall: Any TEAE
+  - table_plan:
+      cols: TRT01A
+      rows:
+        group1: AEBODSYS
+      label:
+        label: AEDECOD
+  - plan_sort:
+      keys:
+        - .overall
+        - group1
+        - .depth
+        - -n
+        - label
+  - plan_levels:
+      TRT01A:
+        - Placebo
+        - Xanomeline Low Dose
+        - Xanomeline High Dose
+  - plan_paginate_rows:
+      max_rows: 22
+      split: group_force
+  - plan_col_header:
+      header:
+        - line: '1'
+          cols: row_label
+        - line: '1'
+          cols: .values
+          span: each
+          text: |-
+            {col}
+            (N={n})
+            n (%)
+        - line: '2'
+          cols: row_label
+          text: |-
+            System Organ Class
+               Preferred Term
+        - line: '2'
+          cols: .values
+page:
+  footer:
+    '1':
+      left: Subjects are counted once per system organ class and once per preferred
+        term.
+  tokens:
+    OUTPUT_TITLE: Treatment-Emergent Adverse Events by System Organ Class and Preferred
+      Term
+    OUTPUT_POPULATION: Safety Analysis Set
+note: TEAE by SOC / PT, frequency descending
+

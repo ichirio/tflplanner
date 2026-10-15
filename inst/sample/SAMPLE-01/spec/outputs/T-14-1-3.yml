@@ -1,0 +1,75 @@
+id: T-14-1-3
+kind: table
+label: 'Age group and sex: the ARD keeps cards'' default n, N and p; the table prints
+  n (%) and leaves the N rows out'
+population: SAF
+extends:
+  - defaults
+ard:
+  analysis_data:
+    - id: adsl_saf
+      label: Safety set
+      from: ADSL
+      population: SAF
+  analyses:
+    - id: GROUPN
+      method: categorical
+      data: adsl_saf
+      variables:
+        - TRT01A
+      purpose: PRIMARY OUTCOME MEASURE
+    - id: CAT
+      label: Age group and sex
+      method: categorical
+      data: adsl_saf
+      by:
+        - TRT01A
+      variables:
+        - AGEGR1
+        - SEX
+      purpose: PRIMARY OUTCOME MEASURE
+data:
+  source: ard
+  object: ard
+codelists:
+  TRT01A:
+    - value: Placebo
+    - value: Xanomeline Low Dose
+    - value: Xanomeline High Dose
+  SEX:
+    - value: F
+      label: Female
+    - value: M
+      label: Male
+  AGEGR1:
+    - value: 18-64
+      label: 18-64 years
+    - value: '>64'
+      label: '>64 years'
+content:
+  - table_plan:
+      cols: TRT01A
+      rows:
+        group: variable
+  - plan_levels:
+      TRT01A:
+        - Placebo
+        - Xanomeline Low Dose
+        - Xanomeline High Dose
+      SEX:
+        - Female
+        - Male
+      AGEGR1:
+        - 18-64 years
+        - '>64 years'
+  - plan_labels:
+      AGEGR1: Age group, n (%)
+      SEX: Sex, n (%)
+  - plan_paginate_rows:
+      max_rows: 24
+page:
+  tokens:
+    OUTPUT_TITLE: Age Group and Sex
+    OUTPUT_POPULATION: Safety Analysis Set
+note: 'Age group and sex: the ARD''s n, N and p, the table''s n (%)'
+

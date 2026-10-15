@@ -84,9 +84,6 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
   s <- register_study(path, home)
   s <- .sample_study_words(s)
   s <- save_study(s, home = home)
-  # every definition as Excel, to read: the ARD definition's export too
-  .write_ard_spec(s$planner$ard,
-                  file.path(path, study_layout()[["spec"]], .ard_file))
   if (run) {
     miss <- .sample_missing()
     if (length(miss)) {

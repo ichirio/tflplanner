@@ -971,10 +971,7 @@ if (!b$ok) {
 out <- file.path("inst", "sample", id)
 unlink(out, recursive = TRUE)
 dir.create(out, recursive = TRUE)
-keep <- c(.study_file, paste0(id, ".Rproj"),
-          file.path(study_layout()[["spec"]],
-                    c(.table_file, .report_file, .ard_json, .lf_file,
-                      file.path(.fig_design_dir, c("F-14-2-3.yml", "F-14-2-4.yml")))),
+keep <- c(.spec_files_yaml(s$path), paste0(id, ".Rproj"),
           file.path(study_layout()[["adam"]],
                     c("adsl.rds", "adae.rds", "advs.rds", "adtte.rds")))
 for (f in keep) {

@@ -1,0 +1,71 @@
+id: L-16-2-7
+kind: listing
+label: Listing of severe treatment-emergent adverse events
+extends:
+  - defaults
+data:
+  source: dataset
+  dataset: ADAE
+  where: !r AESEV == "SEVERE" & TRTEMFL == "Y"
+  sort:
+    - TRT01AN
+    - USUBJID
+    - ASTDT
+content:
+  - plan_listing:
+      cols:
+        - fn: listing_col
+          args:
+            vars:
+              - TRT01A
+            label: Treatment
+            width: 22
+        - fn: listing_col
+          args:
+            vars:
+              - USUBJID
+            label: Subject
+            width: 14
+            collapse_repeats: true
+        - fn: listing_col
+          args:
+            vars:
+              - AEBODSYS
+              - AEDECOD
+            label: System Organ Class/\nPreferred Term
+            width: 40
+        - fn: listing_col
+          args:
+            vars:
+              - ASTDT
+              - AENDT
+            label: Start/\nEnd
+            width: 14
+        - fn: listing_col
+          args:
+            vars:
+              - AESER
+            label: Serious
+            width: 8
+        - fn: listing_col
+          args:
+            vars:
+              - AEREL
+            label: Relation
+            width: 9
+        - fn: listing_col
+          args:
+            vars:
+              - AEOUT
+            label: Outcome
+            width: 24
+      type: multiline
+  - plan_paginate_rows:
+      max_rows: 22
+page:
+  tokens:
+    OUTPUT_TITLE: Severe Treatment-Emergent Adverse Events
+    OUTPUT_POPULATION: Safety Analysis Set
+  rtf_page:
+    orientation: landscape
+

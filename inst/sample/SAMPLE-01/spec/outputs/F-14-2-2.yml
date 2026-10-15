@@ -1,0 +1,60 @@
+id: F-14-2-2
+kind: figure
+label: KM plot of the time to first dermatologic event
+extends:
+  - defaults
+data:
+  source: ard
+  object: ard
+content: !r |-
+  arms <- c("Placebo", "Xanomeline Low Dose", "Xanomeline High Dose")
+  km_df <- adtte[adtte$PARAMCD == "TTDE" & adtte$SAFFL == "Y", ]
+  km_df$TRT01A <- factor(km_df$TRT01A, levels = arms)
+  km_fit <- survfit2(Surv(AVAL, 1 - CNSR) ~ TRT01A, data = km_df)
+
+  # the number at risk: the KM table's (T-14-2-2's ARD, `ard`: the
+  # figure's ARD source) -- checked against the curve's own count
+  risk_df <- tfl_km_risk(ard, km_fit)
+  x_breaks <- sort(unique(risk_df$time))
+
+  pal <- tfl_colours("treatment", arms)
+  p_km <- ggsurvfit(km_fit, linewidth = tfl_num("line_width", "km")) +
+    add_censor_mark(shape = tfl_marker("censor")$shape,
+                    size = tfl_num("censor_size", "km"),
+                    stroke = tfl_num("censor_stroke", "km")) +
+    geom_hline(yintercept = 0.5, linetype = tfl_setting("median_linetype", "km"),
+               colour = tfl_setting("median_colour", "km"),
+               linewidth = tfl_num("median_line_width", "km")) +
+    scale_colour_manual(values = pal, breaks = names(pal)) +
+    scale_x_continuous(breaks = x_breaks) +
+    scale_y_continuous(breaks = seq(0, 1, by = tfl_num("y_by", "km"))) +
+    coord_cartesian(xlim = range(x_breaks), ylim = c(0, 1)) +
+    labs(x = "Days since first dose",
+         y = "Probability without a dermatologic event", colour = NULL) +
+    theme_tfl("km") + theme(legend.position = "bottom")
+  p_risk <- ggplot(risk_df, aes(time, factor(strata, levels = rev(arms)),
+                                label = n_risk, colour = strata)) +
+    geom_text(size = tfl_num("text_size")) +
+    scale_colour_manual(values = pal, guide = "none") +
+    scale_x_continuous(breaks = x_breaks) +
+    coord_cartesian(xlim = range(x_breaks)) +
+    labs(title = tfl_setting("risk_title", "km"), x = NULL, y = NULL) +
+    theme_void(base_size = tfl_num("base_size")) +
+    theme(plot.title = element_text(hjust = 0, size = rel(0.9)),
+          axis.text.y = element_text(hjust = 1, margin = margin(r = 5)))
+  plot <- p_km / p_risk +
+    plot_layout(heights = c(1, tfl_num("risk_height", "km")))
+  tfl_check(plot)
+  content <- plot
+page:
+  footer:
+    '1':
+      left: x = censored.  The number at risk is that of Table 14.2.2.
+  tokens:
+    OUTPUT_TITLE: Kaplan-Meier Plot of Time to First Dermatologic Event
+    OUTPUT_POPULATION: Safety Analysis Set
+  rtf_page:
+    orientation: landscape
+  report:
+    ard_source: table:T-14-2-2
+

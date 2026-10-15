@@ -1,0 +1,184 @@
+id: F-14-2-4
+kind: figure
+label: Hazard ratio of the time to first dermatologic event by subgroup (forest plot,
+  its own ARD)
+population: SAF
+extends:
+  - defaults
+ard:
+  analysis_data:
+    - id: adtte_saf_ttde
+      label: TTDE of SAF, with the subgroups
+      from: ADTTE
+      population: SAF
+      where: !r PARAMCD == "TTDE"
+      add:
+        - SEX
+        - AGEGR1
+    - id: adsl_saf
+      label: Safety Analysis Set
+      from: ADSL
+      population: SAF
+  analyses:
+    - id: HR
+      label: Hazard ratio, all subjects
+      method: custom
+      data: adtte_saf_ttde
+      code: !r |-
+        cox <- survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = data)
+        cardx::ard_regression(cox, exponentiate = TRUE)
+      purpose: SECONDARY OUTCOME MEASURE
+    - id: HR_SEX
+      label: Hazard ratio by SEX
+      method: custom
+      data: adtte_saf_ttde
+      code: !r |-
+        cards::ard_strata(
+          data,
+          .strata = SEX,
+          .f = ~ cardx::ard_regression(
+            survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = .x),
+            exponentiate = TRUE
+          )
+        )
+      purpose: SECONDARY OUTCOME MEASURE
+    - id: HR_AGEGR1
+      label: Hazard ratio by AGEGR1
+      method: custom
+      data: adtte_saf_ttde
+      code: !r |-
+        cards::ard_strata(
+          data,
+          .strata = AGEGR1,
+          .f = ~ cardx::ard_regression(
+            survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = .x),
+            exponentiate = TRUE
+          )
+        )
+      purpose: SECONDARY OUTCOME MEASURE
+data:
+  source: code
+  steps:
+    - step: read
+      dataset: ADTTE
+    - step: param
+      value: TTDE
+    - step: flag
+      variable: SAFFL
+    - step: ard_stats
+      name: est
+      analysis_id: HR, HR_SEX, HR_AGEGR1
+      variable: TRT01A
+      stats: n_obs, estimate, conf.low, conf.high
+      by: SEX, AGEGR1
+    - step: code
+      label: 'the rows to draw: the comparison arm, a heading row per subgroup'
+      code: |-
+        est <- est |>
+          # the reference arm has no interval; a subgroup whose model did not
+          # converge (no events in an arm) has no point: NE
+          filter(!is.na(conf.low)) |>
+          filter(TRT01A == "Xanomeline High Dose") |>
+          mutate(
+            subgroup = case_when(
+              !is.na(SEX) ~ "SEX",
+              !is.na(AGEGR1) ~ "AGEGR1",
+              TRUE ~ "All subjects"
+            ),
+            level = coalesce(SEX, AGEGR1, "All subjects"),
+            ok = is.finite(estimate) & is.finite(conf.low) & is.finite(conf.high) &
+              conf.high < 1000,
+            txt = ifelse(ok, sprintf("%.2f (%.2f, %.2f)", estimate, conf.low, conf.high),
+                         "NE"),
+            across(c(estimate, conf.low, conf.high), ~ ifelse(ok, .x, NA))
+          )
+        # a heading row above each subgroup's levels, the levels indented
+        heads <- est |>
+          filter(subgroup != "All subjects") |>
+          distinct(subgroup) |>
+          mutate(level = subgroup, head = TRUE)
+        est <- est |>
+          mutate(head = FALSE) |>
+          bind_rows(heads) |>
+          arrange(factor(subgroup, levels = unique(est$subgroup)), desc(head)) |>
+          mutate(
+            label = ifelse(head | subgroup == "All subjects", level, paste0("    ", level)),
+            n = ifelse(head, "", as.character(n_obs)),
+            txt = ifelse(head, "", txt),
+            y = rev(row_number())
+          )
+codelists:
+  TRT01A:
+    - value: Placebo
+    - value: Xanomeline Low Dose
+    - value: Xanomeline High Dose
+  SEX:
+    - value: F
+      label: Female
+    - value: M
+      label: Male
+  AGEGR1:
+    - value: 18-64
+      label: 18-64 years
+    - value: '>64'
+      label: '>64 years'
+content:
+  - vline:
+      xintercept: 1.0
+      linetype: dashed
+      colour: grey50
+  - errorbar_h:
+      data: est
+      'y': 'y'
+      xmin: conf.low
+      xmax: conf.high
+      width: 0.25
+  - point:
+      data: est
+      x: estimate
+      'y': 'y'
+      shape: solid_square
+      size: 2.5
+      na.rm: true
+  - text_column:
+      data: est
+      'y': 'y'
+      columns: N = n | Hazard ratio (95% CI) = txt
+      width: 0.4
+page:
+  footer:
+    '1':
+      left: Hazard ratio of Xanomeline High Dose vs Placebo (Cox model, unstratified)
+        with its 95% CI, overall and within each subgroup; the figure's own ARD.  NE
+        = not estimable.
+  tokens:
+    OUTPUT_TITLE: Hazard Ratio of Time to First Dermatologic Event by Subgroup
+    OUTPUT_POPULATION: Safety Analysis Set
+  rtf_page:
+    orientation: landscape
+  report:
+    ard_source: own
+template: forest_hr
+plot:
+  x_label: Hazard Ratio (95% CI), Xanomeline High Dose vs Placebo
+  legend: none
+  x_log: true
+  add:
+    - fn: scale_y_continuous
+      args:
+        breaks: !r est$y
+        labels: !r est$label
+        expand: !r expansion(add = 0.6)
+    - fn: labs
+      args:
+        'y': !r 'NULL'
+    - fn: theme
+      args:
+        axis.text.y:
+          fn: element_text
+          args:
+            hjust: 0.0
+  dpi: 300.0
+  base_size: 10.0
+  theme: boxed
+

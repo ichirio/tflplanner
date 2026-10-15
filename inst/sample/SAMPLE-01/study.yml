@@ -4,6 +4,23 @@ compound: Xanomeline
 phase: '2'
 description: 'The sample study of tflplanner: the CDISC pilot ADaM data of the pharmaverseadam
   package; one study ARD and tables, a listing and a figure made from it.'
-created: '2026-10-13'
-updated: 2026-10-13 22:43:59
-tflplanner: 0.0.2.9213
+spec_version: 1
+packages:
+  tflspec: 0.0.24.9116
+  rtfreporter: 0.8.2.9059
+  cards: 0.9.0
+  cardx: 0.3.4
+  ggplot2: 4.0.3
+settings:
+  rounding: sas
+  output_path: output/tfl
+  program_dir: programs/tfl
+  file: '{output_id}.rtf'
+  program: '{output_id}.R'
+keys:
+  id: USUBJID
+  output: output/ard/ard.rds
+
+created: '2026-10-15'
+updated: 2026-10-15 13:16:13
+tflplanner: 0.0.2.9224

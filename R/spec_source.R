@@ -14,7 +14,7 @@
 # The definition files tflplanner knows, relative to the study folder (as
 # they are now; the record may name others, gone since)
 .spec_files <- function(root) {
-  if (identical(.study_format(root), "yaml")) return(.spec_files_yaml(root))
+  if (!identical(.study_format(root), "sheets")) return(.spec_files_yaml(root))
   sp <- study_layout()[["spec"]]
   f <- c(.study_file, file.path(sp, c(.table_file, .report_file)))
   # the ARD definition: its JSON; an exported workbook only when there is
@@ -123,111 +123,37 @@
     }
     out
   }
-  if (identical(.study_format(root), "yaml")) {
-    # the YAML spec: read whole (small), its meta from study.yml
+  if (identical(.study_format(root), "sheets")) {
+    # a definition in the workbooks of before the YAML spec: converted once
+    # by tflspec, then registered
+    problems <- rbind(problems, .spec_problems(
+      study_layout()[["spec"]],
+      paste("The definition is in the workbooks of an earlier tflplanner; convert it",
+            "to the YAML spec with tflspec::tfl_convert_sheets_to_yaml(), or import",
+            "the workbooks into a study (Import).")))
+    attr(s, "problems") <- problems
+    return(s)
+  }
+  if (dir.exists(file.path(sp, "outputs")) || file.exists(file.path(sp, "toc.yml"))) {
+    # the YAML spec: read whole (small)
     y <- read(.spec_files_yaml(root), .planner_from_yaml(root))
     if (!is.null(y)) {
       p <- .study_spec_keys(y)
       attr(p, "not_converted") <- NULL
     }
-    m <- read(.study_file, .read_meta(root))
-    if (!is.null(m) && identical(m$study_id, s$meta$study_id)) meta <- m[.study_fields]
-    s$planner <- p
-    s$meta <- meta
-    attr(s, "problems") <- problems
-    return(s)
+  } else if (books_needed) {
+    problems <- rbind(problems, .spec_problems(
+      file.path(study_layout()[["spec"]], "outputs"), "The definition's files are missing."))
   }
-  if ("books" %in% parts) {
-    paths <- file.path(sp, c(.table_file, .report_file))
-    rel <- file.path(study_layout()[["spec"]], c(.table_file, .report_file))
-    if (!any(file.exists(paths)) && !books_needed) {
-      # a study folder with no workbooks yet: its tables and reports are
-      # empty (a new folder), what `s` has
-    } else if (!all(file.exists(paths))) {
-      # the two workbooks are the study's tables and reports: one missing
-      # (or both, once written) is never meant (a deleted figure design is)
-      for (f in rel[!file.exists(paths)]) {
-        problems <- rbind(problems, .spec_problems(f, "The file is missing."))
-      }
+  m <- read(.study_file, .read_meta(root))
+  if (!is.null(m)) {
+    if (!identical(m$study_id, s$meta$study_id)) {
+      problems <- rbind(problems, .spec_problems(
+        .study_file, sprintf("The study ID is %s, not %s.", m$study_id, s$meta$study_id)))
     } else {
-      b <- read(rel, .study_spec_keys(read_planner(paths)))
-      if (!is.null(b)) p[c("sheets", "study", "outputs", "setup")] <-
-        b[c("sheets", "study", "outputs", "setup")]
+      meta <- m[.study_fields]
     }
   }
-  if ("ard" %in% parts) {
-    aj <- file.path(sp, .ard_json)
-    af <- file.path(sp, .ard_file)
-    if (file.exists(aj)) {
-      a <- read(file.path(study_layout()[["spec"]], .ard_json), {
-        a <- .read_ard_json(aj)
-        .ard_spec(a)
-        a
-      })
-      if (!is.null(a)) p$ard <- a
-    } else if (file.exists(af)) {
-      a <- read(file.path(study_layout()[["spec"]], .ard_file),
-                unclass(.read_ard_spec(af, check = TRUE)))
-      if (!is.null(a)) p$ard <- a
-      # where its cells are, for the checks after
-      attr(s, "ard_file") <- .ard_file
-    } else {
-      p$ard <- .empty_ard_spec()
-    }
-  }
-  if ("lf" %in% parts) {
-    lf <- file.path(sp, .lf_file)
-    if (file.exists(lf)) {
-      x <- read(file.path(study_layout()[["spec"]], .lf_file), {
-        out <- .empty_lf()
-        sheets <- readxl::excel_sheets(lf)
-        if ("listings" %in% sheets) {
-          ls <- tflspec::tfl_read_listing_spec(lf, check = TRUE)
-          for (sh in names(ls)) out[[sh]] <- .normalize_lf_sheet(ls[[sh]], sh)
-        }
-        if ("figures" %in% sheets) {
-          out$figures <- .normalize_lf_sheet(.read_sheet_text(lf, "figures"),
-                                             "figures")
-        }
-        out
-      })
-      if (!is.null(x)) p$lf <- x
-    } else {
-      p$lf <- .empty_lf()
-    }
-  }
-  if ("meta" %in% parts) {
-    m <- read(.study_file, .read_meta(root))
-    if (!is.null(m)) {
-      if (!identical(m$study_id, s$meta$study_id)) {
-        problems <- rbind(problems, .spec_problems(
-          .study_file, sprintf("The study ID is %s, not %s.", m$study_id,
-                               s$meta$study_id)))
-      } else {
-        meta <- m[.study_fields]
-      }
-    }
-  }
-  figs <- if ("fig" %in% parts) {
-    union(names(p$fig_designs %||% list()),
-          sub("\\.yml$", "", list.files(file.path(sp, .fig_design_dir),
-                                        "\\.yml$")))
-  } else sub("^fig:", "", grep("^fig:", parts, value = TRUE))
-  for (id in figs) {
-    f <- file.path(sp, .fig_design_dir, paste0(id, ".yml"))
-    rel <- file.path(study_layout()[["spec"]], .fig_design_dir,
-                     paste0(id, ".yml"))
-    if (!file.exists(f)) {
-      p <- set_fig_design(p, id, NULL)
-      next
-    }
-    d <- read(rel, tflspec::tfl_read_fig_design(f))
-    if (!is.null(d)) p <- set_fig_design(p, id, d)
-  }
-  # the figure workbook's and the designs' part of the move to steps of
-  # one's own code (a figures row of a figure with no design: its datasets
-  # the report's), now that they are read
-  p <- .migrate_step_code(p, stats::setNames(character(), character()))
   s$planner <- p
   s$meta <- meta
   attr(s, "problems") <- problems
