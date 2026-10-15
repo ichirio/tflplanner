@@ -175,8 +175,10 @@ test_that("a grade's levels, mildest first", {
 test_that("a shift table: each subject's worst after baseline, by group and baseline, a page a parameter", {
   skip_on_cran()
   skip_if_not_installed("pharmaverseadam")
-  adlb <- pharmaverseadam::adlb[pharmaverseadam::adlb$PARAMCD %in% c("ALT", "AST"), ]
-  adsl <- pharmaverseadam::adsl
+  # (the data package read by name: a Suggests-free test, as test-ard-fn-search's)
+  lb <- getExportedValue("pharmaverseadam", "adlb")
+  adlb <- lb[lb$PARAMCD %in% c("ALT", "AST"), ]
+  adsl <- getExportedValue("pharmaverseadam", "adsl")
   p <- first_shift_table(new_planner(), "T-LB", "data/adam/adlb.rds", adlb,
                          "data/adam/adsl.rds", adsl, population = "SAFFL", group = "TRT01A",
                          params = c("ALT", "AST"), where = "ONTRTFL == \"Y\"", total = "Total")
@@ -218,7 +220,8 @@ test_that("the form: Shift asks the parameters, the categories and the worst ord
   # (hidden in the list until the unified builder; the option shows it)
   withr::local_options(tflplanner.shift_template = TRUE)
   s <- suppressMessages(create_sample_study(run = FALSE))
-  saveRDS(pharmaverseadam::adlb[pharmaverseadam::adlb$PARAMCD %in% c("ALT", "AST"), ],
+  lb <- getExportedValue("pharmaverseadam", "adlb")
+  saveRDS(lb[lb$PARAMCD %in% c("ALT", "AST"), ],
           file.path(s$path, "data/adam/adlb.rds"))
   shiny::testServer(server_for(s$meta$study_id), {
     rv <- session$userData$rv
