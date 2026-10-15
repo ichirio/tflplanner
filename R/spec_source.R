@@ -14,6 +14,7 @@
 # The definition files tflplanner knows, relative to the study folder (as
 # they are now; the record may name others, gone since)
 .spec_files <- function(root) {
+  if (identical(.study_format(root), "yaml")) return(.spec_files_yaml(root))
   sp <- study_layout()[["spec"]]
   f <- c(.study_file, file.path(sp, c(.table_file, .report_file)))
   # the ARD definition: its JSON; an exported workbook only when there is
@@ -64,11 +65,15 @@
 # together), ard, lf, meta, or fig:<output_id>
 .spec_part_of <- function(file) {
   b <- basename(file)
-  ifelse(b == .study_file, "meta",
+  # a file of the YAML spec (spec/*.yml, spec/outputs/, spec/patterns/):
+  # the study is read whole
+  yaml <- grepl("\\.ya?ml$", b) & b != .study_file &
+    !grepl(paste0("(^|/)", .fig_design_dir, "/"), file)
+  ifelse(yaml, "yaml", ifelse(b == .study_file, "meta",
     ifelse(b %in% c(.table_file, .report_file), "books",
       ifelse(b %in% c(.ard_json, .ard_file), "ard",
         ifelse(b == .lf_file, "lf",
-          paste0("fig:", sub("\\.yml$", "", b))))))
+          paste0("fig:", sub("\\.yml$", "", b)))))))
 }
 
 # ---------------------------------------------------------------- reading
@@ -117,6 +122,20 @@
       return(NULL)
     }
     out
+  }
+  if (identical(.study_format(root), "yaml")) {
+    # the YAML spec: read whole (small), its meta from study.yml
+    y <- read(.spec_files_yaml(root), .planner_from_yaml(root))
+    if (!is.null(y)) {
+      p <- .study_spec_keys(y)
+      attr(p, "not_converted") <- NULL
+    }
+    m <- read(.study_file, .read_meta(root))
+    if (!is.null(m) && identical(m$study_id, s$meta$study_id)) meta <- m[.study_fields]
+    s$planner <- p
+    s$meta <- meta
+    attr(s, "problems") <- problems
+    return(s)
   }
   if ("books" %in% parts) {
     paths <- file.path(sp, c(.table_file, .report_file))
