@@ -12,39 +12,19 @@ test_that("a study folder's format: the YAML spec, the workbooks, or nothing", {
                    c("yaml", "yaml", "meta", "books", "fig:F-1"))
 })
 
-# The sample study (made in a home of its own) and a copy of its folder with
-# its definition converted to the YAML spec by tflspec's converter
-yaml_sample <- function() {
-  home <- withr_tempdir(env = parent.frame())
+# The sample study, made in a home of its own: its definition the YAML spec
+yaml_sample <- function(env = parent.frame()) {
+  home <- withr_tempdir(env)
   old <- options(tflplanner.home = home)
-  on.exit(options(old), add = TRUE)
+  do.call(on.exit, list(substitute(options(old)), add = TRUE), envir = env)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  s <- suppressMessages(create_sample_study(run = FALSE))
-  root <- file.path(withr_tempdir(env = parent.frame()), "SAMPLE-01")
-  dir.create(root)
-  file.copy(list.files(s$path, full.names = TRUE, all.files = TRUE, no.. = TRUE), root,
-            recursive = TRUE)
-  y <- file.path(withr_tempdir(), "y")
-  tflspec::tfl_convert_sheets_to_yaml(root, y, overwrite = TRUE)
-  unlink(file.path(root, "spec"), recursive = TRUE)
-  dir.create(file.path(root, "spec"))
-  file.copy(list.files(file.path(y, "spec"), full.names = TRUE), file.path(root, "spec"),
-            recursive = TRUE)
-  unlink(file.path(root, "spec", "_not_converted.yml"))
-  m <- yaml::read_yaml(file.path(s$path, .study_file))
-  writeLines(c(readLines(file.path(y, .study_file)),
-               sub("\n$", "", yaml::as.yaml(m[c("created", "updated", "tflplanner")]))),
-             file.path(root, .study_file))
-  list(sheets = s, root = root)
+  suppressMessages(create_sample_study(run = FALSE, home = home))
 }
 
-test_that("the sample's definition as YAML reads back to the same programs", {
-  x <- yaml_sample()
-  s <- x$sheets
-  root <- x$root
-  expect_identical(.study_format(root), "yaml")
-  expect_true("spec/toc.yml" %in% .spec_files(root))
-  p <- .study_spec_keys(.planner_from_yaml(root))
+test_that("the sample's YAML spec reads back to the same programs", {
+  s <- yaml_sample()
+  expect_true("spec/toc.yml" %in% .spec_files(s$path))
+  p <- .study_spec_keys(.planner_from_yaml(s$path))
   for (id in s$planner$outputs$output_id) {
     expect_identical(program_code(p, id), program_code(s$planner, id), info = id)
   }
@@ -53,13 +33,9 @@ test_that("the sample's definition as YAML reads back to the same programs", {
 })
 
 test_that("a YAML study saves the files whose text changed, and keeps study.yml's keys", {
-  x <- yaml_sample()
-  root <- x$root
-  home <- withr_tempdir()
-  old <- options(tflplanner.home = home)
-  on.exit(options(old), add = TRUE)
-  suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
-  s <- suppressMessages(register_study(root, home = home))
+  s <- yaml_sample()
+  root <- s$path
+  home <- getOption("tflplanner.home")
   # saved as read: the spec's files unchanged but study.yml (its time)
   s <- suppressMessages(save_study(s, home = home))
   f <- s$files

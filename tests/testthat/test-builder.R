@@ -188,7 +188,9 @@ test_that("the sample's T-14-1-5 nests the Asian sub-categories; T-14-1-6 has tw
   expect_match(d5$derive, "ASIANSUB = dplyr::case_when(", fixed = TRUE)
   # the other demographics too: only RACE has more than two levels with
   # rows under one of them
+  # (the variables in their order; a column's levels row has none)
   for (v in list(v5, v6)) {
+    v <- v[!is.na(v$order), ]
     expect_identical(v$variable[order(as.integer(v$order))],
                      c("AGE", "AGEGR1", "SEX", "RACE", "ASIANSUB", "ETHNIC"))
   }

@@ -131,7 +131,9 @@ test_that("a study's files export, and import into another study", {
   expect_true(file.exists(file.path(d, "spec", "toc.yml")))
   expect_true(file.exists(file.path(d, .flat_xlsx)))
   e <- create_study("S2")
-  e <- import_spec_files("S2", file.path(d, "spec"))
+  e <- import_spec_files("S2", d)
+  # (the study's own ID and fields kept, the definition's settings taken)
+  expect_identical(e$meta$study_id, "S2")
   expect_identical(e$planner$outputs, s$planner$outputs)
   expect_identical(program_code(e$planner, "DM"), program_code(s$planner, "DM"))
   expect_equal(unname(e$planner$study[["output_path"]]), "output/tfl")
@@ -333,13 +335,11 @@ test_that("a study whose spec/ changed after unregistering comes back from spec/
   s$planner <- add_output(s$planner, "T-1", type = "table", description = "kept")
   s <- suppressMessages(save_study(s, home = home))
   unregister_study("UR-2")
-  # the report list edited in Excel while the study was off the list
-  f <- file.path(s$path, "spec", "report_spec.xlsx")
-  wb <- openxlsx::loadWorkbook(f)
-  d <- openxlsx::read.xlsx(wb, "_tflplanner")
-  d$description[d$output_id %in% "T-1"] <- "edited"
-  openxlsx::writeData(wb, "_tflplanner", d)
-  openxlsx::saveWorkbook(wb, f, overwrite = TRUE)
+  # the report list (the TOC) edited while the study was off the list
+  f <- file.path(s$path, "spec", "toc.yml")
+  y <- yaml::read_yaml(f)
+  y$outputs[[1L]]$label <- "edited"
+  writeLines(yaml::as.yaml(y), f)
   r <- suppressMessages(register_study(s$path))
   expect_identical(r$planner$outputs$output_id, "T-1")
   expect_identical(r$planner$outputs$description, "edited")

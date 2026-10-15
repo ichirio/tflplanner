@@ -535,6 +535,12 @@ export_spec_files <- function(study, path, home = tflplanner_home()) {
       old <- c(old, f)
     } else if (identical(to, "(flat)")) {
       flat <- c(flat, f)
+    } else if (identical(to, .study_file) && file.exists(file.path(stage, to))) {
+      # another study's study.yml: its definition's part (settings, keys,
+      # setup) comes in, the study keeps its own ID and fields
+      .import_study_yml(f, file.path(stage, to))
+      placed <- c(placed, to)
+      yaml_in <- c(yaml_in, f)
     } else {
       dir.create(dirname(file.path(stage, to)), recursive = TRUE, showWarnings = FALSE)
       file.copy(f, file.path(stage, to), overwrite = TRUE)
@@ -813,4 +819,19 @@ restore_spec_backup <- function(study, backup, parts = NULL,
   tmp <- .backup_copy(study, backup, home)
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
   import_spec_files(study, tmp, parts = parts, home = home)
+}
+
+# An imported study.yml over the study's own: the incoming one, but the
+# study's own ID and fields (and when it was made) kept
+.import_study_yml <- function(from, to) {
+  rd <- function(f) yaml::read_yaml(f, handlers = list(
+    r = function(x) structure(x, tag = "!r"),
+    `bool#yes` = function(x) x, `bool#no` = function(x) x))
+  inc <- rd(from)
+  own <- rd(to)
+  for (k in c(.study_fields, "created", "updated", "tflplanner")) inc[[k]] <- own[[k]]
+  inc <- inc[!vapply(inc, is.null, NA)]
+  writeLines(yaml::as.yaml(inc, handlers = list(logical = yaml::verbatim_logical)), to,
+             useBytes = TRUE)
+  invisible(to)
 }
