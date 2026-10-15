@@ -352,7 +352,7 @@ test_that("a new figure starts from a template the study's data can draw", {
     d <- fig_design(session$userData$rv$p, "F-AGE")
     expect_true(length(d$layers) > 0L)
     h <- output$pd_body$html
-    expect_match(h, "spec/figures/F-AGE.yml", fixed = TRUE)
+    expect_match(h, "spec/outputs/F-AGE.yml", fixed = TRUE)
     expect_match(h, "Spec (YAML)", fixed = TRUE)
     expect_match(h, "pd_retpl")
     # a template again: asked first, then the design is replaced

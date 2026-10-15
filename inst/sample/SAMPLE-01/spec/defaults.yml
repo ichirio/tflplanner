@@ -1,0 +1,56 @@
+content:
+  - normalize_ard: {}
+  - plan_digits:
+      rounding: sas
+  - plan_cells:
+      default: '{n:.0f} ({p:.1f%})'
+  - plan_stub:
+      name: row_label
+      before: true
+  - plan_blanks:
+      where: between_groups
+      first: true
+      last: true
+      counted: true
+  - plan_style:
+      align_count_pct: true
+  - plan_col_header:
+      header:
+        - line: '1'
+          cols: row_label
+        - line: '1'
+          cols: .values
+          span: each
+          text: '{col}'
+        - line: '2'
+          cols: row_label
+          text: Characteristic
+        - line: '2'
+          cols: .values
+          span: each
+          text: (N={n})
+  - plan_columns:
+      widths:
+        row_label: 40.0
+        .values: 18.0
+page:
+  header:
+    '1':
+      left: Sample Pharma (tflplanner sample)
+      right: DRAFT
+    '2':
+      left: 'Protocol: SAMPLE-01 (CDISC pilot data)'
+      right: Page {PAGE} of {TOTAL_PAGES}
+    '3': []
+    '4':
+      center: '{OUTPUT_LABEL}'
+    '5':
+      center: '{OUTPUT_TITLE}'
+    '6':
+      center: <{OUTPUT_POPULATION}>
+  footer:
+    '99':
+      left: '{PROGRAM}       Generated on: {DATETIME}'
+    '98':
+      left: 'Source: CDISC pilot study ADaM data of the pharmaverseadam R package.'
+

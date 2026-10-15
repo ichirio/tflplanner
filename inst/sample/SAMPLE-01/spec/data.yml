@@ -1,0 +1,27 @@
+datasets:
+  - dataset: ADSL
+    level: ADaM
+    path: data/adam/adsl.rds
+  - dataset: ADAE
+    level: ADaM
+    path: data/adam/adae.rds
+  - dataset: ADVS
+    level: ADaM
+    path: data/adam/advs.rds
+  - dataset: ADTTE
+    level: ADaM
+    path: data/adam/adtte.rds
+populations:
+  - id: SAF
+    dataset: ADSL
+    where: !r SAFFL == "Y"
+    derive: !r TRTA = TRT01A
+    label: Safety Analysis Set
+  - id: SCRF
+    dataset: ADSL
+    where: !r ARM == "Screen Failure"
+    label: Screen Failures
+  - id: ENR
+    dataset: ADSL
+    label: Enrolled Set
+

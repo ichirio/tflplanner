@@ -1,0 +1,90 @@
+id: T-14-2-1
+kind: table
+label: 'Systolic blood pressure: change from baseline at Week 24'
+population: SAF
+extends:
+  - defaults
+ard:
+  analysis_data:
+    - id: adsl_saf
+      label: Safety set
+      from: ADSL
+      population: SAF
+    - id: advs_saf_sysbp
+      label: Systolic blood pressure at Week 24, safety set
+      from: ADVS
+      subjects: adsl_saf
+      where: !r PARAMCD == "SYSBP" & AVISIT == "Week 24"
+  analyses:
+    - id: GROUPN
+      method: categorical
+      data: adsl_saf
+      variables:
+        - TRTA
+      purpose: PRIMARY OUTCOME MEASURE
+    - id: SYSBP
+      label: SYSBP at Week 24
+      method: continuous
+      data: advs_saf_sysbp
+      by:
+        - TRTA
+      variables:
+        - BASE
+        - AVAL
+        - CHG
+      statistics:
+        - 'N'
+        - mean
+        - sd
+        - se
+        - mean_lcl
+        - mean_ucl
+        - median
+        - min
+        - max
+      purpose: PRIMARY OUTCOME MEASURE
+data:
+  source: ard
+  object: ard
+codelists:
+  TRTA:
+    - value: Placebo
+    - value: Xanomeline Low Dose
+    - value: Xanomeline High Dose
+content:
+  - table_plan:
+      cols: TRTA
+      rows:
+        group: variable
+  - plan_levels:
+      TRTA:
+        - Placebo
+        - Xanomeline Low Dose
+        - Xanomeline High Dose
+  - plan_labels:
+      BASE: Baseline (mmHg)
+      AVAL: Week 24 (mmHg)
+      CHG: Change from baseline (mmHg)
+  - plan_cells:
+      continuous:
+        'n': '{N:.0f}'
+        Mean (SD): '{mean:.1f} ({sd:.2f})'
+        SE: '{se:.2f}'
+        95% CI of the mean: '{mean_lcl:.1f}, {mean_ucl:.1f}'
+        Median: '{median:.1f}'
+        Min, Max: '{min:.0f}, {max:.0f}'
+  - plan_paginate_rows:
+      max_rows: 30
+      split: group_safe
+page:
+  footer:
+    '1':
+      left: SD = Standard Deviation; SE = Standard Error; CI = Confidence Interval
+        (t distribution).
+    '2':
+      left: Systolic blood pressure after 5 minutes lying down.
+  tokens:
+    OUTPUT_TITLE: 'Systolic Blood Pressure (mmHg): Change from Baseline at Week 24'
+    OUTPUT_POPULATION: Safety Analysis Set
+note: 'SYSBP at Week 24: baseline, value, change'
+

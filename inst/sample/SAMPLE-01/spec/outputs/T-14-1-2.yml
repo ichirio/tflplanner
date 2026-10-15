@@ -1,0 +1,67 @@
+id: T-14-1-2
+kind: table
+label: Subject disposition
+population: SAF
+extends:
+  - defaults
+ard:
+  analysis_data:
+    - id: adsl_saf
+      label: Safety set
+      from: ADSL
+      population: SAF
+  analyses:
+    - id: GROUPN
+      method: categorical
+      data: adsl_saf
+      variables:
+        - TRT01A
+      purpose: PRIMARY OUTCOME MEASURE
+    - id: DISP
+      label: Status at end of study
+      method: categorical
+      data: adsl_saf
+      by:
+        - TRT01A
+      variables:
+        - EOSSTT
+      statistics:
+        - 'n'
+        - p
+      purpose: PRIMARY OUTCOME MEASURE
+data:
+  source: ard
+  object: ard
+codelists:
+  TRT01A:
+    - value: Placebo
+    - value: Xanomeline Low Dose
+    - value: Xanomeline High Dose
+  EOSSTT:
+    - value: COMPLETED
+      label: Completed
+    - value: DISCONTINUED
+      label: Discontinued
+content:
+  - table_plan:
+      cols: TRT01A
+      rows:
+        group: variable
+  - plan_levels:
+      TRT01A:
+        - Placebo
+        - Xanomeline Low Dose
+        - Xanomeline High Dose
+      EOSSTT:
+        - Completed
+        - Discontinued
+  - plan_labels:
+      EOSSTT: Status at end of study, n (%)
+  - plan_paginate_rows:
+      max_rows: 24
+page:
+  tokens:
+    OUTPUT_TITLE: Subject Disposition
+    OUTPUT_POPULATION: Safety Analysis Set
+note: Disposition
+

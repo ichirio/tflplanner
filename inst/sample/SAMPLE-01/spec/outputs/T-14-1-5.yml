@@ -1,0 +1,198 @@
+id: T-14-1-5
+kind: table
+label: Demographics, race's Asian sub-categories nested under Asian (enrolled subjects
+  by arm, Total; ASIANSUB derived for demonstration)
+population: ENR
+extends:
+  - defaults
+ard:
+  analysis_data:
+    - id: adsl_enr
+      label: Enrolled subjects
+      from: ADSL
+      population: ENR
+      derive: !r ASIANSUB = dplyr::case_when(USUBJID == "01-703-1396" ~ "CHINESE",
+        USUBJID == "01-708-1104" ~ "JAPANESE")
+    - id: adsl_enr_1
+      label: Enrolled Set
+      from: ADSL
+      population: ENR
+  analyses:
+    - id: GROUPN
+      method: categorical
+      data: adsl_enr
+      variables:
+        - ARM
+      purpose: PRIMARY OUTCOME MEASURE
+    - id: RACE
+      label: Race
+      method: categorical
+      data: adsl_enr
+      by:
+        - ARM
+      overall: true
+      variables:
+        - RACE
+      statistics:
+        - 'n'
+        - p
+      denominator: adsl_enr
+      purpose: PRIMARY OUTCOME MEASURE
+    - id: ASIANSUB
+      label: Asian sub-category
+      method: categorical
+      data: adsl_enr
+      by:
+        - ARM
+      overall: true
+      variables:
+        - ASIANSUB
+      statistics:
+        - 'n'
+        - p
+      denominator: adsl_enr
+      purpose: PRIMARY OUTCOME MEASURE
+    - id: CONT
+      label: Continuous
+      method: continuous
+      data: adsl_enr
+      by:
+        - ARM
+      overall: true
+      variables:
+        - AGE
+      statistics:
+        - 'N'
+        - mean
+        - sd
+        - median
+        - min
+        - max
+      purpose: PRIMARY OUTCOME MEASURE
+    - id: CAT
+      label: Categorical
+      method: categorical
+      data: adsl_enr
+      by:
+        - ARM
+      overall: true
+      variables:
+        - AGEGR1
+        - SEX
+        - ETHNIC
+      statistics:
+        - 'n'
+        - p
+      denominator: adsl_enr
+      purpose: PRIMARY OUTCOME MEASURE
+data:
+  source: ard
+  object: ard
+codelists:
+  ARM:
+    - value: Placebo
+    - value: Xanomeline Low Dose
+    - value: Xanomeline High Dose
+    - value: Screen Failure
+  RACE:
+    - value: WHITE
+      label: White
+    - value: BLACK OR AFRICAN AMERICAN
+      label: Black or African American
+    - value: ASIAN
+      label: Asian
+    - value: AMERICAN INDIAN OR ALASKA NATIVE
+      label: American Indian or Alaska Native
+    - value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER
+      label: Native Hawaiian or Other Pacific Islander
+  ASIANSUB:
+    - value: CHINESE
+      label: Chinese
+    - value: JAPANESE
+      label: Japanese
+    - value: KOREAN
+      label: Korean
+  SEX:
+    - value: F
+      label: Female
+    - value: M
+      label: Male
+  AGEGR1:
+    - value: 18-64
+      label: 18-64 years
+    - value: '>64'
+      label: '>64 years'
+  ETHNIC:
+    - value: HISPANIC OR LATINO
+      label: Hispanic or Latino
+    - value: NOT HISPANIC OR LATINO
+      label: Not Hispanic or Latino
+    - value: NOT REPORTED
+      label: Not reported
+    - value: UNKNOWN
+      label: Unknown
+content:
+  - table_plan:
+      cols: ARM
+      rows:
+        group: variable
+  - plan_levels:
+      ARM:
+        - Placebo
+        - Xanomeline Low Dose
+        - Xanomeline High Dose
+        - Screen Failure
+      RACE:
+        - White
+        - Black or African American
+        - Asian
+        - American Indian or Alaska Native
+        - Native Hawaiian or Other Pacific Islander
+      ASIANSUB:
+        - Chinese
+        - Japanese
+        - Korean
+      SEX:
+        - Female
+        - Male
+      AGEGR1:
+        - 18-64 years
+        - '>64 years'
+      ETHNIC:
+        - Hispanic or Latino
+        - Not Hispanic or Latino
+        - Not reported
+        - Unknown
+  - plan_labels:
+      AGE: Age (years)
+      AGEGR1: Age group, n (%)
+      SEX: Sex, n (%)
+      RACE: Race, n (%)
+      ETHNIC: Ethnicity, n (%)
+  - plan_nest:
+      ASIANSUB:
+        RACE: Asian
+  - plan_total:
+      label: Total
+  - plan_cells:
+      continuous:
+        'n': '{N:.0f}'
+        Mean (SD): '{mean:.1f} ({sd:.2f})'
+        Median: '{median:.1f}'
+        Min, Max: '{min:.0f}, {max:.0f}'
+  - plan_paginate_rows:
+      max_rows: 45
+page:
+  footer:
+    '1':
+      left: 'Enrolled subjects: all subjects of ADSL, screen failures included.  Percentages
+        of the column''s subjects.'
+    '2':
+      left: 'Asian sub-categories (ASIANSUB: Chinese, Japanese, Korean) are derived
+        for demonstration; they are not in the source data.  As an EDC collects them,
+        each race has its own sub-category column.'
+  tokens:
+    OUTPUT_TITLE: Demographic Characteristics, with the Asian Sub-categories of Race
+    OUTPUT_POPULATION: All Enrolled Subjects
+note: Demographics; race's Asian sub-categories nested under Asian
+

@@ -16,7 +16,7 @@ test_that("the sample study is copied, registered and written", {
                     "F-14-2-4"))
   expect_true(nrow(s$planner$ard$analyses) > 0)
   # the figure made with the designer: the KM template, one layer added;
-  # its design read back from spec/figures/ (and kept by the save)
+  # its design read back from its report's file (and kept by the save)
   expect_identical(report_info(s$planner, "F-14-2-3")$type, "figure")
   d <- fig_design(s$planner, "F-14-2-3")
   expect_identical(d$template, "km_simple")
@@ -27,7 +27,7 @@ test_that("the sample study is copied, registered and written", {
   # the HR is in T-14-2-2's ARD definition, not among its table's variables
   expect_true("HR" %in% ard_rows(s$planner, "analyses", "T-14-2-2")$analysis_id)
   expect_identical(.fig_ard_source(s$planner, "F-14-2-3"), list(kind = "table", id = "T-14-2-2"))
-  expect_true(file.exists(file.path(s$path, "spec/figures/F-14-2-3.yml")))
+  expect_true(file.exists(file.path(s$path, "spec/outputs/F-14-2-3.yml")))
   for (f in c("data/adam/adsl.rds", "data/adam/adtte.rds",
               "programs/tfl/fig_setup.R", "programs/batch.R",
               "programs/ard/T-14-1-1.R", "programs/tfl/F-14-2-1.R")) {
@@ -109,7 +109,7 @@ test_that("the sample study makes its ARD and reports", {
   expect_equal(b$errors, 0L)
 })
 
-test_that("the sample study copies under another ID, with every definition as Excel", {
+test_that("the sample study copies under another ID, its definition the YAML spec", {
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
@@ -119,10 +119,11 @@ test_that("the sample study copies under another ID, with every definition as Ex
   expect_equal(s$meta$study_id, "MY-1")
   expect_equal(s$meta$title, "Mine")
   expect_true(file.exists(file.path(s$path, "MY-1.Rproj")))
-  for (f in c("table_spec.xlsx", "report_spec.xlsx", "listing_figure_spec.xlsx",
-              "ard_spec.xlsx")) {
+  for (f in c("data.yml", "defaults.yml", "toc.yml", "outputs/T-14-1-1.yml")) {
     expect_true(file.exists(file.path(s$path, "spec", f)), label = f)
   }
+  # (no workbook: the YAML spec only)
+  expect_length(list.files(file.path(s$path, "spec"), "\\.(xlsx|json)$"), 0L)
   expect_true(nrow(ard_rows(s$planner, "analyses", "T-14-1-1")) > 0)
   # the sample itself can still be added alongside
   expect_equal(suppressMessages(create_sample_study(run = FALSE))$meta$study_id,

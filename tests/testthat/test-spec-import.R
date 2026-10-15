@@ -8,6 +8,10 @@ imp_study <- function(id = "IM-1") {
   suppressMessages(create_study(id, planner = p))
 }
 
+# a report's file of the YAML spec, edited (fn: the tfl_output to the edited one)
+edit_output <- function(f, fn) {
+  tflspec::tfl_write_output(fn(tflspec::tfl_read_output(f)), f)
+}
 edit_book <- function(f, sheet, fn) {
   wb <- openxlsx::loadWorkbook(f)
   d <- openxlsx::read.xlsx(wb, sheet)
@@ -18,17 +22,16 @@ edit_book <- function(f, sheet, fn) {
   openxlsx::saveWorkbook(wb, f, overwrite = TRUE)
 }
 
-test_that("the files go out as a folder or a zip", {
+test_that("the files go out as a folder or a zip, with a flat workbook", {
   home <- local_home()
   s <- imp_study()
   out <- file.path(home, "copy")
   export_spec_files("IM-1", out)
-  expect_setequal(list.files(out, recursive = TRUE),
-                  c("study.yml", "spec/table_spec.xlsx", "spec/report_spec.xlsx"))
+  want <- c(.spec_files_yaml(s$path), .flat_xlsx)
+  expect_setequal(list.files(out, recursive = TRUE), want)
   z <- file.path(home, "copy.zip")
   export_spec_files("IM-1", z)
-  expect_setequal(utils::unzip(z, list = TRUE)$Name,
-                  c("study.yml", "spec/table_spec.xlsx", "spec/report_spec.xlsx"))
+  expect_setequal(utils::unzip(z, list = TRUE)$Name, want)
 })
 
 test_that("an edited, renamed copy comes back part by part, the old files kept", {
@@ -36,17 +39,22 @@ test_that("an edited, renamed copy comes back part by part, the old files kept",
   s <- imp_study()
   out <- file.path(home, "copy")
   export_spec_files("IM-1", out)
-  g <- file.path(home, "report_spec edited by me.xlsx")
-  file.copy(file.path(out, "spec", "report_spec.xlsx"), g)
-  edit_book(g, "titles", function(d) { d$center[d$output_id == "T-1"] <- "New title"; d })
-  edit_book(g, "_tflplanner", function(d) { d$description[d$output_id %in% "T-2"] <- "renamed"; d })
+  g <- file.path(home, "mine")
+  dir.create(g)
+  t1 <- file.path(g, "T-1 edited by me.yml")
+  file.copy(file.path(out, "spec", "outputs", "T-1.yml"), t1)
+  edit_output(t1, function(o) { o$page$titles[["1"]]$center <- "New title"; o })
+  toc <- file.path(g, "my toc.yml")
+  y <- yaml::read_yaml(file.path(out, "spec", "toc.yml"))
+  y$outputs[[2L]]$label <- "renamed"
+  writeLines(yaml::as.yaml(y), toc)
   pv <- preview_spec_import("IM-1", g)
   expect_true(pv$ok)
-  expect_setequal(pv$parts, c("sheet:titles", "report list"))
+  expect_true(all(c("sheet:titles", "report list") %in% pv$parts))
   expect_true("T-1" %in% pv$outputs)
   # nothing changed by a preview
   expect_identical(sheet_rows(open_study("IM-1")$planner, "titles", "T-1")$center, "Old title")
-  before <- unname(tools::md5sum(file.path(s$path, "spec", "report_spec.xlsx")))
+  before <- unname(tools::md5sum(file.path(s$path, "spec", "outputs", "T-1.yml")))
   # only the titles taken in
   r <- import_spec_files("IM-1", g, parts = "sheet:titles")
   o <- open_study("IM-1")
@@ -55,7 +63,7 @@ test_that("an edited, renamed copy comes back part by part, the old files kept",
   expect_identical(o$planner$outputs$description[2], "two")
   # the files as they were, kept before
   expect_true(dir.exists(r$backup))
-  expect_identical(unname(tools::md5sum(file.path(r$backup, "spec", "report_spec.xlsx"))),
+  expect_identical(unname(tools::md5sum(file.path(r$backup, "spec", "outputs", "T-1.yml"))),
                    before)
   expect_match(r$backup, "spec/[.]backup/[0-9]{8}-[0-9]{6}$")
 })
@@ -63,54 +71,70 @@ test_that("an edited, renamed copy comes back part by part, the old files kept",
 test_that("a copy that does not read changes nothing", {
   home <- local_home()
   s <- imp_study()
-  g <- file.path(home, "report_spec.xlsx")
-  writeLines("not a workbook", g)
+  g <- file.path(home, "T-1.yml")
+  writeLines(c("id: [", "kind"), g)
   rec <- .read_state("IM-1")$files
   pv <- preview_spec_import("IM-1", g)
   expect_false(pv$ok)
-  expect_identical(pv$problems$file[1], "spec/report_spec.xlsx")
+  expect_true(any(grepl("T-1.yml", pv$problems$file, fixed = TRUE)))
   expect_error(import_spec_files("IM-1", g), class = "tflplanner_spec_invalid")
   expect_identical(.read_state("IM-1")$files, rec)
   expect_false(dir.exists(file.path(s$path, "spec", ".backup")))
 })
 
-test_that("a missing output_id column stops the import, in its sheet and workbook", {
+test_that("the flat workbook comes back: its rows into the YAML files", {
+  skip_if_not_installed("openxlsx")
   home <- local_home()
   s <- imp_study()
-  g <- file.path(home, "titles.xlsx")
-  file.copy(file.path(s$path, "spec", "report_spec.xlsx"), g)
-  edit_book(g, "titles", function(d) d[setdiff(names(d), "output_id")])
-  pv <- preview_spec_import("IM-1", g)
-  expect_false(pv$ok)
-  p <- pv$problems[pv$problems$severity == "error", ]
-  expect_identical(p$file[1], "spec/report_spec.xlsx")
-  expect_identical(p$sheet[1], "titles")
+  out <- file.path(home, "copy")
+  export_spec_files("IM-1", out)
+  x <- file.path(out, .flat_xlsx)
+  edit_book(x, "titles", function(d) { d$center[d$output_id %in% "T-2"] <- "From Excel"; d })
+  pv <- preview_spec_import("IM-1", x)
+  expect_true(pv$ok)
+  expect_true("sheet:titles" %in% pv$parts)
+  import_spec_files("IM-1", x)
+  expect_identical(sheet_rows(open_study("IM-1")$planner, "titles", "T-2")$center, "From Excel")
 })
 
-test_that("a filter that is not R stops the import at its cell", {
+test_that("the workbooks of an earlier tflplanner are converted on import", {
+  skip_if_not_installed("openxlsx")
+  home <- local_home()
+  s <- imp_study()
+  # the study's definition as the workbooks of before the YAML spec
+  old <- file.path(home, "old")
+  write_planner(s$planner, old)
+  r <- write_planner(set_sheet_rows(s$planner, "titles", "T-1",
+                                    data.frame(line = "1", center = "From the old workbook")),
+                     old)
+  pv <- preview_spec_import("IM-1", old)
+  expect_true(pv$ok)
+  expect_true("sheet:titles" %in% pv$parts)
+  import_spec_files("IM-1", old)
+  o <- open_study("IM-1")
+  expect_identical(sheet_rows(o$planner, "titles", "T-1")$center, "From the old workbook")
+  # the study is still the YAML spec only
+  expect_length(list.files(file.path(s$path, "spec"), "\\.(xlsx|json)$"), 0L)
+})
+
+test_that("a filter that is not R stops the import at its report", {
   skip_if_not_installed("cards")
   home <- local_home()
   suppressMessages(create_sample_study(run = FALSE))
   out <- file.path(home, "copy")
   export_spec_files("SAMPLE-01", out)
-  # the ARD definition goes out as a workbook, to edit in Excel
-  x <- file.path(out, "spec", "ard_spec.xlsx")
-  expect_true(file.exists(x))
-  expect_false(file.exists(file.path(out, "spec", "ard_definition.json")))
-  edit_book(x, "analyses", function(d) { d$where[2] <- "AGE >"; d })
+  x <- file.path(out, "spec", "outputs", "T-14-1-1.yml")
+  edit_output(x, function(o) { o$ard$analyses[[2L]]$where <- tflspec::tfl_r("AGE >"); o })
   pv <- preview_spec_import("SAMPLE-01", x)
   expect_false(pv$ok)
   p <- pv$problems[pv$problems$column %in% "where", ]
-  expect_identical(p$file, "spec/ard_spec.xlsx")
+  expect_identical(p$file, "spec/outputs/T-14-1-1.yml")
   expect_identical(p$sheet, "analyses")
-  expect_identical(p$row, "3")
   expect_match(p$message, "R cannot read it")
   expect_error(import_spec_files("SAMPLE-01", x), class = "tflplanner_spec_invalid")
-  # and the same put in spec/ directly (its JSON): not taken in on open
-  j <- file.path(studies_root(), "SAMPLE-01", "spec", "ard_definition.json")
-  a <- jsonlite::fromJSON(j)
-  a$analyses$where[2] <- "AGE >"
-  writeLines(jsonlite::toJSON(a, dataframe = "columns", na = "null", pretty = TRUE), j)
+  # and the same put in spec/ directly: not taken in on open
+  file.copy(x, file.path(studies_root(), "SAMPLE-01", "spec", "outputs", "T-14-1-1.yml"),
+            overwrite = TRUE)
   o <- suppressMessages(open_study("SAMPLE-01"))
   expect_identical(o$spec$status, "invalid")
   expect_true("where" %in% o$spec$problems$column)
@@ -121,13 +145,15 @@ test_that("a figure design's R that does not read stops the import at its field"
   p <- add_output(new_planner(), "F-1", type = "figure")
   p <- set_fig_design(p, "F-1", tflspec::tfl_fig_template("km_simple", data = "ADTTE"))
   s <- suppressMessages(create_study("IM-2", planner = p))
-  d <- tflspec::tfl_read_fig_design(file.path(s$path, "spec", "figures", "F-1.yml"))
-  d$layers <- c(d$layers, list(list(layer = "layer_code", code = "geom_point(")))
   g <- file.path(home, "F-1 edited.yml")
-  tflspec::tfl_write_fig_design(d, g)
+  file.copy(file.path(s$path, "spec", "outputs", "F-1.yml"), g)
+  edit_output(g, function(o) {
+    o$content <- c(o$content, list(tflspec::tfl_item("layer_code", list(code = "geom_point("))))
+    o
+  })
   pv <- preview_spec_import("IM-2", g)
   expect_false(pv$ok)
-  p <- pv$problems[pv$problems$file == "spec/figures/F-1.yml", ]
+  p <- pv$problems[pv$problems$file == "spec/outputs/F-1.yml", ]
   expect_true(any(grepl("code", p$column)))
   expect_true(any(grepl("R cannot read it", p$message)))
 })

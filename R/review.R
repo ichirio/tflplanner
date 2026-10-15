@@ -100,7 +100,7 @@ study_review <- function(study, output_id = NULL, data = c("cached", "read", "no
 }
 
 #' @rdname study_review
-#' @param x A planner ([new_planner()], [read_planner()]).
+#' @param x A planner ([new_planner()], a study's `$planner`).
 #' @param facts The facts of the data ([review_facts()]), or `NULL`.
 #' @export
 review_problems <- function(x, output_id = NULL, facts = NULL,

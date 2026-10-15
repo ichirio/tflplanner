@@ -59,9 +59,12 @@ test_that("the definition is saved, reopened and run", {
   local_home2()
   s <- create_study("A1", planner = ard_planner())
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
-  # no workbook: the ARD definition's copy in the folder, and the programs
+  # no workbook: the ARD definition in the report's YAML file, the catalog
+  # in data.yml, and the programs
   expect_false(file.exists(file.path(s$path, "spec", "ard_spec.xlsx")))
-  expect_true(file.exists(file.path(s$path, "spec", "ard_definition.json")))
+  expect_false(file.exists(file.path(s$path, "spec", "ard_definition.json")))
+  expect_true(file.exists(file.path(s$path, "spec", "data.yml")))
+  expect_false(is.null(tflspec::tfl_read_output(file.path(s$path, "spec", "outputs", "DM.yml"))$ard))
   for (f in c("ard_setup.R", "DM.R", "autoexec_ard.R")) {
     expect_true(file.exists(file.path(s$path, "programs", "ard", f)))
   }
@@ -129,15 +132,13 @@ test_that("the definition is saved, reopened and run", {
   g <- register_study(s$path)
   expect_identical(g$planner$ard, o2$planner$ard)
 
-  # ard_spec.xlsx: an export, and an import
+  # the files exported, and imported back: the ARD definition the same
   d <- withr_tempdir()
-  f <- export_spec(g, d)
-  expect_true(file.exists(file.path(d, "ard_spec.xlsx")))
-  g2 <- g
-  g2$planner$ard$analyses <- g2$planner$ard$analyses[0, ]
-  g2 <- import_spec(g2, file.path(d, "ard_spec.xlsx"))
-  expect_identical(g2$planner$ard, g$planner$ard)
-  expect_identical(g2$planner$sheets, g$planner$sheets)
+  export_spec_files("A1", d)
+  expect_true(file.exists(file.path(d, "spec", "outputs", "DM.yml")))
+  g2 <- import_spec_files("A1", file.path(d, "spec"))
+  expect_identical(.study_parts(g2)[grep("^ard:", names(.study_parts(g2)))],
+                   .study_parts(g)[grep("^ard:", names(.study_parts(g)))])
 })
 
 test_that("the study's analyses are exported as CDISC ARS", {

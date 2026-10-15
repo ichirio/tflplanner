@@ -34,11 +34,12 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   expect_true(any(grepl("tfl_colours(", lines, fixed = TRUE)))
   expect_false(any(grepl("ggsave(", code, fixed = TRUE)))
 
-  # saved: the YAML, and the state (7 kept as 7, whatever the reader says)
+  # saved: the report's YAML file, and the state (7 kept as 7, whatever
+  # the reader says)
   s <- save_study(s)
-  f <- file.path(s$path, "spec", "figures", "F-14-2-1.yml")
+  f <- file.path(s$path, "spec", "outputs", "F-14-2-1.yml")
   expect_true(file.exists(f))
-  expect_equal(tflspec::tfl_read_fig_design(f)$plot$title, "SBP: mean change")
+  expect_equal(tflspec::tfl_read_output(f)$plot$title, "SBP: mean change")
   s2 <- open_study("SAMPLE-01")
   expect_identical(s2$planner$fig_designs, s$planner$fig_designs)
 
@@ -51,10 +52,12 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   p <- remove_output(p, "F-14-2-8")
   expect_null(fig_design(p, "F-14-2-8"))
 
-  # dropped: the program's plot is hand-written again, the YAML goes
+  # dropped: the program's plot is hand-written again, the report's file
+  # has no design
   s2$planner <- set_fig_design(s2$planner, "F-14-2-1", NULL)
   s2 <- save_study(s2)
-  expect_false(file.exists(f))
+  expect_true(file.exists(f))
+  expect_null(.planner_from_yaml(s2$path)$fig_designs[["F-14-2-1"]])
 })
 
 test_that("a design is drawn on the study's data, as its program saves it", {

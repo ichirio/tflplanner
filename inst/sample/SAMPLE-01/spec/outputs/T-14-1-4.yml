@@ -1,0 +1,120 @@
+id: T-14-1-4
+kind: table
+label: Demographic characteristics of the screen failures (an analysis set by a condition
+  alone)
+population: SCRF
+extends:
+  - defaults
+ard:
+  analysis_data:
+    - id: adsl_scrf
+      label: Screen failures
+      from: ADSL
+      population: SCRF
+  analyses:
+    - id: GROUPN
+      method: categorical
+      data: adsl_scrf
+      variables:
+        - ARM
+      purpose: PRIMARY OUTCOME MEASURE
+    - id: CONT
+      label: Continuous
+      method: continuous
+      data: adsl_scrf
+      by:
+        - ARM
+      variables:
+        - AGE
+      statistics:
+        - 'N'
+        - mean
+        - sd
+        - median
+        - min
+        - max
+      purpose: PRIMARY OUTCOME MEASURE
+    - id: CAT
+      label: Categorical
+      method: categorical
+      data: adsl_scrf
+      by:
+        - ARM
+      variables:
+        - AGEGR1
+        - SEX
+        - RACE
+      statistics:
+        - 'n'
+        - p
+      purpose: PRIMARY OUTCOME MEASURE
+data:
+  source: ard
+  object: ard
+codelists:
+  ARM:
+    - value: Screen Failure
+  SEX:
+    - value: F
+      label: Female
+    - value: M
+      label: Male
+  AGEGR1:
+    - value: 18-64
+      label: 18-64 years
+    - value: '>64'
+      label: '>64 years'
+  RACE:
+    - value: WHITE
+      label: White
+    - value: BLACK OR AFRICAN AMERICAN
+      label: Black or African American
+    - value: ASIAN
+      label: Asian
+    - value: AMERICAN INDIAN OR ALASKA NATIVE
+      label: American Indian or Alaska Native
+    - value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER
+      label: Native Hawaiian or Other Pacific Islander
+content:
+  - table_plan:
+      cols: ARM
+      rows:
+        group: variable
+  - plan_levels:
+      ARM: Screen Failure
+      SEX:
+        - Female
+        - Male
+      AGEGR1:
+        - 18-64 years
+        - '>64 years'
+      RACE:
+        - White
+        - Black or African American
+        - Asian
+        - American Indian or Alaska Native
+        - Native Hawaiian or Other Pacific Islander
+  - plan_labels:
+      AGE: Age (years)
+      AGEGR1: Age group, n (%)
+      SEX: Sex, n (%)
+      RACE: Race, n (%)
+  - plan_cells:
+      continuous:
+        'n': '{N:.0f}'
+        Mean (SD): '{mean:.1f} ({sd:.2f})'
+        Median: '{median:.1f}'
+        Min, Max: '{min:.0f}, {max:.0f}'
+  - plan_paginate_rows:
+      max_rows: 30
+      split: group_safe
+page:
+  footer:
+    '1':
+      left: 'SD = Standard Deviation.  Screen failures: subjects not randomized (ARM
+        is Screen Failure).'
+  tokens:
+    OUTPUT_TITLE: Demographic Characteristics of Screen Failures
+    OUTPUT_POPULATION: All Screen Failures
+note: The screen failures' demographics
+

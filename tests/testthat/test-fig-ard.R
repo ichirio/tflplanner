@@ -119,8 +119,7 @@ test_that("the preview prints the table's medians", {
 })
 
 test_that("the designer: an ARD piece's code is its whole term, its summary its address", {
-  d <- tflspec::tfl_read_fig_design(system.file("sample/SAMPLE-01/spec/figures/F-14-2-3.yml",
-                                                package = "tflplanner"))
+  d <- sample_fig_design("F-14-2-3")
   make <- function(d, codelists = TRUE) .fig_design_script(d, "F-14-2-3")
   code <- make(d)
   k <- which(vapply(d$layers, function(l) identical(l$layer, "ard_number"), NA))

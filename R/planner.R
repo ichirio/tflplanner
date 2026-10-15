@@ -316,7 +316,8 @@ output_ids <- function(x) {
 #'
 #' @param path One or more `.xlsx` files.
 #' @return An `tflplanner` object.
-#' @export
+#' @keywords internal
+#' @noRd
 read_planner <- function(path) {
   # a report sheet that says type user is read from a copy that does not
   # (.migrate_step_code() then makes its code a step's)
@@ -325,39 +326,18 @@ read_planner <- function(path) {
   user <- attr(path, "user")
   path <- as.character(path)
   sp <- tflspec::tfl_read_report_spec(path)
-  p <- new_planner()
-  for (s in names(p$sheets)) p$sheets[[s]] <- .normalize_sheet(sp[[s]], s)
-  p <- .old_program_default(p)
-  st <- sp$study
-  for (i in seq_len(nrow(st))) {
-    if (st$key[i] %in% names(p$study) && !is.na(st$value[i])) {
-      p$study[[st$key[i]]] <- st$value[i]
-    }
-  }
+  pl <- NULL
   for (f in path) {
     # _rtfplanner: the sheet's name before the package was renamed
     sh <- intersect(c(.planner_sheet, "_rtfplanner"), readxl::excel_sheets(f))
-    if (length(sh)) {
-      d <- .read_sheet_text(f, sh[1L])
-      for (cn in names(.empty_outputs())) {
-        if (!cn %in% names(d)) d[[cn]] <- NA_character_
-      }
-      d$output_id <- trimws(d$output_id)
-      d$output_id[!is.na(d$output_id) & !nzchar(d$output_id)] <- NA
-      # the setup: its own column (before 0.0.2.9206, the data code's)
-      setup_col <- if ("setup_code" %in% names(d)) "setup_code" else "data_code"
-      setup <- d[[setup_col]][is.na(d$output_id)] %||% character()
-      if (length(setup)) p$setup <- setup[1L]
-      old <- .old_data_code(d)
-      d <- d[!is.na(d$output_id), names(.empty_outputs()), drop = FALSE]
-      p$outputs <- d[!duplicated(d$output_id), , drop = FALSE]
-    }
+    if (length(sh)) pl <- .read_sheet_text(f, sh[1L])
   }
-  for (id in setdiff(output_ids(p), p$outputs$output_id)) p <- add_output(p, id, at = "end")
-  rownames(p$outputs) <- NULL
+  p <- .planner_from_sheets(sp, pl)
+  old <- attr(p, "old_data_code")
+  attr(p, "old_data_code") <- NULL
   # (a figure has a design when its file is beside the workbooks)
   fig_dir <- file.path(dirname(path0[1L]), .fig_design_dir)
-  p <- .migrate_step_code(p, if (exists("old", inherits = FALSE)) old else NULL, user,
+  p <- .migrate_step_code(p, old, user,
                           has_design = function(id) file.exists(file.path(fig_dir, paste0(id, ".yml"))))
   .renamed_outputs(p)
 }
@@ -682,7 +662,8 @@ set_sheet_rows <- function(x, sheet, output_id = "", rows) {
 #' @param table_file,report_file File names.
 #' @param books Which to write: `"table"`, `"report"` (both by default).
 #' @return The two paths, invisibly.
-#' @export
+#' @keywords internal
+#' @noRd
 write_planner <- function(x, dir, table_file = "table_spec.xlsx",
                           report_file = "report_spec.xlsx",
                           books = c("table", "report")) {
@@ -773,4 +754,42 @@ check_planner <- function(x) {
   r$type[i] <- type
   x$sheets$report <- r
   x
+}
+
+# The planner from the sheets as tflspec reads them (`sp`: the table and
+# report sheets and `study`, the key / value rows) and the report list (`pl`:
+# the _tflplanner sheet's rows, its setup row's output_id blank; NULL
+# none): what read_planner() reads from the workbooks and
+# .planner_from_yaml() from the YAML spec.  The old data code of a
+# _tflplanner sheet before 0.0.2.9206 is the attribute `old_data_code`.
+.planner_from_sheets <- function(sp, pl = NULL) {
+  p <- new_planner()
+  for (s in names(p$sheets)) p$sheets[[s]] <- .normalize_sheet(sp[[s]], s)
+  p <- .old_program_default(p)
+  st <- sp$study
+  for (i in seq_len(nrow(st %||% data.frame()))) {
+    if (st$key[i] %in% names(p$study) && !is.na(st$value[i])) {
+      p$study[[st$key[i]]] <- st$value[i]
+    }
+  }
+  old <- NULL
+  if (!is.null(pl)) {
+    d <- as.data.frame(pl, stringsAsFactors = FALSE)
+    for (cn in names(.empty_outputs())) {
+      if (!cn %in% names(d)) d[[cn]] <- NA_character_
+    }
+    d$output_id <- trimws(d$output_id)
+    d$output_id[!is.na(d$output_id) & !nzchar(d$output_id)] <- NA
+    # the setup: its own column (before 0.0.2.9206, the data code's)
+    setup_col <- if ("setup_code" %in% names(d)) "setup_code" else "data_code"
+    setup <- d[[setup_col]][is.na(d$output_id)] %||% character()
+    if (length(setup)) p$setup <- setup[1L]
+    old <- .old_data_code(d)
+    d <- d[!is.na(d$output_id), names(.empty_outputs()), drop = FALSE]
+    p$outputs <- d[!duplicated(d$output_id), , drop = FALSE]
+  }
+  for (id in setdiff(output_ids(p), p$outputs$output_id)) p <- add_output(p, id, at = "end")
+  rownames(p$outputs) <- NULL
+  attr(p, "old_data_code") <- old
+  p
 }

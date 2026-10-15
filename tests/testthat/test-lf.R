@@ -69,8 +69,7 @@ test_that("listing and figure rows follow the report and are saved", {
   expect_identical(remove_output(q, "L3")$lf, p$lf)
 
   s <- create_study("LF1", planner = p)
-  expect_true(file.exists(file.path(s$path, "spec",
-                                    "listing_figure_spec.xlsx")))
+  expect_true(file.exists(file.path(s$path, "spec", "outputs", "L1.yml")))
   expect_identical(open_study("LF1")$planner$lf, s$planner$lf)
   unregister_study("LF1")
   expect_identical(register_study(s$path)$planner$lf, s$planner$lf)

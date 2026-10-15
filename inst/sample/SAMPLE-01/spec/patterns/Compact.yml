@@ -1,0 +1,9 @@
+page:
+  rtf_page:
+    margin_top_in: 0.5
+    margin_bottom_in: 0.5
+    margin_left_in: 0.5
+    margin_right_in: 0.5
+  rtf_default_format:
+    font_size_half_points: 16
+
