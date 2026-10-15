@@ -16,7 +16,7 @@
   normalize_ard = "Normalize the ARD",
   table_plan = "Table structure",
   plan_cells = "Statistics in the cells",
-  plan_digits = "Decimals",
+  plan_digits = "Decimals and rounding",
   plan_levels = "Order of the values",
   plan_labels = "Labels",
   plan_nest = "Rows under another value",
@@ -57,7 +57,12 @@
                   counted = "Count blank rows"),
   plan_paginate_rows = c(max_rows = "Most rows a page", split = "Split rule",
                          page_by = "Page by", heading = "Heading",
-                         cont_label = "Continued label"),
+                         cont_label = "Continued label", break_before = "Break before rows",
+                         min_group_rows = "Fewest rows of a group on a page"),
+  plan_paginate_cols = c(every = "Columns a page", fit = "Fit to the page",
+                         at = "Break before columns", keep = "Columns on every page",
+                         cut_by = "Cut by", order = "Order of the pages",
+                         allow_span_break = "A spanning header may break"),
   plan_paginate_group = c(col = "Column", heading = "Heading"),
   plan_col_header = c(header = "Header lines", values = "Values of the tokens",
                       col_header_align = "Alignment"),
@@ -182,17 +187,67 @@ builder_items <- function(x, output_id) {
   if (nchar(s) > width) paste0(substr(s, 1L, width - 1L), "\u2026") else s
 }
 
+# The two groups of a table's items, by verb: the mapping (what the ARD's
+# numbers become: the structure, the cells, the Total, the decimals, the
+# values' order and labels, the rows' order) and the finishing (the column
+# header, the layout).  A verb not named is the mapping's.
+.plan_sections <- list(
+  finish = c("plan_col_header", "plan_stub", "plan_blanks", "plan_paginate_rows",
+             "plan_paginate_group", "plan_paginate_cols", "plan_row_group",
+             "plan_columns", "plan_style", "plan_cell_style"))
+
+.plan_section_labels <- c(mapping = "Mapping", finish = "Finishing")
+
+.plan_section <- function(fn) {
+  for (k in names(.plan_sections)) if (fn %in% .plan_sections[[k]]) return(k)
+  "mapping"
+}
+
+# the cards seldom changed: closed when drawn (the Layers menu reaches them)
+.plan_rare <- c("plan_stub", "plan_blanks", "plan_style", "plan_columns", "plan_cell_style",
+                "plan_paginate_rows", "plan_paginate_group", "plan_paginate_cols")
+
+# A card's own line above its body, by verb (`r`: the card's Edit as R is
+# offered beside it): what the card does not show yet, or where its values go
+.plan_card_note <- function(fn, r = FALSE, lang = "en") {
+  t <- function(x) tr(x, lang)
+  switch(
+    fn,
+    plan_digits = shiny::div(class = "rp-card-note",
+                             t("The decimals are written into plan_cells()'s formats.")),
+    plan_levels = shiny::div(
+      class = "rp-card-note",
+      t("Values and labels: edited in stage 2; for now, edit them as R."),
+      if (r) shiny::tags$button(type = "button",
+                                class = "btn btn-sm btn-outline-primary py-0 ms-2 rp-tool-r",
+                                t("Edit as R"))),
+    plan_sort = shiny::div(
+      class = "rp-card-note",
+      with_tip(builder_label(.arg_meaning("plan_sort", "keys"), "keys", "arg", lang),
+               t(paste("The keys, first to last: .overall the any-event row first;",
+                       "group1, group2 ... the rows' outer levels, label the innermost",
+                       "(the rows' text), each by name (a code list's order when it has one);",
+                       ".depth each group's own row above the rows under it;",
+                       "-n most frequent first (-n@group1: by the group's own count).")))),
+    NULL)
+}
+
 # The cards of a table's content, in its order: one builder_card() an
-# item.  `bodies`: the forms the builder has for some (by path, or by verb);
-# the rest show their arguments.  `id`: the card's input id of a path.
-# table_plan() and plan_cells() are required (and an item marked
+# item, with a thin line before the first item of each group (Mapping,
+# Finishing) -- the content's order is kept, the line only says where a
+# group starts.  `bodies`: the forms the builder has for some (by path, or
+# by verb); the rest show their arguments.  `id`: the card's input id of a
+# path.  table_plan() and plan_cells() are required (and an item marked
 # `required`: normalize_ard()); the others have a switch only where
 # `switches` names the verb (the Total column: its on / off works), none
 # elsewhere for now.  An item of the report's own is marked "This table".
+# The seldom changed cards (.plan_rare) are closed when drawn.
 .table_cards <- function(items, bodies = list(), id = function(path) path,
                          switches = character(), lang = "en") {
   required <- c("table_plan", "plan_cells")
-  lapply(items, function(it) {
+  started <- character()
+  out <- list()
+  for (it in items) {
     body <- bodies[[it$path]] %||% bodies[[it$fn]]
     own_form <- !is.null(body)
     if (!own_form) body <- .item_args_view(it, lang)
@@ -201,19 +256,60 @@ builder_items <- function(x, output_id) {
     # an item the content has not (its form would add it): no switch shown
     # on, no mark of its own -- "not in the code yet"
     absent <- !isTRUE(it$present) && !sw && !req
-    builder_card(
+    tools <- if (it$present && !isTRUE(it$fixed)) "r" else character()
+    sec <- .plan_section(it$fn)
+    if (!sec %in% started) {
+      started <- c(started, sec)
+      out[[length(out) + 1L]] <- shiny::div(class = "rp-card-sep", `data-section` = sec,
+                                            tr(.plan_section_labels[[sec]], lang))
+    }
+    rare <- it$fn %in% .plan_rare
+    note <- .plan_card_note(it$fn, r = "r" %in% tools, lang = lang)
+    out[[length(out) + 1L]] <- builder_card(
       id(it$path), it$fn, .verb_meaning(it$fn), from = it$from, required = req,
       on = it$present || req || !sw,
       switchable = sw, revert = isTRUE(it$revert),
-      body = body,
+      body = if (is.null(note)) body else shiny::tagList(note, body),
       summary = if (it$present) .item_summary(it),
-      tools = if (it$present && !isTRUE(it$fixed)) "r" else character(),
-      # the study's defaults the report leaves as they are: closed
-      open = req || own_form || !identical(it$from, "defaults"),
+      tools = tools,
+      # the study's defaults the report leaves as they are, and the seldom
+      # changed: closed
+      open = !rare && (req || own_form || !identical(it$from, "defaults")),
       path = it$path, lang = lang,
       own_label = if (isTRUE(it$present) && identical(it$from, "own")) "This table",
-      absent = absent)
-  })
+      absent = absent, rare = rare, section = sec,
+      also = if (identical(it$fn, "plan_digits")) "plan_cells")
+  }
+  out
+}
+
+# The bar above the cards: the Layers menu -- every card in the content's
+# order, by group, each a link that opens it and brings it into view (the
+# seldom changed ones faint)
+.table_cards_bar <- function(items, id = function(path) path, lang = "en") {
+  t <- function(x) tr(x, lang)
+  started <- character()
+  entries <- list()
+  for (it in items) {
+    sec <- .plan_section(it$fn)
+    if (!sec %in% started) {
+      started <- c(started, sec)
+      entries[[length(entries) + 1L]] <- shiny::tags$li(
+        shiny::tags$h6(class = "dropdown-header", t(.plan_section_labels[[sec]])))
+    }
+    entries[[length(entries) + 1L]] <- shiny::tags$li(shiny::tags$a(
+      href = "#", class = paste("dropdown-item rp-layer-go",
+                                if (it$fn %in% .plan_rare) "rp-layer-rare"),
+      `data-target` = id(it$path),
+      builder_label(.verb_meaning(it$fn), it$fn, "fn", lang)))
+  }
+  shiny::div(
+    class = "rp-cards-bar",
+    shiny::div(class = "dropdown",
+               shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary dropdown-toggle rp-layers-btn",
+                                  `data-bs-toggle` = "dropdown", `aria-expanded` = "false",
+                                  t("Layer list")),
+               shiny::tags$ul(class = "dropdown-menu", entries)))
 }
 
 # ---- code line -> card -------------------------------------------------------------
@@ -452,6 +548,11 @@ builder_code_map <- function(lines, items) {
   background: #f3f4f6; border: 1px dashed #cbd5e1; border-radius: .3rem; padding: 0 .4rem; }
 .rp-b-fixed-note { margin-top: .15rem; }
 .rp-b-sec > .rp-b-sec-label { font-size: 12.5px; margin-bottom: .15rem; }
+/* the chips of an order (the columns' levels ...): each its whole text,
+   onto the next line when narrow -- never cut */
+.rp-builder-cards .default-sortable.horizontal .rank-list { flex-wrap: wrap; gap: .25rem; }
+.rp-builder-cards .default-sortable.horizontal .rank-list-item { flex: 0 0 auto;
+  overflow: visible; white-space: nowrap; max-width: 100%; }
 "
 
 # the cards' buttons of the table builder, one input each: Revert, Edit as

@@ -719,9 +719,9 @@ Changes that were not saved,保存されていない変更
 Discard,捨てる
 Take them back,戻す
 "The last time this study was open, some changes were not saved. Take them back (they are not saved until you save), or discard them?",前回この試験を開いていたとき、保存されていない変更がありました。戻しますか（戻しても、保存するまでは保存されません）、それとも捨てますか？
-Not in this report's ARD: add %s to its analysis in step 1 (ARD).,この帳票の ARD にありません。段 1（ARD）で、この解析に %s を足してください。
+Not in this report's ARD: add %s to its analysis in step 1 (ARD).,この帳票の ARD にありません。ARD 作成で、この解析に %s を足してください。
 (the ARD has no %s),（ARD に %s がありません）
-"Greyed statistics are not in this report's ARD: add them to its analysis in step 1 (ARD), then read the ARD again.",グレーの統計量は、この帳票の ARD にありません。段 1（ARD）でこの解析に足してから、ARD を読み直してください。
+"Greyed statistics are not in this report's ARD: add them to its analysis in step 1 (ARD), then read the ARD again.",グレーの統計量は、この帳票の ARD にありません。ARD 作成でこの解析に足してから、ARD を読み直してください。
 Time shown in (the data's time is in days),表示する時間の単位（データの時間は日数として読みます）
 The builder could not read the form: %s,Builder がフォームを読めませんでした: %s
 "Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Runs tab. Choose a row to see its log in the latest official run.",プレビュー（この帳票の ARD）は、1 つの帳票を作業用の試験 ARD に入れ、ログは残しません。試験 ARD 全体の正式実行（ログ logrx 付き）は「実行」タブにあります。行を選ぶと、最新の正式実行でのログを表示します。
@@ -2290,9 +2290,9 @@ Blank: every analysis variable (the rule); a variable: its exception.,空欄: �
 "Its decimals, a whole number (p, a percent: 1 prints 61.6).",小数桁数（整数）。p（割合）は 1 で 61.6 と出る。
 digits: decimals,小数桁数 (digits)
 Values,値
-"Numbers: the ARD's values (stat), rounded here to the decimals below. The ARD's text: the values as step 1 formatted them (stat_fmt), printed as they are; a row may still put two in one (Mean (SD)).",数値: ARD の値（stat）を、下の桁数でここで丸めます。ARD の文字: 段 1 で書式を付けた値（stat_fmt）をそのまま出します。2 つを 1 行にまとめること（Mean (SD)）はできます。
+"Numbers: the ARD's values (stat), rounded here to the decimals below. The ARD's text: the values as step 1 formatted them (stat_fmt), printed as they are; a row may still put two in one (Mean (SD)).",数値: ARD の値（stat）を、下の桁数でここで丸めます。ARD の文字: ARD 作成 で書式を付けた値（stat_fmt）をそのまま出します。2 つを 1 行にまとめること（Mean (SD)）はできます。
 "Numbers, rounded here",数値（ここで丸める）
-The ARD's text (as formatted in step 1),ARD の文字（段 1 の書式のまま）
+The ARD's text (as formatted in step 1),ARD の文字（ARD 作成の書式のまま）
 Continuous variables: the rows (drag to order),連続変数: 出す行（ドラッグで並べ替え）
 Not shown (drag a row to the left),出さない行（左へドラッグで追加）
 A row of your own,自分の行
@@ -2416,7 +2416,7 @@ Column definitions,列定義
 "Order (| between variables, - for descending; a column with a code list sorts in the list's order)",並べ順（変数は | で区切る。- で降順。コードリストのある列はリストの順）
 Code lists: the columns of %s's data,コードリスト：%s のデータの列
 "This report's code lists of the listing's columns: its program puts them on the data after the condition (set_levels()), each column a factor in the list's order, its values the labels, and the rows sort in that order. A value a list does not have stops the program.",Listing の列の、この帳票のコードリストです。プログラムは絞り込みの後にこれをデータに当てます（set_levels()）。各列はリストの順の factor になり、値はラベルになり、行はその順に並びます。リストに無い値があるとプログラムは止まります。
-"Code lists: in step 1 (1-1, column definitions)",コードリスト：段 1（1-1 の列定義）で
+"Code lists: in step 1 (1-1, column definitions)",コードリスト：ARD 作成の 1-1（列定義）で
 Code lists,コードリスト
 "%s has a code list: its values' order and text are the code list's (the data steps' last, Code lists).",%s にはコードリストがあります。値の順と文字はコードリストのものです（データの手順の最後の「コードリスト」）。
 "This report's code lists of the figure's columns: its program puts them on the data as the data steps' last (set_levels()), each column a factor in the list's order, its values the labels -- the order and text of the legend and the axis. A value a list does not have stops the program.",図の列の、この帳票のコードリストです。プログラムはデータの手順の最後にこれをデータに当てます（set_levels()）。各列はリストの順の factor になり、値はラベルになります。凡例や軸の順と文字になります。リストに無い値があるとプログラムは止まります。
@@ -2755,7 +2755,7 @@ Where the Total column goes among the column key's values: last or first; blank:
 "The analysis once more without its grouping variables, over all its subjects: the Total column of a table (step 3's switch sets it for every analysis by the column variable). Needs grouping variables.",同じ解析をグループ変数なしでもう一度、全被験者で：表の Total 列になる（段 3 のスイッチが列変数で分けた解析すべてに入れる）。グループ変数が必要。
 The stack once more without its grouping variables (.overall = TRUE): the Total column of a table.,スタックをグループ変数なしでもう一度（.overall = TRUE）：表の Total 列になる。
 Total column,Total 列
-"One more column over all subjects, read from the ARD's overall rows: the analyses by the column variable are run once more without it (step 1, 'Also over all subjects'). No 'Total' arm is made up in the data.",全被験者の列を 1 つ足す。ARD の overall 行（列変数で分けた解析を、それなしでもう一度走らせたもの：段 1 の「全体でも計算する」）から読む。データに「Total」という群は作らない。
+"One more column over all subjects, read from the ARD's overall rows: the analyses by the column variable are run once more without it (step 1, 'Also over all subjects'). No 'Total' arm is made up in the data.",全被験者の列を 1 つ足す。ARD の overall 行（列変数で分けた解析を、それなしでもう一度走らせたもの：ARD 作成の「全体でも計算する」）から読む。データに「Total」という群は作らない。
 Heading,見出し
 Place,位置
 last,末尾
@@ -2765,8 +2765,8 @@ No analysis of this report is grouped by %s: the ARD has no overall rows to show
 Also over all subjects,全体でも計算する
 and over all,全体でも
 "The ARD definition does not hold, so no ARD program was written (the rest is saved). See the Review tab.",ARD 定義が成り立たないため、ARD プログラムは書いていません（他は保存済み）。Review タブを見てください。
-The order is the report's code list's (step 1).,並びは、この帳票のコードリストの順です（段 1）。
-"ARD: not read yet (step 1, ""Preview this table's ARD"")",ARD: まだ読み込んでいません（段 1 の「この表の ARD をプレビュー」）
+The order is the report's code list's (step 1).,並びは、この帳票のコードリストの順です（ARD 作成の 1-1）。
+"ARD: not read yet (step 1, ""Preview this table's ARD"")",ARD: まだ読み込んでいません（ARD 作成の「この表の ARD をプレビュー」）
 %d levels: %s,%d 水準: %s
 columns %s (%s groups),列 %s（%s 群）
 pages %s,ページ %s
@@ -2789,7 +2789,7 @@ This report's ARD has not been read yet.,この帳票の ARD はまだ読み込�
 The normalized ARD: %s (%d rows),正規化した ARD: %s（%d 行）
 All the columns (%d),すべての列（%d）
 Arm compared with the reference (the first),基準群（先頭）と比べる群
-"Added analyses %s to step 1 (remove them there if not wanted): update the ARD, then Preview.",解析 %s を段 1 に追加しました（不要ならそこで削除）。ARD を更新してから Preview してください。
+"Added analyses %s to step 1 (remove them there if not wanted): update the ARD, then Preview.",解析 %s を ARD 作成に追加しました（不要ならそこで削除）。ARD を更新してから Preview してください。
 No analysis set of the study is the flag %s: choose the analysis data's set in step 1.,フラグ %s に当たる解析対象集団が試験にありません。段 1 で解析データの集団を選んでください。
 The report IDs as the last time (%s) are unique for fewer rows of this TOC: %s is proposed.,前回の帳票 ID の作り方（%s）では、この TOC で ID が重ならない行が少なくなります。「%s」を提案します。
 (in the header),（見出しに）
@@ -3040,7 +3040,7 @@ Read its own ARD,自身の ARD を読む
 Its row of the ARD definition (the figure's ARD program):,ARD 定義の行（図の ARD プログラムが作ります）：
 "%s is going on: closing stops it, and its ARD and reports are left unfinished. Wait for it to end, or run it again later (Runs).",%sが動いています。閉じると止まり、ARD と帳票は途中までになります。終わるのを待つか、あとで実行タブからもう一度実行してください。
 A run,実行
-"The ARD of %s has no rows yet: make it (step 1, or an official run in Runs).",%s の ARD にまだ行がありません。作ってください（段 1、または実行タブの正式実行）。
+"The ARD of %s has no rows yet: make it (step 1, or an official run in Runs).",%s の ARD にまだ行がありません。作ってください（ARD 作成、または実行タブの正式実行）。
 The %s code of %s does not read as R (line %s): %s.,%2$s の %1$s のコードが R として読めません（%3$s 行目）: %4$s。
 Correct the code where R says.,R が示す場所でコードを直してください。
 "The %s code of %s reads %s, which the report does not register.",%2$s の %1$s のコードが %3$s を読んでいますが、帳票に登録されていません。
@@ -3128,7 +3128,7 @@ Shift table (baseline x worst after),シフト表（ベースライン × ベー
 "Each subject once a parameter, at the worst category after baseline; percents of each column's subjects.",被験者はパラメータごとに 1 回、ベースライン後の最悪の区分で数えます。割合は各列の被験者数に対してです。
 A shift table counts the subjects of an analysis set: put the subject-level data (adsl) on the Data tab.,シフト表は解析対象集団の被験者を数えます。被験者単位のデータ（adsl）をデータタブに置いてください。
 Row variables (outermost first; drag),行の変数（外側から。ドラッグで並べ替え）
-"Row and column variables are the ARD's groups and hierarchy; to add one, add it to the analysis's by in step 1.",行と列に使える変数は ARD の群（by）と階層です。増やすには手順 1 で解析の by に足します。
+"Row and column variables are the ARD's groups and hierarchy; to add one, add it to the analysis's by in step 1.",行と列に使える変数は ARD の群（by）と階層です。増やすには ARD 作成 で解析の by に足します。
 The outermost row variable a page each,いちばん外側の行の変数ごとにページを分ける
 tables$overall_label; blank: no such row.,tables$overall_label。空欄 = この行なし。
 Order,並び順
@@ -3136,7 +3136,7 @@ Most frequent first (ties by name),多い順（同数は名前順）
 Most frequent first (ties in the code list's order),多い順（同数はコードリストの順）
 Without %s this ARD cannot make the table (its rows would land in another level's cells).,%s を外した表は、この ARD では作れません（行が別の階層のセルに重なります）。
 Put it back,戻す
-Step 1's analysis,手順 1 の解析へ
+Step 1's analysis,ARD 作成の解析へ
 Rows of the table,行
 %s goes on after tflplanner closes; open the study again to see how it went (Runs).,%sは tflplanner を閉じても続きます。結果は試験をもう一度開くと見られます（実行）。
 the official run (started %s),正式実行（%s 開始）
@@ -3266,7 +3266,7 @@ No arguments: the defaults of the function.,引数なし: 関数の既定のま�
 Back to the study default,試験の既定に戻す
 Analysis variables (the block),解析変数（まとまり）
 "Analysis variables (the block), in order",解析変数（まとまり）の順
-"Outermost first; drag to order. The keys are the analysis's by (step 1); a hierarchy's levels are its analysis's: rows the table should not show are hidden by a row filter (plan_filter()), not left out here.",外側から順に。ドラッグで並べ替え。キーは解析の by（ステップ 1）から、階層の段は解析から来ます。表に出さない行は、ここで外すのではなく行のフィルター（plan_filter()）で隠します。
+"Outermost first; drag to order. The keys are the analysis's by (step 1); a hierarchy's levels are its analysis's: rows the table should not show are hidden by a row filter (plan_filter()), not left out here.",外側から順に。ドラッグで並べ替え。キーは解析の by（ARD 作成）から、階層の段は解析から来ます。表に出さない行は、ここで外すのではなく行のフィルター（plan_filter()）で隠します。
 "The arguments as R: name = value, separated by commas. What is no plain value (a call, a name) stays R.",引数を R で: 名前 = 値 をカンマで区切って。単純な値でないもの（関数の呼び出し、名前）は R のまま残ります。
 This table,この表
 Not in the code yet,まだコードにありません
@@ -3274,8 +3274,29 @@ A value set here adds it to the code.,ここで値を決めるとコードに加
 Overall row,全体の行
 Back to the code,コードへ戻る
 Headings and order as a grid,見出しと順を表で編集
-The levels %s are the ARD analysis's (step 1).,段 %s は ARD の解析（手順 1）のものです。
+The levels %s are the ARD analysis's (step 1).,段 %s は ARD の解析（ARD 作成）のものです。
 "A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show are hidden by a row filter (plan_filter()).",表は階層の段を外しません。別の段の表は ARD の別の解析から作ります。表に出さない行は行のフィルター（plan_filter()）で隠します。
-"Outermost first; drag to order. The keys are the analysis's by (step 1).",外側から順に。ドラッグで並べ替え。キーは解析の by（手順 1）から来ます。
-"The hierarchy is the ARD analysis's (step 1): the table shows its levels as they are.",階層は ARD の解析（手順 1）のものです。表はその段をそのまま出します。
+"Outermost first; drag to order. The keys are the analysis's by (step 1).",外側から順に。ドラッグで並べ替え。キーは解析の by（ARD 作成）から来ます。
+"The hierarchy is the ARD analysis's (step 1): the table shows its levels as they are.",階層は ARD の解析（ARD 作成）のものです。表はその段をそのまま出します。
 "The any-event row's text (tables$overall_label); blank: no such row.",全体の行の文字（tables$overall_label）。空欄なら、その行はありません。
+Decimals and rounding,桁と丸め
+Mapping,マッピング
+Finishing,仕上げ
+Layer list,層
+The decimals are written into plan_cells()'s formats.,桁は plan_cells() の書式に書き込まれます。
+"Values and labels: edited in stage 2; for now, edit them as R.",値とラベルは第 2 段で編集できるようになります。今は R で編集してください。
+"The keys, first to last: .overall the any-event row first; group1, group2 ... the rows' outer levels, label the innermost (the rows' text), each by name (a code list's order when it has one); .depth each group's own row above the rows under it; -n most frequent first (-n@group1: by the group's own count).",並べるキーを先頭から順に。.overall は全体の行を先頭に。group1、group2 … は行の外側の段、label はいちばん内側（行の文字）で、それぞれ名前順（コードリストがあればその順）。.depth は各グループ自身の行をその下の行より上に。-n は多い順（-n@group1 はグループ自身の数で）。
+A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show can be hidden in a later stage.,表は階層の段を外しません。別の段の表は ARD の別の解析から作ります。表に出さない行は、後の段で隠せるようになります。
+ARD: made,ARD: 作成済み（読み込み済み）
+ARD: outdated (make it again),ARD: 古くなっています（作り直してください）
+ARD: stopped with an error,ARD: エラーで止まりました
+ARD: not made yet,ARD: まだ作成していません
+Apply again to write it as it is.,このまま書くには、もう一度「適用」を押してください。
+Break before rows,この行の前で改ページ
+Fewest rows of a group on a page,1 ページに残すグループの最少行数
+Columns a page,1 ページの列数
+Break before columns,この列の前で分ける
+Columns on every page,どのページにも出す列
+Cut by,分ける単位
+Order of the pages,ページの順
+A spanning header may break,またがる見出しを途中で切ってよい

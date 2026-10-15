@@ -75,10 +75,11 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
                          tools = c("up", "down", "copy", "remove", "r"), nav = NULL,
                          open = TRUE, error = NULL, path = id, lang = "en",
                          switchable = TRUE, revert = !identical(from, "own"),
-                         own_label = NULL, absent = FALSE) {
+                         own_label = NULL, absent = FALSE, also = NULL, rare = FALSE,
+                         section = NULL) {
   t <- function(x) tr(x, lang)
   cls <- c("rp-card", if (required) "rp-card-required", if (!on) "rp-card-off",
-           if (isTRUE(absent)) "rp-card-absent",
+           if (isTRUE(absent)) "rp-card-absent", if (isTRUE(rare)) "rp-card-rare",
            if (open) "rp-card-open", if (!is.null(error)) "rp-card-error")
   # the switch only where on / off works (`switchable`): a switch that
   # cannot be turned off would look on and mislead -- such a card has none
@@ -101,9 +102,12 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
   head <- shiny::div(
     class = "rp-card-head",
     left,
+    # (its arrow is the CSS's: right when closed, down when open)
     shiny::tags$button(type = "button", class = "rp-card-toggle", `aria-label` = t("Open or close"),
-                       `data-card` = id, "\u25b8"),
+                       `data-card` = id),
     shiny::tags$span(class = "rp-card-title", builder_label(label, fn, "fn", lang)),
+    # a required card says so, faint, beside its name
+    if (required) shiny::tags$span(class = "rp-card-req", t("Required")),
     # an item the code has not yet (`absent`): what its form would add
     if (isTRUE(absent)) {
       shiny::tags$span(class = "rp-badge rp-badge-absent",
@@ -116,6 +120,10 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
   shiny::div(
     class = paste(cls, collapse = " "), id = id, `data-card` = id, `data-fn` = fn,
     `data-path` = path,
+    # `also`: other items' paths whose code lines its fields light too (the
+    # decimals: plan_cells()'s formats hold them); `section`: its group
+    `data-also` = if (length(also)) paste(also, collapse = " "),
+    `data-section` = section,
     head,
     shiny::div(class = "rp-card-body",
                if (!is.null(nav)) nav_hint(nav, "group", lang),
@@ -544,7 +552,8 @@ arg_group <- function(label = NULL, fields, as = NULL, lang = "en") {
 
 # The arguments not shown: the function's formals less the visible ones
 # and the ones in use, folded under "Other arguments (n)" -- a search
-# field, the names in order, each a field labelled by its name, its (i)
+# field, the names in order, each a field labelled "meaning (name)" (the
+# name alone when no meaning is known), its (i)
 # the help or a link to the package's.  A field given a value stays shown
 # when the fold closes (it is promoted; the next render passes it as used).
 #' @noRd
@@ -563,7 +572,7 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
                     rel = "noopener", title = t("The package's help"),
                     paste0("?", pkg, "::", sub("^.*::", "", fn)))
     }
-    arg_field(id, a, schema$args[[a]]$type, label = NULL, value = values[[a]],
+    arg_field(id, a, schema$args[[a]]$type, label = .arg_meaning(fn, a), value = values[[a]],
               default = schema$args[[a]]$default, help = help, help_link = link,
               choices = choices, lang = lang)
   })
@@ -735,9 +744,19 @@ add_item_input <- function(id, kinds = NULL, schema = NULL, lang = "en", placeho
 .rp-card-switch { margin: 0; padding: 0; min-height: 0; }
 .rp-card-switch .form-check-input { margin: 0; cursor: pointer; }
 .rp-card-toggle { border: 0; background: none; padding: 0 .2rem; color: #6b7280;
-  font-size: 13px; transition: transform .15s; }
-.rp-card.rp-card-open .rp-card-toggle { transform: rotate(90deg); }
+  font-size: 13px; width: 1.1em; }
+.rp-card-toggle::before { content: '\\25b8'; }
+.rp-card.rp-card-open > .rp-card-head .rp-card-toggle::before { content: '\\25be'; }
 .rp-card-title { font-weight: 600; }
+.rp-card-req { font-size: 11px; color: #9ca3af; font-weight: normal; }
+.rp-card-sep { display: flex; align-items: center; gap: .5rem; margin: .7rem 0 .4rem;
+  font-size: 11.5px; color: #6b7280; letter-spacing: .02em; }
+.rp-card-sep::after { content: ''; flex: 1 1 auto; border-top: 1px solid #e5e7eb; }
+.rp-cards-bar { display: flex; align-items: center; gap: .4rem; margin-bottom: .4rem; }
+.rp-cards-bar .dropdown-menu { max-height: 60vh; overflow-y: auto; font-size: 13px; }
+.rp-cards-bar .dropdown-item.rp-layer-rare { color: #6b7280; }
+.rp-card.rp-card-rare > .rp-card-head { padding-top: .2rem; padding-bottom: .2rem; }
+.rp-card-note { font-size: 12.5px; color: #4b5563; margin: .1rem 0 .35rem; }
 .rp-card-summary { color: #6b7280; font-size: 12px; margin-left: .2rem; }
 .rp-card.rp-card-open .rp-card-summary { display: none; }
 .rp-card-err { color: #dc3545; font-size: 12px; }
@@ -910,10 +929,22 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     }
     if (window.Shiny) Shiny.setInputValue('rp_card_selected', p, {priority: 'event'});
   });
+  // a card's field in focus lights its lines (and those of the items it
+  // names in data-also: the decimals light plan_cells()'s formats)
   $(document).on('focusin', '.rp-card', function() {
-    var p = this.getAttribute('data-path');
+    var ps = [this.getAttribute('data-path')]
+      .concat((this.getAttribute('data-also') || '').split(' ').filter(Boolean));
     $('.rp-ln').removeClass('rp-ln-hl');
-    $('.rp-ln[data-path=\"' + p + '\"]').addClass('rp-ln-hl');
+    ps.forEach(function(p) { $('.rp-ln[data-path=\"' + p + '\"]').addClass('rp-ln-hl'); });
+  });
+  // the Layers menu: a card chosen is opened, selected and brought into view
+  $(document).on('click', '.rp-layer-go', function(e) {
+    e.preventDefault();
+    var card = $('#' + $(this).data('target'));
+    if (!card.length) return;
+    $('.rp-card').removeClass('rp-card-selected');
+    card.addClass('rp-card-selected rp-card-open');
+    card[0].scrollIntoView({block: 'start', behavior: 'smooth'});
   });
   // Enter in the add field adds; the new card's first field takes the focus
   var wantFocus = false;

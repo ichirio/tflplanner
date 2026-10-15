@@ -6690,10 +6690,10 @@ app_server <- function(input, output, session, start) {
     st <- tryCatch(ard_state(), error = function(e) NULL)
     s0 <- if (!is.null(st)) st$state[match(id, st$output_id)] else NA
     switch(if (is.na(s0)) "none" else s0,
-      built = step_mark("\u25cf", t(.ard_state_labels[["built"]]), "text-success"),
-      outdated = step_mark("\u27f3", t(.ard_state_labels[["outdated"]]), "text-warning"),
-      error = step_mark("!", t(.ard_state_labels[["error"]]), "text-danger"),
-      step_mark("\u25cb", t(.ard_state_labels[["not built"]]), "text-muted"))
+      built = step_mark("\u25cf", t("ARD: made"), "text-success"),
+      outdated = step_mark("\u27f3", t("ARD: outdated (make it again)"), "text-warning"),
+      error = step_mark("!", t("ARD: stopped with an error"), "text-danger"),
+      step_mark("\u25cb", t("ARD: not made yet"), "text-muted"))
   })
   ard_state_view <- function() {
     d <- ard_state()
@@ -8749,7 +8749,7 @@ app_server <- function(input, output, session, start) {
           class = "small text-muted rp-b-fixed-note",
           with_tip(sprintf(t("The levels %s are the ARD analysis's (step 1)."),
                            paste(st$hierarchy, collapse = " \u203a ")),
-                   t("A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show are hidden by a row filter (plan_filter()).")),
+                   t("A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show can be hidden in a later stage.")),
           " ", shiny::actionLink("b_rows_step1", t("Step 1's analysis"))),
         if (hier && length(st$row_keys) > 1L) shiny::checkboxInput(
           bid("rowpages"), t("The outermost row variable a page each"), isTRUE(st$row_pages))),
@@ -8891,10 +8891,16 @@ app_server <- function(input, output, session, start) {
         digits_ui, .item_args_view(item_of("plan_digits"), lang)),
       plan_labels = labels_body,
       plan_sort = if (hier) hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
-                                         total = .rows_for(p0, "tables", id)$total[1L]))
+                                         total = .rows_for(p0, "tables", id)$total[1L]),
+      # the pages: their arguments as fields (a number, a choice ...)
+      plan_paginate_rows = if (has("plan_paginate_rows"))
+        pages_body("plan_paginate_rows", item_of("plan_paginate_rows"), keys),
+      plan_paginate_cols = if (has("plan_paginate_cols"))
+        pages_body("plan_paginate_cols", item_of("plan_paginate_cols"), keys))
     bodies <- Filter(Negate(is.null), bodies)
     shiny::div(
       class = "rp-builder-cards", `data-back` = t("Back to the code"),
+      .table_cards_bar(items, id = card_id, lang = lang),
       .table_cards(items, bodies, id = card_id, switches = "plan_total", lang = lang))
   })
   # a card's input id: by its path (the verb; "#2" its second call)
@@ -8914,32 +8920,52 @@ app_server <- function(input, output, session, start) {
   })
   # a card's "Edit as R": its arguments as one line of R, read back (and
   # written to the sheets through tflspec's bridge) on Apply
+  # the dialog of a card's R: its text, and what tflspec's check found in
+  # the text applied (`problems`, lines) -- shown before it is written
+  r_dialog <- function(it, text, problems = character()) {
+    shiny::modalDialog(
+      title = shiny::tagList(t("Edit as R"), " ", shiny::tags$code(paste0(it$fn, "()"))),
+      shiny::textAreaInput("b_r_text", NULL, text, rows = 6,
+                           width = "100%", resize = "vertical"),
+      shiny::p(class = "small text-muted",
+               t("The arguments as R: name = value, separated by commas. What is no plain value (a call, a name) stays R.")),
+      if (length(problems)) shiny::div(
+        class = "alert alert-warning py-1 small rp-r-problems",
+        shiny::tags$ul(class = "mb-1", lapply(problems, shiny::tags$li)),
+        t("Apply again to write it as it is.")),
+      footer = shiny::tagList(
+        .btn("b_r_no", t("Cancel"), class = "btn-secondary"),
+        .btn("b_r_ok", t("Apply"), class = "btn-primary")),
+      size = "l", easyClose = TRUE)
+  }
   shiny::observeEvent(input$b_card_r, {
     it <- .builder_item_at(bform$items, input$b_card_r$path)
     shiny::req(!is.null(it), isTRUE(it$present))
     bform$r_item <- it
-    shiny::showModal(shiny::modalDialog(
-      title = shiny::tagList(t("Edit as R"), " ", shiny::tags$code(paste0(it$fn, "()"))),
-      shiny::textAreaInput("b_r_text", NULL, args_to_r(it$fn, it$args), rows = 6,
-                           width = "100%", resize = "vertical"),
-      shiny::p(class = "small text-muted",
-               t("The arguments as R: name = value, separated by commas. What is no plain value (a call, a name) stays R.")),
-      footer = shiny::tagList(
-        .btn("b_r_no", t("Cancel"), class = "btn-secondary"),
-        .btn("b_r_ok", t("Apply"), class = "btn-primary")),
-      size = "l", easyClose = TRUE))
+    bform$r_seen <- NULL
+    shiny::showModal(r_dialog(it, args_to_r(it$fn, it$args)))
   })
   shiny::observeEvent(input$b_r_no, shiny::removeModal())
   shiny::observeEvent(input$b_r_ok, {
     it <- bform$r_item
     shiny::req(!is.null(it), identical(bform$id, current()))
-    args <- tryCatch(args_from_r(it$fn, input$b_r_text %||% ""), error = function(e) {
+    txt <- input$b_r_text %||% ""
+    args <- tryCatch(args_from_r(it$fn, txt), error = function(e) {
       notify(conditionMessage(e), "error")
       NULL
     })
     shiny::req(!is.null(args))
+    # the check's problems are shown in the dialog first (drawn again with
+    # the text as typed); Apply again with the same text writes it as it is
+    pr <- .args_problems(args)
+    if (length(pr) && !identical(bform$r_seen, txt)) {
+      bform$r_seen <- txt
+      shiny::showModal(r_dialog(it, txt, pr))
+      return()
+    }
+    args <- .args_plain(args)
     shiny::removeModal()
-    if (identical(args, it$args)) return()
+    if (identical(args_to_r(it$fn, args), args_to_r(it$fn, it$args))) return()
     k <- if (grepl("#", it$path, fixed = TRUE)) as.integer(sub("^.*#", "", it$path)) else 1L
     p2 <- guarded(.builder_item_write(rv$p, bform$id, it$fn, args, k))
     if (is.null(p2)) return()
@@ -8998,6 +9024,64 @@ app_server <- function(input, output, session, start) {
         shiny::selectInput(bid("sort_col"), NULL, cols,
                            selected = if (is.na(col_now)) "" else col_now, width = "22em")))
   }
+  # The pages' cards (plan_paginate_rows(), plan_paginate_cols()): their
+  # arguments as fields by the schema's types -- the most used on the
+  # card, the rest folded under "Other arguments"; an edit is written to
+  # the layout sheet through tflspec's bridge (pages_args() below)
+  .pages_main <- list(plan_paginate_rows = c("max_rows", "split"),
+                      plan_paginate_cols = c("every", "fit"))
+  pages_schema <- function(fn) {
+    sch <- .schema_of(fn)
+    # (the plan's own arguments only: not the function's `plan`)
+    sch$formals <- names(sch$args)
+    sch$visible <- .pages_main[[fn]]
+    sch
+  }
+  pages_body <- function(fn, it, keys) {
+    sch <- pages_schema(fn)
+    cid <- card_id(it$path)
+    a <- it$args %||% list()
+    fields <- lapply(.pages_main[[fn]], function(k) {
+      arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = a[[k]],
+                default = sch$args[[k]]$default, choices = keys,
+                help = .schema_help(fn, k), lang = lang)
+    })
+    shiny::tagList(arg_group(NULL, fields, lang = lang),
+                   arg_more(cid, fn, schema = sch, lang = lang, values = a, choices = keys))
+  }
+  # the pages' cards read back: by verb, the arguments the fields say (none
+  # until the card's fields are there)
+  pages_args <- shiny::reactive({
+    bform_drawn()
+    shiny::req(builder_case() %in% c("ok", "hierarchy"))
+    out <- list()
+    for (fn in names(.pages_main)) {
+      it <- .builder_item_at(bform$items, fn)
+      if (is.null(it) || !isTRUE(it$present)) next
+      cid <- card_id(it$path)
+      seen <- vapply(.pages_main[[fn]], function(k) !is.null(input[[paste0(cid, "__", k)]]), NA)
+      if (!all(seen)) next
+      sch <- pages_schema(fn)
+      out[[fn]] <- builder_card_read(input, cid, sch, args = names(sch$args))
+    }
+    out
+  })
+  pages_args_d <- shiny::debounce(pages_args, 600)
+  shiny::observeEvent(pages_args_d(), builder_guard({
+    now <- pages_args_d()
+    for (fn in names(now)) {
+      at <- which(vapply(bform$items, function(it) identical(it$path, fn), NA))
+      if (!length(at)) next
+      it <- bform$items[[at[1L]]]
+      if (identical(args_to_r(fn, now[[fn]]), args_to_r(fn, it$args))) next
+      p2 <- guarded(.builder_item_write(rv$p, bform$id, fn, now[[fn]]))
+      if (is.null(p2)) next
+      # (what the card says now: the next edit is told from it)
+      bform$items[[at[1L]]]$args <- now[[fn]]
+      rv$p <- p2
+      rv$btouched <- TRUE
+    }
+  }))
   shiny::observeEvent(input$b_rows_step1, go("ard"))
   shiny::observeEvent(input$b_norm_step1, go("ard"))
   shiny::observeEvent(input$b_sort_reset, {
@@ -9183,13 +9267,13 @@ app_server <- function(input, output, session, start) {
         shiny::tags$summary(t("A row of your own")),
         shiny::div(
           class = "d-flex flex-wrap gap-2 align-items-end",
-          shiny::textInput(bid("own_label"), t("Row label"), placeholder = "Mean +/- SD",
-                           width = "160px"),
-          shiny::textInput(bid("own_tpl"), t("Template"), placeholder = "{mean} +/- {sd}",
-                           width = "200px"),
-          .btn(bid("own_add"), t("Add the row"), class = "btn-sm btn-outline-primary mb-3")),
-        shiny::p(class = "text-muted mb-0",
-                 t("{statistic} as the ARD names it: N, mean, sd, se, median, p25, p75, min, max ...; a format after a colon: {mean:.2f} two decimals, {p:.1f%} a percent. Blank: the decimals above. The table on the right shows the row once added."))))
+          # (an example, as the placeholder: the fields start empty)
+          shiny::textInput(bid("own_label"), t("Row label"),
+                           placeholder = sprintf(t("e.g. %s"), "Mean +/- SD"), width = "160px"),
+          shiny::textInput(bid("own_tpl"),
+                           with_tip(t("Template"), t("{statistic} as the ARD names it: N, mean, sd, se, median, p25, p75, min, max ...; a format after a colon: {mean:.2f} two decimals, {p:.1f%} a percent. Blank: the decimals above. The table on the right shows the row once added.")),
+                           placeholder = sprintf(t("e.g. %s"), "{mean} +/- {sd}"), width = "200px"),
+          .btn(bid("own_add"), t("Add the row"), class = "btn-sm btn-outline-primary mb-3"))))
   }
   # every row's template: the table's, the standards', one's own
   builder_templates <- function(st) {

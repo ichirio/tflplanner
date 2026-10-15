@@ -201,3 +201,88 @@ test_that("a line of the program leads to the card that wrote it", {
   expect_match(h, 'data-for="program_table"', fixed = TRUE)
   expect_match(h, "\"plan_cells\"", fixed = TRUE)
 })
+
+test_that("a thin line before each group of cards; the content's order kept", {
+  p <- sample_planner()
+  items <- builder_items(p, "T-14-1-1")
+  h <- html(.table_cards(items))
+  # the cards in the content's order, as before
+  shown <- sub('data-fn="([^"]+)"', "\\1", regmatches(h, gregexpr('data-fn="[^"]+"', h))[[1L]])
+  expect_identical(shown, fns_of(items))
+  # one line a group, before its first card
+  seps <- regmatches(h, gregexpr('rp-card-sep" data-section="[a-z]+"', h))[[1L]]
+  expect_identical(sub('.*"([a-z]+)"$', "\\1", seps), c("mapping", "finish"))
+  at <- function(x) regexpr(x, h, fixed = TRUE)[[1L]]
+  first_finish <- fns_of(items)[vapply(fns_of(items), .plan_section, "") == "finish"][1L]
+  expect_lt(at('data-section="finish">'), at(sprintf('data-fn="%s"', first_finish)))
+  expect_lt(at('data-section="mapping">'), at('data-fn="table_plan"'))
+  expect_match(h, ">Mapping<", fixed = TRUE)
+  expect_match(h, ">Finishing<", fixed = TRUE)
+  # the groups by verb
+  expect_identical(.plan_section("plan_sort"), "mapping")
+  expect_identical(.plan_section("plan_col_header"), "finish")
+  expect_identical(.plan_section("plan_paginate_cols"), "finish")
+  expect_match(html(.table_cards(items, lang = "ja")), tr("Finishing", "ja"), fixed = TRUE)
+})
+
+test_that("a required card says Required; the arrow is the open state's; the seldom changed start closed", {
+  p <- sample_planner()
+  items <- builder_items(p, "T-14-1-1")
+  h <- html(.table_cards(items[match("table_plan", fns_of(items))]))
+  expect_match(h, 'class="rp-card-req">Required<', fixed = TRUE)
+  expect_match(h, "rp-card-open", fixed = TRUE)
+  # (the arrow is drawn by the CSS: right closed, down open)
+  expect_false(grepl("\u25b8", h, fixed = TRUE))
+  expect_match(.builder_cards_css, "rp-card-open > .rp-card-head .rp-card-toggle::before", fixed = TRUE)
+  h <- html(.table_cards(items[match("plan_stub", fns_of(items))]))
+  expect_false(grepl("rp-card-req", h, fixed = TRUE))
+  expect_match(h, "rp-card-rare", fixed = TRUE)
+  expect_false(grepl("rp-card-open", h, fixed = TRUE))
+  # a seldom changed card with the report's own form still starts closed
+  pg <- items[match("plan_paginate_rows", fns_of(items))]
+  h <- html(.table_cards(pg, bodies = list(plan_paginate_rows = shiny::div("form"))))
+  expect_false(grepl("rp-card-open", h, fixed = TRUE))
+})
+
+test_that("the decimals' card: its heading, where they go, and plan_cells' lines lit with it", {
+  p <- sample_planner()
+  items <- builder_items(p, "T-14-1-1")
+  h <- html(.table_cards(items[match("plan_digits", fns_of(items))]))
+  expect_match(h, "rp-meaning\">Decimals and rounding<", fixed = TRUE)
+  expect_match(h, "The decimals are written into plan_cells()'s formats.", fixed = TRUE)
+  expect_match(h, 'data-also="plan_cells"', fixed = TRUE)
+  expect_match(.builder_cards_js, "data-also", fixed = TRUE)
+  expect_identical(tr("Decimals and rounding", "ja"), "\u6841\u3068\u4e38\u3081")
+})
+
+test_that("the order of the values says where it is edited; the row order explains its keys", {
+  p <- sample_planner()
+  items <- builder_items(p, "T-14-1-1")
+  h <- html(.table_cards(items[match("plan_levels", fns_of(items))]))
+  expect_match(h, "Values and labels: edited in stage 2", fixed = TRUE)
+  # Edit as R on the card itself, not only in the menu
+  expect_match(h, "btn btn-sm btn-outline-primary py-0 ms-2 rp-tool-r", fixed = TRUE)
+  items <- builder_items(p, "T-14-3-1")
+  h <- html(.table_cards(items[match("plan_sort", fns_of(items))]))
+  expect_match(h, ".overall the any-event row first", fixed = TRUE)
+  expect_match(h, ".depth each group's own row", fixed = TRUE)
+  expect_match(h, "rp-tip", fixed = TRUE)
+})
+
+test_that("the Layers menu lists the cards in their order and brings one into view", {
+  p <- sample_planner()
+  items <- builder_items(p, "T-14-1-1")
+  h <- html(.table_cards_bar(items, id = function(x) paste0("c_", x)))
+  expect_match(h, ">Layer list<", fixed = TRUE)
+  tg <- sub('data-target="c_([^"]+)"', "\\1", regmatches(h, gregexpr('data-target="c_[^"]+"', h))[[1L]])
+  expect_identical(tg, vapply(items, function(it) it$path, ""))
+  expect_match(h, "dropdown-header", fixed = TRUE)
+  expect_match(h, "rp-layer-go rp-layer-rare", fixed = TRUE)
+  expect_match(.builder_cards_js, "rp-layer-go", fixed = TRUE)
+  expect_identical(tr("Layer list", "ja"), "\u5c64")
+})
+
+test_that("the chips of an order wrap when narrow, never cut", {
+  expect_match(.builder_content_css, "horizontal .rank-list { flex-wrap: wrap;", fixed = TRUE)
+  expect_match(.builder_content_css, "overflow: visible; white-space: nowrap;", fixed = TRUE)
+})

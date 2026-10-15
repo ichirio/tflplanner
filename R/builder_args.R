@@ -1,23 +1,39 @@
 # A card's arguments as R text, and back: the `R` of a card shows its
 # arguments as one line of R (`cols = "TRT", rows = c(group = "variable")`)
-# and reads one back.  The spec's values stay what they are (a string, a
-# number, a named vector, a list, a tfl_r()); what the text holds that is
-# no literal stays R (a tfl_r()).  Until tflspec exports tfl_args_to_r() /
-# tfl_args_from_r(), this is the one place the two meet in the app.
+# and reads one back.  tflspec's tfl_args_to_r() / tfl_args_from_r() do
+# it for the functions its schema knows (the plan verbs, a figure's
+# functions): the R as the function takes it, read back into the values as
+# the spec holds them.  Two rules are the app's own, kept here: a
+# tfl_unset() -- the layers' "back to the default" -- is no argument at all,
+# and NULL is `!r NULL`.  A function the schema does not know (and one
+# value, in .arg_to_r()) is written and read by the app's own conversion
+# below.
 
 # The arguments of one item as R text: "name = value" pieces joined with
 # ", ".  A tfl_r() is its text as it is (NULL is `!r NULL`); a tfl_unset()
-# -- the layers' "back to the default" -- is no argument at all.
+# is no argument at all.
 #' @noRd
 args_to_r <- function(fn, args) {
   args <- args[!vapply(args, inherits, NA, "tfl_unset")]
   if (!length(args)) return("")
+  if (.args_known(fn)) return(tflspec::tfl_args_to_r(fn, args))
+  .args_to_r_own(fn, args)
+}
+
+# the app's own: each value by .arg_to_r()
+.args_to_r_own <- function(fn, args) {
   nm <- names(args) %||% rep("", length(args))
   pieces <- vapply(seq_along(args), function(i) {
     v <- .arg_to_r(args[[i]])
     if (nzchar(nm[[i]])) paste0(.arg_name(nm[[i]]), " = ", v) else v
   }, "")
   paste(pieces, collapse = ", ")
+}
+
+# does tflspec's schema know the function (its conversion applies)?
+.args_known <- function(fn) {
+  if (is.null(fn) || !is.character(fn) || length(fn) != 1L || !nzchar(fn)) return(FALSE)
+  !is.null(.schema_of(fn))
 }
 
 # one value as R text
@@ -28,7 +44,7 @@ args_to_r <- function(fn, args) {
     return(paste0(v$fn, "(", args_to_r(v$fn, v$args), ")"))
   }
   if (is.list(v)) {
-    return(paste0("list(", args_to_r(NULL, v), ")"))
+    return(paste0("list(", .args_to_r_own(NULL, v), ")"))
   }
   if (is.atomic(v)) {
     if (is.factor(v)) v <- as.character(v)
@@ -42,19 +58,31 @@ args_to_r <- function(fn, args) {
   if (make.names(x) == x) x else paste0("`", gsub("`", "\\\\`", x), "`")
 }
 
-# The other way: the text, read as the arguments of a call.  A literal
-# (a string, a number, TRUE, a c() or list() of them) is its value; NULL
-# is `!r NULL` (an !unset means "back to the layers' default", not NULL);
-# anything else stays R.  Arguments with no name go to the function's
-# positional `...` (plan_sort's `keys`) when the schema names it.
+# The other way: the text, read as the arguments of a call -- each value
+# as the spec holds it, the check's problems as the attribute `problems`
+# (tflspec's; a data frame, no rows for none).  A literal (a string, a
+# number, TRUE, a c() or list() of them) is its value; NULL is `!r NULL`
+# (an !unset means "back to the layers' default", not NULL); anything else
+# stays R.  Arguments with no name go to the function's positional `...`
+# (plan_sort's `keys`) when the schema names it.
 #' @noRd
 args_from_r <- function(fn, text) {
   text <- trimws(paste(text, collapse = "\n"))
   if (!nzchar(text)) return(list())
-  cl <- tryCatch(str2lang(paste0("f(", text, ")")), error = function(e) NULL)
-  if (is.null(cl)) {
+  if (is.null(tryCatch(str2lang(paste0("f(", text, ")")), error = function(e) NULL))) {
     stop(sprintf("The arguments cannot be read as R: %s", text), call. = FALSE)
   }
+  if (.args_known(fn)) {
+    return(tryCatch(tflspec::tfl_args_from_r(fn, text), error = function(e) {
+      stop(sub("^tfl_args_from_r[(][)]: ", "", conditionMessage(e)), call. = FALSE)
+    }))
+  }
+  .args_from_r_own(fn, text)
+}
+
+# the app's own reading (a function the schema does not know)
+.args_from_r_own <- function(fn, text) {
+  cl <- str2lang(paste0("f(", text, ")"))
   exprs <- as.list(cl)[-1L]
   nm <- names(exprs) %||% rep("", length(exprs))
   out <- list()
@@ -73,6 +101,22 @@ args_from_r <- function(fn, text) {
     out[[key]] <- v
   }
   out
+}
+
+# The problems tflspec's check found in arguments read back from R (its
+# `problems`, a data frame of fn, arg, level, message) as lines of text;
+# none: character()
+.args_problems <- function(args) {
+  pr <- attr(args, "problems")
+  if (!is.data.frame(pr) || !nrow(pr)) return(character())
+  arg <- ifelse(is.na(pr$arg) | !nzchar(pr$arg), "", paste0("`", pr$arg, "` "))
+  paste0(pr$level, ": ", arg, pr$message)
+}
+
+# the arguments with the check's problems left off (to compare or write)
+.args_plain <- function(args) {
+  attr(args, "problems") <- NULL
+  args
 }
 
 # the name of the function's positional `...` (plan_sort: keys), from the

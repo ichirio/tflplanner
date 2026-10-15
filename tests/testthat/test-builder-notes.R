@@ -99,3 +99,43 @@ test_that("the column order: the code list's when the report has one, else 'chec
     expect_match(output[[b("arms_ui")]]$html, "Check this order", fixed = TRUE)
   })
 })
+
+test_that("the builder's form: the Layers bar, the groups, the pages as fields, an example as placeholder", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  local_home()
+  ard <- cards::ard_stack(cards::ADSL, .by = TRT01A,
+                          cards::ard_continuous(variables = AGE),
+                          cards::ard_categorical(variables = SEX))
+  builder_study("T-PG", ard)
+  shiny::testServer(server_for("BN"), {
+    open_builder(session, "T-PG")
+    session$flushReact()
+    h <- output$builder_form$html
+    expect_match(h, "rp-cards-bar", fixed = TRUE)
+    expect_match(h, ">Layer list<", fixed = TRUE)
+    expect_match(h, "rp-card-sep", fixed = TRUE)
+    expect_match(h, 'class="rp-card-req">Required<', fixed = TRUE)
+    # the own row's fields start empty: the example is the placeholder, its
+    # explanation behind the (i) of the template
+    expect_match(h, 'placeholder="e.g. Mean +/- SD"', fixed = TRUE)
+    expect_false(grepl('<p class="text-muted mb-0">{statistic}', h, fixed = TRUE))
+    bf <- session$userData$bform
+    fns <- vapply(bf$items, function(it) it$fn, "")
+    skip_if_not("plan_paginate_rows" %in% fns)
+    cid <- paste0("b", bf$n, "_card_plan_paginate_rows")
+    # the pages' arguments as fields: a number, a choice of the schema's
+    expect_match(h, sprintf('id="%s__max_rows"', cid), fixed = TRUE)
+    expect_match(h, 'type="number"', fixed = TRUE)
+    expect_match(h, sprintf('id="%s__split"', cid), fixed = TRUE)
+    expect_match(h, '<option value="group_safe"', fixed = TRUE)
+    expect_match(h, '<option value="group_force"', fixed = TRUE)
+    # an edit lands in the layout sheet
+    it <- bf$items[[match("plan_paginate_rows", fns)]]
+    v <- list(25L, it$args$split %||% "group_safe")
+    names(v) <- paste0(cid, c("__max_rows", "__split"))
+    do.call(session$setInputs, v)
+    session$elapse(1500)
+    expect_identical(sheet_rows(session$userData$rv$p, "layout", "T-PG")$pages_max_rows, "25")
+  })
+})

@@ -271,23 +271,39 @@ test_that("the add field lists the schema's functions as meaning (fn), narrowed 
 
 # ---- the arguments <-> R text -------------------------------------------------------
 
+# (the check's problems, tflspec's, ride on the arguments read: left off)
 rt <- function(fn, args) {
   txt <- args_to_r(fn, args)
-  expect_identical(args_from_r(fn, txt), args, info = paste(fn, txt))
+  expect_identical(.args_plain(args_from_r(fn, txt)), args, info = paste(fn, txt))
   txt
 }
 
-test_that("a table's plan verbs round trip through R text", {
+# ... and the text read again gives the same text: what tflspec's reading
+# makes of a value (a column for a name, a call of constants for its R)
+# writes back as it was read
+# writes back as it was read (tflspec's reading may put the arguments in
+# another order: by name, the same)
+rt_text <- function(fn, args) {
+  txt <- args_to_r(fn, args)
+  a1 <- .args_plain(args_from_r(fn, txt))
+  a2 <- .args_plain(args_from_r(fn, args_to_r(fn, a1)))
+  expect_identical(a2[sort(names(a2))], a1[sort(names(a1))], info = paste(fn, txt))
+  txt
+}
+
+test_that("a table's plan verbs round trip through R text (tflspec's conversion)", {
   skip_if_not_installed("tflspec")
   r <- tflspec::tfl_r
-  expect_identical(rt("table_plan", list(cols = "TRT", rows = c(group = "variable"), label = "label")),
+  # the values as the spec holds them: a named map is a list
+  expect_identical(rt("table_plan", list(cols = "TRT", rows = list(group = "variable"), label = "label")),
                    'cols = "TRT", rows = c(group = "variable"), label = "label"')
+  # the positional `...` (plan_sort's keys) is written without its name
   expect_identical(rt("plan_sort", list(keys = c(".overall", "-n"), stat = "n")),
-                   'keys = c(".overall", "-n"), stat = "n"')
+                   'c(".overall", "-n"), stat = "n"')
   rt("plan_digits", list(continuous = list(mean = 1, sd = 2), AGE = 0, rounding = "sas"))
   rt("plan_levels", list(SEX = c("F", "M"), .drop_empty = "RACE"))
-  rt("plan_labels", list(AGE = "Age (years)", SEX = c(F = "Female", M = "Male")))
-  rt("plan_nest", list(RACE = c(ETHNIC = "Hispanic")))
+  rt("plan_labels", list(AGE = "Age (years)", SEX = list(F = "Female", M = "Male")))
+  rt("plan_nest", list(RACE = list(ETHNIC = "Hispanic")))
   rt("plan_total", list(label = "Total", position = "last"))
   rt("plan_stat_groups", list(n = "N", orr_ci = c("n", "estimate", "conf.low", "conf.high")))
   expect_identical(
@@ -295,57 +311,81 @@ test_that("a table's plan verbs round trip through R text", {
                           stats = "columns", notes = TRUE)),
     'default = "{n} ({p:.1f%})", continuous = list(n = "{n}"), stats = "columns", notes = TRUE')
   expect_identical(rt("plan_filter", list(where = r("SAFFL == \"Y\" & AGE > 65"))),
-                   'where = SAFFL == "Y" & AGE > 65')
+                   'SAFFL == "Y" & AGE > 65')
   rt("plan_compare", list(ref = "Placebo", stat = "p.value"))
-  rt("plan_stub", list(width = 2.5, indent = 2L))
-  expect_identical(rt("plan_paginate_rows", list(max_rows = 26L, keep = TRUE)), "max_rows = 26L, keep = TRUE")
+  rt("plan_stub", list(width = 2.5, indent = 2))
+  expect_identical(rt("plan_paginate_rows", list(max_rows = 26, split = "group_safe")),
+                   'max_rows = 26, split = "group_safe"')
   rt("plan_col_header", list(header = c("A | B", "C"), align_count_pct = TRUE))
   # the positional `...` with no name goes to the schema's key
-  expect_identical(args_from_r("plan_sort", '".overall", "-n", stat = "n"'),
-                   list(stat = "n", keys = c(".overall", "-n")))
-  expect_identical(args_from_r("plan_sort", '"-n"'), list(keys = "-n"))
+  a <- .args_plain(args_from_r("plan_sort", '".overall", "-n", stat = "n"'))
+  expect_identical(names(a), c("keys", "stat"))
+  expect_identical(unlist(a$keys, use.names = FALSE), c(".overall", "-n"))
+  expect_identical(.args_plain(args_from_r("plan_sort", '"-n"')), list(keys = "-n"))
   expect_error(args_from_r("plan_total", '"Total"'), "no name")
   # NULL is !r NULL, both ways (an !unset is "back to the default": no argument)
-  expect_identical(args_from_r("plan_total", "label = NULL"), list(label = tflspec::tfl_r("NULL")))
+  expect_identical(.args_plain(args_from_r("plan_total", "label = NULL")),
+                   list(label = tflspec::tfl_r("NULL")))
   expect_identical(args_to_r("plan_total", list(label = tflspec::tfl_r("NULL"))), "label = NULL")
   expect_identical(args_to_r("plan_total", list(label = tflspec::tfl_unset(), x = 1)), "x = 1")
-  # a name R cannot write bare is back-quoted
-  expect_identical(args_to_r("plan_labels", list("Age (years)" = "x")), "`Age (years)` = \"x\"")
-  expect_identical(args_from_r("plan_labels", "`Age (years)` = \"x\""), list("Age (years)" = "x"))
+  # a name R cannot write bare is quoted, and read back
+  expect_identical(args_to_r("plan_labels", list("Age (years)" = "x")), "\"Age (years)\" = \"x\"")
+  expect_identical(.args_plain(args_from_r("plan_labels", "`Age (years)` = \"x\"")), list("Age (years)" = "x"))
   expect_identical(args_to_r("f", list()), "")
   expect_identical(args_from_r("f", ""), list())
   expect_error(args_from_r("f", "a = ("), "cannot be read")
 })
 
+test_that("the check's problems come with the arguments read, as lines for the R dialog", {
+  skip_if_not_installed("tflspec")
+  a <- args_from_r("plan_paginate_rows", "max_rows = 26, keep = TRUE")
+  expect_s3_class(attr(a, "problems"), "data.frame")
+  pr <- .args_problems(a)
+  expect_length(pr, 1L)
+  expect_match(pr, "`keep`", fixed = TRUE)
+  expect_identical(.args_problems(args_from_r("plan_total", 'label = "Total"')), character())
+  expect_null(attr(.args_plain(a), "problems"))
+})
+
+test_that("a function the schema does not know: the app's own conversion", {
+  r <- tflspec::tfl_r
+  expect_identical(args_to_r("f", list(a = 1L, b = list(c = "x"), d = r("y + 1"))),
+                   'a = 1L, b = list(c = "x"), d = y + 1')
+  expect_identical(args_from_r("f", "a = list(b = x + 1, c = 2)"),
+                   list(a = list(b = r("x + 1"), c = 2)))
+  expect_identical(args_from_r("f", "a = NULL"), list(a = r("NULL")))
+  expect_error(args_from_r("f", '"x"'), "no name")
+})
+
 test_that("a figure's functions round trip through R text; what is no literal stays R", {
   skip_if_not_installed("tflspec")
   r <- tflspec::tfl_r
+  # written as the function takes it (aes() for a mapping), read back as
+  # the spec holds it, written again the same
   expect_identical(
-    rt("ggplot", list(data = r("sm"), mapping = list(x = "AVISITN", y = "mean", colour = "TRTA"))),
-    'data = sm, mapping = list(x = "AVISITN", y = "mean", colour = "TRTA")')
-  expect_identical(rt("geom_line", list(position = r("position_dodge(width = 0.6)"), linewidth = 0.5)),
+    rt_text("ggplot", list(data = r("sm"), mapping = list(x = "AVISITN", y = "mean", colour = "TRTA"))),
+    "data = sm, mapping = aes(x = AVISITN, y = mean, colour = TRTA)")
+  expect_identical(rt_text("geom_line", list(position = r("position_dodge(width = 0.6)"), linewidth = 0.5)),
                    "position = position_dodge(width = 0.6), linewidth = 0.5")
-  rt("geom_point", list(size = 2, shape = 16L, alpha = 0.8))
-  rt("geom_errorbar", list(mapping = list(ymin = "lo", ymax = "hi"), width = 0.4,
-                           position = r("pd")))
+  rt_text("geom_point", list(size = 2, shape = 16L, alpha = 0.8))
+  rt_text("geom_errorbar", list(mapping = list(ymin = "lo", ymax = "hi"), width = 0.4,
+                                position = r("pd")))
   expect_identical(
-    rt("scale_x_continuous", list(limits = c(0, 24), breaks = r("seq(0, 24, 4)"), expand = c(0.01, 0))),
+    rt_text("scale_x_continuous", list(limits = c(0, 24), breaks = r("seq(0, 24, 4)"), expand = c(0.01, 0))),
     "limits = c(0, 24), breaks = seq(0, 24, 4), expand = c(0.01, 0)")
   rt("labs", list(x = "Week", y = "Mean change from baseline (mmHg)", colour = tflspec::tfl_r("NULL")))
   expect_identical(
-    rt("theme", list(legend.position = "bottom", legend.position.inside = c(0.8, 0.8),
-                     axis.text.y = r("element_text(size = 8)"))),
+    rt_text("theme", list(legend.position = "bottom", legend.position.inside = c(0.8, 0.8),
+                          axis.text.y = r("element_text(size = 8)"))),
     "legend.position = \"bottom\", legend.position.inside = c(0.8, 0.8), axis.text.y = element_text(size = 8)")
-  rt("ggsurvfit", list(fit = r("fit"), linewidth = 0.3, type = "survival"))
+  rt_text("ggsurvfit", list(fit = r("fit"), linewidth = 0.3, type = "survival"))
   rt("add_risktable", list(times = r("x_breaks"), risktable_stats = c("n.risk", "cum.event"), size = 3))
-  expect_identical(rt("wrap_plots", list(plots = c("km", "risk"), ncol = 1L, heights = c(3, 1), guides = "collect")),
-                   'plots = c("km", "risk"), ncol = 1L, heights = c(3, 1), guides = "collect"')
-  rt("geom_hline", list(yintercept = -30, linetype = "dashed", colour = r("tfl_setting(\"zero_line_colour\")")))
-  # a nested call the form cannot split stays R, inside a list too
-  expect_identical(args_from_r("theme", "legend.position = c(0.8, 1 - 0.2)"),
+  expect_identical(rt_text("wrap_plots", list(plots = c("km", "risk"), ncol = 1L, heights = c(3, 1), guides = "collect")),
+                   'plots = c("km", "risk"), ncol = 1, heights = c(3, 1), guides = "collect"')
+  rt_text("geom_hline", list(yintercept = -30, linetype = "dashed", colour = r("tfl_setting(\"zero_line_colour\")")))
+  # a nested call the form cannot split stays R
+  expect_identical(.args_plain(args_from_r("theme", "legend.position = c(0.8, 1 - 0.2)")),
                    list(legend.position = r("c(0.8, 1 - 0.2)")))
-  expect_identical(args_from_r("f", "a = list(b = x + 1, c = 2)"),
-                   list(a = list(b = r("x + 1"), c = 2)))
   # a tfl_call is written as its call
   expect_identical(
     args_to_r("geom_line", list(position = tflspec::tfl_call("position_dodge", list(width = 0.6)))),
