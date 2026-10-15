@@ -89,8 +89,10 @@
   more <- list(created = meta$created %||% format(Sys.Date()),
                updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
                tflplanner = as.character(utils::packageVersion("tflplanner")))
-  writeLines(c(readLines(sy, encoding = "UTF-8"), sub("\n$", "", yaml::as.yaml(more))),
-             sy, useBytes = TRUE)
+  lines <- readLines(sy, encoding = "UTF-8")
+  # (no blank line between tflspec's part and the study's)
+  while (length(lines) && !nzchar(trimws(lines[length(lines)]))) lines <- lines[-length(lines)]
+  writeLines(c(lines, sub("\n$", "", yaml::as.yaml(more))), sy, useBytes = TRUE)
   rel <- list.files(tmp, recursive = TRUE)
   rel <- setdiff(rel, file.path(study_layout()[["spec"]], "_not_converted.yml"))
   files <- data.frame(file = character(), status = character(), stringsAsFactors = FALSE)
