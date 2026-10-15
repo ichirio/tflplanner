@@ -7,6 +7,8 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
   expect_null(fig_design(s$planner, "F-14-2-1"))
   # the sample's F-14-2-1 is a figure of its own code: the code goes, to be designed
   s$planner <- set_step_code(s$planner, "F-14-2-1", "content", NA)
+  # (the sample's setup code has its library() lines: not the design's)
+  s$planner$setup <- NA_character_
   d <- tflspec::tfl_fig_template("mean_ci", data = "ADVS", param = "SYSBP",
                                   value = "CHG", title = "SBP: mean change")
   d$plot$dpi <- 150
