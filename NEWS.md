@@ -1,5 +1,32 @@
 # tflplanner (development version)
 
+- **The study tab: Title, Short title, Study ID; no veil while a field is
+  edited** (#386, 0.0.2.9223; the user's request).  The "Protocol" box was
+  a second copy of the Study ID, and "protocol" usually means the long
+  title.  The tab now has the Title, a Short title (new `short_title` in
+  `study.yml`; `{STUDY_SHORT_TITLE}` in a header or footer;
+  `study_short_title` in `programs/study_setup.R`; `create_study(short_title
+  = )`) and the Study ID, read-only (it is the folder's name and cannot be
+  changed here; `{STUDY_ID}` in a header is it).  A study whose `STUDY_ID`
+  token says something else keeps that value, so its headers do not change;
+  the tab says so and offers "Use the Study ID".  Editing a field (text,
+  text area, select) or pressing Save no longer greys the page and shows
+  the hourglass after 0.4 s (#51); the veil stays for opening a study and
+  switching a tab or a report.  More on the study tab: the Files section
+  is three groups (Export, Import definition files, Restore from a backup),
+  each a name and a "?" (the long text is the help); the sample study has
+  keys (`id`, `output`, `source`: an ARD function of its own it does not
+  use, `programs/ard/functions/ard_cv_geomean.R`) and a setup code with the
+  libraries and commented options; and the study's Title, Compound, Phase
+  and Description are tokens too (`{STUDY_TITLE}`, `{STUDY_COMPOUND}`,
+  `{STUDY_PHASE}`, `{STUDY_DESCRIPTION}`, with `{STUDY_SHORT_TITLE}`; named
+  as study_setup.R's variables), filled from study.yml for a header, footer,
+  title or footnote that says one, and shown after each field's label.
+  The company standards' setup code gains `options(warn = 1)` (a run's log
+  shows where a warning came from; nothing in the numbers changes), and
+  the keys' help says `source` is added when a function is made in Own
+  ARD functions.
+
 - **The Data tab: files and datasets on one screen** (#388, 0.0.2.9222; the
   user's request).  The file list (All / SDTM / ADaM / Other, an "Into"
   folder) and the Datasets definition were two places.  Now the Datasets

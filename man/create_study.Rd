@@ -14,6 +14,7 @@ create_study(
   compound = NA,
   phase = NA,
   description = NA,
+  short_title = NA,
   planner = NULL,
   root = studies_root(home),
   home = tflplanner_home()
@@ -30,7 +31,8 @@ list_studies(home = tflplanner_home())
 \arguments{
 \item{study_id}{The study's id, which is also its folder name.}
 
-\item{title, compound, phase, description}{What the study is.}
+\item{title, short_title, compound, phase, description}{What the study is
+(\code{short_title}: the title for a header or footer, \code{{STUDY_SHORT_TITLE}}).}
 
 \item{planner}{An \code{tflplanner} to start from (e.g. an earlier study's
 \code{open_study(...)$planner}); \code{NULL} starts from the company standards:

@@ -64,6 +64,7 @@ reference:
       - save_study
       - reload_from_spec
       - export_spec_files
+      - list_spec_backups
       - export_spec
       - export_ars
       - study_layout

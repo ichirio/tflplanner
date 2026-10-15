@@ -30,7 +30,7 @@ this order:
 (its marker line says when, and which standards); tflplanner does
 not change it after.
 \item the study: its folders (\code{\link[=study_layout]{study_layout()}}: \code{path_adam}, \code{path_sdtm}
-...) and what it is (\code{study_id}, \code{study_title}, \code{study_compound},
+...) and what it is (\code{study_id}, \code{study_title}, \code{study_short_title}, \code{study_compound},
 \code{study_phase}, \code{study_description} from \code{study.yml}).  tflplanner
 writes it again on every save.
 \item the study's own code: tflplanner never touches it.

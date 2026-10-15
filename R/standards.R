@@ -171,10 +171,11 @@
     # (no tflspec: the programs call the study's programs/study_helpers.R)
     setup_code = .df(
       code = c("library(cards)", "library(dplyr)", "library(rtfreporter)",
-               .time_unit_lines()),
+               "options(warn = 1)", .time_unit_lines()),
       note = c("the ARD programs' cards calls",
                "the programs' data steps (filter(), mutate() ...)",
                "the report programs' rtfreporter calls",
+               "warnings are printed as they happen: a run's log shows where",
                "the days in a week, a month, a year: a figure's time unit divides by them",
                NA, NA)),
     listing_types = .df(type = "multiline", label = "multiline",

@@ -12,6 +12,7 @@ create_sample_study(
   compound = NULL,
   phase = NULL,
   description = NULL,
+  short_title = NULL,
   home = tflplanner_home()
 )
 }
@@ -23,7 +24,7 @@ create_sample_study(
 
 \item{study_id}{The new study's ID (default \code{SAMPLE-01}).}
 
-\item{title, compound, phase, description}{The study's fields; \code{NULL}
+\item{title, short_title, compound, phase, description}{The study's fields; \code{NULL}
 keeps the sample's.}
 
 \item{home}{tflplanner's home.}
