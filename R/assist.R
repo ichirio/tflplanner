@@ -208,8 +208,10 @@ fetch_ard <- function(study, output_id, timeout = 300,
   writeLines(enc2utf8(c(.report_id_line(output_id),
                         if (!is.na(p$setup)) .code_block(p$setup),
                         .code_block(ard_code))), f_ard, useBytes = TRUE)
+  # (the normalization its program has: a hierarchical analysis's terms
+  # and the any-event row, so the builder sees the hierarchy)
   proc <- if (!is.na(o$process_code)) .code_block(o$process_code) else
-    if (!.makes_data(ard_code)) "data <- normalize_ard(ard)" else ""
+    if (!.makes_data(ard_code)) .normalize_line(p, output_id) else ""
   writeLines(enc2utf8(proc), f_proc, useBytes = TRUE)
   # the functions the programs call (programs/study_helpers.R's)
   f_helpers <- file.path(tmp, "study_helpers.R")
@@ -301,6 +303,36 @@ fetch_ard <- function(study, output_id, timeout = 300,
   }
   m$variables <- v
   m$labels <- labels
+  m
+}
+
+# The hierarchy of a report's hierarchical analysis (its terms, outermost
+# first; none: character()) -- the ARD analysis's, step 1's
+.analysis_hierarchy <- function(x, output_id) {
+  a <- tryCatch(ard_rows(x, "analyses", output_id), error = function(e) NULL)
+  if (is.null(a) || !nrow(a)) return(character())
+  kw <- .method_kw(a$method)
+  at <- which(kw %in% c("hierarchical", "cards::ard_stack_hierarchical"))
+  if (!length(at)) return(character())
+  v <- .split_bar(a$variables[at[1L]])
+  v[!is.na(v) & nzchar(v)]
+}
+
+# What the ARD says, with the hierarchy its analysis has when the reading
+# did not see one (an ARD read before its normalization knew the terms:
+# the innermost term an analysis variable, the outer ones column keys)
+.meta_with_hierarchy <- function(m, x, output_id) {
+  if (is.null(m) || length(m$hierarchy)) return(m)
+  hier <- .analysis_hierarchy(x, output_id)
+  if (length(hier) < 2L) return(m)
+  v <- m$variables
+  for (h in setdiff(hier, names(m$keys))) {
+    i <- match(h, v$variable)
+    m$keys[[h]] <- if (!is.na(i)) .split_list(v$levels[i]) else character()
+  }
+  m$by <- setdiff(m$by, hier)
+  m$hierarchy <- hier
+  if (!is.null(v)) m$variables <- v[!v$variable %in% hier, , drop = FALSE]
   m
 }
 

@@ -202,3 +202,104 @@ test_that("the rows are the table's: the ARD's keys by default, a group outermos
   expect_identical(.row_keys_read('PARAM = PARAM | group1 = "Worst"', "label = .label"), "PARAM")
   expect_identical(.row_keys_read(NA, "label = AEDECOD"), "AEDECOD")
 })
+
+test_that("an ARD read without its hierarchy takes the analysis's: the levels, not variables", {
+  p <- hier_planner()
+  expect_identical(.analysis_hierarchy(p, "T-AE"), c("AEBODSYS", "AEDECOD"))
+  # as an ARD normalized without its terms reads: the outer term a column
+  # key, the inner one an analysis variable
+  stale <- hier_meta()
+  stale$keys$AEDECOD <- NULL
+  stale$by <- c("TRT01A", "AEBODSYS")
+  stale$hierarchy <- character()
+  stale$variables <- data.frame(variable = "AEDECOD", kind = "categorical",
+                                levels = "SINUS BRADYCARDIA | NAUSEA", n_levels = 2L,
+                                stats = "n | N | p", label = NA_character_)
+  m <- .meta_with_hierarchy(stale, p, "T-AE")
+  expect_identical(m$hierarchy, c("AEBODSYS", "AEDECOD"))
+  expect_identical(m$by, "TRT01A")
+  expect_identical(m$keys$AEDECOD, c("SINUS BRADYCARDIA", "NAUSEA"))
+  expect_identical(nrow(m$variables), 0L)
+  # one that has it, or a report with no hierarchical analysis: as it is
+  expect_identical(.meta_with_hierarchy(hier_meta(), p, "T-AE"), hier_meta())
+  st <- builder_read(p, "T-AE", m)
+  expect_identical(st$row_keys, c("AEBODSYS", "AEDECOD"))
+  expect_identical(nrow(st$variables), 0L)
+})
+
+test_that("the hierarchy's levels are fixed chips, the last the label; normalize_ard() has the overall row", {
+  skip_on_cran()
+  local_home()
+  s <- create_study("BF", planner = hier_planner())
+  f <- .meta_file(s, "T-AE")
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(hier_meta(), f)
+  shiny::testServer(server_for("BF"), {
+    rv <- session$userData$rv
+    session$setInputs(target = "T-AE", nav = "make", step = "content", content_nav = "content",
+                      table_nav = "builder")
+    h <- output$builder_form$html
+    bf <- session$userData$bform
+    lay <- paste0("b", bf$n, "_layers")
+    # no x on a level, and the page refuses to remove one
+    expect_match(h, sprintf('#%s ~ .selectize-control .item[data-value="AEBODSYS"] .remove', lay),
+                 fixed = TRUE)
+    expect_match(h, "onDelete", fixed = TRUE)
+    expect_match(h, '[\\"AEBODSYS\\",\\"AEDECOD\\"]', fixed = TRUE)
+    # AEDECOD is the hierarchy's last level, the rows' text; not a variable
+    expect_match(h, "AEDECOD (label)", fixed = TRUE)
+    expect_no_match(h, "Analysis variables (the block)", fixed = TRUE)
+    expect_match(h, "are the ARD analysis", fixed = TRUE)
+    # normalize_ard(): first, its hierarchy read only, its overall row
+    expect_match(h, 'data-fn="normalize_ard"', fixed = TRUE)
+    expect_lt(regexpr('data-fn="normalize_ard"', h), regexpr('data-fn="table_plan"', h))
+    expect_match(h, "(overall)", fixed = TRUE)
+    expect_match(h, paste0('id="b', bf$n, '_overall"'), fixed = TRUE)
+    # its overall row is written to tables$overall_label
+    v <- list()
+    v[[paste0("b", bf$n, "_key")]] <- "TRT01A"
+    v[[paste0("b", bf$n, "_overall")]] <- "Any adverse event"
+    do.call(session$setInputs, v)
+    session$elapse(1000)
+    expect_identical(sheet_rows(rv$p, "tables", "T-AE")$overall_label, "Any adverse event")
+  })
+})
+
+test_that("opening the builder on an ARD just read writes nothing: the study stays saved", {
+  skip_on_cran()
+  local_home()
+  s <- create_study("BD", planner = hier_planner())
+  f <- .meta_file(s, "T-AE")
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  # as the review's preview read it: no hierarchy seen (the old reading)
+  stale <- hier_meta()
+  stale$keys$AEDECOD <- NULL
+  stale$by <- c("TRT01A", "AEBODSYS")
+  stale$hierarchy <- character()
+  stale$variables <- data.frame(variable = "AEDECOD", kind = "categorical",
+                                levels = "SINUS BRADYCARDIA", n_levels = 1L,
+                                stats = "n | N | p", label = NA_character_)
+  saveRDS(stale, f)
+  shiny::testServer(server_for("BD"), {
+    rv <- session$userData$rv
+    session$setInputs(target = "T-AE", nav = "make", step = "content", content_nav = "content",
+                      table_nav = "builder")
+    bf <- session$userData$bform
+    b <- function(x) paste0("b", bf$n, "_", x)
+    # the form's inputs as the page sends them when drawn
+    st <- bf$st
+    v <- list()
+    v[[b("key")]] <- st$key
+    v[[b("layers")]] <- st$row_keys
+    v[[b("value")]] <- st$value
+    v[[b("cat")]] <- st$cat_format
+    v[[b("pct")]] <- st$pct_decimals
+    v[[b("overall")]] <- st$overall_label %||% ""
+    for (i in seq_along(st$row_keys)) v[[b(paste0("sort", i))]] <- st$sort[i]
+    v[[b("sort_col")]] <- ""
+    do.call(session$setInputs, v)
+    session$elapse(1000)
+    expect_identical(bf$st$hierarchy, c("AEBODSYS", "AEDECOD"))
+    expect_false(session$userData$dirty())
+  })
+})

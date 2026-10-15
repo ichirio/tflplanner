@@ -687,9 +687,10 @@ app_ui <- function(lang = "en") {
           bslib::layout_columns(
             col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
             shiny::uiOutput("builder_form"),
-            # what the report's ARD holds, folded to one line, above the tabs
+            # what the report's ARD holds, folded to one line, above the tabs;
+            # beside the cards it stays in view (.rp-b-right) as they scroll
             shiny::div(
-              style = "min-width: 0",
+              class = "rp-b-right", style = "min-width: 0",
               shiny::uiOutput("builder_ard_card"),
               result_tabs_ui(
               "table_right", lang = lang, selected = "result",
@@ -3373,7 +3374,7 @@ app_server <- function(input, output, session, start) {
     # the study it is (a save gives rv$study anew: the same study)
     study_open()
     if (!has_study() || is.null(id)) return(NULL)
-    ard_info(shiny::isolate(rv$study), id)
+    .meta_with_hierarchy(ard_info(shiny::isolate(rv$study), id), shiny::isolate(rv$p), id)
   }
   meta_now <- shiny::reactive({
     rv$ard_ver
@@ -8700,6 +8701,9 @@ app_server <- function(input, output, session, start) {
       guarded(builder_items(p0, id)) %||% list(),
       c("table_plan", "plan_cells", "plan_total", "plan_col_header",
         if (hier) "plan_sort" else "plan_labels"))
+    # the ARD's normalization first: its hierarchy (step 1's) and the
+    # any-event row
+    items <- .builder_items_normalize(items, st$hierarchy, st$overall_label)
     bform$items <- items
     has <- function(fn) any(vapply(items, function(it) identical(it$fn, fn), NA))
     cont <- any(st$variables$kind %in% "continuous")
@@ -8708,8 +8712,16 @@ app_server <- function(input, output, session, start) {
       sprintf("input['%s'] == 'stat'", bid("value")),
       shiny::uiOutput(bid("digits_ui")),
       shiny::uiOutput(bid("exc_ui")))
-    layer_names <- vapply(st$layer_choices, function(k)
-      if (identical(k, ".variable")) t("Analysis variables (the block)") else k, "")
+    # the row layers: a hierarchy's levels are its analysis's (step 1) --
+    # fixed, never removed; its last level is the rows' text (label)
+    lay_now <- if (hier) st$row_keys else st$layers
+    lay_ch <- unique(c(lay_now, if (hier) st$row_choices else st$layer_choices))
+    fixed <- if (hier) st$hierarchy else ".variable"
+    layer_names <- vapply(lay_ch, function(k) {
+      if (identical(k, ".variable")) return(t("Analysis variables (the block)"))
+      if (hier && identical(k, utils::tail(st$hierarchy, 1L))) return(paste0(k, " (label)"))
+      k
+    }, "")
     # table_plan(): the columns (cols) and the rows as layers (rows, label)
     tp_body <- shiny::tagList(
       shiny::div(
@@ -8727,26 +8739,45 @@ app_server <- function(input, output, session, start) {
         shiny::selectizeInput(
           bid("layers"),
           with_tip(al("table_plan", "rows"),
-                   t("Outermost first; drag to order. The keys are the analysis's by (step 1); a hierarchy's levels are its analysis's: rows the table should not show are hidden by a row filter (plan_filter()), not left out here.")),
-          stats::setNames(st$layer_choices, layer_names), selected = st$layers,
+                   t("Outermost first; drag to order. The keys are the analysis's by (step 1).")),
+          stats::setNames(lay_ch, layer_names), selected = lay_now,
           multiple = TRUE, width = "100%",
-          options = list(plugins = list("remove_button", "drag_drop"))),
-        if (hier) shiny::tagList(
-          shiny::uiOutput("b_rows_gap"),
-          if (length(st$row_keys) > 1L) shiny::checkboxInput(
-            bid("rowpages"), t("The outermost row variable a page each"), isTRUE(st$row_pages)),
-          shiny::textInput(bid("overall"), with_tip(t("The any-event row"),
-                                                    t("tables$overall_label; blank: no such row.")),
-                           value = st$overall_label %||% "", width = "18em",
-                           placeholder = "Any TEAE"))),
+          options = list(plugins = list("remove_button", "drag_drop"),
+                         onDelete = .fixed_items_js(fixed))),
+        .fixed_items_css(bid("layers"), fixed),
+        if (hier) shiny::div(
+          class = "small text-muted rp-b-fixed-note",
+          with_tip(sprintf(t("The levels %s are the ARD analysis's (step 1)."),
+                           paste(st$hierarchy, collapse = " \u203a ")),
+                   t("A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show are hidden by a row filter (plan_filter()).")),
+          " ", shiny::actionLink("b_rows_step1", t("Step 1's analysis"))),
+        if (hier && length(st$row_keys) > 1L) shiny::checkboxInput(
+          bid("rowpages"), t("The outermost row variable a page each"), isTRUE(st$row_pages))),
       # the block's variables, in order (a summary table)
       if (!hier) shiny::div(
         class = "rp-b-sec",
         shiny::div(class = "rp-b-sec-label", t("Analysis variables (the block), in order")),
         sortable::rank_list(text = NULL, labels = var_items,
-                            input_id = bid("vars")),
-        # the same, as the code list of `variable`: value -> label, in order
-        shiny::uiOutput("b_vcl")))
+                            input_id = bid("vars"))))
+    # normalize_ard(): the hierarchy (the ARD analysis's, read only) and the
+    # any-event row (the table's: tables$overall_label)
+    norm_body <- if (hier) shiny::tagList(
+      shiny::div(
+        class = "rp-b-sec",
+        shiny::div(class = "rp-b-sec-label",
+                   with_tip(al("normalize_ard", "hierarchy"),
+                            t("The hierarchy is the ARD analysis's (step 1): the table shows its levels as they are."))),
+        shiny::div(
+          class = "rp-b-levels",
+          lapply(st$hierarchy, function(h) shiny::span(class = "rp-b-level", h)),
+          shiny::actionLink("b_norm_step1", t("Step 1's analysis"), class = "small ms-1"))),
+      shiny::div(
+        class = "rp-b-sec",
+        shiny::textInput(bid("overall"),
+                         with_tip(al("normalize_ard", "overall"),
+                                  t("The any-event row's text (tables$overall_label); blank: no such row.")),
+                         value = st$overall_label %||% "", width = "18em",
+                         placeholder = "Any TEAE")))
     # plan_cells(): what the cells print
     cells_body <- shiny::tagList(
       shiny::radioButtons(
@@ -8785,6 +8816,9 @@ app_server <- function(input, output, session, start) {
     labels_body <- if (!hier) shiny::tagList(
       .btn("cl3_open", t("Code lists: in step 1 (1-1, column definitions)"),
            class = "btn-sm btn-link py-0 px-0 mb-1"),
+      # the headings and the order as one grid (the code list of the
+      # variables), once: here
+      shiny::uiOutput("b_vcl"),
       bslib::accordion(
         open = FALSE,
         lapply(seq_len(nrow(v)), function(i) {
@@ -8850,6 +8884,7 @@ app_server <- function(input, output, session, start) {
                class = "btn-sm btn-outline-primary py-0")))
     item_of <- function(fn) Filter(function(it) identical(it$fn, fn), items)[[1L]]
     bodies <- list(
+      normalize_ard = norm_body,
       table_plan = tp_body, plan_cells = cells_body, plan_col_header = hdr_body,
       plan_total = shiny::uiOutput(bid("total_ui")),
       plan_digits = if (cont && has("plan_digits")) shiny::tagList(
@@ -8859,7 +8894,7 @@ app_server <- function(input, output, session, start) {
                                          total = .rows_for(p0, "tables", id)$total[1L]))
     bodies <- Filter(Negate(is.null), bodies)
     shiny::div(
-      class = "rp-builder-cards",
+      class = "rp-builder-cards", `data-back` = t("Back to the code"),
       .table_cards(items, bodies, id = card_id, switches = "plan_total", lang = lang))
   })
   # a card's input id: by its path (the verb; "#2" its second call)
@@ -8917,7 +8952,8 @@ app_server <- function(input, output, session, start) {
     id <- current()
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
     items <- tryCatch(builder_items(rv$p, id), error = function(e) list())
-    code_jump(builder_code_map(program_text(), items), "program_table")
+    code_jump(builder_code_map(program_text(), .builder_items_normalize(items)),
+              "program_table")
   })
   # A hierarchy's order, one a term (outermost first): by name -- the code
   # list's order when the report has one for it -- or most frequent first
@@ -8962,28 +8998,8 @@ app_server <- function(input, output, session, start) {
         shiny::selectInput(bid("sort_col"), NULL, cols,
                            selected = if (is.na(col_now)) "" else col_now, width = "22em")))
   }
-  # a hierarchy level left out of the rows: this ARD cannot make that table
-  # (the level's rows would land in another's cells) -- said, with the way
-  # back and the way to step 1; nothing is written meanwhile
-  output$b_rows_gap <- shiny::renderUI({
-    bform_drawn()
-    st <- bform$st
-    shiny::req(length(st$hierarchy) > 0L)
-    rk <- input[[bid("layers")]]
-    shiny::req(!is.null(rk))
-    miss <- setdiff(st$hierarchy, rk)
-    if (!length(miss)) return(NULL)
-    shiny::div(
-      class = "alert alert-warning py-1 px-2 small",
-      sprintf(t("Without %s this ARD cannot make the table (its rows would land in another level's cells)."),
-              paste(miss, collapse = ", ")), " ",
-      shiny::actionLink("b_rows_back", t("Put it back")), " \u00b7 ",
-      shiny::actionLink("b_rows_step1", t("Step 1's analysis")))
-  })
-  shiny::observeEvent(input$b_rows_back, {
-    shiny::updateSelectizeInput(session, bid("layers"), selected = bform$st$row_keys)
-  })
   shiny::observeEvent(input$b_rows_step1, go("ard"))
+  shiny::observeEvent(input$b_norm_step1, go("ard"))
   shiny::observeEvent(input$b_sort_reset, {
     id <- bform$id
     st <- bform$st
@@ -9014,7 +9030,7 @@ app_server <- function(input, output, session, start) {
         type = "button", class = "btn btn-sm btn-link py-0 px-0 mb-1",
         onclick = "Shiny.setInputValue('b_vcl_toggle', Math.random(), {priority: 'event'})",
         shiny::span(class = "text-muted me-1", if (on) "\u25be" else "\u25b8"),
-        t("As the code list of variable: value, label, order")),
+        t("Headings and order as a grid")),
       if (on) shiny::div(
         class = "border rounded p-2 mb-2 bg-body-tertiary",
         shiny::p(class = "small text-muted mb-1",
@@ -9814,8 +9830,10 @@ app_server <- function(input, output, session, start) {
          hierarchy = st$hierarchy,
          row_keys = if (hier) {
            rk <- get("layers")
-           # a hierarchy level left out: not written (the card says why)
-           if (is.null(rk) || !length(rk) || !all(st$hierarchy %in% rk)) st$row_keys else rk
+           # the hierarchy's levels are fixed (the page refuses to remove
+           # them): its groups outermost, then its levels in their order
+           if (is.null(rk) || !length(rk) || !all(st$hierarchy %in% rk)) st$row_keys else
+             c(setdiff(rk, st$hierarchy), st$hierarchy)
          },
          row_choices = st$row_choices,
          # a summary table's row layers (a hierarchy's are its row keys);

@@ -29,9 +29,63 @@ test_that("the cards are the plan's items, in its order", {
   h <- html(.table_cards(items[match("plan_total", fns_of(items))], switches = "plan_total"))
   expect_match(h, "rp-card-off", fixed = TRUE)
   expect_false(grepl("disabled", h, fixed = TRUE))
-  # another optional card's switch is shown greyed for now
+  # another optional card, whose on / off does not work yet: no switch at
+  # all (not a disabled one that looks on), and no "off writes nothing"
   h <- html(.table_cards(items[match("plan_stub", fns_of(items))]))
-  expect_match(h, "disabled", fixed = TRUE)
+  expect_false(grepl("form-switch", h, fixed = TRUE))
+  expect_false(grepl("disabled", h, fixed = TRUE))
+  expect_false(grepl("off writes nothing", h, fixed = TRUE))
+})
+
+test_that("a card comes only from the content: one it lacks is not shown on", {
+  p <- sample_planner()
+  items <- builder_items(p, "T-14-3-1")
+  # T-14-3-1's code has no plan_labels(): no item, and the card the builder
+  # shows for its form says it is not in the code yet -- no switch, no mark
+  expect_false("plan_labels" %in% fns_of(items))
+  shown <- .builder_items_shown(items, "plan_labels")
+  h <- html(.table_cards(shown[match("plan_labels", fns_of(shown))], switches = "plan_total"))
+  expect_match(h, "rp-card-absent", fixed = TRUE)
+  expect_match(h, "Not in the code yet", fixed = TRUE)
+  expect_false(grepl("form-switch", h, fixed = TRUE))
+  expect_false(grepl("rp-badge-own", h, fixed = TRUE))
+})
+
+test_that("the report's own item has the mark This table, with Revert over a default", {
+  p <- sample_planner()
+  items <- builder_items(p, "T-14-1-1")
+  own <- Filter(function(it) identical(it$from, "own"), items)
+  expect_true(length(own) > 0L)
+  for (it in own) {
+    h <- html(.table_cards(list(it)))
+    expect_match(h, "rp-badge-own", fixed = TRUE, info = it$fn)
+    expect_match(h, "This table", fixed = TRUE, info = it$fn)
+    expect_identical(grepl("rp-revert", h, fixed = TRUE), isTRUE(it$revert), info = it$fn)
+  }
+  dfl <- Filter(function(it) identical(it$from, "defaults"), items)
+  if (length(dfl)) {
+    h <- html(.table_cards(dfl[1L]))
+    expect_false(grepl("rp-badge-own", h, fixed = TRUE))
+    expect_match(h, "Study default", fixed = TRUE)
+  }
+})
+
+test_that("normalize_ard() is the first card: the hierarchy read only, the overall row", {
+  p <- sample_planner()
+  items <- .builder_items_normalize(builder_items(p, "T-14-3-1"), c("AEBODSYS", "AEDECOD"),
+                                    "Any TEAE")
+  expect_identical(fns_of(items)[1:2], c("normalize_ard", "table_plan"))
+  expect_identical(items[[1L]]$args, list(hierarchy = c("AEBODSYS", "AEDECOD"), overall = "Any TEAE"))
+  h <- html(.table_cards(items[1L]))
+  expect_match(h, "Normalize the ARD", fixed = TRUE)
+  expect_match(h, "rp-card-required", fixed = TRUE)
+  # no R editing of it here: the hierarchy is step 1's
+  expect_false(grepl("rp-tool-r", h, fixed = TRUE))
+  # its line of the program leads to it
+  lines <- c('data <- normalize_ard(ard, hierarchy = c("AEBODSYS", "AEDECOD"), overall = "Any TEAE")',
+             "", "plan <- table_plan(data, cols = TRT01A)", "")
+  m <- builder_code_map(lines, items)
+  expect_identical(m$path[m$line == 1L], "normalize_ard")
 })
 
 test_that("a card's label is the meaning and the verb; an argument's the meaning and its name", {

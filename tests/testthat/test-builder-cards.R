@@ -26,6 +26,15 @@ test_that("a label is the meaning and the name; the name alone without a meaning
   expect_match(html(builder_label(list(en = "Lines"), "geom_line", "fn", lang = "ja")),
                ">Lines<", fixed = TRUE)
   expect_match(html(builder_label("Column", "cols", "arg", lang = "ja")), "\u5217", fixed = TRUE)
+  # a meaning that says the name already (a translation "... (rounding)"):
+  # the name once
+  for (lang in c("en", "ja")) {
+    h <- html(builder_label("Rounding", "rounding", "arg", lang = lang))
+    expect_identical(lengths(regmatches(h, gregexpr("(rounding)", h, fixed = TRUE))), 1L, info = lang)
+  }
+  h <- html(builder_label("Rows (table_plan())", "table_plan", "fn"))
+  expect_match(h, "rp-meaning\">Rows<", fixed = TRUE)
+  expect_identical(lengths(regmatches(h, gregexpr("table_plan()", h, fixed = TRUE))), 1L)
 })
 
 test_that("a card has its head, its switch or bar, its badge, its menu and its body", {
@@ -186,7 +195,22 @@ test_that("a group puts its fields on one row; the folded arguments are the rest
   expect_false(grepl('data-arg="..."', h, fixed = TRUE))
 })
 
-test_that("the badge says where a value came from; own has none", {
+test_that("a card whose on / off cannot work has no switch", {
+  h <- html(builder_card("c5", "plan_stub", "Row label column", switchable = FALSE))
+  expect_false(grepl("c5__on", h, fixed = TRUE))
+  expect_false(grepl("form-switch", h, fixed = TRUE))
+  expect_false(grepl("off writes nothing", h, fixed = TRUE))
+  # an item the code has not yet: said so, no mark of its own
+  h <- html(builder_card("c6", "plan_labels", "Labels", switchable = FALSE, absent = TRUE,
+                         own_label = "This table"))
+  expect_match(h, "rp-card-absent", fixed = TRUE)
+  expect_match(h, ">Not in the code yet<", fixed = TRUE)
+  expect_false(grepl("rp-badge-own", h, fixed = TRUE))
+})
+
+test_that("the badge says where a value came from; own has its mark when named", {
+  expect_match(html(from_badge("own", own = "This table")), ">This table<", fixed = TRUE)
+  expect_match(html(from_badge("own", "ja", own = "This table")), "この表", fixed = TRUE)
   expect_null(from_badge("own"))
   expect_null(from_badge(NULL))
   h <- html(from_badge("defaults"))

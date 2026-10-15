@@ -33,6 +33,18 @@ builder_label <- function(meaning, name, kind = c("fn", "arg"), lang = "en") {
   kind <- match.arg(kind)
   shown <- if (kind == "fn") paste0(name, "()") else name
   meaning <- .label_text(meaning, lang)
+  # a meaning that says the name already ("Rounding (rounding)" in a
+  # translation): the name once, in its own type
+  if (!is.null(meaning)) {
+    for (s in unique(c(shown, name))) {
+      for (tail in c(paste0("(", s, ")"), paste0("\uff08", s, "\uff09"))) {
+        if (endsWith(meaning, tail)) {
+          meaning <- trimws(substr(meaning, 1L, nchar(meaning) - nchar(tail)))
+        }
+      }
+    }
+    if (!nzchar(meaning)) meaning <- NULL
+  }
   if (is.null(meaning) || identical(meaning, name)) {
     return(shiny::tags$span(class = paste("rp-label", paste0("rp-label-", kind)),
                             shiny::tags$code(class = "rp-name rp-name-only", shown)))
@@ -62,18 +74,21 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
                          body = NULL, summary = NULL,
                          tools = c("up", "down", "copy", "remove", "r"), nav = NULL,
                          open = TRUE, error = NULL, path = id, lang = "en",
-                         switchable = TRUE, revert = !identical(from, "own")) {
+                         switchable = TRUE, revert = !identical(from, "own"),
+                         own_label = NULL, absent = FALSE) {
   t <- function(x) tr(x, lang)
   cls <- c("rp-card", if (required) "rp-card-required", if (!on) "rp-card-off",
+           if (isTRUE(absent)) "rp-card-absent",
            if (open) "rp-card-open", if (!is.null(error)) "rp-card-error")
+  # the switch only where on / off works (`switchable`): a switch that
+  # cannot be turned off would look on and mislead -- such a card has none
   left <- if (required) {
     shiny::tags$span(class = "rp-card-bar", title = t("Required"))
-  } else {
+  } else if (isTRUE(switchable)) {
     shiny::tags$span(class = "form-check form-switch rp-card-switch",
                      shiny::tags$input(type = "checkbox", class = "form-check-input",
                                        id = paste0(id, "__on"),
                                        checked = if (on) NA else NULL,
-                                       disabled = if (!switchable) NA else NULL,
                                        title = t("On or off: off writes nothing")))
   }
   # Revert: an item of the report's own over the defaults' (`revert`)
@@ -89,7 +104,12 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
     shiny::tags$button(type = "button", class = "rp-card-toggle", `aria-label` = t("Open or close"),
                        `data-card` = id, "\u25b8"),
     shiny::tags$span(class = "rp-card-title", builder_label(label, fn, "fn", lang)),
-    from_badge(from, lang), revert,
+    # an item the code has not yet (`absent`): what its form would add
+    if (isTRUE(absent)) {
+      shiny::tags$span(class = "rp-badge rp-badge-absent",
+                       title = t("A value set here adds it to the code."), t("Not in the code yet"))
+    } else from_badge(from, lang, own = own_label),
+    revert,
     if (!is.null(summary)) shiny::tags$span(class = "rp-card-summary", summary),
     if (!is.null(error)) shiny::tags$span(class = "rp-card-err", "\u26a0 ", error),
     menu)
@@ -598,9 +618,15 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
 # study's defaults, `standards` the company standards, `pattern:<name>` a
 # pattern, `template:<name>` a template.
 #' @noRd
-from_badge <- function(from, lang = "en") {
-  if (is.null(from) || !length(from) || identical(from, "own") || !nzchar(from)) return(NULL)
+from_badge <- function(from, lang = "en", own = NULL) {
+  if (is.null(from) || !length(from) || !nzchar(from)) return(NULL)
   t <- function(x) tr(x, lang)
+  # the report's own: its mark when the caller names it ("This table"),
+  # none otherwise
+  if (identical(from, "own")) {
+    if (is.null(own)) return(NULL)
+    return(shiny::tags$span(class = "rp-badge rp-badge-own", `data-from` = "own", t(own)))
+  }
   kind <- sub(":.*$", "", from)
   name <- if (grepl(":", from, fixed = TRUE)) sub("^[^:]*:", "", from) else NULL
   text <- switch(kind,
@@ -725,6 +751,10 @@ add_item_input <- function(id, kinds = NULL, schema = NULL, lang = "en", placeho
 .rp-badge { display: inline-block; font-size: 11px; line-height: 1.3; padding: 0 .4rem;
   border-radius: .6rem; background: var(--bs-tertiary-bg, #f3f4f6); color: #4b5563;
   border: 1px solid #e5e7eb; white-space: nowrap; vertical-align: middle; }
+.rp-badge-own { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+.rp-badge-absent { background: none; border-style: dashed; color: #6b7280; }
+.rp-card.rp-card-absent { border-style: dashed; }
+.rp-card.rp-card-absent > .rp-card-head .rp-card-title { color: #6b7280; }
 .rp-badge-standards { background: #eef6ff; border-color: #cfe2ff; color: #1d4ed8; }
 .rp-badge-template { background: #f5f3ff; border-color: #ddd6fe; color: #6d28d9; }
 .rp-revert { padding: 0 .3rem; font-size: 12px; text-decoration: none; }
@@ -851,12 +881,33 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     });
   }
   $(document).on('shiny:value', function() { setTimeout(applyJumps, 20); });
+  // a line's card: selected, opened and scrolled into view in the cards'
+  // column only -- the code beside it stays where it is (its column is
+  // sticky, its own scroll); narrow, where the code is below the cards, the
+  // card offers the way back to the line
   $(document).on('click', '.rp-code-view .rp-ln[data-path]', function() {
-    var p = this.getAttribute('data-path');
+    var p = this.getAttribute('data-path'), line = this;
     $('.rp-card').removeClass('rp-card-selected');
+    $('.rp-back-code').remove();
     var card = $('.rp-card[data-path=\"' + p + '\"]');
     card.addClass('rp-card-selected rp-card-open');
-    if (card.length) card[0].scrollIntoView({block: 'nearest', behavior: 'smooth'});
+    if (card.length) {
+      var right = $(line).closest('.rp-b-right')[0];
+      var keep = right ? right.scrollTop : null;
+      card[0].scrollIntoView({block: 'nearest'});
+      if (right) right.scrollTop = keep;
+      if (window.innerWidth < 992) {
+        var txt = card.closest('.rp-builder-cards').data('back') || 'Back to the code';
+        var b = $('<button type=\"button\" class=\"btn btn-link btn-sm rp-back-code\"></button>')
+          .text('\\u2193 ' + txt);
+        b.on('click', function(e) {
+          e.stopPropagation();
+          line.scrollIntoView({block: 'center', behavior: 'smooth'});
+          b.remove();
+        });
+        card.find('> .rp-card-head .rp-card-title').after(b);
+      }
+    }
     if (window.Shiny) Shiny.setInputValue('rp_card_selected', p, {priority: 'event'});
   });
   $(document).on('focusin', '.rp-card', function() {

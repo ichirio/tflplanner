@@ -39,6 +39,7 @@
 
 # ... and their main arguments'
 .plan_arg_meaning <- list(
+  normalize_ard = c(hierarchy = "Hierarchy", overall = "Overall row"),
   table_plan = c(cols = "Columns", rows = "Row layers", label = "Row text column",
                  stat = "Statistic columns", show_keys = "Keys shown"),
   plan_cells = c(value = "Values printed", stats = "Statistics as", na = "Text for missing",
@@ -138,6 +139,20 @@ builder_items <- function(x, output_id) {
   items
 }
 
+# The items with the ARD's normalization first (normalize_ard(): what the
+# plan is given): its hierarchy -- the ARD analysis's, read only -- and the
+# any-event row (tables$overall_label), the table's.  Always written, so
+# required; its arguments are not edited as R here (the hierarchy is step
+# 1's).
+.builder_items_normalize <- function(items, hierarchy = character(), overall = NA_character_) {
+  args <- list()
+  if (length(hierarchy)) args$hierarchy <- as.character(hierarchy)
+  if (length(overall) == 1L && !is.na(overall) && nzchar(overall)) args$overall <- overall
+  it <- list(fn = "normalize_ard", args = args, from = "", path = "normalize_ard",
+             revert = FALSE, present = TRUE, required = TRUE, fixed = TRUE)
+  c(list(it), items)
+}
+
 # ---- the cards ------------------------------------------------------------------
 
 # One item's arguments as they are, read only: a line an argument, its
@@ -170,9 +185,10 @@ builder_items <- function(x, output_id) {
 # The cards of a table's content, in its order: one builder_card() an
 # item.  `bodies`: the forms the builder has for some (by path, or by verb);
 # the rest show their arguments.  `id`: the card's input id of a path.
-# table_plan() and plan_cells() are required; the others' switch works
-# where `switches` names the verb (the Total column), and is shown greyed
-# elsewhere for now.
+# table_plan() and plan_cells() are required (and an item marked
+# `required`: normalize_ard()); the others have a switch only where
+# `switches` names the verb (the Total column: its on / off works), none
+# elsewhere for now.  An item of the report's own is marked "This table".
 .table_cards <- function(items, bodies = list(), id = function(path) path,
                          switches = character(), lang = "en") {
   required <- c("table_plan", "plan_cells")
@@ -180,17 +196,23 @@ builder_items <- function(x, output_id) {
     body <- bodies[[it$path]] %||% bodies[[it$fn]]
     own_form <- !is.null(body)
     if (!own_form) body <- .item_args_view(it, lang)
-    req <- it$fn %in% required
+    req <- it$fn %in% required || isTRUE(it$required)
+    sw <- it$fn %in% switches
+    # an item the content has not (its form would add it): no switch shown
+    # on, no mark of its own -- "not in the code yet"
+    absent <- !isTRUE(it$present) && !sw && !req
     builder_card(
       id(it$path), it$fn, .verb_meaning(it$fn), from = it$from, required = req,
-      on = it$present || req || !(it$fn %in% switches),
-      switchable = it$fn %in% switches, revert = isTRUE(it$revert),
+      on = it$present || req || !sw,
+      switchable = sw, revert = isTRUE(it$revert),
       body = body,
       summary = if (it$present) .item_summary(it),
-      tools = if (it$present) "r" else character(),
+      tools = if (it$present && !isTRUE(it$fixed)) "r" else character(),
       # the study's defaults the report leaves as they are: closed
       open = req || own_form || !identical(it$from, "defaults"),
-      path = it$path, lang = lang)
+      path = it$path, lang = lang,
+      own_label = if (isTRUE(it$present) && identical(it$from, "own")) "This table",
+      absent = absent)
   })
 }
 
@@ -249,6 +271,22 @@ builder_code_map <- function(lines, items) {
       at <- at[nzchar(trimws(lines[at]))]
       out_l <- c(out_l, at)
       out_p <- c(out_p, rep(lev[[1L]], length(at)))
+    }
+  }
+  # the ARD's normalization above the plan: normalize_ard()'s card
+  if ("normalize_ard" %in% paths) {
+    na <- grep("normalize_ard\\(", lines)
+    na <- na[na < start]
+    if (length(na)) {
+      i <- na[length(na)]
+      at <- i
+      # (its call over several lines: to the line that closes it)
+      while (i < start - 1L && !grepl("\\)\\s*$", lines[[i]])) {
+        i <- i + 1L
+        at <- c(at, i)
+      }
+      out_l <- c(out_l, at)
+      out_p <- c(out_p, rep("normalize_ard", length(at)))
     }
   }
   o <- order(out_l)
@@ -400,7 +438,19 @@ builder_code_map <- function(lines, items) {
 .rp-args-view dd { margin: 0; overflow-wrap: anywhere; }
 .rp-args-view code { color: #374151; background: none; padding: 0; font-size: 12px; }
 .rp-card-switch .form-check-input:disabled { cursor: default; }
+@media (min-width: 992px) {
+  /* SPEC | Code | Result beside the cards stays in view as they scroll: the
+     column is the sticky box (the tabs inside it are not), its own scroll */
+  .rp-b-right { position: sticky; top: .5rem;
+    max-height: calc(100vh - 1rem); overflow-y: auto; }
+  .rp-b-right .rp-tabs { position: static; max-height: none; overflow-y: visible; }
+}
+.rp-back-code { padding: 0 .3rem; font-size: 12px; text-decoration: none; }
 .rp-b-sec { margin-top: .5rem; }
+.rp-b-levels { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
+.rp-b-level { font-family: Consolas, 'Courier New', monospace; font-size: 12px; color: #374151;
+  background: #f3f4f6; border: 1px dashed #cbd5e1; border-radius: .3rem; padding: 0 .4rem; }
+.rp-b-fixed-note { margin-top: .15rem; }
 .rp-b-sec > .rp-b-sec-label { font-size: 12.5px; margin-bottom: .15rem; }
 "
 
@@ -416,6 +466,27 @@ $(document).on('click', '.rp-builder-cards .rp-tool-r', function() {
   Shiny.setInputValue('b_card_r', {path: String(p), t: Date.now()}, {priority: 'event'});
 });
 "
+
+# The fixed items of a selectize of layers (a hierarchy's levels, the block
+# of variables): neither its x nor Backspace removes them -- selectize's
+# onDelete refuses -- and their x is not drawn (.fixed_items_css())
+.fixed_items_js <- function(fixed) {
+  I(sprintf(
+    "function(values) { var fixed = %s; return !values.some(function(v) { return fixed.indexOf(v) >= 0; }); }",
+    jsonlite::toJSON(as.character(fixed))))
+}
+
+# ... their look: no x, a fixed chip (by the input's id and their values)
+.fixed_items_css <- function(id, fixed) {
+  if (!length(fixed)) return(NULL)
+  sel <- function(v, tail = "") sprintf(
+    "#%s ~ .selectize-control .item[data-value=\"%s\"]%s", id, v, tail)
+  shiny::tags$style(shiny::HTML(paste0(
+    paste(vapply(fixed, sel, "", tail = " .remove"), collapse = ", "),
+    " { display: none !important; } ",
+    paste(vapply(fixed, sel, ""), collapse = ", "),
+    " { background: #f3f4f6 !important; color: #374151 !important; border-style: dashed !important; padding-right: 6px !important; }")))
+}
 
 # the item a card's path names (NULL for none)
 .builder_item_at <- function(items, path) {

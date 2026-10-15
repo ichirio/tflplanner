@@ -3268,3 +3268,14 @@ Analysis variables (the block),解析変数（まとまり）
 "Analysis variables (the block), in order",解析変数（まとまり）の順
 "Outermost first; drag to order. The keys are the analysis's by (step 1); a hierarchy's levels are its analysis's: rows the table should not show are hidden by a row filter (plan_filter()), not left out here.",外側から順に。ドラッグで並べ替え。キーは解析の by（ステップ 1）から、階層の段は解析から来ます。表に出さない行は、ここで外すのではなく行のフィルター（plan_filter()）で隠します。
 "The arguments as R: name = value, separated by commas. What is no plain value (a call, a name) stays R.",引数を R で: 名前 = 値 をカンマで区切って。単純な値でないもの（関数の呼び出し、名前）は R のまま残ります。
+This table,この表
+Not in the code yet,まだコードにありません
+A value set here adds it to the code.,ここで値を決めるとコードに加わります。
+Overall row,全体の行
+Back to the code,コードへ戻る
+Headings and order as a grid,見出しと順を表で編集
+The levels %s are the ARD analysis's (step 1).,段 %s は ARD の解析（手順 1）のものです。
+"A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show are hidden by a row filter (plan_filter()).",表は階層の段を外しません。別の段の表は ARD の別の解析から作ります。表に出さない行は行のフィルター（plan_filter()）で隠します。
+"Outermost first; drag to order. The keys are the analysis's by (step 1).",外側から順に。ドラッグで並べ替え。キーは解析の by（手順 1）から来ます。
+"The hierarchy is the ARD analysis's (step 1): the table shows its levels as they are.",階層は ARD の解析（手順 1）のものです。表はその段をそのまま出します。
+"The any-event row's text (tables$overall_label); blank: no such row.",全体の行の文字（tables$overall_label）。空欄なら、その行はありません。
