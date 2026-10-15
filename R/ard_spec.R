@@ -201,15 +201,16 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
 # (tfl_write_ard_spec(), tfl_read_ard_spec()).
 .ard_json <- "ard_definition.json"
 
-.save_ard <- function(p, root) {
+.save_ard <- function(p, root, json = TRUE) {
   a <- p$ard %||% .empty_ard_spec()
   out <- data.frame(file = character(), status = character(),
                     stringsAsFactors = FALSE)
   a <- stats::setNames(lapply(names(.ard_sheets()), function(s)
     .normalize_ard_sheet(a[[s]], s)), names(.ard_sheets()))
   j <- file.path(root, study_layout()[["spec"]], .ard_json)
-  if (nrow(a$analyses) || nrow(a$datasets) || nrow(a$populations) ||
-      nrow(a$analysis_data) || file.exists(j)) {
+  # (a study of the YAML spec keeps its ARD definition there: no JSON)
+  if (json && (nrow(a$analyses) || nrow(a$datasets) || nrow(a$populations) ||
+      nrow(a$analysis_data) || file.exists(j))) {
     txt <- jsonlite::toJSON(a, dataframe = "columns", na = "null",
                             pretty = TRUE, auto_unbox = FALSE)
     old <- if (file.exists(j)) paste(readLines(j, warn = FALSE,

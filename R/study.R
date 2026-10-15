@@ -636,6 +636,16 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
          "; give each its own `program` on the report sheet.", call. = FALSE)
   }
   spec_dir <- file.path(root, lay[["spec"]])
+  # the definition's format: the folder's, a new folder's the option's
+  fmt <- .study_format(root)
+  if (identical(fmt, "none")) fmt <- getOption("tflplanner.spec_format", "sheets")
+  meta <- study$meta[.study_fields]
+  old_meta <- tryCatch(.read_meta(root), error = function(e) list())
+  meta$created <- old_meta$created %||% format(Sys.Date())
+  if (identical(fmt, "yaml")) {
+    # the YAML spec: each file written only when its text changed
+    files <- .save_yaml_spec(p, meta, root, own = as_recorded)
+  } else {
   paths <- file.path(spec_dir, c(.table_file, .report_file))
   same <- if (!is.null(rec)) {
     # the workbooks are what the last save wrote: compared with its state,
@@ -658,6 +668,7 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
   files <- data.frame(file = paths,
                       status = ifelse(same, "unchanged", "written"),
                       stringsAsFactors = FALSE)
+  }
   for (d in lay) dir.create(file.path(root, d), recursive = TRUE,
                             showWarnings = FALSE)
   .move_old_programs(root, progs)
@@ -674,24 +685,25 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
     files[nrow(files) + 1L, ] <- list(f, if (state == "edited") "rewritten" else "written")
   }
   lf_rel <- file.path(lay[["spec"]], .lf_file)
-  ard_files <- .save_ard(p, root)
+  ard_files <- .save_ard(p, root, json = !identical(fmt, "yaml"))
   ard_problem <- attr(ard_files, "problem")
   if (!is.null(ard_problem)) {
     message("The ARD definition does not hold, so no ARD program was written ",
             "(the rest is saved):\n", ard_problem)
   }
-  files <- rbind(files, ard_files,
-                 .save_lf(p, root, was = if (as_recorded(lf_rel)) was$lf),
-                 .save_fig_designs(p, root, own = function(f)
-                   as_recorded(file.path(lay[["spec"]], .fig_design_dir,
-                                         basename(f)))))
+  files <- rbind(files, ard_files)
+  if (!identical(fmt, "yaml")) {
+    files <- rbind(files,
+                   .save_lf(p, root, was = if (as_recorded(lf_rel)) was$lf),
+                   .save_fig_designs(p, root, own = function(f)
+                     as_recorded(file.path(lay[["spec"]], .fig_design_dir,
+                                           basename(f)))))
+  }
   files <- rbind(files, .save_study_setup(study$meta, root),
                  .save_study_helpers(root),
                  .save_batch_programs(p, root))
-  meta <- study$meta[.study_fields]
-  old_meta <- tryCatch(.read_meta(root), error = function(e) list())
-  meta$created <- old_meta$created %||% format(Sys.Date())
-  .write_meta(meta, root)
+  # (the YAML spec's study.yml is written with it, the study's fields too)
+  if (!identical(fmt, "yaml")) .write_meta(meta, root)
   study$meta <- .read_meta(root)[.study_fields]
   .write_state(study, home)
   .set_config("last_study", study$meta$study_id, home)

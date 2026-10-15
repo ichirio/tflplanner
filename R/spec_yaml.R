@@ -51,3 +51,65 @@
   attr(p, "not_converted") <- back$not_converted
   p
 }
+
+# What tflspec's tfl_yaml_from_sheets() writes the YAML spec from: the
+# planner's sheets as one definition (with the study keys), the report list
+# and setup (the _tflplanner sheet's rows), the ARD definition, the listing
+# and figure sheets, the figure designs, and the study's fields
+.planner_sheets <- function(p, meta) {
+  o <- p$outputs[names(.empty_outputs())]
+  o$setup_code <- rep(NA_character_, nrow(o))
+  planner <- rbind(
+    data.frame(output_id = NA_character_, description = "(every report)",
+               setup_code = p$setup, process_code = NA_character_,
+               section = NA_character_, population = NA_character_,
+               datasets = NA_character_, batches = NA_character_,
+               stringsAsFactors = FALSE),
+    o)
+  study <- meta[intersect(.study_fields, names(meta))]
+  study <- study[!vapply(study, function(v) is.null(v) || !length(v) || is.na(v[1L]), NA)]
+  list(table = unclass(.spec_object(p, c(table_sheets(), report_sheets()),
+                                    unique(unlist(.study_keys)))),
+       planner = planner, ard = p$ard, listing = p$lf,
+       figures = p$fig_designs %||% list(), study = study)
+}
+
+# The study's definition written as the YAML spec into its folder: the
+# files tflspec writes (in a folder of their own first), study.yml with the
+# study's fields, when it was created and by which tflplanner; each file
+# written only when its text changed (a save that changes one report writes
+# its file, and study.yml), a report's file gone from the definition
+# removed when it is the one the last save wrote (`own(rel)`).  The files,
+# as save_study() lists them: file, status.
+.save_yaml_spec <- function(p, meta, root, own = function(rel) FALSE) {
+  tmp <- tempfile("tflplanner-yaml")
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+  tflspec::tfl_yaml_from_sheets(.planner_sheets(p, meta), tmp, overwrite = TRUE)
+  sy <- file.path(tmp, .study_file)
+  more <- list(created = meta$created %||% format(Sys.Date()),
+               updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+               tflplanner = as.character(utils::packageVersion("tflplanner")))
+  writeLines(c(readLines(sy, encoding = "UTF-8"), sub("\n$", "", yaml::as.yaml(more))),
+             sy, useBytes = TRUE)
+  rel <- list.files(tmp, recursive = TRUE)
+  rel <- setdiff(rel, file.path(study_layout()[["spec"]], "_not_converted.yml"))
+  files <- data.frame(file = character(), status = character(), stringsAsFactors = FALSE)
+  for (r in rel) {
+    to <- file.path(root, r)
+    new <- readLines(file.path(tmp, r), encoding = "UTF-8")
+    same <- file.exists(to) && identical(readLines(to, encoding = "UTF-8"), new)
+    if (!same) {
+      dir.create(dirname(to), recursive = TRUE, showWarnings = FALSE)
+      file.copy(file.path(tmp, r), to, overwrite = TRUE)
+    }
+    files[nrow(files) + 1L, ] <- list(to, if (same) "unchanged" else "written")
+  }
+  # a report's (or a pattern's) file no longer in the definition
+  for (r in setdiff(.spec_files_yaml(root), c(rel, .study_file))) {
+    if (isTRUE(own(r))) {
+      unlink(file.path(root, r))
+      files[nrow(files) + 1L, ] <- list(file.path(root, r), "removed")
+    }
+  }
+  files
+}
