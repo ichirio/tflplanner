@@ -1,11 +1,11 @@
 # tflplanner (development version)
 
-- **The shift table returns with the unified builder.**  Its template is
+- **The shift table returns with the unified builder** (#378, 0.0.2.9224).  Its template is
   hidden from the list for now (`options(tflplanner.shift_template = TRUE)`
   shows it): it is to choose its data among the study's datasets, its
   parameters from the data, and to check BNRIND / ANRIND first.
 
-- **A hierarchy table's rows are the table's** (the user's principle: the
+- **A hierarchy table's rows are the table's** (#375, 0.0.2.9224; the user's principle: the
   ARD's variables are defaults; the layout belongs to the content step).
   The builder's "Rows" card mirrors "Columns": the row variables,
   outermost first, among the ARD's groups and hierarchy (by default its
@@ -22,7 +22,7 @@
   this ARD cannot make that table, with "Put it back" and a link to step
   1's analysis.
 
-- **A shift table started from the data** (#378, 0.0.2.9213; core
+- **A shift table started from the data** (#378, 0.0.2.9224; core
   gap #2 as corrected: tflspec's LB example shows the engine does it).
   "Apply a template" has a third kind, Shift (baseline x worst after):
   the data (ADLB), the population (ADSL), the group, the parameters (a page
@@ -39,7 +39,7 @@
   header's {n} is one number a column.
 
 - **SOC / PT by worst severity or grade, from the data** (#376,
-  0.0.2.9212; core gap #2 as corrected: the engine does it, the GUI did
+  0.0.2.9224; core gap #2 as corrected: the engine does it, the GUI did
   not).  The hierarchy starter has an optional "By severity / grade
   (columns)" (AESEV, ATOXGR ...): the grade joins the analysis's `by` and
   the table's columns, under each group with its N, and its levels are
@@ -49,7 +49,7 @@
   drop the grade too).  `first_hierarchy_table(grade = )`.
 
 - **The table builder edits a hierarchy table (SOC / PT)** (#375,
-  0.0.2.9211).  It used to send such a table to the sheets (Details).  It
+  0.0.2.9224).  It used to send such a table to the sheets (Details).  It
   now opens with what such a table has: its columns (the variable, the
   arms' order, Total), its column header, its statistics (n (%) and the
   decimals), and a Rows card of its own: the order of each term (the
@@ -68,7 +68,7 @@
   denominator has the subjects per group of its header.  (The "Any TEAE"
   row's name follows once `tables$overall_label` is on main.)
 
-- **A hierarchical table started from the data** (#374, 0.0.2.9210; the
+- **A hierarchical table started from the data** (#374, 0.0.2.9224; the
   user's decision after the template evaluation, dev-rep #5).  A
   table's "Start from the data" in Add a report is "Apply a template"
   now (the user's choice; the figure designer's word), a list of kinds:
