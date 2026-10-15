@@ -169,21 +169,8 @@ first_table <- function(x, output_id, path, data, population, group,
   dsn <- cd$dataset
 
   # the analysis set
-  pop <- sub("FL$", "", population)
-  po <- ard_rows(x, "populations")
-  where <- sprintf("%s == \"Y\"", population)
-  have <- po$population_id[!is.na(po$where) & po$where == where &
-                             !is.na(po$dataset) & po$dataset == dsn]
-  if (length(have)) {
-    pop <- have[1L]
-  } else {
-    while (pop %in% po$population_id) pop <- paste0(pop, "_", dsn)
-    po[nrow(po) + 1L, ] <- NA
-    po$population_id[nrow(po)] <- pop
-    po$dataset[nrow(po)] <- dsn
-    po$where[nrow(po)] <- where
-    x <- set_ard_rows(x, "populations", "", po)
-  }
+  x <- .first_population(x, dsn, population)
+  pop <- attr(x, "population_id")
 
   # the report; the subjects per group (the N of the column headers), then
   # one analysis per call: the numeric variables together (CONT), the
@@ -298,6 +285,399 @@ first_table <- function(x, output_id, path, data, population, group,
   x
 }
 
+# The analysis set of a flag (SAFFL == "Y") on a dataset: the one there,
+# else added (SAF, named after the flag).  The planner, with attribute
+# "population_id".
+.first_population <- function(x, dataset, flag) {
+  pop <- sub("FL$", "", flag)
+  po <- ard_rows(x, "populations")
+  where <- sprintf("%s == \"Y\"", flag)
+  have <- po$population_id[!is.na(po$where) & po$where == where &
+                             !is.na(po$dataset) & po$dataset == dataset]
+  if (length(have)) {
+    pop <- have[1L]
+  } else {
+    while (pop %in% po$population_id) pop <- paste0(pop, "_", dataset)
+    po[nrow(po) + 1L, ] <- NA
+    po$population_id[nrow(po)] <- pop
+    po$dataset[nrow(po)] <- dataset
+    po$where[nrow(po)] <- where
+    x <- set_ard_rows(x, "populations", "", po)
+  }
+  attr(x, "population_id") <- pop
+  x
+}
+
+#' Start a hierarchical table from the data
+#'
+#' The other kind of table the app's "first table" form starts: counts of
+#' subjects by a hierarchy of terms -- adverse events by system organ class
+#' and preferred term (`AEBODSYS | AEDECOD`), and the same for medications
+#' or medical history by their own -- in the columns of a group, the
+#' percents of the analysis set's subjects.  It writes the rows every sheet
+#' says them in, as a table made by hand has them:
+#'
+#' * the datasets (added to the data catalog when missing) and the analysis
+#'   set (`population` flag `== "Y"` of the subject-level data);
+#' * two analysis data of the report: the analysis set's subjects
+#'   (`adsl_saf`), and the records kept to them and to `where` (`adae_saf`);
+#' * one `hierarchical` analysis by the group, over the hierarchy, its
+#'   denominator the analysis set (`over_variables = TRUE`: the "any event"
+#'   row, named in the table's `overall_label`: `"Any TEAE"`);
+#' * the table: the group as columns, the outer terms as groups and the
+#'   innermost as rows, by frequency (most first) within each group;
+#' * the column header (the standards' `"Arm (N=n) n (%), SOC / PT"`), a
+#'   page not splitting a group (22 rows a page, unless the study says),
+#'   and a Total column when `total` is given.
+#'
+#' @param x A `tflplanner`.
+#' @param output_id The report.
+#' @param path The records' data file (`data/adam/adae.rds`), relative to
+#'   the study folder.
+#' @param data Its data.
+#' @param subjects_path The subject-level data file (`data/adam/adsl.rds`).
+#' @param subjects Its data.
+#' @param population The analysis set flag column of the subject-level data
+#'   (`SAFFL`).
+#' @param group The column of the groups (`TRT01A`).
+#' @param hierarchy The terms, outermost first (`c("AEBODSYS", "AEDECOD")`).
+#' @param where The records counted (`TRTEMFL == "Y"`); `NA` all of them.
+#' @param total The heading of a Total column (`"Total"`); `NA` none.
+#' @param grade A severity or grade column (`AESEV`, `ATOXGR`) to count by
+#'   too, in the columns under each group; `NA` none.  Each subject is
+#'   counted once, at the worst: the grade's levels are written in order
+#'   (a code list), and cards counts a subject at the last level it has --
+#'   of the SOC for the SOC row, of the PT for the PT row.  Not with a Total
+#'   column.
+#' @param description The report's description.
+#' @return The `tflplanner`.
+#' @export
+first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subjects,
+                                  population, group,
+                                  hierarchy = c("AEBODSYS", "AEDECOD"),
+                                  where = NA_character_, total = NA_character_,
+                                  grade = NA_character_,
+                                  description = NA_character_) {
+  id <- output_id
+  hierarchy <- hierarchy[!is.na(hierarchy) & nzchar(hierarchy)]
+  if (length(hierarchy) < 2L) {
+    stop("A hierarchy has two terms or more (AEBODSYS | AEDECOD).", call. = FALSE)
+  }
+  miss <- setdiff(c(group, hierarchy), names(data))
+  if (length(miss)) stop("The data have no ", paste(miss, collapse = ", "), ".", call. = FALSE)
+  miss <- setdiff(c(population, group), names(subjects))
+  if (length(miss)) {
+    stop("The subject-level data have no ", paste(miss, collapse = ", "), ".", call. = FALSE)
+  }
+  if (nrow(ard_rows(x, "analyses", id))) {
+    stop("'", id, "' has analyses already: edit them in step 1 (ARD).", call. = FALSE)
+  }
+  if (.is_blank(where)) where <- NA_character_
+  if (.is_blank(grade)) grade <- NA_character_
+  if (!is.na(grade)) {
+    if (!grade %in% names(data)) stop("The data have no ", grade, ".", call. = FALSE)
+    if (grade %in% c(group, hierarchy)) {
+      stop("The grade is a column of its own, not the group or a term.", call. = FALSE)
+    }
+    if (!is.na(total) && nzchar(trimws(total))) {
+      stop("A Total column and a grade together are not made here: add the Total ",
+           "column afterwards in the sheets.", call. = FALSE)
+    }
+  }
+  if (!is.na(where) && inherits(try(str2lang(where), silent = TRUE), "try-error")) {
+    stop("The condition is not R: ", where, call. = FALSE)
+  }
+
+  # the datasets and the analysis set (of the subject-level data)
+  cd <- .catalog_dataset(x, subjects_path)
+  x <- cd$x
+  sl <- cd$dataset
+  cd <- .catalog_dataset(x, path)
+  x <- cd$x
+  dsn <- cd$dataset
+  x <- .first_population(x, sl, population)
+  pop <- attr(x, "population_id")
+
+  if (!id %in% x$outputs$output_id) {
+    x <- add_output(x, id, description = description, type = "table")
+  }
+  # the analysis data: the set's subjects, and the records kept to them
+  x <- .ensure_pop_adata(x, id, pop)
+  subj <- attr(x, "data_id")
+  rec <- .adata_free_name(x, id, .adata_default_name(dsn, pop))
+  x <- set_analysis_data(x, id, rec, from = dsn, subjects = subj, where = where)
+
+  # the analysis: the hierarchy by the group, percents of the set's subjects
+  # (its name: the records' -- AE; TEAE for the treatment-emergent ones)
+  aid <- sub("^AD", "", dsn)
+  if (!nzchar(aid)) aid <- "HIER"
+  if (!is.na(where) && grepl("\\bTRTEMFL\\b", where)) aid <- paste0("TE", aid)
+  an <- data.frame(
+    analysis_id = aid,
+    label = if (is.na(description)) paste(hierarchy, collapse = " / ") else description,
+    method = "hierarchical", data = rec,
+    by = paste(c(group, stats::na.omit(grade)), collapse = " | "),
+    variables = paste(hierarchy, collapse = " | "), denominator = subj,
+    args = "over_variables = TRUE", stringsAsFactors = FALSE)
+  x <- set_ard_rows(x, "analyses", id, an)
+
+  # the table: the outer terms as groups, the innermost as rows, by
+  # frequency within each group
+  n <- length(hierarchy)
+  tb <- sheet_rows(x, "tables", id)
+  tb$output_id <- NULL
+  if (!nrow(tb)) tb[1L, ] <- NA
+  tb$cols[1L] <- paste(c(group, stats::na.omit(grade)), collapse = " | ")
+  tb$rows[1L] <- paste(sprintf("group%d = %s", seq_len(n - 1L), hierarchy[-n]),
+                       collapse = " | ")
+  tb$label[1L] <- paste("label =", hierarchy[n])
+  # the "any event" row's name: the program reads the ARD as a hierarchy
+  # with it (tflspec::tfl_normalize_code())
+  tb$overall_label[1L] <- paste("Any", aid)
+  tb$sort[1L] <- .hier_sort(c(rep("alpha", n - 1L), "freq"))
+  x <- set_sheet_rows(x, "tables", id, tb)
+
+  # the groups' order (the columns): the analysis set's, from the
+  # subject-level data
+  arms <- .group_order(subjects[subjects[[population]] %in% "Y", , drop = FALSE], group)
+  if (length(arms)) {
+    vr <- sheet_rows(x, "variables", id)
+    vr$output_id <- NULL
+    i <- match(group, vr$variable)
+    if (is.na(i)) {
+      vr[nrow(vr) + 1L, ] <- NA
+      i <- nrow(vr)
+      vr$variable[i] <- group
+    }
+    if (is.na(vr$levels[i])) vr$levels[i] <- paste(arms, collapse = " | ")
+    x <- set_sheet_rows(x, "variables", id, vr)
+  }
+
+  # the grade's levels in order: its code list (cards counts a subject at
+  # the last level it has -- its worst)
+  if (!is.na(grade)) {
+    lv <- .grade_levels(data[[grade]])
+    x <- set_codelist(x, id, data.frame(variable = grade, value = lv,
+                                        order = as.character(seq_along(lv))))
+  }
+
+  # the column header, and a page that does not split a group
+  hp <- "Arm (N=n) n (%), SOC / PT"
+  if (is.na(grade) && hp %in% names(header_presets())) x <- add_preset(x, id, hp)
+  if (!is.na(grade)) {
+    # each group over its grades: the group and its N, then each grade
+    x <- set_sheet_rows(x, "col_header", id, data.frame(
+      line = c("1", "1", "2", "2"), cols = c("row_label", ".values", "row_label", ".values"),
+      span = c(NA, group, NA, "each"),
+      text = c(NA, "{col1}\n(N={n})", "System Organ Class\n   Preferred Term", "{col}"),
+      stringsAsFactors = FALSE))
+    # (a group a grade: narrower value columns, room for the terms)
+    x <- set_sheet_rows(x, "columns", id, data.frame(
+      column = c("row_label", ".values"), rel_width = c("34", "10"),
+      stringsAsFactors = FALSE))
+  }
+  ly <- sheet_rows(x, "layout", id)
+  ly$output_id <- NULL
+  if (!nrow(ly)) ly[1L, ] <- NA
+  ly$pages_split[1L] <- "group_force"
+  # (which needs the rows a page: the study's, else as the sample's SOC /
+  # PT table)
+  inh <- inherited_rows(x, "layout", id)
+  if (.is_blank(ly$pages_max_rows[1L]) &&
+      (!nrow(inh) || .is_blank(inh$pages_max_rows[1L]))) ly$pages_max_rows[1L] <- "22"
+  x <- set_sheet_rows(x, "layout", id, ly)
+
+  if (!is.na(total) && nzchar(trimws(total))) x <- set_total_column(x, id, total)
+  x
+}
+
+#' Start a shift table from the data
+#'
+#' The third kind of table the app's "first table" form starts: subjects by
+#' their baseline category (columns, under each group) and their worst
+#' category after baseline (rows) -- a laboratory normal range (`BNRIND` /
+#' `ANRIND`) or toxicity grade (`BTOXGR` / `ATOXGR`) -- one page a
+#' parameter, the percents of each column's subjects.  It writes what such
+#' a table made by hand has (tflspec's LB example):
+#'
+#' * the analysis set and its subjects (`adsl_saf`), and the parameters'
+#'   records counted, kept to them (`adlb_saf`);
+#' * each subject's worst record of a parameter (`adlb_saf_worst`, R of its
+#'   own): the last of `worst`, the post-baseline categories from best to
+#'   worst;
+#' * one categorical analysis by parameter, group and baseline; with
+#'   `total`, over the records and the same again with every baseline as
+#'   `total` (a column of all the group's subjects);
+#' * the categories' order (code lists), the table (one page a
+#'   parameter), and the column header (each group over its baselines; no
+#'   N, which differs from one parameter's page to the next).
+#'
+#' @inheritParams first_hierarchy_table
+#' @param path The records' data file (`data/adam/adlb.rds`).
+#' @param params The parameters (`PARAMCD` values), one page each.
+#' @param baseline,post The baseline and the post-baseline category
+#'   columns (`BNRIND`, `ANRIND`).
+#' @param worst The post-baseline categories from best to worst; `NULL`:
+#'   normal ranges `NORMAL, LOW, HIGH`, else the categories' order.
+#' @param where The records counted (`ONTRTFL == "Y"`); `NA` all of them.
+#' @param total The heading of a column of each group's subjects whatever
+#'   their baseline (`"Total"`); `NA` none.
+#' @return The `tflplanner`.
+#' @export
+first_shift_table <- function(x, output_id, path, data, subjects_path, subjects,
+                              population, group, params, baseline = "BNRIND",
+                              post = "ANRIND", worst = NULL,
+                              where = NA_character_, total = NA_character_,
+                              description = NA_character_) {
+  id <- output_id
+  miss <- setdiff(c(group, "PARAMCD", baseline, post), names(data))
+  if (length(miss)) stop("The data have no ", paste(miss, collapse = ", "), ".", call. = FALSE)
+  miss <- setdiff(c(population, group), names(subjects))
+  if (length(miss)) {
+    stop("The subject-level data have no ", paste(miss, collapse = ", "), ".", call. = FALSE)
+  }
+  params <- params[!is.na(params) & nzchar(params)]
+  if (!length(params)) stop("Choose the parameters.", call. = FALSE)
+  if (nrow(ard_rows(x, "analyses", id))) {
+    stop("'", id, "' has analyses already: edit them in step 1 (ARD).", call. = FALSE)
+  }
+  if (.is_blank(where)) where <- NA_character_
+  if (!is.na(where) && inherits(try(str2lang(where), silent = TRUE), "try-error")) {
+    stop("The condition is not R: ", where, call. = FALSE)
+  }
+  if (.is_blank(total)) total <- NA_character_
+
+  # the categories: as the table shows them, and from best to worst
+  shown <- .shift_levels(c(as.character(data[[baseline]]), as.character(data[[post]])))
+  if (is.null(worst)) {
+    worst <- if (all(c("LOW", "NORMAL", "HIGH") %in% toupper(shown))) {
+      c(shown[toupper(shown) == "NORMAL"], shown[toupper(shown) == "LOW"],
+        shown[toupper(shown) == "HIGH"], setdiff(shown, shown[toupper(shown) %in% c("NORMAL", "LOW", "HIGH")]))
+    } else shown
+  }
+
+  # the datasets and the analysis set (of the subject-level data)
+  cd <- .catalog_dataset(x, subjects_path)
+  x <- cd$x
+  sl <- cd$dataset
+  cd <- .catalog_dataset(x, path)
+  x <- cd$x
+  dsn <- cd$dataset
+  x <- .first_population(x, sl, population)
+  pop <- attr(x, "population_id")
+  if (!id %in% x$outputs$output_id) {
+    x <- add_output(x, id, description = description, type = "table")
+  }
+
+  # the analysis data: the subjects; the parameters' records counted; each
+  # subject's worst record of a parameter; the same as a Total baseline
+  x <- .ensure_pop_adata(x, id, pop)
+  subj <- attr(x, "data_id")
+  rec <- .adata_free_name(x, id, .adata_default_name(dsn, pop))
+  cond <- paste(c(sprintf("PARAMCD %%in%% c(%s)", paste0("\"", params, "\"", collapse = ", ")),
+                  stats::na.omit(where)), collapse = " & ")
+  x <- set_analysis_data(x, id, rec, from = dsn, subjects = subj, where = cond)
+  wst <- .adata_free_name(x, id, paste0(rec, "_worst"))
+  code <- sprintf(paste0(
+    "%s |>\n  dplyr::filter(!is.na(%s), !is.na(%s)) |>\n",
+    "  dplyr::slice_max(match(%s, c(%s)), n = 1, with_ties = FALSE,\n",
+    "                   by = c(USUBJID, PARAMCD))"),
+    rec, baseline, post, post, paste0("\"", worst, "\"", collapse = ", "))
+  x <- set_analysis_data(x, id, wst, from = rec, code = code,
+                         label = "Each subject's worst record of a parameter")
+  # a Total column: the same records again, every baseline the total --
+  # one analysis over both (two would each state the other's columns as 0)
+  counted <- wst
+  if (!is.na(total)) {
+    counted <- .adata_free_name(x, id, paste0(wst, "_all"))
+    x <- set_analysis_data(x, id, counted, from = wst, label = "With a total of the baselines",
+                           code = sprintf(
+                             "dplyr::bind_rows(\n  dplyr::mutate(%s, %s = as.character(%s)),\n  dplyr::mutate(%s, %s = \"%s\")\n)",
+                             wst, baseline, baseline, wst, baseline, total))
+  }
+
+  # the analyses: the post-baseline category by parameter, group and
+  # baseline (percents of each column's subjects)
+  by <- paste("PARAMCD", group, baseline, sep = " | ")
+  an <- data.frame(analysis_id = "SHIFT",
+                   label = if (is.na(description)) "Shift from baseline" else description,
+                   method = "categorical", data = counted, by = by, variables = post,
+                   stringsAsFactors = FALSE)
+  # (no N in the header: a group's subjects differ from one parameter --
+  # one page -- to the next, and a header's {n} is one number a column)
+  x <- set_ard_rows(x, "analyses", id, an)
+
+  # the categories' order: the code lists
+  base_lv <- c(shown, stats::na.omit(total))
+  x <- set_codelist(x, id, rbind(
+    data.frame(variable = baseline, value = base_lv, order = as.character(seq_along(base_lv))),
+    data.frame(variable = post, value = shown, order = as.character(seq_along(shown)))))
+
+  # the table: each group over its baselines; the worst category down; a
+  # page a parameter
+  tb <- sheet_rows(x, "tables", id)
+  tb$output_id <- NULL
+  if (!nrow(tb)) tb[1L, ] <- NA
+  tb$cols[1L] <- paste(group, baseline, sep = " | ")
+  tb$rows[1L] <- "PARAMCD = PARAMCD"
+  tb$label[1L] <- "label = .label"
+  x <- set_sheet_rows(x, "tables", id, tb)
+  arms <- .group_order(subjects[subjects[[population]] %in% "Y", , drop = FALSE], group)
+  if (length(arms)) {
+    vr <- sheet_rows(x, "variables", id)
+    vr$output_id <- NULL
+    vr[nrow(vr) + 1L, ] <- NA
+    vr$variable[nrow(vr)] <- group
+    vr$levels[nrow(vr)] <- paste(arms, collapse = " | ")
+    x <- set_sheet_rows(x, "variables", id, vr)
+  }
+  x <- set_sheet_rows(x, "col_header", id, data.frame(
+    line = c("1", "1", "2", "2"), cols = c("row_label", ".values", "row_label", ".values"),
+    span = c(NA, group, NA, "each"),
+    text = c("Baseline:", "{col1}", "Worst after baseline", "{col}"),
+    stringsAsFactors = FALSE))
+  ly <- sheet_rows(x, "layout", id)
+  ly$output_id <- NULL
+  if (!nrow(ly)) ly[1L, ] <- NA
+  ly$group_page[1L] <- "TRUE"
+  # (the parameter heads its page)
+  ly$group_keep[1L] <- "TRUE"
+  # (the headings in the row-label column, not on rows of their own above
+  # it: those would each start a page of their own)
+  ly$stub_before[1L] <- "FALSE"
+  x <- set_sheet_rows(x, "layout", id, ly)
+  # a group a baseline (and a total): many narrow columns, at 8 points
+  x <- set_sheet_rows(x, "columns", id, data.frame(
+    column = c("row_label", ".values"), rel_width = c("20", "9"),
+    stringsAsFactors = FALSE))
+  x <- set_page_cell(x, "report", "table_font_size_half_points", id, "16")
+  x
+}
+
+# The categories of a shift table in the order it shows them: normal ranges
+# LOW, NORMAL, HIGH; grades by number; else by name
+.shift_levels <- function(v) {
+  u <- unique(v[!is.na(v) & nzchar(trimws(v))])
+  nr <- c("LOW", "NORMAL", "HIGH")
+  if (length(u) && all(toupper(u) %in% c(nr, "LOW LOW", "HIGH HIGH", "ABNORMAL"))) {
+    return(u[order(match(toupper(u), c("LOW LOW", "LOW", "NORMAL", "HIGH", "HIGH HIGH", "ABNORMAL")))])
+  }
+  .grade_levels(u)
+}
+
+# A grade's levels, mildest first: a factor's own, the usual severities
+# (MILD < MODERATE < SEVERE, LIFE THREATENING, FATAL), numbers by value,
+# else by name
+.grade_levels <- function(v) {
+  if (is.factor(v)) return(levels(droplevels(v)))
+  u <- unique(as.character(v[!is.na(v) & nzchar(trimws(as.character(v)))]))
+  sev <- c("MILD", "MODERATE", "SEVERE", "LIFE THREATENING", "FATAL", "DEATH")
+  if (length(u) && all(toupper(u) %in% sev)) return(u[order(match(toupper(u), sev))])
+  num <- suppressWarnings(as.numeric(sub("^[^0-9]*", "", u)))
+  if (length(u) && !anyNA(num)) return(u[order(num)])
+  sort(u)
+}
+
 # Does a report's ARD count the subjects per group (the N of the column
 # headers)?  An analysis of the group itself, not by anything, or a
 # total_n by the group.
@@ -308,9 +688,14 @@ first_table <- function(x, output_id, path, data, population, group,
   stacks[stacks] <- vapply(a$args[stacks], function(g)
     isTRUE(.stack_flags_of(g)$flags[[".by_stats"]]), NA)
   kw <- .method_kw(a$method)
+  # (a hierarchy counted of a denominator: its rows count the
+  # denominator's subjects per group too)
+  den <- if (is.null(a$denominator)) rep(NA_character_, nrow(a)) else a$denominator
+  hier <- kw %in% c("hierarchical", "cards::ard_stack_hierarchical") &
+    vapply(a$by, function(b) group %in% .split_bar(b), NA) & !is.na(den) & nzchar(den)
   any((kw %in% c("categorical", "subjects") & a$variables %in% group &
          is.na(a$by)) |
-        (kw %in% "total_n" & a$by %in% group) | stacks)
+        (kw %in% "total_n" & a$by %in% group) | stacks | hier)
 }
 
 #' Count the subjects per group for a report's column headers

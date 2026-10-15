@@ -33,7 +33,16 @@ variable's row labels in order) and their \code{templates}, \code{value}
 \code{digits} (each statistic the rows print: its decimals), \code{exceptions}
 (a variable's own: \code{variable}, \code{statistic}, \code{digits}), \code{cat_format} (\code{npct},
 \code{nNpct}, \code{n}), \code{pct_decimals}, \code{header} (\code{keep} or a name of
-\code{\link[=header_presets]{header_presets()}}).  \code{builder_write()}: the \code{tflplanner}.
+\code{\link[=header_presets]{header_presets()}}), and for a hierarchy table (SOC / PT) its
+\code{hierarchy} (the ARD's terms, outermost first), \code{row_keys} (the
+table's rows, outermost first: by default the ARD's other groups, then
+its hierarchy), \code{row_choices} (the keys it may take), \code{row_pages} (the
+outermost a page each), \code{sort} (each row key's
+order, outermost first -- \code{"alpha"} by name, or a code list's order;
+\code{"freq"} most frequent first, ties by name -- or \code{"own"}: an order of
+the sheets' own, left as it is) and \code{overall_label} (the "any event"
+row's name, \code{tables$overall_label}).  \code{builder_write()}: the
+\code{tflplanner}.
 }
 \description{
 \code{builder_read()} describes a report's summary table from its sheets (and

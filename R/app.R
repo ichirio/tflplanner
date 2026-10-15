@@ -8635,7 +8635,6 @@ app_server <- function(input, output, session, start) {
         t("This table has no ARD yet: the builder is built from it."), " ",
         .btn("fetch3", t("Preview this table's ARD"),
              class = "btn-sm btn-primary ms-1")),
-      hierarchy = t("This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Edit it in Details (sheets); the preview works."),
       NULL)
     if (is.null(msg)) return(pane_head(
       t("Table builder"),
@@ -8646,7 +8645,7 @@ app_server <- function(input, output, session, start) {
   output$builder_form <- shiny::renderUI({
     rv$bver
     rv$ard_ver
-    shiny::req(identical(builder_case(), "ok"))
+    shiny::req(builder_case() %in% c("ok", "hierarchy"))
     id <- current()
     m <- meta_of(id)
     st <- builder_read(shiny::isolate(rv$p), id, m)
@@ -8707,7 +8706,30 @@ app_server <- function(input, output, session, start) {
                                 st$key[1L])),
             .btn("b_add_n", t("Count them (then Preview)"),
                  class = "btn-sm btn-outline-primary py-0"))),
-      shiny::div(
+      if (length(st$hierarchy)) shiny::div(
+        class = "rp-b-card",
+        shiny::h6(t("Rows of the table")),
+        # the table's rows: the ARD's keys (its groups, its hierarchy),
+        # outermost first -- the layout is the table's; the ARD only
+        # offers them
+        shiny::selectizeInput(
+          bid("rowkeys"),
+          with_tip(t("Row variables (outermost first; drag)"),
+                   t("Row and column variables are the ARD's groups and hierarchy; to add one, add it to the analysis's by in step 1.")),
+          c(st$row_keys, setdiff(st$row_choices, st$row_keys)), selected = st$row_keys,
+          multiple = TRUE, width = "100%",
+          options = list(plugins = list("remove_button", "drag_drop"))),
+        shiny::uiOutput("b_rows_gap"),
+        if (length(st$row_keys) > 1L) shiny::checkboxInput(
+          bid("rowpages"), t("The outermost row variable a page each"), isTRUE(st$row_pages)),
+        shiny::textInput(bid("overall"), with_tip(t("The any-event row"),
+                                                  t("tables$overall_label; blank: no such row.")),
+                         value = st$overall_label %||% "", width = "18em",
+                         placeholder = "Any TEAE"),
+        shiny::h6(class = "mt-2", t("Order")),
+        hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
+                     total = .rows_for(p0, "tables", id)$total[1L])),
+      if (!length(st$hierarchy)) shiny::div(
         class = "rp-b-card",
         shiny::div(
           class = "d-flex flex-wrap align-items-baseline gap-2",
@@ -8808,6 +8830,85 @@ app_server <- function(input, output, session, start) {
                               value = st$pct_decimals, min = 0, max = 3,
                               width = "260px")),
         shiny::uiOutput(bid("warn"))))
+  })
+  # A hierarchy's order, one a term (outermost first): by name -- the code
+  # list's order when the report has one for it -- or most frequent first
+  # (an outer term by its own count), counted in every column together or
+  # in one (the Total, an arm).  An order of the sheets' own is said, with
+  # a way back to the card's.
+  hier_sort_ui <- function(st, coded, total = NA) {
+    n <- length(st$row_keys)
+    if (identical(st$sort, "own")) {
+      return(shiny::div(
+        class = "small",
+        t("Order: as the sheets say (tables$sort)."), " ",
+        shiny::actionLink("b_sort_reset", t("Use the card's order"))))
+    }
+    key <- st$key[1L]
+    col_now <- attr(st$sort, "col") %||% NA_character_
+    cols <- c(stats::setNames("", t("All columns together")),
+              if (!is.na(total) && nzchar(total)) stats::setNames(total, total),
+              stats::setNames(st$arms[[key]] %||% character(), st$arms[[key]] %||% character()))
+    shiny::tagList(
+      lapply(seq_len(n), function(i) {
+        v <- st$row_keys[i]
+        opt <- function(value, label) shiny::tags$option(
+          value = value, selected = if (identical(st$sort[i], value)) NA, label)
+        cl <- v %in% coded
+        shiny::div(
+          class = "d-flex align-items-center gap-2 mb-1",
+          shiny::span(class = "rp-b-var", style = "min-width: 9em;", v),
+          shiny::tags$select(
+            id = bid(paste0("sort", i)), class = "form-select form-select-sm",
+            style = "width: 22em;",
+            # (a code list is the order a factor sorts in: no name order
+            # beside it; a group of the ARD is not ordered by its count)
+            opt("alpha", if (cl) t("Code list's order") else t("By name")),
+            if (v %in% st$hierarchy) opt("freq", if (cl)
+              t("Most frequent first (ties in the code list's order)") else
+                t("Most frequent first (ties by name)"))))
+      }),
+      shiny::div(
+        class = "d-flex align-items-center gap-2 mb-1",
+        shiny::span(class = "small", style = "min-width: 9em;", t("Counted in")),
+        shiny::selectInput(bid("sort_col"), NULL, cols,
+                           selected = if (is.na(col_now)) "" else col_now, width = "22em")))
+  }
+  # a hierarchy level left out of the rows: this ARD cannot make that table
+  # (the level's rows would land in another's cells) -- said, with the way
+  # back and the way to step 1; nothing is written meanwhile
+  output$b_rows_gap <- shiny::renderUI({
+    bform_drawn()
+    st <- bform$st
+    shiny::req(length(st$hierarchy) > 0L)
+    rk <- input[[bid("rowkeys")]]
+    shiny::req(!is.null(rk))
+    miss <- setdiff(st$hierarchy, rk)
+    if (!length(miss)) return(NULL)
+    shiny::div(
+      class = "alert alert-warning py-1 px-2 small",
+      sprintf(t("Without %s this ARD cannot make the table (its rows would land in another level's cells)."),
+              paste(miss, collapse = ", ")), " ",
+      shiny::actionLink("b_rows_back", t("Put it back")), " \u00b7 ",
+      shiny::actionLink("b_rows_step1", t("Step 1's analysis")))
+  })
+  shiny::observeEvent(input$b_rows_back, {
+    shiny::updateSelectizeInput(session, bid("rowkeys"), selected = bform$st$row_keys)
+  })
+  shiny::observeEvent(input$b_rows_step1, go("ard"))
+  shiny::observeEvent(input$b_sort_reset, {
+    id <- bform$id
+    st <- bform$st
+    shiny::req(!is.null(id), length(st$hierarchy) > 0L)
+    n <- length(st$row_keys)
+    tb <- sheet_rows(rv$p, "tables", id)
+    tb$output_id <- NULL
+    tb$sort[1L] <- .hier_sort(c(rep("alpha", n - 1L), "freq"), hier = st$row_keys %in% st$hierarchy)
+    p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    rv$bver <- rv$bver + 1L
   })
   # The rows' variables as the code list of `variable`: each variable (the
   # value), the heading the table prints for it (the label) and its place
@@ -9066,7 +9167,7 @@ app_server <- function(input, output, session, start) {
   shiny::observe(builder_guard({
     bform_drawn()
     ks <- input[[bid("key")]]
-    shiny::req(identical(builder_case(), "ok"), length(ks) > 0L)
+    shiny::req(builder_case() %in% c("ok", "hierarchy"), length(ks) > 0L)
     n <- bform$n
     output[[paste0("b", n, "_arms_ui")]] <- shiny::renderUI(shiny::tagList(
       if (length(ks) > 1L) shiny::tagList(
@@ -9110,7 +9211,7 @@ app_server <- function(input, output, session, start) {
   shiny::observe(builder_guard({
     bform_drawn()
     ks <- input[[bid("key")]]
-    shiny::req(identical(builder_case(), "ok"), length(ks) > 0L)
+    shiny::req(builder_case() %in% c("ok", "hierarchy"), length(ks) > 0L)
     n <- bform$n
     id <- bform$id
     p0 <- shiny::isolate(rv$p)
@@ -9140,7 +9241,7 @@ app_server <- function(input, output, session, start) {
     on <- input[[bid("total_on")]]
     lbl <- input[[bid("total_label")]]
     pos <- input[[bid("total_pos")]]
-    shiny::req(!is.null(on), identical(builder_case(), "ok"))
+    shiny::req(!is.null(on), builder_case() %in% c("ok", "hierarchy"))
     id <- bform$id
     p0 <- shiny::isolate(rv$p)
     now <- total_now(p0, id)
@@ -9543,11 +9644,12 @@ app_server <- function(input, output, session, start) {
   })
   bstate <- shiny::reactive(builder_guard({
     bform_drawn()
-    shiny::req(identical(builder_case(), "ok"),
+    shiny::req(builder_case() %in% c("ok", "hierarchy"),
                identical(bform$id, current()))
     st <- bform$st
     get <- function(x) input[[bid(x)]]
-    vars <- get("vars")
+    hier <- length(st$hierarchy) > 0L
+    vars <- if (hier) st$variables$variable else get("vars")
     ks <- get("key")
     shiny::req(!is.null(vars), length(ks) > 0L,
                setequal(vars, st$variables$variable))
@@ -9611,14 +9713,47 @@ app_server <- function(input, output, session, start) {
            v <- get("hdr_n")
            if (nzchar(v)) v else NA_character_
          },
-         auto_levels = st$auto_levels)
+         auto_levels = st$auto_levels,
+         hierarchy = st$hierarchy,
+         row_keys = if (hier) {
+           rk <- get("rowkeys")
+           # a hierarchy level left out: not written (the card says why)
+           if (is.null(rk) || !length(rk) || !all(st$hierarchy %in% rk)) st$row_keys else rk
+         },
+         row_choices = st$row_choices,
+         row_pages = if (hier) {
+           pg <- get("rowpages")
+           if (is.null(pg)) st$row_pages else isTRUE(pg)
+         },
+         overall_label = if (hier) {
+           o <- get("overall")
+           if (is.null(o)) st$overall_label %||% NA_character_ else
+             if (nzchar(trimws(o))) trimws(o) else NA_character_
+         },
+         sort = if (hier) {
+           if (identical(st$sort, "own")) "own" else {
+             lv <- vapply(seq_along(st$row_keys), function(i)
+               get(paste0("sort", i)) %||% st$sort[i], "")
+             cc <- get("sort_col")
+             attr(lv, "col") <- if (is.null(cc)) attr(st$sort, "col") %||% NA_character_ else
+               if (nzchar(cc)) cc else NA_character_
+             lv
+           }
+         })
   }))
   bstate_d <- shiny::debounce(bstate, 400)
   shiny::observeEvent(bstate_d(), {
     st <- bstate_d()
     id <- bform$id
+    rows_new <- length(st$hierarchy) > 0L && !identical(st$row_keys, bform$last$row_keys)
     p2 <- guarded(builder_write(rv$p, id, st, was = bform$last))
     if (!is.null(p2)) bform$last <- st
+    if (!is.null(p2) && isTRUE(rows_new)) {
+      rv$p <- p2
+      rv$btouched <- TRUE
+      rv$bver <- rv$bver + 1L
+      return()
+    }
     if (!is.null(p2) && !identical(p2, rv$p)) {
       session$sendCustomMessage("builder-updating", TRUE)
       rv$p <- p2
@@ -10421,8 +10556,8 @@ app_server <- function(input, output, session, start) {
         "input.modal_type == 'table'",
         shiny::checkboxInput(
           "modal_first",
-          with_tip(t("Start from the data"),
-                   t("Start the table from the data (writes its ARD definition and opens the builder)")),
+          with_tip(t("Apply a template"),
+                   t("A kind of table: a few questions about the data, then its ARD definition and its table are written -- all of it editable afterwards.")),
           value = !nrow(rv$p$ard$analyses), width = "100%"),
         shiny::conditionalPanel("input.modal_first",
                                 shiny::uiOutput("modal_first_ui"))),
@@ -10547,19 +10682,49 @@ app_server <- function(input, output, session, start) {
     shiny::req(input$mf_data %in% first_files())
     guarded(read_data_head(file.path(rv$study$path, input$mf_data), n = Inf))
   })
+  # a hierarchical table's subject-level data: the study's ADSL
+  first_subjects_file <- shiny::reactive({
+    f <- first_files()
+    c(f[grepl("(^|/)adsl[.][^/]+$", f, ignore.case = TRUE)], NA_character_)[1L]
+  })
+  first_subjects <- shiny::reactive({
+    f <- first_subjects_file()
+    shiny::req(!is.na(f))
+    guarded(read_data_head(file.path(rv$study$path, f), n = Inf))
+  })
+  # the kind of table: a summary (variables as rows) or a hierarchy of terms
+  # (SOC / PT); chosen, never switched by the data
   output$modal_first_ui <- shiny::renderUI({
     f <- first_files()
     if (!length(f)) {
       return(shiny::div(class = "alert alert-warning py-1 small",
         t("No data files yet: put them on the Data tab (data/adam), then add the table.")))
     }
+    # the templates, one a line (more to come: AE overview, subgroups).  The
+    # shift table is hidden until the unified builder has its data stage
+    # (a dataset of the catalog, the parameters from the data, BNRIND /
+    # ANRIND checked): options(tflplanner.shift_template = TRUE) shows it
+    kinds <- c(summary = t("Summary table (demographics ...)"),
+               hierarchy = t("Hierarchical table (SOC / PT, ATC / drug ...)"))
+    if (isTRUE(getOption("tflplanner.shift_template", FALSE))) {
+      kinds <- c(kinds, shift = t("Shift table (baseline x worst after)"))
+    }
     shiny::tagList(
-      shiny::selectInput("mf_data", t("Data"), f,
-                         selected = c(grep("adsl", f, value = TRUE), f)[1L],
-                         width = "100%"),
+      shiny::radioButtons("mf_kind", NULL, stats::setNames(names(kinds), unname(kinds))),
+      shiny::uiOutput("mf_data_ui"),
       shiny::uiOutput("mf_cols"))
   })
+  output$mf_data_ui <- shiny::renderUI({
+    f <- first_files()
+    shiny::selectInput("mf_data", t("Data"), f,
+                       selected = c(grep(switch(input$mf_kind %||% "summary",
+                                                hierarchy = "adae", shift = "adlb", "adsl"),
+                                         f, value = TRUE), f)[1L],
+                       width = "100%")
+  })
   output$mf_cols <- shiny::renderUI({
+    if (identical(input$mf_kind, "hierarchy")) return(mf_hier_ui())
+    if (identical(input$mf_kind, "shift")) return(mf_shift_ui())
     d <- first_data()
     shiny::req(d)
     cols <- as.list(d)
@@ -10584,7 +10749,7 @@ app_server <- function(input, output, session, start) {
       shiny::checkboxInput("mf_stack", t("Run the analyses together (cards::ard_stack)"), TRUE),
       shiny::uiOutput("mf_stack_note"),
       shiny::p(class = "small text-muted",
-               t("Numbers get summary statistics; the others, counts and percents. Everything can be changed afterwards (steps 1 and 2).")))
+               t("Numbers get summary statistics; the others, counts and percents.")))
   })
   # a subject of the analysis set with no group: ard_stack() leaves them
   # out, so the wizard makes the analyses one by one -- said before
@@ -10598,14 +10763,160 @@ app_server <- function(input, output, session, start) {
       shiny::div(class = "alert alert-warning py-1 small", sprintf(
         t("%d subjects of the population have no %s: ard_stack does not count them, so the analyses are made one by one."),
         n, input$mf_group))
-    } else {
-      shiny::p(class = "small text-muted mt-n2",
-               t("One call computes the rows and the subjects per group (the column headers' N)."))
     }
+  })
+  # a hierarchical table: the analysis set (of ADSL), the group, the terms,
+  # the records counted, a Total column
+  mf_hier_ui <- function() {
+    d <- first_data()
+    shiny::req(d)
+    sl <- first_subjects_file()
+    if (is.na(sl)) {
+      return(shiny::div(class = "alert alert-warning py-1 small",
+        t("A hierarchical table counts the subjects of an analysis set: put the subject-level data (adsl) on the Data tab.")))
+    }
+    a <- first_subjects()
+    shiny::req(a)
+    cols <- as.list(d)
+    fl <- grep("FL$", names(a), value = TRUE)
+    grp <- intersect(.group_choices(cols), names(a))
+    terms <- names(cols)[vapply(cols, function(v) is.character(v) || is.factor(v), NA)]
+    # (the selected keep the choices' order: the usual terms first, outermost
+    # first)
+    usual <- intersect(c("AEBODSYS", "AEDECOD"), terms)
+    terms <- c(usual, setdiff(terms, usual))
+    shiny::tagList(
+      shiny::selectInput("mf_pop", t("Population (its flag = \"Y\")"),
+                         .labelled(fl, as.list(a)),
+                         selected = c(intersect(c("SAFFL", "ITTFL", "FASFL"), fl), fl)[1L],
+                         width = "100%"),
+      shiny::selectInput("mf_group", t("Group (the columns)"), grp,
+                         selected = c(intersect(c("TRT01A", "TRT01P", "ARM"), grp), grp)[1L],
+                         width = "100%"),
+      shiny::selectizeInput(
+        "mf_hier", t("Hierarchy (outermost first)"), .labelled(terms, cols),
+        selected = usual,
+        multiple = TRUE, width = "100%",
+        options = list(plugins = list("remove_button", "drag_drop"))),
+      shiny::textInput("mf_where", t("Records counted (R; blank: all)"),
+                       value = if ("TRTEMFL" %in% names(cols)) "TRTEMFL == \"Y\"" else "",
+                       width = "100%"),
+      # by severity or grade too: the usual names first
+      shiny::selectInput(
+        "mf_grade", with_tip(t("By severity / grade (columns)"),
+                             t("Each subject counted once, at the worst: the grade's levels in order (a code list); each level's row, the worst within that level.")),
+        c(stats::setNames("", t("(none)")),
+          c(intersect(c("AESEV", "ASEV", "AETOXGR", "ATOXGR"), terms),
+            setdiff(terms, c("AESEV", "ASEV", "AETOXGR", "ATOXGR")))),
+        width = "100%"),
+      shiny::conditionalPanel(
+        "!input.mf_grade",
+        shiny::checkboxInput("mf_total", t("Total column"), FALSE)),
+      shiny::p(class = "small text-muted",
+               sprintf(t("Subjects counted once at each level, percents of the population's subjects in %s; most frequent first."),
+                       sl)))
+  }
+  # a shift table: the analysis set (of ADSL), the group, the parameters
+  # (a page each), the baseline and the post-baseline category, which
+  # records count, the worst order, a Total column
+  mf_shift_ui <- function() {
+    d <- first_data()
+    shiny::req(d)
+    sl <- first_subjects_file()
+    if (is.na(sl)) {
+      return(shiny::div(class = "alert alert-warning py-1 small",
+        t("A shift table counts the subjects of an analysis set: put the subject-level data (adsl) on the Data tab.")))
+    }
+    if (!"PARAMCD" %in% names(d)) {
+      return(shiny::div(class = "alert alert-warning py-1 small",
+        t("A shift table reads a data with parameters (PARAMCD): choose one (adlb).")))
+    }
+    a <- first_subjects()
+    shiny::req(a)
+    cols <- as.list(d)
+    fl <- grep("FL$", names(a), value = TRUE)
+    grp <- intersect(.group_choices(cols), names(a))
+    ch <- names(cols)[vapply(cols, function(v) is.character(v) || is.factor(v), NA)]
+    first_of <- function(usual) c(intersect(usual, ch), setdiff(ch, usual))
+    pc <- sort(unique(as.character(d$PARAMCD[!is.na(d$PARAMCD)])))
+    shiny::tagList(
+      shiny::selectInput("mf_pop", t("Population (its flag = \"Y\")"),
+                         .labelled(fl, as.list(a)),
+                         selected = c(intersect(c("SAFFL", "ITTFL", "FASFL"), fl), fl)[1L],
+                         width = "100%"),
+      shiny::selectInput("mf_group", t("Group (the columns)"), grp,
+                         selected = c(intersect(c("TRT01A", "TRTA", "TRT01P", "ARM"), grp), grp)[1L],
+                         width = "100%"),
+      shiny::selectizeInput("mf_params", t("Parameters (a page each)"), pc,
+                            selected = pc[seq_len(min(2L, length(pc)))], multiple = TRUE,
+                            width = "100%", options = list(plugins = list("remove_button"))),
+      shiny::div(
+        class = "d-flex gap-2",
+        shiny::selectInput("mf_base", t("Baseline category"), first_of(c("BNRIND", "BTOXGR")),
+                           width = "50%"),
+        shiny::selectInput("mf_post", t("Category after baseline"), first_of(c("ANRIND", "ATOXGR")),
+                           width = "50%")),
+      shiny::textInput("mf_where", t("Records counted (R; blank: all)"),
+                       value = if ("ONTRTFL" %in% names(cols)) "ONTRTFL == \"Y\"" else "",
+                       width = "100%"),
+      shiny::uiOutput("mf_worst_ui"),
+      shiny::checkboxInput("mf_total", t("Total column"), TRUE),
+      shiny::p(class = "small text-muted",
+               t("Each subject once a parameter, at the worst category after baseline; percents of each column's subjects.")))
+  }
+  # the worst order: the post-baseline categories from best to worst
+  output$mf_worst_ui <- shiny::renderUI({
+    d <- first_data()
+    shiny::req(d, input$mf_post %in% names(d))
+    v <- as.character(d[[input$mf_post]])
+    shown <- .shift_levels(v)
+    w <- if (all(c("LOW", "NORMAL", "HIGH") %in% toupper(shown))) {
+      c(shown[toupper(shown) == "NORMAL"], setdiff(shown, shown[toupper(shown) == "NORMAL"]))
+    } else shown
+    shiny::textInput("mf_worst", with_tip(t("Worst: from best to worst"),
+                                          t("A subject's record of a parameter after baseline is the last of these it has; | between them.")),
+                     value = paste(w, collapse = " | "), width = "100%")
   })
   start_first_table <- function(id, desc) {
     d <- first_data()
     if (is.null(d)) return(notify(t("Choose the data"), "warning"))
+    if (identical(input$mf_kind, "shift")) {
+      a <- first_subjects()
+      if (is.null(a)) return(notify(t("Choose the data"), "warning"))
+      worst <- trimws(strsplit(input$mf_worst %||% "", "|", fixed = TRUE)[[1L]])
+      p2 <- guarded(first_shift_table(
+        rv$p, id, input$mf_data, d, first_subjects_file(), a,
+        population = input$mf_pop, group = input$mf_group, params = input$mf_params,
+        baseline = input$mf_base, post = input$mf_post,
+        worst = if (length(worst[nzchar(worst)])) worst[nzchar(worst)],
+        where = input$mf_where %||% NA_character_,
+        total = if (isTRUE(input$mf_total)) "Total" else NA_character_,
+        description = desc))
+      if (is.null(p2)) return()
+      after_id_change(p2, id)
+      go("tables")
+      bslib::nav_select("table_right", "result")
+      do_preview(id)
+      return()
+    }
+    if (identical(input$mf_kind, "hierarchy")) {
+      a <- first_subjects()
+      if (is.null(a)) return(notify(t("Choose the data"), "warning"))
+      p2 <- guarded(first_hierarchy_table(
+        rv$p, id, input$mf_data, d, first_subjects_file(), a,
+        population = input$mf_pop, group = input$mf_group,
+        hierarchy = input$mf_hier, where = input$mf_where %||% NA_character_,
+        grade = input$mf_grade %||% NA_character_,
+        total = if (isTRUE(input$mf_total) && !nzchar(input$mf_grade %||% "")) "Total" else
+          NA_character_,
+        description = desc))
+      if (is.null(p2)) return()
+      after_id_change(p2, id)
+      go("tables")
+      bslib::nav_select("table_right", "result")
+      do_preview(id)
+      return()
+    }
     p2 <- guarded(first_table(rv$p, id, input$mf_data, d,
                               population = input$mf_pop,
                               group = input$mf_group,

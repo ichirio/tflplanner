@@ -1,5 +1,91 @@
 # tflplanner (development version)
 
+- **The shift table returns with the unified builder** (#378, 0.0.2.9224).  Its template is
+  hidden from the list for now (`options(tflplanner.shift_template = TRUE)`
+  shows it): it is to choose its data among the study's datasets, its
+  parameters from the data, and to check BNRIND / ANRIND first.
+
+- **A hierarchy table's rows are the table's** (#375, 0.0.2.9224; the user's principle: the
+  ARD's variables are defaults; the layout belongs to the content step).
+  The builder's "Rows" card mirrors "Columns": the row variables,
+  outermost first, among the ARD's groups and hierarchy (by default its
+  other groups, then the hierarchy; drag to reorder; a group of the ARD
+  -- a stratum -- outermost), written to `tables$rows` / `tables$label`
+  only, never to the ARD's analysis; the outermost a page each
+  (`layout$group_page`); "The any-event row" (`tables$overall_label`);
+  and "Order", one a row variable: by name, or the code list's order when
+  it has one (a factor sorts by its levels), or most frequent first with
+  the tie in the choice ("ties by name" / "ties in the code list's
+  order"; a stratum is not ordered by its count), "Counted in" beside
+  them.  A stratum comes before the any-event row and has no summary row
+  of its own.  A hierarchy level left out is not written: the card says
+  this ARD cannot make that table, with "Put it back" and a link to step
+  1's analysis.
+
+- **A shift table started from the data** (#378, 0.0.2.9224; core
+  gap #2 as corrected: tflspec's LB example shows the engine does it).
+  "Apply a template" has a third kind, Shift (baseline x worst after):
+  the data (ADLB), the population (ADSL), the group, the parameters (a page
+  each), the baseline and the post-baseline category (BNRIND / ANRIND,
+  BTOXGR / ATOXGR), the records counted (`ONTRTFL == "Y"`), the worst
+  order (best to worst; normal ranges NORMAL, LOW, HIGH) and a Total
+  column.  `first_shift_table()` writes each subject's worst record of a
+  parameter (an analysis data of R of its own), one categorical analysis
+  by parameter, group and baseline -- with a Total, over the records and
+  the same again as the total, so no column is stated twice -- the
+  categories' code lists, and a table with each group over its baselines,
+  the parameter heading its page, at 8 points.  The header prints no N:
+  a group's subjects differ from one parameter's page to the next, and a
+  header's {n} is one number a column.
+
+- **SOC / PT by worst severity or grade, from the data** (#376,
+  0.0.2.9224; core gap #2 as corrected: the engine does it, the GUI did
+  not).  The hierarchy starter has an optional "By severity / grade
+  (columns)" (AESEV, ATOXGR ...): the grade joins the analysis's `by` and
+  the table's columns, under each group with its N, and its levels are
+  written in order as the report's code list -- cards counts each subject
+  once, at the last level it has, so at its worst: of the SOC for the SOC
+  row, of the PT for the PT row.  Not with a Total column (it would
+  drop the grade too).  `first_hierarchy_table(grade = )`.
+
+- **The table builder edits a hierarchy table (SOC / PT)** (#375,
+  0.0.2.9224).  It used to send such a table to the sheets (Details).  It
+  now opens with what such a table has: its columns (the variable, the
+  arms' order, Total), its column header, its statistics (n (%) and the
+  decimals), and a Rows card of its own: the order of each term (the
+  user's request: rules are set per level) -- by name (the code list's
+  order when the report has one for it) or most frequent first, ties by
+  name -- written as `tables$sort`.  An order of the sheets' own shows as
+  such, with a link back to the card's (SOC by name, PT most frequent
+  first).  An outer term most frequent first is its own row's count
+  (`-n@group1`), and "Counted in" says whose count: every column
+  together, the Total column or one arm (`-n[Total]`; rtfreporter >=
+  0.8.2.9046, #624).  The card also names the "any event" row (the
+  table's `overall_label`, #379; blank: no such row).  The starter writes
+  the same per-level order, and its "Any TEAE" in `overall_label` rather
+  than a rework line of its own.  A summary
+  table's rows are never written into it, and a hierarchy counted of a
+  denominator has the subjects per group of its header.  (The "Any TEAE"
+  row's name follows once `tables$overall_label` is on main.)
+
+- **A hierarchical table started from the data** (#374, 0.0.2.9224; the
+  user's decision after the template evaluation, dev-rep #5).  A
+  table's "Start from the data" in Add a report is "Apply a template"
+  now (the user's choice; the figure designer's word), a list of kinds:
+  a summary table (demographics ...) as before, or a hierarchical table
+  (SOC / PT, ATC / drug ... -- its terms are chosen).  The kind is
+  chosen, never switched by the data.  The hierarchy asks the data (ADAE),
+  the population flag (of ADSL), the group, the terms (AEBODSYS | AEDECOD;
+  CMCLAS | CMDECOD for medications), the records counted (`TRTEMFL ==
+  "Y"`) and a Total column, and writes what a table made by hand has
+  (`first_hierarchy_table()`): the analysis set and its subjects
+  (`adsl_saf`), the records kept to them (`adae_saf`), one hierarchical
+  analysis (`over_variables = TRUE`, percents of the set's subjects), the
+  table (most frequent first within each group), the SOC / PT column
+  header and a page that does not split a group -- the rows of the
+  sample's T-14-3-1.  Before, choosing ADAE in "Start from the data" wrote
+  a summary of its columns, and a first SOC / PT table took seven screens.
+
 - **The study tab: Title, Short title, Study ID; no veil while a field is
   edited** (#386, 0.0.2.9223; the user's request).  The "Protocol" box was
   a second copy of the Study ID, and "protocol" usually means the long

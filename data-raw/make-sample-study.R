@@ -187,6 +187,7 @@ sheets <- list(
     list(output_id = "T-14-3-1", cols = "TRT01A", rows = "group1 = AEBODSYS",
          label = "label = AEDECOD",
          sort = ".overall | group1 | .depth | -n | label",
+         overall_label = "Any TEAE",
          note = "TEAE by SOC / PT, frequency descending")),
   variables = tbl(
     list(output_id = "T-14-1-1", variable = "AGE", label = "Age (years)",
@@ -903,10 +904,9 @@ process <- list(
     "is_time <- data$variable == \"time\"",
     "data$.label[data$variable == \"prob\"] <- \"Median (95% CI)\"",
     "data$.label[is_time] <- paste(\"Day\", as.character(data$variable_level[is_time]))",
-    "data <- data[!(is_time & as.character(data$variable_level) == \"0\"), ]"),
-  "T-14-3-1" = c(
-    "data <- normalize_ard(ard, hierarchy = c(\"AEBODSYS\", \"AEDECOD\"),",
-    "                      overall = \"Any TEAE\")"))
+    "data <- data[!(is_time & as.character(data$variable_level) == \"0\"), ]"))
+# (T-14-3-1 reads its ARD as a hierarchy with its "Any TEAE" row from its
+# definitions: tables$overall_label, tflspec::tfl_normalize_code())
 for (o in names(desc)) {
   p <- add_output(p, o, description = desc[[o]],
                   process_code = if (!is.null(process[[o]]))

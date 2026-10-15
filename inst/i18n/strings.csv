@@ -744,7 +744,6 @@ This table has no ARD yet: the builder is built from it.,この表にはまだ A
 No data to show yet: Preview this table's ARD.,表示するデータがまだありません。この表の ARD をプレビューしてください。
 Nothing yet: the button above makes this table's ARD.,まだありません。上のボタンでこの表の ARD を作ります。
 Preview this table's ARD first.,先にこの表の ARD をプレビューしてください。
-Start the table from the data (writes its ARD definition and opens the builder),データから表を始める（ARD の定義を書き、ビルダーを開きます）
 "No data files yet: put them on the Data tab (data/adam), then add the table.",データファイルがまだありません。「データ」タブに置いて（data/adam）から、表を追加してください。
 numbers,数値
 counts,度数
@@ -3102,6 +3101,43 @@ It leaves `content`. The rules: at the top of this step.,`content` を残しま�
 "The report's own code for its content step, instead of the definition: R that leaves content -- a table plan, a data frame, rtftable pages, a ggplot or rtfplot figure, or a list of them -- for the report step to dress. Blank: the definition makes the content.",内容の手順を定義の代わりに作る帳票自身のコード: content（表の plan、データフレーム、rtftable のページ、ggplot か rtfplot の図、またはそれらのリスト）を残す R。ページと出力の手順がそれを整えます。空欄: 定義が内容を作る。
  (its own size),（図そのもの）
 Its own size,図そのものの大きさ
+Hierarchy (outermost first),階層（外側から順に）
+Records counted (R; blank: all),数えるレコード（R 式、空欄 = すべて）
+A hierarchical table counts the subjects of an analysis set: put the subject-level data (adsl) on the Data tab.,階層表は解析対象集団の被験者を数えます。被験者単位のデータ（adsl）をデータタブに置いてください。
+By name,名前順
+Code list's order,コードリストの順
+Order: as the sheets say (tables$sort).,並び順: シートのとおり（tables$sort）。
+Use the card's order,カードの並び順にする
+By severity / grade (columns),重症度・Grade 別（列）
+A shift table reads a data with parameters (PARAMCD): choose one (adlb).,シフト表はパラメータ（PARAMCD）を持つデータを読みます。そのデータ（adlb）を選んでください。
+Parameters (a page each),パラメータ（それぞれ 1 ページ）
+Baseline category,ベースラインの区分
+Category after baseline,ベースライン後の区分
+Worst: from best to worst,最悪の決め方: よい → 悪い の順
+A subject's record of a parameter after baseline is the last of these it has; | between them.,被験者のパラメータごとの投与後の記録は、この並びで最も後ろのものを取ります。| で区切ります。
+All columns together,全列の合計
+Counted in,数える列
+The any-event row,全体の行
+"A kind of table: a few questions about the data, then its ARD definition and its table are written -- all of it editable afterwards.",表の種類とデータについて数問答えると、ARD 定義と表が書かれます。後から編集できます。
+Summary table (demographics ...),要約表（人口統計など）
+"Hierarchical table (SOC / PT, ATC / drug ...)",階層表（SOC / PT、ATC / 薬剤 など）
+Shift table (baseline x worst after),シフト表（ベースライン × ベースライン後の最悪）
+"Each subject counted once, at the worst: the grade's levels in order (a code list); each level's row, the worst within that level.",被験者は最悪の重症度・Grade で 1 回だけ数えます（並び順はコードリスト）。各階層の行は、その階層の中での最悪です。
+"Numbers get summary statistics; the others, counts and percents.",数値は要約統計量、それ以外は度数と割合になります。
+"Subjects counted once at each level, percents of the population's subjects in %s; most frequent first.",各階層で被験者を 1 回ずつ数え、割合は %s の集団の被験者数に対してです。多い順に並びます。
+"Each subject once a parameter, at the worst category after baseline; percents of each column's subjects.",被験者はパラメータごとに 1 回、ベースライン後の最悪の区分で数えます。割合は各列の被験者数に対してです。
+A shift table counts the subjects of an analysis set: put the subject-level data (adsl) on the Data tab.,シフト表は解析対象集団の被験者を数えます。被験者単位のデータ（adsl）をデータタブに置いてください。
+Row variables (outermost first; drag),行の変数（外側から。ドラッグで並べ替え）
+"Row and column variables are the ARD's groups and hierarchy; to add one, add it to the analysis's by in step 1.",行と列に使える変数は ARD の群（by）と階層です。増やすには手順 1 で解析の by に足します。
+The outermost row variable a page each,いちばん外側の行の変数ごとにページを分ける
+tables$overall_label; blank: no such row.,tables$overall_label。空欄 = この行なし。
+Order,並び順
+Most frequent first (ties by name),多い順（同数は名前順）
+Most frequent first (ties in the code list's order),多い順（同数はコードリストの順）
+Without %s this ARD cannot make the table (its rows would land in another level's cells).,%s を外した表は、この ARD では作れません（行が別の階層のセルに重なります）。
+Put it back,戻す
+Step 1's analysis,手順 1 の解析へ
+Rows of the table,行
 %s goes on after tflplanner closes; open the study again to see how it went (Runs).,%sは tflplanner を閉じても続きます。結果は試験をもう一度開くと見られます（実行）。
 the official run (started %s),正式実行（%s 開始）
 The official run of %s is going on (started %s).,%s の正式実行が動いています（%s 開始）。
