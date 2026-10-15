@@ -453,3 +453,15 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
          title = t(.report_state_words[[k]]), mark = .report_state_marks[[k]])
   })
 }
+
+# The row of the data a double click on a table's k-th row shown means: the
+# tables are drawn on the server (DT's default), so the browser knows only
+# the rows it shows -- the k-th of those, filtered by a search -- and DT's
+# `<id>_rows_current` says which rows of the data they are, in order
+.dt_row_shown <- function(k, current) {
+  if (is.null(k) || !length(k) || is.na(k[1L])) return(NA_integer_)
+  k <- as.integer(k[1L])
+  if (length(current) && k >= 1L && k <= length(current)) return(as.integer(current[k]))
+  # (no rows_current yet: the rows shown are the data's)
+  k
+}

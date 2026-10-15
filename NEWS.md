@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **A double click on a filtered list opens the row double-clicked** (#398,
+  0.0.2.9226; the user's report).  The report list filtered to Figure opened
+  the third report of the whole list for the third figure: the lists are
+  drawn on the server, so the browser's row number is the row's place among
+  those shown; it is now read through the rows shown.  The study list (its
+  search over ten studies) the same.
+
 - **A study's definition is tflspec's YAML spec** (#395, 0.0.2.9225; the
   user's decision of 2026-10-15).  `study.yml` and `spec/` -- `data.yml`
   (the data catalog), `defaults.yml` (what every report has), `toc.yml`
