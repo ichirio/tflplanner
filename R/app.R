@@ -824,6 +824,8 @@ app_ui <- function(lang = "en") {
                               "}, true);"))),
                             shiny::tags$script(shiny::HTML(.split_js)),
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
+                            shiny::tags$style(shiny::HTML(.builder_cards_css)),
+                            shiny::tags$script(shiny::HTML(.builder_cards_js)),
                             shiny::tags$style(shiny::HTML(.study_section_css)),
                             shiny::tags$script(shiny::HTML(.study_section_js)),
                             shiny::tags$style(shiny::HTML(.help_tip_css)),

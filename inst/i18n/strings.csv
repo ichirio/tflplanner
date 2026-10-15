@@ -3191,3 +3191,19 @@ Puts the whole list in the order of the numbers in the ids (T-14-1-2 before T-14
 "Filter the reports (ID, description)",帳票を絞り込む（ID・説明）
 Tick the shown,表示中をチェック
 Untick the shown,表示中のチェックを外す
+Required,必須
+On or off: off writes nothing,オン／オフ: オフなら書きません
+Revert,戻す
+Open or close,開く／閉じる
+Move up,上へ
+Move down,下へ
+Duplicate,複製
+Edit as R,R で編集
+More,その他
+As R,R で
+Choose,選択
+"A column of the data, or a constant value",データの列か、定数の値か
+Other arguments,ほかの引数
+Search arguments,引数を検索
+Study default,試験の既定
+Add an item (type a function name),項目を追加（関数名を入力）
