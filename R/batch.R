@@ -59,15 +59,16 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
     tflspec::tfl_ard_spec_hash(structure(spec, class = "tfl_ard_spec"), id, dir = root,
                                codelists = .study_codelists(x)),
     error = function(e) ""), "")
-  wb <- function(f) file.path(lay[["spec"]], f)
+  # (the definition: the YAML spec's files)
+  spec_files <- setdiff(.spec_files_yaml(root), .study_file)
   support <- list(
     ard = c(file.path(lay[["programs_ard"]], c(.ard_setup_file,
                                                .ard_autoexec_file)),
-            wb(.ard_file)),
+            spec_files),
     tfl = c(file.path(lay[["programs_tfl"]], c("autoexec_report.R",
                                                .fig_setup_file,
                                                .report_setup_file)),
-            wb(c(.table_file, .report_file, .lf_file, .ard_file))),
+            spec_files),
     all = c(file.path("programs", c(.batch_file, .autoexec_all_file,
                                     .study_helpers_file)),
             .study_setup_path(), .study_file))

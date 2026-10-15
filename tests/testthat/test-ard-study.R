@@ -59,9 +59,12 @@ test_that("the definition is saved, reopened and run", {
   local_home2()
   s <- create_study("A1", planner = ard_planner())
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
-  # no workbook: the ARD definition's copy in the folder, and the programs
+  # no workbook: the ARD definition in the report's YAML file, the catalog
+  # in data.yml, and the programs
   expect_false(file.exists(file.path(s$path, "spec", "ard_spec.xlsx")))
-  expect_true(file.exists(file.path(s$path, "spec", "ard_definition.json")))
+  expect_false(file.exists(file.path(s$path, "spec", "ard_definition.json")))
+  expect_true(file.exists(file.path(s$path, "spec", "data.yml")))
+  expect_false(is.null(tflspec::tfl_read_output(file.path(s$path, "spec", "outputs", "DM.yml"))$ard))
   for (f in c("ard_setup.R", "DM.R", "autoexec_ard.R")) {
     expect_true(file.exists(file.path(s$path, "programs", "ard", f)))
   }

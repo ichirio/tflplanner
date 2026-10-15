@@ -82,35 +82,36 @@ test_that("a save gives the study anew: whether one is open does not change", {
   })
 })
 
-test_that("a save writes only the workbook whose half changed", {
+test_that("a save writes only the files of the YAML spec whose text changed", {
   local_home()
   p <- add_output(new_planner(), "T1", type = "table", description = "one")
+  p <- add_output(p, "T2", type = "table", description = "two")
   s <- create_study("BK", planner = p)
   spec <- file.path(s$path, study_layout()[["spec"]])
-  tf <- file.path(spec, "table_spec.xlsx")
-  rf <- file.path(spec, "report_spec.xlsx")
-  md5 <- function() unname(tools::md5sum(c(tf, rf)))
+  t1 <- file.path(spec, "outputs", "T1.yml")
+  t2 <- file.path(spec, "outputs", "T2.yml")
+  md5 <- function() unname(tools::md5sum(c(t1, t2)))
   m0 <- md5()
-  # a table's cell: the table workbook only
+  # a table's cell of T1: its file only
   s$planner <- set_sheet_rows(s$planner, "tables", "T1",
                               data.frame(cols = "TRT01A", label = "Edited"))
   s <- save_study(s)
   m1 <- md5()
   expect_false(identical(m1[1], m0[1]))
   expect_identical(m1[2], m0[2])
-  expect_identical(s$files$status[match(c(tf, rf), s$files$file)],
+  expect_identical(s$files$status[match(c(t1, t2), s$files$file)],
                    c("written", "unchanged"))
-  # a title: the report workbook only
-  s$planner <- set_sheet_rows(s$planner, "titles", "T1",
+  # a title of T2: its file only
+  s$planner <- set_sheet_rows(s$planner, "titles", "T2",
                               data.frame(line = "1", center = "A title"))
   s <- save_study(s)
   m2 <- md5()
   expect_identical(m2[1], m1[1])
   expect_false(identical(m2[2], m1[2]))
   # what was written reads back as the definition
-  back <- read_planner(c(tf, rf))
+  back <- .planner_from_yaml(s$path)
   expect_identical(sheet_rows(back, "tables", "T1")$label, "Edited")
-  expect_identical(sheet_rows(back, "titles", "T1")$center, "A title")
+  expect_identical(sheet_rows(back, "titles", "T2")$center, "A title")
 })
 
 test_that("a program's checksum is the same however often it is worked out", {

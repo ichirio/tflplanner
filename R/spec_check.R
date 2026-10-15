@@ -45,16 +45,21 @@
   if (length(acc)) last else NULL
 }
 
-# Which file a sheet's cells are in (the ARD definition: its JSON, or the
-# workbook it was read from)
-.sheet_file <- function(part, sheet, ard_file = .ard_json) {
+# Which file of the YAML spec a sheet's cells are in: a report's own file
+# (spec/outputs/<id>.yml), the data catalog's (spec/data.yml) or the study
+# defaults' (spec/defaults.yml)
+.sheet_file <- function(part, sheet, ard_file = NULL, output_id = NA_character_) {
   sp <- study_layout()[["spec"]]
-  if (part == "ard") return(file.path(sp, ard_file))
-  if (part == "lf") return(file.path(sp, .lf_file))
-  if (part == "outputs" || sheet %in% report_sheets()) {
-    return(file.path(sp, .report_file))
+  if (identical(part, "outputs") && identical(sheet, "(setup)")) return(.study_file)
+  if (identical(part, "ard") && sheet %in% c("datasets", "populations", "study")) {
+    return(file.path(sp, "data.yml"))
   }
-  file.path(sp, .table_file)
+  if (length(output_id) == 1L && !is.na(output_id) && nzchar(output_id)) {
+    return(file.path(sp, "outputs", paste0(output_id, ".yml")))
+  }
+  # (the ARD definition as a whole: the catalog's file)
+  if (identical(part, "ard")) return(file.path(sp, "data.yml"))
+  file.path(sp, "defaults.yml")
 }
 
 .problem_rows <- function(file, sheet, row, column, message,
@@ -89,7 +94,8 @@
       if (is.null(msg)) next
       sheet <- if (cc$part == "outputs") .planner_sheet else cc$sheet
       out <- rbind(out, .problem_rows(
-        .sheet_file(cc$part, cc$sheet, ard_file), sheet,
+        .sheet_file(cc$part, cc$sheet, ard_file,
+                    if ("output_id" %in% names(d)) d$output_id[r] else NA_character_), sheet,
         # the row as a spreadsheet shows it (the header is row 1); the
         # JSON's row, its place in the sheet
         if (cc$part == "ard" && ard_file == .ard_json) r else r + 1L, cc$column,
@@ -99,7 +105,7 @@
   if (!is.na(p$setup %||% NA)) {
     msg <- .parse_problem(p$setup, "program")
     if (!is.null(msg)) out <- rbind(out, .problem_rows(
-      .sheet_file("outputs", ""), .planner_sheet, "(setup)", "data_code",
+      .sheet_file("outputs", "(setup)"), .planner_sheet, "(setup)", "data_code",
       paste("R cannot read it:", trimws(msg))))
   }
   out
@@ -108,7 +114,7 @@
 # A figure design's R pieces (data_code, layer_code, a derive or filter
 # expression, an `!r` value), parsed, and tflspec's check of the design
 .check_fig <- function(id, d) {
-  f <- file.path(study_layout()[["spec"]], .fig_design_dir, paste0(id, ".yml"))
+  f <- file.path(study_layout()[["spec"]], "outputs", paste0(id, ".yml"))
   out <- .problem_rows(character(), character(), character(), character(),
                        character())
   walk <- function(x, path) {
@@ -150,8 +156,8 @@
     if (is.null(pr) || !nrow(pr)) next
     # the source: the report sheet's; a piece: the design's file
     out <- rbind(out, .problem_rows(
-      ifelse(pr$part == "ard", .sheet_file("report", ""),
-             file.path(study_layout()[["spec"]], .fig_design_dir, paste0(id, ".yml"))),
+      ifelse(pr$part == "ard", .sheet_file("report", "", output_id = id),
+             file.path(study_layout()[["spec"]], "outputs", paste0(id, ".yml"))),
       ifelse(pr$part == "ard", "report", ""), "",
       ifelse(pr$part == "ard", "ard_source", paste(pr$part, pr$field)),
       paste0(id, ": ", pr$problem), pr$severity))
@@ -178,24 +184,24 @@
     code <- tryCatch(program_code(p, id), error = function(e) e)
     if (inherits(code, "error")) {
       # (the report named in the message: the row and column are a cell's)
-      out <- rbind(out, .problem_rows(.sheet_file("outputs", ""), "", "", "",
+      out <- rbind(out, .problem_rows(.sheet_file("outputs", "", output_id = id), "", "", "",
         paste0(id, ": the report's program cannot be written: ", conditionMessage(code))))
     } else {
       msg <- .parse_problem(paste(code, collapse = "\n"), "program")
       if (!is.null(msg)) out <- rbind(out, .problem_rows(
-        .sheet_file("outputs", ""), "", "", "",
+        .sheet_file("outputs", "", output_id = id), "", "", "",
         paste0(id, ": the report's program does not read as R: ", trimws(msg))))
     }
     if (!is.null(spec) && id %in% a$analyses$output_id) {
       code <- tryCatch(ard_program_code(spec, id, codelists = .study_codelists(p)),
                        error = function(e) e)
       if (inherits(code, "error")) {
-        out <- rbind(out, .problem_rows(.sheet_file("ard", "", ard_file), "analyses", "", "",
+        out <- rbind(out, .problem_rows(.sheet_file("ard", "", ard_file, id), "analyses", "", "",
           paste0(id, ": the ARD program cannot be written: ", conditionMessage(code))))
       } else {
         msg <- .parse_problem(paste(code, collapse = "\n"), "program")
         if (!is.null(msg)) out <- rbind(out, .problem_rows(
-          .sheet_file("ard", "", ard_file), "analyses", "", "",
+          .sheet_file("ard", "", ard_file, id), "analyses", "", "",
           paste0(id, ": the ARD program does not read as R: ", trimws(msg))))
       }
     }

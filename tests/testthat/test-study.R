@@ -54,7 +54,7 @@ test_that("a new study has its layout and is registered", {
   for (d in study_layout()) expect_true(dir.exists(file.path(s$path, d)))
   expect_true(file.exists(file.path(s$path, "study.yml")))
   expect_true(file.exists(file.path(s$path, "ABC-101.Rproj")))
-  expect_true(file.exists(file.path(s$path, "spec", "table_spec.xlsx")))
+  expect_true(file.exists(file.path(s$path, "spec", "toc.yml")))
   expect_true(file.exists(file.path(home, "state", "ABC-101",
                                     "state.json")))
   expect_error(create_study("ABC-101"), "already registered")
@@ -77,7 +77,7 @@ test_that("a study whose workbooks are gone opens as it was last saved", {
   s$meta$title <- "Title"
   s <- save_study(s)
 
-  # the workbooks gone: they do not read, so the study opens as last saved
+  # the definition's files gone: they do not read, so the study opens as last saved
   # (and cannot be saved until they are written back, #274)
   unlink(file.path(s$path, "spec"), recursive = TRUE)
   o <- suppressMessages(open_study("S1"))
@@ -123,22 +123,26 @@ test_that("an existing folder is registered from its workbooks", {
   expect_true(list_studies()$folder)
 })
 
-test_that("workbooks export and import", {
+test_that("a study's files export, and import into another study", {
   local_home()
   s <- create_study("S1", planner = sample_planner())
-  paths <- export_spec(s, withr_tempdir())
+  d <- withr_tempdir()
+  export_spec_files("S1", d)
+  expect_true(file.exists(file.path(d, "spec", "toc.yml")))
+  expect_true(file.exists(file.path(d, .flat_xlsx)))
   e <- create_study("S2")
-  e <- import_spec(e, paths)
-  expect_identical(e$planner$sheets, s$planner$sheets)
+  e <- import_spec_files("S2", file.path(d, "spec"))
+  expect_identical(e$planner$outputs, s$planner$outputs)
+  expect_identical(program_code(e$planner, "DM"), program_code(s$planner, "DM"))
   expect_equal(unname(e$planner$study[["output_path"]]), "output/tfl")
 })
 
 test_that("saving writes the programs from the definition, an edited one too", {
   local_home()
   s <- create_study("S1", planner = sample_planner())
-  # the workbooks, the programs, batch.R, the two autoexec programs,
+  # the YAML spec's files, the programs, batch.R, the two autoexec programs,
   # fig_setup.R, report_setup.R, study_setup.R, study_helpers.R
-  expect_equal(sum(s$files$status == "written"), 2 + 5 + 7)
+  expect_equal(sum(s$files$status == "written"), length(.spec_files_yaml(s$path)) + 5 + 7)
   s0 <- save_study(s)
   expect_true(all(s0$files$status == "unchanged"))
   f <- file.path(s$path, "programs", "tfl", "DM.R")
@@ -277,13 +281,13 @@ test_that("a study folder registered again keeps its designed figures", {
   p <- add_output(new_planner(), "F-1", type = "figure")
   p <- set_fig_design(p, "F-1", tflspec::tfl_fig_template("km_simple", data = "ADTTE"))
   s <- create_study("FD", planner = p)
-  expect_true(file.exists(file.path(s$path, "spec/figures/F-1.yml")))
+  expect_true(file.exists(file.path(s$path, "spec/outputs/F-1.yml")))
   unregister_study("FD")
   s2 <- register_study(s$path)
   expect_identical(fig_design(s2$planner, "F-1")$template, "km_simple")
-  # saved again: the design file stays
+  # saved again: the design stays in its report's file
   save_study(s2)
-  expect_true(file.exists(file.path(s$path, "spec/figures/F-1.yml")))
+  expect_identical(fig_design(.planner_from_yaml(s$path), "F-1")$template, "km_simple")
 })
 
 test_that("unregistering and registering again gives the study back as it was", {

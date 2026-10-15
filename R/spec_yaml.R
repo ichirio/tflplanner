@@ -45,7 +45,12 @@
   for (sh in intersect(.lf_sheet_names, names(back$listing))) {
     p$lf[[sh]] <- .normalize_lf_sheet(back$listing[[sh]], sh)
   }
-  for (id in names(back$figures)) p <- set_fig_design(p, id, back$figures[[id]])
+  for (id in names(back$figures)) {
+    # (a figure with nothing of the designer's -- no template, no layers,
+    # no steps -- has no design)
+    d <- .fig_norm(back$figures[[id]])
+    if (length(Filter(length, d))) p <- set_fig_design(p, id, d)
+  }
   p <- .migrate_step_code(p, old)
   p <- .renamed_outputs(p)
   attr(p, "not_converted") <- back$not_converted
@@ -99,7 +104,9 @@
   for (r in rel) {
     to <- file.path(root, r)
     new <- readLines(file.path(tmp, r), encoding = "UTF-8")
-    same <- file.exists(to) && identical(readLines(to, encoding = "UTF-8"), new)
+    # (study.yml whose time alone would change: as it is)
+    drop <- if (identical(r, .study_file)) function(x) x[!startsWith(x, "updated:")] else identity
+    same <- file.exists(to) && identical(drop(readLines(to, encoding = "UTF-8")), drop(new))
     if (!same) {
       dir.create(dirname(to), recursive = TRUE, showWarnings = FALSE)
       file.copy(file.path(tmp, r), to, overwrite = TRUE)
@@ -114,4 +121,22 @@
     }
   }
   files
+}
+
+# A study as its YAML spec would read back: its planner written by tflspec
+# (a folder of its own) and read again -- the same definition in the way
+# the files say it (rows in the TOC's order, the content's own form), to
+# compare the files with (outside edits, imports)
+.yaml_normal <- function(s) {
+  tmp <- tempfile("tflplanner-normal")
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+  p <- tryCatch({
+    tflspec::tfl_yaml_from_sheets(.planner_sheets(s$planner, s$meta), tmp, overwrite = TRUE)
+    .study_spec_keys(.planner_from_yaml(tmp))
+  }, error = function(e) NULL)
+  if (!is.null(p)) {
+    attr(p, "not_converted") <- NULL
+    s$planner <- p
+  }
+  s
 }

@@ -397,8 +397,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
       lay[["spec"]], "/.") else c(
       paste0("The data and plot parts make `plot`; the report part is written from ",
              lay[["spec"]], "/."),
-      paste0("Edit the design in the Plot Designer (", lay[["spec"]], "/",
-             .fig_design_dir, "/", output_id, ".yml), not this code.")))
+      paste0("Edit the design in the Plot Designer (", lay[["spec"]], "/outputs/",
+             output_id, ".yml), not this code.")))
 
   data <- if (is.null(design) || own) data_lines(x, output_id) else c(
     if (!is.na(x$setup)) c(.code_block(x$setup), ""),
@@ -507,11 +507,12 @@ program_code <- function(x, output_id, date = Sys.Date()) {
                           unique(c(.study_keys$table, .study_keys$report)))
   tryCatch(c(
     if (table) c(
-      paste0("# the table, as ", file.path(lay[["spec"]], .table_file),
+      paste0("# the table, as ", file.path(lay[["spec"]], "outputs", paste0(output_id, ".yml")),
              " defines it"),
       tflspec::tfl_table_code(sp, output_id, pipe = "|>"),
       ""),
-    paste0("# the report, as ", file.path(lay[["spec"]], .report_file), " defines it"),
+    paste0("# the report, as ", file.path(lay[["spec"]], "outputs", paste0(output_id, ".yml")),
+           " defines it"),
     .report_id_code(tflspec::tfl_report_code(sp, output_id, content = content,
                                              setup = .uses_report_setup(x)), output_id),
     sprintf("generate_rtfreport(doc, %s, overwrite = TRUE)",
@@ -596,7 +597,7 @@ report_setup_code <- function(x, date = Sys.Date()) {
       paste0("Generated  : tflplanner ", utils::packageVersion("tflplanner"),
              ", ", format(date, "%Y-%m-%d")),
       "",
-      "Written from spec/report_spec.xlsx: change them there (the study tab),",
+      "Written from spec/defaults.yml: change them there (the study tab),",
       "then generate the programs again."),
     "",
     "# the study's setup: the company's, the study's folders and id, your own",

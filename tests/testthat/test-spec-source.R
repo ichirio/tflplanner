@@ -1,5 +1,6 @@
-# The SPEC is the source (#274): the definition files are read on open when
-# they changed outside tflplanner, a save never writes over such a change.
+# The SPEC is the source (#274): the definition files -- the YAML spec --
+# are read on open when they changed outside tflplanner, a save never writes
+# over such a change.
 
 # (slow: its tests write study folders or start the app -- run on CI
 # and locally with NOT_CRAN=true, not in CRAN's check)
@@ -21,16 +22,16 @@ spec_study <- function(id = "SP-1") {
   suppressMessages(create_study(id, planner = p))
 }
 
-# a person's edit in Excel: one cell of a sheet of a workbook
-edit_cell <- function(path, sheet, col, value, row = 1L) {
-  wb <- openxlsx::loadWorkbook(path)
-  d <- openxlsx::read.xlsx(wb, sheet)
-  d[[col]][row] <- value
-  openxlsx::writeData(wb, sheet, d)
-  openxlsx::saveWorkbook(wb, path, overwrite = TRUE)
+# a report's file of the YAML spec, and a person's edit of it in a text
+# editor: its first title
+report_file <- function(s, id = "T-1") file.path(s$path, "spec", "outputs", paste0(id, ".yml"))
+edit_title <- function(s, value, id = "T-1") {
+  f <- report_file(s, id)
+  o <- tflspec::tfl_read_output(f)
+  o$page$titles[["1"]]$center <- value
+  tflspec::tfl_write_output(o, f)
 }
-
-report_book <- function(s) file.path(s$path, "spec", "report_spec.xlsx")
+break_file <- function(f) writeLines(c("id: [", "kind"), f)
 history_n <- function(home, id) {
   length(list.files(file.path(.store_dir(id, home), "history")))
 }
@@ -40,17 +41,18 @@ test_that("a save records each definition file's fingerprint", {
   s <- spec_study()
   st <- .read_state("SP-1", home)
   expect_identical(st$format, 2L)
-  expect_setequal(names(st$files), c("study.yml", "spec/table_spec.xlsx",
-                                     "spec/report_spec.xlsx"))
-  expect_identical(st$files[["spec/report_spec.xlsx"]]$md5,
-                   unname(tools::md5sum(report_book(s))))
+  expect_setequal(names(st$files), .spec_files_yaml(s$path))
+  expect_true(all(c("study.yml", "spec/toc.yml", "spec/outputs/T-1.yml",
+                    "spec/outputs/T-2.yml") %in% names(st$files)))
+  expect_identical(st$files[["spec/outputs/T-1.yml"]]$md5,
+                   unname(tools::md5sum(report_file(s))))
   expect_true(all(spec_status("SP-1")$status == "same"))
 })
 
-test_that("an untouched study opens from its state, without reading a workbook", {
+test_that("an untouched study opens from its state, without reading its files", {
   spec_home()
   spec_study()
-  local_mocked_bindings(read_planner = function(...) stop("read"))
+  local_mocked_bindings(.planner_from_yaml = function(...) stop("read"))
   o <- open_study("SP-1")
   expect_identical(o$spec$status, "same")
 })
@@ -59,12 +61,12 @@ test_that("a direct edit that reads is taken in on open", {
   home <- spec_home()
   s <- spec_study()
   n <- history_n(home, "SP-1")
-  edit_cell(report_book(s), "titles", "center", "New title")
+  edit_title(s, "New title")
   expect_identical(spec_status("SP-1")$status[
-    spec_status("SP-1")$file == "spec/report_spec.xlsx"], "changed")
+    spec_status("SP-1")$file == "spec/outputs/T-1.yml"], "changed")
   expect_message(o <- open_study("SP-1"), "changed outside tflplanner")
   expect_identical(o$spec$status, "adopted")
-  expect_identical(o$spec$files$file, "spec/report_spec.xlsx")
+  expect_identical(o$spec$files$file, "spec/outputs/T-1.yml")
   expect_true("sheet:titles" %in% o$spec$parts)
   expect_identical(o$spec$outputs, "T-1")
   expect_identical(sheet_rows(o$planner, "titles", "T-1")$center, "New title")
@@ -80,64 +82,65 @@ test_that("a direct edit that reads is taken in on open", {
 test_that("a direct edit that does not read: open as saved, no save, write back or reload", {
   home <- spec_home()
   s <- spec_study()
-  good <- tempfile(fileext = ".xlsx")
-  edit_cell(report_book(s), "titles", "center", "Fixed title")
-  file.copy(report_book(s), good)
-  writeLines("not a workbook", report_book(s))
+  good <- tempfile(fileext = ".yml")
+  edit_title(s, "Fixed title")
+  file.copy(report_file(s), good)
+  break_file(report_file(s))
   o <- suppressMessages(open_study("SP-1"))
   expect_identical(o$spec$status, "invalid")
-  expect_identical(o$spec$problems$file, "spec/report_spec.xlsx")
+  expect_true(any(grepl("T-1.yml", o$spec$problems$file, fixed = TRUE)))
   expect_identical(sheet_rows(o$planner, "titles", "T-1")$center, "Old title")
   # a save is stopped, whatever it changes
   o$planner$outputs$description[1] <- "changed in the app"
   expect_error(save_study(o), class = "tflplanner_spec_changed")
   expect_error(reload_from_spec("SP-1"), class = "tflplanner_spec_invalid")
-  # fixed in Excel, then reloaded: taken in
-  file.copy(good, report_book(s), overwrite = TRUE)
+  # fixed in the editor, then reloaded: taken in
+  file.copy(good, report_file(s), overwrite = TRUE)
   r <- reload_from_spec("SP-1")
   expect_identical(r$spec$status, "adopted")
   expect_identical(sheet_rows(r$planner, "titles", "T-1")$center, "Fixed title")
   # broken again, then written back from the last save: the rejected file
   # is kept in spec/.rejected/
-  writeLines("not a workbook", report_book(s))
+  break_file(report_file(s))
   w <- write_spec("SP-1")
   rej <- list.files(file.path(s$path, "spec", ".rejected"))
   expect_length(rej, 1L)
-  expect_match(rej, "^report_spec_[0-9-]+\\.xlsx$")
+  expect_match(rej, "^T-1_[0-9-]+\\.yml$")
   o <- open_study("SP-1")
   expect_identical(o$spec$status, "same")
   expect_identical(sheet_rows(o$planner, "titles", "T-1")$center, "Fixed title")
 })
 
-test_that("a missing workbook does not read; a figure design added or removed is taken in", {
+test_that("a figure's design taken out of its file, or put back, is taken in", {
   spec_home()
   p <- add_output(new_planner(), "F-1", type = "figure")
+  p <- set_fig_design(p, "F-1", tflspec::tfl_fig_template("km_simple", data = "ADTTE"))
   s <- suppressMessages(create_study("SP-2", planner = p))
-  d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE")
-  f <- file.path(s$path, "spec", "figures", "F-1.yml")
-  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
-  tflspec::tfl_write_fig_design(d, f)
-  o <- suppressMessages(open_study("SP-2"))
-  expect_identical(o$spec$status, "adopted")
-  expect_identical(fig_design(o$planner, "F-1")$template, "km_simple")
-  unlink(f)
-  o <- suppressMessages(open_study("SP-2"))
-  expect_identical(o$spec$status, "adopted")
-  expect_null(fig_design(o$planner, "F-1"))
-  unlink(file.path(s$path, "spec", "table_spec.xlsx"))
-  o <- suppressMessages(open_study("SP-2"))
-  expect_identical(o$spec$status, "invalid")
-  expect_match(o$spec$problems$message, "missing")
+  f <- report_file(s, "F-1")
+  with_design <- readLines(f)
+  o <- tflspec::tfl_read_output(f)
+  o$template <- NULL
+  o$content <- list()
+  o$data$steps <- NULL
+  for (k in c("plot", "plots", "compose", "ggplot2_version")) o[[k]] <- NULL
+  tflspec::tfl_write_output(o, f)
+  r <- suppressMessages(open_study("SP-2"))
+  expect_identical(r$spec$status, "adopted")
+  expect_null(fig_design(r$planner, "F-1"))
+  writeLines(with_design, f)
+  r <- suppressMessages(open_study("SP-2"))
+  expect_identical(r$spec$status, "adopted")
+  expect_identical(fig_design(r$planner, "F-1")$template, "km_simple")
 })
 
-test_that("a workbook saved again unchanged is touched: no notice, no history", {
+test_that("a file written again with the same meaning is touched: no notice, no history", {
   home <- spec_home()
   s <- spec_study()
   n <- history_n(home, "SP-1")
-  wb <- openxlsx::loadWorkbook(report_book(s))
-  openxlsx::saveWorkbook(wb, report_book(s), overwrite = TRUE)
-  skip_if(identical(spec_status("SP-1")$status[2:3], c("same", "same")),
-          "openxlsx wrote the same bytes")
+  # the same report, written with its keys in another order
+  y <- yaml::read_yaml(report_file(s))
+  writeLines(yaml::as.yaml(y[rev(names(y))]), report_file(s))
+  skip_if(all(spec_status("SP-1")$status == "same"), "the same bytes")
   expect_no_message(o <- open_study("SP-1"))
   expect_identical(o$spec$status, "touched")
   expect_identical(history_n(home, "SP-1"), n)
@@ -159,7 +162,7 @@ test_that("a state of an earlier version reads the files once, an earlier edit k
   # an edit made before the upgrade is taken in, not written over
   st$files <- NULL
   writeLines(.json(st), f)
-  edit_cell(report_book(s), "titles", "center", "Edited before")
+  edit_title(s, "Edited before")
   o <- suppressMessages(open_study("SP-1"))
   expect_identical(o$spec$status, "adopted")
   expect_identical(sheet_rows(o$planner, "titles", "T-1")$center, "Edited before")
@@ -181,13 +184,13 @@ test_that("an edit made while the study was off the list is taken in on register
   home <- spec_home()
   s <- spec_study()
   unregister_study("SP-1")
-  edit_cell(report_book(s), "titles", "center", "While away")
+  edit_title(s, "While away")
   r <- suppressMessages(register_study(s$path))
   expect_identical(r$spec$status, "adopted")
   expect_identical(sheet_rows(r$planner, "titles", "T-1")$center, "While away")
   # one that does not read: the kept state comes back, marked
   unregister_study("SP-1")
-  writeLines("not a workbook", report_book(s))
+  break_file(report_file(s))
   r <- suppressMessages(register_study(s$path))
   expect_identical(r$spec$status, "invalid")
   expect_identical(sheet_rows(r$planner, "titles", "T-1")$center, "While away")
@@ -206,27 +209,28 @@ test_that("two sessions: another's save passes the guard, an outside edit does n
   saved <- save_study(a2, base = a)
   expect_identical(saved$planner$outputs$description[1], "A's")
   expect_identical(sheet_rows(saved$planner, "titles", "T-2")$center, "B's")
-  # an Excel edit after A opened: A's save stops
+  # an edit in the editor after A opened: A's save stops
   a <- open_study("SP-1")
-  edit_cell(report_book(s), "titles", "center", "Outside")
+  edit_title(s, "Outside")
   a$planner$outputs$description[1] <- "A again"
   expect_error(save_study(a, base = a), class = "tflplanner_spec_changed")
 })
 
-test_that("a save with nothing changed in the workbooks does not read them", {
+test_that("a save writes the files whose part changed, and reads none", {
   spec_home()
   s <- spec_study()
-  local_mocked_bindings(read_planner = function(...) stop("read"))
+  local_mocked_bindings(.planner_from_yaml = function(...) stop("read"))
   s$planner$outputs$description[1] <- "report list only"
-  # the report list is in the report workbook: written, not read
+  # the report list is the TOC: written, not read; the reports' files not
   out <- save_study(s)
-  st <- out$files$status[basename(out$files$file) == "report_spec.xlsx"]
-  expect_identical(st, "written")
-  # a study field only: neither workbook read nor written
+  st <- function(f) out$files$status[basename(out$files$file) == f]
+  expect_identical(st("toc.yml"), "written")
+  expect_identical(st("T-2.yml"), "unchanged")
+  # a study field only: study.yml, not a report's file
   out$meta$title <- "a title"
   out <- save_study(out)
-  st <- out$files$status[basename(out$files$file) == "table_spec.xlsx"]
-  expect_identical(st, "unchanged")
+  expect_identical(st("T-2.yml"), "unchanged")
+  expect_identical(.read_meta(s$path)$title, "a title")
 })
 
 test_that("a figure design is a part: merged, or a conflict", {
@@ -254,26 +258,14 @@ test_that("a figure design is a part: merged, or a conflict", {
   expect_error(save_study(y, base = b2), class = "tflplanner_conflict")
 })
 
-test_that("a design file tflplanner did not write is kept when its figure has none", {
+test_that("a report taken out in the app: the file the save wrote goes", {
   spec_home()
-  p <- add_output(new_planner(), "F-1", type = "figure")
-  s <- suppressMessages(create_study("SP-4", planner = p))
-  # a file for a report the study does not have: kept, reported
-  f <- file.path(s$path, "spec", "figures", "X-9.yml")
-  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
-  tflspec::tfl_write_fig_design(tflspec::tfl_fig_template("km_simple", data = "ADTTE"), f)
-  o <- suppressMessages(open_study("SP-4"))
-  out <- save_study(o)
-  expect_true(file.exists(f))
-  # a design dropped in the app: tflplanner's own file goes
+  s <- spec_study("SP-4")
+  expect_true(file.exists(report_file(s, "T-2")))
   o <- open_study("SP-4")
-  o$planner <- set_fig_design(o$planner, "F-1",
-                              tflspec::tfl_fig_template("km_simple", data = "ADTTE"))
+  o$planner <- remove_output(o$planner, "T-2")
   o <- save_study(o)
-  g <- file.path(s$path, "spec", "figures", "F-1.yml")
-  expect_true(file.exists(g))
-  o$planner <- set_fig_design(o$planner, "F-1", NULL)
-  o <- save_study(o)
-  expect_false(file.exists(g))
-  expect_true(file.exists(f))
+  expect_false(file.exists(report_file(s, "T-2")))
+  expect_true(file.exists(report_file(s, "T-1")))
+  expect_identical(o$files$status[basename(o$files$file) == "T-2.yml"], "removed")
 })

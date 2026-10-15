@@ -235,20 +235,26 @@
   }
   parts <- if (full) c("books", "ard", "lf", "meta", "fig") else
     unique(.spec_part_of(changed))
-  books <- file.path(study_layout()[["spec"]], c(.table_file, .report_file))
-  r <- .read_spec(s, s$path, parts,
-                  books_needed = any(names(st$files %||% list()) %in% books))
+  # (the record names the YAML spec's reports: gone, they do not read)
+  sp <- study_layout()[["spec"]]
+  rec_files <- names(st$files) %||% character()
+  needed <- any(startsWith(rec_files, paste0(sp, "/outputs/")) |
+                  rec_files == file.path(sp, "toc.yml"))
+  r <- .read_spec(s, s$path, parts, books_needed = needed)
   problems <- attr(r, "problems")
   attr(r, "problems") <- NULL
   if (.has_errors(problems)) {
     s$spec <- list(status = "invalid", files = diff, problems = problems)
     return(s)
   }
-  chg <- .changed_parts(s, r)
+  # (compared with the saved study as its files say it: the YAML's own way
+  # of saying the same definition is not a change)
+  n <- .yaml_normal(s)
+  chg <- .changed_parts(n, r)
   # what changed, checked as an import is: its R cells, its figure
   # designs, the programs of the reports it touches written and parsed
   if (length(chg)) {
-    problems <- rbind(problems, .check_spec(r, .changed_outputs(s, r, chg)))
+    problems <- rbind(problems, .check_spec(r, .changed_outputs(n, r, chg)))
     if (.has_errors(problems)) {
       s$spec <- list(status = "invalid", files = diff, problems = problems)
       return(s)
@@ -263,7 +269,12 @@
       "touched" else "same", files = diff)
     return(s)
   }
-  out <- .changed_outputs(s, r, chg)
+  out <- .changed_outputs(n, r, chg)
+  # the parts that changed taken in, the others kept as the study had them
+  inc <- .study_parts(r)
+  a <- s
+  for (k in chg) a <- .set_study_part(a, k, inc[[k]])
+  r <- a
   .write_state(r, home)
   r$spec <- list(status = "adopted", files = diff[diff$status != "same", ,
                                                   drop = FALSE],
@@ -464,22 +475,19 @@ export_spec_files <- function(study, path, home = tflplanner_home()) {
   if (is.null(st)) stop("No study '", .study_id_of(study), "' is registered.",
                         call. = FALSE)
   root <- st$path
-  sp <- study_layout()[["spec"]]
-  # the files as they are, but the ARD definition as a workbook to edit in
-  # Excel (its JSON is the study's copy; an imported workbook replaces it)
+  # the YAML spec's files as they are, and one workbook of their flat parts
+  # (tflspec's) to read and to edit in Excel -- an import takes it back
   out <- tempfile("tflplanner-export")
-  files <- setdiff(.spec_files(root), file.path(sp, c(.ard_json, .ard_file)))
+  files <- .spec_files_yaml(root)
   for (f in files) {
     dir.create(file.path(out, dirname(f)), recursive = TRUE, showWarnings = FALSE)
     file.copy(file.path(root, f), file.path(out, f), copy.date = TRUE)
   }
-  a <- .planner_from_state(st)$ard
-  if (!is.null(a) && (nrow(a$analyses) || nrow(a$datasets) ||
-                      nrow(a$populations) || nrow(a$analysis_data))) {
-    dir.create(file.path(out, sp), recursive = TRUE, showWarnings = FALSE)
-    .write_ard_spec(a, file.path(out, sp, .ard_file))
-    files <- c(files, file.path(sp, .ard_file))
-  }
+  ok <- tryCatch({
+    tflspec::tfl_write_spec_xlsx(root, file.path(out, .flat_xlsx))
+    TRUE
+  }, error = function(e) FALSE)
+  if (ok) files <- c(files, .flat_xlsx)
   on.exit(unlink(out, recursive = TRUE), add = TRUE)
   if (grepl("[.]zip$", path, ignore.case = TRUE)) {
     dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
@@ -493,15 +501,14 @@ export_spec_files <- function(study, path, home = tflplanner_home()) {
   }
   invisible(file.path(path, files))
 }
-
 # The copy laid out as a study folder's files, in a temporary folder: the
 # study's own files first, the copy's over them (an import of one workbook
 # reads with the study's other files)
 .stage_import <- function(root, path, ids) {
   stage <- tempfile("tflplanner-import")
   sp <- study_layout()[["spec"]]
-  dir.create(file.path(stage, sp, .fig_design_dir), recursive = TRUE)
-  for (f in .spec_files(root)) {
+  dir.create(file.path(stage, sp, "outputs"), recursive = TRUE)
+  for (f in .spec_files_yaml(root)) {
     dir.create(file.path(stage, dirname(f)), recursive = TRUE,
                showWarnings = FALSE)
     file.copy(file.path(root, f), file.path(stage, f))
@@ -516,57 +523,122 @@ export_spec_files <- function(study, path, home = tflplanner_home()) {
   } else path
   files <- files[!grepl("(^|/)[.](rejected|backup)/", files) &
                    !grepl("(^|/)~[$]", files)]
+  rel_of <- function(f) if (dir.exists(src)) substring(f, nchar(src) + 2L) else basename(f)
   placed <- character()
+  old <- character()
+  flat <- character()
   for (f in files) {
-    to <- .import_place(f, ids)
+    to <- .import_place(f, ids, rel_of(f))
     if (is.na(to)) next
-    file.copy(f, file.path(stage, to), overwrite = TRUE)
-    placed <- c(placed, to)
+    if (identical(to, "(old)")) {
+      old <- c(old, f)
+    } else if (identical(to, "(flat)")) {
+      flat <- c(flat, f)
+    } else {
+      dir.create(dirname(file.path(stage, to)), recursive = TRUE, showWarnings = FALSE)
+      file.copy(f, file.path(stage, to), overwrite = TRUE)
+      placed <- c(placed, to)
+    }
+  }
+  # the workbooks of an earlier tflplanner (and its ARD JSON, its figure
+  # designs): tflspec's converter makes them the YAML spec, which replaces
+  # the study's
+  if (length(old)) {
+    tmp <- tempfile("tflplanner-old")
+    dir.create(file.path(tmp, sp, .fig_design_dir), recursive = TRUE)
+    file.copy(file.path(stage, .study_file), file.path(tmp, .study_file))
+    for (f in old) {
+      to <- if (tolower(tools::file_ext(f)) %in% c("yml", "yaml")) {
+        file.path(tmp, sp, .fig_design_dir, basename(f))
+      } else file.path(tmp, sp, .old_book_name(f))
+      file.copy(f, to, overwrite = TRUE)
+    }
+    conv <- tempfile("tflplanner-conv")
+    tflspec::tfl_convert_sheets_to_yaml(tmp, conv, overwrite = TRUE)
+    unlink(file.path(stage, sp), recursive = TRUE)
+    for (f in setdiff(list.files(conv, recursive = TRUE), file.path(sp, "_not_converted.yml"))) {
+      dir.create(dirname(file.path(stage, f)), recursive = TRUE, showWarnings = FALSE)
+      if (identical(f, .study_file) && file.exists(file.path(stage, f))) {
+        # (the study's own fields stay; the definition's parts come in)
+        m <- yaml::read_yaml(file.path(stage, f))
+        y <- readLines(file.path(conv, f), encoding = "UTF-8")
+        keep <- m[intersect(c("created", "updated", "tflplanner"), names(m))]
+        writeLines(c(y, if (length(keep)) sub("\n$", "", yaml::as.yaml(keep))),
+                   file.path(stage, f), useBytes = TRUE)
+      } else {
+        file.copy(file.path(conv, f), file.path(stage, f), overwrite = TRUE)
+      }
+      placed <- c(placed, f)
+    }
+    unlink(c(tmp, conv), recursive = TRUE)
+  }
+  # tflspec's flat workbook: its rows into the YAML files, matched by key
+  for (f in flat) {
+    r <- tflspec::tfl_import_spec_xlsx(stage, f, write = TRUE)
+    w <- r$files %||% character()
+    w <- substring(normalizePath(w, "/", mustWork = FALSE),
+                   nchar(normalizePath(stage, "/")) + 2L)
+    placed <- c(placed, if (length(w)) w else file.path(sp, "toc.yml"))
   }
   if (!length(placed)) {
     stop("No definition file in ", path, ".", call. = FALSE)
   }
-  # an ARD workbook brought back is the ARD definition (the JSON is read
-  # only when there is no workbook beside it: the study's JSON goes)
-  if (file.path(sp, .ard_file) %in% placed &&
-      !file.path(sp, .ard_json) %in% placed) {
-    unlink(file.path(stage, sp, .ard_json))
-  }
   structure(stage, placed = unique(placed))
 }
-
 # Where a file of a copy goes, from what it holds; NA: not a definition file
-.import_place <- function(f, ids) {
+.import_place <- function(f, ids, rel = basename(f)) {
   sp <- study_layout()[["spec"]]
   ext <- tolower(tools::file_ext(f))
+  rel <- gsub("\\\\", "/", rel)
   if (ext == "xlsx") {
     sh <- tryCatch(readxl::excel_sheets(f), error = function(e) character())
-    # a workbook that does not open: in place of the one its name says, to
-    # be reported by its reader
-    if (!length(sh)) {
-      b <- basename(f)
-      known <- c(.table_file, .report_file, .lf_file, .ard_file)
-      hit <- known[startsWith(b, tools::file_path_sans_ext(known))]
-      return(file.path(sp, if (length(hit)) hit[1L] else .report_file))
-    }
-    if ("analyses" %in% sh) return(file.path(sp, .ard_file))
-    if ("listings" %in% sh || "figures" %in% sh) return(file.path(sp, .lf_file))
-    if (any(c("report", "titles", "page") %in% sh)) return(file.path(sp, .report_file))
-    if (any(c("tables", "cells", "variables") %in% sh)) return(file.path(sp, .table_file))
-    return(NA_character_)
+    # tflspec's flat workbook (it has the TOC), or the workbooks of an
+    # earlier tflplanner
+    if ("toc" %in% sh) return("(flat)")
+    if (length(sh) && !any(c("analyses", "listings", "figures", "report", "titles", "page",
+                             "tables", "cells", "variables") %in% sh)) return(NA_character_)
+    return("(old)")
   }
-  if (ext == "json") return(file.path(sp, .ard_json))
-  if (ext %in% c("yml", "yaml")) {
-    y <- tryCatch(yaml::read_yaml(f), error = function(e) NULL)
-    if (is.list(y) && !is.null(y$study_id)) return(.study_file)
+  if (ext == "json") return("(old)")
+  if (!ext %in% c("yml", "yaml")) return(NA_character_)
+  # a file of the YAML spec in its place (a folder or zip exported)
+  if (identical(rel, .study_file) || grepl(paste0("(^|/)", .study_file, "$"), rel) &&
+      !grepl("(^|/)spec/", rel)) return(.study_file)
+  m <- regmatches(rel, regexpr(paste0(sp, "/(outputs|patterns)/.+$|", sp, "/[^/]+$"), rel))
+  if (length(m) && !grepl("_not_converted", m)) {
+    # (an old figure design, spec/figures/<id>.yml)
+    if (startsWith(m, file.path(sp, .fig_design_dir))) return("(old)")
+    return(m)
+  }
+  # one file on its own: by what it holds
+  y <- tryCatch(yaml::read_yaml(f), error = function(e) NULL)
+  if (!is.list(y)) {
     b <- tools::file_path_sans_ext(basename(f))
-    id <- ids[startsWith(b, ids)]
-    id <- if (length(id)) id[which.max(nchar(id))] else b
-    return(file.path(sp, .fig_design_dir, paste0(id, ".yml")))
+    return(file.path(sp, "outputs", paste0(b, ".yml")))
   }
+  if (!is.null(y$study_id)) return(.study_file)
+  if (!is.null(y$id) && !is.null(y$kind)) return(file.path(sp, "outputs", paste0(y$id, ".yml")))
+  if (!is.null(y$outputs)) return(file.path(sp, "toc.yml"))
+  if (!is.null(y$datasets) || !is.null(y$populations)) return(file.path(sp, "data.yml"))
+  if (!is.null(y$layers) || !is.null(y$template)) return("(old)")
+  if (!is.null(y$content) || !is.null(y$page)) return(file.path(sp, "defaults.yml"))
+  if (!is.null(y$codelists)) return(file.path(sp, "codelists.yml"))
   NA_character_
 }
 
+# The flat workbook an export adds (tflspec's tfl_write_spec_xlsx())
+.flat_xlsx <- "spec_rows.xlsx"
+
+# Where a workbook of an earlier tflplanner goes for tflspec's converter: by
+# its sheets
+.old_book_name <- function(f) {
+  if (tolower(tools::file_ext(f)) == "json") return(.ard_json)
+  sh <- tryCatch(readxl::excel_sheets(f), error = function(e) character())
+  if ("analyses" %in% sh) return(.ard_file)
+  if ("listings" %in% sh || "figures" %in% sh) return(.lf_file)
+  if (any(c("report", "titles", "page") %in% sh)) return(.report_file)
+  .table_file
+}
 #' @rdname export_spec_files
 #' @export
 preview_spec_import <- function(study, path, home = tflplanner_home()) {
@@ -581,13 +653,15 @@ preview_spec_import <- function(study, path, home = tflplanner_home()) {
   attr(r, "problems") <- NULL
   parts <- character()
   outputs <- character()
+  n <- s
   if (!.has_errors(problems)) {
-    parts <- .changed_parts(s, r)
-    outputs <- .changed_outputs(s, r, parts)
+    n <- .yaml_normal(s)
+    parts <- .changed_parts(n, r)
+    outputs <- .changed_outputs(n, r, parts)
     if (length(parts)) problems <- rbind(problems, .check_spec(r, outputs))
   }
   list(parts = parts, labels = .part_labels(parts), outputs = outputs,
-       summary = .part_summary(s, r, parts),
+       summary = .part_summary(n, r, parts),
        problems = problems, ok = !.has_errors(problems),
        files = attr(stage, "placed"), incoming = r, current = s)
 }

@@ -417,7 +417,7 @@
     shiny::div(
       class = "small mb-2",
       shiny::strong(t("This figure's Spec (YAML):")), " ",
-      shiny::code(sprintf("spec/figures/%s.yml", id)), " ",
+      shiny::code(sprintf("spec/outputs/%s.yml", id)), " ",
       shiny::span(class = "text-muted",
                   t("-- the designer's result; the same whether started from a template or empty."))),
     bslib::layout_columns(
