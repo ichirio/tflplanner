@@ -527,6 +527,7 @@ export_spec_files <- function(study, path, home = tflplanner_home()) {
   placed <- character()
   old <- character()
   flat <- character()
+  yaml_in <- character()
   for (f in files) {
     to <- .import_place(f, ids, rel_of(f))
     if (is.na(to)) next
@@ -538,7 +539,14 @@ export_spec_files <- function(study, path, home = tflplanner_home()) {
       dir.create(dirname(file.path(stage, to)), recursive = TRUE, showWarnings = FALSE)
       file.copy(f, file.path(stage, to), overwrite = TRUE)
       placed <- c(placed, to)
+      yaml_in <- c(yaml_in, f)
     }
+  }
+  # the flat workbook beside the YAML files it was made from (an export):
+  # taken only when it was edited after them
+  if (length(flat) && length(yaml_in)) {
+    newest <- max(file.mtime(yaml_in))
+    flat <- flat[file.mtime(flat) > newest]
   }
   # the workbooks of an earlier tflplanner (and its ARD JSON, its figure
   # designs): tflspec's converter makes them the YAML spec, which replaces
