@@ -61,7 +61,8 @@ builder_label <- function(meaning, name, kind = c("fn", "arg"), lang = "en") {
 builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, on = TRUE,
                          body = NULL, summary = NULL,
                          tools = c("up", "down", "copy", "remove", "r"), nav = NULL,
-                         open = TRUE, error = NULL, path = id, lang = "en") {
+                         open = TRUE, error = NULL, path = id, lang = "en",
+                         switchable = TRUE, revert = !identical(from, "own")) {
   t <- function(x) tr(x, lang)
   cls <- c("rp-card", if (required) "rp-card-required", if (!on) "rp-card-off",
            if (open) "rp-card-open", if (!is.null(error)) "rp-card-error")
@@ -72,11 +73,14 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
                      shiny::tags$input(type = "checkbox", class = "form-check-input",
                                        id = paste0(id, "__on"),
                                        checked = if (on) NA else NULL,
+                                       disabled = if (!switchable) NA else NULL,
                                        title = t("On or off: off writes nothing")))
   }
-  revert <- if (!identical(from, "own")) {
+  # Revert: an item of the report's own over the defaults' (`revert`)
+  revert <- if (isTRUE(revert)) {
     shiny::tags$button(type = "button", id = paste0(id, "__revert"),
-                       class = "btn btn-link btn-sm rp-revert action-button", t("Revert"))
+                       class = "btn btn-link btn-sm rp-revert action-button",
+                       title = t("Back to the study default"), t("Revert"))
   }
   menu <- .card_menu(id, tools, lang)
   head <- shiny::div(
@@ -835,18 +839,18 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     if (!s) return null;
     try { return JSON.parse(s.textContent); } catch (e) { return null; }
   }
-  $(document).on('shiny:value', function(e) {
-    var pre = document.getElementById(e.name);
-    if (!pre || !$(pre).closest('.rp-code-view').length) return;
-    setTimeout(function() {
-      var m = jumpMap(pre);
+  // (again whenever an output comes: the code and its map arrive apart)
+  function applyJumps() {
+    $('.rp-code-view pre').each(function() {
+      var pre = this, m = jumpMap(pre);
       if (!m) return;
       $(pre).find('.rp-ln').each(function(i) {
         var p = m[String(i + 1)];
-        if (p) this.setAttribute('data-path', p);
+        if (p) this.setAttribute('data-path', p); else this.removeAttribute('data-path');
       });
-    }, 5);
-  });
+    });
+  }
+  $(document).on('shiny:value', function() { setTimeout(applyJumps, 20); });
   $(document).on('click', '.rp-code-view .rp-ln[data-path]', function() {
     var p = this.getAttribute('data-path');
     $('.rp-card').removeClass('rp-card-selected');

@@ -701,7 +701,8 @@ app_ui <- function(lang = "en") {
                 do.call(bslib::navset_card_underline,
                         c(list(id = "table_sheet"),
                           lapply(setdiff(table_sheets(), "codelists"), sheet_panel)))),
-              code = code_view("program_table", lang),
+              code = shiny::tagList(code_view("program_table", lang),
+                                    shiny::uiOutput("builder_code_jump")),
               result = shiny::tagList(
                 shiny::div(
                   class = "d-flex justify-content-between small mb-1",
@@ -826,6 +827,8 @@ app_ui <- function(lang = "en") {
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
                             shiny::tags$style(shiny::HTML(.builder_cards_css)),
                             shiny::tags$script(shiny::HTML(.builder_cards_js)),
+                            shiny::tags$style(shiny::HTML(.builder_content_css)),
+                            shiny::tags$script(shiny::HTML(.builder_content_js)),
                             shiny::tags$style(shiny::HTML(.study_section_css)),
                             shiny::tags$script(shiny::HTML(.study_section_js)),
                             shiny::tags$style(shiny::HTML(.help_tip_css)),
@@ -8689,149 +8692,232 @@ app_server <- function(input, output, session, start) {
                   if (!is.null(under_of(i))) shiny::span(
                     class = "rp-b-kind", paste0("\u2192 ", t("under"), " ", under_of(i))))),
       v$variable)
-    shiny::tagList(
+    hier <- length(st$hierarchy) > 0L
+    al <- function(fn, arg) builder_label(.arg_meaning(fn, arg), arg, "arg", lang)
+    # the cards, one an item of the table's content, in its order (Total and
+    # the column header shown though the plan has none: their forms make it)
+    items <- .builder_items_shown(
+      guarded(builder_items(p0, id)) %||% list(),
+      c("table_plan", "plan_cells", "plan_total", "plan_col_header",
+        if (hier) "plan_sort" else "plan_labels"))
+    bform$items <- items
+    has <- function(fn) any(vapply(items, function(it) identical(it$fn, fn), NA))
+    cont <- any(st$variables$kind %in% "continuous")
+    # the decimals: the plan_digits() card's when there is one
+    digits_ui <- if (cont) shiny::conditionalPanel(
+      sprintf("input['%s'] == 'stat'", bid("value")),
+      shiny::uiOutput(bid("digits_ui")),
+      shiny::uiOutput(bid("exc_ui")))
+    layer_names <- vapply(st$layer_choices, function(k)
+      if (identical(k, ".variable")) t("Analysis variables (the block)") else k, "")
+    # table_plan(): the columns (cols) and the rows as layers (rows, label)
+    tp_body <- shiny::tagList(
       shiny::div(
-        class = "rp-b-card",
-        shiny::h6(t("Columns")),
+        class = "rp-b-sec",
         # one or more (a group, then a visit ...): outermost first
-        shiny::selectizeInput(bid("key"), t("Column variables"), keys,
+        shiny::selectizeInput(bid("key"), al("table_plan", "cols"), keys,
                               selected = if (!anyNA(st$key)) st$key,
                               multiple = TRUE, width = "100%"),
-        shiny::uiOutput(bid("arms_ui")),
-        shiny::uiOutput(bid("total_ui")),
-        shiny::uiOutput(bid("hdr_ui")),
-        if (!anyNA(st$key) &&
-            !.has_group_n(shiny::isolate(rv$p), id, st$key[1L]))
-          shiny::div(
-            class = "small text-warning d-flex flex-wrap gap-2 align-items-center",
-            shiny::span(sprintf(t("The ARD has no subjects per %s: a header's (N=n) prints NA."),
-                                st$key[1L])),
-            .btn("b_add_n", t("Count them (then Preview)"),
-                 class = "btn-sm btn-outline-primary py-0"))),
-      if (length(st$hierarchy)) shiny::div(
-        class = "rp-b-card",
-        shiny::h6(t("Rows of the table")),
-        # the table's rows: the ARD's keys (its groups, its hierarchy),
-        # outermost first -- the layout is the table's; the ARD only
-        # offers them
+        shiny::uiOutput(bid("arms_ui"))),
+      shiny::div(
+        class = "rp-b-sec",
+        # the table's rows: the ARD's keys (its groups, its hierarchy) and
+        # the block of the analysis variables, outermost first -- the
+        # layout is the table's; the ARD only offers them
         shiny::selectizeInput(
-          bid("rowkeys"),
-          with_tip(t("Row variables (outermost first; drag)"),
-                   t("Row and column variables are the ARD's groups and hierarchy; to add one, add it to the analysis's by in step 1.")),
-          c(st$row_keys, setdiff(st$row_choices, st$row_keys)), selected = st$row_keys,
+          bid("layers"),
+          with_tip(al("table_plan", "rows"),
+                   t("Outermost first; drag to order. The keys are the analysis's by (step 1); a hierarchy's levels are its analysis's: rows the table should not show are hidden by a row filter (plan_filter()), not left out here.")),
+          stats::setNames(st$layer_choices, layer_names), selected = st$layers,
           multiple = TRUE, width = "100%",
           options = list(plugins = list("remove_button", "drag_drop"))),
-        shiny::uiOutput("b_rows_gap"),
-        if (length(st$row_keys) > 1L) shiny::checkboxInput(
-          bid("rowpages"), t("The outermost row variable a page each"), isTRUE(st$row_pages)),
-        shiny::textInput(bid("overall"), with_tip(t("The any-event row"),
-                                                  t("tables$overall_label; blank: no such row.")),
-                         value = st$overall_label %||% "", width = "18em",
-                         placeholder = "Any TEAE"),
-        shiny::h6(class = "mt-2", t("Order")),
-        hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
-                     total = .rows_for(p0, "tables", id)$total[1L])),
-      if (!length(st$hierarchy)) shiny::div(
-        class = "rp-b-card",
-        shiny::div(
-          class = "d-flex flex-wrap align-items-baseline gap-2",
-          shiny::h6(t("Rows: variables in order")),
-          .btn("cl3_open", t("Code lists: in step 1 (1-1, column definitions)"),
-               class = "btn-sm btn-link py-0")),
+        if (hier) shiny::tagList(
+          shiny::uiOutput("b_rows_gap"),
+          if (length(st$row_keys) > 1L) shiny::checkboxInput(
+            bid("rowpages"), t("The outermost row variable a page each"), isTRUE(st$row_pages)),
+          shiny::textInput(bid("overall"), with_tip(t("The any-event row"),
+                                                    t("tables$overall_label; blank: no such row.")),
+                           value = st$overall_label %||% "", width = "18em",
+                           placeholder = "Any TEAE"))),
+      # the block's variables, in order (a summary table)
+      if (!hier) shiny::div(
+        class = "rp-b-sec",
+        shiny::div(class = "rp-b-sec-label", t("Analysis variables (the block), in order")),
         sortable::rank_list(text = NULL, labels = var_items,
                             input_id = bid("vars")),
         # the same, as the code list of `variable`: value -> label, in order
-        shiny::uiOutput("b_vcl"),
-        bslib::accordion(
-          open = FALSE,
-          lapply(seq_len(nrow(v)), function(i) {
-            # blank: the code list's label of the variable (faint), what the
-            # table prints unless one is written here
-            hint <- v$hint[i] %||% NA_character_
-            bslib::accordion_panel(
-              title = paste0(v$variable[i],
-                             if (!is.null(under_of(i))) paste0(" \u2192 ", t("under"), " ", under_of(i)) else
-                               if (!is.na(v$label[i])) paste0(": ", v$label[i]) else
-                                 if (!is.na(hint)) paste0(": ", hint)),
-              value = v$variable[i],
-              # nested under another's level: no heading of its own, so no
-              # label to write (the field would mislead)
-              if (!is.null(under_of(i))) shiny::p(
-                class = "small text-muted mb-1",
-                sprintf(t("No heading of its own: its rows go under %s."), under_of(i)))
-              else shiny::textInput(bid(paste0("lab", i)),
-                               if (is.na(hint)) t("Label") else
-                                 with_tip(t("Label"), t("Blank: the label of this report's code list of variable (faint). What is written here is the table's own.")),
-                               value = if (is.na(v$label[i])) "" else
-                                 v$label[i], width = "100%",
-                               placeholder = if (!is.na(hint)) hint),
-              # what the table prints for it (the Statistics card's), faint
-              shiny::uiOutput(bid(paste0("vdef", i))),
-              # its rows under one level of another categorical variable
-              # (RACE: Asian; plan_nest())
-              if (identical(v$kind[i], "categorical")) {
-                others <- v$variable[v$kind == "categorical" & v$variable != v$variable[i]]
-                ch <- unlist(lapply(others, function(o) paste0(o, ": ", st$levels[[o]])))
-                cur <- v$under[i] %||% NA_character_
-                shiny::selectInput(
-                  bid(paste0("under", i)),
-                  with_tip(t("Rows under a level of another variable"),
-                           t("Its rows go right after that level's row, one step deeper, without its own heading: Chinese / Japanese / Korean under Race's Asian. Blank: a block of its own.")),
-                  choices = c(stats::setNames("", t("(its own block)")),
-                              unique(c(ch, if (!is.na(cur)) cur))),
-                  selected = if (is.na(cur)) "" else cur, width = "100%")
-              },
-              if (identical(v$kind[i], "categorical") &&
-                  length(st$levels[[v$variable[i]]])) {
-                shiny::tagList(
-                  shiny::tags$label(class = "form-label small",
-                                    t("Levels (drag to order)")),
-                  sortable::rank_list(
-                    text = NULL,
-                    labels = .levels_with_labels(st$levels[[v$variable[i]]], v$variable[i],
-                                                 sheet_rows(p0, "codelists", id)),
-                    input_id = bid(paste0("lv", i)),
-                    orientation = "horizontal"))
-              })
-          }))),
-      shiny::div(
-        class = "rp-b-card",
-        shiny::h6(t("Statistics")),
-        shiny::radioButtons(
-          bid("value"),
-          with_tip(t("Values"), t("Numbers: the ARD's values (stat), rounded here to the decimals below. The ARD's text: the values as step 1 formatted them (stat_fmt), printed as they are; a row may still put two in one (Mean (SD)).")),
-          stats::setNames(c("stat", "stat_fmt"),
-                          t(c("Numbers, rounded here", "The ARD's text (as formatted in step 1)"))),
-          selected = st$value, inline = TRUE),
-        # the rows of a continuous variable, their decimals: only when the
-        # table has one (left out, what the definition says is kept)
-        if (any(st$variables$kind %in% "continuous")) shiny::tagList(
-          builder_rows_ui(bs, st, m$stats),
-          shiny::conditionalPanel(
-            sprintf("input['%s'] == 'stat'", bid("value")),
-            shiny::uiOutput(bid("digits_ui")),
-            shiny::uiOutput(bid("exc_ui")))),
-        shiny::radioButtons(
-          bid("cat"), t("Categorical variables"),
-          c(stats::setNames(.cat_formats()$key, .cat_formats()$label),
-            stats::setNames("own", t("Own"))),
-          selected = st$cat_format, inline = TRUE),
-        shiny::conditionalPanel(
-          sprintf("input['%s'] == 'own'", bid("cat")),
-          shiny::textInput(bid("cat_own"), t("Template"),
-                           # one's own starts from the format chosen now
-                           if (is.na(st$cat_own %||% NA))
-                             .cat_template(st$cat_format, st$pct_decimals,
-                                           st$value %||% "stat") else st$cat_own,
-                           placeholder = "{n} ({p:.1f%})", width = "100%"),
-          shiny::p(class = "small text-muted",
-                   t("{n} the count, {N} the denominator, {p} the proportion; a format after a colon: {p:.1f%} prints 16.3%, {p:.2f} 0.16. The table on the right shows it."))),
-        shiny::conditionalPanel(
-          sprintf("input['%s'] == 'stat' && input['%s'] != 'own'", bid("value"), bid("cat")),
-          shiny::numericInput(bid("pct"), t("Decimals of the percent"),
-                              value = st$pct_decimals, min = 0, max = 3,
-                              width = "260px")),
-        shiny::uiOutput(bid("warn"))))
+        shiny::uiOutput("b_vcl")))
+    # plan_cells(): what the cells print
+    cells_body <- shiny::tagList(
+      shiny::radioButtons(
+        bid("value"),
+        with_tip(al("plan_cells", "value"), t("Numbers: the ARD's values (stat), rounded here to the decimals below. The ARD's text: the values as step 1 formatted them (stat_fmt), printed as they are; a row may still put two in one (Mean (SD)).")),
+        stats::setNames(c("stat", "stat_fmt"),
+                        t(c("Numbers, rounded here", "The ARD's text (as formatted in step 1)"))),
+        selected = st$value, inline = TRUE),
+      # the rows of a continuous variable, their decimals: only when the
+      # table has one (left out, what the definition says is kept)
+      if (cont) builder_rows_ui(bs, st, m$stats),
+      if (!has("plan_digits")) digits_ui,
+      shiny::radioButtons(
+        bid("cat"), al("plan_cells", "categorical"),
+        c(stats::setNames(.cat_formats()$key, .cat_formats()$label),
+          stats::setNames("own", t("Own"))),
+        selected = st$cat_format, inline = TRUE),
+      shiny::conditionalPanel(
+        sprintf("input['%s'] == 'own'", bid("cat")),
+        shiny::textInput(bid("cat_own"), t("Template"),
+                         # one's own starts from the format chosen now
+                         if (is.na(st$cat_own %||% NA))
+                           .cat_template(st$cat_format, st$pct_decimals,
+                                         st$value %||% "stat") else st$cat_own,
+                         placeholder = "{n} ({p:.1f%})", width = "100%"),
+        shiny::p(class = "small text-muted",
+                 t("{n} the count, {N} the denominator, {p} the proportion; a format after a colon: {p:.1f%} prints 16.3%, {p:.2f} 0.16. The table on the right shows it."))),
+      shiny::conditionalPanel(
+        sprintf("input['%s'] == 'stat' && input['%s'] != 'own'", bid("value"), bid("cat")),
+        shiny::numericInput(bid("pct"), t("Decimals of the percent"),
+                            value = st$pct_decimals, min = 0, max = 3,
+                            width = "260px")),
+      shiny::uiOutput(bid("warn")))
+    # plan_labels(): each variable's heading, levels and nesting (a summary
+    # table; the values-and-labels card of the next step takes them over)
+    labels_body <- if (!hier) shiny::tagList(
+      .btn("cl3_open", t("Code lists: in step 1 (1-1, column definitions)"),
+           class = "btn-sm btn-link py-0 px-0 mb-1"),
+      bslib::accordion(
+        open = FALSE,
+        lapply(seq_len(nrow(v)), function(i) {
+          # blank: the code list's label of the variable (faint), what the
+          # table prints unless one is written here
+          hint <- v$hint[i] %||% NA_character_
+          bslib::accordion_panel(
+            title = paste0(v$variable[i],
+                           if (!is.null(under_of(i))) paste0(" \u2192 ", t("under"), " ", under_of(i)) else
+                             if (!is.na(v$label[i])) paste0(": ", v$label[i]) else
+                               if (!is.na(hint)) paste0(": ", hint)),
+            value = v$variable[i],
+            # nested under another's level: no heading of its own, so no
+            # label to write (the field would mislead)
+            if (!is.null(under_of(i))) shiny::p(
+              class = "small text-muted mb-1",
+              sprintf(t("No heading of its own: its rows go under %s."), under_of(i)))
+            else shiny::textInput(bid(paste0("lab", i)),
+                             if (is.na(hint)) t("Label") else
+                               with_tip(t("Label"), t("Blank: the label of this report's code list of variable (faint). What is written here is the table's own.")),
+                             value = if (is.na(v$label[i])) "" else
+                               v$label[i], width = "100%",
+                             placeholder = if (!is.na(hint)) hint),
+            # what the table prints for it (the Statistics card's), faint
+            shiny::uiOutput(bid(paste0("vdef", i))),
+            # its rows under one level of another categorical variable
+            # (RACE: Asian; plan_nest())
+            if (identical(v$kind[i], "categorical")) {
+              others <- v$variable[v$kind == "categorical" & v$variable != v$variable[i]]
+              ch <- unlist(lapply(others, function(o) paste0(o, ": ", st$levels[[o]])))
+              cur <- v$under[i] %||% NA_character_
+              shiny::selectInput(
+                bid(paste0("under", i)),
+                with_tip(t("Rows under a level of another variable"),
+                         t("Its rows go right after that level's row, one step deeper, without its own heading: Chinese / Japanese / Korean under Race's Asian. Blank: a block of its own.")),
+                choices = c(stats::setNames("", t("(its own block)")),
+                            unique(c(ch, if (!is.na(cur)) cur))),
+                selected = if (is.na(cur)) "" else cur, width = "100%")
+            },
+            if (identical(v$kind[i], "categorical") &&
+                length(st$levels[[v$variable[i]]])) {
+              shiny::tagList(
+                shiny::tags$label(class = "form-label small",
+                                  t("Levels (drag to order)")),
+                sortable::rank_list(
+                  text = NULL,
+                  labels = .levels_with_labels(st$levels[[v$variable[i]]], v$variable[i],
+                                               sheet_rows(p0, "codelists", id)),
+                  input_id = bid(paste0("lv", i)),
+                  orientation = "horizontal"))
+            })
+        })))
+    # plan_col_header(): the header's lines
+    hdr_body <- shiny::tagList(
+      shiny::uiOutput(bid("hdr_ui")),
+      if (!anyNA(st$key) &&
+          !.has_group_n(p0, id, st$key[1L]))
+        shiny::div(
+          class = "small text-warning d-flex flex-wrap gap-2 align-items-center",
+          shiny::span(sprintf(t("The ARD has no subjects per %s: a header's (N=n) prints NA."),
+                              st$key[1L])),
+          .btn("b_add_n", t("Count them (then Preview)"),
+               class = "btn-sm btn-outline-primary py-0")))
+    item_of <- function(fn) Filter(function(it) identical(it$fn, fn), items)[[1L]]
+    bodies <- list(
+      table_plan = tp_body, plan_cells = cells_body, plan_col_header = hdr_body,
+      plan_total = shiny::uiOutput(bid("total_ui")),
+      plan_digits = if (cont && has("plan_digits")) shiny::tagList(
+        digits_ui, .item_args_view(item_of("plan_digits"), lang)),
+      plan_labels = labels_body,
+      plan_sort = if (hier) hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
+                                         total = .rows_for(p0, "tables", id)$total[1L]))
+    bodies <- Filter(Negate(is.null), bodies)
+    shiny::div(
+      class = "rp-builder-cards",
+      .table_cards(items, bodies, id = card_id, switches = "plan_total", lang = lang))
+  })
+  # a card's input id: by its path (the verb; "#2" its second call)
+  card_id <- function(path) bid(paste0("card_", gsub("[^A-Za-z0-9_]", "_", path)))
+  # the Total column's switch: its card's
+  total_on_id <- function() paste0(card_id("plan_total"), "__on")
+  # a card's Revert: the report's own rows of its verb taken away, so the
+  # study's defaults apply again
+  shiny::observeEvent(input$b_card_revert, {
+    it <- .builder_item_at(bform$items, input$b_card_revert$path)
+    shiny::req(!is.null(it), identical(bform$id, current()))
+    p2 <- guarded(.builder_item_revert(rv$p, bform$id, it$fn))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    rv$bver <- rv$bver + 1L
+  })
+  # a card's "Edit as R": its arguments as one line of R, read back (and
+  # written to the sheets through tflspec's bridge) on Apply
+  shiny::observeEvent(input$b_card_r, {
+    it <- .builder_item_at(bform$items, input$b_card_r$path)
+    shiny::req(!is.null(it), isTRUE(it$present))
+    bform$r_item <- it
+    shiny::showModal(shiny::modalDialog(
+      title = shiny::tagList(t("Edit as R"), " ", shiny::tags$code(paste0(it$fn, "()"))),
+      shiny::textAreaInput("b_r_text", NULL, args_to_r(it$fn, it$args), rows = 6,
+                           width = "100%", resize = "vertical"),
+      shiny::p(class = "small text-muted",
+               t("The arguments as R: name = value, separated by commas. What is no plain value (a call, a name) stays R.")),
+      footer = shiny::tagList(
+        .btn("b_r_no", t("Cancel"), class = "btn-secondary"),
+        .btn("b_r_ok", t("Apply"), class = "btn-primary")),
+      size = "l", easyClose = TRUE))
+  })
+  shiny::observeEvent(input$b_r_no, shiny::removeModal())
+  shiny::observeEvent(input$b_r_ok, {
+    it <- bform$r_item
+    shiny::req(!is.null(it), identical(bform$id, current()))
+    args <- tryCatch(args_from_r(it$fn, input$b_r_text %||% ""), error = function(e) {
+      notify(conditionMessage(e), "error")
+      NULL
+    })
+    shiny::req(!is.null(args))
+    shiny::removeModal()
+    if (identical(args, it$args)) return()
+    k <- if (grepl("#", it$path, fixed = TRUE)) as.integer(sub("^.*#", "", it$path)) else 1L
+    p2 <- guarded(.builder_item_write(rv$p, bform$id, it$fn, args, k))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    rv$bver <- rv$bver + 1L
+  })
+  # the Code tab's lines -> the cards that wrote them (code_jump())
+  output$builder_code_jump <- shiny::renderUI({
+    id <- current()
+    shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
+    items <- tryCatch(builder_items(rv$p, id), error = function(e) list())
+    code_jump(builder_code_map(program_text(), items), "program_table")
   })
   # A hierarchy's order, one a term (outermost first): by name -- the code
   # list's order when the report has one for it -- or most frequent first
@@ -8883,7 +8969,7 @@ app_server <- function(input, output, session, start) {
     bform_drawn()
     st <- bform$st
     shiny::req(length(st$hierarchy) > 0L)
-    rk <- input[[bid("rowkeys")]]
+    rk <- input[[bid("layers")]]
     shiny::req(!is.null(rk))
     miss <- setdiff(st$hierarchy, rk)
     if (!length(miss)) return(NULL)
@@ -8895,7 +8981,7 @@ app_server <- function(input, output, session, start) {
       shiny::actionLink("b_rows_step1", t("Step 1's analysis")))
   })
   shiny::observeEvent(input$b_rows_back, {
-    shiny::updateSelectizeInput(session, bid("rowkeys"), selected = bform$st$row_keys)
+    shiny::updateSelectizeInput(session, bid("layers"), selected = bform$st$row_keys)
   })
   shiny::observeEvent(input$b_rows_step1, go("ard"))
   shiny::observeEvent(input$b_sort_reset, {
@@ -9202,12 +9288,21 @@ app_server <- function(input, output, session, start) {
   # the Total column: a switch, its heading and place; it sets `overall` on
   # the analyses by the column variable too (set_total_column()), which
   # the ARD then needs to run again
+  # (the report's own, else the study's defaults': the card's switch is on
+  # for either, and drawing it writes nothing)
   total_now <- function(p0, id) {
     tb <- sheet_rows(p0, "tables", id)
-    on <- nrow(tb) > 0L && !is.na(tb$total[1L] %||% NA)
+    inh <- inherited_rows(p0, "tables", id)
+    val <- function(col) {
+      a <- if (nrow(tb)) tb[[col]][1L] %||% NA else NA
+      if (is.na(a) && nrow(inh)) a <- inh[[col]][1L] %||% NA
+      a
+    }
+    total <- val("total")
+    on <- !is.na(total)
     list(on = on,
-         label = if (on) tb$total[1L] else NA_character_,
-         position = if (on && identical(tb$total_position[1L] %||% NA, "first"))
+         label = if (on) total else NA_character_,
+         position = if (on && identical(val("total_position"), "first"))
            "first" else "last")
   }
   shiny::observe(builder_guard({
@@ -9219,18 +9314,18 @@ app_server <- function(input, output, session, start) {
     p0 <- shiny::isolate(rv$p)
     now <- total_now(p0, id)
     runs <- sum(.total_rows(ard_rows(p0, "analyses", id), ks[1L]))
+    # (the switch is the card's: its body shows while it is on)
     output[[paste0("b", n, "_total_ui")]] <- shiny::renderUI(shiny::tagList(
-      shiny::checkboxInput(
-        bid("total_on"),
-        with_tip(t("Total column"),
-                 t("One more column over all subjects, read from the ARD's overall rows: the analyses by the column variable are run once more without it (step 1, 'Also over all subjects'). No 'Total' arm is made up in the data.")),
-        now$on, width = "100%"),
-      if (now$on) shiny::div(
+      shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-end mb-2",
-        shiny::textInput(bid("total_label"), t("Heading"), now$label, width = "160px"),
-        shiny::radioButtons(bid("total_pos"), t("Place"),
+        shiny::textInput(bid("total_label"),
+                         builder_label(.arg_meaning("plan_total", "label"), "label", "arg", lang),
+                         if (now$on) now$label else "", placeholder = "Total", width = "160px"),
+        shiny::radioButtons(bid("total_pos"),
+                            builder_label(.arg_meaning("plan_total", "position"), "position", "arg", lang),
                             stats::setNames(c("last", "first"), c(t("last"), t("first"))),
-                            now$position, inline = TRUE)),
+                            now$position, inline = TRUE),
+        help_tip(t("One more column over all subjects, read from the ARD's overall rows: the analyses by the column variable are run once more without it (step 1, 'Also over all subjects'). No 'Total' arm is made up in the data."))),
       if (now$on && runs == 0L) shiny::div(
         class = "small text-warning",
         sprintf(t("No analysis of this report is grouped by %s: the ARD has no overall rows to show."), ks[1L]))
@@ -9240,7 +9335,7 @@ app_server <- function(input, output, session, start) {
   }))
   shiny::observe(builder_guard({
     bform_drawn()
-    on <- input[[bid("total_on")]]
+    on <- input[[total_on_id()]]
     lbl <- input[[bid("total_label")]]
     pos <- input[[bid("total_pos")]]
     shiny::req(!is.null(on), builder_case() %in% c("ok", "hierarchy"))
@@ -9718,11 +9813,19 @@ app_server <- function(input, output, session, start) {
          auto_levels = st$auto_levels,
          hierarchy = st$hierarchy,
          row_keys = if (hier) {
-           rk <- get("rowkeys")
+           rk <- get("layers")
            # a hierarchy level left out: not written (the card says why)
            if (is.null(rk) || !length(rk) || !all(st$hierarchy %in% rk)) st$row_keys else rk
          },
          row_choices = st$row_choices,
+         # a summary table's row layers (a hierarchy's are its row keys);
+         # the block of variables is always among them
+         layers = {
+           ly <- get("layers")
+           if (hier || is.null(ly) || !length(ly)) st$layers else
+             unique(c(ly, ".variable"))
+         },
+         layer_choices = st$layer_choices,
          row_pages = if (hier) {
            pg <- get("rowpages")
            if (is.null(pg)) st$row_pages else isTRUE(pg)

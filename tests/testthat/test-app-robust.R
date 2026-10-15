@@ -584,13 +584,13 @@ test_that("an input left by an earlier session is not read as this form's (the T
     # a reconnecting browser sends the inputs of the session before: an
     # earlier form's switch, on -- not this form's, nothing changes
     old <- list(TRUE, TRUE, TRUE)
-    names(old) <- paste0("b", 1:3, "_total_on")
+    names(old) <- paste0("b", 1:3, "_card_plan_total__on")
     do.call(session$setInputs, old)
     session$elapse(1000)
     expect_true(is.na(total()))
     # this form's own switch does
     on <- list(TRUE)
-    names(on) <- b("total_on")
+    names(on) <- b("card_plan_total__on")
     do.call(session$setInputs, on)
     session$elapse(1000)
     expect_identical(total(), "Total")

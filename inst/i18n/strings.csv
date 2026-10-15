@@ -3207,3 +3207,64 @@ Other arguments,ほかの引数
 Search arguments,引数を検索
 Study default,試験の既定
 Add an item (type a function name),項目を追加（関数名を入力）
+Table structure,表の構造
+Statistics in the cells,セルに入れる統計量
+Order of the values,値の順
+Labels,ラベル
+Rows under another value,別の値の下の行
+Comparison columns,比較列
+Groups of statistics,統計量のグループ
+Row order,行の並び順
+Row filter,行のフィルター
+Hidden columns,隠す列
+Row label column,行ラベルの列
+Blank rows,空行
+Page breaks by rows,行でページ分割
+A page per group,群ごとに 1 ページ
+Column pages,列のページ分割
+Row groups,行のグループ
+Column widths and alignment,列の幅と揃え
+Table style,表のスタイル
+Cell styles,セルのスタイル
+Normalize the ARD,ARD の正規化
+Row layers,行
+Row text column,行の文字の列
+Statistic columns,統計量の列
+Keys shown,見せるキー
+Values printed,出す値
+Statistics as,統計量の並べ方
+Text for missing,欠測の文字
+Every cell,すべてのセル
+Decimals by row,行ごとの桁
+Hide empty values,空の値を隠す
+Statistic counted,数える統計量
+Condition,条件
+In any column,いずれかの列で
+Parent rows,親の行
+By group,群ごとに
+Column name,列の名前
+Indent,字下げ
+Group summary rows,群の要約行
+Before the rows,行の前に
+Before the first,最初の前
+After the last,最後の後
+Count blank rows,空行も数える
+Most rows a page,1 ページの最大行数
+Split rule,分割の規則
+Page by,ページを分ける変数
+Continued label,続きの印
+Header lines,見出しの行
+Values of the tokens,トークンの値
+Alignment,揃え
+Widths,幅
+Decimal alignment,小数点揃え
+Row title,行の見出し
+Automatic width,自動の幅
+Separator,区切り
+Align n (%),n (%) を揃える
+No arguments: the defaults of the function.,引数なし: 関数の既定のまま。
+Back to the study default,試験の既定に戻す
+Analysis variables (the block),解析変数（まとまり）
+"Analysis variables (the block), in order",解析変数（まとまり）の順
+"Outermost first; drag to order. The keys are the analysis's by (step 1); a hierarchy's levels are its analysis's: rows the table should not show are hidden by a row filter (plan_filter()), not left out here.",外側から順に。ドラッグで並べ替え。キーは解析の by（ステップ 1）から、階層の段は解析から来ます。表に出さない行は、ここで外すのではなく行のフィルター（plan_filter()）で隠します。
+"The arguments as R: name = value, separated by commas. What is no plain value (a call, a name) stays R.",引数を R で: 名前 = 値 をカンマで区切って。単純な値でないもの（関数の呼び出し、名前）は R のまま残ります。

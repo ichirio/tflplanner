@@ -108,7 +108,8 @@ test_that("the builder opens on a hierarchy table, and writes its order", {
                       table_nav = "builder")
     expect_no_match(output$builder_note$html %||% "", "summary tables for now", fixed = TRUE)
     h <- output$builder_form$html
-    expect_match(h, "Row variables (outermost first; drag)", fixed = TRUE)
+    expect_match(h, "Row layers", fixed = TRUE)
+    expect_match(h, "(rows)", fixed = TRUE)
     # one order a term; an outer term's count waits for rtfreporter
     expect_match(h, "Most frequent first (ties by name)", fixed = TRUE)
     expect_match(h, "Counted in", fixed = TRUE)

@@ -256,6 +256,16 @@ builder_read <- function(x, output_id, meta = NULL) {
   rk <- if (length(hier)) .row_keys_read(tb$rows[1L], tb$label[1L]) else character()
   if (length(hier) && !length(rk)) rk <- c(setdiff(meta$by %||% character(), key), hier)
   ly <- .rows_for(x, "layout", id)
+  # the rows as layers, outermost first, for both kinds: a hierarchy's
+  # row keys; a summary table's keys over its block of variables
+  # (".variable": group = variable)
+  if (length(hier)) {
+    layers <- rk
+    layer_choices <- setdiff(names(meta$keys), key)
+  } else {
+    layers <- .row_layers_read(tb$rows[1L])
+    layer_choices <- c(setdiff(names(meta$keys) %||% character(), c(key, vars)), ".variable")
+  }
   list(key = key, arms = arms, variables = variables, levels = levels,
        rows = rows, templates = templates, value = value, digits = digits,
        exceptions = exc, cat_format = cat_format, cat_own = cat_own,
@@ -265,7 +275,29 @@ builder_read <- function(x, output_id, meta = NULL) {
        row_pages = length(hier) > 0L && isTRUE(as.logical(ly$group_page[1L])) &&
          identical(ly$group_col[1L] %||% NA_character_, "group1"),
        sort = if (length(hier)) .hier_sort_read(tb$sort[1L], length(rk)),
-       overall_label = if (length(hier)) tb$overall_label[1L] %||% NA_character_)
+       overall_label = if (length(hier)) tb$overall_label[1L] %||% NA_character_,
+       layers = layers, layer_choices = unique(c(layers, layer_choices)))
+}
+
+# A summary table's row layers from its tables$rows ("group1 = SEX | group
+# = variable"): the keys, and ".variable" for the block of the analysis
+# variables; the block alone when the rows say nothing
+.row_layers_read <- function(rows) {
+  if (.is_blank(rows)) return(".variable")
+  part <- trimws(strsplit(rows, "|", fixed = TRUE)[[1L]])
+  v <- trimws(sub("^[^=]*=", "", part))
+  v <- v[nzchar(v) & !grepl("^[\"'~]", v)]
+  v[v == "variable"] <- ".variable"
+  if (!".variable" %in% v) v <- c(v, ".variable")
+  v
+}
+
+# ... and back: the keys a group each (group1, group2 ...), outermost
+# first, the block as `group = variable`
+.row_layers_write <- function(layers) {
+  keys <- setdiff(layers, ".variable")
+  paste(c(if (length(keys)) sprintf("group%d = %s", seq_along(keys), keys),
+          "group = variable"), collapse = " | ")
 }
 
 # A table's row keys, outermost first, from its tables$rows and
@@ -392,6 +424,12 @@ builder_write <- function(x, output_id, state, was = NULL) {
     if (!"overall_label" %in% names(tb)) tb$overall_label <- NA_character_
     ol <- st$overall_label %||% NA_character_
     tb$overall_label[1L] <- if (is.na(ol) || !nzchar(trimws(ol))) NA_character_ else trimws(ol)
+  }
+  # a summary table's row layers: written when they changed (a key over
+  # the block of variables)
+  if (!length(st$hierarchy) && length(st$layers) && !is.null(was) &&
+      !identical(st$layers, was$layers)) {
+    tb$rows[1L] <- .row_layers_write(st$layers)
   }
   # whose {n} the header prints (the form asks only when a cell uses {n})
   if (!is.null(st$header_n) && "header_n" %in% names(tb)) tb$header_n[1L] <- st$header_n
