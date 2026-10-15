@@ -53,7 +53,7 @@ will (\code{\link[=check_planner]{check_planner()}}): slow, one read a report.}
 \item{progress}{A function called with each dataset's name before its
 file is read (\code{data = "read"}), or \code{NULL}.}
 
-\item{x}{A planner (\code{\link[=new_planner]{new_planner()}}, \code{\link[=read_planner]{read_planner()}}).}
+\item{x}{A planner (\code{\link[=new_planner]{new_planner()}}, a study's \verb{$planner}).}
 
 \item{facts}{The facts of the data (\code{\link[=review_facts]{review_facts()}}), or \code{NULL}.}
 

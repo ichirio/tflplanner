@@ -132,15 +132,13 @@ test_that("the definition is saved, reopened and run", {
   g <- register_study(s$path)
   expect_identical(g$planner$ard, o2$planner$ard)
 
-  # ard_spec.xlsx: an export, and an import
+  # the files exported, and imported back: the ARD definition the same
   d <- withr_tempdir()
-  f <- export_spec(g, d)
-  expect_true(file.exists(file.path(d, "ard_spec.xlsx")))
-  g2 <- g
-  g2$planner$ard$analyses <- g2$planner$ard$analyses[0, ]
-  g2 <- import_spec(g2, file.path(d, "ard_spec.xlsx"))
-  expect_identical(g2$planner$ard, g$planner$ard)
-  expect_identical(g2$planner$sheets, g$planner$sheets)
+  export_spec_files("A1", d)
+  expect_true(file.exists(file.path(d, "spec", "outputs", "DM.yml")))
+  g2 <- import_spec_files("A1", file.path(d, "spec"))
+  expect_identical(.study_parts(g2)[grep("^ard:", names(.study_parts(g2)))],
+                   .study_parts(g)[grep("^ard:", names(.study_parts(g)))])
 })
 
 test_that("the study's analyses are exported as CDISC ARS", {

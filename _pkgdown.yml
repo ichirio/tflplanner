@@ -65,7 +65,6 @@ reference:
       - reload_from_spec
       - export_spec_files
       - list_spec_backups
-      - export_spec
       - export_ars
       - study_layout
       - study_setup_code
@@ -117,8 +116,6 @@ reference:
       - inherited_rows
       - page_patterns
       - add_page_pattern
-      - read_planner
-      - write_planner
       - check_planner
       - report_info
       - lf_rows

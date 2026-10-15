@@ -316,7 +316,8 @@ output_ids <- function(x) {
 #'
 #' @param path One or more `.xlsx` files.
 #' @return An `tflplanner` object.
-#' @export
+#' @keywords internal
+#' @noRd
 read_planner <- function(path) {
   # a report sheet that says type user is read from a copy that does not
   # (.migrate_step_code() then makes its code a step's)
@@ -661,7 +662,8 @@ set_sheet_rows <- function(x, sheet, output_id = "", rows) {
 #' @param table_file,report_file File names.
 #' @param books Which to write: `"table"`, `"report"` (both by default).
 #' @return The two paths, invisibly.
-#' @export
+#' @keywords internal
+#' @noRd
 write_planner <- function(x, dir, table_file = "table_spec.xlsx",
                           report_file = "report_spec.xlsx",
                           books = c("table", "report")) {

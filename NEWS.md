@@ -1,5 +1,30 @@
 # tflplanner (development version)
 
+- **A study's definition is tflspec's YAML spec** (#395, 0.0.2.9225; the
+  user's decision of 2026-10-15).  `study.yml` and `spec/` -- `data.yml`
+  (the data catalog), `defaults.yml` (what every report has), `toc.yml`
+  (the reports, their order and files), `patterns/<name>.yml` and one file
+  a report, `spec/outputs/<id>.yml` (its ARD analyses, data, content and
+  page) -- are what the app reads and writes, through tflspec
+  (`tfl_sheets_from_yaml()`, `tfl_yaml_from_sheets()`); the screens are as
+  before.  A save writes each file only when its text changed (one report
+  changed: its file, and the TOC when its list changed).  The workbooks
+  (`table_spec.xlsx`, `report_spec.xlsx`, `listing_figure_spec.xlsx`,
+  `ard_definition.json`, `spec/figures/`) are gone: a folder that still has
+  them says to convert it (`tflspec::tfl_convert_sheets_to_yaml()`) or to
+  import the workbooks.  Outside edits (#274) are per file, compared with
+  the study as its files say it, and only the parts that changed are taken
+  in.  Export writes the YAML files and one flat workbook to read or edit in
+  Excel (tflspec's `tfl_write_spec_xlsx()`); Import takes YAML files, a
+  folder or zip of them, that workbook (when edited after the YAML beside
+  it), or the workbooks of an earlier tflplanner (converted by tflspec).
+  The sample study is made again as YAML: its programs are the same, its
+  RTFs too but the time stamp (its ARD program in the TOC's order).  The
+  programs' header lines name the report's file.  `export_spec()`,
+  `import_spec()`, `read_planner()` and `write_planner()` are gone from the
+  API (the workbooks are no longer the study's).  Needs tflspec >=
+  0.0.24.9124.
+
 - **The shift table returns with the unified builder** (#378, 0.0.2.9224).  Its template is
   hidden from the list for now (`options(tflplanner.shift_template = TRUE)`
   shows it): it is to choose its data among the study's datasets, its
