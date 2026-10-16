@@ -3340,3 +3340,20 @@ Blank: rtfreporter's width. .values: every value column.,空欄: rtfreporter の
 No categorical variable to order.,並べるカテゴリ変数はありません。
 The columns' values (%s): ordered on the columns (table_plan()).,列の値（%s）の順は、列（table_plan()）で並べ替えます。
 Relative width,相対幅
+Variables split,分ける変数
+Group of the other variables,ほかの変数のグループ
+Rows under a level,水準の下に入れる行
+Group boundary,グループの区切り
+A repeat printed once,繰り返しを 1 回だけ表示
+Group column,グループの列
+Keep the column,列を残す
+Group and its statistics,グループとその統計量
+Group name,グループ名
+As R: Edit as R changes it.,R のまま：「R で編集」で変えます
+"A comparison column a name: a statistic of the ARD's comparison records (a test's p.value, a difference's estimate ...), or a name typed. Each column's text is its template.",比較列ごとに名前を 1 つ：ARD の比較レコードの統計量（検定の p.value、差の estimate など）、または入力した名前。各列の文字はそのテンプレートです。
+Choose or type a column's name,列の名前を選ぶか入力
+"The ARD has no comparison records (a test, a difference): add one in step 1, then read the ARD again.",ARD に比較レコード（検定・差）がありません。手順 1 で追加し、ARD を読み直してください。
+A new group,新しいグループ
+"A group a row: its name (a key of .stat_group, as table_plan()'s cols or rows name it, and plan_cells()' template's) and its statistics. A statistic in no group is not read.",1 行に 1 グループ：名前（.stat_group のキー。table_plan() の cols / rows と plan_cells() のテンプレートで使う名前）と統計量。どのグループにも入らない統計量は読まれません。
+No categorical variable to nest.,下に入れられるカテゴリ変数がありません。
+Every row key (TRUE),すべての行キー（TRUE）

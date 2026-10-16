@@ -53,7 +53,12 @@
   plan_sort = c(keys = "Order", stat = "Statistic counted"),
   plan_total = c(label = "Heading", position = "Place"),
   plan_filter = c(where = "Condition", any = "In any column", parents = "Parent rows"),
-  plan_compare = c(by = "By group", position = "Place"),
+  plan_compare = c(by = "By group", position = "Place", "..." = "Columns"),
+  plan_stat_groups = c("..." = "Group and its statistics", .variables = "Variables split",
+                       .others = "Group of the other variables"),
+  plan_nest = c("..." = "Rows under a level"),
+  plan_row_group = c(mode = "Group boundary", collapse = "A repeat printed once",
+                     group_col = "Group column"),
   plan_stub = c(vars = "Variables", name = "Column name", indent = "Indent",
                 group_summary = "Group summary rows", before = "Before the rows"),
   plan_blanks = c(where = "Where", first = "Before the first", last = "After the last",
@@ -66,7 +71,7 @@
                          at = "Break before columns", keep = "Columns on every page",
                          cut_by = "Cut by", order = "Order of the pages",
                          allow_span_break = "A spanning header may break"),
-  plan_paginate_group = c(col = "Column", heading = "Heading"),
+  plan_paginate_group = c(col = "Column", keep = "Keep the column", heading = "Heading"),
   plan_col_header = c(header = "Header lines", values = "Values of the tokens",
                       col_header_align = "Alignment"),
   plan_columns = c(widths = "Widths", decimal = "Decimal alignment", row_title = "Row title",
@@ -595,7 +600,9 @@ builder_items <- function(x, output_id) {
   plan_filter = c("any", "parents"),
   plan_blanks = c("where", "first", "last"),
   plan_paginate_rows = c("max_rows", "split", "page_by"),
-  plan_paginate_cols = c("every", "fit"),
+  plan_paginate_cols = c("every", "fit", "at", "keep", "cut_by", "order", "allow_span_break"),
+  plan_paginate_group = c("col", "keep", "heading"),
+  plan_row_group = c("mode", "collapse"),
   plan_stub = c("name", "indent", "before"),
   plan_columns = c("widths", "decimal", "row_title", "auto_width"),
   plan_style = c("border", "align_count_pct", "font_size_half_points"))
@@ -606,6 +613,7 @@ builder_items <- function(x, output_id) {
 .plan_form_types <- list(
   plan_blanks = c(where = "enum[between_groups|records]|r"),
   plan_columns = c(widths = "widths", row_title = "list<column>"),
+  plan_paginate_cols = c(order = "enum[across|down|group|rows|cols]"),
   plan_style = c(border = "string", align_count_pct = "logical",
                  font_size_half_points = "integer"))
 
@@ -613,7 +621,9 @@ builder_items <- function(x, output_id) {
 # "Other arguments" as R, what the function does said
 .plan_form_unkept <- list(
   plan_filter = "by",
-  plan_columns = c("cell_format", "column_widths_twips"))
+  plan_columns = c("cell_format", "column_widths_twips"),
+  plan_paginate_cols = "col_header",
+  plan_row_group = "group_col")
 
 # a form card's schema: tflspec's, with the types above, its formals the
 # function's own (not `plan`) and its visible arguments the main ones
@@ -626,9 +636,18 @@ builder_items <- function(x, output_id) {
     sch$args[[a]]$type <- "r"
     sch$args[[a]]$description <- "Not kept in the sheets yet: the function's default applies."
   }
-  fo <- tryCatch(names(formals(utils::getFromNamespace(fn, "rtfreporter"))),
-                 error = function(e) NULL)
-  sch$formals <- setdiff(unique(c(fo, names(sch$args))), c("plan", "..."))
+  fl <- tryCatch(formals(utils::getFromNamespace(fn, "rtfreporter")), error = function(e) NULL)
+  fo <- names(fl)
+  # a check's default the function's own (plan_paginate_group(keep = TRUE)):
+  # the field ticked as the function would be
+  for (a in intersect(fo, names(sch$args))) {
+    d <- fl[[a]]
+    if (identical(.arg_kind(sch$args[[a]]$type), "logical") && is.null(sch$args[[a]]$default) &&
+        is.logical(d) && length(d) == 1L && !is.na(d)) {
+      sch$args[[a]]$default <- d
+    }
+  }
+  sch$formals <- setdiff(unique(c(fo, names(sch$args))), c("plan", ".plan", "..."))
   sch$visible <- .plan_form_main[[fn]]
   sch
 }
@@ -679,6 +698,7 @@ builder_items <- function(x, output_id) {
   }, NA)
   if (!any(seen)) return(NULL)
   out <- builder_card_read(input, cid, sch, args = setdiff(sch$formals, wa), logical_false = TRUE)
+  for (k in intersect(names(out), names(sch$args))) out[[k]] <- .form_list_value(out[[k]], sch$args[[k]]$type)
   for (k in wa) {
     if (isTRUE(.input_value(input, paste0(cid, "__", k, "__isr")))) {
       txt <- .input_value(input, paste0(cid, "__", k, "__r"))
@@ -689,6 +709,18 @@ builder_items <- function(x, output_id) {
     if (length(w)) out[[k]] <- w
   }
   out
+}
+
+# A list field's values as the argument takes them, by its type: whole
+# numbers (column positions: plan_paginate_cols(at = c(2, 4))) as
+# integers, a lone TRUE / FALSE (plan_row_group(collapse = TRUE)) a
+# logical, the rest the columns' names
+.form_list_value <- function(v, type) {
+  if (!is.character(v) || !length(v) || is.null(type)) return(v)
+  alts <- .type_split(type, "|")
+  if ("logical" %in% alts && length(v) == 1L && v %in% c("TRUE", "FALSE")) return(as.logical(v))
+  if ("list<integer>" %in% alts && all(grepl("^[0-9]+$", v))) return(as.integer(v))
+  v
 }
 
 # ---- plan_columns(widths = ): a number a column ---------------------------------
@@ -777,7 +809,11 @@ builder_items <- function(x, output_id) {
   for (a in union(names(read), intersect(names(eff), sch$formals))) {
     lg <- identical(.arg_kind(sch$args[[a]]$type), "logical") && !inherits(read[[a]], "tfl_r")
     new <- read[[a]]
-    if (.same_value(new, eff[[a]], lg)) next
+    # (an argument the item does not say is the function's default: a
+    # check ticked as that default is no change)
+    cur <- eff[[a]]
+    if (is.null(cur) && lg) cur <- sch$args[[a]]$default
+    if (.same_value(new, cur, lg)) next
     if (is.null(new)) {
       if (a %in% names(own)) own[[a]] <- NULL
       next
@@ -1183,6 +1219,7 @@ builder_code_map <- function(lines, items) {
 .builder_item_write <- function(x, output_id, fn, args, k = 1L) {
   tg <- .verb_targets[[fn]]
   if (is.null(tg)) stop(sprintf("%s: the sheets have no place for it.", fn), call. = FALSE)
+  was_cmp <- .compare_names_own(x, output_id)
   sp <- .spec_object_last(x, table_sheets(), .study_keys$table)
   own <- .tflspec_fn(".plan_content_from_sheets")(sp, output_id, own = TRUE)
   at <- which(vapply(own, function(it) it$fn, "") == fn)
@@ -1205,6 +1242,10 @@ builder_code_map <- function(lines, items) {
   # c(ALL = "All Subjects")): tflspec keeps them as the report's code list
   # rows of those columns; the data's own code lists are not touched
   if (identical(fn, "plan_labels")) x <- .put_plan_made_codelists(x, output_id, sh$codelists)
+  # plan_compare(): each column's template is a cells row of its name
+  # (variable = the column) -- those rows replaced, the rest of the
+  # report's cells (plan_cells()') kept
+  if (identical(fn, "plan_compare")) x <- .put_compare_cells(x, output_id, was_cmp, sh$cells)
   # the study's own (plan_digits()' rounding): one value for every report,
   # written when the item says it
   .put_study_keys(x, sh$study)
@@ -1255,6 +1296,7 @@ builder_code_map <- function(lines, items) {
 .builder_item_revert <- function(x, output_id, fn) {
   tg <- .verb_targets[[fn]]
   if (is.null(tg)) return(x)
+  was_cmp <- .compare_names_own(x, output_id)
   for (sheet in names(tg)) {
     cols <- tg[[sheet]]
     x <- if (is.null(cols)) .put_rows(x, output_id, sheet, NULL) else
@@ -1262,7 +1304,41 @@ builder_code_map <- function(lines, items) {
   }
   # (plan_labels(): its labels of the columns the plan makes too)
   if (identical(fn, "plan_labels")) x <- .put_plan_made_codelists(x, output_id, NULL)
+  # (plan_compare(): its columns' cells rows too)
+  if (identical(fn, "plan_compare")) x <- .put_compare_cells(x, output_id, was_cmp, NULL)
   x
+}
+
+# The comparison columns the report's own tables row names (tables$compare)
+.compare_names_own <- function(x, output_id) {
+  tb <- sheet_rows(x, "tables", output_id)
+  if (!nrow(tb) || !"compare" %in% names(tb)) return(character())
+  v <- tb$compare[1L]
+  if (is.na(v) || !nzchar(trimws(v))) return(character())
+  trimws(strsplit(v, "|", fixed = TRUE)[[1L]])
+}
+
+# The report's cells rows of the comparison columns: those of the columns
+# it had (`was`) and those the bridge wrote (`new`, its cells rows, of the
+# columns it names now) replace them; the other cells rows as they are
+.put_compare_cells <- function(x, output_id, was, new) {
+  d <- sheet_rows(x, "cells", output_id)
+  d$output_id <- NULL
+  now <- .compare_names_own(x, output_id)
+  add <- if (is.data.frame(new) && nrow(new) && "variable" %in% names(new)) {
+    new <- as.data.frame(new, stringsAsFactors = FALSE)
+    new[new$variable %in% now, , drop = FALSE]
+  }
+  drop <- d$variable %in% union(was, now)
+  if (!any(drop) && (is.null(add) || !nrow(add))) return(x)
+  rows <- d[!drop, , drop = FALSE]
+  if (!is.null(add) && nrow(add)) {
+    more <- d[rep(NA_integer_, nrow(add)), , drop = FALSE]
+    for (c in intersect(names(add), names(more))) more[[c]] <- as.character(add[[c]])
+    rows <- rbind(rows, more)
+  }
+  rownames(rows) <- NULL
+  set_sheet_rows(x, "cells", output_id, rows)
 }
 
 # ---- style -----------------------------------------------------------------------------
@@ -1282,6 +1358,13 @@ builder_code_map <- function(lines, items) {
   .rp-b-right .rp-tabs { position: static; max-height: none; overflow-y: visible; }
 }
 .rp-back-code { padding: 0 .3rem; font-size: 12px; text-decoration: none; }
+/* a card's rows of names the user gives (comparison columns, groups of
+   statistics, nests): the name narrow, its value the rest of the row */
+.rp-dots-table { width: 100%; font-size: 12.5px; margin-top: .2rem; }
+.rp-dots-table th { font-weight: normal; color: #6b7280; font-size: 12px; padding: 0 .4rem .1rem 0; }
+.rp-dots-table td { padding: .1rem .4rem .1rem 0; vertical-align: middle; }
+.rp-dots-table td:first-child { width: 1%; white-space: nowrap; }
+.rp-dots-table td .form-group, .rp-dots-table td .shiny-input-container { margin-bottom: 0; width: 100% !important; }
 .rp-b-sec { margin-top: .5rem; }
 .rp-b-levels { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
 .rp-b-level { font-family: Consolas, 'Courier New', monospace; font-size: 12px; color: #374151;

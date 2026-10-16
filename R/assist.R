@@ -41,8 +41,10 @@
 #'   frame: `variable`, `kind`, `levels`, `n_levels`, `stats`, `label`),
 #'   `contexts`, `stats`, `columns`; from a normalized ARD also `overall`
 #'   (rows over all subjects, which a Total column reads), `factor_vars`
-#'   (the variables whose levels keep a factor's order) and `factor_keys`
-#'   (the key columns that are factors: their levels' order).
+#'   (the variables whose levels keep a factor's order), `factor_keys`
+#'   (the key columns that are factors: their levels' order) and
+#'   `comparisons` (the comparison records -- tests, differences -- by
+#'   context: their statistics).
 #' @export
 ard_meta <- function(ard = NULL, data = NULL) {
   out <- list(keys = list(), by = character(), hierarchy = character(),
@@ -112,6 +114,7 @@ ard_meta <- function(ard = NULL, data = NULL) {
       unique(v[!is.na(v) & v %in% ana & !is.na(d$.label_order)])
     } else character()
     out$factor_keys <- keys[vapply(keys, function(k) is.factor(d[[k]]), NA)]
+    out$comparisons <- .ard_comparisons(d, by)
   } else if (is.data.frame(ard)) {
     # a raw ARD: keys are the groupN columns, their levels groupN_level
     g <- grep("^group[0-9]+$", names(ard), value = TRUE)
@@ -147,6 +150,28 @@ ard_meta <- function(ard = NULL, data = NULL) {
   out
 }
 
+# The comparison records of a normalized ARD (the tests, differences
+# plan_compare() reads): the analyses whose rows never have a column key
+# (`by` all NA in every row of the context; the overall rows share their
+# context with the arms' rows), the attributes and the total N left out.
+# A named list: context -> its statistics that are numbers, in order.
+.ard_comparisons <- function(d, by) {
+  if (!is.data.frame(d) || !nrow(d) || !length(by) || !all(by %in% names(d)) ||
+      !all(c("context", "stat_name") %in% names(d))) return(list())
+  ctx <- .flat(d$context)
+  none <- Reduce(`&`, lapply(by, function(k) is.na(.flat(d[[k]]))))
+  cmp <- setdiff(unique(ctx[none & !is.na(ctx)]), c(unique(ctx[!none]), "attributes", "total_n"))
+  if (!length(cmp)) return(list())
+  sn <- .flat(d$stat_name)
+  # (a statistic that is a number: the normalized ARD's stat is NA for a
+  # text, as a test's method)
+  num <- if (!"stat" %in% names(d)) rep(TRUE, nrow(d)) else if (is.list(d$stat)) {
+    vapply(d$stat, function(e) is.numeric(e) && length(e) == 1L && !is.na(e), NA)
+  } else !is.na(suppressWarnings(as.numeric(d$stat)))
+  out <- lapply(cmp, function(k) unique(sn[ctx == k & none & num & !is.na(sn)]))
+  stats::setNames(out, cmp)
+}
+
 # Has a normalized ARD rows over all subjects -- an analysis's rows with no
 # column key (`by` all NA), as ard_stack(.overall = TRUE) makes them?
 # plan_total() reads those; without them it stops.
@@ -156,6 +181,12 @@ ard_meta <- function(ard = NULL, data = NULL) {
   own <- if (".key_own" %in% names(d)) d$.key_own %in% TRUE else rep(FALSE, nrow(d))
   ana <- !is.na(v) & !startsWith(v, "..") & !own & !v %in% by
   none <- Reduce(`&`, lapply(by, function(k) is.na(.flat(d[[k]]))))
+  # (an overall row shares its context with the arms' rows; a comparison
+  # -- a test, a difference -- has no arm row at all, so it is not one)
+  if ("context" %in% names(d)) {
+    ctx <- .flat(d$context)
+    none <- none & ctx %in% unique(ctx[!none])
+  }
   any(ana & none)
 }
 

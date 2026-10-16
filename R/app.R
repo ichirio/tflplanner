@@ -8898,21 +8898,9 @@ app_server <- function(input, output, session, start) {
                                v$label[i], width = "100%",
                              placeholder = if (!is.na(hint)) hint),
             # what the table prints for it (the Statistics card's), faint
-            shiny::uiOutput(bid(paste0("vdef", i))),
-            # its rows under one level of another categorical variable
-            # (RACE: Asian; plan_nest())
-            if (identical(v$kind[i], "categorical")) {
-              others <- v$variable[v$kind == "categorical" & v$variable != v$variable[i]]
-              ch <- unlist(lapply(others, function(o) paste0(o, ": ", st$levels[[o]])))
-              cur <- v$under[i] %||% NA_character_
-              shiny::selectInput(
-                bid(paste0("under", i)),
-                with_tip(t("Rows under a level of another variable"),
-                         t("Its rows go right after that level's row, one step deeper, without its own heading: Chinese / Japanese / Korean under Race's Asian. Blank: a block of its own.")),
-                choices = c(stats::setNames("", t("(its own block)")),
-                            unique(c(ch, if (!is.na(cur)) cur))),
-                selected = if (is.na(cur)) "" else cur, width = "100%")
-            })
+            # (its rows under a level of another variable: plan_nest()'s
+            # card)
+            shiny::uiOutput(bid(paste0("vdef", i))))
         })))
     # plan_col_header(): the header's lines
     hdr_body <- shiny::tagList(
@@ -8960,7 +8948,13 @@ app_server <- function(input, output, session, start) {
     for (fn in names(.plan_form_main)) {
       it <- item_of(fn)
       if (is.null(it) || !(isTRUE(it$present) || isTRUE(it$added))) next
-      ch <- if (identical(fn, "plan_columns")) print_cols else cols_offered
+      # (plan_paginate_cols(): the printed columns and the keys;
+      # plan_row_group(collapse = TRUE): every row key)
+      ch <- switch(fn, plan_columns = print_cols,
+                   plan_paginate_cols = unique(c(print_cols, cols_offered)),
+                   plan_row_group = c(stats::setNames("TRUE", t("Every row key (TRUE)")),
+                                      stats::setNames(cols_offered, cols_offered)),
+                   cols_offered)
       wc <- if (identical(fn, "plan_columns")) .widths_cols(it$args$widths, ch)
       bform$form_cols[[fn]] <- wc
       body <- .plan_form_body(card_id(it$path), fn, it, choices = ch, lang = lang, cols = wc)
@@ -8977,6 +8971,30 @@ app_server <- function(input, output, session, start) {
           body)
       }
       bodies[[fn]] <- body
+    }
+    # the cards of the names the user gives (a function's ...): the
+    # comparison columns, the groups of statistics, the rows nested
+    bform$dots_drawn <- list()
+    for (fn in .plan_form_dots) {
+      it <- item_of(fn)
+      if (is.null(it) || !(isTRUE(it$present) || isTRUE(it$added))) next
+      cid <- card_id(it$path)
+      bodies[[fn]] <- switch(
+        fn,
+        plan_compare = {
+          bform$dots_drawn[[fn]] <- .dots_args(fn, it$args %||% list())
+          .compare_body(cid, it, comparisons_of(id, m), by_choices = m$by %||% keys, lang = lang)
+        },
+        plan_stat_groups = {
+          bform$dots_drawn[[fn]] <- length(.dots_args(fn, it$args %||% list()))
+          .stat_groups_body(cid, it, stats = m$stats,
+                            variables = if (is.data.frame(m$variables)) m$variables$variable,
+                            lang = lang)
+        },
+        plan_nest = {
+          bform$dots_drawn[[fn]] <- .nest_vars(st)
+          .nest_body(cid, it, st, lang = lang)
+        })
     }
     bodies <- Filter(Negate(is.null), bodies)
     add_sch <- .plan_add_schema(items)
@@ -8998,6 +9016,16 @@ app_server <- function(input, output, session, start) {
       if (!is.null(d)) m$overall <- .ard_has_overall(d, m$by)
     }
     .ard_total_kind(m)
+  }
+  # the comparison records of the report's ARD (ard_meta()'s
+  # `comparisons`); an older saved meta without them: read from the ARD
+  comparisons_of <- function(id, m) {
+    if (is.null(m)) return(list())
+    if (is.null(m$comparisons)) {
+      d <- tryCatch(ard_data(shiny::isolate(rv$study), id), error = function(e) NULL)
+      return(if (is.null(d)) list() else .ard_comparisons(d, m$by))
+    }
+    m$comparisons
   }
   # a card's input id: by its path (the verb; "#2" its second call)
   card_id <- function(path) bid(paste0("card_", gsub("[^A-Za-z0-9_]", "_", path)))
@@ -9135,6 +9163,18 @@ app_server <- function(input, output, session, start) {
       r <- .plan_form_read(input, card_id(it$path), fn, cols = bform$form_cols[[fn]])
       if (!is.null(r)) out[[fn]] <- r
     }
+    # (the cards of the names the user gives: their whole arguments)
+    for (fn in .plan_form_dots) {
+      it <- .builder_item_at(bform$items, fn)
+      if (is.null(it) || !(isTRUE(it$present) || isTRUE(it$added))) next
+      cid <- card_id(it$path)
+      drawn <- bform$dots_drawn[[fn]]
+      r <- switch(fn,
+                  plan_compare = .compare_read(input, cid, drawn %||% list()),
+                  plan_stat_groups = .stat_groups_read(input, cid, drawn %||% 0L),
+                  plan_nest = .nest_read(input, cid, drawn, it))
+      if (!is.null(r)) out[[fn]] <- structure(r, dots = TRUE)
+    }
     out
   })
   form_args_d <- shiny::debounce(form_args, 600)
@@ -9144,7 +9184,9 @@ app_server <- function(input, output, session, start) {
       at <- which(vapply(bform$items, function(it) identical(it$path, fn), NA))
       if (!length(at)) next
       it <- bform$items[[at[1L]]]
-      own <- .plan_form_own(now[[fn]], it, fn)
+      dots <- isTRUE(attr(now[[fn]], "dots"))
+      own <- if (dots) .dots_form_own(.args_plain_attr(now[[fn]]), it, fn) else
+        .plan_form_own(now[[fn]], it, fn)
       if (identical(args_to_r(fn, own), args_to_r(fn, it$own_args %||% list()))) next
       p2 <- guarded(.builder_item_write(rv$p, bform$id, fn, own))
       if (is.null(p2)) next
@@ -9156,8 +9198,12 @@ app_server <- function(input, output, session, start) {
         was_present <- isTRUE(it$present)
         bform$items[[at[1L]]][c("args", "own_args", "from", "revert", "present")] <-
           fresh[c("args", "own_args", "from", "revert", "present")]
-        # a card added here that is now in the code: drawn again (its mark)
-        if (!was_present) rv$bver <- rv$bver + 1L
+        # a card added here that is now in the code: drawn again (its mark);
+        # a column or a group more or less, a nest changed: drawn again (its
+        # fields; the labels' card says where a variable's rows go)
+        if (!was_present ||
+            (dots && length(.dots_args(fn, fresh$args)) != length(.dots_args(fn, it$args))) ||
+            identical(fn, "plan_nest")) rv$bver <- rv$bver + 1L
       }
     }
   }))
