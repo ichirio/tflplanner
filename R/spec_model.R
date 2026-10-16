@@ -195,7 +195,8 @@
     if (is.null(sp)) sp <- list(study = NULL, outputs = list(), text = list(), where = character())
     if (is.null(sp$study)) sp$study <- new$study
     for (r in changed) {
-      sp$text[r] <- list(now$text[[r]])
+      # (a file the bridge no longer writes: gone from the spec)
+      sp$text[[r]] <- now$text[[r]]
       part <- .spec_part(r)
       switch(part$kind,
         output = {
@@ -207,7 +208,7 @@
             sp$where[[id]] <- r
           }
         },
-        pattern = sp$study$patterns[part$name] <- list(new$study$patterns[[part$name]]),
+        pattern = sp$study$patterns[[part$name]] <- new$study$patterns[[part$name]],
         sp$study[part$kind] <- list(new$study[[part$kind]]))
     }
     sp$study$dir <- dir %||% sp$study$dir
