@@ -19,9 +19,9 @@ populations:
     label: Safety Analysis Set
   - id: SCRF
     dataset: ADSL
-    where: !r ARM == "Screen Failure"
+    where: !r ARMNRS == "SCREEN FAILURE"
     label: Screen Failures
   - id: ENR
     dataset: ADSL
-    label: Enrolled Set
+    label: Screened Set
 

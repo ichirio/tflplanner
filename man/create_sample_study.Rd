@@ -34,8 +34,9 @@ The study, invisibly.
 }
 \description{
 Copies tflplanner's sample study into a studies folder and registers it:
-the CDISC pilot ADaM data of the 'pharmaverseadam' package (ADSL, ADAE,
-ADVS, and ADTTE derived from them), the ARD definition, five tables made
+the simulated oncology study XYZ-ONC-01 of 'tflspec' (Drug X vs Control:
+its ADSL with the screen failures, ADAE, ADVS's systolic blood pressure
+and ADTTE), the ARD definition, five tables made
 from one study ARD, a listing and two figures -- every step, from the ARD
 to the reports, defined in the app and written as Excel (\verb{spec/}: the
 table and report definitions, the listing / figure definition and

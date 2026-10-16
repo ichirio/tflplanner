@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **The table builder shows the content as the plan's cards** (#397,
-  0.0.2.9227).  One card a function call, in the content's order, under the
+  0.0.2.9228).  One card a function call, in the content's order, under the
   plan bar with two separators: the table skeleton (which ARD values go to
   which rows, columns and cells) and finishing (labels, order, digits,
   pages).  Each card is its meaning and its verb, the study default's mark
@@ -12,6 +12,26 @@
   when the ARD has overall rows, the factor order of the levels, the
   labels.  The rows card lists the ARD's variables to order, show or hide
   (a hidden one is a row filter; the ARD is unchanged).
+
+- **The sample study SAMPLE-01 runs on tflspec's oncology sample data**
+  (#400, 0.0.2.9227; the owner's decision: the bundled onco data are the
+  tfl series' sample data).  SAMPLE-01's ADaM are tflspec's simulated study
+  XYZ-ONC-01 (Drug X vs Control; tflspec >= 0.0.24.9136): ADSL with its
+  screen failures, ADAE, ADVS's systolic blood pressure and ADTTE.  The
+  outputs are the same ones, each on the new study: the screen failures
+  (T-14-1-4) are `ARMNRS == "SCREEN FAILURE"` (no arm), the screened
+  subjects (T-14-1-5/6) have them as a column of their own (a derived
+  `ARMGRP`) and the Asian sub-categories from the country, the
+  disposition (T-14-1-2) is the end
+  of study status (ongoing in follow-up, discontinued), the blood pressure
+  (T-14-2-1/3, F-14-2-1) is at week 24 = cycle 9 day 1, and the
+  time-to-event table and figures (T-14-2-2, F-14-2-2/3/4) are the time to
+  the first treatment-emergent skin disorder (`TTSKIN`), Drug X against
+  Control.  pharmaverseadam is no longer used (its copyright holders leave
+  DESCRIPTION; `inst/COPYRIGHTS` names tflspec's data).  The example TOC
+  workbooks (`inst/extdata/SAMPLE-01_TOC*.xlsx`) are made again from it.
+  The sample is written by tflspec 0.0.24.9136, whose tables keep their
+  variables' order as `plan_levels(variable = )` (tflspec #300).
 
 - **A double click on a filtered list opens the row double-clicked** (#398,
   0.0.2.9226; the user's report).  The report list filtered to Figure opened

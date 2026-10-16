@@ -1,17 +1,17 @@
 id: F-14-2-4
 kind: figure
-label: Hazard ratio of the time to first dermatologic event by subgroup (forest plot,
-  its own ARD)
+label: Hazard ratio of the time to first skin disorder by subgroup (forest plot, its
+  own ARD)
 population: SAF
 extends:
   - defaults
 ard:
   analysis_data:
-    - id: adtte_saf_ttde
-      label: TTDE of SAF, with the subgroups
+    - id: adtte_saf_ttskin
+      label: TTSKIN of SAF, with the subgroups
       from: ADTTE
       population: SAF
-      where: !r PARAMCD == "TTDE"
+      where: !r PARAMCD == "TTSKIN"
       add:
         - SEX
         - AGEGR1
@@ -23,7 +23,7 @@ ard:
     - id: HR
       label: Hazard ratio, all subjects
       method: custom
-      data: adtte_saf_ttde
+      data: adtte_saf_ttskin
       code: !r |-
         cox <- survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = data)
         cardx::ard_regression(cox, exponentiate = TRUE)
@@ -31,7 +31,7 @@ ard:
     - id: HR_SEX
       label: Hazard ratio by SEX
       method: custom
-      data: adtte_saf_ttde
+      data: adtte_saf_ttskin
       code: !r |-
         cards::ard_strata(
           data,
@@ -45,7 +45,7 @@ ard:
     - id: HR_AGEGR1
       label: Hazard ratio by AGEGR1
       method: custom
-      data: adtte_saf_ttde
+      data: adtte_saf_ttskin
       code: !r |-
         cards::ard_strata(
           data,
@@ -62,7 +62,7 @@ data:
     - step: read
       dataset: ADTTE
     - step: param
-      value: TTDE
+      value: TTSKIN
     - step: flag
       variable: SAFFL
     - step: ard_stats
@@ -78,7 +78,7 @@ data:
           # the reference arm has no interval; a subgroup whose model did not
           # converge (no events in an arm) has no point: NE
           filter(!is.na(conf.low)) |>
-          filter(TRT01A == "Xanomeline High Dose") |>
+          filter(TRT01A == "Drug X") |>
           mutate(
             subgroup = case_when(
               !is.na(SEX) ~ "SEX",
@@ -109,19 +109,18 @@ data:
           )
 codelists:
   TRT01A:
-    - value: Placebo
-    - value: Xanomeline Low Dose
-    - value: Xanomeline High Dose
+    - value: Control
+    - value: Drug X
   SEX:
     - value: F
       label: Female
     - value: M
       label: Male
   AGEGR1:
-    - value: 18-64
-      label: 18-64 years
-    - value: '>64'
-      label: '>64 years'
+    - value: <65
+      label: <65 years
+    - value: '>=65'
+      label: '>=65 years'
 content:
   - vline:
       xintercept: 1.0
@@ -148,11 +147,11 @@ content:
 page:
   footer:
     '1':
-      left: Hazard ratio of Xanomeline High Dose vs Placebo (Cox model, unstratified)
-        with its 95% CI, overall and within each subgroup; the figure's own ARD.  NE
-        = not estimable.
+      left: Hazard ratio of Drug X vs Control (Cox model, unstratified) with its 95%
+        CI, overall and within each subgroup; the figure's own ARD.  NE = not estimable.
   tokens:
-    OUTPUT_TITLE: Hazard Ratio of Time to First Dermatologic Event by Subgroup
+    OUTPUT_TITLE: Hazard Ratio of Time to First Treatment-Emergent Skin Disorder by
+      Subgroup
     OUTPUT_POPULATION: Safety Analysis Set
   rtf_page:
     orientation: landscape
@@ -160,7 +159,7 @@ page:
     ard_source: own
 template: forest_hr
 plot:
-  x_label: Hazard Ratio (95% CI), Xanomeline High Dose vs Placebo
+  x_label: Hazard Ratio (95% CI), Drug X vs Control
   legend: none
   x_log: true
   add:

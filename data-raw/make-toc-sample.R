@@ -58,8 +58,8 @@ rows_of <- function(title, foot) {
   rows
 }
 shell <- function(id) list(c(id, "Shell"),
-                           c("", "Placebo", "Xanomeline Low Dose", "Xanomeline High Dose"),
-                           c("n", "xx", "xx", "xx"))
+                           c("", "Drug X", "Control"),
+                           c("n", "xx", "xx"))
 book <- function(rows, file) {
   sheets <- c(list(TOC = rows), stats::setNames(lapply(o$output_id, shell), o$output_id))
   d <- lapply(sheets, function(rs) {

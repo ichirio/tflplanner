@@ -348,7 +348,7 @@ Working reports: RTF,作業用帳票：RTF
 What a report program printed in its last preview,帳票プログラムの直近プレビューの出力
 1. ARD: make `ard` (Listing: rework `data`; Figure: the plot). Blank for a table = the company template: its rows of the study ARD.,1. ARD：`ard` を作る（Listing：`data` の加工、Figure：プロット）。表で空欄なら会社テンプレート（試験 ARD から自分の行を取得）。
 "2. Normalize and rework: make `data` from `ard` (normalize_ard(), then mutate() ...). Blank = the company template (normalize).",2. normalize と加工：`ard` から `data` を作る（normalize_ard() の後に mutate() など）。空欄なら会社テンプレート（normalize）。
-"The sample study SAMPLE-01: CDISC pilot data (pharmaverseadam), one study ARD, four tables, a listing and a figure.",サンプル試験 SAMPLE-01：CDISC パイロットデータ（pharmaverseadam）、試験 ARD 1 つ、表 4 つ、Listing 1 つ、Figure 1 つ。
+"The sample study SAMPLE-01: tflspec's oncology sample data (simulated), one study ARD, four tables, a listing and a figure.",サンプル試験 SAMPLE-01：tflspec の腫瘍領域サンプルデータ（シミュレーション）、試験 ARD 1 つ、表 4 つ、Listing 1 つ、Figure 1 つ。
 Add the sample study,サンプル試験を追加
 Adding the sample study and making its ARD and reports ...,サンプル試験を追加し、ARD と帳票を作成しています ...
 Added %s: double-click it in the list to open it.,%s を追加しました。一覧でダブルクリックすると開きます。
@@ -825,7 +825,7 @@ Getting started,はじめに
 Try the sample study (about 1 minute)...,サンプル試験で試す（約 1 分）…
 New study...,新規試験…
 Register a study folder,既存の試験フォルダを登録する
-"The sample uses the CDISC pilot data: it makes its ARD, 5 tables, a listing and 2 figures, to look at and change.",サンプルは CDISC pilot のデータで、ARD・Table 5 本・Listing 1 本・Figure 2 本を作ります。見て、変えてみてください。
+"The sample uses tflspec's oncology sample data (simulated): it makes its ARD, 5 tables, a listing and 2 figures, to look at and change.",サンプルは tflspec の腫瘍領域サンプルデータ（シミュレーション）で、ARD・Table 5 本・Listing 1 本・Figure 2 本を作ります。見て、変えてみてください。
 Start from,始め方
 Details (optional),詳細（任意）
 Where the study folder goes,試験フォルダの置き場所
@@ -845,7 +845,7 @@ Table,Table
 Full size,原寸で見る
 The language is changed: the page reloads to show it.,言語を変えました。画面を読み込み直すと切り替わります。
 Reload now,今すぐ読み込み直す
-"The sample study: CDISC pilot data (pharmaverseadam), its ARD, 5 tables, a listing and 2 figures.",サンプル試験: CDISC パイロットデータ（pharmaverseadam）で、ARD・Table 5 本・Listing 1 本・Figure 2 本。
+"The sample study: tflspec's oncology sample data (simulated), its ARD, 5 tables, a listing and 2 figures.",サンプル試験: tflspec の腫瘍領域サンプルデータ（シミュレーション）で、ARD・Table 5 本・Listing 1 本・Figure 2 本。
 method:continuous,要約統計量
 method:categorical,度数と割合
 method:dichotomous,ある水準の度数

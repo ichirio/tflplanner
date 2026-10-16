@@ -1,6 +1,6 @@
 # The sample study that ships with tflplanner (inst/sample/SAMPLE-01):
-# one of each kind of report, on the CDISC pilot ADaM data of
-# {pharmaverseadam} (Apache License 2.0).
+# one of each kind of report, on tflspec's oncology sample study XYZ-ONC-01
+# (simulated ADaM data: tflspec::adsl, adae, advs, adtte).
 #
 #   T-14-0-1  Table    Study information (dictionary versions, the dates
 #                      of the data): no analysis set -- its ARD is the
@@ -11,15 +11,15 @@
 #                      it, and the column N it makes itself)
 #   T-14-1-2  Table    Subject disposition
 #   T-14-1-4  Table    Demographic characteristics of the screen failures:
-#                      an analysis set by a condition alone (SCRF, ARM is
-#                      Screen Failure), no flag
+#                      an analysis set by a condition alone (SCRF, ARMNRS
+#                      is SCREEN FAILURE), no flag
 #   T-14-1-5  Table    Demographics with race's Asian sub-categories nested
 #                      under Asian (variables$under, plan_nest()): the
 #                      same data and analyses as T-14-1-6
 #   T-14-1-6  Table    Demographics with race's Asian sub-categories as a
-#                      block of their own: the enrolled subjects (screen
-#                      failures too: the pilot's two Asian subjects are
-#                      screen failures) by ARM, with a Total column.  The
+#                      block of their own: the screened subjects (screen
+#                      failures too, a column of their own) by arm (ARMGRP), with a
+#                      Total column.  The
 #                      sub-categories are one column per race, as an EDC
 #                      collects them (ASIANSUB; WHTSUB would be White's),
 #                      derived for demonstration
@@ -27,12 +27,12 @@
 #                      statistics (n, N, p), the table prints n (%) -- the
 #                      N rows the cells do not name are left out
 #   T-14-2-1  Table    Change from baseline in systolic blood pressure,
-#                      Week 24 (with SE and the mean's 95% CI)
+#                      Week 24 = cycle 9 day 1 (with SE and the mean's 95% CI)
 #   T-14-2-3  Table    Change from baseline in systolic blood pressure at
 #                      Week 24: mean (95% CI) and p-value of a one-sample
 #                      t-test -- the ARD also holds the test's method and
 #                      alternative as text
-#   T-14-2-2  Table    Time to first dermatologic event: Kaplan-Meier
+#   T-14-2-2  Table    Time to first skin disorder (TTSKIN): Kaplan-Meier
 #                      estimates (median, event-free probability by day);
 #                      its ARD also has the hazard ratios of a Cox model,
 #                      which the table does not print (F-14-2-3 does)
@@ -41,8 +41,8 @@
 #   L-16-2-7  Listing  Severe treatment-emergent adverse events
 #   F-14-2-1  Figure   Mean change from baseline in systolic blood pressure;
 #                      its content step is its own R (R program)
-#   F-14-2-2  Figure   Kaplan-Meier plot of the time to first dermatologic
-#                      event, its content step its own R; its number at
+#   F-14-2-2  Figure   Kaplan-Meier plot of the time to first skin
+#                      disorder, its content step its own R; its number at
 #                      risk is T-14-2-2's ARD (its ARD source, `ard`)
 #   F-14-2-3  Figure   The same KM curves, designed: the designer's KM
 #                      template, the median line, and the medians and
@@ -68,7 +68,7 @@
 # (create_sample_study()).
 
 devtools::load_all(quiet = TRUE)
-stopifnot(requireNamespace("pharmaverseadam", quietly = TRUE),
+stopifnot(utils::packageVersion("tflspec") >= "0.0.24.9136",
           requireNamespace("cards", quietly = TRUE),
           requireNamespace("cardx", quietly = TRUE))
 
@@ -97,62 +97,25 @@ codelist <- function(output_id, variable, values) {
              label = if (is.null(names(values))) NA_character_ else unname(values),
              order = as.character(seq_along(values)), stringsAsFactors = FALSE)
 }
-arms <- "Placebo | Xanomeline Low Dose | Xanomeline High Dose"
+arms <- "Drug X | Control"
 
 # ------------------------------------------------------------ the data
-# The CDISC pilot study as {pharmaverseadam} has it; screen failures stay in
-# ADSL (the Safety set leaves them out).  ADVS: systolic blood pressure
-# after 5 minutes lying down, the post-baseline records of the analysis flag
-# (they carry BASE and CHG), End of Treatment left out.
-
-adsl <- as.data.frame(pharmaverseadam::adsl)
-adae <- as.data.frame(pharmaverseadam::adae)
-advs <- as.data.frame(pharmaverseadam::advs)
-advs <- advs[advs$PARAMCD == "SYSBP" & advs$ANL01FL %in% "Y" &
-               advs$ATPT %in% "AFTER LYING DOWN FOR 5 MINUTES" &
-               !advs$AVISIT %in% "End of Treatment",
-             c("STUDYID", "USUBJID", "PARAMCD", "PARAM", "AVISIT", "AVISITN",
-               "ATPT", "AVAL", "BASE", "CHG", "ABLFL", "ANL01FL", "TRTA",
-               "TRTP")]
+# tflspec's oncology sample study XYZ-ONC-01 (simulated; Drug X vs Control;
+# see ?tflspec::adsl), its datasets as they are: ADSL with its screen
+# failures (the Safety set leaves them out), ADAE, and ADTTE (PFS, OS, DOR
+# and the safety endpoint TTSKIN, the time to the first treatment-emergent
+# skin and subcutaneous tissue disorder, in days).  ADVS: the systolic blood
+# pressure, at baseline and on day 1 of each 21-day cycle (cycle 9 day 1 is
+# week 24), with the actual arm as an event dataset has it (TRTA).
+adsl <- as.data.frame(tflspec::adsl)
+adae <- as.data.frame(tflspec::adae)
+adtte <- as.data.frame(tflspec::adtte)
+advs <- as.data.frame(tflspec::advs)
+advs <- advs[advs$PARAMCD == "SYSBP", ]
+advs$TRTA <- structure(as.character(advs$TRT01A), label = "Actual Treatment")
+advs <- advs[c("STUDYID", "USUBJID", "TRTA", "PARAMCD", "PARAM", "AVISIT", "AVISITN",
+               "ADT", "ADY", "AVAL", "BASE", "CHG", "ABLFL", "ONTRTFL")]
 rownames(advs) <- NULL
-# Population flags pharmaverseadam's ADSL lacks (of those, it has SAFFL), derived here
-# so that step 2 has more than one to choose from -- the README says how:
-# ITTFL the randomized (not a screen failure), EFFFL the safety set with a
-# post-baseline systolic blood pressure, PPROTFL the safety set that
-# completed the study.  The study's analysis sets stay SAF only.
-flag <- function(v, label) structure(ifelse(v, "Y", "N"), label = label)
-adsl$ITTFL <- flag(adsl$ARM != "Screen Failure", "Intent-To-Treat Population Flag")
-adsl$EFFFL <- flag(adsl$SAFFL %in% "Y" &
-                     adsl$USUBJID %in% advs$USUBJID[!advs$ABLFL %in% "Y" & !is.na(advs$CHG)],
-                   "Efficacy Population Flag")
-adsl$PPROTFL <- flag(adsl$SAFFL %in% "Y" & adsl$EOSSTT %in% "COMPLETED",
-                     "Per-Protocol Population Flag")
-# the arm's number, as an ADaM has it (pharmaverseadam lacks it): a listing
-# sorts by it, so the arms come in their order, not the alphabet's
-arm_n <- c("Placebo" = 0, "Xanomeline Low Dose" = 54, "Xanomeline High Dose" = 81)
-adsl$TRT01AN <- structure(unname(arm_n[adsl$TRT01A]),
-                          label = "Actual Treatment for Period 01 (N)")
-adae$TRT01AN <- structure(unname(arm_n[adae$TRT01A]),
-                          label = "Actual Treatment for Period 01 (N)")
-# ADTTE: time to the first dermatologic treatment-emergent adverse event
-# (skin and subcutaneous tissue disorders, or an application site event),
-# the CDISC pilot's time-to-event endpoint; censored at the end of treatment.
-derm <- adae[adae$TRTEMFL %in% "Y" &
-               (adae$AEBODSYS %in% "SKIN AND SUBCUTANEOUS TISSUE DISORDERS" |
-                  startsWith(adae$AEDECOD, "APPLICATION SITE")), ]
-first <- aggregate(ASTDT ~ USUBJID, data = derm, FUN = min)
-adtte <- merge(adsl[adsl$SAFFL == "Y",
-                    c("STUDYID", "USUBJID", "TRT01A", "SAFFL", "TRTSDT", "TRTEDT")],
-               first, by = "USUBJID", all.x = TRUE)
-adtte$TRTEDT[is.na(adtte$TRTEDT)] <- adtte$TRTSDT[is.na(adtte$TRTEDT)]
-adtte$CNSR <- ifelse(is.na(adtte$ASTDT), 1L, 0L)
-adtte$ADT <- as.Date(ifelse(is.na(adtte$ASTDT), adtte$TRTEDT, adtte$ASTDT),
-                     origin = "1970-01-01")
-adtte$AVAL <- as.numeric(adtte$ADT - adtte$TRTSDT) + 1
-adtte$PARAMCD <- "TTDE"
-adtte$PARAM <- "Time to First Dermatologic Event (Days)"
-adtte <- adtte[c("STUDYID", "USUBJID", "TRT01A", "SAFFL", "PARAMCD", "PARAM",
-                 "TRTSDT", "ADT", "AVAL", "CNSR")]
 
 strip <- function(d) {
   for (k in names(d)) attr(d[[k]], "format.sas") <- NULL
@@ -172,14 +135,14 @@ sheets <- list(
          note = "SYSBP at Week 24: baseline, value, change"),
     list(output_id = "T-14-0-1", cols = "context", rows = "group = variable",
          note = "Study information: one row a fact, its value text"),
-    list(output_id = "T-14-1-4", cols = "ARM", rows = "group = variable",
+    list(output_id = "T-14-1-4", cols = "ARMNRS", rows = "group = variable",
          note = "The screen failures' demographics"),
     list(output_id = "T-14-1-3", cols = "TRT01A", rows = "group = variable",
          note = "Age group and sex: the ARD's n, N and p, the table's n (%)"),
-    list(output_id = "T-14-1-5", cols = "ARM", rows = "group = variable",
+    list(output_id = "T-14-1-5", cols = "ARMGRP", rows = "group = variable",
          total = "Total",
          note = "Demographics; race's Asian sub-categories nested under Asian"),
-    list(output_id = "T-14-1-6", cols = "ARM", rows = "group = variable",
+    list(output_id = "T-14-1-6", cols = "ARMGRP", rows = "group = variable",
          total = "Total",
          note = "Demographics; race's Asian sub-categories as a block of their own"),
     list(output_id = "T-14-2-3", cols = "TRTA", rows = "group = variable",
@@ -205,7 +168,7 @@ sheets <- list(
     list(output_id = "T-14-2-1", variable = "BASE",
          label = "Baseline (mmHg)", order = 1),
     list(output_id = "T-14-2-1", variable = "AVAL",
-         label = "Week 24 (mmHg)", order = 2),
+         label = "Week 24, cycle 9 day 1 (mmHg)", order = 2),
     list(output_id = "T-14-2-1", variable = "CHG",
          label = "Change from baseline (mmHg)", order = 3),
     list(output_id = "T-14-0-1", variable = "INFO",
@@ -223,7 +186,7 @@ sheets <- list(
     list(output_id = "T-14-1-3", variable = "SEX", label = "Sex, n (%)",
          order = 2),
     list(output_id = "T-14-2-3", variable = "CHG",
-         label = "Change from baseline at Week 24 (mmHg)", order = 1),
+         label = "Change from baseline at week 24 (mmHg)", order = 1),
     list(output_id = "T-14-2-2", variable = "prob",
          label = "Time to first event (days)", order = 1),
     list(output_id = "T-14-2-2", variable = "time",
@@ -263,35 +226,38 @@ sheets <- list(
     list(codelist("T-14-2-1", "TRTA", arms),
          # the forest plot's own ARD: its arms and its subgroups' values
          # decoded, as the tables print them
-         codelist("F-14-2-4", "TRT01A", arms),
+         # the reference arm first: the hazard ratio is of Drug X vs Control
+         codelist("F-14-2-4", "TRT01A", "Control | Drug X"),
          codelist("F-14-2-4", "SEX", c(F = "Female", M = "Male")),
-         codelist("F-14-2-4", "AGEGR1", c("18-64" = "18-64 years",
-                                          ">64" = ">64 years")),
+         codelist("F-14-2-4", "AGEGR1", c("<65" = "<65 years",
+                                          ">=65" = ">=65 years")),
          codelist("T-14-2-3", "TRTA", arms),
          codelist("T-14-1-3", "SEX", c(F = "Female", M = "Male")),
-         codelist("T-14-1-4", "ARM", "Screen Failure"),
+         codelist("T-14-1-4", "ARMNRS", c("SCREEN FAILURE" = "Screen Failures")),
          codelist("T-14-1-4", "SEX", c(F = "Female", M = "Male")),
-         codelist("T-14-1-4", "AGEGR1", c("18-64" = "18-64 years",
-                                          ">64" = ">64 years")),
+         codelist("T-14-1-4", "AGEGR1", c("<65" = "<65 years",
+                                          ">=65" = ">=65 years")),
          codelist("T-14-1-4", "RACE", c(
            "WHITE" = "White",
            "BLACK OR AFRICAN AMERICAN" = "Black or African American",
            "ASIAN" = "Asian",
            "AMERICAN INDIAN OR ALASKA NATIVE" = "American Indian or Alaska Native",
            "NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER" =
-             "Native Hawaiian or Other Pacific Islander")),
-         codelist("T-14-1-3", "AGEGR1", c("18-64" = "18-64 years",
-                                          ">64" = ">64 years")),
+             "Native Hawaiian or Other Pacific Islander",
+           "OTHER" = "Other")),
+         codelist("T-14-1-3", "AGEGR1", c("<65" = "<65 years",
+                                          ">=65" = ">=65 years")),
          codelist("T-14-1-1", "SEX", c(F = "Female", M = "Male")),
-         codelist("T-14-1-1", "AGEGR1", c("18-64" = "18-64 years",
-                                          ">64" = ">64 years")),
+         codelist("T-14-1-1", "AGEGR1", c("<65" = "<65 years",
+                                          ">=65" = ">=65 years")),
          codelist("T-14-1-1", "RACE", c(
            "WHITE" = "White",
            "BLACK OR AFRICAN AMERICAN" = "Black or African American",
            "ASIAN" = "Asian",
            "AMERICAN INDIAN OR ALASKA NATIVE" = "American Indian or Alaska Native",
            "NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER" =
-             "Native Hawaiian or Other Pacific Islander")),
+             "Native Hawaiian or Other Pacific Islander",
+           "OTHER" = "Other")),
          codelist("T-14-1-1", "ETHNIC", c(
            "HISPANIC OR LATINO" = "Hispanic or Latino",
            "NOT HISPANIC OR LATINO" = "Not Hispanic or Latino",
@@ -299,46 +265,51 @@ sheets <- list(
          # T-14-1-5/6: the enrolled subjects' arms (screen failures too;
          # the Total column is tables$total, not a value); race as the
          # other tables; the demonstration sub-categories of Asian
-         codelist("T-14-1-5", "ARM", paste(arms, "| Screen Failure")),
+         codelist("T-14-1-5", "ARMGRP", paste(arms, "| Screen Failure")),
          codelist("T-14-1-5", "RACE", c(
            "WHITE" = "White",
            "BLACK OR AFRICAN AMERICAN" = "Black or African American",
            "ASIAN" = "Asian",
            "AMERICAN INDIAN OR ALASKA NATIVE" = "American Indian or Alaska Native",
            "NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER" =
-             "Native Hawaiian or Other Pacific Islander")),
+             "Native Hawaiian or Other Pacific Islander",
+           "OTHER" = "Other")),
          codelist("T-14-1-5", "ASIANSUB", c(CHINESE = "Chinese", JAPANESE = "Japanese",
                                             KOREAN = "Korean")),
          codelist("T-14-1-5", "SEX", c(F = "Female", M = "Male")),
-         codelist("T-14-1-5", "AGEGR1", c("18-64" = "18-64 years",
-                                          ">64" = ">64 years")),
+         codelist("T-14-1-5", "AGEGR1", c("<65" = "<65 years",
+                                          ">=65" = ">=65 years")),
          codelist("T-14-1-5", "ETHNIC", c(
            "HISPANIC OR LATINO" = "Hispanic or Latino",
            "NOT HISPANIC OR LATINO" = "Not Hispanic or Latino",
            "NOT REPORTED" = "Not reported", "UNKNOWN" = "Unknown")),
-         codelist("T-14-1-6", "ARM", paste(arms, "| Screen Failure")),
+         codelist("T-14-1-6", "ARMGRP", paste(arms, "| Screen Failure")),
          codelist("T-14-1-6", "RACE", c(
            "WHITE" = "White",
            "BLACK OR AFRICAN AMERICAN" = "Black or African American",
            "ASIAN" = "Asian",
            "AMERICAN INDIAN OR ALASKA NATIVE" = "American Indian or Alaska Native",
            "NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER" =
-             "Native Hawaiian or Other Pacific Islander")),
+             "Native Hawaiian or Other Pacific Islander",
+           "OTHER" = "Other")),
          codelist("T-14-1-6", "ASIANSUB", c(CHINESE = "Chinese", JAPANESE = "Japanese",
                                             KOREAN = "Korean")),
          codelist("T-14-1-6", "SEX", c(F = "Female", M = "Male")),
-         codelist("T-14-1-6", "AGEGR1", c("18-64" = "18-64 years",
-                                          ">64" = ">64 years")),
+         codelist("T-14-1-6", "AGEGR1", c("<65" = "<65 years",
+                                          ">=65" = ">=65 years")),
          codelist("T-14-1-6", "ETHNIC", c(
            "HISPANIC OR LATINO" = "Hispanic or Latino",
            "NOT HISPANIC OR LATINO" = "Not Hispanic or Latino",
            "NOT REPORTED" = "Not reported", "UNKNOWN" = "Unknown")),
          # the disposition table's status at the end of the study
-         codelist("T-14-1-2", "EOSSTT", c(COMPLETED = "Completed",
+         codelist("T-14-1-2", "EOSSTT", c(ONGOING = "Ongoing (in follow-up)",
                                           DISCONTINUED = "Discontinued"))))),
   cells = tbl(
     list(output_id = "T-14-2-2", variable = "prob", when = "is.na(estimate)",
          template = "NE"),
+    # a median reached whose CI's upper limit is not
+    list(output_id = "T-14-2-2", variable = "prob", when = "is.na(conf.high)",
+         template = "{estimate:.0f} ({conf.low:.0f}, NE)"),
     list(output_id = "T-14-2-2", variable = "prob",
          template = "{estimate:.0f} ({conf.low:.0f}, {conf.high:.0f})"),
     list(output_id = "T-14-2-2", variable = "time",
@@ -492,7 +463,7 @@ sheets$page <- tbl(
        font_size_half_points = "16"))
 sheets$header <- tbl(
   list(line = "1", left = "Sample Pharma (tflplanner sample)", right = "DRAFT"),
-  list(line = "2", left = "Protocol: SAMPLE-01 (CDISC pilot data)",
+  list(line = "2", left = "Protocol: SAMPLE-01 (tflspec's oncology sample data)",
        right = "Page {PAGE} of {TOTAL_PAGES}"),
   list(line = "3"),
   list(line = "4", center = "{OUTPUT_LABEL}"),
@@ -502,25 +473,25 @@ sheets$tokens <- do.call(tbl, c(
   title("T-14-1-1", "Demographic Characteristics"),
   title("T-14-1-1S", "Demographic Characteristics"),
   title("T-14-1-2", "Subject Disposition"),
-  title("T-14-2-1", "Systolic Blood Pressure (mmHg): Change from Baseline at Week 24"),
+  title("T-14-2-1", "Systolic Blood Pressure (mmHg): Change from Baseline at Week 24 (Cycle 9 Day 1)"),
   title("T-14-1-3", "Age Group and Sex"),
   title("T-14-0-1", "Study Information", set = "All Subjects"),
   title("T-14-1-4", "Demographic Characteristics of Screen Failures",
         set = "All Screen Failures"),
   title("T-14-1-5", "Demographic Characteristics, with the Asian Sub-categories of Race",
-        set = "All Enrolled Subjects"),
+        set = "All Screened Subjects"),
   title("T-14-1-6", "Demographic Characteristics and the Asian Sub-categories of Race",
-        set = "All Enrolled Subjects"),
+        set = "All Screened Subjects"),
   title("T-14-2-3",
-        "Systolic Blood Pressure (mmHg): Mean Change from Baseline at Week 24 (95% CI)"),
+        "Systolic Blood Pressure (mmHg): Mean Change from Baseline at Week 24 (Cycle 9 Day 1) (95% CI)"),
   title("T-14-3-1",
         "Treatment-Emergent Adverse Events by System Organ Class and Preferred Term"),
   title("L-16-2-7", "Severe Treatment-Emergent Adverse Events"),
   title("F-14-2-1", "Mean (SE) Change from Baseline in Systolic Blood Pressure over Time"),
-  title("T-14-2-2", "Time to First Dermatologic Event: Kaplan-Meier Estimates"),
-  title("F-14-2-2", "Kaplan-Meier Plot of Time to First Dermatologic Event"),
-  title("F-14-2-3", "Kaplan-Meier Curves of Time to First Dermatologic Event"),
-  title("F-14-2-4", "Hazard Ratio of Time to First Dermatologic Event by Subgroup")))
+  title("T-14-2-2", "Time to First Treatment-Emergent Skin Disorder: Kaplan-Meier Estimates"),
+  title("F-14-2-2", "Kaplan-Meier Plot of Time to First Treatment-Emergent Skin Disorder"),
+  title("F-14-2-3", "Kaplan-Meier Curves of Time to First Treatment-Emergent Skin Disorder"),
+  title("F-14-2-4", "Hazard Ratio of Time to First Treatment-Emergent Skin Disorder by Subgroup")))
 sheets$footer <- tbl(
   list(line = "99", left = "{PROGRAM}       Generated on: {DATETIME}"),
   list(output_id = "T-14-1-1", line = "1",
@@ -530,29 +501,29 @@ sheets$footer <- tbl(
   list(output_id = "T-14-2-1", line = "1",
        left = "SD = Standard Deviation; SE = Standard Error; CI = Confidence Interval (t distribution)."),
   list(output_id = "T-14-0-1", line = "1",
-       left = "The dictionary versions are the study's (data management plan); the dates are those of ADSL."),
+       left = "The dictionary versions are the study's (data management plan); the dates are those of ADSL (the data cut-off: DCUTDT)."),
   list(output_id = "T-14-1-4", line = "1",
-       left = "SD = Standard Deviation.  Screen failures: subjects not randomized (ARM is Screen Failure)."),
+       left = "SD = Standard Deviation.  Screen failures: screened subjects not randomized (ARMNRS is SCREEN FAILURE)."),
   list(output_id = "T-14-1-5", line = "1",
-       left = "Enrolled subjects: all subjects of ADSL, screen failures included.  Percentages of the column's subjects."),
+       left = "Screened subjects: all subjects of ADSL, screen failures included (a column of their own).  Percentages of the column's subjects."),
   list(output_id = "T-14-1-5", line = "2",
-       left = "Asian sub-categories (ASIANSUB: Chinese, Japanese, Korean) are derived for demonstration; they are not in the source data.  As an EDC collects them, each race has its own sub-category column."),
+       left = "Asian sub-categories (ASIANSUB: Chinese, Japanese, Korean) are derived for demonstration from the country (Japan, Korea); they are not in the source data.  As an EDC collects them, each race has its own sub-category column."),
   list(output_id = "T-14-1-6", line = "1",
-       left = "Enrolled subjects: all subjects of ADSL, screen failures included.  Percentages of the column's subjects."),
+       left = "Screened subjects: all subjects of ADSL, screen failures included (a column of their own).  Percentages of the column's subjects."),
   list(output_id = "T-14-1-6", line = "2",
-       left = "Asian sub-categories (ASIANSUB: Chinese, Japanese, Korean) are derived for demonstration; they are not in the source data.  As an EDC collects them, each race has its own sub-category column."),
+       left = "Asian sub-categories (ASIANSUB: Chinese, Japanese, Korean) are derived for demonstration from the country (Japan, Korea); they are not in the source data.  As an EDC collects them, each race has its own sub-category column."),
   list(output_id = "T-14-2-3", line = "1",
        left = "CI = Confidence Interval.  95% CI and p-value: one-sample t-test of the change from baseline (H0: mean change = 0)."),
   list(output_id = "T-14-2-3", line = "2",
-       left = "Systolic blood pressure after 5 minutes lying down."),
+       left = "Systolic blood pressure on day 1 of each 21-day cycle; week 24 is cycle 9 day 1."),
   list(output_id = "T-14-3-1", line = "1",
        left = "Subjects are counted once per system organ class and once per preferred term."),
   list(output_id = "F-14-2-1", line = "1",
-       left = "Vertical bars: mean +/- SE.  Systolic blood pressure after 5 minutes lying down."),
+       left = "Vertical bars: mean +/- SE.  Systolic blood pressure on day 1 of each 21-day cycle."),
   list(output_id = "T-14-2-1", line = "2",
-       left = "Systolic blood pressure after 5 minutes lying down."),
+       left = "Systolic blood pressure on day 1 of each 21-day cycle; week 24 is cycle 9 day 1."),
   list(output_id = "T-14-2-2", line = "1",
-       left = "Dermatologic event: first treatment-emergent skin and subcutaneous tissue disorder or application site event; censored at the end of treatment."),
+       left = "Skin disorder: first treatment-emergent adverse event of the SOC Skin and subcutaneous tissue disorders; censored at the end of the treatment-emergent period (30 days after the last dose, death or the data cut-off)."),
   list(output_id = "T-14-2-2", line = "2",
        left = "Kaplan-Meier estimates; 95% CI of the median by the Brookmeyer-Crowley method (log transformation). NE = not estimable."),
   list(output_id = "F-14-2-2", line = "1",
@@ -560,9 +531,9 @@ sheets$footer <- tbl(
   list(output_id = "F-14-2-3", line = "1",
        left = "x = censored.  Dashed line: the median (probability 0.5).  The medians are those of Table 14.2.2; the hazard ratios (Cox model) are in its ARD."),
   list(output_id = "F-14-2-4", line = "1",
-       left = "Hazard ratio of Xanomeline High Dose vs Placebo (Cox model, unstratified) with its 95% CI, overall and within each subgroup; the figure's own ARD.  NE = not estimable."),
+       left = "Hazard ratio of Drug X vs Control (Cox model, unstratified) with its 95% CI, overall and within each subgroup; the figure's own ARD.  NE = not estimable."),
   list(line = "98",
-       left = "Source: CDISC pilot study ADaM data of the pharmaverseadam R package."))
+       left = "Source: tflspec's oncology sample study XYZ-ONC-01 (simulated ADaM data; not real patients)."))
 
 p <- new_planner(c(rounding = "sas"))
 for (s in names(sheets)) p$sheets[[s]] <- .normalize_sheet(sheets[[s]], s)
@@ -579,11 +550,11 @@ p$ard$populations <- tbl(
   list(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"",
        derive = "TRTA = TRT01A", label = "Safety Analysis Set"),
   # the screen failures: an analysis set by a condition alone (ADSL has no
-  # flag for them)
+  # flag for them: no arm, ARMNRS says why)
   list(population_id = "SCRF", dataset = "ADSL",
-       where = "ARM == \"Screen Failure\"", label = "Screen Failures"),
-  # every subject of ADSL (no condition): the enrolled subjects
-  list(population_id = "ENR", dataset = "ADSL", label = "Enrolled Set"))
+       where = "ARMNRS == \"SCREEN FAILURE\"", label = "Screen Failures"),
+  # every subject of ADSL (no condition): the screened subjects
+  list(population_id = "ENR", dataset = "ADSL", label = "Screened Set"))
 p$ard$analyses <- tbl(
   list(output_id = "T-14-1-1", analysis_id = "GROUPN", label = "Subjects per group",
        method = "categorical", data = "adsl_saf", variables = "TRT01A"),
@@ -614,7 +585,7 @@ p$ard$analyses <- tbl(
   list(output_id = "T-14-2-1", analysis_id = "GROUPN", method = "categorical",
        data = "adsl_saf", variables = "TRTA"),
   list(output_id = "T-14-2-1", analysis_id = "SYSBP",
-       label = "SYSBP at Week 24", method = "continuous", data = "advs_saf_sysbp", by = "TRTA",
+       label = "SYSBP at week 24", method = "continuous", data = "advs_saf_sysbp", by = "TRTA",
        variables = "BASE | AVAL | CHG",
        statistics = "N | mean | sd | se | mean_lcl | mean_ucl | median | min | max"),
   # T-14-0-1: the study's information -- no analysis set (it counts no
@@ -628,7 +599,7 @@ p$ard$analyses <- tbl(
          "  \"WHODrug version\" = \"Global B3 March 2023\",",
          "  \"First dose\" = format(min(data$TRTSDT, na.rm = TRUE)),",
          "  \"Last dose\" = format(max(data$TRTEDT, na.rm = TRUE)),",
-         "  \"Data cut-off\" = format(max(data$LSTALVDT, na.rm = TRUE))",
+         "  \"Data cut-off\" = format(max(data$DCUTDT, na.rm = TRUE))",
          ")",
          "cards::as_card(dplyr::tibble(",
          "  variable = \"INFO\", variable_level = as.list(names(facts)),",
@@ -638,12 +609,12 @@ p$ard$analyses <- tbl(
          "))", sep = "\n")),
   # T-14-1-4: the screen failures (SCRF, an analysis set by a condition)
   list(output_id = "T-14-1-4", analysis_id = "GROUPN", method = "categorical",
-       data = "adsl_scrf", variables = "ARM"),
+       data = "adsl_scrf", variables = "ARMNRS"),
   list(output_id = "T-14-1-4", analysis_id = "CONT", label = "Continuous",
-       method = "continuous", data = "adsl_scrf", by = "ARM",
+       method = "continuous", data = "adsl_scrf", by = "ARMNRS",
        variables = "AGE", statistics = "N | mean | sd | median | min | max"),
   list(output_id = "T-14-1-4", analysis_id = "CAT", label = "Categorical",
-       method = "categorical", data = "adsl_scrf", by = "ARM",
+       method = "categorical", data = "adsl_scrf", by = "ARMNRS",
        variables = "AGEGR1 | SEX | RACE", statistics = "n | p"),
   # T-14-1-3: cards' default statistics of a count (n, N and p) -- the
   # table's cells print n (%) and leave the N rows out
@@ -666,7 +637,7 @@ p$ard$analyses <- tbl(
   list(output_id = "T-14-2-2", analysis_id = "GROUPN", method = "categorical",
        data = "adsl_saf", variables = "TRT01A"),
   list(output_id = "T-14-2-2", analysis_id = "KM",
-       label = "Kaplan-Meier estimates", method = "custom", data = "adtte_saf_ttde",
+       label = "Kaplan-Meier estimates", method = "custom", data = "adtte_saf_ttskin",
        code = paste(
          "fit <- survival::survfit(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = data)",
          "cards::bind_ard(",
@@ -675,47 +646,49 @@ p$ard$analyses <- tbl(
          "  .quiet = TRUE",
          ")", sep = "\n")),
   # in the ARD, not in the table (its cells name prob and time only): the
-  # hazard ratios against placebo, which F-14-2-3 prints (#311)
+  # hazard ratio of Drug X against Control (the reference level), which
+  # F-14-2-3 prints (#311)
   list(output_id = "T-14-2-2", analysis_id = "HR",
-       label = "Hazard ratio vs placebo (Cox), not printed in the table",
-       method = "custom", data = "adtte_saf_ttde",
+       label = "Hazard ratio vs control (Cox), not printed in the table",
+       method = "custom", data = "adtte_saf_ttskin",
        code = paste(
+         "data$TRT01A <- stats::relevel(factor(data$TRT01A), ref = \"Control\")",
          "cox <- survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = data)",
          "cardx::ard_regression(cox, exponentiate = TRUE)", sep = "\n")),
   # T-14-1-5 and T-14-1-6: the demographics of the enrolled subjects, race
   # with its Asian sub-categories -- the same analyses, laid out nested
   # (T-14-1-5) or as a block of their own (T-14-1-6)
   list(output_id = "T-14-1-5", analysis_id = "GROUPN", method = "categorical",
-       data = "adsl_enr", variables = "ARM"),
+       data = "adsl_enr", variables = "ARMGRP"),
   list(output_id = "T-14-1-5", analysis_id = "RACE", label = "Race",
-       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "RACE", denominator = "adsl_enr", statistics = "n | p"),
   list(output_id = "T-14-1-5", analysis_id = "ASIANSUB", label = "Asian sub-category",
-       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "ASIANSUB", denominator = "adsl_enr", statistics = "n | p"),
   list(output_id = "T-14-1-5", analysis_id = "CONT", label = "Continuous",
-       method = "continuous", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "continuous", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "AGE", statistics = "N | mean | sd | median | min | max"),
   list(output_id = "T-14-1-5", analysis_id = "CAT", label = "Categorical",
-       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "AGEGR1 | SEX | ETHNIC", denominator = "adsl_enr",
        statistics = "n | p"),
   # T-14-1-6: the demographics of the enrolled subjects,
   # percentages of the column's subjects; `overall` runs each analysis
   # again over all of them (cards' overall rows: the Total column)
   list(output_id = "T-14-1-6", analysis_id = "GROUPN", method = "categorical",
-       data = "adsl_enr", variables = "ARM"),
+       data = "adsl_enr", variables = "ARMGRP"),
   list(output_id = "T-14-1-6", analysis_id = "RACE", label = "Race",
-       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "RACE", denominator = "adsl_enr", statistics = "n | p"),
   list(output_id = "T-14-1-6", analysis_id = "ASIANSUB", label = "Asian sub-category",
-       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "ASIANSUB", denominator = "adsl_enr", statistics = "n | p"),
   list(output_id = "T-14-1-6", analysis_id = "CONT", label = "Continuous",
-       method = "continuous", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "continuous", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "AGE", statistics = "N | mean | sd | median | min | max"),
   list(output_id = "T-14-1-6", analysis_id = "CAT", label = "Categorical",
-       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "AGEGR1 | SEX | ETHNIC", denominator = "adsl_enr",
        statistics = "n | p"),
   # T-14-3-1 reads analysis data: the TEAEs of the safety set (adae_saf,
@@ -727,38 +700,40 @@ p$ard$analyses <- tbl(
 # every table reads analysis data -- each table's own (an analysis data is
 # a report's): the safety set (adsl_saf) in each, and the records of other
 # datasets kept to its subjects where a table reads them
+# the screened subjects by arm (ARMGRP), the screen failures a column of their
+# own (they have no ARM: ARMNRS says why); a demonstration sub-race of Asian
+# from the country (the data have none: derived for the sample only)
+enr_derive <- paste(
+  "ARMGRP = dplyr::if_else(ARMNRS %in% \"SCREEN FAILURE\", \"Screen Failure\", as.character(ARM))",
+  "ASIANSUB = dplyr::case_when(RACE == \"ASIAN\" & COUNTRY == \"JPN\" ~ \"JAPANESE\", RACE == \"ASIAN\" & COUNTRY == \"KOR\" ~ \"KOREAN\")",
+  sep = " | ")
 saf <- function(o) list(output_id = o, data_id = "adsl_saf", label = "Safety set",
                         from = "ADSL", population_id = "SAF")
 p$ard$analysis_data <- tbl(
   saf("T-14-1-1"), saf("T-14-1-1S"), saf("T-14-1-2"), saf("T-14-1-3"),
   list(output_id = "T-14-1-4", data_id = "adsl_scrf", label = "Screen failures",
        from = "ADSL", population_id = "SCRF"),
-  list(output_id = "T-14-1-5", data_id = "adsl_enr", label = "Enrolled subjects",
+  list(output_id = "T-14-1-5", data_id = "adsl_enr", label = "Screened subjects",
        from = "ADSL", population_id = "ENR",
-       derive = paste0(
-         "ASIANSUB = dplyr::case_when(USUBJID == \"01-703-1396\" ~ \"CHINESE\", ",
-         "USUBJID == \"01-708-1104\" ~ \"JAPANESE\")")),
-  # T-14-1-6: the enrolled subjects with a demonstration sub-race of Asian
-  # (the pilot data has none: derived, by subject, for the sample only)
-  list(output_id = "T-14-1-6", data_id = "adsl_enr", label = "Enrolled subjects",
+       derive = enr_derive),
+  # T-14-1-6: the same screened subjects
+  list(output_id = "T-14-1-6", data_id = "adsl_enr", label = "Screened subjects",
        from = "ADSL", population_id = "ENR",
-       derive = paste0(
-         "ASIANSUB = dplyr::case_when(USUBJID == \"01-703-1396\" ~ \"CHINESE\", ",
-         "USUBJID == \"01-708-1104\" ~ \"JAPANESE\")")),
+       derive = enr_derive),
   saf("T-14-2-1"),
   list(output_id = "T-14-2-1", data_id = "advs_saf_sysbp",
-       label = "Systolic blood pressure at Week 24, safety set",
+       label = "Systolic blood pressure at week 24, safety set",
        from = "ADVS", subjects = "adsl_saf",
-       where = "PARAMCD == \"SYSBP\" & AVISIT == \"Week 24\""),
+       where = "PARAMCD == \"SYSBP\" & AVISIT == \"CYCLE 9 DAY 1\""),
   saf("T-14-2-3"),
   list(output_id = "T-14-2-3", data_id = "advs_saf_sysbp",
-       label = "Systolic blood pressure at Week 24, safety set",
+       label = "Systolic blood pressure at week 24, safety set",
        from = "ADVS", subjects = "adsl_saf",
-       where = "PARAMCD == \"SYSBP\" & AVISIT == \"Week 24\""),
+       where = "PARAMCD == \"SYSBP\" & AVISIT == \"CYCLE 9 DAY 1\""),
   saf("T-14-2-2"),
-  list(output_id = "T-14-2-2", data_id = "adtte_saf_ttde",
-       label = "Time to first dermatologic event, safety set",
-       from = "ADTTE", subjects = "adsl_saf", where = "PARAMCD == \"TTDE\""),
+  list(output_id = "T-14-2-2", data_id = "adtte_saf_ttskin",
+       label = "Time to first skin disorder, safety set",
+       from = "ADTTE", subjects = "adsl_saf", where = "PARAMCD == \"TTSKIN\""),
   saf("T-14-3-1"),
   list(output_id = "T-14-3-1", data_id = "adae_saf",
        label = "Treatment-emergent AEs of the safety set",
@@ -790,35 +765,36 @@ p$lf$listing_cols <- .normalize_lf_sheet(tbl(
 # the median line, and the medians printed from T-14-2-2's ARD (its KM
 # analysis: prob 0.5, the estimate by arm; NE when not reached)
 km_design <- tflspec::tfl_fig_template("km_simple", data = "ADTTE",
-                                       param = "TTDE", pop = "SAFFL",
+                                       param = "TTSKIN", pop = "SAFFL",
                                        group = "TRT01A", time_unit = "days")
-km_design$plot$y_label <- "Probability of No Dermatologic Event"
+km_design$plot$y_label <- "Probability of No Skin Disorder"
 km_design$layers <- c(km_design$layers, list(list(
   layer = "hline", yintercept = 0.5, linetype = "dashed", colour = "grey50",
   linewidth = 0.3)))
-arms <- c("Placebo", "Xanomeline Low Dose", "Xanomeline High Dose")
+arms <- c("Drug X", "Control")
 km_design$layers <- c(km_design$layers, lapply(seq_along(arms), function(i) list(
   layer = "ard_number", analysis_id = "KM", variable = "prob", level = 0.5,
   stat = "estimate", group = paste("TRT01A =", arms[i]),
   label = paste0("Median (days), ", arms[i], ": {value}"), digits = 0,
   x = 0, y = "-Inf", hjust = 0, vjust = -0.6 - 1.5 * (length(arms) - i))))
-# and the hazard ratios (T-14-2-2's HR analysis, in its ARD and not in the
-# table), each with its CI on one line, right, between the curves
-km_design$layers <- c(km_design$layers, lapply(2:3, function(i) list(
-  layer = "ard_number", analysis_id = "HR", variable = "TRT01A", level = arms[i],
-  stat = "estimate", label = paste0("HR, ", arms[i], " vs Placebo: {value} (95% CI {conf.low}, {conf.high})"),
-  digits = 2, x = "Inf", y = 0.3, hjust = 1.02, vjust = -0.6 - 1.5 * (3 - i))))
+# and the hazard ratio (T-14-2-2's HR analysis, in its ARD and not in the
+# table): Drug X against Control, its CI on one line, bottom right
+km_design$layers <- c(km_design$layers, list(list(
+  layer = "ard_number", analysis_id = "HR", variable = "TRT01A", level = "Drug X",
+  stat = "estimate", label = "HR, Drug X vs Control: {value} (95% CI {conf.low}, {conf.high})",
+  digits = 2, x = "Inf", y = 0.15, hjust = 1.02, vjust = -0.6)))
 
 plot_code <- c(
   "saf <- adsl$USUBJID[adsl$SAFFL == \"Y\"]",
   "d <- advs[advs$PARAMCD == \"SYSBP\" & advs$USUBJID %in% saf &",
-  "            advs$AVISITN > 0 & !is.na(advs$CHG), ]",
+  "            advs$AVISITN > 0 & advs$AVISITN <= 8 & !is.na(advs$CHG), ]",
   "m <- aggregate(CHG ~ TRTA + AVISITN, data = d, FUN = function(x)",
   "  c(mean = mean(x), se = stats::sd(x) / sqrt(length(x))))",
   "m <- data.frame(m[c(\"TRTA\", \"AVISITN\")], m$CHG)",
-  "arms <- c(\"Placebo\", \"Xanomeline Low Dose\", \"Xanomeline High Dose\")",
+  "m$CYCLE <- m$AVISITN + 1  # AVISITN 1 is cycle 2 day 1",
+  "arms <- c(\"Drug X\", \"Control\")",
   "m$TRTA <- factor(m$TRTA, levels = arms)",
-  "plot <- ggplot(m, aes(AVISITN, mean, colour = TRTA)) +",
+  "plot <- ggplot(m, aes(CYCLE, mean, colour = TRTA)) +",
   "  geom_hline(yintercept = 0, colour = tfl_setting(\"zero_line_colour\"),",
   "             linewidth = tfl_num(\"line_width\")) +",
   "  geom_line(position = position_dodge(width = 0.6), linewidth = tfl_num(\"line_width\")) +",
@@ -826,16 +802,16 @@ plot_code <- c(
   "  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.4,",
   "                position = position_dodge(width = 0.6)) +",
   "  scale_colour_tfl(\"treatment\", arms) +",
-  "  scale_x_continuous(breaks = sort(unique(m$AVISITN))) +",
-  "  labs(x = \"Week\", y = \"Mean change from baseline (mmHg)\",",
+  "  scale_x_continuous(breaks = sort(unique(m$CYCLE))) +",
+  "  labs(x = \"Cycle (day 1)\", y = \"Mean change from baseline (mmHg)\",",
   "       colour = NULL) +",
   "  theme_tfl() + theme(legend.position = \"bottom\")",
   "tfl_check(plot)",
   "content <- plot")
 
 km_code <- c(
-  "arms <- c(\"Placebo\", \"Xanomeline Low Dose\", \"Xanomeline High Dose\")",
-  "km_df <- adtte[adtte$PARAMCD == \"TTDE\" & adtte$SAFFL == \"Y\", ]",
+  "arms <- c(\"Drug X\", \"Control\")",
+  "km_df <- adtte[adtte$PARAMCD == \"TTSKIN\" & adtte$SAFFL == \"Y\", ]",
   "km_df$TRT01A <- factor(km_df$TRT01A, levels = arms)",
   "km_fit <- survfit2(Surv(AVAL, 1 - CNSR) ~ TRT01A, data = km_df)",
   "",
@@ -857,7 +833,7 @@ km_code <- c(
   "  scale_y_continuous(breaks = seq(0, 1, by = tfl_num(\"y_by\", \"km\"))) +",
   "  coord_cartesian(xlim = range(x_breaks), ylim = c(0, 1)) +",
   "  labs(x = \"Days since first dose\",",
-  "       y = \"Probability without a dermatologic event\", colour = NULL) +",
+  "       y = \"Probability without a skin disorder\", colour = NULL) +",
   "  theme_tfl(\"km\") + theme(legend.position = \"bottom\")",
   "p_risk <- ggplot(risk_df, aes(time, factor(strata, levels = rev(arms)),",
   "                              label = n_risk, colour = strata)) +",
@@ -876,24 +852,24 @@ km_code <- c(
 
 desc <- c("T-14-0-1" = "Study information: dictionary versions and the dates of the data (no analysis set)",
           "T-14-1-4" = "Demographic characteristics of the screen failures (an analysis set by a condition alone)",
-          "T-14-1-5" = "Demographics, race's Asian sub-categories nested under Asian (enrolled subjects by arm, Total; ASIANSUB derived for demonstration)",
-          "T-14-1-6" = "Demographics, race's Asian sub-categories as a block of their own (enrolled subjects by arm, Total; ASIANSUB derived for demonstration)",
+          "T-14-1-5" = "Demographics, race's Asian sub-categories nested under Asian (screened subjects by arm, Total; ASIANSUB derived for demonstration)",
+          "T-14-1-6" = "Demographics, race's Asian sub-categories as a block of their own (screened subjects by arm, Total; ASIANSUB derived for demonstration)",
           "T-14-1-1" = "Demographic characteristics",
           "T-14-1-1S" = "Demographic characteristics (its ARD one ard_stack call)",
           "T-14-1-2" = "Subject disposition",
-          "T-14-2-1" = "Systolic blood pressure: change from baseline at Week 24",
+          "T-14-2-1" = "Systolic blood pressure: change from baseline at week 24 (cycle 9 day 1)",
           "T-14-1-3" = paste("Age group and sex: the ARD keeps cards' default n, N",
                              "and p; the table prints n (%) and leaves the N rows out"),
-          "T-14-2-3" = paste("Systolic blood pressure: mean change at Week 24 (95% CI),",
+          "T-14-2-3" = paste("Systolic blood pressure: mean change at week 24 (95% CI),",
                              "p-value; the ARD also holds the test's method and",
                              "alternative as text"),
           "T-14-3-1" = "TEAEs by SOC / PT",
-          "T-14-2-2" = "Time to first dermatologic event: KM estimates",
+          "T-14-2-2" = "Time to first skin disorder: KM estimates",
           "L-16-2-7" = "Listing of severe treatment-emergent adverse events",
           "F-14-2-1" = "Mean change from baseline in systolic blood pressure",
-          "F-14-2-2" = "KM plot of the time to first dermatologic event",
-          "F-14-2-3" = "KM curves of the time to first dermatologic event (designed)",
-          "F-14-2-4" = "Hazard ratio of the time to first dermatologic event by subgroup (forest plot, its own ARD)")
+          "F-14-2-2" = "KM plot of the time to first skin disorder",
+          "F-14-2-3" = "KM curves of the time to first skin disorder (designed)",
+          "F-14-2-4" = "Hazard ratio of the time to first skin disorder by subgroup (forest plot, its own ARD)")
 types <- c("T-14-0-1" = "table", "T-14-1-4" = "table", "T-14-1-5" = "table", "T-14-1-6" = "table", "T-14-1-1" = "table", "T-14-1-1S" = "table", "T-14-1-2" = "table",
            "T-14-1-3" = "table", "T-14-2-3" = "table", "T-14-2-1" = "table", "T-14-3-1" = "table", "T-14-2-2" = "table", "L-16-2-7" = "listing",
            "F-14-2-1" = "figure", "F-14-2-2" = "figure", "F-14-2-3" = "figure", "F-14-2-4" = "figure")
@@ -924,9 +900,9 @@ p <- set_fig_design(p, "F-14-2-3", km_design)
 # a Cox model of all subjects and one within each subgroup (its analyses
 # come with the design; the population is the study's SAF)
 forest_design <- tflspec::tfl_fig_template(
-  "forest_hr", data = "ADTTE", param = "TTDE", pop = "SAFFL", group = "TRT01A",
-  subgroups = "SEX, AGEGR1", comparison = "Xanomeline High Dose")
-forest_design$plot$x_label <- "Hazard Ratio (95% CI), Xanomeline High Dose vs Placebo"
+  "forest_hr", data = "ADTTE", param = "TTSKIN", pop = "SAFFL", group = "TRT01A",
+  subgroups = "SEX, AGEGR1", comparison = "Drug X")
+forest_design$plot$x_label <- "Hazard Ratio (95% CI), Drug X vs Control"
 p <- set_fig_design(p, "F-14-2-4", forest_design)
 p <- set_fig_own_analyses(p, "F-14-2-4", attr(forest_design, "analyses"),
                           population_id = "SAF")
@@ -944,11 +920,11 @@ p$ard$analyses$purpose <- ifelse(
   "SECONDARY OUTCOME MEASURE", "PRIMARY OUTCOME MEASURE")
 
 # ------------------------------------------------------------ the study
-s <- create_study(id, title = "Sample study (CDISC pilot data, pharmaverseadam)",
-                  compound = "Xanomeline", phase = "2",
+s <- create_study(id, title = "Sample study (tflspec's oncology sample data)",
+                  compound = "Drug X", phase = "2",
                   description = paste(
-                    "The sample study of tflplanner: the CDISC pilot ADaM",
-                    "data of the pharmaverseadam package; one study ARD and",
+                    "The sample study of tflplanner: tflspec's simulated",
+                    "oncology study XYZ-ONC-01 (Drug X vs Control); one study ARD and",
                     "tables, a listing and a figure made from it."),
                   planner = p)
 adam <- file.path(s$path, study_layout()[["adam"]])
@@ -981,25 +957,26 @@ for (f in keep) {
 writeLines(c(
   "# SAMPLE-01: the sample study of tflplanner",
   "",
-  "The CDISC pilot study (Xanomeline) as the ADaM datasets of the",
-  "[pharmaverseadam](https://pharmaverse.github.io/pharmaverseadam/) R package",
-  "(Apache License 2.0): ADSL, ADAE, ADVS (systolic blood pressure after 5",
-  "minutes lying down) and ADTTE (the time to the first dermatologic event,",
-  "derived from ADSL and ADAE by data-raw/make-sample-study.R).",
+  "tflspec's oncology sample study XYZ-ONC-01 (simulated ADaM data; not real",
+  "patients; see ?tflspec::adsl and the study's SAP,",
+  "system.file(\"sample\", \"onco\", package = \"tflspec\")): Drug X vs",
+  "Control, ADSL (the 200 screened subjects: 160 randomised, 40 screen",
+  "failures), ADAE, ADVS (systolic blood pressure at baseline and on day 1 of",
+  "each 21-day cycle; week 24 is cycle 9 day 1) and ADTTE (PFS, OS, DOR and",
+  "TTSKIN, the time to the first treatment-emergent skin disorder).",
   "",
-  "ITTFL, EFFFL and PPROTFL are not in pharmaverseadam's ADSL (of the",
-  "population flags it has SAFFL only); data-raw/make-sample-study.R",
-  "derives them, so step 2 has more than one flag to choose from:",
+  "ADSL's population flags, of which step 2 makes an analysis set:",
   "",
   "| Flag | Label | Y when | Subjects |",
   "|---|---|---|---|",
-  "| ITTFL | Intent-To-Treat Population Flag | randomized (ARM is not Screen Failure) | 254 |",
-  "| EFFFL | Efficacy Population Flag | SAFFL is Y and a post-baseline systolic blood pressure (CHG) in ADVS | 230 |",
-  "| PPROTFL | Per-Protocol Population Flag | SAFFL is Y and EOSSTT is COMPLETED | 110 |",
+  "| ENRLFL | Enrolled Population Flag | randomised (not a screen failure) | 160 |",
+  "| ITTFL | Intent-To-Treat Population Flag | randomised | 160 |",
+  "| SAFFL | Safety Population Flag | at least one dose | 158 |",
+  "| EFFFL | Efficacy Evaluable Population Flag | SAFFL is Y and a post-baseline tumour assessment | 157 |",
   "",
-  "They are not analysis sets of the study (its populations sheet has SAF,",
-  "and SCRF -- the screen failures, by ARM alone): in step 2-1 they are",
-  "offered as flags of ADSL, to make one.",
+  "The study's analysis sets are SAF, SCRF (the screen failures, by ARMNRS",
+  "alone: they have no arm and no flag) and ENR (every subject of ADSL: the",
+  "screened set).",
   "",
   "| Output | Type | |",
   "|---|---|---|",
@@ -1007,15 +984,17 @@ writeLines(c(
   "| T-14-1-1 | Table | Demographic characteristics |",
   "| T-14-1-1S | Table | The same table, its ARD one `cards::ard_stack()` call (the analyses inside it, and the column N it makes) |",
   "| T-14-1-2 | Table | Subject disposition |",
-  "| T-14-1-4 | Table | Demographic characteristics of the screen failures: an analysis set by a condition alone (SCRF, ARM is Screen Failure; ADSL has no flag for it) |",
+  "| T-14-1-4 | Table | Demographic characteristics of the screen failures: an analysis set by a condition alone (SCRF, ARMNRS is SCREEN FAILURE; ADSL has no flag for it) |",
   "| T-14-1-3 | Table | Age group and sex: the ARD keeps cards' default n, N and p, the table prints n (%) (the N rows its cells do not name are left out) |",
-  "| T-14-2-1 | Table | Systolic blood pressure: change from baseline at Week 24 (SE, 95% CI of the mean) |",
-  "| T-14-2-3 | Table | Systolic blood pressure: mean change at Week 24 (95% CI) and p-value of a one-sample t-test (the ARD also holds the test's method and alternative as text) |",
-  "| T-14-2-2 | Table | Time to first dermatologic event: Kaplan-Meier estimates |",
+  "| T-14-1-5 | Table | Demographics of the screened subjects by arm (screen failures a column of their own), Total; race's Asian sub-categories nested under Asian |",
+  "| T-14-1-6 | Table | The same, the Asian sub-categories a block of their own |",
+  "| T-14-2-1 | Table | Systolic blood pressure: change from baseline at week 24, cycle 9 day 1 (SE, 95% CI of the mean) |",
+  "| T-14-2-3 | Table | Systolic blood pressure: mean change at week 24 (95% CI) and p-value of a one-sample t-test (the ARD also holds the test's method and alternative as text) |",
+  "| T-14-2-2 | Table | Time to first skin disorder: Kaplan-Meier estimates (its ARD also holds the hazard ratio of Drug X vs Control) |",
   "| T-14-3-1 | Table | TEAEs by SOC / PT |",
   "| L-16-2-7 | Listing | Severe treatment-emergent adverse events |",
   "| F-14-2-1 | Figure (R program) | Mean change from baseline in systolic blood pressure: its content step is its own R |",
-  "| F-14-2-2 | Figure (R program) | Kaplan-Meier plot of the time to first dermatologic event, its own R; the number at risk from T-14-2-2's ARD (`ard`) |",
+  "| F-14-2-2 | Figure (R program) | Kaplan-Meier plot of the time to first skin disorder, its own R; the number at risk from T-14-2-2's ARD (`ard`) |",
   "| F-14-2-3 | Figure (designed) | The same KM curves from the designer's KM template, with a median line added |",
   "| F-14-2-4 | Figure (designed) | Forest plot of the hazard ratio by subgroup from the figure's own ARD (a Cox model overall and within each subgroup, cards / cardx) |",
   "",

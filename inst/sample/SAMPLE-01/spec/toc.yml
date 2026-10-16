@@ -27,12 +27,12 @@ outputs:
     population: SCRF
   - id: T-14-1-5
     kind: table
-    label: Demographics, race's Asian sub-categories nested under Asian (enrolled
+    label: Demographics, race's Asian sub-categories nested under Asian (screened
       subjects by arm, Total; ASIANSUB derived for demonstration)
     population: ENR
   - id: T-14-1-6
     kind: table
-    label: Demographics, race's Asian sub-categories as a block of their own (enrolled
+    label: Demographics, race's Asian sub-categories as a block of their own (screened
       subjects by arm, Total; ASIANSUB derived for demonstration)
     population: ENR
   - id: F-14-2-1
@@ -43,28 +43,29 @@ outputs:
       - ADVS
   - id: T-14-2-1
     kind: table
-    label: 'Systolic blood pressure: change from baseline at Week 24'
+    label: 'Systolic blood pressure: change from baseline at week 24 (cycle 9 day
+      1)'
     population: SAF
   - id: F-14-2-2
     kind: figure
-    label: KM plot of the time to first dermatologic event
+    label: KM plot of the time to first skin disorder
     datasets: ADTTE
   - id: T-14-2-2
     kind: table
-    label: 'Time to first dermatologic event: KM estimates'
+    label: 'Time to first skin disorder: KM estimates'
     population: SAF
   - id: F-14-2-3
     kind: figure
-    label: KM curves of the time to first dermatologic event (designed)
+    label: KM curves of the time to first skin disorder (designed)
   - id: T-14-2-3
     kind: table
-    label: 'Systolic blood pressure: mean change at Week 24 (95% CI), p-value; the
+    label: 'Systolic blood pressure: mean change at week 24 (95% CI), p-value; the
       ARD also holds the test''s method and alternative as text'
     population: SAF
   - id: F-14-2-4
     kind: figure
-    label: Hazard ratio of the time to first dermatologic event by subgroup (forest
-      plot, its own ARD)
+    label: Hazard ratio of the time to first skin disorder by subgroup (forest plot,
+      its own ARD)
     population: SAF
   - id: T-14-3-1
     kind: table

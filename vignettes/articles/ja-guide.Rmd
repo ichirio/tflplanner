@@ -209,15 +209,15 @@ ARD と帳票まで作成します（正式実行を 1 回行い、1 分ほど�
 | T-14-1-1 | Table | 人口統計学的特性 |
 | T-14-1-1S | Table | 同じ表を、ARD は ard_stack の 1 回の呼び出しで（4.2 節） |
 | T-14-1-2 | Table | 被験者の内訳 |
-| T-14-2-1 | Table | 収縮期血圧の Week 24 のベースラインからの変化（SE、平均の 95% 信頼区間） |
+| T-14-2-1 | Table | 収縮期血圧の Week 24（サイクル 9 の Day 1）のベースラインからの変化（SE、平均の 95% 信頼区間） |
 | T-14-3-1 | Table | SOC / PT 別の有害事象（TEAE） |
 | T-14-2-2 | Table | 初めての皮膚の有害事象までの時間（Kaplan-Meier 推定値） |
 | L-16-2-7 | Listing | 重度の有害事象 |
 | F-14-2-1 | 図（R プログラム） | 収縮期血圧のベースラインからの平均変化量の推移（内容の手順が ggplot2 のコード） |
 | F-14-2-2 | 図（R プログラム） | 初めての皮膚の有害事象までの時間の KM 曲線（内容の手順が ggplot2 のコード。リスク数は T-14-2-2 の ARD から） |
 
-データは [pharmaverseadam](https://pharmaverse.github.io/pharmaverseadam/)
-パッケージの CDISC パイロット試験 ADaM（ADSL、ADAE、ADVS、ADTTE）です。
+データは [tflspec](https://github.com/ichirio/tflspec) の腫瘍領域サンプル試験
+XYZ-ONC-01（シミュレーション。Drug X 対 Control）の ADaM（ADSL、ADAE、ADVS、ADTTE）です。
 2 つの図は内容の手順を R プログラムにした図（11 章）で、ggplot2 のコードがそのまま見られます。
 プロットデザイナーで図を作るときは、図（Figure）の帳票を足して始めます（7 章）。
 表は 1 つの試験 ARD から、Listing と図は ADaM から作られます。
