@@ -414,12 +414,11 @@ test_that("every setting in the dictionary runs as written", {
   skip_if_not_installed("mmrm")
   skip_if_not_installed("emmeans")
   skip_if_not_installed("broom.helpers")
-  skip_if_not_installed("pharmaverseadam")
-  advs <- as.data.frame(getExportedValue("pharmaverseadam", "advs"))
+  # tflspec's sample study: systolic blood pressure on day 1 of cycles 2-4
+  advs <- as.data.frame(tflspec::advs)
+  advs$TRTA <- as.character(advs$TRT01A)
   advs <- advs[advs$PARAMCD == "SYSBP" & !is.na(advs$CHG) &
-                 advs$AVISIT %in% c("Week 2", "Week 4", "Week 8") &
-                 advs$ATPT %in% "AFTER LYING DOWN FOR 5 MINUTES" &
-                 advs$TRTA %in% c("Placebo", "Xanomeline High Dose"), ]
+                 advs$AVISIT %in% c("CYCLE 2 DAY 1", "CYCLE 3 DAY 1", "CYCLE 4 DAY 1"), ]
   advs <- advs[!duplicated(advs[c("USUBJID", "AVISIT")]), ]
   for (k in c("TRTA", "USUBJID", "AVISIT")) advs[[k]] <- factor(advs[[k]])
   mm <- 'method = "mmrm", package = "mmrm"'

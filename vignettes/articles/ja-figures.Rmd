@@ -25,7 +25,7 @@ tflplanner の図の作り方は 3 つあります。この記事はこの順に
 | **空から**デザイナーで部品を 1 つずつ組む | 合うテンプレートが無いとき、部品の働きを確かめたいとき | 4 章：F-14-2-5 を作る | ― |
 | **R プログラム**（ggplot を自分で書く） | デザイナーで書けない図、既存のプログラムを持ち込むとき | 5 章 | **F-14-2-1**、**F-14-2-2** |
 
-使うのはサンプル試験 **SAMPLE-01**（CDISC パイロット試験の ADaM、[pharmaverseadam](https://pharmaverse.github.io/pharmaverseadam/)）です。
+使うのはサンプル試験 **SAMPLE-01**（[tflspec](https://github.com/ichirio/tflspec) の腫瘍領域サンプル試験 XYZ-ONC-01 のシミュレーション ADaM。Drug X 対 Control）です。
 3 章では、サンプルの F-14-2-3 と同じ図を、新しい帳票 F-14-2-4 として自分で作ります。
 できあがったら、2 つのデザインが同じになることを確かめます（3.3 節）。
 
@@ -158,7 +158,7 @@ run_app("SAMPLE-01")             # サンプル試験を開いてアプリを起
 
 1. 2.1 節で足した **F-14-2-4** の **内容** で、**テンプレートから始める** の **テンプレート** に「KM 曲線 · ADTTE」（`km_simple`）を選ぶ。
 2. **データセット** に `ADTTE` を選ぶと、そのデータの変数から選べる項目が出る。
-   - **パラメータ（PARAMCD）**：`TTDE`
+   - **パラメータ（PARAMCD）**：`TTSKIN`（初めての治験薬投与後の皮膚・皮下組織障害までの日数）
    - **解析対象集団フラグ**：`SAFFL`
    - **群（投与群）**：`TRT01A`
    - **表示する時間の単位**：`days`（ADTTE の `AVAL` は日数）
@@ -168,7 +168,7 @@ run_app("SAMPLE-01")             # サンプル試験を開いてアプリを起
 ![最初の一歩：km_simple のテンプレートに ADTTE の値を選んだところ](figures/fig-start.png)
 
 左の **デザイン** には、テンプレートが入れた部品が並びます：
-データ加工に「データセットを読む（ADTTE）→ パラメータで絞る（TTDE）→ 解析対象集団で絞る（SAFFL）→ 時間の単位を変える（days）→ Kaplan-Meier 推定」、
+データ加工に「データセットを読む（ADTTE）→ パラメータで絞る（TTSKIN）→ 解析対象集団で絞る（SAFFL）→ 時間の単位を変える（days）→ Kaplan-Meier 推定」、
 レイヤーに「KM 曲線 → 打ち切りマーク」。
 
 R では `tfl_fig_template()` で、同じ選択をそのまま引数にします。
@@ -177,7 +177,7 @@ R では `tfl_fig_template()` で、同じ選択をそのまま引数にしま�
 km <- tfl_fig_template(
   "km_simple",
   data  = "ADTTE",     # データセット
-  param = "TTDE",      # パラメータ（PARAMCD）
+  param = "TTSKIN",    # パラメータ（PARAMCD）
   pop   = "SAFFL",     # 解析対象集団フラグ
   group = "TRT01A",    # 群
   time_unit = "days"   # 時間の単位
@@ -186,7 +186,7 @@ km
 ```
 
 表示されているのがデザイン（YAML）です。画面の **Spec（YAML）** と同じ内容です。
-`data` の部品が「ADTTE を読む → TTDE を選ぶ → SAFFL = "Y" で絞る → 時間の単位 → KM 推定（`survfit`、`fit` を作る）」、
+`data` の部品が「ADTTE を読む → TTSKIN を選ぶ → SAFFL = "Y" で絞る → 時間の単位 → KM 推定（`survfit`、`fit` を作る）」、
 `layers` が「KM 曲線 → 打ち切りマーク」です。
 
 ### 3.2 デザイナーでレイヤーを足す・設定を直す
@@ -195,7 +195,7 @@ km
 
 1. 左の **デザイン** の下の選択欄で **水平線** を選び、**追加** を押す。レイヤーの最後に **水平線** が加わり、選ばれた状態になる。
 2. 右の **編集** で **y の位置** に `0.5` を入れる。線種（dashed）・色（grey50）・太さ（0.3）は既定値のままでよい。
-3. 左の **図全体の設定** を選び、**Y 軸ラベル** に `Probability of No Dermatologic Event` と入れる。
+3. 左の **図全体の設定** を選び、**Y 軸ラベル** に `Probability of No Skin Disorder` と入れる。
 
 変えるたびにプレビューが描き直されます。右下の **この部品のコード** には、選んだ部品が書き出すコードが出ます
 （水平線なら `geom_hline(yintercept = 0.5, linetype = "dashed", ...)`）。
@@ -204,7 +204,7 @@ R では、デザインのレイヤーに 1 つ足し、図全体の設定の項
 
 ```{r, fig.width = 8.33, fig.height = 4.79}
 km$layers <- c(km$layers, list(list(layer = "hline", yintercept = 0.5)))
-km$plot$y_label <- "Probability of No Dermatologic Event"
+km$plot$y_label <- "Probability of No Skin Disorder"
 draw(km)
 ```
 
@@ -262,13 +262,13 @@ vapply(fixed$layers, `[[`, "", "layer")
 ### 3.5 表の ARD の数値を表示する（F-14-2-3）
 
 図に中央値やハザード比などの数値を書き込むときは、図の中で計算し直さず、**表の ARD** の値をそのまま使います。
-表と図で同じ数値になり、ARD から追跡できます。サンプルの F-14-2-3 は、T-14-2-2（KM 推定の表）の ARD から 3 群の中央値と、
-プラセボに対するハザード比（95% 信頼区間つき）を表示しています。
+表と図で同じ数値になり、ARD から追跡できます。サンプルの F-14-2-3 は、T-14-2-2（KM 推定の表）の ARD から 2 群の中央値と、
+Control に対する Drug X のハザード比（95% 信頼区間つき）を表示しています。
 
 1. F-14-2-3 の **段 2（ARD）** を開き、**この図の ARD** で **表の ARD** を選び、表に **T-14-2-2** を選ぶ。
    その表の解析と、ARD にある統計量（`KM` なら `prob: estimate` など）が一覧で出る。
 2. **段 3（内容）** で、レイヤーに **ARD の数値を表示** を足す。**解析** `KM`、**変数** `prob`、**水準** `0.5`（中央値）、
-   **統計量** `estimate`、**群** `TRT01A = Placebo`、**ラベル** `Median (days), Placebo: {value}`、**小数** `0`。
+   **統計量** `estimate`、**群** `TRT01A = Control`、**ラベル** `Median (days), Control: {value}`、**小数** `0`。
    選べる解析・変数・統計量は、表の ARD にあるものです。
 3. プレビューに、表と同じ中央値が出る。中央値に達していない群は `NE` です。
 
@@ -276,7 +276,7 @@ vapply(fixed$layers, `[[`, "", "layer")
 表にない統計量（たとえばハザード比）を図に出したいときは、表の解析（段 2）にその解析や統計量を足します。
 サンプルの T-14-2-2 には Cox モデルの解析 `HR` があり、ARD にはハザード比が入っていますが、表のセルは `prob` と `time` だけを指定しているので、表には出ません（表の RTF は変わりません）。
 ラベルには `{value}` のほかに、同じ行のほかの統計量を `{conf.low}`、`{conf.high}` のように書けます：
-`HR, Xanomeline Low Dose vs Placebo: {value} (95% CI {conf.low}, {conf.high})`（**統計量** `estimate`、**小数** `2`）。
+`HR, Drug X vs Control: {value} (95% CI {conf.low}, {conf.high})`（**統計量** `estimate`、**小数** `2`）。
 **この図の ARD** を **図自身の解析** にすると、表と同じ画面で図だけの解析を定義することもできます。
 
 R では、図の ARD の出どころを `set_fig_ard_source()` で、表示するレイヤーを `ard_number` で書きます。
@@ -289,8 +289,8 @@ st$planner <- set_fig_ard_source(st$planner, "F-14-2-3", "table:T-14-2-2")
 km_med <- km
 km_med$layers <- c(km_med$layers, list(list(
   layer = "ard_number", analysis_id = "KM", variable = "prob", level = 0.5,
-  stat = "estimate", group = "TRT01A = Placebo",
-  label = "Median (days), Placebo: {value}", digits = 0,
+  stat = "estimate", group = "TRT01A = Control",
+  label = "Median (days), Control: {value}", digits = 0,
   x = 0, y = "-Inf", hjust = 0, vjust = -0.6)))
 code <- tfl_fig_design_code(km_med, "F-14-2-4")
 cat(code[grep("annotate", code):(grep("annotate", code) + 3)], sep = "\n")
@@ -465,7 +465,7 @@ cat(yaml::as.yaml(list(layers = km2$layers[3])),
 yaml_text <- '
 fn: scale_x_discrete
 args:
-  labels: !r function(x) sub("Week ", "W", x)
+  labels: !r function(x) sub(" DAY 1", "", x)
 '
 spec <- yaml::yaml.load(yaml_text, handlers = list(r = tfl_r))
 mean_fig2 <- mean_fig

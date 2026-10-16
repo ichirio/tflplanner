@@ -16,14 +16,14 @@ ard:
       method: categorical
       data: adsl_scrf
       variables:
-        - ARM
+        - ARMNRS
       purpose: PRIMARY OUTCOME MEASURE
     - id: CONT
       label: Continuous
       method: continuous
       data: adsl_scrf
       by:
-        - ARM
+        - ARMNRS
       variables:
         - AGE
       statistics:
@@ -39,7 +39,7 @@ ard:
       method: categorical
       data: adsl_scrf
       by:
-        - ARM
+        - ARMNRS
       variables:
         - AGEGR1
         - SEX
@@ -52,18 +52,19 @@ data:
   source: ard
   object: ard
 codelists:
-  ARM:
-    - value: Screen Failure
+  ARMNRS:
+    - value: SCREEN FAILURE
+      label: Screen Failures
   SEX:
     - value: F
       label: Female
     - value: M
       label: Male
   AGEGR1:
-    - value: 18-64
-      label: 18-64 years
-    - value: '>64'
-      label: '>64 years'
+    - value: <65
+      label: <65 years
+    - value: '>=65'
+      label: '>=65 years'
   RACE:
     - value: WHITE
       label: White
@@ -75,44 +76,52 @@ codelists:
       label: American Indian or Alaska Native
     - value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER
       label: Native Hawaiian or Other Pacific Islander
+    - value: OTHER
+      label: Other
 content:
   - table_plan:
-      cols: ARM
+      cols: ARMNRS
       rows:
         group: variable
-  - plan_levels:
-      ARM: Screen Failure
-      SEX:
-        - Female
-        - Male
-      AGEGR1:
-        - 18-64 years
-        - '>64 years'
-      RACE:
-        - White
-        - Black or African American
-        - Asian
-        - American Indian or Alaska Native
-        - Native Hawaiian or Other Pacific Islander
-  - plan_labels:
-      AGE: Age (years)
-      AGEGR1: Age group, n (%)
-      SEX: Sex, n (%)
-      RACE: Race, n (%)
   - plan_cells:
       continuous:
         'n': '{N:.0f}'
         Mean (SD): '{mean:.1f} ({sd:.2f})'
         Median: '{median:.1f}'
         Min, Max: '{min:.0f}, {max:.0f}'
+  - plan_labels:
+      AGE: Age (years)
+      AGEGR1: Age group, n (%)
+      SEX: Sex, n (%)
+      RACE: Race, n (%)
+  - plan_levels:
+      variable:
+        - AGE
+        - AGEGR1
+        - SEX
+        - RACE
+      ARMNRS: Screen Failures
+      SEX:
+        - Female
+        - Male
+      AGEGR1:
+        - <65 years
+        - '>=65 years'
+      RACE:
+        - White
+        - Black or African American
+        - Asian
+        - American Indian or Alaska Native
+        - Native Hawaiian or Other Pacific Islander
+        - Other
   - plan_paginate_rows:
       max_rows: 30
       split: group_safe
 page:
   footer:
     '1':
-      left: 'SD = Standard Deviation.  Screen failures: subjects not randomized (ARM
-        is Screen Failure).'
+      left: 'SD = Standard Deviation.  Screen failures: screened subjects not randomized
+        (ARMNRS is SCREEN FAILURE).'
   tokens:
     OUTPUT_TITLE: Demographic Characteristics of Screen Failures
     OUTPUT_POPULATION: All Screen Failures

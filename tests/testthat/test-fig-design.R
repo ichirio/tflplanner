@@ -109,7 +109,7 @@ test_that("the preview carries the advice, and a fix applies", {
   on.exit(options(old), add = TRUE)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
   s <- suppressMessages(create_sample_study(run = FALSE))
-  d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTDE",
+  d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTSKIN",
                                   pop = "SAFFL", group = "TRT01A")
   r <- preview_figure(s, "F-14-2-2", d)
   expect_null(r$error)

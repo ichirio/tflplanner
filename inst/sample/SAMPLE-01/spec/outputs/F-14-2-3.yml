@@ -1,6 +1,6 @@
 id: F-14-2-3
 kind: figure
-label: KM curves of the time to first dermatologic event (designed)
+label: KM curves of the time to first skin disorder (designed)
 extends:
   - defaults
 data:
@@ -9,7 +9,7 @@ data:
     - step: read
       dataset: ADTTE
     - step: param
-      value: TTDE
+      value: TTSKIN
     - step: flag
       variable: SAFFL
     - step: time_unit
@@ -37,20 +37,8 @@ content:
       variable: prob
       level: 0.5
       stat: estimate
-      group: TRT01A = Placebo
-      label: 'Median (days), Placebo: {value}'
-      digits: 0.0
-      x: 0.0
-      'y': -Inf
-      hjust: 0.0
-      vjust: -3.6
-  - ard_number:
-      analysis_id: KM
-      variable: prob
-      level: 0.5
-      stat: estimate
-      group: TRT01A = Xanomeline Low Dose
-      label: 'Median (days), Xanomeline Low Dose: {value}'
+      group: TRT01A = Drug X
+      label: 'Median (days), Drug X: {value}'
       digits: 0.0
       x: 0.0
       'y': -Inf
@@ -61,8 +49,8 @@ content:
       variable: prob
       level: 0.5
       stat: estimate
-      group: TRT01A = Xanomeline High Dose
-      label: 'Median (days), Xanomeline High Dose: {value}'
+      group: TRT01A = Control
+      label: 'Median (days), Control: {value}'
       digits: 0.0
       x: 0.0
       'y': -Inf
@@ -71,23 +59,12 @@ content:
   - ard_number:
       analysis_id: HR
       variable: TRT01A
-      level: Xanomeline Low Dose
+      level: Drug X
       stat: estimate
-      label: 'HR, Xanomeline Low Dose vs Placebo: {value} (95% CI {conf.low}, {conf.high})'
+      label: 'HR, Drug X vs Control: {value} (95% CI {conf.low}, {conf.high})'
       digits: 2.0
       x: Inf
-      'y': 0.3
-      hjust: 1.02
-      vjust: -2.1
-  - ard_number:
-      analysis_id: HR
-      variable: TRT01A
-      level: Xanomeline High Dose
-      stat: estimate
-      label: 'HR, Xanomeline High Dose vs Placebo: {value} (95% CI {conf.low}, {conf.high})'
-      digits: 2.0
-      x: Inf
-      'y': 0.3
+      'y': 0.15
       hjust: 1.02
       vjust: -0.6
 page:
@@ -96,7 +73,7 @@ page:
       left: 'x = censored.  Dashed line: the median (probability 0.5).  The medians
         are those of Table 14.2.2; the hazard ratios (Cox model) are in its ARD.'
   tokens:
-    OUTPUT_TITLE: Kaplan-Meier Curves of Time to First Dermatologic Event
+    OUTPUT_TITLE: Kaplan-Meier Curves of Time to First Treatment-Emergent Skin Disorder
     OUTPUT_POPULATION: Safety Analysis Set
   rtf_page:
     orientation: landscape
@@ -105,7 +82,7 @@ page:
 template: km_simple
 plot:
   x_label: Time (Days)
-  y_label: Probability of No Dermatologic Event
+  y_label: Probability of No Skin Disorder
   colour_by: TRT01A
   palette: treatment
   legend: inside

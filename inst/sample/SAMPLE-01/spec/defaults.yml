@@ -1,19 +1,9 @@
 content:
   - normalize_ard: {}
-  - plan_digits:
-      rounding: sas
   - plan_cells:
       default: '{n:.0f} ({p:.1f%})'
-  - plan_stub:
-      name: row_label
-      before: true
-  - plan_blanks:
-      where: between_groups
-      first: true
-      last: true
-      counted: true
-  - plan_style:
-      align_count_pct: true
+  - plan_digits:
+      rounding: sas
   - plan_col_header:
       header:
         - line: '1'
@@ -29,17 +19,27 @@ content:
           cols: .values
           span: each
           text: (N={n})
+  - plan_stub:
+      name: row_label
+      before: true
+  - plan_blanks:
+      where: between_groups
+      first: true
+      last: true
+      counted: true
   - plan_columns:
       widths:
         row_label: 40.0
         .values: 18.0
+  - plan_style:
+      align_count_pct: true
 page:
   header:
     '1':
       left: Sample Pharma (tflplanner sample)
       right: DRAFT
     '2':
-      left: 'Protocol: SAMPLE-01 (CDISC pilot data)'
+      left: 'Protocol: SAMPLE-01 (tflspec''s oncology sample data)'
       right: Page {PAGE} of {TOTAL_PAGES}
     '3': []
     '4':
@@ -52,5 +52,6 @@ page:
     '99':
       left: '{PROGRAM}       Generated on: {DATETIME}'
     '98':
-      left: 'Source: CDISC pilot study ADaM data of the pharmaverseadam R package.'
+      left: 'Source: tflspec''s oncology sample study XYZ-ONC-01 (simulated ADaM data;
+        not real patients).'
 

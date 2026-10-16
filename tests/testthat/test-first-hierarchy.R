@@ -49,7 +49,7 @@ test_that("the starter writes the rows of the sample's T-14-3-1", {
   expect_setequal(r$p$ard$datasets$dataset, c("ADSL", "ADAE"))
   # the columns: the analysis set's arms (no screen failures), in order
   vr <- sample_rows(r$p, "sheet", "variables", cols = c("variable", "levels"))
-  expect_identical(vr$levels, "Placebo | Xanomeline Low Dose | Xanomeline High Dose")
+  expect_identical(vr$levels, "Drug X | Control")
   expect_identical(report_info(r$p, "T-14-3-1")$type, "table")
 })
 
@@ -174,11 +174,10 @@ test_that("a grade's levels, mildest first", {
 
 test_that("a shift table: each subject's worst after baseline, by group and baseline, a page a parameter", {
   skip_on_cran()
-  skip_if_not_installed("pharmaverseadam")
-  # (the data package read by name: a Suggests-free test, as test-ard-fn-search's)
-  lb <- getExportedValue("pharmaverseadam", "adlb")
+  # tflspec's sample study (tflspec is imported: no skip)
+  lb <- as.data.frame(tflspec::adlb)
   adlb <- lb[lb$PARAMCD %in% c("ALT", "AST"), ]
-  adsl <- getExportedValue("pharmaverseadam", "adsl")
+  adsl <- as.data.frame(tflspec::adsl)
   p <- first_shift_table(new_planner(), "T-LB", "data/adam/adlb.rds", adlb,
                          "data/adam/adsl.rds", adsl, population = "SAFFL", group = "TRT01A",
                          params = c("ALT", "AST"), where = "ONTRTFL == \"Y\"", total = "Total")
@@ -215,12 +214,11 @@ test_that("a shift table: each subject's worst after baseline, by group and base
 
 test_that("the form: Shift asks the parameters, the categories and the worst order, and starts the table", {
   skip_on_cran()
-  skip_if_not_installed("pharmaverseadam")
   local_home()
   # (hidden in the list until the unified builder; the option shows it)
   withr::local_options(tflplanner.shift_template = TRUE)
   s <- suppressMessages(create_sample_study(run = FALSE))
-  lb <- getExportedValue("pharmaverseadam", "adlb")
+  lb <- as.data.frame(tflspec::adlb)
   saveRDS(lb[lb$PARAMCD %in% c("ALT", "AST"), ],
           file.path(s$path, "data/adam/adlb.rds"))
   shiny::testServer(server_for(s$meta$study_id), {

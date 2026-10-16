@@ -15,7 +15,7 @@ test_that("a report with no analysis set, and one with a set by a condition, dra
   expect_identical(report_population(p, "T-14-1-4"), "SCRF")
   expect_true("SCRF" %in% p$ard$populations$population_id)
   expect_true(is.na(p$ard$populations$where[p$ard$populations$population_id == "SCRF"]) ||
-                grepl("Screen Failure", p$ard$populations$where[p$ard$populations$population_id == "SCRF"],
+                grepl("SCREEN FAILURE", p$ard$populations$where[p$ard$populations$population_id == "SCRF"],
                       fixed = TRUE))
   # the ARD tab and the report's program, each report
   shiny::testServer(server_for("SAMPLE-01"), {

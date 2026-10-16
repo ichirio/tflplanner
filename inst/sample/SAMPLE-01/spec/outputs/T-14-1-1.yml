@@ -54,19 +54,18 @@ data:
   object: ard
 codelists:
   TRT01A:
-    - value: Placebo
-    - value: Xanomeline Low Dose
-    - value: Xanomeline High Dose
+    - value: Drug X
+    - value: Control
   SEX:
     - value: F
       label: Female
     - value: M
       label: Male
   AGEGR1:
-    - value: 18-64
-      label: 18-64 years
-    - value: '>64'
-      label: '>64 years'
+    - value: <65
+      label: <65 years
+    - value: '>=65'
+      label: '>=65 years'
   RACE:
     - value: WHITE
       label: White
@@ -78,6 +77,8 @@ codelists:
       label: American Indian or Alaska Native
     - value: NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER
       label: Native Hawaiian or Other Pacific Islander
+    - value: OTHER
+      label: Other
   ETHNIC:
     - value: HISPANIC OR LATINO
       label: Hispanic or Latino
@@ -92,40 +93,46 @@ content:
       cols: TRT01A
       rows:
         group: variable
-  - plan_levels:
-      TRT01A:
-        - Placebo
-        - Xanomeline Low Dose
-        - Xanomeline High Dose
-      SEX:
-        - Female
-        - Male
-      AGEGR1:
-        - 18-64 years
-        - '>64 years'
-      RACE:
-        - White
-        - Black or African American
-        - Asian
-        - American Indian or Alaska Native
-        - Native Hawaiian or Other Pacific Islander
-      ETHNIC:
-        - Hispanic or Latino
-        - Not Hispanic or Latino
-        - Not reported
-        - Unknown
-  - plan_labels:
-      AGE: Age (years)
-      AGEGR1: Age group, n (%)
-      SEX: Sex, n (%)
-      RACE: Race, n (%)
-      ETHNIC: Ethnicity, n (%)
   - plan_cells:
       continuous:
         'n': '{N:.0f}'
         Mean (SD): '{mean:.1f} ({sd:.2f})'
         Median: '{median:.1f}'
         Min, Max: '{min:.0f}, {max:.0f}'
+  - plan_labels:
+      AGE: Age (years)
+      AGEGR1: Age group, n (%)
+      SEX: Sex, n (%)
+      RACE: Race, n (%)
+      ETHNIC: Ethnicity, n (%)
+  - plan_levels:
+      variable:
+        - AGE
+        - AGEGR1
+        - SEX
+        - RACE
+        - ETHNIC
+      TRT01A:
+        - Drug X
+        - Control
+      SEX:
+        - Female
+        - Male
+      AGEGR1:
+        - <65 years
+        - '>=65 years'
+      RACE:
+        - White
+        - Black or African American
+        - Asian
+        - American Indian or Alaska Native
+        - Native Hawaiian or Other Pacific Islander
+        - Other
+      ETHNIC:
+        - Hispanic or Latino
+        - Not Hispanic or Latino
+        - Not reported
+        - Unknown
   - plan_paginate_rows:
       max_rows: 30
       split: group_safe

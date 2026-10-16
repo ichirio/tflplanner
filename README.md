@@ -137,10 +137,11 @@ run_app()
 
 `sample = TRUE` (or `create_sample_study()`, or *Add the sample study* in
 the app's settings) copies the sample study **SAMPLE-01** into the studies
-folder and makes it: the CDISC pilot ADaM data of
-[pharmaverseadam](https://pharmaverse.github.io/pharmaverseadam/), one
-study ARD, tables, a listing, two designed figures and two whose content
-is their own R code -- a study to try everything on.
+folder and makes it: the simulated oncology study XYZ-ONC-01 of
+[tflspec](https://github.com/ichirio/tflspec) (Drug X vs Control: its
+ADSL with the screen failures, ADAE, ADVS and ADTTE), one study ARD,
+tables, a listing, two designed figures and two whose content is their own
+R code -- a study to try everything on.
 
 A guide in Japanese (provisional):
 [tflplanner 利用ガイド（日本語）](https://ichirio.github.io/tflplanner/articles/ja-guide.html).
@@ -168,10 +169,6 @@ authors.
   [sortable](https://rstudio.github.io/sortable/): the app's screens.
 - **[logrx](https://pharmaverse.github.io/logrx/)**: the log of every program
   of an official run.
-- **[pharmaverseadam](https://pharmaverse.github.io/pharmaverseadam/)**: the
-  ADaM data of the sample study SAMPLE-01 (from the CDISC pilot study,
-  Apache License 2.0; copyright Cytel Inc., F. Hoffmann-La Roche AG and
-  GlaxoSmithKline LLC -- see `inst/COPYRIGHTS`).
 
 tflplanner is an independent project and is not affiliated with, or endorsed
 by, the authors of these packages.

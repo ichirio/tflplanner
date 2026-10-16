@@ -14,8 +14,8 @@ rtfreporter (the RTF renderer).
 \code{setup_tflplanner()} once: where the app keeps its settings and where
 new study folders go (its home, under \code{\link[tools:userdir]{tools::R_user_dir()}} unless you
 choose another).  Then \code{run_app()} opens the app.  \code{create_sample_study()}
-makes a study to try it on: CDISC pilot data with tables, a listing
-and figures, ready to run.
+makes a study to try it on: tflspec's oncology sample data with tables,
+a listing and figures, ready to run.
 }
 
 \seealso{
@@ -29,13 +29,6 @@ Useful links:
 }
 \author{
 \strong{Maintainer}: Yoichi Masui \email{ichi.r.pro@gmail.com} [copyright holder]
-
-Other contributors:
-\itemize{
-  \item Cytel Inc. (pharmaverseadam data in inst/sample (Apache License 2.0)) [copyright holder]
-  \item F. Hoffmann-La Roche AG (pharmaverseadam data in inst/sample (Apache License 2.0)) [copyright holder]
-  \item GlaxoSmithKline LLC (pharmaverseadam data in inst/sample (Apache License 2.0)) [copyright holder]
-}
 
 }
 \keyword{internal}
