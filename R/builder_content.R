@@ -45,7 +45,7 @@
                     drop_key_variables = "Drop the key variables"),
   table_plan = c(cols = "Columns", rows = "Row layers", label = "Row text column",
                  stat = "Statistic columns", show_keys = "Keys shown"),
-  plan_cells = c(value = "Values printed", stats = "Statistics as", na = "Text for missing",
+  plan_cells = c(value = "Values used", stats = "Statistics as", na = "Text for missing",
                  default = "Every cell", continuous = "Continuous variables",
                  categorical = "Categorical variables"),
   plan_digits = c(rounding = "Rounding", .rows = "Decimals by row"),
@@ -481,10 +481,25 @@ builder_items <- function(x, output_id) {
     fn,
     plan_digits = shiny::div(class = "rp-card-note",
                              t("The decimals are written into plan_cells()'s formats.")),
-    plan_levels = {
-      lines <- .level_order_lines(level_from, lang)
-      if (length(lines)) shiny::div(class = "rp-card-note", lines)
-    },
+    normalize_ard = shiny::div(
+      class = "rp-card-note",
+      with_tip(t(paste("Turns the ARD's group1/group1_level ... into columns named after the groups",
+                       "(TRT01A, SEX), folds a hierarchy into its level columns and attaches the",
+                       "formatted value stat_fmt. The cards below use these column names",
+                       "(TRT01A, variable, variable_level, .label, stat, stat_fmt).")),
+               t(paste("Columns out: the keys (groups, hierarchy levels, a stack's",
+                       "subgroup/subgroup_level), variable (the analysis variable's name),",
+                       "variable_level (a category), context, stat_name, stat (the number),",
+                       "stat_fmt (the text as step 1 formatted it), .kind (continuous/categorical),",
+                       ".label (the row's text), .depth (depth in a hierarchy). Analysis variables",
+                       "stay values of variable, not columns.")))),
+    plan_levels = shiny::div(
+      class = "rp-card-note",
+      shiny::div(t(paste("Makes plan_levels(name = the values' order). A name is a column of the",
+                         "normalized ARD (a column key TRT01A, a stack's subgroup), variable (the",
+                         "analysis variables' order) or a categorical variable (its values). Only",
+                         "what has fixed values can be ordered."))),
+      .level_order_lines(level_from, lang)),
     plan_sort = shiny::div(
       class = "rp-card-note",
       with_tip(builder_label(.arg_meaning("plan_sort", "keys"), "keys", "arg", lang),
@@ -883,8 +898,8 @@ builder_items <- function(x, output_id) {
 # their order, dragged (`id(paste0("lv", i))`, the variable's place in the
 # builder's variables), and its empty values hidden or not (`"lvdrop"`).
 # `vars`: a summary table's block of variables, its items in their order
-# (the `variable` entry, dragged: `id("vars")`); `cols`: the column
-# variables' levels in order (the columns' order, drawn by the page).
+# (the `variable` entry, dragged: `id("vars")`), first; `cols`: the column
+# variables' levels in order (the columns' order, drawn by the page), next.
 # `empty`: the variables sheet's rows (.empty_levels_of()).
 .levels_body <- function(id, st, codelists = NULL, empty = NULL, lang = "en",
                          vars = NULL, cols = NULL) {
@@ -897,7 +912,8 @@ builder_items <- function(x, output_id) {
     if (!identical(v$kind[i], "categorical") || !length(lv)) return(NULL)
     shiny::div(
       class = "rp-b-sec rp-levels-var", `data-variable` = nm,
-      shiny::div(class = "rp-b-sec-label", shiny::tags$code(nm),
+      shiny::div(class = "rp-b-sec-label",
+                 builder_label(sprintf(t("Values of %s"), nm), nm, "arg", lang),
                  if (!is.na(v$label[i])) shiny::span(class = "text-muted ms-1", v$label[i])),
       sortable::rank_list(text = NULL, labels = .levels_with_labels(lv, nm, codelists),
                           input_id = id(paste0("lv", i)), orientation = "horizontal"),
@@ -909,13 +925,15 @@ builder_items <- function(x, output_id) {
         builder_label(.arg_meaning("plan_levels", ".drop_empty"), ".drop_empty", "arg", lang)))
   })
   rows <- Filter(Negate(is.null), rows)
+  # (the code's order: variable, the column keys, then the categorical
+  # variables)
   shiny::tagList(
-    cols,
     if (length(vars)) shiny::div(
       class = "rp-b-sec rp-levels-var", `data-variable` = "variable",
       shiny::div(class = "rp-b-sec-label",
-                 builder_label("Analysis variables", "variable", "arg", lang)),
+                 builder_label("Analysis variables' order", "variable", "arg", lang)),
       sortable::rank_list(text = NULL, labels = vars, input_id = id("vars"))),
+    cols,
     if (length(rows)) rows else if (!length(vars)) shiny::div(
       class = "small text-muted", t("No categorical variable to order.")))
 }
@@ -968,6 +986,16 @@ builder_items <- function(x, output_id) {
   sch$args$stack$type <- "string"
   sch$args$stack_sep$type <- "string"
   sch$args$stack_nest$type <- "logical"
+  # (folded while the table has no stack: what each does, in a line)
+  sch$args$stack$description <- paste(
+    "Stacks parallel subgroup analyses (ALL, SEX, AGEGR1 ...) as one pair of keys,",
+    "subgroup and subgroup_level, for a subgroup table. e.g. subgroup = ALL, SEX, AGEGR1")
+  sch$args$stack_sep$description <- paste(
+    "The text between a crossed layer's names and values (\" / \": AGEGR1 / SEX).",
+    "e.g. \" x \"")
+  sch$args$stack_nest$description <- paste(
+    "TRUE: a crossed layer's outer value goes to subgroup_outer",
+    "(Age Group by Sex, 65-80, F as three levels). e.g. TRUE")
   sch$formals <- c("keys", "drop_contexts", "drop_key_variables", "stack", "stack_sep",
                    "stack_nest")
   sch
@@ -1015,15 +1043,16 @@ builder_items <- function(x, output_id) {
                           title = t("No any-event row: the ARD's rows as they are"))),
       shiny::tags$input(type = "text", id = overall_id, class = "form-control form-control-sm",
                         value = ov %||% "", placeholder = "Any TEAE", style = "max-width: 18em;")),
-    # (a summary table: always -- its subgroups are its rows; a hierarchy
-    # does not stack)
-    if (stacked || !hier) lapply(c("stack", "stack_sep", "stack_nest"), function(a) {
+    # (only when the table says a stack -- else they are under "Other
+    # arguments"; a hierarchy does not stack)
+    if (stacked) lapply(c("stack", "stack_sep", "stack_nest"), function(a) {
       v <- val(.normalize_cols[[a]])
       if (identical(a, "stack_nest")) v <- if (!is.null(v)) toupper(v) == "TRUE"
       arg_field(cid, a, sch$args[[a]]$type, label = .arg_meaning("normalize_ard", a),
-                value = v, from = "own", default = if (identical(a, "stack")) "subgroup = ALL, SEX, AGEGR1",
+                value = v, from = "own",
                 help = if (identical(a, "stack"))
-                  t("Subgroups as one pair of keys: name = its layers, a comma between them, * crossing variables (AGEGR1 * SEX). The rows can then take subgroup and subgroup_level (table_plan()).") else
+                  sprintf(t("e.g. %s. Subgroups as one pair of keys: name = its layers, a comma between them, * crossing variables (AGEGR1 * SEX). The rows can then take subgroup and subgroup_level (table_plan())."),
+                          "subgroup = ALL, SEX, AGEGR1") else
                     .schema_help("normalize_ard", a),
                 own = if (!is.null(v)) "This table", lang = lang)
     }))
@@ -1032,7 +1061,7 @@ builder_items <- function(x, output_id) {
     if (!length(parts)) shiny::div(class = "small text-muted",
                                    t("No settings: the function's defaults.")),
     parts,
-    arg_more(cid, "normalize_ard", used = if (stacked || !hier) c("stack", "stack_sep", "stack_nest"),
+    arg_more(cid, "normalize_ard", used = if (stacked) c("stack", "stack_sep", "stack_nest"),
              schema = sch, lang = lang))
 }
 
@@ -1451,15 +1480,25 @@ $(document).on('click', '.rp-builder-cards .rp-tool-remove', function() {
     " { background: #f3f4f6 !important; color: #374151 !important; border-style: dashed !important; padding-right: 6px !important; }")))
 }
 
-# The row layers' chips, named: the block of the analysis variables in
-# words, a hierarchy's last level marked the rows' text (label), a key or a
+# The row layers' chips, named "name (meaning)": the block of the analysis
+# variables in words, a hierarchy's last level marked the rows' text
+# (label), its other levels, a stack's keys (`stack`), the other keys; a
 # constant heading as it is
-.layer_names <- function(layers, hierarchy = NULL, lang = "en") {
+.layer_names <- function(layers, hierarchy = NULL, lang = "en", stack = character()) {
+  t <- function(x) tr(x, lang)
   vapply(layers, function(k) {
-    if (identical(k, ".variable")) return(paste0(tr("Analysis variables", lang), " (variable)"))
+    if (identical(k, ".variable")) return(paste0(t("Analysis variables"), " (variable)"))
     if (length(hierarchy) && identical(k, utils::tail(hierarchy, 1L))) return(paste0(k, " (label)"))
-    k
+    if (.is_heading(k)) return(k)
+    if (k %in% hierarchy) return(sprintf(t("%s (hierarchy)"), k))
+    if (k %in% stack) return(sprintf(t("%s (stack)"), k))
+    sprintf(t("%s (key)"), k)
   }, "", USE.NAMES = FALSE)
+}
+
+# the columns' chips: "TRT01A (column key)"
+.col_key_names <- function(keys, lang = "en") {
+  stats::setNames(keys, sprintf(tr("%s (column key)", lang), keys))
 }
 
 # A constant heading typed into the row layers ("Overall, typed with a

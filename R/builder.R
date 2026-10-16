@@ -271,14 +271,11 @@ builder_read <- function(x, output_id, meta = NULL) {
   # (".variable": group = variable)
   if (length(hier)) {
     layers <- rk
-    layer_choices <- setdiff(names(meta$keys), key)
   } else {
     layers <- .row_layers_read(tb$rows[1L])
-    # (the keys a stack adds -- subgroup, subgroup_level -- though the
-    # ARD read has not got them yet)
-    layer_choices <- c(setdiff(names(meta$keys) %||% character(), c(key, vars)),
-                       .stack_keys(tb$stack[1L], tb$stack_nest[1L]), ".variable")
   }
+  layer_choices <- .layer_choices(names(meta$keys), key, vars, length(hier) > 0L,
+                                  tb$stack[1L], tb$stack_nest[1L])
   list(key = key, arms = arms, variables = variables, levels = levels,
        rows = rows, templates = templates, value = value, digits = digits,
        exceptions = exc, cat_format = cat_format, cat_own = cat_own,
@@ -292,6 +289,17 @@ builder_read <- function(x, output_id, meta = NULL) {
        overall_label = if (length(hier)) tb$overall_label[1L] %||% NA_character_,
        layers = layers, layer_choices = unique(c(layers, layer_choices)),
        row_label = if (length(hier)) utils::tail(rk, 1L) else .row_label_read(tb$label[1L]))
+}
+
+# The rows' candidates: the normalized ARD's keys less the columns' (one
+# column is in cols or rows, not both); a summary table's less its
+# analysis variables (values of variable, not columns), with the keys a
+# stack adds -- subgroup, subgroup_level, though the ARD read has not got
+# them yet -- and the block of the analysis variables (".variable")
+.layer_choices <- function(keys, cols, vars, hier = FALSE, stack = NA, nest = NA) {
+  keys <- keys %||% character()
+  if (hier) return(setdiff(keys, cols))
+  unique(c(setdiff(keys, c(cols, vars)), .stack_keys(stack, nest), ".variable"))
 }
 
 # The keys normalize_ard()'s stack adds (tables$stack "subgroup = ALL, SEX

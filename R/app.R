@@ -8731,7 +8731,9 @@ app_server <- function(input, output, session, start) {
     # (a summary table's block of variables is a layer like the keys: put
     # where it goes, or taken out -- a table of one variable)
     fixed <- if (hier) st$hierarchy else character()
-    layer_names <- .layer_names(lay_ch, if (hier) st$hierarchy, lang)
+    stack_keys <- .stack_keys(.rows_for(p0, "tables", id)$stack[1L],
+                              .rows_for(p0, "tables", id)$stack_nest[1L])
+    layer_names <- .layer_names(lay_ch, if (hier) st$hierarchy, lang, stack = stack_keys)
     # the rows' text (label): normalize_ard()'s .label, a key, or none
     lab_keys <- setdiff(lay_ch, c(".variable", lay_ch[.is_heading(lay_ch)]))
     row_label_ui <- if (hier) {
@@ -8763,7 +8765,7 @@ app_server <- function(input, output, session, start) {
         class = "rp-b-sec",
         # one or more (a group, then a visit ...): outermost first, as the
         # rows -- dragged to order, each removed by its x (or Backspace)
-        shiny::selectizeInput(bid("key"), al("table_plan", "cols"), keys,
+        shiny::selectizeInput(bid("key"), al("table_plan", "cols"), .col_key_names(keys, lang),
                               selected = if (!anyNA(st$key)) st$key,
                               multiple = TRUE, width = "100%",
                               options = list(plugins = list("remove_button", "drag_drop")))),
@@ -8775,8 +8777,9 @@ app_server <- function(input, output, session, start) {
         shiny::selectizeInput(
           bid("layers"),
           with_tip(al("table_plan", "rows"),
-                   if (hier) t("Outermost first; drag to order. The keys are the analysis's by (step 1).") else
-                     t("Outermost first; drag to order. The keys are the analysis's by (step 1) and the stack's (normalize_ard()); \"...\" typed is a constant heading.")),
+                   paste(if (hier) t("Outermost first; drag to order. The keys are the analysis's by (step 1).") else
+                     t("Outermost first; drag to order. The keys are the analysis's by (step 1) and the stack's (normalize_ard()); \"...\" typed is a constant heading."),
+                     t("What can be placed: the normalized ARD's columns (the keys, variable, a stack's subgroup). group1 is not there: normalizing makes it a column named after its group (TRT01A ...); the analysis variables AGE/SEX are values of variable, so they come as the block of variable. A column is in cols or in rows, not both."))),
           stats::setNames(lay_ch, layer_names), selected = lay_now,
           multiple = TRUE, width = "100%",
           options = c(list(plugins = list("remove_button", "drag_drop"),
@@ -8820,9 +8823,9 @@ app_server <- function(input, output, session, start) {
     cells_body <- shiny::tagList(
       shiny::radioButtons(
         bid("value"),
-        with_tip(al("plan_cells", "value"), t("Numbers: the ARD's values (stat), rounded here to the decimals below. The ARD's text: the values as step 1 formatted them (stat_fmt), printed as they are; a row may still put two in one (Mean (SD)).")),
+        with_tip(al("plan_cells", "value"), t("Numbers: the ARD's values (stat), rounded here to the decimals below. Formatted text: the values as step 1 formatted them (stat_fmt), printed as they are, not rounded here; a row may still put two in one (Mean (SD)).")),
         stats::setNames(c("stat", "stat_fmt"),
-                        t(c("Numbers, rounded here", "The ARD's text (as formatted in step 1)"))),
+                        t(c("Numbers (stat)", "Formatted text (stat_fmt)"))),
         selected = st$value, inline = TRUE),
       # the rows of a continuous variable, their decimals: only when the
       # table has one (left out, what the definition says is kept)
@@ -9322,10 +9325,42 @@ app_server <- function(input, output, session, start) {
         ch <- unique(c(sel, setdiff(st$layer_choices, c(old, ".variable")), new, ".variable"))
         bform$st$layer_choices <- ch
         shiny::updateSelectizeInput(session, bid("layers"),
-                                    choices = stats::setNames(ch, .layer_names(ch, lang = lang)),
+                                    choices = stats::setNames(ch, .layer_names(ch, lang = lang, stack = new)),
                                     selected = sel)
       }
     }
+  }))
+  # the columns changed: the rows' candidates made again (a key taken out
+  # of cols offered to the rows; one put in cols no more -- one column is
+  # in cols or in rows, not both)
+  shiny::observe(builder_guard({
+    bform_drawn()
+    ks <- input[[bid("key")]]
+    # (none before the field is drawn; none after: every column taken out)
+    n <- shiny::isolate(bform$n)
+    if (!is.null(ks)) bform$key_seen <- n
+    shiny::req(builder_case() %in% c("ok", "hierarchy"),
+               identical(shiny::isolate(bform$key_seen), n))
+    ks <- ks %||% character()
+    st <- shiny::isolate(bform$st)
+    m <- shiny::isolate(bform$meta)
+    shiny::req(!is.null(st), !is.null(m))
+    hier <- length(st$hierarchy) > 0L
+    tb <- .rows_for(shiny::isolate(rv$p), "tables", shiny::isolate(bform$id))
+    sk <- .stack_keys(tb$stack[1L], tb$stack_nest[1L])
+    base <- .layer_choices(names(m$keys), ks, st$variables$variable, hier,
+                           tb$stack[1L], tb$stack_nest[1L])
+    sel0 <- shiny::isolate(input[[bid("layers")]]) %||% (if (hier) st$row_keys else st$layers)
+    # (a hierarchy's levels stay: they are the analysis's)
+    sel <- setdiff(sel0, setdiff(ks, if (hier) st$hierarchy))
+    ch <- unique(c(sel, base))
+    now <- if (hier) st$row_choices else st$layer_choices
+    if (identical(sel, sel0) && setequal(ch, unique(c(sel0, now)))) return()
+    if (hier) bform$st$row_choices <- ch else bform$st$layer_choices <- ch
+    shiny::updateSelectizeInput(
+      session, bid("layers"),
+      choices = stats::setNames(ch, .layer_names(ch, if (hier) st$hierarchy, lang, stack = sk)),
+      selected = sel)
   }))
   # plan_filter()'s condition (the condition builder): written through the
   # bridge as the item's `where` (none: no condition), the card's other
@@ -9611,7 +9646,7 @@ app_server <- function(input, output, session, start) {
     lb <- trimws(input[[bid("own_label")]] %||% "")
     tp <- trimws(input[[bid("own_tpl")]] %||% "")
     if (!nzchar(lb) || !grepl("[{][^}]+[}]", tp)) {
-      return(notify(t("A row of your own needs a label and a template with a {statistic}.")))
+      return(notify(t("A row to add needs a label and a template with a {statistic}.")))
     }
     st <- shiny::isolate(bstate())
     st$rows <- unique(c(st$rows, lb))
@@ -9640,7 +9675,7 @@ app_server <- function(input, output, session, start) {
         group_name = bid("rows_group"),
         orientation = "horizontal",
         sortable::add_rank_list(
-          text = t("Continuous variables: the rows (drag to order)"),
+          text = t("Continuous variables' rows (continuous)"),
           labels = stats::setNames(lapply(st$rows, label_of), st$rows),
           input_id = bid("rows")),
         sortable::add_rank_list(
@@ -9649,7 +9684,8 @@ app_server <- function(input, output, session, start) {
           input_id = bid("rows_off"))),
       shiny::tags$details(
         class = "small mb-2", open = NA,
-        shiny::tags$summary(t("A row of your own")),
+        shiny::tags$summary(with_tip(t("Add a row (row label = template)"),
+                                      t("One row of plan_cells(continuous = c(row label = template)). Write the ARD's statistic names, {mean} {sd} ...; {mean:.2f} sets the decimals too."))),
         shiny::div(
           class = "d-flex flex-wrap gap-2 align-items-end",
           # (an example, as the placeholder: the fields start empty)
@@ -9788,9 +9824,10 @@ app_server <- function(input, output, session, start) {
         # report's code list, the ARD's factor, as first seen), said as on
         # plan_levels()' card
         from <- bform$st$level_from[[k]]
-        shiny::tagList(
-          shiny::tags$label(class = "form-label small",
-                            sprintf(t("Order of the columns of %s (drag)"), k)),
+        shiny::div(
+          class = "rp-b-sec rp-levels-var", `data-variable` = k,
+          shiny::div(class = "rp-b-sec-label",
+                     builder_label(sprintf(t("Values of %s"), k), k, "arg", lang)),
           if (!is.null(from)) .level_order_note(from, lang),
           sortable::rank_list(text = NULL,
                               labels = .levels_with_labels(

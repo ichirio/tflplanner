@@ -196,20 +196,32 @@ test_that("normalize_ard(): the hierarchy fixed and From the ARD, overall editab
   expect_match(h, ">This table<", fixed = TRUE)
   expect_match(h, 'id="ovr"', fixed = TRUE)
   expect_match(h, "Other arguments (6)", fixed = TRUE)
-  # a summary table with nothing set (DM): its stack's fields always (its
-  # subgroups can be its rows), empty; the rest folded
+  # a summary table with nothing set (DM): its stack's arguments folded,
+  # each with what it does in a line and an example; no placeholder
   h <- html(.normalize_body("n", character(), tb = NULL))
   expect_match(h, 'id="n__stack"', fixed = TRUE)
-  expect_match(h, 'placeholder="subgroup = ALL, SEX, AGEGR1"', fixed = TRUE)
-  expect_match(h, "Other arguments (3)", fixed = TRUE)
+  expect_false(grepl('placeholder="subgroup = ALL, SEX, AGEGR1"', h, fixed = TRUE))
+  expect_match(h, "Other arguments (6)", fixed = TRUE)
+  expect_match(h, "e.g. subgroup = ALL, SEX, AGEGR1", fixed = TRUE)
   expect_false(grepl('data-arg="overall"', h, fixed = TRUE))
   # a stack the table says: shown, its fields read back as the columns
   h <- html(.normalize_body("n", character(), tb = data.frame(stack = "subgroup = SEX")))
   expect_match(h, 'id="n__stack"', fixed = TRUE)
   expect_match(h, "Other arguments (3)", fixed = TRUE)
+  expect_match(h, "e.g. subgroup = ALL, SEX, AGEGR1. Subgroups", fixed = TRUE)
+  expect_false(grepl('placeholder="subgroup = ALL', h, fixed = TRUE))
+  expect_match(html(.normalize_body("n", character(), tb = data.frame(stack = "subgroup = SEX"),
+                                    lang = "ja")),
+               "例: subgroup = ALL, SEX, AGEGR1。", fixed = TRUE)
   r <- .normalize_read(list(n__stack = " subgroup = SEX ", n__stack_sep = "", n__stack_nest = TRUE), "n")
   expect_identical(r, list(stack = "subgroup = SEX", stack_sep = NA_character_, stack_nest = "TRUE"))
   expect_null(.normalize_read(list(), "n"))
+  # its card's note: what it does, the columns out under the ?
+  h <- html(.plan_card_note("normalize_ard"))
+  expect_match(h, "columns named after the groups (TRT01A, SEX)", fixed = TRUE)
+  expect_match(h, "Analysis variables stay values of variable", fixed = TRUE)
+  expect_match(html(.plan_card_note("normalize_ard", lang = "ja")), "群の名前の列", fixed = TRUE)
+  expect_match(html(.plan_card_note("plan_levels")), "plan_levels(name = the values' order)", fixed = TRUE)
   # the mark: one of the badges
   expect_match(html(from_badge("ard", "ja")), tr("From the ARD", "ja"), fixed = TRUE)
   expect_identical(tr("From the ARD", "ja"), "ARD から")

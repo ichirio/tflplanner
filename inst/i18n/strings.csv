@@ -1146,7 +1146,7 @@ Saving...,保存中…
 The plot written by hand (ggplot2),手書きのプロット（ggplot2）
 "The code that makes the plot (edit it in step 2, Data code)",プロットを作るコード（段 2 のデータ準備コードで編集します）
 Column variables,列の変数
-Order of the columns of %s (drag),%s の列の順序（ドラッグ）
+Values of %s,%s の値
 Report (output_id),帳票 (output_id)
 Repeated within,層（この中で繰り返す）
 Percentages of,% の分母
@@ -2289,12 +2289,12 @@ Blank: every analysis variable (the rule); a variable: its exception.,空欄: �
 "Its decimals, a whole number (p, a percent: 1 prints 61.6).",小数桁数（整数）。p（割合）は 1 で 61.6 と出る。
 digits: decimals,小数桁数 (digits)
 Values,値
-"Numbers: the ARD's values (stat), rounded here to the decimals below. The ARD's text: the values as step 1 formatted them (stat_fmt), printed as they are; a row may still put two in one (Mean (SD)).",数値: ARD の値（stat）を、下の桁数でここで丸めます。ARD の文字: ARD 作成 で書式を付けた値（stat_fmt）をそのまま出します。2 つを 1 行にまとめること（Mean (SD)）はできます。
-"Numbers, rounded here",数値（ここで丸める）
-The ARD's text (as formatted in step 1),ARD の文字（ARD 作成の書式のまま）
-Continuous variables: the rows (drag to order),連続変数: 出す行（ドラッグで並べ替え）
+"Numbers: the ARD's values (stat), rounded here to the decimals below. Formatted text: the values as step 1 formatted them (stat_fmt), printed as they are, not rounded here; a row may still put two in one (Mean (SD)).",数値: ARD の値（stat）を、下の桁数でここで丸めます。書式済みの文字: ARD 作成で書式を付けた値（stat_fmt）を、ここでは丸めずそのまま出します。2 つを 1 行にまとめること（Mean (SD)）はできます。
+Numbers (stat),数値 (stat)
+Formatted text (stat_fmt),書式済みの文字 (stat_fmt)
+Continuous variables' rows (continuous),連続変数の行 (continuous)
 Not shown (drag a row to the left),出さない行（左へドラッグで追加）
-A row of your own,自分の行
+Add a row (row label = template),行を足す（行ラベル = テンプレート）
 Row label,行ラベル
 Add the row,行を足す
 Decimals of each statistic,統計量ごとの小数桁数
@@ -2303,7 +2303,7 @@ A variable of its own (%d),変数ごとの例外（%d）
 Take it away,取り除く
 Statistic,統計量
 Decimals,小数桁数
-A row of your own needs a label and a template with a {statistic}.,自分の行には、行ラベルと {統計量} を含むテンプレートが要ります。
+A row to add needs a label and a template with a {statistic}.,足す行には、行ラベルと {統計量} を含むテンプレートが要ります。
 "Columns of the subjects' data (the population's, or the analysis data its subjects are kept to) joined by the subject key. Nothing chosen: nothing added. A column of the same name takes the subjects' values.",症例側のデータ（解析対象集団のデータ、または症例を絞った解析データ）の列を被験者 ID で結合して足します。選ばなければ何も足しません。同じ名前の列は症例側の値に置き換わります。
 "The columns this data makes: split by conditions, cut a number into groups, days between two dates, or any R. The sheet keeps each as NAME = R (derive, | between them); one the form cannot draw is kept as written.",このデータで作る列：条件で分ける、数値を区分に区切る、2 つの日付の日数の差、または任意の R。シートには NAME = R の形で残ります（derive、| 区切り）。フォームで描けないものは書いたまま残します。
 Split by conditions,条件で分ける
@@ -3228,7 +3228,7 @@ Row layers,行
 Row text column,行の文字の列
 Statistic columns,統計量の列
 Keys shown,見せるキー
-Values printed,出す値
+Values used,使う値
 Statistics as,統計量の並べ方
 Text for missing,欠測の文字
 Every cell,すべてのセル
@@ -3328,7 +3328,7 @@ The ARD's row text (.label),ARD の行の文字（.label）
 None (NA),無し（NA）
 "Outermost first; drag to order. The keys are the analysis's by (step 1) and the stack's (normalize_ard()); ""..."" typed is a constant heading.","外側から順に。ドラッグで並べ替えます。キーは解析の by（第 1 段）と積み上げ（normalize_ard()）のものです。""…"" と打つと定数の見出しになります。"
 Analysis variables (variable) are no rows (a table of one variable: ORR ...).,解析変数 (variable) は行になりません（1 変数の表、ORR など）
-"Subgroups as one pair of keys: name = its layers, a comma between them, * crossing variables (AGEGR1 * SEX). The rows can then take subgroup and subgroup_level (table_plan()).",サブグループを 1 組のキーにします: 名前 = 層、層の間はカンマ、* で変数を交差（AGEGR1 * SEX）。設定すると行（table_plan()）に subgroup と subgroup_level を置けます。
+"e.g. %s. Subgroups as one pair of keys: name = its layers, a comma between them, * crossing variables (AGEGR1 * SEX). The rows can then take subgroup and subgroup_level (table_plan()).",例: %s。サブグループを 1 組のキーにします: 名前 = 層、層の間はカンマ、* で変数を交差（AGEGR1 * SEX）。設定すると行（table_plan()）に subgroup と subgroup_level を置けます。
 Blank: rtfreporter's width. .values: every value column.,空欄: rtfreporter の幅。.values: 値の列すべて。
 "The rows kept: a condition over a row's statistics (n, p ...) and its keys, as a cells row's when. A SOC stays when one of its PTs does; the overall row always stays.",残す行: 行の統計量（n、p など）とキーの条件（cells の when と同じ書き方）。PT が 1 つでも残れば SOC も残り、全体の行は常に残ります。
 "How a 5 is rounded: sas half away from zero, r half to even, iec60559 as the machine stores the number. The study's: every report's (the Study tab's Rounding); blank there: options(rtfreporter.rounding).",5 の丸め方: sas は 0 から遠い方へ、r は偶数へ、iec60559 は計算機の値のまま。試験全体の値です（試験タブの「丸め方」）: すべての帳票に効きます。そこが空欄なら options(rtfreporter.rounding)。
@@ -3361,3 +3361,16 @@ Underline,下線
 Indent (twips),字下げ（twips）
 As the sheets say: %s,シートのまま：%s
 Text colour,文字の色
+Analysis variables' order,解析変数の並び
+%s (key),%s（キー）
+%s (stack),%s（積み上げ）
+%s (hierarchy),%s（階層）
+%s (column key),%s（列キー）
+"One row of plan_cells(continuous = c(row label = template)). Write the ARD's statistic names, {mean} {sd} ...; {mean:.2f} sets the decimals too.",plan_cells(continuous = c(行ラベル = テンプレート)) の 1 行。{mean} {sd} など ARD の統計量名を書き、{mean:.2f} で桁も書けます。
+"What can be placed: the normalized ARD's columns (the keys, variable, a stack's subgroup). group1 is not there: normalizing makes it a column named after its group (TRT01A ...); the analysis variables AGE/SEX are values of variable, so they come as the block of variable. A column is in cols or in rows, not both.",置けるのは正規化 ARD の列（キー、variable、積み上げの subgroup）。group1 は正規化で TRT01A などの名前の列になるので無く、解析変数 AGE/SEX は variable の値なので variable のまとまりとして置きます。1 列は cols と rows のどちらか一方。
+"Turns the ARD's group1/group1_level ... into columns named after the groups (TRT01A, SEX), folds a hierarchy into its level columns and attaches the formatted value stat_fmt. The cards below use these column names (TRT01A, variable, variable_level, .label, stat, stat_fmt).","ARD の group1/group1_level … を群の名前の列（TRT01A, SEX）に直し、階層は段の列に畳み、書式済みの値 stat_fmt を付けます。以後のカードはこの列名（TRT01A, variable, variable_level, .label, stat, stat_fmt）で書きます。"
+"Columns out: the keys (groups, hierarchy levels, a stack's subgroup/subgroup_level), variable (the analysis variable's name), variable_level (a category), context, stat_name, stat (the number), stat_fmt (the text as step 1 formatted it), .kind (continuous/categorical), .label (the row's text), .depth (depth in a hierarchy). Analysis variables stay values of variable, not columns.",出てくる列: キー列（群・階層の段・積み上げの subgroup/subgroup_level）、variable（解析変数の名前）、variable_level（カテゴリの値）、context、stat_name、stat（数値）、stat_fmt（ARD 作成で付けた書式の文字）、.kind（continuous/categorical）、.label（行の文字）、.depth（階層の深さ）。解析変数は列にならず variable の値のままです。
+"Makes plan_levels(name = the values' order). A name is a column of the normalized ARD (a column key TRT01A, a stack's subgroup), variable (the analysis variables' order) or a categorical variable (its values). Only what has fixed values can be ordered.",plan_levels(名前 = 値の順) を作ります。名前は正規化 ARD の列（列キー TRT01A、積み上げ subgroup）、variable（解析変数の並び）、カテゴリ変数（その値）。値の決まったものだけ並べられます。
+"Stacks parallel subgroup analyses (ALL, SEX, AGEGR1 ...) as one pair of keys, subgroup and subgroup_level, for a subgroup table. e.g. subgroup = ALL, SEX, AGEGR1","部分集団ごとの並行した解析（ALL, SEX, AGEGR1 …）を 1 組のキー subgroup と subgroup_level に積み上げます（部分集団の表）。例: subgroup = ALL, SEX, AGEGR1"
+"The text between a crossed layer's names and values ("" / "": AGEGR1 / SEX). e.g. "" x ""","交差した層の名前と値をつなぐ文字（"" / "": AGEGR1 / SEX）。例: "" x """
+"TRUE: a crossed layer's outer value goes to subgroup_outer (Age Group by Sex, 65-80, F as three levels). e.g. TRUE",TRUE: 交差した層の外側の値を subgroup_outer に分けます（Age Group by Sex → 65-80 → F の 3 段）。例: TRUE

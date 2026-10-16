@@ -43,8 +43,8 @@ test_that("a categorical-only table: no continuous rows, no warning about them",
     session$flushReact()
     h <- output$builder_form$html
     expect_match(h, "Categorical variables", fixed = TRUE)
-    expect_false(grepl("Continuous variables: the rows", h, fixed = TRUE))
-    expect_false(grepl("A row of your own", h, fixed = TRUE))
+    expect_false(grepl("Continuous variables' rows (continuous)", h, fixed = TRUE))
+    expect_false(grepl("Add a row (row label = template)", h, fixed = TRUE))
     b <- function(x) paste0("b", session$userData$bform$n, "_", x)
     w <- output[[b("warn")]]$html %||% ""
     expect_false(grepl("mean", w, fixed = TRUE))
@@ -66,8 +66,8 @@ test_that("a table with a continuous variable still has its rows", {
     open_builder(session, "T-MIX")
     session$flushReact()
     h <- output$builder_form$html
-    expect_match(h, "Continuous variables: the rows", fixed = TRUE)
-    expect_match(h, "A row of your own", fixed = TRUE)
+    expect_match(h, "Continuous variables' rows (continuous)", fixed = TRUE)
+    expect_match(h, "Add a row (row label = template)", fixed = TRUE)
   })
 })
 

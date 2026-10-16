@@ -42,8 +42,22 @@ test_that("the row layers are written in their order, the block where it is or n
   expect_true(.is_heading('"Overall"'))
   expect_false(.is_heading("SEX"))
   # the chips' names
-  expect_identical(.layer_names(c(".variable", "SEX")), c("Analysis variables (variable)", "SEX"))
+  expect_identical(.layer_names(c(".variable", "SEX", '"Overall"')),
+                   c("Analysis variables (variable)", "SEX (key)", '"Overall"'))
   expect_identical(.layer_names(".variable", lang = "ja"), "解析変数 (variable)")
+  expect_identical(.layer_names(c("subgroup", "subgroup_level", "TRT01A"), lang = "ja",
+                                stack = c("subgroup", "subgroup_level")),
+                   c("subgroup（積み上げ）", "subgroup_level（積み上げ）", "TRT01A（キー）"))
+  expect_identical(.layer_names(c("AEBODSYS", "AEDECOD"), c("AEBODSYS", "AEDECOD")),
+                   c("AEBODSYS (hierarchy)", "AEDECOD (label)"))
+  expect_identical(.col_key_names("TRT01A", "ja"), c("TRT01A（列キー）" = "TRT01A"))
+  # the rows' candidates: a column is in cols or in rows, not both
+  expect_identical(.layer_choices(c("TRT01A", "SEX", "AGEGR1"), "TRT01A", "SEX"),
+                   c("AGEGR1", ".variable"))
+  expect_identical(.layer_choices(c("TRT01A", "SEX"), character(), "SEX", stack = "subgroup = ALL, SEX"),
+                   c("TRT01A", "subgroup", "subgroup_level", ".variable"))
+  expect_identical(.layer_choices(c("TRT01A", "AEBODSYS"), "TRT01A", character(), hier = TRUE),
+                   "AEBODSYS")
   expect_match(.heading_create_js, "return {value: v, text: v}", fixed = TRUE)
 })
 
