@@ -371,6 +371,19 @@ test_that("in the app: a switch writes and takes away; Add; the variables shown;
     expect_match(output[[paste0("b", bf$n, "_arms_ui")]]$html,
                  "rp-level-from text-warning", fixed = TRUE)
     cid <- function(path) paste0("b", bf$n, "_card_", path)
+    # table_plan()'s card: its own arguments only (cols dragged and removed
+    # as the rows); the block's order and the columns' levels are
+    # plan_levels()' card's, the variables shown plan_filter()'s
+    h <- output$builder_form$html
+    tp <- regmatches(h, regexpr('(?s)data-fn="table_plan".*?data-fn="plan_', h, perl = TRUE))
+    expect_length(tp, 1L)
+    expect_match(tp, sprintf('data-for="b%d_key">{"plugins":["remove_button","drag_drop"', bf$n),
+                 fixed = TRUE)
+    for (x in c("_vars", "_shown", "_arms_ui", "_keyorder")) {
+      expect_no_match(tp, paste0('id="b', bf$n, x, '"'), fixed = TRUE)
+    }
+    expect_no_match(h, "Order of the column variables", fixed = TRUE)
+    expect_match(tp, "A variable not here is added in the ARD analysis.", fixed = TRUE)
     # a usual card off (no levels written): on writes the ARD's levels
     it <- .builder_item_at(bf$items, "plan_levels")
     skip_if(is.null(it) || isTRUE(it$present))

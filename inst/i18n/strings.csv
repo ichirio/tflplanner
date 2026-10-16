@@ -1146,7 +1146,6 @@ Saving...,保存中…
 The plot written by hand (ggplot2),手書きのプロット（ggplot2）
 "The code that makes the plot (edit it in step 2, Data code)",プロットを作るコード（段 2 のデータ準備コードで編集します）
 Column variables,列の変数
-"Order of the column variables, outermost first (drag)",列の変数の順序（外側から。ドラッグ）
 Order of the columns of %s (drag),%s の列の順序（ドラッグ）
 Report (output_id),帳票 (output_id)
 Repeated within,層（この中で繰り返す）
@@ -3263,8 +3262,6 @@ Separator,区切り
 Align n (%),n (%) を揃える
 No arguments: the defaults of the function.,引数なし: 関数の既定のまま。
 Back to the study default,試験の既定に戻す
-Analysis variables (the block),解析変数（まとまり）
-"Analysis variables (the block), in order",解析変数（まとまり）の順
 "Outermost first; drag to order. The keys are the analysis's by (step 1); a hierarchy's levels are its analysis's: rows the table should not show are hidden by a row filter (plan_filter()), not left out here.",外側から順に。ドラッグで並べ替え。キーは解析の by（ARD 作成）から、階層の段は解析から来ます。表に出さない行は、ここで外すのではなく行のフィルター（plan_filter()）で隠します。
 "The arguments as R: name = value, separated by commas. What is no plain value (a call, a name) stays R.",引数を R で: 名前 = 値 をカンマで区切って。単純な値でないもの（関数の呼び出し、名前）は R のまま残ります。
 This table,この表
@@ -3312,7 +3309,6 @@ No any-event row: the ARD's rows as they are,全体の行なし（ARD の行の�
 A variable not here is added in the ARD analysis.,ここにない変数は ARD 作成の解析で足します
 Shown,表示する
 "Unticked: the table does not show the variable's rows (written as the row filter, plan_filter()); the ARD stays as it is.",チェックを外すと、その変数の行を表に出しません（行のフィルター plan_filter() として書きます）。ARD はそのままです。
-The rows shown are the row filter's (plan_filter()): edit it there.,表に出す行は行のフィルター（plan_filter()）で決まっています。そちらで編集してください。
 Keep at least one variable shown.,少なくとも 1 つの変数は表示してください。
 "%s cannot be added here: a card the table has already, or no verb of the plan.",%s はここでは追加できません（すでにあるカード、または plan の関数ではありません）。
 Stacked analyses,積み上げ (stack)
@@ -3332,13 +3328,12 @@ the sheets' own (tables$label); edit it as R.,シートの値です（tables$lab
 The ARD's row text (.label),ARD の行の文字（.label）
 None (NA),無し（NA）
 "Outermost first; drag to order. The keys are the analysis's by (step 1) and the stack's (normalize_ard()); ""..."" typed is a constant heading.","外側から順に。ドラッグで並べ替えます。キーは解析の by（第 1 段）と積み上げ（normalize_ard()）のものです。""…"" と打つと定数の見出しになります。"
-The analysis variables are no rows (a table of one variable: ORR ...).,解析変数は行になりません（1 変数の表、ORR など）
+Analysis variables (variable) are no rows (a table of one variable: ORR ...).,解析変数 (variable) は行になりません（1 変数の表、ORR など）
 "Subgroups as one pair of keys: name = its layers, a comma between them, * crossing variables (AGEGR1 * SEX). The rows can then take subgroup and subgroup_level (table_plan()).",サブグループを 1 組のキーにします: 名前 = 層、層の間はカンマ、* で変数を交差（AGEGR1 * SEX）。設定すると行（table_plan()）に subgroup と subgroup_level を置けます。
 Blank: rtfreporter's width. .values: every value column.,空欄: rtfreporter の幅。.values: 値の列すべて。
 "The rows kept: a condition over a row's statistics (n, p ...) and its keys, as a cells row's when. A SOC stays when one of its PTs does; the overall row always stays.",残す行: 行の統計量（n、p など）とキーの条件（cells の when と同じ書き方）。PT が 1 つでも残れば SOC も残り、全体の行は常に残ります。
 "How a 5 is rounded: sas half away from zero, r half to even, iec60559 as the machine stores the number. The study's: every report's (the Study tab's Rounding); blank there: options(rtfreporter.rounding).",5 の丸め方: sas は 0 から遠い方へ、r は偶数へ、iec60559 は計算機の値のまま。試験全体の値です（試験タブの「丸め方」）: すべての帳票に効きます。そこが空欄なら options(rtfreporter.rounding)。
 No categorical variable to order.,並べるカテゴリ変数はありません。
-The columns' values (%s): ordered on the columns (table_plan()).,列の値（%s）の順は、列（table_plan()）で並べ替えます。
 Relative width,相対幅
 Variables split,分ける変数
 Group of the other variables,ほかの変数のグループ

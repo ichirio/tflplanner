@@ -248,7 +248,7 @@ test_that("the hierarchy's levels are fixed chips, the last the label; normalize
     expect_match(h, '[\\"AEBODSYS\\",\\"AEDECOD\\"]', fixed = TRUE)
     # AEDECOD is the hierarchy's last level, the rows' text; not a variable
     expect_match(h, "AEDECOD (label)", fixed = TRUE)
-    expect_no_match(h, "Analysis variables (the block)", fixed = TRUE)
+    expect_no_match(h, "Analysis variables (variable)", fixed = TRUE)
     expect_match(h, "are the ARD analysis", fixed = TRUE)
     # normalize_ard(): first, its hierarchy read only, its overall row
     expect_match(h, 'data-fn="normalize_ard"', fixed = TRUE)

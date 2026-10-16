@@ -42,7 +42,8 @@ test_that("the row layers are written in their order, the block where it is or n
   expect_true(.is_heading('"Overall"'))
   expect_false(.is_heading("SEX"))
   # the chips' names
-  expect_identical(.layer_names(c(".variable", "SEX")), c("Analysis variables (the block)", "SEX"))
+  expect_identical(.layer_names(c(".variable", "SEX")), c("Analysis variables (variable)", "SEX"))
+  expect_identical(.layer_names(".variable", lang = "ja"), "解析変数 (variable)")
   expect_match(.heading_create_js, "return {value: v, text: v}", fixed = TRUE)
 })
 
@@ -210,7 +211,17 @@ test_that("plan_levels(): each variable's values dragged, its empty values hidde
   expect_match(h, sprintf('id="b_lv%d"', i), fixed = TRUE)
   expect_match(h, sprintf('id="b_lvdrop%d" class="form-check-input me-1" checked', i), fixed = TRUE)
   expect_match(h, "(.drop_empty)", fixed = TRUE)
-  expect_match(h, "ordered on the columns", fixed = TRUE)
+  # the column variables' levels and the block's order are this card's
+  # (table_plan()'s card has only its own arguments)
+  expect_no_match(h, "ordered on the columns", fixed = TRUE)
+  expect_no_match(h, 'id="b_vars"', fixed = TRUE)
+  h2 <- html(.levels_body(function(x) paste0("b_", x), st, vars = list(SEX = "SEX", AGE = "AGE"),
+                          cols = shiny::div(id = "the-cols")))
+  expect_match(h2, 'id="b_vars"', fixed = TRUE)
+  expect_match(h2, "(variable)", fixed = TRUE)
+  expect_match(h2, 'id="the-cols"', fixed = TRUE)
+  expect_identical(.verb_targets$plan_levels$variables, c("levels", "empty_levels", "order"))
+  expect_identical(.verb_targets$plan_labels$variables, "label")
   expect_identical(.empty_levels_of(vr), list(SEX = TRUE, RACE = FALSE))
   expect_identical(.empty_levels_of(NULL), list())
   # the labels' card has no order of the levels any more
@@ -219,15 +230,14 @@ test_that("plan_levels(): each variable's values dragged, its empty values hidde
 })
 
 test_that("the new words have their Japanese", {
-  w <- c("The analysis variables are no rows (a table of one variable: ORR ...).",
+  w <- c("Analysis variables (variable) are no rows (a table of one variable: ORR ...).",
          "None (NA)", "The ARD's row text (.label)", "(the last level)",
          "Blank: rtfreporter's width. .values: every value column.",
-         "No categorical variable to order.",
-         "The columns' values (%s): ordered on the columns (table_plan()).")
+         "No categorical variable to order.")
   ja <- vapply(w, tr, "", lang = "ja")
   expect_true(all(ja != w), info = paste(w[ja == w], collapse = " / "))
   expect_identical(tr(w[[1L]], "ja"),
-                   "解析変数は行になりません（1 変数の表、ORR など）")
+                   "解析変数 (variable) は行になりません（1 変数の表、ORR など）")
 })
 
 test_that("plan_labels(): the labels of the columns the plan makes go to their code list rows only", {

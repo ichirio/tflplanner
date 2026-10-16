@@ -881,10 +881,13 @@ builder_items <- function(x, output_id) {
 
 # The plan_levels() card's body: each categorical variable's values in
 # their order, dragged (`id(paste0("lv", i))`, the variable's place in the
-# builder's variables), and its empty values hidden or not (`"lvdrop"`);
-# the column keys' order is the columns' (table_plan()).  `empty`: the
-# variables sheet's rows (.empty_levels_of()).
-.levels_body <- function(id, st, codelists = NULL, empty = NULL, lang = "en") {
+# builder's variables), and its empty values hidden or not (`"lvdrop"`).
+# `vars`: a summary table's block of variables, its items in their order
+# (the `variable` entry, dragged: `id("vars")`); `cols`: the column
+# variables' levels in order (the columns' order, drawn by the page).
+# `empty`: the variables sheet's rows (.empty_levels_of()).
+.levels_body <- function(id, st, codelists = NULL, empty = NULL, lang = "en",
+                         vars = NULL, cols = NULL) {
   t <- function(x) tr(x, lang)
   v <- st$variables
   hidden <- .empty_levels_of(empty)
@@ -906,14 +909,15 @@ builder_items <- function(x, output_id) {
         builder_label(.arg_meaning("plan_levels", ".drop_empty"), ".drop_empty", "arg", lang)))
   })
   rows <- Filter(Negate(is.null), rows)
-  keys <- if (!anyNA(st$key)) st$key else character()
   shiny::tagList(
-    if (length(rows)) rows else shiny::div(class = "small text-muted",
-                                           t("No categorical variable to order.")),
-    if (length(keys)) shiny::div(
-      class = "small text-muted rp-b-fixed-note",
-      sprintf(t("The columns' values (%s): ordered on the columns (table_plan())."),
-              paste(keys, collapse = ", "))))
+    cols,
+    if (length(vars)) shiny::div(
+      class = "rp-b-sec rp-levels-var", `data-variable` = "variable",
+      shiny::div(class = "rp-b-sec-label",
+                 builder_label("Analysis variables", "variable", "arg", lang)),
+      sortable::rank_list(text = NULL, labels = vars, input_id = id("vars"))),
+    if (length(rows)) rows else if (!length(vars)) shiny::div(
+      class = "small text-muted", t("No categorical variable to order.")))
 }
 
 # plan_filter()'s `where` as one condition's R (several joined by &, as
@@ -1156,8 +1160,8 @@ builder_code_map <- function(lines, items) {
   plan_filter = list(tables = c("keep_where", "keep_any", "keep_parents")),
   plan_compare = list(tables = c("compare", "compare_by", "compare_position")),
   plan_digits = list(digits = NULL),
-  plan_levels = list(variables = c("levels", "empty_levels")),
-  plan_labels = list(variables = c("label", "order")),
+  plan_levels = list(variables = c("levels", "empty_levels", "order")),
+  plan_labels = list(variables = "label"),
   plan_nest = list(variables = "under"),
   plan_stub = list(layout = c("stub_vars", "stub_name", "stub_indent", "stub_summary",
                               "stub_before")),
@@ -1452,7 +1456,7 @@ $(document).on('click', '.rp-builder-cards .rp-tool-remove', function() {
 # constant heading as it is
 .layer_names <- function(layers, hierarchy = NULL, lang = "en") {
   vapply(layers, function(k) {
-    if (identical(k, ".variable")) return(tr("Analysis variables (the block)", lang))
+    if (identical(k, ".variable")) return(paste0(tr("Analysis variables", lang), " (variable)"))
     if (length(hierarchy) && identical(k, utils::tail(hierarchy, 1L))) return(paste0(k, " (label)"))
     k
   }, "", USE.NAMES = FALSE)

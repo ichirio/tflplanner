@@ -8761,11 +8761,12 @@ app_server <- function(input, output, session, start) {
     tp_body <- shiny::tagList(
       shiny::div(
         class = "rp-b-sec",
-        # one or more (a group, then a visit ...): outermost first
+        # one or more (a group, then a visit ...): outermost first, as the
+        # rows -- dragged to order, each removed by its x (or Backspace)
         shiny::selectizeInput(bid("key"), al("table_plan", "cols"), keys,
                               selected = if (!anyNA(st$key)) st$key,
-                              multiple = TRUE, width = "100%"),
-        shiny::uiOutput(bid("arms_ui"))),
+                              multiple = TRUE, width = "100%",
+                              options = list(plugins = list("remove_button", "drag_drop")))),
       shiny::div(
         class = "rp-b-sec",
         # the table's rows: the ARD's keys (its groups, its hierarchy) and
@@ -8787,35 +8788,26 @@ app_server <- function(input, output, session, start) {
         if (!hier) shiny::conditionalPanel(
           sprintf("!(input['%1$s'] || []).includes('.variable')", bid("layers")),
           shiny::div(class = "small text-muted rp-b-fixed-note",
-                     t("The analysis variables are no rows (a table of one variable: ORR ...)."))),
+                     t("Analysis variables (variable) are no rows (a table of one variable: ORR ...)."))),
         row_label_ui,
         if (hier) shiny::div(
           class = "small text-muted rp-b-fixed-note",
           with_tip(sprintf(t("The levels %s are the ARD analysis's (step 1)."),
                            paste(st$hierarchy, collapse = " \u203a ")),
                    t("A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show can be hidden in a later stage.")),
-          " ", shiny::actionLink("b_rows_step1", t("Step 1's analysis"))),
-        if (hier && length(st$row_keys) > 1L) shiny::checkboxInput(
-          bid("rowpages"), t("The outermost row variable a page each"), isTRUE(st$row_pages))),
+          " ", shiny::actionLink("b_rows_step1", t("Step 1's analysis")))),
       # a variable the ARD lacks is not offered: the ARD analysis adds it
       if (!hier) shiny::div(
         class = "small text-muted rp-b-fixed-note",
         t("A variable not here is added in the ARD analysis."), " ",
-        shiny::actionLink("b_rows_step1", t("Step 1's analysis"))),
-      # the block's variables, in order, each shown or not (a summary
-      # table; the ARD stays as it is)
-      if (!hier) shiny::div(
-        class = "rp-b-sec",
-        shiny::div(class = "rp-b-sec-label", t("Analysis variables (the block), in order")),
-        sortable::rank_list(text = NULL, labels = var_items,
-                            input_id = bid("vars")),
-        if (!is.null(hidden)) shiny::checkboxGroupInput(
-          bid("shown"),
-          with_tip(t("Shown"),
-                   t("Unticked: the table does not show the variable's rows (written as the row filter, plan_filter()); the ARD stays as it is.")),
-          choices = v$variable, selected = setdiff(v$variable, hidden), inline = TRUE)
-        else shiny::div(class = "small text-muted",
-                        t("The rows shown are the row filter's (plan_filter()): edit it there."))))
+        shiny::actionLink("b_rows_step1", t("Step 1's analysis"))))
+    # (a summary table's variables each shown or not: plan_filter()'s card,
+    # written as its row filter; the ARD stays as it is)
+    shown_ui <- if (!hier && !is.null(hidden)) shiny::checkboxGroupInput(
+      bid("shown"),
+      with_tip(t("Shown"),
+               t("Unticked: the table does not show the variable's rows (written as the row filter, plan_filter()); the ARD stays as it is.")),
+      choices = v$variable, selected = setdiff(v$variable, hidden), inline = TRUE)
     # normalize_ard(): the hierarchy (the ARD analysis's, read only), the
     # any-event row (the table's: tables$overall_label), the stack, the rest
     # folded
@@ -8929,9 +8921,12 @@ app_server <- function(input, output, session, start) {
       plan_labels = labels_body,
       # plan_levels(): each variable's values in order (dragged), its empty
       # values hidden or not
+      # (the block of variables in order, the `variable` entry, and the
+      # column variables' levels: the columns' order)
       plan_levels = if (has("plan_levels")) .levels_body(
         bid, st, sheet_rows(p0, "codelists", id),
-        empty = .rows_for(p0, "variables", id), lang = lang),
+        empty = .rows_for(p0, "variables", id), lang = lang,
+        vars = if (!hier) var_items, cols = shiny::uiOutput(bid("arms_ui"))),
       plan_sort = if (hier && isTRUE(item_of("plan_sort")$present))
         hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
                      total = .rows_for(p0, "tables", id)$total[1L]))
@@ -8972,6 +8967,15 @@ app_server <- function(input, output, session, start) {
                                        with_tip(al("plan_filter", "where"),
                                                 t("The rows kept: a condition over a row's statistics (n, p ...) and its keys, as a cells row's when. A SOC stays when one of its PTs does; the overall row always stays."))),
                      condition_builder_ui("b_filter_cond", lang)),
+          body)
+        if (!is.null(shown_ui)) body <- shiny::tagList(shown_ui, body)
+      }
+      # plan_paginate_group(): a hierarchy table's outermost row variable a
+      # page each (col = it)
+      if (identical(fn, "plan_paginate_group") && hier && length(st$row_keys) > 1L) {
+        body <- shiny::tagList(
+          shiny::checkboxInput(bid("rowpages"), t("The outermost row variable a page each"),
+                               isTRUE(st$row_pages)),
           body)
       }
       bodies[[it$path]] <- body
@@ -9787,11 +9791,6 @@ app_server <- function(input, output, session, start) {
     shiny::req(builder_case() %in% c("ok", "hierarchy"), length(ks) > 0L)
     n <- bform$n
     output[[paste0("b", n, "_arms_ui")]] <- shiny::renderUI(shiny::tagList(
-      if (length(ks) > 1L) shiny::tagList(
-        shiny::tags$label(class = "form-label small",
-                          t("Order of the column variables, outermost first (drag)")),
-        sortable::rank_list(text = NULL, labels = ks, input_id = bid("keyorder"),
-                            orientation = "horizontal")),
       lapply(ks, function(k) {
         # where the order comes from (builder_read(): this table's own, the
         # report's code list, the ARD's factor, as first seen), said as on
@@ -10272,13 +10271,11 @@ app_server <- function(input, output, session, start) {
     st <- bform$st
     get <- function(x) input[[bid(x)]]
     hier <- length(st$hierarchy) > 0L
-    vars <- if (hier) st$variables$variable else get("vars")
-    ks <- get("key")
-    shiny::req(!is.null(vars), length(ks) > 0L,
-               setequal(vars, st$variables$variable))
+    # (the block's order: plan_levels()' card's, while it is there)
+    vars <- if (hier) st$variables$variable else get("vars") %||% st$variables$variable
     # the column variables in the order dragged (outermost first)
-    ko <- get("keyorder")
-    if (length(ks) > 1L && setequal(ko, ks)) ks <- ko
+    ks <- get("key")
+    shiny::req(length(ks) > 0L, setequal(vars, st$variables$variable))
     arms <- stats::setNames(lapply(ks, function(k)
       input[[arms_id(k)]] %||% key_levels(k)), ks)
     v <- st$variables[match(vars, st$variables$variable), , drop = FALSE]
@@ -10382,7 +10379,11 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(bstate_d(), {
     st <- bstate_d()
     id <- bform$id
-    rows_new <- length(st$hierarchy) > 0L && !identical(st$row_keys, bform$last$row_keys)
+    # (a hierarchy's rows changed, or its pages: drawn again -- the
+    # plan_paginate_group() card's fields say what was written)
+    rows_new <- length(st$hierarchy) > 0L &&
+      (!identical(st$row_keys, bform$last$row_keys) ||
+         (!is.null(bform$last) && !identical(st$row_pages, bform$last$row_pages)))
     # the key chosen as the rows' text is no row layer: taken out of them
     # (as builder_write() writes them)
     lk <- st$row_label
