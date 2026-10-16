@@ -1,5 +1,21 @@
 # tflplanner (development version)
 
+- **The sample study SAMPLE-01 runs on tflspec's oncology sample data**
+  (#400, 0.0.2.9227; the owner's decision: the bundled onco data are the
+  tfl series' sample data).  SAMPLE-01's ADaM are tflspec's simulated study
+  XYZ-ONC-01 (Drug X vs Control; tflspec >= 0.0.24.9135): ADSL with its
+  screen failures, ADAE, ADVS's systolic blood pressure and ADTTE.  The
+  outputs are the same ones, each on the new study: the screen failures
+  (T-14-1-4) are `ARMNRS == "SCREEN FAILURE"` (no arm), the screened
+  subjects (T-14-1-5/6) have them as a column of their own and the Asian
+  sub-categories from the country, the disposition (T-14-1-2) is the end
+  of study status (ongoing in follow-up, discontinued), the blood pressure
+  (T-14-2-1/3, F-14-2-1) is at week 24 = cycle 9 day 1, and the
+  time-to-event table and figures (T-14-2-2, F-14-2-2/3/4) are the time to
+  the first treatment-emergent skin disorder (`TTSKIN`), Drug X against
+  Control.  pharmaverseadam is no longer used (its copyright holders leave
+  DESCRIPTION; `inst/COPYRIGHTS` names tflspec's data).
+
 - **A double click on a filtered list opens the row double-clicked** (#398,
   0.0.2.9226; the user's report).  The report list filtered to Figure opened
   the third report of the whole list for the third figure: the lists are

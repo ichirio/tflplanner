@@ -2109,7 +2109,7 @@ app_server <- function(input, output, session, start) {
         .btn("register2", t("Register a study folder"),
              class = "btn btn-outline-secondary")),
       shiny::p(class = "small text-muted mb-0",
-               t("The sample uses the CDISC pilot data: it makes its ARD, 5 tables, a listing and 2 figures, to look at and change.")))
+               t("The sample uses tflspec's oncology sample data (simulated): it makes its ARD, 5 tables, a listing and 2 figures, to look at and change.")))
   })
   # both open the New study dialog: the sample chosen, or nothing chosen
   # yet; the study's ID is given there
@@ -2234,7 +2234,7 @@ app_server <- function(input, output, session, start) {
       shiny::div(
         class = "mb-2",
         .btn("add_sample", t("Add the sample study"), class = "btn-sm btn-outline-primary"),
-        help_tip(t("The sample study: CDISC pilot data (pharmaverseadam), its ARD, 5 tables, a listing and 2 figures."))),
+        help_tip(t("The sample study: tflspec's oncology sample data (simulated), its ARD, 5 tables, a listing and 2 figures."))),
       shiny::hr(),
       shiny::p(shiny::strong(with_tip(t("Company standards"),
                                       t("Dropdowns, presets, statistics, ARD methods, listing types, and the defaults a new study starts with."))),

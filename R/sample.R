@@ -1,8 +1,9 @@
 # The sample study that ships with tflplanner.
 #
 # inst/sample/SAMPLE-01 holds what a study folder needs to be registered
-# (study.yml, spec/, data/), made by data-raw/make-sample-study.R from the
-# CDISC pilot ADaM data of the pharmaverseadam package.  It is copied into
+# (study.yml, spec/, data/), made by data-raw/make-sample-study.R from
+# tflspec's oncology sample study XYZ-ONC-01 (simulated ADaM data: tflspec::adsl,
+# adae, advs, adtte).  It is copied into
 # the studies folder a user sets up -- never into a developer's test
 # studies -- and made there: its programs, its study ARD, its reports.
 
@@ -11,8 +12,9 @@
 #' Add the sample study
 #'
 #' Copies tflplanner's sample study into a studies folder and registers it:
-#' the CDISC pilot ADaM data of the 'pharmaverseadam' package (ADSL, ADAE,
-#' ADVS, and ADTTE derived from them), the ARD definition, five tables made
+#' the simulated oncology study XYZ-ONC-01 of 'tflspec' (Drug X vs Control:
+#' its ADSL with the screen failures, ADAE, ADVS's systolic blood pressure
+#' and ADTTE), the ARD definition, five tables made
 #' from one study ARD, a listing and two figures -- every step, from the ARD
 #' to the reports, defined in the app and written as Excel (`spec/`: the
 #' table and report definitions, the listing / figure definition and
