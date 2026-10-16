@@ -1,6 +1,6 @@
 id: T-14-2-1
 kind: table
-label: 'Systolic blood pressure: change from baseline at Week 24'
+label: 'Systolic blood pressure: change from baseline at week 24 (cycle 9 day 1)'
 population: SAF
 extends:
   - defaults
@@ -11,10 +11,10 @@ ard:
       from: ADSL
       population: SAF
     - id: advs_saf_sysbp
-      label: Systolic blood pressure at Week 24, safety set
+      label: Systolic blood pressure at week 24, safety set
       from: ADVS
       subjects: adsl_saf
-      where: !r PARAMCD == "SYSBP" & AVISIT == "Week 24"
+      where: !r PARAMCD == "SYSBP" & AVISIT == "CYCLE 9 DAY 1"
   analyses:
     - id: GROUPN
       method: categorical
@@ -23,7 +23,7 @@ ard:
         - TRTA
       purpose: PRIMARY OUTCOME MEASURE
     - id: SYSBP
-      label: SYSBP at Week 24
+      label: SYSBP at week 24
       method: continuous
       data: advs_saf_sysbp
       by:
@@ -48,23 +48,13 @@ data:
   object: ard
 codelists:
   TRTA:
-    - value: Placebo
-    - value: Xanomeline Low Dose
-    - value: Xanomeline High Dose
+    - value: Drug X
+    - value: Control
 content:
   - table_plan:
       cols: TRTA
       rows:
         group: variable
-  - plan_levels:
-      TRTA:
-        - Placebo
-        - Xanomeline Low Dose
-        - Xanomeline High Dose
-  - plan_labels:
-      BASE: Baseline (mmHg)
-      AVAL: Week 24 (mmHg)
-      CHG: Change from baseline (mmHg)
   - plan_cells:
       continuous:
         'n': '{N:.0f}'
@@ -73,6 +63,14 @@ content:
         95% CI of the mean: '{mean_lcl:.1f}, {mean_ucl:.1f}'
         Median: '{median:.1f}'
         Min, Max: '{min:.0f}, {max:.0f}'
+  - plan_labels:
+      BASE: Baseline (mmHg)
+      AVAL: Week 24, cycle 9 day 1 (mmHg)
+      CHG: Change from baseline (mmHg)
+  - plan_levels:
+      TRTA:
+        - Drug X
+        - Control
   - plan_paginate_rows:
       max_rows: 30
       split: group_safe
@@ -82,9 +80,11 @@ page:
       left: SD = Standard Deviation; SE = Standard Error; CI = Confidence Interval
         (t distribution).
     '2':
-      left: Systolic blood pressure after 5 minutes lying down.
+      left: Systolic blood pressure on day 1 of each 21-day cycle; week 24 is cycle
+        9 day 1.
   tokens:
-    OUTPUT_TITLE: 'Systolic Blood Pressure (mmHg): Change from Baseline at Week 24'
+    OUTPUT_TITLE: 'Systolic Blood Pressure (mmHg): Change from Baseline at Week 24
+      (Cycle 9 Day 1)'
     OUTPUT_POPULATION: Safety Analysis Set
 note: 'SYSBP at Week 24: baseline, value, change'
 

@@ -1,14 +1,13 @@
 id: F-14-2-2
 kind: figure
-label: KM plot of the time to first dermatologic event
+label: KM plot of the time to first skin disorder
 extends:
   - defaults
 data:
-  source: ard
-  object: ard
+  source: code
 content: !r |-
-  arms <- c("Placebo", "Xanomeline Low Dose", "Xanomeline High Dose")
-  km_df <- adtte[adtte$PARAMCD == "TTDE" & adtte$SAFFL == "Y", ]
+  arms <- c("Drug X", "Control")
+  km_df <- adtte[adtte$PARAMCD == "TTSKIN" & adtte$SAFFL == "Y", ]
   km_df$TRT01A <- factor(km_df$TRT01A, levels = arms)
   km_fit <- survfit2(Surv(AVAL, 1 - CNSR) ~ TRT01A, data = km_df)
 
@@ -30,7 +29,7 @@ content: !r |-
     scale_y_continuous(breaks = seq(0, 1, by = tfl_num("y_by", "km"))) +
     coord_cartesian(xlim = range(x_breaks), ylim = c(0, 1)) +
     labs(x = "Days since first dose",
-         y = "Probability without a dermatologic event", colour = NULL) +
+         y = "Probability without a skin disorder", colour = NULL) +
     theme_tfl("km") + theme(legend.position = "bottom")
   p_risk <- ggplot(risk_df, aes(time, factor(strata, levels = rev(arms)),
                                 label = n_risk, colour = strata)) +
@@ -51,7 +50,7 @@ page:
     '1':
       left: x = censored.  The number at risk is that of Table 14.2.2.
   tokens:
-    OUTPUT_TITLE: Kaplan-Meier Plot of Time to First Dermatologic Event
+    OUTPUT_TITLE: Kaplan-Meier Plot of Time to First Treatment-Emergent Skin Disorder
     OUTPUT_POPULATION: Safety Analysis Set
   rtf_page:
     orientation: landscape

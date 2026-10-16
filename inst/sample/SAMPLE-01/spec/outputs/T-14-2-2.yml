@@ -1,6 +1,6 @@
 id: T-14-2-2
 kind: table
-label: 'Time to first dermatologic event: KM estimates'
+label: 'Time to first skin disorder: KM estimates'
 population: SAF
 extends:
   - defaults
@@ -10,11 +10,11 @@ ard:
       label: Safety set
       from: ADSL
       population: SAF
-    - id: adtte_saf_ttde
-      label: Time to first dermatologic event, safety set
+    - id: adtte_saf_ttskin
+      label: Time to first skin disorder, safety set
       from: ADTTE
       subjects: adsl_saf
-      where: !r PARAMCD == "TTDE"
+      where: !r PARAMCD == "TTSKIN"
   analyses:
     - id: GROUPN
       method: categorical
@@ -25,7 +25,7 @@ ard:
     - id: KM
       label: Kaplan-Meier estimates
       method: custom
-      data: adtte_saf_ttde
+      data: adtte_saf_ttskin
       code: !r |-
         fit <- survival::survfit(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = data)
         cards::bind_ard(
@@ -35,10 +35,11 @@ ard:
         )
       purpose: PRIMARY OUTCOME MEASURE
     - id: HR
-      label: Hazard ratio vs placebo (Cox), not printed in the table
+      label: Hazard ratio vs control (Cox), not printed in the table
       method: custom
-      data: adtte_saf_ttde
+      data: adtte_saf_ttskin
       code: !r |-
+        data$TRT01A <- stats::relevel(factor(data$TRT01A), ref = "Control")
         cox <- survival::coxph(survival::Surv(AVAL, CNSR == 0) ~ TRT01A, data = data)
         cardx::ard_regression(cox, exponentiate = TRUE)
       purpose: SECONDARY OUTCOME MEASURE
@@ -55,27 +56,26 @@ data:
       data <- data[!(is_time & as.character(data$variable_level) == "0"), ]
 codelists:
   TRT01A:
-    - value: Placebo
-    - value: Xanomeline Low Dose
-    - value: Xanomeline High Dose
+    - value: Drug X
+    - value: Control
 content:
   - table_plan:
       cols: TRT01A
       rows:
         group: variable
-  - plan_levels:
-      TRT01A:
-        - Placebo
-        - Xanomeline Low Dose
-        - Xanomeline High Dose
-  - plan_labels:
-      prob: Time to first event (days)
-      time: Event-free probability (95% CI)
   - plan_cells:
       prob:
         - !r is.na(estimate) ~ "NE"
+        - !r is.na(conf.high) ~ "{estimate:.0f} ({conf.low:.0f}, NE)"
         - '{estimate:.0f} ({conf.low:.0f}, {conf.high:.0f})'
       time: '{estimate:.1f%} ({conf.low:.1f%}, {conf.high:.1f%})'
+  - plan_labels:
+      prob: Time to first event (days)
+      time: Event-free probability (95% CI)
+  - plan_levels:
+      TRT01A:
+        - Drug X
+        - Control
   - plan_col_header:
       header:
         - line: '1'
@@ -93,13 +93,14 @@ content:
 page:
   footer:
     '1':
-      left: 'Dermatologic event: first treatment-emergent skin and subcutaneous tissue
-        disorder or application site event; censored at the end of treatment.'
+      left: 'Skin disorder: first treatment-emergent adverse event of the SOC Skin
+        and subcutaneous tissue disorders; censored at the end of the treatment-emergent
+        period (30 days after the last dose, death or the data cut-off).'
     '2':
       left: Kaplan-Meier estimates; 95% CI of the median by the Brookmeyer-Crowley
         method (log transformation). NE = not estimable.
   tokens:
-    OUTPUT_TITLE: 'Time to First Dermatologic Event: Kaplan-Meier Estimates'
+    OUTPUT_TITLE: 'Time to First Treatment-Emergent Skin Disorder: Kaplan-Meier Estimates'
     OUTPUT_POPULATION: Safety Analysis Set
 note: KM estimates
 

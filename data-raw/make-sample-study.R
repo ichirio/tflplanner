@@ -111,11 +111,10 @@ adsl <- as.data.frame(tflspec::adsl)
 adae <- as.data.frame(tflspec::adae)
 adtte <- as.data.frame(tflspec::adtte)
 advs <- as.data.frame(tflspec::advs)
-advs <- advs[advs$PARAMCD == "SYSBP",
-             c("STUDYID", "USUBJID", "TRT01A", "TRT01AN", "SAFFL", "PARAMCD",
-               "PARAM", "AVISIT", "AVISITN", "ADT", "ADY", "AVAL", "BASE", "CHG",
-               "ABLFL", "ONTRTFL")]
+advs <- advs[advs$PARAMCD == "SYSBP", ]
 advs$TRTA <- structure(as.character(advs$TRT01A), label = "Actual Treatment")
+advs <- advs[c("STUDYID", "USUBJID", "TRTA", "PARAMCD", "PARAM", "AVISIT", "AVISITN",
+               "ADT", "ADY", "AVAL", "BASE", "CHG", "ABLFL", "ONTRTFL")]
 rownames(advs) <- NULL
 
 strip <- function(d) {

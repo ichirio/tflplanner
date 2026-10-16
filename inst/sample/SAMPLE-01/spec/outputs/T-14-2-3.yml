@@ -1,6 +1,6 @@
 id: T-14-2-3
 kind: table
-label: 'Systolic blood pressure: mean change at Week 24 (95% CI), p-value; the ARD
+label: 'Systolic blood pressure: mean change at week 24 (95% CI), p-value; the ARD
   also holds the test''s method and alternative as text'
 population: SAF
 extends:
@@ -12,10 +12,10 @@ ard:
       from: ADSL
       population: SAF
     - id: advs_saf_sysbp
-      label: Systolic blood pressure at Week 24, safety set
+      label: Systolic blood pressure at week 24, safety set
       from: ADVS
       subjects: adsl_saf
-      where: !r PARAMCD == "SYSBP" & AVISIT == "Week 24"
+      where: !r PARAMCD == "SYSBP" & AVISIT == "CYCLE 9 DAY 1"
   analyses:
     - id: GROUPN
       method: categorical
@@ -48,26 +48,24 @@ data:
   object: ard
 codelists:
   TRTA:
-    - value: Placebo
-    - value: Xanomeline Low Dose
-    - value: Xanomeline High Dose
+    - value: Drug X
+    - value: Control
 content:
   - table_plan:
       cols: TRTA
       rows:
         group: variable
-  - plan_levels:
-      TRTA:
-        - Placebo
-        - Xanomeline Low Dose
-        - Xanomeline High Dose
-  - plan_labels:
-      CHG: Change from baseline at Week 24 (mmHg)
   - plan_cells:
       continuous:
         'n': '{N:.0f}'
         Mean (95% CI): '{estimate:.1f} ({conf.low:.1f}, {conf.high:.1f})'
         p-value: '{p.value:.3f}'
+  - plan_labels:
+      CHG: Change from baseline at week 24 (mmHg)
+  - plan_levels:
+      TRTA:
+        - Drug X
+        - Control
   - plan_paginate_rows:
       max_rows: 24
 page:
@@ -76,10 +74,11 @@ page:
       left: 'CI = Confidence Interval.  95% CI and p-value: one-sample t-test of the
         change from baseline (H0: mean change = 0).'
     '2':
-      left: Systolic blood pressure after 5 minutes lying down.
+      left: Systolic blood pressure on day 1 of each 21-day cycle; week 24 is cycle
+        9 day 1.
   tokens:
     OUTPUT_TITLE: 'Systolic Blood Pressure (mmHg): Mean Change from Baseline at Week
-      24 (95% CI)'
+      24 (Cycle 9 Day 1) (95% CI)'
     OUTPUT_POPULATION: Safety Analysis Set
 note: 'SYSBP change at Week 24: mean (95% CI), p-value'
 

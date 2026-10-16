@@ -1,13 +1,14 @@
 study_id: SAMPLE-01
-title: Sample study (CDISC pilot data, pharmaverseadam)
-compound: Xanomeline
+title: Sample study (tflspec's oncology sample data)
+compound: Drug X
 phase: '2'
-description: 'The sample study of tflplanner: the CDISC pilot ADaM data of the pharmaverseadam
-  package; one study ARD and tables, a listing and a figure made from it.'
+description: 'The sample study of tflplanner: tflspec''s simulated oncology study
+  XYZ-ONC-01 (Drug X vs Control); one study ARD and tables, a listing and a figure
+  made from it.'
 spec_version: 1
 packages:
-  tflspec: 0.0.24.9116
-  rtfreporter: 0.8.2.9059
+  tflspec: 0.0.24.9135
+  rtfreporter: 0.8.2.9066
   cards: 0.9.0
   cardx: 0.3.4
   ggplot2: 4.0.3
@@ -20,6 +21,6 @@ settings:
 keys:
   id: USUBJID
   output: output/ard/ard.rds
-created: '2026-10-15'
-updated: 2026-10-15 13:16:13
-tflplanner: 0.0.2.9224
+created: '2026-10-16'
+updated: 2026-10-16 04:40:35
+tflplanner: 0.0.2.9226

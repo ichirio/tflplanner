@@ -16,7 +16,7 @@ ard:
           "WHODrug version" = "Global B3 March 2023",
           "First dose" = format(min(data$TRTSDT, na.rm = TRUE)),
           "Last dose" = format(max(data$TRTEDT, na.rm = TRUE)),
-          "Data cut-off" = format(max(data$LSTALVDT, na.rm = TRUE))
+          "Data cut-off" = format(max(data$DCUTDT, na.rm = TRUE))
         )
         cards::as_card(dplyr::tibble(
           variable = "INFO", variable_level = as.list(names(facts)),
@@ -33,12 +33,10 @@ content:
       cols: context
       rows:
         group: variable
-  - plan_labels:
-      INFO: Dictionaries and dates of the data
   - plan_cells:
       default: '{value}'
-  - plan_paginate_rows:
-      max_rows: 24
+  - plan_labels:
+      INFO: Dictionaries and dates of the data
   - plan_col_header:
       header:
         - line: '1'
@@ -51,11 +49,13 @@ content:
         - line: '2'
           cols: .values
           text: Value
+  - plan_paginate_rows:
+      max_rows: 24
 page:
   footer:
     '1':
-      left: The dictionary versions are the study's (data management plan); the dates
-        are those of ADSL.
+      left: 'The dictionary versions are the study''s (data management plan); the
+        dates are those of ADSL (the data cut-off: DCUTDT).'
   tokens:
     OUTPUT_TITLE: Study Information
     OUTPUT_POPULATION: All Subjects

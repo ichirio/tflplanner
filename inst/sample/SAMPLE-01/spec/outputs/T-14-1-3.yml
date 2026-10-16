@@ -33,38 +33,36 @@ data:
   object: ard
 codelists:
   TRT01A:
-    - value: Placebo
-    - value: Xanomeline Low Dose
-    - value: Xanomeline High Dose
+    - value: Drug X
+    - value: Control
   SEX:
     - value: F
       label: Female
     - value: M
       label: Male
   AGEGR1:
-    - value: 18-64
-      label: 18-64 years
-    - value: '>64'
-      label: '>64 years'
+    - value: <65
+      label: <65 years
+    - value: '>=65'
+      label: '>=65 years'
 content:
   - table_plan:
       cols: TRT01A
       rows:
         group: variable
+  - plan_labels:
+      AGEGR1: Age group, n (%)
+      SEX: Sex, n (%)
   - plan_levels:
       TRT01A:
-        - Placebo
-        - Xanomeline Low Dose
-        - Xanomeline High Dose
+        - Drug X
+        - Control
       SEX:
         - Female
         - Male
       AGEGR1:
-        - 18-64 years
-        - '>64 years'
-  - plan_labels:
-      AGEGR1: Age group, n (%)
-      SEX: Sex, n (%)
+        - <65 years
+        - '>=65 years'
   - plan_paginate_rows:
       max_rows: 24
 page:
