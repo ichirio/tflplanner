@@ -1,5 +1,18 @@
 # tflplanner (development version)
 
+- **The table builder shows the content as the plan's cards** (#397,
+  0.0.2.9227).  One card a function call, in the content's order, under the
+  plan bar with two separators: the table skeleton (which ARD values go to
+  which rows, columns and cells) and finishing (labels, order, digits,
+  pages).  Each card is its meaning and its verb, the study default's mark
+  and Revert, real fields for the arguments and R text for the rest; the
+  whole program is in Code, a line jumping to its card.  A switch is shown
+  only where it writes or removes the item; others come from Add.  Defaults
+  the ARD tells are filled in with the mark "from the ARD": a Total column
+  when the ARD has overall rows, the factor order of the levels, the
+  labels.  The rows card lists the ARD's variables to order, show or hide
+  (a hidden one is a row filter; the ARD is unchanged).
+
 - **A double click on a filtered list opens the row double-clicked** (#398,
   0.0.2.9226; the user's report).  The report list filtered to Figure opened
   the third report of the whole list for the third figure: the lists are
