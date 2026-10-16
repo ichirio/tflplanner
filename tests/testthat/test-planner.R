@@ -98,10 +98,12 @@ test_that("a filtered edit puts the rows back where they were", {
   q <- set_sheet_rows(p, "variables", "AE", ae)
   v <- q$sheets$variables
   expect_equal(nrow(v), nrow(before) + 1)
-  expect_equal(v$variable[v$output_id == "AE"], c("TRTA", "SEX", "NEW"))
+  # (the sample is tflspec's: read its AE rows, not a fixed list)
+  expect_equal(v$variable[v$output_id == "AE"], c(before$variable[before$output_id == "AE"], "NEW"))
   expect_equal(v[v$output_id != "AE", ], before[before$output_id != "AE", ],
                ignore_attr = TRUE)
-  expect_equal(which(v$output_id == "AE"), 6:8)
+  at <- which(before$output_id == "AE")
+  expect_equal(which(v$output_id == "AE"), c(at, max(at) + 1L))
   # a default-row filter writes blank ids; blank rows are dropped
   d <- sheet_rows(p, "cells", NA)
   d <- rbind(d, NA)
