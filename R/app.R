@@ -687,9 +687,10 @@ app_ui <- function(lang = "en") {
           bslib::layout_columns(
             col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
             shiny::uiOutput("builder_form"),
-            # what the report's ARD holds, folded to one line, above the tabs
+            # what the report's ARD holds, folded to one line, above the tabs;
+            # beside the cards it stays in view (.rp-b-right) as they scroll
             shiny::div(
-              style = "min-width: 0",
+              class = "rp-b-right", style = "min-width: 0",
               shiny::uiOutput("builder_ard_card"),
               result_tabs_ui(
               "table_right", lang = lang, selected = "result",
@@ -701,7 +702,8 @@ app_ui <- function(lang = "en") {
                 do.call(bslib::navset_card_underline,
                         c(list(id = "table_sheet"),
                           lapply(setdiff(table_sheets(), "codelists"), sheet_panel)))),
-              code = code_view("program_table", lang),
+              code = shiny::tagList(code_view("program_table", lang),
+                                    shiny::uiOutput("builder_code_jump")),
               result = shiny::tagList(
                 shiny::div(
                   class = "d-flex justify-content-between small mb-1",
@@ -824,6 +826,10 @@ app_ui <- function(lang = "en") {
                               "}, true);"))),
                             shiny::tags$script(shiny::HTML(.split_js)),
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
+                            shiny::tags$style(shiny::HTML(.builder_cards_css)),
+                            shiny::tags$script(shiny::HTML(.builder_cards_js)),
+                            shiny::tags$style(shiny::HTML(.builder_content_css)),
+                            shiny::tags$script(shiny::HTML(.builder_content_js)),
                             shiny::tags$style(shiny::HTML(.study_section_css)),
                             shiny::tags$script(shiny::HTML(.study_section_js)),
                             shiny::tags$style(shiny::HTML(.help_tip_css)),
@@ -3368,7 +3374,7 @@ app_server <- function(input, output, session, start) {
     # the study it is (a save gives rv$study anew: the same study)
     study_open()
     if (!has_study() || is.null(id)) return(NULL)
-    ard_info(shiny::isolate(rv$study), id)
+    .meta_with_hierarchy(ard_info(shiny::isolate(rv$study), id), shiny::isolate(rv$p), id)
   }
   meta_now <- shiny::reactive({
     rv$ard_ver
@@ -6684,10 +6690,10 @@ app_server <- function(input, output, session, start) {
     st <- tryCatch(ard_state(), error = function(e) NULL)
     s0 <- if (!is.null(st)) st$state[match(id, st$output_id)] else NA
     switch(if (is.na(s0)) "none" else s0,
-      built = step_mark("\u25cf", t(.ard_state_labels[["built"]]), "text-success"),
-      outdated = step_mark("\u27f3", t(.ard_state_labels[["outdated"]]), "text-warning"),
-      error = step_mark("!", t(.ard_state_labels[["error"]]), "text-danger"),
-      step_mark("\u25cb", t(.ard_state_labels[["not built"]]), "text-muted"))
+      built = step_mark("\u25cf", t("ARD: made"), "text-success"),
+      outdated = step_mark("\u27f3", t("ARD: outdated (make it again)"), "text-warning"),
+      error = step_mark("!", t("ARD: stopped with an error"), "text-danger"),
+      step_mark("\u25cb", t("ARD: not made yet"), "text-muted"))
   })
   ard_state_view <- function() {
     d <- ard_state()
@@ -8649,6 +8655,8 @@ app_server <- function(input, output, session, start) {
     id <- current()
     m <- meta_of(id)
     st <- builder_read(shiny::isolate(rv$p), id, m)
+    # a table with no row of its own yet: the ARD's cards are put on once
+    bform$fresh <- !nrow(sheet_rows(shiny::isolate(rv$p), "tables", id))
     bform$n <- bform$n + 1L
     bform_drawn(bform$n)
     bform$id <- id
@@ -8687,149 +8695,418 @@ app_server <- function(input, output, session, start) {
                   if (!is.null(under_of(i))) shiny::span(
                     class = "rp-b-kind", paste0("\u2192 ", t("under"), " ", under_of(i))))),
       v$variable)
-    shiny::tagList(
+    hier <- length(st$hierarchy) > 0L
+    # a summary table's variables not shown (the row filter the builder
+    # writes; NULL: the row filter is the user's own)
+    hidden <- if (!hier) .hidden_vars_read(.rows_for(p0, "tables", id)$keep_where[1L])
+    bform$hidden <- hidden
+    al <- function(fn, arg) builder_label(.arg_meaning(fn, arg), arg, "arg", lang)
+    # the cards, one an item of the table's content, in its order, the ARD's
+    # normalization first (its hierarchy, step 1's, and the any-event row);
+    # the required and the usual ones of the table's kind shown though the
+    # content has none (off), and those added here waiting for a value
+    items <- .builder_items_normalize(guarded(builder_items(p0, id)) %||% list(),
+                                      st$hierarchy, st$overall_label)
+    # (a verb added or switched off here stays a card: kept in added_by
+    # though the content has it now, so off -- its rows taken away -- it
+    # is still shown; the menu's Remove drops it)
+    added <- bform$added_by[[id]] %||% character()
+    bform$total_kind <- ard_total_of(id, m)
+    items <- .builder_items_cards(items, hier, added, ard_total = bform$total_kind,
+                                  off = bform$off_by[[id]] %||% character())
+    bform$items <- items
+    new_card <- bform$just_added
+    bform$just_added <- NULL
+    has <- function(fn) any(vapply(items, function(it) identical(it$fn, fn), NA))
+    cont <- any(st$variables$kind %in% "continuous")
+    # the decimals: the plan_digits() card's when there is one
+    digits_ui <- if (cont) shiny::conditionalPanel(
+      sprintf("input['%s'] == 'stat'", bid("value")),
+      shiny::uiOutput(bid("digits_ui")),
+      shiny::uiOutput(bid("exc_ui")))
+    # the row layers: a hierarchy's levels are its analysis's (step 1) --
+    # fixed, never removed; its last level is the rows' text (label)
+    lay_now <- if (hier) st$row_keys else st$layers
+    lay_ch <- unique(c(lay_now, if (hier) st$row_choices else st$layer_choices))
+    # (a summary table's block of variables is a layer like the keys: put
+    # where it goes, or taken out -- a table of one variable)
+    fixed <- if (hier) st$hierarchy else character()
+    stack_keys <- .stack_keys(.rows_for(p0, "tables", id)$stack[1L],
+                              .rows_for(p0, "tables", id)$stack_nest[1L])
+    layer_names <- .layer_names(lay_ch, if (hier) st$hierarchy, lang, stack = stack_keys)
+    # the rows' text (label): normalize_ard()'s .label, a key, or none
+    lab_keys <- setdiff(lay_ch, c(".variable", lay_ch[.is_heading(lay_ch)]))
+    row_label_ui <- if (hier) {
+      shiny::div(class = "rp-b-sec small",
+                 al("table_plan", "label"), " ",
+                 shiny::tags$code(paste("label =", utils::tail(st$row_keys, 1L))),
+                 shiny::span(class = "text-muted ms-1", t("(the last level)")))
+    } else if (identical(st$row_label, "own")) {
+      shiny::div(class = "rp-b-sec small text-muted",
+                 al("table_plan", "label"), ": ",
+                 t("the sheets' own (tables$label); edit it as R."))
+    } else {
+      cur <- if (is.na(st$row_label %||% ".label")) "NA" else st$row_label %||% ".label"
       shiny::div(
-        class = "rp-b-card",
-        shiny::h6(t("Columns")),
-        # one or more (a group, then a visit ...): outermost first
-        shiny::selectizeInput(bid("key"), t("Column variables"), keys,
+        class = "rp-b-sec",
+        shiny::selectInput(
+          bid("rowlabel"),
+          with_tip(al("table_plan", "label"),
+                   t("What the label column prints on each row: normalize_ard()'s row text (.label), the values of a key (that key is then no row layer), or nothing (NA).")),
+          choices = c(stats::setNames(".label", t("The ARD's row text (.label)")),
+                      stats::setNames(unique(c(lab_keys, setdiff(cur, c(".label", "NA")))),
+                                      unique(c(lab_keys, setdiff(cur, c(".label", "NA"))))),
+                      stats::setNames("NA", t("None (NA)"))),
+          selected = cur, width = "22em"))
+    }
+    # table_plan(): the columns (cols) and the rows as layers (rows, label)
+    tp_body <- shiny::tagList(
+      shiny::div(
+        class = "rp-b-sec",
+        # one or more (a group, then a visit ...): outermost first, as the
+        # rows -- dragged to order, each removed by its x (or Backspace)
+        shiny::selectizeInput(bid("key"), al("table_plan", "cols"), .col_key_names(keys, lang),
                               selected = if (!anyNA(st$key)) st$key,
-                              multiple = TRUE, width = "100%"),
-        shiny::uiOutput(bid("arms_ui")),
-        shiny::uiOutput(bid("total_ui")),
-        shiny::uiOutput(bid("hdr_ui")),
-        if (!anyNA(st$key) &&
-            !.has_group_n(shiny::isolate(rv$p), id, st$key[1L]))
-          shiny::div(
-            class = "small text-warning d-flex flex-wrap gap-2 align-items-center",
-            shiny::span(sprintf(t("The ARD has no subjects per %s: a header's (N=n) prints NA."),
-                                st$key[1L])),
-            .btn("b_add_n", t("Count them (then Preview)"),
-                 class = "btn-sm btn-outline-primary py-0"))),
-      if (length(st$hierarchy)) shiny::div(
-        class = "rp-b-card",
-        shiny::h6(t("Rows of the table")),
-        # the table's rows: the ARD's keys (its groups, its hierarchy),
-        # outermost first -- the layout is the table's; the ARD only
-        # offers them
+                              multiple = TRUE, width = "100%",
+                              options = list(plugins = list("remove_button", "drag_drop")))),
+      shiny::div(
+        class = "rp-b-sec",
+        # the table's rows: the ARD's keys (its groups, its hierarchy) and
+        # the block of the analysis variables, outermost first -- the
+        # layout is the table's; the ARD only offers them
         shiny::selectizeInput(
-          bid("rowkeys"),
-          with_tip(t("Row variables (outermost first; drag)"),
-                   t("Row and column variables are the ARD's groups and hierarchy; to add one, add it to the analysis's by in step 1.")),
-          c(st$row_keys, setdiff(st$row_choices, st$row_keys)), selected = st$row_keys,
+          bid("layers"),
+          with_tip(al("table_plan", "rows"),
+                   paste(if (hier) t("Outermost first; drag to order. The keys are the analysis's by (step 1).") else
+                     t("Outermost first; drag to order. The keys are the analysis's by (step 1) and the stack's (normalize_ard()); \"...\" typed is a constant heading."),
+                     t("What can be placed: the normalized ARD's columns (the keys, variable, a stack's subgroup). group1 is not there: normalizing makes it a column named after its group (TRT01A ...); the analysis variables AGE/SEX are values of variable, so they come as the block of variable. A column is in cols or in rows, not both."))),
+          stats::setNames(lay_ch, layer_names), selected = lay_now,
           multiple = TRUE, width = "100%",
-          options = list(plugins = list("remove_button", "drag_drop"))),
-        shiny::uiOutput("b_rows_gap"),
-        if (length(st$row_keys) > 1L) shiny::checkboxInput(
-          bid("rowpages"), t("The outermost row variable a page each"), isTRUE(st$row_pages)),
-        shiny::textInput(bid("overall"), with_tip(t("The any-event row"),
-                                                  t("tables$overall_label; blank: no such row.")),
-                         value = st$overall_label %||% "", width = "18em",
-                         placeholder = "Any TEAE"),
-        shiny::h6(class = "mt-2", t("Order")),
-        hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
-                     total = .rows_for(p0, "tables", id)$total[1L])),
-      if (!length(st$hierarchy)) shiny::div(
-        class = "rp-b-card",
-        shiny::div(
-          class = "d-flex flex-wrap align-items-baseline gap-2",
-          shiny::h6(t("Rows: variables in order")),
-          .btn("cl3_open", t("Code lists: in step 1 (1-1, column definitions)"),
-               class = "btn-sm btn-link py-0")),
-        sortable::rank_list(text = NULL, labels = var_items,
-                            input_id = bid("vars")),
-        # the same, as the code list of `variable`: value -> label, in order
-        shiny::uiOutput("b_vcl"),
-        bslib::accordion(
-          open = FALSE,
-          lapply(seq_len(nrow(v)), function(i) {
-            # blank: the code list's label of the variable (faint), what the
-            # table prints unless one is written here
-            hint <- v$hint[i] %||% NA_character_
-            bslib::accordion_panel(
-              title = paste0(v$variable[i],
-                             if (!is.null(under_of(i))) paste0(" \u2192 ", t("under"), " ", under_of(i)) else
-                               if (!is.na(v$label[i])) paste0(": ", v$label[i]) else
-                                 if (!is.na(hint)) paste0(": ", hint)),
-              value = v$variable[i],
-              # nested under another's level: no heading of its own, so no
-              # label to write (the field would mislead)
-              if (!is.null(under_of(i))) shiny::p(
-                class = "small text-muted mb-1",
-                sprintf(t("No heading of its own: its rows go under %s."), under_of(i)))
-              else shiny::textInput(bid(paste0("lab", i)),
+          options = c(list(plugins = list("remove_button", "drag_drop"),
+                           onDelete = .fixed_items_js(fixed)),
+                      if (!hier) list(create = I(.heading_create_js),
+                                      createFilter = "^[\"']"))),
+        .fixed_items_css(bid("layers"), fixed),
+        # (the block taken out: said, in a line)
+        if (!hier) shiny::conditionalPanel(
+          sprintf("!(input['%1$s'] || []).includes('.variable')", bid("layers")),
+          shiny::div(class = "small text-muted rp-b-fixed-note",
+                     t("Analysis variables (variable) are no rows (a table of one variable: ORR ...)."))),
+        row_label_ui,
+        if (hier) shiny::div(
+          class = "small text-muted rp-b-fixed-note",
+          with_tip(sprintf(t("The levels %s are the ARD analysis's (step 1)."),
+                           paste(st$hierarchy, collapse = " \u203a ")),
+                   t("A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show can be hidden in a later stage.")),
+          " ", shiny::actionLink("b_rows_step1", t("Step 1's analysis")))),
+      # a variable the ARD lacks is not offered: the ARD analysis adds it
+      if (!hier) shiny::div(
+        class = "small text-muted rp-b-fixed-note",
+        t("A variable not here is added in the ARD analysis."), " ",
+        shiny::actionLink("b_rows_step1", t("Step 1's analysis"))))
+    # (a summary table's variables each shown or not: plan_filter()'s card,
+    # written as its row filter; the ARD stays as it is)
+    shown_ui <- if (!hier && !is.null(hidden)) shiny::checkboxGroupInput(
+      bid("shown"),
+      with_tip(t("Shown"),
+               t("Unticked: the table does not show the variable's rows (written as the row filter, plan_filter()); the ARD stays as it is.")),
+      choices = v$variable, selected = setdiff(v$variable, hidden), inline = TRUE)
+    # normalize_ard(): the hierarchy (the ARD analysis's, read only), the
+    # any-event row (the table's: tables$overall_label), the stack, the rest
+    # folded
+    norm_body <- .normalize_body(
+      card_id("normalize_ard"), st$hierarchy, tb = sheet_rows(p0, "tables", id),
+      overall_id = bid("overall"),
+      step_link = shiny::actionLink("b_norm_step1", t("Step 1's analysis"), class = "small ms-1"),
+      revert_id = bid("overall_revert"), lang = lang)
+    # plan_cells(): what the cells print
+    cells_body <- shiny::tagList(
+      shiny::radioButtons(
+        bid("value"),
+        with_tip(al("plan_cells", "value"), t("Numbers: the ARD's values (stat), rounded here to the decimals below. Formatted text: the values as step 1 formatted them (stat_fmt), printed as they are, not rounded here; a row may still put two in one (Mean (SD)).")),
+        stats::setNames(c("stat", "stat_fmt"),
+                        t(c("Numbers (stat)", "Formatted text (stat_fmt)"))),
+        selected = st$value, inline = TRUE),
+      # the rows of a continuous variable, their decimals: only when the
+      # table has one (left out, what the definition says is kept)
+      if (cont) builder_rows_ui(bs, st, m$stats),
+      if (!has("plan_digits")) digits_ui,
+      shiny::radioButtons(
+        bid("cat"), al("plan_cells", "categorical"),
+        c(stats::setNames(.cat_formats()$key, .cat_formats()$label),
+          stats::setNames("own", t("Own"))),
+        selected = st$cat_format, inline = TRUE),
+      shiny::conditionalPanel(
+        sprintf("input['%s'] == 'own'", bid("cat")),
+        shiny::textInput(bid("cat_own"), t("Template"),
+                         # one's own starts from the format chosen now
+                         if (is.na(st$cat_own %||% NA))
+                           .cat_template(st$cat_format, st$pct_decimals,
+                                         st$value %||% "stat") else st$cat_own,
+                         placeholder = "{n} ({p:.1f%})", width = "100%"),
+        shiny::p(class = "small text-muted",
+                 t("{n} the count, {N} the denominator, {p} the proportion; a format after a colon: {p:.1f%} prints 16.3%, {p:.2f} 0.16. The table on the right shows it."))),
+      shiny::conditionalPanel(
+        sprintf("input['%s'] == 'stat' && input['%s'] != 'own'", bid("value"), bid("cat")),
+        shiny::numericInput(bid("pct"), t("Decimals of the percent"),
+                            value = st$pct_decimals, min = 0, max = 3,
+                            width = "260px")),
+      shiny::uiOutput(bid("warn")))
+    # plan_labels(): each variable's heading, levels and nesting (a summary
+    # table; the values-and-labels card of the next step takes them over)
+    vr_own <- .rows_for(p0, "variables", id)
+    label_from_ard <- function(var) {
+      l <- vr_own$label[match(var, vr_own$variable)]
+      length(l) != 1L || is.na(l) || !nzchar(l)
+    }
+    labels_body <- if (!hier) shiny::tagList(
+      .btn("cl3_open", t("Code lists: in step 1 (1-1, column definitions)"),
+           class = "btn-sm btn-link py-0 px-0 mb-1"),
+      # the headings and the order as one grid (the code list of the
+      # variables), once: here
+      shiny::uiOutput("b_vcl"),
+      bslib::accordion(
+        open = FALSE,
+        lapply(seq_len(nrow(v)), function(i) {
+          # blank: the code list's label of the variable (faint), what the
+          # table prints unless one is written here
+          hint <- v$hint[i] %||% NA_character_
+          bslib::accordion_panel(
+            title = paste0(v$variable[i],
+                           if (!is.null(under_of(i))) paste0(" \u2192 ", t("under"), " ", under_of(i)) else
+                             if (!is.na(v$label[i])) paste0(": ", v$label[i]) else
+                               if (!is.na(hint)) paste0(": ", hint)),
+            value = v$variable[i],
+            # nested under another's level: no heading of its own, so no
+            # label to write (the field would mislead)
+            if (!is.null(under_of(i))) shiny::p(
+              class = "small text-muted mb-1",
+              sprintf(t("No heading of its own: its rows go under %s."), under_of(i)))
+            else shiny::textInput(bid(paste0("lab", i)),
+                             shiny::tagList(
                                if (is.na(hint)) t("Label") else
                                  with_tip(t("Label"), t("Blank: the label of this report's code list of variable (faint). What is written here is the table's own.")),
-                               value = if (is.na(v$label[i])) "" else
-                                 v$label[i], width = "100%",
-                               placeholder = if (!is.na(hint)) hint),
-              # what the table prints for it (the Statistics card's), faint
-              shiny::uiOutput(bid(paste0("vdef", i))),
-              # its rows under one level of another categorical variable
-              # (RACE: Asian; plan_nest())
-              if (identical(v$kind[i], "categorical")) {
-                others <- v$variable[v$kind == "categorical" & v$variable != v$variable[i]]
-                ch <- unlist(lapply(others, function(o) paste0(o, ": ", st$levels[[o]])))
-                cur <- v$under[i] %||% NA_character_
-                shiny::selectInput(
-                  bid(paste0("under", i)),
-                  with_tip(t("Rows under a level of another variable"),
-                           t("Its rows go right after that level's row, one step deeper, without its own heading: Chinese / Japanese / Korean under Race's Asian. Blank: a block of its own.")),
-                  choices = c(stats::setNames("", t("(its own block)")),
-                              unique(c(ch, if (!is.na(cur)) cur))),
-                  selected = if (is.na(cur)) "" else cur, width = "100%")
-              },
-              if (identical(v$kind[i], "categorical") &&
-                  length(st$levels[[v$variable[i]]])) {
-                shiny::tagList(
-                  shiny::tags$label(class = "form-label small",
-                                    t("Levels (drag to order)")),
-                  sortable::rank_list(
-                    text = NULL,
-                    labels = .levels_with_labels(st$levels[[v$variable[i]]], v$variable[i],
-                                                 sheet_rows(p0, "codelists", id)),
-                    input_id = bid(paste0("lv", i)),
-                    orientation = "horizontal"))
-              })
-          }))),
-      shiny::div(
-        class = "rp-b-card",
-        shiny::h6(t("Statistics")),
-        shiny::radioButtons(
-          bid("value"),
-          with_tip(t("Values"), t("Numbers: the ARD's values (stat), rounded here to the decimals below. The ARD's text: the values as step 1 formatted them (stat_fmt), printed as they are; a row may still put two in one (Mean (SD)).")),
-          stats::setNames(c("stat", "stat_fmt"),
-                          t(c("Numbers, rounded here", "The ARD's text (as formatted in step 1)"))),
-          selected = st$value, inline = TRUE),
-        # the rows of a continuous variable, their decimals: only when the
-        # table has one (left out, what the definition says is kept)
-        if (any(st$variables$kind %in% "continuous")) shiny::tagList(
-          builder_rows_ui(bs, st, m$stats),
-          shiny::conditionalPanel(
-            sprintf("input['%s'] == 'stat'", bid("value")),
-            shiny::uiOutput(bid("digits_ui")),
-            shiny::uiOutput(bid("exc_ui")))),
-        shiny::radioButtons(
-          bid("cat"), t("Categorical variables"),
-          c(stats::setNames(.cat_formats()$key, .cat_formats()$label),
-            stats::setNames("own", t("Own"))),
-          selected = st$cat_format, inline = TRUE),
-        shiny::conditionalPanel(
-          sprintf("input['%s'] == 'own'", bid("cat")),
-          shiny::textInput(bid("cat_own"), t("Template"),
-                           # one's own starts from the format chosen now
-                           if (is.na(st$cat_own %||% NA))
-                             .cat_template(st$cat_format, st$pct_decimals,
-                                           st$value %||% "stat") else st$cat_own,
-                           placeholder = "{n} ({p:.1f%})", width = "100%"),
-          shiny::p(class = "small text-muted",
-                   t("{n} the count, {N} the denominator, {p} the proportion; a format after a colon: {p:.1f%} prints 16.3%, {p:.2f} 0.16. The table on the right shows it."))),
-        shiny::conditionalPanel(
-          sprintf("input['%s'] == 'stat' && input['%s'] != 'own'", bid("value"), bid("cat")),
-          shiny::numericInput(bid("pct"), t("Decimals of the percent"),
-                              value = st$pct_decimals, min = 0, max = 3,
-                              width = "260px")),
-        shiny::uiOutput(bid("warn"))))
+                               # a label the sheets do not say: the ARD's
+                               if (!is.na(v$label[i]) && label_from_ard(v$variable[i]))
+                                 from_badge("ard", lang)),
+                             value = if (is.na(v$label[i])) "" else
+                               v$label[i], width = "100%",
+                             placeholder = if (!is.na(hint)) hint),
+            # what the table prints for it (the Statistics card's), faint
+            # (its rows under a level of another variable: plan_nest()'s
+            # card)
+            shiny::uiOutput(bid(paste0("vdef", i))))
+        })))
+    # plan_col_header(): the header's lines
+    hdr_body <- shiny::tagList(
+      shiny::uiOutput(bid("hdr_ui")),
+      if (!anyNA(st$key) &&
+          !.has_group_n(p0, id, st$key[1L]))
+        shiny::div(
+          class = "small text-warning d-flex flex-wrap gap-2 align-items-center",
+          shiny::span(sprintf(t("The ARD has no subjects per %s: a header's (N=n) prints NA."),
+                              st$key[1L])),
+          .btn("b_add_n", t("Count them (then Preview)"),
+               class = "btn-sm btn-outline-primary py-0")))
+    item_of <- function(fn) {
+      at <- Filter(function(it) identical(it$fn, fn), items)
+      if (length(at)) at[[1L]]
+    }
+    bodies <- list(
+      normalize_ard = norm_body,
+      table_plan = tp_body, plan_cells = cells_body, plan_col_header = hdr_body,
+      plan_total = shiny::uiOutput(bid("total_ui")),
+      # plan_digits(): the rounding (the study's: every report's) and the
+      # statistics' decimals
+      plan_digits = if (has("plan_digits")) shiny::tagList(
+        .rounding_field(card_id("plan_digits"), shiny::isolate(rv$p$study[["rounding"]]), lang),
+        if (cont) digits_ui),
+      plan_labels = labels_body,
+      # plan_levels(): each variable's values in order (dragged), its empty
+      # values hidden or not
+      # (the block of variables in order, the `variable` entry, and the
+      # column variables' levels: the columns' order)
+      plan_levels = if (has("plan_levels")) .levels_body(
+        bid, st, sheet_rows(p0, "codelists", id),
+        empty = .rows_for(p0, "variables", id), lang = lang,
+        vars = if (!hier) var_items, cols = shiny::uiOutput(bid("arms_ui"))),
+      plan_sort = if (hier && isTRUE(item_of("plan_sort")$present))
+        hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
+                     total = .rows_for(p0, "tables", id)$total[1L]))
+    # the layout cards with a form: their arguments as fields (a number, a
+    # choice ...), the columns offered the table's keys and row layers
+    lay_keys <- setdiff(st$layers %||% character(), ".variable")
+    cols_offered <- unique(c(keys, st$row_keys, lay_keys[!.is_heading(lay_keys)]))
+    # (plan_columns(): the columns printed -- the row label column, every
+    # value column, each by name)
+    stub_name <- item_of("plan_stub")$args$name %||% "row_label"
+    print_cols <- unique(c(stub_name, ".values",
+                           if (length(st$key) == 1L && !anyNA(st$key)) st$arms[[st$key]]))
+    bform$form_cols <- list()
+    # (each call its own card: plan_cell_style()'s second is
+    # "plan_cell_style#2", its form read and written as the second)
+    form_items <- Filter(function(it) it$fn %in% names(.plan_form_main) &&
+                           (isTRUE(it$present) || isTRUE(it$added)), items)
+    for (it in form_items) {
+      fn <- it$fn
+      # (plan_paginate_cols(), plan_hide(), plan_cell_style(): the printed
+      # columns and the keys; plan_row_group(collapse = TRUE): every row key)
+      ch <- switch(fn, plan_columns = print_cols,
+                   plan_paginate_cols = , plan_hide = , plan_cell_style =
+                     unique(c(print_cols, cols_offered)),
+                   plan_row_group = c(stats::setNames("TRUE", t("Every row key (TRUE)")),
+                                      stats::setNames(cols_offered, cols_offered)),
+                   cols_offered)
+      wc <- if (identical(fn, "plan_columns")) .widths_cols(it$args$widths, ch)
+      bform$form_cols[[it$path]] <- wc
+      body <- .plan_form_body(card_id(it$path), fn, it, choices = ch, lang = lang, cols = wc)
+      # plan_filter(): its condition by the condition builder (the rows
+      # kept: tables$keep_where), its switches as fields
+      if (identical(fn, "plan_filter")) {
+        bform$filter_where <- .filter_where_text(it$args$where)
+        body <- shiny::tagList(
+          shiny::div(class = "rp-field", `data-arg` = "where",
+                     shiny::tags$label(class = "rp-field-label",
+                                       with_tip(al("plan_filter", "where"),
+                                                t("The rows kept: a condition over a row's statistics (n, p ...) and its keys, as a cells row's when. A SOC stays when one of its PTs does; the overall row always stays."))),
+                     condition_builder_ui("b_filter_cond", lang)),
+          body)
+        if (!is.null(shown_ui)) body <- shiny::tagList(shown_ui, body)
+      }
+      bodies[[it$path]] <- body
+    }
+    # the cards of the names the user gives (a function's ...): the
+    # comparison columns, the groups of statistics, the rows nested
+    bform$dots_drawn <- list()
+    for (fn in .plan_form_dots) {
+      it <- item_of(fn)
+      if (is.null(it) || !(isTRUE(it$present) || isTRUE(it$added))) next
+      cid <- card_id(it$path)
+      bodies[[fn]] <- switch(
+        fn,
+        plan_compare = {
+          bform$dots_drawn[[fn]] <- .dots_args(fn, it$args %||% list())
+          .compare_body(cid, it, comparisons_of(id, m), by_choices = m$by %||% keys, lang = lang)
+        },
+        plan_stat_groups = {
+          bform$dots_drawn[[fn]] <- length(.dots_args(fn, it$args %||% list()))
+          .stat_groups_body(cid, it, stats = m$stats,
+                            variables = if (is.data.frame(m$variables)) m$variables$variable,
+                            lang = lang)
+        },
+        plan_nest = {
+          bform$dots_drawn[[fn]] <- .nest_vars(st)
+          .nest_body(cid, it, st, lang = lang)
+        })
+    }
+    bodies <- Filter(Negate(is.null), bodies)
+    add_sch <- .plan_add_schema(items)
+    shiny::div(
+      class = "rp-builder-cards", `data-back` = t("Back to the code"),
+      .table_cards_bar(items, id = card_id, lang = lang),
+      .table_cards(items, bodies, id = card_id, lang = lang, new = new_card,
+                   level_from = st$level_from),
+      # the other verbs: added here, each a card in its place
+      if (length(add_sch)) add_item_input(bid("add"), kinds = "plan", schema = add_sch, lang = lang,
+                                          placeholder = t("Add a card (type to search)")))
+  })
+  # the kind of Total the report's ARD has (.ard_total_kind()); an older
+  # saved meta without `overall`: read from the ARD itself
+  ard_total_of <- function(id, m) {
+    if (is.null(m)) return(NA_character_)
+    if (is.null(m$overall)) {
+      d <- tryCatch(ard_data(shiny::isolate(rv$study), id), error = function(e) NULL)
+      if (!is.null(d)) m$overall <- .ard_has_overall(d, m$by)
+    }
+    .ard_total_kind(m)
+  }
+  # the comparison records of the report's ARD (ard_meta()'s
+  # `comparisons`); an older saved meta without them: read from the ARD
+  comparisons_of <- function(id, m) {
+    if (is.null(m)) return(list())
+    if (is.null(m$comparisons)) {
+      d <- tryCatch(ard_data(shiny::isolate(rv$study), id), error = function(e) NULL)
+      return(if (is.null(d)) list() else .ard_comparisons(d, m$by))
+    }
+    m$comparisons
+  }
+  # a card's input id: by its path (the verb; "#2" its second call)
+  card_id <- function(path) bid(paste0("card_", gsub("[^A-Za-z0-9_]", "_", path)))
+  # the Total column's switch: its card's
+  total_on_id <- function() paste0(card_id("plan_total"), "__on")
+  # a card's Revert: the report's own rows of its verb taken away, so the
+  # study's defaults apply again
+  shiny::observeEvent(input$b_card_revert, {
+    it <- .builder_item_at(bform$items, input$b_card_revert$path)
+    shiny::req(!is.null(it), identical(bform$id, current()))
+    p2 <- guarded(.builder_item_revert(rv$p, bform$id, it$fn))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    rv$bver <- rv$bver + 1L
+  })
+  # a card's "Edit as R": its arguments as one line of R, read back (and
+  # written to the sheets through tflspec's bridge) on Apply
+  # the dialog of a card's R: its text, and what tflspec's check found in
+  # the text applied (`problems`, lines) -- shown before it is written
+  r_dialog <- function(it, text, problems = character()) {
+    shiny::modalDialog(
+      title = shiny::tagList(t("Edit as R"), " ", shiny::tags$code(paste0(it$fn, "()"))),
+      shiny::textAreaInput("b_r_text", NULL, text, rows = 6,
+                           width = "100%", resize = "vertical"),
+      shiny::p(class = "small text-muted",
+               t("The arguments as R: name = value, separated by commas. What is no plain value (a call, a name) stays R.")),
+      if (length(problems)) shiny::div(
+        class = "alert alert-warning py-1 small rp-r-problems",
+        shiny::tags$ul(class = "mb-1", lapply(problems, shiny::tags$li)),
+        t("Apply again to write it as it is.")),
+      footer = shiny::tagList(
+        .btn("b_r_no", t("Cancel"), class = "btn-secondary"),
+        .btn("b_r_ok", t("Apply"), class = "btn-primary")),
+      size = "l", easyClose = TRUE)
+  }
+  shiny::observeEvent(input$b_card_r, {
+    it <- .builder_item_at(bform$items, input$b_card_r$path)
+    shiny::req(!is.null(it), isTRUE(it$present) || isTRUE(it$added))
+    bform$r_item <- it
+    bform$r_seen <- NULL
+    shiny::showModal(r_dialog(it, args_to_r(it$fn, it$args)))
+  })
+  shiny::observeEvent(input$b_r_no, shiny::removeModal())
+  shiny::observeEvent(input$b_r_ok, {
+    it <- bform$r_item
+    shiny::req(!is.null(it), identical(bform$id, current()))
+    txt <- input$b_r_text %||% ""
+    args <- tryCatch(args_from_r(it$fn, txt), error = function(e) {
+      notify(conditionMessage(e), "error")
+      NULL
+    })
+    shiny::req(!is.null(args))
+    # the check's problems are shown in the dialog first (drawn again with
+    # the text as typed); Apply again with the same text writes it as it is
+    pr <- .args_problems(args)
+    if (length(pr) && !identical(bform$r_seen, txt)) {
+      bform$r_seen <- txt
+      shiny::showModal(r_dialog(it, txt, pr))
+      return()
+    }
+    args <- .args_plain(args)
+    shiny::removeModal()
+    if (identical(args_to_r(it$fn, args), args_to_r(it$fn, it$args))) return()
+    k <- if (grepl("#", it$path, fixed = TRUE)) as.integer(sub("^.*#", "", it$path)) else 1L
+    p2 <- guarded(.builder_item_write(rv$p, bform$id, it$fn, args, k))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    rv$bver <- rv$bver + 1L
+  })
+  # the Code tab's lines -> the cards that wrote them (code_jump())
+  output$builder_code_jump <- shiny::renderUI({
+    id <- current()
+    shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
+    items <- tryCatch(builder_items(rv$p, id), error = function(e) list())
+    code_jump(builder_code_map(program_text(), .builder_items_normalize(items)),
+              "program_table")
   })
   # A hierarchy's order, one a term (outermost first): by name -- the code
   # list's order when the report has one for it -- or most frequent first
@@ -8874,28 +9151,359 @@ app_server <- function(input, output, session, start) {
         shiny::selectInput(bid("sort_col"), NULL, cols,
                            selected = if (is.na(col_now)) "" else col_now, width = "22em")))
   }
-  # a hierarchy level left out of the rows: this ARD cannot make that table
-  # (the level's rows would land in another's cells) -- said, with the way
-  # back and the way to step 1; nothing is written meanwhile
-  output$b_rows_gap <- shiny::renderUI({
+  # The layout cards with a form (.plan_form_main: the blank rows, the
+  # pages, the row label column, the style): read back by verb -- none
+  # until the card's fields are there -- and written to the sheets through
+  # tflspec's bridge as the report's own: what the form changed from the
+  # item (a field from the study's defaults left as it is stays theirs)
+  form_args <- shiny::reactive({
     bform_drawn()
+    shiny::req(builder_case() %in% c("ok", "hierarchy"))
+    out <- list()
+    # (by the card's path: a verb's second call its own)
+    for (it in bform$items) {
+      if (!it$fn %in% names(.plan_form_main) ||
+          !(isTRUE(it$present) || isTRUE(it$added))) next
+      r <- .plan_form_read(input, card_id(it$path), it$fn, cols = bform$form_cols[[it$path]])
+      if (!is.null(r)) out[[it$path]] <- r
+    }
+    # (the cards of the names the user gives: their whole arguments)
+    for (fn in .plan_form_dots) {
+      it <- .builder_item_at(bform$items, fn)
+      if (is.null(it) || !(isTRUE(it$present) || isTRUE(it$added))) next
+      cid <- card_id(it$path)
+      drawn <- bform$dots_drawn[[fn]]
+      r <- switch(fn,
+                  plan_compare = .compare_read(input, cid, drawn %||% list()),
+                  plan_stat_groups = .stat_groups_read(input, cid, drawn %||% 0L),
+                  plan_nest = .nest_read(input, cid, drawn, it))
+      if (!is.null(r)) out[[fn]] <- structure(r, dots = TRUE)
+    }
+    out
+  })
+  form_args_d <- shiny::debounce(form_args, 600)
+  shiny::observeEvent(form_args_d(), builder_guard({
+    now <- form_args_d()
+    for (path in names(now)) {
+      at <- which(vapply(bform$items, function(it) identical(it$path, path), NA))
+      if (!length(at)) next
+      it <- bform$items[[at[1L]]]
+      fn <- it$fn
+      # (the verb's k-th call: "plan_cell_style#2" the second)
+      k <- if (grepl("#", path, fixed = TRUE)) as.integer(sub("^.*#", "", path)) else 1L
+      dots <- isTRUE(attr(now[[path]], "dots"))
+      own <- if (dots) .dots_form_own(.args_plain_attr(now[[path]]), it, fn) else
+        .plan_form_own(now[[path]], it, fn)
+      if (identical(args_to_r(fn, own), args_to_r(fn, it$own_args %||% list()))) next
+      p2 <- guarded(.builder_item_write(rv$p, bform$id, fn, own, k))
+      if (is.null(p2)) next
+      rv$p <- p2
+      rv$btouched <- TRUE
+      # (what the card says now: the next edit is told from it)
+      fresh <- .builder_item_at(tryCatch(builder_items(p2, bform$id), error = function(e) list()), path)
+      if (!is.null(fresh)) {
+        was_present <- isTRUE(it$present)
+        bform$items[[at[1L]]][c("args", "own_args", "from", "revert", "present")] <-
+          fresh[c("args", "own_args", "from", "revert", "present")]
+        # a card added here that is now in the code: drawn again (its mark);
+        # a column or a group more or less, a nest changed: drawn again (its
+        # fields; the labels' card says where a variable's rows go)
+        if (!was_present ||
+            (dots && length(.dots_args(fn, fresh$args)) != length(.dots_args(fn, it$args))) ||
+            identical(fn, "plan_nest")) rv$bver <- rv$bver + 1L
+      }
+    }
+  }))
+  # A card switched on (or added): written with its usual values, or --
+  # a verb with none -- opened to be filled (its fields, or R); switched
+  # off: the report's own rows of it taken away, the card kept, off (every
+  # card stays; the menu's Remove takes one away).  The form is drawn
+  # again either way.
+  card_switch <- function(it, on) {
+    id <- bform$id
+    shiny::req(!is.null(id), identical(id, current()))
+    added <- unique(c(bform$added_by[[id]] %||% character(), it$fn))
+    bform$added_by[[id]] <- added
+    off <- bform$off_by[[id]] %||% character()
+    if (on) {
+      bform$off_by[[id]] <- setdiff(off, it$fn)
+      hier <- length(bform$st$hierarchy) > 0L
+      args <- .plan_starter_args(it$fn, bform$st, hier, meta = bform$meta)
+      if (!is.null(args)) {
+        p2 <- guarded(.builder_item_write(rv$p, id, it$fn, args))
+        if (is.null(p2)) return()
+        rv$p <- p2
+        rv$btouched <- TRUE
+      }
+      bform$just_added <- it$path %||% it$fn
+    } else {
+      bform$off_by[[id]] <- unique(c(off, it$fn))
+      if (isTRUE(it$present)) {
+        p2 <- guarded(.builder_item_revert(rv$p, id, it$fn))
+        if (is.null(p2)) return()
+        rv$p <- p2
+        rv$btouched <- TRUE
+      }
+    }
+    rv$bver <- rv$bver + 1L
+  }
+  # a card's Remove (its menu, any card not required): its rows taken away
+  # when the code has it, the card dropped -- a usual card of the table's
+  # kind comes back, off, when the form is drawn again
+  shiny::observeEvent(input$b_card_remove, {
+    it <- .builder_item_at(bform$items, input$b_card_remove$path)
+    id <- bform$id
+    shiny::req(!is.null(it), isTRUE(it$removable), identical(id, current()))
+    bform$added_by[[id]] <- setdiff(bform$added_by[[id]] %||% character(), it$fn)
+    bform$off_by[[id]] <- setdiff(bform$off_by[[id]] %||% character(), it$fn)
+    if (isTRUE(it$present)) {
+      p2 <- guarded(.builder_item_revert(rv$p, id, it$fn))
+      if (is.null(p2)) return()
+      rv$p <- p2
+      rv$btouched <- TRUE
+    }
+    rv$bver <- rv$bver + 1L
+  })
+  # the cards' switches (the Total column's is its own, below)
+  shiny::observe(builder_guard({
+    bform_drawn()
+    shiny::req(builder_case() %in% c("ok", "hierarchy"))
+    for (it in bform$items) {
+      if (!isTRUE(it$switch) || identical(it$fn, "plan_total")) next
+      v <- input[[paste0(card_id(it$path), "__on")]]
+      if (is.null(v) || identical(isTRUE(v), isTRUE(it$on))) next
+      shiny::isolate(card_switch(it, isTRUE(v)))
+      return(invisible())
+    }
+  }))
+  # "Add": a verb of the plan not shown yet, its card in its place, on
+  # (the form drawn again has new ids: read them again when it is)
+  shiny::observeEvent({
+    bform_drawn()
+    input[[paste0(bid("add"), "__add")]]
+  }, {
+    fn <- input[[bid("add")]]
+    shiny::req(length(fn) == 1L, nzchar(fn), !is.null(input[[paste0(bid("add"), "__add")]]))
+    if (!fn %in% .plan_addable(bform$items)) {
+      return(notify(sprintf(t("%s cannot be added here: a card the table has already, or no verb of the plan."), fn)))
+    }
+    card_switch(list(fn = fn, path = fn, present = FALSE), TRUE)
+  }, ignoreInit = TRUE)
+  # normalize_ard()'s stack (tables$stack, stack_sep, stack_nest): written
+  # as the fields say
+  norm_args <- shiny::reactive({
+    bform_drawn()
+    shiny::req(builder_case() %in% c("ok", "hierarchy"))
+    .normalize_read(input, card_id("normalize_ard"))
+  })
+  norm_args_d <- shiny::debounce(norm_args, 600)
+  shiny::observeEvent(norm_args_d(), builder_guard({
+    r <- norm_args_d()
+    shiny::req(!is.null(r), identical(bform$id, current()))
+    id <- bform$id
+    tb <- sheet_rows(rv$p, "tables", id)
+    tb$output_id <- NULL
+    if (!nrow(tb)) tb[1L, ] <- NA
+    cur <- vapply(names(r), function(k) {
+      v <- if (k %in% names(tb)) as.character(tb[[k]][1L]) else NA_character_
+      if (!is.na(v) && !nzchar(trimws(v))) NA_character_ else v
+    }, "")
+    if (identical(unname(cur), unname(unlist(r)))) return()
+    for (k in names(r)) tb[[k]][1L] <- r[[k]]
+    p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    # the keys the stack adds offered to the rows at once (subgroup,
+    # subgroup_level), those of a stack taken away no more (unless chosen)
     st <- bform$st
-    shiny::req(length(st$hierarchy) > 0L)
-    rk <- input[[bid("rowkeys")]]
-    shiny::req(!is.null(rk))
-    miss <- setdiff(st$hierarchy, rk)
-    if (!length(miss)) return(NULL)
-    shiny::div(
-      class = "alert alert-warning py-1 px-2 small",
-      sprintf(t("Without %s this ARD cannot make the table (its rows would land in another level's cells)."),
-              paste(miss, collapse = ", ")), " ",
-      shiny::actionLink("b_rows_back", t("Put it back")), " \u00b7 ",
-      shiny::actionLink("b_rows_step1", t("Step 1's analysis")))
-  })
-  shiny::observeEvent(input$b_rows_back, {
-    shiny::updateSelectizeInput(session, bid("rowkeys"), selected = bform$st$row_keys)
-  })
+    if (!length(st$hierarchy)) {
+      old <- .stack_keys(cur[["stack"]], cur[["stack_nest"]])
+      new <- .stack_keys(r$stack, r$stack_nest)
+      if (!identical(old, new)) {
+        sel <- input[[bid("layers")]] %||% st$layers
+        ch <- unique(c(sel, setdiff(st$layer_choices, c(old, ".variable")), new, ".variable"))
+        bform$st$layer_choices <- ch
+        shiny::updateSelectizeInput(session, bid("layers"),
+                                    choices = stats::setNames(ch, .layer_names(ch, lang = lang, stack = new)),
+                                    selected = sel)
+      }
+    }
+  }))
+  # the columns changed: the rows' candidates made again (a key taken out
+  # of cols offered to the rows; one put in cols no more -- one column is
+  # in cols or in rows, not both)
+  shiny::observe(builder_guard({
+    bform_drawn()
+    ks <- input[[bid("key")]]
+    # (none before the field is drawn; none after: every column taken out)
+    n <- shiny::isolate(bform$n)
+    if (!is.null(ks)) bform$key_seen <- n
+    shiny::req(builder_case() %in% c("ok", "hierarchy"),
+               identical(shiny::isolate(bform$key_seen), n))
+    ks <- ks %||% character()
+    st <- shiny::isolate(bform$st)
+    m <- shiny::isolate(bform$meta)
+    shiny::req(!is.null(st), !is.null(m))
+    hier <- length(st$hierarchy) > 0L
+    tb <- .rows_for(shiny::isolate(rv$p), "tables", shiny::isolate(bform$id))
+    sk <- .stack_keys(tb$stack[1L], tb$stack_nest[1L])
+    base <- .layer_choices(names(m$keys), ks, st$variables$variable, hier,
+                           tb$stack[1L], tb$stack_nest[1L])
+    sel0 <- shiny::isolate(input[[bid("layers")]]) %||% (if (hier) st$row_keys else st$layers)
+    # (a hierarchy's levels stay: they are the analysis's)
+    sel <- setdiff(sel0, setdiff(ks, if (hier) st$hierarchy))
+    ch <- unique(c(sel, base))
+    now <- if (hier) st$row_choices else st$layer_choices
+    if (identical(sel, sel0) && setequal(ch, unique(c(sel0, now)))) return()
+    if (hier) bform$st$row_choices <- ch else bform$st$layer_choices <- ch
+    shiny::updateSelectizeInput(
+      session, bid("layers"),
+      choices = stats::setNames(ch, .layer_names(ch, if (hier) st$hierarchy, lang, stack = sk)),
+      selected = sel)
+  }))
+  # plan_filter()'s condition (the condition builder): written through the
+  # bridge as the item's `where` (none: no condition), the card's other
+  # values as they are now
+  filter_cond <- condition_builder_server(
+    "b_filter_cond",
+    data = shiny::reactive({
+      bform_drawn()
+      .filter_data(bform$meta)
+    }),
+    value = shiny::reactive({
+      bform_drawn()
+      bform$filter_where %||% NA_character_
+    }),
+    lang = lang, key = bform_drawn)
+  filter_cond_d <- shiny::debounce(shiny::reactive(filter_cond()$expr), 600)
+  shiny::observeEvent(filter_cond_d(), builder_guard({
+    e <- filter_cond_d()
+    shiny::req(builder_case() %in% c("ok", "hierarchy"), identical(bform$id, current()))
+    at <- which(vapply(bform$items, function(it) identical(it$path, "plan_filter"), NA))
+    shiny::req(length(at) > 0L)
+    it <- bform$items[[at[1L]]]
+    shiny::req(isTRUE(it$present) || isTRUE(it$added))
+    e <- if (length(e) != 1L || is.na(e) || !nzchar(trimws(e))) NA_character_ else trimws(e)
+    # (the condition as the builder writes it: the same one read back,
+    # written another way, is no change)
+    old <- .filter_where_text(it$args$where) %||% NA_character_
+    if (identical(e, old) || (!is.na(old) && identical(e, .cond_tidy(old)))) return()
+    own <- it$own_args %||% list()
+    own$where <- if (is.na(e)) NULL else tflspec::tfl_r(e)
+    p2 <- guarded(.builder_item_write(rv$p, bform$id, "plan_filter", own))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    bform$filter_where <- e
+    bform$hidden <- if (!length(bform$st$hierarchy)) .hidden_vars_read(e)
+    fresh <- .builder_item_at(tryCatch(builder_items(p2, bform$id), error = function(e) list()),
+                              "plan_filter")
+    if (!is.null(fresh)) {
+      was_present <- isTRUE(it$present)
+      bform$items[[at[1L]]][c("args", "own_args", "from", "revert", "present")] <-
+        fresh[c("args", "own_args", "from", "revert", "present")]
+      if (!was_present) rv$bver <- rv$bver + 1L
+    }
+  }), ignoreInit = TRUE)
+  # plan_digits()' rounding: the study's (every report's), written there
+  shiny::observeEvent({
+    bform_drawn()
+    input[[paste0(card_id("plan_digits"), "__rounding")]]
+  }, {
+    v <- input[[paste0(card_id("plan_digits"), "__rounding")]]
+    shiny::req(!is.null(v), nzchar(v), identical(bform$id, current()))
+    if (identical(unname(rv$p$study[["rounding"]]), v)) return()
+    rv$p$study[["rounding"]] <- v
+    rv$btouched <- TRUE
+  }, ignoreInit = TRUE)
+  # plan_levels(.drop_empty = ): a variable's values with no record hidden
+  # (variables$empty_levels "hide") or shown
+  shiny::observe(builder_guard({
+    bform_drawn()
+    shiny::req(identical(builder_case(), "ok"))
+    v <- bform$st$variables
+    shiny::req(is.data.frame(v), nrow(v) > 0L)
+    got <- lapply(seq_len(nrow(v)), function(i) input[[bid(paste0("lvdrop", i))]])
+    shiny::req(any(!vapply(got, is.null, NA)))
+    id <- shiny::isolate(bform$id)
+    shiny::req(identical(id, shiny::isolate(current())))
+    p <- shiny::isolate(rv$p)
+    now <- .empty_levels_of(.rows_for(p, "variables", id))
+    want <- now
+    for (i in seq_along(got)) {
+      if (is.null(got[[i]])) next
+      want[[v$variable[i]]] <- isTRUE(got[[i]])
+    }
+    ch <- names(want)[vapply(names(want), function(k) !identical(isTRUE(want[[k]]),
+                                                               isTRUE(now[[k]])), NA)]
+    if (!length(ch)) return()
+    vr <- sheet_rows(p, "variables", id)
+    vr$output_id <- NULL
+    if (!"empty_levels" %in% names(vr)) vr$empty_levels <- NA_character_
+    for (k in ch) {
+      j <- match(k, vr$variable)
+      if (is.na(j)) {
+        vr[nrow(vr) + 1L, ] <- NA
+        j <- nrow(vr)
+        vr$variable[j] <- k
+      }
+      vr$empty_levels[j] <- if (isTRUE(want[[k]])) "hide" else NA_character_
+    }
+    p2 <- guarded(set_sheet_rows(p, "variables", id, vr))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+  }))
+  # the any-event row taken away (Revert): no overall row
+  shiny::observeEvent({
+    bform_drawn()
+    input[[bid("overall_revert")]]
+  }, {
+    shiny::req(isTRUE(input[[bid("overall_revert")]] > 0), identical(bform$id, current()))
+    id <- bform$id
+    tb <- sheet_rows(rv$p, "tables", id)
+    tb$output_id <- NULL
+    shiny::req(nrow(tb), "overall_label" %in% names(tb))
+    tb$overall_label[1L] <- NA_character_
+    p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    rv$bver <- rv$bver + 1L
+  }, ignoreInit = TRUE)
+  # A summary table's variables shown: those unticked are written as the
+  # row filter (tables$keep_where `!variable %in% c(...)`); the ARD stays as
+  # it is.  At least one stays shown.
+  shiny::observeEvent({
+    bform_drawn()
+    input[[bid("shown")]]
+  }, {
+    shiny::req(identical(builder_case(), "ok"), identical(bform$id, current()),
+               !is.null(bform$hidden))
+    vars <- bform$st$variables$variable
+    sh <- input[[bid("shown")]]
+    if (is.null(sh)) {
+      if (isTRUE(bform$shown_seen == bform$n)) notify(t("Keep at least one variable shown."))
+      return()
+    }
+    bform$shown_seen <- bform$n
+    hidden <- setdiff(vars, sh)
+    if (setequal(hidden, bform$hidden)) return()
+    id <- bform$id
+    tb <- sheet_rows(rv$p, "tables", id)
+    tb$output_id <- NULL
+    if (!nrow(tb)) tb[1L, ] <- NA
+    if (!"keep_where" %in% names(tb)) tb$keep_where <- NA_character_
+    tb$keep_where[1L] <- .hidden_vars_write(vars[vars %in% hidden])
+    p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    rv$bver <- rv$bver + 1L
+  }, ignoreInit = TRUE)
   shiny::observeEvent(input$b_rows_step1, go("ard"))
+  shiny::observeEvent(input$b_norm_step1, go("ard"))
   shiny::observeEvent(input$b_sort_reset, {
     id <- bform$id
     st <- bform$st
@@ -8926,7 +9534,7 @@ app_server <- function(input, output, session, start) {
         type = "button", class = "btn btn-sm btn-link py-0 px-0 mb-1",
         onclick = "Shiny.setInputValue('b_vcl_toggle', Math.random(), {priority: 'event'})",
         shiny::span(class = "text-muted me-1", if (on) "\u25be" else "\u25b8"),
-        t("As the code list of variable: value, label, order")),
+        t("Headings and order as a grid")),
       if (on) shiny::div(
         class = "border rounded p-2 mb-2 bg-body-tertiary",
         shiny::p(class = "small text-muted mb-1",
@@ -9038,7 +9646,7 @@ app_server <- function(input, output, session, start) {
     lb <- trimws(input[[bid("own_label")]] %||% "")
     tp <- trimws(input[[bid("own_tpl")]] %||% "")
     if (!nzchar(lb) || !grepl("[{][^}]+[}]", tp)) {
-      return(notify(t("A row of your own needs a label and a template with a {statistic}.")))
+      return(notify(t("A row to add needs a label and a template with a {statistic}.")))
     }
     st <- shiny::isolate(bstate())
     st$rows <- unique(c(st$rows, lb))
@@ -9067,7 +9675,7 @@ app_server <- function(input, output, session, start) {
         group_name = bid("rows_group"),
         orientation = "horizontal",
         sortable::add_rank_list(
-          text = t("Continuous variables: the rows (drag to order)"),
+          text = t("Continuous variables' rows (continuous)"),
           labels = stats::setNames(lapply(st$rows, label_of), st$rows),
           input_id = bid("rows")),
         sortable::add_rank_list(
@@ -9076,16 +9684,17 @@ app_server <- function(input, output, session, start) {
           input_id = bid("rows_off"))),
       shiny::tags$details(
         class = "small mb-2", open = NA,
-        shiny::tags$summary(t("A row of your own")),
+        shiny::tags$summary(with_tip(t("Add a row (row label = template)"),
+                                      t("One row of plan_cells(continuous = c(row label = template)). Write the ARD's statistic names, {mean} {sd} ...; {mean:.2f} sets the decimals too."))),
         shiny::div(
           class = "d-flex flex-wrap gap-2 align-items-end",
-          shiny::textInput(bid("own_label"), t("Row label"), placeholder = "Mean +/- SD",
-                           width = "160px"),
-          shiny::textInput(bid("own_tpl"), t("Template"), placeholder = "{mean} +/- {sd}",
-                           width = "200px"),
-          .btn(bid("own_add"), t("Add the row"), class = "btn-sm btn-outline-primary mb-3")),
-        shiny::p(class = "text-muted mb-0",
-                 t("{statistic} as the ARD names it: N, mean, sd, se, median, p25, p75, min, max ...; a format after a colon: {mean:.2f} two decimals, {p:.1f%} a percent. Blank: the decimals above. The table on the right shows the row once added."))))
+          # (an example, as the placeholder: the fields start empty)
+          shiny::textInput(bid("own_label"), t("Row label"),
+                           placeholder = sprintf(t("e.g. %s"), "Mean +/- SD"), width = "160px"),
+          shiny::textInput(bid("own_tpl"),
+                           with_tip(t("Template"), t("{statistic} as the ARD names it: N, mean, sd, se, median, p25, p75, min, max ...; a format after a colon: {mean:.2f} two decimals, {p:.1f%} a percent. Blank: the decimals above. The table on the right shows the row once added.")),
+                           placeholder = sprintf(t("e.g. %s"), "{mean} +/- {sd}"), width = "200px"),
+          .btn(bid("own_add"), t("Add the row"), class = "btn-sm btn-outline-primary mb-3"))))
   }
   # every row's template: the table's, the standards', one's own
   builder_templates <- function(st) {
@@ -9131,20 +9740,60 @@ app_server <- function(input, output, session, start) {
 
   # A table with no definition yet (made without the first-table form, an
   # older study, a workbook read in): what the builder shows is written to
-  # the sheets once, so the preview has a table to show.
+  # the sheets once, so the preview has a table to show.  A table with no
+  # row of its own in the tables sheet yet also gets, once, the cards the
+  # ARD tells the values of, on: its Total column (rows over all
+  # subjects), its factors' order, its labels -- then it has its own row,
+  # and what the user switches off later stays off.
+  # (not ignoreInit: the first form may be drawn in the flush that makes
+  # this observer, and its draw must count)
   shiny::observeEvent(bform_drawn(), {
+    shiny::req(bform_drawn() > 0L)
     id <- bform$id
     tb <- sheet_rows(rv$p, "tables", id)
     inh <- inherited_rows(rv$p, "tables", id)
     has_cols <- (nrow(tb) && !is.na(tb$cols[1L])) ||
       (nrow(inh) && !is.na(inh$cols[1L]))
-    if (has_cols || anyNA(bform$st$key)) return()
-    p2 <- guarded(builder_write(rv$p, id, bform$st))
-    if (!is.null(p2)) {
-      rv$p <- p2
-      rv$btouched <- TRUE
+    # (fresh: no row of its own when the form was drawn -- the form's own
+    # first write may have made one since)
+    fresh <- isTRUE(bform$fresh)
+    bform$fresh <- FALSE
+    if (anyNA(bform$st$key) || (has_cols && !fresh)) return()
+    p2 <- if (has_cols) rv$p else guarded(builder_write(rv$p, id, bform$st))
+    if (is.null(p2)) return()
+    hier <- length(bform$st$hierarchy) > 0L
+    wrote <- FALSE
+    if (fresh) {
+      for (fn in .ard_on_cards(bform$meta, hier)) {
+        have <- vapply(tryCatch(builder_items(p2, id), error = function(e) list()),
+                       function(it) it$fn, "")
+        if (fn %in% have) next
+        p3 <- if (identical(fn, "plan_total")) {
+          guarded(set_total_column(p2, id, "Total", "last"))
+        } else {
+          args <- .plan_starter_args(fn, bform$st, hier, meta = bform$meta)
+          if (!is.null(args)) guarded(.builder_item_write(p2, id, fn, args))
+        }
+            if (!is.null(p3)) {
+          p2 <- p3
+          wrote <- TRUE
+        }
+      }
+      # (its own row now: once only)
+      t2 <- sheet_rows(p2, "tables", id)
+      t2$output_id <- NULL
+      if (wrote && !nrow(t2)) {
+        t2[1L, ] <- NA
+        t2$cols[1L] <- paste(bform$st$key, collapse = " | ")
+        p2 <- set_sheet_rows(p2, "tables", id, t2)
+      }
     }
-  }, ignoreInit = TRUE)
+    if (identical(p2, rv$p)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    # (the cards written: drawn again, on)
+    if (wrote) rv$bver <- rv$bver + 1L
+  })
 
   shiny::observeEvent(input$b_add_n, {
     id <- bform$id
@@ -9170,25 +9819,16 @@ app_server <- function(input, output, session, start) {
     shiny::req(builder_case() %in% c("ok", "hierarchy"), length(ks) > 0L)
     n <- bform$n
     output[[paste0("b", n, "_arms_ui")]] <- shiny::renderUI(shiny::tagList(
-      if (length(ks) > 1L) shiny::tagList(
-        shiny::tags$label(class = "form-label small",
-                          t("Order of the column variables, outermost first (drag)")),
-        sortable::rank_list(text = NULL, labels = ks, input_id = bid("keyorder"),
-                            orientation = "horizontal")),
       lapply(ks, function(k) {
-        # a column variable the report's code list has: the ARD program
-        # puts it in the list's order (set_levels()), so the order is known
-        listed <- k %in% sheet_rows(shiny::isolate(rv$p), "codelists", bform$id)$variable
-        guess <- !listed && k %in% names(bform$st$auto_levels) && k %in% bform$st$key
-        shiny::tagList(
-          shiny::tags$label(class = "form-label small",
-                            sprintf(t("Order of the columns of %s (drag)"), k)),
-          if (guess) shiny::div(
-            class = "small text-warning",
-            t("Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.")),
-          if (listed) shiny::div(
-            class = "small text-muted",
-            t("The order is the report's code list's (step 1).")),
+        # where the order comes from (builder_read(): this table's own, the
+        # report's code list, the ARD's factor, as first seen), said as on
+        # plan_levels()' card
+        from <- bform$st$level_from[[k]]
+        shiny::div(
+          class = "rp-b-sec rp-levels-var", `data-variable` = k,
+          shiny::div(class = "rp-b-sec-label",
+                     builder_label(sprintf(t("Values of %s"), k), k, "arg", lang)),
+          if (!is.null(from)) .level_order_note(from, lang),
           sortable::rank_list(text = NULL,
                               labels = .levels_with_labels(
                                 key_levels(k), k,
@@ -9200,12 +9840,21 @@ app_server <- function(input, output, session, start) {
   # the Total column: a switch, its heading and place; it sets `overall` on
   # the analyses by the column variable too (set_total_column()), which
   # the ARD then needs to run again
+  # (the report's own, else the study's defaults': the card's switch is on
+  # for either, and drawing it writes nothing)
   total_now <- function(p0, id) {
     tb <- sheet_rows(p0, "tables", id)
-    on <- nrow(tb) > 0L && !is.na(tb$total[1L] %||% NA)
+    inh <- inherited_rows(p0, "tables", id)
+    val <- function(col) {
+      a <- if (nrow(tb)) tb[[col]][1L] %||% NA else NA
+      if (is.na(a) && nrow(inh)) a <- inh[[col]][1L] %||% NA
+      a
+    }
+    total <- val("total")
+    on <- !is.na(total)
     list(on = on,
-         label = if (on) tb$total[1L] else NA_character_,
-         position = if (on && identical(tb$total_position[1L] %||% NA, "first"))
+         label = if (on) total else NA_character_,
+         position = if (on && identical(val("total_position"), "first"))
            "first" else "last")
   }
   shiny::observe(builder_guard({
@@ -9217,18 +9866,19 @@ app_server <- function(input, output, session, start) {
     p0 <- shiny::isolate(rv$p)
     now <- total_now(p0, id)
     runs <- sum(.total_rows(ard_rows(p0, "analyses", id), ks[1L]))
+    # (the switch is the card's: its body shows while it is on)
     output[[paste0("b", n, "_total_ui")]] <- shiny::renderUI(shiny::tagList(
-      shiny::checkboxInput(
-        bid("total_on"),
-        with_tip(t("Total column"),
-                 t("One more column over all subjects, read from the ARD's overall rows: the analyses by the column variable are run once more without it (step 1, 'Also over all subjects'). No 'Total' arm is made up in the data.")),
-        now$on, width = "100%"),
-      if (now$on) shiny::div(
+      shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-end mb-2",
-        shiny::textInput(bid("total_label"), t("Heading"), now$label, width = "160px"),
-        shiny::radioButtons(bid("total_pos"), t("Place"),
+        shiny::textInput(bid("total_label"),
+                         builder_label(.arg_meaning("plan_total", "label"), "label", "arg", lang),
+                         if (now$on) now$label else "", placeholder = "Total", width = "160px"),
+        shiny::radioButtons(bid("total_pos"),
+                            builder_label(.arg_meaning("plan_total", "position"), "position", "arg", lang),
                             stats::setNames(c("last", "first"), c(t("last"), t("first"))),
-                            now$position, inline = TRUE)),
+                            now$position, inline = TRUE),
+        help_tip(t("plan_total puts the ARD's overall rows (results not split by group) in a Total column.")),
+        if (now$on) from_badge("ard", lang)),
       if (now$on && runs == 0L) shiny::div(
         class = "small text-warning",
         sprintf(t("No analysis of this report is grouped by %s: the ARD has no overall rows to show."), ks[1L]))
@@ -9238,7 +9888,7 @@ app_server <- function(input, output, session, start) {
   }))
   shiny::observe(builder_guard({
     bform_drawn()
-    on <- input[[bid("total_on")]]
+    on <- input[[total_on_id()]]
     lbl <- input[[bid("total_label")]]
     pos <- input[[bid("total_pos")]]
     shiny::req(!is.null(on), builder_case() %in% c("ok", "hierarchy"))
@@ -9406,16 +10056,20 @@ app_server <- function(input, output, session, start) {
         st <- l$stub
         # the row-header cells, each under its column (one over them all
         # when merged)
+        # (text areas, as the line's text: a cell's text may have line
+        # breaks (a hierarchy's "System Organ Class", a line break, "Preferred
+        # Term"), which a one-line field drops, and the header read back would differ
+        # from the sheet's though nothing was changed)
         stub_ui <- if (isTRUE(l$merge)) {
-          list(shiny::div(style = span(ns), shiny::textInput(
+          list(shiny::div(style = span(ns), shiny::textAreaInput(
             hid(l$uid, "stub1"), NULL, if (is.na(st[[1L]])) "" else st[[1L]],
-            width = "100%", placeholder = t("e.g. Characteristic"))))
+            width = "100%", rows = 1, placeholder = t("e.g. Characteristic"))))
         } else lapply(stub_cols, function(cn) {
           k <- match(cn, names(st))
           if (is.na(k)) return(shiny::div())
-          shiny::textInput(hid(l$uid, paste0("stub", k)), NULL,
-                           if (is.na(st[[k]])) "" else st[[k]], width = "100%",
-                           placeholder = t("e.g. Characteristic"))
+          shiny::textAreaInput(hid(l$uid, paste0("stub", k)), NULL,
+                               if (is.na(st[[k]])) "" else st[[k]], width = "100%",
+                               rows = 1, placeholder = t("e.g. Characteristic"))
         })
         val_ui <- switch(
           l$mode,
@@ -9424,8 +10078,9 @@ app_server <- function(input, output, session, start) {
             sg <- l$segments[[j]]
             shiny::div(
               style = span(length(sg$levels)), class = "rp-hdr-cell",
-              shiny::textInput(hid(l$uid, paste0("seg", j)), NULL,
-                               if (is.na(sg$text %||% NA)) "" else sg$text, width = "100%"),
+              shiny::textAreaInput(hid(l$uid, paste0("seg", j)), NULL,
+                                   if (is.na(sg$text %||% NA)) "" else sg$text,
+                                   width = "100%", rows = 1),
               shiny::div(
                 class = "rp-hdr-cell-tools",
                 if (length(sg$levels) > 1L)
@@ -9477,7 +10132,8 @@ app_server <- function(input, output, session, start) {
         shiny::uiOutput(bid("hdr_tok")),
         if (header_uses_n(lines)) shiny::div(
           class = "rp-hdr-box",
-          shiny::div(class = "rp-hdr-box-title", t("What the header's {n} counts")),
+          shiny::div(class = "rp-hdr-box-title",
+                     builder_label("What the header's {n} counts", "values", "arg", lang)),
           shiny::uiOutput(bid("hdr_n_ui"))),
         shiny::tags$script(shiny::HTML(paste0(
           "if (!window.tflHdrInsert) {",
@@ -9649,13 +10305,11 @@ app_server <- function(input, output, session, start) {
     st <- bform$st
     get <- function(x) input[[bid(x)]]
     hier <- length(st$hierarchy) > 0L
-    vars <- if (hier) st$variables$variable else get("vars")
-    ks <- get("key")
-    shiny::req(!is.null(vars), length(ks) > 0L,
-               setequal(vars, st$variables$variable))
+    # (the block's order: plan_levels()' card's, while it is there)
+    vars <- if (hier) st$variables$variable else get("vars") %||% st$variables$variable
     # the column variables in the order dragged (outermost first)
-    ko <- get("keyorder")
-    if (length(ks) > 1L && setequal(ko, ks)) ks <- ko
+    ks <- get("key")
+    shiny::req(length(ks) > 0L, setequal(vars, st$variables$variable))
     arms <- stats::setNames(lapply(ks, function(k)
       input[[arms_id(k)]] %||% key_levels(k)), ks)
     v <- st$variables[match(vars, st$variables$variable), , drop = FALSE]
@@ -9683,9 +10337,16 @@ app_server <- function(input, output, session, start) {
     value <- get("value") %||% st$value
     used <- unique(unlist(lapply(tpl[intersect(rows, names(tpl))], .template_stats)))
     digits <- st$digits[intersect(names(st$digits), used)]
+    # (a statistic the table has no decimals of shows the study's rule, or
+    # 1 (output_digits_ui()): that number, sent back as drawn, is no value
+    # of the table's own -- written, the study would change unasked)
+    rule <- .report_digits(shiny::isolate(rv$p), bform$id)
     for (k in used) {
       dv <- suppressWarnings(as.numeric(get(paste0("dg_", k))))
-      if (length(dv) == 1L && !is.na(dv)) digits[[k]] <- as.integer(max(0, round(dv)))
+      if (length(dv) != 1L || is.na(dv)) next
+      dv <- as.integer(max(0, round(dv)))
+      if (!k %in% names(digits) && identical(dv, as.integer(.or_na(unname(rule[k]), 1L)))) next
+      digits[[k]] <- dv
     }
     digits <- digits[intersect(used, names(digits))]
     if (identical(digits, st$digits[names(digits)]) &&
@@ -9716,11 +10377,25 @@ app_server <- function(input, output, session, start) {
          auto_levels = st$auto_levels,
          hierarchy = st$hierarchy,
          row_keys = if (hier) {
-           rk <- get("rowkeys")
-           # a hierarchy level left out: not written (the card says why)
-           if (is.null(rk) || !length(rk) || !all(st$hierarchy %in% rk)) st$row_keys else rk
+           rk <- get("layers")
+           # the hierarchy's levels are fixed (the page refuses to remove
+           # them): its groups outermost, then its levels in their order
+           if (is.null(rk) || !length(rk) || !all(st$hierarchy %in% rk)) st$row_keys else
+             c(setdiff(rk, st$hierarchy), st$hierarchy)
          },
          row_choices = st$row_choices,
+         # a summary table's row layers in their order (a hierarchy's are
+         # its row keys); the block of variables among them, or not
+         layers = {
+           ly <- get("layers")
+           if (hier || is.null(ly) || !length(ly)) st$layers else unique(as.character(ly))
+         },
+         layer_choices = st$layer_choices,
+         # ... and its rows' text (.label, a key, "NA" none)
+         row_label = {
+           rl <- if (!hier) get("rowlabel")
+           if (is.null(rl) || !nzchar(rl)) st$row_label else if (identical(rl, "NA")) NA_character_ else rl
+         },
          row_pages = if (hier) {
            pg <- get("rowpages")
            if (is.null(pg)) st$row_pages else isTRUE(pg)
@@ -9745,7 +10420,19 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(bstate_d(), {
     st <- bstate_d()
     id <- bform$id
-    rows_new <- length(st$hierarchy) > 0L && !identical(st$row_keys, bform$last$row_keys)
+    # (a hierarchy's rows changed, or its pages: drawn again -- the
+    # plan_paginate_group() card's fields say what was written)
+    rows_new <- length(st$hierarchy) > 0L &&
+      (!identical(st$row_keys, bform$last$row_keys) ||
+         (!is.null(bform$last) && !identical(st$row_pages, bform$last$row_pages)))
+    # the key chosen as the rows' text is no row layer: taken out of them
+    # (as builder_write() writes them)
+    lk <- st$row_label
+    if (!length(st$hierarchy) && length(lk) == 1L && !is.na(lk) && lk %in% st$layers &&
+        length(st$layers) > 1L) {
+      st$layers <- setdiff(st$layers, lk)
+      shiny::updateSelectizeInput(session, bid("layers"), selected = st$layers)
+    }
     p2 <- guarded(builder_write(rv$p, id, st, was = bform$last))
     if (!is.null(p2)) bform$last <- st
     if (!is.null(p2) && isTRUE(rows_new)) {

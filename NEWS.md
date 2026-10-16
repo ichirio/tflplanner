@@ -1,5 +1,26 @@
 # tflplanner (development version)
 
+- **The table builder shows the content as the plan's cards** (#397,
+  0.0.2.9230).  One card a function call -- its fields that function's
+  arguments only -- in the content's order, under the plan bar with two
+  separators: the table skeleton (which ARD values go to which rows,
+  columns and cells) and finishing (labels, order, digits, pages).  Each
+  card is its meaning and its name ("Analysis variables (variable)"), the
+  study default's mark and Revert, real fields for the arguments (widths,
+  rounding, the row filter through the condition builder, the level order
+  by drag, comparisons, statistic groups, nesting, paging, row groups,
+  hidden columns, cell styles) and R text for the rest; the whole program
+  is in Code, a line jumping to its card.  A card switched off stays (off:
+  not in the code); its menu removes it; Add brings the others, placed by
+  tflspec's rank.  Defaults the ARD tells are filled in with the mark
+  "from the ARD": a Total column when the ARD has overall rows, the factor
+  order of the levels, the labels.  A level order comes from the table's
+  own, else the report's code list, else the ARD's factor, else as first
+  seen, the source said beside it.  The rows are assigned as dragged, the
+  analysis variables' block removable (a table of one variable), the
+  stack's subgroup offered as rows (an Overall Response table), the row
+  text chosen.  tflspec >= 0.0.24.9137.
+
 - **A table's data is no longer saved per report** (#405, 0.0.2.9229; the
   owner's decision: the deliverable is the report).  A table's program no
   longer ends with `saveRDS()` to `output/ard/<output_id>.rds`; the report's

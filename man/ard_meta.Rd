@@ -15,7 +15,12 @@ ard_meta(ard = NULL, data = NULL)
 A list: \code{keys} (named list of levels), \code{by} (the column keys),
 \code{hierarchy} (the hierarchy keys, outermost first), \code{variables} (a data
 frame: \code{variable}, \code{kind}, \code{levels}, \code{n_levels}, \code{stats}, \code{label}),
-\code{contexts}, \code{stats}, \code{columns}.
+\code{contexts}, \code{stats}, \code{columns}; from a normalized ARD also \code{overall}
+(rows over all subjects, which a Total column reads), \code{factor_vars}
+(the variables whose levels keep a factor's order), \code{factor_keys}
+(the key columns that are factors: their levels' order) and
+\code{comparisons} (the comparison records -- tests, differences -- by
+context: their statistics).
 }
 \description{
 Reads the keys (the column and hierarchy variables) with their levels,

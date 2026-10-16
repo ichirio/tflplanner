@@ -39,7 +39,12 @@
 #' @return A list: `keys` (named list of levels), `by` (the column keys),
 #'   `hierarchy` (the hierarchy keys, outermost first), `variables` (a data
 #'   frame: `variable`, `kind`, `levels`, `n_levels`, `stats`, `label`),
-#'   `contexts`, `stats`, `columns`.
+#'   `contexts`, `stats`, `columns`; from a normalized ARD also `overall`
+#'   (rows over all subjects, which a Total column reads), `factor_vars`
+#'   (the variables whose levels keep a factor's order), `factor_keys`
+#'   (the key columns that are factors: their levels' order) and
+#'   `comparisons` (the comparison records -- tests, differences -- by
+#'   context: their statistics).
 #' @export
 ard_meta <- function(ard = NULL, data = NULL) {
   out <- list(keys = list(), by = character(), hierarchy = character(),
@@ -101,6 +106,15 @@ ard_meta <- function(ard = NULL, data = NULL) {
     out$contexts <- unique(stats::na.omit(.flat(d$context)))
     out$stats <- unique(stats::na.omit(sn))
     out$columns <- cn
+    # the analyses' rows over all subjects (no column key: a Total column
+    # reads them), the variables whose levels keep a factor's order and
+    # the key columns that are factors (TRT01A in its arms' order)
+    out$overall <- .ard_has_overall(d, by)
+    out$factor_vars <- if (".label_order" %in% cn) {
+      unique(v[!is.na(v) & v %in% ana & !is.na(d$.label_order)])
+    } else character()
+    out$factor_keys <- keys[vapply(keys, function(k) is.factor(d[[k]]), NA)]
+    out$comparisons <- .ard_comparisons(d, by)
   } else if (is.data.frame(ard)) {
     # a raw ARD: keys are the groupN columns, their levels groupN_level
     g <- grep("^group[0-9]+$", names(ard), value = TRUE)
@@ -134,6 +148,46 @@ ard_meta <- function(ard = NULL, data = NULL) {
   }
   rownames(out$variables) <- NULL
   out
+}
+
+# The comparison records of a normalized ARD (the tests, differences
+# plan_compare() reads): the analyses whose rows never have a column key
+# (`by` all NA in every row of the context; the overall rows share their
+# context with the arms' rows), the attributes and the total N left out.
+# A named list: context -> its statistics that are numbers, in order.
+.ard_comparisons <- function(d, by) {
+  if (!is.data.frame(d) || !nrow(d) || !length(by) || !all(by %in% names(d)) ||
+      !all(c("context", "stat_name") %in% names(d))) return(list())
+  ctx <- .flat(d$context)
+  none <- Reduce(`&`, lapply(by, function(k) is.na(.flat(d[[k]]))))
+  cmp <- setdiff(unique(ctx[none & !is.na(ctx)]), c(unique(ctx[!none]), "attributes", "total_n"))
+  if (!length(cmp)) return(list())
+  sn <- .flat(d$stat_name)
+  # (a statistic that is a number: the normalized ARD's stat is NA for a
+  # text, as a test's method)
+  num <- if (!"stat" %in% names(d)) rep(TRUE, nrow(d)) else if (is.list(d$stat)) {
+    vapply(d$stat, function(e) is.numeric(e) && length(e) == 1L && !is.na(e), NA)
+  } else !is.na(suppressWarnings(as.numeric(d$stat)))
+  out <- lapply(cmp, function(k) unique(sn[ctx == k & none & num & !is.na(sn)]))
+  stats::setNames(out, cmp)
+}
+
+# Has a normalized ARD rows over all subjects -- an analysis's rows with no
+# column key (`by` all NA), as ard_stack(.overall = TRUE) makes them?
+# plan_total() reads those; without them it stops.
+.ard_has_overall <- function(d, by) {
+  if (!is.data.frame(d) || !nrow(d) || !length(by) || !all(by %in% names(d))) return(FALSE)
+  v <- .flat(d$variable)
+  own <- if (".key_own" %in% names(d)) d$.key_own %in% TRUE else rep(FALSE, nrow(d))
+  ana <- !is.na(v) & !startsWith(v, "..") & !own & !v %in% by
+  none <- Reduce(`&`, lapply(by, function(k) is.na(.flat(d[[k]]))))
+  # (an overall row shares its context with the arms' rows; a comparison
+  # -- a test, a difference -- has no arm row at all, so it is not one)
+  if ("context" %in% names(d)) {
+    ctx <- .flat(d$context)
+    none <- none & ctx %in% unique(ctx[!none])
+  }
+  any(ana & none)
 }
 
 # variable labels a cards ARD carries (ard_stack(.attributes = TRUE))
@@ -208,8 +262,10 @@ fetch_ard <- function(study, output_id, timeout = 300,
   writeLines(enc2utf8(c(.report_id_line(output_id),
                         if (!is.na(p$setup)) .code_block(p$setup),
                         .code_block(ard_code))), f_ard, useBytes = TRUE)
+  # (the normalization its program has: a hierarchical analysis's terms
+  # and the any-event row, so the builder sees the hierarchy)
   proc <- if (!is.na(o$process_code)) .code_block(o$process_code) else
-    if (!.makes_data(ard_code)) "data <- normalize_ard(ard)" else ""
+    if (!.makes_data(ard_code)) .normalize_line(p, output_id) else ""
   writeLines(enc2utf8(proc), f_proc, useBytes = TRUE)
   # the functions the programs call (programs/study_helpers.R's)
   f_helpers <- file.path(tmp, "study_helpers.R")
@@ -301,6 +357,36 @@ fetch_ard <- function(study, output_id, timeout = 300,
   }
   m$variables <- v
   m$labels <- labels
+  m
+}
+
+# The hierarchy of a report's hierarchical analysis (its terms, outermost
+# first; none: character()) -- the ARD analysis's, step 1's
+.analysis_hierarchy <- function(x, output_id) {
+  a <- tryCatch(ard_rows(x, "analyses", output_id), error = function(e) NULL)
+  if (is.null(a) || !nrow(a)) return(character())
+  kw <- .method_kw(a$method)
+  at <- which(kw %in% c("hierarchical", "cards::ard_stack_hierarchical"))
+  if (!length(at)) return(character())
+  v <- .split_bar(a$variables[at[1L]])
+  v[!is.na(v) & nzchar(v)]
+}
+
+# What the ARD says, with the hierarchy its analysis has when the reading
+# did not see one (an ARD read before its normalization knew the terms:
+# the innermost term an analysis variable, the outer ones column keys)
+.meta_with_hierarchy <- function(m, x, output_id) {
+  if (is.null(m) || length(m$hierarchy)) return(m)
+  hier <- .analysis_hierarchy(x, output_id)
+  if (length(hier) < 2L) return(m)
+  v <- m$variables
+  for (h in setdiff(hier, names(m$keys))) {
+    i <- match(h, v$variable)
+    m$keys[[h]] <- if (!is.na(i)) .split_list(v$levels[i]) else character()
+  }
+  m$by <- setdiff(m$by, hier)
+  m$hierarchy <- hier
+  if (!is.null(v)) m$variables <- v[!v$variable %in% hier, , drop = FALSE]
   m
 }
 
