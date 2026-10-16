@@ -68,6 +68,10 @@ content:
       AVAL: Week 24, cycle 9 day 1 (mmHg)
       CHG: Change from baseline (mmHg)
   - plan_levels:
+      variable:
+        - BASE
+        - AVAL
+        - CHG
       TRTA:
         - Drug X
         - Control

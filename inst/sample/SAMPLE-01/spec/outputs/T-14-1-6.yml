@@ -154,6 +154,13 @@ content:
       ASIANSUB: Asian sub-category, n (%)
       ETHNIC: Ethnicity, n (%)
   - plan_levels:
+      variable:
+        - AGE
+        - AGEGR1
+        - SEX
+        - RACE
+        - ASIANSUB
+        - ETHNIC
       ARMGRP:
         - Drug X
         - Control

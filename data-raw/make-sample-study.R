@@ -68,7 +68,7 @@
 # (create_sample_study()).
 
 devtools::load_all(quiet = TRUE)
-stopifnot(utils::packageVersion("tflspec") >= "0.0.24.9135",
+stopifnot(utils::packageVersion("tflspec") >= "0.0.24.9136",
           requireNamespace("cards", quietly = TRUE),
           requireNamespace("cardx", quietly = TRUE))
 

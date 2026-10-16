@@ -102,6 +102,12 @@ content:
       RACE: Race, n (%)
       ETHNIC: Ethnicity, n (%)
   - plan_levels:
+      variable:
+        - AGE
+        - AGEGR1
+        - SEX
+        - RACE
+        - ETHNIC
       TRT01A:
         - Drug X
         - Control

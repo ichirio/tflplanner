@@ -63,6 +63,7 @@ content:
   - plan_labels:
       CHG: Change from baseline at week 24 (mmHg)
   - plan_levels:
+      variable: CHG
       TRTA:
         - Drug X
         - Control

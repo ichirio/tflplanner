@@ -73,6 +73,9 @@ content:
       prob: Time to first event (days)
       time: Event-free probability (95% CI)
   - plan_levels:
+      variable:
+        - prob
+        - time
       TRT01A:
         - Drug X
         - Control

@@ -49,6 +49,7 @@ content:
   - plan_labels:
       EOSSTT: Status at end of study, n (%)
   - plan_levels:
+      variable: EOSSTT
       TRT01A:
         - Drug X
         - Control

@@ -54,6 +54,9 @@ content:
       AGEGR1: Age group, n (%)
       SEX: Sex, n (%)
   - plan_levels:
+      variable:
+        - AGEGR1
+        - SEX
       TRT01A:
         - Drug X
         - Control
