@@ -202,12 +202,18 @@ header_n_choices <- function(cand, keys, now = NA_character_, tr = function(x) x
     if (length(v) > 4L) v <- c(utils::head(v, 4L), "\u2026")
     paste(v, collapse = " / ")
   }
+  # header_n as it is, when it is none of the choices (n = table, N =
+  # table alone): a choice of its own, kept -- not lost by the form
+  other <- function(ch) {
+    if (!nzchar(keep) || keep %in% ch) return(ch)
+    c(ch, stats::setNames(keep, sprintf(tr("As the sheets say: %s"), keep)))
+  }
   if (is.null(cand) || !nrow(cand)) {
     ch <- stats::setNames(c(if (identical(keep, "page")) "page" else "", "table", both),
                           c(tr("Subjects of each page (the default)"),
                             tr("The analysis set, the same on every page"),
                             tr("Both: {n} each page's, {N} the analysis set's")))
-    return(list(choices = ch, selected = keep,
+    return(list(choices = other(ch), selected = keep,
                 note = tr("The numbers are not known yet: the preview has not been made."), warn = NULL))
   }
   if (all(cand$scope == "all")) {
@@ -226,8 +232,8 @@ header_n_choices <- function(cand, keys, now = NA_character_, tr = function(x) x
                                       tr("(the pages and the analysis set have the same numbers)")))
     return(list(choices = ch, selected = keep, note = NULL, warn = NULL))
   }
-  ch <- stats::setNames(c("page", "table", both),
-                        c(page_lab, tbl_lab, tr("Both: {n} each page's, {N} the analysis set's")))
+  ch <- other(stats::setNames(c("page", "table", both),
+                              c(page_lab, tbl_lab, tr("Both: {n} each page's, {N} the analysis set's"))))
   sel <- if (keep %in% ch) keep else NULL
   list(choices = ch, selected = sel, note = NULL,
        warn = if (is.null(sel)) tr("The pages and the analysis set have different numbers: choose which one {n} says (until then, making the report warns)."))

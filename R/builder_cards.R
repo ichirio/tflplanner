@@ -487,7 +487,8 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   shiny::selectizeInput(fid, NULL, choices = c(stats::setNames("", ""), choices), selected = value,
                         width = "100%",
                         options = list(placeholder = if (!is.null(default)) as.character(default) else tr("Choose", lang),
-                                       render = render))
+                                       # (a colour typed: #CC0000)
+                                       create = TRUE, render = render))
 }
 
 # ggplot2's shapes by number, each shown with its glyph

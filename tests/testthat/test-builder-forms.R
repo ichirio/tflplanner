@@ -462,3 +462,122 @@ test_that("a comparison's rows (no arm row in their context) are not overall row
   d2 <- rbind(d, data.frame(variable = "AGE", TRT01A = NA, context = "continuous"))
   expect_true(.ard_has_overall(d2, "TRT01A"))
 })
+
+test_that("plan_hide(): the table's columns hidden, a multi-select, written by column", {
+  expect_identical(.plan_form_main$plan_hide, "cols")
+  sch <- .plan_form_schema("plan_hide")
+  expect_identical(sch$formals, "cols")
+  it0 <- list(fn = "plan_hide", args = list(), own_args = list())
+  h <- html(.plan_form_body("c", "plan_hide", it0, choices = c("row_label", ".values", "Placebo")))
+  expect_match(h, 'id="c__cols"', fixed = TRUE)
+  expect_match(h, "multiple", fixed = TRUE)
+  expect_match(h, "(cols)", fixed = TRUE)
+  # nothing chosen: no change
+  expect_null(.plan_form_read(list(c__cols = NULL), "c", "plan_hide"))
+  r <- .plan_form_read(list(c__cols = c("Placebo", "row_label")), "c", "plan_hide")
+  expect_identical(r, list(cols = c("Placebo", "row_label")))
+  own <- .plan_form_own(r, it0, "plan_hide")
+  p <- sample_planner()
+  id <- "T-14-1-1"
+  q <- .builder_item_write(p, id, "plan_hide", own)
+  co <- sheet_rows(q, "columns", id)
+  expect_setequal(co$column[co$hide %in% "TRUE"], c("Placebo", "row_label"))
+  it <- item(builder_items(q, id), "plan_hide")
+  expect_identical(args_to_r("plan_hide", it$args), 'c("Placebo", "row_label")')
+  # drawn again: chosen as the sheets say; read back the same is no change
+  h2 <- html(.plan_form_body("c", "plan_hide", it, choices = c("row_label", ".values", "Placebo")))
+  expect_match(h2, '<option value="Placebo" selected>', fixed = TRUE)
+  r2 <- .plan_form_read(list(c__cols = it$args$cols), "c", "plan_hide")
+  expect_identical(args_to_r("plan_hide", .plan_form_own(r2, it, "plan_hide")),
+                   args_to_r("plan_hide", it$own_args))
+})
+
+test_that("plan_cell_style(): cols, where, the looks as fields, each call its own card", {
+  expect_identical(.plan_form_main$plan_cell_style,
+                   c("cols", "header", "where", "bold", "italic", "align", "color", "background"))
+  sch <- .plan_form_schema("plan_cell_style")
+  # a look left blank is not written (not FALSE); border: under Other arguments, said so
+  expect_identical(.arg_kind(sch$args$bold$type), "enum")
+  expect_identical(.arg_kind(sch$args$color$type), "colour")
+  expect_identical(sch$args$border$type, "r")
+  expect_match(sch$args$border$description, "Not kept", fixed = TRUE)
+  expect_true(isFALSE(sch$args$header$default))
+  it0 <- list(fn = "plan_cell_style", args = list(), own_args = list())
+  h <- html(.plan_form_body("c", "plan_cell_style", it0, choices = c("row_label", "Placebo")))
+  for (a in c("cols", "header", "where", "bold", "italic", "align", "color", "background")) {
+    expect_match(h, sprintf('id="c__%s"', a), fixed = TRUE)
+  }
+  expect_match(h, "Other arguments", fixed = TRUE)
+  # blank fields: nothing (the header's check unticked is its default)
+  inp <- list(c__cols = NULL, c__header = FALSE, c__where = "", c__bold = "", c__italic = "",
+              c__align = "", c__color = "", c__background = "")
+  r0 <- .plan_form_read(inp, "c", "plan_cell_style")
+  expect_identical(.plan_form_own(r0, it0, "plan_cell_style"), list())
+  # the looks as values; the condition without its ~ (the code writes it)
+  inp$c__cols <- "Placebo"
+  inp$c__where <- "~ is.na(label)"
+  inp$c__bold <- "TRUE"
+  inp$c__align <- "left"
+  inp$c__color <- "#CC0000"
+  r <- .plan_form_read(inp, "c", "plan_cell_style")
+  expect_true(isTRUE(r$bold))
+  expect_identical(as.character(unclass(r$where)), "is.na(label)")
+  expect_identical(.formula_text(tflspec::tfl_r("  ~  ")), NULL)
+  own <- .plan_form_own(r, it0, "plan_cell_style")
+  expect_null(own$italic)
+  expect_null(own$header)
+  p <- sample_planner()
+  id <- "T-14-1-1"
+  q <- .builder_item_write(p, id, "plan_cell_style", own)
+  # a second call, its own row
+  q <- .builder_item_write(q, id, "plan_cell_style", list(cols = "row_label", italic = FALSE), k = 2L)
+  cs <- sheet_rows(q, "cell_styles", id)
+  expect_identical(nrow(cs), 2L)
+  expect_identical(cs$where[1L], "is.na(label)")
+  expect_identical(cs$italic[2L], "FALSE")
+  its <- Filter(function(x) identical(x$fn, "plan_cell_style"), builder_items(q, id))
+  expect_identical(vapply(its, `[[`, "", "path"), c("plan_cell_style", "plan_cell_style#2"))
+  expect_identical(args_to_r("plan_cell_style", its[[1L]]$args),
+                   'cols = "Placebo", where = ~ is.na(label), bold = TRUE, align = "left", color = "#CC0000"')
+  # drawn again as they are: read back the same is no change
+  h2 <- html(.plan_form_body("c", "plan_cell_style", its[[2L]], choices = c("row_label", "Placebo")))
+  expect_match(h2, '<option value="FALSE" selected>', fixed = TRUE)
+  r2 <- .plan_form_read(list(c__cols = "row_label", c__header = FALSE, c__where = "", c__bold = "",
+                             c__italic = "FALSE", c__align = "", c__color = "", c__background = ""),
+                        "c", "plan_cell_style")
+  expect_identical(args_to_r("plan_cell_style", .plan_form_own(r2, its[[2L]], "plan_cell_style")),
+                   args_to_r("plan_cell_style", its[[2L]]$own_args))
+  # a colour typed is kept (the select takes one)
+  expect_match(html(.field_colour("x", NULL, "#CC0000", NULL)), '"create":true', fixed = TRUE)
+})
+
+test_that("plan_col_header(values = ): what {n} counts, header_n kept when it is none of the choices", {
+  ch <- header_n_choices(NULL, "TRT01A", "n = table")
+  expect_true("n = table" %in% ch$choices)
+  expect_identical(ch$selected, "n = table")
+  expect_match(names(ch$choices)[ch$choices == "n = table"], "As the sheets say", fixed = TRUE)
+  # one of the choices: not twice
+  expect_identical(sum(header_n_choices(NULL, "TRT01A", "table")$choices == "table"), 1L)
+  pg <- data.frame(scope = c("page", "page", "table", "table"), page = c("ALT", "ALT", NA, NA),
+                   column = c("A", "B", "A", "B"), value = c(10, 12, 50, 52),
+                   stringsAsFactors = FALSE)
+  attr(pg, "differ") <- TRUE
+  ch2 <- header_n_choices(pg, "TRT01A", "N = table")
+  expect_identical(ch2$selected, "N = table")
+  expect_null(ch2$warn)
+  # its alignment (Edit as R) kept: the style sheet's col_header_align
+  p <- sample_planner()
+  id <- "T-14-1-1"
+  it <- item(builder_items(p, id), "plan_col_header")
+  q <- .builder_item_write(p, id, "plan_col_header", c(it$args, list(col_header_align = "left")))
+  expect_identical(sheet_rows(q, "style", id)$col_header_align, "left")
+  expect_identical(item(builder_items(q, id), "plan_col_header")$args$col_header_align, "left")
+})
+
+test_that("the third bundle's words have their Japanese", {
+  w <- c("Columns styled", "The column header", "Rows styled", "Bold", "Italic", "Text colour",
+         "Background colour", "Underline", "Indent (twips)", "As the sheets say: %s",
+         "Hidden columns", "Alignment", "Borders")
+  ja <- vapply(w, tr, "", lang = "ja")
+  expect_true(all(ja != w), info = paste(w[ja == w], collapse = " / "))
+})

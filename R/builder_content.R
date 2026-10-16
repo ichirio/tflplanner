@@ -77,7 +77,13 @@
   plan_columns = c(widths = "Widths", decimal = "Decimal alignment", row_title = "Row title",
                    auto_width = "Automatic width", sep = "Separator"),
   plan_style = c(align_count_pct = "Align n (%)", border = "Borders",
-                 font_size_half_points = "Font size (half points)"))
+                 font_size_half_points = "Font size (half points)"),
+  plan_hide = c(cols = "Hidden columns"),
+  plan_cell_style = c(cols = "Columns styled", header = "The column header",
+                      where = "Rows styled", bold = "Bold", italic = "Italic",
+                      align = "Alignment", color = "Text colour",
+                      background = "Background colour", underline = "Underline",
+                      indent_twips = "Indent (twips)", border = "Borders"))
 
 # a verb's meaning: the schema's label, else the table above; NULL for none
 .verb_meaning <- function(fn) {
@@ -605,12 +611,24 @@ builder_items <- function(x, output_id) {
   plan_row_group = c("mode", "collapse"),
   plan_stub = c("name", "indent", "before"),
   plan_columns = c("widths", "decimal", "row_title", "auto_width"),
-  plan_style = c("border", "align_count_pct", "font_size_half_points"))
+  plan_style = c("border", "align_count_pct", "font_size_half_points"),
+  plan_hide = "cols",
+  plan_cell_style = c("cols", "header", "where", "bold", "italic", "align", "color",
+                      "background"))
 
 # the types the form uses where the schema says none (or a looser one): a
 # choice of the usual values, or a number; "widths" a number a column
-# (.widths_field())
+# (.widths_field()).  plan_cell_style()'s looks are a choice of TRUE /
+# FALSE with a blank (left alone: not written), not a check (an unticked
+# check would say FALSE); its `where` the condition as R, over the
+# table's columns (.formula_text()).
+.plan_cell_look <- "enum[TRUE|FALSE]|logical"
 .plan_form_types <- list(
+  plan_hide = c(cols = "list<column>"),
+  plan_cell_style = c(cols = "list<column>", where = "formula",
+                      bold = .plan_cell_look, italic = .plan_cell_look,
+                      underline = .plan_cell_look, align = "enum[left|center|right]",
+                      color = "colour", background = "colour"),
   plan_blanks = c(where = "enum[between_groups|records]|r"),
   plan_columns = c(widths = "widths", row_title = "list<column>"),
   plan_paginate_cols = c(order = "enum[across|down|group|rows|cols]"),
@@ -621,6 +639,7 @@ builder_items <- function(x, output_id) {
 # "Other arguments" as R, what the function does said
 .plan_form_unkept <- list(
   plan_filter = "by",
+  plan_cell_style = "border",
   plan_columns = c("cell_format", "column_widths_twips"),
   plan_paginate_cols = "col_header",
   plan_row_group = "group_col")
@@ -698,7 +717,10 @@ builder_items <- function(x, output_id) {
   }, NA)
   if (!any(seen)) return(NULL)
   out <- builder_card_read(input, cid, sch, args = setdiff(sch$formals, wa), logical_false = TRUE)
-  for (k in intersect(names(out), names(sch$args))) out[[k]] <- .form_list_value(out[[k]], sch$args[[k]]$type)
+  for (k in intersect(names(out), names(sch$args))) {
+    out[[k]] <- .form_list_value(out[[k]], sch$args[[k]]$type)
+    if (identical(sch$args[[k]]$type, "formula")) out[[k]] <- .formula_text(out[[k]])
+  }
   for (k in wa) {
     if (isTRUE(.input_value(input, paste0(cid, "__", k, "__isr")))) {
       txt <- .input_value(input, paste0(cid, "__", k, "__r"))
@@ -709,6 +731,15 @@ builder_items <- function(x, output_id) {
     if (length(w)) out[[k]] <- w
   }
   out
+}
+
+# A condition typed as R for a one-sided formula's argument
+# (plan_cell_style(where = )): its text without the "~" the code writes
+# itself (`~ is.na(label)` typed: `is.na(label)`); blank: none
+.formula_text <- function(v) {
+  if (!inherits(v, "tfl_r")) return(v)
+  txt <- trimws(sub("^[[:space:]]*~", "", as.character(unclass(v))))
+  if (!nzchar(txt)) NULL else tflspec::tfl_r(txt)
 }
 
 # A list field's values as the argument takes them, by its type: whole
@@ -1144,7 +1175,7 @@ builder_code_map <- function(lines, items) {
   plan_style = list(style = NA),
   plan_cell_style = list(cell_styles = NULL),
   plan_hide = list(columns = "hide"),
-  plan_col_header = list(col_header = NULL, tables = "header_n"),
+  plan_col_header = list(col_header = NULL, tables = "header_n", style = "col_header_align"),
   plan_columns = list(columns = c("rel_width", "decimal_split", "row_title"),
                       style = "auto_width", tables = "sep"))
 

@@ -8945,18 +8945,22 @@ app_server <- function(input, output, session, start) {
     print_cols <- unique(c(stub_name, ".values",
                            if (length(st$key) == 1L && !anyNA(st$key)) st$arms[[st$key]]))
     bform$form_cols <- list()
-    for (fn in names(.plan_form_main)) {
-      it <- item_of(fn)
-      if (is.null(it) || !(isTRUE(it$present) || isTRUE(it$added))) next
-      # (plan_paginate_cols(): the printed columns and the keys;
-      # plan_row_group(collapse = TRUE): every row key)
+    # (each call its own card: plan_cell_style()'s second is
+    # "plan_cell_style#2", its form read and written as the second)
+    form_items <- Filter(function(it) it$fn %in% names(.plan_form_main) &&
+                           (isTRUE(it$present) || isTRUE(it$added)), items)
+    for (it in form_items) {
+      fn <- it$fn
+      # (plan_paginate_cols(), plan_hide(), plan_cell_style(): the printed
+      # columns and the keys; plan_row_group(collapse = TRUE): every row key)
       ch <- switch(fn, plan_columns = print_cols,
-                   plan_paginate_cols = unique(c(print_cols, cols_offered)),
+                   plan_paginate_cols = , plan_hide = , plan_cell_style =
+                     unique(c(print_cols, cols_offered)),
                    plan_row_group = c(stats::setNames("TRUE", t("Every row key (TRUE)")),
                                       stats::setNames(cols_offered, cols_offered)),
                    cols_offered)
       wc <- if (identical(fn, "plan_columns")) .widths_cols(it$args$widths, ch)
-      bform$form_cols[[fn]] <- wc
+      bform$form_cols[[it$path]] <- wc
       body <- .plan_form_body(card_id(it$path), fn, it, choices = ch, lang = lang, cols = wc)
       # plan_filter(): its condition by the condition builder (the rows
       # kept: tables$keep_where), its switches as fields
@@ -8970,7 +8974,7 @@ app_server <- function(input, output, session, start) {
                      condition_builder_ui("b_filter_cond", lang)),
           body)
       }
-      bodies[[fn]] <- body
+      bodies[[it$path]] <- body
     }
     # the cards of the names the user gives (a function's ...): the
     # comparison columns, the groups of statistics, the rows nested
@@ -9157,11 +9161,12 @@ app_server <- function(input, output, session, start) {
     bform_drawn()
     shiny::req(builder_case() %in% c("ok", "hierarchy"))
     out <- list()
-    for (fn in names(.plan_form_main)) {
-      it <- .builder_item_at(bform$items, fn)
-      if (is.null(it) || !(isTRUE(it$present) || isTRUE(it$added))) next
-      r <- .plan_form_read(input, card_id(it$path), fn, cols = bform$form_cols[[fn]])
-      if (!is.null(r)) out[[fn]] <- r
+    # (by the card's path: a verb's second call its own)
+    for (it in bform$items) {
+      if (!it$fn %in% names(.plan_form_main) ||
+          !(isTRUE(it$present) || isTRUE(it$added))) next
+      r <- .plan_form_read(input, card_id(it$path), it$fn, cols = bform$form_cols[[it$path]])
+      if (!is.null(r)) out[[it$path]] <- r
     }
     # (the cards of the names the user gives: their whole arguments)
     for (fn in .plan_form_dots) {
@@ -9180,20 +9185,23 @@ app_server <- function(input, output, session, start) {
   form_args_d <- shiny::debounce(form_args, 600)
   shiny::observeEvent(form_args_d(), builder_guard({
     now <- form_args_d()
-    for (fn in names(now)) {
-      at <- which(vapply(bform$items, function(it) identical(it$path, fn), NA))
+    for (path in names(now)) {
+      at <- which(vapply(bform$items, function(it) identical(it$path, path), NA))
       if (!length(at)) next
       it <- bform$items[[at[1L]]]
-      dots <- isTRUE(attr(now[[fn]], "dots"))
-      own <- if (dots) .dots_form_own(.args_plain_attr(now[[fn]]), it, fn) else
-        .plan_form_own(now[[fn]], it, fn)
+      fn <- it$fn
+      # (the verb's k-th call: "plan_cell_style#2" the second)
+      k <- if (grepl("#", path, fixed = TRUE)) as.integer(sub("^.*#", "", path)) else 1L
+      dots <- isTRUE(attr(now[[path]], "dots"))
+      own <- if (dots) .dots_form_own(.args_plain_attr(now[[path]]), it, fn) else
+        .plan_form_own(now[[path]], it, fn)
       if (identical(args_to_r(fn, own), args_to_r(fn, it$own_args %||% list()))) next
-      p2 <- guarded(.builder_item_write(rv$p, bform$id, fn, own))
+      p2 <- guarded(.builder_item_write(rv$p, bform$id, fn, own, k))
       if (is.null(p2)) next
       rv$p <- p2
       rv$btouched <- TRUE
       # (what the card says now: the next edit is told from it)
-      fresh <- .builder_item_at(tryCatch(builder_items(p2, bform$id), error = function(e) list()), fn)
+      fresh <- .builder_item_at(tryCatch(builder_items(p2, bform$id), error = function(e) list()), path)
       if (!is.null(fresh)) {
         was_present <- isTRUE(it$present)
         bform$items[[at[1L]]][c("args", "own_args", "from", "revert", "present")] <-
@@ -10091,7 +10099,8 @@ app_server <- function(input, output, session, start) {
         shiny::uiOutput(bid("hdr_tok")),
         if (header_uses_n(lines)) shiny::div(
           class = "rp-hdr-box",
-          shiny::div(class = "rp-hdr-box-title", t("What the header's {n} counts")),
+          shiny::div(class = "rp-hdr-box-title",
+                     builder_label("What the header's {n} counts", "values", "arg", lang)),
           shiny::uiOutput(bid("hdr_n_ui"))),
         shiny::tags$script(shiny::HTML(paste0(
           "if (!window.tflHdrInsert) {",

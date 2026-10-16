@@ -3357,3 +3357,13 @@ A new group,新しいグループ
 "A group a row: its name (a key of .stat_group, as table_plan()'s cols or rows name it, and plan_cells()' template's) and its statistics. A statistic in no group is not read.",1 行に 1 グループ：名前（.stat_group のキー。table_plan() の cols / rows と plan_cells() のテンプレートで使う名前）と統計量。どのグループにも入らない統計量は読まれません。
 No categorical variable to nest.,下に入れられるカテゴリ変数がありません。
 Every row key (TRUE),すべての行キー（TRUE）
+Columns styled,書式を付ける列
+The column header,列見出し
+Rows styled,書式を付ける行（条件）
+Bold,太字
+Italic,斜体
+Background colour,背景の色
+Underline,下線
+Indent (twips),字下げ（twips）
+As the sheets say: %s,シートのまま：%s
+Text colour,文字の色
