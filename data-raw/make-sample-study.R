@@ -18,7 +18,7 @@
 #                      same data and analyses as T-14-1-6
 #   T-14-1-6  Table    Demographics with race's Asian sub-categories as a
 #                      block of their own: the screened subjects (screen
-#                      failures too, a column of their own) by ARM, with a
+#                      failures too, a column of their own) by arm (ARMGRP), with a
 #                      Total column.  The
 #                      sub-categories are one column per race, as an EDC
 #                      collects them (ASIANSUB; WHTSUB would be White's),
@@ -139,10 +139,10 @@ sheets <- list(
          note = "The screen failures' demographics"),
     list(output_id = "T-14-1-3", cols = "TRT01A", rows = "group = variable",
          note = "Age group and sex: the ARD's n, N and p, the table's n (%)"),
-    list(output_id = "T-14-1-5", cols = "ARM", rows = "group = variable",
+    list(output_id = "T-14-1-5", cols = "ARMGRP", rows = "group = variable",
          total = "Total",
          note = "Demographics; race's Asian sub-categories nested under Asian"),
-    list(output_id = "T-14-1-6", cols = "ARM", rows = "group = variable",
+    list(output_id = "T-14-1-6", cols = "ARMGRP", rows = "group = variable",
          total = "Total",
          note = "Demographics; race's Asian sub-categories as a block of their own"),
     list(output_id = "T-14-2-3", cols = "TRTA", rows = "group = variable",
@@ -265,7 +265,7 @@ sheets <- list(
          # T-14-1-5/6: the enrolled subjects' arms (screen failures too;
          # the Total column is tables$total, not a value); race as the
          # other tables; the demonstration sub-categories of Asian
-         codelist("T-14-1-5", "ARM", paste(arms, "| Screen Failure")),
+         codelist("T-14-1-5", "ARMGRP", paste(arms, "| Screen Failure")),
          codelist("T-14-1-5", "RACE", c(
            "WHITE" = "White",
            "BLACK OR AFRICAN AMERICAN" = "Black or African American",
@@ -283,7 +283,7 @@ sheets <- list(
            "HISPANIC OR LATINO" = "Hispanic or Latino",
            "NOT HISPANIC OR LATINO" = "Not Hispanic or Latino",
            "NOT REPORTED" = "Not reported", "UNKNOWN" = "Unknown")),
-         codelist("T-14-1-6", "ARM", paste(arms, "| Screen Failure")),
+         codelist("T-14-1-6", "ARMGRP", paste(arms, "| Screen Failure")),
          codelist("T-14-1-6", "RACE", c(
            "WHITE" = "White",
            "BLACK OR AFRICAN AMERICAN" = "Black or African American",
@@ -659,36 +659,36 @@ p$ard$analyses <- tbl(
   # with its Asian sub-categories -- the same analyses, laid out nested
   # (T-14-1-5) or as a block of their own (T-14-1-6)
   list(output_id = "T-14-1-5", analysis_id = "GROUPN", method = "categorical",
-       data = "adsl_enr", variables = "ARM"),
+       data = "adsl_enr", variables = "ARMGRP"),
   list(output_id = "T-14-1-5", analysis_id = "RACE", label = "Race",
-       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "RACE", denominator = "adsl_enr", statistics = "n | p"),
   list(output_id = "T-14-1-5", analysis_id = "ASIANSUB", label = "Asian sub-category",
-       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "ASIANSUB", denominator = "adsl_enr", statistics = "n | p"),
   list(output_id = "T-14-1-5", analysis_id = "CONT", label = "Continuous",
-       method = "continuous", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "continuous", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "AGE", statistics = "N | mean | sd | median | min | max"),
   list(output_id = "T-14-1-5", analysis_id = "CAT", label = "Categorical",
-       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "AGEGR1 | SEX | ETHNIC", denominator = "adsl_enr",
        statistics = "n | p"),
   # T-14-1-6: the demographics of the enrolled subjects,
   # percentages of the column's subjects; `overall` runs each analysis
   # again over all of them (cards' overall rows: the Total column)
   list(output_id = "T-14-1-6", analysis_id = "GROUPN", method = "categorical",
-       data = "adsl_enr", variables = "ARM"),
+       data = "adsl_enr", variables = "ARMGRP"),
   list(output_id = "T-14-1-6", analysis_id = "RACE", label = "Race",
-       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "RACE", denominator = "adsl_enr", statistics = "n | p"),
   list(output_id = "T-14-1-6", analysis_id = "ASIANSUB", label = "Asian sub-category",
-       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "ASIANSUB", denominator = "adsl_enr", statistics = "n | p"),
   list(output_id = "T-14-1-6", analysis_id = "CONT", label = "Continuous",
-       method = "continuous", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "continuous", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "AGE", statistics = "N | mean | sd | median | min | max"),
   list(output_id = "T-14-1-6", analysis_id = "CAT", label = "Categorical",
-       method = "categorical", data = "adsl_enr", by = "ARM", overall = "TRUE",
+       method = "categorical", data = "adsl_enr", by = "ARMGRP", overall = "TRUE",
        variables = "AGEGR1 | SEX | ETHNIC", denominator = "adsl_enr",
        statistics = "n | p"),
   # T-14-3-1 reads analysis data: the TEAEs of the safety set (adae_saf,
@@ -700,11 +700,11 @@ p$ard$analyses <- tbl(
 # every table reads analysis data -- each table's own (an analysis data is
 # a report's): the safety set (adsl_saf) in each, and the records of other
 # datasets kept to its subjects where a table reads them
-# the screened subjects by arm, the screen failures a column of their own
-# (they have no ARM: ARMNRS says why); a demonstration sub-race of Asian
+# the screened subjects by arm (ARMGRP), the screen failures a column of their
+# own (they have no ARM: ARMNRS says why); a demonstration sub-race of Asian
 # from the country (the data have none: derived for the sample only)
 enr_derive <- paste(
-  "ARM = dplyr::if_else(ARMNRS %in% \"SCREEN FAILURE\", \"Screen Failure\", as.character(ARM))",
+  "ARMGRP = dplyr::if_else(ARMNRS %in% \"SCREEN FAILURE\", \"Screen Failure\", as.character(ARM))",
   "ASIANSUB = dplyr::case_when(RACE == \"ASIAN\" & COUNTRY == \"JPN\" ~ \"JAPANESE\", RACE == \"ASIAN\" & COUNTRY == \"KOR\" ~ \"KOREAN\")",
   sep = " | ")
 saf <- function(o) list(output_id = o, data_id = "adsl_saf", label = "Safety set",

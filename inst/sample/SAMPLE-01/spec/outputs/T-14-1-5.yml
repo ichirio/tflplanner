@@ -11,7 +11,7 @@ ard:
       label: Screened subjects
       from: ADSL
       population: ENR
-      derive: !r ARM = dplyr::if_else(ARMNRS %in% "SCREEN FAILURE", "Screen Failure",
+      derive: !r ARMGRP = dplyr::if_else(ARMNRS %in% "SCREEN FAILURE", "Screen Failure",
         as.character(ARM)) | ASIANSUB = dplyr::case_when(RACE == "ASIAN" & COUNTRY
         == "JPN" ~ "JAPANESE", RACE == "ASIAN" & COUNTRY == "KOR" ~ "KOREAN")
     - id: adsl_enr_1
@@ -23,14 +23,14 @@ ard:
       method: categorical
       data: adsl_enr
       variables:
-        - ARM
+        - ARMGRP
       purpose: PRIMARY OUTCOME MEASURE
     - id: RACE
       label: Race
       method: categorical
       data: adsl_enr
       by:
-        - ARM
+        - ARMGRP
       overall: true
       variables:
         - RACE
@@ -44,7 +44,7 @@ ard:
       method: categorical
       data: adsl_enr
       by:
-        - ARM
+        - ARMGRP
       overall: true
       variables:
         - ASIANSUB
@@ -58,7 +58,7 @@ ard:
       method: continuous
       data: adsl_enr
       by:
-        - ARM
+        - ARMGRP
       overall: true
       variables:
         - AGE
@@ -75,7 +75,7 @@ ard:
       method: categorical
       data: adsl_enr
       by:
-        - ARM
+        - ARMGRP
       overall: true
       variables:
         - AGEGR1
@@ -90,7 +90,7 @@ data:
   source: ard
   object: ard
 codelists:
-  ARM:
+  ARMGRP:
     - value: Drug X
     - value: Control
     - value: Screen Failure
@@ -135,7 +135,7 @@ codelists:
       label: Unknown
 content:
   - table_plan:
-      cols: ARM
+      cols: ARMGRP
       rows:
         group: variable
   - plan_cells:
@@ -153,7 +153,7 @@ content:
       RACE: Race, n (%)
       ETHNIC: Ethnicity, n (%)
   - plan_levels:
-      ARM:
+      ARMGRP:
         - Drug X
         - Control
         - Screen Failure

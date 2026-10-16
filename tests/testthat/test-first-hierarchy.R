@@ -49,7 +49,7 @@ test_that("the starter writes the rows of the sample's T-14-3-1", {
   expect_setequal(r$p$ard$datasets$dataset, c("ADSL", "ADAE"))
   # the columns: the analysis set's arms (no screen failures), in order
   vr <- sample_rows(r$p, "sheet", "variables", cols = c("variable", "levels"))
-  expect_identical(vr$levels, "Placebo | Xanomeline Low Dose | Xanomeline High Dose")
+  expect_identical(vr$levels, "Drug X | Control")
   expect_identical(report_info(r$p, "T-14-3-1")$type, "table")
 })
 

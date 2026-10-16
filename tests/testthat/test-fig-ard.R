@@ -53,9 +53,9 @@ test_that("the sample's F-14-2-3 reads T-14-2-2's ARD in its data section", {
   # the medians: one annotate a arm, its number the ARD's; the hazard
   # ratios: the estimate and its CI on one line (#311)
   expect_identical(sum(grepl("ard_value(ard, \"KM\", \"prob\", \"estimate\", TRT01A = ",
-                             code, fixed = TRUE)), 3L)
-  expect_identical(sum(grepl("ard_value(ard, \"HR\", \"TRT01A\", \"conf.high\", level = ",
                              code, fixed = TRUE)), 2L)
+  expect_identical(sum(grepl("ard_value(ard, \"HR\", \"TRT01A\", \"conf.high\", level = ",
+                             code, fixed = TRUE)), 1L)
   expect_false(inherits(tryCatch(parse(text = code), error = function(e) e), "error"))
   # no source: the program stops, saying where to choose it
   p0 <- set_fig_ard_source(p, "F-14-2-3", NULL)
@@ -135,7 +135,7 @@ test_that("the designer: an ARD piece's code is its whole term, its summary its 
                      sub(pattern = ": $", replacement = ""), fixed = TRUE)
     }
   }
-  expect_identical(.pd_summary(d$layers[[k[1L]]]), "KM prob estimate TRT01A = Placebo")
+  expect_identical(.pd_summary(d$layers[[k[1L]]]), "KM prob estimate TRT01A = Drug X")
 })
 
 test_that("a table deleted, or an analysis dropped from it: the figure's checks say so", {
