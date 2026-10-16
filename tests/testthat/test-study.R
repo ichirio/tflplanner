@@ -217,7 +217,7 @@ test_that("a study runs end to end and reports what it produced", {
   st <- run_study(s)
   expect_equal(st$status, c("ok", "todo"))
   expect_true(file.exists(file.path(s$path, "output", "tfl", "DM.rtf")))
-  expect_true(file.exists(file.path(s$path, "output", "ard", "DM.rds")))
+  expect_false(file.exists(file.path(s$path, "output", "ard", "DM.rds")))
   expect_true(file.exists(file.path(s$path, "logs", "preview", "DM.log")))
 
   # saving an unchanged study leaves the RTF current

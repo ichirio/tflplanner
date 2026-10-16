@@ -56,7 +56,7 @@ test_that("a table: its data step's code (ard normalized), its content step's co
   # its content as the table definition makes it (the plan)
   expect_true("plan <- ard |>" %in% code)
   expect_true(any(grepl("table_plan(", code, fixed = TRUE)))
-  expect_true(any(grepl("saveRDS(ard", code, fixed = TRUE)))
+  expect_false(any(grepl("saveRDS(", code, fixed = TRUE)))
   expect_silent(parse(text = code))
   # the content its code: no plan, `content` to the report
   p <- set_step_code(p, "T-1", "content", "content <- head(data)")
