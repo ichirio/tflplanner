@@ -45,10 +45,7 @@ batch_code <- function(x, date = Sys.Date(), root = ".") {
   infos <- lapply(out_ids, function(id) report_info(x, id))
   tfl_progs <- file.path(lay[["programs_tfl"]],
                          vapply(infos, `[[`, "", "program"))
-  made <- lapply(seq_along(out_ids), function(i) c(
-    infos[[i]]$file,
-    if (identical(infos[[i]]$type, "table"))
-      file.path(lay[["ard"]], paste0(out_ids[i], ".rds"))))
+  made <- lapply(infos, function(info) info$file)
   ard_out <- .study_value(spec, "output", "output/ard/ard.rds")
   # the figures printing an ARD's numbers (#293)
   need <- vapply(out_ids, function(id)

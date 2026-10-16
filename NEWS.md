@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **The table builder shows the content as the plan's cards** (#397,
-  0.0.2.9229).  One card a function call -- its fields that function's
+  0.0.2.9230).  One card a function call -- its fields that function's
   arguments only -- in the content's order, under the plan bar with two
   separators: the table skeleton (which ARD values go to which rows,
   columns and cells) and finishing (labels, order, digits, pages).  Each
@@ -20,6 +20,14 @@
   analysis variables' block removable (a table of one variable), the
   stack's subgroup offered as rows (an Overall Response table), the row
   text chosen.  tflspec >= 0.0.24.9137.
+
+- **A table's data is no longer saved per report** (#405, 0.0.2.9229; the
+  owner's decision: the deliverable is the report).  A table's program no
+  longer ends with `saveRDS()` to `output/ard/<output_id>.rds`; the report's
+  ARD is in the study ARD (`output/ard/ard.rds`) by `output_id`.  The
+  official run no longer lists the file among those it made (an earlier
+  run's compares as "not made" once), and `study_status()` loses its `ard`
+  column (the file's time, not shown on the status screen).
 
 - **A table's program normalizes its ARD in the table's pipe** (#402,
   0.0.2.9228; tflspec >= 0.0.24.9137, its #302).  With no process code and

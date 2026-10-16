@@ -373,5 +373,7 @@ test_that("two official runs of the sample compared after a data fix", {
   b3 <- run_batch(s, c("ard", "tfl"), data = TRUE, only = "T-14-1-1")
   r3 <- compare_batches(s, basename(b3$batch))
   expect_identical(attr(r3, "changed")$inputs, "data/adam/adsl.rds")
-  expect_true("output/ard/T-14-1-1.rds" %in% attr(r3, "changed")$outputs)
+  # (the study ARD; a table's data is not saved per report, #405)
+  expect_true("output/ard/ard.rds" %in% attr(r3, "changed")$outputs)
+  expect_false("output/ard/T-14-1-1.rds" %in% c(r3$file, attr(r3, "changed")$outputs))
 })
