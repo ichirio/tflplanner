@@ -147,18 +147,39 @@ report_info <- function(x, output_id) {
 }
 
 # A table's normalization after its ARD: its process code, or (when the
-# code before it did not make `data`) the company's template or
-# normalize_ard()
+# code before it did not make `data`) the company's template; the built-in
+# normalization is the table's plan's (tflspec::tfl_table_code(): `plan <-
+# ard |> normalize_ard(...) |> table_plan(...)`), no line here
 .table_process_lines <- function(x, output_id, code, proc) {
+  if (.table_norm_builtin(x, output_id, code, proc)) return(NULL)
   if (!is.na(proc)) {
     c("", "# normalize and rework", .code_block(proc))
   } else if (!.makes_data(code)) {
-    tp <- .fill_template("table_process", x, output_id)
-    # the built-in normalization, or the company's template left at it:
-    # the line the report's definitions say (tflspec::tfl_normalize_code())
-    c("", if (is.na(tp) || identical(trimws(tp), "data <- normalize_ard(ard)"))
-      .normalize_line(x, output_id) else .code_block(tp))
+    c("", .code_block(.fill_template("table_process", x, output_id)))
   }
+}
+
+# Is a table's normalization the built-in one, in its plan's pipe?  When
+# nothing makes `data` -- no process code, the ARD code (or the data step's
+# own code) leaves `ard`, the company's template is blank or left at
+# `data <- normalize_ard(ard)` -- and the plan is the definition's (not a
+# content step of its own code, which reads `data`).  `code` and `proc`:
+# the report's ARD code and process code (by default, the report's).
+.table_norm_builtin <- function(x, output_id, code = NULL, proc = NULL) {
+  if (!identical(report_info(x, output_id)$type, "table")) return(FALSE)
+  if (.is_code_step(x, output_id, "content")) return(FALSE)
+  if (is.null(proc)) {
+    o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
+    proc <- if (nrow(o) && !is.na(o$process_code)) o$process_code else NA
+  }
+  if (!is.na(proc)) return(FALSE)
+  if (is.null(code)) {
+    code <- if (.is_code_step(x, output_id, "data")) step_code(x, output_id, "data") else
+      .ard_code_of(x, output_id)
+  }
+  if (!is.na(code) && .makes_data(code)) return(FALSE)
+  tp <- .fill_template("table_process", x, output_id)
+  is.na(tp) || identical(trimws(tp), "data <- normalize_ard(ard)")
 }
 
 # a report whose ARD was made elsewhere and taken in (ard_source =
@@ -221,7 +242,8 @@ code_templates <- function(name = NULL) {
 #' report runs, then its data and its content as its definition makes them
 #' or as its own code does ([step_code()]: the datasets it registers, its
 #' ARD as `ard`, the code) -- a table's ARD and its `process_code`
-#' (normalization and rework, by default `data <- normalize_ard(ard)`).
+#' (normalization and rework; by default none: the table's plan normalizes
+#' `ard`).
 #' With nothing to make it, a TODO that stops.  [program_code()] writes it
 #' into the program, and [fetch_ard()] runs it to learn what the ARD holds.
 #'
@@ -303,16 +325,21 @@ data_lines <- function(x, output_id, todo = TRUE) {
     code <- step_code(x, output_id, "data")
     c(.section("data: your code"),
       .code_inputs(x, output_id),
-      if (identical(type, "table")) c(
-        "# your code: leaves `data` (or `ard`, normalized below)",
-        .code_block(code),
-        .table_process_lines(x, output_id, code, proc),
-        "", "data <- report_data(data, \"data\")")
+      if (identical(type, "table")) {
+        # (leaving `ard`, it is normalized in the table's plan)
+        leaves <- if (.table_norm_builtin(x, output_id, code, proc)) "ard" else "data"
+        c(if (identical(leaves, "ard")) "# your code: leaves `ard` (normalized in the table's plan) or `data`"
+          else "# your code: leaves `data` (or `ard`, normalized below)",
+          .code_block(code),
+          .table_process_lines(x, output_id, code, proc),
+          "", sprintf("%s <- report_data(%s, \"%s\")", leaves, leaves, leaves))
+      }
       else .code_step_lines(x, output_id, "data"))
   } else switch(type,
     table = {
       a <- .ard_code_of(x, output_id)
-      c(.section("data: this report's normalized ARD"),
+      c(.section(if (.table_norm_builtin(x, output_id, a, proc)) "data: this report's ARD"
+                 else "data: this report's normalized ARD"),
         if (is.na(a)) todo("ARD") else c(.code_block(a), .table_process_lines(x, output_id, a, proc)))
     },
     listing = c(.section("data: the listing's data"),
@@ -344,10 +371,12 @@ data_lines <- function(x, output_id, todo = TRUE) {
 #' [study_layout()]) and names every file relative to it.  What it does
 #' depends on the report's `type`:
 #'
-#' * `table` -- the data part leaves `data`, the normalized ARD; the program
-#'   saves it to `output/ard/<output_id>.rds` (the deliverable data) and
-#'   plans the table as `table_spec.xlsx` defines it, written out as
-#'   `table_plan() |> plan_*()` ([tflspec::tfl_table_code()]).
+#' * `table` -- the data part leaves `ard`, this report's ARD (or `data`,
+#'   when its process code or the company's template normalizes it); the
+#'   program saves it to `output/ard/<output_id>.rds` (the deliverable data)
+#'   and plans the table as `table_spec.xlsx` defines it, written out as
+#'   `ard |> normalize_ard() |> table_plan() |> plan_*()` (or
+#'   `table_plan(data)`; [tflspec::tfl_table_code()]).
 #' * `listing`, `figure` -- the data part leaves `content`: `rtftable`
 #'   pages for a listing, the figures for a figure.
 #'
@@ -374,7 +403,9 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   titles <- .title_lines(x, output_id)
   type <- info$type
   table <- identical(type, "table")
-  obj <- if (table) "data" else "content"
+  # a table normalized in its plan's pipe keeps its ARD (`ard`), one
+  # normalized in its data part `data`
+  obj <- if (!table) "content" else if (.table_norm_builtin(x, output_id)) "ard" else "data"
   # a designed figure: its code is the design's (#293)
   design <- if (identical(type, "figure")) fig_design(x, output_id)
   # a step of the report's own code: its data and content parts are
@@ -403,21 +434,19 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   data <- if (is.null(design) || own) data_lines(x, output_id) else c(
     if (!is.na(x$setup)) c(.code_block(x$setup), ""),
     .fig_design_lines(x, output_id, design, source = FALSE))
-  data_part <- if (!is.null(design) || own) c(data, if (own && table) c(
+  keep <- c(
       "",
-      "# the table's data, kept beside the study ARD",
-      paste0("saveRDS(data, file.path(", .path_lit(lay[["ard"]]),
-             ", paste0(report_id, \".rds\")))"))) else c(
+      paste0("# the table's ", if (identical(obj, "ard")) "ARD" else "data",
+             ", kept beside the study ARD"),
+      paste0("saveRDS(", obj, ", file.path(", .path_lit(lay[["ard"]]),
+             ", paste0(report_id, \".rds\")))"))
+  data_part <- if (!is.null(design) || own) c(data, if (own && table) keep) else c(
     .section(paste0("data: ", switch(type,
       figure = "the figure",
       listing = "the listing's pages",
-      "this report's normalized ARD"))),
+      if (identical(obj, "ard")) "this report's ARD" else "this report's normalized ARD"))),
     data,
-    if (table) c(
-      "",
-      "# the table's data, kept beside the study ARD",
-      paste0("saveRDS(data, file.path(", .path_lit(lay[["ard"]]),
-             ", paste0(report_id, \".rds\")))")))
+    if (table) keep)
 
   # a figure's plot goes to the report as it is (rtf_figures(doc, plot)),
   # unless its code makes `content` itself
@@ -449,16 +478,6 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 # (tfl_report_code()) and where it goes (tfl_report_path()).  A definition
 # that does not hold yet (a half-filled sheet) gives a stop() line saying
 # why, so the program is still written and says what to fix when run.
-# A table's normalization when it says none and the company's template is
-# the built-in one: the line its definitions say -- the hierarchy of its
-# hierarchical analysis, the any-event row (tables$overall_label):
-# tflspec::tfl_normalize_code()
-.normalize_line <- function(x, output_id) {
-  sp <- .spec_object_last(x, table_sheets(), .study_keys$table)
-  tryCatch(tflspec::tfl_normalize_code(sp, .ard_spec(x$ard), output_id),
-           error = function(e) "data <- normalize_ard(ard)")
-}
-
 # The whole study's table and report spec, kept for the next report of
 # the same definition: writing or checking every report's program (saving
 # a study, study_status()) built it once per report -- 0.2 s each, a minute
@@ -509,7 +528,17 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     if (table) c(
       paste0("# the table, as ", file.path(lay[["spec"]], "outputs", paste0(output_id, ".yml")),
              " defines it"),
-      tflspec::tfl_table_code(sp, output_id, pipe = "|>"),
+      # the built-in normalization in its pipe (the hierarchy of its
+      # hierarchical analysis, the any-event row: as the report's
+      # definitions say; an ARD definition that does not hold yet, a
+      # half-filled one: as the table's rows say); otherwise the data part
+      # made `data`
+      if (.table_norm_builtin(x, output_id)) {
+        tryCatch(tflspec::tfl_table_code(sp, output_id, pipe = "|>", ard_spec = .ard_spec(x$ard)),
+                 error = function(e) tflspec::tfl_table_code(sp, output_id, pipe = "|>"))
+      } else {
+        tflspec::tfl_table_code(sp, output_id, data = "data", pipe = "|>", normalize = FALSE)
+      },
       ""),
     paste0("# the report, as ", file.path(lay[["spec"]], "outputs", paste0(output_id, ".yml")),
            " defines it"),

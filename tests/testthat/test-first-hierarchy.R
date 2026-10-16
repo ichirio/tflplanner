@@ -39,8 +39,15 @@ test_that("the starter writes the rows of the sample's T-14-3-1", {
   # overall_label, the very line the sample's rework writes by hand
   expect_true(is.na(r$p$outputs$process_code[match("T-14-3-1", r$p$outputs$output_id)]))
   same("sheet", "tables", "overall_label")
-  expect_identical(.normalize_line(r$p, "T-14-3-1"), .normalize_line(r$sample, "T-14-3-1"))
-  expect_match(.normalize_line(r$p, "T-14-3-1"), "overall = \"Any TEAE\"", fixed = TRUE)
+  # (in the table's pipe, tflspec #302)
+  norm <- function(p, id) {
+    code <- .report_code_lines(p, id, table = TRUE)
+    i <- which(code == "plan <- ard |>")
+    j <- which(startsWith(trimws(code), "table_plan("))
+    paste(trimws(code[(i + 1L):(j[j > i][1L] - 1L)]), collapse = " ")
+  }
+  expect_identical(norm(r$p, "T-14-3-1"), norm(r$sample, "T-14-3-1"))
+  expect_match(norm(r$p, "T-14-3-1"), "overall = \"Any TEAE\"", fixed = TRUE)
   # the analysis set, as the sample's
   po <- r$p$ard$populations
   expect_identical(po$population_id, "SAF")
@@ -68,7 +75,8 @@ test_that("its own hierarchy (medications), all records, a Total column", {
   expect_identical(an$variables, "CMCLAS | CMDECOD")
   expect_identical(an$overall, "TRUE")
   expect_identical(sheet_rows(p, "tables", "T-CM")$overall_label, "Any CM")
-  expect_match(norm_line <- paste(.normalize_line(p, "T-CM"), collapse = " "),
+  code <- .report_code_lines(p, "T-CM", table = TRUE)
+  expect_match(norm_line <- paste(code, collapse = " "),
                "hierarchy = c(\"CMCLAS\", \"CMDECOD\")", fixed = TRUE)
   expect_match(norm_line, "overall = \"Any CM\"", fixed = TRUE)
   ad <- ard_rows(p, "analysis_data", "T-CM")

@@ -23,10 +23,12 @@ depends on the report's \code{type}:
 }
 \details{
 \itemize{
-\item \code{table} -- the data part leaves \code{data}, the normalized ARD; the program
-saves it to \verb{output/ard/<output_id>.rds} (the deliverable data) and
-plans the table as \code{table_spec.xlsx} defines it, written out as
-\verb{table_plan() |> plan_*()} (\code{\link[tflspec:tfl_table_code]{tflspec::tfl_table_code()}}).
+\item \code{table} -- the data part leaves \code{ard}, this report's ARD (or \code{data},
+when its process code or the company's template normalizes it); the
+program saves it to \verb{output/ard/<output_id>.rds} (the deliverable data)
+and plans the table as \code{table_spec.xlsx} defines it, written out as
+\verb{ard |> normalize_ard() |> table_plan() |> plan_*()} (or
+\code{table_plan(data)}; \code{\link[tflspec:tfl_table_code]{tflspec::tfl_table_code()}}).
 \item \code{listing}, \code{figure} -- the data part leaves \code{content}: \code{rtftable}
 pages for a listing, the figures for a figure.
 }
