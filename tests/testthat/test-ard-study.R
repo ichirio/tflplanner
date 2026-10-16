@@ -43,7 +43,8 @@ test_that("a table the ARD definition serves reads its part of the study ARD", {
   p <- ard_planner()
   code <- data_lines(p, "DM")
   expect_true(any(grepl("readRDS(\"output/ard/ard.rds\")", code, fixed = TRUE)))
-  expect_true(any(grepl("data <- normalize_ard(ard)", code, fixed = TRUE)))
+  # normalized in the table's plan (tflspec #302), not here
+  expect_false(any(grepl("normalize_ard(", code, fixed = TRUE)))
   expect_true(any(grepl("still to be written", data_lines(p, "L1"))))
   # its data step its own code: that code, which makes the data itself (no
   # study ARD read for it)

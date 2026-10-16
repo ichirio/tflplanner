@@ -1,5 +1,17 @@
 # tflplanner (development version)
 
+- **A table's program normalizes its ARD in the table's pipe** (#402,
+  0.0.2.9228; tflspec >= 0.0.24.9137, its #302).  With no process code and
+  the company's template left at the built-in one, the data part leaves
+  `ard` (the report's rows of the study ARD, saved to
+  `output/ard/<output_id>.rds`) and the report part writes `plan <- ard |>
+  normalize_ard(hierarchy = ..., overall = ..., stack = ...) |>
+  table_plan(...) |> plan_*()`, the arguments from the report's
+  definitions as before; the separate `data <- normalize_ard(...)` line is
+  gone.  A table whose process code, company template or own data step
+  makes `data` keeps `plan <- table_plan(data, ...)`, and so does one whose
+  content step is its own code.  SAMPLE-01's RTFs are the same.
+
 - **The sample study SAMPLE-01 runs on tflspec's oncology sample data**
   (#400, 0.0.2.9227; the owner's decision: the bundled onco data are the
   tfl series' sample data).  SAMPLE-01's ADaM are tflspec's simulated study

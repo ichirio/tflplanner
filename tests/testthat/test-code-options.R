@@ -42,7 +42,7 @@ test_that("a study's programs read its folders by their variables; previews as t
   rep <- readLines(file.path(s$path, "programs", "tfl", report_info(s$planner, "DM")$program))
   expect_true(any(grepl("readRDS(file.path(path_ard, \"ard.rds\")) |>", rep, fixed = TRUE)))
   expect_true(any(grepl("  filter(output_id == report_id) |>", rep, fixed = TRUE)))
-  expect_true(any(grepl("saveRDS(data, file.path(path_ard, paste0(report_id, \".rds\")))",
+  expect_true(any(grepl("saveRDS(ard, file.path(path_ard, paste0(report_id, \".rds\")))",
                         rep, fixed = TRUE)))
   # written once: saved again, the programs are as they were
   expect_identical(unique(study_status(s)$program_state), "current")
