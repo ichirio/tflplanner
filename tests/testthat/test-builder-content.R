@@ -185,7 +185,13 @@ test_that("a line of the program leads to the card that wrote it", {
   m <- builder_code_map(code, items)
   expect_true(all(m$path %in% vapply(items, function(it) it$path, "")))
   path_of <- function(pattern) m$path[match(grep(pattern, code)[1L], m$line)]
-  expect_identical(path_of("^plan <- table_plan\\("), "table_plan")
+  # (the plan is one pipe from the ARD: plan <- ard |> normalize_ard() |> table_plan())
+  expect_identical(path_of("^(plan <- |  )table_plan\\("), "table_plan")
+  # with the normalization's card among the items: its line in the pipe
+  m2 <- builder_code_map(code, .builder_items_normalize(items))
+  at <- grep("^  normalize_ard\\(", code)[1L]
+  expect_false(is.na(at))
+  expect_identical(m2$path[match(at, m2$line)], "normalize_ard")
   expect_identical(path_of("^  plan_cells\\("), "plan_cells")
   expect_identical(path_of("^  plan_col_header\\("), "plan_col_header")
   # a call over several lines: each of them
