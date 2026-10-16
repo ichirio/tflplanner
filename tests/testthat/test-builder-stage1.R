@@ -562,14 +562,17 @@ test_that("builder_read() tells where each order comes from; a key column's fact
   vr <- sheet_rows(p, "variables", "T-14-1-1")
   vr$levels <- NA_character_
   q <- .put_rows(p, "T-14-1-1", "variables", vr)
-  adsl <- cards::ADSL
-  adsl$TRT01A <- factor(adsl$TRT01A, levels = c("Xanomeline High Dose", "Xanomeline Low Dose", "Placebo"))
+  # (the arms of the sample's code list, the ARD's factor the other way round)
+  cl <- .codelist_order(sheet_rows(p, "codelists", "T-14-1-1"), "TRT01A")
+  expect_length(cl, 2L)
+  adsl <- data.frame(TRT01A = factor(rep(cl, each = 3), levels = rev(cl)),
+                     SEX = rep(c("F", "M", "F"), 2))
   ard <- cards::ard_stack(adsl, .by = TRT01A, cards::ard_categorical(variables = SEX))
   m <- ard_meta(ard, rtfreporter::normalize_ard(ard))
   expect_true("TRT01A" %in% m$factor_keys)
   st <- builder_read(q, "T-14-1-1", m)
   expect_identical(st$level_from$TRT01A, list(source = "codelist", differs = TRUE))
-  expect_identical(st$arms$TRT01A, c("Placebo", "Xanomeline Low Dose", "Xanomeline High Dose"))
+  expect_identical(st$arms$TRT01A, cl)
   expect_identical(st$auto_levels$TRT01A, st$arms$TRT01A)
   # the key column's factor: plan_levels on, its arms written
   m$factor_vars <- character()
