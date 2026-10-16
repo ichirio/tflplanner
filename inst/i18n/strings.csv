@@ -3303,7 +3303,6 @@ The ARD has no overall rows.,ARD に全体の行がありません
 Cards (plan),カード一覧 (plan)
 Add a card (type to search),カードを追加する（名前で探す）
 No settings: the function's defaults.,設定なし: 関数の既定
-Not kept in the sheets yet: the function's default applies.,まだシートに保存できません: 関数の既定が使われます
 No any-event row: the ARD's rows as they are,全体の行なし（ARD の行のまま）
 A variable not here is added in the ARD analysis.,ここにない変数は ARD 作成の解析で足します
 Shown,表示する
@@ -3368,9 +3367,56 @@ Analysis variables' order,解析変数の並び
 %s (column key),%s（列キー）
 "One row of plan_cells(continuous = c(row label = template)). Write the ARD's statistic names, {mean} {sd} ...; {mean:.2f} sets the decimals too.",plan_cells(continuous = c(行ラベル = テンプレート)) の 1 行。{mean} {sd} など ARD の統計量名を書き、{mean:.2f} で桁も書けます。
 "What can be placed: the normalized ARD's columns (the keys, variable, a stack's subgroup). group1 is not there: normalizing makes it a column named after its group (TRT01A ...); the analysis variables AGE/SEX are values of variable, so they come as the block of variable. A column is in cols or in rows, not both.",置けるのは正規化 ARD の列（キー、variable、積み上げの subgroup）。group1 は正規化で TRT01A などの名前の列になるので無く、解析変数 AGE/SEX は variable の値なので variable のまとまりとして置きます。1 列は cols と rows のどちらか一方。
-"Turns the ARD's group1/group1_level ... into columns named after the groups (TRT01A, SEX), folds a hierarchy into its level columns and attaches the formatted value stat_fmt. The cards below use these column names (TRT01A, variable, variable_level, .label, stat, stat_fmt).","ARD の group1/group1_level … を群の名前の列（TRT01A, SEX）に直し、階層は段の列に畳み、書式済みの値 stat_fmt を付けます。以後のカードはこの列名（TRT01A, variable, variable_level, .label, stat, stat_fmt）で書きます。"
-"Columns out: the keys (groups, hierarchy levels, a stack's subgroup/subgroup_level), variable (the analysis variable's name), variable_level (a category), context, stat_name, stat (the number), stat_fmt (the text as step 1 formatted it), .kind (continuous/categorical), .label (the row's text), .depth (depth in a hierarchy). Analysis variables stay values of variable, not columns.",出てくる列: キー列（群・階層の段・積み上げの subgroup/subgroup_level）、variable（解析変数の名前）、variable_level（カテゴリの値）、context、stat_name、stat（数値）、stat_fmt（ARD 作成で付けた書式の文字）、.kind（continuous/categorical）、.label（行の文字）、.depth（階層の深さ）。解析変数は列にならず variable の値のままです。
 "Makes plan_levels(name = the values' order). A name is a column of the normalized ARD (a column key TRT01A, a stack's subgroup), variable (the analysis variables' order) or a categorical variable (its values). Only what has fixed values can be ordered.",plan_levels(名前 = 値の順) を作ります。名前は正規化 ARD の列（列キー TRT01A、積み上げ subgroup）、variable（解析変数の並び）、カテゴリ変数（その値）。値の決まったものだけ並べられます。
 "Stacks parallel subgroup analyses (ALL, SEX, AGEGR1 ...) as one pair of keys, subgroup and subgroup_level, for a subgroup table. e.g. subgroup = ALL, SEX, AGEGR1","部分集団ごとの並行した解析（ALL, SEX, AGEGR1 …）を 1 組のキー subgroup と subgroup_level に積み上げます（部分集団の表）。例: subgroup = ALL, SEX, AGEGR1"
 "The text between a crossed layer's names and values ("" / "": AGEGR1 / SEX). e.g. "" x ""","交差した層の名前と値をつなぐ文字（"" / "": AGEGR1 / SEX）。例: "" x """
 "TRUE: a crossed layer's outer value goes to subgroup_outer (Age Group by Sex, 65-80, F as three levels). e.g. TRUE",TRUE: 交差した層の外側の値を subgroup_outer に分けます（Age Group by Sex → 65-80 → F の 3 段）。例: TRUE
+"The group variables made into columns of their own (TRT01A, SEX ...). Blank: every group of the ARD, which is what a table usually needs. e.g. TRT01A","列にする群の変数（TRT01A, SEX など）。空欄 = ARD のすべての群（ふつうはこれで足ります）。例: TRT01A"
+"The kinds of ARD rows (context) left out before the table. Blank: the attributes rows and the total_n row, which no cell prints (the total N is still kept for a header). e.g. attributes",表の前に除く ARD の行の種類（context）。空欄 = attributes の行と total_n の行（どのセルにも出ない行。全体の N は見出し用に残ります）。例: attributes
+The rows that count a group variable itself (the subjects per arm): TRUE takes them out; blank (FALSE) keeps them out of the body for a header's (N=n). Usually left blank. e.g. TRUE,群の変数そのものを数えた行（群ごとの例数）: TRUE で取り除きます。空欄（FALSE）なら本体には出さず、見出しの (N=n) 用に残します。ふつうは空欄。例: TRUE
+The row key whose rows are judged together by the condition (with the keys outside it): a SOC kept or dropped as a whole. Blank: each row by itself. e.g. AEBODSYS,条件でまとめて判定する行のキー（その外側のキーも含めて）: SOC ごと残す・除くなど。空欄 = 1 行ずつ。例: AEBODSYS
+"TRUE: the blank rows count toward a page's rows (plan_paginate_rows()' most rows a page), so a page never overflows. Blank: only the table's rows are counted. e.g. TRUE",TRUE: 空白行もページの行数（plan_paginate_rows() の 1 ページの最大行数）に数え、ページからあふれないようにします。空欄 = 表の行だけを数えます。例: TRUE
+"The row numbers a page starts at, for the split rule ""rows"". Used for breaks by hand. e.g. c(20, 40): pages 1-19, 20-39, 40-","ページを始める行の番号（分け方 ""rows"" のとき）。手で改ページするときに使います。例: c(20, 40) で 1-19 行、20-39 行、40 行以降"
+"The fewest rows of a group a page may end with: a group with fewer moves whole to the next page, so its heading is not left alone at the foot. Blank: 2; 0 turns it off. e.g. 3",ページの最後に残してよいグループの最少行数。これより少なければグループごと次のページへ送り、見出しだけが下に残らないようにします。空欄 = 2、0 で無効。例: 3
+"The text after a group's heading on the pages it continues onto. Blank: "" (Cont.)"". e.g. "" (continued)""","続きのページでグループの見出しの後ろに付ける文字。空欄 = "" (Cont.)""。例: ""（続き）"""
+"With page by one column: each page's name as a template, {value} the page's value and {n} its subjects. e.g. Treatment: {value} (N={n})",1 つの列でページを分けるとき、各ページの名前のテンプレート。{value} はそのページの値、{n} はその例数。例: Treatment: {value} (N={n})
+"What each column page's header becomes, as R. Used when the pages need a header other than the table's own. Blank: the table's header, cut with its columns.",列ごとのページの見出しを R で指定します。表の見出しと違う見出しが要るときに使います。空欄 = 表の見出しを列に合わせて切ったもの。
+"The column whose runs of the same value are the groups, for a table already built (not from an ARD; an ARD table's groups are its outermost row key). e.g. ""V1""","同じ値が続く範囲をグループとみなす列（作成済みの表のとき。ARD から作る表では、いちばん外側の行のキーがグループです）。例: ""V1"""
+"The row keys folded into the one row label column, outermost first. Blank: worked out from the table's row layers, which is usually right. e.g. c(""AEBODSYS"", ""AEDECOD"")","1 つの行ラベルの列にまとめる行のキー（外側から）。空欄 = 表の行の段から決めます（ふつうはこれで足ります）。例: c(""AEBODSYS"", ""AEDECOD"")"
+"Which rows are a group's own summary, printed on the group's heading row: ""empty"" a blank leaf, ""parent"" a leaf equal to its parent. Blank: both; ""none"" turns it off. e.g. ""empty""","グループ自身の集計とみなす行（見出しの行に数字を載せます）: ""empty"" は下位が空の行、""parent"" は下位が親と同じ行。空欄 = 両方、""none"" で無効。例: ""empty"""
+"The text that joins several column keys in the value columns' names; the spanning header is cut at it. Blank: ""____"" (Placebo____F). Changed only when a value has ""____"" in it. e.g. ""__""","列のキーが複数のとき、値の列の名前でキーをつなぐ文字。上段の見出しはここで切ります。空欄 = ""____""（Placebo____F）。値に ""____"" を含むときだけ変えます。例: ""__"""
+"A function that formats the cells' text, or a list of them one a column, as R. e.g. function(x) toupper(x)",セルの文字を整える関数、または列ごとの関数のリストを R で指定します。例: function(x) toupper(x)
+"Each column's width in twips (1/1440 inch), as R; it replaces the widths above. e.g. c(3000, 1500, 1500)","各列の幅を twip（1/1440 インチ）で R で指定します。上の幅の代わりに使われます。例: c(3000, 1500, 1500)"
+"The table's font. Blank: the document's font. e.g. ""Arial""","表のフォント。空欄 = 文書のフォント。例: ""Arial"""
+The height of the body's rows in twips (1/1440 inch). Blank: from the font size. e.g. 240,本体の行の高さ（twip = 1/1440 インチ）。空欄 = フォントの大きさから決まります。例: 240
+TRUE: the rows' height is exact (a longer text is cut); FALSE: it is the least height (a row grows). e.g. TRUE,TRUE: 行の高さを固定（長い文字は切れます）。FALSE: 最小の高さ（行が伸びます）。例: TRUE
+The height of the column header's rows in twips. Blank: as the body's. e.g. 300,列見出しの行の高さ（twip）。空欄 = 本体と同じ。例: 300
+The height of the blank rows in twips: lower ones make a table shorter. Blank: as the body's. e.g. 120,空白行の高さ（twip）。低くすると表が短くなります。空欄 = 本体と同じ。例: 120
+"The space between a cell's left border and its text, in twips. Blank: 0. e.g. 60",セルの左の罫線と文字の間の余白（twip）。空欄 = 0。例: 60
+"The space between a cell's text and its right border, in twips. Blank: 0. e.g. 60",セルの文字と右の罫線の間の余白（twip）。空欄 = 0。例: 60
+"Where a cell's text sits from top to bottom: ""bottom"", ""top"" or ""center"". Blank: bottom. e.g. ""top""","セルの中の文字の縦の位置: ""bottom""（下）、""top""（上）、""center""（中央）。空欄 = 下。例: ""top"""
+"Where the table sits on the page: ""left"", ""center"" or ""right"". Blank: left. e.g. ""center""","ページの中の表の位置: ""left""（左）、""center""（中央）、""right""（右）。空欄 = 左。例: ""center"""
+"The marks in the cells' text turned into print: ""script"" ^{...} superscript and _{...} subscript, ""relational"" >= and <= as signs, ""all"", ""none"". Blank: the document's (script). e.g. ""all""","セルの文字の記法を印字に変えるもの: ""script"" は ^{...} を上付き・_{...} を下付き、""relational"" は >= と <= を記号に、""all""、""none""。空欄 = 文書の設定（script）。例: ""all"""
+"How blank rows are tidied: ""detect"" an empty row printed as one blank row, ""collapse"" several in a row made one. Blank: both. e.g. ""detect""","空白行の整え方: ""detect"" は空の行を 1 つの空白行として印字、""collapse"" は続く空白行を 1 つにまとめます。空欄 = 両方。例: ""detect"""
+"The rules of the column header's rows, one kind of row's (with border_spanning ... border_last_row: a style of one's own in place of Borders). e.g. ""bottom""","列見出しの行の罫線（border_spanning … border_last_row と合わせて、罫線の型の代わりに自分で決めるとき）。例: ""bottom"""
+"The rules under a spanning header's cells (the header over several columns). e.g. ""bottom""","複数列にまたがる見出しのセルの下の罫線。例: ""bottom"""
+"The rules of the body's rows. Blank: none between them. e.g. ""none""","本体の行の罫線。空欄 = 行の間には引きません。例: ""none"""
+"The rule over the table's first row (the top of the table). e.g. ""top""","表の最初の行の上の罫線（表のいちばん上）。例: ""top"""
+"The rule under the table's last row (the foot of the table). e.g. ""bottom""","表の最後の行の下の罫線（表のいちばん下）。例: ""bottom"""
+"The column header's alignment: ""left"", ""center"" or ""right"". Blank: center. e.g. ""left""","列見出しの文字の位置: ""left""、""center""、""right""。空欄 = 中央。例: ""left"""
+TRUE: the whole column header in bold. e.g. TRUE,TRUE: 列見出し全体を太字にします。例: TRUE
+TRUE: the whole column header in italics. e.g. TRUE,TRUE: 列見出し全体を斜体にします。例: TRUE
+"The body's alignment: ""left"", ""center"" or ""right"" (one column's: Cell styles). e.g. ""center""","本体の文字の位置: ""left""、""center""、""right""（1 つの列だけならセルの書式）。例: ""center"""
+TRUE: the whole body in bold (some cells only: Cell styles). e.g. TRUE,TRUE: 本体全体を太字にします（一部のセルだけならセルの書式）。例: TRUE
+TRUE: the whole body in italics (some cells only: Cell styles). e.g. TRUE,TRUE: 本体全体を斜体にします（一部のセルだけならセルの書式）。例: TRUE
+TRUE: the whole body underlined (some cells only: Cell styles). e.g. TRUE,TRUE: 本体全体に下線を引きます（一部のセルだけならセルの書式）。例: TRUE
+The table's width in twips (1/1440 inch); it wins over the widths in percent. Blank: the page's writable width. e.g. 12960,表の幅（twip = 1/1440 インチ）。パーセントの指定より優先されます。空欄 = ページの書ける幅。例: 12960
+The table's width as a percent (0-100) of the page's writable width. e.g. 80,表の幅を、ページの書ける幅に対するパーセント（0-100）で。例: 80
+"The table's width as a fraction (0-1) of the page's writable width (as table_width_pct, by 0-1). e.g. 0.8",表の幅を、ページの書ける幅に対する割合（0-1）で（table_width_pct の 0-1 版）。例: 0.8
+"The chosen cells' borders, as R (rtf_border()). e.g. rtf_border(bottom = ""single"")","選んだセルの罫線を R で指定します（rtf_border()）。例: rtf_border(bottom = ""single"")"
+"The chosen cells underlined: TRUE / FALSE, or a condition as R. e.g. TRUE",選んだセルに下線を引きます: TRUE / FALSE、または R の条件。例: TRUE
+The left indent of the chosen cells' text in twips (not the header's). e.g. 240,選んだセルの文字の左のインデント（twip。見出しには効きません）。例: 240
+Not saved,保存されません
+"The sheets have no place for this argument yet: a value here is not saved, and the function's default applies.",この引数はまだシートに保存する場所がありません。ここに入れた値は保存されず、関数の既定が使われます。
+Shapes the ARD for making the table.,ARD を表を作りやすい形に整えます。
+"normalize_ard() shapes the cards ARD for making the table. Before: group1 = TRT01A, group1_level = Drug X, variable = SEX, variable_level = F, stat_name = n -> After: TRT01A = Drug X, variable = SEX, .label = F, stat_name = n. The groups become columns (TRT01A), the analysis variables stay values of variable, and a category's value becomes .label (the row's text).","normalize_ard() は cards の ARD を表を作りやすい形にします。前: group1 = TRT01A, group1_level = Drug X, variable = SEX, variable_level = F, stat_name = n → 後: TRT01A = Drug X, variable = SEX, .label = F, stat_name = n。群は列（TRT01A）になり、解析変数は variable の値のまま、カテゴリの値は .label（行の文字）になります。"

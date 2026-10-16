@@ -339,12 +339,14 @@ builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_fal
 # select with the shapes, a call<fn> a small form of that function's
 # visible arguments (or R), r a monospace field, map<aes, ...> a row of
 # aes fields each with a column / value switch.  Beside every field: the
-# `R` switch (the value as R) and the (i) of its help.
+# `R` switch (the value as R) and the (i) of its help (what the argument
+# means); `unsaved`: the sheets have no place for it -- a mark of its own
+# beside the (i) (unsaved_badge()).
 #' @noRd
 arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default = NULL,
                       choices = NULL, from = "own", help = NULL, required = FALSE,
                       lang = "en", fn = NULL, aes = NULL, nav = NULL, help_link = NULL,
-                      own = NULL) {
+                      own = NULL, unsaved = FALSE) {
   t <- function(x) tr(x, lang)
   kind <- .arg_kind(type)
   fid <- paste0(id, "__", arg)
@@ -385,7 +387,8 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
                       builder_label(label, arg, "arg", lang),
                       if (required) shiny::tags$span(class = "rp-req", title = t("Required"), "*"),
                       from_badge(from, lang, own = own),
-                      help_tip(help), help_link),
+                      help_tip(help), help_link,
+                      if (isTRUE(unsaved)) unsaved_badge(lang)),
     shiny::div(class = "rp-field-row",
                shiny::div(class = "rp-form-input", control),
                r_input, r_switch),
@@ -571,9 +574,11 @@ arg_group <- function(label = NULL, fields, as = NULL, lang = "en") {
 
 # The arguments not shown: the function's formals less the visible ones
 # and the ones in use, folded under "Other arguments (n)" -- a search
-# field, the names in order, each a field labelled "meaning (name)" (the
-# name alone when no meaning is known), its (i)
-# the help or a link to the package's.  A field given a value stays shown
+# field, the names in the function's order, each a field labelled
+# "meaning (name)" (the name alone when no meaning is known), its (i)
+# what the argument means (.arg_help()) or a link to the package's help,
+# and "Not saved" beside it where the sheets have no place for it (the
+# schema's `unsaved`).  A field given a value stays shown
 # when the fold closes (it is promoted; the next render passes it as used).
 #' @noRd
 arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
@@ -581,11 +586,12 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
   t <- function(x) tr(x, lang)
   schema <- schema %||% .schema_of(fn)
   all <- .fn_formals(fn, schema)
-  rest <- sort(setdiff(all, c(schema$visible, used, "...")))
+  # (in the function's order, as its formals)
+  rest <- setdiff(all, c(schema$visible, used, "..."))
   if (!length(rest)) return(NULL)
   pkg <- schema$package %||% if (grepl("::", fn, fixed = TRUE)) sub("::.*$", "", fn)
   fields <- lapply(rest, function(a) {
-    help <- schema$args[[a]]$description %||% .schema_help(fn, a)
+    help <- .arg_help(fn, a, schema, lang)
     link <- if (is.null(help) && !is.null(pkg)) {
       shiny::tags$a(class = "rp-help-link", href = .help_url(pkg, fn), target = "_blank",
                     rel = "noopener", title = t("The package's help"),
@@ -593,7 +599,7 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
     }
     arg_field(id, a, schema$args[[a]]$type, label = .arg_meaning(fn, a), value = values[[a]],
               default = schema$args[[a]]$default, help = help, help_link = link,
-              choices = choices, lang = lang)
+              choices = choices, lang = lang, unsaved = isTRUE(schema$args[[a]]$unsaved))
   })
   shiny::div(
     class = "rp-more", `data-card` = id,
@@ -625,6 +631,33 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
 
 .help_url <- function(pkg, fn) {
   sprintf("https://rdrr.io/cran/%s/man/%s.html", pkg, sub("^.*::", "", fn))
+}
+
+# The arguments `args` in the order of the function's arguments
+# (`formals`: .fn_formals()'s), those not among them after, as they came.
+# Every card's fields are in this order.
+.arg_order <- function(args, formals) {
+  args[order(match(args, formals, nomatch = length(formals) + 1L), seq_along(args))]
+}
+
+# An argument's help in the (i): what it means, when it is used, an
+# example -- tflplanner's own text (.plan_arg_help), else the schema's,
+# else tflspec's -- in the language; NULL for none
+.arg_help <- function(fn, arg, schema = NULL, lang = "en") {
+  own <- .plan_arg_help[[fn]]
+  h <- if (!is.null(own) && arg %in% names(own)) own[[arg]]
+  h <- h %||% schema$args[[arg]]$description %||% .schema_help(fn, arg)
+  if (is.null(h)) NULL else tr(h, lang)
+}
+
+# The mark of an argument the sheets have no place for yet: what it says
+# is not saved (the function's default applies), its own tooltip
+#' @noRd
+unsaved_badge <- function(lang = "en") {
+  t <- function(x) tr(x, lang)
+  bslib::tooltip(
+    shiny::tags$span(class = "rp-badge rp-badge-unsaved", tabindex = "0", t("Not saved")),
+    t("The sheets have no place for this argument yet: a value here is not saved, and the function's default applies."))
 }
 
 # the schema of a function, when tflspec has one
@@ -792,6 +825,7 @@ add_item_input <- function(id, kinds = NULL, schema = NULL, lang = "en", placeho
   border-radius: .6rem; background: var(--bs-tertiary-bg, #f3f4f6); color: #4b5563;
   border: 1px solid #e5e7eb; white-space: nowrap; vertical-align: middle; }
 .rp-badge-own { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+.rp-badge-unsaved { background: transparent; border-color: #d1d5db; color: #6b7280; margin-left: .25rem; cursor: help; }
 .rp-badge-absent { background: none; border-style: dashed; color: #6b7280; }
 .rp-card.rp-card-absent { border-style: dashed; }
 .rp-card.rp-card-absent > .rp-card-head .rp-card-title { color: #6b7280; }

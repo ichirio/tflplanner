@@ -131,9 +131,9 @@ test_that("a column the plan makes keeps the plan's order, not its code list's",
 test_that("plan_columns(): a width a column, the decimal alignment, the row title, written by column", {
   sch <- .plan_form_schema("plan_columns")
   expect_identical(sch$visible, c("widths", "decimal", "row_title", "auto_width"))
-  # (what the sheets cannot keep: under Other arguments, said so)
+  # (what the sheets cannot keep: under Other arguments, marked Not saved)
   expect_identical(sch$args$cell_format$type, "r")
-  expect_match(sch$args$column_widths_twips$description, "Not kept in the sheets", fixed = TRUE)
+  expect_true(sch$args$column_widths_twips$unsaved)
   p <- sample_planner()
   it <- item(builder_items(p, "T-14-1-1"), "plan_columns")
   cols <- .widths_cols(it$args$widths, c("row_label", ".values", "Placebo"))
@@ -186,7 +186,7 @@ test_that("plan_digits()' rounding: a choice, the study's (written there)", {
 test_that("plan_filter(): its condition for the condition builder, any and parents as fields", {
   expect_identical(.plan_form_main$plan_filter, c("any", "parents"))
   sch <- .plan_form_schema("plan_filter")
-  expect_match(sch$args$by$description, "Not kept in the sheets", fixed = TRUE)
+  expect_true(sch$args$by$unsaved)
   expect_null(.filter_where_text(NULL))
   expect_identical(.filter_where_text(tflspec::tfl_r("p >= 0.05")), "p >= 0.05")
   expect_identical(.filter_where_text(list(tflspec::tfl_r("p >= 0.05"), tflspec::tfl_r("n > 2"))),
@@ -422,9 +422,15 @@ test_that("plan_paginate_group(), plan_paginate_cols(), plan_row_group(): a form
   expect_identical(.plan_form_main$plan_paginate_cols,
                    c("every", "fit", "at", "keep", "cut_by", "order", "allow_span_break"))
   expect_identical(.plan_form_main$plan_row_group, c("mode", "collapse"))
-  # what the sheets cannot keep: under Other arguments, said so
-  expect_match(.plan_form_schema("plan_row_group")$args$group_col$description, "Not kept", fixed = TRUE)
-  expect_match(.plan_form_schema("plan_paginate_cols")$args$col_header$description, "Not kept", fixed = TRUE)
+  # what the sheets cannot keep: under Other arguments, marked Not saved
+  expect_true(.plan_form_schema("plan_row_group")$args$group_col$unsaved)
+  expect_true(.plan_form_schema("plan_paginate_cols")$args$col_header$unsaved)
+  # the fields in the function's order (its formals)
+  expect_identical(.plan_form_schema("plan_paginate_cols")$visible,
+                   c("at", "cut_by", "every", "keep", "fit", "allow_span_break", "order"))
+  h <- html(.plan_form_body("c", "plan_paginate_cols", list(fn = "plan_paginate_cols", args = list())))
+  expect_lt(regexpr('data-arg="at"', h, fixed = TRUE), regexpr('data-arg="every"', h, fixed = TRUE))
+  expect_match(h, "rp-badge-unsaved", fixed = TRUE)
   # keep = TRUE by the function: ticked, and no change while it stays so
   sch <- .plan_form_schema("plan_paginate_group")
   expect_true(isTRUE(sch$args$keep$default))
@@ -520,11 +526,11 @@ test_that("plan_cell_style(): cols, where, the looks as fields, each call its ow
   expect_identical(.plan_form_main$plan_cell_style,
                    c("cols", "header", "where", "bold", "italic", "align", "color", "background"))
   sch <- .plan_form_schema("plan_cell_style")
-  # a look left blank is not written (not FALSE); border: under Other arguments, said so
+  # a look left blank is not written (not FALSE); border: under Other arguments, marked Not saved
   expect_identical(.arg_kind(sch$args$bold$type), "enum")
   expect_identical(.arg_kind(sch$args$color$type), "colour")
   expect_identical(sch$args$border$type, "r")
-  expect_match(sch$args$border$description, "Not kept", fixed = TRUE)
+  expect_true(sch$args$border$unsaved)
   expect_true(isFALSE(sch$args$header$default))
   it0 <- list(fn = "plan_cell_style", args = list(), own_args = list())
   h <- html(.plan_form_body("c", "plan_cell_style", it0, choices = c("row_label", "Placebo")))

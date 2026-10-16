@@ -85,6 +85,117 @@
                       background = "Background colour", underline = "Underline",
                       indent_twips = "Indent (twips)", border = "Borders"))
 
+# What each argument means, when it is used, an example: the (i) of a
+# card's field (.arg_help()), where tflspec's schema says nothing.  In the
+# function's order.
+.plan_arg_help <- list(
+  normalize_ard = c(
+    keys =
+      "The group variables made into columns of their own (TRT01A, SEX ...). Blank: every group of the ARD, which is what a table usually needs. e.g. TRT01A",
+    drop_contexts =
+      "The kinds of ARD rows (context) left out before the table. Blank: the attributes rows and the total_n row, which no cell prints (the total N is still kept for a header). e.g. attributes",
+    drop_key_variables =
+      "The rows that count a group variable itself (the subjects per arm): TRUE takes them out; blank (FALSE) keeps them out of the body for a header's (N=n). Usually left blank. e.g. TRUE",
+    stack =
+      "Stacks parallel subgroup analyses (ALL, SEX, AGEGR1 ...) as one pair of keys, subgroup and subgroup_level, for a subgroup table. e.g. subgroup = ALL, SEX, AGEGR1",
+    stack_sep =
+      "The text between a crossed layer's names and values (\" / \": AGEGR1 / SEX). e.g. \" x \"",
+    stack_nest =
+      "TRUE: a crossed layer's outer value goes to subgroup_outer (Age Group by Sex, 65-80, F as three levels). e.g. TRUE"),
+  plan_filter = c(
+    by =
+      "The row key whose rows are judged together by the condition (with the keys outside it): a SOC kept or dropped as a whole. Blank: each row by itself. e.g. AEBODSYS"),
+  plan_blanks = c(
+    counted =
+      "TRUE: the blank rows count toward a page's rows (plan_paginate_rows()' most rows a page), so a page never overflows. Blank: only the table's rows are counted. e.g. TRUE"),
+  plan_paginate_rows = c(
+    break_before =
+      "The row numbers a page starts at, for the split rule \"rows\". Used for breaks by hand. e.g. c(20, 40): pages 1-19, 20-39, 40-",
+    min_group_rows =
+      "The fewest rows of a group a page may end with: a group with fewer moves whole to the next page, so its heading is not left alone at the foot. Blank: 2; 0 turns it off. e.g. 3",
+    cont_label =
+      "The text after a group's heading on the pages it continues onto. Blank: \" (Cont.)\". e.g. \" (continued)\"",
+    heading =
+      "With page by one column: each page's name as a template, {value} the page's value and {n} its subjects. e.g. Treatment: {value} (N={n})"),
+  plan_paginate_cols = c(
+    col_header =
+      "What each column page's header becomes, as R. Used when the pages need a header other than the table's own. Blank: the table's header, cut with its columns."),
+  plan_row_group = c(
+    group_col =
+      "The column whose runs of the same value are the groups, for a table already built (not from an ARD; an ARD table's groups are its outermost row key). e.g. \"V1\""),
+  plan_stub = c(
+    vars =
+      "The row keys folded into the one row label column, outermost first. Blank: worked out from the table's row layers, which is usually right. e.g. c(\"AEBODSYS\", \"AEDECOD\")",
+    group_summary =
+      "Which rows are a group's own summary, printed on the group's heading row: \"empty\" a blank leaf, \"parent\" a leaf equal to its parent. Blank: both; \"none\" turns it off. e.g. \"empty\""),
+  plan_columns = c(
+    sep =
+      "The text that joins several column keys in the value columns' names; the spanning header is cut at it. Blank: \"____\" (Placebo____F). Changed only when a value has \"____\" in it. e.g. \"__\"",
+    cell_format =
+      "A function that formats the cells' text, or a list of them one a column, as R. e.g. function(x) toupper(x)",
+    column_widths_twips =
+      "Each column's width in twips (1/1440 inch), as R; it replaces the widths above. e.g. c(3000, 1500, 1500)"),
+  plan_style = c(
+    font =
+      "The table's font. Blank: the document's font. e.g. \"Arial\"",
+    row_height_twips =
+      "The height of the body's rows in twips (1/1440 inch). Blank: from the font size. e.g. 240",
+    row_height_exact =
+      "TRUE: the rows' height is exact (a longer text is cut); FALSE: it is the least height (a row grows). e.g. TRUE",
+    header_row_height_twips =
+      "The height of the column header's rows in twips. Blank: as the body's. e.g. 300",
+    blank_row_height_twips =
+      "The height of the blank rows in twips: lower ones make a table shorter. Blank: as the body's. e.g. 120",
+    cell_padding_left_twips =
+      "The space between a cell's left border and its text, in twips. Blank: 0. e.g. 60",
+    cell_padding_right_twips =
+      "The space between a cell's text and its right border, in twips. Blank: 0. e.g. 60",
+    cell_valign =
+      "Where a cell's text sits from top to bottom: \"bottom\", \"top\" or \"center\". Blank: bottom. e.g. \"top\"",
+    table_align =
+      "Where the table sits on the page: \"left\", \"center\" or \"right\". Blank: left. e.g. \"center\"",
+    markup =
+      "The marks in the cells' text turned into print: \"script\" ^{...} superscript and _{...} subscript, \"relational\" >= and <= as signs, \"all\", \"none\". Blank: the document's (script). e.g. \"all\"",
+    blank_row_normalize =
+      "How blank rows are tidied: \"detect\" an empty row printed as one blank row, \"collapse\" several in a row made one. Blank: both. e.g. \"detect\"",
+    border_header =
+      "The rules of the column header's rows, one kind of row's (with border_spanning ... border_last_row: a style of one's own in place of Borders). e.g. \"bottom\"",
+    border_spanning =
+      "The rules under a spanning header's cells (the header over several columns). e.g. \"bottom\"",
+    border_body =
+      "The rules of the body's rows. Blank: none between them. e.g. \"none\"",
+    border_first_row =
+      "The rule over the table's first row (the top of the table). e.g. \"top\"",
+    border_last_row =
+      "The rule under the table's last row (the foot of the table). e.g. \"bottom\"",
+    header_align =
+      "The column header's alignment: \"left\", \"center\" or \"right\". Blank: center. e.g. \"left\"",
+    header_bold =
+      "TRUE: the whole column header in bold. e.g. TRUE",
+    header_italic =
+      "TRUE: the whole column header in italics. e.g. TRUE",
+    align =
+      "The body's alignment: \"left\", \"center\" or \"right\" (one column's: Cell styles). e.g. \"center\"",
+    bold =
+      "TRUE: the whole body in bold (some cells only: Cell styles). e.g. TRUE",
+    italic =
+      "TRUE: the whole body in italics (some cells only: Cell styles). e.g. TRUE",
+    underline =
+      "TRUE: the whole body underlined (some cells only: Cell styles). e.g. TRUE",
+    table_width_twips =
+      "The table's width in twips (1/1440 inch); it wins over the widths in percent. Blank: the page's writable width. e.g. 12960",
+    table_width_pct =
+      "The table's width as a percent (0-100) of the page's writable width. e.g. 80",
+    table_width_pct_of_writable =
+      "The table's width as a fraction (0-1) of the page's writable width (as table_width_pct, by 0-1). e.g. 0.8"),
+  plan_cell_style = c(
+    border =
+      "The chosen cells' borders, as R (rtf_border()). e.g. rtf_border(bottom = \"single\")",
+    underline =
+      "The chosen cells underlined: TRUE / FALSE, or a condition as R. e.g. TRUE",
+    indent_twips =
+      "The left indent of the chosen cells' text in twips (not the header's). e.g. 240"))
+
 # a verb's meaning: the schema's label, else the table above; NULL for none
 .verb_meaning <- function(fn) {
   lab <- .schema_of(fn)$label
@@ -185,6 +296,11 @@ builder_items <- function(x, output_id) {
     return(shiny::div(class = "small text-muted", tr("No arguments: the defaults of the function.", lang)))
   }
   nm <- names(a) %||% rep("", length(a))
+  # (in the function's order; the ... where the function has it)
+  at <- order(match(ifelse(nzchar(nm), nm, "..."), .fn_formals(it$fn, .schema_of(it$fn)),
+                    nomatch = length(a) + 1000L), seq_along(a))
+  a <- a[at]
+  nm <- nm[at]
   shiny::tags$dl(
     class = "rp-args-view",
     lapply(seq_along(a), function(i) {
@@ -481,18 +597,16 @@ builder_items <- function(x, output_id) {
     fn,
     plan_digits = shiny::div(class = "rp-card-note",
                              t("The decimals are written into plan_cells()'s formats.")),
+    # (a line; what it does and one row before and after under the (i))
     normalize_ard = shiny::div(
       class = "rp-card-note",
-      with_tip(t(paste("Turns the ARD's group1/group1_level ... into columns named after the groups",
-                       "(TRT01A, SEX), folds a hierarchy into its level columns and attaches the",
-                       "formatted value stat_fmt. The cards below use these column names",
-                       "(TRT01A, variable, variable_level, .label, stat, stat_fmt).")),
-               t(paste("Columns out: the keys (groups, hierarchy levels, a stack's",
-                       "subgroup/subgroup_level), variable (the analysis variable's name),",
-                       "variable_level (a category), context, stat_name, stat (the number),",
-                       "stat_fmt (the text as step 1 formatted it), .kind (continuous/categorical),",
-                       ".label (the row's text), .depth (depth in a hierarchy). Analysis variables",
-                       "stay values of variable, not columns.")))),
+      with_tip(t("Shapes the ARD for making the table."),
+               t(paste("normalize_ard() shapes the cards ARD for making the table.",
+                       "Before: group1 = TRT01A, group1_level = Drug X, variable = SEX,",
+                       "variable_level = F, stat_name = n -> After: TRT01A = Drug X,",
+                       "variable = SEX, .label = F, stat_name = n. The groups become columns",
+                       "(TRT01A), the analysis variables stay values of variable, and a",
+                       "category's value becomes .label (the row's text).")))),
     plan_levels = shiny::div(
       class = "rp-card-note",
       shiny::div(t(paste("Makes plan_levels(name = the values' order). A name is a column of the",
@@ -651,7 +765,8 @@ builder_items <- function(x, output_id) {
                  font_size_half_points = "integer"))
 
 # the arguments of a form card the sheets have no place for: shown under
-# "Other arguments" as R, what the function does said
+# "Other arguments" as R, marked "Not saved" (the function's default
+# applies)
 .plan_form_unkept <- list(
   plan_filter = "by",
   plan_cell_style = "border",
@@ -668,7 +783,7 @@ builder_items <- function(x, output_id) {
   }
   for (a in .plan_form_unkept[[fn]]) {
     sch$args[[a]]$type <- "r"
-    sch$args[[a]]$description <- "Not kept in the sheets yet: the function's default applies."
+    sch$args[[a]]$unsaved <- TRUE
   }
   fl <- tryCatch(formals(utils::getFromNamespace(fn, "rtfreporter")), error = function(e) NULL)
   fo <- names(fl)
@@ -682,7 +797,8 @@ builder_items <- function(x, output_id) {
     }
   }
   sch$formals <- setdiff(unique(c(fo, names(sch$args))), c("plan", ".plan", "..."))
-  sch$visible <- .plan_form_main[[fn]]
+  # (the main fields in the function's order too)
+  sch$visible <- .arg_order(.plan_form_main[[fn]], sch$formals)
   sch
 }
 
@@ -697,21 +813,19 @@ builder_items <- function(x, output_id) {
 # columns offered (the row layers, the ARD's keys).
 .plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en", cols = NULL) {
   sch <- .plan_form_schema(fn)
-  for (a in .plan_form_unkept[[fn]]) {
-    sch$args[[a]]$description <- tr(sch$args[[a]]$description, lang)
-  }
   a <- it$args %||% list()
-  fields <- lapply(.plan_form_main[[fn]], function(k) {
+  # (in the function's order: sch$visible)
+  fields <- lapply(sch$visible, function(k) {
     from <- if (k %in% names(a)) .arg_from(it, k) else "own"
     own <- if (k %in% names(it$own_args %||% list())) "This table"
     if (identical(sch$args[[k]]$type, "widths")) {
       return(.widths_field(cid, k, cols %||% .widths_cols(a[[k]], choices), a[[k]],
                            label = .arg_meaning(fn, k), from = from, own = own,
-                           help = .schema_help(fn, k), lang = lang))
+                           help = .arg_help(fn, k, sch, lang), lang = lang))
     }
     arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = a[[k]],
               default = sch$args[[k]]$default, choices = choices,
-              from = from, own = own, help = .schema_help(fn, k), lang = lang)
+              from = from, own = own, help = .arg_help(fn, k, sch, lang), lang = lang)
   })
   shiny::tagList(arg_group(NULL, fields, lang = lang),
                  arg_more(cid, fn, schema = sch, lang = lang, values = a, choices = choices))
@@ -978,26 +1092,20 @@ builder_items <- function(x, output_id) {
 
 .normalize_schema <- function() {
   sch <- .schema_of("normalize_ard") %||% list()
-  # the sheets have no place for these yet: what the function does is said
+  # the sheets have no place for these yet: marked "Not saved" (the
+  # function's default applies)
   for (a in c("keys", "drop_contexts", "drop_key_variables")) {
     sch$args[[a]]$type <- "r"
-    sch$args[[a]]$description <- "Not kept in the sheets yet: the function's default applies."
+    sch$args[[a]]$unsaved <- TRUE
   }
   sch$args$stack$type <- "string"
   sch$args$stack_sep$type <- "string"
   sch$args$stack_nest$type <- "logical"
-  # (folded while the table has no stack: what each does, in a line)
-  sch$args$stack$description <- paste(
-    "Stacks parallel subgroup analyses (ALL, SEX, AGEGR1 ...) as one pair of keys,",
-    "subgroup and subgroup_level, for a subgroup table. e.g. subgroup = ALL, SEX, AGEGR1")
-  sch$args$stack_sep$description <- paste(
-    "The text between a crossed layer's names and values (\" / \": AGEGR1 / SEX).",
-    "e.g. \" x \"")
-  sch$args$stack_nest$description <- paste(
-    "TRUE: a crossed layer's outer value goes to subgroup_outer",
-    "(Age Group by Sex, 65-80, F as three levels). e.g. TRUE")
-  sch$formals <- c("keys", "drop_contexts", "drop_key_variables", "stack", "stack_sep",
-                   "stack_nest")
+  # (each one's (i): .plan_arg_help; the fields in the function's order --
+  # the hierarchy and the overall row are the card's own)
+  sch$formals <- setdiff(.fn_formals("rtfreporter::normalize_ard"), "x")
+  if (!length(sch$formals)) sch$formals <- names(sch$args)
+  sch$visible <- c("hierarchy", "overall")
   sch
 }
 
@@ -1018,9 +1126,6 @@ builder_items <- function(x, output_id) {
   hier <- length(hierarchy) > 0L
   stacked <- !is.null(val("stack"))
   sch <- .normalize_schema()
-  for (a in names(sch$args)) {
-    if (!is.null(sch$args[[a]]$description)) sch$args[[a]]$description <- t(sch$args[[a]]$description)
-  }
   ov <- val("overall_label")
   parts <- list(
     if (hier) shiny::div(
@@ -1053,7 +1158,7 @@ builder_items <- function(x, output_id) {
                 help = if (identical(a, "stack"))
                   sprintf(t("e.g. %s. Subgroups as one pair of keys: name = its layers, a comma between them, * crossing variables (AGEGR1 * SEX). The rows can then take subgroup and subgroup_level (table_plan())."),
                           "subgroup = ALL, SEX, AGEGR1") else
-                    .schema_help("normalize_ard", a),
+                    .arg_help("normalize_ard", a, sch, lang),
                 own = if (!is.null(v)) "This table", lang = lang)
     }))
   parts <- Filter(Negate(is.null), parts)

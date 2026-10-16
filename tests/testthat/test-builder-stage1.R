@@ -216,11 +216,30 @@ test_that("normalize_ard(): the hierarchy fixed and From the ARD, overall editab
   r <- .normalize_read(list(n__stack = " subgroup = SEX ", n__stack_sep = "", n__stack_nest = TRUE), "n")
   expect_identical(r, list(stack = "subgroup = SEX", stack_sep = NA_character_, stack_nest = "TRUE"))
   expect_null(.normalize_read(list(), "n"))
-  # its card's note: what it does, the columns out under the ?
+  # its fields in the function's order: hierarchy, overall; then folded
+  # keys, drop_contexts, drop_key_variables, stack, stack_sep, stack_nest
+  h <- html(.normalize_body("n", c("AEBODSYS", "AEDECOD"),
+                            tb = data.frame(overall_label = "Any TEAE", stack = NA),
+                            overall_id = "ov", revert_id = "ovr", lang = "ja"))
+  args <- regmatches(h, gregexpr('data-arg="[^"]+"', h))[[1L]]
+  expect_identical(gsub('data-arg="|"', "", args),
+                   c("overall", "keys", "drop_contexts", "drop_key_variables", "stack",
+                     "stack_sep", "stack_nest"))
+  # (i) its meaning; the three the sheets cannot keep marked "Not saved"
+  expect_equal(lengths(regmatches(h, gregexpr("rp-badge-unsaved", h, fixed = TRUE))), 3L)
+  expect_false(grepl("まだシートに保存できません", h, fixed = TRUE))
+  expect_match(h, tr(.plan_arg_help$normalize_ard[["keys"]], "ja"), fixed = TRUE)
+  # its card's note: one line, what it does with a row before and after under the (i)
   h <- html(.plan_card_note("normalize_ard"))
-  expect_match(h, "columns named after the groups (TRT01A, SEX)", fixed = TRUE)
-  expect_match(h, "Analysis variables stay values of variable", fixed = TRUE)
-  expect_match(html(.plan_card_note("normalize_ard", lang = "ja")), "群の名前の列", fixed = TRUE)
+  expect_match(h, "Shapes the ARD for making the table.", fixed = TRUE)
+  expect_match(h, "group1 = TRT01A, group1_level = Drug X", fixed = TRUE)
+  expect_match(h, ".label = F, stat_name = n", fixed = TRUE)
+  hj <- html(.plan_card_note("normalize_ard", lang = "ja"))
+  expect_match(hj, "ARD を表を作りやすい形に整えます。", fixed = TRUE)
+  expect_match(hj, "カテゴリの値は .label（行の文字）になります。", fixed = TRUE)
+  # every argument's help under Other arguments is said in Japanese too
+  miss <- unlist(lapply(.plan_arg_help, function(v) v[tr(unname(v), "ja") == unname(v)]))
+  expect_length(miss, 0L)
   expect_match(html(.plan_card_note("plan_levels")), "plan_levels(name = the values' order)", fixed = TRUE)
   # the mark: one of the badges
   expect_match(html(from_badge("ard", "ja")), tr("From the ARD", "ja"), fixed = TRUE)

@@ -177,8 +177,21 @@ test_that("a group puts its fields on one row; the folded arguments are the rest
   for (a in c("width", "position", "mapping")) {
     expect_false(grepl(paste0('data-arg="', a, '"'), h, fixed = TRUE), info = a)
   }
-  # the names in order
-  expect_lt(regexpr('data-arg="data"', h, fixed = TRUE), regexpr('data-arg="stat"', h, fixed = TRUE))
+  # the names in the function's order (its formals), not alphabetical
+  pos <- function(a) regexpr(paste0('data-arg="', a, '"'), h, fixed = TRUE)
+  expect_lt(pos("data"), pos("stat"))
+  expect_lt(pos("stat"), pos("na.rm"))
+  expect_lt(pos("inherit.aes"), pos("orientation"))
+  expect_lt(pos("na.rm"), pos("inherit.aes"))
+  expect_identical(.arg_order(c("b", "z", "a"), c("a", "b")), c("a", "b", "z"))
+  # an argument the sheets cannot keep: "Not saved" beside it, its own
+  # tooltip; the (i) stays the argument's help
+  schema$args$stat <- list(type = "r", unsaved = TRUE, description = "The statistic.")
+  hu <- html(arg_more("c1", "geom_errorbar", used = "mapping", schema = schema, lang = "ja"))
+  expect_equal(lengths(regmatches(hu, gregexpr("rp-badge-unsaved", hu, fixed = TRUE))), 1L)
+  expect_match(hu, ">保存されません<", fixed = TRUE)
+  expect_match(hu, 'aria-label="The statistic."', fixed = TRUE)
+  expect_false(grepl("まだシートに保存できません", hu, fixed = TRUE))
   # the schema's help, else a link to the package's
   expect_match(h, 'aria-label="Drop missing values?"', fixed = TRUE)
   expect_match(h, 'class="rp-help-link" href="https://rdrr.io/cran/ggplot2/man/geom_errorbar.html"', fixed = TRUE)
