@@ -790,7 +790,6 @@ study_status <- function(study) {
     info <- report_info(p, id)
     prog <- file.path(root, lay[["programs_tfl"]], info$program)
     rtf <- file.path(root, info$file)
-    ard <- file.path(root, lay[["ard"]], paste0(id, ".rds"))
     log <- file.path(root, lay[["logs_preview"]], sub("\\.[Rr]$", ".log",
                                              info$program))
     pstate <- .program_state(p, id, prog)
@@ -815,7 +814,6 @@ study_status <- function(study) {
       format(t, "%Y-%m-%d %H:%M")
     data.frame(output_id = id, type = info$type, program = info$program,
                program_state = pstate,
-               ard = if (file.exists(ard)) fmt(.mtime(ard)) else NA,
                rtf = fmt(t_rtf), status = status,
                why = paste(why, collapse = " "),
                log = if (file.exists(log)) log else NA_character_,
@@ -823,7 +821,7 @@ study_status <- function(study) {
   })
   out <- do.call(rbind, c(list(data.frame(
     output_id = character(), type = character(), program = character(),
-    program_state = character(), ard = character(), rtf = character(),
+    program_state = character(), rtf = character(),
     status = character(), why = character(), log = character(),
     rtf_path = character())),
     rows))

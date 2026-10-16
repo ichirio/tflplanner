@@ -3,7 +3,7 @@ sample_planner <- function() {
   read_planner(file.path(d, c("report.xlsx", "study.xlsx")))
 }
 
-test_that("a table program writes out its plan and report, saves its ARD and parses", {
+test_that("a table program writes out its plan and report (its data not saved) and parses", {
   p <- sample_planner()
   code <- program_code(p, "PK")
   expect_true(any(grepl('report_id <- "PK"', code, fixed = TRUE)))
@@ -20,7 +20,7 @@ test_that("a table program writes out its plan and report, saves its ARD and par
   expect_true(any(startsWith(trimws(code), "rtf_tables(plan")))
   expect_true('generate_rtfreport(doc, file.path("output", paste0(report_id, ".rtf")), overwrite = TRUE)' %in% code)
   expect_true(any(grepl('file.exists("study.yml")', code, fixed = TRUE)))
-  expect_true(any(grepl("saveRDS(ard", code, fixed = TRUE)))
+  expect_false(any(grepl("saveRDS(", code, fixed = TRUE)))
   # no data code: the company template takes its rows of the study ARD
   expect_true(any(grepl("filter(output_id == report_id)", code, fixed = TRUE)))
   expect_false(any(grepl("data <- normalize_ard(", code, fixed = TRUE)))
@@ -129,7 +129,7 @@ test_that("a table's normalization is what its definitions say: the hierarchy, t
     "  ) |>",
     "  table_plan(cols = \"TRTA\", rows = c(group1 = \"AEBODSYS\"))"))
   expect_false(any(grepl("data <- normalize_ard(", code, fixed = TRUE)))
-  expect_true(any(startsWith(code, "saveRDS(ard, ")))
+  expect_false(any(startsWith(code, "saveRDS(")))
   # a table without them: normalize_ard() with none
   q <- add_output(new_planner(), "T1")
   code <- program_code(q, "T1")
@@ -140,6 +140,6 @@ test_that("a table's normalization is what its definitions say: the hierarchy, t
   code <- program_code(q, "T2")
   expect_true("data <- normalize_ard(ard) |> dplyr::mutate(x = 1)" %in% code)
   expect_true("plan <- table_plan(data)" %in% code)
-  expect_true(any(startsWith(code, "saveRDS(data, ")))
+  expect_false(any(startsWith(code, "saveRDS(")))
   expect_silent(parse(text = code))
 })

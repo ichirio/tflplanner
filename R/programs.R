@@ -373,8 +373,7 @@ data_lines <- function(x, output_id, todo = TRUE) {
 #'
 #' * `table` -- the data part leaves `ard`, this report's ARD (or `data`,
 #'   when its process code or the company's template normalizes it); the
-#'   program saves it to `output/ard/<output_id>.rds` (the deliverable data)
-#'   and plans the table as `table_spec.xlsx` defines it, written out as
+#'   program plans the table as `table_spec.xlsx` defines it, written out as
 #'   `ard |> normalize_ard() |> table_plan() |> plan_*()` (or
 #'   `table_plan(data)`; [tflspec::tfl_table_code()]).
 #' * `listing`, `figure` -- the data part leaves `content`: `rtftable`
@@ -434,19 +433,14 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   data <- if (is.null(design) || own) data_lines(x, output_id) else c(
     if (!is.na(x$setup)) c(.code_block(x$setup), ""),
     .fig_design_lines(x, output_id, design, source = FALSE))
-  keep <- c(
-      "",
-      paste0("# the table's ", if (identical(obj, "ard")) "ARD" else "data",
-             ", kept beside the study ARD"),
-      paste0("saveRDS(", obj, ", file.path(", .path_lit(lay[["ard"]]),
-             ", paste0(report_id, \".rds\")))"))
-  data_part <- if (!is.null(design) || own) c(data, if (own && table) keep) else c(
+  # (the deliverable is the report: a table's data is not saved -- the
+  # study ARD holds it by output_id)
+  data_part <- if (!is.null(design) || own) data else c(
     .section(paste0("data: ", switch(type,
       figure = "the figure",
       listing = "the listing's pages",
       if (identical(obj, "ard")) "this report's ARD" else "this report's normalized ARD"))),
-    data,
-    if (table) keep)
+    data)
 
   # a figure's plot goes to the report as it is (rtf_figures(doc, plot)),
   # unless its code makes `content` itself
