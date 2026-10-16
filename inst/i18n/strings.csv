@@ -3127,7 +3127,6 @@ Shift table (baseline x worst after),シフト表（ベースライン × ベー
 A shift table counts the subjects of an analysis set: put the subject-level data (adsl) on the Data tab.,シフト表は解析対象集団の被験者を数えます。被験者単位のデータ（adsl）をデータタブに置いてください。
 Row variables (outermost first; drag),行の変数（外側から。ドラッグで並べ替え）
 "Row and column variables are the ARD's groups and hierarchy; to add one, add it to the analysis's by in step 1.",行と列に使える変数は ARD の群（by）と階層です。増やすには ARD 作成 で解析の by に足します。
-The outermost row variable a page each,いちばん外側の行の変数ごとにページを分ける
 tables$overall_label; blank: no such row.,tables$overall_label。空欄 = この行なし。
 Order,並び順
 Most frequent first (ties by name),多い順（同数は名前順）

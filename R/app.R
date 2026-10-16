@@ -8970,14 +8970,6 @@ app_server <- function(input, output, session, start) {
           body)
         if (!is.null(shown_ui)) body <- shiny::tagList(shown_ui, body)
       }
-      # plan_paginate_group(): a hierarchy table's outermost row variable a
-      # page each (col = it)
-      if (identical(fn, "plan_paginate_group") && hier && length(st$row_keys) > 1L) {
-        body <- shiny::tagList(
-          shiny::checkboxInput(bid("rowpages"), t("The outermost row variable a page each"),
-                               isTRUE(st$row_pages)),
-          body)
-      }
       bodies[[it$path]] <- body
     }
     # the cards of the names the user gives (a function's ...): the
