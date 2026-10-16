@@ -3300,3 +3300,28 @@ Columns on every page,どのページにも出す列
 Cut by,分ける単位
 Order of the pages,ページの順
 A spanning header may break,またがる見出しを途中で切ってよい
+Table skeleton,表の骨組み
+"Which ARD values go to which rows, columns and cells",ARD のどの値を、表の行・列・セルのどこに置くか
+"Labels, order, decimals, pages: the look",ラベル・順序・桁・ページなど見た目の整え
+From the ARD,ARD から
+On: its usual values are written.,オンにすると既定値が入ります
+The ARD has no overall rows.,ARD に全体の行がありません
+Cards (plan),カード一覧 (plan)
+Add a card (type to search),カードを追加する（名前で探す）
+No settings: the function's defaults.,設定なし: 関数の既定
+Not kept in the sheets yet: the function's default applies.,まだシートに保存できません: 関数の既定が使われます
+No any-event row: the ARD's rows as they are,全体の行なし（ARD の行のまま）
+A variable not here is added in the ARD analysis.,ここにない変数は ARD 作成の解析で足します
+Shown,表示する
+"Unticked: the table does not show the variable's rows (written as the row filter, plan_filter()); the ARD stays as it is.",チェックを外すと、その変数の行を表に出しません（行のフィルター plan_filter() として書きます）。ARD はそのままです。
+The rows shown are the row filter's (plan_filter()): edit it there.,表に出す行は行のフィルター（plan_filter()）で決まっています。そちらで編集してください。
+Keep at least one variable shown.,少なくとも 1 つの変数は表示してください。
+"%s cannot be added here: a card the table has already, or no verb of the plan.",%s はここでは追加できません（すでにあるカード、または plan の関数ではありません）。
+Stacked analyses,積み上げ (stack)
+Stack separator,積み上げの区切り
+Nest the stack,積み上げを入れ子に
+Contexts dropped,除く context
+Drop the key variables,キー変数の行を除く
+Borders,罫線
+Font size (half points),文字の大きさ（半ポイント）
+plan_total puts the ARD's overall rows (results not split by group) in a Total column.,plan_total は ARD の全体の行（群で分けない結果）を Total 列にします。

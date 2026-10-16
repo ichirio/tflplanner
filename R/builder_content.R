@@ -39,7 +39,10 @@
 
 # ... and their main arguments'
 .plan_arg_meaning <- list(
-  normalize_ard = c(hierarchy = "Hierarchy", overall = "Overall row"),
+  normalize_ard = c(hierarchy = "Hierarchy", overall = "Overall row", keys = "Keys",
+                    stack = "Stacked analyses", stack_sep = "Stack separator",
+                    stack_nest = "Nest the stack", drop_contexts = "Contexts dropped",
+                    drop_key_variables = "Drop the key variables"),
   table_plan = c(cols = "Columns", rows = "Row layers", label = "Row text column",
                  stat = "Statistic columns", show_keys = "Keys shown"),
   plan_cells = c(value = "Values printed", stats = "Statistics as", na = "Text for missing",
@@ -68,7 +71,8 @@
                       col_header_align = "Alignment"),
   plan_columns = c(widths = "Widths", decimal = "Decimal alignment", row_title = "Row title",
                    auto_width = "Automatic width", sep = "Separator"),
-  plan_style = c(align_count_pct = "Align n (%)"))
+  plan_style = c(align_count_pct = "Align n (%)", border = "Borders",
+                 font_size_half_points = "Font size (half points)"))
 
 # a verb's meaning: the schema's label, else the table above; NULL for none
 .verb_meaning <- function(fn) {
@@ -187,25 +191,172 @@ builder_items <- function(x, output_id) {
   if (nchar(s) > width) paste0(substr(s, 1L, width - 1L), "\u2026") else s
 }
 
-# The two groups of a table's items, by verb: the mapping (what the ARD's
-# numbers become: the structure, the cells, the Total, the decimals, the
-# values' order and labels, the rows' order) and the finishing (the column
-# header, the layout).  A verb not named is the mapping's.
+# The two groups of a table's items, by verb, in the order a person
+# designs a table: the mapping (ARD -> table: which variables and
+# statistics go to which rows, columns and cells -- the structure, the
+# cells, the statistic groups, the Total, the comparisons, the row filter)
+# and the finishing (the content and the look: the labels, the values'
+# order, the nesting, the decimals, the row order, the column header, the
+# layout).  normalize_ard() is neither: the ARD made ready for the plan,
+# first, with no line of its own.  The schema's `stage` (mapping /
+# finishing) says it when tflspec has it; else this table.
 .plan_sections <- list(
-  finish = c("plan_col_header", "plan_stub", "plan_blanks", "plan_paginate_rows",
-             "plan_paginate_group", "plan_paginate_cols", "plan_row_group",
+  mapping = c("table_plan", "plan_cells", "plan_stat_groups", "plan_total", "plan_compare",
+              "plan_filter"),
+  finish = c("plan_labels", "plan_levels", "plan_nest", "plan_digits", "plan_sort",
+             "plan_col_header", "plan_stub", "plan_blanks", "plan_paginate_rows",
+             "plan_paginate_group", "plan_paginate_cols", "plan_row_group", "plan_hide",
              "plan_columns", "plan_style", "plan_cell_style"))
 
-.plan_section_labels <- c(mapping = "Mapping", finish = "Finishing")
+# (the words are the strings' (inst/i18n): swapped there)
+.plan_section_labels <- c(mapping = "Table skeleton", finish = "Finishing", ard = "ARD")
+
+# each group's line: what it is for, in a line
+.plan_section_notes <- c(
+  mapping = "Which ARD values go to which rows, columns and cells",
+  finish = "Labels, order, decimals, pages: the look")
 
 .plan_section <- function(fn) {
+  if (identical(fn, "normalize_ard")) return("ard")
+  st <- .schema_of(fn)$stage
+  if (identical(st, "mapping")) return("mapping")
+  if (identical(st, "finishing")) return("finish")
   for (k in names(.plan_sections)) if (fn %in% .plan_sections[[k]]) return(k)
-  "mapping"
+  "finish"
 }
 
-# the cards seldom changed: closed when drawn (the Layers menu reaches them)
+# the cards seldom changed: closed when drawn (the cards' menu reaches them)
 .plan_rare <- c("plan_stub", "plan_blanks", "plan_style", "plan_columns", "plan_cell_style",
                 "plan_paginate_rows", "plan_paginate_group", "plan_paginate_cols")
+
+# ---- which cards, and their switches ---------------------------------------------
+
+# Three kinds of card: the required (always, no switch); the usual ones of
+# the table's kind and the study defaults' (shown though the content has
+# none: off, a switch turns them on); the rest only through "Add" (a card
+# the content has is shown whatever its kind).
+.plan_required <- c("normalize_ard", "table_plan", "plan_cells")
+
+.plan_usual <- function(hier = FALSE) {
+  if (hier) {
+    c("plan_sort", "plan_digits", "plan_col_header", "plan_total", "plan_filter")
+  } else {
+    c("plan_labels", "plan_levels", "plan_digits", "plan_col_header", "plan_total")
+  }
+}
+
+.plan_study_cards <- c("plan_stub", "plan_blanks", "plan_paginate_rows", "plan_columns",
+                       "plan_style")
+
+# The items as cards: the content's, the required and usual ones it lacks
+# (off), and those added in the builder (`added`: verbs on, waiting for a
+# value) -- each in the schema's order among the content's; each told
+# whether it has a switch (`switch`) and whether it is on (`on`).  A
+# switch only where its on / off really writes: off a card the content
+# lacks (on writes it, or opens it to be filled); on a report's own item
+# with no study default under it (off takes its rows away).  An item of
+# the study's defaults has none (its Revert, or the study's defaults,
+# change it).
+#
+# The Total column (plan_total()) reads the ARD's rows over all subjects
+# and stops without them: an ARD known to have none (`ard_total` "none",
+# .ard_total_kind()) leaves its card off with no switch, saying why
+# (`blocked`); its own switch otherwise (on / off works from the study's
+# defaults too).
+.builder_items_cards <- function(items, hier = FALSE, added = character(), ard_total = NA) {
+  usual <- c(.plan_usual(hier), .plan_study_cards)
+  items <- .builder_items_shown(items, unique(c("table_plan", "plan_cells", usual, added)))
+  lapply(items, function(it) {
+    req <- it$fn %in% .plan_required || isTRUE(it$required)
+    it$added <- !isTRUE(it$present) && it$fn %in% added
+    it$switch <- !req && (!isTRUE(it$present) ||
+                            (identical(it$from, "own") && !isTRUE(it$revert)))
+    if (identical(it$fn, "plan_total")) {
+      it$switch <- TRUE
+      if (!isTRUE(it$present) && identical(ard_total, "none")) {
+        it$switch <- FALSE
+        it$blocked <- "The ARD has no overall rows."
+      }
+    }
+    it$on <- isTRUE(it$present) || req || it$added
+    it
+  })
+}
+
+# The ARD's Total: "overall" when it has rows over all subjects (no
+# column key: ard_stack(.overall = TRUE)), which plan_total() makes the
+# Total column; "none" when it has none (plan_total() would stop); NA not
+# known (an older saved meta without `overall`).  `meta`: ard_meta().
+.ard_total_kind <- function(meta) {
+  if (is.null(meta) || is.null(meta$overall)) return(NA_character_)
+  if (isTRUE(meta$overall)) "overall" else "none"
+}
+
+# The usual cards the ARD itself tells the values of -- on by default (a
+# new table writes them): the Total column when the ARD has rows over all
+# subjects, the values' order when its variables keep a factor's levels,
+# the labels when it carries the variables' labels.  `meta`: ard_meta().
+.ard_on_cards <- function(meta, hier = FALSE) {
+  if (is.null(meta)) return(character())
+  usual <- .plan_usual(hier)
+  v <- meta$variables
+  on <- c(if (identical(.ard_total_kind(meta), "overall")) "plan_total",
+          if (length(intersect(meta$factor_vars, v$variable))) "plan_levels",
+          if (is.data.frame(v) && any(!is.na(v$label) & nzchar(v$label %||% ""))) "plan_labels")
+  intersect(on, usual)
+}
+
+# The verbs "Add" offers: the plan's, in the schema's order, less those
+# shown (a verb is one card) and the required
+.plan_addable <- function(items) {
+  shown <- vapply(items, function(it) it$fn, "")
+  setdiff(names(.plan_meaning), c(.plan_required, shown))
+}
+
+# ... the schema of those verbs, for add_item_input() (NULL: none known)
+.plan_add_schema <- function(items) {
+  sch <- tryCatch(tflspec::tfl_schema(), error = function(e) NULL)
+  if (is.null(sch)) return(NULL)
+  sch[intersect(names(sch), .plan_addable(items))]
+}
+
+# What a card switched on (or added) is written with: its values from the
+# ARD and the usual ones (`st`: builder_read()'s state); NULL for a verb
+# with no such value (its card opens to be filled: its fields or R)
+.plan_starter_args <- function(fn, st = NULL, hier = FALSE, meta = NULL) {
+  v <- st$variables
+  switch(
+    fn,
+    # the ARD's labels (none: the card opens to be filled)
+    plan_labels = {
+      if (!is.data.frame(v) || !nrow(v)) return(NULL)
+      has <- !is.na(v$label) & nzchar(v$label)
+      if (!any(has)) return(NULL)
+      as.list(stats::setNames(v$label[has], v$variable[has]))
+    },
+    # the levels in the ARD's order (a factor's, when it keeps one)
+    plan_levels = {
+      lv <- Filter(length, st$levels %||% list())
+      if (length(meta$factor_vars)) lv <- lv[intersect(names(lv), meta$factor_vars)]
+      if (!length(lv)) NULL else lv
+    },
+    plan_digits = list(rounding = "sas"),
+    plan_sort = if (hier && length(st$row_keys)) {
+      list(keys = trimws(strsplit(.hier_sort(
+        c(rep("alpha", length(st$row_keys) - 1L), "freq"),
+        hier = st$row_keys %in% st$hierarchy), "|", fixed = TRUE)[[1L]]))
+    },
+    plan_col_header = {
+      hp <- header_presets()
+      ch <- .header_preset_choices(hier)
+      if (!length(ch)) NULL else list(header = hp[[ch[[1L]]]])
+    },
+    plan_stub = list(name = "row_label"),
+    plan_blanks = list(where = "between_groups"),
+    plan_paginate_rows = list(max_rows = 30L, split = "group_safe"),
+    plan_style = list(align_count_pct = TRUE),
+    NULL)
+}
 
 # A card's own line above its body, by verb (`r`: the card's Edit as R is
 # offered beside it): what the card does not show yet, or where its values go
@@ -234,56 +385,73 @@ builder_items <- function(x, output_id) {
 
 # The cards of a table's content, in its order: one builder_card() an
 # item, with a thin line before the first item of each group (Mapping,
-# Finishing) -- the content's order is kept, the line only says where a
-# group starts.  `bodies`: the forms the builder has for some (by path, or
-# by verb); the rest show their arguments.  `id`: the card's input id of a
-# path.  table_plan() and plan_cells() are required (and an item marked
-# `required`: normalize_ard()); the others have a switch only where
-# `switches` names the verb (the Total column: its on / off works), none
-# elsewhere for now.  An item of the report's own is marked "This table".
-# The seldom changed cards (.plan_rare) are closed when drawn.
+# Finishing; its one line of what it is for) -- the content's order is
+# kept, the line only says where a group starts, and each card's head
+# names its group (faint), so a group that comes back later is still told.
+# normalize_ard() has no line: first, its head says ARD.  `bodies`: the
+# forms the builder has for some (by path, or by verb); the rest show
+# their arguments.  `id`: the card's input id of a path.  The required
+# cards (.plan_required, and an item marked `required`) have the bar; the
+# others a switch where the item says (`switch`, .builder_items_cards();
+# else where `switches` names the verb), none elsewhere.  An item of the
+# report's own is marked "This table".  The seldom changed cards
+# (.plan_rare) are closed when drawn.  `new`: the path of a card just
+# added (it takes the focus).
 .table_cards <- function(items, bodies = list(), id = function(path) path,
-                         switches = character(), lang = "en") {
-  required <- c("table_plan", "plan_cells")
+                         switches = character(), lang = "en", new = NULL) {
+  t <- function(x) tr(x, lang)
   started <- character()
   out <- list()
   for (it in items) {
     body <- bodies[[it$path]] %||% bodies[[it$fn]]
     own_form <- !is.null(body)
     if (!own_form) body <- .item_args_view(it, lang)
-    req <- it$fn %in% required || isTRUE(it$required)
-    sw <- it$fn %in% switches
-    # an item the content has not (its form would add it): no switch shown
-    # on, no mark of its own -- "not in the code yet"
-    absent <- !isTRUE(it$present) && !sw && !req
-    tools <- if (it$present && !isTRUE(it$fixed)) "r" else character()
+    req <- it$fn %in% .plan_required || isTRUE(it$required)
+    sw <- if (!is.null(it$switch)) isTRUE(it$switch) else it$fn %in% switches
+    on <- if (!is.null(it$on)) isTRUE(it$on) else (isTRUE(it$present) || req || !sw)
+    # a card that cannot be on (the ARD lacks what it reads): off, its
+    # reason where its body would be
+    blocked <- !is.null(it$blocked)
+    if (blocked) on <- FALSE
+    pending <- !isTRUE(it$present) && on
+    # an item the content has not (its form would add it): no mark of its
+    # own -- "not in the code yet"
+    absent <- !isTRUE(it$present) && !blocked && (pending || (!sw && !req))
+    tools <- if ((isTRUE(it$present) || pending) && !isTRUE(it$fixed)) "r" else character()
     sec <- .plan_section(it$fn)
     if (!sec %in% started) {
       started <- c(started, sec)
-      out[[length(out) + 1L]] <- shiny::div(class = "rp-card-sep", `data-section` = sec,
-                                            tr(.plan_section_labels[[sec]], lang))
+      if (sec %in% names(.plan_section_notes)) {
+        out[[length(out) + 1L]] <- shiny::div(
+          class = "rp-card-sep", `data-section` = sec,
+          shiny::tags$span(class = "rp-card-sep-label", t(.plan_section_labels[[sec]])),
+          shiny::tags$span(class = "rp-card-sep-note", t(.plan_section_notes[[sec]])))
+      }
     }
     rare <- it$fn %in% .plan_rare
     note <- .plan_card_note(it$fn, r = "r" %in% tools, lang = lang)
     out[[length(out) + 1L]] <- builder_card(
       id(it$path), it$fn, .verb_meaning(it$fn), from = it$from, required = req,
-      on = it$present || req || !sw,
-      switchable = sw, revert = isTRUE(it$revert),
+      on = on, switchable = sw, revert = isTRUE(it$revert),
       body = if (is.null(note)) body else shiny::tagList(note, body),
-      summary = if (it$present) .item_summary(it),
+      # (off: what turning it on does, said where its body would be)
+      summary = if (isTRUE(it$present)) .item_summary(it) else
+        if (blocked) t(it$blocked) else if (!on) t("On: its usual values are written."),
       tools = tools,
-      # the study's defaults the report leaves as they are, and the seldom
-      # changed: closed
-      open = !rare && (req || own_form || !identical(it$from, "defaults")),
+      # the study's defaults the report leaves as they are, the seldom
+      # changed and the off: closed
+      open = on && (pending || (!rare && (req || own_form || !identical(it$from, "defaults")))),
       path = it$path, lang = lang,
       own_label = if (isTRUE(it$present) && identical(it$from, "own")) "This table",
       absent = absent, rare = rare, section = sec,
+      tag = .plan_section_labels[[sec]],
+      new = identical(it$path, new),
       also = if (identical(it$fn, "plan_digits")) "plan_cells")
   }
   out
 }
 
-# The bar above the cards: the Layers menu -- every card in the content's
+# The bar above the cards: "Cards (plan)" -- every card in the content's
 # order, by group, each a link that opens it and brings it into view (the
 # seldom changed ones faint)
 .table_cards_bar <- function(items, id = function(path) path, lang = "en") {
@@ -294,8 +462,10 @@ builder_items <- function(x, output_id) {
     sec <- .plan_section(it$fn)
     if (!sec %in% started) {
       started <- c(started, sec)
-      entries[[length(entries) + 1L]] <- shiny::tags$li(
-        shiny::tags$h6(class = "dropdown-header", t(.plan_section_labels[[sec]])))
+      if (sec %in% names(.plan_section_notes)) {
+        entries[[length(entries) + 1L]] <- shiny::tags$li(
+          shiny::tags$h6(class = "dropdown-header", t(.plan_section_labels[[sec]])))
+      }
     }
     entries[[length(entries) + 1L]] <- shiny::tags$li(shiny::tags$a(
       href = "#", class = paste("dropdown-item rp-layer-go",
@@ -308,8 +478,216 @@ builder_items <- function(x, output_id) {
     shiny::div(class = "dropdown",
                shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary dropdown-toggle rp-layers-btn",
                                   `data-bs-toggle` = "dropdown", `aria-expanded` = "false",
-                                  t("Layer list")),
+                                  t("Cards (plan)")),
                shiny::tags$ul(class = "dropdown-menu", entries)))
+}
+
+# ---- the forms of the layout cards -------------------------------------------------
+
+# The cards with a form of fields by the schema's types (arg_field()): the
+# most used arguments on the card, the rest folded under "Other arguments"
+.plan_form_main <- list(
+  plan_blanks = c("where", "first", "last"),
+  plan_paginate_rows = c("max_rows", "split", "page_by"),
+  plan_paginate_cols = c("every", "fit"),
+  plan_stub = c("name", "indent", "before"),
+  plan_style = c("border", "align_count_pct", "font_size_half_points"))
+
+# the types the form uses where the schema says none (or a looser one): a
+# choice of the usual values, or a number
+.plan_form_types <- list(
+  plan_blanks = c(where = "enum[between_groups|records]|r"),
+  plan_style = c(border = "string", align_count_pct = "logical",
+                 font_size_half_points = "integer"))
+
+# a form card's schema: tflspec's, with the types above, its formals the
+# function's own (not `plan`) and its visible arguments the main ones
+.plan_form_schema <- function(fn) {
+  sch <- .schema_of(fn) %||% list()
+  for (a in names(.plan_form_types[[fn]])) {
+    sch$args[[a]]$type <- .plan_form_types[[fn]][[a]]
+  }
+  fo <- tryCatch(names(formals(utils::getFromNamespace(fn, "rtfreporter"))),
+                 error = function(e) NULL)
+  sch$formals <- setdiff(unique(c(fo, names(sch$args))), c("plan", "..."))
+  sch$visible <- .plan_form_main[[fn]]
+  sch
+}
+
+# where an argument's value came from: the report's own, the study's
+# defaults (a value the item has that the report does not say)
+.arg_from <- function(it, a) {
+  if (a %in% names(it$own_args %||% list())) "own" else if (a %in% names(it$args)) "defaults" else "own"
+}
+
+# A form card's body: its main arguments as fields (each marked where its
+# value came from), the rest under "Other arguments".  `choices`: the
+# columns offered (the row layers, the ARD's keys).
+.plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en") {
+  sch <- .plan_form_schema(fn)
+  a <- it$args %||% list()
+  fields <- lapply(.plan_form_main[[fn]], function(k) {
+    arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = a[[k]],
+              default = sch$args[[k]]$default, choices = choices,
+              from = if (k %in% names(a)) .arg_from(it, k) else "own",
+              own = if (k %in% names(it$own_args %||% list())) "This table",
+              help = .schema_help(fn, k), lang = lang)
+  })
+  shiny::tagList(arg_group(NULL, fields, lang = lang),
+                 arg_more(cid, fn, schema = sch, lang = lang, values = a, choices = choices))
+}
+
+# the form read back: the arguments its fields say (an unticked check
+# FALSE); NULL while its fields are not there yet
+.plan_form_read <- function(input, cid, fn) {
+  sch <- .plan_form_schema(fn)
+  seen <- vapply(.plan_form_main[[fn]], function(k) {
+    !is.null(.input_value(input, paste0(cid, "__", k))) ||
+      isTRUE(.input_value(input, paste0(cid, "__", k, "__isr")))
+  }, NA)
+  if (!any(seen)) return(NULL)
+  builder_card_read(input, cid, sch, args = sch$formals, logical_false = TRUE)
+}
+
+# two values the same (a number as a number: 30 and 30L; a check's FALSE
+# and no value)
+.same_value <- function(a, b, logical = FALSE) {
+  if (logical) return(isTRUE(as.logical(a)) == isTRUE(as.logical(b)))
+  if (is.null(a) || is.null(b)) return(is.null(a) && is.null(b))
+  if (is.numeric(a) && is.numeric(b)) return(isTRUE(all.equal(as.numeric(a), as.numeric(b))))
+  identical(.arg_to_r(a), .arg_to_r(b))
+}
+
+# The report's own arguments after a form's edit: a field changed from
+# what the item says is the report's own; one emptied that was its own is
+# taken away (the study's default again).  `read`: .plan_form_read().
+.plan_form_own <- function(read, it, fn) {
+  sch <- .plan_form_schema(fn)
+  eff <- it$args %||% list()
+  own <- it$own_args %||% list()
+  for (a in union(names(read), intersect(names(eff), sch$formals))) {
+    lg <- identical(.arg_kind(sch$args[[a]]$type), "logical") && !inherits(read[[a]], "tfl_r")
+    new <- read[[a]]
+    if (.same_value(new, eff[[a]], lg)) next
+    if (is.null(new)) {
+      if (a %in% names(own)) own[[a]] <- NULL
+      next
+    }
+    own[[a]] <- new
+  }
+  own
+}
+
+# ---- normalize_ard() ------------------------------------------------------------
+
+# normalize_ard()'s arguments the sheets have a place for (tables), and
+# those they have not (shown, kept as the function's defaults)
+.normalize_cols <- c(overall = "overall_label", stack = "stack", stack_sep = "stack_sep",
+                     stack_nest = "stack_nest")
+
+.normalize_schema <- function() {
+  sch <- .schema_of("normalize_ard") %||% list()
+  # the sheets have no place for these yet: what the function does is said
+  for (a in c("keys", "drop_contexts", "drop_key_variables")) {
+    sch$args[[a]]$type <- "r"
+    sch$args[[a]]$description <- "Not kept in the sheets yet: the function's default applies."
+  }
+  sch$args$stack$type <- "string"
+  sch$args$stack_sep$type <- "string"
+  sch$args$stack_nest$type <- "logical"
+  sch$formals <- c("keys", "drop_contexts", "drop_key_variables", "stack", "stack_sep",
+                   "stack_nest")
+  sch
+}
+
+# The normalize_ard() card: the hierarchy -- the ARD analysis's, fixed
+# chips marked "From the ARD", with the way to that analysis -- and the
+# any-event row (overall: the table's, tables$overall_label) when the table
+# has a hierarchy; the stack when the table says one; the rest under
+# "Other arguments".  `tb`: the report's tables row; `step_link`: the link
+# to the ARD analysis; `overall_id`: the overall field's input id.
+.normalize_body <- function(cid, hierarchy = character(), tb = NULL, overall_id = NULL,
+                            step_link = NULL, revert_id = NULL, lang = "en") {
+  t <- function(x) tr(x, lang)
+  val <- function(col) {
+    v <- if (!is.null(tb) && col %in% names(tb) && nrow(tb)) tb[[col]][1L] else NA
+    if (is.na(v) || !nzchar(trimws(v))) NULL else v
+  }
+  al <- function(arg) builder_label(.arg_meaning("normalize_ard", arg), arg, "arg", lang)
+  hier <- length(hierarchy) > 0L
+  stacked <- !is.null(val("stack"))
+  sch <- .normalize_schema()
+  for (a in names(sch$args)) {
+    if (!is.null(sch$args[[a]]$description)) sch$args[[a]]$description <- t(sch$args[[a]]$description)
+  }
+  ov <- val("overall_label")
+  parts <- list(
+    if (hier) shiny::div(
+      class = "rp-b-sec",
+      shiny::div(class = "rp-b-sec-label",
+                 with_tip(al("hierarchy"),
+                          t("The hierarchy is the ARD analysis's (step 1): the table shows its levels as they are.")),
+                 " ", from_badge("ard", lang)),
+      shiny::div(class = "rp-b-levels",
+                 lapply(hierarchy, function(h) shiny::span(class = "rp-b-level", h)),
+                 step_link)),
+    if (hier) shiny::div(
+      class = "rp-b-sec rp-field", `data-arg` = "overall",
+      shiny::tags$label(class = "rp-field-label", `for` = overall_id,
+                        with_tip(al("overall"),
+                                 t("The any-event row's text (tables$overall_label); blank: no such row.")),
+                        if (!is.null(ov)) from_badge("own", lang, own = "This table"),
+                        if (!is.null(ov) && !is.null(revert_id)) shiny::actionLink(
+                          revert_id, t("Revert"), class = "small rp-revert",
+                          title = t("No any-event row: the ARD's rows as they are"))),
+      shiny::tags$input(type = "text", id = overall_id, class = "form-control form-control-sm",
+                        value = ov %||% "", placeholder = "Any TEAE", style = "max-width: 18em;")),
+    if (stacked) lapply(c("stack", "stack_sep", "stack_nest"), function(a) {
+      v <- val(.normalize_cols[[a]])
+      if (identical(a, "stack_nest")) v <- if (!is.null(v)) toupper(v) == "TRUE"
+      arg_field(cid, a, sch$args[[a]]$type, label = .arg_meaning("normalize_ard", a),
+                value = v, from = "own",
+                own = if (!is.null(v)) "This table", lang = lang)
+    }))
+  parts <- Filter(Negate(is.null), parts)
+  shiny::tagList(
+    if (!length(parts)) shiny::div(class = "small text-muted",
+                                   t("No settings: the function's defaults.")),
+    parts,
+    arg_more(cid, "normalize_ard", used = if (stacked) c("stack", "stack_sep", "stack_nest"),
+             schema = sch, lang = lang))
+}
+
+# the stack's fields read back as the tables columns (NULL while they are
+# not there): stack, stack_sep, stack_nest
+.normalize_read <- function(input, cid) {
+  get <- function(a) .input_value(input, paste0(cid, "__", a))
+  if (is.null(get("stack")) && is.null(get("stack_sep")) && is.null(get("stack_nest"))) return(NULL)
+  txt <- function(v) if (is.null(v) || !nzchar(trimws(v))) NA_character_ else trimws(v)
+  list(stack = txt(get("stack")), stack_sep = txt(get("stack_sep")),
+       stack_nest = if (isTRUE(get("stack_nest"))) "TRUE" else NA_character_)
+}
+
+# ---- the rows: the variables shown --------------------------------------------------
+
+# A summary table's variables not shown: the row filter the builder writes
+# for them (tables$keep_where `!variable %in% c("AGE", ...)`) read back.
+# NULL when the row filter says something else (it is the user's, kept).
+.hidden_vars_read <- function(where) {
+  if (length(where) != 1L || is.na(where) || !nzchar(trimws(where))) return(character())
+  e <- tryCatch(str2lang(where), error = function(e) NULL)
+  ok <- is.call(e) && identical(e[[1L]], as.name("!")) && is.call(e[[2L]]) &&
+    identical(e[[2L]][[1L]], as.name("%in%")) && identical(e[[2L]][[2L]], as.name("variable"))
+  if (!ok) return(NULL)
+  v <- tryCatch(eval(e[[2L]][[3L]], envir = baseenv()), error = function(e) NULL)
+  if (!is.character(v)) NULL else v
+}
+
+# ... and written: NA for none
+.hidden_vars_write <- function(hidden) {
+  if (!length(hidden)) return(NA_character_)
+  sprintf("!variable %%in%% %s", paste(deparse(as.character(hidden), width.cutoff = 500L),
+                                       collapse = " "))
 }
 
 # ---- code line -> card -------------------------------------------------------------

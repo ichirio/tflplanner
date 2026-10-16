@@ -113,7 +113,7 @@ test_that("the builder's form: the Layers bar, the groups, the pages as fields, 
     session$flushReact()
     h <- output$builder_form$html
     expect_match(h, "rp-cards-bar", fixed = TRUE)
-    expect_match(h, ">Layer list<", fixed = TRUE)
+    expect_match(h, ">Cards (plan)<", fixed = TRUE)
     expect_match(h, "rp-card-sep", fixed = TRUE)
     expect_match(h, 'class="rp-card-req">Required<', fixed = TRUE)
     # the own row's fields start empty: the example is the placeholder, its
@@ -123,6 +123,19 @@ test_that("the builder's form: the Layers bar, the groups, the pages as fields, 
     bf <- session$userData$bform
     fns <- vapply(bf$items, function(it) it$fn, "")
     skip_if_not("plan_paginate_rows" %in% fns)
+    # a study card the table has not: off; its switch puts it on (its
+    # usual values written), its fields shown
+    if (!isTRUE(bf$items[[match("plan_paginate_rows", fns)]]$present)) {
+      on <- list(TRUE)
+      names(on) <- paste0("b", bf$n, "_card_plan_paginate_rows__on")
+      do.call(session$setInputs, on)
+      session$elapse(1000)
+      session$flushReact()
+      h <- output$builder_form$html
+      bf <- session$userData$bform
+      fns <- vapply(bf$items, function(it) it$fn, "")
+      expect_true(bf$items[[match("plan_paginate_rows", fns)]]$present)
+    }
     cid <- paste0("b", bf$n, "_card_plan_paginate_rows")
     # the pages' arguments as fields: a number, a choice of the schema's
     expect_match(h, sprintf('id="%s__max_rows"', cid), fixed = TRUE)

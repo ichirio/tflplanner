@@ -216,10 +216,10 @@ test_that("a thin line before each group of cards; the content's order kept", {
   first_finish <- fns_of(items)[vapply(fns_of(items), .plan_section, "") == "finish"][1L]
   expect_lt(at('data-section="finish">'), at(sprintf('data-fn="%s"', first_finish)))
   expect_lt(at('data-section="mapping">'), at('data-fn="table_plan"'))
-  expect_match(h, ">Mapping<", fixed = TRUE)
+  expect_match(h, ">Table skeleton<", fixed = TRUE)
   expect_match(h, ">Finishing<", fixed = TRUE)
   # the groups by verb
-  expect_identical(.plan_section("plan_sort"), "mapping")
+  expect_identical(.plan_section("plan_sort"), "finish")
   expect_identical(.plan_section("plan_col_header"), "finish")
   expect_identical(.plan_section("plan_paginate_cols"), "finish")
   expect_match(html(.table_cards(items, lang = "ja")), tr("Finishing", "ja"), fixed = TRUE)
@@ -269,17 +269,17 @@ test_that("the order of the values says where it is edited; the row order explai
   expect_match(h, "rp-tip", fixed = TRUE)
 })
 
-test_that("the Layers menu lists the cards in their order and brings one into view", {
+test_that("the cards' menu lists the cards in their order and brings one into view", {
   p <- sample_planner()
   items <- builder_items(p, "T-14-1-1")
   h <- html(.table_cards_bar(items, id = function(x) paste0("c_", x)))
-  expect_match(h, ">Layer list<", fixed = TRUE)
+  expect_match(h, ">Cards (plan)<", fixed = TRUE)
   tg <- sub('data-target="c_([^"]+)"', "\\1", regmatches(h, gregexpr('data-target="c_[^"]+"', h))[[1L]])
   expect_identical(tg, vapply(items, function(it) it$path, ""))
   expect_match(h, "dropdown-header", fixed = TRUE)
   expect_match(h, "rp-layer-go rp-layer-rare", fixed = TRUE)
   expect_match(.builder_cards_js, "rp-layer-go", fixed = TRUE)
-  expect_identical(tr("Layer list", "ja"), "\u5c64")
+  expect_identical(tr("Cards (plan)", "ja"), "\u30ab\u30fc\u30c9\u4e00\u89a7 (plan)")
 })
 
 test_that("the chips of an order wrap when narrow, never cut", {

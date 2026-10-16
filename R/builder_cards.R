@@ -76,11 +76,12 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
                          open = TRUE, error = NULL, path = id, lang = "en",
                          switchable = TRUE, revert = !identical(from, "own"),
                          own_label = NULL, absent = FALSE, also = NULL, rare = FALSE,
-                         section = NULL) {
+                         section = NULL, tag = NULL, new = FALSE) {
   t <- function(x) tr(x, lang)
   cls <- c("rp-card", if (required) "rp-card-required", if (!on) "rp-card-off",
            if (isTRUE(absent)) "rp-card-absent", if (isTRUE(rare)) "rp-card-rare",
-           if (open) "rp-card-open", if (!is.null(error)) "rp-card-error")
+           if (open) "rp-card-open", if (!is.null(error)) "rp-card-error",
+           if (isTRUE(new)) "rp-card-new")
   # the switch only where on / off works (`switchable`): a switch that
   # cannot be turned off would look on and mislead -- such a card has none
   left <- if (required) {
@@ -116,6 +117,8 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
     revert,
     if (!is.null(summary)) shiny::tags$span(class = "rp-card-summary", summary),
     if (!is.null(error)) shiny::tags$span(class = "rp-card-err", "\u26a0 ", error),
+    # its group (`tag`: Mapping, Finishing ...), faint at the right
+    if (!is.null(tag)) shiny::tags$span(class = "rp-card-stage", t(tag)),
     menu)
   shiny::div(
     class = paste(cls, collapse = " "), id = id, `data-card` = id, `data-fn` = fn,
@@ -153,8 +156,9 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
 # argument left blank left out (not written).  NULL when the card is
 # switched off.  `schema` gives the arguments and their types (`args`,
 # `formals`, `aes`); an argument whose R switch is on is its R text.
+# `logical_false`: an unticked check is FALSE (not left out).
 #' @noRd
-builder_card_read <- function(input, id, schema = NULL, args = NULL) {
+builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_false = FALSE) {
   get <- function(...) .input_value(input, paste(c(id, ...), collapse = "__"))
   on <- get("on")
   if (isFALSE(on)) return(NULL)
@@ -191,7 +195,9 @@ builder_card_read <- function(input, id, schema = NULL, args = NULL) {
     if (is.null(v)) next
     if (kind == "logical") {
       dflt <- schema$args[[a]]$default
-      if (isTRUE(v)) out[[a]] <- TRUE else if (isTRUE(dflt)) out[[a]] <- FALSE
+      # unticked: FALSE when the default is TRUE, or when every logical is
+      # wanted as it is (`logical_false`: a value over the study's default)
+      if (isTRUE(v)) out[[a]] <- TRUE else if (isTRUE(dflt) || logical_false) out[[a]] <- FALSE
       next
     }
     if (kind %in% c("number", "integer")) {
@@ -337,7 +343,8 @@ builder_card_read <- function(input, id, schema = NULL, args = NULL) {
 #' @noRd
 arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default = NULL,
                       choices = NULL, from = "own", help = NULL, required = FALSE,
-                      lang = "en", fn = NULL, aes = NULL, nav = NULL, help_link = NULL) {
+                      lang = "en", fn = NULL, aes = NULL, nav = NULL, help_link = NULL,
+                      own = NULL) {
   t <- function(x) tr(x, lang)
   kind <- .arg_kind(type)
   fid <- paste0(id, "__", arg)
@@ -351,7 +358,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     list = .field_select(fid, choices, value, multiple = TRUE, lang = lang, placeholder = default),
     enum = .field_enum(fid, .type_enum(type), value, default, lang),
     number = .field_number(fid, value, default, step = "any"),
-    integer = .field_number(fid, value, default, step = "1"),
+    integer = .field_number(fid, value, default, step = "1", min = "0"),
     logical = .field_check(fid, value, default),
     string = .field_text(fid, value, default, choices),
     template = .field_text(fid, value, default, choices, mono = TRUE),
@@ -377,7 +384,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     shiny::tags$label(class = "rp-field-label", `for` = fid,
                       builder_label(label, arg, "arg", lang),
                       if (required) shiny::tags$span(class = "rp-req", title = t("Required"), "*"),
-                      from_badge(from, lang),
+                      from_badge(from, lang, own = own),
                       help_tip(help), help_link),
     shiny::div(class = "rp-field-row",
                shiny::div(class = "rp-form-input", control),
@@ -412,24 +419,35 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   choices
 }
 
+# An enum: a select of its entries, the default named so ("(default)") and
+# a blank first (blank: the default, not written); a value outside the
+# entries (an older spec's) is kept as one of them, not lost
 .field_enum <- function(fid, entries, value, default, lang = "en") {
+  v <- if (!is.null(value) && length(value)) as.character(value)[[1L]] else ""
+  if (nzchar(v) && !v %in% entries) entries <- c(entries, v)
   labels <- entries
-  if (!is.null(default) && default %in% entries) {
+  if (!is.null(default) && length(default) == 1L && default %in% entries) {
     labels[entries == default] <- paste0(default, " ", tr("(default)", lang))
   }
   shiny::selectInput(fid, NULL, choices = c(stats::setNames("", ""), stats::setNames(entries, labels)),
-                     selected = value %||% "", width = "100%", selectize = FALSE)
+                     selected = v, width = "100%", selectize = FALSE)
 }
 
-.field_number <- function(fid, value, default, step = "any") {
+# A number: a number field, the default as its placeholder (blank: the
+# default, not written); an integer steps by 1 (`min`: the least it takes)
+.field_number <- function(fid, value, default, step = "any", min = NULL) {
+  v <- if (!is.null(value) && length(value) && !is.na(value[[1L]])) as.character(value[[1L]])
   shiny::tags$input(type = "number", id = fid, class = "form-control form-control-sm rp-number",
-                    value = if (!is.null(value)) as.character(value) else NULL,
-                    placeholder = if (!is.null(default)) as.character(default) else NULL,
-                    step = step)
+                    value = v,
+                    placeholder = if (!is.null(default) && length(default)) as.character(default[[1L]]) else NULL,
+                    step = step, min = min,
+                    inputmode = if (identical(step, "1")) "numeric" else "decimal")
 }
 
+# A logical: a check, ticked as the value says (the default when there is
+# none)
 .field_check <- function(fid, value, default) {
-  on <- if (!is.null(value)) isTRUE(value) else isTRUE(default)
+  on <- if (!is.null(value) && length(value)) isTRUE(as.logical(value[[1L]])) else isTRUE(default)
   shiny::tags$span(class = "form-check form-switch rp-check",
                    shiny::tags$input(type = "checkbox", class = "form-check-input", id = fid,
                                      checked = if (on) NA else NULL))
@@ -625,7 +643,8 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
 
 # The mark of an item's or a value's source: own has none; `defaults` the
 # study's defaults, `standards` the company standards, `pattern:<name>` a
-# pattern, `template:<name>` a template.
+# pattern, `template:<name>` a template, `ard` taken from the ARD (changed,
+# it is the report's own, and Revert takes it back to the ARD's).
 #' @noRd
 from_badge <- function(from, lang = "en", own = NULL) {
   if (is.null(from) || !length(from) || !nzchar(from)) return(NULL)
@@ -643,6 +662,7 @@ from_badge <- function(from, lang = "en", own = NULL) {
                  standards = t("Company standard"),
                  pattern = paste(t("Pattern"), name),
                  template = t("Template"),
+                 ard = t("From the ARD"),
                  from)
   shiny::tags$span(class = paste("rp-badge", paste0("rp-badge-", kind)), `data-from` = from,
                    title = if (!is.null(name)) name else NULL, text)
@@ -776,6 +796,10 @@ add_item_input <- function(id, kinds = NULL, schema = NULL, lang = "en", placeho
 .rp-card.rp-card-absent > .rp-card-head .rp-card-title { color: #6b7280; }
 .rp-badge-standards { background: #eef6ff; border-color: #cfe2ff; color: #1d4ed8; }
 .rp-badge-template { background: #f5f3ff; border-color: #ddd6fe; color: #6d28d9; }
+.rp-badge-ard { background: #fff7ed; border-color: #fed7aa; color: #9a3412; }
+.rp-card-stage { font-size: 10.5px; color: #9ca3af; margin-left: auto; white-space: nowrap; }
+.rp-card-stage + .rp-card-menu { margin-left: 0; }
+.rp-card-sep-note { color: #9ca3af; letter-spacing: 0; }
 .rp-revert { padding: 0 .3rem; font-size: 12px; text-decoration: none; }
 .rp-field { margin-bottom: .35rem; min-width: 0; }
 .rp-field-label { font-size: 12.5px; margin-bottom: .1rem; display: flex; align-items: center;
@@ -958,9 +982,12 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
   $(document).on('shiny:value', function() {
     if (!wantFocus) return;
     setTimeout(function() {
-      var cards = $('.rp-card');
-      if (!cards.length) return;
-      var f = cards.last().find('input:visible, select:visible').first();
+      // the card just added (marked new), else the last
+      var card = $('.rp-card.rp-card-new').first();
+      if (!card.length) card = $('.rp-card').last();
+      if (!card.length) return;
+      card[0].scrollIntoView({block: 'nearest'});
+      var f = card.find('input:visible, select:visible').first();
       if (f.length) { f.trigger('focus'); wantFocus = false; }
     }, 50);
   });
