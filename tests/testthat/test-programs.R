@@ -10,17 +10,20 @@ test_that("a table program writes out its plan and report, saves its ARD and par
   # the definition written out, not read at run time
   expect_false(any(grepl("tfl_read_report_spec", code, fixed = TRUE)))
   expect_false(any(grepl("spec = spec", code, fixed = TRUE)))
-  expect_true(any(startsWith(code, "plan <- table_plan(")))
+  # one pipe from the ARD: its normalization, the plan (tflspec #302)
+  expect_true("plan <- ard |>" %in% code)
+  expect_true(any(startsWith(trimws(code), "normalize_ard(")))
+  expect_true(any(startsWith(trimws(code), "table_plan(")))
   expect_true(any(startsWith(trimws(code), "plan_digits(")))
   expect_true(any(startsWith(code, "doc <- rtf_document(")))
   # one pipe: the document, its tables
   expect_true(any(startsWith(trimws(code), "rtf_tables(plan")))
   expect_true('generate_rtfreport(doc, file.path("output", paste0(report_id, ".rtf")), overwrite = TRUE)' %in% code)
   expect_true(any(grepl('file.exists("study.yml")', code, fixed = TRUE)))
-  expect_true(any(grepl("saveRDS(data", code, fixed = TRUE)))
+  expect_true(any(grepl("saveRDS(ard", code, fixed = TRUE)))
   # no data code: the company template takes its rows of the study ARD
   expect_true(any(grepl("filter(output_id == report_id)", code, fixed = TRUE)))
-  expect_true(any(grepl("data <- normalize_ard(ard)", code, fixed = TRUE)))
+  expect_false(any(grepl("data <- normalize_ard(", code, fixed = TRUE)))
   expect_silent(parse(text = code))
   expect_equal(report_info(p, "PK")$file, "output/PK.rtf")
   expect_silent(parse(text = autoexec_code(p)))
@@ -116,9 +119,27 @@ test_that("a table's normalization is what its definitions say: the hierarchy, t
     cols = "TRTA", rows = "group1 = AEBODSYS",
     overall_label = "Subjects with at least one TEAE"))
   code <- program_code(p, "AE")
-  expect_true(any(grepl(paste0("data <- normalize_ard(ard, hierarchy = c(\"AEBODSYS\", \"AEDECOD\"), ",
-                               "overall = \"Subjects with at least one TEAE\")"), code, fixed = TRUE)))
-  # a table without them: as before
+  # in the table's pipe (tflspec #302)
+  i <- which(code == "plan <- ard |>")
+  expect_length(i, 1L)
+  expect_identical(code[i + 1:5], c(
+    "  normalize_ard(",
+    "    hierarchy = c(\"AEBODSYS\", \"AEDECOD\"),",
+    "    overall = \"Subjects with at least one TEAE\"",
+    "  ) |>",
+    "  table_plan(cols = \"TRTA\", rows = c(group1 = \"AEBODSYS\"))"))
+  expect_false(any(grepl("data <- normalize_ard(", code, fixed = TRUE)))
+  expect_true(any(startsWith(code, "saveRDS(ard, ")))
+  # a table without them: normalize_ard() with none
   q <- add_output(new_planner(), "T1")
-  expect_true("data <- normalize_ard(ard)" %in% program_code(q, "T1"))
+  code <- program_code(q, "T1")
+  expect_true("plan <- ard |>" %in% code)
+  expect_true("  normalize_ard() |>" %in% code)
+  # a process code makes `data`: the plan is planned from it
+  q <- add_output(new_planner(), "T2", process_code = "data <- normalize_ard(ard) |> dplyr::mutate(x = 1)")
+  code <- program_code(q, "T2")
+  expect_true("data <- normalize_ard(ard) |> dplyr::mutate(x = 1)" %in% code)
+  expect_true("plan <- table_plan(data)" %in% code)
+  expect_true(any(startsWith(code, "saveRDS(data, ")))
+  expect_silent(parse(text = code))
 })

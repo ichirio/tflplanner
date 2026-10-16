@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **The table builder shows the content as the plan's cards** (#397,
-  0.0.2.9228).  One card a function call -- its fields that function's
+  0.0.2.9229).  One card a function call -- its fields that function's
   arguments only -- in the content's order, under the plan bar with two
   separators: the table skeleton (which ARD values go to which rows,
   columns and cells) and finishing (labels, order, digits, pages).  Each
@@ -19,7 +19,19 @@
   seen, the source said beside it.  The rows are assigned as dragged, the
   analysis variables' block removable (a table of one variable), the
   stack's subgroup offered as rows (an Overall Response table), the row
-  text chosen.  tflspec >= 0.0.24.9136.
+  text chosen.  tflspec >= 0.0.24.9137.
+
+- **A table's program normalizes its ARD in the table's pipe** (#402,
+  0.0.2.9228; tflspec >= 0.0.24.9137, its #302).  With no process code and
+  the company's template left at the built-in one, the data part leaves
+  `ard` (the report's rows of the study ARD, saved to
+  `output/ard/<output_id>.rds`) and the report part writes `plan <- ard |>
+  normalize_ard(hierarchy = ..., overall = ..., stack = ...) |>
+  table_plan(...) |> plan_*()`, the arguments from the report's
+  definitions as before; the separate `data <- normalize_ard(...)` line is
+  gone.  A table whose process code, company template or own data step
+  makes `data` keeps `plan <- table_plan(data, ...)`, and so does one whose
+  content step is its own code.  SAMPLE-01's RTFs are the same.
 
 - **The sample study SAMPLE-01 runs on tflspec's oncology sample data**
   (#400, 0.0.2.9227; the owner's decision: the bundled onco data are the
