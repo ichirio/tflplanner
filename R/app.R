@@ -2423,8 +2423,8 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$open_study2, open_row(shown_study()))
   shiny::observeEvent(input$studies_dbl, {
     d <- studies()
-    i <- input$studies_dbl
-    if (i >= 1L && i <= nrow(d)) open_row(d[i, , drop = FALSE])
+    i <- .dt_row_shown(input$studies_dbl, input$studies_rows_current)
+    if (!is.na(i) && i >= 1L && i <= nrow(d)) open_row(d[i, , drop = FALSE])
   })
   shiny::observeEvent(input$new_study, open_new_study("sample"))
   open_new_study <- function(from = "sample") {
@@ -10498,7 +10498,7 @@ app_server <- function(input, output, session, start) {
   # a double click on a report: open its Content
   shiny::observeEvent(input$outputs_dbl, {
     v <- shiny::isolate(outputs_view())
-    id <- v$output_id[input$outputs_dbl]
+    id <- v$output_id[.dt_row_shown(input$outputs_dbl, input$outputs_rows_current)]
     if (!length(id) || is.na(id)) return()
     shiny::updateSelectInput(session, "target", selected = id)
     go(switch(report_info(rv$p, id)$type, listing = "lf", figure = "designer",
