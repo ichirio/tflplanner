@@ -2765,7 +2765,6 @@ No analysis of this report is grouped by %s: the ARD has no overall rows to show
 Also over all subjects,全体でも計算する
 and over all,全体でも
 "The ARD definition does not hold, so no ARD program was written (the rest is saved). See the Review tab.",ARD 定義が成り立たないため、ARD プログラムは書いていません（他は保存済み）。Review タブを見てください。
-The order is the report's code list's (step 1).,並びは、この帳票のコードリストの順です（ARD 作成の 1-1）。
 "ARD: not read yet (step 1, ""Preview this table's ARD"")",ARD: まだ読み込んでいません（ARD 作成の「この表の ARD をプレビュー」）
 %d levels: %s,%d 水準: %s
 columns %s (%s groups),列 %s（%s 群）
@@ -3325,3 +3324,6 @@ Drop the key variables,キー変数の行を除く
 Borders,罫線
 Font size (half points),文字の大きさ（半ポイント）
 plan_total puts the ARD's overall rows (results not split by group) in a Total column.,plan_total は ARD の全体の行（群で分けない結果）を Total 列にします。
+The ARD's order (its factor levels).,ARD の順（因子の水準順）です。
+The code list's order (ARD step 1-1).,コードリストの順（ARD 作成の 1-1）です。
+The ARD's order differs from the code list's; the table uses the code list's.,ARD の順とコードリストの順が違います。コードリストの順で表を作ります。

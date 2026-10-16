@@ -40,8 +40,9 @@
 #'   `hierarchy` (the hierarchy keys, outermost first), `variables` (a data
 #'   frame: `variable`, `kind`, `levels`, `n_levels`, `stats`, `label`),
 #'   `contexts`, `stats`, `columns`; from a normalized ARD also `overall`
-#'   (rows over all subjects, which a Total column reads) and `factor_vars`
-#'   (the variables whose levels keep a factor's order).
+#'   (rows over all subjects, which a Total column reads), `factor_vars`
+#'   (the variables whose levels keep a factor's order) and `factor_keys`
+#'   (the key columns that are factors: their levels' order).
 #' @export
 ard_meta <- function(ard = NULL, data = NULL) {
   out <- list(keys = list(), by = character(), hierarchy = character(),
@@ -104,11 +105,13 @@ ard_meta <- function(ard = NULL, data = NULL) {
     out$stats <- unique(stats::na.omit(sn))
     out$columns <- cn
     # the analyses' rows over all subjects (no column key: a Total column
-    # reads them) and the variables whose levels keep a factor's order
+    # reads them), the variables whose levels keep a factor's order and
+    # the key columns that are factors (TRT01A in its arms' order)
     out$overall <- .ard_has_overall(d, by)
     out$factor_vars <- if (".label_order" %in% cn) {
       unique(v[!is.na(v) & v %in% ana & !is.na(d$.label_order)])
     } else character()
+    out$factor_keys <- keys[vapply(keys, function(k) is.factor(d[[k]]), NA)]
   } else if (is.data.frame(ard)) {
     # a raw ARD: keys are the groupN columns, their levels groupN_level
     g <- grep("^group[0-9]+$", names(ard), value = TRUE)

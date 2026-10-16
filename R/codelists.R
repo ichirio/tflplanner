@@ -406,6 +406,20 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
 # -- a report's code lists where its data is made (1-1, a listing's data,
 # a figure's data) --------------------------------------------------------
 
+# A variable's values in its code list's order (`cl`: a report's rows of
+# the codelists sheet), as the ARD program makes them: each its label,
+# else its value -- tflspec's order for plan_levels(); none when the
+# report has no list of it
+.codelist_order <- function(cl, variable) {
+  if (is.null(cl) || !nrow(cl) || !"variable" %in% names(cl)) return(character())
+  r <- cl[!is.na(cl$variable) & cl$variable == variable & !is.na(cl$value), , drop = FALSE]
+  if (!nrow(r)) return(character())
+  o <- suppressWarnings(as.numeric(r$order %||% rep(NA, nrow(r))))
+  r <- r[order(is.na(o), o, seq_len(nrow(r))), , drop = FALSE]
+  lab <- r$label %||% rep(NA_character_, nrow(r))
+  unique(ifelse(is.na(lab) | !nzchar(lab), r$value, lab))
+}
+
 # The code lists of `vars` (a report's rows of the codelists sheet), each a
 # line of what it makes of the data: "F -> Female, M -> Male" (a value the
 # list prints as it is, alone); list(variable, text), in the lists' order

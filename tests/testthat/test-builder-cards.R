@@ -280,14 +280,13 @@ rt <- function(fn, args) {
 
 # ... and the text read again gives the same text: what tflspec's reading
 # makes of a value (a column for a name, a call of constants for its R)
-# writes back as it was read
-# writes back as it was read (tflspec's reading may put the arguments in
-# another order: by name, the same)
+# writes back as it was read, in the order written
 rt_text <- function(fn, args) {
   txt <- args_to_r(fn, args)
   a1 <- .args_plain(args_from_r(fn, txt))
+  expect_identical(names(a1), names(args), info = paste(fn, txt))
   a2 <- .args_plain(args_from_r(fn, args_to_r(fn, a1)))
-  expect_identical(a2[sort(names(a2))], a1[sort(names(a1))], info = paste(fn, txt))
+  expect_identical(a2, a1, info = paste(fn, txt))
   txt
 }
 
@@ -313,8 +312,9 @@ test_that("a table's plan verbs round trip through R text (tflspec's conversion)
   expect_identical(rt("plan_filter", list(where = r("SAFFL == \"Y\" & AGE > 65"))),
                    'SAFFL == "Y" & AGE > 65')
   rt("plan_compare", list(ref = "Placebo", stat = "p.value"))
-  rt("plan_stub", list(width = 2.5, indent = 2))
-  expect_identical(rt("plan_paginate_rows", list(max_rows = 26, split = "group_safe")),
+  # an integer argument comes back an integer (tflspec#292)
+  rt("plan_stub", list(width = 2.5, indent = 2L))
+  expect_identical(rt("plan_paginate_rows", list(max_rows = 26L, split = "group_safe")),
                    'max_rows = 26, split = "group_safe"')
   rt("plan_col_header", list(header = c("A | B", "C"), align_count_pct = TRUE))
   # the positional `...` with no name goes to the schema's key
@@ -380,7 +380,7 @@ test_that("a figure's functions round trip through R text; what is no literal st
     "legend.position = \"bottom\", legend.position.inside = c(0.8, 0.8), axis.text.y = element_text(size = 8)")
   rt_text("ggsurvfit", list(fit = r("fit"), linewidth = 0.3, type = "survival"))
   rt("add_risktable", list(times = r("x_breaks"), risktable_stats = c("n.risk", "cum.event"), size = 3))
-  expect_identical(rt_text("wrap_plots", list(plots = c("km", "risk"), ncol = 1L, heights = c(3, 1), guides = "collect")),
+  expect_identical(rt("wrap_plots", list(plots = c("km", "risk"), ncol = 1L, heights = c(3, 1), guides = "collect")),
                    'plots = c("km", "risk"), ncol = 1, heights = c(3, 1), guides = "collect"')
   rt_text("geom_hline", list(yintercept = -30, linetype = "dashed", colour = r("tfl_setting(\"zero_line_colour\")")))
   # a nested call the form cannot split stays R

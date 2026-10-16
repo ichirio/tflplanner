@@ -184,11 +184,55 @@ builder_items <- function(x, output_id) {
     }))
 }
 
-# the summary of a closed card: its arguments as R, cut short
-.item_summary <- function(it, width = 70L) {
-  s <- tryCatch(args_to_r(it$fn, it$args), error = function(e) "")
-  s <- gsub("[[:space:]]+", " ", s)
-  if (nchar(s) > width) paste0(substr(s, 1L, width - 1L), "\u2026") else s
+# The summary of a closed card: its arguments as "meaning (name) = value",
+# each value short (a text bare, a vector's values by commas, a map's
+# name: value, what is R as its R), each pair and the whole cut short
+.item_summary <- function(it, width = 90L, lang = "en") {
+  a <- it$args
+  if (!length(a)) return("")
+  cut <- function(s, n) if (nchar(s) > n) paste0(substr(s, 1L, n - 1L), "\u2026") else s
+  nm <- names(a) %||% rep("", length(a))
+  pairs <- vapply(seq_along(a), function(i) {
+    arg <- if (nzchar(nm[[i]])) nm[[i]] else "..."
+    v <- tryCatch(.summary_value(a[[i]]), error = function(e) "")
+    paste0(.summary_label(it$fn, arg, lang), " = ", cut(gsub("[[:space:]]+", " ", v), 32L))
+  }, "")
+  cut(paste(pairs, collapse = "; "), width)
+}
+
+# ... an argument's "meaning (name)" as text (the name alone when it has
+# no meaning, or its meaning says the name already: builder_label()'s rule)
+.summary_label <- function(fn, arg, lang = "en") {
+  m <- .label_text(.arg_meaning(fn, arg), lang)
+  if (!is.null(m)) {
+    for (tail in c(paste0("(", arg, ")"), paste0("\uff08", arg, "\uff09"))) {
+      if (endsWith(m, tail)) m <- trimws(substr(m, 1L, nchar(m) - nchar(tail)))
+    }
+  }
+  if (is.null(m) || !nzchar(m) || identical(m, arg)) arg else paste0(m, " (", arg, ")")
+}
+
+# ... a value, short
+.summary_value <- function(v) {
+  if (is.null(v)) return("NULL")
+  if (inherits(v, c("tfl_r", "tfl_call"))) return(.arg_to_r(v))
+  if (is.list(v)) {
+    n <- names(v) %||% rep("", length(v))
+    parts <- vapply(seq_along(v), function(i) {
+      x <- .summary_value(v[[i]])
+      if (nzchar(n[[i]])) paste0(n[[i]], ": ", x) else x
+    }, "")
+    return(paste(parts, collapse = ", "))
+  }
+  if (is.atomic(v)) {
+    if (is.factor(v)) v <- as.character(v)
+    x <- if (is.character(v)) v else format(v, trim = TRUE)
+    if (!is.null(names(v)) && any(nzchar(names(v)))) {
+      x <- ifelse(nzchar(names(v)), paste0(names(v), ": ", x), x)
+    }
+    return(paste(x, collapse = ", "))
+  }
+  .arg_to_r(v)
 }
 
 # The two groups of a table's items, by verb, in the order a person
@@ -250,8 +294,11 @@ builder_items <- function(x, output_id) {
 
 # The items as cards: the content's, the required and usual ones it lacks
 # (off), and those added in the builder (`added`: verbs on, waiting for a
-# value) -- each in the schema's order among the content's; each told
-# whether it has a switch (`switch`) and whether it is on (`on`).  A
+# value; `off` those of them switched off, kept as cards) -- each in the
+# schema's order among the content's; each told whether it has a switch
+# (`switch`), whether it is on (`on`) and whether the menu's Remove takes
+# it away (`removable`: any card not required -- a usual one comes back
+# off when drawn again).  A
 # switch only where its on / off really writes: off a card the content
 # lacks (on writes it, or opens it to be filled); on a report's own item
 # with no study default under it (off takes its rows away).  An item of
@@ -263,12 +310,14 @@ builder_items <- function(x, output_id) {
 # .ard_total_kind()) leaves its card off with no switch, saying why
 # (`blocked`); its own switch otherwise (on / off works from the study's
 # defaults too).
-.builder_items_cards <- function(items, hier = FALSE, added = character(), ard_total = NA) {
+.builder_items_cards <- function(items, hier = FALSE, added = character(), ard_total = NA,
+                                off = character()) {
   usual <- c(.plan_usual(hier), .plan_study_cards)
   items <- .builder_items_shown(items, unique(c("table_plan", "plan_cells", usual, added)))
   lapply(items, function(it) {
     req <- it$fn %in% .plan_required || isTRUE(it$required)
-    it$added <- !isTRUE(it$present) && it$fn %in% added
+    it$added <- !isTRUE(it$present) && it$fn %in% setdiff(added, off)
+    it$removable <- !req && !isTRUE(it$fixed)
     it$switch <- !req && (!isTRUE(it$present) ||
                             (identical(it$from, "own") && !isTRUE(it$revert)))
     if (identical(it$fn, "plan_total")) {
@@ -294,14 +343,16 @@ builder_items <- function(x, output_id) {
 
 # The usual cards the ARD itself tells the values of -- on by default (a
 # new table writes them): the Total column when the ARD has rows over all
-# subjects, the values' order when its variables keep a factor's levels,
-# the labels when it carries the variables' labels.  `meta`: ard_meta().
+# subjects, the values' order when its variables or its key columns keep a
+# factor's levels, the labels when it carries the variables' labels.
+# `meta`: ard_meta().
 .ard_on_cards <- function(meta, hier = FALSE) {
   if (is.null(meta)) return(character())
   usual <- .plan_usual(hier)
   v <- meta$variables
   on <- c(if (identical(.ard_total_kind(meta), "overall")) "plan_total",
-          if (length(intersect(meta$factor_vars, v$variable))) "plan_levels",
+          if (length(intersect(meta$factor_vars, v$variable)) ||
+                length(meta$factor_keys)) "plan_levels",
           if (is.data.frame(v) && any(!is.na(v$label) & nzchar(v$label %||% ""))) "plan_labels")
   intersect(on, usual)
 }
@@ -334,10 +385,18 @@ builder_items <- function(x, output_id) {
       if (!any(has)) return(NULL)
       as.list(stats::setNames(v$label[has], v$variable[has]))
     },
-    # the levels in the ARD's order (a factor's, when it keeps one)
+    # the levels in their order (.level_order()): the variables' and the
+    # key columns' (the columns' arms, a key's levels) -- those the ARD
+    # keeps a factor of, when it keeps any
     plan_levels = {
       lv <- Filter(length, st$levels %||% list())
-      if (length(meta$factor_vars)) lv <- lv[intersect(names(lv), meta$factor_vars)]
+      fac <- c(meta$factor_vars, meta$factor_keys)
+      if (length(fac)) {
+        keys <- setdiff(meta$factor_keys, names(lv))
+        kl <- stats::setNames(lapply(keys, function(k) st$arms[[k]] %||% meta$keys[[k]]), keys)
+        lv <- Filter(length, c(lv, kl))
+        lv <- lv[intersect(names(lv), fac)]
+      }
       if (!length(lv)) NULL else lv
     },
     plan_digits = list(rounding = "sas"),
@@ -358,9 +417,53 @@ builder_items <- function(x, output_id) {
     NULL)
 }
 
+# Where a variable's order comes from (.level_order()'s `source` and
+# `differs`), in words: the same lines under the columns' order and on
+# plan_levels()' card.  This table's own order says nothing; as first
+# seen is a warning (check it).  A list: `text` (the sentences), `warn`.
+.level_order_words <- c(
+  ard = "The ARD's order (its factor levels).",
+  codelist = "The code list's order (ARD step 1-1).",
+  seen = "Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.",
+  differs = "The ARD's order differs from the code list's; the table uses the code list's.")
+
+.level_order_text <- function(from, lang = "en") {
+  src <- from$source %||% "seen"
+  if (identical(src, "table")) return(NULL)
+  words <- .level_order_words[[if (src %in% names(.level_order_words)) src else "seen"]]
+  txt <- tr(words, lang)
+  if (isTRUE(from$differs)) txt <- paste(txt, tr(.level_order_words[["differs"]], lang))
+  list(text = txt, warn = identical(src, "seen") || isTRUE(from$differs))
+}
+
+# ... as a line (NULL: none)
+.level_order_note <- function(from, lang = "en") {
+  w <- .level_order_text(from, lang)
+  if (is.null(w)) return(NULL)
+  shiny::div(class = paste("small rp-level-from", if (w$warn) "text-warning" else "text-muted"),
+             w$text)
+}
+
+# ... plan_levels()' card: a line a source, its variables before it
+# ("SEX, RACE: The code list's order ...")
+.level_order_lines <- function(level_from, lang = "en") {
+  if (!length(level_from)) return(NULL)
+  txt <- lapply(level_from, .level_order_text, lang = lang)
+  txt <- Filter(Negate(is.null), txt)
+  if (!length(txt)) return(NULL)
+  key <- vapply(txt, function(w) w$text, "")
+  lapply(unique(key), function(k) {
+    vars <- names(key)[key == k]
+    warn <- any(vapply(txt[vars], function(w) isTRUE(w$warn), NA))
+    shiny::div(class = paste("small rp-level-from", if (warn) "text-warning" else "text-muted"),
+               shiny::tags$code(paste(vars, collapse = ", ")), ": ", k)
+  })
+}
+
 # A card's own line above its body, by verb (`r`: the card's Edit as R is
-# offered beside it): what the card does not show yet, or where its values go
-.plan_card_note <- function(fn, r = FALSE, lang = "en") {
+# offered beside it; `level_from`: the variables' orders' sources, for
+# plan_levels()): what the card does not show yet, or where its values go
+.plan_card_note <- function(fn, r = FALSE, lang = "en", level_from = NULL) {
   t <- function(x) tr(x, lang)
   switch(
     fn,
@@ -371,7 +474,8 @@ builder_items <- function(x, output_id) {
       t("Values and labels: edited in stage 2; for now, edit them as R."),
       if (r) shiny::tags$button(type = "button",
                                 class = "btn btn-sm btn-outline-primary py-0 ms-2 rp-tool-r",
-                                t("Edit as R"))),
+                                t("Edit as R")),
+      .level_order_lines(level_from, lang)),
     plan_sort = shiny::div(
       class = "rp-card-note",
       with_tip(builder_label(.arg_meaning("plan_sort", "keys"), "keys", "arg", lang),
@@ -396,9 +500,11 @@ builder_items <- function(x, output_id) {
 # else where `switches` names the verb), none elsewhere.  An item of the
 # report's own is marked "This table".  The seldom changed cards
 # (.plan_rare) are closed when drawn.  `new`: the path of a card just
-# added (it takes the focus).
+# added (it takes the focus).  `level_from`: where each variable's order
+# comes from (builder_read()'s), said on plan_levels()' card.
 .table_cards <- function(items, bodies = list(), id = function(path) path,
-                         switches = character(), lang = "en", new = NULL) {
+                         switches = character(), lang = "en", new = NULL,
+                         level_from = NULL) {
   t <- function(x) tr(x, lang)
   started <- character()
   out <- list()
@@ -417,7 +523,8 @@ builder_items <- function(x, output_id) {
     # an item the content has not (its form would add it): no mark of its
     # own -- "not in the code yet"
     absent <- !isTRUE(it$present) && !blocked && (pending || (!sw && !req))
-    tools <- if ((isTRUE(it$present) || pending) && !isTRUE(it$fixed)) "r" else character()
+    tools <- c(if ((isTRUE(it$present) || pending) && !isTRUE(it$fixed)) "r",
+               if (isTRUE(it$removable) && !req) "remove")
     sec <- .plan_section(it$fn)
     if (!sec %in% started) {
       started <- c(started, sec)
@@ -429,13 +536,13 @@ builder_items <- function(x, output_id) {
       }
     }
     rare <- it$fn %in% .plan_rare
-    note <- .plan_card_note(it$fn, r = "r" %in% tools, lang = lang)
+    note <- .plan_card_note(it$fn, r = "r" %in% tools, lang = lang, level_from = level_from)
     out[[length(out) + 1L]] <- builder_card(
       id(it$path), it$fn, .verb_meaning(it$fn), from = it$from, required = req,
       on = on, switchable = sw, revert = isTRUE(it$revert),
       body = if (is.null(note)) body else shiny::tagList(note, body),
       # (off: what turning it on does, said where its body would be)
-      summary = if (isTRUE(it$present)) .item_summary(it) else
+      summary = if (isTRUE(it$present)) .item_summary(it, lang = lang) else
         if (blocked) t(it$blocked) else if (!on) t("On: its usual values are written."),
       tools = tools,
       # the study's defaults the report leaves as they are, the seldom
@@ -934,7 +1041,7 @@ builder_code_map <- function(lines, items) {
 "
 
 # the cards' buttons of the table builder, one input each: Revert, Edit as
-# R (the card's path)
+# R, Remove (the card's path)
 .builder_content_js <- "
 $(document).on('click', '.rp-builder-cards .rp-revert', function() {
   var p = $(this).closest('.rp-card').data('path');
@@ -943,6 +1050,10 @@ $(document).on('click', '.rp-builder-cards .rp-revert', function() {
 $(document).on('click', '.rp-builder-cards .rp-tool-r', function() {
   var p = $(this).closest('.rp-card').data('path');
   Shiny.setInputValue('b_card_r', {path: String(p), t: Date.now()}, {priority: 'event'});
+});
+$(document).on('click', '.rp-builder-cards .rp-tool-remove', function() {
+  var p = $(this).closest('.rp-card').data('path');
+  Shiny.setInputValue('b_card_remove', {path: String(p), t: Date.now()}, {priority: 'event'});
 });
 "
 

@@ -8707,11 +8707,13 @@ app_server <- function(input, output, session, start) {
     # content has none (off), and those added here waiting for a value
     items <- .builder_items_normalize(guarded(builder_items(p0, id)) %||% list(),
                                       st$hierarchy, st$overall_label)
-    have <- vapply(items, function(it) it$fn, "")
-    added <- setdiff(bform$added_by[[id]] %||% character(), have)
-    bform$added_by[[id]] <- added
+    # (a verb added or switched off here stays a card: kept in added_by
+    # though the content has it now, so off -- its rows taken away -- it
+    # is still shown; the menu's Remove drops it)
+    added <- bform$added_by[[id]] %||% character()
     bform$total_kind <- ard_total_of(id, m)
-    items <- .builder_items_cards(items, hier, added, ard_total = bform$total_kind)
+    items <- .builder_items_cards(items, hier, added, ard_total = bform$total_kind,
+                                  off = bform$off_by[[id]] %||% character())
     bform$items <- items
     new_card <- bform$just_added
     bform$just_added <- NULL
@@ -8930,7 +8932,8 @@ app_server <- function(input, output, session, start) {
     shiny::div(
       class = "rp-builder-cards", `data-back` = t("Back to the code"),
       .table_cards_bar(items, id = card_id, lang = lang),
-      .table_cards(items, bodies, id = card_id, lang = lang, new = new_card),
+      .table_cards(items, bodies, id = card_id, lang = lang, new = new_card,
+                   level_from = st$level_from),
       # the other verbs: added here, each a card in its place
       if (length(add_sch)) add_item_input(bid("add"), kinds = "plan", schema = add_sch, lang = lang,
                                           placeholder = t("Add a card (type to search)")))
@@ -9109,18 +9112,20 @@ app_server <- function(input, output, session, start) {
   }))
   # A card switched on (or added): written with its usual values, or --
   # a verb with none -- opened to be filled (its fields, or R); switched
-  # off: the report's own rows of it taken away, or the card waiting for a
-  # value dropped.  The form is drawn again either way.
+  # off: the report's own rows of it taken away, the card kept, off (every
+  # card stays; the menu's Remove takes one away).  The form is drawn
+  # again either way.
   card_switch <- function(it, on) {
     id <- bform$id
     shiny::req(!is.null(id), identical(id, current()))
-    added <- bform$added_by[[id]] %||% character()
+    added <- unique(c(bform$added_by[[id]] %||% character(), it$fn))
+    bform$added_by[[id]] <- added
+    off <- bform$off_by[[id]] %||% character()
     if (on) {
+      bform$off_by[[id]] <- setdiff(off, it$fn)
       hier <- length(bform$st$hierarchy) > 0L
       args <- .plan_starter_args(it$fn, bform$st, hier, meta = bform$meta)
-      if (is.null(args)) {
-        bform$added_by[[id]] <- unique(c(added, it$fn))
-      } else {
+      if (!is.null(args)) {
         p2 <- guarded(.builder_item_write(rv$p, id, it$fn, args))
         if (is.null(p2)) return()
         rv$p <- p2
@@ -9128,7 +9133,7 @@ app_server <- function(input, output, session, start) {
       }
       bform$just_added <- it$path %||% it$fn
     } else {
-      bform$added_by[[id]] <- setdiff(added, it$fn)
+      bform$off_by[[id]] <- unique(c(off, it$fn))
       if (isTRUE(it$present)) {
         p2 <- guarded(.builder_item_revert(rv$p, id, it$fn))
         if (is.null(p2)) return()
@@ -9138,6 +9143,23 @@ app_server <- function(input, output, session, start) {
     }
     rv$bver <- rv$bver + 1L
   }
+  # a card's Remove (its menu, any card not required): its rows taken away
+  # when the code has it, the card dropped -- a usual card of the table's
+  # kind comes back, off, when the form is drawn again
+  shiny::observeEvent(input$b_card_remove, {
+    it <- .builder_item_at(bform$items, input$b_card_remove$path)
+    id <- bform$id
+    shiny::req(!is.null(it), isTRUE(it$removable), identical(id, current()))
+    bform$added_by[[id]] <- setdiff(bform$added_by[[id]] %||% character(), it$fn)
+    bform$off_by[[id]] <- setdiff(bform$off_by[[id]] %||% character(), it$fn)
+    if (isTRUE(it$present)) {
+      p2 <- guarded(.builder_item_revert(rv$p, id, it$fn))
+      if (is.null(p2)) return()
+      rv$p <- p2
+      rv$btouched <- TRUE
+    }
+    rv$bver <- rv$bver + 1L
+  })
   # the cards' switches (the Total column's is its own, below)
   shiny::observe(builder_guard({
     bform_drawn()
@@ -9558,19 +9580,14 @@ app_server <- function(input, output, session, start) {
         sortable::rank_list(text = NULL, labels = ks, input_id = bid("keyorder"),
                             orientation = "horizontal")),
       lapply(ks, function(k) {
-        # a column variable the report's code list has: the ARD program
-        # puts it in the list's order (set_levels()), so the order is known
-        listed <- k %in% sheet_rows(shiny::isolate(rv$p), "codelists", bform$id)$variable
-        guess <- !listed && k %in% names(bform$st$auto_levels) && k %in% bform$st$key
+        # where the order comes from (builder_read(): this table's own, the
+        # report's code list, the ARD's factor, as first seen), said as on
+        # plan_levels()' card
+        from <- bform$st$level_from[[k]]
         shiny::tagList(
           shiny::tags$label(class = "form-label small",
                             sprintf(t("Order of the columns of %s (drag)"), k)),
-          if (guess) shiny::div(
-            class = "small text-warning",
-            t("Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.")),
-          if (listed) shiny::div(
-            class = "small text-muted",
-            t("The order is the report's code list's (step 1).")),
+          if (!is.null(from)) .level_order_note(from, lang),
           sortable::rank_list(text = NULL,
                               labels = .levels_with_labels(
                                 key_levels(k), k,

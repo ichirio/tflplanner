@@ -166,17 +166,24 @@ builder_read <- function(x, output_id, meta = NULL) {
 
   vr <- .rows_for(x, "variables", id)
   vr <- vr[!duplicated(vr$variable), , drop = FALSE]
-  # levels no sheet states are the ARD's order; remembered, so that
-  # writing them back unchanged writes nothing
+  cl <- tryCatch(sheet_rows(x, "codelists", id), error = function(e) NULL)
+  # a variable's levels in order, by .level_order() (this table's own, the
+  # report's code list, the ARD's factor, as first seen) with where they
+  # come from (`level_from`); those no sheet states are remembered, so
+  # that writing them back unchanged writes nothing
   auto <- list()
+  from <- list()
   lev_of <- function(v) {
-    l <- .split_list(vr$levels[match(v, vr$variable)])
-    if (!length(l) && !is.null(meta)) {
-      l <- if (v %in% names(meta$keys)) meta$keys[[v]] else
-        .split_list(meta$variables$levels[match(v, meta$variables$variable)])
-      auto[[v]] <<- l
+    own <- .split_list(vr$levels[match(v, vr$variable)])
+    ard <- if (is.null(meta)) character() else if (v %in% names(meta$keys)) meta$keys[[v]] else
+      .split_list(meta$variables$levels[match(v, meta$variables$variable)])
+    fac <- v %in% c(meta$factor_vars, meta$factor_keys)
+    o <- .level_order(own, .codelist_order(cl, v), ard, fac)
+    if (!identical(o$source, "table") && (!is.null(meta) || identical(o$source, "codelist"))) {
+      auto[[v]] <<- o$levels
     }
-    l
+    if (length(o$levels)) from[[v]] <<- o[c("source", "differs")]
+    o$levels
   }
   arms <- if (!anyNA(key)) stats::setNames(lapply(key, lev_of), key) else
     list()
@@ -270,6 +277,7 @@ builder_read <- function(x, output_id, meta = NULL) {
        rows = rows, templates = templates, value = value, digits = digits,
        exceptions = exc, cat_format = cat_format, cat_own = cat_own,
        pct_decimals = pct_decimals, header = "keep", auto_levels = auto,
+       level_from = from,
        hierarchy = hier, row_keys = rk,
        row_choices = if (length(hier)) setdiff(names(meta$keys), key) else character(),
        row_pages = length(hier) > 0L && isTRUE(as.logical(ly$group_page[1L])) &&
@@ -277,6 +285,30 @@ builder_read <- function(x, output_id, meta = NULL) {
        sort = if (length(hier)) .hier_sort_read(tb$sort[1L], length(rk)),
        overall_label = if (length(hier)) tb$overall_label[1L] %||% NA_character_,
        layers = layers, layer_choices = unique(c(layers, layer_choices)))
+}
+
+# A variable's levels in order, data first, and where the order comes
+# from: this table's own (the variables sheet's levels: "table"), the
+# report's code list ("codelist", ARD step 1-1 -- tflspec writes
+# plan_levels() from it, so the screen and the code agree), the ARD's
+# factor ("ard": `ard_factor`, its levels), else the ARD's values as
+# first seen ("seen"); a code list's order is followed by the ARD's values
+# it does not name.  The precedence is `steps`' order, here only.
+# `differs`: the ARD keeps a factor's order and the code list puts the
+# values they share in another.
+.level_order <- function(own = character(), codelist = character(), ard = character(),
+                         ard_factor = FALSE) {
+  steps <- list(table = own, codelist = codelist,
+                ard = if (isTRUE(ard_factor)) ard else character(), seen = ard)
+  at <- which(lengths(steps) > 0L)
+  src <- if (length(at)) names(steps)[at[1L]] else "seen"
+  both <- intersect(ard, codelist)
+  differs <- isTRUE(ard_factor) && length(both) > 1L &&
+    !identical(both, intersect(codelist, ard))
+  lv <- as.character(steps[[src]])
+  # (the ARD's values a code list does not name: after its own)
+  if (identical(src, "codelist")) lv <- c(lv, setdiff(ard, lv))
+  list(levels = lv, source = src, differs = differs)
 }
 
 # A summary table's row layers from its tables$rows ("group1 = SEX | group

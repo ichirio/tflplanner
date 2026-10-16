@@ -16,8 +16,9 @@ A list: \code{keys} (named list of levels), \code{by} (the column keys),
 \code{hierarchy} (the hierarchy keys, outermost first), \code{variables} (a data
 frame: \code{variable}, \code{kind}, \code{levels}, \code{n_levels}, \code{stats}, \code{label}),
 \code{contexts}, \code{stats}, \code{columns}; from a normalized ARD also \code{overall}
-(rows over all subjects, which a Total column reads) and \code{factor_vars}
-(the variables whose levels keep a factor's order).
+(rows over all subjects, which a Total column reads), \code{factor_vars}
+(the variables whose levels keep a factor's order) and \code{factor_keys}
+(the key columns that are factors: their levels' order).
 }
 \description{
 Reads the keys (the column and hierarchy variables) with their levels,
