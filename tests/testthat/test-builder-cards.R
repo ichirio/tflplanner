@@ -472,3 +472,100 @@ test_that("a type's kind picks the field", {
   expect_identical(.arg_kind("number|enum[fit]"), "number")
   expect_identical(.arg_kind("template|map<string, template>"), "template")
 })
+
+# The page's fields as drawn: each <input type="text"> its value (line
+# breaks dropped, as a browser does), each <textarea> its text, each
+# checkbox ticked or not (the values the page sends when the form is drawn)
+.drawn_inputs <- function(html) {
+  unesc <- function(x) {
+    x <- gsub("&lt;", "<", x, fixed = TRUE)
+    x <- gsub("&gt;", ">", x, fixed = TRUE)
+    x <- gsub("&#39;", "'", x, fixed = TRUE)
+    x <- gsub("&#10;", "\n", x, fixed = TRUE)
+    x <- gsub("&#13;", "\r", x, fixed = TRUE)
+    x <- gsub("&quot;", "\"", x, fixed = TRUE)
+    gsub("&amp;", "&", x, fixed = TRUE)
+  }
+  out <- list()
+  ta <- regmatches(html, gregexpr("<textarea[^>]*id=\"[^\"]+\"[^>]*>[^<]*</textarea>", html))[[1L]]
+  for (s in ta) {
+    id <- sub("(?s)^.*?id=\"([^\"]+)\".*$", "\\1", s, perl = TRUE)
+    out[[id]] <- unesc(sub("(?s)^<textarea[^>]*>([^<]*)</textarea>$", "\\1", s, perl = TRUE))
+  }
+  # a select: its options marked selected (none: a single one's first
+  # option, a multiple one nothing)
+  sel <- regmatches(html, gregexpr("(?s)<select[^>]*id=\"[^\"]+\"[^>]*>.*?</select>", html, perl = TRUE))[[1L]]
+  for (s in sel) {
+    id <- sub("(?s)^<select[^>]*?id=\"([^\"]+)\".*$", "\\1", s, perl = TRUE)
+    opts <- regmatches(s, gregexpr("<option[^>]*>", s))[[1L]]
+    val <- function(o) unesc(sub("(?s)^.*?value=\"([^\"]*)\".*$", "\\1", o, perl = TRUE))
+    on <- vapply(opts[grepl("selected", opts, fixed = TRUE)], val, "", USE.NAMES = FALSE)
+    multiple <- grepl("<select[^>]*multiple", s)
+    if (length(on)) out[[id]] <- if (multiple) on else on[[1L]]
+    else if (!multiple && length(opts)) out[[id]] <- val(opts[[1L]])
+  }
+  inp <- regmatches(html, gregexpr("<input[^>]*>", html))[[1L]]
+  for (s in inp) {
+    if (!grepl("id=\"", s, fixed = TRUE)) next
+    id <- sub("(?s)^.*?id=\"([^\"]+)\".*$", "\\1", s, perl = TRUE)
+    type <- if (grepl("type=\"", s, fixed = TRUE)) sub("(?s)^.*?type=\"([^\"]+)\".*$", "\\1", s, perl = TRUE) else "text"
+    if (type %in% c("text", "search")) {
+      v <- if (grepl("value=\"", s, fixed = TRUE)) sub("(?s)^.*?value=\"([^\"]*)\".*$", "\\1", s, perl = TRUE) else ""
+      # (a one-line field drops line breaks, as the browser does)
+      out[[id]] <- gsub("[\r\n]", "", unesc(v))
+    } else if (type == "number") {
+      v <- if (grepl("value=\"", s, fixed = TRUE)) sub("(?s)^.*?value=\"([^\"]*)\".*$", "\\1", s, perl = TRUE) else ""
+      if (nzchar(v)) out[[id]] <- as.numeric(v)
+    } else if (type == "checkbox") {
+      out[[id]] <- grepl("checked", s, fixed = TRUE)
+    }
+  }
+  out
+}
+
+test_that("the ARD preview, the form as drawn and its other arguments leave the study unchanged", {
+  skip_on_cran()
+  local_home()
+  suppressMessages(create_sample_study(run = FALSE))
+  for (id in c("T-14-3-1", "T-14-1-1", "T-14-2-3")) {
+    shiny::testServer(server_for("SAMPLE-01"), {
+      session$setInputs(target = id, nav = "make", step = "content", content_nav = "content",
+                        table_nav = "builder")
+      session$setInputs(fetch3 = 1)
+      session$elapse(2000)
+      expect_false(session$userData$dirty())
+      bf <- session$userData$bform
+      n <- bf$n
+      b <- function(x) paste0("b", n, "_", x)
+      # the form as the page draws it: the cards (their "Other arguments"
+      # among them: drawn folded, there all the same), the column header,
+      # the decimals ... (some drawn once the form's first values come)
+      drawn <- function() {
+        outs <- c("hdr_ui", "hdr_n_ui", "digits_ui", "exc_ui", "arms_ui", "total_ui",
+                  paste0("vdef", 1:9))
+        html <- vapply(outs, function(o) tryCatch(output[[b(o)]]$html %||% "",
+                                                  error = function(e) ""), "")
+        html <- paste(c(html, output$builder_form$html %||% ""), collapse = " ")
+        v <- .drawn_inputs(html)
+        v <- v[startsWith(names(v), b(""))]
+        # (and the selects as read: the table's key and rows)
+        st <- bf$st
+        v[[b("key")]] <- st$key
+        v[[b("layers")]] <- if (length(st$hierarchy)) st$row_keys else st$layers
+        list(html = html, v = v)
+      }
+      d <- drawn()
+      if (identical(id, "T-14-3-1")) {
+        # a row-header cell's text with a line break: a field that keeps it
+        expect_match(d$html, "<textarea[^>]*_stub1\"[^>]*>System Organ Class\n", perl = TRUE)
+      }
+      expect_gt(length(d$v), 0L)
+      do.call(session$setInputs, d$v)
+      session$elapse(2000)
+      d <- drawn()
+      do.call(session$setInputs, d$v)
+      session$elapse(2000)
+      expect_false(session$userData$dirty(), label = paste(id, "dirty"))
+    })
+  }
+})

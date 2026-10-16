@@ -10056,16 +10056,20 @@ app_server <- function(input, output, session, start) {
         st <- l$stub
         # the row-header cells, each under its column (one over them all
         # when merged)
+        # (text areas, as the line's text: a cell's text may have line
+        # breaks (a hierarchy's "System Organ Class", a line break, "Preferred
+        # Term"), which a one-line field drops, and the header read back would differ
+        # from the sheet's though nothing was changed)
         stub_ui <- if (isTRUE(l$merge)) {
-          list(shiny::div(style = span(ns), shiny::textInput(
+          list(shiny::div(style = span(ns), shiny::textAreaInput(
             hid(l$uid, "stub1"), NULL, if (is.na(st[[1L]])) "" else st[[1L]],
-            width = "100%", placeholder = t("e.g. Characteristic"))))
+            width = "100%", rows = 1, placeholder = t("e.g. Characteristic"))))
         } else lapply(stub_cols, function(cn) {
           k <- match(cn, names(st))
           if (is.na(k)) return(shiny::div())
-          shiny::textInput(hid(l$uid, paste0("stub", k)), NULL,
-                           if (is.na(st[[k]])) "" else st[[k]], width = "100%",
-                           placeholder = t("e.g. Characteristic"))
+          shiny::textAreaInput(hid(l$uid, paste0("stub", k)), NULL,
+                               if (is.na(st[[k]])) "" else st[[k]], width = "100%",
+                               rows = 1, placeholder = t("e.g. Characteristic"))
         })
         val_ui <- switch(
           l$mode,
@@ -10074,8 +10078,9 @@ app_server <- function(input, output, session, start) {
             sg <- l$segments[[j]]
             shiny::div(
               style = span(length(sg$levels)), class = "rp-hdr-cell",
-              shiny::textInput(hid(l$uid, paste0("seg", j)), NULL,
-                               if (is.na(sg$text %||% NA)) "" else sg$text, width = "100%"),
+              shiny::textAreaInput(hid(l$uid, paste0("seg", j)), NULL,
+                                   if (is.na(sg$text %||% NA)) "" else sg$text,
+                                   width = "100%", rows = 1),
               shiny::div(
                 class = "rp-hdr-cell-tools",
                 if (length(sg$levels) > 1L)
@@ -10332,9 +10337,16 @@ app_server <- function(input, output, session, start) {
     value <- get("value") %||% st$value
     used <- unique(unlist(lapply(tpl[intersect(rows, names(tpl))], .template_stats)))
     digits <- st$digits[intersect(names(st$digits), used)]
+    # (a statistic the table has no decimals of shows the study's rule, or
+    # 1 (output_digits_ui()): that number, sent back as drawn, is no value
+    # of the table's own -- written, the study would change unasked)
+    rule <- .report_digits(shiny::isolate(rv$p), bform$id)
     for (k in used) {
       dv <- suppressWarnings(as.numeric(get(paste0("dg_", k))))
-      if (length(dv) == 1L && !is.na(dv)) digits[[k]] <- as.integer(max(0, round(dv)))
+      if (length(dv) != 1L || is.na(dv)) next
+      dv <- as.integer(max(0, round(dv)))
+      if (!k %in% names(digits) && identical(dv, as.integer(.or_na(unname(rule[k]), 1L)))) next
+      digits[[k]] <- dv
     }
     digits <- digits[intersect(used, names(digits))]
     if (identical(digits, st$digits[names(digits)]) &&
