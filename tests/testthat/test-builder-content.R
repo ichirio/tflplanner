@@ -259,9 +259,9 @@ test_that("the order of the values says where it is edited; the row order explai
   p <- sample_planner()
   items <- builder_items(p, "T-14-1-1")
   h <- html(.table_cards(items[match("plan_levels", fns_of(items))]))
-  expect_match(h, "Values and labels: edited in stage 2", fixed = TRUE)
-  # Edit as R on the card itself, not only in the menu
-  expect_match(h, "btn btn-sm btn-outline-primary py-0 ms-2 rp-tool-r", fixed = TRUE)
+  # (a form now: no "edit them as R" note; Edit as R in the card's menu)
+  expect_false(grepl("edited in stage 2", h, fixed = TRUE))
+  expect_match(h, "rp-tool-r", fixed = TRUE)
   items <- builder_items(p, "T-14-3-1")
   h <- html(.table_cards(items[match("plan_sort", fns_of(items))]))
   expect_match(h, ".overall the any-event row first", fixed = TRUE)

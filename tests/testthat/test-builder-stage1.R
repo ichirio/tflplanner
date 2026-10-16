@@ -196,10 +196,12 @@ test_that("normalize_ard(): the hierarchy fixed and From the ARD, overall editab
   expect_match(h, ">This table<", fixed = TRUE)
   expect_match(h, 'id="ovr"', fixed = TRUE)
   expect_match(h, "Other arguments (6)", fixed = TRUE)
-  # a table with nothing set (DM): one line, the arguments folded
+  # a summary table with nothing set (DM): its stack's fields always (its
+  # subgroups can be its rows), empty; the rest folded
   h <- html(.normalize_body("n", character(), tb = NULL))
-  expect_match(h, "No settings: the function's defaults.", fixed = TRUE)
-  expect_match(h, "Other arguments (6)", fixed = TRUE)
+  expect_match(h, 'id="n__stack"', fixed = TRUE)
+  expect_match(h, 'placeholder="subgroup = ALL, SEX, AGEGR1"', fixed = TRUE)
+  expect_match(h, "Other arguments (3)", fixed = TRUE)
   expect_false(grepl('data-arg="overall"', h, fixed = TRUE))
   # a stack the table says: shown, its fields read back as the columns
   h <- html(.normalize_body("n", character(), tb = data.frame(stack = "subgroup = SEX")))

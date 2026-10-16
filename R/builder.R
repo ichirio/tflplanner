@@ -173,12 +173,15 @@ builder_read <- function(x, output_id, meta = NULL) {
   # that writing them back unchanged writes nothing
   auto <- list()
   from <- list()
+  # the columns the plan makes (the stack's subgroup, subgroup_level ...;
+  # .stat_group): their order is the plan's, not their code list's
+  plan_made <- c(.stack_keys(tb$stack[1L], tb$stack_nest[1L]), ".stat_group")
   lev_of <- function(v) {
     own <- .split_list(vr$levels[match(v, vr$variable)])
     ard <- if (is.null(meta)) character() else if (v %in% names(meta$keys)) meta$keys[[v]] else
       .split_list(meta$variables$levels[match(v, meta$variables$variable)])
     fac <- v %in% c(meta$factor_vars, meta$factor_keys)
-    o <- .level_order(own, .codelist_order(cl, v), ard, fac)
+    o <- .level_order(own, .codelist_order(cl, v), ard, fac, plan_made = v %in% plan_made)
     if (!identical(o$source, "table") && (!is.null(meta) || identical(o$source, "codelist"))) {
       auto[[v]] <<- o$levels
     }
@@ -271,7 +274,10 @@ builder_read <- function(x, output_id, meta = NULL) {
     layer_choices <- setdiff(names(meta$keys), key)
   } else {
     layers <- .row_layers_read(tb$rows[1L])
-    layer_choices <- c(setdiff(names(meta$keys) %||% character(), c(key, vars)), ".variable")
+    # (the keys a stack adds -- subgroup, subgroup_level -- though the
+    # ARD read has not got them yet)
+    layer_choices <- c(setdiff(names(meta$keys) %||% character(), c(key, vars)),
+                       .stack_keys(tb$stack[1L], tb$stack_nest[1L]), ".variable")
   }
   list(key = key, arms = arms, variables = variables, levels = levels,
        rows = rows, templates = templates, value = value, digits = digits,
@@ -284,7 +290,38 @@ builder_read <- function(x, output_id, meta = NULL) {
          identical(ly$group_col[1L] %||% NA_character_, "group1"),
        sort = if (length(hier)) .hier_sort_read(tb$sort[1L], length(rk)),
        overall_label = if (length(hier)) tb$overall_label[1L] %||% NA_character_,
-       layers = layers, layer_choices = unique(c(layers, layer_choices)))
+       layers = layers, layer_choices = unique(c(layers, layer_choices)),
+       row_label = if (length(hier)) utils::tail(rk, 1L) else .row_label_read(tb$label[1L]))
+}
+
+# The keys normalize_ard()'s stack adds (tables$stack "subgroup = ALL, SEX
+# | ..."): each name and its _level, and its _outer when the stack nests
+# (tables$stack_nest TRUE); none for no stack
+.stack_keys <- function(stack, nest = NA) {
+  if (.is_blank(stack)) return(character())
+  part <- trimws(strsplit(stack, "|", fixed = TRUE)[[1L]])
+  nm <- ifelse(grepl("=", part, fixed = TRUE), trimws(sub("=.*$", "", part)), "subgroup")
+  nm <- unique(nm[nzchar(nm)])
+  nested <- !.is_blank(nest) && isTRUE(as.logical(toupper(trimws(nest))))
+  unlist(lapply(nm, function(n) c(n, if (nested) paste0(n, "_outer"), paste0(n, "_level"))))
+}
+
+# A summary table's row text (tables$label): ".label" (blank: what
+# normalize_ard() builds), a key ("label = SEX"), NA (none: "NA"), or
+# "own" (a template or a guard the builder does not write: kept)
+.row_label_read <- function(label) {
+  if (.is_blank(label)) return(".label")
+  v <- trimws(sub("^[^=]*=", "", trimws(label)))
+  if (toupper(v) %in% c("NA", "FALSE")) return(NA_character_)
+  if (identical(v, ".label") || grepl("^[A-Za-z.][A-Za-z0-9._]*$", v)) return(v)
+  "own"
+}
+
+# ... and written: blank for ".label", "NA" for none, "label = KEY"
+.row_label_write <- function(label) {
+  if (length(label) != 1L || is.na(label)) return("NA")
+  if (identical(label, ".label")) return(NA_character_)
+  paste("label =", label)
 }
 
 # A variable's levels in order, data first, and where the order comes
@@ -295,9 +332,15 @@ builder_read <- function(x, output_id, meta = NULL) {
 # first seen ("seen"); a code list's order is followed by the ARD's values
 # it does not name.  The precedence is `steps`' order, here only.
 # `differs`: the ARD keeps a factor's order and the code list puts the
-# values they share in another.
+# values they share in another.  A column the plan makes (`plan_made`: the
+# stack's subgroup, .stat_group) has the plan's order -- its code list
+# rows give its labels only (tflspec writes no plan_levels() from them):
+# the ARD's as it is ("plan"), nothing said of it.
 .level_order <- function(own = character(), codelist = character(), ard = character(),
-                         ard_factor = FALSE) {
+                         ard_factor = FALSE, plan_made = FALSE) {
+  if (isTRUE(plan_made) && !length(own)) {
+    return(list(levels = as.character(ard), source = "plan", differs = FALSE))
+  }
   steps <- list(table = own, codelist = codelist,
                 ard = if (isTRUE(ard_factor)) ard else character(), seen = ard)
   at <- which(lengths(steps) > 0L)
@@ -312,25 +355,36 @@ builder_read <- function(x, output_id, meta = NULL) {
 }
 
 # A summary table's row layers from its tables$rows ("group1 = SEX | group
-# = variable"): the keys, and ".variable" for the block of the analysis
-# variables; the block alone when the rows say nothing
+# = variable"), outermost first: the keys, ".variable" for the block of the
+# analysis variables where the rows put it, a constant heading as written
+# ('"Overall"'); the block alone when the rows say nothing.  Rows without
+# the block have none (a table of one variable: ORR by subgroup).
 .row_layers_read <- function(rows) {
   if (.is_blank(rows)) return(".variable")
   part <- trimws(strsplit(rows, "|", fixed = TRUE)[[1L]])
   v <- trimws(sub("^[^=]*=", "", part))
-  v <- v[nzchar(v) & !grepl("^[\"'~]", v)]
+  v <- v[nzchar(v)]
   v[v == "variable"] <- ".variable"
-  if (!".variable" %in% v) v <- c(v, ".variable")
   v
 }
 
-# ... and back: the keys a group each (group1, group2 ...), outermost
-# first, the block as `group = variable`
+# ... and back, in the order given: the keys and the constant headings a
+# group each (group1, group2 ...), the block as `group = variable` where it
+# is; NA for no layers (the rows' default: the block)
 .row_layers_write <- function(layers) {
-  keys <- setdiff(layers, ".variable")
-  paste(c(if (length(keys)) sprintf("group%d = %s", seq_along(keys), keys),
-          "group = variable"), collapse = " | ")
+  layers <- layers[!is.na(layers) & nzchar(layers)]
+  if (!length(layers)) return(NA_character_)
+  k <- 0L
+  parts <- vapply(layers, function(l) {
+    if (identical(l, ".variable")) return("group = variable")
+    k <<- k + 1L
+    sprintf("group%d = %s", k, l)
+  }, "", USE.NAMES = FALSE)
+  paste(parts, collapse = " | ")
 }
+
+# a layer that is a constant heading ('"Overall"', ~"Worst grade"), not a key
+.is_heading <- function(x) grepl("^[\"'~]", x)
 
 # A table's row keys, outermost first, from its tables$rows and
 # tables$label ("group1 = AEBODSYS", "label = AEDECOD"): the columns named
@@ -457,11 +511,21 @@ builder_write <- function(x, output_id, state, was = NULL) {
     ol <- st$overall_label %||% NA_character_
     tb$overall_label[1L] <- if (is.na(ol) || !nzchar(trimws(ol))) NA_character_ else trimws(ol)
   }
-  # a summary table's row layers: written when they changed (a key over
-  # the block of variables)
+  # a summary table's row layers: written when they changed, in their
+  # order (a key over the block of variables, or no block at all); the
+  # key that is the rows' text is no layer of them
+  lab_ch <- !length(st$hierarchy) && !is.null(was) && !is.null(st$row_label) &&
+    !identical(st$row_label, "own") && !identical(st$row_label, was$row_label)
+  lab_key <- if (!length(st$hierarchy) && length(st$row_label) == 1L && !is.na(st$row_label) &&
+                   !st$row_label %in% c(".label", "own")) st$row_label
   if (!length(st$hierarchy) && length(st$layers) && !is.null(was) &&
-      !identical(st$layers, was$layers)) {
-    tb$rows[1L] <- .row_layers_write(st$layers)
+      (!identical(st$layers, was$layers) || (lab_ch && isTRUE(lab_key %in% st$layers)))) {
+    tb$rows[1L] <- .row_layers_write(setdiff(st$layers, lab_key))
+  }
+  # ... and its rows' text: normalize_ard()'s .label, a key, or none
+  if (lab_ch) {
+    if (!"label" %in% names(tb)) tb$label <- NA_character_
+    tb$label[1L] <- .row_label_write(st$row_label)
   }
   # whose {n} the header prints (the form asks only when a cell uses {n})
   if (!is.null(st$header_n) && "header_n" %in% names(tb)) tb$header_n[1L] <- st$header_n

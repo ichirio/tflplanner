@@ -429,7 +429,8 @@ builder_items <- function(x, output_id) {
 
 .level_order_text <- function(from, lang = "en") {
   src <- from$source %||% "seen"
-  if (identical(src, "table")) return(NULL)
+  # (this table's own, or the plan's -- a stack's subgroups: nothing to say)
+  if (src %in% c("table", "plan")) return(NULL)
   words <- .level_order_words[[if (src %in% names(.level_order_words)) src else "seen"]]
   txt <- tr(words, lang)
   if (isTRUE(from$differs)) txt <- paste(txt, tr(.level_order_words[["differs"]], lang))
@@ -469,13 +470,10 @@ builder_items <- function(x, output_id) {
     fn,
     plan_digits = shiny::div(class = "rp-card-note",
                              t("The decimals are written into plan_cells()'s formats.")),
-    plan_levels = shiny::div(
-      class = "rp-card-note",
-      t("Values and labels: edited in stage 2; for now, edit them as R."),
-      if (r) shiny::tags$button(type = "button",
-                                class = "btn btn-sm btn-outline-primary py-0 ms-2 rp-tool-r",
-                                t("Edit as R")),
-      .level_order_lines(level_from, lang)),
+    plan_levels = {
+      lines <- .level_order_lines(level_from, lang)
+      if (length(lines)) shiny::div(class = "rp-card-note", lines)
+    },
     plan_sort = shiny::div(
       class = "rp-card-note",
       with_tip(builder_label(.arg_meaning("plan_sort", "keys"), "keys", "arg", lang),
@@ -594,18 +592,28 @@ builder_items <- function(x, output_id) {
 # The cards with a form of fields by the schema's types (arg_field()): the
 # most used arguments on the card, the rest folded under "Other arguments"
 .plan_form_main <- list(
+  plan_filter = c("any", "parents"),
   plan_blanks = c("where", "first", "last"),
   plan_paginate_rows = c("max_rows", "split", "page_by"),
   plan_paginate_cols = c("every", "fit"),
   plan_stub = c("name", "indent", "before"),
+  plan_columns = c("widths", "decimal", "row_title", "auto_width"),
   plan_style = c("border", "align_count_pct", "font_size_half_points"))
 
 # the types the form uses where the schema says none (or a looser one): a
-# choice of the usual values, or a number
+# choice of the usual values, or a number; "widths" a number a column
+# (.widths_field())
 .plan_form_types <- list(
   plan_blanks = c(where = "enum[between_groups|records]|r"),
+  plan_columns = c(widths = "widths", row_title = "list<column>"),
   plan_style = c(border = "string", align_count_pct = "logical",
                  font_size_half_points = "integer"))
+
+# the arguments of a form card the sheets have no place for: shown under
+# "Other arguments" as R, what the function does said
+.plan_form_unkept <- list(
+  plan_filter = "by",
+  plan_columns = c("cell_format", "column_widths_twips"))
 
 # a form card's schema: tflspec's, with the types above, its formals the
 # function's own (not `plan`) and its visible arguments the main ones
@@ -613,6 +621,10 @@ builder_items <- function(x, output_id) {
   sch <- .schema_of(fn) %||% list()
   for (a in names(.plan_form_types[[fn]])) {
     sch$args[[a]]$type <- .plan_form_types[[fn]][[a]]
+  }
+  for (a in .plan_form_unkept[[fn]]) {
+    sch$args[[a]]$type <- "r"
+    sch$args[[a]]$description <- "Not kept in the sheets yet: the function's default applies."
   }
   fo <- tryCatch(names(formals(utils::getFromNamespace(fn, "rtfreporter"))),
                  error = function(e) NULL)
@@ -630,30 +642,120 @@ builder_items <- function(x, output_id) {
 # A form card's body: its main arguments as fields (each marked where its
 # value came from), the rest under "Other arguments".  `choices`: the
 # columns offered (the row layers, the ARD's keys).
-.plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en") {
+.plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en", cols = NULL) {
   sch <- .plan_form_schema(fn)
+  for (a in .plan_form_unkept[[fn]]) {
+    sch$args[[a]]$description <- tr(sch$args[[a]]$description, lang)
+  }
   a <- it$args %||% list()
   fields <- lapply(.plan_form_main[[fn]], function(k) {
+    from <- if (k %in% names(a)) .arg_from(it, k) else "own"
+    own <- if (k %in% names(it$own_args %||% list())) "This table"
+    if (identical(sch$args[[k]]$type, "widths")) {
+      return(.widths_field(cid, k, cols %||% .widths_cols(a[[k]], choices), a[[k]],
+                           label = .arg_meaning(fn, k), from = from, own = own,
+                           help = .schema_help(fn, k), lang = lang))
+    }
     arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = a[[k]],
               default = sch$args[[k]]$default, choices = choices,
-              from = if (k %in% names(a)) .arg_from(it, k) else "own",
-              own = if (k %in% names(it$own_args %||% list())) "This table",
-              help = .schema_help(fn, k), lang = lang)
+              from = from, own = own, help = .schema_help(fn, k), lang = lang)
   })
   shiny::tagList(arg_group(NULL, fields, lang = lang),
                  arg_more(cid, fn, schema = sch, lang = lang, values = a, choices = choices))
 }
 
 # the form read back: the arguments its fields say (an unticked check
-# FALSE); NULL while its fields are not there yet
-.plan_form_read <- function(input, cid, fn) {
+# FALSE); NULL while its fields are not there yet.  `cols`: the columns
+# of a widths field, as drawn (.widths_cols()).
+.plan_form_read <- function(input, cid, fn, cols = NULL) {
   sch <- .plan_form_schema(fn)
+  wa <- names(Filter(function(x) identical(x$type, "widths"), sch$args))
   seen <- vapply(.plan_form_main[[fn]], function(k) {
+    if (k %in% wa) {
+      return(length(cols) > 0L && !is.null(.input_value(input, paste0(cid, "__", k, "__1"))))
+    }
     !is.null(.input_value(input, paste0(cid, "__", k))) ||
       isTRUE(.input_value(input, paste0(cid, "__", k, "__isr")))
   }, NA)
   if (!any(seen)) return(NULL)
-  builder_card_read(input, cid, sch, args = sch$formals, logical_false = TRUE)
+  out <- builder_card_read(input, cid, sch, args = setdiff(sch$formals, wa), logical_false = TRUE)
+  for (k in wa) {
+    if (isTRUE(.input_value(input, paste0(cid, "__", k, "__isr")))) {
+      txt <- .input_value(input, paste0(cid, "__", k, "__r"))
+      if (!is.null(txt) && nzchar(trimws(txt))) out[[k]] <- tflspec::tfl_r(trimws(txt))
+      next
+    }
+    w <- .widths_read(input, paste0(cid, "__", k), cols)
+    if (length(w)) out[[k]] <- w
+  }
+  out
+}
+
+# ---- plan_columns(widths = ): a number a column ---------------------------------
+
+# the columns a widths field offers: those the widths name, then the
+# columns printed (the row label column, .values -- every value column --
+# and the value columns by name)
+.widths_cols <- function(widths = NULL, choices = NULL) {
+  nm <- if (is.list(widths) || is.numeric(widths)) names(widths) else NULL
+  unique(c(nm[!is.na(nm) & nzchar(nm)], as.character(unname(choices))))
+}
+
+# A widths field: a small table, a column a row and its relative width (a
+# number; blank: rtfreporter's), its `R` switch as every field has
+.widths_field <- function(id, arg, cols, value = NULL, label = NULL, from = "own", own = NULL,
+                          help = NULL, lang = "en") {
+  t <- function(x) tr(x, lang)
+  fid <- paste0(id, "__", arg)
+  is_r <- inherits(value, "tfl_r")
+  r_text <- if (is_r) as.character(unclass(value)) else ""
+  w <- if (!is_r && (is.list(value) || is.numeric(value))) value else list()
+  rows <- lapply(seq_along(cols), function(i) {
+    v <- if (!is.null(names(w)) && cols[[i]] %in% names(w)) w[[cols[[i]]]]
+    shiny::tags$tr(
+      shiny::tags$td(shiny::tags$code(cols[[i]])),
+      shiny::tags$td(shiny::tags$input(
+        type = "number", id = paste0(fid, "__", i), class = "form-control form-control-sm rp-number",
+        value = if (!is.null(v) && length(v) && !is.na(v[[1L]])) as.character(v[[1L]]),
+        step = "any", min = "0", inputmode = "decimal", style = "width: 7em;")))
+  })
+  shiny::div(
+    class = paste("rp-field rp-field-widths", if (is_r) "rp-field-r",
+                  if (length(w) || nzchar(r_text)) "rp-has-value"),
+    `data-arg` = arg, `data-field` = fid,
+    shiny::tags$label(class = "rp-field-label",
+                      builder_label(label, arg, "arg", lang),
+                      from_badge(from, lang, own = own), help_tip(help)),
+    shiny::div(class = "rp-field-row",
+               shiny::div(class = "rp-form-input",
+                          shiny::tags$table(class = "rp-widths",
+                                            shiny::tags$thead(shiny::tags$tr(
+                                              shiny::tags$th(t("Column")),
+                                              shiny::tags$th(t("Relative width")))),
+                                            shiny::tags$tbody(rows)),
+                          shiny::div(class = "small text-muted",
+                                     t("Blank: rtfreporter's width. .values: every value column."))),
+               shiny::tags$input(type = "text", id = paste0(fid, "__r"),
+                                 class = "form-control form-control-sm rp-mono rp-r-input",
+                                 value = r_text, placeholder = "R", spellcheck = "false"),
+               shiny::tags$label(class = "rp-r-toggle", title = t("As R"),
+                                 shiny::tags$input(type = "checkbox", id = paste0(fid, "__isr"),
+                                                   class = "rp-isr",
+                                                   checked = if (is_r) NA else NULL),
+                                 shiny::tags$span("R"))))
+}
+
+# ... read back: the columns given a number, in the field's order (a named
+# list, as the sheets give widths); none: NULL
+.widths_read <- function(input, fid, cols) {
+  out <- list()
+  for (i in seq_along(cols)) {
+    v <- .input_value(input, paste0(fid, "__", i))
+    if (is.null(v) || !length(v)) next
+    n <- suppressWarnings(as.numeric(v[[1L]]))
+    if (length(n) == 1L && !is.na(n)) out[[cols[[i]]]] <- n
+  }
+  if (length(out)) out else NULL
 }
 
 # two values the same (a number as a number: 30 and 30L; a check's FALSE
@@ -683,6 +785,99 @@ builder_items <- function(x, output_id) {
     own[[a]] <- new
   }
   own
+}
+
+# ---- plan_digits(), plan_levels(), plan_filter() -----------------------------------
+
+# plan_digits(rounding = ): the study's rounding (one for every report: the
+# study sheet's), a choice of the schema's
+.rounding_field <- function(cid, value = NULL, lang = "en") {
+  ty <- .schema_of("plan_digits")$args$rounding$type %||% "enum[sas|r|iec60559]"
+  v <- if (length(value) == 1L && !is.na(value) && nzchar(value)) value
+  arg_field(cid, "rounding", ty, label = .arg_meaning("plan_digits", "rounding"), value = v,
+            from = if (!is.null(v)) "defaults" else "own",
+            help = tr(paste("How a 5 is rounded: sas half away from zero, r half to even,",
+                            "iec60559 as the machine stores the number. The study's: every",
+                            "report's (the Study tab's Rounding); blank there: options(rtfreporter.rounding)."),
+                      lang),
+            lang = lang)
+}
+
+# Each variable's empty values hidden (plan_levels(.drop_empty = ):
+# variables$empty_levels "hide"): a named logical, by variable
+.empty_levels_of <- function(vr) {
+  if (!is.data.frame(vr) || !nrow(vr) || !"empty_levels" %in% names(vr)) return(list())
+  vr <- vr[!is.na(vr$variable) & !duplicated(vr$variable), , drop = FALSE]
+  stats::setNames(as.list(!is.na(vr$empty_levels) & tolower(vr$empty_levels) == "hide"),
+                  vr$variable)
+}
+
+# The plan_levels() card's body: each categorical variable's values in
+# their order, dragged (`id(paste0("lv", i))`, the variable's place in the
+# builder's variables), and its empty values hidden or not (`"lvdrop"`);
+# the column keys' order is the columns' (table_plan()).  `empty`: the
+# variables sheet's rows (.empty_levels_of()).
+.levels_body <- function(id, st, codelists = NULL, empty = NULL, lang = "en") {
+  t <- function(x) tr(x, lang)
+  v <- st$variables
+  hidden <- .empty_levels_of(empty)
+  rows <- lapply(seq_len(nrow(v)), function(i) {
+    nm <- v$variable[i]
+    lv <- st$levels[[nm]]
+    if (!identical(v$kind[i], "categorical") || !length(lv)) return(NULL)
+    shiny::div(
+      class = "rp-b-sec rp-levels-var", `data-variable` = nm,
+      shiny::div(class = "rp-b-sec-label", shiny::tags$code(nm),
+                 if (!is.na(v$label[i])) shiny::span(class = "text-muted ms-1", v$label[i])),
+      sortable::rank_list(text = NULL, labels = .levels_with_labels(lv, nm, codelists),
+                          input_id = id(paste0("lv", i)), orientation = "horizontal"),
+      shiny::tags$label(
+        class = "small rp-levels-drop",
+        shiny::tags$input(type = "checkbox", id = id(paste0("lvdrop", i)),
+                          class = "form-check-input me-1",
+                          checked = if (isTRUE(hidden[[nm]])) NA else NULL),
+        builder_label(.arg_meaning("plan_levels", ".drop_empty"), ".drop_empty", "arg", lang)))
+  })
+  rows <- Filter(Negate(is.null), rows)
+  keys <- if (!anyNA(st$key)) st$key else character()
+  shiny::tagList(
+    if (length(rows)) rows else shiny::div(class = "small text-muted",
+                                           t("No categorical variable to order.")),
+    if (length(keys)) shiny::div(
+      class = "small text-muted rp-b-fixed-note",
+      sprintf(t("The columns' values (%s): ordered on the columns (table_plan())."),
+              paste(keys, collapse = ", "))))
+}
+
+# plan_filter()'s `where` as one condition's R (several joined by &, as
+# the sheet keeps them); NULL for none
+.filter_where_text <- function(where) {
+  if (is.null(where) || !length(where)) return(NULL)
+  one <- function(w) if (inherits(w, "tfl_r")) as.character(unclass(w)) else .arg_to_r(w)
+  if (inherits(where, "tfl_r")) return(one(where))
+  if (is.list(where)) {
+    parts <- vapply(where, one, "")
+    return(if (length(parts) == 1L) parts else paste0("(", parts, ")", collapse = " & "))
+  }
+  if (is.character(where)) return(paste(where, collapse = " & "))
+  NULL
+}
+
+# The columns a row filter's condition reads, for the condition builder:
+# the ARD's keys with their values, the variables and their values, and
+# each statistic a number (typed in).  `meta`: ard_meta(); NULL: none.
+.filter_data <- function(meta) {
+  if (is.null(meta)) return(NULL)
+  cols <- c(meta$keys %||% list(),
+            list(variable = meta$variables$variable %||% character()))
+  lv <- unlist(lapply(meta$variables$levels %||% character(), .split_list))
+  if (length(lv)) cols$variable_level <- unique(lv)
+  cols <- Filter(length, cols)
+  n <- max(c(1L, lengths(cols)))
+  d <- as.data.frame(lapply(cols, function(x) rep_len(as.character(x), n)),
+                     stringsAsFactors = FALSE, check.names = FALSE)
+  for (s in setdiff(meta$stats %||% character(), names(d))) d[[s]] <- rep(NA_real_, n)
+  d
 }
 
 # ---- normalize_ard() ------------------------------------------------------------
@@ -749,11 +944,16 @@ builder_items <- function(x, output_id) {
                           title = t("No any-event row: the ARD's rows as they are"))),
       shiny::tags$input(type = "text", id = overall_id, class = "form-control form-control-sm",
                         value = ov %||% "", placeholder = "Any TEAE", style = "max-width: 18em;")),
-    if (stacked) lapply(c("stack", "stack_sep", "stack_nest"), function(a) {
+    # (a summary table: always -- its subgroups are its rows; a hierarchy
+    # does not stack)
+    if (stacked || !hier) lapply(c("stack", "stack_sep", "stack_nest"), function(a) {
       v <- val(.normalize_cols[[a]])
       if (identical(a, "stack_nest")) v <- if (!is.null(v)) toupper(v) == "TRUE"
       arg_field(cid, a, sch$args[[a]]$type, label = .arg_meaning("normalize_ard", a),
-                value = v, from = "own",
+                value = v, from = "own", default = if (identical(a, "stack")) "subgroup = ALL, SEX, AGEGR1",
+                help = if (identical(a, "stack"))
+                  t("Subgroups as one pair of keys: name = its layers, a comma between them, * crossing variables (AGEGR1 * SEX). The rows can then take subgroup and subgroup_level (table_plan()).") else
+                    .schema_help("normalize_ard", a),
                 own = if (!is.null(v)) "This table", lang = lang)
     }))
   parts <- Filter(Negate(is.null), parts)
@@ -761,7 +961,7 @@ builder_items <- function(x, output_id) {
     if (!length(parts)) shiny::div(class = "small text-muted",
                                    t("No settings: the function's defaults.")),
     parts,
-    arg_more(cid, "normalize_ard", used = if (stacked) c("stack", "stack_sep", "stack_nest"),
+    arg_more(cid, "normalize_ard", used = if (stacked || !hier) c("stack", "stack_sep", "stack_nest"),
              schema = sch, lang = lang))
 }
 
@@ -909,7 +1109,8 @@ builder_code_map <- function(lines, items) {
   plan_cell_style = list(cell_styles = NULL),
   plan_hide = list(columns = "hide"),
   plan_col_header = list(col_header = NULL, tables = "header_n"),
-  plan_columns = list(columns = c("rel_width", "decimal_split", "row_title")))
+  plan_columns = list(columns = c("rel_width", "decimal_split", "row_title"),
+                      style = "auto_width", tables = "sep"))
 
 # the columns of a one-row sheet a verb writes (NA: all but those other
 # verbs write there)
@@ -926,7 +1127,8 @@ builder_code_map <- function(lines, items) {
 
 # The report's own rows of `sheet` with the columns `cols` taken from
 # `new` (its own rows the bridge wrote; NULL or none: the columns cleared).
-# Rows: a one-row sheet's row; the variables sheet's by variable.
+# Rows: a one-row sheet's row; the variables sheet's by variable, the
+# columns sheet's by column (a column's row left with nothing taken away).
 .put_cols <- function(x, id, sheet, cols, new) {
   d <- sheet_rows(x, sheet, id)
   d$output_id <- NULL
@@ -936,18 +1138,23 @@ builder_code_map <- function(lines, items) {
   cols <- .target_cols(sheet, cols, d)
   if (!length(cols)) return(x)
   val <- function(df, i, c) if (c %in% names(df) && i <= nrow(df)) as.character(df[[c]][i]) else NA_character_
-  if (identical(sheet, "variables")) {
+  key <- c(variables = "variable", columns = "column")[sheet]
+  if (!is.na(key)) {
     for (c in cols) d[[c]] <- as.character(d[[c]])
     for (c in cols) d[[c]][] <- NA_character_
     for (i in seq_len(nrow(new))) {
-      v <- new$variable[i]
-      j <- match(v, d$variable)
+      v <- new[[key]][i]
+      j <- match(v, d[[key]])
       if (is.na(j)) {
         d[nrow(d) + 1L, ] <- NA
         j <- nrow(d)
-        d$variable[j] <- v
+        d[[key]][j] <- v
       }
       for (c in cols) d[[c]][j] <- val(new, i, c)
+    }
+    if (identical(sheet, "columns") && nrow(d)) {
+      left <- rowSums(!is.na(d[setdiff(names(d), c(key, "note"))])) > 0
+      d <- d[left, , drop = FALSE]
     }
   } else {
     if (!nrow(d)) d[1L, ] <- NA
@@ -994,6 +1201,52 @@ builder_code_map <- function(lines, items) {
     x <- if (is.null(cols)) .put_rows(x, output_id, sheet, new) else
       .put_cols(x, output_id, sheet, cols, new)
   }
+  # the value labels of the columns the plan makes (plan_labels(subgroup =
+  # c(ALL = "All Subjects")): tflspec keeps them as the report's code list
+  # rows of those columns; the data's own code lists are not touched
+  if (identical(fn, "plan_labels")) x <- .put_plan_made_codelists(x, output_id, sh$codelists)
+  # the study's own (plan_digits()' rounding): one value for every report,
+  # written when the item says it
+  .put_study_keys(x, sh$study)
+}
+
+# The columns the plan makes, of a report: its stack's keys, .stat_group
+.plan_made_cols <- function(x, output_id) {
+  tb <- .rows_for(x, "tables", output_id)
+  c(.stack_keys(tb$stack[1L], tb$stack_nest[1L]), ".stat_group")
+}
+
+# The report's code list rows of the columns the plan makes, as the bridge
+# wrote them (`new`, its codelists rows): those rows replaced, the rest of
+# the report's code lists (the data's variables') kept as they are
+.put_plan_made_codelists <- function(x, output_id, new) {
+  made <- .plan_made_cols(x, output_id)
+  d <- sheet_rows(x, "codelists", output_id)
+  d$output_id <- NULL
+  keep <- d[!d$variable %in% made, , drop = FALSE]
+  add <- if (is.data.frame(new) && nrow(new) && "variable" %in% names(new)) {
+    new <- as.data.frame(new, stringsAsFactors = FALSE)
+    new[new$variable %in% made, , drop = FALSE]
+  }
+  if (!sum(d$variable %in% made) && (is.null(add) || !nrow(add))) return(x)
+  rows <- keep
+  if (!is.null(add) && nrow(add)) {
+    more <- d[rep(NA_integer_, nrow(add)), , drop = FALSE]
+    for (c in intersect(names(add), names(more))) more[[c]] <- as.character(add[[c]])
+    rows <- rbind(keep, more)
+  }
+  rownames(rows) <- NULL
+  set_sheet_rows(x, "codelists", output_id, rows)
+}
+
+# the study keys a bridge's study rows say (key, value), into x$study
+.put_study_keys <- function(x, rows) {
+  if (!is.data.frame(rows) || !nrow(rows) || !all(c("key", "value") %in% names(rows))) return(x)
+  for (i in seq_len(nrow(rows))) {
+    k <- as.character(rows$key[i])
+    if (!k %in% .study_keys$table || is.na(rows$value[i])) next
+    x$study[[k]] <- as.character(rows$value[i])
+  }
   x
 }
 
@@ -1007,6 +1260,8 @@ builder_code_map <- function(lines, items) {
     x <- if (is.null(cols)) .put_rows(x, output_id, sheet, NULL) else
       .put_cols(x, output_id, sheet, cols, NULL)
   }
+  # (plan_labels(): its labels of the columns the plan makes too)
+  if (identical(fn, "plan_labels")) x <- .put_plan_made_codelists(x, output_id, NULL)
   x
 }
 
@@ -1077,6 +1332,24 @@ $(document).on('click', '.rp-builder-cards .rp-tool-remove', function() {
     paste(vapply(fixed, sel, ""), collapse = ", "),
     " { background: #f3f4f6 !important; color: #374151 !important; border-style: dashed !important; padding-right: 6px !important; }")))
 }
+
+# The row layers' chips, named: the block of the analysis variables in
+# words, a hierarchy's last level marked the rows' text (label), a key or a
+# constant heading as it is
+.layer_names <- function(layers, hierarchy = NULL, lang = "en") {
+  vapply(layers, function(k) {
+    if (identical(k, ".variable")) return(tr("Analysis variables (the block)", lang))
+    if (length(hierarchy) && identical(k, utils::tail(hierarchy, 1L))) return(paste0(k, " (label)"))
+    k
+  }, "", USE.NAMES = FALSE)
+}
+
+# A constant heading typed into the row layers ("Overall, typed with a
+# quote first): its text in double quotes, as tables$rows writes it
+# (group1 = "Overall")
+.heading_create_js <- paste0(
+  "function(input) { var v = String(input).replace(/^[\\s\"']+|[\\s\"']+$/g, '').replace(/\"/g, '');",
+  " if (!v.length) return false; v = '\"' + v + '\"'; return {value: v, text: v}; }")
 
 # the item a card's path names (NULL for none)
 .builder_item_at <- function(items, path) {
