@@ -327,6 +327,7 @@ register_study <- function(path, home = tflplanner_home()) {
     r$planner <- set_fig_design(r$planner, f, NULL)
   }
   .write_state(r, home)
+  r$planner <- .spec_rebase(r$planner, r$meta)
   r$spec <- list(status = "same", files = .spec_diff(NULL, list()))
   .set_config("last_study", id, home)
   r
@@ -604,6 +605,10 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
   meta$created <- old_meta$created %||% format(Sys.Date())
   # the YAML spec: each file written only when its text changed
   files <- .save_yaml_spec(p, meta, root, own = as_recorded)
+  # (the planner and its spec in step: what was saved)
+  p <- attr(files, "planner")
+  attr(files, "planner") <- NULL
+  study$planner <- p
   for (d in lay) dir.create(file.path(root, d), recursive = TRUE,
                             showWarnings = FALSE)
   .move_old_programs(root, progs)
