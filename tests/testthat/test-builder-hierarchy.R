@@ -254,11 +254,12 @@ test_that("the hierarchy's levels are fixed chips, the last the label; normalize
     expect_match(h, 'data-fn="normalize_ard"', fixed = TRUE)
     expect_lt(regexpr('data-fn="normalize_ard"', h), regexpr('data-fn="table_plan"', h))
     expect_match(h, "(overall)", fixed = TRUE)
-    expect_match(h, paste0('id="b', bf$n, '_overall"'), fixed = TRUE)
-    # its overall row is written to tables$overall_label
+    expect_match(h, paste0('id="b', bf$n, '_card_normalize_ard__overall"'), fixed = TRUE)
+    # its overall row is written into the report's normalize_ard() (the
+    # sheets' tables$overall_label made from it)
     v <- list()
     v[[paste0("b", bf$n, "_key")]] <- "TRT01A"
-    v[[paste0("b", bf$n, "_overall")]] <- "Any adverse event"
+    v[[paste0("b", bf$n, "_card_normalize_ard__overall")]] <- "Any adverse event"
     do.call(session$setInputs, v)
     session$elapse(1000)
     expect_identical(sheet_rows(rv$p, "tables", "T-AE")$overall_label, "Any adverse event")

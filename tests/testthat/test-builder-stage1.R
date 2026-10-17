@@ -182,52 +182,51 @@ test_that("the ARD tells the order and the labels: a factor's levels, its labels
   expect_false("plan_levels" %in% .ard_on_cards(m))
 })
 
-test_that("normalize_ard(): the hierarchy fixed and From the ARD, overall editable, the rest folded", {
-  h <- html(.normalize_body("n", c("AEBODSYS", "AEDECOD"),
-                            tb = data.frame(overall_label = "Any TEAE", stack = NA),
-                            overall_id = "ov", revert_id = "ovr"))
+test_that("normalize_ard(): a form card -- the hierarchy fixed and From the ARD, the rest its fields (#417)", {
+  p <- sample_planner()
+  hier <- c("AEBODSYS", "AEDECOD")
+  it <- item(builder_items(p, "T-14-3-1"), "normalize_ard")
+  h <- html(.plan_form_body("n", "normalize_ard", it, ard = list(hierarchy = hier),
+                            fixed_link = shiny::tags$a(id = "lk", "step 1")))
   expect_match(h, 'data-from="ard"', fixed = TRUE)
   expect_match(h, ">From the ARD<", fixed = TRUE)
   expect_match(h, 'class="rp-b-level">AEBODSYS<', fixed = TRUE)
-  expect_false(grepl("remove", h, fixed = TRUE))
-  expect_match(h, 'id="ov"', fixed = TRUE)
+  expect_match(h, 'id="lk"', fixed = TRUE)
+  # (no field of its own: read only, step 1 changes it)
+  expect_false(grepl('id="n__hierarchy"', h, fixed = TRUE))
+  expect_match(h, 'id="n__overall"', fixed = TRUE)
   expect_match(h, 'value="Any TEAE"', fixed = TRUE)
   expect_match(h, ">This table<", fixed = TRUE)
-  expect_match(h, 'id="ovr"', fixed = TRUE)
-  expect_match(h, "Other arguments (6)", fixed = TRUE)
-  # a summary table with nothing set (DM): its stack's arguments folded,
-  # each with what it does in a line and an example; no placeholder
-  h <- html(.normalize_body("n", character(), tb = NULL))
-  expect_match(h, 'id="n__stack"', fixed = TRUE)
-  expect_false(grepl('placeholder="subgroup = ALL, SEX, AGEGR1"', h, fixed = TRUE))
-  expect_match(h, "Other arguments (6)", fixed = TRUE)
-  expect_match(h, "e.g. subgroup = ALL, SEX, AGEGR1", fixed = TRUE)
-  expect_false(grepl('data-arg="overall"', h, fixed = TRUE))
-  # a stack the table says: shown, its fields read back as the columns
-  h <- html(.normalize_body("n", character(), tb = data.frame(stack = "subgroup = SEX")))
-  expect_match(h, 'id="n__stack"', fixed = TRUE)
-  expect_match(h, "Other arguments (3)", fixed = TRUE)
-  expect_match(h, "e.g. subgroup = ALL, SEX, AGEGR1. Subgroups", fixed = TRUE)
-  expect_false(grepl('placeholder="subgroup = ALL', h, fixed = TRUE))
-  expect_match(html(.normalize_body("n", character(), tb = data.frame(stack = "subgroup = SEX"),
-                                    lang = "ja")),
-               "例: subgroup = ALL, SEX, AGEGR1。", fixed = TRUE)
-  r <- .normalize_read(list(n__stack = " subgroup = SEX ", n__stack_sep = "", n__stack_nest = TRUE), "n")
-  expect_identical(r, list(stack = "subgroup = SEX", stack_sep = NA_character_, stack_nest = "TRUE"))
-  expect_null(.normalize_read(list(), "n"))
-  # its fields in the function's order: hierarchy, overall; then folded
-  # keys, drop_contexts, drop_key_variables, stack, stack_sep, stack_nest
-  h <- html(.normalize_body("n", c("AEBODSYS", "AEDECOD"),
-                            tb = data.frame(overall_label = "Any TEAE", stack = NA),
-                            overall_id = "ov", revert_id = "ovr", lang = "ja"))
-  args <- regmatches(h, gregexpr('data-arg="[^"]+"', h))[[1L]]
-  expect_identical(gsub('data-arg="|"', "", args),
-                   c("overall", "keys", "drop_contexts", "drop_key_variables", "stack",
-                     "stack_sep", "stack_nest"))
-  # (i) its meaning; the three the sheets cannot keep marked "Not saved"
-  expect_equal(lengths(regmatches(h, gregexpr("rp-badge-unsaved", h, fixed = TRUE))), 3L)
-  expect_false(grepl("まだシートに保存できません", h, fixed = TRUE))
-  expect_match(h, tr(.plan_arg_help$normalize_ard[["keys"]], "ja"), fixed = TRUE)
+  # the arguments the code writes above, the rest below, each in the
+  # function's order -- the same fields as any table's
+  args <- gsub('data-arg="|"', "", regmatches(h, gregexpr('data-arg="[^"]+"', h))[[1L]])
+  expect_identical(args, c("hierarchy", "overall", "keys", "drop_contexts", "drop_key_variables",
+                           "stack", "stack_sep", "stack_nest"))
+  expect_match(h, "Not in the code (6)", fixed = TRUE)
+  expect_false(grepl("rp-badge-unsaved", h, fixed = TRUE))
+  # a summary table's (the study's defaults: none): every argument below
+  i0 <- item(builder_items(p, "T-14-1-1"), "normalize_ard")
+  h0 <- html(.plan_form_body("n", "normalize_ard", i0, ard = list(hierarchy = character())))
+  expect_match(h0, "Not in the code (8)", fixed = TRUE)
+  expect_match(h0, 'id="n__stack"', fixed = TRUE)
+  expect_match(html(.plan_form_body("n", "normalize_ard", i0, lang = "ja")),
+               tr(.plan_arg_help$normalize_ard[["keys"]], "ja"), fixed = TRUE)
+  # read back: the hierarchy kept as it is, the overall row the field's
+  inp <- list(n__overall = "Any TEAE", n__stack = "", n__stack_sep = "", n__stack_nest = FALSE,
+              n__drop_key_variables = FALSE)
+  r <- .plan_form_read(inp, "n", "normalize_ard")
+  expect_null(r$hierarchy)
+  expect_identical(.plan_form_args(r, it, "normalize_ard"), it$args)
+  inp$n__overall <- "Any AE"
+  a <- .plan_form_args(.plan_form_read(inp, "n", "normalize_ard"), it, "normalize_ard")
+  expect_identical(a, list(hierarchy = hier, overall = "Any AE"))
+  # written into the report's YAML: its normalize_ard() only
+  q <- .builder_item_write(p, "T-14-3-1", "normalize_ard", a)
+  o0 <- .spec_output(p, "T-14-3-1")
+  o1 <- .spec_output(q, "T-14-3-1")
+  expect_identical(o1$content[[1L]]$args, list(hierarchy = hier, overall = "Any AE"))
+  expect_identical(o1$content[-1L], o0$content[-1L])
+  expect_identical(sheet_rows(q, "tables", "T-14-3-1")$overall_label, "Any AE")
   # its card's note: one line, what it does with a row before and after under the (i)
   h <- html(.plan_card_note("normalize_ard"))
   expect_match(h, "Shapes the ARD for making the table.", fixed = TRUE)

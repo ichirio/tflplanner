@@ -772,6 +772,7 @@ builder_items <- function(x, output_id, meta = NULL) {
 # The cards with a form of fields by the schema's types (arg_field()): the
 # most used arguments on the card, the rest folded under "Other arguments"
 .plan_form_main <- list(
+  normalize_ard = c("overall", "stack"),
   plan_filter = c("any", "parents"),
   plan_blanks = c("where", "first", "last"),
   plan_paginate_rows = c("max_rows", "split", "page_by"),
@@ -793,6 +794,9 @@ builder_items <- function(x, output_id, meta = NULL) {
 # table's columns (.formula_text()).
 .plan_cell_look <- "enum[TRUE|FALSE]|logical"
 .plan_form_types <- list(
+  normalize_ard = c(keys = "list<column>", overall = "string", drop_contexts = "r",
+                    drop_key_variables = "logical", stack = "r", stack_sep = "string",
+                    stack_nest = "logical"),
   plan_hide = c(cols = "list<column>"),
   plan_cell_style = c(cols = "list<column>", where = "formula",
                       bold = .plan_cell_look, italic = .plan_cell_look,
@@ -832,6 +836,9 @@ builder_items <- function(x, output_id, meta = NULL) {
     }
   }
   sch$formals <- setdiff(unique(c(fo, names(sch$args))), c("plan", ".plan", "..."))
+  # (normalize_ard()'s hierarchy is the ARD analysis's: read only here, step
+  # 1 changes it)
+  sch$fixed <- if (identical(fn, "normalize_ard")) "hierarchy" else character()
   # (the main fields in the function's order too)
   sch$visible <- .arg_order(.plan_form_main[[fn]], sch$formals)
   sch
@@ -871,11 +878,13 @@ builder_items <- function(x, output_id, meta = NULL) {
 # its value came from), those its code writes above, the rest below
 # ("Not in the code", folded: a value given there moves its field up).
 # `choices`: the columns offered (the row layers, the ARD's keys).
-.plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en", cols = NULL) {
+.plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en", cols = NULL,
+                            ard = list(), fixed_link = NULL) {
   sch <- .plan_form_schema(fn)
   a <- it$args %||% list()
-  sp <- .fields_split(fn, it, sch$formals)
+  sp <- .fields_split(fn, it, sch$formals, ard = names(Filter(length, ard)))
   field <- function(k, value) {
+    if (k %in% sch$fixed) return(.fixed_field(fn, k, value %||% ard[[k]], it, ard[[k]], fixed_link, lang))
     from <- if (k %in% names(a)) .arg_from(it, k) else "own"
     own <- if (k %in% names(it$own_args %||% list())) "This table"
     if (identical(sch$args[[k]]$type, "widths")) {
@@ -895,6 +904,24 @@ builder_items <- function(x, output_id, meta = NULL) {
              fields = lapply(sp$lower, function(k) field(k, NULL)), label = "Not in the code"))
 }
 
+# A value the card shows but does not change (normalize_ard()'s hierarchy:
+# step 1's): its values as chips, marked "From the ARD" when they are the
+# ARD's (`ard`), with the way to change them (`link`)
+.fixed_field <- function(fn, k, value, it, ard = NULL, link = NULL, lang = "en") {
+  from <- if (length(value) && identical(as.character(value), as.character(ard))) "ard" else
+    if (k %in% names(it$args)) .arg_from(it, k) else "own"
+  shiny::div(
+    class = "rp-field rp-field-fixed rp-has-value", `data-arg` = k,
+    shiny::tags$label(class = "rp-field-label",
+                      builder_label(.arg_meaning(fn, k), k, "arg", lang),
+                      from_badge(from, lang, own = if (identical(from, "own")) "This table"),
+                      help_tip(.arg_help(fn, k, NULL, lang))),
+    shiny::div(class = "rp-b-levels",
+               if (length(value)) lapply(as.character(value), function(h) shiny::span(class = "rp-b-level", h)) else
+                 shiny::span(class = "small text-muted", tr("None", lang)),
+               link))
+}
+
 # the form read back: the arguments its fields say (an unticked check
 # FALSE); NULL while its fields are not there yet.  `cols`: the columns
 # of a widths field, as drawn (.widths_cols()).
@@ -909,7 +936,8 @@ builder_items <- function(x, output_id, meta = NULL) {
       isTRUE(.input_value(input, paste0(cid, "__", k, "__isr")))
   }, NA)
   if (!any(seen)) return(NULL)
-  out <- builder_card_read(input, cid, sch, args = setdiff(sch$formals, wa), logical_false = TRUE)
+  out <- builder_card_read(input, cid, sch, args = setdiff(sch$formals, c(wa, sch$fixed)),
+                           logical_false = TRUE)
   for (k in intersect(names(out), names(sch$args))) {
     out[[k]] <- .form_list_value(out[[k]], sch$args[[k]]$type)
     if (identical(sch$args[[k]]$type, "formula")) out[[k]] <- .formula_text(out[[k]])
@@ -1033,7 +1061,8 @@ builder_items <- function(x, output_id, meta = NULL) {
   eff <- it$args %||% list()
   # (a widths field not drawn -- no columns known -- reads nothing: no change)
   wa <- names(Filter(function(x) identical(x$type, "widths"), sch$args))
-  for (a in union(names(read), setdiff(intersect(names(eff), sch$formals), setdiff(wa, names(read))))) {
+  for (a in setdiff(union(names(read), setdiff(intersect(names(eff), sch$formals),
+                                              setdiff(wa, names(read)))), sch$fixed)) {
     lg <- identical(.arg_kind(sch$args[[a]]$type), "logical") && !inherits(read[[a]], "tfl_r")
     new <- read[[a]]
     cur <- eff[[a]]
@@ -1147,100 +1176,9 @@ builder_items <- function(x, output_id, meta = NULL) {
 
 # ---- normalize_ard() ------------------------------------------------------------
 
-# normalize_ard()'s arguments the sheets have a place for (tables), and
-# those they have not (shown, kept as the function's defaults)
-.normalize_cols <- c(overall = "overall_label", stack = "stack", stack_sep = "stack_sep",
-                     stack_nest = "stack_nest")
-
-.normalize_schema <- function() {
-  sch <- .schema_of("normalize_ard") %||% list()
-  # the sheets have no place for these yet: marked "Not saved" (the
-  # function's default applies)
-  for (a in c("keys", "drop_contexts", "drop_key_variables")) {
-    sch$args[[a]]$type <- "r"
-    sch$args[[a]]$unsaved <- TRUE
-  }
-  sch$args$stack$type <- "string"
-  sch$args$stack_sep$type <- "string"
-  sch$args$stack_nest$type <- "logical"
-  # (each one's (i): .plan_arg_help; the fields in the function's order --
-  # the hierarchy and the overall row are the card's own)
-  sch$formals <- setdiff(.fn_formals("rtfreporter::normalize_ard"), "x")
-  if (!length(sch$formals)) sch$formals <- names(sch$args)
-  sch$visible <- c("hierarchy", "overall")
-  sch
-}
-
-# The normalize_ard() card: the hierarchy -- the ARD analysis's, fixed
-# chips marked "From the ARD", with the way to that analysis -- and the
-# any-event row (overall: the table's, tables$overall_label) when the table
-# has a hierarchy; the stack when the table says one; the rest under
-# "Other arguments".  `tb`: the report's tables row; `step_link`: the link
-# to the ARD analysis; `overall_id`: the overall field's input id.
-.normalize_body <- function(cid, hierarchy = character(), tb = NULL, overall_id = NULL,
-                            step_link = NULL, revert_id = NULL, lang = "en") {
-  t <- function(x) tr(x, lang)
-  val <- function(col) {
-    v <- if (!is.null(tb) && col %in% names(tb) && nrow(tb)) tb[[col]][1L] else NA
-    if (is.na(v) || !nzchar(trimws(v))) NULL else v
-  }
-  al <- function(arg) builder_label(.arg_meaning("normalize_ard", arg), arg, "arg", lang)
-  hier <- length(hierarchy) > 0L
-  stacked <- !is.null(val("stack"))
-  sch <- .normalize_schema()
-  ov <- val("overall_label")
-  parts <- list(
-    if (hier) shiny::div(
-      class = "rp-b-sec",
-      shiny::div(class = "rp-b-sec-label",
-                 with_tip(al("hierarchy"),
-                          t("The hierarchy is the ARD analysis's (step 1): the table shows its levels as they are.")),
-                 " ", from_badge("ard", lang)),
-      shiny::div(class = "rp-b-levels",
-                 lapply(hierarchy, function(h) shiny::span(class = "rp-b-level", h)),
-                 step_link)),
-    if (hier) shiny::div(
-      class = "rp-b-sec rp-field", `data-arg` = "overall",
-      shiny::tags$label(class = "rp-field-label", `for` = overall_id,
-                        with_tip(al("overall"),
-                                 t("The any-event row's text (tables$overall_label); blank: no such row.")),
-                        if (!is.null(ov)) from_badge("own", lang, own = "This table"),
-                        if (!is.null(ov) && !is.null(revert_id)) shiny::actionLink(
-                          revert_id, t("Revert"), class = "small rp-revert",
-                          title = t("No any-event row: the ARD's rows as they are"))),
-      shiny::tags$input(type = "text", id = overall_id, class = "form-control form-control-sm",
-                        value = ov %||% "", placeholder = "Any TEAE", style = "max-width: 18em;")),
-    # (only when the table says a stack -- else they are under "Other
-    # arguments"; a hierarchy does not stack)
-    if (stacked) lapply(c("stack", "stack_sep", "stack_nest"), function(a) {
-      v <- val(.normalize_cols[[a]])
-      if (identical(a, "stack_nest")) v <- if (!is.null(v)) toupper(v) == "TRUE"
-      arg_field(cid, a, sch$args[[a]]$type, label = .arg_meaning("normalize_ard", a),
-                value = v, from = "own",
-                help = if (identical(a, "stack"))
-                  sprintf(t("e.g. %s. Subgroups as one pair of keys: name = its layers, a comma between them, * crossing variables (AGEGR1 * SEX). The rows can then take subgroup and subgroup_level (table_plan())."),
-                          "subgroup = ALL, SEX, AGEGR1") else
-                    .arg_help("normalize_ard", a, sch, lang),
-                own = if (!is.null(v)) "This table", lang = lang)
-    }))
-  parts <- Filter(Negate(is.null), parts)
-  shiny::tagList(
-    if (!length(parts)) shiny::div(class = "small text-muted",
-                                   t("No settings: the function's defaults.")),
-    parts,
-    arg_more(cid, "normalize_ard", used = if (stacked) c("stack", "stack_sep", "stack_nest"),
-             schema = sch, lang = lang))
-}
-
-# the stack's fields read back as the tables columns (NULL while they are
-# not there): stack, stack_sep, stack_nest
-.normalize_read <- function(input, cid) {
-  get <- function(a) .input_value(input, paste0(cid, "__", a))
-  if (is.null(get("stack")) && is.null(get("stack_sep")) && is.null(get("stack_nest"))) return(NULL)
-  txt <- function(v) if (is.null(v) || !nzchar(trimws(v))) NA_character_ else trimws(v)
-  list(stack = txt(get("stack")), stack_sep = txt(get("stack_sep")),
-       stack_nest = if (isTRUE(get("stack_nest"))) "TRUE" else NA_character_)
-}
+# (normalize_ard()'s card is a form card like the others: .plan_form_body(),
+# its hierarchy read only -- .fixed_field() -- and its arguments written
+# into the report's YAML)
 
 # ---- the rows: the variables shown --------------------------------------------------
 

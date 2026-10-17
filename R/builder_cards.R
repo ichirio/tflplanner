@@ -340,13 +340,12 @@ builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_fal
 # visible arguments (or R), r a monospace field, map<aes, ...> a row of
 # aes fields each with a column / value switch.  Beside every field: the
 # `R` switch (the value as R) and the (i) of its help (what the argument
-# means); `unsaved`: the sheets have no place for it -- a mark of its own
-# beside the (i) (unsaved_badge()).
+# means).
 #' @noRd
 arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default = NULL,
                       choices = NULL, from = "own", help = NULL, required = FALSE,
                       lang = "en", fn = NULL, aes = NULL, nav = NULL, help_link = NULL,
-                      own = NULL, unsaved = FALSE) {
+                      own = NULL) {
   t <- function(x) tr(x, lang)
   kind <- .arg_kind(type)
   fid <- paste0(id, "__", arg)
@@ -387,8 +386,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
                       builder_label(label, arg, "arg", lang),
                       if (required) shiny::tags$span(class = "rp-req", title = t("Required"), "*"),
                       from_badge(from, lang, own = own),
-                      help_tip(help), help_link,
-                      if (isTRUE(unsaved)) unsaved_badge(lang)),
+                      help_tip(help), help_link),
     shiny::div(class = "rp-field-row",
                shiny::div(class = "rp-form-input", control),
                r_input, r_switch),
@@ -576,9 +574,8 @@ arg_group <- function(label = NULL, fields, as = NULL, lang = "en") {
 # and the ones in use, folded under "Other arguments (n)" -- a search
 # field, the names in the function's order, each a field labelled
 # "meaning (name)" (the name alone when no meaning is known), its (i)
-# what the argument means (.arg_help()) or a link to the package's help,
-# and "Not saved" beside it where the sheets have no place for it (the
-# schema's `unsaved`).  A field given a value stays shown
+# what the argument means (.arg_help()) or a link to the package's help.
+# A field given a value stays shown
 # when the fold closes (it is promoted; the next render passes it as used).
 #' @noRd
 arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
@@ -601,7 +598,7 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
     }
     arg_field(id, a, schema$args[[a]]$type, label = .arg_meaning(fn, a), value = values[[a]],
               default = schema$args[[a]]$default, help = help, help_link = link,
-              choices = choices, lang = lang, unsaved = isTRUE(schema$args[[a]]$unsaved))
+              choices = choices, lang = lang)
   })
   shiny::div(
     class = "rp-more", `data-card` = id,
@@ -650,16 +647,6 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
   h <- if (!is.null(own) && arg %in% names(own)) own[[arg]]
   h <- h %||% schema$args[[arg]]$description %||% .schema_help(fn, arg)
   if (is.null(h)) NULL else tr(h, lang)
-}
-
-# The mark of an argument the sheets have no place for yet: what it says
-# is not saved (the function's default applies), its own tooltip
-#' @noRd
-unsaved_badge <- function(lang = "en") {
-  t <- function(x) tr(x, lang)
-  bslib::tooltip(
-    shiny::tags$span(class = "rp-badge rp-badge-unsaved", tabindex = "0", t("Not saved")),
-    t("The sheets have no place for this argument yet: a value here is not saved, and the function's default applies."))
 }
 
 # the schema of a function, when tflspec has one
@@ -827,7 +814,6 @@ add_item_input <- function(id, kinds = NULL, schema = NULL, lang = "en", placeho
   border-radius: .6rem; background: var(--bs-tertiary-bg, #f3f4f6); color: #4b5563;
   border: 1px solid #e5e7eb; white-space: nowrap; vertical-align: middle; }
 .rp-badge-own { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
-.rp-badge-unsaved { background: transparent; border-color: #d1d5db; color: #6b7280; margin-left: .25rem; cursor: help; }
 .rp-badge-absent { background: none; border-style: dashed; color: #6b7280; }
 .rp-card.rp-card-absent { border-style: dashed; }
 .rp-card.rp-card-absent > .rp-card-head .rp-card-title { color: #6b7280; }

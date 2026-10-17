@@ -3416,8 +3416,6 @@ The table's width as a percent (0-100) of the page's writable width. e.g. 80,表
 "The chosen cells' borders, as R (rtf_border()). e.g. rtf_border(bottom = ""single"")","選んだセルの罫線を R で指定します（rtf_border()）。例: rtf_border(bottom = ""single"")"
 "The chosen cells underlined: TRUE / FALSE, or a condition as R. e.g. TRUE",選んだセルに下線を引きます: TRUE / FALSE、または R の条件。例: TRUE
 The left indent of the chosen cells' text in twips (not the header's). e.g. 240,選んだセルの文字の左のインデント（twip。見出しには効きません）。例: 240
-Not saved,保存されません
-"The sheets have no place for this argument yet: a value here is not saved, and the function's default applies.",この引数はまだシートに保存する場所がありません。ここに入れた値は保存されず、関数の既定が使われます。
 Shapes the ARD for making the table.,ARD を表を作りやすい形に整えます。
 "normalize_ard() shapes the cards ARD for making the table. Before: group1 = TRT01A, group1_level = Drug X, variable = SEX, variable_level = F, stat_name = n -> After: TRT01A = Drug X, variable = SEX, .label = F, stat_name = n. The groups become columns (TRT01A), the analysis variables stay values of variable, and a category's value becomes .label (the row's text).","normalize_ard() は cards の ARD を表を作りやすい形にします。前: group1 = TRT01A, group1_level = Drug X, variable = SEX, variable_level = F, stat_name = n → 後: TRT01A = Drug X, variable = SEX, .label = F, stat_name = n。群は列（TRT01A）になり、解析変数は variable の値のまま、カテゴリの値は .label（行の文字）になります。"
 Not in the code,コードに書かれない引数

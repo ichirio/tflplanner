@@ -8814,14 +8814,6 @@ app_server <- function(input, output, session, start) {
       with_tip(t("Shown"),
                t("Unticked: the table does not show the variable's rows (written as the row filter, plan_filter()); the ARD stays as it is.")),
       choices = v$variable, selected = setdiff(v$variable, hidden), inline = TRUE)
-    # normalize_ard(): the hierarchy (the ARD analysis's, read only), the
-    # any-event row (the table's: tables$overall_label), the stack, the rest
-    # folded
-    norm_body <- .normalize_body(
-      card_id("normalize_ard"), st$hierarchy, tb = sheet_rows(p0, "tables", id),
-      overall_id = bid("overall"),
-      step_link = shiny::actionLink("b_norm_step1", t("Step 1's analysis"), class = "small ms-1"),
-      revert_id = bid("overall_revert"), lang = lang)
     # plan_cells(): what the cells print
     cells_body <- shiny::tagList(
       shiny::radioButtons(
@@ -8916,7 +8908,6 @@ app_server <- function(input, output, session, start) {
       if (length(at)) at[[1L]]
     }
     bodies <- list(
-      normalize_ard = norm_body,
       table_plan = tp_body, plan_cells = cells_body, plan_col_header = hdr_body,
       plan_total = shiny::uiOutput(bid("total_ui")),
       # plan_digits(): the rounding (the study's: every report's) and the
@@ -8962,7 +8953,13 @@ app_server <- function(input, output, session, start) {
                    cols_offered)
       wc <- if (identical(fn, "plan_columns")) .widths_cols(it$args$widths, ch)
       bform$form_cols[[it$path]] <- wc
-      body <- .plan_form_body(card_id(it$path), fn, it, choices = ch, lang = lang, cols = wc)
+      # (normalize_ard(): its hierarchy the ARD analysis's, read only, the
+      # way to step 1 beside it)
+      body <- .plan_form_body(
+        card_id(it$path), fn, it, choices = ch, lang = lang, cols = wc,
+        ard = if (identical(fn, "normalize_ard")) list(hierarchy = st$hierarchy),
+        fixed_link = if (identical(fn, "normalize_ard"))
+          shiny::actionLink("b_norm_step1", t("Step 1's analysis"), class = "small ms-1"))
       # plan_filter(): its condition by the condition builder (the rows
       # kept: tables$keep_where), its switches as fields
       if (identical(fn, "plan_filter")) {
@@ -9215,6 +9212,9 @@ app_server <- function(input, output, session, start) {
         # labels' card says where a variable's rows go)
         if (!was_present || !identical(fresh$from, it$from) ||
             !identical(isTRUE(fresh$revert), isTRUE(it$revert)) ||
+            # (normalize_ard()'s stack: the keys it adds offered to the rows)
+            (identical(fn, "normalize_ard") &&
+               !identical(.arg_to_r(fresh$args$stack), .arg_to_r(it$args$stack))) ||
             (dots && length(.dots_args(fn, fresh$args)) != length(.dots_args(fn, it$args))) ||
             identical(fn, "plan_nest")) rv$bver <- rv$bver + 1L
       }
@@ -9295,47 +9295,6 @@ app_server <- function(input, output, session, start) {
     }
     card_switch(list(fn = fn, path = fn, present = FALSE), TRUE)
   }, ignoreInit = TRUE)
-  # normalize_ard()'s stack (tables$stack, stack_sep, stack_nest): written
-  # as the fields say
-  norm_args <- shiny::reactive({
-    bform_drawn()
-    shiny::req(builder_case() %in% c("ok", "hierarchy"))
-    .normalize_read(input, card_id("normalize_ard"))
-  })
-  norm_args_d <- shiny::debounce(norm_args, 600)
-  shiny::observeEvent(norm_args_d(), builder_guard({
-    r <- norm_args_d()
-    shiny::req(!is.null(r), identical(bform$id, current()))
-    id <- bform$id
-    tb <- sheet_rows(rv$p, "tables", id)
-    tb$output_id <- NULL
-    if (!nrow(tb)) tb[1L, ] <- NA
-    cur <- vapply(names(r), function(k) {
-      v <- if (k %in% names(tb)) as.character(tb[[k]][1L]) else NA_character_
-      if (!is.na(v) && !nzchar(trimws(v))) NA_character_ else v
-    }, "")
-    if (identical(unname(cur), unname(unlist(r)))) return()
-    for (k in names(r)) tb[[k]][1L] <- r[[k]]
-    p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
-    if (is.null(p2)) return()
-    rv$p <- p2
-    rv$btouched <- TRUE
-    # the keys the stack adds offered to the rows at once (subgroup,
-    # subgroup_level), those of a stack taken away no more (unless chosen)
-    st <- bform$st
-    if (!length(st$hierarchy)) {
-      old <- .stack_keys(cur[["stack"]], cur[["stack_nest"]])
-      new <- .stack_keys(r$stack, r$stack_nest)
-      if (!identical(old, new)) {
-        sel <- input[[bid("layers")]] %||% st$layers
-        ch <- unique(c(sel, setdiff(st$layer_choices, c(old, ".variable")), new, ".variable"))
-        bform$st$layer_choices <- ch
-        shiny::updateSelectizeInput(session, bid("layers"),
-                                    choices = stats::setNames(ch, .layer_names(ch, lang = lang, stack = new)),
-                                    selected = sel)
-      }
-    }
-  }))
   # the columns changed: the rows' candidates made again (a key taken out
   # of cols offered to the rows; one put in cols no more -- one column is
   # in cols or in rows, not both)
@@ -9461,23 +9420,6 @@ app_server <- function(input, output, session, start) {
     rv$p <- p2
     rv$btouched <- TRUE
   }))
-  # the any-event row taken away (Revert): no overall row
-  shiny::observeEvent({
-    bform_drawn()
-    input[[bid("overall_revert")]]
-  }, {
-    shiny::req(isTRUE(input[[bid("overall_revert")]] > 0), identical(bform$id, current()))
-    id <- bform$id
-    tb <- sheet_rows(rv$p, "tables", id)
-    tb$output_id <- NULL
-    shiny::req(nrow(tb), "overall_label" %in% names(tb))
-    tb$overall_label[1L] <- NA_character_
-    p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
-    if (is.null(p2)) return()
-    rv$p <- p2
-    rv$btouched <- TRUE
-    rv$bver <- rv$bver + 1L
-  }, ignoreInit = TRUE)
   # A summary table's variables shown: those unticked are written as the
   # row filter (tables$keep_where `!variable %in% c(...)`); the ARD stays as
   # it is.  At least one stays shown.
