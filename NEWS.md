@@ -6,7 +6,11 @@
   only the parts the edit changes -- the label, the ARD, the data, the
   codelists, the page, a content item and its arguments -- and keeps the
   rest as the spec has it, with the values the sheets cannot hold (a
-  content argument written straight into the spec, a page key).
+  content argument written straight into the spec, a page key).  A draft
+  (the unsaved changes kept for a reload) also keeps the spec's files the
+  session changed, and taking it back gives them back; a draft made
+  before files changed outside the app is merged by its sheets, as
+  before.
 
 - **The programs are written from the report files' items** (#411,
   0.0.2.9233; step B2).  A report program's report part is tflspec's

@@ -132,6 +132,44 @@ test_that("an edit of a report's sheets keeps what only its spec holds (#415)", 
   expect_identical(changed_files(m1, spec_md5(s$path)), character())
 })
 
+test_that("a draft keeps what only the spec holds, and gives it back (#415)", {
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  id <- "T-14-3-1"
+  rel <- "spec/outputs/T-14-3-1.yml"
+  # a draft of nothing changed holds no spec
+  expect_null(.draft_spec_of(s))
+  o <- s$planner$spec$outputs[[id]]
+  k <- which(vapply(o$content, function(i) i$fn, "") == "table_plan")
+  o$content[[k]]$args$kept_arg <- "kept"
+  s$planner <- .spec_set_output(s$planner, id, o)
+  # then the same report's page sheet edited (not yet in the spec)
+  f <- sheet_rows(s$planner, "footer", id)
+  f$output_id <- NULL
+  f$left <- "An edited footnote."
+  s$planner <- set_sheet_rows(s$planner, "footer", id, f)
+  .write_draft(s, home)
+  d <- .read_draft("SAMPLE-01", home)
+  expect_false(is.null(d$planner$spec))
+  expect_identical(d$planner$spec$outputs[[id]]$content[[k]]$args$kept_arg, "kept")
+  # taken back (as the app does) and saved: both are in the file
+  d$planner <- .study_spec_keys(d$planner)
+  m0 <- spec_md5(d$path)
+  d <- suppressMessages(save_study(d, home = home))
+  expect_identical(changed_files(m0, spec_md5(d$path)), rel)
+  back <- tflspec::tfl_read_output(file.path(d$path, rel))
+  expect_identical(back$content[[k]]$args$kept_arg, "kept")
+  expect_identical(back$page$footer[["1"]]$left, "An edited footnote.")
+  # a report removed in the spec stays removed
+  s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  s$planner <- .spec_set_output(s$planner, "T-14-1-2", NULL)
+  .write_draft(s, home)
+  d <- .read_draft("SAMPLE-01", home)
+  expect_false("T-14-1-2" %in% names(d$planner$spec$outputs))
+  expect_false("T-14-1-2" %in% d$planner$outputs$output_id)
+})
+
 test_that("a three-way merge keeps the spec's own keys and takes the edits", {
   spec <- list(a = 1, b = list(x = 1, y = 2), only = "s")
   was <- list(a = 1, b = list(x = 1))

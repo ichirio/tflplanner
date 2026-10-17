@@ -368,17 +368,68 @@ studies_root <- function(home = tflplanner_home()) {
 .write_draft <- function(study, home = tflplanner_home()) {
   f <- .draft_file(study$meta$study_id, home)
   dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
-  writeLines(enc2utf8(.json(.state_of(study))), f, useBytes = TRUE)
+  st <- .state_of(study)
+  st$spec <- .draft_spec_of(study)
+  writeLines(enc2utf8(.json(st)), f, useBytes = TRUE)
   invisible(f)
 }
 
+# A draft read back: the study with its sheets, and with its spec when
+# the draft holds one (`planner$spec`; NULL: the study folder's)
 .read_draft <- function(id, home = tflplanner_home()) {
   f <- .draft_file(id, home)
   if (!file.exists(f)) return(NULL)
   st <- tryCatch(jsonlite::fromJSON(f, simplifyVector = FALSE),
                  error = function(e) NULL)
   if (is.null(st)) return(NULL)
-  .study_from_state(st)
+  d <- .study_from_state(st)
+  if (!is.null(st$spec)) {
+    d$planner$spec <- tryCatch(.draft_spec_back(st$spec, d$path), error = function(e) NULL)
+  }
+  d
+}
+
+# The spec's part of a draft (#415): the spec's files whose text differs
+# from the study folder's (study.yml: but for the time it was updated),
+# the folder's files the spec no longer has, and the view and the study's
+# fields the spec was last in step with -- so that what only the spec
+# holds comes back with the draft.  NULL: the spec is the folder's.
+.draft_spec_of <- function(study) {
+  sp <- study$planner$spec
+  root <- study$path
+  if (is.null(sp) || is.null(sp$base) || is.null(root) || !dir.exists(root)) return(NULL)
+  drop <- function(r, x) if (identical(r, .study_file)) x[!startsWith(x, "updated:")] else x
+  disk <- function(r) {
+    f <- file.path(root, r)
+    if (file.exists(f)) readLines(f, encoding = "UTF-8", warn = FALSE)
+  }
+  changed <- Filter(function(r) !identical(drop(r, disk(r)), drop(r, sp$text[[r]])),
+                    names(sp$text))
+  gone <- setdiff(.spec_files_yaml(root), names(sp$text))
+  if (!length(changed) && !length(gone)) return(NULL)
+  list(text = sp$text[changed], gone = gone, base = .planner_state(sp$base),
+       meta = lapply(sp$meta, function(v) if (is.na(v)) NULL else v))
+}
+
+# The spec of a draft: the study folder's files with the draft's put in,
+# in step with the view the draft says
+.draft_spec_back <- function(x, root) {
+  sp <- .spec_load(root)
+  text <- if (is.null(sp)) list() else sp$text
+  for (r in names(x$text)) text[[r]] <- as.character(unlist(x$text[[r]]))
+  text[intersect(as.character(unlist(x$gone)), names(text))] <- NULL
+  tmp <- tempfile("tflplanner-draft")
+  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
+  for (r in names(text)) {
+    dir.create(dirname(file.path(tmp, r)), recursive = TRUE, showWarnings = FALSE)
+    writeLines(text[[r]], file.path(tmp, r), useBytes = TRUE)
+  }
+  new <- .spec_load(tmp)
+  if (is.null(new)) return(NULL)
+  new$study$dir <- if (is.null(sp)) root else sp$study$dir
+  new$base <- .planner_body(.study_spec_keys(.planner_from_state(list(planner = x$base))))
+  new$meta <- .spec_meta(x$meta)
+  new
 }
 
 .drop_draft <- function(id, home = tflplanner_home()) {
@@ -398,21 +449,25 @@ studies_root <- function(home = tflplanner_home()) {
 }
 
 .state_of <- function(study) {
-  p <- study$planner
   list(format = 2L,
        tflplanner = as.character(utils::packageVersion("tflplanner")),
        saved = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
        path = study$path,
        meta = lapply(study$meta[.study_fields], function(v)
          if (is.na(v)) NULL else v),
-       planner = list(
-         study = as.list(p$study[!is.na(p$study)]),
-         setup = if (is.na(p$setup)) NULL else p$setup,
-         outputs = .cols_df(p$outputs),
-         sheets = lapply(p$sheets, .cols_df),
-         ard = lapply(p$ard %||% .empty_ard_spec(), .cols_df),
-         lf = lapply(p$lf %||% .empty_lf(), .cols_df),
-         fig_designs = if (length(p$fig_designs)) .fig_r_to_state(p$fig_designs)))
+       planner = .planner_state(study$planner))
+}
+
+# A planner's sheets as the state keeps them (.planner_from_state() reads
+# them back)
+.planner_state <- function(p) {
+  list(study = as.list(p$study[!is.na(p$study)]),
+       setup = if (is.na(p$setup)) NULL else p$setup,
+       outputs = .cols_df(p$outputs),
+       sheets = lapply(p$sheets, .cols_df),
+       ard = lapply(p$ard %||% .empty_ard_spec(), .cols_df),
+       lf = lapply(p$lf %||% .empty_lf(), .cols_df),
+       fig_designs = if (length(p$fig_designs)) .fig_r_to_state(p$fig_designs))
 }
 
 .json <- function(x) {

@@ -205,6 +205,24 @@ test_that("a draft identical to the saved study is dropped, not offered", {
   expect_false(file.exists(.draft_file("S1", home)))
 })
 
+test_that("a draft gives back what only the spec holds (#415)", {
+  home <- local_home()
+  suppressMessages(create_sample_study(run = FALSE, home = home))
+  s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  id <- "T-14-3-1"
+  o <- s$planner$spec$outputs[[id]]
+  o$page$kept_key <- "kept"
+  s$planner <- .spec_set_output(s$planner, id, o)
+  .write_draft(s, home)
+  suppressWarnings(shiny::testServer(server_for("SAMPLE-01"), {
+    rv <- session$userData$rv
+    # offered though the sheets are the saved ones
+    expect_false(is.null(rv$draft))
+    session$setInputs(draft_restore = 1L)
+    expect_identical(.spec_output(rv$p, id)$page$kept_key, "kept")
+  }))
+})
+
 test_that("a builder statistic the ARD cannot fill is named with what it lacks", {
   expect_identical(.template_stats("{mean} ({sd:.2f})"), c("mean", "sd"))
   expect_identical(.builder_stats_lacking(c("{mean}", "{p25}, {p75}"), c("mean", "sd")),
