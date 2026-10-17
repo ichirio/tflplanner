@@ -6,11 +6,18 @@
 # spec/ still holds the workbooks is of the sheets' format: it opens as
 # before until it is converted.
 
-# The format of a study folder's definition: "yaml" (spec/outputs/),
+# Whether a study folder has a YAML spec: spec/outputs/, or spec/toc.yml
+# (a study saved with no report yet has no outputs folder)
+.has_yaml_spec <- function(root) {
+  sp <- file.path(root, study_layout()[["spec"]])
+  dir.exists(file.path(sp, "outputs")) || file.exists(file.path(sp, "toc.yml"))
+}
+
+# The format of a study folder's definition: "yaml" (.has_yaml_spec()),
 # "sheets" (the workbooks, the ARD's JSON) or "none" (nothing yet)
 .study_format <- function(root) {
   sp <- file.path(root, study_layout()[["spec"]])
-  if (dir.exists(file.path(sp, "outputs"))) return("yaml")
+  if (.has_yaml_spec(root)) return("yaml")
   old <- c(.table_file, .report_file, .ard_json, .ard_file, .lf_file)
   if (any(file.exists(file.path(sp, old)))) "sheets" else "none"
 }
