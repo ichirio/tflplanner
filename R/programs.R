@@ -373,16 +373,20 @@ data_lines <- function(x, output_id, todo = TRUE) {
 #'
 #' * `table` -- the data part leaves `ard`, this report's ARD (or `data`,
 #'   when its process code or the company's template normalizes it); the
-#'   program plans the table as `table_spec.xlsx` defines it, written out as
-#'   `ard |> normalize_ard() |> table_plan() |> plan_*()` (or
-#'   `table_plan(data)`; [tflspec::tfl_table_code()]).
+#'   program plans the table as its file (`spec/outputs/<id>.yml`)
+#'   defines it, written out as
+#'   `ard |> normalize_ard() |> table_plan() |> plan_*()` from its content's
+#'   items ([tflspec::tfl_content_code()]; or `table_plan(data)`).
 #' * `listing`, `figure` -- the data part leaves `content`: `rtftable`
 #'   pages for a listing, the figures for a figure.
 #'
 #' The report around it -- page, header, footer, titles, footnotes -- is
-#' written out from `report_spec.xlsx` for every type, as rtfreporter calls
-#' ([tflspec::tfl_report_code()]).  The program does not read the workbooks:
-#' generate it again after changing them.
+#' written out from the report's `page:` (its own, its pattern's, the
+#' study's defaults) for every type, as rtfreporter calls
+#' ([tflspec::tfl_report_code()]).  The program does not read the spec:
+#' generate it again after changing it.  (A planner without a YAML spec --
+#' a new study not yet saved -- or with edits not yet saved: from its
+#' sheets, the same code.)
 #'
 #' @param x An `tflplanner`.
 #' @param output_id The report.
@@ -526,8 +530,12 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 .report_code_lines <- function(x, output_id, table,
                                content = if (table) "plan" else "content") {
   lay <- study_layout()
-  sp <- .spec_object_last(x, c(table_sheets(), report_sheets()),
-                          unique(c(.study_keys$table, .study_keys$report)))
+  # the report as its file says it, and the study's spec (#411); none (a
+  # planner without a spec): the sheets
+  y <- .code_output(x, output_id)
+  sheets <- function() .spec_object_last(x, c(table_sheets(), report_sheets()),
+                                         unique(c(.study_keys$table, .study_keys$report)))
+  sp <- if (is.null(y)) sheets()
   tryCatch(c(
     if (table) c(
       paste0("# the table, as ", file.path(lay[["spec"]], "outputs", paste0(output_id, ".yml")),
@@ -538,18 +546,35 @@ program_code <- function(x, output_id, date = Sys.Date()) {
       # half-filled one: as the table's rows say); otherwise the data part
       # made `data`
       if (.table_norm_builtin(x, output_id)) {
-        tryCatch(tflspec::tfl_table_code(sp, output_id, pipe = "|>", ard_spec = .ard_spec(x$ard)),
-                 error = function(e) tflspec::tfl_table_code(sp, output_id, pipe = "|>"))
+        if (!is.null(y)) {
+          tflspec::tfl_content_code(.code_content(y), pipe = "|>")
+        } else {
+          tryCatch(tflspec::tfl_table_code(sp, output_id, pipe = "|>", ard_spec = .ard_spec(x$ard)),
+                   error = function(e) tflspec::tfl_table_code(sp, output_id, pipe = "|>"))
+        }
       } else {
-        tflspec::tfl_table_code(sp, output_id, data = "data", pipe = "|>", normalize = FALSE)
+        # (a table normalized in its data part -- its process code, the
+        # data's steps -- keeps the sheets' plan for now: the items' plan
+        # writes the steps and normalize_ard() in its own pipe)
+        tflspec::tfl_table_code(sp %||% sheets(), output_id, data = "data", pipe = "|>",
+                                normalize = FALSE)
       },
       ""),
     paste0("# the report, as ", file.path(lay[["spec"]], "outputs", paste0(output_id, ".yml")),
            " defines it"),
-    .report_id_code(tflspec::tfl_report_code(sp, output_id, content = content,
-                                             setup = .uses_report_setup(x)), output_id),
-    sprintf("generate_rtfreport(doc, %s, overwrite = TRUE)",
-            .report_path_code(tflspec::tfl_report_path(sp, output_id), output_id)),
+    if (!is.null(y)) {
+      c(.report_id_code(tflspec::tfl_report_code(y$output, content = content,
+                                                 setup = .uses_report_setup(x),
+                                                 study = y$study), output_id),
+        sprintf("generate_rtfreport(doc, %s, overwrite = TRUE)",
+                .report_path_code(tflspec::tfl_report_path(y$output, study = y$study),
+                                  output_id)))
+    } else {
+      c(.report_id_code(tflspec::tfl_report_code(sp, output_id, content = content,
+                                                 setup = .uses_report_setup(x)), output_id),
+        sprintf("generate_rtfreport(doc, %s, overwrite = TRUE)",
+                .report_path_code(tflspec::tfl_report_path(sp, output_id), output_id)))
+    },
     # a figure from an ARD: the definition of that ARD it was made from
     if (!is.na(.fig_ard_need(x, output_id))) "record_report(report_id, ard = ard_built)"
     else "record_report(report_id)"),
@@ -557,6 +582,69 @@ program_code <- function(x, output_id, date = Sys.Date()) {
       "stop(%s)", .r_string(paste0("tflplanner: the definition of ",
                                    output_id, " does not hold: ",
                                    conditionMessage(e)))))
+}
+
+# ---- the programs from the YAML spec's items (#411) -------------------------
+
+# The study's spec as the programs are written from it, when the view is
+# in step with it (a study opened or saved: what save_study() writes the
+# programs from); NULL -- the programs are written from the sheets -- when
+# the planner has none (a new study not yet saved, the company standards,
+# workbooks) or its view has edits the spec has not taken in yet: taking
+# them in runs the bridge over the whole study (.spec_sync(), seconds a
+# report's Code tab would wait after each edit) to give the items the
+# sheets already say.  Kept for the next report of the same planner
+# (writing every report's program, study_status()).
+.code_spec_cache <- new.env()
+.code_spec <- function(x) {
+  if (is.null(x$spec) || is.null(x$spec$base)) return(NULL)
+  if (!is.null(.code_spec_cache$key) && identical(.code_spec_cache$key, x)) {
+    return(.code_spec_cache$spec)
+  }
+  spec <- if (identical(.planner_body(x), x$spec$base)) x$spec
+  .code_spec_cache$key <- x
+  .code_spec_cache$spec <- spec
+  spec
+}
+
+# A report as its file says it, with the study's spec: list(output,
+# study); NULL when the planner's spec has no such report.  The report's
+# analysis set and section are its tokens {OUTPUT_POPULATION} and
+# {OUTPUT_SECTION} when no layer of its page says them (as
+# .with_population_tokens() gives the sheets): its own, not written.
+.code_output <- function(x, output_id) {
+  spec <- .code_spec(x)
+  o <- spec$outputs[[output_id]]
+  if (is.null(o) || is.null(spec$study)) return(NULL)
+  said <- union(names(o$page$tokens),
+                names(tryCatch(tflspec::tfl_resolve_output(o, spec$study)$page$tokens,
+                               error = function(e) NULL)))
+  i <- match(output_id, x$outputs$output_id)
+  add <- list()
+  if (!is.na(i)) {
+    pop <- if (!is.null(x$outputs$population)) x$outputs$population[i] else NA_character_
+    if (!.is_blank(pop) && !"OUTPUT_POPULATION" %in% said) {
+      add$OUTPUT_POPULATION <- .pop_label(x, pop)
+    }
+    sec <- if (!is.null(x$outputs$section)) x$outputs$section[i] else NA_character_
+    if (!.is_blank(sec) && !"OUTPUT_SECTION" %in% said) add$OUTPUT_SECTION <- sec
+  }
+  for (k in names(add)) o$page$tokens[[k]] <- add[[k]]
+  list(output = o, study = spec$study)
+}
+
+# A table's content as its program writes it: the report resolved (its
+# defaults and pattern applied), each item without the layer it came from
+# (the program says no "(study default)")
+.code_content <- function(y) {
+  r <- tflspec::tfl_resolve_output(y$output, y$study)
+  if (is.list(r$content) && !inherits(r$content, "tfl_r")) {
+    r$content <- lapply(r$content, function(it) {
+      if (is.list(it)) it["from"] <- list(NULL)
+      it
+    })
+  }
+  r
 }
 
 # `report_id <- "<id>"`: what a report's program sets at its head, and a
@@ -590,6 +678,11 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 # says only its own; one that has none writes each report's header in its
 # program, as before
 .uses_report_setup <- function(x) {
+  # a study's spec: its defaults say some of it (tfl_report_setup_code())
+  spec <- .code_spec(x)
+  if (!is.null(spec$study)) {
+    return(length(tflspec::tfl_report_setup_code(spec$study)) > 0L)
+  }
   study_rows <- function(sh) {
     d <- x$sheets[[sh]]
     !is.null(d) && any(is.na(d$output_id))
@@ -606,8 +699,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 #' reports' font and size (`options(rtfreporter.font = )`), the
 #' study's tokens (`options(rtfreporter.tokens = )`: the company, the
 #' analysis, the protocol ...), its running header and footer
-#' (`study_header`, `study_footer`), written once from `report_spec.xlsx`
-#' ([tflspec::tfl_report_setup_code()]).  Each report program then says
+#' (`study_header`, `study_footer`), written once from the study's
+#' defaults, `spec/defaults.yml` ([tflspec::tfl_report_setup_code()]).  Each report program then says
 #' only its own tokens (`OUTPUT_LABEL`, `OUTPUT_TITLE` ...), and ends with
 #' `record_report()`, which records the report as made, with the
 #' fingerprint of the study setup, in `output/tfl/report_status.csv`.
@@ -622,8 +715,8 @@ report_setup_code <- function(x, date = Sys.Date()) {
 
 .report_setup_code <- function(x, date = Sys.Date()) {
   lay <- study_layout()
-  sp <- .spec_object_last(x, c(table_sheets(), report_sheets()),
-                          unique(c(.study_keys$table, .study_keys$report)))
+  sp <- function() .spec_object_last(x, c(table_sheets(), report_sheets()),
+                                     unique(c(.study_keys$table, .study_keys$report)))
   c(.banner(
       paste("Program    :", file.path(lay[["programs_tfl"]], .report_setup_file)),
       "The study's font, header, footer and tokens: every report program sources it.",
@@ -637,7 +730,10 @@ report_setup_code <- function(x, date = Sys.Date()) {
     .source_study_setup(),
     "",
     local({
-      own <- tflspec::tfl_report_setup_code(sp)
+      # (the study's spec: its defaults; else the sheets' default rows)
+      spec <- .code_spec(x)
+      own <- if (!is.null(spec$study)) tflspec::tfl_report_setup_code(spec$study) else
+        tflspec::tfl_report_setup_code(sp())
       if (length(own)) c(own, "")
     }),
     .record_report_fun(),

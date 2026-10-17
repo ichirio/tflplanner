@@ -25,15 +25,19 @@ depends on the report's \code{type}:
 \itemize{
 \item \code{table} -- the data part leaves \code{ard}, this report's ARD (or \code{data},
 when its process code or the company's template normalizes it); the
-program plans the table as \code{table_spec.xlsx} defines it, written out as
-\verb{ard |> normalize_ard() |> table_plan() |> plan_*()} (or
-\code{table_plan(data)}; \code{\link[tflspec:tfl_table_code]{tflspec::tfl_table_code()}}).
+program plans the table as its file (\verb{spec/outputs/<id>.yml})
+defines it, written out as
+\verb{ard |> normalize_ard() |> table_plan() |> plan_*()} from its content's
+items (\code{\link[tflspec:tfl_content_code]{tflspec::tfl_content_code()}}; or \code{table_plan(data)}).
 \item \code{listing}, \code{figure} -- the data part leaves \code{content}: \code{rtftable}
 pages for a listing, the figures for a figure.
 }
 
 The report around it -- page, header, footer, titles, footnotes -- is
-written out from \code{report_spec.xlsx} for every type, as rtfreporter calls
-(\code{\link[tflspec:tfl_report_code]{tflspec::tfl_report_code()}}).  The program does not read the workbooks:
-generate it again after changing them.
+written out from the report's \verb{page:} (its own, its pattern's, the
+study's defaults) for every type, as rtfreporter calls
+(\code{\link[tflspec:tfl_report_code]{tflspec::tfl_report_code()}}).  The program does not read the spec:
+generate it again after changing it.  (A planner without a YAML spec --
+a new study not yet saved -- or with edits not yet saved: from its
+sheets, the same code.)
 }

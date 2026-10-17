@@ -1,5 +1,19 @@
 # tflplanner (development version)
 
+- **The programs are written from the report files' items** (#411,
+  0.0.2.9232; step B2).  A report program's report part is tflspec's
+  `tfl_report_code()` and `tfl_report_path()` of the report as its file
+  says it, a table's plan `tfl_content_code()` of its content's items, and
+  `programs/tfl/report_setup.R` `tfl_report_setup_code()` of the study's
+  defaults: an argument the sheets cannot hold is in the program.  The
+  programs of the sample study are the same, byte for byte.  The sheets
+  still write a planner without a spec (a new study not yet saved, the
+  company standards), one whose edits are not saved yet (the same code,
+  without waiting for the whole study's files), a listing's data and
+  columns, a figure's design and a table normalized in its data part.
+  The help of the variables' order says the program's `plan_labels()` and
+  `plan_levels(variable = )`.  tflspec >= 0.0.24.9144.
+
 - **The study's model is its YAML spec** (#407, 0.0.2.9231; step B1).  A
   study's planner holds the spec itself -- the study's files and one
   `tfl_output` a report -- and the sheets the screens edit are a view of it
