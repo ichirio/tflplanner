@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **An edit through the sheets keeps what only the spec holds** (#415,
+  0.0.2.9235).  When a screen that still edits the sheets (the ARD, the
+  page, a listing, ...) edits a report, its file takes from the sheets
+  only the parts the edit changes -- the label, the ARD, the data, the
+  codelists, the page, a content item and its arguments -- and keeps the
+  rest as the spec has it, with the values the sheets cannot hold (a
+  content argument written straight into the spec, a page key).
+
 - **The programs are written from the report files' items** (#411,
   0.0.2.9233; step B2).  A report program's report part is tflspec's
   `tfl_report_code()` and `tfl_report_path()` of the report as its file

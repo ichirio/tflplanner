@@ -21,7 +21,10 @@
 # what .planner_sheets() gives it) -- but only the files the edits change:
 # the bridge is run on the view as it was (`base`) and as it is, and a file
 # whose bridged text is the same both times keeps the spec's own text (and
-# whatever of it the sheets cannot hold).  A save writes the files whose
+# whatever of it the sheets cannot hold).  A report's file the edits do
+# change takes from the bridge only the parts (and content items, and
+# their arguments) the edits change; the rest stays the spec's
+# (.spec_output_parts(), #415).  A save writes the files whose
 # text differs from the disk's.  A part written straight into the spec
 # (.spec_set_output(), the screens to come) has its view made again, for
 # that report only.  A planner with no `spec` (a new study, the company
@@ -168,11 +171,12 @@
   }
   now <- .spec_bridge(body, meta)
   on.exit(unlink(now$dir, recursive = TRUE), add = TRUE)
+  was <- NULL
   if (is.null(sp) || is.null(sp$base)) {
     changed <- union(names(sp$text), names(now$text))
   } else {
     was <- .spec_bridge(sp$base, sp$meta)
-    unlink(was$dir, recursive = TRUE)
+    on.exit(unlink(was$dir, recursive = TRUE), add = TRUE)
     rels <- union(names(was$text), names(now$text))
     changed <- rels[!vapply(rels, function(r) identical(was$text[[r]], now$text[[r]]), NA)]
   }
@@ -201,12 +205,14 @@
       switch(part$kind,
         output = {
           gone <- names(sp$where)[sp$where == r]
+          kept <- .spec_output_parts(sp$outputs[gone], was, r, new$outputs[names(new$where)[new$where == r]])
           sp$outputs[gone] <- NULL
           sp$where <- sp$where[!names(sp$where) %in% gone]
-          for (id in names(new$where)[new$where == r]) {
-            sp$outputs[[id]] <- new$outputs[[id]]
+          for (id in names(kept$outputs)) {
+            sp$outputs[[id]] <- kept$outputs[[id]]
             sp$where[[id]] <- r
           }
+          if (!is.null(kept$text)) sp$text[[r]] <- kept$text
         },
         pattern = sp$study$patterns[[part$name]] <- new$study$patterns[[part$name]],
         sp$study[part$kind] <- list(new$study[[part$kind]]))
@@ -221,6 +227,73 @@
   p <- .spec_rebase(p, meta)
   attr(p, "changed") <- changed
   p
+}
+
+# A report file the edits change, part by part (#415): the bridge's value
+# of a part (label, population, ard, data, codelists, content, page, ...)
+# is taken only where the bridge's text of the view as it was (`was`) and
+# as it is (`now`) differ; the rest stays as the spec has it, with what the
+# sheets cannot hold.  `spec`: the spec's reports of the file `rel`; `now`:
+# the bridge's.  The reports to put, and the file's text when it is not
+# the bridge's.  (A file of several reports, or a report new or gone, is
+# the bridge's.)
+.spec_output_parts <- function(spec, was, rel, now) {
+  whole <- list(outputs = now, text = NULL)
+  if (is.null(was) || !rel %in% names(was$text) || length(spec) != 1L || length(now) != 1L) {
+    return(whole)
+  }
+  w <- tryCatch(tflspec::tfl_read_output(file.path(was$dir, rel)), error = function(e) NULL)
+  if (inherits(w, "tfl_output")) w <- list(w)
+  if (length(w) != 1L || !identical(w[[1L]]$id, now[[1L]]$id) ||
+      !identical(spec[[1L]]$id, now[[1L]]$id)) {
+    return(whole)
+  }
+  m <- .merge3(spec[[1L]], w[[1L]], now[[1L]])
+  if (identical(m, now[[1L]])) return(whole)
+  f <- tempfile("tflplanner-output", fileext = ".yml")
+  on.exit(unlink(f), add = TRUE)
+  tflspec::tfl_write_output(m, f)
+  list(outputs = stats::setNames(list(m), m$id),
+       text = readLines(f, encoding = "UTF-8", warn = FALSE))
+}
+
+# A three-way merge of a value of the spec: `was` and `now` are the
+# bridge's before and after the edits.  Unchanged by the edits: the spec's.
+# Maps (a report, an item, named arguments) key by key: the keys only the
+# spec has are kept; a key the edits add, change or remove follows `now`,
+# in now's order.  A report's content item by item when the three have the
+# same calls in the same order.  Anything else changed: now's.
+.merge3 <- function(spec, was, now) {
+  if (identical(was, now)) return(spec)
+  if (identical(spec, was)) return(now)
+  if (.is_map(spec) && .is_map(was) && .is_map(now)) {
+    out <- list()
+    for (k in names(now)) {
+      if (!k %in% names(was)) {
+        out[k] <- list(now[[k]])
+      } else if (k %in% names(spec)) {
+        out[k] <- list(.merge3(spec[[k]], was[[k]], now[[k]]))
+      } else if (!identical(was[[k]], now[[k]])) {
+        out[k] <- list(now[[k]])
+      }
+    }
+    for (k in setdiff(names(spec), union(names(was), names(now)))) out[k] <- list(spec[[k]])
+    attributes(out) <- c(list(names = names(out)), attributes(now)[setdiff(names(attributes(now)), "names")])
+    return(out)
+  }
+  fns <- function(x) vapply(x, function(i) as.character(i$fn %||% ""), "")
+  items <- function(x) is.list(x) && is.null(names(x)) && all(vapply(x, inherits, NA, "tfl_item"))
+  if (items(spec) && items(was) && items(now) && length(spec) == length(now) &&
+      length(was) == length(now) && identical(fns(spec), fns(now)) && identical(fns(was), fns(now))) {
+    return(lapply(seq_along(now), function(i) .merge3(spec[[i]], was[[i]], now[[i]])))
+  }
+  now
+}
+
+.is_map <- function(x) {
+  is.list(x) && length(x) && !is.null(names(x)) && all(nzchar(names(x))) &&
+    !anyDuplicated(names(x)) &&
+    (is.null(oldClass(x)) || inherits(x, c("tfl_output", "tfl_item")))
 }
 
 # ------------------------------------------------------------- writing
