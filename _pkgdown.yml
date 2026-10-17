@@ -4,7 +4,7 @@ template:
   bootstrap: 5
   bootswatch: cosmo
   bslib:
-    primary: "#1f4e79"
+    primary: "#7a2734"
     base_font: {google: "Source Sans 3"}
     heading_font: {google: "Source Sans 3"}
     code_font: {google: "JetBrains Mono"}

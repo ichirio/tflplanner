@@ -1,5 +1,8 @@
 # tflplanner (development version)
 
+- Docs: the Pages' top bar is the package icon's colour, red `#7a2734` (#408, 0.0.2.9232),
+  as rtfreporter's bar is its icon's navy.
+
 - **The study's model is its YAML spec** (#407, 0.0.2.9231; step B1).  A
   study's planner holds the spec itself -- the study's files and one
   `tfl_output` a report -- and the sheets the screens edit are a view of it
