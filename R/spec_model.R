@@ -340,6 +340,24 @@
 .spec_study <- function(p) .spec_now(p)$study
 .spec_output <- function(p, output_id) .spec_now(p)$outputs[[output_id]]
 
+# A report's content items as the program has them: its file's over the
+# layers it extends (tflspec::tfl_resolve_output(provenance = TRUE)), each
+# item with `arg_from` (where each argument comes from: "own", "defaults",
+# "pattern:<name>") and `below` (the same verb's item without the
+# report's own: what a revert goes back to); `own` the report's own items.
+# NULL: the planner has no spec or edits of its sheets not yet in it (the
+# program is then written from the sheets: .code_spec()), the spec has no
+# such report, or its content is R of its own.
+.spec_items <- function(p, output_id) {
+  sp <- .code_spec(p)
+  o <- sp$outputs[[output_id]]
+  if (is.null(o) || inherits(o$content, "tfl_r")) return(NULL)
+  r <- tryCatch(tflspec::tfl_resolve_output(o, sp$study, provenance = TRUE),
+                error = function(e) NULL)
+  if (is.null(r) || inherits(r$content, "tfl_r")) return(NULL)
+  list(items = r$content %||% list(), own = o$content %||% list())
+}
+
 # A report written straight into the spec (a tfl_output; NULL removes
 # it): the view's edits taken in first, the report's text made by
 # tflspec::tfl_write_output(), and its rows of the view made again from it

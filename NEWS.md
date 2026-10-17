@@ -1,5 +1,10 @@
 # tflplanner (development version)
 
+- Internal: a report's content items as its file says them over the
+  layers it extends, with where each argument comes from (own, the
+  defaults, a pattern) and what a revert goes back to (#417, 0.0.2.9236;
+  step B3).  tflspec >= 0.0.24.9152.
+
 - **An edit through the sheets keeps what only the spec holds** (#415,
   0.0.2.9235).  When a screen that still edits the sheets (the ARD, the
   page, a listing, ...) edits a report, its file takes from the sheets

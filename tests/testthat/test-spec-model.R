@@ -209,3 +209,34 @@ test_that("a planner with no spec is written whole, and gets one", {
   # the sample's files are what the bridge writes of it
   expect_identical(changed_files(m0, spec_md5(s$path)), character())
 })
+
+test_that("a report's items say where each argument comes from (#417)", {
+  s <- model_sample()
+  p <- s$planner
+  x <- .spec_items(p, "T-14-1-1")
+  fns <- vapply(x$items, function(it) it$fn, "")
+  expect_true(all(c("table_plan", "normalize_ard", "plan_cells") %in% fns))
+  expect_identical(vapply(x$own, function(it) it$fn, "")[1L], "table_plan")
+  # a named-dots verb key by key; any other verb the layer's whole
+  pc <- x$items[[match("plan_cells", fns)]]
+  expect_identical(pc$arg_from[["default"]], "defaults")
+  expect_identical(pc$arg_from[["continuous"]], "own")
+  expect_identical(pc$below$fn, "plan_cells")
+  st <- x$items[[match("plan_stub", fns)]]
+  expect_true(all(st$arg_from == "defaults"))
+  tp <- x$items[[match("table_plan", fns)]]
+  expect_true(all(tp$arg_from == "own"))
+  expect_null(tp$below)
+  # T-14-3-1's normalization is its own
+  y <- .spec_items(p, "T-14-3-1")
+  na <- Filter(function(it) identical(it$fn, "normalize_ard"), y$items)[[1L]]
+  expect_identical(na$from, "own")
+  expect_true("hierarchy" %in% names(na$arg_from))
+  # no spec, no such report, or edits of the sheets not in it yet: NULL
+  expect_null(.spec_items(.planner_body(p), "T-14-1-1"))
+  expect_null(.spec_items(p, "T-99"))
+  d <- sheet_rows(p, "tables", "T-14-1-1")
+  d$output_id <- NULL
+  d$note <- "an edit"
+  expect_null(.spec_items(set_sheet_rows(p, "tables", "T-14-1-1", d), "T-14-1-1"))
+})
