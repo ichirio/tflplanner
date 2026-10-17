@@ -9540,7 +9540,7 @@ app_server <- function(input, output, session, start) {
       if (on) shiny::div(
         class = "border rounded p-2 mb-2 bg-body-tertiary",
         shiny::p(class = "small text-muted mb-1",
-                 t("Each variable (value), the heading the table prints for it (label; blank: as the ARD names it) and its place (order). The same as the list above and its labels: the program writes them as plan_labels(variable = ...).")),
+                 t("Each variable (value), the heading the table prints for it (label; blank: as the ARD names it) and its place (order). The same as the list above and its labels: the program writes the headings as plan_labels() and the order as plan_levels(variable = ...).")),
         rhandsontable::rHandsontableOutput("b_vcl_hot")))
   })
   vcl_key <- shiny::reactive(paste("vcl", bform_drawn(), sep = "|"))

@@ -2447,7 +2447,7 @@ All code lists...,すべてのコードリスト…
 Code list of %s,%s のコードリスト
 value: as the data has it; label: what it prints as (blank: itself); order: its place,value：データの値、label：表示する文字（空欄なら値のまま）、order：並び順
 "As the code list of variable: value, label, order",variable のコードリストとして：値・ラベル・並び順
-"Each variable (value), the heading the table prints for it (label; blank: as the ARD names it) and its place (order). The same as the list above and its labels: the program writes them as plan_labels(variable = ...).",各変数（value）、表に出す見出し（label。空欄なら ARD の名前のまま）、並び順（order）です。上の並びとラベルと同じもので、プログラムには plan_labels(variable = ...) として書かれます。
+"Each variable (value), the heading the table prints for it (label; blank: as the ARD names it) and its place (order). The same as the list above and its labels: the program writes the headings as plan_labels() and the order as plan_levels(variable = ...).",各変数（value）、表に出す見出し（label。空欄なら ARD の名前のまま）、並び順（order）です。上の並びとラベルと同じもので、プログラムには見出しが plan_labels()、並び順が plan_levels(variable = ...) として書かれます。
 (the report set %s),（帳票セット %s）
 (%d left out),（%d 件を除く）
 Report set,帳票セット
