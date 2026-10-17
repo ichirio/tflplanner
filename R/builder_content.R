@@ -217,14 +217,46 @@
 .tflspec_fn <- function(name) get(name, envir = asNamespace("tflspec"))
 
 # The items of a report's table as the builder shows them, in the plan's
-# order: each a list -- `fn`, `args`, `from` ("own": the report says it;
-# "defaults": the study's defaults), `path` (the card's and the code's
-# name for it: the verb, "#2" for its second call), `revert` (an item of
-# the report's own over one of the defaults: "Revert" removes the own),
-# `present` (TRUE; FALSE for a card shown though the plan has no such
-# item yet).  `args` are the plan's (the report's over the defaults'),
-# `own_args` what the report says itself (NULL: nothing).
-builder_items <- function(x, output_id) {
+# order, the ARD's normalization (normalize_ard()) first: each a list --
+# `fn`, `args`, `from` (where the item comes from: "own" the report says
+# it; "defaults" the study's defaults; "pattern:<name>" a pattern), `arg_from`
+# (each argument's: the same words), `below` (the item under the report's
+# own: what a Revert goes back to; NULL none), `path` (the card's and the
+# code's name for it: the verb, "#2" for its second call), `revert` (an
+# item of the report's own over one of a layer: "Revert" removes the own),
+# `present` (TRUE; FALSE for a card shown though the plan has no such item
+# yet).  `args` are the plan's (the report's over its layers'), `own_args`
+# what the report says itself (NULL: nothing).  Read from the spec (the
+# report's YAML over its layers); from the sheets while they hold edits
+# the spec has not taken yet.  normalize_ard() is required, and its
+# hierarchy step 1's (`meta`: ard_meta(), for the sheets' way).
+builder_items <- function(x, output_id, meta = NULL) {
+  sp <- .spec_items(x, output_id)
+  items <- if (is.null(sp)) .builder_items_sheets(x, output_id, meta) else {
+    own_fn <- vapply(sp$own, function(it) it$fn, "")
+    seen <- character()
+    lapply(sp$items, function(it) {
+      fn <- it$fn
+      seen <<- c(seen, fn)
+      k <- sum(seen == fn)
+      at <- which(own_fn == fn)
+      from <- if (identical(fn, "table_plan")) "own" else it$from %||% "own"
+      list(fn = fn, args = it$args %||% list(),
+           own_args = if (length(at) >= k) sp$own[[at[k]]]$args %||% list(),
+           from = from, arg_from = it$arg_from, below = it$below,
+           path = if (k > 1L) paste0(fn, "#", k) else fn,
+           revert = identical(from, "own") && !is.null(it$below) &&
+             fn %in% names(.verb_targets),
+           present = TRUE)
+    })
+  }
+  .builder_items_ard_first(items)
+}
+
+# ... from the sheets (the bridge): the report's and the defaults' items,
+# and normalize_ard() from the ARD's hierarchy (`meta`) and the table's
+# any-event row (tables$overall_label)
+.builder_items_sheets <- function(x, output_id, meta = NULL) {
   sp <- .spec_object_last(x, table_sheets(), .study_keys$table)
   bridge <- .tflspec_fn(".plan_content_from_sheets")
   get <- function(...) tryCatch(bridge(sp, ...), error = function(e) list())
@@ -235,7 +267,7 @@ builder_items <- function(x, output_id) {
   own_fn <- fns(own)
   dfl_fn <- fns(dfl)
   seen <- character()
-  lapply(res, function(it) {
+  items <- lapply(res, function(it) {
     fn <- it$fn
     seen <<- c(seen, fn)
     k <- sum(seen == fn)
@@ -249,6 +281,29 @@ builder_items <- function(x, output_id) {
          revert = mine && fn %in% dfl_fn && fn %in% names(.verb_targets),
          present = TRUE)
   })
+  if (any(fns(items) == "normalize_ard")) return(items)
+  args <- list()
+  hier <- meta$hierarchy %||% character()
+  if (length(hier)) args$hierarchy <- as.character(hier)
+  ov <- .rows_for(x, "tables", output_id)$overall_label[1L] %||% NA_character_
+  if (length(hier) && !is.na(ov) && nzchar(ov)) args$overall <- ov
+  c(list(list(fn = "normalize_ard", args = args, own_args = if (length(args)) args,
+              from = if (length(args)) "own" else "defaults", path = "normalize_ard",
+              revert = FALSE, present = TRUE)), items)
+}
+
+# The items with the ARD's normalization (normalize_ard(): what the plan
+# is given) first -- one, required, and its arguments not edited as R
+# here (its hierarchy is step 1's); a content with none has the defaults'
+.builder_items_ard_first <- function(items) {
+  na <- vapply(items, function(it) identical(it$fn, "normalize_ard"), NA)
+  it <- if (any(na)) items[[which(na)[1L]]] else
+    list(fn = "normalize_ard", args = list(), from = "defaults", path = "normalize_ard",
+         present = TRUE)
+  it$required <- TRUE
+  it$fixed <- TRUE
+  it$revert <- FALSE
+  c(list(it), items[!na])
 }
 
 # The items with the cards shown though the plan has none yet (`always`:
@@ -268,20 +323,6 @@ builder_items <- function(x, output_id) {
     items <- append(items, list(it), after = at)
   }
   items
-}
-
-# The items with the ARD's normalization first (normalize_ard(): what the
-# plan is given): its hierarchy -- the ARD analysis's, read only -- and the
-# any-event row (tables$overall_label), the table's.  Always written, so
-# required; its arguments are not edited as R here (the hierarchy is step
-# 1's).
-.builder_items_normalize <- function(items, hierarchy = character(), overall = NA_character_) {
-  args <- list()
-  if (length(hierarchy)) args$hierarchy <- as.character(hierarchy)
-  if (length(overall) == 1L && !is.na(overall) && nzchar(overall)) args$overall <- overall
-  it <- list(fn = "normalize_ard", args = args, from = "", path = "normalize_ard",
-             revert = FALSE, present = TRUE, required = TRUE, fixed = TRUE)
-  c(list(it), items)
 }
 
 # ---- the cards ------------------------------------------------------------------
@@ -685,7 +726,7 @@ builder_items <- function(x, output_id) {
       tools = tools,
       # the study's defaults the report leaves as they are, the seldom
       # changed and the off: closed
-      open = on && (pending || (!rare && (req || own_form || !identical(it$from, "defaults")))),
+      open = on && (pending || (!rare && (req || own_form || identical(it$from, "own")))),
       path = it$path, lang = lang,
       own_label = if (isTRUE(it$present) && identical(it$from, "own")) "This table",
       absent = absent, rare = rare, section = sec,
@@ -803,8 +844,11 @@ builder_items <- function(x, output_id) {
 }
 
 # where an argument's value came from: the report's own, the study's
-# defaults (a value the item has that the report does not say)
+# defaults, a pattern (the item's arg_from, read from the spec); else a
+# value the item has that the report does not say is the defaults'
 .arg_from <- function(it, a) {
+  af <- it$arg_from
+  if (!is.null(af) && a %in% names(af)) return(af[[a]])
   if (a %in% names(it$own_args %||% list())) "own" else if (a %in% names(it$args)) "defaults" else "own"
 }
 

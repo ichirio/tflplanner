@@ -8709,8 +8709,7 @@ app_server <- function(input, output, session, start) {
     # normalization first (its hierarchy, step 1's, and the any-event row);
     # the required and the usual ones of the table's kind shown though the
     # content has none (off), and those added here waiting for a value
-    items <- .builder_items_normalize(guarded(builder_items(p0, id)) %||% list(),
-                                      st$hierarchy, st$overall_label)
+    items <- guarded(builder_items(p0, id, m)) %||% .builder_items_ard_first(list())
     # (a verb added or switched off here stays a card: kept in added_by
     # though the content has it now, so off -- its rows taken away -- it
     # is still shown; the menu's Remove drops it)
@@ -9108,8 +9107,8 @@ app_server <- function(input, output, session, start) {
   output$builder_code_jump <- shiny::renderUI({
     id <- current()
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
-    items <- tryCatch(builder_items(rv$p, id), error = function(e) list())
-    code_jump(builder_code_map(program_text(), .builder_items_normalize(items)),
+    items <- tryCatch(builder_items(rv$p, id, meta_of(id)), error = function(e) list())
+    code_jump(builder_code_map(program_text(), items),
               "program_table")
   })
   # A hierarchy's order, one a term (outermost first): by name -- the code
@@ -9204,11 +9203,11 @@ app_server <- function(input, output, session, start) {
       rv$p <- p2
       rv$btouched <- TRUE
       # (what the card says now: the next edit is told from it)
-      fresh <- .builder_item_at(tryCatch(builder_items(p2, bform$id), error = function(e) list()), path)
+      fresh <- .builder_item_at(tryCatch(builder_items(p2, bform$id, bform$meta), error = function(e) list()), path)
       if (!is.null(fresh)) {
         was_present <- isTRUE(it$present)
-        bform$items[[at[1L]]][c("args", "own_args", "from", "revert", "present")] <-
-          fresh[c("args", "own_args", "from", "revert", "present")]
+        bform$items[[at[1L]]][c("args", "own_args", "from", "arg_from", "below", "revert", "present")] <-
+          fresh[c("args", "own_args", "from", "arg_from", "below", "revert", "present")]
         # a card added here that is now in the code: drawn again (its mark);
         # a column or a group more or less, a nest changed: drawn again (its
         # fields; the labels' card says where a variable's rows go)
@@ -9401,12 +9400,12 @@ app_server <- function(input, output, session, start) {
     rv$btouched <- TRUE
     bform$filter_where <- e
     bform$hidden <- if (!length(bform$st$hierarchy)) .hidden_vars_read(e)
-    fresh <- .builder_item_at(tryCatch(builder_items(p2, bform$id), error = function(e) list()),
+    fresh <- .builder_item_at(tryCatch(builder_items(p2, bform$id, bform$meta), error = function(e) list()),
                               "plan_filter")
     if (!is.null(fresh)) {
       was_present <- isTRUE(it$present)
-      bform$items[[at[1L]]][c("args", "own_args", "from", "revert", "present")] <-
-        fresh[c("args", "own_args", "from", "revert", "present")]
+      bform$items[[at[1L]]][c("args", "own_args", "from", "arg_from", "below", "revert", "present")] <-
+        fresh[c("args", "own_args", "from", "arg_from", "below", "revert", "present")]
       if (!was_present) rv$bver <- rv$bver + 1L
     }
   }), ignoreInit = TRUE)
@@ -9769,7 +9768,7 @@ app_server <- function(input, output, session, start) {
     wrote <- FALSE
     if (fresh) {
       for (fn in .ard_on_cards(bform$meta, hier)) {
-        have <- vapply(tryCatch(builder_items(p2, id), error = function(e) list()),
+        have <- vapply(tryCatch(builder_items(p2, id, bform$meta), error = function(e) list()),
                        function(it) it$fn, "")
         if (fn %in% have) next
         p3 <- if (identical(fn, "plan_total")) {

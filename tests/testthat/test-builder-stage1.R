@@ -4,15 +4,14 @@
 # cards' forms and the rows' variables shown.
 
 html <- function(...) as.character(htmltools::tagList(...))
+# (the spec in step with its view, as a study opened: the items read from it)
 sample_planner <- function() {
-  .planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner"))
+  .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
 }
 fns_of <- function(items) vapply(items, function(it) it$fn, "")
 item <- function(items, fn) items[[match(fn, fns_of(items))]]
 cards_of <- function(p, id, hier = FALSE, ...) {
-  .builder_items_cards(.builder_items_normalize(builder_items(p, id),
-                                                if (hier) c("AEBODSYS", "AEDECOD")),
-                       hier, ...)
+  .builder_items_cards(builder_items(p, id), hier, ...)
 }
 
 test_that("the groups by verb: the table's skeleton, the finishing; normalize_ard() neither", {
@@ -33,7 +32,7 @@ test_that("the groups by verb: the table's skeleton, the finishing; normalize_ar
 
 test_that("a line before each group's first card, with its meaning; every card names its group", {
   p <- sample_planner()
-  items <- .builder_items_normalize(builder_items(p, "T-14-1-1"))
+  items <- builder_items(p, "T-14-1-1")
   # the content's order mixes the groups (digits before cells): still one
   # line a group, and the order kept
   h <- html(.table_cards(items))
@@ -76,7 +75,7 @@ test_that("required cards have no switch; a switch only where on / off writes; n
 test_that("an AE table: plan_levels not shown on, offered by Add; an empty usual card is off", {
   p <- sample_planner()
   raw <- Filter(function(it) it$fn != "plan_levels", builder_items(p, "T-14-3-1"))
-  items <- .builder_items_cards(.builder_items_normalize(raw, c("AEBODSYS", "AEDECOD")), TRUE)
+  items <- .builder_items_cards(raw, TRUE)
   expect_false("plan_levels" %in% fns_of(items))
   expect_true("plan_levels" %in% .plan_addable(items))
   expect_false("plan_sort" %in% .plan_addable(items))

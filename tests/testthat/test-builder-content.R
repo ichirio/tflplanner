@@ -4,8 +4,9 @@
 # program's lines traced to the cards.
 
 html <- function(...) as.character(htmltools::tagList(...))
+# (the spec in step with its view, as a study opened: the items read from it)
 sample_planner <- function() {
-  .planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner"))
+  .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
 }
 fns_of <- function(items) vapply(items, function(it) it$fn, "")
 
@@ -15,8 +16,9 @@ test_that("the cards are the plan's items, in its order", {
   for (id in c("T-14-1-1", "T-14-3-1")) {
     items <- builder_items(p, id)
     plan <- .tflspec_fn(".plan_content_from_sheets")(sp, id)
-    expect_identical(fns_of(items), fns_of(plan), info = id)
-    expect_identical(items[[1L]]$fn, "table_plan")
+    # (the ARD's normalization first, then the plan's)
+    expect_identical(fns_of(items)[-1L], fns_of(plan), info = id)
+    expect_identical(fns_of(items)[1:2], c("normalize_ard", "table_plan"))
     h <- html(.table_cards(items))
     shown <- sub('data-fn="([^"]+)"', "\\1", regmatches(h, gregexpr('data-fn="[^"]+"', h))[[1L]])
     expect_identical(shown, fns_of(items), info = id)
@@ -72,8 +74,8 @@ test_that("the report's own item has the mark This table, with Revert over a def
 
 test_that("normalize_ard() is the first card: the hierarchy read only, the overall row", {
   p <- sample_planner()
-  items <- .builder_items_normalize(builder_items(p, "T-14-3-1"), c("AEBODSYS", "AEDECOD"),
-                                    "Any TEAE")
+  # (the report's YAML says it: hierarchy and the any-event row)
+  items <- builder_items(p, "T-14-3-1")
   expect_identical(fns_of(items)[1:2], c("normalize_ard", "table_plan"))
   expect_identical(items[[1L]]$args, list(hierarchy = c("AEBODSYS", "AEDECOD"), overall = "Any TEAE"))
   h <- html(.table_cards(items[1L]))
@@ -99,14 +101,14 @@ test_that("a card's label is the meaning and the verb; an argument's the meaning
   # every verb shown has its meaning
   expect_true(all(fns_of(items) %in% names(.plan_meaning)))
   # an argument: "Columns (cols)"
-  a <- html(.item_args_view(items[[1L]]))
+  a <- html(.item_args_view(items[[2L]]))
   expect_match(a, "rp-meaning\">Columns<", fixed = TRUE)
   expect_match(a, "(cols)", fixed = TRUE)
   # in Japanese, every meaning translated
   m <- unique(c(unname(.plan_meaning), unlist(.plan_arg_meaning, use.names = FALSE)))
   ja <- vapply(m, tr, "", lang = "ja")
   expect_true(all(ja != m), info = paste(m[ja == m], collapse = ", "))
-  expect_match(html(.table_cards(items[1L], lang = "ja")), tr("Table structure", "ja"), fixed = TRUE)
+  expect_match(html(.table_cards(items[2L], lang = "ja")), tr("Table structure", "ja"), fixed = TRUE)
 })
 
 test_that("read and written back unchanged, the sheets stay as they are", {
@@ -188,7 +190,7 @@ test_that("a line of the program leads to the card that wrote it", {
   # (the plan is one pipe from the ARD: plan <- ard |> normalize_ard() |> table_plan())
   expect_identical(path_of("^(plan <- |  )table_plan\\("), "table_plan")
   # with the normalization's card among the items: its line in the pipe
-  m2 <- builder_code_map(code, .builder_items_normalize(items))
+  m2 <- builder_code_map(code, items)
   at <- grep("^  normalize_ard\\(", code)[1L]
   expect_false(is.na(at))
   expect_identical(m2$path[match(at, m2$line)], "normalize_ard")
