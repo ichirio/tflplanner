@@ -1,5 +1,8 @@
 # tflplanner (development version)
 
+- Docs: the Pages' top bar is the package icon's colour, red `#7a2734` (#408, 0.0.2.9231),
+  as rtfreporter's bar is its icon's navy.
+
 - **The table builder shows the content as the plan's cards** (#397,
   0.0.2.9230).  One card a function call -- its fields that function's
   arguments only -- in the content's order, under the plan bar with two
