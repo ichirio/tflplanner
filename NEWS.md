@@ -3,6 +3,15 @@
 - Docs: the Pages' top bar is the package icon's colour, red `#7a2734` (#408, 0.0.2.9232),
   as rtfreporter's bar is its icon's navy.
 
+- **The study's model is its YAML spec** (#407, 0.0.2.9231; step B1).  A
+  study's planner holds the spec itself -- the study's files and one
+  `tfl_output` a report -- and the sheets the screens edit are a view of it
+  (tflspec's `tfl_sheets_from_spec()`).  An edit of the sheets goes back to
+  the files it changes only: a save after opening with no change writes no
+  definition file, an edit of one report writes that report's file, and a
+  report the edits do not touch keeps its file as it is (what the sheets
+  cannot hold included).  tflspec >= 0.0.24.9139.
+
 - **The table builder shows the content as the plan's cards** (#397,
   0.0.2.9230).  One card a function call -- its fields that function's
   arguments only -- in the content's order, under the plan bar with two

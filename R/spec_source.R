@@ -230,6 +230,9 @@
   diff <- .spec_diff(st$files, now)
   changed <- diff$file[diff$status != "same"]
   if (!full && !length(changed)) {
+    # (the files are what the state was saved as: the spec they hold, in
+    # step with the state's view)
+    s <- .spec_attach(s)
     s$spec <- list(status = "same", files = diff)
     return(s)
   }
@@ -264,6 +267,7 @@
     # opened and saved again, copied with other line ends: the same
     # definition, a new fingerprint (no history entry, no notice)
     .write_state(s, home)
+    s <- .spec_attach(s)
     # (a state of an earlier version had no record: nothing to say)
     s$spec <- list(status = if (length(changed) && !is.null(st$files))
       "touched" else "same", files = diff)
@@ -274,7 +278,7 @@
   inc <- .study_parts(r)
   a <- s
   for (k in chg) a <- .set_study_part(a, k, inc[[k]])
-  r <- a
+  r <- .spec_attach(a)
   .write_state(r, home)
   r$spec <- list(status = "adopted", files = diff[diff$status != "same", ,
                                                   drop = FALSE],

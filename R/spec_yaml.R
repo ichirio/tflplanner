@@ -1,8 +1,8 @@
 # The study definition as tflspec's YAML spec (2026-10-15): study.yml and
 # spec/ (data.yml, defaults.yml, codelists.yml, toc.yml, patterns/,
-# outputs/<id>.yml), one file a report.  The app keeps its planner object --
-# the sheets every screen edits -- and reads and writes the YAML through
-# tflspec (tfl_sheets_from_yaml(), tfl_yaml_from_sheets()).  A study whose
+# outputs/<id>.yml), one file a report.  The planner holds the spec itself
+# and the sheets every screen edits are a view of it (spec_model.R, #407);
+# the view's edits go back through tflspec's tfl_yaml_from_sheets().  A study whose
 # spec/ still holds the workbooks is of the sheets' format: it opens as
 # before until it is converted.
 
@@ -29,31 +29,18 @@
   f[file.exists(file.path(root, f))]
 }
 
-# The planner read from a study folder's YAML spec: the sheets, the report
-# list and setup, the ARD definition, the listing and figure sheets and the
-# figure designs, as read_planner() and the ARD and listing readers give
-# them.  What the YAML holds that the sheets cannot is the attribute
-# `not_converted`.
+# The planner read from a study folder's YAML spec: its view of the spec
+# (.planner_from_spec()), the spec in `$spec` (.spec_load(); in step with
+# the view once .spec_rebase() is given the study's fields).  What the YAML
+# holds that the sheets cannot is the attribute `not_converted`.
 .planner_from_yaml <- function(root) {
-  back <- tflspec::tfl_sheets_from_yaml(root)
-  p <- .planner_from_sheets(back$table, back$planner)
-  old <- attr(p, "old_data_code")
-  attr(p, "old_data_code") <- NULL
-  p$ard <- stats::setNames(lapply(names(.ard_sheets()), function(s)
-    .normalize_ard_sheet(back$ard[[s]] %||% data.frame(), s)), names(.ard_sheets()))
-  p$lf <- .empty_lf()
-  for (sh in intersect(.lf_sheet_names, names(back$listing))) {
-    p$lf[[sh]] <- .normalize_lf_sheet(back$listing[[sh]], sh)
+  sp <- .spec_load(root)
+  if (is.null(sp)) {
+    # (a spec with no reports' folder: what tflspec reads of it)
+    return(.planner_from_spec(tflspec::tfl_read_study_spec(root), tflspec::tfl_read_outputs(root)))
   }
-  for (id in names(back$figures)) {
-    # (a figure with nothing of the designer's -- no template, no layers,
-    # no steps -- has no design)
-    d <- .fig_norm(back$figures[[id]])
-    if (length(Filter(length, d))) p <- set_fig_design(p, id, d)
-  }
-  p <- .migrate_step_code(p, old)
-  p <- .renamed_outputs(p)
-  attr(p, "not_converted") <- back$not_converted
+  p <- .planner_from_spec(sp$study, sp$outputs)
+  p$spec <- sp
   p
 }
 
@@ -80,46 +67,20 @@
 }
 
 # The study's definition written as the YAML spec into its folder: the
-# files tflspec writes (in a folder of their own first), study.yml with the
-# study's fields, when it was created and by which tflplanner; each file
-# written only when its text changed (a save that changes one report writes
-# its file, and study.yml), a report's file gone from the definition
-# removed when it is the one the last save wrote (`own(rel)`).  The files,
-# as save_study() lists them: file, status.
+# view's edits taken into the spec (.spec_sync(): only the files they
+# change come from the bridge, the others keep the spec's text), study.yml
+# with the study's fields, when it was created and by which tflplanner; each
+# file written only when its text changed (a save that changes one report
+# writes its file), a report's file gone from the definition removed when
+# it is the one the last save wrote (`own(rel)`).  The files, as
+# save_study() lists them: file, status; the planner, in step with the
+# spec now, is the attribute `planner`.
 .save_yaml_spec <- function(p, meta, root, own = function(rel) FALSE) {
-  tmp <- tempfile("tflplanner-yaml")
-  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
-  tflspec::tfl_yaml_from_sheets(.planner_sheets(p, meta), tmp, overwrite = TRUE)
-  sy <- file.path(tmp, .study_file)
-  more <- list(created = meta$created %||% format(Sys.Date()),
-               updated = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-               tflplanner = as.character(utils::packageVersion("tflplanner")))
-  lines <- readLines(sy, encoding = "UTF-8")
-  # (no blank line between tflspec's part and the study's)
-  while (length(lines) && !nzchar(trimws(lines[length(lines)]))) lines <- lines[-length(lines)]
-  writeLines(c(lines, sub("\n$", "", yaml::as.yaml(more))), sy, useBytes = TRUE)
-  rel <- list.files(tmp, recursive = TRUE)
-  rel <- setdiff(rel, file.path(study_layout()[["spec"]], "_not_converted.yml"))
-  files <- data.frame(file = character(), status = character(), stringsAsFactors = FALSE)
-  for (r in rel) {
-    to <- file.path(root, r)
-    new <- readLines(file.path(tmp, r), encoding = "UTF-8")
-    # (study.yml whose time alone would change: as it is)
-    drop <- if (identical(r, .study_file)) function(x) x[!startsWith(x, "updated:")] else identity
-    same <- file.exists(to) && identical(drop(readLines(to, encoding = "UTF-8")), drop(new))
-    if (!same) {
-      dir.create(dirname(to), recursive = TRUE, showWarnings = FALSE)
-      file.copy(file.path(tmp, r), to, overwrite = TRUE)
-    }
-    files[nrow(files) + 1L, ] <- list(to, if (same) "unchanged" else "written")
-  }
-  # a report's (or a pattern's) file no longer in the definition
-  for (r in setdiff(.spec_files_yaml(root), c(rel, .study_file))) {
-    if (isTRUE(own(r))) {
-      unlink(file.path(root, r))
-      files[nrow(files) + 1L, ] <- list(file.path(root, r), "removed")
-    }
-  }
+  p <- .spec_sync(p, meta)
+  attr(p, "changed") <- NULL
+  p$spec$study$dir <- normalizePath(root, "/", mustWork = FALSE)
+  files <- .spec_write(p, root, own)
+  attr(files, "planner") <- p
   files
 }
 
@@ -136,6 +97,8 @@
   }, error = function(e) NULL)
   if (!is.null(p)) {
     attr(p, "not_converted") <- NULL
+    # (the study's own spec stays its own)
+    p$spec <- s$planner$spec
     s$planner <- p
   }
   s

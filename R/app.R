@@ -1749,7 +1749,7 @@ app_server <- function(input, output, session, start) {
       }
       d <- m$study
     }
-    if (identical(d$planner, s$planner) &&
+    if (.same_planner(d$planner, s$planner) &&
         identical(d$meta[.study_fields], s$meta[.study_fields])) {
       .drop_draft(s$meta$study_id)
       return(invisible())
@@ -1767,6 +1767,8 @@ app_server <- function(input, output, session, start) {
     d <- rv$draft
     if (!is.null(d)) {
       rv$p <- .study_spec_keys(d$planner)
+      # (a draft is the view, edited: the spec it was made from is the study's)
+      if (is.null(rv$p$spec)) rv$p$spec <- rv$saved$spec
       rv$meta <- d$meta[.study_fields]
       bump()
     }
@@ -1935,7 +1937,7 @@ app_server <- function(input, output, session, start) {
     if (is.null(s)) return(FALSE)
     rv$study <- s
     rv$p <- rv$saved <- s$planner
-    if (!identical(.study_spec_keys(mine), s$planner)) {
+    if (!.same_planner(.study_spec_keys(mine), s$planner)) {
       bump()
       notify(t("Changes others saved meanwhile were merged in."))
     }
