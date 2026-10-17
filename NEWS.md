@@ -1,5 +1,17 @@
 # tflplanner (development version)
 
+- **An edit through the sheets keeps what only the spec holds** (#415,
+  0.0.2.9235).  When a screen that still edits the sheets (the ARD, the
+  page, a listing, ...) edits a report, its file takes from the sheets
+  only the parts the edit changes -- the label, the ARD, the data, the
+  codelists, the page, a content item and its arguments -- and keeps the
+  rest as the spec has it, with the values the sheets cannot hold (a
+  content argument written straight into the spec, a page key).  A draft
+  (the unsaved changes kept for a reload) also keeps the spec's files the
+  session changed, and taking it back gives them back; a draft made
+  before files changed outside the app is merged by its sheets, as
+  before.
+
 - **A study with no report keeps its YAML spec** (#413, 0.0.2.9234).  A
   study saved before its first report has no `spec/outputs/` folder; its
   `spec/toc.yml` now makes it a YAML spec all the same, so the planner's

@@ -1736,6 +1736,8 @@ app_server <- function(input, output, session, start) {
     # the definition files were taken in on this open: the draft was made
     # against the study before, merged part by part with the files' (#274)
     if (identical(s$spec$status, "adopted") && !is.null(s$spec$was)) {
+      # (merged by its sheets: what only its spec held is not taken back)
+      d$planner$spec <- NULL
       base <- s
       base$planner <- s$spec$was$planner
       base$meta <- s$spec$was$meta
@@ -1749,7 +1751,7 @@ app_server <- function(input, output, session, start) {
       }
       d <- m$study
     }
-    if (.same_planner(d$planner, s$planner) &&
+    if (is.null(d$planner$spec) && .same_planner(d$planner, s$planner) &&
         identical(d$meta[.study_fields], s$meta[.study_fields])) {
       .drop_draft(s$meta$study_id)
       return(invisible())
