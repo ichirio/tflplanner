@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **The programs are written from the report files' items** (#411,
-  0.0.2.9232; step B2).  A report program's report part is tflspec's
+  0.0.2.9233; step B2).  A report program's report part is tflspec's
   `tfl_report_code()` and `tfl_report_path()` of the report as its file
   says it, a table's plan `tfl_content_code()` of its content's items, and
   `programs/tfl/report_setup.R` `tfl_report_setup_code()` of the study's
@@ -13,6 +13,9 @@
   columns, a figure's design and a table normalized in its data part.
   The help of the variables' order says the program's `plan_labels()` and
   `plan_levels(variable = )`.  tflspec >= 0.0.24.9147.
+
+- Docs: the Pages' top bar is the package icon's colour, red `#7a2734` (#408, 0.0.2.9232),
+  as rtfreporter's bar is its icon's navy.
 
 - **The study's model is its YAML spec** (#407, 0.0.2.9231; step B1).  A
   study's planner holds the spec itself -- the study's files and one
