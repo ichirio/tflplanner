@@ -605,6 +605,15 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     return(.code_spec_cache$spec)
   }
   spec <- if (identical(.planner_body(x), x$spec$base)) x$spec
+  if (!is.null(spec)) {
+    # (the study's page text as its sheets' cells mean it: .page_sheet_text())
+    st <- spec$study
+    st$defaults$page <- .page_sheet_text(st$defaults$page)
+    for (nm in names(st$patterns)) {
+      st$patterns[[nm]]$page <- .page_sheet_text(st$patterns[[nm]]$page)
+    }
+    spec$study <- st
+  }
   .code_spec_cache$key <- x
   .code_spec_cache$spec <- spec
   spec
@@ -633,7 +642,39 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     if (!.is_blank(sec) && !"OUTPUT_SECTION" %in% said) add$OUTPUT_SECTION <- sec
   }
   for (k in names(add)) o$page$tokens[[k]] <- add[[k]]
+  o$page <- .page_sheet_text(o$page)
   list(output = o, study = spec$study)
+}
+
+# The text of a page's lines and tokens as the sheets' cells mean it (the
+# bridge from the sheets passes a cell through as it is): a quoted cell is
+# its text, spaces kept ("  Indented"), and a written \n a line break -- what
+# tflspec reads a sheet's text cell as
+.page_sheet_text <- function(pg) {
+  if (!is.list(pg) || !length(pg)) return(pg)
+  text <- function(v) {
+    if (!is.character(v) || length(v) != 1L || is.na(v) || inherits(v, "tfl_r")) return(v)
+    q <- regmatches(v, regexec("^([\"'])(.*)\\1$", v))[[1L]]
+    if (length(q)) v <- q[3L]
+    gsub("\\n", "\n", gsub("\r\n", "\n", v, fixed = TRUE), fixed = TRUE)
+  }
+  for (band in intersect(c("header", "footer", "titles", "footnotes"), names(pg))) {
+    m <- pg[[band]]
+    if (!is.list(m) || inherits(m, "tfl_unset")) next
+    for (ln in names(m)) {
+      cells <- m[[ln]]
+      if (!is.list(cells) || inherits(cells, "tfl_unset")) next
+      for (k in intersect(c("left", "center", "right"), names(cells))) {
+        if (!is.null(cells[[k]])) cells[[k]] <- text(cells[[k]])
+      }
+      m[[ln]] <- cells
+    }
+    pg[[band]] <- m
+  }
+  if (is.list(pg$tokens) && !inherits(pg$tokens, "tfl_unset")) {
+    for (k in names(pg$tokens)) if (!is.null(pg$tokens[[k]])) pg$tokens[[k]] <- text(pg$tokens[[k]])
+  }
+  pg
 }
 
 # A table's content as its program writes it: the report resolved (its
