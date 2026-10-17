@@ -30,9 +30,10 @@
 # ------------------------------------------------------------- reading
 
 # The spec of a study folder as the model holds it (NULL when the folder
-# has no YAML spec)
+# has no YAML spec; a spec with no report yet -- no outputs folder -- is
+# one, its study a tfl_study_spec)
 .spec_load <- function(root) {
-  if (is.null(root) || !dir.exists(file.path(root, study_layout()[["spec"]], "outputs"))) {
+  if (is.null(root) || !.has_yaml_spec(root)) {
     return(NULL)
   }
   rels <- .spec_files_yaml(root)

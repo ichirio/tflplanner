@@ -120,3 +120,23 @@ test_that("a planner with no spec is written whole, and gets one", {
   # the sample's files are what the bridge writes of it
   expect_identical(changed_files(m0, spec_md5(s$path)), character())
 })
+
+test_that("a study with no report keeps its spec a tfl_study_spec (#413)", {
+  home <- withr_tempdir()
+  old <- options(tflplanner.home = home)
+  on.exit(options(old), add = TRUE)
+  suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))
+  s <- suppressMessages(create_study("Z-01", home = home))
+  expect_identical(nrow(s$planner$outputs), 0L)
+  expect_s3_class(s$planner$spec$study, "tfl_study_spec")
+  expect_identical(.study_format(s$path), "yaml")
+  # reopened and saved again: still the spec, in step
+  s <- suppressMessages(open_study("Z-01", home = home))
+  expect_s3_class(s$planner$spec$study, "tfl_study_spec")
+  expect_length(s$planner$spec$outputs, 0L)
+  s <- suppressMessages(save_study(s, home = home))
+  expect_s3_class(s$planner$spec$study, "tfl_study_spec")
+  expect_true(.same_planner(s$planner$spec$base, s$planner))
+  # its programs are written from the spec
+  expect_false(is.null(.code_spec(s$planner)))
+})
