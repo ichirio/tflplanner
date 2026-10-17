@@ -1,6 +1,6 @@
 # tflplanner (development version)
 
-- Docs: the Pages' top bar is the package icon's colour, red `#7a2734` (#408, 0.0.2.9231),
+- Docs: the Pages' top bar is the package icon's colour, red `#7a2734` (#408, 0.0.2.9232),
   as rtfreporter's bar is its icon's navy.
 
 - **The table builder shows the content as the plan's cards** (#397,
