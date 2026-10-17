@@ -134,7 +134,7 @@
     attr(s, "problems") <- problems
     return(s)
   }
-  if (dir.exists(file.path(sp, "outputs")) || file.exists(file.path(sp, "toc.yml"))) {
+  if (.has_yaml_spec(root)) {
     # the YAML spec: read whole (small)
     y <- read(.spec_files_yaml(root), .planner_from_yaml(root))
     if (!is.null(y)) {
