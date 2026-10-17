@@ -12,7 +12,7 @@
   without waiting for the whole study's files), a listing's data and
   columns, a figure's design and a table normalized in its data part.
   The help of the variables' order says the program's `plan_labels()` and
-  `plan_levels(variable = )`.  tflspec >= 0.0.24.9144.
+  `plan_levels(variable = )`.  tflspec >= 0.0.24.9147.
 
 - **The study's model is its YAML spec** (#407, 0.0.2.9231; step B1).  A
   study's planner holds the spec itself -- the study's files and one
