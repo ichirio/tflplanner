@@ -9209,10 +9209,12 @@ app_server <- function(input, output, session, start) {
         was_present <- isTRUE(it$present)
         bform$items[[at[1L]]][c("args", "own_args", "from", "arg_from", "below", "revert", "present")] <-
           fresh[c("args", "own_args", "from", "arg_from", "below", "revert", "present")]
-        # a card added here that is now in the code: drawn again (its mark);
-        # a column or a group more or less, a nest changed: drawn again (its
-        # fields; the labels' card says where a variable's rows go)
-        if (!was_present ||
+        # a card added here that is now in the code, or of the defaults now
+        # the report's own: drawn again (its mark, its Revert); a column or a
+        # group more or less, a nest changed: drawn again (its fields; the
+        # labels' card says where a variable's rows go)
+        if (!was_present || !identical(fresh$from, it$from) ||
+            !identical(isTRUE(fresh$revert), isTRUE(it$revert)) ||
             (dots && length(.dots_args(fn, fresh$args)) != length(.dots_args(fn, it$args))) ||
             identical(fn, "plan_nest")) rv$bver <- rv$bver + 1L
       }
@@ -9407,7 +9409,7 @@ app_server <- function(input, output, session, start) {
       was_present <- isTRUE(it$present)
       bform$items[[at[1L]]][c("args", "own_args", "from", "arg_from", "below", "revert", "present")] <-
         fresh[c("args", "own_args", "from", "arg_from", "below", "revert", "present")]
-      if (!was_present) rv$bver <- rv$bver + 1L
+      if (!was_present || !identical(fresh$from, it$from)) rv$bver <- rv$bver + 1L
     }
   }), ignoreInit = TRUE)
   # plan_digits()' rounding: the study's (every report's), written there

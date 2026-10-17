@@ -257,7 +257,10 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
     it <- item(items, fn)
     h <- html(.plan_form_body("c", fn, it, choices = c("TRT01A", "SEX")))
     for (a in want[[fn]]) expect_match(h, sprintf('id="c__%s"', a), fixed = TRUE, info = paste(fn, a))
-    expect_match(h, "Other arguments", fixed = TRUE, info = fn)
+    # (the arguments the code does not write: below, when there are any)
+    if (length(setdiff(.plan_form_schema(fn)$formals, c(names(it$args), .data_args)))) {
+      expect_match(h, "Not in the code", fixed = TRUE, info = fn)
+    }
   }
   # the kinds of field: a choice, a number, a check
   h <- html(.plan_form_body("c", "plan_blanks", item(items, "plan_blanks")))

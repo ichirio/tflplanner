@@ -529,7 +529,7 @@ test_that("plan_cell_style(): cols, where, the looks as fields, each call its ow
   for (a in c("cols", "header", "where", "bold", "italic", "align", "color", "background")) {
     expect_match(h, sprintf('id="c__%s"', a), fixed = TRUE)
   }
-  expect_match(h, "Other arguments", fixed = TRUE)
+  expect_match(h, "Not in the code", fixed = TRUE)
   # blank fields: nothing (the header's check unticked is its default)
   inp <- list(c__cols = NULL, c__header = FALSE, c__where = "", c__bold = "", c__italic = "",
               c__align = "", c__color = "", c__background = "")
@@ -602,4 +602,36 @@ test_that("the third bundle's words have their Japanese", {
          "Hidden columns", "Alignment", "Borders")
   ja <- vapply(w, tr, "", lang = "ja")
   expect_true(all(ja != w), info = paste(w[ja == w], collapse = " / "))
+})
+
+test_that("every form card shows all its function's arguments: those written above, the rest below (#417)", {
+  p <- sample_planner()
+  args_of <- function(h, part) {
+    x <- regmatches(h, regexpr(part, h, perl = TRUE))
+    if (!length(x)) return(character())
+    gsub('data-arg="|"', "", regmatches(x, gregexpr('data-arg="[^"]+"', x))[[1L]])
+  }
+  seen <- list()
+  for (id in c("T-14-1-1", "T-14-3-1")) {
+    items <- builder_items(p, id)
+    for (fn in names(.plan_form_main)) {
+      it <- Filter(function(x) identical(x$fn, fn), items)
+      it <- if (length(it)) it[[1L]] else list(fn = fn, args = list())
+      h <- html(.plan_form_body("c", fn, it, cols = c("row_label", ".values")))
+      up <- args_of(h, '(?s)rp-args-up.*?(?=rp-more|$)')
+      low <- args_of(h, '(?s)rp-more-body.*$')
+      fo <- setdiff(.plan_form_schema(fn)$formals, .data_args)
+      # all of them, once, each group in the function's order
+      expect_setequal(c(up, low), fo)
+      expect_false(any(duplicated(c(up, low))), info = fn)
+      expect_identical(up, fo[fo %in% up], info = fn)
+      expect_identical(low, fo[fo %in% low], info = fn)
+      # above: what the call writes
+      expect_true(all(intersect(names(it$args), fo) %in% up), info = paste(id, fn))
+      seen[[id]][[fn]] <- sort(c(up, low))
+    }
+  }
+  # the same fields whatever the table's kind
+  expect_identical(seen[["T-14-1-1"]], seen[["T-14-3-1"]])
+  expect_identical(tr("Not in the code", "ja"), "コードに書かれない引数")
 })

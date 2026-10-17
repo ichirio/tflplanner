@@ -846,27 +846,53 @@ builder_items <- function(x, output_id, meta = NULL) {
   if (a %in% names(it$own_args %||% list())) "own" else if (a %in% names(it$args)) "defaults" else "own"
 }
 
-# A form card's body: its main arguments as fields (each marked where its
-# value came from), the rest under "Other arguments".  `choices`: the
-# columns offered (the row layers, the ARD's keys).
+# The function's arguments a card shows, in two groups (each in the
+# function's order, a data argument -- x, plan -- none): `upper` those the
+# call's code writes -- the required, the item's arguments
+# (tflspec::tfl_item_written()), those the ARD decides (`ard`) -- and
+# `lower` the rest.  The same for every report: no kind of table shows or
+# hides an argument.
+.data_args <- c("x", "plan", ".plan", "data", "ard", "...")
+
+.fields_split <- function(fn, it, formals, ard = character()) {
+  fo <- setdiff(formals, .data_args)
+  fl <- tryCatch(formals(utils::getFromNamespace(sub("^.*::", "", fn), "rtfreporter")),
+                 error = function(e) NULL)
+  req <- names(fl)[vapply(fl, function(d) is.symbol(d) && !nzchar(as.character(d)), NA)]
+  a <- it$args %||% list()
+  wr <- if (length(a)) tryCatch(tflspec::tfl_item_written(tflspec::tfl_item(fn, a)),
+                                error = function(e) names(a)) else character()
+  # (a verb's positional ... keyed by an argument -- plan_hide(cols) -- by its key too)
+  up <- unique(c(req, wr, names(a)[nzchar(names(a))], ard))
+  list(upper = fo[fo %in% up], lower = fo[!fo %in% up])
+}
+
+# A form card's body: the function's arguments as fields (each marked where
+# its value came from), those its code writes above, the rest below
+# ("Not in the code", folded: a value given there moves its field up).
+# `choices`: the columns offered (the row layers, the ARD's keys).
 .plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en", cols = NULL) {
   sch <- .plan_form_schema(fn)
   a <- it$args %||% list()
-  # (in the function's order: sch$visible)
-  fields <- lapply(sch$visible, function(k) {
+  sp <- .fields_split(fn, it, sch$formals)
+  field <- function(k, value) {
     from <- if (k %in% names(a)) .arg_from(it, k) else "own"
     own <- if (k %in% names(it$own_args %||% list())) "This table"
     if (identical(sch$args[[k]]$type, "widths")) {
-      return(.widths_field(cid, k, cols %||% .widths_cols(a[[k]], choices), a[[k]],
+      return(.widths_field(cid, k, cols %||% .widths_cols(value, choices), value,
                            label = .arg_meaning(fn, k), from = from, own = own,
                            help = .arg_help(fn, k, sch, lang), lang = lang))
     }
-    arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = a[[k]],
+    arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
               default = sch$args[[k]]$default, choices = choices,
               from = from, own = own, help = .arg_help(fn, k, sch, lang), lang = lang)
-  })
-  shiny::tagList(arg_group(NULL, fields, lang = lang),
-                 arg_more(cid, fn, schema = sch, lang = lang, values = a, choices = choices))
+  }
+  shiny::div(
+    class = "rp-plan-args", `data-card` = cid,
+    shiny::div(class = "rp-args-up", `data-formals` = paste(sch$formals, collapse = ","),
+               arg_group(NULL, lapply(sp$upper, function(k) field(k, a[[k]])), lang = lang)),
+    arg_more(cid, fn, schema = sch, lang = lang, rest = sp$lower,
+             fields = lapply(sp$lower, function(k) field(k, NULL)), label = "Not in the code"))
 }
 
 # the form read back: the arguments its fields say (an unticked check

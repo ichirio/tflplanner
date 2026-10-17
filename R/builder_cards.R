@@ -582,15 +582,17 @@ arg_group <- function(label = NULL, fields, as = NULL, lang = "en") {
 # when the fold closes (it is promoted; the next render passes it as used).
 #' @noRd
 arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
-                     values = list(), choices = NULL) {
+                     values = list(), choices = NULL, rest = NULL, fields = NULL,
+                     label = "Other arguments") {
   t <- function(x) tr(x, lang)
   schema <- schema %||% .schema_of(fn)
   all <- .fn_formals(fn, schema)
-  # (in the function's order, as its formals)
-  rest <- setdiff(all, c(schema$visible, used, "..."))
+  # (in the function's order, as its formals; `rest` and their `fields`
+  # given: those)
+  rest <- rest %||% setdiff(all, c(schema$visible, used, "..."))
   if (!length(rest)) return(NULL)
   pkg <- schema$package %||% if (grepl("::", fn, fixed = TRUE)) sub("::.*$", "", fn)
-  fields <- lapply(rest, function(a) {
+  fields <- fields %||% lapply(rest, function(a) {
     help <- .arg_help(fn, a, schema, lang)
     link <- if (is.null(help) && !is.null(pkg)) {
       shiny::tags$a(class = "rp-help-link", href = .help_url(pkg, fn), target = "_blank",
@@ -605,7 +607,7 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
     class = "rp-more", `data-card` = id,
     shiny::tags$button(type = "button", class = "rp-more-toggle",
                        shiny::tags$span(class = "rp-more-arrow", "\u25b8"), " ",
-                       sprintf("%s (%d)", t("Other arguments"), length(rest))),
+                       sprintf("%s (%d)", t(label), length(rest))),
     shiny::div(class = "rp-more-body",
                shiny::tags$input(type = "search", class = "form-control form-control-sm rp-more-search",
                                  id = paste0(id, "__more_q"), placeholder = t("Search arguments")),
@@ -940,6 +942,59 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     var f = $(this).closest('.rp-field');
     var has = $(this).is(':checkbox') ? this.checked : (this.value || '').length > 0;
     f.toggleClass('rp-has-value', has);
+  });
+  // a plan card's fields in two groups: those its code writes (above) and
+  // those it does not (below, folded).  A value given below moves its
+  // field up when the field is left; a field above emptied moves down --
+  // each in the function's order (the upper group's data-formals), as the
+  // next drawing puts them
+  function fieldHas(f) {
+    var has = false;
+    f.find('input, select, textarea').each(function() {
+      if ($(this).hasClass('rp-isr') || this.type === 'search') return;
+      if (this.type === 'checkbox' || this.type === 'radio') {
+        if (this.checked !== (this.getAttribute('data-init') === '1')) has = true;
+      } else if (($(this).val() || '').toString().length > 0) has = true;
+    });
+    return has;
+  }
+  function placeField(f, box, wrap, order) {
+    var rank = order.indexOf(String(f.data('arg')));
+    var el = wrap ? $('<div class=\"rp-group-cell\"></div>').append(f) : f;
+    var after = null;
+    box.children().each(function() {
+      var g = $(this).is('.rp-field') ? $(this) : $(this).find('.rp-field').first();
+      var r = order.indexOf(String(g.data('arg')));
+      if (r >= 0 && r < rank) after = $(this);
+    });
+    if (after) after.after(el); else if (wrap) box.prepend(el); else box.children('.rp-more-search').length ? box.children('.rp-more-search').after(el) : box.prepend(el);
+  }
+  $(document).on('focusout', '.rp-plan-args .rp-field', function() {
+    var f = $(this);
+    setTimeout(function() {
+      if (f[0].contains(document.activeElement)) return;
+      var card = f.closest('.rp-plan-args');
+      var up = card.find('.rp-args-up .rp-group-row').first();
+      var low = card.find('.rp-more-body').first();
+      if (!up.length || !low.length) return;
+      var order = (card.find('[data-formals]').first().attr('data-formals') || '').split(',');
+      var below = f.closest('.rp-more-body').length > 0;
+      var has = fieldHas(f);
+      if (below && has) {
+        placeField(f, up, true, order);
+      } else if (!below && !has) {
+        var cell = f.parent('.rp-group-cell');
+        placeField(f, low, false, order);
+        if (cell.length && !cell.children().length) cell.remove();
+      }
+    }, 0);
+  });
+  $(document).on('shiny:value', function() {
+    setTimeout(function() {
+      $('.rp-plan-args input[type=checkbox]:not([data-init])').each(function() {
+        this.setAttribute('data-init', this.checked ? '1' : '0');
+      });
+    }, 0);
   });
   // Code line <-> card
   function jumpMap(pre) {
