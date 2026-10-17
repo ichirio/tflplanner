@@ -597,7 +597,10 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 # (writing every report's program, study_status()).
 .code_spec_cache <- new.env()
 .code_spec <- function(x) {
-  if (is.null(x$spec) || is.null(x$spec$base)) return(NULL)
+  # (a study's spec is a tfl_study_spec: a planner saved with no report yet
+  # has a bare list -- written from the sheets)
+  if (is.null(x$spec) || is.null(x$spec$base) ||
+      !inherits(x$spec$study, "tfl_study_spec")) return(NULL)
   if (!is.null(.code_spec_cache$key) && identical(.code_spec_cache$key, x)) {
     return(.code_spec_cache$spec)
   }
