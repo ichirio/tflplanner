@@ -359,6 +359,77 @@
   list(items = r$content %||% list(), own = o$content %||% list())
 }
 
+# A planner with a spec in step with its view: one with none (a study not
+# saved as YAML yet) is given the one a save would write (the bridge's);
+# one never in step (no base) is taken as the view's
+.spec_ensure <- function(p, meta = p$spec$meta) {
+  if (is.null(p$spec)) {
+    p <- .spec_sync(p, meta)
+    attr(p, "changed") <- NULL
+    return(p)
+  }
+  if (is.null(p$spec$base)) p <- .spec_rebase(p, meta)
+  p
+}
+
+.content_fns <- function(content) vapply(content, function(it) as.character(it$fn), "")
+
+# A content (a report's own items) with the `k`-th item of `fn` replaced by
+# `item` (NULL: taken away); an item it has not put in by the schema's rank
+# (after the items of its rank or before)
+.content_put <- function(content, fn, k, item) {
+  content <- content %||% list()
+  at <- which(.content_fns(content) == fn)
+  if (length(at) >= k) {
+    if (is.null(item)) content[at[k]] <- NULL else content[[at[k]]] <- item
+    return(content)
+  }
+  if (is.null(item)) return(content)
+  rank <- function(f) as.numeric(.schema_of(f)$rank %||% 500)
+  r <- rank(fn)
+  before <- which(vapply(.content_fns(content), rank, 0) <= r)
+  where <- if (length(at)) max(at) else if (length(before)) max(before) else 0L
+  append(content, list(item), after = where)
+}
+
+# The `k`-th item of `fn` of a report set to `args` -- its whole arguments,
+# as the program is to have them: the report's own layer holds what differs
+# from the layers below (tflspec::tfl_item_own(): a verb of named `...` key
+# by key; any other the item whole, so a card of the study's defaults
+# changed is the report's own from then on, the defaults' later changes
+# no longer reaching it -- #417 Q1), or nothing when it is the same.
+# `below_args`: arguments that stay the layers' (the study's rounding).
+.spec_set_item <- function(p, output_id, fn, args, k = 1L, below_args = character()) {
+  p <- .spec_ensure(p)
+  p <- .spec_sync(p, p$spec$meta)
+  attr(p, "changed") <- NULL
+  o <- p$spec$outputs[[output_id]]
+  if (is.null(o)) stop("The spec has no report ", output_id, ".", call. = FALSE)
+  if (inherits(o$content, "tfl_r")) {
+    stop("The report ", output_id, "'s content is R of its own.", call. = FALSE)
+  }
+  r <- tflspec::tfl_resolve_output(o, p$spec$study, provenance = TRUE)
+  at <- which(.content_fns(r$content) == fn)
+  below <- if (length(at) >= k) r$content[[at[k]]]$below
+  args <- args %||% list()
+  for (a in below_args) args[a] <- list(below$args[[a]])
+  args <- Filter(Negate(is.null), args)
+  own <- tflspec::tfl_item_own(tflspec::tfl_item(fn, args), below)
+  o$content <- .content_put(o$content, fn, k, own)
+  .spec_set_output(p, output_id, o)
+}
+
+# ... and the report's own `k`-th item of `fn` taken away: the layers' again
+# (none: the verb is gone from the report's plan)
+.spec_revert_item <- function(p, output_id, fn, k = 1L) {
+  p <- .spec_ensure(p)
+  o <- .spec_output(p, output_id)
+  if (is.null(o) || inherits(o$content, "tfl_r")) return(p)
+  if (sum(.content_fns(o$content) == fn) < k) return(p)
+  o$content <- .content_put(o$content, fn, k, NULL)
+  .spec_set_output(p, output_id, o)
+}
+
 # A report written straight into the spec (a tfl_output; NULL removes
 # it): the view's edits taken in first, the report's text made by
 # tflspec::tfl_write_output(), and its rows of the view made again from it

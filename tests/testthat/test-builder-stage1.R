@@ -272,33 +272,35 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
   it <- item(items, "plan_blanks")
   inp <- list(c__where = "between_groups", c__first = TRUE, c__last = TRUE, c__counted = TRUE)
   r <- .plan_form_read(inp, "c", "plan_blanks")
-  expect_identical(.plan_form_own(r, it, "plan_blanks"), it$own_args %||% list())
+  expect_identical(.plan_form_args(r, it, "plan_blanks"), it$args %||% list())
   # a check unticked over the study's TRUE: the report's own FALSE, written
   inp$c__first <- FALSE
-  own <- .plan_form_own(.plan_form_read(inp, "c", "plan_blanks"), it, "plan_blanks")
-  expect_identical(own, list(first = FALSE))
+  own <- .plan_form_args(.plan_form_read(inp, "c", "plan_blanks"), it, "plan_blanks")
+  # (the item whole, the study's values with it: the report's own from now on)
+  expect_identical(own, utils::modifyList(it$args, list(first = FALSE)))
   q <- .builder_item_write(p, id, "plan_blanks", own)
   expect_identical(sheet_rows(q, "layout", id)$blank_first, "FALSE")
   expect_identical(item(builder_items(q, id), "plan_blanks")$args$where, "between_groups")
+  expect_identical(item(builder_items(q, id), "plan_blanks")$from, "own")
   # a number and a choice
   it <- item(items, "plan_paginate_rows")
   inp <- list(c__max_rows = 25, c__split = "group_force", c__page_by = NULL)
-  own <- .plan_form_own(.plan_form_read(inp, "c", "plan_paginate_rows"), it, "plan_paginate_rows")
+  own <- .plan_form_args(.plan_form_read(inp, "c", "plan_paginate_rows"), it, "plan_paginate_rows")
   q <- .builder_item_write(p, id, "plan_paginate_rows", own)
   expect_identical(sheet_rows(q, "layout", id)$pages_max_rows, "25")
   expect_identical(sheet_rows(q, "layout", id)$pages_split, "group_force")
   # the style's and the row label column's
   it <- item(items, "plan_style")
-  own <- .plan_form_own(.plan_form_read(list(c__border = "tfl", c__align_count_pct = TRUE,
+  own <- .plan_form_args(.plan_form_read(list(c__border = "tfl", c__align_count_pct = TRUE,
                                              c__font_size_half_points = 18), "c", "plan_style"),
                         it, "plan_style")
   expect_identical(own$border, "tfl")
   q <- .builder_item_write(p, id, "plan_style", own)
   expect_identical(item(builder_items(q, id), "plan_style")$args$font_size_half_points, 18L)
   it <- item(items, "plan_stub")
-  own <- .plan_form_own(.plan_form_read(list(c__name = "row_label", c__indent = 3, c__before = TRUE),
+  own <- .plan_form_args(.plan_form_read(list(c__name = "row_label", c__indent = 3, c__before = TRUE),
                                         "c", "plan_stub"), it, "plan_stub")
-  expect_identical(own, list(indent = 3L))
+  expect_identical(own, utils::modifyList(it$args, list(indent = 3L)))
   q <- .builder_item_write(p, id, "plan_stub", own)
   expect_identical(sheet_rows(q, "layout", id)$stub_indent, "3")
   # the field parts the figures use too
@@ -342,8 +344,8 @@ test_that("nothing changed, nothing written: the sample's items and program as t
         if (!is.null(v)) inp[[paste0("c__", a)]] <- if (is.logical(v)) v else
           if (.arg_kind(sch$args[[a]]$type) %in% c("r", "string") && !is.character(v)) .arg_to_r(v) else v
       }
-      own <- .plan_form_own(.plan_form_read(inp, "c", it$fn), it, it$fn)
-      expect_identical(args_to_r(it$fn, own), args_to_r(it$fn, it$own_args %||% list()),
+      own <- .plan_form_args(.plan_form_read(inp, "c", it$fn), it, it$fn)
+      expect_identical(args_to_r(it$fn, own), args_to_r(it$fn, it$args %||% list()),
                        info = paste(id, it$fn))
     }
   }
@@ -579,7 +581,8 @@ test_that("builder_read() tells where each order comes from; a key column's fact
   # no own levels: the report's code list's, as tflspec writes it
   vr <- sheet_rows(p, "variables", "T-14-1-1")
   vr$levels <- NA_character_
-  q <- .put_rows(p, "T-14-1-1", "variables", vr)
+  vr$output_id <- NULL
+  q <- set_sheet_rows(p, "variables", "T-14-1-1", vr)
   # (the arms of the sample's code list, the ARD's factor the other way round)
   cl <- .codelist_order(sheet_rows(p, "codelists", "T-14-1-1"), "TRT01A")
   expect_length(cl, 2L)

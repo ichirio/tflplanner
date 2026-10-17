@@ -260,3 +260,51 @@ test_that("a study with no report keeps its spec a tfl_study_spec (#413)", {
   # its programs are written from the spec
   expect_false(is.null(.code_spec(s$planner)))
 })
+
+test_that("a card's edit writes that report's YAML only, its content only; Revert takes it back (#417)", {
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  m0 <- spec_md5(s$path)
+  id <- "T-14-1-1"
+  rel <- "spec/outputs/T-14-1-1.yml"
+  y0 <- s$planner$spec$text[[rel]]
+  items <- builder_items(s$planner, id)
+  it <- Filter(function(x) identical(x$fn, "plan_stub"), items)[[1L]]
+  expect_identical(it$from, "defaults")
+  # a card of the study's defaults changed: the item whole the report's own (Q1)
+  p <- .builder_item_write(s$planner, id, "plan_stub", utils::modifyList(it$args, list(indent = 3L)))
+  st <- .spec_output(p, id)
+  own <- Filter(function(x) identical(x$fn, "plan_stub"), st$content)[[1L]]
+  expect_identical(own$args, list(name = "row_label", before = TRUE, indent = 3L))
+  # only the report's file changes, and in it only lines of the content
+  expect_identical(changed_files(s$planner$spec$text, p$spec$text), rel)
+  y1 <- p$spec$text[[rel]]
+  at <- grep("^content:", y1)
+  expect_identical(utils::head(y1, at), utils::head(y0, at))
+  # the spec and the view in step: the program is written from the YAML
+  expect_false(is.null(.code_spec(p)))
+  # a key-by-key verb: only the key that differs is the report's
+  pc <- Filter(function(x) identical(x$fn, "plan_cells"), builder_items(p, id))[[1L]]
+  p2 <- .builder_item_write(p, id, "plan_cells", utils::modifyList(pc$args, list(default = "{n}")))
+  own <- Filter(function(x) identical(x$fn, "plan_cells"), .spec_output(p2, id)$content)[[1L]]
+  expect_identical(own$args$default, "{n}")
+  # what the sheets never held is kept: plan_filter(by =), plan_columns(cell_format =)
+  p3 <- .builder_item_write(p2, id, "plan_filter", list(where = tflspec::tfl_r("n > 0"), by = "TRT01A"))
+  cf <- Filter(function(x) identical(x$fn, "plan_columns"), builder_items(p3, id))[[1L]]
+  p3 <- .builder_item_write(p3, id, "plan_columns",
+                            c(cf$args, list(cell_format = tflspec::tfl_r("list(row_label = \"x\")"))))
+  s$planner <- p3
+  s <- suppressMessages(save_study(s, home = home))
+  expect_identical(changed_files(m0, spec_md5(s$path)), rel)
+  s2 <- suppressMessages(open_study("SAMPLE-01", home = home))
+  i2 <- builder_items(s2$planner, id)
+  get <- function(fn) Filter(function(x) identical(x$fn, fn), i2)[[1L]]
+  expect_identical(get("plan_filter")$args$by, "TRT01A")
+  expect_s3_class(get("plan_columns")$args$cell_format, "tfl_r")
+  expect_identical(get("plan_stub")$args$indent, 3L)
+  # Revert: the report's own item gone, the study's defaults again
+  q <- .builder_item_revert(s2$planner, id, "plan_stub")
+  expect_identical(Filter(function(x) identical(x$fn, "plan_stub"), builder_items(q, id))[[1L]]$from,
+                   "defaults")
+  expect_false("plan_stub" %in% vapply(.spec_output(q, id)$content, function(x) x$fn, ""))
+})

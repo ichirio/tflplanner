@@ -9042,7 +9042,8 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$b_card_revert, {
     it <- .builder_item_at(bform$items, input$b_card_revert$path)
     shiny::req(!is.null(it), identical(bform$id, current()))
-    p2 <- guarded(.builder_item_revert(rv$p, bform$id, it$fn))
+    k <- if (grepl("#", it$path, fixed = TRUE)) as.integer(sub("^.*#", "", it$path)) else 1L
+    p2 <- guarded(.builder_item_revert(rv$p, bform$id, it$fn, k))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$btouched <- TRUE
@@ -9195,10 +9196,10 @@ app_server <- function(input, output, session, start) {
       # (the verb's k-th call: "plan_cell_style#2" the second)
       k <- if (grepl("#", path, fixed = TRUE)) as.integer(sub("^.*#", "", path)) else 1L
       dots <- isTRUE(attr(now[[path]], "dots"))
-      own <- if (dots) .dots_form_own(.args_plain_attr(now[[path]]), it, fn) else
-        .plan_form_own(now[[path]], it, fn)
-      if (identical(args_to_r(fn, own), args_to_r(fn, it$own_args %||% list()))) next
-      p2 <- guarded(.builder_item_write(rv$p, bform$id, fn, own, k))
+      args <- if (dots) .dots_form_args(.args_plain_attr(now[[path]]), it, fn) else
+        .plan_form_args(now[[path]], it, fn)
+      if (identical(args_to_r(fn, args), args_to_r(fn, it$args %||% list()))) next
+      p2 <- guarded(.builder_item_write(rv$p, bform$id, fn, args, k))
       if (is.null(p2)) next
       rv$p <- p2
       rv$btouched <- TRUE
@@ -9242,7 +9243,7 @@ app_server <- function(input, output, session, start) {
     } else {
       bform$off_by[[id]] <- unique(c(off, it$fn))
       if (isTRUE(it$present)) {
-        p2 <- guarded(.builder_item_revert(rv$p, id, it$fn))
+        p2 <- guarded(.builder_item_revert(rv$p, id, it$fn, .path_k(it$path)))
         if (is.null(p2)) return()
         rv$p <- p2
         rv$btouched <- TRUE
@@ -9260,7 +9261,7 @@ app_server <- function(input, output, session, start) {
     bform$added_by[[id]] <- setdiff(bform$added_by[[id]] %||% character(), it$fn)
     bform$off_by[[id]] <- setdiff(bform$off_by[[id]] %||% character(), it$fn)
     if (isTRUE(it$present)) {
-      p2 <- guarded(.builder_item_revert(rv$p, id, it$fn))
+      p2 <- guarded(.builder_item_revert(rv$p, id, it$fn, .path_k(it$path)))
       if (is.null(p2)) return()
       rv$p <- p2
       rv$btouched <- TRUE
@@ -9392,9 +9393,9 @@ app_server <- function(input, output, session, start) {
     # written another way, is no change)
     old <- .filter_where_text(it$args$where) %||% NA_character_
     if (identical(e, old) || (!is.na(old) && identical(e, .cond_tidy(old)))) return()
-    own <- it$own_args %||% list()
-    own$where <- if (is.na(e)) NULL else tflspec::tfl_r(e)
-    p2 <- guarded(.builder_item_write(rv$p, bform$id, "plan_filter", own))
+    args <- it$args %||% list()
+    args$where <- if (is.na(e)) NULL else tflspec::tfl_r(e)
+    p2 <- guarded(.builder_item_write(rv$p, bform$id, "plan_filter", args))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$btouched <- TRUE

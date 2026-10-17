@@ -141,9 +141,10 @@ test_that("read and written back unchanged, the sheets stay as they are", {
     seen <- character()
     for (it in builder_items(s, id)) {
       seen <- c(seen, it$fn)
-      if (is.null(it$own_args) || is.null(.verb_targets[[it$fn]])) next
-      q <- .builder_item_write(s, id, it$fn, it$own_args, sum(seen == it$fn))
+      if (identical(it$fn, "normalize_ard")) next
+      q <- .builder_item_write(s, id, it$fn, it$args, sum(seen == it$fn))
       expect_identical(q$sheets, s$sheets, info = paste(id, it$fn))
+      expect_identical(q$spec$text, s$spec$text, info = paste(id, it$fn))
     }
   }
 })

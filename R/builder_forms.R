@@ -5,7 +5,7 @@
 # has a body (its fields) and a reader (the fields back as the item's
 # whole arguments, NULL while they are not drawn).  What a form read says
 # is written as the report's own when it differs from the item
-# (.dots_form_own()).
+# (.dots_form_args()).
 
 # the verbs with such a form
 .plan_form_dots <- c("plan_compare", "plan_stat_groups", "plan_nest")
@@ -17,14 +17,10 @@
   args[setdiff(names(args) %||% character(), sch$formals)]
 }
 
-# The report's own arguments after the form's edit: the whole form when it
-# says other than the item (the verb's sheet cells are the report's own
-# then), else as they were
-.dots_form_own <- function(read, it, fn) {
-  if (is.null(read)) return(it$own_args %||% list())
-  if (identical(args_to_r(fn, read), args_to_r(fn, it$args %||% list()))) {
-    return(it$own_args %||% list())
-  }
+# The item's whole arguments after the form's edit: the form's reading
+# (its `...` as the user names them), else the item's as they are
+.dots_form_args <- function(read, it, fn) {
+  if (is.null(read)) return(it$args %||% list())
   read
 }
 

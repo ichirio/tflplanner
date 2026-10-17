@@ -245,8 +245,7 @@ builder_items <- function(x, output_id, meta = NULL) {
            own_args = if (length(at) >= k) sp$own[[at[k]]]$args %||% list(),
            from = from, arg_from = it$arg_from, below = it$below,
            path = if (k > 1L) paste0(fn, "#", k) else fn,
-           revert = identical(from, "own") && !is.null(it$below) &&
-             fn %in% names(.verb_targets),
+           revert = identical(from, "own") && !is.null(it$below),
            present = TRUE)
     })
   }
@@ -278,7 +277,7 @@ builder_items <- function(x, output_id, meta = NULL) {
          own_args = if (length(at) >= k) own[[at[k]]]$args %||% list(),
          from = if (mine) "own" else "defaults",
          path = if (k > 1L) paste0(fn, "#", k) else fn,
-         revert = mine && fn %in% dfl_fn && fn %in% names(.verb_targets),
+         revert = mine && fn %in% dfl_fn,
          present = TRUE)
   })
   if (any(fns(items) == "normalize_ard")) return(items)
@@ -805,10 +804,8 @@ builder_items <- function(x, output_id, meta = NULL) {
   plan_style = c(border = "string", align_count_pct = "logical",
                  font_size_half_points = "integer"))
 
-# the arguments of a form card the sheets have no place for: shown under
-# "Other arguments" as R, marked "Not saved" (the function's default
-# applies)
-.plan_form_unkept <- list(
+# the arguments of a form card given as R (no field of their own)
+.plan_form_r <- list(
   plan_filter = "by",
   plan_cell_style = "border",
   plan_columns = c("cell_format", "column_widths_twips"),
@@ -822,10 +819,7 @@ builder_items <- function(x, output_id, meta = NULL) {
   for (a in names(.plan_form_types[[fn]])) {
     sch$args[[a]]$type <- .plan_form_types[[fn]][[a]]
   }
-  for (a in .plan_form_unkept[[fn]]) {
-    sch$args[[a]]$type <- "r"
-    sch$args[[a]]$unsaved <- TRUE
-  }
+  for (a in .plan_form_r[[fn]]) sch$args[[a]]$type <- "r"
   fl <- tryCatch(formals(utils::getFromNamespace(fn, "rtfreporter")), error = function(e) NULL)
   fo <- names(fl)
   # a check's default the function's own (plan_paginate_group(keep = TRUE)):
@@ -1003,28 +997,26 @@ builder_items <- function(x, output_id, meta = NULL) {
   identical(.arg_to_r(a), .arg_to_r(b))
 }
 
-# The report's own arguments after a form's edit: a field changed from
-# what the item says is the report's own; one emptied that was its own is
-# taken away (the study's default again).  `read`: .plan_form_read().
-.plan_form_own <- function(read, it, fn) {
+# The item's whole arguments after the form's edit: its arguments (the
+# report's over its layers') with what the form says otherwise put in, a
+# field emptied taking its argument away (an argument the item does not
+# say is the function's default: a check ticked as that default is no
+# change).  .builder_item_write() keeps of them what differs from the layers.
+.plan_form_args <- function(read, it, fn) {
   sch <- .plan_form_schema(fn)
   eff <- it$args %||% list()
-  own <- it$own_args %||% list()
-  for (a in union(names(read), intersect(names(eff), sch$formals))) {
+  # (a widths field not drawn -- no columns known -- reads nothing: no change)
+  wa <- names(Filter(function(x) identical(x$type, "widths"), sch$args))
+  for (a in union(names(read), setdiff(intersect(names(eff), sch$formals), setdiff(wa, names(read))))) {
     lg <- identical(.arg_kind(sch$args[[a]]$type), "logical") && !inherits(read[[a]], "tfl_r")
     new <- read[[a]]
-    # (an argument the item does not say is the function's default: a
-    # check ticked as that default is no change)
     cur <- eff[[a]]
     if (is.null(cur) && lg) cur <- sch$args[[a]]$default
     if (.same_value(new, cur, lg)) next
-    if (is.null(new)) {
-      if (a %in% names(own)) own[[a]] <- NULL
-      next
-    }
-    own[[a]] <- new
+    eff[a] <- list(new)
+    if (is.null(new)) eff[[a]] <- NULL
   }
-  own
+  eff
 }
 
 # ---- plan_digits(), plan_levels(), plan_filter() -----------------------------------
@@ -1325,233 +1317,26 @@ builder_code_map <- function(lines, items) {
 
 # ---- writing an item back ------------------------------------------------------------
 
-# Where each verb is written in the sheets: a sheet with one row a report
-# (tables, layout, style) by its columns; a sheet of rows (cells,
-# col_header ...) by its rows -- `cols` NULL -- or, the variables sheet, by
-# its columns of each variable's row.
-.verb_targets <- list(
-  table_plan = list(tables = c("cols", "rows", "label", "show_keys")),
-  plan_sort = list(tables = c("sort", "sort_stat")),
-  plan_total = list(tables = c("total", "total_position")),
-  plan_stat_groups = list(tables = "stat_groups"),
-  plan_cells = list(tables = c("stats", "value", "na"), cells = NULL),
-  plan_filter = list(tables = c("keep_where", "keep_any", "keep_parents")),
-  plan_compare = list(tables = c("compare", "compare_by", "compare_position")),
-  plan_digits = list(digits = NULL),
-  plan_levels = list(variables = c("levels", "empty_levels", "order")),
-  plan_labels = list(variables = "label"),
-  plan_nest = list(variables = "under"),
-  plan_stub = list(layout = c("stub_vars", "stub_name", "stub_indent", "stub_summary",
-                              "stub_before")),
-  plan_paginate_group = list(layout = c("group_page", "group_col", "group_keep",
-                                        "group_heading")),
-  plan_row_group = list(layout = c("group_mode", "group_collapse")),
-  plan_blanks = list(layout = c("blank_where", "blank_first", "blank_last",
-                                "blank_counted")),
-  plan_paginate_rows = list(layout = c("pages_max_rows", "pages_split", "pages_break_before",
-                                       "pages_min_group_rows", "pages_cont_label",
-                                       "pages_page_by", "pages_heading")),
-  plan_paginate_cols = list(layout = c("colpages_every", "colpages_at", "colpages_keep",
-                                       "colpages_order", "colpages_cut_by", "colpages_fit",
-                                       "colpages_allow_span_break")),
-  plan_style = list(style = NA),
-  plan_cell_style = list(cell_styles = NULL),
-  plan_hide = list(columns = "hide"),
-  plan_col_header = list(col_header = NULL, tables = "header_n", style = "col_header_align"),
-  plan_columns = list(columns = c("rel_width", "decimal_split", "row_title"),
-                      style = "auto_width", tables = "sep"))
-
-# the columns of a one-row sheet a verb writes (NA: all but those other
-# verbs write there)
-.target_cols <- function(sheet, cols, d) {
-  if (identical(cols, NA)) {
-    others <- unlist(lapply(.verb_targets, function(t) {
-      v <- t[[sheet]]
-      if (is.character(v)) v
-    }), use.names = FALSE)
-    cols <- setdiff(names(d), c("output_id", "note", others, "col_header_align", "auto_width"))
-  }
-  intersect(cols, names(d))
-}
-
-# The report's own rows of `sheet` with the columns `cols` taken from
-# `new` (its own rows the bridge wrote; NULL or none: the columns cleared).
-# Rows: a one-row sheet's row; the variables sheet's by variable, the
-# columns sheet's by column (a column's row left with nothing taken away).
-.put_cols <- function(x, id, sheet, cols, new) {
-  d <- sheet_rows(x, sheet, id)
-  d$output_id <- NULL
-  if (is.null(new)) new <- d[0, , drop = FALSE]
-  new <- as.data.frame(new, stringsAsFactors = FALSE)
-  new$output_id <- NULL
-  cols <- .target_cols(sheet, cols, d)
-  if (!length(cols)) return(x)
-  val <- function(df, i, c) if (c %in% names(df) && i <= nrow(df)) as.character(df[[c]][i]) else NA_character_
-  key <- c(variables = "variable", columns = "column")[sheet]
-  if (!is.na(key)) {
-    for (c in cols) d[[c]] <- as.character(d[[c]])
-    for (c in cols) d[[c]][] <- NA_character_
-    for (i in seq_len(nrow(new))) {
-      v <- new[[key]][i]
-      j <- match(v, d[[key]])
-      if (is.na(j)) {
-        d[nrow(d) + 1L, ] <- NA
-        j <- nrow(d)
-        d[[key]][j] <- v
-      }
-      for (c in cols) d[[c]][j] <- val(new, i, c)
-    }
-    if (identical(sheet, "columns") && nrow(d)) {
-      left <- rowSums(!is.na(d[setdiff(names(d), c(key, "note"))])) > 0
-      d <- d[left, , drop = FALSE]
-    }
-  } else {
-    if (!nrow(d)) d[1L, ] <- NA
-    for (c in cols) d[[c]][1L] <- val(new, 1L, c)
-  }
-  set_sheet_rows(x, sheet, id, d)
-}
-
-# the report's own rows of a sheet of rows, as the bridge wrote them
-.put_rows <- function(x, id, sheet, new) {
-  d <- sheet_rows(x, sheet, id)
-  d$output_id <- NULL
-  if (is.null(new) || !nrow(new)) return(set_sheet_rows(x, sheet, id, d[0, , drop = FALSE]))
-  new <- as.data.frame(new, stringsAsFactors = FALSE)
-  new$output_id <- NULL
-  rows <- d[rep(NA_integer_, nrow(new)), , drop = FALSE]
-  for (c in intersect(names(new), names(rows))) rows[[c]] <- as.character(new[[c]])
-  rownames(rows) <- NULL
-  set_sheet_rows(x, sheet, id, rows)
-}
-
-# One item of a table written back to the report's sheets: the report's
-# own items with the `k`-th item of `fn` given these arguments (added when
-# it has none), written through tflspec's bridge into the sheets that verb
-# is written from.  What a sheet cannot hold stops it (nothing is written).
+# One item of a table written into the report's YAML: the `k`-th item of
+# `fn` given these arguments -- its whole arguments, as the card says them
+# (.spec_set_item(): the report's own layer holds what differs from the
+# layers below).  plan_digits()' rounding is the study's, one for every
+# report: it stays the layers', and a new one is the study's rounding.
 .builder_item_write <- function(x, output_id, fn, args, k = 1L) {
-  tg <- .verb_targets[[fn]]
-  if (is.null(tg)) stop(sprintf("%s: the sheets have no place for it.", fn), call. = FALSE)
-  was_cmp <- .compare_names_own(x, output_id)
-  sp <- .spec_object_last(x, table_sheets(), .study_keys$table)
-  own <- .tflspec_fn(".plan_content_from_sheets")(sp, output_id, own = TRUE)
-  at <- which(vapply(own, function(it) it$fn, "") == fn)
-  if (length(at) >= k) {
-    own[[at[k]]]$args <- args
-  } else {
-    own <- c(own, list(tflspec::tfl_item(fn, args)))
-  }
-  sh <- .tflspec_fn(".plan_sheets_from_content")(own, output_id)
-  lost <- attr(sh, "not_converted")
-  lost <- lost[startsWith(lost, paste0(fn, ":"))]
-  if (length(lost)) stop(paste(lost, collapse = "; "), call. = FALSE)
-  for (sheet in names(tg)) {
-    new <- sh[[sheet]]
-    cols <- tg[[sheet]]
-    x <- if (is.null(cols)) .put_rows(x, output_id, sheet, new) else
-      .put_cols(x, output_id, sheet, cols, new)
-  }
-  # the value labels of the columns the plan makes (plan_labels(subgroup =
-  # c(ALL = "All Subjects")): tflspec keeps them as the report's code list
-  # rows of those columns; the data's own code lists are not touched
-  if (identical(fn, "plan_labels")) x <- .put_plan_made_codelists(x, output_id, sh$codelists)
-  # plan_compare(): each column's template is a cells row of its name
-  # (variable = the column) -- those rows replaced, the rest of the
-  # report's cells (plan_cells()') kept
-  if (identical(fn, "plan_compare")) x <- .put_compare_cells(x, output_id, was_cmp, sh$cells)
-  # the study's own (plan_digits()' rounding): one value for every report,
-  # written when the item says it
-  .put_study_keys(x, sh$study)
-}
-
-# The columns the plan makes, of a report: its stack's keys, .stat_group
-.plan_made_cols <- function(x, output_id) {
-  tb <- .rows_for(x, "tables", output_id)
-  c(.stack_keys(tb$stack[1L], tb$stack_nest[1L]), ".stat_group")
-}
-
-# The report's code list rows of the columns the plan makes, as the bridge
-# wrote them (`new`, its codelists rows): those rows replaced, the rest of
-# the report's code lists (the data's variables') kept as they are
-.put_plan_made_codelists <- function(x, output_id, new) {
-  made <- .plan_made_cols(x, output_id)
-  d <- sheet_rows(x, "codelists", output_id)
-  d$output_id <- NULL
-  keep <- d[!d$variable %in% made, , drop = FALSE]
-  add <- if (is.data.frame(new) && nrow(new) && "variable" %in% names(new)) {
-    new <- as.data.frame(new, stringsAsFactors = FALSE)
-    new[new$variable %in% made, , drop = FALSE]
-  }
-  if (!sum(d$variable %in% made) && (is.null(add) || !nrow(add))) return(x)
-  rows <- keep
-  if (!is.null(add) && nrow(add)) {
-    more <- d[rep(NA_integer_, nrow(add)), , drop = FALSE]
-    for (c in intersect(names(add), names(more))) more[[c]] <- as.character(add[[c]])
-    rows <- rbind(keep, more)
-  }
-  rownames(rows) <- NULL
-  set_sheet_rows(x, "codelists", output_id, rows)
-}
-
-# the study keys a bridge's study rows say (key, value), into x$study
-.put_study_keys <- function(x, rows) {
-  if (!is.data.frame(rows) || !nrow(rows) || !all(c("key", "value") %in% names(rows))) return(x)
-  for (i in seq_len(nrow(rows))) {
-    k <- as.character(rows$key[i])
-    if (!k %in% .study_keys$table || is.na(rows$value[i])) next
-    x$study[[k]] <- as.character(rows$value[i])
+  rd <- if (identical(fn, "plan_digits")) args$rounding
+  x <- .spec_set_item(x, output_id, fn, args, k,
+                      below_args = if (identical(fn, "plan_digits")) "rounding" else character())
+  if (!is.null(rd) && !inherits(rd, "tfl_r") &&
+      !identical(as.character(rd), unname(x$study[["rounding"]] %||% NA_character_))) {
+    x$study[["rounding"]] <- as.character(rd)
   }
   x
 }
 
-# ... and the report's own rows of that verb taken away: the study's
-# defaults apply again
-.builder_item_revert <- function(x, output_id, fn) {
-  tg <- .verb_targets[[fn]]
-  if (is.null(tg)) return(x)
-  was_cmp <- .compare_names_own(x, output_id)
-  for (sheet in names(tg)) {
-    cols <- tg[[sheet]]
-    x <- if (is.null(cols)) .put_rows(x, output_id, sheet, NULL) else
-      .put_cols(x, output_id, sheet, cols, NULL)
-  }
-  # (plan_labels(): its labels of the columns the plan makes too)
-  if (identical(fn, "plan_labels")) x <- .put_plan_made_codelists(x, output_id, NULL)
-  # (plan_compare(): its columns' cells rows too)
-  if (identical(fn, "plan_compare")) x <- .put_compare_cells(x, output_id, was_cmp, NULL)
-  x
-}
-
-# The comparison columns the report's own tables row names (tables$compare)
-.compare_names_own <- function(x, output_id) {
-  tb <- sheet_rows(x, "tables", output_id)
-  if (!nrow(tb) || !"compare" %in% names(tb)) return(character())
-  v <- tb$compare[1L]
-  if (is.na(v) || !nzchar(trimws(v))) return(character())
-  trimws(strsplit(v, "|", fixed = TRUE)[[1L]])
-}
-
-# The report's cells rows of the comparison columns: those of the columns
-# it had (`was`) and those the bridge wrote (`new`, its cells rows, of the
-# columns it names now) replace them; the other cells rows as they are
-.put_compare_cells <- function(x, output_id, was, new) {
-  d <- sheet_rows(x, "cells", output_id)
-  d$output_id <- NULL
-  now <- .compare_names_own(x, output_id)
-  add <- if (is.data.frame(new) && nrow(new) && "variable" %in% names(new)) {
-    new <- as.data.frame(new, stringsAsFactors = FALSE)
-    new[new$variable %in% now, , drop = FALSE]
-  }
-  drop <- d$variable %in% union(was, now)
-  if (!any(drop) && (is.null(add) || !nrow(add))) return(x)
-  rows <- d[!drop, , drop = FALSE]
-  if (!is.null(add) && nrow(add)) {
-    more <- d[rep(NA_integer_, nrow(add)), , drop = FALSE]
-    for (c in intersect(names(add), names(more))) more[[c]] <- as.character(add[[c]])
-    rows <- rbind(rows, more)
-  }
-  rownames(rows) <- NULL
-  set_sheet_rows(x, "cells", output_id, rows)
+# ... and the report's own `k`-th item of `fn` taken away: its layers' apply
+# again (none: the verb is gone from the plan)
+.builder_item_revert <- function(x, output_id, fn, k = 1L) {
+  .spec_revert_item(x, output_id, fn, k)
 }
 
 # ---- style -----------------------------------------------------------------------------
@@ -1656,6 +1441,11 @@ $(document).on('click', '.rp-builder-cards .rp-tool-remove', function() {
 .heading_create_js <- paste0(
   "function(input) { var v = String(input).replace(/^[\\s\"']+|[\\s\"']+$/g, '').replace(/\"/g, '');",
   " if (!v.length) return false; v = '\"' + v + '\"'; return {value: v, text: v}; }")
+
+# the k-th call of its verb a card's path names ("plan_cell_style#2": 2)
+.path_k <- function(path) {
+  if (!is.null(path) && grepl("#", path, fixed = TRUE)) as.integer(sub("^.*#", "", path)) else 1L
+}
 
 # the item a card's path names (NULL for none)
 .builder_item_at <- function(items, path) {
