@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **A study with no report keeps its YAML spec** (#413, 0.0.2.9234).  A
+  study saved before its first report has no `spec/outputs/` folder; its
+  `spec/toc.yml` now makes it a YAML spec all the same, so the planner's
+  spec holds a `tfl_study_spec` (it was a plain list, and the study
+  reopened with no spec) and its programs are written from it.
+
 - **The programs are written from the report files' items** (#411,
   0.0.2.9233; step B2).  A report program's report part is tflspec's
   `tfl_report_code()` and `tfl_report_path()` of the report as its file
