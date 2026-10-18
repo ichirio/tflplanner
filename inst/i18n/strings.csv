@@ -3420,3 +3420,4 @@ Not saved,保存されません
 "The sheets have no place for this argument yet: a value here is not saved, and the function's default applies.",この引数はまだシートに保存する場所がありません。ここに入れた値は保存されず、関数の既定が使われます。
 Shapes the ARD for making the table.,ARD を表を作りやすい形に整えます。
 "normalize_ard() shapes the cards ARD for making the table. Before: group1 = TRT01A, group1_level = Drug X, variable = SEX, variable_level = F, stat_name = n -> After: TRT01A = Drug X, variable = SEX, .label = F, stat_name = n. The groups become columns (TRT01A), the analysis variables stay values of variable, and a category's value becomes .label (the row's text).","normalize_ard() は cards の ARD を表を作りやすい形にします。前: group1 = TRT01A, group1_level = Drug X, variable = SEX, variable_level = F, stat_name = n → 後: TRT01A = Drug X, variable = SEX, .label = F, stat_name = n。群は列（TRT01A）になり、解析変数は variable の値のまま、カテゴリの値は .label（行の文字）になります。"
+%s (not in the populations sheet),%s（Populations シートにない集団）

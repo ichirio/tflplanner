@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **Switching reports no longer writes one report's population to
+  another** (#418, 0.0.2.9237).  Step 1's "This report's population",
+  step 3's page pattern and the data a step of its own code reads are
+  drawn again for each report, and the value a select sent when it was
+  drawn could reach the server after another report was chosen: switching
+  quickly, a report's population could become NA and be saved.  Only the
+  user's change is written now, and only to the report the select was
+  drawn for.  A report's population missing from the populations sheet
+  stays a choice (it was shown, and saved, as "(not chosen)").
+
 - **An edit through the sheets keeps what only the spec holds** (#415,
   0.0.2.9235).  When a screen that still edits the sheets (the ARD, the
   page, a listing, ...) edits a report, its file takes from the sheets
