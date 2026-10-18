@@ -701,7 +701,7 @@ Figures,Figures
 Definition,定義
 Builder (beta),ビルダー（試作）
 Choose a Listing report on the left.,左で Listing の帳票を選んでください。
-This is a Table: it is made in step 2, the table builder's cards.,これは表です。ステップ 2 の表ビルダー（カード）で作ります。
+"This is a Table: it is made in step 2, the table builder's cards.",これは表です。ステップ 2 の表ビルダー（カード）で作ります。
 This is a Figure: it is made in Make the figure.,これは図です。「図を作る」で作ります。
 Written by hand,手書きの図
 "This figure's plot is its data code (step 2, Data code), written with ggplot2: it leaves `plot`. Its program reads these datasets first.",この図のプロットは段 2 のデータ準備コード（ggplot2 で書き、`plot` を残す）です。プログラムは先にこれらのデータセットを読みます。
