@@ -1081,13 +1081,17 @@ builder_items <- function(x, output_id, meta = NULL) {
 .rounding_field <- function(cid, value = NULL, lang = "en") {
   ty <- .schema_of("plan_digits")$args$rounding$type %||% "enum[sas|r|iec60559]"
   v <- if (length(value) == 1L && !is.na(value) && nzchar(value)) value
-  arg_field(cid, "rounding", ty, label = .arg_meaning("plan_digits", "rounding"), value = v,
-            from = if (!is.null(v)) "defaults" else "own",
-            help = tr(paste("How a 5 is rounded: sas half away from zero, r half to even,",
-                            "iec60559 as the machine stores the number. The study's: every",
-                            "report's (the Study tab's Rounding); blank there: options(rtfreporter.rounding)."),
-                      lang),
-            lang = lang)
+  shiny::tagList(
+    arg_field(cid, "rounding", ty, label = .arg_meaning("plan_digits", "rounding"), value = v,
+              from = if (!is.null(v)) "defaults" else "own",
+              help = tr(paste("How a 5 is rounded: sas half away from zero, r half to even,",
+                              "iec60559 as the machine stores the number. The study's: every",
+                              "report's (the Study tab's Rounding); blank there: options(rtfreporter.rounding)."),
+                        lang),
+              lang = lang),
+    # (a change here is the study's: every report's)
+    shiny::div(class = "small text-warning rp-every-report",
+               tr("Applies to every report (the study's defaults.yml)", lang)))
 }
 
 # Each variable's empty values hidden (plan_levels(.drop_empty = ):
@@ -1292,7 +1296,7 @@ builder_code_map <- function(lines, items) {
                       below_args = if (identical(fn, "plan_digits")) "rounding" else character())
   if (!is.null(rd) && !inherits(rd, "tfl_r") &&
       !identical(as.character(rd), unname(x$study[["rounding"]] %||% NA_character_))) {
-    x$study[["rounding"]] <- as.character(rd)
+    x <- .spec_set_rounding(x, as.character(rd))
   }
   x
 }

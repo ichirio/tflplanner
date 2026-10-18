@@ -510,6 +510,25 @@ builder_read <- function(x, output_id, meta = NULL) {
   exc <- own_dg[!is.na(own_dg$variable), c("variable", "statistic", "digits"),
                 drop = FALSE]
   exc$digits <- as.integer(exc$digits)
+  # (the report's YAML: a variable's own rows -- the continuous rows again,
+  # other decimals in their templates -- are its own decimals)
+  if (!nrow(exc) && nrow(cont)) {
+    bare <- function(t) gsub(":[^}]*}", "}", t)
+    own_v <- ce[!is.na(ce$variable) & ce$variable %in% vars & !is.na(ce$row), , drop = FALSE]
+    for (v in unique(own_v$variable)) {
+      r <- own_v[own_v$variable == v, , drop = FALSE]
+      same_rows <- setequal(r$row, cont$row) &&
+        identical(bare(r$template[match(cont$row, r$row)]), bare(cont$template))
+      if (!same_rows) next
+      d <- unlist(lapply(r$template, .inline_digits))
+      d <- d[!duplicated(names(d))]
+      for (k in names(d)) {
+        if (!identical(unname(d[[k]]), unname(digits[k]))) {
+          exc[nrow(exc) + 1L, ] <- list(v, k, as.integer(d[[k]]))
+        }
+      }
+    }
+  }
   rownames(exc) <- NULL
 
   cat_row <- ce[(!is.na(ce$variable) & ce$variable == "categorical") |
@@ -746,11 +765,7 @@ builder_write <- function(x, output_id, state, was = NULL) {
   no_cols <- is.na(tb$cols[1L])
   put_key <- !anyNA(st$key) && (changed("key") || no_cols)
   if (put_key) tb$cols[1L] <- paste(st$key, collapse = " | ")
-  # the value the table prints: the number (rounded here) or the ARD's text
-  if (changed("value") && !is.null(st$value)) {
-    if (!"value" %in% names(tb)) tb$value <- NA_character_
-    tb$value[1L] <- if (identical(st$value, "stat_fmt")) "stat_fmt" else NA_character_
-  }
+  # (the value the table prints: plan_cells(value = ), below)
   # a hierarchy table's order (the form's: by frequency or by name)
   # the rows: the keys, outermost first (a hierarchy's every level among
   # them: a level left out would put its rows in another's cells); a new
@@ -884,12 +899,13 @@ builder_write <- function(x, output_id, state, was = NULL) {
     x <- set_sheet_rows(x, "tables", id, own)
   }
 
-  # cells: the continuous rows and the categorical format it manages, and
-  # the statistics' decimals (the digits sheet), each written only when
-  # changed
+  # plan_cells(): the continuous rows, the statistics' decimals (in the
+  # templates, as the report's YAML holds them), a variable's own
+  # decimals, the categorical format and the value printed -- each
+  # written only when changed
   cont_ch <- changed("rows")
-  # the decimals: those the form shows against those the sheets say (with no
-  # `was`, what the sheets say now)
+  # the decimals: those the form shows against those the plan says (with no
+  # `was`, what it says now)
   now <- if (is.null(was)) builder_read(x, id)
   dig_ch <- if (is.null(was)) {
     !identical(st$digits[sort(names(st$digits))], now$digits[sort(names(st$digits))]) ||
@@ -900,135 +916,99 @@ builder_write <- function(x, output_id, state, was = NULL) {
   cat_ch <- (changed("cat_format") || changed("pct_decimals") || changed("value") ||
     changed("cat_own")) &&
     !(identical(st$cat_format, "own") && is.na(st$cat_own %||% NA_character_))
-  if (!cont_ch && !cat_ch && !dig_ch) return(fin(.builder_header(x, id, st)))
-  ce <- sheet_rows(x, "cells", id)
-  ce$output_id <- NULL
-  inh <- inherited_rows(x, "cells", id)
-  inh_cont <- inh[!is.na(inh$variable) & inh$variable == "continuous", ,
-                  drop = FALSE]
-  is_cont <- !is.na(ce$variable) & ce$variable == "continuous" & !is.na(ce$row)
-  is_cat <- !is.na(ce$variable) & ce$variable == "categorical" & is.na(ce$row)
-  # the rows' decimals become the statistics' when those are set: a row's
-  # own digits would win over them
-  clear <- dig_ch && identical(st$value %||% "stat", "stat")
-  rewrite <- cont_ch || (clear && (any(!is.na(ce$digits[is_cont])) ||
-                                   any(!is.na(inh_cont$digits))))
-  mine <- (rewrite & is_cont) | (cat_ch & is_cat)
-  keep <- ce[!mine, , drop = FALSE]
-  new <- ce[0, , drop = FALSE]
-  if (rewrite) {
-    # a table of categorical variables only has no statistics to state
-    had <- any(is_cont) || nrow(inh_cont) > 0L
-    rows <- if (had || any(st$variables$kind == "continuous")) st$rows else
-      character()
-    old <- if (any(is_cont)) ce[is_cont, , drop = FALSE] else {
-      o <- inh_cont
-      o$output_id <- NULL
-      o
-    }
-    for (lb in rows) {
-      if (lb %in% old$row) {
-        # a row kept: its own lines as written (its template, the chain of
-        # conditions); its digits give way to the statistics'
-        r <- old[old$row == lb, , drop = FALSE]
-        if (clear) r$digits <- NA_character_
-        new <- rbind(new, r[names(new)])
-        next
-      }
-      new[nrow(new) + 1L, ] <- NA
-      new$variable[nrow(new)] <- "continuous"
-      new$row[nrow(new)] <- lb
-      new$template[nrow(new)] <- st$templates[[lb]] %||%
+  val_ch <- changed("value") && !is.null(st$value)
+  if (cont_ch || dig_ch || cat_ch || val_ch) {
+    pcw <- .builder_cells_write(its, st, was %||% now, cont_ch, dig_ch, cat_ch, val_ch)
+    if (!is.null(pcw)) w[[length(w) + 1L]] <- pcw
+  }
+  fin(.builder_header(x, id, st))
+}
+
+# A template with the statistics' decimals in it ({mean} -> {mean:.1f}): `dg`
+# a statistic's decimals; one with none keeps what it has.  The ARD's text
+# (`fmt`, stat_fmt): the template as it is (the decimals are not the
+# builder's then).
+.with_digits <- function(tpl, dg, fmt = FALSE) {
+  if (!is.character(tpl) || length(tpl) != 1L || is.na(tpl) || fmt) return(tpl)
+  m <- gregexpr("[{][^}]+[}]", tpl)
+  toks <- regmatches(tpl, m)[[1L]]
+  if (!length(toks)) return(tpl)
+  regmatches(tpl, m) <- list(vapply(toks, function(tk) {
+    s <- sub("^[{]([^}:]+).*$", "\\1", tk)
+    d <- if (s %in% names(dg)) dg[[s]] else NA
+    if (length(d) != 1L || is.na(d)) return(tk)
+    pct <- if (grepl("%[}]$", tk)) "%" else ""
+    sprintf("{%s:.%df%s}", s, as.integer(d), pct)
+  }, "", USE.NAMES = FALSE))
+  tpl
+}
+
+# plan_cells() as the form says it (`st`; `was` as read): its whole
+# arguments, those the form does not say kept.  The continuous rows (a row
+# kept: its own template, or chain, as written) with the statistics'
+# decimals; a variable's own decimals its rows again with them; the
+# categorical template (the layers' when the same); the value printed.
+# NULL: no change.
+.builder_cells_write <- function(its, st, was, cont_ch, dig_ch, cat_ch, val_ch) {
+  it <- Filter(function(i) identical(i$fn, "plan_cells") && !isFALSE(i$present), its)
+  pc <- if (length(it)) it[[1L]]$args %||% list() else list()
+  below <- if (length(it)) it[[1L]]$below$args %||% list() else list()
+  new <- pc
+  fmt <- identical(st$value, "stat_fmt")
+  dg <- st$digits %||% integer()
+  rows_tpl <- function(dg) {
+    old <- pc$continuous %||% below$continuous %||% list()
+    had <- length(old) > 0L
+    rows <- if (had || any(st$variables$kind %in% "continuous")) st$rows else character()
+    out <- lapply(rows, function(lb) {
+      o <- old[[lb]]
+      if (!is.null(o) && !(is.character(o) && length(o) == 1L)) return(o)
+      tpl <- o %||% st$templates[[lb]] %||%
         builder_stats()$template[match(lb, builder_stats()$row)]
+      .with_digits(tpl, dg, fmt)
+    })
+    stats::setNames(out, rows)
+  }
+  if (cont_ch || dig_ch || val_ch) {
+    ct <- rows_tpl(dg)
+    if (length(ct)) new$continuous <- ct else new$continuous <- NULL
+    # a variable's own decimals: its rows, those decimals in them
+    exc_vars <- unique(c(was$exceptions$variable %||% character(),
+                         st$exceptions$variable %||% character()))
+    for (v in exc_vars) new[[v]] <- NULL
+    exc <- st$exceptions
+    if (!fmt && !is.null(exc) && nrow(exc) && length(ct)) {
+      for (v in unique(exc$variable)) {
+        d2 <- dg
+        e <- exc[exc$variable == v & !is.na(exc$digits), , drop = FALSE]
+        d2[e$statistic] <- as.integer(e$digits)
+        new[[v]] <- rows_tpl(d2)
+      }
     }
-    same <- function(a, b) {
-      identical(paste(a$row, a$template, a$digits),
-                paste(b$row, b$template, b$digits))
-    }
-    if (nrow(inh_cont) && same(new, inh_cont)) new <- new[0, , drop = FALSE]
   }
   if (cat_ch) {
     tpl <- .cat_template(st$cat_format, st$pct_decimals, st$value %||% "stat",
                          own = st$cat_own %||% NA_character_)
-    inh_cat <- inh[(!is.na(inh$variable) & inh$variable == "categorical") |
-                     (is.na(inh$variable) & is.na(inh$row)), , drop = FALSE]
-    if (!identical(inh_cat$template[1L], tpl)) {
-      new[nrow(new) + 1L, ] <- NA
-      new$variable[nrow(new)] <- "categorical"
-      new$template[nrow(new)] <- tpl
+    # (the layers' template: what is below the report's own; read from the
+    # sheets, with nothing below known, the plan's other than categorical)
+    ref <- if (length(it) && !is.null(it[[1L]]$below)) below else pc[setdiff(names(pc), "categorical")]
+    inh <- ref$categorical %||% ref$default
+    add <- is.null(new$categorical)
+    new$categorical <- if (identical(inh, tpl)) NULL else tpl
+    # (a new one before the continuous rows, as tflspec writes them)
+    if (add && !is.null(new$categorical) && "continuous" %in% names(new)) {
+      nm <- setdiff(names(new), "categorical")
+      at <- match("continuous", nm)
+      new <- new[append(nm, "categorical", after = at - 1L)]
     }
+    # (the report's own default template gives way to it, as the sheets did)
+    if (!is.null(pc$default) && !is.null(below$default)) new$default <- below$default
   }
-  # the rows written first, in the place the builder's rows had
-  x <- set_sheet_rows(x, "cells", id, rbind(new, keep))
-  # the decimals as the form says them; rows alone changed: only those of a
-  # statistic nothing states yet (a row just added)
-  if (dig_ch) x <- .builder_digits(x, id, st)
-  else if (cont_ch) x <- .builder_digits(x, id, st, missing_only = TRUE)
-  fin(.builder_header(x, id, st))
-}
-
-# The digits sheet as the form says it: a statistic's decimals where they
-# differ from the study's (or the study has none), a variable's exceptions.
-# A statistic the form does not show keeps its row.
-.builder_digits <- function(x, id, st, missing_only = FALSE) {
-  if (identical(st$value, "stat_fmt")) return(x)
-  own <- sheet_rows(x, "digits", id)
-  own$output_id <- NULL
-  shown <- names(st$digits)
-  if (missing_only) {
-    # what states a statistic's decimals already: the study, the report's
-    # own rows, a row's own digits
-    sd <- x$sheets$digits
-    covered <- c(if (!is.null(sd)) trimws(sd$statistic[is.na(sd$output_id) &
-                                                        is.na(sd$variable)]),
-                 trimws(own$statistic[is.na(own$variable)]))
-    ce <- .rows_for(x, "cells", id)
-    ce <- ce[ce$variable %in% "continuous", , drop = FALSE]
-    covered <- c(covered, unlist(lapply(seq_len(nrow(ce)), function(i)
-      names(.row_digits(ce$template[i], ce$digits[i])))))
-    add <- setdiff(shown, covered)
-    if (!length(add)) return(x)
-    new <- own[0, , drop = FALSE]
-    for (k in add) {
-      if (is.na(st$digits[k])) next
-      new[nrow(new) + 1L, ] <- NA
-      new$statistic[nrow(new)] <- k
-      new$digits[nrow(new)] <- as.character(as.integer(st$digits[[k]]))
-    }
-    if (!nrow(new)) return(x)
-    return(set_sheet_rows(x, "digits", id, rbind(own, new[names(own)])))
+  if (val_ch) new$value <- if (fmt) "stat_fmt" else NULL
+  if (identical(tflspec::tfl_args_to_r("plan_cells", new), tflspec::tfl_args_to_r("plan_cells", pc))) {
+    return(NULL)
   }
-  keep <- own[is.na(own$variable) & !trimws(own$statistic) %in% shown, ,
-              drop = FALSE]
-  study <- .study_digits(x)
-  study_rows <- x$sheets$digits
-  stated <- if (!is.null(study_rows) && nrow(study_rows))
-    trimws(study_rows$statistic[is.na(study_rows$output_id) &
-                                  is.na(study_rows$variable)]) else character()
-  new <- own[0, , drop = FALSE]
-  for (k in shown) {
-    v <- st$digits[[k]]
-    if (is.na(v)) next
-    if (k %in% stated && identical(as.integer(study[[k]]), as.integer(v))) next
-    new[nrow(new) + 1L, ] <- NA
-    new$statistic[nrow(new)] <- k
-    new$digits[nrow(new)] <- as.character(as.integer(v))
-  }
-  exc <- st$exceptions
-  if (!is.null(exc) && nrow(exc)) {
-    for (i in seq_len(nrow(exc))) {
-      if (is.na(exc$variable[i]) || is.na(exc$statistic[i]) ||
-          is.na(exc$digits[i])) next
-      new[nrow(new) + 1L, ] <- NA
-      new$variable[nrow(new)] <- exc$variable[i]
-      new$statistic[nrow(new)] <- exc$statistic[i]
-      new$digits[nrow(new)] <- as.character(as.integer(exc$digits[i]))
-    }
-  }
-  rows <- rbind(new, keep[names(new)])
-  if (identical(paste(rows$variable, rows$statistic, rows$digits),
-                paste(own$variable, own$statistic, own$digits))) return(x)
-  set_sheet_rows(x, "digits", id, rows)
+  list(fn = "plan_cells", args = new, drop_empty = TRUE)
 }
 
 # the column header: the form's rows (a data frame), written as the

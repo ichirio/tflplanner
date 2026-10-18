@@ -425,3 +425,54 @@ test_that("the builder's rows and the items' arguments: one way and back (#417)"
   its$tp <- list(fn = "table_plan", args = list(cols = "TRT01A", rows = list(group = "variable")))
   expect_length(.builder_items_from_rows(its, tb, vr, vr), 0L)
 })
+
+test_that("the builder's cells and decimals are plan_cells(); the rounding the study's defaults.yml (#417)", {
+  s <- model_sample()
+  p <- s$planner
+  id <- "T-14-1-1"
+  rel <- "spec/outputs/T-14-1-1.yml"
+  st <- builder_read(p, id)
+  # the decimals the templates state are the form's
+  expect_identical(st$digits[c("mean", "sd")], c(mean = 1L, sd = 2L))
+  cells <- function(q) .builder_args(builder_items(q, id), "plan_cells")
+  # a statistic's decimals: in the templates of the rows
+  st1 <- st
+  st1$digits[["mean"]] <- 2L
+  q <- builder_write(p, id, st1, was = st)
+  expect_identical(changed_files(p$spec$text, q$spec$text), rel)
+  expect_identical(cells(q)$continuous[["Mean (SD)"]], "{mean:.2f} ({sd:.2f})")
+  expect_false(is.null(.spec_items(q, id)))
+  expect_identical(builder_read(q, id)$digits[["mean"]], 2L)
+  # a variable's own decimals: its rows again, read back as its own
+  st2 <- st
+  st2$exceptions <- data.frame(variable = "AGE", statistic = "mean", digits = 3L)
+  q <- builder_write(p, id, st2, was = st)
+  expect_identical(cells(q)$AGE[["Mean (SD)"]], "{mean:.3f} ({sd:.2f})")
+  expect_identical(builder_read(q, id)$exceptions,
+                   data.frame(variable = "AGE", statistic = "mean", digits = 3L))
+  # ... and taken away again
+  q2 <- builder_write(q, id, st, was = builder_read(q, id))
+  expect_null(cells(q2)$AGE)
+  # the categorical format; the value printed
+  st3 <- st
+  st3$cat_format <- "nNpct"
+  q <- builder_write(p, id, st3, was = st)
+  expect_identical(cells(q)$categorical, "{n:.0f}/{N:.0f} ({p:.1f%})")
+  expect_identical(names(cells(q))[1:3], c("default", "categorical", "continuous"))
+  st4 <- st
+  st4$value <- "stat_fmt"
+  q <- builder_write(p, id, st4, was = st)
+  expect_identical(cells(q)$value, "stat_fmt")
+  # the rounding: the study's defaults.yml only, every report's
+  q <- .spec_set_rounding(p, "r")
+  expect_identical(changed_files(p$spec$text, q$spec$text), "spec/defaults.yml")
+  expect_identical(unname(q$study[["rounding"]]), "r")
+  expect_false(is.null(.spec_items(q, id)))
+  expect_true(any(grepl("plan_digits(rounding = \"r\")", program_code(q, "T-14-3-1"), fixed = TRUE)))
+  expect_identical(.spec_set_rounding(q, "sas")$spec$text, p$spec$text)
+  # the card's write of it: the same
+  pd <- .builder_args(builder_items(p, id), "plan_digits")
+  q <- .builder_item_write(p, id, "plan_digits", utils::modifyList(pd, list(rounding = "r")))
+  expect_identical(changed_files(p$spec$text, q$spec$text), "spec/defaults.yml")
+  expect_match(as.character(.rounding_field("n", "sas")), "Applies to every report", fixed = TRUE)
+})

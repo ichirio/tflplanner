@@ -9374,7 +9374,8 @@ app_server <- function(input, output, session, start) {
       if (!was_present || !identical(fresh$from, it$from)) rv$bver <- rv$bver + 1L
     }
   }), ignoreInit = TRUE)
-  # plan_digits()' rounding: the study's (every report's), written there
+  # plan_digits()' rounding: the study's (every report's), written into
+  # the study's defaults.yml
   shiny::observeEvent({
     bform_drawn()
     input[[paste0(card_id("plan_digits"), "__rounding")]]
@@ -9382,7 +9383,9 @@ app_server <- function(input, output, session, start) {
     v <- input[[paste0(card_id("plan_digits"), "__rounding")]]
     shiny::req(!is.null(v), nzchar(v), identical(bform$id, current()))
     if (identical(unname(rv$p$study[["rounding"]]), v)) return()
-    rv$p$study[["rounding"]] <- v
+    p2 <- guarded(.spec_set_rounding(rv$p, v))
+    if (is.null(p2)) return()
+    rv$p <- p2
     rv$btouched <- TRUE
   }, ignoreInit = TRUE)
   # plan_levels(.drop_empty = ): a variable's values with no record hidden

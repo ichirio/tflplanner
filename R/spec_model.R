@@ -435,6 +435,40 @@
   .spec_set_output(p, output_id, o)
 }
 
+# The study's rounding -- plan_digits(rounding = ) of the study's defaults,
+# every report's -- written straight into its defaults.yml
+# (tflspec::tfl_write_study_part()), and the view's study row with it, in
+# the view and in the base (NA: none, options(rtfreporter.rounding))
+.spec_set_rounding <- function(p, value) {
+  v <- if (length(value) == 1L && !is.na(value) && nzchar(value)) as.character(value) else NA_character_
+  p <- .spec_ensure(p)
+  p <- .spec_sync(p, p$spec$meta)
+  attr(p, "changed") <- NULL
+  sp <- p$spec
+  d <- sp$study$defaults %||% list()
+  content <- d$content %||% list()
+  at <- which(.content_fns(content) == "plan_digits")
+  if (length(at)) {
+    it <- content[[at[1L]]]
+    it$args$rounding <- if (is.na(v)) NULL else v
+    if (length(it$args)) content[[at[1L]]] <- it else content[at[1L]] <- NULL
+  } else if (!is.na(v)) {
+    content <- .content_put(content, "plan_digits", 1L,
+                            tflspec::tfl_item("plan_digits", list(rounding = v)))
+  }
+  d$content <- content
+  sp$study$defaults <- d
+  rel <- file.path(study_layout()[["spec"]], "defaults.yml")
+  f <- tempfile("tflplanner-defaults", fileext = ".yml")
+  on.exit(unlink(f), add = TRUE)
+  tflspec::tfl_write_study_part(sp$study, "defaults", f)
+  sp$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  p$spec <- sp
+  p$study[["rounding"]] <- v
+  if (!is.null(p$spec$base)) p$spec$base$study[["rounding"]] <- v
+  p
+}
+
 # ... and the report's own `k`-th item of `fn` taken away: the layers' again
 # (none: the verb is gone from the report's plan)
 .spec_revert_item <- function(p, output_id, fn, k = 1L) {
