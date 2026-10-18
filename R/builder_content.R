@@ -17,8 +17,8 @@
   table_plan = "Table structure",
   plan_cells = "Statistics in the cells",
   plan_digits = "Decimals and rounding",
-  plan_levels = "Order of the values",
-  plan_labels = "Labels",
+  plan_levels = "Level order",
+  plan_labels = "Display names",
   plan_nest = "Rows under another value",
   plan_total = "Total column",
   plan_compare = "Comparison columns",
@@ -652,10 +652,9 @@ builder_items <- function(x, output_id, meta = NULL) {
                        "category's value becomes .label (the row's text).")))),
     plan_levels = shiny::div(
       class = "rp-card-note",
-      help_tip(t(paste("Makes plan_levels(name = the values' order). A name is a column of the",
-                       "normalized ARD (a column key TRT01A, a stack's subgroup), variable (the",
-                       "analysis variables' order) or a categorical variable (its values). Only",
-                       "what has fixed values can be ordered."))),
+      help_tip(t(paste("Sets the order of the levels of the column and row keys (the groups,",
+                       "an analysis variable's values). The analysis variables' own order",
+                       "(variable) is here too. Levels with no data can be hidden (.drop_empty)."))),
       .level_order_lines(level_from, lang)),
     plan_sort = shiny::div(
       class = "rp-card-note",
@@ -1214,7 +1213,7 @@ builder_items <- function(x, output_id, meta = NULL) {
     if (length(vars)) shiny::div(
       class = "rp-b-sec rp-levels-var", `data-variable` = "variable",
       shiny::div(class = "rp-b-sec-label",
-                 builder_label("Analysis variables' order", "variable", "arg", lang)),
+                 builder_label("Analysis variables' order (the levels of variable)", "variable", "arg", lang)),
       sortable::rank_list(text = NULL, labels = vars, input_id = id("vars"))),
     cols,
     if (length(rows)) rows else if (!length(vars)) shiny::div(

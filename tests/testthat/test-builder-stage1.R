@@ -245,7 +245,7 @@ test_that("normalize_ard(): a form card -- the hierarchy fixed and From the ARD,
   # every argument's help under Other arguments is said in Japanese too
   miss <- unlist(lapply(.plan_arg_help, function(v) v[tr(unname(v), "ja") == unname(v)]))
   expect_length(miss, 0L)
-  expect_match(html(.plan_card_note("plan_levels")), "plan_levels(name = the values' order)", fixed = TRUE)
+  expect_match(html(.plan_card_note("plan_levels")), "Sets the order of the levels of the column and row keys", fixed = TRUE)
   # the mark: one of the badges
   expect_match(html(from_badge("ard", "ja")), tr("From the ARD", "ja"), fixed = TRUE)
   expect_identical(tr("From the ARD", "ja"), "ARD から")
