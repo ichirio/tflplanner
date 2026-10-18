@@ -26,6 +26,36 @@
   x
 }
 
+# plan_col_header(header = ) -- a list of rows, each a map of its cells --
+# as the col_header sheet's rows (a cell with a leading or trailing space
+# quoted, as the sheet holds it), and back
+.header_cols <- c("line", "cols", "span", "text", "align", "bold", "border_top", "border_bottom")
+.header_df <- function(header) {
+  rows <- Filter(is.list, header %||% list())
+  if (!length(rows)) {
+    return(as.data.frame(stats::setNames(rep(list(character()), length(.header_cols)), .header_cols),
+                         stringsAsFactors = FALSE))
+  }
+  cols <- unique(c(.header_cols, unlist(lapply(rows, names))))
+  d <- as.data.frame(lapply(stats::setNames(cols, cols), function(k)
+    vapply(rows, function(r) {
+      v <- r[[k]]
+      if (is.null(v) || !length(v)) return(NA_character_)
+      v <- if (is.logical(v)) (if (isTRUE(v)) "TRUE" else "FALSE") else as.character(v)[1L]
+      if (!is.na(v) && grepl("^[[:space:]]|[[:space:]]$", v)) paste0("\"", v, "\"") else v
+    }, "")), stringsAsFactors = FALSE)
+  d
+}
+.header_list <- function(rows) {
+  rows <- as.data.frame(rows, stringsAsFactors = FALSE)
+  rows$output_id <- NULL
+  keep <- names(rows)[vapply(rows, function(v) any(!is.na(v) & nzchar(as.character(v))), NA)]
+  lapply(seq_len(nrow(rows)), function(i) {
+    r <- lapply(rows[i, keep, drop = FALSE], function(v) .text_from_cell(as.character(v)))
+    r[!vapply(r, function(v) is.na(v) || !nzchar(v), NA)]
+  })
+}
+
 # The rows of a report's col_header as the form's lines, or NULL when the
 # form cannot show them.  A line: `line`, `stub` (text per row-header
 # column, named; or one text over them all when `merge`), `merge`, `mode`

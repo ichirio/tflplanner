@@ -210,7 +210,7 @@ builder_stats <- function() {
   tb$output_id <- NULL
   if (!nrow(tb)) tb[1L, ] <- NA
   tb <- tb[1L, , drop = FALSE]
-  for (k in c("cols", "rows", "label", "keep_where")) {
+  for (k in c("cols", "rows", "label", "keep_where", "sort", "header_n")) {
     if (!k %in% names(tb)) tb[[k]] <- NA_character_
   }
   tp <- .builder_args(its, "table_plan")
@@ -223,7 +223,37 @@ builder_stats <- function() {
   }
   pf <- .builder_args(its, "plan_filter")
   tb$keep_where[1L] <- .filter_where_text(pf$where) %||% NA_character_
+  # a hierarchy's order (plan_sort(keys = )); whose {n} the header prints
+  # (plan_col_header(values = ))
+  ps <- .builder_args(its, "plan_sort")
+  keys <- as.character(unlist(ps$keys))
+  tb$sort[1L] <- if (length(keys)) paste(keys, collapse = " | ") else NA_character_
+  tb$header_n[1L] <- .header_n_text(.builder_args(its, "plan_col_header")$values)
   tb
+}
+
+# plan_col_header(values = ) as the tables sheet's header_n: "n" alone, else
+# `name = value | ...`; NA none
+.header_n_text <- function(v) {
+  if (is.null(v) || !length(v)) return(NA_character_)
+  v <- lapply(v, function(e) as.character(unlist(e))[1L])
+  if (identical(names(v), "n")) return(v$n)
+  paste(paste(names(v), "=", unlist(v)), collapse = " | ")
+}
+
+# ... and back
+.header_n_values <- function(txt) {
+  if (.is_blank(txt)) return(NULL)
+  parts <- trimws(strsplit(txt, "|", fixed = TRUE)[[1L]])
+  if (!all(grepl("=", parts, fixed = TRUE))) return(list(n = trimws(txt)))
+  stats::setNames(as.list(trimws(sub("^[^=]*=", "", parts))), trimws(sub("=.*$", "", parts)))
+}
+
+# A hierarchy's outermost row key a page each: plan_paginate_group(col =
+# "group1")
+.builder_row_pages <- function(its) {
+  pg <- .builder_args(its, "plan_paginate_group")
+  !is.null(pg) && identical(as.character(unlist(pg$col))[1L], "group1")
 }
 
 # ... the rows the form reads: the report's own row over its defaults'
@@ -236,7 +266,7 @@ builder_stats <- function() {
   # a cell the report leaves blank is its defaults' (the roles are the
   # plan's already)
   if (nrow(inh)) {
-    for (k in setdiff(names(own), c("cols", "rows", "label", "keep_where"))) {
+    for (k in setdiff(names(own), c("cols", "rows", "label", "keep_where", "sort", "header_n"))) {
       if (is.na(own[[k]][1L])) own[[k]][1L] <- inh[[k]][1L]
     }
   }
@@ -370,43 +400,32 @@ builder_stats <- function() {
   out
 }
 
-#' Read and write a table the builder way
-#'
-#' `builder_read()` describes a report's summary table from its sheets (and
-#' what its ARD holds, for what the sheets do not say yet);
-#' `builder_write()` writes such a description back to the report's own
-#' rows of `tables`, `variables`, `cells` and `col_header`.  Rows it does
-#' not manage (a statistic it does not offer, a variable of its own
-#' template) are left as they are.
-#'
-#' @param x An `tflplanner`.
-#' @param output_id The report.
-#' @param meta Its [ard_meta()], or `NULL`.
-#' @param state What `builder_read()` returns, as edited.
-#' @param was What `builder_read()` returned before the edit, or `NULL`.
-#'   Given it, only what differs from it is written: what the builder does
-#'   not show (a statistic's own template, a condition, an order of one's
-#'   own) stays as the sheets have it.  `NULL` writes the whole description.
-#' @return `builder_read()`: a list -- `key` (the column variables,
-#'   outermost first), `arms` (a named list: each column variable's levels
-#'   in order), `variables` (a data frame: `variable`,
-#'   `kind`, `label`), `levels` (named list), `rows` (a continuous
-#'   variable's row labels in order) and their `templates`, `value`
-#'   (`stat`: the numbers, rounded by `digits`; `stat_fmt`: the ARD's text),
-#'   `digits` (each statistic the rows print: its decimals), `exceptions`
-#'   (a variable's own: `variable`, `statistic`, `digits`), `cat_format` (`npct`,
-#'   `nNpct`, `n`), `pct_decimals`, `header` (`keep` or a name of
-#'   [header_presets()]), and for a hierarchy table (SOC / PT) its
-#'   `hierarchy` (the ARD's terms, outermost first), `row_keys` (the
-#'   table's rows, outermost first: by default the ARD's other groups, then
-#'   its hierarchy), `row_choices` (the keys it may take), `row_pages` (the
-#'   outermost a page each), `sort` (each row key's
-#'   order, outermost first -- `"alpha"` by name, or a code list's order;
-#'   `"freq"` most frequent first, ties by name -- or `"own"`: an order of
-#'   the sheets' own, left as it is) and `overall_label` (the "any event"
-#'   row's name, `tables$overall_label`).  `builder_write()`: the
-#'   `tflplanner`.
-#' @export
+# Read and write a table the builder way (internal, #417)
+#
+# `builder_read()` describes a report's table from its items (its YAML over
+# its layers; the sheets while they hold edits the spec has not taken yet)
+# and what its ARD holds (`meta`: ard_meta(), for what the plan does not
+# say yet); `builder_write()` writes such a description (`state`) back into
+# the report's items: table_plan(), plan_levels(), plan_labels(),
+# plan_nest(), plan_cells(), plan_sort(), plan_paginate_group(),
+# plan_col_header() -- each only where it differs from `was` (what
+# builder_read() returned before the edit; NULL: the whole description).
+# What the builder does not show (a statistic's own template, a condition,
+# an order of one's own) stays as the plan has it.
+#
+# builder_read() returns a list: `key` (the column variables, outermost
+# first), `arms` (each column variable's levels in order), `variables` (a
+# data frame: variable, kind, label, hint, under), `levels`, `rows` (a
+# continuous variable's row labels in order) and their `templates`,
+# `value` ("stat" or "stat_fmt"), `digits` (each statistic the rows print:
+# its decimals), `exceptions` (a variable's own: variable, statistic,
+# digits), `cat_format`, `cat_own`, `pct_decimals`, `header` ("keep" or a
+# name of header_presets()), `auto_levels`, `level_from`, `layers`,
+# `layer_choices`, `row_label`, and for a hierarchy (SOC / PT) its
+# `hierarchy`, `row_keys`, `row_choices`, `row_pages` (the outermost a
+# page each) and `sort` (each row key's order: "alpha" or "freq", or
+# "own": the plan's own, left as it is).  builder_write() returns the
+# tflplanner.
 builder_read <- function(x, output_id, meta = NULL) {
   id <- output_id
   # the roles, the variables' headings, order and levels: the report's
@@ -544,7 +563,6 @@ builder_read <- function(x, output_id, meta = NULL) {
   hier <- if (!is.null(meta)) meta$hierarchy %||% character() else character()
   rk <- if (length(hier)) .row_keys_read(tb$rows[1L], tb$label[1L]) else character()
   if (length(hier) && !length(rk)) rk <- c(setdiff(meta$by %||% character(), key), hier)
-  ly <- .rows_for(x, "layout", id)
   # the rows as layers, outermost first, for both kinds: a hierarchy's
   # row keys; a summary table's keys over its block of variables
   # (".variable": group = variable)
@@ -562,10 +580,8 @@ builder_read <- function(x, output_id, meta = NULL) {
        level_from = from,
        hierarchy = hier, row_keys = rk,
        row_choices = if (length(hier)) setdiff(names(meta$keys), key) else character(),
-       row_pages = length(hier) > 0L && isTRUE(as.logical(ly$group_page[1L])) &&
-         identical(ly$group_col[1L] %||% NA_character_, "group1"),
+       row_pages = length(hier) > 0L && .builder_row_pages(its),
        sort = if (length(hier)) .hier_sort_read(tb$sort[1L], length(rk)),
-       overall_label = if (length(hier)) tb$overall_label[1L] %||% NA_character_,
        layers = layers, layer_choices = unique(c(layers, layer_choices)),
        row_label = if (length(hier)) utils::tail(rk, 1L) else .row_label_read(tb$label[1L]))
 }
@@ -746,8 +762,6 @@ builder_read <- function(x, output_id, meta = NULL) {
   lv
 }
 
-#' @rdname builder_read
-#' @export
 builder_write <- function(x, output_id, state, was = NULL) {
   id <- output_id
   st <- state
@@ -789,12 +803,6 @@ builder_write <- function(x, output_id, state, was = NULL) {
     tb$sort[1L] <- .hier_sort(st$sort, attr(st$sort, "col") %||% NA_character_,
                               hier = rk %in% st$hierarchy)
   }
-  # a hierarchy table's "any event" row's name
-  if (length(st$hierarchy) && changed("overall_label")) {
-    if (!"overall_label" %in% names(tb)) tb$overall_label <- NA_character_
-    ol <- st$overall_label %||% NA_character_
-    tb$overall_label[1L] <- if (is.na(ol) || !nzchar(trimws(ol))) NA_character_ else trimws(ol)
-  }
   # a summary table's row layers: written when they changed, in their
   # order (a key over the block of variables, or no block at all); the
   # key that is the rows' text is no layer of them
@@ -812,18 +820,9 @@ builder_write <- function(x, output_id, state, was = NULL) {
     tb$label[1L] <- .row_label_write(st$row_label)
   }
   # whose {n} the header prints (the form asks only when a cell uses {n})
-  if (!is.null(st$header_n) && "header_n" %in% names(tb)) tb$header_n[1L] <- st$header_n
+  if (!is.null(st$header_n)) tb$header_n[1L] <- st$header_n
   if (is.na(tb$rows[1L]) && (is.null(was) || put_key)) tb$rows[1L] <- "group = variable"
 
-  # a hierarchy table's outermost row key a page each (layout)
-  if (length(st$hierarchy) && changed("row_pages") && !is.null(st$row_pages)) {
-    ly <- sheet_rows(x, "layout", id)
-    ly$output_id <- NULL
-    if (!nrow(ly)) ly[1L, ] <- NA
-    ly$group_page[1L] <- if (isTRUE(st$row_pages)) "TRUE" else NA_character_
-    ly$group_col[1L] <- if (isTRUE(st$row_pages)) "group1" else NA_character_
-    x <- set_sheet_rows(x, "layout", id, ly)
-  }
 
   # variables: the arms' order, each variable's label, order and levels
   cl <- tryCatch(sheet_rows(x, "codelists", id), error = function(e) NULL)
@@ -875,29 +874,34 @@ builder_write <- function(x, output_id, state, was = NULL) {
   empty <- rowSums(!is.na(vr[setdiff(names(vr), "variable")])) == 0 &
     vr$variable %in% st$key
   vr <- vr[!empty, , drop = FALSE]
-  # the roles and the variables into the report's items: one write, last
-  # (after the sheets' cells below, which the spec then takes in first)
+  # the roles and the variables into the report's items, with the rest
+  # below: one write
   w <- .builder_items_from_rows(its, tb, vr, vr_was, cl)
-  fin <- function(x) if (length(w)) .spec_set_items(x, id, w) else x
-  # the tables row's other cells (the value, a hierarchy's order and its
-  # any-event row, whose {n}): the sheet, as yet -- only those changed
-  rest <- setdiff(names(tb), c("cols", "rows", "label", "keep_where"))
   same_cell <- function(a, b) {
     a <- as.character(a %||% NA)[1L]
     b <- as.character(b %||% NA)[1L]
     identical(is.na(a), is.na(b)) && (is.na(a) || identical(a, b))
   }
-  ch <- rest[!vapply(rest, function(k) same_cell(tb[[k]], tb_was[[k]]), NA)]
-  if (length(ch)) {
-    own <- sheet_rows(x, "tables", id)
-    own$output_id <- NULL
-    if (!nrow(own)) own[1L, ] <- NA
-    for (k in ch) {
-      if (!k %in% names(own)) own[[k]] <- NA_character_
-      own[[k]][1L] <- tb[[k]][1L]
-    }
-    x <- set_sheet_rows(x, "tables", id, own)
+  # a hierarchy's order: plan_sort(keys = ), its other arguments kept
+  if (!same_cell(tb$sort, tb_was$sort)) {
+    ps <- .builder_args(its, "plan_sort") %||% list()
+    k <- .split_list(tb$sort[1L])
+    if (length(k)) ps$keys <- k else ps$keys <- NULL
+    w[[length(w) + 1L]] <- list(fn = "plan_sort", args = ps, drop_empty = TRUE)
   }
+  # the outermost row key a page each: plan_paginate_group(col = "group1")
+  if (length(st$hierarchy) && changed("row_pages") && !is.null(st$row_pages) &&
+      !identical(isTRUE(st$row_pages), .builder_row_pages(its))) {
+    pg <- .builder_args(its, "plan_paginate_group") %||% list()
+    pg$col <- "group1"
+    w[[length(w) + 1L]] <- list(fn = "plan_paginate_group",
+                                args = if (isTRUE(st$row_pages)) pg else list(),
+                                drop_empty = TRUE)
+  }
+  # the column header and whose {n} it prints: plan_col_header()
+  hw <- .builder_header_write(its, st, if (!same_cell(tb$header_n, tb_was$header_n)) tb$header_n[1L])
+  if (!is.null(hw)) w[[length(w) + 1L]] <- hw
+  fin <- function(x) if (length(w)) .spec_set_items(x, id, w) else x
 
   # plan_cells(): the continuous rows, the statistics' decimals (in the
   # templates, as the report's YAML holds them), a variable's own
@@ -921,7 +925,7 @@ builder_write <- function(x, output_id, state, was = NULL) {
     pcw <- .builder_cells_write(its, st, was %||% now, cont_ch, dig_ch, cat_ch, val_ch)
     if (!is.null(pcw)) w[[length(w) + 1L]] <- pcw
   }
-  fin(.builder_header(x, id, st))
+  fin(x)
 }
 
 # A template with the statistics' decimals in it ({mean} -> {mean:.1f}): `dg`
@@ -1011,25 +1015,25 @@ builder_write <- function(x, output_id, state, was = NULL) {
   list(fn = "plan_cells", args = new, drop_empty = TRUE)
 }
 
-# the column header: the form's rows (a data frame), written as the
-# report's own only when they differ from the header it has now
-.builder_header <- function(x, id, st) {
-  if (is.data.frame(st$header)) {
-    own <- sheet_rows(x, "col_header", id)
-    own$output_id <- NULL
-    eff <- if (nrow(own)) own else {
-      inh <- inherited_rows(x, "col_header", id)
-      inh$output_id <- NULL
-      inh
-    }
-    if (!.same_header(eff, st$header)) {
-      x <- set_sheet_rows(x, "col_header", id, st$header)
-    }
-  } else if (!identical(st$header, "keep") &&
-             st$header %in% names(header_presets())) {
-    x <- add_preset(x, id, st$header)
+# plan_col_header() as the form says it: its header lines (`st$header`, the
+# form's rows, or a preset's name) where they differ from the plan's, whose
+# {n} (`header_n`: the tables sheet's form, NULL unchanged) -- its other
+# arguments kept.  NULL: no change.
+.builder_header_write <- function(its, st, header_n = NULL) {
+  ch <- .builder_args(its, "plan_col_header") %||% list()
+  new <- ch
+  rows <- if (is.data.frame(st$header)) st$header else
+    if (!identical(st$header, "keep") && isTRUE(st$header %in% names(header_presets())))
+      header_presets()[[st$header]]
+  if (!is.null(rows)) {
+    rows <- as.data.frame(rows, stringsAsFactors = FALSE)
+    rows$output_id <- NULL
+    if (!.same_header(.header_df(ch$header), rows)) new$header <- .header_list(rows)
   }
-  x
+  if (!is.null(header_n)) new$values <- .header_n_values(header_n)
+  if (identical(tflspec::tfl_args_to_r("plan_col_header", new),
+                tflspec::tfl_args_to_r("plan_col_header", ch))) return(NULL)
+  list(fn = "plan_col_header", args = new, drop_empty = TRUE)
 }
 
 # Do two sets of col_header rows say the same?

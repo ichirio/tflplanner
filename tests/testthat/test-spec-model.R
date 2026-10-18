@@ -476,3 +476,47 @@ test_that("the builder's cells and decimals are plan_cells(); the rounding the s
   expect_identical(changed_files(p$spec$text, q$spec$text), "spec/defaults.yml")
   expect_match(as.character(.rounding_field("n", "sas")), "Applies to every report", fixed = TRUE)
 })
+
+test_that("the builder's header, order and pages are plan_col_header(), plan_sort(), plan_paginate_group() (#417)", {
+  s <- model_sample()
+  p <- s$planner
+  id <- "T-14-3-1"
+  rel <- "spec/outputs/T-14-3-1.yml"
+  m <- list(hierarchy = c("AEBODSYS", "AEDECOD"), by = "TRT01A",
+            keys = list(TRT01A = c("Drug X", "Control"), AEBODSYS = character(), AEDECOD = character()))
+  arg <- function(q, fn) .builder_args(builder_items(q, id), fn)
+  st <- builder_read(p, id, m)
+  expect_null(st$overall_label)
+  # the header's rows and back, the same item
+  h <- arg(p, "plan_col_header")$header
+  expect_identical(tflspec::tfl_args_to_r("plan_col_header", list(header = .header_list(.header_df(h)))),
+                   tflspec::tfl_args_to_r("plan_col_header", list(header = h)))
+  # a header line's text: plan_col_header(header = ) of that report only
+  st1 <- st
+  st1$header <- .header_df(h)
+  st1$header$text[st1$header$line == "2" & st1$header$cols == "row_label"] <- "SOC"
+  q <- builder_write(p, id, st1, was = st)
+  expect_identical(changed_files(p$spec$text, q$spec$text), rel)
+  expect_identical(arg(q, "plan_col_header")$header[[3L]]$text, "SOC")
+  expect_false(is.null(.spec_items(q, id)))
+  # whose {n}: plan_col_header(values = )
+  st2 <- st
+  st2$header_n <- "page"
+  q <- builder_write(p, id, st2, was = st)
+  expect_identical(arg(q, "plan_col_header")$values, list(n = "page"))
+  # the order of each level: plan_sort(keys = )
+  st3 <- st
+  st3$sort[] <- c("freq", "freq")
+  q <- builder_write(p, id, st3, was = st)
+  expect_identical(as.vector(builder_read(q, id, m)$sort), c("freq", "freq"))
+  expect_true("-n@group1" %in% arg(q, "plan_sort")$keys)
+  # the outermost a page each: plan_paginate_group(col = "group1"); off: gone
+  st4 <- st
+  st4$row_pages <- TRUE
+  q <- builder_write(p, id, st4, was = st)
+  expect_identical(arg(q, "plan_paginate_group")$col, "group1")
+  expect_true(builder_read(q, id, m)$row_pages)
+  q2 <- builder_write(q, id, st, was = builder_read(q, id, m))
+  expect_null(arg(q2, "plan_paginate_group"))
+  expect_identical(q2$spec$text, p$spec$text)
+})

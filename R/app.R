@@ -8671,20 +8671,12 @@ app_server <- function(input, output, session, start) {
     # only what differs from it
     bform$last <- st
     bform$meta <- m
-    # the column header as lines of the form (NULL: the form cannot show it)
+    # the column header as lines of the form (NULL: the form cannot show
+    # it), and whose {n} it prints: plan_col_header()'s header and values
     p0 <- shiny::isolate(rv$p)
-    own <- sheet_rows(p0, "col_header", id)
-    own$output_id <- NULL
-    eff <- if (nrow(own)) own else {
-      inh <- inherited_rows(p0, "col_header", id)
-      inh$output_id <- NULL
-      inh
-    }
-    bform$hdr <- hdr_uid(header_read(eff, st$key))
-    bform$hdr_n <- {
-      tb <- sheet_rows(p0, "tables", id)
-      if (nrow(tb) && "header_n" %in% names(tb)) tb$header_n[1L] else NA_character_
-    }
+    hd <- .builder_args(guarded(builder_items(p0, id, m)) %||% list(), "plan_col_header")
+    bform$hdr <- hdr_uid(header_read(.header_df(hd$header), st$key))
+    bform$hdr_n <- .header_n_text(hd$values)
     hdr_ver(shiny::isolate(hdr_ver()) + 1L)
     v <- st$variables
     bs <- builder_stats()
@@ -9452,10 +9444,10 @@ app_server <- function(input, output, session, start) {
     st <- bform$st
     shiny::req(!is.null(id), length(st$hierarchy) > 0L)
     n <- length(st$row_keys)
-    tb <- sheet_rows(rv$p, "tables", id)
-    tb$output_id <- NULL
-    tb$sort[1L] <- .hier_sort(c(rep("alpha", n - 1L), "freq"), hier = st$row_keys %in% st$hierarchy)
-    p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
+    ps <- .builder_args(builder_items(rv$p, id), "plan_sort") %||% list()
+    ps$keys <- .split_list(.hier_sort(c(rep("alpha", n - 1L), "freq"),
+                                      hier = st$row_keys %in% st$hierarchy))
+    p2 <- guarded(.spec_set_items(rv$p, id, list(list(fn = "plan_sort", args = ps))))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$btouched <- TRUE
@@ -10342,11 +10334,6 @@ app_server <- function(input, output, session, start) {
          row_pages = if (hier) {
            pg <- get("rowpages")
            if (is.null(pg)) st$row_pages else isTRUE(pg)
-         },
-         overall_label = if (hier) {
-           o <- get("overall")
-           if (is.null(o)) st$overall_label %||% NA_character_ else
-             if (nzchar(trimws(o))) trimws(o) else NA_character_
          },
          sort = if (hier) {
            if (identical(st$sort, "own")) "own" else {
