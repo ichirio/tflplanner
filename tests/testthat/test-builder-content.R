@@ -64,7 +64,7 @@ test_that("the report's own item has the mark This table, with Revert over a def
     expect_match(h, "This table", fixed = TRUE, info = it$fn)
     expect_identical(grepl("rp-revert", h, fixed = TRUE), isTRUE(it$revert), info = it$fn)
   }
-  dfl <- Filter(function(it) identical(it$from, "defaults"), items)
+  dfl <- Filter(function(it) identical(it$from, "defaults") && length(it$args), items)
   if (length(dfl)) {
     h <- html(.table_cards(dfl[1L]))
     expect_false(grepl("rp-badge-own", h, fixed = TRUE))
@@ -258,7 +258,7 @@ test_that("the decimals' card: its heading, where they go, and plan_cells' lines
   items <- builder_items(p, "T-14-1-1")
   h <- html(.table_cards(items[match("plan_digits", fns_of(items))]))
   expect_match(h, "rp-meaning\">Decimals and rounding<", fixed = TRUE)
-  expect_match(h, "The decimals are written into plan_cells()'s formats.", fixed = TRUE)
+  expect_match(h, "The decimals are written into plan_cells", fixed = TRUE)
   expect_match(h, 'data-also="plan_cells"', fixed = TRUE)
   expect_match(.builder_cards_js, "data-also", fixed = TRUE)
   expect_identical(tr("Decimals and rounding", "ja"), "\u6841\u3068\u4e38\u3081")
@@ -329,4 +329,11 @@ test_that("the screen review's fixes: per-variable templates said, every argumen
   h <- html(.table_cards(list(off)))
   expect_false(grepl("No arguments: the defaults of the function.", h, fixed = TRUE))
   expect_match(h, "On: its usual values are written.", fixed = TRUE)
+})
+
+test_that("the rounding's choices say SAS, R, IEC 60559; the YAML keeps sas, r, iec60559 (#417)", {
+  h <- html(.rounding_field("n", "sas"))
+  expect_match(h, '<option value="sas" selected>SAS</option>', fixed = TRUE)
+  expect_match(h, '<option value="r">R</option>', fixed = TRUE)
+  expect_match(h, '<option value="iec60559">IEC 60559</option>', fixed = TRUE)
 })

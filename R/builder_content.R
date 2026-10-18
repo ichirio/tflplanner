@@ -635,8 +635,11 @@ builder_items <- function(x, output_id, meta = NULL) {
   t <- function(x) tr(x, lang)
   switch(
     fn,
+    # (said behind the (i): where the card writes -- plan_cells(), the
+    # study's defaults.yml -- one card a function's exception)
     plan_digits = shiny::div(class = "rp-card-note",
-                             t("The decimals are written into plan_cells()'s formats.")),
+                             help_tip(paste(t("The decimals are written into plan_cells()'s formats."),
+                                            t("Applies to every report (the study's defaults.yml)")))),
     # (a line; what it does and one row before and after under the (i))
     normalize_ard = shiny::div(
       class = "rp-card-note",
@@ -649,10 +652,10 @@ builder_items <- function(x, output_id, meta = NULL) {
                        "category's value becomes .label (the row's text).")))),
     plan_levels = shiny::div(
       class = "rp-card-note",
-      shiny::div(t(paste("Makes plan_levels(name = the values' order). A name is a column of the",
-                         "normalized ARD (a column key TRT01A, a stack's subgroup), variable (the",
-                         "analysis variables' order) or a categorical variable (its values). Only",
-                         "what has fixed values can be ordered."))),
+      help_tip(t(paste("Makes plan_levels(name = the values' order). A name is a column of the",
+                       "normalized ARD (a column key TRT01A, a stack's subgroup), variable (the",
+                       "analysis variables' order) or a categorical variable (its values). Only",
+                       "what has fixed values can be ordered."))),
       .level_order_lines(level_from, lang)),
     plan_sort = shiny::div(
       class = "rp-card-note",
@@ -715,8 +718,11 @@ builder_items <- function(x, output_id, meta = NULL) {
     }
     rare <- it$fn %in% .plan_rare
     note <- .plan_card_note(it$fn, r = "r" %in% tools, lang = lang, level_from = level_from)
+    # (normalize_ard() with no argument -- a table of no hierarchy -- no
+    # mark: there is nothing of anyone's on it)
+    from <- if (identical(it$fn, "normalize_ard") && !length(it$args)) NULL else it$from
     out[[length(out) + 1L]] <- builder_card(
-      id(it$path), it$fn, .verb_meaning(it$fn), from = it$from, required = req,
+      id(it$path), it$fn, .verb_meaning(it$fn), from = from, required = req,
       on = on, switchable = sw, revert = isTRUE(it$revert),
       # (off: no body -- the summary says what turning it on does)
       body = if (!on) NULL else if (is.null(note)) body else shiny::tagList(note, body),
@@ -1155,9 +1161,11 @@ builder_items <- function(x, output_id, meta = NULL) {
                               "report's (the Study tab's Rounding); blank there: options(rtfreporter.rounding)."),
                         lang),
               lang = lang),
-    # (a change here is the study's: every report's)
-    shiny::div(class = "small text-warning rp-every-report",
-               tr("Applies to every report (the study's defaults.yml)", lang)))
+    # (a change here is the study's: every report's -- a mark, its words
+    # in its title)
+    shiny::span(class = "rp-badge rp-badge-defaults rp-every-report",
+                title = tr("Applies to every report (the study's defaults.yml)", lang),
+                tr("every report", lang)))
 }
 
 # Each variable's empty values hidden (plan_levels(.drop_empty = ):

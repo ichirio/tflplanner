@@ -357,7 +357,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     kind,
     column = .field_select(fid, choices, value, multiple = FALSE, lang = lang, placeholder = default),
     list = .field_select(fid, choices, value, multiple = TRUE, lang = lang, placeholder = default),
-    enum = .field_enum(fid, .type_enum(type), value, default, lang),
+    enum = .field_enum(fid, .type_enum(type), value, default, lang, labels = .enum_labels[[arg]]),
     number = .field_number(fid, value, default, step = "any"),
     integer = .field_number(fid, value, default, step = "1", min = "0"),
     logical = .field_check(fid, value, default),
@@ -423,16 +423,23 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
 # An enum: a select of its entries, the default named so ("(default)") and
 # a blank first (blank: the default, not written); a value outside the
 # entries (an older spec's) is kept as one of them, not lost
-.field_enum <- function(fid, entries, value, default, lang = "en") {
+.field_enum <- function(fid, entries, value, default, lang = "en", labels = NULL) {
   v <- if (!is.null(value) && length(value)) as.character(value)[[1L]] else ""
   if (nzchar(v) && !v %in% entries) entries <- c(entries, v)
+  # (a value's label where the argument names one: rounding's "sas" SAS)
+  map <- labels
   labels <- entries
+  if (length(map)) labels[entries %in% names(map)] <- unname(map[entries[entries %in% names(map)]])
   if (!is.null(default) && length(default) == 1L && default %in% entries) {
-    labels[entries == default] <- paste0(default, " ", tr("(default)", lang))
+    labels[entries == default] <- paste0(labels[entries == default], " ", tr("(default)", lang))
   }
   shiny::selectInput(fid, NULL, choices = c(stats::setNames("", ""), stats::setNames(entries, labels)),
                      selected = v, width = "100%", selectize = FALSE)
 }
+
+# The labels of an argument's choices where the values are words of their
+# own (the YAML keeps the values)
+.enum_labels <- list(rounding = c(sas = "SAS", r = "R", iec60559 = "IEC 60559"))
 
 # A number: a number field, the default as its placeholder (blank: the
 # default, not written); an integer steps by 1 (`min`: the least it takes)

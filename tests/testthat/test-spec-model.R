@@ -578,3 +578,37 @@ test_that("a save merges what another session saved since; nothing saved since, 
   expect_true(any(grepl("indent: 4", readLines(file.path(a4$path, "spec/outputs/T-14-1-1.yml")), fixed = TRUE)))
   expect_true(any(grepl("overall: Any event", readLines(file.path(a4$path, "spec/outputs/T-14-3-1.yml")), fixed = TRUE)))
 })
+
+test_that("the rounding on plan_digits()' card: the study's defaults.yml, back and forth, no error (#417)", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  s <- model_sample()
+  ard <- cards::ard_stack(cards::ADSL, .by = TRT01A, cards::ard_continuous(variables = AGE),
+                          cards::ard_categorical(variables = SEX))
+  data <- rtfreporter::normalize_ard(ard)
+  f <- .meta_file(s, "T-14-1-1")
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(ard_meta(ard, data), f)
+  saveRDS(data, sub("[.]rds$", "_data.rds", f))
+  rel <- file.path(s$path, "spec", "defaults.yml")
+  d0 <- readLines(rel)
+  shiny::testServer(server_for("SAMPLE-01"), {
+    rv <- session$userData$rv
+    bf <- session$userData$bform
+    session$setInputs(target = "T-14-1-1", nav = "make", step = "content",
+                      content_nav = "content", table_nav = "builder")
+    session$elapse(1000)
+    expect_true(grepl("_card_plan_digits__rounding", output$builder_form$html, fixed = TRUE))
+    id <- paste0("b", bf$n, "_card_plan_digits__rounding")
+    for (v in c("r", "sas", "r")) {
+      a <- list()
+      a[[id]] <- v
+      do.call(session$setInputs, a)
+      session$elapse(3000)
+      expect_identical(unname(rv$p$study[["rounding"]]), v)
+    }
+    session$setInputs(save = 1)
+    expect_identical(setdiff(readLines(rel), d0), "      rounding: r")
+    expect_identical(length(readLines(rel)), length(d0))
+  })
+})

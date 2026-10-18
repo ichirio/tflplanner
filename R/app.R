@@ -1562,8 +1562,9 @@ app_server <- function(input, output, session, start) {
       # (while the dialog of a change made outside the app is up, the
       # draft waits: it is offered once that is decided)
       if (!has_study() || !is.null(rv$draft) || isTRUE(rv$adopting)) return()
-      if (unsaved) .write_draft(current_study())
-      else .drop_draft(rv$study$meta$study_id)
+      # (a draft not written is said, never the session's end)
+      tryCatch(if (unsaved) .write_draft(current_study()) else .drop_draft(rv$study$meta$study_id),
+               error = function(e) message("tflplanner: the draft: ", conditionMessage(e)))
     })
   })
 
@@ -8791,17 +8792,18 @@ app_server <- function(input, output, session, start) {
           shiny::div(class = "small text-muted rp-b-fixed-note",
                      t("Analysis variables (variable) are no rows (a table of one variable: ORR ...)."))),
         row_label_ui,
+        # (what it means, behind the (i): the way to step 1 alone shown)
         if (hier) shiny::div(
           class = "small text-muted rp-b-fixed-note",
-          with_tip(sprintf(t("The levels %s are the ARD analysis's (step 1)."),
-                           paste(st$hierarchy, collapse = " \u203a ")),
-                   t("A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show can be hidden in a later stage.")),
-          " ", shiny::actionLink("b_rows_step1", t("Step 1's analysis")))),
+          shiny::actionLink("b_rows_step1", t("Step 1's analysis")), " ",
+          help_tip(paste(sprintf(t("The levels %s are the ARD analysis's (step 1)."),
+                                 paste(st$hierarchy, collapse = " \u203a ")),
+                         t("A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show can be hidden in a later stage."))))),
       # a variable the ARD lacks is not offered: the ARD analysis adds it
       if (!hier) shiny::div(
         class = "small text-muted rp-b-fixed-note",
-        t("A variable not here is added in the ARD analysis."), " ",
-        shiny::actionLink("b_rows_step1", t("Step 1's analysis"))))
+        shiny::actionLink("b_rows_step1", t("Step 1's analysis")), " ",
+        help_tip(t("A variable not here is added in the ARD analysis."))))
     # (a summary table's variables each shown or not: plan_filter()'s card,
     # written as its row filter; the ARD stays as it is)
     shown_ui <- if (nrow(v) >= 2L && !is.null(hidden)) shiny::checkboxGroupInput(
