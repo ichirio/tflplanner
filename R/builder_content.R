@@ -683,6 +683,20 @@ builder_items <- function(x, output_id, meta = NULL) {
     NULL)
 }
 
+# A card's mark: where its item comes from (normalize_ard() with no
+# argument -- a table of no hierarchy -- none: nothing of anyone's on it)
+.card_from <- function(it) {
+  if (identical(it$fn, "normalize_ard") && !length(it$args)) NULL else it$from
+}
+# ... its mark and Revert as a card's head has them (sent after a write:
+# the page puts them in the card's head, .builder_cards_js)
+.card_mark <- function(it, id, lang = "en") {
+  shiny::tagList(
+    from_badge(.card_from(it), lang,
+               own = if (isTRUE(it$present) && identical(it$from, "own")) "This table"),
+    if (isTRUE(it$revert)) .card_revert(id, lang))
+}
+
 # The cards of a table's content, in its order: one builder_card() an
 # item, with a thin line before the first item of each group (Mapping,
 # Finishing; its one line of what it is for) -- the content's order is
@@ -733,9 +747,7 @@ builder_items <- function(x, output_id, meta = NULL) {
     }
     rare <- it$fn %in% .plan_rare
     note <- .plan_card_note(it$fn, r = "r" %in% tools, lang = lang, level_from = level_from)
-    # (normalize_ard() with no argument -- a table of no hierarchy -- no
-    # mark: there is nothing of anyone's on it)
-    from <- if (identical(it$fn, "normalize_ard") && !length(it$args)) NULL else it$from
+    from <- .card_from(it)
     out[[length(out) + 1L]] <- builder_card(
       id(it$path), it$fn, .verb_meaning(it$fn), from = from, required = req,
       on = on, switchable = sw, revert = isTRUE(it$revert),

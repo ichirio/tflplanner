@@ -94,11 +94,7 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
                                        title = t("On or off: off writes nothing")))
   }
   # Revert: an item of the report's own over the defaults' (`revert`)
-  revert <- if (isTRUE(revert)) {
-    shiny::tags$button(type = "button", id = paste0(id, "__revert"),
-                       class = "btn btn-link btn-sm rp-revert action-button",
-                       title = t("Back to the study default"), t("Revert"))
-  }
+  revert <- if (isTRUE(revert)) .card_revert(id, lang)
   menu <- .card_menu(id, tools, lang)
   head <- shiny::div(
     class = "rp-card-head",
@@ -131,6 +127,13 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
     shiny::div(class = "rp-card-body",
                if (!is.null(nav)) nav_hint(nav, "group", lang),
                body))
+}
+
+# a card's Revert button
+.card_revert <- function(id, lang = "en") {
+  shiny::tags$button(type = "button", id = paste0(id, "__revert"),
+                     class = "btn btn-link btn-sm rp-revert action-button",
+                     title = tr("Back to the study default", lang), tr("Revert", lang))
 }
 
 # the card's menu: up, down, duplicate, remove, edit as R
@@ -915,6 +918,29 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
         if (v === '0') $(this).removeClass('rp-card-open');
       });
     }, 0);
+  });
+  // a card's mark and Revert after a write, without drawing the form again
+  $(document).on('shiny:connected', function() {
+    Shiny.addCustomMessageHandler('rp-card-mark', function(x) {
+      var head = $('#' + x.card + ' > .rp-card-head');
+      if (!head.length) return;
+      var old = head.children('.rp-badge, .rp-revert');
+      Shiny.unbindAll(old.get(0) ? old.parent().get(0) : head.get(0));
+      old.remove();
+      var at = head.children('.rp-card-req');
+      if (!at.length) at = head.children('.rp-card-title');
+      at.after(x.html);
+      // the summary line (what the card says when closed)
+      if (typeof x.summary === 'string') {
+        var sm = head.children('.rp-card-summary');
+        if (!sm.length && x.summary.length) {
+          sm = $(document.createElement('span')).addClass('rp-card-summary');
+          head.children('.rp-badge, .rp-revert').last().after(sm);
+        }
+        sm.text(x.summary);
+      }
+      Shiny.bindAll(head.get(0));
+    });
   });
   $(document).on('change', '.rp-card-switch input', function() {
     $(this).closest('.rp-card').toggleClass('rp-card-off', !this.checked);

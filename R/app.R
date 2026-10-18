@@ -9079,6 +9079,27 @@ app_server <- function(input, output, session, start) {
   }
   # a card's input id: by its path (the verb; "#2" its second call)
   card_id <- function(path) bid(paste0("card_", gsub("[^A-Za-z0-9_]", "_", path)))
+  # after a write: each card whose item now comes from elsewhere (a card
+  # of the study's defaults edited is this table's own; Revert) gets its
+  # mark and Revert in its head, the form not drawn again
+  send_mark <- function(path, f) {
+    session$sendCustomMessage("rp-card-mark", list(
+      card = card_id(path), html = as.character(.card_mark(f, card_id(path), lang)),
+      summary = .item_summary(f, lang = lang)))
+  }
+  refresh_marks <- function(p2) {
+    fresh <- tryCatch(builder_items(p2, bform$id, bform$meta), error = function(e) list())
+    for (i in seq_along(bform$items)) {
+      it <- bform$items[[i]]
+      f <- .builder_item_at(fresh, it$path)
+      if (is.null(f) || !isTRUE(it$present) || !isTRUE(f$present)) next
+      if (identical(f$from, it$from) && identical(isTRUE(f$revert), isTRUE(it$revert)) &&
+          identical(f$args, it$args)) next
+      bform$items[[i]][c("args", "own_args", "from", "arg_from", "below", "revert")] <-
+        f[c("args", "own_args", "from", "arg_from", "below", "revert")]
+      send_mark(it$path, f)
+    }
+  }
   # the Total column's switch: its card's
   total_on_id <- function() paste0(card_id("plan_total"), "__on")
   # a card's Revert: the report's own rows of its verb taken away, so the
@@ -9274,8 +9295,9 @@ app_server <- function(input, output, session, start) {
         # the report's own: drawn again (its mark, its Revert); a column or a
         # group more or less, a nest changed: drawn again (its fields; the
         # labels' card says where a variable's rows go)
-        if (!was_present || !identical(fresh$from, it$from) ||
-            !identical(isTRUE(fresh$revert), isTRUE(it$revert)) ||
+        # (its mark and Revert only: put in its head, not drawn again)
+        if (was_present) send_mark(path, fresh)
+        if (!was_present ||
             # (normalize_ard()'s stack: the keys it adds offered to the rows)
             (identical(fn, "normalize_ard") &&
                !identical(.arg_to_r(fresh$args$stack), .arg_to_r(it$args$stack))) ||
@@ -10444,6 +10466,7 @@ app_server <- function(input, output, session, start) {
       session$sendCustomMessage("builder-updating", TRUE)
       rv$p <- p2
       rv$btouched <- TRUE
+      refresh_marks(p2)
     }
   })
   shiny::observe(builder_guard({
