@@ -400,6 +400,16 @@
 # no longer reaching it -- #417 Q1), or nothing when it is the same.
 # `below_args`: arguments that stay the layers' (the study's rounding).
 .spec_set_item <- function(p, output_id, fn, args, k = 1L, below_args = character()) {
+  .spec_set_items(p, output_id, list(list(fn = fn, args = args %||% list(), k = k,
+                                          below_args = below_args)))
+}
+
+# ... several items of a report at once (one write of its file): `items` a
+# list of list(fn, args, k = 1, below_args = character(), drop_empty =
+# FALSE).  `drop_empty`: an item left with no argument and nothing below it
+# is taken away (a verb of named `...` emptied: plan_levels() of no
+# variable is no call).
+.spec_set_items <- function(p, output_id, items) {
   p <- .spec_ensure(p)
   p <- .spec_sync(p, p$spec$meta)
   attr(p, "changed") <- NULL
@@ -409,13 +419,19 @@
     stop("The report ", output_id, "'s content is R of its own.", call. = FALSE)
   }
   r <- tflspec::tfl_resolve_output(o, p$spec$study, provenance = TRUE)
-  at <- which(.content_fns(r$content) == fn)
-  below <- if (length(at) >= k) r$content[[at[k]]]$below
-  args <- args %||% list()
-  for (a in below_args) args[a] <- list(below$args[[a]])
-  args <- Filter(Negate(is.null), args)
-  own <- tflspec::tfl_item_own(tflspec::tfl_item(fn, args), below)
-  o$content <- .content_put(o$content, fn, k, own)
+  fns <- .content_fns(r$content)
+  for (w in items) {
+    fn <- w$fn
+    k <- w$k %||% 1L
+    at <- which(fns == fn)
+    below <- if (length(at) >= k) r$content[[at[k]]]$below
+    args <- w$args %||% list()
+    for (a in w$below_args %||% character()) args[a] <- list(below$args[[a]])
+    args <- Filter(Negate(is.null), args)
+    own <- if (isTRUE(w$drop_empty) && !length(args) && is.null(below)) NULL else
+      tflspec::tfl_item_own(tflspec::tfl_item(fn, args), below)
+    o$content <- .content_put(o$content, fn, k, own)
+  }
   .spec_set_output(p, output_id, o)
 }
 

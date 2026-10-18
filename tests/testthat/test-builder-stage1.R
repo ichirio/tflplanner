@@ -577,8 +577,9 @@ test_that("builder_read() tells where each order comes from; a key column's fact
   skip_if_not_installed("cards")
   p <- sample_planner()
   st <- builder_read(p, "T-14-1-1")
-  # the sample's own levels: this table's
-  expect_identical(st$level_from$SEX$source, "table")
+  # the sample's levels: its code list's order (#417: the report's
+  # plan_levels() as tflspec writes it from the code list)
+  expect_identical(st$level_from$SEX$source, "codelist")
   expect_null(st$level_from[["AGE"]])
   # no own levels: the report's code list's, as tflspec writes it
   vr <- sheet_rows(p, "variables", "T-14-1-1")

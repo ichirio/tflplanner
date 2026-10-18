@@ -66,14 +66,25 @@ builder_stats <- function() {
   r
 }
 
-# What a row's own digits (cells$digits "1,2") give its statistics
+# What a row's own digits (cells$digits "1,2") give its statistics; none
+# there, its template's own ("{mean:.1f}": the spec's way, #417)
 .row_digits <- function(tpl, digits) {
-  if (is.na(digits) || !nzchar(digits)) return(stats::setNames(integer(), character()))
+  if (is.na(digits) || !nzchar(digits)) return(.inline_digits(tpl))
   st <- .template_stats(tpl)
   dg <- suppressWarnings(as.integer(trimws(strsplit(digits, ",")[[1L]])))
   dg <- dg[!is.na(dg)]
   if (!length(dg) || !length(st)) return(stats::setNames(integer(), character()))
   stats::setNames(dg[pmin(seq_along(st), length(dg))], st)
+}
+
+# The decimals a template states itself: "{mean:.1f} ({sd:.2f})" -> mean 1, sd 2
+.inline_digits <- function(tpl) {
+  none <- stats::setNames(integer(), character())
+  if (length(tpl) != 1L || is.na(tpl)) return(none)
+  m <- regmatches(tpl, gregexpr("[{][^}:]+:[.][0-9]+f%?[}]", tpl))[[1L]]
+  if (!length(m)) return(none)
+  stats::setNames(as.integer(sub("^.*:[.]([0-9]+)f.*$", "\\1", m)),
+                  sub("^[{]([^}:]+):.*$", "\\1", m))
 }
 
 # the categorical formats: key, label, template with <p> for the decimals
@@ -119,6 +130,246 @@ builder_stats <- function() {
   rbind(sheet_rows(p, sheet, id), inherited_rows(p, sheet, id))
 }
 
+# ---- the builder's rows from the report's items, and back (#417) ------------
+#
+# The builder's form reads a table as the `tables` and `variables` rows it
+# always has: here they are made from the report's items (its YAML over its
+# layers) -- table_plan()'s roles, plan_filter()'s condition, plan_levels(),
+# plan_labels() and plan_nest() -- and an edit of them is written back into
+# those items, not into the sheets.
+
+# The arguments of a verb as the plan has them (NULL: no such item)
+.builder_args <- function(its, fn) {
+  for (it in its) {
+    if (identical(it$fn, fn) && !isFALSE(it$present)) return(it$args %||% list())
+  }
+  NULL
+}
+
+# An item's argument as R takes it (rows: c(group1 = "AEBODSYS"); a constant
+# heading ~"Overall"); NULL when it has none or it is not a constant
+.item_arg_r <- function(fn, args, name) {
+  if (is.null(args[[name]])) return(NULL)
+  txt <- tflspec::tfl_args_to_r(fn, args[name])
+  v <- tryCatch(eval(str2lang(sprintf("list(%s)", txt)), baseenv()), error = function(e) NULL)
+  v[[name]]
+}
+
+# ... and an R value as the item holds it
+.item_arg_from_r <- function(fn, name, value) {
+  if (is.null(value)) return(NULL)
+  txt <- paste(name, "=", paste(deparse(value, width.cutoff = 500L), collapse = " "))
+  tflspec::tfl_args_from_r(fn, txt)[[name]]
+}
+
+# A role (table_plan()'s rows or label, as R) as the tables sheet says it:
+# `name = column | ...`, a constant heading quoted; "NA" for none
+.role_text <- function(v) {
+  if (is.null(v)) return(NA_character_)
+  if (!is.list(v) && length(v) == 1L && is.na(v)) return("NA")
+  nm <- names(v) %||% rep("", length(v))
+  val <- vapply(seq_along(v), function(i) {
+    e <- v[[i]]
+    if (inherits(e, "formula")) paste0("\"", eval(e[[2L]], baseenv()), "\"") else
+      as.character(e)[1L]
+  }, "")
+  paste(ifelse(nzchar(nm) & nm != val, paste(nm, "=", val), val), collapse = " | ")
+}
+
+# ... and read back as R (tflspec's reading of the sheet): NULL for blank,
+# NA for "NA"
+.role_value <- function(txt) {
+  if (.is_blank(txt)) return(NULL)
+  if (identical(trimws(txt), "NA")) return(NA)
+  parts <- trimws(strsplit(txt, "|", fixed = TRUE)[[1L]])
+  parts <- parts[nzchar(parts)]
+  one <- function(x) {
+    m <- regmatches(x, regexec("^([A-Za-z.][A-Za-z0-9._]*)\\s*=\\s*(.+)$", x))[[1L]]
+    nm <- if (length(m)) m[2L] else ""
+    v <- trimws(if (length(m)) m[3L] else x)
+    q <- regmatches(v, regexec("^([\"'])(.*)\\1$", v))[[1L]]
+    list(name = nm, value = if (length(q)) eval(call("~", q[3L]), baseenv()) else v)
+  }
+  ps <- lapply(parts, one)
+  nms <- vapply(ps, `[[`, "", "name")
+  vals <- lapply(ps, `[[`, "value")
+  if (any(vapply(vals, inherits, NA, "formula"))) {
+    own <- !nzchar(nms) & !vapply(vals, inherits, NA, "formula")
+    nms[own] <- unlist(vals[own])
+    return(stats::setNames(vals, nms))
+  }
+  v <- unlist(vals)
+  if (any(nzchar(nms))) names(v) <- nms
+  v
+}
+
+# The report's own `tables` row (one; blank cells where it has none), its
+# roles (cols, rows, label) and its row filter (keep_where) the items'
+.builder_tables_own <- function(x, id, its) {
+  tb <- sheet_rows(x, "tables", id)
+  tb$output_id <- NULL
+  if (!nrow(tb)) tb[1L, ] <- NA
+  tb <- tb[1L, , drop = FALSE]
+  for (k in c("cols", "rows", "label", "keep_where")) {
+    if (!k %in% names(tb)) tb[[k]] <- NA_character_
+  }
+  tp <- .builder_args(its, "table_plan")
+  if (!is.null(tp)) {
+    cols <- as.character(unlist(tp$cols))
+    tb$cols[1L] <- if (length(cols)) paste(cols, collapse = " | ") else NA_character_
+    tb$rows[1L] <- .role_text(.item_arg_r("table_plan", tp, "rows"))
+    tb$label[1L] <- if ("label" %in% names(tp)) .role_text(.item_arg_r("table_plan", tp, "label")) else
+      NA_character_
+  }
+  pf <- .builder_args(its, "plan_filter")
+  tb$keep_where[1L] <- .filter_where_text(pf$where) %||% NA_character_
+  tb
+}
+
+# ... the rows the form reads: the report's own row over its defaults'
+.builder_tables_rows <- function(x, id, its) {
+  inh <- inherited_rows(x, "tables", id)
+  inh$output_id <- NULL
+  own <- .builder_tables_own(x, id, its)
+  for (k in setdiff(names(inh), names(own))) own[[k]] <- NA_character_
+  for (k in setdiff(names(own), names(inh))) inh[[k]] <- rep(NA_character_, nrow(inh))
+  # a cell the report leaves blank is its defaults' (the roles are the
+  # plan's already)
+  if (nrow(inh)) {
+    for (k in setdiff(names(own), c("cols", "rows", "label", "keep_where"))) {
+      if (is.na(own[[k]][1L])) own[[k]][1L] <- inh[[k]][1L]
+    }
+  }
+  own
+}
+
+# The `variables` rows of a report as its items say them: a variable's
+# heading (plan_labels()), its values in order and its empty values hidden
+# (plan_levels(), `.drop_empty`), the variables' order (plan_levels(variable
+# = )), its rows under a level of another (plan_nest(): "RACE: Asian", placed
+# after that variable).  Values in the order of the report's code list
+# (`cl`, its rows of the codelists sheet) are the code list's, not the
+# table's own: no `levels` (tflspec writes them so from the code list).
+.builder_vars_rows <- function(its, cl = NULL) {
+  lv <- .builder_args(its, "plan_levels") %||% list()
+  lb <- .builder_args(its, "plan_labels") %||% list()
+  ne <- .builder_args(its, "plan_nest") %||% list()
+  heading <- function(v) is.character(v) && length(v) == 1L && is.null(names(v))
+  lb <- lb[vapply(lb, heading, NA)]
+  ord <- as.character(unlist(lv$variable))
+  drop <- as.character(unlist(lv$.drop_empty))
+  keys <- setdiff(names(lv), c("variable", ".drop_empty"))
+  under <- vapply(ne, function(u) {
+    u <- unlist(u)
+    if (length(u) == 1L && !is.null(names(u))) paste0(names(u), ": ", u) else NA_character_
+  }, "")
+  vars <- unique(c(ord, names(lb), keys, names(under), drop))
+  # each nested variable after its parent and the parent's children so far
+  seq_v <- ord
+  for (v in names(under)) {
+    if (v %in% seq_v || is.na(under[[v]])) next
+    p <- trimws(sub(":.*$", "", under[[v]]))
+    at <- match(p, seq_v)
+    if (is.na(at)) next
+    par_of <- function(w) if (w %in% names(under)) trimws(sub(":.*$", "", under[[w]])) else NA
+    while (at < length(seq_v) && identical(par_of(seq_v[at + 1L]), p)) at <- at + 1L
+    seq_v <- append(seq_v, v, after = at)
+  }
+  n <- length(vars)
+  data.frame(
+    variable = vars,
+    label = if (n) vapply(vars, function(v) lb[[v]] %||% NA_character_, "", USE.NAMES = FALSE) else
+      character(),
+    order = as.character(match(vars, seq_v)),
+    levels = if (n) vapply(vars, function(v) {
+      l <- as.character(unlist(lv[[v]]))
+      if (length(l) && identical(l, .codelist_order(cl, v))) l <- character()
+      if (length(l)) paste(l, collapse = " | ") else NA_character_
+    }, "", USE.NAMES = FALSE) else character(),
+    empty_levels = ifelse(vars %in% drop, "hide", NA_character_),
+    under = if (n) unname(under[vars]) else character(),
+    stringsAsFactors = FALSE)
+}
+
+# The items the builder's rows stand for, as written back: table_plan()'s
+# roles from `tb` (the report's own tables row as edited), plan_levels(),
+# plan_labels() and plan_nest() from `vr` (the variables rows as edited;
+# `vr_was` as they were read) -- each verb's whole arguments, those the rows
+# do not say kept as they are; a variable with no levels of its own takes
+# its code list's order (`cl`), as tflspec writes it.  A list of list(fn,
+# args, drop_empty) for the verbs that change; none: nothing to write.
+.builder_items_from_rows <- function(its, tb, vr, vr_was, cl = NULL) {
+  out <- list()
+  same <- function(fn, a, b) identical(tflspec::tfl_args_to_r(fn, a %||% list()),
+                                       tflspec::tfl_args_to_r(fn, b %||% list()))
+  put <- function(fn, new, old) {
+    if (!same(fn, new, old)) out[[length(out) + 1L]] <<- list(fn = fn, args = new,
+                                                              drop_empty = TRUE)
+  }
+  tp <- .builder_args(its, "table_plan") %||% list()
+  new <- tp
+  cols <- .split_list(tb$cols[1L])
+  new$cols <- if (length(cols)) .item_arg_from_r("table_plan", "cols", cols)
+  new$rows <- .item_arg_from_r("table_plan", "rows", .role_value(tb$rows[1L]))
+  lab <- .role_value(tb$label[1L])
+  if (is.null(lab)) new$label <- NULL else new["label"] <- list(.item_arg_from_r("table_plan", "label", lab))
+  if (!same("table_plan", new, tp)) {
+    out[[length(out) + 1L]] <- list(fn = "table_plan", args = new)
+  }
+  vars <- unique(c(vr_was$variable, vr$variable))
+  row_of <- function(v, k) {
+    i <- match(v, vr$variable)
+    if (is.na(i) || is.null(vr[[k]])) NA_character_ else vr[[k]][i]
+  }
+  # plan_levels(): the variables' order first, then the values of each
+  lv <- .builder_args(its, "plan_levels") %||% list()
+  new <- lv
+  for (v in vars) {
+    l <- .split_list(row_of(v, "levels"))
+    if (!length(l)) l <- .codelist_order(cl, v)
+    if (length(l)) new[[v]] <- l else new[[v]] <- NULL
+  }
+  o <- suppressWarnings(as.numeric(vr$order))
+  nested <- !is.na(vr$under %||% rep(NA, nrow(vr))) & nzchar(vr$under %||% rep("", nrow(vr)))
+  k <- !is.na(o) & !nested
+  vo <- vr$variable[k][order(o[k])]
+  if (length(vo)) new$variable <- vo else new$variable <- NULL
+  hide <- vr$variable[!is.na(vr$empty_levels) & tolower(vr$empty_levels) == "hide"]
+  keep_drop <- setdiff(as.character(unlist(lv$.drop_empty)), vars)
+  drop <- unique(c(keep_drop, hide))
+  if (length(drop)) new$.drop_empty <- drop else new$.drop_empty <- NULL
+  first <- intersect("variable", names(new))
+  new <- new[c(first, setdiff(names(new), first))]
+  put("plan_levels", new, lv)
+  # plan_labels(): a variable's heading (its values' labels kept)
+  lb <- .builder_args(its, "plan_labels") %||% list()
+  new <- lb
+  for (v in vars) {
+    cur <- lb[[v]]
+    if (!is.null(cur) && !(is.character(cur) && length(cur) == 1L && is.null(names(cur)))) next
+    l <- row_of(v, "label")
+    if (is.na(l) || !nzchar(l)) new[[v]] <- NULL else new[[v]] <- l
+  }
+  # (the variables moved: their headings in their new order, as the
+  # program lists them)
+  if (!identical(vo, as.character(unlist(lv$variable)))) {
+    by_o <- vr$variable[order(is.na(o), o)]
+    r <- match(names(new), by_o)
+    new <- new[order(is.na(r), r)]
+  }
+  put("plan_labels", new, lb)
+  # plan_nest(): rows under a level of another variable
+  ne <- .builder_args(its, "plan_nest") %||% list()
+  new <- ne
+  for (v in vars) {
+    u <- row_of(v, "under")
+    if (is.na(u) || !nzchar(trimws(u))) new[[v]] <- NULL else
+      new[[v]] <- stats::setNames(list(trimws(sub("^[^:]*:", "", u))), trimws(sub(":.*$", "", u)))
+  }
+  put("plan_nest", new, ne)
+  out
+}
+
 #' Read and write a table the builder way
 #'
 #' `builder_read()` describes a report's summary table from its sheets (and
@@ -158,15 +409,24 @@ builder_stats <- function() {
 #' @export
 builder_read <- function(x, output_id, meta = NULL) {
   id <- output_id
-  tb <- .rows_for(x, "tables", id)
+  # the roles, the variables' headings, order and levels: the report's
+  # items (its YAML over its layers)
+  its <- builder_items(x, id, meta)
+  tb <- .builder_tables_rows(x, id, its)
+  # (from the spec; while the sheets hold edits it has not taken yet, or
+  # the planner has none, the sheets' rows: a code list's order is then
+  # the code list's, not the table's own)
+  in_spec <- !is.null(.spec_items(x, id))
   # the column variables, outermost first (tables$cols "A | B")
   key <- .split_list(tb$cols[1L])
   if (!length(key) && !is.null(meta) && length(meta$by)) key <- meta$by[1L]
   if (!length(key)) key <- NA_character_
 
-  vr <- .rows_for(x, "variables", id)
-  vr <- vr[!duplicated(vr$variable), , drop = FALSE]
   cl <- tryCatch(sheet_rows(x, "codelists", id), error = function(e) NULL)
+  vr <- if (in_spec) .builder_vars_rows(its, cl) else {
+    v <- .rows_for(x, "variables", id)
+    v[!duplicated(v$variable), , drop = FALSE]
+  }
   # a variable's levels in order, by .level_order() (this table's own, the
   # report's code list, the ARD's factor, as first seen) with where they
   # come from (`level_from`); those no sheet states are remembered, so
@@ -476,13 +736,14 @@ builder_write <- function(x, output_id, state, was = NULL) {
   # so what the form cannot show -- a statistic's own template, a
   # condition, an order of one's own -- stays as the sheets have it
   changed <- function(part) is.null(was) || !identical(st[[part]], was[[part]])
+  # the report's items (its YAML over its layers): table_plan()'s roles,
+  # plan_levels(), plan_labels(), plan_nest() are written into them
+  its <- builder_items(x, id)
   # tables: the column key, and one group per variable unless said otherwise
-  tb <- sheet_rows(x, "tables", id)
-  tb$output_id <- NULL
-  if (!nrow(tb)) tb[1L, ] <- NA
-  # (a key the sheets do not state yet, read from the ARD, is written too)
-  inh_tb <- inherited_rows(x, "tables", id)
-  no_cols <- is.na(tb$cols[1L]) && (!nrow(inh_tb) || is.na(inh_tb$cols[1L]))
+  tb <- .builder_tables_own(x, id, its)
+  tb_was <- tb
+  # (a key the plan does not state yet, read from the ARD, is written too)
+  no_cols <- is.na(tb$cols[1L])
   put_key <- !anyNA(st$key) && (changed("key") || no_cols)
   if (put_key) tb$cols[1L] <- paste(st$key, collapse = " | ")
   # the value the table prints: the number (rounded here) or the ARD's text
@@ -537,11 +798,7 @@ builder_write <- function(x, output_id, state, was = NULL) {
   }
   # whose {n} the header prints (the form asks only when a cell uses {n})
   if (!is.null(st$header_n) && "header_n" %in% names(tb)) tb$header_n[1L] <- st$header_n
-  if (is.na(tb$rows[1L]) && (is.null(was) || put_key)) {
-    inh <- inherited_rows(x, "tables", id)
-    if (!nrow(inh) || is.na(inh$rows[1L])) tb$rows[1L] <- "group = variable"
-  }
-  x <- set_sheet_rows(x, "tables", id, tb)
+  if (is.na(tb$rows[1L]) && (is.null(was) || put_key)) tb$rows[1L] <- "group = variable"
 
   # a hierarchy table's outermost row key a page each (layout)
   if (length(st$hierarchy) && changed("row_pages") && !is.null(st$row_pages)) {
@@ -554,8 +811,9 @@ builder_write <- function(x, output_id, state, was = NULL) {
   }
 
   # variables: the arms' order, each variable's label, order and levels
-  vr <- sheet_rows(x, "variables", id)
-  vr$output_id <- NULL
+  cl <- tryCatch(sheet_rows(x, "codelists", id), error = function(e) NULL)
+  vr <- .builder_vars_rows(its, cl)
+  vr_was <- vr
   put <- function(vr, v, ...) {
     val <- list(...)
     if (!length(val)) return(vr)
@@ -601,7 +859,30 @@ builder_write <- function(x, output_id, state, was = NULL) {
   }
   empty <- rowSums(!is.na(vr[setdiff(names(vr), "variable")])) == 0 &
     vr$variable %in% st$key
-  x <- set_sheet_rows(x, "variables", id, vr[!empty, , drop = FALSE])
+  vr <- vr[!empty, , drop = FALSE]
+  # the roles and the variables into the report's items: one write, last
+  # (after the sheets' cells below, which the spec then takes in first)
+  w <- .builder_items_from_rows(its, tb, vr, vr_was, cl)
+  fin <- function(x) if (length(w)) .spec_set_items(x, id, w) else x
+  # the tables row's other cells (the value, a hierarchy's order and its
+  # any-event row, whose {n}): the sheet, as yet -- only those changed
+  rest <- setdiff(names(tb), c("cols", "rows", "label", "keep_where"))
+  same_cell <- function(a, b) {
+    a <- as.character(a %||% NA)[1L]
+    b <- as.character(b %||% NA)[1L]
+    identical(is.na(a), is.na(b)) && (is.na(a) || identical(a, b))
+  }
+  ch <- rest[!vapply(rest, function(k) same_cell(tb[[k]], tb_was[[k]]), NA)]
+  if (length(ch)) {
+    own <- sheet_rows(x, "tables", id)
+    own$output_id <- NULL
+    if (!nrow(own)) own[1L, ] <- NA
+    for (k in ch) {
+      if (!k %in% names(own)) own[[k]] <- NA_character_
+      own[[k]][1L] <- tb[[k]][1L]
+    }
+    x <- set_sheet_rows(x, "tables", id, own)
+  }
 
   # cells: the continuous rows and the categorical format it manages, and
   # the statistics' decimals (the digits sheet), each written only when
@@ -619,7 +900,7 @@ builder_write <- function(x, output_id, state, was = NULL) {
   cat_ch <- (changed("cat_format") || changed("pct_decimals") || changed("value") ||
     changed("cat_own")) &&
     !(identical(st$cat_format, "own") && is.na(st$cat_own %||% NA_character_))
-  if (!cont_ch && !cat_ch && !dig_ch) return(.builder_header(x, id, st))
+  if (!cont_ch && !cat_ch && !dig_ch) return(fin(.builder_header(x, id, st)))
   ce <- sheet_rows(x, "cells", id)
   ce$output_id <- NULL
   inh <- inherited_rows(x, "cells", id)
@@ -683,7 +964,7 @@ builder_write <- function(x, output_id, state, was = NULL) {
   # statistic nothing states yet (a row just added)
   if (dig_ch) x <- .builder_digits(x, id, st)
   else if (cont_ch) x <- .builder_digits(x, id, st, missing_only = TRUE)
-  .builder_header(x, id, st)
+  fin(.builder_header(x, id, st))
 }
 
 # The digits sheet as the form says it: a statistic's decimals where they

@@ -308,3 +308,120 @@ test_that("a card's edit writes that report's YAML only, its content only; Rever
                    "defaults")
   expect_false("plan_stub" %in% vapply(.spec_output(q, id)$content, function(x) x$fn, ""))
 })
+
+test_that("the builder's form reads and writes the report's items: roles, labels, levels, nests (#417)", {
+  s <- model_sample()
+  p <- s$planner
+  id <- "T-14-1-1"
+  rel <- "spec/outputs/T-14-1-1.yml"
+  st <- builder_read(p, id)
+  expect_identical(st$key, "TRT01A")
+  expect_identical(st$variables$variable, c("AGE", "AGEGR1", "SEX", "RACE", "ETHNIC"))
+  expect_identical(st$variables$label[1L], "Age (years)")
+  # unchanged: nothing written
+  expect_identical(builder_write(p, id, st, was = st)$spec$text, p$spec$text)
+  own_of <- function(q, fn) Filter(function(x) identical(x$fn, fn), .spec_output(q, id)$content)[[1L]]
+  # a heading: plan_labels() only, in that report's file only
+  st1 <- st
+  st1$variables$label[1L] <- "Age, years"
+  q <- builder_write(p, id, st1, was = st)
+  expect_identical(changed_files(p$spec$text, q$spec$text), rel)
+  y0 <- p$spec$text[[rel]]
+  y1 <- q$spec$text[[rel]]
+  expect_identical(setdiff(y1, y0), "      AGE: Age, years")
+  expect_identical(own_of(q, "plan_labels")$args$AGE, "Age, years")
+  # (written into the spec, not the sheets: the program from the YAML)
+  expect_false(is.null(.spec_items(q, id)))
+  # the variables moved and an arm's order: plan_levels(variable = , TRT01A = ),
+  # the headings in the new order
+  st2 <- st
+  st2$variables <- st$variables[c(3, 1, 2, 4, 5), ]
+  rownames(st2$variables) <- NULL
+  st2$arms$TRT01A <- rev(st$arms$TRT01A)
+  q <- builder_write(p, id, st2, was = st)
+  lv <- own_of(q, "plan_levels")$args
+  expect_identical(lv$variable, c("SEX", "AGE", "AGEGR1", "RACE", "ETHNIC"))
+  expect_identical(lv$TRT01A, c("Control", "Drug X"))
+  expect_identical(names(own_of(q, "plan_labels")$args)[1L], "SEX")
+  expect_identical(builder_read(q, id)$variables$variable, st2$variables$variable)
+  # the rows' layers: table_plan(rows = )
+  st3 <- st
+  st3$layers <- c("SEX", ".variable")
+  q <- builder_write(p, id, st3, was = st)
+  expect_identical(own_of(q, "table_plan")$args$rows, list(group1 = "SEX", group = "variable"))
+  # a variable under another's level: plan_nest(), out of the variables' order
+  p13 <- "T-14-1-3"
+  s13 <- builder_read(p, p13)
+  s13b <- s13
+  s13b$variables$under[s13b$variables$variable == "SEX"] <- "AGEGR1: <65 years"
+  q <- builder_write(p, p13, s13b, was = s13)
+  o13 <- .spec_output(q, p13)$content
+  ne <- Filter(function(x) identical(x$fn, "plan_nest"), o13)[[1L]]
+  expect_identical(ne$args, list(SEX = list(AGEGR1 = "<65 years")))
+  lv13 <- Filter(function(x) identical(x$fn, "plan_levels"), o13)[[1L]]$args
+  expect_identical(lv13$variable, "AGEGR1")
+  expect_identical(changed_files(p$spec$text, q$spec$text), "spec/outputs/T-14-1-3.yml")
+  # ... and read back so: under its parent, after it
+  r13 <- builder_read(q, p13)
+  expect_identical(r13$variables$under[r13$variables$variable == "SEX"], "AGEGR1: <65 years")
+  # a hierarchy's rows: table_plan(rows = , label = )
+  m <- list(hierarchy = c("AEBODSYS", "AEDECOD"), by = "TRT01A",
+            keys = list(TRT01A = c("Drug X", "Control"), AEBODSYS = character(), AEDECOD = character()))
+  h <- builder_read(p, "T-14-3-1", m)
+  h2 <- h
+  h2$row_keys <- rev(h$row_keys)
+  q <- builder_write(p, "T-14-3-1", h2, was = h)
+  tp <- Filter(function(x) identical(x$fn, "table_plan"), .spec_output(q, "T-14-3-1")$content)[[1L]]
+  expect_identical(tp$args$rows, list(group1 = "AEDECOD"))
+  expect_identical(tp$args$label, list(label = "AEBODSYS"))
+  # the variables shown: plan_filter(where = ); all shown again, no filter
+  pf <- .builder_args(builder_items(p, id), "plan_filter") %||% list()
+  pf$where <- tflspec::tfl_r(.hidden_vars_write("ETHNIC"))
+  q <- .spec_set_items(p, id, list(list(fn = "plan_filter", args = pf, drop_empty = TRUE)))
+  w <- .builder_args(builder_items(q, id), "plan_filter")$where
+  expect_identical(.hidden_vars_read(.filter_where_text(w)), "ETHNIC")
+  expect_identical(changed_files(p$spec$text, q$spec$text), rel)
+  q2 <- .spec_set_items(q, id, list(list(fn = "plan_filter", args = list(), drop_empty = TRUE)))
+  expect_null(.builder_args(builder_items(q2, id), "plan_filter"))
+  expect_identical(q2$spec$text, p$spec$text)
+  # empty values hidden: plan_levels(.drop_empty = )
+  lv <- .builder_args(builder_items(p, id), "plan_levels")
+  lv$.drop_empty <- "RACE"
+  q <- .spec_set_items(p, id, list(list(fn = "plan_levels", args = lv, drop_empty = TRUE)))
+  expect_identical(builder_read(q, id)$variables$variable, st$variables$variable)
+  expect_identical(.builder_vars_rows(builder_items(q, id))$empty_levels[
+    .builder_vars_rows(builder_items(q, id))$variable == "RACE"], "hide")
+})
+
+test_that("the builder's rows and the items' arguments: one way and back (#417)", {
+  expect_identical(.role_text(c(group1 = "AEBODSYS", group = "variable")),
+                   "group1 = AEBODSYS | group = variable")
+  expect_identical(.role_text(NA), "NA")
+  expect_identical(.role_text(NULL), NA_character_)
+  expect_identical(.role_text(list(group1 = ~"Overall", group = "variable")),
+                   "group1 = \"Overall\" | group = variable")
+  expect_identical(.role_value("group1 = AEBODSYS | group = variable"),
+                   c(group1 = "AEBODSYS", group = "variable"))
+  expect_true(is.na(.role_value("NA")))
+  expect_null(.role_value(NA_character_))
+  v <- .role_value("group1 = \"Overall\" | group = variable")
+  expect_true(inherits(v$group1, "formula"))
+  expect_identical(.role_text(v), "group1 = \"Overall\" | group = variable")
+  # the variables rows of items: a nested one after its parent
+  its <- list(
+    list(fn = "plan_levels", args = list(variable = c("AGE", "RACE", "SEX"), RACE = c("White", "Asian"),
+                                         .drop_empty = "SEX")),
+    list(fn = "plan_labels", args = list(AGE = "Age", subgroup = c(ALL = "All"))),
+    list(fn = "plan_nest", args = list(ASIANSUB = list(RACE = "Asian"))))
+  vr <- .builder_vars_rows(its)
+  expect_identical(vr$variable, c("AGE", "RACE", "SEX", "ASIANSUB"))
+  expect_identical(vr$order, c("1", "2", "4", "3"))
+  expect_identical(vr$label, c("Age", NA, NA, NA))
+  expect_identical(vr$empty_levels, c(NA, NA, "hide", NA))
+  expect_identical(vr$under, c(NA, NA, NA, "RACE: Asian"))
+  # nothing edited: nothing to write
+  tb <- data.frame(cols = "TRT01A", rows = "group = variable", label = NA_character_,
+                   keep_where = NA_character_)
+  its$tp <- list(fn = "table_plan", args = list(cols = "TRT01A", rows = list(group = "variable")))
+  expect_length(.builder_items_from_rows(its, tb, vr, vr), 0L)
+})

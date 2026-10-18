@@ -8700,16 +8700,19 @@ app_server <- function(input, output, session, start) {
                     class = "rp-b-kind", paste0("\u2192 ", t("under"), " ", under_of(i))))),
       v$variable)
     hier <- length(st$hierarchy) > 0L
-    # a summary table's variables not shown (the row filter the builder
-    # writes; NULL: the row filter is the user's own)
-    hidden <- if (!hier) .hidden_vars_read(.rows_for(p0, "tables", id)$keep_where[1L])
-    bform$hidden <- hidden
     al <- function(fn, arg) builder_label(.arg_meaning(fn, arg), arg, "arg", lang)
     # the cards, one an item of the table's content, in its order, the ARD's
     # normalization first (its hierarchy, step 1's, and the any-event row);
     # the required and the usual ones of the table's kind shown though the
     # content has none (off), and those added here waiting for a value
     items <- guarded(builder_items(p0, id, m)) %||% .builder_items_ard_first(list())
+    # the variables not shown (plan_filter()'s condition the builder writes;
+    # NULL: the condition is the user's own)
+    hidden <- .hidden_vars_read(.filter_where_text(.builder_args(items, "plan_filter")$where) %||%
+                                  NA_character_)
+    bform$hidden <- hidden
+    # the variables' rows as the items say them (headings, levels, nesting)
+    vr_items <- .builder_vars_rows(items)
     # (a verb added or switched off here stays a card: kept in added_by
     # though the content has it now, so off -- its rows taken away -- it
     # is still shown; the menu's Remove drops it)
@@ -8809,7 +8812,7 @@ app_server <- function(input, output, session, start) {
         shiny::actionLink("b_rows_step1", t("Step 1's analysis"))))
     # (a summary table's variables each shown or not: plan_filter()'s card,
     # written as its row filter; the ARD stays as it is)
-    shown_ui <- if (!hier && !is.null(hidden)) shiny::checkboxGroupInput(
+    shown_ui <- if (nrow(v) >= 2L && !is.null(hidden)) shiny::checkboxGroupInput(
       bid("shown"),
       with_tip(t("Shown"),
                t("Unticked: the table does not show the variable's rows (written as the row filter, plan_filter()); the ARD stays as it is.")),
@@ -8849,12 +8852,12 @@ app_server <- function(input, output, session, start) {
       shiny::uiOutput(bid("warn")))
     # plan_labels(): each variable's heading, levels and nesting (a summary
     # table; the values-and-labels card of the next step takes them over)
-    vr_own <- .rows_for(p0, "variables", id)
+    vr_own <- vr_items
     label_from_ard <- function(var) {
       l <- vr_own$label[match(var, vr_own$variable)]
       length(l) != 1L || is.na(l) || !nzchar(l)
     }
-    labels_body <- if (!hier) shiny::tagList(
+    labels_body <- if (nrow(v) > 0L) shiny::tagList(
       .btn("cl3_open", t("Code lists: in step 1 (1-1, column definitions)"),
            class = "btn-sm btn-link py-0 px-0 mb-1"),
       # the headings and the order as one grid (the code list of the
@@ -8922,7 +8925,7 @@ app_server <- function(input, output, session, start) {
       # column variables' levels: the columns' order)
       plan_levels = if (has("plan_levels")) .levels_body(
         bid, st, sheet_rows(p0, "codelists", id),
-        empty = .rows_for(p0, "variables", id), lang = lang,
+        empty = vr_items, lang = lang,
         vars = if (!hier) var_items, cols = shiny::uiOutput(bid("arms_ui"))),
       plan_sort = if (hier && isTRUE(item_of("plan_sort")$present))
         hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
@@ -9361,7 +9364,7 @@ app_server <- function(input, output, session, start) {
     rv$p <- p2
     rv$btouched <- TRUE
     bform$filter_where <- e
-    bform$hidden <- if (!length(bform$st$hierarchy)) .hidden_vars_read(e)
+    bform$hidden <- .hidden_vars_read(e)
     fresh <- .builder_item_at(tryCatch(builder_items(p2, bform$id, bform$meta), error = function(e) list()),
                               "plan_filter")
     if (!is.null(fresh)) {
@@ -9386,7 +9389,7 @@ app_server <- function(input, output, session, start) {
   # (variables$empty_levels "hide") or shown
   shiny::observe(builder_guard({
     bform_drawn()
-    shiny::req(identical(builder_case(), "ok"))
+    shiny::req(builder_case() %in% c("ok", "hierarchy"))
     v <- bform$st$variables
     shiny::req(is.data.frame(v), nrow(v) > 0L)
     got <- lapply(seq_len(nrow(v)), function(i) input[[bid(paste0("lvdrop", i))]])
@@ -9394,40 +9397,30 @@ app_server <- function(input, output, session, start) {
     id <- shiny::isolate(bform$id)
     shiny::req(identical(id, shiny::isolate(current())))
     p <- shiny::isolate(rv$p)
-    now <- .empty_levels_of(.rows_for(p, "variables", id))
+    its <- builder_items(p, id)
+    lv <- .builder_args(its, "plan_levels") %||% list()
+    now <- as.character(unlist(lv$.drop_empty))
     want <- now
     for (i in seq_along(got)) {
       if (is.null(got[[i]])) next
-      want[[v$variable[i]]] <- isTRUE(got[[i]])
+      want <- if (isTRUE(got[[i]])) union(want, v$variable[i]) else setdiff(want, v$variable[i])
     }
-    ch <- names(want)[vapply(names(want), function(k) !identical(isTRUE(want[[k]]),
-                                                               isTRUE(now[[k]])), NA)]
-    if (!length(ch)) return()
-    vr <- sheet_rows(p, "variables", id)
-    vr$output_id <- NULL
-    if (!"empty_levels" %in% names(vr)) vr$empty_levels <- NA_character_
-    for (k in ch) {
-      j <- match(k, vr$variable)
-      if (is.na(j)) {
-        vr[nrow(vr) + 1L, ] <- NA
-        j <- nrow(vr)
-        vr$variable[j] <- k
-      }
-      vr$empty_levels[j] <- if (isTRUE(want[[k]])) "hide" else NA_character_
-    }
-    p2 <- guarded(set_sheet_rows(p, "variables", id, vr))
+    if (setequal(want, now)) return()
+    if (length(want)) lv$.drop_empty <- want else lv$.drop_empty <- NULL
+    p2 <- guarded(.spec_set_items(p, id, list(list(fn = "plan_levels", args = lv,
+                                                   drop_empty = TRUE))))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$btouched <- TRUE
   }))
-  # A summary table's variables shown: those unticked are written as the
-  # row filter (tables$keep_where `!variable %in% c(...)`); the ARD stays as
-  # it is.  At least one stays shown.
+  # The variables shown: those unticked are written as the row filter
+  # (plan_filter(where = !variable %in% c(...)), its other arguments kept);
+  # the ARD stays as it is.  At least one stays shown.
   shiny::observeEvent({
     bform_drawn()
     input[[bid("shown")]]
   }, {
-    shiny::req(identical(builder_case(), "ok"), identical(bform$id, current()),
+    shiny::req(builder_case() %in% c("ok", "hierarchy"), identical(bform$id, current()),
                !is.null(bform$hidden))
     vars <- bform$st$variables$variable
     sh <- input[[bid("shown")]]
@@ -9439,12 +9432,11 @@ app_server <- function(input, output, session, start) {
     hidden <- setdiff(vars, sh)
     if (setequal(hidden, bform$hidden)) return()
     id <- bform$id
-    tb <- sheet_rows(rv$p, "tables", id)
-    tb$output_id <- NULL
-    if (!nrow(tb)) tb[1L, ] <- NA
-    if (!"keep_where" %in% names(tb)) tb$keep_where <- NA_character_
-    tb$keep_where[1L] <- .hidden_vars_write(vars[vars %in% hidden])
-    p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
+    pf <- .builder_args(builder_items(rv$p, id), "plan_filter") %||% list()
+    w <- .hidden_vars_write(vars[vars %in% hidden])
+    if (is.na(w)) pf$where <- NULL else pf$where <- tflspec::tfl_r(w)
+    p2 <- guarded(.spec_set_items(rv$p, id, list(list(fn = "plan_filter", args = pf,
+                                                      drop_empty = TRUE))))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$btouched <- TRUE
@@ -9475,7 +9467,7 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$b_vcl_toggle, vcl_open(!vcl_open()))
   output$b_vcl <- shiny::renderUI({
     bform_drawn()
-    shiny::req(identical(builder_case(), "ok"))
+    shiny::req(builder_case() %in% c("ok", "hierarchy"))
     on <- vcl_open()
     shiny::tagList(
       shiny::tags$button(
@@ -9491,7 +9483,7 @@ app_server <- function(input, output, session, start) {
   })
   vcl_key <- shiny::reactive(paste("vcl", bform_drawn(), sep = "|"))
   output$b_vcl_hot <- rhandsontable::renderRHandsontable({
-    shiny::req(vcl_open(), identical(builder_case(), "ok"))
+    shiny::req(vcl_open(), builder_case() %in% c("ok", "hierarchy"))
     vcl_key()
     v <- bform$st$variables
     d <- data.frame(value = v$variable,
