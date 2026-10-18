@@ -511,7 +511,7 @@
         cat_cols <- setdiff(cat_cols, c(.group_choices(cols), grep("FL$", cat_cols, value = TRUE)))
         shiny::selectizeInput("pd_tpl_subgroups", t("Subgroups"), .labelled(cat_cols, cols),
                               intersect(c("SEX", "AGEGR1"), cat_cols), multiple = TRUE,
-                              options = list(plugins = list("remove_button")))
+                              options = list(plugins = list("remove_button", "drag_drop")))
       },
       if (kind == "forest" && !whole) {
         g <- .group_choices(cols)

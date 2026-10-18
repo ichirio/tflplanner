@@ -337,3 +337,10 @@ test_that("the rounding's choices say SAS, R, IEC 60559; the YAML keeps sas, r, 
   expect_match(h, '<option value="r">R</option>', fixed = TRUE)
   expect_match(h, '<option value="iec60559">IEC 60559</option>', fixed = TRUE)
 })
+
+test_that("an ordered field of several values is dragged to reorder (#417)", {
+  h <- html(arg_field("c", "hierarchy", "list<column>", value = c("AEBODSYS", "AEDECOD"),
+                      choices = c("AEBODSYS", "AEDECOD")))
+  expect_match(h, "drag_drop", fixed = TRUE)
+  expect_match(h, "remove_button", fixed = TRUE)
+})

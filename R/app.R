@@ -4774,7 +4774,7 @@ app_server <- function(input, output, session, start) {
       if (!in_stack) shiny::selectizeInput(
         st_id("by"), with_tip(argl("Grouping variables", "by"), t("The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step 2's. A combination with no records is shown, with 0.")),
         bch, by_now, multiple = TRUE,
-        width = "100%", options = list(plugins = list("remove_button"))),
+        width = "100%", options = list(plugins = list("remove_button", "drag_drop"))),
       # the same analysis once more without its groups: cards' overall rows,
       # which a table shows as its Total column (step 3 switches it for
       # every analysis by the column variable)
@@ -4796,7 +4796,7 @@ app_server <- function(input, output, session, start) {
           st_id("strata"), with_tip(argl("Repeated within", "strata"),
                                     t("Repeated within each combination the data has (e.g. PARAMCD \u00d7 AVISIT). Unlike the groups (by), a combination with no records is not shown: for 0s, use the groups.")), sch, strata_now,
           multiple = TRUE, width = "100%",
-          options = list(plugins = list("remove_button"),
+          options = list(plugins = list("remove_button", "drag_drop"),
                          placeholder = t("none")))),
         shiny::div(class = "flex-grow-1", shiny::selectInput(
           st_id("den"), with_tip(argl("Percentages of", "denominator",
@@ -4856,7 +4856,7 @@ app_server <- function(input, output, session, start) {
       shiny::selectizeInput(
         st_id("pick"), argl("Statistics", "statistics"), choices = ch, selected = have,
         multiple = TRUE, width = "100%",
-        options = list(plugins = list("remove_button"),
+        options = list(plugins = list("remove_button", "drag_drop"),
                        placeholder = t("the method's default (below)"))),
       if (!length(have)) shiny::div(
         class = "small mt-n2 mb-1",
@@ -6247,7 +6247,7 @@ app_server <- function(input, output, session, start) {
       shiny::selectizeInput(
         st_id("by"), argl("Grouping variables", ".by"),
         an_by_choices(r, .split_bar(r$by)), .split_bar(r$by), multiple = TRUE,
-        width = "100%", options = list(plugins = list("remove_button"))),
+        width = "100%", options = list(plugins = list("remove_button", "drag_drop"))),
       shiny::checkboxInput(
         st_id("overall"),
         with_tip(argl("Also over all subjects", "overall"),
@@ -11580,7 +11580,7 @@ app_server <- function(input, output, session, start) {
                          width = "100%"),
       shiny::selectizeInput("mf_params", t("Parameters (a page each)"), pc,
                             selected = pc[seq_len(min(2L, length(pc)))], multiple = TRUE,
-                            width = "100%", options = list(plugins = list("remove_button"))),
+                            width = "100%", options = list(plugins = list("remove_button", "drag_drop"))),
       shiny::div(
         class = "d-flex gap-2",
         shiny::selectInput("mf_base", t("Baseline category"), first_of(c("BNRIND", "BTOXGR")),

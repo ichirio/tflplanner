@@ -91,7 +91,7 @@
       shiny::selectizeInput(paste0(cid, "__cols"), NULL,
                             choices = .compare_choices(cols, comparisons), selected = cols,
                             multiple = TRUE, width = "100%",
-                            options = list(create = TRUE, plugins = list("remove_button"),
+                            options = list(create = TRUE, plugins = list("remove_button", "drag_drop"),
                                            placeholder = t("Choose or type a column's name"))),
       if (!length(st)) shiny::div(class = "small text-warning",
                                   t("The ARD has no comparison records (a test, a difference): add one in step 1, then read the ARD again.")),

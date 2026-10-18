@@ -411,7 +411,9 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   choices <- .choices_with(choices, value)
   ph <- if (!is.null(placeholder)) as.character(placeholder)[[1L]] else tr("Choose", lang)
   opts <- list(placeholder = ph)
-  if (multiple) opts$plugins <- list("remove_button")
+  # (several: in order, dragged to reorder -- a hierarchy's levels, the
+  # columns of a stub, the keys of an order)
+  if (multiple) opts$plugins <- list("remove_button", "drag_drop")
   shiny::selectizeInput(fid, NULL, choices = c(stats::setNames("", ""), choices),
                         selected = value, multiple = multiple, width = "100%", options = opts)
 }
