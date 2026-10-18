@@ -50,9 +50,6 @@ content:
       cols: TRT01A
       rows:
         group: variable
-  - plan_labels:
-      AGEGR1: Age group, n (%)
-      SEX: Sex, n (%)
   - plan_levels:
       variable:
         - AGEGR1
@@ -66,6 +63,9 @@ content:
       AGEGR1:
         - <65 years
         - '>=65 years'
+  - plan_labels:
+      AGEGR1: Age group, n (%)
+      SEX: Sex, n (%)
   - plan_paginate_rows:
       max_rows: 24
 page:
