@@ -257,6 +257,13 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 .rp-inline .btn { padding-top: .25rem; padding-bottom: .25rem; }
 /* a top tab the chosen report has nothing on */
 .nav-link.rp-idle { opacity: .45; }
+/* the top bar (the pages, Save) stays in view on a tall page (a figure's
+   designer, the table builder); its height (--rp-top, .sticky_top_js) is
+   where the panes that stay in view start, and what a card brought into
+   view is kept clear of */
+nav.navbar.navbar-static-top { position: sticky; top: 0; z-index: 1020;
+  background-color: var(--bs-body-bg, #fff); }
+html { scroll-padding-top: calc(var(--rp-top, 0px) + .5rem); }
 /* a step's mark worked out again (a run in the background): not faded */
 [id^='step_mark_'].recalculating { opacity: 1 !important; }
 /* While the server works on what the user did (opening a study, switching
@@ -842,6 +849,7 @@ app_ui <- function(lang = "en") {
                             shiny::tags$script(shiny::HTML(.updating_js)),
                             shiny::tags$script(shiny::HTML(.report_pick_js)),
                             shiny::tags$script(shiny::HTML(.dt_adjust_js)),
+                            shiny::tags$script(shiny::HTML(.sticky_top_js)),
                             shiny::tags$script(shiny::HTML(.adata_code_js)),
                             shiny::tags$style(shiny::HTML(.review_css)),
                             shiny::tags$script(shiny::HTML(.review_js)),
@@ -1140,6 +1148,24 @@ $(document).on('shiny:value shiny:error', function(e) {
 # time: fitting every table of the app on each of these (a form opens with
 # several folded parts, each a toggle) measured thousands of cells and took
 # seconds.
+# The top bar's height as --rp-top on the page (it wraps on a narrow
+# window): the sticky panes start under it
+.sticky_top_js <- "
+(function() {
+  function put() {
+    var n = document.querySelector('nav.navbar.navbar-static-top');
+    if (!n) return;
+    document.documentElement.style.setProperty('--rp-top', n.offsetHeight + 'px');
+  }
+  $(function() {
+    put();
+    var n = document.querySelector('nav.navbar.navbar-static-top');
+    if (n && window.ResizeObserver) new ResizeObserver(put).observe(n);
+    $(window).on('resize', put);
+  });
+})();
+"
+
 .dt_adjust_js <- "
 (function() {
   var roots = [], timer = null;

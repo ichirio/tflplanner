@@ -1454,8 +1454,8 @@ builder_code_map <- function(lines, items) {
 @media (min-width: 992px) {
   /* SPEC | Code | Result beside the cards stays in view as they scroll: the
      column is the sticky box (the tabs inside it are not), its own scroll */
-  .rp-b-right { position: sticky; top: .5rem;
-    max-height: calc(100vh - 1rem); overflow-y: auto; }
+  .rp-b-right { position: sticky; top: calc(var(--rp-top, 0px) + .5rem);
+    max-height: calc(100vh - var(--rp-top, 0px) - 1rem); overflow-y: auto; }
   .rp-b-right .rp-tabs { position: static; max-height: none; overflow-y: visible; }
 }
 .rp-back-code { padding: 0 .3rem; font-size: 12px; text-decoration: none; }
