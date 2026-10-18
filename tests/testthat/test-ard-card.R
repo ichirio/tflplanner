@@ -48,7 +48,7 @@ test_that("pages, a hierarchy, two column keys; no meta", {
   expect_false(grepl("variables", ard_card_summary(m2)$line, fixed = TRUE))
   none <- ard_card_summary(NULL)
   expect_null(none$rows)
-  expect_match(none$line, "not read yet", fixed = TRUE)
+  expect_match(none$line, "not made yet", fixed = TRUE)
   # in Japanese
   ja <- ard_card_summary(card_meta(), tr = function(x) tr(x, lang = "ja"))
   expect_match(ja$line, "\u5217 TRT01A\uff083 \u7fa4\uff09", fixed = TRUE)

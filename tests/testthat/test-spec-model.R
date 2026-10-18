@@ -612,3 +612,35 @@ test_that("the rounding on plan_digits()' card: the study's defaults.yml, back a
     expect_identical(length(readLines(rel)), length(d0))
   })
 })
+
+test_that("Discard changes: the study back to its last save, its draft gone; nothing to discard, disabled (#417)", {
+  skip_on_cran()
+  model_sample()
+  home <- getOption("tflplanner.home")
+  shiny::testServer(server_for("SAMPLE-01"), {
+    rv <- session$userData$rv
+    session$flushReact()
+    expect_match(output$discard_btn$html, "disabled", fixed = TRUE)
+    saved <- rv$saved
+    # a change of the study's own files (defaults.yml) and of a report
+    p2 <- .spec_set_rounding(rv$p, "r")
+    it <- Filter(function(x) identical(x$fn, "plan_stub"), builder_items(p2, "T-14-1-1"))[[1L]]
+    rv$p <- .builder_item_write(p2, "T-14-1-1", "plan_stub", utils::modifyList(it$args, list(indent = 3L)))
+    session$elapse(3000)
+    expect_true(session$userData$dirty())
+    expect_false(grepl("disabled", output$discard_btn$html, fixed = TRUE))
+    # (its draft, as the app keeps one once the edits pause)
+    d <- suppressMessages(open_study("SAMPLE-01", home = home))
+    d$planner <- rv$p
+    .write_draft(d, home)
+    expect_true(file.exists(.draft_file("SAMPLE-01", home)))
+    session$setInputs(discard = 1)
+    session$setInputs(discard_ok = 1)
+    session$elapse(3000)
+    expect_identical(rv$p, saved)
+    expect_identical(rv$p$spec$text, saved$spec$text)
+    expect_false(session$userData$dirty())
+    expect_false(file.exists(.draft_file("SAMPLE-01", home)))
+    expect_match(output$discard_btn$html, "disabled", fixed = TRUE)
+  })
+})

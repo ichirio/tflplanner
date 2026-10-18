@@ -1087,6 +1087,7 @@ app_ui <- function(lang = "en") {
     bslib::nav_spacer(),
     bslib::nav_item(shiny::uiOutput("save_state")),
     bslib::nav_item(shiny::uiOutput("save_btn")),
+    bslib::nav_item(shiny::uiOutput("discard_btn")),
     bslib::nav_item(shiny::uiOutput("close_btn")))
 }
 
@@ -2094,6 +2095,35 @@ app_server <- function(input, output, session, start) {
     rv$save_ver
     if (has_study()) .btn("save", t("Save"), class = "btn-sm btn-primary",
                           `data-saving` = t("Saving..."))
+  })
+  # [Discard changes]: the study back to its last save -- every unsaved
+  # change of it, as a save would write them (every report, the study's
+  # files such as defaults.yml), and its draft gone.  Asked in the page
+  # first; nothing to discard, the button cannot be pressed.
+  output$discard_btn <- shiny::renderUI({
+    if (!has_study()) return(NULL)
+    .btn("discard", t("Discard changes"), class = "btn-sm btn-outline-secondary ms-1",
+         disabled = !isTRUE(dirty()))
+  })
+  shiny::observeEvent(input$discard, {
+    if (!isTRUE(dirty())) return()
+    shiny::showModal(shiny::modalDialog(
+      title = t("Discard changes"), easyClose = TRUE,
+      shiny::p(t("Every change not saved goes -- in every report of the study and in the study's own files (defaults.yml ...), as a save would have written them -- and the study is as it was last saved. The draft goes too.")),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("discard_ok", t("Discard changes"), class = "btn-danger"))))
+  })
+  shiny::observeEvent(input$discard_ok, {
+    shiny::removeModal()
+    held$p <- held$before <- NULL
+    rv$p <- rv$saved
+    rv$meta <- rv$saved_meta
+    guarded(.drop_draft(rv$study$meta$study_id))
+    # (the screens drawn again from it: the cards, the code, the preview)
+    rv$bver <- rv$bver + 1L
+    rv$ard_ver <- rv$ard_ver + 1L
+    bump()
+    notify(t("The changes were discarded: the study is as it was last saved."))
   })
   # [Close]: tflplanner stops -- where it runs on this computer only (an
   # app on a server is not one user's to stop).  Unsaved changes are asked
@@ -3602,8 +3632,9 @@ app_server <- function(input, output, session, start) {
       class = "d-flex flex-wrap gap-2 align-items-center",
       shiny::strong("ARD"),
       shiny::span(class = paste("small", if (st$need) "text-muted"), st$text),
-      if (st$need) .btn("fetch2", t("Preview this table's ARD"),
-                        class = "btn-sm btn-outline-primary"))
+      if (st$need) .btn("fetch2", t("Generate this table's ARD"),
+                        class = "btn-sm btn-outline-primary"),
+      if (st$need) help_tip(t("Makes this report's ARD in an R of its own, for the table builder's choices and the preview. The study ARD (output/ard/ard.rds) is not changed (the study ARD is made by the ARD step's Make the ARD).")))
   })
   # A report's ARD in one word -- not made, outdated (its definition has
   # changed), made (when), error -- and whether a Preview is wanted.
@@ -3711,7 +3742,7 @@ app_server <- function(input, output, session, start) {
   need_meta <- function() {
     m <- meta_of(current())
     if (is.null(m)) {
-      notify(t("Preview this table's ARD first."), "warning")
+      notify(t("Generate this table's ARD first."), "warning")
     }
     m
   }
@@ -8703,8 +8734,9 @@ app_server <- function(input, output, session, start) {
       type = t("The builder is for Tables; Listings and Figures are made in their data code."),
       meta = shiny::tagList(
         t("This table has no ARD yet: the builder is built from it."), " ",
-        .btn("fetch3", t("Preview this table's ARD"),
-             class = "btn-sm btn-primary ms-1")),
+        .btn("fetch3", t("Generate this table's ARD"),
+             class = "btn-sm btn-primary ms-1"), " ",
+        help_tip(t("Makes this report's ARD in an R of its own, for the table builder's choices and the preview. The study ARD (output/ard/ard.rds) is not changed (the study ARD is made by the ARD step's Make the ARD)."))),
       NULL)
     if (is.null(msg)) return(pane_head(
       t("Table builder"),
@@ -10593,7 +10625,7 @@ app_server <- function(input, output, session, start) {
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
     rv$ard_ver
     d <- ard_data(rv$study, id)
-    if (is.null(d)) return(list(id = id, error = t("No data to show yet: Preview this table's ARD.")))
+    if (is.null(d)) return(list(id = id, error = t("No data to show yet: generate this table's ARD.")))
     tryCatch(list(id = id, pages = preview_cached(rv$p, id, d)),
              error = function(e) list(id = id, error = conditionMessage(e)))
   })

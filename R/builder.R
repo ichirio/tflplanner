@@ -1075,7 +1075,7 @@ builder_write <- function(x, output_id, state, was = NULL) {
 # label (NULL with no meta).  `tr`: the app's translation.
 ard_card_summary <- function(meta, page_by = character(), tr = function(x) x) {
   if (is.null(meta) || (!length(meta$by) && !NROW(meta$variables))) {
-    return(list(line = tr("ARD: not read yet (step 1, \"Preview this table's ARD\")"),
+    return(list(line = tr("ARD: not made yet (step 1, \"Generate this table's ARD\")"),
                 rows = NULL))
   }
   cut <- function(x, k) if (length(x) > k) c(utils::head(x, k), "\u2026") else x
