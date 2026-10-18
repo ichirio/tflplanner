@@ -198,8 +198,20 @@ test_that("a line of the program leads to the card that wrote it", {
   cells <- m$line[m$path == "plan_cells"]
   expect_gt(length(cells), 1L)
   expect_identical(cells, seq(min(cells), max(cells)))
-  # the code lists at the head: plan_levels()'s
-  expect_identical(path_of("^cl_sex <- "), "plan_levels")
+  # the code lists at the head: plan_levels()'s.  T-14-1-1's orders are the
+  # ARD's own, which tflspec does not write (#355): an order of the
+  # report's own, SEX's values the other way round
+  o <- p$spec$outputs[[id]]
+  k <- match("plan_labels", vapply(o$content, function(it) it$fn, ""))
+  o$content <- append(o$content, list(list(fn = "plan_levels",
+                                           args = list(SEX = c("Male", "Female")))),
+                      after = k - 1L)
+  p3 <- .spec_set_output(p, id, o)
+  code3 <- unlist(strsplit(paste(program_code(p3, id), collapse = "\n"), "\n", fixed = TRUE))
+  m3 <- builder_code_map(code3, builder_items(p3, id))
+  at <- grep("^cl_sex <- ", code3)[1L]
+  expect_false(is.na(at))
+  expect_identical(m3$path[match(at, m3$line)], "plan_levels")
   # nothing outside the plan
   expect_true(is.na(path_of("^generate_rtfreport")))
   # the map on the page

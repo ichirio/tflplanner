@@ -573,10 +573,15 @@ test_that("the values' order, data first: this table's, the code list's, the ARD
 test_that("builder_read() tells where each order comes from; a key column's factor counts", {
   skip_if_not_installed("cards")
   p <- sample_planner()
-  st <- builder_read(p, "T-14-1-1")
-  # the sample's own levels: this table's
+  # levels of the report's own: this table's (the sample's orders are its
+  # code lists', which tflspec does not write: #355)
+  vr <- sheet_rows(p, "variables", "T-14-1-1")
+  vr$levels[vr$variable == "SEX"] <- "Male | Female"
+  st <- builder_read(.put_rows(p, "T-14-1-1", "variables", vr), "T-14-1-1")
   expect_identical(st$level_from$SEX$source, "table")
   expect_null(st$level_from[["AGE"]])
+  st <- builder_read(p, "T-14-1-1")
+  expect_identical(st$level_from$SEX$source, "codelist")
   # no own levels: the report's code list's, as tflspec writes it
   vr <- sheet_rows(p, "variables", "T-14-1-1")
   vr$levels <- NA_character_
