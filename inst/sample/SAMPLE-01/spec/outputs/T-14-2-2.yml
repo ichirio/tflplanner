@@ -69,9 +69,6 @@ content:
         - !r is.na(conf.high) ~ "{estimate:.0f} ({conf.low:.0f}, NE)"
         - '{estimate:.0f} ({conf.low:.0f}, {conf.high:.0f})'
       time: '{estimate:.1f%} ({conf.low:.1f%}, {conf.high:.1f%})'
-  - plan_labels:
-      prob: Time to first event (days)
-      time: Event-free probability (95% CI)
   - plan_levels:
       variable:
         - prob
@@ -79,6 +76,9 @@ content:
       TRT01A:
         - Drug X
         - Control
+  - plan_labels:
+      prob: Time to first event (days)
+      time: Event-free probability (95% CI)
   - plan_col_header:
       header:
         - line: '1'

@@ -60,13 +60,13 @@ content:
         'n': '{N:.0f}'
         Mean (95% CI): '{estimate:.1f} ({conf.low:.1f}, {conf.high:.1f})'
         p-value: '{p.value:.3f}'
-  - plan_labels:
-      CHG: Change from baseline at week 24 (mmHg)
   - plan_levels:
       variable: CHG
       TRTA:
         - Drug X
         - Control
+  - plan_labels:
+      CHG: Change from baseline at week 24 (mmHg)
   - plan_paginate_rows:
       max_rows: 24
 page:

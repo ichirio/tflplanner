@@ -422,15 +422,15 @@ builder_items <- function(x, output_id, meta = NULL) {
 # designs a table: the mapping (ARD -> table: which variables and
 # statistics go to which rows, columns and cells -- the structure, the
 # cells, the statistic groups, the Total, the comparisons, the row filter)
-# and the finishing (the content and the look: the labels, the values'
-# order, the nesting, the decimals, the row order, the column header, the
+# and the finishing (the content and the look: the values' order, the
+# labels, the nesting, the decimals, the row order, the column header, the
 # layout).  normalize_ard() is neither: the ARD made ready for the plan,
 # first, with no line of its own.  The schema's `stage` (mapping /
 # finishing) says it when tflspec has it; else this table.
 .plan_sections <- list(
   mapping = c("table_plan", "plan_cells", "plan_stat_groups", "plan_total", "plan_compare",
               "plan_filter"),
-  finish = c("plan_labels", "plan_levels", "plan_nest", "plan_digits", "plan_sort",
+  finish = c("plan_levels", "plan_labels", "plan_nest", "plan_digits", "plan_sort",
              "plan_col_header", "plan_stub", "plan_blanks", "plan_paginate_rows",
              "plan_paginate_group", "plan_paginate_cols", "plan_row_group", "plan_hide",
              "plan_columns", "plan_style", "plan_cell_style"))
@@ -466,7 +466,7 @@ builder_items <- function(x, output_id, meta = NULL) {
 
 # (one list for every table, whatever its kind -- #417 Q2; `hier` unused)
 .plan_usual <- function(hier = FALSE) {
-  c("plan_labels", "plan_levels", "plan_sort", "plan_digits", "plan_col_header", "plan_total",
+  c("plan_levels", "plan_labels", "plan_sort", "plan_digits", "plan_col_header", "plan_total",
     "plan_filter")
 }
 

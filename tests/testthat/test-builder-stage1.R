@@ -19,7 +19,7 @@ test_that("the groups by verb: the table's skeleton, the finishing; normalize_ar
                "plan_filter")) {
     expect_identical(.plan_section(fn), "mapping", info = fn)
   }
-  for (fn in c("plan_labels", "plan_levels", "plan_nest", "plan_digits", "plan_sort",
+  for (fn in c("plan_levels", "plan_labels", "plan_nest", "plan_digits", "plan_sort",
                "plan_col_header", "plan_stub", "plan_blanks", "plan_paginate_rows",
                "plan_style", "plan_columns", "plan_cell_style", "plan_hide")) {
     expect_identical(.plan_section(fn), "finish", info = fn)

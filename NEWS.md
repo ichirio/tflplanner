@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **The table builder reads and writes the report's YAML items** (#417,
-  0.0.2.9239; step B3 of the YAML-native plan).  tflspec >= 0.0.24.9152.
+  0.0.2.9242; step B3 of the YAML-native plan).  tflspec >= 0.0.24.9163.
   Each card is the report's item of its function, read over the layers
   it extends with where each argument comes from (this table, the
   study's defaults, a pattern, the ARD) and written back into the
@@ -23,6 +23,12 @@
   "Generate this table's ARD"; cards named "Level order" and "Display
   names"; the code pane as tall as the window, its edge dragged.
   `builder_read()` and `builder_write()` are internal now.
+
+- **The values' order comes before the labels** (#421, 0.0.2.9240).
+  tflspec (>= 0.0.24.9163) writes `plan_levels()` before `plan_labels()`,
+  so the builder's cards and a table's generated code put the values'
+  order first.  SAMPLE-01's specs are written in the new order; the
+  tables' RTF files are unchanged.
 
 - **tflspec's `layout$group_heading_at` and `pages_heading_at`** (tflspec
   #337, 0.0.2.9238): where a table's page names print (the section header,
