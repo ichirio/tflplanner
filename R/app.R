@@ -9950,12 +9950,15 @@ app_server <- function(input, output, session, start) {
     # (the switch is the card's: its body shows while it is on)
     output[[paste0("b", n, "_total_ui")]] <- shiny::renderUI(shiny::tagList(
       shiny::div(
-        class = "d-flex flex-wrap gap-2 align-items-end mb-2",
+        # (the fields' labels on one line, their boxes under them)
+        class = "d-flex flex-wrap gap-3 align-items-start mb-2 rp-total-fields",
         shiny::textInput(bid("total_label"),
-                         builder_label(.arg_meaning("plan_total", "label"), "label", "arg", lang),
+                         with_tip(builder_label(.arg_meaning("plan_total", "label"), "label", "arg", lang),
+                                  .arg_help("plan_total", "label", lang = lang)),
                          if (now$on) now$label else "", placeholder = "Total", width = "160px"),
         shiny::radioButtons(bid("total_pos"),
-                            builder_label(.arg_meaning("plan_total", "position"), "position", "arg", lang),
+                            with_tip(builder_label(.arg_meaning("plan_total", "position"), "position", "arg", lang),
+                                     .arg_help("plan_total", "position", lang = lang)),
                             stats::setNames(c("last", "first"), c(t("last"), t("first"))),
                             now$position, inline = TRUE),
         help_tip(t("plan_total puts the ARD's overall rows (results not split by group) in a Total column.")),
