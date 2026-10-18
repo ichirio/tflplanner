@@ -432,7 +432,7 @@
       tflspec::tfl_item_own(tflspec::tfl_item(fn, args), below)
     o$content <- .content_put(o$content, fn, k, own)
   }
-  .spec_set_output(p, output_id, o)
+  .spec_set_output(p, output_id, o, content_only = TRUE)
 }
 
 # The study's rounding -- plan_digits(rounding = ) of the study's defaults,
@@ -477,14 +477,14 @@
   if (is.null(o) || inherits(o$content, "tfl_r")) return(p)
   if (sum(.content_fns(o$content) == fn) < k) return(p)
   o$content <- .content_put(o$content, fn, k, NULL)
-  .spec_set_output(p, output_id, o)
+  .spec_set_output(p, output_id, o, content_only = TRUE)
 }
 
 # A report written straight into the spec (a tfl_output; NULL removes
 # it): the view's edits taken in first, the report's text made by
 # tflspec::tfl_write_output(), and its rows of the view made again from it
 # -- in the view and in the base, so the bridge does not take it back
-.spec_set_output <- function(p, output_id, output) {
+.spec_set_output <- function(p, output_id, output, content_only = FALSE) {
   if (is.null(p$spec)) stop("The planner has no YAML spec.", call. = FALSE)
   p <- .spec_sync(p, p$spec$meta)
   attr(p, "changed") <- NULL
@@ -510,43 +510,77 @@
     sp$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
   }
   p$spec <- sp
-  .spec_view_output(p, output_id)
+  .spec_view_output(p, output_id, content_only = content_only && !is.null(output))
 }
 
-# One report's rows of the view (and of the base) made again from the spec
-.spec_view_output <- function(p, output_id) {
+# One report's rows of the view made again from the spec, and the base
+# with them.  Only that report is bridged (the study's defaults and
+# patterns, which give no row of the report's, left out: .spec_study_lean()),
+# only its sheets whose rows changed are set, and the base -- the view as
+# the spec was last in step with it, as it is before an edit here -- is the
+# view again (#417: a card's save in well under a second).
+.spec_view_output <- function(p, output_id, content_only = FALSE) {
   sp <- p$spec
-  v <- .planner_from_spec(sp$study, sp$outputs[intersect(output_id, names(sp$outputs))])
-  put <- function(x) {
-    nc <- attr(x, "not_converted")
-    no_id <- function(d) { d$output_id <- NULL; d }
-    for (s in names(x$sheets)) {
-      x <- set_sheet_rows(x, s, output_id, no_id(sheet_rows(v, s, output_id)))
+  # (only the report's content changed -- a card's edit: its table sheets
+  # alone, bridged from its content and code lists)
+  if (content_only && !is.null(sp$outputs[[output_id]])) {
+    o <- sp$outputs[[output_id]]
+    o[c("ard", "data", "page")] <- list(NULL)
+    back <- tflspec::tfl_sheets_from_spec(.spec_study_lean(sp$study), stats::setNames(list(o), output_id))
+    for (s in intersect(table_sheets(), names(p$sheets))) {
+      d <- .normalize_sheet(back$table[[s]], s)
+      new <- d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
+      old <- sheet_rows(p, s, output_id)
+      new$output_id <- old$output_id <- NULL
+      rownames(new) <- rownames(old) <- NULL
+      if (!identical(old, new)) p <- set_sheet_rows(p, s, output_id, new)
     }
-    for (s in c("analysis_data", "analyses")) {
-      d <- v$ard[[s]]
-      x <- set_ard_rows(x, s, output_id,
-                        no_id(d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]))
-    }
-    for (s in names(x$lf %||% .empty_lf())) {
-      x <- set_lf_rows(x, s, output_id, no_id(lf_rows(v, s, output_id)))
-    }
-    x <- set_fig_design(x, output_id, fig_design(v, output_id))
-    row <- v$outputs[v$outputs$output_id == output_id, , drop = FALSE]
-    i <- match(output_id, x$outputs$output_id)
-    if (!nrow(row)) {
-      if (!is.na(i)) x$outputs <- x$outputs[-i, , drop = FALSE]
-    } else if (is.na(i)) {
-      x$outputs <- rbind(x$outputs, row[names(x$outputs)])
-    } else {
-      x$outputs[i, ] <- row[names(x$outputs)]
-    }
-    rownames(x$outputs) <- NULL
-    attr(x, "not_converted") <- nc
-    x
+    if (!is.null(p$spec$base)) p$spec$base <- .planner_body(p)
+    return(p)
   }
-  base <- sp$base
-  p <- put(p)
-  if (!is.null(base)) p$spec$base <- put(base)
+  v <- .planner_from_spec(.spec_study_lean(sp$study), sp$outputs[intersect(output_id, names(sp$outputs))])
+  nc <- attr(p, "not_converted")
+  no_id <- function(d) { d$output_id <- NULL; d }
+  same_rows <- function(a, b) identical(no_id(a), no_id(b))
+  for (s in names(p$sheets)) {
+    new <- sheet_rows(v, s, output_id)
+    if (!same_rows(sheet_rows(p, s, output_id), new)) p <- set_sheet_rows(p, s, output_id, no_id(new))
+  }
+  for (s in c("analysis_data", "analyses")) {
+    d <- v$ard[[s]]
+    new <- d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
+    o <- p$ard[[s]]
+    old <- if (!is.null(o)) o[!is.na(o$output_id) & o$output_id == output_id, , drop = FALSE]
+    if (is.null(old) || !identical(`rownames<-`(no_id(old), NULL), `rownames<-`(no_id(new), NULL))) {
+      p <- set_ard_rows(p, s, output_id, no_id(new))
+    }
+  }
+  for (s in names(p$lf %||% .empty_lf())) {
+    new <- lf_rows(v, s, output_id)
+    if (!same_rows(lf_rows(p, s, output_id), new)) p <- set_lf_rows(p, s, output_id, no_id(new))
+  }
+  fd <- fig_design(v, output_id)
+  if (!identical(fig_design(p, output_id), fd)) p <- set_fig_design(p, output_id, fd)
+  row <- v$outputs[v$outputs$output_id == output_id, , drop = FALSE]
+  i <- match(output_id, p$outputs$output_id)
+  if (!nrow(row)) {
+    if (!is.na(i)) p$outputs <- p$outputs[-i, , drop = FALSE]
+  } else if (is.na(i)) {
+    p$outputs <- rbind(p$outputs, row[names(p$outputs)])
+  } else if (!identical(unname(as.list(p$outputs[i, ])), unname(as.list(row[names(p$outputs)])))) {
+    p$outputs[i, ] <- row[names(p$outputs)]
+  }
+  rownames(p$outputs) <- NULL
+  attr(p, "not_converted") <- nc
+  if (!is.null(p$spec$base)) p$spec$base <- .planner_body(p)
   p
+}
+
+# The study's spec with no rows of its own for the bridge to make: its
+# defaults' and patterns' content and page (a report's rows are its own)
+.spec_study_lean <- function(study) {
+  if (is.null(study)) return(study)
+  if (!is.null(study$defaults)) study$defaults[c("content", "page")] <- list(NULL)
+  study$patterns <- list()
+  study
 }

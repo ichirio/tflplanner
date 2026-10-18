@@ -520,3 +520,61 @@ test_that("the builder's header, order and pages are plan_col_header(), plan_sor
   expect_null(arg(q2, "plan_paginate_group"))
   expect_identical(q2$spec$text, p$spec$text)
 })
+
+test_that("a card's save rebuilds that report's view only, and writes that report's program only (#417)", {
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  p <- s$planner
+  id <- "T-14-1-1"
+  # the view made again for the report alone: the same as made whole
+  it <- Filter(function(x) identical(x$fn, "plan_stub"), builder_items(p, id))[[1L]]
+  args <- utils::modifyList(it$args, list(indent = 3L))
+  q <- .builder_item_write(p, id, "plan_stub", args)
+  o <- .spec_output(q, id)
+  full <- .spec_set_output(p, id, o)
+  expect_true(.same_planner(q, full))
+  expect_identical(q$spec$base, full$spec$base)
+  expect_true(identical(.planner_body(q), q$spec$base))
+  # saved: that report's program written, the others' unchanged
+  s$planner <- q
+  s2 <- suppressMessages(save_study(s, home = home))
+  progs <- s2$files[grepl("/programs/tfl/[^/]+[.]R$", s2$files$file), , drop = FALSE]
+  expect_identical(basename(progs$file[progs$status == "written"]), "T-14-1-1.R")
+  expect_true(any(grepl("indent = 3", readLines(progs$file[progs$status == "written"]), fixed = TRUE)))
+  # the study's rounding: every table's program again
+  s2$planner <- .spec_set_rounding(s2$planner, "r")
+  s3 <- suppressMessages(save_study(s2, home = home))
+  f <- s3$files$file[grepl("tfl/T-14-3-1[.]R$", s3$files$file)]
+  expect_identical(s3$files$status[s3$files$file == f], "written")
+  expect_true(any(grepl("rounding = \"r\"", readLines(f), fixed = TRUE)))
+})
+
+test_that("a save merges what another session saved since; nothing saved since, nothing to merge (#417)", {
+  model_sample()
+  home <- getOption("tflplanner.home")
+  s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  it <- Filter(function(x) identical(x$fn, "plan_stub"), builder_items(s$planner, "T-14-1-1"))[[1L]]
+  # one session saves an edit of T-14-1-1
+  a <- s
+  a$planner <- .builder_item_write(s$planner, "T-14-1-1", "plan_stub",
+                                   utils::modifyList(it$args, list(indent = 3L)))
+  a2 <- suppressMessages(save_study(a, base = s, home = home))
+  # another, opened before it, saves an edit of T-14-3-1: both are kept
+  b <- s
+  na <- Filter(function(x) identical(x$fn, "normalize_ard"), builder_items(s$planner, "T-14-3-1"))[[1L]]
+  b$planner <- .builder_item_write(s$planner, "T-14-3-1", "normalize_ard",
+                                   utils::modifyList(na$args, list(overall = "Any event")))
+  b2 <- suppressMessages(save_study(b, base = s, home = home))
+  y1 <- readLines(file.path(b2$path, "spec/outputs/T-14-1-1.yml"))
+  y3 <- readLines(file.path(b2$path, "spec/outputs/T-14-3-1.yml"))
+  expect_true(any(grepl("indent: 3", y1, fixed = TRUE)))
+  expect_true(any(grepl("overall: Any event", y3, fixed = TRUE)))
+  # the first session again, from what it saved: nothing to merge, its
+  # edit written, the other's kept
+  a3 <- a2
+  a3$planner <- .builder_item_write(a2$planner, "T-14-1-1", "plan_stub",
+                                    utils::modifyList(it$args, list(indent = 4L)))
+  a4 <- suppressMessages(save_study(a3, base = a2, home = home))
+  expect_true(any(grepl("indent: 4", readLines(file.path(a4$path, "spec/outputs/T-14-1-1.yml")), fixed = TRUE)))
+  expect_true(any(grepl("overall: Any event", readLines(file.path(a4$path, "spec/outputs/T-14-3-1.yml")), fixed = TRUE)))
+})

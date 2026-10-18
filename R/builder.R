@@ -330,8 +330,10 @@ builder_stats <- function() {
 # args, drop_empty) for the verbs that change; none: nothing to write.
 .builder_items_from_rows <- function(its, tb, vr, vr_was, cl = NULL) {
   out <- list()
-  same <- function(fn, a, b) identical(tflspec::tfl_args_to_r(fn, a %||% list()),
-                                       tflspec::tfl_args_to_r(fn, b %||% list()))
+  same <- function(fn, a, b) {
+    identical(a, b) || identical(tflspec::tfl_args_to_r(fn, a %||% list()),
+                                 tflspec::tfl_args_to_r(fn, b %||% list()))
+  }
   put <- function(fn, new, old) {
     if (!same(fn, new, old)) out[[length(out) + 1L]] <<- list(fn = fn, args = new,
                                                               drop_empty = TRUE)
@@ -939,6 +941,10 @@ builder_write <- function(x, output_id, state, was = NULL) {
   if (!length(toks)) return(tpl)
   regmatches(tpl, m) <- list(vapply(toks, function(tk) {
     s <- sub("^[{]([^}:]+).*$", "\\1", tk)
+    # (a format of its own -- significant digits {median:.3s}, a width --
+    # stays; only decimals, {mean:.1f}, are the builder's)
+    spec <- sub("^[{][^}:]+", "", sub("[}]$", "", tk))
+    if (nzchar(spec) && !grepl("^:[.][0-9]+f%?$", spec)) return(tk)
     d <- if (s %in% names(dg)) dg[[s]] else NA
     if (length(d) != 1L || is.na(d)) return(tk)
     pct <- if (grepl("%[}]$", tk)) "%" else ""
@@ -962,16 +968,23 @@ builder_write <- function(x, output_id, state, was = NULL) {
   dg <- st$digits %||% integer()
   rows_tpl <- function(dg) {
     old <- pc$continuous %||% below$continuous %||% list()
+    # (rows with conditions are cell_rows(): its rows are its arguments)
+    call <- if (inherits(old, "tfl_call")) old
+    if (!is.null(call)) old <- call$args %||% list()
     had <- length(old) > 0L
     rows <- if (had || any(st$variables$kind %in% "continuous")) st$rows else character()
     out <- lapply(rows, function(lb) {
       o <- old[[lb]]
+      # a row of conditions, or a template of its own, as written
       if (!is.null(o) && !(is.character(o) && length(o) == 1L)) return(o)
       tpl <- o %||% st$templates[[lb]] %||%
         builder_stats()$template[match(lb, builder_stats()$row)]
       .with_digits(tpl, dg, fmt)
     })
-    stats::setNames(out, rows)
+    out <- stats::setNames(out, rows)
+    if (is.null(call)) return(out)
+    call$args <- out
+    call
   }
   if (cont_ch || dig_ch || val_ch) {
     ct <- rows_tpl(dg)

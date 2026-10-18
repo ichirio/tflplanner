@@ -531,6 +531,7 @@ studies_root <- function(home = tflplanner_home()) {
 # A change of the fingerprints only (a workbook saved again unchanged) is
 # written without a history entry.
 .write_state <- function(study, home = tflplanner_home()) {
+  on.exit(.state_remember(study, home), add = TRUE)
   id <- study$meta$study_id
   dir <- .store_dir(id, home)
   dir.create(file.path(dir, "history"), recursive = TRUE,
@@ -545,10 +546,14 @@ studies_root <- function(home = tflplanner_home()) {
     x$format <- NULL
     x
   }
+  # (the new state as JSON once, and as read back once)
+  nj <- .json(new)
   if (file.exists(f)) {
     old <- jsonlite::fromJSON(f, simplifyVector = FALSE)
-    if (identical(.json(body(old)), .json(body(.from_json(.json(new)))))) {
-      if (identical(.json(old$files), .json(.from_json(.json(new))$files)) &&
+    back <- .from_json(nj)
+    # (both as read from JSON: compared as they are, not written again)
+    if (identical(body(old), body(back))) {
+      if (identical(old$files, back$files) &&
           identical(old$format, new$format)) {
         return(invisible(FALSE))
       }
@@ -559,8 +564,19 @@ studies_root <- function(home = tflplanner_home()) {
     stamp <- gsub("[^0-9]", "", old$saved %||% format(file.mtime(f)))
     file.copy(f, file.path(dir, "history", paste0(stamp, ".json")))
   }
-  writeLines(enc2utf8(.json(new)), f, useBytes = TRUE)
+  writeLines(enc2utf8(nj), f, useBytes = TRUE)
   invisible(TRUE)
 }
 
 .from_json <- function(txt) jsonlite::fromJSON(txt, simplifyVector = FALSE)
+
+# The state file as this process last wrote it, and the planner it wrote it
+# from (.merge_saved(): a save from that planner with the file unchanged
+# since has nothing to merge)
+.state_seen <- new.env()
+.state_remember <- function(study, home) {
+  f <- .state_file(study$meta$study_id, home)
+  if (file.exists(f)) {
+    .state_seen[[f]] <- list(md5 = unname(tools::md5sum(f)), planner = study$planner)
+  }
+}

@@ -621,7 +621,7 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
       next
     }
     if (state == "edited") .back_up_edited(f, root)
-    .write_program(program_code(p, id), f)
+    .write_program(.program_code_last(p, id), f)
     files[nrow(files) + 1L, ] <- list(f, if (state == "edited") "rewritten" else "written")
   }
   ard_files <- .save_ard(p, root, json = FALSE)
@@ -709,15 +709,49 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
 # each refresh (study_status()), and the definition rarely changed between
 .program_cache <- new.env()
 .program_code_last <- function(p, id) {
-  if (!identical(.program_cache$p, p) || !identical(.program_cache$date, Sys.Date()) ||
+  if (!identical(.program_cache$date, Sys.Date()) ||
       !identical(.program_cache$opts, .code_context$opts)) {
-    .program_cache$p <- p
     .program_cache$date <- Sys.Date()
     .program_cache$opts <- .code_context$opts
     .program_cache$code <- list()
+    .program_cache$key <- list()
   }
-  if (is.null(.program_cache$code[[id]])) .program_cache$code[[id]] <- program_code(p, id)
+  # (kept report by report: an edit of one report -- a card of the table
+  # builder -- writes the others' programs from the cache, #417)
+  key <- .program_key(p, id)
+  if (is.null(.program_cache$code[[id]]) || !identical(.program_cache$key[[id]], key)) {
+    .program_cache$code[[id]] <- program_code(p, id)
+    .program_cache$key[[id]] <- key
+  }
   .program_cache$code[[id]]
+}
+
+# What a report's program is written from: the planner with the other
+# reports' own rows of the sheets, listings, figures and spec left out
+# (the study's rows, the patterns', the ARD definition and the report
+# list kept whole), and whether its spec is in step with the sheets
+.program_key <- function(p, id) {
+  # (the planner cut by report once for all its reports)
+  if (!identical(.program_cache$cut_of, p)) {
+    cut <- function(d) {
+      if (!is.data.frame(d) || !"output_id" %in% names(d)) return(list(all = d))
+      o <- d$output_id
+      shared <- is.na(o) | startsWith(o, "@")
+      c(list(shared = d[shared, , drop = FALSE]),
+        split(d[!shared, , drop = FALSE], o[!shared]))
+    }
+    q <- p
+    q$sheets <- q$lf <- q$fig_designs <- q$spec <- NULL
+    .program_cache$cut <- list(sheets = lapply(p$sheets, cut), lf = lapply(p$lf, cut), rest = q,
+                               in_step = !is.null(p$spec) && !is.null(p$spec$base) &&
+                                 .same_planner(p$spec$base, p))
+    .program_cache$cut_of <- p
+  }
+  ct <- .program_cache$cut
+  mine <- function(parts) lapply(parts, function(x) list(x$all, x$shared, x[[id]]))
+  list(ct$rest, sheets = mine(ct$sheets), lf = mine(ct$lf),
+       fig = p$fig_designs[intersect(id, names(p$fig_designs))],
+       spec_output = p$spec$outputs[[id]], spec_study = p$spec$study, in_step = ct$in_step)
 }
 
 # its checksum, kept with it
@@ -733,12 +767,24 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
 
 .program_state <- function(p, id, f) {
   if (!file.exists(f)) return("missing")
+  # (the file as last read, the definition's program the same: its state
+  # again, without reading it)
+  md5 <- unname(tools::md5sum(f))
+  last <- .program_hash_last(p, id)
+  hit <- .state_cache[[f]]
+  if (!is.null(hit) && identical(hit$md5, md5) && identical(hit$last, last)) return(hit$state)
+  state <- .program_state_read(f, last)
+  .state_cache[[f]] <- list(md5 = md5, last = last, state = state)
+  state
+}
+.state_cache <- new.env()
+.program_state_read <- function(f, last) {
   have <- readLines(f, warn = FALSE, encoding = "UTF-8")
   chk <- sub("^#  Checksum   : *", "",
              grep("^#  Checksum   :", have, value = TRUE))
   h <- .body_hash(have)
   if (!length(chk) || !identical(chk[1L], h)) return("edited")
-  if (identical(h, .program_hash_last(p, id))) {
+  if (identical(h, last)) {
     if (any(grepl("tflplanner: the data part of", have, fixed = TRUE))) {
       return("todo")
     }
@@ -1014,6 +1060,14 @@ read_data_head <- function(path, n = 50L) {
 }
 
 .merge_saved <- function(study, base, home) {
+  # (nobody saved since this session did: the state on disk is the one it
+  # wrote, from the planner it is based on -- nothing to merge, #417)
+  f <- .state_file(study$meta$study_id, home)
+  seen <- .state_seen[[f]]
+  if (!is.null(seen) && file.exists(f) && identical(unname(tools::md5sum(f)), seen$md5) &&
+      identical(base$planner, seen$planner)) {
+    return(study)
+  }
   st <- .read_state(study$meta$study_id, home)
   if (is.null(st)) return(study)
   disk <- .study_from_state(st)
