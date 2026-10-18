@@ -4,7 +4,8 @@
   #337, 0.0.2.9236): where a table's page names print (the section header,
   under the titles, or nowhere), said with the pages.  Their help in
   Japanese, and the table builder keeps them with `plan_paginate_group()`
-  and `plan_paginate_rows()`.  Needs tflspec 0.0.24.9156.
+  and `plan_paginate_rows()`.  (Ready before tflspec 0.0.24.9156: with an
+  older tflspec the two lines are unused.)
 
 - **An edit through the sheets keeps what only the spec holds** (#415,
   0.0.2.9235).  When a screen that still edits the sheets (the ARD, the
