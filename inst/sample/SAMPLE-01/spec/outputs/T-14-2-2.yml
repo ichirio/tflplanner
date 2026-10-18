@@ -77,8 +77,9 @@ content:
         - Drug X
         - Control
   - plan_labels:
-      prob: Time to first event (days)
-      time: Event-free probability (95% CI)
+      variable:
+        prob: Time to first event (days)
+        time: Event-free probability (95% CI)
   - plan_col_header:
       header:
         - line: '1'
