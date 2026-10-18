@@ -1,5 +1,15 @@
 # tflplanner (development version)
 
+- **SAMPLE-01 follows tflspec #355 and #358** (#426, 0.0.2.9243; tflspec
+  >= 0.0.24.9168).  The report specs drop the `plan_levels` entries that
+  only repeat what the ARD already says (the code lists applied when the
+  ARD is made, the order of the ARD's analyses), which tflspec no longer
+  writes; an order of a report's own stays (T-14-1-5 and T-14-1-6's
+  variables, T-14-2-2, T-14-2-3).  The variables' headings are written
+  under `plan_labels(variable = c(AGE = ...))`.  The tables' RTF files are
+  unchanged.  The Japanese help covers tflspec's new `post` text and the
+  code lists' `under` column (complete_hierarchy()).
+
 - **The values' order comes before the labels** (#421, 0.0.2.9240).
   tflspec (>= 0.0.24.9163) writes `plan_levels()` before `plan_labels()`,
   so the builder's cards and a table's generated code put the values'
