@@ -152,3 +152,24 @@ test_that("the builder's form: the Layers bar, the groups, the pages as fields, 
     expect_identical(sheet_rows(session$userData$rv$p, "layout", "T-PG")$pages_max_rows, "25")
   })
 })
+
+test_that("a new table only drawn in the builder is no change: nothing saved until one is made (#417)", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  local_home()
+  ard <- cards::ard_stack(cards::ADSL, .by = TRT01A, cards::ard_categorical(variables = SEX))
+  s <- builder_study("T-NEW", ard)
+  f <- file.path(s$path, "spec", "outputs", "T-NEW.yml")
+  y0 <- readLines(f)
+  shiny::testServer(server_for("BN"), {
+    rv <- session$userData$rv
+    open_builder(session, "T-NEW")
+    session$flushReact()
+    # the description the builder shows is in the planner (its preview's)
+    expect_true("table_plan" %in% .content_fns(.spec_output(rv$p, "T-NEW")$content))
+    # ... held: no change, saved as it was
+    expect_false(session$userData$dirty())
+    session$setInputs(save = 1)
+    expect_identical(readLines(f), y0)
+  })
+})

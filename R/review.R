@@ -60,7 +60,15 @@ study_review <- function(study, output_id = NULL, data = c("cached", "read", "no
     }
   }
   p <- study$planner
-  r <- .review_planner(p, facts)
+  # (the same definition and facts as last time -- a save, its status
+  # refreshed -- the same rows, #417)
+  key <- list(.planner_body(p), facts, tflplanner_language())
+  r <- if (identical(.review_memo$planner_key, key)) .review_memo$planner_r else {
+    r0 <- .review_planner(p, facts)
+    .review_memo$planner_key <- key
+    .review_memo$planner_r <- r0
+    r0
+  }
   # a figure's dataset the catalog has but whose facts were not read yet is
   # not missing (D02 says it is not reviewed yet)
   if (inherits(facts, "tfl_data_facts") && nrow(r)) {

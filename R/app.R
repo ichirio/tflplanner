@@ -273,7 +273,10 @@ html.shiny-busy.rp-user-busy body::after { visibility: visible;
   transition: visibility 0s .4s, background .2s .4s; }
 .rp-code textarea, .rp-code pre { font-family: Consolas, 'Courier New',
   monospace; font-size: 12.5px; }
-.rp-code pre { max-height: 520px; overflow: auto; white-space: pre; }
+/* the code: as tall as the window lets it (the sticky column's), its
+   bottom edge dragged to make it shorter or taller */
+.rp-code pre { max-height: calc(100vh - 12rem); min-height: 6rem; overflow: auto; white-space: pre;
+  resize: vertical; }
 /* a step's own code: the header, the editor and its check on a laptop's screen
    (above it 320px, below ~90px: measured at 1366x640 and 1536x730) */
 .rp-code-step textarea { height: clamp(12em, calc(100vh - 410px), 36em); }
@@ -757,9 +760,9 @@ app_ui <- function(lang = "en") {
             placeholder = "data <- normalize_ard(ard)"),
           shiny::div(
             class = "d-flex gap-2 align-items-center mb-2",
-            .btn("fetch", t("Preview"),
+            .btn("fetch", t("Generate this table's ARD"),
                  class = "btn-sm btn-outline-primary"),
-            help_tip(t("Makes this report's ARD (as Preview in step 1), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
+            help_tip(t("Makes this report's ARD (as Generate this table's ARD in step 1), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
           shiny::uiOutput("ard_summary")))))
 
   step_page <- shiny::div(
@@ -1087,6 +1090,7 @@ app_ui <- function(lang = "en") {
     bslib::nav_spacer(),
     bslib::nav_item(shiny::uiOutput("save_state")),
     bslib::nav_item(shiny::uiOutput("save_btn")),
+    bslib::nav_item(shiny::uiOutput("discard_btn")),
     bslib::nav_item(shiny::uiOutput("close_btn")))
 }
 
@@ -1568,8 +1572,14 @@ app_server <- function(input, output, session, start) {
   p_list <- p_part(function(p) list(p$outputs, p$ard, p$lf, p$fig_designs,
                                     p$sheets$report, p$sheets$titles, p$sheets$tokens,
                                     p$study))
+  # A new table's first drawing in the builder (#417): the description the
+  # builder shows is put in the planner -- the preview's, the next edit's
+  # -- but held: until something is changed it is no change (not saved, no
+  # draft), and leaving the report puts the planner back as it was
+  held <- shiny::reactiveValues(p = NULL, before = NULL)
+  unheld <- function(p) if (!is.null(held$p) && identical(p, held$p)) held$before else p
   dirty <- shiny::reactive({
-    has_study() && (!identical(rv$p, rv$saved) ||
+    has_study() && (!identical(unheld(rv$p), rv$saved) ||
                        !identical(rv$meta, rv$saved_meta))
   })
   # for shiny::testServer(), which sees only the session
@@ -1588,8 +1598,9 @@ app_server <- function(input, output, session, start) {
       # (while the dialog of a change made outside the app is up, the
       # draft waits: it is offered once that is decided)
       if (!has_study() || !is.null(rv$draft) || isTRUE(rv$adopting)) return()
-      if (unsaved) .write_draft(current_study())
-      else .drop_draft(rv$study$meta$study_id)
+      # (a draft not written is said, never the session's end)
+      tryCatch(if (unsaved) .write_draft(current_study()) else .drop_draft(rv$study$meta$study_id),
+               error = function(e) message("tflplanner: the draft: ", conditionMessage(e)))
     })
   })
 
@@ -1930,6 +1941,11 @@ app_server <- function(input, output, session, start) {
     s
   }
   do_save <- function() {
+    # (a new table only drawn, nothing changed: saved as it was)
+    if (!is.null(held$p)) {
+      if (identical(rv$p, held$p)) rv$p <- held$before
+      held$p <- held$before <- NULL
+    }
     # what this session opened (or last saved): the save merges it with
     # whatever others saved since
     base <- rv$study
@@ -2082,6 +2098,35 @@ app_server <- function(input, output, session, start) {
     rv$save_ver
     if (has_study()) .btn("save", t("Save"), class = "btn-sm btn-primary",
                           `data-saving` = t("Saving..."))
+  })
+  # [Discard changes]: the study back to its last save -- every unsaved
+  # change of it, as a save would write them (every report, the study's
+  # files such as defaults.yml), and its draft gone.  Asked in the page
+  # first; nothing to discard, the button cannot be pressed.
+  output$discard_btn <- shiny::renderUI({
+    if (!has_study()) return(NULL)
+    .btn("discard", t("Discard changes"), class = "btn-sm btn-outline-secondary ms-1",
+         disabled = !isTRUE(dirty()))
+  })
+  shiny::observeEvent(input$discard, {
+    if (!isTRUE(dirty())) return()
+    shiny::showModal(shiny::modalDialog(
+      title = t("Discard changes"), easyClose = TRUE,
+      shiny::p(t("Every change not saved goes -- in every report of the study and in the study's own files (defaults.yml ...), as a save would have written them -- and the study is as it was last saved. The draft goes too.")),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("discard_ok", t("Discard changes"), class = "btn-danger"))))
+  })
+  shiny::observeEvent(input$discard_ok, {
+    shiny::removeModal()
+    held$p <- held$before <- NULL
+    rv$p <- rv$saved
+    rv$meta <- rv$saved_meta
+    guarded(.drop_draft(rv$study$meta$study_id))
+    # (the screens drawn again from it: the cards, the code, the preview)
+    rv$bver <- rv$bver + 1L
+    rv$ard_ver <- rv$ard_ver + 1L
+    bump()
+    notify(t("The changes were discarded: the study is as it was last saved."))
   })
   # [Close]: tflplanner stops -- where it runs on this computer only (an
   # app on a server is not one user's to stop).  Unsaved changes are asked
@@ -3162,6 +3207,13 @@ app_server <- function(input, output, session, start) {
   # form among them, redrawn (closed, the text lost) while being typed in.
   current <- shiny::reactiveVal(NULL)
   shiny::observe(current(current_now()), priority = 100)
+  # (another report chosen: a new table only drawn, nothing changed, is
+  # put back as it was)
+  shiny::observeEvent(current(), {
+    if (is.null(held$p)) return()
+    if (identical(rv$p, held$p)) rv$p <- held$before
+    held$p <- held$before <- NULL
+  }, ignoreInit = TRUE)
 
   # -- where the user is ---------------------------------------------------
   # A report's screens are the Reports tab's sub-tabs (the list, its
@@ -3583,8 +3635,9 @@ app_server <- function(input, output, session, start) {
       class = "d-flex flex-wrap gap-2 align-items-center",
       shiny::strong("ARD"),
       shiny::span(class = paste("small", if (st$need) "text-muted"), st$text),
-      if (st$need) .btn("fetch2", t("Preview this table's ARD"),
-                        class = "btn-sm btn-outline-primary"))
+      if (st$need) .btn("fetch2", t("Generate this table's ARD"),
+                        class = "btn-sm btn-outline-primary"),
+      if (st$need) help_tip(t("Saves the study when it has unsaved changes, runs this report's ARD program in an R of its own and puts its rows into the study's working ARD (output/ard/ard.rds), the other reports' rows left as they are. The table builder's choices and the preview read it. The official run is the Runs tab's.")))
   })
   # A report's ARD in one word -- not made, outdated (its definition has
   # changed), made (when), error -- and whether a Preview is wanted.
@@ -3692,7 +3745,7 @@ app_server <- function(input, output, session, start) {
   need_meta <- function() {
     m <- meta_of(current())
     if (is.null(m)) {
-      notify(t("Preview this table's ARD first."), "warning")
+      notify(t("Generate this table's ARD first."), "warning")
     }
     m
   }
@@ -4755,7 +4808,7 @@ app_server <- function(input, output, session, start) {
       if (!in_stack) shiny::selectizeInput(
         st_id("by"), with_tip(argl("Grouping variables", "by"), t("The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step 2's. A combination with no records is shown, with 0.")),
         bch, by_now, multiple = TRUE,
-        width = "100%", options = list(plugins = list("remove_button"))),
+        width = "100%", options = list(plugins = list("remove_button", "drag_drop"))),
       # the same analysis once more without its groups: cards' overall rows,
       # which a table shows as its Total column (step 3 switches it for
       # every analysis by the column variable)
@@ -4777,7 +4830,7 @@ app_server <- function(input, output, session, start) {
           st_id("strata"), with_tip(argl("Repeated within", "strata"),
                                     t("Repeated within each combination the data has (e.g. PARAMCD \u00d7 AVISIT). Unlike the groups (by), a combination with no records is not shown: for 0s, use the groups.")), sch, strata_now,
           multiple = TRUE, width = "100%",
-          options = list(plugins = list("remove_button"),
+          options = list(plugins = list("remove_button", "drag_drop"),
                          placeholder = t("none")))),
         shiny::div(class = "flex-grow-1", shiny::selectInput(
           st_id("den"), with_tip(argl("Percentages of", "denominator",
@@ -4837,7 +4890,7 @@ app_server <- function(input, output, session, start) {
       shiny::selectizeInput(
         st_id("pick"), argl("Statistics", "statistics"), choices = ch, selected = have,
         multiple = TRUE, width = "100%",
-        options = list(plugins = list("remove_button"),
+        options = list(plugins = list("remove_button", "drag_drop"),
                        placeholder = t("the method's default (below)"))),
       if (!length(have)) shiny::div(
         class = "small mt-n2 mb-1",
@@ -6228,7 +6281,7 @@ app_server <- function(input, output, session, start) {
       shiny::selectizeInput(
         st_id("by"), argl("Grouping variables", ".by"),
         an_by_choices(r, .split_bar(r$by)), .split_bar(r$by), multiple = TRUE,
-        width = "100%", options = list(plugins = list("remove_button"))),
+        width = "100%", options = list(plugins = list("remove_button", "drag_drop"))),
       shiny::checkboxInput(
         st_id("overall"),
         with_tip(argl("Also over all subjects", "overall"),
@@ -6587,7 +6640,8 @@ app_server <- function(input, output, session, start) {
     shiny::tagList(
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center",
-      .btn("ard_preview", t("Preview"), class = "btn-sm btn-primary"),
+      .btn("ard_preview", t("Generate this table's ARD"), class = "btn-sm btn-primary"),
+      help_tip(t("Saves the study when it has unsaved changes, runs this report's ARD program in an R of its own and puts its rows into the study's working ARD (output/ard/ard.rds), the other reports' rows left as they are. The table builder's choices and the preview read it. The official run is the Runs tab's.")),
       shiny::span(class = "small text-muted",
                   t("Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills."))),
     shiny::uiOutput("ard_run_info"),
@@ -6653,7 +6707,7 @@ app_server <- function(input, output, session, start) {
     r <- ard_res()
     if (is.null(r)) {
       return(shiny::p(class = "small text-muted mt-2",
-                      t("Preview to see the ARD this report's analyses make.")))
+                      t("Generate this table's ARD to see the ARD this report's analyses make.")))
     }
     if (!is.null(r$error)) {
       return(shiny::div(class = "alert alert-danger py-1 small mt-2",
@@ -8197,7 +8251,7 @@ app_server <- function(input, output, session, start) {
   output$lf_note <- shiny::renderUI({
     msg <- switch(lf_type(),
       none = t("Choose a Listing report on the left."),
-      table = t("This is a Table: it is made in Table (builder) and Details (sheets)."),
+      table = t("This is a Table: it is made in step 2, the table builder's cards."),
       listing = t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 2, Data code), if any, changes the data after the condition."),
       figure = t("This is a Figure: it is made in Make the figure."))
     # a listing's: the (i) of its form's heading
@@ -8684,12 +8738,13 @@ app_server <- function(input, output, session, start) {
       type = t("The builder is for Tables; Listings and Figures are made in their data code."),
       meta = shiny::tagList(
         t("This table has no ARD yet: the builder is built from it."), " ",
-        .btn("fetch3", t("Preview this table's ARD"),
-             class = "btn-sm btn-primary ms-1")),
+        .btn("fetch3", t("Generate this table's ARD"),
+             class = "btn-sm btn-primary ms-1"), " ",
+        help_tip(t("Saves the study when it has unsaved changes, runs this report's ARD program in an R of its own and puts its rows into the study's working ARD (output/ard/ard.rds), the other reports' rows left as they are. The table builder's choices and the preview read it. The official run is the Runs tab's."))),
       NULL)
     if (is.null(msg)) return(pane_head(
       t("Table builder"),
-      t("Drag to order, type to rename; every change is written to the sheets (Details) and shown on the right.")))
+      t("Drag to order, type to rename; every change is written to this report's SPEC (YAML) and shown in the code and the preview on the right.")))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
   bid <- function(x) paste0("b", bform$n, "_", x)
@@ -8701,7 +8756,13 @@ app_server <- function(input, output, session, start) {
     m <- meta_of(id)
     st <- builder_read(shiny::isolate(rv$p), id, m)
     # a table with no row of its own yet: the ARD's cards are put on once
-    bform$fresh <- !nrow(sheet_rows(shiny::isolate(rv$p), "tables", id))
+    # (a table with no table_plan() of its own yet: a new one)
+    bform$fresh <- {
+      o <- tryCatch(.spec_output(shiny::isolate(rv$p), id), error = function(e) NULL)
+      tp <- if (!is.null(o)) Filter(function(it) identical(it$fn, "table_plan"), o$content %||% list())
+      if (!is.null(o)) !length(tp) || !length(tp[[1L]]$args) else
+        !nrow(sheet_rows(shiny::isolate(rv$p), "tables", id))
+    }
     bform$n <- bform$n + 1L
     bform_drawn(bform$n)
     bform$id <- id
@@ -8712,20 +8773,12 @@ app_server <- function(input, output, session, start) {
     # only what differs from it
     bform$last <- st
     bform$meta <- m
-    # the column header as lines of the form (NULL: the form cannot show it)
+    # the column header as lines of the form (NULL: the form cannot show
+    # it), and whose {n} it prints: plan_col_header()'s header and values
     p0 <- shiny::isolate(rv$p)
-    own <- sheet_rows(p0, "col_header", id)
-    own$output_id <- NULL
-    eff <- if (nrow(own)) own else {
-      inh <- inherited_rows(p0, "col_header", id)
-      inh$output_id <- NULL
-      inh
-    }
-    bform$hdr <- hdr_uid(header_read(eff, st$key))
-    bform$hdr_n <- {
-      tb <- sheet_rows(p0, "tables", id)
-      if (nrow(tb) && "header_n" %in% names(tb)) tb$header_n[1L] else NA_character_
-    }
+    hd <- .builder_args(guarded(builder_items(p0, id, m)) %||% list(), "plan_col_header")
+    bform$hdr <- hdr_uid(header_read(.header_df(hd$header), st$key))
+    bform$hdr_n <- .header_n_text(hd$values)
     hdr_ver(shiny::isolate(hdr_ver()) + 1L)
     v <- st$variables
     bs <- builder_stats()
@@ -8741,17 +8794,19 @@ app_server <- function(input, output, session, start) {
                     class = "rp-b-kind", paste0("\u2192 ", t("under"), " ", under_of(i))))),
       v$variable)
     hier <- length(st$hierarchy) > 0L
-    # a summary table's variables not shown (the row filter the builder
-    # writes; NULL: the row filter is the user's own)
-    hidden <- if (!hier) .hidden_vars_read(.rows_for(p0, "tables", id)$keep_where[1L])
-    bform$hidden <- hidden
     al <- function(fn, arg) builder_label(.arg_meaning(fn, arg), arg, "arg", lang)
     # the cards, one an item of the table's content, in its order, the ARD's
     # normalization first (its hierarchy, step 1's, and the any-event row);
     # the required and the usual ones of the table's kind shown though the
     # content has none (off), and those added here waiting for a value
-    items <- .builder_items_normalize(guarded(builder_items(p0, id)) %||% list(),
-                                      st$hierarchy, st$overall_label)
+    items <- guarded(builder_items(p0, id, m)) %||% .builder_items_ard_first(list())
+    # the variables not shown (plan_filter()'s condition the builder writes;
+    # NULL: the condition is the user's own)
+    hidden <- .hidden_vars_read(.filter_where_text(.builder_args(items, "plan_filter")$where) %||%
+                                  NA_character_)
+    bform$hidden <- hidden
+    # the variables' rows as the items say them (headings, levels, nesting)
+    vr_items <- .builder_vars_rows(items)
     # (a verb added or switched off here stays a card: kept in added_by
     # though the content has it now, so off -- its rows taken away -- it
     # is still shown; the menu's Remove drops it)
@@ -8838,32 +8893,25 @@ app_server <- function(input, output, session, start) {
           shiny::div(class = "small text-muted rp-b-fixed-note",
                      t("Analysis variables (variable) are no rows (a table of one variable: ORR ...)."))),
         row_label_ui,
+        # (what it means, behind the (i): the way to step 1 alone shown)
         if (hier) shiny::div(
           class = "small text-muted rp-b-fixed-note",
-          with_tip(sprintf(t("The levels %s are the ARD analysis's (step 1)."),
-                           paste(st$hierarchy, collapse = " \u203a ")),
-                   t("A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show can be hidden in a later stage.")),
-          " ", shiny::actionLink("b_rows_step1", t("Step 1's analysis")))),
+          shiny::actionLink("b_rows_step1", t("Step 1's analysis")), " ",
+          help_tip(paste(sprintf(t("The levels %s are the ARD analysis's (step 1)."),
+                                 paste(st$hierarchy, collapse = " \u203a ")),
+                         t("A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show can be hidden in a later stage."))))),
       # a variable the ARD lacks is not offered: the ARD analysis adds it
       if (!hier) shiny::div(
         class = "small text-muted rp-b-fixed-note",
-        t("A variable not here is added in the ARD analysis."), " ",
-        shiny::actionLink("b_rows_step1", t("Step 1's analysis"))))
+        shiny::actionLink("b_rows_step1", t("Step 1's analysis")), " ",
+        help_tip(t("A variable not here is added in the ARD analysis."))))
     # (a summary table's variables each shown or not: plan_filter()'s card,
     # written as its row filter; the ARD stays as it is)
-    shown_ui <- if (!hier && !is.null(hidden)) shiny::checkboxGroupInput(
+    shown_ui <- if (nrow(v) >= 2L && !is.null(hidden)) shiny::checkboxGroupInput(
       bid("shown"),
       with_tip(t("Shown"),
                t("Unticked: the table does not show the variable's rows (written as the row filter, plan_filter()); the ARD stays as it is.")),
       choices = v$variable, selected = setdiff(v$variable, hidden), inline = TRUE)
-    # normalize_ard(): the hierarchy (the ARD analysis's, read only), the
-    # any-event row (the table's: tables$overall_label), the stack, the rest
-    # folded
-    norm_body <- .normalize_body(
-      card_id("normalize_ard"), st$hierarchy, tb = sheet_rows(p0, "tables", id),
-      overall_id = bid("overall"),
-      step_link = shiny::actionLink("b_norm_step1", t("Step 1's analysis"), class = "small ms-1"),
-      revert_id = bid("overall_revert"), lang = lang)
     # plan_cells(): what the cells print
     cells_body <- shiny::tagList(
       shiny::radioButtons(
@@ -8896,15 +8944,18 @@ app_server <- function(input, output, session, start) {
         shiny::numericInput(bid("pct"), t("Decimals of the percent"),
                             value = st$pct_decimals, min = 0, max = 3,
                             width = "260px")),
-      shiny::uiOutput(bid("warn")))
+      shiny::uiOutput(bid("warn")),
+      # a variable's own templates the form does not show (a KM table's
+      # prob / time): said, read only, so that nothing unseen goes
+      .cells_own_note(.builder_args(items, "plan_cells"), st$exceptions$variable, t))
     # plan_labels(): each variable's heading, levels and nesting (a summary
     # table; the values-and-labels card of the next step takes them over)
-    vr_own <- .rows_for(p0, "variables", id)
+    vr_own <- vr_items
     label_from_ard <- function(var) {
       l <- vr_own$label[match(var, vr_own$variable)]
       length(l) != 1L || is.na(l) || !nzchar(l)
     }
-    labels_body <- if (!hier) shiny::tagList(
+    labels_body <- if (nrow(v) > 0L) shiny::tagList(
       .btn("cl3_open", t("Code lists: in step 1 (1-1, column definitions)"),
            class = "btn-sm btn-link py-0 px-0 mb-1"),
       # the headings and the order as one grid (the code list of the
@@ -8917,10 +8968,10 @@ app_server <- function(input, output, session, start) {
           # table prints unless one is written here
           hint <- v$hint[i] %||% NA_character_
           bslib::accordion_panel(
+            # (where a nested one's rows go: plan_nest()'s card says it)
             title = paste0(v$variable[i],
-                           if (!is.null(under_of(i))) paste0(" \u2192 ", t("under"), " ", under_of(i)) else
-                             if (!is.na(v$label[i])) paste0(": ", v$label[i]) else
-                               if (!is.na(hint)) paste0(": ", hint)),
+                           if (!is.na(v$label[i])) paste0(": ", v$label[i]) else
+                             if (!is.na(hint)) paste0(": ", hint)),
             value = v$variable[i],
             # nested under another's level: no heading of its own, so no
             # label to write (the field would mislead)
@@ -8958,7 +9009,6 @@ app_server <- function(input, output, session, start) {
       if (length(at)) at[[1L]]
     }
     bodies <- list(
-      normalize_ard = norm_body,
       table_plan = tp_body, plan_cells = cells_body, plan_col_header = hdr_body,
       plan_total = shiny::uiOutput(bid("total_ui")),
       # plan_digits(): the rounding (the study's: every report's) and the
@@ -8973,11 +9023,17 @@ app_server <- function(input, output, session, start) {
       # column variables' levels: the columns' order)
       plan_levels = if (has("plan_levels")) .levels_body(
         bid, st, sheet_rows(p0, "codelists", id),
-        empty = .rows_for(p0, "variables", id), lang = lang,
+        empty = vr_items, lang = lang,
         vars = if (!hier) var_items, cols = shiny::uiOutput(bid("arms_ui"))),
       plan_sort = if (hier && isTRUE(item_of("plan_sort")$present))
         hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
                      total = .rows_for(p0, "tables", id)$total[1L]))
+    # (a form of its own: the function's other arguments below it)
+    for (fn in names(.special_covered)) {
+      it <- item_of(fn)
+      if (is.null(bodies[[fn]]) || is.null(it) || !(isTRUE(it$present) || isTRUE(it$added))) next
+      bodies[[fn]] <- shiny::tagList(bodies[[fn]], .special_more(card_id(it$path), fn, it, lang))
+    }
     # the layout cards with a form: their arguments as fields (a number, a
     # choice ...), the columns offered the table's keys and row layers
     lay_keys <- setdiff(st$layers %||% character(), ".variable")
@@ -9004,7 +9060,13 @@ app_server <- function(input, output, session, start) {
                    cols_offered)
       wc <- if (identical(fn, "plan_columns")) .widths_cols(it$args$widths, ch)
       bform$form_cols[[it$path]] <- wc
-      body <- .plan_form_body(card_id(it$path), fn, it, choices = ch, lang = lang, cols = wc)
+      # (normalize_ard(): its hierarchy the ARD analysis's, read only, the
+      # way to step 1 beside it)
+      body <- .plan_form_body(
+        card_id(it$path), fn, it, choices = ch, lang = lang, cols = wc,
+        ard = if (identical(fn, "normalize_ard")) list(hierarchy = st$hierarchy),
+        fixed_link = if (identical(fn, "normalize_ard"))
+          shiny::actionLink("b_norm_step1", t("Step 1's analysis"), class = "small ms-1"))
       # plan_filter(): its condition by the condition builder (the rows
       # kept: tables$keep_where), its switches as fields
       if (identical(fn, "plan_filter")) {
@@ -9077,6 +9139,27 @@ app_server <- function(input, output, session, start) {
   }
   # a card's input id: by its path (the verb; "#2" its second call)
   card_id <- function(path) bid(paste0("card_", gsub("[^A-Za-z0-9_]", "_", path)))
+  # after a write: each card whose item now comes from elsewhere (a card
+  # of the study's defaults edited is this table's own; Revert) gets its
+  # mark and Revert in its head, the form not drawn again
+  send_mark <- function(path, f) {
+    session$sendCustomMessage("rp-card-mark", list(
+      card = card_id(path), html = as.character(.card_mark(f, card_id(path), lang)),
+      summary = .item_summary(f, lang = lang)))
+  }
+  refresh_marks <- function(p2) {
+    fresh <- tryCatch(builder_items(p2, bform$id, bform$meta), error = function(e) list())
+    for (i in seq_along(bform$items)) {
+      it <- bform$items[[i]]
+      f <- .builder_item_at(fresh, it$path)
+      if (is.null(f) || !isTRUE(it$present) || !isTRUE(f$present)) next
+      if (identical(f$from, it$from) && identical(isTRUE(f$revert), isTRUE(it$revert)) &&
+          identical(f$args, it$args)) next
+      bform$items[[i]][c("args", "own_args", "from", "arg_from", "below", "revert")] <-
+        f[c("args", "own_args", "from", "arg_from", "below", "revert")]
+      send_mark(it$path, f)
+    }
+  }
   # the Total column's switch: its card's
   total_on_id <- function() paste0(card_id("plan_total"), "__on")
   # a card's Revert: the report's own rows of its verb taken away, so the
@@ -9084,7 +9167,8 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$b_card_revert, {
     it <- .builder_item_at(bform$items, input$b_card_revert$path)
     shiny::req(!is.null(it), identical(bform$id, current()))
-    p2 <- guarded(.builder_item_revert(rv$p, bform$id, it$fn))
+    k <- if (grepl("#", it$path, fixed = TRUE)) as.integer(sub("^.*#", "", it$path)) else 1L
+    p2 <- guarded(.builder_item_revert(rv$p, bform$id, it$fn, k))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$btouched <- TRUE
@@ -9149,8 +9233,8 @@ app_server <- function(input, output, session, start) {
   output$builder_code_jump <- shiny::renderUI({
     id <- current()
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
-    items <- tryCatch(builder_items(rv$p, id), error = function(e) list())
-    code_jump(builder_code_map(program_text(), .builder_items_normalize(items)),
+    items <- tryCatch(builder_items(rv$p, id, meta_of(id)), error = function(e) list())
+    code_jump(builder_code_map(program_text(), items),
               "program_table")
   })
   # A hierarchy's order, one a term (outermost first): by name -- the code
@@ -9212,6 +9296,14 @@ app_server <- function(input, output, session, start) {
       r <- .plan_form_read(input, card_id(it$path), it$fn, cols = bform$form_cols[[it$path]])
       if (!is.null(r)) out[[it$path]] <- r
     }
+    # (a form of its own: the other arguments' fields, the item's whole
+    # arguments)
+    for (fn in names(.special_covered)) {
+      it <- .builder_item_at(bform$items, fn)
+      if (is.null(it) || !(isTRUE(it$present) || isTRUE(it$added))) next
+      r <- .special_read(input, card_id(it$path), fn)
+      if (!is.null(r)) out[[fn]] <- structure(r, special = TRUE)
+    }
     # (the cards of the names the user gives: their whole arguments)
     for (fn in .plan_form_dots) {
       it <- .builder_item_at(bform$items, fn)
@@ -9226,7 +9318,7 @@ app_server <- function(input, output, session, start) {
     }
     out
   })
-  form_args_d <- shiny::debounce(form_args, 600)
+  form_args_d <- shiny::debounce(form_args, 250)
   shiny::observeEvent(form_args_d(), builder_guard({
     now <- form_args_d()
     for (path in names(now)) {
@@ -9237,23 +9329,38 @@ app_server <- function(input, output, session, start) {
       # (the verb's k-th call: "plan_cell_style#2" the second)
       k <- if (grepl("#", path, fixed = TRUE)) as.integer(sub("^.*#", "", path)) else 1L
       dots <- isTRUE(attr(now[[path]], "dots"))
-      own <- if (dots) .dots_form_own(.args_plain_attr(now[[path]]), it, fn) else
-        .plan_form_own(now[[path]], it, fn)
-      if (identical(args_to_r(fn, own), args_to_r(fn, it$own_args %||% list()))) next
-      p2 <- guarded(.builder_item_write(rv$p, bform$id, fn, own, k))
+      if (isTRUE(attr(now[[path]], "special"))) {
+        # (a form of its own writes its item too: the fields below it put
+        # into its arguments as they are now, not as drawn)
+        cur <- .builder_item_at(tryCatch(builder_items(rv$p, bform$id, bform$meta),
+                                         error = function(e) list()), path)
+        if (is.null(cur)) next
+        it$args <- cur$args
+      }
+      args <- if (isTRUE(attr(now[[path]], "special"))) .special_args_put(it$args, now[[path]]) else
+        if (dots) .dots_form_args(.args_plain_attr(now[[path]]), it, fn) else
+          .plan_form_args(now[[path]], it, fn)
+      if (identical(args_to_r(fn, args), args_to_r(fn, it$args %||% list()))) next
+      p2 <- guarded(.builder_item_write(rv$p, bform$id, fn, args, k))
       if (is.null(p2)) next
       rv$p <- p2
       rv$btouched <- TRUE
       # (what the card says now: the next edit is told from it)
-      fresh <- .builder_item_at(tryCatch(builder_items(p2, bform$id), error = function(e) list()), path)
+      fresh <- .builder_item_at(tryCatch(builder_items(p2, bform$id, bform$meta), error = function(e) list()), path)
       if (!is.null(fresh)) {
         was_present <- isTRUE(it$present)
-        bform$items[[at[1L]]][c("args", "own_args", "from", "revert", "present")] <-
-          fresh[c("args", "own_args", "from", "revert", "present")]
-        # a card added here that is now in the code: drawn again (its mark);
-        # a column or a group more or less, a nest changed: drawn again (its
-        # fields; the labels' card says where a variable's rows go)
+        bform$items[[at[1L]]][c("args", "own_args", "from", "arg_from", "below", "revert", "present")] <-
+          fresh[c("args", "own_args", "from", "arg_from", "below", "revert", "present")]
+        # a card added here that is now in the code, or of the defaults now
+        # the report's own: drawn again (its mark, its Revert); a column or a
+        # group more or less, a nest changed: drawn again (its fields; the
+        # labels' card says where a variable's rows go)
+        # (its mark and Revert only: put in its head, not drawn again)
+        if (was_present) send_mark(path, fresh)
         if (!was_present ||
+            # (normalize_ard()'s stack: the keys it adds offered to the rows)
+            (identical(fn, "normalize_ard") &&
+               !identical(.arg_to_r(fresh$args$stack), .arg_to_r(it$args$stack))) ||
             (dots && length(.dots_args(fn, fresh$args)) != length(.dots_args(fn, it$args))) ||
             identical(fn, "plan_nest")) rv$bver <- rv$bver + 1L
       }
@@ -9284,7 +9391,7 @@ app_server <- function(input, output, session, start) {
     } else {
       bform$off_by[[id]] <- unique(c(off, it$fn))
       if (isTRUE(it$present)) {
-        p2 <- guarded(.builder_item_revert(rv$p, id, it$fn))
+        p2 <- guarded(.builder_item_revert(rv$p, id, it$fn, .path_k(it$path)))
         if (is.null(p2)) return()
         rv$p <- p2
         rv$btouched <- TRUE
@@ -9302,7 +9409,7 @@ app_server <- function(input, output, session, start) {
     bform$added_by[[id]] <- setdiff(bform$added_by[[id]] %||% character(), it$fn)
     bform$off_by[[id]] <- setdiff(bform$off_by[[id]] %||% character(), it$fn)
     if (isTRUE(it$present)) {
-      p2 <- guarded(.builder_item_revert(rv$p, id, it$fn))
+      p2 <- guarded(.builder_item_revert(rv$p, id, it$fn, .path_k(it$path)))
       if (is.null(p2)) return()
       rv$p <- p2
       rv$btouched <- TRUE
@@ -9334,47 +9441,6 @@ app_server <- function(input, output, session, start) {
     }
     card_switch(list(fn = fn, path = fn, present = FALSE), TRUE)
   }, ignoreInit = TRUE)
-  # normalize_ard()'s stack (tables$stack, stack_sep, stack_nest): written
-  # as the fields say
-  norm_args <- shiny::reactive({
-    bform_drawn()
-    shiny::req(builder_case() %in% c("ok", "hierarchy"))
-    .normalize_read(input, card_id("normalize_ard"))
-  })
-  norm_args_d <- shiny::debounce(norm_args, 600)
-  shiny::observeEvent(norm_args_d(), builder_guard({
-    r <- norm_args_d()
-    shiny::req(!is.null(r), identical(bform$id, current()))
-    id <- bform$id
-    tb <- sheet_rows(rv$p, "tables", id)
-    tb$output_id <- NULL
-    if (!nrow(tb)) tb[1L, ] <- NA
-    cur <- vapply(names(r), function(k) {
-      v <- if (k %in% names(tb)) as.character(tb[[k]][1L]) else NA_character_
-      if (!is.na(v) && !nzchar(trimws(v))) NA_character_ else v
-    }, "")
-    if (identical(unname(cur), unname(unlist(r)))) return()
-    for (k in names(r)) tb[[k]][1L] <- r[[k]]
-    p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
-    if (is.null(p2)) return()
-    rv$p <- p2
-    rv$btouched <- TRUE
-    # the keys the stack adds offered to the rows at once (subgroup,
-    # subgroup_level), those of a stack taken away no more (unless chosen)
-    st <- bform$st
-    if (!length(st$hierarchy)) {
-      old <- .stack_keys(cur[["stack"]], cur[["stack_nest"]])
-      new <- .stack_keys(r$stack, r$stack_nest)
-      if (!identical(old, new)) {
-        sel <- input[[bid("layers")]] %||% st$layers
-        ch <- unique(c(sel, setdiff(st$layer_choices, c(old, ".variable")), new, ".variable"))
-        bform$st$layer_choices <- ch
-        shiny::updateSelectizeInput(session, bid("layers"),
-                                    choices = stats::setNames(ch, .layer_names(ch, lang = lang, stack = new)),
-                                    selected = sel)
-      }
-    }
-  }))
   # the columns changed: the rows' candidates made again (a key taken out
   # of cols offered to the rows; one put in cols no more -- one column is
   # in cols or in rows, not both)
@@ -9434,24 +9500,25 @@ app_server <- function(input, output, session, start) {
     # written another way, is no change)
     old <- .filter_where_text(it$args$where) %||% NA_character_
     if (identical(e, old) || (!is.na(old) && identical(e, .cond_tidy(old)))) return()
-    own <- it$own_args %||% list()
-    own$where <- if (is.na(e)) NULL else tflspec::tfl_r(e)
-    p2 <- guarded(.builder_item_write(rv$p, bform$id, "plan_filter", own))
+    args <- it$args %||% list()
+    args$where <- if (is.na(e)) NULL else tflspec::tfl_r(e)
+    p2 <- guarded(.builder_item_write(rv$p, bform$id, "plan_filter", args))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$btouched <- TRUE
     bform$filter_where <- e
-    bform$hidden <- if (!length(bform$st$hierarchy)) .hidden_vars_read(e)
-    fresh <- .builder_item_at(tryCatch(builder_items(p2, bform$id), error = function(e) list()),
+    bform$hidden <- .hidden_vars_read(e)
+    fresh <- .builder_item_at(tryCatch(builder_items(p2, bform$id, bform$meta), error = function(e) list()),
                               "plan_filter")
     if (!is.null(fresh)) {
       was_present <- isTRUE(it$present)
-      bform$items[[at[1L]]][c("args", "own_args", "from", "revert", "present")] <-
-        fresh[c("args", "own_args", "from", "revert", "present")]
-      if (!was_present) rv$bver <- rv$bver + 1L
+      bform$items[[at[1L]]][c("args", "own_args", "from", "arg_from", "below", "revert", "present")] <-
+        fresh[c("args", "own_args", "from", "arg_from", "below", "revert", "present")]
+      if (!was_present || !identical(fresh$from, it$from)) rv$bver <- rv$bver + 1L
     }
   }), ignoreInit = TRUE)
-  # plan_digits()' rounding: the study's (every report's), written there
+  # plan_digits()' rounding: the study's (every report's), written into
+  # the study's defaults.yml
   shiny::observeEvent({
     bform_drawn()
     input[[paste0(card_id("plan_digits"), "__rounding")]]
@@ -9459,14 +9526,16 @@ app_server <- function(input, output, session, start) {
     v <- input[[paste0(card_id("plan_digits"), "__rounding")]]
     shiny::req(!is.null(v), nzchar(v), identical(bform$id, current()))
     if (identical(unname(rv$p$study[["rounding"]]), v)) return()
-    rv$p$study[["rounding"]] <- v
+    p2 <- guarded(.spec_set_rounding(rv$p, v))
+    if (is.null(p2)) return()
+    rv$p <- p2
     rv$btouched <- TRUE
   }, ignoreInit = TRUE)
   # plan_levels(.drop_empty = ): a variable's values with no record hidden
   # (variables$empty_levels "hide") or shown
   shiny::observe(builder_guard({
     bform_drawn()
-    shiny::req(identical(builder_case(), "ok"))
+    shiny::req(builder_case() %in% c("ok", "hierarchy"))
     v <- bform$st$variables
     shiny::req(is.data.frame(v), nrow(v) > 0L)
     got <- lapply(seq_len(nrow(v)), function(i) input[[bid(paste0("lvdrop", i))]])
@@ -9474,57 +9543,30 @@ app_server <- function(input, output, session, start) {
     id <- shiny::isolate(bform$id)
     shiny::req(identical(id, shiny::isolate(current())))
     p <- shiny::isolate(rv$p)
-    now <- .empty_levels_of(.rows_for(p, "variables", id))
+    its <- builder_items(p, id)
+    lv <- .builder_args(its, "plan_levels") %||% list()
+    now <- as.character(unlist(lv$.drop_empty))
     want <- now
     for (i in seq_along(got)) {
       if (is.null(got[[i]])) next
-      want[[v$variable[i]]] <- isTRUE(got[[i]])
+      want <- if (isTRUE(got[[i]])) union(want, v$variable[i]) else setdiff(want, v$variable[i])
     }
-    ch <- names(want)[vapply(names(want), function(k) !identical(isTRUE(want[[k]]),
-                                                               isTRUE(now[[k]])), NA)]
-    if (!length(ch)) return()
-    vr <- sheet_rows(p, "variables", id)
-    vr$output_id <- NULL
-    if (!"empty_levels" %in% names(vr)) vr$empty_levels <- NA_character_
-    for (k in ch) {
-      j <- match(k, vr$variable)
-      if (is.na(j)) {
-        vr[nrow(vr) + 1L, ] <- NA
-        j <- nrow(vr)
-        vr$variable[j] <- k
-      }
-      vr$empty_levels[j] <- if (isTRUE(want[[k]])) "hide" else NA_character_
-    }
-    p2 <- guarded(set_sheet_rows(p, "variables", id, vr))
+    if (setequal(want, now)) return()
+    if (length(want)) lv$.drop_empty <- want else lv$.drop_empty <- NULL
+    p2 <- guarded(.spec_set_items(p, id, list(list(fn = "plan_levels", args = lv,
+                                                   drop_empty = TRUE))))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$btouched <- TRUE
   }))
-  # the any-event row taken away (Revert): no overall row
-  shiny::observeEvent({
-    bform_drawn()
-    input[[bid("overall_revert")]]
-  }, {
-    shiny::req(isTRUE(input[[bid("overall_revert")]] > 0), identical(bform$id, current()))
-    id <- bform$id
-    tb <- sheet_rows(rv$p, "tables", id)
-    tb$output_id <- NULL
-    shiny::req(nrow(tb), "overall_label" %in% names(tb))
-    tb$overall_label[1L] <- NA_character_
-    p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
-    if (is.null(p2)) return()
-    rv$p <- p2
-    rv$btouched <- TRUE
-    rv$bver <- rv$bver + 1L
-  }, ignoreInit = TRUE)
-  # A summary table's variables shown: those unticked are written as the
-  # row filter (tables$keep_where `!variable %in% c(...)`); the ARD stays as
-  # it is.  At least one stays shown.
+  # The variables shown: those unticked are written as the row filter
+  # (plan_filter(where = !variable %in% c(...)), its other arguments kept);
+  # the ARD stays as it is.  At least one stays shown.
   shiny::observeEvent({
     bform_drawn()
     input[[bid("shown")]]
   }, {
-    shiny::req(identical(builder_case(), "ok"), identical(bform$id, current()),
+    shiny::req(builder_case() %in% c("ok", "hierarchy"), identical(bform$id, current()),
                !is.null(bform$hidden))
     vars <- bform$st$variables$variable
     sh <- input[[bid("shown")]]
@@ -9536,12 +9578,11 @@ app_server <- function(input, output, session, start) {
     hidden <- setdiff(vars, sh)
     if (setequal(hidden, bform$hidden)) return()
     id <- bform$id
-    tb <- sheet_rows(rv$p, "tables", id)
-    tb$output_id <- NULL
-    if (!nrow(tb)) tb[1L, ] <- NA
-    if (!"keep_where" %in% names(tb)) tb$keep_where <- NA_character_
-    tb$keep_where[1L] <- .hidden_vars_write(vars[vars %in% hidden])
-    p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
+    pf <- .builder_args(builder_items(rv$p, id), "plan_filter") %||% list()
+    w <- .hidden_vars_write(vars[vars %in% hidden])
+    if (is.na(w)) pf$where <- NULL else pf$where <- tflspec::tfl_r(w)
+    p2 <- guarded(.spec_set_items(rv$p, id, list(list(fn = "plan_filter", args = pf,
+                                                      drop_empty = TRUE))))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$btouched <- TRUE
@@ -9554,10 +9595,10 @@ app_server <- function(input, output, session, start) {
     st <- bform$st
     shiny::req(!is.null(id), length(st$hierarchy) > 0L)
     n <- length(st$row_keys)
-    tb <- sheet_rows(rv$p, "tables", id)
-    tb$output_id <- NULL
-    tb$sort[1L] <- .hier_sort(c(rep("alpha", n - 1L), "freq"), hier = st$row_keys %in% st$hierarchy)
-    p2 <- guarded(set_sheet_rows(rv$p, "tables", id, tb))
+    ps <- .builder_args(builder_items(rv$p, id), "plan_sort") %||% list()
+    ps$keys <- .split_list(.hier_sort(c(rep("alpha", n - 1L), "freq"),
+                                      hier = st$row_keys %in% st$hierarchy))
+    p2 <- guarded(.spec_set_items(rv$p, id, list(list(fn = "plan_sort", args = ps))))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$btouched <- TRUE
@@ -9572,7 +9613,7 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$b_vcl_toggle, vcl_open(!vcl_open()))
   output$b_vcl <- shiny::renderUI({
     bform_drawn()
-    shiny::req(identical(builder_case(), "ok"))
+    shiny::req(builder_case() %in% c("ok", "hierarchy"))
     on <- vcl_open()
     shiny::tagList(
       shiny::tags$button(
@@ -9588,7 +9629,7 @@ app_server <- function(input, output, session, start) {
   })
   vcl_key <- shiny::reactive(paste("vcl", bform_drawn(), sep = "|"))
   output$b_vcl_hot <- rhandsontable::renderRHandsontable({
-    shiny::req(vcl_open(), identical(builder_case(), "ok"))
+    shiny::req(vcl_open(), builder_case() %in% c("ok", "hierarchy"))
     vcl_key()
     v <- bform$st$variables
     d <- data.frame(value = v$variable,
@@ -9810,7 +9851,7 @@ app_server <- function(input, output, session, start) {
     wrote <- FALSE
     if (fresh) {
       for (fn in .ard_on_cards(bform$meta, hier)) {
-        have <- vapply(tryCatch(builder_items(p2, id), error = function(e) list()),
+        have <- vapply(tryCatch(builder_items(p2, id, bform$meta), error = function(e) list()),
                        function(it) it$fn, "")
         if (fn %in% have) next
         p3 <- if (identical(fn, "plan_total")) {
@@ -9824,16 +9865,11 @@ app_server <- function(input, output, session, start) {
           wrote <- TRUE
         }
       }
-      # (its own row now: once only)
-      t2 <- sheet_rows(p2, "tables", id)
-      t2$output_id <- NULL
-      if (wrote && !nrow(t2)) {
-        t2[1L, ] <- NA
-        t2$cols[1L] <- paste(bform$st$key, collapse = " | ")
-        p2 <- set_sheet_rows(p2, "tables", id, t2)
-      }
     }
     if (identical(p2, rv$p)) return()
+    # (held: no change until one is made, .unheld())
+    held$before <- if (!is.null(held$p) && identical(rv$p, held$p)) held$before else rv$p
+    held$p <- p2
     rv$p <- p2
     rv$btouched <- TRUE
     # (the cards written: drawn again, on)
@@ -10072,7 +10108,7 @@ app_server <- function(input, output, session, start) {
       if (is.null(lines)) {
         return(shiny::tagList(head, shiny::div(
           class = "small text-muted",
-          t("This report's column header is more than the form shows (positions, KEY = value, styled row-header cells): edit it in Details (sheets), col_header."))))
+          t("This report's column header is more than the form shows (positions, KEY = value, styled row-header cells): edit it as R on this card (plan_col_header())."))))
       }
       act <- function(i, what, label, j = 0L, title = NULL) shiny::tags$button(
         type = "button", class = "btn btn-sm btn-link py-0 px-1", label, title = title,
@@ -10445,11 +10481,6 @@ app_server <- function(input, output, session, start) {
            pg <- get("rowpages")
            if (is.null(pg)) st$row_pages else isTRUE(pg)
          },
-         overall_label = if (hier) {
-           o <- get("overall")
-           if (is.null(o)) st$overall_label %||% NA_character_ else
-             if (nzchar(trimws(o))) trimws(o) else NA_character_
-         },
          sort = if (hier) {
            if (identical(st$sort, "own")) "own" else {
              lv <- vapply(seq_along(st$row_keys), function(i)
@@ -10461,7 +10492,7 @@ app_server <- function(input, output, session, start) {
            }
          })
   }))
-  bstate_d <- shiny::debounce(bstate, 400)
+  bstate_d <- shiny::debounce(bstate, 250)
   shiny::observeEvent(bstate_d(), {
     st <- bstate_d()
     id <- bform$id
@@ -10490,6 +10521,7 @@ app_server <- function(input, output, session, start) {
       session$sendCustomMessage("builder-updating", TRUE)
       rv$p <- p2
       rv$btouched <- TRUE
+      refresh_marks(p2)
     }
   })
   shiny::observe(builder_guard({
@@ -10597,14 +10629,14 @@ app_server <- function(input, output, session, start) {
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
     rv$ard_ver
     d <- ard_data(rv$study, id)
-    if (is.null(d)) return(list(id = id, error = t("No data to show yet: Preview this table's ARD.")))
+    if (is.null(d)) return(list(id = id, error = t("No data to show yet: generate this table's ARD.")))
     tryCatch(list(id = id, pages = preview_cached(rv$p, id, d)),
              error = function(e) list(id = id, error = conditionMessage(e)))
   })
   # a change typed in the builder: drawn once the typing stops; another
   # report: drawn at once (the waiting is for the typing, and a debounced
   # value would still be the report before)
-  preview_d <- shiny::debounce(preview, 300)
+  preview_d <- shiny::debounce(preview, 100)
   preview_now <- shiny::reactive({
     id <- current()
     pv <- preview_d()
@@ -11584,7 +11616,7 @@ app_server <- function(input, output, session, start) {
                          width = "100%"),
       shiny::selectizeInput("mf_params", t("Parameters (a page each)"), pc,
                             selected = pc[seq_len(min(2L, length(pc)))], multiple = TRUE,
-                            width = "100%", options = list(plugins = list("remove_button"))),
+                            width = "100%", options = list(plugins = list("remove_button", "drag_drop"))),
       shiny::div(
         class = "d-flex gap-2",
         shiny::selectInput("mf_base", t("Baseline category"), first_of(c("BNRIND", "BTOXGR")),

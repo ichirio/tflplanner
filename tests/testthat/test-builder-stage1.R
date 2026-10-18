@@ -4,15 +4,14 @@
 # cards' forms and the rows' variables shown.
 
 html <- function(...) as.character(htmltools::tagList(...))
+# (the spec in step with its view, as a study opened: the items read from it)
 sample_planner <- function() {
-  .planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner"))
+  .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
 }
 fns_of <- function(items) vapply(items, function(it) it$fn, "")
 item <- function(items, fn) items[[match(fn, fns_of(items))]]
 cards_of <- function(p, id, hier = FALSE, ...) {
-  .builder_items_cards(.builder_items_normalize(builder_items(p, id),
-                                                if (hier) c("AEBODSYS", "AEDECOD")),
-                       hier, ...)
+  .builder_items_cards(builder_items(p, id), hier, ...)
 }
 
 test_that("the groups by verb: the table's skeleton, the finishing; normalize_ard() neither", {
@@ -33,7 +32,7 @@ test_that("the groups by verb: the table's skeleton, the finishing; normalize_ar
 
 test_that("a line before each group's first card, with its meaning; every card names its group", {
   p <- sample_planner()
-  items <- .builder_items_normalize(builder_items(p, "T-14-1-1"))
+  items <- builder_items(p, "T-14-1-1")
   # the content's order mixes the groups (digits before cells): still one
   # line a group, and the order kept
   h <- html(.table_cards(items))
@@ -73,12 +72,14 @@ test_that("required cards have no switch; a switch only where on / off writes; n
   expect_true(all(.plan_study_cards %in% fns_of(items)))
 })
 
-test_that("an AE table: plan_levels not shown on, offered by Add; an empty usual card is off", {
+test_that("an AE table: the same usual cards as any (plan_levels off); an empty usual card is off", {
   p <- sample_planner()
   raw <- Filter(function(it) it$fn != "plan_levels", builder_items(p, "T-14-3-1"))
-  items <- .builder_items_cards(.builder_items_normalize(raw, c("AEBODSYS", "AEDECOD")), TRUE)
-  expect_false("plan_levels" %in% fns_of(items))
-  expect_true("plan_levels" %in% .plan_addable(items))
+  items <- .builder_items_cards(raw, TRUE)
+  # (one list of usual cards for every table, #417 Q2)
+  expect_true("plan_levels" %in% fns_of(items))
+  expect_false(item(items, "plan_levels")$present)
+  expect_false("plan_levels" %in% .plan_addable(items))
   expect_false("plan_sort" %in% .plan_addable(items))
   expect_false(any(c("normalize_ard", "table_plan", "plan_cells") %in% .plan_addable(items)))
   # plan_filter: a usual card of an AE table, empty: off, its switch works
@@ -94,7 +95,7 @@ test_that("an AE table: plan_levels not shown on, offered by Add; an empty usual
   sch <- .plan_add_schema(items)
   skip_if(is.null(sch))
   ch <- .item_choices(sch, "plan")
-  expect_true("plan_levels" %in% ch)
+  expect_false("plan_levels" %in% ch)
   expect_false("plan_sort" %in% ch)
   expect_false(any(c("plan_titles", "plan_footnotes", "plan_listing") %in% ch))
 })
@@ -183,52 +184,62 @@ test_that("the ARD tells the order and the labels: a factor's levels, its labels
   expect_false("plan_levels" %in% .ard_on_cards(m))
 })
 
-test_that("normalize_ard(): the hierarchy fixed and From the ARD, overall editable, the rest folded", {
-  h <- html(.normalize_body("n", c("AEBODSYS", "AEDECOD"),
-                            tb = data.frame(overall_label = "Any TEAE", stack = NA),
-                            overall_id = "ov", revert_id = "ovr"))
+test_that("normalize_ard(): a form card -- the hierarchy a field marked From the ARD, the rest its fields (#417)", {
+  p <- sample_planner()
+  hier <- c("AEBODSYS", "AEDECOD")
+  it <- item(builder_items(p, "T-14-3-1"), "normalize_ard")
+  h <- html(.plan_form_body("n", "normalize_ard", it, ard = list(hierarchy = hier),
+                            fixed_link = shiny::tags$a(id = "lk", "step 1")))
   expect_match(h, 'data-from="ard"', fixed = TRUE)
   expect_match(h, ">From the ARD<", fixed = TRUE)
-  expect_match(h, 'class="rp-b-level">AEBODSYS<', fixed = TRUE)
-  expect_false(grepl("remove", h, fixed = TRUE))
-  expect_match(h, 'id="ov"', fixed = TRUE)
+  expect_match(h, 'id="lk"', fixed = TRUE)
+  # (a field of its own, the ARD's value on it; its warning hidden while
+  # it says the ARD's)
+  expect_match(h, 'id="n__hierarchy"', fixed = TRUE)
+  expect_match(h, 'data-ard="AEBODSYS|AEDECOD"', fixed = TRUE)
+  expect_match(h, 'rp-ard-warn" style="display: none;"', fixed = TRUE)
+  expect_match(h, 'id="n__overall"', fixed = TRUE)
   expect_match(h, 'value="Any TEAE"', fixed = TRUE)
   expect_match(h, ">This table<", fixed = TRUE)
-  expect_match(h, 'id="ovr"', fixed = TRUE)
-  expect_match(h, "Other arguments (6)", fixed = TRUE)
-  # a summary table with nothing set (DM): its stack's arguments folded,
-  # each with what it does in a line and an example; no placeholder
-  h <- html(.normalize_body("n", character(), tb = NULL))
-  expect_match(h, 'id="n__stack"', fixed = TRUE)
-  expect_false(grepl('placeholder="subgroup = ALL, SEX, AGEGR1"', h, fixed = TRUE))
-  expect_match(h, "Other arguments (6)", fixed = TRUE)
-  expect_match(h, "e.g. subgroup = ALL, SEX, AGEGR1", fixed = TRUE)
-  expect_false(grepl('data-arg="overall"', h, fixed = TRUE))
-  # a stack the table says: shown, its fields read back as the columns
-  h <- html(.normalize_body("n", character(), tb = data.frame(stack = "subgroup = SEX")))
-  expect_match(h, 'id="n__stack"', fixed = TRUE)
-  expect_match(h, "Other arguments (3)", fixed = TRUE)
-  expect_match(h, "e.g. subgroup = ALL, SEX, AGEGR1. Subgroups", fixed = TRUE)
-  expect_false(grepl('placeholder="subgroup = ALL', h, fixed = TRUE))
-  expect_match(html(.normalize_body("n", character(), tb = data.frame(stack = "subgroup = SEX"),
-                                    lang = "ja")),
-               "例: subgroup = ALL, SEX, AGEGR1。", fixed = TRUE)
-  r <- .normalize_read(list(n__stack = " subgroup = SEX ", n__stack_sep = "", n__stack_nest = TRUE), "n")
-  expect_identical(r, list(stack = "subgroup = SEX", stack_sep = NA_character_, stack_nest = "TRUE"))
-  expect_null(.normalize_read(list(), "n"))
-  # its fields in the function's order: hierarchy, overall; then folded
-  # keys, drop_contexts, drop_key_variables, stack, stack_sep, stack_nest
-  h <- html(.normalize_body("n", c("AEBODSYS", "AEDECOD"),
-                            tb = data.frame(overall_label = "Any TEAE", stack = NA),
-                            overall_id = "ov", revert_id = "ovr", lang = "ja"))
-  args <- regmatches(h, gregexpr('data-arg="[^"]+"', h))[[1L]]
-  expect_identical(gsub('data-arg="|"', "", args),
-                   c("overall", "keys", "drop_contexts", "drop_key_variables", "stack",
-                     "stack_sep", "stack_nest"))
-  # (i) its meaning; the three the sheets cannot keep marked "Not saved"
-  expect_equal(lengths(regmatches(h, gregexpr("rp-badge-unsaved", h, fixed = TRUE))), 3L)
-  expect_false(grepl("まだシートに保存できません", h, fixed = TRUE))
-  expect_match(h, tr(.plan_arg_help$normalize_ard[["keys"]], "ja"), fixed = TRUE)
+  # the arguments the code writes above, the rest below, each in the
+  # function's order -- the same fields as any table's
+  args <- gsub('data-arg="|"', "", regmatches(h, gregexpr('data-arg="[^"]+"', h))[[1L]])
+  expect_identical(args, c("hierarchy", "overall", "keys", "drop_contexts", "drop_key_variables",
+                           "stack", "stack_sep", "stack_nest"))
+  expect_match(h, "Not in the code (6)", fixed = TRUE)
+  expect_false(grepl("rp-badge-unsaved", h, fixed = TRUE))
+  # a summary table's (the study's defaults: none): every argument below
+  i0 <- item(builder_items(p, "T-14-1-1"), "normalize_ard")
+  h0 <- html(.plan_form_body("n", "normalize_ard", i0, ard = list(hierarchy = character())))
+  expect_match(h0, "Not in the code (8)", fixed = TRUE)
+  # its hierarchy an ordinary field below (the code does not write it)
+  expect_false(grepl("data-ard=", h0, fixed = TRUE))
+  expect_match(h0, 'id="n__hierarchy"', fixed = TRUE)
+  # another hierarchy than the ARD's: warned, not stopped
+  it2 <- it
+  it2$args$hierarchy <- rev(hier)
+  h2 <- html(.plan_form_body("n", "normalize_ard", it2, ard = list(hierarchy = hier)))
+  expect_false(grepl('rp-ard-warn" style="display: none;"', h2, fixed = TRUE))
+  expect_match(h2, "Not the ARD analysis", fixed = TRUE)
+  expect_match(h0, 'id="n__stack"', fixed = TRUE)
+  expect_match(html(.plan_form_body("n", "normalize_ard", i0, lang = "ja")),
+               tr(.plan_arg_help$normalize_ard[["keys"]], "ja"), fixed = TRUE)
+  # read back: the hierarchy kept as it is, the overall row the field's
+  inp <- list(n__hierarchy = hier, n__overall = "Any TEAE", n__stack = "", n__stack_sep = "",
+              n__stack_nest = FALSE, n__drop_key_variables = FALSE)
+  r <- .plan_form_read(inp, "n", "normalize_ard")
+  expect_identical(r$hierarchy, hier)
+  expect_identical(.plan_form_args(r, it, "normalize_ard"), it$args)
+  inp$n__overall <- "Any AE"
+  a <- .plan_form_args(.plan_form_read(inp, "n", "normalize_ard"), it, "normalize_ard")
+  expect_identical(a, list(hierarchy = hier, overall = "Any AE"))
+  # written into the report's YAML: its normalize_ard() only
+  q <- .builder_item_write(p, "T-14-3-1", "normalize_ard", a)
+  o0 <- .spec_output(p, "T-14-3-1")
+  o1 <- .spec_output(q, "T-14-3-1")
+  expect_identical(o1$content[[1L]]$args, list(hierarchy = hier, overall = "Any AE"))
+  expect_identical(o1$content[-1L], o0$content[-1L])
+  expect_identical(sheet_rows(q, "tables", "T-14-3-1")$overall_label, "Any AE")
   # its card's note: one line, what it does with a row before and after under the (i)
   h <- html(.plan_card_note("normalize_ard"))
   expect_match(h, "Shapes the ARD for making the table.", fixed = TRUE)
@@ -240,7 +251,7 @@ test_that("normalize_ard(): the hierarchy fixed and From the ARD, overall editab
   # every argument's help under Other arguments is said in Japanese too
   miss <- unlist(lapply(.plan_arg_help, function(v) v[tr(unname(v), "ja") == unname(v)]))
   expect_length(miss, 0L)
-  expect_match(html(.plan_card_note("plan_levels")), "plan_levels(name = the values' order)", fixed = TRUE)
+  expect_match(html(.plan_card_note("plan_levels")), "Sets the order of the levels of the column and row keys", fixed = TRUE)
   # the mark: one of the badges
   expect_match(html(from_badge("ard", "ja")), tr("From the ARD", "ja"), fixed = TRUE)
   expect_identical(tr("From the ARD", "ja"), "ARD から")
@@ -258,7 +269,10 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
     it <- item(items, fn)
     h <- html(.plan_form_body("c", fn, it, choices = c("TRT01A", "SEX")))
     for (a in want[[fn]]) expect_match(h, sprintf('id="c__%s"', a), fixed = TRUE, info = paste(fn, a))
-    expect_match(h, "Other arguments", fixed = TRUE, info = fn)
+    # (the arguments the code does not write: below, when there are any)
+    if (length(setdiff(.plan_form_schema(fn)$formals, c(names(it$args), .data_args)))) {
+      expect_match(h, "Not in the code", fixed = TRUE, info = fn)
+    }
   }
   # the kinds of field: a choice, a number, a check
   h <- html(.plan_form_body("c", "plan_blanks", item(items, "plan_blanks")))
@@ -273,33 +287,35 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
   it <- item(items, "plan_blanks")
   inp <- list(c__where = "between_groups", c__first = TRUE, c__last = TRUE, c__counted = TRUE)
   r <- .plan_form_read(inp, "c", "plan_blanks")
-  expect_identical(.plan_form_own(r, it, "plan_blanks"), it$own_args %||% list())
+  expect_identical(.plan_form_args(r, it, "plan_blanks"), it$args %||% list())
   # a check unticked over the study's TRUE: the report's own FALSE, written
   inp$c__first <- FALSE
-  own <- .plan_form_own(.plan_form_read(inp, "c", "plan_blanks"), it, "plan_blanks")
-  expect_identical(own, list(first = FALSE))
+  own <- .plan_form_args(.plan_form_read(inp, "c", "plan_blanks"), it, "plan_blanks")
+  # (the item whole, the study's values with it: the report's own from now on)
+  expect_identical(own, utils::modifyList(it$args, list(first = FALSE)))
   q <- .builder_item_write(p, id, "plan_blanks", own)
   expect_identical(sheet_rows(q, "layout", id)$blank_first, "FALSE")
   expect_identical(item(builder_items(q, id), "plan_blanks")$args$where, "between_groups")
+  expect_identical(item(builder_items(q, id), "plan_blanks")$from, "own")
   # a number and a choice
   it <- item(items, "plan_paginate_rows")
   inp <- list(c__max_rows = 25, c__split = "group_force", c__page_by = NULL)
-  own <- .plan_form_own(.plan_form_read(inp, "c", "plan_paginate_rows"), it, "plan_paginate_rows")
+  own <- .plan_form_args(.plan_form_read(inp, "c", "plan_paginate_rows"), it, "plan_paginate_rows")
   q <- .builder_item_write(p, id, "plan_paginate_rows", own)
   expect_identical(sheet_rows(q, "layout", id)$pages_max_rows, "25")
   expect_identical(sheet_rows(q, "layout", id)$pages_split, "group_force")
   # the style's and the row label column's
   it <- item(items, "plan_style")
-  own <- .plan_form_own(.plan_form_read(list(c__border = "tfl", c__align_count_pct = TRUE,
+  own <- .plan_form_args(.plan_form_read(list(c__border = "tfl", c__align_count_pct = TRUE,
                                              c__font_size_half_points = 18), "c", "plan_style"),
                         it, "plan_style")
   expect_identical(own$border, "tfl")
   q <- .builder_item_write(p, id, "plan_style", own)
   expect_identical(item(builder_items(q, id), "plan_style")$args$font_size_half_points, 18L)
   it <- item(items, "plan_stub")
-  own <- .plan_form_own(.plan_form_read(list(c__name = "row_label", c__indent = 3, c__before = TRUE),
+  own <- .plan_form_args(.plan_form_read(list(c__name = "row_label", c__indent = 3, c__before = TRUE),
                                         "c", "plan_stub"), it, "plan_stub")
-  expect_identical(own, list(indent = 3L))
+  expect_identical(own, utils::modifyList(it$args, list(indent = 3L)))
   q <- .builder_item_write(p, id, "plan_stub", own)
   expect_identical(sheet_rows(q, "layout", id)$stub_indent, "3")
   # the field parts the figures use too
@@ -343,8 +359,8 @@ test_that("nothing changed, nothing written: the sample's items and program as t
         if (!is.null(v)) inp[[paste0("c__", a)]] <- if (is.logical(v)) v else
           if (.arg_kind(sch$args[[a]]$type) %in% c("r", "string") && !is.character(v)) .arg_to_r(v) else v
       }
-      own <- .plan_form_own(.plan_form_read(inp, "c", it$fn), it, it$fn)
-      expect_identical(args_to_r(it$fn, own), args_to_r(it$fn, it$own_args %||% list()),
+      own <- .plan_form_args(.plan_form_read(inp, "c", it$fn), it, it$fn)
+      expect_identical(args_to_r(it$fn, own), args_to_r(it$fn, it$args %||% list()),
                        info = paste(id, it$fn))
     }
   }
@@ -564,8 +580,9 @@ test_that("the values' order, data first: this table's, the code list's, the ARD
   expect_match(h, "<code>SEX, RACE</code>[[:space:]]*:[[:space:]]*The code list's order")
   expect_false(grepl("TRT01A", h, fixed = TRUE))
   # on plan_levels()' card
+  # (on: an off card has no body, #417)
   it <- list(fn = "plan_levels", args = list(), path = "plan_levels", present = FALSE,
-             switch = TRUE, on = FALSE)
+             switch = TRUE, on = TRUE)
   h <- html(.table_cards(list(it), level_from = list(SEX = list(source = "ard"))))
   expect_match(h, "order (its factor levels).", fixed = TRUE)
 })
@@ -573,19 +590,16 @@ test_that("the values' order, data first: this table's, the code list's, the ARD
 test_that("builder_read() tells where each order comes from; a key column's factor counts", {
   skip_if_not_installed("cards")
   p <- sample_planner()
-  # levels of the report's own: this table's (the sample's orders are its
-  # code lists', which tflspec does not write: #355)
-  vr <- sheet_rows(p, "variables", "T-14-1-1")
-  vr$levels[vr$variable == "SEX"] <- "Male | Female"
-  st <- builder_read(.put_rows(p, "T-14-1-1", "variables", vr), "T-14-1-1")
-  expect_identical(st$level_from$SEX$source, "table")
-  expect_null(st$level_from[["AGE"]])
   st <- builder_read(p, "T-14-1-1")
+  # the sample's levels: its code list's order (#417: the report's
+  # plan_levels() as tflspec writes it from the code list)
   expect_identical(st$level_from$SEX$source, "codelist")
+  expect_null(st$level_from[["AGE"]])
   # no own levels: the report's code list's, as tflspec writes it
   vr <- sheet_rows(p, "variables", "T-14-1-1")
   vr$levels <- NA_character_
-  q <- .put_rows(p, "T-14-1-1", "variables", vr)
+  vr$output_id <- NULL
+  q <- set_sheet_rows(p, "variables", "T-14-1-1", vr)
   # (the arms of the sample's code list, the ARD's factor the other way round)
   cl <- .codelist_order(sheet_rows(p, "codelists", "T-14-1-1"), "TRT01A")
   expect_length(cl, 2L)

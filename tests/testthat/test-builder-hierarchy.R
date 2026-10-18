@@ -27,14 +27,10 @@ test_that("a hierarchy table reads its terms and its order", {
   expect_identical(st$hierarchy, c("AEBODSYS", "AEDECOD"))
   expect_identical(as.vector(st$sort), c("alpha", "freq"))
   expect_identical(attr(st$sort, "col"), NA_character_)
-  expect_identical(st$overall_label, "Any TEAE")
-  # its name, changed: written to tables$overall_label, and nothing else
-  renamed <- st
-  renamed$overall_label <- "Subjects with any TEAE"
-  q2 <- builder_write(p, "T-AE", renamed, was = st)
-  expect_identical(sheet_rows(q2, "tables", "T-AE")$overall_label, "Subjects with any TEAE")
-  expect_identical(sheet_rows(q2, "tables", "T-AE")[, setdiff(names(sheet_rows(q2, "tables", "T-AE")), "overall_label")],
-                   sheet_rows(p, "tables", "T-AE")[, setdiff(names(sheet_rows(p, "tables", "T-AE")), "overall_label")])
+  # its any-event row's name: normalize_ard()'s card, not the form's (#417)
+  expect_null(st$overall_label)
+  expect_identical(Filter(function(it) identical(it$fn, "normalize_ard"),
+                          builder_items(p, "T-AE", hier_meta()))[[1L]]$args$overall, "Any TEAE")
   expect_identical(nrow(st$variables), 0L)
   expect_identical(st$key, "TRT01A")
   # an order of the sheets' own is "own", and kept
@@ -254,11 +250,12 @@ test_that("the hierarchy's levels are fixed chips, the last the label; normalize
     expect_match(h, 'data-fn="normalize_ard"', fixed = TRUE)
     expect_lt(regexpr('data-fn="normalize_ard"', h), regexpr('data-fn="table_plan"', h))
     expect_match(h, "(overall)", fixed = TRUE)
-    expect_match(h, paste0('id="b', bf$n, '_overall"'), fixed = TRUE)
-    # its overall row is written to tables$overall_label
+    expect_match(h, paste0('id="b', bf$n, '_card_normalize_ard__overall"'), fixed = TRUE)
+    # its overall row is written into the report's normalize_ard() (the
+    # sheets' tables$overall_label made from it)
     v <- list()
     v[[paste0("b", bf$n, "_key")]] <- "TRT01A"
-    v[[paste0("b", bf$n, "_overall")]] <- "Any adverse event"
+    v[[paste0("b", bf$n, "_card_normalize_ard__overall")]] <- "Any adverse event"
     do.call(session$setInputs, v)
     session$elapse(1000)
     expect_identical(sheet_rows(rv$p, "tables", "T-AE")$overall_label, "Any adverse event")
