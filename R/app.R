@@ -9258,7 +9258,7 @@ app_server <- function(input, output, session, start) {
     }
     out
   })
-  form_args_d <- shiny::debounce(form_args, 600)
+  form_args_d <- shiny::debounce(form_args, 250)
   shiny::observeEvent(form_args_d(), builder_guard({
     now <- form_args_d()
     for (path in names(now)) {
@@ -10437,7 +10437,7 @@ app_server <- function(input, output, session, start) {
            }
          })
   }))
-  bstate_d <- shiny::debounce(bstate, 400)
+  bstate_d <- shiny::debounce(bstate, 250)
   shiny::observeEvent(bstate_d(), {
     st <- bstate_d()
     id <- bform$id
@@ -10581,7 +10581,7 @@ app_server <- function(input, output, session, start) {
   # a change typed in the builder: drawn once the typing stops; another
   # report: drawn at once (the waiting is for the typing, and a debounced
   # value would still be the report before)
-  preview_d <- shiny::debounce(preview, 300)
+  preview_d <- shiny::debounce(preview, 100)
   preview_now <- shiny::reactive({
     id <- current()
     pv <- preview_d()
