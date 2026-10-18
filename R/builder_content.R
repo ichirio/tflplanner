@@ -17,8 +17,8 @@
   table_plan = "Table structure",
   plan_cells = "Statistics in the cells",
   plan_digits = "Decimals and rounding",
-  plan_levels = "Order of the values",
-  plan_labels = "Labels",
+  plan_levels = "Level order",
+  plan_labels = "Display names",
   plan_nest = "Rows under another value",
   plan_total = "Total column",
   plan_compare = "Comparison columns",
@@ -52,7 +52,8 @@
   plan_levels = c(.drop_empty = "Hide empty values"),
   plan_sort = c(keys = "Order", stat = "Statistic counted"),
   plan_total = c(label = "Heading", position = "Place"),
-  plan_filter = c(where = "Condition", any = "In any column", parents = "Parent rows"),
+  plan_filter = c(where = "Condition", any = "In any column", parents = "Parent rows",
+                  by = "Rows judged together"),
   plan_compare = c(by = "By group", position = "Place", "..." = "Columns"),
   plan_stat_groups = c("..." = "Group and its statistics", .variables = "Variables split",
                        .others = "Group of the other variables"),
@@ -75,9 +76,24 @@
   plan_col_header = c(header = "Header lines", values = "Values of the tokens",
                       col_header_align = "Alignment"),
   plan_columns = c(widths = "Widths", decimal = "Decimal alignment", row_title = "Row title",
-                   auto_width = "Automatic width", sep = "Separator"),
+                   auto_width = "Automatic width", sep = "Separator",
+                   cell_format = "Cell formats", column_widths_twips = "Column widths (twips)"),
   plan_style = c(align_count_pct = "Align n (%)", border = "Borders",
-                 font_size_half_points = "Font size (half points)"),
+                 font_size_half_points = "Font size (half points)", font = "Font",
+                 row_height_twips = "Row height (twips)", row_height_exact = "Exact row height",
+                 header_row_height_twips = "Header row height (twips)",
+                 blank_row_height_twips = "Blank row height (twips)",
+                 cell_padding_left_twips = "Cell padding, left (twips)",
+                 cell_padding_right_twips = "Cell padding, right (twips)",
+                 cell_valign = "Vertical alignment", table_align = "Table alignment",
+                 markup = "Markup in the text", blank_row_normalize = "Blank rows as one",
+                 border_header = "Header borders", border_spanning = "Spanning header borders",
+                 border_body = "Body borders", border_first_row = "First row's border",
+                 border_last_row = "Last row's border", header_align = "Header alignment",
+                 header_bold = "Header bold", header_italic = "Header italic",
+                 align = "Alignment", bold = "Bold", italic = "Italic", underline = "Underline",
+                 table_width_twips = "Table width (twips)", table_width_pct = "Table width (%)",
+                 table_width_pct_of_writable = "Table width (% of the writable width)"),
   plan_hide = c(cols = "Hidden columns"),
   plan_cell_style = c(cols = "Columns styled", header = "The column header",
                       where = "Rows styled", bold = "Bold", italic = "Italic",
@@ -217,14 +233,45 @@
 .tflspec_fn <- function(name) get(name, envir = asNamespace("tflspec"))
 
 # The items of a report's table as the builder shows them, in the plan's
-# order: each a list -- `fn`, `args`, `from` ("own": the report says it;
-# "defaults": the study's defaults), `path` (the card's and the code's
-# name for it: the verb, "#2" for its second call), `revert` (an item of
-# the report's own over one of the defaults: "Revert" removes the own),
-# `present` (TRUE; FALSE for a card shown though the plan has no such
-# item yet).  `args` are the plan's (the report's over the defaults'),
-# `own_args` what the report says itself (NULL: nothing).
-builder_items <- function(x, output_id) {
+# order, the ARD's normalization (normalize_ard()) first: each a list --
+# `fn`, `args`, `from` (where the item comes from: "own" the report says
+# it; "defaults" the study's defaults; "pattern:<name>" a pattern), `arg_from`
+# (each argument's: the same words), `below` (the item under the report's
+# own: what a Revert goes back to; NULL none), `path` (the card's and the
+# code's name for it: the verb, "#2" for its second call), `revert` (an
+# item of the report's own over one of a layer: "Revert" removes the own),
+# `present` (TRUE; FALSE for a card shown though the plan has no such item
+# yet).  `args` are the plan's (the report's over its layers'), `own_args`
+# what the report says itself (NULL: nothing).  Read from the spec (the
+# report's YAML over its layers); from the sheets while they hold edits
+# the spec has not taken yet.  normalize_ard() is required, and its
+# hierarchy step 1's (`meta`: ard_meta(), for the sheets' way).
+builder_items <- function(x, output_id, meta = NULL) {
+  sp <- .spec_items(x, output_id)
+  items <- if (is.null(sp)) .builder_items_sheets(x, output_id, meta) else {
+    own_fn <- vapply(sp$own, function(it) it$fn, "")
+    seen <- character()
+    lapply(sp$items, function(it) {
+      fn <- it$fn
+      seen <<- c(seen, fn)
+      k <- sum(seen == fn)
+      at <- which(own_fn == fn)
+      from <- if (identical(fn, "table_plan")) "own" else it$from %||% "own"
+      list(fn = fn, args = it$args %||% list(),
+           own_args = if (length(at) >= k) sp$own[[at[k]]]$args %||% list(),
+           from = from, arg_from = it$arg_from, below = it$below,
+           path = if (k > 1L) paste0(fn, "#", k) else fn,
+           revert = identical(from, "own") && !is.null(it$below),
+           present = TRUE)
+    })
+  }
+  .builder_items_ard_first(items)
+}
+
+# ... from the sheets (the bridge): the report's and the defaults' items,
+# and normalize_ard() from the ARD's hierarchy (`meta`) and the table's
+# any-event row (tables$overall_label)
+.builder_items_sheets <- function(x, output_id, meta = NULL) {
   sp <- .spec_object_last(x, table_sheets(), .study_keys$table)
   bridge <- .tflspec_fn(".plan_content_from_sheets")
   get <- function(...) tryCatch(bridge(sp, ...), error = function(e) list())
@@ -235,7 +282,7 @@ builder_items <- function(x, output_id) {
   own_fn <- fns(own)
   dfl_fn <- fns(dfl)
   seen <- character()
-  lapply(res, function(it) {
+  items <- lapply(res, function(it) {
     fn <- it$fn
     seen <<- c(seen, fn)
     k <- sum(seen == fn)
@@ -246,9 +293,32 @@ builder_items <- function(x, output_id) {
          own_args = if (length(at) >= k) own[[at[k]]]$args %||% list(),
          from = if (mine) "own" else "defaults",
          path = if (k > 1L) paste0(fn, "#", k) else fn,
-         revert = mine && fn %in% dfl_fn && fn %in% names(.verb_targets),
+         revert = mine && fn %in% dfl_fn,
          present = TRUE)
   })
+  if (any(fns(items) == "normalize_ard")) return(items)
+  args <- list()
+  hier <- meta$hierarchy %||% character()
+  if (length(hier)) args$hierarchy <- as.character(hier)
+  ov <- .rows_for(x, "tables", output_id)$overall_label[1L] %||% NA_character_
+  if (length(hier) && !is.na(ov) && nzchar(ov)) args$overall <- ov
+  c(list(list(fn = "normalize_ard", args = args, own_args = if (length(args)) args,
+              from = if (length(args)) "own" else "defaults", path = "normalize_ard",
+              revert = FALSE, present = TRUE)), items)
+}
+
+# The items with the ARD's normalization (normalize_ard(): what the plan
+# is given) first -- one, required, and its arguments not edited as R
+# here (its hierarchy is step 1's); a content with none has the defaults'
+.builder_items_ard_first <- function(items) {
+  na <- vapply(items, function(it) identical(it$fn, "normalize_ard"), NA)
+  it <- if (any(na)) items[[which(na)[1L]]] else
+    list(fn = "normalize_ard", args = list(), from = "defaults", path = "normalize_ard",
+         present = TRUE)
+  it$required <- TRUE
+  it$fixed <- TRUE
+  it$revert <- FALSE
+  c(list(it), items[!na])
 }
 
 # The items with the cards shown though the plan has none yet (`always`:
@@ -268,20 +338,6 @@ builder_items <- function(x, output_id) {
     items <- append(items, list(it), after = at)
   }
   items
-}
-
-# The items with the ARD's normalization first (normalize_ard(): what the
-# plan is given): its hierarchy -- the ARD analysis's, read only -- and the
-# any-event row (tables$overall_label), the table's.  Always written, so
-# required; its arguments are not edited as R here (the hierarchy is step
-# 1's).
-.builder_items_normalize <- function(items, hierarchy = character(), overall = NA_character_) {
-  args <- list()
-  if (length(hierarchy)) args$hierarchy <- as.character(hierarchy)
-  if (length(overall) == 1L && !is.na(overall) && nzchar(overall)) args$overall <- overall
-  it <- list(fn = "normalize_ard", args = args, from = "", path = "normalize_ard",
-             revert = FALSE, present = TRUE, required = TRUE, fixed = TRUE)
-  c(list(it), items)
 }
 
 # ---- the cards ------------------------------------------------------------------
@@ -366,15 +422,15 @@ builder_items <- function(x, output_id) {
 # designs a table: the mapping (ARD -> table: which variables and
 # statistics go to which rows, columns and cells -- the structure, the
 # cells, the statistic groups, the Total, the comparisons, the row filter)
-# and the finishing (the content and the look: the labels, the values'
-# order, the nesting, the decimals, the row order, the column header, the
+# and the finishing (the content and the look: the values' order, the
+# labels, the nesting, the decimals, the row order, the column header, the
 # layout).  normalize_ard() is neither: the ARD made ready for the plan,
 # first, with no line of its own.  The schema's `stage` (mapping /
 # finishing) says it when tflspec has it; else this table.
 .plan_sections <- list(
   mapping = c("table_plan", "plan_cells", "plan_stat_groups", "plan_total", "plan_compare",
               "plan_filter"),
-  finish = c("plan_labels", "plan_levels", "plan_nest", "plan_digits", "plan_sort",
+  finish = c("plan_levels", "plan_labels", "plan_nest", "plan_digits", "plan_sort",
              "plan_col_header", "plan_stub", "plan_blanks", "plan_paginate_rows",
              "plan_paginate_group", "plan_paginate_cols", "plan_row_group", "plan_hide",
              "plan_columns", "plan_style", "plan_cell_style"))
@@ -408,12 +464,10 @@ builder_items <- function(x, output_id) {
 # the content has is shown whatever its kind).
 .plan_required <- c("normalize_ard", "table_plan", "plan_cells")
 
+# (one list for every table, whatever its kind -- #417 Q2; `hier` unused)
 .plan_usual <- function(hier = FALSE) {
-  if (hier) {
-    c("plan_sort", "plan_digits", "plan_col_header", "plan_total", "plan_filter")
-  } else {
-    c("plan_labels", "plan_levels", "plan_digits", "plan_col_header", "plan_total")
-  }
+  c("plan_levels", "plan_labels", "plan_sort", "plan_digits", "plan_col_header", "plan_total",
+    "plan_filter")
 }
 
 .plan_study_cards <- c("plan_stub", "plan_blanks", "plan_paginate_rows", "plan_columns",
@@ -595,8 +649,11 @@ builder_items <- function(x, output_id) {
   t <- function(x) tr(x, lang)
   switch(
     fn,
+    # (said behind the (i): where the card writes -- plan_cells(), the
+    # study's defaults.yml -- one card a function's exception)
     plan_digits = shiny::div(class = "rp-card-note",
-                             t("The decimals are written into plan_cells()'s formats.")),
+                             help_tip(paste(t("The decimals are written into plan_cells()'s formats."),
+                                            t("Applies to every report (the study's defaults.yml)")))),
     # (a line; what it does and one row before and after under the (i))
     normalize_ard = shiny::div(
       class = "rp-card-note",
@@ -609,10 +666,9 @@ builder_items <- function(x, output_id) {
                        "category's value becomes .label (the row's text).")))),
     plan_levels = shiny::div(
       class = "rp-card-note",
-      shiny::div(t(paste("Makes plan_levels(name = the values' order). A name is a column of the",
-                         "normalized ARD (a column key TRT01A, a stack's subgroup), variable (the",
-                         "analysis variables' order) or a categorical variable (its values). Only",
-                         "what has fixed values can be ordered."))),
+      help_tip(t(paste("Sets the order of the levels of the column and row keys (the groups,",
+                       "an analysis variable's values). The analysis variables' own order",
+                       "(variable) is here too. Levels with no data can be hidden (.drop_empty)."))),
       .level_order_lines(level_from, lang)),
     plan_sort = shiny::div(
       class = "rp-card-note",
@@ -623,6 +679,20 @@ builder_items <- function(x, output_id) {
                        ".depth each group's own row above the rows under it;",
                        "-n most frequent first (-n@group1: by the group's own count).")))),
     NULL)
+}
+
+# A card's mark: where its item comes from (normalize_ard() with no
+# argument -- a table of no hierarchy -- none: nothing of anyone's on it)
+.card_from <- function(it) {
+  if (identical(it$fn, "normalize_ard") && !length(it$args)) NULL else it$from
+}
+# ... its mark and Revert as a card's head has them (sent after a write:
+# the page puts them in the card's head, .builder_cards_js)
+.card_mark <- function(it, id, lang = "en") {
+  shiny::tagList(
+    from_badge(.card_from(it), lang,
+               own = if (isTRUE(it$present) && identical(it$from, "own")) "This table"),
+    if (isTRUE(it$revert)) .card_revert(id, lang))
 }
 
 # The cards of a table's content, in its order: one builder_card() an
@@ -675,17 +745,19 @@ builder_items <- function(x, output_id) {
     }
     rare <- it$fn %in% .plan_rare
     note <- .plan_card_note(it$fn, r = "r" %in% tools, lang = lang, level_from = level_from)
+    from <- .card_from(it)
     out[[length(out) + 1L]] <- builder_card(
-      id(it$path), it$fn, .verb_meaning(it$fn), from = it$from, required = req,
+      id(it$path), it$fn, .verb_meaning(it$fn), from = from, required = req,
       on = on, switchable = sw, revert = isTRUE(it$revert),
-      body = if (is.null(note)) body else shiny::tagList(note, body),
+      # (off: no body -- the summary says what turning it on does)
+      body = if (!on) NULL else if (is.null(note)) body else shiny::tagList(note, body),
       # (off: what turning it on does, said where its body would be)
       summary = if (isTRUE(it$present)) .item_summary(it, lang = lang) else
         if (blocked) t(it$blocked) else if (!on) t("On: its usual values are written."),
       tools = tools,
       # the study's defaults the report leaves as they are, the seldom
       # changed and the off: closed
-      open = on && (pending || (!rare && (req || own_form || !identical(it$from, "defaults")))),
+      open = on && (pending || (!rare && (req || own_form || identical(it$from, "own")))),
       path = it$path, lang = lang,
       own_label = if (isTRUE(it$present) && identical(it$from, "own")) "This table",
       absent = absent, rare = rare, section = sec,
@@ -732,6 +804,7 @@ builder_items <- function(x, output_id) {
 # The cards with a form of fields by the schema's types (arg_field()): the
 # most used arguments on the card, the rest folded under "Other arguments"
 .plan_form_main <- list(
+  normalize_ard = c("overall", "stack"),
   plan_filter = c("any", "parents"),
   plan_blanks = c("where", "first", "last"),
   plan_paginate_rows = c("max_rows", "split", "page_by"),
@@ -753,6 +826,9 @@ builder_items <- function(x, output_id) {
 # table's columns (.formula_text()).
 .plan_cell_look <- "enum[TRUE|FALSE]|logical"
 .plan_form_types <- list(
+  normalize_ard = c(hierarchy = "list<column>", keys = "list<column>", overall = "string", drop_contexts = "r",
+                    drop_key_variables = "logical", stack = "r", stack_sep = "string",
+                    stack_nest = "logical"),
   plan_hide = c(cols = "list<column>"),
   plan_cell_style = c(cols = "list<column>", where = "formula",
                       bold = .plan_cell_look, italic = .plan_cell_look,
@@ -764,10 +840,8 @@ builder_items <- function(x, output_id) {
   plan_style = c(border = "string", align_count_pct = "logical",
                  font_size_half_points = "integer"))
 
-# the arguments of a form card the sheets have no place for: shown under
-# "Other arguments" as R, marked "Not saved" (the function's default
-# applies)
-.plan_form_unkept <- list(
+# the arguments of a form card given as R (no field of their own)
+.plan_form_r <- list(
   plan_filter = "by",
   plan_cell_style = "border",
   plan_columns = c("cell_format", "column_widths_twips"),
@@ -781,10 +855,7 @@ builder_items <- function(x, output_id) {
   for (a in names(.plan_form_types[[fn]])) {
     sch$args[[a]]$type <- .plan_form_types[[fn]][[a]]
   }
-  for (a in .plan_form_unkept[[fn]]) {
-    sch$args[[a]]$type <- "r"
-    sch$args[[a]]$unsaved <- TRUE
-  }
+  for (a in .plan_form_r[[fn]]) sch$args[[a]]$type <- "r"
   fl <- tryCatch(formals(utils::getFromNamespace(fn, "rtfreporter")), error = function(e) NULL)
   fo <- names(fl)
   # a check's default the function's own (plan_paginate_group(keep = TRUE)):
@@ -797,39 +868,156 @@ builder_items <- function(x, output_id) {
     }
   }
   sch$formals <- setdiff(unique(c(fo, names(sch$args))), c("plan", ".plan", "..."))
+  # (no argument is read only: normalize_ard()'s hierarchy is a field too,
+  # marked the ARD's while it says the same, warned when it does not)
+  sch$fixed <- character()
   # (the main fields in the function's order too)
   sch$visible <- .arg_order(.plan_form_main[[fn]], sch$formals)
   sch
 }
 
 # where an argument's value came from: the report's own, the study's
-# defaults (a value the item has that the report does not say)
+# defaults, a pattern (the item's arg_from, read from the spec); else a
+# value the item has that the report does not say is the defaults'
 .arg_from <- function(it, a) {
+  af <- it$arg_from
+  if (!is.null(af) && a %in% names(af)) return(af[[a]])
   if (a %in% names(it$own_args %||% list())) "own" else if (a %in% names(it$args)) "defaults" else "own"
 }
 
-# A form card's body: its main arguments as fields (each marked where its
-# value came from), the rest under "Other arguments".  `choices`: the
-# columns offered (the row layers, the ARD's keys).
-.plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en", cols = NULL) {
+# The function's arguments a card shows, in two groups (each in the
+# function's order, a data argument -- x, plan -- none): `upper` those the
+# call's code writes -- the required, the item's arguments
+# (tflspec::tfl_item_written()), those the ARD decides (`ard`) -- and
+# `lower` the rest.  The same for every report: no kind of table shows or
+# hides an argument.
+.data_args <- c("x", "plan", ".plan", "data", "ard", "...")
+
+.fields_split <- function(fn, it, formals, ard = character()) {
+  fo <- setdiff(formals, .data_args)
+  fl <- tryCatch(formals(utils::getFromNamespace(sub("^.*::", "", fn), "rtfreporter")),
+                 error = function(e) NULL)
+  req <- names(fl)[vapply(fl, function(d) is.symbol(d) && !nzchar(as.character(d)), NA)]
+  a <- it$args %||% list()
+  wr <- if (length(a)) tryCatch(tflspec::tfl_item_written(tflspec::tfl_item(fn, a)),
+                                error = function(e) names(a)) else character()
+  # (a verb's positional ... keyed by an argument -- plan_hide(cols) -- by its key too)
+  up <- unique(c(req, wr, names(a)[nzchar(names(a))], ard))
+  list(upper = fo[fo %in% up], lower = fo[!fo %in% up])
+}
+
+# A form card's body: the function's arguments as fields (each marked where
+# its value came from), those its code writes above, the rest below
+# ("Not in the code", folded: a value given there moves its field up).
+# `choices`: the columns offered (the row layers, the ARD's keys).
+.plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en", cols = NULL,
+                            ard = list(), fixed_link = NULL) {
   sch <- .plan_form_schema(fn)
   a <- it$args %||% list()
-  # (in the function's order: sch$visible)
-  fields <- lapply(sch$visible, function(k) {
+  sp <- .fields_split(fn, it, sch$formals, ard = names(Filter(length, ard)))
+  field <- function(k, value) {
     from <- if (k %in% names(a)) .arg_from(it, k) else "own"
     own <- if (k %in% names(it$own_args %||% list())) "This table"
+    # an argument the ARD decides (normalize_ard()'s hierarchy: step 1's
+    # analysis): an ordinary field, "From the ARD" while it says the same
+    # (blank: the ARD's), a warning when another value is given
+    ak <- ard[[k]]
+    if (length(ak)) {
+      same <- is.null(value) || identical(as.character(unlist(value)), as.character(ak))
+      f <- arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
+                     default = paste(ak, collapse = ", "), choices = unique(c(ak, choices)),
+                     from = if (same) "ard" else from, own = if (!same) own,
+                     help = .arg_help(fn, k, sch, lang), lang = lang)
+      return(.ard_checked(f, ak, same, fixed_link, lang))
+    }
     if (identical(sch$args[[k]]$type, "widths")) {
-      return(.widths_field(cid, k, cols %||% .widths_cols(a[[k]], choices), a[[k]],
+      return(.widths_field(cid, k, cols %||% .widths_cols(value, choices), value,
                            label = .arg_meaning(fn, k), from = from, own = own,
                            help = .arg_help(fn, k, sch, lang), lang = lang))
     }
-    arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = a[[k]],
+    arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
               default = sch$args[[k]]$default, choices = choices,
               from = from, own = own, help = .arg_help(fn, k, sch, lang), lang = lang)
-  })
-  shiny::tagList(arg_group(NULL, fields, lang = lang),
-                 arg_more(cid, fn, schema = sch, lang = lang, values = a, choices = choices))
+  }
+  shiny::div(
+    class = "rp-plan-args", `data-card` = cid,
+    shiny::div(class = "rp-args-up", `data-formals` = paste(sch$formals, collapse = ","),
+               arg_group(NULL, lapply(sp$upper, function(k) field(k, a[[k]])), lang = lang)),
+    arg_more(cid, fn, schema = sch, lang = lang, rest = sp$lower,
+             fields = lapply(sp$lower, function(k) field(k, NULL)), label = "Not in the code"))
 }
+
+# The cards of a form of their own (table_plan()'s roles, plan_cells()'
+# rows and formats, plan_col_header()'s lines, plan_sort()'s order): the
+# arguments their form says; the function's other arguments are fields as
+# a form card's, below the form (#417: every argument on the card)
+.special_covered <- list(table_plan = c("cols", "rows", "label"),
+                         plan_cells = c("value", "categorical", "continuous", "default"),
+                         plan_col_header = c("header", "values"),
+                         plan_sort = c("keys", "stat"))
+.special_args <- function(fn) {
+  setdiff(.plan_form_schema(fn)$formals, c(.data_args, .special_covered[[fn]]))
+}
+.special_more <- function(cid, fn, it, lang = "en") {
+  ex <- .special_args(fn)
+  if (!length(ex)) return(NULL)
+  sch <- .plan_form_schema(fn)
+  a <- it$args %||% list()
+  up <- ex[ex %in% names(a)]
+  lo <- setdiff(ex, up)
+  field <- function(k, value) {
+    arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
+              default = sch$args[[k]]$default,
+              from = if (k %in% names(a)) .arg_from(it, k) else "own",
+              own = if (k %in% names(it$own_args %||% list())) "This table",
+              help = .arg_help(fn, k, sch, lang), lang = lang)
+  }
+  shiny::div(
+    class = "rp-plan-args rp-special-more", `data-card` = cid,
+    shiny::div(class = "rp-args-up", `data-formals` = paste(ex, collapse = ","),
+               arg_group(NULL, lapply(up, function(k) field(k, a[[k]])), lang = lang)),
+    arg_more(cid, fn, schema = sch, lang = lang, rest = lo,
+             fields = lapply(lo, function(k) field(k, NULL)), label = "Not in the code"))
+}
+# ... read back: those fields' values (`set`) and the fields emptied, or a
+# check as the function's default (`unset`); NULL while they are not there
+.special_read <- function(input, cid, fn) {
+  ex <- .special_args(fn)
+  seen <- ex[vapply(ex, function(k) !is.null(.input_value(input, paste0(cid, "__", k))), NA)]
+  if (!length(seen)) return(NULL)
+  sch <- .plan_form_schema(fn)
+  r <- builder_card_read(input, cid, sch, args = seen, logical_false = TRUE)
+  out <- list(set = list(), unset = character())
+  for (k in seen) {
+    v <- r[[k]]
+    d <- sch$args[[k]]$default
+    empty <- is.null(v) || !length(v) || (length(v) == 1L && (is.na(v) || identical(v, ""))) ||
+      (is.logical(v) && (if (is.null(d)) isFALSE(as.logical(v)) else
+        identical(as.logical(v), as.logical(d))))
+    if (empty) out$unset <- c(out$unset, k) else out$set[[k]] <- .form_list_value(v, sch$args[[k]]$type)
+  }
+  out
+}
+# ... put into the item's arguments as they are now
+.special_args_put <- function(args, r) {
+  args <- args %||% list()
+  for (k in r$unset) args[[k]] <- NULL
+  for (k in names(r$set)) args[[k]] <- r$set[[k]]
+  args
+}
+
+# A field of a value the ARD decides: its ARD value on it (`data-ard`, the
+# page compares as it is changed), and a warning -- not a stop -- shown when
+# the field says another (`same` FALSE), with the way to step 1 (`link`)
+.ard_checked <- function(field, ard, same, link = NULL, lang = "en") {
+  field <- htmltools::tagAppendAttributes(field, `data-ard` = paste(ard, collapse = "|"))
+  field <- htmltools::tagAppendChild(field, shiny::div(
+    class = "small text-warning rp-ard-warn", style = if (same) "display: none;",
+    sprintf(tr("Not the ARD analysis's (%s): the table may fail or come out otherwise. The analysis is changed in step 1.", lang),
+            paste(ard, collapse = " > "))))
+  htmltools::tagAppendChild(field, shiny::div(class = "small rp-ard-link", link))
+}
+
 
 # the form read back: the arguments its fields say (an unticked check
 # FALSE); NULL while its fields are not there yet.  `cols`: the columns
@@ -845,7 +1033,8 @@ builder_items <- function(x, output_id) {
       isTRUE(.input_value(input, paste0(cid, "__", k, "__isr")))
   }, NA)
   if (!any(seen)) return(NULL)
-  out <- builder_card_read(input, cid, sch, args = setdiff(sch$formals, wa), logical_false = TRUE)
+  out <- builder_card_read(input, cid, sch, args = setdiff(sch$formals, c(wa, sch$fixed)),
+                           logical_false = TRUE)
   for (k in intersect(names(out), names(sch$args))) {
     out[[k]] <- .form_list_value(out[[k]], sch$args[[k]]$type)
     if (identical(sch$args[[k]]$type, "formula")) out[[k]] <- .formula_text(out[[k]])
@@ -959,28 +1148,27 @@ builder_items <- function(x, output_id) {
   identical(.arg_to_r(a), .arg_to_r(b))
 }
 
-# The report's own arguments after a form's edit: a field changed from
-# what the item says is the report's own; one emptied that was its own is
-# taken away (the study's default again).  `read`: .plan_form_read().
-.plan_form_own <- function(read, it, fn) {
+# The item's whole arguments after the form's edit: its arguments (the
+# report's over its layers') with what the form says otherwise put in, a
+# field emptied taking its argument away (an argument the item does not
+# say is the function's default: a check ticked as that default is no
+# change).  .builder_item_write() keeps of them what differs from the layers.
+.plan_form_args <- function(read, it, fn) {
   sch <- .plan_form_schema(fn)
   eff <- it$args %||% list()
-  own <- it$own_args %||% list()
-  for (a in union(names(read), intersect(names(eff), sch$formals))) {
+  # (a widths field not drawn -- no columns known -- reads nothing: no change)
+  wa <- names(Filter(function(x) identical(x$type, "widths"), sch$args))
+  for (a in setdiff(union(names(read), setdiff(intersect(names(eff), sch$formals),
+                                              setdiff(wa, names(read)))), sch$fixed)) {
     lg <- identical(.arg_kind(sch$args[[a]]$type), "logical") && !inherits(read[[a]], "tfl_r")
     new <- read[[a]]
-    # (an argument the item does not say is the function's default: a
-    # check ticked as that default is no change)
     cur <- eff[[a]]
     if (is.null(cur) && lg) cur <- sch$args[[a]]$default
     if (.same_value(new, cur, lg)) next
-    if (is.null(new)) {
-      if (a %in% names(own)) own[[a]] <- NULL
-      next
-    }
-    own[[a]] <- new
+    eff[a] <- list(new)
+    if (is.null(new)) eff[[a]] <- NULL
   }
-  own
+  eff
 }
 
 # ---- plan_digits(), plan_levels(), plan_filter() -----------------------------------
@@ -990,13 +1178,19 @@ builder_items <- function(x, output_id) {
 .rounding_field <- function(cid, value = NULL, lang = "en") {
   ty <- .schema_of("plan_digits")$args$rounding$type %||% "enum[sas|r|iec60559]"
   v <- if (length(value) == 1L && !is.na(value) && nzchar(value)) value
-  arg_field(cid, "rounding", ty, label = .arg_meaning("plan_digits", "rounding"), value = v,
-            from = if (!is.null(v)) "defaults" else "own",
-            help = tr(paste("How a 5 is rounded: sas half away from zero, r half to even,",
-                            "iec60559 as the machine stores the number. The study's: every",
-                            "report's (the Study tab's Rounding); blank there: options(rtfreporter.rounding)."),
-                      lang),
-            lang = lang)
+  shiny::tagList(
+    arg_field(cid, "rounding", ty, label = .arg_meaning("plan_digits", "rounding"), value = v,
+              from = if (!is.null(v)) "defaults" else "own",
+              help = tr(paste("How a 5 is rounded: sas half away from zero, r half to even,",
+                              "iec60559 as the machine stores the number. The study's: every",
+                              "report's (the Study tab's Rounding); blank there: options(rtfreporter.rounding)."),
+                        lang),
+              lang = lang),
+    # (a change here is the study's: every report's -- a mark, its words
+    # in its title)
+    shiny::span(class = "rp-badge rp-badge-defaults rp-every-report",
+                title = tr("Applies to every report (the study's defaults.yml)", lang),
+                tr("every report", lang)))
 }
 
 # Each variable's empty values hidden (plan_levels(.drop_empty = ):
@@ -1029,8 +1223,9 @@ builder_items <- function(x, output_id) {
       shiny::div(class = "rp-b-sec-label",
                  builder_label(sprintf(t("Values of %s"), nm), nm, "arg", lang),
                  if (!is.na(v$label[i])) shiny::span(class = "text-muted ms-1", v$label[i])),
-      sortable::rank_list(text = NULL, labels = .levels_with_labels(lv, nm, codelists),
-                          input_id = id(paste0("lv", i)), orientation = "horizontal"),
+      .levels_fold(sortable::rank_list(text = NULL, labels = .levels_with_labels(lv, nm, codelists),
+                                       input_id = id(paste0("lv", i)), orientation = "horizontal"),
+                   lv, lang),
       shiny::tags$label(
         class = "small rp-levels-drop",
         shiny::tags$input(type = "checkbox", id = id(paste0("lvdrop", i)),
@@ -1045,11 +1240,24 @@ builder_items <- function(x, output_id) {
     if (length(vars)) shiny::div(
       class = "rp-b-sec rp-levels-var", `data-variable` = "variable",
       shiny::div(class = "rp-b-sec-label",
-                 builder_label("Analysis variables' order", "variable", "arg", lang)),
+                 builder_label("Analysis variables' order (the levels of variable)", "variable", "arg", lang)),
       sortable::rank_list(text = NULL, labels = vars, input_id = id("vars"))),
     cols,
     if (length(rows)) rows else if (!length(vars)) shiny::div(
       class = "small text-muted", t("No categorical variable to order.")))
+}
+
+# A variable's levels to order: a long list (RACE's six) clipped to its
+# first line, "all" opens it.  (Clipped, not hidden: a sortable list reads
+# its items' text, which a hidden list has not -- it would read blanks.)
+.levels_fold <- function(list_ui, lv, lang = "en", at = 4L) {
+  if (length(lv) <= at) return(list_ui)
+  shiny::tagList(
+    shiny::div(class = "rp-levels-clip", list_ui),
+    shiny::tags$a(href = "#", class = "small rp-levels-more",
+                  onclick = "$(this).prev('.rp-levels-clip').toggleClass('rp-open'); return false;",
+                  sprintf(tr("%d levels: %s", lang), length(lv),
+                          paste(c(utils::head(lv, 3L), "..."), collapse = ", "))))
 }
 
 # plan_filter()'s `where` as one condition's R (several joined by &, as
@@ -1085,100 +1293,9 @@ builder_items <- function(x, output_id) {
 
 # ---- normalize_ard() ------------------------------------------------------------
 
-# normalize_ard()'s arguments the sheets have a place for (tables), and
-# those they have not (shown, kept as the function's defaults)
-.normalize_cols <- c(overall = "overall_label", stack = "stack", stack_sep = "stack_sep",
-                     stack_nest = "stack_nest")
-
-.normalize_schema <- function() {
-  sch <- .schema_of("normalize_ard") %||% list()
-  # the sheets have no place for these yet: marked "Not saved" (the
-  # function's default applies)
-  for (a in c("keys", "drop_contexts", "drop_key_variables")) {
-    sch$args[[a]]$type <- "r"
-    sch$args[[a]]$unsaved <- TRUE
-  }
-  sch$args$stack$type <- "string"
-  sch$args$stack_sep$type <- "string"
-  sch$args$stack_nest$type <- "logical"
-  # (each one's (i): .plan_arg_help; the fields in the function's order --
-  # the hierarchy and the overall row are the card's own)
-  sch$formals <- setdiff(.fn_formals("rtfreporter::normalize_ard"), "x")
-  if (!length(sch$formals)) sch$formals <- names(sch$args)
-  sch$visible <- c("hierarchy", "overall")
-  sch
-}
-
-# The normalize_ard() card: the hierarchy -- the ARD analysis's, fixed
-# chips marked "From the ARD", with the way to that analysis -- and the
-# any-event row (overall: the table's, tables$overall_label) when the table
-# has a hierarchy; the stack when the table says one; the rest under
-# "Other arguments".  `tb`: the report's tables row; `step_link`: the link
-# to the ARD analysis; `overall_id`: the overall field's input id.
-.normalize_body <- function(cid, hierarchy = character(), tb = NULL, overall_id = NULL,
-                            step_link = NULL, revert_id = NULL, lang = "en") {
-  t <- function(x) tr(x, lang)
-  val <- function(col) {
-    v <- if (!is.null(tb) && col %in% names(tb) && nrow(tb)) tb[[col]][1L] else NA
-    if (is.na(v) || !nzchar(trimws(v))) NULL else v
-  }
-  al <- function(arg) builder_label(.arg_meaning("normalize_ard", arg), arg, "arg", lang)
-  hier <- length(hierarchy) > 0L
-  stacked <- !is.null(val("stack"))
-  sch <- .normalize_schema()
-  ov <- val("overall_label")
-  parts <- list(
-    if (hier) shiny::div(
-      class = "rp-b-sec",
-      shiny::div(class = "rp-b-sec-label",
-                 with_tip(al("hierarchy"),
-                          t("The hierarchy is the ARD analysis's (step 1): the table shows its levels as they are.")),
-                 " ", from_badge("ard", lang)),
-      shiny::div(class = "rp-b-levels",
-                 lapply(hierarchy, function(h) shiny::span(class = "rp-b-level", h)),
-                 step_link)),
-    if (hier) shiny::div(
-      class = "rp-b-sec rp-field", `data-arg` = "overall",
-      shiny::tags$label(class = "rp-field-label", `for` = overall_id,
-                        with_tip(al("overall"),
-                                 t("The any-event row's text (tables$overall_label); blank: no such row.")),
-                        if (!is.null(ov)) from_badge("own", lang, own = "This table"),
-                        if (!is.null(ov) && !is.null(revert_id)) shiny::actionLink(
-                          revert_id, t("Revert"), class = "small rp-revert",
-                          title = t("No any-event row: the ARD's rows as they are"))),
-      shiny::tags$input(type = "text", id = overall_id, class = "form-control form-control-sm",
-                        value = ov %||% "", placeholder = "Any TEAE", style = "max-width: 18em;")),
-    # (only when the table says a stack -- else they are under "Other
-    # arguments"; a hierarchy does not stack)
-    if (stacked) lapply(c("stack", "stack_sep", "stack_nest"), function(a) {
-      v <- val(.normalize_cols[[a]])
-      if (identical(a, "stack_nest")) v <- if (!is.null(v)) toupper(v) == "TRUE"
-      arg_field(cid, a, sch$args[[a]]$type, label = .arg_meaning("normalize_ard", a),
-                value = v, from = "own",
-                help = if (identical(a, "stack"))
-                  sprintf(t("e.g. %s. Subgroups as one pair of keys: name = its layers, a comma between them, * crossing variables (AGEGR1 * SEX). The rows can then take subgroup and subgroup_level (table_plan())."),
-                          "subgroup = ALL, SEX, AGEGR1") else
-                    .arg_help("normalize_ard", a, sch, lang),
-                own = if (!is.null(v)) "This table", lang = lang)
-    }))
-  parts <- Filter(Negate(is.null), parts)
-  shiny::tagList(
-    if (!length(parts)) shiny::div(class = "small text-muted",
-                                   t("No settings: the function's defaults.")),
-    parts,
-    arg_more(cid, "normalize_ard", used = if (stacked) c("stack", "stack_sep", "stack_nest"),
-             schema = sch, lang = lang))
-}
-
-# the stack's fields read back as the tables columns (NULL while they are
-# not there): stack, stack_sep, stack_nest
-.normalize_read <- function(input, cid) {
-  get <- function(a) .input_value(input, paste0(cid, "__", a))
-  if (is.null(get("stack")) && is.null(get("stack_sep")) && is.null(get("stack_nest"))) return(NULL)
-  txt <- function(v) if (is.null(v) || !nzchar(trimws(v))) NA_character_ else trimws(v)
-  list(stack = txt(get("stack")), stack_sep = txt(get("stack_sep")),
-       stack_nest = if (isTRUE(get("stack_nest"))) "TRUE" else NA_character_)
-}
+# (normalize_ard()'s card is a form card like the others: .plan_form_body(),
+# its hierarchy a field marked the ARD's (.ard_checked()) -- and its arguments written
+# into the report's YAML)
 
 # ---- the rows: the variables shown --------------------------------------------------
 
@@ -1279,236 +1396,50 @@ builder_code_map <- function(lines, items) {
   data.frame(line = out_l[o], path = out_p[o], stringsAsFactors = FALSE)
 }
 
+# plan_cells()' entries of a variable of its own (not the default, the
+# continuous or categorical rows, the value printed, a variable's own
+# decimals `skip`), as the card says them: "prob (3 rows), time"; NULL none
+.cells_own_vars <- function(pc, skip = character()) {
+  k <- setdiff(names(pc %||% list()),
+               c("default", "continuous", "categorical", "value", "stats", "na", "notes", skip))
+  if (!length(k)) return(NULL)
+  vapply(k, function(v) {
+    x <- pc[[v]]
+    if (inherits(x, "tfl_call")) x <- x$args
+    n <- if (is.list(x) || length(x) > 1L) length(x) else 1L
+    if (n > 1L) sprintf("%s (%d)", v, n) else v
+  }, "", USE.NAMES = FALSE)
+}
+.cells_own_note <- function(pc, skip = character(), t = function(x) x) {
+  v <- .cells_own_vars(pc, skip)
+  if (is.null(v)) return(NULL)
+  shiny::div(class = "small text-muted rp-cells-own mt-1",
+             t("Per variable (edit them as R on this card):"), " ",
+             shiny::tags$code(paste(v, collapse = ", ")))
+}
+
 # ---- writing an item back ------------------------------------------------------------
 
-# Where each verb is written in the sheets: a sheet with one row a report
-# (tables, layout, style) by its columns; a sheet of rows (cells,
-# col_header ...) by its rows -- `cols` NULL -- or, the variables sheet, by
-# its columns of each variable's row.
-.verb_targets <- list(
-  table_plan = list(tables = c("cols", "rows", "label", "show_keys")),
-  plan_sort = list(tables = c("sort", "sort_stat")),
-  plan_total = list(tables = c("total", "total_position")),
-  plan_stat_groups = list(tables = "stat_groups"),
-  plan_cells = list(tables = c("stats", "value", "na"), cells = NULL),
-  plan_filter = list(tables = c("keep_where", "keep_any", "keep_parents")),
-  plan_compare = list(tables = c("compare", "compare_by", "compare_position")),
-  plan_digits = list(digits = NULL),
-  plan_levels = list(variables = c("levels", "empty_levels", "order")),
-  plan_labels = list(variables = "label"),
-  plan_nest = list(variables = "under"),
-  plan_stub = list(layout = c("stub_vars", "stub_name", "stub_indent", "stub_summary",
-                              "stub_before")),
-  plan_paginate_group = list(layout = c("group_page", "group_col", "group_keep",
-                                        "group_heading", "group_heading_at")),
-  plan_row_group = list(layout = c("group_mode", "group_collapse")),
-  plan_blanks = list(layout = c("blank_where", "blank_first", "blank_last",
-                                "blank_counted")),
-  plan_paginate_rows = list(layout = c("pages_max_rows", "pages_split", "pages_break_before",
-                                       "pages_min_group_rows", "pages_cont_label",
-                                       "pages_page_by", "pages_heading",
-                                       "pages_heading_at")),
-  plan_paginate_cols = list(layout = c("colpages_every", "colpages_at", "colpages_keep",
-                                       "colpages_order", "colpages_cut_by", "colpages_fit",
-                                       "colpages_allow_span_break")),
-  plan_style = list(style = NA),
-  plan_cell_style = list(cell_styles = NULL),
-  plan_hide = list(columns = "hide"),
-  plan_col_header = list(col_header = NULL, tables = "header_n", style = "col_header_align"),
-  plan_columns = list(columns = c("rel_width", "decimal_split", "row_title"),
-                      style = "auto_width", tables = "sep"))
-
-# the columns of a one-row sheet a verb writes (NA: all but those other
-# verbs write there)
-.target_cols <- function(sheet, cols, d) {
-  if (identical(cols, NA)) {
-    others <- unlist(lapply(.verb_targets, function(t) {
-      v <- t[[sheet]]
-      if (is.character(v)) v
-    }), use.names = FALSE)
-    cols <- setdiff(names(d), c("output_id", "note", others, "col_header_align", "auto_width"))
-  }
-  intersect(cols, names(d))
-}
-
-# The report's own rows of `sheet` with the columns `cols` taken from
-# `new` (its own rows the bridge wrote; NULL or none: the columns cleared).
-# Rows: a one-row sheet's row; the variables sheet's by variable, the
-# columns sheet's by column (a column's row left with nothing taken away).
-.put_cols <- function(x, id, sheet, cols, new) {
-  d <- sheet_rows(x, sheet, id)
-  d$output_id <- NULL
-  if (is.null(new)) new <- d[0, , drop = FALSE]
-  new <- as.data.frame(new, stringsAsFactors = FALSE)
-  new$output_id <- NULL
-  cols <- .target_cols(sheet, cols, d)
-  if (!length(cols)) return(x)
-  val <- function(df, i, c) if (c %in% names(df) && i <= nrow(df)) as.character(df[[c]][i]) else NA_character_
-  key <- c(variables = "variable", columns = "column")[sheet]
-  if (!is.na(key)) {
-    for (c in cols) d[[c]] <- as.character(d[[c]])
-    for (c in cols) d[[c]][] <- NA_character_
-    for (i in seq_len(nrow(new))) {
-      v <- new[[key]][i]
-      j <- match(v, d[[key]])
-      if (is.na(j)) {
-        d[nrow(d) + 1L, ] <- NA
-        j <- nrow(d)
-        d[[key]][j] <- v
-      }
-      for (c in cols) d[[c]][j] <- val(new, i, c)
-    }
-    if (identical(sheet, "columns") && nrow(d)) {
-      left <- rowSums(!is.na(d[setdiff(names(d), c(key, "note"))])) > 0
-      d <- d[left, , drop = FALSE]
-    }
-  } else {
-    if (!nrow(d)) d[1L, ] <- NA
-    for (c in cols) d[[c]][1L] <- val(new, 1L, c)
-  }
-  set_sheet_rows(x, sheet, id, d)
-}
-
-# the report's own rows of a sheet of rows, as the bridge wrote them
-.put_rows <- function(x, id, sheet, new) {
-  d <- sheet_rows(x, sheet, id)
-  d$output_id <- NULL
-  if (is.null(new) || !nrow(new)) return(set_sheet_rows(x, sheet, id, d[0, , drop = FALSE]))
-  new <- as.data.frame(new, stringsAsFactors = FALSE)
-  new$output_id <- NULL
-  rows <- d[rep(NA_integer_, nrow(new)), , drop = FALSE]
-  for (c in intersect(names(new), names(rows))) rows[[c]] <- as.character(new[[c]])
-  rownames(rows) <- NULL
-  set_sheet_rows(x, sheet, id, rows)
-}
-
-# One item of a table written back to the report's sheets: the report's
-# own items with the `k`-th item of `fn` given these arguments (added when
-# it has none), written through tflspec's bridge into the sheets that verb
-# is written from.  What a sheet cannot hold stops it (nothing is written).
+# One item of a table written into the report's YAML: the `k`-th item of
+# `fn` given these arguments -- its whole arguments, as the card says them
+# (.spec_set_item(): the report's own layer holds what differs from the
+# layers below).  plan_digits()' rounding is the study's, one for every
+# report: it stays the layers', and a new one is the study's rounding.
 .builder_item_write <- function(x, output_id, fn, args, k = 1L) {
-  tg <- .verb_targets[[fn]]
-  if (is.null(tg)) stop(sprintf("%s: the sheets have no place for it.", fn), call. = FALSE)
-  was_cmp <- .compare_names_own(x, output_id)
-  sp <- .spec_object_last(x, table_sheets(), .study_keys$table)
-  own <- .tflspec_fn(".plan_content_from_sheets")(sp, output_id, own = TRUE)
-  at <- which(vapply(own, function(it) it$fn, "") == fn)
-  if (length(at) >= k) {
-    own[[at[k]]]$args <- args
-  } else {
-    own <- c(own, list(tflspec::tfl_item(fn, args)))
-  }
-  sh <- .tflspec_fn(".plan_sheets_from_content")(own, output_id)
-  lost <- attr(sh, "not_converted")
-  lost <- lost[startsWith(lost, paste0(fn, ":"))]
-  if (length(lost)) stop(paste(lost, collapse = "; "), call. = FALSE)
-  for (sheet in names(tg)) {
-    new <- sh[[sheet]]
-    cols <- tg[[sheet]]
-    x <- if (is.null(cols)) .put_rows(x, output_id, sheet, new) else
-      .put_cols(x, output_id, sheet, cols, new)
-  }
-  # the value labels of the columns the plan makes (plan_labels(subgroup =
-  # c(ALL = "All Subjects")): tflspec keeps them as the report's code list
-  # rows of those columns; the data's own code lists are not touched
-  if (identical(fn, "plan_labels")) x <- .put_plan_made_codelists(x, output_id, sh$codelists)
-  # plan_compare(): each column's template is a cells row of its name
-  # (variable = the column) -- those rows replaced, the rest of the
-  # report's cells (plan_cells()') kept
-  if (identical(fn, "plan_compare")) x <- .put_compare_cells(x, output_id, was_cmp, sh$cells)
-  # the study's own (plan_digits()' rounding): one value for every report,
-  # written when the item says it
-  .put_study_keys(x, sh$study)
-}
-
-# The columns the plan makes, of a report: its stack's keys, .stat_group
-.plan_made_cols <- function(x, output_id) {
-  tb <- .rows_for(x, "tables", output_id)
-  c(.stack_keys(tb$stack[1L], tb$stack_nest[1L]), ".stat_group")
-}
-
-# The report's code list rows of the columns the plan makes, as the bridge
-# wrote them (`new`, its codelists rows): those rows replaced, the rest of
-# the report's code lists (the data's variables') kept as they are
-.put_plan_made_codelists <- function(x, output_id, new) {
-  made <- .plan_made_cols(x, output_id)
-  d <- sheet_rows(x, "codelists", output_id)
-  d$output_id <- NULL
-  keep <- d[!d$variable %in% made, , drop = FALSE]
-  add <- if (is.data.frame(new) && nrow(new) && "variable" %in% names(new)) {
-    new <- as.data.frame(new, stringsAsFactors = FALSE)
-    new[new$variable %in% made, , drop = FALSE]
-  }
-  if (!sum(d$variable %in% made) && (is.null(add) || !nrow(add))) return(x)
-  rows <- keep
-  if (!is.null(add) && nrow(add)) {
-    more <- d[rep(NA_integer_, nrow(add)), , drop = FALSE]
-    for (c in intersect(names(add), names(more))) more[[c]] <- as.character(add[[c]])
-    rows <- rbind(keep, more)
-  }
-  rownames(rows) <- NULL
-  set_sheet_rows(x, "codelists", output_id, rows)
-}
-
-# the study keys a bridge's study rows say (key, value), into x$study
-.put_study_keys <- function(x, rows) {
-  if (!is.data.frame(rows) || !nrow(rows) || !all(c("key", "value") %in% names(rows))) return(x)
-  for (i in seq_len(nrow(rows))) {
-    k <- as.character(rows$key[i])
-    if (!k %in% .study_keys$table || is.na(rows$value[i])) next
-    x$study[[k]] <- as.character(rows$value[i])
+  rd <- if (identical(fn, "plan_digits")) args$rounding
+  x <- .spec_set_item(x, output_id, fn, args, k,
+                      below_args = if (identical(fn, "plan_digits")) "rounding" else character())
+  if (!is.null(rd) && !inherits(rd, "tfl_r") &&
+      !identical(as.character(rd), unname(x$study[["rounding"]] %||% NA_character_))) {
+    x <- .spec_set_rounding(x, as.character(rd))
   }
   x
 }
 
-# ... and the report's own rows of that verb taken away: the study's
-# defaults apply again
-.builder_item_revert <- function(x, output_id, fn) {
-  tg <- .verb_targets[[fn]]
-  if (is.null(tg)) return(x)
-  was_cmp <- .compare_names_own(x, output_id)
-  for (sheet in names(tg)) {
-    cols <- tg[[sheet]]
-    x <- if (is.null(cols)) .put_rows(x, output_id, sheet, NULL) else
-      .put_cols(x, output_id, sheet, cols, NULL)
-  }
-  # (plan_labels(): its labels of the columns the plan makes too)
-  if (identical(fn, "plan_labels")) x <- .put_plan_made_codelists(x, output_id, NULL)
-  # (plan_compare(): its columns' cells rows too)
-  if (identical(fn, "plan_compare")) x <- .put_compare_cells(x, output_id, was_cmp, NULL)
-  x
-}
-
-# The comparison columns the report's own tables row names (tables$compare)
-.compare_names_own <- function(x, output_id) {
-  tb <- sheet_rows(x, "tables", output_id)
-  if (!nrow(tb) || !"compare" %in% names(tb)) return(character())
-  v <- tb$compare[1L]
-  if (is.na(v) || !nzchar(trimws(v))) return(character())
-  trimws(strsplit(v, "|", fixed = TRUE)[[1L]])
-}
-
-# The report's cells rows of the comparison columns: those of the columns
-# it had (`was`) and those the bridge wrote (`new`, its cells rows, of the
-# columns it names now) replace them; the other cells rows as they are
-.put_compare_cells <- function(x, output_id, was, new) {
-  d <- sheet_rows(x, "cells", output_id)
-  d$output_id <- NULL
-  now <- .compare_names_own(x, output_id)
-  add <- if (is.data.frame(new) && nrow(new) && "variable" %in% names(new)) {
-    new <- as.data.frame(new, stringsAsFactors = FALSE)
-    new[new$variable %in% now, , drop = FALSE]
-  }
-  drop <- d$variable %in% union(was, now)
-  if (!any(drop) && (is.null(add) || !nrow(add))) return(x)
-  rows <- d[!drop, , drop = FALSE]
-  if (!is.null(add) && nrow(add)) {
-    more <- d[rep(NA_integer_, nrow(add)), , drop = FALSE]
-    for (c in intersect(names(add), names(more))) more[[c]] <- as.character(add[[c]])
-    rows <- rbind(rows, more)
-  }
-  rownames(rows) <- NULL
-  set_sheet_rows(x, "cells", output_id, rows)
+# ... and the report's own `k`-th item of `fn` taken away: its layers' apply
+# again (none: the verb is gone from the plan)
+.builder_item_revert <- function(x, output_id, fn, k = 1L) {
+  .spec_revert_item(x, output_id, fn, k)
 }
 
 # ---- style -----------------------------------------------------------------------------
@@ -1546,6 +1477,12 @@ builder_code_map <- function(lines, items) {
 .rp-builder-cards .default-sortable.horizontal .rank-list { flex-wrap: wrap; gap: .25rem; }
 .rp-builder-cards .default-sortable.horizontal .rank-list-item { flex: 0 0 auto;
   overflow: visible; white-space: nowrap; max-width: 100%; }
+/* plan_levels()' chips: small, a line or two (#417) */
+.rp-builder-cards .rp-levels-var .rank-list-item { font-size: 12px; padding: .05rem .4rem;
+  line-height: 1.4; min-height: 0; }
+.rp-builder-cards .rp-levels-var .rank-list { gap: .2rem; padding: .2rem; }
+.rp-levels-clip { max-height: 2.1rem; overflow: hidden; }
+.rp-levels-clip.rp-open { max-height: none; }
 "
 
 # the cards' buttons of the table builder, one input each: Revert, Edit as
@@ -1613,6 +1550,11 @@ $(document).on('click', '.rp-builder-cards .rp-tool-remove', function() {
 .heading_create_js <- paste0(
   "function(input) { var v = String(input).replace(/^[\\s\"']+|[\\s\"']+$/g, '').replace(/\"/g, '');",
   " if (!v.length) return false; v = '\"' + v + '\"'; return {value: v, text: v}; }")
+
+# the k-th call of its verb a card's path names ("plan_cell_style#2": 2)
+.path_k <- function(path) {
+  if (!is.null(path) && grepl("#", path, fixed = TRUE)) as.integer(sub("^.*#", "", path)) else 1L
+}
 
 # the item a card's path names (NULL for none)
 .builder_item_at <- function(items, path) {

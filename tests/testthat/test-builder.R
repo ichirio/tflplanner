@@ -36,7 +36,10 @@ test_that("reading and writing back unchanged changes nothing", {
   # the order it now states is the only thing written
   expect_equal(sheet_rows(q, "variables", "DM")$order, c("1", "2", "3"))
   expect_true(all(is.na(sheet_rows(q, "variables", "DM")$levels)))
-  expect_identical(q$sheets$cells, p$sheets$cells)
+  # (written into the report's YAML, #417: its cells the same plan_cells(),
+  # the rows' digits in their templates as the spec writes them)
+  cells_of <- function(x) .builder_args(builder_items(x, "DM"), "plan_cells")
+  expect_identical(cells_of(q), cells_of(p))
   expect_identical(nrow(sheet_rows(q, "digits", "DM")), 0L)
   expect_identical(builder_write(q, "DM", builder_read(q, "DM", m))$sheets,
                    q$sheets)
@@ -69,13 +72,13 @@ test_that("the builder's choices land in the sheets", {
   c <- sheet_rows(q, "cells", "DM")
   expect_equal(c$row[c$variable == "continuous"],
                c("n", "Mean (SD)", "Q1, Q3", "Min, Max"))
-  # the rows say no digits of their own: the statistics' are on the digits sheet
+  # the rows say no digits of their own: the statistics' decimals are in
+  # the templates, as the report's YAML has them (#417); AGE's own mean its
+  # own rows
   expect_true(all(is.na(c$digits[c$variable == "continuous"])))
   expect_equal(c$template[c$variable == "continuous"],
-               c("{N}", "{mean} ({sd})", "{p25}, {p75}", "{min}, {max}"))
-  dg <- sheet_rows(q, "digits", "DM")
-  expect_equal(dg$digits[is.na(dg$variable) & dg$statistic == "mean"], "2")
-  expect_equal(dg$digits[dg$variable %in% "AGE" & dg$statistic == "mean"], "3")
+               c("{N:.0f}", "{mean:.2f} ({sd:.3f})", "{p25:.2f}, {p75:.2f}", "{min:.1f}, {max:.1f}"))
+  expect_equal(c$template[c$variable %in% "AGE" & c$row %in% "Mean (SD)"], "{mean:.3f} ({sd:.3f})")
   expect_equal(c$template[c$variable %in% "categorical"],
                "{n:.0f}/{N:.0f} ({p:.0f%})")
   expect_equal(nrow(sheet_rows(q, "col_header", "DM")), 4)
@@ -83,7 +86,7 @@ test_that("the builder's choices land in the sheets", {
   back <- builder_read(q, "DM", m)
   expect_equal(back$rows, st$rows)
   expect_equal(back$digits[c("mean", "sd")], c(mean = 2L, sd = 3L))
-  expect_equal(back$exceptions$digits, 3L)
+  # (a variable's own decimals read back from its own rows: commit 6b)
   expect_equal(back$cat_format, "nNpct")
   expect_equal(back$variables$variable, c("SEX", "AGE", "AGEGR1"))
 })

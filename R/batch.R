@@ -277,6 +277,7 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 .is_abs_path <- function(p) grepl("^([A-Za-z]:)?[/\\\\]", p)
 
 # the runner and the autoexec programs, written with the study
+.batch_cache <- new.env()
 .save_batch_programs <- function(p, root) {
   lay <- study_layout()
   out <- data.frame(file = character(), status = character(),
@@ -285,7 +286,15 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
     f <- file.path(root, f)
     out[nrow(out) + 1L, ] <<- list(f, .put_program(code, f, root))
   }
-  put(batch_code(p, root = root), file.path("programs", .batch_file))
+  # (the same reports, ARD and definition files: the same program -- a
+  # save after a table's card edit writes none again, #417)
+  key <- list(p$ard, p$outputs, p$study, p$sheets$report, p$sheets$codelists, p$fig_designs,
+              p$lf, .spec_files_yaml(root), root, Sys.Date(), .code_context$opts)
+  if (!identical(.batch_cache$key, key)) {
+    .batch_cache$code <- batch_code(p, root = root)
+    .batch_cache$key <- key
+  }
+  put(.batch_cache$code, file.path("programs", .batch_file))
   # the figure style, and the one function a report of one's own code ends
   # with (report_content()), written once here
   put(.fig_setup_code(p), file.path(lay[["programs_tfl"]], .fig_setup_file))

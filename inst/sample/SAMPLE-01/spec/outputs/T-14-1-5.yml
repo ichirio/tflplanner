@@ -146,12 +146,6 @@ content:
         Min, Max: '{min:.0f}, {max:.0f}'
   - plan_total:
       label: Total
-  - plan_labels:
-      AGE: Age (years)
-      AGEGR1: Age group, n (%)
-      SEX: Sex, n (%)
-      RACE: Race, n (%)
-      ETHNIC: Ethnicity, n (%)
   - plan_levels:
       variable:
         - AGE
@@ -185,6 +179,12 @@ content:
         - Not Hispanic or Latino
         - Not reported
         - Unknown
+  - plan_labels:
+      AGE: Age (years)
+      AGEGR1: Age group, n (%)
+      SEX: Sex, n (%)
+      RACE: Race, n (%)
+      ETHNIC: Ethnicity, n (%)
   - plan_nest:
       ASIANSUB:
         RACE: Asian

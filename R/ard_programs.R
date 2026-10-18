@@ -144,13 +144,25 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
 # write a generated program (one edited by hand copied to
 # programs/.edited/ first); the file's row of what the save did
 .put_program <- function(code, f, root) {
+  # (the same code over the file it wrote, untouched since: unchanged --
+  # without reading the file again; #417, a save after a card's edit)
+  md5 <- if (file.exists(f)) unname(tools::md5sum(f))
+  hit <- .put_cache[[f]]
+  if (!is.null(md5) && !is.null(hit) && identical(hit$md5, md5) && identical(hit$code, code)) {
+    return("unchanged")
+  }
   state <- .ard_program_state(code, f)
-  if (state == "current") return("unchanged")
-  if (state == "edited") .back_up_edited(f, root)
-  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
-  .write_program(code, f)
-  if (state == "edited") "rewritten" else "written"
+  if (state != "current") {
+    if (state == "edited") .back_up_edited(f, root)
+    dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+    .write_program(code, f)
+  }
+  .put_cache[[f]] <- list(md5 = unname(tools::md5sum(f)), code = code)
+  switch(state, current = "unchanged", edited = "rewritten", "written")
 }
+.put_cache <- new.env()
+
+.ard_prog_cache <- new.env()
 
 # the ARD programs, written with the study: the setup, one per output, the
 # autoexec; a program of an output no longer defined goes (one edited by
@@ -166,9 +178,20 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
     out[nrow(out) + 1L, ] <<- list(f, .put_program(code, f, root))
   }
   put(ard_setup_code(spec), .ard_setup_file)
-  for (id in ids) put(ard_program_code(spec, id, dir = root,
-                                       codelists = codelists),
-                      .ard_prog_name(id))
+  # (an output's ARD program kept while the ARD definition, the code lists
+  # and the day are the same: a save after an edit of a table writes the
+  # same programs, #417)
+  key <- list(spec, root, codelists, Sys.Date(), .code_context$opts)
+  if (!identical(.ard_prog_cache$key, key)) {
+    .ard_prog_cache$key <- key
+    .ard_prog_cache$code <- list()
+  }
+  for (id in ids) {
+    if (is.null(.ard_prog_cache$code[[id]])) {
+      .ard_prog_cache$code[[id]] <- ard_program_code(spec, id, dir = root, codelists = codelists)
+    }
+    put(.ard_prog_cache$code[[id]], .ard_prog_name(id))
+  }
   put(ard_autoexec_code(spec), .ard_autoexec_file)
   keep <- c(.ard_setup_file, .ard_autoexec_file, vapply(ids, .ard_prog_name, ""))
   for (f in setdiff(list.files(dir, "\\.[Rr]$"), keep)) {

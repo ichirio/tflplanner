@@ -8,8 +8,9 @@
 # text).
 
 html <- function(...) as.character(htmltools::tagList(...))
+# (the spec in step with its view, as a study opened: the items read from it)
 sample_planner <- function() {
-  .planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner"))
+  .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
 }
 fns_of <- function(items) vapply(items, function(it) it$fn, "")
 item <- function(items, fn) items[[match(fn, fns_of(items))]]
@@ -131,9 +132,9 @@ test_that("a column the plan makes keeps the plan's order, not its code list's",
 test_that("plan_columns(): a width a column, the decimal alignment, the row title, written by column", {
   sch <- .plan_form_schema("plan_columns")
   expect_identical(sch$visible, c("widths", "decimal", "row_title", "auto_width"))
-  # (what the sheets cannot keep: under Other arguments, marked Not saved)
+  # (given as R: under Other arguments)
   expect_identical(sch$args$cell_format$type, "r")
-  expect_true(sch$args$column_widths_twips$unsaved)
+  expect_identical(sch$args$column_widths_twips$type, "r")
   p <- sample_planner()
   it <- item(builder_items(p, "T-14-1-1"), "plan_columns")
   cols <- .widths_cols(it$args$widths, c("row_label", ".values", "Placebo"))
@@ -147,13 +148,13 @@ test_that("plan_columns(): a width a column, the decimal alignment, the row titl
   inp <- list(c__widths__1 = "40", c__widths__2 = "18", c__widths__3 = "", c__auto_width = FALSE)
   r <- .plan_form_read(inp, "c", "plan_columns", cols = cols)
   expect_identical(r$widths, list(row_label = 40, .values = 18))
-  own <- .plan_form_own(r, it, "plan_columns")
-  expect_identical(args_to_r("plan_columns", own), args_to_r("plan_columns", it$own_args %||% list()))
+  own <- .plan_form_args(r, it, "plan_columns")
+  expect_identical(args_to_r("plan_columns", own), args_to_r("plan_columns", it$args %||% list()))
   # a width, the alignment and the automatic width of the table's own
   inp$c__widths__3 <- "25"
   inp$c__decimal <- ".values"
   inp$c__auto_width <- TRUE
-  own <- .plan_form_own(.plan_form_read(inp, "c", "plan_columns", cols = cols), it, "plan_columns")
+  own <- .plan_form_args(.plan_form_read(inp, "c", "plan_columns", cols = cols), it, "plan_columns")
   q <- .builder_item_write(p, "T-14-1-1", "plan_columns", own)
   co <- sheet_rows(q, "columns", "T-14-1-1")
   expect_setequal(co$column, c("row_label", ".values", "Placebo"))
@@ -186,7 +187,7 @@ test_that("plan_digits()' rounding: a choice, the study's (written there)", {
 test_that("plan_filter(): its condition for the condition builder, any and parents as fields", {
   expect_identical(.plan_form_main$plan_filter, c("any", "parents"))
   sch <- .plan_form_schema("plan_filter")
-  expect_true(sch$args$by$unsaved)
+  expect_identical(sch$args$by$type, "r")
   expect_null(.filter_where_text(NULL))
   expect_identical(.filter_where_text(tflspec::tfl_r("p >= 0.05")), "p >= 0.05")
   expect_identical(.filter_where_text(list(tflspec::tfl_r("p >= 0.05"), tflspec::tfl_r("n > 2"))),
@@ -208,8 +209,8 @@ test_that("plan_filter(): its condition for the condition builder, any and paren
   expect_identical(tb$keep_parents, "drop")
   it <- item(builder_items(q, "T-14-1-1"), "plan_filter")
   inp <- list(c__any = FALSE, c__parents = "drop")
-  own <- .plan_form_own(.plan_form_read(inp, "c", "plan_filter"), it, "plan_filter")
-  expect_identical(args_to_r("plan_filter", own), args_to_r("plan_filter", it$own_args))
+  own <- .plan_form_args(.plan_form_read(inp, "c", "plan_filter"), it, "plan_filter")
+  expect_identical(args_to_r("plan_filter", own), args_to_r("plan_filter", it$args))
   h <- html(.plan_form_body("c", "plan_filter", it))
   expect_match(h, 'id="c__parents"', fixed = TRUE)
   expect_match(h, 'id="c__any"', fixed = TRUE)
@@ -234,8 +235,6 @@ test_that("plan_levels(): each variable's values dragged, its empty values hidde
   expect_match(h2, 'id="b_vars"', fixed = TRUE)
   expect_match(h2, "(variable)", fixed = TRUE)
   expect_match(h2, 'id="the-cols"', fixed = TRUE)
-  expect_identical(.verb_targets$plan_levels$variables, c("levels", "empty_levels", "order"))
-  expect_identical(.verb_targets$plan_labels$variables, "label")
   expect_identical(.empty_levels_of(vr), list(SEX = TRUE, RACE = FALSE))
   expect_identical(.empty_levels_of(NULL), list())
   # the labels' card has no order of the levels any more
@@ -254,29 +253,22 @@ test_that("the new words have their Japanese", {
                    "解析変数 (variable) は行になりません（1 変数の表、ORR など）")
 })
 
-test_that("plan_labels(): the labels of the columns the plan makes go to their code list rows only", {
+test_that("plan_labels(): the labels of the columns the plan makes are the item's, the data's code lists kept", {
   p <- sample_planner()
   id <- "T-14-1-1"
-  tb <- own_tables(p, id)
-  tb$stack <- "subgroup = ALL, SEX"
-  p <- set_sheet_rows(p, "tables", id, tb)
-  expect_identical(.plan_made_cols(p, id), c("subgroup", "subgroup_level", ".stat_group"))
   before <- sheet_rows(p, "codelists", id)
-  new <- data.frame(output_id = id, variable = c("subgroup", "subgroup", "SEX"),
-                    value = c("ALL", "SEX", "F"), label = c("All Subjects", "Sex", "Nope"))
-  q <- .put_plan_made_codelists(p, id, new)
+  it <- item(builder_items(p, id), "plan_labels")
+  q <- .builder_item_write(p, id, "plan_labels",
+                           c(it$args, list(subgroup = c(ALL = "All Subjects", SEX = "Sex"))))
+  got <- item(builder_items(q, id), "plan_labels")$args$subgroup
+  expect_identical(got, c(ALL = "All Subjects", SEX = "Sex"))
+  # (the report's YAML says it; the data's code lists as they were)
+  o <- .spec_output(q, id)
+  pl <- Filter(function(x) identical(x$fn, "plan_labels"), o$content)[[1L]]
+  expect_identical(pl$args$subgroup, c(ALL = "All Subjects", SEX = "Sex"))
   cl <- sheet_rows(q, "codelists", id)
-  # the data's code lists as they were; the subgroup's rows added
-  expect_identical(cl[cl$variable != "subgroup", names(before)], before[, names(before)],
-                   ignore_attr = TRUE)
-  expect_identical(cl$label[cl$variable == "subgroup"], c("All Subjects", "Sex"))
-  # written again: replaced, not added twice; none: taken away
-  q2 <- .put_plan_made_codelists(q, id, new[1L, ])
-  expect_identical(sum(sheet_rows(q2, "codelists", id)$variable == "subgroup"), 1L)
-  q3 <- .put_plan_made_codelists(q2, id, NULL)
-  expect_identical(sum(sheet_rows(q3, "codelists", id)$variable == "subgroup"), 0L)
-  # nothing of the plan's, nothing to write: the planner as it was
-  expect_identical(.put_plan_made_codelists(p, id, NULL), p)
+  keep <- cl[cl$variable %in% before$variable, names(before)]
+  expect_identical(keep$label, before$label)
 })
 
 # ---- the second bundle: the cards "Add" brings (2026-10-16) -----------------
@@ -317,12 +309,12 @@ test_that("plan_compare(): its columns chosen, each its template, written with i
   drawn <- .dots_args("plan_compare", it$args)
   inp <- list(c__cols = "p", c__tpl__1 = "{p.value:.3f}", c__by = "TRT01A", c__position = "")
   r <- .compare_read(inp, "c", drawn)
-  expect_identical(.dots_form_own(r, it, "plan_compare"), it$own_args)
+  expect_identical(.dots_form_args(r, it, "plan_compare"), it$args)
   expect_null(.compare_read(list(), "c", drawn))
   # a column more (a statistic chosen: its template {name}), the place first
   inp$c__cols <- c("estimate", "p")
   inp$c__position <- "first"
-  own <- .dots_form_own(.compare_read(inp, "c", drawn), it, "plan_compare")
+  own <- .dots_form_args(.compare_read(inp, "c", drawn), it, "plan_compare")
   expect_identical(names(own), c("estimate", "p", "by", "position"))
   expect_identical(own$estimate, "{estimate}")
   q2 <- .builder_item_write(q, id, "plan_compare", own)
@@ -334,7 +326,7 @@ test_that("plan_compare(): its columns chosen, each its template, written with i
   inp$c__cols <- "estimate"
   it2 <- item(builder_items(q2, id), "plan_compare")
   q3 <- .builder_item_write(q2, id, "plan_compare",
-                            .dots_form_own(.compare_read(inp, "c", .dots_args("plan_compare", it2$args)),
+                            .dots_form_args(.compare_read(inp, "c", .dots_args("plan_compare", it2$args)),
                                            it2, "plan_compare"))
   expect_false("p" %in% sheet_rows(q3, "cells", id)$variable)
   # taken away: the report's cells as before
@@ -369,13 +361,13 @@ test_that("plan_stat_groups(): a group a row (its name, its statistics), .variab
               c__g__3__name = "", c__g__3__stats = NULL,
               c__.variables = "AGE", c__.others = "n")
   r <- .stat_groups_read(inp, "c", 2L)
-  expect_identical(.dots_form_own(r, it, "plan_stat_groups"), it$own_args)
+  expect_identical(.dots_form_args(r, it, "plan_stat_groups"), it$args)
   expect_null(.stat_groups_read(list(), "c", 2L))
   # a new group in the spare row; a group with no statistic is none
   inp$c__g__3__name <- "ci"
   inp$c__g__3__stats <- c("conf.low", "conf.high")
   inp$c__g__1__stats <- NULL
-  own <- .dots_form_own(.stat_groups_read(inp, "c", 2L), it, "plan_stat_groups")
+  own <- .dots_form_args(.stat_groups_read(inp, "c", 2L), it, "plan_stat_groups")
   expect_identical(names(own), c("orr", "ci", ".variables", ".others"))
   q2 <- .builder_item_write(q, id, "plan_stat_groups", own)
   expect_identical(own_tables(q2, id)$stat_groups,
@@ -401,10 +393,10 @@ test_that("plan_nest(): a variable under a level of another, on its own card", {
   expect_match(h, '<option value="RACE: Asian" selected>', fixed = TRUE)
   inp <- stats::setNames(as.list(rep("", length(vars))), paste0("c__nest__", seq_along(vars)))
   inp[[paste0("c__nest__", i)]] <- "RACE: Asian"
-  expect_identical(.dots_form_own(.nest_read(inp, "c", vars, it), it, "plan_nest"), it$own_args)
+  expect_identical(.dots_form_args(.nest_read(inp, "c", vars, it), it, "plan_nest"), it$args)
   # taken away: its own block again
   inp[[paste0("c__nest__", i)]] <- ""
-  own <- .dots_form_own(.nest_read(inp, "c", vars, it), it, "plan_nest")
+  own <- .dots_form_args(.nest_read(inp, "c", vars, it), it, "plan_nest")
   expect_length(own, 0L)
   q2 <- .builder_item_write(q, id, "plan_nest", own)
   vr2 <- sheet_rows(q2, "variables", id)
@@ -422,15 +414,15 @@ test_that("plan_paginate_group(), plan_paginate_cols(), plan_row_group(): a form
   expect_identical(.plan_form_main$plan_paginate_cols,
                    c("every", "fit", "at", "keep", "cut_by", "order", "allow_span_break"))
   expect_identical(.plan_form_main$plan_row_group, c("mode", "collapse"))
-  # what the sheets cannot keep: under Other arguments, marked Not saved
-  expect_true(.plan_form_schema("plan_row_group")$args$group_col$unsaved)
-  expect_true(.plan_form_schema("plan_paginate_cols")$args$col_header$unsaved)
+  # given as R: under Other arguments, saved
+  expect_identical(.plan_form_schema("plan_row_group")$args$group_col$type, "r")
+  expect_identical(.plan_form_schema("plan_paginate_cols")$args$col_header$type, "r")
   # the fields in the function's order (its formals)
   expect_identical(.plan_form_schema("plan_paginate_cols")$visible,
                    c("at", "cut_by", "every", "keep", "fit", "allow_span_break", "order"))
   h <- html(.plan_form_body("c", "plan_paginate_cols", list(fn = "plan_paginate_cols", args = list())))
   expect_lt(regexpr('data-arg="at"', h, fixed = TRUE), regexpr('data-arg="every"', h, fixed = TRUE))
-  expect_match(h, "rp-badge-unsaved", fixed = TRUE)
+  expect_no_match(h, "rp-badge-unsaved", fixed = TRUE)
   # keep = TRUE by the function: ticked, and no change while it stays so
   sch <- .plan_form_schema("plan_paginate_group")
   expect_true(isTRUE(sch$args$keep$default))
@@ -438,9 +430,9 @@ test_that("plan_paginate_group(), plan_paginate_cols(), plan_row_group(): a form
   h <- html(.plan_form_body("c", "plan_paginate_group", it0, choices = c("PARAM", "AVISIT")))
   expect_match(h, 'id="c__keep" checked', fixed = TRUE)
   r <- .plan_form_read(list(c__col = "PARAM", c__keep = TRUE, c__heading = ""), "c", "plan_paginate_group")
-  expect_identical(.plan_form_own(r, it0, "plan_paginate_group"), it0$own_args)
+  expect_identical(.plan_form_args(r, it0, "plan_paginate_group"), it0$args)
   r$keep <- FALSE
-  expect_false(.plan_form_own(r, it0, "plan_paginate_group")$keep)
+  expect_false(.plan_form_args(r, it0, "plan_paginate_group")$keep)
   # written and read back through the sheets
   p <- sample_planner()
   id <- "T-14-1-1"
@@ -506,7 +498,7 @@ test_that("plan_hide(): the table's columns hidden, a multi-select, written by c
   expect_null(.plan_form_read(list(c__cols = NULL), "c", "plan_hide"))
   r <- .plan_form_read(list(c__cols = c("Placebo", "row_label")), "c", "plan_hide")
   expect_identical(r, list(cols = c("Placebo", "row_label")))
-  own <- .plan_form_own(r, it0, "plan_hide")
+  own <- .plan_form_args(r, it0, "plan_hide")
   p <- sample_planner()
   id <- "T-14-1-1"
   q <- .builder_item_write(p, id, "plan_hide", own)
@@ -518,31 +510,31 @@ test_that("plan_hide(): the table's columns hidden, a multi-select, written by c
   h2 <- html(.plan_form_body("c", "plan_hide", it, choices = c("row_label", ".values", "Placebo")))
   expect_match(h2, '<option value="Placebo" selected>', fixed = TRUE)
   r2 <- .plan_form_read(list(c__cols = it$args$cols), "c", "plan_hide")
-  expect_identical(args_to_r("plan_hide", .plan_form_own(r2, it, "plan_hide")),
-                   args_to_r("plan_hide", it$own_args))
+  expect_identical(args_to_r("plan_hide", .plan_form_args(r2, it, "plan_hide")),
+                   args_to_r("plan_hide", it$args))
 })
 
 test_that("plan_cell_style(): cols, where, the looks as fields, each call its own card", {
   expect_identical(.plan_form_main$plan_cell_style,
                    c("cols", "header", "where", "bold", "italic", "align", "color", "background"))
   sch <- .plan_form_schema("plan_cell_style")
-  # a look left blank is not written (not FALSE); border: under Other arguments, marked Not saved
+  # a look left blank is not written (not FALSE); border: under Other arguments, as R
   expect_identical(.arg_kind(sch$args$bold$type), "enum")
   expect_identical(.arg_kind(sch$args$color$type), "colour")
   expect_identical(sch$args$border$type, "r")
-  expect_true(sch$args$border$unsaved)
+  expect_identical(sch$args$border$type, "r")
   expect_true(isFALSE(sch$args$header$default))
   it0 <- list(fn = "plan_cell_style", args = list(), own_args = list())
   h <- html(.plan_form_body("c", "plan_cell_style", it0, choices = c("row_label", "Placebo")))
   for (a in c("cols", "header", "where", "bold", "italic", "align", "color", "background")) {
     expect_match(h, sprintf('id="c__%s"', a), fixed = TRUE)
   }
-  expect_match(h, "Other arguments", fixed = TRUE)
+  expect_match(h, "Not in the code", fixed = TRUE)
   # blank fields: nothing (the header's check unticked is its default)
   inp <- list(c__cols = NULL, c__header = FALSE, c__where = "", c__bold = "", c__italic = "",
               c__align = "", c__color = "", c__background = "")
   r0 <- .plan_form_read(inp, "c", "plan_cell_style")
-  expect_identical(.plan_form_own(r0, it0, "plan_cell_style"), list())
+  expect_identical(.plan_form_args(r0, it0, "plan_cell_style"), list())
   # the looks as values; the condition without its ~ (the code writes it)
   inp$c__cols <- "Placebo"
   inp$c__where <- "~ is.na(label)"
@@ -553,7 +545,7 @@ test_that("plan_cell_style(): cols, where, the looks as fields, each call its ow
   expect_true(isTRUE(r$bold))
   expect_identical(as.character(unclass(r$where)), "is.na(label)")
   expect_identical(.formula_text(tflspec::tfl_r("  ~  ")), NULL)
-  own <- .plan_form_own(r, it0, "plan_cell_style")
+  own <- .plan_form_args(r, it0, "plan_cell_style")
   expect_null(own$italic)
   expect_null(own$header)
   p <- sample_planner()
@@ -575,8 +567,8 @@ test_that("plan_cell_style(): cols, where, the looks as fields, each call its ow
   r2 <- .plan_form_read(list(c__cols = "row_label", c__header = FALSE, c__where = "", c__bold = "",
                              c__italic = "FALSE", c__align = "", c__color = "", c__background = ""),
                         "c", "plan_cell_style")
-  expect_identical(args_to_r("plan_cell_style", .plan_form_own(r2, its[[2L]], "plan_cell_style")),
-                   args_to_r("plan_cell_style", its[[2L]]$own_args))
+  expect_identical(args_to_r("plan_cell_style", .plan_form_args(r2, its[[2L]], "plan_cell_style")),
+                   args_to_r("plan_cell_style", its[[2L]]$args))
   # a colour typed is kept (the select takes one)
   expect_match(html(.field_colour("x", NULL, "#CC0000", NULL)), '"create":true', fixed = TRUE)
 })
@@ -610,4 +602,36 @@ test_that("the third bundle's words have their Japanese", {
          "Hidden columns", "Alignment", "Borders")
   ja <- vapply(w, tr, "", lang = "ja")
   expect_true(all(ja != w), info = paste(w[ja == w], collapse = " / "))
+})
+
+test_that("every form card shows all its function's arguments: those written above, the rest below (#417)", {
+  p <- sample_planner()
+  args_of <- function(h, part) {
+    x <- regmatches(h, regexpr(part, h, perl = TRUE))
+    if (!length(x)) return(character())
+    gsub('data-arg="|"', "", regmatches(x, gregexpr('data-arg="[^"]+"', x))[[1L]])
+  }
+  seen <- list()
+  for (id in c("T-14-1-1", "T-14-3-1")) {
+    items <- builder_items(p, id)
+    for (fn in names(.plan_form_main)) {
+      it <- Filter(function(x) identical(x$fn, fn), items)
+      it <- if (length(it)) it[[1L]] else list(fn = fn, args = list())
+      h <- html(.plan_form_body("c", fn, it, cols = c("row_label", ".values")))
+      up <- args_of(h, '(?s)rp-args-up.*?(?=rp-more|$)')
+      low <- args_of(h, '(?s)rp-more-body.*$')
+      fo <- setdiff(.plan_form_schema(fn)$formals, .data_args)
+      # all of them, once, each group in the function's order
+      expect_setequal(c(up, low), fo)
+      expect_false(any(duplicated(c(up, low))), info = fn)
+      expect_identical(up, fo[fo %in% up], info = fn)
+      expect_identical(low, fo[fo %in% low], info = fn)
+      # above: what the call writes
+      expect_true(all(intersect(names(it$args), fo) %in% up), info = paste(id, fn))
+      seen[[id]][[fn]] <- sort(c(up, low))
+    }
+  }
+  # the same fields whatever the table's kind
+  expect_identical(seen[["T-14-1-1"]], seen[["T-14-3-1"]])
+  expect_identical(tr("Not in the code", "ja"), "コードに書かれない引数")
 })

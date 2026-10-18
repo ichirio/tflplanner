@@ -138,7 +138,6 @@ reference:
       - fill_variables
       - cell_presets
       - add_preset
-      - builder_read
       - builder_stats
       - preview_pages
   - title: Starting from the data

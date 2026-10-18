@@ -95,12 +95,6 @@ content:
         Mean (SD): '{mean:.1f} ({sd:.2f})'
         Median: '{median:.1f}'
         Min, Max: '{min:.0f}, {max:.0f}'
-  - plan_labels:
-      AGE: Age (years)
-      AGEGR1: Age group, n (%)
-      SEX: Sex, n (%)
-      RACE: Race, n (%)
-      ETHNIC: Ethnicity, n (%)
   - plan_levels:
       variable:
         - AGE
@@ -129,6 +123,12 @@ content:
         - Not Hispanic or Latino
         - Not reported
         - Unknown
+  - plan_labels:
+      AGE: Age (years)
+      AGEGR1: Age group, n (%)
+      SEX: Sex, n (%)
+      RACE: Race, n (%)
+      ETHNIC: Ethnicity, n (%)
   - plan_paginate_rows:
       max_rows: 30
       split: group_safe

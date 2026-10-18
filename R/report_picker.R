@@ -257,13 +257,27 @@ Shiny.addCustomMessageHandler('rp-dt-search', function(m) {
   var el = $('#' + m.id + ' table.dataTable');
   if (el.length) el.DataTable().search(m.q).draw();
 });
-// drawn again: the report chosen in sight
+// drawn again: the report chosen in sight -- in the list's own scroll
+// only, never the page's (an edit elsewhere draws the list again, and the
+// page would jump to it)
+function rpInBox(n) {
+  var box = n.parentElement;
+  while (box && box !== document.body) {
+    var oy = getComputedStyle(box).overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && box.scrollHeight > box.clientHeight) break;
+    box = box.parentElement;
+  }
+  if (!box || box === document.body) return;
+  var b = box.getBoundingClientRect(), r = n.getBoundingClientRect();
+  if (r.top < b.top) box.scrollTop -= b.top - r.top;
+  else if (r.bottom > b.bottom) box.scrollTop += r.bottom - b.bottom;
+}
 $(document).on('shiny:value', function(e) {
   var el = $(e.target);
   if (!el.parent().hasClass('rp-picker')) return;
   setTimeout(function() {
     var n = el.find('.rp-now')[0];
-    if (n) n.scrollIntoView({block: 'nearest'});
+    if (n) rpInBox(n);
   }, 0);
 });
 $(document).on('keydown', '.rp-picker', function(e) {
