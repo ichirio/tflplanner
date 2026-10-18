@@ -208,6 +208,14 @@ test_that("normalize_ard(): a form card -- the hierarchy fixed and From the ARD,
   i0 <- item(builder_items(p, "T-14-1-1"), "normalize_ard")
   h0 <- html(.plan_form_body("n", "normalize_ard", i0, ard = list(hierarchy = character())))
   expect_match(h0, "Not in the code (8)", fixed = TRUE)
+  # its hierarchy where it comes from: the study's defaults (none there),
+  # not "This table"; one the ARD has, the ARD's
+  f0 <- html(.fixed_field("normalize_ard", "hierarchy", NULL, i0, character()))
+  expect_match(f0, 'data-from="defaults"', fixed = TRUE)
+  expect_false(grepl(">This table<", f0, fixed = TRUE))
+  expect_match(f0, ">None<", fixed = TRUE)
+  f1 <- html(.fixed_field("normalize_ard", "hierarchy", NULL, i0, hier))
+  expect_match(f1, 'data-from="ard"', fixed = TRUE)
   expect_match(h0, 'id="n__stack"', fixed = TRUE)
   expect_match(html(.plan_form_body("n", "normalize_ard", i0, lang = "ja")),
                tr(.plan_arg_help$normalize_ard[["keys"]], "ja"), fixed = TRUE)

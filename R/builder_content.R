@@ -908,8 +908,12 @@ builder_items <- function(x, output_id, meta = NULL) {
 # step 1's): its values as chips, marked "From the ARD" when they are the
 # ARD's (`ard`), with the way to change them (`link`)
 .fixed_field <- function(fn, k, value, it, ard = NULL, link = NULL, lang = "en") {
+  # where the value comes from: the ARD's (step 1 decides it), the item's
+  # argument's layer; with none written, the ARD's when it has one, else
+  # the layer the item comes from (the study's defaults: none there)
   from <- if (length(value) && identical(as.character(value), as.character(ard))) "ard" else
-    if (k %in% names(it$args)) .arg_from(it, k) else "own"
+    if (k %in% names(it$args)) .arg_from(it, k) else
+      if (length(ard)) "ard" else it$from %||% "own"
   shiny::div(
     class = "rp-field rp-field-fixed rp-has-value", `data-arg` = k,
     shiny::tags$label(class = "rp-field-label",
