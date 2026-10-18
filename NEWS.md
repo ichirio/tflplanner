@@ -1,11 +1,28 @@
 # tflplanner (development version)
 
-- Internal: a report's content items as its file says them over the
-  layers it extends, with where each argument comes from (own, the
-  defaults, a pattern) and what a revert goes back to (#417, 0.0.2.9236;
-  step B3).  tflspec >= 0.0.24.9152.  The table builder reads its cards
-  from them: normalize_ard() is the report's YAML item (no longer made
-  from the ARD), each field marked where its value comes from.
+- **The table builder reads and writes the report's YAML items** (#417,
+  0.0.2.9239; step B3 of the YAML-native plan).  tflspec >= 0.0.24.9152.
+  Each card is the report's item of its function, read over the layers
+  it extends with where each argument comes from (this table, the
+  study's defaults, a pattern, the ARD) and written back into the
+  report's YAML -- no sheet in between, every argument kept (no more "not
+  saved").  A card of the study's defaults edited becomes this table's
+  own whole item ("This table", Revert takes it back).  Every card shows
+  all of its function's arguments: those the code writes above, the rest
+  below ("Not in the code"), each in the function's order, for every kind
+  of table; a value given moves its field up.  normalize_ard()'s
+  hierarchy is an ordinary field, marked when it is the ARD analysis's and
+  warned when it is not.  The decimals of a statistic and a variable's
+  own decimals are written into plan_cells()' templates (they had no
+  effect on a table read from YAML); the rounding into the study's
+  defaults.yml ("every report").  A card's edit redraws no card and keeps
+  the page where it is (its mark, Revert and summary put in its head);
+  a save writes only what changed (seconds less); a new table first drawn
+  is no change until something is changed.  Fields of several values are
+  dragged to reorder.  New: "Discard changes" beside Save; the button
+  "Generate this table's ARD"; cards named "Level order" and "Display
+  names"; the code pane as tall as the window, its edge dragged.
+  `builder_read()` and `builder_write()` are internal now.
 
 - **tflspec's `layout$group_heading_at` and `pages_heading_at`** (tflspec
   #337, 0.0.2.9238): where a table's page names print (the section header,

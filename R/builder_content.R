@@ -1018,29 +1018,6 @@ builder_items <- function(x, output_id, meta = NULL) {
   htmltools::tagAppendChild(field, shiny::div(class = "small rp-ard-link", link))
 }
 
-# A value the card shows but does not change (normalize_ard()'s hierarchy:
-# step 1's): its values as chips, marked "From the ARD" when they are the
-# ARD's (`ard`), with the way to change them (`link`)
-.fixed_field <- function(fn, k, value, it, ard = NULL, link = NULL, lang = "en") {
-  # where the value comes from: the ARD's (step 1 decides it), the item's
-  # argument's layer; with none written, the ARD's when it has one, else
-  # the layer the item comes from
-  # (no value -- a table with no hierarchy: no mark, the value says none)
-  from <- if (!length(value)) NULL else
-    if (identical(as.character(value), as.character(ard))) "ard" else
-      if (k %in% names(it$args)) .arg_from(it, k) else
-        if (length(ard)) "ard" else it$from %||% "own"
-  shiny::div(
-    class = "rp-field rp-field-fixed rp-has-value", `data-arg` = k,
-    shiny::tags$label(class = "rp-field-label",
-                      builder_label(.arg_meaning(fn, k), k, "arg", lang),
-                      from_badge(from, lang, own = if (identical(from, "own")) "This table"),
-                      help_tip(.arg_help(fn, k, NULL, lang))),
-    shiny::div(class = "rp-b-levels",
-               if (length(value)) lapply(as.character(value), function(h) shiny::span(class = "rp-b-level", h)) else
-                 shiny::span(class = "small text-muted", tr("None", lang)),
-               link))
-}
 
 # the form read back: the arguments its fields say (an unticked check
 # FALSE); NULL while its fields are not there yet.  `cols`: the columns
@@ -1317,7 +1294,7 @@ builder_items <- function(x, output_id, meta = NULL) {
 # ---- normalize_ard() ------------------------------------------------------------
 
 # (normalize_ard()'s card is a form card like the others: .plan_form_body(),
-# its hierarchy read only -- .fixed_field() -- and its arguments written
+# its hierarchy a field marked the ARD's (.ard_checked()) -- and its arguments written
 # into the report's YAML)
 
 # ---- the rows: the variables shown --------------------------------------------------

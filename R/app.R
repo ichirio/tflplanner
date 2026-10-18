@@ -273,7 +273,10 @@ html.shiny-busy.rp-user-busy body::after { visibility: visible;
   transition: visibility 0s .4s, background .2s .4s; }
 .rp-code textarea, .rp-code pre { font-family: Consolas, 'Courier New',
   monospace; font-size: 12.5px; }
-.rp-code pre { max-height: 520px; overflow: auto; white-space: pre; }
+/* the code: as tall as the window lets it (the sticky column's), its
+   bottom edge dragged to make it shorter or taller */
+.rp-code pre { max-height: calc(100vh - 12rem); min-height: 6rem; overflow: auto; white-space: pre;
+  resize: vertical; }
 /* a step's own code: the header, the editor and its check on a laptop's screen
    (above it 320px, below ~90px: measured at 1366x640 and 1536x730) */
 .rp-code-step textarea { height: clamp(12em, calc(100vh - 410px), 36em); }
@@ -757,9 +760,9 @@ app_ui <- function(lang = "en") {
             placeholder = "data <- normalize_ard(ard)"),
           shiny::div(
             class = "d-flex gap-2 align-items-center mb-2",
-            .btn("fetch", t("Preview"),
+            .btn("fetch", t("Generate this table's ARD"),
                  class = "btn-sm btn-outline-primary"),
-            help_tip(t("Makes this report's ARD (as Preview in step 1), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
+            help_tip(t("Makes this report's ARD (as Generate this table's ARD in step 1), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
           shiny::uiOutput("ard_summary")))))
 
   step_page <- shiny::div(
@@ -3634,7 +3637,7 @@ app_server <- function(input, output, session, start) {
       shiny::span(class = paste("small", if (st$need) "text-muted"), st$text),
       if (st$need) .btn("fetch2", t("Generate this table's ARD"),
                         class = "btn-sm btn-outline-primary"),
-      if (st$need) help_tip(t("Makes this report's ARD in an R of its own, for the table builder's choices and the preview. The study ARD (output/ard/ard.rds) is not changed (the study ARD is made by the ARD step's Make the ARD).")))
+      if (st$need) help_tip(t("Saves the study when it has unsaved changes, runs this report's ARD program in an R of its own and puts its rows into the study's working ARD (output/ard/ard.rds), the other reports' rows left as they are. The table builder's choices and the preview read it. The official run is the Runs tab's.")))
   })
   # A report's ARD in one word -- not made, outdated (its definition has
   # changed), made (when), error -- and whether a Preview is wanted.
@@ -6637,7 +6640,8 @@ app_server <- function(input, output, session, start) {
     shiny::tagList(
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center",
-      .btn("ard_preview", t("Preview"), class = "btn-sm btn-primary"),
+      .btn("ard_preview", t("Generate this table's ARD"), class = "btn-sm btn-primary"),
+      help_tip(t("Saves the study when it has unsaved changes, runs this report's ARD program in an R of its own and puts its rows into the study's working ARD (output/ard/ard.rds), the other reports' rows left as they are. The table builder's choices and the preview read it. The official run is the Runs tab's.")),
       shiny::span(class = "small text-muted",
                   t("Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills."))),
     shiny::uiOutput("ard_run_info"),
@@ -6703,7 +6707,7 @@ app_server <- function(input, output, session, start) {
     r <- ard_res()
     if (is.null(r)) {
       return(shiny::p(class = "small text-muted mt-2",
-                      t("Preview to see the ARD this report's analyses make.")))
+                      t("Generate this table's ARD to see the ARD this report's analyses make.")))
     }
     if (!is.null(r$error)) {
       return(shiny::div(class = "alert alert-danger py-1 small mt-2",
@@ -8736,7 +8740,7 @@ app_server <- function(input, output, session, start) {
         t("This table has no ARD yet: the builder is built from it."), " ",
         .btn("fetch3", t("Generate this table's ARD"),
              class = "btn-sm btn-primary ms-1"), " ",
-        help_tip(t("Makes this report's ARD in an R of its own, for the table builder's choices and the preview. The study ARD (output/ard/ard.rds) is not changed (the study ARD is made by the ARD step's Make the ARD)."))),
+        help_tip(t("Saves the study when it has unsaved changes, runs this report's ARD program in an R of its own and puts its rows into the study's working ARD (output/ard/ard.rds), the other reports' rows left as they are. The table builder's choices and the preview read it. The official run is the Runs tab's."))),
       NULL)
     if (is.null(msg)) return(pane_head(
       t("Table builder"),

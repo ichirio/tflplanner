@@ -726,7 +726,7 @@ The builder could not read the form: %s,Builder がフォームを読めませ�
 "Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Runs tab. Choose a row to see its log in the latest official run.",プレビュー（この帳票の ARD）は、1 つの帳票を作業用の試験 ARD に入れ、ログは残しません。試験 ARD 全体の正式実行（ログ logrx 付き）は「実行」タブにあります。行を選ぶと、最新の正式実行でのログを表示します。
 ARD (this report),この帳票の ARD
 "Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills.",保存し、この帳票の ARD プログラムを実行して試験 ARD に入れ、表ビルダーと入力支援のために読み取ります。
-"Makes this report's ARD (as Preview in step 1), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance.",この帳票の ARD を作り（段 1 のプレビューと同じ）、試験フォルダから 1 と 2 を実行して、入力支援のために変数・水準・統計量を読み取ります。
+"Makes this report's ARD (as Generate this table's ARD in step 1), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance.",この帳票の ARD を作り（手順 1 の「この表の ARD を生成」と同じ）、試験フォルダから 1 と 2 を実行して、入力支援のために変数・水準・統計量を読み取ります。
 Generate this table's ARD,この表の ARD を生成
 not made yet,未作成
 outdated: the ARD definition has changed since it was made,古い：作成後に ARD の定義が変わりました
@@ -738,7 +738,7 @@ reading it,読み取り中
 The ARD program failed: see what it printed in Data > Study ARD.,ARD プログラムが失敗しました。データ > 試験 ARD で出力を見てください。
 %s is in the study ARD; add it to the Report list to make its table.,%s は試験 ARD に入りました。表を作るには、帳票一覧で帳票として追加してください。
 "Preview of %s: %d keys, %d variables",%s のプレビュー：キー %d、変数 %d
-Preview to see the ARD this report's analyses make.,プレビューすると、この帳票の解析が作る ARD が表示されます。
+Generate this table's ARD to see the ARD this report's analyses make.,「この表の ARD を生成」で、この帳票の解析が作る ARD を表示します。
 This table has no ARD yet: the builder is built from it.,この表にはまだ ARD がありません。ビルダーは ARD から作られます。
 No data to show yet: generate this table's ARD.,表示するデータがまだありません。この表の ARD を生成してください。
 Nothing yet: the button above makes this table's ARD.,まだありません。上のボタンでこの表の ARD を作ります。
@@ -3447,7 +3447,7 @@ Rows judged together,まとめて判定する行のキー
 %s (not in the populations sheet),%s（Populations シートにない集団）
 "Not the ARD analysis's (%s): the table may fail or come out otherwise. The analysis is changed in step 1.",ARD の解析（%s）と違います。表が作れないか、違う表になることがあります。解析は手順 1 で変えます。
 
-"Makes this report's ARD in an R of its own, for the table builder's choices and the preview. The study ARD (output/ard/ard.rds) is not changed (the study ARD is made by the ARD step's Make the ARD).",この帳票の ARD を別の R で作り、表ビルダーの候補とプレビューに使います。試験の ARD（output/ard/ard.rds）は変えません（試験の ARD は ARD 作成の『ARD を作る』）。
+"Saves the study when it has unsaved changes, runs this report's ARD program in an R of its own and puts its rows into the study's working ARD (output/ard/ard.rds), the other reports' rows left as they are. The table builder's choices and the preview read it. The official run is the Runs tab's.",未保存の変更があれば試験を保存し、この帳票の ARD プログラムを別の R で実行して、試験の作業用 ARD（output/ard/ard.rds）のこの帳票の行を入れ替えます（他の帳票の行はそのまま）。表ビルダーの候補とプレビューはこれを読みます。正式な実行は『実行』タブ。
 Discard changes,変更を破棄
 "Every change not saved goes -- in every report of the study and in the study's own files (defaults.yml ...), as a save would have written them -- and the study is as it was last saved. The draft goes too.",保存していない変更をすべて捨てます（保存と同じ範囲: この試験のすべての帳票と、defaults.yml など試験全体のファイル）。試験は最後に保存したときの状態に戻ります。下書きも消えます。
 "The changes were discarded: the study is as it was last saved.",変更を破棄しました。試験は最後に保存した状態です。
