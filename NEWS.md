@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **The values' order comes before the labels** (#421, 0.0.2.9240).
-  tflspec (>= 0.0.24.9162) writes `plan_levels()` before `plan_labels()`,
+  tflspec (>= 0.0.24.9163) writes `plan_levels()` before `plan_labels()`,
   so the builder's cards and a table's generated code put the values'
   order first.  SAMPLE-01's specs are written in the new order; the
   tables' RTF files are unchanged.
