@@ -1165,6 +1165,8 @@ The variable (an analysis variable or a column key).,変数（解析変数か列
 A value as the data have it.,データにある値。
 "What the value is in the data the program makes, and so what prints; blank: the value.",プログラムが作るデータの中でその値がなるもの（そのまま表示にもなる）; 空欄 = 値そのもの。
 "Its place among the variable's values (a number); blank: after the numbered ones, in the sheet's order.",その変数の値の中での位置（数字）; 空欄 = 番号付きの後、シートの順。
+"A nested count's (SOC / PT) inner value: the value, as the data have it, of the variable one level out it sits under, so that complete_hierarchy() in the analysis's `post` shows it with 0 counts when no subject has it; blank: none (an outer value is shown without it).","入れ子の集計（SOC / PT）の内側の値：その値が属する一つ外側の変数の値（データにあるとおり）。解析の `post` の complete_hierarchy() が、該当する被験者がいなくても 0 件で表示します。空欄 = なし（外側の値はこの値なしで表示）。"
+"under: the value one level out it sits under (a nested count: shown with 0 when no subject has it)","under：その値が属する一つ外側の値（入れ子の集計で、該当する被験者がいなくても 0 で表示）"
 Make the table,表を作る
 Make the figure,図を作る
 Make the listing,Listing を作る
@@ -2267,7 +2269,7 @@ A header of this report's own,この帳票だけのヘッダーにする
 Copy code lists...,コードリストを写す…
 "Every variable, not only those this report uses",この帳票が使う変数だけでなく、すべての変数
 Read a file into this report,ファイルからこの帳票へ読み込む
-"A code list (xlsx / csv: variable, value, label, order)","コードリスト（xlsx / csv: variable, value, label, order）"
+"A code list (xlsx / csv: variable, value, label, order, under)","コードリスト（xlsx / csv: variable, value, label, order, under）"
 (%d more variables' code lists: tick the box to see them),（ほかに %d 変数のコードリスト：チェックを入れると見える）
 %d values of %d variables read into %s's code lists.,%d 個の値（%d 変数）を %s のコードリストに読み込みました。
 The company standards,会社標準

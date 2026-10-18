@@ -1,5 +1,22 @@
 # tflplanner (development version)
 
+- **A code list's `under`** (tflspec #359, #423, 0.0.2.9241): the
+  codelists sheet's new last column -- a nested count's (SOC / PT) inner
+  value names the value, as the data have it, of the variable one level
+  out it sits under (`AEDECOD` `VISION BLURRED` under `EYE DISORDERS`), so
+  that `complete_hierarchy()` in the analysis's `post` shows it with 0
+  counts when no subject has it.  The dialog of every code list shows the
+  column; a column's own grid shows it when one of its values has one, or
+  when it is an inner term of the report's hierarchical analysis.  Every
+  write keeps it: the grids (a column a grid does not show stays as it
+  was), the copy from the company standards or another report (the
+  standards' codelists sheet may have `under`), a file read in
+  (`read_codelist()`; `set_codelist()` keeps a value's `under` when the
+  rows have no such column), and the spec's files.  Its help in Japanese.
+  `complete_hierarchy()` is in `programs/study_helpers.R`: an older
+  study's file without it is written again on the next save.  Needs
+  tflspec 0.0.24.9168.
+
 - **tflspec's `layout$group_heading_at` and `pages_heading_at`** (tflspec
   #337, 0.0.2.9238): where a table's page names print (the section header,
   under the titles, or nowhere), said with the pages.  Their help in
