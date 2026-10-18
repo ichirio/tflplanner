@@ -942,6 +942,16 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
       Shiny.bindAll(head.get(0));
     });
   });
+  // a field of a value the ARD decides: warned while it says another
+  $(document).on('change', '.rp-field[data-ard] select', function() {
+    var f = $(this).closest('.rp-field');
+    var ard = String(f.attr('data-ard')).split('|');
+    var v = this.selectize ? this.selectize.getValue() : $(this).val();
+    if (!Array.isArray(v)) v = v ? [v] : [];
+    var same = v.length === 0 || (v.length === ard.length &&
+      v.every(function(x, i) { return x === ard[i]; }));
+    f.find('.rp-ard-warn').toggle(!same);
+  });
   $(document).on('change', '.rp-card-switch input', function() {
     $(this).closest('.rp-card').toggleClass('rp-card-off', !this.checked);
   });

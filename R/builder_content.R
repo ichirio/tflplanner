@@ -828,7 +828,7 @@ builder_items <- function(x, output_id, meta = NULL) {
 # table's columns (.formula_text()).
 .plan_cell_look <- "enum[TRUE|FALSE]|logical"
 .plan_form_types <- list(
-  normalize_ard = c(keys = "list<column>", overall = "string", drop_contexts = "r",
+  normalize_ard = c(hierarchy = "list<column>", keys = "list<column>", overall = "string", drop_contexts = "r",
                     drop_key_variables = "logical", stack = "r", stack_sep = "string",
                     stack_nest = "logical"),
   plan_hide = c(cols = "list<column>"),
@@ -870,9 +870,9 @@ builder_items <- function(x, output_id, meta = NULL) {
     }
   }
   sch$formals <- setdiff(unique(c(fo, names(sch$args))), c("plan", ".plan", "..."))
-  # (normalize_ard()'s hierarchy is the ARD analysis's: read only here, step
-  # 1 changes it)
-  sch$fixed <- if (identical(fn, "normalize_ard")) "hierarchy" else character()
+  # (no argument is read only: normalize_ard()'s hierarchy is a field too,
+  # marked the ARD's while it says the same, warned when it does not)
+  sch$fixed <- character()
   # (the main fields in the function's order too)
   sch$visible <- .arg_order(.plan_form_main[[fn]], sch$formals)
   sch
@@ -918,9 +918,20 @@ builder_items <- function(x, output_id, meta = NULL) {
   a <- it$args %||% list()
   sp <- .fields_split(fn, it, sch$formals, ard = names(Filter(length, ard)))
   field <- function(k, value) {
-    if (k %in% sch$fixed) return(.fixed_field(fn, k, value %||% ard[[k]], it, ard[[k]], fixed_link, lang))
     from <- if (k %in% names(a)) .arg_from(it, k) else "own"
     own <- if (k %in% names(it$own_args %||% list())) "This table"
+    # an argument the ARD decides (normalize_ard()'s hierarchy: step 1's
+    # analysis): an ordinary field, "From the ARD" while it says the same
+    # (blank: the ARD's), a warning when another value is given
+    ak <- ard[[k]]
+    if (length(ak)) {
+      same <- is.null(value) || identical(as.character(unlist(value)), as.character(ak))
+      f <- arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
+                     default = paste(ak, collapse = ", "), choices = unique(c(ak, choices)),
+                     from = if (same) "ard" else from, own = if (!same) own,
+                     help = .arg_help(fn, k, sch, lang), lang = lang)
+      return(.ard_checked(f, ak, same, fixed_link, lang))
+    }
     if (identical(sch$args[[k]]$type, "widths")) {
       return(.widths_field(cid, k, cols %||% .widths_cols(value, choices), value,
                            label = .arg_meaning(fn, k), from = from, own = own,
@@ -995,6 +1006,18 @@ builder_items <- function(x, output_id, meta = NULL) {
   for (k in r$unset) args[[k]] <- NULL
   for (k in names(r$set)) args[[k]] <- r$set[[k]]
   args
+}
+
+# A field of a value the ARD decides: its ARD value on it (`data-ard`, the
+# page compares as it is changed), and a warning -- not a stop -- shown when
+# the field says another (`same` FALSE), with the way to step 1 (`link`)
+.ard_checked <- function(field, ard, same, link = NULL, lang = "en") {
+  field <- htmltools::tagAppendAttributes(field, `data-ard` = paste(ard, collapse = "|"))
+  field <- htmltools::tagAppendChild(field, shiny::div(
+    class = "small text-warning rp-ard-warn", style = if (same) "display: none;",
+    sprintf(tr("Not the ARD analysis's (%s): the table may fail or come out otherwise. The analysis is changed in step 1.", lang),
+            paste(ard, collapse = " > "))))
+  htmltools::tagAppendChild(field, shiny::div(class = "small rp-ard-link", link))
 }
 
 # A value the card shows but does not change (normalize_ard()'s hierarchy:

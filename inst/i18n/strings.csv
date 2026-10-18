@@ -3445,3 +3445,4 @@ Cell formats,セルの書式
 Column widths (twips),列の幅（twip）
 Rows judged together,まとめて判定する行のキー
 %s (not in the populations sheet),%s（Populations シートにない集団）
+"Not the ARD analysis's (%s): the table may fail or come out otherwise. The analysis is changed in step 1.",ARD の解析（%s）と違います。表が作れないか、違う表になることがあります。解析は手順 1 で変えます。

@@ -182,7 +182,7 @@ test_that("the ARD tells the order and the labels: a factor's levels, its labels
   expect_false("plan_levels" %in% .ard_on_cards(m))
 })
 
-test_that("normalize_ard(): a form card -- the hierarchy fixed and From the ARD, the rest its fields (#417)", {
+test_that("normalize_ard(): a form card -- the hierarchy a field marked From the ARD, the rest its fields (#417)", {
   p <- sample_planner()
   hier <- c("AEBODSYS", "AEDECOD")
   it <- item(builder_items(p, "T-14-3-1"), "normalize_ard")
@@ -190,10 +190,12 @@ test_that("normalize_ard(): a form card -- the hierarchy fixed and From the ARD,
                             fixed_link = shiny::tags$a(id = "lk", "step 1")))
   expect_match(h, 'data-from="ard"', fixed = TRUE)
   expect_match(h, ">From the ARD<", fixed = TRUE)
-  expect_match(h, 'class="rp-b-level">AEBODSYS<', fixed = TRUE)
   expect_match(h, 'id="lk"', fixed = TRUE)
-  # (no field of its own: read only, step 1 changes it)
-  expect_false(grepl('id="n__hierarchy"', h, fixed = TRUE))
+  # (a field of its own, the ARD's value on it; its warning hidden while
+  # it says the ARD's)
+  expect_match(h, 'id="n__hierarchy"', fixed = TRUE)
+  expect_match(h, 'data-ard="AEBODSYS|AEDECOD"', fixed = TRUE)
+  expect_match(h, 'rp-ard-warn" style="display: none;"', fixed = TRUE)
   expect_match(h, 'id="n__overall"', fixed = TRUE)
   expect_match(h, 'value="Any TEAE"', fixed = TRUE)
   expect_match(h, ">This table<", fixed = TRUE)
@@ -208,21 +210,23 @@ test_that("normalize_ard(): a form card -- the hierarchy fixed and From the ARD,
   i0 <- item(builder_items(p, "T-14-1-1"), "normalize_ard")
   h0 <- html(.plan_form_body("n", "normalize_ard", i0, ard = list(hierarchy = character())))
   expect_match(h0, "Not in the code (8)", fixed = TRUE)
-  # its hierarchy: none, no mark (not "This table"); one the ARD has, the ARD's
-  f0 <- html(.fixed_field("normalize_ard", "hierarchy", NULL, i0, character()))
-  expect_false(grepl("data-from=", f0, fixed = TRUE))
-  expect_false(grepl(">This table<", f0, fixed = TRUE))
-  expect_match(f0, ">None<", fixed = TRUE)
-  f1 <- html(.fixed_field("normalize_ard", "hierarchy", hier, i0, hier))
-  expect_match(f1, 'data-from="ard"', fixed = TRUE)
+  # its hierarchy an ordinary field below (the code does not write it)
+  expect_false(grepl("data-ard=", h0, fixed = TRUE))
+  expect_match(h0, 'id="n__hierarchy"', fixed = TRUE)
+  # another hierarchy than the ARD's: warned, not stopped
+  it2 <- it
+  it2$args$hierarchy <- rev(hier)
+  h2 <- html(.plan_form_body("n", "normalize_ard", it2, ard = list(hierarchy = hier)))
+  expect_false(grepl('rp-ard-warn" style="display: none;"', h2, fixed = TRUE))
+  expect_match(h2, "Not the ARD analysis", fixed = TRUE)
   expect_match(h0, 'id="n__stack"', fixed = TRUE)
   expect_match(html(.plan_form_body("n", "normalize_ard", i0, lang = "ja")),
                tr(.plan_arg_help$normalize_ard[["keys"]], "ja"), fixed = TRUE)
   # read back: the hierarchy kept as it is, the overall row the field's
-  inp <- list(n__overall = "Any TEAE", n__stack = "", n__stack_sep = "", n__stack_nest = FALSE,
-              n__drop_key_variables = FALSE)
+  inp <- list(n__hierarchy = hier, n__overall = "Any TEAE", n__stack = "", n__stack_sep = "",
+              n__stack_nest = FALSE, n__drop_key_variables = FALSE)
   r <- .plan_form_read(inp, "n", "normalize_ard")
-  expect_null(r$hierarchy)
+  expect_identical(r$hierarchy, hier)
   expect_identical(.plan_form_args(r, it, "normalize_ard"), it$args)
   inp$n__overall <- "Any AE"
   a <- .plan_form_args(.plan_form_read(inp, "n", "normalize_ard"), it, "normalize_ard")
