@@ -63,10 +63,6 @@ content:
         95% CI of the mean: '{mean_lcl:.1f}, {mean_ucl:.1f}'
         Median: '{median:.1f}'
         Min, Max: '{min:.0f}, {max:.0f}'
-  - plan_labels:
-      BASE: Baseline (mmHg)
-      AVAL: Week 24, cycle 9 day 1 (mmHg)
-      CHG: Change from baseline (mmHg)
   - plan_levels:
       variable:
         - BASE
@@ -75,6 +71,10 @@ content:
       TRTA:
         - Drug X
         - Control
+  - plan_labels:
+      BASE: Baseline (mmHg)
+      AVAL: Week 24, cycle 9 day 1 (mmHg)
+      CHG: Change from baseline (mmHg)
   - plan_paginate_rows:
       max_rows: 30
       split: group_safe

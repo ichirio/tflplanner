@@ -46,8 +46,6 @@ content:
       cols: TRT01A
       rows:
         group: variable
-  - plan_labels:
-      EOSSTT: Status at end of study, n (%)
   - plan_levels:
       variable: EOSSTT
       TRT01A:
@@ -56,6 +54,8 @@ content:
       EOSSTT:
         - Ongoing (in follow-up)
         - Discontinued
+  - plan_labels:
+      EOSSTT: Status at end of study, n (%)
   - plan_paginate_rows:
       max_rows: 24
 page:

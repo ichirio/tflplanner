@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **The values' order comes before the labels** (#421, 0.0.2.9240).
+  tflspec (>= 0.0.24.9162) writes `plan_levels()` before `plan_labels()`,
+  so the builder's cards and a table's generated code put the values'
+  order first.  SAMPLE-01's specs are written in the new order; the
+  tables' RTF files are unchanged.
+
 - **tflspec's `layout$group_heading_at` and `pages_heading_at`** (tflspec
   #337, 0.0.2.9238): where a table's page names print (the section header,
   under the titles, or nowhere), said with the pages.  Their help in
