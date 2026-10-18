@@ -3418,3 +3418,27 @@ Not in the code,コードに書かれない引数
 Applies to every report (the study's defaults.yml),全帳票に効きます（試験の defaults.yml）
 Per variable (edit them as R on this card):,変数ごと（このカードの R で編集）:
 Display names,表示名
+Row height (twips),行の高さ（twip）
+Exact row height,行の高さを固定
+Header row height (twips),見出し行の高さ（twip）
+Blank row height (twips),空行の高さ（twip）
+"Cell padding, left (twips)",セルの左余白（twip）
+"Cell padding, right (twips)",セルの右余白（twip）
+Vertical alignment,縦の揃え
+Table alignment,表の配置
+Markup in the text,文字の書式記法
+Blank rows as one,空行をまとめる
+Header borders,見出しの罫線
+Spanning header borders,結合見出しの罫線
+Body borders,本体の罫線
+First row's border,最初の行の罫線
+Last row's border,最後の行の罫線
+Header alignment,見出しの揃え
+Header bold,見出しを太字
+Header italic,見出しを斜体
+Table width (twips),表の幅（twip）
+Table width (%),表の幅（%）
+Table width (% of the writable width),表の幅（書ける幅に対する %）
+Cell formats,セルの書式
+Column widths (twips),列の幅（twip）
+Rows judged together,まとめて判定する行のキー

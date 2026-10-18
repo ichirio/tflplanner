@@ -8867,10 +8867,10 @@ app_server <- function(input, output, session, start) {
           # table prints unless one is written here
           hint <- v$hint[i] %||% NA_character_
           bslib::accordion_panel(
+            # (where a nested one's rows go: plan_nest()'s card says it)
             title = paste0(v$variable[i],
-                           if (!is.null(under_of(i))) paste0(" \u2192 ", t("under"), " ", under_of(i)) else
-                             if (!is.na(v$label[i])) paste0(": ", v$label[i]) else
-                               if (!is.na(hint)) paste0(": ", hint)),
+                           if (!is.na(v$label[i])) paste0(": ", v$label[i]) else
+                             if (!is.na(hint)) paste0(": ", hint)),
             value = v$variable[i],
             # nested under another's level: no heading of its own, so no
             # label to write (the field would mislead)
