@@ -47,10 +47,10 @@
                  stat = "Statistic columns", show_keys = "Keys shown"),
   plan_cells = c(value = "Values used", stats = "Statistics as", na = "Text for missing",
                  default = "Every cell", continuous = "Continuous variables",
-                 categorical = "Categorical variables"),
+                 categorical = "Categorical variables", notes = "Notes of unused statistics"),
   plan_digits = c(rounding = "Rounding", .rows = "Decimals by row"),
   plan_levels = c(.drop_empty = "Hide empty values"),
-  plan_sort = c(keys = "Order", stat = "Statistic counted"),
+  plan_sort = c(keys = "Order", stat = "Statistic counted", keep = "Print the sort columns"),
   plan_total = c(label = "Heading", position = "Place"),
   plan_filter = c(where = "Condition", any = "In any column", parents = "Parent rows",
                   by = "Rows judged together"),
@@ -67,14 +67,18 @@
   plan_paginate_rows = c(max_rows = "Most rows a page", split = "Split rule",
                          page_by = "Page by", heading = "Heading",
                          cont_label = "Continued label", break_before = "Break before rows",
-                         min_group_rows = "Fewest rows of a group on a page"),
+                         min_group_rows = "Fewest rows of a group on a page",
+                         heading_at = "Where the heading prints"),
   plan_paginate_cols = c(every = "Columns a page", fit = "Fit to the page",
                          at = "Break before columns", keep = "Columns on every page",
                          cut_by = "Cut by", order = "Order of the pages",
-                         allow_span_break = "A spanning header may break"),
-  plan_paginate_group = c(col = "Column", keep = "Keep the column", heading = "Heading"),
+                         allow_span_break = "A spanning header may break",
+                         col_header = "Header of the column pages"),
+  plan_paginate_group = c(col = "Column", keep = "Keep the column", heading = "Heading",
+                          heading_at = "Where the heading prints"),
   plan_col_header = c(header = "Header lines", values = "Values of the tokens",
-                      col_header_align = "Alignment"),
+                      header_sep = "Header separator", col_header_align = "Alignment",
+                      lines = "Header lines, a row at a time", span = "Cells over columns"),
   plan_columns = c(widths = "Widths", decimal = "Decimal alignment", row_title = "Row title",
                    auto_width = "Automatic width", sep = "Separator",
                    cell_format = "Cell formats", column_widths_twips = "Column widths (twips)"),
@@ -106,6 +110,10 @@
 # function's order.
 .plan_arg_help <- list(
   normalize_ard = c(
+    hierarchy =
+      "The nested row keys, outermost first: each level's own summary rows become its rows (a SOC's row over its PTs). Blank: step 1's hierarchical analysis's, which is usually right; another may not match the ARD. e.g. AEBODSYS, AEDECOD",
+    overall =
+      "The text of the row a hierarchical analysis makes over all its terms (the subjects with any event), put on the first hierarchy column. Blank: that row is left as it is. e.g. Any TEAE",
     keys =
       "The group variables made into columns of their own (TRT01A, SEX ...). Blank: every group of the ARD, which is what a table usually needs. e.g. TRT01A",
     drop_contexts =
@@ -119,12 +127,30 @@
     stack_nest =
       "TRUE: a crossed layer's outer value goes to subgroup_outer (Age Group by Sex, 65-80, F as three levels). e.g. TRUE"),
   plan_filter = c(
+    any =
+      "TRUE: a row stays when any column's statistics meet the condition (PTs of 5% or more in any arm); FALSE: when every column's do. Blank: TRUE. e.g. FALSE",
+    parents =
+      "\"keep\": a parent row (a SOC) stays exactly when one of its children does; \"drop\": it is judged by its own counts. Blank: keep. e.g. \"drop\"",
     by =
       "The row key whose rows are judged together by the condition (with the keys outside it): a SOC kept or dropped as a whole. Blank: each row by itself. e.g. AEBODSYS"),
   plan_blanks = c(
+    where =
+      "Where blank rows go: \"between_groups\" between the outermost row groups, \"records\" after each record of a listing, or as R (the rows' numbers, 0 before the first). e.g. \"between_groups\"",
+    first =
+      "TRUE: a blank row at the top of every page. Blank: none. e.g. TRUE",
+    last =
+      "TRUE: a blank row at the bottom of every page. Blank: none. e.g. TRUE",
     counted =
       "TRUE: the blank rows count toward a page's rows (plan_paginate_rows()' most rows a page), so a page never overflows. Blank: only the table's rows are counted. e.g. TRUE"),
   plan_paginate_rows = c(
+    max_rows =
+      "The most rows a page holds (blank rows too when they are counted: plan_blanks()). Blank: no limit. e.g. 45",
+    split =
+      "What a page break may cut: \"group_safe\" whole groups to a page (a group that does not fit starts the next), \"group_force\" every most rows a page, a group cut with a continued label, \"rows\" before the rows given in break before rows. e.g. \"group_force\"",
+    page_by =
+      "The columns whose value starts a new page first, each page named after it; the most rows a page applies within each. e.g. \"PARAM\"",
+    heading_at =
+      "Where a page's name (its heading) prints: \"section\" the section header, \"title\" under the titles, \"none\" nowhere. Blank: the report's. e.g. \"title\"",
     break_before =
       "The row numbers a page starts at, for the split rule \"rows\". Used for breaks by hand. e.g. c(20, 40): pages 1-19, 20-39, 40-",
     min_group_rows =
@@ -134,17 +160,49 @@
     heading =
       "With page by one column: each page's name as a template, {value} the page's value and {n} its subjects. e.g. Treatment: {value} (N={n})"),
   plan_paginate_cols = c(
+    at =
+      "The columns a new column page starts before. One of these, cut by or columns a page is given. e.g. \"Drug Y\"",
+    cut_by =
+      "The column blocks as a list, or a separator in the columns' names (a block a key value). e.g. \"____\"",
+    every =
+      "A new column page every this many columns (the columns on every page not counted). e.g. 3",
+    keep =
+      "The columns every column page repeats. Blank: the row heading columns. e.g. \"row_label\"",
+    fit =
+      "TRUE: every page's columns on page 1's scale, filling the width; FALSE: each column keeps its width. e.g. FALSE",
+    allow_span_break =
+      "FALSE: a page is not cut inside a spanning header's cell. Blank: TRUE. e.g. FALSE",
+    order =
+      "The order the pages come out in: \"across\" a row's column pages one after another, \"down\" all the rows' pages of a block first. Blank: across. e.g. \"down\"",
     col_header =
       "What each column page's header becomes, as R. Used when the pages need a header other than the table's own. Blank: the table's header, cut with its columns."),
   plan_row_group = c(
+    mode =
+      "How a group's first row is found: \"value\" each run of equal values, \"indent\" a row whose cell is not indented, \"filled\" a row whose cell is not empty, \"auto\". e.g. \"value\"",
+    collapse =
+      "A repeated value printed once and then blank: TRUE in every row key, or in the columns named. e.g. TRUE",
     group_col =
       "The column whose runs of the same value are the groups, for a table already built (not from an ARD; an ARD table's groups are its outermost row key). e.g. \"V1\""),
   plan_stub = c(
+    name =
+      "The name of the one row label column the row keys are folded into. Blank: row_label. e.g. \"stub\"",
+    indent =
+      "The spaces a level of the folded rows is indented by. Blank: 4. e.g. 2",
+    before =
+      "TRUE: the rows are folded before the pages and groups are made, which plan_cell_style() needs to see the rows as printed; a page or group key folded away is then not found. Blank (FALSE): folded last. e.g. TRUE",
     vars =
       "The row keys folded into the one row label column, outermost first. Blank: worked out from the table's row layers, which is usually right. e.g. c(\"AEBODSYS\", \"AEDECOD\")",
     group_summary =
       "Which rows are a group's own summary, printed on the group's heading row: \"empty\" a blank leaf, \"parent\" a leaf equal to its parent. Blank: both; \"none\" turns it off. e.g. \"empty\""),
   plan_columns = c(
+    widths =
+      "The columns' relative widths, by column (.values every value column). e.g. row_label 5, .values 2",
+    decimal =
+      "The columns whose numbers line up at the decimal point (.values every value column). e.g. .values",
+    row_title =
+      "The row heading columns: left aligned (the others centred) and repeated on every column page. Blank: the first column. e.g. row_label",
+    auto_width =
+      "TRUE: each column sized to its content. e.g. TRUE",
     sep =
       "The text that joins several column keys in the value columns' names; the spanning header is cut at it. Blank: \"____\" (Placebo____F). Changed only when a value has \"____\" in it. e.g. \"__\"",
     cell_format =
@@ -152,6 +210,12 @@
     column_widths_twips =
       "Each column's width in twips (1/1440 inch), as R; it replaces the widths above. e.g. c(3000, 1500, 1500)"),
   plan_style = c(
+    border =
+      "The table's borders: \"tfl\" (rules over and under the header and under the last row) or \"none\"; another style as R (rtf_border()). Blank: tfl. e.g. \"none\"",
+    align_count_pct =
+      "TRUE: the n and the (%) of a count cell line up from row to row. e.g. TRUE",
+    font_size_half_points =
+      "The table's font size in half points (18 = 9 pt). Blank: the document's. e.g. 16",
     font =
       "The table's font. Blank: the document's font. e.g. \"Arial\"",
     row_height_twips =
@@ -205,12 +269,74 @@
     table_width_pct_of_writable =
       "The table's width as a fraction (0-1) of the page's writable width (as table_width_pct, by 0-1). e.g. 0.8"),
   plan_cell_style = c(
+    cols =
+      "The columns styled, by name (.values every value column). Blank: every column. e.g. .values",
+    header =
+      "TRUE: the column header is styled (not the body). e.g. TRUE",
+    bold =
+      "TRUE: the chosen cells in bold; FALSE: not. Blank: as they are. e.g. TRUE",
+    italic =
+      "TRUE: the chosen cells in italics; FALSE: not. Blank: as they are. e.g. TRUE",
+    align =
+      "The chosen cells' alignment: \"left\", \"center\" or \"right\". e.g. \"left\"",
+    color =
+      "The chosen cells' text colour. e.g. \"#CC0000\"",
+    background =
+      "The chosen cells' background colour. e.g. \"#F2F2F2\"",
     border =
       "The chosen cells' borders, as R (rtf_border()). e.g. rtf_border(bottom = \"single\")",
     underline =
       "The chosen cells underlined: TRUE / FALSE, or a condition as R. e.g. TRUE",
     indent_twips =
-      "The left indent of the chosen cells' text in twips (not the header's). e.g. 240"))
+      "The left indent of the chosen cells' text in twips (not the header's). e.g. 240"),
+  plan_cells = c(
+    stats =
+      "How the statistics are laid out: \"cells\" one template a cell (n (%) in one cell), \"rows\" each statistic a row of its own. Blank: cells. e.g. \"rows\"",
+    value =
+      "Which value a template's {x} reads: the number (stat), which the template formats, or the ARD's formatted text (stat_fmt). Blank: stat. e.g. \"stat_fmt\"",
+    na =
+      "The text of a cell no template could fill (a statistic the ARD does not have). Blank: empty. e.g. \"-\"",
+    notes =
+      "FALSE: no note of the ARD's statistics that no template uses. Blank (TRUE): such statistics are listed when the table is made. e.g. FALSE"),
+  plan_total = c(
+    label =
+      "The heading of the Total column. Its cells are the ARD's overall rows (the analyses run over all subjects, not split by the column key). Blank: \"Total\". e.g. \"All Subjects\"",
+    position =
+      "Where the Total column goes among the column key's values: \"last\" or \"first\". Blank: last. e.g. \"first\""),
+  plan_compare = c(
+    by =
+      "The column that splits the comparison records (tests, differences) into columns, one a level (each arm against placebo). Blank: one comparison a variable. e.g. \"COMPARISON\"",
+    position =
+      "Where the comparison columns go: after the column key's values (\"last\") or before them (\"first\"). Blank: last. e.g. \"first\""),
+  plan_stat_groups = c(
+    `.variables` =
+      "The variables whose statistics are split into the groups. Blank: every variable. e.g. c(\"AGE\", \"BMI\")",
+    `.others` =
+      "The group the other variables' statistics go to whole. Blank: none. e.g. \"Summary\""),
+  plan_sort = c(
+    keep =
+      "FALSE: the columns the order is read from (the sort keys) are not printed, with no plan_hide() for them. Blank (TRUE): they are printed as they are. e.g. FALSE"),
+  plan_hide = c(
+    cols =
+      "The columns not printed, by name: a key a page break or an order reads stays in the data. e.g. TRT01AN"),
+  plan_col_header = c(
+    values =
+      "What the header's tokens take: TRUE (list(n = TRUE)) reads each column's N from the ARD; numbers named by column give them by hand. e.g. list(n = TRUE)",
+    header_sep =
+      "The text a plain table's column names are cut at into spanning header rows. e.g. \"____\"",
+    col_header_align =
+      "The column header's alignment: \"left\", \"center\" or \"right\". Blank: center. e.g. \"left\"",
+    span =
+      "How a cell of the header lines over several columns is made: \"each\" a cell a column, \"one\" one cell over them all, or a key's name (a cell a value of that key: a spanner). Blank: each. e.g. \"one\""),
+  plan_paginate_group = c(
+    col =
+      "The column whose value starts a new page, a page a value however long. Blank: the outermost row key. e.g. \"PARAM\"",
+    keep =
+      "FALSE: the page column is not printed (each page's name says its value). Blank (TRUE): it is printed. e.g. FALSE",
+    heading =
+      "Each page's name as a template, {value} the page's value and {n} its subjects. Blank: the value. e.g. Parameter: {value}",
+    heading_at =
+      "Where a page's name (its heading) prints: \"section\" the section header, \"title\" under the titles, \"none\" nowhere. Blank: the report's. e.g. \"title\""))
 
 # a verb's meaning: the schema's label, else the table above; NULL for none
 .verb_meaning <- function(fn) {

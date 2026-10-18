@@ -8891,7 +8891,10 @@ app_server <- function(input, output, session, start) {
         class = "rp-b-sec",
         # one or more (a group, then a visit ...): outermost first, as the
         # rows -- dragged to order, each removed by its x (or Backspace)
-        shiny::selectizeInput(bid("key"), al("table_plan", "cols"), .col_key_names(keys, lang),
+        shiny::selectizeInput(bid("key"),
+                              with_tip(al("table_plan", "cols"),
+                                       t("The column keys, outermost first; drag to order. Their values are the table's columns (TRT01A: a column an arm). A key is in cols or in rows, not both.")),
+                              .col_key_names(keys, lang),
                               selected = if (!anyNA(st$key)) st$key,
                               multiple = TRUE, width = "100%",
                               options = list(plugins = list("remove_button", "drag_drop")))),
@@ -8951,7 +8954,9 @@ app_server <- function(input, output, session, start) {
       if (cont) builder_rows_ui(bs, st, m$stats),
       if (!has("plan_digits")) digits_ui,
       shiny::radioButtons(
-        bid("cat"), al("plan_cells", "categorical"),
+        bid("cat"),
+        with_tip(al("plan_cells", "categorical"),
+                 t("How a level of a categorical variable prints: its count and percentage in one of these formats (n (%) ...), or a template of one's own (Own), e.g. {n} ({p:.1f}%). Every categorical variable takes it.")),
         c(stats::setNames(.cat_formats()$key, .cat_formats()$label),
           stats::setNames("own", t("Own"))),
         selected = st$cat_format, inline = TRUE),
