@@ -133,7 +133,7 @@ test_that("step 1: the report's analysis set chosen, its data made, 1-1 starts f
     session$setInputs(nav = "make", step = "ard", target = "T1")
     h <- output$ard_report_pop$html
     expect_match(h, "ard_report_pop_pick", fixed = TRUE)
-    session$setInputs(ard_report_pop_pick = "ITT")
+    session$setInputs(ard_report_pop_pick_by = list(report = "T1", value = "ITT"))
     rv <- session$userData$rv
     expect_identical(report_population(rv$p, "T1"), "ITT")
     expect_true("adsl_itt" %in% .adata_rows(rv$p, "T1")$data_id)
@@ -295,4 +295,44 @@ test_that("an analysis set's label: the sheet's own first, then the company stan
   # a blank label: the note as before
   p$ard$populations$label[p$ard$populations$population_id == "SAF"] <- NA
   expect_identical(.pop_label(p, "SAF"), "Safety Analysis Set")
+})
+
+test_that("step 1: a value the population select sends for another report is not written (#418)", {
+  local_home()
+  p <- pop_planner()
+  p <- add_output(p, "T2")
+  p <- set_report_population(p, "T1", "SAF")
+  attr(p, "made") <- attr(p, "left") <- NULL
+  create_study("RR", planner = p)
+  shiny::testServer(server_for("RR"), {
+    rv <- session$userData$rv
+    session$setInputs(nav = "make", step = "ard", target = "T1")
+    expect_match(output$ard_report_pop$html, "data-tfl-report=\"T1\"", fixed = TRUE)
+    # A -> B -> A quickly: the select drawn for T2 (no set) sends "" after
+    # T1 is chosen again
+    session$setInputs(target = "T2")
+    session$setInputs(target = "T1")
+    session$setInputs(ard_report_pop_pick = "")
+    expect_identical(report_population(rv$p, "T1"), "SAF")
+    session$setInputs(ard_report_pop_pick_by = list(report = "T2", value = ""))
+    expect_identical(report_population(rv$p, "T1"), "SAF")
+    expect_true(is.na(report_population(rv$p, "T2")))
+    # the user's change, on the report it was drawn for: written
+    session$setInputs(ard_report_pop_pick_by = list(report = "T1", value = "ITT"))
+    expect_identical(report_population(rv$p, "T1"), "ITT")
+    session$setInputs(ard_report_pop_pick_by = list(report = "T1", value = ""))
+    expect_true(is.na(report_population(rv$p, "T1")))
+  })
+})
+
+test_that("step 1: a population not in the populations sheet stays a choice (#418)", {
+  local_home()
+  p <- pop_planner()
+  p$outputs$population <- "FAS"
+  create_study("RS", planner = p)
+  shiny::testServer(server_for("RS"), {
+    session$setInputs(nav = "make", step = "ard", target = "T1")
+    h <- output$ard_report_pop$html
+    expect_match(h, "<option value=\"FAS\" selected>", fixed = TRUE)
+  })
 })

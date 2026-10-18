@@ -228,7 +228,10 @@ test_that("a report's own code runs out of the app; the line of an error is said
     # the editor writes the step's code
     session$setInputs(cc_code = "content <- adsl[1:5, ]")
     expect_identical(step_code(rv$p, "F-1", "content"), "content <- adsl[1:5, ]")
-    session$setInputs(uc_ds = c("ADSL"))
+    session$setInputs(uc_ds_by = list(report = "F-1", value = list("ADSL")))
+    expect_identical(report_datasets(rv$p, "F-1"), "ADSL")
+    # none, sent for another report: not written to this one (#418)
+    session$setInputs(uc_ds_by = list(report = "F-2", value = list()))
     expect_identical(report_datasets(rv$p, "F-1"), "ADSL")
     session$setInputs(fig_ard_kind = "own")
     expect_identical(.fig_ard_source(rv$p, "F-1")$kind, "own")

@@ -1,11 +1,21 @@
 # tflplanner (development version)
 
 - **tflspec's `layout$group_heading_at` and `pages_heading_at`** (tflspec
-  #337, 0.0.2.9236): where a table's page names print (the section header,
+  #337, 0.0.2.9238): where a table's page names print (the section header,
   under the titles, or nowhere), said with the pages.  Their help in
   Japanese, and the table builder keeps them with `plan_paginate_group()`
   and `plan_paginate_rows()`.  (Ready before tflspec 0.0.24.9156: with an
   older tflspec the two lines are unused.)
+
+- **Switching reports no longer writes one report's population to
+  another** (#418, 0.0.2.9237).  Step 1's "This report's population",
+  step 3's page pattern and the data a step of its own code reads are
+  drawn again for each report, and the value a select sent when it was
+  drawn could reach the server after another report was chosen: switching
+  quickly, a report's population could become NA and be saved.  Only the
+  user's change is written now, and only to the report the select was
+  drawn for.  A report's population missing from the populations sheet
+  stays a choice (it was shown, and saved, as "(not chosen)").
 
 - **An edit through the sheets keeps what only the spec holds** (#415,
   0.0.2.9235).  When a screen that still edits the sheets (the ARD, the

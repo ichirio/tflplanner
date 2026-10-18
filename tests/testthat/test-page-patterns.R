@@ -84,7 +84,10 @@ test_that("step 3: the pattern chosen, a value written, a line left out, from th
     rv <- session$userData$rv
     session$setInputs(target = "T1", nav = "make", step = "page")
     expect_match(output$page_pattern_bar$html, "Compact", fixed = TRUE)
-    session$setInputs(page_pattern = "Compact")
+    session$setInputs(page_pattern_by = list(report = "T1", value = "Compact"))
+    expect_identical(report_pattern(rv$p, "T1"), "Compact")
+    # a value sent for another report is not written to this one (#418)
+    session$setInputs(page_pattern_by = list(report = "T2", value = "Standard"))
     expect_identical(report_pattern(rv$p, "T1"), "Compact")
     h <- output$page_form$html
     expect_match(h, "pattern Compact", fixed = TRUE)
