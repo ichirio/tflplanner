@@ -328,8 +328,9 @@ test_that("the builder's form reads and writes the report's items: roles, labels
   expect_identical(changed_files(p$spec$text, q$spec$text), rel)
   y0 <- p$spec$text[[rel]]
   y1 <- q$spec$text[[rel]]
-  expect_identical(setdiff(y1, y0), "      AGE: Age, years")
-  expect_identical(own_of(q, "plan_labels")$args$AGE, "Age, years")
+  # (the headings under `variable =`, as tflspec writes them: #358)
+  expect_identical(setdiff(y1, y0), "        AGE: Age, years")
+  expect_identical(own_of(q, "plan_labels")$args$variable$AGE, "Age, years")
   # (written into the spec, not the sheets: the program from the YAML)
   expect_false(is.null(.spec_items(q, id)))
   # the variables moved and an arm's order: plan_levels(variable = , TRT01A = ),
@@ -342,7 +343,7 @@ test_that("the builder's form reads and writes the report's items: roles, labels
   lv <- own_of(q, "plan_levels")$args
   expect_identical(lv$variable, c("SEX", "AGE", "AGEGR1", "RACE", "ETHNIC"))
   expect_identical(lv$TRT01A, c("Control", "Drug X"))
-  expect_identical(names(own_of(q, "plan_labels")$args)[1L], "SEX")
+  expect_identical(names(own_of(q, "plan_labels")$args$variable)[1L], "SEX")
   expect_identical(builder_read(q, id)$variables$variable, st2$variables$variable)
   # the rows' layers: table_plan(rows = )
   st3 <- st
@@ -358,8 +359,9 @@ test_that("the builder's form reads and writes the report's items: roles, labels
   o13 <- .spec_output(q, p13)$content
   ne <- Filter(function(x) identical(x$fn, "plan_nest"), o13)[[1L]]
   expect_identical(ne$args, list(SEX = list(AGEGR1 = "<65 years")))
-  lv13 <- Filter(function(x) identical(x$fn, "plan_levels"), o13)[[1L]]$args
-  expect_identical(lv13$variable, "AGEGR1")
+  # (the variables' order is the ARD's, which tflspec does not write, #355:
+  # no plan_levels() for it)
+  expect_false("plan_levels" %in% vapply(o13, function(x) x$fn, ""))
   expect_identical(changed_files(p$spec$text, q$spec$text), "spec/outputs/T-14-1-3.yml")
   # ... and read back so: under its parent, after it
   r13 <- builder_read(q, p13)

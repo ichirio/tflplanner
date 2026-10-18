@@ -9,13 +9,23 @@ sample_planner <- function() {
   .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
 }
 fns_of <- function(items) vapply(items, function(it) it$fn, "")
+# a report's own order of values (the sample's are the ARD's, which tflspec
+# does not write, #355): SEX's values the other way round, before the labels
+own_levels <- function(p, id, args = list(SEX = c("Male", "Female"))) {
+  o <- p$spec$outputs[[id]]
+  k <- match("plan_labels", fns_of(o$content))
+  o$content <- append(o$content, list(list(fn = "plan_levels", args = args)), after = k - 1L)
+  .spec_set_output(p, id, o)
+}
 
 test_that("the cards are the plan's items, in its order", {
   p <- sample_planner()
   sp <- .spec_object_last(p, table_sheets(), .study_keys$table)
   for (id in c("T-14-1-1", "T-14-3-1")) {
     items <- builder_items(p, id)
-    plan <- .tflspec_fn(".plan_content_from_sheets")(sp, id)
+    # (the bridge given the ARD's definition, as the builder gives it: no
+    # plan_levels() the ARD already says, #358)
+    plan <- .tflspec_fn(".plan_content_from_sheets")(sp, id, ard_spec = .ard_spec(p$ard))
     # (the ARD's normalization first, then the plan's)
     expect_identical(fns_of(items)[-1L], fns_of(plan), info = id)
     expect_identical(fns_of(items)[1:2], c("normalize_ard", "table_plan"))
@@ -204,12 +214,7 @@ test_that("a line of the program leads to the card that wrote it", {
   # the code lists at the head: plan_levels()'s.  T-14-1-1's orders are the
   # ARD's own, which tflspec does not write (#355): an order of the
   # report's own, SEX's values the other way round
-  o <- p$spec$outputs[[id]]
-  k <- match("plan_labels", vapply(o$content, function(it) it$fn, ""))
-  o$content <- append(o$content, list(list(fn = "plan_levels",
-                                           args = list(SEX = c("Male", "Female")))),
-                      after = k - 1L)
-  p3 <- .spec_set_output(p, id, o)
+  p3 <- own_levels(p, id)
   code3 <- unlist(strsplit(paste(program_code(p3, id), collapse = "\n"), "\n", fixed = TRUE))
   m3 <- builder_code_map(code3, builder_items(p3, id))
   at <- grep("^cl_sex <- ", code3)[1L]
@@ -278,7 +283,7 @@ test_that("the decimals' card: its heading, where they go, and plan_cells' lines
 
 test_that("the order of the values says where it is edited; the row order explains its keys", {
   p <- sample_planner()
-  items <- builder_items(p, "T-14-1-1")
+  items <- builder_items(own_levels(p, "T-14-1-1"), "T-14-1-1")
   h <- html(.table_cards(items[match("plan_levels", fns_of(items))]))
   # (a form now: no "edit them as R" note; Edit as R in the card's menu)
   expect_false(grepl("edited in stage 2", h, fixed = TRUE))
