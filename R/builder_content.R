@@ -1213,8 +1213,9 @@ builder_items <- function(x, output_id, meta = NULL) {
       shiny::div(class = "rp-b-sec-label",
                  builder_label(sprintf(t("Values of %s"), nm), nm, "arg", lang),
                  if (!is.na(v$label[i])) shiny::span(class = "text-muted ms-1", v$label[i])),
-      sortable::rank_list(text = NULL, labels = .levels_with_labels(lv, nm, codelists),
-                          input_id = id(paste0("lv", i)), orientation = "horizontal"),
+      .levels_fold(sortable::rank_list(text = NULL, labels = .levels_with_labels(lv, nm, codelists),
+                                       input_id = id(paste0("lv", i)), orientation = "horizontal"),
+                   lv, lang),
       shiny::tags$label(
         class = "small rp-levels-drop",
         shiny::tags$input(type = "checkbox", id = id(paste0("lvdrop", i)),
@@ -1234,6 +1235,19 @@ builder_items <- function(x, output_id, meta = NULL) {
     cols,
     if (length(rows)) rows else if (!length(vars)) shiny::div(
       class = "small text-muted", t("No categorical variable to order.")))
+}
+
+# A variable's levels to order: a long list (RACE's six) clipped to its
+# first line, "all" opens it.  (Clipped, not hidden: a sortable list reads
+# its items' text, which a hidden list has not -- it would read blanks.)
+.levels_fold <- function(list_ui, lv, lang = "en", at = 4L) {
+  if (length(lv) <= at) return(list_ui)
+  shiny::tagList(
+    shiny::div(class = "rp-levels-clip", list_ui),
+    shiny::tags$a(href = "#", class = "small rp-levels-more",
+                  onclick = "$(this).prev('.rp-levels-clip').toggleClass('rp-open'); return false;",
+                  sprintf(tr("%d levels: %s", lang), length(lv),
+                          paste(c(utils::head(lv, 3L), "..."), collapse = ", "))))
 }
 
 # plan_filter()'s `where` as one condition's R (several joined by &, as
@@ -1453,6 +1467,12 @@ builder_code_map <- function(lines, items) {
 .rp-builder-cards .default-sortable.horizontal .rank-list { flex-wrap: wrap; gap: .25rem; }
 .rp-builder-cards .default-sortable.horizontal .rank-list-item { flex: 0 0 auto;
   overflow: visible; white-space: nowrap; max-width: 100%; }
+/* plan_levels()' chips: small, a line or two (#417) */
+.rp-builder-cards .rp-levels-var .rank-list-item { font-size: 12px; padding: .05rem .4rem;
+  line-height: 1.4; min-height: 0; }
+.rp-builder-cards .rp-levels-var .rank-list { gap: .2rem; padding: .2rem; }
+.rp-levels-clip { max-height: 2.1rem; overflow: hidden; }
+.rp-levels-clip.rp-open { max-height: none; }
 "
 
 # the cards' buttons of the table builder, one input each: Revert, Edit as

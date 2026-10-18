@@ -349,7 +349,10 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   t <- function(x) tr(x, lang)
   kind <- .arg_kind(type)
   fid <- paste0(id, "__", arg)
-  is_r <- inherits(value, "tfl_r")
+  # (an argument that is R only -- no other form -- shows its R in its own
+  # field, as the others' R: no switch to press, its R mark fixed)
+  r_only <- identical(kind, "r")
+  is_r <- inherits(value, "tfl_r") && !r_only
   r_text <- if (is_r) as.character(unclass(value)) else ""
   if (is_r) value <- NULL
   if (inherits(value, "tfl_unset")) value <- NULL
@@ -373,7 +376,8 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     .field_r(fid, value, default))
   r_input <- shiny::tags$input(type = "text", id = paste0(fid, "__r"), class = "form-control form-control-sm rp-mono rp-r-input",
                                value = r_text, placeholder = "R", spellcheck = "false")
-  r_switch <- shiny::tags$label(
+  r_switch <- if (r_only) shiny::tags$span(class = "rp-r-toggle rp-r-fixed", title = t("As R"), "R") else
+    shiny::tags$label(
     class = "rp-r-toggle", title = t("As R"),
     shiny::tags$input(type = "checkbox", id = paste0(fid, "__isr"), class = "rp-isr",
                       checked = if (is_r) NA else NULL),
@@ -389,7 +393,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
                       help_tip(help), help_link),
     shiny::div(class = "rp-field-row",
                shiny::div(class = "rp-form-input", control),
-               r_input, r_switch),
+               if (!r_only) r_input, r_switch),
     if (!is.null(nav)) nav_hint(nav, "field", lang))
 }
 
@@ -845,6 +849,7 @@ add_item_input <- function(id, kinds = NULL, schema = NULL, lang = "en", placeho
 .rp-r-toggle { margin: 0; cursor: pointer; font-size: 11px; font-family: Consolas, 'Courier New', monospace;
   color: #9ca3af; border: 1px solid #e5e7eb; border-radius: .25rem; padding: 0 .3rem; line-height: 1.5; }
 .rp-r-toggle input { display: none; }
+.rp-r-toggle.rp-r-fixed { cursor: default; }
 .rp-field.rp-field-r .rp-r-toggle { color: #fff; background: var(--bs-primary, #0d6efd);
   border-color: var(--bs-primary, #0d6efd); }
 .rp-field .shiny-input-container { width: 100% !important; margin-bottom: 0; }
