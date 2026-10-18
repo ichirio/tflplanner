@@ -94,11 +94,7 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
                                        title = t("On or off: off writes nothing")))
   }
   # Revert: an item of the report's own over the defaults' (`revert`)
-  revert <- if (isTRUE(revert)) {
-    shiny::tags$button(type = "button", id = paste0(id, "__revert"),
-                       class = "btn btn-link btn-sm rp-revert action-button",
-                       title = t("Back to the study default"), t("Revert"))
-  }
+  revert <- if (isTRUE(revert)) .card_revert(id, lang)
   menu <- .card_menu(id, tools, lang)
   head <- shiny::div(
     class = "rp-card-head",
@@ -131,6 +127,13 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
     shiny::div(class = "rp-card-body",
                if (!is.null(nav)) nav_hint(nav, "group", lang),
                body))
+}
+
+# a card's Revert button
+.card_revert <- function(id, lang = "en") {
+  shiny::tags$button(type = "button", id = paste0(id, "__revert"),
+                     class = "btn btn-link btn-sm rp-revert action-button",
+                     title = tr("Back to the study default", lang), tr("Revert", lang))
 }
 
 # the card's menu: up, down, duplicate, remove, edit as R
@@ -340,17 +343,19 @@ builder_card_read <- function(input, id, schema = NULL, args = NULL, logical_fal
 # visible arguments (or R), r a monospace field, map<aes, ...> a row of
 # aes fields each with a column / value switch.  Beside every field: the
 # `R` switch (the value as R) and the (i) of its help (what the argument
-# means); `unsaved`: the sheets have no place for it -- a mark of its own
-# beside the (i) (unsaved_badge()).
+# means).
 #' @noRd
 arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default = NULL,
                       choices = NULL, from = "own", help = NULL, required = FALSE,
                       lang = "en", fn = NULL, aes = NULL, nav = NULL, help_link = NULL,
-                      own = NULL, unsaved = FALSE) {
+                      own = NULL) {
   t <- function(x) tr(x, lang)
   kind <- .arg_kind(type)
   fid <- paste0(id, "__", arg)
-  is_r <- inherits(value, "tfl_r")
+  # (an argument that is R only -- no other form -- shows its R in its own
+  # field, as the others' R: no switch to press, its R mark fixed)
+  r_only <- identical(kind, "r")
+  is_r <- inherits(value, "tfl_r") && !r_only
   r_text <- if (is_r) as.character(unclass(value)) else ""
   if (is_r) value <- NULL
   if (inherits(value, "tfl_unset")) value <- NULL
@@ -358,7 +363,7 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     kind,
     column = .field_select(fid, choices, value, multiple = FALSE, lang = lang, placeholder = default),
     list = .field_select(fid, choices, value, multiple = TRUE, lang = lang, placeholder = default),
-    enum = .field_enum(fid, .type_enum(type), value, default, lang),
+    enum = .field_enum(fid, .type_enum(type), value, default, lang, labels = .enum_labels[[arg]]),
     number = .field_number(fid, value, default, step = "any"),
     integer = .field_number(fid, value, default, step = "1", min = "0"),
     logical = .field_check(fid, value, default),
@@ -374,7 +379,8 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
     .field_r(fid, value, default))
   r_input <- shiny::tags$input(type = "text", id = paste0(fid, "__r"), class = "form-control form-control-sm rp-mono rp-r-input",
                                value = r_text, placeholder = "R", spellcheck = "false")
-  r_switch <- shiny::tags$label(
+  r_switch <- if (r_only) shiny::tags$span(class = "rp-r-toggle rp-r-fixed", title = t("As R"), "R") else
+    shiny::tags$label(
     class = "rp-r-toggle", title = t("As R"),
     shiny::tags$input(type = "checkbox", id = paste0(fid, "__isr"), class = "rp-isr",
                       checked = if (is_r) NA else NULL),
@@ -387,11 +393,10 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
                       builder_label(label, arg, "arg", lang),
                       if (required) shiny::tags$span(class = "rp-req", title = t("Required"), "*"),
                       from_badge(from, lang, own = own),
-                      help_tip(help), help_link,
-                      if (isTRUE(unsaved)) unsaved_badge(lang)),
+                      help_tip(help), help_link),
     shiny::div(class = "rp-field-row",
                shiny::div(class = "rp-form-input", control),
-               r_input, r_switch),
+               if (!r_only) r_input, r_switch),
     if (!is.null(nav)) nav_hint(nav, "field", lang))
 }
 
@@ -406,7 +411,9 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
   choices <- .choices_with(choices, value)
   ph <- if (!is.null(placeholder)) as.character(placeholder)[[1L]] else tr("Choose", lang)
   opts <- list(placeholder = ph)
-  if (multiple) opts$plugins <- list("remove_button")
+  # (several: in order, dragged to reorder -- a hierarchy's levels, the
+  # columns of a stub, the keys of an order)
+  if (multiple) opts$plugins <- list("remove_button", "drag_drop")
   shiny::selectizeInput(fid, NULL, choices = c(stats::setNames("", ""), choices),
                         selected = value, multiple = multiple, width = "100%", options = opts)
 }
@@ -425,16 +432,23 @@ arg_field <- function(id, arg, type = NULL, label = NULL, value = NULL, default 
 # An enum: a select of its entries, the default named so ("(default)") and
 # a blank first (blank: the default, not written); a value outside the
 # entries (an older spec's) is kept as one of them, not lost
-.field_enum <- function(fid, entries, value, default, lang = "en") {
+.field_enum <- function(fid, entries, value, default, lang = "en", labels = NULL) {
   v <- if (!is.null(value) && length(value)) as.character(value)[[1L]] else ""
   if (nzchar(v) && !v %in% entries) entries <- c(entries, v)
+  # (a value's label where the argument names one: rounding's "sas" SAS)
+  map <- labels
   labels <- entries
+  if (length(map)) labels[entries %in% names(map)] <- unname(map[entries[entries %in% names(map)]])
   if (!is.null(default) && length(default) == 1L && default %in% entries) {
-    labels[entries == default] <- paste0(default, " ", tr("(default)", lang))
+    labels[entries == default] <- paste0(labels[entries == default], " ", tr("(default)", lang))
   }
   shiny::selectInput(fid, NULL, choices = c(stats::setNames("", ""), stats::setNames(entries, labels)),
                      selected = v, width = "100%", selectize = FALSE)
 }
+
+# The labels of an argument's choices where the values are words of their
+# own (the YAML keeps the values)
+.enum_labels <- list(rounding = c(sas = "SAS", r = "R", iec60559 = "IEC 60559"))
 
 # A number: a number field, the default as its placeholder (blank: the
 # default, not written); an integer steps by 1 (`min`: the least it takes)
@@ -576,21 +590,22 @@ arg_group <- function(label = NULL, fields, as = NULL, lang = "en") {
 # and the ones in use, folded under "Other arguments (n)" -- a search
 # field, the names in the function's order, each a field labelled
 # "meaning (name)" (the name alone when no meaning is known), its (i)
-# what the argument means (.arg_help()) or a link to the package's help,
-# and "Not saved" beside it where the sheets have no place for it (the
-# schema's `unsaved`).  A field given a value stays shown
+# what the argument means (.arg_help()) or a link to the package's help.
+# A field given a value stays shown
 # when the fold closes (it is promoted; the next render passes it as used).
 #' @noRd
 arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
-                     values = list(), choices = NULL) {
+                     values = list(), choices = NULL, rest = NULL, fields = NULL,
+                     label = "Other arguments") {
   t <- function(x) tr(x, lang)
   schema <- schema %||% .schema_of(fn)
   all <- .fn_formals(fn, schema)
-  # (in the function's order, as its formals)
-  rest <- setdiff(all, c(schema$visible, used, "..."))
+  # (in the function's order, as its formals; `rest` and their `fields`
+  # given: those)
+  rest <- rest %||% setdiff(all, c(schema$visible, used, "..."))
   if (!length(rest)) return(NULL)
   pkg <- schema$package %||% if (grepl("::", fn, fixed = TRUE)) sub("::.*$", "", fn)
-  fields <- lapply(rest, function(a) {
+  fields <- fields %||% lapply(rest, function(a) {
     help <- .arg_help(fn, a, schema, lang)
     link <- if (is.null(help) && !is.null(pkg)) {
       shiny::tags$a(class = "rp-help-link", href = .help_url(pkg, fn), target = "_blank",
@@ -599,13 +614,13 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
     }
     arg_field(id, a, schema$args[[a]]$type, label = .arg_meaning(fn, a), value = values[[a]],
               default = schema$args[[a]]$default, help = help, help_link = link,
-              choices = choices, lang = lang, unsaved = isTRUE(schema$args[[a]]$unsaved))
+              choices = choices, lang = lang)
   })
   shiny::div(
     class = "rp-more", `data-card` = id,
     shiny::tags$button(type = "button", class = "rp-more-toggle",
                        shiny::tags$span(class = "rp-more-arrow", "\u25b8"), " ",
-                       sprintf("%s (%d)", t("Other arguments"), length(rest))),
+                       sprintf("%s (%d)", t(label), length(rest))),
     shiny::div(class = "rp-more-body",
                shiny::tags$input(type = "search", class = "form-control form-control-sm rp-more-search",
                                  id = paste0(id, "__more_q"), placeholder = t("Search arguments")),
@@ -648,16 +663,6 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
   h <- if (!is.null(own) && arg %in% names(own)) own[[arg]]
   h <- h %||% schema$args[[arg]]$description %||% .schema_help(fn, arg)
   if (is.null(h)) NULL else tr(h, lang)
-}
-
-# The mark of an argument the sheets have no place for yet: what it says
-# is not saved (the function's default applies), its own tooltip
-#' @noRd
-unsaved_badge <- function(lang = "en") {
-  t <- function(x) tr(x, lang)
-  bslib::tooltip(
-    shiny::tags$span(class = "rp-badge rp-badge-unsaved", tabindex = "0", t("Not saved")),
-    t("The sheets have no place for this argument yet: a value here is not saved, and the function's default applies."))
 }
 
 # the schema of a function, when tflspec has one
@@ -825,7 +830,6 @@ add_item_input <- function(id, kinds = NULL, schema = NULL, lang = "en", placeho
   border-radius: .6rem; background: var(--bs-tertiary-bg, #f3f4f6); color: #4b5563;
   border: 1px solid #e5e7eb; white-space: nowrap; vertical-align: middle; }
 .rp-badge-own { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
-.rp-badge-unsaved { background: transparent; border-color: #d1d5db; color: #6b7280; margin-left: .25rem; cursor: help; }
 .rp-badge-absent { background: none; border-style: dashed; color: #6b7280; }
 .rp-card.rp-card-absent { border-style: dashed; }
 .rp-card.rp-card-absent > .rp-card-head .rp-card-title { color: #6b7280; }
@@ -850,6 +854,7 @@ add_item_input <- function(id, kinds = NULL, schema = NULL, lang = "en", placeho
 .rp-r-toggle { margin: 0; cursor: pointer; font-size: 11px; font-family: Consolas, 'Courier New', monospace;
   color: #9ca3af; border: 1px solid #e5e7eb; border-radius: .25rem; padding: 0 .3rem; line-height: 1.5; }
 .rp-r-toggle input { display: none; }
+.rp-r-toggle.rp-r-fixed { cursor: default; }
 .rp-field.rp-field-r .rp-r-toggle { color: #fff; background: var(--bs-primary, #0d6efd);
   border-color: var(--bs-primary, #0d6efd); }
 .rp-field .shiny-input-container { width: 100% !important; margin-bottom: 0; }
@@ -916,6 +921,39 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
       });
     }, 0);
   });
+  // a card's mark and Revert after a write, without drawing the form again
+  $(document).on('shiny:connected', function() {
+    Shiny.addCustomMessageHandler('rp-card-mark', function(x) {
+      var head = $('#' + x.card + ' > .rp-card-head');
+      if (!head.length) return;
+      var old = head.children('.rp-badge, .rp-revert');
+      Shiny.unbindAll(old.get(0) ? old.parent().get(0) : head.get(0));
+      old.remove();
+      var at = head.children('.rp-card-req');
+      if (!at.length) at = head.children('.rp-card-title');
+      at.after(x.html);
+      // the summary line (what the card says when closed)
+      if (typeof x.summary === 'string') {
+        var sm = head.children('.rp-card-summary');
+        if (!sm.length && x.summary.length) {
+          sm = $(document.createElement('span')).addClass('rp-card-summary');
+          head.children('.rp-badge, .rp-revert').last().after(sm);
+        }
+        sm.text(x.summary);
+      }
+      Shiny.bindAll(head.get(0));
+    });
+  });
+  // a field of a value the ARD decides: warned while it says another
+  $(document).on('change', '.rp-field[data-ard] select', function() {
+    var f = $(this).closest('.rp-field');
+    var ard = String(f.attr('data-ard')).split('|');
+    var v = this.selectize ? this.selectize.getValue() : $(this).val();
+    if (!Array.isArray(v)) v = v ? [v] : [];
+    var same = v.length === 0 || (v.length === ard.length &&
+      v.every(function(x, i) { return x === ard[i]; }));
+    f.find('.rp-ard-warn').toggle(!same);
+  });
   $(document).on('change', '.rp-card-switch input', function() {
     $(this).closest('.rp-card').toggleClass('rp-card-off', !this.checked);
   });
@@ -940,6 +978,59 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     var f = $(this).closest('.rp-field');
     var has = $(this).is(':checkbox') ? this.checked : (this.value || '').length > 0;
     f.toggleClass('rp-has-value', has);
+  });
+  // a plan card's fields in two groups: those its code writes (above) and
+  // those it does not (below, folded).  A value given below moves its
+  // field up when the field is left; a field above emptied moves down --
+  // each in the function's order (the upper group's data-formals), as the
+  // next drawing puts them
+  function fieldHas(f) {
+    var has = false;
+    f.find('input, select, textarea').each(function() {
+      if ($(this).hasClass('rp-isr') || this.type === 'search') return;
+      if (this.type === 'checkbox' || this.type === 'radio') {
+        if (this.checked !== (this.getAttribute('data-init') === '1')) has = true;
+      } else if (($(this).val() || '').toString().length > 0) has = true;
+    });
+    return has;
+  }
+  function placeField(f, box, wrap, order) {
+    var rank = order.indexOf(String(f.data('arg')));
+    var el = wrap ? $('<div class=\"rp-group-cell\"></div>').append(f) : f;
+    var after = null;
+    box.children().each(function() {
+      var g = $(this).is('.rp-field') ? $(this) : $(this).find('.rp-field').first();
+      var r = order.indexOf(String(g.data('arg')));
+      if (r >= 0 && r < rank) after = $(this);
+    });
+    if (after) after.after(el); else if (wrap) box.prepend(el); else box.children('.rp-more-search').length ? box.children('.rp-more-search').after(el) : box.prepend(el);
+  }
+  $(document).on('focusout', '.rp-plan-args .rp-field', function() {
+    var f = $(this);
+    setTimeout(function() {
+      if (f[0].contains(document.activeElement)) return;
+      var card = f.closest('.rp-plan-args');
+      var up = card.find('.rp-args-up .rp-group-row').first();
+      var low = card.find('.rp-more-body').first();
+      if (!up.length || !low.length) return;
+      var order = (card.find('[data-formals]').first().attr('data-formals') || '').split(',');
+      var below = f.closest('.rp-more-body').length > 0;
+      var has = fieldHas(f);
+      if (below && has) {
+        placeField(f, up, true, order);
+      } else if (!below && !has) {
+        var cell = f.parent('.rp-group-cell');
+        placeField(f, low, false, order);
+        if (cell.length && !cell.children().length) cell.remove();
+      }
+    }, 0);
+  });
+  $(document).on('shiny:value', function() {
+    setTimeout(function() {
+      $('.rp-plan-args input[type=checkbox]:not([data-init])').each(function() {
+        this.setAttribute('data-init', this.checked ? '1' : '0');
+      });
+    }, 0);
   });
   // Code line <-> card
   function jumpMap(pre) {

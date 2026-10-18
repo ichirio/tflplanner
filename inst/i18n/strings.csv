@@ -199,7 +199,6 @@ Table builder (beta),表ビルダー（試作）
 Preview: the table as it will print,プレビュー：出力される表
 The builder is for Tables; Listings and Figures are made in their data code.,ビルダーは Table 用です。Listing / Figure はデータ準備コードで作ります。
 Read the report's ARD first (Reports > Data code > Run and read the ARD): the builder is built from it.,先に帳票の ARD を読んでください（帳票 > データ準備コード > 実行して ARD を読む）。ビルダーはその内容から作られます。
-This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Use Table definition; the preview works.,この表は階層（SOC / PT）を持ちます。ビルダーは今のところ要約表のみ対応です。表の定義を使ってください（プレビューは表示されます）。
 "Drag to order, type to rename; every change is written to the sheets (Table definition) and shown on the right.",ドラッグで並べ替え、入力で名前変更。変更はすべてシート（表の定義）に書き込まれ、右側に表示されます。
 Columns,列
 Column variable,列の変数
@@ -437,7 +436,7 @@ Keep a parameter,パラメータで絞る
 Keep rows (condition),条件で絞る
 Derive a variable,変数を作る
 Change a time's unit,時間の単位を変える
-Order a variable's values,値の並び順
+Order a variable's values,水準の並び順
 Rank rows,順位を付ける
 R code,R コード
 Kaplan-Meier fit,Kaplan-Meier 推定
@@ -702,7 +701,7 @@ Figures,Figures
 Definition,定義
 Builder (beta),ビルダー（試作）
 Choose a Listing report on the left.,左で Listing の帳票を選んでください。
-This is a Table: it is made in Table (builder) and Details (sheets).,これは表です。「表（ビルダー）」と「詳細（シート）」で作ります。
+"This is a Table: it is made in step 2, the table builder's cards.",これは表です。ステップ 2 の表ビルダー（カード）で作ります。
 This is a Figure: it is made in Make the figure.,これは図です。「図を作る」で作ります。
 Written by hand,手書きの図
 "This figure's plot is its data code (step 2, Data code), written with ggplot2: it leaves `plot`. Its program reads these datasets first.",この図のプロットは段 2 のデータ準備コード（ggplot2 で書き、`plot` を残す）です。プログラムは先にこれらのデータセットを読みます。
@@ -727,8 +726,8 @@ The builder could not read the form: %s,Builder がフォームを読めませ�
 "Preview (on this report's ARD) puts one report into the working study ARD and keeps no log. The official run of the whole study ARD, with its logs (logrx), is on the Runs tab. Choose a row to see its log in the latest official run.",プレビュー（この帳票の ARD）は、1 つの帳票を作業用の試験 ARD に入れ、ログは残しません。試験 ARD 全体の正式実行（ログ logrx 付き）は「実行」タブにあります。行を選ぶと、最新の正式実行でのログを表示します。
 ARD (this report),この帳票の ARD
 "Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills.",保存し、この帳票の ARD プログラムを実行して試験 ARD に入れ、表ビルダーと入力支援のために読み取ります。
-"Makes this report's ARD (as Preview in step 1), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance.",この帳票の ARD を作り（段 1 のプレビューと同じ）、試験フォルダから 1 と 2 を実行して、入力支援のために変数・水準・統計量を読み取ります。
-Preview this table's ARD,この表の ARD をプレビュー
+"Makes this report's ARD (as Generate this table's ARD in step 1), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance.",この帳票の ARD を作り（手順 1 の「この表の ARD を生成」と同じ）、試験フォルダから 1 と 2 を実行して、入力支援のために変数・水準・統計量を読み取ります。
+Generate this table's ARD,この表の ARD を生成
 not made yet,未作成
 outdated: the ARD definition has changed since it was made,古い：作成後に ARD の定義が変わりました
 error: its program failed (ARD tab > Study ARD),エラー：プログラムが失敗しました（ARD タブ > 試験 ARD）
@@ -739,11 +738,11 @@ reading it,読み取り中
 The ARD program failed: see what it printed in Data > Study ARD.,ARD プログラムが失敗しました。データ > 試験 ARD で出力を見てください。
 %s is in the study ARD; add it to the Report list to make its table.,%s は試験 ARD に入りました。表を作るには、帳票一覧で帳票として追加してください。
 "Preview of %s: %d keys, %d variables",%s のプレビュー：キー %d、変数 %d
-Preview to see the ARD this report's analyses make.,プレビューすると、この帳票の解析が作る ARD が表示されます。
+Generate this table's ARD to see the ARD this report's analyses make.,「この表の ARD を生成」で、この帳票の解析が作る ARD を表示します。
 This table has no ARD yet: the builder is built from it.,この表にはまだ ARD がありません。ビルダーは ARD から作られます。
-No data to show yet: Preview this table's ARD.,表示するデータがまだありません。この表の ARD をプレビューしてください。
+No data to show yet: generate this table's ARD.,表示するデータがまだありません。この表の ARD を生成してください。
 Nothing yet: the button above makes this table's ARD.,まだありません。上のボタンでこの表の ARD を作ります。
-Preview this table's ARD first.,先にこの表の ARD をプレビューしてください。
+Generate this table's ARD first.,先にこの表の ARD を生成してください。
 "No data files yet: put them on the Data tab (data/adam), then add the table.",データファイルがまだありません。「データ」タブに置いて（data/adam）から、表を追加してください。
 numbers,数値
 counts,度数
@@ -779,11 +778,8 @@ Give the analysis an ID.,解析 ID を入れてください。
 %s already has an analysis %s.,%s にはすでに解析 %s があります。
 The subset is not an R condition: %s,部分集団が R の条件式になっていません: %s
 %s: written,%s: 書き込みました
-Table (builder),表（ビルダー）
-Details (sheets),詳細（シート）
 Updating ...,更新しています…
-This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Edit it in Details (sheets); the preview works.,この表は階層（SOC / PT）を持ちます。ビルダーは今のところ要約表だけです。詳細（シート）で編集してください。プレビューは使えます。
-"Drag to order, type to rename; every change is written to the sheets (Details) and shown on the right.",ドラッグで並べ替え、入力で名前を変えられます。変更はすべてシート（詳細）に書かれ、右に表示されます。
+"Drag to order, type to rename; every change is written to this report's SPEC (YAML) and shown in the code and the preview on the right.",ドラッグで並べ替え、入力で名前を変えられます。変更はこの帳票の SPEC（YAML）に書かれ、右のコードとプレビューに出ます。
 %s has changes that are not saved,%s に保存していない変更があります
 "Save them and open %s, or open it without saving them (they are kept as a draft: opening %s again offers them back).",保存して %s を開くか、保存せずに開いてください（変更は下書きとして残り、%s をもう一度開くと戻せます）。
 Open without saving,保存せずに開く
@@ -960,7 +956,7 @@ What a cell no template could fill prints (plan_cells(na = )); blank: empty.,ど
 The variable's name.,変数名。
 What prints for its name (plan_labels()); blank: the name.,変数名の代わりに表示する文字（plan_labels()）。空欄 = 変数名。
 Its place among the variables (a number); blank: the data's order.,変数の並び順（数値）。空欄 = データの順。
-"Its values in print order, | between them (plan_levels()); blank: the data's order.",値の表示順。| 区切り（plan_levels()）。空欄 = データの順。
+"Its values in print order, | between them (plan_levels()); blank: the data's order.",水準の表示順。| 区切り（plan_levels()）。空欄 = データの順。
 "Table: one row a line of a cell (plan_cells()). Rows with the same variable / context / row are one chain, tried top down. With stats = rows, a row with no template is one statistic's digits (plan_digits(.rows = )): row = the statistic as the label column prints it.",表：1 行 = セルの 1 行分（plan_cells()）。同じ variable / context / row の行は上から順に試す連鎖になる。stats = rows では、template の無い行は 1 つの統計量の桁（plan_digits(.rows = )）：row = ラベル列に出る統計量名。
 "What the template is for: a variable, continuous / categorical (every variable of that kind); blank: every variable.",テンプレートの対象：変数名、continuous / categorical（その種類の変数すべて）。空欄 = すべての変数。
 Only the ARD rows of this context (one variable summarised two ways); blank: any.,この context の ARD の行だけ（1 つの変数を 2 通りに集計したとき）。空欄 = すべて。
@@ -1146,7 +1142,7 @@ Saving...,保存中…
 The plot written by hand (ggplot2),手書きのプロット（ggplot2）
 "The code that makes the plot (edit it in step 2, Data code)",プロットを作るコード（段 2 のデータ準備コードで編集します）
 Column variables,列の変数
-Values of %s,%s の値
+Values of %s,%s の水準
 Report (output_id),帳票 (output_id)
 Repeated within,層（この中で繰り返す）
 Percentages of,% の分母
@@ -1356,7 +1352,7 @@ See ?%s for this argument.,この引数は ?%s を見てください。
 Not offered by the builder: kept as written.,画面では扱わない関数です。書いたまま残します。
 "ARDs made elsewhere, taken in (imports.csv lists them)",よそで作った ARD の取り込み（imports.csv に一覧）
 Add a line above,行を上に足す
-"This report's column header is more than the form shows (positions, KEY = value, styled row-header cells): edit it in Details (sheets), col_header.",この帳票の列見出しは、この画面で表せない書き方（列の位置、KEY = 値、行見出しの列の書式）を含みます。詳しく（シート）の col_header で編集してください。
+"This report's column header is more than the form shows (positions, KEY = value, styled row-header cells): edit it as R on this card (plan_col_header()).",この帳票の列見出しは、この画面で表せない書き方（列の位置、KEY = 値、行見出しの列の書式）を含みます。このカードの R で編集してください（plan_col_header()）。
 Line %d,行 %d
 the same on each column,各列に同じ
 one cell per value of a key,キーごとにまとめる
@@ -2417,7 +2413,7 @@ Code lists: the columns of %s's data,コードリスト：%s のデータの列
 "This report's code lists of the listing's columns: its program puts them on the data after the condition (set_levels()), each column a factor in the list's order, its values the labels, and the rows sort in that order. A value a list does not have stops the program.",Listing の列の、この帳票のコードリストです。プログラムは絞り込みの後にこれをデータに当てます（set_levels()）。各列はリストの順の factor になり、値はラベルになり、行はその順に並びます。リストに無い値があるとプログラムは止まります。
 "Code lists: in step 1 (1-1, column definitions)",コードリスト：ARD 作成の 1-1（列定義）で
 Code lists,コードリスト
-"%s has a code list: its values' order and text are the code list's (the data steps' last, Code lists).",%s にはコードリストがあります。値の順と文字はコードリストのものです（データの手順の最後の「コードリスト」）。
+"%s has a code list: its values' order and text are the code list's (the data steps' last, Code lists).",%s にはコードリストがあります。水準の順と表示名はコードリストのものです（データの手順の最後の「コードリスト」）。
 "This report's code lists of the figure's columns: its program puts them on the data as the data steps' last (set_levels()), each column a factor in the list's order, its values the labels -- the order and text of the legend and the axis. A value a list does not have stops the program.",図の列の、この帳票のコードリストです。プログラムはデータの手順の最後にこれをデータに当てます（set_levels()）。各列はリストの順の factor になり、値はラベルになります。凡例や軸の順と文字になります。リストに無い値があるとプログラムは止まります。
 None of these columns has a code list: their values are as the data has them.,これらの列にはコードリストがありません。値はデータのままです。
 %s: the data has values its code list does not (the program would stop): %s,%s：コードリストに無い値がデータにあります（このままではプログラムが止まります）：%s
@@ -2764,7 +2760,7 @@ No analysis of this report is grouped by %s: the ARD has no overall rows to show
 Also over all subjects,全体でも計算する
 and over all,全体でも
 "The ARD definition does not hold, so no ARD program was written (the rest is saved). See the Review tab.",ARD 定義が成り立たないため、ARD プログラムは書いていません（他は保存済み）。Review タブを見てください。
-"ARD: not read yet (step 1, ""Preview this table's ARD"")",ARD: まだ読み込んでいません（ARD 作成の「この表の ARD をプレビュー」）
+"ARD: not made yet (step 1, ""Generate this table's ARD"")",ARD: まだありません（ARD 作成の「この表の ARD を生成」）
 %d levels: %s,%d 水準: %s
 columns %s (%s groups),列 %s（%s 群）
 pages %s,ページ %s
@@ -3208,7 +3204,7 @@ Study default,試験の既定
 Add an item (type a function name),項目を追加（関数名を入力）
 Table structure,表の構造
 Statistics in the cells,セルに入れる統計量
-Order of the values,値の順
+Level order,水準の順
 Labels,ラベル
 Rows under another value,別の値の下の行
 Comparison columns,比較列
@@ -3235,7 +3231,7 @@ Statistics as,統計量の並べ方
 Text for missing,欠測の文字
 Every cell,すべてのセル
 Decimals by row,行ごとの桁
-Hide empty values,空の値を隠す
+Hide empty values,データに無い水準を隠す
 Statistic counted,数える統計量
 Condition,条件
 In any column,いずれかの列で
@@ -3362,14 +3358,14 @@ Underline,下線
 Indent (twips),字下げ（twips）
 As the sheets say: %s,シートのまま：%s
 Text colour,文字の色
-Analysis variables' order,解析変数の並び
+Analysis variables' order (the levels of variable),解析変数の並び（variable の水準）
 %s (key),%s（キー）
 %s (stack),%s（積み上げ）
 %s (hierarchy),%s（階層）
 %s (column key),%s（列キー）
 "One row of plan_cells(continuous = c(row label = template)). Write the ARD's statistic names, {mean} {sd} ...; {mean:.2f} sets the decimals too.",plan_cells(continuous = c(行ラベル = テンプレート)) の 1 行。{mean} {sd} など ARD の統計量名を書き、{mean:.2f} で桁も書けます。
 "What can be placed: the normalized ARD's columns (the keys, variable, a stack's subgroup). group1 is not there: normalizing makes it a column named after its group (TRT01A ...); the analysis variables AGE/SEX are values of variable, so they come as the block of variable. A column is in cols or in rows, not both.",置けるのは正規化 ARD の列（キー、variable、積み上げの subgroup）。group1 は正規化で TRT01A などの名前の列になるので無く、解析変数 AGE/SEX は variable の値なので variable のまとまりとして置きます。1 列は cols と rows のどちらか一方。
-"Makes plan_levels(name = the values' order). A name is a column of the normalized ARD (a column key TRT01A, a stack's subgroup), variable (the analysis variables' order) or a categorical variable (its values). Only what has fixed values can be ordered.",plan_levels(名前 = 値の順) を作ります。名前は正規化 ARD の列（列キー TRT01A、積み上げ subgroup）、variable（解析変数の並び）、カテゴリ変数（その値）。値の決まったものだけ並べられます。
+"Sets the order of the levels of the column and row keys (the groups, an analysis variable's values). The analysis variables' own order (variable) is here too. Levels with no data can be hidden (.drop_empty).",列・行のキー（群・解析変数の値）の水準の並びを決めます。解析変数そのもの（variable）の並びもここ。データに無い水準を隠す（.drop_empty）。
 "Stacks parallel subgroup analyses (ALL, SEX, AGEGR1 ...) as one pair of keys, subgroup and subgroup_level, for a subgroup table. e.g. subgroup = ALL, SEX, AGEGR1","部分集団ごとの並行した解析（ALL, SEX, AGEGR1 …）を 1 組のキー subgroup と subgroup_level に積み上げます（部分集団の表）。例: subgroup = ALL, SEX, AGEGR1"
 "The text between a crossed layer's names and values ("" / "": AGEGR1 / SEX). e.g. "" x ""","交差した層の名前と値をつなぐ文字（"" / "": AGEGR1 / SEX）。例: "" x """
 "TRUE: a crossed layer's outer value goes to subgroup_outer (Age Group by Sex, 65-80, F as three levels). e.g. TRUE",TRUE: 交差した層の外側の値を subgroup_outer に分けます（Age Group by Sex → 65-80 → F の 3 段）。例: TRUE
@@ -3418,8 +3414,40 @@ The table's width as a percent (0-100) of the page's writable width. e.g. 80,表
 "The chosen cells' borders, as R (rtf_border()). e.g. rtf_border(bottom = ""single"")","選んだセルの罫線を R で指定します（rtf_border()）。例: rtf_border(bottom = ""single"")"
 "The chosen cells underlined: TRUE / FALSE, or a condition as R. e.g. TRUE",選んだセルに下線を引きます: TRUE / FALSE、または R の条件。例: TRUE
 The left indent of the chosen cells' text in twips (not the header's). e.g. 240,選んだセルの文字の左のインデント（twip。見出しには効きません）。例: 240
-Not saved,保存されません
-"The sheets have no place for this argument yet: a value here is not saved, and the function's default applies.",この引数はまだシートに保存する場所がありません。ここに入れた値は保存されず、関数の既定が使われます。
 Shapes the ARD for making the table.,ARD を表を作りやすい形に整えます。
 "normalize_ard() shapes the cards ARD for making the table. Before: group1 = TRT01A, group1_level = Drug X, variable = SEX, variable_level = F, stat_name = n -> After: TRT01A = Drug X, variable = SEX, .label = F, stat_name = n. The groups become columns (TRT01A), the analysis variables stay values of variable, and a category's value becomes .label (the row's text).","normalize_ard() は cards の ARD を表を作りやすい形にします。前: group1 = TRT01A, group1_level = Drug X, variable = SEX, variable_level = F, stat_name = n → 後: TRT01A = Drug X, variable = SEX, .label = F, stat_name = n。群は列（TRT01A）になり、解析変数は variable の値のまま、カテゴリの値は .label（行の文字）になります。"
+Not in the code,コードに書かれない引数
+Applies to every report (the study's defaults.yml),全帳票に効きます（試験の defaults.yml）
+Per variable (edit them as R on this card):,変数ごと（このカードの R で編集）:
+Display names,表示名
+Row height (twips),行の高さ（twip）
+Exact row height,行の高さを固定
+Header row height (twips),見出し行の高さ（twip）
+Blank row height (twips),空行の高さ（twip）
+"Cell padding, left (twips)",セルの左余白（twip）
+"Cell padding, right (twips)",セルの右余白（twip）
+Vertical alignment,縦の揃え
+Table alignment,表の配置
+Markup in the text,文字の書式記法
+Blank rows as one,空行をまとめる
+Header borders,見出しの罫線
+Spanning header borders,結合見出しの罫線
+Body borders,本体の罫線
+First row's border,最初の行の罫線
+Last row's border,最後の行の罫線
+Header alignment,見出しの揃え
+Header bold,見出しを太字
+Header italic,見出しを斜体
+Table width (twips),表の幅（twip）
+Table width (%),表の幅（%）
+Table width (% of the writable width),表の幅（書ける幅に対する %）
+Cell formats,セルの書式
+Column widths (twips),列の幅（twip）
+Rows judged together,まとめて判定する行のキー
 %s (not in the populations sheet),%s（Populations シートにない集団）
+"Not the ARD analysis's (%s): the table may fail or come out otherwise. The analysis is changed in step 1.",ARD の解析（%s）と違います。表が作れないか、違う表になることがあります。解析は手順 1 で変えます。
+
+"Saves the study when it has unsaved changes, runs this report's ARD program in an R of its own and puts its rows into the study's working ARD (output/ard/ard.rds), the other reports' rows left as they are. The table builder's choices and the preview read it. The official run is the Runs tab's.",未保存の変更があれば試験を保存し、この帳票の ARD プログラムを別の R で実行して、試験の作業用 ARD（output/ard/ard.rds）のこの帳票の行を入れ替えます（他の帳票の行はそのまま）。表ビルダーの候補とプレビューはこれを読みます。正式な実行は『実行』タブ。
+Discard changes,変更を破棄
+"Every change not saved goes -- in every report of the study and in the study's own files (defaults.yml ...), as a save would have written them -- and the study is as it was last saved. The draft goes too.",保存していない変更をすべて捨てます（保存と同じ範囲: この試験のすべての帳票と、defaults.yml など試験全体のファイル）。試験は最後に保存したときの状態に戻ります。下書きも消えます。
+"The changes were discarded: the study is as it was last saved.",変更を破棄しました。試験は最後に保存した状態です。

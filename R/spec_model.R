@@ -341,11 +341,150 @@
 .spec_study <- function(p) .spec_now(p)$study
 .spec_output <- function(p, output_id) .spec_now(p)$outputs[[output_id]]
 
+# A report's content items as the program has them: its file's over the
+# layers it extends (tflspec::tfl_resolve_output(provenance = TRUE)), each
+# item with `arg_from` (where each argument comes from: "own", "defaults",
+# "pattern:<name>") and `below` (the same verb's item without the
+# report's own: what a revert goes back to); `own` the report's own items.
+# NULL: the planner has no spec or edits of its sheets not yet in it (the
+# program is then written from the sheets: .code_spec()), the spec has no
+# such report, or its content is R of its own.
+.spec_items <- function(p, output_id) {
+  sp <- .code_spec(p)
+  o <- sp$outputs[[output_id]]
+  if (is.null(o) || inherits(o$content, "tfl_r")) return(NULL)
+  r <- tryCatch(tflspec::tfl_resolve_output(o, sp$study, provenance = TRUE),
+                error = function(e) NULL)
+  if (is.null(r) || inherits(r$content, "tfl_r")) return(NULL)
+  list(items = r$content %||% list(), own = o$content %||% list())
+}
+
+# A planner with a spec in step with its view: one with none (a study not
+# saved as YAML yet) is given the one a save would write (the bridge's);
+# one never in step (no base) is taken as the view's
+.spec_ensure <- function(p, meta = p$spec$meta) {
+  if (is.null(p$spec)) {
+    p <- .spec_sync(p, meta)
+    attr(p, "changed") <- NULL
+    return(p)
+  }
+  if (is.null(p$spec$base)) p <- .spec_rebase(p, meta)
+  p
+}
+
+.content_fns <- function(content) vapply(content, function(it) as.character(it$fn), "")
+
+# A content (a report's own items) with the `k`-th item of `fn` replaced by
+# `item` (NULL: taken away); an item it has not put in by the schema's rank
+# (after the items of its rank or before)
+.content_put <- function(content, fn, k, item) {
+  content <- content %||% list()
+  at <- which(.content_fns(content) == fn)
+  if (length(at) >= k) {
+    if (is.null(item)) content[at[k]] <- NULL else content[[at[k]]] <- item
+    return(content)
+  }
+  if (is.null(item)) return(content)
+  rank <- function(f) as.numeric(.schema_of(f)$rank %||% 500)
+  r <- rank(fn)
+  before <- which(vapply(.content_fns(content), rank, 0) <= r)
+  where <- if (length(at)) max(at) else if (length(before)) max(before) else 0L
+  append(content, list(item), after = where)
+}
+
+# The `k`-th item of `fn` of a report set to `args` -- its whole arguments,
+# as the program is to have them: the report's own layer holds what differs
+# from the layers below (tflspec::tfl_item_own(): a verb of named `...` key
+# by key; any other the item whole, so a card of the study's defaults
+# changed is the report's own from then on, the defaults' later changes
+# no longer reaching it -- #417 Q1), or nothing when it is the same.
+# `below_args`: arguments that stay the layers' (the study's rounding).
+.spec_set_item <- function(p, output_id, fn, args, k = 1L, below_args = character()) {
+  .spec_set_items(p, output_id, list(list(fn = fn, args = args %||% list(), k = k,
+                                          below_args = below_args)))
+}
+
+# ... several items of a report at once (one write of its file): `items` a
+# list of list(fn, args, k = 1, below_args = character(), drop_empty =
+# FALSE).  `drop_empty`: an item left with no argument and nothing below it
+# is taken away (a verb of named `...` emptied: plan_levels() of no
+# variable is no call).
+.spec_set_items <- function(p, output_id, items) {
+  p <- .spec_ensure(p)
+  p <- .spec_sync(p, p$spec$meta)
+  attr(p, "changed") <- NULL
+  o <- p$spec$outputs[[output_id]]
+  if (is.null(o)) stop("The spec has no report ", output_id, ".", call. = FALSE)
+  if (inherits(o$content, "tfl_r")) {
+    stop("The report ", output_id, "'s content is R of its own.", call. = FALSE)
+  }
+  r <- tflspec::tfl_resolve_output(o, p$spec$study, provenance = TRUE)
+  fns <- .content_fns(r$content)
+  for (w in items) {
+    fn <- w$fn
+    k <- w$k %||% 1L
+    at <- which(fns == fn)
+    below <- if (length(at) >= k) r$content[[at[k]]]$below
+    args <- w$args %||% list()
+    for (a in w$below_args %||% character()) args[a] <- list(below$args[[a]])
+    args <- Filter(Negate(is.null), args)
+    own <- if (isTRUE(w$drop_empty) && !length(args) && is.null(below)) NULL else
+      tflspec::tfl_item_own(tflspec::tfl_item(fn, args), below)
+    o$content <- .content_put(o$content, fn, k, own)
+  }
+  .spec_set_output(p, output_id, o, content_only = TRUE)
+}
+
+# The study's rounding -- plan_digits(rounding = ) of the study's defaults,
+# every report's -- written straight into its defaults.yml
+# (tflspec::tfl_write_study_part()), and the view's study row with it, in
+# the view and in the base (NA: none, options(rtfreporter.rounding))
+.spec_set_rounding <- function(p, value) {
+  v <- if (length(value) == 1L && !is.na(value) && nzchar(value)) as.character(value) else NA_character_
+  p <- .spec_ensure(p)
+  p <- .spec_sync(p, p$spec$meta)
+  attr(p, "changed") <- NULL
+  sp <- p$spec
+  d <- sp$study$defaults %||% list()
+  content <- d$content %||% list()
+  at <- which(.content_fns(content) == "plan_digits")
+  if (length(at)) {
+    it <- content[[at[1L]]]
+    it$args$rounding <- if (is.na(v)) NULL else v
+    if (length(it$args)) content[[at[1L]]] <- it else content[at[1L]] <- NULL
+  } else if (!is.na(v)) {
+    content <- .content_put(content, "plan_digits", 1L,
+                            tflspec::tfl_item("plan_digits", list(rounding = v)))
+  }
+  d$content <- content
+  sp$study$defaults <- d
+  rel <- file.path(study_layout()[["spec"]], "defaults.yml")
+  f <- tempfile("tflplanner-defaults", fileext = ".yml")
+  on.exit(unlink(f), add = TRUE)
+  tflspec::tfl_write_study_part(sp$study, "defaults", f)
+  sp$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  p$spec <- sp
+  p$study[["rounding"]] <- v
+  if (!is.null(p$spec$base)) p$spec$base$study[["rounding"]] <- v
+  p
+}
+
+# ... and the report's own `k`-th item of `fn` taken away: the layers' again
+# (none: the verb is gone from the report's plan)
+.spec_revert_item <- function(p, output_id, fn, k = 1L) {
+  p <- .spec_ensure(p)
+  o <- .spec_output(p, output_id)
+  if (is.null(o) || inherits(o$content, "tfl_r")) return(p)
+  if (sum(.content_fns(o$content) == fn) < k) return(p)
+  o$content <- .content_put(o$content, fn, k, NULL)
+  .spec_set_output(p, output_id, o, content_only = TRUE)
+}
+
 # A report written straight into the spec (a tfl_output; NULL removes
 # it): the view's edits taken in first, the report's text made by
 # tflspec::tfl_write_output(), and its rows of the view made again from it
 # -- in the view and in the base, so the bridge does not take it back
-.spec_set_output <- function(p, output_id, output) {
+.spec_set_output <- function(p, output_id, output, content_only = FALSE) {
   if (is.null(p$spec)) stop("The planner has no YAML spec.", call. = FALSE)
   p <- .spec_sync(p, p$spec$meta)
   attr(p, "changed") <- NULL
@@ -371,43 +510,77 @@
     sp$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
   }
   p$spec <- sp
-  .spec_view_output(p, output_id)
+  .spec_view_output(p, output_id, content_only = content_only && !is.null(output))
 }
 
-# One report's rows of the view (and of the base) made again from the spec
-.spec_view_output <- function(p, output_id) {
+# One report's rows of the view made again from the spec, and the base
+# with them.  Only that report is bridged (the study's defaults and
+# patterns, which give no row of the report's, left out: .spec_study_lean()),
+# only its sheets whose rows changed are set, and the base -- the view as
+# the spec was last in step with it, as it is before an edit here -- is the
+# view again (#417: a card's save in well under a second).
+.spec_view_output <- function(p, output_id, content_only = FALSE) {
   sp <- p$spec
-  v <- .planner_from_spec(sp$study, sp$outputs[intersect(output_id, names(sp$outputs))])
-  put <- function(x) {
-    nc <- attr(x, "not_converted")
-    no_id <- function(d) { d$output_id <- NULL; d }
-    for (s in names(x$sheets)) {
-      x <- set_sheet_rows(x, s, output_id, no_id(sheet_rows(v, s, output_id)))
+  # (only the report's content changed -- a card's edit: its table sheets
+  # alone, bridged from its content and code lists)
+  if (content_only && !is.null(sp$outputs[[output_id]])) {
+    o <- sp$outputs[[output_id]]
+    o[c("ard", "data", "page")] <- list(NULL)
+    back <- tflspec::tfl_sheets_from_spec(.spec_study_lean(sp$study), stats::setNames(list(o), output_id))
+    for (s in intersect(table_sheets(), names(p$sheets))) {
+      d <- .normalize_sheet(back$table[[s]], s)
+      new <- d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
+      old <- sheet_rows(p, s, output_id)
+      new$output_id <- old$output_id <- NULL
+      rownames(new) <- rownames(old) <- NULL
+      if (!identical(old, new)) p <- set_sheet_rows(p, s, output_id, new)
     }
-    for (s in c("analysis_data", "analyses")) {
-      d <- v$ard[[s]]
-      x <- set_ard_rows(x, s, output_id,
-                        no_id(d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]))
-    }
-    for (s in names(x$lf %||% .empty_lf())) {
-      x <- set_lf_rows(x, s, output_id, no_id(lf_rows(v, s, output_id)))
-    }
-    x <- set_fig_design(x, output_id, fig_design(v, output_id))
-    row <- v$outputs[v$outputs$output_id == output_id, , drop = FALSE]
-    i <- match(output_id, x$outputs$output_id)
-    if (!nrow(row)) {
-      if (!is.na(i)) x$outputs <- x$outputs[-i, , drop = FALSE]
-    } else if (is.na(i)) {
-      x$outputs <- rbind(x$outputs, row[names(x$outputs)])
-    } else {
-      x$outputs[i, ] <- row[names(x$outputs)]
-    }
-    rownames(x$outputs) <- NULL
-    attr(x, "not_converted") <- nc
-    x
+    if (!is.null(p$spec$base)) p$spec$base <- .planner_body(p)
+    return(p)
   }
-  base <- sp$base
-  p <- put(p)
-  if (!is.null(base)) p$spec$base <- put(base)
+  v <- .planner_from_spec(.spec_study_lean(sp$study), sp$outputs[intersect(output_id, names(sp$outputs))])
+  nc <- attr(p, "not_converted")
+  no_id <- function(d) { d$output_id <- NULL; d }
+  same_rows <- function(a, b) identical(no_id(a), no_id(b))
+  for (s in names(p$sheets)) {
+    new <- sheet_rows(v, s, output_id)
+    if (!same_rows(sheet_rows(p, s, output_id), new)) p <- set_sheet_rows(p, s, output_id, no_id(new))
+  }
+  for (s in c("analysis_data", "analyses")) {
+    d <- v$ard[[s]]
+    new <- d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
+    o <- p$ard[[s]]
+    old <- if (!is.null(o)) o[!is.na(o$output_id) & o$output_id == output_id, , drop = FALSE]
+    if (is.null(old) || !identical(`rownames<-`(no_id(old), NULL), `rownames<-`(no_id(new), NULL))) {
+      p <- set_ard_rows(p, s, output_id, no_id(new))
+    }
+  }
+  for (s in names(p$lf %||% .empty_lf())) {
+    new <- lf_rows(v, s, output_id)
+    if (!same_rows(lf_rows(p, s, output_id), new)) p <- set_lf_rows(p, s, output_id, no_id(new))
+  }
+  fd <- fig_design(v, output_id)
+  if (!identical(fig_design(p, output_id), fd)) p <- set_fig_design(p, output_id, fd)
+  row <- v$outputs[v$outputs$output_id == output_id, , drop = FALSE]
+  i <- match(output_id, p$outputs$output_id)
+  if (!nrow(row)) {
+    if (!is.na(i)) p$outputs <- p$outputs[-i, , drop = FALSE]
+  } else if (is.na(i)) {
+    p$outputs <- rbind(p$outputs, row[names(p$outputs)])
+  } else if (!identical(unname(as.list(p$outputs[i, ])), unname(as.list(row[names(p$outputs)])))) {
+    p$outputs[i, ] <- row[names(p$outputs)]
+  }
+  rownames(p$outputs) <- NULL
+  attr(p, "not_converted") <- nc
+  if (!is.null(p$spec$base)) p$spec$base <- .planner_body(p)
   p
+}
+
+# The study's spec with no rows of its own for the bridge to make: its
+# defaults' and patterns' content and page (a report's rows are its own)
+.spec_study_lean <- function(study) {
+  if (is.null(study)) return(study)
+  if (!is.null(study$defaults)) study$defaults[c("content", "page")] <- list(NULL)
+  study$patterns <- list()
+  study
 }

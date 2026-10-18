@@ -60,7 +60,7 @@
       .pd-overlay .badge { font-size: .65rem; }
       .pd-overlay button { padding: 0 .4rem; font-size: .7rem; }
       .pd-overlay-head { display: flex; justify-content: space-between; align-items: center; }
-      .pd-piece-code pre { font-size: .75rem; max-height: 16rem; margin-bottom: 0; }
+      .pd-piece-code pre { font-size: .75rem; max-height: calc(100vh - 16rem); min-height: 4rem; margin-bottom: 0; resize: vertical; }
       .pd-auto .form-group, .pd-auto .checkbox { margin: 0; }
       .pd-auto label { font-size: .8rem; font-weight: normal; margin: 0; }")),
     shiny::uiOutput("pd_note"),
@@ -511,7 +511,7 @@
         cat_cols <- setdiff(cat_cols, c(.group_choices(cols), grep("FL$", cat_cols, value = TRUE)))
         shiny::selectizeInput("pd_tpl_subgroups", t("Subgroups"), .labelled(cat_cols, cols),
                               intersect(c("SEX", "AGEGR1"), cat_cols), multiple = TRUE,
-                              options = list(plugins = list("remove_button")))
+                              options = list(plugins = list("remove_button", "drag_drop")))
       },
       if (kind == "forest" && !whole) {
         g <- .group_choices(cols)

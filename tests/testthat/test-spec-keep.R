@@ -168,37 +168,39 @@ test_that("step 2, the table builder: what it cannot show stays as written", {
       expect_identical(sheet_rows(rv$p, sh, "T-DM"), sheet_rows(p0, sh, "T-DM"),
                        info = paste("shown:", sh))
     }
+    # (written into the report's YAML items, #417: the sheets are their view)
+    content <- function(x) .spec_output(x, "T-DM")$content
+    item <- function(x, fn) Filter(function(it) identical(it$fn, fn), content(x))[[1L]]$args
+    c0 <- content(p0)
     # one label changed: that label, nothing else
     i <- match("SEX", bform$st$variables$variable)
     v <- list()
     v[[paste0("b", bform$n, "_lab", i)]] <- "Sex"
     do.call(session$setInputs, v)
     session$elapse(1000)
-    want <- sheet_rows(p0, "variables", "T-DM")
-    want$label[want$variable == "SEX"] <- "Sex"
-    expect_identical(sheet_rows(rv$p, "variables", "T-DM"), want)
-    for (sh in setdiff(table_sheets(), "variables")) {
-      expect_identical(sheet_rows(rv$p, sh, "T-DM"), sheet_rows(p0, sh, "T-DM"),
-                       info = paste("label:", sh))
-    }
-    # a statistic's decimals changed: the digits sheet says them, the rows
-    # give theirs up (or they would win); each row's template, condition and
-    # significant digits stay
+    expect_identical(item(rv$p, "plan_labels")$SEX, "Sex")
+    expect_identical(item(rv$p, "plan_labels")$AGE, "Age (years)")
+    others <- function(x) Filter(function(it) !identical(it$fn, "plan_labels"), content(x))
+    expect_identical(others(rv$p), others(p0))
+    # a statistic's decimals changed: in the rows' templates; each row's
+    # condition and significant digits, the categorical format, the
+    # missing text stay
     v <- list()
     v[[paste0("b", bform$n, "_dg_mean")]] <- bform$st$digits[["mean"]] + 1
     do.call(session$setInputs, v)
     session$elapse(1000)
-    ce <- sheet_rows(rv$p, "cells", "T-DM")
-    ce0 <- sheet_rows(p0, "cells", "T-DM")
-    expect_identical(ce[c("variable", "row", "when", "template", "signif")],
-                     ce0[c("variable", "row", "when", "template", "signif")])
-    expect_false(identical(ce$digits, ce0$digits))
+    pc <- item(rv$p, "plan_cells")
+    pc0 <- item(p0, "plan_cells")
+    expect_identical(pc$continuous$args[["Mean (SD)"]], "{mean:.3f} [{sd:.3f}]")
+    expect_identical(pc$continuous$args$Median, pc0$continuous$args$Median)
+    expect_match(as.character(unclass(pc$continuous$args$Median[[1L]])), "!is.na(median)", fixed = TRUE)
+    expect_identical(pc$categorical, pc0$categorical)
+    expect_identical(pc$na, pc0$na)
+    expect_identical(item(rv$p, "table_plan"), item(p0, "table_plan"))
     edited <- rv$p
     session$setInputs(save = 1)
     saved <- open_study("B1")$planner
-    for (sh in table_sheets()) {
-      expect_identical(saved$sheets[[sh]], edited$sheets[[sh]], info = sh)
-    }
+    expect_identical(.spec_output(saved, "T-DM")$content, content(edited))
   })
 })
 
@@ -336,14 +338,16 @@ test_that("the builder's header form: spaces typed are saved, quoted, and reach 
     v[[id("ul")]] <- FALSE
     do.call(session$setInputs, v)
     session$elapse(1000)
-    ch <- sheet_rows(rv$p, "col_header", "T-DM")
-    expect_identical(ch$text[ch$cols == ".values"], "\"  {col}\"")
+    # (the report's plan_col_header(), #417: the text as typed)
+    hdr <- function(x) .builder_args(builder_items(x, "T-DM"), "plan_col_header")$header
+    texts <- function(h) vapply(h, function(r) r$text %||% NA_character_, "")
+    expect_identical(texts(hdr(rv$p))[2L], "  {col}")
     session$setInputs(save = 1)
     q <- open_study("B1")$planner
-    ch <- sheet_rows(q, "col_header", "T-DM")
-    expect_identical(ch$text[ch$cols == ".values"], "\"  {col}\"")
+    expect_identical(texts(hdr(q))[2L], "  {col}")
+    expect_true(any(grepl("  {col}", program_code(q, "T-DM"), fixed = TRUE)))
     # the form shows it without the quotes
-    expect_identical(header_read(ch)[[1L]]$text, "  {col}")
+    expect_identical(header_read(.header_df(hdr(q)))[[1L]]$text, "  {col}")
   })
 })
 
