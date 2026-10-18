@@ -837,6 +837,7 @@ app_ui <- function(lang = "en") {
                             shiny::tags$script(shiny::HTML(.result_tabs_js)),
                             shiny::tags$script(shiny::HTML(.unsaved_js)),
                             shiny::tags$script(shiny::HTML(.updating_js)),
+                            shiny::tags$script(shiny::HTML(.report_pick_js)),
                             shiny::tags$script(shiny::HTML(.dt_adjust_js)),
                             shiny::tags$script(shiny::HTML(.adata_code_js)),
                             shiny::tags$style(shiny::HTML(.review_css)),
@@ -1190,6 +1191,31 @@ function rpBatchShown(mode) {
   Shiny.setInputValue('batch_shown', {mode: mode, ids: ids, n: Math.random()}, {priority: 'event'});
 }
 "
+
+# A report's own select (its population, its page pattern, the data its
+# code reads) is drawn again for each report, and sends a value when it is
+# drawn too.  That value can reach the server after another report is
+# chosen, and was written to that one (#418).  So the select is drawn in
+# .for_report(), and only the user's change is written: it comes as
+# <id>_by = {report, value}, the report the select was drawn for, and is
+# written only when that report is the one chosen now (.report_pick()).
+.report_pick_js <- "
+$(document).on('change', '[data-tfl-report] select', function() {
+  var w = $(this).closest('[data-tfl-report]');
+  var v = $(this).val();
+  if (v === null || v === undefined) v = [];
+  Shiny.setInputValue(this.id + '_by',
+    {report: w.attr('data-tfl-report'), value: v, n: Math.random()},
+    {priority: 'event'});
+});
+"
+.for_report <- function(tag, id) shiny::div(`data-tfl-report` = id, tag)
+# the value of a change sent for `id`: NULL when it was sent for another
+# report (or none); character(0) when nothing is chosen
+.report_pick <- function(ev, id) {
+  if (!is.list(ev) || is.null(id) || !identical(ev$report, id)) return(NULL)
+  as.character(unlist(ev$value))
+}
 
 .updating_js <- "
 // The veil (the page's busy state, CSS rp-user-busy) only for work the
@@ -5162,7 +5188,10 @@ app_server <- function(input, output, session, start) {
   # The report's analysis set: the report list's, the TOC's -- one value.
   # Chosen here, it is written there, the data of its subjects (adsl_<set>)
   # is made, and the report's analyses move to the new set's data.
-  pop_choices <- function() {
+  # `now`, the report's set when the populations sheet does not have it,
+  # stays a choice: a select without it would show "(not chosen)" and send
+  # it (#418)
+  pop_choices <- function(now = NA) {
     po <- rv$p$ard$populations
     po <- po[!is.na(po$population_id), , drop = FALSE]
     adsl <- tryCatch(an_data(po$dataset[1L] %||% "ADSL"), error = function(e) NULL)
@@ -5170,7 +5199,11 @@ app_server <- function(input, output, session, start) {
       l <- .pop_label(rv$p, id, adsl)
       if (identical(l, id)) id else sprintf("%s \u2014 %s", id, l)
     }, "")
-    c(stats::setNames("", t("(not chosen)")), stats::setNames(po$population_id, lab))
+    out <- c(stats::setNames("", t("(not chosen)")), stats::setNames(po$population_id, lab))
+    if (!.is_blank(now) && !now %in% po$population_id) {
+      out <- c(out, stats::setNames(now, sprintf(t("%s (not in the populations sheet)"), now)))
+    }
+    out
   }
   output$ard_report_pop <- shiny::renderUI({
     tg <- ard_target()
@@ -5182,13 +5215,17 @@ app_server <- function(input, output, session, start) {
       shiny::tags$label(`for` = "ard_report_pop_pick", class = "small fw-bold mb-0",
                         with_tip(t("This report's population"), t("The report's analysis set (the TOC's; also the header's <OUTPUT_POPULATION> text): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 1-1 and 1-2 start from it. An analysis may still read another."))),
       shiny::div(style = "min-width: 16rem",
-                 shiny::selectInput("ard_report_pop_pick", NULL, pop_choices(),
-                                    selected = if (is.na(now)) "" else now, width = "100%")))
+                 .for_report(shiny::selectInput("ard_report_pop_pick", NULL, pop_choices(now),
+                                                selected = if (is.na(now)) "" else now,
+                                                width = "100%"), tg)))
   })
-  shiny::observeEvent(input$ard_report_pop_pick, {
+  # only the user's change, of the report the select was drawn for (#418)
+  shiny::observeEvent(input$ard_report_pop_pick_by, {
     tg <- ard_target()
     shiny::req(has_study(), tg)
-    v <- input$ard_report_pop_pick %||% ""
+    v <- .report_pick(input$ard_report_pop_pick_by, tg)
+    if (is.null(v)) return()
+    v <- if (length(v)) v[1L] else ""
     now <- report_population(rv$p, tg)
     if (identical(v, if (is.na(now)) "" else now)) return()
     p <- guarded(set_report_population(rv$p, tg, if (nzchar(v)) v else NA))
@@ -8270,9 +8307,9 @@ app_server <- function(input, output, session, start) {
     k <- report_kind()
     shiny::div(
       class = "rp-b-card mb-2",
-      shiny::selectizeInput("uc_ds", t("Data it reads (the program reads them first, by their names in lower case)"),
-                            .ds_choices(cat_ds, have),
-                            selected = have, multiple = TRUE, width = "100%"),
+      .for_report(shiny::selectizeInput(
+        "uc_ds", t("Data it reads (the program reads them first, by their names in lower case)"),
+        .ds_choices(cat_ds, have), selected = have, multiple = TRUE, width = "100%"), id),
       # its ARD as `ard`: a table's own or taken in; a figure's as its ARD
       # source says (below)
       shiny::uiOutput("uc_ard_state"))
@@ -8301,10 +8338,14 @@ app_server <- function(input, output, session, start) {
       class = "small text-muted",
       t("`ard` is this report's rows of the ARD (a cards ARD); normalize_ard(ard) makes it a table's shape.")))
   })
-  shiny::observeEvent(input$uc_ds, {
+  # only the user's change, of the report it was drawn for (#418): a value
+  # sent as it is drawn (none, for a report without data) can arrive after
+  # the next report is chosen
+  shiny::observeEvent(input$uc_ds_by, {
     id <- current()
     shiny::req(!is.null(id), has_study())
-    ds <- input$uc_ds %||% character()
+    ds <- .report_pick(input$uc_ds_by, id)
+    if (is.null(ds)) return()
     if (!identical(sort(toupper(ds)), sort(report_datasets(rv$p, id)))) {
       rv$p <- set_report_datasets(rv$p, id, ds)
     }
@@ -10914,10 +10955,10 @@ app_server <- function(input, output, session, start) {
       class = "d-flex flex-wrap gap-2 align-items-center mb-2 pg-bar",
       shiny::tags$label(`for` = "page_pattern", class = "small mb-0",
                         with_tip(t("Page pattern"), t("The set of page defaults this report starts from: Standard (every report's) or a pattern of the study (Compact for the PK tables ...), which changes only what differs from Standard. What this report changes goes over it."))),
-      shiny::div(style = "width: 14rem", shiny::selectInput(
+      shiny::div(style = "width: 14rem", .for_report(shiny::selectInput(
         "page_pattern", NULL, width = "100%", selectize = FALSE,
         choices = c(stats::setNames("Standard", t("Standard")), stats::setNames(pats, pats)),
-        selected = if (is.na(now)) "Standard" else now)),
+        selected = if (is.na(now)) "Standard" else now), id)),
       .btn("pat_edit", t("Edit the patterns..."), class = "btn-sm btn-outline-secondary"),
       if (!length(pats)) shiny::span(class = "small text-muted",
         t("(no other pattern yet: Edit the patterns... makes one)")))
@@ -10995,10 +11036,13 @@ app_server <- function(input, output, session, start) {
     page_write(p2)
     pat_now("Standard")
   })
-  shiny::observeEvent(input$page_pattern, {
+  # only the user's change, of the report it was drawn for (#418)
+  shiny::observeEvent(input$page_pattern_by, {
     id <- page_report()
     shiny::req(id)
-    v <- input$page_pattern
+    v <- .report_pick(input$page_pattern_by, id)
+    if (!length(v)) return()
+    v <- v[1L]
     now <- report_pattern(rv$p, id)
     if (identical(v, if (is.na(now)) "Standard" else now)) return()
     p2 <- guarded(set_report_pattern(rv$p, id, v))
