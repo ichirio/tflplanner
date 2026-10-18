@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **tflspec's `layout$group_heading_at` and `pages_heading_at`** (tflspec
+  #337, 0.0.2.9238): where a table's page names print (the section header,
+  under the titles, or nowhere), said with the pages.  Their help in
+  Japanese, and the table builder keeps them with `plan_paginate_group()`
+  and `plan_paginate_rows()`.  (Ready before tflspec 0.0.24.9156: with an
+  older tflspec the two lines are unused.)
+
 - **Switching reports no longer writes one report's population to
   another** (#418, 0.0.2.9237).  Step 1's "This report's population",
   step 3's page pattern and the data a step of its own code reads are
