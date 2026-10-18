@@ -718,7 +718,8 @@ builder_items <- function(x, output_id, meta = NULL) {
     out[[length(out) + 1L]] <- builder_card(
       id(it$path), it$fn, .verb_meaning(it$fn), from = it$from, required = req,
       on = on, switchable = sw, revert = isTRUE(it$revert),
-      body = if (is.null(note)) body else shiny::tagList(note, body),
+      # (off: no body -- the summary says what turning it on does)
+      body = if (!on) NULL else if (is.null(note)) body else shiny::tagList(note, body),
       # (off: what turning it on does, said where its body would be)
       summary = if (isTRUE(it$present)) .item_summary(it, lang = lang) else
         if (blocked) t(it$blocked) else if (!on) t("On: its usual values are written."),
@@ -904,16 +905,77 @@ builder_items <- function(x, output_id, meta = NULL) {
              fields = lapply(sp$lower, function(k) field(k, NULL)), label = "Not in the code"))
 }
 
+# The cards of a form of their own (table_plan()'s roles, plan_cells()'
+# rows and formats, plan_col_header()'s lines, plan_sort()'s order): the
+# arguments their form says; the function's other arguments are fields as
+# a form card's, below the form (#417: every argument on the card)
+.special_covered <- list(table_plan = c("cols", "rows", "label"),
+                         plan_cells = c("value", "categorical", "continuous", "default"),
+                         plan_col_header = c("header", "values"),
+                         plan_sort = c("keys", "stat"))
+.special_args <- function(fn) {
+  setdiff(.plan_form_schema(fn)$formals, c(.data_args, .special_covered[[fn]]))
+}
+.special_more <- function(cid, fn, it, lang = "en") {
+  ex <- .special_args(fn)
+  if (!length(ex)) return(NULL)
+  sch <- .plan_form_schema(fn)
+  a <- it$args %||% list()
+  up <- ex[ex %in% names(a)]
+  lo <- setdiff(ex, up)
+  field <- function(k, value) {
+    arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
+              default = sch$args[[k]]$default,
+              from = if (k %in% names(a)) .arg_from(it, k) else "own",
+              own = if (k %in% names(it$own_args %||% list())) "This table",
+              help = .arg_help(fn, k, sch, lang), lang = lang)
+  }
+  shiny::div(
+    class = "rp-plan-args rp-special-more", `data-card` = cid,
+    shiny::div(class = "rp-args-up", `data-formals` = paste(ex, collapse = ","),
+               arg_group(NULL, lapply(up, function(k) field(k, a[[k]])), lang = lang)),
+    arg_more(cid, fn, schema = sch, lang = lang, rest = lo,
+             fields = lapply(lo, function(k) field(k, NULL)), label = "Not in the code"))
+}
+# ... read back: those fields' values (`set`) and the fields emptied, or a
+# check as the function's default (`unset`); NULL while they are not there
+.special_read <- function(input, cid, fn) {
+  ex <- .special_args(fn)
+  seen <- ex[vapply(ex, function(k) !is.null(.input_value(input, paste0(cid, "__", k))), NA)]
+  if (!length(seen)) return(NULL)
+  sch <- .plan_form_schema(fn)
+  r <- builder_card_read(input, cid, sch, args = seen, logical_false = TRUE)
+  out <- list(set = list(), unset = character())
+  for (k in seen) {
+    v <- r[[k]]
+    d <- sch$args[[k]]$default
+    empty <- is.null(v) || !length(v) || (length(v) == 1L && (is.na(v) || identical(v, ""))) ||
+      (is.logical(v) && (if (is.null(d)) isFALSE(as.logical(v)) else
+        identical(as.logical(v), as.logical(d))))
+    if (empty) out$unset <- c(out$unset, k) else out$set[[k]] <- .form_list_value(v, sch$args[[k]]$type)
+  }
+  out
+}
+# ... put into the item's arguments as they are now
+.special_args_put <- function(args, r) {
+  args <- args %||% list()
+  for (k in r$unset) args[[k]] <- NULL
+  for (k in names(r$set)) args[[k]] <- r$set[[k]]
+  args
+}
+
 # A value the card shows but does not change (normalize_ard()'s hierarchy:
 # step 1's): its values as chips, marked "From the ARD" when they are the
 # ARD's (`ard`), with the way to change them (`link`)
 .fixed_field <- function(fn, k, value, it, ard = NULL, link = NULL, lang = "en") {
   # where the value comes from: the ARD's (step 1 decides it), the item's
   # argument's layer; with none written, the ARD's when it has one, else
-  # the layer the item comes from (the study's defaults: none there)
-  from <- if (length(value) && identical(as.character(value), as.character(ard))) "ard" else
-    if (k %in% names(it$args)) .arg_from(it, k) else
-      if (length(ard)) "ard" else it$from %||% "own"
+  # the layer the item comes from
+  # (no value -- a table with no hierarchy: no mark, the value says none)
+  from <- if (!length(value)) NULL else
+    if (identical(as.character(value), as.character(ard))) "ard" else
+      if (k %in% names(it$args)) .arg_from(it, k) else
+        if (length(ard)) "ard" else it$from %||% "own"
   shiny::div(
     class = "rp-field rp-field-fixed rp-has-value", `data-arg` = k,
     shiny::tags$label(class = "rp-field-label",
@@ -1285,6 +1347,28 @@ builder_code_map <- function(lines, items) {
   }
   o <- order(out_l)
   data.frame(line = out_l[o], path = out_p[o], stringsAsFactors = FALSE)
+}
+
+# plan_cells()' entries of a variable of its own (not the default, the
+# continuous or categorical rows, the value printed, a variable's own
+# decimals `skip`), as the card says them: "prob (3 rows), time"; NULL none
+.cells_own_vars <- function(pc, skip = character()) {
+  k <- setdiff(names(pc %||% list()),
+               c("default", "continuous", "categorical", "value", "stats", "na", "notes", skip))
+  if (!length(k)) return(NULL)
+  vapply(k, function(v) {
+    x <- pc[[v]]
+    if (inherits(x, "tfl_call")) x <- x$args
+    n <- if (is.list(x) || length(x) > 1L) length(x) else 1L
+    if (n > 1L) sprintf("%s (%d)", v, n) else v
+  }, "", USE.NAMES = FALSE)
+}
+.cells_own_note <- function(pc, skip = character(), t = function(x) x) {
+  v <- .cells_own_vars(pc, skip)
+  if (is.null(v)) return(NULL)
+  shiny::div(class = "small text-muted rp-cells-own mt-1",
+             t("Per variable (edit them as R on this card):"), " ",
+             shiny::tags$code(paste(v, collapse = ", ")))
 }
 
 # ---- writing an item back ------------------------------------------------------------

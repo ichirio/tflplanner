@@ -8160,7 +8160,7 @@ app_server <- function(input, output, session, start) {
   output$lf_note <- shiny::renderUI({
     msg <- switch(lf_type(),
       none = t("Choose a Listing report on the left."),
-      table = t("This is a Table: it is made in Table (builder) and Details (sheets)."),
+      table = t("This is a Table: it is made in step 2, the table builder's cards."),
       listing = t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 2, Data code), if any, changes the data after the condition."),
       figure = t("This is a Figure: it is made in Make the figure."))
     # a listing's: the (i) of its form's heading
@@ -8648,7 +8648,7 @@ app_server <- function(input, output, session, start) {
       NULL)
     if (is.null(msg)) return(pane_head(
       t("Table builder"),
-      t("Drag to order, type to rename; every change is written to the sheets (Details) and shown on the right.")))
+      t("Drag to order, type to rename; every change is written to this report's SPEC (YAML) and shown in the code and the preview on the right.")))
     shiny::div(class = "alert alert-info py-2 small", msg)
   })
   bid <- function(x) paste0("b", bform$n, "_", x)
@@ -8841,7 +8841,10 @@ app_server <- function(input, output, session, start) {
         shiny::numericInput(bid("pct"), t("Decimals of the percent"),
                             value = st$pct_decimals, min = 0, max = 3,
                             width = "260px")),
-      shiny::uiOutput(bid("warn")))
+      shiny::uiOutput(bid("warn")),
+      # a variable's own templates the form does not show (a KM table's
+      # prob / time): said, read only, so that nothing unseen goes
+      .cells_own_note(.builder_args(items, "plan_cells"), st$exceptions$variable, t))
     # plan_labels(): each variable's heading, levels and nesting (a summary
     # table; the values-and-labels card of the next step takes them over)
     vr_own <- vr_items
@@ -8922,6 +8925,12 @@ app_server <- function(input, output, session, start) {
       plan_sort = if (hier && isTRUE(item_of("plan_sort")$present))
         hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
                      total = .rows_for(p0, "tables", id)$total[1L]))
+    # (a form of its own: the function's other arguments below it)
+    for (fn in names(.special_covered)) {
+      it <- item_of(fn)
+      if (is.null(bodies[[fn]]) || is.null(it) || !(isTRUE(it$present) || isTRUE(it$added))) next
+      bodies[[fn]] <- shiny::tagList(bodies[[fn]], .special_more(card_id(it$path), fn, it, lang))
+    }
     # the layout cards with a form: their arguments as fields (a number, a
     # choice ...), the columns offered the table's keys and row layers
     lay_keys <- setdiff(st$layers %||% character(), ".variable")
@@ -9163,6 +9172,14 @@ app_server <- function(input, output, session, start) {
       r <- .plan_form_read(input, card_id(it$path), it$fn, cols = bform$form_cols[[it$path]])
       if (!is.null(r)) out[[it$path]] <- r
     }
+    # (a form of its own: the other arguments' fields, the item's whole
+    # arguments)
+    for (fn in names(.special_covered)) {
+      it <- .builder_item_at(bform$items, fn)
+      if (is.null(it) || !(isTRUE(it$present) || isTRUE(it$added))) next
+      r <- .special_read(input, card_id(it$path), fn)
+      if (!is.null(r)) out[[fn]] <- structure(r, special = TRUE)
+    }
     # (the cards of the names the user gives: their whole arguments)
     for (fn in .plan_form_dots) {
       it <- .builder_item_at(bform$items, fn)
@@ -9188,8 +9205,17 @@ app_server <- function(input, output, session, start) {
       # (the verb's k-th call: "plan_cell_style#2" the second)
       k <- if (grepl("#", path, fixed = TRUE)) as.integer(sub("^.*#", "", path)) else 1L
       dots <- isTRUE(attr(now[[path]], "dots"))
-      args <- if (dots) .dots_form_args(.args_plain_attr(now[[path]]), it, fn) else
-        .plan_form_args(now[[path]], it, fn)
+      if (isTRUE(attr(now[[path]], "special"))) {
+        # (a form of its own writes its item too: the fields below it put
+        # into its arguments as they are now, not as drawn)
+        cur <- .builder_item_at(tryCatch(builder_items(rv$p, bform$id, bform$meta),
+                                         error = function(e) list()), path)
+        if (is.null(cur)) next
+        it$args <- cur$args
+      }
+      args <- if (isTRUE(attr(now[[path]], "special"))) .special_args_put(it$args, now[[path]]) else
+        if (dots) .dots_form_args(.args_plain_attr(now[[path]]), it, fn) else
+          .plan_form_args(now[[path]], it, fn)
       if (identical(args_to_r(fn, args), args_to_r(fn, it$args %||% list()))) next
       p2 <- guarded(.builder_item_write(rv$p, bform$id, fn, args, k))
       if (is.null(p2)) next
@@ -9962,7 +9988,7 @@ app_server <- function(input, output, session, start) {
       if (is.null(lines)) {
         return(shiny::tagList(head, shiny::div(
           class = "small text-muted",
-          t("This report's column header is more than the form shows (positions, KEY = value, styled row-header cells): edit it in Details (sheets), col_header."))))
+          t("This report's column header is more than the form shows (positions, KEY = value, styled row-header cells): edit it as R on this card (plan_col_header())."))))
       }
       act <- function(i, what, label, j = 0L, title = NULL) shiny::tags$button(
         type = "button", class = "btn btn-sm btn-link py-0 px-1", label, title = title,

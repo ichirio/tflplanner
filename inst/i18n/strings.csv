@@ -199,7 +199,6 @@ Table builder (beta),表ビルダー（試作）
 Preview: the table as it will print,プレビュー：出力される表
 The builder is for Tables; Listings and Figures are made in their data code.,ビルダーは Table 用です。Listing / Figure はデータ準備コードで作ります。
 Read the report's ARD first (Reports > Data code > Run and read the ARD): the builder is built from it.,先に帳票の ARD を読んでください（帳票 > データ準備コード > 実行して ARD を読む）。ビルダーはその内容から作られます。
-This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Use Table definition; the preview works.,この表は階層（SOC / PT）を持ちます。ビルダーは今のところ要約表のみ対応です。表の定義を使ってください（プレビューは表示されます）。
 "Drag to order, type to rename; every change is written to the sheets (Table definition) and shown on the right.",ドラッグで並べ替え、入力で名前変更。変更はすべてシート（表の定義）に書き込まれ、右側に表示されます。
 Columns,列
 Column variable,列の変数
@@ -702,7 +701,7 @@ Figures,Figures
 Definition,定義
 Builder (beta),ビルダー（試作）
 Choose a Listing report on the left.,左で Listing の帳票を選んでください。
-This is a Table: it is made in Table (builder) and Details (sheets).,これは表です。「表（ビルダー）」と「詳細（シート）」で作ります。
+This is a Table: it is made in step 2, the table builder's cards.,これは表です。ステップ 2 の表ビルダー（カード）で作ります。
 This is a Figure: it is made in Make the figure.,これは図です。「図を作る」で作ります。
 Written by hand,手書きの図
 "This figure's plot is its data code (step 2, Data code), written with ggplot2: it leaves `plot`. Its program reads these datasets first.",この図のプロットは段 2 のデータ準備コード（ggplot2 で書き、`plot` を残す）です。プログラムは先にこれらのデータセットを読みます。
@@ -779,11 +778,8 @@ Give the analysis an ID.,解析 ID を入れてください。
 %s already has an analysis %s.,%s にはすでに解析 %s があります。
 The subset is not an R condition: %s,部分集団が R の条件式になっていません: %s
 %s: written,%s: 書き込みました
-Table (builder),表（ビルダー）
-Details (sheets),詳細（シート）
 Updating ...,更新しています…
-This table has a hierarchy (SOC / PT): the builder handles summary tables for now. Edit it in Details (sheets); the preview works.,この表は階層（SOC / PT）を持ちます。ビルダーは今のところ要約表だけです。詳細（シート）で編集してください。プレビューは使えます。
-"Drag to order, type to rename; every change is written to the sheets (Details) and shown on the right.",ドラッグで並べ替え、入力で名前を変えられます。変更はすべてシート（詳細）に書かれ、右に表示されます。
+"Drag to order, type to rename; every change is written to this report's SPEC (YAML) and shown in the code and the preview on the right.",ドラッグで並べ替え、入力で名前を変えられます。変更はこの帳票の SPEC（YAML）に書かれ、右のコードとプレビューに出ます。
 %s has changes that are not saved,%s に保存していない変更があります
 "Save them and open %s, or open it without saving them (they are kept as a draft: opening %s again offers them back).",保存して %s を開くか、保存せずに開いてください（変更は下書きとして残り、%s をもう一度開くと戻せます）。
 Open without saving,保存せずに開く
@@ -1356,7 +1352,7 @@ See ?%s for this argument.,この引数は ?%s を見てください。
 Not offered by the builder: kept as written.,画面では扱わない関数です。書いたまま残します。
 "ARDs made elsewhere, taken in (imports.csv lists them)",よそで作った ARD の取り込み（imports.csv に一覧）
 Add a line above,行を上に足す
-"This report's column header is more than the form shows (positions, KEY = value, styled row-header cells): edit it in Details (sheets), col_header.",この帳票の列見出しは、この画面で表せない書き方（列の位置、KEY = 値、行見出しの列の書式）を含みます。詳しく（シート）の col_header で編集してください。
+"This report's column header is more than the form shows (positions, KEY = value, styled row-header cells): edit it as R on this card (plan_col_header()).",この帳票の列見出しは、この画面で表せない書き方（列の位置、KEY = 値、行見出しの列の書式）を含みます。このカードの R で編集してください（plan_col_header()）。
 Line %d,行 %d
 the same on each column,各列に同じ
 one cell per value of a key,キーごとにまとめる
@@ -3420,3 +3416,4 @@ Shapes the ARD for making the table.,ARD を表を作りやすい形に整えま
 "normalize_ard() shapes the cards ARD for making the table. Before: group1 = TRT01A, group1_level = Drug X, variable = SEX, variable_level = F, stat_name = n -> After: TRT01A = Drug X, variable = SEX, .label = F, stat_name = n. The groups become columns (TRT01A), the analysis variables stay values of variable, and a category's value becomes .label (the row's text).","normalize_ard() は cards の ARD を表を作りやすい形にします。前: group1 = TRT01A, group1_level = Drug X, variable = SEX, variable_level = F, stat_name = n → 後: TRT01A = Drug X, variable = SEX, .label = F, stat_name = n。群は列（TRT01A）になり、解析変数は variable の値のまま、カテゴリの値は .label（行の文字）になります。"
 Not in the code,コードに書かれない引数
 Applies to every report (the study's defaults.yml),全帳票に効きます（試験の defaults.yml）
+Per variable (edit them as R on this card):,変数ごと（このカードの R で編集）:

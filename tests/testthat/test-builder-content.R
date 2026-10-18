@@ -295,3 +295,38 @@ test_that("the chips of an order wrap when narrow, never cut", {
   expect_match(.builder_content_css, "horizontal .rank-list { flex-wrap: wrap;", fixed = TRUE)
   expect_match(.builder_content_css, "overflow: visible; white-space: nowrap;", fixed = TRUE)
 })
+
+test_that("the screen review's fixes: per-variable templates said, every argument on a form of its own, an off card with no body (#417)", {
+  # plan_cells()' entries of a variable of its own: said on the card
+  pc <- list(default = "{n}", continuous = list(n = "{N}"),
+             prob = list(tflspec::tfl_r("a ~ 1"), tflspec::tfl_r("b ~ 2"), "{x}"), time = "{t}")
+  expect_identical(.cells_own_vars(pc), c("prob (3)", "time"))
+  expect_null(.cells_own_vars(list(default = "{n}", AGE = list(n = "{N}")), skip = "AGE"))
+  h <- html(.cells_own_note(pc))
+  expect_match(h, "Per variable (edit them as R on this card):", fixed = TRUE)
+  expect_match(h, "prob (3), time", fixed = TRUE)
+  # a form of its own: the function's other arguments, below it
+  expect_true("keep" %in% .special_args("plan_sort"))
+  expect_false("keys" %in% .special_args("plan_sort"))
+  expect_true(all(c("stat", "show_keys") %in% .special_args("table_plan")))
+  expect_false(any(c("cols", "rows", "label") %in% .special_args("table_plan")))
+  it <- list(fn = "plan_sort", args = list(keys = c(".overall", "label")), path = "plan_sort",
+             present = TRUE, from = "own")
+  h <- html(.special_more("c", "plan_sort", it))
+  expect_match(h, "Not in the code", fixed = TRUE)
+  expect_match(h, 'data-arg="keep"', fixed = TRUE)
+  # ... read back onto the item's arguments as they are now
+  # (keep's default TRUE: unticked is written, ticked again is none)
+  r <- .special_read(list(c__keep = FALSE), "c", "plan_sort")
+  expect_identical(.special_args_put(it$args, r)$keep, FALSE)
+  expect_identical(.special_args_put(c(it$args, list(keep = FALSE)),
+                                     .special_read(list(c__keep = TRUE), "c", "plan_sort")),
+                   it$args)
+  expect_null(.special_read(list(), "c", "plan_sort"))
+  # an off card: no body, the summary says what turning it on does
+  off <- list(fn = "plan_filter", args = list(), path = "plan_filter", present = FALSE,
+              switch = TRUE, on = FALSE)
+  h <- html(.table_cards(list(off)))
+  expect_false(grepl("No arguments: the defaults of the function.", h, fixed = TRUE))
+  expect_match(h, "On: its usual values are written.", fixed = TRUE)
+})
