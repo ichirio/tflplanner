@@ -1552,6 +1552,11 @@ builder_code_map <- function(lines, items) {
 # layers below).  plan_digits()' rounding is the study's, one for every
 # report: it stays the layers', and a new one is the study's rounding.
 .builder_item_write <- function(x, output_id, fn, args, k = 1L) {
+  if (identical(fn, "plan_nest")) {
+    its <- builder_items(x, output_id)
+    x <- .spec_set_item(x, output_id, fn, args, k)
+    return(.nest_order_kept(x, output_id, its))
+  }
   rd <- if (identical(fn, "plan_digits")) args$rounding
   x <- .spec_set_item(x, output_id, fn, args, k,
                       below_args = if (identical(fn, "plan_digits")) "rounding" else character())
@@ -1565,7 +1570,31 @@ builder_code_map <- function(lines, items) {
 # ... and the report's own `k`-th item of `fn` taken away: its layers' apply
 # again (none: the verb is gone from the plan)
 .builder_item_revert <- function(x, output_id, fn, k = 1L) {
-  .spec_revert_item(x, output_id, fn, k)
+  if (!identical(fn, "plan_nest")) return(.spec_revert_item(x, output_id, fn, k))
+  its <- builder_items(x, output_id)
+  .nest_order_kept(.spec_revert_item(x, output_id, fn, k), output_id, its)
+}
+
+# A variable no longer nested (its plan_nest() entry gone: changed, the
+# card off or removed, #428) keeps its place among the variables: it was
+# shown after the level's variable (and that variable's other nested ones),
+# and plan_levels()' order of the variables, which leaves a nested one out,
+# takes it there -- not after the others, where a variable the order does
+# not name goes.  `its`: the items before the change.
+.nest_order_kept <- function(x, output_id, its) {
+  now <- builder_items(x, output_id)
+  lv <- .builder_args(now, "plan_levels")
+  ord <- as.character(unlist(lv$variable))
+  if (!length(ord)) return(x)
+  was <- names(.builder_args(its, "plan_nest") %||% list())
+  freed <- setdiff(setdiff(was, names(.builder_args(now, "plan_nest") %||% list())), ord)
+  if (!length(freed)) return(x)
+  vr <- .builder_vars_rows(its)
+  o <- suppressWarnings(as.numeric(vr$order))
+  seq_was <- vr$variable[order(is.na(o), o)]
+  new <- seq_was[seq_was %in% c(ord, freed)]
+  lv$variable <- c(new, setdiff(ord, new))
+  .spec_set_item(x, output_id, "plan_levels", lv, 1L)
 }
 
 # ---- style -----------------------------------------------------------------------------
