@@ -72,12 +72,14 @@ test_that("required cards have no switch; a switch only where on / off writes; n
   expect_true(all(.plan_study_cards %in% fns_of(items)))
 })
 
-test_that("an AE table: plan_levels not shown on, offered by Add; an empty usual card is off", {
+test_that("an AE table: the same usual cards as any (plan_levels off); an empty usual card is off", {
   p <- sample_planner()
   raw <- Filter(function(it) it$fn != "plan_levels", builder_items(p, "T-14-3-1"))
   items <- .builder_items_cards(raw, TRUE)
-  expect_false("plan_levels" %in% fns_of(items))
-  expect_true("plan_levels" %in% .plan_addable(items))
+  # (one list of usual cards for every table, #417 Q2)
+  expect_true("plan_levels" %in% fns_of(items))
+  expect_false(item(items, "plan_levels")$present)
+  expect_false("plan_levels" %in% .plan_addable(items))
   expect_false("plan_sort" %in% .plan_addable(items))
   expect_false(any(c("normalize_ard", "table_plan", "plan_cells") %in% .plan_addable(items)))
   # plan_filter: a usual card of an AE table, empty: off, its switch works
@@ -93,7 +95,7 @@ test_that("an AE table: plan_levels not shown on, offered by Add; an empty usual
   sch <- .plan_add_schema(items)
   skip_if(is.null(sch))
   ch <- .item_choices(sch, "plan")
-  expect_true("plan_levels" %in% ch)
+  expect_false("plan_levels" %in% ch)
   expect_false("plan_sort" %in% ch)
   expect_false(any(c("plan_titles", "plan_footnotes", "plan_listing") %in% ch))
 })

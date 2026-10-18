@@ -1568,8 +1568,14 @@ app_server <- function(input, output, session, start) {
   p_list <- p_part(function(p) list(p$outputs, p$ard, p$lf, p$fig_designs,
                                     p$sheets$report, p$sheets$titles, p$sheets$tokens,
                                     p$study))
+  # A new table's first drawing in the builder (#417): the description the
+  # builder shows is put in the planner -- the preview's, the next edit's
+  # -- but held: until something is changed it is no change (not saved, no
+  # draft), and leaving the report puts the planner back as it was
+  held <- shiny::reactiveValues(p = NULL, before = NULL)
+  unheld <- function(p) if (!is.null(held$p) && identical(p, held$p)) held$before else p
   dirty <- shiny::reactive({
-    has_study() && (!identical(rv$p, rv$saved) ||
+    has_study() && (!identical(unheld(rv$p), rv$saved) ||
                        !identical(rv$meta, rv$saved_meta))
   })
   # for shiny::testServer(), which sees only the session
@@ -1931,6 +1937,11 @@ app_server <- function(input, output, session, start) {
     s
   }
   do_save <- function() {
+    # (a new table only drawn, nothing changed: saved as it was)
+    if (!is.null(held$p)) {
+      if (identical(rv$p, held$p)) rv$p <- held$before
+      held$p <- held$before <- NULL
+    }
     # what this session opened (or last saved): the save merges it with
     # whatever others saved since
     base <- rv$study
@@ -3163,6 +3174,13 @@ app_server <- function(input, output, session, start) {
   # form among them, redrawn (closed, the text lost) while being typed in.
   current <- shiny::reactiveVal(NULL)
   shiny::observe(current(current_now()), priority = 100)
+  # (another report chosen: a new table only drawn, nothing changed, is
+  # put back as it was)
+  shiny::observeEvent(current(), {
+    if (is.null(held$p)) return()
+    if (identical(rv$p, held$p)) rv$p <- held$before
+    held$p <- held$before <- NULL
+  }, ignoreInit = TRUE)
 
   # -- where the user is ---------------------------------------------------
   # A report's screens are the Reports tab's sub-tabs (the list, its
@@ -8702,7 +8720,13 @@ app_server <- function(input, output, session, start) {
     m <- meta_of(id)
     st <- builder_read(shiny::isolate(rv$p), id, m)
     # a table with no row of its own yet: the ARD's cards are put on once
-    bform$fresh <- !nrow(sheet_rows(shiny::isolate(rv$p), "tables", id))
+    # (a table with no table_plan() of its own yet: a new one)
+    bform$fresh <- {
+      o <- tryCatch(.spec_output(shiny::isolate(rv$p), id), error = function(e) NULL)
+      tp <- if (!is.null(o)) Filter(function(it) identical(it$fn, "table_plan"), o$content %||% list())
+      if (!is.null(o)) !length(tp) || !length(tp[[1L]]$args) else
+        !nrow(sheet_rows(shiny::isolate(rv$p), "tables", id))
+    }
     bform$n <- bform$n + 1L
     bform_drawn(bform$n)
     bform$id <- id
@@ -9805,16 +9829,11 @@ app_server <- function(input, output, session, start) {
           wrote <- TRUE
         }
       }
-      # (its own row now: once only)
-      t2 <- sheet_rows(p2, "tables", id)
-      t2$output_id <- NULL
-      if (wrote && !nrow(t2)) {
-        t2[1L, ] <- NA
-        t2$cols[1L] <- paste(bform$st$key, collapse = " | ")
-        p2 <- set_sheet_rows(p2, "tables", id, t2)
-      }
     }
     if (identical(p2, rv$p)) return()
+    # (held: no change until one is made, .unheld())
+    held$before <- if (!is.null(held$p) && identical(rv$p, held$p)) held$before else rv$p
+    held$p <- p2
     rv$p <- p2
     rv$btouched <- TRUE
     # (the cards written: drawn again, on)

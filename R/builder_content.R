@@ -464,12 +464,10 @@ builder_items <- function(x, output_id, meta = NULL) {
 # the content has is shown whatever its kind).
 .plan_required <- c("normalize_ard", "table_plan", "plan_cells")
 
+# (one list for every table, whatever its kind -- #417 Q2; `hier` unused)
 .plan_usual <- function(hier = FALSE) {
-  if (hier) {
-    c("plan_sort", "plan_digits", "plan_col_header", "plan_total", "plan_filter")
-  } else {
-    c("plan_labels", "plan_levels", "plan_digits", "plan_col_header", "plan_total")
-  }
+  c("plan_labels", "plan_levels", "plan_sort", "plan_digits", "plan_col_header", "plan_total",
+    "plan_filter")
 }
 
 .plan_study_cards <- c("plan_stub", "plan_blanks", "plan_paginate_rows", "plan_columns",
