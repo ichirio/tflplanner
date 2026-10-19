@@ -7,8 +7,8 @@
   workbook's requests to the earlier ones (`add`, ticked when the study has
   requests): the new requests get the next names (`ae-2`), the answers are
   kept.  A report asked for already is said on the read and, on Write, its
-  request is written again only when asked (`overwrite`; the study's own
-  `study.yml` and `spec/` files kept).  The sheets' choices name their
+  request is written again only when asked (`overwrite`: that request
+  alone; the study's own files and the agent's are kept by tflspec).  The sheets' choices name their
   workbooks; step 2's list and step 1's TOC show each request's workbook.
   After requests are written into the open study it is read again (the
   study's TOC may have new reports).  The agent's first message is read

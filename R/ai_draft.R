@@ -229,17 +229,8 @@
          if (!is.null(title) && nzchar(title)) list(title = title),
          if (length(shells)) list(shells = unname(shells)),
          Filter(Negate(is.null), args))
-  # A request asked again (add, overwrite) in a study already there:
-  # tfl_ai_prepare(overwrite = TRUE) would start the study's own files
-  # again too (study.yml, spec/data.yml, spec/defaults.yml) -- kept as they
-  # are
-  keep <- character()
-  if (!isTRUE(dry_run) && isTRUE(args$overwrite) && file.exists(file.path(dir, "study.yml"))) {
-    keep <- file.path(dir, c("study.yml", "spec/data.yml", "spec/defaults.yml"))
-    keep <- keep[file.exists(keep)]
-  }
-  was <- lapply(keep, function(f) readBin(f, "raw", file.info(f)$size))
-  on.exit(for (i in seq_along(keep)) writeBin(was[[i]], keep[i]), add = TRUE)
+  # (add = TRUE, overwrite = TRUE: the requests asked again alone -- the
+  # study's own files and the agent's are kept, tflspec >= 0.0.24.9178)
   # (a dry run on a folder not made yet: its path is not there to normalize)
   suppressWarnings(do.call(tflspec::tfl_ai_prepare, a))
 }

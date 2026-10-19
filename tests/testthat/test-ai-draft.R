@@ -485,7 +485,8 @@ test_that("requests added: the next names, the answers kept; a report asked agai
   dir.create(d, showWarnings = FALSE)
   m <- ai_more_book(d)
   ai_answer(path, "ae-1")
-  before <- tools::md5sum(file.path(path, c("study.yml", "spec/data.yml")))
+  own <- file.path(path, c("study.yml", "spec/data.yml", "spec/defaults.yml"))
+  before <- tools::md5sum(own)
   n0 <- nrow(.ai_requests(path))
   # the dry run says nothing is asked for twice; then added
   p <- .ai_prepare(path, m, ai_adam, list(add = TRUE), dry_run = TRUE)
@@ -509,8 +510,24 @@ test_that("requests added: the next names, the answers kept; a report asked agai
   r2 <- .ai_requests(path)
   expect_identical(sum(r2$outputs == "T-14-3-2"), 1L)
   expect_identical(nrow(r2), nrow(r))
-  expect_identical(unname(tools::md5sum(file.path(path, c("study.yml", "spec/data.yml")))),
-                   unname(before))
+  expect_identical(unname(tools::md5sum(own)), unname(before))
+})
+
+test_that("an agent's study: a request asked again keeps the study's files and the agent's", {
+  local_home()
+  out <- .ai_new_study("AG-4", ai_toc, "onco_toc_shell.xlsx", ai_adam,
+                       list(size = 3L, mode = "agent"))
+  path <- out$study$path
+  d <- file.path(tempdir(), "ai-more-agent")
+  dir.create(d, showWarnings = FALSE)
+  m <- ai_more_book(d)
+  .ai_write_requests(path, m, "more.xlsx", ai_adam, list(add = TRUE, mode = "agent"))
+  own <- file.path(path, c("study.yml", "spec/data.yml", "spec/defaults.yml", "AGENTS.md", "run.R"))
+  before <- tools::md5sum(own)
+  .ai_write_requests(path, m, "more.xlsx", ai_adam,
+                     list(add = TRUE, overwrite = TRUE, mode = "agent"))
+  expect_identical(unname(tools::md5sum(own)), unname(before))
+  expect_identical(sum(.ai_requests(path)$outputs == "T-14-3-2"), 1L)
 })
 
 test_that("the agent's first message: ai/agent_prompt.md when the study has it", {
