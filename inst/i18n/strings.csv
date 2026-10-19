@@ -2874,6 +2874,30 @@ Rename the column in the data: a program would read it instead of the constant.,
 "(no line: the time is in days already; months, weeks or years divide it)",（行なし：時間はもう日単位です。月・週・年にすると割り算の行が入ります）
 (nothing yet: this piece writes no line on its own),（まだ何もありません：この部品だけで書く行はありません）
 Standard (= %s),Standard（%s も同じ）
+This figure,この図
+style %s,スタイル %s
+Standard (study default),Standard（試験の既定）
+None here (!unset),ここでは無し（!unset）
+(none: left out here),(none)：ここでは出さない
+Paper and margins,用紙と余白
+Text defaults,文字の既定
+Document,文書
+Table on the page,ページの表
+Header distance (in),ヘッダーの位置 (in)
+Footer distance (in),フッターの位置 (in)
+"Cell padding, left (twips)",セルの余白・左 (twips)
+"Cell padding, right (twips)",セルの余白・右 (twips)
+Markup,記法
+Titles as,タイトルの形
+Footnotes as,脚注の形
+Titles' width,タイトルの幅
+Footnotes' width,脚注の幅
+Watermark,透かし
+Section from the table's name,表の名前を区分に
+Section's alignment,区分の揃え
+Title from the table's name,表の名前をタイトルに
+Title's alignment,タイトルの揃え
+(no YAML spec),（YAML の SPEC がありません）
 NAME,名前
 its text,その文
 (empty),（空）
