@@ -112,11 +112,14 @@ test_that("Add > Table from the data: data file to a previewed table in one form
     session$setInputs(add_ok = 1)
     expect_true("T-DM" %in% rv$p$outputs$output_id)
     expect_identical(nrow(ard_rows(rv$p, "analyses", "T-DM")), 3L)
-    # saved, previewed and read: the builder can start
-    s2 <- open_study("F1")
+    # previewed and read: the builder can start -- its ARD made for the
+    # preview (the study not saved for it), the study ARD not written (#428)
+    s2 <- rv$study
+    s2$planner <- rv$p
     st <- ard_status(s2)
-    expect_identical(st$state[st$output_id == "T-DM"], "built")
+    expect_identical(st$state[st$output_id == "T-DM"], "not built")
     expect_false(is.null(ard_info(s2, "T-DM")))
+    expect_identical(ard_preview_state(s2, "T-DM"), "current")
   })
 })
 

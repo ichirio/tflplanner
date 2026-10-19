@@ -29,7 +29,23 @@ test_that("the study ARD grows output by output, and says where it stands", {
   flow_home()
   s <- two_output_study()
   expect_equal(ard_status(s)$state, c("not built", "not built"))
-  expect_error(fetch_ard(s, "DM"), "nothing for 'DM' yet")
+  # the preview's ARD (#428): made for the report alone, in a folder of its
+  # own -- the study ARD is not written
+  expect_equal(ard_preview_state(s, "DM"), "missing")
+  m <- fetch_ard(s, "DM")
+  expect_identical(m$made, "here")
+  expect_equal(m$variables$variable, "AGE")
+  expect_false(file.exists(file.path(s$path, "output", "ard", "ard.rds")))
+  expect_equal(ard_status(s)$state, c("not built", "not built"))
+  expect_equal(ard_preview_state(s, "DM"), "current")
+  expect_identical(unique(ard_raw(s, "DM", rows = TRUE)$output_id), "DM")
+  expect_false("output_id" %in% names(ard_raw(s, "DM")))
+  # the preview normalizes the ARD read as the report's item says
+  expect_identical(.preview_normalized(s$planner, "DM", ard_raw(s, "DM")), ard_data(s, "DM"))
+  # what it is made from changes: outdated
+  s2 <- s
+  s2$planner$ard$analyses$label[1] <- "Age"
+  expect_equal(ard_preview_state(s2, "DM"), "outdated")
 
   update_study_ard(s, "DM")
   st <- ard_status(s)
@@ -37,6 +53,8 @@ test_that("the study ARD grows output by output, and says where it stands", {
   a <- readRDS(file.path(s$path, "output", "ard", "ard.rds"))
   expect_equal(unique(a$output_id), "DM")
   expect_equal(fetch_ard(s, "DM")$variables$variable, "AGE")
+  # (the study ARD's rows, made from the definition as it is now: read)
+  expect_identical(ard_info(s, "DM")$made, "study")
 
   update_study_ard(s, "SEX")
   a2 <- readRDS(file.path(s$path, "output", "ard", "ard.rds"))

@@ -213,7 +213,12 @@ ard_meta <- function(ard = NULL, data = NULL) {
 #' Runs the study's setup code, the report's ARD code and its
 #' normalization and rework ([data_lines()]) in a fresh R process, from the
 #' study folder, and reads [ard_meta()] from the result: the normalized
-#' `data` when the rework ran, the raw `ard` otherwise.  The data frames the
+#' `data` when the rework ran, the raw `ard` otherwise.  A report whose ARD
+#' its ARD definition makes reads its rows of the study ARD when they are
+#' made from the definition as it is now ([ard_status()]: built); else its
+#' ARD is made here, in a folder of its own, and the study ARD
+#' (`output/ard/ard.rds`) is not written -- making the study ARD is
+#' [update_study_ard()]'s, and the official run's.  The data frames the
 #' code loaded (`adsl`, ...) add what the ARD lacks: each variable's label,
 #' and the order of its values (a factor's levels, or the order of a
 #' numeric companion `<name>N`: `TRT01A` by `TRT01AN`).  The result is kept
@@ -224,11 +229,18 @@ ard_meta <- function(ard = NULL, data = NULL) {
 #' @param timeout Seconds to allow.
 #' @param home tflplanner's home.
 #' `ard_info()` returns the metadata kept, `ard_data()` the normalized data
-#' kept with it (what the builder's preview is planned from).
+#' kept with it (what the builder's preview is planned from), `ard_raw()`
+#' the ARD before its normalization (`rows = TRUE`: the report's rows as the
+#' study ARD has them, with their ids), and `ard_preview_state()` whether
+#' what is kept is still the report's ARD: `"missing"`, `"outdated"` (its
+#' definition, its code, the study's setup or the data have changed since)
+#' or `"current"`.
 #'
 #' @return The metadata ([ard_meta()]) with `fetched` (the time), `source`
-#'   (`"data"` or `"ard"`), `error` (the rework's error, if it failed) and
-#'   `log`, invisibly.
+#'   (`"data"` or `"ard"`), `error` (the rework's error, if it failed),
+#'   `made` (`"here"`: made for the report; `"study"`: read from the study
+#'   ARD), `print` (what it was made from, [ard_preview_state()]) and `log`,
+#'   invisibly.
 #' @export
 fetch_ard <- function(study, output_id, timeout = 300,
                       home = tflplanner_home()) {
@@ -242,22 +254,38 @@ fetch_ard <- function(study, output_id, timeout = 300,
   if (!nrow(o) || is.na(ard_code)) {
     stop("Report '", output_id, "' has no ARD code yet.", call. = FALSE)
   }
-  if (!.is_code_step(p, output_id, "data") && any(p$ard$analyses$output_id %in% output_id)) {
-    # its data is its part of the study ARD: there must be one
-    out <- file.path(study$path, .ard_study_value(p$ard, "output",
-                                                  "output/ard/ard.rds"))
-    have <- file.exists(out) && any(readRDS(out)$output_id == output_id)
-    if (!have) {
-      stop("The study ARD has nothing for '", output_id,
-           "' yet: build it in step 1 (ARD) first.", call. = FALSE)
-    }
-  }
   tmp <- tempfile("fetch")
   dir.create(tmp)
   on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
   f_ard <- file.path(tmp, "ard.R")
   f_proc <- file.path(tmp, "process.R")
   f_out <- file.path(tmp, "out.rds")
+  q <- function(x) encodeString(normalizePath(x, "/", FALSE), quote = "\"")
+  # its data is its part of the study ARD: those rows while they are the
+  # definition's as it is now; else the report's ARD made here (its ARD
+  # program's code, the study ARD left alone), and its data code reads that
+  made <- "here"
+  rows <- NULL
+  f_make <- NULL
+  if (.ard_from_definition(p, output_id)) {
+    st <- tryCatch(ard_status(study), error = function(e) NULL)
+    if (identical(st$state[match(output_id, st$output_id)], "built")) {
+      rows <- tryCatch(study_ard_rows(study, output_id), error = function(e) NULL)
+    }
+    if (!is.null(rows) && nrow(rows)) {
+      made <- "study"
+    } else {
+      rows <- NULL
+      f_make <- file.path(tmp, "make_ard.R")
+      f_made <- file.path(tmp, "ard_made.rds")
+      code <- .ard_spec_code(.ard_spec(p$ard), output_id = output_id, save = FALSE,
+                             dir = study$path, codelists = .study_codelists(p))
+      writeLines(enc2utf8(c(code, sprintf("saveRDS(ard, %s)", q(f_made)))), f_make,
+                 useBytes = TRUE)
+      ard_code <- .fill_template("table_data", .with_ard_output(p, normalizePath(f_made, "/", FALSE)),
+                                 output_id)
+    }
+  }
   # the report's id first, as its program has it (a template reads it)
   writeLines(enc2utf8(c(.report_id_line(output_id),
                         if (!is.na(p$setup)) .code_block(p$setup),
@@ -270,8 +298,10 @@ fetch_ard <- function(study, output_id, timeout = 300,
   # the functions the programs call (programs/study_helpers.R's)
   f_helpers <- file.path(tmp, "study_helpers.R")
   writeLines(tflspec::tfl_helpers_code(), f_helpers)
-  q <- function(x) encodeString(normalizePath(x, "/", FALSE), quote = "\"")
   script <- c(
+    # (the report's ARD made first, in an environment of its own)
+    if (!is.null(f_make)) paste0("local(eval(parse(", q(f_make),
+                                 ", encoding = \"UTF-8\"), envir = new.env(parent = globalenv())))"),
     "suppressPackageStartupMessages(library(rtfreporter))",
     paste0("sys.source(", q(f_helpers), ", envir = globalenv())"),
     ".e <- new.env(parent = globalenv())",
@@ -321,17 +351,84 @@ fetch_ard <- function(study, output_id, timeout = 300,
   }
   res <- readRDS(f_out)
   data <- if (is.data.frame(res$data)) res$data
+  if (!is.null(f_make) && file.exists(f_made)) rows <- readRDS(f_made)
   m <- .with_source(ard_meta(res$ard, data), res$labels, res$orders)
   m$fetched <- format(Sys.time(), "%Y-%m-%d %H:%M")
   m$source <- if (!is.null(data)) "data" else "ard"
   m$error <- res$error
+  m$made <- made
+  m$print <- .ard_print(study, output_id)
   m$log <- log
   f <- .meta_file(study, output_id, home)
   dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
   saveRDS(m, f)
-  fd <- sub("[.]rds$", "_data.rds", f)
-  if (!is.null(data)) saveRDS(data, fd) else unlink(fd)
+  # the normalized data, the ARD before it (normalized again in the app as
+  # normalize_ard()'s arguments change) and the report's rows with their ids
+  put <- function(suffix, x) {
+    fx <- sub("[.]rds$", suffix, f)
+    if (is.data.frame(x)) saveRDS(x, fx) else unlink(fx)
+  }
+  put("_data.rds", data)
+  put("_ard.rds", res$ard)
+  put("_rows.rds", rows)
   invisible(m)
+}
+
+# Is a report's ARD its ARD definition's (its part of the study ARD)?  Not
+# when its data step is its own code, nor when it takes in an ARD made
+# elsewhere.
+.ard_from_definition <- function(x, output_id) {
+  !.is_code_step(x, output_id, "data") && is.null(.ard_import_of(x, output_id)) &&
+    any(x$ard$analyses$output_id %in% output_id)
+}
+
+# the planner with its study ARD at `path` (the ARD definition's output):
+# the report's data code (code_templates: table_data) then reads that file
+.with_ard_output <- function(x, path) {
+  st <- x$ard$study
+  if (is.null(st) || !is.data.frame(st)) st <- data.frame(key = character(), value = character())
+  k <- match("output", st$key)
+  if (is.na(k)) {
+    st[nrow(st) + 1L, ] <- NA
+    k <- nrow(st)
+    st$key[k] <- "output"
+  }
+  st$value[k] <- path
+  x$ard$study <- st
+  x
+}
+
+# What a report's ARD is made from, as one fingerprint: its ARD
+# definition's (tflspec's hash: the analyses, their data, populations and
+# datasets, the study's settings and own functions, the code lists), its
+# data code (the report's own, or the code that reads its ARD), its
+# rework, the study's setup, and the data files' sizes and times.  Kept
+# with the ARD read (fetch_ard()); another now: the ARD is outdated.
+.ard_print <- function(study, output_id) {
+  p <- study$planner
+  o <- p$outputs[p$outputs$output_id == output_id, , drop = FALSE]
+  code <- tryCatch(if (.is_code_step(p, output_id, "data")) {
+    paste(c(.code_inputs(p, output_id), step_code(p, output_id, "data")), collapse = "\n")
+  } else .ard_code_of(p, output_id), error = function(e) NA_character_)
+  defn <- if (.ard_from_definition(p, output_id)) {
+    tryCatch(tflspec::tfl_ard_spec_hash(structure(p$ard, class = "tfl_ard_spec"), output_id,
+                                        dir = study$path, codelists = .study_codelists(p)),
+             error = function(e) NA_character_)
+  }
+  # (a table's normalization the app makes again itself: not part of it)
+  proc <- if (nrow(o) && !.table_norm_builtin(p, output_id)) o$process_code[1L]
+  ds <- p$ard$datasets$path
+  imp <- .ard_import_of(p, output_id)
+  files <- c(character(), if (length(ds)) file.path(study$path, ds[!is.na(ds) & nzchar(ds)]),
+             if (!is.null(imp)) file.path(.import_dir(study), imp))
+  info <- file.info(files)
+  data <- paste(basename(files), info$size, as.numeric(info$mtime), collapse = ";")
+  txt <- c(defn, code, proc %||% "", if (!is.na(p$setup)) p$setup, .study_setup_hash(study$path),
+           data)
+  f <- tempfile("print")
+  on.exit(unlink(f), add = TRUE)
+  writeLines(enc2utf8(as.character(txt)), f, useBytes = TRUE)
+  unname(tools::md5sum(f))
 }
 
 # What the source data know and the ARD does not: a variable's label, and
@@ -402,6 +499,28 @@ ard_info <- function(study, output_id, home = tflplanner_home()) {
 ard_data <- function(study, output_id, home = tflplanner_home()) {
   f <- sub("[.]rds$", "_data.rds", .meta_file(study, output_id, home))
   if (file.exists(f)) readRDS(f)
+}
+
+#' @rdname fetch_ard
+#' @param rows `TRUE`: the report's rows with their ids, as the study ARD
+#'   has them (the ARD definition's reports; `NULL` for the others).
+#' @export
+ard_raw <- function(study, output_id, rows = FALSE, home = tflplanner_home()) {
+  f <- sub("[.]rds$", if (isTRUE(rows)) "_rows.rds" else "_ard.rds",
+           .meta_file(study, output_id, home))
+  if (file.exists(f)) readRDS(f)
+}
+
+#' @rdname fetch_ard
+#' @param meta What was kept ([ard_info()]); by default, read.
+#' @export
+ard_preview_state <- function(study, output_id, meta = ard_info(study, output_id, home),
+                              home = tflplanner_home()) {
+  if (is.null(meta)) return("missing")
+  if (is.null(meta$print) || !identical(meta$print, .ard_print(study, output_id))) {
+    return("outdated")
+  }
+  "current"
 }
 
 # ----------------------------------------------------------- filling

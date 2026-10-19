@@ -3522,3 +3522,22 @@ The ARD's order (not written in the code),ARD の順（コードに書かれな�
 This table's order (written in the code),この表の順（コードに書かれる）
 Back to the ARD's order,ARD の水準の順に戻す
 Written in the code,コードに書かれる
+Update preview,プレビューを更新
+"Makes this report's ARD in an R of its own, only when it is needed. The study's ARD (output/ard/ard.rds) is not changed.",必要な時だけこの帳票の ARD を別の R で作ります。試験の ARD（output/ard/ard.rds）は変えません。
+No ARD yet,ARD がまだありません
+ARD outdated,ARD が古い
+"%s is not in the Report list: its ARD is shown, no table is made from it.",%s は帳票一覧にありません。ARD を表示します（表は作りません）。
+"making its ARD (%d analyses, in its own R process)",ARD を作成中（解析 %d 本、別の R で）
+running its data code (in its own R process),データのコードを実行中（別の R で）
+The preview's ARD could not be made:,プレビューの ARD を作れませんでした:
+Preview of %s: its ARD is up to date (not made again).,%s のプレビュー: ARD は最新です（作り直していません）。
+The study ARD of %s,%s の試験 ARD
+1/2 saving the study,1/2 試験を保存
+"2/2 making its ARD (%d analyses, in its own R process)",2/2 ARD を作成中（解析 %d 本、別の R で）
+%s: its rows of the study ARD are made.,%s: 試験 ARD のこの帳票の行を作りました。
+Update preview to see the ARD this report's analyses make.,「プレビューを更新」で、この帳票の解析が作る ARD を表示します。
+No data to show yet: Update preview makes this table's ARD.,表示するデータがまだありません。「プレビューを更新」でこの表の ARD を作ります。
+Update preview first: it makes this table's ARD.,先に「プレビューを更新」を押してください。この表の ARD を作ります。
+normalize_ard() stopped:,normalize_ard() が止まりました:
+ARD: not made yet (Update preview makes it),ARD: まだありません（「プレビューを更新」で作ります）
+%d analyses are run over all subjects too: Update preview makes the ARD again.,%d 本の解析を全体でも走らせます。「プレビューを更新」で ARD を作り直します。

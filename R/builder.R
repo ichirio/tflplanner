@@ -1082,7 +1082,7 @@ builder_write <- function(x, output_id, state, was = NULL) {
 # label (NULL with no meta).  `tr`: the app's translation.
 ard_card_summary <- function(meta, page_by = character(), tr = function(x) x) {
   if (is.null(meta) || (!length(meta$by) && !NROW(meta$variables))) {
-    return(list(line = tr("ARD: not made yet (step 1, \"Generate this table's ARD\")"),
+    return(list(line = tr("ARD: not made yet (Update preview makes it)"),
                 rows = NULL))
   }
   cut <- function(x, k) if (length(x) > k) c(utils::head(x, k), "\u2026") else x
@@ -1181,6 +1181,21 @@ preview_pages <- function(x, output_id, data) {
   attr(res, "n_candidates") <- tryCatch(rtfreporter::plan_n_candidates(plan),
                                         error = function(e) NULL)
   res
+}
+
+# The table's data for the preview from its ARD as read (ard_raw(), #428):
+# normalized here with normalize_ard()'s arguments as the report's item
+# says them now -- the overall row, the hierarchy, the stack -- so a change
+# of them shows without making the ARD again.  The same call the program
+# writes (its plan's pipe); NULL when the report has no such item.
+.preview_normalized <- function(x, output_id, ard) {
+  its <- builder_items(x, output_id)
+  it <- Filter(function(i) identical(i$fn, "normalize_ard"), its)
+  args <- if (length(it)) it[[1L]]$args %||% list() else list()
+  txt <- tflspec::tfl_args_to_r("normalize_ard", args)
+  call <- if (length(txt) && nzchar(txt)) paste0("rtfreporter::normalize_ard(.ard, ", txt, ")") else
+    "rtfreporter::normalize_ard(.ard)"
+  eval(parse(text = call), envir = list2env(list(.ard = ard), parent = baseenv()))
 }
 
 # The insert chips' labels: a token and what it holds here

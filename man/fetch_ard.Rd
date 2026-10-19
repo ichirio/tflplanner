@@ -4,6 +4,8 @@
 \alias{fetch_ard}
 \alias{ard_info}
 \alias{ard_data}
+\alias{ard_raw}
+\alias{ard_preview_state}
 \title{Run a report's data part and keep what its ARD holds}
 \usage{
 fetch_ard(study, output_id, timeout = 300, home = tflplanner_home())
@@ -11,6 +13,15 @@ fetch_ard(study, output_id, timeout = 300, home = tflplanner_home())
 ard_info(study, output_id, home = tflplanner_home())
 
 ard_data(study, output_id, home = tflplanner_home())
+
+ard_raw(study, output_id, rows = FALSE, home = tflplanner_home())
+
+ard_preview_state(
+  study,
+  output_id,
+  meta = ard_info(study, output_id, home),
+  home = tflplanner_home()
+)
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
@@ -21,18 +32,35 @@ ard_data(study, output_id, home = tflplanner_home())
 
 \item{home}{tflplanner's home.
 \code{ard_info()} returns the metadata kept, \code{ard_data()} the normalized data
-kept with it (what the builder's preview is planned from).}
+kept with it (what the builder's preview is planned from), \code{ard_raw()}
+the ARD before its normalization (\code{rows = TRUE}: the report's rows as the
+study ARD has them, with their ids), and \code{ard_preview_state()} whether
+what is kept is still the report's ARD: \code{"missing"}, \code{"outdated"} (its
+definition, its code, the study's setup or the data have changed since)
+or \code{"current"}.}
+
+\item{rows}{\code{TRUE}: the report's rows with their ids, as the study ARD
+has them (the ARD definition's reports; \code{NULL} for the others).}
+
+\item{meta}{What was kept (\code{\link[=ard_info]{ard_info()}}); by default, read.}
 }
 \value{
 The metadata (\code{\link[=ard_meta]{ard_meta()}}) with \code{fetched} (the time), \code{source}
-(\code{"data"} or \code{"ard"}), \code{error} (the rework's error, if it failed) and
-\code{log}, invisibly.
+(\code{"data"} or \code{"ard"}), \code{error} (the rework's error, if it failed),
+\code{made} (\code{"here"}: made for the report; \code{"study"}: read from the study
+ARD), \code{print} (what it was made from, \code{\link[=ard_preview_state]{ard_preview_state()}}) and \code{log},
+invisibly.
 }
 \description{
 Runs the study's setup code, the report's ARD code and its
 normalization and rework (\code{\link[=data_lines]{data_lines()}}) in a fresh R process, from the
 study folder, and reads \code{\link[=ard_meta]{ard_meta()}} from the result: the normalized
-\code{data} when the rework ran, the raw \code{ard} otherwise.  The data frames the
+\code{data} when the rework ran, the raw \code{ard} otherwise.  A report whose ARD
+its ARD definition makes reads its rows of the study ARD when they are
+made from the definition as it is now (\code{\link[=ard_status]{ard_status()}}: built); else its
+ARD is made here, in a folder of its own, and the study ARD
+(\code{output/ard/ard.rds}) is not written -- making the study ARD is
+\code{\link[=update_study_ard]{update_study_ard()}}'s, and the official run's.  The data frames the
 code loaded (\code{adsl}, ...) add what the ARD lacks: each variable's label,
 and the order of its values (a factor's levels, or the order of a
 numeric companion \verb{<name>N}: \code{TRT01A} by \code{TRT01AN}).  The result is kept

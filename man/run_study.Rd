@@ -22,5 +22,7 @@ Runs report programs on their own (a preview), from the study folder --
 every report or the ones named -- each in its own \code{Rscript} process.
 They write the working RTFs (output/tfl/); what each printed is kept in
 \verb{logs/preview/} until the next preview, and no log of record is made.
-The official run is \code{\link[=run_batch]{run_batch()}}.
+A table's rows of the study ARD, and those a figure prints numbers of,
+are made first when they are not made from the definition as it is now
+(\code{\link[=update_study_ard]{update_study_ard()}}).  The official run is \code{\link[=run_batch]{run_batch()}}.
 }
