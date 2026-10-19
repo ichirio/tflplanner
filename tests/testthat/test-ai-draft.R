@@ -572,3 +572,20 @@ test_that("step 1 in the app: a workbook added to the requests; asked again, wri
     expect_identical(nrow(ai$requests()), n0 + 1L)
   })
 })
+
+test_that("a study made with the ADaM outside its folder: its data found, no D01 for a report taken in", {
+  local_home()
+  out <- .ai_new_study("ABS-1", ai_toc, "onco_toc_shell.xlsx", ai_adam, list(size = 3L))
+  path <- out$study$path
+  # the catalog's paths are the ADaM folder's own (absolute)
+  expect_true(all(startsWith(out$study$planner$ard$datasets$path, ai_adam)))
+  ai_answer(path, "ae-1")
+  .ai_collect(path)
+  s <- .ai_reload_study("ABS-1", unsaved = FALSE)
+  expect_true("T-14-3-1" %in% output_ids(s$planner))
+  r <- study_review(s, data = "read", lang = "en")
+  expect_false(any(r$rule %in% c("D01", "D02")),
+               info = paste(r$rule, r$output_id, r$message, collapse = "\n"))
+  expect_false(any(r$output_id %in% "T-14-3-1" & r$level == "error"),
+               info = paste(r$rule, r$output_id, r$message, collapse = "\n"))
+})
