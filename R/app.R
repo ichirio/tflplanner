@@ -11810,11 +11810,10 @@ app_server <- function(input, output, session, start) {
     d$size_kb <- ifelse(is.na(d$path), NA_character_,
                         ifelse(file.exists(p), sprintf("%.1f", file.size(p) / 1024),
                                t("no file")))
-    # a file outside the study folder (ADaM kept elsewhere): its folder, said
+    # a file outside the study folder (ADaM kept elsewhere), said (its
+    # folder under the grid)
     out <- .data_outside(rv$study$path, d$path)
-    if (any(out)) {
-      d$where <- ifelse(out, sprintf(t("outside the study folder (%s)"), dirname(p)), "")
-    }
+    if (any(out)) d$where <- ifelse(out, t("outside the study folder"), "")
     h <- .grid(d, "datasets", key,
                list(path = file.path(mine$folder, mine$file)),
                closed = character(), select = TRUE)
@@ -11853,7 +11852,13 @@ app_server <- function(input, output, session, start) {
     bare <- rel[!rel %in% d$path & !.dataset_name(f$file) %in% d$dataset]
     cl <- catalog_name_clashes(rv$p, data_files())
     cl <- cl[cl$dataset %in% .dataset_name(f$file), , drop = FALSE]
+    # the folders outside the study folder the rows of this folder read
+    mine <- ds_sub()$path
+    away <- unique(dirname(.data_file(rv$study$path, mine[.data_outside(rv$study$path, mine)])))
     shiny::tagList(
+      if (length(away)) shiny::p(
+        class = "small text-muted mt-1 mb-0",
+        sprintf(t("Outside the study folder: %s"), paste0(away, "/", collapse = ", "))),
       if (length(bare)) shiny::p(
         class = "small text-muted mt-1 mb-0",
         sprintf(t("Files with no row yet: %s (Refresh makes the rows)."),
