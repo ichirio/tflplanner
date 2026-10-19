@@ -1,6 +1,6 @@
 # tflplanner (development version)
 
-- **AI drafts over several workbooks** (#431, 0.0.2.9248; tflspec >=
+- **AI drafts over several workbooks** (#431, 0.0.2.9251; tflspec >=
   0.0.24.9178): step 1 takes the shell workbooks apart from the TOC's
   (uploaded, several, and / or their paths one a line, Browse... choosing
   several; each copied into the study's `ai/` as the TOC's), and adds a
@@ -14,7 +14,7 @@
   study's TOC may have new reports).  The agent's first message is read
   from `ai/agent_prompt.md` when the study has it.
 
-- **AI drafts** (#431, 0.0.2.9247; tflspec >= 0.0.24.9177): a tab for
+- **AI drafts** (#431, 0.0.2.9250; tflspec >= 0.0.24.9177): a tab for
   tflspec's AI table requests and their answers, after the Report list
   (`options(tflplanner.ai_drafts = FALSE)` hides it).  Step 1 (Prepare,
   `tfl_ai_prepare()`): the study open or a new one (its ID, made under the
@@ -54,6 +54,15 @@
   (`tfl_ai_answer_questions()`, only the answers typed) and copy the line
   that tells the agent.  The path fields have Browse... (the computer's
   dialog; `options(tflplanner.file_dialog = FALSE)` on a server).
+
+- **A test's try of an ARD function says why it gave nothing** (#435,
+  0.0.2.9249).  `test-ard-own-ui.R` failed once in a full run (no error
+  row for a function that stops) and passed on its own; no earlier test
+  was found to leave anything behind.  The try's own R now has 300 s in
+  the test (a busy machine in the whole suite is slow), and the test
+  checks the try's `error` first, so a failure shows its reason.  Tests
+  only.
+
 - **Data kept outside the study folder** (#430, 0.0.2.9246): a dataset's
   `path` in the data catalog (`spec/data.yml`) may be a full path
   (`C:/secure/adam/adsl.rds`), so that the ADaM stays out of the study

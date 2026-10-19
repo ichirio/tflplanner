@@ -20,8 +20,10 @@ test_that("own ARD functions: the study's and the company's side by side, tried,
   expect_identical(own$where, "both")
   expect_true(own$loaded)
   expect_false(own$differs)
-  # tried on cards' example data (no dataset given), kept
-  r <- try_ard_function(s, "ard_cv", args = "by = ARM, variables = AGE")
+  # tried on cards' example data (no dataset given), kept.  Its R of its
+  # own is given time: in the whole suite on a busy machine it is slow
+  # (#435); this is about what it says, not how fast
+  r <- try_ard_function(s, "ard_cv", args = "by = ARM, variables = AGE", timeout = 300)
   expect_null(r$error)
   expect_true(nrow(r$ard) > 0)
   ck <- own_function_checks(s)[["ard_cv"]]
@@ -68,8 +70,11 @@ test_that("own ARD functions: the study's and the company's side by side, tried,
   writeLines("ard_bad <- function(data, ...) stop(\"nope\")",
              file.path(s$path, "programs/ard/functions/ard_bad.R"))
   s <- .add_source(s, "programs/ard/functions/ard_bad.R")
-  r <- try_ard_function(s, "ard_bad")
+  r <- try_ard_function(s, "ard_bad", timeout = 300)
+  # tried (not: its R gave nothing -- that says why, #435), the error found
+  expect_null(r$error)
   expect_true(any(r$problems$level == "error"))
+  expect_match(r$problems$message[r$problems$level == "error"], "nope", fixed = TRUE, all = FALSE)
 })
 
 test_that("the Own functions tab: listed, used, tried, a new one; the analysis form offers them", {
