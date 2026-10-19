@@ -12,7 +12,11 @@
   reads and writes the headings under `variable =` as well (a report that
   has them one by one keeps that form), writes no `plan_levels` entry for
   a variable whose order is its code list's, and gives tflspec's bridge
-  the ARD's definition.
+  the ARD's definition.  T-14-2-2 drops the arms' order its ARD already
+  says (tflspec #363, >= 0.0.24.9169; its RTF unchanged).  A new sample
+  study's setup code no longer carries the commented-out rounding and
+  font options (the rounding is the Study tab's, each table's
+  `plan_digits()`); studies made before keep theirs.
 
 - **The table builder reads and writes the report's YAML items** (#417,
   0.0.2.9242; step B3 of the YAML-native plan).  tflspec >= 0.0.24.9163.

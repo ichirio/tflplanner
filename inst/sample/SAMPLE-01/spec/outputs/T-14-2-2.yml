@@ -73,9 +73,6 @@ content:
       variable:
         - prob
         - time
-      TRT01A:
-        - Drug X
-        - Control
   - plan_labels:
       variable:
         prob: Time to first event (days)

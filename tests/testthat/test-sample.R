@@ -141,9 +141,11 @@ test_that("the sample's Study tab has keys and a setup code of its own", {
   src <- st$value[st$key == "source"]
   expect_identical(src, "programs/ard/functions/ard_cv_geomean.R")
   expect_true(file.exists(file.path(s$path, src)))
-  # the setup code: the libraries, a commented option; it parses
+  # the setup code: the libraries; no rounding or font of its own (the
+  # Study tab's, each table's plan_digits()); it parses
   expect_match(s$planner$setup, "library(cards)", fixed = TRUE)
-  expect_match(s$planner$setup, "# options(rtfreporter.rounding", fixed = TRUE)
+  expect_false(grepl("rtfreporter.rounding", s$planner$setup, fixed = TRUE))
+  expect_false(grepl("rtfreporter.font", s$planner$setup, fixed = TRUE))
   expect_silent(parse(text = s$planner$setup))
   # saved: it is what the study opens with
   o <- open_study(s$meta$study_id)
