@@ -24,7 +24,8 @@ standard_codelists(sets = NULL, home = tflplanner_home())
 }
 \value{
 \code{import_codelist()}: the \code{tflplanner}; \code{standard_codelists()}: a
-data frame (\code{set}, \code{variable}, \code{value}, \code{label}, \code{order}, \code{note}).
+data frame (\code{set}, \code{variable}, \code{value}, \code{label}, \code{order}, \code{under},
+\code{note}).
 }
 \description{
 A code list is a report's: every row of the \code{codelists} sheet names its

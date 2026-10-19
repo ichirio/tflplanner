@@ -49,7 +49,8 @@
 #' @param sets Only these sets of the standards; `NULL` for all.
 #' @param home tflplanner's home.
 #' @return `import_codelist()`: the `tflplanner`; `standard_codelists()`: a
-#'   data frame (`set`, `variable`, `value`, `label`, `order`, `note`).
+#'   data frame (`set`, `variable`, `value`, `label`, `order`, `under`,
+#'   `note`).
 #' @export
 import_codelist <- function(x, from_output, output_id, variables = NULL) {
   src <- sheet_rows(x, "codelists", from_output)
@@ -83,8 +84,8 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
 .builtin_codelists <- function() {
   one <- function(var, values, labels, note = NA_character_) {
     data.frame(set = var, variable = var, value = values, label = labels,
-               order = as.character(seq_along(values)), note = note,
-               stringsAsFactors = FALSE)
+               order = as.character(seq_along(values)), under = NA_character_,
+               note = note, stringsAsFactors = FALSE)
   }
   rbind(
     one("SEX", c("F", "M", "U"), c("Female", "Male", "Unknown")),
@@ -137,7 +138,7 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
       class = "small mt-2",
       shiny::tags$summary(t("Read a file into this report")),
       shiny::fileInput(
-        p("file"), t("A code list (xlsx / csv: variable, value, label, order)"),
+        p("file"), t("A code list (xlsx / csv: variable, value, label, order, under)"),
         accept = c(".xlsx", ".csv"), width = "100%")),
     shiny::tags$details(
       class = "rp-help mt-2",
@@ -279,8 +280,10 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     id <- report()
     k <- input[[p("pick")]]
     if (!length(k)) return(notify(t("Choose at least one."), "warning"))
-    rows <- do.call(rbind, lapply(source_rows(input[[p("from")]])[k],
-                                  function(r) r[c("variable", "value", "label", "order")]))
+    rows <- do.call(rbind, lapply(source_rows(input[[p("from")]])[k], function(r) {
+      for (cn in setdiff(.codelist_cols, names(r))) r[[cn]] <- rep(NA_character_, nrow(r))
+      r[.codelist_cols]
+    }))
     as <- trimws(input[[p("as_var")]] %||% "")
     if (length(k) == 1L && nzchar(as)) rows$variable <- as
     p2 <- guarded(set_codelist(rv$p, id, rows))
@@ -528,9 +531,10 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
         t("Add them to the list")))))
 }
 
-# The open column's grid: its values, labels and order, written back to
-# the report's code list of that column as they are edited
-.codelist_detail_ui <- function(variable, t, ids) {
+# The open column's grid: its values, labels and order (and `under`, when
+# .codelist_shows_under()), written back to the report's code list of that
+# column as they are edited
+.codelist_detail_ui <- function(variable, t, ids, under = FALSE) {
   shiny::div(
     class = "border rounded p-2 mb-2 bg-body-tertiary",
     shiny::div(
@@ -539,8 +543,20 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
       shiny::div(class = "ms-auto",
                  .btn(ids[["close"]], t("Close"), class = "btn-sm btn-outline-secondary py-0"))),
     shiny::div(class = "small text-muted mb-1",
-               t("value: as the data has it; label: what it prints as (blank: itself); order: its place")),
+               t("value: as the data has it; label: what it prints as (blank: itself); order: its place"),
+               if (under) paste0(" ", t("under: the value one level out it sits under (a nested count: shown with 0 when no subject has it)"))),
     rhandsontable::rHandsontableOutput(ids[["hot"]]))
+}
+
+# Whether the open column's grid shows `under` (a nested count's inner
+# value: its parent's value, for complete_hierarchy()): when a value of
+# the column has one, or the column is an inner term of the report's
+# hierarchical analysis.  Hidden, it is kept as it is.
+.codelist_shows_under <- function(x, output_id, variable) {
+  cl <- sheet_rows(x, "codelists", output_id)
+  u <- cl$under[!is.na(cl$variable) & cl$variable == variable]
+  any(!is.na(u) & nzchar(u)) ||
+    variable %in% utils::tail(.analysis_hierarchy(x, output_id), -1L)
 }
 
 # Its server: `vars()` the place's columns, `data()` its data (or NULL),
@@ -572,7 +588,8 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
   output[[ids[["detail"]]]] <- shiny::renderUI({
     v <- open()
     shiny::req(has_study(), report(), v)
-    .codelist_detail_ui(v, t, ids)
+    .codelist_detail_ui(v, t, ids, under = .codelist_shows_under(
+      shiny::isolate(rv$p), report(), v))
   })
   key <- shiny::reactive(paste(ids[["hot"]], report() %||% "", open() %||% "",
                                rv$ver, sep = "|"))
@@ -581,8 +598,11 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     shiny::req(has_study(), report(), v)
     key()
     grids_drawn()
-    d <- sheet_rows(shiny::isolate(rv$p), "codelists", report())
-    d <- d[d$variable %in% v, c("value", "label", "order"), drop = FALSE]
+    p <- shiny::isolate(rv$p)
+    d <- sheet_rows(p, "codelists", report())
+    cols <- c("value", "label", "order",
+              if (.codelist_shows_under(p, report(), v)) "under")
+    d <- d[d$variable %in% v, cols, drop = FALSE]
     .grid(d, "codelists", key(), list())
   })
   shiny::observeEvent(input[[ids[["hot"]]]], {
@@ -599,9 +619,11 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     keep <- old[!old$variable %in% v, , drop = FALSE]
     keep$output_id <- NULL
     mine <- data.frame(variable = rep(v, nrow(d)), stringsAsFactors = FALSE)
+    # a column the grid does not show (under, note): each value's as it was
+    was <- old[old$variable %in% v, , drop = FALSE]
     for (cn in setdiff(names(keep), "variable")) {
       mine[[cn]] <- if (cn %in% names(d)) as.character(d[[cn]]) else
-        rep(NA_character_, nrow(d))
+        was[[cn]][match(as.character(d$value), was$value)]
     }
     # the column's rows where they were (a new list after the others)
     at <- which(old$variable %in% v)

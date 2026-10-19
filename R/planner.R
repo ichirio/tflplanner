@@ -61,19 +61,22 @@ report_types <- function() c("table", "listing", "figure")
 #' Read a code list into a report
 #'
 #' `read_codelist()` reads a code list -- one row a value of a variable:
-#' `variable`, `value`, `label` (what it prints as) and `order` (its
-#' place) -- from an `.xlsx` (its first sheet) or a `.csv` file.
-#' `set_codelist()` puts it into a report's rows of the definition's
+#' `variable`, `value`, `label` (what it prints as), `order` (its place)
+#' and `under` (a nested count's inner value: the value, as the data have
+#' it, of the variable one level out it sits under, for
+#' `complete_hierarchy()`) -- from an `.xlsx` (its first sheet) or a `.csv`
+#' file.  `set_codelist()` puts it into a report's rows of the definition's
 #' `codelists` sheet: a value the report has already for the same variable
-#' is replaced, the others are kept.  A code list is a report's (tflspec:
+#' is replaced, the others are kept (rows with no `under` column keep the
+#' `under` the report's values have).  A code list is a report's (tflspec:
 #' every row names its report); to use one in several reports, copy it
 #' ([import_codelist()], [standard_codelists()]).
 #'
 #' @param path An `.xlsx` or `.csv` file.
 #' @param x A `tflplanner`.
 #' @param output_id The report.
-#' @param rows A data frame with `variable` and `value` (`label` and `order`
-#'   optional): what `read_codelist()` returns.
+#' @param rows A data frame with `variable` and `value` (`label`, `order`
+#'   and `under` optional): what `read_codelist()` returns.
 #' @return `read_codelist()`: a data frame; `set_codelist()`: the
 #'   `tflplanner`.
 #' @export
@@ -88,11 +91,11 @@ read_codelist <- function(path) {
   miss <- setdiff(c("variable", "value"), names(d))
   if (length(miss)) {
     stop("The code list has no column ", paste(sQuote(miss), collapse = ", "),
-         ": it needs variable and value (label and order are optional).",
+         ": it needs variable and value (label, order and under are optional).",
          call. = FALSE)
   }
-  for (k in c("label", "order")) if (!k %in% names(d)) d[[k]] <- NA_character_
-  d <- d[c("variable", "value", "label", "order")]
+  for (k in .codelist_cols) if (!k %in% names(d)) d[[k]] <- NA_character_
+  d <- d[.codelist_cols]
   d[] <- lapply(d, function(v) {
     v <- trimws(as.character(v))
     v[!is.na(v) & !nzchar(v)] <- NA_character_
@@ -112,15 +115,26 @@ set_codelist <- function(x, output_id, rows) {
          sQuote(paste(output_id, collapse = ", ")), ".", call. = FALSE)
   }
   rows <- as.data.frame(rows, stringsAsFactors = FALSE)
-  for (k in c("label", "order")) if (!k %in% names(rows)) rows[[k]] <- NA_character_
-  rows <- rows[c("variable", "value", "label", "order")]
+  has_under <- "under" %in% names(rows)
+  for (k in .codelist_cols) if (!k %in% names(rows)) rows[[k]] <- NA_character_
+  rows <- rows[.codelist_cols]
   rows[] <- lapply(rows, as.character)
   old <- sheet_rows(x, "codelists", output_id)
   key <- function(d) paste(d$variable, d$value, sep = "\r")
+  # rows that do not say `under` (a file of variable, value, label and
+  # order): each value's `under` as the report has it
+  if (!has_under) rows$under <- old$under[match(key(rows), key(old))]
   old <- old[!key(old) %in% key(rows), , drop = FALSE]
   old$output_id <- NULL
-  set_sheet_rows(x, "codelists", output_id, rbind(old[names(rows)], rows))
+  # (a column of the sheet besides these -- the note -- as it was)
+  for (k in setdiff(names(old), names(rows))) {
+    rows[[k]] <- rep(NA_character_, nrow(rows))
+  }
+  set_sheet_rows(x, "codelists", output_id, rbind(old, rows[names(old)]))
 }
+
+# a code list's columns (the codelists sheet's, without its report and note)
+.codelist_cols <- c("variable", "value", "label", "order", "under")
 
 .study_keys <- list(table = "rounding",
                     report = c("output_path", "program_dir"))

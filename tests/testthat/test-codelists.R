@@ -51,7 +51,7 @@ test_that("the company standards' code lists, and the variables a report uses", 
   expect_true(all(c("SEX", "RACE", "ETHNIC", "AESEV", "AESER", "AEREL", "AEOUT",
                     "EOSSTT") %in% s$set))
   expect_identical(standard_codelists("AESEV")$value, c("MILD", "MODERATE", "SEVERE"))
-  expect_identical(names(s), c("set", "variable", "value", "label", "order", "note"))
+  expect_identical(names(s), c("set", "variable", "value", "label", "order", "under", "note"))
   # a company's workbook without set (and label, order, note): read, set = variable
   f <- withr::local_tempfile(fileext = ".xlsx")
   std <- .builtin_standards()
@@ -318,4 +318,183 @@ test_that("an analysis's own filter: a listed column is compared with its labels
   # the example: a value its list changes
   expect_match(h, "e.g. SEX == \"Female\", not SEX == \"F\"", fixed = TRUE)
   expect_null(.where_labels_note(cl[0, ], identity))
+})
+
+# -- under (tflspec #359): a nested count's inner value, its parent's ------
+
+under_rows <- function() {
+  data.frame(variable = c("AEBODSYS", "AEDECOD", "AEDECOD"),
+             value = c("EYE DISORDERS", "VISION BLURRED", "DRY EYE"),
+             label = c("Eye disorders", "Vision blurred", "Dry eye"),
+             order = c("1", "1", "2"),
+             under = c(NA, "EYE DISORDERS", "EYE DISORDERS"))
+}
+
+test_that("a code list's under: read, set, copied, and kept by rows without it", {
+  local_home()
+  p <- cl_planner()
+  f <- withr::local_tempfile(fileext = ".csv")
+  utils::write.csv(under_rows(), f, row.names = FALSE, na = "")
+  cl <- read_codelist(f)
+  expect_identical(names(cl), c("variable", "value", "label", "order", "under"))
+  expect_identical(cl$under, c(NA, "EYE DISORDERS", "EYE DISORDERS"))
+  p <- set_codelist(p, "T1", cl)
+  d <- sheet_rows(p, "codelists", "T1")
+  expect_identical(d$under, c(NA, "EYE DISORDERS", "EYE DISORDERS"))
+  # rows without the column (a file of variable, value, label): each
+  # value's under as the report has it
+  p <- set_codelist(p, "T1", data.frame(variable = "AEDECOD", value = "VISION BLURRED",
+                                        label = "Blurred vision"))
+  d <- sheet_rows(p, "codelists", "T1")
+  expect_identical(d$label[d$value == "VISION BLURRED"], "Blurred vision")
+  expect_identical(d$under[d$value == "VISION BLURRED"], "EYE DISORDERS")
+  # rows that have the column: theirs (blank: none)
+  q <- set_codelist(p, "T1", data.frame(variable = "AEDECOD", value = "DRY EYE",
+                                        under = NA_character_))
+  d <- sheet_rows(q, "codelists", "T1")
+  expect_true(is.na(d$under[d$value == "DRY EYE"]))
+  # a note on the other rows stays
+  d <- sheet_rows(p, "codelists", "T1")
+  d$output_id <- NULL
+  d$note[1L] <- "kept"
+  p <- set_sheet_rows(p, "codelists", "T1", d)
+  p <- set_codelist(p, "T1", data.frame(variable = "AEDECOD", value = "DRY EYE", label = "Dry eyes"))
+  expect_identical(sheet_rows(p, "codelists", "T1")$note[1L], "kept")
+  # copied into another report: with it
+  q <- import_codelist(p, "T1", "T2", "AEDECOD")
+  expect_identical(sheet_rows(q, "codelists", "T2")$under, c("EYE DISORDERS", "EYE DISORDERS"))
+  # the company standards: under is optional, kept when given
+  std <- .builtin_standards()
+  std$codelists <- cbind(set = "AE terms", under_rows())
+  sf <- withr::local_tempfile(fileext = ".xlsx")
+  writexl::write_xlsx(std, sf)
+  r <- read_standards(sf)$codelists
+  expect_identical(names(r), names(standard_codelists()))
+  expect_identical(r$under, c(NA, "EYE DISORDERS", "EYE DISORDERS"))
+})
+
+test_that("a column's grid shows under when it has one or is an inner term", {
+  p <- cl_planner()
+  p$ard$analyses <- .normalize_ard_sheet(data.frame(
+    output_id = "T1", analysis_id = "AE", method = "hierarchical",
+    population_id = "SAF", by = "TRT01A", variables = "AEBODSYS | AEDECOD"), "analyses")
+  expect_true(.codelist_shows_under(p, "T1", "AEDECOD"))
+  expect_false(.codelist_shows_under(p, "T1", "AEBODSYS"))
+  expect_false(.codelist_shows_under(p, "T1", "SEX"))
+  expect_false(.codelist_shows_under(p, "T2", "AEDECOD"))
+  p <- set_codelist(p, "T2", data.frame(variable = "PARAMCD", value = "ALT", under = "LIVER"))
+  expect_true(.codelist_shows_under(p, "T2", "PARAMCD"))
+})
+
+test_that("under in the app: the grids show it, edits and copies keep it", {
+  skip_on_cran()
+  local_home()
+  p <- cl_planner()
+  p <- set_analysis_data(p, "T1", "adsl_saf", from = "ADSL", population_id = "SAF")
+  p <- set_codelist(p, "T1", rbind(
+    data.frame(variable = "SEX", value = c("F", "M"), label = c("Female", "Male"),
+               order = c("1", "2"), under = NA),
+    under_rows()))
+  create_study("CU", planner = p)
+  # what rhandsontable sends when one cell of a grid is changed
+  grid_edit <- function(session, output, id, row, col, value) {
+    w <- jsonlite::fromJSON(output[[id]], simplifyVector = FALSE)$x
+    hdr <- unlist(w$colHeaders)
+    data <- w$data
+    old <- data[[row]][[match(col, hdr)]]
+    data[[row]][[match(col, hdr)]] <- value
+    v <- list(list(
+      data = data,
+      changes = list(event = "afterChange",
+                     changes = list(list(row - 1L, col, old, value))),
+      params = list(planner_key = w$planner_key, rClass = "data.frame",
+                    rColHeaders = as.list(hdr), rColClasses = w$rColClasses,
+                    rDataDim = list(length(data), length(hdr)))))
+    names(v) <- id
+    do.call(session$setInputs, v)
+  }
+  shiny::testServer(server_for("CU"), {
+    rv <- session$userData$rv
+    session$setInputs(nav = "make", step = "ard", target = "T1")
+    session$setInputs(ard_adata_pick = "adsl_saf")
+    session$setInputs(adata_id = "adsl_saf", adata_add = c("SEX", "AEDECOD"), adata_keep = NULL)
+    hdr <- function(id) unlist(jsonlite::fromJSON(output[[id]], simplifyVector = FALSE)$x$colHeaders)
+    # SEX: no under, none shown; AEDECOD: shown
+    session$setInputs(adata_cl_pick = "SEX")
+    expect_identical(hdr("adata_cl_hot"), c("value", "label", "order"))
+    session$setInputs(adata_cl_pick = "AEDECOD")
+    expect_identical(hdr("adata_cl_hot"), c("value", "label", "order", "under"))
+    expect_match(output$adata_cl_detail$html, "under: the value one level out", fixed = TRUE)
+    # another column edited: under as it was; under itself edited
+    grid_edit(session, output, "adata_cl_hot", 1L, "label", "Blurred vision")
+    d <- sheet_rows(rv$p, "codelists", "T1")
+    expect_identical(d$label[d$value == "VISION BLURRED"], "Blurred vision")
+    expect_identical(d$under[d$variable == "AEDECOD"], c("EYE DISORDERS", "EYE DISORDERS"))
+    grid_edit(session, output, "adata_cl_hot", 2L, "under", "EYE DISORDER")
+    d <- sheet_rows(rv$p, "codelists", "T1")
+    expect_identical(d$under[d$variable == "AEDECOD"], c("EYE DISORDERS", "EYE DISORDER"))
+    # SEX edited (its grid without under): the AE rows as they were
+    before <- d[d$variable != "SEX", ]
+    session$setInputs(adata_cl_pick = "SEX")
+    grid_edit(session, output, "adata_cl_hot", 2L, "label", "Men")
+    d <- sheet_rows(rv$p, "codelists", "T1")
+    expect_identical(d[d$variable != "SEX", ], before)
+    expect_identical(d$label[d$variable == "SEX"], c("Female", "Men"))
+    # the dialog of every code list: under is a column
+    session$setInputs(cl21_open = 1, cl21_all = TRUE)
+    expect_true("under" %in% hdr("cl21_hot"))
+    session$setInputs(cl21_done = 1)
+    # copied into T2: with it
+    session$setInputs(target = "T2")
+    session$setInputs(cl21_copy = 1, cl21_from = "T1")
+    session$setInputs(cl21_pick = "AEDECOD", cl21_as_var = "AEDECOD", cl21_copy_ok = 1)
+    expect_identical(sheet_rows(rv$p, "codelists", "T2")$under,
+                     c("EYE DISORDERS", "EYE DISORDER"))
+  })
+})
+
+test_that("under survives open, an edit of another column, save and reopen", {
+  skip_on_cran()
+  local_home()
+  p <- cl_planner()
+  p <- set_codelist(p, "T1", under_rows())
+  s <- create_study("CS", planner = p)
+  y <- file.path(s$path, "spec", "outputs", "T1.yml")
+  expect_identical(tflspec::tfl_read_output(y)$codelists$AEDECOD[[1L]]$under, "EYE DISORDERS")
+  s <- suppressMessages(open_study("CS"))
+  expect_identical(sheet_rows(s$planner, "codelists", "T1")$under,
+                   c(NA, "EYE DISORDERS", "EYE DISORDERS"))
+  # another column of the rows edited
+  d <- sheet_rows(s$planner, "codelists", "T1")
+  d$output_id <- NULL
+  d$label[2L] <- "Blurred vision"
+  s$planner <- set_sheet_rows(s$planner, "codelists", "T1", d)
+  s <- suppressMessages(save_study(s))
+  s <- suppressMessages(open_study("CS"))
+  d <- sheet_rows(s$planner, "codelists", "T1")
+  expect_identical(d$label[2L], "Blurred vision")
+  expect_identical(d$under, c(NA, "EYE DISORDERS", "EYE DISORDERS"))
+  # saved again with no change: no file written
+  f <- list.files(s$path, recursive = TRUE, full.names = TRUE)
+  m0 <- tools::md5sum(f)
+  s <- suppressMessages(save_study(s))
+  expect_identical(tools::md5sum(f), m0)
+  expect_true(all(s$files$status == "unchanged"))
+})
+
+test_that("an older study's study_helpers.R without complete_hierarchy() is written again on save", {
+  skip_on_cran()
+  local_home()
+  s <- create_study("CH", planner = cl_planner())
+  f <- file.path(s$path, .study_helpers_path())
+  expect_true(any(grepl("^complete_hierarchy <- function", readLines(f))))
+  # the file an earlier tflspec wrote: no complete_hierarchy()
+  code <- study_helpers_code()
+  at <- grep("^complete_hierarchy <- function", code)
+  end <- at + which(code[-seq_len(at)] == "}")[1L]
+  .write_program(code[-(at:end)], f)
+  expect_false(any(grepl("complete_hierarchy <- function", readLines(f))))
+  s <- suppressMessages(save_study(open_study("CH")))
+  expect_identical(s$files$status[s$files$file == f], "written")
+  expect_true(any(grepl("^complete_hierarchy <- function", readLines(f))))
 })
