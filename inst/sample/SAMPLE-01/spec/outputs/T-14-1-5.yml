@@ -153,38 +153,13 @@ content:
         - SEX
         - RACE
         - ETHNIC
-      ARMGRP:
-        - Drug X
-        - Control
-        - Screen Failure
-      RACE:
-        - White
-        - Black or African American
-        - Asian
-        - American Indian or Alaska Native
-        - Native Hawaiian or Other Pacific Islander
-        - Other
-      ASIANSUB:
-        - Chinese
-        - Japanese
-        - Korean
-      SEX:
-        - Female
-        - Male
-      AGEGR1:
-        - <65 years
-        - '>=65 years'
-      ETHNIC:
-        - Hispanic or Latino
-        - Not Hispanic or Latino
-        - Not reported
-        - Unknown
   - plan_labels:
-      AGE: Age (years)
-      AGEGR1: Age group, n (%)
-      SEX: Sex, n (%)
-      RACE: Race, n (%)
-      ETHNIC: Ethnicity, n (%)
+      variable:
+        AGE: Age (years)
+        AGEGR1: Age group, n (%)
+        SEX: Sex, n (%)
+        RACE: Race, n (%)
+        ETHNIC: Ethnicity, n (%)
   - plan_nest:
       ASIANSUB:
         RACE: Asian

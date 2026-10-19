@@ -48,10 +48,6 @@ content:
         group1: AEBODSYS
       label:
         label: AEDECOD
-  - plan_levels:
-      TRT01A:
-        - Drug X
-        - Control
   - plan_sort:
       keys:
         - .overall

@@ -178,8 +178,9 @@ test_that("step 2, the table builder: what it cannot show stays as written", {
     v[[paste0("b", bform$n, "_lab", i)]] <- "Sex"
     do.call(session$setInputs, v)
     session$elapse(1000)
-    expect_identical(item(rv$p, "plan_labels")$SEX, "Sex")
-    expect_identical(item(rv$p, "plan_labels")$AGE, "Age (years)")
+    # (the headings under `variable =`, as tflspec writes them: #358)
+    expect_identical(item(rv$p, "plan_labels")$variable$SEX, "Sex")
+    expect_identical(item(rv$p, "plan_labels")$variable$AGE, "Age (years)")
     others <- function(x) Filter(function(it) !identical(it$fn, "plan_labels"), content(x))
     expect_identical(others(rv$p), others(p0))
     # a statistic's decimals changed: in the rows' templates; each row's
