@@ -8,7 +8,7 @@
   file under `data/external/`; now the app and the review read it too:
   the review (D01, the facts of the data), the ARS check, the variable
   choices and counts of the ARD tab, the listing and figure columns, the
-  Data tab's size and preview.  A file outside that is not there is still
+  Data tab's size and preview, Update preview's check of the data files.  A file outside that is not there is still
   said to be missing.  The Data tab shows such a file under its level's
   pill (ADaM under ADaM), marked "outside the study folder" in a "where"
   column, its folder named under the grid; the first table and first
