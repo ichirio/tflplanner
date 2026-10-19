@@ -340,3 +340,35 @@
   if (length(x) != 1L || is.na(x) || !nzchar(x)) return(NA_character_)
   normalizePath(x, "/", mustWork = FALSE)
 }
+
+# ---- a coding agent (tfl_ai_prepare(mode = "agent")) --------------------------
+
+# A study's mode: "agent" when tfl_ai_prepare(mode = "agent") wrote its
+# AGENTS.md, else "chat"
+.ai_mode <- function(path) {
+  if (!is.null(path) && file.exists(file.path(path, "AGENTS.md"))) "agent" else "chat"
+}
+
+# The agent's first message, as tfl_ai_prepare(mode = "agent") gives it
+# (its `agent_prompt`), made again from the study's folder when the app has
+# no prepare of this session
+.ai_agent_prompt <- function(path) {
+  at <- normalizePath(path, winslash = "/", mustWork = FALSE)
+  paste0("Follow ", at, "/AGENTS.md. Do every request of ", at, "/ai/requests/index.md, ",
+         "in its order: save each answer as ", at, "/ai/answers/<request>.md and run ",
+         "`Rscript ", at, "/run.R` after it, then read ", at, "/ai/status.md and repair. ",
+         "Do not stop to ask; when every request is done, tell me which reports have an ",
+         "RTF and that ", at, "/ai/questions.md waits for my answers.")
+}
+
+# The questions of ai/questions.md (tfl_ai_questions()), the open ones
+# first: id, output_id, where, question, provisional, answer, status
+.ai_questions <- function(path) {
+  q <- tflspec::tfl_ai_questions(path)
+  q[order(q$status == "decided"), , drop = FALSE]
+}
+
+# Answers (named by the questions' ids) written into ai/questions.md
+.ai_answer_questions <- function(path, answers) {
+  tflspec::tfl_ai_answer_questions(path, answers)
+}

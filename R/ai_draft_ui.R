@@ -48,6 +48,10 @@ ai_ui <- function(id, lang = "en") {
           shiny::div(
             class = "ai-form",
             shiny::radioButtons(
+              ns("mode"), paste0(t("Who drafts"), " (mode)"), inline = TRUE,
+              choiceNames = list(t("A chat (chat)"), t("A coding agent (agent)")),
+              choiceValues = c("chat", "agent"), selected = "chat"),
+            shiny::radioButtons(
               ns("study_mode"), t("Study"), inline = TRUE,
               choiceNames = list(t("The open study"), paste0(t("New study"), " (tfl_ai_study_init)")),
               choiceValues = c("open", "new"), selected = "open"),
@@ -145,10 +149,33 @@ ai_ui <- function(id, lang = "en") {
             t("Paste each request into a NEW chat as one message; the chat's whole answer goes to step 3."))),
           .btn(ns("open_requests"), t("Open the folder")),
           .btn(ns("reread"), t("Read again"))),
+        shiny::uiOutput(ns("agent_card")),
         shiny::uiOutput(ns("instructions")),
         DT::DTOutput(ns("requests"))),
       bslib::nav_panel(
         paste0("3 ", t("Answers"), " (tfl_ai_collect_answers)"), value = "answers",
+        # (the study's mode, for the page: the agent's cards or the chat's paste)
+        shiny::div(class = "d-none", shiny::textOutput(ns("mode_now"))),
+        shiny::conditionalPanel(
+          "output.mode_now == 'agent'", ns = ns,
+          bslib::card(
+            bslib::card_header(
+              class = "d-flex flex-wrap gap-2 align-items-center",
+              shiny::span(class = "me-auto", paste0(t("Status"), " (ai/status.md)")),
+              .btn(ns("status_reread"), t("Read the status again"), class = "btn-sm btn-primary"),
+              shiny::uiOutput(ns("check_note_agent"), inline = TRUE)),
+            shiny::uiOutput(ns("status_md")),
+            shiny::uiOutput(ns("result_all"))),
+          bslib::card(
+            bslib::card_header(
+              class = "d-flex flex-wrap gap-2 align-items-center",
+              shiny::span(class = "me-auto", paste0(t("Questions"), " (ai/questions.md)")),
+              .btn(ns("questions_write"), paste0(t("Write the answers back"), " (tfl_ai_answer_questions)"),
+                   class = "btn-sm btn-primary"),
+              shiny::uiOutput(ns("tell_agent"), inline = TRUE)),
+            shiny::uiOutput(ns("questions")))),
+        shiny::conditionalPanel(
+          "output.mode_now != 'agent'", ns = ns,
         bslib::layout_columns(
           col_widths = bslib::breakpoints(sm = 12, lg = c(3, 9)),
           shiny::div(
@@ -171,7 +198,7 @@ ai_ui <- function(id, lang = "en") {
                    class = "btn-sm btn-outline-primary"),
               .btn(ns("save_check"), t("Save and check"), class = "btn-sm btn-primary"),
               shiny::uiOutput(ns("saved"), inline = TRUE)),
-            shiny::uiOutput(ns("result")))),
+            shiny::uiOutput(ns("result"))))),
         shiny::uiOutput(ns("stray")),
         bslib::card(
           bslib::card_header(
@@ -221,6 +248,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     # the text of a request (or of the instructions, or of a fix request)
     text_of <- function(what, id) {
       p <- path()
+      if (identical(what, "agent")) return(agent_prompt())
+      if (identical(what, "tell")) {
+        return(t("I answered the questions in ai/questions.md. Read it again and go on."))
+      }
       if (identical(what, "instructions")) {
         return(.ai_read_text(file.path(p, .ai_requests_dir, "00-instructions.md")))
       }
@@ -228,6 +259,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     }
     file_of <- function(what, id) {
       switch(what, instructions = "00-instructions.md",
+             agent = t("The agent's first message"), tell = t("To tell the agent"),
              repair = .ai_rel(.ai_repairs_dir, paste0(id, ".md")),
              paste0(id, ".md"))
     }
@@ -631,7 +663,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
            workbook = input$workbook %||% "text", instructions = input$instructions %||% "each",
            max_chars = if (is.null(mc) || is.na(mc)) NULL else mc,
            datasets = if (!is.null(all) && length(ds) && !setequal(ds, all)) ds,
-           max_levels = as.integer(input$max_levels %||% 15L))
+           max_levels = as.integer(input$max_levels %||% 15L),
+           mode = input$mode %||% "chat")
     }
     inputs_ok <- function() {
       msg <- .ai_toc_problem(toc_src()$path, t)
@@ -825,7 +858,152 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                     options = list(dom = "t", paging = FALSE, ordering = FALSE))
     }, server = FALSE)
 
+    # -- a coding agent (mode = "agent") ---------------------------------------
+    # The study's mode: what was written last here, else the study's
+    # AGENTS.md (tfl_ai_prepare(mode = "agent") writes it)
+    mode_now <- shiny::reactive({
+      ver()
+      p <- path()
+      pr <- prepared()
+      if (!is.null(pr) && !isTRUE(pr$dry_run) && !is.null(pr$mode)) return(pr$mode)
+      .ai_mode(p)
+    })
+    output$mode_now <- shiny::renderText(mode_now())
+    shiny::outputOptions(output, "mode_now", suspendWhenHidden = FALSE)
+    # the agent's first message: tfl_ai_prepare()'s, else made again from
+    # the study's folder (the app opened again)
+    agent_prompt <- function() {
+      pr <- shiny::isolate(prepared())
+      if (!is.null(pr) && !isTRUE(pr$dry_run) && length(pr$agent_prompt) &&
+          !is.na(pr$agent_prompt)) return(pr$agent_prompt)
+      .ai_agent_prompt(path())
+    }
+    output$agent_card <- shiny::renderUI({
+      if (!identical(mode_now(), "agent") || is.null(path())) return(NULL)
+      ver()
+      prepared()
+      bslib::card(
+        class = "mb-3",
+        bslib::card_header(
+          class = "d-flex flex-wrap gap-2 align-items-center",
+          shiny::span(class = "me-auto", t("The agent's first message")),
+          shiny::HTML(act("agent", "agent", c(copy = t("Copy text"), view = t("View as text"))))),
+        shiny::tags$pre(class = "small mb-0 ai-prompt", agent_prompt()))
+    })
+    output$check_note_agent <- shiny::renderUI({
+      if (isTRUE(dirty())) shiny::span(class = "small text-warning", t("Save first"))
+    })
+    shiny::observe({
+      session$sendCustomMessage("ai-disable", list(id = ns("status_reread"), on = isTRUE(dirty())))
+    })
+    status_ver <- shiny::reactiveVal(0L)
+    # the status run.R wrote, read again, and the answers checked (the
+    # reports taken in, as Check all does)
+    shiny::observeEvent(input$status_reread, {
+      status_ver(status_ver() + 1L)
+      q_ver(q_ver() + 1L)
+      check_all()
+    })
+    output$status_md <- shiny::renderUI({
+      status_ver()
+      ver()
+      p <- path()
+      shiny::req(p)
+      f <- file.path(p, "ai", "status.md")
+      if (!file.exists(f)) {
+        return(shiny::p(class = "small text-muted", t("No ai/status.md yet: run.R writes it.")))
+      }
+      txt <- tryCatch(.ai_read_text(f), error = function(e) conditionMessage(e))
+      shiny::div(class = "small ai-status-md", shiny::markdown(txt))
+    })
+    output$result_all <- shiny::renderUI({
+      co <- collected()
+      if (is.null(co)) return(shiny::p(class = "small text-muted mt-2", t("Check first.")))
+      r <- co$reports
+      cls <- c(ok = "text-success", warning = "text-warning", error = "text-danger",
+               `no answer` = "text-muted")
+      shiny::tags$table(
+        class = "table table-sm small mt-2",
+        shiny::tags$thead(shiny::tags$tr(lapply(c(t("request"), "output_id", t("status"),
+                                                  t("first problem"), ""), shiny::tags$th))),
+        shiny::tags$tbody(lapply(seq_len(nrow(r)), function(i) shiny::tags$tr(
+          shiny::tags$td(r$request[i]), shiny::tags$td(r$output_id[i]),
+          shiny::tags$td(class = cls[[r$status[i]]] %||% "", t(r$status[i])),
+          shiny::tags$td(if (is.na(r$first[i])) "" else r$first[i]),
+          shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && !is.na(r$file[i]))
+            shiny::tags$button(
+              type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
+              `data-ns` = ns(""), `data-id` = r$output_id[i], t("Open in Make a report")))))))
+    })
+
+    # the questions (ai/questions.md): one a row, the open ones first, an
+    # answer field each; written back with tfl_ai_answer_questions()
+    q_ver <- shiny::reactiveVal(0L)
+    questions <- shiny::reactive({
+      q_ver()
+      p <- path()
+      if (is.null(p) || !identical(mode_now(), "agent")) return(NULL)
+      tryCatch(.ai_questions(p), error = function(e) {
+        message("tflplanner: ai/questions.md: ", conditionMessage(e))
+        NULL
+      })
+    })
+    q_input <- function(id) paste0("qa_", gsub("[^A-Za-z0-9_]", "_", id))
+    # a question's status in the app's words (its own keys: "open" is a word
+    # of other places too)
+    q_status <- function(s) {
+      v <- t(paste0("question-status:", s))
+      if (startsWith(v, "question-status:")) s else v
+    }
+    output$questions <- shiny::renderUI({
+      q <- questions()
+      if (is.null(q) || !nrow(q)) {
+        return(shiny::p(class = "small text-muted", t("No questions.")))
+      }
+      shiny::tagList(lapply(seq_len(nrow(q)), function(i) {
+        open <- !identical(q$status[i], "decided")
+        shiny::div(
+          class = paste("ai-question border-bottom py-2", if (!open) "text-muted"),
+          shiny::div(
+            class = "d-flex flex-wrap gap-2 align-items-baseline",
+            shiny::tags$b(q$id[i]),
+            shiny::span(class = paste("badge", if (open) "text-bg-warning" else "text-bg-secondary"),
+                        q_status(q$status[i])),
+            shiny::span(class = "small", q$output_id[i]),
+            if (!is.na(q$where[i]) && nzchar(q$where[i]))
+              shiny::span(class = "small text-muted", q$where[i])),
+          shiny::div(class = "mt-1", q$question[i]),
+          if (!is.na(q$provisional[i]) && nzchar(q$provisional[i])) shiny::div(
+            class = "small text-muted",
+            shiny::tags$b(t("The agent took, for now:")), " ", q$provisional[i]),
+          shiny::textAreaInput(ns(q_input(q$id[i])), NULL,
+                               value = if (is.na(q$answer[i])) "" else q$answer[i],
+                               rows = 2, width = "100%", resize = "vertical",
+                               placeholder = t("Your answer")))
+      }))
+    })
+    shiny::observeEvent(input$questions_write, {
+      q <- questions()
+      shiny::req(q, nrow(q))
+      typed <- vapply(q$id, function(id) input[[q_input(id)]] %||% "", "")
+      old <- ifelse(is.na(q$answer), "", q$answer)
+      # only what was typed (an answer emptied here is left as it was)
+      put <- nzchar(trimws(typed)) & trimws(typed) != trimws(old)
+      if (!any(put)) return(notify(t("No new answer to write."), "warning"))
+      f <- guarded(.ai_answer_questions(path(), stats::setNames(typed[put], q$id[put])))
+      if (is.null(f)) return()
+      q_ver(q_ver() + 1L)
+      tell(TRUE)
+      notify(sprintf(t("%d answers written to ai/questions.md: tell the agent."), sum(put)))
+    })
+    tell <- shiny::reactiveVal(FALSE)
+    output$tell_agent <- shiny::renderUI({
+      if (!isTRUE(tell())) return(NULL)
+      shiny::HTML(act("tell", "tell", c(copy = t("Copy the line to tell the agent"))))
+    })
+
     list(requests = requests, collected = collected, prepared = prepared,
+         questions = questions, mode = mode_now,
          text = function(id, what = "request") shiny::isolate(text_of(what, id)))
   })
 }
@@ -833,6 +1011,11 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
 .ai_draft_css <- "
 .ai-view { font-family: var(--bs-font-monospace); font-size: .8rem; white-space: pre; }
 .ai-status b { margin-right: .5rem; }
+.ai-prompt { white-space: pre-wrap; }
+.ai-status-md h1, .ai-status-md h2, .ai-status-md h3 { font-size: 1rem; }
+.ai-status-md table { border-collapse: collapse; margin-bottom: .5rem; }
+.ai-status-md th, .ai-status-md td { padding: .15rem .6rem;
+  border-bottom: 1px solid var(--bs-border-color); }
 .ai-form .form-group { margin-bottom: .5rem; }
 /* a path field as tall as the upload beside it (both an input group: the
    box and its button) */

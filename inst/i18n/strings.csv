@@ -3653,3 +3653,22 @@ Update preview first: it makes this table's ARD.,先に「プレビューを更�
 normalize_ard() stopped:,normalize_ard() が止まりました:
 ARD: not made yet (Update preview makes it),ARD: まだありません（「プレビューを更新」で作ります）
 %d analyses are run over all subjects too: Update preview makes the ARD again.,%d 本の解析を全体でも走らせます。「プレビューを更新」で ARD を作り直します。
+Who drafts,下書きする AI
+A chat (chat),チャット (chat)
+A coding agent (agent),エージェント (agent)
+Read the status again,状態を読み直す
+Questions,疑問の一覧
+Write the answers back,回答を書き戻す
+I answered the questions in ai/questions.md. Read it again and go on.,ai/questions.md の質問に答えました。読み直して進めてください。
+The agent's first message,エージェントへの最初の指示
+To tell the agent,エージェントへの一言
+View as text,テキストで見る
+No ai/status.md yet: run.R writes it.,ai/status.md はまだありません: run.R が書きます。
+No questions.,疑問はありません。
+"The agent took, for now:",AI の仮の答え:
+Your answer,回答
+No new answer to write.,書き戻す新しい回答がありません。
+%d answers written to ai/questions.md: tell the agent.,%d 件の回答を ai/questions.md に書きました: エージェントに伝えてください。
+Copy the line to tell the agent,エージェントへの一言をコピー
+question-status:open,未回答
+question-status:decided,決定済み

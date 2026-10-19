@@ -1,6 +1,6 @@
 # tflplanner (development version)
 
-- **AI drafts** (#431, 0.0.2.9247; tflspec >= 0.0.24.9175): a tab for
+- **AI drafts** (#431, 0.0.2.9247; tflspec >= 0.0.24.9177): a tab for
   tflspec's AI table requests and their answers, after the Report list
   (`options(tflplanner.ai_drafts = FALSE)` hides it).  Step 1 (Prepare,
   `tfl_ai_prepare()`): the study open or a new one (its ID, made under the
@@ -31,6 +31,15 @@
   sees them as made outside the app.  Nothing is written while the study
   has unsaved changes ("Save first").  The functions under the screen know
   no Shiny (`R/ai_draft.R`).  Its texts in Japanese.
+  **For a coding agent** (`mode = "agent"`, chosen on step 1): step 2
+  shows the agent's first message (`agent_prompt`) to copy; step 3 shows
+  `ai/status.md` (what `run.R` wrote) with every report's status, Read the
+  status again (the answers checked and the reports taken in), and the
+  questions of `ai/questions.md` (`tfl_ai_questions()`, the open ones
+  first) with an answer field each: Write the answers back
+  (`tfl_ai_answer_questions()`, only the answers typed) and copy the line
+  that tells the agent.  The path fields have Browse... (the computer's
+  dialog; `options(tflplanner.file_dialog = FALSE)` on a server).
 - **Update preview, and the preview follows normalize_ard()** (#428,
   0.0.2.9245).  One button, "Update preview", in the table builder (above
   the ARD's summary), in step 1 and in the data code: it makes the
