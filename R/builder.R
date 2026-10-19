@@ -461,7 +461,9 @@ builder_stats <- function() {
 # its decimals), `exceptions` (a variable's own: variable, statistic,
 # digits), `cat_format`, `cat_own`, `pct_decimals`, `header` ("keep" or a
 # name of header_presets()), `auto_levels`, `level_from`, `layers`,
-# `layer_choices`, `row_label`, and for a hierarchy (SOC / PT) its
+# `layer_choices`, `row_label`, `level_ard` (a variable's levels in the
+# ARD's order, where the ARD keeps them as a factor), `variable_ard` (the
+# analysis variables in the ARD's order), and for a hierarchy (SOC / PT) its
 # `hierarchy`, `row_keys`, `row_choices`, `row_pages` (the outermost a
 # page each) and `sort` (each row key's order: "alpha" or "freq", or
 # "own": the plan's own, left as it is).  builder_write() returns the
@@ -492,6 +494,9 @@ builder_read <- function(x, output_id, meta = NULL) {
   # that writing them back unchanged writes nothing
   auto <- list()
   from <- list()
+  # (the ARD's own order of a variable it keeps as a factor: an order the
+  # same is not written in the code, tflspec #355)
+  lard <- list()
   # the columns the plan makes (the stack's subgroup, subgroup_level ...;
   # .stat_group): their order is the plan's, not their code list's
   plan_made <- c(.stack_keys(tb$stack[1L], tb$stack_nest[1L]), ".stat_group")
@@ -505,6 +510,7 @@ builder_read <- function(x, output_id, meta = NULL) {
       auto[[v]] <<- o$levels
     }
     if (length(o$levels)) from[[v]] <<- o[c("source", "differs")]
+    if (fac && length(ard)) lard[[v]] <<- as.character(ard)
     o$levels
   }
   arms <- if (!anyNA(key)) stats::setNames(lapply(key, lev_of), key) else
@@ -617,7 +623,8 @@ builder_read <- function(x, output_id, meta = NULL) {
        rows = rows, templates = templates, value = value, digits = digits,
        exceptions = exc, cat_format = cat_format, cat_own = cat_own,
        pct_decimals = pct_decimals, header = "keep", auto_levels = auto,
-       level_from = from,
+       level_from = from, level_ard = lard,
+       variable_ard = if (!is.null(meta)) intersect(mv$variable, vars) else character(),
        hierarchy = hier, row_keys = rk,
        row_choices = if (length(hier)) setdiff(names(meta$keys), key) else character(),
        row_pages = length(hier) > 0L && .builder_row_pages(its),
@@ -1113,7 +1120,7 @@ builder_write <- function(x, output_id, state, was = NULL) {
 # label (NULL with no meta).  `tr`: the app's translation.
 ard_card_summary <- function(meta, page_by = character(), tr = function(x) x) {
   if (is.null(meta) || (!length(meta$by) && !NROW(meta$variables))) {
-    return(list(line = tr("ARD: not made yet (step 1, \"Generate this table's ARD\")"),
+    return(list(line = tr("ARD: not made yet (Update preview makes it)"),
                 rows = NULL))
   }
   cut <- function(x, k) if (length(x) > k) c(utils::head(x, k), "\u2026") else x
@@ -1212,6 +1219,21 @@ preview_pages <- function(x, output_id, data) {
   attr(res, "n_candidates") <- tryCatch(rtfreporter::plan_n_candidates(plan),
                                         error = function(e) NULL)
   res
+}
+
+# The table's data for the preview from its ARD as read (ard_raw(), #428):
+# normalized here with normalize_ard()'s arguments as the report's item
+# says them now -- the overall row, the hierarchy, the stack -- so a change
+# of them shows without making the ARD again.  The same call the program
+# writes (its plan's pipe); NULL when the report has no such item.
+.preview_normalized <- function(x, output_id, ard) {
+  its <- builder_items(x, output_id)
+  it <- Filter(function(i) identical(i$fn, "normalize_ard"), its)
+  args <- if (length(it)) it[[1L]]$args %||% list() else list()
+  txt <- tflspec::tfl_args_to_r("normalize_ard", args)
+  call <- if (length(txt) && nzchar(txt)) paste0("rtfreporter::normalize_ard(.ard, ", txt, ")") else
+    "rtfreporter::normalize_ard(.ard)"
+  eval(parse(text = call), envir = list2env(list(.ard = ard), parent = baseenv()))
 }
 
 # The insert chips' labels: a token and what it holds here

@@ -257,6 +257,13 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 .rp-inline .btn { padding-top: .25rem; padding-bottom: .25rem; }
 /* a top tab the chosen report has nothing on */
 .nav-link.rp-idle { opacity: .45; }
+/* the top bar (the pages, Save) stays in view on a tall page (a figure's
+   designer, the table builder); its height (--rp-top, .sticky_top_js) is
+   where the panes that stay in view start, and what a card brought into
+   view is kept clear of */
+nav.navbar.navbar-static-top { position: sticky; top: 0; z-index: 1020;
+  background-color: var(--bs-body-bg, #fff); }
+html { scroll-padding-top: calc(var(--rp-top, 0px) + .5rem); }
 /* a step's mark worked out again (a run in the background): not faded */
 [id^='step_mark_'].recalculating { opacity: 1 !important; }
 /* While the server works on what the user did (opening a study, switching
@@ -760,9 +767,9 @@ app_ui <- function(lang = "en") {
             placeholder = "data <- normalize_ard(ard)"),
           shiny::div(
             class = "d-flex gap-2 align-items-center mb-2",
-            .btn("fetch", t("Generate this table's ARD"),
+            .btn("fetch", t("Update preview"),
                  class = "btn-sm btn-outline-primary"),
-            help_tip(t("Makes this report's ARD (as Generate this table's ARD in step 1), runs 1 and 2 from the study folder and reads the variables, levels and statistics for input assistance."))),
+            help_tip(t(.preview_tip))),
           shiny::uiOutput("ard_summary")))))
 
   step_page <- shiny::div(
@@ -842,6 +849,7 @@ app_ui <- function(lang = "en") {
                             shiny::tags$script(shiny::HTML(.updating_js)),
                             shiny::tags$script(shiny::HTML(.report_pick_js)),
                             shiny::tags$script(shiny::HTML(.dt_adjust_js)),
+                            shiny::tags$script(shiny::HTML(.sticky_top_js)),
                             shiny::tags$script(shiny::HTML(.adata_code_js)),
                             shiny::tags$style(shiny::HTML(.review_css)),
                             shiny::tags$script(shiny::HTML(.review_js)),
@@ -1143,6 +1151,27 @@ $(document).on('shiny:value shiny:error', function(e) {
 # time: fitting every table of the app on each of these (a form opens with
 # several folded parts, each a toggle) measured thousands of cells and took
 # seconds.
+# The top bar's height as --rp-top on the page (it wraps on a narrow
+# window): the sticky panes start under it
+.sticky_top_js <- "
+(function() {
+  function put() {
+    var n = document.querySelector('nav.navbar.navbar-static-top');
+    if (!n) return;
+    document.documentElement.style.setProperty('--rp-top', n.offsetHeight + 'px');
+  }
+  $(function() {
+    put();
+    var n = document.querySelector('nav.navbar.navbar-static-top');
+    if (n && window.ResizeObserver) new ResizeObserver(put).observe(n);
+    $(window).on('resize', put);
+  });
+})();
+"
+
+# Update preview's (i): what it does, and what it does not (#428)
+.preview_tip <- "Makes this report's ARD in an R of its own, only when it is needed. The study's ARD (output/ard/ard.rds) is not changed."
+
 .dt_adjust_js <- "
 (function() {
   var roots = [], timer = null;
@@ -3687,10 +3716,29 @@ app_server <- function(input, output, session, start) {
       class = "d-flex flex-wrap gap-2 align-items-center",
       shiny::strong("ARD"),
       shiny::span(class = paste("small", if (st$need) "text-muted"), st$text),
-      if (st$need) .btn("fetch2", t("Generate this table's ARD"),
-                        class = "btn-sm btn-outline-primary"),
-      if (st$need) help_tip(t("Saves the study when it has unsaved changes, runs this report's ARD program in an R of its own and puts its rows into the study's working ARD (output/ard/ard.rds), the other reports' rows left as they are. The table builder's choices and the preview read it. The official run is the Runs tab's.")))
+      preview_button("fetch2", current(), "btn-sm btn-outline-primary"),
+      help_tip(t(.preview_tip)))
   })
+  # the preview's ARD of a report: missing, outdated, current
+  # (ard_preview_state(): what it was made from against now)
+  preview_state <- function(id) {
+    rv$ard_ver
+    rv$p
+    if (is.null(id) || !has_study()) return(NA_character_)
+    tryCatch(ard_preview_state(shiny::isolate(current_study()), id),
+             error = function(e) NA_character_)
+  }
+  # Update preview, and when it would make the ARD, why: none yet, or
+  # outdated (its mark beside it); current: the button only redraws
+  preview_button <- function(input_id, id, class = "btn-sm btn-primary") {
+    st <- preview_state(id)
+    mark <- switch(st %||% "",
+      missing = shiny::span(class = "badge text-bg-secondary rp-pv-mark", t("No ARD yet")),
+      outdated = shiny::span(class = "badge text-bg-warning rp-pv-mark", t("ARD outdated")),
+      NULL)
+    shiny::span(class = "d-inline-flex align-items-center gap-1",
+                .btn(input_id, t("Update preview"), class = class), mark)
+  }
   # A report's ARD in one word -- not made, outdated (its definition has
   # changed), made (when), error -- and whether a Preview is wanted.
   report_ard_state <- function(id) {
@@ -3797,7 +3845,7 @@ app_server <- function(input, output, session, start) {
   need_meta <- function() {
     m <- meta_of(current())
     if (is.null(m)) {
-      notify(t("Generate this table's ARD first."), "warning")
+      notify(t("Update preview first: it makes this table's ARD."), "warning")
     }
     m
   }
@@ -3830,12 +3878,16 @@ app_server <- function(input, output, session, start) {
     after_fill(guarded(add_preset(rv$p, current(), input$header_preset)),
                "col_header", "col_header")
   })
-  # Preview: the one action that makes a report's ARD and reads it, the
-  # same from the ARD, Tables and Reports tabs.  It saves; runs the report's
-  # ARD program into the study's working ARD (when the ARD definition has
-  # analyses for it); then runs its data code (1 and 2) and reads what the
-  # builder and the fills use; and shows the report's ARD on the ARD tab.
-  do_preview <- function(id = current()) {
+  # Update preview (#428): the one action that makes a report's ARD for its
+  # preview, the same from the ARD, Tables and Reports tabs -- only when it
+  # is needed: none kept yet, or what it is made from has changed since
+  # (ard_preview_state()).  It is made in an R of its own, in a folder of
+  # its own (fetch_ard()): the study ARD (output/ard/ard.rds) is not
+  # written, and the study is not saved for it.  Then the builder's choices
+  # and the preview are read again, and the report's ARD is shown on the
+  # ARD tab.  Making the study ARD is do_study_ard() (step 1's Make the
+  # ARD) and the official run.
+  do_preview <- function(id = current(), force = FALSE) {
     if (is.null(id)) return(notify(t("Choose a report"), "warning"))
     has_an <- any(rv$p$ard$analyses$output_id %in% id)
     is_report <- id %in% rv$p$outputs$output_id
@@ -3843,58 +3895,112 @@ app_server <- function(input, output, session, start) {
       return(notify(sprintf(t("%s has no analyses in the ARD definition."), id),
                     "warning"))
     }
-    t0 <- Sys.time()
-    ok <- TRUE
-    m <- NULL
-    n_an <- sum(rv$p$ard$analyses$output_id %in% id)
-    shiny::withProgress(message = sprintf(t("Preview of %s"), id), {
-      if (has_an) {
-        shiny::setProgress(0.05, detail = t("1/3 saving the study"))
-        ok <- ard_ready()
-      }
-      if (ok && has_an) {
-        shiny::setProgress(0.15, detail = sprintf(
-          t("2/3 making its ARD (%d analyses, in its own R process)"), n_an))
-        r <- guarded(update_study_ard(current_study(), id))
-        ard_state_ver(ard_state_ver() + 1L)
-        rv$status_ver <- rv$status_ver + 1L
-        if (is.null(r)) {
-          ok <- FALSE
-        } else {
-          ard_preview_out(list(id = id, text = r$output))
-          if (!r$ok) {
-            ok <- FALSE
-            ard_res(list(scope = id, error = r$error))
-            notify(t("The ARD program failed: see what it printed in Data > Study ARD."),
-                   "error")
-          }
-        }
-      }
-      if (ok && is_report) {
-        shiny::setProgress(0.6, detail = t("3/3 reading it for the builder"))
-        m <- guarded(fetch_ard(current_study(), id))
-        if (is.null(m)) ok <- FALSE
-      }
-    })
-    rv$ard_ver <- rv$ard_ver + 1L
-    if (!ok) return(invisible(FALSE))
-    if (has_an) {
-      ard_res(list(ard = study_ard_rows(current_study(), id), scope = id,
-                   seconds = as.numeric(difftime(Sys.time(), t0,
-                                                 units = "secs"))))
+    if (has_an && !is.null(ard_valid())) {
+      notify(t("Correct the ARD definition first."), "warning")
+      return(invisible(FALSE))
     }
+    s <- current_study()
+    t0 <- Sys.time()
+    # (analyses not in the report list: their ARD made to be seen, alone)
     if (!is_report) {
-      notify(sprintf(t("%s is in the study ARD; add it to the Report list to make its table."),
-                     id), "warning")
-    } else if (!is.null(m$error)) {
+      r <- NULL
+      shiny::withProgress(message = sprintf(t("Preview of %s"), id),
+                          r <- guarded(run_ard(s, id)))
+      if (is.null(r)) return(invisible(FALSE))
+      if (is.null(r$ard)) {
+        ard_res(list(scope = id, error = r$error))
+        return(invisible(FALSE))
+      }
+      ard_res(list(ard = r$ard, scope = id, seconds = r$seconds))
+      notify(sprintf(t("%s is not in the Report list: its ARD is shown, no table is made from it."), id),
+             "warning")
+      return(invisible(TRUE))
+    }
+    state <- ard_preview_state(s, id)
+    m <- NULL
+    if (identical(state, "current") && !isTRUE(force)) {
+      m <- ard_info(s, id)
+    } else {
+      n_an <- sum(rv$p$ard$analyses$output_id %in% id)
+      err <- NULL
+      shiny::withProgress(
+        message = sprintf(t("Preview of %s"), id),
+        detail = if (has_an) sprintf(t("making its ARD (%d analyses, in its own R process)"), n_an) else
+          t("running its data code (in its own R process)"),
+        m <- tryCatch(fetch_ard(s, id), error = function(e) {
+          err <<- e
+          NULL
+        }))
+      if (is.null(m)) {
+        msg <- conditionMessage(err)
+        ard_res(list(scope = id, error = paste(c(msg, err$detail), collapse = "\n\n")))
+        ard_preview_out(list(id = id, text = strsplit(err$detail %||% msg, "\r?\n")[[1L]]))
+        notify(paste(t("The preview's ARD could not be made:"), msg), "error")
+        rv$ard_ver <- rv$ard_ver + 1L
+        return(invisible(FALSE))
+      }
+      ard_preview_out(list(id = id, text = strsplit(m$log %||% "", "\r?\n")[[1L]]))
+    }
+    rv$ard_ver <- rv$ard_ver + 1L
+    a <- ard_raw(s, id, rows = TRUE) %||% ard_raw(s, id)
+    if (!is.null(a)) {
+      ard_res(list(ard = a, scope = id,
+                   seconds = as.numeric(difftime(Sys.time(), t0, units = "secs"))))
+    }
+    if (!is.null(m$error)) {
       notify(paste(t("The ARD was read, but normalize and rework failed:"),
                    m$error), "warning")
+    } else if (identical(state, "current") && !isTRUE(force)) {
+      notify(sprintf(t("Preview of %s: its ARD is up to date (not made again)."), id))
     } else {
       notify(sprintf(t("Preview of %s: %d keys, %d variables"), id,
                      length(m$keys), nrow(m$variables)))
     }
     invisible(TRUE)
   }
+  # Make the ARD (step 1): this report's rows of the study ARD, by its
+  # saved ARD program (the study saved first) -- what a table program
+  # and a figure printing its numbers read; then read for the preview
+  do_study_ard <- function(id) {
+    if (is.null(id)) return(notify(t("Choose a report"), "warning"))
+    if (!any(rv$p$ard$analyses$output_id %in% id)) {
+      return(notify(sprintf(t("%s has no analyses in the ARD definition."), id), "warning"))
+    }
+    t0 <- Sys.time()
+    ok <- FALSE
+    n_an <- sum(rv$p$ard$analyses$output_id %in% id)
+    shiny::withProgress(message = sprintf(t("The study ARD of %s"), id), {
+      shiny::setProgress(0.05, detail = t("1/2 saving the study"))
+      if (ard_ready()) {
+        shiny::setProgress(0.2, detail = sprintf(
+          t("2/2 making its ARD (%d analyses, in its own R process)"), n_an))
+        r <- guarded(update_study_ard(current_study(), id))
+        ard_state_ver(ard_state_ver() + 1L)
+        rv$status_ver <- rv$status_ver + 1L
+        if (!is.null(r)) {
+          ard_preview_out(list(id = id, text = r$output))
+          if (!r$ok) {
+            ard_res(list(scope = id, error = r$error))
+            notify(t("The ARD program failed: see what it printed in Data > Study ARD."),
+                   "error")
+          } else ok <- TRUE
+        }
+      }
+    })
+    if (!ok) return(invisible(FALSE))
+    ard_res(list(ard = study_ard_rows(current_study(), id), scope = id,
+                 seconds = as.numeric(difftime(Sys.time(), t0, units = "secs"))))
+    notify(sprintf(t("%s: its rows of the study ARD are made."), id))
+    # (the preview reads them, when it is a report's)
+    if (id %in% rv$p$outputs$output_id &&
+        !identical(ard_preview_state(current_study(), id), "current")) {
+      if (!is.null(tryCatch(fetch_ard(current_study(), id), error = function(e) NULL))) {
+        rv$ard_ver <- rv$ard_ver + 1L
+      }
+    }
+    invisible(TRUE)
+  }
+  shiny::observeEvent(input$ard_make_study, do_study_ard(ard_target()))
   shiny::observeEvent(input$fetch, do_preview())
   shiny::observeEvent(input$fetch2, do_preview())
   shiny::observeEvent(input$fetch3, do_preview())
@@ -6222,10 +6328,8 @@ app_server <- function(input, output, session, start) {
       shiny::div(
         class = "small mb-1", title = why,
         sprintf(t("This report's ARD: %s"), words),
-        if (!is.null(go)) shiny::tags$button(
-          type = "button", class = "btn btn-sm btn-link py-0",
-          title = why,
-          onclick = "document.getElementById('ard_preview').click();", go))
+        if (!is.null(go)) shiny::actionLink("ard_make_study", go, title = why,
+                                            class = "btn btn-sm btn-link py-0"))
     }
     picked <- !is.na(pick) && pick %in% a$analysis_id
     prole <- if (picked) st_role(a[a$analysis_id == pick, , drop = FALSE][1L, ], a) else ""
@@ -6692,10 +6796,8 @@ app_server <- function(input, output, session, start) {
     shiny::tagList(
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center",
-      .btn("ard_preview", t("Generate this table's ARD"), class = "btn-sm btn-primary"),
-      help_tip(t("Saves the study when it has unsaved changes, runs this report's ARD program in an R of its own and puts its rows into the study's working ARD (output/ard/ard.rds), the other reports' rows left as they are. The table builder's choices and the preview read it. The official run is the Runs tab's.")),
-      shiny::span(class = "small text-muted",
-                  t("Saves, runs this report's ARD program into the study ARD, and reads it for the table builder and the fills."))),
+      preview_button("ard_preview", ard_target(), "btn-sm btn-primary"),
+      help_tip(t(.preview_tip))),
     shiny::uiOutput("ard_run_info"),
     shiny::div(class = "rp-resize",
                DT::DTOutput("ard_table", height = "auto", fill = FALSE)))
@@ -6759,7 +6861,7 @@ app_server <- function(input, output, session, start) {
     r <- ard_res()
     if (is.null(r)) {
       return(shiny::p(class = "small text-muted mt-2",
-                      t("Generate this table's ARD to see the ARD this report's analyses make.")))
+                      t("Update preview to see the ARD this report's analyses make.")))
     }
     if (!is.null(r$error)) {
       return(shiny::div(class = "alert alert-danger py-1 small mt-2",
@@ -8790,9 +8892,9 @@ app_server <- function(input, output, session, start) {
       type = t("The builder is for Tables; Listings and Figures are made in their data code."),
       meta = shiny::tagList(
         t("This table has no ARD yet: the builder is built from it."), " ",
-        .btn("fetch3", t("Generate this table's ARD"),
+        .btn("fetch3", t("Update preview"),
              class = "btn-sm btn-primary ms-1"), " ",
-        help_tip(t("Saves the study when it has unsaved changes, runs this report's ARD program in an R of its own and puts its rows into the study's working ARD (output/ard/ard.rds), the other reports' rows left as they are. The table builder's choices and the preview read it. The official run is the Runs tab's."))),
+        help_tip(t(.preview_tip))),
       NULL)
     if (is.null(msg)) return(pane_head(
       t("Table builder"),
@@ -8917,7 +9019,10 @@ app_server <- function(input, output, session, start) {
         class = "rp-b-sec",
         # one or more (a group, then a visit ...): outermost first, as the
         # rows -- dragged to order, each removed by its x (or Backspace)
-        shiny::selectizeInput(bid("key"), al("table_plan", "cols"), .col_key_names(keys, lang),
+        shiny::selectizeInput(bid("key"),
+                              with_tip(al("table_plan", "cols"),
+                                       t("The column keys, outermost first; drag to order. Their values are the table's columns (TRT01A: a column an arm). A key is in cols or in rows, not both.")),
+                              .col_key_names(keys, lang),
                               selected = if (!anyNA(st$key)) st$key,
                               multiple = TRUE, width = "100%",
                               options = list(plugins = list("remove_button", "drag_drop")))),
@@ -8977,7 +9082,9 @@ app_server <- function(input, output, session, start) {
       if (cont) builder_rows_ui(bs, st, m$stats),
       if (!has("plan_digits")) digits_ui,
       shiny::radioButtons(
-        bid("cat"), al("plan_cells", "categorical"),
+        bid("cat"),
+        with_tip(al("plan_cells", "categorical"),
+                 t("How a level of a categorical variable prints: its count and percentage in one of these formats (n (%) ...), or a template of one's own (Own), e.g. {n} ({p:.1f}%). Every categorical variable takes it.")),
         c(stats::setNames(.cat_formats()$key, .cat_formats()$label),
           stats::setNames("own", t("Own"))),
         selected = st$cat_format, inline = TRUE),
@@ -9928,6 +10035,42 @@ app_server <- function(input, output, session, start) {
     if (wrote) rv$bver <- rv$bver + 1L
   })
 
+  # "Back to the ARD's order" (plan_levels()' card, #428): the variable's
+  # values -- a column key's, or the analysis variables' blocks -- in the
+  # order the ARD keeps them; written as no order of the table's own, so
+  # the code writes none (tflspec #355)
+  shiny::observeEvent(input$b_lv_reset, builder_guard({
+    nm <- input$b_lv_reset$variable
+    st <- shiny::isolate(bstate())
+    shiny::req(length(nm) == 1L, !is.null(st), identical(bform$id, current()))
+    if (identical(nm, "variable")) {
+      ard <- bform$st$variable_ard
+      shiny::req(length(ard))
+      vs <- st$variables$variable
+      un <- st$variables$under %||% rep(NA_character_, length(vs))
+      top <- vs[is.na(un) | !nzchar(un)]
+      want <- c(intersect(ard, top), setdiff(top, ard))
+      # (a nested variable after its parent, as it was shown)
+      out <- character()
+      for (v0 in want) {
+        out <- c(out, v0)
+        out <- c(out, vs[!is.na(un) & startsWith(un, paste0(v0, ":"))])
+      }
+      out <- c(out, setdiff(vs, out))
+      st$variables <- st$variables[match(out, vs), , drop = FALSE]
+      rownames(st$variables) <- NULL
+    } else {
+      ard <- bform$st$level_ard[[nm]]
+      shiny::req(length(ard))
+      st$auto_levels[[nm]] <- ard
+      if (nm %in% names(st$arms)) st$arms[[nm]] <- ard else st$levels[[nm]] <- ard
+    }
+    p2 <- guarded(builder_write(rv$p, bform$id, st, was = bform$last))
+    shiny::req(!is.null(p2))
+    rv$p <- p2
+    rv$btouched <- TRUE
+    rv$bver <- rv$bver + 1L
+  }))
   shiny::observeEvent(input$b_add_n, {
     id <- bform$id
     key <- bform$st$key[1L]
@@ -9953,21 +10096,17 @@ app_server <- function(input, output, session, start) {
     n <- bform$n
     output[[paste0("b", n, "_arms_ui")]] <- shiny::renderUI(shiny::tagList(
       lapply(ks, function(k) {
-        # where the order comes from (builder_read(): this table's own, the
-        # report's code list, the ARD's factor, as first seen), said as on
-        # plan_levels()' card
-        from <- bform$st$level_from[[k]]
-        shiny::div(
-          class = "rp-b-sec rp-levels-var", `data-variable` = k,
-          shiny::div(class = "rp-b-sec-label",
-                     builder_label(sprintf(t("Values of %s"), k), k, "arg", lang)),
-          if (!is.null(from)) .level_order_note(from, lang),
+        # a line until opened, and whether the code writes its order, as
+        # plan_levels()' other variables (.levels_var())
+        lv <- key_levels(k)
+        .levels_var(
+          arms_id(k), k, lv,
           sortable::rank_list(text = NULL,
                               labels = .levels_with_labels(
-                                key_levels(k), k,
-                                sheet_rows(shiny::isolate(rv$p), "codelists", bform$id)),
+                                lv, k, sheet_rows(shiny::isolate(rv$p), "codelists", bform$id)),
                               input_id = arms_id(k),
-                              orientation = "horizontal"))
+                              orientation = "horizontal"),
+          ard = bform$st$level_ard[[k]], from = bform$st$level_from[[k]], lang = lang)
       })))
   }))
   # the Total column: a switch, its heading and place; it sets `overall` on
@@ -10002,12 +10141,15 @@ app_server <- function(input, output, session, start) {
     # (the switch is the card's: its body shows while it is on)
     output[[paste0("b", n, "_total_ui")]] <- shiny::renderUI(shiny::tagList(
       shiny::div(
-        class = "d-flex flex-wrap gap-2 align-items-end mb-2",
+        # (the fields' labels on one line, their boxes under them)
+        class = "d-flex flex-wrap gap-3 align-items-start mb-2 rp-total-fields",
         shiny::textInput(bid("total_label"),
-                         builder_label(.arg_meaning("plan_total", "label"), "label", "arg", lang),
+                         with_tip(builder_label(.arg_meaning("plan_total", "label"), "label", "arg", lang),
+                                  .arg_help("plan_total", "label", lang = lang)),
                          if (now$on) now$label else "", placeholder = "Total", width = "160px"),
         shiny::radioButtons(bid("total_pos"),
-                            builder_label(.arg_meaning("plan_total", "position"), "position", "arg", lang),
+                            with_tip(builder_label(.arg_meaning("plan_total", "position"), "position", "arg", lang),
+                                     .arg_help("plan_total", "position", lang = lang)),
                             stats::setNames(c("last", "first"), c(t("last"), t("first"))),
                             now$position, inline = TRUE),
         help_tip(t("plan_total puts the ARD's overall rows (results not split by group) in a Total column.")),
@@ -10017,7 +10159,7 @@ app_server <- function(input, output, session, start) {
         sprintf(t("No analysis of this report is grouped by %s: the ARD has no overall rows to show."), ks[1L]))
       else if (now$on) shiny::div(
         class = "small text-muted",
-        sprintf(t("%d analyses are run over all subjects too: update the ARD, then Preview."), runs))))
+        sprintf(t("%d analyses are run over all subjects too: Update preview makes the ARD again."), runs))))
   }))
   shiny::observe(builder_guard({
     bform_drawn()
@@ -10616,11 +10758,16 @@ app_server <- function(input, output, session, start) {
     pb <- sheet_rows(rv$p, "layout", id)$pages_page_by
     pb <- .split_list(pb[!is.na(pb)][1L] %||% NA_character_)
     card <- ard_card_summary(m, page_by = pb, tr = t)
+    # Update preview: needed only when the ARD is missing or outdated
+    # (its mark), the cards' changes are shown without it
+    btn <- shiny::div(class = "d-flex align-items-center gap-1 mb-1 rp-pv-bar",
+                      preview_button("b_preview", id, "btn-sm btn-outline-primary py-0"),
+                      help_tip(t(.preview_tip)))
     if (is.null(card$rows)) {
-      return(shiny::div(class = "rp-ard-card text-muted", card$line))
+      return(shiny::tagList(btn, shiny::div(class = "rp-ard-card text-muted", card$line)))
     }
     r <- card$rows
-    shiny::tags$details(
+    shiny::tagList(btn, shiny::tags$details(
       class = "rp-ard-card",
       shiny::tags$summary(card$line),
       shiny::tags$table(
@@ -10631,8 +10778,9 @@ app_server <- function(input, output, session, start) {
           shiny::tags$td(r$kind[i]), shiny::tags$td(r$detail[i]),
           shiny::tags$td(if (is.na(r$label[i])) "" else r$label[i]))))),
       .btn("ard_card_all", t("Show the whole normalized ARD"),
-           class = "btn-sm btn-outline-secondary mb-1"))
+           class = "btn-sm btn-outline-secondary mb-1")))
   })
+  shiny::observeEvent(input$b_preview, do_preview())
   shiny::observeEvent(input$ard_card_all, {
     id <- current()
     shiny::req(!is.null(id))
@@ -10676,12 +10824,31 @@ app_server <- function(input, output, session, start) {
     pv_cache[[id]] <- list(from = from, pages = pages)
     pages
   }
+  # the table's data: its ARD as read, normalized here with
+  # normalize_ard()'s arguments as they are now (#428: a change of the
+  # overall row, the hierarchy, the stack shows without making the ARD
+  # again); a rework of the report's own: the data as it made them
+  norm_cache <- new.env(parent = emptyenv())
+  preview_data <- function(p, id) {
+    raw <- if (.table_norm_builtin(p, id)) ard_raw(rv$study, id)
+    if (is.null(raw)) return(ard_data(rv$study, id))
+    its <- Filter(function(i) identical(i$fn, "normalize_ard"), builder_items(p, id))
+    key <- list(raw, if (length(its)) its[[1L]]$args)
+    hit <- norm_cache[[id]]
+    if (!is.null(hit) && identical(hit$key, key)) return(hit$d)
+    d <- .preview_normalized(p, id, raw)
+    norm_cache[[id]] <- list(key = key, d = d)
+    d
+  }
   preview <- shiny::reactive({
     id <- current()
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
     rv$ard_ver
-    d <- ard_data(rv$study, id)
-    if (is.null(d)) return(list(id = id, error = t("No data to show yet: generate this table's ARD.")))
+    d <- tryCatch(preview_data(rv$p, id), error = function(e) e)
+    if (inherits(d, "error")) {
+      return(list(id = id, error = paste(t("normalize_ard() stopped:"), conditionMessage(d))))
+    }
+    if (is.null(d)) return(list(id = id, error = t("No data to show yet: Update preview makes this table's ARD.")))
     tryCatch(list(id = id, pages = preview_cached(rv$p, id, d)),
              error = function(e) list(id = id, error = conditionMessage(e)))
   })
