@@ -1,5 +1,19 @@
 # tflplanner (development version)
 
+- **AI drafts over several workbooks** (#431, 0.0.2.9248; tflspec >=
+  0.0.24.9178): step 1 takes the shell workbooks apart from the TOC's
+  (uploaded, several, and / or their paths one a line, Browse... choosing
+  several; each copied into the study's `ai/` as the TOC's), and adds a
+  workbook's requests to the earlier ones (`add`, ticked when the study has
+  requests): the new requests get the next names (`ae-2`), the answers are
+  kept.  A report asked for already is said on the read and, on Write, its
+  request is written again only when asked (`overwrite`; the study's own
+  `study.yml` and `spec/` files kept).  The sheets' choices name their
+  workbooks; step 2's list and step 1's TOC show each request's workbook.
+  After requests are written into the open study it is read again (the
+  study's TOC may have new reports).  The agent's first message is read
+  from `ai/agent_prompt.md` when the study has it.
+
 - **AI drafts** (#431, 0.0.2.9247; tflspec >= 0.0.24.9177): a tab for
   tflspec's AI table requests and their answers, after the Report list
   (`options(tflplanner.ai_drafts = FALSE)` hides it).  Step 1 (Prepare,

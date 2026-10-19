@@ -3672,3 +3672,14 @@ No new answer to write.,書き戻す新しい回答がありません。
 Copy the line to tell the agent,エージェントへの一言をコピー
 question-status:open,未回答
 question-status:decided,決定済み
+Shell workbooks,SHELL ブック
+Only when the shells are not in the TOC workbook; several can be given.,シェルが TOC のブックにないときだけ。複数指定できます。
+"or their paths, one a line",またはパスで指定（1 行に 1 つ）
+Add to the earlier requests,前の依頼に追加する
+Workbook,元のブック
+Shells read from: %s,シェルを読むブック: %s
+A report is asked for already,すでに依頼済みの帳票があります
+Write its request again (overwrite)? Its earlier request is replaced; the other requests and the answers are kept.,その依頼を書き直しますか（overwrite）？前の依頼は置き換わり、他の依頼と回答は残ります。
+Write it again,書き直す
+Asked for already: %s. Write the requests will ask whether to write them again (overwrite).,依頼済み: %s。「依頼を書く」で書き直すか確認します（overwrite）。
+Added to the %d requests there (their answers kept).,既にある依頼 %d 件に追加します（回答は残ります）。
