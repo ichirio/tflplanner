@@ -1,5 +1,32 @@
 # tflplanner (development version)
 
+- **Update preview, and the preview follows normalize_ard()** (#428,
+  0.0.2.9245).  One button, "Update preview", in the table builder (above
+  the ARD's summary), in step 1 and in the data code: it makes the
+  report's ARD only when it is needed -- none yet, or what it is made from
+  (its ARD definition, its data code, the study's setup, the data files)
+  has changed since, marked on the button ("No ARD yet", "ARD outdated")
+  -- in an R of its own and a folder of its own: the study ARD
+  (`output/ard/ard.rds`) is no longer written by it, and the study is not
+  saved for it.  A report whose rows of the study ARD are current reads
+  them instead.  Making the study ARD stays step 1's "Make the ARD" (and
+  the official run).  The ARD read is kept (`ard_raw()`), and the preview
+  normalizes it with normalize_ard()'s arguments as they are now: a change
+  of the overall row, the hierarchy or the stack shows at once, no ARD made
+  again (a rework of the report's own: as its data code made them).
+  `ard_preview_state()` says whether the kept ARD is current.
+- **The table builder after the 10/19 review** (#428).  Every field is
+  "meaning (argument)" with its (i): 7 meanings and 56 helps added (a bare
+  `[keep]` was plan_sort()'s).  plan_levels()' card: each variable one line
+  until opened ("RACE: White, Black or African American, ... (6) > Reorder"),
+  every value a chip when open; under it whether the code writes the order
+  -- the ARD's own is not written (tflspec #355) -- and "Back to the ARD's
+  order" when it differs; the column keys the same.  A nest taken away
+  (plan_nest()) keeps the variable where it was shown, not after the
+  others.  plan_total()'s two fields on one line; a field of several values
+  (normalize_ard()'s hierarchy) on a row of its own; the top bar (Save)
+  stays in view on a tall page (the figure designer, the builder).
+
 - **The table builder reads and writes the report's YAML items** (#417,
   0.0.2.9242; step B3 of the YAML-native plan).  tflspec >= 0.0.24.9163.
   Each card is the report's item of its function, read over the layers
