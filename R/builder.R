@@ -465,8 +465,9 @@ builder_stats <- function() {
 # ARD's order, where the ARD keeps them as a factor), `variable_ard` (the
 # analysis variables in the ARD's order), and for a hierarchy (SOC / PT) its
 # `hierarchy`, `row_keys`, `row_choices`, `row_pages` (the outermost a
-# page each) and `sort` (each row key's order: "alpha" or "freq", or
-# "own": the plan's own, left as it is).  builder_write() returns the
+# page each) and `sort` (each row key's order: "alpha", "freq", a key of
+# a statistic or "=<key>" -- see .hier_sort() -- or "own": the plan's own,
+# left as it is).  builder_write() returns the
 # tflplanner.
 builder_read <- function(x, output_id, meta = NULL) {
   id <- output_id
@@ -628,7 +629,13 @@ builder_read <- function(x, output_id, meta = NULL) {
        hierarchy = hier, row_keys = rk,
        row_choices = if (length(hier)) setdiff(names(meta$keys), key) else character(),
        row_pages = length(hier) > 0L && .builder_row_pages(its),
-       sort = if (length(hier)) .hier_sort_read(tb$sort[1L], length(rk)),
+       sort = if (length(hier)) {
+         # (a comparison's statistics: no column of the arms' counts them)
+         nocol <- unique(as.character(unlist(meta$comparisons)))
+         so <- .hier_sort_read(tb$sort[1L], length(rk), nocol)
+         if (!identical(so, "own")) attr(so, "nocol") <- nocol
+         so
+       },
        layers = layers, layer_choices = unique(c(layers, layer_choices)),
        row_label = if (length(hier)) utils::tail(rk, 1L) else .row_label_read(tb$label[1L]))
 }
@@ -751,19 +758,22 @@ builder_read <- function(x, output_id, meta = NULL) {
 
 # A hierarchy table's order (tables$sort), written as plan_sort() takes
 # it, one order a level, outermost first: "alpha" (by name -- a code
-# list's order when the report has one: a factor sorts by its levels) or
-# "freq" (most frequent first, ties by name: an outer level by its own
-# row's n, -n@group1; the innermost by its n).  `col`: the column whose n
+# list's order when the report has one: a factor sorts by its levels),
+# "freq" (most frequent first, ties by name: -n), a key of a statistic
+# ("-max(n)", "min(n)", "-p", "-estimate": a sign, a statistic of the ARD,
+# max() / min() / sum() over the columns or not) or "=<key>" (a key of the
+# user's, written as it is).  An outer level's statistic is its own row's
+# (-n@group1); the innermost its rows'.  `col`: the column whose value
 # counts (a level of the outer column key, or the Total column's
-# heading: -n[Total]); NA every column's together.  The "any event" row
-# first, and each group's own row above the rows under it.
+# heading: -n[Total]); NA every column's together; `nocol`: the
+# statistics no column is added to (a comparison's: estimate).  The "any
+# event" row first, and each group's own row above the rows under it.
 # `hier`: which row keys are the hierarchy's levels -- a group of the ARD
 # outside it (a stratum, outermost) comes before the "any event" row and
 # has no summary row of its own.
 .hier_sort <- function(levels = c("alpha", "freq"), col = NA_character_,
-                       hier = rep(TRUE, length(levels))) {
+                       hier = rep(TRUE, length(levels)), nocol = character()) {
   n <- length(levels)
-  at <- if (!is.na(col) && nzchar(col)) sprintf("[%s]", col) else ""
   out <- character()
   overall <- FALSE
   for (i in seq_len(n)) {
@@ -772,17 +782,66 @@ builder_read <- function(x, output_id, meta = NULL) {
       out <- c(out, ".overall")
       overall <- TRUE
     }
-    count <- if (identical(levels[i], "freq")) paste0(if (i < n) paste0("-n@", g) else "-n", at)
+    lv <- levels[i]
+    if (identical(lv, "freq")) lv <- "-n"
+    count <- if (startsWith(lv, "=")) substring(lv, 2L) else if (!identical(lv, "alpha")) {
+      at <- if (!is.na(col) && nzchar(col) && !.sort_key_stat(lv) %in% nocol) sprintf("[%s]", col) else ""
+      paste0(lv, if (i < n) paste0("@", g), at)
+    }
+    if (!is.null(count) && !nzchar(trimws(count))) count <- NULL
     out <- c(out, count, g, if (hier[i] && i < n) ".depth")
   }
   if (!overall) out <- c(".overall", out)
   paste(out, collapse = " | ")
 }
 
+# A sort key's statistic ("-max(n)" n), "" when it is no key of one
+.sort_key_stat <- function(key) {
+  m <- regmatches(key, regexec(.sort_key_re, key))[[1L]]
+  if (!length(m)) "" else if (nzchar(m[5L])) m[5L] else m[6L]
+}
+# (a sign; max(s), min(s), sum(s) or s; nothing after)
+.sort_key_re <- "^(-?)((max|min|sum)\\(([A-Za-z.][A-Za-z0-9._]*)\\)|([A-Za-z.][A-Za-z0-9._]*))$"
+
+# The orders a row key's card offers (a named vector: the value
+# .hier_sort() takes, its label with its key): by name (`coded`: the code
+# list's order), and for a level of the hierarchy each statistic of the
+# ARD (`stats`; n and p first, N -- the same on every row -- left out)
+# largest and smallest first, by the columns' total or by the largest /
+# smallest in any column.
+.sort_key_choices <- function(stats = character(), coded = FALSE, hier = TRUE,
+                              lang = "en") {
+  t <- function(x) tr(x, lang)
+  out <- stats::setNames("alpha", if (coded) t("Code list's order") else t("By name"))
+  if (!hier) return(out)
+  s <- unique(as.character(stats))
+  s <- s[!is.na(s) & s != "N" & grepl("^[A-Za-z.][A-Za-z0-9._]*$", s)]
+  s <- c(intersect(c("n", "p"), s), setdiff(s, c("n", "p")))
+  if (!length(s)) s <- "n"
+  for (x in s) {
+    n <- identical(x, "n")
+    keys <- c(paste0("-", x), x, sprintf("-max(%s)", x), sprintf("min(%s)", x))
+    labs <- if (n) c(
+      if (coded) t("Most frequent first (ties in the code list's order)") else
+        t("Most frequent first (ties by name)"),
+      t("Least frequent first (the columns' total)"),
+      t("Most frequent first (in any column)"),
+      t("Least frequent first (in any column)")) else c(
+        t("Largest first (the columns' total)"), t("Smallest first (the columns' total)"),
+        t("Largest first (in any column)"), t("Smallest first (in any column)"))
+    vals <- keys
+    if (n) vals[1L] <- "freq"
+    out <- c(out, stats::setNames(vals, paste0(labs, ": ", keys)))
+  }
+  out
+}
+
 # ... and read back: the order of each level (attribute "col": the column
 # that counts, NA all of them), or "own" (an order the builder does not
-# write: kept as it is).  n: the terms.
-.hier_sort_read <- function(sort, n = 2L) {
+# write: kept as it is).  n: the terms; nocol: as .hier_sort()'s.  A key
+# not of the builder's form is the level's own ("=<key>"), written back
+# as it is.
+.hier_sort_read <- function(sort, n = 2L, nocol = character()) {
   if (length(sort) != 1L || is.na(sort) || !nzchar(trimws(sort))) return("own")
   tk <- trimws(strsplit(sort, "|", fixed = TRUE)[[1L]])
   if (!".overall" %in% tk) return("own")
@@ -791,16 +850,25 @@ builder_read <- function(x, output_id, meta = NULL) {
   cols <- character()
   for (i in seq_len(n)) {
     name <- if (i < n) sprintf("group%d", i) else "label"
-    count <- if (i < n) paste0("^-n@", name) else "^-n"
-    m <- if (length(tk)) regmatches(tk[1L], regexec(paste0(count, "(\\[(.+)\\])?$"), tk[1L]))[[1L]]
-    if (length(m)) {
-      lv[i] <- "freq"
-      cols <- c(cols, if (nzchar(m[3L])) m[3L] else NA_character_)
-      tk <- tk[-1L]
-    } else {
+    if (!length(tk)) return("own")
+    if (identical(tk[1L], name)) {
       lv[i] <- "alpha"
+    } else {
+      k <- tk[1L]
+      tk <- tk[-1L]
+      if (!length(tk) || !identical(tk[1L], name)) return("own")
+      # (the key less its column, and less its own group's @)
+      m <- regmatches(k, regexec("^(.*?)(\\[(.+)\\])?$", k, perl = TRUE))[[1L]]
+      e <- m[2L]
+      if (i < n) e <- if (endsWith(e, paste0("@", name))) substr(e, 1L, nchar(e) - nchar(name) - 1L) else ""
+      s <- .sort_key_stat(e)
+      if (!nzchar(s) || (s %in% nocol && nzchar(m[3L]))) {
+        lv[i] <- paste0("=", k)
+      } else {
+        lv[i] <- if (identical(e, "-n")) "freq" else e
+        if (!s %in% nocol) cols <- c(cols, if (nzchar(m[3L])) m[4L] else NA_character_)
+      }
     }
-    if (!length(tk) || !identical(tk[1L], name)) return("own")
     tk <- tk[-1L]
   }
   # one column counts for every level, or the order is the sheets' own
@@ -848,7 +916,8 @@ builder_write <- function(x, output_id, state, was = NULL) {
       length(st$sort) == length(rk)) {
     if (!"sort" %in% names(tb)) tb$sort <- NA_character_
     tb$sort[1L] <- .hier_sort(st$sort, attr(st$sort, "col") %||% NA_character_,
-                              hier = rk %in% st$hierarchy)
+                              hier = rk %in% st$hierarchy,
+                              nocol = attr(st$sort, "nocol") %||% character())
   }
   # a summary table's row layers: written when they changed, in their
   # order (a key over the block of variables, or no block at all); the

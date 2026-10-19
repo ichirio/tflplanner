@@ -1,5 +1,17 @@
 # tflplanner (development version)
 
+- **The row order card offers keys from the ARD's statistics** (#437,
+  0.0.2.9252; rtfreporter >= 0.8.2.9082 for `max()` / `min()`): each row
+  key of a SOC / PT table is ordered by name (or its code list), or by a
+  statistic the report's ARD has (n, p, a comparison's estimate ...):
+  largest or smallest first, by the columns' total (`-n`, `p`) or by the
+  largest / smallest in any column (`-max(n)`, `min(n)`); an outer key by
+  its own row's value (`-max(n)@group1`) as before.  "Another key" takes
+  any key, written as it is.  The card shows the keys `plan_sort()` gets.
+  A key the card had read as the sheets' own order before (a SOC key
+  without its `@group1`) is now that key's "another key"; the YAML is
+  written as it was.
+
 - **AI drafts over several workbooks** (#431, 0.0.2.9251; tflspec >=
   0.0.24.9178): step 1 takes the shell workbooks apart from the TOC's
   (uploaded, several, and / or their paths one a line, Browse... choosing
