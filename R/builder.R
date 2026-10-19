@@ -280,12 +280,24 @@ builder_stats <- function() {
 # after that variable).  Values in the order of the report's code list
 # (`cl`, its rows of the codelists sheet) are the code list's, not the
 # table's own: no `levels` (tflspec writes them so from the code list).
+# plan_labels()' variables' headings written as tflspec writes them (#358):
+# `variable = c(AGE = "Age (years)", ...)`, as a named list (none: empty)
+.labels_variable_map <- function(lb) {
+  m <- lb[["variable"]]
+  if (is.null(m) || is.null(names(m)) || !all(nzchar(names(m)))) return(list())
+  m <- as.list(m)
+  m[vapply(m, function(x) is.character(x) && length(x) == 1L, NA)]
+}
+
 .builder_vars_rows <- function(its, cl = NULL) {
   lv <- .builder_args(its, "plan_levels") %||% list()
   lb <- .builder_args(its, "plan_labels") %||% list()
   ne <- .builder_args(its, "plan_nest") %||% list()
   heading <- function(v) is.character(v) && length(v) == 1L && is.null(names(v))
+  # (the headings as tflspec writes them: under `variable = c(AGE = ...)`)
+  vm <- .labels_variable_map(lb)
   lb <- lb[vapply(lb, heading, NA)]
+  lb <- c(vm, lb[setdiff(names(lb), names(vm))])
   ord <- as.character(unlist(lv$variable))
   drop <- as.character(unlist(lv$.drop_empty))
   keys <- setdiff(names(lv), c("variable", ".drop_empty"))
@@ -325,13 +337,15 @@ builder_stats <- function() {
 # roles from `tb` (the report's own tables row as edited), plan_levels(),
 # plan_labels() and plan_nest() from `vr` (the variables rows as edited;
 # `vr_was` as they were read) -- each verb's whole arguments, those the rows
-# do not say kept as they are; a variable with no levels of its own takes
-# its code list's order (`cl`), as tflspec writes it.  A list of list(fn,
+# do not say kept as they are; a variable with no levels of its own has
+# none written (its code list's order, `cl`, kept where the report has
+# it: tflspec writes none, #355).  A list of list(fn,
 # args, drop_empty) for the verbs that change; none: nothing to write.
 .builder_items_from_rows <- function(its, tb, vr, vr_was, cl = NULL) {
   out <- list()
   same <- function(fn, a, b) {
-    identical(a, b) || identical(tflspec::tfl_args_to_r(fn, a %||% list()),
+    identical(a, b) || (!length(a) && !length(b)) ||
+      identical(tflspec::tfl_args_to_r(fn, a %||% list()),
                                  tflspec::tfl_args_to_r(fn, b %||% list()))
   }
   put <- function(fn, new, old) {
@@ -358,7 +372,12 @@ builder_stats <- function() {
   new <- lv
   for (v in vars) {
     l <- .split_list(row_of(v, "levels"))
-    if (!length(l)) l <- .codelist_order(cl, v)
+    # none of its own: its code list's order, which tflspec does not write
+    # (#355; the ARD is made with it) -- kept where the report has it
+    if (!length(l)) {
+      was <- as.character(unlist(lv[[v]]))
+      l <- if (length(was) && identical(was, .codelist_order(cl, v))) lv[[v]]
+    }
     if (length(l)) new[[v]] <- l else new[[v]] <- NULL
   }
   o <- suppressWarnings(as.numeric(vr$order))
@@ -376,18 +395,37 @@ builder_stats <- function() {
   # plan_labels(): a variable's heading (its values' labels kept)
   lb <- .builder_args(its, "plan_labels") %||% list()
   new <- lb
+  heading <- function(x) is.character(x) && length(x) == 1L && is.null(names(x))
+  # the headings in the form the report has them: one argument each, or
+  # (as tflspec writes them, #358) under `variable = c(AGE = ...)`
+  map <- .labels_variable_map(lb)
+  one_by_one <- any(vapply(setdiff(names(lb), "variable"),
+                           function(k) heading(lb[[k]]), NA)) ||
+    (!is.null(lb[["variable"]]) && !length(map))
   for (v in vars) {
     cur <- lb[[v]]
-    if (!is.null(cur) && !(is.character(cur) && length(cur) == 1L && is.null(names(cur)))) next
+    if (!is.null(cur) && !heading(cur)) next
     l <- row_of(v, "label")
-    if (is.na(l) || !nzchar(l)) new[[v]] <- NULL else new[[v]] <- l
+    l <- if (is.na(l) || !nzchar(l)) NULL else l
+    if (one_by_one) new[[v]] <- l else {
+      new[[v]] <- NULL
+      map[[v]] <- l
+    }
   }
   # (the variables moved: their headings in their new order, as the
   # program lists them)
   if (!identical(vo, as.character(unlist(lv$variable)))) {
     by_o <- vr$variable[order(is.na(o), o)]
-    r <- match(names(new), by_o)
-    new <- new[order(is.na(r), r)]
+    re <- function(l) {
+      r <- match(names(l), by_o)
+      l[order(is.na(r), r)]
+    }
+    new <- re(new)
+    map <- re(map)
+  }
+  if (!one_by_one) {
+    new[["variable"]] <- NULL
+    if (length(map)) new <- c(list(variable = map), new)
   }
   put("plan_labels", new, lb)
   # plan_nest(): rows under a level of another variable

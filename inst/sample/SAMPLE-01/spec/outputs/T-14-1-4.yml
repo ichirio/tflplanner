@@ -89,31 +89,12 @@ content:
         Mean (SD): '{mean:.1f} ({sd:.2f})'
         Median: '{median:.1f}'
         Min, Max: '{min:.0f}, {max:.0f}'
-  - plan_levels:
-      variable:
-        - AGE
-        - AGEGR1
-        - SEX
-        - RACE
-      ARMNRS: Screen Failures
-      SEX:
-        - Female
-        - Male
-      AGEGR1:
-        - <65 years
-        - '>=65 years'
-      RACE:
-        - White
-        - Black or African American
-        - Asian
-        - American Indian or Alaska Native
-        - Native Hawaiian or Other Pacific Islander
-        - Other
   - plan_labels:
-      AGE: Age (years)
-      AGEGR1: Age group, n (%)
-      SEX: Sex, n (%)
-      RACE: Race, n (%)
+      variable:
+        AGE: Age (years)
+        AGEGR1: Age group, n (%)
+        SEX: Sex, n (%)
+        RACE: Race, n (%)
   - plan_paginate_rows:
       max_rows: 30
       split: group_safe

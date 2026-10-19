@@ -99,40 +99,13 @@ content:
         Mean (SD): '{mean:.1f} ({sd:.2f})'
         Median: '{median:.1f}'
         Min, Max: '{min:.0f}, {max:.0f}'
-  - plan_levels:
-      variable:
-        - AGE
-        - AGEGR1
-        - SEX
-        - RACE
-        - ETHNIC
-      TRT01A:
-        - Drug X
-        - Control
-      SEX:
-        - Female
-        - Male
-      AGEGR1:
-        - <65 years
-        - '>=65 years'
-      RACE:
-        - White
-        - Black or African American
-        - Asian
-        - American Indian or Alaska Native
-        - Native Hawaiian or Other Pacific Islander
-        - Other
-      ETHNIC:
-        - Hispanic or Latino
-        - Not Hispanic or Latino
-        - Not reported
-        - Unknown
   - plan_labels:
-      AGE: Age (years)
-      AGEGR1: Age group, n (%)
-      SEX: Sex, n (%)
-      RACE: Race, n (%)
-      ETHNIC: Ethnicity, n (%)
+      variable:
+        AGE: Age (years)
+        AGEGR1: Age group, n (%)
+        SEX: Sex, n (%)
+        RACE: Race, n (%)
+        ETHNIC: Ethnicity, n (%)
   - plan_paginate_rows:
       max_rows: 30
       split: group_safe
