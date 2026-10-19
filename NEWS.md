@@ -1,5 +1,20 @@
 # tflplanner (development version)
 
+- **Data kept outside the study folder** (#430, 0.0.2.9246): a dataset's
+  `path` in the data catalog (`spec/data.yml`) may be a full path
+  (`C:/secure/adam/adsl.rds`), so that the ADaM stays out of the study
+  folder (and out of reach of an AI agent working in it).  The programs
+  already read the path as written, and the official run keeps such a
+  file under `data/external/`; now the app and the review read it too:
+  the review (D01, the facts of the data), the ARS check, the variable
+  choices and counts of the ARD tab, the listing and figure columns, the
+  Data tab's size and preview.  A file outside that is not there is still
+  said to be missing.  The Data tab shows such a file under its level's
+  pill (ADaM under ADaM), marked "outside the study folder" in a "where"
+  column, its folder named under the grid; the first table and first
+  listing offer it, so marked.  `register_study()` writes the `.Rproj` a folder has not, as
+  `create_study()` does.  SAMPLE-01's programs are unchanged.
+
 - **A code list's `under`** (tflspec #359, #423, 0.0.2.9244): the
   codelists sheet's new last column -- a nested count's (SOC / PT) inner
   value names the value, as the data have it, of the variable one level
