@@ -301,7 +301,7 @@
     out <- list()
     for (x in ds) {
       pth <- d$path[match(toupper(x), toupper(d$dataset))]
-      f <- if (length(pth) == 1L && !is.na(pth)) file.path(rv$study$path, pth)
+      f <- if (length(pth) == 1L && !is.na(pth)) .data_file(rv$study$path, pth)
       k <- if (!is.null(f) && file.exists(f)) paste(f, file.mtime(f))
       if (is.null(k)) next
       if (is.null(pd$data[[k]])) {
@@ -351,7 +351,7 @@
   # the catalog's datasets whose file is there
   data_present <- function() {
     d <- catalog()
-    d$dataset[!is.na(d$path) & file.exists(file.path(rv$study$path, d$path))]
+    d$dataset[!is.na(d$path) & file.exists(.data_file(rv$study$path, d$path))]
   }
   tpl_select <- function() {
     tc <- .fig_template_choices(

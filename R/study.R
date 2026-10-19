@@ -117,7 +117,7 @@ study_layout <- function() {
 #' * `register_study()` adds an existing study folder: its `study.yml`, and
 #'   its definition workbooks when `spec/` has them.  A folder unregistered
 #'   before comes back as it was (its saved state, history and unsaved
-#'   changes).
+#'   changes).  A folder with no RStudio project (`.Rproj`) gets one.
 #' * `unregister_study()` takes a study off the list.  Its folder is not
 #'   deleted: what tflplanner kept about it goes into the folder
 #'   (`.tflplanner/`), for `register_study()` to take back.  tflplanner
@@ -300,6 +300,10 @@ register_study <- function(path, home = tflplanner_home()) {
     stop("Study '", id, "' is already registered at ", st$path, ".",
          call. = FALSE)
   }
+  # a folder with no RStudio project gets one, as create_study() makes it
+  if (!length(list.files(path, "\\.Rproj$", ignore.case = TRUE))) {
+    writeLines(.rproj, file.path(path, paste0(id, ".Rproj")))
+  }
   # unregistered before: what tflplanner kept comes back as it was, the
   # definition files compared with its record (an edit made while the
   # study was off the list is taken in, #274)
@@ -450,8 +454,8 @@ export_ars <- function(study, dir, profile = c("cdisc", "siera")) {
   ds <- a$datasets
   out <- list()
   for (i in seq_len(nrow(ds))) {
-    f <- file.path(study$path, ds$path[i])
-    if (is.na(ds$path[i]) || !file.exists(f)) next
+    f <- .data_file(study$path, ds$path[i])
+    if (is.na(f) || !file.exists(f)) next
     ext <- tolower(tools::file_ext(f))
     d <- tryCatch(switch(ext,
       rds = readRDS(f),
@@ -950,6 +954,38 @@ run_study <- function(study, output_id = NULL, wait = TRUE) {
   if (!wait) return(px)
   px$wait()
   study_status(study)
+}
+
+# A data path written whole: a drive (C:/adam), a root (/data, \\server),
+# or the home (~/adam)
+.is_abs_path <- function(p) grepl("^(([A-Za-z]:)?[/\\\\]|~)", p)
+
+# A data catalog's path as a file on this computer: a path written whole
+# as it is (ADaM kept outside the study folder), else under the study
+# folder; "/" between the folders either way.  No path: NA.
+.data_file <- function(study_path, path) {
+  path <- as.character(path)
+  out <- ifelse(.is_abs_path(path), path.expand(path), file.path(study_path, path))
+  out[is.na(path) | !nzchar(path)] <- NA_character_
+  gsub("\\", "/", out, fixed = TRUE)
+}
+
+# A data catalog's path whose file is not in the study folder: written whole
+# and not under the folder, or going up out of it (../adam/adsl.rds)
+.data_outside <- function(study_path, path) {
+  path <- as.character(path)
+  have <- !is.na(path) & nzchar(path)
+  if (!length(path)) return(logical())
+  np <- function(p) {
+    p <- gsub("\\", "/", normalizePath(p, "/", mustWork = FALSE), fixed = TRUE)
+    if (identical(.Platform$OS.type, "windows")) tolower(p) else p
+  }
+  root <- paste0(sub("/+$", "", np(study_path)), "/")
+  up <- grepl("^\\.\\.([/\\\\]|$)", path)
+  abs <- .is_abs_path(path)
+  out <- have & up
+  out[have & abs] <- !startsWith(np(.data_file(study_path, path[have & abs])), root)
+  out
 }
 
 #' Files in a study folder
