@@ -906,7 +906,9 @@ study_status <- function(study) {
 #' every report or the ones named -- each in its own `Rscript` process.
 #' They write the working RTFs (output/tfl/); what each printed is kept in
 #' `logs/preview/` until the next preview, and no log of record is made.
-#' The official run is [run_batch()].
+#' A table's rows of the study ARD, and those a figure prints numbers of,
+#' are made first when they are not made from the definition as it is now
+#' ([update_study_ard()]).  The official run is [run_batch()].
 #'
 #' @param study An `rtfstudy` (saved: the programs run from disk).
 #' @param output_id Reports to run; `NULL` runs all.
@@ -918,9 +920,13 @@ run_study <- function(study, output_id = NULL, wait = TRUE) {
   p <- study$planner
   ids <- output_id %||% p$outputs$output_id
   # a figure printing an ARD's numbers: that ARD first, when it is not made
-  # from its definition now (as the official run does, #293)
+  # from its definition now (as the official run does, #293); a table's own
+  # likewise -- the builder's preview makes its ARD apart and leaves the
+  # study ARD as it is (#428), so a table run reads its rows made here
   need <- unique(stats::na.omit(vapply(ids, function(id)
     tryCatch(.fig_ard_need(p, id), error = function(e) NA_character_), "")))
+  need <- unique(c(need, ids[vapply(ids, function(id)
+    identical(report_info(p, id)$type, "table") && .ard_from_definition(p, id), NA)]))
   if (length(need)) {
     st <- tryCatch(ard_status(study), error = function(e) NULL)
     for (tb in need) {

@@ -3457,3 +3457,93 @@ Discard changes,変更を破棄
 outside the study folder,試験フォルダの外
 Outside the study folder: %s,試験フォルダの外：%s
 "A row's file may also be outside the study folder, by its full path (C:/adam/adsl.rds).",行のファイルは、試験フォルダの外にフルパスで置くこともできます（C:/adam/adsl.rds）。
+"The nested row keys, outermost first: each level's own summary rows become its rows (a SOC's row over its PTs). Blank: step 1's hierarchical analysis's, which is usually right; another may not match the ARD. e.g. AEBODSYS, AEDECOD","入れ子の行キー（外側から）。各段の自分の要約行がその段の行になります（PT の上の SOC の行）。空欄 = 手順 1 の階層の解析のもの（ふつうはこれで正しい）。別の値は ARD と合わないことがあります。例: AEBODSYS, AEDECOD"
+"The text of the row a hierarchical analysis makes over all its terms (the subjects with any event), put on the first hierarchy column. Blank: that row is left as it is. e.g. Any TEAE",階層の解析が全体について作る行（何かのイベントがある被験者）の文字。最初の階層の列に入ります。空欄 = その行はそのまま。例: Any TEAE
+"How the statistics are laid out: ""cells"" one template a cell (n (%) in one cell), ""rows"" each statistic a row of its own. Blank: cells. e.g. ""rows""","統計量の並べ方。""cells"" は 1 セルに 1 つのテンプレート（n (%) を 1 セルに）、""rows"" は統計量ごとに 1 行。空欄 = cells。例: ""rows"""
+"Which value a template's {x} reads: the number (stat), which the template formats, or the ARD's formatted text (stat_fmt). Blank: stat. e.g. ""stat_fmt""","テンプレートの {x} が読む値。数値（stat、テンプレートで書式化）か、ARD の書式済みの文字（stat_fmt）。空欄 = stat。例: ""stat_fmt"""
+"The text of a cell no template could fill (a statistic the ARD does not have). Blank: empty. e.g. ""-""","どのテンプレートでも埋まらないセル（ARD に無い統計量）の文字。空欄 = 空。例: ""-"""
+FALSE: no note of the ARD's statistics that no template uses. Blank (TRUE): such statistics are listed when the table is made. e.g. FALSE,FALSE: どのテンプレートも使わない ARD の統計量を知らせません。空欄（TRUE）: 表を作るときにそれらを一覧します。例: FALSE
+"The heading of the Total column. Its cells are the ARD's overall rows (the analyses run over all subjects, not split by the column key). Blank: ""Total"". e.g. ""All Subjects""","Total 列の見出し。セルは ARD の全体の行（列キーで分けずに全被験者で走らせた解析）です。空欄 = ""Total""。例: ""All Subjects"""
+"Where the Total column goes among the column key's values: ""last"" or ""first"". Blank: last. e.g. ""first""","Total 列を列キーの値のどこに置くか: ""last""（末尾）または ""first""（先頭）。空欄 = last。例: ""first"""
+"The column that splits the comparison records (tests, differences) into columns, one a level (each arm against placebo). Blank: one comparison a variable. e.g. ""COMPARISON""","比較のレコード（検定、差）を列に分ける列（水準ごとに 1 列: 各群とプラセボの比較）。空欄 = 変数ごとに 1 つの比較。例: ""COMPARISON"""
+"Where the comparison columns go: after the column key's values (""last"") or before them (""first""). Blank: last. e.g. ""first""","比較の列の位置: 列キーの値の後（""last""）か前（""first""）。空欄 = last。例: ""first"""
+"The variables whose statistics are split into the groups. Blank: every variable. e.g. c(""AGE"", ""BMI"")","統計量をグループに分ける変数。空欄 = すべての変数。例: c(""AGE"", ""BMI"")"
+"The group the other variables' statistics go to whole. Blank: none. e.g. ""Summary""","ほかの変数の統計量をまとめて入れるグループ。空欄 = なし。例: ""Summary"""
+"FALSE: the columns the order is read from (the sort keys) are not printed, with no plan_hide() for them. Blank (TRUE): they are printed as they are. e.g. FALSE",FALSE: 並び順が読む列（並べ替えのキー）を印刷しません（plan_hide() は不要）。空欄（TRUE）: そのまま印刷します。例: FALSE
+TRUE: a row stays when any column's statistics meet the condition (PTs of 5% or more in any arm); FALSE: when every column's do. Blank: TRUE. e.g. FALSE,TRUE: どれかの列の統計量が条件を満たせば行を残します（どれかの群で 5% 以上の PT）。FALSE: すべての列が満たすとき。空欄 = TRUE。例: FALSE
+"""keep"": a parent row (a SOC) stays exactly when one of its children does; ""drop"": it is judged by its own counts. Blank: keep. e.g. ""drop""","""keep"": 親の行（SOC）は、子の行が 1 つでも残るときだけ残ります。""drop"": 親自身の数で判定します。空欄 = keep。例: ""drop"""
+"The columns not printed, by name: a key a page break or an order reads stays in the data. e.g. TRT01AN",印刷しない列（名前で）。ページ分割や並び順が読むキーはデータに残ります。例: TRT01AN
+What the header's tokens take: TRUE (list(n = TRUE)) reads each column's N from the ARD; numbers named by column give them by hand. e.g. list(n = TRUE),見出しのトークンが受け取る値。TRUE（list(n = TRUE)）は各列の N を ARD から読みます。列名つきの数値で手で与えることもできます。例: list(n = TRUE)
+"The text a plain table's column names are cut at into spanning header rows. e.g. ""____""","単純な表の列名を、列見出しの複数行に切り分ける区切りの文字。例: ""____"""
+"How a cell of the header lines over several columns is made: ""each"" a cell a column, ""one"" one cell over them all, or a key's name (a cell a value of that key: a spanner). Blank: each. e.g. ""one""","見出しの行の、複数列にまたがるセルの作り方: ""each"" は列ごとに 1 セル、""one"" は全体で 1 セル、キーの名前はそのキーの値ごとに 1 セル（スパナー）。空欄 = each。例: ""one"""
+"The name of the one row label column the row keys are folded into. Blank: row_label. e.g. ""stub""","行キーをまとめて入れる 1 つの行ラベルの列の名前。空欄 = row_label。例: ""stub"""
+The spaces a level of the folded rows is indented by. Blank: 4. e.g. 2,まとめた行の 1 段ごとの字下げ（空白の数）。空欄 = 4。例: 2
+"TRUE: the rows are folded before the pages and groups are made, which plan_cell_style() needs to see the rows as printed; a page or group key folded away is then not found. Blank (FALSE): folded last. e.g. TRUE",TRUE: ページとグループを作る前に行をまとめます（plan_cell_style() が印刷される行を見るのに必要）。そのときは、まとめて消えたページやグループのキーは見つかりません。空欄（FALSE）: 最後にまとめます。例: TRUE
+"Where blank rows go: ""between_groups"" between the outermost row groups, ""records"" after each record of a listing, or as R (the rows' numbers, 0 before the first). e.g. ""between_groups""","空行を入れる場所: ""between_groups"" は一番外側の行グループの間、""records"" は Listing のレコードごとの後、または R（行番号。0 は最初の行の前）。例: ""between_groups"""
+TRUE: a blank row at the top of every page. Blank: none. e.g. TRUE,TRUE: 各ページの先頭に空行を 1 行入れます。空欄 = なし。例: TRUE
+TRUE: a blank row at the bottom of every page. Blank: none. e.g. TRUE,TRUE: 各ページの末尾に空行を 1 行入れます。空欄 = なし。例: TRUE
+The most rows a page holds (blank rows too when they are counted: plan_blanks()). Blank: no limit. e.g. 45,1 ページの最大行数（空行を数える場合は空行も: plan_blanks()）。空欄 = 制限なし。例: 45
+"What a page break may cut: ""group_safe"" whole groups to a page (a group that does not fit starts the next), ""group_force"" every most rows a page, a group cut with a continued label, ""rows"" before the rows given in break before rows. e.g. ""group_force""","ページ区切りが切ってよいもの: ""group_safe"" はグループごと 1 ページへ（入りきらないグループは次のページから）、""group_force"" は最大行数ごとに切り、切れたグループには続きの表示、""rows"" は「区切る行」の前で切ります。例: ""group_force"""
+"The columns whose value starts a new page first, each page named after it; the most rows a page applies within each. e.g. ""PARAM""","値が変わるとまず新しいページにする列（ページ名はその値）。1 ページの最大行数はその中で効きます。例: ""PARAM"""
+"Where a page's name (its heading) prints: ""section"" the section header, ""title"" under the titles, ""none"" nowhere. Blank: the report's. e.g. ""title""","ページの名前（見出し）を出す場所: ""section"" はセクションの見出し、""title"" はタイトルの下、""none"" は出しません。空欄 = 帳票の既定。例: ""title"""
+"The column whose value starts a new page, a page a value however long. Blank: the outermost row key. e.g. ""PARAM""","値が変わると新しいページにする列（長さによらず 1 つの値に 1 ページ）。空欄 = 一番外側の行キー。例: ""PARAM"""
+FALSE: the page column is not printed (each page's name says its value). Blank (TRUE): it is printed. e.g. FALSE,FALSE: ページの列を印刷しません（各ページの名前が値を示します）。空欄（TRUE）: 印刷します。例: FALSE
+"Each page's name as a template, {value} the page's value and {n} its subjects. Blank: the value. e.g. Parameter: {value}",各ページの名前のテンプレート。{value} はページの値、{n} はその被験者数。空欄 = 値そのもの。例: Parameter: {value}
+"The columns a new column page starts before. One of these, cut by or columns a page is given. e.g. ""Drug Y""","新しい列ページを始める列（その列の前で切ります）。これか、区切り方、1 ページの列数のどれかを指定します。例: ""Drug Y"""
+"The column blocks as a list, or a separator in the columns' names (a block a key value). e.g. ""____""","列のまとまりのリスト、または列名の中の区切り（キーの値ごとに 1 まとまり）。例: ""____"""
+A new column page every this many columns (the columns on every page not counted). e.g. 3,この列数ごとに新しい列ページにします（どのページにも出す列は数えません）。例: 3
+"The columns every column page repeats. Blank: the row heading columns. e.g. ""row_label""","どの列ページにも繰り返す列。空欄 = 行見出しの列。例: ""row_label"""
+"TRUE: every page's columns on page 1's scale, filling the width; FALSE: each column keeps its width. e.g. FALSE",TRUE: どのページの列も 1 ページ目と同じ比率で幅いっぱいに。FALSE: 各列は自分の幅のまま。例: FALSE
+FALSE: a page is not cut inside a spanning header's cell. Blank: TRUE. e.g. FALSE,FALSE: 列見出しのまたがるセルの途中ではページを切りません。空欄 = TRUE。例: FALSE
+"The order the pages come out in: ""across"" a row's column pages one after another, ""down"" all the rows' pages of a block first. Blank: across. e.g. ""down""","ページの出る順: ""across"" はある行の列ページを続けて、""down"" はあるまとまりのすべての行のページを先に。空欄 = across。例: ""down"""
+"How a group's first row is found: ""value"" each run of equal values, ""indent"" a row whose cell is not indented, ""filled"" a row whose cell is not empty, ""auto"". e.g. ""value""","グループの最初の行の見つけ方: ""value"" は同じ値の続き、""indent"" はセルが字下げされていない行、""filled"" はセルが空でない行、""auto""。例: ""value"""
+"A repeated value printed once and then blank: TRUE in every row key, or in the columns named. e.g. TRUE",繰り返す値を最初の 1 回だけ印刷し、あとは空にします。TRUE はすべての行キー、または指定した列。例: TRUE
+"The columns' relative widths, by column (.values every value column). e.g. row_label 5, .values 2",列の相対的な幅（列名ごと、.values はすべての値の列）。例: row_label 5、.values 2
+The columns whose numbers line up at the decimal point (.values every value column). e.g. .values,数値を小数点で揃える列（.values はすべての値の列）。例: .values
+The row heading columns: left aligned (the others centred) and repeated on every column page. Blank: the first column. e.g. row_label,行見出しの列: 左揃え（ほかの列は中央）で、どの列ページにも繰り返します。空欄 = 最初の列。例: row_label
+TRUE: each column sized to its content. e.g. TRUE,TRUE: 各列を中身に合わせた幅にします。例: TRUE
+"The table's borders: ""tfl"" (rules over and under the header and under the last row) or ""none""; another style as R (rtf_border()). Blank: tfl. e.g. ""none""","表の罫線: ""tfl""（列見出しの上下と最終行の下の罫線）または ""none""。ほかの形は R で（rtf_border()）。空欄 = tfl。例: ""none"""
+TRUE: the n and the (%) of a count cell line up from row to row. e.g. TRUE,TRUE: 件数セルの n と (%) を行の間で揃えます。例: TRUE
+The table's font size in half points (18 = 9 pt). Blank: the document's. e.g. 16,表のフォントの大きさ（半ポイント。18 = 9 pt）。空欄 = 文書のもの。例: 16
+"The columns styled, by name (.values every value column). Blank: every column. e.g. .values",スタイルを付ける列（名前で、.values はすべての値の列）。空欄 = すべての列。例: .values
+TRUE: the column header is styled (not the body). e.g. TRUE,TRUE: 本体ではなく列見出しにスタイルを付けます。例: TRUE
+TRUE: the chosen cells in bold; FALSE: not. Blank: as they are. e.g. TRUE,TRUE: 選んだセルを太字に、FALSE: 太字にしない。空欄 = そのまま。例: TRUE
+TRUE: the chosen cells in italics; FALSE: not. Blank: as they are. e.g. TRUE,TRUE: 選んだセルを斜体に、FALSE: 斜体にしない。空欄 = そのまま。例: TRUE
+"The chosen cells' alignment: ""left"", ""center"" or ""right"". e.g. ""left""","選んだセルの揃え: ""left""、""center""、""right""。例: ""left"""
+"The chosen cells' text colour. e.g. ""#CC0000""","選んだセルの文字の色。例: ""#CC0000"""
+"The chosen cells' background colour. e.g. ""#F2F2F2""","選んだセルの背景の色。例: ""#F2F2F2"""
+Notes of unused statistics,使わない統計量の知らせ
+Print the sort columns,並べ替えの列を印刷
+Where the heading prints,見出しを出す場所
+Header of the column pages,列ページの列見出し
+Header separator,見出しの区切り
+"Header lines, a row at a time",見出しの行（1 行ずつ）
+Cells over columns,複数列にまたがるセル
+"The column keys, outermost first; drag to order. Their values are the table's columns (TRT01A: a column an arm). A key is in cols or in rows, not both.",列キー（外側から。ドラッグで並べ替え）。その値が表の列になります（TRT01A: 群ごとに 1 列）。キーは cols か rows のどちらか一方にだけ置けます。
+"How a level of a categorical variable prints: its count and percentage in one of these formats (n (%) ...), or a template of one's own (Own), e.g. {n} ({p:.1f}%). Every categorical variable takes it.",カテゴリ変数の水準の印刷のしかた。件数と割合をこれらの書式（n (%) など）のどれかで、または自分のテンプレート（独自）で。例: {n} ({p:.1f}%)。すべてのカテゴリ変数に使われます。
+"Ticked: the variable's values no subject has (a code list's value, 0 in every column) are not printed. Unticked: printed with their zeros.",チェックあり: どの被験者にも無い値（コードリストの値で、どの列も 0）を印刷しません。チェックなし: 0 のまま印刷します。
+"The order of the analysis variables' blocks, dragged. A variable nested under another's level goes with it.",解析変数のまとまりの並び（ドラッグで並べ替え）。ほかの変数の水準の下に入れた変数は、その変数と一緒に動きます。
+Reorder,並べ替える
+The ARD's order (not written in the code),ARD の順（コードに書かれない）
+This table's order (written in the code),この表の順（コードに書かれる）
+Back to the ARD's order,ARD の水準の順に戻す
+Written in the code,コードに書かれる
+Update preview,プレビューを更新
+"Makes this report's ARD in an R of its own, only when it is needed. The study's ARD (output/ard/ard.rds) is not changed.",必要な時だけこの帳票の ARD を別の R で作ります。試験の ARD（output/ard/ard.rds）は変えません。
+No ARD yet,ARD がまだありません
+ARD outdated,ARD が古い
+"%s is not in the Report list: its ARD is shown, no table is made from it.",%s は帳票一覧にありません。ARD を表示します（表は作りません）。
+"making its ARD (%d analyses, in its own R process)",ARD を作成中（解析 %d 本、別の R で）
+running its data code (in its own R process),データのコードを実行中（別の R で）
+The preview's ARD could not be made:,プレビューの ARD を作れませんでした:
+Preview of %s: its ARD is up to date (not made again).,%s のプレビュー: ARD は最新です（作り直していません）。
+The study ARD of %s,%s の試験 ARD
+1/2 saving the study,1/2 試験を保存
+"2/2 making its ARD (%d analyses, in its own R process)",2/2 ARD を作成中（解析 %d 本、別の R で）
+%s: its rows of the study ARD are made.,%s: 試験 ARD のこの帳票の行を作りました。
+Update preview to see the ARD this report's analyses make.,「プレビューを更新」で、この帳票の解析が作る ARD を表示します。
+No data to show yet: Update preview makes this table's ARD.,表示するデータがまだありません。「プレビューを更新」でこの表の ARD を作ります。
+Update preview first: it makes this table's ARD.,先に「プレビューを更新」を押してください。この表の ARD を作ります。
+normalize_ard() stopped:,normalize_ard() が止まりました:
+ARD: not made yet (Update preview makes it),ARD: まだありません（「プレビューを更新」で作ります）
+%d analyses are run over all subjects too: Update preview makes the ARD again.,%d 本の解析を全体でも走らせます。「プレビューを更新」で ARD を作り直します。

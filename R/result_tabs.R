@@ -39,8 +39,8 @@ code_view <- function(output_id, lang = "en") {
   .bslib-sidebar-layout > .main { overflow-x: clip; overflow-y: visible; }
   /* beside the form, SPEC | Code | Result stays in view as the form scrolls:
      the table as it prints beside the row being changed */
-  .rp-tabs { position: sticky; top: .5rem; align-self: start;
-    max-height: calc(100vh - 1rem); overflow-y: auto; }
+  .rp-tabs { position: sticky; top: calc(var(--rp-top, 0px) + .5rem); align-self: start;
+    max-height: calc(100vh - var(--rp-top, 0px) - 1rem); overflow-y: auto; }
   .rp-split.rp-lay-stack > .rp-tabs, .rp-split.rp-lay-one > .rp-tabs {
     position: static; max-height: none; overflow-y: visible; }
 }

@@ -47,10 +47,10 @@
                  stat = "Statistic columns", show_keys = "Keys shown"),
   plan_cells = c(value = "Values used", stats = "Statistics as", na = "Text for missing",
                  default = "Every cell", continuous = "Continuous variables",
-                 categorical = "Categorical variables"),
+                 categorical = "Categorical variables", notes = "Notes of unused statistics"),
   plan_digits = c(rounding = "Rounding", .rows = "Decimals by row"),
   plan_levels = c(.drop_empty = "Hide empty values"),
-  plan_sort = c(keys = "Order", stat = "Statistic counted"),
+  plan_sort = c(keys = "Order", stat = "Statistic counted", keep = "Print the sort columns"),
   plan_total = c(label = "Heading", position = "Place"),
   plan_filter = c(where = "Condition", any = "In any column", parents = "Parent rows",
                   by = "Rows judged together"),
@@ -67,14 +67,18 @@
   plan_paginate_rows = c(max_rows = "Most rows a page", split = "Split rule",
                          page_by = "Page by", heading = "Heading",
                          cont_label = "Continued label", break_before = "Break before rows",
-                         min_group_rows = "Fewest rows of a group on a page"),
+                         min_group_rows = "Fewest rows of a group on a page",
+                         heading_at = "Where the heading prints"),
   plan_paginate_cols = c(every = "Columns a page", fit = "Fit to the page",
                          at = "Break before columns", keep = "Columns on every page",
                          cut_by = "Cut by", order = "Order of the pages",
-                         allow_span_break = "A spanning header may break"),
-  plan_paginate_group = c(col = "Column", keep = "Keep the column", heading = "Heading"),
+                         allow_span_break = "A spanning header may break",
+                         col_header = "Header of the column pages"),
+  plan_paginate_group = c(col = "Column", keep = "Keep the column", heading = "Heading",
+                          heading_at = "Where the heading prints"),
   plan_col_header = c(header = "Header lines", values = "Values of the tokens",
-                      col_header_align = "Alignment"),
+                      header_sep = "Header separator", col_header_align = "Alignment",
+                      lines = "Header lines, a row at a time", span = "Cells over columns"),
   plan_columns = c(widths = "Widths", decimal = "Decimal alignment", row_title = "Row title",
                    auto_width = "Automatic width", sep = "Separator",
                    cell_format = "Cell formats", column_widths_twips = "Column widths (twips)"),
@@ -106,6 +110,10 @@
 # function's order.
 .plan_arg_help <- list(
   normalize_ard = c(
+    hierarchy =
+      "The nested row keys, outermost first: each level's own summary rows become its rows (a SOC's row over its PTs). Blank: step 1's hierarchical analysis's, which is usually right; another may not match the ARD. e.g. AEBODSYS, AEDECOD",
+    overall =
+      "The text of the row a hierarchical analysis makes over all its terms (the subjects with any event), put on the first hierarchy column. Blank: that row is left as it is. e.g. Any TEAE",
     keys =
       "The group variables made into columns of their own (TRT01A, SEX ...). Blank: every group of the ARD, which is what a table usually needs. e.g. TRT01A",
     drop_contexts =
@@ -119,12 +127,30 @@
     stack_nest =
       "TRUE: a crossed layer's outer value goes to subgroup_outer (Age Group by Sex, 65-80, F as three levels). e.g. TRUE"),
   plan_filter = c(
+    any =
+      "TRUE: a row stays when any column's statistics meet the condition (PTs of 5% or more in any arm); FALSE: when every column's do. Blank: TRUE. e.g. FALSE",
+    parents =
+      "\"keep\": a parent row (a SOC) stays exactly when one of its children does; \"drop\": it is judged by its own counts. Blank: keep. e.g. \"drop\"",
     by =
       "The row key whose rows are judged together by the condition (with the keys outside it): a SOC kept or dropped as a whole. Blank: each row by itself. e.g. AEBODSYS"),
   plan_blanks = c(
+    where =
+      "Where blank rows go: \"between_groups\" between the outermost row groups, \"records\" after each record of a listing, or as R (the rows' numbers, 0 before the first). e.g. \"between_groups\"",
+    first =
+      "TRUE: a blank row at the top of every page. Blank: none. e.g. TRUE",
+    last =
+      "TRUE: a blank row at the bottom of every page. Blank: none. e.g. TRUE",
     counted =
       "TRUE: the blank rows count toward a page's rows (plan_paginate_rows()' most rows a page), so a page never overflows. Blank: only the table's rows are counted. e.g. TRUE"),
   plan_paginate_rows = c(
+    max_rows =
+      "The most rows a page holds (blank rows too when they are counted: plan_blanks()). Blank: no limit. e.g. 45",
+    split =
+      "What a page break may cut: \"group_safe\" whole groups to a page (a group that does not fit starts the next), \"group_force\" every most rows a page, a group cut with a continued label, \"rows\" before the rows given in break before rows. e.g. \"group_force\"",
+    page_by =
+      "The columns whose value starts a new page first, each page named after it; the most rows a page applies within each. e.g. \"PARAM\"",
+    heading_at =
+      "Where a page's name (its heading) prints: \"section\" the section header, \"title\" under the titles, \"none\" nowhere. Blank: the report's. e.g. \"title\"",
     break_before =
       "The row numbers a page starts at, for the split rule \"rows\". Used for breaks by hand. e.g. c(20, 40): pages 1-19, 20-39, 40-",
     min_group_rows =
@@ -134,17 +160,49 @@
     heading =
       "With page by one column: each page's name as a template, {value} the page's value and {n} its subjects. e.g. Treatment: {value} (N={n})"),
   plan_paginate_cols = c(
+    at =
+      "The columns a new column page starts before. One of these, cut by or columns a page is given. e.g. \"Drug Y\"",
+    cut_by =
+      "The column blocks as a list, or a separator in the columns' names (a block a key value). e.g. \"____\"",
+    every =
+      "A new column page every this many columns (the columns on every page not counted). e.g. 3",
+    keep =
+      "The columns every column page repeats. Blank: the row heading columns. e.g. \"row_label\"",
+    fit =
+      "TRUE: every page's columns on page 1's scale, filling the width; FALSE: each column keeps its width. e.g. FALSE",
+    allow_span_break =
+      "FALSE: a page is not cut inside a spanning header's cell. Blank: TRUE. e.g. FALSE",
+    order =
+      "The order the pages come out in: \"across\" a row's column pages one after another, \"down\" all the rows' pages of a block first. Blank: across. e.g. \"down\"",
     col_header =
       "What each column page's header becomes, as R. Used when the pages need a header other than the table's own. Blank: the table's header, cut with its columns."),
   plan_row_group = c(
+    mode =
+      "How a group's first row is found: \"value\" each run of equal values, \"indent\" a row whose cell is not indented, \"filled\" a row whose cell is not empty, \"auto\". e.g. \"value\"",
+    collapse =
+      "A repeated value printed once and then blank: TRUE in every row key, or in the columns named. e.g. TRUE",
     group_col =
       "The column whose runs of the same value are the groups, for a table already built (not from an ARD; an ARD table's groups are its outermost row key). e.g. \"V1\""),
   plan_stub = c(
+    name =
+      "The name of the one row label column the row keys are folded into. Blank: row_label. e.g. \"stub\"",
+    indent =
+      "The spaces a level of the folded rows is indented by. Blank: 4. e.g. 2",
+    before =
+      "TRUE: the rows are folded before the pages and groups are made, which plan_cell_style() needs to see the rows as printed; a page or group key folded away is then not found. Blank (FALSE): folded last. e.g. TRUE",
     vars =
       "The row keys folded into the one row label column, outermost first. Blank: worked out from the table's row layers, which is usually right. e.g. c(\"AEBODSYS\", \"AEDECOD\")",
     group_summary =
       "Which rows are a group's own summary, printed on the group's heading row: \"empty\" a blank leaf, \"parent\" a leaf equal to its parent. Blank: both; \"none\" turns it off. e.g. \"empty\""),
   plan_columns = c(
+    widths =
+      "The columns' relative widths, by column (.values every value column). e.g. row_label 5, .values 2",
+    decimal =
+      "The columns whose numbers line up at the decimal point (.values every value column). e.g. .values",
+    row_title =
+      "The row heading columns: left aligned (the others centred) and repeated on every column page. Blank: the first column. e.g. row_label",
+    auto_width =
+      "TRUE: each column sized to its content. e.g. TRUE",
     sep =
       "The text that joins several column keys in the value columns' names; the spanning header is cut at it. Blank: \"____\" (Placebo____F). Changed only when a value has \"____\" in it. e.g. \"__\"",
     cell_format =
@@ -152,6 +210,12 @@
     column_widths_twips =
       "Each column's width in twips (1/1440 inch), as R; it replaces the widths above. e.g. c(3000, 1500, 1500)"),
   plan_style = c(
+    border =
+      "The table's borders: \"tfl\" (rules over and under the header and under the last row) or \"none\"; another style as R (rtf_border()). Blank: tfl. e.g. \"none\"",
+    align_count_pct =
+      "TRUE: the n and the (%) of a count cell line up from row to row. e.g. TRUE",
+    font_size_half_points =
+      "The table's font size in half points (18 = 9 pt). Blank: the document's. e.g. 16",
     font =
       "The table's font. Blank: the document's font. e.g. \"Arial\"",
     row_height_twips =
@@ -205,12 +269,74 @@
     table_width_pct_of_writable =
       "The table's width as a fraction (0-1) of the page's writable width (as table_width_pct, by 0-1). e.g. 0.8"),
   plan_cell_style = c(
+    cols =
+      "The columns styled, by name (.values every value column). Blank: every column. e.g. .values",
+    header =
+      "TRUE: the column header is styled (not the body). e.g. TRUE",
+    bold =
+      "TRUE: the chosen cells in bold; FALSE: not. Blank: as they are. e.g. TRUE",
+    italic =
+      "TRUE: the chosen cells in italics; FALSE: not. Blank: as they are. e.g. TRUE",
+    align =
+      "The chosen cells' alignment: \"left\", \"center\" or \"right\". e.g. \"left\"",
+    color =
+      "The chosen cells' text colour. e.g. \"#CC0000\"",
+    background =
+      "The chosen cells' background colour. e.g. \"#F2F2F2\"",
     border =
       "The chosen cells' borders, as R (rtf_border()). e.g. rtf_border(bottom = \"single\")",
     underline =
       "The chosen cells underlined: TRUE / FALSE, or a condition as R. e.g. TRUE",
     indent_twips =
-      "The left indent of the chosen cells' text in twips (not the header's). e.g. 240"))
+      "The left indent of the chosen cells' text in twips (not the header's). e.g. 240"),
+  plan_cells = c(
+    stats =
+      "How the statistics are laid out: \"cells\" one template a cell (n (%) in one cell), \"rows\" each statistic a row of its own. Blank: cells. e.g. \"rows\"",
+    value =
+      "Which value a template's {x} reads: the number (stat), which the template formats, or the ARD's formatted text (stat_fmt). Blank: stat. e.g. \"stat_fmt\"",
+    na =
+      "The text of a cell no template could fill (a statistic the ARD does not have). Blank: empty. e.g. \"-\"",
+    notes =
+      "FALSE: no note of the ARD's statistics that no template uses. Blank (TRUE): such statistics are listed when the table is made. e.g. FALSE"),
+  plan_total = c(
+    label =
+      "The heading of the Total column. Its cells are the ARD's overall rows (the analyses run over all subjects, not split by the column key). Blank: \"Total\". e.g. \"All Subjects\"",
+    position =
+      "Where the Total column goes among the column key's values: \"last\" or \"first\". Blank: last. e.g. \"first\""),
+  plan_compare = c(
+    by =
+      "The column that splits the comparison records (tests, differences) into columns, one a level (each arm against placebo). Blank: one comparison a variable. e.g. \"COMPARISON\"",
+    position =
+      "Where the comparison columns go: after the column key's values (\"last\") or before them (\"first\"). Blank: last. e.g. \"first\""),
+  plan_stat_groups = c(
+    `.variables` =
+      "The variables whose statistics are split into the groups. Blank: every variable. e.g. c(\"AGE\", \"BMI\")",
+    `.others` =
+      "The group the other variables' statistics go to whole. Blank: none. e.g. \"Summary\""),
+  plan_sort = c(
+    keep =
+      "FALSE: the columns the order is read from (the sort keys) are not printed, with no plan_hide() for them. Blank (TRUE): they are printed as they are. e.g. FALSE"),
+  plan_hide = c(
+    cols =
+      "The columns not printed, by name: a key a page break or an order reads stays in the data. e.g. TRT01AN"),
+  plan_col_header = c(
+    values =
+      "What the header's tokens take: TRUE (list(n = TRUE)) reads each column's N from the ARD; numbers named by column give them by hand. e.g. list(n = TRUE)",
+    header_sep =
+      "The text a plain table's column names are cut at into spanning header rows. e.g. \"____\"",
+    col_header_align =
+      "The column header's alignment: \"left\", \"center\" or \"right\". Blank: center. e.g. \"left\"",
+    span =
+      "How a cell of the header lines over several columns is made: \"each\" a cell a column, \"one\" one cell over them all, or a key's name (a cell a value of that key: a spanner). Blank: each. e.g. \"one\""),
+  plan_paginate_group = c(
+    col =
+      "The column whose value starts a new page, a page a value however long. Blank: the outermost row key. e.g. \"PARAM\"",
+    keep =
+      "FALSE: the page column is not printed (each page's name says its value). Blank (TRUE): it is printed. e.g. FALSE",
+    heading =
+      "Each page's name as a template, {value} the page's value and {n} its subjects. Blank: the value. e.g. Parameter: {value}",
+    heading_at =
+      "Where a page's name (its heading) prints: \"section\" the section header, \"title\" under the titles, \"none\" nowhere. Blank: the report's. e.g. \"title\""))
 
 # a verb's meaning: the schema's label, else the table above; NULL for none
 .verb_meaning <- function(fn) {
@@ -628,22 +754,6 @@ builder_items <- function(x, output_id, meta = NULL) {
              w$text)
 }
 
-# ... plan_levels()' card: a line a source, its variables before it
-# ("SEX, RACE: The code list's order ...")
-.level_order_lines <- function(level_from, lang = "en") {
-  if (!length(level_from)) return(NULL)
-  txt <- lapply(level_from, .level_order_text, lang = lang)
-  txt <- Filter(Negate(is.null), txt)
-  if (!length(txt)) return(NULL)
-  key <- vapply(txt, function(w) w$text, "")
-  lapply(unique(key), function(k) {
-    vars <- names(key)[key == k]
-    warn <- any(vapply(txt[vars], function(w) isTRUE(w$warn), NA))
-    shiny::div(class = paste("small rp-level-from", if (warn) "text-warning" else "text-muted"),
-               shiny::tags$code(paste(vars, collapse = ", ")), ": ", k)
-  })
-}
-
 # A card's own line above its body, by verb (`r`: the card's Edit as R is
 # offered beside it; `level_from`: the variables' orders' sources, for
 # plan_levels()): what the card does not show yet, or where its values go
@@ -670,8 +780,7 @@ builder_items <- function(x, output_id, meta = NULL) {
       class = "rp-card-note",
       help_tip(t(paste("Sets the order of the levels of the column and row keys (the groups,",
                        "an analysis variable's values). The analysis variables' own order",
-                       "(variable) is here too. Levels with no data can be hidden (.drop_empty)."))),
-      .level_order_lines(level_from, lang)),
+                       "(variable) is here too. Levels with no data can be hidden (.drop_empty).")))),
     plan_sort = shiny::div(
       class = "rp-card-note",
       with_tip(builder_label(.arg_meaning("plan_sort", "keys"), "keys", "arg", lang),
@@ -1210,7 +1319,8 @@ builder_items <- function(x, output_id, meta = NULL) {
 # `vars`: a summary table's block of variables, its items in their order
 # (the `variable` entry, dragged: `id("vars")`), first; `cols`: the column
 # variables' levels in order (the columns' order, drawn by the page), next.
-# `empty`: the variables sheet's rows (.empty_levels_of()).
+# `empty`: the variables sheet's rows (.empty_levels_of()).  Each variable
+# is a line until opened (.levels_var()).
 .levels_body <- function(id, st, codelists = NULL, empty = NULL, lang = "en",
                          vars = NULL, cols = NULL) {
   t <- function(x) tr(x, lang)
@@ -1220,46 +1330,110 @@ builder_items <- function(x, output_id, meta = NULL) {
     nm <- v$variable[i]
     lv <- st$levels[[nm]]
     if (!identical(v$kind[i], "categorical") || !length(lv)) return(NULL)
-    shiny::div(
-      class = "rp-b-sec rp-levels-var", `data-variable` = nm,
-      shiny::div(class = "rp-b-sec-label",
-                 builder_label(sprintf(t("Values of %s"), nm), nm, "arg", lang),
-                 if (!is.na(v$label[i])) shiny::span(class = "text-muted ms-1", v$label[i])),
-      .levels_fold(sortable::rank_list(text = NULL, labels = .levels_with_labels(lv, nm, codelists),
-                                       input_id = id(paste0("lv", i)), orientation = "horizontal"),
-                   lv, lang),
-      shiny::tags$label(
+    .levels_var(
+      id(paste0("lv", i)), nm, lv,
+      sortable::rank_list(text = NULL, labels = .levels_with_labels(lv, nm, codelists),
+                          input_id = id(paste0("lv", i)), orientation = "horizontal"),
+      ard = st$level_ard[[nm]], from = st$level_from[[nm]], lang = lang,
+      extra = shiny::tags$label(
         class = "small rp-levels-drop",
         shiny::tags$input(type = "checkbox", id = id(paste0("lvdrop", i)),
                           class = "form-check-input me-1",
                           checked = if (isTRUE(hidden[[nm]])) NA else NULL),
-        builder_label(.arg_meaning("plan_levels", ".drop_empty"), ".drop_empty", "arg", lang)))
+        with_tip(builder_label(.arg_meaning("plan_levels", ".drop_empty"), ".drop_empty", "arg", lang),
+                 t("Ticked: the variable's values no subject has (a code list's value, 0 in every column) are not printed. Unticked: printed with their zeros."))))
   })
   rows <- Filter(Negate(is.null), rows)
   # (the code's order: variable, the column keys, then the categorical
   # variables)
   shiny::tagList(
     if (length(vars)) shiny::div(
-      class = "rp-b-sec rp-levels-var", `data-variable` = "variable",
+      class = "rp-b-sec rp-levels-var rp-levels-block", `data-variable` = "variable",
       shiny::div(class = "rp-b-sec-label",
-                 builder_label("Analysis variables' order (the levels of variable)", "variable", "arg", lang)),
+                 with_tip(builder_label("Analysis variables' order (the levels of variable)", "variable", "arg", lang),
+                          t("The order of the analysis variables' blocks, dragged. A variable nested under another's level goes with it."))),
+      .levels_state(.levels_block_order(st), intersect(st$variable_ard, .levels_block_order(st)),
+                    nm = "variable", lang = lang),
       sortable::rank_list(text = NULL, labels = vars, input_id = id("vars"))),
     cols,
     if (length(rows)) rows else if (!length(vars)) shiny::div(
       class = "small text-muted", t("No categorical variable to order.")))
 }
 
-# A variable's levels to order: a long list (RACE's six) clipped to its
-# first line, "all" opens it.  (Clipped, not hidden: a sortable list reads
-# its items' text, which a hidden list has not -- it would read blanks.)
-.levels_fold <- function(list_ui, lv, lang = "en", at = 4L) {
-  if (length(lv) <= at) return(list_ui)
-  shiny::tagList(
-    shiny::div(class = "rp-levels-clip", list_ui),
-    shiny::tags$a(href = "#", class = "small rp-levels-more",
-                  onclick = "$(this).prev('.rp-levels-clip').toggleClass('rp-open'); return false;",
-                  sprintf(tr("%d levels: %s", lang), length(lv),
-                          paste(c(utils::head(lv, 3L), "..."), collapse = ", "))))
+# the analysis variables in their blocks' order, those nested under
+# another's level left out (plan_levels()' `variable` names none of them)
+.levels_block_order <- function(st) {
+  v <- st$variables
+  if (!is.data.frame(v) || !nrow(v)) return(character())
+  un <- v$under %||% rep(NA_character_, nrow(v))
+  v$variable[is.na(un) | !nzchar(un)]
+}
+
+# One variable's values on plan_levels()' card (#428): closed, one line --
+# "RACE: White, Black or African American, ... (6)  > Reorder" -- and
+# open, every value a chip, dragged.  The chips stay drawn while closed,
+# cut to no height: never display: none nor a closed <details> -- the
+# sortable list reads its items' text, which a list not drawn has not (it
+# wrote empty levels).  Under the line, whether the code writes the order
+# (.levels_state()).  `input_id`: the list's; `extra`: drawn under the
+# chips (the empty values' tick).
+.levels_var <- function(input_id, nm, lv, list_ui, ard = NULL, from = NULL,
+                        extra = NULL, lang = "en") {
+  t <- function(x) tr(x, lang)
+  shiny::div(
+    class = "rp-b-sec rp-levels-var", `data-variable` = nm, `data-input` = input_id,
+    shiny::tags$a(
+      href = "#", class = "rp-levels-toggle", role = "button",
+      shiny::tags$code(nm), ": ",
+      shiny::span(class = "rp-levels-sum", .levels_summary(lv)), " ",
+      shiny::span(class = "rp-levels-n", sprintf("(%d)", length(lv))), " ",
+      shiny::span(class = "rp-levels-go rp-closed-only", paste("\u25b8", t("Reorder"))),
+      shiny::span(class = "rp-levels-go rp-open-only", paste("\u25be", t("Close")))),
+    .levels_state(lv, ard, from, nm = nm, lang = lang),
+    shiny::div(class = "rp-levels-body", list_ui, extra))
+}
+
+# the closed line's values: the first ones up to about 40 characters, then
+# "..." (the page writes it again as they are dragged: .builder_content_js)
+.levels_summary <- function(lv, width = 40L) {
+  lv <- as.character(lv)
+  if (!length(lv)) return("")
+  n <- cumsum(nchar(lv) + 2L)
+  k <- max(1L, sum(n <= width))
+  paste(c(lv[seq_len(k)], if (k < length(lv)) "\u2026"), collapse = ", ")
+}
+
+# Whether the code writes a variable's order: the ARD's own (`ard`: the
+# order the ARD keeps the variable in, a factor -- the code list applied
+# when it was made) is not written (tflspec #355); another is, with the
+# way back to the ARD's ("Back to the ARD's order": the page sends
+# b_lv_reset).  With no order of the ARD's, where it comes from
+# (.level_order_text(): the code list's, or as first seen -- check it).
+.levels_state <- function(lv, ard = NULL, from = NULL, nm = NULL, lang = "en") {
+  t <- function(x) tr(x, lang)
+  line <- function(cls, ...) shiny::div(class = paste("small rp-levels-state", cls), ...)
+  if (length(ard)) {
+    # (both lines drawn, one shown: the page shows the other as the values
+    # are dragged, by the ARD's order it is given)
+    same <- identical(as.character(lv), as.character(ard))
+    hide <- "display: none;"
+    return(shiny::div(
+      class = "rp-levels-states",
+      `data-ard` = jsonlite::toJSON(as.character(ard)),
+      shiny::div(class = "small rp-levels-state text-muted rp-st-same", style = if (!same) hide,
+                 t("The ARD's order (not written in the code)")),
+      shiny::div(class = "small rp-levels-state text-muted rp-st-own", style = if (same) hide,
+                 t("This table's order (written in the code)"), " ",
+                 shiny::tags$a(href = "#", class = "rp-levels-reset", `data-variable` = nm,
+                               t("Back to the ARD's order")))))
+  }
+  if (is.null(from)) return(NULL)
+  src <- from$source %||% "seen"
+  if (identical(src, "plan")) return(NULL)
+  w <- .level_order_text(from, lang)
+  if (identical(src, "seen")) return(line("text-warning", w$text))
+  line(if (isTRUE(w$warn)) "text-warning" else "text-muted",
+       paste0(t("Written in the code"), if (!is.null(w)) paste0(": ", w$text)))
 }
 
 # plan_filter()'s `where` as one condition's R (several joined by &, as
@@ -1428,6 +1602,11 @@ builder_code_map <- function(lines, items) {
 # layers below).  plan_digits()' rounding is the study's, one for every
 # report: it stays the layers', and a new one is the study's rounding.
 .builder_item_write <- function(x, output_id, fn, args, k = 1L) {
+  if (identical(fn, "plan_nest")) {
+    its <- builder_items(x, output_id)
+    x <- .spec_set_item(x, output_id, fn, args, k)
+    return(.nest_order_kept(x, output_id, its))
+  }
   rd <- if (identical(fn, "plan_digits")) args$rounding
   x <- .spec_set_item(x, output_id, fn, args, k,
                       below_args = if (identical(fn, "plan_digits")) "rounding" else character())
@@ -1441,7 +1620,31 @@ builder_code_map <- function(lines, items) {
 # ... and the report's own `k`-th item of `fn` taken away: its layers' apply
 # again (none: the verb is gone from the plan)
 .builder_item_revert <- function(x, output_id, fn, k = 1L) {
-  .spec_revert_item(x, output_id, fn, k)
+  if (!identical(fn, "plan_nest")) return(.spec_revert_item(x, output_id, fn, k))
+  its <- builder_items(x, output_id)
+  .nest_order_kept(.spec_revert_item(x, output_id, fn, k), output_id, its)
+}
+
+# A variable no longer nested (its plan_nest() entry gone: changed, the
+# card off or removed, #428) keeps its place among the variables: it was
+# shown after the level's variable (and that variable's other nested ones),
+# and plan_levels()' order of the variables, which leaves a nested one out,
+# takes it there -- not after the others, where a variable the order does
+# not name goes.  `its`: the items before the change.
+.nest_order_kept <- function(x, output_id, its) {
+  now <- builder_items(x, output_id)
+  lv <- .builder_args(now, "plan_levels")
+  ord <- as.character(unlist(lv$variable))
+  if (!length(ord)) return(x)
+  was <- names(.builder_args(its, "plan_nest") %||% list())
+  freed <- setdiff(setdiff(was, names(.builder_args(now, "plan_nest") %||% list())), ord)
+  if (!length(freed)) return(x)
+  vr <- .builder_vars_rows(its)
+  o <- suppressWarnings(as.numeric(vr$order))
+  seq_was <- vr$variable[order(is.na(o), o)]
+  new <- seq_was[seq_was %in% c(ord, freed)]
+  lv$variable <- c(new, setdiff(ord, new))
+  .spec_set_item(x, output_id, "plan_levels", lv, 1L)
 }
 
 # ---- style -----------------------------------------------------------------------------
@@ -1456,8 +1659,8 @@ builder_code_map <- function(lines, items) {
 @media (min-width: 992px) {
   /* SPEC | Code | Result beside the cards stays in view as they scroll: the
      column is the sticky box (the tabs inside it are not), its own scroll */
-  .rp-b-right { position: sticky; top: .5rem;
-    max-height: calc(100vh - 1rem); overflow-y: auto; }
+  .rp-b-right { position: sticky; top: calc(var(--rp-top, 0px) + .5rem);
+    max-height: calc(100vh - var(--rp-top, 0px) - 1rem); overflow-y: auto; }
   .rp-b-right .rp-tabs { position: static; max-height: none; overflow-y: visible; }
 }
 .rp-back-code { padding: 0 .3rem; font-size: 12px; text-decoration: none; }
@@ -1483,8 +1686,18 @@ builder_code_map <- function(lines, items) {
 .rp-builder-cards .rp-levels-var .rank-list-item { font-size: 12px; padding: .05rem .4rem;
   line-height: 1.4; min-height: 0; }
 .rp-builder-cards .rp-levels-var .rank-list { gap: .2rem; padding: .2rem; }
-.rp-levels-clip { max-height: 2.1rem; overflow: hidden; }
-.rp-levels-clip.rp-open { max-height: none; }
+/* plan_levels()' variables (#428): a line each until opened; the chips
+   cut to no height, not hidden (the list reads their text) */
+.rp-levels-toggle { color: inherit; text-decoration: none; font-size: 12.5px; display: inline; }
+.rp-levels-toggle code { color: #111827; background: none; padding: 0; font-size: 12.5px;
+  font-weight: 600; }
+.rp-levels-go { color: var(--bs-link-color, #0d6efd); white-space: nowrap; }
+.rp-levels-n { color: #6b7280; }
+.rp-levels-body { max-height: 0; overflow: hidden; }
+.rp-levels-var.rp-open > .rp-levels-body { max-height: none; overflow: visible; }
+.rp-levels-var:not(.rp-open) .rp-open-only, .rp-levels-var.rp-open .rp-closed-only { display: none; }
+.rp-levels-state { font-size: 12px; margin-left: .6rem; }
+.rp-levels-reset { white-space: nowrap; }
 "
 
 # the cards' buttons of the table builder, one input each: Revert, Edit as
@@ -1502,6 +1715,54 @@ $(document).on('click', '.rp-builder-cards .rp-tool-remove', function() {
   var p = $(this).closest('.rp-card').data('path');
   Shiny.setInputValue('b_card_remove', {path: String(p), t: Date.now()}, {priority: 'event'});
 });
+// plan_levels()' variables: opened and closed (kept as the card is drawn
+// again), their line written again as the values are dragged, and the way
+// back to the ARD's order
+(function() {
+  var open = {};
+  function summary(lv) {
+    var out = [], n = 0;
+    for (var i = 0; i < lv.length; i++) {
+      n += String(lv[i]).length + 2;
+      if (i > 0 && n > 40) { out.push('\\u2026'); break; }
+      out.push(lv[i]);
+    }
+    return out.join(', ');
+  }
+  $(document).on('click', '.rp-levels-toggle', function(e) {
+    e.preventDefault();
+    var v = $(this).closest('.rp-levels-var');
+    v.toggleClass('rp-open');
+    open[v.data('input')] = v.hasClass('rp-open');
+  });
+  $(document).on('shiny:value', function() {
+    setTimeout(function() {
+      $('.rp-levels-var[data-input]').each(function() {
+        if (open[$(this).data('input')]) $(this).addClass('rp-open');
+      });
+    }, 0);
+  });
+  $(document).on('shiny:inputchanged', function(e) {
+    if (!e.name || !Array.isArray(e.value)) return;
+    var v = $('.rp-levels-var[data-input=\"' + e.name + '\"]');
+    if (!v.length) return;
+    v.find('.rp-levels-sum').first().text(summary(e.value));
+    v.find('.rp-levels-n').first().text('(' + e.value.length + ')');
+    var st = v.find('.rp-levels-states').first();
+    if (st.length) {
+      var ard = JSON.parse(st.attr('data-ard') || '[]');
+      var same = ard.length === e.value.length &&
+        ard.every(function(x, i) { return x === String(e.value[i]); });
+      st.find('.rp-st-same').toggle(same);
+      st.find('.rp-st-own').toggle(!same);
+    }
+  });
+  $(document).on('click', '.rp-levels-reset', function(e) {
+    e.preventDefault();
+    Shiny.setInputValue('b_lv_reset', {variable: String($(this).data('variable')), t: Date.now()},
+                        {priority: 'event'});
+  });
+})();
 "
 
 # The fixed items of a selectize of layers (a hierarchy's levels, the block

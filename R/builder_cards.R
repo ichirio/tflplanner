@@ -881,6 +881,9 @@ add_item_input <- function(id, kinds = NULL, schema = NULL, lang = "en", placeho
 .rp-group-label { font-size: 12.5px; font-weight: 600; color: #4b5563; margin-bottom: .1rem; }
 .rp-group-row { display: flex; gap: .6rem; flex-wrap: wrap; }
 .rp-group-row > .rp-group-cell { flex: 1 1 8em; min-width: 0; }
+/* a field of several values (its chips wrap: a box taller than a text's)
+   on a row of its own, the others side by side under it */
+.rp-group-row > .rp-group-cell:has(> .rp-field-list) { flex-basis: 100%; }
 .rp-more { margin-top: .3rem; }
 .rp-more-toggle { border: 0; background: none; padding: 0; font-size: 12.5px; color: #6b7280; }
 .rp-more-arrow { display: inline-block; transition: transform .15s; }
