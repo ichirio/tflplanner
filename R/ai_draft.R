@@ -291,3 +291,52 @@
   })
   list(study = register_study(dir, home = home), prepared = p)
 }
+
+# ---- the computer's own dialogs (Browse...) ----------------------------------
+
+# Whether a dialog to choose a folder or a file can be opened: on Windows
+# (utils::choose.dir() / choose.files()), else with tcltk.  A server sets
+# options(tflplanner.file_dialog = FALSE): the dialog would open on the
+# server, not before the user.
+.ai_dialog_ok <- function() {
+  if (isFALSE(getOption("tflplanner.file_dialog", TRUE))) return(FALSE)
+  .Platform$OS.type == "windows" ||
+    (isTRUE(capabilities("tcltk")) && requireNamespace("tcltk", quietly = TRUE))
+}
+
+# A folder / a file chosen in the dialog (its path, "/" separated), NA when
+# cancelled.  The dialog holds the app's R session while it is open (a
+# local app's one user waits on it anyway).  The tests put their own chooser
+# in options(tflplanner.choose_dir = , tflplanner.choose_file = ).
+.ai_choose_dir <- function(default = "") {
+  f <- getOption("tflplanner.choose_dir")
+  out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
+    # (Windows only: looked up, not named, for the check on other systems)
+    getExportedValue("utils", "choose.dir")(default = if (dir.exists(default)) default else "",
+                                            caption = "ADaM folder")
+  } else {
+    tcltk::tk_choose.dir(default = default, caption = "ADaM folder")
+  }
+  .ai_chosen(out)
+}
+
+.ai_choose_file <- function(default = "") {
+  f <- getOption("tflplanner.choose_file")
+  out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
+    filters <- rbind(c("Excel workbook (*.xlsx, *.xlsm)", "*.xlsx;*.xlsm"), c("All files (*.*)", "*.*"))
+    getExportedValue("utils", "choose.files")(default = if (file.exists(default)) default else "",
+                                              caption = "TOC / SHELL workbook",
+                                              multi = FALSE, filters = filters)
+  } else {
+    tcltk::tk_choose.files(default = default, caption = "TOC / SHELL workbook", multi = FALSE,
+                           filters = matrix(c("Excel workbook", ".xlsx", "Excel workbook", ".xlsm"),
+                                            ncol = 2, byrow = TRUE))
+  }
+  .ai_chosen(out)
+}
+
+.ai_chosen <- function(x) {
+  x <- as.character(x)
+  if (length(x) != 1L || is.na(x) || !nzchar(x)) return(NA_character_)
+  normalizePath(x, "/", mustWork = FALSE)
+}

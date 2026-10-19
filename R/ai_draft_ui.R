@@ -17,6 +17,20 @@
 # the tab is shown (options(tflplanner.ai_drafts = FALSE) hides it)
 .ai_drafts_on <- function() !isFALSE(getOption("tflplanner.ai_drafts", TRUE))
 
+# A path typed, with Browse... (the computer's dialog) beside it when one
+# can be opened: an input group, as tall as shiny's upload field
+.ai_path_input <- function(id, label, placeholder, browse_id, browse_label) {
+  shiny::div(
+    class = "form-group shiny-input-container",
+    shiny::tags$label(class = "control-label", id = paste0(id, "-label"), `for` = id, label),
+    shiny::div(
+      class = "input-group",
+      shiny::tags$input(id = id, type = "text", class = "form-control", value = "",
+                        placeholder = placeholder),
+      if (.ai_dialog_ok()) shiny::actionButton(browse_id, browse_label,
+                                               class = "btn-outline-secondary")))
+}
+
 #' @noRd
 ai_ui <- function(id, lang = "en") {
   ns <- shiny::NS(id)
@@ -53,23 +67,26 @@ ai_ui <- function(id, lang = "en") {
               class = "d-flex flex-wrap gap-2 align-items-start",
               shiny::div(style = "flex: 1 1 14rem;",
                          shiny::fileInput(ns("toc_file"), paste0(t("TOC / SHELL workbook"), " (toc)"),
-                                          accept = c(".xlsx", ".xlsm"), width = "100%")),
+                                          accept = c(".xlsx", ".xlsm"), width = "100%",
+                                          buttonLabel = t("Browse..."),
+                                          placeholder = t("No file selected"))),
               shiny::div(style = "flex: 1 1 14rem;",
-                         shiny::textInput(ns("toc_path"), t("or its path"), width = "100%",
-                                          placeholder = "C:/.../TOC_SHELL.xlsx"))),
+                         .ai_path_input(ns("toc_path"), t("or its path"), "C:/.../TOC_SHELL.xlsx",
+                                        ns("toc_browse"), t("Browse...")))),
             shiny::uiOutput(ns("toc_check")),
-            shiny::textInput(ns("adam_dir"), paste0(t("ADaM folder"), " (adam)"), width = "100%",
-                             placeholder = "C:/.../adam"),
+            .ai_path_input(ns("adam_dir"), paste0(t("ADaM folder"), " (adam)"), "C:/.../adam",
+                           ns("adam_browse"), t("Browse...")),
             shiny::uiOutput(ns("adam_files")),
             shiny::div(
-              class = "d-flex flex-wrap gap-2",
+              class = "d-flex flex-wrap gap-2 align-items-end",
               shiny::selectInput(ns("toc_sheet"), paste0(t("TOC sheet"), " (toc_sheet)"),
                                  choices = stats::setNames("", t("guess")), width = "12rem",
                                  selectize = FALSE),
               shiny::selectizeInput(ns("sheets"), paste0(t("Shell sheets to add"), " (sheets)"),
                                     choices = character(), multiple = TRUE, width = "16rem")),
+            # (fields side by side: their boxes level, whatever their labels' lines)
             shiny::div(
-              class = "d-flex flex-wrap gap-2",
+              class = "d-flex flex-wrap gap-2 align-items-end",
               shiny::numericInput(ns("size"), paste0(t("Reports a request holds"), " (size)"),
                                   value = 3, min = 1, max = 20, width = "12rem"),
               shiny::selectInput(ns("language"), paste0(t("Language of the assumptions"), " (language)"),
@@ -86,7 +103,7 @@ ai_ui <- function(id, lang = "en") {
               class = "small mb-2",
               shiny::tags$summary(t("More")),
               shiny::div(
-                class = "d-flex flex-wrap gap-2 mt-1",
+                class = "d-flex flex-wrap gap-2 mt-1 align-items-end",
                 shiny::selectInput(ns("workbook"), paste0(t("The workbook in the chat"), " (workbook)"),
                                    choices = c("text", "attach", "both"), width = "12rem",
                                    selectize = FALSE),
@@ -573,6 +590,16 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                  sprintf(t("%d files: %s"), length(f),
                          paste(c(utils::head(f, 8L), if (length(f) > 8L) "..."), collapse = ", ")))
     })
+    # Browse...: the computer's own dialog fills the path (as typing it
+    # does); cancelled, nothing changes
+    shiny::observeEvent(input$adam_browse, {
+      d <- guarded(.ai_choose_dir(input$adam_dir %||% ""))
+      if (length(d) == 1L && !is.na(d)) shiny::updateTextInput(session, "adam_dir", value = d)
+    })
+    shiny::observeEvent(input$toc_browse, {
+      f <- guarded(.ai_choose_file(input$toc_path %||% ""))
+      if (length(f) == 1L && !is.na(f)) shiny::updateTextInput(session, "toc_path", value = f)
+    })
     # the workbook: the one given last, uploaded or its path typed
     toc_from <- shiny::reactiveVal("upload")
     shiny::observeEvent(input$toc_file, toc_from("upload"))
@@ -807,6 +834,13 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
 .ai-view { font-family: var(--bs-font-monospace); font-size: .8rem; white-space: pre; }
 .ai-status b { margin-right: .5rem; }
 .ai-form .form-group { margin-bottom: .5rem; }
+/* a path field as tall as the upload beside it (both an input group: the
+   box and its button) */
+.ai-form .input-group > .form-control, .ai-form .input-group .btn {
+  height: calc(1.5em + .75rem + 2px); padding-top: .375rem; padding-bottom: .375rem; }
+.ai-form .input-group .btn { display: inline-flex; align-items: center; }
+.ai-form .shiny-input-container:not(.shiny-input-container-inline) { width: 100%; }
+.ai-form .d-flex > .shiny-input-container { width: auto; }
 "
 
 # The tab's buttons in the list (Copy / View, by data-*): the server is

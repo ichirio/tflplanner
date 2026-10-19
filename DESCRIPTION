@@ -60,6 +60,7 @@ Suggests:
     logrx,
     patchwork,
     survival,
+    tcltk,
     testthat (>= 3.0.0),
     withr,
     xml2

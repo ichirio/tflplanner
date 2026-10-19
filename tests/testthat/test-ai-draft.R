@@ -343,3 +343,26 @@ test_that("step 1 in the app: the path given after an upload is the one read", {
     expect_match(output$`ai-toc_check`$html, "onco_toc_shell.xlsx", fixed = TRUE)
   })
 })
+
+test_that("Browse... fills the path from the computer's dialog; cancelled, nothing changes", {
+  local_home()
+  ai_study()
+  old <- options(tflplanner.ai_drafts = TRUE,
+                 tflplanner.choose_dir = function(default) ai_adam,
+                 tflplanner.choose_file = function(default) character())
+  on.exit(options(old))
+  expect_identical(.ai_choose_dir(), ai_adam)
+  expect_true(is.na(.ai_choose_file()))
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(`ai-adam_dir` = "", `ai-toc_path` = "")
+    session$setInputs(`ai-adam_browse` = 1)
+    # (the field is set on the page; what it sends back is the typed value)
+    session$setInputs(`ai-toc_browse` = 1)
+    expect_identical(input$`ai-toc_path`, "")
+  })
+  # no dialog on a server
+  options(tflplanner.file_dialog = FALSE)
+  expect_false(.ai_dialog_ok())
+  expect_false(grepl("ai-adam_browse", as.character(app_ui("en")), fixed = TRUE))
+  options(tflplanner.file_dialog = NULL)
+})
