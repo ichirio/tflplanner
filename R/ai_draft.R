@@ -184,9 +184,9 @@
   path <- study$path
   if (!is.null(ds) && nrow(ds) && !is.null(ds$path)) {
     p <- ds$path[!is.na(ds$path) & nzchar(ds$path)]
-    for (f in p) {
-      abs <- if (grepl("^(/|[A-Za-z]:|\\\\\\\\)", f)) f else file.path(path, f)
-      if (file.exists(abs)) return(normalizePath(dirname(abs), "/"))
+    # (a path of its own, or from the study's folder: .data_file())
+    for (f in .data_file(path, p)) {
+      if (file.exists(f)) return(normalizePath(dirname(f), "/"))
     }
   }
   d <- file.path(path, study_layout()[["adam"]])

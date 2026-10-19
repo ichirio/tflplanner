@@ -394,8 +394,8 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
   p <- study$planner
   d <- p$ard$datasets
   if (is.null(d) || !nrow(d)) return(NULL)
-  gone <- d$dataset[!is.na(d$path) &
-                      !file.exists(file.path(study$path, d$path))]
+  gone <- d$dataset[!is.na(d$path) & nzchar(d$path) &
+                      !file.exists(.data_file(study$path, d$path))]
   if (!length(gone)) return(NULL)
   out <- lapply(gone, function(g) .rv_row("D01", NA_character_, "datasets", g, "path",
                                           args = g))
@@ -564,7 +564,7 @@ review_facts <- function(study, refresh = FALSE, read = TRUE,
   ds <- ds[!is.na(ds$dataset) & !is.na(ds$path), , drop = FALSE]
   path_of <- function(d) {
     k <- match(toupper(d), toupper(ds$dataset))
-    if (is.na(k)) NA_character_ else file.path(study$path, ds$path[k])
+    if (is.na(k)) NA_character_ else .data_file(study$path, ds$path[k])
   }
   sig <- function(f) {
     if (is.na(f) || !file.exists(f)) return(NULL)

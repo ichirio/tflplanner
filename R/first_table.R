@@ -888,12 +888,15 @@ first_listing <- function(x, output_id, path, data, columns, group = NULL,
 
 # The folder (the pill of the Data tab) each catalog row is shown under: the
 # folder its file is in; a row with no file, by its level (ADaM, SDTM); a
-# file outside the three folders, or a row of neither level: "other"
+# file outside the three folders, or a row of neither level: "other".  A
+# file not in the study folder (a path written whole, or ../) goes by its
+# level too: ADaM kept outside is under ADaM.
 .dataset_pill <- function(path, level) {
   lay <- study_layout()
   vapply(seq_along(path), function(i) {
     p <- path[i]
-    if (!is.na(p) && nzchar(p)) {
+    whole <- !is.na(p) && (.is_abs_path(p) || grepl("^\\.\\.([/\\\\]|$)", p))
+    if (!is.na(p) && nzchar(p) && !whole) {
       for (k in c("adam", "sdtm", "other")) {
         if (startsWith(p, paste0(lay[[k]], "/"))) return(k)
       }

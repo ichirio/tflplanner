@@ -40,6 +40,21 @@
   (`tfl_ai_answer_questions()`, only the answers typed) and copy the line
   that tells the agent.  The path fields have Browse... (the computer's
   dialog; `options(tflplanner.file_dialog = FALSE)` on a server).
+- **Data kept outside the study folder** (#430, 0.0.2.9246): a dataset's
+  `path` in the data catalog (`spec/data.yml`) may be a full path
+  (`C:/secure/adam/adsl.rds`), so that the ADaM stays out of the study
+  folder (and out of reach of an AI agent working in it).  The programs
+  already read the path as written, and the official run keeps such a
+  file under `data/external/`; now the app and the review read it too:
+  the review (D01, the facts of the data), the ARS check, the variable
+  choices and counts of the ARD tab, the listing and figure columns, the
+  Data tab's size and preview, Update preview's check of the data files.  A file outside that is not there is still
+  said to be missing.  The Data tab shows such a file under its level's
+  pill (ADaM under ADaM), marked "outside the study folder" in a "where"
+  column, its folder named under the grid; the first table and first
+  listing offer it, so marked.  `register_study()` writes the `.Rproj` a folder has not, as
+  `create_study()` does.  SAMPLE-01's programs are unchanged.
+
 - **Update preview, and the preview follows normalize_ard()** (#428,
   0.0.2.9245).  One button, "Update preview", in the table builder (above
   the ARD's summary), in step 1 and in the data code: it makes the
