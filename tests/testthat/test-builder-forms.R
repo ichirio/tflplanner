@@ -409,6 +409,28 @@ test_that("plan_nest(): a variable under a level of another, on its own card", {
                      fixed = TRUE))
 })
 
+test_that("a nest taken away keeps the variable where it was shown (#428)", {
+  p <- sample_planner()
+  id <- "T-14-1-5"
+  order_of <- function(q) as.character(unlist(.builder_args(builder_items(q, id), "plan_levels")$variable))
+  # ASIANSUB is shown after RACE, its parent; the order of the variables
+  # leaves the nested one out
+  st <- builder_read(p, id)
+  expect_identical(st$variables$variable[match(c("RACE", "ASIANSUB", "ETHNIC"), st$variables$variable)],
+                   c("RACE", "ASIANSUB", "ETHNIC"))
+  expect_false("ASIANSUB" %in% order_of(p))
+  want <- c("AGE", "AGEGR1", "SEX", "RACE", "ASIANSUB", "ETHNIC")
+  # the card removed (or off), or its entry emptied: after RACE, not last
+  q <- .builder_item_revert(p, id, "plan_nest")
+  expect_identical(order_of(q), want)
+  expect_identical(builder_read(q, id)$variables$variable[1:6], want)
+  q2 <- .builder_item_write(p, id, "plan_nest", list())
+  expect_identical(order_of(q2), want)
+  # (nothing freed: the order as it was)
+  q3 <- .builder_item_write(p, id, "plan_nest", list(ASIANSUB = list(RACE = "Asian")))
+  expect_identical(order_of(q3), order_of(p))
+})
+
 test_that("plan_paginate_group(), plan_paginate_cols(), plan_row_group(): a form line each", {
   expect_identical(.plan_form_main$plan_paginate_group, c("col", "keep", "heading"))
   expect_identical(.plan_form_main$plan_paginate_cols,
