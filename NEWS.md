@@ -1,5 +1,24 @@
 # tflplanner (development version)
 
+- **AI drafts, steps 2 and 3** (#431, 0.0.2.9247; tflspec >= 0.0.24.9175),
+  behind `options(tflplanner.ai_drafts = TRUE)` until the tab's place is
+  decided.  A tab for tflspec's AI table requests and their answers, after
+  the Report list.  Step 2 (`ai/requests`): one row a request (its family,
+  reports, characters, status, the answer's time); Copy writes the request
+  to the clipboard (when the browser does not let the page, the View dialog
+  opens to select it all), View shows it whole; the instructions written
+  once (`00-instructions.md`) have their own row.  Step 3: a request's
+  answer pasted and saved (`tfl_ai_save_answer()`, UTF-8), every answer
+  checked (`tfl_ai_collect_answers()`): each report's status and first
+  problem, the request's next step, its fix request to copy, all the
+  problems, the assumptions by report, the answers named after no request.
+  A check writes the reports' files: the study is read again from them at
+  once, so the reports are on the Report list and no save sees them as
+  made outside the app.  No check while the study has unsaved changes
+  ("Save first").  Step 1 (`tfl_ai_prepare()` on the screen) is to come;
+  for now the requests are written in R.  The functions under the screen
+  know no Shiny (`R/ai_draft.R`).  Its texts in Japanese.
+
 - **A code list's `under`** (tflspec #359, #423, 0.0.2.9244): the
   codelists sheet's new last column -- a nested count's (SOC / PT) inner
   value names the value, as the data have it, of the variable one level

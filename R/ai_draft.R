@@ -135,12 +135,13 @@
 }
 
 # a request's status as the list says it: "error 1", "ok 3", "no answer"
-.ai_status_label <- function(requests, reports) {
+# (`t` the app's words)
+.ai_status_label <- function(requests, reports, t = identity) {
   st <- .ai_request_status(requests, reports)
   vapply(seq_along(requests), function(i) {
     if (is.na(st[i])) return(NA_character_)
-    if (identical(st[i], "no answer")) return(st[i])
-    paste(st[i], sum(reports$request == requests[i] & reports$status == st[i]))
+    if (identical(st[i], "no answer")) return(t(st[i]))
+    paste(t(st[i]), sum(reports$request == requests[i] & reports$status == st[i]))
   }, "")
 }
 

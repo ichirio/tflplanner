@@ -3453,3 +3453,58 @@ Rows judged together,まとめて判定する行のキー
 Discard changes,変更を破棄
 "Every change not saved goes -- in every report of the study and in the study's own files (defaults.yml ...), as a save would have written them -- and the study is as it was last saved. The draft goes too.",保存していない変更をすべて捨てます（保存と同じ範囲: この試験のすべての帳票と、defaults.yml など試験全体のファイル）。試験は最後に保存したときの状態に戻ります。下書きも消えます。
 "The changes were discarded: the study is as it was last saved.",変更を破棄しました。試験は最後に保存した状態です。
+AI drafts,AI 下書き
+Prepare,準備
+"For now the requests are written in R: tflspec::tfl_ai_prepare(<study folder>, <TOC / SHELL workbook>); then Read again on step 2.","依頼は当面 R で書きます: tflspec::tfl_ai_prepare(<試験フォルダ>, <TOC / SHELL ブック>)。その後、手順 2 で「読み直す」。"
+Requests,依頼
+Paste each request into a NEW chat as one message; the chat's whole answer goes to step 3.,依頼は 1 件ずつ新しいチャットに 1 つのメッセージとして貼り付けます。チャットの回答は全体を手順 3 へ。
+Read again,読み直す
+Answers,回答
+Check all answers,すべての回答を検査
+Open ai/answers,ai/answers を開く
+Paste the chat's whole answer (from the first ``` to the last),チャットの回答の全体を貼り付け（最初の ``` から最後まで）
+Save the answer,回答を保存
+Save and check,保存して検査
+Assumptions,仮定
+No requests yet: step 1.,依頼はまだありません: 手順 1 へ。
+"%d reports, %d requests",帳票 %d、依頼 %d
+answers %d / %d,回答 %d / %d
+Copy text,コピー
+View,表示
+(paste first in each new chat),（新しいチャットごとに最初に貼る）
+%s characters,%s 文字
+request,依頼
+family,族
+reports,帳票数
+outputs,帳票
+characters,文字数
+status,状態
+answer,回答
+%s  %s characters,%s  %s 文字
+The page could not copy it: select it all and press Ctrl+C.,画面からコピーできませんでした: 全選択して Ctrl+C を押してください。
+Select all,全選択
+no answer,回答なし
+saved,保存済み
+View the request,依頼を表示
+saved: %s  %s (UTF-8),保存: %s  %s（UTF-8）
+Paste first.,先に貼り付けてください。
+Saved: %s,保存しました: %s
+Save first: the study has unsaved changes.,先に保存してください: 試験に未保存の変更があります。
+%d reports taken in: %s (Report list),%d 帳票を取り込みました: %s（帳票一覧）
+No report could be taken in: see each request's next step.,取り込めた帳票はありません: 各依頼の「次」を見てください。
+Save first,先に保存
+Check first.,先に検査してください。
+Copy the fix request,修正依頼をコピー
+Result of the last check,最後の検査の結果
+first problem,最初の問題
+next:,次:
+All problems,すべての問題
+%s: the problems,%s: 問題
+(all reports),（すべての帳票）
+(study),（試験）
+No assumptions.,仮定はありません。
+Not read (no request of that name): %s -- rename it to a request's name.,読まなかった回答（その名前の依頼がない）: %s -- 依頼の名前に変えてください。
+where,場所
+item,項目
+assumption,仮定
+question,確認したいこと

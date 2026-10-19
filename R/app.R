@@ -1009,6 +1009,10 @@ app_ui <- function(lang = "en") {
         # its own height (a fixed one let a long list cover the buttons)
         DT::DTOutput("outputs", height = "auto", fill = FALSE))),
 
+    # tflspec's AI table requests and their answers (#431): off until its
+    # place is decided
+    if (.ai_drafts_on()) bslib::nav_panel(t("AI drafts"), value = "ai", ai_ui("ai", lang)),
+
     # one report at a time: chosen on the left, made in its steps
     bslib::nav_panel(
       t("Make a report"), value = "make",
@@ -1884,6 +1888,42 @@ app_server <- function(input, output, session, start) {
     notify(if (identical(s$spec$status, "adopted"))
       t("The definition files were changed outside tflplanner; the changes were loaded.") else
       t("Nothing changed in the definition files."))
+  }
+  # The study read again from its definition files, when a part of the app
+  # wrote some (the AI drafts' check, its reports' files): taken in as they
+  # are, their fingerprints recorded.  Never over unsaved changes (those
+  # are merged by Reload above): FALSE, and nothing changed.
+  reload_now <- function() {
+    if (!has_study()) return(FALSE)
+    s <- tryCatch(.ai_reload_study(rv$study$meta$study_id, unsaved = isTRUE(dirty())),
+                  tflplanner_ai_unsaved = function(e) {
+                    notify(t("Save first: the study has unsaved changes."), "warning")
+                    NULL
+                  },
+                  tflplanner_spec_invalid = function(e) {
+                    rv$spec <- list(status = "invalid", problems = e$problems,
+                                    files = spec_status(rv$study$meta$study_id))
+                    spec_modal()
+                    NULL
+                  }, error = function(e) {
+                    notify(.error_view(conditionMessage(e), t), "error")
+                    NULL
+                  })
+    if (is.null(s)) return(FALSE)
+    held$p <- held$before <- NULL
+    rv$study <- s
+    rv$p <- rv$saved <- .study_spec_keys(s$planner)
+    rv$meta <- rv$saved_meta <- s$meta[.study_fields]
+    rv$spec <- s$spec
+    rv$status_ver <- rv$status_ver + 1L
+    rv$ard_ver <- rv$ard_ver + 1L
+    bump()
+    TRUE
+  }
+  if (.ai_drafts_on()) {
+    session$userData$ai <- ai_server(
+      "ai", rv = rv, has_study = has_study, dirty = dirty, reload_now = reload_now,
+      notify = notify, guarded = guarded, lang = lang)
   }
   for (b in c("spec_reload", "spec_reload_m")) local({
     id <- b
