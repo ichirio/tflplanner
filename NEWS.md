@@ -4,8 +4,9 @@
   tflspec's AI table requests and their answers, after the Report list
   (`options(tflplanner.ai_drafts = FALSE)` hides it).  Step 1 (Prepare,
   `tfl_ai_prepare()`): the study open or a new one (its ID, made under the
-  studies' folder), the TOC / SHELL workbook (uploaded, or its path; a copy
-  is kept in the study's `ai/`), the ADaM folder (a full path; its files
+  studies' folder), the TOC / SHELL workbook (uploaded, or its path -- a
+  file anywhere, said when it is missing or cannot be read; either way a
+  copy is kept in the study's `ai/`), the ADaM folder (a full path; its files
   counted as it is typed), the TOC sheet and the shell sheets, the reports
   a request holds, the language of the assumptions, the instructions in
   each request or once; the workbook's form in the chat and a request's

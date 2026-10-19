@@ -47,13 +47,17 @@ ai_ui <- function(id, lang = "en") {
                 shiny::textInput(ns("new_title"), paste0(t("Title"), " (title)"),
                                  width = "20rem")),
               shiny::uiOutput(ns("new_where"))),
-            shiny::fileInput(ns("toc_file"), paste0(t("TOC / SHELL workbook"), " (toc)"),
-                             accept = c(".xlsx", ".xlsm"), width = "100%"),
-            shiny::tags$details(
-              class = "small mb-2",
-              shiny::tags$summary(t("or its path")),
-              shiny::textInput(ns("toc_path"), NULL, width = "100%",
-                               placeholder = "C:/.../TOC_SHELL.xlsx")),
+            # the workbook chosen (uploaded) or its path: the one given last
+            # is read, and copied into the study's ai/
+            shiny::div(
+              class = "d-flex flex-wrap gap-2 align-items-start",
+              shiny::div(style = "flex: 1 1 14rem;",
+                         shiny::fileInput(ns("toc_file"), paste0(t("TOC / SHELL workbook"), " (toc)"),
+                                          accept = c(".xlsx", ".xlsm"), width = "100%")),
+              shiny::div(style = "flex: 1 1 14rem;",
+                         shiny::textInput(ns("toc_path"), t("or its path"), width = "100%",
+                                          placeholder = "C:/.../TOC_SHELL.xlsx"))),
+            shiny::uiOutput(ns("toc_check")),
             shiny::textInput(ns("adam_dir"), paste0(t("ADaM folder"), " (adam)"), width = "100%",
                              placeholder = "C:/.../adam"),
             shiny::uiOutput(ns("adam_files")),
@@ -569,13 +573,28 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                  sprintf(t("%d files: %s"), length(f),
                          paste(c(utils::head(f, 8L), if (length(f) > 8L) "..."), collapse = ", ")))
     })
-    # the workbook: the one chosen (uploaded), else the path typed
+    # the workbook: the one given last, uploaded or its path typed
+    toc_from <- shiny::reactiveVal("upload")
+    shiny::observeEvent(input$toc_file, toc_from("upload"))
+    shiny::observeEvent(input$toc_path, {
+      if (nzchar(trimws(input$toc_path %||% ""))) toc_from("path")
+    })
     toc_src <- function() {
       f <- input$toc_file
-      if (!is.null(f) && nrow(f)) return(list(path = f$datapath[1L], name = f$name[1L]))
       p <- trimws(input$toc_path %||% "")
-      if (nzchar(p)) list(path = p, name = basename(p)) else NULL
+      up <- if (!is.null(f) && nrow(f)) list(path = f$datapath[1L], name = f$name[1L])
+      typed <- if (nzchar(p)) list(path = p, name = basename(p))
+      if (identical(toc_from(), "path")) typed %||% up else up %||% typed
     }
+    output$toc_check <- shiny::renderUI({
+      src <- toc_src()
+      if (is.null(src)) return(NULL)
+      msg <- .ai_toc_problem(src$path, t)
+      if (!is.null(msg)) return(shiny::div(class = "small text-danger mb-2", msg))
+      shiny::div(class = "small text-muted mb-2",
+                 sprintf(t("Read: %s (copied into the study's ai/ when the requests are written)"),
+                         src$name))
+    })
     args_of <- function(p) {
       all <- if (!is.null(p)) p$adam$datasets$dataset
       ds <- input$datasets
@@ -588,8 +607,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
            max_levels = as.integer(input$max_levels %||% 15L))
     }
     inputs_ok <- function() {
-      if (is.null(toc_src())) {
-        notify(t("Choose the TOC / SHELL workbook first."), "warning")
+      msg <- .ai_toc_problem(toc_src()$path, t)
+      if (!is.null(msg)) {
+        notify(msg, "warning")
         return(FALSE)
       }
       if (is.null(.ai_adam_files(input$adam_dir))) {

@@ -308,3 +308,38 @@ test_that("step 1 in the app: read, then a new study written, registered and ope
     expect_true(ai$prepared()$dry_run)
   })
 })
+
+test_that("the workbook by its path: checked, then copied into the study's ai/ like an upload", {
+  local_home()
+  expect_null(.ai_toc_problem(ai_toc))
+  expect_match(.ai_toc_problem(file.path(tempdir(), "none.xlsx")), "No file")
+  expect_match(.ai_toc_problem(""), "Choose the TOC")
+  txt <- tempfile(fileext = ".txt")
+  writeLines("x", txt)
+  expect_match(.ai_toc_problem(txt), ".xlsx or .xlsm")
+  # a workbook in a folder of its own, outside the studies
+  d <- file.path(tempdir(), "toc-elsewhere")
+  dir.create(d, showWarnings = FALSE)
+  file.copy(ai_toc, file.path(d, "TOC_SHELL.xlsx"), overwrite = TRUE)
+  out <- .ai_new_study("PATH-1", file.path(d, "TOC_SHELL.xlsx"), "TOC_SHELL.xlsx", ai_adam,
+                       list(size = 3L))
+  kept <- file.path(out$study$path, "ai", "TOC_SHELL.xlsx")
+  expect_true(file.exists(kept))
+  expect_identical(unname(tools::md5sum(kept)), unname(tools::md5sum(ai_toc)))
+  expect_error(.ai_new_study("PATH-2", file.path(d, "gone.xlsx"), "gone.xlsx", ai_adam),
+               "No file")
+  expect_false(dir.exists(file.path(studies_root(), "PATH-2")))
+})
+
+test_that("step 1 in the app: the path given after an upload is the one read", {
+  local_home()
+  ai_study()
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(`ai-toc_path` = file.path(tempdir(), "missing.xlsx"))
+    expect_match(output$`ai-toc_check`$html, "No file", fixed = TRUE)
+    session$setInputs(`ai-toc_path` = ai_toc)
+    expect_match(output$`ai-toc_check`$html, "onco_toc_shell.xlsx", fixed = TRUE)
+  })
+})

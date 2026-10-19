@@ -3557,3 +3557,7 @@ type,種類
 "%d datasets, %d variables; no records are sent.",データセット %d、変数 %d。レコードは送りません。
 "A variable's values are shown up to %d (max_levels); the data itself is never sent, and the data files go by their names only.",値は 1 変数 %d まで示します (max_levels)。データそのものは送らず、データファイルは名前だけを送ります。
 No study open: step 1 can make a new one.,試験が開いていません: 手順 1 で新しい試験を作れます。
+No file %s.,ファイル %s がありません。
+The TOC / SHELL workbook is an .xlsx or .xlsm file.,TOC / SHELL ブックは .xlsx か .xlsm のファイルです。
+%s cannot be read: is it open in another program (Excel)?,%s を読めません: 別のプログラム（Excel）で開いていませんか？
+Read: %s (copied into the study's ai/ when the requests are written),読むブック: %s（依頼を書くときに試験の ai/ へコピーします）

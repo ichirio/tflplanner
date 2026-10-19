@@ -231,14 +231,36 @@
 # The TOC / SHELL workbook kept in the study (ai/<its name>): what was
 # read, beside the requests.  Gives the copy's path.
 .ai_keep_toc <- function(dir, toc, name = basename(toc)) {
+  msg <- .ai_toc_problem(toc)
+  if (!is.null(msg)) stop(msg, call. = FALSE)
   to <- file.path(dir, "ai", basename(name))
   if (identical(normalizePath(toc, "/", mustWork = FALSE),
                 normalizePath(to, "/", mustWork = FALSE))) return(to)
   dir.create(dirname(to), recursive = TRUE, showWarnings = FALSE)
-  if (!file.copy(toc, to, overwrite = TRUE)) {
-    stop(sprintf("Could not copy %s to %s.", name, to), call. = FALSE)
+  if (!isTRUE(suppressWarnings(file.copy(toc, to, overwrite = TRUE)))) {
+    stop(sprintf("Could not copy %s to %s: is it open in another program (Excel)?", name, to),
+         call. = FALSE)
   }
   to
+}
+
+# Why the TOC / SHELL workbook at `path` cannot be read, or NULL (`t` the
+# app's words): no such file, not a workbook, or not readable (open in a
+# program that locks it)
+.ai_toc_problem <- function(path, t = identity) {
+  path <- trimws(path %||% "")
+  if (!nzchar(path)) return(t("Choose the TOC / SHELL workbook first."))
+  if (!file.exists(path) || dir.exists(path)) return(sprintf(t("No file %s."), path))
+  if (!grepl("[.]xls[xm]$", path, ignore.case = TRUE)) {
+    return(t("The TOC / SHELL workbook is an .xlsx or .xlsm file."))
+  }
+  ok <- tryCatch({
+    con <- file(path, "rb")
+    on.exit(close(con))
+    length(readBin(con, "raw", 4L)) == 4L
+  }, error = function(e) FALSE, warning = function(w) FALSE)
+  if (!ok) return(sprintf(t("%s cannot be read: is it open in another program (Excel)?"), path))
+  NULL
 }
 
 # The requests written into a study open in the app (its study.yml and
@@ -259,12 +281,13 @@
   if (!is.null(msg)) stop(msg, call. = FALSE)
   id <- trimws(id)
   dir <- .study_path(root, id)
-  toc <- .ai_keep_toc(dir, toc, toc_name)
-  p <- tryCatch(.ai_prepare(dir, toc, adam, args, dry_run = FALSE, study_id = id, title = title),
-                error = function(e) {
-                  # nothing half made is left behind
-                  unlink(dir, recursive = TRUE)
-                  stop(e)
-                })
+  p <- tryCatch({
+    toc <- .ai_keep_toc(dir, toc, toc_name)
+    .ai_prepare(dir, toc, adam, args, dry_run = FALSE, study_id = id, title = title)
+  }, error = function(e) {
+    # nothing half made is left behind
+    unlink(dir, recursive = TRUE)
+    stop(e)
+  })
   list(study = register_study(dir, home = home), prepared = p)
 }
