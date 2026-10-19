@@ -3453,3 +3453,6 @@ Rows judged together,まとめて判定する行のキー
 Discard changes,変更を破棄
 "Every change not saved goes -- in every report of the study and in the study's own files (defaults.yml ...), as a save would have written them -- and the study is as it was last saved. The draft goes too.",保存していない変更をすべて捨てます（保存と同じ範囲: この試験のすべての帳票と、defaults.yml など試験全体のファイル）。試験は最後に保存したときの状態に戻ります。下書きも消えます。
 "The changes were discarded: the study is as it was last saved.",変更を破棄しました。試験は最後に保存した状態です。
+%s (outside the study folder),%s（試験フォルダの外）
+outside the study folder (%s),試験フォルダの外（%s）
+"A row's file may also be outside the study folder, by its full path (C:/adam/adsl.rds).",行のファイルは、試験フォルダの外にフルパスで置くこともできます（C:/adam/adsl.rds）。

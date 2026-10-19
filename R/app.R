@@ -922,7 +922,9 @@ app_ui <- function(lang = "en") {
             bslib::card(
               bslib::card_header(with_tip(
                 paste0(t("Datasets"), " (datasets)"),
-                paste(t("The data files of the folder (data/) and what the study's programs read of them (the data catalog): a name, its level, its file, columns derived. A file put in the folder gets a row; a row with no file is a dataset made on the way. Defined once for the study, used by every report."), edit_note))),
+                paste(t("The data files of the folder (data/) and what the study's programs read of them (the data catalog): a name, its level, its file, columns derived. A file put in the folder gets a row; a row with no file is a dataset made on the way. Defined once for the study, used by every report."),
+                      t("A row's file may also be outside the study folder, by its full path (C:/adam/adsl.rds)."),
+                      edit_note))),
               # the folder you are in: where Add files puts them
               bslib::navset_pill(
                 id = "data_pill",
@@ -3890,7 +3892,7 @@ app_server <- function(input, output, session, start) {
     if (!has_study()) return(character())
     ds <- rv$p$ard$datasets
     unique(unlist(lapply(ds$path[!is.na(ds$path)], function(pth) {
-      f <- file.path(rv$study$path, pth)
+      f <- .data_file(rv$study$path, pth)
       if (!file.exists(f)) return(NULL)
       k <- paste(f, file.mtime(f))
       if (is.null(ard_cols[[k]])) {
@@ -4149,7 +4151,7 @@ app_server <- function(input, output, session, start) {
     ad <- .adata_rows(rv$p, ard_target())
     if (!nrow(ad)) return(character())
     ds <- rv$p$ard$datasets
-    f <- file.path(rv$study$path, ds$path[!is.na(ds$path)])
+    f <- .data_file(rv$study$path, ds$path[!is.na(ds$path)])
     key <- paste(c(rv$study$path, unlist(ad), unlist(ds), unlist(rv$p$ard$populations),
                    as.character(file.mtime(f))), collapse = "|")
     if (!identical(ard_cols[["adata_key"]], key)) {
@@ -4167,7 +4169,7 @@ app_server <- function(input, output, session, start) {
     shiny::req(has_study())
     ds <- rv$p$ard$datasets
     po <- rv$p$ard$populations
-    f <- file.path(rv$study$path, ds$path[!is.na(ds$path)])
+    f <- .data_file(rv$study$path, ds$path[!is.na(ds$path)])
     key <- paste(c(rv$study$path, ds$dataset, ds$path, po$population_id, po$dataset, po$where,
                    as.character(file.mtime(f))), collapse = "|")
     if (!identical(ard_cols[["counts_key"]], key)) {
@@ -4295,7 +4297,7 @@ app_server <- function(input, output, session, start) {
     d <- rv$p$ard$datasets
     pth <- d$path[match(ds, d$dataset)]
     if (!length(pth) || is.na(pth)) return(NULL)
-    f <- file.path(rv$study$path, pth)
+    f <- .data_file(rv$study$path, pth)
     if (!file.exists(f)) return(NULL)
     k <- paste("form", f, file.mtime(f))
     if (is.null(ard_cols[[k]])) {
@@ -8207,7 +8209,8 @@ app_server <- function(input, output, session, start) {
   output$catalog_missing <- shiny::renderUI({
     shiny::req(has_study())
     d <- rv$p$ard$datasets
-    gone <- d$dataset[!is.na(d$path) & !file.exists(file.path(rv$study$path, d$path))]
+    gone <- d$dataset[!is.na(d$path) & nzchar(d$path) &
+                        !file.exists(.data_file(rv$study$path, d$path))]
     if (!length(gone)) return(NULL)
     shiny::div(class = "alert alert-warning py-1 small",
                sprintf(t("No file for: %s"), paste(gone, collapse = ", ")))
@@ -8234,7 +8237,7 @@ app_server <- function(input, output, session, start) {
     d <- catalog()
     pth <- d$path[match(ds, d$dataset)]
     if (length(pth) != 1L || is.na(pth)) return(character())
-    f <- file.path(rv$study$path, pth)
+    f <- .data_file(rv$study$path, pth)
     if (!file.exists(f)) return(character())
     k <- paste(f, file.mtime(f))
     if (is.null(ard_cols[[k]])) {
@@ -11389,7 +11392,7 @@ app_server <- function(input, output, session, start) {
   # -- the first listing: the data and its columns --------------------------
   first_data_l <- shiny::reactive({
     shiny::req(input$ml_data %in% first_files())
-    guarded(read_data_head(file.path(rv$study$path, input$ml_data), n = 2000L))
+    guarded(read_data_head(.data_file(rv$study$path, input$ml_data), n = 2000L))
   })
   output$modal_first_l_ui <- shiny::renderUI({
     f <- first_files()
@@ -11443,21 +11446,29 @@ app_server <- function(input, output, session, start) {
     f <- data_files()
     ok <- !is.na(vapply(f$folder, .folder_level, "", USE.NAMES = FALSE)) &
       tolower(tools::file_ext(f$file)) %in% .data_exts
-    file.path(f$folder, f$file)[ok]
+    mine <- file.path(f$folder, f$file)[ok]
+    # and the catalog's files outside the study folder (ADaM kept
+    # elsewhere), said so
+    p <- rv$p$ard$datasets$path
+    p <- unique(p[!is.na(p) & tolower(tools::file_ext(p)) %in% .data_exts])
+    p <- p[.data_outside(rv$study$path, p)]
+    p <- p[file.exists(.data_file(rv$study$path, p))]
+    c(stats::setNames(mine, mine),
+      stats::setNames(p, sprintf(t("%s (outside the study folder)"), p)))
   })
   first_data <- shiny::reactive({
     shiny::req(input$mf_data %in% first_files())
-    guarded(read_data_head(file.path(rv$study$path, input$mf_data), n = Inf))
+    guarded(read_data_head(.data_file(rv$study$path, input$mf_data), n = Inf))
   })
   # a hierarchical table's subject-level data: the study's ADSL
   first_subjects_file <- shiny::reactive({
     f <- first_files()
-    c(f[grepl("(^|/)adsl[.][^/]+$", f, ignore.case = TRUE)], NA_character_)[1L]
+    unname(c(f[grepl("(^|/)adsl[.][^/]+$", f, ignore.case = TRUE)], NA_character_)[1L])
   })
   first_subjects <- shiny::reactive({
     f <- first_subjects_file()
     shiny::req(!is.na(f))
-    guarded(read_data_head(file.path(rv$study$path, f), n = Inf))
+    guarded(read_data_head(.data_file(rv$study$path, f), n = Inf))
   })
   # the kind of table: a summary (variables as rows) or a hierarchy of terms
   # (SOC / PT); chosen, never switched by the data
@@ -11795,14 +11806,21 @@ app_server <- function(input, output, session, start) {
     lay <- study_layout()
     f <- shiny::isolate(data_files())
     mine <- f[f$folder == lay[[data_pill()]], , drop = FALSE]
-    p <- file.path(rv$study$path, d$path)
+    p <- .data_file(rv$study$path, d$path)
     d$size_kb <- ifelse(is.na(d$path), NA_character_,
                         ifelse(file.exists(p), sprintf("%.1f", file.size(p) / 1024),
                                t("no file")))
+    # a file outside the study folder (ADaM kept elsewhere): its folder, said
+    out <- .data_outside(rv$study$path, d$path)
+    if (any(out)) {
+      d$where <- ifelse(out, sprintf(t("outside the study folder (%s)"), dirname(p)), "")
+    }
     h <- .grid(d, "datasets", key,
                list(path = file.path(mine$folder, mine$file)),
                closed = character(), select = TRUE)
-    suppressWarnings(rhandsontable::hot_col(h, "size_kb", readOnly = TRUE))
+    h <- suppressWarnings(rhandsontable::hot_col(h, "size_kb", readOnly = TRUE))
+    if (any(out)) h <- suppressWarnings(rhandsontable::hot_col(h, "where", readOnly = TRUE))
+    h
   })
   shiny::observeEvent(input$hot_ard_datasets, {
     h <- input$hot_ard_datasets
@@ -11811,7 +11829,7 @@ app_server <- function(input, output, session, start) {
     if (!identical(h$params$planner_key, ds_key())) return()
     d <- read_grid(h)
     if (is.null(d)) return()
-    d$size_kb <- NULL
+    d$size_kb <- d$where <- NULL
     # a new row of ADaM / SDTM is of that level (it stays under its pill)
     lv <- c(adam = "ADaM", sdtm = "SDTM")[data_pill()]
     if (!is.na(lv)) {
@@ -11894,7 +11912,7 @@ app_server <- function(input, output, session, start) {
     shiny::req(length(r) == 1L)
     d <- ds_sub()
     shiny::req(r >= 1L, r <= nrow(d), !is.na(d$path[r]))
-    path <- file.path(rv$study$path, d$path[r])
+    path <- .data_file(rv$study$path, d$path[r])
     shiny::req(file.exists(path))
     guarded(read_data_head(path, n = Inf))
   })
