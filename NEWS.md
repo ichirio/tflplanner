@@ -1,5 +1,46 @@
 # tflplanner (development version)
 
+- **AI drafts** (#431, 0.0.2.9250; tflspec >= 0.0.24.9177): a tab for
+  tflspec's AI table requests and their answers, after the Report list
+  (`options(tflplanner.ai_drafts = FALSE)` hides it).  Step 1 (Prepare,
+  `tfl_ai_prepare()`): the study open or a new one (its ID, made under the
+  studies' folder), the TOC / SHELL workbook (uploaded, or its path -- a
+  file anywhere, said when it is missing or cannot be read; either way a
+  copy is kept in the study's `ai/`), the ADaM folder (a full path; its files
+  counted as it is typed), the TOC sheet and the shell sheets, the reports
+  a request holds, the language of the assumptions, the instructions in
+  each request or once; the workbook's form in the chat and a request's
+  length at most folded under More.  Read (`dry_run`) shows the TOC (each
+  report's shell, the reports with none, tflspec's hints), the ADaM summary
+  that is sent (the datasets to send ticked, the values a variable shows)
+  and the sheets; Write the requests writes them (asking first when the
+  study has some; the answers are kept).  A new study is written by
+  `tfl_ai_prepare()` first (its study.yml, data catalog and analysis
+  sets), then registered and opened.  Step 2 (`ai/requests`): one row a
+  request (its family, reports, characters, status, the answer's time);
+  Copy writes the request to the clipboard (when the browser does not let
+  the page, the View dialog opens to select it all), View shows it whole;
+  the instructions written once (`00-instructions.md`) have their own row.
+  Step 3: a request's answer pasted and saved (`tfl_ai_save_answer()`,
+  UTF-8), every answer checked (`tfl_ai_collect_answers()`): each report's
+  status and first problem, the request's next step, its fix request to
+  copy, all the problems, the assumptions by report, the answers named
+  after no request.  A check writes the reports' files: the study is read
+  again from them at once, so the reports are on the Report list (a button
+  goes there, and each report taken in opens in Make a report) and no save
+  sees them as made outside the app.  Nothing is written while the study
+  has unsaved changes ("Save first").  The functions under the screen know
+  no Shiny (`R/ai_draft.R`).  Its texts in Japanese.
+  **For a coding agent** (`mode = "agent"`, chosen on step 1): step 2
+  shows the agent's first message (`agent_prompt`) to copy; step 3 shows
+  `ai/status.md` (what `run.R` wrote) with every report's status, Read the
+  status again (the answers checked and the reports taken in), and the
+  questions of `ai/questions.md` (`tfl_ai_questions()`, the open ones
+  first) with an answer field each: Write the answers back
+  (`tfl_ai_answer_questions()`, only the answers typed) and copy the line
+  that tells the agent.  The path fields have Browse... (the computer's
+  dialog; `options(tflplanner.file_dialog = FALSE)` on a server).
+
 - **A test's try of an ARD function says why it gave nothing** (#435,
   0.0.2.9249).  `test-ard-own-ui.R` failed once in a full run (no error
   row for a function that stops) and passed on its own; no earlier test
