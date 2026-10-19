@@ -75,6 +75,10 @@ test_that("a study with its ADaM outside the study folder reads it (#430)", {
   file.rename(file.path(st$adam, "advs.rds"), file.path(st$adam, "advs-gone.rds"))
   expect_identical(.rule_d01(s)$row[1L], "ADVS")
   file.rename(file.path(st$adam, "advs-gone.rds"), file.path(st$adam, "advs.rds"))
+  # Update preview's fingerprint sees a file outside change
+  fp <- .ard_print(s, "T-14-1-1")
+  saveRDS(readRDS(file.path(st$adam, "adsl.rds"))[1:10, ], file.path(st$adam, "adsl.rds"))
+  expect_false(identical(.ard_print(s, "T-14-1-1"), fp))
   # the official run keeps it (data/external/)
   plan <- batch_data_plan(s)
   expect_true(all(!is.na(plan$size)))
