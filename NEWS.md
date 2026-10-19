@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **A test's try of an ARD function says why it gave nothing** (#435,
+  0.0.2.9249).  `test-ard-own-ui.R` failed once in a full run (no error
+  row for a function that stops) and passed on its own; no earlier test
+  was found to leave anything behind.  The try's own R now has 300 s in
+  the test (a busy machine in the whole suite is slow), and the test
+  checks the try's `error` first, so a failure shows its reason.  Tests
+  only.
+
 - **Data kept outside the study folder** (#430, 0.0.2.9246): a dataset's
   `path` in the data catalog (`spec/data.yml`) may be a full path
   (`C:/secure/adam/adsl.rds`), so that the ADaM stays out of the study
