@@ -443,43 +443,48 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
 # the viewer's browser)
 .split_js <- "
 (function() {
-  var cur = {lay: 'side', pane: 'def'};
-  try {
-    var v = (localStorage.getItem('tflplanner.ard_layout') || '').split('|');
-    if (v[0]) cur.lay = v[0];
-    if (v[1]) cur.pane = v[1];
-  } catch (e) {}
-  function apply() {
-    var s = document.getElementById('ard_split');
-    if (!s) return;
-    s.classList.remove('rp-lay-side', 'rp-lay-stack', 'rp-lay-one',
-                       'rp-show-def', 'rp-show-out');
-    s.classList.add('rp-lay-' + cur.lay, 'rp-show-' + cur.pane);
-    document.querySelectorAll('#ard_layout [data-lay]').forEach(function(b) {
-      b.classList.toggle('active', b.dataset.lay === cur.lay);
+  // step 1's (ard_) and step 3's (page_, #438) split, each kept on its own
+  function group(pre) {
+    var cur = {lay: 'side', pane: 'def'};
+    try {
+      var v = (localStorage.getItem('tflplanner.' + pre + 'layout') || '').split('|');
+      if (v[0]) cur.lay = v[0];
+      if (v[1]) cur.pane = v[1];
+    } catch (e) {}
+    function apply() {
+      var s = document.getElementById(pre + 'split');
+      if (!s) return;
+      s.classList.remove('rp-lay-side', 'rp-lay-stack', 'rp-lay-one',
+                         'rp-show-def', 'rp-show-out');
+      s.classList.add('rp-lay-' + cur.lay, 'rp-show-' + cur.pane);
+      document.querySelectorAll('#' + pre + 'layout [data-lay]').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.lay === cur.lay);
+      });
+      document.querySelectorAll('#' + pre + 'pane [data-pane]').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.pane === cur.pane);
+      });
+      var g = document.getElementById(pre + 'pane');
+      if (g) g.style.display = cur.lay === 'one' ? '' : 'none';
+      try { localStorage.setItem('tflplanner.' + pre + 'layout', cur.lay + '|' + cur.pane); }
+      catch (e) {}
+      setTimeout(function() {
+        window.dispatchEvent(new Event('resize'));
+        if (window.jQuery && jQuery.fn.dataTable) {
+          jQuery.fn.dataTable.tables({visible: true, api: true}).columns.adjust();
+        }
+      }, 50);
+    }
+    document.addEventListener('click', function(e) {
+      var b = e.target.closest('#' + pre + 'layout [data-lay], #' + pre + 'pane [data-pane]');
+      if (!b) return;
+      if (b.dataset.lay) cur.lay = b.dataset.lay;
+      if (b.dataset.pane) cur.pane = b.dataset.pane;
+      apply();
     });
-    document.querySelectorAll('#ard_pane [data-pane]').forEach(function(b) {
-      b.classList.toggle('active', b.dataset.pane === cur.pane);
-    });
-    var g = document.getElementById('ard_pane');
-    if (g) g.style.display = cur.lay === 'one' ? '' : 'none';
-    try { localStorage.setItem('tflplanner.ard_layout', cur.lay + '|' + cur.pane); }
-    catch (e) {}
-    setTimeout(function() {
-      window.dispatchEvent(new Event('resize'));
-      if (window.jQuery && jQuery.fn.dataTable) {
-        jQuery.fn.dataTable.tables({visible: true, api: true}).columns.adjust();
-      }
-    }, 50);
+    document.addEventListener('DOMContentLoaded', apply);
   }
-  document.addEventListener('click', function(e) {
-    var b = e.target.closest('#ard_layout [data-lay], #ard_pane [data-pane]');
-    if (!b) return;
-    if (b.dataset.lay) cur.lay = b.dataset.lay;
-    if (b.dataset.pane) cur.pane = b.dataset.pane;
-    apply();
-  });
-  document.addEventListener('DOMContentLoaded', apply);
+  group('ard_');
+  group('page_');
 })();
 
 // a grid is as tall as its rows; the bar under it drags it taller or
@@ -779,11 +784,24 @@ app_ui <- function(lang = "en") {
     shiny::tags$script(shiny::HTML(.page_form_js)),
     # its page pattern (Standard, Compact ...): what it inherits
     shiny::uiOutput("page_pattern_bar"),
-    # the input on the left -- the page's sheets, edited -- and on the right
-    # what they make: the first page, the program, the rows as they are
-    # written (SPEC, read only: the grid on the left is where they change)
-    bslib::layout_columns(
-      col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
+    # the layout, as step 1's: side by side, stacked, one pane (#438)
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-center mb-2 small",
+      shiny::span(class = "text-muted", t("Layout")),
+      shiny::div(
+        id = "page_layout", class = "btn-group btn-group-sm", role = "group",
+        lay_btn("data-lay" = "side", t("Side by side")),
+        lay_btn("data-lay" = "stack", t("Stacked")),
+        lay_btn("data-lay" = "one", t("One pane"))),
+      shiny::div(
+        id = "page_pane", class = "btn-group btn-group-sm", role = "group",
+        lay_btn("data-pane" = "def", t("This report's page")),
+        lay_btn("data-pane" = "out", "SPEC | Code | Result"))),
+    # the input on the left -- the page's form -- and on the right what it
+    # makes: the first page, the program, the rows as they are written
+    # (SPEC, read only); the right stays in view as the form scrolls
+    shiny::div(
+      id = "page_split", class = "rp-split rp-lay-side rp-show-def",
       shiny::div(
         # the page as a form: each value with where it comes from
         shiny::uiOutput("page_form"),
@@ -794,9 +812,7 @@ app_ui <- function(lang = "en") {
           grid_note,
           do.call(bslib::navset_card_underline,
                   c(list(id = "page_sheet"), lapply(report_sheets(), sheet_panel))))),
-      # (min-width 0: a grid item may then be narrower than the page it
-      # holds, which scrolls inside it at its actual size)
-      shiny::div(style = "min-width: 0", result_tabs_ui(
+      result_tabs_ui(
         "page_right", lang = lang, selected = "result",
         spec = shiny::uiOutput("page_spec_view"),
         code = shiny::tagList(
@@ -807,6 +823,9 @@ app_ui <- function(lang = "en") {
                      shiny::span(t("First page (sample)")),
                      shiny::div(
                        class = "d-flex gap-1",
+                       # a table's numbers: its ARD made again (step 2's button)
+                       .btn("page_fetch", t("Update preview"),
+                            class = "btn-sm btn-outline-primary py-0"),
                        # fit to the pane's width by default; actual size
                        # on a click, remembered in this browser
                        shiny::tags$button(
@@ -816,7 +835,7 @@ app_ui <- function(lang = "en") {
                          t("Fit to width")),
                        .btn("page_full", t("Full size"),
                             class = "btn-sm btn-outline-secondary py-0"))),
-          shiny::div(class = "rp-page-wrap", shiny::uiOutput("page_sample")))))))
+          shiny::div(class = "rp-page-wrap", shiny::uiOutput("page_sample"))))))
 
   bslib::page_navbar(
     id = "nav",
@@ -4004,6 +4023,7 @@ app_server <- function(input, output, session, start) {
   }
   shiny::observeEvent(input$ard_make_study, do_study_ard(ard_target()))
   shiny::observeEvent(input$fetch, do_preview())
+  shiny::observeEvent(input$page_fetch, do_preview())
   shiny::observeEvent(input$fetch2, do_preview())
   shiny::observeEvent(input$fetch3, do_preview())
   output$ard_summary <- shiny::renderUI({
@@ -10893,6 +10913,21 @@ app_server <- function(input, output, session, start) {
           shiny::tags$thead(shiny::tags$tr(lapply(names(d), shiny::tags$th))),
           shiny::tags$tbody(lapply(seq_len(nrow(d)), function(i) shiny::tags$tr(
             lapply(d[i, ], function(v) shiny::tags$td(if (is.na(v)) "" else as.character(v))))))))
+    }
+    # the YAML spec: the report file's page: as it is written (#438)
+    rel <- p$spec$where[[id]]
+    lines <- if (!is.null(rel)) p$spec$text[[rel]]
+    if (length(lines)) {
+      at <- which(lines == "page:")
+      pg <- if (length(at)) {
+        top <- which(grepl("^[A-Za-z_]+:", lines) & seq_along(lines) > at[1L])
+        lines[at[1L]:(if (length(top)) top[1L] - 1L else length(lines))]
+      }
+      return(shiny::tagList(
+        shiny::div(class = "small text-muted mb-1", shiny::code(rel), " ",
+                   help_tip(t("The report's own page: in its YAML file (edit it on the left). The pattern it extends and the study defaults fill what it leaves out."))),
+        if (length(pg)) shiny::tags$pre(class = "small", paste(pg, collapse = "\n")) else
+          shiny::p(class = "small text-muted", t("No rows of its own: the study defaults make its page."))))
     }
     out <- Filter(Negate(is.null), lapply(report_sheets(), sheet_table))
     shiny::tagList(

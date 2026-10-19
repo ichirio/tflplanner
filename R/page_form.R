@@ -126,6 +126,13 @@ $(document).on('shiny:value', function(e) {
 .pg-lower > summary { font-size: .75rem; color: var(--bs-secondary-color, #6b7280); margin-top: .3rem; }
 .pg-lower .pg-grid { margin-top: .3rem; }
 .pg-lines td { padding: .15rem .3rem; vertical-align: middle; font-size: .8rem; }
+.pg-band { table-layout: fixed; width: 100%; }
+.pg-band td, .pg-band th { overflow-wrap: anywhere; }
+.pg-band th { white-space: nowrap; font-size: .75rem; }
+.pg-band tr.pg-line > td { border-bottom-width: 0; }
+.pg-band tr.pg-line-src > td { padding-top: 0; font-size: .7rem; }
+.pg-band td.pg-num { color: var(--bs-secondary-color, #6b7280); }
+.pg-badge-none { background: none; border-style: dashed; color: #6b7280; }
 .pg-lines .pg-inh { color: var(--bs-secondary-color, #6b7280); }
 .pg-lines .pg-omit { color: var(--bs-secondary-color, #6b7280); font-style: italic; }
 .pg-lines td.pg-src { white-space: normal; max-width: 8rem; line-height: 1.2; }
@@ -137,9 +144,20 @@ $(document).on('shiny:value', function(e) {
 .pg-info input[readonly] { background: var(--bs-secondary-bg, #e9ecef); }
 "
 
-# a field's label: its meaning, then (its argument)
-.pg_label <- function(text, arg) {
-  shiny::tags$label(text, " ", shiny::span(class = "pg-fn", paste0("(", arg, ")")))
+# a field's label: its meaning, then (its argument) -- with the unit the
+# code has when the field shows another (points as half points, inches as
+# twips)
+.pg_label <- function(text, arg, kind = "") {
+  conv <- switch(kind, pt = " = pt x 2", inches = " = in x 1440", "")
+  shiny::tags$label(text, " ", shiny::span(class = "pg-fn", paste0("(", arg, conv, ")")))
+}
+
+# rtfreporter's own default of an argument (what the code leaves to it), as
+# the form shows it; "" when it has none to show
+.pg_fn_default <- function(fn, arg, kind) {
+  a <- tryCatch(formals(getExportedValue("rtfreporter", fn))[[arg]], error = function(e) NULL)
+  if (is.null(a) || is.symbol(a) || !is.atomic(a) || length(a) != 1L) return("")
+  .pgs_show(a, kind)
 }
 
 # One argument of an rtfreporter function: the target's own value in the
@@ -152,6 +170,9 @@ $(document).on('shiny:value', function(e) {
   below <- a$below
   inh <- if (!is.null(below$value)) .pgs_show(below$value, f$kind) else
     if (isTRUE(below$unset)) "(none)" else ""
+  # (nothing in the spec: rtfreporter's own default)
+  dflt <- if (is.null(a$value) && !own) .pg_fn_default(fn, f$arg, f$kind) else ""
+  if (!nzchar(inh) && nzchar(dflt)) inh <- dflt
   val <- if (own && a$unset) "(none)" else if (own) .pgs_show(a$value, f$kind) else ""
   key <- paste(fn, f$arg, sep = ":")
   attrs <- list(class = "pg-in form-control form-control-sm", `data-kind` = "arg",
@@ -160,7 +181,8 @@ $(document).on('shiny:value', function(e) {
     ch <- if (identical(f$kind, "logical")) c("TRUE", "FALSE") else f$choices
     if (own && a$unset) ch <- c(ch, "(none)")
     opts <- c(list(shiny::tags$option(value = "", if (nzchar(inh))
-      sprintf(t("(%s: %s)"), .page_from_label(below$from, id, t), inh) else "")),
+      sprintf(t("(%s: %s)"), if (!is.na(below$from)) .page_from_label(below$from, id, t) else
+        t("rtfreporter's default"), inh) else "")),
       lapply(ch, function(x) shiny::tags$option(
         value = x, selected = if (own && identical(tolower(val), tolower(x))) NA, x)))
     do.call(shiny::tags$select, c(attrs, list(class = "pg-in form-select form-select-sm"), opts))
@@ -175,11 +197,12 @@ $(document).on('shiny:value', function(e) {
   }
   shiny::div(
     class = "pg-field",
-    .pg_label(t(f$label), f$arg),
+    .pg_label(t(f$label), f$arg, f$kind),
     input,
     shiny::div(
       class = "d-flex flex-wrap align-items-center gap-1 mt-1",
       .pg_badge(a$from, id, t, kind),
+      if (is.na(a$from)) shiny::span(class = "pg-badge pg-badge-none", t("rtfreporter's default")),
       if (own) .pg_btn("reset", t("Revert"), .pg_back_word(id, t), `data-fn` = fn,
                        `data-arg` = f$arg),
       # (a value the layers below say: none here)
@@ -198,10 +221,11 @@ $(document).on('shiny:value', function(e) {
   ui <- function(fs) shiny::div(class = "pg-grid", lapply(fs, function(f) .page_arg_ui(sp, id, fn, f, t, kind)))
   shiny::div(
     class = "pg-card", `data-fn` = fn,
-    shiny::h6(t(title %||% .pgs_cards[[fn]]), " ", shiny::span(class = "pg-fn", paste0("(", fn, "())"))),
+    shiny::h6(t(title %||% .pgs_cards[[fn]]), " ",
+              shiny::span(class = "pg-fn", .pgs_call_names[[fn]] %||% paste0("(", fn, "())"))),
     if (any(said)) ui(fields[said]),
     if (any(!said)) shiny::tags$details(
-      class = "pg-lower", open = if (!any(said)) NA,
+      class = "pg-lower",
       shiny::tags$summary(sprintf("%s (%d)", t("Not in the code"), sum(!said))),
       ui(fields[!said])),
     extra)
@@ -227,32 +251,35 @@ $(document).on('shiny:value', function(e) {
   }
   btn <- function(act, line, label, title = NULL) .pg_btn(act, label, title, `data-band` = band,
                                                           `data-line` = line)
+  # each line: its cells (left : center : right = 2 : 1 : 1), then a small
+  # row of where it comes from and what can be done; numbered in order (the
+  # key, its place among the layers' lines, in the tooltip)
   rows <- lapply(seq_len(nrow(d)), function(i) {
     r <- d[i, , drop = FALSE]
     own <- identical(r$from, "own")
-    if (own && r$omitted) {
-      return(shiny::tags$tr(
-        shiny::tags$td(r$line),
-        shiny::tags$td(colspan = 3, class = "pg-omit", t("(none: left out here)")),
-        shiny::tags$td(class = "text-nowrap", .pg_badge("own", id, t, kind)),
-        shiny::tags$td(btn("drop", r$line, t("Revert"), .pg_back_word(id, t)))))
-    }
-    shiny::tags$tr(
-      class = if (!own) "pg-inh",
-      shiny::tags$td(r$line),
+    num <- shiny::tags$td(class = "pg-num", title = paste0("'", r$line, "'"), i)
+    acts <- if (own && r$omitted) btn("drop", r$line, t("Revert"), .pg_back_word(id, t)) else
+      if (own) btn("drop", r$line, if (is.na(id)) t("Remove the line") else t("Revert"),
+                   .pg_back_word(id, t))
+      else shiny::tagList(btn("own", r$line, t("Change here")),
+                          btn("omit", r$line, t("Leave out here"), "!unset"))
+    main <- if (own && r$omitted) shiny::tags$tr(
+      class = "pg-line", num,
+      shiny::tags$td(colspan = 3, class = "pg-omit", t("(none: left out here)")))
+    else shiny::tags$tr(
+      class = paste("pg-line", if (!own) "pg-inh"), num,
       shiny::tags$td(cell(r, "left", own)), shiny::tags$td(cell(r, "center", own)),
-      shiny::tags$td(cell(r, "right", own)),
-      shiny::tags$td(class = if (own) "text-nowrap" else "pg-src", .pg_badge(r$from, id, t, kind)),
-      shiny::tags$td(class = "text-nowrap",
-        if (own) btn("drop", r$line, if (is.na(id)) t("Remove the line") else t("Revert"),
-                     .pg_back_word(id, t))
-        else shiny::tagList(btn("own", r$line, t("Change here")),
-                            btn("omit", r$line, t("Leave out here"), "!unset"))))
+      shiny::tags$td(cell(r, "right", own)))
+    shiny::tagList(main, shiny::tags$tr(
+      class = "pg-line-src", shiny::tags$td(),
+      shiny::tags$td(colspan = 3, .pg_badge(r$from, id, t, kind), acts)))
   })
   shiny::tagList(
     if (nrow(d)) shiny::tags$table(
-      class = "table table-sm pg-lines mb-1",
-      shiny::tags$thead(shiny::tags$tr(lapply(c("#", t("Left"), t("Center"), t("Right"), "", ""),
+      class = "table table-sm pg-lines pg-band mb-1",
+      shiny::tags$colgroup(shiny::tags$col(style = "width: 2rem"), shiny::tags$col(style = "width: 50%"),
+                           shiny::tags$col(style = "width: 25%"), shiny::tags$col(style = "width: 25%")),
+      shiny::tags$thead(shiny::tags$tr(lapply(c("#", t("Left"), t("Center"), t("Right")),
                                               shiny::tags$th))),
       shiny::tags$tbody(rows))
     else shiny::p(class = "small text-muted mb-1", t("(no lines)")),
@@ -455,11 +482,12 @@ $(document).on('shiny:value', function(e) {
   toks <- unique(c(.pg_report_tokens, study, builtin))
   shiny::div(
     class = "small mt-1 d-flex flex-wrap align-items-center gap-1",
-    shiny::span(class = "text-muted", t("Insert (into the field last clicked):")),
     shiny::tags$select(
       class = "pg-ins-sel form-select form-select-sm", style = "max-width: 16rem",
+      title = t("Insert (into the field last clicked):"),
       shiny::tags$option(value = "", t("(a token)")),
-      lapply(toks, function(k) shiny::tags$option(value = paste0("{", k, "}"), paste0("{", k, "}")))))
+      lapply(toks, function(k) shiny::tags$option(value = paste0("{", k, "}"), paste0("{", k, "}")))),
+    help_tip(t("Insert (into the field last clicked):")))
 }
 
 # The Titles card's note: the title the header prints, edited in the card
@@ -469,9 +497,8 @@ $(document).on('shiny:value', function(e) {
   if (!"OUTPUT_TITLE" %in% .page_said(sp, id)) return(NULL)
   tk <- .pgs_tokens(sp, id)
   v <- tk$value[match("OUTPUT_TITLE", tk$name)]
-  shiny::div(class = "pg-from mb-2",
-             sprintf(t("The header prints {OUTPUT_TITLE}: %s (changed in \"Report information and tokens\", above)."),
-                     if (is.na(v) || !nzchar(v)) t("(empty)") else v))
+  help_tip(sprintf(t("The header prints {OUTPUT_TITLE}: %s (changed in \"Report information and tokens\", above)."),
+                   if (is.na(v) || !nzchar(v)) t("(empty)") else v))
 }
 
 # the whole form of a target's page (a report, @pattern, NA: Standard)
@@ -481,19 +508,24 @@ $(document).on('shiny:value', function(e) {
   report <- !is.na(id) && !.is_pattern_id(id)
   if (report && is.null(sp$outputs[[id]])) return(NULL)
   kind <- if (report) sp$outputs[[id]]$kind %||% "table"
-  card <- function(title, ...) shiny::div(class = "pg-card", shiny::h6(title), ...)
+  card <- function(title, call = NULL, ...) shiny::div(
+    class = "pg-card",
+    shiny::h6(title, if (!is.null(call)) shiny::tagList(" ", shiny::span(class = "pg-fn", call))), ...)
+  fig <- lapply(c("width_twips", "height_twips"), function(a) .pgs_arg(sp, id, "rtf_figures", a))
+  fig_said <- vapply(fig, function(a) tolower(as.character(a$value %||% "")), "")
+  fig_own <- vapply(fig, function(a) identical(a$from, "own"), NA)
   size <- function(fn) shiny::div(class = "pg-grid mb-1", .page_arg_ui(sp, id, fn, .pgs_fields[[fn]][[1L]],
                                                                        t, kind))
   shiny::div(
     `data-pg-target` = .pg_target(id),
     # every token the page can say, in one place: the report's information
     # (the TOC's, edited here), its own tokens, rtfreporter's
-    if (report) card(t("Report information and tokens"),
+    if (report) card(t("Report information and tokens"), "(rtf_document(tokens =))",
       .page_report_info_ui(x, sp, id, t),
       shiny::div(class = "small fw-semibold mt-2", t("This report's own tokens")),
       .page_tokens_ui(sp, id, t, kind),
       .page_builtins_ui(t))
-    else card(t("Tokens"), .page_tokens_ui(sp, id, t, kind), .page_builtins_ui(t)),
+    else card(t("Tokens"), "(rtf_document(tokens =))", .page_tokens_ui(sp, id, t, kind), .page_builtins_ui(t)),
     .page_fn_ui(sp, id, "rtf_page", t, kind),
     .page_fn_ui(sp, id, "rtf_default_format", t, kind),
     .page_fn_ui(sp, id, "rtf_document", t, kind),
@@ -505,15 +537,15 @@ $(document).on('shiny:value', function(e) {
       extra = shiny::div(class = "d-flex flex-wrap gap-2 align-items-center",
         if (report) shiny::span(class = "pg-from", sprintf(t("(its own: %s)"),
           paste(format(.fig_native_size(x, id)), collapse = " x "))),
-        .pg_btn("fig_fit", t("Fit to the page")),
-        .pg_btn("fig_native", t("Its own size")),
+        if (!all(fig_said == "fit")) .pg_btn("fig_fit", t("Fit to the page")),
+        if (any(fig_own)) .pg_btn("fig_native", t("Its own size")),
         help_tip(t("Blank: the figure's own size (the company's figure style for its kind; a figure of your own code, 6.5 x 4.5 in), as rtfreporter places an image. A number: that size in inches. fit: the page's body (its width; its height less the titles and footnotes). The figure is drawn at this size, its text as its theme says; the dpi (step 2) changes only its pixels.")))),
-    card(t("Header"), .page_lines_ui(sp, id, "header", t, kind)),
-    card(t("Titles"), .page_heading_ui(sp, id, t), size("rtf_titles"),
-         .page_lines_ui(sp, id, "titles", t, kind), .page_insert_ui(sp, id, t)),
-    card(t("Footnotes"), size("rtf_footnotes"), .page_lines_ui(sp, id, "footnotes", t, kind),
-         .page_insert_ui(sp, id, t)),
-    card(t("Footer"), .page_lines_ui(sp, id, "footer", t, kind)))
+    card(t("Header"), "(rtf_section(header =))", .page_lines_ui(sp, id, "header", t, kind)),
+    card(shiny::tagList(t("Titles"), " ", .page_heading_ui(sp, id, t)), "(rtf_titles())",
+         size("rtf_titles"), .page_lines_ui(sp, id, "titles", t, kind), .page_insert_ui(sp, id, t)),
+    card(t("Footnotes"), "(rtf_footnotes())", size("rtf_footnotes"),
+         .page_lines_ui(sp, id, "footnotes", t, kind), .page_insert_ui(sp, id, t)),
+    card(t("Footer"), "(rtf_section(footer =))", .page_lines_ui(sp, id, "footer", t, kind)))
 }
 
 # A line number for a new line of a band: after the last line the page has

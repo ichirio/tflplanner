@@ -1,5 +1,26 @@
 # tflplanner (development version)
 
+- **Step 3 on the YAML spec** (#438, 0.0.2.9252; step B4 of the YAML
+  native plan): the page form reads a report's `page:` layer by layer --
+  its own, its style, the pattern it extends, the study's defaults -- each
+  value with where it comes from, and writes only the key changed, into
+  that layer's file (`spec/outputs/<id>.yml`, `spec/defaults.yml`,
+  `spec/patterns/<name>.yml`).  One card an rtfreporter function
+  (`rtf_page()`, `rtf_default_format()`, `rtf_document()`, `rtf_tables()` or
+  `rtf_figures()`), labelled "meaning (argument)": the arguments with a
+  value first, the others folded below ("Not in the code"), in the
+  function's order -- the arguments no sheet had a column for
+  (`header_dist_in`, `row_height_twips`, `title_format` ...) now edited
+  too.  A value of a layer below changed is the report's own ("This
+  table", Revert takes the key away); the same value as below writes
+  nothing; "(none)" and "Leave out here" write `!unset` (a value, a line, a
+  token left out).  The page pattern choice edits the report's `extends:`;
+  the pattern dialog edits `defaults.yml` (Standard) or the pattern's file,
+  makes a pattern (an empty file), renames it (the reports' `extends:` with
+  it) and removes one no report uses.  The sheets' view of the layer
+  edited is made again from the spec (the grids in "Details" still edit
+  the sheets).
+
 - **AI drafts over several workbooks** (#431, 0.0.2.9251; tflspec >=
   0.0.24.9178): step 1 takes the shell workbooks apart from the TOC's
   (uploaded, several, and / or their paths one a line, Browse... choosing

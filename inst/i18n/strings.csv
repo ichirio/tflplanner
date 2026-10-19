@@ -2828,7 +2828,7 @@ Back to the pattern,型に戻す
 (left out in this report),（この帳票では出さない）
 Print it again,また出す
 Change here,ここで変える
-Leave out here,この帳票では出さない
+Leave out here,ここでは出さない
 Left,左
 Center,中央
 Right,右
@@ -2898,6 +2898,8 @@ Section's alignment,区分の揃え
 Title from the table's name,表の名前をタイトルに
 Title's alignment,タイトルの揃え
 (no YAML spec),（YAML の SPEC がありません）
+rtfreporter's default,rtfreporter の既定
+"The report's own page: in its YAML file (edit it on the left). The pattern it extends and the study defaults fill what it leaves out.",帳票自身のページ：その YAML ファイルの page:（左で編集）。書いていないところは、使う型と試験の既定が埋めます。
 NAME,名前
 its text,その文
 (empty),（空）

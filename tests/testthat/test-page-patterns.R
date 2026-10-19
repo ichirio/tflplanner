@@ -92,19 +92,19 @@ test_that("step 3: the pattern chosen, a value written, a line left out, from th
     h <- output$page_form$html
     expect_match(h, "pattern Compact", fixed = TRUE)
     expect_match(h, "{STUDY} (PK)", fixed = TRUE)
-    session$setInputs(pg_edit = list(kind = "cell", sheet = "page", col = "margin_top_in",
+    session$setInputs(pg_edit = list(kind = "arg", fn = "rtf_page", arg = "margin_top_in",
                                      line = "", part = "", name = "", value = "0.5", n = 1))
     expect_identical(page_value_from(rv$p, "page", "margin_top_in", "T1")$value, "0.5")
-    session$setInputs(pg_edit = list(kind = "cell", sheet = "page", col = "font_size_half_points",
+    session$setInputs(pg_edit = list(kind = "arg", fn = "rtf_default_format", arg = "font_size_half_points",
                                      line = "", part = "", name = "", value = "8", n = 2))
     expect_identical(page_value_from(rv$p, "page", "font_size_half_points", "T1")$value, "16")
-    expect_match(output$page_form$html, "Back to the pattern", fixed = TRUE)
-    session$setInputs(pg_act = list(act = "omit", sheet = "header", col = "", line = "1",
+    expect_match(output$page_form$html, "Back to the study default", fixed = TRUE)
+    session$setInputs(pg_act = list(act = "omit", band = "header", line = "1",
                                     name = "", n = 3))
     expect_true(page_lines_from(rv$p, "header", "T1")$omitted[1])
-    session$setInputs(pg_act = list(act = "own", sheet = "header", col = "", line = "2",
+    session$setInputs(pg_act = list(act = "own", band = "header", line = "2",
                                     name = "", n = 4))
-    session$setInputs(pg_edit = list(kind = "line", sheet = "header", col = "", line = "2",
+    session$setInputs(pg_edit = list(kind = "line", band = "header", line = "2",
                                      part = "left", name = "", value = "PK study", n = 5))
     d <- page_lines_from(rv$p, "header", "T1")
     expect_identical(d$left[d$line == "2"], "PK study")
@@ -147,9 +147,9 @@ test_that("an edit on the form does not draw the pattern's select again", {
     rv <- session$userData$rv
     session$setInputs(target = "T1", nav = "make", step = "page")
     bar <- output$page_pattern_bar$html
-    session$setInputs(pg_act = list(act = "addline", sheet = "footnotes", col = "", line = "",
+    session$setInputs(pg_act = list(act = "addline", band = "footnotes", line = "",
                                     name = "", n = 1))
-    session$setInputs(pg_edit = list(kind = "line", sheet = "footnotes", col = "", line = "1",
+    session$setInputs(pg_edit = list(kind = "line", band = "footnotes", line = "1",
                                      part = "left", name = "", value = "A note", n = 2))
     # the bar is the same drawing: its select sends nothing new
     expect_identical(output$page_pattern_bar$html, bar)
@@ -211,8 +211,8 @@ test_that("the pattern dialog: a new pattern, edited by its target, renamed", {
     session$setInputs(pat_name = "Wide", pat_new = 1)
     expect_true("Wide" %in% page_patterns(rv$p))
     expect_match(output$pat_form$html, 'data-pg-target="@Wide"', fixed = TRUE)
-    session$setInputs(pg_edit = list(target = "@Wide", kind = "cell", sheet = "page",
-                                     col = "orientation", line = "", part = "", name = "",
+    session$setInputs(pg_edit = list(target = "@Wide", kind = "arg", fn = "rtf_page",
+                                     arg = "orientation", line = "", part = "", name = "",
                                      value = "portrait", n = 1))
     expect_identical(sheet_rows(rv$p, "page", "@Wide")$orientation, "portrait")
     # the dialog stays on the pattern edited, and counts its reports
@@ -220,13 +220,13 @@ test_that("the pattern dialog: a new pattern, edited by its target, renamed", {
     expect_match(output$pat_count$html, "Reports using it: 0", fixed = TRUE)
     # Standard, from the dialog
     session$setInputs(pat_pick = "Standard")
-    session$setInputs(pg_edit = list(target = "", kind = "cell", sheet = "page",
-                                     col = "margin_top_in", line = "", part = "", name = "",
+    session$setInputs(pg_edit = list(target = "", kind = "arg", fn = "rtf_page",
+                                     arg = "margin_top_in", line = "", part = "", name = "",
                                      value = "1", n = 2))
     expect_identical(sheet_rows(rv$p, "page", NA)$margin_top_in, "1")
     # another report's id is not a target here
-    session$setInputs(pg_edit = list(target = "T2", kind = "cell", sheet = "page",
-                                     col = "font", line = "", part = "", name = "",
+    session$setInputs(pg_edit = list(target = "T2", kind = "arg", fn = "rtf_document",
+                                     arg = "font_table", line = "", part = "", name = "",
                                      value = "Arial", n = 3))
     expect_identical(nrow(sheet_rows(rv$p, "page", "T2")), 0L)
     session$setInputs(pat_pick = "Wide", pat_name = "Landscape", pat_rename = 1)
@@ -242,14 +242,14 @@ test_that("the user's notes: Standard under a pattern, the tokens card, the head
     output_id = NA, line = "5", center = "{OUTPUT_TITLE}"), "header"))
   p <- set_page_token(p, "T1", "OUTPUT_TITLE", "Demographics")
   h <- as.character(.page_form_ui(p, "T1", identity))
-  # Standard's line 1 under Compact: Compact says the same
-  expect_match(h, "Standard (= Compact)", fixed = TRUE)
+  # Standard's line 1 under Compact: the study default's
+  expect_match(h, "Study default", fixed = TRUE)
   # the Titles card: the title the header prints, changed in the card above
   expect_match(h, "The header prints {OUTPUT_TITLE}: Demographics", fixed = TRUE)
   # one card first: the report's information (a field each), its own
   # tokens, rtfreporter's
   expect_lt(regexpr(">Report information and tokens<", h, fixed = TRUE),
-            regexpr(">Paper, margins and font<", h, fixed = TRUE))
+            regexpr(">Paper and margins", h, fixed = TRUE))
   for (k in .pg_info_items) expect_match(h, sprintf('data-kind="info" data-name="%s"', k), fixed = TRUE)
   # no reset buttons (a TOC taken in again overwrites); an empty label is
   # its default, said by the placeholder

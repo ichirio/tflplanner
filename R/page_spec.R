@@ -70,6 +70,13 @@
                 rtf_document = "Document", rtf_tables = "Table on the page",
                 rtf_figures = "Figure size")
 
+# the call each card is in the program (tflspec writes rtf_page()'s
+# arguments as rtf_document(page = list(...)))
+.pgs_call_names <- c(rtf_page = "(rtf_document(page =))", rtf_default_format = "(rtf_default_format())",
+                     rtf_document = "(rtf_document())", rtf_tables = "(rtf_tables())",
+                     rtf_figures = "(rtf_figures())", rtf_titles = "(rtf_titles())",
+                     rtf_footnotes = "(rtf_footnotes())")
+
 .pgs_field <- function(fn, arg) {
   for (f in .pgs_fields[[fn]]) if (identical(f$arg, arg)) return(f)
   NULL
