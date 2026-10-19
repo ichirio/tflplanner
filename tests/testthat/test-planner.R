@@ -159,7 +159,7 @@ test_that("a code list file is read into a report's code lists", {
   writeLines(c("Variable,Value,Label,Order", "SEX,F,Female,2", "SEX,M,Male,1",
                "AGEGR1,<65,Under 65,"), f)
   cl <- read_codelist(f)
-  expect_identical(names(cl), c("variable", "value", "label", "order"))
+  expect_identical(names(cl), c("variable", "value", "label", "order", "under"))
   expect_identical(nrow(cl), 3L)
   p <- add_output(new_planner(), "T1")
   p <- set_codelist(p, "T1", cl)

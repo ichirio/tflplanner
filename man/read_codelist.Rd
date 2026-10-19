@@ -16,8 +16,8 @@ set_codelist(x, output_id, rows)
 
 \item{output_id}{The report.}
 
-\item{rows}{A data frame with \code{variable} and \code{value} (\code{label} and \code{order}
-optional): what \code{read_codelist()} returns.}
+\item{rows}{A data frame with \code{variable} and \code{value} (\code{label}, \code{order}
+and \code{under} optional): what \code{read_codelist()} returns.}
 }
 \value{
 \code{read_codelist()}: a data frame; \code{set_codelist()}: the
@@ -25,11 +25,14 @@ optional): what \code{read_codelist()} returns.}
 }
 \description{
 \code{read_codelist()} reads a code list -- one row a value of a variable:
-\code{variable}, \code{value}, \code{label} (what it prints as) and \code{order} (its
-place) -- from an \code{.xlsx} (its first sheet) or a \code{.csv} file.
-\code{set_codelist()} puts it into a report's rows of the definition's
+\code{variable}, \code{value}, \code{label} (what it prints as), \code{order} (its place)
+and \code{under} (a nested count's inner value: the value, as the data have
+it, of the variable one level out it sits under, for
+\code{complete_hierarchy()}) -- from an \code{.xlsx} (its first sheet) or a \code{.csv}
+file.  \code{set_codelist()} puts it into a report's rows of the definition's
 \code{codelists} sheet: a value the report has already for the same variable
-is replaced, the others are kept.  A code list is a report's (tflspec:
+is replaced, the others are kept (rows with no \code{under} column keep the
+\code{under} the report's values have).  A code list is a report's (tflspec:
 every row names its report); to use one in several reports, copy it
 (\code{\link[=import_codelist]{import_codelist()}}, \code{\link[=standard_codelists]{standard_codelists()}}).
 }
