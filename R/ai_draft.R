@@ -60,7 +60,10 @@
   ans <- vapply(d$request, function(r) .ai_answer_file(path, r), "", USE.NAMES = FALSE)
   d$answer <- ans
   d$answer_time <- file.mtime(as.character(ifelse(is.na(ans), "", file.path(path, ans))))
-  d <- d[c("request", "family", "outputs", "n", "chars", "file", "answer", "answer_time")]
+  # (the workbook a request's reports come from, tflspec >= 0.0.24.9178)
+  if (is.null(d$book)) d$book <- rep(NA_character_, nrow(d))
+  d <- d[c("request", "family", "outputs", "n", "chars", "file", "answer", "answer_time",
+           "book")]
   rownames(d) <- NULL
   ins <- file.path(path, .ai_requests_dir, "00-instructions.md")
   attr(d, "instructions") <- if (file.exists(ins))
@@ -214,19 +217,39 @@
 
 # tfl_ai_prepare() as the screen calls it: no printing, the ADaM folder
 # absolute.  `args`: toc_sheet, sheets, size, language, workbook,
-# instructions, max_chars, datasets, max_levels, adam_summary (NULL ones
-# left out).
+# instructions, max_chars, datasets, max_levels, adam_summary, mode, add,
+# overwrite (NULL ones left out); `shells` the shell workbooks apart from
+# the TOC's.
 .ai_prepare <- function(dir, toc, adam, args = list(), dry_run = TRUE, study_id = NULL,
-                        title = NULL) {
+                        title = NULL, shells = NULL) {
   adam <- normalizePath(trimws(adam), "/", mustWork = FALSE)
   if (!dir.exists(adam)) stop(sprintf("No ADaM folder %s.", adam), call. = FALSE)
   a <- c(list(dir = dir, toc = toc, adam = adam, dry_run = dry_run, quiet = TRUE),
          if (!is.null(study_id)) list(study_id = study_id),
          if (!is.null(title) && nzchar(title)) list(title = title),
+         if (length(shells)) list(shells = unname(shells)),
          Filter(Negate(is.null), args))
+  # (add = TRUE, overwrite = TRUE: the requests asked again alone -- the
+  # study's own files and the agent's are kept, tflspec >= 0.0.24.9178)
   # (a dry run on a folder not made yet: its path is not there to normalize)
   suppressWarnings(do.call(tflspec::tfl_ai_prepare, a))
 }
+
+# The reports of a dry run already asked for in the study's requests
+# (add): output_id, request
+.ai_already_asked <- function(path, ids) {
+  r <- if (is.null(path)) NULL else tryCatch(tflspec::tfl_ai_requests(path), error = function(e) NULL)
+  none <- data.frame(output_id = character(), request = character(), stringsAsFactors = FALSE)
+  if (is.null(r) || !nrow(r)) return(none)
+  asked <- strsplit(r$outputs, ", ", fixed = TRUE)
+  had <- data.frame(output_id = unlist(asked), request = rep(r$request, lengths(asked)),
+                    stringsAsFactors = FALSE)
+  had[had$output_id %in% ids, , drop = FALSE]
+}
+
+# Whether an error of tfl_ai_prepare(add = TRUE) is a report asked for
+# already (asked again with overwrite = TRUE)
+.ai_is_asked_again <- function(msg) grepl("already asked for", msg, fixed = TRUE)
 
 # The TOC / SHELL workbook kept in the study (ai/<its name>): what was
 # read, beside the requests.  Gives the copy's path.
@@ -263,11 +286,17 @@
   NULL
 }
 
+# The shell workbooks kept in the study (ai/<their names>), as the TOC's:
+# `shells` a list of list(path, name).  Gives the copies' paths.
+.ai_keep_shells <- function(dir, shells) {
+  vapply(shells, function(s) .ai_keep_toc(dir, s$path, s$name), "", USE.NAMES = FALSE)
+}
+
 # The requests written into a study open in the app (its study.yml and
-# spec/ kept): the workbook copied into ai/ first.  The tfl_ai_prepared.
-.ai_write_requests <- function(path, toc, toc_name, adam, args = list()) {
+# spec/ kept): the workbooks copied into ai/ first.  The tfl_ai_prepared.
+.ai_write_requests <- function(path, toc, toc_name, adam, args = list(), shells = list()) {
   toc <- .ai_keep_toc(path, toc, toc_name)
-  .ai_prepare(path, toc, adam, args, dry_run = FALSE)
+  .ai_prepare(path, toc, adam, args, dry_run = FALSE, shells = .ai_keep_shells(path, shells))
 }
 
 # A new study made from the TOC and the ADaM folder, in this order:
@@ -276,14 +305,15 @@
 # study.yml would stop tfl_ai_study_init()), then register_study().
 # Gives list(study, prepared).
 .ai_new_study <- function(id, toc, toc_name, adam, args = list(), title = NULL,
-                          root = studies_root(), home = tflplanner_home()) {
+                          root = studies_root(), home = tflplanner_home(), shells = list()) {
   msg <- .ai_new_study_problem(id, root, home)
   if (!is.null(msg)) stop(msg, call. = FALSE)
   id <- trimws(id)
   dir <- .study_path(root, id)
   p <- tryCatch({
     toc <- .ai_keep_toc(dir, toc, toc_name)
-    .ai_prepare(dir, toc, adam, args, dry_run = FALSE, study_id = id, title = title)
+    .ai_prepare(dir, toc, adam, args, dry_run = FALSE, study_id = id, title = title,
+                shells = .ai_keep_shells(dir, shells))
   }, error = function(e) {
     # nothing half made is left behind
     unlink(dir, recursive = TRUE)
@@ -335,6 +365,24 @@
   .ai_chosen(out)
 }
 
+# Shell workbooks chosen in the dialog (several), their paths; none when
+# cancelled
+.ai_choose_files <- function(default = "") {
+  f <- getOption("tflplanner.choose_files")
+  out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
+    filters <- rbind(c("Excel workbook (*.xlsx, *.xlsm)", "*.xlsx;*.xlsm"), c("All files (*.*)", "*.*"))
+    getExportedValue("utils", "choose.files")(default = "", caption = "Shell workbooks",
+                                              multi = TRUE, filters = filters)
+  } else {
+    tcltk::tk_choose.files(default = default, caption = "Shell workbooks", multi = TRUE,
+                           filters = matrix(c("Excel workbook", ".xlsx", "Excel workbook", ".xlsm"),
+                                            ncol = 2, byrow = TRUE))
+  }
+  out <- as.character(out)
+  out <- out[!is.na(out) & nzchar(out)]
+  normalizePath(out, "/", mustWork = FALSE)
+}
+
 .ai_chosen <- function(x) {
   x <- as.character(x)
   if (length(x) != 1L || is.na(x) || !nzchar(x)) return(NA_character_)
@@ -350,9 +398,14 @@
 }
 
 # The agent's first message, as tfl_ai_prepare(mode = "agent") gives it
-# (its `agent_prompt`), made again from the study's folder when the app has
-# no prepare of this session
+# (its `agent_prompt`): ai/agent_prompt.md, which it writes too; made again
+# from the study's folder when there is none (a study of an older tflspec)
 .ai_agent_prompt <- function(path) {
+  f <- file.path(path, "ai", "agent_prompt.md")
+  if (file.exists(f)) {
+    txt <- tryCatch(.ai_read_text(f), error = function(e) NULL)
+    if (!is.null(txt)) return(sub("\n+$", "", txt))
+  }
   at <- normalizePath(path, winslash = "/", mustWork = FALSE)
   paste0("Follow ", at, "/AGENTS.md. Do every request of ", at, "/ai/requests/index.md, ",
          "in its order: save each answer as ", at, "/ai/answers/<request>.md and run ",

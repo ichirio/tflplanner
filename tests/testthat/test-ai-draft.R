@@ -433,6 +433,146 @@ test_that("agent mode in the app: the first message on step 2, the questions on 
   })
 })
 
+# -- several workbooks, and requests added (tflspec >= 0.0.24.9178) ----------
+
+# the example split in two (its TOC alone, its shells alone), and a second
+# TOC of one more table with its shell (a sheet named as one of the first's)
+ai_split_books <- function(dir) {
+  wb <- openxlsx::loadWorkbook(ai_toc)
+  for (s in setdiff(names(wb), "TOC")) openxlsx::removeWorksheet(wb, s)
+  openxlsx::saveWorkbook(wb, file.path(dir, "toc.xlsx"), overwrite = TRUE)
+  wb <- openxlsx::loadWorkbook(ai_toc)
+  openxlsx::removeWorksheet(wb, "TOC")
+  openxlsx::saveWorkbook(wb, file.path(dir, "shells.xlsx"), overwrite = TRUE)
+  file.path(dir, c("toc.xlsx", "shells.xlsx"))
+}
+ai_more_book <- function(dir) {
+  wb <- openxlsx::createWorkbook()
+  openxlsx::addWorksheet(wb, "TOC")
+  openxlsx::writeData(wb, "TOC", data.frame(
+    No = "T-14-3-2", Type = "Table", Title = "Serious Adverse Events by System Organ Class",
+    Population = "Safety Population"))
+  openxlsx::addWorksheet(wb, "Safety")
+  openxlsx::writeData(wb, "Safety", c("Table 14.3.2", "Serious Adverse Events by System Organ Class",
+                                      "(Safety Population)", "", "System Organ Class | Drug X | Control"))
+  f <- file.path(dir, "more.xlsx")
+  openxlsx::saveWorkbook(wb, f, overwrite = TRUE)
+  f
+}
+
+test_that("the shells in a workbook of their own: read, kept in ai/, each request's workbook", {
+  local_home()
+  d <- file.path(tempdir(), "ai-books")
+  dir.create(d, showWarnings = FALSE)
+  f <- ai_split_books(d)
+  p <- .ai_prepare(file.path(studies_root(), "BK-0"), f[1L], ai_adam, list(), dry_run = TRUE,
+                   shells = f[2L])
+  expect_identical(unique(p$toc$book), "shells.xlsx")
+  expect_true(all(p$toc$shell_found))
+  out <- .ai_new_study("BK-1", f[1L], "toc.xlsx", ai_adam, list(size = 3L),
+                       shells = list(list(path = f[2L], name = "shells.xlsx")))
+  path <- out$study$path
+  expect_true(all(file.exists(file.path(path, "ai", c("toc.xlsx", "shells.xlsx")))))
+  r <- .ai_requests(path)
+  expect_true("book" %in% names(r))
+  expect_identical(unique(r$book), "shells.xlsx")
+})
+
+test_that("requests added: the next names, the answers kept; a report asked again only with overwrite", {
+  local_home()
+  path <- ai_study()
+  d <- file.path(tempdir(), "ai-more")
+  dir.create(d, showWarnings = FALSE)
+  m <- ai_more_book(d)
+  ai_answer(path, "ae-1")
+  own <- file.path(path, c("study.yml", "spec/data.yml", "spec/defaults.yml"))
+  before <- tools::md5sum(own)
+  n0 <- nrow(.ai_requests(path))
+  # the dry run says nothing is asked for twice; then added
+  p <- .ai_prepare(path, m, ai_adam, list(add = TRUE), dry_run = TRUE)
+  expect_identical(nrow(.ai_already_asked(path, p$toc$output_id)), 0L)
+  w <- .ai_write_requests(path, m, "more.xlsx", ai_adam, list(add = TRUE))
+  r <- .ai_requests(path)
+  expect_identical(nrow(r), n0 + 1L)
+  expect_identical(r$request[nrow(r)], "ae-2")
+  expect_identical(r$book[nrow(r)], "more.xlsx")
+  expect_true(file.exists(file.path(path, "ai", "answers", "ae-1.md")))
+  expect_true(file.exists(file.path(path, "ai", "more.xlsx")))
+  # the same workbook again: asked for already
+  again <- .ai_already_asked(path, "T-14-3-2")
+  expect_identical(again$request, "ae-2")
+  e <- tryCatch(.ai_write_requests(path, m, "more.xlsx", ai_adam, list(add = TRUE)),
+                error = function(e) conditionMessage(e))
+  expect_true(.ai_is_asked_again(e))
+  expect_match(e, "T-14-3-2 already asked for (ae-2)", fixed = TRUE)
+  # written again (overwrite): one request for it, the study's own files kept
+  .ai_write_requests(path, m, "more.xlsx", ai_adam, list(add = TRUE, overwrite = TRUE))
+  r2 <- .ai_requests(path)
+  expect_identical(sum(r2$outputs == "T-14-3-2"), 1L)
+  expect_identical(nrow(r2), nrow(r))
+  expect_identical(unname(tools::md5sum(own)), unname(before))
+})
+
+test_that("an agent's study: a request asked again keeps the study's files and the agent's", {
+  local_home()
+  out <- .ai_new_study("AG-4", ai_toc, "onco_toc_shell.xlsx", ai_adam,
+                       list(size = 3L, mode = "agent"))
+  path <- out$study$path
+  d <- file.path(tempdir(), "ai-more-agent")
+  dir.create(d, showWarnings = FALSE)
+  m <- ai_more_book(d)
+  .ai_write_requests(path, m, "more.xlsx", ai_adam, list(add = TRUE, mode = "agent"))
+  own <- file.path(path, c("study.yml", "spec/data.yml", "spec/defaults.yml", "AGENTS.md", "run.R"))
+  before <- tools::md5sum(own)
+  .ai_write_requests(path, m, "more.xlsx", ai_adam,
+                     list(add = TRUE, overwrite = TRUE, mode = "agent"))
+  expect_identical(unname(tools::md5sum(own)), unname(before))
+  expect_identical(sum(.ai_requests(path)$outputs == "T-14-3-2"), 1L)
+})
+
+test_that("the agent's first message: ai/agent_prompt.md when the study has it", {
+  local_home()
+  out <- .ai_new_study("AG-3", ai_toc, "onco_toc_shell.xlsx", ai_adam,
+                       list(size = 3L, mode = "agent"))
+  path <- out$study$path
+  expect_true(file.exists(file.path(path, "ai", "agent_prompt.md")))
+  expect_identical(.ai_agent_prompt(path), out$prepared$agent_prompt)
+  writeLines("Follow the steps.", file.path(path, "ai", "agent_prompt.md"))
+  expect_identical(.ai_agent_prompt(path), "Follow the steps.")
+})
+
+test_that("step 1 in the app: a workbook added to the requests; asked again, written with overwrite", {
+  local_home()
+  path <- ai_study()
+  d <- file.path(tempdir(), "ai-more-app")
+  dir.create(d, showWarnings = FALSE)
+  m <- ai_more_book(d)
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  shiny::testServer(server_for("XYZ-1"), {
+    ai <- session$userData$ai
+    n0 <- nrow(ai$requests())
+    session$setInputs(`ai-study_mode` = "open", `ai-toc_path` = m, `ai-adam_dir` = ai_adam,
+                      `ai-add` = TRUE, `ai-size` = 3, `ai-language` = "English",
+                      `ai-instructions` = "each", `ai-workbook` = "text", `ai-max_levels` = 15,
+                      `ai-mode` = "chat")
+    session$setInputs(`ai-read` = 1)
+    expect_match(output$`ai-prep_status`$html, "Added to the", fixed = TRUE)
+    session$setInputs(`ai-write` = 1)
+    r <- ai$requests()
+    expect_identical(nrow(r), n0 + 1L)
+    expect_match(output$`ai-requests`, "more.xlsx", fixed = TRUE)
+    # read again: asked for already, said; written again on overwrite
+    session$setInputs(`ai-read` = 2)
+    expect_match(output$`ai-prep_status`$html, "T-14-3-2 (ae-2)", fixed = TRUE)
+    session$setInputs(`ai-write` = 2)
+    expect_identical(nrow(ai$requests()), n0 + 1L)
+    session$setInputs(`ai-write_overwrite` = 1)
+    expect_identical(sum(ai$requests()$outputs == "T-14-3-2"), 1L)
+    expect_identical(nrow(ai$requests()), n0 + 1L)
+  })
+})
+
 test_that("a study made with the ADaM outside its folder: its data found, no D01 for a report taken in", {
   local_home()
   out <- .ai_new_study("ABS-1", ai_toc, "onco_toc_shell.xlsx", ai_adam, list(size = 3L))
