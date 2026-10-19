@@ -416,7 +416,7 @@ test_that("in the app: a switch writes and takes away; Add; the variables shown;
     bf <- session$userData$bform
     # the columns' order, where it comes from: no factor, no code list
     expect_match(output[[paste0("b", bf$n, "_arms_ui")]]$html,
-                 "rp-level-from text-warning", fixed = TRUE)
+                 "rp-levels-state text-warning", fixed = TRUE)
     cid <- function(path) paste0("b", bf$n, "_card_", path)
     # table_plan()'s card: its own arguments only (cols dragged and removed
     # as the rows); the block's order and the columns' levels are
@@ -575,16 +575,57 @@ test_that("the values' order, data first: this table's, the code list's, the ARD
   expect_match(w$text, tr("The ARD's order differs from the code list's; the table uses the code list's.", "ja"),
                fixed = TRUE)
   expect_true(.level_order_text(list(source = "seen"))$warn)
-  h <- html(.level_order_lines(list(SEX = list(source = "codelist"), RACE = list(source = "codelist"),
-                                    TRT01A = list(source = "table"))))
-  expect_match(h, "<code>SEX, RACE</code>[[:space:]]*:[[:space:]]*The code list's order")
-  expect_false(grepl("TRT01A", h, fixed = TRUE))
-  # on plan_levels()' card
-  # (on: an off card has no body, #417)
-  it <- list(fn = "plan_levels", args = list(), path = "plan_levels", present = FALSE,
-             switch = TRUE, on = TRUE)
-  h <- html(.table_cards(list(it), level_from = list(SEX = list(source = "ard"))))
-  expect_match(h, "order (its factor levels).", fixed = TRUE)
+  # on plan_levels()' card, a variable's line (#428): the code list's order
+  # the ARD does not keep is written; as first seen, a warning
+  h <- html(.levels_state(c("F", "M"), from = list(source = "codelist")))
+  expect_match(h, "Written in the code: The code list's order", fixed = TRUE)
+  expect_match(html(.levels_state("A", from = list(source = "seen"))), "text-warning", fixed = TRUE)
+  expect_null(.levels_state("A", from = list(source = "plan")))
+})
+
+test_that("plan_levels()' variables: a line until opened, the ARD's order not written (#428)", {
+  lv <- c("White", "Black or African American", "Asian", "American Indian or Alaska Native",
+          "Native Hawaiian or Other Pacific Islander", "Other")
+  expect_identical(.levels_summary(lv), "White, Black or African American, \u2026")
+  expect_identical(.levels_summary(c("F", "M")), "F, M")
+  expect_identical(.levels_summary("A very long value that is longer than forty characters"),
+                   "A very long value that is longer than forty characters")
+  # the chips stay drawn (cut to no height): no <details>, no display: none
+  h <- html(.levels_var("b1_lv4", "RACE", lv,
+                        sortable::rank_list(text = NULL, labels = lv, input_id = "b1_lv4"),
+                        ard = lv))
+  expect_match(h, "RACE</code>[[:space:]]*:[[:space:]]*<span class=\"rp-levels-sum\">White, Black or African American")
+  expect_match(h, "(6)", fixed = TRUE)
+  expect_match(h, 'data-input="b1_lv4"', fixed = TRUE)
+  expect_match(h, 'class="rp-levels-body"', fixed = TRUE)
+  expect_false(grepl("<details", h, fixed = TRUE))
+  expect_match(h, "Reorder", fixed = TRUE)
+  expect_match(h, "Asian", fixed = TRUE)
+  # the ARD's order: not written; another: written, with the way back
+  expect_match(h, "rp-st-same\">[[:space:]]*The ARD's order [(]not written in the code[)]")
+  expect_match(h, "rp-st-own\" style=\"display: none;\"", fixed = TRUE)
+  h2 <- html(.levels_state(rev(lv), lv, nm = "RACE"))
+  expect_match(h2, "rp-st-same\" style=\"display: none;\"", fixed = TRUE)
+  expect_match(h2, "This table's order (written in the code)", fixed = TRUE)
+  expect_match(h2, "data-ard=", fixed = TRUE)
+  expect_match(h2, 'class="rp-levels-reset" data-variable="RACE"', fixed = TRUE)
+  expect_match(html(.levels_state(rev(lv), lv, nm = "RACE", lang = "ja")),
+               tr("Back to the ARD's order", "ja"), fixed = TRUE)
+  # the block of variables: nested ones left out of its order
+  st <- list(variables = data.frame(variable = c("RACE", "ASIANSUB", "ETHNIC"),
+                                    under = c(NA, "RACE: Asian", NA)))
+  expect_identical(.levels_block_order(st), c("RACE", "ETHNIC"))
+  # a sample table: the ARD keeps SEX as a factor in its code list's order
+  skip_if_not_installed("cards")
+  p <- sample_planner()
+  m <- list(keys = list(TRT01A = c("Drug X", "Control")), by = "TRT01A",
+            variables = data.frame(variable = c("AGE", "SEX"), kind = c("continuous", "categorical"),
+                                   levels = c(NA, "Female | Male"), n_levels = c(0L, 2L),
+                                   stats = "n", label = NA_character_),
+            factor_vars = "SEX", factor_keys = "TRT01A")
+  st <- builder_read(p, "T-14-1-1", m)
+  expect_identical(st$level_ard$SEX, c("Female", "Male"))
+  expect_identical(st$variable_ard, c("AGE", "SEX"))
 })
 
 test_that("builder_read() tells where each order comes from; a key column's factor counts", {

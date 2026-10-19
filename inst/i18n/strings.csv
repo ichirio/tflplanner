@@ -3515,3 +3515,10 @@ Header separator,見出しの区切り
 Cells over columns,複数列にまたがるセル
 "The column keys, outermost first; drag to order. Their values are the table's columns (TRT01A: a column an arm). A key is in cols or in rows, not both.",列キー（外側から。ドラッグで並べ替え）。その値が表の列になります（TRT01A: 群ごとに 1 列）。キーは cols か rows のどちらか一方にだけ置けます。
 "How a level of a categorical variable prints: its count and percentage in one of these formats (n (%) ...), or a template of one's own (Own), e.g. {n} ({p:.1f}%). Every categorical variable takes it.",カテゴリ変数の水準の印刷のしかた。件数と割合をこれらの書式（n (%) など）のどれかで、または自分のテンプレート（独自）で。例: {n} ({p:.1f}%)。すべてのカテゴリ変数に使われます。
+"Ticked: the variable's values no subject has (a code list's value, 0 in every column) are not printed. Unticked: printed with their zeros.",チェックあり: どの被験者にも無い値（コードリストの値で、どの列も 0）を印刷しません。チェックなし: 0 のまま印刷します。
+"The order of the analysis variables' blocks, dragged. A variable nested under another's level goes with it.",解析変数のまとまりの並び（ドラッグで並べ替え）。ほかの変数の水準の下に入れた変数は、その変数と一緒に動きます。
+Reorder,並べ替える
+The ARD's order (not written in the code),ARD の順（コードに書かれない）
+This table's order (written in the code),この表の順（コードに書かれる）
+Back to the ARD's order,ARD の水準の順に戻す
+Written in the code,コードに書かれる

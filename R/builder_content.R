@@ -752,22 +752,6 @@ builder_items <- function(x, output_id, meta = NULL) {
              w$text)
 }
 
-# ... plan_levels()' card: a line a source, its variables before it
-# ("SEX, RACE: The code list's order ...")
-.level_order_lines <- function(level_from, lang = "en") {
-  if (!length(level_from)) return(NULL)
-  txt <- lapply(level_from, .level_order_text, lang = lang)
-  txt <- Filter(Negate(is.null), txt)
-  if (!length(txt)) return(NULL)
-  key <- vapply(txt, function(w) w$text, "")
-  lapply(unique(key), function(k) {
-    vars <- names(key)[key == k]
-    warn <- any(vapply(txt[vars], function(w) isTRUE(w$warn), NA))
-    shiny::div(class = paste("small rp-level-from", if (warn) "text-warning" else "text-muted"),
-               shiny::tags$code(paste(vars, collapse = ", ")), ": ", k)
-  })
-}
-
 # A card's own line above its body, by verb (`r`: the card's Edit as R is
 # offered beside it; `level_from`: the variables' orders' sources, for
 # plan_levels()): what the card does not show yet, or where its values go
@@ -794,8 +778,7 @@ builder_items <- function(x, output_id, meta = NULL) {
       class = "rp-card-note",
       help_tip(t(paste("Sets the order of the levels of the column and row keys (the groups,",
                        "an analysis variable's values). The analysis variables' own order",
-                       "(variable) is here too. Levels with no data can be hidden (.drop_empty)."))),
-      .level_order_lines(level_from, lang)),
+                       "(variable) is here too. Levels with no data can be hidden (.drop_empty).")))),
     plan_sort = shiny::div(
       class = "rp-card-note",
       with_tip(builder_label(.arg_meaning("plan_sort", "keys"), "keys", "arg", lang),
@@ -1334,7 +1317,8 @@ builder_items <- function(x, output_id, meta = NULL) {
 # `vars`: a summary table's block of variables, its items in their order
 # (the `variable` entry, dragged: `id("vars")`), first; `cols`: the column
 # variables' levels in order (the columns' order, drawn by the page), next.
-# `empty`: the variables sheet's rows (.empty_levels_of()).
+# `empty`: the variables sheet's rows (.empty_levels_of()).  Each variable
+# is a line until opened (.levels_var()).
 .levels_body <- function(id, st, codelists = NULL, empty = NULL, lang = "en",
                          vars = NULL, cols = NULL) {
   t <- function(x) tr(x, lang)
@@ -1344,46 +1328,110 @@ builder_items <- function(x, output_id, meta = NULL) {
     nm <- v$variable[i]
     lv <- st$levels[[nm]]
     if (!identical(v$kind[i], "categorical") || !length(lv)) return(NULL)
-    shiny::div(
-      class = "rp-b-sec rp-levels-var", `data-variable` = nm,
-      shiny::div(class = "rp-b-sec-label",
-                 builder_label(sprintf(t("Values of %s"), nm), nm, "arg", lang),
-                 if (!is.na(v$label[i])) shiny::span(class = "text-muted ms-1", v$label[i])),
-      .levels_fold(sortable::rank_list(text = NULL, labels = .levels_with_labels(lv, nm, codelists),
-                                       input_id = id(paste0("lv", i)), orientation = "horizontal"),
-                   lv, lang),
-      shiny::tags$label(
+    .levels_var(
+      id(paste0("lv", i)), nm, lv,
+      sortable::rank_list(text = NULL, labels = .levels_with_labels(lv, nm, codelists),
+                          input_id = id(paste0("lv", i)), orientation = "horizontal"),
+      ard = st$level_ard[[nm]], from = st$level_from[[nm]], lang = lang,
+      extra = shiny::tags$label(
         class = "small rp-levels-drop",
         shiny::tags$input(type = "checkbox", id = id(paste0("lvdrop", i)),
                           class = "form-check-input me-1",
                           checked = if (isTRUE(hidden[[nm]])) NA else NULL),
-        builder_label(.arg_meaning("plan_levels", ".drop_empty"), ".drop_empty", "arg", lang)))
+        with_tip(builder_label(.arg_meaning("plan_levels", ".drop_empty"), ".drop_empty", "arg", lang),
+                 t("Ticked: the variable's values no subject has (a code list's value, 0 in every column) are not printed. Unticked: printed with their zeros."))))
   })
   rows <- Filter(Negate(is.null), rows)
   # (the code's order: variable, the column keys, then the categorical
   # variables)
   shiny::tagList(
     if (length(vars)) shiny::div(
-      class = "rp-b-sec rp-levels-var", `data-variable` = "variable",
+      class = "rp-b-sec rp-levels-var rp-levels-block", `data-variable` = "variable",
       shiny::div(class = "rp-b-sec-label",
-                 builder_label("Analysis variables' order (the levels of variable)", "variable", "arg", lang)),
+                 with_tip(builder_label("Analysis variables' order (the levels of variable)", "variable", "arg", lang),
+                          t("The order of the analysis variables' blocks, dragged. A variable nested under another's level goes with it."))),
+      .levels_state(.levels_block_order(st), intersect(st$variable_ard, .levels_block_order(st)),
+                    nm = "variable", lang = lang),
       sortable::rank_list(text = NULL, labels = vars, input_id = id("vars"))),
     cols,
     if (length(rows)) rows else if (!length(vars)) shiny::div(
       class = "small text-muted", t("No categorical variable to order.")))
 }
 
-# A variable's levels to order: a long list (RACE's six) clipped to its
-# first line, "all" opens it.  (Clipped, not hidden: a sortable list reads
-# its items' text, which a hidden list has not -- it would read blanks.)
-.levels_fold <- function(list_ui, lv, lang = "en", at = 4L) {
-  if (length(lv) <= at) return(list_ui)
-  shiny::tagList(
-    shiny::div(class = "rp-levels-clip", list_ui),
-    shiny::tags$a(href = "#", class = "small rp-levels-more",
-                  onclick = "$(this).prev('.rp-levels-clip').toggleClass('rp-open'); return false;",
-                  sprintf(tr("%d levels: %s", lang), length(lv),
-                          paste(c(utils::head(lv, 3L), "..."), collapse = ", "))))
+# the analysis variables in their blocks' order, those nested under
+# another's level left out (plan_levels()' `variable` names none of them)
+.levels_block_order <- function(st) {
+  v <- st$variables
+  if (!is.data.frame(v) || !nrow(v)) return(character())
+  un <- v$under %||% rep(NA_character_, nrow(v))
+  v$variable[is.na(un) | !nzchar(un)]
+}
+
+# One variable's values on plan_levels()' card (#428): closed, one line --
+# "RACE: White, Black or African American, ... (6)  > Reorder" -- and
+# open, every value a chip, dragged.  The chips stay drawn while closed,
+# cut to no height: never display: none nor a closed <details> -- the
+# sortable list reads its items' text, which a list not drawn has not (it
+# wrote empty levels).  Under the line, whether the code writes the order
+# (.levels_state()).  `input_id`: the list's; `extra`: drawn under the
+# chips (the empty values' tick).
+.levels_var <- function(input_id, nm, lv, list_ui, ard = NULL, from = NULL,
+                        extra = NULL, lang = "en") {
+  t <- function(x) tr(x, lang)
+  shiny::div(
+    class = "rp-b-sec rp-levels-var", `data-variable` = nm, `data-input` = input_id,
+    shiny::tags$a(
+      href = "#", class = "rp-levels-toggle", role = "button",
+      shiny::tags$code(nm), ": ",
+      shiny::span(class = "rp-levels-sum", .levels_summary(lv)), " ",
+      shiny::span(class = "rp-levels-n", sprintf("(%d)", length(lv))), " ",
+      shiny::span(class = "rp-levels-go rp-closed-only", paste("\u25b8", t("Reorder"))),
+      shiny::span(class = "rp-levels-go rp-open-only", paste("\u25be", t("Close")))),
+    .levels_state(lv, ard, from, nm = nm, lang = lang),
+    shiny::div(class = "rp-levels-body", list_ui, extra))
+}
+
+# the closed line's values: the first ones up to about 40 characters, then
+# "..." (the page writes it again as they are dragged: .builder_content_js)
+.levels_summary <- function(lv, width = 40L) {
+  lv <- as.character(lv)
+  if (!length(lv)) return("")
+  n <- cumsum(nchar(lv) + 2L)
+  k <- max(1L, sum(n <= width))
+  paste(c(lv[seq_len(k)], if (k < length(lv)) "\u2026"), collapse = ", ")
+}
+
+# Whether the code writes a variable's order: the ARD's own (`ard`: the
+# order the ARD keeps the variable in, a factor -- the code list applied
+# when it was made) is not written (tflspec #355); another is, with the
+# way back to the ARD's ("Back to the ARD's order": the page sends
+# b_lv_reset).  With no order of the ARD's, where it comes from
+# (.level_order_text(): the code list's, or as first seen -- check it).
+.levels_state <- function(lv, ard = NULL, from = NULL, nm = NULL, lang = "en") {
+  t <- function(x) tr(x, lang)
+  line <- function(cls, ...) shiny::div(class = paste("small rp-levels-state", cls), ...)
+  if (length(ard)) {
+    # (both lines drawn, one shown: the page shows the other as the values
+    # are dragged, by the ARD's order it is given)
+    same <- identical(as.character(lv), as.character(ard))
+    hide <- "display: none;"
+    return(shiny::div(
+      class = "rp-levels-states",
+      `data-ard` = jsonlite::toJSON(as.character(ard)),
+      shiny::div(class = "small rp-levels-state text-muted rp-st-same", style = if (!same) hide,
+                 t("The ARD's order (not written in the code)")),
+      shiny::div(class = "small rp-levels-state text-muted rp-st-own", style = if (same) hide,
+                 t("This table's order (written in the code)"), " ",
+                 shiny::tags$a(href = "#", class = "rp-levels-reset", `data-variable` = nm,
+                               t("Back to the ARD's order")))))
+  }
+  if (is.null(from)) return(NULL)
+  src <- from$source %||% "seen"
+  if (identical(src, "plan")) return(NULL)
+  w <- .level_order_text(from, lang)
+  if (identical(src, "seen")) return(line("text-warning", w$text))
+  line(if (isTRUE(w$warn)) "text-warning" else "text-muted",
+       paste0(t("Written in the code"), if (!is.null(w)) paste0(": ", w$text)))
 }
 
 # plan_filter()'s `where` as one condition's R (several joined by &, as
@@ -1636,8 +1684,18 @@ builder_code_map <- function(lines, items) {
 .rp-builder-cards .rp-levels-var .rank-list-item { font-size: 12px; padding: .05rem .4rem;
   line-height: 1.4; min-height: 0; }
 .rp-builder-cards .rp-levels-var .rank-list { gap: .2rem; padding: .2rem; }
-.rp-levels-clip { max-height: 2.1rem; overflow: hidden; }
-.rp-levels-clip.rp-open { max-height: none; }
+/* plan_levels()' variables (#428): a line each until opened; the chips
+   cut to no height, not hidden (the list reads their text) */
+.rp-levels-toggle { color: inherit; text-decoration: none; font-size: 12.5px; display: inline; }
+.rp-levels-toggle code { color: #111827; background: none; padding: 0; font-size: 12.5px;
+  font-weight: 600; }
+.rp-levels-go { color: var(--bs-link-color, #0d6efd); white-space: nowrap; }
+.rp-levels-n { color: #6b7280; }
+.rp-levels-body { max-height: 0; overflow: hidden; }
+.rp-levels-var.rp-open > .rp-levels-body { max-height: none; overflow: visible; }
+.rp-levels-var:not(.rp-open) .rp-open-only, .rp-levels-var.rp-open .rp-closed-only { display: none; }
+.rp-levels-state { font-size: 12px; margin-left: .6rem; }
+.rp-levels-reset { white-space: nowrap; }
 "
 
 # the cards' buttons of the table builder, one input each: Revert, Edit as
@@ -1655,6 +1713,54 @@ $(document).on('click', '.rp-builder-cards .rp-tool-remove', function() {
   var p = $(this).closest('.rp-card').data('path');
   Shiny.setInputValue('b_card_remove', {path: String(p), t: Date.now()}, {priority: 'event'});
 });
+// plan_levels()' variables: opened and closed (kept as the card is drawn
+// again), their line written again as the values are dragged, and the way
+// back to the ARD's order
+(function() {
+  var open = {};
+  function summary(lv) {
+    var out = [], n = 0;
+    for (var i = 0; i < lv.length; i++) {
+      n += String(lv[i]).length + 2;
+      if (i > 0 && n > 40) { out.push('\\u2026'); break; }
+      out.push(lv[i]);
+    }
+    return out.join(', ');
+  }
+  $(document).on('click', '.rp-levels-toggle', function(e) {
+    e.preventDefault();
+    var v = $(this).closest('.rp-levels-var');
+    v.toggleClass('rp-open');
+    open[v.data('input')] = v.hasClass('rp-open');
+  });
+  $(document).on('shiny:value', function() {
+    setTimeout(function() {
+      $('.rp-levels-var[data-input]').each(function() {
+        if (open[$(this).data('input')]) $(this).addClass('rp-open');
+      });
+    }, 0);
+  });
+  $(document).on('shiny:inputchanged', function(e) {
+    if (!e.name || !Array.isArray(e.value)) return;
+    var v = $('.rp-levels-var[data-input=\"' + e.name + '\"]');
+    if (!v.length) return;
+    v.find('.rp-levels-sum').first().text(summary(e.value));
+    v.find('.rp-levels-n').first().text('(' + e.value.length + ')');
+    var st = v.find('.rp-levels-states').first();
+    if (st.length) {
+      var ard = JSON.parse(st.attr('data-ard') || '[]');
+      var same = ard.length === e.value.length &&
+        ard.every(function(x, i) { return x === String(e.value[i]); });
+      st.find('.rp-st-same').toggle(same);
+      st.find('.rp-st-own').toggle(!same);
+    }
+  });
+  $(document).on('click', '.rp-levels-reset', function(e) {
+    e.preventDefault();
+    Shiny.setInputValue('b_lv_reset', {variable: String($(this).data('variable')), t: Date.now()},
+                        {priority: 'event'});
+  });
+})();
 "
 
 # The fixed items of a selectize of layers (a hierarchy's levels, the block

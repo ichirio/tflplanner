@@ -9907,6 +9907,42 @@ app_server <- function(input, output, session, start) {
     if (wrote) rv$bver <- rv$bver + 1L
   })
 
+  # "Back to the ARD's order" (plan_levels()' card, #428): the variable's
+  # values -- a column key's, or the analysis variables' blocks -- in the
+  # order the ARD keeps them; written as no order of the table's own, so
+  # the code writes none (tflspec #355)
+  shiny::observeEvent(input$b_lv_reset, builder_guard({
+    nm <- input$b_lv_reset$variable
+    st <- shiny::isolate(bstate())
+    shiny::req(length(nm) == 1L, !is.null(st), identical(bform$id, current()))
+    if (identical(nm, "variable")) {
+      ard <- bform$st$variable_ard
+      shiny::req(length(ard))
+      vs <- st$variables$variable
+      un <- st$variables$under %||% rep(NA_character_, length(vs))
+      top <- vs[is.na(un) | !nzchar(un)]
+      want <- c(intersect(ard, top), setdiff(top, ard))
+      # (a nested variable after its parent, as it was shown)
+      out <- character()
+      for (v0 in want) {
+        out <- c(out, v0)
+        out <- c(out, vs[!is.na(un) & startsWith(un, paste0(v0, ":"))])
+      }
+      out <- c(out, setdiff(vs, out))
+      st$variables <- st$variables[match(out, vs), , drop = FALSE]
+      rownames(st$variables) <- NULL
+    } else {
+      ard <- bform$st$level_ard[[nm]]
+      shiny::req(length(ard))
+      st$auto_levels[[nm]] <- ard
+      if (nm %in% names(st$arms)) st$arms[[nm]] <- ard else st$levels[[nm]] <- ard
+    }
+    p2 <- guarded(builder_write(rv$p, bform$id, st, was = bform$last))
+    shiny::req(!is.null(p2))
+    rv$p <- p2
+    rv$btouched <- TRUE
+    rv$bver <- rv$bver + 1L
+  }))
   shiny::observeEvent(input$b_add_n, {
     id <- bform$id
     key <- bform$st$key[1L]
@@ -9932,21 +9968,17 @@ app_server <- function(input, output, session, start) {
     n <- bform$n
     output[[paste0("b", n, "_arms_ui")]] <- shiny::renderUI(shiny::tagList(
       lapply(ks, function(k) {
-        # where the order comes from (builder_read(): this table's own, the
-        # report's code list, the ARD's factor, as first seen), said as on
-        # plan_levels()' card
-        from <- bform$st$level_from[[k]]
-        shiny::div(
-          class = "rp-b-sec rp-levels-var", `data-variable` = k,
-          shiny::div(class = "rp-b-sec-label",
-                     builder_label(sprintf(t("Values of %s"), k), k, "arg", lang)),
-          if (!is.null(from)) .level_order_note(from, lang),
+        # a line until opened, and whether the code writes its order, as
+        # plan_levels()' other variables (.levels_var())
+        lv <- key_levels(k)
+        .levels_var(
+          arms_id(k), k, lv,
           sortable::rank_list(text = NULL,
                               labels = .levels_with_labels(
-                                key_levels(k), k,
-                                sheet_rows(shiny::isolate(rv$p), "codelists", bform$id)),
+                                lv, k, sheet_rows(shiny::isolate(rv$p), "codelists", bform$id)),
                               input_id = arms_id(k),
-                              orientation = "horizontal"))
+                              orientation = "horizontal"),
+          ard = bform$st$level_ard[[k]], from = bform$st$level_from[[k]], lang = lang)
       })))
   }))
   # the Total column: a switch, its heading and place; it sets `overall` on
