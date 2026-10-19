@@ -38,7 +38,8 @@ content:
   - plan_levels:
       variable: INFO
   - plan_labels:
-      INFO: Dictionaries and dates of the data
+      variable:
+        INFO: Dictionaries and dates of the data
   - plan_col_header:
       header:
         - line: '1'

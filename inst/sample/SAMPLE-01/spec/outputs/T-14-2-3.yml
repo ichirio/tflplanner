@@ -66,7 +66,8 @@ content:
         - Drug X
         - Control
   - plan_labels:
-      CHG: Change from baseline at week 24 (mmHg)
+      variable:
+        CHG: Change from baseline at week 24 (mmHg)
   - plan_paginate_rows:
       max_rows: 24
 page:

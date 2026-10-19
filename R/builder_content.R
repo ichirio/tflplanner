@@ -274,7 +274,9 @@ builder_items <- function(x, output_id, meta = NULL) {
 .builder_items_sheets <- function(x, output_id, meta = NULL) {
   sp <- .spec_object_last(x, table_sheets(), .study_keys$table)
   bridge <- .tflspec_fn(".plan_content_from_sheets")
-  get <- function(...) tryCatch(bridge(sp, ...), error = function(e) list())
+  # the ARD's definition: no plan_levels the ARD already says (tflspec #358)
+  ard <- tryCatch(suppressWarnings(.ard_spec(x$ard)), error = function(e) NULL)
+  get <- function(...) tryCatch(bridge(sp, ..., ard_spec = ard), error = function(e) list())
   res <- get(output_id, own = FALSE)
   own <- get(output_id, own = TRUE)
   dfl <- get(NA)
