@@ -419,7 +419,7 @@ fetch_ard <- function(study, output_id, timeout = 300,
   proc <- if (nrow(o) && !.table_norm_builtin(p, output_id)) o$process_code[1L]
   ds <- p$ard$datasets$path
   imp <- .ard_import_of(p, output_id)
-  files <- c(character(), if (length(ds)) file.path(study$path, ds[!is.na(ds) & nzchar(ds)]),
+  files <- c(character(), if (length(ds)) .data_file(study$path, ds[!is.na(ds) & nzchar(ds)]),
              if (!is.null(imp)) file.path(.import_dir(study), imp))
   info <- file.info(files)
   data <- paste(basename(files), info$size, as.numeric(info$mtime), collapse = ";")

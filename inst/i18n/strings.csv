@@ -3453,6 +3453,10 @@ Rows judged together,まとめて判定する行のキー
 Discard changes,変更を破棄
 "Every change not saved goes -- in every report of the study and in the study's own files (defaults.yml ...), as a save would have written them -- and the study is as it was last saved. The draft goes too.",保存していない変更をすべて捨てます（保存と同じ範囲: この試験のすべての帳票と、defaults.yml など試験全体のファイル）。試験は最後に保存したときの状態に戻ります。下書きも消えます。
 "The changes were discarded: the study is as it was last saved.",変更を破棄しました。試験は最後に保存した状態です。
+%s (outside the study folder),%s（試験フォルダの外）
+outside the study folder,試験フォルダの外
+Outside the study folder: %s,試験フォルダの外：%s
+"A row's file may also be outside the study folder, by its full path (C:/adam/adsl.rds).",行のファイルは、試験フォルダの外にフルパスで置くこともできます（C:/adam/adsl.rds）。
 "The nested row keys, outermost first: each level's own summary rows become its rows (a SOC's row over its PTs). Blank: step 1's hierarchical analysis's, which is usually right; another may not match the ARD. e.g. AEBODSYS, AEDECOD","入れ子の行キー（外側から）。各段の自分の要約行がその段の行になります（PT の上の SOC の行）。空欄 = 手順 1 の階層の解析のもの（ふつうはこれで正しい）。別の値は ARD と合わないことがあります。例: AEBODSYS, AEDECOD"
 "The text of the row a hierarchical analysis makes over all its terms (the subjects with any event), put on the first hierarchy column. Blank: that row is left as it is. e.g. Any TEAE",階層の解析が全体について作る行（何かのイベントがある被験者）の文字。最初の階層の列に入ります。空欄 = その行はそのまま。例: Any TEAE
 "How the statistics are laid out: ""cells"" one template a cell (n (%) in one cell), ""rows"" each statistic a row of its own. Blank: cells. e.g. ""rows""","統計量の並べ方。""cells"" は 1 セルに 1 つのテンプレート（n (%) を 1 セルに）、""rows"" は統計量ごとに 1 行。空欄 = cells。例: ""rows"""

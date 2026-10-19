@@ -142,7 +142,7 @@
   read <- function(d) {
     pth <- ds$path[match(d, ds$dataset)]
     if (is.na(pth)) return(NULL)
-    f <- file.path(study$path, pth)
+    f <- .data_file(study$path, pth)
     if (!file.exists(f)) return(NULL)
     tryCatch(as.data.frame(read_data_head(f, n = .Machine$integer.max)),
              error = function(e) NULL)
