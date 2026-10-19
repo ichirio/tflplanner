@@ -265,7 +265,7 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
     return(data.frame(path = character(), size = numeric(), programs = character(),
                       stringsAsFactors = FALSE))
   }
-  full <- ifelse(.is_abs_path(files), files, file.path(study$path, files))
+  full <- .data_file(study$path, files)
   data.frame(
     path = files,
     size = unname(file.size(full)),
@@ -273,8 +273,6 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
       f %in% v, NA)]), collapse = ", "), "", USE.NAMES = FALSE),
     stringsAsFactors = FALSE)
 }
-
-.is_abs_path <- function(p) grepl("^([A-Za-z]:)?[/\\\\]", p)
 
 # the runner and the autoexec programs, written with the study
 .batch_cache <- new.env()
