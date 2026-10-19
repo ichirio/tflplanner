@@ -1009,8 +1009,7 @@ app_ui <- function(lang = "en") {
         # its own height (a fixed one let a long list cover the buttons)
         DT::DTOutput("outputs", height = "auto", fill = FALSE))),
 
-    # tflspec's AI table requests and their answers (#431): off until its
-    # place is decided
+    # tflspec's AI table requests and their answers (#431)
     if (.ai_drafts_on()) bslib::nav_panel(t("AI drafts"), value = "ai", ai_ui("ai", lang)),
 
     # one report at a time: chosen on the left, made in its steps
@@ -1923,6 +1922,19 @@ app_server <- function(input, output, session, start) {
   if (.ai_drafts_on()) {
     session$userData$ai <- ai_server(
       "ai", rv = rv, has_study = has_study, dirty = dirty, reload_now = reload_now,
+      # (a new study made by the tab: listed, and open)
+      adopt = function(s) shiny::withReactiveDomain(session, {
+        rv$studies_ver <- rv$studies_ver + 1L
+        set_study(s)
+      }),
+      # (in the app's own session, not the module's: its tabs; go() is
+      # defined further down -- called, not taken, here)
+      open_report = function(id) shiny::withReactiveDomain(session, {
+        rv$want <- id
+        shiny::updateSelectInput(session, "target", selected = id)
+        go("tables")
+      }),
+      go = function(where) shiny::withReactiveDomain(session, go(where)),
       notify = notify, guarded = guarded, lang = lang)
   }
   for (b in c("spec_reload", "spec_reload_m")) local({

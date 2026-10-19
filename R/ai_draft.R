@@ -166,3 +166,105 @@
   }
   reload_from_spec(study_id, home = home)
 }
+
+# ---- step 1: the requests prepared (tfl_ai_prepare()) -----------------------
+
+# the data files of an ADaM folder (their names); NULL for no such folder
+.ai_adam_files <- function(dir) {
+  dir <- trimws(dir %||% "")
+  if (!nzchar(dir) || !dir.exists(dir)) return(NULL)
+  sort(list.files(dir, "[.](xpt|sas7bdat|rds)$", ignore.case = TRUE))
+}
+
+# The ADaM folder a study's data catalog points to: the folder of its first
+# ADaM dataset that is there (a path from the study's folder, or one of its
+# own), else the study's data/adam
+.ai_adam_default <- function(study) {
+  ds <- study$planner$ard$datasets
+  path <- study$path
+  if (!is.null(ds) && nrow(ds) && !is.null(ds$path)) {
+    p <- ds$path[!is.na(ds$path) & nzchar(ds$path)]
+    for (f in p) {
+      abs <- if (grepl("^(/|[A-Za-z]:|\\\\\\\\)", f)) f else file.path(path, f)
+      if (file.exists(abs)) return(normalizePath(dirname(abs), "/"))
+    }
+  }
+  d <- file.path(path, study_layout()[["adam"]])
+  if (dir.exists(d)) normalizePath(d, "/") else ""
+}
+
+# Why a new study cannot be made under `root` with this id, or NULL (`t`
+# the app's words)
+.ai_new_study_problem <- function(id, root = studies_root(), home = tflplanner_home(),
+                                  t = identity) {
+  id <- trimws(id %||% "")
+  if (!nzchar(id)) return(t("Give the study an ID."))
+  if (!grepl("^[A-Za-z0-9][A-Za-z0-9._-]*$", id)) {
+    return(t("Use letters, digits, '.', '_' or '-' only (e.g. ABC-101)."))
+  }
+  if (id %in% list_studies(home)$study_id) return(t("A study with this ID is already registered."))
+  path <- tryCatch(.study_path(root, id), error = function(e) e)
+  if (inherits(path, "error")) return(.error_view(conditionMessage(path), t))
+  if (dir.exists(path)) {
+    return(sprintf(t("A folder %s is already there: choose another ID, or register that folder (Studies > Register a folder)."),
+                   path))
+  }
+  NULL
+}
+
+# tfl_ai_prepare() as the screen calls it: no printing, the ADaM folder
+# absolute.  `args`: toc_sheet, sheets, size, language, workbook,
+# instructions, max_chars, datasets, max_levels, adam_summary (NULL ones
+# left out).
+.ai_prepare <- function(dir, toc, adam, args = list(), dry_run = TRUE, study_id = NULL,
+                        title = NULL) {
+  adam <- normalizePath(trimws(adam), "/", mustWork = FALSE)
+  if (!dir.exists(adam)) stop(sprintf("No ADaM folder %s.", adam), call. = FALSE)
+  a <- c(list(dir = dir, toc = toc, adam = adam, dry_run = dry_run, quiet = TRUE),
+         if (!is.null(study_id)) list(study_id = study_id),
+         if (!is.null(title) && nzchar(title)) list(title = title),
+         Filter(Negate(is.null), args))
+  # (a dry run on a folder not made yet: its path is not there to normalize)
+  suppressWarnings(do.call(tflspec::tfl_ai_prepare, a))
+}
+
+# The TOC / SHELL workbook kept in the study (ai/<its name>): what was
+# read, beside the requests.  Gives the copy's path.
+.ai_keep_toc <- function(dir, toc, name = basename(toc)) {
+  to <- file.path(dir, "ai", basename(name))
+  if (identical(normalizePath(toc, "/", mustWork = FALSE),
+                normalizePath(to, "/", mustWork = FALSE))) return(to)
+  dir.create(dirname(to), recursive = TRUE, showWarnings = FALSE)
+  if (!file.copy(toc, to, overwrite = TRUE)) {
+    stop(sprintf("Could not copy %s to %s.", name, to), call. = FALSE)
+  }
+  to
+}
+
+# The requests written into a study open in the app (its study.yml and
+# spec/ kept): the workbook copied into ai/ first.  The tfl_ai_prepared.
+.ai_write_requests <- function(path, toc, toc_name, adam, args = list()) {
+  toc <- .ai_keep_toc(path, toc, toc_name)
+  .ai_prepare(path, toc, adam, args, dry_run = FALSE)
+}
+
+# A new study made from the TOC and the ADaM folder, in this order:
+# tfl_ai_prepare() writes study.yml, spec/data.yml, spec/defaults.yml and
+# the requests (create_study() first would leave no data.yml: its
+# study.yml would stop tfl_ai_study_init()), then register_study().
+# Gives list(study, prepared).
+.ai_new_study <- function(id, toc, toc_name, adam, args = list(), title = NULL,
+                          root = studies_root(), home = tflplanner_home()) {
+  msg <- .ai_new_study_problem(id, root, home)
+  if (!is.null(msg)) stop(msg, call. = FALSE)
+  id <- trimws(id)
+  dir <- .study_path(root, id)
+  toc <- .ai_keep_toc(dir, toc, toc_name)
+  p <- tryCatch(.ai_prepare(dir, toc, adam, args, dry_run = FALSE, study_id = id, title = title),
+                error = function(e) {
+                  # nothing half made is left behind
+                  unlink(dir, recursive = TRUE)
+                  stop(e)
+                })
+  list(study = register_study(dir, home = home), prepared = p)
+}

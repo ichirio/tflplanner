@@ -1,7 +1,9 @@
 # ============================================================================
 #  The AI drafts tab (#431): tflspec's AI table requests and answers
 # ----------------------------------------------------------------------------
-#  A module, in three steps: 1 Prepare (tfl_ai_prepare(); to come), 2 the
+#  A module, in three steps: 1 Prepare (tfl_ai_prepare(): the TOC / SHELL
+#  workbook and the ADaM folder read, what is sent looked at, the requests
+#  written -- into the open study or a new one), 2 the
 #  requests (ai/requests: copy each into a new chat, or view it), 3 the
 #  answers (each pasted and saved, all checked with
 #  tfl_ai_collect_answers(); a report's status, the next step, the fix
@@ -9,12 +11,11 @@
 #  (spec/outputs/<id>.yml): the study is read again from them at once
 #  (`reload_now`), so the new reports are on the Report list.  Not while
 #  there are unsaved changes.  The functions it calls know no Shiny
-#  (R/ai_draft.R).  Behind options(tflplanner.ai_drafts = TRUE) until its
-#  place is decided.
+#  (R/ai_draft.R).  options(tflplanner.ai_drafts = FALSE) hides the tab.
 # ============================================================================
 
-# the tab is shown (off by default, until its place is decided)
-.ai_drafts_on <- function() isTRUE(getOption("tflplanner.ai_drafts", FALSE))
+# the tab is shown (options(tflplanner.ai_drafts = FALSE) hides it)
+.ai_drafts_on <- function() !isFALSE(getOption("tflplanner.ai_drafts", TRUE))
 
 #' @noRd
 ai_ui <- function(id, lang = "en") {
@@ -25,11 +26,95 @@ ai_ui <- function(id, lang = "en") {
     shiny::tags$script(shiny::HTML(.ai_draft_js)),
     shiny::div(class = "small mb-2 ai-status", shiny::uiOutput(ns("status_line"))),
     bslib::navset_card_underline(
-      id = ns("step"), selected = "requests",
+      id = ns("step"), selected = "prepare",
       bslib::nav_panel(
         paste0("1 ", t("Prepare"), " (tfl_ai_prepare)"), value = "prepare",
-        shiny::p(class = "small text-muted",
-                 t("For now the requests are written in R: tflspec::tfl_ai_prepare(<study folder>, <TOC / SHELL workbook>); then Read again on step 2."))),
+        bslib::layout_columns(
+          col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
+          shiny::div(
+            class = "ai-form",
+            shiny::radioButtons(
+              ns("study_mode"), t("Study"), inline = TRUE,
+              choiceNames = list(t("The open study"), paste0(t("New study"), " (tfl_ai_study_init)")),
+              choiceValues = c("open", "new"), selected = "open"),
+            shiny::uiOutput(ns("open_name")),
+            shiny::conditionalPanel(
+              "input.study_mode == 'new'", ns = ns,
+              shiny::div(
+                class = "d-flex flex-wrap gap-2",
+                shiny::textInput(ns("new_id"), "ID (study_id)", width = "12rem",
+                                 placeholder = "ABC-123"),
+                shiny::textInput(ns("new_title"), paste0(t("Title"), " (title)"),
+                                 width = "20rem")),
+              shiny::uiOutput(ns("new_where"))),
+            shiny::fileInput(ns("toc_file"), paste0(t("TOC / SHELL workbook"), " (toc)"),
+                             accept = c(".xlsx", ".xlsm"), width = "100%"),
+            shiny::tags$details(
+              class = "small mb-2",
+              shiny::tags$summary(t("or its path")),
+              shiny::textInput(ns("toc_path"), NULL, width = "100%",
+                               placeholder = "C:/.../TOC_SHELL.xlsx")),
+            shiny::textInput(ns("adam_dir"), paste0(t("ADaM folder"), " (adam)"), width = "100%",
+                             placeholder = "C:/.../adam"),
+            shiny::uiOutput(ns("adam_files")),
+            shiny::div(
+              class = "d-flex flex-wrap gap-2",
+              shiny::selectInput(ns("toc_sheet"), paste0(t("TOC sheet"), " (toc_sheet)"),
+                                 choices = stats::setNames("", t("guess")), width = "12rem",
+                                 selectize = FALSE),
+              shiny::selectizeInput(ns("sheets"), paste0(t("Shell sheets to add"), " (sheets)"),
+                                    choices = character(), multiple = TRUE, width = "16rem")),
+            shiny::div(
+              class = "d-flex flex-wrap gap-2",
+              shiny::numericInput(ns("size"), paste0(t("Reports a request holds"), " (size)"),
+                                  value = 3, min = 1, max = 20, width = "12rem"),
+              shiny::selectInput(ns("language"), paste0(t("Language of the assumptions"), " (language)"),
+                                 choices = stats::setNames(c("Japanese", "English", ""),
+                                                           c(t("Japanese"), t("English"), t("the chat's"))),
+                                 selected = if (identical(lang, "ja")) "Japanese" else "English",
+                                 width = "14rem", selectize = FALSE)),
+            shiny::radioButtons(ns("instructions"), paste0(t("Instructions"), " (instructions)"),
+                                inline = TRUE,
+                                choiceNames = list(t("in each request (each)"),
+                                                   t("once, in 00-instructions.md (once)")),
+                                choiceValues = c("each", "once"), selected = "each"),
+            shiny::tags$details(
+              class = "small mb-2",
+              shiny::tags$summary(t("More")),
+              shiny::div(
+                class = "d-flex flex-wrap gap-2 mt-1",
+                shiny::selectInput(ns("workbook"), paste0(t("The workbook in the chat"), " (workbook)"),
+                                   choices = c("text", "attach", "both"), width = "12rem",
+                                   selectize = FALSE),
+                shiny::numericInput(ns("max_chars"), paste0(t("A request's length at most"), " (max_chars)"),
+                                    value = NA, min = 1000, step = 1000, width = "14rem"))),
+            shiny::div(
+              class = "d-flex flex-wrap gap-2 align-items-center",
+              .btn(ns("read"), paste0(t("Read"), " (dry_run)"), class = "btn-sm btn-outline-primary"),
+              .btn(ns("write"), t("Write the requests"), class = "btn-sm btn-primary"),
+              shiny::uiOutput(ns("write_note"), inline = TRUE)),
+            shiny::uiOutput(ns("prep_status"))),
+          bslib::card(
+            bslib::card_header(t("What was read (dry_run = TRUE)")),
+            shiny::uiOutput(ns("prep_empty")),
+            bslib::navset_underline(
+              id = ns("prep_tab"),
+              bslib::nav_panel("TOC", value = "toc",
+                               shiny::uiOutput(ns("toc_head")),
+                               DT::DTOutput(ns("toc_table"))),
+              bslib::nav_panel(t("ADaM summary (what is sent)"), value = "adam",
+                               shiny::div(
+                                 class = "d-flex flex-wrap gap-3 align-items-end mt-2",
+                                 shiny::checkboxGroupInput(
+                                   ns("datasets"), paste0(t("Datasets to send"), " (datasets)"),
+                                   choices = character(), inline = TRUE),
+                                 shiny::numericInput(
+                                   ns("max_levels"), paste0(t("Values a variable shows"), " (max_levels)"),
+                                   value = 15, min = 1, max = 100, width = "12rem")),
+                               shiny::uiOutput(ns("adam_head")),
+                               DT::DTOutput(ns("adam_table"))),
+              bslib::nav_panel(t("Sheets"), value = "sheets",
+                               DT::DTOutput(ns("sheets_table"))))))),
       bslib::nav_panel(
         paste0("2 ", t("Requests"), " (ai/requests)"), value = "requests",
         shiny::div(
@@ -80,11 +165,14 @@ ai_ui <- function(id, lang = "en") {
 
 # The module's server.  `rv` the app's values (rv$study: the study open);
 # `has_study()`, `dirty()` (unsaved changes), `reload_now()` (the study
-# read again from its files; FALSE when it was not), `notify(msg, type)`,
-# `guarded(expr)` the app's.  Gives list(requests, collected, text) (the
-# tests read them).
+# read again from its files; FALSE when it was not), `adopt(study)` (a new
+# study registered: listed and opened), `open_report(id)` (a report in
+# Make a report), `go(where)` (a top tab), `notify(msg, type)`,
+# `guarded(expr)` the app's.  Gives list(requests, collected, prepared,
+# text) (the tests read them).
 #' @noRd
-ai_server <- function(id, rv, has_study, dirty, reload_now, notify, guarded, lang = "en") {
+ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, go, notify,
+                      guarded, lang = "en") {
   shiny::moduleServer(id, function(input, output, session) {
     t <- function(x) tr(x, lang)
     ns <- session$ns
@@ -125,7 +213,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, notify, guarded, lan
 
     # -- the status line ----------------------------------------------------
     output$status_line <- shiny::renderUI({
-      if (!has_study()) return(shiny::span(class = "text-muted", t("Open a study.")))
+      if (!has_study()) {
+        return(shiny::span(class = "text-muted", t("No study open: step 1 can make a new one.")))
+      }
       r <- requests()
       sid <- rv$study$meta$study_id
       if (is.null(r) || !nrow(r)) {
@@ -344,15 +434,23 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, notify, guarded, lan
           shiny::tags$tbody(lapply(seq_len(nrow(r)), function(i) shiny::tags$tr(
             shiny::tags$td(r$output_id[i]),
             shiny::tags$td(class = cls[[r$status[i]]] %||% "", t(r$status[i])),
-            shiny::tags$td(if (is.na(r$first[i])) "" else r$first[i]))))),
+            shiny::tags$td(if (is.na(r$first[i])) "" else r$first[i]),
+            shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && !is.na(r$file[i]))
+              shiny::tags$button(
+                type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
+                `data-ns` = ns(""), `data-id` = r$output_id[i], t("Open in Make a report"))))))),
         if (length(nxt) && !is.na(nxt)) shiny::p(class = "small mb-1",
                                                 shiny::tags$b(t("next:")), " ", nxt),
         shiny::div(
           class = "d-flex flex-wrap gap-2",
           rep_btn,
+          if (any(co$reports$status %in% c("ok", "warning")))
+            .btn(ns("to_list"), t("Report list"), class = "btn-sm btn-outline-secondary py-0"),
           if (any(r$problems > 0))
             .btn(ns("problems"), t("All problems"), class = "btn-sm btn-outline-secondary py-0")))
     })
+    shiny::observeEvent(input$to_list, go("outputs"))
+    shiny::observeEvent(input$open_report, open_report(input$open_report$id))
     shiny::observeEvent(input$problems, {
       co <- collected()
       q <- input$pick
@@ -401,7 +499,286 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, notify, guarded, lan
                          paste(s, collapse = ", ")))
     })
 
-    list(requests = requests, collected = collected,
+    # -- step 1: the requests prepared (tfl_ai_prepare()) ----------------------
+    prepared <- shiny::reactiveVal(NULL)
+    # the folder it was read for, the error it stopped with, the ADaM
+    # summary's max_levels
+    prep_for <- shiny::reactiveVal(NULL)
+    prep_error <- shiny::reactiveVal(NULL)
+    used_levels <- shiny::reactiveVal(NULL)
+    is_new <- function() !identical(input$study_mode, "open") || !has_study()
+    nz <- function(v) if (is.null(v) || !length(v) || is.na(v[1L]) || !nzchar(v[1L])) NULL else v
+    # the study's folder the requests go to (a new study's, made on Write)
+    target_dir <- function() {
+      if (!is_new()) return(path())
+      id <- trimws(input$new_id %||% "")
+      if (is.null(.ai_new_study_problem(id))) .study_path(studies_root(), id) else
+        file.path(tempdir(), "tflplanner-ai-new")
+    }
+    # no study open: a new one; another study opened: its ADaM folder, and
+    # what was read for another folder is gone
+    shiny::observe({
+      if (!has_study()) shiny::updateRadioButtons(session, "study_mode", selected = "new")
+    })
+    seen <- NULL
+    shiny::observe({
+      p <- path()
+      # (a save makes a new copy of the study, not another study)
+      if (identical(p, seen)) return()
+      seen <<- p
+      shiny::isolate(if (!is.null(prep_for()) && !identical(prep_for(), p)) {
+        prepared(NULL)
+        prep_for(NULL)
+      })
+      if (!is.null(p)) shiny::isolate({
+        r <- tryCatch(.ai_requests(p), error = function(e) NULL)
+        shiny::updateRadioButtons(session, "study_mode", selected = "open")
+        if (!nzchar(trimws(shiny::isolate(input$adam_dir) %||% ""))) {
+          shiny::updateTextInput(session, "adam_dir", value = .ai_adam_default(rv$study))
+        }
+        if (!is.null(r) && nrow(r)) bslib::nav_select("step", "requests", session = session)
+      })
+    })
+    output$open_name <- shiny::renderUI({
+      if (!identical(input$study_mode, "open")) return(NULL)
+      if (!has_study()) {
+        return(shiny::div(class = "small text-danger mb-2", t("Open a study, or make a new one.")))
+      }
+      shiny::div(class = "small text-muted mb-2", shiny::tags$b(rv$study$meta$study_id), " ",
+                 rv$study$path)
+    })
+    output$new_where <- shiny::renderUI({
+      id <- input$new_id %||% ""
+      msg <- .ai_new_study_problem(id, t = t)
+      if (!is.null(msg) && nzchar(trimws(id))) {
+        return(shiny::div(class = "small text-danger mb-2", msg))
+      }
+      shiny::div(class = "small text-muted mb-2",
+                 sprintf(t("made in: %s (studies_root)"), studies_root()))
+    })
+    output$adam_files <- shiny::renderUI({
+      d <- trimws(input$adam_dir %||% "")
+      if (!nzchar(d)) return(NULL)
+      f <- .ai_adam_files(d)
+      if (is.null(f)) return(shiny::div(class = "small text-danger mb-2", t("No such folder.")))
+      if (!length(f)) {
+        return(shiny::div(class = "small text-danger mb-2",
+                          t("No .xpt, .sas7bdat or .rds file in it.")))
+      }
+      shiny::div(class = "small text-muted mb-2",
+                 sprintf(t("%d files: %s"), length(f),
+                         paste(c(utils::head(f, 8L), if (length(f) > 8L) "..."), collapse = ", ")))
+    })
+    # the workbook: the one chosen (uploaded), else the path typed
+    toc_src <- function() {
+      f <- input$toc_file
+      if (!is.null(f) && nrow(f)) return(list(path = f$datapath[1L], name = f$name[1L]))
+      p <- trimws(input$toc_path %||% "")
+      if (nzchar(p)) list(path = p, name = basename(p)) else NULL
+    }
+    args_of <- function(p) {
+      all <- if (!is.null(p)) p$adam$datasets$dataset
+      ds <- input$datasets
+      mc <- input$max_chars
+      list(toc_sheet = nz(input$toc_sheet), sheets = if (length(input$sheets)) input$sheets,
+           size = as.integer(input$size %||% 3L), language = nz(input$language),
+           workbook = input$workbook %||% "text", instructions = input$instructions %||% "each",
+           max_chars = if (is.null(mc) || is.na(mc)) NULL else mc,
+           datasets = if (!is.null(all) && length(ds) && !setequal(ds, all)) ds,
+           max_levels = as.integer(input$max_levels %||% 15L))
+    }
+    inputs_ok <- function() {
+      if (is.null(toc_src())) {
+        notify(t("Choose the TOC / SHELL workbook first."), "warning")
+        return(FALSE)
+      }
+      if (is.null(.ai_adam_files(input$adam_dir))) {
+        notify(t("Give the ADaM folder (a full path)."), "warning")
+        return(FALSE)
+      }
+      TRUE
+    }
+    shiny::observeEvent(input$read, {
+      if (!inputs_ok()) return()
+      src <- toc_src()
+      a <- args_of(NULL)
+      # every dataset read: the ones to send are ticked afterwards
+      a$datasets <- NULL
+      dir <- target_dir()
+      p <- NULL
+      shiny::withProgress(message = t("Reading the workbook and the ADaM data"), {
+        p <- tryCatch(.ai_prepare(dir, src$path, input$adam_dir, a, dry_run = TRUE),
+                      error = function(e) {
+                        prep_error(conditionMessage(e))
+                        NULL
+                      })
+      })
+      if (is.null(p)) {
+        prepared(NULL)
+        return()
+      }
+      prep_error(NULL)
+      prepared(p)
+      prep_for(if (is_new()) NULL else dir)
+      used_levels(a$max_levels)
+      sh <- p$sheets$sheet
+      shiny::updateSelectInput(session, "toc_sheet",
+                               choices = c(stats::setNames("", t("guess")), stats::setNames(sh, sh)),
+                               selected = input$toc_sheet %||% "")
+      shiny::updateSelectizeInput(session, "sheets", choices = sh,
+                                  selected = intersect(input$sheets, sh))
+      ds <- p$adam$datasets$dataset
+      keep <- intersect(input$datasets, ds)
+      shiny::updateCheckboxGroupInput(
+        session, "datasets", inline = TRUE,
+        choiceNames = lapply(seq_along(ds), function(i) sprintf(
+          "%s (%d)", ds[i], p$adam$datasets$variables[i])),
+        choiceValues = ds, selected = if (length(keep)) keep else ds)
+      bslib::nav_select("prep_tab", if (nrow(p$toc) && all(p$toc$shell_found)) "adam" else "toc",
+                        session = session)
+    })
+    write_now <- function() {
+      p <- prepared()
+      shiny::req(p)
+      if (!inputs_ok()) return()
+      src <- toc_src()
+      a <- args_of(p)
+      # the summary read is sent again unless its values' limit changed
+      if (identical(a$max_levels, used_levels())) a$adam_summary <- p$adam
+      out <- NULL
+      shiny::withProgress(message = t("Writing the requests"), {
+        out <- if (is_new()) {
+          guarded(.ai_new_study(input$new_id, src$path, src$name, input$adam_dir, a,
+                                title = nz(trimws(input$new_title %||% ""))))
+        } else {
+          w <- guarded(.ai_write_requests(path(), src$path, src$name, input$adam_dir, a))
+          if (!is.null(w)) list(study = NULL, prepared = w)
+        }
+      })
+      if (is.null(out)) return()
+      if (!is.null(out$study)) {
+        prep_for(out$study$path)
+        adopt(out$study)
+      }
+      prepared(out$prepared)
+      collected(NULL)
+      ver(ver() + 1L)
+      r <- out$prepared$requests
+      notify(sprintf(t("%d requests written in ai/requests (the longest %s characters)."),
+                     nrow(r), format(max(r$chars, 0L, na.rm = TRUE), big.mark = ",")))
+      bslib::nav_select("step", "requests", session = session)
+    }
+    shiny::observeEvent(input$write, {
+      if (isTRUE(dirty())) return(notify(t("Save first: the study has unsaved changes."), "warning"))
+      shiny::req(prepared())
+      if (is_new()) {
+        msg <- .ai_new_study_problem(input$new_id, t = t)
+        if (!is.null(msg)) return(notify(msg, "warning"))
+        return(write_now())
+      }
+      r <- requests()
+      if (is.null(r) || !nrow(r)) return(write_now())
+      shiny::showModal(shiny::modalDialog(
+        title = t("Write the requests again"), easyClose = TRUE,
+        shiny::p(sprintf(t("ai/requests holds %d requests: they are written again (the answers are kept)."),
+                         nrow(r))),
+        footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                                .btn(ns("write_ok"), t("Write the requests"), class = "btn-primary"))))
+    })
+    shiny::observeEvent(input$write_ok, {
+      shiny::removeModal()
+      write_now()
+    })
+    # Write: after a read, never over unsaved changes
+    shiny::observe({
+      session$sendCustomMessage("ai-disable", list(id = ns("write"),
+                                                   on = isTRUE(dirty()) || is.null(prepared())))
+    })
+    output$write_note <- shiny::renderUI({
+      if (isTRUE(dirty())) return(shiny::span(class = "small text-warning", t("Save first")))
+      if (is.null(prepared())) shiny::span(class = "small text-muted", t("Read first."))
+    })
+    output$prep_status <- shiny::renderUI({
+      p <- prepared()
+      if (is.null(p)) return(NULL)
+      r <- p$requests
+      had <- if (!is_new()) requests() else NULL
+      shiny::div(
+        class = "small mt-2",
+        if (isTRUE(p$dry_run)) sprintf(t("%d requests to write (%d reports)."), nrow(r), sum(r$n))
+        else sprintf(t("%d requests written; the longest %s characters."), nrow(r),
+                     format(max(r$chars, 0L, na.rm = TRUE), big.mark = ",")),
+        if (isTRUE(p$dry_run) && !is.null(had) && nrow(had)) shiny::span(
+          class = "text-muted ms-1",
+          sprintf(t("ai/requests holds %d already (written again; the answers kept)."), nrow(had))))
+    })
+
+    # what was read: the TOC, the ADaM summary, the sheets
+    output$prep_empty <- shiny::renderUI({
+      e <- prep_error()
+      if (!is.null(e)) return(shiny::div(class = "alert alert-danger py-2 small", .error_view(e, t)))
+      if (is.null(prepared())) shiny::p(class = "small text-muted", t("Read first."))
+    })
+    output$toc_head <- shiny::renderUI({
+      p <- prepared()
+      shiny::req(p)
+      tc <- p$toc
+      no <- tc$output_id[!tc$shell_found]
+      shiny::tagList(
+        if (!nrow(tc)) shiny::div(
+          class = "alert alert-danger py-2 small",
+          sprintf(t("No TOC was found: name its sheet in (toc_sheet). The sheets: %s"),
+                  paste(p$sheets$sheet, collapse = ", "))),
+        shiny::p(class = "small mb-1", sprintf(t("%d reports, %d with a shell"), nrow(tc),
+                                               sum(tc$shell_found))),
+        if (length(no)) shiny::div(
+          class = "alert alert-warning py-2 small",
+          sprintf(t("%d reports with no shell (%s): add their sheets (sheets) on the left and read again."),
+                  length(no), paste(no, collapse = ", "))),
+        if (length(p$hint)) shiny::div(class = "alert alert-warning py-2 small",
+                                       lapply(p$hint, shiny::div)))
+    })
+    output$toc_table <- DT::renderDT({
+      p <- prepared()
+      shiny::req(p, nrow(p$toc))
+      tc <- p$toc
+      d <- data.frame(tc$output_id, tc$title, tc$type,
+                      ifelse(tc$shell_found, paste("\u2713", tc$shell), "\u2014"),
+                      ifelse(is.na(tc$request), "", tc$request), stringsAsFactors = FALSE)
+      names(d) <- c("output_id", t("title"), t("type"), "shell", t("request"))
+      DT::datatable(d, rownames = FALSE, selection = "none",
+                    options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
+    }, server = FALSE)
+    output$adam_head <- shiny::renderUI({
+      p <- prepared()
+      shiny::req(p)
+      ds <- p$adam$datasets
+      shiny::div(
+        class = "small text-muted mb-1",
+        sprintf(t("%d datasets, %d variables; no records are sent."), nrow(ds), sum(ds$variables)),
+        " ",
+        sprintf(t("A variable's values are shown up to %d (max_levels); the data itself is never sent, and the data files go by their names only."),
+                used_levels() %||% 15L))
+    })
+    output$adam_table <- DT::renderDT({
+      p <- prepared()
+      shiny::req(p)
+      v <- p$adam$variables
+      keep <- input$datasets
+      if (length(keep)) v <- v[v$dataset %in% keep, , drop = FALSE] else v <- v[0, , drop = FALSE]
+      d <- v[intersect(c("dataset", "variable", "label", "kind", "levels"), names(v))]
+      d[is.na(d)] <- ""
+      DT::datatable(d, rownames = FALSE, selection = "none",
+                    options = list(dom = "tp", pageLength = 50, ordering = FALSE, scrollX = TRUE))
+    }, server = FALSE)
+    output$sheets_table <- DT::renderDT({
+      p <- prepared()
+      shiny::req(p)
+      DT::datatable(p$sheets, rownames = FALSE, selection = "none",
+                    options = list(dom = "t", paging = FALSE, ordering = FALSE))
+    }, server = FALSE)
+
+    list(requests = requests, collected = collected, prepared = prepared,
          text = function(id, what = "request") shiny::isolate(text_of(what, id)))
   })
 }
@@ -409,6 +786,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, notify, guarded, lan
 .ai_draft_css <- "
 .ai-view { font-family: var(--bs-font-monospace); font-size: .8rem; white-space: pre; }
 .ai-status b { margin-right: .5rem; }
+.ai-form .form-group { margin-bottom: .5rem; }
 "
 
 # The tab's buttons in the list (Copy / View, by data-*): the server is
@@ -424,6 +802,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, notify, guarded, lan
     b.textContent = '\\u2713';
     setTimeout(function() { b.textContent = was; }, 1200);
   }
+  $(document).on('click', '.ai-open', function() {
+    Shiny.setInputValue(this.dataset.ns + 'open_report', {id: this.dataset.id, n: Date.now()},
+                        {priority: 'event'});
+  });
   $(document).on('click', '.ai-act', function() {
     var b = this;
     if (b.dataset.kind === 'copy') last = b;

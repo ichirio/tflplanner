@@ -162,13 +162,13 @@ test_that("after a check the study is read again from its files; never over unsa
 
 # -- the tab (shiny::testServer on the whole app) ------------------------
 
-test_that("the tab is off unless asked for", {
+test_that("the tab is there unless turned off", {
   local_home()
   old <- options(tflplanner.ai_drafts = NULL)
   on.exit(options(old))
-  expect_false(grepl("ai-requests", as.character(app_ui("en")), fixed = TRUE))
-  options(tflplanner.ai_drafts = TRUE)
   expect_true(grepl("ai-requests", as.character(app_ui("en")), fixed = TRUE))
+  options(tflplanner.ai_drafts = FALSE)
+  expect_false(grepl("ai-requests", as.character(app_ui("en")), fixed = TRUE))
 })
 
 test_that("step 2 and 3: the list, View, save an answer, check all, the reports taken in", {
@@ -206,5 +206,105 @@ test_that("step 2 and 3: the list, View, save an answer, check all, the reports 
     expect_false(isTRUE(session$userData$dirty()))
     expect_true(all(spec_status("XYZ-1")$status == "same"))
     expect_match(output$`ai-result`$html, "T-14-3-1", fixed = TRUE)
+  })
+})
+
+# -- step 1: the requests prepared --------------------------------------------
+
+ai_toc <- file.path(ai_example, "onco_toc_shell.xlsx")
+ai_adam <- normalizePath(file.path(ai_prepared, "adam"), "/")
+
+test_that("a dry run reads the TOC and the ADaM summary, and writes nothing", {
+  local_home()
+  dir <- file.path(studies_root(), "DRY-1")
+  p <- .ai_prepare(dir, ai_toc, ai_adam, list(size = 3L), dry_run = TRUE)
+  expect_s3_class(p, "tfl_ai_prepared")
+  expect_true(p$dry_run)
+  expect_identical(p$toc$output_id, c("T-14-1-1", "T-14-2-1", "T-14-3-1", "T-14-3-5"))
+  expect_true(all(p$toc$shell_found))
+  expect_identical(sort(p$adam$datasets$dataset), c("ADAE", "ADLB", "ADRS", "ADSL"))
+  expect_identical(nrow(p$requests), 4L)
+  expect_false(dir.exists(dir))
+  # the TOC sheet named wrong: the TOC of that sheet, one report
+  p2 <- .ai_prepare(dir, ai_toc, ai_adam, list(toc_sheet = "T14.1.1"), dry_run = TRUE)
+  expect_identical(nrow(p2$toc), 1L)
+  expect_error(.ai_prepare(dir, ai_toc, file.path(tempdir(), "no-such-adam")), "No ADaM folder")
+  expect_identical(.ai_adam_files(ai_adam), c("adae.xpt", "adlb.xpt", "adrs.xpt", "adsl.xpt"))
+  expect_null(.ai_adam_files(file.path(tempdir(), "no-such-adam")))
+})
+
+test_that("a new study: written by tfl_ai_prepare(), then registered; its ID checked first", {
+  local_home()
+  expect_match(.ai_new_study_problem(""), "Give the study an ID")
+  expect_match(.ai_new_study_problem("a b"), "letters, digits")
+  up <- file.path(tempdir(), "0.xlsx")
+  file.copy(ai_toc, up, overwrite = TRUE)
+  out <- .ai_new_study("NEW-1", up, "onco_toc_shell.xlsx", ai_adam,
+                       list(size = 3L, datasets = c("ADSL", "ADAE")), title = "A new study")
+  s <- out$study
+  expect_s3_class(s, "rtfstudy")
+  expect_identical(s$meta$study_id, "NEW-1")
+  expect_identical(s$meta$title, "A new study")
+  expect_true("NEW-1" %in% list_studies()$study_id)
+  # the workbook kept beside the requests, under its own name
+  expect_true(file.exists(file.path(s$path, "ai", "onco_toc_shell.xlsx")))
+  expect_identical(.ai_requests(s$path)$request, out$prepared$requests$request)
+  # only the datasets ticked are sent
+  sent <- paste(readLines(file.path(s$path, "ai", "adam_summary.md"), encoding = "UTF-8"),
+                collapse = "\n")
+  expect_match(sent, "ADAE", fixed = TRUE)
+  expect_no_match(sent, "ADLB", fixed = TRUE)
+  expect_true(file.exists(file.path(s$path, "spec", "data.yml")))
+  expect_match(.ai_new_study_problem("NEW-1"), "already registered")
+  # a failure leaves no folder behind
+  expect_error(.ai_new_study("NEW-2", up, "x.xlsx", file.path(tempdir(), "no-such-adam")))
+  expect_false(dir.exists(file.path(studies_root(), "NEW-2")))
+})
+
+test_that("the requests written into a study open: its study.yml and spec kept", {
+  local_home()
+  path <- ai_study()
+  before <- tools::md5sum(file.path(path, c("study.yml", "spec/data.yml")))
+  unlink(file.path(path, "ai", "requests"), recursive = TRUE)
+  p <- .ai_write_requests(path, ai_toc, "onco_toc_shell.xlsx", ai_adam,
+                          list(size = 2L, instructions = "once"))
+  expect_false(p$dry_run)
+  expect_identical(unname(tools::md5sum(file.path(path, c("study.yml", "spec/data.yml")))),
+                   unname(before))
+  r <- .ai_requests(path)
+  expect_identical(nrow(r), nrow(p$requests))
+  expect_identical(attr(r, "instructions"), "ai/requests/00-instructions.md")
+  expect_true(all(spec_status("XYZ-1")$status == "same"))
+  # the study's ADaM folder, from its data catalog
+  s <- open_study("XYZ-1")
+  expect_identical(.ai_adam_default(s), normalizePath(file.path(path, "adam"), "/"))
+})
+
+test_that("step 1 in the app: read, then a new study written, registered and open; step 2 lists its requests", {
+  local_home()
+  ai_study()
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  shiny::testServer(server_for("XYZ-1"), {
+    rv <- session$userData$rv
+    ai <- session$userData$ai
+    session$setInputs(`ai-study_mode` = "new", `ai-new_id` = "NEW-9", `ai-new_title` = "Nine",
+                      `ai-toc_path` = ai_toc, `ai-adam_dir` = ai_adam, `ai-size` = 3,
+                      `ai-language` = "English", `ai-instructions` = "each",
+                      `ai-workbook` = "text", `ai-max_levels` = 15)
+    expect_null(ai$prepared())
+    session$setInputs(`ai-read` = 1)
+    p <- ai$prepared()
+    expect_true(p$dry_run)
+    expect_identical(nrow(p$toc), 4L)
+    expect_false(dir.exists(file.path(studies_root(), "NEW-9")))
+    expect_match(output$`ai-toc_head`$html, "4 reports, 4 with a shell", fixed = TRUE)
+    session$setInputs(`ai-datasets` = c("ADSL", "ADAE"), `ai-write` = 1)
+    expect_identical(rv$study$meta$study_id, "NEW-9")
+    expect_false(ai$prepared()$dry_run)
+    expect_identical(nrow(ai$requests()), 4L)
+    # the open study again: Write asks first (its requests are there)
+    session$setInputs(`ai-study_mode` = "open", `ai-read` = 2)
+    expect_true(ai$prepared()$dry_run)
   })
 })
