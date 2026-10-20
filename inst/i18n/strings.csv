@@ -3721,3 +3721,9 @@ Added to the %d requests there (their answers kept).,既にある依頼 %d 件�
 "Smallest first (the columns' total)",小さい順（列の合計）
 "Largest first (in any column)",大きい順（いずれかの列で最大）
 "Smallest first (in any column)",小さい順（いずれかの列で最小）
+Treatment variable (settings.treatment),投与群の変数 (settings.treatment)
+"The variable of the treatment groups a template's by / group takes when the report does not say it (study.yml settings: treatment:). Blank: the template's own, TRT01A.",帳票で指定しないときにテンプレートの by / group が使う投与群の変数（study.yml の settings: treatment:）。空欄 = テンプレートの既定（TRT01A）。
+How to join (how),結合の仕方 (how)
+Left join (left),左結合 (left)
+Keep its subjects only (semi),その被験者だけに絞り込む (semi)
+left: add the variables; semi: keep only the rows of its subjects (no variables).,left = 変数を足す。semi = その被験者の行だけを残す（変数は足さない）。

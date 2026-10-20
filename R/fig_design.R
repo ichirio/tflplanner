@@ -580,7 +580,7 @@ remove_fig_preset <- function(name, home = tflplanner_home()) {
 .trim_join <- function(d, x) {
   keep <- vapply(seq_along(d$data), function(i) {
     s <- d$data[[i]]
-    if (!identical(s$step, "join") || is.null(s$vars)) return(TRUE)
+    if (!identical(s$step, "join") || identical(s$how, "semi") || is.null(s$vars)) return(TRUE)
     v <- trimws(strsplit(paste(s$vars, collapse = ","), ",")[[1L]])
     v <- v[nzchar(v) & !v %in% names(x)]
     if (!length(v)) return(FALSE)

@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **Follows tflspec #397** (#444, 0.0.2.9256; tflspec >= 0.0.24.9185): the
+  figure designer's join card has the join's how -- "How to join (how)":
+  a left join (left, the default) or keep its subjects only (semi); a semi
+  join asks no Variables.  The study tab has "Treatment variable
+  (settings.treatment)": the variable a template's by / group takes when
+  the report does not say it, written to study.yml's `settings: treatment:`
+  only when set (blank: none, the template's TRT01A).
+
 - **The row order card offers keys from the ARD's statistics** (#437,
   0.0.2.9253; rtfreporter >= 0.8.2.9082 for `max()` / `min()`): each row
   key of a SOC / PT table is ordered by name (or its code list), or by a
