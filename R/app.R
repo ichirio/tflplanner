@@ -10002,6 +10002,12 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(bform_drawn(), {
     shiny::req(bform_drawn() > 0L)
     id <- bform$id
+    # (a template report: its items are the template's; nothing written
+    # for a preview -- R/template_report.R)
+    if (!is.null(.tpl_of(rv$p, id %||% ""))) {
+      bform$fresh <- FALSE
+      return()
+    }
     tb <- sheet_rows(rv$p, "tables", id)
     inh <- inherited_rows(rv$p, "tables", id)
     has_cols <- (nrow(tb) && !is.na(tb$cols[1L])) ||
@@ -10709,6 +10715,12 @@ app_server <- function(input, output, session, start) {
         length(st$layers) > 1L) {
       st$layers <- setdiff(st$layers, lk)
       shiny::updateSelectizeInput(session, bid("layers"), selected = st$layers)
+    }
+    # (a template report: the form as first drawn is the template's, not
+    # an edit -- only what is changed after it is written)
+    if (is.null(bform$last) && !is.null(.tpl_of(rv$p, id %||% ""))) {
+      bform$last <- st
+      return()
     }
     p2 <- guarded(builder_write(rv$p, id, st, was = bform$last))
     if (!is.null(p2)) bform$last <- st
