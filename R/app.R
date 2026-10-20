@@ -13420,13 +13420,13 @@ app_server <- function(input, output, session, start) {
   })
   output$batches <- DT::renderDT({
     d <- batches()
-    local <- isTRUE(app_local())
+    is_local <- isTRUE(app_local())
     esc <- function(x) htmltools::htmlEscape(ifelse(is.na(x), "", x))
     col <- c(running = "#1d4ed8", done = "#15803d", failed = "#b91c1c",
              incomplete = "#6b7280")[d$state]
     st <- sprintf('<span style="color:%s;white-space:nowrap">%s</span>', col,
                   esc(.batch_state_text(d, t = t)))
-    v <- data.frame(a = paste0(esc(d$batch), if (local) sprintf(
+    v <- data.frame(a = paste0(esc(d$batch), if (is_local) sprintf(
                       paste0(' <a href="#" class="ms-1 text-decoration-none" title="%s" ',
                              'onmousedown="event.stopPropagation();" ',
                              'onclick="event.stopPropagation(); ',
