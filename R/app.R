@@ -2883,7 +2883,29 @@ app_server <- function(input, output, session, start) {
         class = "d-flex flex-wrap gap-2 align-items-center mb-2",
         .btn("std_defaults", t("Add the company's study defaults (only what is missing)"),
              class = "btn-sm btn-outline-primary"),
-        help_tip(t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, the font, populations and data catalog. Nothing already there is changed.")))))
+        help_tip(t("For a study made without them: the table look (stub, blank rows, column headers, widths), headers and footers, the font, populations and data catalog. Nothing already there is changed.")))),
+      # the study standard's plan_cells(), and the company standard's
+      # items it differs in, copied one by one (#454)
+      .study_section("cells", builder_label(.verb_meaning("plan_cells"), "plan_cells", "fn", lang),
+                     shiny::div(class = "small text-muted mb-1", t("Study standard")),
+                     shiny::uiOutput("std_cells_ui")))
+  })
+  output$std_cells_ui <- shiny::renderUI({
+    shiny::req(shows_open())
+    rv$p
+    guarded(.cells_std_ui(rv$p, lang))
+  })
+  shiny::observeEvent(input$std_cells_copy, {
+    if (!has_study()) return()
+    keys <- input$std_cells_pick
+    if (!length(keys)) return(notify(t("Tick the items to copy.")))
+    sc <- .cells_company_apply(.cells_study(rv$p), keys)
+    p2 <- guarded(.spec_set_study_cells(rv$p, sc))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    bump()
+    notify(sprintf(t("Copied from the company standard: %s (save to keep them)"),
+                   paste(keys, collapse = ", ")))
   })
   output$study_actions <- shiny::renderUI({
     shiny::req(shows_open())
@@ -9244,9 +9266,9 @@ app_server <- function(input, output, session, start) {
                             value = st$pct_decimals, min = 0, max = 3,
                             width = "260px")),
       shiny::uiOutput(bid("warn")),
-      # a variable's own templates the form does not show (a KM table's
-      # prob / time): said, read only, so that nothing unseen goes
-      .cells_own_note(.builder_args(items, "plan_cells"), st$exceptions$variable, t))
+      # each variable: the common template or its own, its conditions
+      # (a KM table's prob / time) -- #454
+      shiny::uiOutput("b_cv_ui"))
     # plan_labels(): each variable's heading, levels and nesting (a summary
     # table; the values-and-labels card of the next step takes them over)
     vr_own <- vr_items
@@ -10020,6 +10042,96 @@ app_server <- function(input, output, session, start) {
     rv$p <- p2
     rv$bver <- rv$bver + 1L
   })
+  # plan_cells() by variable (#454): the table on the plan_cells() card,
+  # drawn again when a row's shape changes (cv_ver) or the form is
+  cv_ver <- shiny::reactiveVal(0L)
+  output$b_cv_ui <- shiny::renderUI(builder_guard({
+    cv_ver()
+    bform_drawn()
+    id <- bform$id
+    shiny::req(!is.null(id), builder_case() %in% c("ok", "hierarchy"))
+    p <- shiny::isolate(rv$p)
+    m <- shiny::isolate(bform$meta)
+    st <- shiny::isolate(bform$st)
+    its <- builder_items(p, id, m)
+    pc <- .builder_args(its, "plan_cells") %||% list()
+    .cells_vars_ui(pc, m, st, dg = .report_digits(p, id),
+                   kinds = shiny::isolate(bform$cv_kind[[id]]) %||% list(), lang = lang,
+                   diff = tryCatch(.cells_company_diff(p), error = function(e) NULL))
+  }))
+  shiny::observeEvent(input$b_cv_std, {
+    go("study")
+    session$sendCustomMessage("rp-open-sec", "cells")
+  })
+  shiny::observeEvent(input$b_cv_ev, builder_guard({
+    ev <- input$b_cv_ev
+    id <- bform$id
+    v <- ev$v %||% ""
+    shiny::req(!is.null(id), identical(id, current()), nzchar(v))
+    p <- rv$p
+    m <- bform$meta
+    st <- bform$st
+    pc <- .builder_args(builder_items(p, id, m), "plan_cells") %||% list()
+    kinds <- bform$cv_kind[[id]] %||% list()
+    act <- ev$act %||% ""
+    redraw <- TRUE
+    value <- pc[[v]]
+    if (identical(act, "kind")) {
+      kinds[[v]] <- ev$value
+      bform$cv_kind[[id]] <- kinds
+      cv_ver(cv_ver() + 1L)
+      return()
+    }
+    if (identical(act, "mode")) {
+      value <- if (identical(ev$value, "own")) {
+        r <- .cells_vars_rows(pc, m, kinds)
+        k <- r$kind[match(v, r$variable)]
+        pc[[v]] %||% .cells_common_entry(pc, st, if (is.na(k)) "continuous" else k)
+      }
+    } else {
+      e <- .cells_entry_parse(pc[[v]])
+      shiny::req(!identical(e$type, "r"))
+      i <- as.integer(ev$i %||% NA)
+      n <- length(e$conds)
+      if (identical(act, "tpl")) {
+        redraw <- FALSE
+        k <- ev$k %||% "0"
+        if (identical(e$type, "rows") && startsWith(k, "r:")) {
+          e$rows[[substring(k, 3L)]] <- ev$value %||% ""
+        } else if (identical(e$type, "single")) {
+          e$fallback <- ev$value %||% ""
+        }
+      } else {
+        shiny::req(identical(e$type, "single"))
+        if (identical(act, "cond")) {
+          redraw <- FALSE
+          shiny::req(!is.na(i), i >= 1L, i <= n, ev$field %in% c("col", "op", "value", "tpl"))
+          e$conds[[i]][[ev$field]] <- ev$value %||% ""
+          e$conds[[i]]["raw"] <- list(NULL)
+        } else if (identical(act, "cond_add")) {
+          cols <- .cells_cond_columns(m)
+          own_st <- .cells_var_stats(m, v)
+          e$conds[[n + 1L]] <- list(col = c(own_st, cols)[1L] %||% "n", op = "==", value = "",
+                                    tpl = if (is.na(e$fallback)) "" else e$fallback,
+                                    raw = NULL, ok = TRUE)
+        } else if (identical(act, "cond_rm")) {
+          shiny::req(!is.na(i), i >= 1L, i <= n)
+          e$conds <- e$conds[-i]
+        } else if (act %in% c("cond_up", "cond_down")) {
+          j <- if (identical(act, "cond_up")) i - 1L else i + 1L
+          shiny::req(!is.na(i), i >= 1L, i <= n, j >= 1L, j <= n)
+          e$conds[c(i, j)] <- e$conds[c(j, i)]
+        } else return()
+      }
+      value <- .cells_entry_build(e)
+    }
+    p2 <- guarded(.cells_var_put(p, id, v, value))
+    shiny::req(!is.null(p2))
+    if (identical(p2, p)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    if (redraw) rv$bver <- rv$bver + 1L
+  }))
   # A variable's own decimals: the list (each with x to take it away) and a
   # line to add one
   builder_exc_ui <- function(n, st, rows) {

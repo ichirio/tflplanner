@@ -3811,3 +3811,39 @@ Left join (left),左結合 (left)
 Keep its subjects only (semi),その被験者だけに絞り込む (semi)
 left: add the variables; semi: keep only the rows of its subjects (no variables).,left = 変数を足す。semi = その被験者の行だけを残す（変数は足さない）。
 "TRUE: the variables are the ones the data has of them (written any_of(); tfl_build_ard() says which it left out), as a template's default list. Blank: every variable must be in the data.",TRUE: 変数のうち、データにあるものだけを使います（any_of() で書き、tfl_build_ard() が外した変数を知らせます）。テンプレートの既定の一覧に使います。空欄: どの変数もデータに無ければなりません。
+Per variable: %s,変数ごと: %s
+Common,共通
+Continuous,連続量
+Categorical,カテゴリ
+from the ARD,ARD から
+"Own: a copy of the common template, edited here; it does not follow the common one afterwards.",独自: 共通の中身を写して、ここで直します。後で共通を変えても追従しません。
+Which common template the variable takes: from the ARD's statistics (p: categorical); choose to override.,どの共通のテンプレートを使うか: ARD の統計量から決めます（p があればカテゴリ）。選ぶと上書きできます。
+When no condition holds,どの条件にも合わないとき
+Edit in R (this card's R).,R で編集（このカードの R）。
+Not in the ARD: add it in step 1,ARD に無い: 手順 1 で足します
+step 1,手順 1
+Up (the first that holds is used),上へ（最初に合ったものが効きます）
+Remove the condition,条件を消す
+Edit in R,R で編集
+Operator,演算子
+Value (a number or a text),値（数値か文字）
+Template when it holds,合ったときのテンプレート
+A condition: the first that holds is used,条件: 上から見て最初に合ったものが効きます
+"Not in the ARD: kept, its settings would be lost",ARD にない変数: 消すと設定が失われるので残します
+Not in the ARD,ARD にない
+A variable of its own...,独自にする変数...
+The study standard differs from the company standard:,試験標準が会社標準と違います:
+Differs from the company standard,会社標準と違う
+Variables and formats,変数 × 書式
+Common / own,共通／独自
+Conditions,条件
+The study standard says none: the company standard's apply.,試験標準に指定がありません: 会社標準が効きます。
+The same as the company standard.,会社標準と同じです。
+Copy from the company standard,会社標準から写す
+The company standard's value of each ticked item is written into the study standard (defaults.yml); the others stay. Every report takes it unless it has its own.,チェックした項目だけ、会社標準の値を試験標準（defaults.yml）に書きます。他はそのままです。帳票に独自の値が無ければ、どの帳票にも効きます。
+(the study standard has none),（試験標準に無い）
+study standard,試験標準
+Copy the ticked items,チェックした項目を写す
+Tick the items to copy.,写す項目をチェックしてください。
+Copied from the company standard: %s (save to keep them),会社標準から写しました: %s（保存すると残ります）
+Own (this variable),独自
