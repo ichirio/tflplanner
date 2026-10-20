@@ -248,8 +248,8 @@ test_that("the user's notes: Standard under a pattern, the tokens card, the head
   expect_match(h, "The header prints {OUTPUT_TITLE}: Demographics", fixed = TRUE)
   # one card first: the report's information (a field each), its own
   # tokens, rtfreporter's
-  expect_lt(regexpr(">Report information and tokens", h, fixed = TRUE),
-            regexpr(">Paper and margins", h, fixed = TRUE))
+  expect_lt(regexpr("Report information and tokens", h, fixed = TRUE),
+            regexpr("Paper and margins", h, fixed = TRUE))
   for (k in .pg_info_items) expect_match(h, sprintf('data-kind="info" data-name="%s"', k), fixed = TRUE)
   # no reset buttons (a TOC taken in again overwrites); an empty label is
   # its default, said by the placeholder
