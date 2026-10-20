@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **Follows tflspec #407** (#450, 0.0.2.9259; tflspec >= 0.0.24.9191): the
+  AI tab's step 1 has "Use the templates (templates)", on by default:
+  the requests list the templates the answer may use (`tfl_ai_prepare(templates =)`).
+  Step 3 shows, after a check, the answers compared ("Compare the answers
+  (compare.csv)": `tfl_ai_compare()`, one row a report -- the setting, what
+  the answer used, its values, its check and its repairs).  In Japanese the
+  tab is now "AI 連携".
+
 - **Follows tflspec #397** (#444, 0.0.2.9256; tflspec >= 0.0.24.9185): the
   figure designer's join card has the join's how -- "How to join (how)":
   a left join (left, the default) or keep its subjects only (semi); a semi

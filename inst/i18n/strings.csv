@@ -3479,7 +3479,7 @@ Rows judged together,まとめて判定する行のキー
 Discard changes,変更を破棄
 "Every change not saved goes -- in every report of the study and in the study's own files (defaults.yml ...), as a save would have written them -- and the study is as it was last saved. The draft goes too.",保存していない変更をすべて捨てます（保存と同じ範囲: この試験のすべての帳票と、defaults.yml など試験全体のファイル）。試験は最後に保存したときの状態に戻ります。下書きも消えます。
 "The changes were discarded: the study is as it was last saved.",変更を破棄しました。試験は最後に保存した状態です。
-AI drafts,AI 下書き
+AI drafts,AI 連携
 Prepare,準備
 "For now the requests are written in R: tflspec::tfl_ai_prepare(<study folder>, <TOC / SHELL workbook>); then Read again on step 2.","依頼は当面 R で書きます: tflspec::tfl_ai_prepare(<試験フォルダ>, <TOC / SHELL ブック>)。その後、手順 2 で「読み直す」。"
 Requests,依頼
@@ -3706,6 +3706,8 @@ Shell workbooks,SHELL ブック
 Only when the shells are not in the TOC workbook; several can be given.,シェルが TOC のブックにないときだけ。複数指定できます。
 "or their paths, one a line",またはパスで指定（1 行に 1 つ）
 Add to the earlier requests,前の依頼に追加する
+Use the templates,テンプレートを使う
+Compare the answers,比べる
 Workbook,元のブック
 Shells read from: %s,シェルを読むブック: %s
 A report is asked for already,すでに依頼済みの帳票があります

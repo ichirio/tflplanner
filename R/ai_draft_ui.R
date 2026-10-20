@@ -117,6 +117,8 @@ ai_ui <- function(id, lang = "en") {
                                  width = "14rem", selectize = FALSE)),
             shiny::checkboxInput(ns("add"), paste0(t("Add to the earlier requests"), " (add)"),
                                  value = FALSE),
+            shiny::checkboxInput(ns("templates"), paste0(t("Use the templates"), " (templates)"),
+                                 value = TRUE),
             shiny::radioButtons(ns("instructions"), paste0(t("Instructions"), " (instructions)"),
                                 inline = TRUE,
                                 choiceNames = list(t("in each request (each)"),
@@ -219,6 +221,7 @@ ai_ui <- function(id, lang = "en") {
               shiny::uiOutput(ns("saved"), inline = TRUE)),
             shiny::uiOutput(ns("result"))))),
         shiny::uiOutput(ns("stray")),
+        shiny::uiOutput(ns("compare_card")),
         bslib::card(
           bslib::card_header(
             class = "d-flex flex-wrap gap-2 align-items-center",
@@ -247,6 +250,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     path <- shiny::reactive(if (has_study()) rv$study$path else NULL)
     ver <- shiny::reactiveVal(0L)
     collected <- shiny::reactiveVal(NULL)
+    compared <- shiny::reactiveVal(NULL)
     # another study opened: its own check, none yet
     was <- NULL
     shiny::observe({
@@ -469,6 +473,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       }
       co <- guarded(.ai_collect(path()))
       if (is.null(co)) return()
+      # (compared before the study is read again: it checks the answers again)
+      compared(.ai_compare(path()))
       collected(co)
       ver(ver() + 1L)
       # the reports written: the study read from its files at once (no save
@@ -570,6 +576,19 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       DT::datatable(a, rownames = FALSE, selection = "none",
                     options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
     }, server = FALSE)
+    # the answers compared (tfl_ai_compare(): ai/compare.csv), under the checks
+    output$compare_card <- shiny::renderUI({
+      if (is.null(collected()) || is.null(compared())) return(NULL)
+      bslib::card(
+        bslib::card_header(paste0(t("Compare the answers"), " (compare.csv)")),
+        DT::DTOutput(ns("compare")))
+    })
+    output$compare <- DT::renderDT({
+      d <- compared()
+      shiny::req(d)
+      DT::datatable(d, rownames = FALSE, selection = "none",
+                    options = list(dom = "t", paging = FALSE, ordering = FALSE))
+    })
     output$stray <- shiny::renderUI({
       s <- collected()$stray
       if (!length(s)) return(NULL)
@@ -729,6 +748,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
            datasets = if (!is.null(all) && length(ds) && !setequal(ds, all)) ds,
            max_levels = as.integer(input$max_levels %||% 15L),
            mode = input$mode %||% "chat",
+           templates = !isFALSE(input$templates),
            add = isTRUE(input$add) && !is_new())
     }
     inputs_ok <- function() {
