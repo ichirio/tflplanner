@@ -697,7 +697,7 @@ from_badge <- function(from, lang = "en", own = NULL) {
   kind <- sub(":.*$", "", from)
   name <- if (grepl(":", from, fixed = TRUE)) sub("^[^:]*:", "", from) else NULL
   text <- switch(kind,
-                 defaults = t("Study default"),
+                 defaults = t("Study standard"),
                  standards = t("Company standard"),
                  pattern = paste(t("Pattern"), name),
                  template = t("Template"),

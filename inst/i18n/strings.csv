@@ -3739,3 +3739,28 @@ the analysis' label,解析のラベル
 the any-event row's label,「いずれかの事象」行のラベル
 Update preview draws the figure.,「プレビューを更新」で図を描きます。
 The expanded code,展開したコード
+1 Template (ARD and content),1 テンプレート（ARD とコンテンツ）
+2 Page and output,2 ページと出力
+A line a row: %s,1 行に 1 つ: %s
+Add a card,カードを追加
+Adverse events by PT (frequent ones),PT 別の有害事象（頻度の高いもの）
+Adverse events by maximum grade,最大グレード別の有害事象
+Arguments dropped:,捨てる引数:
+Arguments kept:,引き継ぐ引数:
+Change the template,テンプレートを切り替える
+Change the template to %s,テンプレートを %s に切り替える
+Make a variant ...,変種を作る…
+New cards,新しく足すカード
+No ARD yet: Update preview makes it.,ARD はまだありません。「プレビューを更新」で作ります。
+Save as a template ...,テンプレートとして保存…
+Study standard,試験標準
+The ARD the template makes: Update preview makes it with the table.,テンプレートが作る ARD です。「プレビューを更新」で表と一緒に作ります。
+The card %s was removed.,カード %s を消しました。
+The code that makes the ARD (expanded),ARD を作るコード（展開）
+The content's code expanded,コンテンツを展開したコード
+The function's default,関数の既定
+The report's own cards are kept.,この帳票自身のカードは、そのまま残ります。
+The table's program,表のプログラム
+The template's cards (override),テンプレートが作るカード（上書き）
+Undo,元に戻す
+over the study standard (%s),試験標準（%s）より優先

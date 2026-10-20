@@ -686,7 +686,8 @@ app_ui <- function(lang = "en") {
     id = "content_nav",
     bslib::nav_panel(
       t("Content"), value = "content",
-      shiny::uiOutput("content_mode_bar"),
+      # (a template report: its content is the template's, no R program)
+      shiny::div(class = "rp-code-only", shiny::uiOutput("content_mode_bar")),
       shiny::conditionalPanel("output.content_is_code == 'yes'", code_step_ui("cc", t, lang)),
       shiny::conditionalPanel(
         "output.report_kind == 'table' && output.content_is_code != 'yes'",
@@ -696,8 +697,10 @@ app_ui <- function(lang = "en") {
           shiny::uiOutput("builder_note"),
           bslib::layout_columns(
             col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
-            # a template report's arguments (R/template_report.R) above
-            shiny::div(shiny::uiOutput("tpl_card"), shiny::uiOutput("builder_form")),
+            # a template report's arguments (R/template_report.R) above its
+            # overridden cards
+            shiny::div(shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_card")),
+                       shiny::uiOutput("builder_form")),
             # what the report's ARD holds, folded to one line, above the tabs;
             # beside the cards it stays in view (.rp-b-right) as they scroll
             shiny::div(
@@ -705,6 +708,8 @@ app_ui <- function(lang = "en") {
               shiny::uiOutput("builder_ard_card"),
               result_tabs_ui(
               "table_right", lang = lang, selected = "result",
+              # (a template report's: the ARD its template makes)
+              ard = shiny::uiOutput("tpl_ard_pane"),
               spec = shiny::tagList(
                 shiny::uiOutput("type_note"),
                 shiny::div(class = "rp-assist border rounded p-2 mb-2",
@@ -713,8 +718,10 @@ app_ui <- function(lang = "en") {
                 do.call(bslib::navset_card_underline,
                         c(list(id = "table_sheet"),
                           lapply(setdiff(table_sheets(), "codelists"), sheet_panel)))),
-              code = shiny::tagList(code_view("program_table", lang),
-                                    shiny::uiOutput("builder_code_jump")),
+              code = shiny::tagList(shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_code_ard")),
+                                    code_view("program_table", lang),
+                                    shiny::uiOutput("builder_code_jump"),
+                                    shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_code_expanded"))),
               result = shiny::tagList(
                 shiny::div(
                   class = "d-flex justify-content-between small mb-1",
@@ -730,8 +737,10 @@ app_ui <- function(lang = "en") {
         bslib::layout_columns(
           col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
           shiny::div(
-            shiny::uiOutput("lf_form"),
-            shiny::uiOutput("lf_cols_box")),
+            shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_card_lf")),
+            shiny::div(class = "rp-code-only",
+                       shiny::uiOutput("lf_form"),
+                       shiny::uiOutput("lf_cols_box"))),
           result_tabs_ui(
             "lf_right", lang = lang, selected = "result",
             spec = shiny::tagList(
@@ -745,9 +754,10 @@ app_ui <- function(lang = "en") {
                               class = "btn-sm btn-outline-primary")),
               shiny::uiOutput("lf_preview_out"))))),
       shiny::conditionalPanel("output.report_kind == 'figure'",
-                              shiny::uiOutput("tpl_card_fig"), shiny::uiOutput("tpl_fig_out")),
-      shiny::conditionalPanel("output.content_is_code != 'yes' && output.is_tpl != 'yes'",
-                              .designer_ui(t))),
+                              shiny::div(class = "rp-tpl-only",
+                                         shiny::uiOutput("tpl_card_fig"), shiny::uiOutput("tpl_fig_out"))),
+      shiny::conditionalPanel("output.content_is_code != 'yes'",
+                              shiny::div(class = "rp-code-only", .designer_ui(t)))),
     bslib::nav_panel(
       t("Data code"), value = "code",
       shiny::uiOutput("current_label"),
@@ -842,6 +852,8 @@ app_ui <- function(lang = "en") {
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
                             shiny::tags$style(shiny::HTML(.builder_cards_css)),
                             shiny::tags$script(shiny::HTML(.builder_cards_js)),
+                            shiny::tags$style(shiny::HTML(.tpl_css)),
+                            shiny::tags$script(shiny::HTML(.tpl_js)),
                             shiny::tags$style(shiny::HTML(.builder_content_css)),
                             shiny::tags$script(shiny::HTML(.builder_content_js)),
                             shiny::tags$style(shiny::HTML(.study_section_css)),
@@ -1038,6 +1050,8 @@ app_ui <- function(lang = "en") {
           "output.report_kind == ''",
           shiny::p(class = "text-muted mt-3",
                    t("Choose a report above, or in the list on the left (> opens it)."))),
+        # (a report being opened: its steps hidden until drawn -- .tpl_js)
+        shiny::div(class = "rp-report-loading text-muted my-3", t("Loading ...")),
         bslib::navset_pill(
           id = "step",
           bslib::nav_panel(step_title("ard"), value = "ard", step_ard),
@@ -2066,6 +2080,8 @@ app_server <- function(input, output, session, start) {
                     NULL
                   })
     if (is.null(s)) return(FALSE)
+    # (no report is new after a save: its usual empty cards go -- #440)
+    bnew$ids <- character()
     rv$study <- s
     rv$p <- rv$saved <- s$planner
     if (!.same_planner(.study_spec_keys(mine), s$planner)) {
@@ -3329,6 +3345,10 @@ app_server <- function(input, output, session, start) {
                    tables = , lf = , designer = , code = "content",
                    report_spec = "page", NULL)
     if (is.null(step)) return(bslib::nav_select("nav", where))
+    # (a template report has no ARD step: its step 1 is the content's)
+    if (identical(step, "ard") && !is.null(current()) && !is.null(.tpl_of(rv$p, current()))) {
+      step <- "content"
+    }
     bslib::nav_select("nav", "make")
     bslib::nav_select("step", step)
     if (identical(step, "content")) {
@@ -3354,10 +3374,10 @@ app_server <- function(input, output, session, start) {
   # the steps' names: the kind's own (a figure's "1 Data", "2 Figure")
   shiny::observe({
     k <- report_kind()
-    own <- .step_labels_of[[k]] %||% character()
-    nm <- .step_labels
-    nm[names(own)] <- own
-    session$sendCustomMessage("rp-step-names", stats::setNames(as.list(t(unname(nm))), names(nm)))
+    # (a template report's two steps: R/template_report.R)
+    id <- current()
+    tpl <- !is.null(id) && !is.null(.tpl_of(rv$p, id))
+    session$sendCustomMessage("rp-step-names", tpl_names(tpl, k))
   })
   # the tabs this kind of report has nothing on, faded (still clickable)
   shiny::observe({
@@ -8830,6 +8850,10 @@ app_server <- function(input, output, session, start) {
   bform$n <- sample.int(1e6L, 1L) * 10L
   session$userData$bform <- bform
   bform_drawn <- shiny::reactiveVal(0L)
+  # the reports added since the study was last saved (their usual cards
+  # are shown, empty: .builder_items_cards(fresh = ))
+  bnew <- new.env()
+  bnew$ids <- character()
   # a variable's own decimals, as the form edits them (bform$exc)
   exc_ver <- shiny::reactiveVal(0L)
   rv$bver <- 0L
@@ -8973,8 +8997,14 @@ app_server <- function(input, output, session, start) {
     # is still shown; the menu's Remove drops it)
     added <- bform$added_by[[id]] %||% character()
     bform$total_kind <- ard_total_of(id, m)
+    # (a template report: only the cards it overrides or adds; the cards
+    # its pipe has are offered in "+ Add a card" first -- #440)
+    tpl <- !is.null(.tpl_of(p0, id))
+    bform$tpl <- tpl
+    bform$made <- vapply(items, function(it) it$fn, "")
     items <- .builder_items_cards(items, hier, added, ard_total = bform$total_kind,
-                                  off = bform$off_by[[id]] %||% character())
+                                  off = bform$off_by[[id]] %||% character(),
+                                  fresh = id %in% bnew$ids, template = tpl)
     bform$items <- items
     new_card <- bform$just_added
     bform$just_added <- NULL
@@ -9273,15 +9303,13 @@ app_server <- function(input, output, session, start) {
         })
     }
     bodies <- Filter(Negate(is.null), bodies)
-    add_sch <- .plan_add_schema(items)
     shiny::div(
       class = "rp-builder-cards", `data-back` = t("Back to the code"),
-      .table_cards_bar(items, id = card_id, lang = lang),
       .table_cards(items, bodies, id = card_id, lang = lang, new = new_card,
                    level_from = st$level_from),
-      # the other verbs: added here, each a card in its place
-      if (length(add_sch)) add_item_input(bid("add"), kinds = "plan", schema = add_sch, lang = lang,
-                                          placeholder = t("Add a card (type to search)")))
+      # the other verbs: "+ Add a card", in the pipe's order, below the last
+      .plan_add_menu_ui("b_add_pick", .plan_add_menu(items, made = if (tpl) bform$made, template = tpl),
+                        lang = lang))
   })
   # the kind of Total the report's ARD has (.ard_total_kind()); an older
   # saved meta without `overall`: read from the ARD itself
@@ -9568,18 +9596,44 @@ app_server <- function(input, output, session, start) {
   # a card's Remove (its menu, any card not required): its rows taken away
   # when the code has it, the card dropped -- a usual card of the table's
   # kind comes back, off, when the form is drawn again
+  # (#440: only the report's own items -- no study standard under them --
+  # or a card shown empty; no question asked: "Undo" for 5 s puts the
+  # report's YAML back as it was)
   shiny::observeEvent(input$b_card_remove, {
     it <- .builder_item_at(bform$items, input$b_card_remove$path)
     id <- bform$id
     shiny::req(!is.null(it), isTRUE(it$removable), identical(id, current()))
     bform$added_by[[id]] <- setdiff(bform$added_by[[id]] %||% character(), it$fn)
-    bform$off_by[[id]] <- setdiff(bform$off_by[[id]] %||% character(), it$fn)
-    if (isTRUE(it$present)) {
-      p2 <- guarded(.builder_item_revert(rv$p, id, it$fn, .path_k(it$path)))
+    bform$off_by[[id]] <- unique(c(bform$off_by[[id]] %||% character(), it$fn))
+    if (isTRUE(it$present) && identical(it$from, "own")) {
+      before <- tryCatch(.spec_output(rv$p, id), error = function(e) NULL)
+      p2 <- if (identical(it$fn, "plan_total")) {
+        guarded(set_total_column(rv$p, id, NULL, "last"))
+      } else guarded(.builder_item_revert(rv$p, id, it$fn, .path_k(it$path)))
       if (is.null(p2)) return()
       rv$p <- p2
       rv$btouched <- TRUE
+      if (!is.null(before)) {
+        bform$undo <- list(id = id, output = before, fn = it$fn)
+        shiny::showNotification(
+          sprintf(t("The card %s was removed."), it$fn),
+          action = shiny::actionLink("b_card_undo", t("Undo")),
+          duration = 5, id = "b_card_undo_note")
+      }
     }
+    rv$bver <- rv$bver + 1L
+  })
+  shiny::observeEvent(input$b_card_undo, {
+    u <- bform$undo
+    bform$undo <- NULL
+    shiny::removeNotification("b_card_undo_note")
+    shiny::req(!is.null(u), identical(u$id, current()))
+    p2 <- guarded(.spec_set_output(rv$p, u$id, u$output))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    bform$off_by[[u$id]] <- setdiff(bform$off_by[[u$id]] %||% character(), u$fn)
+    bform$just_added <- u$fn
     rv$bver <- rv$bver + 1L
   })
   # the cards' switches (the Total column's is its own, below)
@@ -9596,17 +9650,25 @@ app_server <- function(input, output, session, start) {
   }))
   # "Add": a verb of the plan not shown yet, its card in its place, on
   # (the form drawn again has new ids: read them again when it is)
-  shiny::observeEvent({
-    bform_drawn()
-    input[[paste0(bid("add"), "__add")]]
-  }, {
-    fn <- input[[bid("add")]]
-    shiny::req(length(fn) == 1L, nzchar(fn), !is.null(input[[paste0(bid("add"), "__add")]]))
-    if (!fn %in% .plan_addable(bform$items)) {
+  # (#440: "+ Add a card"; a template report's card of its pipe is shown
+  # to be overridden -- nothing written till a value is changed)
+  shiny::observeEvent(input$b_add_pick, {
+    fn <- input$b_add_pick
+    id <- bform$id
+    shiny::req(length(fn) == 1L, nzchar(fn), !is.null(id), identical(id, current()))
+    tpl <- isTRUE(bform$tpl)
+    if (!fn %in% .plan_addable(bform$items, template = tpl)) {
       return(notify(sprintf(t("%s cannot be added here: a card the table has already, or no verb of the plan."), fn)))
     }
+    if (tpl && fn %in% bform$made) {
+      bform$added_by[[id]] <- unique(c(bform$added_by[[id]] %||% character(), fn))
+      bform$off_by[[id]] <- setdiff(bform$off_by[[id]] %||% character(), fn)
+      bform$just_added <- fn
+      rv$bver <- rv$bver + 1L
+      return()
+    }
     card_switch(list(fn = fn, path = fn, present = FALSE), TRUE)
-  }, ignoreInit = TRUE)
+  })
   # the columns changed: the rows' candidates made again (a key taken out
   # of cols offered to the rows; one put in cols no more -- one column is
   # in cols or in rows, not both)
@@ -11538,8 +11600,7 @@ app_server <- function(input, output, session, start) {
         "modal_how", t("How to make it"),
         stats::setNames(c("template", "code"), c(t("Template"), t("Code"))),
         selected = "template", inline = TRUE),
-      if (type) shiny::conditionalPanel("input.modal_how == 'template'",
-                                        shiny::uiOutput("modal_tpl_ui")),
+      if (type) shiny::conditionalPanel("input.modal_how == 'template'", tpl_modal_ui()),
       if (type) shiny::uiOutput("modal_ok_js"),
       if (type) shiny::textInput("modal_desc", t("Description"),
                                  width = "100%"),
@@ -11610,6 +11671,8 @@ app_server <- function(input, output, session, start) {
   }
   shiny::observeEvent(input$add_ok, {
     id <- trimws(input$modal_id)
+    # (a new report until the study is saved: the usual cards, empty -- #440)
+    bnew$ids <- unique(c(bnew$ids, id))
     d <- trimws(input$modal_desc)
     desc <- if (nzchar(d)) d else NA
     if (identical(input$modal_how, "template")) return(add_template_report(id, desc))
@@ -11635,8 +11698,7 @@ app_server <- function(input, output, session, start) {
     if (!is.null(p2)) go(switch(input$modal_type,
       table = "tables", listing = "lf", figure = "designer", "outputs"))
   })
-  # -- template reports (R/template_report.R) ---------------------------------
-  # the dialog: the templates of the kind chosen, then the required arguments
+  # -- template reports (R/template_report.R, #440) ---------------------------
   tpl_data <- function() .tpl_data_cols(rv$study$path)
   tpl_all_cols <- function() unique(unlist(lapply(tpl_data(), names)))
   tpl_label <- function(prm) {
@@ -11644,13 +11706,17 @@ app_server <- function(input, output, session, start) {
     lab <- if (nzchar(doc)) paste0(t(doc), " (", prm$name, ")") else prm$name
     if (isTRUE(prm$required)) shiny::span(lab, shiny::span(class = "text-danger", " *")) else lab
   }
-  # the input of an argument: by the type its default and doc suggest
-  tpl_widget <- function(input_id, prm, value, dataset = NULL) {
+  # the input of an argument, by its type (.tpl_type(): tflspec's
+  # tfl_param(type = ), guessed only when it declares none).  `params`,
+  # `args`: the template's parameters and the report's arguments (a levels
+  # parameter's variable is another's value)
+  tpl_widget <- function(input_id, prm, value, dataset = NULL, params = list(), args = list(),
+                         label = tpl_label(prm)) {
     data <- tpl_data()
     type <- .tpl_type(prm, tpl_all_cols())
     cols <- .tpl_columns(data, dataset)
     shown <- if (is.null(value)) prm$default else value
-    lab <- tpl_label(prm)
+    lab <- label
     rm_btn <- list(plugins = list("remove_button"))
     switch(type,
       population = shiny::selectInput(input_id, lab, pop_choices(),
@@ -11660,104 +11726,164 @@ app_server <- function(input, output, session, start) {
         c(if (is.null(shown)) stats::setNames("", t("(default)")),
           union(as.character(shown %||% character()), names(data))),
         selected = as.character(shown %||% "")[1L], width = "100%"),
-      param = {
-        ds <- toupper(dataset %||% "ADTTE")
-        vals <- unique(as.character(data[[ds]]$PARAMCD %||% character()))
-        shiny::selectizeInput(input_id, lab, c("", union(as.character(shown %||% character()), vals)),
-                              selected = as.character(shown %||% ""), width = "100%",
-                              options = list(create = TRUE))
+      levels = {
+        vr <- .tpl_levels_of(prm, params, args)
+        lv <- .tpl_levels(data, vr, dataset)
+        several <- isTRUE(prm$multiple)
+        shiny::selectizeInput(
+          input_id, lab, c(if (!several) "", union(as.character(shown %||% character()), lv)),
+          selected = as.character(shown %||% if (several) character() else ""),
+          multiple = several, width = "100%",
+          options = c(if (several) rm_btn, list(create = TRUE)))
       },
       flag = bslib::input_switch(input_id, lab, value = isTRUE(shown)),
       number = shiny::numericInput(input_id, lab, value = shown, width = "100%", updateOn = "blur"),
       vars = shiny::selectizeInput(input_id, lab, union(as.character(shown), cols),
                                    selected = as.character(shown), multiple = TRUE,
-                                   width = "100%", options = rm_btn),
+                                   width = "100%", options = list(plugins = list("remove_button", "drag_drop"))),
       var = shiny::selectizeInput(input_id, lab, c("", union(as.character(shown %||% character()), cols)),
                                   selected = as.character(shown %||% ""), width = "100%"),
       chips = shiny::selectizeInput(
-        input_id, lab,
-        union(as.character(shown), if (identical(prm$name, "sort")) c("n", "-n", "label", "-label", ".depth", ".overall")),
-        selected = as.character(shown), multiple = TRUE, width = "100%",
-        options = c(rm_btn, list(create = TRUE))),
+        input_id, lab, as.character(shown), selected = as.character(shown), multiple = TRUE,
+        width = "100%", options = c(rm_btn, list(create = TRUE))),
+      choice = shiny::selectInput(
+        input_id, lab, c(if (is.null(shown)) stats::setNames("", t("(default)")),
+                         union(as.character(shown %||% character()), as.character(prm$choices))),
+        selected = as.character(shown %||% "")[1L], width = "100%"),
+      choices = shiny::selectizeInput(
+        input_id, lab, union(as.character(shown), as.character(prm$choices)),
+        selected = as.character(shown), multiple = TRUE, width = "100%", options = rm_btn),
       text = shiny::textInput(input_id, lab, value = if (is.null(shown)) "" else .tpl_show(shown),
                               width = "100%", updateOn = "blur",
                               placeholder = if (is.null(prm$default)) t("(default)")),
-      shiny::div(
-        class = "mb-3",
-        shiny::tags$label(class = "form-label", lab),
-        shiny::div(class = "font-monospace small border rounded p-1", style = "word-break: break-all",
-                   .tpl_show(shown)),
-        shiny::div(class = "small text-muted", t("Edit in R (the report's YAML file)"))))
+      list = {
+        txt <- .tpl_list_text(shown, prm)
+        if (is.null(txt)) {
+          shiny::div(
+            class = "mb-3",
+            shiny::tags$label(class = "form-label", lab),
+            shiny::div(class = "font-monospace small border rounded p-1", style = "word-break: break-all",
+                       .tpl_show(shown)),
+            shiny::div(class = "small text-muted", t("Edit in R (the report's YAML file)")))
+        } else {
+          shiny::div(
+            shiny::textAreaInput(
+              input_id, lab, value = txt, width = "100%", updateOn = "blur",
+              rows = max(2L, min(8L, length(strsplit(txt, "\n")[[1L]]) + 1L)),
+              placeholder = paste(.tpl_list_fields(prm), collapse = " | ")),
+            shiny::div(class = "small text-muted mt-n2 mb-2",
+                       sprintf(t("A line a row: %s"), paste(.tpl_list_fields(prm), collapse = " | "))))
+        }
+      })
   }
-  output$modal_tpl_ui <- shiny::renderUI({
+  # The new report's dialog: the templates of each kind, a searchable list
+  # with a line on each; the required arguments of each template, below it
+  # -- all drawn with the dialog (shown by the choice in the page itself:
+  # nothing is waited for from the server)
+  tpl_input <- function(kind) paste0("modal_tpl_", kind)
+  tpl_arg_id <- function(nm, a) paste0("mtpl_", nm, "__", gsub("[^A-Za-z0-9_]", "_", a))
+  tpl_chosen <- function() {
     kind <- input$modal_type %||% "table"
-    tp <- .tpl_list(kind)
-    if (!nrow(tp)) {
-      return(shiny::div(class = "alert alert-secondary py-1 small",
-                        t("No template of this kind: choose Code.")))
+    nm <- input[[tpl_input(kind)]]
+    if (is.null(nm) || !nzchar(nm)) NULL else nm
+  }
+  tpl_modal_ui <- function() {
+    lapply(report_types(), function(kind) {
+      tp <- .tpl_list(kind)
+      shiny::conditionalPanel(
+        sprintf("input.modal_type == '%s'", kind),
+        if (!nrow(tp)) {
+          shiny::div(class = "alert alert-secondary py-1 small",
+                     t("No template of this kind: choose Code."))
+        } else shiny::tagList(
+          shiny::selectizeInput(
+            tpl_input(kind), t("Template"),
+            stats::setNames(tp$name, vapply(tp$name, function(n) {
+              d <- if (!is.na(.tpl_desc[n])) t(.tpl_desc[[n]]) else ""
+              if (nzchar(d)) paste0(n, " — ", d) else n
+            }, "")),
+            selected = tp$name[1L], width = "100%",
+            options = list(searchField = list("label", "value"))),
+          lapply(tp$name, function(nm) {
+            prm <- .tpl_params(nm)
+            req_p <- Filter(function(x) isTRUE(x$required), prm)
+            shiny::conditionalPanel(
+              sprintf("input.modal_type == '%s' && input['%s'] == '%s'", kind, tpl_input(kind), nm),
+              if (!length(req_p)) {
+                shiny::p(class = "small text-muted",
+                         t("No argument is required: every one has its default."))
+              } else shiny::div(
+                class = "border rounded p-2 mb-2",
+                shiny::h6(t("Required arguments")),
+                lapply(req_p, function(x) tpl_widget(tpl_arg_id(nm, x$name), x, NULL,
+                                                     dataset = prm$data$default, params = prm))))
+          })))
+    })
+  }
+  # the required arguments the dialog has (NULL: one is empty)
+  tpl_modal_args <- function(nm) {
+    args <- list()
+    for (x in .tpl_params(nm)) {
+      if (!isTRUE(x$required)) next
+      v <- .tpl_value(input[[tpl_arg_id(nm, x$name)]], .tpl_type(x), x)
+      if (is.null(v)) return(structure(list(), missing = x$name))
+      args[[x$name]] <- v
     }
-    shiny::tagList(
-      shiny::radioButtons(
-        "modal_tpl", t("Template"),
-        choiceNames = lapply(tp$name, function(n) shiny::span(
-          shiny::code(n), " ", shiny::span(class = "small text-muted",
-                                            if (!is.na(.tpl_desc[n])) t(.tpl_desc[[n]]) else ""))),
-        choiceValues = tp$name, selected = tp$name[1L], width = "100%"),
-      shiny::uiOutput("modal_tpl_args"))
-  })
-  output$modal_tpl_args <- shiny::renderUI({
-    nm <- input$modal_tpl
-    shiny::req(nm)
-    prm <- .tpl_params(nm)
-    req_p <- Filter(function(x) isTRUE(x$required), prm)
-    if (!length(req_p)) {
-      return(shiny::p(class = "small text-muted", t("No argument is required: every one has its default.")))
-    }
-    shiny::div(
-      class = "border rounded p-2 mb-2",
-      shiny::h6(t("Required arguments")),
-      lapply(req_p, function(x) tpl_widget(paste0("mtpl_", x$name), x, NULL,
-                                           dataset = prm$data$default)))
-  })
+    args
+  }
   # Create: not while a required argument is empty
   output$modal_ok_js <- shiny::renderUI({
     how <- input$modal_how
     if (is.null(how)) return(NULL)
     ok <- TRUE
     if (identical(how, "template")) {
-      nm <- input$modal_tpl
-      ok <- !is.null(nm) && nzchar(nm)
-      if (ok) {
-        for (x in .tpl_params(nm)) {
-          if (!isTRUE(x$required)) next
-          if (is.null(.tpl_value(input[[paste0("mtpl_", x$name)]], .tpl_type(x)))) ok <- FALSE
-        }
-      }
+      nm <- tpl_chosen()
+      ok <- !is.null(nm) && is.null(attr(tpl_modal_args(nm), "missing"))
     }
     shiny::tags$script(shiny::HTML(sprintf(
       "setTimeout(function() { $('#add_ok').prop('disabled', %s); }, 0);",
       if (ok) "false" else "true")))
   })
+  # the page told at once that a report is being opened, and whether it is
+  # a template report (.tpl_js): its steps hidden until drawn
+  tpl_names <- function(tpl, kind) {
+    own <- .step_labels_of[[kind]] %||% character()
+    nm <- .step_labels
+    nm[names(own)] <- own
+    if (isTRUE(tpl)) nm[names(.tpl_step_labels)] <- .tpl_step_labels
+    stats::setNames(as.list(t(unname(nm))), names(nm))
+  }
+  tpl_mode_send <- function(tpl, kind = "", loading = TRUE) {
+    session$sendCustomMessage("rp-tpl-mode", list(tpl = isTRUE(tpl), loading = loading,
+                                                  names = tpl_names(tpl, kind)))
+    if (loading) {
+      session$onFlushed(function() session$sendCustomMessage("rp-report-ready", TRUE), once = TRUE)
+    }
+  }
+  shiny::observeEvent(current(), {
+    id <- current()
+    p <- shiny::isolate(rv$p)
+    tpl <- !is.null(id) && !is.null(.tpl_of(p, id))
+    kind <- if (is.null(id)) "" else report_info(p, id)$type
+    tpl_mode_send(tpl, kind, loading = !is.null(id))
+  }, ignoreNULL = FALSE, priority = 99)
   add_template_report <- function(id, desc) {
-    nm <- input$modal_tpl
-    if (is.null(nm) || !nzchar(nm)) return(notify(t("Choose a template"), "warning"))
-    args <- list()
-    for (x in .tpl_params(nm)) {
-      if (!isTRUE(x$required)) next
-      v <- .tpl_value(input[[paste0("mtpl_", x$name)]], .tpl_type(x))
-      if (is.null(v)) {
-        return(notify(sprintf(t("Fill in the required argument %s."), x$name), "warning"))
-      }
-      args[[x$name]] <- v
+    nm <- tpl_chosen()
+    if (is.null(nm)) return(notify(t("Choose a template"), "warning"))
+    args <- tpl_modal_args(nm)
+    if (!is.null(attr(args, "missing"))) {
+      return(notify(sprintf(t("Fill in the required argument %s."), attr(args, "missing")), "warning"))
     }
     if (is.null(rv$p$spec)) {
       return(notify(t("A template report needs the study's YAML spec (save the study first)."), "error"))
     }
     kind <- input$modal_type
     sec <- trimws(input$modal_section %||% "")
+    # (the page shows the new report's steps from its first draw)
+    tpl_mode_send(TRUE, kind)
     p2 <- guarded(add_output(rv$p, id, description = desc, type = kind,
                              section = if (nzchar(sec)) sec else NA_character_))
-    if (is.null(p2)) return()
+    if (is.null(p2)) return(tpl_mode_send(!is.null(.tpl_of(rv$p, current() %||% "")), report_kind()))
     o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
                              population = as.character(args$population %||% NA_character_),
                              template = list(name = nm, args = args))
@@ -11765,13 +11891,15 @@ app_server <- function(input, output, session, start) {
     after_id_change(p2, id)
     if (!is.null(p2)) go(switch(kind, table = "tables", listing = "lf", figure = "designer", "outputs"))
   }
-  # step 2: the template's card -- the required arguments and those given
-  # above, the others (their defaults, greyed) folded below
+  # The template's card: the required arguments and those the report gives
+  # above, the others (their defaults, greyed) folded below; each with
+  # where its value comes from.  Its own output (tpl_card, tpl_card_lf,
+  # tpl_card_fig), whatever step it is put in.
   tpl_ver <- shiny::reactiveVal(0L)
   tpl_obs <- new.env()
   tpl_iid <- function(name, a) paste0("tpl_", name, "__", gsub("[^A-Za-z0-9_]", "_", a))
-  tpl_write <- function(id, args) {
-    o <- .tpl_output(rv$p, id, args)
+  tpl_write <- function(id, args, name = NULL) {
+    o <- .tpl_output(rv$p, id, args, name = name)
     p2 <- guarded(.spec_set_output(rv$p, id, o))
     if (is.null(p2)) return(invisible(FALSE))
     rv$p <- p2
@@ -11786,8 +11914,8 @@ app_server <- function(input, output, session, start) {
     if (is.null(tp) || !identical(tp$name, name)) return()
     prm <- .tpl_params(name)[[a]]
     type <- .tpl_type(prm, tpl_all_cols())
-    if (identical(type, "list")) return()
-    args <- .tpl_set_arg(tp$args, prm, .tpl_value(v, type))
+    if (identical(type, "list") && is.null(.tpl_list_text(tp$args[[a]] %||% prm$default, prm))) return()
+    args <- .tpl_set_arg(tp$args, prm, .tpl_value(v, type, prm))
     if (identical(args, tp$args)) return()
     tpl_write(id, args)
   }
@@ -11814,6 +11942,39 @@ app_server <- function(input, output, session, start) {
     tpl_write(id, args)
   })
   shiny::observeEvent(input$tpl_preview, do_preview())
+  # another template: the arguments of the same name kept, the others
+  # dropped -- said by name before; the report's own items stay
+  shiny::observeEvent(input$tpl_switch, {
+    id <- current()
+    tp <- .tpl_of(rv$p, id %||% "")
+    to <- input$tpl_switch
+    if (is.null(tp) || !length(to) || !nzchar(to) || identical(to, tp$name)) return()
+    keep <- intersect(names(tp$args), names(.tpl_params(to)))
+    drop <- setdiff(names(tp$args), keep)
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("Change the template to %s"), to),
+      shiny::p(t("Arguments kept:"), " ",
+               if (length(keep)) shiny::code(paste(keep, collapse = ", ")) else t("(none)")),
+      shiny::p(t("Arguments dropped:"), " ",
+               if (length(drop)) shiny::code(paste(drop, collapse = ", ")) else t("(none)")),
+      shiny::p(class = "small text-muted", t("The report's own cards are kept.")),
+      footer = shiny::tagList(
+        shiny::tags$button(type = "button", class = "btn btn-default", `data-bs-dismiss` = "modal",
+                           onclick = "Shiny.setInputValue('tpl_switch_cancel', Date.now())",
+                           t("Cancel")),
+        .btn("tpl_switch_ok", "OK", class = "btn-primary")),
+      easyClose = FALSE))
+  })
+  shiny::observeEvent(input$tpl_switch_cancel, tpl_ver(tpl_ver() + 1L))
+  shiny::observeEvent(input$tpl_switch_ok, {
+    shiny::removeModal()
+    id <- current()
+    tp <- .tpl_of(rv$p, id %||% "")
+    to <- input$tpl_switch
+    if (is.null(tp) || is.null(to)) return()
+    args <- tp$args[intersect(names(tp$args), names(.tpl_params(to)))]
+    tpl_write(id, args, name = to)
+  })
   tpl_card_ui <- function() {
     id <- current()
     shiny::req(id)
@@ -11830,12 +11991,32 @@ app_server <- function(input, output, session, start) {
     low <- setdiff(names(prm), up)
     miss <- .tpl_missing(tp$name, args)
     kind <- report_info(p, id)$type
+    study <- p$spec$study
+    # where a value comes from: this report / the study standard / the
+    # function's default (and the report's over the study's, said)
+    from_of <- function(a) {
+      og <- .tpl_arg_origin(study, prm[[a]], args)
+      sv <- og$study
+      if (identical(og$from, "own")) {
+        return(shiny::span(class = "rp-tpl-arg-from",
+                           t("This table"),
+                           if (!is.null(sv)) paste0(" — ", sprintf(t("over the study standard (%s)"),
+                                                                       .tpl_show(sv)))))
+      }
+      shiny::span(class = "rp-tpl-arg-from",
+                  if (!is.null(sv)) paste0(t("Study standard"), ": ", .tpl_show(sv)) else
+                    t("The function's default"))
+    }
     row <- function(a, upper) {
       x <- prm[[a]]
+      og <- .tpl_arg_origin(study, x, args)
+      sv <- if (identical(og$from, "study")) og$study
       shiny::div(
         class = paste("d-flex gap-2 align-items-start", if (!upper) "rp-tpl-default"),
         shiny::div(style = "flex: 1 1 auto; min-width: 0",
-                   tpl_widget(tpl_iid(tp$name, a), x, args[[a]], dataset)),
+                   tpl_widget(tpl_iid(tp$name, a), x, args[[a]] %||% sv, dataset, params = prm,
+                              args = args,
+                              label = shiny::span(tpl_label(x), " ", from_of(a)))),
         if (upper && !isTRUE(x$required)) shiny::tags$button(
           type = "button", class = "btn btn-sm btn-outline-secondary mt-4",
           title = t("Back to the default (the line is taken out of args)"),
@@ -11845,19 +12026,34 @@ app_server <- function(input, output, session, start) {
     open <- isTRUE(shiny::isolate(input$tpl_open))
     preview_btn <- .btn(if (identical(kind, "figure")) "tpl_fig_preview" else "tpl_preview",
                         t("Update preview"), class = "btn-sm btn-primary")
+    others <- .tpl_list(kind)$name
     bslib::card(
       class = "mb-2 border-primary",
       bslib::card_header(shiny::div(
-        shiny::strong(t("Template")), " ",
-        shiny::code(sprintf("tfl_template(%s)", tp$name)), " ",
+        class = "d-flex flex-wrap gap-2 align-items-center",
+        shiny::strong(t("Template")),
+        shiny::code(sprintf("tfl_template(%s)", tp$name)),
         shiny::span(class = "badge text-bg-light border", paste0("template:", tp$name)),
-        if (!is.na(.tpl_desc[tp$name])) shiny::div(class = "small text-muted", t(.tpl_desc[[tp$name]])))),
+        # (another template: chosen here, confirmed in a dialog)
+        shiny::tags$select(
+          class = "form-select form-select-sm ms-auto", style = "width: auto",
+          title = t("Change the template"),
+          onchange = "Shiny.setInputValue('tpl_switch', this.value, {priority: 'event'})",
+          lapply(others, function(n) shiny::tags$option(
+            value = n, selected = if (identical(n, tp$name)) NA, n))),
+        # (for later: greyed)
+        shiny::div(
+          class = "dropdown",
+          shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary dropdown-toggle",
+                             `data-bs-toggle` = "dropdown", `aria-expanded` = "false", "⋯"),
+          shiny::tags$ul(
+            class = "dropdown-menu dropdown-menu-end",
+            shiny::tags$li(shiny::tags$a(class = "dropdown-item disabled", href = "#",
+                                         t("Save as a template ..."))),
+            shiny::tags$li(shiny::tags$a(class = "dropdown-item disabled", href = "#",
+                                         t("Make a variant ..."))))),
+        if (!is.na(.tpl_desc[tp$name])) shiny::div(class = "small text-muted w-100", t(.tpl_desc[[tp$name]])))),
       bslib::card_body(
-        shiny::tags$style(shiny::HTML(paste(
-          ".rp-tpl-default .form-control, .rp-tpl-default .selectize-input,",
-          ".rp-tpl-default .form-select, .rp-tpl-default .selectize-input .item",
-          "{ color: #8a8f98 !important; background-color: #f4f5f7; }",
-          ".rp-tpl-default .form-label { color: #6c757d; }"))),
         if (length(miss)) shiny::div(
           class = "alert alert-danger py-1 small",
           sprintf(t("Required arguments are empty: %s. The preview waits for them."),
@@ -11877,12 +12073,6 @@ app_server <- function(input, output, session, start) {
   # a template figure: drawn here from the template's items
   # (tflspec::tfl_content_run(), the figure as its program makes it), the
   # PNG under the card and the expanded code folded below it
-  output$is_tpl <- shiny::renderText({
-    id <- current()
-    rv$ver
-    if (!is.null(id) && !is.null(.tpl_of(shiny::isolate(rv$p), id))) "yes" else "no"
-  })
-  shiny::outputOptions(output, "is_tpl", suspendWhenHidden = FALSE)
   tpl_fig <- shiny::reactiveVal(NULL)
   tpl_fig_draw <- function() {
     id <- current()
@@ -11935,9 +12125,73 @@ app_server <- function(input, output, session, start) {
     if (!identical(report_kind(), "table")) return(NULL)
     tpl_card_ui()
   })
+  output$tpl_card_lf <- shiny::renderUI({
+    if (!identical(report_kind(), "listing")) return(NULL)
+    tpl_card_ui()
+  })
   output$tpl_card_fig <- shiny::renderUI({
     if (!identical(report_kind(), "figure")) return(NULL)
     tpl_card_ui()
+  })
+  # The right pane of a template table: ARD (the ARD its template makes,
+  # as the preview made it), and in Code the ARD's code expanded first,
+  # the content's expanded code folded after the program
+  tpl_now <- shiny::reactive({
+    id <- current()
+    if (is.null(id)) return(NULL)
+    tp <- .tpl_of(rv$p, id)
+    if (is.null(tp)) NULL else id
+  })
+  output$tpl_ard_pane <- shiny::renderUI({
+    id <- tpl_now()
+    shiny::req(id)
+    shiny::tagList(
+      shiny::p(class = "small text-muted mb-1",
+               t("The ARD the template makes: Update preview makes it with the table.")),
+      shiny::div(class = "rp-resize", DT::DTOutput("tpl_ard_table", height = "auto", fill = FALSE)))
+  })
+  output$tpl_ard_table <- DT::renderDT({
+    id <- tpl_now()
+    shiny::req(id)
+    rv$ard_ver
+    r <- ard_res()
+    a <- if (!is.null(r) && identical(r$scope, id)) r$ard else
+      tryCatch(ard_raw(current_study(), id, rows = TRUE), error = function(e) NULL)
+    shiny::validate(shiny::need(!is.null(a), t("No ARD yet: Update preview makes it.")))
+    DT::datatable(ard_view(a), rownames = FALSE, filter = "top",
+                  selection = "none", class = "compact stripe nowrap", fillContainer = FALSE,
+                  options = list(pageLength = 50, scrollX = TRUE, scrollY = "55vh",
+                                 scrollCollapse = TRUE, dom = "tip"))
+  })
+  output$tpl_code_ard <- shiny::renderUI({
+    id <- tpl_now()
+    shiny::req(id)
+    a <- structure(rv$p$ard, class = "tfl_ard_spec")
+    code <- if (any(a$analyses$output_id %in% id)) tryCatch(
+      ard_program_code(a, id, dir = rv$study$path, codelists = .study_codelists(rv$p)),
+      error = function(e) paste(t("The code cannot be written yet:"), conditionMessage(e)))
+    if (is.null(code)) return(NULL)
+    shiny::div(
+      class = "mb-2",
+      shiny::h6(class = "small fw-bold mb-1", t("The code that makes the ARD (expanded)")),
+      shiny::div(class = "rp-code", shiny::tags$pre(class = "small", paste(code, collapse = "\n"))),
+      shiny::h6(class = "small fw-bold mb-1 mt-2", t("The table's program")))
+  })
+  output$tpl_code_expanded <- shiny::renderUI({
+    id <- tpl_now()
+    shiny::req(id)
+    sp <- tryCatch(.code_spec(rv$p), error = function(e) NULL)
+    o <- sp$outputs[[id]]
+    shiny::req(!is.null(o))
+    code <- tryCatch({
+      b <- tflspec::tfl_template_to_spec(o, sp$study)
+      paste(tflspec::tfl_content_code(tflspec::tfl_resolve_output(b, sp$study), pipe = "|>"),
+            collapse = "\n")
+    }, error = function(e) conditionMessage(e))
+    shiny::tags$details(
+      class = "mt-2",
+      shiny::tags$summary(class = "small", t("The content's code expanded")),
+      shiny::div(class = "rp-code", shiny::tags$pre(class = "small", code)))
   })
   # -- the first listing: the data and its columns --------------------------
   first_data_l <- shiny::reactive({

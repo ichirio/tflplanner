@@ -78,7 +78,7 @@ test_that("the report's own item has the mark This table, with Revert over a def
   if (length(dfl)) {
     h <- html(.table_cards(dfl[1L]))
     expect_false(grepl("rp-badge-own", h, fixed = TRUE))
-    expect_match(h, "Study default", fixed = TRUE)
+    expect_match(h, "Study standard", fixed = TRUE)
   }
 })
 
