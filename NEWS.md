@@ -8,6 +8,12 @@
   the report does not say it, written to study.yml's `settings: treatment:`
   only when set (blank: none, the template's TRT01A).
 
+- **ARD analyses: `optional`** (#442, 0.0.2.9255; tflspec >= 0.0.24.9186,
+  #393): the analyses grid shows tflspec's new column `optional`
+  (right after `variables`) as a yes / no dropdown: yes, the variables the
+  data lack are skipped (`any_of()`; tfl_build_ard() says which).  An
+  analysis turned into a stack clears it with its variables.
+
 - **The row order card offers keys from the ARD's statistics** (#437,
   0.0.2.9253; rtfreporter >= 0.8.2.9082 for `max()` / `min()`): each row
   key of a SOC / PT table is ordered by name (or its code list), or by a

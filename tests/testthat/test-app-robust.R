@@ -159,6 +159,26 @@ test_that("a row typed into the spare row from a dropdown column is a new row", 
   }))
 })
 
+test_that("the analyses grid keeps an analysis's optional (tflspec's skip-missing-variables)", {
+  skip_if_not("optional" %in% .ard_sheets()$analyses)
+  local_home()
+  ard_study()
+  suppressWarnings(shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    session$setInputs(target = "T1")
+    cols <- setdiff(.ard_sheets()$analyses, "output_id")
+    # right after variables, as tflspec has it
+    expect_identical(match("optional", cols), match("variables", cols) + 1L)
+    row <- as.list(stats::setNames(rep(NA, length(cols)), cols))
+    row[c("analysis_id", "method", "dataset", "variables", "optional")] <-
+      list("A1", "continuous", "ADSL", "AGE | HEIGHTBL", "yes")
+    key <- paste("ard", "analyses", "T1", rv$ver, sep = "|")
+    session$setInputs(hot_ard_analyses = analyses_payload(list(unname(row)), key))
+    a <- ard_rows(rv$p, "analyses", "T1")
+    expect_identical(a$optional, "yes")
+  }))
+})
+
 test_that("grid rows are padded or cut to the grid's width", {
   rows <- .grid_rows_full(list(list("a"), list("a", "b", "c", "d")), 3L)
   expect_identical(lengths(rows), c(3L, 3L))
