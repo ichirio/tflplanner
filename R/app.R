@@ -709,7 +709,7 @@ app_ui <- function(lang = "en") {
             # what the report's ARD holds, folded to one line, above the tabs;
             # beside the cards it stays in view (.rp-b-right) as they scroll
             shiny::div(
-              class = "rp-b-right", style = "min-width: 0",
+              class = "rp-b-right", style = "min-width: 0", `data-busy` = t("Updating ..."),
               shiny::uiOutput("builder_ard_card"),
               result_tabs_ui(
               "table_right", lang = lang, selected = "result",
@@ -3229,6 +3229,14 @@ app_server <- function(input, output, session, start) {
   # is drawn -- tpl_mode_send())
   review_hold <- shiny::reactiveVal(FALSE)
   review_last <- new.env()
+  shiny::observe({
+    if (!review_hold()) return()
+    shiny::invalidateLater(8000)
+    if (!is.null(review_last$held) && difftime(Sys.time(), review_last$held, units = "secs") > 7) {
+      review_last$held <- NULL
+      review_hold(FALSE)
+    } else if (is.null(review_last$held)) review_last$held <- Sys.time()
+  })
   review_now <- shiny::reactive({
     if (!has_study() || !review_go()) return(NULL)
     if (review_hold()) return(review_last$r)
@@ -12001,6 +12009,7 @@ app_server <- function(input, output, session, start) {
   tpl_ready_send <- function() {
     session$onFlushed(function() {
       session$sendCustomMessage("rp-report-ready", TRUE)
+      review_last$held <- NULL
       review_hold(FALSE)
     }, once = TRUE)
   }
@@ -12211,7 +12220,7 @@ app_server <- function(input, output, session, start) {
       bslib::card_header(shiny::div(
         class = "d-flex flex-wrap gap-2 align-items-center",
         shiny::strong(t("Template")),
-        shiny::code(sprintf("tfl_template(%s)", tp$name)),
+        shiny::code(.tpl_call_name(tp$name)),
         shiny::span(class = "badge text-bg-light border", paste0("template:", tp$name),
                     title = sprintf(t("Saved in spec/outputs/%s.yml as template: name and its args only."), id)),
         # (another template: chosen here, confirmed in a dialog)
@@ -12355,7 +12364,7 @@ app_server <- function(input, output, session, start) {
       class = "mb-2",
       shiny::tags$details(
         shiny::tags$summary(class = "small fw-bold", t("The code that makes the ARD (expanded)")),
-        shiny::div(class = "rp-code", shiny::tags$pre(class = "small", paste(code, collapse = "\n")))),
+        shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", paste(code, collapse = "\n")))),
       shiny::h6(class = "small fw-bold mb-1 mt-2", t("The table's program")))
   })
   # SPEC: the report's YAML file as written, and expanded (the template's
@@ -12375,10 +12384,10 @@ app_server <- function(input, output, session, start) {
     expanded <- tryCatch(tflspec::tfl_template_to_spec(o, sp$study), error = function(e) NULL)
     shiny::tagList(
       shiny::p(class = "small text-muted mb-1", shiny::code(sp$where[[id]] %||% paste0(id, ".yml"))),
-      shiny::div(class = "rp-code", shiny::tags$pre(class = "small", yaml_of(o))),
+      shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", yaml_of(o))),
       if (!is.null(expanded)) shiny::tagList(
         shiny::h6(class = "small fw-bold mt-2 mb-1", t("Expanded (read only)")),
-        shiny::div(class = "rp-code", shiny::tags$pre(class = "small", yaml_of(expanded)))))
+        shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", yaml_of(expanded)))))
   })
   output$tpl_code_expanded <- shiny::renderUI({
     id <- tpl_now()
@@ -12394,7 +12403,7 @@ app_server <- function(input, output, session, start) {
     shiny::tags$details(
       class = "mt-2",
       shiny::tags$summary(class = "small", t("The content's code expanded")),
-      shiny::div(class = "rp-code", shiny::tags$pre(class = "small", code)))
+      shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", code)))
   })
   # -- the first listing: the data and its columns --------------------------
   first_data_l <- shiny::reactive({

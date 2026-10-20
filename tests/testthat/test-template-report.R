@@ -112,3 +112,23 @@ test_that("a template report: one card a line after its call -- the study standa
   expect_true(all(vapply(cards, function(x) identical(x$from, "defaults"), NA)))
   expect_false(any(vapply(cards, function(x) isTRUE(x$removable), NA)))
 })
+
+test_that("a study standard's card edited in a template report: the report's own, in its YAML", {
+  p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
+  o <- tflspec::tfl_output("T-99", "table", population = "SAF",
+                           template = list(name = "demog", args = list(population = "SAF")))
+  p <- .spec_add_output(p, o, population = "SAF")
+  it <- Filter(function(x) identical(x$fn, "plan_stub"), builder_items(p, "T-99"))[[1L]]
+  expect_identical(it$from, "defaults")
+  q <- .builder_item_write(p, "T-99", "plan_stub", utils::modifyList(it$args, list(indent = 3L)))
+  own <- q$spec$outputs[["T-99"]]$content
+  expect_true("plan_stub" %in% vapply(own, function(x) x$fn, ""))
+  expect_identical(q$spec$outputs[["T-99"]]$template$name, "demog")
+  it2 <- Filter(function(x) identical(x$fn, "plan_stub"), builder_items(q, "T-99"))[[1L]]
+  expect_identical(it2$from, "own")
+  expect_true(any(grepl("indent: 3", unlist(q$spec$text), fixed = TRUE)))
+  # the file written for it: the template, its arguments and the card
+  txt <- paste(q$spec$text[[q$spec$where[["T-99"]]]], collapse = "\n")
+  expect_match(txt, "template:", fixed = TRUE)
+  expect_match(txt, "plan_stub", fixed = TRUE)
+})

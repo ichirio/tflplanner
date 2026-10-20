@@ -334,9 +334,11 @@ body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_
   color: #8a8f98 !important; background-color: #f4f5f7; }
 .rp-tpl-default .form-label { color: #6c757d; }
 .rp-tpl-arg-from { font-size: .75rem; color: #6b7280; }
-@keyframes rp-card-flash { 0% { box-shadow: 0 0 0 3px rgba(13,110,253,.55); }
-  100% { box-shadow: 0 0 0 3px rgba(13,110,253,0); } }
-.rp-card.rp-card-flash { animation: rp-card-flash 1.6s ease-out 1; }
+.rp-code pre.rp-flow { max-height: none !important; overflow-y: visible; min-height: 0; }
+@keyframes rp-card-flash { 0%, 60% { outline-color: rgba(13,110,253,.85); }
+  100% { outline-color: rgba(13,110,253,0); } }
+.rp-card.rp-card-flash { outline: 3px solid rgba(13,110,253,0); outline-offset: 2px;
+  animation: rp-card-flash 1.8s ease-out 1; }
 .rp-add-menu .dropdown-menu { max-height: 60vh; overflow-y: auto; }
 /* the right pane (SPEC | Code | Result, ARD): it does not scroll itself --
    fitted to the window, sticky -- and in it only the tab shown scrolls (a
@@ -369,6 +371,11 @@ body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_
 .rp-split.rp-lay-stack > .rp-tabs .tab-pane pre, .rp-split.rp-lay-one > .rp-tabs .tab-pane pre {
   max-height: none; }
 /* an argument's edit: only the right pane shows it is busy */
+html.shiny-busy.rp-user-busy body.rp-tpl:not(.rp-switching)::after { visibility: hidden; }
+.rp-b-right { position: relative; }
+html.shiny-busy body.rp-tpl .rp-b-right::after { content: attr(data-busy); position: absolute;
+  top: .25rem; right: .5rem; z-index: 5; font-size: .75rem; padding: 0 .4rem;
+  border-radius: .25rem; background: #ffc107; color: #000; }
 body.rp-tpl .recalculating { opacity: 1 !important; }
 body.rp-tpl .rp-tabs .recalculating { opacity: .35 !important; }
 .rp-add-menu .dropdown-item.disabled { color: #9ca3af; }
@@ -419,6 +426,15 @@ $(document).on('shiny:connected', function() {
       if (c.length) c[0].scrollIntoView({block: 'start', behavior: 'smooth'});
     }, 150);
   });
+  // OK of a new template report: its steps and Loading ... at the click
+  $(document).on('click', '#add_ok', function() {
+    if ($('input[name=\"modal_how\"]:checked').val() !== 'template') return;
+    if ($(this).prop('disabled')) return;
+    $('body').addClass('rp-tpl rp-switching');
+    $('#nav a[data-value=\"make\"]').tab('show');
+    clearTimeout(timer);
+    timer = setTimeout(function() { $('body').removeClass('rp-switching'); }, 30000);
+  });
   Shiny.addCustomMessageHandler('rp-report-ready', function(x) {
     clearTimeout(timer);
     setTimeout(function() { $('body').removeClass('rp-switching'); }, 50);
@@ -429,10 +445,11 @@ $(document).on('shiny:connected', function() {
       var c = $('.rp-card.rp-card-new').not('.rp-card-flashed').first();
       if (!c.length) return;
       c.addClass('rp-card-flashed rp-card-flash rp-card-open');
-      // (its head in view, below the page's sticky bar)
-      var top = c[0].getBoundingClientRect().top + window.scrollY;
+      // (its head in view, below the page's sticky bar -- whichever box
+      // scrolls: scroll-margin)
       var bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rp-top')) || 0;
-      window.scrollTo({top: Math.max(0, top - bar - 12), behavior: 'smooth'});
+      c[0].style.scrollMarginTop = (bar + 12) + 'px';
+      c[0].scrollIntoView({block: 'start', behavior: 'smooth'});
       setTimeout(function() { c.removeClass('rp-card-flash'); }, 1700);
     }, 80);
   });
@@ -524,4 +541,12 @@ $(document).on('shiny:connected', function() {
 .tpl_spec_name <- function(o) {
   t <- o$template
   if (is.list(t) && !is.null(t$name)) t$name else NULL
+}
+
+# A template's call as its program has it: tpl_demog() (a template with no
+# call of its own -- a figure's -- tfl_template(<name>))
+.tpl_call_name <- function(name) {
+  x <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
+  call <- if (!is.null(x) && "call" %in% names(x)) x$call[match(name, x$name)] else NA
+  if (length(call) && !is.na(call) && nzchar(call)) paste0(call, "()") else sprintf("tfl_template(%s)", name)
 }

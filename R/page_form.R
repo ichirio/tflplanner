@@ -115,8 +115,7 @@ $(document).on('shiny:value', function(e) {
 .pg-card h6 .pg-fn, .pg-field .pg-fn { font-family: Consolas, 'Courier New', monospace;
   font-weight: normal; color: var(--bs-secondary-color, #6b7280); font-size: .9em; }
 .pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: .4rem .75rem; }
-.pg-grid.pg-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: .4rem; }
-@media (max-width: 767.98px) { .pg-grid.pg-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pg-grid.pg-grid-4 { grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr)); margin-bottom: .4rem; }
 .pg-field label { font-size: .75rem; margin-bottom: .1rem; display: block; }
 .pg-from { font-size: .7rem; color: var(--bs-secondary-color, #6b7280); }
 .pg-own { font-size: .7rem; color: var(--bs-primary, #0d6efd); }
@@ -258,9 +257,10 @@ $(document).on('shiny:value', function(e) {
   rest <- lapply(Filter(function(f) !f$arg %in% placed, .pgs_fields$rtf_page),
                  function(f) { f$fn <- "rtf_page"; f })
   rows <- c(rows, list(rest))
+  # (a value from any layer -- the study standard's too -- is in the code)
   said <- function(f) {
     a <- .pgs_arg(sp, id, f$fn, f$arg)
-    !is.null(a$value) || identical(a$from, "own")
+    !is.null(a$value) || !is.null(a$below$value) || identical(a$from, "own")
   }
   grid <- function(fs, cls = "pg-grid") if (length(fs)) shiny::div(
     class = cls, lapply(fs, function(f) .page_arg_ui(sp, id, f$fn, f, t, kind)))

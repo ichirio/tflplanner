@@ -921,7 +921,8 @@ builder_items <- function(x, output_id, meta = NULL) {
       body = if (!on) NULL else if (is.null(note)) body else shiny::tagList(note, body),
       # (off: what turning it on does, said where its body would be)
       summary = if (isTRUE(it$present)) .item_summary(it, lang = lang) else
-        if (blocked) t(it$blocked) else if (!on) t("On: its usual values are written."),
+        if (blocked) t(it$blocked) else if (!on) t("On: its usual values are written.") else
+          if (isTRUE(it$added)) t("Not set (not in the code)"),
       tools = tools,
       # the study's defaults the report leaves as they are, the seldom
       # changed and the off: closed

@@ -72,7 +72,7 @@ test_that("a card has its head, its switch or bar, its badge, its menu and its b
   expect_false(grepl("rp-card-open", h, fixed = TRUE))
   # in Japanese
   h <- html(builder_card("c4", "plan_sort", "Row order", from = "defaults", lang = "ja"))
-  expect_match(h, "\u8a66\u9a13\u306e\u65e2\u5b9a", fixed = TRUE)
+  expect_match(h, "\u8a66\u9a13\u6a19\u6e96", fixed = TRUE)
   expect_match(h, "\u623b\u3059", fixed = TRUE)
 })
 
