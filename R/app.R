@@ -697,7 +697,11 @@ app_ui <- function(lang = "en") {
           bslib::layout_columns(
             col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
             # a template report's arguments (R/template_report.R) above
-            shiny::div(shiny::uiOutput("tpl_card"), shiny::uiOutput("builder_form")),
+            # (a template report shows its card only: the builder's cards and
+            # their menu stay drawn, hidden, for the preview that reads them)
+            shiny::div(shiny::uiOutput("tpl_card"),
+                       shiny::conditionalPanel("output.is_tpl != 'yes'",
+                                               shiny::uiOutput("builder_form"))),
             # what the report's ARD holds, folded to one line, above the tabs;
             # beside the cards it stays in view (.rp-b-right) as they scroll
             shiny::div(
@@ -11877,6 +11881,9 @@ app_server <- function(input, output, session, start) {
   # a template figure: drawn here from the template's items
   # (tflspec::tfl_content_run(), the figure as its program makes it), the
   # PNG under the card and the expanded code folded below it
+  # the builder's cards are hidden for a template report, still drawn: the
+  # preview reads their inputs
+  shiny::outputOptions(output, "builder_form", suspendWhenHidden = FALSE)
   output$is_tpl <- shiny::renderText({
     id <- current()
     rv$ver
