@@ -1,5 +1,17 @@
 # tflplanner (development version)
 
+- **The row order card offers keys from the ARD's statistics** (#437,
+  0.0.2.9253; rtfreporter >= 0.8.2.9082 for `max()` / `min()`): each row
+  key of a SOC / PT table is ordered by name (or its code list), or by a
+  statistic the report's ARD has (n, p, a comparison's estimate ...):
+  largest or smallest first, by the columns' total (`-n`, `p`) or by the
+  largest / smallest in any column (`-max(n)`, `min(n)`); an outer key by
+  its own row's value (`-max(n)@group1`) as before.  "Another key" takes
+  any key, written as it is.  The card shows the keys `plan_sort()` gets.
+  A key the card had read as the sheets' own order before (a SOC key
+  without its `@group1`) is now that key's "another key"; the YAML is
+  written as it was.
+
 - **Step 3 on the YAML spec** (#438, 0.0.2.9252; step B4 of the YAML
   native plan): the page form reads a report's `page:` layer by layer --
   its own, its style, the pattern it extends, the study's defaults -- each
