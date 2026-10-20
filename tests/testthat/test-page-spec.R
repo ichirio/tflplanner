@@ -134,9 +134,10 @@ test_that("the form: a card a function, the arguments with a value first, labels
   expect_match(h, "rtfreporter's default", fixed = TRUE)
   expect_match(h, "(margin_top_in)", fixed = TRUE)
   expect_match(h, "pattern Compact", fixed = TRUE)
-  # the margins first, the rest folded: paper_size after "Not in the code"
-  expect_lt(regexpr("margin_top_in", h, fixed = TRUE), regexpr("Not in the code (6)", h, fixed = TRUE))
-  expect_lt(regexpr("Not in the code (6)", h, fixed = TRUE), regexpr("data-arg=\"paper_size\"", h, fixed = TRUE))
+  # the paper card's two rows above (paper, orientation, font, size; the
+  # margins), whether written or not; the rest folded
+  expect_lt(regexpr("data-arg=\"paper_size\"", h, fixed = TRUE), regexpr("margin_top_in", h, fixed = TRUE))
+  expect_lt(regexpr("margin_top_in", h, fixed = TRUE), regexpr("Not in the code (", h, fixed = TRUE))
   # no figure card for a table
   expect_false(grepl("rtf_figures", h, fixed = TRUE))
   q <- .pgs_set_arg(p, "T-14-3-1", "rtf_page", "margin_top_in", 0.7)
@@ -182,4 +183,19 @@ test_that("step 3's form in the app: an argument, a line, the pattern, the study
   })
   after <- md5()
   expect_identical(names(after)[after != before], file.path(root, "spec/outputs/T-14-1-1.yml"))
+})
+
+test_that("the paper card: paper, orientation, font, size; then the four margins (screen order)", {
+  p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
+  sp <- .pgs_spec(p)
+  h <- as.character(.page_paper_ui(sp, NA_character_, function(x) x))
+  at <- function(a) regexpr(sprintf('data-arg="%s"', a), h, fixed = TRUE)
+  args <- c("paper_size", "orientation", "font_table", "font_size_half_points")
+  pos <- vapply(args, at, 0)
+  said <- pos[pos > 0]
+  expect_identical(names(said), names(sort(said)))
+  # the font and the size are not in their own cards any more
+  h2 <- as.character(.page_form_ui(p, NA_character_, function(x) x))
+  n <- function(x) lengths(regmatches(x, gregexpr('data-arg="font_table"', x, fixed = TRUE)))
+  expect_identical(n(h2), n(h))
 })

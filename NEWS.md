@@ -8,6 +8,21 @@
   the answer used, its values, its check and its repairs).  In Japanese the
   tab is now "AI 連携".
 
+- **Template SPEC reports, and the builder's new card layout** (#440,
+  0.0.2.9257; tflspec >= 0.0.24.9186): a new report is made from one of
+  tflspec's templates (a searchable list, its required arguments in the
+  dialog) or as a code SPEC. A template report has two steps -- "1 Template
+  (ARD and content)" and "2 Page and output" -- and is drawn as one from its
+  first render ("Loading ..." meanwhile): the template's argument card
+  (inputs by the type tflspec declares, where each value comes from), the
+  plan_*() cards it overrides or adds ("+ Add a card": the template's cards,
+  then new ones), the ARD tab, and in Code the ARD's code expanded before
+  `tpl_x(...) |> plan_y(...)`. The builder's cards: the required ones, the
+  items in effect and those added -- a new report's usual cards empty until
+  it is saved; no on / off switches; "+ Add a card" in the pipe's order below
+  the last card (the card added scrolled to and lit); Remove only for a
+  report's own item, with 5 s to undo. Tiers from tfl_schema(fn)$tier.
+
 - **Follows tflspec #397** (#444, 0.0.2.9256; tflspec >= 0.0.24.9185): the
   figure designer's join card has the join's how -- "How to join (how)":
   a left join (left, the default) or keep its subjects only (semi); a semi

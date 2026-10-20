@@ -115,6 +115,9 @@ $(document).on('shiny:value', function(e) {
 .pg-card h6 .pg-fn, .pg-field .pg-fn { font-family: Consolas, 'Courier New', monospace;
   font-weight: normal; color: var(--bs-secondary-color, #6b7280); font-size: .9em; }
 .pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: .4rem .75rem; }
+.pg-card { container-type: inline-size; }
+.pg-grid.pg-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .4rem .5rem; margin-bottom: .4rem; }
+@container (max-width: 300px) { .pg-grid.pg-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .pg-field label { font-size: .75rem; margin-bottom: .1rem; display: block; }
 .pg-from { font-size: .7rem; color: var(--bs-secondary-color, #6b7280); }
 .pg-own { font-size: .7rem; color: var(--bs-primary, #0d6efd); }
@@ -229,6 +232,53 @@ $(document).on('shiny:value', function(e) {
       shiny::tags$summary(sprintf("%s (%d)", t("Not in the code"), sum(!said))),
       ui(fields[!said])),
     extra)
+}
+
+# The paper card (rtf_document(page =)): on screen in two rows -- paper,
+# orientation, the font (rtf_document()) and its size
+# (rtf_default_format()); then the four margins -- and the paper's other
+# fields after them.  Only the screen's order: the YAML and the code keep
+# theirs.  Written fields above (in this order), the others folded below,
+# as every card, but for the two rows: always above.
+.page_paper_rows <- list(
+  list(c("rtf_page", "paper_size"), c("rtf_page", "orientation"),
+       c("rtf_document", "font_table"), c("rtf_default_format", "font_size_half_points")),
+  list(c("rtf_page", "margin_top_in"), c("rtf_page", "margin_bottom_in"),
+       c("rtf_page", "margin_left_in"), c("rtf_page", "margin_right_in")))
+.page_paper_moved <- list(rtf_document = "font_table", rtf_default_format = "font_size_half_points")
+
+.page_paper_ui <- function(sp, id, t, kind = NULL) {
+  fld <- function(fa) {
+    f <- .pgs_field(fa[[1L]], fa[[2L]])
+    if (is.null(f)) return(NULL)
+    f$fn <- fa[[1L]]
+    f
+  }
+  rows <- lapply(.page_paper_rows, function(r) Filter(Negate(is.null), lapply(r, fld)))
+  placed <- unlist(lapply(.page_paper_rows, function(r) vapply(r, function(fa) fa[[2L]], "")))
+  rest <- lapply(Filter(function(f) !f$arg %in% placed, .pgs_fields$rtf_page),
+                 function(f) { f$fn <- "rtf_page"; f })
+  rows <- c(rows, list(rest))
+  # (a value from any layer -- the study standard's too -- is in the code)
+  said <- function(f) {
+    a <- .pgs_arg(sp, id, f$fn, f$arg)
+    !is.null(a$value) || !is.null(a$below$value) || identical(a$from, "own")
+  }
+  grid <- function(fs, cls = "pg-grid") if (length(fs)) shiny::div(
+    class = cls, lapply(fs, function(f) .page_arg_ui(sp, id, f$fn, f, t, kind)))
+  # (the two rows always above -- the paper, the font, the margins are
+  # what a page is; a field not written shows the value the page gets)
+  up <- c(rows[1:2], list(Filter(said, rows[[3L]])))
+  low <- Filter(Negate(said), rows[[3L]])
+  shiny::div(
+    class = "pg-card", `data-fn` = "rtf_page",
+    shiny::h6(t(.pgs_cards[["rtf_page"]]), " ", shiny::span(class = "pg-fn", .pgs_call_names[["rtf_page"]])),
+    lapply(up[1:2], grid, cls = "pg-grid pg-grid-4"),
+    grid(up[[3L]]),
+    if (length(low)) shiny::tags$details(
+      class = "pg-lower",
+      shiny::tags$summary(sprintf("%s (%d)", t("Not in the code"), length(low))),
+      grid(low)))
 }
 
 # a band's lines: the target's own editable, the others read and acted on
@@ -526,9 +576,13 @@ $(document).on('shiny:value', function(e) {
       .page_tokens_ui(sp, id, t, kind),
       .page_builtins_ui(t))
     else card(t("Tokens"), "(rtf_document(tokens =))", .page_tokens_ui(sp, id, t, kind), .page_builtins_ui(t)),
-    .page_fn_ui(sp, id, "rtf_page", t, kind),
-    .page_fn_ui(sp, id, "rtf_default_format", t, kind),
-    .page_fn_ui(sp, id, "rtf_document", t, kind),
+    .page_paper_ui(sp, id, t, kind),
+    .page_fn_ui(sp, id, "rtf_default_format", t, kind,
+                fields = Filter(function(f) !f$arg %in% .page_paper_moved$rtf_default_format,
+                                .pgs_fields$rtf_default_format)),
+    .page_fn_ui(sp, id, "rtf_document", t, kind,
+                fields = Filter(function(f) !f$arg %in% .page_paper_moved$rtf_document,
+                                .pgs_fields$rtf_document)),
     # the content's call: rtf_tables() for a table or a listing, rtf_figures()
     # for a figure (a pattern's or Standard's: both)
     if (!identical(kind, "figure")) .page_fn_ui(sp, id, "rtf_tables", t, kind),

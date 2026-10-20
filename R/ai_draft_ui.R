@@ -171,7 +171,7 @@ ai_ui <- function(id, lang = "en") {
           .btn(ns("open_requests"), t("Open the folder")),
           .btn(ns("reread"), t("Read again"))),
         shiny::uiOutput(ns("agent_card")),
-        shiny::uiOutput(ns("instructions")),
+        shiny::uiOutput(ns("instructions_file")),
         DT::DTOutput(ns("requests"))),
       bslib::nav_panel(
         paste0("3 ", t("Answers"), " (tfl_ai_collect_answers)"), value = "answers",
@@ -316,7 +316,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         ns(""), kind, what, htmltools::htmlEscape(id, TRUE), htmltools::htmlEscape(labels[[kind]]))
       paste(vapply(names(labels), b, ""), collapse = " ")
     }
-    output$instructions <- shiny::renderUI({
+    output$instructions_file <- shiny::renderUI({
       r <- requests()
       if (is.null(r) || is.na(attr(r, "instructions"))) return(NULL)
       chars <- tryCatch(nchar(text_of("instructions", NA)), error = function(e) NA_integer_)

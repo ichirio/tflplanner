@@ -521,7 +521,7 @@
   p <- .spec_sync(p, p$spec$meta)
   attr(p, "changed") <- NULL
   sp <- p$spec
-  rel <- sp$where[[output_id]] %||%
+  rel <- (if (output_id %in% names(sp$where)) sp$where[[output_id]]) %||%
     file.path(study_layout()[["spec"]], "outputs", paste0(output_id, ".yml"))
   if (sum(sp$where == rel) > 1L) {
     stop("The report ", output_id, " shares its file ", rel, " with others.", call. = FALSE)
