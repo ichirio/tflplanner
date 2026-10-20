@@ -10,11 +10,13 @@
 # not a card: a card around the sheets' own card makes the inner one a fill
 # item of a box with no height, and every grid in it 0 px high
 #' @noRd
-result_tabs_ui <- function(id, spec, code, result, lang = "en", selected = "spec") {
+result_tabs_ui <- function(id, spec, code, result, lang = "en", selected = "spec", ard = NULL) {
   shiny::div(
     class = "rp-tabs border rounded p-2",
     bslib::navset_underline(
       id = id, selected = selected,
+      # (an ARD tab first: a template report's, its tab hidden for others)
+      if (!is.null(ard)) bslib::nav_panel("ARD", value = "ard", shiny::div(class = "pt-2", ard)),
       bslib::nav_panel("SPEC", value = "spec", shiny::div(class = "pt-2", spec)),
       bslib::nav_panel(tr("Code", lang), value = "code", shiny::div(class = "pt-2", code)),
       bslib::nav_panel(tr("Result", lang), value = "result", shiny::div(class = "pt-2", result))))
