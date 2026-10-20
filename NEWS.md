@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **Template SPEC reports, and the builder's new card layout** (#440,
-  0.0.2.9254; tflspec >= 0.0.24.9182): a new report is made from one of
+  0.0.2.9254; tflspec >= 0.0.24.9185): a new report is made from one of
   tflspec's templates (a searchable list, its required arguments in the
   dialog) or as a code SPEC. A template report has two steps -- "1 Template
   (ARD and content)" and "2 Page and output" -- and is drawn as one from its

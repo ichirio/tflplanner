@@ -132,3 +132,13 @@ test_that("a study standard's card edited in a template report: the report's own
   expect_match(txt, "template:", fixed = TRUE)
   expect_match(txt, "plan_stub", fixed = TRUE)
 })
+
+test_that("an argument tflspec filled from the study is the study standard's, with its source", {
+  prm <- list(name = "population", study = "output.population")
+  og <- .tpl_arg_origin(list(), prm, list(), filled = list(study = "population",
+                                                           args = list(population = "SAF")))
+  expect_identical(og$from, "study")
+  expect_identical(og$study, "SAF")
+  expect_identical(og$source, "output.population")
+  expect_identical(.tpl_arg_origin(list(), prm, list(population = "FAS"))$from, "own")
+})

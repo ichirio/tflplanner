@@ -460,10 +460,29 @@ $(document).on('shiny:connected', function() {
 # it can later read tflspec's own record, attr(<resolved output>,
 # "template")$study): list(from = "own" | "study" | "default", study =
 # the study standard's value, NULL none)
-.tpl_arg_origin <- function(study, prm, args) {
+.tpl_arg_origin <- function(study, prm, args, filled = NULL) {
+  src <- as.character(prm$study %||% NA_character_)[1L]
+  if (prm$name %in% names(args)) {
+    return(list(from = "own", study = .tpl_study_value(study, prm), source = src))
+  }
+  # (tflspec >= 0.0.24.9185 says which it filled from the study:
+  # attr(<resolved output>, "template")$study, their values in $args)
+  if (!is.null(filled) && prm$name %in% filled$study) {
+    return(list(from = "study", study = filled$args[[prm$name]], source = src))
+  }
   sv <- .tpl_study_value(study, prm)
-  from <- if (prm$name %in% names(args)) "own" else if (!is.null(sv)) "study" else "default"
-  list(from = from, study = sv)
+  list(from = if (!is.null(sv)) "study" else "default", study = sv, source = src)
+}
+
+# What tflspec filled in from the study for a template report: the
+# template attribute of its resolved output (NULL: none, or an older
+# tflspec)
+.tpl_filled <- function(p, output_id) {
+  o <- p$spec$outputs[[output_id]]
+  if (is.null(o)) return(NULL)
+  r <- tryCatch(tflspec::tfl_resolve_output(o, p$spec$study), error = function(e) NULL)
+  a <- attr(r, "template")
+  if (is.null(a$study)) NULL else a
 }
 
 # A new report written straight into the spec: its line in spec/toc.yml

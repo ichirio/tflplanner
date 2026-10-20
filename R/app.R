@@ -12179,8 +12179,9 @@ app_server <- function(input, output, session, start) {
     study <- p$spec$study
     # where a value comes from: this report / the study standard / the
     # function's default (and the report's over the study's, said)
+    filled <- .tpl_filled(p, id)
     from_of <- function(a) {
-      og <- .tpl_arg_origin(study, prm[[a]], args)
+      og <- .tpl_arg_origin(study, prm[[a]], args, filled)
       sv <- og$study
       if (identical(og$from, "own")) {
         return(shiny::span(class = "rp-tpl-arg-from",
@@ -12188,13 +12189,16 @@ app_server <- function(input, output, session, start) {
                            if (!is.null(sv)) paste0(" \u2014 ", sprintf(t("over the study standard (%s)"),
                                                                        .tpl_show(sv)))))
       }
+      # (the study standard, and where in it: "Study standard
+      # (settings.treatment)")
+      std <- if (!is.na(og$source)) sprintf(t("Study standard (%s)"), og$source) else t("Study standard")
       shiny::span(class = "rp-tpl-arg-from",
-                  if (!is.null(sv)) paste0(t("Study standard"), ": ", .tpl_show(sv)) else
+                  if (identical(og$from, "study")) paste0(std, ": ", .tpl_show(sv)) else
                     t("The function's default"))
     }
     row <- function(a, upper) {
       x <- prm[[a]]
-      og <- .tpl_arg_origin(study, x, args)
+      og <- .tpl_arg_origin(study, x, args, filled)
       sv <- if (identical(og$from, "study")) og$study
       shiny::div(
         class = paste("d-flex gap-2 align-items-start", if (!upper) "rp-tpl-default"),
