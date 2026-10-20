@@ -744,8 +744,10 @@ app_ui <- function(lang = "en") {
                          .btn("lf_preview", t("Preview the listing"),
                               class = "btn-sm btn-outline-primary")),
               shiny::uiOutput("lf_preview_out"))))),
-      shiny::conditionalPanel("output.report_kind == 'figure'", shiny::uiOutput("tpl_card_fig")),
-      shiny::conditionalPanel("output.content_is_code != 'yes'", .designer_ui(t))),
+      shiny::conditionalPanel("output.report_kind == 'figure'",
+                              shiny::uiOutput("tpl_card_fig"), shiny::uiOutput("tpl_fig_out")),
+      shiny::conditionalPanel("output.content_is_code != 'yes' && output.is_tpl != 'yes'",
+                              .designer_ui(t))),
     bslib::nav_panel(
       t("Data code"), value = "code",
       shiny::uiOutput("current_label"),
@@ -11641,8 +11643,11 @@ app_server <- function(input, output, session, start) {
     switch(type,
       population = shiny::selectInput(input_id, lab, pop_choices(),
                                       selected = as.character(shown %||% ""), width = "100%"),
-      data = shiny::selectInput(input_id, lab, union(as.character(shown %||% character()), names(data)),
-                                selected = as.character(shown %||% "")[1L], width = "100%"),
+      data = shiny::selectInput(
+        input_id, lab,
+        c(if (is.null(shown)) stats::setNames("", t("(default)")),
+          union(as.character(shown %||% character()), names(data))),
+        selected = as.character(shown %||% "")[1L], width = "100%"),
       param = {
         ds <- toupper(dataset %||% "ADTTE")
         vals <- unique(as.character(data[[ds]]$PARAMCD %||% character()))
@@ -11826,11 +11831,8 @@ app_server <- function(input, output, session, start) {
           t("Revert")))
     }
     open <- isTRUE(shiny::isolate(input$tpl_open))
-    preview_btn <- if (identical(kind, "figure")) {
-      shiny::tags$button(type = "button", class = "btn btn-sm btn-primary",
-                         onclick = "var b = document.getElementById('pd_redraw'); if (b) b.click();",
-                         t("Update preview"))
-    } else .btn("tpl_preview", t("Update preview"), class = "btn-sm btn-primary")
+    preview_btn <- .btn(if (identical(kind, "figure")) "tpl_fig_preview" else "tpl_preview",
+                        t("Update preview"), class = "btn-sm btn-primary")
     bslib::card(
       class = "mb-2 border-primary",
       bslib::card_header(shiny::div(
@@ -11860,6 +11862,63 @@ app_server <- function(input, output, session, start) {
           shiny::span(class = "small text-muted",
                       sprintf(t("Saved in spec/outputs/%s.yml as template: name and its args only."), id)))))
   }
+  # a template figure: drawn here from the template's items
+  # (tflspec::tfl_content_run(), the figure as its program makes it), the
+  # PNG under the card and the expanded code folded below it
+  output$is_tpl <- shiny::renderText({
+    id <- current()
+    rv$ver
+    if (!is.null(id) && !is.null(.tpl_of(shiny::isolate(rv$p), id))) "yes" else "no"
+  })
+  shiny::outputOptions(output, "is_tpl", suspendWhenHidden = FALSE)
+  tpl_fig <- shiny::reactiveVal(NULL)
+  tpl_fig_draw <- function() {
+    id <- current()
+    p <- rv$p
+    if (is.null(id) || is.null(.tpl_of(p, id))) return()
+    miss <- .tpl_missing(.tpl_of(p, id)$name, .tpl_of(p, id)$args)
+    if (length(miss)) {
+      return(tpl_fig(list(id = id, error = sprintf(
+        t("Required arguments are empty: %s. The preview waits for them."), paste(miss, collapse = ", ")))))
+    }
+    res <- shiny::withProgress(message = sprintf(t("Preview of %s"), id), tryCatch({
+      r <- tflspec::tfl_resolve_output(p$spec$outputs[[id]], p$spec$study)
+      d <- tpl_data()
+      names(d) <- tolower(names(d))
+      g <- tflspec::tfl_content_run(r, d)
+      f <- tempfile("tplfig", fileext = ".png")
+      save <- getExportedValue("ggplot2", "ggsave")
+      save(f, g, width = 7.3, height = 4.2, dpi = 110)
+      list(id = id, png = f, code = paste(tflspec::tfl_content_code(r), collapse = "\n"))
+    }, error = function(e) list(id = id, error = conditionMessage(e))))
+    tpl_fig(res)
+  }
+  shiny::observeEvent(input$tpl_fig_preview, tpl_fig_draw())
+  output$tpl_fig_out <- shiny::renderUI({
+    if (!identical(report_kind(), "figure")) return(NULL)
+    id <- current()
+    if (is.null(id) || is.null(.tpl_of(shiny::isolate(rv$p), id))) return(NULL)
+    r <- tpl_fig()
+    body <- if (is.null(r) || !identical(r$id, id)) {
+      shiny::p(class = "small text-muted", t("Update preview draws the figure."))
+    } else if (!is.null(r$error)) {
+      shiny::div(class = "alert alert-danger py-2 small",
+                 shiny::strong(t("The figure could not be drawn: ")), r$error)
+    } else {
+      bytes <- readBin(r$png, "raw", file.size(r$png))
+      shiny::tagList(
+        shiny::tags$img(src = paste0("data:image/png;base64,", jsonlite::base64_enc(bytes)),
+                        style = "max-width: min(100%, 760px); border: 1px solid #dee2e6"),
+        shiny::tags$details(
+          class = "mt-2",
+          shiny::tags$summary(class = "small", t("The expanded code")),
+          shiny::div(class = "rp-code", shiny::tags$pre(class = "small", r$code))))
+    }
+    bslib::card(
+      class = "mb-2",
+      bslib::card_header(t("Preview")),
+      bslib::card_body(body))
+  })
   output$tpl_card <- shiny::renderUI({
     if (!identical(report_kind(), "table")) return(NULL)
     tpl_card_ui()
