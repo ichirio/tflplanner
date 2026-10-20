@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **The row order card offers keys from the ARD's statistics** (#437,
-  0.0.2.9252; rtfreporter >= 0.8.2.9082 for `max()` / `min()`): each row
+  0.0.2.9253; rtfreporter >= 0.8.2.9082 for `max()` / `min()`): each row
   key of a SOC / PT table is ordered by name (or its code list), or by a
   statistic the report's ARD has (n, p, a comparison's estimate ...):
   largest or smallest first, by the columns' total (`-n`, `p`) or by the
