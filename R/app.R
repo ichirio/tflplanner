@@ -4174,6 +4174,8 @@ app_server <- function(input, output, session, start) {
         dataset = p$ard$datasets$dataset,
         population_id = p$ard$populations$population_id,
         by = cols, strata = cols, variables = cols,
+        # (tflspec >= 0.0.24.9186: yes, the variables the data lack skipped)
+        optional = c("yes", "no"),
         denominator = c("population", "row", "column", "cell",
                         p$ard$populations$population_id,
                         p$ard$datasets$dataset,
@@ -5327,7 +5329,8 @@ app_server <- function(input, output, session, start) {
     # it becomes a stack: what it computed goes into one inside it
     to_stack <- identical(a$method[i], .stack_fn) && !identical(r$method, .stack_fn)
     if (to_stack) {
-      for (cn in c("variables", "statistics", "strata", "denominator", "formats", "args")) a[[cn]][i] <- NA
+      own <- c("variables", "optional", "statistics", "strata", "denominator", "formats", "args")
+      for (cn in intersect(own, names(a))) a[[cn]][i] <- NA
     }
     rv$p$ard$analyses <- a
     an_pick(new_id)

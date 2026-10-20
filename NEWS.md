@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **Template SPEC reports, and the builder's new card layout** (#440,
-  0.0.2.9254; tflspec >= 0.0.24.9185): a new report is made from one of
+  0.0.2.9257; tflspec >= 0.0.24.9186): a new report is made from one of
   tflspec's templates (a searchable list, its required arguments in the
   dialog) or as a code SPEC. A template report has two steps -- "1 Template
   (ARD and content)" and "2 Page and output" -- and is drawn as one from its
@@ -14,6 +14,12 @@
   it is saved; no on / off switches; "+ Add a card" in the pipe's order below
   the last card (the card added scrolled to and lit); Remove only for a
   report's own item, with 5 s to undo. Tiers from tfl_schema(fn)$tier.
+
+- **ARD analyses: `optional`** (#442, 0.0.2.9255; tflspec >= 0.0.24.9186,
+  #393): the analyses grid shows tflspec's new column `optional`
+  (right after `variables`) as a yes / no dropdown: yes, the variables the
+  data lack are skipped (`any_of()`; tfl_build_ard() says which).  An
+  analysis turned into a stack clears it with its variables.
 
 - **The row order card offers keys from the ARD's statistics** (#437,
   0.0.2.9253; rtfreporter >= 0.8.2.9082 for `max()` / `min()`): each row
