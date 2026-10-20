@@ -12215,20 +12215,27 @@ app_server <- function(input, output, session, start) {
     args <- tp$args[intersect(names(tp$args), names(.tpl_params(to)))]
     tpl_write(id, args, name = to)
   })
+  # the card drawn: "Loading ..." taken away when it is the report opened,
+  # and a new template report's preview started after it
+  tpl_card_drawn <- function(id) {
+    .tpl_trace("argument card drawn")
+    if (!identical(tpl_ready$id, id)) return(invisible())
+    tpl_ready$id <- NULL
+    tpl_ready_send()
+    if (identical(tpl_autoprev$want, id)) {
+      tpl_autoprev$want <- NULL
+      session$onFlushed(function() if (!session$isClosed()) tpl_autoprev_go(id), once = TRUE)
+    }
+    invisible()
+  }
   tpl_card_ui <- function() {
     id <- current()
     shiny::req(id)
-    on.exit({
-      .tpl_trace("argument card drawn")
-      if (identical(tpl_ready$id, id)) {
-        tpl_ready$id <- NULL
-        tpl_ready_send()
-        if (identical(tpl_autoprev$want, id)) {
-          tpl_autoprev$want <- NULL
-          session$onFlushed(function() if (!session$isClosed()) tpl_autoprev_go(id), once = TRUE)
-        }
-      }
-    }, add = TRUE)
+    card <- tpl_card_draw(id)
+    tpl_card_drawn(id)
+    card
+  }
+  tpl_card_draw <- function(id) {
     tpl_ver()
     rv$ver
     p <- shiny::isolate(rv$p)
