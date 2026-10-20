@@ -685,7 +685,8 @@ builder_items <- function(x, output_id, meta = NULL) {
           if (length(intersect(meta$factor_vars, v$variable)) ||
                 length(meta$factor_keys)) "plan_levels",
           if (is.data.frame(v) && any(!is.na(v$label) & nzchar(v$label %||% ""))) "plan_labels")
-  intersect(on, usual)
+  # (the Total column too, though not a usual card: the ARD tells it)
+  intersect(on, c(usual, "plan_total"))
 }
 
 # The verbs "Add" offers: the plan's, in the schema's order, less those
@@ -879,7 +880,9 @@ builder_items <- function(x, output_id, meta = NULL) {
     pending <- !isTRUE(it$present) && on
     # an item the content has not (its form would add it): no mark of its
     # own -- "not in the code yet"
-    absent <- !isTRUE(it$present) && !blocked && (pending || (!sw && !req))
+    # (#440: a card added or shown empty is the table's own card, drawn as
+    # any -- its mark "This table"; nothing is written till a value is)
+    absent <- !isTRUE(it$present) && !blocked && !isTRUE(it$added) && (pending || (!sw && !req))
     tools <- c(if ((isTRUE(it$present) || pending) && !isTRUE(it$fixed)) "r",
                if (isTRUE(it$removable) && !req) "remove")
     sec <- .plan_section(it$fn)
@@ -908,7 +911,7 @@ builder_items <- function(x, output_id, meta = NULL) {
       # changed and the off: closed
       open = on && (pending || (!rare && (req || own_form || identical(it$from, "own")))),
       path = it$path, lang = lang,
-      own_label = if (isTRUE(it$present) && identical(it$from, "own")) "This table",
+      own_label = if ((isTRUE(it$present) || isTRUE(it$added)) && identical(it$from, "own")) "This table",
       absent = absent, rare = rare, section = sec,
       tag = .plan_section_labels[[sec]],
       new = identical(it$path, new),

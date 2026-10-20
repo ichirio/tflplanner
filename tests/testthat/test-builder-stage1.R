@@ -54,50 +54,54 @@ test_that("a line before each group's first card, with its meaning; every card n
   expect_match(html(.table_cards_bar(items)), ">Cards (plan)<", fixed = TRUE)
 })
 
-test_that("required cards have no switch; a switch only where on / off writes; none disabled", {
+test_that("the cards: required + the items in effect + added; no switch (#440)", {
   p <- sample_planner()
   items <- cards_of(p, "T-14-1-1")
   h <- html(.table_cards(items))
   expect_false(grepl("disabled", h, fixed = TRUE))
-  for (fn in c("normalize_ard", "table_plan", "plan_cells")) {
+  expect_false(grepl("form-switch", h, fixed = TRUE))
+  for (fn in c("normalize_ard", "table_plan", "plan_cells", "plan_paginate_rows", "plan_stub")) {
     expect_false(item(items, fn)$switch, info = fn)
+    expect_true(item(items, fn)$on, info = fn)
   }
-  # the report's own, no study default under it: on, off takes it away
-  expect_true(item(items, "plan_paginate_rows")$switch)
-  expect_true(item(items, "plan_paginate_rows")$on)
-  # the study's defaults: no switch (off could not take them away)
-  expect_false(item(items, "plan_stub")$switch)
-  # the usual cards of a summary table are all there
-  expect_true(all(.plan_usual(FALSE) %in% fns_of(items)))
+  # the study standard's cards in effect are shown, with their mark
   expect_true(all(.plan_study_cards %in% fns_of(items)))
+  # a saved report: no empty usual card; a new one (not saved): all of them
+  expect_false(any(!vapply(items, function(it) isTRUE(it$present), NA) &
+                     !fns_of(items) %in% .plan_tier_fns("required")))
+  fresh <- cards_of(p, "T-14-1-1", fresh = TRUE)
+  expect_true(all(.plan_tier_fns("usual") %in% fns_of(fresh)))
 })
 
 test_that("an AE table: the same usual cards as any (plan_levels off); an empty usual card is off", {
   p <- sample_planner()
   raw <- Filter(function(it) it$fn != "plan_levels", builder_items(p, "T-14-3-1"))
+  # (a saved report: only what it has -- one tier list for every table)
   items <- .builder_items_cards(raw, TRUE)
-  # (one list of usual cards for every table, #417 Q2)
-  expect_true("plan_levels" %in% fns_of(items))
-  expect_false(item(items, "plan_levels")$present)
-  expect_false("plan_levels" %in% .plan_addable(items))
+  expect_false("plan_levels" %in% fns_of(items))
+  expect_true("plan_levels" %in% .plan_addable(items))
   expect_false("plan_sort" %in% .plan_addable(items))
   expect_false(any(c("normalize_ard", "table_plan", "plan_cells") %in% .plan_addable(items)))
-  # plan_filter: a usual card of an AE table, empty: off, its switch works
-  f <- item(items, "plan_filter")
-  expect_false(f$present)
-  expect_false(f$on)
-  expect_true(f$switch)
-  h <- html(.table_cards(list(f)))
-  expect_match(h, "rp-card-off", fixed = TRUE)
-  expect_match(h, "On: its usual values are written.", fixed = TRUE)
-  expect_false(grepl("Not in the code yet", h, fixed = TRUE))
-  # Add offers the verbs not shown, meaning (fn()), in the schema's order
-  sch <- .plan_add_schema(items)
-  skip_if(is.null(sch))
-  ch <- .item_choices(sch, "plan")
-  expect_false("plan_levels" %in% ch)
-  expect_false("plan_sort" %in% ch)
-  expect_false(any(c("plan_titles", "plan_footnotes", "plan_listing") %in% ch))
+  # a new report: the usual card empty -- on, nothing written yet
+  items <- .builder_items_cards(raw, TRUE, fresh = TRUE)
+  lv <- item(items, "plan_levels")
+  expect_false(lv$present)
+  expect_true(lv$on)
+  expect_false(lv$switch)
+  expect_true(lv$removable)
+  h <- html(.table_cards(list(lv)))
+  expect_false(grepl("rp-card-off", h, fixed = TRUE))
+  expect_false(grepl("rp-card-absent", h, fixed = TRUE))
+  expect_match(h, ">This table<", fixed = TRUE)
+  # + Add a card: every verb in the pipe's order, those shown greyed
+  menu <- .plan_add_menu(items)
+  fns <- vapply(menu, function(m) m$fn, "")
+  expect_false(any(c("normalize_ard", "table_plan", "plan_cells") %in% fns))
+  expect_false(menu[[match("plan_sort", fns)]]$ok)
+  expect_true(menu[[match("plan_compare", fns)]]$ok)
+  h <- html(.plan_add_menu_ui("b_add_pick", menu))
+  expect_match(h, "dropdown-item disabled", fixed = TRUE)
+  expect_match(h, "+ Add a card", fixed = TRUE)
 })
 
 test_that("an added plan_stat_groups goes after plan_cells, before plan_total and plan_labels", {
@@ -138,7 +142,8 @@ test_that("added: a verb with usual values is written; one without waits, on, fo
   at <- match("plan_compare", fns_of(items))
   expect_true(at > match("table_plan", fns_of(items)))
   h <- html(.table_cards(list(cp), new = "plan_compare"))
-  expect_match(h, "Not in the code yet", fixed = TRUE)
+  # (#440: drawn as the table's own card, nothing written yet)
+  expect_match(h, ">This table<", fixed = TRUE)
   expect_match(h, "rp-card-new", fixed = TRUE)
   expect_match(h, "rp-tool-r", fixed = TRUE)
   expect_match(.builder_cards_js, "rp-card-new", fixed = TRUE)
@@ -158,7 +163,7 @@ test_that("the Total card: on by default with overall rows; off and no switch wi
   expect_true("plan_total" %in% .ard_on_cards(m1))
   expect_false("plan_total" %in% .ard_on_cards(m0))
   p <- sample_planner()
-  t0 <- item(cards_of(p, "T-14-1-1", ard_total = "none"), "plan_total")
+  t0 <- item(cards_of(p, "T-14-1-1", ard_total = "none", added = "plan_total"), "plan_total")
   expect_false(t0$switch)
   h <- html(.table_cards(list(t0)))
   expect_false(grepl("form-switch", h, fixed = TRUE))
@@ -166,7 +171,7 @@ test_that("the Total card: on by default with overall rows; off and no switch wi
   expect_match(h, "The ARD has no overall rows.", fixed = TRUE)
   expect_identical(tr("The ARD has no overall rows.", "ja"),
                    "ARD に全体の行がありません")
-  t1 <- item(cards_of(p, "T-14-1-1", ard_total = "overall"), "plan_total")
+  t1 <- item(cards_of(p, "T-14-1-1", ard_total = "overall", added = "plan_total"), "plan_total")
   expect_true(t1$switch)
 })
 
@@ -277,7 +282,7 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
   # the kinds of field: a choice, a number, a check
   h <- html(.plan_form_body("c", "plan_blanks", item(items, "plan_blanks")))
   expect_match(h, '<option value="between_groups" selected>', fixed = TRUE)
-  expect_match(h, ">Study default<", fixed = TRUE)
+  expect_match(h, ">Study standard<", fixed = TRUE)
   h <- html(.plan_form_body("c", "plan_paginate_rows", item(items, "plan_paginate_rows")))
   expect_match(h, 'type="number"', fixed = TRUE)
   expect_match(h, ">This table<", fixed = TRUE)
@@ -431,57 +436,45 @@ test_that("in the app: a switch writes and takes away; Add; the variables shown;
     }
     expect_no_match(h, "Order of the column variables", fixed = TRUE)
     expect_match(tp, "A variable not here is added in the ARD analysis.", fixed = TRUE)
-    # a usual card off (no levels written): on writes the ARD's levels
-    it <- .builder_item_at(bf$items, "plan_levels")
-    skip_if(is.null(it) || isTRUE(it$present))
-    expect_false(it$on)
-    set_in(session, paste0(cid("plan_levels"), "__on"), TRUE)
-    expect_true("plan_levels" %in% fns())
-    # ... and off takes it away again
-    bf <- session$userData$bform
-    it <- .builder_item_at(bf$items, "plan_levels")
-    expect_true(it$present)
-    expect_true(it$switch)
-    set_in(session, paste0(cid("plan_levels"), "__on"), FALSE)
-    expect_false("plan_levels" %in% fns())
-    # Add: a verb with no usual value -- its card, on, waiting
-    bf <- session$userData$bform
+    # "+ Add a card" below the cards: a verb with no usual value -- its
+    # card, on, waiting, lit
     h <- output$builder_form$html
-    expect_match(h, sprintf('id="b%d_add"', bf$n), fixed = TRUE)
-    set_in(session, paste0("b", bf$n, "_add"), "plan_compare")
-    set_in(session, paste0("b", bf$n, "_add__add"), 1L)
+    expect_match(h, "rp-add-menu", fixed = TRUE)
+    # (no switch but the Total column's own)
+    bf <- session$userData$bform
+    sw <- vapply(bf$items, function(it) isTRUE(it$switch), NA)
+    expect_true(all(vapply(bf$items[sw], function(it) it$fn, "") == "plan_total"))
+    session$setInputs(b_add_pick = "plan_compare")
+    session$elapse(1000)
     bf <- session$userData$bform
     cp <- .builder_item_at(bf$items, "plan_compare")
     expect_false(is.null(cp))
     expect_true(cp$added)
+    expect_false(cp$switch)
     expect_match(output$builder_form$html, "rp-card-new", fixed = TRUE)
-    # an added card switched off stays, off; on again it waits again
-    set_in(session, paste0(cid("plan_compare"), "__on"), FALSE)
-    bf <- session$userData$bform
-    cp <- .builder_item_at(bf$items, "plan_compare")
-    expect_false(is.null(cp))
-    expect_false(cp$on)
-    expect_true(cp$switch)
-    set_in(session, paste0(cid("plan_compare"), "__on"), TRUE)
-    bf <- session$userData$bform
-    expect_true(.builder_item_at(bf$items, "plan_compare")$added)
     # the menu's Remove: the added card gone, Add offers it again
     session$setInputs(b_card_remove = list(path = "plan_compare", t = 1))
     session$elapse(1000)
     bf <- session$userData$bform
     expect_null(.builder_item_at(bf$items, "plan_compare"))
     expect_true("plan_compare" %in% .plan_addable(bf$items))
-    # a usual card written, then removed: its rows taken away, its card
-    # back, off
-    set_in(session, paste0(cid("plan_levels"), "__on"), TRUE)
+    # a card of the report's own, removed: its item taken away; Undo puts
+    # the report's YAML back
+    if (!"plan_levels" %in% fns()) {
+      session$setInputs(b_add_pick = "plan_levels")
+      session$elapse(1000)
+    }
     expect_true("plan_levels" %in% fns())
     session$setInputs(b_card_remove = list(path = "plan_levels", t = 2))
     session$elapse(1000)
     expect_false("plan_levels" %in% fns())
     bf <- session$userData$bform
-    lv <- .builder_item_at(bf$items, "plan_levels")
-    expect_false(is.null(lv))
-    expect_false(lv$on)
+    expect_null(.builder_item_at(bf$items, "plan_levels"))
+    if (!is.null(bf$undo)) {
+      session$setInputs(b_card_undo = 1)
+      session$elapse(1000)
+      expect_true("plan_levels" %in% fns())
+    }
     # a required card cannot be removed
     session$setInputs(b_card_remove = list(path = "plan_cells", t = 3))
     session$elapse(1000)
@@ -493,17 +486,19 @@ test_that("in the app: a switch writes and takes away; Add; the variables shown;
   })
 })
 
-test_that("every card stays when off; Remove in the menu of any card not required", {
+test_that("Remove: only a card of the report's own, or one shown empty (#440)", {
   p <- sample_planner()
-  # an added verb switched off: still a card, off, its switch kept
-  items <- cards_of(p, "T-14-1-1", added = "plan_compare", off = "plan_compare")
+  # an added verb taken away again (off): no card
+  expect_null(cards_of(p, "T-14-1-1", added = "plan_compare",
+                       off = "plan_compare")[["plan_compare"]])
+  expect_false("plan_compare" %in% fns_of(cards_of(p, "T-14-1-1", added = "plan_compare",
+                                                   off = "plan_compare")))
+  items <- cards_of(p, "T-14-1-1", added = "plan_compare")
   cp <- item(items, "plan_compare")
-  expect_false(cp$added)
-  expect_false(cp$on)
-  expect_true(cp$switch)
+  expect_true(cp$on)
   expect_true(cp$removable)
-  # on (not off): waiting, on
-  expect_true(item(cards_of(p, "T-14-1-1", added = "plan_compare"), "plan_compare")$on)
+  # the study standard's: no Remove (Revert, or this table's own value)
+  expect_false(item(items, "plan_stub")$removable)
   for (fn in c("normalize_ard", "table_plan", "plan_cells")) {
     expect_false(isTRUE(item(items, fn)$removable), info = fn)
   }

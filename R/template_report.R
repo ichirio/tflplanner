@@ -337,6 +337,9 @@ body.rp-switching #step ~ .tab-content { visibility: hidden; }
   100% { box-shadow: 0 0 0 3px rgba(13,110,253,0); } }
 .rp-card.rp-card-flash { animation: rp-card-flash 1.6s ease-out 1; }
 .rp-add-menu .dropdown-menu { max-height: 60vh; overflow-y: auto; }
+/* an argument's edit: only the right pane shows it is busy */
+body.rp-tpl .recalculating { opacity: 1 !important; }
+body.rp-tpl .rp-tabs .recalculating { opacity: .35 !important; }
 .rp-add-menu .dropdown-item.disabled { color: #9ca3af; }
 "
 
@@ -379,7 +382,10 @@ $(document).on('shiny:connected', function() {
       var c = $('.rp-card.rp-card-new').not('.rp-card-flashed').first();
       if (!c.length) return;
       c.addClass('rp-card-flashed rp-card-flash rp-card-open');
-      c[0].scrollIntoView({block: 'center', behavior: 'smooth'});
+      // (its head in view, below the page's sticky bar)
+      var top = c[0].getBoundingClientRect().top + window.scrollY;
+      var bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rp-top')) || 0;
+      window.scrollTo({top: Math.max(0, top - bar - 12), behavior: 'smooth'});
       setTimeout(function() { c.removeClass('rp-card-flash'); }, 1700);
     }, 80);
   });
@@ -394,4 +400,45 @@ $(document).on('shiny:connected', function() {
   sv <- .tpl_study_value(study, prm)
   from <- if (prm$name %in% names(args)) "own" else if (!is.null(sv)) "study" else "default"
   list(from = from, study = sv)
+}
+
+# A new report written straight into the spec: its line in spec/toc.yml
+# (in the list's natural order, .natural_slot()) and its own file, the
+# view's rows made from them alone -- not add_output() and the bridge over
+# every report (#440: some 15 s for a study of 17 reports).  `output` a
+# tfl_output; `label`, `section`, `population` the toc line's.
+.spec_add_output <- function(p, output, label = NA_character_, section = NA_character_,
+                             population = NA_character_) {
+  p <- .spec_ensure(p)
+  p <- .spec_sync(p, p$spec$meta)
+  attr(p, "changed") <- NULL
+  id <- output$id
+  if (id %in% p$outputs$output_id) stop("Report '", id, "' is already on the list.", call. = FALSE)
+  toc <- p$spec$study$toc %||% list()
+  lines <- toc$outputs %||% list()
+  ids <- vapply(lines, function(e) as.character(e$id %||% ""), "")
+  entry <- list(id = id, kind = output$kind)
+  if (length(label) && !is.na(label) && nzchar(label)) entry$label <- label
+  if (length(section) && !is.na(section) && nzchar(section)) entry$section <- section
+  if (length(population) && !is.na(population) && nzchar(population)) entry$population <- population
+  k <- .natural_slot(ids, id)
+  lines <- append(lines, list(entry), after = k - 1L)
+  toc$outputs <- lines
+  p$spec$study$toc <- toc
+  rel <- file.path(study_layout()[["spec"]], "toc.yml")
+  f <- tempfile("tflplanner-toc", fileext = ".yml")
+  on.exit(unlink(f), add = TRUE)
+  tflspec::tfl_write_study_part(p$spec$study, "toc", f)
+  p$spec$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  p <- .spec_set_output(p, id, output)
+  # (the list in the toc's order, in the view and in the base alike)
+  ord <- function(o) {
+    o <- o[order(match(o$output_id, append(ids, id, after = k - 1L), nomatch = length(ids) + 2L),
+                 seq_len(nrow(o))), , drop = FALSE]
+    rownames(o) <- NULL
+    o
+  }
+  p$outputs <- ord(p$outputs)
+  if (!is.null(p$spec$base)) p$spec$base$outputs <- ord(p$spec$base$outputs)
+  p
 }
