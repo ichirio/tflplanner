@@ -173,7 +173,7 @@ test_that("plan_digits()' rounding: a choice, the study's (written there)", {
   h <- html(.rounding_field("d", "sas"))
   expect_match(h, 'id="d__rounding"', fixed = TRUE)
   for (v in c("sas", "r", "iec60559")) expect_match(h, sprintf('value="%s"', v), fixed = TRUE)
-  expect_match(h, "Study default", fixed = TRUE)
+  expect_match(h, "Study standard", fixed = TRUE)
   p <- sample_planner()
   it <- item(builder_items(p, "T-14-1-1"), "plan_digits")
   args <- it$own_args %||% it$args

@@ -584,51 +584,84 @@ builder_items <- function(x, output_id, meta = NULL) {
 .plan_rare <- c("plan_stub", "plan_blanks", "plan_style", "plan_columns", "plan_cell_style",
                 "plan_paginate_rows", "plan_paginate_group", "plan_paginate_cols")
 
-# ---- which cards, and their switches ---------------------------------------------
+# ---- which cards (#440, _archive/builder-card-layout-design-2026-10-20.md) ----
 
-# Three kinds of card: the required (always, no switch); the usual ones of
-# the table's kind and the study defaults' (shown though the content has
-# none: off, a switch turns them on); the rest only through "Add" (a card
-# the content has is shown whatever its kind).
+# A verb's tier, as tflspec's schema says it (tfl_schema(fn)$tier, "for
+# the GUI"): "required" (always a card), "usual" (an empty card of a new
+# report, before it is saved), "other" (through "+ Add a card").  The
+# table below is the fallback for a schema with no tier.  One tier for
+# every kind of table.
 .plan_required <- c("normalize_ard", "table_plan", "plan_cells")
 
-# (one list for every table, whatever its kind -- #417 Q2; `hier` unused)
 .plan_usual <- function(hier = FALSE) {
-  c("plan_levels", "plan_labels", "plan_sort", "plan_digits", "plan_col_header", "plan_total",
-    "plan_filter")
+  c("plan_levels", "plan_labels", "plan_sort", "plan_digits", "plan_col_header")
 }
 
 .plan_study_cards <- c("plan_stub", "plan_blanks", "plan_paginate_rows", "plan_columns",
                        "plan_style")
 
-# The items as cards: the content's, the required and usual ones it lacks
-# (off), and those added in the builder (`added`: verbs on, waiting for a
-# value; `off` those of them switched off, kept as cards) -- each in the
-# schema's order among the content's; each told whether it has a switch
-# (`switch`), whether it is on (`on`) and whether the menu's Remove takes
-# it away (`removable`: any card not required -- a usual one comes back
-# off when drawn again).  A
-# switch only where its on / off really writes: off a card the content
-# lacks (on writes it, or opens it to be filled); on a report's own item
-# with no study default under it (off takes its rows away).  An item of
-# the study's defaults has none (its Revert, or the study's defaults,
-# change it).
-#
-# The Total column (plan_total()) reads the ARD's rows over all subjects
-# and stops without them: an ARD known to have none (`ard_total` "none",
-# .ard_total_kind()) leaves its card off with no switch, saying why
-# (`blocked`); its own switch otherwise (on / off works from the study's
-# defaults too).
+.plan_tier_cache <- new.env()
+.plan_tier <- function(fn) {
+  hit <- .plan_tier_cache[[fn]]
+  if (!is.null(hit)) return(hit)
+  tr <- tryCatch(tflspec::tfl_schema(fn)$tier, error = function(e) NULL)
+  if (!(length(tr) == 1L && tr %in% c("required", "usual", "other"))) {
+    tr <- if (fn %in% .plan_required) "required" else
+      if (fn %in% c(.plan_usual(), .plan_study_cards)) "usual" else "other"
+  }
+  .plan_tier_cache[[fn]] <- tr
+  tr
+}
+.plan_tier_fns <- function(tier, fns = names(.plan_meaning)) {
+  fns[vapply(fns, function(f) identical(.plan_tier(f), tier), NA)]
+}
+
+# The verbs a template report never shows a card of: they are in the
+# template's call (the pipe after it starts with a plan)
+.tpl_inner_fns <- c("normalize_ard", "table_plan")
+
+# The items as cards -- one rule: the required ones, the items the report
+# has (its YAML's, the study standard's in effect), and those added here
+# (`added`); a new report not saved yet (`fresh`) also has the usual ones,
+# empty (nothing is written till a value is given).  No on / off switch
+# (the Total column's own excepted: it writes the ARD's overall rows too).
+# `off`: added or usual cards taken away again (not shown).  Each told
+# whether the menu's Remove takes it away (`removable`): a card of the
+# report's own only (no study standard under it -- that one has Revert),
+# or one shown empty.  A template report (`template`): its template's card
+# above, then only the cards it overrides or adds -- no required card,
+# none of the template's own call (.tpl_inner_fns).
 .builder_items_cards <- function(items, hier = FALSE, added = character(), ard_total = NA,
-                                off = character()) {
-  usual <- c(.plan_usual(hier), .plan_study_cards)
-  items <- .builder_items_shown(items, unique(c("table_plan", "plan_cells", usual, added)))
+                                off = character(), fresh = FALSE, template = FALSE,
+                                code_fns = character()) {
+  added <- setdiff(added, off)
+  if (template) {
+    # (one card a line of the program after the template's call --
+    # `code_fns`, .tpl_code_fns(): the study standard's items and the
+    # report's own -- and those added here)
+    items <- Filter(function(it) !it$fn %in% .tpl_inner_fns &&
+                      (identical(it$from, "own") || it$fn %in% c(added, code_fns)), items)
+    items <- lapply(items, function(it) {
+      if (!identical(it$from, "own") && it$fn %in% code_fns &&
+          "defaults" %in% unlist(it$arg_from)) it$from <- "defaults"
+      it
+    })
+    items <- .builder_items_shown(items, setdiff(added, .tpl_inner_fns))
+  } else {
+    usual <- if (fresh) setdiff(.plan_tier_fns("usual"), off) else character()
+    items <- .builder_items_shown(items, unique(c(.plan_tier_fns("required"), usual, added)))
+  }
   lapply(items, function(it) {
-    req <- it$fn %in% .plan_required || isTRUE(it$required)
-    it$added <- !isTRUE(it$present) && it$fn %in% setdiff(added, off)
-    it$removable <- !req && !isTRUE(it$fixed)
-    it$switch <- !req && (!isTRUE(it$present) ||
-                            (identical(it$from, "own") && !isTRUE(it$revert)))
+    req <- !template && (identical(.plan_tier(it$fn), "required") || isTRUE(it$required))
+    it$required <- req
+    it$added <- !isTRUE(it$present)
+    own <- identical(it$from, "own") && !isTRUE(it$revert) && is.null(it$below)
+    # (a template report's card of its pipe, shown to be overridden: taken
+    # away again)
+    it$removable <- !req && !isTRUE(it$fixed) &&
+      (!isTRUE(it$present) || own ||
+         (template && !identical(it$from, "own") && !it$fn %in% code_fns))
+    it$switch <- FALSE
     if (identical(it$fn, "plan_total")) {
       it$switch <- TRUE
       if (!isTRUE(it$present) && identical(ard_total, "none")) {
@@ -663,14 +696,31 @@ builder_items <- function(x, output_id, meta = NULL) {
           if (length(intersect(meta$factor_vars, v$variable)) ||
                 length(meta$factor_keys)) "plan_levels",
           if (is.data.frame(v) && any(!is.na(v$label) & nzchar(v$label %||% ""))) "plan_labels")
-  intersect(on, usual)
+  # (the Total column too, though not a usual card: the ARD tells it)
+  intersect(on, c(usual, "plan_total"))
 }
 
 # The verbs "Add" offers: the plan's, in the schema's order, less those
 # shown (a verb is one card) and the required
-.plan_addable <- function(items) {
+.plan_addable <- function(items, template = FALSE) {
   shown <- vapply(items, function(it) it$fn, "")
-  setdiff(names(.plan_meaning), c(.plan_required, shown))
+  setdiff(names(.plan_meaning), c(if (template) .tpl_inner_fns else .plan_tier_fns("required"), shown))
+}
+
+# "+ Add a card": every verb of the plan in the pipe's order (the schema's
+# rank), each with whether it can be added (a card shown already cannot);
+# a template report's in two groups -- the cards the template's pipe has
+# (`made`: overriding them), then the new ones -- and never its call's own
+# verbs.  A list of list(fn, group, ok).
+.plan_add_menu <- function(items, made = character(), template = FALSE) {
+  shown <- vapply(items, function(it) it$fn, "")
+  rank <- function(f) as.numeric(.schema_of(f)$rank %||% 500)
+  fns <- names(.plan_meaning)
+  fns <- setdiff(fns, if (template) .tpl_inner_fns else .plan_tier_fns("required"))
+  fns <- fns[order(vapply(fns, rank, 0))]
+  group <- if (template) ifelse(fns %in% made, "made", "new") else rep("new", length(fns))
+  ord <- order(match(group, c("made", "new")))
+  lapply(ord, function(i) list(fn = fns[[i]], group = group[[i]], ok = !fns[[i]] %in% shown))
 }
 
 # ... the schema of those verbs, for add_item_input() (NULL: none known)
@@ -800,14 +850,22 @@ builder_items <- function(x, output_id, meta = NULL) {
 # A card's mark: where its item comes from (normalize_ard() with no
 # argument -- a table of no hierarchy -- none: nothing of anyone's on it)
 .card_from <- function(it) {
-  if (identical(it$fn, "normalize_ard") && !length(it$args)) NULL else it$from
+  if (identical(it$fn, "normalize_ard") && !length(it$args)) return(NULL)
+  af <- unlist(it$arg_from)
+  if (identical(it$from, "own") || (length(af) && any(af == "own")) || length(it$own_args)) {
+    return("own")
+  }
+  if (startsWith(it$from %||% "", "template:") && length(af) && any(af == "defaults")) {
+    return("defaults")
+  }
+  it$from
 }
 # ... its mark and Revert as a card's head has them (sent after a write:
 # the page puts them in the card's head, .builder_cards_js)
 .card_mark <- function(it, id, lang = "en") {
   shiny::tagList(
     from_badge(.card_from(it), lang,
-               own = if (isTRUE(it$present) && identical(it$from, "own")) "This table"),
+               own = if (isTRUE(it$present) && identical(.card_from(it), "own")) "This table"),
     if (isTRUE(it$revert)) .card_revert(id, lang))
 }
 
@@ -836,7 +894,9 @@ builder_items <- function(x, output_id, meta = NULL) {
     body <- bodies[[it$path]] %||% bodies[[it$fn]]
     own_form <- !is.null(body)
     if (!own_form) body <- .item_args_view(it, lang)
-    req <- it$fn %in% .plan_required || isTRUE(it$required)
+    # (`required` as the item says -- none in a template report -- else by
+    # the verb)
+    req <- if (!is.null(it$required)) isTRUE(it$required) else it$fn %in% .plan_required
     sw <- if (!is.null(it$switch)) isTRUE(it$switch) else it$fn %in% switches
     on <- if (!is.null(it$on)) isTRUE(it$on) else (isTRUE(it$present) || req || !sw)
     # a card that cannot be on (the ARD lacks what it reads): off, its
@@ -846,7 +906,9 @@ builder_items <- function(x, output_id, meta = NULL) {
     pending <- !isTRUE(it$present) && on
     # an item the content has not (its form would add it): no mark of its
     # own -- "not in the code yet"
-    absent <- !isTRUE(it$present) && !blocked && (pending || (!sw && !req))
+    # (#440: a card added or shown empty is the table's own card, drawn as
+    # any -- its mark "This table"; nothing is written till a value is)
+    absent <- !isTRUE(it$present) && !blocked && !isTRUE(it$added) && (pending || (!sw && !req))
     tools <- c(if ((isTRUE(it$present) || pending) && !isTRUE(it$fixed)) "r",
                if (isTRUE(it$removable) && !req) "remove")
     sec <- .plan_section(it$fn)
@@ -870,12 +932,13 @@ builder_items <- function(x, output_id, meta = NULL) {
       # (off: what turning it on does, said where its body would be)
       summary = if (isTRUE(it$present)) .item_summary(it, lang = lang) else
         if (blocked) t(it$blocked) else if (!on) t("On: its usual values are written."),
+      empty = if (!isTRUE(it$present) && isTRUE(it$added)) "Not set (not in the code)",
       tools = tools,
       # the study's defaults the report leaves as they are, the seldom
       # changed and the off: closed
       open = on && (pending || (!rare && (req || own_form || identical(it$from, "own")))),
       path = it$path, lang = lang,
-      own_label = if (isTRUE(it$present) && identical(it$from, "own")) "This table",
+      own_label = if (isTRUE(it$present) && identical(from, "own")) "This table",
       absent = absent, rare = rare, section = sec,
       tag = .plan_section_labels[[sec]],
       new = identical(it$path, new),
@@ -913,6 +976,35 @@ builder_items <- function(x, output_id, meta = NULL) {
                                   `data-bs-toggle` = "dropdown", `aria-expanded` = "false",
                                   t("Cards (plan)")),
                shiny::tags$ul(class = "dropdown-menu", entries)))
+}
+
+# "+ Add a card" below the last card: a menu of every verb in the pipe's
+# order (.plan_add_menu()), those shown already greyed; a click sends the
+# verb (`input_id`, an event)
+.plan_add_menu_ui <- function(input_id, menu, lang = "en") {
+  t <- function(x) tr(x, lang)
+  heads <- c(made = "The template's cards (override)", new = "New cards")
+  groups <- unique(vapply(menu, function(m) m$group, ""))
+  entries <- list()
+  for (g in groups) {
+    if (length(groups) > 1L) {
+      entries[[length(entries) + 1L]] <- shiny::tags$li(shiny::tags$h6(class = "dropdown-header", t(heads[[g]])))
+    }
+    for (m in Filter(function(m) identical(m$group, g), menu)) {
+      entries[[length(entries) + 1L]] <- shiny::tags$li(shiny::tags$a(
+        href = "#", class = paste("dropdown-item", if (!m$ok) "disabled"),
+        `aria-disabled` = if (!m$ok) "true",
+        onclick = if (m$ok) sprintf(
+          "event.preventDefault(); Shiny.setInputValue('%s', '%s', {priority: 'event'})", input_id, m$fn),
+        builder_label(.verb_meaning(m$fn), m$fn, "fn", lang)))
+    }
+  }
+  shiny::div(
+    class = "dropdown rp-add-menu mt-2",
+    shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-primary dropdown-toggle",
+                       `data-bs-toggle` = "dropdown", `aria-expanded` = "false",
+                       paste0("+ ", t("Add a card"))),
+    shiny::tags$ul(class = "dropdown-menu", entries))
 }
 
 # ---- the forms of the layout cards -------------------------------------------------
@@ -1306,7 +1398,9 @@ builder_items <- function(x, output_id, meta = NULL) {
     # in its title)
     shiny::span(class = "rp-badge rp-badge-defaults rp-every-report",
                 title = tr("Applies to every report (the study's defaults.yml)", lang),
-                tr("every report", lang)))
+                tr("Applies to every report", lang)),
+    shiny::div(class = "small text-muted rp-every-report-note",
+               tr("Applies to every report (the study's defaults.yml)", lang)))
 }
 
 # Each variable's empty values hidden (plan_levels(.drop_empty = ):

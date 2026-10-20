@@ -72,7 +72,7 @@ test_that("a card has its head, its switch or bar, its badge, its menu and its b
   expect_false(grepl("rp-card-open", h, fixed = TRUE))
   # in Japanese
   h <- html(builder_card("c4", "plan_sort", "Row order", from = "defaults", lang = "ja"))
-  expect_match(h, "\u8a66\u9a13\u306e\u65e2\u5b9a", fixed = TRUE)
+  expect_match(h, "\u8a66\u9a13\u6a19\u6e96", fixed = TRUE)
   expect_match(h, "\u623b\u3059", fixed = TRUE)
 })
 
@@ -225,13 +225,13 @@ test_that("the badge says where a value came from; own has its mark when named",
   expect_null(from_badge(NULL))
   h <- html(from_badge("defaults"))
   expect_match(h, 'class="rp-badge rp-badge-defaults" data-from="defaults"', fixed = TRUE)
-  expect_match(h, ">Study default<", fixed = TRUE)
+  expect_match(h, ">Study standard<", fixed = TRUE)
   expect_match(html(from_badge("pattern:ae")), ">Pattern ae<", fixed = TRUE)
   expect_match(html(from_badge("standards")), ">Company standard<", fixed = TRUE)
   h <- html(from_badge("template:km_simple"))
   expect_match(h, ">Template<", fixed = TRUE)
   expect_match(h, 'title="km_simple"', fixed = TRUE)
-  expect_match(html(from_badge("defaults", "ja")), "\u8a66\u9a13\u306e\u65e2\u5b9a", fixed = TRUE)
+  expect_match(html(from_badge("defaults", "ja")), tr("Study standard", "ja"), fixed = TRUE)
   expect_match(html(from_badge("standards", "ja")), tr("Company standard", "ja"), fixed = TRUE)
 })
 

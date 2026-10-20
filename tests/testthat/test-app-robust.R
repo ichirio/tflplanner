@@ -344,7 +344,9 @@ test_that("a step's right is SPEC | Code | Result, the form on its left", {
     unname(v[nzchar(v)])
   }
   for (id in c("ard_right", "table_right", "lf_right", "dc_right", "cc_right", "page_right")) {
-    expect_identical(vals(id), c("spec", "code", "result"), info = id)
+    # (the table's: an ARD tab first, a template report's -- #440)
+    want <- c(if (identical(id, "table_right")) "ard", "spec", "code", "result")
+    expect_identical(vals(id), want, info = id)
   }
   # the table: the sheets in SPEC, the preview in Result, the builder beside
   panes <- ui$find("#table_right")$parent()$find(".tab-pane")$selectedTags()

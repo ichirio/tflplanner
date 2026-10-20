@@ -139,6 +139,17 @@ set_codelist <- function(x, output_id, rows) {
 .study_keys <- list(table = "rounding",
                     report = c("output_path", "program_dir"))
 
+# The study's settings no workbook sheet holds: written into study.yml's
+# `settings:` by the app itself (.spec_bridge()) -- `treatment`, the
+# treatment variable a template's by / group reads (settings.treatment)
+.study_own_settings <- "treatment"
+
+# A study key's value (NA: not set; a planner kept before the key was one)
+.study_setting <- function(p, key) {
+  v <- if (key %in% names(p$study)) unname(p$study[[key]]) else NA_character_
+  if (length(v) == 1L && !is.na(v) && nzchar(v)) v else NA_character_
+}
+
 .planner_sheet <- "_tflplanner"
 
 # The columns a sheet has, straight from rtfreporter, plus the free `note`.
@@ -246,7 +257,7 @@ sheet_columns <- function(sheet) {
 #' A new, empty study definition
 #'
 #' @param study Named study keys (`rounding`, `output_path`,
-#'   `program_dir`).
+#'   `program_dir`, `treatment`).
 #' @return An `tflplanner` object.
 #' @examples
 #' p <- new_planner(c(rounding = "sas"))
@@ -254,7 +265,7 @@ sheet_columns <- function(sheet) {
 #' p
 #' @export
 new_planner <- function(study = NULL) {
-  keys <- unlist(.study_keys, use.names = FALSE)
+  keys <- c(unlist(.study_keys, use.names = FALSE), .study_own_settings)
   st <- stats::setNames(rep(NA_character_, length(keys)), keys)
   if (length(study)) {
     bad <- setdiff(names(study), keys)

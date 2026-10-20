@@ -986,6 +986,7 @@
       return(shiny::tagList(shiny::uiOutput("pd_cl"), shiny::uiOutput("pd_cl_detail")))
     }
     f <- parts[parts$piece == pn$kind, , drop = FALSE]
+    if (identical(pn$kind, "join")) f <- .pd_join_fields(f, pn$p)
     # a variable with a code list: its values' order and text are the code
     # list's (the data's last step), not a field here
     listed <- unique(sheet_rows(shiny::isolate(rv$p), "codelists",
@@ -1085,7 +1086,7 @@
         ard_variable = sz(ard_vars),
         ard_stat = sz(ard_stat),
         ard_stats = sz(ard_stat, multiple = TRUE),
-        choice = sz(if (!is.na(r$choices)) strsplit(r$choices, " | ", fixed = TRUE)[[1L]], create = FALSE),
+        choice = sz(.pd_choice_words(r, t), create = FALSE),
         shape = sz(c("circle", "square", "diamond", "triangle", "triangle_down", "x",
                      "plus", "dot", "solid_square", "solid_triangle", "star", "open_circle"),
                    create = FALSE),
@@ -1247,7 +1248,9 @@
     set_design(d)
     # another dataset changes what the forms offer; another function, the
     # arguments its form names
-    if (!identical(old$dataset, new$dataset) || !identical(old$fn, new$fn)) redraw_form()
+    # (a join's how: whether its variables are asked)
+    if (!identical(old$dataset, new$dataset) || !identical(old$fn, new$fn) ||
+        !identical(old$how, new$how)) redraw_form()
   })
 
   # ---- the drawing ----------------------------------------------------------
@@ -1430,6 +1433,29 @@
   at %||% df_end
 }
 .pd_source_steps <- c("read", "join", "param", "flag", "time_unit")
+
+# A join's fields as its card shows them: its how named for what it does;
+# a semi join (only the subjects the dataset has) adds no variables, so
+# they are not asked (shown, not starred, while it still has some)
+.pd_join_fields <- function(f, p) {
+  f$label[f$field == "how"] <- "How to join (how)"
+  if (identical(p$how, "semi")) {
+    v <- f$field == "vars"
+    f$required[v] <- FALSE
+    if (!length(p$vars) || all(!nzchar(trimws(p$vars)))) f <- f[!v, , drop = FALSE]
+  }
+  f
+}
+
+# A choice field's choices (tflspec's "a | b"), named by their words where
+# the app has them (a join's how: left / semi)
+.pd_choice_words <- function(r, t = identity) {
+  if (is.na(r$choices)) return(NULL)
+  ch <- strsplit(r$choices, " | ", fixed = TRUE)[[1L]]
+  words <- c(left = "Left join (left)", semi = "Keep its subjects only (semi)")
+  if (!identical(r$field, "how") || !all(ch %in% names(words))) return(ch)
+  stats::setNames(ch, t(unname(words[ch])))
+}
 
 # The lines of a design's script that one piece makes: the lines the
 # script has with it and not without it (`make(d)` writes a design's
