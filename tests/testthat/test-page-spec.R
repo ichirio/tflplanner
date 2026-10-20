@@ -134,9 +134,10 @@ test_that("the form: a card a function, the arguments with a value first, labels
   expect_match(h, "rtfreporter's default", fixed = TRUE)
   expect_match(h, "(margin_top_in)", fixed = TRUE)
   expect_match(h, "pattern Compact", fixed = TRUE)
-  # the margins first, the rest folded: paper_size after "Not in the code"
+  # the paper card's two rows above (paper, orientation, font, size; the
+  # margins), whether written or not; the rest folded
+  expect_lt(regexpr("data-arg=\"paper_size\"", h, fixed = TRUE), regexpr("margin_top_in", h, fixed = TRUE))
   expect_lt(regexpr("margin_top_in", h, fixed = TRUE), regexpr("Not in the code (", h, fixed = TRUE))
-  expect_lt(regexpr("Not in the code (", h, fixed = TRUE), regexpr("data-arg=\"paper_size\"", h, fixed = TRUE))
   # no figure card for a table
   expect_false(grepl("rtf_figures", h, fixed = TRUE))
   q <- .pgs_set_arg(p, "T-14-3-1", "rtf_page", "margin_top_in", 0.7)

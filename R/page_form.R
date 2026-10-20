@@ -237,7 +237,7 @@ $(document).on('shiny:value', function(e) {
 # (rtf_default_format()); then the four margins -- and the paper's other
 # fields after them.  Only the screen's order: the YAML and the code keep
 # theirs.  Written fields above (in this order), the others folded below,
-# as every card.
+# as every card, but for the two rows: always above.
 .page_paper_rows <- list(
   list(c("rtf_page", "paper_size"), c("rtf_page", "orientation"),
        c("rtf_document", "font_table"), c("rtf_default_format", "font_size_half_points")),
@@ -264,8 +264,10 @@ $(document).on('shiny:value', function(e) {
   }
   grid <- function(fs, cls = "pg-grid") if (length(fs)) shiny::div(
     class = cls, lapply(fs, function(f) .page_arg_ui(sp, id, f$fn, f, t, kind)))
-  up <- lapply(rows, function(fs) Filter(said, fs))
-  low <- unlist(lapply(rows, function(fs) Filter(Negate(said), fs)), recursive = FALSE)
+  # (the two rows always above -- the paper, the font, the margins are
+  # what a page is; a field not written shows the value the page gets)
+  up <- c(rows[1:2], list(Filter(said, rows[[3L]])))
+  low <- Filter(Negate(said), rows[[3L]])
   shiny::div(
     class = "pg-card", `data-fn` = "rtf_page",
     shiny::h6(t(.pgs_cards[["rtf_page"]]), " ", shiny::span(class = "pg-fn", .pgs_call_names[["rtf_page"]])),
