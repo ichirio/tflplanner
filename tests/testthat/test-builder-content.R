@@ -168,7 +168,7 @@ test_that("an item of the defaults is marked; the report's own over it can be re
   expect_false(at("plan_stub")$revert)
   h <- html(.table_cards(list(at("plan_stub")), id = function(x) paste0("c_", x)))
   expect_match(h, 'data-from="defaults"', fixed = TRUE)
-  expect_match(h, ">Study default<", fixed = TRUE)
+  expect_match(h, ">Study standard<", fixed = TRUE)
   expect_false(grepl("__revert", h, fixed = TRUE))
   expect_false(grepl("rp-card-open", h, fixed = TRUE))
   # the report's own, alone: no mark, nothing to revert

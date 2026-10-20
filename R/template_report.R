@@ -327,7 +327,8 @@
 body:not(.rp-tpl) .rp-tpl-only, body.rp-tpl .rp-code-only { display: none !important; }
 .rp-report-loading { display: none; }
 body.rp-switching .rp-report-loading { display: block; }
-body.rp-switching #step ~ .tab-content { visibility: hidden; }
+body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_head.rp-stale {
+  visibility: hidden; }
 .rp-tpl-default .form-control, .rp-tpl-default .selectize-input,
 .rp-tpl-default .form-select, .rp-tpl-default .selectize-input .item {
   color: #8a8f98 !important; background-color: #f4f5f7; }
@@ -337,6 +338,36 @@ body.rp-switching #step ~ .tab-content { visibility: hidden; }
   100% { box-shadow: 0 0 0 3px rgba(13,110,253,0); } }
 .rp-card.rp-card-flash { animation: rp-card-flash 1.6s ease-out 1; }
 .rp-add-menu .dropdown-menu { max-height: 60vh; overflow-y: auto; }
+/* the right pane (SPEC | Code | Result, ARD): it does not scroll itself --
+   fitted to the window, sticky -- and in it only the tab shown scrolls (a
+   code block, a table inside it grow to their height: one scroll bar) */
+@media (min-width: 992px) {
+  .rp-b-right { display: flex; flex-direction: column; overflow: hidden !important;
+    height: calc(100vh - var(--rp-top, 0px) - 1rem); }
+  .rp-split:not(.rp-lay-stack):not(.rp-lay-one) > .rp-tabs {
+    height: calc(100vh - var(--rp-top, 0px) - 1rem); }
+  .rp-b-right > .rp-tabs { flex: 1 1 auto; }
+  .rp-b-right > .rp-tabs, .rp-split:not(.rp-lay-stack):not(.rp-lay-one) > .rp-tabs {
+    display: flex; flex-direction: column; min-height: 0; overflow: hidden !important; }
+  .rp-b-right > .rp-tabs > .tabbable,
+  .rp-split:not(.rp-lay-stack):not(.rp-lay-one) > .rp-tabs > .tabbable {
+    display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .rp-b-right > .rp-tabs > .tabbable > .tab-content,
+  .rp-split:not(.rp-lay-stack):not(.rp-lay-one) > .rp-tabs > .tabbable > .tab-content {
+    flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  .rp-b-right > .rp-tabs > .tabbable > .tab-content > .tab-pane.active,
+  .rp-split:not(.rp-lay-stack):not(.rp-lay-one) > .rp-tabs > .tabbable > .tab-content > .tab-pane.active {
+    height: 100%; overflow-y: auto; }
+  .rp-b-right .tab-pane pre, .rp-split > .rp-tabs .tab-pane pre { max-height: none; }
+  .rp-b-right .tab-pane .dataTables_scrollBody,
+  .rp-split > .rp-tabs .tab-pane .dataTables_scrollBody { max-height: none !important; }
+}
+/* narrow, or the panes one above the other: the page alone scrolls */
+@media (max-width: 991.98px) {
+  .rp-tabs .tab-pane pre { max-height: none; }
+}
+.rp-split.rp-lay-stack > .rp-tabs .tab-pane pre, .rp-split.rp-lay-one > .rp-tabs .tab-pane pre {
+  max-height: none; }
 /* an argument's edit: only the right pane shows it is busy */
 body.rp-tpl .recalculating { opacity: 1 !important; }
 body.rp-tpl .rp-tabs .recalculating { opacity: .35 !important; }
@@ -346,7 +377,16 @@ body.rp-tpl .rp-tabs .recalculating { opacity: .35 !important; }
 .tpl_js <- "
 $(document).on('shiny:connected', function() {
   var timer = null;
+  // the report head of another report than the one opened: hidden
+  function headCheck() {
+    var want = document.body.getAttribute('data-rp-id');
+    var h = $('#report_head [data-rp-head]');
+    $('#report_head').toggleClass('rp-stale', !!want && h.length > 0 && h.attr('data-rp-head') !== want);
+  }
+  $(document).on('shiny:value', function(e) { if (e.name === 'report_head') setTimeout(headCheck, 0); });
   Shiny.addCustomMessageHandler('rp-tpl-mode', function(x) {
+    if (x.id) document.body.setAttribute('data-rp-id', x.id);
+    headCheck();
     $('body').toggleClass('rp-tpl', !!x.tpl);
     // (the ARD step: a template report's is in its step 1)
     var ard = $('#step a[data-value=\"ard\"]');
@@ -371,6 +411,13 @@ $(document).on('shiny:connected', function() {
       // (never left on: at most 30 s)
       timer = setTimeout(function() { $('body').removeClass('rp-switching'); }, 30000);
     }
+  });
+  Shiny.addCustomMessageHandler('rp-tpl-card-show', function(x) {
+    setTimeout(function() {
+      var c = $('#tpl_card, #tpl_card_lf, #tpl_card_fig').filter(function() {
+        return this.offsetParent !== null && $(this).children().length; }).first();
+      if (c.length) c[0].scrollIntoView({block: 'start', behavior: 'smooth'});
+    }, 150);
   });
   Shiny.addCustomMessageHandler('rp-report-ready', function(x) {
     clearTimeout(timer);
@@ -441,4 +488,40 @@ $(document).on('shiny:connected', function() {
   p$outputs <- ord(p$outputs)
   if (!is.null(p$spec$base)) p$spec$base$outputs <- ord(p$spec$base$outputs)
   p
+}
+
+# Timings of a template report's opening, for a check (#440):
+# options(tflplanner.tpl_trace = TRUE) prints each step's time since the
+# report was asked for; options(tflplanner.tpl_slow = <seconds>) waits that
+# long in each drawing step (a slow machine, to see that no other screen
+# is drawn meanwhile)
+.tpl_clock <- new.env()
+.tpl_trace <- function(step, start = FALSE) {
+  if (start) .tpl_clock$t0 <- Sys.time()
+  slow <- getOption("tflplanner.tpl_slow", 0)
+  if (is.numeric(slow) && slow > 0 && !start) Sys.sleep(slow)
+  if (!isTRUE(getOption("tflplanner.tpl_trace"))) return(invisible())
+  t0 <- .tpl_clock$t0 %||% Sys.time()
+  message(sprintf("[tpl] %6.2f s  %s", as.numeric(difftime(Sys.time(), t0, units = "secs")), step))
+}
+
+# The verbs of the lines after a template report's call, as its program
+# has them (tflspec::tfl_content_code(): the study standard's items, and any
+# the template adds after its call), in their order -- the cards shown
+# with the report's own (one card a line, #440)
+.tpl_code_fns <- function(p, output_id) {
+  sp <- tryCatch(.code_spec(p), error = function(e) NULL)
+  o <- sp$outputs[[output_id]]
+  if (is.null(o) || is.null(.tpl_spec_name(o))) return(character())
+  code <- tryCatch(tflspec::tfl_content_code(tflspec::tfl_resolve_output(o, sp$study)),
+                   error = function(e) character())
+  at <- grep("tpl_[A-Za-z0-9_]+\\(", code)
+  if (!length(at)) return(character())
+  rest <- code[seq_along(code) > at[1L]]
+  m <- regmatches(rest, regexpr("^\\s*(plan_[A-Za-z0-9_]+)\\(", rest))
+  sub("\\($", "", trimws(m))
+}
+.tpl_spec_name <- function(o) {
+  t <- o$template
+  if (is.list(t) && !is.null(t$name)) t$name else NULL
 }

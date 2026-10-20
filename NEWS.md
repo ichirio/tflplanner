@@ -14,6 +14,7 @@
   it is saved; no on / off switches; "+ Add a card" in the pipe's order below
   the last card (the card added scrolled to and lit); Remove only for a
   report's own item, with 5 s to undo. Tiers from tfl_schema(fn)$tier.
+
 - **Step 3 on the YAML spec** (#438, 0.0.2.9252; step B4 of the YAML
   native plan): the page form reads a report's `page:` layer by layer --
   its own, its style, the pattern it extends, the study's defaults -- each

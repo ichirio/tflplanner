@@ -632,11 +632,20 @@ builder_items <- function(x, output_id, meta = NULL) {
 # above, then only the cards it overrides or adds -- no required card,
 # none of the template's own call (.tpl_inner_fns).
 .builder_items_cards <- function(items, hier = FALSE, added = character(), ard_total = NA,
-                                off = character(), fresh = FALSE, template = FALSE) {
+                                off = character(), fresh = FALSE, template = FALSE,
+                                code_fns = character()) {
   added <- setdiff(added, off)
   if (template) {
+    # (one card a line of the program after the template's call --
+    # `code_fns`, .tpl_code_fns(): the study standard's items and the
+    # report's own -- and those added here)
     items <- Filter(function(it) !it$fn %in% .tpl_inner_fns &&
-                      (identical(it$from, "own") || it$fn %in% added), items)
+                      (identical(it$from, "own") || it$fn %in% c(added, code_fns)), items)
+    items <- lapply(items, function(it) {
+      if (!identical(it$from, "own") && it$fn %in% code_fns &&
+          "defaults" %in% unlist(it$arg_from)) it$from <- "defaults"
+      it
+    })
     items <- .builder_items_shown(items, setdiff(added, .tpl_inner_fns))
   } else {
     usual <- if (fresh) setdiff(.plan_tier_fns("usual"), off) else character()
@@ -644,12 +653,14 @@ builder_items <- function(x, output_id, meta = NULL) {
   }
   lapply(items, function(it) {
     req <- !template && (identical(.plan_tier(it$fn), "required") || isTRUE(it$required))
+    it$required <- req
     it$added <- !isTRUE(it$present)
     own <- identical(it$from, "own") && !isTRUE(it$revert) && is.null(it$below)
     # (a template report's card of its pipe, shown to be overridden: taken
     # away again)
     it$removable <- !req && !isTRUE(it$fixed) &&
-      (!isTRUE(it$present) || own || (template && !identical(it$from, "own")))
+      (!isTRUE(it$present) || own ||
+         (template && !identical(it$from, "own") && !it$fn %in% code_fns))
     it$switch <- FALSE
     if (identical(it$fn, "plan_total")) {
       it$switch <- TRUE
@@ -870,7 +881,9 @@ builder_items <- function(x, output_id, meta = NULL) {
     body <- bodies[[it$path]] %||% bodies[[it$fn]]
     own_form <- !is.null(body)
     if (!own_form) body <- .item_args_view(it, lang)
-    req <- it$fn %in% .plan_required || isTRUE(it$required)
+    # (`required` as the item says -- none in a template report -- else by
+    # the verb)
+    req <- if (!is.null(it$required)) isTRUE(it$required) else it$fn %in% .plan_required
     sw <- if (!is.null(it$switch)) isTRUE(it$switch) else it$fn %in% switches
     on <- if (!is.null(it$on)) isTRUE(it$on) else (isTRUE(it$present) || req || !sw)
     # a card that cannot be on (the ARD lacks what it reads): off, its

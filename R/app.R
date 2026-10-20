@@ -3161,11 +3161,19 @@ app_server <- function(input, output, session, start) {
     })
 
   # -- the report chosen in the sidebar --------------------------------
+  # (a report the server chose -- added, copied: after_id_change() -- not
+  # come back from the page yet is the one: drawn again meanwhile, the
+  # list must not send the page's old one -- the report before would be
+  # drawn between, #440)
+  tgt_sent <- new.env()
+  shiny::observeEvent(input$target, {
+    tgt_sent$v <- NULL
+  }, priority = 200)
   shiny::observe({
     rv$ver
     p <- shiny::isolate(rv$p)
     ids <- if (is.null(p)) character() else output_ids(p)
-    cur <- shiny::isolate(input$target)
+    cur <- tgt_sent$v %||% shiny::isolate(input$target)
     ch <- if (is.null(p)) c("-" = .all_rows) else
       stats::setNames(list(
         stats::setNames(ids, ids),
@@ -3217,8 +3225,13 @@ app_server <- function(input, output, session, start) {
   # review's counts come a moment later -- #440, the first render)
   review_go <- shiny::reactiveVal(FALSE)
   session$onFlushed(function() review_go(TRUE), once = TRUE)
+  # (nor while a report is being opened: the last review is kept till it
+  # is drawn -- tpl_mode_send())
+  review_hold <- shiny::reactiveVal(FALSE)
+  review_last <- new.env()
   review_now <- shiny::reactive({
     if (!has_study() || !review_go()) return(NULL)
+    if (review_hold()) return(review_last$r)
     review_p()
     review_ver()
     rv$status_ver
@@ -3238,6 +3251,7 @@ app_server <- function(input, output, session, start) {
       r <- .review_bind(list(r, dp$rows))
       for (k in names(keep)) attr(r, k) <- keep[[k]]
     }
+    review_last$r <- r
     r
   })
   session$userData$review_now <- review_now
@@ -3325,7 +3339,9 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$status_q, .report_dt_set_search(session, "status", input$status_q))
   target <- shiny::reactive(.target_value(input$target))
   current_now <- shiny::reactive({
-    tg <- target()
+    # (a report the server has just chosen -- added, copied -- is the one
+    # before the page says so: tgt_sent, #440)
+    tg <- if (!is.null(tgt_sent$v)) tgt_sent$v else target()
     if (!is.null(rv$p) && !is.na(tg) && nzchar(tg) &&
         tg %in% rv$p$outputs$output_id) tg else NULL
   })
@@ -3574,10 +3590,13 @@ app_server <- function(input, output, session, start) {
                                      parts[[i]]) else parts[[i]]))
     }
     shiny::div(
-      class = "d-flex flex-wrap gap-2 align-items-baseline my-2",
+      class = "d-flex flex-wrap gap-2 align-items-baseline my-2", `data-rp-head` = id,
       shiny::strong(id),
       shiny::span(class = "badge text-bg-light border",
                   t(unname(.type_labels[report_kind()]))),
+      # a template report's template, on every step: a click goes to its
+      # card (#440)
+      tpl_head_link(id),
       if (!is.na(d)) shiny::span(class = "text-muted small", d),
       counts)
   })
@@ -8970,6 +8989,7 @@ app_server <- function(input, output, session, start) {
     rv$bver
     rv$ard_ver
     shiny::req(builder_case() %in% c("ok", "hierarchy"))
+    on.exit(.tpl_trace("builder cards drawn"), add = TRUE)
     id <- current()
     m <- meta_of(id)
     st <- builder_read(shiny::isolate(rv$p), id, m)
@@ -9037,7 +9057,8 @@ app_server <- function(input, output, session, start) {
     bform$made <- vapply(items, function(it) it$fn, "")
     items <- .builder_items_cards(items, hier, added, ard_total = bform$total_kind,
                                   off = bform$off_by[[id]] %||% character(),
-                                  fresh = id %in% bnew$ids, template = tpl)
+                                  fresh = id %in% bnew$ids, template = tpl,
+                                  code_fns = if (tpl) .tpl_code_fns(p0, id) else character())
     bform$items <- items
     new_card <- bform$just_added
     bform$just_added <- NULL
@@ -11173,7 +11194,8 @@ app_server <- function(input, output, session, start) {
   })
   output$outputs <- DT::renderDT({
     v <- outputs_view()
-    sel <- match(shiny::isolate(input$target), v$output_id)
+    # (a report just chosen by the server, not come back yet: that one)
+    sel <- match(tgt_sent$v %||% shiny::isolate(input$target), v$output_id)
     v$output_id <- htmltools::htmlEscape(v$output_id)
     v$section <- htmltools::htmlEscape(v$section)
     v$batches <- htmltools::htmlEscape(v$batches)
@@ -11221,6 +11243,9 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$outputs_rows_selected, {
     v <- shiny::isolate(outputs_view())
     id <- v$output_id[input$outputs_rows_selected]
+    # (the list drawn again while the server's choice is on its way: its
+    # old selection is not a choice -- #440)
+    if (!is.null(tgt_sent$v) && !identical(id, tgt_sent$v)) return()
     if (length(id) && !identical(id, input$target)) {
       shiny::updateSelectInput(session, "target", selected = id)
     }
@@ -11702,6 +11727,7 @@ app_server <- function(input, output, session, start) {
     if (is.null(p)) return()
     rv$p <- p
     rv$want <- id
+    tgt_sent$v <- id
     shiny::removeModal()
     bump()
   }
@@ -11905,6 +11931,25 @@ app_server <- function(input, output, session, start) {
       "setTimeout(function() { $('#add_ok').prop('disabled', %s); }, 0);",
       if (ok) "false" else "true")))
   })
+  # the report head's mark of the template: "Template: demog (summary)";
+  # a variant "demog_jp (a variant of demog)" when tflspec tells the base
+  tpl_head_link <- function(id) {
+    tp <- .tpl_of(rv$p, id)
+    if (is.null(tp)) return(NULL)
+    info <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
+    row <- if (!is.null(info)) info[info$name == tp$name, , drop = FALSE]
+    base <- if (!is.null(row) && nrow(row) && "base" %in% names(row)) row$base[1L] else NA
+    extra <- if (length(base) && !is.na(base) && nzchar(base)) sprintf(t("a variant of %s"), base) else
+      if (!is.null(row) && nrow(row) && "layout" %in% names(row)) row$layout[1L] else NA
+    shiny::tags$a(
+      href = "#", class = "small",
+      onclick = "Shiny.setInputValue('tpl_goto_card', Math.random(), {priority: 'event'}); return false;",
+      paste0(t("Template"), ": ", tp$name, if (!is.na(extra)) paste0(" (", extra, ")")))
+  }
+  shiny::observeEvent(input$tpl_goto_card, {
+    go(switch(report_kind(), listing = "lf", figure = "designer", "tables"))
+    session$onFlushed(function() session$sendCustomMessage("rp-tpl-card-show", TRUE), once = TRUE)
+  })
   # the page told at once that a report is being opened, and whether it is
   # a template report (.tpl_js): its steps hidden until drawn
   tpl_names <- function(tpl, kind) {
@@ -11917,12 +11962,20 @@ app_server <- function(input, output, session, start) {
   # (`ready`: "Loading ..." taken away after this flush; a report being
   # added waits for its own -- tpl_pending)
   tpl_pending <- new.env()
-  tpl_mode_send <- function(tpl, kind = "", loading = TRUE, ready = loading) {
+  tpl_mode_send <- function(tpl, kind = "", loading = TRUE, ready = loading, id = NULL) {
     session$sendCustomMessage("rp-tpl-mode", list(tpl = isTRUE(tpl), loading = loading,
-                                                  names = tpl_names(tpl, kind)))
-    if (ready) {
-      session$onFlushed(function() session$sendCustomMessage("rp-report-ready", TRUE), once = TRUE)
-    }
+                                                  names = tpl_names(tpl, kind), id = id))
+    if (loading && !isTRUE(shiny::isolate(review_hold()))) review_hold(TRUE)
+    if (ready) tpl_ready_send()
+  }
+  # "Loading ..." taken away once the flush now running is done; a
+  # template report's when its card is drawn (tpl_ready$id)
+  tpl_ready <- new.env()
+  tpl_ready_send <- function() {
+    session$onFlushed(function() {
+      session$sendCustomMessage("rp-report-ready", TRUE)
+      review_hold(FALSE)
+    }, once = TRUE)
   }
   shiny::observeEvent(current(), {
     id <- current()
@@ -11930,13 +11983,17 @@ app_server <- function(input, output, session, start) {
     if (!is.null(tpl_pending$id)) {
       if (!identical(id, tpl_pending$id)) return()
       tpl_pending$id <- NULL
+      .tpl_trace("the report chosen")
+      session$onFlushed(function() .tpl_trace("drawn (flush done)"), once = TRUE)
     }
     p <- shiny::isolate(rv$p)
     tpl <- !is.null(id) && !is.null(.tpl_of(p, id))
     kind <- if (is.null(id)) "" else report_info(p, id)$type
-    tpl_mode_send(tpl, kind, loading = !is.null(id))
+    tpl_ready$id <- if (tpl) id
+    tpl_mode_send(tpl, kind, loading = !is.null(id), ready = !is.null(id) && !tpl, id = id)
   }, ignoreNULL = FALSE, priority = 99)
   add_template_report <- function(id, desc) {
+    .tpl_trace("OK", start = TRUE)
     nm <- tpl_chosen()
     if (is.null(nm)) return(notify(t("Choose a template"), "warning"))
     args <- tpl_modal_args(nm)
@@ -11949,7 +12006,7 @@ app_server <- function(input, output, session, start) {
     kind <- input$modal_type
     sec <- trimws(input$modal_section %||% "")
     # (the page shows the new report's steps from its first draw)
-    tpl_mode_send(TRUE, kind, ready = FALSE)
+    tpl_mode_send(TRUE, kind, ready = FALSE, id = id)
     tpl_pending$id <- id
     o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
                              population = as.character(args$population %||% NA_character_),
@@ -11959,6 +12016,7 @@ app_server <- function(input, output, session, start) {
     p2 <- guarded(.spec_add_output(rv$p, o, label = desc,
                                    section = if (nzchar(sec)) sec else NA_character_,
                                    population = as.character(args$population %||% NA_character_)))
+    .tpl_trace("written into the spec")
     if (is.null(p2)) {
       tpl_pending$id <- NULL
       return(tpl_mode_send(!is.null(.tpl_of(rv$p, current() %||% "")), report_kind()))
@@ -11991,7 +12049,15 @@ app_server <- function(input, output, session, start) {
     prm <- .tpl_params(name)[[a]]
     type <- .tpl_type(prm, tpl_all_cols())
     if (identical(type, "list") && is.null(.tpl_list_text(tp$args[[a]] %||% prm$default, prm))) return()
-    args <- .tpl_set_arg(tp$args, prm, .tpl_value(v, type, prm))
+    val <- .tpl_value(v, type, prm)
+    # (a field drawn again says its value back: what it shows already --
+    # the report's, the study's or the default -- is no edit)
+    shown <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
+    same <- if (identical(type, "list")) {
+      identical(.tpl_list_text(val, prm), .tpl_list_text(shown, prm))
+    } else !is.null(val) && identical(as.character(unlist(val)), as.character(unlist(shown)))
+    if (same) return()
+    args <- .tpl_set_arg(tp$args, prm, val)
     if (identical(args, tp$args)) return()
     tpl_write(id, args)
   }
@@ -12054,6 +12120,13 @@ app_server <- function(input, output, session, start) {
   tpl_card_ui <- function() {
     id <- current()
     shiny::req(id)
+    on.exit({
+      .tpl_trace("argument card drawn")
+      if (identical(tpl_ready$id, id)) {
+        tpl_ready$id <- NULL
+        tpl_ready_send()
+      }
+    }, add = TRUE)
     tpl_ver()
     rv$ver
     p <- shiny::isolate(rv$p)
@@ -12209,6 +12282,10 @@ app_server <- function(input, output, session, start) {
     if (!identical(report_kind(), "figure")) return(NULL)
     tpl_card_ui()
   })
+  # (drawn on any step: its draw ends "Loading ...")
+  for (o in c("tpl_card", "tpl_card_lf", "tpl_card_fig")) {
+    shiny::outputOptions(output, o, suspendWhenHidden = FALSE)
+  }
   # The right pane of a template table: ARD (the ARD its template makes,
   # as the preview made it), and in Code the ARD's code expanded first,
   # the content's expanded code folded after the program

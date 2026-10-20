@@ -97,3 +97,18 @@ test_that("a template report shows only the cards it overrides or adds", {
   expect_true("plan_cells" %in% fns)
   expect_false(menu[[which(fns == "plan_sort")]]$ok)
 })
+
+test_that("a template report: one card a line after its call -- the study standard's too", {
+  it <- function(fn, from, arg_from = from) {
+    list(fn = fn, args = list(), from = from, arg_from = list(x = arg_from), path = fn,
+         below = list(), revert = FALSE, present = TRUE)
+  }
+  items <- list(it("table_plan", "template:demog"), it("plan_cells", "template:demog",
+                                                       c("defaults", "template:demog")),
+                it("plan_labels", "template:demog"), it("plan_digits", "defaults"))
+  cards <- .builder_items_cards(items, template = TRUE, code_fns = c("plan_cells", "plan_digits"))
+  expect_identical(vapply(cards, function(x) x$fn, ""), c("plan_cells", "plan_digits"))
+  # the study standard's mark, and no Remove
+  expect_true(all(vapply(cards, function(x) identical(x$from, "defaults"), NA)))
+  expect_false(any(vapply(cards, function(x) isTRUE(x$removable), NA)))
+})
