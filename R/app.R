@@ -11800,7 +11800,7 @@ app_server <- function(input, output, session, start) {
             tpl_input(kind), t("Template"),
             stats::setNames(tp$name, vapply(tp$name, function(n) {
               d <- if (!is.na(.tpl_desc[n])) t(.tpl_desc[[n]]) else ""
-              if (nzchar(d)) paste0(n, " — ", d) else n
+              if (nzchar(d)) paste0(n, " \u2014 ", d) else n
             }, "")),
             selected = tp$name[1L], width = "100%",
             options = list(searchField = list("label", "value"))),
@@ -12000,7 +12000,7 @@ app_server <- function(input, output, session, start) {
       if (identical(og$from, "own")) {
         return(shiny::span(class = "rp-tpl-arg-from",
                            t("This table"),
-                           if (!is.null(sv)) paste0(" — ", sprintf(t("over the study standard (%s)"),
+                           if (!is.null(sv)) paste0(" \u2014 ", sprintf(t("over the study standard (%s)"),
                                                                        .tpl_show(sv)))))
       }
       shiny::span(class = "rp-tpl-arg-from",
@@ -12045,7 +12045,7 @@ app_server <- function(input, output, session, start) {
         shiny::div(
           class = "dropdown",
           shiny::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary dropdown-toggle",
-                             `data-bs-toggle` = "dropdown", `aria-expanded` = "false", "⋯"),
+                             `data-bs-toggle` = "dropdown", `aria-expanded` = "false", "\u22ef"),
           shiny::tags$ul(
             class = "dropdown-menu dropdown-menu-end",
             shiny::tags$li(shiny::tags$a(class = "dropdown-item disabled", href = "#",
