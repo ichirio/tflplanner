@@ -397,6 +397,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       st <- .ai_status_label(q, collected()$reports, t)
       if (length(q)) st[is.na(st)] <- ifelse(is.na(r$answer[is.na(st)]), t("no answer"), t("saved"))
       now <- shiny::isolate(input$pick)
+      # no request: the list emptied, no value sent (updateRadioButtons()
+      # would send its first choice, an NA: null in the browser)
+      if (!length(q)) {
+        session$sendInputMessage("pick", list(options = '<div class="shiny-options-group"></div>'))
+        return()
+      }
       shiny::updateRadioButtons(
         session, "pick",
         choiceNames = lapply(seq_along(q), function(i) shiny::span(
