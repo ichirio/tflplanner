@@ -484,7 +484,7 @@
 # it): the view's edits taken in first, the report's text made by
 # tflspec::tfl_write_output(), and its rows of the view made again from it
 # -- in the view and in the base, so the bridge does not take it back
-.spec_set_output <- function(p, output_id, output, content_only = FALSE) {
+.spec_set_output <- function(p, output_id, output, content_only = FALSE, page_only = FALSE) {
   if (is.null(p$spec)) stop("The planner has no YAML spec.", call. = FALSE)
   p <- .spec_sync(p, p$spec$meta)
   attr(p, "changed") <- NULL
@@ -510,7 +510,8 @@
     sp$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
   }
   p$spec <- sp
-  .spec_view_output(p, output_id, content_only = content_only && !is.null(output))
+  .spec_view_output(p, output_id, content_only = content_only && !is.null(output),
+                    page_only = page_only && !is.null(output))
 }
 
 # One report's rows of the view made again from the spec, and the base
@@ -519,8 +520,23 @@
 # only its sheets whose rows changed are set, and the base -- the view as
 # the spec was last in step with it, as it is before an edit here -- is the
 # view again (#417: a card's save in well under a second).
-.spec_view_output <- function(p, output_id, content_only = FALSE) {
+.spec_view_output <- function(p, output_id, content_only = FALSE, page_only = FALSE) {
   sp <- p$spec
+  # (only the report's page or extends changed -- step 3's form: its report
+  # sheets alone, bridged without its content's items and its ARD; #438)
+  if (page_only && !is.null(sp$outputs[[output_id]])) {
+    o <- sp$outputs[[output_id]]
+    o["ard"] <- list(NULL)
+    if (!inherits(o$content, "tfl_r")) o["content"] <- list(NULL)
+    v <- .planner_from_spec(.spec_study_lean(sp$study), stats::setNames(list(o), output_id))
+    no_id <- function(d) { d$output_id <- NULL; rownames(d) <- NULL; d }
+    for (s in intersect(report_sheets(), names(p$sheets))) {
+      new <- no_id(sheet_rows(v, s, output_id))
+      if (!identical(no_id(sheet_rows(p, s, output_id)), new)) p <- set_sheet_rows(p, s, output_id, new)
+    }
+    if (!is.null(p$spec$base)) p$spec$base <- .planner_body(p)
+    return(p)
+  }
   # (only the report's content changed -- a card's edit: its table sheets
   # alone, bridged from its content and code lists)
   if (content_only && !is.null(sp$outputs[[output_id]])) {

@@ -73,23 +73,23 @@ test_that("step 3 of a figure: its size, and its first page says where its figur
     rv <- session$userData$rv
     session$setInputs(target = "F-1", nav = "make", step = "page")
     h <- output$page_form$html
-    expect_match(h, "data-col=\"figure_width_in\"", fixed = TRUE)
-    expect_match(h, "(its own: 6.5)", fixed = TRUE)
+    expect_match(h, "data-arg=\"width_twips\"", fixed = TRUE)
+    expect_match(h, "(its own: 6.5 x 4.5)", fixed = TRUE)
     expect_match(h, "data-act=\"fig_fit\"", fixed = TRUE)
     expect_no_match(h, "data-act=\"fig_native\"", fixed = TRUE)
     expect_match(output$page_sample$html, "Run the code", fixed = TRUE)
-    session$setInputs(pg_edit = list(kind = "cell", sheet = "report", col = "figure_width_in",
+    session$setInputs(pg_edit = list(kind = "arg", fn = "rtf_figures", arg = "width_twips",
                                      value = "6", target = "F-1"))
     expect_identical(page_value_from(rv$p, "report", "figure_width_in", "F-1")$value, "6")
     # fit to the page: both fit; its own size: both blank again
-    session$setInputs(pg_act = list(act = "fig_fit", target = "F-1", sheet = "report", col = ""))
+    session$setInputs(pg_act = list(act = "fig_fit", target = "F-1"))
     expect_identical(page_value_from(rv$p, "report", "figure_width_in", "F-1")$value, "fit")
     expect_identical(page_value_from(rv$p, "report", "figure_height_in", "F-1")$value, "fit")
     expect_match(output$page_form$html, "data-act=\"fig_native\"", fixed = TRUE)
-    session$setInputs(pg_act = list(act = "fig_native", target = "F-1", sheet = "report", col = ""))
+    session$setInputs(pg_act = list(act = "fig_native", target = "F-1"))
     expect_false(identical(page_value_from(rv$p, "report", "figure_width_in", "F-1")$from, "own"))
     # a table: no figure size
     session$setInputs(target = "T-1")
-    expect_no_match(output$page_form$html, "figure_width_in", fixed = TRUE)
+    expect_no_match(output$page_form$html, "width_twips", fixed = TRUE)
   })
 })

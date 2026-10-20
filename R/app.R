@@ -443,43 +443,48 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
 # the viewer's browser)
 .split_js <- "
 (function() {
-  var cur = {lay: 'side', pane: 'def'};
-  try {
-    var v = (localStorage.getItem('tflplanner.ard_layout') || '').split('|');
-    if (v[0]) cur.lay = v[0];
-    if (v[1]) cur.pane = v[1];
-  } catch (e) {}
-  function apply() {
-    var s = document.getElementById('ard_split');
-    if (!s) return;
-    s.classList.remove('rp-lay-side', 'rp-lay-stack', 'rp-lay-one',
-                       'rp-show-def', 'rp-show-out');
-    s.classList.add('rp-lay-' + cur.lay, 'rp-show-' + cur.pane);
-    document.querySelectorAll('#ard_layout [data-lay]').forEach(function(b) {
-      b.classList.toggle('active', b.dataset.lay === cur.lay);
+  // step 1's (ard_) and step 3's (page_, #438) split, each kept on its own
+  function group(pre) {
+    var cur = {lay: 'side', pane: 'def'};
+    try {
+      var v = (localStorage.getItem('tflplanner.' + pre + 'layout') || '').split('|');
+      if (v[0]) cur.lay = v[0];
+      if (v[1]) cur.pane = v[1];
+    } catch (e) {}
+    function apply() {
+      var s = document.getElementById(pre + 'split');
+      if (!s) return;
+      s.classList.remove('rp-lay-side', 'rp-lay-stack', 'rp-lay-one',
+                         'rp-show-def', 'rp-show-out');
+      s.classList.add('rp-lay-' + cur.lay, 'rp-show-' + cur.pane);
+      document.querySelectorAll('#' + pre + 'layout [data-lay]').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.lay === cur.lay);
+      });
+      document.querySelectorAll('#' + pre + 'pane [data-pane]').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.pane === cur.pane);
+      });
+      var g = document.getElementById(pre + 'pane');
+      if (g) g.style.display = cur.lay === 'one' ? '' : 'none';
+      try { localStorage.setItem('tflplanner.' + pre + 'layout', cur.lay + '|' + cur.pane); }
+      catch (e) {}
+      setTimeout(function() {
+        window.dispatchEvent(new Event('resize'));
+        if (window.jQuery && jQuery.fn.dataTable) {
+          jQuery.fn.dataTable.tables({visible: true, api: true}).columns.adjust();
+        }
+      }, 50);
+    }
+    document.addEventListener('click', function(e) {
+      var b = e.target.closest('#' + pre + 'layout [data-lay], #' + pre + 'pane [data-pane]');
+      if (!b) return;
+      if (b.dataset.lay) cur.lay = b.dataset.lay;
+      if (b.dataset.pane) cur.pane = b.dataset.pane;
+      apply();
     });
-    document.querySelectorAll('#ard_pane [data-pane]').forEach(function(b) {
-      b.classList.toggle('active', b.dataset.pane === cur.pane);
-    });
-    var g = document.getElementById('ard_pane');
-    if (g) g.style.display = cur.lay === 'one' ? '' : 'none';
-    try { localStorage.setItem('tflplanner.ard_layout', cur.lay + '|' + cur.pane); }
-    catch (e) {}
-    setTimeout(function() {
-      window.dispatchEvent(new Event('resize'));
-      if (window.jQuery && jQuery.fn.dataTable) {
-        jQuery.fn.dataTable.tables({visible: true, api: true}).columns.adjust();
-      }
-    }, 50);
+    document.addEventListener('DOMContentLoaded', apply);
   }
-  document.addEventListener('click', function(e) {
-    var b = e.target.closest('#ard_layout [data-lay], #ard_pane [data-pane]');
-    if (!b) return;
-    if (b.dataset.lay) cur.lay = b.dataset.lay;
-    if (b.dataset.pane) cur.pane = b.dataset.pane;
-    apply();
-  });
-  document.addEventListener('DOMContentLoaded', apply);
+  group('ard_');
+  group('page_');
 })();
 
 // a grid is as tall as its rows; the bar under it drags it taller or
@@ -795,11 +800,24 @@ app_ui <- function(lang = "en") {
     shiny::tags$script(shiny::HTML(.page_form_js)),
     # its page pattern (Standard, Compact ...): what it inherits
     shiny::uiOutput("page_pattern_bar"),
-    # the input on the left -- the page's sheets, edited -- and on the right
-    # what they make: the first page, the program, the rows as they are
-    # written (SPEC, read only: the grid on the left is where they change)
-    bslib::layout_columns(
-      col_widths = bslib::breakpoints(sm = 12, lg = c(7, 5)),
+    # the layout, as step 1's: side by side, stacked, one pane (#438)
+    shiny::div(
+      class = "d-flex flex-wrap gap-2 align-items-center mb-2 small",
+      shiny::span(class = "text-muted", t("Layout")),
+      shiny::div(
+        id = "page_layout", class = "btn-group btn-group-sm", role = "group",
+        lay_btn("data-lay" = "side", t("Side by side")),
+        lay_btn("data-lay" = "stack", t("Stacked")),
+        lay_btn("data-lay" = "one", t("One pane"))),
+      shiny::div(
+        id = "page_pane", class = "btn-group btn-group-sm", role = "group",
+        lay_btn("data-pane" = "def", t("This report's page")),
+        lay_btn("data-pane" = "out", "SPEC | Code | Result"))),
+    # the input on the left -- the page's form -- and on the right what it
+    # makes: the first page, the program, the rows as they are written
+    # (SPEC, read only); the right stays in view as the form scrolls
+    shiny::div(
+      id = "page_split", class = "rp-split rp-lay-side rp-show-def",
       shiny::div(
         # the page as a form: each value with where it comes from
         shiny::uiOutput("page_form"),
@@ -810,9 +828,7 @@ app_ui <- function(lang = "en") {
           grid_note,
           do.call(bslib::navset_card_underline,
                   c(list(id = "page_sheet"), lapply(report_sheets(), sheet_panel))))),
-      # (min-width 0: a grid item may then be narrower than the page it
-      # holds, which scrolls inside it at its actual size)
-      shiny::div(style = "min-width: 0", result_tabs_ui(
+      result_tabs_ui(
         "page_right", lang = lang, selected = "result",
         spec = shiny::uiOutput("page_spec_view"),
         code = shiny::tagList(
@@ -823,6 +839,9 @@ app_ui <- function(lang = "en") {
                      shiny::span(t("First page (sample)")),
                      shiny::div(
                        class = "d-flex gap-1",
+                       # a table's numbers: its ARD made again (step 2's button)
+                       .btn("page_fetch", t("Update preview"),
+                            class = "btn-sm btn-outline-primary py-0"),
                        # fit to the pane's width by default; actual size
                        # on a click, remembered in this browser
                        shiny::tags$button(
@@ -832,7 +851,7 @@ app_ui <- function(lang = "en") {
                          t("Fit to width")),
                        .btn("page_full", t("Full size"),
                             class = "btn-sm btn-outline-secondary py-0"))),
-          shiny::div(class = "rp-page-wrap", shiny::uiOutput("page_sample")))))))
+          shiny::div(class = "rp-page-wrap", shiny::uiOutput("page_sample"))))))
 
   bslib::page_navbar(
     id = "nav",
@@ -4034,6 +4053,7 @@ app_server <- function(input, output, session, start) {
   }
   shiny::observeEvent(input$ard_make_study, do_study_ard(ard_target()))
   shiny::observeEvent(input$fetch, do_preview())
+  shiny::observeEvent(input$page_fetch, do_preview())
   shiny::observeEvent(input$fetch2, do_preview())
   shiny::observeEvent(input$fetch3, do_preview())
   output$ard_summary <- shiny::renderUI({
@@ -10989,6 +11009,21 @@ app_server <- function(input, output, session, start) {
           shiny::tags$tbody(lapply(seq_len(nrow(d)), function(i) shiny::tags$tr(
             lapply(d[i, ], function(v) shiny::tags$td(if (is.na(v)) "" else as.character(v))))))))
     }
+    # the YAML spec: the report file's page: as it is written (#438)
+    rel <- p$spec$where[[id]]
+    lines <- if (!is.null(rel)) p$spec$text[[rel]]
+    if (length(lines)) {
+      at <- which(lines == "page:")
+      pg <- if (length(at)) {
+        top <- which(grepl("^[A-Za-z_]+:", lines) & seq_along(lines) > at[1L])
+        lines[at[1L]:(if (length(top)) top[1L] - 1L else length(lines))]
+      }
+      return(shiny::tagList(
+        shiny::div(class = "small text-muted mb-1", shiny::code(rel), " ",
+                   help_tip(t("The report's own page: in its YAML file (edit it on the left). The pattern it extends and the study defaults fill what it leaves out."))),
+        if (length(pg)) shiny::tags$pre(class = "small", paste(pg, collapse = "\n")) else
+          shiny::p(class = "small text-muted", t("No rows of its own: the study defaults make its page."))))
+    }
     out <- Filter(Negate(is.null), lapply(report_sheets(), sheet_table))
     shiny::tagList(
       shiny::p(class = "small text-muted mb-1",
@@ -11313,7 +11348,8 @@ app_server <- function(input, output, session, start) {
   # edit of a table's cell does not draw the form again)
   page_sheets <- shiny::reactiveVal(NULL)
   shiny::observe({
-    s <- if (!is.null(rv$p)) rv$p$sheets[.pattern_sheets]
+    # (and the spec's pages: an argument no sheet has a column for, #438)
+    s <- if (!is.null(rv$p)) list(rv$p$sheets[.pattern_sheets], .pgs_pages(rv$p$spec))
     if (!identical(s, shiny::isolate(page_sheets()))) page_sheets(s)
   })
   page_report <- shiny::reactive({
@@ -11326,7 +11362,7 @@ app_server <- function(input, output, session, start) {
   pat_names <- shiny::reactiveVal(character())
   shiny::observe({
     page_sheets()
-    v <- if (!is.null(rv$p)) page_patterns(shiny::isolate(rv$p)) else character()
+    v <- if (!is.null(rv$p)) .pgs_patterns(.pgs_spec(shiny::isolate(rv$p))) else character()
     if (!identical(v, shiny::isolate(pat_names()))) pat_names(v)
   })
   # (the report, passed on only when it changes: page_report() is worked out
@@ -11343,17 +11379,19 @@ app_server <- function(input, output, session, start) {
       return(shiny::p(class = "small text-muted",
                       t("Standard (every report's page) and the page patterns are the sheets' blank and @<name> rows: Details, below.")))
     }
-    p <- shiny::isolate(rv$p)
-    pats <- page_patterns(p)
-    now <- report_pattern(p, id)
+    sp <- .pgs_spec(shiny::isolate(rv$p))
+    pats <- .pgs_patterns(sp)
+    now <- .pgs_pattern_of(sp, id)
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center mb-2 pg-bar",
       shiny::tags$label(`for` = "page_pattern", class = "small mb-0",
                         with_tip(t("Page pattern"), t("The set of page defaults this report starts from: Standard (every report's) or a pattern of the study (Compact for the PK tables ...), which changes only what differs from Standard. What this report changes goes over it."))),
       shiny::div(style = "width: 14rem", .for_report(shiny::selectInput(
         "page_pattern", NULL, width = "100%", selectize = FALSE,
-        choices = c(stats::setNames("Standard", t("Standard")), stats::setNames(pats, pats)),
+        choices = c(stats::setNames("Standard", t("Standard (study default)")), stats::setNames(pats, pats)),
         selected = if (is.na(now)) "Standard" else now), id)),
+      shiny::span(class = "small text-muted", "extends: ",
+                  shiny::code(paste(sp$outputs[[id]]$extends %||% "-", collapse = ", "))),
       .btn("pat_edit", t("Edit the patterns..."), class = "btn-sm btn-outline-secondary"),
       if (!length(pats)) shiny::span(class = "small text-muted",
         t("(no other pattern yet: Edit the patterns... makes one)")))
@@ -11362,7 +11400,7 @@ app_server <- function(input, output, session, start) {
   pat_now <- shiny::reactiveVal("Standard")
   shiny::observeEvent(input$pat_edit, {
     id <- page_report()
-    cur <- if (!is.null(id)) report_pattern(rv$p, id) else NA
+    cur <- if (!is.null(id)) .pgs_pattern_of(.pgs_spec(rv$p), id) else NA
     pat_now(if (is.na(cur)) "Standard" else cur)
     shiny::showModal(shiny::modalDialog(
       title = t("Page patterns"), size = "xl", easyClose = TRUE,
@@ -11393,11 +11431,11 @@ app_server <- function(input, output, session, start) {
   })
   output$pat_count <- shiny::renderUI({
     page_sheets()
-    p <- shiny::isolate(rv$p)
+    sp <- .pgs_spec(shiny::isolate(rv$p))
     now <- pat_now()
     n <- if (identical(now, "Standard")) {
-      length(setdiff(p$outputs$output_id, unlist(lapply(page_patterns(p), pattern_reports, x = p))))
-    } else length(pattern_reports(p, now))
+      length(setdiff(names(sp$outputs), unlist(lapply(.pgs_patterns(sp), .pgs_pattern_reports, sp = sp))))
+    } else length(.pgs_pattern_reports(sp, now))
     shiny::span(class = "small text-muted mb-3", sprintf(t("Reports using it: %d"), n))
   })
   shiny::observeEvent(input$pat_pick, {
@@ -11410,7 +11448,7 @@ app_server <- function(input, output, session, start) {
     .page_form_ui(shiny::isolate(rv$p), id, t)
   })
   shiny::observeEvent(input$pat_new, {
-    p2 <- guarded(add_page_pattern(rv$p, input$pat_name))
+    p2 <- guarded(.pgs_add_pattern(rv$p, input$pat_name))
     if (is.null(p2)) return()
     nm <- trimws(sub("^@", "", input$pat_name))
     page_write(p2)
@@ -11419,14 +11457,14 @@ app_server <- function(input, output, session, start) {
   })
   shiny::observeEvent(input$pat_rename, {
     now <- pat_now()
-    p2 <- guarded(rename_page_pattern(rv$p, now, input$pat_name))
+    p2 <- guarded(.pgs_rename_pattern(rv$p, now, input$pat_name))
     if (is.null(p2)) return()
     page_write(p2)
     pat_now(trimws(sub("^@", "", input$pat_name)))
     shiny::updateTextInput(session, "pat_name", value = "")
   })
   shiny::observeEvent(input$pat_remove, {
-    p2 <- guarded(remove_page_pattern(rv$p, pat_now()))
+    p2 <- guarded(.pgs_remove_pattern(rv$p, pat_now()))
     if (is.null(p2)) return()
     page_write(p2)
     pat_now("Standard")
@@ -11438,9 +11476,9 @@ app_server <- function(input, output, session, start) {
     v <- .report_pick(input$page_pattern_by, id)
     if (!length(v)) return()
     v <- v[1L]
-    now <- report_pattern(rv$p, id)
+    now <- .pgs_pattern_of(.pgs_spec(rv$p), id)
     if (identical(v, if (is.na(now)) "Standard" else now)) return()
-    p2 <- guarded(set_report_pattern(rv$p, id, v))
+    p2 <- guarded(.pgs_set_pattern(rv$p, id, v))
     if (is.null(p2)) return()
     rv$p <- p2
     page_ver(page_ver() + 1L)
@@ -11468,30 +11506,30 @@ app_server <- function(input, output, session, start) {
     e <- input$pg_edit
     id <- pg_id(e$target)
     shiny::req(!is.null(id))
-    v <- trimws(e$value %||% "")
-    if (!nzchar(v)) v <- NA_character_
     p <- rv$p
-    if (identical(e$kind, "cell")) {
-      if (identical(e$col, "font_size_half_points") && !is.na(v)) {
-        hp <- .half_points(v)
-        if (is.na(hp)) return(notify(t("The size is a number of points (9, 10 ...)."), "warning"))
-        v <- hp
-      }
-      page_write(guarded(set_page_cell(p, e$sheet, e$col, id, v)))
+    if (identical(e$kind, "arg")) {
+      f <- .pgs_field(e$fn, e$arg)
+      shiny::req(!is.null(f))
+      v <- guarded(list(.pgs_value(e$value, f$kind)))
+      if (is.null(v)) return()
+      page_write(guarded(.pgs_set_arg(p, id, e$fn, e$arg, v[[1L]])))
     } else if (identical(e$kind, "line")) {
-      own <- sheet_rows(p, e$sheet, id)
-      r <- own[own$line %in% e$line, , drop = FALSE]
+      d <- .pgs_lines(.pgs_spec(p), id, e$band)
+      r <- d[d$line %in% e$line & d$from == "own", , drop = FALSE]
       parts <- list(left = NA_character_, center = NA_character_, right = NA_character_)
       if (nrow(r)) for (k in names(parts)) parts[[k]] <- r[[k]][1L]
-      parts[[e$part]] <- v
-      page_write(guarded(set_page_line(p, e$sheet, id, e$line, parts$left, parts$center, parts$right)))
+      v <- e$value %||% ""
+      parts[[e$part]] <- if (nzchar(trimws(v))) v else NA_character_
+      page_write(guarded(.pgs_set_line(p, id, e$band, e$line, parts$left, parts$center,
+                                       parts$right)))
     } else if (identical(e$kind, "token")) {
       if (.pg_token_taken(e$name)) {
         return(notify(.pg_token_taken_msg(e$name, t), "warning"))
       }
-      page_write(guarded(set_page_token(p, id, e$name, if (is.na(v)) "" else v)))
+      page_write(guarded(.pgs_set_token(p, id, e$name, trimws(e$value %||% ""))))
     } else if (identical(e$kind, "info") && !is.na(id) && !.is_pattern_id(id)) {
-      page_write(guarded(.set_report_info(p, id, e$name, v)))
+      v <- trimws(e$value %||% "")
+      page_write(guarded(.set_report_info_spec(p, id, e$name, if (nzchar(v)) v else NA_character_)))
     }
   })
   shiny::observeEvent(input$pg_act, {
@@ -11510,33 +11548,35 @@ app_server <- function(input, output, session, start) {
       return(notify(.pg_token_taken_msg(toupper(trimws(a$name)), t), "warning"))
     }
     page_write(guarded(switch(a$act,
-      reset = set_page_cell(p, a$sheet, a$col, id, NA_character_),
-      # a figure's size: both fit to the page, or both its own (blank)
-      fig_fit = set_page_cell(set_page_cell(p, "report", "figure_width_in", id, "fit"),
-                              "report", "figure_height_in", id, "fit"),
-      fig_native = set_page_cell(set_page_cell(p, "report", "figure_width_in", id, NA_character_),
-                                 "report", "figure_height_in", id, NA_character_),
-      # a line of the pattern's (or Standard's) made the report's own, to change
+      reset = .pgs_set_arg(p, id, a$fn, a$arg, NULL),
+      none = .pgs_set_arg(p, id, a$fn, a$arg, tflspec::tfl_unset()),
+      # a figure's size: both fit to the page, or both its own (none)
+      fig_fit = .pgs_set_arg(.pgs_set_arg(p, id, "rtf_figures", "width_twips", "fit"),
+                             id, "rtf_figures", "height_twips", "fit"),
+      fig_native = .pgs_set_arg(.pgs_set_arg(p, id, "rtf_figures", "width_twips", NULL),
+                                id, "rtf_figures", "height_twips", NULL),
+      # a line of the layers below made the target's own, to change
       own = {
-        r <- page_lines_from(p, a$sheet, id)
+        r <- .pgs_lines(.pgs_spec(p), id, a$band)
         r <- r[r$line %in% a$line, , drop = FALSE]
-        set_page_line(p, a$sheet, id, a$line, r$left, r$center, r$right)
+        .pgs_set_line(p, id, a$band, a$line, r$left, r$center, r$right)
       },
-      omit = omit_page_line(p, a$sheet, id, a$line),
-      drop = drop_page_line(p, a$sheet, id, a$line),
-      addline = set_page_line(p, a$sheet, id, .page_new_line(p, a$sheet, id), left = ""),
+      omit = .pgs_set_line(p, id, a$band, a$line, omit = TRUE),
+      drop = .pgs_set_line(p, id, a$band, a$line, drop = TRUE),
+      addline = .pgs_set_line(p, id, a$band, .page_new_line(p, a$band, id, sp = .pgs_spec(p))),
       token_own = {
-        r <- page_tokens_from(p, id)
-        set_page_token(p, id, a$name, r$value[r$name %in% a$name][1L] %||% "")
+        r <- .pgs_tokens(.pgs_spec(p), id)
+        .pgs_set_token(p, id, a$name, r$value[r$name %in% a$name][1L] %||% "")
       },
-      token_reset = set_page_token(p, id, a$name, NA_character_),
+      token_reset = .pgs_set_token(p, id, a$name, NULL),
+      token_omit = .pgs_set_token(p, id, a$name, tflspec::tfl_unset()),
       token_add = {
         nm <- toupper(trimws(a$name %||% ""))
         if (!grepl("^[A-Z][A-Z0-9_]*$", nm)) {
           stop("A token's name is upper case: a letter, then letters, digits or _ (DATA_CUTOFF).",
                call. = FALSE)
         }
-        set_page_token(p, id, nm, trimws(a$value %||% ""))
+        .pgs_set_token(p, id, nm, trimws(a$value %||% ""))
       },
       NULL)))
   })
