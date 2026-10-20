@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **tflspec's three-stage analysis data code** (#452, 0.0.2.9260; tflspec
+  >= 0.0.24.9192): an analysis data is now written as a pipe -- its subjects
+  by `semi_join(select(adsl_x, USUBJID), by = "USUBJID")`, its condition in a
+  `filter()` after it; the test of the code a data written as R starts from
+  follows.  Tests only.
+
 - **Follows tflspec #397** (#444, 0.0.2.9256; tflspec >= 0.0.24.9185): the
   figure designer's join card has the join's how -- "How to join (how)":
   a left join (left, the default) or keep its subjects only (semi); a semi
