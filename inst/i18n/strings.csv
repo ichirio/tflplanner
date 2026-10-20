@@ -3305,7 +3305,7 @@ Mapping,マッピング
 Finishing,仕上げ
 Layer list,層
 The decimals are written into plan_cells()'s formats.,桁は plan_cells() の書式に書き込まれます。
-"The keys, first to last: .overall the any-event row first; group1, group2 ... the rows' outer levels, label the innermost (the rows' text), each by name (a code list's order when it has one); .depth each group's own row above the rows under it; -n most frequent first (-n@group1: by the group's own count).",並べるキーを先頭から順に。.overall は全体の行を先頭に。group1、group2 … は行の外側の段、label はいちばん内側（行の文字）で、それぞれ名前順（コードリストがあればその順）。.depth は各グループ自身の行をその下の行より上に。-n は多い順（-n@group1 はグループ自身の数で）。
+"The keys, first to last: .overall the any-event row first; group1, group2 ... the rows' outer levels, label the innermost (the rows' text), each by name (a code list's order when it has one); .depth each group's own row above the rows under it; -n most frequent first (-n@group1: by the group's own count); -max(n) the most frequent in any column first, min(n) the least; -p, -estimate by another statistic of the ARD. Another key is written as it is.",並べるキーを先頭から順に。.overall は全体の行を先頭に。group1、group2 … は行の外側の段、label はいちばん内側（行の文字）で、それぞれ名前順（コードリストがあればその順）。.depth は各グループ自身の行をその下の行より上に。-n は多い順（-n@group1 はグループ自身の数で）。-max(n) はいずれかの列で多い順、min(n) は少ない順。-p、-estimate は ARD のほかの統計量で。ほかのキーは書いたとおりに書かれます。
 A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show can be hidden in a later stage.,表は階層の段を外しません。別の段の表は ARD の別の解析から作ります。表に出さない行は、後の段で隠せるようになります。
 ARD: made,ARD: 作成済み（読み込み済み）
 ARD: outdated (make it again),ARD: 古くなっています（作り直してください）
@@ -3792,3 +3792,11 @@ Undo,元に戻す
 over the study standard (%s),試験標準（%s）より優先
 Expanded (read only),展開した形（読むだけ）
 a variant of %s,%s の変種
+"Another key (written as it is)",ほかのキー（書いたとおりに）
+"Least frequent first (the columns' total)",少ない順（列の合計）
+"Most frequent first (in any column)",多い順（いずれかの列で最多）
+"Least frequent first (in any column)",少ない順（いずれかの列で最少）
+"Largest first (the columns' total)",大きい順（列の合計）
+"Smallest first (the columns' total)",小さい順（列の合計）
+"Largest first (in any column)",大きい順（いずれかの列で最大）
+"Smallest first (in any column)",小さい順（いずれかの列で最小）

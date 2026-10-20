@@ -77,9 +77,43 @@ test_that("written back unchanged, nothing changes; the order is all it writes o
   # two levels counted in two columns: not the card's
   expect_identical(.hier_sort_read(".overall | -n@group1[Total] | group1 | .depth | -n | label", 2L), "own")
   # what the card does not write is the sheets' own
-  for (own in c("group1 | -n", ".overall | -n | group1 | label", ".overall | group1 | label | x", NA)) {
+  for (own in c("group1 | -n", ".overall | group1 | label | x", NA)) {
     expect_identical(.hier_sort_read(own, 2L), "own", info = own)
   }
+})
+
+test_that("an order by any statistic of the ARD, or a key of the user's", {
+  # a row's largest / smallest in any column, another statistic
+  s <- .hier_sort(c("-max(n)", "min(p)"), "Total")
+  expect_identical(s, ".overall | -max(n)@group1[Total] | group1 | .depth | min(p)[Total] | label")
+  back <- .hier_sort_read(s, 2L)
+  expect_identical(as.vector(back), c("-max(n)", "min(p)"))
+  expect_identical(attr(back, "col"), "Total")
+  # a comparison's statistic: its own row, no column of the arms
+  s <- .hier_sort(c("-estimate", "-max(n)"), "Total", nocol = "estimate")
+  expect_identical(s, ".overall | -estimate@group1 | group1 | .depth | -max(n)[Total] | label")
+  back <- .hier_sort_read(s, 2L, nocol = "estimate")
+  expect_identical(as.vector(back), c("-estimate", "-max(n)"))
+  expect_identical(attr(back, "col"), "Total")
+  # a key of the user's: written as it is, and read back as it is
+  s <- .hier_sort(c("=-n[Drug X]", "freq"))
+  expect_identical(s, ".overall | -n[Drug X] | group1 | .depth | -n | label")
+  expect_identical(as.vector(.hier_sort_read(s, 2L)), c("=-n[Drug X]", "freq"))
+  expect_identical(as.vector(.hier_sort_read(".overall | -n | group1 | label", 2L)),
+                   c("=-n", "alpha"))
+  for (s in c(".overall | -max(n)@group1[Placebo] | group1 | .depth | -p[Placebo] | label",
+              ".overall | -n@group1 | group1 | .depth | -estimate[A - B] | label",
+              ".overall | sum(n)@group1 | group1 | .depth | -n@group1 | label")) {
+    expect_identical(.hier_sort(.hier_sort_read(s, 2L, "estimate"),
+                                attr(.hier_sort_read(s, 2L, "estimate"), "col"),
+                                nocol = "estimate"), s, info = s)
+  }
+  # the card's choices: by name, then each statistic (n, p first; N not)
+  ch <- .sort_key_choices(c("N", "estimate", "p", "n"))
+  expect_identical(unname(ch)[1:6], c("alpha", "freq", "n", "-max(n)", "min(n)", "-p"))
+  expect_false(any(grepl("(N)", ch, fixed = TRUE)))
+  expect_true(all(c("-estimate", "min(estimate)") %in% ch))
+  expect_identical(unname(.sort_key_choices("n", hier = FALSE)), "alpha")
 })
 
 test_that("a hierarchy counted of a denominator has the subjects per group", {

@@ -9278,7 +9278,7 @@ app_server <- function(input, output, session, start) {
         vars = if (!hier) var_items, cols = shiny::uiOutput(bid("arms_ui"))),
       plan_sort = if (hier && isTRUE(item_of("plan_sort")$present))
         hier_sort_ui(st, sheet_rows(p0, "codelists", id)$variable,
-                     total = .rows_for(p0, "tables", id)$total[1L]))
+                     total = .rows_for(p0, "tables", id)$total[1L], stats = m$stats))
     # (a form of its own: the function's other arguments below it)
     for (fn in names(.special_covered)) {
       it <- item_of(fn)
@@ -9487,11 +9487,14 @@ app_server <- function(input, output, session, start) {
               "program_table")
   })
   # A hierarchy's order, one a term (outermost first): by name -- the code
-  # list's order when the report has one for it -- or most frequent first
-  # (an outer term by its own count), counted in every column together or
-  # in one (the Total, an arm).  An order of the sheets' own is said, with
-  # a way back to the card's.
-  hier_sort_ui <- function(st, coded, total = NA) {
+  # list's order when the report has one for it -- or by a statistic of
+  # the ARD (n, p, a comparison's estimate ...): largest or smallest
+  # first, its sum over the columns or its largest / smallest in any one
+  # (an outer term by its own row's), or a key of the user's, written as
+  # it is.  The value counted in every column together or in one (the
+  # Total, an arm).  The keys plan_sort() gets are shown under it.  An
+  # order of the sheets' own is said, with a way back to the card's.
+  hier_sort_ui <- function(st, coded, total = NA, stats = character()) {
     n <- length(st$row_keys)
     if (identical(st$sort, "own")) {
       return(shiny::div(
@@ -9507,27 +9510,36 @@ app_server <- function(input, output, session, start) {
     shiny::tagList(
       lapply(seq_len(n), function(i) {
         v <- st$row_keys[i]
-        opt <- function(value, label) shiny::tags$option(
-          value = value, selected = if (identical(st$sort[i], value)) NA, label)
+        now <- st$sort[i]
+        own <- startsWith(now, "=")
         cl <- v %in% coded
+        choices <- .sort_key_choices(stats, cl, hier = v %in% st$hierarchy, lang = lang)
+        # (a key of the builder's form that is not offered: offered too)
+        if (!own && !now %in% choices) choices <- c(choices, stats::setNames(now, now))
+        choices <- c(choices, stats::setNames("=", t("Another key (written as it is)")))
+        opt <- function(value, label) shiny::tags$option(
+          value = value, selected = if (identical(if (own) "=" else now, value)) NA, label)
+        sid <- bid(paste0("sort", i))
         shiny::div(
-          class = "d-flex align-items-center gap-2 mb-1",
+          class = "d-flex flex-wrap align-items-center gap-2 mb-1",
           shiny::span(class = "rp-b-var", style = "min-width: 9em;", v),
           shiny::tags$select(
-            id = bid(paste0("sort", i)), class = "form-select form-select-sm",
-            style = "width: 22em;",
-            # (a code list is the order a factor sorts in: no name order
-            # beside it; a group of the ARD is not ordered by its count)
-            opt("alpha", if (cl) t("Code list's order") else t("By name")),
-            if (v %in% st$hierarchy) opt("freq", if (cl)
-              t("Most frequent first (ties in the code list's order)") else
-                t("Most frequent first (ties by name)"))))
+            id = sid, class = "form-select form-select-sm",
+            style = "width: 22em; max-width: 100%;",
+            unname(Map(opt, unname(choices), names(choices)))),
+          shiny::conditionalPanel(
+            sprintf("input['%s'] == '='", sid),
+            shiny::textInput(bid(paste0("sort_own", i)), NULL,
+                             value = if (own) substring(now, 2L) else "",
+                             placeholder = "-max(n)@group1", width = "100%")))
       }),
       shiny::div(
         class = "d-flex align-items-center gap-2 mb-1",
         shiny::span(class = "small", style = "min-width: 9em;", t("Counted in")),
         shiny::selectInput(bid("sort_col"), NULL, cols,
-                           selected = if (is.na(col_now)) "" else col_now, width = "22em")))
+                           selected = if (is.na(col_now)) "" else col_now, width = "22em")),
+      shiny::div(class = "small text-muted", "plan_sort(): ",
+                 shiny::tags$code(shiny::textOutput("b_sort_code", inline = TRUE))))
   }
   # The layout cards with a form (.plan_form_main: the blank rows, the
   # pages, the row label column, the style): read back by verb -- none
@@ -10810,8 +10822,15 @@ app_server <- function(input, output, session, start) {
          },
          sort = if (hier) {
            if (identical(st$sort, "own")) "own" else {
-             lv <- vapply(seq_along(st$row_keys), function(i)
-               get(paste0("sort", i)) %||% st$sort[i], "")
+             # (another key: its text, "=" before it; none yet, the order
+             # as it was)
+             lv <- vapply(seq_along(st$row_keys), function(i) {
+               k <- get(paste0("sort", i)) %||% st$sort[i]
+               if (!identical(k, "=")) return(k)
+               own <- trimws(get(paste0("sort_own", i)) %||% "")
+               if (nzchar(own)) paste0("=", own) else st$sort[i]
+             }, "")
+             attr(lv, "nocol") <- attr(st$sort, "nocol")
              cc <- get("sort_col")
              attr(lv, "col") <- if (is.null(cc)) attr(st$sort, "col") %||% NA_character_ else
                if (nzchar(cc)) cc else NA_character_
@@ -10820,6 +10839,14 @@ app_server <- function(input, output, session, start) {
          })
   }))
   bstate_d <- shiny::debounce(bstate, 250)
+  # the keys plan_sort() gets from the order chosen (under its fields)
+  output$b_sort_code <- shiny::renderText({
+    st <- bstate()
+    shiny::req(length(st$hierarchy) > 0L, !identical(st$sort, "own"))
+    .hier_sort(st$sort, attr(st$sort, "col") %||% NA_character_,
+               hier = st$row_keys %in% st$hierarchy,
+               nocol = attr(st$sort, "nocol") %||% character())
+  })
   shiny::observeEvent(bstate_d(), {
     st <- bstate_d()
     id <- bform$id
