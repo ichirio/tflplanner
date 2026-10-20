@@ -38,6 +38,24 @@ test_that("an edit in the editor changes the chosen report and is saved", {
   expect_equal(open_study("S1")$planner$outputs$process_code, "a <- 10")
 })
 
+test_that("the study tab's treatment variable is saved to study.yml's settings (#444)", {
+  local_home()
+  two_studies()
+  suppressWarnings(shiny::testServer(server_for("S1"), {
+    rv <- session$userData$rv
+    session$setInputs(study_treatment = "")
+    expect_false(session$userData$dirty())
+    session$setInputs(study_treatment = " TRT01P ")
+    expect_identical(.study_setting(rv$p, "treatment"), "TRT01P")
+    expect_true(session$userData$dirty())
+    session$setInputs(save = 1L)
+    expect_false(session$userData$dirty())
+  }))
+  s <- open_study("S1")
+  expect_identical(yaml::read_yaml(file.path(s$path, "study.yml"))$settings$treatment, "TRT01P")
+  expect_identical(.study_setting(s$planner, "treatment"), "TRT01P")
+})
+
 test_that("unregistering removes the chosen study only, and the list still draws", {
   local_home()
   two_studies()

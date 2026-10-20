@@ -646,3 +646,42 @@ test_that("Discard changes: the study back to its last save, its draft gone; not
     expect_match(output$discard_btn$html, "disabled", fixed = TRUE)
   })
 })
+
+test_that("the treatment variable is study.yml's settings: treatment: (#444)", {
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  m0 <- spec_md5(s$path)
+  expect_identical(.study_setting(s$planner, "treatment"), NA_character_)
+  s$planner$study[["treatment"]] <- "TRT01P"
+  s <- suppressMessages(save_study(s, home = home))
+  expect_identical(changed_files(m0, spec_md5(s$path)), "study.yml")
+  y <- yaml::read_yaml(file.path(s$path, "study.yml"))
+  expect_identical(y$settings$treatment, "TRT01P")
+  expect_identical(y$settings$rounding, "sas")
+  expect_null(y$treatment)
+  # tflspec reads it (a template's by / group)
+  expect_identical(tflspec::tfl_read_study_spec(s$path)$study$settings$treatment, "TRT01P")
+  # opened again: the field's value; saved unchanged: nothing written
+  s2 <- suppressMessages(open_study("SAMPLE-01", home = home))
+  expect_identical(.study_setting(s2$planner, "treatment"), "TRT01P")
+  m1 <- spec_md5(s2$path)
+  s2 <- suppressMessages(save_study(s2, home = home))
+  expect_identical(changed_files(m1, spec_md5(s2$path)), character())
+  # blank again: gone from study.yml
+  s2$planner$study[["treatment"]] <- NA_character_
+  s2 <- suppressMessages(save_study(s2, home = home))
+  expect_null(yaml::read_yaml(file.path(s2$path, "study.yml"))$settings$treatment)
+})
+
+test_that("a planner kept before the treatment key reads it as not set", {
+  p <- new_planner()
+  p$study <- p$study[c("rounding", "output_path", "program_dir")]
+  expect_identical(.study_setting(p, "treatment"), NA_character_)
+  f <- tempfile(fileext = ".yml")
+  on.exit(unlink(f), add = TRUE)
+  writeLines(c("study_id: X", "keys:", "  id: USUBJID"), f)
+  .study_yml_own_settings(f, p$study)
+  expect_identical(readLines(f), c("study_id: X", "keys:", "  id: USUBJID"))
+  .study_yml_own_settings(f, c(treatment = "ARM"))
+  expect_identical(yaml::read_yaml(f)$settings$treatment, "ARM")
+})

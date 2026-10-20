@@ -72,6 +72,12 @@
 .planner_from_spec <- function(study, outputs) {
   back <- tflspec::tfl_sheets_from_spec(study, outputs)
   p <- .planner_from_sheets(back$table, back$planner)
+  # study.yml's settings no sheet holds (the treatment variable)
+  st <- study$study$settings %||% list()
+  for (k in .study_own_settings) {
+    v <- st[[k]]
+    if (length(v) == 1L && !is.na(v) && nzchar(as.character(v))) p$study[[k]] <- as.character(v)
+  }
   old <- attr(p, "old_data_code")
   attr(p, "old_data_code") <- NULL
   p$ard <- stats::setNames(lapply(names(.ard_sheets()), function(s)
@@ -139,10 +145,36 @@
 .spec_bridge <- function(body, meta) {
   tmp <- tempfile("tflplanner-yaml")
   tflspec::tfl_yaml_from_sheets(.planner_sheets(body, meta), tmp, overwrite = TRUE)
+  .study_yml_own_settings(file.path(tmp, .study_file), body$study)
   rel <- list.files(tmp, recursive = TRUE)
   rel <- setdiff(rel, file.path(study_layout()[["spec"]], "_not_converted.yml"))
   list(dir = tmp, text = stats::setNames(lapply(rel, function(r)
     readLines(file.path(tmp, r), encoding = "UTF-8", warn = FALSE)), rel))
+}
+
+# The study's own settings (.study_own_settings: the treatment variable)
+# put into study.yml's `settings:` as tflspec wrote it: each one set, a
+# line at the block's end (a block of its own when tflspec wrote none); none
+# set: the file as it is
+.study_yml_own_settings <- function(f, study) {
+  v <- vapply(.study_own_settings, function(k) {
+    x <- if (k %in% names(study)) study[[k]] else NA_character_
+    if (length(x) == 1L && !is.na(x) && nzchar(trimws(x))) trimws(x) else NA_character_
+  }, "")
+  v <- v[!is.na(v)]
+  if (!length(v) || !file.exists(f)) return(invisible(f))
+  lines <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  add <- strsplit(sub("\n$", "", yaml::as.yaml(as.list(v))), "\n", fixed = TRUE)[[1L]]
+  at <- which(lines == "settings:")
+  if (length(at)) {
+    end <- at[1L]
+    while (end < length(lines) && grepl("^[ ]", lines[end + 1L])) end <- end + 1L
+    lines <- append(lines, paste0("  ", add), after = end)
+  } else {
+    lines <- c(lines, "settings:", paste0("  ", add))
+  }
+  writeLines(lines, f, useBytes = TRUE)
+  invisible(f)
 }
 
 # Which part of the spec a file is: study, data, defaults, codelists, toc,

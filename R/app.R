@@ -2858,6 +2858,11 @@ app_server <- function(input, output, session, start) {
                         t(c("As options(rtfreporter.rounding)",
                             "r (half to even)", "sas (half away from zero)"))),
         selected = v(r)),
+      shiny::textInput(
+        "study_treatment",
+        with_tip(t("Treatment variable (settings.treatment)"),
+                 t("The variable of the treatment groups a template's by / group takes when the report does not say it (study.yml settings: treatment:). Blank: the template's own, TRT01A.")),
+        v(.study_setting(shiny::isolate(rv$p), "treatment")), placeholder = "TRT01A"),
       shiny::h6(with_tip(t("Every report's header"),
                          t("The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}; {STUDY_ID} is the Study ID above. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, population)."))),
       shiny::div(class = "d-flex flex-wrap gap-2",
@@ -2967,6 +2972,14 @@ app_server <- function(input, output, session, start) {
     v <- if (nzchar(input$rounding)) input$rounding else NA_character_
     if (!identical(unname(rv$p$study[["rounding"]]), v)) {
       rv$p$study[["rounding"]] <- v
+    }
+  }, ignoreInit = TRUE)
+  # the treatment variable: study.yml's settings: treatment: (blank: none)
+  shiny::observeEvent(input$study_treatment, {
+    v <- trimws(input$study_treatment)
+    v <- if (nzchar(v)) v else NA_character_
+    if (!identical(.study_setting(rv$p, "treatment"), v)) {
+      rv$p$study[["treatment"]] <- v
     }
   }, ignoreInit = TRUE)
   shiny::observeEvent(input$study_folder, .open_folder(rv$study$path))
