@@ -3687,3 +3687,53 @@ Write its request again (overwrite)? Its earlier request is replaced; the other 
 Write it again,書き直す
 Asked for already: %s. Write the requests will ask whether to write them again (overwrite).,依頼済み: %s。「依頼を書く」で書き直すか確認します（overwrite）。
 Added to the %d requests there (their answers kept).,既にある依頼 %d 件に追加します（回答は残ります）。
+How to make it,作り方
+No template of this kind: choose Code.,この種類のテンプレートはありません。「コード」を選んでください。
+No argument is required: every one has its default.,必須の引数はありません。すべて既定値があります。
+Required arguments,必須の引数
+Choose a template,テンプレートを選んでください
+Fill in the required argument %s.,必須の引数 %s を入れてください。
+A template report needs the study's YAML spec (save the study first).,テンプレートの帳票には試験の YAML の Spec が要ります（先に試験を保存してください）。
+Edit in R (the report's YAML file),R で編集（帳票の YAML ファイル）
+Back to the default (the line is taken out of args),既定値に戻す（args からこの行を消します）
+Required arguments are empty: %s. The preview waits for them.,必須の引数が空です: %s。入れるまでプレビューは作りません。
+Arguments with defaults (%d),既定値の引数（%d）
+Saved in spec/outputs/%s.yml as template: name and its args only.,spec/outputs/%s.yml には template: の名前と引数だけを書きます。
+Overview of adverse events,有害事象の概要
+Adverse events by SOC and PT,SOC・PT 別の有害事象
+Demographics,人口統計学的特性
+Disposition,被験者の内訳
+A hierarchy's counts,階層の集計
+Kaplan-Meier curves,Kaplan-Meier 曲線（図）
+Kaplan-Meier estimates,Kaplan-Meier 推定値
+Shift table of a lab parameter,臨床検査のシフト表
+A listing,Listing
+Objective response,奏効率
+Shift table,シフト表
+Continuous variables by a column key,連続変数の要約（列キー別）
+A vital sign's change,バイタルサインの変化量
+the analysis set's id (SAF),解析対象集団の ID（SAF）
+the dataset,データセット
+the column variable,列の変数
+continuous variables,連続変数
+categorical variables,カテゴリ変数
+each variable's heading,各変数の見出し
+the continuous variables' rows,連続変数の行
+TRUE: the ARD as one cards::ard_stack() call,TRUE: ARD を cards::ard_stack() 1 回で作る
+the dataset of records,レコードのデータセット
+the analysis data's id; NULL: <data>_<population>,解析データの ID（NULL: <data>_<population>）
+the rows' order (plan_sort()),行の並べ順（plan_sort()）
+"the label column's heading, a line a level",ラベル列の見出し（階層ごとに 1 行）
+the PARAMCD of ADTTE,ADTTE の PARAMCD
+the population flag (SAFFL),解析対象集団のフラグ（SAFFL）
+the curves' variable (TRT01A),曲線を分ける変数（TRT01A）
+the time variable; NULL: AVAL,時間の変数（NULL: AVAL）
+the censoring variable,打ち切りの変数
+the time axis' unit,時間軸の単位
+the dataset; NULL: ADTTE,データセット（NULL: ADTTE）
+"the hierarchy's variables (SOC, PT)",階層の変数（SOC・PT）
+the records' condition,レコードの条件
+the analysis data's label,解析データのラベル
+the analysis' id,解析の ID
+the analysis' label,解析のラベル
+the any-event row's label,「いずれかの事象」行のラベル

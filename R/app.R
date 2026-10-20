@@ -696,7 +696,8 @@ app_ui <- function(lang = "en") {
           shiny::uiOutput("builder_note"),
           bslib::layout_columns(
             col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
-            shiny::uiOutput("builder_form"),
+            # a template report's arguments (R/template_report.R) above
+            shiny::div(shiny::uiOutput("tpl_card"), shiny::uiOutput("builder_form")),
             # what the report's ARD holds, folded to one line, above the tabs;
             # beside the cards it stays in view (.rp-b-right) as they scroll
             shiny::div(
@@ -743,6 +744,7 @@ app_ui <- function(lang = "en") {
                          .btn("lf_preview", t("Preview the listing"),
                               class = "btn-sm btn-outline-primary")),
               shiny::uiOutput("lf_preview_out"))))),
+      shiny::conditionalPanel("output.report_kind == 'figure'", shiny::uiOutput("tpl_card_fig")),
       shiny::conditionalPanel("output.content_is_code != 'yes'", .designer_ui(t))),
     bslib::nav_panel(
       t("Data code"), value = "code",
@@ -11516,6 +11518,15 @@ app_server <- function(input, output, session, start) {
       if (type) lapply(report_types(), function(k) shiny::conditionalPanel(
         sprintf("input.modal_type == '%s'", k),
         shiny::p(class = "small text-muted mt-n2", t(.type_notes[[k]])))),
+      # how it is made: from one of tflspec's templates (its arguments
+      # only), or the code SPEC as before (R/template_report.R)
+      if (type) shiny::radioButtons(
+        "modal_how", t("How to make it"),
+        stats::setNames(c("template", "code"), c(t("Template"), t("Code"))),
+        selected = "template", inline = TRUE),
+      if (type) shiny::conditionalPanel("input.modal_how == 'template'",
+                                        shiny::uiOutput("modal_tpl_ui")),
+      if (type) shiny::uiOutput("modal_ok_js"),
       if (type) shiny::textInput("modal_desc", t("Description"),
                                  width = "100%"),
       # the section: the chosen report's, as a new one usually goes beside it
@@ -11526,14 +11537,15 @@ app_server <- function(input, output, session, start) {
           if (length(s) && !is.na(s)) s else ""
         },
         placeholder = t("blank: from the ID")),
-      if (type && nrow(rv$p$ard$populations)) shiny::selectInput(
+      if (type && nrow(rv$p$ard$populations)) shiny::conditionalPanel(
+        "input.modal_how != 'template'", shiny::selectInput(
         "modal_pop", t("This report's population"), pop_choices(), width = "100%",
         selected = {
           v <- report_population(rv$p, current() %||% "")
           if (is.na(v)) "" else v
-        }),
+        })),
       if (type) shiny::conditionalPanel(
-        "input.modal_type == 'listing'",
+        "input.modal_type == 'listing' && input.modal_how != 'template'",
         shiny::checkboxInput(
           "modal_first_l",
           with_tip(t("Start from the data"),
@@ -11542,7 +11554,7 @@ app_server <- function(input, output, session, start) {
         shiny::conditionalPanel("input.modal_first_l",
                                 shiny::uiOutput("modal_first_l_ui"))),
       if (type) shiny::conditionalPanel(
-        "input.modal_type == 'table'",
+        "input.modal_type == 'table' && input.modal_how != 'template'",
         shiny::checkboxInput(
           "modal_first",
           with_tip(t("Apply a template"),
@@ -11586,6 +11598,7 @@ app_server <- function(input, output, session, start) {
     id <- trimws(input$modal_id)
     d <- trimws(input$modal_desc)
     desc <- if (nzchar(d)) d else NA
+    if (identical(input$modal_how, "template")) return(add_template_report(id, desc))
     if (identical(input$modal_type, "table") && isTRUE(input$modal_first)) {
       on.exit(put_section(id), add = TRUE)
       return(start_first_table(id, desc))
@@ -11607,6 +11620,253 @@ app_server <- function(input, output, session, start) {
     # the new report's own tab
     if (!is.null(p2)) go(switch(input$modal_type,
       table = "tables", listing = "lf", figure = "designer", "outputs"))
+  })
+  # -- template reports (R/template_report.R) ---------------------------------
+  # the dialog: the templates of the kind chosen, then the required arguments
+  tpl_data <- function() .tpl_data_cols(rv$study$path)
+  tpl_all_cols <- function() unique(unlist(lapply(tpl_data(), names)))
+  tpl_label <- function(prm) {
+    doc <- prm$doc %||% ""
+    lab <- if (nzchar(doc)) paste0(t(doc), " (", prm$name, ")") else prm$name
+    if (isTRUE(prm$required)) shiny::span(lab, shiny::span(class = "text-danger", " *")) else lab
+  }
+  # the input of an argument: by the type its default and doc suggest
+  tpl_widget <- function(input_id, prm, value, dataset = NULL) {
+    data <- tpl_data()
+    type <- .tpl_type(prm, tpl_all_cols())
+    cols <- .tpl_columns(data, dataset)
+    shown <- if (is.null(value)) prm$default else value
+    lab <- tpl_label(prm)
+    rm_btn <- list(plugins = list("remove_button"))
+    switch(type,
+      population = shiny::selectInput(input_id, lab, pop_choices(),
+                                      selected = as.character(shown %||% ""), width = "100%"),
+      data = shiny::selectInput(input_id, lab, union(as.character(shown %||% character()), names(data)),
+                                selected = as.character(shown %||% "")[1L], width = "100%"),
+      param = {
+        ds <- toupper(dataset %||% "ADTTE")
+        vals <- unique(as.character(data[[ds]]$PARAMCD %||% character()))
+        shiny::selectizeInput(input_id, lab, c("", union(as.character(shown %||% character()), vals)),
+                              selected = as.character(shown %||% ""), width = "100%",
+                              options = list(create = TRUE))
+      },
+      flag = bslib::input_switch(input_id, lab, value = isTRUE(shown)),
+      number = shiny::numericInput(input_id, lab, value = shown, width = "100%", updateOn = "blur"),
+      vars = shiny::selectizeInput(input_id, lab, union(as.character(shown), cols),
+                                   selected = as.character(shown), multiple = TRUE,
+                                   width = "100%", options = rm_btn),
+      var = shiny::selectizeInput(input_id, lab, c("", union(as.character(shown %||% character()), cols)),
+                                  selected = as.character(shown %||% ""), width = "100%"),
+      chips = shiny::selectizeInput(
+        input_id, lab,
+        union(as.character(shown), if (identical(prm$name, "sort")) c("n", "-n", "label", "-label", ".depth", ".overall")),
+        selected = as.character(shown), multiple = TRUE, width = "100%",
+        options = c(rm_btn, list(create = TRUE))),
+      text = shiny::textInput(input_id, lab, value = if (is.null(shown)) "" else .tpl_show(shown),
+                              width = "100%", updateOn = "blur",
+                              placeholder = if (is.null(prm$default)) t("(default)")),
+      shiny::div(
+        class = "mb-3",
+        shiny::tags$label(class = "form-label", lab),
+        shiny::div(class = "font-monospace small border rounded p-1", style = "word-break: break-all",
+                   .tpl_show(shown)),
+        shiny::div(class = "small text-muted", t("Edit in R (the report's YAML file)"))))
+  }
+  output$modal_tpl_ui <- shiny::renderUI({
+    kind <- input$modal_type %||% "table"
+    tp <- .tpl_list(kind)
+    if (!nrow(tp)) {
+      return(shiny::div(class = "alert alert-secondary py-1 small",
+                        t("No template of this kind: choose Code.")))
+    }
+    shiny::tagList(
+      shiny::radioButtons(
+        "modal_tpl", t("Template"),
+        choiceNames = lapply(tp$name, function(n) shiny::span(
+          shiny::code(n), " ", shiny::span(class = "small text-muted",
+                                            if (!is.na(.tpl_desc[n])) t(.tpl_desc[[n]]) else ""))),
+        choiceValues = tp$name, selected = tp$name[1L], width = "100%"),
+      shiny::uiOutput("modal_tpl_args"))
+  })
+  output$modal_tpl_args <- shiny::renderUI({
+    nm <- input$modal_tpl
+    shiny::req(nm)
+    prm <- .tpl_params(nm)
+    req_p <- Filter(function(x) isTRUE(x$required), prm)
+    if (!length(req_p)) {
+      return(shiny::p(class = "small text-muted", t("No argument is required: every one has its default.")))
+    }
+    shiny::div(
+      class = "border rounded p-2 mb-2",
+      shiny::h6(t("Required arguments")),
+      lapply(req_p, function(x) tpl_widget(paste0("mtpl_", x$name), x, NULL,
+                                           dataset = prm$data$default)))
+  })
+  # Create: not while a required argument is empty
+  output$modal_ok_js <- shiny::renderUI({
+    how <- input$modal_how
+    if (is.null(how)) return(NULL)
+    ok <- TRUE
+    if (identical(how, "template")) {
+      nm <- input$modal_tpl
+      ok <- !is.null(nm) && nzchar(nm)
+      if (ok) {
+        for (x in .tpl_params(nm)) {
+          if (!isTRUE(x$required)) next
+          if (is.null(.tpl_value(input[[paste0("mtpl_", x$name)]], .tpl_type(x)))) ok <- FALSE
+        }
+      }
+    }
+    shiny::tags$script(shiny::HTML(sprintf(
+      "setTimeout(function() { $('#add_ok').prop('disabled', %s); }, 0);",
+      if (ok) "false" else "true")))
+  })
+  add_template_report <- function(id, desc) {
+    nm <- input$modal_tpl
+    if (is.null(nm) || !nzchar(nm)) return(notify(t("Choose a template"), "warning"))
+    args <- list()
+    for (x in .tpl_params(nm)) {
+      if (!isTRUE(x$required)) next
+      v <- .tpl_value(input[[paste0("mtpl_", x$name)]], .tpl_type(x))
+      if (is.null(v)) {
+        return(notify(sprintf(t("Fill in the required argument %s."), x$name), "warning"))
+      }
+      args[[x$name]] <- v
+    }
+    if (is.null(rv$p$spec)) {
+      return(notify(t("A template report needs the study's YAML spec (save the study first)."), "error"))
+    }
+    kind <- input$modal_type
+    sec <- trimws(input$modal_section %||% "")
+    p2 <- guarded(add_output(rv$p, id, description = desc, type = kind,
+                             section = if (nzchar(sec)) sec else NA_character_))
+    if (is.null(p2)) return()
+    o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
+                             population = as.character(args$population %||% NA_character_),
+                             template = list(name = nm, args = args))
+    p2 <- guarded(.spec_set_output(p2, id, o))
+    after_id_change(p2, id)
+    if (!is.null(p2)) go(switch(kind, table = "tables", listing = "lf", figure = "designer", "outputs"))
+  }
+  # step 2: the template's card -- the required arguments and those given
+  # above, the others (their defaults, greyed) folded below
+  tpl_ver <- shiny::reactiveVal(0L)
+  tpl_obs <- new.env()
+  tpl_iid <- function(name, a) paste0("tpl_", name, "__", gsub("[^A-Za-z0-9_]", "_", a))
+  tpl_write <- function(id, args) {
+    o <- .tpl_output(rv$p, id, args)
+    p2 <- guarded(.spec_set_output(rv$p, id, o))
+    if (is.null(p2)) return(invisible(FALSE))
+    rv$p <- p2
+    rv$bver <- rv$bver + 1L
+    tpl_ver(tpl_ver() + 1L)
+    bump()
+    invisible(TRUE)
+  }
+  tpl_edit <- function(name, a, v) {
+    id <- current()
+    tp <- .tpl_of(rv$p, id %||% "")
+    if (is.null(tp) || !identical(tp$name, name)) return()
+    prm <- .tpl_params(name)[[a]]
+    type <- .tpl_type(prm, tpl_all_cols())
+    if (identical(type, "list")) return()
+    args <- .tpl_set_arg(tp$args, prm, .tpl_value(v, type))
+    if (identical(args, tp$args)) return()
+    tpl_write(id, args)
+  }
+  tpl_observe <- function(name, prm) {
+    for (a in names(prm)) {
+      key <- paste(name, a)
+      if (!is.null(tpl_obs[[key]])) next
+      tpl_obs[[key]] <- TRUE
+      local({
+        a <- a
+        iid <- tpl_iid(name, a)
+        shiny::observeEvent(input[[iid]], tpl_edit(name, a, input[[iid]]),
+                            ignoreInit = TRUE, ignoreNULL = FALSE)
+      })
+    }
+  }
+  shiny::observeEvent(input$tpl_revert, {
+    id <- current()
+    tp <- .tpl_of(rv$p, id %||% "")
+    a <- input$tpl_revert
+    if (is.null(tp) || is.null(tp$args[[a]])) return()
+    args <- tp$args
+    args[[a]] <- NULL
+    tpl_write(id, args)
+  })
+  shiny::observeEvent(input$tpl_preview, do_preview())
+  tpl_card_ui <- function() {
+    id <- current()
+    shiny::req(id)
+    tpl_ver()
+    rv$ver
+    p <- shiny::isolate(rv$p)
+    tp <- .tpl_of(p, id)
+    if (is.null(tp)) return(NULL)
+    prm <- .tpl_params(tp$name)
+    tpl_observe(tp$name, prm)
+    args <- tp$args
+    dataset <- args$data %||% prm$data$default
+    up <- names(prm)[vapply(prm, function(x) isTRUE(x$required) || x$name %in% names(args), NA)]
+    low <- setdiff(names(prm), up)
+    miss <- .tpl_missing(tp$name, args)
+    kind <- report_info(p, id)$type
+    row <- function(a, upper) {
+      x <- prm[[a]]
+      shiny::div(
+        class = paste("d-flex gap-2 align-items-start", if (!upper) "rp-tpl-default"),
+        shiny::div(style = "flex: 1 1 auto; min-width: 0",
+                   tpl_widget(tpl_iid(tp$name, a), x, args[[a]], dataset)),
+        if (upper && !isTRUE(x$required)) shiny::tags$button(
+          type = "button", class = "btn btn-sm btn-outline-secondary mt-4",
+          title = t("Back to the default (the line is taken out of args)"),
+          onclick = sprintf("Shiny.setInputValue('tpl_revert', '%s', {priority: 'event'})", a),
+          t("Revert")))
+    }
+    open <- isTRUE(shiny::isolate(input$tpl_open))
+    preview_btn <- if (identical(kind, "figure")) {
+      shiny::tags$button(type = "button", class = "btn btn-sm btn-primary",
+                         onclick = "var b = document.getElementById('pd_redraw'); if (b) b.click();",
+                         t("Update preview"))
+    } else .btn("tpl_preview", t("Update preview"), class = "btn-sm btn-primary")
+    bslib::card(
+      class = "mb-2 border-primary",
+      bslib::card_header(shiny::div(
+        shiny::strong(t("Template")), " ",
+        shiny::code(sprintf("tfl_template(%s)", tp$name)), " ",
+        shiny::span(class = "badge text-bg-light border", paste0("template:", tp$name)),
+        if (!is.na(.tpl_desc[tp$name])) shiny::div(class = "small text-muted", t(.tpl_desc[[tp$name]])))),
+      bslib::card_body(
+        shiny::tags$style(shiny::HTML(paste(
+          ".rp-tpl-default .form-control, .rp-tpl-default .selectize-input,",
+          ".rp-tpl-default .form-select, .rp-tpl-default .selectize-input .item",
+          "{ color: #8a8f98 !important; background-color: #f4f5f7; }",
+          ".rp-tpl-default .form-label { color: #6c757d; }"))),
+        if (length(miss)) shiny::div(
+          class = "alert alert-danger py-1 small",
+          sprintf(t("Required arguments are empty: %s. The preview waits for them."),
+                  paste(miss, collapse = ", "))),
+        lapply(up, row, upper = TRUE),
+        shiny::tags$details(
+          class = "mt-1", open = if (open) NA,
+          ontoggle = "Shiny.setInputValue('tpl_open', this.open)",
+          shiny::tags$summary(class = "small", sprintf(t("Arguments with defaults (%d)"), length(low))),
+          shiny::div(class = "mt-2", lapply(low, row, upper = FALSE))),
+        shiny::div(
+          class = "d-flex gap-2 align-items-center mt-2",
+          preview_btn,
+          shiny::span(class = "small text-muted",
+                      sprintf(t("Saved in spec/outputs/%s.yml as template: name and its args only."), id)))))
+  }
+  output$tpl_card <- shiny::renderUI({
+    if (!identical(report_kind(), "table")) return(NULL)
+    tpl_card_ui()
+  })
+  output$tpl_card_fig <- shiny::renderUI({
+    if (!identical(report_kind(), "figure")) return(NULL)
+    tpl_card_ui()
   })
   # -- the first listing: the data and its columns --------------------------
   first_data_l <- shiny::reactive({
