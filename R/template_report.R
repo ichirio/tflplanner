@@ -326,6 +326,9 @@
 .tpl_css <- "
 body:not(.rp-tpl) .rp-tpl-only, body.rp-tpl .rp-code-only { display: none !important; }
 .rp-report-loading { display: none; }
+body.rp-adding::before { content: attr(data-loading); position: fixed; inset: 0; z-index: 1040;
+  background: var(--bs-body-bg, #fff); color: #6c757d; padding: 6rem 2rem; font-size: .95rem; }
+
 body.rp-switching .rp-report-loading { display: block; }
 body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_head.rp-stale {
   visibility: hidden; }
@@ -340,6 +343,8 @@ body.rp-switching #step ~ .tab-content, body.rp-switching #report_head, #report_
 .rp-card.rp-card-flash { outline: 3px solid rgba(13,110,253,0); outline-offset: 2px;
   animation: rp-card-flash 1.8s ease-out 1; }
 .rp-add-menu .dropdown-menu { max-height: 60vh; overflow-y: auto; }
+/* room below the last card: a card added at the end can come to the top */
+.rp-builder-cards { padding-bottom: 45vh; }
 /* the right pane (SPEC | Code | Result, ARD): it does not scroll itself --
    fitted to the window, sticky -- and in it only the tab shown scrolls (a
    code block, a table inside it grow to their height: one scroll bar) */
@@ -391,6 +396,7 @@ $(document).on('shiny:connected', function() {
     $('#report_head').toggleClass('rp-stale', !!want && h.length > 0 && h.attr('data-rp-head') !== want);
   }
   $(document).on('shiny:value', function(e) { if (e.name === 'report_head') setTimeout(headCheck, 0); });
+  document.body.setAttribute('data-loading', $('.rp-report-loading').first().text() || 'Loading ...');
   Shiny.addCustomMessageHandler('rp-tpl-mode', function(x) {
     if (x.id) document.body.setAttribute('data-rp-id', x.id);
     headCheck();
@@ -416,7 +422,7 @@ $(document).on('shiny:connected', function() {
       $('body').addClass('rp-switching');
       clearTimeout(timer);
       // (never left on: at most 30 s)
-      timer = setTimeout(function() { $('body').removeClass('rp-switching'); }, 30000);
+      timer = setTimeout(function() { $('body').removeClass('rp-switching rp-adding'); }, 30000);
     }
   });
   Shiny.addCustomMessageHandler('rp-tpl-card-show', function(x) {
@@ -426,43 +432,54 @@ $(document).on('shiny:connected', function() {
       if (c.length) c[0].scrollIntoView({block: 'start', behavior: 'smooth'});
     }, 150);
   });
+  // the new report's dialog: its body scrolls, its OK always in view
+  $(document).on('show.bs.modal', function(e) {
+    if ($(e.target).find('#modal_id').length) $(e.target).find('.modal-dialog').addClass('modal-dialog-scrollable');
+  });
   // OK of a new template report: its steps and Loading ... at the click
   $(document).on('click', '#add_ok', function() {
     if ($('input[name=\"modal_how\"]:checked').val() !== 'template') return;
     if ($(this).prop('disabled')) return;
-    $('body').addClass('rp-tpl rp-switching');
-    $('#nav a[data-value=\"make\"]').tab('show');
+    $('body').addClass('rp-tpl rp-switching rp-adding');
     clearTimeout(timer);
-    timer = setTimeout(function() { $('body').removeClass('rp-switching'); }, 30000);
+    timer = setTimeout(function() { $('body').removeClass('rp-switching rp-adding'); }, 30000);
   });
   Shiny.addCustomMessageHandler('rp-report-ready', function(x) {
     clearTimeout(timer);
-    setTimeout(function() { $('body').removeClass('rp-switching'); }, 50);
+    setTimeout(function() { $('body').removeClass('rp-switching rp-adding'); }, 50);
   });
   // a card just added: scrolled to and lit for a moment -- once the page
   // is idle (the re-drawn form and its parts in place); the menu's toggle
   // does not take the focus (and the scroll) back
-  var wantCard = false;
+  var wantCard = 0;
   $(document).on('click', '.rp-add-menu .dropdown-item', function() {
-    wantCard = true;
+    wantCard = Date.now();
     var tg = $(this).closest('.rp-add-menu').find('.dropdown-toggle');
     setTimeout(function() { tg.blur(); }, 0);
   });
   function goCard() {
     setTimeout(function() {
-      var c = $('.rp-card.rp-card-new').not('.rp-card-flashed').first();
+      var c = $('.rp-card.rp-card-new').first();
       if (!c.length) return;
-      wantCard = false;
-      c.addClass('rp-card-flashed rp-card-flash rp-card-open');
+      var first = !c.hasClass('rp-card-flashed');
+      var r = c[0].getBoundingClientRect();
+      var bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rp-top')) || 0;
+      if (!first && r.top >= bar && r.top < window.innerHeight - 60) return;
+      if (first) c.addClass('rp-card-flashed rp-card-flash rp-card-open');
       // (its head in view, below the page's sticky bar -- whichever box
       // scrolls: scroll-margin)
       var bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rp-top')) || 0;
       c[0].style.scrollMarginTop = (bar + 12) + 'px';
-      c[0].scrollIntoView({block: 'start'});
-      setTimeout(function() { c.removeClass('rp-card-flash'); }, 1900);
+      // (at once: the page's smooth scrolling would be cut short by the
+      // drawing still going on)
+      window.scrollTo({top: Math.max(0, window.scrollY + c[0].getBoundingClientRect().top - bar - 12),
+                       behavior: 'instant'});
+      if (first) setTimeout(function() { c.removeClass('rp-card-flash'); }, 1900);
     }, 120);
   }
-  $(document).on('shiny:idle', function() { if (wantCard) goCard(); });
+  $(document).on('shiny:idle', function() {
+    if (wantCard && Date.now() - wantCard < 6000) goCard(); else wantCard = 0;
+  });
 });
 "
 

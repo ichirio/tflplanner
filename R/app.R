@@ -1310,6 +1310,9 @@ $(document).on('change', '[data-tfl-report] select', function() {
     }, true);
   });
   $(document).on('shiny:busy', function() {
+    // (a template report: only its right pane shows it is busy, #440)
+    var b = document.body.classList;
+    if (b.contains('rp-tpl') && !b.contains('rp-switching')) return;
     if (Date.now() - last < 1500) document.documentElement.classList.add('rp-user-busy');
   });
   $(document).on('shiny:idle', function() {
@@ -10768,6 +10771,8 @@ app_server <- function(input, output, session, start) {
     vars <- if (hier) st$variables$variable else get("vars") %||% st$variables$variable
     # the column variables in the order dragged (outermost first)
     ks <- get("key")
+    # (a template report has no table_plan() card: its columns as read)
+    if (is.null(ks) && isTRUE(bform$tpl)) ks <- st$key
     shiny::req(length(ks) > 0L, setequal(vars, st$variables$variable))
     arms <- stats::setNames(lapply(ks, function(k)
       input[[arms_id(k)]] %||% key_levels(k)), ks)
@@ -10909,6 +10914,12 @@ app_server <- function(input, output, session, start) {
       return()
     }
     p2 <- guarded(builder_write(rv$p, id, st, was = bform$last))
+    if (isTRUE(getOption("tflplanner.tpl_trace"))) {
+      message(sprintf("[form] %s pct %s -> %s, cat %s -> %s, written %s", id,
+                      format(bform$last$pct_decimals), format(st$pct_decimals),
+                      format(bform$last$cat_format), format(st$cat_format),
+                      !is.null(p2) && !identical(p2, rv$p)))
+    }
     if (!is.null(p2)) bform$last <- st
     if (!is.null(p2) && isTRUE(rows_new)) {
       rv$p <- p2
@@ -12074,14 +12085,19 @@ app_server <- function(input, output, session, start) {
   }, ignoreNULL = FALSE, priority = 99)
   add_template_report <- function(id, desc) {
     .tpl_trace("OK", start = TRUE)
+    # (not made: the page's "Loading ..." taken away again)
+    fail <- function(msg, type) {
+      session$sendCustomMessage("rp-report-ready", TRUE)
+      notify(msg, type)
+    }
     nm <- tpl_chosen()
-    if (is.null(nm)) return(notify(t("Choose a template"), "warning"))
+    if (is.null(nm)) return(fail(t("Choose a template"), "warning"))
     args <- tpl_modal_args(nm)
     if (!is.null(attr(args, "missing"))) {
-      return(notify(sprintf(t("Fill in the required argument %s."), attr(args, "missing")), "warning"))
+      return(fail(sprintf(t("Fill in the required argument %s."), attr(args, "missing")), "warning"))
     }
     if (is.null(rv$p$spec)) {
-      return(notify(t("A template report needs the study's YAML spec (save the study first)."), "error"))
+      return(fail(t("A template report needs the study's YAML spec (save the study first)."), "error"))
     }
     kind <- input$modal_type
     sec <- trimws(input$modal_section %||% "")

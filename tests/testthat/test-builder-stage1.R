@@ -92,7 +92,8 @@ test_that("an AE table: the same usual cards as any (plan_levels off); an empty 
   h <- html(.table_cards(list(lv)))
   expect_false(grepl("rp-card-off", h, fixed = TRUE))
   expect_false(grepl("rp-card-absent", h, fixed = TRUE))
-  expect_match(h, ">This table<", fixed = TRUE)
+  expect_match(h, "Not set (not in the code)", fixed = TRUE)
+  expect_false(grepl(">This table<", h, fixed = TRUE))
   # + Add a card: every verb in the pipe's order, those shown greyed
   menu <- .plan_add_menu(items)
   fns <- vapply(menu, function(m) m$fn, "")
@@ -143,7 +144,7 @@ test_that("added: a verb with usual values is written; one without waits, on, fo
   expect_true(at > match("table_plan", fns_of(items)))
   h <- html(.table_cards(list(cp), new = "plan_compare"))
   # (#440: drawn as the table's own card, nothing written yet)
-  expect_match(h, ">This table<", fixed = TRUE)
+  expect_match(h, "Not set (not in the code)", fixed = TRUE)
   expect_match(h, "rp-card-new", fixed = TRUE)
   expect_match(h, "rp-tool-r", fixed = TRUE)
   expect_match(.builder_cards_js, "rp-card-new", fixed = TRUE)

@@ -848,14 +848,22 @@ builder_items <- function(x, output_id, meta = NULL) {
 # A card's mark: where its item comes from (normalize_ard() with no
 # argument -- a table of no hierarchy -- none: nothing of anyone's on it)
 .card_from <- function(it) {
-  if (identical(it$fn, "normalize_ard") && !length(it$args)) NULL else it$from
+  if (identical(it$fn, "normalize_ard") && !length(it$args)) return(NULL)
+  af <- unlist(it$arg_from)
+  if (identical(it$from, "own") || (length(af) && any(af == "own")) || length(it$own_args)) {
+    return("own")
+  }
+  if (startsWith(it$from %||% "", "template:") && length(af) && any(af == "defaults")) {
+    return("defaults")
+  }
+  it$from
 }
 # ... its mark and Revert as a card's head has them (sent after a write:
 # the page puts them in the card's head, .builder_cards_js)
 .card_mark <- function(it, id, lang = "en") {
   shiny::tagList(
     from_badge(.card_from(it), lang,
-               own = if (isTRUE(it$present) && identical(it$from, "own")) "This table"),
+               own = if (isTRUE(it$present) && identical(.card_from(it), "own")) "This table"),
     if (isTRUE(it$revert)) .card_revert(id, lang))
 }
 
@@ -922,13 +930,13 @@ builder_items <- function(x, output_id, meta = NULL) {
       # (off: what turning it on does, said where its body would be)
       summary = if (isTRUE(it$present)) .item_summary(it, lang = lang) else
         if (blocked) t(it$blocked) else if (!on) t("On: its usual values are written."),
-      empty = if (!isTRUE(it$present) && !blocked && isTRUE(it$added)) "Not set (not in the code)",
+      empty = if (!isTRUE(it$present) && isTRUE(it$added)) "Not set (not in the code)",
       tools = tools,
       # the study's defaults the report leaves as they are, the seldom
       # changed and the off: closed
       open = on && (pending || (!rare && (req || own_form || identical(it$from, "own")))),
       path = it$path, lang = lang,
-      own_label = if ((isTRUE(it$present) || isTRUE(it$added)) && identical(it$from, "own")) "This table",
+      own_label = if (isTRUE(it$present) && identical(from, "own")) "This table",
       absent = absent, rare = rare, section = sec,
       tag = .plan_section_labels[[sec]],
       new = identical(it$path, new),
