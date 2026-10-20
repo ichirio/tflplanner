@@ -255,3 +255,23 @@ test_that("a design with R code in it (tfl_r, !r) is saved in the state and read
   expect_identical(tflspec::tfl_fig_design_code(back$F1, "F1", save = FALSE),
                    tflspec::tfl_fig_design_code(d, "F1", save = FALSE))
 })
+
+test_that("a join's card: its how named, a semi join's variables not asked (#444)", {
+  parts <- tflspec::tfl_fig_parts()
+  f <- parts[parts$piece == "join", , drop = FALSE]
+  expect_true("how" %in% f$field)
+  l <- .pd_join_fields(f, list(step = "join", dataset = "ADSL", vars = "AGE"))
+  expect_identical(l$label[l$field == "how"], "How to join (how)")
+  expect_true(l$required[l$field == "vars"])
+  s <- .pd_join_fields(f, list(step = "join", dataset = "ADSL", how = "semi"))
+  expect_false("vars" %in% s$field)
+  s2 <- .pd_join_fields(f, list(step = "join", dataset = "ADSL", how = "semi", vars = "AGE"))
+  expect_false(s2$required[s2$field == "vars"])
+  ch <- .pd_choice_words(f[f$field == "how", ])
+  expect_identical(unname(ch), c("left", "semi"))
+  expect_identical(names(ch), c("Left join (left)", "Keep its subjects only (semi)"))
+  # a template's ADSL join trimmed of what the data has; a semi join kept
+  d <- list(data = list(list(step = "read", dataset = "ADTTE"),
+                        list(step = "join", dataset = "ADSL", how = "semi", vars = "USUBJID")))
+  expect_identical(.trim_join(d, data.frame(USUBJID = "1"))$data, d$data)
+})

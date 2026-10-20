@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **Follows tflspec #397** (#444, 0.0.2.9256; tflspec >= 0.0.24.9185): the
+  figure designer's join card has the join's how -- "How to join (how)":
+  a left join (left, the default) or keep its subjects only (semi); a semi
+  join asks no Variables.  The study tab has "Treatment variable
+  (settings.treatment)": the variable a template's by / group takes when
+  the report does not say it, written to study.yml's `settings: treatment:`
+  only when set (blank: none, the template's TRT01A).
+
 - **ARD analyses: `optional`** (#442, 0.0.2.9255; tflspec >= 0.0.24.9186,
   #393): the analyses grid shows tflspec's new column `optional`
   (right after `variables`) as a yes / no dropdown: yes, the variables the
