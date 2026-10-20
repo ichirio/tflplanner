@@ -3239,7 +3239,7 @@ app_server <- function(input, output, session, start) {
   # (not in the session's first flush: the page is drawn first, the
   # review's counts come a moment later -- #440, the first render)
   review_go <- shiny::reactiveVal(FALSE)
-  session$onFlushed(function() review_go(TRUE), once = TRUE)
+  session$onFlushed(function() if (!session$isClosed()) review_go(TRUE), once = TRUE)
   # (nor while a report is being opened: the last review is kept till it
   # is drawn -- tpl_mode_send())
   review_hold <- shiny::reactiveVal(FALSE)
@@ -12063,6 +12063,7 @@ app_server <- function(input, output, session, start) {
   })
   tpl_ready_send <- function() {
     session$onFlushed(function() {
+      if (session$isClosed()) return()
       session$sendCustomMessage("rp-report-ready", TRUE)
       review_last$held <- NULL
       review_hold(FALSE)
@@ -12224,7 +12225,7 @@ app_server <- function(input, output, session, start) {
         tpl_ready_send()
         if (identical(tpl_autoprev$want, id)) {
           tpl_autoprev$want <- NULL
-          session$onFlushed(function() tpl_autoprev_go(id), once = TRUE)
+          session$onFlushed(function() if (!session$isClosed()) tpl_autoprev_go(id), once = TRUE)
         }
       }
     }, add = TRUE)

@@ -45,10 +45,11 @@
   p
 }
 
-# A report's template, as its file says it (NULL: none)
+# A report's template, as its file says it (NULL: none; a figure
+# designer's `template: km_simple`, a name, is no template SPEC)
 .tpl_of <- function(p, output_id) {
   o <- p$spec$outputs[[output_id]]
-  if (is.null(o) || is.null(o$template$name)) return(NULL)
+  if (is.null(o) || !is.list(o$template) || is.null(o$template$name)) return(NULL)
   list(name = as.character(o$template$name), args = o$template$args %||% list())
 }
 
