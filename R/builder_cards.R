@@ -76,7 +76,7 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
                          open = TRUE, error = NULL, path = id, lang = "en",
                          switchable = TRUE, revert = !identical(from, "own"),
                          own_label = NULL, absent = FALSE, also = NULL, rare = FALSE,
-                         section = NULL, tag = NULL, new = FALSE) {
+                         section = NULL, tag = NULL, new = FALSE, empty = NULL) {
   t <- function(x) tr(x, lang)
   cls <- c("rp-card", if (required) "rp-card-required", if (!on) "rp-card-off",
            if (isTRUE(absent)) "rp-card-absent", if (isTRUE(rare)) "rp-card-rare",
@@ -110,6 +110,8 @@ builder_card <- function(id, fn, label = NULL, from = "own", required = FALSE, o
       shiny::tags$span(class = "rp-badge rp-badge-absent",
                        title = t("A value set here adds it to the code."), t("Not in the code yet"))
     } else from_badge(from, lang, own = own_label),
+    # a card shown with nothing in it yet (`empty`, its words)
+    if (!is.null(empty)) shiny::tags$span(class = "rp-badge rp-badge-absent", t(empty)),
     revert,
     if (!is.null(summary)) shiny::tags$span(class = "rp-card-summary", summary),
     if (!is.null(error)) shiny::tags$span(class = "rp-card-err", "\u26a0 ", error),

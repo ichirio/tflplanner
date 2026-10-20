@@ -3802,3 +3802,5 @@ a variant of %s,%s の変種
 "Smallest first (in any column)",小さい順（いずれかの列で最小）
 Not set (not in the code),未設定（コードには出ません）
 Study standard (%s),試験標準（%s）
+Applies to every report,全帳票に効きます
+The card %s is shown once the ARD is made (Update preview).,カード %s は ARD を作ると出ます（「プレビューを更新」）。

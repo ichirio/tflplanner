@@ -921,8 +921,8 @@ builder_items <- function(x, output_id, meta = NULL) {
       body = if (!on) NULL else if (is.null(note)) body else shiny::tagList(note, body),
       # (off: what turning it on does, said where its body would be)
       summary = if (isTRUE(it$present)) .item_summary(it, lang = lang) else
-        if (blocked) t(it$blocked) else if (!on) t("On: its usual values are written.") else
-          if (isTRUE(it$added)) t("Not set (not in the code)"),
+        if (blocked) t(it$blocked) else if (!on) t("On: its usual values are written."),
+      empty = if (!isTRUE(it$present) && !blocked && isTRUE(it$added)) "Not set (not in the code)",
       tools = tools,
       # the study's defaults the report leaves as they are, the seldom
       # changed and the off: closed
@@ -1388,7 +1388,9 @@ builder_items <- function(x, output_id, meta = NULL) {
     # in its title)
     shiny::span(class = "rp-badge rp-badge-defaults rp-every-report",
                 title = tr("Applies to every report (the study's defaults.yml)", lang),
-                tr("every report", lang)))
+                tr("Applies to every report", lang)),
+    shiny::div(class = "small text-muted rp-every-report-note",
+               tr("Applies to every report (the study's defaults.yml)", lang)))
 }
 
 # Each variable's empty values hidden (plan_levels(.drop_empty = ):

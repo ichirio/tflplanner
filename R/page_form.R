@@ -115,7 +115,9 @@ $(document).on('shiny:value', function(e) {
 .pg-card h6 .pg-fn, .pg-field .pg-fn { font-family: Consolas, 'Courier New', monospace;
   font-weight: normal; color: var(--bs-secondary-color, #6b7280); font-size: .9em; }
 .pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: .4rem .75rem; }
-.pg-grid.pg-grid-4 { grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr)); margin-bottom: .4rem; }
+.pg-card { container-type: inline-size; }
+.pg-grid.pg-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .4rem .5rem; margin-bottom: .4rem; }
+@container (max-width: 300px) { .pg-grid.pg-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .pg-field label { font-size: .75rem; margin-bottom: .1rem; display: block; }
 .pg-from { font-size: .7rem; color: var(--bs-secondary-color, #6b7280); }
 .pg-own { font-size: .7rem; color: var(--bs-primary, #0d6efd); }

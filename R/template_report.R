@@ -439,20 +439,30 @@ $(document).on('shiny:connected', function() {
     clearTimeout(timer);
     setTimeout(function() { $('body').removeClass('rp-switching'); }, 50);
   });
-  // a card just added: scrolled to and lit for a moment
-  $(document).on('shiny:value', function() {
+  // a card just added: scrolled to and lit for a moment -- once the page
+  // is idle (the re-drawn form and its parts in place); the menu's toggle
+  // does not take the focus (and the scroll) back
+  var wantCard = false;
+  $(document).on('click', '.rp-add-menu .dropdown-item', function() {
+    wantCard = true;
+    var tg = $(this).closest('.rp-add-menu').find('.dropdown-toggle');
+    setTimeout(function() { tg.blur(); }, 0);
+  });
+  function goCard() {
     setTimeout(function() {
       var c = $('.rp-card.rp-card-new').not('.rp-card-flashed').first();
       if (!c.length) return;
+      wantCard = false;
       c.addClass('rp-card-flashed rp-card-flash rp-card-open');
       // (its head in view, below the page's sticky bar -- whichever box
       // scrolls: scroll-margin)
       var bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rp-top')) || 0;
       c[0].style.scrollMarginTop = (bar + 12) + 'px';
-      c[0].scrollIntoView({block: 'start', behavior: 'smooth'});
-      setTimeout(function() { c.removeClass('rp-card-flash'); }, 1700);
-    }, 80);
-  });
+      c[0].scrollIntoView({block: 'start'});
+      setTimeout(function() { c.removeClass('rp-card-flash'); }, 1900);
+    }, 120);
+  }
+  $(document).on('shiny:idle', function() { if (wantCard) goCard(); });
 });
 "
 

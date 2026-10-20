@@ -3169,11 +3169,23 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$target, {
     tgt_sent$v <- NULL
   }, priority = 200)
+  # (the pick, while it is the page's news: none once the page shows it or
+  # after 3 s -- the page sends nothing when it already showed that report)
+  tgt_pick <- function() {
+    v <- tgt_sent$v
+    if (is.null(v)) return(NULL)
+    if (identical(shiny::isolate(input$target), v) ||
+        difftime(Sys.time(), tgt_sent$t %||% Sys.time(), units = "secs") > 3) {
+      tgt_sent$v <- NULL
+      return(NULL)
+    }
+    v
+  }
   shiny::observe({
     rv$ver
     p <- shiny::isolate(rv$p)
     ids <- if (is.null(p)) character() else output_ids(p)
-    cur <- tgt_sent$v %||% shiny::isolate(input$target)
+    cur <- tgt_pick() %||% shiny::isolate(input$target)
     ch <- if (is.null(p)) c("-" = .all_rows) else
       stats::setNames(list(
         stats::setNames(ids, ids),
@@ -3349,7 +3361,8 @@ app_server <- function(input, output, session, start) {
   current_now <- shiny::reactive({
     # (a report the server has just chosen -- added, copied -- is the one
     # before the page says so: tgt_sent, #440)
-    tg <- if (!is.null(tgt_sent$v)) tgt_sent$v else target()
+    tg0 <- target()
+    tg <- tgt_pick() %||% tg0
     if (!is.null(rv$p) && !is.na(tg) && nzchar(tg) &&
         tg %in% rv$p$outputs$output_id) tg else NULL
   })
@@ -8975,7 +8988,16 @@ app_server <- function(input, output, session, start) {
     id <- current()
     if (!is.null(id) && !is.null(.tpl_of(rv$p, id))) {
       return(if (identical(builder_case(), "meta")) {
-        shiny::p(class = "small text-muted", t("No ARD yet: Update preview makes it."))
+        items <- tryCatch(builder_items(rv$p, id), error = function(e) list())
+        made <- vapply(items, function(it) it$fn, "")
+        cards <- tryCatch(.builder_items_cards(items, template = TRUE,
+                                               added = bform$added_by[[id]] %||% character(),
+                                               code_fns = .tpl_code_fns(rv$p, id)),
+                          error = function(e) list())
+        shiny::tagList(
+          shiny::p(class = "small text-muted", t("No ARD yet: Update preview makes it.")),
+          .plan_add_menu_ui("b_add_pick", .plan_add_menu(cards, made = made, template = TRUE),
+                            lang = lang))
       })
     }
     msg <- switch(builder_case(),
@@ -9733,6 +9755,15 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(input$b_add_pick, {
     fn <- input$b_add_pick
     id <- bform$id
+    # (a template report with no ARD yet: no form -- the card waits, shown
+    # once the preview has made the ARD)
+    cur <- current()
+    if (!is.null(cur) && !identical(id, cur) && !is.null(.tpl_of(rv$p, cur))) {
+      bform$added_by[[cur]] <- unique(c(bform$added_by[[cur]] %||% character(), fn))
+      bform$off_by[[cur]] <- setdiff(bform$off_by[[cur]] %||% character(), fn)
+      notify(sprintf(t("The card %s is shown once the ARD is made (Update preview)."), fn))
+      return()
+    }
     shiny::req(length(fn) == 1L, nzchar(fn), !is.null(id), identical(id, current()))
     tpl <- isTRUE(bform$tpl)
     if (!fn %in% .plan_addable(bform$items, template = tpl)) {
@@ -11230,7 +11261,7 @@ app_server <- function(input, output, session, start) {
   output$outputs <- DT::renderDT({
     v <- outputs_view()
     # (a report just chosen by the server, not come back yet: that one)
-    sel <- match(tgt_sent$v %||% shiny::isolate(input$target), v$output_id)
+    sel <- match(tgt_pick() %||% shiny::isolate(input$target), v$output_id)
     v$output_id <- htmltools::htmlEscape(v$output_id)
     v$section <- htmltools::htmlEscape(v$section)
     v$batches <- htmltools::htmlEscape(v$batches)
@@ -11280,7 +11311,8 @@ app_server <- function(input, output, session, start) {
     id <- v$output_id[input$outputs_rows_selected]
     # (the list drawn again while the server's choice is on its way: its
     # old selection is not a choice -- #440)
-    if (!is.null(tgt_sent$v) && !identical(id, tgt_sent$v)) return()
+    pk <- tgt_pick()
+    if (!is.null(pk) && !identical(id, pk)) return()
     if (length(id) && !identical(id, input$target)) {
       shiny::updateSelectInput(session, "target", selected = id)
     }
@@ -11763,6 +11795,7 @@ app_server <- function(input, output, session, start) {
     rv$p <- p
     rv$want <- id
     tgt_sent$v <- id
+    tgt_sent$t <- Sys.time()
     shiny::removeModal()
     bump()
   }
@@ -12006,6 +12039,17 @@ app_server <- function(input, output, session, start) {
   # "Loading ..." taken away once the flush now running is done; a
   # template report's when its card is drawn (tpl_ready$id)
   tpl_ready <- new.env()
+  # a new template report: its preview (ARD and table) made once its card
+  # is on the page -- never before it
+  tpl_autoprev <- new.env()
+  tpl_autoprev_go <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(tpl_autoprev_go(), {
+    id <- tpl_autoprev_go()
+    tp <- .tpl_of(rv$p, id %||% "")
+    if (identical(id, current()) && !is.null(tp) && !length(.tpl_missing(tp$name, tp$args))) {
+      do_preview(id)
+    }
+  })
   tpl_ready_send <- function() {
     session$onFlushed(function() {
       session$sendCustomMessage("rp-report-ready", TRUE)
@@ -12044,6 +12088,7 @@ app_server <- function(input, output, session, start) {
     # (the page shows the new report's steps from its first draw)
     tpl_mode_send(TRUE, kind, ready = FALSE, id = id)
     tpl_pending$id <- id
+    if (identical(kind, "table")) tpl_autoprev$want <- id
     o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
                              population = as.character(args$population %||% NA_character_),
                              template = list(name = nm, args = args))
@@ -12161,6 +12206,10 @@ app_server <- function(input, output, session, start) {
       if (identical(tpl_ready$id, id)) {
         tpl_ready$id <- NULL
         tpl_ready_send()
+        if (identical(tpl_autoprev$want, id)) {
+          tpl_autoprev$want <- NULL
+          session$onFlushed(function() tpl_autoprev_go(id), once = TRUE)
+        }
       }
     }, add = TRUE)
     tpl_ver()
