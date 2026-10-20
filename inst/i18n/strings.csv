@@ -3721,3 +3721,4 @@ Added to the %d requests there (their answers kept).,既にある依頼 %d 件�
 "Smallest first (the columns' total)",小さい順（列の合計）
 "Largest first (in any column)",大きい順（いずれかの列で最大）
 "Smallest first (in any column)",小さい順（いずれかの列で最小）
+"TRUE: the variables are the ones the data has of them (written any_of(); tfl_build_ard() says which it left out), as a template's default list. Blank: every variable must be in the data.",TRUE: 変数のうち、データにあるものだけを使います（any_of() で書き、tfl_build_ard() が外した変数を知らせます）。テンプレートの既定の一覧に使います。空欄: どの変数もデータに無ければなりません。
