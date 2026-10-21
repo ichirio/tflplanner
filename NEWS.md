@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **tflspec's three-stage analysis data code** (#452, 0.0.2.9260; tflspec
+  >= 0.0.24.9192): an analysis data is now written as a pipe -- its subjects
+  by `semi_join(select(adsl_x, USUBJID), by = "USUBJID")`, its condition in a
+  `filter()` after it; the test of the code a data written as R starts from
+  follows.  Tests only.
+
 - **Table builder: `levels(<row key>)` in the row order** (#447,
   0.0.2.9258; rtfreporter >= 0.8.2.9083, rtfreporter#696): the
   plan_sort() card has a checkbox per row layer, "Values in plan_levels'
