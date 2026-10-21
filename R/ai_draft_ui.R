@@ -167,7 +167,7 @@ ai_ui <- function(id, lang = "en") {
           class = "d-flex flex-wrap gap-2 align-items-center mb-2",
           shiny::h6(class = "mb-0 me-auto", with_tip(
             paste0(t("Requests"), " (ai/requests)"),
-            t("Paste each request into a NEW chat as one message; the chat's whole answer goes to step 3."))),
+            t("Agent: give the agent the first instruction above; it reads these requests itself, in their order. Chat: paste each request into a NEW chat as one message; the chat's whole answer goes to step 3."))),
           .btn(ns("open_requests"), t("Open the folder")),
           .btn(ns("reread"), t("Read again"))),
         shiny::uiOutput(ns("agent_card")),

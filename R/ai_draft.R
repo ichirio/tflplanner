@@ -391,13 +391,21 @@
   if (!is.null(msg)) stop(msg, call. = FALSE)
   id <- trimws(id)
   dir <- .study_path(root, id)
+  # what the folder held before (its data/adam put there first): kept when
+  # making the study fails; only what this call wrote is taken away
+  before <- if (dir.exists(dir)) list.files(dir, all.files = TRUE, no.. = TRUE) else NULL
   p <- tryCatch({
     toc <- .ai_keep_toc(dir, toc, toc_name)
     .ai_prepare(dir, toc, adam, args, dry_run = FALSE, study_id = id, title = title,
                 shells = .ai_keep_shells(dir, shells))
   }, error = function(e) {
-    # nothing half made is left behind
-    unlink(dir, recursive = TRUE)
+    # nothing half made is left behind -- but what was there stays
+    if (is.null(before)) {
+      unlink(dir, recursive = TRUE)
+    } else {
+      made <- setdiff(list.files(dir, all.files = TRUE, no.. = TRUE), before)
+      unlink(file.path(dir, made), recursive = TRUE)
+    }
     stop(e)
   })
   list(study = register_study(dir, home = home), prepared = p)

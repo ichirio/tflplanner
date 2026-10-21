@@ -1,5 +1,12 @@
 # tflplanner (development version)
 
+- **A new study that fails keeps its folder's data** (#460, 0.0.2.9267): the
+  AI tab makes a new study in a folder that holds only its `data/adam` so
+  far (#455); when making it fails, only what the call wrote is taken away
+  -- the ADaM put there first stays.  A folder that was not there is still
+  taken away whole.  Step 2's ⓘ says what to do with the requests in the
+  agent mode too (give the agent the first instruction), not the chat only.
+
 - **AI tab, agent mode: fix requests and reports not built** (#458,
   0.0.2.9266; tflspec >= 0.0.24.9197 for the reasons, tflspec#420): the
   list of step 3 has, on each request's first row, "Copy the fix request"
