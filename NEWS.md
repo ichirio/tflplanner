@@ -1,12 +1,20 @@
 # tflplanner (development version)
 
 - **The AI tab writes an ADaM folder inside the study relative** (#455,
-  0.0.2.9261): an ADaM folder in the study folder (e.g. `data/adam`) goes
+  0.0.2.9264): an ADaM folder in the study folder (e.g. `data/adam`) goes
   to `tfl_ai_prepare()` as `data/adam`, so `spec/data.yml` holds no path of
   this computer and the study folder copied to another one still finds its
   data; a folder outside stays absolute.  A new study's ID may name a folder
   that holds only its data so far (no study.yml): the ADaM put in its
   `data/adam` first, the study is made there.
+
+- **Follows tflspec #407** (#450, 0.0.2.9263; tflspec >= 0.0.24.9191): the
+  AI tab's step 1 has "Use the templates (templates)", on by default:
+  the requests list the templates the answer may use (`tfl_ai_prepare(templates =)`).
+  Step 3 shows, after a check, the answers compared ("Compare the answers
+  (compare.csv)": `tfl_ai_compare()`, one row a report -- the setting, what
+  the answer used, its values, its check and its repairs).  In Japanese the
+  tab is now "AI 連携".
 
 - **tflspec's three-stage analysis data code** (#452, 0.0.2.9260; tflspec
   >= 0.0.24.9192): an analysis data is now written as a pipe -- its subjects
