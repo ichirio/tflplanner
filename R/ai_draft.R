@@ -275,11 +275,24 @@
   if (id %in% list_studies(home)$study_id) return(t("A study with this ID is already registered."))
   path <- tryCatch(.study_path(root, id), error = function(e) e)
   if (inherits(path, "error")) return(.error_view(conditionMessage(path), t))
-  if (dir.exists(path)) {
+  # (a folder with no study.yml yet -- the ADaM put in its data/adam first --
+  # becomes the study; one that is a study is registered instead)
+  if (file.exists(file.path(path, "study.yml"))) {
     return(sprintf(t("A folder %s is already there: choose another ID, or register that folder (Studies > Register a folder)."),
                    path))
   }
   NULL
+}
+
+# An ADaM folder inside the study folder, written relative to it
+# (`data/adam`): the study's files then hold no path of this computer, so
+# the folder copied elsewhere still finds its data (tflspec reads a relative
+# `adam` from `dir`); a folder outside stays absolute.
+.ai_adam_in_study <- function(adam, dir) {
+  d <- sub("/+$", "", normalizePath(dir, "/", mustWork = FALSE))
+  a <- sub("/+$", "", adam)
+  inside <- startsWith(tolower(a), paste0(tolower(d), "/"))
+  if (inside) substring(a, nchar(d) + 2L) else adam
 }
 
 # tfl_ai_prepare() as the screen calls it: no printing, the ADaM folder
@@ -291,6 +304,7 @@
                         title = NULL, shells = NULL) {
   adam <- normalizePath(trimws(adam), "/", mustWork = FALSE)
   if (!dir.exists(adam)) stop(sprintf("No ADaM folder %s.", adam), call. = FALSE)
+  adam <- .ai_adam_in_study(adam, dir)
   a <- c(list(dir = dir, toc = toc, adam = adam, dry_run = dry_run, quiet = TRUE),
          if (!is.null(study_id)) list(study_id = study_id),
          if (!is.null(title) && nzchar(title)) list(title = title),

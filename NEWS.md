@@ -14,6 +14,35 @@
   With a tflspec whose `tfl_ai_run()` takes `requests`, a copy of
   `Rscript run.R <request>` per request.  An older tflspec: as before.
 
+- **plan_cells() by variable** (#454, 0.0.2.9265): the "Statistics in the
+  cells" card says which variables have a template of their own ("Per
+  variable: prob (3), time", "+ Variable") over a table of the variables --
+  the ARD's analysis variables and those the YAML names that the ARD lacks
+  (marked, kept) -- each common (its template, continuous or categorical
+  by the ARD's statistics -- p: categorical -- shown read only) or its own:
+  a copy of the common template of either kind, edited here, not following
+  the common one afterwards (back to common drops it). Its ARD statistics
+  are chips inserting `{mean:.1f}` with the report's decimals; conditions
+  are three fields (column, operator, value) written as
+  `!r <col> <op> <value> ~ "<template>"` once column and value are said,
+  first match wins, reordered, added, removed -- on a continuous variable's
+  rows too (cell_rows()); an expression the fields cannot say stays as R,
+  read only. Changing the decimals rewrites a variable's own templates and
+  its conditions (a continuous row's too) and drops none. With no ARD yet
+  the card lists them read only. The study tab's plan_cells() section
+  shows the study standard and copies the company standard's items it
+  differs in, the ticked ones only, into defaults.yml (a study with no
+  continuous rows takes the company's as one item); a report's card marks
+  a study standard that differs (a tooltip, linking there).
+
+- **The AI tab writes an ADaM folder inside the study relative** (#455,
+  0.0.2.9264): an ADaM folder in the study folder (e.g. `data/adam`) goes
+  to `tfl_ai_prepare()` as `data/adam`, so `spec/data.yml` holds no path of
+  this computer and the study folder copied to another one still finds its
+  data; a folder outside stays absolute.  A new study's ID may name a folder
+  that holds only its data so far (no study.yml): the ADaM put in its
+  `data/adam` first, the study is made there.
+
 - **Follows tflspec #407** (#450, 0.0.2.9263; tflspec >= 0.0.24.9191): the
   AI tab's step 1 has "Use the templates (templates)", on by default:
   the requests list the templates the answer may use (`tfl_ai_prepare(templates =)`).
