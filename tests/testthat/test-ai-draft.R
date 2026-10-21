@@ -589,3 +589,22 @@ test_that("a study made with the ADaM outside its folder: its data found, no D01
   expect_false(any(r$output_id %in% "T-14-3-1" & r$level == "error"),
                info = paste(r$rule, r$output_id, r$message, collapse = "\n"))
 })
+
+test_that("an ADaM folder inside the study is passed relative; a folder with only its data can become the study", {
+  d <- file.path(tempfile("adamrel"), "ABC-1")
+  dir.create(file.path(d, "data", "adam"), recursive = TRUE)
+  on.exit(unlink(dirname(d), recursive = TRUE), add = TRUE)
+  inside <- normalizePath(file.path(d, "data", "adam"), "/")
+  expect_identical(.ai_adam_in_study(inside, d), "data/adam")
+  expect_identical(.ai_adam_in_study(paste0(inside, "/"), d), "data/adam")
+  outside <- normalizePath(tempdir(), "/")
+  expect_identical(.ai_adam_in_study(outside, d), outside)
+  # a sibling folder that only starts with the study's name stays absolute
+  sib <- paste0(normalizePath(d, "/"), "-other/adam")
+  expect_identical(.ai_adam_in_study(sib, d), sib)
+  # the new study's ID: a folder holding only data is fine, a study is not
+  home <- file.path(dirname(d), "home")
+  expect_null(.ai_new_study_problem("ABC-1", root = dirname(d), home = home))
+  writeLines("study_id: ABC-1", file.path(d, "study.yml"))
+  expect_match(.ai_new_study_problem("ABC-1", root = dirname(d), home = home), "already there")
+})

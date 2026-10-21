@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **The AI tab writes an ADaM folder inside the study relative** (#455,
+  0.0.2.9261): an ADaM folder in the study folder (e.g. `data/adam`) goes
+  to `tfl_ai_prepare()` as `data/adam`, so `spec/data.yml` holds no path of
+  this computer and the study folder copied to another one still finds its
+  data; a folder outside stays absolute.  A new study's ID may name a folder
+  that holds only its data so far (no study.yml): the ADaM put in its
+  `data/adam` first, the study is made there.
+
 - **Table builder: `levels(<row key>)` in the row order** (#447,
   0.0.2.9258; rtfreporter >= 0.8.2.9083, rtfreporter#696): the
   plan_sort() card has a checkbox per row layer, "Values in plan_levels'
