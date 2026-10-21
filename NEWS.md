@@ -4,7 +4,8 @@
   AI tab makes a new study in a folder that holds only its `data/adam` so
   far (#455); when making it fails, only what the call wrote is taken away
   -- the ADaM put there first stays.  A folder that was not there is still
-  taken away whole.
+  taken away whole.  Step 2's ⓘ says what to do with the requests in the
+  agent mode too (give the agent the first instruction), not the chat only.
 
 - **The AI tab writes an ADaM folder inside the study relative** (#455,
   0.0.2.9264): an ADaM folder in the study folder (e.g. `data/adam`) goes

@@ -3814,3 +3814,4 @@ Left join (left),左結合 (left)
 Keep its subjects only (semi),その被験者だけに絞り込む (semi)
 left: add the variables; semi: keep only the rows of its subjects (no variables).,left = 変数を足す。semi = その被験者の行だけを残す（変数は足さない）。
 "TRUE: the variables are the ones the data has of them (written any_of(); tfl_build_ard() says which it left out), as a template's default list. Blank: every variable must be in the data.",TRUE: 変数のうち、データにあるものだけを使います（any_of() で書き、tfl_build_ard() が外した変数を知らせます）。テンプレートの既定の一覧に使います。空欄: どの変数もデータに無ければなりません。
+"Agent: give the agent the first instruction above; it reads these requests itself, in their order. Chat: paste each request into a NEW chat as one message; the chat's whole answer goes to step 3.",エージェント: 上の「エージェントへの最初の指示」を渡すと、エージェントがこれらの依頼を順に自分で読みます。チャット: 依頼を 1 件ずつ新しいチャットに 1 つのメッセージとして貼り付けます。チャットの回答は全体を手順 3 へ。
