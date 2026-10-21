@@ -3446,7 +3446,6 @@ Shapes the ARD for making the table.,ARD を表を作りやすい形に整えま
 "normalize_ard() shapes the cards ARD for making the table. Before: group1 = TRT01A, group1_level = Drug X, variable = SEX, variable_level = F, stat_name = n -> After: TRT01A = Drug X, variable = SEX, .label = F, stat_name = n. The groups become columns (TRT01A), the analysis variables stay values of variable, and a category's value becomes .label (the row's text).","normalize_ard() は cards の ARD を表を作りやすい形にします。前: group1 = TRT01A, group1_level = Drug X, variable = SEX, variable_level = F, stat_name = n → 後: TRT01A = Drug X, variable = SEX, .label = F, stat_name = n。群は列（TRT01A）になり、解析変数は variable の値のまま、カテゴリの値は .label（行の文字）になります。"
 Not in the code,コードに書かれない引数
 Applies to every report (the study's defaults.yml),全帳票に効きます（試験の defaults.yml）
-Per variable (edit them as R on this card):,変数ごと（このカードの R で編集）:
 Display names,表示名
 Row height (twips),行の高さ（twip）
 Exact row height,行の高さを固定
@@ -3700,6 +3699,10 @@ Your answer,回答
 No new answer to write.,書き戻す新しい回答がありません。
 %d answers written to ai/questions.md: tell the agent.,%d 件の回答を ai/questions.md に書きました: エージェントに伝えてください。
 Copy the line to tell the agent,エージェントへの一言をコピー
+Could not be built:,RTF を作れませんでした：
+Copy: rebuild only this request,この依頼だけ作り直す行をコピー
+To rebuild only this request,この依頼だけ作り直す
+Copy the fix request to rebuild,作り直しの修正依頼をコピー
 question-status:open,未回答
 question-status:decided,決定済み
 Shell workbooks,SHELL ブック
@@ -3815,3 +3818,38 @@ Keep its subjects only (semi),その被験者だけに絞り込む (semi)
 left: add the variables; semi: keep only the rows of its subjects (no variables).,left = 変数を足す。semi = その被験者の行だけを残す（変数は足さない）。
 "TRUE: the variables are the ones the data has of them (written any_of(); tfl_build_ard() says which it left out), as a template's default list. Blank: every variable must be in the data.",TRUE: 変数のうち、データにあるものだけを使います（any_of() で書き、tfl_build_ard() が外した変数を知らせます）。テンプレートの既定の一覧に使います。空欄: どの変数もデータに無ければなりません。
 "Agent: give the agent the first instruction above; it reads these requests itself, in their order. Chat: paste each request into a NEW chat as one message; the chat's whole answer goes to step 3.",エージェント: 上の「エージェントへの最初の指示」を渡すと、エージェントがこれらの依頼を順に自分で読みます。チャット: 依頼を 1 件ずつ新しいチャットに 1 つのメッセージとして貼り付けます。チャットの回答は全体を手順 3 へ。
+
+Per variable: %s,変数ごと: %s
+Common,共通
+Continuous,連続量
+Categorical,カテゴリ
+Own (this variable),独自
+Own (from the %s template),独自（%sのテンプレートから）
+"Own: a copy of the common template, edited here; it does not follow the common one afterwards. Back to Common: the own template goes.",独自: 共通の中身を写して、ここで直します。後で共通を変えても追従しません。共通に戻すと、独自のテンプレートは消えます。
+From the ARD's statistics (p: categorical),ARD の統計量から（p があればカテゴリ）
+When no condition holds,どの条件にも合わないとき
+Edit in R (this card's R).,R で編集（このカードの R）。
+Not in the ARD: add it in step 1,ARD に無い: 手順 1 で足します
+step 1,手順 1
+Up (the first that holds is used),上へ（最初に合ったものが効きます）
+Remove the condition,条件を消す
+Edit in R,R で編集
+Operator,演算子
+Value (a number or a text); the condition is written once it has one,値（数値か文字）。値を入れると条件が書かれます
+Template when it holds,合ったときのテンプレート
+A condition: the first that holds is used,条件: 上から見て最初に合ったものが効きます
+"Not in the ARD: kept, its settings would be lost",ARD にない変数: 消すと設定が失われるので残します
+Not in the ARD,ARD にない
+A variable of its own...,独自にする変数...
+The study standard differs from the company standard:,試験標準が会社標準と違います:
+Differs from the company standard,会社標準と違う
+Variables and formats,変数 × 書式
+The study standard says none: the company standard's apply.,試験標準に指定がありません: 会社標準が効きます。
+The same as the company standard.,会社標準と同じです。
+Copy from the company standard,会社標準から写す
+The company standard's value of each ticked item is written into the study standard (defaults.yml); the others stay. Every report takes it unless it has its own.,チェックした項目だけ、会社標準の値を試験標準（defaults.yml）に書きます。他はそのままです。帳票に独自の値が無ければ、どの帳票にも効きます。
+(the study standard has none),（試験標準に無い）
+study standard,試験標準
+Copy the ticked items,チェックした項目を写す
+Tick the items to copy.,写す項目をチェックしてください。
+Copied from the company standard: %s (save to keep them),会社標準から写しました: %s（保存すると残ります）

@@ -1093,6 +1093,9 @@ builder_write <- function(x, output_id, state, was = NULL) {
   new <- pc
   fmt <- identical(st$value, "stat_fmt")
   dg <- st$digits %||% integer()
+  # (the statistics whose decimals changed: a variable's own entries and
+  # the conditions take them too, nothing of theirs dropped -- #454)
+  chg <- if (dig_ch && !fmt) .cells_digits_changed(dg, was$digits) else integer()
   rows_tpl <- function(dg) {
     old <- pc$continuous %||% below$continuous %||% list()
     # (rows with conditions are cell_rows(): its rows are its arguments)
@@ -1102,8 +1105,9 @@ builder_write <- function(x, output_id, state, was = NULL) {
     rows <- if (had || any(st$variables$kind %in% "continuous")) st$rows else character()
     out <- lapply(rows, function(lb) {
       o <- old[[lb]]
-      # a row of conditions, or a template of its own, as written
-      if (!is.null(o) && !(is.character(o) && length(o) == 1L)) return(o)
+      # a row of conditions, or a template of its own, as written (the
+      # decimals changed put in its templates too: #454)
+      if (!is.null(o) && !(is.character(o) && length(o) == 1L)) return(.cells_redigit(o, chg))
       tpl <- o %||% st$templates[[lb]] %||%
         builder_stats()$template[match(lb, builder_stats()$row)]
       .with_digits(tpl, dg, fmt)
@@ -1120,6 +1124,9 @@ builder_write <- function(x, output_id, state, was = NULL) {
     exc_vars <- unique(c(was$exceptions$variable %||% character(),
                          st$exceptions$variable %||% character()))
     for (v in exc_vars) new[[v]] <- NULL
+    for (v in setdiff(.cells_var_names(new), exc_vars)) {
+      new[v] <- list(.cells_redigit(new[[v]], chg))
+    }
     exc <- st$exceptions
     if (!fmt && !is.null(exc) && nrow(exc) && length(ct)) {
       for (v in unique(exc$variable)) {

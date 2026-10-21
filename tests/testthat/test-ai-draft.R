@@ -444,6 +444,119 @@ test_that("agent mode in the app: the first message on step 2, the questions on 
   })
 })
 
+# what tfl_ai_run() (tflspec >= 0.0.24.9197) writes for a report that
+# passed its checks but could not be built
+ai_unbuilt_repair <- function(path, request, id, why) {
+  dir.create(file.path(path, "ai", "repairs"), recursive = TRUE, showWarnings = FALSE)
+  writeLines(c(sprintf("# Repair: %s", request), "",
+               "The answer passed its checks, but a report could not be built.", "",
+               "## Could not be built", "", sprintf("- %s: %s", id, why)),
+             file.path(path, "ai", "repairs", paste0(request, ".md")))
+}
+
+test_that("the reports run.R could not build: read from ai/repairs, none from an older tflspec", {
+  local_home()
+  path <- ai_study(register = FALSE)
+  u <- .ai_unbuilt(path)
+  expect_identical(nrow(u), 0L)
+  ai_unbuilt_repair(path, "ae-1", "T-14-3-1", "object 'AEDECOD' not found: in the ARD")
+  # a fix request of the checks alone (no such section): not one
+  writeLines(c("# Repair", "", "- table_plan: unknown"), file.path(path, "ai", "repairs", "labs-1.md"))
+  u <- .ai_unbuilt(path)
+  expect_identical(u$request, "ae-1")
+  expect_identical(u$output_id, "T-14-3-1")
+  expect_identical(u$reason, "object 'AEDECOD' not found: in the ARD")
+  expect_named(attr(u, "texts"), "ae-1")
+  expect_identical(.ai_short(strrep("a", 100), 10L), "aaaaaaa...")
+})
+
+test_that("agent mode, step 3: a report not built shows why, its fix request to copy", {
+  local_home()
+  out <- .ai_new_study("AG-3", ai_toc, "onco_toc_shell.xlsx", ai_adam,
+                       list(size = 3L, mode = "agent"))
+  path <- out$study$path
+  for (q in c("demographics-1", "ae-1")) ai_answer(path, q)
+  why <- paste("the ARD could not be made:", strrep("x", 120))
+  ai_unbuilt_repair(path, "demographics-1", "T-14-1-1", why)
+  writeLines(c("# Status", "", "- T-14-1-1: ok"), file.path(path, "ai", "status.md"))
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  shiny::testServer(server_for("AG-3"), {
+    ai <- session$userData$ai
+    session$setInputs(`ai-status_reread` = 1)
+    co <- ai$collected()
+    expect_false("built" %in% names(co$reports))
+    expect_identical(co$reports$status[co$reports$output_id == "T-14-1-1"], "ok")
+    html <- output$`ai-result_all`$html
+    expect_match(html, "Could not be built: the ARD could not be made: x", fixed = TRUE)
+    expect_false(grepl(why, html, fixed = TRUE))
+    expect_match(html, "data-what=\"unbuilt\" data-id=\"demographics-1\"", fixed = TRUE)
+    expect_match(html, "data-what=\"repair\" data-id=\"demographics-1\"", fixed = TRUE)
+    # the whole reason, and the fix request (kept: the check removed the file)
+    expect_match(ai$text("demographics-1", "unbuilt"), why, fixed = TRUE)
+    expect_match(ai$text("demographics-1", "repair"), "## Could not be built", fixed = TRUE)
+    # to rebuild one request: only with a tflspec whose run.R takes them
+    expect_identical(grepl("data-what=\"rerun\"", html, fixed = TRUE), .ai_run_has_requests())
+    expect_identical(ai$text("demographics-1", "rerun"), "Rscript run.R demographics-1")
+    # a run.R written again: the reasons read again (none now)
+    Sys.sleep(1.1)
+    writeLines(c("# Status", "", "- T-14-1-1: ok"), file.path(path, "ai", "status.md"))
+    session$setInputs(`ai-status_reread` = 2)
+    expect_false(grepl("Could not be built", output$`ai-result_all`$html, fixed = TRUE))
+  })
+})
+
+# tflspec >= 0.0.24.9199: its own file, ai/repairs/<request>-build.md
+ai_build_repair <- function(path, request, id, why) {
+  dir.create(file.path(path, "ai", "repairs"), recursive = TRUE, showWarnings = FALSE)
+  writeLines(c(sprintf("# Repair: %s -- could not be built", request), "",
+               sprintf("Fix the answer and run `Rscript run.R %s`.", request), "",
+               "## Could not be built", "", sprintf("- %s: %s", id, why)),
+             file.path(path, "ai", "repairs", paste0(request, "-build.md")))
+}
+
+test_that("a report not built, from <request>-build.md: read first, kept by the check, its own copy", {
+  local_home()
+  path <- ai_study(register = FALSE)
+  # both files: the separate one's reason
+  ai_unbuilt_repair(path, "ae-1", "T-14-3-1", "the old section")
+  ai_build_repair(path, "ae-1", "T-14-3-1", "the build file")
+  u <- .ai_unbuilt(path)
+  expect_identical(u$reason, "the build file")
+  expect_identical(u$from, "build")
+  expect_identical(attr(u, "build"), "ae-1")
+  expect_length(attr(u, "texts"), 0L)
+
+  out <- .ai_new_study("AG-4", ai_toc, "onco_toc_shell.xlsx", ai_adam,
+                       list(size = 3L, mode = "agent"))
+  path <- out$study$path
+  ai_answer(path, "demographics-1")
+  ai_build_repair(path, "demographics-1", "T-14-1-1", "object 'ard' not found")
+  writeLines(c("# Status", "", "- T-14-1-1: ok"), file.path(path, "ai", "status.md"))
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  shiny::testServer(server_for("AG-4"), {
+    ai <- session$userData$ai
+    session$setInputs(`ai-status_reread` = 1)
+    expect_true(file.exists(file.path(path, "ai", "repairs", "demographics-1-build.md")))
+    html <- output$`ai-result_all`$html
+    expect_match(html, "Could not be built: object .{1,5}ard.{1,5} not found")
+    expect_match(html, "data-what=\"build\" data-id=\"demographics-1\"", fixed = TRUE)
+    # no check repair: no "Copy the fix request" of the checks
+    expect_false(grepl("data-what=\"repair\" data-id=\"demographics-1\"", html, fixed = TRUE))
+    expect_match(ai$text("demographics-1", "build"), "could not be built", fixed = TRUE)
+    # a new run that left the file: still there (read again, not kept)
+    Sys.sleep(1.1)
+    writeLines(c("# Status", "", "- T-14-1-1: ok"), file.path(path, "ai", "status.md"))
+    session$setInputs(`ai-status_reread` = 2)
+    expect_match(output$`ai-result_all`$html, "data-what=\"build\"", fixed = TRUE)
+    # run.R removed it: gone
+    unlink(file.path(path, "ai", "repairs", "demographics-1-build.md"))
+    session$setInputs(`ai-status_reread` = 3)
+    expect_false(grepl("Could not be built", output$`ai-result_all`$html, fixed = TRUE))
+  })
+})
+
 # -- several workbooks, and requests added (tflspec >= 0.0.24.9178) ----------
 
 # the example split in two (its TOC alone, its shells alone), and a second
