@@ -21,6 +21,14 @@
   continuous rows takes the company's as one item); a report's card marks
   a study standard that differs (a tooltip, linking there).
 
+- **The AI tab writes an ADaM folder inside the study relative** (#455,
+  0.0.2.9264): an ADaM folder in the study folder (e.g. `data/adam`) goes
+  to `tfl_ai_prepare()` as `data/adam`, so `spec/data.yml` holds no path of
+  this computer and the study folder copied to another one still finds its
+  data; a folder outside stays absolute.  A new study's ID may name a folder
+  that holds only its data so far (no study.yml): the ADaM put in its
+  `data/adam` first, the study is made there.
+
 - **Follows tflspec #407** (#450, 0.0.2.9263; tflspec >= 0.0.24.9191): the
   AI tab's step 1 has "Use the templates (templates)", on by default:
   the requests list the templates the answer may use (`tfl_ai_prepare(templates =)`).
