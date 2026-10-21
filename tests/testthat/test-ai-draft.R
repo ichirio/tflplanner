@@ -619,3 +619,21 @@ test_that("an ADaM folder inside the study is passed relative; a folder with onl
   writeLines("study_id: ABC-1", file.path(d, "study.yml"))
   expect_match(.ai_new_study_problem("ABC-1", root = dirname(d), home = home), "already there")
 })
+
+test_that("a new study that fails keeps what its folder held before (its data/adam)", {
+  root <- tempfile("keep")
+  d <- file.path(root, "KEEP-1")
+  dir.create(file.path(d, "data", "adam"), recursive = TRUE)
+  on.exit(unlink(root, recursive = TRUE), add = TRUE)
+  saveRDS(data.frame(USUBJID = "1"), file.path(d, "data", "adam", "adsl.rds"))
+  home <- file.path(root, "home")
+  bad <- file.path(root, "no-such-toc.xlsx")
+  expect_error(.ai_new_study("KEEP-1", bad, "no-such-toc.xlsx", file.path(d, "data", "adam"),
+                             root = root, home = home))
+  expect_true(file.exists(file.path(d, "data", "adam", "adsl.rds")))
+  expect_identical(sort(list.files(d, all.files = TRUE, no.. = TRUE)), "data")
+  # a folder that was not there is taken away whole
+  expect_error(.ai_new_study("KEEP-2", bad, "no-such-toc.xlsx", file.path(d, "data", "adam"),
+                             root = root, home = home))
+  expect_false(dir.exists(file.path(root, "KEEP-2")))
+})

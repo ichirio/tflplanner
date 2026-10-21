@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **A new study that fails keeps its folder's data** (#460, 0.0.2.9267): the
+  AI tab makes a new study in a folder that holds only its `data/adam` so
+  far (#455); when making it fails, only what the call wrote is taken away
+  -- the ADaM put there first stays.  A folder that was not there is still
+  taken away whole.
+
 - **The AI tab writes an ADaM folder inside the study relative** (#455,
   0.0.2.9264): an ADaM folder in the study folder (e.g. `data/adam`) goes
   to `tfl_ai_prepare()` as `data/adam`, so `spec/data.yml` holds no path of
