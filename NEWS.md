@@ -1,12 +1,18 @@
 # tflplanner (development version)
 
-- **Follows tflspec #407** (#450, 0.0.2.9259; tflspec >= 0.0.24.9191): the
+- **Follows tflspec #407** (#450, 0.0.2.9263; tflspec >= 0.0.24.9191): the
   AI tab's step 1 has "Use the templates (templates)", on by default:
   the requests list the templates the answer may use (`tfl_ai_prepare(templates =)`).
   Step 3 shows, after a check, the answers compared ("Compare the answers
   (compare.csv)": `tfl_ai_compare()`, one row a report -- the setting, what
   the answer used, its values, its check and its repairs).  In Japanese the
   tab is now "AI 連携".
+
+- **tflspec's three-stage analysis data code** (#452, 0.0.2.9260; tflspec
+  >= 0.0.24.9192): an analysis data is now written as a pipe -- its subjects
+  by `semi_join(select(adsl_x, USUBJID), by = "USUBJID")`, its condition in a
+  `filter()` after it; the test of the code a data written as R starts from
+  follows.  Tests only.
 
 - **Table builder: `levels(<row key>)` in the row order** (#447,
   0.0.2.9258; rtfreporter >= 0.8.2.9083, rtfreporter#696): the
