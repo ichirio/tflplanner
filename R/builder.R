@@ -770,10 +770,15 @@ builder_read <- function(x, output_id, meta = NULL) {
 # event" row first, and each group's own row above the rows under it.
 # `hier`: which row keys are the hierarchy's levels -- a group of the ARD
 # outside it (a stratum, outermost) comes before the "any event" row and
-# has no summary row of its own.
+# has no summary row of its own.  `first`: the levels whose values
+# plan_levels() names come first, in its order (levels(group1), before the
+# level's own key; rtfreporter >= 0.8.2.9083) -- by default the "first"
+# attribute of `levels`, none when it has none.
 .hier_sort <- function(levels = c("alpha", "freq"), col = NA_character_,
-                       hier = rep(TRUE, length(levels)), nocol = character()) {
+                       hier = rep(TRUE, length(levels)), nocol = character(),
+                       first = attr(levels, "first")) {
   n <- length(levels)
+  first <- rep_len(as.logical(first %||% FALSE), n)
   out <- character()
   overall <- FALSE
   for (i in seq_len(n)) {
@@ -789,6 +794,7 @@ builder_read <- function(x, output_id, meta = NULL) {
       paste0(lv, if (i < n) paste0("@", g), at)
     }
     if (!is.null(count) && !nzchar(trimws(count))) count <- NULL
+    if (isTRUE(first[i])) count <- c(sprintf("levels(%s)", g), count)
     out <- c(out, count, g, if (hier[i] && i < n) ".depth")
   }
   if (!overall) out <- c(".overall", out)
@@ -840,16 +846,22 @@ builder_read <- function(x, output_id, meta = NULL) {
 # that counts, NA all of them), or "own" (an order the builder does not
 # write: kept as it is).  n: the terms; nocol: as .hier_sort()'s.  A key
 # not of the builder's form is the level's own ("=<key>"), written back
-# as it is.
+# as it is.  levels(<level>) before a level's key: attribute "first" (the
+# levels it is on; none, no attribute).
 .hier_sort_read <- function(sort, n = 2L, nocol = character()) {
   if (length(sort) != 1L || is.na(sort) || !nzchar(trimws(sort))) return("own")
   tk <- trimws(strsplit(sort, "|", fixed = TRUE)[[1L]])
   if (!".overall" %in% tk) return("own")
   tk <- tk[!tk %in% c(".overall", ".depth")]
   lv <- character(n)
+  first <- logical(n)
   cols <- character()
   for (i in seq_len(n)) {
     name <- if (i < n) sprintf("group%d", i) else "label"
+    if (identical(tk[1L], sprintf("levels(%s)", name))) {
+      first[i] <- TRUE
+      tk <- tk[-1L]
+    }
     if (!length(tk)) return("own")
     if (identical(tk[1L], name)) {
       lv[i] <- "alpha"
@@ -874,6 +886,7 @@ builder_read <- function(x, output_id, meta = NULL) {
   # one column counts for every level, or the order is the sheets' own
   if (length(tk) || length(unique(cols)) > 1L) return("own")
   attr(lv, "col") <- if (length(cols)) cols[1L] else NA_character_
+  if (any(first)) attr(lv, "first") <- first
   lv
 }
 
