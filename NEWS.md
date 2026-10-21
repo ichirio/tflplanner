@@ -8,8 +8,11 @@
   built: ...", the whole text behind "View"), read from
   `ai/repairs/<request>.md` before each check (the check removes the fix
   request of an answer that passes) and kept while `ai/status.md` is the
-  same run's.  With a tflspec whose `tfl_ai_run()` takes `requests`, a copy
-  of `Rscript run.R <request>` per request.  An older tflspec: as before.
+  same run's.  With tflspec >= 0.0.24.9199 the reasons come from
+  `ai/repairs/<request>-build.md` (read first; a check leaves it), with its
+  own "Copy the fix request to rebuild" beside the checks' fix request.
+  With a tflspec whose `tfl_ai_run()` takes `requests`, a copy of
+  `Rscript run.R <request>` per request.  An older tflspec: as before.
 
 - **Follows tflspec #407** (#450, 0.0.2.9263; tflspec >= 0.0.24.9191): the
   AI tab's step 1 has "Use the templates (templates)", on by default:

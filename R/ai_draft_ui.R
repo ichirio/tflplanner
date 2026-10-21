@@ -272,12 +272,15 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       now <- tryCatch(.ai_unbuilt(p), error = function(e) NULL)
       if (is.null(now)) return(invisible())
       old <- unbuilt()
+      # (only the old format's: a -build.md stays until run.R removes it)
       if (!is.null(old) && identical(attr(old, "when"), when)) {
-        more <- old[!old$request %in% now$request, , drop = FALSE]
+        more <- old[old$from == "repair" & !old$request %in% now$request, , drop = FALSE]
         texts <- c(attr(now, "texts"), attr(old, "texts")[setdiff(names(attr(old, "texts")),
                                                                   names(attr(now, "texts")))])
+        build <- attr(now, "build")
         now <- rbind(now, more)
         attr(now, "texts") <- texts
+        attr(now, "build") <- build
       }
       attr(now, "when") <- when
       unbuilt(now)
@@ -304,6 +307,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         return(.ai_read_text(file.path(p, .ai_requests_dir, "00-instructions.md")))
       }
       if (identical(what, "rerun")) return(paste("Rscript run.R", id))
+      if (identical(what, "build")) {
+        .ai_check_request_name(id)
+        return(.ai_read_text(file.path(p, .ai_repairs_dir, paste0(id, "-build.md"))))
+      }
       kept <- attr(shiny::isolate(unbuilt()), "texts")
       if (identical(what, "unbuilt")) {
         u <- shiny::isolate(unbuilt())
@@ -321,7 +328,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     file_of <- function(what, id) {
       switch(what, instructions = "00-instructions.md",
              agent = t("The agent's first message"), tell = t("To tell the agent"),
-             repair = , unbuilt = .ai_rel(.ai_repairs_dir, paste0(id, ".md")),
+             repair = .ai_rel(.ai_repairs_dir, paste0(id, ".md")),
+             build = .ai_rel(.ai_repairs_dir, paste0(id, "-build.md")),
+             unbuilt = .ai_rel(.ai_repairs_dir, paste0(
+               id, if (id %in% attr(shiny::isolate(unbuilt()), "build")) "-build.md" else ".md")),
              rerun = t("To rebuild only this request"),
              paste0(id, ".md"))
     }
@@ -1114,6 +1124,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         shiny::div(
           class = "d-flex flex-wrap gap-1 mt-1",
           if (fix) shiny::HTML(act("repair", q, c(copy = t("Copy the fix request"), view = t("View")))),
+          if (q %in% attr(u, "build"))
+            shiny::HTML(act("build", q, c(copy = t("Copy the fix request to rebuild"),
+                                          view = t("View")))),
           if (rerun && any(r$status[rows] %in% c("ok", "warning")))
             shiny::HTML(act("rerun", q, c(copy = t("Copy: rebuild only this request")))))
       }

@@ -91,39 +91,48 @@
   .ai_read_text(f)
 }
 
-# The reports that passed their checks but could not be built: the
-# "## Could not be built" section tfl_ai_run() (tflspec >= 0.0.24.9197)
-# writes in ai/repairs/<request>.md, one "- <output_id>: <reason>" a line.
-# A data frame (request, output_id, reason) with attr "texts" (each
-# request's whole fix request, named by request; a later check removes the
-# file of an answer that passes, so the app keeps them).  An older tflspec
-# writes no such section: no rows.
+# The reports that passed their checks but could not be built, from what
+# tfl_ai_run() writes: ai/repairs/<request>-build.md (tflspec >= 0.0.24.9199;
+# run.R removes it once the request's reports are built; a check leaves it),
+# else the "## Could not be built" section of ai/repairs/<request>.md
+# (tflspec 0.0.24.9197 / 9198), one "- <output_id>: <reason>" a line.
+# A data frame (request, output_id, reason, from: "build" or "repair") with
+# attr "texts" (each old-format request's whole fix request, named by
+# request: a later check removes that file of an answer that passes, so the
+# app keeps them) and attr "build" (the requests with a -build.md).  An
+# older tflspec writes neither: no rows.
 .ai_unbuilt <- function(path) {
   none <- data.frame(request = character(), output_id = character(), reason = character(),
-                     stringsAsFactors = FALSE)
-  attr(none, "texts") <- character()
+                     from = character(), stringsAsFactors = FALSE)
   fs <- list.files(file.path(path, .ai_repairs_dir), "[.]md$", full.names = TRUE)
+  is_build <- grepl("-build[.]md$", basename(fs))
+  build <- sub("-build[.]md$", "", basename(fs[is_build]))
   rows <- list()
   texts <- character()
   for (f in fs) {
+    from <- if (grepl("-build[.]md$", basename(f))) "build" else "repair"
+    q <- sub(if (from == "build") "-build[.]md$" else "[.]md$", "", basename(f))
+    # the separate file first
+    if (from == "repair" && q %in% build) next
     txt <- tryCatch(.ai_read_text(f), error = function(e) NA_character_)
     if (is.na(txt)) next
     lines <- strsplit(txt, "\n", fixed = TRUE)[[1L]]
     at <- which(trimws(lines) == "## Could not be built")
     if (!length(at)) next
-    q <- sub("[.]md$", "", basename(f))
-    texts[[q]] <- txt
+    if (from == "repair") texts[[q]] <- txt
     body <- lines[-seq_len(at[1L])]
     nxt <- grep("^#{1,2} ", body)
     if (length(nxt)) body <- body[seq_len(nxt[1L] - 1L)]
     body <- grep("^- [^:]+: ", body, value = TRUE)
     if (!length(body)) next
     rows[[q]] <- data.frame(request = q, output_id = sub("^- ([^:]+): .*$", "\\1", body),
-                            reason = sub("^- [^:]+: ", "", body), stringsAsFactors = FALSE)
+                            reason = sub("^- [^:]+: ", "", body), from = from,
+                            stringsAsFactors = FALSE)
   }
   out <- if (length(rows)) do.call(rbind, unname(rows)) else none
   rownames(out) <- NULL
   attr(out, "texts") <- texts
+  attr(out, "build") <- intersect(build, out$request)
   out
 }
 
