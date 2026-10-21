@@ -98,20 +98,51 @@ test_that("plan_cells() by variable in the browser: own template, condition, dec
   Sys.sleep(1)
   js("(() => { $('#step a[data-value=\"content\"]').tab('show'); return true; })()")
   wait_for("$('.rp-cv').length > 0 || $('#fetch3').length > 0", 60)
-  if (isTRUE(js("$('#fetch3').length > 0"))) click("#fetch3")
+  # (4) no ARD yet: prob / time said, read only
+  if (isTRUE(js("$('#fetch3').length > 0"))) {
+    ro <- js("$('.rp-cv-sum').text()")
+    check("(4) no ARD yet: the own templates read only", grepl("prob", ro %||% "") && grepl("time", ro %||% ""), ro %||% "")
+    click("#fetch3")
+  }
   check("the plan_cells() card's table", wait_for("$('.rp-cv-row[data-var=time]').length > 0", 240))
   idle()
   row <- function(v) sprintf(".rp-cv-row[data-var=%s]", v)
 
   # (a) time's own template edited: in its YAML once saved
-  set_field(paste(row("time"), "input.rp-cv-tpl[data-k='0']"), "{estimate:.1f%}")
+  set_field(paste(row("time"), ".rp-cv-unit[data-k='0'] input.rp-cv-tpl"), "{estimate:.1f%}")
   save()
   check("(a) the own template written", grepl("time: '{estimate:.1f%}'", yml("outputs/T-14-2-2.yml"), fixed = TRUE),
         yml("outputs/T-14-2-2.yml"))
 
+  # time back to common: its own template goes; own again: the copy
+  y0 <- yml("outputs/T-14-2-2.yml")
+  mode <- function(v, value) {
+    js(sprintf("(() => { const s = document.querySelector('%s select.rp-cv-mode'); s.value = '%s';
+      s.dispatchEvent(new Event('change', {bubbles: true})); return true; })()", row(v), value))
+    idle()
+  }
+  mode("time", "common")
+  save()
+  check("own -> common: the own template gone", !grepl("time:", sub("plan_levels.*", "", yml("outputs/T-14-2-2.yml")), fixed = TRUE))
+  wait_for(sprintf("$('%s select.rp-cv-mode option').length > 2", row("time")), 30)
+  opts <- js(sprintf("$('%s select.rp-cv-mode option').map((i, e) => e.value).get()", row("time")))
+  # (1) the kind chosen by hand: only the source of the copy (no setting of its own)
+  check("(1) own from either kind, no kind override", setequal(unlist(opts), c("common", "own:categorical", "own:continuous")) &&
+          isTRUE(js("$('.rp-cv-kind').length == 0")), paste(unlist(opts), collapse = " "))
+  mode("time", "own:categorical")
+  save()
+  check("common -> own: a copy written", grepl("time: '{n:.0f} ({p:.1f%})'", yml("outputs/T-14-2-2.yml"), fixed = TRUE),
+        yml("outputs/T-14-2-2.yml"))
+  set_field(paste(row("time"), ".rp-cv-unit[data-k='0'] input.rp-cv-tpl"), "{estimate:.1f%}")
+
   # (b) a condition: added, its fields set, written as !r, read back
   click(paste(row("time"), "button[data-act=cond_add]"))
   wait_for(sprintf("$('%s .rp-cv-cond').length > 0", row("time")), 20)
+  # (2) added, not said yet: nothing written
+  save()
+  y <- yml("outputs/T-14-2-2.yml")
+  check("(2) a condition with no value is not written", !grepl("== \"\"", y, fixed = TRUE) &&
+          grepl("time: '{estimate:.1f%}'", y, fixed = TRUE), y)
   js(sprintf("(() => { const s = document.querySelector('%s .rp-cv-cond select[data-f=col]');
     s.value = 'estimate'; s.dispatchEvent(new Event('change', {bubbles: true})); return true; })()", row("time")))
   idle()
@@ -125,17 +156,20 @@ test_that("plan_cells() by variable in the browser: own template, condition, dec
   check("(b) the condition written as !r", grepl("!r estimate < 0.5 ~ \"<{mean:.1f}\"", y, fixed = TRUE), y)
   # (the form drawn again -- another report, then this one: the fields
   # read back from the YAML)
+  condvals <- function() js(sprintf("$('%s .rp-cv-cond').map((i, c) => [...c.querySelectorAll('[data-f]')].map(x => x.value).join(',')).get().join(' / ')", row("time")))
+  pre <- condvals()
   js("(() => { $('#target')[0].selectize.setValue('T-14-2-1'); return true; })()")
   idle()
   wait_for(sprintf("$('%s').length == 0", row("time")), 60)
   js("(() => { $('#target')[0].selectize.setValue('T-14-2-2'); return true; })()")
   idle()
   wait_for(sprintf("$('%s .rp-cv-cond input[data-f=value]').length > 0", row("time")), 120)
+  wait_for(sprintf("$('%s .rp-cv-cond input[data-f=value]').val() == '0.5'", row("time")), 20)
   back <- js(sprintf("(() => { const c = document.querySelector('%s .rp-cv-cond');
     return [c.querySelector('[data-f=col]').value, c.querySelector('[data-f=op]').value,
             c.querySelector('[data-f=value]').value, c.querySelector('[data-f=tpl]').value]; })()", row("time")))
   check("(b) the condition read back into its fields",
-        identical(unlist(back), c("estimate", "<", "0.5", "<{mean:.1f}")), paste(unlist(back), collapse = " | "))
+        identical(unlist(back), c("estimate", "<", "0.5", "<{mean:.1f}")), paste(paste(unlist(back), collapse = " | "), pre, condvals(), y))
 
   # (c) T-14-1-1: SEX made its own (+ Variable), a condition on it; the
   # decimals of N changed -- the condition kept, its decimals rewritten
@@ -162,6 +196,21 @@ test_that("plan_cells() by variable in the browser: own template, condition, dec
   idle()
   set_field(paste(row("SEX"), ".rp-cv-cond input[data-f=value]"), "0")
   set_field(paste(row("SEX"), ".rp-cv-cond input[data-f=tpl]"), "{N:.0f}")
+  # (3) AGE own (its continuous rows), a condition on its row n: cell_rows()
+  mode("AGE", "own:continuous")
+  wait_for(sprintf("$('%s .rp-cv-unit').length > 1", row("AGE")), 30)
+  unit <- paste(row("AGE"), ".rp-cv-unit[data-k='r:n']")
+  click(paste(unit, "button[data-act=cond_add]"))
+  wait_for(sprintf("$(\"%s .rp-cv-cond\").length > 0", unit), 20)
+  js(sprintf("(() => { const s = document.querySelector(\"%s .rp-cv-cond select[data-f=col]\");
+    if (![...s.options].some(o => o.value == 'N')) s.add(new Option('N', 'N'));
+    s.value = 'N'; s.dispatchEvent(new Event('change', {bubbles: true})); return true; })()", unit))
+  idle()
+  js(sprintf("(() => { const s = document.querySelector(\"%s .rp-cv-cond select[data-f=op]\");
+    s.value = '<'; s.dispatchEvent(new Event('change', {bubbles: true})); return true; })()", unit))
+  idle()
+  set_field(paste(unit, ".rp-cv-cond input[data-f=tpl]"), "few")
+  set_field(paste(unit, ".rp-cv-cond input[data-f=value]"), "3")
   js("(() => { const c = document.querySelector('.rp-card[data-fn=plan_digits]'); if (c && !c.classList.contains('rp-card-open')) c.querySelector('.rp-card-toggle').click(); return true; })()")
   wait_for("$('input[id$=\"_dg_N\"]').length > 0", 30)
   dg <- js("(() => { const e = $('input[id$=\"_dg_N\"]').first(); return e.length ? e.attr('id') : null; })()")
@@ -173,6 +222,10 @@ test_that("plan_cells() by variable in the browser: own template, condition, dec
     y <- yml("outputs/T-14-1-1.yml")
     check("(c) the decimals changed: the condition kept, its decimals too",
           grepl("!r n >= 0 ~ \"{N:.1f}\"", y, fixed = TRUE), y)
+    check("T-14-2-2's condition still there after another save",
+          grepl("!r estimate < 0.5", yml("outputs/T-14-2-2.yml"), fixed = TRUE), yml("outputs/T-14-2-2.yml"))
+    check("(3) a continuous row's condition written (cell_rows)",
+          grepl("N < 3 ~ \"few\"", y, fixed = TRUE) && grepl("cell_rows", y, fixed = TRUE), y)
   } else check("(c) the decimals of N", FALSE, js("$('input[id*=\"_dg_\"]').map((i, e) => e.id).get().join(' ')"))
 
   # (d) the study tab: the company standard's first item copied, it alone

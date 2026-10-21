@@ -1,22 +1,25 @@
 # tflplanner (development version)
 
-- **plan_cells() by variable** (#454, 0.0.2.9261): the "Statistics in the
+- **plan_cells() by variable** (#454, 0.0.2.9262): the "Statistics in the
   cells" card says which variables have a template of their own ("Per
   variable: prob (3), time", "+ Variable") over a table of the variables --
   the ARD's analysis variables and those the YAML names that the ARD lacks
-  (marked, kept) -- each common (continuous or categorical from the ARD's
-  statistics, p => categorical; overridable) or its own: an editable copy
-  of the common template that does not follow it afterwards, its ARD
-  statistics as chips inserting `{mean:.1f}` with the report's decimals,
-  and conditions in three fields (column, operator, value) written as
-  `!r <col> <op> <value> ~ "<template>"`, first match wins, reordered,
-  added, removed; an expression the fields cannot say stays as R, read
-  only. Changing the decimals rewrites a variable's own templates and its
-  conditions (a continuous row's too) and drops none. The study tab's
-  plan_cells() section shows the study standard and copies the company
-  standard's items it differs in, the ticked ones only, into defaults.yml;
-  a report's card marks a study standard that differs from the company
-  standard (a tooltip, linking there).
+  (marked, kept) -- each common (its template, continuous or categorical
+  by the ARD's statistics -- p: categorical -- shown read only) or its own:
+  a copy of the common template of either kind, edited here, not following
+  the common one afterwards (back to common drops it). Its ARD statistics
+  are chips inserting `{mean:.1f}` with the report's decimals; conditions
+  are three fields (column, operator, value) written as
+  `!r <col> <op> <value> ~ "<template>"` once column and value are said,
+  first match wins, reordered, added, removed -- on a continuous variable's
+  rows too (cell_rows()); an expression the fields cannot say stays as R,
+  read only. Changing the decimals rewrites a variable's own templates and
+  its conditions (a continuous row's too) and drops none. With no ARD yet
+  the card lists them read only. The study tab's plan_cells() section
+  shows the study standard and copies the company standard's items it
+  differs in, the ticked ones only, into defaults.yml (a study with no
+  continuous rows takes the company's as one item); a report's card marks
+  a study standard that differs (a tooltip, linking there).
 
 - **Template SPEC reports, and the builder's new card layout** (#440,
   0.0.2.9257; tflspec >= 0.0.24.9186): a new report is made from one of

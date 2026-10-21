@@ -1,22 +1,24 @@
 # The plan_cells() card's table of variables (#454): a line saying which
 # variables have a template of their own, and -- unfolded when one has --
-# a row a variable: common or its own, its template, its statistics as
-# chips, its conditions.  Every control sends one event (`ev`, an input of
-# the session) that the server writes from; nothing is written unless a
-# value is changed.
+# a box a variable: common or its own, its template (a continuous
+# variable's: a row each), its statistics as chips, its conditions.  Every
+# control sends one event (`ev`, an input of the session) that the server
+# writes from; nothing is written unless a value is changed.
 
 # The table.  `pc`: plan_cells()' arguments (the report's, over its
 # layers); `meta`: ard_meta(); `st`: builder_read(); `dg`: each statistic's
-# decimals (the report's rule); `kinds`: the table's own choice of a
-# variable's kind; `diff`: .cells_company_diff() (a mark when the study
-# standard differs).
-.cells_vars_ui <- function(pc, meta, st, dg = integer(), kinds = list(), lang = "en",
-                           ev = "b_cv_ev", diff = NULL) {
+# decimals (the report's rule); `edits`: a variable's entry as being edited
+# (conditions not said yet, which are not written: .cells_cond_done()),
+# used while it builds what the plan has; `diff`: .cells_company_diff() (a
+# mark when the study standard differs).
+.cells_vars_ui <- function(pc, meta, st, dg = integer(), lang = "en",
+                           ev = "b_cv_ev", diff = NULL, edits = list()) {
   t <- function(x) tr(x, lang)
-  rows <- .cells_vars_rows(pc, meta, kinds)
+  rows <- .cells_vars_rows(pc, meta)
   any_own <- any(rows$own)
   pct <- if (identical(st$cat_format, "own")) NA else st$pct_decimals %||% 1
   cols <- .cells_cond_columns(meta)
+  kind_name <- c(continuous = t("Continuous"), categorical = t("Categorical"))
   sel <- function(cls, choices, selected, names = choices, ...) {
     shiny::tags$select(
       class = paste("form-select form-select-sm", cls), ...,
@@ -28,39 +30,80 @@
     shiny::tags$button(type = "button", class = paste("btn btn-sm py-0 px-1 rp-cv-btn", cls),
                        `data-act` = act, `data-i` = if (!is.na(i)) i, title = title, label)
   }
+  # a template and its conditions (the entry's, or a row's: `k`)
+  unit_ui <- function(u, k, label = NULL) {
+    conds <- lapply(seq_along(u$conds), function(i) {
+      c1 <- u$conds[[i]]
+      moves <- shiny::span(
+        class = "text-nowrap",
+        btn("cond_up", "\u2191", t("Up (the first that holds is used)"), i),
+        btn("cond_down", "\u2193", t("Down"), i),
+        btn("cond_rm", "\u00d7", t("Remove the condition"), i, "btn-outline-danger"))
+      if (!is.null(c1$raw) && !isTRUE(c1$ok)) {
+        return(shiny::div(
+          class = "d-flex gap-1 align-items-center mb-1 rp-cv-cond", `data-i` = i,
+          shiny::tags$code(class = "small", as.character(unclass(c1$raw))),
+          shiny::span(class = "small text-muted text-nowrap", t("Edit in R")), moves))
+      }
+      shiny::div(
+        class = "d-flex gap-1 align-items-center mb-1 rp-cv-cond", `data-i` = i,
+        sel("rp-cv-cf", unique(c(c1$col, cols)), c1$col, `data-f` = "col", title = t("Column")),
+        sel("rp-cv-cf", .cells_ops, c1$op, `data-f` = "op", title = t("Operator")),
+        shiny::tags$input(type = "text", class = "form-control form-control-sm rp-cv-cf rp-cv-val",
+                          `data-f` = "value", value = c1$value %||% "",
+                          placeholder = t("Value"),
+                          title = t("Value (a number or a text); the condition is written once it has one")),
+        shiny::tags$input(type = "text", class = "form-control form-control-sm rp-cv-cf rp-cv-tpl2",
+                          `data-f` = "tpl", value = c1$tpl %||% "", title = t("Template when it holds")),
+        moves)
+    })
+    shiny::div(
+      class = "rp-cv-unit", `data-k` = k,
+      shiny::div(
+        class = "d-flex gap-1 align-items-center mb-1",
+        if (!is.null(label)) shiny::span(class = "small text-nowrap rp-cv-rowlab", label),
+        shiny::tags$input(type = "text", class = "form-control form-control-sm rp-cv-tpl",
+                          value = if (!is.na(u$fallback)) u$fallback else "",
+                          title = if (length(u$conds)) t("When no condition holds"))),
+      if (length(conds)) shiny::div(class = "ms-3", conds),
+      shiny::div(class = if (!is.null(label)) "ms-3 mb-1" else "mb-1",
+                 btn("cond_add", paste0("\uff0b", t("Condition")),
+                     t("A condition: the first that holds is used"), cls = "btn-outline-primary")))
+  }
   row_ui <- function(r) {
     v <- rows$variable[r]
     own <- rows$own[r]
     kind <- rows$kind[r]
-    e <- if (own) .cells_entry_parse(pc[[v]])
+    e <- if (own) {
+      ed <- edits[[v]]
+      if (!is.null(ed) && .cells_entry_pending(ed) && identical(.cells_entry_build(ed), pc[[v]])) ed else
+        .cells_entry_parse(pc[[v]])
+    }
     stats <- .cells_var_stats(meta, v)
     # (the statistics its template reads that the ARD lacks: grey, to step 1)
-    used <- if (own) unique(unlist(lapply(.cells_entry_templates(pc[[v]]), .template_stats))) else
+    used <- if (own) unique(unlist(lapply(.cells_entry_templates(e), .template_stats))) else
       character()
     lack <- if (length(stats)) setdiff(used, stats) else character()
-    mode_ui <- shiny::tagList(
-      sel("rp-cv-mode", c("common", "own"), if (own) "own" else "common",
-          names = t(c("Common", "Own (this variable)")),
-          title = t("Own: a copy of the common template, edited here; it does not follow the common one afterwards."),
-          disabled = if (own && !rows$in_ard[r]) NA),
-      if (!own) sel("rp-cv-kind", c("continuous", "categorical"), kind,
-                    names = paste0(t(c("Continuous", "Categorical")),
-                                   ifelse(c("continuous", "categorical") %in% rows$kind_auto[r],
-                                          paste0(" (", t("from the ARD"), ")"), "")),
-                    title = t("Which common template the variable takes: from the ARD's statistics (p: categorical); choose to override.")))
+    other <- setdiff(names(kind_name), kind)
+    # own: a copy of the common template -- the ARD's kind's, or the other's
+    mode_ui <- sel(
+      "rp-cv-mode",
+      if (own) c("common", "own") else c("common", paste0("own:", c(kind, other))),
+      if (own) "own" else "common",
+      names = if (own) t(c("Common", "Own (this variable)")) else
+        c(t("Common"), sprintf(t("Own (from the %s template)"), kind_name[c(kind, other)])),
+      title = t("Own: a copy of the common template, edited here; it does not follow the common one afterwards. Back to Common: the own template goes."),
+      disabled = if (own && !rows$in_ard[r]) NA)
     tpl_ui <- if (!own) {
       shiny::div(class = "rp-cv-ro text-muted small",
+                 shiny::span(class = "badge text-bg-light me-1",
+                             title = t("From the ARD's statistics (p: categorical)"),
+                             kind_name[[kind]]),
                  .cells_entry_text(.cells_common_entry(pc, st, kind)))
     } else if (identical(e$type, "single")) {
-      shiny::tags$input(type = "text", class = "form-control form-control-sm rp-cv-tpl",
-                        `data-k` = "0", value = if (!is.na(e$fallback)) e$fallback else "",
-                        title = if (length(e$conds)) t("When no condition holds"))
+      unit_ui(e, "0")
     } else if (identical(e$type, "rows")) {
-      shiny::tagList(lapply(names(e$rows), function(lb) shiny::div(
-        class = "d-flex gap-1 align-items-center mb-1",
-        shiny::span(class = "small text-nowrap rp-cv-rowlab", lb),
-        shiny::tags$input(type = "text", class = "form-control form-control-sm rp-cv-tpl",
-                          `data-k` = paste0("r:", lb), value = e$rows[[lb]]))))
+      shiny::tagList(lapply(names(e$rows), function(lb) unit_ui(e$rows[[lb]], paste0("r:", lb), lb)))
     } else {
       shiny::div(class = "small", shiny::tags$code(.cells_entry_text(e$raw)),
                  shiny::div(class = "text-muted", t("Edit in R (this card's R).")))
@@ -76,34 +119,6 @@
         title = t("Not in the ARD: add it in step 1"),
         onclick = "Shiny.setInputValue('b_rows_step1', Math.random()); return false;",
         paste(k, "\u2192", t("step 1")))))
-    cond_ui <- if (own && identical(e$type, "single")) shiny::tagList(
-      lapply(seq_along(e$conds), function(i) {
-        c1 <- e$conds[[i]]
-        moves <- shiny::span(
-          class = "text-nowrap",
-          btn("cond_up", "\u2191", t("Up (the first that holds is used)"), i),
-          btn("cond_down", "\u2193", t("Down"), i),
-          btn("cond_rm", "\u00d7", t("Remove the condition"), i, "btn-outline-danger"))
-        if (!isTRUE(c1$ok)) {
-          return(shiny::div(
-            class = "d-flex gap-1 align-items-center mb-1 rp-cv-cond", `data-i` = i,
-            shiny::tags$code(class = "small", as.character(unclass(c1$raw))),
-            shiny::span(class = "small text-muted text-nowrap", t("Edit in R")), moves))
-        }
-        shiny::div(
-          class = "d-flex gap-1 align-items-center mb-1 rp-cv-cond", `data-i` = i,
-          sel("rp-cv-cf", unique(c(c1$col, cols)), c1$col, `data-f` = "col",
-              title = t("Column")),
-          sel("rp-cv-cf", .cells_ops, c1$op, `data-f` = "op", title = t("Operator")),
-          shiny::tags$input(type = "text", class = "form-control form-control-sm rp-cv-cf",
-                            `data-f` = "value", value = c1$value, title = t("Value (a number or a text)"),
-                            style = "width:6em"),
-          shiny::tags$input(type = "text", class = "form-control form-control-sm rp-cv-cf rp-cv-tpl2",
-                            `data-f` = "tpl", value = c1$tpl, title = t("Template when it holds")),
-          moves)
-      }),
-      btn("cond_add", paste0("\uff0b", t("Condition")), t("A condition: the first that holds is used"),
-          cls = "btn-outline-primary"))
     shiny::tags$tr(
       class = "rp-cv-row", `data-var` = v,
       shiny::tags$td(shiny::div(
@@ -114,8 +129,7 @@
           t("Not in the ARD")),
         mode_ui)),
       shiny::tags$td(class = "rp-cv-tplcell", `data-label` = t("Template"), tpl_ui),
-      shiny::tags$td(`data-label` = t("Statistics"), chips),
-      shiny::tags$td(`data-label` = t("Conditions"), cond_ui))
+      shiny::tags$td(`data-label` = t("Statistics"), chips))
   }
   commons <- rows$variable[!rows$own & rows$in_ard]
   differs <- !is.null(diff) && any(diff$differs)
@@ -131,12 +145,15 @@
         class = "rp-cv-addbox d-none",
         sel("rp-cv-addsel", c("", commons), "", names = c(t("A variable of its own..."), commons),
             style = "width:auto;display:inline-block")),
+      # (a mark, its words in the tooltip: to the study tab's card)
       if (differs) shiny::tags$a(
-        href = "#", class = "badge text-bg-light text-decoration-none rp-cv-std",
-        title = paste(t("The study standard differs from the company standard:"),
+        href = "#", class = "text-warning text-decoration-none rp-cv-std",
+        title = paste(t("Differs from the company standard"), "--",
+                      t("The study standard differs from the company standard:"),
                       paste(diff$label[diff$differs], collapse = ", ")),
+        `aria-label` = t("Differs from the company standard"),
         onclick = "Shiny.setInputValue('b_cv_std', Math.random()); return false;",
-        t("Differs from the company standard"))),
+        "\u2260")),
     shiny::tags$details(
       class = "rp-cv-tbl mt-1", open = if (any_own) NA,
       shiny::tags$summary(class = "small text-muted", t("Variables and formats")),
@@ -145,20 +162,32 @@
         shiny::tags$table(
           class = "table table-sm align-top small mb-1",
           shiny::tags$thead(shiny::tags$tr(
-            shiny::tags$th(t("Variable")), shiny::tags$th(t("Common / own")),
-            shiny::tags$th(t("Template")), shiny::tags$th(t("Statistics")),
-            shiny::tags$th(t("Conditions")))),
+            shiny::tags$th(t("Variable")), shiny::tags$th(t("Template")),
+            shiny::tags$th(t("Statistics")))),
           shiny::tags$tbody(lapply(seq_len(nrow(rows)), row_ui))))),
     shiny::singleton(shiny::tags$head(shiny::tags$script(shiny::HTML(.cells_vars_js)),
                                       shiny::tags$style(shiny::HTML(.cells_vars_css)))))
 }
 
+# ... read only (no ARD yet to edit against): the variables of their own
+# and their templates
+.cells_vars_ro <- function(pc, lang = "en") {
+  v <- .cells_var_names(pc)
+  shiny::div(
+    class = "rp-cv mt-2 small",
+    shiny::div(class = "rp-cv-sum", .cells_vars_summary(pc, lang)),
+    if (length(v)) shiny::tags$ul(
+      class = "list-unstyled mb-0 text-muted",
+      lapply(v, function(k) shiny::tags$li(shiny::strong(k), ": ",
+                                           shiny::tags$code(.cells_entry_text(pc[[k]]))))))
+}
+
 # the templates an entry holds (its rows', its conditions' after the ~)
-.cells_entry_templates <- function(x) {
-  e <- .cells_entry_parse(x)
-  switch(e$type,
-         single = c(vapply(e$conds, function(c) c$tpl %||% NA_character_, ""), e$fallback),
-         rows = unlist(e$rows),
+.cells_entry_templates <- function(e) {
+  one <- function(u) c(vapply(u$conds, function(c) c$tpl %||% NA_character_, ""), u$fallback)
+  switch(e$type %||% "r",
+         single = one(e),
+         rows = unlist(lapply(e$rows, one)),
          character())
 }
 
@@ -215,6 +244,7 @@
 .rp-cv .rp-cv-ro { white-space: pre-wrap; }
 .rp-cv .rp-cv-cond { flex-wrap: wrap; }
 .rp-cv .rp-cv-cond input[data-f=tpl] { flex: 1 1 10em; }
+.rp-cv .rp-cv-cond input.rp-cv-val { min-width: 6em; flex: 0 1 8em; }
 .rp-cv .rp-cv-rowlab { min-width: 5em; }
 "
 
@@ -226,7 +256,9 @@
   function send(el, o) {
     var box = el.closest('.rp-cv');
     var row = el.closest('.rp-cv-row');
-    if (row) o.v = row.getAttribute('data-var');
+    if (row && !o.v) o.v = row.getAttribute('data-var');
+    var unit = el.closest('.rp-cv-unit');
+    if (unit) o.k = unit.getAttribute('data-k');
     o.nonce = Math.random();
     Shiny.setInputValue(box.getAttribute('data-ev'), o, {priority: 'event'});
   }
@@ -246,7 +278,7 @@
       var c = el.closest('.rp-cv-cond');
       send(el, {act: 'cond', i: +c.getAttribute('data-i'), field: el.getAttribute('data-f'), value: el.value});
     }
-    else if (cl.contains('rp-cv-tpl')) send(el, {act: 'tpl', k: el.getAttribute('data-k'), value: el.value});
+    else if (cl.contains('rp-cv-tpl')) send(el, {act: 'tpl', value: el.value});
   });
   document.addEventListener('click', function(e) {
     var el = e.target.closest ? e.target.closest('.rp-cv button') : null;
@@ -258,7 +290,7 @@
     }
     if (el.classList.contains('rp-cv-chip')) {
       var row = el.closest('.rp-cv-row');
-      var inp = (last && row.contains(last)) ? last : row.querySelector('.rp-cv-tpl');
+      var inp = (last && row.contains(last) && document.contains(last)) ? last : row.querySelector('.rp-cv-tpl');
       if (!inp) return;
       var s = inp.selectionStart == null ? inp.value.length : inp.selectionStart;
       var t = inp.selectionEnd == null ? s : inp.selectionEnd;

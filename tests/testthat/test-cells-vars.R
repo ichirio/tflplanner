@@ -53,6 +53,26 @@ test_that("a variable's entry reads and builds back unchanged (T-14-2-2's prob, 
   expect_identical(.cells_entry_parse(rows)$type, "rows")
   expect_identical(.cells_entry_build(.cells_entry_parse(rows)), rows)
   expect_identical(.cells_entry_parse(list(n = list(1)))$type, "r")
+  # a condition not said yet (no value): not written
+  e <- .cells_entry_parse(pc$time)
+  e$conds <- list(list(col = "estimate", op = "==", value = "", tpl = "x", raw = NULL, ok = TRUE))
+  expect_identical(.cells_entry_build(e), pc$time)
+  e$conds[[1L]]$value <- "1"
+  expect_identical(as.character(unclass(.cells_entry_build(e)[[1L]])), "estimate == 1 ~ \"x\"")
+  # a continuous variable's rows with a condition: cell_rows(), read back
+  r <- .cells_entry_parse(rows)
+  u <- .cells_entry_part(r, "r:Mean (SD)")
+  u$conds <- list(list(col = "N", op = "<", value = "3", tpl = "NE", raw = NULL, ok = TRUE))
+  r <- .cells_entry_part_set(r, "r:Mean (SD)", u)
+  b <- .cells_entry_build(r)
+  expect_s3_class(b, "tfl_call")
+  expect_identical(b$fn, "cell_rows")
+  expect_identical(b$args$n, "{N}")
+  expect_length(b$args[["Mean (SD)"]], 2L)
+  r2 <- .cells_entry_parse(b)
+  expect_identical(r2$type, "rows")
+  expect_identical(.cells_entry_build(r2), b)
+  expect_identical(r2$rows[["Mean (SD)"]]$conds[[1L]]$value, "3")
   expect_identical(.cells_var_names(pc), c("prob", "time"))
   expect_identical(.cells_vars_summary(pc), "Per variable: prob (3), time")
   expect_identical(.cells_vars_summary(list(default = "{n}")), "Per variable: none")
@@ -66,8 +86,6 @@ test_that("a variable's entry reads and builds back unchanged (T-14-2-2's prob, 
   expect_identical(r$in_ard, c(TRUE, TRUE, FALSE))
   expect_identical(r$own, c(TRUE, FALSE, TRUE))
   expect_identical(r$kind, c("continuous", "categorical", "continuous"))
-  expect_identical(.cells_vars_rows(pc, meta, kinds = list(prob = "categorical"))$kind[1L],
-                   "categorical")
   expect_identical(.cells_chip_text("mean", c(mean = 1L)), "{mean:.1f}")
   expect_identical(.cells_chip_text("p", pct = 1), "{p:.1f%}")
   expect_identical(.cells_chip_text("estimate"), "{estimate}")
@@ -129,6 +147,17 @@ test_that("changing the decimals rewrites a variable's own rows and conditions, 
   expect_length(ms, 2L)
   expect_identical(as.character(unclass(ms[[1L]])), "N < 3 ~ \"{mean:.2f}\"")
   expect_identical(ms[[2L]], "{mean:.2f} ({sd:.2f})")
+  # a continuous variable's own rows with a condition: cell_rows() in the code
+  e <- .cells_entry_parse(.cells_common_entry(cells(p), st, "continuous"))
+  u <- .cells_entry_part(e, "r:n")
+  u$conds <- list(list(col = "N", op = "<", value = "3", tpl = "few", raw = NULL, ok = TRUE))
+  q2 <- .cells_var_put(p, id, "AGE", .cells_entry_build(.cells_entry_part_set(e, "r:n", u)))
+  code <- paste(program_code(q2, id), collapse = " ")
+  expect_match(code, "cell_rows(", fixed = TRUE)
+  expect_match(code, "N < 3 ~ \"few\"", fixed = TRUE)
+  # with no ARD to edit against: read only
+  h <- as.character(.cells_vars_ro(cells(q2)))
+  expect_match(h, "AGE", fixed = TRUE)
   # the sd unchanged: its decimals stay
   expect_identical(got$continuous[["n"]], cells(p)$continuous[["n"]])
 })

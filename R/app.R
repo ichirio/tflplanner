@@ -9050,6 +9050,12 @@ app_server <- function(input, output, session, start) {
              class = "btn-sm btn-primary ms-1"), " ",
         help_tip(t(.preview_tip))),
       NULL)
+    # (plan_cells()' variables of their own, read only, until the ARD is
+    # there to edit them against -- #454)
+    if (identical(builder_case(), "meta")) {
+      pc <- tryCatch(.builder_args(builder_items(rv$p, id), "plan_cells"), error = function(e) NULL)
+      if (length(.cells_var_names(pc))) msg <- shiny::tagList(msg, .cells_vars_ro(pc, lang))
+    }
     if (is.null(msg)) return(pane_head(
       t("Table builder"),
       t("Drag to order, type to rename; every change is written to this report's SPEC (YAML) and shown in the code and the preview on the right.")))
@@ -9074,6 +9080,8 @@ app_server <- function(input, output, session, start) {
     }
     bform$n <- bform$n + 1L
     bform_drawn(bform$n)
+    # (conditions not said yet are the form's: another report, gone)
+    if (!identical(bform$id, id)) bform$cv_edit <- list()
     bform$id <- id
     bform$st <- st
     bform$exc <- st$exceptions
@@ -10043,22 +10051,30 @@ app_server <- function(input, output, session, start) {
     rv$bver <- rv$bver + 1L
   })
   # plan_cells() by variable (#454): the table on the plan_cells() card,
-  # drawn again when a row's shape changes (cv_ver) or the form is
+  # drawn again when a row's shape changes (cv_ver) or the form is; with no
+  # ARD to edit against, what the plan says, read only
   cv_ver <- shiny::reactiveVal(0L)
-  output$b_cv_ui <- shiny::renderUI(builder_guard({
+  output$b_cv_ui <- shiny::renderUI({
     cv_ver()
     bform_drawn()
     id <- bform$id
-    shiny::req(!is.null(id), builder_case() %in% c("ok", "hierarchy"))
+    shiny::req(!is.null(id))
     p <- shiny::isolate(rv$p)
-    m <- shiny::isolate(bform$meta)
-    st <- shiny::isolate(bform$st)
-    its <- builder_items(p, id, m)
-    pc <- .builder_args(its, "plan_cells") %||% list()
-    .cells_vars_ui(pc, m, st, dg = .report_digits(p, id),
-                   kinds = shiny::isolate(bform$cv_kind[[id]]) %||% list(), lang = lang,
-                   diff = tryCatch(.cells_company_diff(p), error = function(e) NULL))
-  }))
+    m <- bform$meta
+    pc <- tryCatch(.builder_args(builder_items(p, id, m), "plan_cells"),
+                   error = function(e) NULL) %||% list()
+    if (!shiny::isolate(builder_case()) %in% c("ok", "hierarchy") || is.null(m)) {
+      return(.cells_vars_ro(pc, lang))
+    }
+    tryCatch(
+      .cells_vars_ui(pc, m, bform$st, dg = .report_digits(p, id), lang = lang,
+                     diff = tryCatch(.cells_company_diff(p), error = function(e) NULL),
+                     edits = bform$cv_edit[[id]] %||% list()),
+      error = function(e) {
+        message("tflplanner: builder: ", conditionMessage(e))
+        .cells_vars_ro(pc, lang)
+      })
+  })
   shiny::observeEvent(input$b_cv_std, {
     go("study")
     session$sendCustomMessage("rp-open-sec", "cells")
@@ -10072,65 +10088,72 @@ app_server <- function(input, output, session, start) {
     m <- bform$meta
     st <- bform$st
     pc <- .builder_args(builder_items(p, id, m), "plan_cells") %||% list()
-    kinds <- bform$cv_kind[[id]] %||% list()
     act <- ev$act %||% ""
+    edits <- bform$cv_edit[[id]] %||% list()
     redraw <- TRUE
     value <- pc[[v]]
-    if (identical(act, "kind")) {
-      kinds[[v]] <- ev$value
-      bform$cv_kind[[id]] <- kinds
-      cv_ver(cv_ver() + 1L)
-      return()
-    }
     if (identical(act, "mode")) {
-      value <- if (identical(ev$value, "own")) {
-        r <- .cells_vars_rows(pc, m, kinds)
-        k <- r$kind[match(v, r$variable)]
-        pc[[v]] %||% .cells_common_entry(pc, st, if (is.na(k)) "continuous" else k)
+      # own: a copy of the common template of the kind chosen (the ARD's,
+      # or the other); common: the own template goes
+      md <- ev$value %||% ""
+      if (startsWith(md, "own")) {
+        k <- sub("^own:?", "", md)
+        if (!k %in% c("continuous", "categorical")) {
+          k <- .cells_vars_rows(pc, m)$kind[match(v, .cells_vars_rows(pc, m)$variable)]
+        }
+        value <- pc[[v]] %||% .cells_common_entry(pc, st, if (is.na(k)) "continuous" else k)
+      } else {
+        value <- NULL
       }
+      edits[[v]] <- NULL
     } else {
-      e <- .cells_entry_parse(pc[[v]])
+      ed <- edits[[v]]
+      e <- if (!is.null(ed) && identical(.cells_entry_build(ed), pc[[v]])) ed else
+        .cells_entry_parse(pc[[v]])
       shiny::req(!identical(e$type, "r"))
+      k <- ev$k %||% "0"
+      u <- .cells_entry_part(e, k)
+      shiny::req(!is.null(u))
       i <- as.integer(ev$i %||% NA)
-      n <- length(e$conds)
+      n <- length(u$conds)
       if (identical(act, "tpl")) {
         redraw <- FALSE
-        k <- ev$k %||% "0"
-        if (identical(e$type, "rows") && startsWith(k, "r:")) {
-          e$rows[[substring(k, 3L)]] <- ev$value %||% ""
-        } else if (identical(e$type, "single")) {
-          e$fallback <- ev$value %||% ""
-        }
-      } else {
-        shiny::req(identical(e$type, "single"))
-        if (identical(act, "cond")) {
-          redraw <- FALSE
-          shiny::req(!is.na(i), i >= 1L, i <= n, ev$field %in% c("col", "op", "value", "tpl"))
-          e$conds[[i]][[ev$field]] <- ev$value %||% ""
-          e$conds[[i]]["raw"] <- list(NULL)
-        } else if (identical(act, "cond_add")) {
-          cols <- .cells_cond_columns(m)
-          own_st <- .cells_var_stats(m, v)
-          e$conds[[n + 1L]] <- list(col = c(own_st, cols)[1L] %||% "n", op = "==", value = "",
-                                    tpl = if (is.na(e$fallback)) "" else e$fallback,
-                                    raw = NULL, ok = TRUE)
-        } else if (identical(act, "cond_rm")) {
-          shiny::req(!is.na(i), i >= 1L, i <= n)
-          e$conds <- e$conds[-i]
-        } else if (act %in% c("cond_up", "cond_down")) {
-          j <- if (identical(act, "cond_up")) i - 1L else i + 1L
-          shiny::req(!is.na(i), i >= 1L, i <= n, j >= 1L, j <= n)
-          e$conds[c(i, j)] <- e$conds[c(j, i)]
-        } else return()
-      }
+        u$fallback <- ev$value %||% ""
+      } else if (identical(act, "cond")) {
+        redraw <- FALSE
+        shiny::req(!is.na(i), i >= 1L, i <= n, ev$field %in% c("col", "op", "value", "tpl"))
+        u$conds[[i]][[ev$field]] <- ev$value %||% ""
+        u$conds[[i]]["raw"] <- list(NULL)
+        u$conds[[i]]$ok <- TRUE
+      } else if (identical(act, "cond_add")) {
+        # (written once its column and value are said)
+        cols <- c(.cells_var_stats(m, v), .cells_cond_columns(m))
+        u$conds[[n + 1L]] <- list(col = cols[1L] %||% "n", op = "==", value = "",
+                                  tpl = if (is.na(u$fallback)) "" else u$fallback,
+                                  raw = NULL, ok = TRUE)
+      } else if (identical(act, "cond_rm")) {
+        shiny::req(!is.na(i), i >= 1L, i <= n)
+        u$conds <- u$conds[-i]
+      } else if (act %in% c("cond_up", "cond_down")) {
+        j <- if (identical(act, "cond_up")) i - 1L else i + 1L
+        shiny::req(!is.na(i), i >= 1L, i <= n, j >= 1L, j <= n)
+        u$conds[c(i, j)] <- u$conds[c(j, i)]
+      } else return()
+      e <- .cells_entry_part_set(e, k, u)
+      # (kept only while a condition is not said yet: what the plan has
+      # is read again otherwise)
+      edits[v] <- list(if (.cells_entry_pending(e)) e)
       value <- .cells_entry_build(e)
     }
+    bform$cv_edit[[id]] <- edits
     p2 <- guarded(.cells_var_put(p, id, v, value))
     shiny::req(!is.null(p2))
-    if (identical(p2, p)) return()
-    rv$p <- p2
-    rv$btouched <- TRUE
-    if (redraw) rv$bver <- rv$bver + 1L
+    if (!identical(p2, p)) {
+      rv$p <- p2
+      rv$btouched <- TRUE
+    }
+    if (!redraw) return()
+    if (identical(p2, p)) cv_ver(cv_ver() + 1L) else rv$bver <- rv$bver + 1L
   }))
   # A variable's own decimals: the list (each with x to take it away) and a
   # line to add one

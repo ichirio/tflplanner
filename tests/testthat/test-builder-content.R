@@ -319,9 +319,9 @@ test_that("the screen review's fixes: per-variable templates said, every argumen
              prob = list(tflspec::tfl_r("a ~ 1"), tflspec::tfl_r("b ~ 2"), "{x}"), time = "{t}")
   expect_identical(.cells_own_vars(pc), c("prob (3)", "time"))
   expect_null(.cells_own_vars(list(default = "{n}", AGE = list(n = "{N}")), skip = "AGE"))
-  h <- html(.cells_own_note(pc))
-  expect_match(h, "Per variable (edit them as R on this card):", fixed = TRUE)
-  expect_match(h, "prob (3), time", fixed = TRUE)
+  # (the card's table says them now: #454)
+  h <- html(.cells_vars_ro(pc))
+  expect_match(h, "Per variable: prob (3), time", fixed = TRUE)
   # a form of its own: the function's other arguments, below it
   expect_true("keep" %in% .special_args("plan_sort"))
   expect_false("keys" %in% .special_args("plan_sort"))

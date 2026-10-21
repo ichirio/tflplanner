@@ -88,42 +88,96 @@
 
 # A variable's entry as the table edits it: `type` "single" (a template, and
 # the conditions above it: `conds`, `fallback`), "rows" (a continuous
-# variable's rows: `rows`, a template a row label) or "r" (anything else:
-# R, read only; `raw`)
+# variable's rows: `rows`, a "single" a row label; with conditions they are
+# cell_rows(), `call`) or "r" (anything else: R, read only; `raw`)
 .cells_entry_parse <- function(x) {
   r <- list(type = "r", raw = x)
-  if (is.null(x) || inherits(x, "tfl_call") || inherits(x, "tfl_r")) return(r)
+  if (is.null(x) || inherits(x, "tfl_r")) return(r)
+  if (inherits(x, "tfl_call")) {
+    rows <- if (identical(x$fn, "cell_rows")) .cells_rows_parse(x$args)
+    return(if (is.null(rows)) r else list(type = "rows", rows = rows, call = x))
+  }
+  s <- .cells_single_parse(x)
+  if (!is.null(s)) return(s)
+  rows <- .cells_rows_parse(x)
+  if (is.null(rows)) r else list(type = "rows", rows = rows)
+}
+
+# a template, or conditions (tfl_r) then a template; NULL: not one
+.cells_single_parse <- function(x) {
   one <- function(z) is.character(z) && length(z) == 1L && !inherits(z, "tfl_r")
   if (one(x)) return(list(type = "single", conds = list(), fallback = x))
-  if (!is.list(x) || !length(x)) return(r)
+  if (!is.list(x) || !length(x) || inherits(x, "tfl_call")) return(NULL)
   nm <- names(x)
-  if (!is.null(nm) && all(nzchar(nm))) {
-    if (!all(vapply(x, one, NA))) return(r)
-    return(list(type = "rows", rows = x))
-  }
-  if (!is.null(nm) && any(nzchar(nm))) return(r)
+  if (!is.null(nm) && any(nzchar(nm))) return(NULL)
   n <- length(x)
   last <- x[[n]]
   conds <- if (one(last)) x[-n] else x
-  if (!all(vapply(conds, function(z) inherits(z, "tfl_r"), NA))) return(r)
+  if (!all(vapply(conds, function(z) inherits(z, "tfl_r"), NA))) return(NULL)
   list(type = "single", conds = lapply(conds, .cells_cond_parse),
        fallback = if (one(last)) last else NA_character_)
 }
 
-# ... and back into what plan_cells() takes (a condition not edited: as written)
+# named rows, each a template or conditions; NULL: not such rows
+.cells_rows_parse <- function(x) {
+  if (!is.list(x) || !length(x) || inherits(x, "tfl_call")) return(NULL)
+  nm <- names(x)
+  if (is.null(nm) || !all(nzchar(nm))) return(NULL)
+  rows <- lapply(x, .cells_single_parse)
+  if (any(vapply(rows, is.null, NA))) return(NULL)
+  rows
+}
+
+# a condition the fields have not said yet (a column and a value): not
+# written until they are
+.cells_cond_done <- function(c) {
+  !is.null(c$raw) || (nzchar(c$col %||% "") && !is.na(c$col) &&
+                        nzchar(trimws(c$value %||% "")) && !is.na(c$value))
+}
+
+# an entry with a condition not said yet
+.cells_entry_pending <- function(e) {
+  one <- function(u) any(!vapply(u$conds %||% list(), .cells_cond_done, NA))
+  switch(e$type %||% "r", single = one(e), rows = any(vapply(e$rows, one, NA)), FALSE)
+}
+
+# ... and back into what plan_cells() takes (a condition not edited: as
+# written; one not said yet left out)
 .cells_entry_build <- function(e) {
   switch(
     e$type,
     single = {
-      if (!length(e$conds)) return(e$fallback)
-      cs <- lapply(e$conds, function(c) {
+      cs <- Filter(.cells_cond_done, e$conds)
+      if (!length(cs)) return(e$fallback)
+      cs <- lapply(cs, function(c) {
         if (!is.null(c$raw)) return(c$raw)
         .cells_cond_r(c$col, c$op, c$value, c$tpl)
       })
       if (is.na(e$fallback %||% NA_character_)) cs else c(cs, list(e$fallback))
     },
-    rows = e$rows,
+    rows = {
+      rows <- lapply(e$rows, .cells_entry_build)
+      guarded <- any(vapply(rows, is.list, NA))
+      if (!is.null(e$call)) {
+        e$call$args <- rows
+        return(e$call)
+      }
+      if (guarded) tflspec::tfl_call("cell_rows", rows) else rows
+    },
     e$raw)
+}
+
+# a part of an entry by its key ("0" the entry, "r:<row>" a row) and back
+.cells_entry_part <- function(e, k) {
+  if (identical(e$type, "rows") && startsWith(k %||% "", "r:")) e$rows[[substring(k, 3L)]] else
+    if (identical(e$type, "single")) e
+}
+.cells_entry_part_set <- function(e, k, part) {
+  if (identical(e$type, "rows") && startsWith(k %||% "", "r:")) {
+    e$rows[[substring(k, 3L)]] <- part
+    return(e)
+  }
+  part
 }
 
 # ---- decimals ---------------------------------------------------------------
@@ -211,19 +265,16 @@
 # The table's rows: the ARD's analysis variables, then the variables the
 # plan names that the ARD lacks (kept: their settings would go).  A data
 # frame: variable, in_ard, own (named in plan_cells()), kind (the common
-# one: `kinds` the table's own choice over the ARD's), kind_auto.
-.cells_vars_rows <- function(pc, meta, kinds = list()) {
+# template it takes: from the ARD's statistics; one the ARD lacks
+# continuous).
+.cells_vars_rows <- function(pc, meta) {
   ard <- if (!is.null(meta$variables)) meta$variables$variable else character()
   own <- .cells_var_names(pc)
   vars <- unique(c(ard, own))
-  auto <- vapply(vars, function(v) .cells_var_kind(meta, v), "", USE.NAMES = FALSE)
-  kind <- vapply(seq_along(vars), function(i) {
-    k <- kinds[[vars[i]]]
-    if (!is.null(k) && k %in% c("continuous", "categorical")) k else
-      if (is.na(auto[i])) "continuous" else auto[i]
-  }, "")
+  kind <- vapply(vars, function(v) .cells_var_kind(meta, v), "", USE.NAMES = FALSE)
+  kind[is.na(kind)] <- "continuous"
   data.frame(variable = vars, in_ard = vars %in% ard, own = vars %in% own,
-             kind = kind, kind_auto = auto, stringsAsFactors = FALSE)
+             kind = kind, stringsAsFactors = FALSE)
 }
 
 # the one-line summary: the variables of their own ("prob (3), time"), or none

@@ -1683,13 +1683,6 @@ builder_code_map <- function(lines, items) {
     if (n > 1L) sprintf("%s (%d)", v, n) else v
   }, "", USE.NAMES = FALSE)
 }
-.cells_own_note <- function(pc, skip = character(), t = function(x) x) {
-  v <- .cells_own_vars(pc, skip)
-  if (is.null(v)) return(NULL)
-  shiny::div(class = "small text-muted rp-cells-own mt-1",
-             t("Per variable (edit them as R on this card):"), " ",
-             shiny::tags$code(paste(v, collapse = ", ")))
-}
 
 # ---- writing an item back ------------------------------------------------------------
 
