@@ -113,7 +113,7 @@
     if (!length(at)) next
     q <- sub("[.]md$", "", basename(f))
     texts[[q]] <- txt
-    body <- lines[seq_len(length(lines)) > at[1L]]
+    body <- lines[-seq_len(at[1L])]
     nxt <- grep("^#{1,2} ", body)
     if (length(nxt)) body <- body[seq_len(nxt[1L] - 1L)]
     body <- grep("^- [^:]+: ", body, value = TRUE)
