@@ -3700,6 +3700,9 @@ Your answer,回答
 No new answer to write.,書き戻す新しい回答がありません。
 %d answers written to ai/questions.md: tell the agent.,%d 件の回答を ai/questions.md に書きました: エージェントに伝えてください。
 Copy the line to tell the agent,エージェントへの一言をコピー
+Could not be built:,RTF を作れませんでした：
+Copy: rebuild only this request,この依頼だけ作り直す行をコピー
+To rebuild only this request,この依頼だけ作り直す
 question-status:open,未回答
 question-status:decided,決定済み
 Shell workbooks,SHELL ブック

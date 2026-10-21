@@ -1,5 +1,16 @@
 # tflplanner (development version)
 
+- **AI tab, agent mode: fix requests and reports not built** (#458,
+  0.0.2.9264; tflspec >= 0.0.24.9197 for the reasons, tflspec#420): the
+  list of step 3 has, on each request's first row, "Copy the fix request"
+  and "View" when the request has one; a report whose answer passed the
+  checks but whose RTF run.R could not build says why ("Could not be
+  built: ...", the whole text behind "View"), read from
+  `ai/repairs/<request>.md` before each check (the check removes the fix
+  request of an answer that passes) and kept while `ai/status.md` is the
+  same run's.  With a tflspec whose `tfl_ai_run()` takes `requests`, a copy
+  of `Rscript run.R <request>` per request.  An older tflspec: as before.
+
 - **tflspec's three-stage analysis data code** (#452, 0.0.2.9260; tflspec
   >= 0.0.24.9192): an analysis data is now written as a pipe -- its subjects
   by `semi_join(select(adsl_x, USUBJID), by = "USUBJID")`, its condition in a

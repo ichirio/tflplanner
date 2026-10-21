@@ -91,6 +91,54 @@
   .ai_read_text(f)
 }
 
+# The reports that passed their checks but could not be built: the
+# "## Could not be built" section tfl_ai_run() (tflspec >= 0.0.24.9197)
+# writes in ai/repairs/<request>.md, one "- <output_id>: <reason>" a line.
+# A data frame (request, output_id, reason) with attr "texts" (each
+# request's whole fix request, named by request; a later check removes the
+# file of an answer that passes, so the app keeps them).  An older tflspec
+# writes no such section: no rows.
+.ai_unbuilt <- function(path) {
+  none <- data.frame(request = character(), output_id = character(), reason = character(),
+                     stringsAsFactors = FALSE)
+  attr(none, "texts") <- character()
+  fs <- list.files(file.path(path, .ai_repairs_dir), "[.]md$", full.names = TRUE)
+  rows <- list()
+  texts <- character()
+  for (f in fs) {
+    txt <- tryCatch(.ai_read_text(f), error = function(e) NA_character_)
+    if (is.na(txt)) next
+    lines <- strsplit(txt, "\n", fixed = TRUE)[[1L]]
+    at <- which(trimws(lines) == "## Could not be built")
+    if (!length(at)) next
+    q <- sub("[.]md$", "", basename(f))
+    texts[[q]] <- txt
+    body <- lines[seq_len(length(lines)) > at[1L]]
+    nxt <- grep("^#{1,2} ", body)
+    if (length(nxt)) body <- body[seq_len(nxt[1L] - 1L)]
+    body <- grep("^- [^:]+: ", body, value = TRUE)
+    if (!length(body)) next
+    rows[[q]] <- data.frame(request = q, output_id = sub("^- ([^:]+): .*$", "\\1", body),
+                            reason = sub("^- [^:]+: ", "", body), stringsAsFactors = FALSE)
+  }
+  out <- if (length(rows)) do.call(rbind, unname(rows)) else none
+  rownames(out) <- NULL
+  attr(out, "texts") <- texts
+  out
+}
+
+# a reason short enough for a cell
+.ai_short <- function(x, n = 80L) {
+  x <- gsub("\\s+", " ", x)
+  ifelse(nchar(x) > n, paste0(substr(x, 1L, n - 3L), "..."), x)
+}
+
+# tfl_ai_run() builds only some requests (`Rscript run.R <request>`)
+.ai_run_has_requests <- function() {
+  f <- tryCatch(getExportedValue("tflspec", "tfl_ai_run"), error = function(e) NULL)
+  is.function(f) && "requests" %in% names(formals(f))
+}
+
 # The saved answer of a request, for the box it is pasted in: its text,
 # "" when there is none.  An answer not in UTF-8: "" with attr "problem".
 .ai_answer_text <- function(path, request) {

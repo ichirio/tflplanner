@@ -251,9 +251,34 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     was <- NULL
     shiny::observe({
       p <- path()
-      if (!identical(p, was)) collected(NULL)
+      if (!identical(p, was)) {
+        collected(NULL)
+        unbuilt(NULL)
+      }
       was <<- p
     })
+    # the reports run.R could not build (.ai_unbuilt()), read before each
+    # check: the check removes the fix request of an answer that passes.
+    # Kept while ai/status.md is the same run's.
+    unbuilt <- shiny::reactiveVal(NULL)
+    keep_unbuilt <- function() {
+      p <- path()
+      if (is.null(p)) return(invisible())
+      when <- file.mtime(file.path(p, "ai", "status.md"))
+      now <- tryCatch(.ai_unbuilt(p), error = function(e) NULL)
+      if (is.null(now)) return(invisible())
+      old <- unbuilt()
+      if (!is.null(old) && identical(attr(old, "when"), when)) {
+        more <- old[!old$request %in% now$request, , drop = FALSE]
+        texts <- c(attr(now, "texts"), attr(old, "texts")[setdiff(names(attr(old, "texts")),
+                                                                  names(attr(now, "texts")))])
+        now <- rbind(now, more)
+        attr(now, "texts") <- texts
+      }
+      attr(now, "when") <- when
+      unbuilt(now)
+      invisible()
+    }
 
     requests <- shiny::reactive({
       ver()
@@ -274,12 +299,26 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       if (identical(what, "instructions")) {
         return(.ai_read_text(file.path(p, .ai_requests_dir, "00-instructions.md")))
       }
+      if (identical(what, "rerun")) return(paste("Rscript run.R", id))
+      kept <- attr(shiny::isolate(unbuilt()), "texts")
+      if (identical(what, "unbuilt")) {
+        u <- shiny::isolate(unbuilt())
+        u <- u[u$request == id, , drop = FALSE]
+        return(paste(c("## Could not be built", "",
+                       sprintf("- %s: %s", u$output_id, u$reason)), collapse = "
+"))
+      }
+      if (identical(what, "repair") && !is.null(kept[id]) && !is.na(kept[id]) &&
+          !file.exists(file.path(p, .ai_repairs_dir, paste0(id, ".md")))) {
+        return(kept[[id]])
+      }
       .ai_request_text(p, id, if (identical(what, "repair")) "repair" else "request")
     }
     file_of <- function(what, id) {
       switch(what, instructions = "00-instructions.md",
              agent = t("The agent's first message"), tell = t("To tell the agent"),
-             repair = .ai_rel(.ai_repairs_dir, paste0(id, ".md")),
+             repair = , unbuilt = .ai_rel(.ai_repairs_dir, paste0(id, ".md")),
+             rerun = t("To rebuild only this request"),
              paste0(id, ".md"))
     }
 
@@ -467,6 +506,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         notify(t("Save first: the study has unsaved changes."), "warning")
         return()
       }
+      keep_unbuilt()
       co <- guarded(.ai_collect(path()))
       if (is.null(co)) return()
       collected(co)
@@ -1035,18 +1075,48 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       r <- co$reports
       cls <- c(ok = "text-success", warning = "text-warning", error = "text-danger",
                `no answer` = "text-muted")
+      u <- unbuilt()
+      kept <- names(attr(u, "texts"))
+      rerun <- .ai_run_has_requests()
+      # a report that passed its checks but run.R could not build: the reason
+      why <- function(i) {
+        if (is.null(u) || !r$status[i] %in% c("ok", "warning")) return(NA_character_)
+        x <- u$reason[u$request == r$request[i] & u$output_id == r$output_id[i]]
+        if (length(x)) x[1L] else NA_character_
+      }
+      # a request's buttons, on its first row: its fix request, and the line
+      # to rebuild it alone
+      req_btns <- function(i) {
+        q <- r$request[i]
+        if (i > 1L && identical(r$request[i - 1L], q)) return(NULL)
+        rows <- r$request == q
+        fix <- any(!is.na(r$repair[rows])) || q %in% kept
+        shiny::div(
+          class = "d-flex flex-wrap gap-1 mt-1",
+          if (fix) shiny::HTML(act("repair", q, c(copy = t("Copy the fix request"), view = t("View")))),
+          if (rerun && any(r$status[rows] %in% c("ok", "warning")))
+            shiny::HTML(act("rerun", q, c(copy = t("Copy: rebuild only this request")))))
+      }
       shiny::tags$table(
-        class = "table table-sm small mt-2",
+        class = "table table-sm small mt-2 ai-result-all",
         shiny::tags$thead(shiny::tags$tr(lapply(c(t("request"), "output_id", t("status"),
                                                   t("first problem"), ""), shiny::tags$th))),
-        shiny::tags$tbody(lapply(seq_len(nrow(r)), function(i) shiny::tags$tr(
-          shiny::tags$td(r$request[i]), shiny::tags$td(r$output_id[i]),
-          shiny::tags$td(class = cls[[r$status[i]]] %||% "", t(r$status[i])),
-          shiny::tags$td(if (is.na(r$first[i])) "" else r$first[i]),
-          shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && !is.na(r$file[i]))
-            shiny::tags$button(
-              type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
-              `data-ns` = ns(""), `data-id` = r$output_id[i], t("Open in Make a report")))))))
+        shiny::tags$tbody(lapply(seq_len(nrow(r)), function(i) {
+          w <- why(i)
+          shiny::tags$tr(
+            shiny::tags$td(r$request[i], req_btns(i)), shiny::tags$td(r$output_id[i]),
+            shiny::tags$td(class = cls[[r$status[i]]] %||% "", t(r$status[i])),
+            shiny::tags$td(
+              if (!is.na(w)) shiny::tagList(
+                shiny::span(class = "text-danger ai-unbuilt",
+                            paste0(t("Could not be built:"), " ", .ai_short(w))), " ",
+                shiny::HTML(act("unbuilt", r$request[i], c(view = t("View")))))
+              else if (is.na(r$first[i])) "" else r$first[i]),
+            shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && !is.na(r$file[i]))
+              shiny::tags$button(
+                type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
+                `data-ns` = ns(""), `data-id` = r$output_id[i], t("Open in Make a report"))))
+        })))
     })
 
     # the questions (ai/questions.md): one a row, the open ones first, an
