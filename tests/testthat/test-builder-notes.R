@@ -112,8 +112,8 @@ test_that("the builder's form: the Layers bar, the groups, the pages as fields, 
     open_builder(session, "T-PG")
     session$flushReact()
     h <- output$builder_form$html
-    expect_match(h, "rp-cards-bar", fixed = TRUE)
-    expect_match(h, ">Cards (plan)<", fixed = TRUE)
+    expect_match(h, "rp-add-menu", fixed = TRUE)
+    expect_match(h, "+ Add a card", fixed = TRUE)
     expect_match(h, "rp-card-sep", fixed = TRUE)
     expect_match(h, 'class="rp-card-req">Required<', fixed = TRUE)
     # the own row's fields start empty: the example is the placeholder, its
