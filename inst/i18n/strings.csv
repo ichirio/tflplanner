@@ -3305,7 +3305,7 @@ Mapping,マッピング
 Finishing,仕上げ
 Layer list,層
 The decimals are written into plan_cells()'s formats.,桁は plan_cells() の書式に書き込まれます。
-"The keys, first to last: .overall the any-event row first; group1, group2 ... the rows' outer levels, label the innermost (the rows' text), each by name (a code list's order when it has one); .depth each group's own row above the rows under it; -n most frequent first (-n@group1: by the group's own count); -max(n) the most frequent in any column first, min(n) the least; -p, -estimate by another statistic of the ARD. Another key is written as it is.",並べるキーを先頭から順に。.overall は全体の行を先頭に。group1、group2 … は行の外側の段、label はいちばん内側（行の文字）で、それぞれ名前順（コードリストがあればその順）。.depth は各グループ自身の行をその下の行より上に。-n は多い順（-n@group1 はグループ自身の数で）。-max(n) はいずれかの列で多い順、min(n) は少ない順。-p、-estimate は ARD のほかの統計量で。ほかのキーは書いたとおりに書かれます。
+"The keys, first to last: .overall the any-event row first; group1, group2 ... the rows' outer levels, label the innermost (the rows' text), each by name (a code list's order when it has one); .depth each group's own row above the rows under it; -n most frequent first (-n@group1: by the group's own count); levels(group1) the values plan_levels() names first, in its order, the others by the next keys; -max(n) the most frequent in any column first, min(n) the least; -p, -estimate by another statistic of the ARD. Another key is written as it is.",並べるキーを先頭から順に。.overall は全体の行を先頭に。group1、group2 … は行の外側の段、label はいちばん内側（行の文字）で、それぞれ名前順（コードリストがあればその順）。.depth は各グループ自身の行をその下の行より上に。-n は多い順（-n@group1 はグループ自身の数で）。levels(group1) は plan_levels() が挙げた値をその順で先に、ほかは次のキーで。-max(n) はいずれかの列で多い順、min(n) は少ない順。-p、-estimate は ARD のほかの統計量で。ほかのキーは書いたとおりに書かれます。
 A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show can be hidden in a later stage.,表は階層の段を外しません。別の段の表は ARD の別の解析から作ります。表に出さない行は、後の段で隠せるようになります。
 ARD: made,ARD: 作成済み（読み込み済み）
 ARD: outdated (make it again),ARD: 古くなっています（作り直してください）
@@ -3478,7 +3478,7 @@ Rows judged together,まとめて判定する行のキー
 Discard changes,変更を破棄
 "Every change not saved goes -- in every report of the study and in the study's own files (defaults.yml ...), as a save would have written them -- and the study is as it was last saved. The draft goes too.",保存していない変更をすべて捨てます（保存と同じ範囲: この試験のすべての帳票と、defaults.yml など試験全体のファイル）。試験は最後に保存したときの状態に戻ります。下書きも消えます。
 "The changes were discarded: the study is as it was last saved.",変更を破棄しました。試験は最後に保存した状態です。
-AI drafts,AI 下書き
+AI drafts,AI 連携
 Prepare,準備
 "For now the requests are written in R: tflspec::tfl_ai_prepare(<study folder>, <TOC / SHELL workbook>); then Read again on step 2.","依頼は当面 R で書きます: tflspec::tfl_ai_prepare(<試験フォルダ>, <TOC / SHELL ブック>)。その後、手順 2 で「読み直す」。"
 Requests,依頼
@@ -3705,6 +3705,8 @@ Shell workbooks,SHELL ブック
 Only when the shells are not in the TOC workbook; several can be given.,シェルが TOC のブックにないときだけ。複数指定できます。
 "or their paths, one a line",またはパスで指定（1 行に 1 つ）
 Add to the earlier requests,前の依頼に追加する
+Use the templates,テンプレートを使う
+Compare the answers,比べる
 Workbook,元のブック
 Shells read from: %s,シェルを読むブック: %s
 A report is asked for already,すでに依頼済みの帳票があります
@@ -3792,6 +3794,7 @@ over the study standard (%s),試験標準（%s）より優先
 Expanded (read only),展開した形（読むだけ）
 a variant of %s,%s の変種
 "Another key (written as it is)",ほかのキー（書いたとおりに）
+Values in plan_levels' order first,水準の順を先に
 "Least frequent first (the columns' total)",少ない順（列の合計）
 "Most frequent first (in any column)",多い順（いずれかの列で最多）
 "Least frequent first (in any column)",少ない順（いずれかの列で最少）

@@ -1,6 +1,6 @@
 # tflplanner (development version)
 
-- **plan_cells() by variable** (#454, 0.0.2.9262): the "Statistics in the
+- **plan_cells() by variable** (#454, 0.0.2.9265): the "Statistics in the
   cells" card says which variables have a template of their own ("Per
   variable: prob (3), time", "+ Variable") over a table of the variables --
   the ARD's analysis variables and those the YAML names that the ARD lacks
@@ -20,6 +20,29 @@
   differs in, the ticked ones only, into defaults.yml (a study with no
   continuous rows takes the company's as one item); a report's card marks
   a study standard that differs (a tooltip, linking there).
+
+- **Follows tflspec #407** (#450, 0.0.2.9263; tflspec >= 0.0.24.9191): the
+  AI tab's step 1 has "Use the templates (templates)", on by default:
+  the requests list the templates the answer may use (`tfl_ai_prepare(templates =)`).
+  Step 3 shows, after a check, the answers compared ("Compare the answers
+  (compare.csv)": `tfl_ai_compare()`, one row a report -- the setting, what
+  the answer used, its values, its check and its repairs).  In Japanese the
+  tab is now "AI 連携".
+
+- **tflspec's three-stage analysis data code** (#452, 0.0.2.9260; tflspec
+  >= 0.0.24.9192): an analysis data is now written as a pipe -- its subjects
+  by `semi_join(select(adsl_x, USUBJID), by = "USUBJID")`, its condition in a
+  `filter()` after it; the test of the code a data written as R starts from
+  follows.  Tests only.
+
+- **Table builder: `levels(<row key>)` in the row order** (#447,
+  0.0.2.9258; rtfreporter >= 0.8.2.9083, rtfreporter#696): the
+  plan_sort() card has a checkbox per row layer, "Values in plan_levels'
+  order first (levels(group1))": the values plan_levels() names for that
+  key come first, in its order, the others by the layer's order.  It is
+  written just before the layer's key (after `.overall`) and reads back
+  checked; an unchanged save writes nothing.  Offered on every layer:
+  where plan_levels() names no value, all tie (no effect).
 
 - **Template SPEC reports, and the builder's new card layout** (#440,
   0.0.2.9257; tflspec >= 0.0.24.9186): a new report is made from one of

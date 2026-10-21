@@ -839,6 +839,8 @@ builder_items <- function(x, output_id, meta = NULL) {
                        "(the rows' text), each by name (a code list's order when it has one);",
                        ".depth each group's own row above the rows under it;",
                        "-n most frequent first (-n@group1: by the group's own count);",
+                       "levels(group1) the values plan_levels() names first, in its order,",
+                       "the others by the next keys;",
                        "-max(n) the most frequent in any column first, min(n) the least;",
                        "-p, -estimate by another statistic of the ARD. Another key is",
                        "written as it is.")))),

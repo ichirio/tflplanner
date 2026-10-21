@@ -9599,9 +9599,17 @@ app_server <- function(input, output, session, start) {
         opt <- function(value, label) shiny::tags$option(
           value = value, selected = if (identical(if (own) "=" else now, value)) NA, label)
         sid <- bid(paste0("sort", i))
+        # (the values plan_levels() names first: levels(group1), offered
+        # on every level -- where it names none, all tie, as if not there)
+        g <- if (i < n) sprintf("group%d", i) else "label"
+        first <- isTRUE((attr(st$sort, "first") %||% logical(n))[i])
         shiny::div(
           class = "d-flex flex-wrap align-items-center gap-2 mb-1",
           shiny::span(class = "rp-b-var", style = "min-width: 9em;", v),
+          shiny::checkboxInput(
+            bid(paste0("sort_first", i)),
+            sprintf("%s (levels(%s))", t("Values in plan_levels' order first"), g),
+            value = first),
           shiny::tags$select(
             id = sid, class = "form-select form-select-sm",
             style = "width: 22em; max-width: 100%;",
@@ -11026,6 +11034,12 @@ app_server <- function(input, output, session, start) {
                if (nzchar(own)) paste0("=", own) else st$sort[i]
              }, "")
              attr(lv, "nocol") <- attr(st$sort, "nocol")
+             # (levels(<key>) first: on the levels checked; none, no
+             # attribute -- as the sheets' order read back)
+             was_first <- attr(st$sort, "first") %||% logical(length(lv))
+             first <- vapply(seq_along(lv), function(i)
+               isTRUE(get(paste0("sort_first", i)) %||% was_first[i]), NA)
+             if (any(first)) attr(lv, "first") <- first
              cc <- get("sort_col")
              attr(lv, "col") <- if (is.null(cc)) attr(st$sort, "col") %||% NA_character_ else
                if (nzchar(cc)) cc else NA_character_
