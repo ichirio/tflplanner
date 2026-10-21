@@ -210,6 +210,11 @@ test_that("step 2 and 3: the list, View, save an answer, check all, the reports 
     expect_false(isTRUE(session$userData$dirty()))
     expect_true(all(spec_status("XYZ-1")$status == "same"))
     expect_match(output$`ai-result`$html, "T-14-3-1", fixed = TRUE)
+    # the answers compared, under the checks (tflspec >= 0.0.24.9191)
+    if (exists("tfl_ai_compare", envir = asNamespace("tflspec"))) {
+      expect_match(output$`ai-compare_card`$html, "compare.csv", fixed = TRUE)
+      expect_true(file.exists(file.path(path, "ai", "compare.csv")))
+    }
   })
 })
 
@@ -279,6 +284,12 @@ test_that("the requests written into a study open: its study.yml and spec kept",
   expect_identical(nrow(r), nrow(p$requests))
   expect_identical(attr(r, "instructions"), "ai/requests/00-instructions.md")
   expect_true(all(spec_status("XYZ-1")$status == "same"))
+  # the templates listed (the default), or not (templates = FALSE)
+  first <- function() readLines(file.path(path, "ai", "requests", paste0(r$request[1], ".md")), 1L)
+  expect_identical(first(), "<!-- templates: TRUE -->")
+  .ai_write_requests(path, ai_toc, "onco_toc_shell.xlsx", ai_adam,
+                     list(size = 2L, instructions = "once", templates = FALSE))
+  expect_false(identical(first(), "<!-- templates: TRUE -->"))
   # the study's ADaM folder, from its data catalog
   s <- open_study("XYZ-1")
   expect_identical(.ai_adam_default(s), normalizePath(file.path(path, "adam"), "/"))

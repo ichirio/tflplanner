@@ -175,6 +175,16 @@
   x
 }
 
+# The answers compared, with templates or the code SPEC only:
+# tfl_ai_compare()'s table (one row a report; ai/compare.csv written), or
+# NULL with a tflspec that has none or when it fails
+.ai_compare <- function(path) {
+  ns <- asNamespace("tflspec")
+  if (!exists("tfl_ai_compare", envir = ns, inherits = FALSE)) return(NULL)
+  tryCatch(suppressMessages(get("tfl_ai_compare", envir = ns)(path)),
+           error = function(e) NULL)
+}
+
 # a request's status: its worst report's (ok < warning < no answer < error);
 # NA for a request the check has not seen
 .ai_request_status <- function(requests, reports) {
@@ -265,7 +275,7 @@
 
 # tfl_ai_prepare() as the screen calls it: no printing, the ADaM folder
 # absolute.  `args`: toc_sheet, sheets, size, language, workbook,
-# instructions, max_chars, datasets, max_levels, adam_summary, mode, add,
+# instructions, max_chars, datasets, max_levels, adam_summary, mode, templates, add,
 # overwrite (NULL ones left out); `shells` the shell workbooks apart from
 # the TOC's.
 .ai_prepare <- function(dir, toc, adam, args = list(), dry_run = TRUE, study_id = NULL,

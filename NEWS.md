@@ -1,7 +1,7 @@
 # tflplanner (development version)
 
 - **AI tab, agent mode: fix requests and reports not built** (#458,
-  0.0.2.9264; tflspec >= 0.0.24.9197 for the reasons, tflspec#420): the
+  0.0.2.9266; tflspec >= 0.0.24.9197 for the reasons, tflspec#420): the
   list of step 3 has, on each request's first row, "Copy the fix request"
   and "View" when the request has one; a report whose answer passed the
   checks but whose RTF run.R could not build says why ("Could not be
@@ -10,6 +10,14 @@
   request of an answer that passes) and kept while `ai/status.md` is the
   same run's.  With a tflspec whose `tfl_ai_run()` takes `requests`, a copy
   of `Rscript run.R <request>` per request.  An older tflspec: as before.
+
+- **Follows tflspec #407** (#450, 0.0.2.9263; tflspec >= 0.0.24.9191): the
+  AI tab's step 1 has "Use the templates (templates)", on by default:
+  the requests list the templates the answer may use (`tfl_ai_prepare(templates =)`).
+  Step 3 shows, after a check, the answers compared ("Compare the answers
+  (compare.csv)": `tfl_ai_compare()`, one row a report -- the setting, what
+  the answer used, its values, its check and its repairs).  In Japanese the
+  tab is now "AI 連携".
 
 - **tflspec's three-stage analysis data code** (#452, 0.0.2.9260; tflspec
   >= 0.0.24.9192): an analysis data is now written as a pipe -- its subjects
