@@ -170,7 +170,47 @@ test_that("the builder opens on a hierarchy table, and writes its order", {
     session$elapse(1000)
     expect_identical(sheet_rows(rv$p, "tables", "T-AE")$sort,
                      ".overall | -n@group1[Placebo] | group1 | .depth | -n[Placebo] | label")
+    # the values plan_levels() names first (#447)
+    expect_match(output$builder_form$html, "(levels(group1))", fixed = TRUE)
+    v[[b("sort_first1")]] <- TRUE
+    do.call(session$setInputs, v)
+    session$elapse(1000)
+    expect_identical(sheet_rows(rv$p, "tables", "T-AE")$sort,
+                     paste(".overall | levels(group1) | -n@group1[Placebo] | group1 | .depth |",
+                           "-n[Placebo] | label"))
   })
+})
+
+test_that("levels(<key>): plan_levels' values first, written and read back (#447)", {
+  # before the level's own key, after .overall (the any-event row first)
+  s <- .hier_sort(structure(c("freq", "freq"), first = c(TRUE, FALSE)))
+  expect_identical(s, ".overall | levels(group1) | -n@group1 | group1 | .depth | -n | label")
+  back <- .hier_sort_read(s, 2L)
+  expect_identical(as.vector(back), c("freq", "freq"))
+  expect_identical(attr(back, "first"), c(TRUE, FALSE))
+  expect_identical(.hier_sort(back), s)
+  # by name, the innermost level, a column that counts
+  s2 <- .hier_sort(c("alpha", "freq"), "Total", first = c(TRUE, TRUE))
+  expect_identical(s2, ".overall | levels(group1) | group1 | .depth | levels(label) | -n[Total] | label")
+  b2 <- .hier_sort_read(s2, 2L)
+  expect_identical(as.vector(b2), c("alpha", "freq"))
+  expect_identical(attr(b2, "first"), c(TRUE, TRUE))
+  expect_identical(attr(b2, "col"), "Total")
+  # none checked: no attribute, the key as before
+  expect_null(attr(.hier_sort_read(.hier_sort(c("alpha", "freq")), 2L), "first"))
+  # the builder: an unchanged save writes nothing; checked, the key
+  p <- hier_planner()
+  st <- builder_read(p, "T-AE", hier_meta())
+  expect_identical(builder_write(p, "T-AE", st, was = st), p)
+  st2 <- st
+  attr(st2$sort, "first") <- c(TRUE, FALSE)
+  q <- builder_write(p, "T-AE", st2, was = st)
+  expect_identical(sheet_rows(q, "tables", "T-AE")$sort,
+                   ".overall | levels(group1) | group1 | .depth | -n | label")
+  back <- builder_read(q, "T-AE", hier_meta())$sort
+  expect_identical(attr(back, "first"), c(TRUE, FALSE))
+  expect_identical(builder_write(q, "T-AE", builder_read(q, "T-AE", hier_meta()),
+                                 was = builder_read(q, "T-AE", hier_meta())), q)
 })
 
 test_that("an order of the sheets' own is kept, and the card's order is one click away", {
