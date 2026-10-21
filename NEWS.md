@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **Table builder: `levels(<row key>)` in the row order** (#447,
+  0.0.2.9258; rtfreporter >= 0.8.2.9083, rtfreporter#696): the
+  plan_sort() card has a checkbox per row layer, "Values in plan_levels'
+  order first (levels(group1))": the values plan_levels() names for that
+  key come first, in its order, the others by the layer's order.  It is
+  written just before the layer's key (after `.overall`) and reads back
+  checked; an unchanged save writes nothing.  Offered on every layer:
+  where plan_levels() names no value, all tie (no effect).
+
 - **Template SPEC reports, and the builder's new card layout** (#440,
   0.0.2.9257; tflspec >= 0.0.24.9186): a new report is made from one of
   tflspec's templates (a searchable list, its required arguments in the
