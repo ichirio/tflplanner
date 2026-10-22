@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **Templates: tflspec's tidied parameters** (#462, 0.0.2.9268; tflspec >=
+  0.0.24.9208): summary and hierarchical (and the templates made from them)
+  have fewer parameters, some renamed (count_cell, continuous_statistics,
+  categorical_statistics, any_row / any_row_label); their help is in
+  Japanese too.  The new template stf_t02_demog has its line in the list.
+  The app's own meanings for parameters without a doc are gone: every
+  parameter has its own now.
+
 - **A new study that fails keeps its folder's data** (#460, 0.0.2.9267): the
   AI tab makes a new study in a folder that holds only its `data/adam` so
   far (#455); when making it fails, only what the call wrote is taken away

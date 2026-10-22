@@ -11,6 +11,7 @@
   ae_overview = "Overview of adverse events",
   ae_soc_pt = "Adverse events by SOC and PT",
   demog = "Demographics",
+  stf_t02_demog = "Demographics, after FDA STF IG v2 Table 2",
   disposition = "Disposition",
   hierarchical = "A hierarchy's counts",
   km_simple = "Kaplan-Meier curves",
@@ -21,7 +22,7 @@
   ae_pt_freq = "Adverse events by PT (frequent ones)",
   orr = "Objective response",
   shift = "Shift table",
-  summary = "Continuous variables by a column key",
+  summary = "Continuous and categorical variables by a column key",
   vs_change = "A vital sign's change")
 
 # The templates of a kind of report: name and kind
@@ -38,9 +39,6 @@
   p <- tryCatch(tflspec::tfl_template_params(name), error = function(e) list())
   if (length(p) && is.null(names(p))) {
     names(p) <- vapply(p, function(x) x$name, "")
-  }
-  for (a in names(p)) {
-    if (!nzchar(p[[a]]$doc %||% "") && !is.na(.tpl_doc_fill[a])) p[[a]]$doc <- .tpl_doc_fill[[a]]
   }
   p
 }
@@ -288,15 +286,6 @@
   if (!is.null(args$population)) o$population <- as.character(args$population)
   o
 }
-
-# a meaning for the parameters whose template says none (their doc empty)
-.tpl_doc_fill <- c(
-  hierarchy = "the hierarchy's variables (SOC, PT)",
-  where = "the records' condition",
-  data_label = "the analysis data's label",
-  analysis_id = "the analysis' id",
-  analysis_label = "the analysis' label",
-  overall = "the any-event row's label")
 
 # The study standard's value of a parameter that says where it is
 # (tfl_param(study = "<verb>.<argument>")): that argument of the verb's
