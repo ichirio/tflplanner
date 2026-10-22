@@ -1,5 +1,26 @@
 # tflplanner (development version)
 
+- **AI tab, step 1: Browse... opens in the study's folder; the ADaM folder
+  and the sheet lists follow what is given** (#466, 0.0.2.9270): the
+  dialogs open in the folder of the path already given, else in the
+  study's folder (the open study's; a new one's `studies_root/<ID>` when
+  there, else `studies_root()`) -- its `data/adam` for the ADaM folder,
+  its `docs` for the TOC and shell workbooks, when there.  The ADaM
+  folder put in is the chosen study's (a new study's
+  `studies_root/<ID>/data/adam` when there, else empty -- no longer the
+  open study's when "New study" is chosen) and follows the study chosen
+  and the ID typed; a folder typed or chosen is kept.  "TOC sheet" and
+  "Shell sheets to add" list the workbooks' sheets (their names only) as
+  soon as a workbook is given, before "Read"; a sheet chosen is kept.
+  "Reports a request holds (size)" is 1 for a coding agent (3, tflspec's,
+  for a chat), following the mode unless changed by hand, and always given
+  to `tfl_ai_prepare()`.  "Common instructions (instructions)" is "only
+  once" by default (first), and "Language of the AI's assumption notes
+  (language)" says, in its (i), that it is not the reports' language.  The
+  count of the requests to write follows the size changed after "Read"
+  (writing always used the size in the field); with another workbook or
+  TOC / shell sheet, "Write" waits for "Read" again.
+
 - **The template report's browser test follows the screen** (#464, 0.0.2.9269):
   `test-e2e-template.R` (run only with `TFLPLANNER_E2E=true`) checks that a
   template report shows the template's card and the overridden cards only,
