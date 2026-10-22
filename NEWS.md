@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **The template report's browser test follows the screen** (#464, 0.0.2.9269):
+  `test-e2e-template.R` (run only with `TFLPLANNER_E2E=true`) checks that a
+  template report shows the template's card and the overridden cards only,
+  adds `plan_cells()` from "+ Add a card" to edit a study standard's field,
+  and waits for the page's state instead of fixed sleeps. Tests only.
+
 - **Templates: tflspec's tidied parameters** (#462, 0.0.2.9268; tflspec >=
   0.0.24.9208): summary and hierarchical (and the templates made from them)
   have fewer parameters, some renamed (count_cell, continuous_statistics,
