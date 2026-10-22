@@ -160,7 +160,7 @@
 .ai_check_request_name <- function(request) {
   if (!is.character(request) || length(request) != 1L || is.na(request) ||
       !grepl("^[A-Za-z0-9][A-Za-z0-9._-]*$", request)) {
-    stop("A request's name is letters, digits, '.', '_' and '-' (ae-1).", call. = FALSE)
+    stop("A request's name is letters, digits, '.', '_' and '-' (ae-1, t.15.1.5.1).", call. = FALSE)
   }
   invisible(request)
 }
@@ -304,7 +304,62 @@
   b <- b[!b$output_id %in% figs, , drop = FALSE]
   bt <- c(unique(b$batch), if (length(figs)) paste0("figure-", seq_along(figs)))
   n <- c(as.integer(table(factor(b$batch, unique(b$batch)))), rep(1L, length(figs)))
+  # (one report a request: named after it, as tfl_ai_write_requests() does)
+  if (isTRUE(as.integer(size) == 1L)) bt <- .ai_one_names(c(b$output_id, figs))
   data.frame(request = bt, n = n, stringsAsFactors = FALSE)
+}
+
+# The requests' names when each holds one report (size = 1, tflspec >=
+# 0.0.24.9211): the report's number (t.15.1.5.1), what a file name cannot
+# hold made "-", a name twice made unique ("-1") -- the tables', then the
+# figures', in order
+.ai_one_names <- function(ids) {
+  x <- trimws(as.character(ids))
+  y <- gsub("^-+|-+$", "", gsub("[^A-Za-z0-9._-]+", "-", x))
+  make.unique(ifelse(grepl("^[A-Za-z0-9._-]+$", x), x, y), sep = "-")
+}
+
+# A dry run's TOC with its reports' parts (tfl_ai_read_shell()$toc, tflspec
+# >= 0.0.24.9211): `parts` (the parts' ids, " | " between them, NA for a
+# report not in parts) and `same_number` (a number the TOC names twice);
+# its requests named after their reports when each holds one (size = 1).
+# The workbook is read again for the parts only when the dry run's TOC
+# does not carry them.
+.ai_dry_with_parts <- function(p, toc, args = list(), shells = NULL) {
+  tc <- p$toc
+  if (!nrow(tc)) return(p)
+  rq <- p$requests
+  if (isTRUE(as.integer(args$size %||% 0L) == 1L) && nrow(rq) && all(rq$n == 1L)) {
+    nm <- .ai_one_names(rq$outputs)
+    tc$request <- nm[match(tc$request, rq$request)]
+    rq$request <- nm
+    p$requests <- rq
+  }
+  if (is.null(tc$parts) || is.null(tc$same_number)) {
+    a <- Filter(Negate(is.null), list(toc_sheet = args$toc_sheet, sheets = args$sheets,
+                                      shells = if (length(shells)) unname(shells)))
+    x <- tryCatch(suppressWarnings(do.call(tflspec::tfl_ai_read_shell, c(list(toc), a))),
+                  error = function(e) NULL)
+    i <- if (!is.null(x)) match(tc$output_id, x$toc$output_id)
+    tc$parts <- if (!is.null(x$toc$parts)) x$toc$parts[i] else rep(NA_character_, nrow(tc))
+    tc$same_number <- if (!is.null(x$toc$same_number)) x$toc$same_number[i] %in% TRUE else
+      rep(FALSE, nrow(tc))
+  }
+  p$toc <- tc
+  p
+}
+
+# A report's parts as the TOC table says them: "2 parts (.a, .b)" -- each
+# part's id after the report's number; "" for a report not in parts
+.ai_parts_label <- function(output_id, parts, t = identity) {
+  if (is.null(parts)) return(rep("", length(output_id)))
+  vapply(seq_along(output_id), function(i) {
+    if (is.na(parts[i]) || !nzchar(parts[i])) return("")
+    p <- strsplit(parts[i], " | ", fixed = TRUE)[[1L]]
+    own <- startsWith(tolower(p), tolower(output_id[i]))
+    p[own] <- substring(p[own], nchar(output_id[i]) + 1L)
+    sprintf(t("%d parts (%s)"), length(p), paste(p, collapse = ", "))
+  }, "")
 }
 
 # Said when what the read was for has changed (the workbooks, their sheets)
@@ -350,6 +405,13 @@
   NULL
 }
 
+# Whether the file `path` is inside the study folder `dir` (any depth)
+.ai_in_study <- function(path, dir) {
+  if (!dir.exists(dir) || !file.exists(path)) return(FALSE)
+  d <- sub("/+$", "", normalizePath(dir, "/"))
+  startsWith(tolower(normalizePath(path, "/")), paste0(tolower(d), "/"))
+}
+
 # An ADaM folder inside the study folder, written relative to it
 # (`data/adam`): the study's files then hold no path of this computer, so
 # the folder copied elsewhere still finds its data (tflspec reads a relative
@@ -379,7 +441,9 @@
   # (add = TRUE, overwrite = TRUE: the requests asked again alone -- the
   # study's own files and the agent's are kept, tflspec >= 0.0.24.9178)
   # (a dry run on a folder not made yet: its path is not there to normalize)
-  suppressWarnings(do.call(tflspec::tfl_ai_prepare, a))
+  p <- suppressWarnings(do.call(tflspec::tfl_ai_prepare, a))
+  if (isTRUE(dry_run)) p <- .ai_dry_with_parts(p, toc, a, shells)
+  p
 }
 
 # The reports of a dry run already asked for in the study's requests
@@ -399,10 +463,13 @@
 .ai_is_asked_again <- function(msg) grepl("already asked for", msg, fixed = TRUE)
 
 # The TOC / SHELL workbook kept in the study (ai/<its name>): what was
-# read, beside the requests.  Gives the copy's path.
+# read, beside the requests.  Gives the copy's path.  A workbook already
+# inside the study folder (its docs/, say) is not copied: its own path
+# (tflspec writes it from the study folder).
 .ai_keep_toc <- function(dir, toc, name = basename(toc)) {
   msg <- .ai_toc_problem(toc)
   if (!is.null(msg)) stop(msg, call. = FALSE)
+  if (.ai_in_study(toc, dir)) return(normalizePath(toc, "/"))
   to <- file.path(dir, "ai", basename(name))
   if (identical(normalizePath(toc, "/", mustWork = FALSE),
                 normalizePath(to, "/", mustWork = FALSE))) return(to)

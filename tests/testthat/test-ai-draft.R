@@ -632,6 +632,7 @@ test_that("the requests to write: counted again at the size now; the workbook ch
     got$size <- args$size
     stop("write no further")
   })
+  test_env <- environment()
   shiny::testServer(server_for("XYZ-1"), {
     ai <- session$userData$ai
     session$setInputs(`ai-study_mode` = "open", `ai-toc_path` = ai_toc, `ai-adam_dir` = ai_adam,
@@ -647,7 +648,9 @@ test_that("the requests to write: counted again at the size now; the workbook ch
     # size from a stand-in)
     one <- data.frame(request = paste0("ae-", 1:7), n = 1L)
     real <- .ai_dry_requests
-    local_mocked_bindings(.ai_dry_requests = function(toc, size) if (size == 1L) one else real(toc, size))
+    # (undone at the test's end: testServer's own frame is never left)
+    local_mocked_bindings(.ai_dry_requests = function(toc, size) if (size == 1L) one else real(toc, size),
+                          .env = test_env)
     session$setInputs(`ai-size` = 1)
     expect_match(output$`ai-prep_status`$html, count(one), fixed = TRUE)
     # written at the size now

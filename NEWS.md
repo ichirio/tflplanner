@@ -1,5 +1,20 @@
 # tflplanner (development version)
 
+- **AI tab: a report's parts, requests named after their report, the
+  workbooks in the study read where they are** (#470, 0.0.2.9272; tflspec
+  >= 0.0.24.9211, tflspec#439).  Step 1's TOC table says, for a TOC row
+  whose shell sheet holds the report in parts (`.a` above, `.b` below),
+  its parts ("2 parts (.a, .b)"; nothing for the others), and a report
+  number the TOC names twice is warned about (only its first row is read).
+  With one report a request (size = 1) a request is named after its
+  report's number (`ai/requests/t.15.1.5.1.md`): the count, the TOC
+  table's request column, the requests list, the answers and the fix
+  requests (`ai/repairs/<request>.md`, `-build.md`) take those names.  A
+  TOC / shell workbook already inside the study folder (its `docs/`, say)
+  is no longer copied into `ai/`: it is read where it is; one outside the
+  study still is.  Writing the requests shows which request it is at
+  ("request i of n").
+
 - **test-ai-draft follows tflspec's once default** (#468, 0.0.2.9271): an
   agent's requests now come with `ai/requests/00-instructions.md` (tflspec
   `instructions = "once"` by default); the test takes it away before it
