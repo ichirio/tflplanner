@@ -54,7 +54,10 @@ test_that("the requests: one row each, in the order written, the reports from tf
   expect_identical(r$chars[2], nchar(sub("\n$", "", txt)))
   expect_match(txt, "T-14-3-1", fixed = TRUE)
   expect_true(all(is.na(r$answer)))
-  expect_true(is.na(attr(r, "instructions")))
+  # (no instructions file: as tflspec writes the requests with "each"; with
+  # "once", its default from 0.0.24.9212 on, the file is there -- taken away)
+  unlink(file.path(path, "ai", "requests", "00-instructions.md"))
+  expect_true(is.na(attr(.ai_requests(path), "instructions")))
   # the instructions once: their file named; no requests: no rows
   writeLines("x", file.path(path, "ai", "requests", "00-instructions.md"))
   expect_identical(attr(.ai_requests(path), "instructions"), "ai/requests/00-instructions.md")

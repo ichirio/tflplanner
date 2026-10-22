@@ -13,6 +13,10 @@
   TOC / shell workbook already inside the study folder (its `docs/`, say)
   is no longer copied into `ai/`: it is read where it is; one outside the
   study still is.
+- **test-ai-draft follows tflspec's once default** (#468, 0.0.2.9271): an
+  agent's requests now come with `ai/requests/00-instructions.md` (tflspec
+  `instructions = "once"` by default); the test takes it away before it
+  checks the case with no such file.  Tests only.
 
 - **AI tab, step 1: Browse... opens in the study's folder; the ADaM folder
   and the sheet lists follow what is given** (#466, 0.0.2.9270): the
