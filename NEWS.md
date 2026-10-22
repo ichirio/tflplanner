@@ -1,5 +1,11 @@
 # tflplanner (development version)
 
+- **The template report's browser test follows the screen** (#464, 0.0.2.9269):
+  `test-e2e-template.R` (run only with `TFLPLANNER_E2E=true`) checks that a
+  template report shows the template's card and the overridden cards only,
+  adds `plan_cells()` from "+ Add a card" to edit a study standard's field,
+  and waits for the page's state instead of fixed sleeps. Tests only.
+
 - **A new study that fails keeps its folder's data** (#460, 0.0.2.9267): the
   AI tab makes a new study in a folder that holds only its `data/adam` so
   far (#455); when making it fails, only what the call wrote is taken away
