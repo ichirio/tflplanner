@@ -947,6 +947,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       # the summary read is sent again unless its values' limit changed
       if (identical(a$max_levels, used_levels())) a$adam_summary <- p$adam
       out <- NULL
+      # (tflspec >= 0.0.24.9211 writes a request at a time and says where it is)
+      a$progress <- function(step, i, n) {
+        if (identical(step, "request") && n > 0L) {
+          shiny::setProgress(i / n, detail = sprintf(t("request %d of %d"), i, n))
+        }
+      }
       shiny::withProgress(message = t("Writing the requests"), {
         out <- tryCatch(if (is_new()) {
           .ai_new_study(input$new_id, src$path, src$name, input$adam_dir, a,
