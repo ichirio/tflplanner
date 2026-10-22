@@ -12,7 +12,9 @@
   requests (`ai/repairs/<request>.md`, `-build.md`) take those names.  A
   TOC / shell workbook already inside the study folder (its `docs/`, say)
   is no longer copied into `ai/`: it is read where it is; one outside the
-  study still is.
+  study still is.  Writing the requests shows which request it is at
+  ("request i of n").
+
 - **test-ai-draft follows tflspec's once default** (#468, 0.0.2.9271): an
   agent's requests now come with `ai/requests/00-instructions.md` (tflspec
   `instructions = "once"` by default); the test takes it away before it
