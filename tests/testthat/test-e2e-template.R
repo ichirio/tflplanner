@@ -5,6 +5,9 @@
 # view once the page settles; (b) an empty card says "Not set"; (c) an
 # argument changed: the page not veiled; (d) the dialog's first OK makes
 # the report; (e) a study standard's field edited: the card is "This table".
+# The template report shows the template's card and the cards overridden
+# (none at first: tfl_tpl() writes no study-standard plan_*() line); the
+# test waits for the page's state, not for fixed times.
 
 test_that("a template report in the browser: add, empty card, no veil, OK, this table", {
   skip_on_cran()
@@ -122,66 +125,90 @@ test_that("a template report in the browser: add, empty card, no veil, OK, this 
   check("(d) the first OK makes the report", made,
         sprintf("%.1f s to its card", as.numeric(difftime(Sys.time(), t0, units = "secs"))))
 
-  # the preview (ARD and table) made by itself: the cards
-  cards <- wait_for("$('.rp-builder-cards .rp-card').length > 0 && $('.rp-add-menu').length > 0", 60)
-  check("the cards after the preview", cards)
-  Sys.sleep(2)
+  # the page at rest: no Shiny work running, for a while
+  idle <- function(secs = 60) {
+    Sys.sleep(0.5)
+    wait_for("!document.documentElement.classList.contains('shiny-busy') && !document.body.classList.contains('rp-switching')", secs)
+    Sys.sleep(0.5)
+    wait_for("!document.documentElement.classList.contains('shiny-busy')", secs)
+  }
+  # a card from "+ Add a card": the menu opened, its entry clicked, the card
+  # in the builder
+  add_card <- function(fn) {
+    idle()
+    for (k in 1:3) {
+      click(".rp-builder-cards .rp-add-menu .dropdown-toggle")
+      if (isTRUE(wait_for("$('.rp-builder-cards .rp-add-menu .dropdown-menu.show').length > 0", 3))) break
+    }
+    click(sprintf(".rp-add-menu .dropdown-menu.show a[onclick*=\"'%s'\"]", fn))
+    ok <- wait_for(sprintf("$('.rp-card[data-fn=%s] > .rp-card-head').length > 0", fn), 30)
+    idle()
+    ok
+  }
+  card_head <- function(fn) {
+    js(sprintf("(() => { const h = document.querySelector('.rp-card[data-fn=%s] > .rp-card-head'); return h ? h.innerText : ''; })()", fn))
+  }
+
+  # the preview (ARD and table) made by itself: the template's card and the
+  # builder's "+ Add a card"; no other card till one is overridden (the
+  # template writes no study-standard line of its own)
+  cards <- wait_for("$('#tpl_card').text().includes('tfl_tpl()') && $('.rp-builder-cards .rp-add-menu').length > 0", 60)
+  idle()
+  shown <- js("$('.rp-builder-cards .rp-card').map((i, e) => e.dataset.fn).get().join(' ')")
+  check("the template card and + Add a card after the preview", cards)
+  check("no card but the template's before an override", identical(shown, ""), shown)
 
   # (a), (b) a card added from "+ Add a card": its head in view once the page
   # settles; an empty card says so
-  wait_for("!document.documentElement.classList.contains('shiny-busy')", 30)
-  Sys.sleep(1)
-  for (k in 1:3) {
-    click(".rp-builder-cards .rp-add-menu .dropdown-toggle")
-    if (isTRUE(wait_for("$('.rp-builder-cards .rp-add-menu .dropdown-menu.show').length > 0", 3))) break
-    Sys.sleep(1)
-  }
-  click(".rp-add-menu .dropdown-menu.show a[onclick*=\"'plan_hide'\"]")
-  wait_for("$('.rp-card[data-fn=plan_hide]').length > 0", 20)
-  wait_for("!document.documentElement.classList.contains('shiny-busy')", 20)
-  Sys.sleep(3)
+  check("plan_hide() added", add_card("plan_hide"))
   pos <- js("(() => { const h = document.querySelector('.rp-card[data-fn=plan_hide] > .rp-card-head');
     const r = h.getBoundingClientRect(); return [r.top, r.bottom, window.innerHeight, window.scrollY]; })()")
   check("(a) the added card's head in view", pos[[1]] >= 0 && pos[[2]] <= pos[[3]],
         sprintf("top %.0f bottom %.0f of %.0f (scrollY %.0f)", pos[[1]], pos[[2]], pos[[3]], pos[[4]]))
-  head <- js("document.querySelector('.rp-card[data-fn=plan_hide] > .rp-card-head').innerText")
+  head <- card_head("plan_hide")
   check("(b) the empty card says Not set", grepl("\u672a\u8a2d\u5b9a", head), gsub("\\s+", " ", head))
   check("(b) the empty card is not This table", !grepl("\u3053\u306e\u8868", head))
+  shown <- js("$('.rp-builder-cards .rp-card').map((i, e) => e.dataset.fn).get().join(' ')")
+  check("the template card and the added card only", identical(shown, "plan_hide"), shown)
 
   # (c) an argument changed (x on a chip): the page is not veiled
-  watch()
   if (isTRUE(js("!document.querySelector('#tpl_card details').open"))) click("#tpl_card details > summary")
-  Sys.sleep(0.8)
+  wait_for("document.querySelector('#tpl_card details').open && $('#tpl_demog__categorical').parent().find('.selectize-input .item .remove').filter((i, e) => e.offsetParent !== null).length > 0", 20)
+  idle()
+  watch()
   sel <- js("(() => { const i = $('#tpl_demog__categorical');
     const it = i.parent().find('.selectize-input .item').last(); if (!it.length) return null;
     it.attr('data-e2e', 'x'); return it.attr('data-value'); })()")
   if (!is.null(sel)) {
     click(".selectize-input .item[data-e2e='x'] .remove")
-    Sys.sleep(1)
-    wait_for("!document.documentElement.classList.contains('shiny-busy')", 30)
-    Sys.sleep(1)
+    gone_js <- sprintf("!($('#tpl_demog__categorical').val() || []).includes('%s')", sel)
+    wait_for(gone_js, 20)
+    idle()
+    # (still gone once the server has answered: the change kept)
+    gone <- js(gone_js)
     n <- js("window._busy.length")
-    gone <- js(sprintf("!$('#tpl_demog__categorical').val().includes('%s')", sel))
     check("(c) the chip removed by its x", gone, sel)
     check("(c) no veil (rp-user-busy) on an argument change", n == 0, sprintf("veiled %d samples", n))
   } else check("(c) no veil on an argument change", FALSE, "no chip to remove")
 
-  # (e) a study standard's field edited: the card is this table's
-  wait_for("$('.rp-card[data-fn=plan_cells]').length > 0 && $('[id$=\"_pct\"]').length > 0", 30)
-  before <- js("document.querySelector('.rp-card[data-fn=plan_cells] > .rp-card-head').innerText")
-  js("(() => { const c = document.querySelector('.rp-card[data-fn=plan_cells]'); if (!c.classList.contains('rp-card-open')) c.querySelector('.rp-card-toggle').click(); return true; })()")
-  Sys.sleep(0.5)
-  pct <- js("$('[id$=\"_pct\"]').filter((i, e) => e.offsetParent !== null).first().attr('id')")
+  # (e) a study standard's field edited: the card is this table's.  The
+  # template writes no plan_cells(): its card, added, shows the study
+  # standard's values till one is changed.
+  check("plan_cells() added", add_card("plan_cells"))
+  wait_for("$('.rp-card[data-fn=plan_cells] [id$=\"_pct\"]').filter((i, e) => e.offsetParent !== null).length > 0", 30)
+  before <- card_head("plan_cells")
+  check("(e) the added plan_cells() card shows the study standard", grepl("\u8a66\u9a13\u6a19\u6e96", before),
+        gsub("\\s+", " ", before))
+  pct <- js("$('.rp-card[data-fn=plan_cells] [id$=\"_pct\"]').filter((i, e) => e.offsetParent !== null).first().attr('id')")
+  old <- js(sprintf("document.getElementById('%s').value", pct))
+  new <- if (identical(old, "2")) "3" else "2"
   click(paste0("#", pct))
-  key("a", "KeyA", 65)
   js(sprintf("(() => { const e = document.getElementById('%s'); e.select(); return true; })()", pct))
-  type_text("2")
+  type_text(new)
   key("Tab", "Tab", 9)
-  Sys.sleep(1)
-  wait_for("!document.documentElement.classList.contains('shiny-busy')", 30)
-  Sys.sleep(2)
-  wait_for("document.querySelector('.rp-card[data-fn=plan_cells] > .rp-card-head').innerText.includes('\u3053\u306e\u8868')", 10)
-  after <- js("document.querySelector('.rp-card[data-fn=plan_cells] > .rp-card-head').innerText")
+  wait_for("document.querySelector('.rp-card[data-fn=plan_cells] > .rp-card-head').innerText.includes('\u3053\u306e\u8868')", 30)
+  idle()
+  after <- card_head("plan_cells")
   check("(e) the edited study standard's card says This table", grepl("\u3053\u306e\u8868", after),
         sprintf("before: %s | after: %s", gsub("\\s+", " ", before), gsub("\\s+", " ", after)))
 
