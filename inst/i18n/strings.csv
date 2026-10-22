@@ -3741,7 +3741,7 @@ Shift table of a lab parameter,臨床検査のシフト表
 A listing,Listing
 Objective response,奏効率
 Shift table,シフト表
-Continuous variables by a column key,連続変数の要約（列キー別）
+Continuous and categorical variables by a column key,連続変数とカテゴリ変数の要約（列キー別）
 A vital sign's change,バイタルサインの変化量
 the analysis set's id (SAF),解析対象集団の ID（SAF）
 the dataset,データセット
@@ -3762,12 +3762,7 @@ the time variable; NULL: AVAL,時間の変数（NULL: AVAL）
 the censoring variable,打ち切りの変数
 the time axis' unit,時間軸の単位
 the dataset; NULL: ADTTE,データセット（NULL: ADTTE）
-"the hierarchy's variables (SOC, PT)",階層の変数（SOC・PT）
-the records' condition,レコードの条件
 the analysis data's label,解析データのラベル
-the analysis' id,解析の ID
-the analysis' label,解析のラベル
-the any-event row's label,「いずれかの事象」行のラベル
 Update preview draws the figure.,「プレビューを更新」で図を描きます。
 The expanded code,展開したコード
 1 Template (ARD and content),1 テンプレート（ARD とコンテンツ）
@@ -3853,3 +3848,24 @@ study standard,試験標準
 Copy the ticked items,チェックした項目を写す
 Tick the items to copy.,写す項目をチェックしてください。
 Copied from the company standard: %s (save to keep them),会社標準から写しました: %s（保存すると残ります）
+"Demographics, after FDA STF IG v2 Table 2",人口統計学的特性（FDA STF IG v2 Table 2 に準拠）
+"which subjects (R, on the analysis set's ADSL): PART == ""Part 1""","対象とする被験者（R、解析対象集団の ADSL に対して）: PART == ""Part 1"""
+"the records kept (R), for a dataset other than ADSL",残すレコード（R）。ADSL 以外のデータセットのとき
+"the continuous variables, in order",連続変数（並べる順に）
+"the categorical variables, in order",カテゴリ変数（並べる順に）
+"each variable's heading; given by name, merged (RACE: ~ drops one)",各変数の見出し。名前で指定し、既定に重ねる（RACE: ~ で 1 つを消す）
+"the variables' order (plan_levels(variable = )); NULL: the continuous, then the categorical",変数の並び順（plan_levels(variable = )）。NULL: 連続変数、次にカテゴリ変数
+the rows of each continuous variable,各連続変数の行
+"a categorical value's cell, n (%) (plan_cells(categorical = )); NULL: the study standard's",カテゴリの値のセル、n (%)（plan_cells(categorical = )）。NULL: 試験標準のもの
+the continuous statistics the ARD has,ARD に含める連続変数の統計量
+the categorical statistics the ARD has; NULL: cards' own,ARD に含めるカテゴリ変数の統計量。NULL: cards の既定
+"TRUE: a Total column (each analysis again without `by`, plan_total())",TRUE: 合計列を付ける（各解析を `by` なしでもう一度、plan_total()）
+"the levels, outer first",階層の変数（外側から）
+the records kept (R),残すレコード（R）
+"TRUE: the row of the subjects with any record, first",TRUE: いずれかのレコードがある被験者の行を先頭に
+that row's label,その行のラベル
+the rows kept: this % of subjects or more (plan_filter()); NULL: all,残す行: 被験者のこの % 以上（plan_filter()）。NULL: すべて
+"where min_pct is met: ""any"" column, ""all"" of them, or the ""total"" column","min_pct を満たす場所: いずれかの列 ""any""、すべての列 ""all""、合計列 ""total"""
+"a count's cell, n (%) (plan_cells(categorical = )); NULL: the study standard's",件数のセル、n (%)（plan_cells(categorical = )）。NULL: 試験標準のもの
+"the percentages' denominator: NULL the analysis set's subjects, ""data"" the records' subjects","割合の分母: NULL は解析対象集団の被験者、""data"" はレコードのある被験者"
+"TRUE: a Total column (the analysis again without `by`, plan_total())",TRUE: 合計列を付ける（解析を `by` なしでもう一度、plan_total()）
