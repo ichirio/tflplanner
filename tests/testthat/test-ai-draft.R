@@ -382,6 +382,285 @@ test_that("Browse... fills the path from the computer's dialog; cancelled, nothi
   options(tflplanner.file_dialog = NULL)
 })
 
+# the updates the server sends to the fields (shiny's update*Input() mocked):
+# the last of each field, by its id in the tab
+ai_catch_updates <- function(env = parent.frame()) {
+  sent <- new.env()
+  keep <- function(id, ...) assign(id, list(...), envir = sent)
+  testthat::local_mocked_bindings(
+    updateTextInput = function(session, inputId, label = NULL, value = NULL, placeholder = NULL) {
+      keep(inputId, value = value)
+    },
+    updateSelectInput = function(session, inputId, label = NULL, choices = NULL,
+                                 selected = NULL) {
+      keep(inputId, choices = choices, selected = selected)
+    },
+    updateSelectizeInput = function(session, inputId, label = NULL, choices = NULL,
+                                    selected = NULL, options = list(), server = FALSE) {
+      keep(inputId, choices = choices, selected = selected)
+    },
+    .package = "shiny", .env = env)
+  sent
+}
+
+test_that("Browse... opens in the study's folder: the path given, the study's, studies_root", {
+  local_home()
+  root <- studies_root()
+  open <- file.path(root, "OPEN-1")
+  dir.create(file.path(open, "data", "adam"), recursive = TRUE)
+  dir.create(file.path(root, "NEW-1", "docs"), recursive = TRUE)
+  norm <- function(d) normalizePath(d, "/")
+  # the open study: its data/adam; its folder for the workbooks (no docs/)
+  expect_identical(.ai_browse_start("adam", "", study_dir = open, root = root),
+                   norm(file.path(open, "data", "adam")))
+  expect_identical(.ai_browse_start("toc", "", study_dir = open, root = root), norm(open))
+  # a new study: studies_root/<ID>/docs when there; its folder; else studies_root
+  expect_identical(.ai_browse_start("toc", "", root = root, new_id = "NEW-1"),
+                   norm(file.path(root, "NEW-1", "docs")))
+  expect_identical(.ai_browse_start("shells", "", root = root, new_id = "NEW-1"),
+                   norm(file.path(root, "NEW-1", "docs")))
+  expect_identical(.ai_browse_start("adam", "", root = root, new_id = "NEW-1"),
+                   norm(file.path(root, "NEW-1")))
+  expect_identical(.ai_browse_start("adam", "", root = root, new_id = "NONE-9"), norm(root))
+  expect_identical(.ai_browse_start("adam", "", root = root, new_id = "../NEW-1"), norm(root))
+  expect_identical(.ai_browse_start("adam", ""), norm(root))
+  # the path given first: a file's folder, a folder; a path not there passed over
+  wb <- file.path(tempdir(), "browse-start.xlsx")
+  file.copy(ai_toc, wb, overwrite = TRUE)
+  expect_identical(.ai_browse_start("toc", wb, study_dir = open, root = root), norm(tempdir()))
+  expect_identical(.ai_browse_start("shells", paste0("C:/none/x.xlsx\n\"", wb, "\""), root = root),
+                   norm(tempdir()))
+  expect_identical(.ai_browse_start("adam", ai_adam, study_dir = open, root = root), ai_adam)
+  expect_identical(.ai_browse_start("adam", file.path(tempdir(), "no-such"), study_dir = open,
+                                    root = root), norm(file.path(open, "data", "adam")))
+  expect_identical(.ai_browse_start("adam", "", root = file.path(tempdir(), "no-root")), "")
+  # what the Windows dialog is given: a folder's mask, a file itself
+  expect_identical(.ai_file_default(root, windows = TRUE),
+                   paste0(normalizePath(root, "\\"), "\\*.*"))
+  expect_identical(.ai_file_default(wb, windows = TRUE), normalizePath(wb, "\\"))
+  expect_identical(.ai_file_default(root, windows = FALSE), file.path(root, "*.xlsx"))
+  expect_identical(.ai_file_default(""), "")
+})
+
+test_that("Browse... in the app: the dialog is given the study's folder", {
+  local_home()
+  path <- ai_study()
+  dir.create(file.path(studies_root(), "NEW-2", "docs"), recursive = TRUE)
+  got <- new.env()
+  old <- options(tflplanner.ai_drafts = TRUE,
+                 tflplanner.choose_dir = function(default) {
+                   got$dir <- default
+                   NA_character_
+                 },
+                 tflplanner.choose_file = function(default) {
+                   got$file <- default
+                   NA_character_
+                 },
+                 tflplanner.choose_files = function(default) {
+                   got$files <- default
+                   character()
+                 })
+  on.exit(options(old))
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(`ai-study_mode` = "open", `ai-adam_dir` = "", `ai-toc_path` = "",
+                      `ai-shell_paths` = "")
+    session$setInputs(`ai-adam_browse` = 1)
+    # (XYZ-1 has no data/adam: the study's folder)
+    expect_identical(got$dir, normalizePath(path, "/"))
+    session$setInputs(`ai-study_mode` = "new", `ai-new_id` = "NEW-2")
+    session$setInputs(`ai-toc_browse` = 1, `ai-shells_browse` = 1)
+    expect_identical(got$file, normalizePath(file.path(studies_root(), "NEW-2", "docs"), "/"))
+    expect_identical(got$files, got$file)
+    session$setInputs(`ai-adam_dir` = ai_adam, `ai-adam_browse` = 2)
+    expect_identical(got$dir, ai_adam)
+  })
+})
+
+test_that("the ADaM folder put in: the chosen study's, following the ID; a folder given kept", {
+  local_home()
+  path <- ai_study()
+  root <- studies_root()
+  dir.create(file.path(root, "NEW-3", "data", "adam"), recursive = TRUE)
+  dir.create(file.path(root, "NEW-4"), recursive = TRUE)
+  new3 <- normalizePath(file.path(root, "NEW-3", "data", "adam"), "/")
+  # the pure part
+  expect_identical(.ai_adam_auto(NULL, "NEW-3", root), new3)
+  expect_identical(.ai_adam_auto(NULL, "NEW-4", root), "")
+  expect_identical(.ai_adam_auto(NULL, "", root), "")
+  expect_identical(.ai_adam_auto(NULL, "..", root), "")
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  sent <- ai_catch_updates()
+  shiny::testServer(server_for("XYZ-1"), {
+    adam <- function() sent$adam_dir$value
+    # a new study: its data/adam when there, else empty (not the open study's)
+    session$setInputs(`ai-study_mode` = "new", `ai-new_id` = "NEW-3")
+    expect_identical(adam(), new3)
+    session$setInputs(`ai-adam_dir` = new3, `ai-new_id` = "NEW-4")
+    expect_identical(adam(), "")
+    session$setInputs(`ai-adam_dir` = "", `ai-new_id` = "NEW-3")
+    expect_identical(adam(), new3)
+    # the open study's (.ai_adam_default())
+    session$setInputs(`ai-adam_dir` = new3, `ai-study_mode` = "open")
+    expect_identical(adam(), .ai_adam_default(open_study("XYZ-1")))
+    expect_true(nzchar(adam()))
+    # a folder given: kept when the study or the ID changes
+    rm(list = ls(sent), envir = sent)
+    session$setInputs(`ai-adam_dir` = file.path(tempdir(), "mine"), `ai-study_mode` = "new",
+                      `ai-new_id` = "NEW-4")
+    session$setInputs(`ai-new_id` = "NEW-3")
+    expect_null(sent$adam_dir)
+  })
+})
+
+test_that("the sheets to choose from as soon as the workbook is given; the one chosen kept", {
+  local_home()
+  ai_study()
+  sh <- readxl::excel_sheets(ai_toc)
+  more <- file.path(tempdir(), "more_shells.xlsx")
+  file.copy(ai_toc, more, overwrite = TRUE)
+  s <- .ai_sheet_names(ai_toc, more)
+  expect_identical(s$sheet, c(sh, sprintf("%s [more_shells.xlsx]", sh)))
+  expect_identical(s$toc, rep(c(TRUE, FALSE), each = length(sh)))
+  expect_identical(.ai_sheet_labels(s$sheet, s$book)[1L],
+                   sprintf("%s [%s]", sh[1L], basename(ai_toc)))
+  expect_identical(nrow(.ai_sheet_names(file.path(tempdir(), "none.xlsx"))), 0L)
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  sent <- ai_catch_updates()
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(`ai-toc_path` = ai_toc)
+    toc <- sent$toc_sheet
+    expect_identical(unname(toc$choices), c("", sh))
+    expect_identical(names(toc$choices)[1L], "guess")
+    expect_identical(toc$selected, "")
+    # the sheet chosen kept when the workbook is given again, with more shells
+    session$setInputs(`ai-toc_sheet` = sh[1L], `ai-sheets` = sh[2L], `ai-toc_path` = "",
+                      `ai-shell_paths` = more)
+    session$setInputs(`ai-toc_path` = ai_toc)
+    expect_identical(sent$toc_sheet$selected, sh[1L])
+    expect_identical(unname(sent$toc_sheet$choices), c("", sh))
+    expect_identical(unname(sent$sheets$choices), s$sheet)
+    expect_identical(names(sent$sheets$choices), .ai_sheet_labels(s$sheet, s$book))
+    expect_identical(sent$sheets$selected, sh[2L])
+  })
+})
+
+test_that("step 1's labels: the assumption notes' language, the common instructions once first", {
+  local_home()
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  ui <- as.character(app_ui("en"))
+  expect_match(ui, "assumption notes (language)", fixed = TRUE)
+  expect_match(ui, "Common instructions (instructions)", fixed = TRUE)
+  expect_match(ui, "only once \\(once\\).*in each request \\(each\\)")
+  expect_match(ui, 'value="once" checked', fixed = TRUE)
+  expect_match(as.character(app_ui("ja")), "AI の仮定のメモの言語",
+               fixed = TRUE)
+})
+
+test_that("the reports a request holds: 1 for an agent, 3 for a chat; a number given kept", {
+  local_home()
+  ai_study()
+  expect_identical(.ai_size_default("agent"), 1)
+  expect_identical(.ai_size_default("chat"), 3)
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  sent <- ai_catch_updates()
+  got <- new.env()
+  testthat::local_mocked_bindings(updateNumericInput = function(session, inputId, label = NULL,
+                                                                value = NULL, min = NULL,
+                                                                max = NULL, step = NULL) {
+    assign(inputId, list(value = value), envir = sent)
+  }, .package = "shiny")
+  local_mocked_bindings(.ai_prepare = function(dir, toc, adam, args = list(), ...) {
+    got$size <- args$size
+    got$instructions <- args$instructions
+    stop("read no further")
+  })
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(`ai-mode` = "chat", `ai-size` = 3, `ai-toc_path` = ai_toc,
+                      `ai-adam_dir` = ai_adam)
+    expect_null(sent$size)
+    session$setInputs(`ai-mode` = "agent")
+    expect_identical(sent$size$value, 1)
+    # (what the page sends back)
+    session$setInputs(`ai-size` = 1, `ai-read` = 1)
+    expect_identical(got$size, 1L)
+    # the common instructions: once unless chosen
+    expect_identical(got$instructions, "once")
+    session$setInputs(`ai-mode` = "chat")
+    expect_identical(sent$size$value, 3)
+    session$setInputs(`ai-size` = NA, `ai-read` = 2)
+    expect_identical(got$size, 3L)
+    # a number given by hand: kept whatever the mode
+    rm(list = ls(sent), envir = sent)
+    session$setInputs(`ai-size` = 5)
+    session$setInputs(`ai-mode` = "agent")
+    session$setInputs(`ai-mode` = "chat")
+    expect_null(sent$size)
+    session$setInputs(`ai-read` = 3)
+    expect_identical(got$size, 5L)
+  })
+})
+
+test_that("the requests a dry run would write at another size", {
+  toc <- data.frame(output_id = c("T-1", "T-2", "T-3", "T-4", "F-1"),
+                    title = c("Adverse Events by SOC", "Adverse Events by PT", "Serious Adverse Events",
+                              "Demographics", "KM plot"),
+                    type = c("table", "table", "table", "table", "figure"), stringsAsFactors = FALSE)
+  three <- .ai_dry_requests(toc, 3L)
+  one <- .ai_dry_requests(toc, 1L)
+  expect_identical(sum(three$n), 5L)
+  expect_identical(sum(one$n), 5L)
+  expect_gt(nrow(one), nrow(three))
+  expect_identical(nrow(one), 5L)
+  expect_true("figure-1" %in% three$request)
+})
+
+test_that("the requests to write: counted again at the size now; the workbook changed, read again", {
+  local_home()
+  ai_study()
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  got <- new.env()
+  local_mocked_bindings(.ai_write_requests = function(path, toc, toc_name, adam, args = list(),
+                                                      shells = list()) {
+    got$size <- args$size
+    stop("write no further")
+  })
+  shiny::testServer(server_for("XYZ-1"), {
+    ai <- session$userData$ai
+    session$setInputs(`ai-study_mode` = "open", `ai-toc_path` = ai_toc, `ai-adam_dir` = ai_adam,
+                      `ai-size` = 3, `ai-mode` = "chat", `ai-add` = FALSE)
+    session$setInputs(`ai-read` = 1)
+    p <- ai$prepared()
+    expect_true(p$dry_run)
+    # (as tflspec's dry run counts them)
+    expect_identical(.ai_dry_requests(p$toc, 3L), p$requests[c("request", "n")])
+    count <- function(r) sprintf("%d requests to write (%d reports).", nrow(r), sum(r$n))
+    expect_match(output$`ai-prep_status`$html, count(p$requests), fixed = TRUE)
+    # (the example's reports are of one family each: the count at another
+    # size from a stand-in)
+    one <- data.frame(request = paste0("ae-", 1:7), n = 1L)
+    real <- .ai_dry_requests
+    local_mocked_bindings(.ai_dry_requests = function(toc, size) if (size == 1L) one else real(toc, size))
+    session$setInputs(`ai-size` = 1)
+    expect_match(output$`ai-prep_status`$html, count(one), fixed = TRUE)
+    # written at the size now
+    session$setInputs(`ai-write_ok` = 1)
+    expect_identical(got$size, 1L)
+    # another TOC sheet: read again first
+    session$setInputs(`ai-toc_sheet` = "Safety")
+    expect_match(output$`ai-prep_status`$html, "press \"Read\" again", fixed = TRUE)
+    got$size <- NULL
+    session$setInputs(`ai-write` = 1)
+    expect_null(got$size)
+    session$setInputs(`ai-toc_sheet` = "")
+    expect_match(output$`ai-prep_status`$html, count(one), fixed = TRUE)
+  })
+})
+
 # -- a coding agent (mode = "agent") -------------------------------------------
 
 ai_agent_questions <- function(path) {

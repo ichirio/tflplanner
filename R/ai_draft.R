@@ -263,6 +263,72 @@
   if (dir.exists(d)) normalizePath(d, "/") else ""
 }
 
+# The sheets of the TOC workbook and of the shell workbooks, their names
+# only (readxl::excel_sheets(), not their cells), named as
+# tfl_ai_read_shell() names them: a shell workbook's sheet whose name is
+# taken already is "<sheet> [<workbook>]".  sheet, book (the file's name),
+# toc (in the TOC workbook); none for a file that cannot be read.
+.ai_sheet_names <- function(toc = NULL, shells = character()) {
+  read <- function(f) {
+    if (!is.character(f) || length(f) != 1L || is.na(f) || !file.exists(f)) return(character())
+    tryCatch(readxl::excel_sheets(f), error = function(e) character())
+  }
+  sheet <- read(toc %||% NA_character_)
+  out <- data.frame(sheet = sheet, book = rep(basename(toc %||% ""), length(sheet)),
+                    toc = rep(TRUE, length(sheet)), stringsAsFactors = FALSE)
+  for (f in shells) {
+    s <- read(f)
+    s <- ifelse(s %in% out$sheet, sprintf("%s [%s]", s, basename(f)), s)
+    out <- rbind(out, data.frame(sheet = s, book = rep(basename(f), length(s)),
+                                 toc = rep(FALSE, length(s)), stringsAsFactors = FALSE))
+  }
+  out
+}
+
+# The sheets' labels in the lists: with their workbook when there are
+# several ("Safety [more.xlsx]" named so already)
+.ai_sheet_labels <- function(sheet, book = NULL) {
+  if (is.null(book) || length(unique(book)) < 2L) return(sheet)
+  ifelse(grepl("\\]$", sheet), sheet, sprintf("%s [%s]", sheet, book))
+}
+
+# The requests a dry run would write at another `size`, from its TOC
+# (tfl_ai_prepared$toc): its tables in batches (tfl_ai_batches()), each
+# figure a request of its own -- as tfl_ai_prepare(dry_run = TRUE) counts
+# them.  request, n.
+.ai_dry_requests <- function(toc, size) {
+  # (the tables: tfl_ai_batches()'s types = "table"; each figure apart)
+  b <- if (nrow(toc)) tflspec::tfl_ai_batches(toc, size = size) else
+    data.frame(output_id = character(), batch = character())
+  figs <- toc$output_id[toc$type %in% "figure"]
+  b <- b[!b$output_id %in% figs, , drop = FALSE]
+  bt <- c(unique(b$batch), if (length(figs)) paste0("figure-", seq_along(figs)))
+  n <- c(as.integer(table(factor(b$batch, unique(b$batch)))), rep(1L, length(figs)))
+  data.frame(request = bt, n = n, stringsAsFactors = FALSE)
+}
+
+# Said when what the read was for has changed (the workbooks, their sheets)
+.ai_stale_msg <- "The workbook or its sheets changed: press \"Read\" again to count the requests."
+
+# The reports a request holds by default: one for a coding agent (it
+# answers, checks and fixes each report in turn), tflspec's 3 for a chat
+.ai_size_default <- function(mode = "chat") if (identical(mode, "agent")) 1 else 3
+
+# The ADaM folder put in step 1's field: the open study's
+# (.ai_adam_default()); for a new study (`study` NULL),
+# studies_root/<new_id>/data/adam when it is there; else "" (never another
+# study's folder)
+.ai_adam_auto <- function(study = NULL, new_id = "", root = studies_root()) {
+  if (!is.null(study)) return(.ai_adam_default(study))
+  id <- trimws(as.character(new_id %||% ""))
+  if (length(id) != 1L || is.na(id) || !nzchar(id) || grepl("[/\\\\]", id) ||
+      id %in% c(".", "..")) {
+    return("")
+  }
+  d <- file.path(root, id, study_layout()[["adam"]])
+  if (dir.exists(d)) normalizePath(d, "/") else ""
+}
+
 # Why a new study cannot be made under `root` with this id, or NULL (`t`
 # the app's words)
 .ai_new_study_problem <- function(id, root = studies_root(), home = tflplanner_home(),
@@ -423,6 +489,55 @@
     (isTRUE(capabilities("tcltk")) && requireNamespace("tcltk", quietly = TRUE))
 }
 
+# Where Browse... opens (a folder, "/" separated; "" when none is there):
+# the folder of the path already given; else the study's folder (the open
+# study's, or for a new one studies_root/<ID> when it is there, else
+# studies_root) -- its data/adam for the ADaM folder, its docs for the
+# workbooks, when there
+.ai_browse_start <- function(kind = c("adam", "toc", "shells"), field = "", study_dir = NULL,
+                             root = studies_root(), new_id = "") {
+  kind <- match.arg(kind)
+  here <- function(d) {
+    d <- as.character(d)
+    length(d) == 1L && !is.na(d) && nzchar(d) && dir.exists(d)
+  }
+  done <- function(d) normalizePath(d, "/", mustWork = FALSE)
+  given <- trimws(unlist(strsplit(as.character(field %||% ""), "\n", fixed = TRUE)))
+  given <- gsub('^"|"$', "", given[nzchar(given)])
+  for (g in rev(given)) {
+    if (here(g)) return(done(g))
+    if (file.exists(g) && here(dirname(g))) return(done(dirname(g)))
+  }
+  id <- trimws(new_id %||% "")
+  study <- if (here(study_dir)) {
+    study_dir
+  } else if (length(id) == 1L && !is.na(id) && nzchar(id) && !grepl("[/\\\\]", id) &&
+             here(file.path(root, id))) {
+    file.path(root, id)
+  } else if (here(root)) {
+    root
+  }
+  if (is.null(study)) return("")
+  sub <- file.path(study, if (identical(kind, "adam")) study_layout()[["adam"]] else "docs")
+  done(if (here(sub)) sub else study)
+}
+
+# What a file dialog is given to open in `start`: a file, itself; a folder,
+# on Windows the folder's mask ("C:\\dir\\*.*", see ?choose.files), with
+# tcltk a name in it (tk_choose.files() opens at its dirname())
+.ai_file_default <- function(start, windows = .Platform$OS.type == "windows") {
+  start <- as.character(start %||% "")
+  if (length(start) != 1L || is.na(start) || !nzchar(start)) return("")
+  if (dir.exists(start)) {
+    if (windows) paste0(normalizePath(start, "\\", mustWork = FALSE), "\\*.*") else
+      file.path(start, "*.xlsx")
+  } else if (file.exists(start)) {
+    if (windows) normalizePath(start, "\\", mustWork = FALSE) else start
+  } else {
+    ""
+  }
+}
+
 # A folder / a file chosen in the dialog (its path, "/" separated), NA when
 # cancelled.  The dialog holds the app's R session while it is open (a
 # local app's one user waits on it anyway).  The tests put their own chooser
@@ -431,7 +546,9 @@
   f <- getOption("tflplanner.choose_dir")
   out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
     # (Windows only: looked up, not named, for the check on other systems)
-    getExportedValue("utils", "choose.dir")(default = if (dir.exists(default)) default else "",
+    getExportedValue("utils", "choose.dir")(default = if (dir.exists(default)) {
+      normalizePath(default, "\\", mustWork = FALSE)
+    } else "",
                                             caption = "ADaM folder")
   } else {
     tcltk::tk_choose.dir(default = default, caption = "ADaM folder")
@@ -443,11 +560,11 @@
   f <- getOption("tflplanner.choose_file")
   out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
     filters <- rbind(c("Excel workbook (*.xlsx, *.xlsm)", "*.xlsx;*.xlsm"), c("All files (*.*)", "*.*"))
-    getExportedValue("utils", "choose.files")(default = if (file.exists(default)) default else "",
+    getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
                                               caption = "TOC / SHELL workbook",
                                               multi = FALSE, filters = filters)
   } else {
-    tcltk::tk_choose.files(default = default, caption = "TOC / SHELL workbook", multi = FALSE,
+    tcltk::tk_choose.files(default = .ai_file_default(default), caption = "TOC / SHELL workbook", multi = FALSE,
                            filters = matrix(c("Excel workbook", ".xlsx", "Excel workbook", ".xlsm"),
                                             ncol = 2, byrow = TRUE))
   }
@@ -460,10 +577,11 @@
   f <- getOption("tflplanner.choose_files")
   out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
     filters <- rbind(c("Excel workbook (*.xlsx, *.xlsm)", "*.xlsx;*.xlsm"), c("All files (*.*)", "*.*"))
-    getExportedValue("utils", "choose.files")(default = "", caption = "Shell workbooks",
+    getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
+                                              caption = "Shell workbooks",
                                               multi = TRUE, filters = filters)
   } else {
-    tcltk::tk_choose.files(default = default, caption = "Shell workbooks", multi = TRUE,
+    tcltk::tk_choose.files(default = .ai_file_default(default), caption = "Shell workbooks", multi = TRUE,
                            filters = matrix(c("Excel workbook", ".xlsx", "Excel workbook", ".xlsm"),
                                             ncol = 2, byrow = TRUE))
   }

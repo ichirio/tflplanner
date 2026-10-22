@@ -110,7 +110,9 @@ ai_ui <- function(id, lang = "en") {
               class = "d-flex flex-wrap gap-2 align-items-end",
               shiny::numericInput(ns("size"), paste0(t("Reports a request holds"), " (size)"),
                                   value = 3, min = 1, max = 20, width = "12rem"),
-              shiny::selectInput(ns("language"), paste0(t("Language of the assumptions"), " (language)"),
+              shiny::selectInput(ns("language"),
+                                 with_tip(paste0(t("Language of the AI's assumption notes"), " (language)"),
+                                          t("The language of the notes in which the AI explains what it decided where the shell does not say (its assumptions). Not the language of the reports' titles and labels (those stay as in the shell).")),
                                  choices = stats::setNames(c("Japanese", "English", ""),
                                                            c(t("Japanese"), t("English"), t("the chat's"))),
                                  selected = if (identical(lang, "ja")) "Japanese" else "English",
@@ -119,11 +121,12 @@ ai_ui <- function(id, lang = "en") {
                                  value = FALSE),
             shiny::checkboxInput(ns("templates"), paste0(t("Use the templates"), " (templates)"),
                                  value = TRUE),
-            shiny::radioButtons(ns("instructions"), paste0(t("Instructions"), " (instructions)"),
+            shiny::radioButtons(ns("instructions"),
+                                with_tip(paste0(t("Common instructions"), " (instructions)"),
+                                         t("Chat: once writes the common instructions once, to 00-instructions.md (paste it first), and leaves them out of the requests; each puts them in every request. Coding agent: no difference -- the agent reads them once, from ai/instructions-table.md and ai/instructions-figure.md.")),
                                 inline = TRUE,
-                                choiceNames = list(t("in each request (each)"),
-                                                   t("once, in 00-instructions.md (once)")),
-                                choiceValues = c("each", "once"), selected = "each"),
+                                choiceNames = list(t("only once (once)"), t("in each request (each)")),
+                                choiceValues = c("once", "each"), selected = "once"),
             shiny::tags$details(
               class = "small mb-2",
               shiny::tags$summary(t("More")),
@@ -681,11 +684,34 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       if (!is.null(p)) shiny::isolate({
         r <- tryCatch(.ai_requests(p), error = function(e) NULL)
         shiny::updateRadioButtons(session, "study_mode", selected = "open")
-        if (!nzchar(trimws(shiny::isolate(input$adam_dir) %||% ""))) {
-          shiny::updateTextInput(session, "adam_dir", value = .ai_adam_default(rv$study))
-        }
         if (!is.null(r) && nrow(r)) bslib::nav_select("step", "requests", session = session)
       })
+    })
+    # the ADaM folder: the chosen study's (.ai_adam_auto()), following the
+    # study chosen and the ID typed; a folder typed or chosen in Browse... is
+    # kept (it is not the one put in last)
+    adam_auto <- ""
+    shiny::observe({
+      d <- .ai_adam_auto(if (!is_new()) rv$study, new_id = input$new_id, root = studies_root())
+      shiny::isolate({
+        now <- trimws(input$adam_dir %||% "")
+        if (identical(d, adam_auto)) return()
+        if (!nzchar(now) || identical(now, adam_auto)) {
+          shiny::updateTextInput(session, "adam_dir", value = d)
+          adam_auto <<- d
+        }
+      })
+    })
+    # the reports a request holds: 1 for a coding agent, 3 for a chat
+    # (tflspec's); a number changed by hand kept when the mode changes
+    size_auto <- 3
+    shiny::observeEvent(input$mode, {
+      d <- .ai_size_default(input$mode)
+      now <- input$size
+      if (is.null(now) || is.na(now) || isTRUE(all.equal(as.numeric(now), size_auto))) {
+        if (!identical(d, size_auto)) shiny::updateNumericInput(session, "size", value = d)
+        size_auto <<- d
+      }
     })
     output$open_name <- shiny::renderUI({
       if (!identical(input$study_mode, "open")) return(NULL)
@@ -719,12 +745,17 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     })
     # Browse...: the computer's own dialog fills the path (as typing it
     # does); cancelled, nothing changes
+    # (it opens in the study's folder: .ai_browse_start())
+    browse_start <- function(kind, field) {
+      .ai_browse_start(kind, field, study_dir = if (!is_new()) path(), root = studies_root(),
+                       new_id = input$new_id %||% "")
+    }
     shiny::observeEvent(input$adam_browse, {
-      d <- guarded(.ai_choose_dir(input$adam_dir %||% ""))
+      d <- guarded(.ai_choose_dir(browse_start("adam", input$adam_dir)))
       if (length(d) == 1L && !is.na(d)) shiny::updateTextInput(session, "adam_dir", value = d)
     })
     shiny::observeEvent(input$toc_browse, {
-      f <- guarded(.ai_choose_file(input$toc_path %||% ""))
+      f <- guarded(.ai_choose_file(browse_start("toc", input$toc_path)))
       if (length(f) == 1L && !is.na(f)) shiny::updateTextInput(session, "toc_path", value = f)
     })
     # the workbook: the one given last, uploaded or its path typed
@@ -761,7 +792,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                  sprintf(t("Shells read from: %s"), paste(vapply(s, `[[`, "", "name"), collapse = ", ")))
     })
     shiny::observeEvent(input$shells_browse, {
-      f <- guarded(.ai_choose_files())
+      f <- guarded(.ai_choose_files(browse_start("shells", input$shell_paths)))
       if (!length(f)) return()
       had <- trimws(input$shell_paths %||% "")
       shiny::updateTextAreaInput(session, "shell_paths",
@@ -787,13 +818,40 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                  sprintf(t("Read: %s (copied into the study's ai/ when the requests are written)"),
                          src$name))
     })
+    # the reports a request holds as the field says (the mode's default when
+    # it is empty)
+    size_now <- function() {
+      size <- input$size
+      if (is.null(size) || !length(size) || is.na(size)) size <- .ai_size_default(input$mode)
+      as.integer(size)
+    }
+    # what the read was for: the workbooks and their sheets (changed, the
+    # read is out of date: read again); the size it counted the requests at
+    read_key <- function() {
+      list(toc = toc_src()$path, shells = vapply(shells_src(), `[[`, "", "path"),
+           toc_sheet = nz(input$toc_sheet), sheets = sort(as.character(input$sheets)))
+    }
+    read_with <- shiny::reactiveVal(NULL)
+    read_size <- shiny::reactiveVal(NULL)
+    stale <- shiny::reactive({
+      p <- prepared()
+      !is.null(p) && isTRUE(p$dry_run) && !identical(read_with(), read_key())
+    })
+    # the requests to write: the read's, counted again at the size now
+    to_write <- shiny::reactive({
+      p <- prepared()
+      if (is.null(p) || !isTRUE(p$dry_run) || identical(size_now(), read_size())) return(p$requests)
+      .ai_dry_requests(p$toc, size_now())
+    })
     args_of <- function(p) {
       all <- if (!is.null(p)) p$adam$datasets$dataset
       ds <- input$datasets
       mc <- input$max_chars
+      # (always given: the mode's default when the field is empty)
+      size <- size_now()
       list(toc_sheet = nz(input$toc_sheet), sheets = if (length(input$sheets)) input$sheets,
-           size = as.integer(input$size %||% 3L), language = nz(input$language),
-           workbook = input$workbook %||% "text", instructions = input$instructions %||% "each",
+           size = as.integer(size), language = nz(input$language),
+           workbook = input$workbook %||% "text", instructions = input$instructions %||% "once",
            max_chars = if (is.null(mc) || is.na(mc)) NULL else mc,
            datasets = if (!is.null(all) && length(ds) && !setequal(ds, all)) ds,
            max_levels = as.integer(input$max_levels %||% 15L),
@@ -818,6 +876,25 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       }
       TRUE
     }
+    # the sheets to choose from, as soon as the workbooks are known (their
+    # names only; what is chosen already kept)
+    update_sheets <- function(sh, bk, in_toc) {
+      lab <- .ai_sheet_labels(sh, bk)
+      toc_now <- shiny::isolate(input$toc_sheet) %||% ""
+      shiny::updateSelectInput(session, "toc_sheet",
+                               choices = c(stats::setNames("", t("guess")),
+                                           stats::setNames(sh[in_toc], lab[in_toc])),
+                               selected = if (toc_now %in% sh[in_toc]) toc_now else "")
+      shiny::updateSelectizeInput(session, "sheets", choices = stats::setNames(sh, lab),
+                                  selected = intersect(shiny::isolate(input$sheets), sh))
+    }
+    shiny::observe({
+      src <- toc_src()
+      shl <- vapply(shells_src(), `[[`, "", "path")
+      if (is.null(src) || !is.null(.ai_toc_problem(src$path))) return()
+      s <- .ai_sheet_names(src$path, shl[vapply(shl, function(f) is.null(.ai_toc_problem(f)), TRUE)])
+      if (nrow(s)) shiny::isolate(update_sheets(s$sheet, s$book, s$toc))
+    })
     shiny::observeEvent(input$read, {
       if (!inputs_ok()) return()
       src <- toc_src()
@@ -842,17 +919,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       prepared(p)
       prep_for(if (is_new()) NULL else dir)
       used_levels(a$max_levels)
+      read_size(as.integer(a$size))
       sh <- p$sheets$sheet
-      # (several workbooks: each sheet with its own; a name twice is named by
-      # its workbook already, "Safety [more.xlsx]")
       bk <- p$sheets$book
-      lab <- if (!is.null(bk) && length(unique(bk)) > 1L)
-        ifelse(grepl("\\]$", sh), sh, sprintf("%s [%s]", sh, bk)) else sh
-      shiny::updateSelectInput(session, "toc_sheet",
-                               choices = c(stats::setNames("", t("guess")), stats::setNames(sh, lab)),
-                               selected = input$toc_sheet %||% "")
-      shiny::updateSelectizeInput(session, "sheets", choices = stats::setNames(sh, lab),
-                                  selected = intersect(input$sheets, sh))
+      # (the TOC is one of the TOC workbook's sheets)
+      in_toc <- if (is.null(bk)) TRUE else bk == bk[1L]
+      update_sheets(sh, bk, in_toc)
       ds <- p$adam$datasets$dataset
       keep <- intersect(input$datasets, ds)
       shiny::updateCheckboxGroupInput(
@@ -860,6 +932,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         choiceNames = lapply(seq_along(ds), function(i) sprintf(
           "%s (%d)", ds[i], p$adam$datasets$variables[i])),
         choiceValues = ds, selected = if (length(keep)) keep else ds)
+      read_with(read_key())
       bslib::nav_select("prep_tab", if (nrow(p$toc) && all(p$toc$shell_found)) "adam" else "toc",
                         session = session)
     })
@@ -919,6 +992,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     shiny::observeEvent(input$write, {
       if (isTRUE(dirty())) return(notify(t("Save first: the study has unsaved changes."), "warning"))
       shiny::req(prepared())
+      if (isTRUE(stale())) return(notify(t(.ai_stale_msg), "warning"))
       if (is_new()) {
         msg <- .ai_new_study_problem(input$new_id, t = t)
         if (!is.null(msg)) return(notify(msg, "warning"))
@@ -944,16 +1018,19 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     # Write: after a read, never over unsaved changes
     shiny::observe({
       session$sendCustomMessage("ai-disable", list(id = ns("write"),
-                                                   on = isTRUE(dirty()) || is.null(prepared())))
+                                                   on = isTRUE(dirty()) || is.null(prepared()) ||
+                                                     isTRUE(stale())))
     })
     output$write_note <- shiny::renderUI({
       if (isTRUE(dirty())) return(shiny::span(class = "small text-warning", t("Save first")))
-      if (is.null(prepared())) shiny::span(class = "small text-muted", t("Read first."))
+      if (is.null(prepared())) return(shiny::span(class = "small text-muted", t("Read first.")))
+      if (isTRUE(stale())) shiny::span(class = "small text-warning", t("Read again"))
     })
     output$prep_status <- shiny::renderUI({
       p <- prepared()
       if (is.null(p)) return(NULL)
-      r <- p$requests
+      if (isTRUE(stale())) return(shiny::div(class = "small mt-2 text-warning", t(.ai_stale_msg)))
+      r <- to_write()
       had <- if (!is_new()) requests() else NULL
       shiny::div(
         class = "small mt-2",

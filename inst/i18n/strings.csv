@@ -3541,16 +3541,19 @@ TOC sheet,TOC のシート
 guess,推測
 Shell sheets to add,追加するシェルのシート
 Reports a request holds,依頼 1 件に入れる帳票数
-Language of the assumptions,仮定の言語
+Language of the AI's assumption notes,AI の仮定のメモの言語
+"The language of the notes in which the AI explains what it decided where the shell does not say (its assumptions). Not the language of the reports' titles and labels (those stay as in the shell).",シェルから読めず AI が決めた所の説明（仮定のメモ）の言語です。帳票のタイトルやラベルの言語ではありません（それはシェルのまま）。
 Japanese,日本語
 English,英語
 the chat's,チャットに任せる
-Instructions,指示
+Common instructions,共通の指示
+"Chat: once writes the common instructions once, to 00-instructions.md (paste it first), and leaves them out of the requests; each puts them in every request. Coding agent: no difference -- the agent reads them once, from ai/instructions-table.md and ai/instructions-figure.md.",チャット: once は共通の指示を 00-instructions.md に 1 回だけ書き、依頼には入れません（最初に貼る）。each は依頼ごとに入れます。エージェント: 違いはありません（指示は ai/instructions-table.md と ai/instructions-figure.md から 1 回だけ読みます）。
 in each request (each),依頼ごとに (each)
-"once, in 00-instructions.md (once)",1 回だけ 00-instructions.md に (once)
+only once (once),1 回だけ (once)
 The workbook in the chat,チャットへのブックの渡し方
 A request's length at most,依頼 1 件の最大文字数
 Read,読み取る
+"The workbook or its sheets changed: press ""Read"" again to count the requests.",ブックかそのシートが変わりました。「読み取る」を押し直すと依頼の件数が更新されます。
 Write the requests,依頼を書く
 What was read (dry_run = TRUE),読み取った内容 (dry_run = TRUE)
 ADaM summary (what is sent),ADaM の要約（送る内容）
