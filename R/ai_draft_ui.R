@@ -1062,6 +1062,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       shiny::req(p)
       tc <- p$toc
       no <- tc$output_id[!tc$shell_found]
+      twice <- if (!is.null(tc$same_number)) tc$output_id[tc$same_number %in% TRUE]
       shiny::tagList(
         if (!nrow(tc)) shiny::div(
           class = "alert alert-danger py-2 small",
@@ -1073,6 +1074,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           class = "alert alert-warning py-2 small",
           sprintf(t("%d reports with no shell (%s): add their sheets (sheets) on the left and read again."),
                   length(no), paste(no, collapse = ", "))),
+        if (length(twice)) shiny::div(
+          class = "alert alert-warning py-2 small",
+          sprintf(t("The TOC names %s more than once: only its first row is read. Give each report a number of its own (a report's parts: .a, .b)."),
+                  paste(twice, collapse = ", "))),
         if (length(p$hint)) shiny::div(class = "alert alert-warning py-2 small",
                                        lapply(p$hint, shiny::div)))
     })
@@ -1082,10 +1087,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       tc <- p$toc
       d <- data.frame(tc$output_id, tc$title, tc$type,
                       ifelse(tc$shell_found, paste("\u2713", tc$shell), "\u2014"),
+                      .ai_parts_label(tc$output_id, tc$parts, t),
                       ifelse(is.na(tc$request), "", tc$request),
                       if (is.null(tc$book)) "" else ifelse(is.na(tc$book), "", tc$book),
                       stringsAsFactors = FALSE)
-      names(d) <- c("output_id", t("title"), t("type"), "shell", t("request"), t("Workbook"))
+      names(d) <- c("output_id", t("title"), t("type"), "shell", t("In parts"), t("request"),
+                    t("Workbook"))
       DT::datatable(d, rownames = FALSE, selection = "none",
                     options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
     }, server = FALSE)
