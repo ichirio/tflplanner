@@ -3892,3 +3892,4 @@ Sheets for every request,全依頼に足すシート
 Put the common instructions in each request,依頼ごとに共通の指示を含める
 "Off (the default): the common instructions are written once, to 00-instructions.md -- paste it first -- and left out of the requests. On: every request carries them.",オフ（既定）: 共通の指示は 00-instructions.md に 1 回だけ書き（最初に貼ります）、依頼には入れません。オン: どの依頼にも入れます。
 Copied into the study's docs/: %s,試験の docs/ に写しました: %s
+The upload's dialog is the browser's: where it opens cannot be chosen.,アップロードの「参照…」はブラウザのダイアログなので、開く場所はアプリから選べません。
