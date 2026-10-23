@@ -555,9 +555,9 @@ test_that("step 1's labels: the assumption notes' language, the common instructi
   on.exit(options(old))
   ui <- as.character(app_ui("en"))
   expect_match(ui, "assumption notes (language)", fixed = TRUE)
-  expect_match(ui, "Common instructions (instructions)", fixed = TRUE)
-  expect_match(ui, "only once \\(once\\).*in each request \\(each\\)")
-  expect_match(ui, 'value="once" checked', fixed = TRUE)
+  # (a chat's: once unless ticked, #473)
+  expect_match(ui, "Put the common instructions in each request", fixed = TRUE)
+  expect_false(grepl('id="ai-instructions_each" checked', ui, fixed = TRUE))
   expect_match(as.character(app_ui("ja")), "AI の仮定のメモの言語",
                fixed = TRUE)
 })
