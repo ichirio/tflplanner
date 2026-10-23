@@ -6,7 +6,14 @@
   `rtf_titles()` / `rtf_footnotes()`; those the page does not say folded
   under "Not in the code"), and the figure's card `align`
   (`rtf_figures()`).  tflspec (>= 0.0.24.9217) writes them into the
-  program (0.0.2.9275).
+  program (0.0.2.9281).
+- **tflspec's new sheet columns in Japanese** (#475): the column help of
+  tflspec's records and objects sheets, the analyses' records / by /
+  denominator, the report sheet's page_break / space_before / first_rows /
+  cont_title, the page sheet's font / font_lang / page_more, the tables'
+  and listings' content_more and listing_cols' more.  A test that reads a
+  study's ARD program takes the analysis set's data by its name before and
+  after tflspec#459 (pop_saf, adsl_sub) (0.0.2.9276).
 
 - **AI tab: a report's parts, requests named after their report, the
   workbooks in the study read where they are** (#470, 0.0.2.9272; tflspec
