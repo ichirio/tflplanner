@@ -11,7 +11,16 @@
   request" says it is usually blank and several can be chosen; the button
   is "Read and check", its help what to check.  In what was read, the
   TOC items are listed,
-  and a TOC item with no shell has its shell cell in red.  After the second test, too: one Browse... for each workbook (one from outside the study copied into its docs/; the upload only where the computer's dialog cannot open, a server), shorter labels, a path pasted with its quotes read, and the reports a request holds and the common instructions a chat's only (a checkbox, off: once).  What was read is tflspec's sheet-first view (tflspec >= 0.0.24.9230): the TOC items, the shells (one request a shell sheet, the items it was matched with), the counts (shells, TOC items, those with no shell), and the sheets' roles, changed on the Sheets tab and applied by reading again (`sheet_roles`); the reports in parts are no longer guessed (0.0.2.9278).
+  and a TOC item with no shell has its shell cell in red.  After the second test, too: one Browse... for each workbook (one from outside the study copied into its docs/; the upload only where the computer's dialog cannot open, a server), shorter labels, a path pasted with its quotes read, and the reports a request holds and the common instructions a chat's only (a checkbox, off: once).  What was read is tflspec's sheet-first view (tflspec >= 0.0.24.9234): the TOC items, the shells (one request a shell sheet, the items it was matched with), the counts (shells, TOC items, those with no shell), and the sheets' roles, changed on the Sheets tab and applied by reading again (`sheet_roles`); the reports in parts are no longer guessed (0.0.2.9282).
+
+- **Page screen: the titles' and footnotes' style and the figure's
+  alignment** (#472): the Titles and Footnotes cards have, after the size,
+  `row_height_twips`, `markup`, `font` and `align` (rtfreporter's
+  `rtf_titles()` / `rtf_footnotes()`; those the page does not say folded
+  under "Not in the code"), and the figure's card `align`
+  (`rtf_figures()`).  tflspec (>= 0.0.24.9217) writes them into the
+  program (0.0.2.9281).
+
 - **tflspec's new sheet columns in Japanese** (#475): the column help of
   tflspec's records and objects sheets, the analyses' records / by /
   denominator, the report sheet's page_break / space_before / first_rows /
