@@ -1489,7 +1489,9 @@ $(document).on('click', '#save', function() {
     }
   }
   # (columns kept as they are: shown, not typed into)
-  for (cn in intersect(read_only, names(d))) h <- suppressWarnings(rhandsontable::hot_col(h, cn, readOnly = TRUE))
+  for (cn in intersect(read_only, names(d))) {
+    h <- suppressWarnings(rhandsontable::hot_col(h, cn, readOnly = TRUE))
+  }
   h
 }
 
