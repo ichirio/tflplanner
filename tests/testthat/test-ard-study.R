@@ -282,7 +282,9 @@ test_that("the analysis data is saved, reopened and run (tflspec #135)", {
   expect_identical(o$planner$ard$analysis_data, p$ard$analysis_data)
   expect_identical(o$planner$ard$analyses$data, p$ard$analyses$data)
   code <- readLines(file.path(s$path, "programs", "ard", "DM.R"))
+  # (the analysis set's data: pop_saf before tflspec#459, adsl_sub after)
   expect_true(any(code %in% c("adsl_saf <- filter(pop_saf, AGE >= 18)",
+                              "adsl_saf <- filter(adsl_sub, AGE >= 18)",
                               "  filter(AGE >= 18) |>")))
   r <- run_ard(o, "DM")
   expect_null(r$error)
