@@ -180,7 +180,7 @@ test_that("a row of the analyses grid is edited as a form", {
     inp[[id("fn_pick")]] <- "continuous"
     # the data: one choice of dataset x analysis set, named as the program
     # names it
-    expect_match(h, "ADSL × SAF (pop_saf: ", fixed = TRUE)
+    expect_match(h, "ADSL × SAF (adsl_sub: ", fixed = TRUE)
     expect_false(grepl("(the population's", h, fixed = TRUE))
     # the wizard wrote the dataset out: the same data as the analysis set's
     expect_match(h, 'value="ADSL|SAF" selected', fixed = TRUE)
@@ -452,7 +452,7 @@ test_that("the data of an analysis is one choice of dataset and analysis set", {
   ch <- .an_data_choices(c("ADSL", "ADAE"), po, "|SAF", w)
   expect_identical(unname(ch), c("|SAF", "ADAE|SAF", "|ITT", "ADAE|ITT",
                                  "ADSL|", "ADAE|"))
-  expect_identical(names(ch)[1:2], c("ADSL x SAF (pop_saf)", "ADAE x SAF (adae_saf)"))
+  expect_identical(names(ch)[1:2], c("ADSL x SAF (adsl_sub)", "ADAE x SAF (adae_sub)"))
   expect_identical(names(ch)[5], "ADSL alone (adsl)")
   # a choice the analysis has that is none of these is kept
   ch2 <- .an_data_choices("ADSL", po, "ADVS|SAF", w)

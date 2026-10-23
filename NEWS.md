@@ -1,5 +1,14 @@
 # tflplanner (development version)
 
+- **The program's data names as tflspec's second stage gives them** (#475):
+  a dataset with an analysis set is `<dataset>_sub` (`adsl_sub`,
+  `adae_sub`; a report's second of a dataset `_sub2`), not `pop_saf` /
+  `adae_saf`, in the ARD tab's choices and the data's settings; those
+  names are the program's own, never an analysis data's (so `advs_saf` is
+  a name one may give again).  data.yml's `records:` and `objects:`, an
+  analysis's `records:` and `by: []` are kept when the study is opened and
+  saved (0.0.2.9277).
+
 - **tflspec's new sheet columns in Japanese** (#475): the column help of
   tflspec's records and objects sheets, the analyses' records / by /
   denominator, the report sheet's page_break / space_before / first_rows /
