@@ -2,7 +2,7 @@
 # data.yml's records: and objects:, an analysis's records: and by: [] are
 # kept as they are written
 
-skip_if_not(exists("tfl_ard_data_names", asNamespace("tflspec")), "tflspec before #459")
+skip_if_not("records" %in% names(tflspec::tfl_ard_spec_template()), "tflspec before #460 (records)")
 skip_on_cran()
 
 test_that("records, objects and by: [] survive opening and saving the study", {
