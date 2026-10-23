@@ -12,6 +12,13 @@
   is "Read and check", its help what to check.  In what was read, the
   TOC items are listed,
   and a TOC item with no shell has its shell cell in red.  After the second test, too: one Browse... for each workbook (one from outside the study copied into its docs/; the upload only where the computer's dialog cannot open, a server), shorter labels, a path pasted with its quotes read, and the reports a request holds and the common instructions a chat's only (a checkbox, off: once).  What was read is tflspec's sheet-first view (tflspec >= 0.0.24.9230): the TOC items, the shells (one request a shell sheet, the items it was matched with), the counts (shells, TOC items, those with no shell), and the sheets' roles, changed on the Sheets tab and applied by reading again (`sheet_roles`); the reports in parts are no longer guessed (0.0.2.9278).
+- **tflspec's new sheet columns in Japanese** (#475): the column help of
+  tflspec's records and objects sheets, the analyses' records / by /
+  denominator, the report sheet's page_break / space_before / first_rows /
+  cont_title, the page sheet's font / font_lang / page_more, the tables'
+  and listings' content_more and listing_cols' more.  A test that reads a
+  study's ARD program takes the analysis set's data by its name before and
+  after tflspec#459 (pop_saf, adsl_sub) (0.0.2.9276).
 
 - **AI tab: a report's parts, requests named after their report, the
   workbooks in the study read where they are** (#470, 0.0.2.9272; tflspec
