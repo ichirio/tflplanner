@@ -1471,7 +1471,7 @@ $(document).on('click', '#save', function() {
 }
 
 .grid <- function(d, sheet, key, choices, closed = character(),
-                  select = FALSE) {
+                  select = FALSE, read_only = character()) {
   d <- .na_blank(d)
   if (!nrow(d)) d[1L, ] <- ""
   h <- rhandsontable::rhandsontable(
@@ -1488,6 +1488,8 @@ $(document).on('click', '#save', function() {
         strict = shut, allowInvalid = !shut))
     }
   }
+  # (columns kept as they are: shown, not typed into)
+  for (cn in intersect(read_only, names(d))) h <- suppressWarnings(rhandsontable::hot_col(h, cn, readOnly = TRUE))
   h
 }
 
@@ -8855,6 +8857,7 @@ app_server <- function(input, output, session, start) {
       class = "rp-b-card",
       shiny::h6(with_tip(t("Columns, in order"),
                          t("vars: variables stacked in the column (| between them); label: \\n breaks the header; width: characters; collapse_repeats: print a repeated value once."))),
+      .lf_more_note(rv$p, current(), t),
       rhandsontable::rHandsontableOutput("hot_lf_cols"))
   })
   lf_cols_key <- shiny::reactive(paste("lf_cols", input$target, rv$ver,
@@ -8869,7 +8872,7 @@ app_server <- function(input, output, session, start) {
     cols <- if (nrow(l)) dataset_columns(l$dataset[1L]) else character()
     grids_drawn()
     .grid(d, "listing_cols", lf_cols_key(),
-          list(vars = cols, collapse_repeats = .bool))
+          list(vars = cols, collapse_repeats = .bool), read_only = "more")
   })
   shiny::observeEvent(input$hot_lf_cols, {
     h <- input$hot_lf_cols
@@ -8889,7 +8892,8 @@ app_server <- function(input, output, session, start) {
     d$output_id <- NULL
     grids_drawn()
     .grid(d, "listings", lf_key(),
-          list(type = listing_types()$type, dataset = shiny::isolate(catalog())$dataset))
+          list(type = listing_types()$type, dataset = shiny::isolate(catalog())$dataset),
+          read_only = "content_more")
   })
   shiny::observeEvent(input$hot_lf_listings, {
     h <- input$hot_lf_listings
