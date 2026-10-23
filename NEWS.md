@@ -1,5 +1,13 @@
 # tflplanner (development version)
 
+- **Page screen: the titles' and footnotes' style and the figure's
+  alignment** (#472): the Titles and Footnotes cards have, after the size,
+  `row_height_twips`, `markup`, `font` and `align` (rtfreporter's
+  `rtf_titles()` / `rtf_footnotes()`; those the page does not say folded
+  under "Not in the code"), and the figure's card `align`
+  (`rtf_figures()`).  tflspec (>= 0.0.24.9217) writes them into the
+  program (0.0.2.9281).
+
 - **tflspec's new sheet columns in Japanese** (#475): the column help of
   tflspec's records and objects sheets, the analyses' records / by /
   denominator, the report sheet's page_break / space_before / first_rows /
