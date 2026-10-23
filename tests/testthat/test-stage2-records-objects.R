@@ -35,6 +35,8 @@ test_that("records, objects and by: [] survive opening and saving the study", {
   o <- tflspec::tfl_read_outputs(d)[["T-14-1-1"]]
   nall <- Filter(function(a) identical(a$id, "NALL"), o$ard$analyses)
   expect_length(nall, 1L)
+  # (by: [], "no columns": tflspec's by required, #461)
+  skip_if_not(exists(".by_needed_problems", asNamespace("tflspec")), "tflspec before #461 (by: [])")
   expect_true("by" %in% names(nall[[1L]]))
   expect_length(nall[[1L]]$by, 0L)
 })
