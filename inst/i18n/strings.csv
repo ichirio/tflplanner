@@ -3876,3 +3876,12 @@ In parts,Part
 %d parts (%s),Part %d つ（%s）
 "The TOC names %s more than once: only its first row is read. Give each report a number of its own (a report's parts: .a, .b).","目次に %s が 2 回以上あります。読むのは最初の行だけです。帳票ごとに別の番号を付けてください（1 つの帳票の Part は .a, .b）。"
 request %d of %d,依頼 %d / %d
+"Documents for reference: SAP, TOC / SHELL workbooks",参考の文書: SAP、TOC / SHELL のブック
+"Upload or path: the same workbook is read. Whether a copy is kept in the study's ai/ (what was read, beside the requests): an upload, yes; a path inside the study folder (its docs/, say), no -- the study already holds it; a path outside the study folder, yes.",アップロードでもパスでも、読むブックは同じです。違いは、試験の ai/ に写しを置くか（読んだ物の控えとして依頼の横に置きます）だけです。アップロード＝写す。試験フォルダの中のパス（docs/ など）＝写さない（試験にもうあるため）。試験フォルダの外のパス＝写す。
+or their file paths (several: one a line),またはファイルのパス（複数なら 1 行に 1 つずつ）
+Sheets to add to every request,すべての依頼に足すシート
+"Usually blank: each request carries the shell sheets found for its reports (the TOC table's shell column). Choose sheets only to add them whole to every request -- a sheet of notes common to all, or the shell of a report none was found for. Several can be chosen.",ふつうは空欄です。各依頼には、その帳票のシェルのシート（右の TOC の表の shell 列）が自動で入ります。ここで選ぶのは、すべての依頼にシートを丸ごと足したい時だけです（全帳票に共通の注記のシート、シェルが見つからなかった帳票のシートなど）。複数選べます。
+none (the shells found),なし（見つかったシェルだけ）
+Read and check,読み取って確かめる
+"Reads the workbook and the ADaM and writes nothing; what was read shows on the right. Check there: every report found its shell (TOC: the shell column), the reports in parts, the types, how the reports go into requests; the ADaM summary that is sent (no records); the sheets and what each was taken for. Then Write the requests.",ブックと ADaM を読むだけで、何も書きません。読んだ結果が右に出ます。そこで確かめること: どの帳票もシェルが見つかったか（TOC の shell 列）、Part に分かれた帳票、帳票の種類、帳票がどの依頼に入るか、AI に送る ADaM の要約（レコードは送りません）、各シートを何として読んだか。確かめたら「依頼を書く」を押します。
+"%d reports written in parts (%s): each part becomes a report of its own, its number the part's (.a, .b). Marked in the table.","Part に分かれた帳票が %d 件あります（%s）。Part ごとに別の帳票になり、番号は Part の番号（.a, .b）です。表で印を付けています。"

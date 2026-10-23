@@ -10,6 +10,8 @@
 #     data/adam/           input data: analysis datasets
 #     data/sdtm/                       tabulation datasets
 #     data/other/                      anything else (formats, lookups)
+#     docs/                the study's documents for reference (SAP, the
+#                          TOC / SHELL workbook); nothing writes here
 #     spec/                table_spec.xlsx, report_spec.xlsx (the report
 #                          programs read them; ard_spec.xlsx only if exported)
 #     programs/            study_setup.R (what every program runs first),
@@ -40,7 +42,8 @@ study_layout <- function() {
   c(adam = "data/adam", sdtm = "data/sdtm", other = "data/other",
     spec = "spec", programs_ard = "programs/ard",
     programs_tfl = "programs/tfl", ard = "output/ard", tfl = "output/tfl",
-    ard_import = "input/ard", toc_import = "input/toc", runs = "runs", logs_preview = "logs/preview")
+    ard_import = "input/ard", toc_import = "input/toc", runs = "runs", logs_preview = "logs/preview",
+    docs = "docs")
 }
 
 .study_file <- "study.yml"

@@ -1,5 +1,18 @@
 # tflplanner (development version)
 
+- **AI tab, after the second test** (#473): a new study has a `docs/`
+  folder (`study_layout()`: the SAP, the TOC / SHELL workbook; nothing
+  writes there).  The tab shows step 1 when another study is opened (the
+  same study keeps its step; Write keeps the new study on its requests).
+  The drafting AI is the agent by default (one report a request).  The
+  TOC / SHELL input says when a copy goes into `ai/` (an upload or a path
+  outside the study: yes; a path inside it: no); the shells' paths box is
+  one line high and says "several: one a line"; "Sheets to add to every
+  request" says it is usually blank and several can be chosen; the button
+  is "Read and check", its help what to check.  In what was read, the
+  reports in parts are counted above the TOC and marked by their number,
+  and a report with no shell has its shell cell in red (0.0.2.9273).
+
 - **AI tab: a report's parts, requests named after their report, the
   workbooks in the study read where they are** (#470, 0.0.2.9272; tflspec
   >= 0.0.24.9211, tflspec#439).  Step 1's TOC table says, for a TOC row

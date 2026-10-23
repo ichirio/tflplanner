@@ -62,7 +62,8 @@
     ard_import = "ARDs made elsewhere, taken in (imports.csv lists them)",
     toc_import = "TOCs taken in (imports.csv lists them; last.json: what the last one said)",
     runs = "Official runs: one run folder each (logs, results, code)",
-    logs_preview = "What a report program printed in its last preview")
+    logs_preview = "What a report program printed in its last preview",
+    docs = "Documents for reference: SAP, TOC / SHELL workbooks")
   out <- unname(notes[nm])
   has <- !is.na(out)
   out[has] <- vapply(out[has], function(x) t(x), character(1))
