@@ -886,14 +886,21 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     }
     read_with <- shiny::reactiveVal(NULL)
     read_size <- shiny::reactiveVal(NULL)
+    # (a sheet-first read, tflspec >= 0.0.24.9230: its requests group the
+    # shell sheets, not countable again from its TOC -- another size, read
+    # again)
+    sheet_first <- function(p) !is.null(p$toc$toc_id)
     stale <- shiny::reactive({
       p <- prepared()
-      !is.null(p) && isTRUE(p$dry_run) && !identical(read_with(), read_key())
+      !is.null(p) && isTRUE(p$dry_run) &&
+        (!identical(read_with(), read_key()) ||
+           (sheet_first(p) && !identical(size_now(), read_size())))
     })
     # the requests to write: the read's, counted again at the size now
     to_write <- shiny::reactive({
       p <- prepared()
-      if (is.null(p) || !isTRUE(p$dry_run) || identical(size_now(), read_size())) return(p$requests)
+      if (is.null(p) || !isTRUE(p$dry_run) || sheet_first(p) ||
+          identical(size_now(), read_size())) return(p$requests)
       .ai_dry_requests(p$toc, size_now())
     })
     args_of <- function(p) {
