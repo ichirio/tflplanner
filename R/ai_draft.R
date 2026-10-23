@@ -327,7 +327,9 @@
 # does not carry them.
 .ai_dry_with_parts <- function(p, toc, args = list(), shells = NULL) {
   tc <- p$toc
-  if (!nrow(tc)) return(p)
+  # (tflspec >= 0.0.24.9230: the requests a sheet's, the TOC its items --
+  # nothing to add)
+  if (!nrow(tc) || !is.null(tc$toc_id)) return(p)
   rq <- p$requests
   if (isTRUE(as.integer(args$size %||% 0L) == 1L) && nrow(rq) && all(rq$n == 1L)) {
     nm <- .ai_one_names(rq$outputs)

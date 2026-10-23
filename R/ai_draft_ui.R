@@ -136,7 +136,7 @@ ai_ui <- function(id, lang = "en") {
               # (a coding agent: one a request, the instructions read once)
               shiny::conditionalPanel(
                 "input.mode == 'chat'", ns = ns,
-                shiny::numericInput(ns("size"), paste0(t("Reports a request holds"), " (size)"),
+                shiny::numericInput(ns("size"), paste0(t("Shells a request holds"), " (size)"),
                                     value = 1, min = 1, max = 20, width = "12rem")),
               shiny::selectInput(ns("language"),
                                  with_tip(paste0(t("Language of the AI's assumption notes"), " (language)"),
@@ -178,9 +178,12 @@ ai_ui <- function(id, lang = "en") {
             shiny::uiOutput(ns("prep_empty")),
             bslib::navset_underline(
               id = ns("prep_tab"),
-              bslib::nav_panel("TOC", value = "toc",
+              bslib::nav_panel(t("TOC items"), value = "toc",
                                shiny::uiOutput(ns("toc_head")),
                                DT::DTOutput(ns("toc_table"))),
+              bslib::nav_panel(t("Shells"), value = "shells",
+                               shiny::uiOutput(ns("shells_head")),
+                               DT::DTOutput(ns("shells_table"))),
               bslib::nav_panel(t("ADaM summary (what is sent)"), value = "adam",
                                shiny::div(
                                  class = "d-flex flex-wrap gap-3 align-items-end mt-2",
@@ -193,6 +196,7 @@ ai_ui <- function(id, lang = "en") {
                                shiny::uiOutput(ns("adam_head")),
                                DT::DTOutput(ns("adam_table"))),
               bslib::nav_panel(t("Sheets"), value = "sheets",
+                               shiny::uiOutput(ns("roles_ui")),
                                DT::DTOutput(ns("sheets_table"))))))),
       bslib::nav_panel(
         paste0("2 ", t("Requests"), " (ai/requests)"), value = "requests",
@@ -906,7 +910,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
            max_levels = as.integer(input$max_levels %||% 15L),
            mode = input$mode %||% "agent",
            templates = !isFALSE(input$templates),
-           add = isTRUE(input$add) && !is_new())
+           add = isTRUE(input$add) && !is_new(),
+           sheet_roles = roles_now())
     }
     inputs_ok <- function() {
       msg <- .ai_toc_problem(toc_src()$path, t)
@@ -944,7 +949,11 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       s <- .ai_sheet_names(src$path, shl[vapply(shl, function(f) is.null(.ai_toc_problem(f)), TRUE)])
       if (nrow(s)) shiny::isolate(update_sheets(s$sheet, s$book, s$toc))
     })
-    shiny::observeEvent(input$read, {
+    # (Read and check, or the sheets' roles applied: read again)
+    read_again <- shiny::reactiveVal(0L)
+    read_now <- function() read_again(read_again() + 1L)
+    shiny::observeEvent(list(input$read, read_again()), ignoreInit = TRUE, {
+      if (is.null(input$read) && identical(read_again(), 0L)) return()
       if (!inputs_ok()) return()
       src <- toc_src()
       a <- args_of(NULL)
@@ -1089,14 +1098,18 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       had <- if (!is_new()) requests() else NULL
       shiny::div(
         class = "small mt-2",
-        if (isTRUE(p$dry_run)) sprintf(t("%d requests to write (%d reports)."), nrow(r), sum(r$n))
+        if (isTRUE(p$dry_run)) {
+          if (!is.null(p$counts)) sprintf(t("%d requests to write (%d shells, %d TOC items)."), nrow(r),
+                                           p$counts[["shells"]], p$counts[["toc_items"]])
+          else sprintf(t("%d requests to write (%d reports)."), nrow(r), sum(r$n))
+        }
         else sprintf(t("%d requests written; the longest %s characters."), nrow(r),
                      format(max(r$chars, 0L, na.rm = TRUE), big.mark = ",")),
         if (isTRUE(p$dry_run) && !is.null(had) && nrow(had) && !isTRUE(input$add)) shiny::span(
           class = "text-muted ms-1",
           sprintf(t("ai/requests holds %d already (written again; the answers kept)."), nrow(had))),
         if (isTRUE(p$dry_run) && isTRUE(input$add) && !is_new()) {
-          again <- .ai_already_asked(path(), p$toc$output_id)
+          again <- .ai_already_asked(path(), p$toc$toc_id %||% p$toc$output_id)
           if (nrow(again)) shiny::div(
             class = "text-warning",
             sprintf(t("Asked for already: %s. Write the requests will ask whether to write them again (overwrite)."),
@@ -1116,28 +1129,22 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       p <- prepared()
       shiny::req(p)
       tc <- p$toc
-      no <- tc$output_id[!tc$shell_found]
-      twice <- if (!is.null(tc$same_number)) tc$output_id[tc$same_number %in% TRUE]
-      in_parts <- if (!is.null(tc$parts)) tc$output_id[!is.na(tc$parts) & nzchar(tc$parts)]
+      id <- tc$toc_id %||% tc$output_id
+      no <- id[!tc$shell_found]
+      n <- p$counts
       shiny::tagList(
         if (!nrow(tc)) shiny::div(
           class = "alert alert-danger py-2 small",
           sprintf(t("No TOC was found: name its sheet in (toc_sheet). The sheets: %s"),
                   paste(p$sheets$sheet, collapse = ", "))),
-        shiny::p(class = "small mb-1", sprintf(t("%d reports, %d with a shell"), nrow(tc),
-                                               sum(tc$shell_found))),
-        if (length(in_parts)) shiny::div(
-          class = "alert alert-info py-2 small",
-          sprintf(t("%d reports written in parts (%s): each part becomes a report of its own, its number the part's (.a, .b). Marked in the table."),
-                  length(in_parts), paste(in_parts, collapse = ", "))),
+        shiny::p(class = "small mb-1",
+                 if (!is.null(n)) sprintf(t("%d shells, %d TOC items, %d of them with no shell"),
+                                          n[["shells"]], n[["toc_items"]], n[["no_shell"]])
+                 else sprintf(t("%d reports, %d with a shell"), nrow(tc), sum(tc$shell_found))),
         if (length(no)) shiny::div(
           class = "alert alert-warning py-2 small",
-          sprintf(t("%d reports with no shell (%s): add their sheets (sheets) on the left and read again."),
+          sprintf(t("%d TOC items with no shell (%s): their request says no shell. If their shell is a sheet read as something else, set its role on the Sheets tab and read again."),
                   length(no), paste(no, collapse = ", "))),
-        if (length(twice)) shiny::div(
-          class = "alert alert-warning py-2 small",
-          sprintf(t("The TOC names %s more than once: only its first row is read. Give each report a number of its own (a report's parts: .a, .b)."),
-                  paste(twice, collapse = ", "))),
         if (length(p$hint)) shiny::div(class = "alert alert-warning py-2 small",
                                        lapply(p$hint, shiny::div)))
     })
@@ -1145,24 +1152,44 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       p <- prepared()
       shiny::req(p, nrow(p$toc))
       tc <- p$toc
-      # (a report in parts: marked by its number, its parts next to it)
-      parts <- .ai_parts_label(tc$output_id, tc$parts, t)
-      d <- data.frame(ifelse(nzchar(parts), paste("\u25c6", tc$output_id), tc$output_id),
-                      parts, tc$title, tc$type,
-                      ifelse(tc$shell_found, paste("\u2713", tc$shell), "\u2014"),
-                      ifelse(is.na(tc$request), "", tc$request),
-                      if (is.null(tc$book)) "" else ifelse(is.na(tc$book), "", tc$book),
+      col <- function(v) if (is.null(v)) rep("", nrow(tc)) else ifelse(is.na(v), "", v)
+      d <- data.frame(tc$toc_id %||% tc$output_id, col(tc$title), col(tc$type),
+                      ifelse(tc$shell_found, paste("\u2713", col(tc$shell)), "\u2014"),
+                      col(tc$request), col(tc$book), col(tc$info),
                       stringsAsFactors = FALSE)
-      names(d) <- c("output_id", t("In parts"), t("title"), t("type"), "shell", t("request"),
-                    t("Workbook"))
+      names(d) <- c(t("TOC item"), t("title"), t("type"), "shell", t("request"), t("Workbook"),
+                    t("Other information"))
       dt <- DT::datatable(d, rownames = FALSE, selection = "none",
                           options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
-      dt <- DT::formatStyle(dt, c("output_id", t("In parts")), t("In parts"),
-                            backgroundColor = DT::styleEqual("", "transparent", default = "#fff3cd"),
-                            fontWeight = DT::styleEqual("", "normal", default = "bold"))
-      # (a report with no shell: its shell cell in red)
+      # (a TOC item with no shell: its shell cell in red)
       DT::formatStyle(dt, "shell", backgroundColor = DT::styleEqual("\u2014", "#f8d7da"),
                       color = DT::styleEqual("\u2014", "#842029"))
+    }, server = FALSE)
+    # the shells: a sheet each, the TOC items it was taken for
+    output$shells_head <- shiny::renderUI({
+      p <- prepared()
+      shiny::req(p, !is.null(p$shells))
+      g <- p$shells$sheet[p$shells$guessed %in% TRUE]
+      shiny::tagList(
+        shiny::p(class = "small mb-1",
+                 t("One request a shell sheet: the TOC items it holds go in it (candidates: the items the sheet was matched with, and why).")),
+        if (length(g)) shiny::div(
+          class = "alert alert-warning py-2 small",
+          sprintf(t("%d shells with no number and no TOC item of their own (%s): the AI is asked to say what they are."),
+                  length(g), paste(g, collapse = ", "))))
+    })
+    output$shells_table <- DT::renderDT({
+      p <- prepared()
+      shiny::req(p, !is.null(p$shells), nrow(p$shells))
+      sh <- p$shells
+      col <- function(v) if (is.null(v)) rep("", nrow(sh)) else ifelse(is.na(v), "", as.character(v))
+      d <- data.frame(col(sh$sheet), col(sh$request), col(sh$numbers_in_sheet), col(sh$title_in_sheet),
+                      ifelse(sh$guessed %in% TRUE, "?", ""), col(sh$candidates), col(sh$book),
+                      stringsAsFactors = FALSE)
+      names(d) <- c(t("sheet"), t("request"), t("Numbers in the sheet"), t("Title in the sheet"),
+                    t("No number"), t("Candidates"), t("Workbook"))
+      DT::datatable(d, rownames = FALSE, selection = "none",
+                    options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
     }, server = FALSE)
     output$adam_head <- shiny::renderUI({
       p <- prepared()
@@ -1186,6 +1213,39 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       DT::datatable(d, rownames = FALSE, selection = "none",
                     options = list(dom = "tp", pageLength = 50, ordering = FALSE, scrollX = TRUE))
     }, server = FALSE)
+    # the sheets' roles as read (toc / shell / other), changed here: each
+    # read after a change says every sheet's (tfl_ai_prepare(sheet_roles = ))
+    roles_set <- shiny::reactiveVal(NULL)
+    roles_now <- function() {
+      r <- roles_set()
+      if (is.null(r)) NULL else r
+    }
+    output$roles_ui <- shiny::renderUI({
+      p <- prepared()
+      shiny::req(p, nrow(p$sheets))
+      sh <- p$sheets
+      pick <- function(id, label, role) shiny::selectizeInput(
+        ns(id), label, choices = sh$sheet, selected = sh$sheet[sh$role %in% role], multiple = TRUE,
+        width = "100%")
+      shiny::div(
+        class = "small mb-2",
+        shiny::p(class = "mb-1", t("What each sheet is read as. Move a sheet, then Apply and read again: a TOC sheet read as a shell (a topline TOC), a shell read as other (its number not in the TOC).")),
+        shiny::div(class = "d-flex flex-wrap gap-2",
+                   shiny::div(style = "flex: 1 1 12rem;", pick("role_toc", t("TOC sheets"), "toc")),
+                   shiny::div(style = "flex: 1 1 12rem;", pick("role_other", t("Other sheets (not shells)"), "other"))),
+        shiny::p(class = "text-muted mb-1", t("The rest are shells.")),
+        .btn(ns("roles_apply"), t("Apply and read again"), class = "btn-sm btn-outline-primary"))
+    })
+    shiny::observeEvent(input$roles_apply, {
+      p <- prepared()
+      shiny::req(p)
+      sh <- p$sheets$sheet
+      r <- stats::setNames(rep("shell", length(sh)), sh)
+      r[intersect(input$role_other, sh)] <- "other"
+      r[intersect(input$role_toc, sh)] <- "toc"
+      roles_set(r)
+      read_now()
+    })
     output$sheets_table <- DT::renderDT({
       p <- prepared()
       shiny::req(p)

@@ -3893,3 +3893,23 @@ Put the common instructions in each request,依頼ごとに共通の指示を含
 "Off (the default): the common instructions are written once, to 00-instructions.md -- paste it first -- and left out of the requests. On: every request carries them.",オフ（既定）: 共通の指示は 00-instructions.md に 1 回だけ書き（最初に貼ります）、依頼には入れません。オン: どの依頼にも入れます。
 Copied into the study's docs/: %s,試験の docs/ に写しました: %s
 The upload's dialog is the browser's: where it opens cannot be chosen.,アップロードの「参照…」はブラウザのダイアログなので、開く場所はアプリから選べません。
+TOC items,TOC 項目
+Shells,シェル
+Shells a request holds,依頼 1 件に入れるシェルの数
+"%d requests to write (%d shells, %d TOC items).",書く依頼 %d 件（シェル %d・TOC 項目 %d）。
+"%d shells, %d TOC items, %d of them with no shell",シェル %d・TOC 項目 %d（うちシェルの無いもの %d）
+"%d TOC items with no shell (%s): their request says no shell. If their shell is a sheet read as something else, set its role on the Sheets tab and read again.",シェルの無い TOC 項目が %d 件（%s）: 依頼には「シェル無し」と書かれます。シェルが別の役割で読まれたシートにあるなら、「シート」タブで役割を変えて読み直してください。
+TOC item,TOC 項目
+Other information,その他の情報
+"One request a shell sheet: the TOC items it holds go in it (candidates: the items the sheet was matched with, and why).",シェルのシート 1 枚で依頼 1 件です。そのシートの TOC 項目が依頼に入ります（候補 = そのシートと結び付けた TOC 項目と、その手がかり）。
+%d shells with no number and no TOC item of their own (%s): the AI is asked to say what they are.,番号も TOC 項目も無いシェルが %d 件（%s）: 何の帳票かは AI に判断を頼みます。
+sheet,シート
+Numbers in the sheet,シートの中の番号
+Title in the sheet,シートの中のタイトル
+No number,番号なし
+Candidates,候補
+"What each sheet is read as. Move a sheet, then Apply and read again: a TOC sheet read as a shell (a topline TOC), a shell read as other (its number not in the TOC).",各シートを何として読むか。シートを動かしてから「当てはめて読み直す」を押します（例: シェルとして読まれた TOC のシート＝トップライン用の TOC、その他として読まれたシェル＝番号が TOC に無いもの）。
+TOC sheets,TOC のシート
+Other sheets (not shells),その他のシート（シェルではない）
+The rest are shells.,残りはシェルとして読みます。
+Apply and read again,当てはめて読み直す
