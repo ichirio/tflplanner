@@ -1124,8 +1124,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                             backgroundColor = DT::styleEqual("", "transparent", default = "#fff3cd"),
                             fontWeight = DT::styleEqual("", "normal", default = "bold"))
       # (a report with no shell: its shell cell in red)
-      DT::formatStyle(dt, "shell", backgroundColor = DT::styleEqual("—", "#f8d7da"),
-                      color = DT::styleEqual("—", "#842029"))
+      DT::formatStyle(dt, "shell", backgroundColor = DT::styleEqual("\u2014", "#f8d7da"),
+                      color = DT::styleEqual("\u2014", "#842029"))
     }, server = FALSE)
     output$adam_head <- shiny::renderUI({
       p <- prepared()
