@@ -7,7 +7,7 @@
   names are the program's own, never an analysis data's (so `advs_saf` is
   a name one may give again).  data.yml's `records:` and `objects:`, an
   analysis's `records:` and `by: []` are kept when the study is opened and
-  saved (0.0.2.9277).
+  saved (0.0.2.9280).
 
 - **tflspec's new sheet columns in Japanese** (#475): the column help of
   tflspec's records and objects sheets, the analyses' records / by /
