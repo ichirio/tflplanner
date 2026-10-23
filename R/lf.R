@@ -89,7 +89,7 @@ set_lf_rows <- function(x, sheet, output_id, rows) {
 
 # How many of a listing's settings the listing sheets' columns cannot say:
 # its items in content_more and its columns' other arguments (more), kept as
-# YAML (tflspec >= 0.0.24.9221) and written back as they are
+# YAML (tflspec >= 0.0.24.9226) and written back as they are
 .lf_more_count <- function(x, output_id) {
   n_yaml <- function(v) {
     v <- v[!is.na(v) & nzchar(trimws(v))]

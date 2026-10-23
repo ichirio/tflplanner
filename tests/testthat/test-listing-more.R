@@ -1,7 +1,7 @@
 # The listing screen keeps and says the settings the listing sheets cannot
 # say (tflspec's content_more / more, #474)
 
-skip_if(utils::packageVersion("tflspec") < "0.0.24.9221")
+skip_if(utils::packageVersion("tflspec") < "0.0.24.9226")
 
 lm_planner <- function() {
   x <- structure(list(lf = .empty_lf()), class = "tflplanner")

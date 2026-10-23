@@ -2,10 +2,10 @@
 
 - **The listing screen keeps what the listing sheets cannot say** (#474):
   a listing's items and a column's arguments that the sheets' columns
-  cannot say (tflspec >= 0.0.24.9221: `listings.content_more`,
+  cannot say (tflspec >= 0.0.24.9226: `listings.content_more`,
   `listing_cols.more`, YAML) stay with their rows when the grids or the form
   are edited -- the two columns read-only in the grids -- and the Columns
-  card says "n settings the sheet cannot say (kept)" (0.0.2.9274).
+  card says "n settings the sheet cannot say (kept)" (0.0.2.9279).
 
 - **AI tab: a report's parts, requests named after their report, the
   workbooks in the study read where they are** (#470, 0.0.2.9272; tflspec
