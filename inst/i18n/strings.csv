@@ -2751,7 +2751,7 @@ Shell,シェル
 Where the Total column goes among the column key's values: last or first; blank: last.,Total 列の位置（列変数の値の中で）：last か first。空欄 = last。
 "The analysis once more without its grouping variables, over all its subjects: the Total column of a table (step 3's switch sets it for every analysis by the column variable). Needs grouping variables.",同じ解析をグループ変数なしでもう一度、全被験者で：表の Total 列になる（段 3 のスイッチが列変数で分けた解析すべてに入れる）。グループ変数が必要。
 The stack once more without its grouping variables (.overall = TRUE): the Total column of a table.,スタックをグループ変数なしでもう一度（.overall = TRUE）：表の Total 列になる。
-Total column,Total 列
+Total column,合計列
 "One more column over all subjects, read from the ARD's overall rows: the analyses by the column variable are run once more without it (step 1, 'Also over all subjects'). No 'Total' arm is made up in the data.",全被験者の列を 1 つ足す。ARD の overall 行（列変数で分けた解析を、それなしでもう一度走らせたもの：ARD 作成の「全体でも計算する」）から読む。データに「Total」という群は作らない。
 Heading,見出し
 Place,位置
@@ -3963,14 +3963,14 @@ Analysis set,解析対象集団
 Subjects kept,対象とする被験者
 "Levels, outer first",階層の水準（外側から）
 Source dataset,データセット
-Records kept,対象とするレコードの条件
+Records kept,残すレコード
 Variable that splits the columns,列を分ける変数
 Any-record row,いずれかの事象の行
 Any-record row label,いずれかの事象の行のラベル
 Label column heading,ラベル列の見出し
 Minimum percentage to keep,表示する最小割合
 Where minimum applies,最小割合を適用する列
-Count cell format,例数セルの形式
+Count cell format,n (%) セルの形式
 Percentage denominator,割合の分母
 Exposure days variable,曝露日数の変数
 Event start day,事象の開始日
@@ -4005,7 +4005,7 @@ Group compared with reference,基準と比較する投与群
 Censoring variable,打ち切りの変数
 Event definition,事象の定義
 Y axis type,y 軸の種類
-Y axis in percent,y 軸を % 表示
+Y axis in percent,y 軸の % 表示
 Confidence interval display,信頼区間の表示
 Interval band transparency,信頼区間の帯の透明度
 Interval bar times,信頼区間バーの時点
@@ -4018,11 +4018,11 @@ Median line,中央値の線
 Median line type,中央値の線の種類
 Median line colour,中央値の線の色
 Median line width,中央値の線の太さ
-Number-at-risk table,at risk 数の表
-Risk table title,at risk 数の表のタイトル
-Risk table rows,at risk 数の表の行
-Risk table height,at risk 数の表の高さ
-Risk table text size,at risk 数の表の文字サイズ
+Number-at-risk table,リスク集合の表
+Risk table title,リスク集合の表のタイトル
+Risk table rows,リスク集合の表の行
+Risk table height,リスク集合の表の高さ
+Risk table text size,リスク集合の表の文字サイズ
 End of the x axis,x 軸の終わり
 Step of the x axis,x 軸の間隔
 Title of the x axis,x 軸のタイトル

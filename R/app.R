@@ -12035,7 +12035,7 @@ app_server <- function(input, output, session, start) {
     doc <- prm$doc %||% ""
     short <- if (doc %in% names(.tpl_doc_labels)) .tpl_doc_labels[[doc]] else .tpl_arg_labels[prm$name]
     head <- if (!is.na(short)) t(short) else if (nzchar(doc)) t(doc) else ""
-    lab <- if (nzchar(head)) paste0(head, " (", prm$name, ")") else prm$name
+    lab <- if (nzchar(head)) sprintf(t("%s (%s)"), head, prm$name) else prm$name
     shiny::span(lab, if (isTRUE(prm$required)) shiny::span(class = "text-danger", " *"),
                 if (!is.na(short) && nzchar(doc)) help_tip(t(doc)))
   }
@@ -12539,7 +12539,7 @@ app_server <- function(input, output, session, start) {
                                    width = "100%", options = list(create = TRUE)))),
       shiny::textInput("tpl_data_filter", t("Records kept (filter: an R condition)"), f$filter,
                        width = "100%"),
-      shiny::selectInput("tpl_data_pop", t("This report's population"), tpl_data_pop_choices(f),
+      shiny::selectInput("tpl_data_pop", t("This report's population"), tpl_data_pop_choices(id, f),
                          selected = tpl_data_pop_sel(id, f), width = "100%"),
       shiny::div(class = "small text-muted mb-1",
                  if (is.null(pop) && f$join) {
@@ -12565,9 +12565,10 @@ app_server <- function(input, output, session, start) {
     fl <- .pop_flag(f$join_where)
     if (!is.na(fl) && identical(toupper(f$join_dataset), "ADSL")) paste0("flag:", fl) else ".own"
   }
-  tpl_data_pop_choices <- function(f) {
+  tpl_data_pop_choices <- function(id, f) {
     ch <- tpl_pop_choices()
-    if (f$join) {
+    # (the report's own join, when it has no population of the study)
+    if (f$join && is.null(tpl_data_pop(id))) {
       fl <- .pop_flag(f$join_where)
       own <- if (!is.na(fl) && identical(toupper(f$join_dataset), "ADSL")) paste0("flag:", fl) else ".own"
       if (!own %in% ch) {
@@ -12605,10 +12606,10 @@ app_server <- function(input, output, session, start) {
     pop <- NULL
     if (identical(sel, ".own")) {
       pop <- list(dataset = f$join_dataset, where = f$join_where)
-      o$population <- NULL
+      o$population <- NA_character_
     } else if (startsWith(sel, "flag:")) {
       pop <- list(dataset = "ADSL", where = sprintf("%s == \"Y\"", sub("^flag:", "", sel)))
-      o$population <- NULL
+      o$population <- NA_character_
     } else if (nzchar(sel)) {
       o$population <- sel
       pops <- rv$p$ard$populations
@@ -12616,7 +12617,7 @@ app_server <- function(input, output, session, start) {
       if (!is.na(k)) pop <- as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)),
                                          drop = FALSE])
     } else {
-      o$population <- NULL
+      o$population <- NA_character_
     }
     steps <- .tpl_steps_from(input$tpl_data_ds, pop, input$tpl_data_param %||% "",
                              input$tpl_data_filter %||% "")
