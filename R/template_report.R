@@ -634,6 +634,28 @@ $(document).on('shiny:connected', function() {
   p
 }
 
+# A report's analysis set in its spec/toc.yml line too (the TOC and the
+# header's <OUTPUT_POPULATION> read it): NA, none -- the line's taken out
+.spec_set_toc_population <- function(p, output_id, population = NA_character_) {
+  toc <- p$spec$study$toc
+  lines <- toc$outputs %||% list()
+  k <- match(output_id, vapply(lines, function(e) as.character(e$id %||% ""), ""))
+  if (is.na(k)) return(p)
+  has <- length(population) && !is.na(population[1L]) && nzchar(population[1L])
+  if (identical(lines[[k]]$population, if (has) population[1L])) return(p)
+  lines[[k]]$population <- if (has) population[1L]
+  toc$outputs <- lines
+  p$spec$study$toc <- toc
+  rel <- file.path(study_layout()[["spec"]], "toc.yml")
+  f <- tempfile("tflplanner-toc", fileext = ".yml")
+  on.exit(unlink(f), add = TRUE)
+  tflspec::tfl_write_study_part(p$spec$study, "toc", f)
+  p$spec$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  i <- match(output_id, p$outputs$output_id)
+  if (!is.na(i) && !is.null(p$outputs$population)) p$outputs$population[i] <- if (has) population[1L] else NA
+  p
+}
+
 # Timings of a template report's opening, for a check (#440):
 # options(tflplanner.tpl_trace = TRUE) prints each step's time since the
 # report was asked for; options(tflplanner.tpl_slow = <seconds>) waits that

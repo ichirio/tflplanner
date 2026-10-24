@@ -12623,7 +12623,7 @@ app_server <- function(input, output, session, start) {
                              input$tpl_data_filter %||% "")
     if (is.null(steps)) o$data$steps <- NULL else o$data$steps <- steps
     if (!length(o$data)) o$data <- NULL
-    p2 <- guarded(.spec_set_output(rv$p, id, o))
+    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, o$population), id, o))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$bver <- rv$bver + 1L

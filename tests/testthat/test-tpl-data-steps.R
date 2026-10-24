@@ -72,3 +72,18 @@ test_that("the study's treatment is the `by`, and ADSL's flags no population say
   expect_identical(.tpl_flags_undefined(adsl, pops), c("ITTFL", "EFFFL"))
   expect_identical(.tpl_flags_undefined(NULL), character())
 })
+
+test_that("a report's analysis set changed on the card is its toc line's too", {
+  study <- tflspec::tfl_read_study_spec(system.file("extdata", "spec-yaml", package = "tflspec"))
+  study$toc <- list(outputs = list(list(id = "F-1", kind = "figure", population = "SAF"),
+                                   list(id = "F-2", kind = "figure")))
+  p <- list(spec = list(study = study, text = list()),
+            outputs = data.frame(output_id = c("F-1", "F-2"), population = c("SAF", NA)))
+  p2 <- .spec_set_toc_population(p, "F-1", "ITT")
+  expect_identical(p2$spec$study$toc$outputs[[1L]]$population, "ITT")
+  expect_identical(p2$outputs$population, c("ITT", NA))
+  p3 <- .spec_set_toc_population(p2, "F-1", NA_character_)
+  expect_null(p3$spec$study$toc$outputs[[1L]]$population)
+  expect_true(any(grepl("F-1", unlist(p3$spec$text), fixed = TRUE)))
+  expect_identical(.spec_set_toc_population(p, "F-9", "ITT"), p)
+})
