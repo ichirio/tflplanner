@@ -15,6 +15,16 @@
 
 # ---- the fields: rtfreporter's functions and the arguments tflspec writes
 
+# The titles' and the footnotes' style (rtf_titles(), rtf_footnotes()): the
+# size first, as their cards show it
+.pgs_band_fields <- list(
+  list(arg = "font_size_half_points", label = "Size (pt)", kind = "pt"),
+  list(arg = "row_height_twips", label = "Row height (twips)", kind = "number"),
+  list(arg = "markup", label = "Markup", kind = "choice",
+       choices = c("script", "relational", "all", "none")),
+  list(arg = "font", label = "Font", kind = "text", choices = c("Courier", "Courier New")),
+  list(arg = "align", label = "Alignment", kind = "choice", choices = c("left", "center", "right")))
+
 # One card a function; its fields in the function's order (formals).  kind:
 # choice, number, pt (half points shown as points), text, logical, inches
 # (twips shown as inches, or fit).  `arg` is the YAML key.
@@ -59,11 +69,10 @@
          choices = c("left", "center", "right"))),
   rtf_figures = list(
     list(arg = "width_twips", label = "Width (in)", kind = "inches"),
-    list(arg = "height_twips", label = "Height (in)", kind = "inches")),
-  rtf_titles = list(
-    list(arg = "font_size_half_points", label = "Size (pt)", kind = "pt")),
-  rtf_footnotes = list(
-    list(arg = "font_size_half_points", label = "Size (pt)", kind = "pt")))
+    list(arg = "height_twips", label = "Height (in)", kind = "inches"),
+    list(arg = "align", label = "Alignment", kind = "choice", choices = c("left", "center", "right"))),
+  rtf_titles = .pgs_band_fields,
+  rtf_footnotes = .pgs_band_fields)
 
 # a card's meaning, its title "meaning (function())"
 .pgs_cards <- c(rtf_page = "Paper and margins", rtf_default_format = "Text defaults",

@@ -564,8 +564,21 @@ $(document).on('shiny:value', function(e) {
   fig <- lapply(c("width_twips", "height_twips"), function(a) .pgs_arg(sp, id, "rtf_figures", a))
   fig_said <- vapply(fig, function(a) tolower(as.character(a$value %||% "")), "")
   fig_own <- vapply(fig, function(a) identical(a$from, "own"), NA)
-  size <- function(fn) shiny::div(class = "pg-grid mb-1", .page_arg_ui(sp, id, fn, .pgs_fields[[fn]][[1L]],
-                                                                       t, kind))
+  # the band's size, then its other style the page says; the rest folded
+  size <- function(fn) {
+    fs <- .pgs_fields[[fn]]
+    said <- vapply(fs[-1L], function(f) {
+      a <- .pgs_arg(sp, id, fn, f$arg)
+      !is.null(a$value) || identical(a$from, "own")
+    }, NA)
+    ui <- function(f) .page_arg_ui(sp, id, fn, f, t, kind)
+    shiny::tagList(
+      shiny::div(class = "pg-grid mb-1", ui(fs[[1L]]), lapply(fs[-1L][said], ui)),
+      if (any(!said)) shiny::tags$details(
+        class = "pg-lower mb-1",
+        shiny::tags$summary(sprintf("%s (%d)", t("Not in the code"), sum(!said))),
+        shiny::div(class = "pg-grid", lapply(fs[-1L][!said], ui))))
+  }
   shiny::div(
     `data-pg-target` = .pg_target(id),
     # every token the page can say, in one place: the report's information
