@@ -36,19 +36,24 @@
   list(dataset = na(v[1L]), pop = na(v[2L]), data = NA_character_)
 }
 
-# the name the program gives the data (tflspec's rule, without a subset):
-# the analysis set's own data is the population, another dataset is its
-# records of the analysis set's subjects
+# the name the program gives the data (tflspec's rule, tflspec#459): a
+# dataset with an analysis set is <dataset>_sub -- the analysis set's own
+# dataset when none is said -- the report's second of a dataset _sub2 ...
+# (numbered in its program; the exact names: tflspec::tfl_ard_data_names());
+# a dataset alone is itself
 .an_data_name <- function(dataset, population_id, populations) {
   rn <- function(x) make.names(tolower(x))
   has <- function(x) length(x) && !is.na(x) && nzchar(x)
   if (!has(population_id)) return(if (has(dataset)) rn(dataset) else "")
   pds <- populations$dataset[match(population_id, populations$population_id)]
-  if (!has(dataset) || identical(dataset, pds)) {
-    return(paste0("pop_", rn(population_id)))
-  }
-  paste(rn(dataset), rn(population_id), sep = "_")
+  ds <- if (has(dataset)) dataset else pds
+  if (!has(ds)) return("")
+  paste0(rn(ds), "_sub")
 }
+
+# a name the program keeps for itself (<dataset>_sub, _sub2 ...; an
+# analysis set's pop_<id> before tflspec#459): no analysis data's
+.an_program_name <- function(nm) grepl("^pop_|_sub[0-9]*$", nm)
 
 # The choices: each analysis set's own data, then every other dataset with
 # it, then every dataset alone; the analysis's present choice is kept when

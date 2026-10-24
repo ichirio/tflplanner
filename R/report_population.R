@@ -141,7 +141,9 @@ report_population <- function(x, output_id) {
   a <- a[!is.na(a$output_id) & a$output_id == output_id, , drop = FALSE]
   used <- if (nrow(a)) unique(vapply(seq_len(nrow(a)), function(i)
     .an_data_name(a$dataset[i], a$population_id[i], x$ard$populations), "")) else character()
-  c(rn(x$ard$datasets$dataset), paste0("pop_", rn(x$ard$populations$population_id)),
+  ds <- x$ard$datasets$dataset
+  subs <- as.vector(outer(paste0(rn(ds), "_sub"), c("", 2:9), paste0))
+  c(rn(ds), paste0("pop_", rn(x$ard$populations$population_id)), subs,
     used, .adata_rows(x, output_id)$data_id, "data", "population", "ard", "ards", "status")
 }
 

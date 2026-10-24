@@ -29,7 +29,7 @@ test_that("the data choices say how many subjects (and records) each reads", {
   ch <- .an_data_choices(c("ADSL", "ADAE"), s$planner$ard$populations,
                          words = list(with = "%s x %s (%s)", alone = "%s (%s)", none = "-",
                                       count = "%s: %s"), counts = n)
-  expect_true(any(grepl(sprintf("pop_saf: %d subjects", saf), names(ch), fixed = TRUE)))
+  expect_true(any(grepl(sprintf("adsl_sub: %d subjects", saf), names(ch), fixed = TRUE)))
   s$planner <- add_output(s$planner, "T1", type = "table")
   s$planner <- set_ard_rows(s$planner, "analyses", "T1", data.frame(
     analysis_id = "A1", method = "continuous", population_id = "SAF", variables = "AGE"))
@@ -37,7 +37,7 @@ test_that("the data choices say how many subjects (and records) each reads", {
   shiny::testServer(server_for("CN"), {
     session$setInputs(nav = "make", step = "ard", target = "T1")
     session$setInputs(ard_ol_pick = "A1")
-    expect_match(output$ard_stat_ui$html, sprintf("pop_saf: %d subjects", saf), fixed = TRUE)
+    expect_match(output$ard_stat_ui$html, sprintf("adsl_sub: %d subjects", saf), fixed = TRUE)
   })
 })
 

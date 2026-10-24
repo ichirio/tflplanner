@@ -81,7 +81,7 @@ test_that("the ARD tab shows a report's analysis data and makes one", {
     session$setInputs(nav = "make", step = "ard", target = "DM")
     h <- output$ard_adata$html
     # no named data yet: the analysis set's own data, to be named
-    expect_match(h, "pop_saf", fixed = TRUE)
+    expect_match(h, "adsl_sub", fixed = TRUE)
     expect_match(h, "ard_adata_name", fixed = TRUE)
     session$setInputs(ard_adata_name = "|SAF")
     # chosen as the others: its mark, and its settings below
@@ -105,10 +105,12 @@ test_that("a suggested name is not the program's own; the choices come in groups
   p <- adata_planner()
   p$ard$datasets <- .normalize_ard_sheet(data.frame(
     dataset = c("ADSL", "ADVS"), path = c("a.rds", "b.rds")), "datasets")
-  # advs_saf is the program's name for ADVS x SAF: not suggested
-  expect_identical(.adata_suggest(p, "DM", "ADVS", "SAF"), "advs_saf_1")
+  # the program names ADVS x SAF advs_sub (tflspec#459): advs_saf is free;
+  # the program's own names are never suggested
+  expect_identical(.adata_suggest(p, "DM", "ADVS", "SAF"), "advs_saf")
+  expect_true(all(c("advs_sub", "advs_sub2") %in% .adata_taken_names(p, "DM")))
   # (the visit is the label's, not the name's)
-  expect_identical(.adata_suggest(p, "DM", "ADVS", "SAF", "AVISIT == \"Week 24\""), "advs_saf_1")
+  expect_identical(.adata_suggest(p, "DM", "ADVS", "SAF", "AVISIT == \"Week 24\""), "advs_saf")
   q <- name_analysis_data(p, "DM", NA, "SAF", "adsl_saf")
   ad <- .adata_rows(q, "DM")
   w <- list(with = "%s x %s (%s)", alone = "%s (%s)", none = "(none)",
