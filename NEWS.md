@@ -1,5 +1,18 @@
 # tflplanner (development version)
 
+- **AI tab, after the second test** (#473): a new study has a `docs/`
+  folder (`study_layout()`: the SAP, the TOC / SHELL workbook; nothing
+  writes there).  The tab shows step 1 when another study is opened (the
+  same study keeps its step; Write keeps the new study on its requests).
+  The drafting AI is the agent by default (one report a request).  The
+  TOC / SHELL input says when a copy goes into `ai/` (an upload or a path
+  outside the study: yes; a path inside it: no); the shells' paths box is
+  one line high and says "several: one a line"; "Sheets to add to every
+  request" says it is usually blank and several can be chosen; the button
+  is "Read and check", its help what to check.  In what was read, the
+  TOC items are listed,
+  and a TOC item with no shell has its shell cell in red.  After the second test, too: one Browse... for each workbook (one from outside the study copied into its docs/; the upload only where the computer's dialog cannot open, a server), shorter labels, a path pasted with its quotes read, and the reports a request holds and the common instructions a chat's only (a checkbox, off: once).  What was read is tflspec's sheet-first view (tflspec >= 0.0.24.9234): the TOC items, the shells (one request a shell sheet, the items it was matched with), the counts (shells, TOC items, those with no shell), and the sheets' roles, changed on the Sheets tab and applied by reading again (`sheet_roles`); the reports in parts are no longer guessed (0.0.2.9282).
+
 - **Page screen: the titles' and footnotes' style and the figure's
   alignment** (#472): the Titles and Footnotes cards have, after the size,
   `row_height_twips`, `markup`, `font` and `align` (rtfreporter's
