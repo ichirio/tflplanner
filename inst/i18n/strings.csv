@@ -3768,7 +3768,7 @@ the dataset; NULL: ADTTE,データセット（NULL: ADTTE）
 the analysis data's label,解析データのラベル
 Update preview draws the figure.,「プレビューを更新」で図を描きます。
 The expanded code,展開したコード
-1 Template (ARD and content),1 テンプレート（ARD とコンテンツ）
+1 Template (data and content),1 テンプレート（データと内容）
 2 Page and output,2 ページと出力
 A line a row: %s,1 行に 1 つ: %s
 Add a card,カードを追加
@@ -3959,3 +3959,261 @@ To the report's data: steps:,帳票の data: の手順へ:
 (not defined in the study),（試験で未定義）
 Analysis set: the report's own join (%s: %s).,解析対象集団: 帳票の join（%s: %s）。
 "the curves' variable (survfit2(~ by), the colours)",曲線を分ける変数。投与群など（例: TRT01P）。survfit2(~ by)・色
+Analysis set,解析対象集団
+Subjects kept,対象とする被験者
+"Levels, outer first",階層の水準（外側から）
+Source dataset,データセット
+Records kept,対象とするレコードの条件
+Variable that splits the columns,列を分ける変数
+Any-record row,いずれかの事象の行
+Any-record row label,いずれかの事象の行のラベル
+Label column heading,ラベル列の見出し
+Minimum percentage to keep,表示する最小割合
+Where minimum applies,最小割合を適用する列
+Count cell format,例数セルの形式
+Percentage denominator,割合の分母
+Exposure days variable,曝露日数の変数
+Event start day,事象の開始日
+Person-years unit for rates,率の人年の単位
+Overall row label,全体の行のラベル
+Grade variable,グレードの変数
+Grade levels in order,グレードの水準（低い順）
+Grades as rows or columns,グレードの配置（行か列）
+Analysis data ID,解析データの ID
+Any-grade label,全グレードのラベル
+Flag rows,フラグごとの行
+Term variable,事象名の変数
+Analysis data label,解析データのラベル
+Analysis label,解析のラベル
+Column that orders terms,事象の並びを決める列
+Visit,来院
+Response variable,反応の変数
+Covariates,共変量
+Reference treatment group,基準の投与群
+Variable headings,変数の見出し
+Variable order,変数の並び順
+Row statistics,行に出す統計量
+Continuous statistics,連続変数の統計量
+Categorical statistics,カテゴリ変数の統計量
+Build ARD in one call,ARD を一括で作成
+Category analysis ID,カテゴリ解析の ID
+Category analysis label,カテゴリ解析のラベル
+Group size label,投与群の例数のラベル
+Treatment group compared,比較する投与群
+Subgroup variables,部分集団の変数
+Group compared with reference,基準と比較する投与群
+Censoring variable,打ち切りの変数
+Event definition,事象の定義
+Y axis type,y 軸の種類
+Y axis in percent,y 軸を % 表示
+Confidence interval display,信頼区間の表示
+Interval band transparency,信頼区間の帯の透明度
+Interval bar times,信頼区間バーの時点
+Confidence level,信頼水準
+Interval transformation,信頼区間の変換方法
+Censor mark shape,打ち切りの印の形
+Censor mark size,打ち切りの印の大きさ
+Censor mark line width,打ち切りの印の線の太さ
+Median line,中央値の線
+Median line type,中央値の線の種類
+Median line colour,中央値の線の色
+Median line width,中央値の線の太さ
+Number-at-risk table,at risk 数の表
+Risk table title,at risk 数の表のタイトル
+Risk table rows,at risk 数の表の行
+Risk table height,at risk 数の表の高さ
+Risk table text size,at risk 数の表の文字サイズ
+End of the x axis,x 軸の終わり
+Step of the x axis,x 軸の間隔
+Title of the x axis,x 軸のタイトル
+Start of the y axis,y 軸の始まり
+End of the y axis,y 軸の終わり
+Step of the y axis,y 軸の間隔
+Title of the y axis,y 軸のタイトル
+Curve line width,曲線の太さ
+Curve colours,曲線の色
+Line type per group,投与群ごとの線の種類
+Legend position,凡例の位置
+Legend title,凡例のタイトル
+Log-rank p-value,ログランク検定の p 値
+P-value position,p 値の位置
+Figure theme,図のテーマ
+Other figure settings,その他の図の設定
+Column variable levels,列の変数の水準
+Median row label,中央値の行のラベル
+Rate row prefix,率の行の接頭語
+Drop the time 0 rate,時点 0 の率を除く
+Parameters,パラメータ（複数）
+Parameter order variable,パラメータの並び順の変数
+Category variable,カテゴリの変数
+Levels counted,集計する水準
+Cumulative counting,累積で集計
+Normal at baseline only,ベースラインで正常な被験者のみ
+Normal baseline value,ベースラインで正常とする値
+Parameter headings,パラメータの見出し
+Listing columns,列の定義
+Value variable,値の変数
+Visit variable,来院の変数
+Visit order,来院の並び順
+Responder categories,奏効とするカテゴリ
+Confidence interval method,信頼区間の方法
+Rate and interval layout,率と区間の配置
+Table layout,表のレイアウト
+Visits,来院（複数）
+Baseline heading,ベースラインの見出し
+Value heading,測定値の見出し
+Change heading,変化量の見出し
+Post-baseline category,ベースライン後のカテゴリ
+Cell template,セルのテンプレート
+Analysis variable,解析する変数
+Row keys,行のキー
+Cell direction,セルの並べ方向
+Row label heading,行ラベルの見出し
+Colour bars by response,奏効で棒を色分け
+Variable that splits the curves,曲線を分ける変数
+TRUE: a line type an arm too (ggsurvfit(linetype_aes = TRUE)),TRUE: 投与群ごとに線種も変える（ggsurvfit(linetype_aes = TRUE)）
+"TRUE: the bars coloured by the best overall response (ADRS, BOR)","TRUE: 棒を最良総合効果（ADRS, BOR）で色分けする"
+TRUE: the baseline's rows (BASE) before the value's,TRUE: 値の行より前にベースラインの行（BASE）を置く
+TRUE: the y axis in % (scale_y_continuous(labels = scales::label_percent())),TRUE: y 軸を % 表示にする（scale_y_continuous(labels = scales::label_percent())）
+a cell's template,セルのテンプレート
+a rate's row: <prefix> <time>,発生率の行: <接頭辞> <時点>
+"any other figure setting (plot:): dpi, facet_by, add ..., over the template's","その他の図の設定（plot:）: dpi, facet_by, add ... など。テンプレートの設定より優先される"
+"cols: each arm's value and change side by side; rows: the value's rows, then the change's, under each visit",列: 各投与群の値と変化量を横に並べる; 行: 各来院の下に、値の行、続いて変化量の行
+count a subject in every level up to their worst (level 2 or more ...),最悪グレードまでのすべての水準で被験者を数える（水準 2 以上 ...）
+"each parameter's heading (a named vector); given by name, merged",各パラメータの見出し（名前付きベクトル）; 名前で指定し、結合する
+its values in order; NULL: its code list's,その値を順に指定; NULL: コードリストの値
+"its values, lowest first; NULL: the code list of `grade`",その値を低い順に指定; NULL: `grade` のコードリスト
+leave out the rate at time 0,時点 0 の発生率を除く
+"only the subjects normal at baseline, in n and in the N",ベースラインで正常だった被験者のみを n と N に含める
+the ADSL variable of the days of exposure,曝露日数を表す ADSL の変数
+the AVISIT (CYCLE 9 DAY 1),AVISIT（CYCLE 9 DAY 1）
+the AVISIT values; NULL: all,AVISIT の値; NULL: すべて
+"the BDS dataset (ADLB, ADVS, ADEG)","BDS データセット（ADLB, ADVS, ADEG）"
+"the BDS dataset (ADVS, ADLB)","BDS データセット（ADVS, ADLB）"
+the PARAMCD (SYSBP),PARAMCD（SYSBP）
+the PARAMCD of ADTTE (filter(PARAMCD == )); NULL: no step (a dataset not BDS),ADTTE の PARAMCD（filter(PARAMCD == )）; NULL: 絞り込みなし（BDS でないデータセット）
+the PARAMCD of the best overall response,最良総合効果の PARAMCD
+the PARAMCD of the time to event (PFS),無イベント期間の PARAMCD（PFS）
+the PARAMCD of the tumour measurements (SUMDIAM),腫瘍測定値の PARAMCD（SUMDIAM）
+the PARAMCD values,PARAMCD の値
+"the PARAMCD values, in the data's order; NULL: all",PARAMCD の値（データの順）; NULL: すべて
+the PARAMCD values; NULL: all,PARAMCD の値; NULL: すべて
+the PTs kept: this % of subjects or more; NULL: all,残す PT: 被験者の割合がこの % 以上; NULL: すべて
+"the SOCs and PTs by their count, most first (""n""), or by ""name""","SOC と PT の並び順: 件数の多い順（""n""）または名前順（""name""）"
+the analysis data's id; NULL: <data>_<param>,解析データの ID; NULL: <data>_<param>
+the analysis set's id,解析対象集団の ID
+the analysis set's id (FAS): its subjects kept; NULL: every record,解析対象集団の ID（FAS）: その被験者を残す; NULL: すべてのレコード
+the analysis set's id (SAF): its subjects kept; NULL: every record,解析対象集団の ID（SAF）: その被験者を残す; NULL: すべてのレコード
+the analysis variable whose record is split (RESP),レコードを分割する解析変数（RESP）
+the analysis's id,解析の ID
+the analysis's label,解析のラベル
+the any-record row's label,いずれかのレコード行のラベル
+the any-record row's label; NULL: none,いずれかのレコード行のラベル; NULL: なし
+the arm compared with the reference; NULL: every other arm,参照群と比較する投与群; NULL: 他のすべての投与群
+the arm variable (the columns),投与群変数（列）
+the arms compared (the Cox model's term),比較する投与群（Cox モデルの項）
+the band's transparency (add_confidence_interval(alpha = )); NULL: 0.2,帯の透明度（add_confidence_interval(alpha = )）; NULL: 0.2
+"the bars' times (summary(fit, times = )); NULL: the x axis's breaks","棒の時点（summary(fit, times = )）; NULL: x 軸の目盛"
+the bars' value (the % change),棒の値（% 変化）
+the baseline's heading,ベースラインの見出し
+"the block's grid: heading = template, one element a column (or a row), a vector its lines (N: ""{N}"", ORR(%) 90%CI: [""{n} ({estimate:.1f%})"", ""{conf.low:.1f%}, {conf.high:.1f%}""])","ブロックのグリッド: 見出し = テンプレート、要素 1 つが 1 列（または 1 行）、ベクトルはその各行（N: ""{N}"", ORR(%) 90%CI: [""{n} ({estimate:.1f%})"", ""{conf.low:.1f%}, {conf.high:.1f%}""]）"
+the categories that respond,奏効とするカテゴリ
+"the categories, in order",カテゴリを順に指定
+the category after it (the columns under each arm),その後のカテゴリ（各投与群の下の列）
+the category at baseline,ベースラインのカテゴリ
+the category at baseline (the rows),ベースラインのカテゴリ（行）
+"the category's variable (ANRIND, a criterion's MCRIT1ML)",カテゴリの変数（ANRIND、基準ごとの MCRIT1ML）
+the cells' elements as columns or rows,セルの要素を列または行にする
+the censor mark's shape (add_censor_mark(shape = )); NULL: the figure style's,打ち切りマークの形（add_censor_mark(shape = )）; NULL: 図スタイルの値
+the censor mark's size (add_censor_mark(size = )); NULL: the figure style's,打ち切りマークのサイズ（add_censor_mark(size = )）; NULL: 図スタイルの値
+the censor mark's stroke (add_censor_mark(stroke = )); NULL: the figure style's,打ち切りマークの線の太さ（add_censor_mark(stroke = )）; NULL: 図スタイルの値
+the censor marks (add_censor_mark()),打ち切りマーク（add_censor_mark()）
+"the censoring variable, 1 censored (Surv(time, censor == 0))","打ち切り変数、1 = 打ち切り（Surv(time, censor == 0)）"
+the change's heading,変化量の見出し
+"the column (a value of `by`) whose counts order the PTs; NULL: the Total column with min_pct_in = ""total"", else the code list's first value of `by`, else all the columns","PT を並べる基準となる列（`by` の値）の件数; NULL: min_pct_in = ""total"" なら Total 列、それ以外はコードリストの `by` の最初の値、なければすべての列"
+the column key (the arms),列キー（投与群）
+the column variable's values in order; NULL: the ARD's (its code list),列変数の値を順に指定; NULL: ARD の値（そのコードリスト）
+"the columns, in order: each a list of vars (one or more), label, width and collapse_repeats",列を順に指定: それぞれ変数のリスト（1 つ以上）、label、width、collapse_repeats
+"the confidence interval: band (add_confidence_interval()), bars at the axis's times (geom_errorbar())",信頼区間: 帯（add_confidence_interval()）、軸の時点の棒（geom_errorbar()）
+the curves' colours (scale_colour_manual(values = pal)); NULL: treatment,曲線の色（scale_colour_manual(values = pal)）; NULL: 投与群
+the curves' width (ggsurvfit(linewidth = )); NULL: the figure style's,曲線の太さ（ggsurvfit(linewidth = )）; NULL: 図スタイルの値
+the dataset (ADAE),データセット（ADAE）
+the dataset (ADTTE; ADSL with `event`),データセット（ADTTE; `event` を使う場合は ADSL）
+the dataset of events,イベントのデータセット
+the event's day from the start of treatment: a variable or R (ASTDT - TRTSDT + 1),治療開始からのイベント日: 変数または R の式（ASTDT - TRTSDT + 1）
+"the event, in R (EOTSTT == ""DISCONTINUED""): CNSR made from it (data without CNSR: ADSL)","R で書くイベント（EOTSTT == ""DISCONTINUED""）: これから CNSR を作る（CNSR のないデータ: ADSL）"
+the events kept (R): the treatment-emergent,残すイベント（R）: 治療下で発現したもの
+the events' analysis data's id; NULL: <data>_<population>,イベントの解析データの ID; NULL: <data>_<population>
+the figure's title (labs(title = )),図のタイトル（labs(title = )）
+"the grades as ""rows"" under each term, or as ""cols"" in each group","グレードを各項目の下の ""rows"" にするか、各グループ内の ""cols"" にする"
+the interval's level (survfit2(conf.int = )); NULL: 0.95,区間の水準（survfit2(conf.int = )）; NULL: 0.95
+the interval's transformation (survfit2(conf.type = )); NULL: log,区間の変換（survfit2(conf.type = )）; NULL: log
+the label column's heading,ラベル列の見出し
+the label of a term's count at any grade,いずれかのグレードでの項目の件数のラベル
+the legend's place (theme(legend.position = )); NULL: inside,凡例の位置（theme(legend.position = )）; NULL: 図の内側
+the legend's title (labs(colour = )); NULL: none,凡例のタイトル（labs(colour = )）; NULL: なし
+the line at 50% (geom_hline(yintercept = 0.5)),50% の線（geom_hline(yintercept = 0.5)）
+the lines' variable,線の変数
+the log-rank p-value (add_pvalue()),ログランク p 値（add_pvalue()）
+the median line's colour (geom_hline(colour = )); NULL: the figure style's,中央値の線の色（geom_hline(colour = )）; NULL: 図スタイルの値
+the median line's type (geom_hline(linetype = )); NULL: the figure style's,中央値の線の種類（geom_hline(linetype = )）; NULL: 図スタイルの値
+the median line's width (geom_hline(linewidth = )); NULL: the figure style's,中央値の線の太さ（geom_hline(linewidth = )）; NULL: 図スタイルの値
+the median's row,中央値の行
+the model's covariates besides the arm,投与群以外のモデルの共変量
+the number at risk under the curves (add_risktable(times = x_breaks)),曲線の下のリスク集合の人数（add_risktable(times = x_breaks)）
+the parameter's variable (a block of rows each),パラメータの変数（それぞれが行のブロックになる）
+the parameters' order variable; NULL: by name,パラメータの順序変数; NULL: 名前順
+"the rate and its CI: ""rows"", under each other in the arm's column, or ""cols"", each arm's two columns (stat_block)","発生率とその信頼区間: ""rows"" は投与群の列内で縦に並べる、""cols"" は投与群ごとに 2 列（stat_block）"
+the rate per this many person-years,発生率を何人年あたりで表すか
+the rate's CI (cardx's method),発生率の信頼区間（cardx の方法）
+the rate's CI's level,発生率の信頼区間の水準
+"the records kept (R), e.g. ANL01FL == ""Y""","残すレコード（R）、例: ANL01FL == ""Y"""
+"the records kept (R), e.g. ONTRTFL == ""Y""","残すレコード（R）、例: ONTRTFL == ""Y"""
+"the records kept (R): the visit, the parameters",残すレコード（R）: 来院、パラメータ
+the records kept besides the parameter (R),パラメータ以外に残すレコード（R）
+"the records kept besides the parameter (R): one a subject, its best change",パラメータ以外に残すレコード（R）: 被験者ごとに 1 件、その最良の変化量
+the records kept besides the parameter and visit (R),パラメータと来院以外に残すレコード（R）
+the records kept besides the visit and parameters (R),来院とパラメータ以外に残すレコード（R）
+the records' order (variables),レコードの並び順（変数）
+the reference arm; NULL: the last arm in the code list's order,参照群; NULL: コードリストの順で最後の投与群
+the response category's variable,効果カテゴリの変数
+the response dataset,効果のデータセット
+the response variable,効果の変数
+"the risk table's height, a share (add_risktable(risktable_height = ))",リスク表の高さ、割合（add_risktable(risktable_height = )）
+the risk table's rows (add_risktable(risktable_stats = )); NULL: n.risk,リスク表の行（add_risktable(risktable_stats = )）; NULL: n.risk
+the risk table's text size (add_risktable(size = )),リスク表の文字サイズ（add_risktable(size = )）
+the risk table's title (add_risktable(stats_label = )); NULL: the figure style's,リスク表のタイトル（add_risktable(stats_label = )）; NULL: 図スタイルの値
+"the row keys (subgroup, subgroup_level); NULL: one row of blocks","行キー（subgroup, subgroup_level）; NULL: ブロックの 1 行"
+the row label column's heading,行ラベル列の見出し
+the rows of a value or a change,値または変化量の行
+"the rows, in order: each `id` (the flag's name), `label` (the row's text) and `where` (R: the events it counts; none: every event kept)",行を順に指定: それぞれ `id`（フラグの名前）、`label`（行の文言）、`where`（R: 数えるイベント; なし: 残したすべてのイベント）
+"the severity or grade variable (AESEV, AETOXGR)","重症度またはグレードの変数（AESEV, AETOXGR）"
+the statistics the ARD has,統計量は ARD にあるもの
+"the subgroups, each its levels' hazard ratios",サブグループ、それぞれの水準のハザード比
+the subjects-per-group analysis' label,群あたり被験者数の解析のラベル
+the term variable (the PT),項目の変数（PT）
+the theme's base font size; NULL: the figure style's,テーマの基本フォントサイズ; NULL: 図スタイルの値
+the theme; NULL: the figure style's,テーマ; NULL: 図スタイルの値
+the time variable,時間の変数
+"the time variable (Surv(time, ...)), in `time_unit`","時間の変数（Surv(time, ...)）、単位は `time_unit`"
+the time's unit: the call's first step converts the days to it; the x axis's title,時間の単位: 呼び出しの最初のステップで日数をこの単位に変換する; x 軸のタイトル
+"the times' unit, in the median block's heading",時間の単位、中央値ブロックの見出しに使う
+the value of `baseline` that is normal,正常とみなす `baseline` の値
+the value's heading,値の見出し
+"the values counted, in order (lowest first); NULL: the code list's",数える値を順に指定（低い順）; NULL: コードリストの値
+"the variable averaged (AVAL, CHG)","平均する変数（AVAL, CHG）"
+the visit (AVISIT),来院（AVISIT）
+the visits on the x axis,x 軸に置く来院
+the visits' order,来院の並び順
+the visits' order variable; NULL: by name,来院の順序変数; NULL: 名前順
+"the x axis's end (x_breaks <- seq(0, x_max, by = x_step)); NULL: the last time","x 軸の終点（x_breaks <- seq(0, x_max, by = x_step)）; NULL: 最後の時点"
+"the x axis's step, the risk table's times; NULL: pretty()",x 軸の目盛間隔、リスク表の時点; NULL: pretty()
+the x axis's title (labs(x = )); NULL: Time (<unit>),x 軸のタイトル（labs(x = )）; NULL: Time (<単位>)
+the y axis's end; NULL: 1,y 軸の終点; NULL: 1
+the y axis's start (coord_cartesian(ylim = )); NULL: 0,y 軸の始点（coord_cartesian(ylim = )）; NULL: 0
+the y axis's step (scale_y_continuous(breaks = )); NULL: the figure style's,y 軸の目盛間隔（scale_y_continuous(breaks = )）; NULL: 図スタイルの値
+the y axis's title (labs(y = )); NULL: by y_type,y 軸のタイトル（labs(y = )）; NULL: y_type による
+"the y axis: survival S(t), or risk 1 - S(t) (ggsurvfit(type = ))",y 軸: 生存率 S(t)、またはリスク 1 - S(t)（ggsurvfit(type = )）
+where the p-value goes (add_pvalue(location = )),p 値を置く位置（add_pvalue(location = )）
+"which subjects (R, on ADSL): a listing has no analysis set, so ADSL's subjects it keeps (a semi join)",対象の被験者（R、ADSL 上）: リストには解析対象集団がないため、ADSL の該当被験者を残す（semi join）
+The report's own join,帳票の join

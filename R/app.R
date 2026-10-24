@@ -12029,10 +12029,15 @@ app_server <- function(input, output, session, start) {
   # -- template reports (R/template_report.R, #440) ---------------------------
   tpl_data <- function() .tpl_data_cols(rv$study$path)
   tpl_all_cols <- function() unique(unlist(lapply(tpl_data(), names)))
+  # an argument's heading: "meaning (name)", its doc in the (i)
+  # (.tpl_arg_labels; the doc itself when it has none)
   tpl_label <- function(prm) {
     doc <- prm$doc %||% ""
-    lab <- if (nzchar(doc)) paste0(t(doc), " (", prm$name, ")") else prm$name
-    if (isTRUE(prm$required)) shiny::span(lab, shiny::span(class = "text-danger", " *")) else lab
+    short <- if (doc %in% names(.tpl_doc_labels)) .tpl_doc_labels[[doc]] else .tpl_arg_labels[prm$name]
+    head <- if (!is.na(short)) t(short) else if (nzchar(doc)) t(doc) else ""
+    lab <- if (nzchar(head)) paste0(head, " (", prm$name, ")") else prm$name
+    shiny::span(lab, if (isTRUE(prm$required)) shiny::span(class = "text-danger", " *"),
+                if (!is.na(short) && nzchar(doc)) help_tip(t(doc)))
   }
   # the input of an argument, by its type (.tpl_type(): tflspec's
   # tfl_param(type = ), guessed only when it declares none).  `params`,
@@ -12534,6 +12539,8 @@ app_server <- function(input, output, session, start) {
                                    width = "100%", options = list(create = TRUE)))),
       shiny::textInput("tpl_data_filter", t("Records kept (filter: an R condition)"), f$filter,
                        width = "100%"),
+      shiny::selectInput("tpl_data_pop", t("This report's population"), tpl_data_pop_choices(f),
+                         selected = tpl_data_pop_sel(id, f), width = "100%"),
       shiny::div(class = "small text-muted mb-1",
                  if (is.null(pop) && f$join) {
                    sprintf(t("Analysis set: the report's own join (%s: %s)."), f$join_dataset, f$join_where)
@@ -12548,6 +12555,27 @@ app_server <- function(input, output, session, start) {
         class = "mt-1",
         shiny::tags$summary(class = "small", t("The steps written")),
         shiny::tags$pre(class = "small mb-0", yaml::as.yaml(list(data = list(steps = steps))))))
+  }
+  # the card's analysis-set choice: the report's population, else its own
+  # join -- a flag ("flag:<variable>") or as it is (".own") -- else none
+  tpl_data_pop_sel <- function(id, f) {
+    pid <- rv$p$spec$outputs[[id]]$population
+    if (length(pid) && !is.na(pid[1L]) && nzchar(pid[1L])) return(as.character(pid[1L]))
+    if (!f$join) return("")
+    fl <- .pop_flag(f$join_where)
+    if (!is.na(fl) && identical(toupper(f$join_dataset), "ADSL")) paste0("flag:", fl) else ".own"
+  }
+  tpl_data_pop_choices <- function(f) {
+    ch <- tpl_pop_choices()
+    if (f$join) {
+      fl <- .pop_flag(f$join_where)
+      own <- if (!is.na(fl) && identical(toupper(f$join_dataset), "ADSL")) paste0("flag:", fl) else ".own"
+      if (!own %in% ch) {
+        ch <- c(ch, stats::setNames(own, sprintf("%s (%s: %s)", t("The report's own join"),
+                                                  f$join_dataset, f$join_where)))
+      }
+    }
+    ch
   }
   tpl_data_pop <- function(id) {
     pid <- rv$p$spec$outputs[[id]]$population
@@ -12569,10 +12597,27 @@ app_server <- function(input, output, session, start) {
     if (is.null(id) || is.null(.tpl_of(rv$p, id))) return()
     if (!nzchar(trimws(input$tpl_data_ds %||% ""))) return(notify(t("Choose the dataset."), "warning"))
     o <- rv$p$spec$outputs[[id]]
-    # (no population: the report's own join -- a flag the study does not
-    # define -- kept)
     f <- .tpl_steps_fields(o$data$steps)
-    pop <- tpl_data_pop(id) %||% if (f$fields && f$join) list(dataset = f$join_dataset, where = f$join_where)
+    # the analysis set chosen: the study's (the report's population), a flag
+    # the study does not define, the report's own join as it is (".own"),
+    # or none
+    sel <- input$tpl_data_pop %||% tpl_data_pop_sel(id, f)
+    pop <- NULL
+    if (identical(sel, ".own")) {
+      pop <- list(dataset = f$join_dataset, where = f$join_where)
+      o$population <- NULL
+    } else if (startsWith(sel, "flag:")) {
+      pop <- list(dataset = "ADSL", where = sprintf("%s == \"Y\"", sub("^flag:", "", sel)))
+      o$population <- NULL
+    } else if (nzchar(sel)) {
+      o$population <- sel
+      pops <- rv$p$ard$populations
+      k <- match(sel, pops$population_id)
+      if (!is.na(k)) pop <- as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)),
+                                         drop = FALSE])
+    } else {
+      o$population <- NULL
+    }
     steps <- .tpl_steps_from(input$tpl_data_ds, pop, input$tpl_data_param %||% "",
                              input$tpl_data_filter %||% "")
     if (is.null(steps)) o$data$steps <- NULL else o$data$steps <- steps

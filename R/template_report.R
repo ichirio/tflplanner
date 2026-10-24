@@ -402,7 +402,7 @@
 # (rp-report-ready): the report before it, or the code SPEC's builder, is
 # never seen in its place.  `.rp-tpl-only` / `.rp-code-only` are shown by
 # the mode.
-.tpl_step_labels <- c(content = "1 Template (ARD and content)", page = "2 Page and output")
+.tpl_step_labels <- c(content = "1 Template (data and content)", page = "2 Page and output")
 
 .tpl_css <- "
 body:not(.rp-tpl) .rp-tpl-only, body.rp-tpl .rp-code-only { display: none !important; }
