@@ -3876,6 +3876,7 @@ In parts,Part
 %d parts (%s),Part %d つ（%s）
 "The TOC names %s more than once: only its first row is read. Give each report a number of its own (a report's parts: .a, .b).","目次に %s が 2 回以上あります。読むのは最初の行だけです。帳票ごとに別の番号を付けてください（1 つの帳票の Part は .a, .b）。"
 request %d of %d,依頼 %d / %d
+"%d settings the sheet cannot say (kept): %d of the listing's (content_more), %d of its columns (more). Edit them in the report's YAML.",シートで言えない設定 %d 個（保たれます）: 一覧の %d 個（content_more）、列の %d 個（more）。帳票の YAML で直してください。
 "Documents for reference: SAP, TOC / SHELL workbooks",参考の文書: SAP、TOC / SHELL のブック
 "Upload or path: the same workbook is read. Whether a copy is kept in the study's ai/ (what was read, beside the requests): an upload, yes; a path inside the study folder (its docs/, say), no -- the study already holds it; a path outside the study folder, yes.",アップロードでもパスでも、読むブックは同じです。違いは、試験の ai/ に写しを置くか（読んだ物の控えとして依頼の横に置きます）だけです。アップロード＝写す。試験フォルダの中のパス（docs/ など）＝写さない（試験にもうあるため）。試験フォルダの外のパス＝写す。
 or their file paths (several: one a line),またはファイルのパス（複数なら 1 行に 1 つずつ）
