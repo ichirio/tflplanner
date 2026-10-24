@@ -3876,6 +3876,43 @@ In parts,Part
 %d parts (%s),Part %d つ（%s）
 "The TOC names %s more than once: only its first row is read. Give each report a number of its own (a report's parts: .a, .b).","目次に %s が 2 回以上あります。読むのは最初の行だけです。帳票ごとに別の番号を付けてください（1 つの帳票の Part は .a, .b）。"
 request %d of %d,依頼 %d / %d
+"Documents for reference: SAP, TOC / SHELL workbooks",参考の文書: SAP、TOC / SHELL のブック
+"Upload or path: the same workbook is read. Whether a copy is kept in the study's ai/ (what was read, beside the requests): an upload, yes; a path inside the study folder (its docs/, say), no -- the study already holds it; a path outside the study folder, yes.",アップロードでもパスでも、読むブックは同じです。違いは、試験の ai/ に写しを置くか（読んだ物の控えとして依頼の横に置きます）だけです。アップロード＝写す。試験フォルダの中のパス（docs/ など）＝写さない（試験にもうあるため）。試験フォルダの外のパス＝写す。
+or their file paths (several: one a line),またはファイルのパス（複数なら 1 行に 1 つずつ）
+Sheets to add to every request,すべての依頼に足すシート
+"Usually blank: each request carries the shell sheets found for its reports (the TOC table's shell column). Choose sheets only to add them whole to every request -- a sheet of notes common to all, or the shell of a report none was found for. Several can be chosen.",ふつうは空欄です。各依頼には、その帳票のシェルのシート（右の TOC の表の shell 列）が自動で入ります。ここで選ぶのは、すべての依頼にシートを丸ごと足したい時だけです（全帳票に共通の注記のシート、シェルが見つからなかった帳票のシートなど）。複数選べます。
+none (the shells found),なし（見つかったシェルだけ）
+Read and check,読み取って確かめる
+"Reads the workbook and the ADaM and writes nothing; what was read shows on the right. Check there: every report found its shell (TOC: the shell column), the reports in parts, the types, how the reports go into requests; the ADaM summary that is sent (no records); the sheets and what each was taken for. Then Write the requests.",ブックと ADaM を読むだけで、何も書きません。読んだ結果が右に出ます。そこで確かめること: どの帳票もシェルが見つかったか（TOC の shell 列）、Part に分かれた帳票、帳票の種類、帳票がどの依頼に入るか、AI に送る ADaM の要約（レコードは送りません）、各シートを何として読んだか。確かめたら「依頼を書く」を押します。
+"%d reports written in parts (%s): each part becomes a report of its own, its number the part's (.a, .b). Marked in the table.","Part に分かれた帳票が %d 件あります（%s）。Part ごとに別の帳票になり、番号は Part の番号（.a, .b）です。表で印を付けています。"
+"Browse... or type its path. A workbook outside the study folder is copied into the study's docs/ when it is chosen with Browse..., and that copy is read; one inside the study is read where it is.",「参照…」で選ぶか、パスを入れます。試験フォルダの外のブックを「参照…」で選ぶと、試験の docs/ に写し、その写しを読みます。試験の中のブックは、その場所のまま読みます。
+"Only when the shells are not in the TOC workbook. Browse... (several at once), or their paths, one a line. A workbook outside the study is copied into its docs/ when chosen with Browse...",シェルが TOC のブックに無い時だけ指定します。「参照…」（まとめて複数選べます）か、パスを 1 行に 1 つずつ。試験の外のブックを「参照…」で選ぶと、試験の docs/ に写します。
+or their paths,またはパス
+Sheets for every request,全依頼に足すシート
+Put the common instructions in each request,依頼ごとに共通の指示を含める
+"Off (the default): the common instructions are written once, to 00-instructions.md -- paste it first -- and left out of the requests. On: every request carries them.",オフ（既定）: 共通の指示は 00-instructions.md に 1 回だけ書き（最初に貼ります）、依頼には入れません。オン: どの依頼にも入れます。
+Copied into the study's docs/: %s,試験の docs/ に写しました: %s
+The upload's dialog is the browser's: where it opens cannot be chosen.,アップロードの「参照…」はブラウザのダイアログなので、開く場所はアプリから選べません。
+TOC items,TOC 項目
+Shells,シェル
+Shells a request holds,依頼 1 件に入れるシェルの数
+"%d requests to write (%d shells, %d TOC items).",書く依頼 %d 件（シェル %d・TOC 項目 %d）。
+"%d shells, %d TOC items, %d of them with no shell",シェル %d・TOC 項目 %d（うちシェルの無いもの %d）
+"%d TOC items with no shell (%s): their request says no shell. If their shell is a sheet read as something else, set its role on the Sheets tab and read again.",シェルの無い TOC 項目が %d 件（%s）: 依頼には「シェル無し」と書かれます。シェルが別の役割で読まれたシートにあるなら、「シート」タブで役割を変えて読み直してください。
+TOC item,TOC 項目
+Other information,その他の情報
+"One request a shell sheet: the TOC items it holds go in it (candidates: the items the sheet was matched with, and why).",シェルのシート 1 枚で依頼 1 件です。そのシートの TOC 項目が依頼に入ります（候補 = そのシートと結び付けた TOC 項目と、その手がかり）。
+%d shells with no number and no TOC item of their own (%s): the AI is asked to say what they are.,番号も TOC 項目も無いシェルが %d 件（%s）: 何の帳票かは AI に判断を頼みます。
+sheet,シート
+Numbers in the sheet,シートの中の番号
+Title in the sheet,シートの中のタイトル
+No number,番号なし
+Candidates,候補
+"What each sheet is read as. Move a sheet, then Apply and read again: a TOC sheet read as a shell (a topline TOC), a shell read as other (its number not in the TOC).",各シートを何として読むか。シートを動かしてから「当てはめて読み直す」を押します（例: シェルとして読まれた TOC のシート＝トップライン用の TOC、その他として読まれたシェル＝番号が TOC に無いもの）。
+TOC sheets,TOC のシート
+Other sheets (not shells),その他のシート（シェルではない）
+The rest are shells.,残りはシェルとして読みます。
+Apply and read again,当てはめて読み直す
 "ARD: named sets of records (CDISC ARS data subsets), the study's: a dataset and the condition its records meet. An analysis names one in `records` instead of `dataset` and `where` (its own `where` on top).",ARD: 名前を付けたレコードの集まり（CDISC ARS の data subset）。試験のものです。データセットと、そのレコードが満たす条件を書きます。解析では `dataset` と `where` の代わりに `records` で名前を指します（解析自身の `where` はその上に重ねます）。
 "The set's name, used by analyses.",集まりの名前。解析から使います。
 The dataset its records are of (one of the datasets).,レコードのデータセット（datasets の 1 つ）。
