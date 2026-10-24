@@ -3943,3 +3943,16 @@ The value's name in the program (an R name; not a dataset's or pop_<population>)
 R that makes the value (the datasets and pop_<population> in reach).,値を作る R（データセットと pop_<集団> を使えます）。
 "The alignment of the columns that set none of their own (listing_spec(align = )): left, center or right; blank: the type's.",各列に個別の指定がないときの揃え（align）（listing_spec(align = )）。left・center・right のいずれか。空欄 = 種類の既定。
 "The hidden record column (listing_spec(record = )): FALSE for none, a name for it; blank: the standard one.",非表示のレコード列（record）（listing_spec(record = )）。FALSE = なし、文字列 = その列名。空欄 = 標準のもの。
+Data (the report's data: steps),データ（帳票の data: の手順）
+Steps the fields cannot say: kept as they are; change them in the report's YAML.,欄で表せない手順です。そのまま保ちます。変えるときは帳票の YAML で。
+"The report says its data here: the dataset and, for a dataset of parameters, the parameter.",帳票のデータをここで指定します: データセットと、パラメータを持つデータセットならそのパラメータ。
+Dataset (read),データセット（read）
+Parameter (param: PARAMCD),パラメータ（param: PARAMCD）
+Records kept (filter: an R condition),残すレコード（filter: R の条件）
+Analysis set: none (the report has no population).,解析対象集団: なし（帳票に population がありません）。
+"Analysis set: %s (%s: %s), its subjects kept (join).",解析対象集団: %s（%s: %s）。その被験者だけを残します（join）。
+The analysis set changed: Apply writes the new join.,解析対象集団が変わりました。「適用」で join を書き直します。
+The steps written,書き込まれた手順
+Choose the dataset.,データセットを選んでください。
+To the report's data: steps:,帳票の data: の手順へ:
+%s takes the report's data: fill in param (the PARAMCD) first.,%s は帳票のデータを使います。先に param（PARAMCD）を入れてください。
