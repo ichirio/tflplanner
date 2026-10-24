@@ -46,3 +46,14 @@ test_that("a KM type report with the card's steps resolves", {
   o$data <- list(steps = .tpl_steps_from("ADTTE", pop, "PFS"))
   expect_true(attr(tflspec::tfl_resolve_output(o, s), "template")$ok)
 })
+
+test_that("a join no longer the analysis set's is told", {
+  saf <- list(population_id = "SAF", dataset = "ADSL", where = "SAFFL == \"Y\"")
+  itt <- list(population_id = "ITT", dataset = "ADSL", where = "ITTFL == \"Y\"")
+  f <- .tpl_steps_fields(.tpl_steps_from("ADTTE", saf, "PFS"))
+  expect_false(.tpl_join_stale(f, saf))
+  expect_true(.tpl_join_stale(f, itt))
+  expect_true(.tpl_join_stale(f, NULL))
+  expect_true(.tpl_join_stale(.tpl_steps_fields(.tpl_steps_from("ADTTE", NULL, "PFS")), saf))
+  expect_false(.tpl_join_stale(.tpl_steps_fields(.tpl_steps_from("ADSL", saf)), saf))
+})

@@ -3951,3 +3951,8 @@ Parameter (param: PARAMCD),パラメータ（param: PARAMCD）
 Records kept (filter: an R condition),残すレコード（filter: R の条件）
 Analysis set: none (the report has no population).,解析対象集団: なし（帳票に population がありません）。
 "Analysis set: %s (%s: %s), its subjects kept (join).",解析対象集団: %s（%s: %s）。その被験者だけを残します（join）。
+The analysis set changed: Apply writes the new join.,解析対象集団が変わりました。「適用」で join を書き直します。
+The steps written,書き込まれた手順
+Choose the dataset.,データセットを選んでください。
+To the report's data: steps:,帳票の data: の手順へ:
+%s takes the report's data: fill in param (the PARAMCD) first.,%s は帳票のデータを使います。先に param（PARAMCD）を入れてください。

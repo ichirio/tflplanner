@@ -291,7 +291,8 @@
 # says it), the parameter, a filter.  Steps of another shape (a derive, a
 # second read ...): `fields = FALSE`, kept as they are.
 .tpl_steps_fields <- function(steps) {
-  out <- list(fields = TRUE, dataset = "", join = FALSE, param = "", filter = "")
+  out <- list(fields = TRUE, dataset = "", join = FALSE, join_dataset = "", join_where = "",
+              param = "", filter = "")
   steps <- steps %||% list()
   if (!length(steps)) return(out)
   kind <- vapply(steps, function(s) if (is.list(s)) as.character(s$step %||% "")[1L] else "", "")
@@ -303,6 +304,8 @@
   one <- function(k, f) if (any(kind == k)) as.character(steps[[which(kind == k)]][[f]] %||% "")[1L] else ""
   out$dataset <- one("read", "dataset")
   out$join <- any(kind == "join")
+  out$join_dataset <- one("join", "dataset")
+  out$join_where <- one("join", "where")
   out$param <- one("param", "value")
   out$filter <- one("filter", "expr")
   out
@@ -324,6 +327,17 @@
   if (has(param)) steps[[length(steps) + 1L]] <- list(step = "param", value = trimws(param))
   if (has(filter)) steps[[length(steps) + 1L]] <- list(step = "filter", expr = trimws(filter))
   steps
+}
+
+# Whether the report's join is no longer its analysis set's (the
+# population changed, or its definition): Apply writes it again
+.tpl_join_stale <- function(f, pop, dataset = f$dataset) {
+  want <- .tpl_steps_from(dataset, pop)
+  wj <- Filter(function(s) identical(s$step, "join"), want %||% list())
+  if (!f$join) return(length(wj) > 0L)
+  if (!length(wj)) return(TRUE)
+  !identical(toupper(f$join_dataset), toupper(wj[[1L]]$dataset)) ||
+    !identical(f$join_where, wj[[1L]]$where %||% "")
 }
 
 # A report's file with its template's arguments set
