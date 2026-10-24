@@ -327,7 +327,9 @@
 # does not carry them.
 .ai_dry_with_parts <- function(p, toc, args = list(), shells = NULL) {
   tc <- p$toc
-  if (!nrow(tc)) return(p)
+  # (tflspec >= 0.0.24.9230: the requests a sheet's, the TOC its items --
+  # nothing to add)
+  if (!nrow(tc) || !is.null(tc$toc_id)) return(p)
   rq <- p$requests
   if (isTRUE(as.integer(args$size %||% 0L) == 1L) && nrow(rq) && all(rq$n == 1L)) {
     nm <- .ai_one_names(rq$outputs)
@@ -461,6 +463,29 @@
 # Whether an error of tfl_ai_prepare(add = TRUE) is a report asked for
 # already (asked again with overwrite = TRUE)
 .ai_is_asked_again <- function(msg) grepl("already asked for", msg, fixed = TRUE)
+
+# A workbook chosen with Browse... for a study (`dir`, its folder): inside
+# the study, its own path; outside it, copied into the study's docs/ (made
+# when missing) and the copy's path -- the study then holds what it is read
+# from.  No study folder yet (`dir` NULL or missing): the path as it is.
+# A copy of another file of that name already in docs/ stops.
+.ai_book_into_docs <- function(f, dir) {
+  if (is.null(dir) || !nzchar(dir) || !dir.exists(dir) || !file.exists(f)) return(f)
+  if (.ai_in_study(f, dir)) return(normalizePath(f, "/"))
+  to <- file.path(dir, "docs", basename(f))
+  if (file.exists(to)) {
+    same <- identical(unname(tools::md5sum(f)), unname(tools::md5sum(to)))
+    if (same) return(normalizePath(to, "/"))
+    stop(sprintf("The study's docs/ has another %s already: rename one, or choose the one in docs/.",
+                 basename(f)), call. = FALSE)
+  }
+  dir.create(dirname(to), recursive = TRUE, showWarnings = FALSE)
+  if (!isTRUE(file.copy(f, to))) {
+    stop(sprintf("Could not copy %s into %s: is it open in another program (Excel)?",
+                 basename(f), dirname(to)), call. = FALSE)
+  }
+  normalizePath(to, "/")
+}
 
 # The TOC / SHELL workbook kept in the study (ai/<its name>): what was
 # read, beside the requests.  Gives the copy's path.  A workbook already

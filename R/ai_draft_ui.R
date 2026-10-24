@@ -50,7 +50,7 @@ ai_ui <- function(id, lang = "en") {
             shiny::radioButtons(
               ns("mode"), paste0(t("Who drafts"), " (mode)"), inline = TRUE,
               choiceNames = list(t("A chat (chat)"), t("A coding agent (agent)")),
-              choiceValues = c("chat", "agent"), selected = "chat"),
+              choiceValues = c("chat", "agent"), selected = "agent"),
             shiny::radioButtons(
               ns("study_mode"), t("Study"), inline = TRUE,
               choiceNames = list(t("The open study"), paste0(t("New study"), " (tfl_ai_study_init)")),
@@ -65,35 +65,57 @@ ai_ui <- function(id, lang = "en") {
                 shiny::textInput(ns("new_title"), paste0(t("Title"), " (title)"),
                                  width = "20rem")),
               shiny::uiOutput(ns("new_where"))),
-            # the workbook chosen (uploaded) or its path: the one given last
-            # is read, and copied into the study's ai/
-            shiny::div(
-              class = "d-flex flex-wrap gap-2 align-items-start",
-              shiny::div(style = "flex: 1 1 14rem;",
-                         shiny::fileInput(ns("toc_file"), paste0(t("TOC / SHELL workbook"), " (toc)"),
-                                          accept = c(".xlsx", ".xlsm"), width = "100%",
-                                          buttonLabel = t("Browse..."),
-                                          placeholder = t("No file selected"))),
-              shiny::div(style = "flex: 1 1 14rem;",
-                         .ai_path_input(ns("toc_path"), t("or its path"), "C:/.../TOC_SHELL.xlsx",
-                                        ns("toc_browse"), t("Browse...")))),
+            # the workbook: its path -- Browse... copies one from outside the
+            # study into its docs/ -- or, with no dialog (a server), uploaded
+            if (.ai_dialog_ok()) {
+              .ai_path_input(ns("toc_path"),
+                             with_tip(paste0(t("TOC / SHELL workbook"), " (toc)"),
+                                      t("Browse... or type its path. A workbook outside the study folder is copied into the study's docs/ when it is chosen with Browse..., and that copy is read; one inside the study is read where it is.")),
+                             "C:/.../TOC_SHELL.xlsx", ns("toc_browse"), t("Browse..."))
+            } else {
+              shiny::div(
+                class = "d-flex flex-wrap gap-2 align-items-start",
+                shiny::div(style = "flex: 1 1 14rem;",
+                           shiny::fileInput(ns("toc_file"),
+                                            with_tip(paste0(t("TOC / SHELL workbook"), " (toc)"),
+                                                     paste(t("Upload or path: the same workbook is read. Whether a copy is kept in the study's ai/ (what was read, beside the requests): an upload, yes; a path inside the study folder (its docs/, say), no -- the study already holds it; a path outside the study folder, yes."),
+                                                           t("The upload's dialog is the browser's: where it opens cannot be chosen."))),
+                                            accept = c(".xlsx", ".xlsm"), width = "100%",
+                                            buttonLabel = t("Browse..."),
+                                            placeholder = t("No file selected"))),
+                shiny::div(style = "flex: 1 1 14rem;",
+                           .ai_path_input(ns("toc_path"), t("or its path"), "C:/.../TOC_SHELL.xlsx",
+                                          ns("toc_browse"), t("Browse..."))))
+            },
             shiny::uiOutput(ns("toc_check")),
             # the shells in workbooks of their own (none: in the TOC's)
-            shiny::div(
-              class = "d-flex flex-wrap gap-2 align-items-start",
-              shiny::div(style = "flex: 1 1 14rem;",
-                         shiny::fileInput(ns("shell_files"),
-                                          with_tip(paste0(t("Shell workbooks"), " (shells)"),
-                                                   t("Only when the shells are not in the TOC workbook; several can be given.")),
-                                          multiple = TRUE, accept = c(".xlsx", ".xlsm"),
-                                          width = "100%", buttonLabel = t("Browse..."),
-                                          placeholder = t("No file selected"))),
-              shiny::div(style = "flex: 1 1 14rem;",
-                         shiny::textAreaInput(ns("shell_paths"), t("or their paths, one a line"),
-                                              rows = 2, width = "100%", resize = "vertical",
-                                              placeholder = "C:/.../SHELLS.xlsx"),
-                         if (.ai_dialog_ok()) .btn(ns("shells_browse"), t("Browse..."),
-                                                   class = "btn-sm btn-outline-secondary mb-2"))),
+            if (.ai_dialog_ok()) {
+              shiny::div(
+                class = "d-flex gap-2 align-items-end",
+                shiny::div(style = "flex: 1 1 auto;",
+                           shiny::textAreaInput(ns("shell_paths"),
+                                                with_tip(paste0(t("Shell workbooks"), " (shells)"),
+                                                         t("Only when the shells are not in the TOC workbook. Browse... (several at once), or their paths, one a line. A workbook outside the study is copied into its docs/ when chosen with Browse...")),
+                                                rows = 1, width = "100%", resize = "vertical",
+                                                placeholder = "C:/.../SHELLS.xlsx")),
+                shiny::div(class = "mb-3",
+                           .btn(ns("shells_browse"), t("Browse..."), class = "btn-outline-secondary")))
+            } else {
+              shiny::div(
+                class = "d-flex flex-wrap gap-2 align-items-end",
+                shiny::div(style = "flex: 1 1 14rem;",
+                           shiny::fileInput(ns("shell_files"),
+                                            with_tip(paste0(t("Shell workbooks"), " (shells)"),
+                                                     paste(t("Only when the shells are not in the TOC workbook; several can be given."),
+                                                           t("The upload's dialog is the browser's: where it opens cannot be chosen."))),
+                                            multiple = TRUE, accept = c(".xlsx", ".xlsm"),
+                                            width = "100%", buttonLabel = t("Browse..."),
+                                            placeholder = t("No file selected"))),
+                shiny::div(style = "flex: 1 1 14rem;",
+                           shiny::textAreaInput(ns("shell_paths"), t("or their paths"),
+                                                rows = 1, width = "100%", resize = "vertical",
+                                                placeholder = "C:/.../SHELLS.xlsx")))
+            },
             shiny::uiOutput(ns("shells_check")),
             .ai_path_input(ns("adam_dir"), paste0(t("ADaM folder"), " (adam)"), "C:/.../adam",
                            ns("adam_browse"), t("Browse...")),
@@ -103,13 +125,19 @@ ai_ui <- function(id, lang = "en") {
               shiny::selectInput(ns("toc_sheet"), paste0(t("TOC sheet"), " (toc_sheet)"),
                                  choices = stats::setNames("", t("guess")), width = "12rem",
                                  selectize = FALSE),
-              shiny::selectizeInput(ns("sheets"), paste0(t("Shell sheets to add"), " (sheets)"),
-                                    choices = character(), multiple = TRUE, width = "16rem")),
+              shiny::selectizeInput(ns("sheets"),
+                                    with_tip(paste0(t("Sheets for every request"), " (sheets)"),
+                                             t("Usually blank: each request carries the shell sheets found for its reports (the TOC table's shell column). Choose sheets only to add them whole to every request -- a sheet of notes common to all, or the shell of a report none was found for. Several can be chosen.")),
+                                    choices = character(), multiple = TRUE, width = "16rem",
+                                    options = list(placeholder = t("none (the shells found)")))),
             # (fields side by side: their boxes level, whatever their labels' lines)
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-end",
-              shiny::numericInput(ns("size"), paste0(t("Reports a request holds"), " (size)"),
-                                  value = 3, min = 1, max = 20, width = "12rem"),
+              # (a coding agent: one a request, the instructions read once)
+              shiny::conditionalPanel(
+                "input.mode == 'chat'", ns = ns,
+                shiny::numericInput(ns("size"), paste0(t("Shells a request holds"), " (size)"),
+                                    value = 1, min = 1, max = 20, width = "12rem")),
               shiny::selectInput(ns("language"),
                                  with_tip(paste0(t("Language of the AI's assumption notes"), " (language)"),
                                           t("The language of the notes in which the AI explains what it decided where the shell does not say (its assumptions). Not the language of the reports' titles and labels (those stay as in the shell).")),
@@ -121,12 +149,13 @@ ai_ui <- function(id, lang = "en") {
                                  value = FALSE),
             shiny::checkboxInput(ns("templates"), paste0(t("Use the templates"), " (templates)"),
                                  value = TRUE),
-            shiny::radioButtons(ns("instructions"),
-                                with_tip(paste0(t("Common instructions"), " (instructions)"),
-                                         t("Chat: once writes the common instructions once, to 00-instructions.md (paste it first), and leaves them out of the requests; each puts them in every request. Coding agent: no difference -- the agent reads them once, from ai/instructions-table.md and ai/instructions-figure.md.")),
-                                inline = TRUE,
-                                choiceNames = list(t("only once (once)"), t("in each request (each)")),
-                                choiceValues = c("once", "each"), selected = "once"),
+            shiny::conditionalPanel(
+              "input.mode == 'chat'", ns = ns,
+              shiny::checkboxInput(
+                ns("instructions_each"),
+                with_tip(paste0(t("Put the common instructions in each request"), " (instructions = \"each\")"),
+                         t("Off (the default): the common instructions are written once, to 00-instructions.md -- paste it first -- and left out of the requests. On: every request carries them.")),
+                value = FALSE)),
             shiny::tags$details(
               class = "small mb-2",
               shiny::tags$summary(t("More")),
@@ -139,7 +168,8 @@ ai_ui <- function(id, lang = "en") {
                                     value = NA, min = 1000, step = 1000, width = "14rem"))),
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-center",
-              .btn(ns("read"), paste0(t("Read"), " (dry_run)"), class = "btn-sm btn-outline-primary"),
+              .btn(ns("read"), paste0(t("Read and check"), " (dry_run)"), class = "btn-sm btn-outline-primary"),
+              help_tip(t("Reads the workbook and the ADaM and writes nothing; what was read shows on the right. Check there: every report found its shell (TOC: the shell column), the reports in parts, the types, how the reports go into requests; the ADaM summary that is sent (no records); the sheets and what each was taken for. Then Write the requests.")),
               .btn(ns("write"), t("Write the requests"), class = "btn-sm btn-primary"),
               shiny::uiOutput(ns("write_note"), inline = TRUE)),
             shiny::uiOutput(ns("prep_status"))),
@@ -148,9 +178,12 @@ ai_ui <- function(id, lang = "en") {
             shiny::uiOutput(ns("prep_empty")),
             bslib::navset_underline(
               id = ns("prep_tab"),
-              bslib::nav_panel("TOC", value = "toc",
+              bslib::nav_panel(t("TOC items"), value = "toc",
                                shiny::uiOutput(ns("toc_head")),
                                DT::DTOutput(ns("toc_table"))),
+              bslib::nav_panel(t("Shells"), value = "shells",
+                               shiny::uiOutput(ns("shells_head")),
+                               DT::DTOutput(ns("shells_table"))),
               bslib::nav_panel(t("ADaM summary (what is sent)"), value = "adam",
                                shiny::div(
                                  class = "d-flex flex-wrap gap-3 align-items-end mt-2",
@@ -163,6 +196,7 @@ ai_ui <- function(id, lang = "en") {
                                shiny::uiOutput(ns("adam_head")),
                                DT::DTOutput(ns("adam_table"))),
               bslib::nav_panel(t("Sheets"), value = "sheets",
+                               shiny::uiOutput(ns("roles_ui")),
                                DT::DTOutput(ns("sheets_table"))))))),
       bslib::nav_panel(
         paste0("2 ", t("Requests"), " (ai/requests)"), value = "requests",
@@ -681,10 +715,13 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         prepared(NULL)
         prep_for(NULL)
       })
+      # another study: its step 1 (the step last open was the other
+      # study's); the study the requests were just written for stays on
+      # them (Write opens it)
       if (!is.null(p)) shiny::isolate({
-        r <- tryCatch(.ai_requests(p), error = function(e) NULL)
         shiny::updateRadioButtons(session, "study_mode", selected = "open")
-        if (!is.null(r) && nrow(r)) bslib::nav_select("step", "requests", session = session)
+        np <- function(x) if (is.null(x)) "" else normalizePath(x, "/", mustWork = FALSE)
+        if (!identical(np(prep_for()), np(p))) bslib::nav_select("step", "prepare", session = session)
       })
     })
     # the ADaM folder: the chosen study's (.ai_adam_auto()), following the
@@ -702,14 +739,17 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         }
       })
     })
-    # the reports a request holds: 1 for a coding agent, 3 for a chat
+    # the reports a request holds: 1 for a coding agent (the default), 3 for a chat
     # (tflspec's); a number changed by hand kept when the mode changes
-    size_auto <- 3
+    # (the first mode seen: its default the number put in by itself)
+    size_auto <- NULL
     shiny::observeEvent(input$mode, {
       d <- .ai_size_default(input$mode)
       now <- input$size
-      if (is.null(now) || is.na(now) || isTRUE(all.equal(as.numeric(now), size_auto))) {
-        if (!identical(d, size_auto)) shiny::updateNumericInput(session, "size", value = d)
+      same <- function(a, b) !is.null(b) && isTRUE(all.equal(as.numeric(a), b))
+      if (is.null(now) || is.na(now) || same(now, size_auto) ||
+          (is.null(size_auto) && same(now, d))) {
+        if (!same(now, d)) shiny::updateNumericInput(session, "size", value = d)
         size_auto <<- d
       }
     })
@@ -754,9 +794,21 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       d <- guarded(.ai_choose_dir(browse_start("adam", input$adam_dir)))
       if (length(d) == 1L && !is.na(d)) shiny::updateTextInput(session, "adam_dir", value = d)
     })
+    # (a workbook chosen from outside the study: copied into its docs/, the
+    # copy read -- .ai_book_into_docs(); a study not made yet: as it is)
+    into_docs <- function(f) {
+      d <- if (!is_new()) path() else {
+        id <- trimws(input$new_id %||% "")
+        if (is.null(.ai_new_study_problem(id))) .study_path(studies_root(), id)
+      }
+      out <- guarded(.ai_book_into_docs(f, d))
+      if (is.null(out)) return(f)
+      if (!identical(out, f)) notify(sprintf(t("Copied into the study's docs/: %s"), basename(out)))
+      out
+    }
     shiny::observeEvent(input$toc_browse, {
       f <- guarded(.ai_choose_file(browse_start("toc", input$toc_path)))
-      if (length(f) == 1L && !is.na(f)) shiny::updateTextInput(session, "toc_path", value = f)
+      if (length(f) == 1L && !is.na(f)) shiny::updateTextInput(session, "toc_path", value = into_docs(f))
     })
     # the workbook: the one given last, uploaded or its path typed
     toc_from <- shiny::reactiveVal("upload")
@@ -766,7 +818,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     })
     toc_src <- function() {
       f <- input$toc_file
-      p <- trimws(input$toc_path %||% "")
+      p <- gsub('^"|"$', "", trimws(input$toc_path %||% ""))
       up <- if (!is.null(f) && nrow(f)) list(path = f$datapath[1L], name = f$name[1L])
       typed <- if (nzchar(p)) list(path = p, name = basename(p))
       if (identical(toc_from(), "path")) typed %||% up else up %||% typed
@@ -794,6 +846,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     shiny::observeEvent(input$shells_browse, {
       f <- guarded(.ai_choose_files(browse_start("shells", input$shell_paths)))
       if (!length(f)) return()
+      f <- vapply(f, into_docs, "", USE.NAMES = FALSE)
       had <- trimws(input$shell_paths %||% "")
       shiny::updateTextAreaInput(session, "shell_paths",
                                  value = paste(c(if (nzchar(had)) had, f), collapse = "\n"))
@@ -833,14 +886,21 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     }
     read_with <- shiny::reactiveVal(NULL)
     read_size <- shiny::reactiveVal(NULL)
+    # (a sheet-first read, tflspec >= 0.0.24.9230: its requests group the
+    # shell sheets, not countable again from its TOC -- another size, read
+    # again)
+    sheet_first <- function(p) !is.null(p$toc$toc_id)
     stale <- shiny::reactive({
       p <- prepared()
-      !is.null(p) && isTRUE(p$dry_run) && !identical(read_with(), read_key())
+      !is.null(p) && isTRUE(p$dry_run) &&
+        (!identical(read_with(), read_key()) ||
+           (sheet_first(p) && !identical(size_now(), read_size())))
     })
     # the requests to write: the read's, counted again at the size now
     to_write <- shiny::reactive({
       p <- prepared()
-      if (is.null(p) || !isTRUE(p$dry_run) || identical(size_now(), read_size())) return(p$requests)
+      if (is.null(p) || !isTRUE(p$dry_run) || sheet_first(p) ||
+          identical(size_now(), read_size())) return(p$requests)
       .ai_dry_requests(p$toc, size_now())
     })
     args_of <- function(p) {
@@ -851,13 +911,14 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       size <- size_now()
       list(toc_sheet = nz(input$toc_sheet), sheets = if (length(input$sheets)) input$sheets,
            size = as.integer(size), language = nz(input$language),
-           workbook = input$workbook %||% "text", instructions = input$instructions %||% "once",
+           workbook = input$workbook %||% "text", instructions = if (isTRUE(input$instructions_each)) "each" else "once",
            max_chars = if (is.null(mc) || is.na(mc)) NULL else mc,
            datasets = if (!is.null(all) && length(ds) && !setequal(ds, all)) ds,
            max_levels = as.integer(input$max_levels %||% 15L),
-           mode = input$mode %||% "chat",
+           mode = input$mode %||% "agent",
            templates = !isFALSE(input$templates),
-           add = isTRUE(input$add) && !is_new())
+           add = isTRUE(input$add) && !is_new(),
+           sheet_roles = roles_now())
     }
     inputs_ok <- function() {
       msg <- .ai_toc_problem(toc_src()$path, t)
@@ -895,7 +956,11 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       s <- .ai_sheet_names(src$path, shl[vapply(shl, function(f) is.null(.ai_toc_problem(f)), TRUE)])
       if (nrow(s)) shiny::isolate(update_sheets(s$sheet, s$book, s$toc))
     })
-    shiny::observeEvent(input$read, {
+    # (Read and check, or the sheets' roles applied: read again)
+    read_again <- shiny::reactiveVal(0L)
+    read_now <- function() read_again(read_again() + 1L)
+    shiny::observeEvent(list(input$read, read_again()), ignoreInit = TRUE, {
+      if (is.null(input$read) && identical(read_again(), 0L)) return()
       if (!inputs_ok()) return()
       src <- toc_src()
       a <- args_of(NULL)
@@ -1040,14 +1105,18 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       had <- if (!is_new()) requests() else NULL
       shiny::div(
         class = "small mt-2",
-        if (isTRUE(p$dry_run)) sprintf(t("%d requests to write (%d reports)."), nrow(r), sum(r$n))
+        if (isTRUE(p$dry_run)) {
+          if (!is.null(p$counts)) sprintf(t("%d requests to write (%d shells, %d TOC items)."), nrow(r),
+                                           p$counts[["shells"]], p$counts[["toc_items"]])
+          else sprintf(t("%d requests to write (%d reports)."), nrow(r), sum(r$n))
+        }
         else sprintf(t("%d requests written; the longest %s characters."), nrow(r),
                      format(max(r$chars, 0L, na.rm = TRUE), big.mark = ",")),
         if (isTRUE(p$dry_run) && !is.null(had) && nrow(had) && !isTRUE(input$add)) shiny::span(
           class = "text-muted ms-1",
           sprintf(t("ai/requests holds %d already (written again; the answers kept)."), nrow(had))),
         if (isTRUE(p$dry_run) && isTRUE(input$add) && !is_new()) {
-          again <- .ai_already_asked(path(), p$toc$output_id)
+          again <- .ai_already_asked(path(), p$toc$toc_id %||% p$toc$output_id)
           if (nrow(again)) shiny::div(
             class = "text-warning",
             sprintf(t("Asked for already: %s. Write the requests will ask whether to write them again (overwrite)."),
@@ -1067,23 +1136,22 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       p <- prepared()
       shiny::req(p)
       tc <- p$toc
-      no <- tc$output_id[!tc$shell_found]
-      twice <- if (!is.null(tc$same_number)) tc$output_id[tc$same_number %in% TRUE]
+      id <- tc$toc_id %||% tc$output_id
+      no <- id[!tc$shell_found]
+      n <- p$counts
       shiny::tagList(
         if (!nrow(tc)) shiny::div(
           class = "alert alert-danger py-2 small",
           sprintf(t("No TOC was found: name its sheet in (toc_sheet). The sheets: %s"),
                   paste(p$sheets$sheet, collapse = ", "))),
-        shiny::p(class = "small mb-1", sprintf(t("%d reports, %d with a shell"), nrow(tc),
-                                               sum(tc$shell_found))),
+        shiny::p(class = "small mb-1",
+                 if (!is.null(n)) sprintf(t("%d shells, %d TOC items, %d of them with no shell"),
+                                          n[["shells"]], n[["toc_items"]], n[["no_shell"]])
+                 else sprintf(t("%d reports, %d with a shell"), nrow(tc), sum(tc$shell_found))),
         if (length(no)) shiny::div(
           class = "alert alert-warning py-2 small",
-          sprintf(t("%d reports with no shell (%s): add their sheets (sheets) on the left and read again."),
+          sprintf(t("%d TOC items with no shell (%s): their request says no shell. If their shell is a sheet read as something else, set its role on the Sheets tab and read again."),
                   length(no), paste(no, collapse = ", "))),
-        if (length(twice)) shiny::div(
-          class = "alert alert-warning py-2 small",
-          sprintf(t("The TOC names %s more than once: only its first row is read. Give each report a number of its own (a report's parts: .a, .b)."),
-                  paste(twice, collapse = ", "))),
         if (length(p$hint)) shiny::div(class = "alert alert-warning py-2 small",
                                        lapply(p$hint, shiny::div)))
     })
@@ -1091,14 +1159,42 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       p <- prepared()
       shiny::req(p, nrow(p$toc))
       tc <- p$toc
-      d <- data.frame(tc$output_id, tc$title, tc$type,
-                      ifelse(tc$shell_found, paste("\u2713", tc$shell), "\u2014"),
-                      .ai_parts_label(tc$output_id, tc$parts, t),
-                      ifelse(is.na(tc$request), "", tc$request),
-                      if (is.null(tc$book)) "" else ifelse(is.na(tc$book), "", tc$book),
+      col <- function(v) if (is.null(v)) rep("", nrow(tc)) else ifelse(is.na(v), "", v)
+      d <- data.frame(tc$toc_id %||% tc$output_id, col(tc$title), col(tc$type),
+                      ifelse(tc$shell_found, paste("\u2713", col(tc$shell)), "\u2014"),
+                      col(tc$request), col(tc$book), col(tc$info),
                       stringsAsFactors = FALSE)
-      names(d) <- c("output_id", t("title"), t("type"), "shell", t("In parts"), t("request"),
-                    t("Workbook"))
+      names(d) <- c(t("TOC item"), t("title"), t("type"), "shell", t("request"), t("Workbook"),
+                    t("Other information"))
+      dt <- DT::datatable(d, rownames = FALSE, selection = "none",
+                          options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
+      # (a TOC item with no shell: its shell cell in red)
+      DT::formatStyle(dt, "shell", backgroundColor = DT::styleEqual("\u2014", "#f8d7da"),
+                      color = DT::styleEqual("\u2014", "#842029"))
+    }, server = FALSE)
+    # the shells: a sheet each, the TOC items it was taken for
+    output$shells_head <- shiny::renderUI({
+      p <- prepared()
+      shiny::req(p, !is.null(p$shells))
+      g <- p$shells$sheet[p$shells$guessed %in% TRUE]
+      shiny::tagList(
+        shiny::p(class = "small mb-1",
+                 t("One request a shell sheet: the TOC items it holds go in it (candidates: the items the sheet was matched with, and why).")),
+        if (length(g)) shiny::div(
+          class = "alert alert-warning py-2 small",
+          sprintf(t("%d shells with no number and no TOC item of their own (%s): the AI is asked to say what they are."),
+                  length(g), paste(g, collapse = ", "))))
+    })
+    output$shells_table <- DT::renderDT({
+      p <- prepared()
+      shiny::req(p, !is.null(p$shells), nrow(p$shells))
+      sh <- p$shells
+      col <- function(v) if (is.null(v)) rep("", nrow(sh)) else ifelse(is.na(v), "", as.character(v))
+      d <- data.frame(col(sh$sheet), col(sh$request), col(sh$numbers_in_sheet), col(sh$title_in_sheet),
+                      ifelse(sh$guessed %in% TRUE, "?", ""), col(sh$candidates), col(sh$book),
+                      stringsAsFactors = FALSE)
+      names(d) <- c(t("sheet"), t("request"), t("Numbers in the sheet"), t("Title in the sheet"),
+                    t("No number"), t("Candidates"), t("Workbook"))
       DT::datatable(d, rownames = FALSE, selection = "none",
                     options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
     }, server = FALSE)
@@ -1124,6 +1220,39 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       DT::datatable(d, rownames = FALSE, selection = "none",
                     options = list(dom = "tp", pageLength = 50, ordering = FALSE, scrollX = TRUE))
     }, server = FALSE)
+    # the sheets' roles as read (toc / shell / other), changed here: each
+    # read after a change says every sheet's (tfl_ai_prepare(sheet_roles = ))
+    roles_set <- shiny::reactiveVal(NULL)
+    roles_now <- function() {
+      r <- roles_set()
+      if (is.null(r)) NULL else r
+    }
+    output$roles_ui <- shiny::renderUI({
+      p <- prepared()
+      shiny::req(p, nrow(p$sheets))
+      sh <- p$sheets
+      pick <- function(id, label, role) shiny::selectizeInput(
+        ns(id), label, choices = sh$sheet, selected = sh$sheet[sh$role %in% role], multiple = TRUE,
+        width = "100%")
+      shiny::div(
+        class = "small mb-2",
+        shiny::p(class = "mb-1", t("What each sheet is read as. Move a sheet, then Apply and read again: a TOC sheet read as a shell (a topline TOC), a shell read as other (its number not in the TOC).")),
+        shiny::div(class = "d-flex flex-wrap gap-2",
+                   shiny::div(style = "flex: 1 1 12rem;", pick("role_toc", t("TOC sheets"), "toc")),
+                   shiny::div(style = "flex: 1 1 12rem;", pick("role_other", t("Other sheets (not shells)"), "other"))),
+        shiny::p(class = "text-muted mb-1", t("The rest are shells.")),
+        .btn(ns("roles_apply"), t("Apply and read again"), class = "btn-sm btn-outline-primary"))
+    })
+    shiny::observeEvent(input$roles_apply, {
+      p <- prepared()
+      shiny::req(p)
+      sh <- p$sheets$sheet
+      r <- stats::setNames(rep("shell", length(sh)), sh)
+      r[intersect(input$role_other, sh)] <- "other"
+      r[intersect(input$role_toc, sh)] <- "toc"
+      roles_set(r)
+      read_now()
+    })
     output$sheets_table <- DT::renderDT({
       p <- prepared()
       shiny::req(p)
