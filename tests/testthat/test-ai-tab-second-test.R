@@ -20,9 +20,15 @@ test_that("the inputs: one chooser for the workbook, short labels, a chat's size
   op <- options(tflplanner.file_dialog = TRUE)
   on.exit(options(op))
   h <- as.character(ai_ui("ai"))
-  # (with the computer's dialog: no upload, the path and Browse...)
-  if (.ai_dialog_ok()) expect_false(grepl("ai-toc_file", h, fixed = TRUE))
-  expect_match(h, "copied into the study's docs/ when it is chosen with Browse...", fixed = TRUE)
+  # (with the computer's dialog: no upload, the path and Browse...; with
+  # none -- a Mac with no Tcl/Tk, a server -- the upload and its help)
+  if (.ai_dialog_ok()) {
+    expect_false(grepl("ai-toc_file", h, fixed = TRUE))
+    expect_match(h, "copied into the study's docs/ when it is chosen with Browse...", fixed = TRUE)
+  } else {
+    expect_match(h, "ai-toc_file", fixed = TRUE)
+    expect_match(h, "dialog is the browser", fixed = TRUE)
+  }
   expect_match(h, "Sheets for every request", fixed = TRUE)
   expect_match(h, "Several can be chosen.", fixed = TRUE)
   expect_match(h, "Read and check", fixed = TRUE)
