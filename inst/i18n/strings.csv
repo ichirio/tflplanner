@@ -3947,7 +3947,7 @@ Data (the report's data: steps),データ（帳票の data: の手順）
 Steps the fields cannot say: kept as they are; change them in the report's YAML.,欄で表せない手順です。そのまま保ちます。変えるときは帳票の YAML で。
 "The report says its data here: the dataset and, for a dataset of parameters, the parameter.",帳票のデータをここで指定します: データセットと、パラメータを持つデータセットならそのパラメータ。
 Dataset (read),データセット（read）
-Parameter (param: PARAMCD),パラメータ（param: PARAMCD）
+Parameter (param),パラメータ（param）
 Records kept (filter: an R condition),残すレコード（filter: R の条件）
 Analysis set: none (the report has no population).,解析対象集団: なし（帳票に population がありません）。
 "Analysis set: %s (%s: %s), its subjects kept (join).",解析対象集団: %s（%s: %s）。その被験者だけを残します（join）。
@@ -3956,3 +3956,6 @@ The steps written,書き込まれた手順
 Choose the dataset.,データセットを選んでください。
 To the report's data: steps:,帳票の data: の手順へ:
 %s takes the report's data: fill in param (the PARAMCD) first.,%s は帳票のデータを使います。先に param（PARAMCD）を入れてください。
+(not defined in the study),（試験で未定義）
+Analysis set: the report's own join (%s: %s).,解析対象集団: 帳票の join（%s: %s）。
+"the curves' variable (survfit2(~ by), the colours)",曲線を分ける変数。投与群など（例: TRT01P）。survfit2(~ by)・色

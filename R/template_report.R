@@ -270,10 +270,16 @@
 }
 
 # The required arguments still empty
-.tpl_missing <- function(name, args) {
+.tpl_missing <- function(name, args, study = NULL) {
   prm <- .tpl_params(name)
   req <- names(prm)[vapply(prm, function(x) isTRUE(x$required), NA)]
-  req[!vapply(req, function(a) length(args[[a]]) > 0L && any(nzchar(as.character(args[[a]]))), NA)]
+  # (a required argument the study gives -- its treatment for `by` -- is
+  # not empty: tflspec fills it)
+  given <- function(a) {
+    v <- args[[a]] %||% if (!is.null(study)) .tpl_study_value(study, prm[[a]])
+    length(v) > 0L && any(nzchar(as.character(v)))
+  }
+  req[!vapply(req, given, NA)]
 }
 
 # A template's parameters the card shows: not those it takes from the
@@ -312,14 +318,16 @@
 }
 
 # The `data:` steps the card's fields write: the dataset read; the
-# analysis set's subjects kept when its dataset is another (`pop`: the
+# analysis set's subjects kept (a semi join on its dataset; `pop`: the
 # population's row, its dataset and where); the parameter; the filter
 # (NULL: no dataset, no steps)
 .tpl_steps_from <- function(dataset, pop = NULL, param = "", filter = "") {
   has <- function(x) length(x) && !is.na(x[1L]) && nzchar(trimws(x[1L]))
   if (!has(dataset)) return(NULL)
   steps <- list(list(step = "read", dataset = toupper(trimws(dataset))))
-  if (!is.null(pop) && has(pop$dataset) && !identical(toupper(pop$dataset), toupper(trimws(dataset)))) {
+  # (the analysis set's dataset itself read: the same semi join keeps its
+  # subjects -- its condition never dropped)
+  if (!is.null(pop) && has(pop$dataset)) {
     steps[[length(steps) + 1L]] <- c(list(step = "join", dataset = toupper(pop$dataset)),
                                      if (has(pop$where)) list(where = trimws(pop$where)),
                                      list(by = "USUBJID", how = "semi"))
@@ -329,9 +337,26 @@
   steps
 }
 
+# The analysis-set flags of a subject-level dataset no population of the
+# study says (*FL, its values Y / N): offered beside the study's
+# populations, as a join on that flag
+.tpl_flags_undefined <- function(adsl, pops = NULL) {
+  if (!is.data.frame(adsl)) return(character())
+  fl <- grep("FL$", names(adsl), value = TRUE)
+  fl <- fl[vapply(fl, function(v) {
+    x <- unique(stats::na.omit(as.character(adsl[[v]])))
+    length(x) > 0L && all(x %in% c("Y", "N", ""))
+  }, NA)]
+  said <- paste(as.character(pops$where %||% character()), collapse = " ")
+  fl[!vapply(fl, function(v) grepl(paste0("\\b", v, "\\b"), said), NA)]
+}
+
 # Whether the report's join is no longer its analysis set's (the
 # population changed, or its definition): Apply writes it again
 .tpl_join_stale <- function(f, pop, dataset = f$dataset) {
+  # (no population: a join is the report's own -- a flag the study does not
+  # define -- and stays)
+  if (is.null(pop)) return(FALSE)
   want <- .tpl_steps_from(dataset, pop)
   wj <- Filter(function(s) identical(s$step, "join"), want %||% list())
   if (!f$join) return(length(wj) > 0L)
@@ -359,6 +384,8 @@
   if (is.na(at) || !grepl(".", at, fixed = TRUE)) return(NULL)
   fn <- sub("\\..*$", "", at)
   arg <- sub("^[^.]*\\.", "", at)
+  # (the study's settings: study.yml `settings:`, the treatment ...)
+  if (identical(fn, "settings")) return(study$study$settings[[arg]])
   for (it in study$defaults$content %||% list()) {
     if (identical(it$fn, fn) && !is.null(it$args[[arg]])) return(it$args[[arg]])
   }
