@@ -3943,3 +3943,9 @@ The value's name in the program (an R name; not a dataset's or pop_<population>)
 R that makes the value (the datasets and pop_<population> in reach).,値を作る R（データセットと pop_<集団> を使えます）。
 "The alignment of the columns that set none of their own (listing_spec(align = )): left, center or right; blank: the type's.",各列に個別の指定がないときの揃え（align）（listing_spec(align = )）。left・center・right のいずれか。空欄 = 種類の既定。
 "The hidden record column (listing_spec(record = )): FALSE for none, a name for it; blank: the standard one.",非表示のレコード列（record）（listing_spec(record = )）。FALSE = なし、文字列 = その列名。空欄 = 標準のもの。
+"ARD: condition-defined groups (CDISC ARS grouping factors), one row a level of a group. An analysis names groups in `groups` and runs once in each level; its rows say the group in group2 and the level in group2_level, in this sheet's order.",ARD の「群（groups）」: 条件で決める群（CDISC ARS の grouping factor）。1 行 = 群の 1 つの水準。解析は `groups` で群を指定し、各水準ごとに 1 回実行する。ARD の行には、群を group2、水準を group2_level に、このシートの順で入れる。
+"The group's name, used by analyses (its levels share it).",群 ID: 群の名前。解析（analyses）がこの名前で群を指定する（同じ群の水準は同じ値を共有する）。
+The group as the ARD's group2 says it; blank: the group_id.,群のラベル: ARD の group2 に表示する群の名前。空欄 = group_id。
+The level as group2_level says it; blank: the whole group (All).,水準: ARD の group2_level に表示する水準の名前。空欄 = 群全体（All）。
+An R condition on the analysis's data choosing the level's records (levels may overlap); blank: every record.,条件（where）: その水準に入れるレコードを解析のデータから選ぶ R の条件（水準どうしが重なってもよい）。空欄 = 全レコード。
+"Groups of the groups sheet the analysis runs in, each level once (group2 / group2_level), | between them; blank: none.",群（groups）: 解析を実行する群（群シートの group_id）。各水準ごとに 1 回ずつ実行し（group2 / group2_level）、複数ある場合は | で区切る。空欄 = 群なし。
