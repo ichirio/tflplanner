@@ -12401,16 +12401,90 @@ app_server <- function(input, output, session, start) {
     tpl_card_drawn(id)
     card
   }
+  # A template whose data stage is the report's (a KM type): the report's
+  # `data:` steps -- the dataset, its analysis set's subjects (the report's
+  # population), the parameter, a filter -- written by Apply.  Steps the
+  # fields cannot say are kept and shown as they are.
+  tpl_data_block <- function(id, steps) {
+    f <- .tpl_steps_fields(steps)
+    pop <- tpl_data_pop(id)
+    d <- tpl_data()
+    ds_all <- sort(unique(c(names(d), toupper(stats::na.omit(rv$p$ard$datasets$dataset)))))
+    pcd <- d[[toupper(f$dataset)]]$PARAMCD
+    pcd <- if (is.null(pcd)) character() else sort(unique(as.character(stats::na.omit(pcd))))
+    head <- shiny::div(class = "fw-semibold small mb-1", t("Data (the report's data: steps)"))
+    if (!f$fields) {
+      return(shiny::div(
+        class = "border rounded p-2 mb-2", head,
+        shiny::p(class = "small text-muted mb-1",
+                 t("Steps the fields cannot say: kept as they are; change them in the report's YAML.")),
+        shiny::tags$pre(class = "small mb-0", yaml::as.yaml(list(data = list(steps = steps))))))
+    }
+    shiny::div(
+      class = "border rounded p-2 mb-2", head,
+      if (!nzchar(f$dataset)) shiny::div(
+        class = "alert alert-warning py-1 small",
+        t("The report says its data here: the dataset and, for a dataset of parameters, the parameter.")),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2",
+        shiny::selectizeInput("tpl_data_ds", t("Dataset (read)"), choices = c("", ds_all),
+                              selected = f$dataset, width = "160px",
+                              options = list(create = TRUE)),
+        shiny::selectizeInput("tpl_data_param", t("Parameter (param: PARAMCD)"),
+                              choices = unique(c("", f$param, pcd)), selected = f$param, width = "180px",
+                              options = list(create = TRUE)),
+        shiny::textInput("tpl_data_filter", t("Records kept (filter: an R condition)"), f$filter,
+                         width = "260px")),
+      shiny::div(class = "small text-muted mb-1",
+                 if (is.null(pop)) t("Analysis set: none (the report has no population).") else
+                   sprintf(t("Analysis set: %s (%s: %s), its subjects kept (join)."),
+                           pop$population_id, pop$dataset, pop$where %||% "")),
+      .btn("tpl_data_apply", t("Apply"), class = "btn-sm btn-outline-primary"))
+  }
+  tpl_data_pop <- function(id) {
+    pid <- rv$p$spec$outputs[[id]]$population
+    pops <- rv$p$ard$populations
+    if (is.null(pid) || is.null(pops) || !nrow(pops)) return(NULL)
+    k <- match(as.character(pid)[1L], pops$population_id)
+    if (is.na(k)) return(NULL)
+    as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)), drop = FALSE])
+  }
+  shiny::observeEvent(input$tpl_data_ds, {
+    # (the parameter's choices: the dataset's PARAMCD values)
+    pcd <- tpl_data()[[toupper(input$tpl_data_ds %||% "")]]$PARAMCD
+    pcd <- if (is.null(pcd)) character() else sort(unique(as.character(stats::na.omit(pcd))))
+    shiny::updateSelectizeInput(session, "tpl_data_param", choices = unique(c("", input$tpl_data_param, pcd)),
+                                selected = input$tpl_data_param)
+  }, ignoreInit = TRUE)
+  shiny::observeEvent(input$tpl_data_apply, {
+    id <- current()
+    if (is.null(id) || is.null(.tpl_of(rv$p, id))) return()
+    o <- rv$p$spec$outputs[[id]]
+    steps <- .tpl_steps_from(input$tpl_data_ds, tpl_data_pop(id), input$tpl_data_param %||% "",
+                             input$tpl_data_filter %||% "")
+    if (is.null(steps)) o$data$steps <- NULL else o$data$steps <- steps
+    if (!length(o$data)) o$data <- NULL
+    p2 <- guarded(.spec_set_output(rv$p, id, o))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$bver <- rv$bver + 1L
+    rv$status_ver <- rv$status_ver + 1L
+    tpl_ver(tpl_ver() + 1L)
+    bump()
+  })
   tpl_card_draw <- function(id) {
     tpl_ver()
     rv$ver
     p <- shiny::isolate(rv$p)
     tp <- .tpl_of(p, id)
     if (is.null(tp)) return(NULL)
-    prm <- .tpl_params(tp$name)
+    prm_all <- .tpl_params(tp$name)
+    own_data <- .tpl_own_data(prm_all)
+    prm <- .tpl_shown(prm_all)
     tpl_observe(tp$name, prm)
     args <- tp$args
-    dataset <- args$data %||% prm$data$default
+    steps <- p$spec$outputs[[id]]$data$steps
+    dataset <- if (own_data) .tpl_steps_fields(steps)$dataset else args$data %||% prm$data$default
     up <- names(prm)[vapply(prm, function(x) isTRUE(x$required) || x$name %in% names(args), NA)]
     low <- setdiff(names(prm), up)
     miss <- .tpl_missing(tp$name, args)
@@ -12490,6 +12564,7 @@ app_server <- function(input, output, session, start) {
           class = "alert alert-danger py-1 small",
           sprintf(t("Required arguments are empty: %s. The preview waits for them."),
                   paste(miss, collapse = ", "))),
+        if (own_data) tpl_data_block(id, steps),
         lapply(up, row, upper = TRUE),
         shiny::tags$details(
           class = "mt-1", open = if (open) NA,

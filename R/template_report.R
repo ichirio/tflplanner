@@ -276,6 +276,56 @@
   req[!vapply(req, function(a) length(args[[a]]) > 0L && any(nzchar(as.character(args[[a]]))), NA)]
 }
 
+# A template's parameters the card shows: not those it takes from the
+# study standard (`hidden`; a KM type's data stage, its look)
+.tpl_shown <- function(prm) Filter(function(x) !isTRUE(x$hidden), prm)
+
+# Whether the report says the template's data in its own `data:` steps
+# (the template hides its data stage: km_survival, km_cumulative)
+.tpl_own_data <- function(prm) {
+  any(vapply(prm, function(x) isTRUE(x$hidden) && identical(x$stage, "data"), NA))
+}
+
+# A report's `data:` steps as the card's fields say them: the dataset
+# read, the analysis set's join (a semi join, as the report's population
+# says it), the parameter, a filter.  Steps of another shape (a derive, a
+# second read ...): `fields = FALSE`, kept as they are.
+.tpl_steps_fields <- function(steps) {
+  out <- list(fields = TRUE, dataset = "", join = FALSE, param = "", filter = "")
+  steps <- steps %||% list()
+  if (!length(steps)) return(out)
+  kind <- vapply(steps, function(s) if (is.list(s)) as.character(s$step %||% "")[1L] else "", "")
+  ok <- kind[1L] == "read" && all(kind[-1L] %in% c("join", "param", "filter")) &&
+    !anyDuplicated(kind) && identical(kind, kind[order(match(kind, c("read", "join", "param", "filter")))])
+  j <- steps[kind == "join"]
+  if (length(j) && !identical(j[[1L]]$how, "semi")) ok <- FALSE
+  if (!ok) return(utils::modifyList(out, list(fields = FALSE)))
+  one <- function(k, f) if (any(kind == k)) as.character(steps[[which(kind == k)]][[f]] %||% "")[1L] else ""
+  out$dataset <- one("read", "dataset")
+  out$join <- any(kind == "join")
+  out$param <- one("param", "value")
+  out$filter <- one("filter", "expr")
+  out
+}
+
+# The `data:` steps the card's fields write: the dataset read; the
+# analysis set's subjects kept when its dataset is another (`pop`: the
+# population's row, its dataset and where); the parameter; the filter
+# (NULL: no dataset, no steps)
+.tpl_steps_from <- function(dataset, pop = NULL, param = "", filter = "") {
+  has <- function(x) length(x) && !is.na(x[1L]) && nzchar(trimws(x[1L]))
+  if (!has(dataset)) return(NULL)
+  steps <- list(list(step = "read", dataset = toupper(trimws(dataset))))
+  if (!is.null(pop) && has(pop$dataset) && !identical(toupper(pop$dataset), toupper(trimws(dataset)))) {
+    steps[[length(steps) + 1L]] <- c(list(step = "join", dataset = toupper(pop$dataset)),
+                                     if (has(pop$where)) list(where = trimws(pop$where)),
+                                     list(by = "USUBJID", how = "semi"))
+  }
+  if (has(param)) steps[[length(steps) + 1L]] <- list(step = "param", value = trimws(param))
+  if (has(filter)) steps[[length(steps) + 1L]] <- list(step = "filter", expr = trimws(filter))
+  steps
+}
+
 # A report's file with its template's arguments set
 .tpl_output <- function(p, output_id, args, name = NULL) {
   o <- p$spec$outputs[[output_id]]
