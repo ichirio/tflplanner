@@ -62,7 +62,8 @@
     ard_import = "ARDs made elsewhere, taken in (imports.csv lists them)",
     toc_import = "TOCs taken in (imports.csv lists them; last.json: what the last one said)",
     runs = "Official runs: one run folder each (logs, results, code)",
-    logs_preview = "What a report program printed in its last preview")
+    logs_preview = "What a report program printed in its last preview",
+    docs = "Documents for reference: SAP, TOC / SHELL workbooks")
   out <- unname(notes[nm])
   has <- !is.na(out)
   out[has] <- vapply(out[has], function(x) t(x), character(1))
@@ -6221,10 +6222,10 @@ app_server <- function(input, output, session, start) {
                                   common))
     adata_pick(paste0("auto:", v))
     adata_edit(list(old = NULL, name = v, note = note, reads = on$analysis_id))
-    # the name the program gives it now -- unless that is an analysis set's
-    # own (pop_saf) or an analysis data has it
+    # the name the program gives it now -- unless that is the program's own
+    # (adsl_sub) or an analysis data has it
     nm <- .an_data_name(sp$dataset, sp$pop, po)
-    if (startsWith(nm, "pop_") || nm %in% .adata_rows(rv$p, ard_target())$data_id ||
+    if (.an_program_name(nm) || nm %in% .adata_rows(rv$p, ard_target())$data_id ||
         nm %in% tolower(rv$p$ard$datasets$dataset)) {
       nm <- .adata_suggest(rv$p, ard_target(), from, sp$pop, common)
     }

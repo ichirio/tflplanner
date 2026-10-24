@@ -326,7 +326,9 @@
   pops <- x$ard$populations$population_id
   auto <- unlist(lapply(pops, function(p) vapply(ds, function(d)
     .an_data_name(d, p, x$ard$populations), "")))
-  c(rn(ds), paste0("pop_", rn(pops)), auto,
+  # (a report's second of a dataset: _sub2 ...)
+  subs <- as.vector(outer(paste0(rn(ds), "_sub"), c("", 2:9), paste0))
+  c(rn(ds), paste0("pop_", rn(pops)), auto, subs,
     .adata_rows(x, output_id)$data_id, "data", "population", "ard", "ards", "status")
 }
 
