@@ -4225,3 +4225,7 @@ An R condition on the analysis's data choosing the level's records (levels may o
 "Groups of the groups sheet the analysis runs in, each level once (group2 / group2_level), | between them; blank: none.",群（groups）: 解析を実行する群（群シートの group_id）。各水準ごとに 1 回ずつ実行し（group2 / group2_level）、複数ある場合は | で区切る。空欄 = 群なし。
 Subset,サブセット
 "an R condition on the records, e.g. AVAL > 0",レコードに対する R の条件（例: AVAL > 0）
+"the status variable(s), in order",状態の変数（複数可、順に）
+the status analysis' id in the ARD,ARD での状態の解析の ID
+the status analysis' label in the ARD,ARD での状態の解析のラベル
+"each variable's heading; given by name, merged",各変数の見出し。名前で指定し、既定とまとめる
