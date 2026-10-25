@@ -159,6 +159,15 @@ set_fig_design <- function(x, output_id, design) {
     paste0("# the data: ", paste(reads, collapse = ", "), " (data catalog)"),
     unlist(lapply(reads, function(d) .read_dataset_lines(x, d))),
     "")
+  # the report's analysis data its reads name ({step: read, data: <id>}):
+  # made first, as its ARD definition says (tflspec's data part)
+  adata <- attr(code, "data") %||% character()
+  if (length(adata)) {
+    read <- c(read, "# the report's analysis data (its ARD definition)",
+              .ard_spec_code(structure(x$ard, class = "tfl_ard_spec"),
+                             output_id = output_id, part = "data", data = adata),
+              "")
+  }
   # after the section's line and the code lists (when there are)
   at <- 1L
   if (length(lines) > 1L && startsWith(lines[[2L]], "# ---- code lists")) {
