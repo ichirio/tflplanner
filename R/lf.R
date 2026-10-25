@@ -87,6 +87,30 @@ set_lf_rows <- function(x, sheet, output_id, rows) {
   x
 }
 
+# How many of a listing's settings the listing sheets' columns cannot say:
+# its items in content_more and its columns' other arguments (more), kept as
+# YAML (tflspec >= 0.0.24.9226) and written back as they are
+.lf_more_count <- function(x, output_id) {
+  n_yaml <- function(v) {
+    v <- v[!is.na(v) & nzchar(trimws(v))]
+    sum(vapply(v, function(s) {
+      y <- tryCatch(yaml::yaml.load(s), error = function(e) NULL)
+      if (is.null(y)) 1L else length(y)
+    }, 1L))
+  }
+  l <- lf_rows(x, "listings", output_id)
+  cl <- lf_rows(x, "listing_cols", output_id)
+  c(items = if (!is.null(l$content_more)) n_yaml(l$content_more) else 0L,
+    columns = if (!is.null(cl$more)) sum(!is.na(cl$more) & nzchar(trimws(cl$more))) else 0L)
+}
+.lf_more_note <- function(x, output_id, t = identity) {
+  n <- .lf_more_count(x, output_id)
+  if (!sum(n)) return(NULL)
+  shiny::div(class = "small text-muted mb-1",
+             sprintf(t("%d settings the sheet cannot say (kept): %d of the listing's (content_more), %d of its columns (more). Edit them in the report's YAML."),
+                     sum(n), n[["items"]], n[["columns"]]))
+}
+
 #' @rdname lf_rows
 #' @export
 listing_types <- function() company_standards()$listing_types
