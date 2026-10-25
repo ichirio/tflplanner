@@ -4229,3 +4229,5 @@ Subset,サブセット
 the status analysis' id in the ARD,ARD での状態の解析の ID
 the status analysis' label in the ARD,ARD での状態の解析のラベル
 "each variable's heading; given by name, merged",各変数の見出し。名前で指定し、既定とまとめる
+Font family of the table; blank: the document's (Courier New).,表のフォント。空欄 = 文書のフォント（Courier New）。
+"The document's font (its font table); the study's row (blank output_id) is the company's, written once in the setup code; blank: rtfreporter's option (Courier New). A family per script slot: latin = Times New Roman | east_asian = MS Mincho (rtfreporter's Fonts per script).",文書のフォント（フォント表）。試験の行（output_id が空欄）は会社のもので、setup のコードに 1 回だけ書きます。空欄 = rtfreporter のオプション（Courier New）。文字の種類ごとのフォントは latin = Times New Roman | east_asian = MS Mincho（rtfreporter の Fonts per script）。
