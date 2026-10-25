@@ -30,6 +30,17 @@
 .step_labels_of <- list(figure = c(ard = "1 Data", content = "2 Figure"))
 
 .type_labels <- c(table = "Table", listing = "Listing", figure = "Figure")
+# a new report's ID begins with its kind's prefix (the Add dialog)
+.id_prefix <- c(table = "T-", listing = "L-", figure = "F-")
+# the kinds in the Add dialog: tables, figures, listings (TFL)
+.tfl_order <- c("table", "figure", "listing")
+# the ID typed after the prefix (typed with it already: not twice)
+.id_with_prefix <- function(id, kind) {
+  id <- trimws(id %||% "")
+  pre <- .id_prefix[kind %||% ""]
+  if (!nzchar(id) || is.na(pre) || startsWith(toupper(id), toupper(pre))) return(id)
+  paste0(pre, id)
+}
 # one line on each kind, where a report's kind is chosen
 .type_notes <- list(
   table = "Table: made from the ARD and the table definition.",
@@ -11916,16 +11927,28 @@ app_server <- function(input, output, session, start) {
   })
 
   ask_id <- function(title, button, value = "", type = FALSE) {
+    # (a new report: its type first, then its ID after the type's prefix,
+    # T- / F- / L-: .id_prefix)
+    id_ui <- if (!type) shiny::textInput("modal_id", "output_id", value = value) else shiny::div(
+      class = "form-group shiny-input-container",
+      shiny::tags$label(class = "control-label", `for` = "modal_id", "output_id"),
+      shiny::div(class = "input-group",
+                 shiny::span(class = "input-group-text", id = "modal_id_prefix", .id_prefix[["table"]]),
+                 shiny::tags$input(id = "modal_id", type = "text", class = "shiny-input-text form-control", value = value)),
+      shiny::tags$script(shiny::HTML(sprintf(
+        "$(document).on('change', 'input[name=modal_type]', function() {
+           var p = %s; $('#modal_id_prefix').text(p[this.value] || ''); });",
+        jsonlite::toJSON(as.list(.id_prefix), auto_unbox = TRUE)))))
     shiny::showModal(shiny::modalDialog(
       title = title,
-      shiny::textInput("modal_id", "output_id", value = value),
       if (type) shiny::radioButtons(
         "modal_type", t("Type"),
-        stats::setNames(report_types(), t(unname(.type_labels[report_types()]))),
+        stats::setNames(.tfl_order, t(unname(.type_labels[.tfl_order]))),
         inline = TRUE),
       if (type) lapply(report_types(), function(k) shiny::conditionalPanel(
         sprintf("input.modal_type == '%s'", k),
         shiny::p(class = "small text-muted mt-n2", t(.type_notes[[k]])))),
+      id_ui,
       # how it is made: from one of tflspec's templates (its arguments
       # only), or the code SPEC as before (R/template_report.R)
       if (type) shiny::radioButtons(
@@ -12004,7 +12027,7 @@ app_server <- function(input, output, session, start) {
     }
   }
   shiny::observeEvent(input$add_ok, {
-    id <- trimws(input$modal_id)
+    id <- .id_with_prefix(input$modal_id, input$modal_type)
     # (a new report until the study is saved: the usual cards, empty -- #440)
     bnew$ids <- unique(c(bnew$ids, id))
     d <- trimws(input$modal_desc)
@@ -12035,10 +12058,15 @@ app_server <- function(input, output, session, start) {
   # -- template reports (R/template_report.R, #440) ---------------------------
   tpl_data <- function() .tpl_data_cols(rv$study$path)
   tpl_all_cols <- function() unique(unlist(lapply(tpl_data(), names)))
+  # an argument's heading: "meaning (name)", its doc in the (i)
+  # (.tpl_arg_labels; the doc itself when it has none)
   tpl_label <- function(prm) {
     doc <- prm$doc %||% ""
-    lab <- if (nzchar(doc)) paste0(t(doc), " (", prm$name, ")") else prm$name
-    if (isTRUE(prm$required)) shiny::span(lab, shiny::span(class = "text-danger", " *")) else lab
+    short <- if (doc %in% names(.tpl_doc_labels)) .tpl_doc_labels[[doc]] else .tpl_arg_labels[prm$name]
+    head <- if (!is.na(short)) t(short) else if (nzchar(doc)) t(doc) else ""
+    lab <- if (nzchar(head)) sprintf(t("%s (%s)"), head, prm$name) else prm$name
+    shiny::span(lab, if (isTRUE(prm$required)) shiny::span(class = "text-danger", " *"),
+                if (!is.na(short) && nzchar(doc)) help_tip(t(doc)))
   }
   # the input of an argument, by its type (.tpl_type(): tflspec's
   # tfl_param(type = ), guessed only when it declares none).  `params`,
@@ -12143,30 +12171,102 @@ app_server <- function(input, output, session, start) {
             selected = tp$name[1L], width = "100%",
             options = list(searchField = list("label", "value"))),
           lapply(tp$name, function(nm) {
-            prm <- .tpl_params(nm)
+            prm_all <- .tpl_params(nm)
+            prm <- .tpl_shown(prm_all)
             req_p <- Filter(function(x) isTRUE(x$required), prm)
             shiny::conditionalPanel(
               sprintf("input.modal_type == '%s' && input['%s'] == '%s'", kind, tpl_input(kind), nm),
+              if (.tpl_own_data(prm_all)) tpl_modal_data_ui(nm),
               if (!length(req_p)) {
                 shiny::p(class = "small text-muted",
                          t("No argument is required: every one has its default."))
               } else shiny::div(
                 class = "border rounded p-2 mb-2",
                 shiny::h6(t("Required arguments")),
-                lapply(req_p, function(x) tpl_widget(tpl_arg_id(nm, x$name), x, NULL,
+                # (the study's value first: its treatment for `by`)
+                lapply(req_p, function(x) tpl_widget(tpl_arg_id(nm, x$name), x,
+                                                     .tpl_study_value(rv$p$spec$study, x),
                                                      dataset = prm$data$default, params = prm))))
           })))
     })
   }
+  # a template whose data stage is the report's (a KM type): the report's
+  # data asked in the dialog -- the dataset, its parameter, the analysis
+  # set -- written as its `data:` steps
+  tpl_modal_data_ui <- function(nm) {
+    d <- tpl_data()
+    ds_all <- sort(unique(c(names(d), toupper(stats::na.omit(rv$p$ard$datasets$dataset)))))
+    first <- if ("ADTTE" %in% ds_all) "ADTTE" else ""
+    pid <- tpl_arg_id(nm, ".data_param")
+    did <- tpl_arg_id(nm, ".data_ds")
+    if (is.null(tpl_obs[[did]])) {
+      tpl_obs[[did]] <- TRUE
+      shiny::observeEvent(input[[did]], {
+        pcd <- tpl_data()[[toupper(input[[did]] %||% "")]]$PARAMCD
+        pcd <- if (is.null(pcd)) character() else sort(unique(as.character(stats::na.omit(pcd))))
+        shiny::updateSelectizeInput(session, pid, choices = c("", pcd), selected = "")
+      }, ignoreInit = TRUE)
+    }
+    pcd <- d[[first]]$PARAMCD
+    pcd <- if (is.null(pcd)) character() else sort(unique(as.character(stats::na.omit(pcd))))
+    shiny::div(
+      class = "border rounded p-2 mb-2",
+      shiny::h6(t("Data (the report's data: steps)")),
+      shiny::div(
+        class = "d-flex flex-wrap gap-2",
+        shiny::div(style = "flex: 1 1 140px",
+                   shiny::selectizeInput(did, t("Dataset (read)"), c("", ds_all), selected = first,
+                                         width = "100%", options = list(create = TRUE))),
+        shiny::div(style = "flex: 1 1 140px",
+                   shiny::selectizeInput(pid, t("Parameter (param)"), c("", pcd),
+                                         width = "100%", options = list(create = TRUE))),
+        shiny::div(style = "flex: 1 1 140px",
+                   shiny::selectInput(tpl_arg_id(nm, ".data_pop"), t("Analysis set"),
+                                      tpl_pop_choices(), width = "100%"))))
+  }
+  # the dialog's data as `data:` steps and the population (NULL: not a
+  # template of the report's data; `missing`: what is still to say)
+  tpl_modal_data <- function(nm) {
+    if (!.tpl_own_data(.tpl_params(nm))) return(NULL)
+    ds <- toupper(trimws(input[[tpl_arg_id(nm, ".data_ds")]] %||% ""))
+    par <- trimws(input[[tpl_arg_id(nm, ".data_param")]] %||% "")
+    pid <- input[[tpl_arg_id(nm, ".data_pop")]] %||% ""
+    if (!nzchar(ds)) return(structure(list(), missing = t("Dataset (read)")))
+    if (ds != "ADSL" && !nzchar(par)) return(structure(list(), missing = t("Parameter (param)")))
+    # (a flag the study does not define: the report's own join on it, no
+    # population)
+    if (startsWith(pid, "flag:")) {
+      fl <- sub("^flag:", "", pid)
+      pop <- list(population_id = NA_character_, dataset = "ADSL", where = sprintf("%s == \"Y\"", fl))
+      return(list(steps = .tpl_steps_from(ds, pop, par), population = NULL))
+    }
+    pops <- rv$p$ard$populations
+    k <- if (!is.null(pops) && nzchar(pid)) match(pid, pops$population_id) else NA
+    pop <- if (!is.na(k)) as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)),
+                                       drop = FALSE])
+    list(steps = .tpl_steps_from(ds, pop, par), population = if (nzchar(pid)) pid)
+  }
+  # the study's populations, then ADSL's Y/N flags none of them says
+  # ("flag:<variable>", marked: not defined in the study)
+  tpl_pop_choices <- function() {
+    fl <- .tpl_flags_undefined(tpl_data()[["ADSL"]], rv$p$ard$populations)
+    c(pop_choices(), stats::setNames(paste0("flag:", fl),
+                                     sprintf("%s == \"Y\" %s", fl, t("(not defined in the study)"))))
+  }
   # the required arguments the dialog has (NULL: one is empty)
   tpl_modal_args <- function(nm) {
     args <- list()
-    for (x in .tpl_params(nm)) {
+    for (x in .tpl_shown(.tpl_params(nm))) {
       if (!isTRUE(x$required)) next
       v <- .tpl_value(input[[tpl_arg_id(nm, x$name)]], .tpl_type(x), x)
       if (is.null(v)) return(structure(list(), missing = x$name))
+      # (the study's own value, as prefilled: left to the study)
+      sv <- .tpl_study_value(rv$p$spec$study, x)
+      if (!is.null(sv) && identical(as.character(unlist(v)), as.character(unlist(sv)))) next
       args[[x$name]] <- v
     }
+    dat <- tpl_modal_data(nm)
+    if (!is.null(attr(dat, "missing"))) return(structure(list(), missing = attr(dat, "missing")))
     args
   }
   # Create: not while a required argument is empty
@@ -12229,7 +12329,7 @@ app_server <- function(input, output, session, start) {
   shiny::observeEvent(tpl_autoprev_go(), {
     id <- tpl_autoprev_go()
     tp <- .tpl_of(rv$p, id %||% "")
-    if (identical(id, current()) && !is.null(tp) && !length(.tpl_missing(tp$name, tp$args))) {
+    if (identical(id, current()) && !is.null(tp) && !length(.tpl_missing(tp$name, tp$args, rv$p$spec$study))) {
       do_preview(id)
     }
   })
@@ -12278,14 +12378,17 @@ app_server <- function(input, output, session, start) {
     tpl_mode_send(TRUE, kind, ready = FALSE, id = id)
     tpl_pending$id <- id
     if (identical(kind, "table")) tpl_autoprev$want <- id
+    # (a KM type: its data the report's own `data:` steps, from the dialog)
+    dat <- tpl_modal_data(nm)
+    pop <- as.character(dat$population %||% args$population %||% NA_character_)
     o <- tflspec::tfl_output(id, kind, label = if (is.na(desc)) NA_character_ else desc,
-                             population = as.character(args$population %||% NA_character_),
-                             template = list(name = nm, args = args))
+                             population = pop, template = list(name = nm, args = args),
+                             data = if (length(dat$steps)) list(steps = dat$steps))
     # (straight into the spec: its toc line and its file, the view of
     # that report alone -- .spec_add_output())
     p2 <- guarded(.spec_add_output(rv$p, o, label = desc,
                                    section = if (nzchar(sec)) sec else NA_character_,
-                                   population = as.character(args$population %||% NA_character_)))
+                                   population = pop))
     .tpl_trace("written into the spec")
     if (is.null(p2)) {
       tpl_pending$id <- NULL
@@ -12301,8 +12404,9 @@ app_server <- function(input, output, session, start) {
   tpl_ver <- shiny::reactiveVal(0L)
   tpl_obs <- new.env()
   tpl_iid <- function(name, a) paste0("tpl_", name, "__", gsub("[^A-Za-z0-9_]", "_", a))
-  tpl_write <- function(id, args, name = NULL) {
+  tpl_write <- function(id, args, name = NULL, steps = NULL) {
     o <- .tpl_output(rv$p, id, args, name = name)
+    if (length(steps)) o$data$steps <- steps
     p2 <- guarded(.spec_set_output(rv$p, id, o))
     if (is.null(p2)) return(invisible(FALSE))
     rv$p <- p2
@@ -12361,12 +12465,17 @@ app_server <- function(input, output, session, start) {
     tp <- .tpl_of(rv$p, id %||% "")
     to <- input$tpl_switch
     if (is.null(tp) || !length(to) || !nzchar(to) || identical(to, tp$name)) return()
-    keep <- intersect(names(tp$args), names(.tpl_params(to)))
-    drop <- setdiff(names(tp$args), keep)
+    to_prm <- .tpl_params(to)
+    keep <- intersect(names(tp$args), names(.tpl_shown(to_prm)))
+    # (to a KM type: the data stage goes to the report's `data:` steps)
+    moved <- if (.tpl_own_data(to_prm)) intersect(names(tp$args), c("data", "param", "population"))
+    drop <- setdiff(names(tp$args), c(keep, moved))
     shiny::showModal(shiny::modalDialog(
       title = sprintf(t("Change the template to %s"), to),
       shiny::p(t("Arguments kept:"), " ",
                if (length(keep)) shiny::code(paste(keep, collapse = ", ")) else t("(none)")),
+      if (length(moved)) shiny::p(t("To the report's data: steps:"), " ",
+                                  shiny::code(paste(moved, collapse = ", "))),
       shiny::p(t("Arguments dropped:"), " ",
                if (length(drop)) shiny::code(paste(drop, collapse = ", ")) else t("(none)")),
       shiny::p(class = "small text-muted", t("The report's own cards are kept.")),
@@ -12384,8 +12493,29 @@ app_server <- function(input, output, session, start) {
     tp <- .tpl_of(rv$p, id %||% "")
     to <- input$tpl_switch
     if (is.null(tp) || is.null(to)) return()
-    args <- tp$args[intersect(names(tp$args), names(.tpl_params(to)))]
-    tpl_write(id, args, name = to)
+    to_prm <- .tpl_params(to)
+    args <- tp$args[intersect(names(tp$args), names(.tpl_shown(to_prm)))]
+    # (to a KM type: the old template's data stage -- its dataset, its
+    # parameter, the report's analysis set -- becomes the report's `data:`
+    # steps, written with the template in one go; steps of the report's
+    # own that say a parameter are kept)
+    steps <- NULL
+    if (.tpl_own_data(to_prm)) {
+      have <- rv$p$spec$outputs[[id]]$data$steps
+      f <- .tpl_steps_fields(have)
+      if (!length(have) || (f$fields && !nzchar(f$param) && !identical(toupper(f$dataset), "ADSL"))) {
+        from <- .tpl_params(tp$name)
+        ds <- as.character(tp$args$data %||% from$data$default %||% "")[1L]
+        par <- as.character(tp$args$param %||% from$param$default %||% "")[1L]
+        if (!nzchar(ds) || (!identical(toupper(ds), "ADSL") && !nzchar(par))) {
+          tpl_ver(tpl_ver() + 1L)
+          return(notify(sprintf(t("%s takes the report's data: fill in param (the PARAMCD) first."), to),
+                        "warning"))
+        }
+        steps <- .tpl_steps_from(ds, tpl_data_pop(id), par)
+      }
+    }
+    tpl_write(id, args, name = to, steps = steps)
   })
   # the card drawn: "Loading ..." taken away when it is the report opened,
   # and a new template report's preview started after it
@@ -12407,19 +12537,147 @@ app_server <- function(input, output, session, start) {
     tpl_card_drawn(id)
     card
   }
+  # A template whose data stage is the report's (a KM type): the report's
+  # `data:` steps -- the dataset, its analysis set's subjects (the report's
+  # population), the parameter, a filter -- written by Apply.  Steps the
+  # fields cannot say are kept and shown as they are.
+  tpl_data_block <- function(id, steps) {
+    f <- .tpl_steps_fields(steps)
+    pop <- tpl_data_pop(id)
+    d <- tpl_data()
+    ds_all <- sort(unique(c(names(d), toupper(stats::na.omit(rv$p$ard$datasets$dataset)))))
+    pcd <- d[[toupper(f$dataset)]]$PARAMCD
+    pcd <- if (is.null(pcd)) character() else sort(unique(as.character(stats::na.omit(pcd))))
+    head <- shiny::div(class = "fw-semibold small mb-1", t("Data (the report's data: steps)"))
+    if (!f$fields) {
+      return(shiny::div(
+        class = "border rounded p-2 mb-2", head,
+        shiny::p(class = "small text-muted mb-1",
+                 t("Steps the fields cannot say: kept as they are; change them in the report's YAML.")),
+        shiny::tags$pre(class = "small mb-0", yaml::as.yaml(list(data = list(steps = steps))))))
+    }
+    cell <- function(x) shiny::div(style = "flex: 1 1 140px; min-width: 0", x)
+    shiny::div(
+      class = "border rounded p-2 mb-2", head,
+      shiny::div(
+        class = "d-flex flex-wrap gap-2",
+        cell(shiny::selectizeInput("tpl_data_ds", t("Dataset (read)"), choices = c("", ds_all),
+                                   selected = f$dataset, width = "100%", options = list(create = TRUE))),
+        cell(shiny::selectizeInput("tpl_data_param", t("Parameter (param)"),
+                                   choices = unique(c("", f$param, pcd)), selected = f$param,
+                                   width = "100%", options = list(create = TRUE)))),
+      # (the analysis set, then the subset: CDISC ARS's AnalysisSet and
+      # DataSubset)
+      shiny::selectInput("tpl_data_pop", t("Analysis set"), tpl_data_pop_choices(id, f),
+                         selected = tpl_data_pop_sel(id, f), width = "100%"),
+      shiny::textInput("tpl_data_filter", t("Subset"), f$filter, width = "100%",
+                       placeholder = t("an R condition on the records, e.g. AVAL > 0")),
+      shiny::div(class = "small text-muted mb-1",
+                 if (is.null(pop) && f$join) {
+                   sprintf(t("Analysis set: the report's own join (%s: %s)."), f$join_dataset, f$join_where)
+                 } else if (is.null(pop)) t("Analysis set: none (the report has no population).") else
+                   sprintf(t("Analysis set: %s (%s: %s), its subjects kept (join)."),
+                           pop$population_id, pop$dataset, pop$where %||% "")),
+      if (nzchar(f$dataset) && .tpl_join_stale(f, pop)) shiny::div(
+        class = "alert alert-warning py-1 small",
+        t("The analysis set changed: Apply writes the new join.")),
+      .btn("tpl_data_apply", t("Apply"), class = "btn-sm btn-outline-primary"),
+      if (length(steps)) shiny::tags$details(
+        class = "mt-1",
+        shiny::tags$summary(class = "small", t("The steps written")),
+        shiny::tags$pre(class = "small mb-0", yaml::as.yaml(list(data = list(steps = steps))))))
+  }
+  # the card's analysis-set choice: the report's population, else its own
+  # join -- a flag ("flag:<variable>") or as it is (".own") -- else none
+  tpl_data_pop_sel <- function(id, f) {
+    pid <- rv$p$spec$outputs[[id]]$population
+    if (length(pid) && !is.na(pid[1L]) && nzchar(pid[1L])) return(as.character(pid[1L]))
+    if (!f$join) return("")
+    fl <- .pop_flag(f$join_where)
+    if (!is.na(fl) && identical(toupper(f$join_dataset), "ADSL")) paste0("flag:", fl) else ".own"
+  }
+  tpl_data_pop_choices <- function(id, f) {
+    ch <- tpl_pop_choices()
+    # (the report's own join, when it has no population of the study)
+    if (f$join && is.null(tpl_data_pop(id))) {
+      fl <- .pop_flag(f$join_where)
+      own <- if (!is.na(fl) && identical(toupper(f$join_dataset), "ADSL")) paste0("flag:", fl) else ".own"
+      if (!own %in% ch) {
+        ch <- c(ch, stats::setNames(own, sprintf("%s (%s: %s)", t("The report's own join"),
+                                                  f$join_dataset, f$join_where)))
+      }
+    }
+    ch
+  }
+  tpl_data_pop <- function(id) {
+    pid <- rv$p$spec$outputs[[id]]$population
+    pops <- rv$p$ard$populations
+    if (is.null(pid) || is.null(pops) || !nrow(pops)) return(NULL)
+    k <- match(as.character(pid)[1L], pops$population_id)
+    if (is.na(k)) return(NULL)
+    as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)), drop = FALSE])
+  }
+  shiny::observeEvent(input$tpl_data_ds, {
+    # (the parameter's choices: the dataset's PARAMCD values)
+    pcd <- tpl_data()[[toupper(input$tpl_data_ds %||% "")]]$PARAMCD
+    pcd <- if (is.null(pcd)) character() else sort(unique(as.character(stats::na.omit(pcd))))
+    shiny::updateSelectizeInput(session, "tpl_data_param", choices = unique(c("", input$tpl_data_param, pcd)),
+                                selected = input$tpl_data_param)
+  }, ignoreInit = TRUE)
+  shiny::observeEvent(input$tpl_data_apply, {
+    id <- current()
+    if (is.null(id) || is.null(.tpl_of(rv$p, id))) return()
+    if (!nzchar(trimws(input$tpl_data_ds %||% ""))) return(notify(t("Choose the dataset."), "warning"))
+    o <- rv$p$spec$outputs[[id]]
+    f <- .tpl_steps_fields(o$data$steps)
+    # the analysis set chosen: the study's (the report's population), a flag
+    # the study does not define, the report's own join as it is (".own"),
+    # or none
+    sel <- input$tpl_data_pop %||% tpl_data_pop_sel(id, f)
+    pop <- NULL
+    if (identical(sel, ".own")) {
+      pop <- list(dataset = f$join_dataset, where = f$join_where)
+      o$population <- NA_character_
+    } else if (startsWith(sel, "flag:")) {
+      pop <- list(dataset = "ADSL", where = sprintf("%s == \"Y\"", sub("^flag:", "", sel)))
+      o$population <- NA_character_
+    } else if (nzchar(sel)) {
+      o$population <- sel
+      pops <- rv$p$ard$populations
+      k <- match(sel, pops$population_id)
+      if (!is.na(k)) pop <- as.list(pops[k, intersect(c("population_id", "dataset", "where"), names(pops)),
+                                         drop = FALSE])
+    } else {
+      o$population <- NA_character_
+    }
+    steps <- .tpl_steps_from(input$tpl_data_ds, pop, input$tpl_data_param %||% "",
+                             input$tpl_data_filter %||% "")
+    if (is.null(steps)) o$data$steps <- NULL else o$data$steps <- steps
+    if (!length(o$data)) o$data <- NULL
+    p2 <- guarded(.spec_set_output(.spec_set_toc_population(rv$p, id, o$population), id, o))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$bver <- rv$bver + 1L
+    rv$status_ver <- rv$status_ver + 1L
+    tpl_ver(tpl_ver() + 1L)
+    bump()
+  })
   tpl_card_draw <- function(id) {
     tpl_ver()
     rv$ver
     p <- shiny::isolate(rv$p)
     tp <- .tpl_of(p, id)
     if (is.null(tp)) return(NULL)
-    prm <- .tpl_params(tp$name)
+    prm_all <- .tpl_params(tp$name)
+    own_data <- .tpl_own_data(prm_all)
+    prm <- .tpl_shown(prm_all)
     tpl_observe(tp$name, prm)
     args <- tp$args
-    dataset <- args$data %||% prm$data$default
+    steps <- p$spec$outputs[[id]]$data$steps
+    dataset <- if (own_data) .tpl_steps_fields(steps)$dataset else args$data %||% prm$data$default
     up <- names(prm)[vapply(prm, function(x) isTRUE(x$required) || x$name %in% names(args), NA)]
     low <- setdiff(names(prm), up)
-    miss <- .tpl_missing(tp$name, args)
+    miss <- .tpl_missing(tp$name, args, p$spec$study)
     kind <- report_info(p, id)$type
     study <- p$spec$study
     # where a value comes from: this report / the study standard / the
@@ -12496,6 +12754,7 @@ app_server <- function(input, output, session, start) {
           class = "alert alert-danger py-1 small",
           sprintf(t("Required arguments are empty: %s. The preview waits for them."),
                   paste(miss, collapse = ", "))),
+        if (own_data) tpl_data_block(id, steps),
         lapply(up, row, upper = TRUE),
         shiny::tags$details(
           class = "mt-1", open = if (open) NA,
@@ -12512,7 +12771,7 @@ app_server <- function(input, output, session, start) {
     id <- current()
     p <- rv$p
     if (is.null(id) || is.null(.tpl_of(p, id))) return()
-    miss <- .tpl_missing(.tpl_of(p, id)$name, .tpl_of(p, id)$args)
+    miss <- .tpl_missing(.tpl_of(p, id)$name, .tpl_of(p, id)$args, p$spec$study)
     if (length(miss)) {
       return(tpl_fig(list(id = id, error = sprintf(
         t("Required arguments are empty: %s. The preview waits for them."), paste(miss, collapse = ", ")))))
