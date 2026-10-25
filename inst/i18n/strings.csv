@@ -4223,6 +4223,7 @@ The group as the ARD's group2 says it; blank: the group_id.,群のラベル: ARD
 The level as group2_level says it; blank: the whole group (All).,水準: ARD の group2_level に表示する水準の名前。空欄 = 群全体（All）。
 An R condition on the analysis's data choosing the level's records (levels may overlap); blank: every record.,条件（where）: その水準に入れるレコードを解析のデータから選ぶ R の条件（水準どうしが重なってもよい）。空欄 = 全レコード。
 "Groups of the groups sheet the analysis runs in, each level once (group2 / group2_level), | between them; blank: none.",群（groups）: 解析を実行する群（群シートの group_id）。各水準ごとに 1 回ずつ実行し（group2 / group2_level）、複数ある場合は | で区切る。空欄 = 群なし。
+"The ARD's name in the report's program (data.object): the content's pipe starts from it and the generated code follows the name. Blank: ard.",ARD の名前（ard_object）: 帳票のプログラムの中で ARD に付ける名前（data.object）。内容のパイプはこの名前から始まり、生成するコードもこの名前に従います。空欄 = ard。
 Subset,サブセット
 "an R condition on the records, e.g. AVAL > 0",レコードに対する R の条件（例: AVAL > 0）
 "the status variable(s), in order",状態の変数（複数可、順に）
