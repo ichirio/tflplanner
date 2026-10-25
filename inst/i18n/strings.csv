@@ -4229,3 +4229,6 @@ Subset,サブセット
 the status analysis' id in the ARD,ARD での状態の解析の ID
 the status analysis' label in the ARD,ARD での状態の解析のラベル
 "each variable's heading; given by name, merged",各変数の見出し。名前で指定し、既定とまとめる
+"The analysis data listed (a data_id of the report's analysis_data), instead of dataset and population_id; blank: dataset and population_id say it.",データ（定義したデータ）: 一覧にする解析データ（帳票の analysis_data の data_id）。dataset と population_id の代わりに使う。空欄 = dataset と population_id のとおり。
+"Keeps the subjects of this population; blank: every subject of the dataset.",解析対象集団: この集団の被験者だけを残す。空欄 = データセットの全被験者。
+"Or one of the report's analysis data (its data_id), made before the figure: read instead of the dataset",または、図の前に作る帳票の解析データ（その data_id）。データセットの代わりに読む
