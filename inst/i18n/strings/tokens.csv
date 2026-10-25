@@ -1,0 +1,3 @@
+"en","ja"
+"The headers say {STUDY_ID} = %s (the tokens sheet), not the Study ID.","ヘッダーの {STUDY_ID} は %s です（tokens シートの値）。試験 ID とは異なります。"
+"Use the Study ID","試験 ID にする"

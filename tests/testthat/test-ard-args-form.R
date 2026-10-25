@@ -162,8 +162,7 @@ test_that("every hint of the ARD catalog has its Japanese", {
   skip_if(!nzchar(f))
   a <- utils::read.csv(f, stringsAsFactors = FALSE)
   h <- unique(a$hint[!is.na(a$hint) & nzchar(a$hint)])
-  keys <- utils::read.csv(system.file("i18n", "strings.csv", package = "tflplanner"),
-                          stringsAsFactors = FALSE, encoding = "UTF-8")[[1]]
+  keys <- .strings()[[1]]
   miss <- setdiff(paste0("arg-hint:", h), keys)
   expect_identical(miss, character(), info = paste(miss, collapse = "\n"))
 })

@@ -169,8 +169,7 @@ test_that("the facts are kept: read once, a changed file or condition read again
 
 test_that("each rule has its words in Japanese, with as many values", {
   cat <- tflspec::tfl_review_rules()
-  d <- utils::read.csv(system.file("i18n", "strings.csv", package = "tflplanner"),
-                       stringsAsFactors = FALSE, encoding = "UTF-8")
+  d <- .strings()
   n_args <- function(x) lengths(regmatches(x, gregexpr("%([0-9]+[$])?s", x)))
   for (k in c(cat$message, cat$hint[nzchar(cat$hint)])) {
     i <- match(k, d$en)

@@ -23,7 +23,7 @@
   - Never copy tests into `$TEMP`: `test_file()` reads that folder's `setup*.R`.
   - Before loading tflplanner, point `R_USER_CONFIG_DIR`, `R_USER_DATA_DIR`, `R_USER_CACHE_DIR` and `options(tflplanner.home =)` at a scratch home, never the user's.
   - Run the installed package's tests in one R session as well (`test_dir`); per-file runs miss interference between tests.
-- **Files** (once app.R and strings.csv are split):
-  - One file per screen (`R/app_<screen>.R`, `inst/i18n/strings/<screen>.csv`).
+- **Files:**
+  - app_server()'s parts are `R/srv_<part>.R` (functions run in its environment by `.srv_part()`); texts' Japanese in `inst/i18n/strings/<file>.csv` (the R file that shows them; `common.csv` for several).
   - Split a file once it passes 2,000 lines.
   - Translation keys must be unique (a test fails on duplicates).

@@ -635,7 +635,7 @@ toc_batches <- function(reports, rule_set, topline_ids = NULL) {
 # ---- problems -----------------------------------------------------------------
 
 # The import's rules: level and message (the message is the key of
-# strings.csv); #288's shape, area "toc"
+# inst/i18n/strings/); #288's shape, area "toc"
 .toc_rule_catalog <- data.frame(
   rule = c("TOC01", "TOC01b", "TOC02", "TOC03", "TOC04", "TOC04b", "TOC05", "TOC06",
            "TOC07", "TOC08", "TOC09", "TOC10", "TOC10b", "TOC11", "TOC12"),

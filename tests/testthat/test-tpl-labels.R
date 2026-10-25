@@ -5,8 +5,7 @@ test_that("every argument a template card shows has a heading and its Japanese",
   tp <- tflspec::tfl_templates()$name
   shown <- unique(unlist(lapply(tp, function(n) names(.tpl_shown(.tpl_params(n))))))
   expect_identical(setdiff(shown, names(.tpl_arg_labels)), character())
-  s <- utils::read.csv(system.file("i18n", "strings.csv", package = "tflplanner"),
-                       encoding = "UTF-8", stringsAsFactors = FALSE)
+  s <- .strings()
   expect_identical(setdiff(c(unname(.tpl_arg_labels), unname(.tpl_doc_labels)), s[[1L]]), character())
   docs <- unique(unlist(lapply(tp, function(n) vapply(.tpl_shown(.tpl_params(n)),
                                                       function(x) x$doc %||% "", ""))))

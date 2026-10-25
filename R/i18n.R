@@ -1,15 +1,19 @@
 # The app speaks English, or Japanese.  Every text is written in English in
-# the code and looked up in inst/i18n/strings.csv (columns `en`, `ja`); a
-# text the table lacks stays English.
+# the code and looked up in inst/i18n/strings/*.csv (columns `en`, `ja`;
+# a file per R file that shows the texts, common.csv for those of several);
+# a text the table lacks stays English.
 
 .i18n <- new.env()
 
 .strings <- function() {
   if (is.null(.i18n$table)) {
-    f <- system.file("i18n", "strings.csv", package = "tflplanner")
-    .i18n$table <- if (nzchar(f)) {
-      utils::read.csv(f, fileEncoding = "UTF-8", stringsAsFactors = FALSE,
-                      na.strings = character())
+    d <- system.file("i18n", "strings", package = "tflplanner")
+    fs <- if (nzchar(d)) sort(list.files(d, "[.]csv$", full.names = TRUE)) else character()
+    .i18n$table <- if (length(fs)) {
+      do.call(rbind, lapply(fs, function(f) {
+        utils::read.csv(f, fileEncoding = "UTF-8", stringsAsFactors = FALSE,
+                        na.strings = character())
+      }))
     } else {
       data.frame(en = character(), ja = character())
     }
