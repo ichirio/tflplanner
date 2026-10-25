@@ -17,3 +17,4 @@
 ^vignettes/articles$
 ^.*\.Rcheck$
 ^\.git$
+^CLAUDE\.md$
