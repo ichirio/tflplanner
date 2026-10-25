@@ -3949,7 +3949,6 @@ Steps the fields cannot say: kept as they are; change them in the report's YAML.
 "The report says its data here: the dataset and, for a dataset of parameters, the parameter.",帳票のデータをここで指定します: データセットと、パラメータを持つデータセットならそのパラメータ。
 Dataset (read),データセット（read）
 Parameter (param),パラメータ（param）
-Records kept (filter: an R condition),残すレコード（filter: R の条件）
 Analysis set: none (the report has no population).,解析対象集団: なし（帳票に population がありません）。
 "Analysis set: %s (%s: %s), its subjects kept (join).",解析対象集団: %s（%s: %s）。その被験者だけを残します（join）。
 The analysis set changed: Apply writes the new join.,解析対象集団が変わりました。「適用」で join を書き直します。
@@ -4224,3 +4223,5 @@ The group as the ARD's group2 says it; blank: the group_id.,群のラベル: ARD
 The level as group2_level says it; blank: the whole group (All).,水準: ARD の group2_level に表示する水準の名前。空欄 = 群全体（All）。
 An R condition on the analysis's data choosing the level's records (levels may overlap); blank: every record.,条件（where）: その水準に入れるレコードを解析のデータから選ぶ R の条件（水準どうしが重なってもよい）。空欄 = 全レコード。
 "Groups of the groups sheet the analysis runs in, each level once (group2 / group2_level), | between them; blank: none.",群（groups）: 解析を実行する群（群シートの group_id）。各水準ごとに 1 回ずつ実行し（group2 / group2_level）、複数ある場合は | で区切る。空欄 = 群なし。
+Subset,サブセット
+"an R condition on the records, e.g. AVAL > 0",レコードに対する R の条件（例: AVAL > 0）

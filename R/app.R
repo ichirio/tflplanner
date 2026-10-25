@@ -30,6 +30,15 @@
 .step_labels_of <- list(figure = c(ard = "1 Data", content = "2 Figure"))
 
 .type_labels <- c(table = "Table", listing = "Listing", figure = "Figure")
+# a new report's ID begins with its kind's prefix (the Add dialog)
+.id_prefix <- c(table = "T-", listing = "L-", figure = "F-")
+# the ID typed after the prefix (typed with it already: not twice)
+.id_with_prefix <- function(id, kind) {
+  id <- trimws(id %||% "")
+  pre <- .id_prefix[kind %||% ""]
+  if (!nzchar(id) || is.na(pre) || startsWith(toupper(id), toupper(pre))) return(id)
+  paste0(pre, id)
+}
 # one line on each kind, where a report's kind is chosen
 .type_notes <- list(
   table = "Table: made from the ARD and the table definition.",
@@ -11916,9 +11925,20 @@ app_server <- function(input, output, session, start) {
   })
 
   ask_id <- function(title, button, value = "", type = FALSE) {
+    # (a new report: its type first, then its ID after the type's prefix,
+    # T- / F- / L-: .id_prefix)
+    id_ui <- if (!type) shiny::textInput("modal_id", "output_id", value = value) else shiny::div(
+      class = "form-group shiny-input-container",
+      shiny::tags$label(class = "control-label", `for` = "modal_id", "output_id"),
+      shiny::div(class = "input-group",
+                 shiny::span(class = "input-group-text", id = "modal_id_prefix", .id_prefix[["table"]]),
+                 shiny::tags$input(id = "modal_id", type = "text", class = "shiny-input-text form-control", value = value)),
+      shiny::tags$script(shiny::HTML(sprintf(
+        "$(document).on('change', 'input[name=modal_type]', function() {
+           var p = %s; $('#modal_id_prefix').text(p[this.value] || ''); });",
+        jsonlite::toJSON(as.list(.id_prefix), auto_unbox = TRUE)))))
     shiny::showModal(shiny::modalDialog(
       title = title,
-      shiny::textInput("modal_id", "output_id", value = value),
       if (type) shiny::radioButtons(
         "modal_type", t("Type"),
         stats::setNames(report_types(), t(unname(.type_labels[report_types()]))),
@@ -11926,6 +11946,7 @@ app_server <- function(input, output, session, start) {
       if (type) lapply(report_types(), function(k) shiny::conditionalPanel(
         sprintf("input.modal_type == '%s'", k),
         shiny::p(class = "small text-muted mt-n2", t(.type_notes[[k]])))),
+      id_ui,
       # how it is made: from one of tflspec's templates (its arguments
       # only), or the code SPEC as before (R/template_report.R)
       if (type) shiny::radioButtons(
@@ -12004,7 +12025,7 @@ app_server <- function(input, output, session, start) {
     }
   }
   shiny::observeEvent(input$add_ok, {
-    id <- trimws(input$modal_id)
+    id <- .id_with_prefix(input$modal_id, input$modal_type)
     # (a new report until the study is saved: the usual cards, empty -- #440)
     bnew$ids <- unique(c(bnew$ids, id))
     d <- trimws(input$modal_desc)
@@ -12198,7 +12219,7 @@ app_server <- function(input, output, session, start) {
                    shiny::selectizeInput(pid, t("Parameter (param)"), c("", pcd),
                                          width = "100%", options = list(create = TRUE))),
         shiny::div(style = "flex: 1 1 140px",
-                   shiny::selectInput(tpl_arg_id(nm, ".data_pop"), t("This report's population"),
+                   shiny::selectInput(tpl_arg_id(nm, ".data_pop"), t("Analysis set"),
                                       tpl_pop_choices(), width = "100%"))))
   }
   # the dialog's data as `data:` steps and the population (NULL: not a
@@ -12543,10 +12564,12 @@ app_server <- function(input, output, session, start) {
         cell(shiny::selectizeInput("tpl_data_param", t("Parameter (param)"),
                                    choices = unique(c("", f$param, pcd)), selected = f$param,
                                    width = "100%", options = list(create = TRUE)))),
-      shiny::textInput("tpl_data_filter", t("Records kept (filter: an R condition)"), f$filter,
-                       width = "100%"),
-      shiny::selectInput("tpl_data_pop", t("This report's population"), tpl_data_pop_choices(id, f),
+      # (the analysis set, then the subset: CDISC ARS's AnalysisSet and
+      # DataSubset)
+      shiny::selectInput("tpl_data_pop", t("Analysis set"), tpl_data_pop_choices(id, f),
                          selected = tpl_data_pop_sel(id, f), width = "100%"),
+      shiny::textInput("tpl_data_filter", t("Subset"), f$filter, width = "100%",
+                       placeholder = t("an R condition on the records, e.g. AVAL > 0")),
       shiny::div(class = "small text-muted mb-1",
                  if (is.null(pop) && f$join) {
                    sprintf(t("Analysis set: the report's own join (%s: %s)."), f$join_dataset, f$join_where)

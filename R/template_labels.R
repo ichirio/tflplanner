@@ -7,7 +7,7 @@
   subset = "Subjects kept",
   hierarchy = "Levels, outer first",
   data = "Source dataset",
-  where = "Records kept",
+  where = "Subset",
   by = "Variable that splits the columns",
   any_row = "Any-record row",
   any_row_label = "Any-record row label",

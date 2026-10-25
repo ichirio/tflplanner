@@ -87,3 +87,12 @@ test_that("a report's analysis set changed on the card is its toc line's too", {
   expect_true(any(grepl("F-1", unlist(p3$spec$text), fixed = TRUE)))
   expect_identical(.spec_set_toc_population(p, "F-9", "ITT"), p)
 })
+
+test_that("a new report's ID gets its type's prefix once", {
+  expect_identical(.id_with_prefix("14.1.1", "table"), "T-14.1.1")
+  expect_identical(.id_with_prefix(" t-14.1.1 ", "table"), "t-14.1.1")
+  expect_identical(.id_with_prefix("1", "figure"), "F-1")
+  expect_identical(.id_with_prefix("1", "listing"), "L-1")
+  expect_identical(.id_with_prefix("", "table"), "")
+  expect_identical(.id_with_prefix("X1", NULL), "X1")
+})

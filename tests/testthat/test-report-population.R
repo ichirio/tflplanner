@@ -209,10 +209,11 @@ test_that("the Add dialog gives a new report its analysis set", {
   shiny::testServer(server_for("RA"), {
     rv <- session$userData$rv
     session$setInputs(add = 1, modal_type = "table", modal_first = FALSE,
-                      modal_id = "T9", modal_desc = "x", modal_pop = "ITT")
+                      modal_id = "9", modal_desc = "x", modal_pop = "ITT")
+    # (the ID typed after the type's prefix: T-9)
     session$setInputs(add_ok = 1)
-    expect_identical(report_population(rv$p, "T9"), "ITT")
-    expect_true("adsl_itt" %in% .adata_rows(rv$p, "T9")$data_id)
+    expect_identical(report_population(rv$p, "T-9"), "ITT")
+    expect_true("adsl_itt" %in% .adata_rows(rv$p, "T-9")$data_id)
   })
 })
 
