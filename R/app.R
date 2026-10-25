@@ -32,6 +32,8 @@
 .type_labels <- c(table = "Table", listing = "Listing", figure = "Figure")
 # a new report's ID begins with its kind's prefix (the Add dialog)
 .id_prefix <- c(table = "T-", listing = "L-", figure = "F-")
+# the kinds in the Add dialog: tables, figures, listings (TFL)
+.tfl_order <- c("table", "figure", "listing")
 # the ID typed after the prefix (typed with it already: not twice)
 .id_with_prefix <- function(id, kind) {
   id <- trimws(id %||% "")
@@ -11941,7 +11943,7 @@ app_server <- function(input, output, session, start) {
       title = title,
       if (type) shiny::radioButtons(
         "modal_type", t("Type"),
-        stats::setNames(report_types(), t(unname(.type_labels[report_types()]))),
+        stats::setNames(.tfl_order, t(unname(.type_labels[.tfl_order]))),
         inline = TRUE),
       if (type) lapply(report_types(), function(k) shiny::conditionalPanel(
         sprintf("input.modal_type == '%s'", k),
