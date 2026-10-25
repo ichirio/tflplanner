@@ -23,8 +23,11 @@ ai_prepared <- local({
   # the example's KM figure reads ADTTE: the sample study's
   file.copy(system.file("sample", "SAMPLE-01", "data", "adam", "adtte.rds", package = "tflplanner"),
             file.path(d, "adam"))
-  utils::capture.output(suppressMessages(tflspec::tfl_ai_prepare(
-    d, file.path(ai_example, "onco_toc_shell.xlsx"), study_id = "XYZ-1", size = 3)))
+  # (as the AI tab prepares it, .ai_prepare(): the drafts in spec/outputs, not
+  # in the AI's area)
+  a <- list(d, file.path(ai_example, "onco_toc_shell.xlsx"), study_id = "XYZ-1", size = 3)
+  if ("area" %in% names(formals(tflspec::tfl_ai_prepare))) a$area <- FALSE
+  utils::capture.output(suppressMessages(do.call(tflspec::tfl_ai_prepare, a)))
   d
 })
 
