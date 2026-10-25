@@ -233,7 +233,22 @@ code_templates <- function(name = NULL) {
   # program is written
   code <- gsub("\"{ARD}\"", .path_lit(sub[["{ARD}"]]), code, fixed = TRUE)
   for (k in names(sub)) code <- gsub(k, sub[[k]], code, fixed = TRUE)
+  # (the report's ARD by its own name, data.object: the content's code
+  # starts from it, tflspec >= #482)
+  obj <- if (!is.na(output_id) && name %in% c("table_data", "table_process")) .ard_object(x, output_id)
+  if (!is.null(obj) && !identical(obj, "ard")) {
+    code <- gsub("(?<![[:alnum:]_./])ard(?![[:alnum:]_./])", obj, code, perl = TRUE)
+  }
   .drop_attached(unname(code))
+}
+
+# The name a report's program gives its ARD: its data.object (the report
+# sheet's ard_object), "ard" when it says none
+.ard_object <- function(x, output_id) {
+  o <- x$spec$outputs[[output_id]]
+  v <- if (is.list(o) && is.list(o$data)) o$data$object
+  v <- as.character(v %||% "ard")[1L]
+  if (is.na(v) || !nzchar(v) || make.names(v) != v) "ard" else v
 }
 
 #' The data part of a report's program
