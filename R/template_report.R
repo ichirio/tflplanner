@@ -270,10 +270,99 @@
 }
 
 # The required arguments still empty
-.tpl_missing <- function(name, args) {
+.tpl_missing <- function(name, args, study = NULL) {
   prm <- .tpl_params(name)
   req <- names(prm)[vapply(prm, function(x) isTRUE(x$required), NA)]
-  req[!vapply(req, function(a) length(args[[a]]) > 0L && any(nzchar(as.character(args[[a]]))), NA)]
+  # (a required argument the study gives -- its treatment for `by` -- is
+  # not empty: tflspec fills it)
+  given <- function(a) {
+    v <- args[[a]] %||% if (!is.null(study)) .tpl_study_value(study, prm[[a]])
+    length(v) > 0L && any(nzchar(as.character(v)))
+  }
+  req[!vapply(req, given, NA)]
+}
+
+# A template's parameters the card shows: not those it takes from the
+# study standard (`hidden`; a KM type's data stage, its look)
+.tpl_shown <- function(prm) Filter(function(x) !isTRUE(x$hidden), prm)
+
+# Whether the report says the template's data in its own `data:` steps
+# (the template hides its data stage: km_survival, km_cumulative)
+.tpl_own_data <- function(prm) {
+  any(vapply(prm, function(x) isTRUE(x$hidden) && identical(x$stage, "data"), NA))
+}
+
+# A report's `data:` steps as the card's fields say them: the dataset
+# read, the analysis set's join (a semi join, as the report's population
+# says it), the parameter, a filter.  Steps of another shape (a derive, a
+# second read ...): `fields = FALSE`, kept as they are.
+.tpl_steps_fields <- function(steps) {
+  out <- list(fields = TRUE, dataset = "", join = FALSE, join_dataset = "", join_where = "",
+              param = "", filter = "")
+  steps <- steps %||% list()
+  if (!length(steps)) return(out)
+  kind <- vapply(steps, function(s) if (is.list(s)) as.character(s$step %||% "")[1L] else "", "")
+  ok <- kind[1L] == "read" && all(kind[-1L] %in% c("join", "param", "filter")) &&
+    !anyDuplicated(kind) && identical(kind, kind[order(match(kind, c("read", "join", "param", "filter")))])
+  j <- steps[kind == "join"]
+  if (length(j) && !identical(j[[1L]]$how, "semi")) ok <- FALSE
+  if (!ok) return(utils::modifyList(out, list(fields = FALSE)))
+  one <- function(k, f) if (any(kind == k)) as.character(steps[[which(kind == k)]][[f]] %||% "")[1L] else ""
+  out$dataset <- one("read", "dataset")
+  out$join <- any(kind == "join")
+  out$join_dataset <- one("join", "dataset")
+  out$join_where <- one("join", "where")
+  out$param <- one("param", "value")
+  out$filter <- one("filter", "expr")
+  out
+}
+
+# The `data:` steps the card's fields write: the dataset read; the
+# analysis set's subjects kept (a semi join on its dataset; `pop`: the
+# population's row, its dataset and where); the parameter; the filter
+# (NULL: no dataset, no steps)
+.tpl_steps_from <- function(dataset, pop = NULL, param = "", filter = "") {
+  has <- function(x) length(x) && !is.na(x[1L]) && nzchar(trimws(x[1L]))
+  if (!has(dataset)) return(NULL)
+  steps <- list(list(step = "read", dataset = toupper(trimws(dataset))))
+  # (the analysis set's dataset itself read: the same semi join keeps its
+  # subjects -- its condition never dropped)
+  if (!is.null(pop) && has(pop$dataset)) {
+    steps[[length(steps) + 1L]] <- c(list(step = "join", dataset = toupper(pop$dataset)),
+                                     if (has(pop$where)) list(where = trimws(pop$where)),
+                                     list(by = "USUBJID", how = "semi"))
+  }
+  if (has(param)) steps[[length(steps) + 1L]] <- list(step = "param", value = trimws(param))
+  if (has(filter)) steps[[length(steps) + 1L]] <- list(step = "filter", expr = trimws(filter))
+  steps
+}
+
+# The analysis-set flags of a subject-level dataset no population of the
+# study says (*FL, its values Y / N): offered beside the study's
+# populations, as a join on that flag
+.tpl_flags_undefined <- function(adsl, pops = NULL) {
+  if (!is.data.frame(adsl)) return(character())
+  fl <- grep("FL$", names(adsl), value = TRUE)
+  fl <- fl[vapply(fl, function(v) {
+    x <- unique(stats::na.omit(as.character(adsl[[v]])))
+    length(x) > 0L && all(x %in% c("Y", "N", ""))
+  }, NA)]
+  said <- paste(as.character(pops$where %||% character()), collapse = " ")
+  fl[!vapply(fl, function(v) grepl(paste0("\\b", v, "\\b"), said), NA)]
+}
+
+# Whether the report's join is no longer its analysis set's (the
+# population changed, or its definition): Apply writes it again
+.tpl_join_stale <- function(f, pop, dataset = f$dataset) {
+  # (no population: a join is the report's own -- a flag the study does not
+  # define -- and stays)
+  if (is.null(pop)) return(FALSE)
+  want <- .tpl_steps_from(dataset, pop)
+  wj <- Filter(function(s) identical(s$step, "join"), want %||% list())
+  if (!f$join) return(length(wj) > 0L)
+  if (!length(wj)) return(TRUE)
+  !identical(toupper(f$join_dataset), toupper(wj[[1L]]$dataset)) ||
+    !identical(f$join_where, wj[[1L]]$where %||% "")
 }
 
 # A report's file with its template's arguments set
@@ -295,6 +384,8 @@
   if (is.na(at) || !grepl(".", at, fixed = TRUE)) return(NULL)
   fn <- sub("\\..*$", "", at)
   arg <- sub("^[^.]*\\.", "", at)
+  # (the study's settings: study.yml `settings:`, the treatment ...)
+  if (identical(fn, "settings")) return(study$study$settings[[arg]])
   for (it in study$defaults$content %||% list()) {
     if (identical(it$fn, fn) && !is.null(it$args[[arg]])) return(it$args[[arg]])
   }
@@ -311,7 +402,7 @@
 # (rp-report-ready): the report before it, or the code SPEC's builder, is
 # never seen in its place.  `.rp-tpl-only` / `.rp-code-only` are shown by
 # the mode.
-.tpl_step_labels <- c(content = "1 Template (ARD and content)", page = "2 Page and output")
+.tpl_step_labels <- c(content = "1 Template (data and content)", page = "2 Page and output")
 
 .tpl_css <- "
 body:not(.rp-tpl) .rp-tpl-only, body.rp-tpl .rp-code-only { display: none !important; }
@@ -540,6 +631,28 @@ $(document).on('shiny:connected', function() {
   }
   p$outputs <- ord(p$outputs)
   if (!is.null(p$spec$base)) p$spec$base$outputs <- ord(p$spec$base$outputs)
+  p
+}
+
+# A report's analysis set in its spec/toc.yml line too (the TOC and the
+# header's <OUTPUT_POPULATION> read it): NA, none -- the line's taken out
+.spec_set_toc_population <- function(p, output_id, population = NA_character_) {
+  toc <- p$spec$study$toc
+  lines <- toc$outputs %||% list()
+  k <- match(output_id, vapply(lines, function(e) as.character(e$id %||% ""), ""))
+  if (is.na(k)) return(p)
+  has <- length(population) && !is.na(population[1L]) && nzchar(population[1L])
+  if (identical(lines[[k]]$population, if (has) population[1L])) return(p)
+  lines[[k]]$population <- if (has) population[1L]
+  toc$outputs <- lines
+  p$spec$study$toc <- toc
+  rel <- file.path(study_layout()[["spec"]], "toc.yml")
+  f <- tempfile("tflplanner-toc", fileext = ".yml")
+  on.exit(unlink(f), add = TRUE)
+  tflspec::tfl_write_study_part(p$spec$study, "toc", f)
+  p$spec$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  i <- match(output_id, p$outputs$output_id)
+  if (!is.na(i) && !is.null(p$outputs$population)) p$outputs$population[i] <- if (has) population[1L] else NA
   p
 }
 
