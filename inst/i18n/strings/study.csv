@@ -110,7 +110,7 @@
 "Every report's header","全帳票のヘッダー"
 "The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}; {STUDY_ID} is the Study ID above. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, population).","全帳票のヘッダーに入る試験の値: {COMPANY}（会社名）、{ANALYSIS_TYPE}（解析）。{STUDY_ID} は上の試験 ID です。ここで 1 回だけ設定します（tokens シートの試験の行）。帳票ごとに書くのは、その帳票の値（番号・題・解析対象集団）だけです。"
 "Every report's font","全帳票のフォント"
-"The font and size every report is written in, set once here (the page sheet's study row; programs/tfl/report_setup.R says them as options()). Blank: rtfreporter's, Courier 9 pt. The company standards give a new study theirs.","全帳票の文字のフォントと大きさ。ここで 1 回だけ設定します（page シートの試験の行。programs/tfl/report_setup.R が options() で指定します）。空欄なら rtfreporter の既定（Courier、9 pt）。新しい試験には会社標準の値が入ります。"
+"The font and size every report is written in, set once here (the page sheet's study row; programs/tfl/report_setup.R says them as options()). Blank: rtfreporter's, Courier New 9 pt. The company standards give a new study theirs.","全帳票の文字のフォントと大きさ。ここで 1 回だけ設定します（page シートの試験の行。programs/tfl/report_setup.R が options() で指定します）。空欄なら rtfreporter の既定（Courier New、9 pt）。新しい試験には会社標準の値が入ります。"
 "The study","試験"
 "Every report","全帳票"
 "The definition files were changed outside tflplanner; the changes were loaded.","定義ファイルが tflplanner の外で変更されていたため、その変更を読み込みました。"
