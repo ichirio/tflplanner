@@ -1169,7 +1169,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         if (length(p$hint)) shiny::div(class = "alert alert-warning py-2 small",
                                        lapply(p$hint, shiny::div)))
     })
+    # (drawn again each time its tab is opened: a table drawn while hidden
+    # can keep its old rows on the page)
+    toc_seen <- shiny::reactiveVal(0L)
+    shiny::observeEvent(input$prep_tab, if (identical(input$prep_tab, "toc")) toc_seen(toc_seen() + 1L))
     output$toc_table <- DT::renderDT({
+      toc_seen()
       p <- prepared()
       shiny::req(p, nrow(p$toc))
       tc <- p$toc
@@ -1186,9 +1191,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       DT::formatStyle(dt, "shell", backgroundColor = DT::styleEqual("\u2014", "#f8d7da"),
                       color = DT::styleEqual("\u2014", "#842029"))
     }, server = FALSE)
-    # (drawn also while their tab is hidden: an Apply on another tab keeps
-    # that tab open, and the TOC view must follow the numbers)
-    for (o in c("toc_head", "toc_table")) shiny::outputOptions(output, o, suspendWhenHidden = FALSE)
+    # (the heading drawn also while its tab is hidden: an Apply on another
+    # tab keeps that tab open, and the counts must follow the numbers)
+    shiny::outputOptions(output, "toc_head", suspendWhenHidden = FALSE)
     # the shells: a sheet each, the TOC items it was taken for
     output$shells_head <- shiny::renderUI({
       p <- prepared()
