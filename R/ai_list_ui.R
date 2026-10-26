@@ -62,6 +62,29 @@ ai_list_panel <- function(ns, t) {
     shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mt-2",
                .btn(ns("exp_add"), paste0(t("Add a report the AI missed"), " (expected_outputs.csv)")),
                shiny::uiOutput(ns("exp_line"), inline = TRUE)),
+    # the agent's questions (moved here from step 3: R/ai_draft_ui.R draws them)
+    bslib::card(
+      class = "mt-3",
+      bslib::card_header(
+        class = "d-flex flex-wrap gap-2 align-items-center",
+        shiny::span(class = "me-auto", paste0(t("Questions"), " (ai/questions.md)")),
+        .btn(ns("questions_write"), paste0(t("Write the answers back"), " (tfl_ai_answer_questions)"),
+             class = "btn-sm btn-primary"),
+        shiny::uiOutput(ns("tell_agent"), inline = TRUE)),
+      shiny::uiOutput(ns("questions"))),
+    # the next round: the corrections in one file, run.R over every request
+    bslib::card(
+      class = "mt-3",
+      bslib::card_header(
+        class = "d-flex flex-wrap gap-2 align-items-center",
+        shiny::span(class = "me-auto", with_tip(
+          paste0(t("The next round"), " (ai/corrections.md)"),
+          t("Your list's changes, notes and the answered questions go into one file the agent works through in its next round; then tell the agent."))),
+        .btn(ns("corrections"), paste0(t("Write the corrections"), " (tfl_ai_corrections)"),
+             class = "btn-sm btn-primary"),
+        .btn(ns("run_all"), paste0(t("Run run.R for every request"), " (Rscript run.R)"))),
+      shiny::uiOutput(ns("corrections_note")),
+      shiny::uiOutput(ns("run_note"))),
     shiny::tags$script(shiny::HTML(
       "$(document).off('click.aiexp').on('click.aiexp', '.ai-exp', function(e) {
          e.preventDefault();
@@ -376,6 +399,58 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       return(notify(t("Say at least its sheet, TOC number, output_id or title."), "warning"))
     }
     exp_save("add", fields = f)
+  })
+  # ---- the next round: the corrections file, run.R over every request
+  corr <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(path(), corr(NULL), ignoreNULL = FALSE)
+  shiny::observeEvent(input$corrections, {
+    heads <- guarded(tflspec::tfl_ai_corrections(path()))
+    if (is.null(heads)) return()
+    corr(list(heads = as.character(heads), n = Sys.time()))
+  })
+  output$corrections_note <- shiny::renderUI({
+    k <- corr()
+    if (is.null(k)) return(NULL)
+    line <- t("I wrote my corrections and answers in ai/corrections.md: work through them (your next round).")
+    shiny::div(
+      class = "alert alert-info py-2 small mt-2 mb-0",
+      if (length(k$heads)) {
+        shiny::div(sprintf(t("%d new corrections written to ai/corrections.md: %s"), length(k$heads),
+                           paste(k$heads, collapse = "; ")))
+      } else shiny::div(t("No new correction: ai/corrections.md has them all already.")),
+      shiny::div(class = "mt-1", t("Then send the agent:"), " ", shiny::code(line)))
+  })
+  # run.R in the study folder, apart (processx): the reports built, the list
+  # read again when it ends
+  run <- shiny::reactiveValues(px = NULL, log = NULL, end = NULL)
+  shiny::observeEvent(input$run_all, {
+    p <- path()
+    if (is.null(p) || !file.exists(file.path(p, "run.R"))) {
+      return(notify(t("The study has no run.R: write the requests in agent mode (step 1)."), "warning"))
+    }
+    if (!is.null(run$px) && run$px$is_alive()) return(notify(t("run.R is running already."), "warning"))
+    log <- file.path(p, "ai", "run-from-app.log")
+    run$log <- log
+    run$end <- NULL
+    run$px <- processx::process$new(file.path(R.home("bin"), "Rscript"), "run.R", wd = p,
+                                    stdout = log, stderr = "2>&1", cleanup = TRUE)
+  })
+  output$run_note <- shiny::renderUI({
+    if (is.null(run$px)) return(NULL)
+    if (run$px$is_alive()) {
+      shiny::invalidateLater(2000)
+      return(shiny::div(class = "small text-muted mt-2", t("run.R is running (every request) ...")))
+    }
+    if (is.null(run$end)) {
+      run$end <- run$px$get_exit_status()
+      shiny::isolate(again(again() + 1L))
+    }
+    tail <- tryCatch(utils::tail(readLines(run$log, warn = FALSE, encoding = "UTF-8"), 3L),
+                     error = function(e) character())
+    shiny::div(class = paste("small mt-2", if (identical(run$end, 0L)) "text-success" else "text-danger"),
+               if (identical(run$end, 0L)) t("run.R ended: the list is read again.") else
+                 sprintf(t("run.R stopped (exit %s): see ai/run-from-app.log."), run$end),
+               if (length(tail)) shiny::tags$pre(class = "small mb-0", paste(tail, collapse = "\n")))
   })
   invisible(listed)
 }

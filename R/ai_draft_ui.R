@@ -226,14 +226,8 @@ ai_ui <- function(id, lang = "en") {
               shiny::uiOutput(ns("check_note_agent"), inline = TRUE)),
             shiny::uiOutput(ns("status_md")),
             shiny::uiOutput(ns("result_all"))),
-          bslib::card(
-            bslib::card_header(
-              class = "d-flex flex-wrap gap-2 align-items-center",
-              shiny::span(class = "me-auto", paste0(t("Questions"), " (ai/questions.md)")),
-              .btn(ns("questions_write"), paste0(t("Write the answers back"), " (tfl_ai_answer_questions)"),
-                   class = "btn-sm btn-primary"),
-              shiny::uiOutput(ns("tell_agent"), inline = TRUE)),
-            shiny::uiOutput(ns("questions")))),
+          # (the questions: in step 4, with the list -- R/ai_list_ui.R)
+          shiny::p(class = "small text-muted", t("The agent's questions are answered in step 4."))),
         shiny::conditionalPanel(
           "output.mode_now != 'agent'", ns = ns,
         bslib::layout_columns(
@@ -1410,7 +1404,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     questions <- shiny::reactive({
       q_ver()
       p <- path()
-      if (is.null(p) || !identical(mode_now(), "agent")) return(NULL)
+      if (is.null(p)) return(NULL)
+      # (none yet: an agent writes ai/questions.md when it has questions;
+      # a chat's questions are in its assumptions, step 3)
+      if (!file.exists(file.path(p, "ai", "questions.md"))) {
+        return(structure(data.frame(), why = if (identical(mode_now(), "agent")) "none yet" else "chat"))
+      }
       tryCatch(.ai_questions(p), error = function(e) {
         message("tflplanner: ai/questions.md: ", conditionMessage(e))
         NULL
@@ -1426,7 +1425,11 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     output$questions <- shiny::renderUI({
       q <- questions()
       if (is.null(q) || !nrow(q)) {
-        return(shiny::p(class = "small text-muted", t("No questions.")))
+        why <- attr(q, "why")
+        return(shiny::p(class = "small text-muted", t(
+          if (identical(why, "chat")) "No questions: a chat writes its questions in its assumptions (step 3)."
+          else if (identical(why, "none yet")) "No questions yet: the agent writes ai/questions.md when it has some."
+          else "No questions.")))
       }
       shiny::tagList(lapply(seq_len(nrow(q)), function(i) {
         open <- !identical(q$status[i], "decided")
