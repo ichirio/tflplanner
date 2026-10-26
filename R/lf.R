@@ -124,12 +124,17 @@ listing_types <- function() company_standards()$listing_types
 # the part of a listing's program between its setup and its report (part
 # "data": its data only; "content": laid out from a `data` made before)
 .listing_lines <- function(x, output_id, rework = NA, part = "all") {
-  if (!nrow(lf_rows(x, "listings", output_id))) return(NULL)
+  l <- lf_rows(x, "listings", output_id)
+  if (!nrow(l)) return(NULL)
+  # a listing of the report's analysis data, or of an analysis set's
+  # subjects: its program starts with their part of the ARD definition
+  own <- any(!is.na(c(l$data[1L] %||% NA, l$population_id[1L] %||% NA)))
   tflspec::tfl_listing_code(
     tflspec::tfl_listing_spec(x$lf, check = FALSE), output_id,
     x$ard$datasets, rework = if (!is.na(rework)) .code_block(rework),
     type = .std_setting("listing_type", "multiline"),
-    codelists = .study_codelists(x), part = part)
+    codelists = .study_codelists(x), part = part,
+    ard = if (own) structure(x$ard, class = "tfl_ard_spec"))
 }
 
 # the part of a figure's program between its setup and its report: a
