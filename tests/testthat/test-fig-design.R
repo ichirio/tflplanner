@@ -204,7 +204,8 @@ test_that("the designer shows a piece's own lines of the design's code", {
   expect_false(any(grepl("^# ----|^library", base)))
   # the flag: the filter line it is in
   fl <- lines_of(list(sec = "data", i = 3L))
-  expect_identical(trimws(fl), "filter(PARAMCD == \"TTDE\", SAFFL == \"Y\") |>")
+  # (its pipe on: or ending there, the time unit's block after it -- tflspec #km)
+  expect_true(startsWith(trimws(fl), "filter(PARAMCD == \"TTDE\", SAFFL == \"Y\")"))
   fit <- .piece_code(code, d, list(sec = "data", i = length(d$data)), make)
   expect_match(fit, "^fit <- survfit2[(]")
   plot <- .piece_code(code, d, list(sec = "plot", i = 1L), make)
