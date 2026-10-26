@@ -236,12 +236,12 @@ test_that("step 2 and 3: the list, View, save an answer, check all, the reports 
     co <- ai$collected()
     expect_identical(co$reports$status[co$reports$request == "ae-1"], rep("ok", 2L))
     if (identical(ai_drafts(path), "ai/spec/outputs")) {
-      # (drafts: step 4 lists them; the rows ticked adopted, the study read again)
+      # (drafts: step 3 says so and points to step 4; there, the drafts not
+      # adopted yet are ticked at first, and copied into the study)
       expect_false("T-14-3-1" %in% output_ids(rv$p))
-      d <- .ai_list(path)
-      session$setInputs(`ai-list_table_rows_selected` = which(d$output_id %in% c("T-14-3-1", "T-14-3-5")))
+      expect_match(output$`ai-taken_note`$html, "step 4", fixed = TRUE)
       session$setInputs(`ai-adopt` = 1)
-      session$setInputs(`ai-adopt_ok` = 1)
+      session$setInputs(`ai-adopt_fresh` = 1)
     }
     expect_true("T-14-3-1" %in% output_ids(rv$p))
     expect_false(isTRUE(session$userData$dirty()))
