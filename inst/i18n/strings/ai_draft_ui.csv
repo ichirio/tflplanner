@@ -147,3 +147,6 @@
 "Other sheets (not shells)","その他のシート（シェルではない）"
 "The rest are shells.","残りはシェルとして読みます。"
 "Apply and read again","当てはめて読み直す"
+"Study folder","試験フォルダ"
+"Usually VS Code opens the study folder itself. To work on several studies at once from the folder above, add this full path to the message.","ふつうは VS Code で試験フォルダそのものを開きます。上のフォルダを開いて複数の試験を同時に扱う時は、このフルパスを指示に書き足します。"
+"Copy the full path","フルパスをコピー"
