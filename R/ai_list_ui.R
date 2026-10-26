@@ -193,7 +193,15 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       ifelse(is.na(act), paste0(one("change", t("Change")), one("drop", t("Not wanted"))),
              paste0(one("change", t("Change")), one("keep", t("Set back"))))
     }
-    v <- data.frame(ck, d$output_id, d$title, d$population, d$split, tw(d$status), tw(d$adopted), rtf,
+    # (a row changed on the person's list: the AI's value, then theirs)
+    yours <- function(col) {
+      if (is.null(e)) return(d[[col]])
+      mine <- e[[col]][k]
+      ifelse(act %in% "change" & !is.na(mine) & mine != ifelse(is.na(d[[col]]), "", d[[col]]),
+             paste0(ifelse(is.na(d[[col]]), "", d[[col]]), " → ", mine), d[[col]])
+    }
+    v <- data.frame(ck, d$output_id, yours("title"), yours("population"), yours("split"), tw(d$status),
+                    tw(d$adopted), rtf,
                     d$questions, d$problem, tw(act), note, links(d$output_id, act), stringsAsFactors = FALSE)
     if (!is.null(e)) {
       a <- e[e$action %in% "add" & !(e$output_id %in% d$output_id), , drop = FALSE]

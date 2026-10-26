@@ -41,6 +41,14 @@
     e$action[i] <- "drop"
     e$reason[i] <- val("reason")
   } else if (identical(what, "keep")) {
+    # (a change set back: the values the AI's list said, from `was`)
+    if (!is.na(e$was[i])) {
+      for (part in strsplit(e$was[i], " | ", fixed = TRUE)[[1L]]) {
+        k <- trimws(sub(":.*$", "", part))
+        v <- trimws(sub("^[^:]*:", "", part))
+        if (k %in% c("title", "population", "split")) e[[k]][i] <- if (nzchar(v)) v else NA_character_
+      }
+    }
     e$action[i] <- NA_character_
     e$reason[i] <- NA_character_
     e$was[i] <- NA_character_
