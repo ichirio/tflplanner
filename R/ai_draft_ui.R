@@ -78,7 +78,7 @@ ai_ui <- function(id, lang = "en") {
                 shiny::div(style = "flex: 1 1 14rem;",
                            shiny::fileInput(ns("toc_file"),
                                             with_tip(paste0(t("TOC / SHELL workbook"), " (toc)"),
-                                                     paste(t("Upload or path: the same workbook is read. Whether a copy is kept in the study's ai/ (what was read, beside the requests): an upload, yes; a path inside the study folder (its docs/, say), no -- the study already holds it; a path outside the study folder, yes."),
+                                                     paste(t("Upload or path: the same workbook is read. Whether a copy is kept in the study's docs/ (what was read): an upload, yes; a path inside the study folder (its docs/, say), no -- the study already holds it; a path outside the study folder, yes."),
                                                            t("The upload's dialog is the browser's: where it opens cannot be chosen."))),
                                             accept = c(".xlsx", ".xlsm"), width = "100%",
                                             buttonLabel = t("Browse..."),
@@ -90,16 +90,21 @@ ai_ui <- function(id, lang = "en") {
             shiny::uiOutput(ns("toc_check")),
             # the shells in workbooks of their own (none: in the TOC's)
             if (.ai_dialog_ok()) {
+              # (as the TOC's field: one input group, the button at the
+              # field's top -- the same height and edges whatever the field
+              # above shows, and when several paths make the field taller)
               shiny::div(
-                class = "d-flex gap-2 align-items-end",
-                shiny::div(style = "flex: 1 1 auto;",
-                           shiny::textAreaInput(ns("shell_paths"),
-                                                with_tip(paste0(t("Shell workbooks"), " (shells)"),
-                                                         t("Only when the shells are not in the TOC workbook. Browse... (several at once), or their paths, one a line. A workbook outside the study is copied into its docs/ when chosen with Browse...")),
-                                                rows = 1, width = "100%", resize = "vertical",
-                                                placeholder = "C:/.../SHELLS.xlsx")),
-                shiny::div(class = "mb-3",
-                           .btn(ns("shells_browse"), t("Browse..."), class = "btn-outline-secondary")))
+                class = "form-group shiny-input-container w-100",
+                shiny::tags$label(class = "control-label", id = paste0(ns("shell_paths"), "-label"),
+                                  `for` = ns("shell_paths"),
+                                  with_tip(paste0(t("Shell workbooks"), " (shells)"),
+                                           t("Only when the shells are not in the TOC workbook. Browse... (several at once), or their paths, one a line. A workbook outside the study is copied into its docs/ when chosen with Browse..."))),
+                shiny::div(
+                  class = "input-group align-items-start",
+                  shiny::tags$textarea(id = ns("shell_paths"), class = "form-control textarea-autoresize", rows = 1,
+                                       style = "resize: vertical;", placeholder = "C:/.../SHELLS.xlsx"),
+                  shiny::actionButton(ns("shells_browse"), t("Browse..."), class = "btn-outline-secondary",
+                                      style = "align-self: flex-start;")))
             } else {
               shiny::div(
                 class = "d-flex flex-wrap gap-2 align-items-end",
@@ -218,6 +223,8 @@ ai_ui <- function(id, lang = "en") {
         paste0("3 ", t("Answers"), " (tfl_ai_collect_answers)"), value = "answers",
         # (the study's mode, for the page: the agent's cards or the chat's paste)
         shiny::div(class = "d-none", shiny::textOutput(ns("mode_now"))),
+        # (the last check: what was taken in, and step 4 to adopt it)
+        shiny::uiOutput(ns("taken_note")),
         shiny::conditionalPanel(
           "output.mode_now == 'agent'", ns = ns,
           bslib::card(
@@ -271,7 +278,9 @@ ai_ui <- function(id, lang = "en") {
             shiny::selectInput(ns("assume_of"), NULL, choices = character(),
                                width = "220px", selectize = FALSE)),
           shiny::uiOutput(ns("assume_empty")),
-          DT::DTOutput(ns("assumptions"))))))
+          DT::DTOutput(ns("assumptions")))),
+      # step 4: the reports, adopted into the study (R/ai_list_ui.R)
+      ai_list_panel(ns, t)))
 }
 
 # The module's server.  `rv` the app's values (rv$study: the study open);
@@ -292,6 +301,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     ver <- shiny::reactiveVal(0L)
     collected <- shiny::reactiveVal(NULL)
     compared <- shiny::reactiveVal(NULL)
+    # step 4: the list and the adopting (R/ai_list_ui.R)
+    ai_list_server(input, output, session, path, ver, reload_now, notify, guarded, t)
     # another study opened: its own check, none yet
     was <- NULL
     shiny::observe({
@@ -341,6 +352,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     text_of <- function(what, id) {
       p <- path()
       if (identical(what, "agent")) return(agent_prompt())
+      if (identical(what, "folder")) return(normalizePath(p, "/", mustWork = FALSE))
       if (identical(what, "tell")) {
         return(t("I answered the questions in ai/questions.md. Read it again and go on."))
       }
@@ -572,10 +584,36 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       # between, which would see them as made outside the app)
       if (!isTRUE(reload_now())) return()
       ok <- unique(co$reports$output_id[co$reports$status %in% c("ok", "warning")])
-      notify(if (length(ok)) sprintf(t("%d reports taken in: %s (Report list)"), length(ok),
-                                     paste(ok, collapse = ", "))
+      drafts <- any(!.ai_in_study_spec(co$reports$file[co$reports$output_id %in% ok]))
+      taken(list(ok = ok, drafts = drafts))
+      notify(if (length(ok) && drafts) sprintf(t("%d drafts taken in: %s (step 4: adopt them into the study)"),
+                                               length(ok), paste(ok, collapse = ", "))
+             else if (length(ok)) sprintf(t("%d reports taken in: %s (Report list)"), length(ok),
+                                          paste(ok, collapse = ", "))
              else t("No report could be taken in: see each request's next step."))
     }
+    # the last check's reports, said on the page until the next check: how
+    # many were taken in, and that step 4 adopts (copies) them into the study
+    taken <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(path(), taken(NULL), ignoreNULL = FALSE)
+    output$taken_note <- shiny::renderUI({
+      k <- taken()
+      if (is.null(k)) return(NULL)
+      if (!length(k$ok)) {
+        return(shiny::div(class = "alert alert-secondary py-2 small",
+                          t("No report could be taken in: see each request's next step.")))
+      }
+      shiny::div(
+        class = paste("alert py-2 d-flex flex-wrap gap-2 align-items-center",
+                      if (k$drafts) "alert-info" else "alert-success"),
+        shiny::span(class = "me-auto", if (k$drafts) {
+          sprintf(t("%d drafts taken in. Next: adopt (copy) them into the study in step 4; the Report list shows only the adopted ones."),
+                  length(k$ok))
+        } else sprintf(t("%d reports taken in: on the Report list."), length(k$ok))),
+        if (k$drafts) .btn(ns("to_list2"), paste0(t("To step 4"), " (", t("List and corrections"), ")"),
+                           class = "btn-sm btn-primary"))
+    })
+    shiny::observeEvent(input$to_list2, bslib::nav_select("step", "list", session = session))
     shiny::observeEvent(input$save, save_answer())
     shiny::observeEvent(input$save_check, if (save_answer()) check_all())
     shiny::observeEvent(input$check, check_all())
@@ -611,7 +649,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
             shiny::tags$td(r$output_id[i]),
             shiny::tags$td(class = cls[[r$status[i]]] %||% "", t(r$status[i])),
             shiny::tags$td(if (is.na(r$first[i])) "" else r$first[i]),
-            shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && !is.na(r$file[i]))
+            shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && .ai_in_study_spec(r$file[i]))
               shiny::tags$button(
                 type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
                 `data-ns` = ns(""), `data-id` = r$output_id[i], t("Open in Make a report"))))))),
@@ -621,11 +659,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           class = "d-flex flex-wrap gap-2",
           rep_btn,
           if (any(co$reports$status %in% c("ok", "warning")))
-            .btn(ns("to_list"), t("Report list"), class = "btn-sm btn-outline-secondary py-0"),
+            .btn(ns("to_list"), paste0("4 ", t("List and corrections")),
+                 class = "btn-sm btn-outline-secondary py-0"),
           if (any(r$problems > 0))
             .btn(ns("problems"), t("All problems"), class = "btn-sm btn-outline-secondary py-0")))
     })
-    shiny::observeEvent(input$to_list, go("outputs"))
+    shiny::observeEvent(input$to_list, bslib::nav_select("step", "list", session = session))
     shiny::observeEvent(input$open_report, open_report(input$open_report$id))
     shiny::observeEvent(input$problems, {
       co <- collected()
@@ -872,7 +911,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       msg <- .ai_toc_problem(src$path, t)
       if (!is.null(msg)) return(shiny::div(class = "small text-danger mb-2", msg))
       shiny::div(class = "small text-muted mb-2",
-                 sprintf(t("Read: %s (copied into the study's ai/ when the requests are written)"),
+                 sprintf(t("Read: %s (copied into the study's docs/ when the requests are written)"),
                          src$name))
     })
     # the reports a request holds as the field says (the mode's default when
@@ -1312,7 +1351,15 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           class = "d-flex flex-wrap gap-2 align-items-center",
           shiny::span(class = "me-auto", t("The agent's first message")),
           shiny::HTML(act("agent", "agent", c(copy = t("Copy text"), view = t("View as text"))))),
-        shiny::tags$pre(class = "small mb-0 ai-prompt", agent_prompt()))
+        shiny::tags$pre(class = "small mb-0 ai-prompt", agent_prompt()),
+        # (the study folder's full path: for an agent opened on the folder
+        # above, the person adds it to the message)
+        shiny::div(
+          class = "d-flex flex-wrap gap-2 align-items-center small mt-2",
+          shiny::span(with_tip(paste0(t("Study folder"), ":"),
+                               t("Usually VS Code opens the study folder itself. To work on several studies at once from the folder above, add this full path to the message."))),
+          shiny::code(normalizePath(path(), "/", mustWork = FALSE)),
+          shiny::HTML(act("folder", "folder", c(copy = t("Copy the full path"))))))
     })
     output$check_note_agent <- shiny::renderUI({
       if (isTRUE(dirty())) shiny::span(class = "small text-warning", t("Save first"))
@@ -1386,7 +1433,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                             paste0(t("Could not be built:"), " ", .ai_short(w))), " ",
                 shiny::HTML(act("unbuilt", r$request[i], c(view = t("View")))))
               else if (is.na(r$first[i])) "" else r$first[i]),
-            shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && !is.na(r$file[i]))
+            shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && .ai_in_study_spec(r$file[i]))
               shiny::tags$button(
                 type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
                 `data-ns` = ns(""), `data-id` = r$output_id[i], t("Open in Make a report"))))
