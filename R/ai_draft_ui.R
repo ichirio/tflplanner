@@ -1186,6 +1186,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       DT::formatStyle(dt, "shell", backgroundColor = DT::styleEqual("\u2014", "#f8d7da"),
                       color = DT::styleEqual("\u2014", "#842029"))
     }, server = FALSE)
+    # (drawn also while their tab is hidden: an Apply on another tab keeps
+    # that tab open, and the TOC view must follow the numbers)
+    for (o in c("toc_head", "toc_table")) shiny::outputOptions(output, o, suspendWhenHidden = FALSE)
     # the shells: a sheet each, the TOC items it was taken for
     output$shells_head <- shiny::renderUI({
       p <- prepared()

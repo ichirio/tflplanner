@@ -1104,6 +1104,14 @@ test_that("step 1: a number unticked and applied, then back to the rule, before 
     session$setInputs(`ai-numbers_apply` = 1)
     expect_false(row_of()$make)
     expect_identical(row_of()$source, "given")
+    # (the TOC view follows: the item made by no sheet now has no shell,
+    # unless another sheet makes it)
+    tc <- ai$prepared()$toc
+    id <- n$toc_id[k]
+    if (!is.na(id) && sum(ai$prepared()$numbers$toc_id %in% id & ai$prepared()$numbers$make %in% TRUE) == 0L) {
+      expect_false(tc$shell_found[(tc$toc_id %||% tc$output_id) == id])
+      expect_match(output$`ai-toc_head`$html, "1 of them with no shell", fixed = TRUE)
+    }
     session$setInputs(`ai-numbers_rule` = 1)
     expect_true(row_of()$make)
     expect_identical(row_of()$source, "rule")
