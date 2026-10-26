@@ -963,7 +963,11 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     })
     # (Read and check, or the sheets' roles applied: read again)
     read_again <- shiny::reactiveVal(0L)
-    read_now <- function() read_again(read_again() + 1L)
+    tab_kept <- new.env()
+    read_now <- function() {
+      tab_kept$tab <- shiny::isolate(input$prep_tab)
+      read_again(read_again() + 1L)
+    }
     # the numbers in the sheets, changed on the Shells tab (R/ai_numbers_ui.R)
     numbers_now <- ai_numbers_server(input, output, session, prepared, read_now, t)
     shiny::observeEvent(list(input$read, read_again()), ignoreInit = TRUE, {
@@ -1005,7 +1009,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           "%s (%d)", ds[i], p$adam$datasets$variables[i])),
         choiceValues = ds, selected = if (length(keep)) keep else ds)
       read_with(read_key())
-      bslib::nav_select("prep_tab", if (nrow(p$toc) && all(p$toc$shell_found)) "adam" else "toc",
+      # (read again by an Apply: the tab it was on kept)
+      tab <- tab_kept$tab
+      tab_kept$tab <- NULL
+      bslib::nav_select("prep_tab", tab %||% if (nrow(p$toc) && all(p$toc$shell_found)) "adam" else "toc",
                         session = session)
     })
     write_now <- function(overwrite = FALSE) {
