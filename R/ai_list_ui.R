@@ -164,7 +164,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     d <- listed()
     if (is.null(d) || !nrow(d)) {
       shiny::p(class = "small text-muted",
-               t("No report listed yet: write the requests (step 1) and check the answers (step 3)."))
+               t("No report listed yet: write the requests (step 1), then check the answers (step 3) or run run.R (below)."))
     }
   })
   output$list_table <- DT::renderDT({
@@ -206,10 +206,10 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     names(v) <- c(t("Tick to copy"), "output_id", t("Title (title)"), t("Analysis set (population)"),
                   t("Split (split)"), t("State (status)"), paste0(t("Adopted"), " (adopted)"), "RTF",
                   t("Questions (questions)"), t("First problem"), paste0(t("Expected"), " (action)"),
-                  paste0(t("Note"), " (note)"), "")
+                  t("Note (note)"), t("Edit"))
     v[is.na(v)] <- ""
     # (the boxes, the RTF links and the change links: not escaped)
-    DT::datatable(v, rownames = FALSE, escape = which(!names(v) %in% c(t("Tick to copy"), "RTF", "")),
+    DT::datatable(v, rownames = FALSE, escape = which(!names(v) %in% c(t("Tick to copy"), "RTF", t("Edit"))),
                   selection = "none",
                   options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
   })
@@ -435,15 +435,18 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     run$px <- processx::process$new(file.path(R.home("bin"), "Rscript"), "run.R", wd = p,
                                     stdout = log, stderr = "2>&1", cleanup = TRUE)
   })
+  # (its end found here, not while drawing: the list read again once)
+  shiny::observe({
+    px <- run$px
+    if (is.null(px) || !is.null(shiny::isolate(run$end))) return()
+    if (px$is_alive()) return(shiny::invalidateLater(2000))
+    run$end <- px$get_exit_status()
+    shiny::isolate(again(again() + 1L))
+  })
   output$run_note <- shiny::renderUI({
     if (is.null(run$px)) return(NULL)
-    if (run$px$is_alive()) {
-      shiny::invalidateLater(2000)
-      return(shiny::div(class = "small text-muted mt-2", t("run.R is running (every request) ...")))
-    }
     if (is.null(run$end)) {
-      run$end <- run$px$get_exit_status()
-      shiny::isolate(again(again() + 1L))
+      return(shiny::div(class = "small text-muted mt-2", t("run.R is running (every request) ...")))
     }
     tail <- tryCatch(utils::tail(readLines(run$log, warn = FALSE, encoding = "UTF-8"), 3L),
                      error = function(e) character())

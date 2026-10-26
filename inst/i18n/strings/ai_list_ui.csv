@@ -2,7 +2,7 @@
 "List and corrections","一覧と修正依頼"
 "The AI's reports","AI の帳票"
 "%d reports, %d drafts, %d adopted","帳票 %d、下書き %d、採用 %d"
-"No report listed yet: write the requests (step 1) and check the answers (step 3).","まだ帳票がありません: 依頼を書き（手順 1）、回答を検査します（手順 3）。"
+"No report listed yet: write the requests (step 1), then check the answers (step 3) or run run.R (below).","まだ帳票がありません: 依頼を書き（手順 1）、回答を検査する（手順 3）か、下の run.R を実行します。"
 "Title (title)","タイトル (title)"
 "Analysis set (population)","解析対象集団 (population)"
 "Split (split)","分け方 (split)"
@@ -79,3 +79,4 @@
 "The agent's questions are answered in step 4.","エージェントの質問には、手順 4 で答えます。"
 "No questions: a chat writes its questions in its assumptions (step 3).","質問はありません。チャットの形では、質問は仮定の表（手順 3）に出ます。"
 "No questions yet: the agent writes ai/questions.md when it has some.","まだ質問はありません。質問があると、エージェントが ai/questions.md に書きます。"
+"Note (note)","メモ (note)"
