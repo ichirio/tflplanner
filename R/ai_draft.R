@@ -440,10 +440,8 @@
          if (!is.null(title) && nzchar(title)) list(title = title),
          if (length(shells)) list(shells = unname(shells)),
          Filter(Negate(is.null), args))
-  # (the AI's drafts in the study's own spec/outputs, as before -- not in the
-  # AI's area, ai/spec/outputs, until the AI tab lists the drafts and adopts
-  # them, tfl_ai_adopt(): the Report list reads spec/outputs alone)
-  if ("area" %in% names(formals(tflspec::tfl_ai_prepare)) && is.null(a$area)) a$area <- FALSE
+  # (a new study: the AI's drafts in its area, ai/spec/outputs -- tflspec's
+  # default; step 4 lists them and adopts them into spec/outputs)
   # (add = TRUE, overwrite = TRUE: the requests asked again alone -- the
   # study's own files and the agent's are kept, tflspec >= 0.0.24.9178)
   # (a dry run on a folder not made yet: its path is not there to normalize)
