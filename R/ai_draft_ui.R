@@ -180,10 +180,14 @@ ai_ui <- function(id, lang = "en") {
               id = ns("prep_tab"),
               bslib::nav_panel(t("TOC items"), value = "toc",
                                shiny::uiOutput(ns("toc_head")),
-                               DT::DTOutput(ns("toc_table"))),
+                               DT::DTOutput(ns("toc_table")),
+                               # (a TOC item with no shell put in a sheet: R/ai_numbers_ui.R)
+                               shiny::uiOutput(ns("toc_attach"))),
               bslib::nav_panel(t("Shells"), value = "shells",
                                shiny::uiOutput(ns("shells_head")),
-                               DT::DTOutput(ns("shells_table"))),
+                               DT::DTOutput(ns("shells_table")),
+                               # (the numbers in the sheets, boxes: R/ai_numbers_ui.R)
+                               ai_numbers_ui(ns, t)),
               bslib::nav_panel(t("ADaM summary (what is sent)"), value = "adam",
                                shiny::div(
                                  class = "d-flex flex-wrap gap-3 align-items-end mt-2",
@@ -918,7 +922,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
            mode = input$mode %||% "agent",
            templates = !isFALSE(input$templates),
            add = isTRUE(input$add) && !is_new(),
-           sheet_roles = roles_now())
+           sheet_roles = roles_now(),
+           numbers = numbers_now())
     }
     inputs_ok <- function() {
       msg <- .ai_toc_problem(toc_src()$path, t)
@@ -959,6 +964,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     # (Read and check, or the sheets' roles applied: read again)
     read_again <- shiny::reactiveVal(0L)
     read_now <- function() read_again(read_again() + 1L)
+    # the numbers in the sheets, changed on the Shells tab (R/ai_numbers_ui.R)
+    numbers_now <- ai_numbers_server(input, output, session, prepared, read_now, t)
     shiny::observeEvent(list(input$read, read_again()), ignoreInit = TRUE, {
       if (is.null(input$read) && identical(read_again(), 0L)) return()
       if (!inputs_ok()) return()
