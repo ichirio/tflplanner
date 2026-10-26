@@ -1,0 +1,2 @@
+"en","ja"
+"%d settings the sheet cannot say (kept): %d of the listing's (content_more), %d of its columns (more). Edit them in the report's YAML.","シートで言えない設定 %d 個（保たれます）: 一覧の %d 個（content_more）、列の %d 個（more）。帳票の YAML で直してください。"

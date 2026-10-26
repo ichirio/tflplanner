@@ -114,8 +114,12 @@ test_that("a new study's ID is checked where it is typed", {
 })
 
 test_that("every sentence the app shows has its Japanese", {
-  src <- test_path("..", "..", "R", c("app.R", "app_designer.R"))
-  skip_if_not(all(file.exists(src)), "source not available (installed package)")
+  # (app.R and its parts since the split: app_ui.R, app_helpers.R, srv_*.R)
+  r_dir <- test_path("..", "..", "R")
+  skip_if_not(file.exists(file.path(r_dir, "app.R")), "source not available (installed package)")
+  src <- c(file.path(r_dir, c("app.R", "app_ui.R", "app_helpers.R", "app_designer.R")),
+           list.files(r_dir, "^srv_.*[.]R$", full.names = TRUE))
+  expect_gt(length(src), 10L)
   code <- unlist(lapply(src, readLines, encoding = "UTF-8", warn = FALSE))
   lits <- unlist(regmatches(code, gregexpr('\\bt\\("((?:[^"\\\\]|\\\\.)*)"\\)', code, perl = TRUE)))
   lits <- unique(eval(parse(text = paste0("c(", paste(sub("^t", "", lits), collapse = ","), ")"))))

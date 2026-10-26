@@ -1,0 +1,5 @@
+"en","ja"
+"Running %s","実行中 %s"
+"Done %s: %d of %d without error","完了 %s：%d / %d 本エラーなし"
+"%d errors (of %d), %s","エラー %d 本（%d 本中）%s"
+"Not finished (stopped)","未完了（途中で止まりました）"

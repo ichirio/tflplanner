@@ -273,8 +273,7 @@ test_that("every study folder has its note on the study tab", {
   # a folder with no note yet shows none instead of breaking the tab
   expect_identical(.study_folder_notes(c("adam", "new_one"))[2], "")
   # and every note is translated
-  tr <- utils::read.csv(system.file("i18n", "strings.csv", package = "tflplanner"),
-                        encoding = "UTF-8", check.names = FALSE)
+  tr <- .strings()
   expect_true(all(notes %in% tr$en))
 })
 

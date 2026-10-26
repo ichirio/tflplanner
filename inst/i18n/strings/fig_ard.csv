@@ -1,0 +1,6 @@
+"en","ja"
+"%s is not a table of the study","%s は試験の表ではありません"
+"%s is not a table of the study (deleted, or renamed by hand)","%s は試験の表ではありません（削除されたか、手で名前が変えられています）"
+"the design reads an ARD, but the figure has none: choose it in step 2","デザインは ARD を読みますが、図に ARD がありません。ステップ 2 で選んでください"
+"%s has no analysis %s (any more): the figure prints from it","%s に解析 %s が（もう）ありません。図はその数値を出します"
+"the ARD of %s is not made yet: make it first (its step 2)","%s の ARD はまだ作られていません。先に作ってください（そのステップ 2）"
