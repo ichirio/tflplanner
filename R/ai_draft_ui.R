@@ -90,16 +90,21 @@ ai_ui <- function(id, lang = "en") {
             shiny::uiOutput(ns("toc_check")),
             # the shells in workbooks of their own (none: in the TOC's)
             if (.ai_dialog_ok()) {
+              # (as the TOC's field: one input group, the button at the
+              # field's top -- the same height and edges whatever the field
+              # above shows, and when several paths make the field taller)
               shiny::div(
-                class = "d-flex gap-2 align-items-end",
-                shiny::div(style = "flex: 1 1 auto;",
-                           shiny::textAreaInput(ns("shell_paths"),
-                                                with_tip(paste0(t("Shell workbooks"), " (shells)"),
-                                                         t("Only when the shells are not in the TOC workbook. Browse... (several at once), or their paths, one a line. A workbook outside the study is copied into its docs/ when chosen with Browse...")),
-                                                rows = 1, width = "100%", resize = "vertical",
-                                                placeholder = "C:/.../SHELLS.xlsx")),
-                shiny::div(class = "mb-3",
-                           .btn(ns("shells_browse"), t("Browse..."), class = "btn-outline-secondary")))
+                class = "form-group shiny-input-container w-100",
+                shiny::tags$label(class = "control-label", id = paste0(ns("shell_paths"), "-label"),
+                                  `for` = ns("shell_paths"),
+                                  with_tip(paste0(t("Shell workbooks"), " (shells)"),
+                                           t("Only when the shells are not in the TOC workbook. Browse... (several at once), or their paths, one a line. A workbook outside the study is copied into its docs/ when chosen with Browse..."))),
+                shiny::div(
+                  class = "input-group align-items-start",
+                  shiny::tags$textarea(id = ns("shell_paths"), class = "form-control textarea-autoresize", rows = 1,
+                                       style = "resize: vertical;", placeholder = "C:/.../SHELLS.xlsx"),
+                  shiny::actionButton(ns("shells_browse"), t("Browse..."), class = "btn-outline-secondary",
+                                      style = "align-self: flex-start;")))
             } else {
               shiny::div(
                 class = "d-flex flex-wrap gap-2 align-items-end",
