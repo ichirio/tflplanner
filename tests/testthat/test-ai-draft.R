@@ -273,7 +273,7 @@ test_that("a new study: written by tfl_ai_prepare(), then registered; its ID che
   expect_identical(s$meta$title, "A new study")
   expect_true("NEW-1" %in% list_studies()$study_id)
   # the workbook kept beside the requests, under its own name
-  expect_true(file.exists(file.path(s$path, "ai", "onco_toc_shell.xlsx")))
+  expect_true(file.exists(file.path(s$path, "docs", "onco_toc_shell.xlsx")))
   expect_identical(.ai_requests(s$path)$request, out$prepared$requests$request)
   # only the datasets ticked are sent
   sent <- paste(readLines(file.path(s$path, "ai", "adam_summary.md"), encoding = "UTF-8"),
@@ -342,7 +342,7 @@ test_that("step 1 in the app: read, then a new study written, registered and ope
   })
 })
 
-test_that("the workbook by its path: checked, then copied into the study's ai/ like an upload", {
+test_that("the workbook by its path: checked, then copied into the study's docs/ like Browse...", {
   local_home()
   expect_null(.ai_toc_problem(ai_toc))
   expect_match(.ai_toc_problem(file.path(tempdir(), "none.xlsx")), "No file")
@@ -356,7 +356,7 @@ test_that("the workbook by its path: checked, then copied into the study's ai/ l
   file.copy(ai_toc, file.path(d, "TOC_SHELL.xlsx"), overwrite = TRUE)
   out <- .ai_new_study("PATH-1", file.path(d, "TOC_SHELL.xlsx"), "TOC_SHELL.xlsx", ai_adam,
                        list(size = 3L))
-  kept <- file.path(out$study$path, "ai", "TOC_SHELL.xlsx")
+  kept <- file.path(out$study$path, "docs", "TOC_SHELL.xlsx")
   expect_true(file.exists(kept))
   expect_identical(unname(tools::md5sum(kept)), unname(tools::md5sum(ai_toc)))
   expect_error(.ai_new_study("PATH-2", file.path(d, "gone.xlsx"), "gone.xlsx", ai_adam),
@@ -912,7 +912,7 @@ skip_unless_asked_again_stops <- function() {
   }
 }
 
-test_that("the shells in a workbook of their own: read, kept in ai/, each request's workbook", {
+test_that("the shells in a workbook of their own: read, kept in docs/, each request's workbook", {
   local_home()
   d <- file.path(tempdir(), "ai-books")
   dir.create(d, showWarnings = FALSE)
@@ -924,7 +924,7 @@ test_that("the shells in a workbook of their own: read, kept in ai/, each reques
   out <- .ai_new_study("BK-1", f[1L], "toc.xlsx", ai_adam, list(size = 3L),
                        shells = list(list(path = f[2L], name = "shells.xlsx")))
   path <- out$study$path
-  expect_true(all(file.exists(file.path(path, "ai", c("toc.xlsx", "shells.xlsx")))))
+  expect_true(all(file.exists(file.path(path, "docs", c("toc.xlsx", "shells.xlsx")))))
   r <- .ai_requests(path)
   expect_true("book" %in% names(r))
   expect_identical(unique(r$book), "shells.xlsx")
@@ -949,7 +949,7 @@ test_that("requests added: the next names, the answers kept; a report asked agai
   expect_identical(r$request[nrow(r)], "ae-2")
   expect_identical(r$book[nrow(r)], "more.xlsx")
   expect_true(file.exists(file.path(path, "ai", "answers", "ae-1.md")))
-  expect_true(file.exists(file.path(path, "ai", "more.xlsx")))
+  expect_true(file.exists(file.path(path, "docs", "more.xlsx")))
   # the same workbook again: asked for already
   again <- .ai_already_asked(path, "T-14-3-2")
   expect_identical(again$request, "ae-2")

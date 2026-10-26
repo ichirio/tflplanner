@@ -78,7 +78,7 @@ ai_ui <- function(id, lang = "en") {
                 shiny::div(style = "flex: 1 1 14rem;",
                            shiny::fileInput(ns("toc_file"),
                                             with_tip(paste0(t("TOC / SHELL workbook"), " (toc)"),
-                                                     paste(t("Upload or path: the same workbook is read. Whether a copy is kept in the study's ai/ (what was read, beside the requests): an upload, yes; a path inside the study folder (its docs/, say), no -- the study already holds it; a path outside the study folder, yes."),
+                                                     paste(t("Upload or path: the same workbook is read. Whether a copy is kept in the study's docs/ (what was read): an upload, yes; a path inside the study folder (its docs/, say), no -- the study already holds it; a path outside the study folder, yes."),
                                                            t("The upload's dialog is the browser's: where it opens cannot be chosen."))),
                                             accept = c(".xlsx", ".xlsm"), width = "100%",
                                             buttonLabel = t("Browse..."),
@@ -868,7 +868,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       msg <- .ai_toc_problem(src$path, t)
       if (!is.null(msg)) return(shiny::div(class = "small text-danger mb-2", msg))
       shiny::div(class = "small text-muted mb-2",
-                 sprintf(t("Read: %s (copied into the study's ai/ when the requests are written)"),
+                 sprintf(t("Read: %s (copied into the study's docs/ when the requests are written)"),
                          src$name))
     })
     # the reports a request holds as the field says (the mode's default when

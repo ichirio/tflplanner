@@ -491,19 +491,25 @@
   normalizePath(to, "/")
 }
 
-# The TOC / SHELL workbook kept in the study (ai/<its name>): what was
-# read, beside the requests.  Gives the copy's path.  A workbook already
-# inside the study folder (its docs/, say) is not copied: its own path
-# (tflspec writes it from the study folder).
+# The TOC / SHELL workbook kept in the study (docs/<its name>, where
+# Browse... puts one too: .ai_book_into_docs()): what was read.  Gives the
+# copy's path.  A workbook already inside the study folder (its docs/, say)
+# is not copied: its own path (tflspec writes it from the study folder).
+# Another file of that name already in docs/ stops, as for Browse....
 .ai_keep_toc <- function(dir, toc, name = basename(toc)) {
   msg <- .ai_toc_problem(toc)
   if (!is.null(msg)) stop(msg, call. = FALSE)
   if (.ai_in_study(toc, dir)) return(normalizePath(toc, "/"))
-  to <- file.path(dir, "ai", basename(name))
+  to <- file.path(dir, "docs", basename(name))
   if (identical(normalizePath(toc, "/", mustWork = FALSE),
                 normalizePath(to, "/", mustWork = FALSE))) return(to)
+  if (file.exists(to)) {
+    if (identical(unname(tools::md5sum(toc)), unname(tools::md5sum(to)))) return(to)
+    stop(sprintf("The study's docs/ has another %s already: rename one, or choose the one in docs/.",
+                 basename(name)), call. = FALSE)
+  }
   dir.create(dirname(to), recursive = TRUE, showWarnings = FALSE)
-  if (!isTRUE(suppressWarnings(file.copy(toc, to, overwrite = TRUE)))) {
+  if (!isTRUE(suppressWarnings(file.copy(toc, to)))) {
     stop(sprintf("Could not copy %s to %s: is it open in another program (Excel)?", name, to),
          call. = FALSE)
   }
@@ -536,7 +542,7 @@
 }
 
 # The requests written into a study open in the app (its study.yml and
-# spec/ kept): the workbooks copied into ai/ first.  The tfl_ai_prepared.
+# spec/ kept): the workbooks copied into docs/ first.  The tfl_ai_prepared.
 .ai_write_requests <- function(path, toc, toc_name, adam, args = list(), shells = list()) {
   toc <- .ai_keep_toc(path, toc, toc_name)
   .ai_prepare(path, toc, adam, args, dry_run = FALSE, shells = .ai_keep_shells(path, shells))

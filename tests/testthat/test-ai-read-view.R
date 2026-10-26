@@ -70,7 +70,7 @@ test_that("a dry run: a row a TOC item, a row a shell sheet, the counts; request
   expect_identical(.ai_one_names(c("t 15.1", "T15.1.5.1", "t 15.1")), c("t-15.1", "T15.1.5.1", "t-15.1-1"))
 })
 
-test_that("a workbook in the study folder is read where it is; one outside is copied into ai/", {
+test_that("a workbook in the study folder is read where it is; one outside is copied into docs/", {
   local_home()
   root <- studies_root()
   dir <- file.path(root, "P-2")
@@ -88,8 +88,8 @@ test_that("a workbook in the study folder is read where it is; one outside is co
   expect_identical(.ai_keep_toc(dir, inside), normalizePath(inside, "/"))
   expect_false(file.exists(file.path(dir, "ai", "toc_shell.xlsx")))
   kept <- .ai_keep_toc(dir, outside, "renamed.xlsx")
-  expect_true(file.exists(file.path(dir, "ai", "renamed.xlsx")))
-  expect_identical(normalizePath(kept, "/"), normalizePath(file.path(dir, "ai", "renamed.xlsx"), "/"))
+  expect_true(file.exists(file.path(dir, "docs", "renamed.xlsx")))
+  expect_identical(normalizePath(kept, "/"), normalizePath(file.path(dir, "docs", "renamed.xlsx"), "/"))
   expect_identical(.ai_keep_shells(dir, list(list(path = inside, name = "x.xlsx"))),
                    normalizePath(inside, "/"))
   # a new study made from the workbook in its docs/: nothing copied, the
