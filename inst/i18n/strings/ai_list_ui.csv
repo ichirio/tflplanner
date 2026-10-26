@@ -26,7 +26,7 @@
 "Tick only the updated drafts","下書きが新しくなった物だけ選ぶ"
 "Adopt (copy) the reports ticked into the study","チェックした帳票を試験に採用（写す）"
 "%d ticked","%d 件を選択"
-"In the study","試験に"
+"In the study","試験の値"
 "Tick the reports to adopt.","採用する帳票にチェックを付けてください。"
 "The reports ticked are in the study as they are: nothing to adopt.","チェックした帳票は、もう試験に同じ形で入っています。写す物はありません。"
 "Adopt (copy) into the study","試験に採用（写す）"
@@ -43,3 +43,4 @@
 "%d drafts taken in. Next: adopt (copy) them into the study in step 4; the Report list shows only the adopted ones.","下書きを %d 件取り込みました。次に、手順 4 で試験に採用（写す）してください。帳票一覧には採用した物だけが出ます。"
 "%d reports taken in: on the Report list.","%d 件の帳票を取り込みました。帳票一覧に出ます。"
 "To step 4","手順 4 へ"
+"Tick to copy","写す"

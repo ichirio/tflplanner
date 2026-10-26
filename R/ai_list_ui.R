@@ -152,12 +152,12 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     tw <- function(x) ifelse(is.na(x) | !nzchar(x), "", vapply(as.character(x), t, ""))
     v <- data.frame(ck, d$output_id, d$title, d$population, d$split, tw(d$status), tw(d$adopted), rtf,
                     d$questions, d$problem, stringsAsFactors = FALSE)
-    names(v) <- c(t("Adopt"), "output_id", t("Title (title)"), t("Analysis set (population)"),
-                  t("Split (split)"), t("State (status)"), paste0(t("In the study"), " (adopted)"), "RTF",
+    names(v) <- c(t("Tick to copy"), "output_id", t("Title (title)"), t("Analysis set (population)"),
+                  t("Split (split)"), t("State (status)"), paste0(t("Adopted"), " (adopted)"), "RTF",
                   t("Questions (questions)"), t("First problem"))
     v[is.na(v)] <- ""
     # (the boxes and the RTF links: not escaped)
-    DT::datatable(v, rownames = FALSE, escape = which(!names(v) %in% c(t("Adopt"), "RTF")),
+    DT::datatable(v, rownames = FALSE, escape = which(!names(v) %in% c(t("Tick to copy"), "RTF")),
                   selection = "none",
                   options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
   })
