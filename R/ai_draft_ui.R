@@ -265,7 +265,9 @@ ai_ui <- function(id, lang = "en") {
           shiny::uiOutput(ns("assume_empty")),
           DT::DTOutput(ns("assumptions")))),
       # step 4: the reports, adopted into the study (R/ai_list_ui.R)
-      ai_list_panel(ns, t)))
+      ai_list_panel(ns, t),
+      # the look of past reports, for every study (R/ai_style_ui.R)
+      ai_style_panel(ns, t)))
 }
 
 # The module's server.  `rv` the app's values (rv$study: the study open);
@@ -288,6 +290,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     compared <- shiny::reactiveVal(NULL)
     # step 4: the list and the adopting (R/ai_list_ui.R)
     ai_list_server(input, output, session, path, ver, reload_now, notify, guarded, t)
+    # the look of past reports (R/ai_style_ui.R)
+    ai_style_server(input, output, session, notify, guarded, t)
     # another study opened: its own check, none yet
     was <- NULL
     shiny::observe({
