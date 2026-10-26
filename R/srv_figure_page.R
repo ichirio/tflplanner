@@ -543,7 +543,7 @@
     own_size <- .points(page_value(p, "font_size_half_points", id))
     all_font <- study_page_value(p, "font")
     all_size <- .points(study_page_value(p, "font_size_half_points"))
-    if (is.na(all_font)) all_font <- "Courier"
+    if (is.na(all_font)) all_font <- "Courier New"
     if (!nzchar(all_size)) all_size <- "9"
     rf_drawn$id <- id
     rf_drawn$font <- if (is.na(own_font)) "" else own_font
