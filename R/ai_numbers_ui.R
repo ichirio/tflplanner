@@ -25,15 +25,17 @@
                   ifelse(is.na(n$toc_id), "—", n$toc_id),
                   ifelse(is.na(src[n$source]), as.character(n$source), src[n$source]), stringsAsFactors = FALSE)
   names(v) <- c(t("Make"), t("sheet"), t("Number in the sheet"), t("Title in the sheet"),
-                paste0(t("TOC item"), " (toc_id)"), t("From"))
+                paste0(t("TOC item"), " (toc_id)"), t("Decided by"))
   v
 }
 
 #' @noRd
 ai_numbers_ui <- function(ns, t) {
-  shiny::tagList(
+  # (in the normal flow, not filling the tab: the table above it fills)
+  shiny::div(
+    class = "flex-shrink-0 mt-2", style = "min-height: fit-content;",
     shiny::uiOutput(ns("numbers_head")),
-    DT::DTOutput(ns("numbers_table")),
+    DT::DTOutput(ns("numbers_table"), height = "auto"),
     shiny::tags$script(shiny::HTML(
       "$(document).off('change.ainum').on('change.ainum', '.ai-num-ck', function() {
          Shiny.setInputValue(this.dataset.ns + 'num_toggle',
@@ -90,11 +92,13 @@ ai_numbers_server <- function(input, output, session, prepared, read_now, t) {
     given(pending())
     read_now()
   })
-  # (every number the person gave set back: make NA, the rule's again)
+  # (every number the person gave, now or saved before, set back: make
+  # NA, the rule's again)
   shiny::observeEvent(input$numbers_rule, {
-    g <- given()
+    n <- numbers()
+    mine <- if (!is.null(n)) n[n$source %in% c("given", "saved"), c("sheet", "number"), drop = FALSE]
     pending(NULL)
-    given(if (!is.null(g) && nrow(g)) transform(g, make = NA) else NULL)
+    given(if (!is.null(mine) && nrow(mine)) transform(mine, make = NA) else NULL)
     read_now()
   })
   # the TOC items tab: a TOC item with no shell put in a sheet's request
