@@ -440,10 +440,8 @@
          if (!is.null(title) && nzchar(title)) list(title = title),
          if (length(shells)) list(shells = unname(shells)),
          Filter(Negate(is.null), args))
-  # (the AI's drafts in the study's own spec/outputs, as before -- not in the
-  # AI's area, ai/spec/outputs, until the AI tab lists the drafts and adopts
-  # them, tfl_ai_adopt(): the Report list reads spec/outputs alone)
-  if ("area" %in% names(formals(tflspec::tfl_ai_prepare)) && is.null(a$area)) a$area <- FALSE
+  # (a new study: the AI's drafts in its area, ai/spec/outputs -- tflspec's
+  # default; step 4 lists them and adopts them into spec/outputs)
   # (add = TRUE, overwrite = TRUE: the requests asked again alone -- the
   # study's own files and the agent's are kept, tflspec >= 0.0.24.9178)
   # (a dry run on a folder not made yet: its path is not there to normalize)
@@ -491,19 +489,25 @@
   normalizePath(to, "/")
 }
 
-# The TOC / SHELL workbook kept in the study (ai/<its name>): what was
-# read, beside the requests.  Gives the copy's path.  A workbook already
-# inside the study folder (its docs/, say) is not copied: its own path
-# (tflspec writes it from the study folder).
+# The TOC / SHELL workbook kept in the study (docs/<its name>, where
+# Browse... puts one too: .ai_book_into_docs()): what was read.  Gives the
+# copy's path.  A workbook already inside the study folder (its docs/, say)
+# is not copied: its own path (tflspec writes it from the study folder).
+# Another file of that name already in docs/ stops, as for Browse....
 .ai_keep_toc <- function(dir, toc, name = basename(toc)) {
   msg <- .ai_toc_problem(toc)
   if (!is.null(msg)) stop(msg, call. = FALSE)
   if (.ai_in_study(toc, dir)) return(normalizePath(toc, "/"))
-  to <- file.path(dir, "ai", basename(name))
+  to <- file.path(dir, "docs", basename(name))
   if (identical(normalizePath(toc, "/", mustWork = FALSE),
                 normalizePath(to, "/", mustWork = FALSE))) return(to)
+  if (file.exists(to)) {
+    if (identical(unname(tools::md5sum(toc)), unname(tools::md5sum(to)))) return(to)
+    stop(sprintf("The study's docs/ has another %s already: rename one, or choose the one in docs/.",
+                 basename(name)), call. = FALSE)
+  }
   dir.create(dirname(to), recursive = TRUE, showWarnings = FALSE)
-  if (!isTRUE(suppressWarnings(file.copy(toc, to, overwrite = TRUE)))) {
+  if (!isTRUE(suppressWarnings(file.copy(toc, to)))) {
     stop(sprintf("Could not copy %s to %s: is it open in another program (Excel)?", name, to),
          call. = FALSE)
   }
@@ -536,7 +540,7 @@
 }
 
 # The requests written into a study open in the app (its study.yml and
-# spec/ kept): the workbooks copied into ai/ first.  The tfl_ai_prepared.
+# spec/ kept): the workbooks copied into docs/ first.  The tfl_ai_prepared.
 .ai_write_requests <- function(path, toc, toc_name, adam, args = list(), shells = list()) {
   toc <- .ai_keep_toc(path, toc, toc_name)
   .ai_prepare(path, toc, adam, args, dry_run = FALSE, shells = .ai_keep_shells(path, shells))
