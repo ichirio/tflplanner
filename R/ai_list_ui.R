@@ -44,10 +44,11 @@ ai_list_panel <- function(ns, t) {
       class = "d-flex flex-wrap gap-2 align-items-center mb-2",
       shiny::h6(class = "mb-0 me-auto", with_tip(
         paste0(t("The AI's reports"), " (tfl_ai_outputs)"),
-        t("Every report the AI was asked for: its draft (ai/spec/outputs) and whether it is in the study (spec/outputs). Tick the rows to adopt; the Report list shows the adopted ones."))),
+        t("Every report the AI was asked for: its draft (ai/spec/outputs) and whether it is in the study (spec/outputs). Select the rows to adopt (click them); the Report list shows the adopted ones."))),
       shiny::uiOutput(ns("list_count"), inline = TRUE),
       .btn(ns("list_reread"), t("Read again")),
-      .btn(ns("adopt"), paste0(t("Adopt the rows ticked"), " (tfl_ai_adopt)"), class = "btn-sm btn-primary")),
+      .btn(ns("adopt"), paste0(t("Adopt the rows selected"), " (tfl_ai_adopt)"), class = "btn-sm btn-primary")),
+    shiny::uiOutput(ns("list_empty")),
     DT::DTOutput(ns("list_table")),
     shiny::tags$script(shiny::HTML(
       "$(document).off('click.airtf').on('click.airtf', '.ai-open-rtf', function(e) {
@@ -71,27 +72,35 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   })
   output$list_count <- shiny::renderUI({
     d <- listed()
-    if (is.null(d)) return(NULL)
+    if (is.null(d) || !nrow(d)) return(NULL)
     n_draft <- sum(!is.na(d$file) & nzchar(d$file))
     n_adopt <- sum(startsWith(as.character(d$adopted %||% ""), "yes"), na.rm = TRUE)
     shiny::span(class = "small text-muted", sprintf(t("%d reports, %d drafts, %d adopted"),
                                                     nrow(d), n_draft, n_adopt))
   })
-  output$list_table <- DT::renderDT({
+  output$list_empty <- shiny::renderUI({
     d <- listed()
     if (is.null(d) || !nrow(d)) {
-      return(.dt(data.frame(x = t("No report listed yet: write the requests (step 1) and check the answers (step 3).")),
-                 colnames = ""))
+      shiny::p(class = "small text-muted",
+               t("No report listed yet: write the requests (step 1) and check the answers (step 3)."))
     }
+  })
+  output$list_table <- DT::renderDT({
+    d <- listed()
+    shiny::req(!is.null(d), nrow(d) > 0L)
     rtf <- ifelse(!is.na(d$rtf) & nzchar(d$rtf), sprintf(
       "<a href=\"#\" class=\"ai-open-rtf\" data-ns=\"%s\" data-file=\"%s\">%s</a>",
       ns(""), htmltools::htmlEscape(d$rtf, attribute = TRUE), t("Open")), "")
-    v <- data.frame(d$output_id, d$title, d$population, d$split, d$status, d$adopted, rtf,
+    # (tflspec's words in the app's language: the state, adopted)
+    tw <- function(x) ifelse(is.na(x) | !nzchar(x), "", vapply(as.character(x), t, ""))
+    v <- data.frame(d$output_id, d$title, d$population, d$split, tw(d$status), tw(d$adopted), rtf,
                     d$questions, d$problem, stringsAsFactors = FALSE)
-    names(v) <- c("output_id", t("Title"), t("Analysis set"), t("Split"), t("State"),
-                  paste0(t("Adopted"), " (adopted)"), "RTF", t("Questions"), t("First problem"))
+    names(v) <- c("output_id", t("Title (title)"), t("Analysis set (population)"), t("Split (split)"),
+                  t("State (status)"), paste0(t("Adopted"), " (adopted)"), "RTF",
+                  t("Questions (questions)"), t("First problem"))
     v[is.na(v)] <- ""
-    DT::datatable(v, rownames = FALSE, escape = setdiff(seq_along(v) - 1L, 6L),
+    # (the RTF column a link: not escaped)
+    DT::datatable(v, rownames = FALSE, escape = which(names(v) != "RTF"),
                   selection = "multiple",
                   options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
   })
@@ -111,7 +120,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   })
   shiny::observeEvent(input$adopt, {
     ids <- picked()
-    if (!length(ids)) return(notify(t("Tick the rows to adopt."), "warning"))
+    if (!length(ids)) return(notify(t("Select the rows to adopt."), "warning"))
     plan <- .ai_adopt_plan(path(), ids)
     diff <- if (!is.null(plan)) .ai_adopt_diff(path(), plan$output_id[plan$status == "replace"])
     plan_ui <- if (is.null(plan)) {
@@ -124,7 +133,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
                         shiny::tags$tbody(lapply(seq_len(nrow(p)), function(r)
                           shiny::tags$tr(lapply(p[r, ], shiny::tags$td)))))
     }
-    diff_ui <- if (!is.null(diff)) shiny::tags$details(
+    diff_ui <- if (!is.null(diff)) shiny::tags$details(open = NA,
       shiny::tags$summary(class = "small", sprintf(t("What replacing changes (%d)"), nrow(diff))),
       shiny::tags$table(class = "table table-sm small",
                         shiny::tags$thead(shiny::tags$tr(lapply(
@@ -150,7 +159,13 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     if (is.null(out)) return()
     again(again() + 1L)
     reload_now()
-    notify(sprintf(t("%d reports adopted: on the Report list."), length(ids)))
+    # (what was done, as tfl_ai_adopt() says it: adopted, the same already,
+    # or kept as it was -- not overwritten)
+    st <- if (is.data.frame(out) && !is.null(out$status)) as.character(out$status) else rep("adopted", length(ids))
+    n_same <- sum(st == "same")
+    n_done <- sum(st %in% c("adopted", "new", "replace", "replaced"))
+    notify(sprintf(t("Adopted %d, the same already %d, kept as they were %d (not overwritten): the Report list shows the adopted ones."),
+                   n_done, n_same, length(st) - n_done - n_same))
   })
   invisible(listed)
 }
