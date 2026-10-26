@@ -21,9 +21,15 @@
   ck <- sprintf("<input type=\"checkbox\" class=\"ai-num-ck\" data-ns=\"%s\" data-sheet=\"%s\" data-number=\"%s\"%s>",
                 ns(""), htmltools::htmlEscape(n$sheet, attribute = TRUE),
                 htmltools::htmlEscape(n$number, attribute = TRUE), ifelse(n$make %in% TRUE, " checked", ""))
+  by <- ifelse(is.na(src[n$source]), as.character(n$source), src[n$source])
+  # (why a guess, as tflspec says it: beside the guess)
+  if (!is.null(n$reason)) {
+    why <- ifelse(n$source %in% "guess" & !is.na(n$reason) & nzchar(n$reason),
+                  paste0(" (", n$reason, ")"), "")
+    by <- paste0(by, why)
+  }
   v <- data.frame(ck, n$sheet, n$number, ifelse(is.na(n$title), "", n$title),
-                  ifelse(is.na(n$toc_id), "—", n$toc_id),
-                  ifelse(is.na(src[n$source]), as.character(n$source), src[n$source]), stringsAsFactors = FALSE)
+                  ifelse(is.na(n$toc_id), "—", n$toc_id), by, stringsAsFactors = FALSE)
   names(v) <- c(t("Make"), t("sheet"), t("Number in the sheet"), t("Title in the sheet"),
                 paste0(t("TOC item"), " (toc_id)"), t("Decided by"))
   v

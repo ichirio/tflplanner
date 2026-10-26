@@ -24,3 +24,11 @@ test_that("the boxes' table says each number's choice and where it comes from", 
   expect_identical(v[[5L]], c("14.1.1", "\u2014"))
   expect_identical(v[[6L]], c("rule", "guess"))
 })
+
+test_that("a guess says why, when tflspec gives the reason", {
+  n <- data.frame(sheet = c("S1", "S2"), number = c("15.2.4.2.b", "14.1.1"), title = NA_character_,
+                  toc_id = c("15.2.4.2", "14.1.1"), make = c(TRUE, TRUE), source = c("guess", "rule"),
+                  reason = c("part letter differs", NA), stringsAsFactors = FALSE)
+  v <- .ai_numbers_view(n, shiny::NS("ai"), identity)
+  expect_identical(v[[6L]], c("guess (part letter differs)", "rule"))
+})
