@@ -12,3 +12,13 @@ test_that("no study, or one tflspec cannot list: no list", {
   expect_null(.ai_list(file.path(tempdir(), "no-such-study")))
   expect_null(.ai_adopt_diff(tempdir(), character()))
 })
+
+test_that("the list ticks at first the drafts not adopted yet", {
+  d <- data.frame(output_id = c("A", "B", "C", "D", "E"),
+                  file = c("ai/spec/outputs/A.yml", "ai/spec/outputs/B.yml", "ai/spec/outputs/C.yml", NA,
+                           "ai/spec/outputs/E.yml"),
+                  status = c("ok", "warning", "ok", "no answer", "error"),
+                  adopted = c("no", "yes", "yes, draft newer", "no", "no"))
+  expect_identical(.ai_adoptable(d), c(TRUE, TRUE, TRUE, FALSE, FALSE))
+  expect_identical(.ai_ticked_first(d), "A")
+})

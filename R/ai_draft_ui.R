@@ -214,6 +214,8 @@ ai_ui <- function(id, lang = "en") {
         paste0("3 ", t("Answers"), " (tfl_ai_collect_answers)"), value = "answers",
         # (the study's mode, for the page: the agent's cards or the chat's paste)
         shiny::div(class = "d-none", shiny::textOutput(ns("mode_now"))),
+        # (the last check: what was taken in, and step 4 to adopt it)
+        shiny::uiOutput(ns("taken_note")),
         shiny::conditionalPanel(
           "output.mode_now == 'agent'", ns = ns,
           bslib::card(
@@ -573,12 +575,35 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       if (!isTRUE(reload_now())) return()
       ok <- unique(co$reports$output_id[co$reports$status %in% c("ok", "warning")])
       drafts <- any(!.ai_in_study_spec(co$reports$file[co$reports$output_id %in% ok]))
+      taken(list(ok = ok, drafts = drafts))
       notify(if (length(ok) && drafts) sprintf(t("%d drafts taken in: %s (step 4: adopt them into the study)"),
                                                length(ok), paste(ok, collapse = ", "))
              else if (length(ok)) sprintf(t("%d reports taken in: %s (Report list)"), length(ok),
                                           paste(ok, collapse = ", "))
              else t("No report could be taken in: see each request's next step."))
     }
+    # the last check's reports, said on the page until the next check: how
+    # many were taken in, and that step 4 adopts (copies) them into the study
+    taken <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(path(), taken(NULL), ignoreNULL = FALSE)
+    output$taken_note <- shiny::renderUI({
+      k <- taken()
+      if (is.null(k)) return(NULL)
+      if (!length(k$ok)) {
+        return(shiny::div(class = "alert alert-secondary py-2 small",
+                          t("No report could be taken in: see each request's next step.")))
+      }
+      shiny::div(
+        class = paste("alert py-2 d-flex flex-wrap gap-2 align-items-center",
+                      if (k$drafts) "alert-info" else "alert-success"),
+        shiny::span(class = "me-auto", if (k$drafts) {
+          sprintf(t("%d drafts taken in. Next: adopt (copy) them into the study in step 4; the Report list shows only the adopted ones."),
+                  length(k$ok))
+        } else sprintf(t("%d reports taken in: on the Report list."), length(k$ok))),
+        if (k$drafts) .btn(ns("to_list2"), paste0(t("To step 4"), " (", t("List and corrections"), ")"),
+                           class = "btn-sm btn-primary"))
+    })
+    shiny::observeEvent(input$to_list2, bslib::nav_select("step", "list", session = session))
     shiny::observeEvent(input$save, save_answer())
     shiny::observeEvent(input$save_check, if (save_answer()) check_all())
     shiny::observeEvent(input$check, check_all())
