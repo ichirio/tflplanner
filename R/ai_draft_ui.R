@@ -342,6 +342,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     text_of <- function(what, id) {
       p <- path()
       if (identical(what, "agent")) return(agent_prompt())
+      if (identical(what, "folder")) return(normalizePath(p, "/", mustWork = FALSE))
       if (identical(what, "tell")) {
         return(t("I answered the questions in ai/questions.md. Read it again and go on."))
       }
@@ -1295,7 +1296,15 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           class = "d-flex flex-wrap gap-2 align-items-center",
           shiny::span(class = "me-auto", t("The agent's first message")),
           shiny::HTML(act("agent", "agent", c(copy = t("Copy text"), view = t("View as text"))))),
-        shiny::tags$pre(class = "small mb-0 ai-prompt", agent_prompt()))
+        shiny::tags$pre(class = "small mb-0 ai-prompt", agent_prompt()),
+        # (the study folder's full path: for an agent opened on the folder
+        # above, the person adds it to the message)
+        shiny::div(
+          class = "d-flex flex-wrap gap-2 align-items-center small mt-2",
+          shiny::span(with_tip(paste0(t("Study folder"), ":"),
+                               t("Usually VS Code opens the study folder itself. To work on several studies at once from the folder above, add this full path to the message."))),
+          shiny::code(normalizePath(path(), "/", mustWork = FALSE)),
+          shiny::HTML(act("folder", "folder", c(copy = t("Copy the full path"))))))
     })
     output$check_note_agent <- shiny::renderUI({
       if (isTRUE(dirty())) shiny::span(class = "small text-warning", t("Save first"))
