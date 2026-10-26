@@ -63,8 +63,7 @@ test_that("Browse...: a workbook outside the study copied into its docs/, one in
 })
 
 test_that("every new text has its Japanese", {
-  s <- utils::read.csv(system.file("i18n", "strings.csv", package = "tflplanner"),
-                       encoding = "UTF-8", stringsAsFactors = FALSE)
+  s <- .strings()
   for (x in c("Read and check", "Sheets for every request", "none (the shells found)",
               "Put the common instructions in each request",
               "Documents for reference: SAP, TOC / SHELL workbooks")) {

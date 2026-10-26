@@ -191,7 +191,7 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
 }
 
 # Each row's message from its rule's template in `lang` (the English
-# template is the key of strings.csv); the English kept as message_en
+# template is the key of inst/i18n/strings/); the English kept as message_en
 .review_language <- function(r, lang) {
   r$message_en <- r$message
   if (!nrow(r) || identical(lang, "en")) return(r)

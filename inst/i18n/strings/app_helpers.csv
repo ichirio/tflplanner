@@ -1,0 +1,2 @@
+"en","ja"
+"Makes this report's ARD in an R of its own, only when it is needed. The study's ARD (output/ard/ard.rds) is not changed.","必要な時だけこの帳票の ARD を別の R で作ります。試験の ARD（output/ard/ard.rds）は変えません。"
