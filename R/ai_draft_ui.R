@@ -267,7 +267,9 @@ ai_ui <- function(id, lang = "en") {
             shiny::selectInput(ns("assume_of"), NULL, choices = character(),
                                width = "220px", selectize = FALSE)),
           shiny::uiOutput(ns("assume_empty")),
-          DT::DTOutput(ns("assumptions"))))))
+          DT::DTOutput(ns("assumptions")))),
+      # step 4: the reports, adopted into the study (R/ai_list_ui.R)
+      ai_list_panel(ns, t)))
 }
 
 # The module's server.  `rv` the app's values (rv$study: the study open);
@@ -288,6 +290,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     ver <- shiny::reactiveVal(0L)
     collected <- shiny::reactiveVal(NULL)
     compared <- shiny::reactiveVal(NULL)
+    # step 4: the list and the adopting (R/ai_list_ui.R)
+    ai_list_server(input, output, session, path, ver, reload_now, notify, guarded, t)
     # another study opened: its own check, none yet
     was <- NULL
     shiny::observe({
@@ -568,8 +572,11 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       # between, which would see them as made outside the app)
       if (!isTRUE(reload_now())) return()
       ok <- unique(co$reports$output_id[co$reports$status %in% c("ok", "warning")])
-      notify(if (length(ok)) sprintf(t("%d reports taken in: %s (Report list)"), length(ok),
-                                     paste(ok, collapse = ", "))
+      drafts <- any(!.ai_in_study_spec(co$reports$file[co$reports$output_id %in% ok]))
+      notify(if (length(ok) && drafts) sprintf(t("%d drafts taken in: %s (step 4: adopt them into the study)"),
+                                               length(ok), paste(ok, collapse = ", "))
+             else if (length(ok)) sprintf(t("%d reports taken in: %s (Report list)"), length(ok),
+                                          paste(ok, collapse = ", "))
              else t("No report could be taken in: see each request's next step."))
     }
     shiny::observeEvent(input$save, save_answer())
@@ -607,7 +614,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
             shiny::tags$td(r$output_id[i]),
             shiny::tags$td(class = cls[[r$status[i]]] %||% "", t(r$status[i])),
             shiny::tags$td(if (is.na(r$first[i])) "" else r$first[i]),
-            shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && !is.na(r$file[i]))
+            shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && .ai_in_study_spec(r$file[i]))
               shiny::tags$button(
                 type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
                 `data-ns` = ns(""), `data-id` = r$output_id[i], t("Open in Make a report"))))))),
@@ -617,11 +624,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           class = "d-flex flex-wrap gap-2",
           rep_btn,
           if (any(co$reports$status %in% c("ok", "warning")))
-            .btn(ns("to_list"), t("Report list"), class = "btn-sm btn-outline-secondary py-0"),
+            .btn(ns("to_list"), paste0("4 ", t("List and corrections")),
+                 class = "btn-sm btn-outline-secondary py-0"),
           if (any(r$problems > 0))
             .btn(ns("problems"), t("All problems"), class = "btn-sm btn-outline-secondary py-0")))
     })
-    shiny::observeEvent(input$to_list, go("outputs"))
+    shiny::observeEvent(input$to_list, bslib::nav_select("step", "list", session = session))
     shiny::observeEvent(input$open_report, open_report(input$open_report$id))
     shiny::observeEvent(input$problems, {
       co <- collected()
@@ -1364,7 +1372,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                             paste0(t("Could not be built:"), " ", .ai_short(w))), " ",
                 shiny::HTML(act("unbuilt", r$request[i], c(view = t("View")))))
               else if (is.na(r$first[i])) "" else r$first[i]),
-            shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && !is.na(r$file[i]))
+            shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && .ai_in_study_spec(r$file[i]))
               shiny::tags$button(
                 type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
                 `data-ns` = ns(""), `data-id` = r$output_id[i], t("Open in Make a report"))))

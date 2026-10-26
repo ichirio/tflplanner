@@ -23,13 +23,26 @@ ai_prepared <- local({
   # the example's KM figure reads ADTTE: the sample study's
   file.copy(system.file("sample", "SAMPLE-01", "data", "adam", "adtte.rds", package = "tflplanner"),
             file.path(d, "adam"))
-  # (as the AI tab prepares it, .ai_prepare(): the drafts in spec/outputs, not
-  # in the AI's area)
-  a <- list(d, file.path(ai_example, "onco_toc_shell.xlsx"), study_id = "XYZ-1", size = 3)
-  if ("area" %in% names(formals(tflspec::tfl_ai_prepare))) a$area <- FALSE
-  utils::capture.output(suppressMessages(do.call(tflspec::tfl_ai_prepare, a)))
+  # (as the AI tab prepares it, .ai_prepare(): a new study's drafts in the
+  # AI's area, ai/spec/outputs, with a tflspec that has it)
+  utils::capture.output(suppressMessages(tflspec::tfl_ai_prepare(
+    d, file.path(ai_example, "onco_toc_shell.xlsx"), study_id = "XYZ-1", size = 3)))
   d
 })
+
+# where a study's AI drafts are (from its folder): the AI's area when it
+# has one (tflspec >= #488), else the study's spec/outputs
+ai_drafts <- function(path) {
+  if (dir.exists(file.path(path, "ai", "spec", "outputs"))) "ai/spec/outputs" else "spec/outputs"
+}
+
+# the drafts adopted into the study (step 4), when they are apart
+ai_adopt_all <- function(path) {
+  if (identical(ai_drafts(path), "ai/spec/outputs")) {
+    utils::capture.output(suppressMessages(tflspec::tfl_ai_adopt(path)))
+  }
+  invisible(path)
+}
 
 # the prepared study in this test's home, registered: its folder
 ai_study <- function(register = TRUE) {
@@ -144,7 +157,7 @@ test_that("the answers checked: tflspec's list (reports, next_steps, assumptions
   # (a row a report: ae-1's two)
   expect_identical(r$request, c("demographics-1", "efficacy-1", "ae-1", "ae-1", "figure-1"))
   expect_identical(r$status, c("ok", "no answer", "error", "error", "no answer"))
-  expect_identical(r$file, c("spec/outputs/T-14-1-1.yml", NA, NA, NA, NA))
+  expect_identical(r$file, c(file.path(ai_drafts(path), "T-14-1-1.yml"), NA, NA, NA, NA))
   expect_identical(r$repair, c(NA, NA, "ai/repairs/ae-1.md", "ai/repairs/ae-1.md", NA))
   expect_match(.ai_request_text(path, "ae-1", "repair"), "table_plan", fixed = TRUE)
   expect_identical(names(co$next_steps), unique(r$request))
@@ -153,8 +166,8 @@ test_that("the answers checked: tflspec's list (reports, next_steps, assumptions
   # (tflspec adds id and kind, the assumptions' own: the columns at least these)
   expect_true(all(c("output_id", "where", "item", "assumption", "question") %in% names(co$assumptions)))
   expect_true("T-14-1-1" %in% co$assumptions$output_id)
-  expect_true(file.exists(file.path(path, "spec", "outputs", "T-14-1-1.yml")))
-  expect_false(file.exists(file.path(path, "spec", "outputs", "T-14-3-1.yml")))
+  expect_true(file.exists(file.path(path, ai_drafts(path), "T-14-1-1.yml")))
+  expect_false(file.exists(file.path(path, ai_drafts(path), "T-14-3-1.yml")))
   # a request's status: its worst report's
   expect_identical(.ai_request_status(c("ae-1", "efficacy-1", "x"), r), c("error", "no answer", NA))
   expect_identical(.ai_status_label(c("demographics-1", "ae-1", "efficacy-1"), r),
@@ -170,6 +183,8 @@ test_that("after a check the study is read again from its files; never over unsa
   path <- ai_study()
   for (q in c("demographics-1", "ae-1")) ai_answer(path, q)
   .ai_collect(path)
+  # (the drafts adopted: step 4)
+  ai_adopt_all(path)
   expect_error(.ai_reload_study("XYZ-1", unsaved = TRUE), class = "tflplanner_ai_unsaved")
   s <- .ai_reload_study("XYZ-1", unsaved = FALSE)
   expect_true(all(c("T-14-1-1", "T-14-3-1") %in% output_ids(s$planner)))
@@ -220,6 +235,14 @@ test_that("step 2 and 3: the list, View, save an answer, check all, the reports 
     session$setInputs(`ai-check` = 2)
     co <- ai$collected()
     expect_identical(co$reports$status[co$reports$request == "ae-1"], rep("ok", 2L))
+    if (identical(ai_drafts(path), "ai/spec/outputs")) {
+      # (drafts: step 4 lists them; the rows ticked adopted, the study read again)
+      expect_false("T-14-3-1" %in% output_ids(rv$p))
+      d <- .ai_list(path)
+      session$setInputs(`ai-list_table_rows_selected` = which(d$output_id %in% c("T-14-3-1", "T-14-3-5")))
+      session$setInputs(`ai-adopt` = 1)
+      session$setInputs(`ai-adopt_ok` = 1)
+    }
     expect_true("T-14-3-1" %in% output_ids(rv$p))
     expect_false(isTRUE(session$userData$dirty()))
     expect_true(all(spec_status("XYZ-1")$status == "same"))
@@ -1036,6 +1059,7 @@ test_that("a study made with the ADaM outside its folder: its data found, no D01
   expect_true(all(startsWith(out$study$planner$ard$datasets$path, ai_adam)))
   ai_answer(path, "ae-1")
   .ai_collect(path)
+  ai_adopt_all(path)
   s <- .ai_reload_study("ABS-1", unsaved = FALSE)
   expect_true("T-14-3-1" %in% output_ids(s$planner))
   r <- study_review(s, data = "read", lang = "en")
