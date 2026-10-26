@@ -1081,3 +1081,39 @@ test_that("a new study that fails keeps what its folder held before (its data/ad
                              root = root, home = home))
   expect_false(dir.exists(file.path(root, "KEEP-2")))
 })
+
+test_that("step 1: a number unticked and applied, then back to the rule, before and after writing", {
+  skip_if_not("numbers" %in% names(formals(tflspec::tfl_ai_prepare)))
+  local_home()
+  ai_study()
+  shiny::testServer(server_for("XYZ-1"), {
+    ai <- session$userData$ai
+    session$setInputs(`ai-study_mode` = "new", `ai-new_id` = "NUM-8", `ai-new_title` = "Eight",
+                      `ai-toc_path` = ai_toc, `ai-adam_dir` = ai_adam, `ai-size` = 3,
+                      `ai-language` = "English", `ai-instructions` = "each",
+                      `ai-workbook` = "text", `ai-max_levels` = 15)
+    session$setInputs(`ai-read` = 1)
+    n <- ai$prepared()$numbers
+    skip_if(is.null(n) || !nrow(n))
+    k <- which(n$make %in% TRUE)[1L]
+    row_of <- function() {
+      m <- ai$prepared()$numbers
+      m[m$sheet == n$sheet[k] & m$number == n$number[k], , drop = FALSE]
+    }
+    session$setInputs(`ai-num_toggle` = list(sheet = n$sheet[k], number = n$number[k], on = FALSE, n = 1))
+    session$setInputs(`ai-numbers_apply` = 1)
+    expect_false(row_of()$make)
+    expect_identical(row_of()$source, "given")
+    session$setInputs(`ai-numbers_rule` = 1)
+    expect_true(row_of()$make)
+    expect_identical(row_of()$source, "rule")
+    # (written with the change, then set back on the open study)
+    session$setInputs(`ai-num_toggle` = list(sheet = n$sheet[k], number = n$number[k], on = FALSE, n = 2))
+    session$setInputs(`ai-numbers_apply` = 2)
+    session$setInputs(`ai-write` = 1)
+    session$setInputs(`ai-study_mode` = "open", `ai-read` = 2)
+    expect_false(row_of()$make)
+    session$setInputs(`ai-numbers_rule` = 2)
+    expect_true(row_of()$make)
+  })
+})

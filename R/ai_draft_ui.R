@@ -180,12 +180,12 @@ ai_ui <- function(id, lang = "en") {
               id = ns("prep_tab"),
               bslib::nav_panel(t("TOC items"), value = "toc",
                                shiny::uiOutput(ns("toc_head")),
-                               DT::DTOutput(ns("toc_table")),
+                               DT::DTOutput(ns("toc_table"), fill = FALSE),
                                # (a TOC item with no shell put in a sheet: R/ai_numbers_ui.R)
                                shiny::uiOutput(ns("toc_attach"))),
               bslib::nav_panel(t("Shells"), value = "shells",
                                shiny::uiOutput(ns("shells_head")),
-                               DT::DTOutput(ns("shells_table")),
+                               DT::DTOutput(ns("shells_table"), fill = FALSE),
                                # (the numbers in the sheets, boxes: R/ai_numbers_ui.R)
                                ai_numbers_ui(ns, t)),
               bslib::nav_panel(t("ADaM summary (what is sent)"), value = "adam",
