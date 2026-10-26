@@ -80,15 +80,16 @@ test_that("what the steps make: kept short by the preview, shown in step 1 on de
   })
 })
 
-test_that("a time-unit step in days says why it writes no line; in months it writes one", {
+test_that("a time-unit step in days says why it writes no line, or writes its block; in months it divides", {
   d <- tflspec::tfl_fig_template("km_simple", data = "ADTTE", param = "TTDE", pop = "SAFFL",
                                  group = "TRT01A")
   i <- which(vapply(d$data, function(p) identical(p$step, "time_unit"), NA))
   make <- function(d, codelists = TRUE) .fig_design_script(d, "F1")
   d$data[[i]]$unit <- "days"
-  expect_match(.piece_code(make(d), d, list(sec = "data", i = i), make), "in days already", fixed = TRUE)
+  # (a tflspec that converts by each record's AVALU writes a block for days too)
+  expect_match(.piece_code(make(d), d, list(sec = "data", i = i), make), "in days already|AVALU")
   d$data[[i]]$unit <- "months"
-  expect_match(.piece_code(make(d), d, list(sec = "data", i = i), make), "AVAL / days_per_month", fixed = TRUE)
+  expect_match(.piece_code(make(d), d, list(sec = "data", i = i), make), "days_per_month", fixed = TRUE)
 })
 
 test_that("a step's In and Out: on one line, what they are when not said as placeholders", {
