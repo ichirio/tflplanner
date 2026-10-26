@@ -185,10 +185,14 @@ ai_ui <- function(id, lang = "en") {
               id = ns("prep_tab"),
               bslib::nav_panel(t("TOC items"), value = "toc",
                                shiny::uiOutput(ns("toc_head")),
-                               DT::DTOutput(ns("toc_table"))),
+                               DT::DTOutput(ns("toc_table"), fill = FALSE),
+                               # (a TOC item with no shell put in a sheet: R/ai_numbers_ui.R)
+                               shiny::uiOutput(ns("toc_attach"))),
               bslib::nav_panel(t("Shells"), value = "shells",
                                shiny::uiOutput(ns("shells_head")),
-                               DT::DTOutput(ns("shells_table"))),
+                               DT::DTOutput(ns("shells_table"), fill = FALSE),
+                               # (the numbers in the sheets, boxes: R/ai_numbers_ui.R)
+                               ai_numbers_ui(ns, t)),
               bslib::nav_panel(t("ADaM summary (what is sent)"), value = "adam",
                                shiny::div(
                                  class = "d-flex flex-wrap gap-3 align-items-end mt-2",
@@ -955,7 +959,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
            mode = input$mode %||% "agent",
            templates = !isFALSE(input$templates),
            add = isTRUE(input$add) && !is_new(),
-           sheet_roles = roles_now())
+           sheet_roles = roles_now(),
+           numbers = numbers_now())
     }
     inputs_ok <- function() {
       msg <- .ai_toc_problem(toc_src()$path, t)
@@ -995,7 +1000,13 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     })
     # (Read and check, or the sheets' roles applied: read again)
     read_again <- shiny::reactiveVal(0L)
-    read_now <- function() read_again(read_again() + 1L)
+    tab_kept <- new.env()
+    read_now <- function() {
+      tab_kept$tab <- shiny::isolate(input$prep_tab)
+      read_again(read_again() + 1L)
+    }
+    # the numbers in the sheets, changed on the Shells tab (R/ai_numbers_ui.R)
+    numbers_now <- ai_numbers_server(input, output, session, prepared, read_now, t)
     shiny::observeEvent(list(input$read, read_again()), ignoreInit = TRUE, {
       if (is.null(input$read) && identical(read_again(), 0L)) return()
       if (!inputs_ok()) return()
@@ -1035,7 +1046,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           "%s (%d)", ds[i], p$adam$datasets$variables[i])),
         choiceValues = ds, selected = if (length(keep)) keep else ds)
       read_with(read_key())
-      bslib::nav_select("prep_tab", if (nrow(p$toc) && all(p$toc$shell_found)) "adam" else "toc",
+      # (read again by an Apply: the tab it was on kept)
+      tab <- tab_kept$tab
+      tab_kept$tab <- NULL
+      bslib::nav_select("prep_tab", tab %||% if (nrow(p$toc) && all(p$toc$shell_found)) "adam" else "toc",
                         session = session)
     })
     write_now <- function(overwrite = FALSE) {
@@ -1192,7 +1206,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         if (length(p$hint)) shiny::div(class = "alert alert-warning py-2 small",
                                        lapply(p$hint, shiny::div)))
     })
+    # (drawn again each time its tab is opened: a table drawn while hidden
+    # can keep its old rows on the page)
+    toc_seen <- shiny::reactiveVal(0L)
+    shiny::observeEvent(input$prep_tab, if (identical(input$prep_tab, "toc")) toc_seen(toc_seen() + 1L))
     output$toc_table <- DT::renderDT({
+      toc_seen()
       p <- prepared()
       shiny::req(p, nrow(p$toc))
       tc <- p$toc
@@ -1209,6 +1228,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       DT::formatStyle(dt, "shell", backgroundColor = DT::styleEqual("\u2014", "#f8d7da"),
                       color = DT::styleEqual("\u2014", "#842029"))
     }, server = FALSE)
+    # (the heading drawn also while its tab is hidden: an Apply on another
+    # tab keeps that tab open, and the counts must follow the numbers)
+    shiny::outputOptions(output, "toc_head", suspendWhenHidden = FALSE)
     # the shells: a sheet each, the TOC items it was taken for
     output$shells_head <- shiny::renderUI({
       p <- prepared()
