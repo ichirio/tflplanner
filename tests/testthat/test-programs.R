@@ -143,3 +143,20 @@ test_that("a table's normalization is what its definitions say: the hierarchy, t
   expect_false(any(startsWith(code, "saveRDS(")))
   expect_silent(parse(text = code))
 })
+
+test_that("a report's ARD read by its own name (data.object), ard by default", {
+  p <- sample_planner()
+  expect_identical(.ard_object(p, "PK"), "ard")
+  code <- .fill_template("table_data", p, "PK")
+  expect_true(any(startsWith(strsplit(code, "\n")[[1]], "ard <- readRDS(")))
+  p$spec$outputs$PK <- list(data = list(object = "ard_pk"))
+  expect_identical(.ard_object(p, "PK"), "ard_pk")
+  lines <- strsplit(.fill_template("table_data", p, "PK"), "\n")[[1]]
+  expect_true(any(startsWith(lines, "ard_pk <- readRDS(")))
+  expect_false(any(grepl("(^|[^[:alnum:]_./])ard([^[:alnum:]_./]|$)", lines)))
+  # (the study ARD's path, output/ard/ard.rds, kept)
+  expect_true(any(grepl("ard.rds", lines, fixed = TRUE)))
+  # (a name R cannot use: ard)
+  p$spec$outputs$PK$data$object <- "1x"
+  expect_identical(.ard_object(p, "PK"), "ard")
+})
