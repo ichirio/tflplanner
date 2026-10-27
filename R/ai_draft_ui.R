@@ -165,7 +165,7 @@ ai_ui <- function(id, lang = "en") {
             shiny::checkboxInput(ns("templates"), paste0(t("Use the templates"), " (templates)"),
                                  value = TRUE),
             # what the agent may open besides its requests (tflspec's
-            # agent_reads, references): none unless chosen here
+            # agent_reads, docs, agent_max_reads): none unless chosen here
             shiny::conditionalPanel(
               "input.mode == 'agent'", ns = ns,
               shiny::checkboxGroupInput(
@@ -174,9 +174,14 @@ ai_ui <- function(id, lang = "en") {
                          t("Off: the agent reads its requests only. The ADaM's needed information (variables, values, codes and their labels) is in the requests as a summary either way.")),
                 choiceNames = list(t("The TOC / SHELL workbook"), t("The ADaM folder")),
                 choiceValues = c("workbook", "adam"), selected = character(), inline = TRUE),
+              shiny::numericInput(
+                ns("agent_max_reads"),
+                with_tip(paste0(t("Other files or commands a request may use, at most"), " (agent_max_reads)"),
+                         t("Besides the request and the files it names. At the limit the agent writes what it does not know as assumptions and questions, and goes on.")),
+                value = 3L, min = 0L, step = 1L, width = "14rem"),
               .ai_path_input(ns("ref_path"),
-                             with_tip(paste0(t("Add a reference"), " (references)"),
-                                      t("Only the files chosen here (a SAP, say): copied into the study's ai/references/, named in AGENTS.md. None: the agent reads none.")),
+                             with_tip(paste0(t("Add a reference"), " (docs)"),
+                                      t("Only the files chosen here (a SAP, say): copied into the study's ai/docs/, named in AGENTS.md. None: the agent reads none.")),
                              "C:/.../SAP.pdf", ns("ref_browse"), t("Browse...")),
               shiny::div(class = "d-flex gap-2 mb-2",
                          .btn(ns("ref_add"), t("Add"), class = "btn-sm btn-outline-secondary")),
@@ -979,7 +984,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           identical(size_now(), read_size())) return(p$requests)
       .ai_dry_requests(p$toc, size_now())
     })
-    # the references the person chose (tfl_ai_prepare(references = )): only
+    # the references the person chose (tfl_ai_prepare(docs = )): only
     # these, listed, each removable
     refs <- shiny::reactiveVal(character())
     shiny::observeEvent(path(), refs(character()), ignoreNULL = FALSE)
@@ -1012,8 +1017,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     scope_args <- function() {
       if (!identical(input$mode %||% "agent", "agent")) return(list())
       fm <- names(formals(tflspec::tfl_ai_prepare))
+      mr <- suppressWarnings(as.integer(input$agent_max_reads))
       c(if ("agent_reads" %in% fm) list(agent_reads = as.character(input$agent_reads %||% character())),
-        if ("references" %in% fm && length(refs())) list(references = refs()))
+        if ("agent_max_reads" %in% fm && length(mr) && !is.na(mr) && mr >= 0L) list(agent_max_reads = mr),
+        if ("docs" %in% fm && length(refs())) list(docs = refs()))
     }
     args_of <- function(p) {
       all <- if (!is.null(p)) p$adam$datasets$dataset
@@ -1406,7 +1413,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     # the agent's first message: tfl_ai_prepare()'s, else made again from
     # the study's folder (the app opened again)
     continue_prompt <- function() {
-      x <- tryCatch(getExportedValue("tflspec", "tfl_ai_agent_prompt")(path(), n = 2L),
+      x <- tryCatch(getExportedValue("tflspec", "tfl_ai_agent_prompt")(path()),
                     error = function(e) NA_character_)
       if (length(x) != 1L || is.na(x)) return(t("Every request has its answer: nothing to ask next."))
       as.character(x)
@@ -1432,7 +1439,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         if (.ai_continue_ok()) shiny::div(
           class = "d-flex flex-wrap gap-2 align-items-center small mt-2",
           shiny::span(with_tip(t("Then, the next requests:"),
-                               t("The agent does a few requests, then stops. This message asks for the next ones with no answer yet (two at a time), in the index's order."))),
+                               t("The agent does the first requests, then stops. This message asks for the next ones with no answer yet, in the index's order (ten at a time, tflspec's)."))),
           shiny::HTML(act("continue", "continue", c(copy = t("Copy the message for the next requests"),
                                                     view = t("View as text"))))),
         # (the study folder's full path: for an agent opened on the folder
