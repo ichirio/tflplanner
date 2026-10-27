@@ -704,7 +704,7 @@ app_ui <- function(lang = "en") {
             "output.shows_open == 'yes'",
             .study_section("keys", with_tip(paste0(t("Keys and setup code"), " (study)"), t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source). (source is added when a function is made in Own ARD functions.)")),
               rhandsontable::rHandsontableOutput("hot_ard_study"),
-              shiny::textAreaInput(
+              shiny::textAreaInput(updateOn = "blur",
                 "setup",
                 t("Setup code every report runs first (library(), common data)"),
                 rows = 4, width = "100%", resize = "vertical"))),

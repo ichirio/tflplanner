@@ -1283,9 +1283,9 @@
       shiny::p(shiny::strong(m$study_id), shiny::br(),
                shiny::span(class = "small text-muted", rv$study$path)),
       .study_section("study", t("The study"), open = TRUE,
-      shiny::textInput("m_title", with_token(t("Title"), "STUDY_TITLE"), v(m$title), width = "100%"),
+      shiny::textInput(updateOn = "blur", "m_title", with_token(t("Title"), "STUDY_TITLE"), v(m$title), width = "100%"),
       shiny::div(class = "d-flex flex-wrap gap-2",
-                 shiny::textInput("m_short_title", with_token(with_tip(
+                 shiny::textInput(updateOn = "blur", "m_short_title", with_token(with_tip(
                    t("Short title"),
                    t("The title for a header or footer.")), "STUDY_SHORT_TITLE"),
                    v(m$short_title)),
@@ -1295,9 +1295,9 @@
                    shiny::tags$input(type = "text", class = "form-control",
                                      value = m$study_id, readonly = NA))),
       shiny::div(class = "d-flex gap-2",
-                 shiny::textInput("m_compound", with_token(t("Compound"), "STUDY_COMPOUND"), v(m$compound)),
-                 shiny::textInput("m_phase", with_token(t("Phase"), "STUDY_PHASE"), v(m$phase))),
-      shiny::textAreaInput("m_description", with_token(t("Description"), "STUDY_DESCRIPTION"),
+                 shiny::textInput(updateOn = "blur", "m_compound", with_token(t("Compound"), "STUDY_COMPOUND"), v(m$compound)),
+                 shiny::textInput(updateOn = "blur", "m_phase", with_token(t("Phase"), "STUDY_PHASE"), v(m$phase))),
+      shiny::textAreaInput(updateOn = "blur", "m_description", with_token(t("Description"), "STUDY_DESCRIPTION"),
                            v(m$description), width = "100%")),
       .study_section("every", t("Every report"), open = TRUE,
       shiny::selectInput(
@@ -1306,25 +1306,32 @@
                         t(c("As options(rtfreporter.rounding)",
                             "r (half to even)", "sas (half away from zero)"))),
         selected = v(r)),
-      shiny::textInput(
-        "study_treatment",
-        with_tip(t("Treatment variable (settings.treatment)"),
-                 t("The variable of the treatment groups a template's by / group takes when the report does not say it (study.yml settings: treatment:). Blank: the template's own, TRT01A.")),
-        v(.study_setting(shiny::isolate(rv$p), "treatment")), placeholder = "TRT01A"),
+      # (chosen from ADSL's variables, or typed: written when chosen, not
+      # at each letter)
+      local({
+        now <- v(.study_setting(shiny::isolate(rv$p), "treatment"))
+        adsl <- tryCatch(names(.tpl_data_cols(rv$study$path)[["ADSL"]]), error = function(e) character())
+        shiny::selectizeInput(
+          "study_treatment",
+          with_tip(t("Treatment variable (settings.treatment)"),
+                   t("The variable of the treatment groups a template's by / group takes when the report does not say it (study.yml settings: treatment:). Blank: the template's own, TRT01A.")),
+          choices = unique(c("", now, adsl)), selected = now,
+          options = list(create = TRUE, placeholder = "TRT01A"))
+      }),
       shiny::h6(with_tip(t("Every report's header"),
                          t("The study's words in every report's header: {COMPANY}, {ANALYSIS_TYPE}; {STUDY_ID} is the Study ID above. Set once here (the tokens sheet's study rows); each report gives only its own (its label, title, population)."))),
       shiny::div(class = "d-flex flex-wrap gap-2",
-        shiny::textInput("tok_COMPANY", with_token(t("Company"), "COMPANY"), v(study_token(rv$p, "COMPANY"))),
-        shiny::textInput("tok_ANALYSIS_TYPE", with_token(t("Analysis"), "ANALYSIS_TYPE"),
+        shiny::textInput(updateOn = "blur", "tok_COMPANY", with_token(t("Company"), "COMPANY"), v(study_token(rv$p, "COMPANY"))),
+        shiny::textInput(updateOn = "blur", "tok_ANALYSIS_TYPE", with_token(t("Analysis"), "ANALYSIS_TYPE"),
                          v(study_token(rv$p, "ANALYSIS_TYPE")),
                          placeholder = "Final Analysis")),
       .study_id_token_note(rv$p, m$study_id, t),
       shiny::h6(with_tip(t("Every report's font"),
                          t("The font and size every report is written in, set once here (the page sheet's study row; programs/tfl/report_setup.R says them as options()). Blank: rtfreporter's, Courier New 9 pt. The company standards give a new study theirs."))),
       shiny::div(class = "d-flex flex-wrap gap-2",
-        shiny::textInput("pg_font", t("Font"), v(study_page_value(rv$p, "font")),
+        shiny::textInput(updateOn = "blur", "pg_font", t("Font"), v(study_page_value(rv$p, "font")),
                          placeholder = "Courier New"),
-        shiny::textInput("pg_font_size", t("Size (pt)"),
+        shiny::textInput(updateOn = "blur", "pg_font_size", t("Size (pt)"),
                          .points(study_page_value(rv$p, "font_size_half_points")),
                          placeholder = "9", width = "8em")),
       shiny::div(
