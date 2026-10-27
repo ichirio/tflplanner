@@ -164,6 +164,23 @@ ai_ui <- function(id, lang = "en") {
                                  value = FALSE),
             shiny::checkboxInput(ns("templates"), paste0(t("Use the templates"), " (templates)"),
                                  value = TRUE),
+            # what the agent may open besides its requests (tflspec's
+            # agent_reads, references): none unless chosen here
+            shiny::conditionalPanel(
+              "input.mode == 'agent'", ns = ns,
+              shiny::checkboxGroupInput(
+                ns("agent_reads"),
+                with_tip(paste0(t("Files the agent may open"), " (agent_reads)"),
+                         t("Off: the agent reads its requests only. The ADaM's needed information (variables, values, codes and their labels) is in the requests as a summary either way.")),
+                choiceNames = list(t("The TOC / SHELL workbook"), t("The ADaM folder")),
+                choiceValues = c("workbook", "adam"), selected = character(), inline = TRUE),
+              .ai_path_input(ns("ref_path"),
+                             with_tip(paste0(t("Add a reference"), " (references)"),
+                                      t("Only the files chosen here (a SAP, say): copied into the study's ai/references/, named in AGENTS.md. None: the agent reads none.")),
+                             "C:/.../SAP.pdf", ns("ref_browse"), t("Browse...")),
+              shiny::div(class = "d-flex gap-2 mb-2",
+                         .btn(ns("ref_add"), t("Add"), class = "btn-sm btn-outline-secondary")),
+              shiny::uiOutput(ns("ref_list"))),
             shiny::conditionalPanel(
               "input.mode == 'chat'", ns = ns,
               shiny::checkboxInput(
@@ -365,6 +382,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     text_of <- function(what, id) {
       p <- path()
       if (identical(what, "agent")) return(agent_prompt())
+      # (the next requests with no answer yet: tflspec's
+      # tfl_ai_agent_prompt(), n of them)
+      if (identical(what, "continue")) return(continue_prompt())
       if (identical(what, "folder")) return(normalizePath(p, "/", mustWork = FALSE))
       if (identical(what, "tell")) {
         return(t("I answered the questions in ai/questions.md. Read it again and go on."))
@@ -959,6 +979,42 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           identical(size_now(), read_size())) return(p$requests)
       .ai_dry_requests(p$toc, size_now())
     })
+    # the references the person chose (tfl_ai_prepare(references = )): only
+    # these, listed, each removable
+    refs <- shiny::reactiveVal(character())
+    shiny::observeEvent(path(), refs(character()), ignoreNULL = FALSE)
+    ref_add <- function(f) {
+      f <- trimws(gsub('^"|"$', "", as.character(f)))
+      f <- f[nzchar(f)]
+      gone <- f[!file.exists(f) | dir.exists(f)]
+      if (length(gone)) notify(sprintf(t("No file %s."), paste(gone, collapse = ", ")), "warning")
+      refs(unique(c(refs(), normalizePath(setdiff(f, gone), "/", mustWork = FALSE))))
+    }
+    shiny::observeEvent(input$ref_browse, {
+      f <- browse_done(guarded(.ai_choose_refs(input$ref_path %||% "")))
+      if (length(f)) ref_add(f)
+    })
+    shiny::observeEvent(input$ref_add, {
+      ref_add(input$ref_path %||% "")
+      shiny::updateTextInput(session, "ref_path", value = "")
+    })
+    shiny::observeEvent(input$ref_remove, refs(setdiff(refs(), input$ref_remove$id)))
+    output$ref_list <- shiny::renderUI({
+      r <- refs()
+      if (!length(r)) return(shiny::p(class = "small text-muted", t("No reference: the agent reads none.")))
+      shiny::tags$ul(class = "small mb-2", lapply(r, function(f) shiny::tags$li(
+        shiny::code(basename(f)), " ", shiny::span(class = "text-muted", dirname(f)), " ",
+        shiny::tags$a(href = "#", class = "ai-ref-remove", `data-ns` = ns(""), `data-id` = f,
+                      onclick = "Shiny.setInputValue(this.dataset.ns + 'ref_remove', {id: this.dataset.id, n: Date.now()}, {priority: 'event'}); return false;",
+                      t("Remove")))))
+    })
+    # (the agent's scope, with a tflspec that has it: tflspec fix/agent-scope)
+    scope_args <- function() {
+      if (!identical(input$mode %||% "agent", "agent")) return(list())
+      fm <- names(formals(tflspec::tfl_ai_prepare))
+      c(if ("agent_reads" %in% fm) list(agent_reads = as.character(input$agent_reads %||% character())),
+        if ("references" %in% fm && length(refs())) list(references = refs()))
+    }
     args_of <- function(p) {
       all <- if (!is.null(p)) p$adam$datasets$dataset
       ds <- input$datasets
@@ -975,7 +1031,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
            templates = !isFALSE(input$templates),
            add = isTRUE(input$add) && !is_new(),
            sheet_roles = roles_now(),
-           numbers = numbers_now())
+           numbers = numbers_now()) |>
+        c(scope_args())
     }
     inputs_ok <- function() {
       msg <- .ai_toc_problem(toc_src()$path, t)
@@ -1348,6 +1405,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     shiny::outputOptions(output, "mode_now", suspendWhenHidden = FALSE)
     # the agent's first message: tfl_ai_prepare()'s, else made again from
     # the study's folder (the app opened again)
+    continue_prompt <- function() {
+      x <- tryCatch(getExportedValue("tflspec", "tfl_ai_agent_prompt")(path(), n = 2L),
+                    error = function(e) NA_character_)
+      if (length(x) != 1L || is.na(x)) return(t("Every request has its answer: nothing to ask next."))
+      as.character(x)
+    }
     agent_prompt <- function() {
       pr <- shiny::isolate(prepared())
       if (!is.null(pr) && !isTRUE(pr$dry_run) && length(pr$agent_prompt) &&
@@ -1365,6 +1428,13 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           shiny::span(class = "me-auto", t("The agent's first message")),
           shiny::HTML(act("agent", "agent", c(copy = t("Copy text"), view = t("View as text"))))),
         shiny::tags$pre(class = "small mb-0 ai-prompt", agent_prompt()),
+        # (the message for the next requests, once the first are done)
+        if (.ai_continue_ok()) shiny::div(
+          class = "d-flex flex-wrap gap-2 align-items-center small mt-2",
+          shiny::span(with_tip(t("Then, the next requests:"),
+                               t("The agent does a few requests, then stops. This message asks for the next ones with no answer yet (two at a time), in the index's order."))),
+          shiny::HTML(act("continue", "continue", c(copy = t("Copy the message for the next requests"),
+                                                    view = t("View as text"))))),
         # (the study folder's full path: for an agent opened on the folder
         # above, the person adds it to the message)
         shiny::div(

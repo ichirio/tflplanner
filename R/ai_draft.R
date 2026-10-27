@@ -694,6 +694,26 @@
   normalizePath(out, "/", mustWork = FALSE)
 }
 
+# Reference files chosen in the dialog (any kind, several): their paths;
+# none when cancelled
+.ai_choose_refs <- function(default = "") {
+  f <- getOption("tflplanner.choose_refs")
+  out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
+    .ps_dialog("file", default, "References", multi = TRUE, filter = "All files (*.*)|*.*") %||%
+      .ai_dialog_try(getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
+                                                               caption = "References", multi = TRUE))
+  } else {
+    .ai_dialog_try(tcltk::tk_choose.files(default = .ai_file_default(default), caption = "References",
+                                          multi = TRUE))
+  }
+  out <- as.character(out)
+  out <- out[!is.na(out) & nzchar(out)]
+  normalizePath(out, "/", mustWork = FALSE)
+}
+
+# Whether tflspec writes the message for an agent's next requests
+.ai_continue_ok <- function() exists("tfl_ai_agent_prompt", envir = asNamespace("tflspec"), inherits = FALSE)
+
 # A dialog of utils (or tcltk) that could not open: said so, with what to
 # do instead
 .ai_dialog_try <- function(expr) {

@@ -39,7 +39,8 @@
 
 # Run the dialog: the paths chosen ("/" separated; character() when
 # cancelled), or NULL when PowerShell could not show it
-.ps_dialog <- function(kind, start = "", title = "", multi = FALSE) {
+.ps_dialog <- function(kind, start = "", title = "", multi = FALSE,
+                       filter = "Excel workbook (*.xlsx;*.xlsm)|*.xlsx;*.xlsm|All files (*.*)|*.*") {
   ps <- Sys.which("powershell")
   if (!nzchar(ps)) return(NULL)
   f <- tempfile("tfl-dialog-", fileext = ".ps1")
@@ -47,7 +48,7 @@
   # (UTF-8 with its mark: Windows PowerShell 5 reads a script so)
   con <- file(f, open = "wb")
   writeBin(as.raw(c(0xEF, 0xBB, 0xBF)), con)
-  writeBin(charToRaw(enc2utf8(paste(.ps_dialog_script(kind, start, title, multi), collapse = "\r\n"))), con)
+  writeBin(charToRaw(enc2utf8(paste(.ps_dialog_script(kind, start, title, multi, filter), collapse = "\r\n"))), con)
   close(con)
   out <- tryCatch(suppressWarnings(system2(ps, c("-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-File",
                                                  shQuote(f)), stdout = TRUE, stderr = FALSE)),
