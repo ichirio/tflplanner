@@ -59,8 +59,39 @@ ai_list_panel <- function(ns, t) {
            class = "btn-sm btn-primary ms-auto")),
     shiny::uiOutput(ns("list_empty")),
     DT::DTOutput(ns("list_table")),
+    shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mt-2",
+               .btn(ns("exp_add"), paste0(t("Add a report the AI missed"), " (expected_outputs.csv)")),
+               shiny::uiOutput(ns("exp_line"), inline = TRUE)),
+    # the agent's questions (moved here from step 3: R/ai_draft_ui.R draws them)
+    bslib::card(
+      class = "mt-3",
+      bslib::card_header(
+        class = "d-flex flex-wrap gap-2 align-items-center",
+        shiny::span(class = "me-auto", paste0(t("Questions"), " (ai/questions.md)")),
+        .btn(ns("questions_write"), paste0(t("Write the answers back"), " (tfl_ai_answer_questions)"),
+             class = "btn-sm btn-primary"),
+        shiny::uiOutput(ns("tell_agent"), inline = TRUE)),
+      shiny::uiOutput(ns("questions"))),
+    # the next round: the corrections in one file, run.R over every request
+    bslib::card(
+      class = "mt-3",
+      bslib::card_header(
+        class = "d-flex flex-wrap gap-2 align-items-center",
+        shiny::span(class = "me-auto", with_tip(
+          paste0(t("The next round"), " (ai/corrections.md)"),
+          t("Your list's changes, notes and the answered questions go into one file the agent works through in its next round; then tell the agent."))),
+        .btn(ns("corrections"), paste0(t("Write the corrections"), " (tfl_ai_corrections)"),
+             class = "btn-sm btn-primary"),
+        .btn(ns("run_all"), paste0(t("Run run.R for every request"), " (Rscript run.R)"))),
+      shiny::uiOutput(ns("corrections_note")),
+      shiny::uiOutput(ns("run_note"))),
     shiny::tags$script(shiny::HTML(
-      "$(document).off('click.airtf').on('click.airtf', '.ai-open-rtf', function(e) {
+      "$(document).off('click.aiexp').on('click.aiexp', '.ai-exp', function(e) {
+         e.preventDefault();
+         Shiny.setInputValue(this.dataset.ns + 'exp_act', {act: this.dataset.act, id: this.dataset.id, n: Date.now()},
+                             {priority: 'event'});
+       });
+       $(document).off('click.airtf').on('click.airtf', '.ai-open-rtf', function(e) {
          e.preventDefault();
          Shiny.setInputValue(this.dataset.ns + 'open_rtf', {file: this.dataset.file, n: Date.now()},
                              {priority: 'event'});
@@ -133,7 +164,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     d <- listed()
     if (is.null(d) || !nrow(d)) {
       shiny::p(class = "small text-muted",
-               t("No report listed yet: write the requests (step 1) and check the answers (step 3)."))
+               t("No report listed yet: write the requests (step 1), then check the answers (step 3) or run run.R (below)."))
     }
   })
   output$list_table <- DT::renderDT({
@@ -150,14 +181,43 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       ns(""), htmltools::htmlEscape(d$rtf, attribute = TRUE), t("Open")), "")
     # (tflspec's words in the app's language: the state, adopted)
     tw <- function(x) ifelse(is.na(x) | !nzchar(x), "", vapply(as.character(x), t, ""))
-    v <- data.frame(ck, d$output_id, d$title, d$population, d$split, tw(d$status), tw(d$adopted), rtf,
-                    d$questions, d$problem, stringsAsFactors = FALSE)
+    # the person's list (ai/expected_outputs.csv): its action and note a
+    # row, its added rows below; a row's changes as links
+    e <- expected()
+    k <- if (is.null(e)) rep(NA_integer_, nrow(d)) else match(d$output_id, e$output_id)
+    act <- if (is.null(e)) rep(NA_character_, nrow(d)) else e$action[k]
+    note <- if (is.null(e)) rep(NA_character_, nrow(d)) else e$note[k]
+    links <- function(id, act) {
+      one <- function(a, label) sprintf("<a href=\"#\" class=\"ai-exp me-2\" data-ns=\"%s\" data-act=\"%s\" data-id=\"%s\">%s</a>",
+                                        ns(""), a, htmltools::htmlEscape(id, attribute = TRUE), label)
+      ifelse(is.na(act), paste0(one("change", t("Change")), one("drop", t("Not wanted"))),
+             paste0(one("change", t("Change")), one("keep", t("Set back"))))
+    }
+    # (a row changed on the person's list: the AI's value, then theirs)
+    yours <- function(col) {
+      if (is.null(e)) return(d[[col]])
+      mine <- e[[col]][k]
+      ifelse(act %in% "change" & !is.na(mine) & mine != ifelse(is.na(d[[col]]), "", d[[col]]),
+             paste0(ifelse(is.na(d[[col]]), "", d[[col]]), " → ", mine), d[[col]])
+    }
+    v <- data.frame(ck, d$output_id, yours("title"), yours("population"), yours("split"), tw(d$status),
+                    tw(d$adopted), rtf,
+                    d$questions, d$problem, tw(act), note, links(d$output_id, act), stringsAsFactors = FALSE)
+    if (!is.null(e)) {
+      a <- e[e$action %in% "add" & !(e$output_id %in% d$output_id), , drop = FALSE]
+      if (nrow(a)) {
+        v <- rbind(v, stats::setNames(data.frame("", a$output_id, a$title, a$population, a$split, "", "", "",
+                                                 "", "", t("add"), a$note, "", stringsAsFactors = FALSE),
+                                      names(v)))
+      }
+    }
     names(v) <- c(t("Tick to copy"), "output_id", t("Title (title)"), t("Analysis set (population)"),
                   t("Split (split)"), t("State (status)"), paste0(t("Adopted"), " (adopted)"), "RTF",
-                  t("Questions (questions)"), t("First problem"))
+                  t("Questions (questions)"), t("First problem"), paste0(t("Expected"), " (action)"),
+                  t("Note (note)"), t("Edit"))
     v[is.na(v)] <- ""
-    # (the boxes and the RTF links: not escaped)
-    DT::datatable(v, rownames = FALSE, escape = which(!names(v) %in% c(t("Tick to copy"), "RTF")),
+    # (the boxes, the RTF links and the change links: not escaped)
+    DT::datatable(v, rownames = FALSE, escape = which(!names(v) %in% c(t("Tick to copy"), "RTF", t("Edit"))),
                   selection = "none",
                   options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
   })
@@ -252,6 +312,156 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   shiny::observeEvent(input$adopt_over_ok, {
     s <- pending()
     if (!is.null(s) && isTRUE(input$adopt_sure)) do_adopt(s$fresh, s$over)
+  })
+  # ---- the person's list (R/ai_expected.R): changed, dropped, added at once
+  expected <- shiny::reactive({
+    ver()
+    again()
+    p <- path()
+    if (is.null(p)) NULL else tryCatch(tflspec::tfl_ai_expected_read(p), error = function(e) NULL)
+  })
+  output$exp_line <- shiny::renderUI({
+    e <- expected()
+    if (is.null(e)) {
+      return(shiny::span(class = "small text-muted", t("No list of your own yet: the first change makes it (ai/expected_outputs.csv).")))
+    }
+    n <- function(a) sum(e$action %in% a)
+    shiny::span(class = "small text-muted", sprintf(t("Your list: %d changed, %d not wanted, %d added (ai/expected_outputs.csv; run.R compares the reports with it)."),
+                                                    n("change"), n("drop"), n("add")))
+  })
+  exp_save <- function(what, id = NA_character_, fields = list()) {
+    ok <- guarded(.ai_expected_change(path(), what, id, fields))
+    if (is.null(ok)) return(FALSE)
+    shiny::removeModal()
+    again(again() + 1L)
+    TRUE
+  }
+  nz <- function(x) if (is.null(x) || !length(x) || is.na(x[1L])) "" else as.character(x[1L])
+  exp_row <- function(id) {
+    e <- shiny::isolate(expected())
+    d <- shiny::isolate(listed())
+    r <- if (!is.null(e) && id %in% e$output_id) e[match(id, e$output_id), , drop = FALSE] else
+      d[match(id, d$output_id), , drop = FALSE]
+    r
+  }
+  shiny::observeEvent(input$exp_act, {
+    a <- input$exp_act$act
+    id <- input$exp_act$id
+    if (identical(a, "keep")) return(invisible(exp_save("keep", id)))
+    r <- exp_row(id)
+    if (identical(a, "drop")) {
+      shiny::showModal(shiny::modalDialog(
+        title = sprintf(t("%s is not wanted"), id),
+        shiny::textAreaInput(ns("exp_reason"), paste0(t("Why (required)"), " (reason)"), "", width = "100%", rows = 3),
+        shiny::p(class = "small text-muted", t("The row stays on your list, marked not wanted; run.R says if the report is still there.")),
+        footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                                .btn(ns("exp_drop_ok"), t("Mark not wanted"), class = "btn-primary")),
+        easyClose = TRUE))
+      exp_pending(id)
+      return()
+    }
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("Change %s on your list"), id),
+      shiny::textInput(ns("exp_title"), t("Title (title)"), nz(r$title), width = "100%"),
+      shiny::div(class = "d-flex gap-2",
+                 shiny::textInput(ns("exp_population"), t("Analysis set (population)"), nz(r$population)),
+                 shiny::textInput(ns("exp_split"), t("Split (split)"), nz(r$split))),
+      shiny::textAreaInput(ns("exp_note"), paste0(t("What the report should show"), " (note)"),
+                           nz(r$note), width = "100%", rows = 3),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn(ns("exp_change_ok"), t("Save"), class = "btn-primary")),
+      easyClose = TRUE))
+    exp_pending(id)
+  })
+  exp_pending <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(input$exp_drop_ok, {
+    if (!nzchar(trimws(input$exp_reason %||% ""))) return(notify(t("Say why the report is not wanted."), "warning"))
+    exp_save("drop", exp_pending(), list(reason = input$exp_reason))
+  })
+  shiny::observeEvent(input$exp_change_ok, {
+    exp_save("change", exp_pending(), list(title = input$exp_title, population = input$exp_population,
+                                           split = input$exp_split, note = input$exp_note))
+  })
+  shiny::observeEvent(input$exp_add, {
+    shiny::showModal(shiny::modalDialog(
+      title = t("Add a report the AI missed"),
+      shiny::div(class = "d-flex gap-2",
+                 shiny::textInput(ns("add_sheet"), t("Shell sheet (sheet)"), ""),
+                 shiny::textInput(ns("add_toc"), t("TOC number (toc_id)"), ""),
+                 shiny::textInput(ns("add_id"), "output_id", "")),
+      shiny::textInput(ns("add_title"), t("Title (title)"), "", width = "100%"),
+      shiny::div(class = "d-flex gap-2",
+                 shiny::textInput(ns("add_population"), t("Analysis set (population)"), ""),
+                 shiny::textInput(ns("add_split"), t("Split (split)"), "")),
+      shiny::textAreaInput(ns("add_note"), paste0(t("What the report should show"), " (note)"), "",
+                           width = "100%", rows = 3),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn(ns("exp_add_ok"), t("Add"), class = "btn-primary")),
+      easyClose = TRUE))
+  })
+  shiny::observeEvent(input$exp_add_ok, {
+    f <- list(sheet = input$add_sheet, toc_id = input$add_toc, output_id = input$add_id,
+              title = input$add_title, population = input$add_population, split = input$add_split,
+              note = input$add_note)
+    if (!any(nzchar(trimws(unlist(f[c("sheet", "toc_id", "output_id", "title")]))))) {
+      return(notify(t("Say at least its sheet, TOC number, output_id or title."), "warning"))
+    }
+    exp_save("add", fields = f)
+  })
+  # ---- the next round: the corrections file, run.R over every request
+  corr <- shiny::reactiveVal(NULL)
+  shiny::observeEvent(path(), corr(NULL), ignoreNULL = FALSE)
+  shiny::observeEvent(input$corrections, {
+    heads <- guarded(tflspec::tfl_ai_corrections(path()))
+    if (is.null(heads)) return()
+    corr(list(heads = as.character(heads), n = Sys.time()))
+  })
+  output$corrections_note <- shiny::renderUI({
+    k <- corr()
+    if (is.null(k)) return(NULL)
+    line <- t("I wrote my corrections and answers in ai/corrections.md: work through them (your next round).")
+    shiny::div(
+      class = "alert alert-info py-2 small mt-2 mb-0",
+      if (length(k$heads)) {
+        shiny::div(sprintf(t("%d new corrections written to ai/corrections.md: %s"), length(k$heads),
+                           paste(k$heads, collapse = "; ")))
+      } else shiny::div(t("No new correction: ai/corrections.md has them all already.")),
+      shiny::div(class = "mt-1", t("Then send the agent:"), " ", shiny::code(line)))
+  })
+  # run.R in the study folder, apart (processx): the reports built, the list
+  # read again when it ends
+  run <- shiny::reactiveValues(px = NULL, log = NULL, end = NULL)
+  shiny::observeEvent(input$run_all, {
+    p <- path()
+    if (is.null(p) || !file.exists(file.path(p, "run.R"))) {
+      return(notify(t("The study has no run.R: write the requests in agent mode (step 1)."), "warning"))
+    }
+    if (!is.null(run$px) && run$px$is_alive()) return(notify(t("run.R is running already."), "warning"))
+    log <- file.path(p, "ai", "run-from-app.log")
+    run$log <- log
+    run$end <- NULL
+    run$px <- processx::process$new(file.path(R.home("bin"), "Rscript"), "run.R", wd = p,
+                                    stdout = log, stderr = "2>&1", cleanup = TRUE)
+  })
+  # (its end found here, not while drawing: the list read again once)
+  shiny::observe({
+    px <- run$px
+    if (is.null(px) || !is.null(shiny::isolate(run$end))) return()
+    if (px$is_alive()) return(shiny::invalidateLater(2000))
+    run$end <- px$get_exit_status()
+    shiny::isolate(again(again() + 1L))
+  })
+  output$run_note <- shiny::renderUI({
+    if (is.null(run$px)) return(NULL)
+    if (is.null(run$end)) {
+      return(shiny::div(class = "small text-muted mt-2", t("run.R is running (every request) ...")))
+    }
+    tail <- tryCatch(utils::tail(readLines(run$log, warn = FALSE, encoding = "UTF-8"), 3L),
+                     error = function(e) character())
+    shiny::div(class = paste("small mt-2", if (identical(run$end, 0L)) "text-success" else "text-danger"),
+               if (identical(run$end, 0L)) t("run.R ended: the list is read again.") else
+                 sprintf(t("run.R stopped (exit %s): see ai/run-from-app.log."), run$end),
+               if (length(tail)) shiny::tags$pre(class = "small mb-0", paste(tail, collapse = "\n")))
   })
   invisible(listed)
 }

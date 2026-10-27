@@ -185,10 +185,14 @@ ai_ui <- function(id, lang = "en") {
               id = ns("prep_tab"),
               bslib::nav_panel(t("TOC items"), value = "toc",
                                shiny::uiOutput(ns("toc_head")),
-                               DT::DTOutput(ns("toc_table"))),
+                               DT::DTOutput(ns("toc_table"), fill = FALSE),
+                               # (a TOC item with no shell put in a sheet: R/ai_numbers_ui.R)
+                               shiny::uiOutput(ns("toc_attach"))),
               bslib::nav_panel(t("Shells"), value = "shells",
                                shiny::uiOutput(ns("shells_head")),
-                               DT::DTOutput(ns("shells_table"))),
+                               DT::DTOutput(ns("shells_table"), fill = FALSE),
+                               # (the numbers in the sheets, boxes: R/ai_numbers_ui.R)
+                               ai_numbers_ui(ns, t)),
               bslib::nav_panel(t("ADaM summary (what is sent)"), value = "adam",
                                shiny::div(
                                  class = "d-flex flex-wrap gap-3 align-items-end mt-2",
@@ -231,14 +235,8 @@ ai_ui <- function(id, lang = "en") {
               shiny::uiOutput(ns("check_note_agent"), inline = TRUE)),
             shiny::uiOutput(ns("status_md")),
             shiny::uiOutput(ns("result_all"))),
-          bslib::card(
-            bslib::card_header(
-              class = "d-flex flex-wrap gap-2 align-items-center",
-              shiny::span(class = "me-auto", paste0(t("Questions"), " (ai/questions.md)")),
-              .btn(ns("questions_write"), paste0(t("Write the answers back"), " (tfl_ai_answer_questions)"),
-                   class = "btn-sm btn-primary"),
-              shiny::uiOutput(ns("tell_agent"), inline = TRUE)),
-            shiny::uiOutput(ns("questions")))),
+          # (the questions: in step 4, with the list -- R/ai_list_ui.R)
+          shiny::p(class = "small text-muted", t("The agent's questions are answered in step 4."))),
         shiny::conditionalPanel(
           "output.mode_now != 'agent'", ns = ns,
         bslib::layout_columns(
@@ -276,7 +274,9 @@ ai_ui <- function(id, lang = "en") {
           shiny::uiOutput(ns("assume_empty")),
           DT::DTOutput(ns("assumptions")))),
       # step 4: the reports, adopted into the study (R/ai_list_ui.R)
-      ai_list_panel(ns, t)))
+      ai_list_panel(ns, t),
+      # the look of past reports, for every study (R/ai_style_ui.R)
+      ai_style_panel(ns, t)))
 }
 
 # The module's server.  `rv` the app's values (rv$study: the study open);
@@ -299,6 +299,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     compared <- shiny::reactiveVal(NULL)
     # step 4: the list and the adopting (R/ai_list_ui.R)
     ai_list_server(input, output, session, path, ver, reload_now, notify, guarded, t)
+    # the look of past reports (R/ai_style_ui.R)
+    ai_style_server(input, output, session, notify, guarded, t)
     # another study opened: its own check, none yet
     was <- NULL
     shiny::observe({
@@ -957,7 +959,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
            mode = input$mode %||% "agent",
            templates = !isFALSE(input$templates),
            add = isTRUE(input$add) && !is_new(),
-           sheet_roles = roles_now())
+           sheet_roles = roles_now(),
+           numbers = numbers_now())
     }
     inputs_ok <- function() {
       msg <- .ai_toc_problem(toc_src()$path, t)
@@ -997,7 +1000,13 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     })
     # (Read and check, or the sheets' roles applied: read again)
     read_again <- shiny::reactiveVal(0L)
-    read_now <- function() read_again(read_again() + 1L)
+    tab_kept <- new.env()
+    read_now <- function() {
+      tab_kept$tab <- shiny::isolate(input$prep_tab)
+      read_again(read_again() + 1L)
+    }
+    # the numbers in the sheets, changed on the Shells tab (R/ai_numbers_ui.R)
+    numbers_now <- ai_numbers_server(input, output, session, prepared, read_now, t)
     shiny::observeEvent(list(input$read, read_again()), ignoreInit = TRUE, {
       if (is.null(input$read) && identical(read_again(), 0L)) return()
       if (!inputs_ok()) return()
@@ -1037,7 +1046,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           "%s (%d)", ds[i], p$adam$datasets$variables[i])),
         choiceValues = ds, selected = if (length(keep)) keep else ds)
       read_with(read_key())
-      bslib::nav_select("prep_tab", if (nrow(p$toc) && all(p$toc$shell_found)) "adam" else "toc",
+      # (read again by an Apply: the tab it was on kept)
+      tab <- tab_kept$tab
+      tab_kept$tab <- NULL
+      bslib::nav_select("prep_tab", tab %||% if (nrow(p$toc) && all(p$toc$shell_found)) "adam" else "toc",
                         session = session)
     })
     write_now <- function(overwrite = FALSE) {
@@ -1194,7 +1206,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         if (length(p$hint)) shiny::div(class = "alert alert-warning py-2 small",
                                        lapply(p$hint, shiny::div)))
     })
+    # (drawn again each time its tab is opened: a table drawn while hidden
+    # can keep its old rows on the page)
+    toc_seen <- shiny::reactiveVal(0L)
+    shiny::observeEvent(input$prep_tab, if (identical(input$prep_tab, "toc")) toc_seen(toc_seen() + 1L))
     output$toc_table <- DT::renderDT({
+      toc_seen()
       p <- prepared()
       shiny::req(p, nrow(p$toc))
       tc <- p$toc
@@ -1211,6 +1228,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       DT::formatStyle(dt, "shell", backgroundColor = DT::styleEqual("\u2014", "#f8d7da"),
                       color = DT::styleEqual("\u2014", "#842029"))
     }, server = FALSE)
+    # (the heading drawn also while its tab is hidden: an Apply on another
+    # tab keeps that tab open, and the counts must follow the numbers)
+    shiny::outputOptions(output, "toc_head", suspendWhenHidden = FALSE)
     # the shells: a sheet each, the TOC items it was taken for
     output$shells_head <- shiny::renderUI({
       p <- prepared()
@@ -1424,7 +1444,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     questions <- shiny::reactive({
       q_ver()
       p <- path()
-      if (is.null(p) || !identical(mode_now(), "agent")) return(NULL)
+      if (is.null(p)) return(NULL)
+      # (none yet: an agent writes ai/questions.md when it has questions;
+      # a chat's questions are in its assumptions, step 3)
+      if (!file.exists(file.path(p, "ai", "questions.md"))) {
+        return(structure(data.frame(), why = if (identical(mode_now(), "agent")) "none yet" else "chat"))
+      }
       tryCatch(.ai_questions(p), error = function(e) {
         message("tflplanner: ai/questions.md: ", conditionMessage(e))
         NULL
@@ -1440,7 +1465,11 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     output$questions <- shiny::renderUI({
       q <- questions()
       if (is.null(q) || !nrow(q)) {
-        return(shiny::p(class = "small text-muted", t("No questions.")))
+        why <- attr(q, "why")
+        return(shiny::p(class = "small text-muted", t(
+          if (identical(why, "chat")) "No questions: a chat writes its questions in its assumptions (step 3)."
+          else if (identical(why, "none yet")) "No questions yet: the agent writes ai/questions.md when it has some."
+          else "No questions.")))
       }
       shiny::tagList(lapply(seq_len(nrow(q)), function(i) {
         open <- !identical(q$status[i], "decided")
