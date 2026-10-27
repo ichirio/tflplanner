@@ -645,11 +645,13 @@
 .ai_choose_dir <- function(default = "") {
   f <- getOption("tflplanner.choose_dir")
   out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
+    # (in front of the browser: R/ai_dialog_win.R; else utils's)
+    .ps_dialog("dir", default, "ADaM folder") %||% .ai_dialog_try(
     # (Windows only: looked up, not named, for the check on other systems)
     getExportedValue("utils", "choose.dir")(default = if (dir.exists(default)) {
       normalizePath(default, "\\", mustWork = FALSE)
     } else "",
-                                            caption = "ADaM folder")
+                                            caption = "ADaM folder"))
   } else {
     tcltk::tk_choose.dir(default = default, caption = "ADaM folder")
   }
@@ -660,9 +662,10 @@
   f <- getOption("tflplanner.choose_file")
   out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
     filters <- rbind(c("Excel workbook (*.xlsx, *.xlsm)", "*.xlsx;*.xlsm"), c("All files (*.*)", "*.*"))
-    getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
-                                              caption = "TOC / SHELL workbook",
-                                              multi = FALSE, filters = filters)
+    .ps_dialog("file", default, "TOC / SHELL workbook") %||% .ai_dialog_try(
+      getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
+                                                caption = "TOC / SHELL workbook",
+                                                multi = FALSE, filters = filters))
   } else {
     tcltk::tk_choose.files(default = .ai_file_default(default), caption = "TOC / SHELL workbook", multi = FALSE,
                            filters = matrix(c("Excel workbook", ".xlsx", "Excel workbook", ".xlsm"),
@@ -677,9 +680,10 @@
   f <- getOption("tflplanner.choose_files")
   out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
     filters <- rbind(c("Excel workbook (*.xlsx, *.xlsm)", "*.xlsx;*.xlsm"), c("All files (*.*)", "*.*"))
-    getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
-                                              caption = "Shell workbooks",
-                                              multi = TRUE, filters = filters)
+    .ps_dialog("file", default, "Shell workbooks", multi = TRUE) %||% .ai_dialog_try(
+      getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
+                                                caption = "Shell workbooks",
+                                                multi = TRUE, filters = filters))
   } else {
     tcltk::tk_choose.files(default = .ai_file_default(default), caption = "Shell workbooks", multi = TRUE,
                            filters = matrix(c("Excel workbook", ".xlsx", "Excel workbook", ".xlsm"),
@@ -688,6 +692,15 @@
   out <- as.character(out)
   out <- out[!is.na(out) & nzchar(out)]
   normalizePath(out, "/", mustWork = FALSE)
+}
+
+# A dialog of utils (or tcltk) that could not open: said so, with what to
+# do instead
+.ai_dialog_try <- function(expr) {
+  tryCatch(expr, error = function(e) {
+    stop("The computer's dialog cannot be opened here: paste the path into the field instead.",
+         call. = FALSE)
+  })
 }
 
 .ai_chosen <- function(x) {

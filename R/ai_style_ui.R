@@ -54,7 +54,11 @@ ai_style_server <- function(input, output, session, notify, guarded, t) {
   ns <- session$ns
   state <- shiny::reactiveValues(prompt = NULL, files = NULL, summary = NULL)
   shiny::observeEvent(input$style_browse, {
-    d <- tryCatch(.ai_choose_dir(input$style_rtf %||% ""), error = function(e) NULL)
+    d <- tryCatch(.ai_choose_dir(input$style_rtf %||% ""), error = function(e) {
+      notify(conditionMessage(e), "warning")
+      NULL
+    })
+    session$sendCustomMessage("ai-browse-done", TRUE)
     if (length(d) && !is.na(d) && nzchar(d)) shiny::updateTextInput(session, "style_rtf", value = d)
   })
   shiny::observeEvent(input$style_prompt, {

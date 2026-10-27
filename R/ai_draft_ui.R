@@ -28,7 +28,7 @@
       shiny::tags$input(id = id, type = "text", class = "form-control", value = "",
                         placeholder = placeholder),
       if (.ai_dialog_ok()) shiny::actionButton(browse_id, browse_label,
-                                               class = "btn-outline-secondary")))
+                                               class = "btn-outline-secondary ai-browse")))
 }
 
 #' @noRd
@@ -38,6 +38,16 @@ ai_ui <- function(id, lang = "en") {
   shiny::tagList(
     shiny::tags$style(shiny::HTML(.ai_draft_css)),
     shiny::tags$script(shiny::HTML(.ai_draft_js)),
+    # (while the computer's dialog is open the app waits: said on the page,
+    # until the server says it is closed)
+    shiny::div(id = ns("browse_wait"), class = "ai-browse-wait",
+               style = "display: none; position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); z-index: 2000; max-width: 40rem;",
+               shiny::div(class = "alert alert-info shadow",
+                          t("The computer's dialog to choose a file or folder is open (it may be behind this window): choose there, or cancel it. The app waits until then."))),
+    shiny::tags$script(shiny::HTML(sprintf(
+      "$(document).off('click.aibrowse').on('click.aibrowse', '.ai-browse', function() { $('#%s').show(); });
+       Shiny.addCustomMessageHandler('ai-browse-done', function(x) { $('#%s').hide(); });",
+      ns("browse_wait"), ns("browse_wait")))),
     shiny::div(class = "small mb-2 ai-status", shiny::uiOutput(ns("status_line"))),
     bslib::navset_card_underline(
       id = ns("step"), selected = "prepare",
@@ -103,7 +113,7 @@ ai_ui <- function(id, lang = "en") {
                   class = "input-group align-items-start",
                   shiny::tags$textarea(id = ns("shell_paths"), class = "form-control textarea-autoresize", rows = 1,
                                        style = "resize: vertical;", placeholder = "C:/.../SHELLS.xlsx"),
-                  shiny::actionButton(ns("shells_browse"), t("Browse..."), class = "btn-outline-secondary",
+                  shiny::actionButton(ns("shells_browse"), t("Browse..."), class = "btn-outline-secondary ai-browse",
                                       style = "align-self: flex-start;")))
             } else {
               shiny::div(
@@ -297,6 +307,11 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     ver <- shiny::reactiveVal(0L)
     collected <- shiny::reactiveVal(NULL)
     compared <- shiny::reactiveVal(NULL)
+    # (a dialog closed: the page's waiting note taken away)
+    browse_done <- function(x) {
+      session$sendCustomMessage("ai-browse-done", TRUE)
+      x
+    }
     # step 4: the list and the adopting (R/ai_list_ui.R)
     ai_list_server(input, output, session, path, ver, reload_now, notify, guarded, t)
     # the look of past reports (R/ai_style_ui.R)
@@ -832,7 +847,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                        new_id = input$new_id %||% "")
     }
     shiny::observeEvent(input$adam_browse, {
-      d <- guarded(.ai_choose_dir(browse_start("adam", input$adam_dir)))
+      d <- browse_done(guarded(.ai_choose_dir(browse_start("adam", input$adam_dir))))
       if (length(d) == 1L && !is.na(d)) shiny::updateTextInput(session, "adam_dir", value = d)
     })
     # (a workbook chosen from outside the study: copied into its docs/, the
@@ -848,7 +863,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       out
     }
     shiny::observeEvent(input$toc_browse, {
-      f <- guarded(.ai_choose_file(browse_start("toc", input$toc_path)))
+      f <- browse_done(guarded(.ai_choose_file(browse_start("toc", input$toc_path))))
       if (length(f) == 1L && !is.na(f)) shiny::updateTextInput(session, "toc_path", value = into_docs(f))
     })
     # the workbook: the one given last, uploaded or its path typed
@@ -885,7 +900,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                  sprintf(t("Shells read from: %s"), paste(vapply(s, `[[`, "", "name"), collapse = ", ")))
     })
     shiny::observeEvent(input$shells_browse, {
-      f <- guarded(.ai_choose_files(browse_start("shells", input$shell_paths)))
+      f <- browse_done(guarded(.ai_choose_files(browse_start("shells", input$shell_paths))))
       if (!length(f)) return()
       f <- vapply(f, into_docs, "", USE.NAMES = FALSE)
       had <- trimws(input$shell_paths %||% "")
