@@ -30,6 +30,8 @@ import_analysis_data(x, from_output, output_id, data_ids = NULL)
 \arguments{
 \item{x}{A \code{tflplanner}.}
 
+\item{output_id}{The report.}
+
 \item{data_id}{The name (lower case; also the object's name in the ARD
 program).}
 
@@ -67,9 +69,6 @@ but \code{from} blank).  An analysis names one in \code{data} (instead of
 \code{set_analysis_data()} adds one, or replaces the one named \code{old} (a new
 name is followed in the analyses and the analysis data made from it).
 \code{remove_analysis_data()} takes one out, refused while it is used.
-\code{name_analysis_data()} gives a report's data -- a dataset x analysis set
-its analyses read -- a name: the analysis data is made, those analyses
-read it, and a condition all of them have moves into it.
 
 \code{import_analysis_data()} copies a report's analysis data into
 another report, under the same names (a name the report has already

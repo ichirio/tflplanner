@@ -3,14 +3,11 @@
 \name{lf_rows}
 \alias{lf_rows}
 \alias{set_lf_rows}
-\alias{listing_types}
 \title{A listing's or figure's definition}
 \usage{
 lf_rows(x, sheet, output_id)
 
 set_lf_rows(x, sheet, output_id, rows)
-
-listing_types()
 }
 \arguments{
 \item{x}{A \code{tflplanner}.}

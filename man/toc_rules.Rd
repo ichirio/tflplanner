@@ -38,5 +38,4 @@ then the set's order.
 \examples{
 r <- toc_rules(home = tempfile())
 names(r)
-toc_pick_rules(c("Shell Number", "Title1", "Title2", "g-", "Topline"), r)
 }

@@ -19,7 +19,7 @@ A list: \code{content} (or \code{NULL}), \code{error} (the code's error, or
 code the error is on, when it is in the report's own code) and \code{log}.
 }
 \description{
-Runs the report's program up to its report (\code{\link[=data_lines]{data_lines()}}: the datasets
+Runs the report's program up to its report (\code{data_lines()}: the datasets
 it registers and its ARD read, its data step and its content step, each
 its own code or as its definition makes it) in a fresh R process from
 the study folder -- the app does not run the code itself -- and gives

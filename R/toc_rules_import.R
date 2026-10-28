@@ -7,13 +7,13 @@
 #'
 #' `toc_import_read()` reads one TOC or several (a TFL workbook and a
 #' listing workbook of the same layout) by the company's rules: each source
-#' read once, its TOC sheet and header row found ([toc_find_sheet()]), the
-#' rule set picked ([toc_pick_rules()]), the columns mapped
-#' ([toc_map_for()]), the output ids made by the set's rule (or the one
-#' that gives unique ids for the most rows, [toc_id_candidates()]), one
-#' report a phase ([toc_expand_phases()]), the shell sheets linked
-#' ([toc_link_shells()]), the Topline batch ([toc_batches()]) and what is
-#' wrong ([toc_problems()]).  Nothing is written.
+#' read once, its TOC sheet and header row found (`toc_find_sheet()`), the
+#' rule set picked (`toc_pick_rules()`), the columns mapped
+#' (`toc_map_for()`), the output ids made by the set's rule (or the one
+#' that gives unique ids for the most rows, `toc_id_candidates()`), one
+#' report a phase (`toc_expand_phases()`), the shell sheets linked
+#' (`toc_link_shells()`), the Topline batch (`toc_batches()`) and what is
+#' wrong (`toc_problems()`).  Nothing is written.
 #'
 #' `toc_import_spec()` gives the reports as [tflspec::tfl_read_toc()] gives
 #' a TOC, for [toc_changes()] and [toc_apply()].
@@ -35,14 +35,14 @@
 #'
 #' @param sources The TOC files (paths) or `toc_source`s.
 #' @param rules What [toc_rules()] returned.
-#' @param profile The study's TOC profile ([toc_profile()]) or `NULL`.
+#' @param profile The study's TOC profile (`toc_profile()`) or `NULL`.
 #' @param choices A list (see above) or `NULL`.
 #' @param names The sources' names as the user knows them (paths: their
 #'   base names).
 #' @return A `toc_import`: `sources`, `detection` (a row a source: `file`,
 #'   `sheet`, `header_row`, `how` -- `"name"`, `"score"`, `"rows"`,
 #'   `"chosen"`, `"profile"` --, `rows`, `shells`, `topline_sheet`, `kind`,
-#'   `note`), `sheets` (each source's [toc_find_sheet()]), `rule_set` (the
+#'   `note`), `sheets` (each source's `toc_find_sheet()`), `rule_set` (the
 #'   set in use), `rule_sets` (the scores), `map` (+ `attr(, "missing")`),
 #'   `id_rule`, `id_candidates`, `type_from`, `rows`, `reports`, `unread`,
 #'   `batches`, `problems`, `profile`, `notes` (what was not as the profile
@@ -54,7 +54,6 @@
 #'              "T-14-2-1,Adverse events,Overview,Safety Population"), f)
 #' r <- toc_import_read(f, toc_rules(home = tempfile()))
 #' r$reports[c("output_id", "label")]
-#' toc_import_spec(r)$report
 #'
 #' # the example TOC made from the sample study
 #' f <- system.file("extdata", "SAMPLE-01_TOC.xlsx", package = "tflplanner")

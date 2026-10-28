@@ -11,17 +11,10 @@ preview_pages(x, output_id, data)
 
 \item{output_id}{The report.}
 
-\item{data}{Its normalized data (\code{\link[=ard_data]{ard_data()}}).}
-
-\item{pages}{\code{rtftable} pages.}
-
-\item{max_pages}{How many pages to render.}
-
-\item{align}{How value cells align: \code{"center"} (a table) or \code{"left"} (a
-listing).}
+\item{data}{Its normalized data (\code{ard_data()}).}
 }
 \value{
-\code{preview_pages()}: a list of \code{rtftable}; \code{preview_html()}: HTML.
+A list of \code{rtftable} pages.
 }
 \description{
 Plans the report's table from the definition as it stands (saved or

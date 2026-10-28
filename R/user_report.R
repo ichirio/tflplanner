@@ -49,7 +49,7 @@
 
 #' Run a report's own code and see what it leaves
 #'
-#' Runs the report's program up to its report ([data_lines()]: the datasets
+#' Runs the report's program up to its report (`data_lines()`: the datasets
 #' it registers and its ARD read, its data step and its content step, each
 #' its own code or as its definition makes it) in a fresh R process from
 #' the study folder -- the app does not run the code itself -- and gives

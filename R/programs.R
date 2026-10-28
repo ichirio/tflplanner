@@ -251,7 +251,7 @@ code_templates <- function(name = NULL) {
 #' @param output_id The report.
 #' @param todo `FALSE` returns `NULL` instead of the TODO.
 #' @return Code lines.
-#' @export
+#' @noRd
 data_lines <- function(x, output_id, todo = TRUE) {
   lay <- study_layout()
   info <- report_info(x, output_id)

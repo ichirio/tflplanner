@@ -15,6 +15,6 @@ preview_listing(study, output_id)
 A list of \code{rtftable} pages.
 }
 \description{
-Runs a listing's data part (\code{\link[=data_lines]{data_lines()}}) from the study folder and
+Runs a listing's data part (\code{data_lines()}) from the study folder and
 gives its first pages, for a preview.
 }

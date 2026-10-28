@@ -135,7 +135,7 @@
 #' column as it is, unless its ids carry no type and the normalised ones
 #' do).
 #'
-#' @param rows What [toc_rows()] returned.
+#' @param rows What `toc_rows()` returned.
 #' @param rule_set A rule set.
 #' @param type_from Where the type is read (`"column"`, `"id"`,
 #'   `"title"`); by default the set's, else the source that reads the most

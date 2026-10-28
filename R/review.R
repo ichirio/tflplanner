@@ -121,7 +121,7 @@ study_review <- function(study, output_id = NULL, data = c("cached", "read", "no
 
 #' @rdname study_review
 #' @param x A planner ([new_planner()], a study's `$planner`).
-#' @param facts The facts of the data ([review_facts()]), or `NULL`.
+#' @param facts The facts of the data (`review_facts()`), or `NULL`.
 #' @noRd
 review_problems <- function(x, output_id = NULL, facts = NULL,
                             lang = tflplanner_language()) {

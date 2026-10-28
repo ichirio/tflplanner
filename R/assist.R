@@ -211,7 +211,7 @@ ard_meta <- function(ard = NULL, data = NULL) {
 #' Run a report's data part and keep what its ARD holds
 #'
 #' Runs the study's setup code, the report's ARD code and its
-#' normalization and rework ([data_lines()]) in a fresh R process, from the
+#' normalization and rework (`data_lines()`) in a fresh R process, from the
 #' study folder, and reads [ard_meta()] from the result: the normalized
 #' `data` when the rework ran, the raw `ard` otherwise.  A report whose ARD
 #' its ARD definition makes reads its rows of the study ARD when they are
@@ -239,7 +239,7 @@ ard_meta <- function(ard = NULL, data = NULL) {
 #' @return The metadata ([ard_meta()]) with `fetched` (the time), `source`
 #'   (`"data"` or `"ard"`), `error` (the rework's error, if it failed),
 #'   `made` (`"here"`: made for the report; `"study"`: read from the study
-#'   ARD), `print` (what it was made from, [ard_preview_state()]) and `log`,
+#'   ARD), `print` (what it was made from, `ard_preview_state()`) and `log`,
 #'   invisibly.
 #' @export
 fetch_ard <- function(study, output_id, timeout = 300,
@@ -512,7 +512,7 @@ ard_raw <- function(study, output_id, rows = FALSE, home = tflplanner_home()) {
 }
 
 #' @rdname fetch_ard
-#' @param meta What was kept ([ard_info()]); by default, read.
+#' @param meta What was kept (`ard_info()`); by default, read.
 #' @noRd
 ard_preview_state <- function(study, output_id, meta = ard_info(study, output_id, home),
                               home = tflplanner_home()) {
@@ -696,7 +696,7 @@ header_presets <- function() {
 #'
 #' @param x An `tflplanner`.
 #' @param output_id The report (`NA` for the study defaults).
-#' @param preset A name of [cell_presets()] or [header_presets()].
+#' @param preset A name of `cell_presets()` or `header_presets()`.
 #' @param variable For a cell preset: the variable its rows are for,
 #'   instead of the kind (`continuous` / `categorical`) that serves every
 #'   variable of that kind.

@@ -73,12 +73,8 @@ ard_card_summary <- function(meta, page_by = character(), tr = function(x) x) {
 #'
 #' @param x An `tflplanner`.
 #' @param output_id The report.
-#' @param data Its normalized data ([ard_data()]).
-#' @param pages `rtftable` pages.
-#' @param max_pages How many pages to render.
-#' @param align How value cells align: `"center"` (a table) or `"left"` (a
-#'   listing).
-#' @return `preview_pages()`: a list of `rtftable`; `preview_html()`: HTML.
+#' @param data Its normalized data (`ard_data()`).
+#' @return A list of `rtftable` pages.
 #' @export
 preview_pages <- function(x, output_id, data) {
   sheets <- lapply(x$sheets[table_sheets()], function(d) {

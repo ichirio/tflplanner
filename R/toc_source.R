@@ -147,7 +147,7 @@ print.toc_source <- function(x, ...) {
 #' @rdname toc_source
 #' @param head A sheet's first rows (a character matrix, as `source$head`
 #'   holds them).
-#' @param rule_set A rule set ([toc_rule_set()]) or a list of them (the
+#' @param rule_set A rule set (`toc_rule_set()`) or a list of them (the
 #'   candidates of all are used).
 #' @return `toc_find_header()`: a list: `row` (`NA` when no row matches),
 #'   `score` (the cells that match a column name), `items` (the items they
@@ -267,7 +267,7 @@ toc_find_sheet <- function(source, rules) {
 #' @param sheet The TOC sheet.
 #' @param header_row Its header row (as the sheet numbers its rows).
 #' @param map Which column is what: a named list, item -> column name(s) of
-#'   the header ([toc_map_for()]).
+#'   the header (`toc_map_for()`).
 #' @return `toc_rows()`: a data frame, a row a non-blank row under the
 #'   header: `.source`, `.sheet`, `.row` (the sheet's row number), a column
 #'   an item (`NA` when not mapped), `titles` and `footnotes` as list

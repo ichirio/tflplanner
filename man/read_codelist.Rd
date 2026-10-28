@@ -34,5 +34,5 @@ file.  \code{set_codelist()} puts it into a report's rows of the definition's
 is replaced, the others are kept (rows with no \code{under} column keep the
 \code{under} the report's values have).  A code list is a report's (tflspec:
 every row names its report); to use one in several reports, copy it
-(\code{\link[=import_codelist]{import_codelist()}}, \code{\link[=standard_codelists]{standard_codelists()}}).
+(\code{\link[=import_codelist]{import_codelist()}}, \code{standard_codelists()}).
 }

@@ -112,7 +112,7 @@ set_lf_rows <- function(x, sheet, output_id, rows) {
 }
 
 #' @rdname lf_rows
-#' @export
+#' @noRd
 listing_types <- function() company_standards()$listing_types
 
 # the lines that read one dataset of the catalog into an object named
@@ -208,7 +208,7 @@ listing_types <- function() company_standards()$listing_types
 
 #' The rows of a listing, as they will print
 #'
-#' Runs a listing's data part ([data_lines()]) from the study folder and
+#' Runs a listing's data part (`data_lines()`) from the study folder and
 #' gives its first pages, for a preview.
 #'
 #' @param study An `rtfstudy`.

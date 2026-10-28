@@ -46,11 +46,7 @@
 #' @param from_output The report copied from.
 #' @param output_id The report copied into.
 #' @param variables Only these variables' code lists; `NULL` for all.
-#' @param sets Only these sets of the standards; `NULL` for all.
-#' @param home tflplanner's home.
-#' @return `import_codelist()`: the `tflplanner`; `standard_codelists()`: a
-#'   data frame (`set`, `variable`, `value`, `label`, `order`, `under`,
-#'   `note`).
+#' @return The `tflplanner`.
 #' @export
 import_codelist <- function(x, from_output, output_id, variables = NULL) {
   src <- sheet_rows(x, "codelists", from_output)

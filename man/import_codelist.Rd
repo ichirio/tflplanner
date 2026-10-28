@@ -14,15 +14,9 @@ import_codelist(x, from_output, output_id, variables = NULL)
 \item{output_id}{The report copied into.}
 
 \item{variables}{Only these variables' code lists; \code{NULL} for all.}
-
-\item{sets}{Only these sets of the standards; \code{NULL} for all.}
-
-\item{home}{tflplanner's home.}
 }
 \value{
-\code{import_codelist()}: the \code{tflplanner}; \code{standard_codelists()}: a
-data frame (\code{set}, \code{variable}, \code{value}, \code{label}, \code{order}, \code{under},
-\code{note}).
+The \code{tflplanner}.
 }
 \description{
 A code list is a report's: every row of the \code{codelists} sheet names its

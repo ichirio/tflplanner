@@ -22,7 +22,7 @@ A data frame; a list or \code{NULL}.
 also \code{rule_set}, \code{standards_md5} -- the company standards' md5 then,
 blank for the built-in ones --, \code{sources}, \code{unread}, \code{warnings}; several
 files \code{|} between them).  \code{toc_last()}: what the last TOC taken in
-said, by report (\code{\link[=toc_snapshot]{toc_snapshot()}}), or \code{NULL}.  \code{toc_shell_links()}:
+said, by report (\code{toc_snapshot()}), or \code{NULL}.  \code{toc_shell_links()}:
 each report's shell sheet (\code{input/toc/shells.csv}: \code{output_id}, \code{file}
 -- the copy in \code{input/toc} --, \code{original}, \code{sheet}, \code{phase}, \code{md5},
 \code{import_id}).  \code{toc_profile()}: what the study's last import chose

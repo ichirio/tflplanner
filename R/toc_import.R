@@ -106,7 +106,7 @@ toc_title_offset <- function(x) {
 #'
 #' Compares the report sheets a TOC gives ([tflspec::tfl_read_toc()]) with
 #' the study's definition and with what the last TOC taken in said
-#' (`last`, see [toc_snapshot()]).
+#' (`last`, see `toc_snapshot()`).
 #'
 #' A report's title and footnote lines are of two kinds: those the TOC gave
 #' (the lines the last TOC had; the first time, the lines where this TOC
@@ -374,7 +374,7 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
 #' @param last,title_offset As [toc_changes()] was given them (kept in
 #'   `changes`).
 #' @param populations The reports' analysis sets, a population_id named by
-#'   report (see [toc_populations()]): each one that differs from the
+#'   report (see `toc_populations()`): each one that differs from the
 #'   report's is set with [set_report_population()] (its data made, its
 #'   analyses moved).
 #' @param make_data Make the analysis data of each new report's datasets
@@ -740,7 +740,7 @@ toc_copy_profile <- function(from, to) {
 #' also `rule_set`, `standards_md5` -- the company standards' md5 then,
 #' blank for the built-in ones --, `sources`, `unread`, `warnings`; several
 #' files ` | ` between them).  `toc_last()`: what the last TOC taken in
-#' said, by report ([toc_snapshot()]), or `NULL`.  `toc_shell_links()`:
+#' said, by report (`toc_snapshot()`), or `NULL`.  `toc_shell_links()`:
 #' each report's shell sheet (`input/toc/shells.csv`: `output_id`, `file`
 #' -- the copy in `input/toc` --, `original`, `sheet`, `phase`, `md5`,
 #' `import_id`).  `toc_profile()`: what the study's last import chose
@@ -879,7 +879,7 @@ toc_profile <- function(study) {
 
 #' Put what a TOC read by the rules says besides the spec into a study
 #'
-#' The reports' batches (the Topline flag, [toc_batches()]) go into the
+#' The reports' batches (the Topline flag, `toc_batches()`) go into the
 #' report list's `batches` column: a report flagged gets the batch, one the
 #' last TOC flagged and this one does not loses it; a batch given here is
 #' kept, and nothing changes when the TOC has no flag column.

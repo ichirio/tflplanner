@@ -71,7 +71,6 @@ reference:
       - study_layout
       - study_setup_code
       - study_files
-      - read_data_head
       - study_status
   - title: The ARD definition and the study ARD
     contents:
@@ -156,7 +155,6 @@ reference:
       - toc_import_read
   - title: Programs and runs
     contents:
-      - data_lines
       - program_code
       - report_setup_code
       - autoexec_code

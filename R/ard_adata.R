@@ -359,11 +359,9 @@
 #' `set_analysis_data()` adds one, or replaces the one named `old` (a new
 #' name is followed in the analyses and the analysis data made from it).
 #' `remove_analysis_data()` takes one out, refused while it is used.
-#' `name_analysis_data()` gives a report's data -- a dataset x analysis set
-#' its analyses read -- a name: the analysis data is made, those analyses
-#' read it, and a condition all of them have moves into it.
 #'
 #' @param x A `tflplanner`.
+#' @param output_id The report.
 #' @param data_id The name (lower case; also the object's name in the ARD
 #'   program).
 #' @param from A dataset, or an analysis data above.

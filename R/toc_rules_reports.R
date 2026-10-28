@@ -26,7 +26,7 @@
 #' value of `phase_values`).  A value the rules do not know leaves the row
 #' out (listed in `attr(, "unread")`).
 #'
-#' @param rows The TOC's rows with their ids: [toc_rows()] plus
+#' @param rows The TOC's rows with their ids: `toc_rows()` plus
 #'   `output_id`, `type`, `label`, `raw_id`.
 #' @param rule_set A rule set (with a study's overrides).
 #' @return The reports: a row a report, `output_id`, `base_id`, `phase`
@@ -106,7 +106,7 @@ toc_expand_phases <- function(rows, rule_set) {
 #' ignoring case; then the same by key (`T-14-1-1` is `t.14.1.1`).  Only the
 #' link is kept: nothing of the sheet is read.
 #'
-#' @param reports What [toc_expand_phases()] returned.
+#' @param reports What `toc_expand_phases()` returned.
 #' @param sources The `toc_source`s.
 #' @param rule_set A rule set.
 #' @param skip Sheets that are not shells: a data frame `source`, `sheet`
@@ -166,7 +166,7 @@ toc_link_shells <- function(reports, sources, rule_set, skip = NULL) {
 #' flagged but not on it, or on it but not flagged, is listed (a check,
 #' never an error; the flag decides).
 #'
-#' @param reports What [toc_link_shells()] (or [toc_expand_phases()])
+#' @param reports What `toc_link_shells()` (or `toc_expand_phases()`)
 #'   returned.
 #' @param rule_set A rule set.
 #' @param topline_ids The output ids (before the phases) of a Topline

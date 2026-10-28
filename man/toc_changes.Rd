@@ -37,7 +37,7 @@ here, the TOC unchanged) or \code{"ask"}); and the \code{last} and
 \description{
 Compares the report sheets a TOC gives (\code{\link[tflspec:tfl_read_toc]{tflspec::tfl_read_toc()}}) with
 the study's definition and with what the last TOC taken in said
-(\code{last}, see \code{\link[=toc_snapshot]{toc_snapshot()}}).
+(\code{last}, see \code{toc_snapshot()}).
 }
 \details{
 A report's title and footnote lines are of two kinds: those the TOC gave

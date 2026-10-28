@@ -17,7 +17,7 @@ toc_import_read(
 
 \item{rules}{What \code{\link[=toc_rules]{toc_rules()}} returned.}
 
-\item{profile}{The study's TOC profile (\code{\link[=toc_profile]{toc_profile()}}) or \code{NULL}.}
+\item{profile}{The study's TOC profile (\code{toc_profile()}) or \code{NULL}.}
 
 \item{choices}{A list (see above) or \code{NULL}.}
 
@@ -28,7 +28,7 @@ base names).}
 A \code{toc_import}: \code{sources}, \code{detection} (a row a source: \code{file},
 \code{sheet}, \code{header_row}, \code{how} -- \code{"name"}, \code{"score"}, \code{"rows"},
 \code{"chosen"}, \code{"profile"} --, \code{rows}, \code{shells}, \code{topline_sheet}, \code{kind},
-\code{note}), \code{sheets} (each source's \code{\link[=toc_find_sheet]{toc_find_sheet()}}), \code{rule_set} (the
+\code{note}), \code{sheets} (each source's \code{toc_find_sheet()}), \code{rule_set} (the
 set in use), \code{rule_sets} (the scores), \code{map} (+ \code{attr(, "missing")}),
 \code{id_rule}, \code{id_candidates}, \code{type_from}, \code{rows}, \code{reports}, \code{unread},
 \code{batches}, \code{problems}, \code{profile}, \code{notes} (what was not as the profile
@@ -37,13 +37,13 @@ said: \code{message}).
 \description{
 \code{toc_import_read()} reads one TOC or several (a TFL workbook and a
 listing workbook of the same layout) by the company's rules: each source
-read once, its TOC sheet and header row found (\code{\link[=toc_find_sheet]{toc_find_sheet()}}), the
-rule set picked (\code{\link[=toc_pick_rules]{toc_pick_rules()}}), the columns mapped
-(\code{\link[=toc_map_for]{toc_map_for()}}), the output ids made by the set's rule (or the one
-that gives unique ids for the most rows, \code{\link[=toc_id_candidates]{toc_id_candidates()}}), one
-report a phase (\code{\link[=toc_expand_phases]{toc_expand_phases()}}), the shell sheets linked
-(\code{\link[=toc_link_shells]{toc_link_shells()}}), the Topline batch (\code{\link[=toc_batches]{toc_batches()}}) and what is
-wrong (\code{\link[=toc_problems]{toc_problems()}}).  Nothing is written.
+read once, its TOC sheet and header row found (\code{toc_find_sheet()}), the
+rule set picked (\code{toc_pick_rules()}), the columns mapped
+(\code{toc_map_for()}), the output ids made by the set's rule (or the one
+that gives unique ids for the most rows, \code{toc_id_candidates()}), one
+report a phase (\code{toc_expand_phases()}), the shell sheets linked
+(\code{toc_link_shells()}), the Topline batch (\code{toc_batches()}) and what is
+wrong (\code{toc_problems()}).  Nothing is written.
 }
 \details{
 \code{toc_import_spec()} gives the reports as \code{\link[tflspec:tfl_read_toc]{tflspec::tfl_read_toc()}} gives
@@ -70,7 +70,6 @@ writeLines(c("Output ID,Title 1,Title 2,Population",
              "T-14-2-1,Adverse events,Overview,Safety Population"), f)
 r <- toc_import_read(f, toc_rules(home = tempfile()))
 r$reports[c("output_id", "label")]
-toc_import_spec(r)$report
 
 # the example TOC made from the sample study
 f <- system.file("extdata", "SAMPLE-01_TOC.xlsx", package = "tflplanner")

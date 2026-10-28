@@ -34,7 +34,7 @@ remove_output(x, output_id)
 
 \item{description}{A short description shown in the report list.}
 
-\item{type}{The report's type, one of \code{\link[=report_types]{report_types()}}; anything but
+\item{type}{The report's type, one of \code{report_types()}; anything but
 \code{"table"} is written on the \code{report} sheet.}
 
 \item{process_code}{A table's: R code that turns \code{ard} into \code{data},

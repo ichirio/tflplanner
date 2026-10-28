@@ -70,7 +70,7 @@ report_types <- function() c("table", "listing", "figure")
 #' is replaced, the others are kept (rows with no `under` column keep the
 #' `under` the report's values have).  A code list is a report's (tflspec:
 #' every row names its report); to use one in several reports, copy it
-#' ([import_codelist()], [standard_codelists()]).
+#' ([import_codelist()], `standard_codelists()`).
 #'
 #' @param path An `.xlsx` or `.csv` file.
 #' @param x A `tflplanner`.
@@ -411,7 +411,7 @@ read_planner <- function(path) {
 #'   plan normalizes `ard` (`ard |> normalize_ard() |> table_plan()`).  A listing's: a rework of its `data`
 #'   before it is sorted.  (A step that is the report's own code instead:
 #'   [set_step_code()].)
-#' @param type The report's type, one of [report_types()]; anything but
+#' @param type The report's type, one of `report_types()`; anything but
 #'   `"table"` is written on the `report` sheet.
 #' @param section The section of the TOC the report is under (its heading,
 #'   "14.1 Demographics"); `NA`: from its ID's numbers.

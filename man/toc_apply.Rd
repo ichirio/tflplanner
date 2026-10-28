@@ -35,7 +35,7 @@ type corrected); the TOC's otherwise.}
 \code{changes}).}
 
 \item{populations}{The reports' analysis sets, a population_id named by
-report (see \code{\link[=toc_populations]{toc_populations()}}): each one that differs from the
+report (see \code{toc_populations()}): each one that differs from the
 report's is set with \code{\link[=set_report_population]{set_report_population()}} (its data made, its
 analyses moved).}
 

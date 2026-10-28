@@ -26,12 +26,12 @@ or \code{"current"}.}
 The metadata (\code{\link[=ard_meta]{ard_meta()}}) with \code{fetched} (the time), \code{source}
 (\code{"data"} or \code{"ard"}), \code{error} (the rework's error, if it failed),
 \code{made} (\code{"here"}: made for the report; \code{"study"}: read from the study
-ARD), \code{print} (what it was made from, \code{\link[=ard_preview_state]{ard_preview_state()}}) and \code{log},
+ARD), \code{print} (what it was made from, \code{ard_preview_state()}) and \code{log},
 invisibly.
 }
 \description{
 Runs the study's setup code, the report's ARD code and its
-normalization and rework (\code{\link[=data_lines]{data_lines()}}) in a fresh R process, from the
+normalization and rework (\code{data_lines()}) in a fresh R process, from the
 study folder, and reads \code{\link[=ard_meta]{ard_meta()}} from the result: the normalized
 \code{data} when the rework ran, the raw \code{ard} otherwise.  A report whose ARD
 its ARD definition makes reads its rows of the study ARD when they are

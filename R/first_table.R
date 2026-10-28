@@ -36,7 +36,7 @@
 #' already there are left as they are.  When one name has files in several
 #' formats (`adsl.rds`, `adsl.xpt`), the row is made for the format read
 #' first (`rds`, `rda`, `parquet`, `csv`, `xpt`, `sas7bdat`); the others
-#' stay files with no row of their own, and [catalog_name_clashes()] says
+#' stay files with no row of their own, and `catalog_name_clashes()` says
 #' which names have more than one file.
 #'
 #' @param x A `tflplanner`.

@@ -71,7 +71,7 @@ study_files <- function(study, folder = "data") {
 #' @param path A file.
 #' @param n Rows to return.
 #' @return A data frame, with the full dimensions in attribute `dim_full`.
-#' @export
+#' @noRd
 read_data_head <- function(path, n = 50L) {
   if (!is.character(path) || length(path) != 1L || is.na(path)) {
     stop("read_data_head(): `path` is one file.", call. = FALSE)
