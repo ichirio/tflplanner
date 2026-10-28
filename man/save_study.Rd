@@ -8,7 +8,8 @@ save_study(
   study,
   home = tflplanner_home(),
   base = NULL,
-  spec = c("check", "overwrite")
+  spec = c("check", "overwrite"),
+  fill_widths = FALSE
 )
 }
 \arguments{
@@ -32,6 +33,11 @@ the files in; or write them back from the last save (\code{\link[=write_spec]{wr
 \item{spec}{\code{"check"} (the default) stops when a definition file was
 changed outside tflplanner; \code{"overwrite"} writes over it, after copying
 it to \verb{spec/.rejected/} (what \code{\link[=write_spec]{write_spec()}} does).}
+
+\item{fill_widths}{\code{TRUE} (the app's save): a report new or changed in
+this save that says no column widths gets the default ones
+(\code{\link[tflspec:tfl_fill_widths]{tflspec::tfl_fill_widths()}}), and a table whose columns changed has
+its old widths replaced.}
 }
 \value{
 The study, invisibly, with \code{files}: what was written (status
