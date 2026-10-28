@@ -174,3 +174,23 @@ test_that("the reports waiting for corrections: an assumption answered wrong, no
   expect_identical(.ai_to_correct(d, "T-3"), character())
   expect_identical(.ai_to_correct(NULL, "T-1"), character())
 })
+
+test_that("the Report list marks a report adopted from the AI, and a draft changed since", {
+  d <- withr_tempdir()
+  dir.create(file.path(d, "ai", "spec", "outputs"), recursive = TRUE)
+  expect_identical(unname(.ai_adopted_marks(d, c("T-1", "T-2"))), c("", ""))
+  f <- file.path(d, "ai", "spec", "outputs", c("T-1.yml", "T-2.yml"))
+  writeLines("id: T-1", f[1])
+  writeLines("id: T-2", f[2])
+  utils::write.csv(data.frame(output_id = c("T-1", "T-2"), adopted = "2026-10-29 03:00:00",
+                              md5 = unname(tools::md5sum(f))),
+                   file.path(d, "ai", "adopted.csv"), row.names = FALSE)
+  writeLines("id: T-2\nlabel: redrafted", f[2])
+  m <- .ai_adopted_marks(d, c("T-1", "T-2", "T-3"))
+  expect_identical(unname(m), c("adopted", "newer", ""))
+  h <- .ai_mark_html(m, function(x) x)
+  expect_match(h[1], "text-bg-light", fixed = TRUE)
+  expect_match(h[2], "the draft changed since", fixed = TRUE)
+  expect_identical(h[3], "")
+  expect_identical(unname(.ai_adopted_marks(NULL, "T-1")), "")
+})
