@@ -44,6 +44,14 @@ test_that("only the answers changed are written; emptied ones removed", {
   expect_true(is.na(ch$verdict) && is.na(ch$correct))
 })
 
+test_that("a kind's content, and the answers wrong with no right content", {
+  r <- data.frame(item = c("arm", "Arm"), assumption = c("TRT01A", "TRT01A"))
+  expect_identical(.ai_asm_kind_said(r[1, ]), "arm : TRT01A")
+  expect_true(is.na(.ai_asm_kind_said(r)))
+  ch <- .ai_asm_changes(c("K1", "A1"), c("wrong", "wrong"), c("", "x"), c(NA, NA), c(NA, NA))
+  expect_identical(.ai_asm_missing_correct(ch), "K1")
+})
+
 test_that("the card saves a kind's answer and one report's own", {
   d <- asm_study()
   on.exit(unlink(d, recursive = TRUE), add = TRUE)
@@ -67,5 +75,20 @@ test_that("the card saves a kind's answer and one report's own", {
     expect_identical(a$status, c("answered", "confirmed", "open"))
     session$setInputs(asm_save = 2)
     expect_match(said[length(said)], "No answer changed.", fixed = TRUE)
+    # the kind's answer shown in its reports' empty choice and field
+    html <- paste(as.character(output$asm$html), collapse = "")
+    expect_match(html, "(K1's answer: Wrong (wrong))", fixed = TRUE)
+    expect_match(html, "K1: TRT01P", fixed = TRUE)
+    # wrong with no right content: named, nothing written
+    session$setInputs(asm_v_K2 = "wrong", asm_c_K2 = "")
+    session$setInputs(asm_save2 = 1)
+    expect_match(said[length(said)], "K2: when wrong", fixed = TRUE)
+    expect_identical(saved(), 1L)
+    # read again while an answer is typed: kept, a note instead
+    ver(1L)
+    session$flushReact()
+    expect_match(paste(as.character(output$asm_stale$html), collapse = ""), "not saved", fixed = TRUE)
+    session$setInputs(asm_reread = 1)
+    expect_null(output$asm_stale)
   })
 })
