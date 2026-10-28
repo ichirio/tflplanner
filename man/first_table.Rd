@@ -52,3 +52,12 @@ data catalog (added when missing), the analysis set (\code{population} flag
 and its \code{tables} row (the group as columns, one group per variable) and
 \code{variables} rows (their order, and the data's labels).
 }
+\examples{
+adsl <- data.frame(USUBJID = 1:4, SAFFL = "Y", TRT01A = c("A", "A", "B", "B"),
+                   AGE = c(34, 51, 47, 62), SEX = c("F", "M", "F", "M"))
+x <- first_table(new_planner(), "T-1", "data/adam/adsl.rds", adsl,
+                  population = "SAFFL", group = "TRT01A",
+                  variables = c("AGE", "SEX"))
+# the analyses it wrote: one of the numbers (AGE), one of the counts (SEX)
+ard_rows(x, "analyses", "T-1")[, c("analysis_id", "method", "variables")]
+}

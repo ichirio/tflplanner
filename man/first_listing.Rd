@@ -40,3 +40,10 @@ listing type; the order: the group, the subject, the start date when the
 data have one) and one \code{listing_cols} row per column, in order, headed by
 the data's label (a repeated group or subject printed once).
 }
+\examples{
+adsl <- data.frame(USUBJID = 1:4, SAFFL = "Y", TRT01A = c("A", "A", "B", "B"),
+                   AGE = c(34, 51, 47, 62), SEX = c("F", "M", "F", "M"))
+x <- first_listing(new_planner(), "L-1", "data/adam/adsl.rds", adsl,
+                   columns = c("USUBJID", "AGE", "SEX"), group = "TRT01A")
+x$sheets$listing_cols[, 1:3]  # one row a column, in order
+}

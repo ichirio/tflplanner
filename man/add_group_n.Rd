@@ -22,3 +22,11 @@ reporting calls big N (\code{GROUPN}: the group counted, by nothing) -- what
 the column headers' \code{(N={n})} read --
 with the data and analysis set of its first analysis.
 }
+\examples{
+adsl <- data.frame(USUBJID = 1:4, SAFFL = "Y", TRT01A = c("A", "A", "B", "B"),
+                   AGE = c(34, 51, 47, 62), SEX = c("F", "M", "F", "M"))
+x <- first_table(new_planner(), "T-1", "data/adam/adsl.rds", adsl, "SAFFL",
+                  "TRT01A", "AGE", stack = FALSE)
+x <- add_group_n(x, "T-1", "TRT01A")  # the subjects per group, for (N=n)
+ard_rows(x, "analyses", "T-1")$analysis_id
+}

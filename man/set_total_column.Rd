@@ -29,3 +29,12 @@ overall rows, with no group, which the table reads as the column and
 the ARS writes as an analysis without the grouping.  No \code{"Total"} value
 of the arm is made up in the data.
 }
+\examples{
+adsl <- data.frame(USUBJID = 1:4, SAFFL = "Y", TRT01A = c("A", "A", "B", "B"),
+                   AGE = c(34, 51, 47, 62), SEX = c("F", "M", "F", "M"))
+x <- first_table(new_planner(), "T-1", "data/adam/adsl.rds", adsl, "SAFFL",
+                  "TRT01A", "AGE")
+x <- set_total_column(x, "T-1", "All subjects")  # switch it on
+x$sheets$tables[, c("output_id", "total", "total_position")]
+x <- set_total_column(x, "T-1", NULL)  # and off again
+}

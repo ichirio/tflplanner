@@ -42,6 +42,16 @@
 #' @return A data frame, one row a function: `name`, `file` (relative to
 #'   the study folder), `loaded`, `title`, `description`, `stat_names`,
 #'   `keywords` (as [company_ard_functions()]).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' study_ard_functions(s)[, c("name", "file", "loaded")]
+#' }
+#' options(old)
 #' @export
 study_ard_functions <- function(study) {
   fs <- .study_fun_files(study)
@@ -84,6 +94,16 @@ study_ard_functions <- function(study) {
 #'   (`"study"`, `"company"` or `NA`), `used_by` (`"T1 / RD | ..."`),
 #'   `title`, `description`, `stat_names`, `keywords`, `tried` (when), `problems`
 #'   (errors and warnings found), `stale` (the file changed since).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' own_ard_functions(s)[, c("name", "where", "used_by")]
+#' }
+#' options(old)
 #' @export
 own_ard_functions <- function(study, home = tflplanner_home()) {
   st <- study_ard_functions(study)
@@ -201,6 +221,19 @@ own_function_checks <- function(study) {
 #' @return A list: `problems` (data frame: `level`, `check`, `message`),
 #'   `ard` (the first rows of the ARD it gave, or `NULL`), `error` (when it
 #'   could not be tried), `seconds`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it runs in its own R process)
+#' s <- create_sample_study(run = FALSE)
+#' s <- new_ard_function(s, "ard_my_mean", test = FALSE)
+#' res <- try_ard_function(s, "ard_my_mean", args = "by = TRT01A, variables = AGE")
+#' res$problems  # what the checks found
+#' }
+#' options(old)
 #' @export
 try_ard_function <- function(study, name, dataset = NA_character_,
                              population_id = NA_character_, args = "",
@@ -300,6 +333,17 @@ try_ard_function <- function(study, name, dataset = NA_character_,
 #' @param test Write a testthat file next to it.
 #' @param home The tflplanner home.
 #' @return The study (its `source` updated when written for the study).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' s <- new_ard_function(s, "ard_my_mean", type = "summary", test = FALSE)
+#' study_ard_functions(s)[, c("name", "file")]  # edit the file, then try it
+#' }
+#' options(old)
 #' @export
 new_ard_function <- function(study, name, type = c("summary", "test", "free"),
                              where = c("study", "company"), test = TRUE,
@@ -378,6 +422,22 @@ new_ard_function <- function(study, name, type = c("summary", "test", "free"),
 #' @param name The function.
 #' @param home The tflplanner home.
 #' @return The study file's path, invisibly.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' # a function in the company standards, and a copy of it in the study
+#' s <- new_ard_function(s, "ard_my_mean", where = "company", test = FALSE)
+#' own <- own_ard_functions(s)
+#' file.copy(own$company_file, file.path(s$path, "programs/ard/functions"))
+#' own_ard_functions(s)[, c("name", "where")]
+#' # the study's copy is overwritten with the company's
+#' take_company_ard_function(s, "ard_my_mean")
+#' }
+#' options(old)
 #' @export
 take_company_ard_function <- function(study, name, home = tflplanner_home()) {
   own <- own_ard_functions(study, home)

@@ -20,3 +20,17 @@ row says \verb{ard_source = import:<file>}, else from the study ARD the ARD
 definition makes (\code{output/ard/ard.rds}).  The id columns are dropped,
 as \code{\link[tflspec:tfl_ard_for]{tflspec::tfl_ard_for()}} does.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes and runs the ARD program)
+s <- create_sample_study(run = FALSE)
+s <- save_study(s)
+update_study_ard(s, "T-14-1-2")$ok  # makes the report's rows of the study ARD
+head(study_ard(s, "T-14-1-2"), 3)
+}
+options(old)
+}

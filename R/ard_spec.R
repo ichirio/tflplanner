@@ -159,6 +159,10 @@
 #' @param output_id A report, or `""` / `NA` for every row.
 #' @param rows The rows, edited.
 #' @return `ard_rows()`: a data frame; `set_ard_rows()`: the `tflplanner`.
+#' @examples
+#' x <- new_planner()
+#' ard_rows(x, "datasets")  # the datasets of the ARD definition (none yet)
+#' ard_rows(x, "analyses", "T-1")  # a report's analyses
 #' @export
 ard_rows <- function(x, sheet, output_id = "") {
   d <- x$ard[[sheet]]
@@ -255,6 +259,19 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
 #'   definition's `output` says).
 #' @param timeout Seconds to allow.
 #' @return A list: `ard` (or `NULL`), `error`, `log`, `seconds`, `code`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it runs in its own R process)
+#' s <- create_sample_study(run = FALSE)
+#' r <- run_ard(s, "T-14-1-2")
+#' r$seconds
+#' head(ard_view(r$ard), 3)
+#' }
+#' options(old)
 #' @export
 run_ard <- function(study, output_id = NULL, timeout = 600) {
   spec <- .ard_spec(study$planner$ard)
@@ -287,6 +304,18 @@ run_ard <- function(study, output_id = NULL, timeout = 600) {
 #' @param ard An ARD.
 #' @return A data frame of text: the ids, the groups, the variable and its
 #'   level, the context, the statistic's name, label and value.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' s <- save_study(s)
+#' r <- run_ard(s, "T-14-1-2")
+#' head(ard_view(r$ard), 3)  # the ARD as a plain table of text
+#' }
+#' options(old)
 #' @export
 ard_view <- function(ard) {
   if (is.null(ard) || !nrow(ard)) return(data.frame())
@@ -372,6 +401,16 @@ study_ard_rows <- function(study, output_id) {
 #' @param study An `rtfstudy`.
 #' @return A data frame: `output_id`, `analyses`, `state`, `rows`,
 #'   `built`, `error`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' head(ard_status(s)[, c("output_id", "analyses", "state")], 3)  # not built yet
+#' }
+#' options(old)
 #' @export
 ard_status <- function(study) {
   a <- study$planner$ard

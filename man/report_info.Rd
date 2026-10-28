@@ -18,3 +18,14 @@ RTF, joined to \code{output_path}).
 \description{
 Where a report's program and RTF go
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+s <- create_sample_study(run = FALSE)
+report_info(s$planner, "T-14-1-1")  # the program and the RTF of a report
+}
+options(old)
+}

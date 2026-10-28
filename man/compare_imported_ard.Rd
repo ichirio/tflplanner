@@ -23,3 +23,24 @@ Double programming: the report's rows of the study ARD (from its ARD
 definition) against the ARD taken in for it, by
 \code{\link[cards:compare_ard]{cards::compare_ard()}}.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes and runs the ARD program)
+s <- create_sample_study(run = FALSE)
+s <- save_study(s)  # the report's ARD program is written
+r <- run_ard(s, "T-14-1-2")  # the report's ARD, made in its own R process
+f <- tempfile(fileext = ".rds")
+saveRDS(r$ard, f)  # (here the same ARD stands for one made elsewhere)
+imp <- import_ard(s, f, output_id = "T-14-1-2", source = "CRO")
+update_study_ard(s, "T-14-1-2")  # the report's own ARD
+s$planner <- use_imported_ard(s$planner, "T-14-1-2", imp$file)
+if (requireNamespace("cards", quietly = TRUE)) {
+  cards::is_ard_equal(compare_imported_ard(s, "T-14-1-2"))  # double programming
+}
+}
+options(old)
+}

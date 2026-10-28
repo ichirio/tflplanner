@@ -29,6 +29,22 @@
 #'
 #' @param study An `rtfstudy` ([open_study()]).
 #' @return A data frame, one row per ARD taken in.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' ard_imports(s)  # none taken in yet
+#' if (requireNamespace("cards", quietly = TRUE)) {
+#'   f <- tempfile(fileext = ".rds")
+#'   saveRDS(cards::ard_continuous(mtcars, variables = "mpg"), f)
+#'   import_ard(s, f, source = "example")
+#'   ard_imports(s)[, c("import_id", "source", "rows", "state")]
+#' }
+#' }
+#' options(old)
 #' @export
 ard_imports <- function(study) {
   f <- .import_log(study)
@@ -210,6 +226,24 @@ import_ard <- function(study, path, output_id = NULL, source = NA_character_,
 #' @param file A `file` of [ard_imports()]; `NULL` to go back to the
 #'   report's own ARD definition.
 #' @return The `tflplanner`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes and runs the ARD program)
+#' s <- create_sample_study(run = FALSE)
+#' s <- save_study(s)  # the report's ARD program is written
+#' r <- run_ard(s, "T-14-1-2")  # the report's ARD, made in its own R process
+#' f <- tempfile(fileext = ".rds")
+#' saveRDS(r$ard, f)  # (here the same ARD stands for one made elsewhere)
+#' imp <- import_ard(s, f, output_id = "T-14-1-2", source = "CRO")
+#' s$planner <- use_imported_ard(s$planner, "T-14-1-2", imp$file)
+#' s$planner$sheets$report$ard_source[s$planner$sheets$report$output_id == "T-14-1-2"]
+#' s$planner <- use_imported_ard(s$planner, "T-14-1-2")  # back to its own ARD
+#' }
+#' options(old)
 #' @export
 use_imported_ard <- function(x, output_id, file = NULL) {
   r <- x$sheets$report
@@ -235,6 +269,23 @@ use_imported_ard <- function(x, output_id, file = NULL) {
 #' @param study An `rtfstudy`.
 #' @param import_id The import.
 #' @return The record, invisibly.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes and runs the ARD program)
+#' s <- create_sample_study(run = FALSE)
+#' s <- save_study(s)  # the report's ARD program is written
+#' r <- run_ard(s, "T-14-1-2")  # the report's ARD, made in its own R process
+#' f <- tempfile(fileext = ".rds")
+#' saveRDS(r$ard, f)  # (here the same ARD stands for one made elsewhere)
+#' imp <- import_ard(s, f, output_id = "T-14-1-2", source = "CRO")
+#' remove_imported_ard(s, imp$import_id)  # the file stays; the record says so
+#' ard_imports(s)[, c("import_id", "state")]
+#' }
+#' options(old)
 #' @export
 remove_imported_ard <- function(study, import_id) {
   d <- ard_imports(study)
@@ -263,6 +314,19 @@ remove_imported_ard <- function(study, import_id) {
 #' @param study An `rtfstudy`.
 #' @param output_id The report.
 #' @return The ARD, or `NULL` when there is none yet.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes and runs the ARD program)
+#' s <- create_sample_study(run = FALSE)
+#' s <- save_study(s)
+#' update_study_ard(s, "T-14-1-2")$ok  # makes the report's rows of the study ARD
+#' head(study_ard(s, "T-14-1-2"), 3)
+#' }
+#' options(old)
 #' @export
 study_ard <- function(study, output_id) {
   ids <- c("output_id", "analysis_id", "population_id")
@@ -290,6 +354,26 @@ study_ard <- function(study, output_id) {
 #'   one the report row names.
 #' @return The comparison ([cards::compare_ard()]); `cards::is_ard_equal()`
 #'   says whether they agree.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes and runs the ARD program)
+#' s <- create_sample_study(run = FALSE)
+#' s <- save_study(s)  # the report's ARD program is written
+#' r <- run_ard(s, "T-14-1-2")  # the report's ARD, made in its own R process
+#' f <- tempfile(fileext = ".rds")
+#' saveRDS(r$ard, f)  # (here the same ARD stands for one made elsewhere)
+#' imp <- import_ard(s, f, output_id = "T-14-1-2", source = "CRO")
+#' update_study_ard(s, "T-14-1-2")  # the report's own ARD
+#' s$planner <- use_imported_ard(s$planner, "T-14-1-2", imp$file)
+#' if (requireNamespace("cards", quietly = TRUE)) {
+#'   cards::is_ard_equal(compare_imported_ard(s, "T-14-1-2"))  # double programming
+#' }
+#' }
+#' options(old)
 #' @export
 compare_imported_ard <- function(study, output_id, file = NULL) {
   if (!requireNamespace("cards", quietly = TRUE)) {

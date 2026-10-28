@@ -26,3 +26,14 @@ only its own tokens (\code{OUTPUT_LABEL}, \code{OUTPUT_TITLE} ...), and ends wit
 \code{record_report()}, which records the report as made, with the
 fingerprint of the study setup, in \code{output/tfl/report_status.csv}.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+s <- create_sample_study(run = FALSE)
+head(report_setup_code(s$planner), 6)
+}
+options(old)
+}

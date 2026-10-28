@@ -81,3 +81,13 @@ page not splitting a group (22 rows a page, unless the study says),
 and a Total column when \code{total} is given.
 }
 }
+\examples{
+adsl <- data.frame(USUBJID = 1:4, SAFFL = "Y", TRT01A = c("A", "A", "B", "B"))
+adae <- data.frame(USUBJID = 1:3, TRT01A = c("A", "A", "B"), TRTEMFL = "Y",
+                   AEBODSYS = "Nervous system",
+                   AEDECOD = c("Headache", "Dizziness", "Headache"))
+x <- first_hierarchy_table(new_planner(), "T-AE", "data/adam/adae.rds", adae,
+                           "data/adam/adsl.rds", adsl, population = "SAFFL",
+                           group = "TRT01A", hierarchy = c("AEBODSYS", "AEDECOD"))
+ard_rows(x, "analyses", "T-AE")[, c("analysis_id", "method")]
+}
