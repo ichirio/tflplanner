@@ -56,3 +56,24 @@ test_that("the person's list: a row changed (what it was said), dropped with a r
   expect_identical(a$action[3L], "add")
   expect_true(is.na(a$output_id[3L]))
 })
+
+test_that("run.R is not started beside an official run, nor with changes unsaved", {
+  d <- withr_tempdir()
+  writeLines("stop('not to run')", file.path(d, "run.R"))
+  said <- character()
+  unsaved <- FALSE
+  shiny::testServer(function(input, output, session) {
+    session$userData$rv <- shiny::reactiveValues(job = "a run")
+    ai_list_server(input, output, session, function() d, shiny::reactiveVal(0L), function(...) TRUE,
+                   notify = function(x, ...) said <<- c(said, x), guarded = function(x) x,
+                   t = function(x) x, dirty = function() unsaved)
+  }, {
+    session$setInputs(run_all = 1)
+    expect_identical(said[length(said)], "A run is going on")
+    session$userData$rv$job <- NULL
+    unsaved <<- TRUE
+    session$setInputs(run_all = 2)
+    expect_match(said[length(said)], "Save first", fixed = TRUE)
+    expect_false(file.exists(file.path(d, "ai", "run-from-app.log")))
+  })
+})
