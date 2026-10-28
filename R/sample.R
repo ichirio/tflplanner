@@ -156,5 +156,4 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
   "",
   "# Warnings are printed as they happen, so the run's log shows where",
   "options(warn = 1)"),
-  collapse = "
-")
+  collapse = "\n")

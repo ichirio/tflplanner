@@ -4,7 +4,6 @@
 "Folder of past RTF reports","過去の RTF 帳票のフォルダ"
 "Write the prompt","プロンプトを書く"
 "Read the result","結果を読み込む"
-"This tflspec cannot read past reports yet (tfl_ai_style_prompt).","この tflspec はまだ過去の帳票を読めません（tfl_ai_style_prompt）。"
 "Choose the folder of past RTF reports.","過去の RTF 帳票のフォルダを選んでください。"
 "No result yet: the agent writes it in %s.","まだ結果がありません。エージェントが %s に書きます。"
 "Written:","書いたファイル:"

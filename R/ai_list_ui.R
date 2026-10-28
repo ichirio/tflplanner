@@ -20,21 +20,20 @@
   d
 }
 
-# What adopting the rows would do (tflspec >= 0.0.24.9237: dry_run), else
-# NULL: output_id, status (new / replace / same / no draft)
+# What adopting the rows would do, or NULL when it cannot say: output_id,
+# status (new / replace / same / no draft)
 .ai_adopt_plan <- function(dir, ids) {
-  if (!"dry_run" %in% names(formals(tflspec::tfl_ai_adopt))) return(NULL)
   p <- tryCatch(tflspec::tfl_ai_adopt(dir, outputs = ids, dry_run = TRUE), error = function(e) NULL)
   if (!is.data.frame(p)) return(NULL)
   p
 }
 
-# The differences of the reports adopting replaces (tflspec's
-# tfl_ai_adopted_diff(), when it has it), else NULL
+# The differences of the reports adopting replaces
+# (tflspec::tfl_ai_adopted_diff()), or NULL
 .ai_adopt_diff <- function(dir, ids) {
-  f <- tryCatch(getExportedValue("tflspec", "tfl_ai_adopted_diff"), error = function(e) NULL)
-  if (is.null(f) || !length(ids)) return(NULL)
-  d <- tryCatch(do.call(rbind, lapply(ids, function(id) f(dir, id))), error = function(e) NULL)
+  if (!length(ids)) return(NULL)
+  d <- tryCatch(do.call(rbind, lapply(ids, function(id) tflspec::tfl_ai_adopted_diff(dir, id))),
+                error = function(e) NULL)
   if (is.data.frame(d) && nrow(d)) d else NULL
 }
 
@@ -84,7 +83,7 @@ ai_list_panel <- function(ns, t) {
           t("Your list's changes, notes and the answered questions go into one file the agent works through in its next round; then tell the agent."))),
         .btn(ns("corrections"), paste0(t("Write the corrections"), " (tfl_ai_corrections)"),
              class = "btn-sm btn-primary"),
-        .btn(ns("run_all"), paste0(t("Run run.R for every request"), " (Rscript run.R)"))),
+        .btn(ns("run_all"), paste0(t("Build every request's reports"), " (run.R / tfl_ai_run)"))),
       shiny::uiOutput(ns("corrections_note")),
       shiny::uiOutput(ns("run_note"))),
     shiny::tags$script(shiny::HTML(
@@ -195,6 +194,13 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       ns(""), htmltools::htmlEscape(d$rtf, attribute = TRUE), t("Open")), "")
     # (tflspec's words in the app's language: the state, adopted)
     tw <- function(x) ifelse(is.na(x) | !nzchar(x), "", vapply(as.character(x), t, ""))
+    # (a report's status in this list's words: "ok" and "error" are kept in
+    # English elsewhere, as program states)
+    tw_status <- function(x) {
+      x <- as.character(x)
+      v <- vapply(paste0("ai-status:", x), t, "", USE.NAMES = FALSE)
+      ifelse(is.na(x) | !nzchar(x), "", ifelse(startsWith(v, "ai-status:"), tw(x), v))
+    }
     # the person's list (ai/expected_outputs.csv): its action and note a
     # row, its added rows below; a row's changes as links
     e <- expected()
@@ -214,7 +220,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       ifelse(act %in% "change" & !is.na(mine) & mine != ifelse(is.na(d[[col]]), "", d[[col]]),
              paste0(ifelse(is.na(d[[col]]), "", d[[col]]), " → ", mine), d[[col]])
     }
-    v <- data.frame(ck, d$output_id, yours("title"), yours("population"), yours("split"), tw(d$status),
+    v <- data.frame(ck, d$output_id, yours("title"), yours("population"), yours("split"), tw_status(d$status),
                     tw(d$adopted), rtf,
                     d$questions, d$problem, tw(act), note, links(d$output_id, act), stringsAsFactors = FALSE)
     if (!is.null(e)) {
@@ -468,17 +474,23 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   run <- shiny::reactiveValues(px = NULL, log = NULL, end = NULL)
   shiny::observeEvent(input$run_all, {
     p <- path()
-    if (is.null(p) || !file.exists(file.path(p, "run.R"))) {
-      return(notify(t("The study has no run.R: write the requests in agent mode (step 1)."), "warning"))
-    }
+    if (is.null(p)) return()
     if (!is.null(run$px) && run$px$is_alive()) return(notify(t("run.R is running already."), "warning"))
+    # (not beside an official or preview run, whose reports it may build
+    # too; not with changes unsaved, which the run would not have)
+    app_rv <- session$userData$rv
+    if (!is.null(app_rv) && !is.null(shiny::isolate(app_rv$job))) {
+      return(notify(t("A run is going on"), "warning"))
+    }
+    if (isTRUE(dirty())) return(notify(t("Save first: the study has unsaved changes."), "warning"))
     # (the drafts in their own folder first: run.R writes them there)
     .ai_ensure_area(p)
     log <- file.path(p, "ai", "run-from-app.log")
     run$log <- log
     run$end <- NULL
-    run$px <- processx::process$new(file.path(R.home("bin"), "Rscript"), "run.R", wd = p,
-                                    stdout = log, stderr = "2>&1", cleanup = TRUE)
+    run$px <- processx::process$new(file.path(R.home("bin"), "Rscript"), .ai_run_args(p), wd = p,
+                                    stdout = log, stderr = "2>&1", cleanup = TRUE,
+                                    env = .ai_run_env())
   })
   # (its end found here, not while drawing: the list read again once)
   shiny::observe({
@@ -523,4 +535,17 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   e <- tryCatch(tflspec::tfl_ai_expected_read(p), error = function(e) NULL)
   drop <- if (is.null(e) || !nrow(e) || !"action" %in% names(e)) character() else e$output_id[e$action %in% "drop"]
   intersect(ids, c(wrong, drop))
+}
+
+# What runs every request's reports: the study's run.R (agent mode), else
+# tflspec::tfl_ai_run() itself (chat mode writes no run.R)
+.ai_run_args <- function(p) {
+  if (file.exists(file.path(p, "run.R"))) return("run.R")
+  c("-e", "invisible(tflspec::tfl_ai_run('.'))")
+}
+
+# The run's environment: this session's libraries (a library set by
+# .libPaths() in the session is not the child's otherwise)
+.ai_run_env <- function() {
+  c("current", R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep))
 }

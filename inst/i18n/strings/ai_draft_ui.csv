@@ -165,3 +165,5 @@
 "Every request has its answer: nothing to ask next.","すべての依頼に回答があります。次に頼む物はありません。"
 "Other files or commands a request may use, at most","依頼 1 件で使ってよいほかのファイル・コマンドの回数（上限）"
 "Besides the request and the files it names. At the limit the agent writes what it does not know as assumptions and questions, and goes on.","依頼と、依頼に名前のあるファイルのほか。上限に来たら、分からない点は仮定と質問にして、先へ進みます。"
+"View the answer","回答を見る"
+"The agent's files","エージェントのファイル"

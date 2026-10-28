@@ -19,12 +19,6 @@
   if (length(y)) y[1L] else NA_character_
 }
 
-# Whether tflspec has the functions (tflspec #496)
-.ai_style_ok <- function() {
-  all(vapply(c("tfl_ai_style_prompt", "tfl_ai_style_read"), function(f)
-    exists(f, envir = asNamespace("tflspec"), inherits = FALSE), NA))
-}
-
 # The card's content: on its own, so it can move to the tool's settings
 # later (the AI tab shows it as a sub-tab for now: ai_style_panel())
 #' @noRd
@@ -62,7 +56,6 @@ ai_style_server <- function(input, output, session, notify, guarded, t) {
     if (length(d) && !is.na(d) && nzchar(d)) shiny::updateTextInput(session, "style_rtf", value = d)
   })
   shiny::observeEvent(input$style_prompt, {
-    if (!.ai_style_ok()) return(notify(t("This tflspec cannot read past reports yet (tfl_ai_style_prompt)."), "warning"))
     rtf <- trimws(gsub("^\"|\"$", "", input$style_rtf %||% ""))
     if (!nzchar(rtf) || !dir.exists(rtf)) return(notify(t("Choose the folder of past RTF reports."), "warning"))
     out <- guarded(tflspec::tfl_ai_style_prompt(rtf, dir = .ai_style_dir()))
@@ -72,7 +65,6 @@ ai_style_server <- function(input, output, session, notify, guarded, t) {
     state$summary <- NULL
   })
   shiny::observeEvent(input$style_read, {
-    if (!.ai_style_ok()) return(notify(t("This tflspec cannot read past reports yet (tfl_ai_style_prompt)."), "warning"))
     f <- .ai_style_result(.ai_style_dir(), state$files)
     if (is.na(f) || !file.exists(f)) {
       return(notify(sprintf(t("No result yet: the agent writes it in %s."), .ai_style_dir()), "warning"))

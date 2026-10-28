@@ -8,7 +8,7 @@
 #  tab (R/ai_draft_ui.R) draws what they give.
 #
 #  Thin: tflspec's functions do the work (tfl_ai_requests(),
-#  tfl_ai_save_answer(), tfl_ai_collect_answers(); tflspec 0.0.24.9175);
+#  tfl_ai_save_answer(), tfl_ai_collect_answers());
 #  here are what the screen adds -- an answer's file and time, a request's
 #  status, the counts, the study read again after a check.
 # ============================================================================
@@ -60,7 +60,7 @@
   ans <- vapply(d$request, function(r) .ai_answer_file(path, r), "", USE.NAMES = FALSE)
   d$answer <- ans
   d$answer_time <- file.mtime(as.character(ifelse(is.na(ans), "", file.path(path, ans))))
-  # (the workbook a request's reports come from, tflspec >= 0.0.24.9178)
+  # (the workbook a request's reports come from)
   if (is.null(d$book)) d$book <- rep(NA_character_, nrow(d))
   d <- d[c("request", "family", "outputs", "n", "chars", "file", "answer", "answer_time",
            "book")]
@@ -92,15 +92,15 @@
 }
 
 # The reports that passed their checks but could not be built, from what
-# tfl_ai_run() writes: ai/repairs/<request>-build.md (tflspec >= 0.0.24.9199;
-# run.R removes it once the request's reports are built; a check leaves it),
+# tfl_ai_run() writes: ai/repairs/<request>-build.md
+# (run.R removes it once the request's reports are built; a check leaves it),
 # else the "## Could not be built" section of ai/repairs/<request>.md
-# (tflspec 0.0.24.9197 / 9198), one "- <output_id>: <reason>" a line.
+# (an older run.R's), one "- <output_id>: <reason>" a line.
 # A data frame (request, output_id, reason, from: "build" or "repair") with
 # attr "texts" (each old-format request's whole fix request, named by
 # request: a later check removes that file of an answer that passes, so the
-# app keeps them) and attr "build" (the requests with a -build.md).  An
-# older tflspec writes neither: no rows.
+# app keeps them) and attr "build" (the requests with a -build.md).  A study
+# with neither file: no rows.
 .ai_unbuilt <- function(path) {
   none <- data.frame(request = character(), output_id = character(), reason = character(),
                      from = character(), stringsAsFactors = FALSE)
@@ -142,12 +142,6 @@
   ifelse(nchar(x) > n, paste0(substr(x, 1L, n - 3L), "..."), x)
 }
 
-# tfl_ai_run() builds only some requests (`Rscript run.R <request>`)
-.ai_run_has_requests <- function() {
-  f <- tryCatch(getExportedValue("tflspec", "tfl_ai_run"), error = function(e) NULL)
-  is.function(f) && "requests" %in% names(formals(f))
-}
-
 # The saved answer of a request, for the box it is pasted in: its text,
 # "" when there is none.  An answer not in UTF-8: "" with attr "problem".
 .ai_answer_text <- function(path, request) {
@@ -187,12 +181,9 @@
 
 # The answers compared, with templates or the code SPEC only:
 # tfl_ai_compare()'s table (one row a report; ai/compare.csv written), or
-# NULL with a tflspec that has none or when it fails
+# NULL when it fails
 .ai_compare <- function(path) {
-  ns <- asNamespace("tflspec")
-  if (!exists("tfl_ai_compare", envir = ns, inherits = FALSE)) return(NULL)
-  tryCatch(suppressMessages(get("tfl_ai_compare", envir = ns)(path)),
-           error = function(e) NULL)
+  tryCatch(suppressMessages(tflspec::tfl_ai_compare(path)), error = function(e) NULL)
 }
 
 # a request's status: its worst report's (ok < warning < no answer < error);
@@ -310,46 +301,13 @@
   data.frame(request = bt, n = n, stringsAsFactors = FALSE)
 }
 
-# The requests' names when each holds one report (size = 1, tflspec >=
-# 0.0.24.9211): the report's number (t.15.1.5.1), what a file name cannot
+# The requests' names when each holds one report (size = 1): the report's number (t.15.1.5.1), what a file name cannot
 # hold made "-", a name twice made unique ("-1") -- the tables', then the
 # figures', in order
 .ai_one_names <- function(ids) {
   x <- trimws(as.character(ids))
   y <- gsub("^-+|-+$", "", gsub("[^A-Za-z0-9._-]+", "-", x))
   make.unique(ifelse(grepl("^[A-Za-z0-9._-]+$", x), x, y), sep = "-")
-}
-
-# A dry run's TOC with its reports' parts (tfl_ai_read_shell()$toc, tflspec
-# >= 0.0.24.9211): `parts` (the parts' ids, " | " between them, NA for a
-# report not in parts) and `same_number` (a number the TOC names twice);
-# its requests named after their reports when each holds one (size = 1).
-# The workbook is read again for the parts only when the dry run's TOC
-# does not carry them.
-.ai_dry_with_parts <- function(p, toc, args = list(), shells = NULL) {
-  tc <- p$toc
-  # (tflspec >= 0.0.24.9230: the requests a sheet's, the TOC its items --
-  # nothing to add)
-  if (!nrow(tc) || !is.null(tc$toc_id)) return(p)
-  rq <- p$requests
-  if (isTRUE(as.integer(args$size %||% 0L) == 1L) && nrow(rq) && all(rq$n == 1L)) {
-    nm <- .ai_one_names(rq$outputs)
-    tc$request <- nm[match(tc$request, rq$request)]
-    rq$request <- nm
-    p$requests <- rq
-  }
-  if (is.null(tc$parts) || is.null(tc$same_number)) {
-    a <- Filter(Negate(is.null), list(toc_sheet = args$toc_sheet, sheets = args$sheets,
-                                      shells = if (length(shells)) unname(shells)))
-    x <- tryCatch(suppressWarnings(do.call(tflspec::tfl_ai_read_shell, c(list(toc), a))),
-                  error = function(e) NULL)
-    i <- if (!is.null(x)) match(tc$output_id, x$toc$output_id)
-    tc$parts <- if (!is.null(x$toc$parts)) x$toc$parts[i] else rep(NA_character_, nrow(tc))
-    tc$same_number <- if (!is.null(x$toc$same_number)) x$toc$same_number[i] %in% TRUE else
-      rep(FALSE, nrow(tc))
-  }
-  p$toc <- tc
-  p
 }
 
 # A report's parts as the TOC table says them: "2 parts (.a, .b)" -- each
@@ -446,12 +404,11 @@
   # with reports of its own too, whose files the AI must not write over;
   # step 4 lists the drafts and adopts them into spec/outputs)
   # (add = TRUE, overwrite = TRUE: the requests asked again alone -- the
-  # study's own files and the agent's are kept, tflspec >= 0.0.24.9178)
+  # study's own files and the agent's are kept)
   # (a dry run on a folder not made yet: its path is not there to normalize)
   # (a study answered before: its drafts put apart first, adopted as they are)
   if (!isTRUE(dry_run)) .ai_ensure_area(dir)
   p <- suppressWarnings(do.call(tflspec::tfl_ai_prepare, a))
-  if (isTRUE(dry_run)) p <- .ai_dry_with_parts(p, toc, a, shells)
   p
 }
 
@@ -716,9 +673,6 @@
   normalizePath(out, "/", mustWork = FALSE)
 }
 
-# Whether tflspec writes the message for an agent's next requests
-.ai_continue_ok <- function() exists("tfl_ai_agent_prompt", envir = asNamespace("tflspec"), inherits = FALSE)
-
 # A dialog of utils (or tcltk) that could not open: said so, with what to
 # do instead
 .ai_dialog_try <- function(expr) {
@@ -751,6 +705,10 @@
     txt <- tryCatch(.ai_read_text(f), error = function(e) NULL)
     if (!is.null(txt)) return(sub("\n+$", "", txt))
   }
+  # (none: tflspec's message for the requests not answered yet; failing
+  # that, the plain one)
+  txt <- tryCatch(as.character(tflspec::tfl_ai_agent_prompt(path)), error = function(e) NULL)
+  if (length(txt) && nzchar(txt[1L])) return(sub("\n+$", "", paste(txt, collapse = "\n")))
   at <- normalizePath(path, winslash = "/", mustWork = FALSE)
   paste0("Follow ", at, "/AGENTS.md. Do every request of ", at, "/ai/requests/index.md, ",
          "in its order: save each answer as ", at, "/ai/answers/<request>.md and run ",
@@ -784,3 +742,7 @@
   })
   invisible(TRUE)
 }
+
+# The study's files the agent works from (AGENTS.md, run.R, the ADaM
+# summary) and writes (its decisions), shown read-only on the AI tab
+.ai_agent_files <- c("AGENTS.md", "run.R", "ai/adam_summary.md", "ai/decisions.md")

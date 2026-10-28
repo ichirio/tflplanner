@@ -27,7 +27,6 @@ test_that("requests written ask for the drafts' own folder; a dry run does not s
     seen[[length(seen) + 1L]] <<- list(...)
     structure(list(), class = "tfl_ai_prepared")
   }, .package = "tflspec")
-  local_mocked_bindings(.ai_dry_with_parts = function(p, ...) p)
   adam <- withr_tempdir()
   d <- file.path(withr_tempdir(), "S")
   .ai_prepare(d, "toc.xlsx", adam, dry_run = FALSE)
