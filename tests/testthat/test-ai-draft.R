@@ -240,8 +240,14 @@ test_that("step 2 and 3: the list, View, save an answer, check all, the reports 
       # adopted yet are ticked at first, and copied into the study)
       expect_false("T-14-3-1" %in% output_ids(rv$p))
       expect_match(output$`ai-taken_note`$html, "step 4", fixed = TRUE)
+      # (not while the study has unsaved changes: nothing written)
+      rv$meta$title <- "mine"
       session$setInputs(`ai-adopt` = 1)
       session$setInputs(`ai-adopt_fresh` = 1)
+      expect_false(file.exists(file.path(path, "spec", "outputs", "T-14-3-1.yml")))
+      rv$meta$title <- rv$saved_meta$title
+      session$setInputs(`ai-adopt` = 2)
+      session$setInputs(`ai-adopt_fresh` = 2)
       # (saved at once: the adopted report's program written, for a run)
       expect_length(list.files(file.path(path, "programs", "tfl"), "14.3.1"), 1L)
     }

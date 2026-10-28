@@ -116,7 +116,8 @@ ai_list_panel <- function(ns, t) {
 # The server part: `path()` the study's folder, `ver()` bumped when the
 # answers are checked again, `reload_now()` the app's
 #' @noRd
-ai_list_server <- function(input, output, session, path, ver, reload_now, notify, guarded, t) {
+ai_list_server <- function(input, output, session, path, ver, reload_now, notify, guarded, t,
+                           dirty = function() FALSE) {
   ns <- session$ns
   again <- shiny::reactiveVal(0L)
   shiny::observeEvent(input$list_reread, again(again() + 1L))
@@ -252,7 +253,15 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
                       shiny::tags$tbody(lapply(seq_len(nrow(d)), function(r)
                         shiny::tags$tr(lapply(d[r, cols], function(x) shiny::tags$td(as.character(x)))))))
   }
+  # (not while the study has unsaved changes: the adopted files would be
+  # taken in over them, or the study left apart from its files)
+  unsaved <- function() {
+    if (!isTRUE(dirty())) return(FALSE)
+    notify(t("Save first: the study has unsaved changes."), "warning")
+    TRUE
+  }
   shiny::observeEvent(input$adopt, {
+    if (unsaved()) return()
     if (!length(ticked())) return(notify(t("Tick the reports to adopt."), "warning"))
     s <- split_ticked()
     pending(s)
@@ -298,15 +307,22 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   })
   do_adopt <- function(fresh, over) {
     shiny::removeModal()
+    if (unsaved()) return()
     p <- path()
-    res <- list()
-    if (length(fresh)) res[[1L]] <- guarded(tflspec::tfl_ai_adopt(p, outputs = fresh, overwrite = FALSE))
-    if (length(over)) res[[2L]] <- guarded(tflspec::tfl_ai_adopt(p, outputs = over, overwrite = TRUE))
+    # (each call NULL when it failed: guarded() said why)
+    done_fresh <- if (length(fresh)) !is.null(guarded(tflspec::tfl_ai_adopt(p, outputs = fresh, overwrite = FALSE)))
+    done_over <- if (length(over)) !is.null(guarded(tflspec::tfl_ai_adopt(p, outputs = over, overwrite = TRUE)))
     again(again() + 1L)
+    n_fresh <- if (isTRUE(done_fresh)) length(fresh) else 0L
+    n_over <- if (isTRUE(done_over)) length(over) else 0L
+    if (!(n_fresh + n_over)) return()
     # (saved too: their programs and batch.R written, for a run)
-    reload_now(save = TRUE)
-    notify(sprintf(t("%d reports adopted (copied) into the study, %d of them replaced: on the Report list."),
-                   length(fresh) + length(over), length(over)))
+    saved <- isTRUE(reload_now(save = TRUE))
+    notify(if (saved) sprintf(t("%d reports adopted (copied) into the study, %d of them replaced: on the Report list."),
+                              n_fresh + n_over, n_over)
+           else sprintf(t("%d reports adopted (copied) into the study, but the study was not saved: save it to write their programs."),
+                        n_fresh + n_over),
+           if (saved) "message" else "warning")
   }
   shiny::observeEvent(input$adopt_fresh, {
     s <- pending()
