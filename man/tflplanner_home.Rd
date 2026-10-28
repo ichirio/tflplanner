@@ -13,3 +13,11 @@ The home folder (it may not exist yet: see
 \description{
 Where tflplanner keeps its settings and the studies' saved state
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+tflplanner_home()
+options(old)
+}

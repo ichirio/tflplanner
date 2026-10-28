@@ -43,6 +43,18 @@
 #'   company standards leave out (their settings' `review_off`, `A12 | C02`),
 #'   whose rows are not there.
 #' @seealso [tflspec::tfl_review_spec()], [tflspec::tfl_review_rules()]
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_sample_study(run = FALSE)
+#' # the definition alone, no data read
+#' study_review(s, data = "none")
+#' }
+#' options(old)
 #' @export
 study_review <- function(study, output_id = NULL, data = c("cached", "read", "none"),
                          ard = TRUE, deep = FALSE, home = tflplanner_home(),

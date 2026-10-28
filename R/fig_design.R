@@ -27,6 +27,20 @@
 #' @param design A `tfl_fig_design`, or `NULL`.
 #' @return `fig_design()`: a `tfl_fig_design` or `NULL`; `set_fig_design()`:
 #'   `x`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_sample_study(run = FALSE)
+#' x <- s$planner
+#' fig_design(x, "F-14-2-1")  # NULL: this figure is written by hand
+#' x <- set_fig_design(x, "F-14-2-1", tflspec::tfl_fig_template("km_simple"))
+#' class(fig_design(x, "F-14-2-1"))
+#' }
+#' options(old)
 #' @export
 fig_design <- function(x, output_id) {
   d <- (x$fig_designs %||% list())[[output_id]]

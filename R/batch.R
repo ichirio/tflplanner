@@ -346,6 +346,20 @@ batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
 #'   (every program without error), `"failed"` (`errors` of `programs`),
 #'   or `"incomplete"` (no record of its end yet: still running, or
 #'   stopped) -- and when it `finished`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (needs the sample data and rtfreporter; the run is in child R processes)
+#' s <- create_sample_study(run = FALSE)
+#' id <- s$planner$outputs$output_id[1]  # one report
+#' b <- run_batch(s, parts = "tfl", only = id)
+#' b$ok
+#' list_batches(s)[, c("batch", "state")]
+#' }
+#' options(old)
 #' @export
 run_batch <- function(study, parts = c("ard", "tfl"), code = TRUE, data = FALSE,
                       only = NULL, exclude = NULL, batch = NULL, wait = TRUE) {

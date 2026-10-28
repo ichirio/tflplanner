@@ -55,6 +55,19 @@ definition alone.  \code{review_problems()} reviews a definition with no study
 (the planner alone: what an import's draft and the tests call).
 \code{review_facts()} gives the facts the review checks against.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_sample_study(run = FALSE)
+# the definition alone, no data read
+study_review(s, data = "none")
+}
+options(old)
+}
 \seealso{
 \code{\link[tflspec:tfl_review_spec]{tflspec::tfl_review_spec()}}, \code{\link[tflspec:tfl_review_rules]{tflspec::tfl_review_rules()}}
 }

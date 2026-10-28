@@ -26,3 +26,17 @@ A table's rows of the study ARD, and those a figure prints numbers of,
 are made first when they are not made from the definition as it is now
 (\code{\link[=update_study_ard]{update_study_ard()}}).  The official run is \code{\link[=run_batch]{run_batch()}}.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (needs the sample data and rtfreporter; each report runs in its own R process)
+s <- create_sample_study(run = FALSE)
+id <- s$planner$outputs$output_id[1]  # one report
+run_study(s, id)[1, c("output_id", "status")]
+study_status(s)[1, c("output_id", "status")]
+}
+options(old)
+}

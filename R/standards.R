@@ -403,6 +403,15 @@
 #' @param home tflplanner's home.
 #' @return `standards_template()`: `path`, invisibly.  `read_standards()`
 #'   and `company_standards()`: a named list of data frames.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' f <- tempfile(fileext = ".xlsx")
+#' standards_template(f)  # the built-in draft, to edit
+#' file.exists(f)
+#' options(old)
 #' @export
 standards_template <- function(path, from = c("builtin", "current")) {
   from <- match.arg(from)

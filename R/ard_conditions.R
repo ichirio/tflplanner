@@ -41,6 +41,17 @@
 #'   `level`, `message`, `statistics`, `source`: `""` for the study ARD,
 #'   the file's name for an ARD taken in); no rows when nothing went wrong
 #'   or there is no ARD yet.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_sample_study(run = FALSE)
+#' study_ard_conditions(s)  # no rows: nothing went wrong, or no ARD yet
+#' }
+#' options(old)
 #' @export
 study_ard_conditions <- function(study) {
   out <- .ard_study_value(study$planner$ard, "output", "output/ard/ard.rds")

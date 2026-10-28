@@ -58,6 +58,18 @@ print.rtfstudy <- function(x, ...) {
 #'   its old widths replaced.
 #' @return The study, invisibly, with `files`: what was written (status
 #'   `written`, `rewritten` for a program edited by hand, `unchanged`, ...).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_sample_study(run = FALSE)
+#' s <- save_study(s)  # writes the definition files and the programs
+#' head(s$files)
+#' }
+#' options(old)
 #' @export
 save_study <- function(study, home = tflplanner_home(), base = NULL,
                        spec = c("check", "overwrite"), fill_widths = FALSE) {

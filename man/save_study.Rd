@@ -58,3 +58,16 @@ written again too, its edited copy first put in \verb{programs/.edited/}
 definition (the data code, a user-code report, a custom analysis,
 where / derive).
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_sample_study(run = FALSE)
+s <- save_study(s)  # writes the definition files and the programs
+head(s$files)
+}
+options(old)
+}

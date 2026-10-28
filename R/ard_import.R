@@ -69,6 +69,22 @@ ard_imports <- function(study) {
 #'   unique.
 #' @return The new row of [ard_imports()], invisibly, with the check's
 #'   problems as the attribute `check`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_sample_study(run = FALSE)
+#' ard_imports(s)  # none taken in yet
+#' # an ARD made elsewhere (here, with cards)
+#' f <- tempfile(fileext = ".rds")
+#' saveRDS(cards::ard_continuous(mtcars, variables = "mpg"), f)
+#' import_ard(s, f, source = "example")
+#' ard_imports(s)
+#' }
+#' options(old)
 #' @export
 import_ard <- function(study, path, output_id = NULL, source = NA_character_,
                        name = NULL) {
