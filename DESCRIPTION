@@ -1,7 +1,7 @@
 Package: tflplanner
 Type: Package
 Title: 'shiny' Study Manager for Clinical Tables, Listings and Figures
-Version: 0.0.2.9284
+Version: 0.0.2.9285
 Authors@R: c(
     person(given  = "Yoichi",
            family = "Masui",
@@ -34,8 +34,8 @@ Imports:
     ps,
     readxl,
     rhandsontable,
-    rtfreporter (>= 0.8.2.9099),
-    tflspec (>= 0.0.24.9237),
+    rtfreporter (>= 0.8.2.9100),
+    tflspec (>= 0.0.24.9238),
     shiny (>= 1.8.1),
     sortable,
     bslib,
@@ -67,8 +67,8 @@ Suggests:
     withr,
     xml2
 Remotes:
-    ichirio/rtfreporter,
-    ichirio/tflspec
+    ichirio/rtfreporter@next,
+    ichirio/tflspec@next
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
 Config/roxygen2/version: 8.1.0
