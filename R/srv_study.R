@@ -416,7 +416,9 @@
   # (`save`: saved at once after -- reports adopted from the AI's area get
   # their programs and batch.R, so a run has them; the study had nothing
   # unsaved, so the save writes only what the files now say)
-  reload_now <- function(save = FALSE) {
+  # (`after`: a change made to the planner read, before that save -- the
+  # adopted reports' batches)
+  reload_now <- function(save = FALSE, after = NULL) {
     if (!has_study()) return(FALSE)
     s <- tryCatch(.ai_reload_study(rv$study$meta$study_id, unsaved = isTRUE(dirty())),
                   tflplanner_ai_unsaved = function(e) {
@@ -440,6 +442,7 @@
     rv$spec <- s$spec
     rv$status_ver <- rv$status_ver + 1L
     rv$ard_ver <- rv$ard_ver + 1L
+    if (is.function(after)) rv$p <- after(rv$p)
     bump()
     if (isTRUE(save)) return(isTRUE(do_save()))
     TRUE
