@@ -20,21 +20,20 @@
   d
 }
 
-# What adopting the rows would do (tflspec >= 0.0.24.9237: dry_run), else
-# NULL: output_id, status (new / replace / same / no draft)
+# What adopting the rows would do, or NULL when it cannot say: output_id,
+# status (new / replace / same / no draft)
 .ai_adopt_plan <- function(dir, ids) {
-  if (!"dry_run" %in% names(formals(tflspec::tfl_ai_adopt))) return(NULL)
   p <- tryCatch(tflspec::tfl_ai_adopt(dir, outputs = ids, dry_run = TRUE), error = function(e) NULL)
   if (!is.data.frame(p)) return(NULL)
   p
 }
 
-# The differences of the reports adopting replaces (tflspec's
-# tfl_ai_adopted_diff(), when it has it), else NULL
+# The differences of the reports adopting replaces
+# (tflspec::tfl_ai_adopted_diff()), or NULL
 .ai_adopt_diff <- function(dir, ids) {
-  f <- tryCatch(getExportedValue("tflspec", "tfl_ai_adopted_diff"), error = function(e) NULL)
-  if (is.null(f) || !length(ids)) return(NULL)
-  d <- tryCatch(do.call(rbind, lapply(ids, function(id) f(dir, id))), error = function(e) NULL)
+  if (!length(ids)) return(NULL)
+  d <- tryCatch(do.call(rbind, lapply(ids, function(id) tflspec::tfl_ai_adopted_diff(dir, id))),
+                error = function(e) NULL)
   if (is.data.frame(d) && nrow(d)) d else NULL
 }
 
@@ -195,6 +194,13 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       ns(""), htmltools::htmlEscape(d$rtf, attribute = TRUE), t("Open")), "")
     # (tflspec's words in the app's language: the state, adopted)
     tw <- function(x) ifelse(is.na(x) | !nzchar(x), "", vapply(as.character(x), t, ""))
+    # (a report's status in this list's words: "ok" and "error" are kept in
+    # English elsewhere, as program states)
+    tw_status <- function(x) {
+      x <- as.character(x)
+      v <- vapply(paste0("ai-status:", x), t, "", USE.NAMES = FALSE)
+      ifelse(is.na(x) | !nzchar(x), "", ifelse(startsWith(v, "ai-status:"), tw(x), v))
+    }
     # the person's list (ai/expected_outputs.csv): its action and note a
     # row, its added rows below; a row's changes as links
     e <- expected()
@@ -214,7 +220,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       ifelse(act %in% "change" & !is.na(mine) & mine != ifelse(is.na(d[[col]]), "", d[[col]]),
              paste0(ifelse(is.na(d[[col]]), "", d[[col]]), " → ", mine), d[[col]])
     }
-    v <- data.frame(ck, d$output_id, yours("title"), yours("population"), yours("split"), tw(d$status),
+    v <- data.frame(ck, d$output_id, yours("title"), yours("population"), yours("split"), tw_status(d$status),
                     tw(d$adopted), rtf,
                     d$questions, d$problem, tw(act), note, links(d$output_id, act), stringsAsFactors = FALSE)
     if (!is.null(e)) {
