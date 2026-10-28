@@ -445,7 +445,7 @@ print.toc_import <- function(x, ...) {
 #'   the reports (a table spec with the report sheets and their
 #'   attributes); `attr(, "guessed")` the reports whose type no type
 #'   column said (read from the id or the title: to check).
-#' @export
+#' @noRd
 toc_import_spec <- function(x) {
   f <- .toc_spec_frame(x)
   d <- f$data

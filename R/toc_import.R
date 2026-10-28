@@ -507,7 +507,7 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
 #'   once taken in from a TOC is said to be missing every time.
 #' @return A list by output id: its `titles` and `footnotes` rows (as the
 #'   study numbers them), `type` and `in_toc`.
-#' @export
+#' @noRd
 toc_snapshot <- function(spec, title_offset = 0L, last = NULL) {
   ids <- unique(stats::na.omit(spec$report$output_id))
   now <- stats::setNames(lapply(ids, function(id) list(
@@ -587,7 +587,7 @@ toc_snapshot <- function(spec, title_offset = 0L, last = NULL) {
 #' @param id_col,pop_col Its columns of the report IDs and the populations.
 #' @param data The data of the analysis sets (ADSL), for its flags' labels.
 #' @return A data frame: output_id, text, population_id.
-#' @export
+#' @noRd
 toc_populations <- function(x, path, id_col = "output_id", pop_col = "population",
                             sheet = NULL, skip = 0L, data = NULL) {
   d <- if (is.data.frame(path)) path else .toc_raw(path, sheet, skip)
@@ -789,7 +789,7 @@ toc_last <- function(study) {
 }
 
 #' @rdname toc_imports
-#' @export
+#' @noRd
 toc_shell_links <- function(study) {
   f <- file.path(.toc_dir(study), "shells.csv")
   if (!file.exists(f)) {
@@ -801,7 +801,7 @@ toc_shell_links <- function(study) {
 }
 
 #' @rdname toc_imports
-#' @export
+#' @noRd
 toc_profile <- function(study) {
   f <- file.path(.toc_dir(study), "profile.yml")
   if (!file.exists(f)) return(NULL)
@@ -888,7 +888,7 @@ toc_profile <- function(study) {
 #' @param result What [toc_import_read()] returned.
 #' @param last The snapshot of the TOCs taken in before ([toc_last()]).
 #' @return The `tflplanner`.
-#' @export
+#' @noRd
 toc_apply_extras <- function(x, result, last = NULL) {
   r <- result$reports
   if (!nrow(r) || !.toc_has_item(result, "topline")) return(x)

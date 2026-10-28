@@ -143,7 +143,7 @@
 #' @return A data frame, the proposed first: `rule`, `ok` (rows with a
 #'   unique id), `filled` (rows with an id), `preview` (the first ids),
 #'   `labels` (the labels they print).
-#' @export
+#' @noRd
 toc_id_candidates <- function(rows, rule_set, type_from = NULL) {
   types <- .toc_types(rows, rule_set, type_from)
   labels <- .toc_labels(rows)$label

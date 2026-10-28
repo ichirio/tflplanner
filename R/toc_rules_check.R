@@ -55,7 +55,7 @@
 #'   (#288: `output_id`, `level` -- `error`, `check`, `hand` --, `area`
 #'   `"toc"`, `sheet`, `row`, `field`, `message`, `hint`, `rule`, `draft`),
 #'   errors first.
-#' @export
+#' @noRd
 toc_problems <- function(x, lang = "en") {
   p <- x$problems
   if (!nrow(p) || identical(lang, "en")) return(p)

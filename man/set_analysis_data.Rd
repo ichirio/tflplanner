@@ -4,8 +4,6 @@
 \alias{set_analysis_data}
 \alias{remove_analysis_data}
 \alias{import_analysis_data}
-\alias{name_analysis_data}
-\alias{copy_analysis_data}
 \title{Add, change or remove an analysis data of the ARD definition}
 \usage{
 set_analysis_data(
@@ -28,15 +26,9 @@ set_analysis_data(
 remove_analysis_data(x, output_id, data_id)
 
 import_analysis_data(x, from_output, output_id, data_ids = NULL)
-
-name_analysis_data(x, output_id, dataset, population_id, data_id, label = NA)
-
-copy_analysis_data(x, output_id, data_id)
 }
 \arguments{
 \item{x}{A \code{tflplanner}.}
-
-\item{output_id}{The report.}
 
 \item{data_id}{The name (lower case; also the object's name in the ARD
 program).}
@@ -57,9 +49,6 @@ it the other columns but \code{from} stay blank.}
 
 \item{data_ids}{Which of them (\code{NULL}: all), with what they are made
 from and kept to, when those are analysis data as well.}
-
-\item{dataset}{The dataset its analyses read (\code{NA}: the analysis set's
-own).}
 }
 \value{
 The \code{tflplanner}.

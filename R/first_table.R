@@ -81,7 +81,7 @@ catalog_add_files <- function(x, files) {
 #' @param files [study_files()] of the study.
 #' @return A data frame: `dataset`, `path` (every file of that name),
 #'   `used` (the catalog's row's path, `NA` when it has none).
-#' @export
+#' @noRd
 catalog_name_clashes <- function(x, files) {
   ds <- ard_rows(x, "datasets")
   lay <- study_layout()

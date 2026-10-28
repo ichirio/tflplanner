@@ -2,12 +2,9 @@
 % Please edit documentation in R/builder_preview.R
 \name{preview_pages}
 \alias{preview_pages}
-\alias{preview_html}
 \title{The table as it will print}
 \usage{
 preview_pages(x, output_id, data)
-
-preview_html(pages, max_pages = 3L, align = "center")
 }
 \arguments{
 \item{x}{An \code{tflplanner}.}

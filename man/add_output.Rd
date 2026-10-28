@@ -40,7 +40,7 @@ remove_output(x, output_id)
 \item{process_code}{A table's: R code that turns \code{ard} into \code{data},
 what \code{\link[rtfreporter:table_plan]{rtfreporter::table_plan()}} is given: \code{\link[rtfreporter:normalize_ard]{rtfreporter::normalize_ard()}}
 and any rework after it (\code{mutate()} ...); \code{NA}: none, the table's
-plan normalizes \code{ard} (\verb{ard |> normalize_ard() |> table_plan()}).  A listing's: a rework of its \code{data}
+plan normalizes \code{ard} (\code{ard |> normalize_ard() |> table_plan()}).  A listing's: a rework of its \code{data}
 before it is sorted.  (A step that is the report's own code instead:
 \code{\link[=set_step_code]{set_step_code()}}.)}
 

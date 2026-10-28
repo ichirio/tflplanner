@@ -220,7 +220,7 @@ header_token_labels <- function(choices, tokens = NULL) {
 }
 
 #' @rdname preview_pages
-#' @export
+#' @noRd
 preview_html <- function(pages, max_pages = 3L, align = "center") {
   one <- function(pg, i) {
     d <- pg$data

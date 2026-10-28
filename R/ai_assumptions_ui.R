@@ -122,8 +122,8 @@
   more <- length(out) > lines
   out <- utils::head(out, lines)
   long <- nchar(out) > width
-  out[long] <- paste0(substr(out[long], 1L, width - 1L), "…")
-  paste(c(out, if (more) "…"), collapse = "\n")
+  out[long] <- paste0(substr(out[long], 1L, width - 1L), "\u2026")
+  paste(c(out, if (more) "\u2026"), collapse = "\n")
 }
 
 # A field's input id (the ids are A<n> / K<n>)

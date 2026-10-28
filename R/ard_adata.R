@@ -481,7 +481,7 @@ import_analysis_data <- function(x, from_output, output_id, data_ids = NULL) {
 #' @param output_id The report.
 #' @param dataset The dataset its analyses read (`NA`: the analysis set's
 #'   own).
-#' @export
+#' @noRd
 name_analysis_data <- function(x, output_id, dataset, population_id,
                                data_id, label = NA) {
   a <- x$ard$analyses
@@ -609,7 +609,7 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
 }
 
 #' @rdname set_analysis_data
-#' @export
+#' @noRd
 copy_analysis_data <- function(x, output_id, data_id) {
   ad <- .adata_rows(x, output_id)
   i <- match(data_id, ad$data_id)

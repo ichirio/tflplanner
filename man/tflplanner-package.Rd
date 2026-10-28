@@ -6,13 +6,14 @@
 \alias{tflplanner-package}
 \title{tflplanner: a Shiny study manager for clinical TFLs}
 \description{
-The GUI over tflspec (the Excel specifications, ARD and plan engine) and
-rtfreporter (the RTF renderer).
+The GUI over tflspec (the study's YAML specifications, its templates and
+the R code written from them) and rtfreporter (the ARD and table engine
+and the RTF renderer).
 }
 \section{Start here}{
 
 \code{setup_tflplanner()} once: where the app keeps its settings and where
-new study folders go (its home, under \code{\link[tools:userdir]{tools::R_user_dir()}} unless you
+new study folders go (its home, under \code{\link[tools:R_user_dir]{tools::R_user_dir()}} unless you
 choose another).  Then \code{run_app()} opens the app.  \code{create_sample_study()}
 makes a study to try it on: tflspec's oncology sample data with tables,
 a listing and figures, ready to run.
@@ -29,6 +30,11 @@ Useful links:
 }
 \author{
 \strong{Maintainer}: Yoichi Masui \email{ichi.r.pro@gmail.com} [copyright holder]
+
+Authors:
+\itemize{
+  \item Yoichi Masui \email{ichi.r.pro@gmail.com} [copyright holder]
+}
 
 }
 \keyword{internal}

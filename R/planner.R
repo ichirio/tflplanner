@@ -24,20 +24,20 @@
 #' The sheet names each workbook carries, in the order they are written.
 #'
 #' @return `table_sheets()` and `report_sheets()` return a character vector.
-#' @export
+#' @noRd
 table_sheets <- function() {
   c("tables", "variables", "codelists", "cells", "digits", "layout", "columns",
     "style", "cell_styles", "col_header")
 }
 
 #' @rdname table_sheets
-#' @export
+#' @noRd
 report_sheets <- function() {
   c("report", "page", "header", "footer", "titles", "footnotes", "tokens")
 }
 
 #' @rdname table_sheets
-#' @export
+#' @noRd
 report_types <- function() c("table", "listing", "figure")
 
 # tflplanner wrote `program = {output_id}.R` on every study's default report

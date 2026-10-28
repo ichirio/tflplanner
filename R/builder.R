@@ -12,7 +12,7 @@
 #' decimals are the statistics' (the `digits` sheet, see [tflspec::tfl_table_spec()]).
 #'
 #' @return A data frame: `key`, `row`, `template`.
-#' @export
+#' @noRd
 builder_stats <- function() {
   d <- company_standards()$statistics
   d[c("key", "row", "template")]

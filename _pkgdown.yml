@@ -22,6 +22,8 @@ navbar:
     articles:
       text: Articles
       menu:
+        - text: "How tflplanner works"
+          href: articles/concepts.html
         - text: "tflplanner 利用ガイド（日本語）"
           href: articles/ja-guide.html
         - text: "プロットデザイナーで図を作る（日本語）"
@@ -31,6 +33,7 @@ articles:
   - title: Guides
     navbar: ~
     contents:
+      - articles/concepts
       - articles/ja-guide
       - articles/ja-figures
 
@@ -41,7 +44,6 @@ reference:
       - setup_tflplanner
       - tflplanner_home
       - tflplanner_config
-      - tr
   - title: Install, update and launch
     desc: >
       What is done at the R console: the setup, the packages, the updates
@@ -101,7 +103,6 @@ reference:
       - check_company_ard_function
       - study_ard_functions
       - own_ard_functions
-      - own_function_checks
       - try_ard_function
       - new_ard_function
       - take_company_ard_function
@@ -110,10 +111,8 @@ reference:
       - new_planner
       - add_output
       - output_ids
-      - table_sheets
       - read_codelist
       - import_codelist
-      - inherited_rows
       - page_patterns
       - add_page_pattern
       - check_planner
@@ -136,9 +135,6 @@ reference:
       - fetch_ard
       - ard_meta
       - fill_variables
-      - cell_presets
-      - add_preset
-      - builder_stats
       - preview_pages
   - title: Starting from the data
     contents:
@@ -146,27 +142,18 @@ reference:
       - first_hierarchy_table
       - first_listing
       - catalog_add_files
-      - catalog_name_clashes
       - add_group_n
       - set_total_column
   - title: A TOC taken in
     contents:
       - toc_changes
       - toc_apply
-      - toc_populations
-      - toc_snapshot
       - toc_copy_profile
       - toc_imports
   - title: A TOC taken in by the company's rules
     contents:
       - toc_rules
-      - toc_source
       - toc_import_read
-      - toc_id_candidates
-      - toc_expand_phases
-      - toc_link_shells
-      - toc_batches
-      - toc_apply_extras
   - title: Programs and runs
     contents:
       - data_lines

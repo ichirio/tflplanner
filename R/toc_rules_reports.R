@@ -32,7 +32,7 @@
 #' @return The reports: a row a report, `output_id`, `base_id`, `phase`
 #'   (1, 2, ... or `NA`), `label`, `titles` and `footnotes` (list
 #'   columns), the rest of the row; `attr(, "unread")`: the rows left out.
-#' @export
+#' @noRd
 toc_expand_phases <- function(rows, rule_set) {
   st <- rule_set$settings
   nsuf <- .toc_list_keep(st$number_suffix)
@@ -114,7 +114,7 @@ toc_expand_phases <- function(rows, rule_set) {
 #' @return `reports` with `shell_file`, `shell_sheet` (`NA`: none);
 #'   `attr(, "unlinked")`: sheets named like a report number no report
 #'   links to (`source`, `sheet`).
-#' @export
+#' @noRd
 toc_link_shells <- function(reports, sources, rule_set, skip = NULL) {
   sh <- do.call(rbind, lapply(sources, function(s) {
     if (!length(s$sheets)) return(NULL)
@@ -173,7 +173,7 @@ toc_link_shells <- function(reports, sources, rule_set, skip = NULL) {
 #'   sheet, or `NULL`.
 #' @return A data frame `batch`, `output_id`; `attr(, "differ")`: `id`,
 #'   `what` (`"flagged_not_on_sheet"`, `"on_sheet_not_flagged"`).
-#' @export
+#' @noRd
 toc_batches <- function(reports, rule_set, topline_ids = NULL) {
   out <- data.frame(batch = character(), output_id = character(),
                     stringsAsFactors = FALSE)

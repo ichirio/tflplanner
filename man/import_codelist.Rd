@@ -2,12 +2,9 @@
 % Please edit documentation in R/codelists.R
 \name{import_codelist}
 \alias{import_codelist}
-\alias{standard_codelists}
 \title{A report's code lists: copy one in}
 \usage{
 import_codelist(x, from_output, output_id, variables = NULL)
-
-standard_codelists(sets = NULL, home = tflplanner_home())
 }
 \arguments{
 \item{x}{A \code{tflplanner}.}

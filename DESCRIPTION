@@ -1,22 +1,23 @@
 Package: tflplanner
 Type: Package
-Title: 'shiny' Study Manager for Clinical Tables, Listings and Figures
+Title: Study Manager for Clinical Tables, Listings and Figures
 Version: 0.0.2.9285
 Authors@R: c(
     person(given  = "Yoichi",
            family = "Masui",
            email  = "ichi.r.pro@gmail.com",
            role   = c("aut", "cre", "cph")))
-Description: A 'shiny' study manager for clinical tables, listings and
-    figures made with 'rtfreporter'. Each study is a folder of its own --
-    input data, definitions, programs, results and the records of its
-    official runs. The app defines the study's analysis results data (ARD)
-    and writes one 'cards' / 'cardx' program per output, which together
-    make one study ARD; it defines the tables, listings and figures and
-    writes one program per report, which reads its part of the study ARD
-    (or the 'SDTM' / 'ADaM' data) and writes the report's RTF. Official
-    runs keep each program's log, what it made and the code it ran in a
-    dated batch folder. Defaults and code lists come from a company's
+Description: Manages the clinical tables, listings and figures of a study
+    in a 'shiny' application. Each study is a folder of its own: its input
+    data, definitions, programs, results and the records of its official
+    runs. The application defines the study's analysis results data (ARD)
+    and writes one 'cards' / 'cardx' program per output, which together make
+    the study's ARD; it defines the tables, listings and figures and writes
+    one program per report, which reads its part of the ARD (or the Study
+    Data Tabulation Model, SDTM, or Analysis Data Model, ADaM, data) and
+    writes the report as a Rich Text Format (RTF) file with 'rtfreporter'.
+    Official runs keep each program's log, what it made and the code it ran
+    in a dated folder. Defaults and code lists come from a company's
     standards workbook.
 License: Apache License (>= 2)
 URL: https://github.com/ichirio/tflplanner,
@@ -71,4 +72,4 @@ Remotes:
     ichirio/tflspec@next
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
-Config/roxygen2/version: 8.1.0
+Config/roxygen2/version: 8.1.1

@@ -149,7 +149,7 @@ own_ard_functions <- function(study, home = tflplanner_home()) {
 #'   (tflspec, cards, cardx).  A company's function tried before the study
 #'   uses it is kept here too: once it is copied, the record holds (the
 #'   files are the same).
-#' @export
+#' @noRd
 own_function_checks <- function(study) {
   f <- .fun_checks_file(study)
   if (!file.exists(f)) return(list())

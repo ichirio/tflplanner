@@ -69,7 +69,7 @@ import_codelist <- function(x, from_output, output_id, variables = NULL) {
 }
 
 #' @rdname import_codelist
-#' @export
+#' @noRd
 standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
   cl <- company_standards(home)$codelists
   if (is.null(cl) || !nrow(cl)) return(.builtin_standards()$codelists[0L, ])

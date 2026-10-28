@@ -110,7 +110,7 @@ study_review <- function(study, output_id = NULL, data = c("cached", "read", "no
 #' @rdname study_review
 #' @param x A planner ([new_planner()], a study's `$planner`).
 #' @param facts The facts of the data ([review_facts()]), or `NULL`.
-#' @export
+#' @noRd
 review_problems <- function(x, output_id = NULL, facts = NULL,
                             lang = tflplanner_language()) {
   r <- .review_planner(x, facts)
@@ -554,7 +554,7 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
 #' @param refresh `TRUE` makes the facts again whatever is kept.
 #' @param read `FALSE` reads no file: the facts kept, the datasets with none
 #'   listed in `attr(, "not_read")`.
-#' @export
+#' @noRd
 review_facts <- function(study, refresh = FALSE, read = TRUE,
                          home = tflplanner_home(), progress = NULL) {
   p <- study$planner

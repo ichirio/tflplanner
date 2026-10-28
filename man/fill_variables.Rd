@@ -2,7 +2,6 @@
 % Please edit documentation in R/assist.R
 \name{fill_variables}
 \alias{fill_variables}
-\alias{fill_tables}
 \title{Fill a report's definition from its ARD}
 \usage{
 fill_variables(
@@ -11,8 +10,6 @@ fill_variables(
   meta,
   max_levels = as.integer(.std_setting("max_levels", "30"))
 )
-
-fill_tables(x, output_id, meta)
 }
 \arguments{
 \item{x}{An \code{tflplanner}.}

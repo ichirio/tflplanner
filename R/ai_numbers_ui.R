@@ -29,7 +29,7 @@
     by <- paste0(by, why)
   }
   v <- data.frame(ck, n$sheet, n$number, ifelse(is.na(n$title), "", n$title),
-                  ifelse(is.na(n$toc_id), "—", n$toc_id), by, stringsAsFactors = FALSE)
+                  ifelse(is.na(n$toc_id), "\u2014", n$toc_id), by, stringsAsFactors = FALSE)
   names(v) <- c(t("Make"), t("sheet"), t("Number in the sheet"), t("Title in the sheet"),
                 paste0(t("TOC item"), " (toc_id)"), t("Decided by"))
   v

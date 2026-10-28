@@ -3,17 +3,11 @@
 \name{toc_imports}
 \alias{toc_imports}
 \alias{toc_last}
-\alias{toc_shell_links}
-\alias{toc_profile}
 \title{TOCs taken into a study}
 \usage{
 toc_imports(study)
 
 toc_last(study)
-
-toc_shell_links(study)
-
-toc_profile(study)
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}

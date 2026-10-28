@@ -2,26 +2,9 @@
 % Please edit documentation in R/assist.R
 \name{fetch_ard}
 \alias{fetch_ard}
-\alias{ard_info}
-\alias{ard_data}
-\alias{ard_raw}
-\alias{ard_preview_state}
 \title{Run a report's data part and keep what its ARD holds}
 \usage{
 fetch_ard(study, output_id, timeout = 300, home = tflplanner_home())
-
-ard_info(study, output_id, home = tflplanner_home())
-
-ard_data(study, output_id, home = tflplanner_home())
-
-ard_raw(study, output_id, rows = FALSE, home = tflplanner_home())
-
-ard_preview_state(
-  study,
-  output_id,
-  meta = ard_info(study, output_id, home),
-  home = tflplanner_home()
-)
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
@@ -38,11 +21,6 @@ study ARD has them, with their ids), and \code{ard_preview_state()} whether
 what is kept is still the report's ARD: \code{"missing"}, \code{"outdated"} (its
 definition, its code, the study's setup or the data have changed since)
 or \code{"current"}.}
-
-\item{rows}{\code{TRUE}: the report's rows with their ids, as the study ARD
-has them (the ARD definition's reports; \code{NULL} for the others).}
-
-\item{meta}{What was kept (\code{\link[=ard_info]{ard_info()}}); by default, read.}
 }
 \value{
 The metadata (\code{\link[=ard_meta]{ard_meta()}}) with \code{fetched} (the time), \code{source}

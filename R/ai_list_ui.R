@@ -218,7 +218,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       if (is.null(e)) return(d[[col]])
       mine <- e[[col]][k]
       ifelse(act %in% "change" & !is.na(mine) & mine != ifelse(is.na(d[[col]]), "", d[[col]]),
-             paste0(ifelse(is.na(d[[col]]), "", d[[col]]), " → ", mine), d[[col]])
+             paste0(ifelse(is.na(d[[col]]), "", d[[col]]), " \u2192 ", mine), d[[col]])
     }
     v <- data.frame(ck, d$output_id, yours("title"), yours("population"), yours("split"), tw_status(d$status),
                     tw(d$adopted), rtf,

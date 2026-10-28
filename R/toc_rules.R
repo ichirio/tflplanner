@@ -139,7 +139,7 @@ print.toc_rule_set <- function(x, ...) {
 #' @param overrides Settings a study changes (its profile): a named list
 #'   (`number_suffix`, `title_suffix`, `title_line`, ...).
 #' @return `toc_rule_set()`: a `toc_rule_set`.
-#' @export
+#' @noRd
 toc_rule_set <- function(rules, name = NULL, overrides = NULL) {
   if (inherits(rules, "toc_rule_set")) {
     s <- rules
@@ -187,7 +187,7 @@ toc_rule_set <- function(rules, name = NULL, overrides = NULL) {
 #'   the first of its candidates the TOC has; `title` and `footnote`: every
 #'   one, in the TOC's order); `attr(, "missing")`: the items the set names
 #'   that the TOC has no column for.
-#' @export
+#' @noRd
 toc_map_for <- function(headers, std = company_standards()$toc_map, rule_set = NULL) {
   tm <- .toc_set_map(std, rule_set)
   headers <- headers[!is.na(headers)]
@@ -214,7 +214,7 @@ toc_map_for <- function(headers, std = company_standards()$toc_map, rule_set = N
 #' @return `toc_pick_rules()`: a data frame, the best set first:
 #'   `rule_set`, `label`, `required_ok`, `matched` (items with a column),
 #'   `named` (items the set names), `items`.
-#' @export
+#' @noRd
 toc_pick_rules <- function(headers, rules) {
   hs <- if (is.list(headers)) headers else list(headers)
   rows <- lapply(seq_along(rules), function(k) {

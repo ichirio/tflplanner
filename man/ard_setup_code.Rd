@@ -19,7 +19,7 @@ ard_program_code(
 ard_autoexec_code(spec, date = Sys.Date())
 }
 \arguments{
-\item{spec}{An \code{\link[tflspec:tfl_read_ard_spec]{tflspec::tfl_ard_spec()}} (or the path of one).}
+\item{spec}{An \code{\link[tflspec:tfl_ard_spec]{tflspec::tfl_ard_spec()}} (or the path of one).}
 
 \item{date}{The date stamped in the banner.}
 

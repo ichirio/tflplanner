@@ -488,14 +488,14 @@ fetch_ard <- function(study, output_id, timeout = 300,
 }
 
 #' @rdname fetch_ard
-#' @export
+#' @noRd
 ard_info <- function(study, output_id, home = tflplanner_home()) {
   f <- .meta_file(study, output_id, home)
   if (file.exists(f)) readRDS(f)
 }
 
 #' @rdname fetch_ard
-#' @export
+#' @noRd
 ard_data <- function(study, output_id, home = tflplanner_home()) {
   f <- sub("[.]rds$", "_data.rds", .meta_file(study, output_id, home))
   if (file.exists(f)) readRDS(f)
@@ -504,7 +504,7 @@ ard_data <- function(study, output_id, home = tflplanner_home()) {
 #' @rdname fetch_ard
 #' @param rows `TRUE`: the report's rows with their ids, as the study ARD
 #'   has them (the ARD definition's reports; `NULL` for the others).
-#' @export
+#' @noRd
 ard_raw <- function(study, output_id, rows = FALSE, home = tflplanner_home()) {
   f <- sub("[.]rds$", if (isTRUE(rows)) "_rows.rds" else "_ard.rds",
            .meta_file(study, output_id, home))
@@ -513,7 +513,7 @@ ard_raw <- function(study, output_id, rows = FALSE, home = tflplanner_home()) {
 
 #' @rdname fetch_ard
 #' @param meta What was kept ([ard_info()]); by default, read.
-#' @export
+#' @noRd
 ard_preview_state <- function(study, output_id, meta = ard_info(study, output_id, home),
                               home = tflplanner_home()) {
   if (is.null(meta)) return("missing")
@@ -603,7 +603,7 @@ fill_variables <- function(x, output_id, meta,
 }
 
 #' @rdname fill_variables
-#' @export
+#' @noRd
 fill_tables <- function(x, output_id, meta) {
   rows <- sheet_rows(x, "tables", output_id)
   rows$output_id <- NULL
@@ -641,7 +641,7 @@ fill_tables <- function(x, output_id, meta) {
 #'
 #' @return `cell_presets()` and `header_presets()` return a named list of
 #'   data frames in the columns of their sheet.
-#' @export
+#' @noRd
 cell_presets <- function() {
   d <- company_standards()$cell_presets
   lapply(split(d[c("variable", "row", "template", "digits")],
@@ -652,7 +652,7 @@ cell_presets <- function() {
 }
 
 #' @rdname cell_presets
-#' @export
+#' @noRd
 header_presets <- function() {
   d <- company_standards()$header_presets
   lapply(split(d[c("line", "cols", "span", "text")],
@@ -703,7 +703,7 @@ header_presets <- function() {
 #' @return The `tflplanner`.  A report's own column header replaces the
 #'   default one whole, so a header preset replaces the report's header
 #'   rows.
-#' @export
+#' @noRd
 add_preset <- function(x, output_id, preset, variable = NULL) {
   if (preset %in% names(cell_presets())) {
     sheet <- "cells"
@@ -783,7 +783,7 @@ grid_choices <- function(sheet, meta) {
 #'   report: those it has no row of its own for.  On a sheet with one row
 #'   per report (`tables`, `layout`, ...) that is the default row, whose
 #'   cells the report's own non-blank cells override.
-#' @export
+#' @noRd
 inherited_rows <- function(x, sheet, output_id) {
   d <- x$sheets[[sheet]]
   def <- d[is.na(d$output_id), , drop = FALSE]

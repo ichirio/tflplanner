@@ -2,54 +2,19 @@
 % Please edit documentation in R/toc_rules.R
 \name{toc_rules}
 \alias{toc_rules}
-\alias{toc_rule_set}
-\alias{toc_map_for}
-\alias{toc_pick_rules}
 \title{The company's rules for taking in a TOC}
 \usage{
 toc_rules(home = tflplanner_home(), standards = NULL)
-
-toc_rule_set(rules, name = NULL, overrides = NULL)
-
-toc_map_for(headers, std = company_standards()$toc_map, rule_set = NULL)
-
-toc_pick_rules(headers, rules)
 }
 \arguments{
 \item{home}{tflplanner's home.}
 
 \item{standards}{The company standards (a list of sheets); by default
 those in use.}
-
-\item{rules}{What \code{toc_rules()} returned.}
-
-\item{name}{A rule set's name.}
-
-\item{overrides}{Settings a study changes (its profile): a named list
-(\code{number_suffix}, \code{title_suffix}, \code{title_line}, ...).}
-
-\item{headers}{A TOC's column names.}
-
-\item{std}{A rule set, what \code{toc_rules()} returned, or the standards'
-\code{toc_map} sheet.}
-
-\item{rule_set}{The rule set's name (\code{std} a list of sets or the
-\code{toc_map} sheet); by default \code{standard}.}
 }
 \value{
 \code{toc_rules()}: a named list of \code{toc_rule_set}s (\code{name}, \code{label},
 \code{settings}, \code{map}: \code{item}, \code{columns}).
-
-\code{toc_rule_set()}: a \code{toc_rule_set}.
-
-\code{toc_map_for()}: a named list, item -> the TOC's column (an item:
-the first of its candidates the TOC has; \code{title} and \code{footnote}: every
-one, in the TOC's order); \code{attr(, "missing")}: the items the set names
-that the TOC has no column for.
-
-\code{toc_pick_rules()}: a data frame, the best set first:
-\code{rule_set}, \code{label}, \code{required_ok}, \code{matched} (items with a column),
-\code{named} (items the set names), \code{items}.
 }
 \description{
 A company keeps one rule set or several for its TOCs, in the company
