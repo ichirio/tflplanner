@@ -565,11 +565,15 @@ print.rtfstudy <- function(x, ...) {
 #' @param spec `"check"` (the default) stops when a definition file was
 #'   changed outside tflplanner; `"overwrite"` writes over it, after copying
 #'   it to `spec/.rejected/` (what [write_spec()] does).
+#' @param fill_widths `TRUE` (the app's save): a report new or changed in
+#'   this save that says no column widths gets the default ones
+#'   ([tflspec::tfl_fill_widths()]), and a table whose columns changed has
+#'   its old widths replaced.
 #' @return The study, invisibly, with `files`: what was written (status
 #'   `written`, `rewritten` for a program edited by hand, `unchanged`, ...).
 #' @export
 save_study <- function(study, home = tflplanner_home(), base = NULL,
-                       spec = c("check", "overwrite")) {
+                       spec = c("check", "overwrite"), fill_widths = FALSE) {
   spec <- match.arg(spec)
   if (!is.null(base)) study <- .merge_saved(study, base, home)
   p <- .meta_tokens(.study_spec_keys(study$planner), study$meta)
@@ -611,10 +615,17 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
   old_meta <- tryCatch(.read_meta(root), error = function(e) list())
   meta$created <- old_meta$created %||% format(Sys.Date())
   # the YAML spec: each file written only when its text changed
+  before <- if (isTRUE(fill_widths)) .widths_before(root)
   files <- .save_yaml_spec(p, meta, root, own = as_recorded)
   # (the planner and its spec in step: what was saved)
   p <- attr(files, "planner")
   attr(files, "planner") <- NULL
+  # the reports saved here say their column widths (R/save_widths.R)
+  # (the planner as saved before them: what the app compares its own with)
+  if (isTRUE(fill_widths)) {
+    study$planner_saved <- p
+    p <- .save_fill_widths(p, root, files, before)
+  }
   study$planner <- p
   for (d in lay) dir.create(file.path(root, d), recursive = TRUE,
                             showWarnings = FALSE)

@@ -525,7 +525,7 @@
     base$planner <- rv$saved
     base$meta[.study_fields] <- rv$saved_meta
     mine <- rv$p
-    s <- tryCatch(save_study(current_study(), base = base),
+    s <- tryCatch(save_study(current_study(), base = base, fill_widths = TRUE),
                   tflplanner_spec_changed = function(e) {
                     shiny::showModal(shiny::modalDialog(
                       title = t("The definition files were changed"),
@@ -556,10 +556,11 @@
     bnew$ids <- character()
     rv$study <- s
     rv$p <- rv$saved <- s$planner
-    if (!.same_planner(.study_spec_keys(mine), s$planner)) {
-      bump()
-      notify(t("Changes others saved meanwhile were merged in."))
-    }
+    # (the widths the save gave reports: drawn, but not others' changes)
+    merged <- !.same_planner(.study_spec_keys(mine), s$planner_saved %||% s$planner)
+    if (merged || !.same_planner(.study_spec_keys(mine), s$planner)) bump()
+    if (merged) notify(t("Changes others saved meanwhile were merged in."))
+    rv$study$planner_saved <- NULL
     rv$meta <- rv$saved_meta <- s$meta[.study_fields]
     rv$status_ver <- rv$status_ver + 1L
     rv$studies_ver <- rv$studies_ver + 1L
