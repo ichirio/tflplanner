@@ -42,10 +42,12 @@ setup_tflplanner(home = tempfile("tflplanner-home"))
 s <- create_sample_study(run = FALSE)
 ard_imports(s)  # none taken in yet
 # an ARD made elsewhere (here, with cards)
-f <- tempfile(fileext = ".rds")
-saveRDS(cards::ard_continuous(mtcars, variables = "mpg"), f)
-import_ard(s, f, source = "example")
-ard_imports(s)
+if (requireNamespace("cards", quietly = TRUE)) {
+  f <- tempfile(fileext = ".rds")
+  saveRDS(cards::ard_continuous(mtcars, variables = "mpg"), f)
+  import_ard(s, f, source = "example")
+  ard_imports(s)
+}
 }
 options(old)
 }
