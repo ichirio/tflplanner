@@ -146,3 +146,20 @@ test_that("the AI's value in spec/_assumptions.yml comes first", {
   # (kept when the ids are written into the file)
   expect_identical(.ai_asm_now(d)$value[3], "Table 14.3.1 / Summary of Adverse Events")
 })
+
+test_that("a report's heading says its assumptions, and how many are not answered", {
+  d <- asm_study()
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  cn <- .ai_asm_counts(d)
+  expect_identical(cn$output_id, c("T-1", "T-2", "T-3"))
+  expect_identical(cn$open, c(1L, 1L, 1L))
+  tflspec::tfl_ai_assumption_answers_write(d, data.frame(id = "K1", verdict = "ok"))
+  cn <- .ai_asm_counts(d)
+  expect_identical(cn$open, c(0L, 0L, 1L))
+  tt <- function(x) x
+  expect_match(as.character(.ai_asm_head(cn, "T-3", tt)), "AI's assumptions 1 (1 not answered)", fixed = TRUE)
+  expect_match(as.character(.ai_asm_head(cn, "T-1", tt)), "AI's assumptions 1<", fixed = TRUE)
+  expect_null(.ai_asm_head(cn, "T-9", tt))
+  expect_null(.ai_asm_head(NULL, "T-1", tt))
+  expect_null(.ai_asm_counts(tempfile()))
+})

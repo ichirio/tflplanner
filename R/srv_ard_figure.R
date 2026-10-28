@@ -109,6 +109,25 @@
     if (identical(src$kind, "table")) shiny::updateSelectInput(session, "target", selected = src$id)
   })
 
+  # the AI's assumptions of each report (spec/_assumptions.yml), its
+  # answers (ai/assumption_answers.csv): read again when either file changes
+  ai_asm_files <- function() {
+    p <- if (has_study()) rv$study$path else NULL
+    if (is.null(p)) return(NULL)
+    file.path(p, c(file.path("spec", "_assumptions.yml"), file.path("ai", "assumption_answers.csv")))
+  }
+  ai_asm_counts <- shiny::reactivePoll(3000, session, function() {
+    f <- ai_asm_files()
+    if (is.null(f)) NULL else paste(f, file.mtime(f))
+  }, function() {
+    f <- ai_asm_files()
+    if (is.null(f) || !file.exists(f[1L])) return(NULL)
+    .ai_asm_counts(dirname(dirname(f[1L])))
+  })
+  shiny::observeEvent(input$ai_asm_goto, {
+    bslib::nav_select("nav", "ai")
+    bslib::nav_select("ai-step", "list")
+  })
   output$report_head <- shiny::renderUI({
     id <- current()
     if (is.null(id)) return(NULL)
@@ -144,7 +163,8 @@
       # card (#440)
       tpl_head_link(id),
       if (!is.na(d)) shiny::span(class = "text-muted small", d),
-      counts)
+      counts,
+      .ai_asm_head(ai_asm_counts(), id, t))
   })
 
   # -- what the ARD says ---------------------------------------------------

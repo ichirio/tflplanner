@@ -25,3 +25,6 @@
 "(differs by report)","（帳票ごとに異なる）"
 "%s: when wrong, write the right content.","%s: 違うときは正しい内容を入れてください。"
 "Now:","今の値:"
+"The AI's assumptions of this report: answered in the AI tab, step 4","この帳票の AI の仮定: AI 連携の手順 4 で答えます"
+"AI's assumptions %d (%d not answered)","AI の仮定 %d（未回答 %d）"
+"AI's assumptions %d","AI の仮定 %d"

@@ -395,3 +395,31 @@ ai_asm_server <- function(input, output, session, path, ver, notify, guarded, t)
   shiny::observeEvent(input$asm_save2, save())
   saved
 }
+
+# ---- a report's assumptions in its heading (R/srv_ard_figure.R) -------------
+
+# Each report's assumptions: output_id, n, open (not answered); NULL when
+# the study has none
+.ai_asm_counts <- function(p) {
+  a <- tryCatch(tflspec::tfl_ai_assumptions(p), error = function(e) NULL)
+  if (is.null(a) || !nrow(a)) return(NULL)
+  a <- a[!is.na(a$output_id) & nzchar(a$output_id), , drop = FALSE]
+  if (!nrow(a)) return(NULL)
+  ids <- unique(a$output_id)
+  data.frame(output_id = ids,
+             n = vapply(ids, function(i) sum(a$output_id == i), 1L, USE.NAMES = FALSE),
+             open = vapply(ids, function(i) sum(a$output_id == i & a$status == "open"), 1L, USE.NAMES = FALSE),
+             stringsAsFactors = FALSE)
+}
+
+# The heading's link: "AI's assumptions 3 (1 not answered)", to step 4
+.ai_asm_head <- function(cn, id, t) {
+  k <- if (is.null(cn)) NA else match(id, cn$output_id)
+  if (is.na(k)) return(NULL)
+  shiny::tags$a(
+    href = "#", class = paste("small", if (cn$open[k]) "text-warning-emphasis" else "text-muted"),
+    title = t("The AI's assumptions of this report: answered in the AI tab, step 4"),
+    onclick = "Shiny.setInputValue('ai_asm_goto', Math.random(), {priority: 'event'}); return false;",
+    if (cn$open[k]) sprintf(t("AI's assumptions %d (%d not answered)"), cn$n[k], cn$open[k])
+    else sprintf(t("AI's assumptions %d"), cn$n[k]))
+}
