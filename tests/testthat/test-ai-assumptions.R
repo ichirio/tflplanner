@@ -146,3 +146,14 @@ test_that("the AI's value in spec/_assumptions.yml comes first", {
   # (kept when the ids are written into the file)
   expect_identical(.ai_asm_now(d)$value[3], "Table 14.3.1 / Summary of Adverse Events")
 })
+
+test_that("the reports waiting for corrections: an assumption answered wrong, not yet applied", {
+  d <- asm_study()
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  expect_identical(.ai_to_correct(d, c("T-1", "T-2", "T-3")), character())
+  tflspec::tfl_ai_assumption_answers_write(d, data.frame(id = c("K1", "A3"), verdict = c("wrong", "ok"),
+                                                         correct = c("TRT01P", NA)))
+  expect_identical(.ai_to_correct(d, c("T-1", "T-2", "T-3")), c("T-1", "T-2"))
+  expect_identical(.ai_to_correct(d, "T-3"), character())
+  expect_identical(.ai_to_correct(NULL, "T-1"), character())
+})
