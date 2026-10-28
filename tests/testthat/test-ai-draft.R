@@ -242,6 +242,8 @@ test_that("step 2 and 3: the list, View, save an answer, check all, the reports 
       expect_match(output$`ai-taken_note`$html, "step 4", fixed = TRUE)
       session$setInputs(`ai-adopt` = 1)
       session$setInputs(`ai-adopt_fresh` = 1)
+      # (saved at once: the adopted report's program written, for a run)
+      expect_length(list.files(file.path(path, "programs", "tfl"), "14.3.1"), 1L)
     }
     expect_true("T-14-3-1" %in% output_ids(rv$p))
     expect_false(isTRUE(session$userData$dirty()))

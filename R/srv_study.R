@@ -413,7 +413,10 @@
   # wrote some (the AI drafts' check, its reports' files): taken in as they
   # are, their fingerprints recorded.  Never over unsaved changes (those
   # are merged by Reload above): FALSE, and nothing changed.
-  reload_now <- function() {
+  # (`save`: saved at once after -- reports adopted from the AI's area get
+  # their programs and batch.R, so a run has them; the study had nothing
+  # unsaved, so the save writes only what the files now say)
+  reload_now <- function(save = FALSE) {
     if (!has_study()) return(FALSE)
     s <- tryCatch(.ai_reload_study(rv$study$meta$study_id, unsaved = isTRUE(dirty())),
                   tflplanner_ai_unsaved = function(e) {
@@ -438,6 +441,7 @@
     rv$status_ver <- rv$status_ver + 1L
     rv$ard_ver <- rv$ard_ver + 1L
     bump()
+    if (isTRUE(save)) return(isTRUE(do_save()))
     TRUE
   }
   if (.ai_drafts_on()) {

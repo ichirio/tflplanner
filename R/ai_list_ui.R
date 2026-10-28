@@ -303,7 +303,8 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     if (length(fresh)) res[[1L]] <- guarded(tflspec::tfl_ai_adopt(p, outputs = fresh, overwrite = FALSE))
     if (length(over)) res[[2L]] <- guarded(tflspec::tfl_ai_adopt(p, outputs = over, overwrite = TRUE))
     again(again() + 1L)
-    reload_now()
+    # (saved too: their programs and batch.R written, for a run)
+    reload_now(save = TRUE)
     notify(sprintf(t("%d reports adopted (copied) into the study, %d of them replaced: on the Report list."),
                    length(fresh) + length(over), length(over)))
   }
