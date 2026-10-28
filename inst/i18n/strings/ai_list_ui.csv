@@ -80,3 +80,4 @@
 "No questions: a chat writes its questions in its assumptions (step 3).","質問はありません。チャットの形では、質問は仮定の表（手順 3）に出ます。"
 "No questions yet: the agent writes ai/questions.md when it has some.","まだ質問はありません。質問があると、エージェントが ai/questions.md に書きます。"
 "Note (note)","メモ (note)"
+"%d reports adopted (copied) into the study, but the study was not saved: save it to write their programs.","%d 件を試験に採用（写し）しましたが、試験は保存されていません: 保存すると、そのプログラムができます。"

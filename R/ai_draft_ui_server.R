@@ -28,7 +28,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       x
     }
     # step 4: the list and the adopting (R/ai_list_ui.R)
-    ai_list_server(input, output, session, path, ver, reload_now, notify, guarded, t)
+    ai_list_server(input, output, session, path, ver, reload_now, notify, guarded, t, dirty = dirty)
     asm_saved <- ai_asm_server(input, output, session, path, ver, notify, guarded, t)
     # the look of past reports (R/ai_style_ui.R)
     ai_style_server(input, output, session, notify, guarded, t)
