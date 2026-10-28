@@ -668,7 +668,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     }
     read_with <- shiny::reactiveVal(NULL)
     read_size <- shiny::reactiveVal(NULL)
-    # (a sheet-first read, tflspec >= 0.0.24.9230: its requests group the
+    # (a sheet-first read: its requests group the
     # shell sheets, not countable again from its TOC -- another size, read
     # again)
     sheet_first <- function(p) !is.null(p$toc$toc_id)
@@ -714,14 +714,13 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                       onclick = "Shiny.setInputValue(this.dataset.ns + 'ref_remove', {id: this.dataset.id, n: Date.now()}, {priority: 'event'}); return false;",
                       t("Remove")))))
     })
-    # (the agent's scope, with a tflspec that has it: tflspec fix/agent-scope)
+    # (the agent's scope)
     scope_args <- function() {
       if (!identical(input$mode %||% "agent", "agent")) return(list())
-      fm <- names(formals(tflspec::tfl_ai_prepare))
       mr <- suppressWarnings(as.integer(input$agent_max_reads))
-      c(if ("agent_reads" %in% fm) list(agent_reads = as.character(input$agent_reads %||% character())),
-        if ("agent_max_reads" %in% fm && length(mr) && !is.na(mr) && mr >= 0L) list(agent_max_reads = mr),
-        if ("docs" %in% fm && length(refs())) list(docs = refs()))
+      c(list(agent_reads = as.character(input$agent_reads %||% character())),
+        if (length(mr) && !is.na(mr) && mr >= 0L) list(agent_max_reads = mr),
+        if (length(refs())) list(docs = refs()))
     }
     args_of <- function(p) {
       all <- if (!is.null(p)) p$adam$datasets$dataset
@@ -843,7 +842,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       # the summary read is sent again unless its values' limit changed
       if (identical(a$max_levels, used_levels())) a$adam_summary <- p$adam
       out <- NULL
-      # (tflspec >= 0.0.24.9211 writes a request at a time and says where it is)
+      # (tflspec writes a request at a time and says where it is)
       a$progress <- function(step, i, n) {
         if (identical(step, "request") && n > 0L) {
           shiny::setProgress(i / n, detail = sprintf(t("request %d of %d"), i, n))
@@ -1137,7 +1136,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           shiny::HTML(act("agent", "agent", c(copy = t("Copy text"), view = t("View as text"))))),
         shiny::tags$pre(class = "small mb-0 ai-prompt", agent_prompt()),
         # (the message for the next requests, once the first are done)
-        if (.ai_continue_ok()) shiny::div(
+        shiny::div(
           class = "d-flex flex-wrap gap-2 align-items-center small mt-2",
           shiny::span(with_tip(t("Then, the next requests:"),
                                t("The agent does the first requests, then stops. This message asks for the next ones with no answer yet, in the index's order (ten at a time, tflspec's)."))),
@@ -1186,7 +1185,6 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                `no answer` = "text-muted")
       u <- unbuilt()
       kept <- names(attr(u, "texts"))
-      rerun <- .ai_run_has_requests()
       # a report that passed its checks but run.R could not build: the reason
       why <- function(i) {
         if (is.null(u) || !r$status[i] %in% c("ok", "warning")) return(NA_character_)
@@ -1206,7 +1204,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           if (q %in% attr(u, "build"))
             shiny::HTML(act("build", q, c(copy = t("Copy the fix request to rebuild"),
                                           view = t("View")))),
-          if (rerun && any(r$status[rows] %in% c("ok", "warning")))
+          if (any(r$status[rows] %in% c("ok", "warning")))
             shiny::HTML(act("rerun", q, c(copy = t("Copy: rebuild only this request")))))
       }
       shiny::tags$table(

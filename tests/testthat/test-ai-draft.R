@@ -7,7 +7,7 @@ skip_on_cran()
 skip_if_not_installed("haven")
 
 # A study prepared once for the file (tfl_ai_prepare() on tflspec's own
-# example workbook and data; tflspec >= 0.0.24.9230: a request a shell
+# example workbook and data; a request a shell
 # sheet -- demographics-1, efficacy-1, ae-1 (the Safety sheet: T-14-3-1 and
 # T-14-3-5), figure-1); each test copies it into its own home.  tflspec's
 # example answers beside it.
@@ -73,7 +73,7 @@ test_that("the requests: one row each, in the order written, the reports from tf
   expect_match(txt, "T-14-3-1", fixed = TRUE)
   expect_true(all(is.na(r$answer)))
   # (no instructions file: as tflspec writes the requests with "each"; with
-  # "once", its default from 0.0.24.9212 on, the file is there -- taken away)
+  # "once", its default, the file is there -- taken away)
   unlink(file.path(path, "ai", "requests", "00-instructions.md"))
   expect_true(is.na(attr(.ai_requests(path), "instructions")))
   # the instructions once: their file named; no requests: no rows
@@ -255,11 +255,9 @@ test_that("step 2 and 3: the list, View, save an answer, check all, the reports 
     expect_false(isTRUE(session$userData$dirty()))
     expect_true(all(spec_status("XYZ-1")$status == "same"))
     expect_match(output$`ai-result`$html, "T-14-3-1", fixed = TRUE)
-    # the answers compared, under the checks (tflspec >= 0.0.24.9191)
-    if (exists("tfl_ai_compare", envir = asNamespace("tflspec"))) {
-      expect_match(output$`ai-compare_card`$html, "compare.csv", fixed = TRUE)
-      expect_true(file.exists(file.path(path, "ai", "compare.csv")))
-    }
+    # the answers compared, under the checks
+    expect_match(output$`ai-compare_card`$html, "compare.csv", fixed = TRUE)
+    expect_true(file.exists(file.path(path, "ai", "compare.csv")))
   })
 })
 
@@ -775,7 +773,7 @@ test_that("agent mode in the app: the first message on step 2, the questions on 
   })
 })
 
-# what tfl_ai_run() (tflspec >= 0.0.24.9197) writes for a report that
+# what tfl_ai_run() writes for a report that
 # passed its checks but could not be built
 ai_unbuilt_repair <- function(path, request, id, why) {
   dir.create(file.path(path, "ai", "repairs"), recursive = TRUE, showWarnings = FALSE)
@@ -785,7 +783,7 @@ ai_unbuilt_repair <- function(path, request, id, why) {
              file.path(path, "ai", "repairs", paste0(request, ".md")))
 }
 
-test_that("the reports run.R could not build: read from ai/repairs, none from an older tflspec", {
+test_that("the reports run.R could not build: read from ai/repairs, none when there is no file", {
   local_home()
   path <- ai_study(register = FALSE)
   u <- .ai_unbuilt(path)
@@ -826,8 +824,8 @@ test_that("agent mode, step 3: a report not built shows why, its fix request to 
     # the whole reason, and the fix request (kept: the check removed the file)
     expect_match(ai$text("demographics-1", "unbuilt"), why, fixed = TRUE)
     expect_match(ai$text("demographics-1", "repair"), "## Could not be built", fixed = TRUE)
-    # to rebuild one request: only with a tflspec whose run.R takes them
-    expect_identical(grepl("data-what=\"rerun\"", html, fixed = TRUE), .ai_run_has_requests())
+    # to rebuild one request
+    expect_match(html, "data-what=\"rerun\"", fixed = TRUE)
     expect_identical(ai$text("demographics-1", "rerun"), "Rscript run.R demographics-1")
     # a run.R written again: the reasons read again (none now)
     Sys.sleep(1.1)
@@ -837,7 +835,7 @@ test_that("agent mode, step 3: a report not built shows why, its fix request to 
   })
 })
 
-# tflspec >= 0.0.24.9199: its own file, ai/repairs/<request>-build.md
+# its own file, ai/repairs/<request>-build.md
 ai_build_repair <- function(path, request, id, why) {
   dir.create(file.path(path, "ai", "repairs"), recursive = TRUE, showWarnings = FALSE)
   writeLines(c(sprintf("# Repair: %s -- could not be built", request), "",
@@ -888,7 +886,7 @@ test_that("a report not built, from <request>-build.md: read first, kept by the 
   })
 })
 
-# -- several workbooks, and requests added (tflspec >= 0.0.24.9178) ----------
+# -- several workbooks, and requests added ----------------
 
 # the example split in two (its TOC alone, its shells alone), and a second
 # TOC of one more table with its shell (a sheet named as one of the first's)
@@ -914,7 +912,7 @@ ai_more_book <- function(dir) {
   openxlsx::saveWorkbook(wb, f, overwrite = TRUE)
   f
 }
-# (tflspec 0.0.24.9230: its sheet-first requests do not stop a TOC item
+# (tflspec's sheet-first requests do not stop a TOC item
 # asked for again with add = TRUE, nor drop its old request on overwrite --
 # the tests of it skipped until tflspec does; tried once)
 ai_asks_again_stops <- local({
@@ -1115,7 +1113,6 @@ test_that("a new study that fails keeps what its folder held before (its data/ad
 })
 
 test_that("step 1: a number unticked and applied, then back to the rule, before and after writing", {
-  skip_if_not("numbers" %in% names(formals(tflspec::tfl_ai_prepare)))
   local_home()
   ai_study()
   shiny::testServer(server_for("XYZ-1"), {

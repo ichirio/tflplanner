@@ -1,4 +1,4 @@
-# AI tab and tflspec >= 0.0.24.9230 (#473): what was read, as tflspec's
+# AI tab (#473): what was read, as tflspec's
 # sheet-first dry run gives it -- the TOC items (their shell, a TOC item
 # with no shell in red), the shells (a request a sheet), the counts, the
 # sheets' roles changed and read again -- and a workbook already in the
@@ -63,8 +63,7 @@ test_that("a dry run: a row a TOC item, a row a shell sheet, the counts; request
                     dry_run = TRUE)
   expect_identical(as.integer(p2$counts[c("shells", "toc_items", "no_shell")]), c(1L, 3L, 2L))
   expect_false(dir.exists(dir))
-  # (an older tflspec's reading: its parts said, its names made from the
-  # report's number)
+  # (the parts said, the names made from the report's number)
   expect_identical(.ai_parts_label(c("a", "b"), NULL), c("", ""))
   expect_identical(.ai_parts_label(c("t.1", "t.2"), c(NA, "t.2.a | t.2.b")), c("", "2 parts (.a, .b)"))
   expect_identical(.ai_one_names(c("t 15.1", "T15.1.5.1", "t 15.1")), c("t-15.1", "T15.1.5.1", "t-15.1-1"))

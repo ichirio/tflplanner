@@ -130,9 +130,8 @@ ai_numbers_server <- function(input, output, session, prepared, read_now, t) {
     given(g)
     read_now()
   })
-  # what the reads are given (NULL: nothing; tflspec without numbers: none)
+  # what the reads are given (NULL: nothing)
   function() {
-    if (!"numbers" %in% names(formals(tflspec::tfl_ai_prepare))) return(NULL)
     g <- given()
     if (is.null(g) || !nrow(g)) NULL else g
   }
