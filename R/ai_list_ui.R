@@ -606,3 +606,13 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   }
   x
 }
+
+# The AI's reports among `ids` an official run should say before it runs:
+# `newer` (their draft changed since adopted), `fix` (waiting for
+# corrections); NULL study: none
+.ai_run_warnings <- function(p, ids) {
+  none <- list(newer = character(), fix = character())
+  if (is.null(p) || !length(ids) || !dir.exists(file.path(p, "ai"))) return(none)
+  m <- .ai_adopted_marks(p, ids)
+  list(newer = names(m)[m == "newer"], fix = .ai_to_correct(p, ids[m != ""]))
+}
