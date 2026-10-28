@@ -456,6 +456,8 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       return(notify(t("The study has no run.R: write the requests in agent mode (step 1)."), "warning"))
     }
     if (!is.null(run$px) && run$px$is_alive()) return(notify(t("run.R is running already."), "warning"))
+    # (the drafts in their own folder first: run.R writes them there)
+    .ai_ensure_area(p)
     log <- file.path(p, "ai", "run-from-app.log")
     run$log <- log
     run$end <- NULL

@@ -179,6 +179,7 @@
 # The answers checked: tfl_ai_collect_answers()'s list (reports,
 # next_steps, assumptions, stray, requests), with the time of the check
 .ai_collect <- function(path) {
+  .ai_ensure_area(path)
   x <- tflspec::tfl_ai_collect_answers(path)
   x$time <- Sys.time()
   x
@@ -439,12 +440,16 @@
          if (!is.null(study_id)) list(study_id = study_id),
          if (!is.null(title) && nzchar(title)) list(title = title),
          if (length(shells)) list(shells = unname(shells)),
-         Filter(Negate(is.null), args))
-  # (a new study: the AI's drafts in its area, ai/spec/outputs -- tflspec's
-  # default; step 4 lists them and adopts them into spec/outputs)
+         Filter(Negate(is.null), args),
+         if (!isTRUE(dry_run) && is.null(args$area)) list(area = TRUE))
+  # (the AI's drafts in their area, ai/spec/outputs, always -- for a study
+  # with reports of its own too, whose files the AI must not write over;
+  # step 4 lists the drafts and adopts them into spec/outputs)
   # (add = TRUE, overwrite = TRUE: the requests asked again alone -- the
   # study's own files and the agent's are kept, tflspec >= 0.0.24.9178)
   # (a dry run on a folder not made yet: its path is not there to normalize)
+  # (a study answered before: its drafts put apart first, adopted as they are)
+  if (!isTRUE(dry_run)) .ai_ensure_area(dir)
   p <- suppressWarnings(do.call(tflspec::tfl_ai_prepare, a))
   if (isTRUE(dry_run)) p <- .ai_dry_with_parts(p, toc, a, shells)
   p
@@ -764,4 +769,18 @@
 # Answers (named by the questions' ids) written into ai/questions.md
 .ai_answer_questions <- function(path, answers) {
   tflspec::tfl_ai_answer_questions(path, answers)
+}
+
+# A study whose AI drafts are still written into spec/outputs (prepared
+# before the drafts had their own folder, or a study with reports of its
+# own): its drafts put apart, ai/spec/outputs (tflspec::tfl_ai_migrate();
+# the study's files kept, as adopted), before answers are checked or run.R
+# runs -- so neither writes over a report the person changed
+.ai_ensure_area <- function(path) {
+  if (is.null(path) || dir.exists(file.path(path, "ai", "spec", "outputs"))) return(invisible(FALSE))
+  if (!dir.exists(file.path(path, "ai"))) return(invisible(FALSE))
+  tryCatch(tflspec::tfl_ai_migrate(path), error = function(e) {
+    message("tflplanner: the AI's drafts not put apart: ", conditionMessage(e))
+  })
+  invisible(TRUE)
 }
