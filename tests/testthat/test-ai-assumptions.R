@@ -131,3 +131,18 @@ c
   expect_identical(.ai_asm_values(d, a), c("TRT01A", NA, "1: center: Table 14.1.1
 2: center: Demographics"))
 })
+
+test_that("the AI's value in spec/_assumptions.yml comes first", {
+  d <- asm_study()
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  # (the ids written first: tflspec rewrites the file without `value` when
+  # it gives them)
+  tflspec::tfl_ai_assumptions(d)
+  rows <- yaml::read_yaml(file.path(d, "spec", "_assumptions.yml"))
+  rows[[3]]$value <- "Table 14.3.1 / Summary of Adverse Events"
+  writeLines(yaml::as.yaml(rows), file.path(d, "spec", "_assumptions.yml"))
+  a <- .ai_asm_now(d)
+  expect_identical(a$value, c(NA, NA, "Table 14.3.1 / Summary of Adverse Events"))
+  # (kept when the ids are written into the file)
+  expect_identical(.ai_asm_now(d)$value[3], "Table 14.3.1 / Summary of Adverse Events")
+})

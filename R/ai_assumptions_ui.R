@@ -25,6 +25,9 @@
   own <- function(ids, col) as.character(ans[[col]][match(ids, ans$id)])
   a$own_verdict <- own(a$id, "verdict")
   a$own_correct <- own(a$id, "correct")
+  # (the AI's `value`, kept in the file by id, when tfl_ai_assumptions()
+  # does not return it)
+  if (!"value" %in% names(a)) a$value <- .ai_asm_file_values(p, a$id)
   a$value <- .ai_asm_values(p, a)
   k <- unique(a$kind)
   kinds <- data.frame(kind = k, verdict = own(k, "verdict"), correct = own(k, "correct"),
@@ -66,6 +69,17 @@
     if (is.null(x)) "" else .ai_asm_value_text(x)
   }, "")
   ifelse(nzchar(out), out, NA_character_)
+}
+
+# The `value` of each id in spec/_assumptions.yml, as text ("" when none)
+.ai_asm_file_values <- function(p, ids) {
+  y <- tryCatch(yaml::read_yaml(file.path(p, "spec", "_assumptions.yml")), error = function(e) NULL)
+  if (!is.list(y)) return(rep("", length(ids)))
+  have <- vapply(y, function(r) if (is.list(r) && !is.null(r$id)) as.character(r$id)[1] else "", "")
+  vals <- vapply(y, function(r) if (is.list(r) && !is.null(r$value)) .ai_asm_value_text(r$value) else "", "")
+  out <- vals[match(ids, have)]
+  out[is.na(out)] <- ""
+  out
 }
 
 .ai_asm_follow <- function(y, where, item) {
