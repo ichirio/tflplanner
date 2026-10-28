@@ -240,6 +240,9 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
     out$nav <- list(nav = "data", data_nav = s)
     out$grid <- paste0("hot_ard_", s)
     out$keycols <- keys[[s]]
+  } else if (identical(sheet, "assumptions")) {
+    # an AI assumption: the AI tab's step 4, its assumptions card
+    out$nav <- list(nav = "ai", `ai-step` = "list")
   } else if (identical(sheet, "analysis_data")) {
     out$go <- "ard"
     if (nzchar(key)) out$inputs <- list(ard_adata_pick = key)
