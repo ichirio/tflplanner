@@ -167,3 +167,6 @@
 "Besides the request and the files it names. At the limit the agent writes what it does not know as assumptions and questions, and goes on.","依頼と、依頼に名前のあるファイルのほか。上限に来たら、分からない点は仮定と質問にして、先へ進みます。"
 "View the answer","回答を見る"
 "The agent's files","エージェントのファイル"
+"ai/status.md, written %s","ai/status.md（%s に書かれた物）"
+"Check first. Every report the AI drafted, kept from the files, is in step 4.","先に検査してください。AI が下書きしたすべての帳票は、ファイルから読んで手順 4 に出ています。"
+"Checked %s","%s に検査"

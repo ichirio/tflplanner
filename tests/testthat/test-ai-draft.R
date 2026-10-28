@@ -761,6 +761,7 @@ test_that("agent mode in the app: the first message on step 2, the questions on 
     expect_match(output$`ai-agent_card`$html, "AGENTS.md", fixed = TRUE)
     expect_identical(ai$text("agent", "agent"), .ai_agent_prompt(path))
     expect_match(output$`ai-status_md`$html, "T-14-1-1: ok", fixed = TRUE)
+    expect_match(output$`ai-status_md`$html, "ai/status.md, written ", fixed = TRUE)
     expect_match(output$`ai-questions`$html, "Which visit is the baseline?", fixed = TRUE)
     # nothing typed: nothing written
     session$setInputs(`ai-qa_Q2` = "", `ai-qa_Q1` = "Yes", `ai-questions_write` = 1)
@@ -821,6 +822,7 @@ test_that("agent mode, step 3: a report not built shows why, its fix request to 
     expect_false("built" %in% names(co$reports))
     expect_identical(co$reports$status[co$reports$output_id == "T-14-1-1"], "ok")
     html <- output$`ai-result_all`$html
+    expect_match(html, "Checked ", fixed = TRUE)
     expect_match(html, "Could not be built: the ARD could not be made: x", fixed = TRUE)
     expect_false(grepl(why, html, fixed = TRUE))
     expect_match(html, "data-what=\"unbuilt\" data-id=\"demographics-1\"", fixed = TRUE)

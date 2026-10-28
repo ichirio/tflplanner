@@ -1191,11 +1191,20 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         return(shiny::p(class = "small text-muted", t("No ai/status.md yet: run.R writes it.")))
       }
       txt <- tryCatch(.ai_read_text(f), error = function(e) conditionMessage(e))
-      shiny::div(class = "small ai-status-md", shiny::markdown(txt))
+      shiny::div(class = "small ai-status-md",
+                 # (when run.R wrote it: beside the check's own time)
+                 shiny::div(class = "text-muted", sprintf(t("ai/status.md, written %s"),
+                                                          format(file.mtime(f), "%Y-%m-%d %H:%M"))),
+                 shiny::markdown(txt))
     })
     output$result_all <- shiny::renderUI({
       co <- collected()
-      if (is.null(co)) return(shiny::p(class = "small text-muted mt-2", t("Check first.")))
+      # (the check's table is this session's; the list of every report,
+      # read from the files, is step 4's)
+      if (is.null(co)) {
+        return(shiny::p(class = "small text-muted mt-2",
+                        t("Check first. Every report the AI drafted, kept from the files, is in step 4.")))
+      }
       r <- co$reports
       cls <- c(ok = "text-success", warning = "text-warning", error = "text-danger",
                `no answer` = "text-muted")
@@ -1225,6 +1234,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           if (file.exists(file.path(path(), "ai", "answers", paste0(q, ".md"))))
             shiny::HTML(act("answer", q, c(view = t("View the answer")))))
       }
+      shiny::tagList(
+      if (!is.null(co$time)) shiny::div(class = "small text-muted mt-2",
+                                        sprintf(t("Checked %s"), format(co$time, "%Y-%m-%d %H:%M"))),
       shiny::tags$table(
         class = "table table-sm small mt-2 ai-result-all",
         shiny::tags$thead(shiny::tags$tr(lapply(c(t("request"), "output_id", t("status"),
@@ -1244,7 +1256,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
               shiny::tags$button(
                 type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
                 `data-ns` = ns(""), `data-id` = r$output_id[i], t("Open in Make a report"))))
-        })))
+        }))))
     })
 
     # the questions (ai/questions.md): one a row, the open ones first, an
