@@ -77,3 +77,13 @@ test_that("run.R is not started beside an official run, nor with changes unsaved
     expect_false(file.exists(file.path(d, "ai", "run-from-app.log")))
   })
 })
+
+test_that("every request's reports are built by run.R, or by tfl_ai_run() in chat mode", {
+  d <- withr_tempdir()
+  expect_identical(.ai_run_args(d), c("-e", "invisible(tflspec::tfl_ai_run('.'))"))
+  writeLines("1", file.path(d, "run.R"))
+  expect_identical(.ai_run_args(d), "run.R")
+  env <- .ai_run_env()
+  expect_identical(env[[1]], "current")
+  expect_identical(unname(env["R_LIBS"]), paste(.libPaths(), collapse = .Platform$path.sep))
+})
