@@ -705,6 +705,10 @@
     txt <- tryCatch(.ai_read_text(f), error = function(e) NULL)
     if (!is.null(txt)) return(sub("\n+$", "", txt))
   }
+  # (none: tflspec's message for the requests not answered yet; failing
+  # that, the plain one)
+  txt <- tryCatch(as.character(tflspec::tfl_ai_agent_prompt(path)), error = function(e) NULL)
+  if (length(txt) && nzchar(txt[1L])) return(sub("\n+$", "", paste(txt, collapse = "\n")))
   at <- normalizePath(path, winslash = "/", mustWork = FALSE)
   paste0("Follow ", at, "/AGENTS.md. Do every request of ", at, "/ai/requests/index.md, ",
          "in its order: save each answer as ", at, "/ai/answers/<request>.md and run ",

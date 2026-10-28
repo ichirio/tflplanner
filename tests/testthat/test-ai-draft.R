@@ -1022,6 +1022,12 @@ test_that("the agent's first message: ai/agent_prompt.md when the study has it",
   expect_identical(.ai_agent_prompt(path), out$prepared$agent_prompt)
   writeLines("Follow the steps.", file.path(path, "ai", "agent_prompt.md"))
   expect_identical(.ai_agent_prompt(path), "Follow the steps.")
+  # none (a study prepared before it was written): tflspec's message, no
+  # absolute path
+  unlink(file.path(path, "ai", "agent_prompt.md"))
+  m <- .ai_agent_prompt(path)
+  expect_identical(m, sub("\n+$", "", paste(as.character(tflspec::tfl_ai_agent_prompt(path)), collapse = "\n")))
+  expect_false(grepl(normalizePath(path, "/"), m, fixed = TRUE))
 })
 
 test_that("step 1 in the app: a workbook added to the requests; asked again, written with overwrite", {
