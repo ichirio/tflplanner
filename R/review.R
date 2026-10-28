@@ -78,7 +78,7 @@ study_review <- function(study, output_id = NULL, data = c("cached", "read", "no
     if (any(drop)) r <- .review_finish(r[!drop, , drop = FALSE])
   }
   more <- list(.rule_d01(study), .rules_fig_ard(study), .rule_p02(study),
-               .rules_step_code(study$planner))
+               .rules_step_code(study$planner), .rule_i01(study))
   if (inherits(facts, "tfl_data_facts")) {
     more <- c(more, list(.rule_d02(study, attr(facts, "not_read")),
                          .rule_d03(facts)))
@@ -390,6 +390,28 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
 
 # D01: a catalog dataset whose file is not there -- once for the study, and
 # under each report that reads it
+# I01: an AI assumption left unanswered (spec/_assumptions.yml with no
+# answer in ai/assumption_answers.csv): one row each, for its report.  Read
+# again only when either file changed (the review runs after each edit).
+.rule_i01 <- function(study) {
+  p <- study$path
+  if (is.null(p)) return(NULL)
+  f <- file.path(p, c(file.path("spec", "_assumptions.yml"), file.path("ai", "assumption_answers.csv")))
+  if (!file.exists(f[1L])) return(NULL)
+  key <- paste(f, file.mtime(f), collapse = "|")
+  if (!identical(.review_memo$i01_key, key)) {
+    a <- tryCatch(tflspec::tfl_ai_assumptions(p), error = function(e) NULL)
+    .review_memo$i01 <- if (is.null(a)) NULL else a[a$status %in% "open", c("id", "output_id"), drop = FALSE]
+    .review_memo$i01_key <- key
+  }
+  a <- .review_memo$i01
+  if (is.null(a) || !nrow(a)) return(NULL)
+  .review_bind(lapply(seq_len(nrow(a)), function(i) {
+    .rv_row("I01", if (is.na(a$output_id[i]) || !nzchar(a$output_id[i])) NA_character_ else a$output_id[i],
+            "assumptions", a$id[i], "", args = a$id[i])
+  }))
+}
+
 .rule_d01 <- function(study) {
   p <- study$planner
   d <- p$ard$datasets

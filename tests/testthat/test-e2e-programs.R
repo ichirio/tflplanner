@@ -6,17 +6,15 @@
 # the data; one report set's run; a report adopted from the AI's draft;
 # every template of tflspec.  A report that fails for a known reason of
 # tflspec's (its message below) is skipped, so the test runs it again once
-# tflspec is fixed; any other failure fails.  (Known, 10/29: tfl_tpl() written
-# without tflspec::; lab_abnormal / param_change's PARAMN; ancova's
-# endsWith(); .den_needs() taking a record-level grade from ADSL.)
+# tflspec is fixed; any other failure fails.
 #
 # Slow (several minutes): not on CRAN, not on CI.
 
-e2e_known <- c(
-  tfl_tpl = "could not find function .tfl_tpl.",
-  paramn = "PARAMN.{0,3} not found",
-  ancova = "non-character object",
-  den_needs = "AESEV.{0,3} doesn.t exist")
+# tflspec's known failures, by their message (none now: the four found on
+# 10/29 -- tfl_tpl() without tflspec::, PARAMN, ancova's endsWith(), a
+# record-level grade taken from ADSL -- were fixed in tflspec 45b466be and
+# eb4d6e05; a new one goes here while tflspec fixes it)
+e2e_known <- character()
 
 e2e_skip <- function() {
   skip_on_cran()
@@ -179,7 +177,11 @@ test_that("every template of tflspec makes its report in an official run", {
   s <- suppressMessages(open_study("TPL-ALL", home = home))
   dat <- st$data
   first <- function(x) as.character(unique(x[!is.na(x)]))[1L]
-  visit <- rev(as.character(unique(dat$adlb$AVISIT[!is.na(dat$adlb$AVISIT)])))[1L]
+  # (a visit with the most changes from baseline of the parameter: an
+  # ANCOVA needs subjects in each arm)
+  lb <- dat$adlb[dat$adlb$PARAMCD %in% first(dat$adlb$PARAMCD) & !is.na(dat$adlb$CHG) &
+                   !is.na(dat$adlb$AVISIT) & dat$adlb$AVISIT != "BASELINE", ]
+  visit <- names(sort(table(as.character(lb$AVISIT)), decreasing = TRUE))[1L]
   # what the dialog's fields would hold, as typed
   typed <- list(population = "SAF", hierarchy = c("AEBODSYS", "AEDECOD"), by = "TRT01A", visit = visit,
                 params = as.character(unique(dat$adlb$PARAMCD))[1:2], variable = "AGE",
