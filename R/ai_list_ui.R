@@ -553,9 +553,9 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
 
 # ---- the batches of the TOC (Topline, ...) of the reports adopted ----------
 # The one place the AI's TOC gives the report sets: spec/toc.yml, each
-# output's `batches` (a name or a list of them), or a top-level `batches`
-# map, name -> ids.  (tflspec writes neither yet: the reports adopted get
-# the sets once it does, and none before.)
+# output's `sets` (tflspec: a TOC_<batch> sheet or a column of marks) or
+# `batches` (a name or a list of them), or a top-level `batches` map,
+# name -> ids.
 
 # toc.yml's batches: a data frame batch, output_id (none: no row)
 .ai_toc_batches <- function(p) {
@@ -572,8 +572,8 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   }
   rows <- list()
   for (o in y$outputs %||% list()) {
-    if (!is.list(o) || is.null(o$id) || is.null(o$batches)) next
-    b <- names_of(o$batches)
+    if (!is.list(o) || is.null(o$id)) next
+    b <- names_of(c(o$sets, o$batches))
     if (length(b)) rows[[length(rows) + 1L]] <- data.frame(batch = b, output_id = as.character(o$id),
                                                            stringsAsFactors = FALSE)
   }

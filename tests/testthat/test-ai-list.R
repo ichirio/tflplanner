@@ -92,7 +92,7 @@ test_that("the reports adopted go into their TOC batches, as spec/toc.yml says t
   d <- withr_tempdir()
   dir.create(file.path(d, "spec"))
   expect_identical(nrow(.ai_toc_batches(d)), 0L)
-  writeLines(c("outputs:", "  - id: T-1", "    batches: Topline", "  - id: T-2",
+  writeLines(c("outputs:", "  - id: T-1", "    sets: [Topline]", "  - id: T-2",
                "    batches: [Topline, Safety]", "  - id: T-3",
                "batches:", "  DSUR: [T-3, T-1]"), file.path(d, "spec", "toc.yml"))
   b <- .ai_toc_batches(d)
