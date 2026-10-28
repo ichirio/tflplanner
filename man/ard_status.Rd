@@ -23,3 +23,14 @@ update failed).  Many people may work on one study: the study ARD is
 updated output by output (\code{\link[=update_study_ard]{update_study_ard()}}), and a table is made
 from whatever of it is there.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+s <- create_sample_study(run = FALSE)
+head(ard_status(s)[, c("output_id", "analyses", "state")], 3)  # not built yet
+}
+options(old)
+}

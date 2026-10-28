@@ -36,3 +36,15 @@ adds it to the study key \code{source}, so the ARD programs load it -- or
 into the company standards' \verb{ard_functions/}.  Edit it afterwards (in
 RStudio ...), then try it.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+s <- create_sample_study(run = FALSE)
+s <- new_ard_function(s, "ard_my_mean", type = "summary", test = FALSE)
+study_ard_functions(s)[, c("name", "file")]  # edit the file, then try it
+}
+options(old)
+}

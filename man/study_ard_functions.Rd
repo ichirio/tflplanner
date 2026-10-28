@@ -20,3 +20,14 @@ ARD definition's study key \code{source}) and in its \verb{programs/ard/function
 (loaded or not), read -- not run -- with
 \code{\link[tflspec:tfl_ard_function_info]{tflspec::tfl_ard_function_info()}}.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+s <- create_sample_study(run = FALSE)
+study_ard_functions(s)[, c("name", "file", "loaded")]
+}
+options(old)
+}

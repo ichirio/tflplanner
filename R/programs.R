@@ -26,6 +26,16 @@
 #' @param output_id A report id.
 #' @return A list: `type`, `program` (file name, with `.R`), `file` (the
 #'   RTF, joined to `output_path`).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' report_info(s$planner, "T-14-1-1")  # the program and the RTF of a report
+#' }
+#' options(old)
 #' @export
 report_info <- function(x, output_id) {
   r <- .resolve_row(x, "report", output_id)
@@ -210,6 +220,14 @@ report_info <- function(x, output_id) {
 #'
 #' @param name A template's name; `NULL` for all.
 #' @return A named character vector.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' names(code_templates())  # the templates the company standards have
+#' code_templates("table_data")
+#' options(old)
 #' @export
 code_templates <- function(name = NULL) {
   d <- company_standards()$code_templates
@@ -392,6 +410,17 @@ data_lines <- function(x, output_id, todo = TRUE) {
 #' @param output_id The report.
 #' @param date The date stamped in the banner.
 #' @return The program, one element per line.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' code <- program_code(s$planner, "T-14-1-1")  # one element a line
+#' head(code, 6)
+#' }
+#' options(old)
 #' @export
 program_code <- function(x, output_id, date = Sys.Date()) {
   # as the study's setup has it: its folders' variables, its packages
@@ -752,6 +781,16 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 #' @param x A `tflplanner`.
 #' @param date The date stamped in the banner.
 #' @return The program, one element per line.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' head(report_setup_code(s$planner), 6)
+#' }
+#' options(old)
 #' @export
 report_setup_code <- function(x, date = Sys.Date()) {
   .with_study_code(.report_setup_code(x, date))
@@ -849,6 +888,16 @@ report_setup_code <- function(x, date = Sys.Date()) {
 #' @param x An `tflplanner`.
 #' @param date The date stamped in the banner.
 #' @return The program, one element per line.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' head(autoexec_code(s$planner), 6)
+#' }
+#' options(old)
 #' @export
 autoexec_code <- function(x, date = Sys.Date()) {
   lay <- study_layout()

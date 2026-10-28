@@ -22,3 +22,22 @@ Sets the report row's \code{ard_source}: \verb{import:<file>} (the file in the
 study's \verb{input/ard/}, see \code{\link[=ard_imports]{ard_imports()}}) or blank (the report's own
 ARD definition).  The report's program then reads that file.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes and runs the ARD program)
+s <- create_sample_study(run = FALSE)
+s <- save_study(s)  # the report's ARD program is written
+r <- run_ard(s, "T-14-1-2")  # the report's ARD, made in its own R process
+f <- tempfile(fileext = ".rds")
+saveRDS(r$ard, f)  # (here the same ARD stands for one made elsewhere)
+imp <- import_ard(s, f, output_id = "T-14-1-2", source = "CRO")
+s$planner <- use_imported_ard(s$planner, "T-14-1-2", imp$file)
+s$planner$sheets$report$ard_source[s$planner$sheets$report$output_id == "T-14-1-2"]
+s$planner <- use_imported_ard(s$planner, "T-14-1-2")  # back to its own ARD
+}
+options(old)
+}
