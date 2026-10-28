@@ -180,77 +180,7 @@ test_that("a grade's levels, mildest first", {
   expect_identical(.grade_levels(c("y", "x")), c("x", "y"))
 })
 
-test_that("a shift table: each subject's worst after baseline, by group and baseline, a page a parameter", {
-  skip_on_cran()
-  # tflspec's sample study (tflspec is imported: no skip)
-  lb <- as.data.frame(tflspec::adlb)
-  adlb <- lb[lb$PARAMCD %in% c("ALT", "AST"), ]
-  adsl <- as.data.frame(tflspec::adsl)
-  p <- first_shift_table(new_planner(), "T-LB", "data/adam/adlb.rds", adlb,
-                         "data/adam/adsl.rds", adsl, population = "SAFFL", group = "TRT01A",
-                         params = c("ALT", "AST"), where = "ONTRTFL == \"Y\"", total = "Total")
-  ad <- ard_rows(p, "analysis_data", "T-LB")
-  expect_identical(ad$data_id, c("adsl_saf", "adlb_saf", "adlb_saf_worst", "adlb_saf_worst_all"))
-  expect_identical(ad$where[2L], "PARAMCD %in% c(\"ALT\", \"AST\") & ONTRTFL == \"Y\"")
-  # the worst: the last of NORMAL, LOW, HIGH a subject has, a parameter
-  expect_match(ad$code[3L], "match(ANRIND, c(\"NORMAL\", \"LOW\", \"HIGH\"))", fixed = TRUE)
-  expect_match(ad$code[3L], "by = c(USUBJID, PARAMCD)", fixed = TRUE)
-  # the total: the same records again, every baseline "Total"; one analysis
-  expect_match(ad$code[4L], "BNRIND = \"Total\"", fixed = TRUE)
-  an <- ard_rows(p, "analyses", "T-LB")
-  expect_identical(an$analysis_id, "SHIFT")
-  expect_identical(an$by, "PARAMCD | TRT01A | BNRIND")
-  expect_identical(an$variables, "ANRIND")
-  expect_identical(an$data, "adlb_saf_worst_all")
-  cl <- sheet_rows(p, "codelists", "T-LB")
-  expect_identical(cl$value[cl$variable == "BNRIND"], c("LOW", "NORMAL", "HIGH", "Total"))
-  expect_identical(cl$value[cl$variable == "ANRIND"], c("LOW", "NORMAL", "HIGH"))
-  tb <- sheet_rows(p, "tables", "T-LB")
-  expect_identical(tb$cols, "TRT01A | BNRIND")
-  expect_identical(tb$rows, "PARAMCD = PARAMCD")
-  ly <- sheet_rows(p, "layout", "T-LB")
-  expect_identical(c(ly$group_page, ly$group_keep, ly$stub_before), c("TRUE", "TRUE", "FALSE"))
-  # without a total: one analysis of the worst records
-  q <- first_shift_table(new_planner(), "T-LB", "data/adam/adlb.rds", adlb,
-                         "data/adam/adsl.rds", adsl, population = "SAFFL", group = "TRT01A",
-                         params = "ALT", worst = c("0", "1", "2", "3", "4"))
-  expect_identical(ard_rows(q, "analyses", "T-LB")$data, "adlb_saf_worst")
-  expect_error(first_shift_table(new_planner(), "T-LB", "data/adam/adlb.rds", adlb,
-                                 "data/adam/adsl.rds", adsl, population = "SAFFL",
-                                 group = "TRT01A", params = character()), "Choose the parameters")
-})
-
-test_that("the form: Shift asks the parameters, the categories and the worst order, and starts the table", {
-  skip_on_cran()
-  local_home()
-  # (hidden in the list until the unified builder; the option shows it)
-  withr::local_options(tflplanner.shift_template = TRUE)
-  s <- suppressMessages(create_sample_study(run = FALSE))
-  lb <- as.data.frame(tflspec::adlb)
-  saveRDS(lb[lb$PARAMCD %in% c("ALT", "AST"), ],
-          file.path(s$path, "data/adam/adlb.rds"))
-  shiny::testServer(server_for(s$meta$study_id), {
-    rv <- session$userData$rv
-    session$setInputs(add = 1)
-    session$setInputs(modal_type = "table", modal_first = TRUE, mf_kind = "shift")
-    expect_match(output$mf_data_ui$html, "selected>data/adam/adlb", fixed = TRUE)
-    session$setInputs(mf_data = "data/adam/adlb.rds")
-    h <- output$mf_cols$html
-    expect_match(h, "mf_params", fixed = TRUE)
-    expect_match(h, "ONTRTFL == &quot;Y&quot;", fixed = TRUE)
-    session$setInputs(mf_post = "ANRIND")
-    expect_match(output$mf_worst_ui$html, "NORMAL | LOW | HIGH", fixed = TRUE)
-    session$setInputs(modal_id = "T-LB", modal_desc = "ALT / AST shift", mf_pop = "SAFFL",
-                      mf_group = "TRT01A", mf_params = c("ALT", "AST"), mf_base = "BNRIND",
-                      mf_where = "ONTRTFL == \"Y\"", mf_worst = "NORMAL | LOW | HIGH",
-                      mf_total = TRUE, add_ok = 1)
-    an <- ard_rows(rv$p, "analyses", "T-LB")
-    expect_identical(an$by, "PARAMCD | TRT01A | BNRIND")
-    expect_identical(sheet_rows(rv$p, "tables", "T-LB")$cols, "TRT01A | BNRIND")
-  })
-})
-
-test_that("the template list has no shift table unless the option says so", {
+test_that("the kinds of table started from the data: no shift table (Add from a template has it)", {
   skip_on_cran()
   local_home()
   s <- suppressMessages(create_sample_study(run = FALSE))

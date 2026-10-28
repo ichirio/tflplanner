@@ -993,15 +993,9 @@
       return(shiny::div(class = "alert alert-warning py-1 small",
         t("No data files yet: put them on the Data tab (data/adam), then add the table.")))
     }
-    # the templates, one a line (more to come: AE overview, subgroups).  The
-    # shift table is hidden until the unified builder has its data stage
-    # (a dataset of the catalog, the parameters from the data, BNRIND /
-    # ANRIND checked): options(tflplanner.shift_template = TRUE) shows it
+    # the kinds, one a line (a shift table and more: Add from a template)
     kinds <- c(summary = t("Summary table (demographics ...)"),
                hierarchy = t("Hierarchical table (SOC / PT, ATC / drug ...)"))
-    if (isTRUE(getOption("tflplanner.shift_template", FALSE))) {
-      kinds <- c(kinds, shift = t("Shift table (baseline x worst after)"))
-    }
     shiny::tagList(
       shiny::radioButtons("mf_kind", NULL, stats::setNames(names(kinds), unname(kinds))),
       shiny::uiOutput("mf_data_ui"),
@@ -1011,13 +1005,12 @@
     f <- first_files()
     shiny::selectInput("mf_data", t("Data"), f,
                        selected = c(grep(switch(input$mf_kind %||% "summary",
-                                                hierarchy = "adae", shift = "adlb", "adsl"),
+                                                hierarchy = "adae", "adsl"),
                                          f, value = TRUE), f)[1L],
                        width = "100%")
   })
   output$mf_cols <- shiny::renderUI({
     if (identical(input$mf_kind, "hierarchy")) return(mf_hier_ui())
-    if (identical(input$mf_kind, "shift")) return(mf_shift_ui())
     d <- first_data()
     shiny::req(d)
     cols <- as.list(d)

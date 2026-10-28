@@ -2,89 +2,9 @@
 # app_server()'s environment (.srv_part()); what it makes is copied back
 # there for the parts after it (.srv_keep()).
 .srv_first_table <- function() {
-  # a shift table: the analysis set (of ADSL), the group, the parameters
-  # (a page each), the baseline and the post-baseline category, which
-  # records count, the worst order, a Total column
-  mf_shift_ui <- function() {
-    d <- first_data()
-    shiny::req(d)
-    sl <- first_subjects_file()
-    if (is.na(sl)) {
-      return(shiny::div(class = "alert alert-warning py-1 small",
-        t("A shift table counts the subjects of an analysis set: put the subject-level data (adsl) on the Data tab.")))
-    }
-    if (!"PARAMCD" %in% names(d)) {
-      return(shiny::div(class = "alert alert-warning py-1 small",
-        t("A shift table reads a data with parameters (PARAMCD): choose one (adlb).")))
-    }
-    a <- first_subjects()
-    shiny::req(a)
-    cols <- as.list(d)
-    fl <- grep("FL$", names(a), value = TRUE)
-    grp <- intersect(.group_choices(cols), names(a))
-    ch <- names(cols)[vapply(cols, function(v) is.character(v) || is.factor(v), NA)]
-    first_of <- function(usual) c(intersect(usual, ch), setdiff(ch, usual))
-    pc <- sort(unique(as.character(d$PARAMCD[!is.na(d$PARAMCD)])))
-    shiny::tagList(
-      shiny::selectInput("mf_pop", t("Population (its flag = \"Y\")"),
-                         .labelled(fl, as.list(a)),
-                         selected = c(intersect(c("SAFFL", "ITTFL", "FASFL"), fl), fl)[1L],
-                         width = "100%"),
-      shiny::selectInput("mf_group", t("Group (the columns)"), grp,
-                         selected = c(intersect(c("TRT01A", "TRTA", "TRT01P", "ARM"), grp), grp)[1L],
-                         width = "100%"),
-      shiny::selectizeInput("mf_params", t("Parameters (a page each)"), pc,
-                            selected = pc[seq_len(min(2L, length(pc)))], multiple = TRUE,
-                            width = "100%", options = list(plugins = list("remove_button", "drag_drop"))),
-      shiny::div(
-        class = "d-flex gap-2",
-        shiny::selectInput("mf_base", t("Baseline category"), first_of(c("BNRIND", "BTOXGR")),
-                           width = "50%"),
-        shiny::selectInput("mf_post", t("Category after baseline"), first_of(c("ANRIND", "ATOXGR")),
-                           width = "50%")),
-      shiny::textInput("mf_where", t("Records counted (R; blank: all)"),
-                       value = if ("ONTRTFL" %in% names(cols)) "ONTRTFL == \"Y\"" else "",
-                       width = "100%"),
-      shiny::uiOutput("mf_worst_ui"),
-      shiny::checkboxInput("mf_total", t("Total column"), TRUE),
-      shiny::p(class = "small text-muted",
-               t("Each subject once a parameter, at the worst category after baseline; percents of each column's subjects.")))
-  }
-  # the worst order: the post-baseline categories from best to worst
-  output$mf_worst_ui <- shiny::renderUI({
-    d <- first_data()
-    shiny::req(d, input$mf_post %in% names(d))
-    v <- as.character(d[[input$mf_post]])
-    shown <- .shift_levels(v)
-    w <- if (all(c("LOW", "NORMAL", "HIGH") %in% toupper(shown))) {
-      c(shown[toupper(shown) == "NORMAL"], setdiff(shown, shown[toupper(shown) == "NORMAL"]))
-    } else shown
-    shiny::textInput("mf_worst", with_tip(t("Worst: from best to worst"),
-                                          t("A subject's record of a parameter after baseline is the last of these it has; | between them.")),
-                     value = paste(w, collapse = " | "), width = "100%")
-  })
   start_first_table <- function(id, desc) {
     d <- first_data()
     if (is.null(d)) return(notify(t("Choose the data"), "warning"))
-    if (identical(input$mf_kind, "shift")) {
-      a <- first_subjects()
-      if (is.null(a)) return(notify(t("Choose the data"), "warning"))
-      worst <- trimws(strsplit(input$mf_worst %||% "", "|", fixed = TRUE)[[1L]])
-      p2 <- guarded(first_shift_table(
-        rv$p, id, input$mf_data, d, first_subjects_file(), a,
-        population = input$mf_pop, group = input$mf_group, params = input$mf_params,
-        baseline = input$mf_base, post = input$mf_post,
-        worst = if (length(worst[nzchar(worst)])) worst[nzchar(worst)],
-        where = input$mf_where %||% NA_character_,
-        total = if (isTRUE(input$mf_total)) "Total" else NA_character_,
-        description = desc))
-      if (is.null(p2)) return()
-      after_id_change(p2, id)
-      go("tables")
-      bslib::nav_select("table_right", "result")
-      do_preview(id)
-      return()
-    }
     if (identical(input$mf_kind, "hierarchy")) {
       a <- first_subjects()
       if (is.null(a)) return(notify(t("Choose the data"), "warning"))

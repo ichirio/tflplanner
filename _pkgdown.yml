@@ -144,7 +144,6 @@ reference:
     contents:
       - first_table
       - first_hierarchy_table
-      - first_shift_table
       - first_listing
       - catalog_add_files
       - catalog_name_clashes

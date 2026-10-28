@@ -12,7 +12,6 @@
 "By severity / grade (columns)","重症度・Grade 別（列）"
 "Summary table (demographics ...)","要約表（人口統計など）"
 "Hierarchical table (SOC / PT, ATC / drug ...)","階層表（SOC / PT、ATC / 薬剤 など）"
-"Shift table (baseline x worst after)","シフト表（ベースライン × ベースライン後の最悪）"
 "Each subject counted once, at the worst: the grade's levels in order (a code list); each level's row, the worst within that level.","被験者は最悪の重症度・Grade で 1 回だけ数えます（並び順はコードリスト）。各階層の行は、その階層の中での最悪です。"
 "Numbers get summary statistics; the others, counts and percents.","数値は要約統計量、それ以外は度数と割合になります。"
 "Subjects counted once at each level, percents of the population's subjects in %s; most frequent first.","各階層で被験者を 1 回ずつ数え、割合は %s の集団の被験者数に対してです。多い順に並びます。"
