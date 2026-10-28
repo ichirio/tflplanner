@@ -19,6 +19,7 @@ changed_files <- function(a, b) {
 }
 
 test_that("an opened study holds its spec, in step with the sheets' view", {
+  skip_on_cran()
   s <- model_sample()
   home <- getOption("tflplanner.home")
   s <- suppressMessages(open_study("SAMPLE-01", home = home))
@@ -39,6 +40,7 @@ test_that("an opened study holds its spec, in step with the sheets' view", {
 })
 
 test_that("opened and saved with no change, no spec file is written", {
+  skip_on_cran()
   s <- model_sample()
   home <- getOption("tflplanner.home")
   m0 <- spec_md5(s$path)
@@ -50,6 +52,7 @@ test_that("opened and saved with no change, no spec file is written", {
 })
 
 test_that("an edit of one report's sheet rows writes that report's file only", {
+  skip_on_cran()
   s <- model_sample()
   home <- getOption("tflplanner.home")
   m0 <- spec_md5(s$path)
@@ -70,6 +73,7 @@ test_that("an edit of one report's sheet rows writes that report's file only", {
 })
 
 test_that("what the sheets cannot hold stays in a report the edits do not touch", {
+  skip_on_cran()
   s <- model_sample()
   home <- getOption("tflplanner.home")
   # a page key with no sheet, written straight into one report's spec

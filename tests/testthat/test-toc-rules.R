@@ -65,6 +65,7 @@ test_that("the built-in rules: two sets, the defaults filled", {
 })
 
 test_that("a standards workbook written before the rule sets reads as one set, standard (backwards compatible)", {
+  skip_on_cran()
   home <- tempfile()
   dir.create(file.path(home, "standards"), recursive = TRUE)
   b <- .builtin_standards()
@@ -394,6 +395,7 @@ test_that("a csv TOC is one sheet; heading rows are sections, rows with no title
 })
 
 test_that("taken in by the rules: the reports, the Topline batch, the record, the profile, shells.csv", {
+  skip_on_cran()
   local_home()
   st <- create_study("TR", planner = new_planner())
   f <- two_phase_book()

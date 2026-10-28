@@ -167,7 +167,7 @@ catalog_name_clashes <- function(x, files) {
 #'                   variables = c("AGE", "SEX"))
 #' # the analyses it wrote: one of the numbers (AGE), one of the counts (SEX)
 #' ard_rows(x, "analyses", "T-1")[, c("analysis_id", "method", "variables")]
-#' @export
+#' @noRd
 first_table <- function(x, output_id, path, data, population, group,
                         variables, description = NA_character_, stack = TRUE) {
   id <- output_id
@@ -383,7 +383,7 @@ first_table <- function(x, output_id, path, data, population, group,
 #'                            "data/adam/adsl.rds", adsl, population = "SAFFL",
 #'                            group = "TRT01A", hierarchy = c("AEBODSYS", "AEDECOD"))
 #' ard_rows(x, "analyses", "T-AE")[, c("analysis_id", "method")]
-#' @export
+#' @noRd
 first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subjects,
                                   population, group,
                                   hierarchy = c("AEBODSYS", "AEDECOD"),
@@ -568,12 +568,17 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
 #' @param group The group column (`TRT01A`).
 #' @return The `tflplanner`.
 #' @examples
-#' adsl <- data.frame(USUBJID = 1:4, SAFFL = "Y", TRT01A = c("A", "A", "B", "B"),
-#'                    AGE = c(34, 51, 47, 62), SEX = c("F", "M", "F", "M"))
-#' x <- first_table(new_planner(), "T-1", "data/adam/adsl.rds", adsl, "SAFFL",
-#'                   "TRT01A", "AGE", stack = FALSE)
-#' x <- add_group_n(x, "T-1", "TRT01A")  # the subjects per group, for (N=n)
-#' ard_rows(x, "analyses", "T-1")$analysis_id
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_sample_study(run = FALSE)
+#' x <- add_group_n(s$planner, "T-14-1-1", "TRT01A")  # the subjects per group, for (N=n)
+#' ard_rows(x, "analyses", "T-14-1-1")$analysis_id
+#' }
+#' options(old)
 #' @export
 add_group_n <- function(x, output_id, group) {
   a <- ard_rows(x, "analyses", output_id)
@@ -612,13 +617,18 @@ add_group_n <- function(x, output_id, group) {
 #' @param position Where it goes among the column variable's values.
 #' @return The `tflplanner`.
 #' @examples
-#' adsl <- data.frame(USUBJID = 1:4, SAFFL = "Y", TRT01A = c("A", "A", "B", "B"),
-#'                    AGE = c(34, 51, 47, 62), SEX = c("F", "M", "F", "M"))
-#' x <- first_table(new_planner(), "T-1", "data/adam/adsl.rds", adsl, "SAFFL",
-#'                   "TRT01A", "AGE")
-#' x <- set_total_column(x, "T-1", "All subjects")  # switch it on
-#' x$sheets$tables[, c("output_id", "total", "total_position")]
-#' x <- set_total_column(x, "T-1", NULL)  # and off again
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_sample_study(run = FALSE)
+#' x <- set_total_column(s$planner, "T-14-1-1", "All subjects")  # switch it on
+#' x$sheets$tables[x$sheets$tables$output_id == "T-14-1-1", c("output_id", "total", "total_position")]
+#' x <- set_total_column(x, "T-14-1-1", NULL)  # and off again
+#' }
+#' options(old)
 #' @export
 set_total_column <- function(x, output_id, label = "Total",
                              position = c("last", "first")) {

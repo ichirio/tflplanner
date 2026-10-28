@@ -114,36 +114,6 @@ test_that("what the starter cannot do, it says", {
                                      group = "TRT01A"), "has analyses already")
 })
 
-test_that("the form: Hierarchy is chosen (never switched by the data) and starts the table", {
-  skip_on_cran()
-  local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
-  shiny::testServer(server_for(s$meta$study_id), {
-    rv <- session$userData$rv
-    session$setInputs(add = 1)
-    # a summary by default, its data ADSL
-    session$setInputs(modal_type = "table", modal_first = TRUE)
-    expect_match(output$modal_first_ui$html, "Hierarchical table (SOC / PT, ATC / drug ...)", fixed = TRUE)
-    expect_match(output$mf_data_ui$html, "selected>data/adam/adsl", fixed = TRUE)
-    session$setInputs(mf_kind = "hierarchy")
-    expect_match(output$mf_data_ui$html, "selected>data/adam/adae", fixed = TRUE)
-    session$setInputs(mf_data = "data/adam/adae.rds")
-    h <- output$mf_cols$html
-    expect_match(h, "mf_hier", fixed = TRUE)
-    # the terms outermost first (the choices' order is the selected order)
-    expect_lt(regexpr("option value=\"AEBODSYS\" selected", h, fixed = TRUE),
-              regexpr("option value=\"AEDECOD\" selected", h, fixed = TRUE))
-    expect_match(h, "TRTEMFL == &quot;Y&quot;", fixed = TRUE)
-    session$setInputs(modal_id = "T-AE", modal_desc = "TEAEs", mf_pop = "SAFFL",
-                      mf_group = "TRT01A", mf_hier = c("AEBODSYS", "AEDECOD"),
-                      mf_where = "TRTEMFL == \"Y\"", mf_total = FALSE, add_ok = 1)
-    an <- ard_rows(rv$p, "analyses", "T-AE")
-    expect_identical(an$method, "hierarchical")
-    expect_identical(an$variables, "AEBODSYS | AEDECOD")
-    expect_identical(sheet_rows(rv$p, "layout", "T-AE")$pages_split, "group_force")
-  })
-})
-
 test_that("by severity too: each subject at the worst, the grade in the columns under each group", {
   skip_on_cran()
   local_home()
@@ -178,17 +148,4 @@ test_that("a grade's levels, mildest first", {
   expect_identical(.grade_levels(c("3", "1", "2")), c("1", "2", "3"))
   expect_identical(.grade_levels(factor(c("b", "a"), c("b", "a"))), c("b", "a"))
   expect_identical(.grade_levels(c("y", "x")), c("x", "y"))
-})
-
-test_that("the kinds of table started from the data: no shift table (Add from a template has it)", {
-  skip_on_cran()
-  local_home()
-  s <- suppressMessages(create_sample_study(run = FALSE))
-  shiny::testServer(server_for(s$meta$study_id), {
-    session$setInputs(add = 1)
-    session$setInputs(modal_type = "table", modal_first = TRUE)
-    h <- output$modal_first_ui$html
-    expect_match(h, "value=\"hierarchy\"", fixed = TRUE)
-    expect_false(grepl("value=\"shift\"", h, fixed = TRUE))
-  })
 })

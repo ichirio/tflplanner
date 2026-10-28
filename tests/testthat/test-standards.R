@@ -115,6 +115,7 @@ test_that("a table without data code starts from the company's template", {
 })
 
 test_that("the figure style is part of the company standards", {
+  skip_on_cran()
   home_for_test()
   s <- company_standards()
   for (sh in c("figure_settings", "figure_colors", "figure_markers")) {

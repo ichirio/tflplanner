@@ -264,6 +264,7 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
 })
 
 test_that("the layout cards' forms: their fields, the study's defaults marked, edits written back", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-1"
   items <- builder_items(p, id)

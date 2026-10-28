@@ -625,7 +625,8 @@
       # only), or the code SPEC as before (R/template_report.R)
       if (type) shiny::radioButtons(
         "modal_how", t("How to make it"),
-        stats::setNames(c("template", "code"), c(t("Template"), t("Code"))),
+        stats::setNames(c("template", "code"),
+                        c(t("Template (converted to code when needed)"), t("Code (from empty)"))),
         selected = "template", inline = TRUE),
       if (type) shiny::conditionalPanel("input.modal_how == 'template'", tpl_modal_ui()),
       if (type) shiny::uiOutput("modal_ok_js"),
@@ -655,15 +656,6 @@
           value = TRUE, width = "100%"),
         shiny::conditionalPanel("input.modal_first_l",
                                 shiny::uiOutput("modal_first_l_ui"))),
-      if (type) shiny::conditionalPanel(
-        "input.modal_type == 'table' && input.modal_how != 'template'",
-        shiny::checkboxInput(
-          "modal_first",
-          with_tip(t("Apply a template"),
-                   t("A kind of table: a few questions about the data, then its ARD definition and its table are written -- all of it editable afterwards.")),
-          value = !nrow(rv$p$ard$analyses), width = "100%"),
-        shiny::conditionalPanel("input.modal_first",
-                                shiny::uiOutput("modal_first_ui"))),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn(button, "OK", class = "btn-primary")),
       easyClose = TRUE))

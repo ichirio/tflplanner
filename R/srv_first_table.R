@@ -2,40 +2,6 @@
 # app_server()'s environment (.srv_part()); what it makes is copied back
 # there for the parts after it (.srv_keep()).
 .srv_first_table <- function() {
-  start_first_table <- function(id, desc) {
-    d <- first_data()
-    if (is.null(d)) return(notify(t("Choose the data"), "warning"))
-    if (identical(input$mf_kind, "hierarchy")) {
-      a <- first_subjects()
-      if (is.null(a)) return(notify(t("Choose the data"), "warning"))
-      p2 <- guarded(first_hierarchy_table(
-        rv$p, id, input$mf_data, d, first_subjects_file(), a,
-        population = input$mf_pop, group = input$mf_group,
-        hierarchy = input$mf_hier, where = input$mf_where %||% NA_character_,
-        grade = input$mf_grade %||% NA_character_,
-        total = if (isTRUE(input$mf_total) && !nzchar(input$mf_grade %||% "")) "Total" else
-          NA_character_,
-        description = desc))
-      if (is.null(p2)) return()
-      after_id_change(p2, id)
-      go("tables")
-      bslib::nav_select("table_right", "result")
-      do_preview(id)
-      return()
-    }
-    p2 <- guarded(first_table(rv$p, id, input$mf_data, d,
-                              population = input$mf_pop,
-                              group = input$mf_group,
-                              variables = input$mf_vars,
-                              description = desc,
-                              stack = !isFALSE(input$mf_stack)))
-    if (is.null(p2)) return()
-    attr(p2, "group_missing") <- NULL
-    after_id_change(p2, id)
-    go("tables")
-    bslib::nav_select("table_right", "result")
-    do_preview(id)
-  }
   shiny::observeEvent(input$copy, {
     if (need_current()) ask_id(sprintf(t("Copy %s"), current()), "copy_ok",
                                paste0(current(), "_2"))

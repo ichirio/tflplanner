@@ -174,6 +174,7 @@ test_that("a variable's rows under a level of another: read, written, unchanged 
 })
 
 test_that("the sample's T-14-1-5 nests the Asian sub-categories; T-14-1-6 has two blocks", {
+  skip_on_cran()
   home <- withr_tempdir()
   withr::local_options(tflplanner.home = home)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))

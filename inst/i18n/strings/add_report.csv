@@ -61,3 +61,5 @@
 "Analysis set: the report's own join (%s: %s).","解析対象集団: 帳票の join（%s: %s）。"
 "The report's own join","帳票の join"
 "an R condition on the records, e.g. AVAL > 0","レコードに対する R の条件（例: AVAL > 0）"
+"Template (converted to code when needed)","テンプレート（必要ならコードに変換）"
+"Code (from empty)","コード（空から）"

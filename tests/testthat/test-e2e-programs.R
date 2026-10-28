@@ -2,8 +2,9 @@
 # study saved (save_study()), its programs run in a child R (run_batch())
 # that attaches only what programs/study_setup.R attaches and finds the
 # packages through R_LIBS -- every kind of report the app makes: the
-# sample's tables, figures and listing; tables and a listing started from
-# the data; one report set's run; a report adopted from the AI's draft;
+# sample's tables, figures and listing; tables from templates converted to
+# code and a listing started from the data; one report set's run; a report
+# adopted from the AI's draft;
 # every template of tflspec.  A report that fails for a known reason of
 # tflspec's (its message below) is skipped, so the test runs it again once
 # tflspec is fixed; any other failure fails.
@@ -103,48 +104,46 @@ test_that("the sample study's official run makes every report", {
   e2e_expect_ok(res)
 })
 
-test_that("tables and a listing started from the data run; a report set's run makes its own", {
+# a report from a template, converted to code as the template card's
+# button does it (tflspec::tfl_template_to_spec())
+e2e_tpl_code <- function(p, id, name, args, kind = "table") {
+  o <- tflspec::tfl_output(id, kind, label = name, population = args$population %||% NA_character_,
+                           template = list(name = name, args = args))
+  b <- tflspec::tfl_template_to_spec(o, .code_spec(p)$study)
+  expect_null(b$template)
+  .spec_add_output(p, b, label = name, population = args$population %||% NA_character_)
+}
+
+test_that("tables from templates converted to code and a listing started from the data run; a report set's run makes its own", {
   e2e_skip()
   home <- local_home()
   e2e_libs()
-  st <- e2e_study("FIRST-1", c("adsl", "adae"), home)
-  s <- suppressMessages(open_study("FIRST-1", home = home))
+  st <- e2e_study("CODE-1", c("adsl", "adae"), home)
+  s <- suppressMessages(open_study("CODE-1", home = home))
   p <- s$planner
-  p <- first_table(p, "F-DM", "adam/adsl.rds", st$data$adsl, population = "SAFFL", group = "TRT01A",
-                   variables = c("AGE", "SEX", "RACE"))
-  p <- first_hierarchy_table(p, "F-AE", "adam/adae.rds", st$data$adae, "adam/adsl.rds", st$data$adsl,
-                             population = "SAFFL", group = "TRT01A", where = "TRTEMFL == \"Y\"",
-                             total = "Total")
+  p <- e2e_tpl_code(p, "C-DM", "demog", list(population = "SAF"))
+  p <- e2e_tpl_code(p, "C-AE", "hierarchical", list(population = "SAF", hierarchy = c("AEBODSYS", "AEDECOD")))
+  p <- e2e_tpl_code(p, "C-AEGR", "ae_max_grade", list(population = "SAF"))
   p <- first_listing(p, "F-LAE", "adam/adae.rds", st$data$adae, columns = c("USUBJID", "AEDECOD", "AESEV"),
                      group = "TRT01A")
-  p <- .set_report_batches(p, "F-DM", "Topline")
+  p <- .set_report_batches(p, "C-DM", "Topline")
   s$planner <- p
   s <- suppressMessages(save_study(s, home = home, fill_widths = TRUE))
+  # (code reports: no template left in their files)
+  for (id in c("C-DM", "C-AE", "C-AEGR")) {
+    expect_null(tflspec::tfl_read_output(file.path(s$path, "spec", "outputs", paste0(id, ".yml")))$template)
+  }
   # the report set alone: its programs only
   before <- list_batches(s)$batch
   invisible(run_batch(s, c("ard", "tfl"), batch = "Topline", wait = TRUE))
   b <- setdiff(list_batches(s)$batch, before)
   expect_length(b, 1L)
   r <- utils::read.csv(file.path(s$path, "runs", b, "run.csv"), stringsAsFactors = FALSE)
-  expect_setequal(r$program, c("programs/ard/F-DM.R", "programs/tfl/F-DM.R"))
+  expect_setequal(r$program, c("programs/ard/C-DM.R", "programs/tfl/C-DM.R"))
   expect_true(all(r$status == "OK"))
   # every report
   invisible(run_batch(s, c("ard", "tfl"), wait = TRUE))
-  e2e_expect_ok(e2e_results(s, c("F-DM", "F-AE", "F-LAE")))
-})
-
-test_that("a hierarchy by worst grade started from the data runs", {
-  e2e_skip()
-  home <- local_home()
-  e2e_libs()
-  st <- e2e_study("FIRST-2", c("adsl", "adae"), home)
-  s <- suppressMessages(open_study("FIRST-2", home = home))
-  s$planner <- first_hierarchy_table(s$planner, "F-AEGR", "adam/adae.rds", st$data$adae, "adam/adsl.rds",
-                                     st$data$adsl, population = "SAFFL", group = "TRT01A",
-                                     where = "TRTEMFL == \"Y\"", grade = "AESEV")
-  s <- suppressMessages(save_study(s, home = home, fill_widths = TRUE))
-  invisible(run_batch(s, c("ard", "tfl"), wait = TRUE))
-  e2e_expect_ok(e2e_results(s, "F-AEGR"))
+  e2e_expect_ok(e2e_results(s, c("C-DM", "C-AE", "C-AEGR", "F-LAE")))
 })
 
 test_that("a report adopted from the AI's draft is in the run and runs", {

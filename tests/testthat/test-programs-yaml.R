@@ -9,6 +9,7 @@ yaml_sample <- function(env = parent.frame()) {
 }
 
 test_that("the programs from the spec's items are the sheets' programs", {
+  skip_on_cran()
   s <- yaml_sample()
   p <- s$planner
   expect_false(is.null(.code_spec(p)))
@@ -22,6 +23,7 @@ test_that("the programs from the spec's items are the sheets' programs", {
 })
 
 test_that("a table's program writes what only its file holds", {
+  skip_on_cran()
   s <- yaml_sample()
   id <- "T-14-1-1"
   o <- s$planner$spec$outputs[[id]]
@@ -36,6 +38,7 @@ test_that("a table's program writes what only its file holds", {
 })
 
 test_that("a report's analysis set is its token when its page says none", {
+  skip_on_cran()
   s <- yaml_sample()
   id <- "T-14-1-1"
   o <- s$planner$spec$outputs[[id]]
@@ -48,6 +51,7 @@ test_that("a report's analysis set is its token when its page says none", {
 })
 
 test_that("a view with edits not yet in the spec is written from the sheets", {
+  skip_on_cran()
   s <- yaml_sample()
   id <- "T-14-1-1"
   p <- set_sheet_rows(s$planner, "footnotes", id,

@@ -78,6 +78,7 @@ test_that("the stack's keys, and the rows' text read and written", {
 })
 
 test_that("an Overall Response table: the stack's subgroups as the rows, no block of variables", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-1"
   tb <- own_tables(p, id)
@@ -290,6 +291,7 @@ test_that("the ARD's comparison records: the analyses with no column key, their 
 })
 
 test_that("plan_compare(): its columns chosen, each its template, written with its cells rows", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-1"
   cells0 <- sheet_rows(p, "cells", id)
@@ -410,6 +412,7 @@ test_that("plan_nest(): a variable under a level of another, on its own card", {
 })
 
 test_that("a nest taken away keeps the variable where it was shown (#428)", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-5"
   order_of <- function(q) as.character(unlist(.builder_args(builder_items(q, id), "plan_levels")$variable))
@@ -432,6 +435,7 @@ test_that("a nest taken away keeps the variable where it was shown (#428)", {
 })
 
 test_that("plan_paginate_group(), plan_paginate_cols(), plan_row_group(): a form line each", {
+  skip_on_cran()
   expect_identical(.plan_form_main$plan_paginate_group, c("col", "keep", "heading"))
   expect_identical(.plan_form_main$plan_paginate_cols,
                    c("every", "fit", "at", "keep", "cut_by", "order", "allow_span_break"))
@@ -627,6 +631,7 @@ test_that("the third bundle's words have their Japanese", {
 })
 
 test_that("every form card shows all its function's arguments: those written above, the rest below (#417)", {
+  skip_on_cran()
   p <- sample_planner()
   args_of <- function(h, part) {
     x <- regmatches(h, regexpr(part, h, perl = TRUE))

@@ -143,6 +143,7 @@ test_that("the definition is saved, reopened and run", {
 })
 
 test_that("the study's analyses are exported as CDISC ARS", {
+  skip_on_cran()
   local_home2()
   p <- ard_planner()
   p$ard$analyses$purpose <- "SECONDARY OUTCOME MEASURE"
@@ -182,6 +183,7 @@ test_that("the study's analyses are exported as CDISC ARS", {
 })
 
 test_that("the ARS is built once with its problems, each with its report", {
+  skip_on_cran()
   local_home2()
   p <- ard_planner()
   s <- create_study("A3", planner = p)

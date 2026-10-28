@@ -1,4 +1,5 @@
 test_that("a figure's design is kept, saved as YAML, and makes its plot", {
+  skip_on_cran()
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
@@ -61,6 +62,7 @@ test_that("a figure's design is kept, saved as YAML, and makes its plot", {
 })
 
 test_that("a design is drawn on the study's data, as its program saves it", {
+  skip_on_cran()
   skip_if_not_installed("ggplot2")
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
@@ -104,6 +106,7 @@ test_that("presets are kept with the company standards, and start a design", {
 })
 
 test_that("the preview carries the advice, and a fix applies", {
+  skip_on_cran()
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
@@ -119,6 +122,7 @@ test_that("the preview carries the advice, and a fix applies", {
 })
 
 test_that("a designed figure is copied to other parameters", {
+  skip_on_cran()
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
@@ -138,6 +142,7 @@ test_that("a designed figure is copied to other parameters", {
 })
 
 test_that("a preview for the screen is smaller, and says the saved size", {
+  skip_on_cran()
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)

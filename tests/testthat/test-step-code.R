@@ -146,6 +146,7 @@ test_that("the old user type and data code become steps of the report's own code
 })
 
 test_that("old workbooks that say type user are read, and saved as they now are", {
+  skip_on_cran()
   d <- withr_tempdir()
   p <- add_output(with_catalog(), "F-1", type = "figure")
   write_planner(p, d)
@@ -264,6 +265,7 @@ test_that("the rules are seven, said in full where the switch is", {
 })
 
 test_that("the sample's figures of their own code: F-14-2-2 reads T-14-2-2's ARD as `ard`", {
+  skip_on_cran()
   local_home()
   s <- suppressMessages(create_sample_study(run = FALSE))
   p <- s$planner
@@ -281,6 +283,7 @@ test_that("the sample's figures of their own code: F-14-2-2 reads T-14-2-2's ARD
 })
 
 test_that("report_content() is written once, in the study's fig_setup.R", {
+  skip_on_cran()
   local_home()
   s <- suppressMessages(create_sample_study(run = FALSE))
   setup <- readLines(file.path(s$path, "programs", "tfl", "fig_setup.R"))
@@ -293,6 +296,7 @@ test_that("report_content() is written once, in the study's fig_setup.R", {
 })
 
 test_that("a step's code editor and the whole app UI build (in English and Japanese)", {
+  skip_on_cran()
   # a start-up error (an argument shiny rejects, as an invalid CSS unit)
   # stops the app before anything is shown
   for (lang in c("en", "ja")) {

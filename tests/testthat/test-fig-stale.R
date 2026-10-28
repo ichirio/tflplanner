@@ -17,6 +17,7 @@ fig_state <- function(s, id = "F-14-2-3") {
 }
 
 test_that("a figure from an ARD records the definition it read; batch.R knows its need", {
+  skip_on_cran()
   s <- stale_study()
   p <- s$planner
   expect_identical(.fig_ard_need(p, "F-14-2-3"), "T-14-2-2")

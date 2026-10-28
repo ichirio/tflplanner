@@ -40,6 +40,7 @@ test_that("a condition reads as its three fields and is written back as !r", {
 })
 
 test_that("a variable's entry reads and builds back unchanged (T-14-2-2's prob, time)", {
+  skip_on_cran()
   s <- cells_sample()
   pc <- .builder_args(builder_items(s$planner, "T-14-2-2"), "plan_cells")
   e <- .cells_entry_parse(pc$prob)
@@ -92,6 +93,7 @@ test_that("a variable's entry reads and builds back unchanged (T-14-2-2's prob, 
 })
 
 test_that("a variable's own entry is written into plan_cells() only; the same writes nothing", {
+  skip_on_cran()
   s <- cells_sample()
   p <- s$planner
   id <- "T-14-2-2"
@@ -113,6 +115,7 @@ test_that("a variable's own entry is written into plan_cells() only; the same wr
 })
 
 test_that("changing the decimals rewrites a variable's own rows and conditions, dropping none", {
+  skip_on_cran()
   # (the decimals once took a variable's conditions away)
   x <- list(tflspec::tfl_r("is.na(sd) ~ \"{mean:.1f} (NE)\""), "{mean:.1f} ({sd:.2f})")
   y <- .cells_redigit(x, c(mean = 2L))
@@ -163,6 +166,7 @@ test_that("changing the decimals rewrites a variable's own rows and conditions, 
 })
 
 test_that("the company standard is copied into the study's, the chosen items only", {
+  skip_on_cran()
   s <- cells_sample()
   p <- s$planner
   co <- list(default = "{n:.0f} ({p:.1f%})",

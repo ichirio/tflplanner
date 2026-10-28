@@ -114,6 +114,7 @@ test_that("a template report: one card a line after its call -- the study standa
 })
 
 test_that("a study standard's card edited in a template report: the report's own, in its YAML", {
+  skip_on_cran()
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
   o <- tflspec::tfl_output("T-99", "table", population = "SAF",
                            template = list(name = "demog", args = list(population = "SAF")))
@@ -144,6 +145,7 @@ test_that("an argument tflspec filled from the study is the study standard's, wi
 })
 
 test_that("plan_digits in a template report: a variable's decimals the report's own, the rounding every report's", {
+  skip_on_cran()
   p <- .spec_rebase(.planner_from_yaml(system.file("sample", "SAMPLE-01", package = "tflplanner")), list())
   o <- tflspec::tfl_output("T-99", "table", population = "SAF",
                            template = list(name = "demog", args = list(population = "SAF")))
@@ -164,4 +166,30 @@ test_that("plan_digits in a template report: a variable's decimals the report's 
   # the field says so
   h <- as.character(.rounding_field("c", "r"))
   expect_match(h, "Applies to every report", fixed = TRUE)
+})
+
+test_that("a template report converted to code: its items on the usual cards, its program without the template", {
+  skip_on_cran()
+  home <- local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  o <- tflspec::tfl_output("T-TPL", "table", label = "Demographics", population = "SAF",
+                           template = list(name = "demog", args = list(population = "SAF")))
+  s$planner <- .spec_add_output(s$planner, o, label = "Demographics", population = "SAF")
+  expect_false(is.null(.tpl_of(s$planner, "T-TPL")))
+  p <- .tpl_to_code(s$planner, "T-TPL")
+  expect_null(.tpl_of(p, "T-TPL"))
+  b <- p$spec$outputs[["T-TPL"]]
+  expect_null(b$template)
+  expect_gt(length(b$content), 0L)
+  expect_identical(b$label, "Demographics")
+  # saved: the file and the program say the items, no template call
+  s$planner <- p
+  s <- suppressMessages(save_study(s, home = home))
+  expect_null(tflspec::tfl_read_output(file.path(s$path, "spec", "outputs", "T-TPL.yml"))$template)
+  prog <- readLines(file.path(s$path, report_info(s$planner, "T-TPL")$program_path %||%
+                                file.path("programs", "tfl", "T-TPL.R")), warn = FALSE)
+  expect_false(any(grepl("tfl_tpl(", prog, fixed = TRUE)))
+  expect_true(any(grepl("plan_cells", prog, fixed = TRUE)))
+  # (not a template report: said)
+  expect_error(.tpl_to_code(p, "T-TPL"), "not a template report")
 })

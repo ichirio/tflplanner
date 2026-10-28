@@ -699,3 +699,15 @@ $(document).on('shiny:connected', function() {
   call <- if (!is.null(x) && "call" %in% names(x)) x$call[match(name, x$name)] else NA
   if (length(call) && !is.na(call) && nzchar(call)) paste0(call, "()") else sprintf("tfl_template(%s)", name)
 }
+
+# A template report made a code one (the template card's "Convert to
+# code"): the template's items, with the study's defaults and the report's
+# own over them (tflspec::tfl_template_to_spec()), written into the report;
+# the planner.  One way: the template is no longer the report's.
+.tpl_to_code <- function(p, id) {
+  sp <- .code_spec(p)
+  o <- sp$outputs[[id]]
+  if (is.null(o) || is.null(o$template)) stop(sprintf("%s is not a template report.", id), call. = FALSE)
+  b <- tflspec::tfl_template_to_spec(o, sp$study)
+  .spec_set_output(p, id, b)
+}

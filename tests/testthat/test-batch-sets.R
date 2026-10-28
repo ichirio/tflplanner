@@ -121,6 +121,7 @@ test_that("an official run of a named batch, or leaving reports out", {
 })
 
 test_that("the batches column survives the SPEC round trip", {
+  skip_on_cran()
   p <- set_batch(bs_planner(), "Topline", c("DM", "L1"))
   dir <- withr_tempdir()
   paths <- write_planner(p, dir)

@@ -69,6 +69,7 @@ test_that("a definition that does not hold yet still gives a program, which says
 })
 
 test_that("the report list names the datasets a report reads, and its title", {
+  skip_on_cran()
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
