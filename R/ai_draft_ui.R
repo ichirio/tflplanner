@@ -336,6 +336,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     }
     # step 4: the list and the adopting (R/ai_list_ui.R)
     ai_list_server(input, output, session, path, ver, reload_now, notify, guarded, t)
+    asm_saved <- ai_asm_server(input, output, session, path, ver, notify, guarded, t)
     # the look of past reports (R/ai_style_ui.R)
     ai_style_server(input, output, session, notify, guarded, t)
     # another study opened: its own check, none yet
@@ -1535,6 +1536,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     q_ver <- shiny::reactiveVal(0L)
     questions <- shiny::reactive({
       q_ver()
+      asm_saved()
       p <- path()
       if (is.null(p)) return(NULL)
       # (none yet: an agent writes ai/questions.md when it has questions;

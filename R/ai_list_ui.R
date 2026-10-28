@@ -62,6 +62,8 @@ ai_list_panel <- function(ns, t) {
     shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mt-2",
                .btn(ns("exp_add"), paste0(t("Add a report the AI missed"), " (expected_outputs.csv)")),
                shiny::uiOutput(ns("exp_line"), inline = TRUE)),
+    # the AI's assumptions (R/ai_assumptions_ui.R)
+    ai_asm_card(ns, t),
     # the agent's questions (moved here from step 3: R/ai_draft_ui.R draws them)
     bslib::card(
       class = "mt-3",
