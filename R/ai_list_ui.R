@@ -116,7 +116,8 @@ ai_list_panel <- function(ns, t) {
 # The server part: `path()` the study's folder, `ver()` bumped when the
 # answers are checked again, `reload_now()` the app's
 #' @noRd
-ai_list_server <- function(input, output, session, path, ver, reload_now, notify, guarded, t) {
+ai_list_server <- function(input, output, session, path, ver, reload_now, notify, guarded, t,
+                           dirty = function() FALSE, run_done = function() NULL) {
   ns <- session$ns
   again <- shiny::reactiveVal(0L)
   shiny::observeEvent(input$list_reread, again(again() + 1L))
@@ -129,10 +130,21 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   # buttons change it (the table drawn again only for the buttons)
   ticked <- shiny::reactiveVal(character())
   redraw <- shiny::reactiveVal(0L)
+  # (the list read again: the ticks the person left kept, the drafts new
+  # to the list ticked as at first; a report waiting for corrections not)
+  seen <- new.env()
   shiny::observeEvent(listed(), {
     d <- listed()
-    ticked(if (is.null(d)) character() else .ai_ticked_first(d))
+    if (is.null(d)) {
+      seen$ids <- NULL
+      return(ticked(character()))
+    }
+    first <- setdiff(.ai_ticked_first(d), .ai_to_correct(path(), d$output_id))
+    ticked(if (is.null(seen$ids)) first
+           else union(intersect(ticked(), d$output_id[.ai_adoptable(d)]), setdiff(first, seen$ids)))
+    seen$ids <- d$output_id
   }, ignoreNULL = FALSE)
+  shiny::observeEvent(path(), seen$ids <- NULL, ignoreInit = TRUE)
   shiny::observeEvent(input$ck_toggle, {
     id <- input$ck_toggle$id
     ticked(if (isTRUE(input$ck_toggle$on)) union(ticked(), id) else setdiff(ticked(), id))
@@ -252,7 +264,15 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
                       shiny::tags$tbody(lapply(seq_len(nrow(d)), function(r)
                         shiny::tags$tr(lapply(d[r, cols], function(x) shiny::tags$td(as.character(x)))))))
   }
+  # (not while the study has unsaved changes: the adopted files would be
+  # taken in over them, or the study left apart from its files)
+  unsaved <- function() {
+    if (!isTRUE(dirty())) return(FALSE)
+    notify(t("Save first: the study has unsaved changes."), "warning")
+    TRUE
+  }
   shiny::observeEvent(input$adopt, {
+    if (unsaved()) return()
     if (!length(ticked())) return(notify(t("Tick the reports to adopt."), "warning"))
     s <- split_ticked()
     pending(s)
@@ -260,8 +280,13 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       return(notify(t("The reports ticked are in the study as they are: nothing to adopt."), "message"))
     }
     diff <- .ai_adopt_diff(path(), s$over)
+    fix <- .ai_to_correct(path(), c(s$fresh, s$over))
     shiny::showModal(shiny::modalDialog(
       title = t("Adopt (copy) into the study"),
+      if (length(fix)) shiny::div(
+        class = "alert alert-warning py-2 small",
+        sprintf(t("Waiting for corrections (%d): %s. You asked the agent to change them (an assumption answered wrong, or dropped from your list); adopting now takes the draft as it is."),
+                length(fix), paste(fix, collapse = ", "))),
       if (length(s$fresh)) shiny::p(sprintf(t("Not in the study yet, copied to its Report list (%d): %s"),
                                             length(s$fresh), paste(s$fresh, collapse = ", "))),
       if (length(s$over)) shiny::div(
@@ -298,15 +323,22 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   })
   do_adopt <- function(fresh, over) {
     shiny::removeModal()
+    if (unsaved()) return()
     p <- path()
-    res <- list()
-    if (length(fresh)) res[[1L]] <- guarded(tflspec::tfl_ai_adopt(p, outputs = fresh, overwrite = FALSE))
-    if (length(over)) res[[2L]] <- guarded(tflspec::tfl_ai_adopt(p, outputs = over, overwrite = TRUE))
+    # (each call NULL when it failed: guarded() said why)
+    done_fresh <- if (length(fresh)) !is.null(guarded(tflspec::tfl_ai_adopt(p, outputs = fresh, overwrite = FALSE)))
+    done_over <- if (length(over)) !is.null(guarded(tflspec::tfl_ai_adopt(p, outputs = over, overwrite = TRUE)))
     again(again() + 1L)
+    n_fresh <- if (isTRUE(done_fresh)) length(fresh) else 0L
+    n_over <- if (isTRUE(done_over)) length(over) else 0L
+    if (!(n_fresh + n_over)) return()
     # (saved too: their programs and batch.R written, for a run)
-    reload_now(save = TRUE)
-    notify(sprintf(t("%d reports adopted (copied) into the study, %d of them replaced: on the Report list."),
-                   length(fresh) + length(over), length(over)))
+    saved <- isTRUE(reload_now(save = TRUE))
+    notify(if (saved) sprintf(t("%d reports adopted (copied) into the study, %d of them replaced: on the Report list."),
+                              n_fresh + n_over, n_over)
+           else sprintf(t("%d reports adopted (copied) into the study, but the study was not saved: save it to write their programs."),
+                        n_fresh + n_over),
+           if (saved) "message" else "warning")
   }
   shiny::observeEvent(input$adopt_fresh, {
     s <- pending()
@@ -440,6 +472,8 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       return(notify(t("The study has no run.R: write the requests in agent mode (step 1)."), "warning"))
     }
     if (!is.null(run$px) && run$px$is_alive()) return(notify(t("run.R is running already."), "warning"))
+    # (the drafts in their own folder first: run.R writes them there)
+    .ai_ensure_area(p)
     log <- file.path(p, "ai", "run-from-app.log")
     run$log <- log
     run$end <- NULL
@@ -453,6 +487,9 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     if (px$is_alive()) return(shiny::invalidateLater(2000))
     run$end <- px$get_exit_status()
     shiny::isolate(again(again() + 1L))
+    # (the status, the questions, the assumptions and the answers' check
+    # read again too: run.R rewrote them)
+    if (identical(run$end, 0L)) run_done()
   })
   output$run_note <- shiny::renderUI({
     if (is.null(run$px)) return(NULL)
@@ -474,4 +511,16 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
 .ai_in_study_spec <- function(f) {
   f <- as.character(f)
   !is.na(f) & startsWith(gsub("\\\\", "/", f), "spec/")
+}
+
+# The reports waiting for corrections, of `ids`: an assumption answered
+# wrong and not yet applied (tflspec::tfl_ai_assumptions() status
+# "answered"), or dropped from the person's list (ai/expected_outputs.csv)
+.ai_to_correct <- function(p, ids) {
+  if (is.null(p) || !length(ids)) return(character())
+  a <- tryCatch(tflspec::tfl_ai_assumptions(p), error = function(e) NULL)
+  wrong <- if (is.null(a) || !nrow(a)) character() else a$output_id[a$status %in% "answered"]
+  e <- tryCatch(tflspec::tfl_ai_expected_read(p), error = function(e) NULL)
+  drop <- if (is.null(e) || !nrow(e) || !"action" %in% names(e)) character() else e$output_id[e$action %in% "drop"]
+  intersect(ids, c(wrong, drop))
 }

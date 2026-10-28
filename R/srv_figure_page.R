@@ -149,6 +149,9 @@
   shiny::observeEvent(input$target, {
     v <- outputs_view()
     sel <- match(input$target, v$output_id)
+    # (the table not drawn yet, its tab not opened: it is drawn with the
+    # report selected, so nothing to tell it -- #445)
+    if (is.null(input$outputs_rows_all)) return()
     if (!identical(input$outputs_rows_selected, if (!is.na(sel)) sel)) {
       DT::selectRows(DT::dataTableProxy("outputs"), if (!is.na(sel)) sel)
     }

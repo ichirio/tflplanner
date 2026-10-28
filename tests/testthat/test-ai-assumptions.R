@@ -162,4 +162,14 @@ test_that("a report's heading says its assumptions, and how many are not answere
   expect_null(.ai_asm_head(cn, "T-9", tt))
   expect_null(.ai_asm_head(NULL, "T-1", tt))
   expect_null(.ai_asm_counts(tempfile()))
+
+test_that("the reports waiting for corrections: an assumption answered wrong, not yet applied", {
+  d <- asm_study()
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  expect_identical(.ai_to_correct(d, c("T-1", "T-2", "T-3")), character())
+  tflspec::tfl_ai_assumption_answers_write(d, data.frame(id = c("K1", "A3"), verdict = c("wrong", "ok"),
+                                                         correct = c("TRT01P", NA)))
+  expect_identical(.ai_to_correct(d, c("T-1", "T-2", "T-3")), c("T-1", "T-2"))
+  expect_identical(.ai_to_correct(d, "T-3"), character())
+  expect_identical(.ai_to_correct(NULL, "T-1"), character())
 })
