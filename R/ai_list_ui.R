@@ -339,7 +339,8 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     n_over <- if (isTRUE(done_over)) length(over) else 0L
     if (!(n_fresh + n_over)) return()
     # (saved too: their programs and batch.R written, for a run)
-    saved <- isTRUE(reload_now(save = TRUE))
+    adopted <- c(if (isTRUE(done_fresh)) fresh, if (isTRUE(done_over)) over)
+    saved <- isTRUE(reload_now(save = TRUE, after = function(x) .ai_apply_toc_batches(x, p, adopted)))
     notify(if (saved) sprintf(t("%d reports adopted (copied) into the study, %d of them replaced: on the Report list."),
                               n_fresh + n_over, n_over)
            else sprintf(t("%d reports adopted (copied) into the study, but the study was not saved: save it to write their programs."),
@@ -548,4 +549,70 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
 # .libPaths() in the session is not the child's otherwise)
 .ai_run_env <- function() {
   c("current", R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep))
+}
+
+# ---- the batches of the TOC (Topline, ...) of the reports adopted ----------
+# The one place the AI's TOC gives the report sets: spec/toc.yml, each
+# output's `batches` (a name or a list of them), or a top-level `batches`
+# map, name -> ids.  (tflspec writes neither yet: the reports adopted get
+# the sets once it does, and none before.)
+
+# toc.yml's batches: a data frame batch, output_id (none: no row)
+.ai_toc_batches <- function(p) {
+  none <- data.frame(batch = character(), output_id = character(), stringsAsFactors = FALSE)
+  f <- if (!is.null(p)) file.path(p, "spec", "toc.yml")
+  if (is.null(f) || !file.exists(f)) return(none)
+  y <- tryCatch(yaml::read_yaml(f), error = function(e) NULL)
+  if (!is.list(y)) return(none)
+  names_of <- function(b) {
+    b <- unlist(b, use.names = FALSE)
+    b <- unlist(strsplit(as.character(b), "|", fixed = TRUE))
+    b <- trimws(b)
+    b[!is.na(b) & nzchar(b)]
+  }
+  rows <- list()
+  for (o in y$outputs %||% list()) {
+    if (!is.list(o) || is.null(o$id) || is.null(o$batches)) next
+    b <- names_of(o$batches)
+    if (length(b)) rows[[length(rows) + 1L]] <- data.frame(batch = b, output_id = as.character(o$id),
+                                                           stringsAsFactors = FALSE)
+  }
+  top <- y$batches
+  if (is.list(top) && !is.null(names(top))) {
+    for (n in names(top)) {
+      ids <- names_of(top[[n]])
+      if (length(ids)) rows[[length(rows) + 1L]] <- data.frame(batch = n, output_id = ids,
+                                                               stringsAsFactors = FALSE)
+    }
+  }
+  if (!length(rows)) return(none)
+  out <- unique(do.call(rbind, rows))
+  rownames(out) <- NULL
+  out
+}
+
+# The planner with the reports `ids` in their TOC batches (a report's
+# batches set already are kept; a name a batch folder cannot carry is left)
+.ai_apply_toc_batches <- function(x, p, ids) {
+  b <- .ai_toc_batches(p)
+  if (!nrow(b) || !length(ids)) return(x)
+  have <- x$outputs$batches %||% rep(NA_character_, nrow(x$outputs))
+  for (id in intersect(ids, x$outputs$output_id)) {
+    i <- match(id, x$outputs$output_id)
+    if (!is.na(have[i]) && nzchar(have[i])) next
+    n <- b$batch[b$output_id == id]
+    n <- n[vapply(n, function(v) !inherits(tryCatch(.check_batch_name(v), error = function(e) e), "error"), NA)]
+    if (length(n)) x <- .set_report_batches(x, id, n)
+  }
+  x
+}
+
+# The AI's reports among `ids` an official run should say before it runs:
+# `newer` (their draft changed since adopted), `fix` (waiting for
+# corrections); NULL study: none
+.ai_run_warnings <- function(p, ids) {
+  none <- list(newer = character(), fix = character())
+  if (is.null(p) || !length(ids) || !dir.exists(file.path(p, "ai"))) return(none)
+  m <- .ai_adopted_marks(p, ids)
+  list(newer = names(m)[m == "newer"], fix = .ai_to_correct(p, ids[m != ""]))
 }

@@ -87,3 +87,39 @@ test_that("every request's reports are built by run.R, or by tfl_ai_run() in cha
   expect_identical(env[[1]], "current")
   expect_identical(unname(env["R_LIBS"]), paste(.libPaths(), collapse = .Platform$path.sep))
 })
+
+test_that("the reports adopted go into their TOC batches, as spec/toc.yml says them", {
+  d <- withr_tempdir()
+  dir.create(file.path(d, "spec"))
+  expect_identical(nrow(.ai_toc_batches(d)), 0L)
+  writeLines(c("outputs:", "  - id: T-1", "    batches: Topline", "  - id: T-2",
+               "    batches: [Topline, Safety]", "  - id: T-3",
+               "batches:", "  DSUR: [T-3, T-1]"), file.path(d, "spec", "toc.yml"))
+  b <- .ai_toc_batches(d)
+  expect_identical(b$batch, c("Topline", "Topline", "Safety", "DSUR", "DSUR"))
+  expect_identical(b$output_id, c("T-1", "T-2", "T-2", "T-3", "T-1"))
+  x <- new_planner()
+  for (id in c("T-1", "T-2", "T-3", "T-4")) x <- add_output(x, id, process_code = "1")
+  x <- .set_report_batches(x, "T-2", "Mine")
+  y <- .ai_apply_toc_batches(x, d, c("T-1", "T-2", "T-3", "T-4"))
+  expect_identical(y$outputs$batches, c("Topline | DSUR", "Mine", "DSUR", NA))
+  # only the reports adopted
+  expect_identical(.ai_apply_toc_batches(x, d, "T-3")$outputs$batches, c(NA, "Mine", "DSUR", NA))
+})
+
+test_that("an official run says the AI's reports whose draft changed or that wait for corrections", {
+  d <- withr_tempdir()
+  expect_identical(.ai_run_warnings(NULL, "T-1"), list(newer = character(), fix = character()))
+  expect_identical(.ai_run_warnings(d, "T-1"), list(newer = character(), fix = character()))
+  dir.create(file.path(d, "ai", "spec", "outputs"), recursive = TRUE)
+  f <- file.path(d, "ai", "spec", "outputs", c("T-1.yml", "T-2.yml"))
+  writeLines("id: T-1", f[1])
+  writeLines("id: T-2", f[2])
+  utils::write.csv(data.frame(output_id = c("T-1", "T-2"), adopted = "2026-10-29 03:00:00",
+                              md5 = unname(tools::md5sum(f))),
+                   file.path(d, "ai", "adopted.csv"), row.names = FALSE)
+  writeLines("id: T-2\nlabel: redrafted", f[2])
+  w <- .ai_run_warnings(d, c("T-1", "T-2", "T-3"))
+  expect_identical(w$newer, "T-2")
+  expect_identical(w$fix, character())
+})
