@@ -25,10 +25,91 @@
   own <- function(ids, col) as.character(ans[[col]][match(ids, ans$id)])
   a$own_verdict <- own(a$id, "verdict")
   a$own_correct <- own(a$id, "correct")
+  a$value <- .ai_asm_values(p, a)
   k <- unique(a$kind)
   kinds <- data.frame(kind = k, verdict = own(k, "verdict"), correct = own(k, "correct"),
                       stringsAsFactors = FALSE)
+  # (a kind's value: when each of its reports has the same one)
+  kinds$value <- vapply(k, function(x) {
+    v <- unique(a$value[a$kind == x])
+    if (length(v) == 1L) v else NA_character_
+  }, "", USE.NAMES = FALSE)
   structure(a, kinds = kinds)
+}
+
+# ---- what an assumption's report has, there --------------------------------
+# The value the AI wrote (its `value`, when the assumptions have one), else
+# the report's own: its YAML (the draft, ai/spec/outputs/<id>.yml, else the
+# study's, spec/outputs/<id>.yml) followed by `where` (keys, "." or " "
+# between) and `item` (a key, or the `id` of a record in a list); text a
+# line a value, NA when not found
+.ai_asm_values <- function(p, a) {
+  given <- if ("value" %in% names(a)) {
+    v <- a$value
+    if (is.list(v)) vapply(v, function(x) .ai_asm_value_text(x), "") else .ai_asm_tidy(v)
+  } else rep("", nrow(a))
+  ys <- list()
+  read_report <- function(id) {
+    if (is.na(id) || !nzchar(id)) return(NULL)
+    if (!id %in% names(ys)) {
+      fs <- file.path(p, c(file.path("ai", "spec", "outputs"), file.path("spec", "outputs")),
+                      paste0(id, ".yml"))
+      f <- fs[file.exists(fs)][1]
+      ys[id] <<- list(if (is.na(f)) NULL else tryCatch(yaml::read_yaml(f), error = function(e) NULL))
+    }
+    ys[[id]]
+  }
+  out <- vapply(seq_len(nrow(a)), function(i) {
+    if (nzchar(given[i])) return(given[i])
+    y <- read_report(a$output_id[i])
+    x <- .ai_asm_follow(y, a$where[i], a$item[i])
+    if (is.null(x)) "" else .ai_asm_value_text(x)
+  }, "")
+  ifelse(nzchar(out), out, NA_character_)
+}
+
+.ai_asm_follow <- function(y, where, item) {
+  if (is.null(y)) return(NULL)
+  key <- function(node, k) {
+    if (!is.list(node) || !nzchar(k)) return(NULL)
+    nm <- names(node)
+    if (!is.null(nm)) {
+      at <- match(tolower(k), tolower(nm))
+      if (!is.na(at)) return(node[[at]])
+    }
+    # a list of records: the one of that id
+    ids <- vapply(node, function(r) if (is.list(r) && !is.null(r$id)) as.character(r$id)[1] else "", "")
+    at <- match(tolower(k), tolower(ids))
+    if (is.na(at)) NULL else node[[at]]
+  }
+  node <- y
+  for (k in strsplit(.ai_asm_tidy(where), "[. ]+")[[1]]) {
+    node <- key(node, k)
+    if (is.null(node)) return(NULL)
+  }
+  key(node, .ai_asm_tidy(item))
+}
+
+# A value as at most 3 lines: a vector "a / b", a record "k: v, k: v", a
+# list of them a line each, a mapping "k: v" a line a leaf
+.ai_asm_value_text <- function(x, lines = 3L, width = 120L) {
+  one <- function(v) {
+    if (is.null(v)) return("")
+    if (!is.list(v)) return(paste(as.character(v), collapse = " / "))
+    nm <- names(v)
+    if (is.null(nm)) return(paste(vapply(v, one, ""), collapse = "; "))
+    paste(paste0(nm, ": ", vapply(v, one, "")), collapse = ", ")
+  }
+  out <- if (!is.list(x)) one(x)
+         else if (is.null(names(x))) vapply(x, one, "")
+         else paste0(names(x), ": ", vapply(x, one, ""))
+  out <- out[nzchar(out)]
+  if (!length(out)) return("")
+  more <- length(out) > lines
+  out <- utils::head(out, lines)
+  long <- nchar(out) > width
+  out[long] <- paste0(substr(out[long], 1L, width - 1L), "…")
+  paste(c(out, if (more) "…"), collapse = "\n")
 }
 
 # A field's input id (the ids are A<n> / K<n>)
@@ -68,6 +149,7 @@
 .ai_asm_css <- "
 .ai-asm-only-open .ai-assumption[data-open='0'] { display: none; }
 .ai-asm-all-done { display: none; }
+.ai-asm-value { white-space: pre-wrap; font-family: var(--bs-font-monospace); font-size: .8rem; vertical-align: top; display: inline-block; }
 .ai-asm-only-open .ai-asm-list:not(:has(.ai-assumption[data-open='1'])) + .ai-asm-all-done { display: block; }
 "
 
@@ -83,6 +165,11 @@ $(document).off('input.aiasm').on('input.aiasm', '.ai-asm-correct input', functi
 $(document).off('change.aiasmv').on('change.aiasmv', '.ai-asm-answer select', function() {
   $(this).closest('.ai-asm-answer').find('.ai-asm-correct input').removeClass('is-invalid');
 });
+document.addEventListener('toggle', function(e) {
+  var d = e.target;
+  if (!d.matches || !d.matches('details.ai-asm-each') || !d.open) return;
+  Shiny.setInputValue(d.dataset.ns + 'asm_open', {kind: d.dataset.kind, n: Date.now()}, {priority: 'event'});
+}, true);
 Shiny.addCustomMessageHandler('ai-asm-invalid', function(x) {
   [].concat(x.ids || []).forEach(function(id) { $('#' + x.ns + id).addClass('is-invalid'); });
 });
@@ -131,13 +218,17 @@ ai_asm_server <- function(input, output, session, path, ver, notify, guarded, t)
   # answers not saved yet (then a note, to read them again)
   shown <- shiny::reactiveVal(NULL)
   stale <- shiny::reactiveVal(FALSE)
+  # the kinds whose reports' rows are drawn (opened once: drawn again with
+  # the rest; a field's value is read only while it is drawn)
+  opened <- character()
+  drawn_kinds <- character()
   typed_changes <- function(a) {
     if (is.null(a)) return(NULL)
     kinds <- attr(a, "kinds")
     ids <- c(kinds$kind, a$id)
     typed <- function(what) vapply(ids, function(id) input[[.ai_asm_input(what, id)]] %||% NA_character_, "")
     v <- typed("v")
-    drawn <- !is.na(v)
+    drawn <- !is.na(v) & c(rep(TRUE, nrow(kinds)), a$kind %in% drawn_kinds)
     .ai_asm_changes(ids[drawn], v[drawn], typed("c")[drawn],
                     c(kinds$verdict, a$own_verdict)[drawn], c(kinds$correct, a$own_correct)[drawn])
   }
@@ -146,6 +237,7 @@ ai_asm_server <- function(input, output, session, path, ver, notify, guarded, t)
   last_path <- NULL
   shiny::observeEvent(asm(), {
     p <- path()
+    if (!identical(p, last_path)) opened <<- character()
     ch <- if (force || !identical(p, last_path)) NULL else shiny::isolate(typed_changes(shown()))
     force <<- FALSE
     last_path <<- p
@@ -193,6 +285,29 @@ ai_asm_server <- function(input, output, session, path, ver, notify, guarded, t)
   said <- function(item, assumption) {
     shiny::span(shiny::tags$b(item), " : ", assumption)
   }
+  value <- function(v) {
+    if (is.na(v)) return(NULL)
+    shiny::div(class = "text-muted small ms-1", shiny::tags$b(t("Now:")), " ",
+               shiny::span(class = "ai-asm-value", v, .noWS = c("after-begin", "before-end")))
+  }
+  # a kind's reports' rows
+  report_rows <- function(a, k) {
+    kinds <- attr(a, "kinds")
+    i <- match(k, kinds$kind)
+    r <- a[a$kind == k, , drop = FALSE]
+    from <- if (is.na(kinds$verdict[i])) NULL
+            else list(kind = k, verdict = kinds$verdict[i], correct = kinds$correct[i])
+    shiny::tagList(lapply(seq_len(nrow(r)), function(j) shiny::div(
+      class = "ms-3 py-1 border-top",
+      shiny::div(class = "d-flex flex-wrap gap-2 align-items-baseline",
+                 shiny::tags$b(r$id[j]), r$output_id[j],
+                 shiny::span(class = "text-muted", r$where[j]),
+                 said(r$item[j], r$assumption[j]),
+                 shiny::span(class = paste("badge", badge[[r$status[j]]] %||% "text-bg-light"),
+                             status_word(r$status[j]))),
+      if (is.na(kinds$value[i])) value(r$value[j]),
+      answer(r$id[j], r$own_verdict[j], r$own_correct[j], from = from))))
+  }
   output$asm <- shiny::renderUI({
     a <- shown()
     if (is.null(a)) {
@@ -200,6 +315,8 @@ ai_asm_server <- function(input, output, session, path, ver, notify, guarded, t)
                       t("No assumptions: the agent writes spec/_assumptions.yml when it assumes something.")))
     }
     kinds <- attr(a, "kinds")
+    # (the kinds opened before: their reports drawn at once, still open)
+    drawn_kinds <<- intersect(opened, kinds$kind)
     rows <- lapply(seq_len(nrow(kinds)), function(i) {
       k <- kinds$kind[i]
       r <- a[a$kind == k, , drop = FALSE]
@@ -217,29 +334,29 @@ ai_asm_server <- function(input, output, session, path, ver, notify, guarded, t)
                                         shiny::span(class = "text-muted", t("(differs by report)")))
         else said(r$item[1], r$assumption[1]),
         if (!is.na(q) && nzchar(q)) shiny::span(class = "small text-muted", q))
-      from <- if (is.na(kinds$verdict[i])) NULL
-              else list(kind = k, verdict = kinds$verdict[i], correct = kinds$correct[i])
       ids <- r$output_id
       each <- shiny::tags$details(
-        class = "small mt-1",
+        class = "ai-asm-each small mt-1", `data-ns` = ns(""), `data-kind` = k,
+        open = if (k %in% drawn_kinds) NA,
         shiny::tags$summary(sprintf(t("Each report (%s)"),
                                     if (length(ids) > 3L) sprintf(t("%d reports"), length(ids))
                                     else paste(ids, collapse = ", "))),
-        lapply(seq_len(nrow(r)), function(j) shiny::div(
-          class = "ms-3 py-1 border-top",
-          shiny::div(class = "d-flex flex-wrap gap-2 align-items-baseline",
-                     shiny::tags$b(r$id[j]), r$output_id[j],
-                     shiny::span(class = "text-muted", r$where[j]),
-                     said(r$item[j], r$assumption[j]),
-                     shiny::span(class = paste("badge", badge[[r$status[j]]] %||% "text-bg-light"),
-                                 status_word(r$status[j]))),
-          answer(r$id[j], r$own_verdict[j], r$own_correct[j], from = from))))
+        shiny::div(id = ns(paste0("asm_rows_", k)), if (k %in% drawn_kinds) report_rows(a, k)))
       shiny::div(class = "ai-assumption border-bottom py-2", `data-open` = if (n_open) "1" else "0",
-                 head, answer(k, kinds$verdict[i], kinds$correct[i]), each)
+                 head, value(kinds$value[i]), answer(k, kinds$verdict[i], kinds$correct[i]), each)
     })
     shiny::tagList(shiny::div(class = "ai-asm-list", rows),
                    shiny::p(class = "ai-asm-all-done small text-muted mb-0 mt-2",
                             t("Every assumption is answered.")))
+  })
+  # a kind's reports opened the first time: their rows drawn into it
+  shiny::observeEvent(input$asm_open, {
+    k <- input$asm_open$kind
+    a <- shown()
+    if (is.null(a) || !k %in% a$kind || k %in% drawn_kinds) return()
+    opened <<- union(opened, k)
+    drawn_kinds <<- union(drawn_kinds, k)
+    shiny::insertUI(paste0("#", ns(paste0("asm_rows_", k))), "beforeEnd", report_rows(a, k), immediate = TRUE)
   })
   save <- function() {
     a <- shown()

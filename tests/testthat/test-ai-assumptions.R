@@ -67,6 +67,8 @@ test_that("the card saves a kind's answer and one report's own", {
     session$setInputs(asm_v_K1 = "wrong", asm_c_K1 = "TRT01P", asm_v_K2 = "", asm_c_K2 = "",
                       asm_v_A1 = "", asm_c_A1 = "", asm_v_A2 = "ok", asm_c_A2 = "",
                       asm_v_A3 = "", asm_c_A3 = "")
+    # (a report's own answer read only once its kind's reports are drawn)
+    session$setInputs(asm_open = list(kind = "K1", n = 1))
     session$setInputs(asm_save = 1)
     expect_identical(saved(), 1L)
     x <- tflspec::tfl_ai_assumption_answers_read(d)
@@ -75,10 +77,12 @@ test_that("the card saves a kind's answer and one report's own", {
     expect_identical(a$status, c("answered", "confirmed", "open"))
     session$setInputs(asm_save = 2)
     expect_match(said[length(said)], "No answer changed.", fixed = TRUE)
-    # the kind's answer shown in its reports' empty choice and field
+    # the kind opened before: drawn open with its reports, its answer shown
+    # in their empty choice and field
     html <- paste(as.character(output$asm$html), collapse = "")
     expect_match(html, "(K1's answer: Wrong (wrong))", fixed = TRUE)
     expect_match(html, "K1: TRT01P", fixed = TRUE)
+    expect_false(grepl("asm_v_A3", html, fixed = TRUE))
     # wrong with no right content: named, nothing written
     session$setInputs(asm_v_K2 = "wrong", asm_c_K2 = "")
     session$setInputs(asm_save2 = 1)
@@ -91,4 +95,39 @@ test_that("the card saves a kind's answer and one report's own", {
     session$setInputs(asm_reread = 1)
     expect_null(output$asm_stale)
   })
+})
+
+test_that("an assumption's value: given, else followed in its report's YAML", {
+  y <- list(page = list(titles = list(`1` = list(center = "Table 14.1.1"), `2` = list(center = "Demographics"))),
+            codelists = list(SEX = list(list(value = "M", label = "Male"), list(value = "F", label = "Female"))),
+            ard = list(analyses = list(list(id = "AGE", method = "continuous", variables = "AGE"))))
+  expect_identical(.ai_asm_value_text(.ai_asm_follow(y, "page", "titles")),
+                   "1: center: Table 14.1.1
+2: center: Demographics")
+  expect_identical(.ai_asm_value_text(.ai_asm_follow(y, "codelists", "sex")),
+                   "value: M, label: Male
+value: F, label: Female")
+  expect_identical(.ai_asm_value_text(.ai_asm_follow(y, "ard.analyses", "AGE")),
+                   "id: AGE
+method: continuous
+variables: AGE")
+  expect_null(.ai_asm_follow(y, "ard.analyses", "arm"))
+  expect_null(.ai_asm_follow(y, "spec/data.yml populations", "SAF"))
+  expect_identical(.ai_asm_value_text(as.list(letters[1:5])), "a
+b
+c
+…")
+  d <- asm_study()
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  dir.create(file.path(d, "ai", "spec", "outputs"), recursive = TRUE)
+  yaml::write_yaml(y, file.path(d, "ai", "spec", "outputs", "T-3.yml"))
+  a <- .ai_asm_now(d)
+  expect_identical(a$value, c(NA, NA, "1: center: Table 14.1.1
+2: center: Demographics"))
+  expect_identical(attr(a, "kinds")$value, c(NA, "1: center: Table 14.1.1
+2: center: Demographics"))
+  # the AI's own value first
+  a$value <- c("TRT01A", NA, "")
+  expect_identical(.ai_asm_values(d, a), c("TRT01A", NA, "1: center: Table 14.1.1
+2: center: Demographics"))
 })
