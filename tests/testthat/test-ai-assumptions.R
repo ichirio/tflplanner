@@ -162,6 +162,7 @@ test_that("a report's heading says its assumptions, and how many are not answere
   expect_null(.ai_asm_head(cn, "T-9", tt))
   expect_null(.ai_asm_head(NULL, "T-1", tt))
   expect_null(.ai_asm_counts(tempfile()))
+})
 
 test_that("the reports waiting for corrections: an assumption answered wrong, not yet applied", {
   d <- asm_study()
