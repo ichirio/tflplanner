@@ -99,6 +99,13 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         return(.ai_read_text(file.path(p, .ai_requests_dir, "00-instructions.md")))
       }
       if (identical(what, "rerun")) return(paste("Rscript run.R", id))
+      # (an answer as the agent saved it; a file of the study the agent reads
+      # or writes -- only those, by name)
+      if (identical(what, "answer")) return(.ai_answer_text(p, id))
+      if (identical(what, "file")) {
+        if (!id %in% .ai_agent_files) stop("Not a file of the agent's.", call. = FALSE)
+        return(.ai_read_text(file.path(p, id)))
+      }
       if (identical(what, "build")) {
         .ai_check_request_name(id)
         return(.ai_read_text(file.path(p, .ai_repairs_dir, paste0(id, "-build.md"))))
@@ -108,8 +115,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         u <- shiny::isolate(unbuilt())
         u <- u[u$request == id, , drop = FALSE]
         return(paste(c("## Could not be built", "",
-                       sprintf("- %s: %s", u$output_id, u$reason)), collapse = "
-"))
+                       sprintf("- %s: %s", u$output_id, u$reason)), collapse = "\n"))
       }
       if (identical(what, "repair") && !is.null(kept[id]) && !is.na(kept[id]) &&
           !file.exists(file.path(p, .ai_repairs_dir, paste0(id, ".md")))) {
@@ -125,6 +131,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
              unbuilt = .ai_rel(.ai_repairs_dir, paste0(
                id, if (id %in% attr(shiny::isolate(unbuilt()), "build")) "-build.md" else ".md")),
              rerun = t("To rebuild only this request"),
+             answer = .ai_rel("ai", "answers", paste0(id, ".md")),
+             file = id,
              paste0(id, ".md"))
     }
 
@@ -1149,7 +1157,15 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           shiny::span(with_tip(paste0(t("Study folder"), ":"),
                                t("Usually VS Code opens the study folder itself. To work on several studies at once from the folder above, add this full path to the message."))),
           shiny::code(normalizePath(path(), "/", mustWork = FALSE)),
-          shiny::HTML(act("folder", "folder", c(copy = t("Copy the full path"))))))
+          shiny::HTML(act("folder", "folder", c(copy = t("Copy the full path"))))),
+        # (the files the agent works from, and its record of decisions)
+        {
+          have <- .ai_agent_files[file.exists(file.path(path(), .ai_agent_files))]
+          if (length(have)) shiny::div(
+            class = "d-flex flex-wrap gap-2 align-items-center small mt-2",
+            shiny::span(paste0(t("The agent's files"), ":")),
+            lapply(have, function(f) shiny::HTML(act("file", f, stats::setNames(f, "view")))))
+        })
     })
     output$check_note_agent <- shiny::renderUI({
       if (isTRUE(dirty())) shiny::span(class = "small text-warning", t("Save first"))
@@ -1205,7 +1221,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
             shiny::HTML(act("build", q, c(copy = t("Copy the fix request to rebuild"),
                                           view = t("View")))),
           if (any(r$status[rows] %in% c("ok", "warning")))
-            shiny::HTML(act("rerun", q, c(copy = t("Copy: rebuild only this request")))))
+            shiny::HTML(act("rerun", q, c(copy = t("Copy: rebuild only this request")))),
+          if (file.exists(file.path(path(), "ai", "answers", paste0(q, ".md"))))
+            shiny::HTML(act("answer", q, c(view = t("View the answer")))))
       }
       shiny::tags$table(
         class = "table table-sm small mt-2 ai-result-all",

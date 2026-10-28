@@ -770,6 +770,10 @@ test_that("agent mode in the app: the first message on step 2, the questions on 
     expect_identical(.ai_questions(path)$answer[2], "Yes")
     expect_match(output$`ai-tell_agent`$html, "data-what=\"tell\"", fixed = TRUE)
     expect_match(ai$text("tell", "tell"), "ai/questions.md", fixed = TRUE)
+    # the agent's files, shown by name: only those
+    expect_match(output$`ai-agent_card`$html, "data-what=\"file\" data-id=\"AGENTS.md\"", fixed = TRUE)
+    expect_identical(ai$text("AGENTS.md", "file"), .ai_read_text(file.path(path, "AGENTS.md")))
+    expect_error(ai$text("../secret.txt", "file"), "Not a file")
   })
 })
 
