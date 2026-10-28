@@ -202,7 +202,7 @@ ai_ui <- function(id, lang = "en") {
                                    choices = c("text", "attach", "both"), width = "12rem",
                                    selectize = FALSE),
                 shiny::numericInput(ns("max_chars"), paste0(t("A request's length at most"), " (max_chars)"),
-                                    value = NA, min = 1000, step = 1000, width = "14rem"))),
+                                    value = NULL, min = 1000, step = 1000, width = "14rem"))),
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-center",
               .btn(ns("read"), paste0(t("Read and check"), " (dry_run)"), class = "btn-sm btn-outline-primary"),
