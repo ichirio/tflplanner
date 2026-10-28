@@ -23,3 +23,15 @@ The data files the programs of a run read (by the data catalog, see
 \code{\link[=run_batch]{run_batch()}}'s \code{data}), with their size, as the study folder has them
 now: what \code{run_batch(data = TRUE)} would copy into the batch folder.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it saves the sample study)
+s <- save_study(create_sample_study(run = FALSE))
+batch_data_plan(s)[c("path", "size")]  # the data files a run would keep
+}
+options(old)
+}

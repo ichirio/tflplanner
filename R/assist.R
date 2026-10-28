@@ -45,6 +45,21 @@
 #'   (the key columns that are factors: their levels' order) and
 #'   `comparisons` (the comparison records -- tests, differences -- by
 #'   context: their statistics).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' if (requireNamespace("cards", quietly = TRUE)) {
+#'   # a cards ARD: age groups by treatment arm
+#'   ard <- cards::ard_categorical(cards::ADSL, by = "ARM", variables = "AGEGR1")
+#'   m <- ard_meta(ard)
+#'   m$by
+#'   m$variables[c("variable", "kind", "levels")]
+#' }
+#' }
+#' options(old)
 #' @export
 ard_meta <- function(ard = NULL, data = NULL) {
   out <- list(keys = list(), by = character(), hierarchy = character(),
@@ -241,6 +256,19 @@ ard_meta <- function(ard = NULL, data = NULL) {
 #'   `made` (`"here"`: made for the report; `"study"`: read from the study
 #'   ARD), `print` (what it was made from, `ard_preview_state()`) and `log`,
 #'   invisibly.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (about 15 seconds: it runs the report's ARD code in another R process)
+#' s <- create_sample_study(run = FALSE)
+#' m <- fetch_ard(s, "T-14-1-1")
+#' m$by          # the column variables of its ARD
+#' m$variables[c("variable", "kind", "n_levels")]
+#' }
+#' options(old)
 #' @export
 fetch_ard <- function(study, output_id, timeout = 300,
                       home = tflplanner_home()) {
@@ -545,6 +573,20 @@ ard_preview_state <- function(study, output_id, meta = ard_info(study, output_id
 #'   no `levels`.
 #' @return The `tflplanner`, with attribute `changed` (rows added or
 #'   filled).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' if (requireNamespace("cards", quietly = TRUE)) {
+#'   ard <- cards::ard_categorical(cards::ADSL, by = "ARM", variables = "AGEGR1")
+#'   x <- add_output(new_planner(), "T-14-1-1", type = "table")
+#'   x <- fill_variables(x, "T-14-1-1", ard_meta(ard))
+#'   x$sheets$variables[c("variable", "levels")]  # the levels, in the ARD's order
+#' }
+#' }
+#' options(old)
 #' @export
 fill_variables <- function(x, output_id, meta,
                            max_levels = as.integer(.std_setting("max_levels", "30"))) {

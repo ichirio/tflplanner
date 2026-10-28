@@ -16,3 +16,8 @@ A character vector.
 The report list first, then any id a sheet or the ARD definition names
 that the list lacks.
 }
+\examples{
+x <- add_output(new_planner(), "T-14-1-1", type = "table")
+x <- add_output(x, "F-14-2-1", type = "figure")
+output_ids(x)
+}

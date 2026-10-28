@@ -53,6 +53,18 @@
 #'   a value no record has (0) ([tflspec::tfl_ard_code()]).  They are part of
 #'   the fingerprint.
 #' @return The code, one element per line.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it makes the sample study)
+#' s <- create_sample_study(run = FALSE)
+#' spec <- tflspec::tfl_ard_spec(s$planner$ard)
+#' head(ard_setup_code(spec), 5)
+#' }
+#' options(old)
 #' @export
 ard_setup_code <- function(spec, date = Sys.Date()) {
   .with_study_code(.ard_setup_code(spec, date))
@@ -228,6 +240,19 @@ ard_autoexec_code <- function(spec, date = Sys.Date()) {
 #' @param timeout Seconds to allow.
 #' @return A list: `ok`, `rows`, `error`, `output` (what the program
 #'   printed).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (about 10 seconds: it saves the sample study and runs one ARD program)
+#' s <- save_study(create_sample_study(run = FALSE))
+#' r <- update_study_ard(s, "T-14-1-1")
+#' r$ok
+#' r$rows  # its rows in the study's working ARD
+#' }
+#' options(old)
 #' @export
 update_study_ard <- function(study, output_id, timeout = 600) {
   prog <- file.path(study_layout()[["programs_ard"]], .ard_prog_name(output_id))

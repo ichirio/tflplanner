@@ -42,3 +42,18 @@ Runs a design's script on the study's data, as the figure's program will
 PNG it saves -- at its size on the page (step 3) -- with the design's problems
 and the figure checks.  The Plot Designer's preview.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (about 10 seconds: it makes the sample study, its ARD and the figure)
+s <- save_study(create_sample_study(run = FALSE))
+update_study_ard(s, "T-14-2-2")  # the ARD the figure reads
+p <- preview_figure(s, "F-14-2-3")
+p$png      # the picture, in a temporary folder
+p$size     # its size on the page
+}
+options(old)
+}

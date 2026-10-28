@@ -29,3 +29,16 @@ each report's shell sheet (\code{input/toc/shells.csv}: \code{output_id}, \code{
 (\code{input/toc/profile.yml}: the rule set, the id rule, the overrides, each
 source's sheet and header row), or \code{NULL}.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it makes the sample study)
+s <- create_sample_study(run = FALSE)
+toc_imports(s)  # no TOC taken in yet: no rows
+toc_last(s)     # NULL: nothing said by a last TOC
+}
+options(old)
+}

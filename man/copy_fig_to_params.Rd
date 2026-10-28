@@ -25,3 +25,16 @@ report (\code{\link[=copy_output]{copy_output()}}: layout and design) whose desi
 piece but the parameter (its \code{param} step), and whose description says
 the new parameter where it said the old one.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it makes the sample study)
+s <- create_sample_study(run = FALSE)
+x <- copy_fig_to_params(s$planner, "F-14-2-3", c("SYSBP", "DIABP"))
+grep("F-14-2-3", output_ids(x), value = TRUE)  # the figure and its two copies
+}
+options(old)
+}

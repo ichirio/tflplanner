@@ -139,6 +139,21 @@ toc_title_offset <- function(x) {
 #'   `toc`, `action` -- `"add"`, `"update"`, `"keep"` (edited or cleared
 #'   here, the TOC unchanged) or `"ask"`); and the `last` and
 #'   `title_offset` it was given.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' # what taking in a TOC would change in a planner with one of its reports
+#' f <- tempfile(fileext = ".csv")
+#' writeLines(c("No.,Title,Population",
+#'              "T-14-1-1,Demographics,Safety Population",
+#'              "T-14-2-1,Adverse events,Safety Population"), f)
+#' spec <- tflspec::tfl_read_toc(f, map = c(output_id = "No.", title = "Title",
+#'                                          population = "Population"))
+#' x <- add_output(new_planner(), "T-14-1-1", type = "table")
+#' toc_changes(x, spec)$reports[c("output_id", "status")]
+#' options(old)
 #' @export
 toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)) {
   ids <- unique(stats::na.omit(spec$report$output_id))
@@ -383,6 +398,22 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
 #' @param again With `make_data`, also for the reports taken in before
 #'   (those deleted since are made again).
 #' @return The `tflplanner`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' # a TOC read with tflspec, put into a planner that has one of its reports
+#' f <- tempfile(fileext = ".csv")
+#' writeLines(c("No.,Title,Population",
+#'              "T-14-1-1,Demographics,Safety Population",
+#'              "T-14-2-1,Adverse events,Safety Population"), f)
+#' spec <- tflspec::tfl_read_toc(f, map = c(output_id = "No.", title = "Title",
+#'                                          population = "Population"))
+#' x <- add_output(new_planner(), "T-14-1-1", type = "table")
+#' x <- toc_apply(x, spec, toc_changes(x, spec))  # adds T-14-2-1
+#' output_ids(x)
+#' options(old)
 #' @export
 toc_apply <- function(x, spec, changes, use_toc = character(), types = character(),
                       last = changes$last,
@@ -724,6 +755,18 @@ toc_headers <- function(path, sheet = NULL, skip = 0L) {
 #'
 #' @param from,to `rtfstudy` objects ([open_study()]).
 #' @return `TRUE` when there was a profile to copy, invisibly.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it makes two studies)
+#' from <- create_sample_study(run = FALSE)
+#' to <- create_study("OTHER-01")
+#' toc_copy_profile(from, to)  # FALSE: the sample took in no TOC, no profile
+#' }
+#' options(old)
 #' @export
 toc_copy_profile <- function(from, to) {
   f <- file.path(.toc_dir(from), "profile.yml")
@@ -749,6 +792,18 @@ toc_copy_profile <- function(from, to) {
 #'
 #' @param study An `rtfstudy`.
 #' @return A data frame; a list or `NULL`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it makes the sample study)
+#' s <- create_sample_study(run = FALSE)
+#' toc_imports(s)  # no TOC taken in yet: no rows
+#' toc_last(s)     # NULL: nothing said by a last TOC
+#' }
+#' options(old)
 #' @export
 toc_imports <- function(study) {
   f <- file.path(.toc_dir(study), "imports.csv")

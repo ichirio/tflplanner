@@ -24,3 +24,17 @@ working ARD, so its table can be made, and keeps no log.  A program that
 fails leaves the ARD alone and records its error (\code{\link[=ard_status]{ard_status()}}).  The
 official run is \code{\link[=run_batch]{run_batch()}}.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (about 10 seconds: it saves the sample study and runs one ARD program)
+s <- save_study(create_sample_study(run = FALSE))
+r <- update_study_ard(s, "T-14-1-1")
+r$ok
+r$rows  # its rows in the study's working ARD
+}
+options(old)
+}

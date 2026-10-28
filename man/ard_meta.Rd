@@ -29,3 +29,19 @@ and the contexts and statistic names, from a normalized ARD (\code{data},
 what \code{\link[rtfreporter:table_plan]{rtfreporter::table_plan()}} is given) or, failing that, from the raw
 cards ARD.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+if (requireNamespace("cards", quietly = TRUE)) {
+  # a cards ARD: age groups by treatment arm
+  ard <- cards::ard_categorical(cards::ADSL, by = "ARM", variables = "AGEGR1")
+  m <- ard_meta(ard)
+  m$by
+  m$variables[c("variable", "kind", "levels")]
+}
+}
+options(old)
+}

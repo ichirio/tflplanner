@@ -41,6 +41,10 @@
 #'
 #' @param date The date stamped in the banner.
 #' @return The code, one element per line.
+#' @examples
+#' # the functions the study's programs call
+#' code <- study_helpers_code()
+#' head(code)
 #' @export
 study_helpers_code <- function(date = Sys.Date()) {
   c(.banner(
@@ -105,6 +109,13 @@ study_helpers_code <- function(date = Sys.Date()) {
 #' @param study_id The study's id (`{STUDY_ID}`); `NA` leaves it.
 #' @param standards The standards ([company_standards()]).
 #' @return The code, one element per line.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' setup_code("ABC-1")  # the company's lines, with the study's id in
+#' options(old)
 #' @export
 setup_code <- function(study_id = NA, standards = company_standards()) {
   d <- standards$setup_code
@@ -241,6 +252,14 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
 #' @param date The date the marker of part 1 says it was copied.
 #' @param standards The standards to copy part 1 from.
 #' @return The program, one element per line.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' meta <- list(study_id = "ABC-1", title = "A study of Drug X")
+#' head(study_setup_code(meta), 8)
+#' options(old)
 #' @export
 study_setup_code <- function(meta, date = Sys.Date(),
                              standards = company_standards()) {

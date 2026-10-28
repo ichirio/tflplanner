@@ -26,3 +26,16 @@ and one written as \code{cards::as_cards_fn()} (the templates of
 are not read.  An analysis names one as its \code{method} once the study
 uses it (\code{\link[=use_company_ard_function]{use_company_ard_function()}}).
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+# write a function from tflspec's template into the company's folder
+d <- file.path(tflplanner_home(), "standards", "ard_functions")
+dir.create(d, recursive = TRUE)
+tflspec::tfl_ard_function_template("ard_cv_geomean", type = "summary",
+                                   file = file.path(d, "ard_cv_geomean.R"))
+company_ard_functions()[c("name", "title", "stat_names")]
+options(old)
+}

@@ -34,6 +34,9 @@
 #' @param root The study folder (the definitions' fingerprints read the
 #'   files the ARD programs name from it).
 #' @return The program, one element per line.
+#' @examples
+#' x <- add_output(new_planner(), "T-14-1-1", type = "table")
+#' head(batch_code(x), 5)
 #' @export
 batch_code <- function(x, date = Sys.Date(), root = ".") {
   lay <- study_layout()
@@ -248,6 +251,17 @@ autoexec_all_code <- function(date = Sys.Date()) {
 #' @return A data frame: `path` (as the catalog gives it), `size` (bytes;
 #'   `NA` when the file is not there), `programs` (the run's programs that
 #'   read it, one string).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it saves the sample study)
+#' s <- save_study(create_sample_study(run = FALSE))
+#' batch_data_plan(s)[c("path", "size")]  # the data files a run would keep
+#' }
+#' options(old)
 #' @export
 batch_data_plan <- function(study, parts = c("ard", "tfl"), output_ids = NULL) {
   parts <- match.arg(parts, c("ard", "tfl"), several.ok = TRUE)

@@ -40,3 +40,12 @@ Saving a study rewrites part 2 only, and parts 1 and 3 stay byte for
 byte.  A part 2 edited by hand (its checksum no longer matches) is
 written again too, the edited file first put in \verb{programs/.edited/}.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+meta <- list(study_id = "ABC-1", title = "A study of Drug X")
+head(study_setup_code(meta), 8)
+options(old)
+}

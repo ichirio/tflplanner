@@ -20,3 +20,16 @@ Not the TOCs it took in nor what they said (\code{last.json}): the other
 study's TOC is its own, and its first one is compared with its own
 lines.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it makes two studies)
+from <- create_sample_study(run = FALSE)
+to <- create_study("OTHER-01")
+toc_copy_profile(from, to)  # FALSE: the sample took in no TOC, no profile
+}
+options(old)
+}

@@ -35,3 +35,18 @@ variables.  Rows already there are kept; only their blank \code{levels} and
 report's \code{tables} row: the column key, and the hierarchy (\code{rows},
 \code{label}, \code{sort}) or \code{group = variable}.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+if (requireNamespace("cards", quietly = TRUE)) {
+  ard <- cards::ard_categorical(cards::ADSL, by = "ARM", variables = "AGEGR1")
+  x <- add_output(new_planner(), "T-14-1-1", type = "table")
+  x <- fill_variables(x, "T-14-1-1", ard_meta(ard))
+  x$sheets$variables[c("variable", "levels")]  # the levels, in the ARD's order
+}
+}
+options(old)
+}

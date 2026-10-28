@@ -323,6 +323,20 @@ set_fig_design <- function(x, output_id, design) {
 #'   `class`; for a data frame `rows`, `columns` and `head` (its first 6
 #'   rows), for anything else `text` (the first lines it prints).  Those
 #'   made before an error are there.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (about 10 seconds: it makes the sample study, its ARD and the figure)
+#' s <- save_study(create_sample_study(run = FALSE))
+#' update_study_ard(s, "T-14-2-2")  # the ARD the figure reads
+#' p <- preview_figure(s, "F-14-2-3")
+#' p$png      # the picture, in a temporary folder
+#' p$size     # its size on the page
+#' }
+#' options(old)
 #' @export
 preview_figure <- function(study, output_id,
                            design = fig_design(study$planner, output_id),
@@ -454,6 +468,18 @@ preview_figure <- function(study, output_id,
 #' @param pattern The new IDs: `{id}` = `output_id`, `{param}` = the
 #'   parameter.
 #' @return `x` with the new figures.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it makes the sample study)
+#' s <- create_sample_study(run = FALSE)
+#' x <- copy_fig_to_params(s$planner, "F-14-2-3", c("SYSBP", "DIABP"))
+#' grep("F-14-2-3", output_ids(x), value = TRUE)  # the figure and its two copies
+#' }
+#' options(old)
 #' @export
 copy_fig_to_params <- function(x, output_id, params, pattern = "{id}-{param}") {
   d <- fig_design(x, output_id)
@@ -497,6 +523,20 @@ copy_fig_to_params <- function(x, output_id, params, pattern = "{id}-{param}") {
 #' @return `fig_presets()`: a data frame (`name`, `description`, `template`,
 #'   `file`); `read_fig_preset()`: a `tfl_fig_design`; the others: the
 #'   file, invisibly.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it makes the sample study)
+#' s <- create_sample_study(run = FALSE)
+#' fig_presets()  # none yet
+#' save_fig_preset(fig_design(s$planner, "F-14-2-3"), "km-company",
+#'                 "KM figure as the company draws it")
+#' fig_presets()[c("name", "description")]
+#' }
+#' options(old)
 #' @export
 fig_presets <- function(home = tflplanner_home()) {
   dir <- .fig_preset_dir(home)

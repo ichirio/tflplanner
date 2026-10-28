@@ -50,3 +50,19 @@ compared: they stay, after the TOC's lines.  The report's information --
 its label, title and analysis set text (those the study's pages say) and
 its section -- is compared the same way.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+# what taking in a TOC would change in a planner with one of its reports
+f <- tempfile(fileext = ".csv")
+writeLines(c("No.,Title,Population",
+             "T-14-1-1,Demographics,Safety Population",
+             "T-14-2-1,Adverse events,Safety Population"), f)
+spec <- tflspec::tfl_read_toc(f, map = c(output_id = "No.", title = "Title",
+                                         population = "Population"))
+x <- add_output(new_planner(), "T-14-1-1", type = "table")
+toc_changes(x, spec)$reports[c("output_id", "status")]
+options(old)
+}

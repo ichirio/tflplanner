@@ -36,3 +36,14 @@ is replaced, the others are kept (rows with no \code{under} column keep the
 every row names its report); to use one in several reports, copy it
 (\code{\link[=import_codelist]{import_codelist()}}, \code{standard_codelists()}).
 }
+\examples{
+f <- tempfile(fileext = ".csv")
+writeLines(c("variable,value,label",
+             "SEX,F,Female",
+             "SEX,M,Male"), f)
+cl <- read_codelist(f)
+cl
+# put it into a report
+x <- add_output(new_planner(), "T-14-1-1", type = "table")
+x <- set_codelist(x, "T-14-1-1", cl)
+}

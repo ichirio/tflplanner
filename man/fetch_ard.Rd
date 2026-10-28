@@ -44,3 +44,17 @@ and the order of its values (a factor's levels, or the order of a
 numeric companion \verb{<name>N}: \code{TRT01A} by \code{TRT01AN}).  The result is kept
 in tflplanner's home, so it is there the next time the study is opened.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (about 15 seconds: it runs the report's ARD code in another R process)
+s <- create_sample_study(run = FALSE)
+m <- fetch_ard(s, "T-14-1-1")
+m$by          # the column variables of its ARD
+m$variables[c("variable", "kind", "n_levels")]
+}
+options(old)
+}

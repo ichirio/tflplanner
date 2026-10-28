@@ -18,3 +18,15 @@ with \code{\link[tflspec:tfl_read_report_spec]{tflspec::tfl_read_report_spec()}}
 report program makes.  (What needs the data -- a column the ARD lacks --
 shows only when the program runs.)
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: the report is written and read back)
+x <- add_output(new_planner(), "F-1", type = "figure")
+check_planner(x)  # one row a report: ok, and the message when not
+}
+options(old)
+}
