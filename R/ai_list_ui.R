@@ -472,6 +472,13 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       return(notify(t("The study has no run.R: write the requests in agent mode (step 1)."), "warning"))
     }
     if (!is.null(run$px) && run$px$is_alive()) return(notify(t("run.R is running already."), "warning"))
+    # (not beside an official or preview run, whose reports it may build
+    # too; not with changes unsaved, which the run would not have)
+    app_rv <- session$userData$rv
+    if (!is.null(app_rv) && !is.null(shiny::isolate(app_rv$job))) {
+      return(notify(t("A run is going on"), "warning"))
+    }
+    if (isTRUE(dirty())) return(notify(t("Save first: the study has unsaved changes."), "warning"))
     # (the drafts in their own folder first: run.R writes them there)
     .ai_ensure_area(p)
     log <- file.path(p, "ai", "run-from-app.log")
