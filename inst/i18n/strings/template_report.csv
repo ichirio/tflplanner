@@ -19,3 +19,5 @@
 "The template's items are written into the report, with the study's defaults and this report's settings, and edited on the usual cards from then on.","テンプレートの項目を、試験の既定とこの帳票の設定を重ねて帳票に書き込みます。以後はふつうのカードで直します。"
 "This cannot be undone: later changes of the template no longer reach this report.","元に戻せません。以後、テンプレートの変更はこの帳票に届きません。"
 "%s is a code report now: its items are on the usual cards (save to keep it).","%s はコードの帳票になりました。項目はふつうのカードにあります（残すには保存）。"
+"More arguments (%d): filters, variables, columns ...","追加の引数 (%d): 絞り込み・変数・列 …"
+"Each starts at its default; only a value you change is written into the report.","どれも既定値から始まります。変えた値だけが帳票に書かれます。"

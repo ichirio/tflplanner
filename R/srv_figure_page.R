@@ -67,7 +67,7 @@
     rv$status_ver
     p <- shiny::isolate(rv$p)
     empty <- data.frame(output_id = character(), section = character(),
-                        batches = character(), type = character(),
+                        batches = character(), type = character(), how = character(),
                         program = character(), rtf = character(),
                         data = character(), title = character())
     if (is.null(p) || !nrow(p$outputs)) return(empty)
@@ -113,6 +113,11 @@
       section = .report_section(o$output_id, type, o$section),
       batches = ifelse(is.na(o$batches %||% NA_character_), "", o$batches %||% ""),
       type = t(unname(.type_labels[type])),
+      # how it is made: a template (its name) or code
+      how = vapply(o$output_id, function(id) {
+        tp <- .tpl_of(p, id)
+        if (is.null(tp)) t("Code") else paste0(t("Template"), ": ", tp$name)
+      }, "", USE.NAMES = FALSE),
       program = vapply(info, `[[`, "", "program"),
       rtf = vapply(info, `[[`, "", "file"),
       data = .cell_tip(data, data_tip),
@@ -131,7 +136,8 @@
     v$program <- htmltools::htmlEscape(v$program)
     v$rtf <- htmltools::htmlEscape(v$rtf)
     # "Title" here is the report's title; t("Title") is the study's
-    names(v) <- c(t(c("output_id", "Section", "Report sets", "Type", "Program", "RTF", "Data")),
+    v$how <- htmltools::htmlEscape(v$how)
+    names(v) <- c(t(c("output_id", "Section", "Report sets", "Type", "How it is made", "Program", "RTF", "Data")),
                   if (identical(lang, "en")) "Title" else t("Report title"))
     v$.key <- .report_search_keys(shiny::isolate(picker_rows()), outputs_view()$output_id)
     DT::datatable(v, rownames = FALSE, escape = FALSE,

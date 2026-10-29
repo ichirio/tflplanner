@@ -141,7 +141,7 @@
     if (is.null(nm) || !nzchar(nm)) NULL else nm
   }
   tpl_modal_ui <- function() {
-    lapply(report_types(), function(kind) {
+    shiny::tagList(lapply(report_types(), function(kind) {
       tp <- .tpl_list(kind)
       shiny::conditionalPanel(
         sprintf("input.modal_type == '%s'", kind),
@@ -175,8 +175,29 @@
                                                      .tpl_study_value(rv$p$spec$study, x),
                                                      dataset = prm$data$default, params = prm))))
           })))
-    })
+    }),
+    # the chosen template's other arguments, with their defaults (drawn for
+    # it alone: a template has a dozen)
+    shiny::uiOutput("tpl_modal_more"))
   }
+  # (an optional argument's value as the dialog starts it: the study's,
+  # else the template's default)
+  tpl_opt_start <- function(x) .tpl_study_value(rv$p$spec$study, x) %||% x$default
+  output$tpl_modal_more <- shiny::renderUI({
+    nm <- tpl_chosen()
+    shiny::req(nm)
+    prm <- .tpl_shown(.tpl_params(nm))
+    opt <- Filter(function(x) !isTRUE(x$required), prm)
+    if (!length(opt)) return(NULL)
+    shiny::tags$details(
+      class = "border rounded p-2 mb-2",
+      shiny::tags$summary(class = "small fw-semibold",
+                          sprintf(t("More arguments (%d): filters, variables, columns ..."), length(opt))),
+      shiny::p(class = "small text-muted mb-1",
+               t("Each starts at its default; only a value you change is written into the report.")),
+      lapply(opt, function(x) tpl_widget(tpl_arg_id(nm, x$name), x, tpl_opt_start(x),
+                                         dataset = prm$data$default, params = prm)))
+  })
   # a template whose data stage is the report's (a KM type): the report's
   # data asked in the dialog -- the dataset, its parameter, the analysis
   # set -- written as its `data:` steps
@@ -244,7 +265,15 @@
   tpl_modal_args <- function(nm) {
     args <- list()
     for (x in .tpl_shown(.tpl_params(nm))) {
-      if (!isTRUE(x$required)) next
+      if (!isTRUE(x$required)) {
+        # (an optional one: written only when changed from where it started)
+        raw <- input[[tpl_arg_id(nm, x$name)]]
+        if (is.null(raw)) next
+        v <- .tpl_value(raw, .tpl_type(x), x)
+        if (is.null(v) || identical(as.character(unlist(v)), as.character(unlist(tpl_opt_start(x))))) next
+        args[[x$name]] <- v
+        next
+      }
       v <- .tpl_value(input[[tpl_arg_id(nm, x$name)]], .tpl_type(x), x)
       if (is.null(v)) return(structure(list(), missing = x$name))
       # (the study's own value, as prefilled: left to the study)
@@ -308,6 +337,8 @@
     rv$p <- p2
     bump()
     tpl_mode_send(FALSE, report_kind(), id = id)
+    # (its cards drawn at once: a table's preview makes the ARD they read)
+    if (identical(report_kind(), "table")) do_preview(id)
     notify(sprintf(t("%s is a code report now: its items are on the usual cards (save to keep it)."), id))
   })
   shiny::observeEvent(input$tpl_goto_card, {

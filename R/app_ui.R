@@ -795,6 +795,9 @@ app_ui <- function(lang = "en") {
             shiny::tags$summary(t("Column help")),
             DT::DTOutput("help_ard_populations"))))),
 
+    # tflspec's AI table requests and their answers (#431): before the Report list, where its reports go
+    if (.ai_drafts_on()) bslib::nav_panel(t("AI drafts"), value = "ai", ai_ui("ai", lang)),
+
     bslib::nav_panel(
       t("Report list"), value = "outputs",
       shiny::uiOutput("next_steps"),
@@ -821,8 +824,6 @@ app_ui <- function(lang = "en") {
         # its own height (a fixed one let a long list cover the buttons)
         DT::DTOutput("outputs", height = "auto", fill = FALSE))),
 
-    # tflspec's AI table requests and their answers (#431)
-    if (.ai_drafts_on()) bslib::nav_panel(t("AI drafts"), value = "ai", ai_ui("ai", lang)),
 
     # one report at a time: chosen on the left, made in its steps
     bslib::nav_panel(
