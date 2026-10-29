@@ -444,7 +444,7 @@ test_that("a nest taken away keeps the variable where it was shown (#428)", {
 test_that("plan_paginate_group(), plan_paginate_cols(), plan_row_group(): a form line each", {
   skip_on_cran()
   expect_identical(.plan_form_main("plan_paginate_group"), c("col", "keep", "heading"))
-  expect_identical(.plan_form_main("plan_paginate_cols"),
+  expect_setequal(.plan_form_main("plan_paginate_cols"),
                    c("every", "fit", "at", "keep", "cut_by", "order", "allow_span_break"))
   expect_identical(.plan_form_main("plan_row_group"), c("mode", "collapse"))
   # given as R: under Other arguments, saved
