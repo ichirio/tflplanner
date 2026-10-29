@@ -35,7 +35,8 @@
   plan_row_group = "Row groups",
   plan_columns = "Column widths and alignment",
   plan_style = "Table style",
-  plan_cell_style = "Cell styles")
+  plan_cell_style = "Cell styles",
+  plan_append = "A part under the table")
 
 # ... and their main arguments'
 .plan_arg_meaning <- list(
@@ -557,7 +558,7 @@ builder_items <- function(x, output_id, meta = NULL) {
 # finishing) says it when tflspec has it; else this table.
 .plan_sections <- list(
   mapping = c("table_plan", "plan_cells", "plan_stat_groups", "plan_total", "plan_compare",
-              "plan_filter"),
+              "plan_filter", "plan_append"),
   finish = c("plan_levels", "plan_labels", "plan_nest", "plan_digits", "plan_sort",
              "plan_col_header", "plan_stub", "plan_blanks", "plan_paginate_rows",
              "plan_paginate_group", "plan_paginate_cols", "plan_row_group", "plan_hide",

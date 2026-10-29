@@ -299,6 +299,15 @@ data_lines <- function(x, output_id, todo = TRUE) {
     }
     if (!is.null(f)) return(c(setup, f))
   }
+  # a table of records: its records as `data`, its ARD too when it has
+  # analyses (a part's rows: plan_append())
+  if (identical(type, "table")) {
+    recs <- .table_dataset_lines(x, output_id)
+    if (!is.null(recs)) {
+      return(c(setup, "# the report's records", recs,
+               if (!is.na(code)) c("", "# its ARD (the parts' rows)", .code_block(code))))
+    }
+  }
   if (is.na(code)) {
     if (!todo) return(NULL)
     stop_todo <- paste0("stop(\"tflplanner: the data part of ",
@@ -356,9 +365,14 @@ data_lines <- function(x, output_id, todo = TRUE) {
   } else switch(type,
     table = {
       a <- .ard_code_of(x, output_id)
-      c(.section(if (.table_norm_builtin(x, output_id, a, proc)) "data: this report's ARD"
-                 else "data: this report's normalized ARD"),
-        if (is.na(a)) todo("ARD") else c(.code_block(a), .table_process_lines(x, output_id, a, proc)))
+      recs <- .table_dataset_lines(x, output_id)
+      ard_lines <- c(.section(if (.table_norm_builtin(x, output_id, a, proc)) "data: this report's ARD"
+                              else "data: this report's normalized ARD"),
+                     if (is.na(a)) todo("ARD") else c(.code_block(a), .table_process_lines(x, output_id, a, proc)))
+      # a table of records (`data: {source: dataset}`): its records as
+      # `data`; its ARD too when it has analyses (a part's rows: plan_append())
+      if (is.null(recs)) ard_lines
+      else c(.section("data: this report's records"), recs, if (!is.na(a)) c("", ard_lines))
     },
     listing = c(.section("data: the listing's data"),
                 .listing_lines(x, output_id, rework = proc, part = "data") %||%
@@ -381,6 +395,28 @@ data_lines <- function(x, output_id, todo = TRUE) {
   # the figure style, report_content() and report_data() first (a designed
   # figure's program sources them at its top)
   c(if (is.null(design)) c(.fig_source_lines(), ""), data, content)
+}
+
+# A table of records (its YAML's `data: {source: dataset, ...}`): the code
+# that makes its `data` -- the dataset, or the report's analysis data, its
+# analysis set's subjects, its condition, its order -- as a listing's data
+# part is written (tflspec::tfl_listing_code(part = "data")); NULL for a
+# table of the ARD
+.table_dataset_lines <- function(x, output_id) {
+  o <- x$spec$outputs[[output_id]]
+  d <- o$data
+  if (is.null(d) || !identical(d[["source"]], "dataset")) return(NULL)
+  txt <- function(v) {
+    v <- unlist(lapply(v, as.character))
+    if (!length(v)) NA_character_ else paste(v, collapse = " | ")
+  }
+  l <- data.frame(output_id = output_id, dataset = txt(d[["dataset"]]), data = txt(d[["data"]]),
+                  population_id = txt(d[["population"]]), where = txt(d[["where"]]),
+                  sort = txt(d[["sort"]]), stringsAsFactors = FALSE)
+  sp <- tflspec::tfl_listing_spec(l, data.frame(output_id = output_id, vars = "USUBJID"), check = FALSE)
+  own <- !is.na(l$data) || !is.na(l$population_id)
+  tflspec::tfl_listing_code(sp, output_id, x$ard$datasets, codelists = .study_codelists(x),
+                            part = "data", ard = if (own) structure(x$ard, class = "tfl_ard_spec"))
 }
 
 #' The R program for one report
@@ -472,7 +508,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     .section(paste0("data: ", switch(type,
       figure = "the figure",
       listing = "the listing's pages",
-      if (identical(obj, "ard")) "this report's ARD" else "this report's normalized ARD"))),
+      if (!is.null(.table_dataset_lines(x, output_id))) "this report's records and ARD"
+      else if (identical(obj, "ard")) "this report's ARD" else "this report's normalized ARD"))),
     data)
 
   # a figure's plot goes to the report as it is (rtf_figures(doc, plot)),

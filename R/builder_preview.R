@@ -310,3 +310,44 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   n <- min(length(pages), max_pages)
   htmltools::tagList(lapply(seq_len(n), function(i) one(pages[[i]], i)))
 }
+
+# A table of records (`data: {source: dataset}`), or one with parts
+# (plan_append()): its pages are its content run on the objects its program
+# makes -- `data` its records, `ard` the report's ARD as read -- not the
+# ARD's sheets.  FALSE for the others.
+.preview_by_content <- function(x, output_id) {
+  o <- tryCatch(.code_spec(x)$outputs[[output_id]], error = function(e) NULL)
+  if (is.null(o) || inherits(o$content, "tfl_r")) return(FALSE)
+  identical(o$data$source, "dataset") ||
+    any(vapply(o$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
+}
+
+# The table's records for the preview: its data code (.table_dataset_lines())
+# run in the study's folder; NULL when its rows are the ARD's
+.preview_records <- function(x, output_id, study_dir) {
+  code <- .table_dataset_lines(x, output_id)
+  if (is.null(code)) return(NULL)
+  old <- setwd(study_dir)
+  on.exit(setwd(old), add = TRUE)
+  env <- new.env(parent = globalenv())
+  eval(parse(text = code, keep.source = FALSE), envir = env)
+  as.data.frame(env$data)
+}
+
+# Its pages: the report resolved, its content run (tflspec::tfl_content_run())
+# on `objects` (data, ard), then laid out as preview_pages() does
+.preview_content_pages <- function(x, output_id, objects) {
+  sp <- .code_spec(x)
+  r <- tflspec::tfl_resolve_output(sp$outputs[[output_id]], sp$study)
+  plan <- tflspec::tfl_content_run(r, objects)
+  res <- suppressMessages(rtfreporter::plan_apply(plan))
+  if (is.data.frame(res)) {
+    res <- list(structure(list(data = res, col_header = list(names(res)),
+                               blank_rows = integer()),
+                          class = "rtftable"))
+  }
+  if (inherits(res, "rtftable")) res <- list(res)
+  attr(res, "header_tokens") <- tryCatch(rtfreporter::plan_header_tokens(plan),
+                                         error = function(e) NULL)
+  res
+}

@@ -639,6 +639,7 @@
   # overall row, the hierarchy, the stack shows without making the ARD
   # again); a rework of the report's own: the data as it made them
   norm_cache <- new.env(parent = emptyenv())
+  rec_cache <- new.env(parent = emptyenv())
   preview_data <- function(p, id) {
     raw <- if (.table_norm_builtin(p, id)) ard_raw(rv$study, id)
     if (is.null(raw)) return(ard_data(rv$study, id))
@@ -654,6 +655,24 @@
     id <- current()
     shiny::req(!is.null(id), identical(report_info(rv$p, id)$type, "table"))
     rv$ard_ver
+    # a table of records, or one with parts: its content on its records
+    # and its ARD (.preview_content_pages())
+    if (isTRUE(.preview_by_content(rv$p, id))) {
+      return(tryCatch({
+        key <- .table_dataset_lines(rv$p, id)
+        hit <- rec_cache[[id]]
+        recs <- if (!is.null(hit) && identical(hit$key, key)) hit$d else {
+          r <- .preview_records(rv$p, id, rv$study$path)
+          rec_cache[[id]] <- list(key = key, d = r)
+          r
+        }
+        objs <- Filter(Negate(is.null), list(data = recs, ard = ard_raw(rv$study, id)))
+        if (is.null(objs$data) && is.null(objs$ard)) {
+          return(list(id = id, error = t("No data to show yet: Update preview makes this table's ARD.")))
+        }
+        list(id = id, pages = .preview_content_pages(rv$p, id, objs))
+      }, error = function(e) list(id = id, error = conditionMessage(e))))
+    }
     d <- tryCatch(preview_data(rv$p, id), error = function(e) e)
     if (inherits(d, "error")) {
       return(list(id = id, error = paste(t("normalize_ard() stopped:"), conditionMessage(d))))

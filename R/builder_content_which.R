@@ -191,6 +191,9 @@
     plan_blanks = list(where = "between_groups"),
     plan_paginate_rows = list(max_rows = 30L, split = "group_safe"),
     plan_style = list(align_count_pct = TRUE),
+    # (a part: the ARD's summary statistics under the table, by its columns)
+    plan_append = list(name = "summary", data = list(source = "ard"),
+                       content = .part_quickstart(st$key[!is.na(st$key)])),
     NULL)
 }
 

@@ -496,6 +496,13 @@
           .nest_body(cid, it, st, lang = lang)
         })
     }
+    # a part (plan_append()): its own fields, its items as YAML
+    # (R/builder_parts.R)
+    for (it in Filter(function(it) identical(it$fn, "plan_append") &&
+                        (isTRUE(it$present) || isTRUE(it$added)), items)) {
+      bodies[[it$path]] <- .part_body(card_id(it$path), it,
+                                      datasets = rv$p$ard$datasets$dataset %||% character(), lang = lang)
+    }
     bodies <- Filter(Negate(is.null), bodies)
     shiny::div(
       class = "rp-builder-cards", `data-back` = t("Back to the code"),
@@ -548,6 +555,27 @@
       send_mark(it$path, f)
     }
   }
+  # a part's card: Apply writes its fields; Start writes the usual part
+  # (the ARD's summary statistics by the table's columns) into it
+  shiny::observeEvent(input$b_part_act, {
+    a <- input$b_part_act
+    it <- .builder_item_at(bform$items, a$path)
+    shiny::req(!is.null(it), identical(bform$id, current()))
+    cid <- card_id(it$path)
+    k <- if (grepl("#", it$path, fixed = TRUE)) as.integer(sub("^.*#", "", it$path)) else 1L
+    args <- if (identical(a$act, "start")) {
+      cols <- bform$st$key[!is.na(bform$st$key)]
+      utils::modifyList(it$args %||% list(),
+                        list(data = list(source = "ard"), content = .part_quickstart(cols)))
+    } else guarded(.part_args_read(input, cid, it))
+    if (is.null(args)) return()
+    p2 <- guarded(.builder_item_write(rv$p, bform$id, "plan_append", args, k))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    rv$bver <- rv$bver + 1L
+    notify(t("The part is written: update the preview to see its rows."))
+  })
   # the Total column's switch: its card's
   total_on_id <- function() paste0(card_id("plan_total"), "__on")
   # a card's Revert: the report's own rows of its verb taken away, so the
