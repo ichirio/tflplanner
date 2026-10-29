@@ -37,6 +37,9 @@
 #'
 #' @return A named character vector of folders, relative to the study
 #'   folder.
+#' @examples
+#' study_layout()["adam"]
+#' names(study_layout())
 #' @export
 study_layout <- function() {
   c(adam = "data/adam", sdtm = "data/sdtm", other = "data/other",

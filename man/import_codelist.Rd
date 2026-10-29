@@ -26,3 +26,17 @@ company standards' (their \code{codelists} sheet: one row a value, \code{set}
 naming each list), for \code{\link[=set_codelist]{set_codelist()}}.  The rows copied are the
 report's own: nothing ties them to where they came from.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: the sample study and its data)
+s <- create_sample_study(run = FALSE)
+# the code list of SEX in one report is copied into another
+p <- import_codelist(s$planner, "T-14-1-1", "T-14-1-3", variables = "SEX")
+sum(p$sheets$codelists$output_id \%in\% "T-14-1-3")
+}
+options(old)
+}

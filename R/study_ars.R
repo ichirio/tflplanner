@@ -17,6 +17,19 @@
 #' @param profile `"cdisc"`, or `"siera"` for a reporting event siera can
 #'   run (see [tflspec::tfl_ars()]).
 #' @return The paths written, invisibly.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the ARS files)
+#' s <- create_sample_study(run = FALSE)
+#' # the ARS files go to a folder in the temporary folder
+#' files <- export_ars(s, file.path(tempdir(), "ars"))
+#' basename(files)
+#' }
+#' options(old)
 #' @export
 export_ars <- function(study, dir, profile = c("cdisc", "siera")) {
   profile <- match.arg(profile)

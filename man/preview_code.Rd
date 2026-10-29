@@ -25,3 +25,17 @@ its own code or as its definition makes it) in a fresh R process from
 the study folder -- the app does not run the code itself -- and gives
 what it left as \code{content}, for a preview.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it runs the report's code)
+s <- create_sample_study(run = FALSE)
+# runs the listing's program up to its report in a fresh R process
+res <- preview_code(s, "L-16-2-7")
+res$error  # NULL: the code ran
+}
+options(old)
+}

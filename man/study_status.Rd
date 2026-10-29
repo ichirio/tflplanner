@@ -42,3 +42,16 @@ reports it is about and no others.
 file it sources is newer), \code{setup} (the study setup changed), or
 \verb{ard:<id>} (the ARD of \verb{<id>} changed, or is to be made again).
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: the sample study and its data)
+s <- create_sample_study(run = FALSE)
+# nothing is saved or run yet
+head(study_status(s)[, c("output_id", "status")])
+}
+options(old)
+}

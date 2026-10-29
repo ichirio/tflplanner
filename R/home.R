@@ -221,6 +221,13 @@ setup_tflplanner <- function(home = NULL, studies_root = NULL,
 #' @param home The home folder.
 #' @return A list: `studies_root`, `last_study`, `language`, and when set
 #'   `port`, `update_channel`, `check_updates`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' tflplanner_config()$last_study
+#' options(old)
 #' @export
 tflplanner_config <- function(home = tflplanner_home()) {
   f <- .config_file(home)

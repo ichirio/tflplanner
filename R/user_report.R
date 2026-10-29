@@ -61,6 +61,19 @@
 #' @return A list: `content` (or `NULL`), `error` (the code's error, or
 #'   `NULL`), `code_step` and `code_line` (the step and the line of its
 #'   code the error is on, when it is in the report's own code) and `log`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it runs the report's code)
+#' s <- create_sample_study(run = FALSE)
+#' # runs the listing's program up to its report in a fresh R process
+#' res <- preview_code(s, "L-16-2-7")
+#' res$error  # NULL: the code ran
+#' }
+#' options(old)
 #' @export
 preview_code <- function(study, output_id, timeout = 300) {
   code <- data_lines(study$planner, output_id, todo = FALSE)

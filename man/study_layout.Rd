@@ -13,3 +13,7 @@ folder.
 \description{
 The folder layout of a study
 }
+\examples{
+study_layout()["adam"]
+names(study_layout())
+}

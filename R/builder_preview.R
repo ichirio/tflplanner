@@ -75,6 +75,21 @@ ard_card_summary <- function(meta, page_by = character(), tr = function(x) x) {
 #' @param output_id The report.
 #' @param data Its normalized data (`ard_data()`).
 #' @return A list of `rtftable` pages.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_sample_study(run = FALSE)
+#' s <- save_study(s)
+#' invisible(update_study_ard(s, "T-14-1-1"))  # the report's ARD, made by its program
+#' ard <- rtfreporter::normalize_ard(study_ard(s, "T-14-1-1"))
+#' pages <- preview_pages(s$planner, "T-14-1-1", ard)
+#' head(pages[[1]]$data)
+#' }
+#' options(old)
 #' @export
 preview_pages <- function(x, output_id, data) {
   sheets <- lapply(x$sheets[table_sheets()], function(d) {

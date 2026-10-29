@@ -27,3 +27,20 @@ set_lf_rows(x, sheet, output_id, rows)
 \code{figures}; \code{set_lf_rows()} puts them back, edited.  \code{listing_types()}
 are the listing types of the company standards (rtfreporter's).
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: the sample study and its data)
+s <- create_sample_study(run = FALSE)
+rows <- lf_rows(s$planner, "listings", "L-16-2-7")
+rows[, c("output_id", "type", "dataset", "max_rows")]
+# change a row and put it back
+rows$max_rows <- 30
+p <- set_lf_rows(s$planner, "listings", "L-16-2-7", rows)
+lf_rows(p, "listings", "L-16-2-7")$max_rows
+}
+options(old)
+}

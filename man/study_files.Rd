@@ -18,3 +18,15 @@ A data frame: \code{folder}, \code{file}, \code{size_kb}, \code{modified}, \code
 \description{
 Files in a study folder
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: the sample study and its data)
+s <- create_sample_study(run = FALSE)
+head(study_files(s)[, c("folder", "file", "size_kb")])
+}
+options(old)
+}
