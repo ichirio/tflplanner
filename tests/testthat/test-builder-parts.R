@@ -26,3 +26,16 @@ test_that("the card's fields make the item's arguments", {
   expect_identical(a$data, list(source = "dataset", dataset = "ADPC"))
   expect_length(a$content, 3L)
 })
+
+test_that("a part's builder id names its report and its part", {
+  expect_identical(.part_of(.part_id("T-PK-1", "summary")), list(id = "T-PK-1", name = "summary"))
+  expect_null(.part_of("T-PK-1"))
+  expect_identical(.part_parent("T-PK-1::summary"), "T-PK-1")
+  expect_identical(.part_parent("T-PK-1"), "T-PK-1")
+  content <- list(tflspec::tfl_item("table_plan", list(cols = "ATPT")),
+                  tflspec::tfl_item("plan_append", list(name = "summary", content = .part_quickstart())),
+                  tflspec::tfl_item("plan_append", list(content = .part_quickstart())))
+  expect_identical(.part_names(content), c("summary", "part3"))
+  expect_identical(.part_at(content, "part3"), 3L)
+  expect_true(is.na(.part_at(content, "none")))
+})

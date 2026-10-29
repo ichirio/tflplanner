@@ -81,3 +81,7 @@
 "Its own table items, as the report's file writes them: table_plan, plan_cells, ... (normalize_ard first for the ARD).","この部分だけの表の項目を、帳票のファイルと同じ書き方で書きます（table_plan、plan_cells など。ARD なら最初に normalize_ard）。"
 "Start: the ARD's summary statistics under the table","はじめる: ARD の要約統計量を表の下に"
 "The part is written: update the preview to see its rows.","部分を書きました。プレビューを更新すると、その行が出ます。"
+"Cards of","カードの対象"
+"Part","部分"
+"These cards edit the part %s: its rows go under the table's.","このカードは部分 %s を直します。その行は表の下に出ます。"
+"Edit its items in cards","中身をカードで直す"

@@ -153,6 +153,8 @@
     # the study it is (a save gives rv$study anew: the same study)
     study_open()
     if (!has_study() || is.null(id)) return(NULL)
+    # (a part's: its report's ARD)
+    id <- .part_parent(id)
     .meta_with_hierarchy(ard_info(shiny::isolate(rv$study), id), shiny::isolate(rv$p), id)
   }
   meta_now <- shiny::reactive({

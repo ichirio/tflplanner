@@ -91,7 +91,11 @@
     shiny::div(
       class = "d-flex flex-wrap gap-2",
       btn("apply", paste0(t("Apply"), " (plan_append)"), "btn-sm btn-primary"),
-      btn("start", t("Start: the ARD's summary statistics under the table"))))
+      btn("start", t("Start: the ARD's summary statistics under the table")),
+      if (nzchar(a$name %||% "")) shiny::tags$button(
+        type = "button", class = "btn btn-sm btn-outline-secondary", `data-name` = a$name,
+        onclick = "Shiny.setInputValue('b_scope', {name: this.dataset.name, n: Date.now()}, {priority: 'event'})",
+        t("Edit its items in cards"))))
 }
 
 # The item's arguments from the card's fields (an error when its items do
@@ -107,4 +111,67 @@
     if (!identical(ab, "error")) list(absent = ab),
     list(data = if (identical(src, "dataset")) list(source = "dataset", dataset = ds) else list(source = "ard"),
          content = content))
+}
+
+# ---- a part's items in the builder's own cards --------------------------------
+# A part is edited with the table's own cards: the builder's id for it is
+# the report's and the part's name ("T-PK-1::summary"), and the spec's
+# reading and writing of a report's items (.spec_items(),
+# .spec_set_items()) take such an id as the part's items inside the
+# report's plan_append() item.
+
+.part_sep <- "::"
+
+# the builder's id of a report's part
+.part_id <- function(output_id, name) paste0(output_id, .part_sep, name)
+
+# a part's id split: list(id, name); NULL for a report's own id
+.part_of <- function(id) {
+  if (is.null(id) || !grepl(.part_sep, id, fixed = TRUE)) return(NULL)
+  at <- regexpr(.part_sep, id, fixed = TRUE)
+  list(id = substr(id, 1L, at - 1L), name = substr(id, at + nchar(.part_sep), nchar(id)))
+}
+
+# the report an id is of (a part's: its report's)
+.part_parent <- function(id) (.part_of(id) %||% list(id = id))$id
+
+# a part's name, as the program calls it (plan_append(name = ))
+.part_name_of <- function(it, i) it$args$name %||% paste0("part", i + 1L)
+
+# the parts of a report's content: their names
+.part_names <- function(content) {
+  parts <- Filter(function(it) identical(it$fn, "plan_append"), content %||% list())
+  vapply(seq_along(parts), function(i) .part_name_of(parts[[i]], i), "")
+}
+
+# where the part called `name` is in a content (its index; NA none)
+.part_at <- function(content, name) {
+  at <- which(vapply(content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
+  nm <- vapply(seq_along(at), function(i) .part_name_of(content[[at[i]]], i), "")
+  at[match(name, nm)]
+}
+
+# The bar over the cards of a table with parts: the table's own cards, or
+# a part's (`part` the one shown, "" the table's); NULL for a table with none
+.part_scope_bar <- function(x, output_id, part = "", lang = "en") {
+  t <- function(z) tr(z, lang)
+  sp <- tryCatch(.spec_items(x, output_id), error = function(e) NULL)
+  nm <- .part_names(sp$items)
+  if (!length(nm)) return(NULL)
+  btn <- function(name, label) {
+    on <- identical(name, part)
+    shiny::tags$button(
+      type = "button", class = paste("btn btn-sm", if (on) "btn-primary" else "btn-outline-primary"),
+      `data-name` = name, `aria-pressed` = if (on) "true" else "false",
+      onclick = "Shiny.setInputValue('b_scope', {name: this.dataset.name, n: Date.now()}, {priority: 'event'})",
+      label)
+  }
+  shiny::div(
+    class = "rp-part-scope d-flex flex-wrap gap-1 align-items-center mb-2",
+    shiny::span(class = "small text-muted me-1", t("Cards of")),
+    btn("", t("The table")),
+    lapply(nm, function(n) btn(n, paste0(t("Part"), ": ", n))),
+    if (nzchar(part)) shiny::span(
+      class = "small text-muted ms-2",
+      sprintf(t("These cards edit the part %s: its rows go under the table's."), part)))
 }

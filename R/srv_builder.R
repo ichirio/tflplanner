@@ -25,6 +25,19 @@
   exc_ver <- shiny::reactiveVal(0L)
   rv$bver <- 0L
   rv$btouched <- FALSE
+  # the part whose items the cards show ("": the table's own); the builder's
+  # id is then the part's (.part_id(), R/builder_parts.R)
+  bpart <- shiny::reactiveVal("")
+  bcur <- function() {
+    id <- current()
+    p <- bpart()
+    if (!is.null(id) && nzchar(p)) .part_id(id, p) else id
+  }
+  shiny::observeEvent(current(), bpart(""), ignoreNULL = FALSE)
+  shiny::observeEvent(input$b_scope, {
+    bpart(as.character(input$b_scope$name %||% ""))
+    rv$bver <- rv$bver + 1L
+  })
   # the page shown: a Tables sub-tab counts as its own page
   active_page_now <- shiny::reactive({
     nav <- page()
@@ -127,7 +140,7 @@
     rv$ard_ver
     shiny::req(builder_case() %in% c("ok", "hierarchy"))
     on.exit(.tpl_trace("builder cards drawn"), add = TRUE)
-    id <- current()
+    id <- bcur()
     m <- meta_of(id)
     st <- builder_read(shiny::isolate(rv$p), id, m)
     # a table with no row of its own yet: the ARD's cards are put on once
@@ -138,6 +151,8 @@
       if (!is.null(o)) !length(tp) || !length(tp[[1L]]$args) else
         !nrow(sheet_rows(shiny::isolate(rv$p), "tables", id))
     }
+    # (a part: its cards as they are, none put on)
+    if (!is.null(.part_of(id))) bform$fresh <- FALSE
     bform$n <- bform$n + 1L
     bform_drawn(bform$n)
     # (conditions not said yet are the form's: another report, gone)
@@ -506,6 +521,7 @@
     bodies <- Filter(Negate(is.null), bodies)
     shiny::div(
       class = "rp-builder-cards", `data-back` = t("Back to the code"),
+      .part_scope_bar(rv$p, current(), bpart(), lang),
       .table_cards(items, bodies, id = card_id, lang = lang, new = new_card,
                    level_from = st$level_from),
       # the other verbs: "+ Add a card", in the pipe's order, below the last
@@ -560,7 +576,7 @@
   shiny::observeEvent(input$b_part_act, {
     a <- input$b_part_act
     it <- .builder_item_at(bform$items, a$path)
-    shiny::req(!is.null(it), identical(bform$id, current()))
+    shiny::req(!is.null(it), identical(bform$id, bcur()))
     cid <- card_id(it$path)
     k <- if (grepl("#", it$path, fixed = TRUE)) as.integer(sub("^.*#", "", it$path)) else 1L
     args <- if (identical(a$act, "start")) {
@@ -582,7 +598,7 @@
   # study's defaults apply again
   shiny::observeEvent(input$b_card_revert, {
     it <- .builder_item_at(bform$items, input$b_card_revert$path)
-    shiny::req(!is.null(it), identical(bform$id, current()))
+    shiny::req(!is.null(it), identical(bform$id, bcur()))
     k <- if (grepl("#", it$path, fixed = TRUE)) as.integer(sub("^.*#", "", it$path)) else 1L
     p2 <- guarded(.builder_item_revert(rv$p, bform$id, it$fn, k))
     if (is.null(p2)) return()
@@ -620,7 +636,7 @@
   shiny::observeEvent(input$b_r_no, shiny::removeModal())
   shiny::observeEvent(input$b_r_ok, {
     it <- bform$r_item
-    shiny::req(!is.null(it), identical(bform$id, current()))
+    shiny::req(!is.null(it), identical(bform$id, bcur()))
     txt <- input$b_r_text %||% ""
     args <- tryCatch(args_from_r(it$fn, txt), error = function(e) {
       notify(conditionMessage(e), "error")
@@ -809,7 +825,7 @@
   # again either way.
   card_switch <- function(it, on) {
     id <- bform$id
-    shiny::req(!is.null(id), identical(id, current()))
+    shiny::req(!is.null(id), identical(id, bcur()))
     added <- unique(c(bform$added_by[[id]] %||% character(), it$fn))
     bform$added_by[[id]] <- added
     off <- bform$off_by[[id]] %||% character()
@@ -844,7 +860,7 @@
   shiny::observeEvent(input$b_card_remove, {
     it <- .builder_item_at(bform$items, input$b_card_remove$path)
     id <- bform$id
-    shiny::req(!is.null(it), isTRUE(it$removable), identical(id, current()))
+    shiny::req(!is.null(it), isTRUE(it$removable), identical(id, bcur()))
     undo <- list(id = id, fn = it$fn, added = bform$added_by[[id]], off = bform$off_by[[id]],
                  p = NULL)
     bform$added_by[[id]] <- setdiff(bform$added_by[[id]] %||% character(), it$fn)
@@ -869,7 +885,7 @@
     u <- bform$undo
     bform$undo <- NULL
     shiny::removeNotification("b_card_undo_note")
-    shiny::req(!is.null(u), identical(u$id, current()))
+    shiny::req(!is.null(u), identical(u$id, bcur()))
     # (the planner as it was: the report's YAML, its view and the ARD's
     # rows a Total column changed)
     if (!is.null(u$p)) {
@@ -909,7 +925,7 @@
       notify(sprintf(t("The card %s is shown once the ARD is made (Update preview)."), fn))
       return()
     }
-    shiny::req(length(fn) == 1L, nzchar(fn), !is.null(id), identical(id, current()))
+    shiny::req(length(fn) == 1L, nzchar(fn), !is.null(id), identical(id, bcur()))
     tpl <- isTRUE(bform$tpl)
     if (!fn %in% .plan_addable(bform$items, template = tpl)) {
       return(notify(sprintf(t("%s cannot be added here: a card the table has already, or no verb of the plan."), fn)))
@@ -972,7 +988,7 @@
   filter_cond_d <- shiny::debounce(shiny::reactive(filter_cond()$expr), 600)
   shiny::observeEvent(filter_cond_d(), builder_guard({
     e <- filter_cond_d()
-    shiny::req(builder_case() %in% c("ok", "hierarchy"), identical(bform$id, current()))
+    shiny::req(builder_case() %in% c("ok", "hierarchy"), identical(bform$id, bcur()))
     at <- which(vapply(bform$items, function(it) identical(it$path, "plan_filter"), NA))
     shiny::req(length(at) > 0L)
     it <- bform$items[[at[1L]]]
@@ -1006,7 +1022,7 @@
     input[[paste0(card_id("plan_digits"), "__rounding")]]
   }, {
     v <- input[[paste0(card_id("plan_digits"), "__rounding")]]
-    shiny::req(!is.null(v), nzchar(v), identical(bform$id, current()))
+    shiny::req(!is.null(v), nzchar(v), identical(bform$id, bcur()))
     if (identical(unname(rv$p$study[["rounding"]]), v)) return()
     p2 <- guarded(.spec_set_rounding(rv$p, v))
     if (is.null(p2)) return()
@@ -1023,7 +1039,7 @@
     got <- lapply(seq_len(nrow(v)), function(i) input[[bid(paste0("lvdrop", i))]])
     shiny::req(any(!vapply(got, is.null, NA)))
     id <- shiny::isolate(bform$id)
-    shiny::req(identical(id, shiny::isolate(current())))
+    shiny::req(identical(id, shiny::isolate(bcur())))
     p <- shiny::isolate(rv$p)
     its <- builder_items(p, id)
     lv <- .builder_args(its, "plan_levels") %||% list()
@@ -1048,7 +1064,7 @@
     bform_drawn()
     input[[bid("shown")]]
   }, {
-    shiny::req(builder_case() %in% c("ok", "hierarchy"), identical(bform$id, current()),
+    shiny::req(builder_case() %in% c("ok", "hierarchy"), identical(bform$id, bcur()),
                !is.null(bform$hidden))
     vars <- bform$st$variables$variable
     sh <- input[[bid("shown")]]
