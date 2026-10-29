@@ -347,6 +347,11 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
                           class = "rtftable"))
   }
   if (inherits(res, "rtftable")) res <- list(res)
+  # (no column header of its own: the columns' names, as the RTF prints them)
+  res <- lapply(res, function(pg) {
+    if (is.null(pg$col_header)) pg$col_header <- list(names(pg$data))
+    pg
+  })
   attr(res, "header_tokens") <- tryCatch(rtfreporter::plan_header_tokens(plan),
                                          error = function(e) NULL)
   res
