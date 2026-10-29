@@ -206,7 +206,7 @@ header_token_choices <- function(keys, header_n = NA) {
   depth <- if (k > 1L) seq_len(k) else integer()
   c("{col}", if (length(depth)) paste0("{col", depth, "}"),
     "{n}", if (length(depth)) paste0("{n", depth, "}"), "{n:sum}",
-    if (!is.na(header_n) && grepl("\\bN\\s*=", header_n)) "{N}")
+    if (length(header_n) == 1L && !is.na(header_n) && grepl("\\bN\\s*=", header_n)) "{N}")
 }
 
 # What the header's {n} counts, as choices: the populations the ARD states
