@@ -378,3 +378,13 @@ test_that("two official runs of the sample compared after a data fix", {
   expect_true("output/ard/ard.rds" %in% attr(r3, "changed")$outputs)
   expect_false("output/ard/T-14-1-1.rds" %in% c(r3$file, attr(r3, "changed")$outputs))
 })
+
+test_that("the runs list of a study with no run yet is drawn (no run, no row)", {
+  skip_on_cran()
+  bs_home()
+  create_study("B0", planner = bs_planner())
+  shiny::testServer(server_for("B0"), {
+    session$setInputs(nav = "outputs", target = "VS")
+    expect_no_error(output$batches)
+  })
+})
