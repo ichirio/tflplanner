@@ -738,7 +738,7 @@ test_that("the requests to write: one report each; the workbook changed, read ag
 
 # -- the coding agent ------------------------------------------------------------
 
-test_that("the agent in the app: the first message on step 2, the agent's files by name", {
+test_that("the agent in the app: one prompt on step 2, to copy", {
   local_home()
   out <- .ai_new_study("AG-2", ai_toc, "onco_toc_shell.xlsx", ai_adam, list(size = 3L))
   path <- out$study$path
@@ -749,12 +749,13 @@ test_that("the agent in the app: the first message on step 2, the agent's files 
     ai <- session$userData$ai
     expect_identical(ai$mode(), "agent")
     expect_identical(output$`ai-mode_now`, "agent")
-    expect_match(output$`ai-agent_card`$html, "AGENTS.md", fixed = TRUE)
+    h <- output$`ai-agent_card`$html
+    expect_match(h, "AGENTS.md", fixed = TRUE)
+    expect_match(h, "Copy the prompt", fixed = TRUE)
     expect_identical(ai$text("agent", "agent"), .ai_agent_prompt(path))
-    # the agent's files, shown by name: only those
-    expect_match(output$`ai-agent_card`$html, "data-what=\"file\" data-id=\"AGENTS.md\"", fixed = TRUE)
-    expect_identical(ai$text("AGENTS.md", "file"), .ai_read_text(file.path(path, "AGENTS.md")))
-    expect_error(ai$text("../secret.txt", "file"), "Not a file")
+    # (one prompt: no message for the next requests, no other file to show)
+    expect_no_match(h, "data-what=\"continue\"", fixed = TRUE)
+    expect_no_match(h, "data-what=\"file\"", fixed = TRUE)
   })
 })
 

@@ -696,6 +696,3 @@
   invisible(TRUE)
 }
 
-# The study's files the agent works from (AGENTS.md, run.R, the ADaM
-# summary) and writes (its decisions), shown read-only on the AI tab
-.ai_agent_files <- c("AGENTS.md", "run.R", "ai/adam_summary.md", "ai/decisions.md")

@@ -79,16 +79,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     text_of <- function(what, id) {
       p <- path()
       if (identical(what, "agent")) return(agent_prompt())
-      # (the next requests with no answer yet: tflspec's
-      # tfl_ai_agent_prompt(), n of them)
-      if (identical(what, "continue")) return(continue_prompt())
-      if (identical(what, "folder")) return(normalizePath(p, "/", mustWork = FALSE))
       if (identical(what, "rerun")) return(paste("Rscript run.R", id))
-      # (a file of the study the agent reads or writes -- only those, by name)
-      if (identical(what, "file")) {
-        if (!id %in% .ai_agent_files) stop("Not a file of the agent's.", call. = FALSE)
-        return(.ai_read_text(file.path(p, id)))
-      }
       if (identical(what, "build")) {
         .ai_check_request_name(id)
         return(.ai_read_text(file.path(p, .ai_repairs_dir, paste0(id, "-build.md"))))
@@ -872,54 +863,29 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     mode_now <- shiny::reactive("agent")
     output$mode_now <- shiny::renderText(mode_now())
     shiny::outputOptions(output, "mode_now", suspendWhenHidden = FALSE)
-    # the agent's first message: tfl_ai_prepare()'s, else made again from
-    # the study's folder (the app opened again)
-    continue_prompt <- function() {
-      x <- tryCatch(getExportedValue("tflspec", "tfl_ai_agent_prompt")(path()),
-                    error = function(e) NA_character_)
-      if (length(x) != 1L || is.na(x)) return(t("Every request has its answer: nothing to ask next."))
-      as.character(x)
-    }
+    # the agent's prompt: tfl_ai_prepare()'s, else made again from the
+    # study's folder (the app opened again)
     agent_prompt <- function() {
       pr <- shiny::isolate(prepared())
       if (!is.null(pr) && !isTRUE(pr$dry_run) && length(pr$agent_prompt) &&
           !is.na(pr$agent_prompt)) return(pr$agent_prompt)
       .ai_agent_prompt(path())
     }
+    # the one prompt for the agent: it works through the requests in the
+    # folder's order, asks in its chat, stops and goes on there ("go on")
     output$agent_card <- shiny::renderUI({
-      if (!identical(mode_now(), "agent") || is.null(path())) return(NULL)
+      if (is.null(path())) return(NULL)
       ver()
       prepared()
       bslib::card(
         class = "mb-3",
         bslib::card_header(
           class = "d-flex flex-wrap gap-2 align-items-center",
-          shiny::span(class = "me-auto", t("The agent's first message")),
-          shiny::HTML(act("agent", "agent", c(copy = t("Copy text"), view = t("View as text"))))),
-        shiny::tags$pre(class = "small mb-0 ai-prompt", agent_prompt()),
-        # (the message for the next requests, once the first are done)
-        shiny::div(
-          class = "d-flex flex-wrap gap-2 align-items-center small mt-2",
-          shiny::span(with_tip(t("Then, the next requests:"),
-                               t("The agent does the first requests, then stops. This message asks for the next ones with no answer yet, in the index's order (ten at a time, tflspec's)."))),
-          shiny::HTML(act("continue", "continue", c(copy = t("Copy the message for the next requests"),
-                                                    view = t("View as text"))))),
-        # (the study folder's full path: for an agent opened on the folder
-        # above, the person adds it to the message)
-        shiny::div(
-          class = "d-flex flex-wrap gap-2 align-items-center small mt-2",
-          shiny::span(with_tip(paste0(t("Study folder"), ":"),
-                               t("Usually VS Code opens the study folder itself. To work on several studies at once from the folder above, add this full path to the message."))),
-          shiny::code(normalizePath(path(), "/", mustWork = FALSE)),
-          shiny::HTML(act("folder", "folder", c(copy = t("Copy the full path"))))),
-        # (the files the agent works from, and its record of decisions)
-        {
-          have <- .ai_agent_files[file.exists(file.path(path(), .ai_agent_files))]
-          if (length(have)) shiny::div(
-            class = "d-flex flex-wrap gap-2 align-items-center small mt-2",
-            shiny::span(paste0(t("The agent's files"), ":")),
-            lapply(have, function(f) shiny::HTML(act("file", f, stats::setNames(f, "view")))))
-        })
+          shiny::span(class = "me-auto", with_tip(
+            t("The prompt"),
+            t("One prompt for the whole study: paste it into the agent's chat. The agent does the requests below in their order and asks there; to stop and go on, say so in the chat."))),
+          shiny::HTML(act("agent", "agent", c(copy = t("Copy the prompt"), view = t("View as text"))))),
+        shiny::tags$pre(class = "small mb-0 ai-prompt", agent_prompt()))
     })
     output$check_note_agent <- shiny::renderUI({
       if (isTRUE(dirty())) shiny::span(class = "small text-warning", t("Save first"))
