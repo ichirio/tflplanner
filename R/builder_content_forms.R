@@ -61,6 +61,12 @@
   for (a in .plan_form_r[[fn]]) sch$args[[a]]$type <- "r"
   fl <- tryCatch(formals(utils::getFromNamespace(fn, "rtfreporter")), error = function(e) NULL)
   fo <- names(fl)
+  # (an argument the schema only names -- a label, no type -- passed by
+  # `...`: no field; plan_filter()'s condition is the condition builder's)
+  if (length(fo)) {
+    typed <- vapply(sch$args, function(x) !is.null(x$type), NA)
+    sch$args <- sch$args[typed | names(sch$args) %in% fo]
+  }
   # a check's default the function's own (plan_paginate_group(keep = TRUE)):
   # the field ticked as the function would be
   for (a in intersect(fo, names(sch$args))) {
