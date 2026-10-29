@@ -112,10 +112,15 @@ test_that("the definition is saved, reopened and run", {
   expect_equal(st$status[st$output_id == "DM"], "error")   # no table spec
   expect_true(file.exists(file.path(s$path, "logs", "preview", "DM.log")))
 
-  # a failing ARD program leaves the study ARD and records its error
+  # a function the installed package has not: the definition's check says
+  # so at the save (tflspec >= a22e3f94), and no ARD program is written
   o2 <- o
   o2$planner$ard$analyses$method[2] <- "cards::ard_nope"
-  o2 <- save_study(o2)
+  o2 <- suppressMessages(save_study(o2))
+  expect_match(o2$ard_problem %||% "", "ard_nope")
+  # a failing ARD program leaves the study ARD and records its error
+  f <- file.path(s$path, "programs", "ard", "DM.R")
+  writeLines(c(readLines(f), "stop(\"ard_nope failed at run time\")"), f)
   u <- update_study_ard(o2, "DM")
   expect_false(u$ok)
   expect_match(u$error, "ard_nope")

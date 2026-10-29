@@ -274,7 +274,12 @@ set_ard_rows <- function(x, sheet, output_id = "", rows) {
 #' options(old)
 #' @export
 run_ard <- function(study, output_id = NULL, timeout = 600) {
-  spec <- .ard_spec(study$planner$ard)
+  # (a definition tflspec's check refuses -- a function the installed
+  # package has not, say: said as the run's error, nothing run)
+  spec <- tryCatch(.ard_spec(study$planner$ard), tflspec_spec_error = function(e) e)
+  if (inherits(spec, "error")) {
+    return(list(ard = NULL, error = conditionMessage(spec), log = "", seconds = 0, code = character()))
+  }
   code <- .ard_spec_code(spec, output_id = output_id,
                         save = is.null(output_id), dir = study$path,
                         codelists = .study_codelists(study$planner))
