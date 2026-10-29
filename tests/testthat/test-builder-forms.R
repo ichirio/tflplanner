@@ -131,6 +131,7 @@ test_that("a column the plan makes keeps the plan's order, not its code list's",
 })
 
 test_that("plan_columns(): a width a column, the decimal alignment, the row title, written by column", {
+  skip_on_cran()
   sch <- .plan_form_schema("plan_columns")
   expect_identical(sch$visible, c("widths", "decimal", "row_title", "auto_width"))
   # (given as R: under Other arguments)
@@ -171,6 +172,7 @@ test_that("plan_columns(): a width a column, the decimal alignment, the row titl
 })
 
 test_that("plan_digits()' rounding: a choice, the study's (written there)", {
+  skip_on_cran()
   h <- html(.rounding_field("d", "sas"))
   expect_match(h, 'id="d__rounding"', fixed = TRUE)
   for (v in c("sas", "r", "iec60559")) expect_match(h, sprintf('value="%s"', v), fixed = TRUE)
@@ -186,6 +188,7 @@ test_that("plan_digits()' rounding: a choice, the study's (written there)", {
 })
 
 test_that("plan_filter(): its condition for the condition builder, any and parents as fields", {
+  skip_on_cran()
   expect_identical(.plan_form_main$plan_filter, c("any", "parents"))
   sch <- .plan_form_schema("plan_filter")
   expect_identical(sch$args$by$type, "r")
@@ -218,6 +221,7 @@ test_that("plan_filter(): its condition for the condition builder, any and paren
 })
 
 test_that("plan_levels(): each variable's values dragged, its empty values hidden", {
+  skip_on_cran()
   p <- sample_planner()
   st <- builder_read(p, "T-14-1-1")
   vr <- data.frame(variable = c("SEX", "RACE"), empty_levels = c("hide", NA))
@@ -255,6 +259,7 @@ test_that("the new words have their Japanese", {
 })
 
 test_that("plan_labels(): the labels of the columns the plan makes are the item's, the data's code lists kept", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-1"
   before <- sheet_rows(p, "codelists", id)
@@ -346,6 +351,7 @@ test_that("plan_compare(): its columns chosen, each its template, written with i
 })
 
 test_that("plan_stat_groups(): a group a row (its name, its statistics), .variables and .others", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-1"
   q <- .builder_item_write(p, id, "plan_stat_groups",
@@ -377,6 +383,7 @@ test_that("plan_stat_groups(): a group a row (its name, its statistics), .variab
 })
 
 test_that("plan_nest(): a variable under a level of another, on its own card", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-1"
   st <- builder_read(p, id)
@@ -512,6 +519,7 @@ test_that("a comparison's rows (no arm row in their context) are not overall row
 })
 
 test_that("plan_hide(): the table's columns hidden, a multi-select, written by column", {
+  skip_on_cran()
   expect_identical(.plan_form_main$plan_hide, "cols")
   sch <- .plan_form_schema("plan_hide")
   expect_identical(sch$formals, "cols")
@@ -541,6 +549,7 @@ test_that("plan_hide(): the table's columns hidden, a multi-select, written by c
 })
 
 test_that("plan_cell_style(): cols, where, the looks as fields, each call its own card", {
+  skip_on_cran()
   expect_identical(.plan_form_main$plan_cell_style,
                    c("cols", "header", "where", "bold", "italic", "align", "color", "background"))
   sch <- .plan_form_schema("plan_cell_style")
@@ -600,6 +609,7 @@ test_that("plan_cell_style(): cols, where, the looks as fields, each call its ow
 })
 
 test_that("plan_col_header(values = ): what {n} counts, header_n kept when it is none of the choices", {
+  skip_on_cran()
   ch <- header_n_choices(NULL, "TRT01A", "n = table")
   expect_true("n = table" %in% ch$choices)
   expect_identical(ch$selected, "n = table")

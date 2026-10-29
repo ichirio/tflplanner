@@ -69,10 +69,14 @@ ai_list_panel <- function(ns, t) {
       bslib::card_header(
         class = "d-flex flex-wrap gap-2 align-items-center",
         shiny::span(class = "me-auto", paste0(t("Questions"), " (ai/questions.md)")),
-        .btn(ns("questions_write"), paste0(t("Write the answers back"), " (tfl_ai_answer_questions)"),
+        # (as the assumptions' card says it: the answers saved, then the
+        # corrections of the next round)
+        .btn(ns("questions_write"), paste0(t("Save the answers"), " (ai/questions.md)"),
              class = "btn-sm btn-primary"),
         shiny::uiOutput(ns("tell_agent"), inline = TRUE)),
-      shiny::uiOutput(ns("questions"))),
+      shiny::uiOutput(ns("questions")),
+      shiny::div(class = "small text-muted mt-2",
+                 t("Then write the corrections in \"The next round\" below."))),
     # the next round: the corrections in one file, run.R over every request
     bslib::card(
       class = "mt-3",

@@ -7,6 +7,7 @@ home_for_test <- function(env = parent.frame()) {
 }
 
 test_that("the draft writes and reads back as it is", {
+  skip_on_cran()
   home_for_test()
   f <- file.path(withr_tempdir(), "std.xlsx")
   standards_template(f)
@@ -25,6 +26,7 @@ test_that("the draft writes and reads back as it is", {
 })
 
 test_that("a company's workbook changes what the app offers", {
+  skip_on_cran()
   home <- home_for_test()
   f <- file.path(withr_tempdir(), "acme.xlsx")
   s <- .builtin_standards()
@@ -92,6 +94,7 @@ test_that("a workbook that does not read is refused", {
 })
 
 test_that("a table without data code starts from the company's template", {
+  skip_on_cran()
   home <- home_for_test()
   f <- file.path(withr_tempdir(), "acme.xlsx")
   s <- .builtin_standards()

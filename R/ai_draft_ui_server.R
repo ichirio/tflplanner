@@ -1260,7 +1260,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     })
 
     # the questions (ai/questions.md): one a row, the open ones first, an
-    # answer field each; written back with tfl_ai_answer_questions()
+    # answer field each; saved with tfl_ai_answer_questions()
     q_ver <- shiny::reactiveVal(0L)
     questions <- shiny::reactive({
       q_ver()
@@ -1327,7 +1327,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       if (is.null(f)) return()
       q_ver(q_ver() + 1L)
       tell(TRUE)
-      notify(sprintf(t("%d answers written to ai/questions.md: tell the agent."), sum(put)))
+      notify(sprintf(t("%d answers saved to ai/questions.md. Then write the corrections in \"The next round\" below."),
+                     sum(put)))
     })
     tell <- shiny::reactiveVal(FALSE)
     output$tell_agent <- shiny::renderUI({
