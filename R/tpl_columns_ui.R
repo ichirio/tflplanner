@@ -44,7 +44,12 @@
     unique(unlist(cols, recursive = FALSE))
   rows <- .tpl_columns_rows(shown)
   picked <- vapply(rows, function(r) strsplit(r$v, ", ", fixed = TRUE)[[1L]][1L], "")
-  choices <- union(picked, vapply(now, function(x) x[[1L]], ""))
+  # (each shown with its label: "AEDECOD (Dictionary-Derived Term)", as the
+  # page adds them when the dataset changes)
+  vars <- union(picked, vapply(now, function(x) x[[1L]], ""))
+  labs <- stats::setNames(vapply(now, function(x) x[[2L]], ""), vapply(now, function(x) x[[1L]], ""))
+  shown_as <- ifelse(!is.na(labs[vars]) & nzchar(labs[vars]), paste0(vars, " (", labs[vars], ")"), vars)
+  choices <- stats::setNames(vars, shown_as)
   json <- function(x) as.character(jsonlite::toJSON(x, auto_unbox = TRUE, null = "null"))
   shiny::div(
     class = "rp-lcols mb-3", id = paste0(input_id, "__box"),
@@ -129,7 +134,7 @@ window.rpLcolsStart = function(id) {
         return cs.some(function(x) { return x[0] === v; });
       });
       s.clearOptions();
-      cs.forEach(function(x) { s.addOption({value: x[0], text: x[1] ? x[0] + ' (' + x[1] + ')' : x[0]}); });
+      cs.forEach(function(x) { s.addOption({value: x[0], label: x[1] ? x[0] + ' (' + x[1] + ')' : x[0]}); });
       s.setValue(keep, true);
       s.refreshOptions(false);
       draw();

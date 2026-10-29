@@ -276,7 +276,7 @@ test_that("a listing's columns are a field of their own: the data's, in order, e
   expect_identical(.tpl_type(prm$sort), "vars")
   # the field says the list field's lines: read back as the template's columns
   v <- .tpl_value("USUBJID | Subject\nAEDECOD | Preferred term | 30 | TRUE", "columns", prm$columns)
-  expect_identical(v[[2L]], list(vars = "AEDECOD", label = "Preferred term", width = 30, collapse_repeats = TRUE))
+  expect_identical(v[[2L]], list(vars = "AEDECOD", label = "Preferred term", width = 30L, collapse_repeats = TRUE))
   # drawn: the dataset's columns with their labels, the rows as they start
   d <- list(ADAE = data.frame(USUBJID = "1", AEDECOD = "Headache"))
   attr(d$ADAE$AEDECOD, "label") <- "Dictionary-Derived Term"
@@ -305,7 +305,7 @@ test_that("Add > Listing: the template listing, its columns from the field (no s
     expect_identical(tp$name, "listing")
     expect_identical(tp$args$data, "ADAE")
     expect_identical(vapply(tp$args$columns, function(x) x$vars, ""), c("USUBJID", "AEDECOD"))
-    expect_identical(tp$args$columns[[2L]]$width, 30)
+    expect_identical(tp$args$columns[[2L]]$width, 30L)
   })
 })
 

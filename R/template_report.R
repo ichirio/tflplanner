@@ -206,6 +206,8 @@
   val <- function(v, several = FALSE) {
     if (!nzchar(v)) return(NULL)
     if (v %in% c("TRUE", "FALSE")) return(v == "TRUE")
+    # (a whole number as one: a column's width 15, not 15.0)
+    if (grepl("^-?[0-9]+$", v)) return(as.integer(v))
     if (grepl("^-?[0-9]+(\\.[0-9]+)?$", v)) return(as.numeric(v))
     if (several && grepl(",", v, fixed = TRUE)) return(trimws(strsplit(v, ",", fixed = TRUE)[[1L]]))
     v
