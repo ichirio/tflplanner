@@ -482,7 +482,9 @@ test_that("the builder's cells and decimals are plan_cells(); the rounding the s
   expect_identical(changed_files(p$spec$text, q$spec$text), "spec/defaults.yml")
   expect_identical(unname(q$study[["rounding"]]), "r")
   expect_false(is.null(.spec_items(q, id)))
-  expect_true(any(grepl("plan_digits(rounding = \"r\")", program_code(q, "T-14-3-1"), fixed = TRUE)))
+  # (said once, in the setup every program sources; no report's program)
+  expect_true(any(grepl("rtfreporter.rounding = \"r\"", report_setup_code(q), fixed = TRUE)))
+  expect_false(any(grepl("rounding = \"r\"", program_code(q, "T-14-3-1"), fixed = TRUE)))
   expect_identical(.spec_set_rounding(q, "sas")$spec$text, p$spec$text)
   # the card's write of it: the same
   pd <- .builder_args(builder_items(p, id), "plan_digits")
@@ -557,12 +559,14 @@ test_that("a card's save rebuilds that report's view only, and writes that repor
   progs <- s2$files[grepl("/programs/tfl/[^/]+[.]R$", s2$files$file), , drop = FALSE]
   expect_identical(basename(progs$file[progs$status == "written"]), "T-14-1-1.R")
   expect_true(any(grepl("indent = 3", readLines(progs$file[progs$status == "written"]), fixed = TRUE)))
-  # the study's rounding: every table's program again
+  # the study's rounding: report_setup.R again, the reports' programs as
+  # they were (the rounding is said once, in the setup they source)
   s2$planner <- .spec_set_rounding(s2$planner, "r")
   s3 <- suppressMessages(save_study(s2, home = home))
   f <- s3$files$file[grepl("tfl/T-14-3-1[.]R$", s3$files$file)]
-  expect_identical(s3$files$status[s3$files$file == f], "written")
-  expect_true(any(grepl("rounding = \"r\"", readLines(f), fixed = TRUE)))
+  expect_identical(s3$files$status[s3$files$file == f], "unchanged")
+  rs <- s3$files$file[grepl("tfl/report_setup[.]R$", s3$files$file)]
+  expect_true(any(grepl("rtfreporter.rounding = \"r\"", readLines(rs), fixed = TRUE)))
 })
 
 test_that("a save merges what another session saved since; nothing saved since, nothing to merge (#417)", {

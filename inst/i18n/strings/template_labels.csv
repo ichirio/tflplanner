@@ -115,3 +115,7 @@
 "Row label heading","行ラベルの見出し"
 "Colour bars by response","奏効で棒を色分け"
 "Variable that splits the curves","曲線を分ける変数"
+"Median in the legend","凡例に中央値"
+"Decimals of the legend's median","凡例の中央値の桁"
+"TRUE: each arm's legend text has its median survival and 95% CI, ""Drug X: 12.3 (9.8, 15.1)"" (from the fit; NE when not reached)","TRUE: 各群の凡例の文字に、生存期間の中央値と 95% 信頼区間を付けます（""Drug X: 12.3 (9.8, 15.1)""。モデルから。未到達は NE）"
+"the decimals of the median and its CI in the legend","凡例の中央値と信頼区間の小数点以下の桁数"
