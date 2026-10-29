@@ -483,7 +483,7 @@
                              'onclick="event.stopPropagation(); ',
                              "Shiny.setInputValue('batch_open_row', '%s', ",
                              '{priority: \'event\'}); return false;">\U0001F4C2</a>'),
-                      esc(t("Open its folder")), esc(d$batch)) else ""),
+                      esc(t("Open its folder")), esc(d$batch)) else character(nrow(d))),
                     b = d$started,
                     c = t(c(ard = "ARD", report = "Reports",
                             all = "ARD, then reports")[d$what]),

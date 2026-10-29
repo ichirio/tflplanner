@@ -50,7 +50,7 @@ study_status <- function(study) {
   .use_study(root)
   lay <- study_layout()
   setup <- .report_setup_recorded(root, p$outputs$output_id)
-  now <- .study_setup_hash(root)
+  now <- .report_setup_hash(root)
   # the figures printing an ARD's numbers: to be made again because of it
   ard_why <- .fig_ard_why(study, p$outputs$output_id)
   rows <- lapply(p$outputs$output_id, function(id) {
@@ -68,7 +68,7 @@ study_status <- function(study) {
     k <- match(id, p$outputs$output_id)
     why <- c(
       if (isTRUE(.program_time(prog, root) > t_rtf)) "program",
-      if (.setup_changed(setup[k], root, now)) "setup",
+      if (.report_setup_changed(setup[k], root, now)) "setup",
       if (nzchar(ard_why[[k]])) ard_why[[k]])
     status <- if (pstate == "missing") "no program" else
       if (pstate == "generated") "unsaved" else
