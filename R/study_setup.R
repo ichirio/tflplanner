@@ -313,6 +313,36 @@ study_setup_code <- function(meta, date = Sys.Date(),
   !is.na(recorded) & nzchar(recorded) & recorded != now
 }
 
+# A report's setup: programs/study_setup.R and programs/tfl/report_setup.R
+# (the study's font, tokens, header, rounding: every report program sources
+# it), their fingerprints "<study>|<report>" -- what a report program records
+# (.report_setup_hash_code()); the ARD reads study_setup.R only
+.report_setup_hash <- function(root) {
+  f <- file.path(root, c(.study_setup_path(), .report_setup_path()))
+  paste(vapply(f, function(x) if (file.exists(x)) unname(tools::md5sum(x)) else "", ""),
+        collapse = "|")
+}
+
+.report_setup_path <- function() file.path(study_layout()[["programs_tfl"]], .report_setup_file)
+
+# Made with another report setup than the one there now?  A record of
+# study_setup.R alone (made before report_setup.R was counted) is held to
+# it alone; one made before the setup was recorded ("" or NA) is not.
+.report_setup_changed <- function(recorded, root, now = .report_setup_hash(root)) {
+  old <- !grepl("|", recorded, fixed = TRUE)
+  cmp <- ifelse(old, sub("[|].*$", "", now), now)
+  !is.na(recorded) & nzchar(recorded) & recorded != cmp
+}
+
+# ... the lines of a report program's record_report() that work it out
+.report_setup_hash_code <- function() {
+  p <- paste(encodeString(c(.study_setup_path(), .report_setup_path()), quote = "\""),
+             collapse = ", ")
+  sprintf(paste0("paste(vapply(c(%s), function(f) {\n",
+                 "    if (file.exists(f)) unname(tools::md5sum(f)) else \"\"\n",
+                 "  }, \"\"), collapse = \"|\")"), p)
+}
+
 # the line of a generated program that works out the setup's fingerprint
 .setup_hash_code <- function() {
   p <- encodeString(.study_setup_path(), quote = "\"")

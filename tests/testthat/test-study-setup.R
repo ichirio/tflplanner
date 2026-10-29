@@ -276,7 +276,9 @@ test_that("a change to study_setup.R marks the ARD and the reports outdated", {
     eval(parse(text = rec))
     record_report("DM")
   })
-  expect_identical(.report_setup_recorded(s$path, "DM"), h)
+  # (a report records report_setup.R too)
+  expect_identical(.report_setup_recorded(s$path, "DM"), .report_setup_hash(s$path))
+  expect_match(.report_setup_hash(s$path), "^[0-9a-f]{32}[|]([0-9a-f]{32})?$")
   expect_equal(ard_status(s)$state, "built")
   expect_equal(study_status(s)$status, "ok")
   expect_equal(.report_run_light(s)$status, "ok")
@@ -341,4 +343,39 @@ test_that("a study gets programs/study_helpers.R, which its setup sources", {
   # saved again: unchanged
   s2 <- save_study(s)
   expect_identical(s2$files$status[s2$files$file == f], "unchanged")
+})
+
+test_that("a change to report_setup.R (the rounding) marks the reports outdated, not the ARD", {
+  local_home()
+  s <- create_study("ABC-109", planner = setup_planner())
+  def <- tflspec::tfl_ard_spec_hash(structure(s$planner$ard, class = "tfl_ard_spec"),
+                                    "DM", dir = s$path,
+                                    codelists = .study_codelists(s$planner))
+  .write_ard_status(s, data.frame(output_id = "DM", definition = def,
+                                  built = "2026-10-08 10:00:00", rows = 10L,
+                                  error = "", setup = .study_setup_hash(s$path),
+                                  stringsAsFactors = FALSE))
+  info <- report_info(s$planner, "DM")
+  rtf <- file.path(s$path, info$file)
+  dir.create(dirname(rtf), recursive = TRUE, showWarnings = FALSE)
+  writeLines("{\rtf1}", rtf)
+  rs <- file.path(s$path, .report_setup_path())
+  dir.create(dirname(rs), recursive = TRUE, showWarnings = FALSE)
+  writeLines("options(rtfreporter.rounding = \"sas\")", rs)
+  rec <- report_setup_code(s$planner)
+  rec <- rec[seq(grep("^record_report <- function", rec), length(rec) - 1L)]
+  withr::with_dir(s$path, {
+    eval(parse(text = rec))
+    record_report("DM")
+  })
+  expect_identical(.report_setup_recorded(s$path, "DM"), .report_setup_hash(s$path))
+  expect_equal(study_status(s)$status, "ok")
+  # the study's rounding changed: report_setup.R written again
+  writeLines("options(rtfreporter.rounding = \"r\")", rs)
+  expect_equal(study_status(s)$status, "outdated")
+  expect_equal(.report_run_light(s)$status, "outdated")
+  expect_equal(ard_status(s)$state, "built")
+  # a record of study_setup.R alone (made before): held to it alone
+  expect_false(.report_setup_changed(.study_setup_hash(s$path), s$path))
+  expect_true(.report_setup_changed(paste0(.study_setup_hash(s$path), "|x"), s$path))
 })
