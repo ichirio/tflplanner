@@ -115,7 +115,9 @@ test_that("a card's label is the meaning and the verb; an argument's the meaning
   expect_match(a, "rp-meaning\">Columns<", fixed = TRUE)
   expect_match(a, "(cols)", fixed = TRUE)
   # in Japanese, every meaning translated
-  m <- unique(c(unname(.plan_meaning), unlist(.plan_arg_meaning, use.names = FALSE)))
+  labs <- unlist(lapply(names(.plan_meaning), function(fn)
+    lapply(.schema_of(fn)$args, `[[`, "label")), use.names = FALSE)
+  m <- unique(c(unname(.plan_meaning), labs))
   ja <- vapply(m, tr, "", lang = "ja")
   expect_true(all(ja != m), info = paste(m[ja == m], collapse = ", "))
   expect_match(html(.table_cards(items[2L], lang = "ja")), tr("Table structure", "ja"), fixed = TRUE)

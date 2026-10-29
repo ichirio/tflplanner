@@ -229,7 +229,7 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
   expect_match(h2, "Not the ARD analysis", fixed = TRUE)
   expect_match(h0, 'id="n__stack"', fixed = TRUE)
   expect_match(html(.plan_form_body("n", "normalize_ard", i0, lang = "ja")),
-               tr(.plan_arg_help$normalize_ard[["keys"]], "ja"), fixed = TRUE)
+               tr(.schema_of("normalize_ard")$args$keys$help, "ja"), fixed = TRUE)
   # read back: the hierarchy kept as it is, the overall row the field's
   inp <- list(n__hierarchy = hier, n__overall = "Any TEAE", n__stack = "", n__stack_sep = "",
               n__stack_nest = FALSE, n__drop_key_variables = FALSE)
@@ -255,7 +255,9 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
   expect_match(hj, "ARD を表を作りやすい形に整えます。", fixed = TRUE)
   expect_match(hj, "カテゴリの値は .label（行の文字）になります。", fixed = TRUE)
   # every argument's help under Other arguments is said in Japanese too
-  miss <- unlist(lapply(.plan_arg_help, function(v) v[tr(unname(v), "ja") == unname(v)]))
+  helps <- unlist(lapply(names(.plan_meaning), function(fn)
+    lapply(.schema_of(fn)$args, `[[`, "help")), use.names = FALSE)
+  miss <- unique(helps[vapply(helps, tr, "", lang = "ja") == helps])
   expect_length(miss, 0L)
   expect_match(html(.plan_card_note("plan_levels")), "Sets the order of the levels of the column and row keys", fixed = TRUE)
   # the mark: one of the badges
@@ -357,7 +359,7 @@ test_that("nothing changed, nothing written: the sample's items and program as t
   p <- sample_planner()
   for (id in c("T-14-1-1", "T-14-3-1")) {
     for (it in builder_items(p, id)) {
-      if (!it$fn %in% names(.plan_form_main)) next
+      if (!it$fn %in% .plan_form_fns) next
       sch <- .plan_form_schema(it$fn)
       inp <- list()
       for (a in sch$formals) {

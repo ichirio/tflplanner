@@ -436,7 +436,7 @@
     bform$form_cols <- list()
     # (each call its own card: plan_cell_style()'s second is
     # "plan_cell_style#2", its form read and written as the second)
-    form_items <- Filter(function(it) it$fn %in% names(.plan_form_main) &&
+    form_items <- Filter(function(it) it$fn %in% .plan_form_fns &&
                            (isTRUE(it$present) || isTRUE(it$added)), items)
     for (it in form_items) {
       fn <- it$fn
@@ -716,7 +716,7 @@
       shiny::div(class = "small text-muted", "plan_sort(): ",
                  shiny::tags$code(shiny::textOutput("b_sort_code", inline = TRUE))))
   }
-  # The layout cards with a form (.plan_form_main: the blank rows, the
+  # The layout cards with a form (.plan_form_fns: the blank rows, the
   # pages, the row label column, the style): read back by verb -- none
   # until the card's fields are there -- and written to the sheets through
   # tflspec's bridge as the report's own: what the form changed from the
@@ -727,7 +727,7 @@
     out <- list()
     # (by the card's path: a verb's second call its own)
     for (it in bform$items) {
-      if (!it$fn %in% names(.plan_form_main) ||
+      if (!it$fn %in% .plan_form_fns ||
           !(isTRUE(it$present) || isTRUE(it$added))) next
       r <- .plan_form_read(input, card_id(it$path), it$fn, cols = bform$form_cols[[it$path]])
       if (!is.null(r)) out[[it$path]] <- r

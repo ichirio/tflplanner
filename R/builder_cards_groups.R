@@ -92,12 +92,11 @@ arg_more <- function(id, fn, used = character(), schema = NULL, lang = "en",
 }
 
 # An argument's help in the (i): what it means, when it is used, an
-# example -- tflplanner's own text (.plan_arg_help), else the schema's,
-# else tflspec's -- in the language; NULL for none
+# example -- the schema's (its `help`, else its description), else
+# tflspec's -- in the language; NULL for none
 .arg_help <- function(fn, arg, schema = NULL, lang = "en") {
-  own <- .plan_arg_help[[fn]]
-  h <- if (!is.null(own) && arg %in% names(own)) own[[arg]]
-  h <- h %||% schema$args[[arg]]$description %||% .schema_help(fn, arg)
+  a <- (schema %||% .schema_of(fn))$args[[arg]]
+  h <- a$help %||% a$description %||% .schema_help(fn, arg)
   if (is.null(h)) NULL else tr(h, lang)
 }
 

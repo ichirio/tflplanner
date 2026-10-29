@@ -5,43 +5,31 @@
 # ---- the forms of the layout cards -------------------------------------------------
 
 # The cards with a form of fields by the schema's types (arg_field()): the
-# most used arguments on the card, the rest folded under "Other arguments"
-.plan_form_main <- list(
-  normalize_ard = c("overall", "stack"),
-  plan_filter = c("any", "parents"),
-  plan_blanks = c("where", "first", "last"),
-  plan_paginate_rows = c("max_rows", "split", "page_by"),
-  plan_paginate_cols = c("every", "fit", "at", "keep", "cut_by", "order", "allow_span_break"),
-  plan_paginate_group = c("col", "keep", "heading"),
-  plan_row_group = c("mode", "collapse"),
-  plan_stub = c("name", "indent", "before"),
-  plan_columns = c("widths", "decimal", "row_title", "auto_width"),
-  plan_style = c("border", "align_count_pct", "font_size_half_points"),
-  plan_hide = "cols",
-  plan_cell_style = c("cols", "header", "where", "bold", "italic", "align", "color",
-                      "background"))
+# arguments the schema marks `main` on the card, the rest folded under
+# "Other arguments"
+.plan_form_fns <- c("normalize_ard", "plan_filter", "plan_blanks", "plan_paginate_rows",
+                    "plan_paginate_cols", "plan_paginate_group", "plan_row_group", "plan_stub",
+                    "plan_columns", "plan_style", "plan_hide", "plan_cell_style")
 
-# the types the form uses where the schema says none (or a looser one): a
-# choice of the usual values, or a number; "widths" a number a column
-# (.widths_field()).  plan_cell_style()'s looks are a choice of TRUE /
-# FALSE with a blank (left alone: not written), not a check (an unticked
-# check would say FALSE); its `where` the condition as R, over the
-# table's columns (.formula_text()).
+# a form card's main arguments: those its schema marks `main`
+.plan_form_main <- function(fn) {
+  a <- .schema_of(fn)$args %||% list()
+  names(a)[vapply(a, function(x) isTRUE(x$main), NA)]
+}
+
+# the types the form uses over the schema's: a choice of the usual values,
+# or R; "widths" a number a column (.widths_field()); a colour a picker
+# (no R or map of its own on the card).  plan_cell_style()'s looks are a
+# choice of TRUE / FALSE with a blank (left alone: not written), not a
+# check (an unticked check would say FALSE).
 .plan_cell_look <- "enum[TRUE|FALSE]|logical"
 .plan_form_types <- list(
-  normalize_ard = c(hierarchy = "list<column>", keys = "list<column>", overall = "string", drop_contexts = "r",
-                    drop_key_variables = "logical", stack = "r", stack_sep = "string",
-                    stack_nest = "logical"),
-  plan_hide = c(cols = "list<column>"),
-  plan_cell_style = c(cols = "list<column>", where = "formula",
-                      bold = .plan_cell_look, italic = .plan_cell_look,
-                      underline = .plan_cell_look, align = "enum[left|center|right]",
-                      color = "colour", background = "colour"),
+  normalize_ard = c(drop_contexts = "r", stack = "r"),
+  plan_cell_style = c(bold = .plan_cell_look, italic = .plan_cell_look,
+                      underline = .plan_cell_look, color = "colour", background = "colour"),
   plan_blanks = c(where = "enum[between_groups|records]|r"),
   plan_columns = c(widths = "widths", row_title = "list<column>"),
-  plan_paginate_cols = c(order = "enum[across|down|group|rows|cols]"),
-  plan_style = c(border = "string", align_count_pct = "logical",
-                 font_size_half_points = "integer"))
+  plan_paginate_cols = c(order = "enum[across|down|group|rows|cols]"))
 
 # the arguments of a form card given as R (no field of their own)
 .plan_form_r <- list(
@@ -61,6 +49,12 @@
   for (a in .plan_form_r[[fn]]) sch$args[[a]]$type <- "r"
   fl <- tryCatch(formals(utils::getFromNamespace(fn, "rtfreporter")), error = function(e) NULL)
   fo <- names(fl)
+  # (an argument the schema only names -- a label, no type -- passed by
+  # `...`: no field; plan_filter()'s condition is the condition builder's)
+  if (length(fo)) {
+    typed <- vapply(sch$args, function(x) !is.null(x$type), NA)
+    sch$args <- sch$args[typed | names(sch$args) %in% fo]
+  }
   # a check's default the function's own (plan_paginate_group(keep = TRUE)):
   # the field ticked as the function would be
   for (a in intersect(fo, names(sch$args))) {
@@ -75,7 +69,7 @@
   # marked the ARD's while it says the same, warned when it does not)
   sch$fixed <- character()
   # (the main fields in the function's order too)
-  sch$visible <- .arg_order(.plan_form_main[[fn]], sch$formals)
+  sch$visible <- .arg_order(.plan_form_main(fn), sch$formals)
   sch
 }
 
@@ -228,7 +222,7 @@
 .plan_form_read <- function(input, cid, fn, cols = NULL) {
   sch <- .plan_form_schema(fn)
   wa <- names(Filter(function(x) identical(x$type, "widths"), sch$args))
-  seen <- vapply(.plan_form_main[[fn]], function(k) {
+  seen <- vapply(.plan_form_main(fn), function(k) {
     if (k %in% wa) {
       return(length(cols) > 0L && !is.null(.input_value(input, paste0(cid, "__", k, "__1"))))
     }

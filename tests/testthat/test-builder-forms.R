@@ -186,7 +186,7 @@ test_that("plan_digits()' rounding: a choice, the study's (written there)", {
 })
 
 test_that("plan_filter(): its condition for the condition builder, any and parents as fields", {
-  expect_identical(.plan_form_main$plan_filter, c("any", "parents"))
+  expect_identical(.plan_form_main("plan_filter"), c("any", "parents"))
   sch <- .plan_form_schema("plan_filter")
   expect_identical(sch$args$by$type, "r")
   expect_null(.filter_where_text(NULL))
@@ -436,10 +436,10 @@ test_that("a nest taken away keeps the variable where it was shown (#428)", {
 
 test_that("plan_paginate_group(), plan_paginate_cols(), plan_row_group(): a form line each", {
   skip_on_cran()
-  expect_identical(.plan_form_main$plan_paginate_group, c("col", "keep", "heading"))
-  expect_identical(.plan_form_main$plan_paginate_cols,
+  expect_identical(.plan_form_main("plan_paginate_group"), c("col", "keep", "heading"))
+  expect_identical(.plan_form_main("plan_paginate_cols"),
                    c("every", "fit", "at", "keep", "cut_by", "order", "allow_span_break"))
-  expect_identical(.plan_form_main$plan_row_group, c("mode", "collapse"))
+  expect_identical(.plan_form_main("plan_row_group"), c("mode", "collapse"))
   # given as R: under Other arguments, saved
   expect_identical(.plan_form_schema("plan_row_group")$args$group_col$type, "r")
   expect_identical(.plan_form_schema("plan_paginate_cols")$args$col_header$type, "r")
@@ -512,7 +512,7 @@ test_that("a comparison's rows (no arm row in their context) are not overall row
 })
 
 test_that("plan_hide(): the table's columns hidden, a multi-select, written by column", {
-  expect_identical(.plan_form_main$plan_hide, "cols")
+  expect_identical(.plan_form_main("plan_hide"), "cols")
   sch <- .plan_form_schema("plan_hide")
   expect_identical(sch$formals, "cols")
   it0 <- list(fn = "plan_hide", args = list(), own_args = list())
@@ -541,7 +541,7 @@ test_that("plan_hide(): the table's columns hidden, a multi-select, written by c
 })
 
 test_that("plan_cell_style(): cols, where, the looks as fields, each call its own card", {
-  expect_identical(.plan_form_main$plan_cell_style,
+  expect_identical(.plan_form_main("plan_cell_style"),
                    c("cols", "header", "where", "bold", "italic", "align", "color", "background"))
   sch <- .plan_form_schema("plan_cell_style")
   # a look left blank is not written (not FALSE); border: under Other arguments, as R
@@ -641,7 +641,7 @@ test_that("every form card shows all its function's arguments: those written abo
   seen <- list()
   for (id in c("T-14-1-1", "T-14-3-1")) {
     items <- builder_items(p, id)
-    for (fn in names(.plan_form_main)) {
+    for (fn in .plan_form_fns) {
       it <- Filter(function(x) identical(x$fn, fn), items)
       it <- if (length(it)) it[[1L]] else list(fn = fn, args = list())
       h <- html(.plan_form_body("c", fn, it, cols = c("row_label", ".values")))
