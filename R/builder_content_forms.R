@@ -27,9 +27,7 @@
   normalize_ard = c(drop_contexts = "r", stack = "r"),
   plan_cell_style = c(bold = .plan_cell_look, italic = .plan_cell_look,
                       underline = .plan_cell_look, color = "colour", background = "colour"),
-  plan_blanks = c(where = "enum[between_groups|records]|r"),
-  plan_columns = c(widths = "widths", row_title = "list<column>"),
-  plan_paginate_cols = c(order = "enum[across|down|group|rows|cols]"))
+  plan_columns = c(widths = "widths", row_title = "list<column>"))
 
 # the arguments of a form card given as R (no field of their own)
 .plan_form_r <- list(

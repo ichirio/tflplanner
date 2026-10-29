@@ -204,7 +204,7 @@
 "The name of the one row label column the row keys are folded into. Blank: row_label. e.g. ""stub""","行キーをまとめて入れる 1 つの行ラベルの列の名前。空欄 = row_label。例: ""stub"""
 "The spaces a level of the folded rows is indented by. Blank: 4. e.g. 2","まとめた行の 1 段ごとの字下げ（空白の数）。空欄 = 4。例: 2"
 "TRUE: the rows are folded before the pages and groups are made, which plan_cell_style() needs to see the rows as printed; a page or group key folded away is then not found. Blank (FALSE): folded last. e.g. TRUE","TRUE: ページとグループを作る前に行をまとめます（plan_cell_style() が印刷される行を見るのに必要）。そのときは、まとめて消えたページやグループのキーは見つかりません。空欄（FALSE）: 最後にまとめます。例: TRUE"
-"Where blank rows go: ""between_groups"" between the outermost row groups, ""records"" after each record of a listing, or as R (the rows' numbers, 0 before the first). e.g. ""between_groups""","空行を入れる場所: ""between_groups"" は一番外側の行グループの間、""records"" は Listing のレコードごとの後、または R（行番号。0 は最初の行の前）。例: ""between_groups"""
+"Where blank rows go: ""between_groups"" between the outermost row groups, ""between_parts"" between a table's appended parts, ""records"" after each record of a listing, ""none"" none, or as R (the rows' numbers, 0 before the first). e.g. ""between_groups""","空行を入れる場所: ""between_groups"" は一番外側の行グループの間、""between_parts"" は表の下に足した部分の間、""records"" は Listing のレコードごとの後、""none"" は入れない、または R（行番号。0 は最初の行の前）。例: ""between_groups"""
 "TRUE: a blank row at the top of every page. Blank: none. e.g. TRUE","TRUE: 各ページの先頭に空行を 1 行入れます。空欄 = なし。例: TRUE"
 "TRUE: a blank row at the bottom of every page. Blank: none. e.g. TRUE","TRUE: 各ページの末尾に空行を 1 行入れます。空欄 = なし。例: TRUE"
 "The most rows a page holds (blank rows too when they are counted: plan_blanks()). Blank: no limit. e.g. 45","1 ページの最大行数（空行を数える場合は空行も: plan_blanks()）。空欄 = 制限なし。例: 45"
