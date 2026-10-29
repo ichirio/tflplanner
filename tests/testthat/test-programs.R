@@ -4,6 +4,7 @@ sample_planner <- function() {
 }
 
 test_that("a table program writes out its plan and report (its data not saved) and parses", {
+  skip_on_cran()
   p <- sample_planner()
   code <- program_code(p, "PK")
   expect_true(any(grepl('report_id <- "PK"', code, fixed = TRUE)))

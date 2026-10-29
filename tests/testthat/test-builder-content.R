@@ -19,6 +19,7 @@ own_levels <- function(p, id, args = list(SEX = c("Male", "Female"))) {
 }
 
 test_that("the cards are the plan's items, in its order", {
+  skip_on_cran()
   p <- sample_planner()
   sp <- .spec_object_last(p, table_sheets(), .study_keys$table)
   for (id in c("T-14-1-1", "T-14-3-1")) {
@@ -50,6 +51,7 @@ test_that("the cards are the plan's items, in its order", {
 })
 
 test_that("a card comes only from the content: one it lacks is not shown on", {
+  skip_on_cran()
   p <- sample_planner()
   items <- builder_items(p, "T-14-3-1")
   # T-14-3-1's code has no plan_labels(): no item, and the card the builder
@@ -64,6 +66,7 @@ test_that("a card comes only from the content: one it lacks is not shown on", {
 })
 
 test_that("the report's own item has the mark This table, with Revert over a default", {
+  skip_on_cran()
   p <- sample_planner()
   items <- builder_items(p, "T-14-1-1")
   own <- Filter(function(it) identical(it$from, "own"), items)
@@ -83,6 +86,7 @@ test_that("the report's own item has the mark This table, with Revert over a def
 })
 
 test_that("normalize_ard() is the first card: the hierarchy read only, the overall row", {
+  skip_on_cran()
   p <- sample_planner()
   # (the report's YAML says it: hierarchy and the any-event row)
   items <- builder_items(p, "T-14-3-1")
@@ -101,6 +105,7 @@ test_that("normalize_ard() is the first card: the hierarchy read only, the overa
 })
 
 test_that("a card's label is the meaning and the verb; an argument's the meaning and its name", {
+  skip_on_cran()
   p <- sample_planner()
   items <- builder_items(p, "T-14-1-1")
   h <- html(.table_cards(items))
@@ -163,6 +168,7 @@ test_that("read and written back unchanged, the sheets stay as they are", {
 })
 
 test_that("an item of the defaults is marked; the report's own over it can be reverted", {
+  skip_on_cran()
   p <- sample_planner()
   items <- builder_items(p, "T-14-1-1")
   at <- function(fn) items[[match(fn, fns_of(items))]]
@@ -194,6 +200,7 @@ test_that("an item of the defaults is marked; the report's own over it can be re
 })
 
 test_that("a line of the program leads to the card that wrote it", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-1"
   items <- builder_items(p, id)
@@ -232,6 +239,7 @@ test_that("a line of the program leads to the card that wrote it", {
 })
 
 test_that("a thin line before each group of cards; the content's order kept", {
+  skip_on_cran()
   p <- sample_planner()
   items <- builder_items(p, "T-14-1-1")
   h <- html(.table_cards(items))
@@ -255,6 +263,7 @@ test_that("a thin line before each group of cards; the content's order kept", {
 })
 
 test_that("a required card says Required; the arrow is the open state's; the seldom changed start closed", {
+  skip_on_cran()
   p <- sample_planner()
   items <- builder_items(p, "T-14-1-1")
   h <- html(.table_cards(items[match("table_plan", fns_of(items))]))
@@ -274,6 +283,7 @@ test_that("a required card says Required; the arrow is the open state's; the sel
 })
 
 test_that("the decimals' card: its heading, where they go, and plan_cells' lines lit with it", {
+  skip_on_cran()
   p <- sample_planner()
   items <- builder_items(p, "T-14-1-1")
   h <- html(.table_cards(items[match("plan_digits", fns_of(items))]))
@@ -285,6 +295,7 @@ test_that("the decimals' card: its heading, where they go, and plan_cells' lines
 })
 
 test_that("the order of the values says where it is edited; the row order explains its keys", {
+  skip_on_cran()
   p <- sample_planner()
   items <- builder_items(own_levels(p, "T-14-1-1"), "T-14-1-1")
   h <- html(.table_cards(items[match("plan_levels", fns_of(items))]))
@@ -299,6 +310,7 @@ test_that("the order of the values says where it is edited; the row order explai
 })
 
 test_that("the cards' menu lists the cards in their order and brings one into view", {
+  skip_on_cran()
   p <- sample_planner()
   items <- builder_items(p, "T-14-1-1")
   h <- html(.table_cards_bar(items, id = function(x) paste0("c_", x)))

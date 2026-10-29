@@ -31,6 +31,7 @@ test_that("the groups by verb: the table's skeleton, the finishing; normalize_ar
 })
 
 test_that("a line before each group's first card, with its meaning; every card names its group", {
+  skip_on_cran()
   p <- sample_planner()
   items <- builder_items(p, "T-14-1-1")
   # the content's order mixes the groups (digits before cells): still one
@@ -55,6 +56,7 @@ test_that("a line before each group's first card, with its meaning; every card n
 })
 
 test_that("the cards: required + the items in effect + added; no switch (#440)", {
+  skip_on_cran()
   p <- sample_planner()
   items <- cards_of(p, "T-14-1-1")
   h <- html(.table_cards(items))
@@ -74,6 +76,7 @@ test_that("the cards: required + the items in effect + added; no switch (#440)",
 })
 
 test_that("an AE table: the same usual cards as any (plan_levels off); an empty usual card is off", {
+  skip_on_cran()
   p <- sample_planner()
   raw <- Filter(function(it) it$fn != "plan_levels", builder_items(p, "T-14-3-1"))
   # (a saved report: only what it has -- one tier list for every table)
@@ -106,6 +109,7 @@ test_that("an AE table: the same usual cards as any (plan_levels off); an empty 
 })
 
 test_that("an added plan_stat_groups goes after plan_cells, before plan_total and plan_labels", {
+  skip_on_cran()
   # (the schema's rank of tflspec >= 0.0.24.9131: cells 30, stat_groups 40,
   # total 50 ... labels 80)
   skip_if(packageVersion("tflspec") < "0.0.24.9131")
@@ -121,6 +125,7 @@ test_that("an added plan_stat_groups goes after plan_cells, before plan_total an
 })
 
 test_that("added: a verb with usual values is written; one without waits, on, for a value", {
+  skip_on_cran()
   p <- sample_planner()
   st <- list(variables = data.frame(variable = c("AGE", "SEX"), label = c("Age", NA),
                                     stringsAsFactors = FALSE),
@@ -151,6 +156,7 @@ test_that("added: a verb with usual values is written; one without waits, on, fo
 })
 
 test_that("the Total card: on by default with overall rows; off and no switch without", {
+  skip_on_cran()
   skip_if_not_installed("cards")
   with_ovr <- cards::ard_stack(cards::ADSL, .by = TRT01A, cards::ard_categorical(variables = SEX),
                                .overall = TRUE)
@@ -191,6 +197,7 @@ test_that("the ARD tells the order and the labels: a factor's levels, its labels
 })
 
 test_that("normalize_ard(): a form card -- the hierarchy a field marked From the ARD, the rest its fields (#417)", {
+  skip_on_cran()
   p <- sample_planner()
   hier <- c("AEBODSYS", "AEDECOD")
   it <- item(builder_items(p, "T-14-3-1"), "normalize_ard")
@@ -336,6 +343,7 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
 })
 
 test_that("the variables shown: written as the row filter, read back; the user's own kept", {
+  skip_on_cran()
   expect_identical(.hidden_vars_read(NA), character())
   w <- .hidden_vars_write(c("AGE", "SEX"))
   expect_identical(w, '!variable %in% c("AGE", "SEX")')
@@ -356,6 +364,7 @@ test_that("the variables shown: written as the row filter, read back; the user's
 })
 
 test_that("nothing changed, nothing written: the sample's items and program as they were", {
+  skip_on_cran()
   p <- sample_planner()
   for (id in c("T-14-1-1", "T-14-3-1")) {
     for (it in builder_items(p, id)) {
@@ -491,6 +500,7 @@ test_that("in the app: a switch writes and takes away; Add; the variables shown;
 })
 
 test_that("Remove: only a card of the report's own, or one shown empty (#440)", {
+  skip_on_cran()
   p <- sample_planner()
   # an added verb taken away again (off): no card
   expect_null(cards_of(p, "T-14-1-1", added = "plan_compare",
@@ -628,6 +638,7 @@ test_that("plan_levels()' variables: a line until opened, the ARD's order not wr
 })
 
 test_that("builder_read() tells where each order comes from; a key column's factor counts", {
+  skip_on_cran()
   skip_if_not_installed("cards")
   p <- sample_planner()
   st <- builder_read(p, "T-14-1-1")

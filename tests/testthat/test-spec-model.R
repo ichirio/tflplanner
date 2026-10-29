@@ -98,6 +98,7 @@ test_that("what the sheets cannot hold stays in a report the edits do not touch"
 })
 
 test_that("an edit of a report's sheets keeps what only its spec holds (#415)", {
+  skip_on_cran()
   s <- model_sample()
   home <- getOption("tflplanner.home")
   id <- "T-14-3-1"
@@ -137,6 +138,7 @@ test_that("an edit of a report's sheets keeps what only its spec holds (#415)", 
 })
 
 test_that("a draft keeps what only the spec holds, and gives it back (#415)", {
+  skip_on_cran()
   s <- model_sample()
   home <- getOption("tflplanner.home")
   s <- suppressMessages(open_study("SAMPLE-01", home = home))
@@ -187,6 +189,7 @@ test_that("a three-way merge keeps the spec's own keys and takes the edits", {
 })
 
 test_that("a report written into the spec has its view made again", {
+  skip_on_cran()
   s <- model_sample()
   id <- "T-14-1-1"
   o <- s$planner$spec$outputs[[id]]
@@ -203,6 +206,7 @@ test_that("a report written into the spec has its view made again", {
 })
 
 test_that("a planner with no spec is written whole, and gets one", {
+  skip_on_cran()
   s <- model_sample()
   home <- getOption("tflplanner.home")
   s$planner <- .planner_body(s$planner)
@@ -215,6 +219,7 @@ test_that("a planner with no spec is written whole, and gets one", {
 })
 
 test_that("a report's items say where each argument comes from (#417)", {
+  skip_on_cran()
   s <- model_sample()
   p <- s$planner
   x <- .spec_items(p, "T-14-1-1")
@@ -266,6 +271,7 @@ test_that("a study with no report keeps its spec a tfl_study_spec (#413)", {
 })
 
 test_that("a card's edit writes that report's YAML only, its content only; Revert takes it back (#417)", {
+  skip_on_cran()
   s <- model_sample()
   home <- getOption("tflplanner.home")
   m0 <- spec_md5(s$path)
@@ -314,6 +320,7 @@ test_that("a card's edit writes that report's YAML only, its content only; Rever
 })
 
 test_that("the builder's form reads and writes the report's items: roles, labels, levels, nests (#417)", {
+  skip_on_cran()
   s <- model_sample()
   p <- s$planner
   id <- "T-14-1-1"
@@ -433,6 +440,7 @@ test_that("the builder's rows and the items' arguments: one way and back (#417)"
 })
 
 test_that("the builder's cells and decimals are plan_cells(); the rounding the study's defaults.yml (#417)", {
+  skip_on_cran()
   s <- model_sample()
   p <- s$planner
   id <- "T-14-1-1"
@@ -484,6 +492,7 @@ test_that("the builder's cells and decimals are plan_cells(); the rounding the s
 })
 
 test_that("the builder's header, order and pages are plan_col_header(), plan_sort(), plan_paginate_group() (#417)", {
+  skip_on_cran()
   s <- model_sample()
   p <- s$planner
   id <- "T-14-3-1"
@@ -528,6 +537,7 @@ test_that("the builder's header, order and pages are plan_col_header(), plan_sor
 })
 
 test_that("a card's save rebuilds that report's view only, and writes that report's program only (#417)", {
+  skip_on_cran()
   s <- model_sample()
   home <- getOption("tflplanner.home")
   p <- s$planner
@@ -556,6 +566,7 @@ test_that("a card's save rebuilds that report's view only, and writes that repor
 })
 
 test_that("a save merges what another session saved since; nothing saved since, nothing to merge (#417)", {
+  skip_on_cran()
   model_sample()
   home <- getOption("tflplanner.home")
   s <- suppressMessages(open_study("SAMPLE-01", home = home))
@@ -652,6 +663,7 @@ test_that("Discard changes: the study back to its last save, its draft gone; not
 })
 
 test_that("the treatment variable is study.yml's settings: treatment: (#444)", {
+  skip_on_cran()
   s <- model_sample()
   home <- getOption("tflplanner.home")
   m0 <- spec_md5(s$path)

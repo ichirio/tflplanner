@@ -237,6 +237,7 @@ test_that("an order of the sheets' own is kept, and the card's order is one clic
 })
 
 test_that("the rows are the table's: the ARD's keys by default, a group outermost, a page each", {
+  skip_on_cran()
   p <- hier_planner()
   m <- hier_meta()
   m$keys$SEX <- c("F", "M")
