@@ -18,3 +18,17 @@ A list of \code{rtftable} pages.
 Runs a listing's data part (\code{data_lines()}) from the study folder and
 gives its first pages, for a preview.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it runs the listing's data part)
+s <- create_sample_study(run = FALSE)
+# runs the listing's data part in a fresh R process
+pages <- preview_listing(s, "L-16-2-7")
+length(pages)
+}
+options(old)
+}

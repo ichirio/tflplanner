@@ -61,6 +61,22 @@
 #' @param rows The rows, edited.
 #' @return `lf_rows()`: a data frame; `set_lf_rows()`: the `tflplanner`;
 #'   `listing_types()`: a data frame (`type`, `label`, `note`).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: the sample study and its data)
+#' s <- create_sample_study(run = FALSE)
+#' rows <- lf_rows(s$planner, "listings", "L-16-2-7")
+#' rows[, c("output_id", "type", "dataset", "max_rows")]
+#' # change a row and put it back
+#' rows$max_rows <- 30
+#' p <- set_lf_rows(s$planner, "listings", "L-16-2-7", rows)
+#' lf_rows(p, "listings", "L-16-2-7")$max_rows
+#' }
+#' options(old)
 #' @export
 lf_rows <- function(x, sheet, output_id) {
   d <- (x$lf %||% .empty_lf())[[sheet]]
@@ -214,6 +230,19 @@ listing_types <- function() company_standards()$listing_types
 #' @param study An `rtfstudy`.
 #' @param output_id The listing.
 #' @return A list of `rtftable` pages.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it runs the listing's data part)
+#' s <- create_sample_study(run = FALSE)
+#' # runs the listing's data part in a fresh R process
+#' pages <- preview_listing(s, "L-16-2-7")
+#' length(pages)
+#' }
+#' options(old)
 #' @export
 preview_listing <- function(study, output_id) {
   code <- data_lines(study$planner, output_id, todo = FALSE)

@@ -220,6 +220,19 @@ report_population <- function(x, output_id) {
 #' @param population A population_id of the study (`NA`: none).
 #' @return The `tflplanner`, with attributes `made` (the analysis data
 #'   added) and `left`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: the sample study and its data)
+#' s <- create_sample_study(run = FALSE)
+#' # the report moves from the safety set to the screened set
+#' p <- set_report_population(s$planner, "T-14-1-2", "ENR")
+#' p$outputs$population[p$outputs$output_id == "T-14-1-2"]
+#' }
+#' options(old)
 #' @export
 set_report_population <- function(x, output_id, population) {
   o <- x$outputs

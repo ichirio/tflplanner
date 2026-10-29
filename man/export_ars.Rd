@@ -27,3 +27,17 @@ does not say (\code{\link[tflspec:tfl_ars_unmapped]{tflspec::tfl_ars_unmapped()}
 \code{purpose} (a column of the ARD definition's analyses) for the ARS to be
 complete; a blank one is listed.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the ARS files)
+s <- create_sample_study(run = FALSE)
+# the ARS files go to a folder in the temporary folder
+files <- export_ars(s, file.path(tempdir(), "ars"))
+basename(files)
+}
+options(old)
+}

@@ -19,3 +19,11 @@ A list: \code{studies_root}, \code{last_study}, \code{language}, and when set
 \description{
 tflplanner's settings
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+tflplanner_config()$last_study
+options(old)
+}

@@ -373,6 +373,19 @@
 #' @param code R that makes the data itself (its value is the data); with
 #'   it the other columns but `from` stay blank.
 #' @return The `tflplanner`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_sample_study(run = FALSE)
+#' # the subjects aged 50 or more: a new analysis data made from ADSL
+#' x <- set_analysis_data(s$planner, "T-14-1-1", "adsl_old", from = "adsl", where = "AGE >= 50")
+#' ard_rows(x, "analysis_data", "T-14-1-1")[, c("data_id", "from", "where")]
+#' }
+#' options(old)
 #' @export
 set_analysis_data <- function(x, output_id, data_id, from, population_id = NA,
                               where = NA, add = NA, derive = NA,

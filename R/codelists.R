@@ -47,6 +47,19 @@
 #' @param output_id The report copied into.
 #' @param variables Only these variables' code lists; `NULL` for all.
 #' @return The `tflplanner`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: the sample study and its data)
+#' s <- create_sample_study(run = FALSE)
+#' # the code list of SEX in one report is copied into another
+#' p <- import_codelist(s$planner, "T-14-1-1", "T-14-1-3", variables = "SEX")
+#' sum(p$sheets$codelists$output_id %in% "T-14-1-3")
+#' }
+#' options(old)
 #' @export
 import_codelist <- function(x, from_output, output_id, variables = NULL) {
   src <- sheet_rows(x, "codelists", from_output)

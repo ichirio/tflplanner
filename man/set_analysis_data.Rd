@@ -74,3 +74,17 @@ name is followed in the analyses and the analysis data made from it).
 another report, under the same names (a name the report has already
 gets \verb{_1}, \verb{_2} ...); attribute \code{copied} names the rows added.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_sample_study(run = FALSE)
+# the subjects aged 50 or more: a new analysis data made from ADSL
+x <- set_analysis_data(s$planner, "T-14-1-1", "adsl_old", from = "adsl", where = "AGE >= 50")
+ard_rows(x, "analysis_data", "T-14-1-1")[, c("data_id", "from", "where")]
+}
+options(old)
+}

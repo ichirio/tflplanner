@@ -21,3 +21,13 @@ gets the company's (\verb{default_<sheet>}), and the analysis sets and data
 catalog get the company's they do not have (by id).  Nothing already
 there is changed.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+x <- add_standard_defaults(new_planner(), "STUDY-1")
+# the sheets that got the company's defaults
+attr(x, "added")
+options(old)
+}

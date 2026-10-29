@@ -31,6 +31,18 @@
 #'
 #' @param study An `rtfstudy`.
 #' @return A data frame.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: the sample study and its data)
+#' s <- create_sample_study(run = FALSE)
+#' # nothing is saved or run yet
+#' head(study_status(s)[, c("output_id", "status")])
+#' }
+#' options(old)
 #' @export
 study_status <- function(study) {
   p <- study$planner

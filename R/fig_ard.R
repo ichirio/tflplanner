@@ -26,6 +26,20 @@
 #' @param source `"own"`, `"table:<output_id>"` (a table of the study), or
 #'   `NULL`.
 #' @return `x`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: the sample study and its data)
+#' s <- create_sample_study(run = FALSE)
+#' # the figure reads the ARD of a table of the study
+#' p <- set_fig_ard_source(s$planner, "F-14-2-1", "table:T-14-2-1")
+#' p$sheets$report[which(p$sheets$report$output_id == "F-14-2-1"),
+#'                 c("output_id", "ard_source")]
+#' }
+#' options(old)
 #' @export
 set_fig_ard_source <- function(x, output_id, source = NULL) {
   if (!is.null(source)) {
@@ -303,6 +317,20 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
 #'   id for it); `NULL` keeps what `analyses` says.
 #' @return The `tflplanner`, with attribute `written`: the ids of the
 #'   analyses written.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: the sample study and its data)
+#' s <- create_sample_study(run = FALSE)
+#' # the forest plot's hazard ratios, written as the figure's own analyses
+#' design <- tflspec::tfl_fig_forest_analyses()
+#' p <- set_fig_own_analyses(s$planner, "F-14-2-2", design, population_id = "SAF")
+#' attr(p, "written")
+#' }
+#' options(old)
 #' @export
 set_fig_own_analyses <- function(x, output_id, analyses, population_id = NULL) {
   if (!is.list(analyses) || !all(c("analysis_data", "analyses") %in% names(analyses))) {

@@ -548,6 +548,15 @@ company_standards <- function(home = tflplanner_home()) {
 #' @param x A `tflplanner`.
 #' @param study_id The study's id (`{STUDY_ID}` in the defaults).
 #' @return The `tflplanner`, with attribute `added` (the sheets added to).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' x <- add_standard_defaults(new_planner(), "STUDY-1")
+#' # the sheets that got the company's defaults
+#' attr(x, "added")
+#' options(old)
 #' @export
 add_standard_defaults <- function(x, study_id) {
   std <- .standard_planner(study_id)

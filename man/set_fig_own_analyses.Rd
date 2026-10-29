@@ -29,3 +29,18 @@ plot's hazard ratios, \code{attr(design, "analyses")} from
 definition: its \code{analysis_data} and \code{analyses} rows (a row of the same
 id is replaced, the others kept) and the report row's \code{ard_source = "own"}.  The study's ARD then has to be made again for the figure.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: the sample study and its data)
+s <- create_sample_study(run = FALSE)
+# the forest plot's hazard ratios, written as the figure's own analyses
+design <- tflspec::tfl_fig_forest_analyses()
+p <- set_fig_own_analyses(s$planner, "F-14-2-2", design, population_id = "SAF")
+attr(p, "written")
+}
+options(old)
+}
