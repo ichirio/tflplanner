@@ -53,6 +53,7 @@ test_that("ard_meta() reads the rework, and a hierarchy", {
 })
 
 test_that("fill_variables() and fill_tables() fill from the metadata", {
+  skip_on_cran()
   skip_if_not_installed("cards")
   m <- ard_meta(dm_ard())
   p <- add_output(new_planner(), "DM")

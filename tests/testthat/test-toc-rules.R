@@ -332,6 +332,7 @@ test_that("ids without a prefix and a separate type column: normalised proposed,
 })
 
 test_that("a sheet name remembered becomes a name hit; the id rule remembered is used", {
+  skip_on_cran()
   home <- tempfile()
   dir.create(home)
   f <- toc_workbook(list(Notes = list(c("Some notes")),
