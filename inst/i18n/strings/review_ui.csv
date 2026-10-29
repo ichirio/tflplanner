@@ -19,5 +19,5 @@
 "Previous","前へ"
 "Next","次へ"
 "The checks against the data have not run yet. Press [Review with the data] to read the datasets once (not again until a file changes).","データと照らし合わせたチェックはまだです。［データも使って見直す］を押すと、データセットを一度読みます（2 回目からは、ファイルが変わらない限り読み直しません）。"
-"AI assumption %s is unanswered (AI step 4).","AI の仮定 %s が未回答です（AI 連携の手順 4）。"
 "Say whether the AI's assumption is right or wrong (and what is right instead) on the AI step's assumptions screen (tfl_ai_assumption_answers_write()); a report built on an unanswered assumption may carry a wrong choice.","AI の仮定が正しいか違うか（違うなら正しい内容）を、AI 連携の手順 4 の仮定の画面で答えます（tfl_ai_assumption_answers_write()）。未回答の仮定の上に作った帳票は、違う選択のままのことがあります。"
+"AI assumption %s is unanswered (AI step 4).","AI の仮定 %s が未回答です（AI 連携の手順 4）。"

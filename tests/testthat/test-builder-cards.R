@@ -123,8 +123,9 @@ test_that("a field is chosen by its type, with its R switch and its (i)", {
   # r: a monospace field
   h <- html(arg_field("c1", "where", "r", value = tflspec::tfl_r("SAFFL == \"Y\"")))
   expect_match(h, "rp-mono", fixed = TRUE)
-  # a call<fn> the schema does not know: R
-  h <- html(arg_field("c1", "position", "call<position_dodge>|string", default = "identity"))
+  # a call<fn> the schema does not know: R (position_dodge() it knows since
+  # tflspec#500: a call form)
+  h <- html(arg_field("c1", "position", "call<my_unknown_position>|string", default = "identity"))
   expect_match(h, 'id="c1__position"', fixed = TRUE)
   expect_match(h, "rp-mono", fixed = TRUE)
   # from a template: the badge on the field
