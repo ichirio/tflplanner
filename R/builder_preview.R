@@ -322,16 +322,21 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
     any(vapply(o$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
 }
 
-# The table's records for the preview: its data code (.table_dataset_lines())
-# run in the study's folder; NULL when its rows are the ARD's
+# The objects a table's content reads but its ARD, for the preview: its
+# data code (.table_objects_code()) run in the study's folder -- its
+# records as `data`, a part's from a dataset by its name; an empty list
+# when its rows are all the ARD's
 .preview_records <- function(x, output_id, study_dir) {
-  code <- .table_dataset_lines(x, output_id)
-  if (is.null(code)) return(NULL)
+  sp <- .code_spec(x)
+  o <- sp$outputs[[output_id]]
+  dc <- if (!is.null(o)) .table_objects_code(o, sp$study) else list()
+  if (!length(dc)) return(list())
   old <- setwd(study_dir)
   on.exit(setwd(old), add = TRUE)
   env <- new.env(parent = globalenv())
-  eval(parse(text = code, keep.source = FALSE), envir = env)
-  as.data.frame(env$data)
+  eval(parse(text = unlist(dc, use.names = FALSE), keep.source = FALSE), envir = env)
+  # (a plain data frame: the plan reads columns it may not have by `$`)
+  lapply(mget(names(dc), envir = env), as.data.frame)
 }
 
 # Its pages: the report resolved, its content run (tflspec::tfl_content_run())

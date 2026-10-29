@@ -403,20 +403,22 @@ data_lines <- function(x, output_id, todo = TRUE) {
 # part is written (tflspec::tfl_listing_code(part = "data")); NULL for a
 # table of the ARD
 .table_dataset_lines <- function(x, output_id) {
-  o <- x$spec$outputs[[output_id]]
-  d <- o$data
-  if (is.null(d) || !identical(d[["source"]], "dataset")) return(NULL)
-  txt <- function(v) {
-    v <- unlist(lapply(v, as.character))
-    if (!length(v)) NA_character_ else paste(v, collapse = " | ")
-  }
-  l <- data.frame(output_id = output_id, dataset = txt(d[["dataset"]]), data = txt(d[["data"]]),
-                  population_id = txt(d[["population"]]), where = txt(d[["where"]]),
-                  sort = txt(d[["sort"]]), stringsAsFactors = FALSE)
-  sp <- tflspec::tfl_listing_spec(l, data.frame(output_id = output_id, vars = "USUBJID"), check = FALSE)
-  own <- !is.na(l$data) || !is.na(l$population_id)
-  tflspec::tfl_listing_code(sp, output_id, x$ard$datasets, codelists = .study_codelists(x),
-                            part = "data", ard = if (own) structure(x$ard, class = "tfl_ard_spec"))
+  sp <- .code_spec(x)
+  o <- sp$outputs[[output_id]]
+  if (is.null(o) || inherits(o$content, "tfl_r")) return(NULL)
+  # the objects it reads but its ARD (written from the study's ARD program):
+  # its records as `data`, a part's from a dataset by its name
+  # (tflspec::tfl_data_code(), the listing's data code); NULL: none
+  dc <- .table_objects_code(o, sp$study)
+  if (!length(dc)) NULL else unlist(dc, use.names = FALSE)
+}
+
+# ... by object, its ARD left out: list(data = <lines>, adpc = <lines>)
+.table_objects_code <- function(o, study) {
+  own <- identical(o$data[["source"]], "dataset")
+  parts <- any(vapply(o$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
+  if (!own && !parts) return(list())
+  tflspec::tfl_data_code(o, study, ard = FALSE)
 }
 
 #' The R program for one report
