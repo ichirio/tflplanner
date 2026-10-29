@@ -44,8 +44,7 @@ test_that("a dry run: a row a TOC item, a row a shell sheet, the counts; request
   book <- view_book(file.path(root, "toc_shell.xlsx"))
   adam <- view_adam(file.path(root, "adam"))
   dir <- file.path(root, "P-1")
-  p <- .ai_prepare(dir, book, adam, list(size = 1L, mode = "agent", templates = FALSE),
-                   dry_run = TRUE)
+  p <- .ai_prepare(dir, book, adam, list(size = 1L, templates = FALSE), dry_run = TRUE)
   # (tflspec's shape, as it gives it: nothing added by tflplanner)
   expect_identical(p$toc$toc_id, c("t.14.1.1", "t.15.1.5.1", "t.16.1"))
   expect_null(p$toc$parts)
@@ -57,15 +56,13 @@ test_that("a dry run: a row a TOC item, a row a shell sheet, the counts; request
   expect_identical(p$requests$request, c("t.14.1.1", "t.15.1.5.1", "no-shell"))
   expect_identical(p$sheets$role, c("toc", "shell", "shell", "other"))
   # a sheet's role given: read as it says
-  p2 <- .ai_prepare(dir, book, adam, list(size = 1L, mode = "agent", templates = FALSE,
+  p2 <- .ai_prepare(dir, book, adam, list(size = 1L, templates = FALSE,
                                           sheet_roles = c(TOC = "toc", t.14.1.1 = "shell",
                                                           t.15.1.5.1 = "other", Notes = "other")),
                     dry_run = TRUE)
   expect_identical(as.integer(p2$counts[c("shells", "toc_items", "no_shell")]), c(1L, 3L, 2L))
   expect_false(dir.exists(dir))
-  # (the parts said, the names made from the report's number)
-  expect_identical(.ai_parts_label(c("a", "b"), NULL), c("", ""))
-  expect_identical(.ai_parts_label(c("t.1", "t.2"), c(NA, "t.2.a | t.2.b")), c("", "2 parts (.a, .b)"))
+  # (the names made from the report's number)
   expect_identical(.ai_one_names(c("t 15.1", "T15.1.5.1", "t 15.1")), c("t-15.1", "T15.1.5.1", "t-15.1-1"))
 })
 
@@ -95,17 +92,18 @@ test_that("a workbook in the study folder is read where it is; one outside is co
   # requests named after their sheets
   adam <- view_adam(file.path(dir, "data", "adam"))
   out <- .ai_new_study("P-2", inside, "toc_shell.xlsx", adam,
-                       list(size = 1L, mode = "agent", workbook = "file", templates = FALSE))
+                       list(size = 1L, workbook = "file", templates = FALSE))
   expect_false(file.exists(file.path(dir, "ai", "toc_shell.xlsx")))
   r <- .ai_requests(dir)
   expect_setequal(r$request, c("t.14.1.1", "t.15.1.5.1", "no-shell"))
   expect_identical(r$file[r$request == "t.15.1.5.1"], "ai/requests/t.15.1.5.1.md")
   txt <- .ai_request_text(dir, "t.15.1.5.1", "request")
   expect_match(txt, "docs/toc_shell.xlsx", fixed = TRUE)
-  # an answer and a fix request by a name with dots
-  dir.create(file.path(dir, "ai", "answers"), showWarnings = FALSE)
-  writeLines("x", file.path(dir, "ai", "answers", "t.15.1.5.1.md"))
-  expect_identical(.ai_answer_file(dir, "t.15.1.5.1"), "ai/answers/t.15.1.5.1.md")
+  # a draft and a fix request by a name with dots
+  dir.create(file.path(dir, "ai", "spec", "outputs"), recursive = TRUE, showWarnings = FALSE)
+  writeLines("id: t.15.1.5.1", file.path(dir, "ai", "spec", "outputs", "t.15.1.5.1.yml"))
+  expect_identical(.ai_request_drafts(dir, "t.15.1.5.1")$n, 1L)
+  expect_identical(.ai_requests(dir)$drafts[r$request == "t.15.1.5.1"], 1L)
   dir.create(file.path(dir, "ai", "repairs"), showWarnings = FALSE)
   writeLines(c("## Could not be built", "", "- t.15.1.5.1.b: no data"),
              file.path(dir, "ai", "repairs", "t.15.1.5.1-build.md"))
@@ -134,7 +132,7 @@ test_that("step 1: the TOC items (no shell in red), the shells, the counts; the 
   shiny::testServer(server_for("P-3"), {
     ai <- session$userData$ai
     session$setInputs(`ai-study_mode` = "open", `ai-toc_path` = book, `ai-adam_dir` = adam,
-                      `ai-size` = 1, `ai-mode` = "agent", `ai-add` = FALSE)
+                      `ai-add` = FALSE)
     session$setInputs(`ai-read` = 1)
     expect_true(ai$prepared()$dry_run)
     # (no roles changed: none passed)

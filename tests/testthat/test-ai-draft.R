@@ -1,5 +1,5 @@
-# AI drafts (#431): the adapters over tflspec's AI requests and answers,
-# and the tab's steps 2 and 3
+# AI drafts (#431): the adapters over tflspec's AI requests and the
+# agent's SPEC drafts (ai/spec/outputs), and the tab's steps 2 to 4
 
 # (slow: a study is prepared with tflspec -- run on CI and locally with
 # NOT_CRAN=true, not in CRAN's check)
@@ -10,7 +10,7 @@ skip_if_not_installed("haven")
 # example workbook and data; a request a shell
 # sheet -- demographics-1, efficacy-1, ae-1 (the Safety sheet: T-14-3-1 and
 # T-14-3-5), figure-1); each test copies it into its own home.  tflspec's
-# example answers beside it.
+# example drafts beside it (drafts/<id>.yml).
 ai_example <- system.file("ai", "example", package = "tflspec")
 ai_prepared <- local({
   d <- file.path(tempfile("ai-prep-"), "XYZ-1")
@@ -53,11 +53,30 @@ ai_study <- function(register = TRUE) {
   if (register) suppressMessages(register_study(path))
   path
 }
-ai_answer <- function(path, request, from = request) {
-  file.copy(file.path(ai_example, "answers", paste0(from, ".md")),
-            file.path(path, "ai", "answers", paste0(request, ".md")), overwrite = TRUE)
+# the agent's draft of a report, as it writes it (ai/spec/outputs/<id>.yml):
+# tflspec's example draft
+ai_draft <- function(path, id, from = id) {
+  d <- file.path(path, "ai", "spec", "outputs")
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  file.copy(file.path(ai_example, "drafts", paste0(from, ".yml")), file.path(d, paste0(id, ".yml")),
+            overwrite = TRUE)
 }
-utf8_bytes <- function(f) readBin(f, "raw", file.info(f)$size)
+# the drafts of a request's reports
+ai_drafts_of <- function(path, request) {
+  r <- .ai_requests(path)
+  for (id in trimws(strsplit(r$outputs[r$request == request], ",", fixed = TRUE)[[1L]])) ai_draft(path, id)
+}
+# a draft whose ai: block leaves a place to confirm (as tflspec's own test
+# of the agent's route writes it)
+ai_draft_confirm <- function(path, id) {
+  f <- file.path(path, "ai", "spec", "outputs", paste0(id, ".yml"))
+  if (!file.exists(f)) ai_draft(path, id)
+  o <- tflspec::tfl_read_output(f)
+  o$ai$confirm <- list(list(where = "content", item = "plan_cells",
+                            why = "the shell shows n (%) but not its denominator"))
+  tflspec::tfl_write_output(o, f)
+  invisible(f)
+}
 
 test_that("the requests: one row each, in the order written, the reports from tflspec's record", {
   local_home()
@@ -71,117 +90,114 @@ test_that("the requests: one row each, in the order written, the reports from tf
   txt <- .ai_request_text(path, "ae-1")
   expect_identical(r$chars[r$request == "ae-1"], nchar(sub("\n$", "", txt)))
   expect_match(txt, "T-14-3-1", fixed = TRUE)
-  expect_true(all(is.na(r$answer)))
-  # (no instructions file: as tflspec writes the requests with "each"; with
-  # "once", its default, the file is there -- taken away)
-  unlink(file.path(path, "ai", "requests", "00-instructions.md"))
-  expect_true(is.na(attr(.ai_requests(path), "instructions")))
-  # the instructions once: their file named; no requests: no rows
-  writeLines("x", file.path(path, "ai", "requests", "00-instructions.md"))
-  expect_identical(attr(.ai_requests(path), "instructions"), "ai/requests/00-instructions.md")
+  # (no draft yet; no answers file, no instructions file)
+  expect_identical(r$drafts, c(0L, 0L, 0L, 0L))
+  expect_true(all(is.na(r$draft_time)))
+  expect_false(any(c("answer", "answer_time") %in% names(r)))
+  expect_false(file.exists(file.path(path, "ai", "requests", "00-instructions.md")))
+  # no requests: no rows
   expect_identical(nrow(.ai_requests(tempfile())), 0L)
 })
 
-test_that("an answer's file: <request>.md first, then the names Notepad saves", {
+test_that("a request's drafts: how many of its reports have one, and the newest's time", {
   local_home()
   path <- ai_study(register = FALSE)
-  a <- file.path(path, "ai", "answers")
-  writeLines("t", file.path(a, "ae-1.txt"))
-  expect_identical(.ai_answer_file(path, "ae-1"), "ai/answers/ae-1.txt")
-  writeLines("m", file.path(a, "ae-1.md.txt"))
-  expect_identical(.ai_answer_file(path, "ae-1"), "ai/answers/ae-1.md.txt")
-  writeLines("m", file.path(a, "ae-1.md"))
-  expect_identical(.ai_answer_file(path, "ae-1"), "ai/answers/ae-1.md")
-  expect_true(is.na(.ai_answer_file(path, "efficacy-1")))
+  none <- .ai_request_drafts(path, "T-14-3-1, T-14-3-5")
+  expect_identical(none$n, 0L)
+  expect_identical(none$of, 2L)
+  expect_true(is.na(none$time))
+  ai_draft(path, "T-14-3-1")
+  one <- .ai_request_drafts(path, "T-14-3-1, T-14-3-5")
+  expect_identical(one$n, 1L)
+  expect_s3_class(one$time, "POSIXct")
+  expect_false(is.na(one$time))
+  ai_draft(path, "T-14-3-5")
+  expect_identical(.ai_request_drafts(path, "T-14-3-1, T-14-3-5")$n, 2L)
+  expect_identical(.ai_request_drafts(path, "")$of, 0L)
   r <- .ai_requests(path)
-  expect_identical(r$answer[r$request == "ae-1"], "ai/answers/ae-1.md")
-  expect_s3_class(.ai_requests(path)$answer_time, "POSIXct")
+  expect_identical(r$drafts, c(0L, 0L, 2L, 0L))
+  expect_s3_class(r$draft_time, "POSIXct")
+  expect_false(is.na(r$draft_time[r$request == "ae-1"]))
+  expect_true(is.na(r$draft_time[r$request == "efficacy-1"]))
 })
 
-test_that("an answer saved: ai/answers/<request>.md, UTF-8 with no mark, LF; a name not a request's is refused", {
+test_that("a text file not in UTF-8 (Shift-JIS) is an error that says how to save it", {
   local_home()
   path <- ai_study(register = FALSE)
-  ja <- "\u89e3\u6790\u5bfe\u8c61\u96c6\u56e3"
-  f <- .ai_save_answer(path, "ae-1", paste0("```yaml\r\nlabel: ", ja, "\r\n```\r\n"))
-  expect_identical(f, "ai/answers/ae-1.md")
-  b <- utf8_bytes(file.path(path, f))
-  expect_identical(b, charToRaw(enc2utf8(paste0("```yaml\nlabel: ", ja, "\n```\n"))))
-  expect_false(identical(b[1:3], as.raw(c(0xef, 0xbb, 0xbf))))
-  expect_identical(.ai_answer_text(path, "ae-1"), paste0("```yaml\nlabel: ", ja, "\n```\n"))
-  # saved again: over the old
-  .ai_save_answer(path, "ae-1", "second")
-  expect_identical(.ai_answer_text(path, "ae-1"), "second\n")
-  expect_error(.ai_save_answer(path, "ae-1", "third", overwrite = FALSE), "already there")
-  expect_error(.ai_save_answer(path, "ae-01", "x"), "one of the study's requests")
-  expect_error(.ai_save_answer(path, "../ae-1", "x"), "A request's name")
-  expect_error(.ai_save_answer(path, "ae-1", "  \n "), "not empty")
-  expect_false(file.exists(file.path(path, "ai", "answers", "ae-01.md")))
-})
-
-test_that("an answer not in UTF-8 (Shift-JIS) is an error that says how to save it", {
-  local_home()
-  path <- ai_study(register = FALSE)
-  f <- file.path(path, "ai", "answers", "ae-1.md")
-  sjis <- iconv("\u89e3\u6790\u5bfe\u8c61", "UTF-8", "CP932", toRaw = TRUE)[[1L]]
+  f <- file.path(path, "ai", "note.md")
+  sjis <- iconv("解析対象", "UTF-8", "CP932", toRaw = TRUE)[[1L]]
   writeBin(c(charToRaw("label: "), sjis, charToRaw("\n")), f)
   expect_error(.ai_read_text(f), class = "tflplanner_ai_encoding")
   expect_error(.ai_read_text(f), "not UTF-8")
-  x <- .ai_answer_text(path, "ae-1")
-  expect_identical(as.vector(x), "")
-  expect_match(attr(x, "problem"), "Shift-JIS")
-  # a mark at the start (Notepad's UTF-8) is read without it
+  # a mark at the start (Notepad's UTF-8) is read without it, CR LF as LF
   writeBin(c(as.raw(c(0xef, 0xbb, 0xbf)), charToRaw("a\r\nb")), f)
-  expect_identical(.ai_answer_text(path, "ae-1"), "a\nb")
-  # tflspec's check says it too
-  writeBin(c(charToRaw("label: "), sjis, charToRaw("\n")), f)
-  co <- .ai_collect(path)
-  # (ae-1's two reports)
-  expect_identical(co$reports$status[co$reports$request == "ae-1"], rep("error", 2L))
+  expect_identical(.ai_read_text(f), "a\nb")
 })
 
-test_that("the answers checked: tflspec's list (reports, next_steps, assumptions, stray)", {
+test_that("the check's levels: OK, WARNING, ERROR, no draft", {
+  expect_identical(.ai_check_level(c("ok", "warning", "error", "no answer")),
+                   c("OK", "WARNING", "ERROR", "no draft"))
+  expect_true(is.na(.ai_check_level("other")))
+  expect_identical(.ai_check_level(character()), character())
+})
+
+test_that("the drafts checked: tflspec's list (reports, next_steps, assumptions), what is to confirm", {
   local_home()
   path <- ai_study(register = FALSE)
-  ai_answer(path, "demographics-1")
-  # an answer with a problem: its fix request written
-  a <- readLines(file.path(ai_example, "answers", "ae-1.md"), encoding = "UTF-8")
-  .ai_save_answer(path, "ae-1", sub("table_plan:", "table_plann:", a))
-  # an answer of a name no request has
-  ai_answer(path, "efficacy-01", from = "efficacy-1")
+  ai_draft(path, "T-14-1-1")
+  # a draft with a problem: its fix request written
+  d <- file.path(path, "ai", "spec", "outputs")
+  a <- readLines(file.path(ai_example, "drafts", "T-14-3-1.yml"), encoding = "UTF-8")
+  writeLines(sub("table_plan:", "table_plann:", a), file.path(d, "T-14-3-1.yml"))
   co <- .ai_collect(path)
   expect_s3_class(co, "tfl_ai_collected")
-  expect_true(all(c("reports", "next_steps", "assumptions", "stray", "time") %in% names(co)))
+  expect_true(all(c("reports", "next_steps", "assumptions", "time", "confirm") %in% names(co)))
+  expect_true(is.data.frame(co$confirm))
+  expect_true(all(c("output_id", "where", "item", "why", "file") %in% names(co$confirm)))
   r <- co$reports
   expect_true(all(c("request", "output_id", "status", "problems", "first", "file",
                     "repair", "problems_text") %in% names(r)))
   # (a row a report: ae-1's two)
   expect_identical(r$request, c("demographics-1", "efficacy-1", "ae-1", "ae-1", "figure-1"))
   expect_identical(r$status, c("ok", "no answer", "error", "error", "no answer"))
-  expect_identical(r$file, c(file.path(ai_drafts(path), "T-14-1-1.yml"), NA, NA, NA, NA))
+  expect_identical(.ai_check_level(r$status), c("OK", "no draft", "ERROR", "ERROR", "no draft"))
+  expect_identical(r$file, c("ai/spec/outputs/T-14-1-1.yml", NA, NA, NA, NA))
   expect_identical(r$repair, c(NA, NA, "ai/repairs/ae-1.md", "ai/repairs/ae-1.md", NA))
   expect_match(.ai_request_text(path, "ae-1", "repair"), "table_plan", fixed = TRUE)
   expect_identical(names(co$next_steps), unique(r$request))
-  expect_match(co$next_steps[["ae-1"]], "SAME chat")
-  expect_identical(co$stray, "ai/answers/efficacy-01.md")
-  # (tflspec adds id and kind, the assumptions' own: the columns at least these)
-  expect_true(all(c("output_id", "where", "item", "assumption", "question") %in% names(co$assumptions)))
+  expect_match(co$next_steps[["ae-1"]], "agent's chat", fixed = TRUE)
+  expect_true(all(c("output_id", "where", "item", "assumption") %in% names(co$assumptions)))
   expect_true("T-14-1-1" %in% co$assumptions$output_id)
-  expect_true(file.exists(file.path(path, ai_drafts(path), "T-14-1-1.yml")))
-  expect_false(file.exists(file.path(path, ai_drafts(path), "T-14-3-1.yml")))
+  # (no answers folder)
+  expect_false(dir.exists(file.path(path, "ai", "answers")))
   # a request's status: its worst report's
   expect_identical(.ai_request_status(c("ae-1", "efficacy-1", "x"), r), c("error", "no answer", NA))
   expect_identical(.ai_status_label(c("demographics-1", "ae-1", "efficacy-1"), r),
                    c("ok 1", "error 2", "no answer"))
   n <- .ai_counts(.ai_requests(path), co)
-  expect_identical(n$answers, 2L)
+  expect_identical(n$drafts, 2L)
+  expect_null(n$answers)
   # (the reports': ok 1, no answer 2, error 2)
   expect_identical(unname(n$status), c(1L, 0L, 2L, 2L))
+})
+
+test_that("what a draft leaves to confirm: listed by .ai_confirm(), the drafts' and the study's", {
+  local_home()
+  path <- ai_study(register = FALSE)
+  expect_identical(nrow(.ai_confirm(path)), 0L)
+  ai_draft_confirm(path, "T-14-1-1")
+  cf <- .ai_confirm(path)
+  expect_identical(cf$output_id, "T-14-1-1")
+  expect_identical(cf$item, "plan_cells")
+  expect_match(cf$file, "ai/spec/outputs/T-14-1-1.yml", fixed = TRUE)
+  # (no such study: none)
+  expect_identical(nrow(.ai_confirm(file.path(tempdir(), "no-such-study"))), 0L)
 })
 
 test_that("after a check the study is read again from its files; never over unsaved changes", {
   local_home()
   path <- ai_study()
-  for (q in c("demographics-1", "ae-1")) ai_answer(path, q)
+  for (q in c("demographics-1", "ae-1")) ai_drafts_of(path, q)
   .ai_collect(path)
   # (the drafts adopted: step 4)
   ai_adopt_all(path)
@@ -203,7 +219,7 @@ test_that("the tab is there unless turned off", {
   expect_false(grepl("ai-requests", as.character(app_ui("en")), fixed = TRUE))
 })
 
-test_that("step 2 and 3: the list, View, save an answer, check all, the reports taken in", {
+test_that("steps 2 to 4: the list and its drafts, Check, the levels and what is to confirm, the copy", {
   local_home()
   path <- ai_study()
   old <- options(tflplanner.ai_drafts = TRUE)
@@ -214,50 +230,87 @@ test_that("step 2 and 3: the list, View, save an answer, check all, the reports 
     expect_identical(ai$requests()$request,
                      c("demographics-1", "efficacy-1", "ae-1", "figure-1"))
     expect_match(output$`ai-status_line`$html, "5 reports, 4 requests", fixed = TRUE)
+    expect_match(output$`ai-status_line`$html, "drafts 0 / 5", fixed = TRUE)
     # the request's text, as the copy and View give it
     expect_identical(ai$text("ae-1"), .ai_request_text(path, "ae-1"))
-    # an answer pasted and saved
-    a <- paste(readLines(file.path(ai_example, "answers", "ae-1.md"), encoding = "UTF-8"),
-               collapse = "\n")
-    session$setInputs(`ai-pick` = "ae-1")
-    session$setInputs(`ai-answer_text` = a, `ai-save` = 1)
-    expect_identical(.ai_answer_text(path, "ae-1"), paste0(a, "\n"))
-    expect_identical(ai$requests()$answer[ai$requests()$request == "ae-1"], "ai/answers/ae-1.md")
+    # before a check: what Check does
+    expect_match(output$`ai-result_all`$html, "Check reads the agent's SPEC drafts", fixed = TRUE)
+    # the agent writes the drafts (ae-1's, one of them with a place to confirm)
+    ai_drafts_of(path, "ae-1")
+    ai_draft_confirm(path, "T-14-3-1")
+    session$setInputs(`ai-reread` = 1)
+    expect_identical(ai$requests()$drafts[ai$requests()$request == "ae-1"], 2L)
+    expect_match(output$`ai-requests`, "2 / 2", fixed = TRUE)
     # unsaved changes: no check
     rv$meta$title <- "mine"
     expect_true(isTRUE(session$userData$dirty()))
-    session$setInputs(`ai-check` = 1)
+    session$setInputs(`ai-status_reread` = 1)
     expect_null(ai$collected())
     expect_identical(rv$meta$title, "mine")
-    expect_false(file.exists(file.path(path, "spec", "outputs", "T-14-3-1.yml")))
-    # saved: the check writes the report, the study read again
+    # saved: the check reads the drafts
     rv$meta$title <- rv$saved_meta$title
-    session$setInputs(`ai-check` = 2)
+    session$setInputs(`ai-status_reread` = 2)
     co <- ai$collected()
     expect_identical(co$reports$status[co$reports$request == "ae-1"], rep("ok", 2L))
-    if (identical(ai_drafts(path), "ai/spec/outputs")) {
-      # (drafts: step 3 says so and points to step 4; there, the drafts not
-      # adopted yet are ticked at first, and copied into the study)
-      expect_false("T-14-3-1" %in% output_ids(rv$p))
-      expect_match(output$`ai-taken_note`$html, "step 4", fixed = TRUE)
-      # (not while the study has unsaved changes: nothing written)
-      rv$meta$title <- "mine"
-      session$setInputs(`ai-adopt` = 1)
-      session$setInputs(`ai-adopt_fresh` = 1)
-      expect_false(file.exists(file.path(path, "spec", "outputs", "T-14-3-1.yml")))
-      rv$meta$title <- rv$saved_meta$title
-      session$setInputs(`ai-adopt` = 2)
-      session$setInputs(`ai-adopt_fresh` = 2)
-      # (saved at once: the adopted report's program written, for a run)
-      expect_length(list.files(file.path(path, "programs", "tfl"), "14.3.1"), 1L)
-    }
+    expect_identical(co$confirm$output_id, "T-14-3-1")
+    # step 3's table: the level, the count to confirm, the draft's ai: block
+    html <- output$`ai-result_all`$html
+    expect_match(html, "Checked ", fixed = TRUE)
+    expect_match(html, "<td>T-14-3-1</td>", fixed = TRUE)
+    expect_match(html, "<td class=\"text-success\">OK</td>", fixed = TRUE)
+    expect_match(html, "<td class=\"text-muted\">no draft</td>", fixed = TRUE)
+    expect_match(html, "1 to confirm", fixed = TRUE)
+    expect_match(html, "<details>", fixed = TRUE)
+    expect_match(html, "the shell shows n (%) but not its denominator", fixed = TRUE)
+    expect_match(html, "treatment-emergent is TRTEMFL", fixed = TRUE)
+    # (a draft not copied yet: copied first)
+    expect_match(html, "Copy it into the study first (step 4)", fixed = TRUE)
+    # (no ERROR or WARNING: no fix text)
+    expect_false(grepl("Copy the fix text", html, fixed = TRUE))
+    # step 4: the drafts not adopted yet are ticked at first, copied into the study
+    expect_false("T-14-3-1" %in% output_ids(rv$p))
+    expect_match(output$`ai-taken_note`$html, "step 4", fixed = TRUE)
+    # (not while the study has unsaved changes: nothing written)
+    rv$meta$title <- "mine"
+    session$setInputs(`ai-adopt` = 1)
+    session$setInputs(`ai-adopt_fresh` = 1)
+    expect_false(file.exists(file.path(path, "spec", "outputs", "T-14-3-1.yml")))
+    rv$meta$title <- rv$saved_meta$title
+    session$setInputs(`ai-adopt` = 2)
+    session$setInputs(`ai-adopt_fresh` = 2)
+    # (saved at once: the adopted report's program written, for a run)
+    expect_length(list.files(file.path(path, "programs", "tfl"), "14.3.1"), 1L)
     expect_true("T-14-3-1" %in% output_ids(rv$p))
     expect_false(isTRUE(session$userData$dirty()))
     expect_true(all(spec_status("XYZ-1")$status == "same"))
-    expect_match(output$`ai-result`$html, "T-14-3-1", fixed = TRUE)
-    # the answers compared, under the checks
-    expect_match(output$`ai-compare_card`$html, "compare.csv", fixed = TRUE)
-    expect_true(file.exists(file.path(path, "ai", "compare.csv")))
+    # copied: checked again, a place to confirm opens the report in the
+    # builder, its card in view
+    session$setInputs(`ai-status_reread` = 3)
+    html <- output$`ai-result_all`$html
+    expect_match(html, "Open in Make a report", fixed = TRUE)
+    expect_match(html, "data-item=\"", fixed = TRUE)
+  })
+})
+
+test_that("step 3: an ERROR row says its first problem and gives the fix text to copy", {
+  local_home()
+  path <- ai_study()
+  d <- file.path(path, "ai", "spec", "outputs")
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  a <- readLines(file.path(ai_example, "drafts", "T-14-3-1.yml"), encoding = "UTF-8")
+  writeLines(sub("table_plan:", "table_plann:", a), file.path(d, "T-14-3-1.yml"))
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  shiny::testServer(server_for("XYZ-1"), {
+    ai <- session$userData$ai
+    session$setInputs(`ai-status_reread` = 1)
+    html <- output$`ai-result_all`$html
+    expect_match(html, "<td class=\"text-danger\">ERROR</td>", fixed = TRUE)
+    expect_match(html, "has no table_plan item", fixed = TRUE)
+    expect_match(html, "data-what=\"repair\" data-id=\"ae-1\"", fixed = TRUE)
+    expect_match(html, "Copy the fix text", fixed = TRUE)
+    expect_match(ai$text("ae-1", "repair"), "table_plan", fixed = TRUE)
+    expect_match(output$`ai-taken_note`$html, "No report could be taken in", fixed = TRUE)
   })
 })
 
@@ -321,21 +374,21 @@ test_that("the requests written into a study open: its study.yml and spec kept",
   path <- ai_study()
   before <- tools::md5sum(file.path(path, c("study.yml", "spec/data.yml")))
   unlink(file.path(path, "ai", "requests"), recursive = TRUE)
-  p <- .ai_write_requests(path, ai_toc, "onco_toc_shell.xlsx", ai_adam,
-                          list(size = 2L, instructions = "once"))
+  p <- .ai_write_requests(path, ai_toc, "onco_toc_shell.xlsx", ai_adam, list(size = 2L))
   expect_false(p$dry_run)
   expect_identical(unname(tools::md5sum(file.path(path, c("study.yml", "spec/data.yml")))),
                    unname(before))
   r <- .ai_requests(path)
   expect_identical(nrow(r), nrow(p$requests))
-  expect_identical(attr(r, "instructions"), "ai/requests/00-instructions.md")
+  expect_false(file.exists(file.path(path, "ai", "requests", "00-instructions.md")))
   expect_true(all(spec_status("XYZ-1")$status == "same"))
   # the templates listed (the default), or not (templates = FALSE)
-  first <- function() readLines(file.path(path, "ai", "requests", paste0(r$request[1], ".md")), 1L)
-  expect_identical(first(), "<!-- templates: TRUE -->")
+  # (in the request's head, under the note for the agent)
+  first <- function() readLines(file.path(path, "ai", "requests", paste0(r$request[1], ".md")), 10L)
+  expect_true("<!-- templates: TRUE -->" %in% first())
   .ai_write_requests(path, ai_toc, "onco_toc_shell.xlsx", ai_adam,
-                     list(size = 2L, instructions = "once", templates = FALSE))
-  expect_false(identical(first(), "<!-- templates: TRUE -->"))
+                     list(size = 2L, templates = FALSE))
+  expect_false("<!-- templates: TRUE -->" %in% first())
   # the study's ADaM folder, from its data catalog
   s <- open_study("XYZ-1")
   expect_identical(.ai_adam_default(s), normalizePath(file.path(path, "adam"), "/"))
@@ -350,9 +403,8 @@ test_that("step 1 in the app: read, then a new study written, registered and ope
     rv <- session$userData$rv
     ai <- session$userData$ai
     session$setInputs(`ai-study_mode` = "new", `ai-new_id` = "NEW-9", `ai-new_title` = "Nine",
-                      `ai-toc_path` = ai_toc, `ai-adam_dir` = ai_adam, `ai-size` = 3,
-                      `ai-language` = "English", `ai-instructions` = "each",
-                      `ai-workbook` = "text", `ai-max_levels` = 15)
+                      `ai-toc_path` = ai_toc, `ai-adam_dir` = ai_adam,
+                      `ai-language` = "English", `ai-max_levels` = 15)
     expect_null(ai$prepared())
     session$setInputs(`ai-read` = 1)
     p <- ai$prepared()
@@ -593,61 +645,43 @@ test_that("the sheets to choose from as soon as the workbook is given; the one c
   })
 })
 
-test_that("step 1's labels: the assumption notes' language, the common instructions once first", {
+test_that("step 1's labels: the language of the AI's questions and notes; no chat's fields", {
   local_home()
   old <- options(tflplanner.ai_drafts = TRUE)
   on.exit(options(old))
   ui <- as.character(app_ui("en"))
-  expect_match(ui, "assumption notes (language)", fixed = TRUE)
-  # (a chat's: once unless ticked, #473)
-  expect_match(ui, "Put the common instructions in each request", fixed = TRUE)
-  expect_false(grepl('id="ai-instructions_each" checked', ui, fixed = TRUE))
-  expect_match(as.character(app_ui("ja")), "AI の仮定のメモの言語",
+  expect_match(ui, "Language of the AI's questions and notes (language)", fixed = TRUE)
+  expect_match(ui, "1 Write the prompt", fixed = TRUE)
+  expect_match(ui, "2 The agent writes the SPEC", fixed = TRUE)
+  expect_match(ui, "3 Check the SPEC", fixed = TRUE)
+  expect_match(ui, "4 Copy into the study", fixed = TRUE)
+  # (one way: no mode to choose, no chat's size, instructions or limits)
+  for (id in c("ai-mode", "ai-size", "ai-instructions_each", "ai-workbook", "ai-max_chars",
+               "ai-answer_text", "ai-questions", "ai-expected_outputs", "ai-run_all")) {
+    expect_false(grepl(sprintf("id=\"%s\"", id), ui, fixed = TRUE), info = id)
+  }
+  expect_match(ui, "id=\"ai-status_reread\"", fixed = TRUE)
+  expect_match(ui, "id=\"ai-list_new\"", fixed = TRUE)
+  expect_match(as.character(app_ui("ja")), "AI の質問と注記の言語",
                fixed = TRUE)
 })
 
-test_that("the reports a request holds: 1 for an agent, 3 for a chat; a number given kept", {
+test_that("the reports a request holds: one, the agent's; no chat's arguments given", {
   local_home()
   ai_study()
   expect_identical(.ai_size_default("agent"), 1)
-  expect_identical(.ai_size_default("chat"), 3)
   old <- options(tflplanner.ai_drafts = TRUE)
   on.exit(options(old))
-  sent <- ai_catch_updates()
   got <- new.env()
-  testthat::local_mocked_bindings(updateNumericInput = function(session, inputId, label = NULL,
-                                                                value = NULL, min = NULL,
-                                                                max = NULL, step = NULL) {
-    assign(inputId, list(value = value), envir = sent)
-  }, .package = "shiny")
   local_mocked_bindings(.ai_prepare = function(dir, toc, adam, args = list(), ...) {
-    got$size <- args$size
-    got$instructions <- args$instructions
+    got$args <- args
     stop("read no further")
   })
   shiny::testServer(server_for("XYZ-1"), {
-    session$setInputs(`ai-mode` = "chat", `ai-size` = 3, `ai-toc_path` = ai_toc,
-                      `ai-adam_dir` = ai_adam)
-    expect_null(sent$size)
-    session$setInputs(`ai-mode` = "agent")
-    expect_identical(sent$size$value, 1)
-    # (what the page sends back)
-    session$setInputs(`ai-size` = 1, `ai-read` = 1)
-    expect_identical(got$size, 1L)
-    # the common instructions: once unless chosen
-    expect_identical(got$instructions, "once")
-    session$setInputs(`ai-mode` = "chat")
-    expect_identical(sent$size$value, 3)
-    session$setInputs(`ai-size` = NA, `ai-read` = 2)
-    expect_identical(got$size, 3L)
-    # a number given by hand: kept whatever the mode
-    rm(list = ls(sent), envir = sent)
-    session$setInputs(`ai-size` = 5)
-    session$setInputs(`ai-mode` = "agent")
-    session$setInputs(`ai-mode` = "chat")
-    expect_null(sent$size)
-    session$setInputs(`ai-read` = 3)
-    expect_identical(got$size, 5L)
+    session$setInputs(`ai-toc_path` = ai_toc, `ai-adam_dir` = ai_adam)
+    session$setInputs(`ai-read` = 1)
+    expect_identical(got$args$size, 1L)
+    expect_false(any(c("mode", "route", "instructions", "agent_run", "workbook") %in% names(got$args)))
   })
 })
 
@@ -665,7 +699,7 @@ test_that("the requests a dry run would write at another size", {
   expect_true("figure-1" %in% three$request)
 })
 
-test_that("the requests to write: counted again at the size now; the workbook changed, read again", {
+test_that("the requests to write: one report each; the workbook changed, read again", {
   local_home()
   ai_study()
   old <- options(tflplanner.ai_drafts = TRUE)
@@ -679,25 +713,16 @@ test_that("the requests to write: counted again at the size now; the workbook ch
   shiny::testServer(server_for("XYZ-1"), {
     ai <- session$userData$ai
     session$setInputs(`ai-study_mode` = "open", `ai-toc_path` = ai_toc, `ai-adam_dir` = ai_adam,
-                      `ai-size` = 3, `ai-mode` = "chat", `ai-add` = FALSE)
+                      `ai-add` = FALSE)
     session$setInputs(`ai-read` = 1)
-    p <- ai$prepared()
-    expect_true(p$dry_run)
+    p1 <- ai$prepared()
+    expect_true(p1$dry_run)
+    expect_identical(p1$requests$request, c("T14.1.1", "T14.2.1", "Safety", "F14.2.2"))
     # (as tflspec's dry run counts them: its shells and TOC items)
     count <- function(p) sprintf("%d requests to write (%d shells, %d TOC items).", nrow(p$requests),
                                  p$counts[["shells"]], p$counts[["toc_items"]])
-    expect_match(output$`ai-prep_status`$html, count(p), fixed = TRUE)
-    # (a sheet-first read: its requests group the shell sheets, not counted
-    # again from the TOC -- another size, read again)
-    session$setInputs(`ai-size` = 1)
-    expect_match(output$`ai-prep_status`$html, "press \"Read\" again", fixed = TRUE)
-    session$setInputs(`ai-write` = 1)
-    expect_null(got$size)
-    session$setInputs(`ai-read` = 2)
-    p1 <- ai$prepared()
-    expect_identical(p1$requests$request, c("T14.1.1", "T14.2.1", "Safety", "F14.2.2"))
     expect_match(output$`ai-prep_status`$html, count(p1), fixed = TRUE)
-    # written at the size now
+    # (the study has requests: Write asks first, then writes at one a request)
     session$setInputs(`ai-write_ok` = 1)
     expect_identical(got$size, 1L)
     # another TOC sheet: read again first
@@ -711,47 +736,13 @@ test_that("the requests to write: counted again at the size now; the workbook ch
   })
 })
 
-# -- a coding agent (mode = "agent") -------------------------------------------
+# -- the coding agent ------------------------------------------------------------
 
-ai_agent_questions <- function(path) {
-  f <- file.path(path, "ai", "questions.md")
-  cat(c("", "## Q1. Is TRTEMFL the treatment-emergent flag?", "",
-        "- Reports: T-14-3-1, T-14-3-5", "- Where: ard.analyses",
-        "- The agent took, for now: TRTEMFL == \"Y\"", "- Status: decided", "- Answer: Yes", "",
-        "## Q2. Which visit is the baseline?", "",
-        "- Reports: T-14-3-5", "- Where: ard.analyses[1].where",
-        "- The agent took, for now: ABLFL == \"Y\"", "- Status: open", "- Answer:", ""),
-      file = f, sep = "\n", append = TRUE)
-  f
-}
-
-test_that("agent mode: AGENTS.md written, the agent's first message, the questions read and answered", {
+test_that("the agent in the app: the first message on step 2, the agent's files by name", {
   local_home()
-  out <- .ai_new_study("AG-1", ai_toc, "onco_toc_shell.xlsx", ai_adam,
-                       list(size = 3L, mode = "agent"))
+  out <- .ai_new_study("AG-2", ai_toc, "onco_toc_shell.xlsx", ai_adam, list(size = 3L))
   path <- out$study$path
-  expect_identical(.ai_mode(path), "agent")
-  expect_identical(.ai_mode(ai_prepared), "chat")
-  expect_identical(.ai_agent_prompt(path), out$prepared$agent_prompt)
-  expect_identical(nrow(.ai_questions(path)), 0L)
-  ai_agent_questions(path)
-  q <- .ai_questions(path)
-  expect_identical(q$id, c("Q2", "Q1"))
-  expect_identical(q$status, c("open", "decided"))
-  expect_identical(q$output_id[2], "T-14-3-1, T-14-3-5")
-  .ai_answer_questions(path, c(Q2 = "The last visit\nbefore the first dose"))
-  q <- .ai_questions(path)
-  expect_identical(q$answer[1], "The last visit\nbefore the first dose")
-  expect_identical(q$answer[2], "Yes")
-})
-
-test_that("agent mode in the app: the first message on step 2, the questions on step 3 written back", {
-  local_home()
-  out <- .ai_new_study("AG-2", ai_toc, "onco_toc_shell.xlsx", ai_adam,
-                       list(size = 3L, mode = "agent"))
-  path <- out$study$path
-  ai_agent_questions(path)
-  writeLines(c("# Status", "", "- T-14-1-1: ok"), file.path(path, "ai", "status.md"))
+  expect_true(file.exists(file.path(path, "AGENTS.md")))
   old <- options(tflplanner.ai_drafts = TRUE)
   on.exit(options(old))
   shiny::testServer(server_for("AG-2"), {
@@ -760,17 +751,6 @@ test_that("agent mode in the app: the first message on step 2, the questions on 
     expect_identical(output$`ai-mode_now`, "agent")
     expect_match(output$`ai-agent_card`$html, "AGENTS.md", fixed = TRUE)
     expect_identical(ai$text("agent", "agent"), .ai_agent_prompt(path))
-    expect_match(output$`ai-status_md`$html, "T-14-1-1: ok", fixed = TRUE)
-    expect_match(output$`ai-status_md`$html, "ai/status.md, written ", fixed = TRUE)
-    expect_match(output$`ai-questions`$html, "Which visit is the baseline?", fixed = TRUE)
-    # nothing typed: nothing written
-    session$setInputs(`ai-qa_Q2` = "", `ai-qa_Q1` = "Yes", `ai-questions_write` = 1)
-    expect_true(is.na(.ai_questions(path)$answer[1]))
-    session$setInputs(`ai-qa_Q2` = "ABLFL", `ai-questions_write` = 2)
-    expect_identical(.ai_questions(path)$answer[1], "ABLFL")
-    expect_identical(.ai_questions(path)$answer[2], "Yes")
-    expect_match(output$`ai-tell_agent`$html, "data-what=\"tell\"", fixed = TRUE)
-    expect_match(ai$text("tell", "tell"), "ai/questions.md", fixed = TRUE)
     # the agent's files, shown by name: only those
     expect_match(output$`ai-agent_card`$html, "data-what=\"file\" data-id=\"AGENTS.md\"", fixed = TRUE)
     expect_identical(ai$text("AGENTS.md", "file"), .ai_read_text(file.path(path, "AGENTS.md")))
@@ -801,44 +781,6 @@ test_that("the reports run.R could not build: read from ai/repairs, none when th
   expect_identical(u$output_id, "T-14-3-1")
   expect_identical(u$reason, "object 'AEDECOD' not found: in the ARD")
   expect_named(attr(u, "texts"), "ae-1")
-  expect_identical(.ai_short(strrep("a", 100), 10L), "aaaaaaa...")
-})
-
-test_that("agent mode, step 3: a report not built shows why, its fix request to copy", {
-  local_home()
-  out <- .ai_new_study("AG-3", ai_toc, "onco_toc_shell.xlsx", ai_adam,
-                       list(size = 3L, mode = "agent"))
-  path <- out$study$path
-  for (q in c("demographics-1", "ae-1")) ai_answer(path, q)
-  why <- paste("the ARD could not be made:", strrep("x", 120))
-  ai_unbuilt_repair(path, "demographics-1", "T-14-1-1", why)
-  writeLines(c("# Status", "", "- T-14-1-1: ok"), file.path(path, "ai", "status.md"))
-  old <- options(tflplanner.ai_drafts = TRUE)
-  on.exit(options(old))
-  shiny::testServer(server_for("AG-3"), {
-    ai <- session$userData$ai
-    session$setInputs(`ai-status_reread` = 1)
-    co <- ai$collected()
-    expect_false("built" %in% names(co$reports))
-    expect_identical(co$reports$status[co$reports$output_id == "T-14-1-1"], "ok")
-    html <- output$`ai-result_all`$html
-    expect_match(html, "Checked ", fixed = TRUE)
-    expect_match(html, "Could not be built: the ARD could not be made: x", fixed = TRUE)
-    expect_false(grepl(why, html, fixed = TRUE))
-    expect_match(html, "data-what=\"unbuilt\" data-id=\"demographics-1\"", fixed = TRUE)
-    expect_match(html, "data-what=\"repair\" data-id=\"demographics-1\"", fixed = TRUE)
-    # the whole reason, and the fix request (kept: the check removed the file)
-    expect_match(ai$text("demographics-1", "unbuilt"), why, fixed = TRUE)
-    expect_match(ai$text("demographics-1", "repair"), "## Could not be built", fixed = TRUE)
-    # to rebuild one request
-    expect_match(html, "data-what=\"rerun\"", fixed = TRUE)
-    expect_identical(ai$text("demographics-1", "rerun"), "Rscript run.R demographics-1")
-    # a run.R written again: the reasons read again (none now)
-    Sys.sleep(1.1)
-    writeLines(c("# Status", "", "- T-14-1-1: ok"), file.path(path, "ai", "status.md"))
-    session$setInputs(`ai-status_reread` = 2)
-    expect_false(grepl("Could not be built", output$`ai-result_all`$html, fixed = TRUE))
-  })
 })
 
 # its own file, ai/repairs/<request>-build.md
@@ -850,7 +792,7 @@ ai_build_repair <- function(path, request, id, why) {
              file.path(path, "ai", "repairs", paste0(request, "-build.md")))
 }
 
-test_that("a report not built, from <request>-build.md: read first, kept by the check, its own copy", {
+test_that("a report not built, from <request>-build.md: read first; its texts after a check", {
   local_home()
   path <- ai_study(register = FALSE)
   # both files: the separate one's reason
@@ -862,33 +804,19 @@ test_that("a report not built, from <request>-build.md: read first, kept by the 
   expect_identical(attr(u, "build"), "ae-1")
   expect_length(attr(u, "texts"), 0L)
 
-  out <- .ai_new_study("AG-4", ai_toc, "onco_toc_shell.xlsx", ai_adam,
-                       list(size = 3L, mode = "agent"))
+  out <- .ai_new_study("AG-4", ai_toc, "onco_toc_shell.xlsx", ai_adam, list(size = 3L))
   path <- out$study$path
-  ai_answer(path, "demographics-1")
+  ai_drafts_of(path, "demographics-1")
   ai_build_repair(path, "demographics-1", "T-14-1-1", "object 'ard' not found")
-  writeLines(c("# Status", "", "- T-14-1-1: ok"), file.path(path, "ai", "status.md"))
   old <- options(tflplanner.ai_drafts = TRUE)
   on.exit(options(old))
   shiny::testServer(server_for("AG-4"), {
     ai <- session$userData$ai
     session$setInputs(`ai-status_reread` = 1)
     expect_true(file.exists(file.path(path, "ai", "repairs", "demographics-1-build.md")))
-    html <- output$`ai-result_all`$html
-    expect_match(html, "Could not be built: object .{1,5}ard.{1,5} not found")
-    expect_match(html, "data-what=\"build\" data-id=\"demographics-1\"", fixed = TRUE)
-    # no check repair: no "Copy the fix request" of the checks
-    expect_false(grepl("data-what=\"repair\" data-id=\"demographics-1\"", html, fixed = TRUE))
     expect_match(ai$text("demographics-1", "build"), "could not be built", fixed = TRUE)
-    # a new run that left the file: still there (read again, not kept)
-    Sys.sleep(1.1)
-    writeLines(c("# Status", "", "- T-14-1-1: ok"), file.path(path, "ai", "status.md"))
-    session$setInputs(`ai-status_reread` = 2)
-    expect_match(output$`ai-result_all`$html, "data-what=\"build\"", fixed = TRUE)
-    # run.R removed it: gone
-    unlink(file.path(path, "ai", "repairs", "demographics-1-build.md"))
-    session$setInputs(`ai-status_reread` = 3)
-    expect_false(grepl("Could not be built", output$`ai-result_all`$html, fixed = TRUE))
+    expect_match(ai$text("demographics-1", "unbuilt"), "object 'ard' not found", fixed = TRUE)
+    expect_identical(ai$text("demographics-1", "rerun"), "Rscript run.R demographics-1")
   })
 })
 
@@ -965,13 +893,13 @@ test_that("the shells in a workbook of their own: read, kept in docs/, each requ
   expect_identical(unique(r$book), "shells.xlsx")
 })
 
-test_that("requests added: the next names, the answers kept; a report asked again only with overwrite", {
+test_that("requests added: the next names, the drafts kept; a report asked again only with overwrite", {
   local_home()
   path <- ai_study()
   d <- file.path(tempdir(), "ai-more")
   dir.create(d, showWarnings = FALSE)
   m <- ai_more_book(d)
-  ai_answer(path, "ae-1")
+  ai_drafts_of(path, "ae-1")
   own <- file.path(path, c("study.yml", "spec/data.yml", "spec/defaults.yml"))
   before <- tools::md5sum(own)
   n0 <- nrow(.ai_requests(path))
@@ -981,18 +909,18 @@ test_that("requests added: the next names, the answers kept; a report asked agai
   w <- .ai_write_requests(path, m, "more.xlsx", ai_adam, list(add = TRUE))
   r <- .ai_requests(path)
   expect_identical(nrow(r), n0 + 1L)
-  expect_identical(r$request[nrow(r)], "ae-2")
+  expect_identical(r$request[nrow(r)], "Safety")
   expect_identical(r$book[nrow(r)], "more.xlsx")
-  expect_true(file.exists(file.path(path, "ai", "answers", "ae-1.md")))
+  expect_true(file.exists(file.path(path, "ai", "spec", "outputs", "T-14-3-1.yml")))
   expect_true(file.exists(file.path(path, "docs", "more.xlsx")))
   # the same workbook again: asked for already
   again <- .ai_already_asked(path, "T-14-3-2")
-  expect_identical(again$request, "ae-2")
+  expect_identical(again$request, "Safety")
   skip_unless_asked_again_stops()
   e <- tryCatch(.ai_write_requests(path, m, "more.xlsx", ai_adam, list(add = TRUE)),
                 error = function(e) conditionMessage(e))
   expect_true(.ai_is_asked_again(e))
-  expect_match(e, "T-14-3-2 already asked for (ae-2)", fixed = TRUE)
+  expect_match(e, "T-14-3-2 already asked for (Safety)", fixed = TRUE)
   # written again (overwrite): one request for it, the study's own files kept
   .ai_write_requests(path, m, "more.xlsx", ai_adam, list(add = TRUE, overwrite = TRUE))
   r2 <- .ai_requests(path)
@@ -1004,25 +932,23 @@ test_that("requests added: the next names, the answers kept; a report asked agai
 test_that("an agent's study: a request asked again keeps the study's files and the agent's", {
   local_home()
   skip_unless_asked_again_stops()
-  out <- .ai_new_study("AG-4", ai_toc, "onco_toc_shell.xlsx", ai_adam,
-                       list(size = 3L, mode = "agent"))
+  out <- .ai_new_study("AG-4", ai_toc, "onco_toc_shell.xlsx", ai_adam, list(size = 3L))
   path <- out$study$path
   d <- file.path(tempdir(), "ai-more-agent")
   dir.create(d, showWarnings = FALSE)
   m <- ai_more_book(d)
-  .ai_write_requests(path, m, "more.xlsx", ai_adam, list(add = TRUE, mode = "agent"))
-  own <- file.path(path, c("study.yml", "spec/data.yml", "spec/defaults.yml", "AGENTS.md", "run.R"))
+  .ai_write_requests(path, m, "more.xlsx", ai_adam, list(add = TRUE))
+  own <- file.path(path, c("study.yml", "spec/data.yml", "spec/defaults.yml", "AGENTS.md"))
   before <- tools::md5sum(own)
   .ai_write_requests(path, m, "more.xlsx", ai_adam,
-                     list(add = TRUE, overwrite = TRUE, mode = "agent"))
+                     list(add = TRUE, overwrite = TRUE))
   expect_identical(unname(tools::md5sum(own)), unname(before))
   expect_identical(sum(.ai_requests(path)$outputs == "T-14-3-2"), 1L)
 })
 
 test_that("the agent's first message: ai/agent_prompt.md when the study has it", {
   local_home()
-  out <- .ai_new_study("AG-3", ai_toc, "onco_toc_shell.xlsx", ai_adam,
-                       list(size = 3L, mode = "agent"))
+  out <- .ai_new_study("AG-3", ai_toc, "onco_toc_shell.xlsx", ai_adam, list(size = 3L))
   path <- out$study$path
   expect_true(file.exists(file.path(path, "ai", "agent_prompt.md")))
   expect_identical(.ai_agent_prompt(path), out$prepared$agent_prompt)
@@ -1048,9 +974,7 @@ test_that("step 1 in the app: a workbook added to the requests; asked again, wri
     ai <- session$userData$ai
     n0 <- nrow(ai$requests())
     session$setInputs(`ai-study_mode` = "open", `ai-toc_path` = m, `ai-adam_dir` = ai_adam,
-                      `ai-add` = TRUE, `ai-size` = 3, `ai-language` = "English",
-                      `ai-instructions` = "each", `ai-workbook` = "text", `ai-max_levels` = 15,
-                      `ai-mode` = "chat")
+                      `ai-add` = TRUE, `ai-language` = "English", `ai-max_levels` = 15)
     session$setInputs(`ai-read` = 1)
     expect_match(output$`ai-prep_status`$html, "Added to the", fixed = TRUE)
     session$setInputs(`ai-write` = 1)
@@ -1059,7 +983,7 @@ test_that("step 1 in the app: a workbook added to the requests; asked again, wri
     expect_match(output$`ai-requests`, "more.xlsx", fixed = TRUE)
     # read again: asked for already, said; written again on overwrite
     session$setInputs(`ai-read` = 2)
-    expect_match(output$`ai-prep_status`$html, "T-14-3-2 (ae-2)", fixed = TRUE)
+    expect_match(output$`ai-prep_status`$html, "T-14-3-2 (Safety)", fixed = TRUE)
     skip_unless_asked_again_stops()
     session$setInputs(`ai-write` = 2)
     expect_identical(nrow(ai$requests()), n0 + 1L)
@@ -1075,7 +999,7 @@ test_that("a study made with the ADaM outside its folder: its data found, no D01
   path <- out$study$path
   # the catalog's paths are the ADaM folder's own (absolute)
   expect_true(all(startsWith(out$study$planner$ard$datasets$path, ai_adam)))
-  ai_answer(path, "ae-1")
+  ai_drafts_of(path, "ae-1")
   .ai_collect(path)
   ai_adopt_all(path)
   s <- .ai_reload_study("ABS-1", unsaved = FALSE)
@@ -1130,9 +1054,8 @@ test_that("step 1: a number unticked and applied, then back to the rule, before 
   shiny::testServer(server_for("XYZ-1"), {
     ai <- session$userData$ai
     session$setInputs(`ai-study_mode` = "new", `ai-new_id` = "NUM-8", `ai-new_title` = "Eight",
-                      `ai-toc_path` = ai_toc, `ai-adam_dir` = ai_adam, `ai-size` = 3,
-                      `ai-language` = "English", `ai-instructions` = "each",
-                      `ai-workbook` = "text", `ai-max_levels` = 15)
+                      `ai-toc_path` = ai_toc, `ai-adam_dir` = ai_adam,
+                      `ai-language` = "English", `ai-max_levels` = 15)
     session$setInputs(`ai-read` = 1)
     n <- ai$prepared()$numbers
     skip_if(is.null(n) || !nrow(n))

@@ -1,5 +1,5 @@
 # The AI tab after the user's second test (#473): a study's docs/ folder,
-# the agent the default, the workbook's copy said, the reports in parts marked
+# the workbook's copy said
 
 test_that("a new study has a docs/ folder for its reference documents", {
   local_home()
@@ -8,15 +8,7 @@ test_that("a new study has a docs/ folder for its reference documents", {
   expect_true(dir.exists(file.path(s$path, "docs")))
 })
 
-test_that("the drafting AI is the agent by default, one report a request", {
-  h <- as.character(ai_ui("ai"))
-  agent <- regmatches(h, regexpr("<input[^>]*value=\"agent\"[^>]*>", h))
-  expect_match(agent, "checked", fixed = TRUE)
-  size <- regmatches(h, regexpr("<input[^>]*id=\"ai-size\"[^>]*>", h))
-  expect_match(size, "value=\"1\"", fixed = TRUE)
-})
-
-test_that("the inputs: one chooser for the workbook, short labels, a chat's size and instructions", {
+test_that("the inputs: one chooser for the workbook, short labels", {
   op <- options(tflplanner.file_dialog = TRUE)
   on.exit(options(op))
   h <- as.character(ai_ui("ai"))
@@ -32,9 +24,6 @@ test_that("the inputs: one chooser for the workbook, short labels, a chat's size
   expect_match(h, "Sheets for every request", fixed = TRUE)
   expect_match(h, "Several can be chosen.", fixed = TRUE)
   expect_match(h, "Read and check", fixed = TRUE)
-  # size and the common instructions: shown for a chat only
-  expect_match(h, "data-display-if=\"input.mode == &#39;chat&#39;\"", fixed = TRUE)
-  expect_match(h, "ai-instructions_each", fixed = TRUE)
   options(tflplanner.file_dialog = FALSE)
   h <- as.character(ai_ui("ai"))
   expect_match(h, "ai-toc_file", fixed = TRUE)
@@ -65,7 +54,6 @@ test_that("Browse...: a workbook outside the study copied into its docs/, one in
 test_that("every new text has its Japanese", {
   s <- .strings()
   for (x in c("Read and check", "Sheets for every request", "none (the shells found)",
-              "Put the common instructions in each request",
               "Documents for reference: SAP, TOC / SHELL workbooks")) {
     expect_true(x %in% s[[1L]], info = x)
   }

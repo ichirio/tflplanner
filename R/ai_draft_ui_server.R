@@ -939,7 +939,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       f <- if (!is.na(file) && nzchar(file)) file.path(path(), file)
       y <- if (!is.null(f) && file.exists(f)) tryCatch(tflspec::tfl_read_output(f)$ai, error = function(e) NULL)
       asm <- y$assumptions %||% list()
-      adopted <- .ai_in_study_spec(file)
+      # (copied into the study: its own spec/outputs/<id>.yml -- the check
+      # reads the draft, ai/spec/outputs, either way)
+      adopted <- file.exists(file.path(path(), "spec", "outputs", paste0(id, ".yml")))
       txt <- function(x) if (is.null(x)) "" else paste(as.character(unlist(x)), collapse = " ")
       shiny::div(
         class = "ms-2",
