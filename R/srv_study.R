@@ -457,10 +457,14 @@
       }),
       # (in the app's own session, not the module's: its tabs; go() is
       # defined further down -- called, not taken, here)
-      open_report = function(id) shiny::withReactiveDomain(session, {
+      # (`item`: a card of the builder to bring into view, a verb's name)
+      open_report = function(id, item = NULL) shiny::withReactiveDomain(session, {
         rv$want <- id
         shiny::updateSelectInput(session, "target", selected = id)
         go("tables")
+        if (length(item) == 1L && !is.na(item) && nzchar(item)) {
+          session$sendCustomMessage("rp-card-go", list(path = item))
+        }
       }),
       go = function(where) shiny::withReactiveDomain(session, go(where)),
       notify = notify, guarded = guarded, lang = lang)

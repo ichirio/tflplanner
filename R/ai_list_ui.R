@@ -40,7 +40,7 @@
 #' @noRd
 ai_list_panel <- function(ns, t) {
   bslib::nav_panel(
-    paste0("4 ", t("List and corrections"), " (tfl_ai_outputs)"), value = "list",
+    paste0("4 ", t("Copy into the study"), " (tfl_ai_adopt)"), value = "list",
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center mb-2",
       shiny::h6(class = "mb-0 me-auto", with_tip(
@@ -52,51 +52,15 @@ ai_list_panel <- function(ns, t) {
       class = "d-flex flex-wrap gap-2 align-items-center mb-2",
       .btn(ns("list_all"), t("Tick all")),
       .btn(ns("list_none"), t("Untick all")),
+      .btn(ns("list_new"), t("Tick only those not in the study yet")),
       .btn(ns("list_newer"), t("Tick only the updated drafts")),
       shiny::uiOutput(ns("list_ticked"), inline = TRUE),
       .btn(ns("adopt"), paste0(t("Adopt (copy) the reports ticked into the study"), " (tfl_ai_adopt)"),
            class = "btn-sm btn-primary ms-auto")),
     shiny::uiOutput(ns("list_empty")),
     DT::DTOutput(ns("list_table")),
-    shiny::div(class = "d-flex flex-wrap gap-2 align-items-center mt-2",
-               .btn(ns("exp_add"), paste0(t("Add a report the AI missed"), " (expected_outputs.csv)")),
-               shiny::uiOutput(ns("exp_line"), inline = TRUE)),
-    # the AI's assumptions (R/ai_assumptions_ui.R)
-    ai_asm_card(ns, t),
-    # the agent's questions (moved here from step 3: R/ai_draft_ui.R draws them)
-    bslib::card(
-      class = "mt-3",
-      bslib::card_header(
-        class = "d-flex flex-wrap gap-2 align-items-center",
-        shiny::span(class = "me-auto", paste0(t("Questions"), " (ai/questions.md)")),
-        # (as the assumptions' card says it: the answers saved, then the
-        # corrections of the next round)
-        .btn(ns("questions_write"), paste0(t("Save the answers"), " (ai/questions.md)"),
-             class = "btn-sm btn-primary"),
-        shiny::uiOutput(ns("tell_agent"), inline = TRUE)),
-      shiny::uiOutput(ns("questions")),
-      shiny::div(class = "small text-muted mt-2",
-                 t("Then write the corrections in \"The next round\" below."))),
-    # the next round: the corrections in one file, run.R over every request
-    bslib::card(
-      class = "mt-3",
-      bslib::card_header(
-        class = "d-flex flex-wrap gap-2 align-items-center",
-        shiny::span(class = "me-auto", with_tip(
-          paste0(t("The next round"), " (ai/corrections.md)"),
-          t("Your list's changes, notes and the answered questions go into one file the agent works through in its next round; then tell the agent."))),
-        .btn(ns("corrections"), paste0(t("Write the corrections"), " (tfl_ai_corrections)"),
-             class = "btn-sm btn-primary"),
-        .btn(ns("run_all"), paste0(t("Build every request's reports"), " (run.R / tfl_ai_run)"))),
-      shiny::uiOutput(ns("corrections_note")),
-      shiny::uiOutput(ns("run_note"))),
     shiny::tags$script(shiny::HTML(
-      "$(document).off('click.aiexp').on('click.aiexp', '.ai-exp', function(e) {
-         e.preventDefault();
-         Shiny.setInputValue(this.dataset.ns + 'exp_act', {act: this.dataset.act, id: this.dataset.id, n: Date.now()},
-                             {priority: 'event'});
-       });
-       $(document).off('click.airtf').on('click.airtf', '.ai-open-rtf', function(e) {
+      "$(document).off('click.airtf').on('click.airtf', '.ai-open-rtf', function(e) {
          e.preventDefault();
          Shiny.setInputValue(this.dataset.ns + 'open_rtf', {file: this.dataset.file, n: Date.now()},
                              {priority: 'event'});
@@ -120,7 +84,7 @@ ai_list_panel <- function(ns, t) {
 # answers are checked again, `reload_now()` the app's
 #' @noRd
 ai_list_server <- function(input, output, session, path, ver, reload_now, notify, guarded, t,
-                           dirty = function() FALSE, run_done = function() NULL) {
+                           dirty = function() FALSE) {
   ns <- session$ns
   again <- shiny::reactiveVal(0L)
   shiny::observeEvent(input$list_reread, again(again() + 1L))
@@ -134,7 +98,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   ticked <- shiny::reactiveVal(character())
   redraw <- shiny::reactiveVal(0L)
   # (the list read again: the ticks the person left kept, the drafts new
-  # to the list ticked as at first; a report waiting for corrections not)
+  # to the list ticked as at first)
   seen <- new.env()
   shiny::observeEvent(listed(), {
     d <- listed()
@@ -142,7 +106,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       seen$ids <- NULL
       return(ticked(character()))
     }
-    first <- setdiff(.ai_ticked_first(d), .ai_to_correct(path(), d$output_id))
+    first <- .ai_ticked_first(d)
     ticked(if (is.null(seen$ids)) first
            else union(intersect(ticked(), d$output_id[.ai_adoptable(d)]), setdiff(first, seen$ids)))
     seen$ids <- d$output_id
@@ -161,6 +125,10 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     if (!is.null(d)) set_ticked(d$output_id[.ai_adoptable(d)])
   })
   shiny::observeEvent(input$list_none, set_ticked(character()))
+  shiny::observeEvent(input$list_new, {
+    d <- listed()
+    if (!is.null(d)) set_ticked(.ai_ticked_first(d))
+  })
   shiny::observeEvent(input$list_newer, {
     d <- listed()
     if (!is.null(d)) set_ticked(d$output_id[.ai_adoptable(d) & as.character(d$adopted) %in% "yes, draft newer"])
@@ -181,7 +149,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     d <- listed()
     if (is.null(d) || !nrow(d)) {
       shiny::p(class = "small text-muted",
-               t("No report listed yet: write the requests (step 1), then check the answers (step 3) or run run.R (below)."))
+               t("No report listed yet: write the requests (step 1), then check the agent's SPEC drafts (step 3)."))
     }
   })
   output$list_table <- DT::renderDT({
@@ -200,48 +168,23 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     tw <- function(x) ifelse(is.na(x) | !nzchar(x), "", vapply(as.character(x), t, ""))
     # (a report's status in this list's words: "ok" and "error" are kept in
     # English elsewhere, as program states)
+    # (the check's three levels: ERROR, WARNING, OK -- step 3's words)
     tw_status <- function(x) {
       x <- as.character(x)
-      v <- vapply(paste0("ai-status:", x), t, "", USE.NAMES = FALSE)
-      ifelse(is.na(x) | !nzchar(x), "", ifelse(startsWith(v, "ai-status:"), tw(x), v))
+      lv <- .ai_check_level(x)
+      out <- tw(x)
+      has <- !is.na(lv)
+      out[has] <- vapply(lv[has], t, "", USE.NAMES = FALSE)
+      out
     }
-    # the person's list (ai/expected_outputs.csv): its action and note a
-    # row, its added rows below; a row's changes as links
-    e <- expected()
-    k <- if (is.null(e)) rep(NA_integer_, nrow(d)) else match(d$output_id, e$output_id)
-    act <- if (is.null(e)) rep(NA_character_, nrow(d)) else e$action[k]
-    note <- if (is.null(e)) rep(NA_character_, nrow(d)) else e$note[k]
-    links <- function(id, act) {
-      one <- function(a, label) sprintf("<a href=\"#\" class=\"ai-exp me-2\" data-ns=\"%s\" data-act=\"%s\" data-id=\"%s\">%s</a>",
-                                        ns(""), a, htmltools::htmlEscape(id, attribute = TRUE), label)
-      ifelse(is.na(act), paste0(one("change", t("Change")), one("drop", t("Not wanted"))),
-             paste0(one("change", t("Change")), one("keep", t("Set back"))))
-    }
-    # (a row changed on the person's list: the AI's value, then theirs)
-    yours <- function(col) {
-      if (is.null(e)) return(d[[col]])
-      mine <- e[[col]][k]
-      ifelse(act %in% "change" & !is.na(mine) & mine != ifelse(is.na(d[[col]]), "", d[[col]]),
-             paste0(ifelse(is.na(d[[col]]), "", d[[col]]), " \u2192 ", mine), d[[col]])
-    }
-    v <- data.frame(ck, d$output_id, yours("title"), yours("population"), yours("split"), tw_status(d$status),
-                    tw(d$adopted), rtf,
-                    d$questions, d$problem, tw(act), note, links(d$output_id, act), stringsAsFactors = FALSE)
-    if (!is.null(e)) {
-      a <- e[e$action %in% "add" & !(e$output_id %in% d$output_id), , drop = FALSE]
-      if (nrow(a)) {
-        v <- rbind(v, stats::setNames(data.frame("", a$output_id, a$title, a$population, a$split, "", "", "",
-                                                 "", "", t("add"), a$note, "", stringsAsFactors = FALSE),
-                                      names(v)))
-      }
-    }
+    v <- data.frame(ck, d$output_id, d$title, d$population, d$split, tw_status(d$status),
+                    tw(d$adopted), rtf, d$problem, stringsAsFactors = FALSE)
     names(v) <- c(t("Tick to copy"), "output_id", t("Title (title)"), t("Analysis set (population)"),
-                  t("Split (split)"), t("State (status)"), paste0(t("Adopted"), " (adopted)"), "RTF",
-                  t("Questions (questions)"), t("First problem"), paste0(t("Expected"), " (action)"),
-                  t("Note (note)"), t("Edit"))
+                  t("Split (split)"), t("Check"), paste0(t("Adopted"), " (adopted)"), "RTF",
+                  t("First problem"))
     v[is.na(v)] <- ""
-    # (the boxes, the RTF links and the change links: not escaped)
-    DT::datatable(v, rownames = FALSE, escape = which(!names(v) %in% c(t("Tick to copy"), "RTF", t("Edit"))),
+    # (the boxes and the RTF links: not escaped)
+    DT::datatable(v, rownames = FALSE, escape = which(!names(v) %in% c(t("Tick to copy"), "RTF")),
                   selection = "none",
                   options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
   })
@@ -290,13 +233,8 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       return(notify(t("The reports ticked are in the study as they are: nothing to adopt."), "message"))
     }
     diff <- .ai_adopt_diff(path(), s$over)
-    fix <- .ai_to_correct(path(), c(s$fresh, s$over))
     shiny::showModal(shiny::modalDialog(
       title = t("Adopt (copy) into the study"),
-      if (length(fix)) shiny::div(
-        class = "alert alert-warning py-2 small",
-        sprintf(t("Waiting for corrections (%d): %s. You asked the agent to change them (an assumption answered wrong, or dropped from your list); adopting now takes the draft as it is."),
-                length(fix), paste(fix, collapse = ", "))),
       if (length(s$fresh)) shiny::p(sprintf(t("Not in the study yet, copied to its Report list (%d): %s"),
                                             length(s$fresh), paste(s$fresh, collapse = ", "))),
       if (length(s$over)) shiny::div(
@@ -359,167 +297,6 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     s <- pending()
     if (!is.null(s) && isTRUE(input$adopt_sure)) do_adopt(s$fresh, s$over)
   })
-  # ---- the person's list (R/ai_expected.R): changed, dropped, added at once
-  expected <- shiny::reactive({
-    ver()
-    again()
-    p <- path()
-    if (is.null(p)) NULL else tryCatch(tflspec::tfl_ai_expected_read(p), error = function(e) NULL)
-  })
-  output$exp_line <- shiny::renderUI({
-    e <- expected()
-    if (is.null(e)) {
-      return(shiny::span(class = "small text-muted", t("No list of your own yet: the first change makes it (ai/expected_outputs.csv).")))
-    }
-    n <- function(a) sum(e$action %in% a)
-    shiny::span(class = "small text-muted", sprintf(t("Your list: %d changed, %d not wanted, %d added (ai/expected_outputs.csv; run.R compares the reports with it)."),
-                                                    n("change"), n("drop"), n("add")))
-  })
-  exp_save <- function(what, id = NA_character_, fields = list()) {
-    ok <- guarded(.ai_expected_change(path(), what, id, fields))
-    if (is.null(ok)) return(FALSE)
-    shiny::removeModal()
-    again(again() + 1L)
-    TRUE
-  }
-  nz <- function(x) if (is.null(x) || !length(x) || is.na(x[1L])) "" else as.character(x[1L])
-  exp_row <- function(id) {
-    e <- shiny::isolate(expected())
-    d <- shiny::isolate(listed())
-    r <- if (!is.null(e) && id %in% e$output_id) e[match(id, e$output_id), , drop = FALSE] else
-      d[match(id, d$output_id), , drop = FALSE]
-    r
-  }
-  shiny::observeEvent(input$exp_act, {
-    a <- input$exp_act$act
-    id <- input$exp_act$id
-    if (identical(a, "keep")) return(invisible(exp_save("keep", id)))
-    r <- exp_row(id)
-    if (identical(a, "drop")) {
-      shiny::showModal(shiny::modalDialog(
-        title = sprintf(t("%s is not wanted"), id),
-        shiny::textAreaInput(ns("exp_reason"), paste0(t("Why (required)"), " (reason)"), "", width = "100%", rows = 3),
-        shiny::p(class = "small text-muted", t("The row stays on your list, marked not wanted; run.R says if the report is still there.")),
-        footer = shiny::tagList(shiny::modalButton(t("Cancel")),
-                                .btn(ns("exp_drop_ok"), t("Mark not wanted"), class = "btn-primary")),
-        easyClose = TRUE))
-      exp_pending(id)
-      return()
-    }
-    shiny::showModal(shiny::modalDialog(
-      title = sprintf(t("Change %s on your list"), id),
-      shiny::textInput(ns("exp_title"), t("Title (title)"), nz(r$title), width = "100%"),
-      shiny::div(class = "d-flex gap-2",
-                 shiny::textInput(ns("exp_population"), t("Analysis set (population)"), nz(r$population)),
-                 shiny::textInput(ns("exp_split"), t("Split (split)"), nz(r$split))),
-      shiny::textAreaInput(ns("exp_note"), paste0(t("What the report should show"), " (note)"),
-                           nz(r$note), width = "100%", rows = 3),
-      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
-                              .btn(ns("exp_change_ok"), t("Save"), class = "btn-primary")),
-      easyClose = TRUE))
-    exp_pending(id)
-  })
-  exp_pending <- shiny::reactiveVal(NULL)
-  shiny::observeEvent(input$exp_drop_ok, {
-    if (!nzchar(trimws(input$exp_reason %||% ""))) return(notify(t("Say why the report is not wanted."), "warning"))
-    exp_save("drop", exp_pending(), list(reason = input$exp_reason))
-  })
-  shiny::observeEvent(input$exp_change_ok, {
-    exp_save("change", exp_pending(), list(title = input$exp_title, population = input$exp_population,
-                                           split = input$exp_split, note = input$exp_note))
-  })
-  shiny::observeEvent(input$exp_add, {
-    shiny::showModal(shiny::modalDialog(
-      title = t("Add a report the AI missed"),
-      shiny::div(class = "d-flex gap-2",
-                 shiny::textInput(ns("add_sheet"), t("Shell sheet (sheet)"), ""),
-                 shiny::textInput(ns("add_toc"), t("TOC number (toc_id)"), ""),
-                 shiny::textInput(ns("add_id"), "output_id", "")),
-      shiny::textInput(ns("add_title"), t("Title (title)"), "", width = "100%"),
-      shiny::div(class = "d-flex gap-2",
-                 shiny::textInput(ns("add_population"), t("Analysis set (population)"), ""),
-                 shiny::textInput(ns("add_split"), t("Split (split)"), "")),
-      shiny::textAreaInput(ns("add_note"), paste0(t("What the report should show"), " (note)"), "",
-                           width = "100%", rows = 3),
-      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
-                              .btn(ns("exp_add_ok"), t("Add"), class = "btn-primary")),
-      easyClose = TRUE))
-  })
-  shiny::observeEvent(input$exp_add_ok, {
-    f <- list(sheet = input$add_sheet, toc_id = input$add_toc, output_id = input$add_id,
-              title = input$add_title, population = input$add_population, split = input$add_split,
-              note = input$add_note)
-    if (!any(nzchar(trimws(unlist(f[c("sheet", "toc_id", "output_id", "title")]))))) {
-      return(notify(t("Say at least its sheet, TOC number, output_id or title."), "warning"))
-    }
-    exp_save("add", fields = f)
-  })
-  # ---- the next round: the corrections file, run.R over every request
-  corr <- shiny::reactiveVal(NULL)
-  shiny::observeEvent(path(), corr(NULL), ignoreNULL = FALSE)
-  shiny::observeEvent(input$corrections, {
-    heads <- guarded(tflspec::tfl_ai_corrections(path()))
-    if (is.null(heads)) return()
-    corr(list(heads = as.character(heads), n = Sys.time()))
-  })
-  output$corrections_note <- shiny::renderUI({
-    k <- corr()
-    if (is.null(k)) return(NULL)
-    line <- t("I wrote my corrections and answers in ai/corrections.md: work through them (your next round).")
-    shiny::div(
-      class = "alert alert-info py-2 small mt-2 mb-0",
-      if (length(k$heads)) {
-        shiny::div(sprintf(t("%d new corrections written to ai/corrections.md: %s"), length(k$heads),
-                           paste(k$heads, collapse = "; ")))
-      } else shiny::div(t("No new correction: ai/corrections.md has them all already.")),
-      shiny::div(class = "mt-1", t("Then send the agent:"), " ", shiny::code(line)))
-  })
-  # run.R in the study folder, apart (processx): the reports built, the list
-  # read again when it ends
-  run <- shiny::reactiveValues(px = NULL, log = NULL, end = NULL)
-  shiny::observeEvent(input$run_all, {
-    p <- path()
-    if (is.null(p)) return()
-    if (!is.null(run$px) && run$px$is_alive()) return(notify(t("run.R is running already."), "warning"))
-    # (not beside an official or preview run, whose reports it may build
-    # too; not with changes unsaved, which the run would not have)
-    app_rv <- session$userData$rv
-    if (!is.null(app_rv) && !is.null(shiny::isolate(app_rv$job))) {
-      return(notify(t("A run is going on"), "warning"))
-    }
-    if (isTRUE(dirty())) return(notify(t("Save first: the study has unsaved changes."), "warning"))
-    # (the drafts in their own folder first: run.R writes them there)
-    .ai_ensure_area(p)
-    log <- file.path(p, "ai", "run-from-app.log")
-    run$log <- log
-    run$end <- NULL
-    run$px <- processx::process$new(file.path(R.home("bin"), "Rscript"), .ai_run_args(p), wd = p,
-                                    stdout = log, stderr = "2>&1", cleanup = TRUE,
-                                    env = .ai_run_env())
-  })
-  # (its end found here, not while drawing: the list read again once)
-  shiny::observe({
-    px <- run$px
-    if (is.null(px) || !is.null(shiny::isolate(run$end))) return()
-    if (px$is_alive()) return(shiny::invalidateLater(2000))
-    run$end <- px$get_exit_status()
-    shiny::isolate(again(again() + 1L))
-    # (the status, the questions, the assumptions and the answers' check
-    # read again too: run.R rewrote them)
-    if (identical(run$end, 0L)) run_done()
-  })
-  output$run_note <- shiny::renderUI({
-    if (is.null(run$px)) return(NULL)
-    if (is.null(run$end)) {
-      return(shiny::div(class = "small text-muted mt-2", t("run.R is running (every request) ...")))
-    }
-    tail <- tryCatch(utils::tail(readLines(run$log, warn = FALSE, encoding = "UTF-8"), 3L),
-                     error = function(e) character())
-    shiny::div(class = paste("small mt-2", if (identical(run$end, 0L)) "text-success" else "text-danger"),
-               if (identical(run$end, 0L)) t("run.R ended: the list is read again.") else
-                 sprintf(t("run.R stopped (exit %s): see ai/run-from-app.log."), run$end),
-               if (length(tail)) shiny::tags$pre(class = "small mb-0", paste(tail, collapse = "\n")))
-  })
   invisible(listed)
 }
 
@@ -528,31 +305,6 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
 .ai_in_study_spec <- function(f) {
   f <- as.character(f)
   !is.na(f) & startsWith(gsub("\\\\", "/", f), "spec/")
-}
-
-# The reports waiting for corrections, of `ids`: an assumption answered
-# wrong and not yet applied (tflspec::tfl_ai_assumptions() status
-# "answered"), or dropped from the person's list (ai/expected_outputs.csv)
-.ai_to_correct <- function(p, ids) {
-  if (is.null(p) || !length(ids)) return(character())
-  a <- tryCatch(tflspec::tfl_ai_assumptions(p), error = function(e) NULL)
-  wrong <- if (is.null(a) || !nrow(a)) character() else a$output_id[a$status %in% "answered"]
-  e <- tryCatch(tflspec::tfl_ai_expected_read(p), error = function(e) NULL)
-  drop <- if (is.null(e) || !nrow(e) || !"action" %in% names(e)) character() else e$output_id[e$action %in% "drop"]
-  intersect(ids, c(wrong, drop))
-}
-
-# What runs every request's reports: the study's run.R (agent mode), else
-# tflspec::tfl_ai_run() itself (chat mode writes no run.R)
-.ai_run_args <- function(p) {
-  if (file.exists(file.path(p, "run.R"))) return("run.R")
-  c("-e", "invisible(tflspec::tfl_ai_run('.'))")
-}
-
-# The run's environment: this session's libraries (a library set by
-# .libPaths() in the session is not the child's otherwise)
-.ai_run_env <- function() {
-  c("current", R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep))
 }
 
 # ---- the batches of the TOC (Topline, ...) of the reports adopted ----------
@@ -612,11 +364,14 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
 }
 
 # The AI's reports among `ids` an official run should say before it runs:
-# `newer` (their draft changed since adopted), `fix` (waiting for
-# corrections); NULL study: none
+# `newer` (their draft changed since adopted), `confirm` (places the AI
+# left to confirm); NULL study: none
 .ai_run_warnings <- function(p, ids) {
-  none <- list(newer = character(), fix = character())
+  none <- list(newer = character(), confirm = character())
   if (is.null(p) || !length(ids) || !dir.exists(file.path(p, "ai"))) return(none)
   m <- .ai_adopted_marks(p, ids)
-  list(newer = names(m)[m == "newer"], fix = .ai_to_correct(p, ids[m != ""]))
+  # (the study's reports with places still to confirm: tfl_ai_confirm())
+  cf <- tryCatch(tflspec::tfl_ai_confirm(p, where = "adopted"), error = function(e) NULL)
+  confirm <- if (is.data.frame(cf) && nrow(cf)) intersect(ids, unique(cf$output_id)) else character()
+  list(newer = names(m)[m == "newer"], confirm = confirm)
 }

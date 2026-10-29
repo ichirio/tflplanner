@@ -313,6 +313,19 @@ html:not(.rp-nav-on):not(.rp-nav) .rp-nav-hint { display: none; }
     card.addClass('rp-card-selected rp-card-open');
     card[0].scrollIntoView({block: 'start', behavior: 'smooth'});
   });
+  // a card asked for from elsewhere (the AI tab's \"to confirm\": its item,
+  // the verb): opened, selected and brought into view once the builder has
+  // drawn it -- tried for a few seconds, the report's form drawn in between
+  Shiny.addCustomMessageHandler('rp-card-go', function(x) {
+    var tries = 0;
+    (function look() {
+      var card = $('.rp-card[data-path=\"' + x.path + '\"]').first();
+      if (!card.length) { if (++tries < 30) setTimeout(look, 200); return; }
+      $('.rp-card').removeClass('rp-card-selected');
+      card.addClass('rp-card-selected rp-card-open');
+      card[0].scrollIntoView({block: 'start', behavior: 'smooth'});
+    })();
+  });
   // Enter in the add field adds; the new card's first field takes the focus
   var wantFocus = false;
   $(document).on('keydown', '.rp-add-item .selectize-input input', function(e) {

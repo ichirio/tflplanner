@@ -1,21 +1,21 @@
 # ============================================================================
-#  AI drafts (#431): tflspec's AI table requests and their answers
+#  AI drafts (#431): tflspec's AI requests and the agent's SPEC drafts
 # ----------------------------------------------------------------------------
-#  tflspec writes a study's requests (ai/requests/<request>.md, each pasted
-#  into a chat as one message) and reads the chat's answers back
-#  (ai/answers/<request>.md -> tfl_ai_collect_answers() -> the report files
-#  spec/outputs/<id>.yml).  These functions know no Shiny: the AI drafts
+#  tflspec writes a study's requests (ai/requests/<request>.md) and the
+#  agent's first message; the agent asks in its chat what it cannot decide
+#  and writes each report's draft (ai/spec/outputs/<id>.yml), which
+#  tfl_ai_collect_answers() checks.  These functions know no Shiny: the AI
 #  tab (R/ai_draft_ui.R) draws what they give.
 #
 #  Thin: tflspec's functions do the work (tfl_ai_requests(),
-#  tfl_ai_save_answer(), tfl_ai_collect_answers());
-#  here are what the screen adds -- an answer's file and time, a request's
-#  status, the counts, the study read again after a check.
+#  tfl_ai_collect_answers(), tfl_ai_confirm()); here are what the screen
+#  adds -- a request's drafts and their time, its status, the counts, the
+#  study read again after a check.
 # ============================================================================
 
 # the folders, under the study's
 .ai_requests_dir <- file.path("ai", "requests")
-.ai_answers_dir <- file.path("ai", "answers")
+.ai_drafts_dir <- file.path("ai", "spec", "outputs")
 .ai_repairs_dir <- file.path("ai", "repairs")
 # a request's status, worst last (as tflspec's print ranks them)
 .ai_status_rank <- c(ok = 1L, warning = 2L, `no answer` = 3L, error = 4L)
@@ -50,34 +50,31 @@
 
 # A study's requests, one row a request: request, family, outputs (the
 # report ids, comma-separated), n, chars, file (from the study's folder),
-# answer (the answer file, from the study's folder, or NA), answer_time.
-# attr "instructions": the instructions file (once) or NA.  No requests: a
-# data frame of no rows.
+# drafts (how many of its reports have a draft), draft_time (the newest).
+# No requests: a data frame of no rows.
 .ai_requests <- function(path) {
   d <- as.data.frame(tflspec::tfl_ai_requests(path), stringsAsFactors = FALSE)
   if (is.null(d$family)) d$family <- rep(NA_character_, nrow(d))
   d$family <- ifelse(is.na(d$family), .ai_family_of(d$request), d$family)
-  ans <- vapply(d$request, function(r) .ai_answer_file(path, r), "", USE.NAMES = FALSE)
-  d$answer <- ans
-  d$answer_time <- file.mtime(as.character(ifelse(is.na(ans), "", file.path(path, ans))))
+  dr <- lapply(d$outputs, function(o) .ai_request_drafts(path, o))
+  d$drafts <- vapply(dr, function(x) x$n, 0L)
+  d$draft_time <- do.call(c, c(list(as.POSIXct(character())), lapply(dr, function(x) x$time)))
   # (the workbook a request's reports come from)
   if (is.null(d$book)) d$book <- rep(NA_character_, nrow(d))
-  d <- d[c("request", "family", "outputs", "n", "chars", "file", "answer", "answer_time",
-           "book")]
+  d <- d[c("request", "family", "outputs", "n", "chars", "file", "drafts", "draft_time", "book")]
   rownames(d) <- NULL
-  ins <- file.path(path, .ai_requests_dir, "00-instructions.md")
-  attr(d, "instructions") <- if (file.exists(ins))
-    .ai_rel(.ai_requests_dir, "00-instructions.md") else NA_character_
   d
 }
 
-# The answer file of a request, from the study's folder: <request>.md, else
-# the names Notepad saves it as (<request>.md.txt, <request>.txt); NA when
-# there is none.  (tflspec reads them in this order.)
-.ai_answer_file <- function(path, request) {
-  f <- .ai_rel(.ai_answers_dir, paste0(request, c(".md", ".md.txt", ".txt")))
-  f <- f[file.exists(file.path(path, f))]
-  if (length(f)) f[1L] else NA_character_
+# A request's drafts: how many of its reports (`outputs`, comma-separated)
+# have one (ai/spec/outputs/<id>.yml), and when the newest was written
+.ai_request_drafts <- function(path, outputs) {
+  ids <- trimws(strsplit(outputs %||% "", ",", fixed = TRUE)[[1L]])
+  ids <- ids[nzchar(ids)]
+  f <- file.path(path, .ai_drafts_dir, paste0(ids, ".yml"))
+  have <- file.exists(f)
+  list(n = sum(have), of = length(ids),
+       time = if (any(have)) max(file.mtime(f[have])) else as.POSIXct(NA))
 }
 
 # The text of a request's file (or of 00-instructions.md, or of its fix
@@ -136,21 +133,6 @@
   out
 }
 
-# a reason short enough for a cell
-.ai_short <- function(x, n = 80L) {
-  x <- gsub("\\s+", " ", x)
-  ifelse(nchar(x) > n, paste0(substr(x, 1L, n - 3L), "..."), x)
-}
-
-# The saved answer of a request, for the box it is pasted in: its text,
-# "" when there is none.  An answer not in UTF-8: "" with attr "problem".
-.ai_answer_text <- function(path, request) {
-  f <- .ai_answer_file(path, request)
-  if (is.na(f)) return("")
-  tryCatch(.ai_read_text(file.path(path, f)),
-           tflplanner_ai_encoding = function(e) structure("", problem = conditionMessage(e)))
-}
-
 .ai_check_request_name <- function(request) {
   if (!is.character(request) || length(request) != 1L || is.na(request) ||
       !grepl("^[A-Za-z0-9][A-Za-z0-9._-]*$", request)) {
@@ -159,31 +141,34 @@
   invisible(request)
 }
 
-# A request's answer saved as ai/answers/<request>.md (UTF-8, LF line
-# ends; tfl_ai_save_answer() checks the request is one of the study's).
-# Gives the file's path from the study's folder.
-.ai_save_answer <- function(path, request, text, overwrite = TRUE) {
-  .ai_check_request_name(request)
-  # (one line end at the end: the file's own)
-  text <- sub("\n+$", "", gsub("\r\n?", "\n", paste(as.character(text), collapse = "\n")))
-  f <- tflspec::tfl_ai_save_answer(path, request, text, overwrite = overwrite)
-  .ai_rel(.ai_answers_dir, basename(f))
-}
-
 # The answers checked: tfl_ai_collect_answers()'s list (reports,
 # next_steps, assumptions, stray, requests), with the time of the check
 .ai_collect <- function(path) {
   .ai_ensure_area(path)
   x <- tflspec::tfl_ai_collect_answers(path)
   x$time <- Sys.time()
+  # what is to confirm (the agent could not decide), the drafts' and the
+  # study's: output_id, where, item, why, file
+  x$confirm <- .ai_confirm(path)
   x
 }
 
-# The answers compared, with templates or the code SPEC only:
-# tfl_ai_compare()'s table (one row a report; ai/compare.csv written), or
-# NULL when it fails
-.ai_compare <- function(path) {
-  tryCatch(suppressMessages(tflspec::tfl_ai_compare(path)), error = function(e) NULL)
+# The places a report's SPEC leaves to confirm (tflspec::tfl_ai_confirm()):
+# its drafts' and the adopted ones'; NULL when tflspec cannot say
+.ai_confirm <- function(path) {
+  d <- tryCatch(tflspec::tfl_ai_confirm(path, where = "both"), error = function(e) NULL)
+  if (!is.data.frame(d)) return(NULL)
+  for (k in c("output_id", "where", "item", "why", "file")) {
+    if (is.null(d[[k]])) d[[k]] <- rep(NA_character_, nrow(d))
+  }
+  d
+}
+
+# A check's three levels as the user says them (the collect's status):
+# ERROR the SPEC does not read; WARNING it reads, no program can be made
+# from it yet; OK a program can be made.  "no answer": no draft yet.
+.ai_check_level <- function(status) {
+  unname(c(ok = "OK", warning = "WARNING", error = "ERROR", `no answer` = "no draft")[status])
 }
 
 # a request's status: its worst report's (ok < warning < no answer < error);
@@ -211,7 +196,7 @@
 .ai_counts <- function(requests, collected = NULL) {
   r <- collected$reports
   st <- if (is.null(r)) character() else r$status
-  list(requests = nrow(requests), answers = sum(!is.na(requests$answer)),
+  list(requests = nrow(requests), drafts = sum(requests$drafts),
        reports = sum(requests$n),
        status = vapply(names(.ai_status_rank), function(s) sum(st == s), 0L))
 }
@@ -308,19 +293,6 @@
   x <- trimws(as.character(ids))
   y <- gsub("^-+|-+$", "", gsub("[^A-Za-z0-9._-]+", "-", x))
   make.unique(ifelse(grepl("^[A-Za-z0-9._-]+$", x), x, y), sep = "-")
-}
-
-# A report's parts as the TOC table says them: "2 parts (.a, .b)" -- each
-# part's id after the report's number; "" for a report not in parts
-.ai_parts_label <- function(output_id, parts, t = identity) {
-  if (is.null(parts)) return(rep("", length(output_id)))
-  vapply(seq_along(output_id), function(i) {
-    if (is.na(parts[i]) || !nzchar(parts[i])) return("")
-    p <- strsplit(parts[i], " | ", fixed = TRUE)[[1L]]
-    own <- startsWith(tolower(p), tolower(output_id[i]))
-    p[own] <- substring(p[own], nchar(output_id[i]) + 1L)
-    sprintf(t("%d parts (%s)"), length(p), paste(p, collapse = ", "))
-  }, "")
 }
 
 # Said when what the read was for has changed (the workbooks, their sheets)
@@ -690,11 +662,6 @@
 
 # ---- a coding agent (tfl_ai_prepare(mode = "agent")) --------------------------
 
-# A study's mode: "agent" when tfl_ai_prepare(mode = "agent") wrote its
-# AGENTS.md, else "chat"
-.ai_mode <- function(path) {
-  if (!is.null(path) && file.exists(file.path(path, "AGENTS.md"))) "agent" else "chat"
-}
 
 # The agent's first message, as tfl_ai_prepare(mode = "agent") gives it
 # (its `agent_prompt`): ai/agent_prompt.md, which it writes too; made again
@@ -711,22 +678,8 @@
   if (length(txt) && nzchar(txt[1L])) return(sub("\n+$", "", paste(txt, collapse = "\n")))
   at <- normalizePath(path, winslash = "/", mustWork = FALSE)
   paste0("Follow ", at, "/AGENTS.md. Do every request of ", at, "/ai/requests/index.md, ",
-         "in its order: save each answer as ", at, "/ai/answers/<request>.md and run ",
-         "`Rscript ", at, "/run.R` after it, then read ", at, "/ai/status.md and repair. ",
-         "Do not stop to ask; when every request is done, tell me which reports have an ",
-         "RTF and that ", at, "/ai/questions.md waits for my answers.")
-}
-
-# The questions of ai/questions.md (tfl_ai_questions()), the open ones
-# first: id, output_id, where, question, provisional, answer, status
-.ai_questions <- function(path) {
-  q <- tflspec::tfl_ai_questions(path)
-  q[order(q$status == "decided"), , drop = FALSE]
-}
-
-# Answers (named by the questions' ids) written into ai/questions.md
-.ai_answer_questions <- function(path, answers) {
-  tflspec::tfl_ai_answer_questions(path, answers)
+         "in its order: ask me here what you cannot decide, then write each report's SPEC ",
+         "draft as ", at, "/ai/spec/outputs/<id>.yml.")
 }
 
 # A study whose AI drafts are still written into spec/outputs (prepared

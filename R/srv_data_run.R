@@ -425,21 +425,21 @@
     batch_go_ai()
   })
   # the AI's reports in the run whose draft changed since they were
-  # adopted, or that wait for corrections the agent was asked for: said
-  # before the run (it makes them as the study has them)
+  # adopted, or with places the AI left to confirm: said before the run (it
+  # makes them as the study has them)
   batch_go_ai <- function() {
     ids <- batch_ids()
     ids <- intersect(input$batch_reports %||% ids, ids)
     w <- .ai_run_warnings(if (has_study()) rv$study$path, ids)
-    if (!length(w$newer) && !length(w$fix)) return(batch_go())
+    if (!length(w$newer) && !length(w$confirm)) return(batch_go())
     shiny::showModal(shiny::modalDialog(
       title = t("The AI's reports in this run"),
       if (length(w$newer)) shiny::p(sprintf(
         t("Their draft changed after they were adopted (step 4 of the AI tab shows what changed): %s."),
         paste(w$newer, collapse = ", "))),
-      if (length(w$fix)) shiny::p(sprintf(
-        t("They wait for corrections you asked the agent for (an assumption answered wrong, or dropped from your list): %s."),
-        paste(w$fix, collapse = ", "))),
+      if (length(w$confirm)) shiny::p(sprintf(
+        t("They have places the AI left to confirm (step 3 of the AI tab lists them): %s."),
+        paste(w$confirm, collapse = ", "))),
       shiny::p(class = "small text-muted", t("The run makes them as the study has them now.")),
       footer = shiny::tagList(
         .btn("batch_ai_cancel", t("Cancel"), class = "btn-outline-secondary"),

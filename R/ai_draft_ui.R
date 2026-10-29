@@ -51,16 +51,15 @@ ai_ui <- function(id, lang = "en") {
     shiny::div(class = "small mb-2 ai-status", shiny::uiOutput(ns("status_line"))),
     bslib::navset_card_underline(
       id = ns("step"), selected = "prepare",
+      # (the agent writes the SPEC drafts itself, asking in its chat:
+      # tfl_ai_prepare(mode = "agent", route = "spec") -- the four steps:
+      # the prompt, the agent's SPEC, its check, the copy into the study)
       bslib::nav_panel(
-        paste0("1 ", t("Prepare"), " (tfl_ai_prepare)"), value = "prepare",
+        paste0("1 ", t("Write the prompt"), " (tfl_ai_prepare)"), value = "prepare",
         bslib::layout_columns(
           col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
           shiny::div(
             class = "ai-form",
-            shiny::radioButtons(
-              ns("mode"), paste0(t("Who drafts"), " (mode)"), inline = TRUE,
-              choiceNames = list(t("A chat (chat)"), t("A coding agent (agent)")),
-              choiceValues = c("chat", "agent"), selected = "agent"),
             shiny::radioButtons(
               ns("study_mode"), t("Study"), inline = TRUE,
               choiceNames = list(t("The open study"), paste0(t("New study"), " (tfl_ai_study_init)")),
@@ -148,14 +147,9 @@ ai_ui <- function(id, lang = "en") {
             # (fields side by side: their boxes level, whatever their labels' lines)
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-end",
-              # (a coding agent: one a request, the instructions read once)
-              shiny::conditionalPanel(
-                "input.mode == 'chat'", ns = ns,
-                shiny::numericInput(ns("size"), paste0(t("Shells a request holds"), " (size)"),
-                                    value = 1, min = 1, max = 20, width = "12rem")),
               shiny::selectInput(ns("language"),
-                                 with_tip(paste0(t("Language of the AI's assumption notes"), " (language)"),
-                                          t("The language of the notes in which the AI explains what it decided where the shell does not say (its assumptions). Not the language of the reports' titles and labels (those stay as in the shell).")),
+                                 with_tip(paste0(t("Language of the AI's questions and notes"), " (language)"),
+                                          t("The language the agent asks in, in its chat, and writes its notes in (its assumptions, what is to confirm): study.yml's ai: language. Not the language of the reports' titles and labels (those stay as in the shell).")),
                                  choices = stats::setNames(c("Japanese", "English", ""),
                                                            c(t("Japanese"), t("English"), t("the chat's"))),
                                  selected = if (identical(lang, "ja")) "Japanese" else "English",
@@ -166,8 +160,7 @@ ai_ui <- function(id, lang = "en") {
                                  value = TRUE),
             # what the agent may open besides its requests (tflspec's
             # agent_reads, docs, agent_max_reads): none unless chosen here
-            shiny::conditionalPanel(
-              "input.mode == 'agent'", ns = ns,
+            shiny::div(
               shiny::checkboxGroupInput(
                 ns("agent_reads"),
                 with_tip(paste0(t("Files the agent may open"), " (agent_reads)"),
@@ -186,23 +179,6 @@ ai_ui <- function(id, lang = "en") {
               shiny::div(class = "d-flex gap-2 mb-2",
                          .btn(ns("ref_add"), t("Add"), class = "btn-sm btn-outline-secondary")),
               shiny::uiOutput(ns("ref_list"))),
-            shiny::conditionalPanel(
-              "input.mode == 'chat'", ns = ns,
-              shiny::checkboxInput(
-                ns("instructions_each"),
-                with_tip(paste0(t("Put the common instructions in each request"), " (instructions = \"each\")"),
-                         t("Off (the default): the common instructions are written once, to 00-instructions.md -- paste it first -- and left out of the requests. On: every request carries them.")),
-                value = FALSE)),
-            shiny::tags$details(
-              class = "small mb-2",
-              shiny::tags$summary(t("More")),
-              shiny::div(
-                class = "d-flex flex-wrap gap-2 mt-1 align-items-end",
-                shiny::selectInput(ns("workbook"), paste0(t("The workbook in the chat"), " (workbook)"),
-                                   choices = c("text", "attach", "both"), width = "12rem",
-                                   selectize = FALSE),
-                shiny::numericInput(ns("max_chars"), paste0(t("A request's length at most"), " (max_chars)"),
-                                    value = NULL, min = 1000, step = 1000, width = "14rem"))),
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-center",
               .btn(ns("read"), paste0(t("Read and check"), " (dry_run)"), class = "btn-sm btn-outline-primary"),
@@ -240,71 +216,30 @@ ai_ui <- function(id, lang = "en") {
                                shiny::uiOutput(ns("roles_ui")),
                                DT::DTOutput(ns("sheets_table"))))))),
       bslib::nav_panel(
-        paste0("2 ", t("Requests"), " (ai/requests)"), value = "requests",
+        paste0("2 ", t("The agent writes the SPEC"), " (ai/requests)"), value = "requests",
         shiny::div(
           class = "d-flex flex-wrap gap-2 align-items-center mb-2",
           shiny::h6(class = "mb-0 me-auto", with_tip(
             paste0(t("Requests"), " (ai/requests)"),
-            t("Agent: give the agent the first instruction above; it reads these requests itself, in their order. Chat: paste each request into a NEW chat as one message; the chat's whole answer goes to step 3."))),
+            t("Give the agent the first message above; it reads these requests itself, in their order, asks in its chat what it cannot decide, and writes each report's SPEC draft (ai/spec/outputs/<id>.yml). Everything else is between you and the agent, in its chat."))),
           .btn(ns("open_requests"), t("Open the folder")),
           .btn(ns("reread"), t("Read again"))),
         shiny::uiOutput(ns("agent_card")),
-        shiny::uiOutput(ns("instructions_file")),
         DT::DTOutput(ns("requests"))),
       bslib::nav_panel(
-        paste0("3 ", t("Answers"), " (tfl_ai_collect_answers)"), value = "answers",
-        # (the study's mode, for the page: the agent's cards or the chat's paste)
-        shiny::div(class = "d-none", shiny::textOutput(ns("mode_now"))),
-        # (the last check: what was taken in, and step 4 to adopt it)
+        paste0("3 ", t("Check the SPEC"), " (tfl_check_spec)"), value = "answers",
+        # (the last check: what was taken in, and step 4 to copy it)
         shiny::uiOutput(ns("taken_note")),
-        shiny::conditionalPanel(
-          "output.mode_now == 'agent'", ns = ns,
-          bslib::card(
-            bslib::card_header(
-              class = "d-flex flex-wrap gap-2 align-items-center",
-              shiny::span(class = "me-auto", paste0(t("Status"), " (ai/status.md)")),
-              .btn(ns("status_reread"), t("Read the status again"), class = "btn-sm btn-primary"),
-              shiny::uiOutput(ns("check_note_agent"), inline = TRUE)),
-            shiny::uiOutput(ns("status_md")),
-            shiny::uiOutput(ns("result_all"))),
-          # (the questions: in step 4, with the list -- R/ai_list_ui.R)
-          shiny::p(class = "small text-muted", t("The agent's questions are answered in step 4."))),
-        shiny::conditionalPanel(
-          "output.mode_now != 'agent'", ns = ns,
-        bslib::layout_columns(
-          col_widths = bslib::breakpoints(sm = 12, lg = c(3, 9)),
-          shiny::div(
-            shiny::radioButtons(ns("pick"), t("Requests"), choices = character(),
-                                selected = character(), width = "100%"),
-            shiny::div(
-              class = "d-flex flex-column gap-1 align-items-start",
-              .btn(ns("check"), paste0(t("Check all answers"), " (tfl_ai_collect_answers)"),
-                   class = "btn-sm btn-primary"),
-              shiny::uiOutput(ns("check_note")),
-              .btn(ns("open_answers"), t("Open ai/answers")))),
-          shiny::div(
-            shiny::uiOutput(ns("answer_head")),
-            shiny::textAreaInput(ns("answer_text"), NULL, value = "", rows = 14,
-                                 width = "100%", resize = "vertical",
-                                 placeholder = t("Paste the chat's whole answer (from the first ``` to the last)")),
-            shiny::div(
-              class = "d-flex flex-wrap gap-2 align-items-center mb-2",
-              .btn(ns("save"), paste0(t("Save the answer"), " (tfl_ai_save_answer)"),
-                   class = "btn-sm btn-outline-primary"),
-              .btn(ns("save_check"), t("Save and check"), class = "btn-sm btn-primary"),
-              shiny::uiOutput(ns("saved"), inline = TRUE)),
-            shiny::uiOutput(ns("result"))))),
-        shiny::uiOutput(ns("stray")),
-        shiny::uiOutput(ns("compare_card")),
         bslib::card(
           bslib::card_header(
             class = "d-flex flex-wrap gap-2 align-items-center",
-            shiny::span(class = "me-auto",
-                        paste0(t("Assumptions"), " (spec/_assumptions.yml)")),
-            shiny::selectInput(ns("assume_of"), NULL, choices = character(),
-                               width = "220px", selectize = FALSE)),
-          shiny::uiOutput(ns("assume_empty")),
-          DT::DTOutput(ns("assumptions")))),
+            shiny::span(class = "me-auto", with_tip(
+              paste0(t("The agent's SPEC drafts"), " (ai/spec/outputs)"),
+              t("Check reads every draft and checks it: ERROR, the SPEC does not read (it cannot be copied); WARNING, it reads but no program can be made from it yet; OK, a program can be made (whether the report is right is yours to see). An ERROR or WARNING row's fix text goes to the agent's chat. A row opened shows what the agent assumed and what it left to confirm."))),
+            .btn(ns("status_reread"), paste0(t("Check"), " (tfl_ai_collect_answers, tfl_check_spec)"),
+                 class = "btn-sm btn-primary"),
+            shiny::uiOutput(ns("check_note_agent"), inline = TRUE)),
+          shiny::uiOutput(ns("result_all")))),
       # step 4: the reports, adopted into the study (R/ai_list_ui.R)
       ai_list_panel(ns, t),
       # the look of past reports, for every study (R/ai_style_ui.R)
@@ -343,7 +278,7 @@ ai_ui <- function(id, lang = "en") {
     setTimeout(function() { b.textContent = was; }, 1200);
   }
   $(document).on('click', '.ai-open', function() {
-    Shiny.setInputValue(this.dataset.ns + 'open_report', {id: this.dataset.id, n: Date.now()},
+    Shiny.setInputValue(this.dataset.ns + 'open_report', {id: this.dataset.id, item: this.dataset.item || null, n: Date.now()},
                         {priority: 'event'});
   });
   $(document).on('click', '.ai-act', function() {

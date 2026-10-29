@@ -21,22 +21,13 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     path <- shiny::reactive(if (has_study()) rv$study$path else NULL)
     ver <- shiny::reactiveVal(0L)
     collected <- shiny::reactiveVal(NULL)
-    compared <- shiny::reactiveVal(NULL)
     # (a dialog closed: the page's waiting note taken away)
     browse_done <- function(x) {
       session$sendCustomMessage("ai-browse-done", TRUE)
       x
     }
-    # step 4: the list and the adopting (R/ai_list_ui.R)
-    ai_list_server(input, output, session, path, ver, reload_now, notify, guarded, t, dirty = dirty,
-                   # (run.R ended: as "Read the status again" does)
-                   run_done = function() {
-                     status_ver(status_ver() + 1L)
-                     q_ver(q_ver() + 1L)
-                     ver(ver() + 1L)
-                     if (!isTRUE(dirty())) check_all()
-                   })
-    asm_saved <- ai_asm_server(input, output, session, path, ver, notify, guarded, t)
+    # step 4: the list and the copying (R/ai_list_ui.R)
+    ai_list_server(input, output, session, path, ver, reload_now, notify, guarded, t, dirty = dirty)
     # the look of past reports (R/ai_style_ui.R)
     ai_style_server(input, output, session, notify, guarded, t)
     # another study opened: its own check, none yet
@@ -92,16 +83,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       # tfl_ai_agent_prompt(), n of them)
       if (identical(what, "continue")) return(continue_prompt())
       if (identical(what, "folder")) return(normalizePath(p, "/", mustWork = FALSE))
-      if (identical(what, "tell")) {
-        return(t("I answered the questions in ai/questions.md. Read it again and go on."))
-      }
-      if (identical(what, "instructions")) {
-        return(.ai_read_text(file.path(p, .ai_requests_dir, "00-instructions.md")))
-      }
       if (identical(what, "rerun")) return(paste("Rscript run.R", id))
-      # (an answer as the agent saved it; a file of the study the agent reads
-      # or writes -- only those, by name)
-      if (identical(what, "answer")) return(.ai_answer_text(p, id))
+      # (a file of the study the agent reads or writes -- only those, by name)
       if (identical(what, "file")) {
         if (!id %in% .ai_agent_files) stop("Not a file of the agent's.", call. = FALSE)
         return(.ai_read_text(file.path(p, id)))
@@ -124,14 +107,13 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       .ai_request_text(p, id, if (identical(what, "repair")) "repair" else "request")
     }
     file_of <- function(what, id) {
-      switch(what, instructions = "00-instructions.md",
-             agent = t("The agent's first message"), tell = t("To tell the agent"),
+      switch(what,
+             agent = t("The agent's first message"),
              repair = .ai_rel(.ai_repairs_dir, paste0(id, ".md")),
              build = .ai_rel(.ai_repairs_dir, paste0(id, "-build.md")),
              unbuilt = .ai_rel(.ai_repairs_dir, paste0(
                id, if (id %in% attr(shiny::isolate(unbuilt()), "build")) "-build.md" else ".md")),
              rerun = t("To rebuild only this request"),
-             answer = .ai_rel("ai", "answers", paste0(id, ".md")),
              file = id,
              paste0(id, ".md"))
     }
@@ -153,7 +135,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       shiny::tagList(
         shiny::tags$b(sid),
         paste(c(sprintf(t("%d reports, %d requests"), n$reports, n$requests),
-                sprintf(t("answers %d / %d"), n$answers, n$requests), st),
+                sprintf(t("drafts %d / %d"), n$drafts, n$reports), st),
               collapse = "  |  "))
     })
 
@@ -165,17 +147,6 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         ns(""), kind, what, htmltools::htmlEscape(id, TRUE), htmltools::htmlEscape(labels[[kind]]))
       paste(vapply(names(labels), b, ""), collapse = " ")
     }
-    output$instructions_file <- shiny::renderUI({
-      r <- requests()
-      if (is.null(r) || is.na(attr(r, "instructions"))) return(NULL)
-      chars <- tryCatch(nchar(text_of("instructions", NA)), error = function(e) NA_integer_)
-      shiny::div(
-        class = "d-flex flex-wrap gap-2 align-items-center small mb-2",
-        shiny::tags$b("00-instructions.md"),
-        shiny::span(class = "text-muted", t("(paste first in each new chat)")),
-        shiny::span(sprintf(t("%s characters"), format(chars, big.mark = ","))),
-        shiny::HTML(act("instructions", "00-instructions")))
-    })
     output$requests <- DT::renderDT({
       r <- requests()
       empty <- if (!has_study()) t("Open a study.") else t("No requests yet: step 1.")
@@ -188,12 +159,13 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         request = r$request, family = r$family, reports = r$n, outputs = r$outputs,
         chars = format(r$chars, big.mark = ","),
         status = ifelse(is.na(st), "", st),
-        answer = ifelse(is.na(r$answer), "\u2014", format(r$answer_time, "%m/%d %H:%M")),
+        drafts = ifelse(r$drafts > 0L, sprintf("%d / %d  %s", r$drafts, r$n, format(r$draft_time, "%m/%d %H:%M")),
+                        "\u2014"),
         book = ifelse(is.na(r$book), "", r$book),
         actions = vapply(r$request, function(q) act("request", q), ""),
         stringsAsFactors = FALSE)
       names(d) <- c(t("request"), t("family"), t("reports"), t("outputs"), t("characters"),
-                    t("status"), t("answer"), t("Workbook"), "")
+                    t("status"), t("drafts"), t("Workbook"), "")
       DT::datatable(d, rownames = FALSE, escape = -9, selection = "none",
                     options = list(dom = "t", paging = FALSE, ordering = FALSE,
                                    scrollX = TRUE))
@@ -202,10 +174,6 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     shiny::observeEvent(input$open_requests, {
       shiny::req(path())
       guarded(.open_folder(file.path(path(), .ai_requests_dir)))
-    })
-    shiny::observeEvent(input$open_answers, {
-      shiny::req(path())
-      guarded(.open_folder(file.path(path(), .ai_answers_dir)))
     })
 
     # Copy: the file read here, written to the clipboard by the page; when
@@ -243,77 +211,6 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       view_modal(a$what %||% "request", a$id, failed = TRUE)
     })
 
-    # -- step 3: the answers -------------------------------------------------
-    shiny::observe({
-      r <- requests()
-      q <- if (is.null(r)) character() else r$request
-      st <- .ai_status_label(q, collected()$reports, t)
-      if (length(q)) st[is.na(st)] <- ifelse(is.na(r$answer[is.na(st)]), t("no answer"), t("saved"))
-      now <- shiny::isolate(input$pick)
-      # no request: the list emptied, no value sent (updateRadioButtons()
-      # would send its first choice, an NA: null in the browser)
-      if (!length(q)) {
-        session$sendInputMessage("pick", list(options = '<div class="shiny-options-group"></div>'))
-        return()
-      }
-      shiny::updateRadioButtons(
-        session, "pick",
-        choiceNames = lapply(seq_along(q), function(i) shiny::span(
-          shiny::tags$b(q[i]), " ", shiny::span(class = "small text-muted", st[i]))),
-        choiceValues = q,
-        selected = if (!is.null(now) && now %in% q) now else q[1L])
-    })
-    # the box: the answer saved, when another request is chosen
-    shiny::observeEvent(list(input$pick, path()), {
-      q <- input$pick
-      p <- path()
-      if (is.null(p) || is.null(q) || !nzchar(q)) return()
-      x <- .ai_answer_text(p, q)
-      shiny::updateTextAreaInput(session, "answer_text", value = as.vector(x))
-      saved_info(list(request = q, problem = attr(x, "problem")))
-    })
-    saved_info <- shiny::reactiveVal(NULL)
-    output$answer_head <- shiny::renderUI({
-      r <- requests()
-      q <- input$pick
-      if (is.null(r) || !nrow(r)) {
-        return(shiny::p(class = "text-muted",
-                        if (has_study()) t("No requests yet: step 1.") else t("Open a study.")))
-      }
-      shiny::req(q %in% r$request)
-      shiny::div(
-        class = "d-flex flex-wrap gap-2 align-items-center mb-1",
-        shiny::tags$b(q), shiny::span(class = "text-muted", sprintf("(%s)", r$outputs[r$request == q])),
-        shiny::HTML(act("request", q, c(view = t("View the request")))))
-    })
-    output$saved <- shiny::renderUI({
-      ver()
-      s <- saved_info()
-      p <- path()
-      if (is.null(s) || is.null(p)) return(NULL)
-      if (!is.null(s$problem)) {
-        return(shiny::span(class = "small text-danger", s$problem))
-      }
-      f <- .ai_answer_file(p, s$request)
-      if (is.na(f)) return(NULL)
-      shiny::span(class = "small text-muted", sprintf(t("saved: %s  %s (UTF-8)"), f,
-                                                      format(file.mtime(file.path(p, f)), "%m/%d %H:%M")))
-    })
-    save_answer <- function() {
-      q <- input$pick
-      txt <- input$answer_text %||% ""
-      if (is.null(path()) || is.null(q) || !nzchar(q)) return(FALSE)
-      if (!nzchar(trimws(txt))) {
-        notify(t("Paste first."), "warning")
-        return(FALSE)
-      }
-      f <- guarded(.ai_save_answer(path(), q, txt))
-      if (is.null(f)) return(FALSE)
-      saved_info(list(request = q))
-      ver(ver() + 1L)
-      notify(sprintf(t("Saved: %s"), f))
-      TRUE
-    }
     check_all <- function() {
       shiny::req(path())
       if (isTRUE(dirty())) {
@@ -323,8 +220,6 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       keep_unbuilt()
       co <- guarded(.ai_collect(path()))
       if (is.null(co)) return()
-      # (compared before the study is read again: it checks the answers again)
-      compared(.ai_compare(path()))
       collected(co)
       ver(ver() + 1L)
       # the reports written: the study read from its files at once (no save
@@ -357,122 +252,11 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           sprintf(t("%d drafts taken in. Next: adopt (copy) them into the study in step 4; the Report list shows only the adopted ones."),
                   length(k$ok))
         } else sprintf(t("%d reports taken in: on the Report list."), length(k$ok))),
-        if (k$drafts) .btn(ns("to_list2"), paste0(t("To step 4"), " (", t("List and corrections"), ")"),
+        if (k$drafts) .btn(ns("to_list2"), paste0(t("To step 4"), " (", t("Copy into the study"), ")"),
                            class = "btn-sm btn-primary"))
     })
     shiny::observeEvent(input$to_list2, bslib::nav_select("step", "list", session = session))
-    shiny::observeEvent(input$save, save_answer())
-    shiny::observeEvent(input$save_check, if (save_answer()) check_all())
-    shiny::observeEvent(input$check, check_all())
-    # no check over unsaved changes
-    shiny::observe({
-      session$sendCustomMessage("ai-disable", list(id = ns("check"), on = isTRUE(dirty())))
-    })
-    output$check_note <- shiny::renderUI({
-      if (isTRUE(dirty())) shiny::span(class = "small text-warning", t("Save first"))
-    })
-
-    output$result <- shiny::renderUI({
-      co <- collected()
-      q <- input$pick
-      if (is.null(co) || is.null(q)) {
-        return(shiny::p(class = "small text-muted mt-2", t("Check first.")))
-      }
-      r <- co$reports[co$reports$request == q, , drop = FALSE]
-      if (!nrow(r)) return(NULL)
-      nxt <- unname(co$next_steps[q])
-      cls <- c(ok = "text-success", warning = "text-warning", error = "text-danger",
-               `no answer` = "text-muted")
-      rep_btn <- if (any(!is.na(r$repair)))
-        shiny::HTML(act("repair", q, c(copy = t("Copy the fix request"), view = t("View"))))
-      shiny::div(
-        class = "mt-2",
-        shiny::h6(t("Result of the last check")),
-        shiny::tags$table(
-          class = "table table-sm small mb-1",
-          shiny::tags$thead(shiny::tags$tr(lapply(c(t("output_id"), t("status"), t("first problem")),
-                                                  shiny::tags$th))),
-          shiny::tags$tbody(lapply(seq_len(nrow(r)), function(i) shiny::tags$tr(
-            shiny::tags$td(r$output_id[i]),
-            shiny::tags$td(class = cls[[r$status[i]]] %||% "", t(r$status[i])),
-            shiny::tags$td(if (is.na(r$first[i])) "" else r$first[i]),
-            shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && .ai_in_study_spec(r$file[i]))
-              shiny::tags$button(
-                type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
-                `data-ns` = ns(""), `data-id` = r$output_id[i], t("Open in Make a report"))))))),
-        if (length(nxt) && !is.na(nxt)) shiny::p(class = "small mb-1",
-                                                shiny::tags$b(t("next:")), " ", nxt),
-        shiny::div(
-          class = "d-flex flex-wrap gap-2",
-          rep_btn,
-          if (any(co$reports$status %in% c("ok", "warning")))
-            .btn(ns("to_list"), paste0("4 ", t("List and corrections")),
-                 class = "btn-sm btn-outline-secondary py-0"),
-          if (any(r$problems > 0))
-            .btn(ns("problems"), t("All problems"), class = "btn-sm btn-outline-secondary py-0")))
-    })
-    shiny::observeEvent(input$to_list, bslib::nav_select("step", "list", session = session))
-    shiny::observeEvent(input$open_report, open_report(input$open_report$id))
-    shiny::observeEvent(input$problems, {
-      co <- collected()
-      q <- input$pick
-      shiny::req(co, q)
-      r <- co$reports[co$reports$request == q & !is.na(co$reports$problems_text), , drop = FALSE]
-      txt <- paste(sprintf("%s (%s)\n%s", r$output_id, r$status, r$problems_text), collapse = "\n\n")
-      shiny::showModal(shiny::modalDialog(
-        title = sprintf(t("%s: the problems"), q), size = "l", easyClose = TRUE,
-        shiny::tags$textarea(class = "form-control rp-code ai-view", readonly = NA, rows = 16, txt),
-        footer = shiny::modalButton(t("Close"))))
-    })
-
-    # the assumptions the answers made, by report
-    shiny::observe({
-      a <- collected()$assumptions
-      ids <- if (is.null(a)) character() else sort(unique(a$output_id[!is.na(a$output_id)]))
-      shiny::updateSelectInput(
-        session, "assume_of",
-        choices = c(stats::setNames("", t("(all reports)")),
-                    stats::setNames(".study", t("(study)")), stats::setNames(ids, ids)),
-        selected = shiny::isolate(input$assume_of) %||% "")
-    })
-    output$assume_empty <- shiny::renderUI({
-      a <- collected()$assumptions
-      if (is.null(collected())) return(shiny::p(class = "small text-muted", t("Check first.")))
-      if (!nrow(a)) return(shiny::p(class = "small text-muted", t("No assumptions.")))
-      NULL
-    })
-    output$assumptions <- DT::renderDT({
-      a <- collected()$assumptions
-      shiny::req(a, nrow(a))
-      f <- input$assume_of %||% ""
-      if (identical(f, ".study")) a <- a[is.na(a$output_id), , drop = FALSE]
-      else if (nzchar(f)) a <- a[!is.na(a$output_id) & a$output_id == f, , drop = FALSE]
-      a$output_id[is.na(a$output_id)] <- t("(study)")
-      a[is.na(a)] <- ""
-      names(a) <- t(names(a))
-      DT::datatable(a, rownames = FALSE, selection = "none",
-                    options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
-    }, server = FALSE)
-    # the answers compared (tfl_ai_compare(): ai/compare.csv), under the checks
-    output$compare_card <- shiny::renderUI({
-      if (is.null(collected()) || is.null(compared())) return(NULL)
-      bslib::card(
-        bslib::card_header(paste0(t("Compare the answers"), " (compare.csv)")),
-        DT::DTOutput(ns("compare")))
-    })
-    output$compare <- DT::renderDT({
-      d <- compared()
-      shiny::req(d)
-      DT::datatable(d, rownames = FALSE, selection = "none",
-                    options = list(dom = "t", paging = FALSE, ordering = FALSE))
-    })
-    output$stray <- shiny::renderUI({
-      s <- collected()$stray
-      if (!length(s)) return(NULL)
-      shiny::div(class = "alert alert-warning py-2 small mt-2",
-                 sprintf(t("Not read (no request of that name): %s -- rename it to a request's name."),
-                         paste(s, collapse = ", ")))
-    })
+    shiny::observeEvent(input$open_report, open_report(input$open_report$id, input$open_report$item))
 
     # -- step 1: the requests prepared (tfl_ai_prepare()) ----------------------
     prepared <- shiny::reactiveVal(NULL)
@@ -528,20 +312,6 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           adam_auto <<- d
         }
       })
-    })
-    # the reports a request holds: 1 for a coding agent (the default), 3 for a chat
-    # (tflspec's); a number changed by hand kept when the mode changes
-    # (the first mode seen: its default the number put in by itself)
-    size_auto <- NULL
-    shiny::observeEvent(input$mode, {
-      d <- .ai_size_default(input$mode)
-      now <- input$size
-      same <- function(a, b) !is.null(b) && isTRUE(all.equal(as.numeric(a), b))
-      if (is.null(now) || is.na(now) || same(now, size_auto) ||
-          (is.null(size_auto) && same(now, d))) {
-        if (!same(now, d)) shiny::updateNumericInput(session, "size", value = d)
-        size_auto <<- d
-      }
     })
     output$open_name <- shiny::renderUI({
       if (!identical(input$study_mode, "open")) return(NULL)
@@ -661,13 +431,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                  sprintf(t("Read: %s (copied into the study's docs/ when the requests are written)"),
                          src$name))
     })
-    # the reports a request holds as the field says (the mode's default when
-    # it is empty)
-    size_now <- function() {
-      size <- input$size
-      if (is.null(size) || !length(size) || is.na(size)) size <- .ai_size_default(input$mode)
-      as.integer(size)
-    }
+    # the reports a request holds: the agent's, one (each report its own
+    # request: it asks before it writes)
+    size_now <- function() as.integer(.ai_size_default("agent"))
     # what the read was for: the workbooks and their sheets (changed, the
     # read is out of date: read again); the size it counted the requests at
     read_key <- function() {
@@ -724,7 +490,6 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     })
     # (the agent's scope)
     scope_args <- function() {
-      if (!identical(input$mode %||% "agent", "agent")) return(list())
       mr <- suppressWarnings(as.integer(input$agent_max_reads))
       c(list(agent_reads = as.character(input$agent_reads %||% character())),
         if (length(mr) && !is.na(mr) && mr >= 0L) list(agent_max_reads = mr),
@@ -733,16 +498,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     args_of <- function(p) {
       all <- if (!is.null(p)) p$adam$datasets$dataset
       ds <- input$datasets
-      mc <- input$max_chars
-      # (always given: the mode's default when the field is empty)
-      size <- size_now()
       list(toc_sheet = nz(input$toc_sheet), sheets = if (length(input$sheets)) input$sheets,
-           size = as.integer(size), language = nz(input$language),
-           workbook = input$workbook %||% "text", instructions = if (isTRUE(input$instructions_each)) "each" else "once",
-           max_chars = if (is.null(mc) || is.na(mc)) NULL else mc,
+           size = size_now(), language = nz(input$language),
            datasets = if (!is.null(all) && length(ds) && !setequal(ds, all)) ds,
            max_levels = as.integer(input$max_levels %||% 15L),
-           mode = input$mode %||% "agent",
            templates = !isFALSE(input$templates),
            add = isTRUE(input$add) && !is_new(),
            sheet_roles = roles_now(),
@@ -1109,13 +868,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     # -- a coding agent (mode = "agent") ---------------------------------------
     # The study's mode: what was written last here, else the study's
     # AGENTS.md (tfl_ai_prepare(mode = "agent") writes it)
-    mode_now <- shiny::reactive({
-      ver()
-      p <- path()
-      pr <- prepared()
-      if (!is.null(pr) && !isTRUE(pr$dry_run) && !is.null(pr$mode)) return(pr$mode)
-      .ai_mode(p)
-    })
+    # (one way now: the agent writes the SPEC drafts)
+    mode_now <- shiny::reactive("agent")
     output$mode_now <- shiny::renderText(mode_now())
     shiny::outputOptions(output, "mode_now", suspendWhenHidden = FALSE)
     # the agent's first message: tfl_ai_prepare()'s, else made again from
@@ -1173,171 +927,87 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     shiny::observe({
       session$sendCustomMessage("ai-disable", list(id = ns("status_reread"), on = isTRUE(dirty())))
     })
-    status_ver <- shiny::reactiveVal(0L)
-    # the status run.R wrote, read again, and the answers checked (the
-    # reports taken in, as Check all does)
-    shiny::observeEvent(input$status_reread, {
-      status_ver(status_ver() + 1L)
-      q_ver(q_ver() + 1L)
-      check_all()
-    })
-    output$status_md <- shiny::renderUI({
-      status_ver()
-      ver()
-      p <- path()
-      shiny::req(p)
-      f <- file.path(p, "ai", "status.md")
-      if (!file.exists(f)) {
-        return(shiny::p(class = "small text-muted", t("No ai/status.md yet: run.R writes it.")))
-      }
-      txt <- tryCatch(.ai_read_text(f), error = function(e) conditionMessage(e))
-      shiny::div(class = "small ai-status-md",
-                 # (when run.R wrote it: beside the check's own time)
-                 shiny::div(class = "text-muted", sprintf(t("ai/status.md, written %s"),
-                                                          format(file.mtime(f), "%Y-%m-%d %H:%M"))),
-                 shiny::markdown(txt))
-    })
+    # Check: the drafts read and checked again (the reports taken in)
+    shiny::observeEvent(input$status_reread, check_all())
+    # A report's row of the check, opened: what its draft's `ai:` block says
+    # -- what the agent assumed, what it left to confirm -- read only; a
+    # place to confirm opens the report in the builder, its card in view
+    # (the report copied into the study first)
+    ai_block <- function(id, file) {
+      cf <- collected()$confirm
+      cf <- if (is.null(cf)) NULL else cf[cf$output_id == id, , drop = FALSE]
+      f <- if (!is.na(file) && nzchar(file)) file.path(path(), file)
+      y <- if (!is.null(f) && file.exists(f)) tryCatch(tflspec::tfl_read_output(f)$ai, error = function(e) NULL)
+      asm <- y$assumptions %||% list()
+      adopted <- .ai_in_study_spec(file)
+      txt <- function(x) if (is.null(x)) "" else paste(as.character(unlist(x)), collapse = " ")
+      shiny::div(
+        class = "ms-2",
+        if (length(asm)) shiny::tagList(
+          shiny::div(class = "fw-bold mt-1", paste0(t("What the agent assumed"), " (ai: assumptions)")),
+          shiny::tags$ul(class = "mb-1", lapply(asm, function(a) shiny::tags$li(
+            shiny::span(class = "text-muted", txt(a$where)), " ", shiny::code(txt(a$item)), " ",
+            txt(a$assumption),
+            if (length(a$from)) shiny::span(class = "badge text-bg-info ms-1",
+                                            sprintf(t("from %s"), txt(a$from))))))),
+        if (!is.null(cf) && nrow(cf)) shiny::tagList(
+          shiny::div(class = "fw-bold mt-1", paste0(t("To confirm"), " (ai: confirm)")),
+          shiny::tags$ul(class = "mb-1", lapply(seq_len(nrow(cf)), function(i) shiny::tags$li(
+            shiny::span(class = "text-muted", cf$where[i] %||% ""), " ", shiny::code(cf$item[i] %||% ""), " ",
+            cf$why[i] %||% "", " ",
+            if (adopted) shiny::tags$button(
+              type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
+              `data-ns` = ns(""), `data-id` = id,
+              `data-item` = if (identical(cf$where[i], "content")) cf$item[i] else "",
+              t("Open in Make a report"))
+            else shiny::span(class = "text-muted", t("Copy it into the study first (step 4)")))))),
+        if (!length(asm) && (is.null(cf) || !nrow(cf)))
+          shiny::div(class = "text-muted", t("Nothing assumed, nothing to confirm.")))
+    }
     output$result_all <- shiny::renderUI({
       co <- collected()
-      # (the check's table is this session's; the list of every report,
-      # read from the files, is step 4's)
       if (is.null(co)) {
         return(shiny::p(class = "small text-muted mt-2",
-                        t("Check first. Every report the AI drafted, kept from the files, is in step 4.")))
+                        t("Check reads the agent's SPEC drafts. Every report the AI drafted is in step 4.")))
       }
       r <- co$reports
       cls <- c(ok = "text-success", warning = "text-warning", error = "text-danger",
                `no answer` = "text-muted")
-      u <- unbuilt()
-      kept <- names(attr(u, "texts"))
-      # a report that passed its checks but run.R could not build: the reason
-      why <- function(i) {
-        if (is.null(u) || !r$status[i] %in% c("ok", "warning")) return(NA_character_)
-        x <- u$reason[u$request == r$request[i] & u$output_id == r$output_id[i]]
-        if (length(x)) x[1L] else NA_character_
-      }
-      # a request's buttons, on its first row: its fix request, and the line
-      # to rebuild it alone
-      req_btns <- function(i) {
-        q <- r$request[i]
-        if (i > 1L && identical(r$request[i - 1L], q)) return(NULL)
-        rows <- r$request == q
-        fix <- any(!is.na(r$repair[rows])) || q %in% kept
-        shiny::div(
-          class = "d-flex flex-wrap gap-1 mt-1",
-          if (fix) shiny::HTML(act("repair", q, c(copy = t("Copy the fix request"), view = t("View")))),
-          if (q %in% attr(u, "build"))
-            shiny::HTML(act("build", q, c(copy = t("Copy the fix request to rebuild"),
-                                          view = t("View")))),
-          if (any(r$status[rows] %in% c("ok", "warning")))
-            shiny::HTML(act("rerun", q, c(copy = t("Copy: rebuild only this request")))),
-          if (file.exists(file.path(path(), "ai", "answers", paste0(q, ".md"))))
-            shiny::HTML(act("answer", q, c(view = t("View the answer")))))
+      cf <- co$confirm
+      n_cf <- function(id) if (is.null(cf)) 0L else sum(cf$output_id == id)
+      # an ERROR or WARNING row's fix text, for the agent's chat (its
+      # request's: one report a request)
+      fix_btn <- function(i) {
+        if (!r$status[i] %in% c("error", "warning") || is.na(r$repair[i])) return(NULL)
+        shiny::HTML(act("repair", r$request[i], c(copy = t("Copy the fix text"), view = t("View"))))
       }
       shiny::tagList(
-      if (!is.null(co$time)) shiny::div(class = "small text-muted mt-2",
-                                        sprintf(t("Checked %s"), format(co$time, "%Y-%m-%d %H:%M"))),
-      shiny::tags$table(
-        class = "table table-sm small mt-2 ai-result-all",
-        shiny::tags$thead(shiny::tags$tr(lapply(c(t("request"), "output_id", t("status"),
-                                                  t("first problem"), ""), shiny::tags$th))),
-        shiny::tags$tbody(lapply(seq_len(nrow(r)), function(i) {
-          w <- why(i)
-          shiny::tags$tr(
-            shiny::tags$td(r$request[i], req_btns(i)), shiny::tags$td(r$output_id[i]),
-            shiny::tags$td(class = cls[[r$status[i]]] %||% "", t(r$status[i])),
-            shiny::tags$td(
-              if (!is.na(w)) shiny::tagList(
-                shiny::span(class = "text-danger ai-unbuilt",
-                            paste0(t("Could not be built:"), " ", .ai_short(w))), " ",
-                shiny::HTML(act("unbuilt", r$request[i], c(view = t("View")))))
-              else if (is.na(r$first[i])) "" else r$first[i]),
-            shiny::tags$td(if (r$status[i] %in% c("ok", "warning") && .ai_in_study_spec(r$file[i]))
-              shiny::tags$button(
-                type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
-                `data-ns` = ns(""), `data-id` = r$output_id[i], t("Open in Make a report"))))
-        }))))
-    })
-
-    # the questions (ai/questions.md): one a row, the open ones first, an
-    # answer field each; saved with tfl_ai_answer_questions()
-    q_ver <- shiny::reactiveVal(0L)
-    questions <- shiny::reactive({
-      q_ver()
-      asm_saved()
-      p <- path()
-      if (is.null(p)) return(NULL)
-      # (none yet: an agent writes ai/questions.md when it has questions;
-      # a chat's questions are in its assumptions, step 3)
-      if (!file.exists(file.path(p, "ai", "questions.md"))) {
-        return(structure(data.frame(), why = if (identical(mode_now(), "agent")) "none yet" else "chat"))
-      }
-      tryCatch(.ai_questions(p), error = function(e) {
-        message("tflplanner: ai/questions.md: ", conditionMessage(e))
-        NULL
-      })
-    })
-    q_input <- function(id) paste0("qa_", gsub("[^A-Za-z0-9_]", "_", id))
-    # a question's status in the app's words (its own keys: "open" is a word
-    # of other places too)
-    q_status <- function(s) {
-      v <- t(paste0("question-status:", s))
-      if (startsWith(v, "question-status:")) s else v
-    }
-    output$questions <- shiny::renderUI({
-      q <- questions()
-      if (is.null(q) || !nrow(q)) {
-        why <- attr(q, "why")
-        return(shiny::p(class = "small text-muted", t(
-          if (identical(why, "chat")) "No questions: a chat writes its questions in its assumptions (step 3)."
-          else if (identical(why, "none yet")) "No questions yet: the agent writes ai/questions.md when it has some."
-          else "No questions.")))
-      }
-      shiny::tagList(lapply(seq_len(nrow(q)), function(i) {
-        open <- !identical(q$status[i], "decided")
-        shiny::div(
-          class = paste("ai-question border-bottom py-2", if (!open) "text-muted"),
-          shiny::div(
-            class = "d-flex flex-wrap gap-2 align-items-baseline",
-            shiny::tags$b(q$id[i]),
-            shiny::span(class = paste("badge", if (open) "text-bg-warning" else "text-bg-secondary"),
-                        q_status(q$status[i])),
-            shiny::span(class = "small", q$output_id[i]),
-            if (!is.na(q$where[i]) && nzchar(q$where[i]))
-              shiny::span(class = "small text-muted", q$where[i])),
-          shiny::div(class = "mt-1", q$question[i]),
-          if (!is.na(q$provisional[i]) && nzchar(q$provisional[i])) shiny::div(
-            class = "small text-muted",
-            shiny::tags$b(t("The agent took, for now:")), " ", q$provisional[i]),
-          shiny::textAreaInput(ns(q_input(q$id[i])), NULL,
-                               value = if (is.na(q$answer[i])) "" else q$answer[i],
-                               rows = 2, width = "100%", resize = "vertical",
-                               placeholder = t("Your answer")))
-      }))
-    })
-    shiny::observeEvent(input$questions_write, {
-      q <- questions()
-      shiny::req(q, nrow(q))
-      typed <- vapply(q$id, function(id) input[[q_input(id)]] %||% "", "")
-      old <- ifelse(is.na(q$answer), "", q$answer)
-      # only what was typed (an answer emptied here is left as it was)
-      put <- nzchar(trimws(typed)) & trimws(typed) != trimws(old)
-      if (!any(put)) return(notify(t("No new answer to write."), "warning"))
-      f <- guarded(.ai_answer_questions(path(), stats::setNames(typed[put], q$id[put])))
-      if (is.null(f)) return()
-      q_ver(q_ver() + 1L)
-      tell(TRUE)
-      notify(sprintf(t("%d answers saved to ai/questions.md. Then write the corrections in \"The next round\" below."),
-                     sum(put)))
-    })
-    tell <- shiny::reactiveVal(FALSE)
-    output$tell_agent <- shiny::renderUI({
-      if (!isTRUE(tell())) return(NULL)
-      shiny::HTML(act("tell", "tell", c(copy = t("Copy the line to tell the agent"))))
+        if (!is.null(co$time)) shiny::div(class = "small text-muted mt-2",
+                                          sprintf(t("Checked %s"), format(co$time, "%Y-%m-%d %H:%M"))),
+        shiny::tags$table(
+          class = "table table-sm small mt-2 ai-result-all",
+          shiny::tags$thead(shiny::tags$tr(lapply(c("output_id", t("Check"), t("To confirm"),
+                                                    t("first problem"), ""), shiny::tags$th))),
+          shiny::tags$tbody(lapply(seq_len(nrow(r)), function(i) {
+            k <- n_cf(r$output_id[i])
+            shiny::tagList(
+              shiny::tags$tr(
+                shiny::tags$td(r$output_id[i]),
+                shiny::tags$td(class = cls[[r$status[i]]] %||% "", t(.ai_check_level(r$status[i]))),
+                shiny::tags$td(if (k) shiny::span(class = "text-warning", sprintf(t("%d to confirm"), k)) else ""),
+                shiny::tags$td(if (is.na(r$first[i])) "" else r$first[i]),
+                shiny::tags$td(fix_btn(i))),
+              # (opened: what the draft's ai: block says)
+              if (!r$status[i] %in% "no answer") shiny::tags$tr(shiny::tags$td(
+                colspan = 5, class = "border-0 pt-0",
+                shiny::tags$details(
+                  shiny::tags$summary(class = "text-muted", t("What the agent assumed and left to confirm")),
+                  ai_block(r$output_id[i], r$file[i])))))
+          }))))
     })
 
     list(requests = requests, collected = collected, prepared = prepared,
-         questions = questions, mode = mode_now,
+         mode = mode_now,
          text = function(id, what = "request") shiny::isolate(text_of(what, id)))
   })
 }
