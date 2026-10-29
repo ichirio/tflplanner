@@ -198,6 +198,8 @@
       lapply(opt, function(x) tpl_widget(tpl_arg_id(nm, x$name), x, tpl_opt_start(x),
                                          dataset = prm$data$default, params = prm)))
   })
+  # (bound while the dialog fades in, it counts as hidden: drawn anyway)
+  shiny::outputOptions(output, "tpl_modal_more", suspendWhenHidden = FALSE)
   # a template whose data stage is the report's (a KM type): the report's
   # data asked in the dialog -- the dataset, its parameter, the analysis
   # set -- written as its `data:` steps
