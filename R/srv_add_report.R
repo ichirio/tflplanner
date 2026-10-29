@@ -2,21 +2,6 @@
 # app_server()'s environment (.srv_part()); what it makes is copied back
 # there for the parts after it (.srv_keep()).
 .srv_add_report <- function() {
-  # the new report's section, as the Add dialog gave it
-  put_section <- function(id) {
-    s <- trimws(input$modal_section %||% "")
-    i <- match(id, rv$p$outputs$output_id)
-    if (nzchar(s) && !is.na(i)) rv$p$outputs$section[i] <- s
-    # and its analysis set (its data made)
-    pop <- input$modal_pop %||% ""
-    if (nzchar(pop) && !is.na(i)) {
-      p <- guarded(set_report_population(rv$p, id, pop))
-      if (!is.null(p)) {
-        attr(p, "made") <- attr(p, "left") <- NULL
-        rv$p <- p
-      }
-    }
-  }
   shiny::observeEvent(input$add_ok, {
     id <- .id_with_prefix(input$modal_id, input$modal_type)
     # (a new report until the study is saved: the usual cards, empty -- #440)
@@ -24,10 +9,6 @@
     d <- trimws(input$modal_desc)
     desc <- if (nzchar(d)) d else NA
     if (identical(input$modal_how, "template")) return(add_template_report(id, desc))
-    if (identical(input$modal_type, "listing") && isTRUE(input$modal_first_l)) {
-      on.exit(put_section(id), add = TRUE)
-      return(start_first_listing(id, desc))
-    }
     sec <- trimws(input$modal_section %||% "")
     p2 <- guarded(add_output(rv$p, id, description = desc,
                              type = input$modal_type,
@@ -106,6 +87,11 @@
       choices = shiny::selectizeInput(
         input_id, lab, union(as.character(shown), as.character(prm$choices)),
         selected = as.character(shown), multiple = TRUE, width = "100%", options = rm_btn),
+      # (a listing's columns: the data's, in order, each its heading and
+      # width -- the template's `data` field beside it, by its id)
+      columns = .tpl_columns_widget(input_id, lab, shown, data,
+                                    data_id = sub("__columns$", "__data", input_id),
+                                    dataset = args$data %||% params$data$default %||% dataset, t = t),
       text = shiny::textInput(input_id, lab, value = if (is.null(shown)) "" else .tpl_show(shown),
                               width = "100%", updateOn = "blur",
                               placeholder = if (is.null(prm$default)) t("(default)")),
@@ -468,12 +454,12 @@
     if (is.null(tp) || !identical(tp$name, name)) return()
     prm <- .tpl_params(name)[[a]]
     type <- .tpl_type(prm, tpl_all_cols())
-    if (identical(type, "list") && is.null(.tpl_list_text(tp$args[[a]] %||% prm$default, prm))) return()
+    if (type %in% c("list", "columns") && is.null(.tpl_list_text(tp$args[[a]] %||% prm$default, prm))) return()
     val <- .tpl_value(v, type, prm)
     # (a field drawn again says its value back: what it shows already --
     # the report's, the study's or the default -- is no edit)
     shown <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
-    same <- if (identical(type, "list")) {
+    same <- if (type %in% c("list", "columns")) {
       identical(.tpl_list_text(val, prm), .tpl_list_text(shown, prm))
     } else !is.null(val) && identical(as.character(unlist(val)), as.character(unlist(shown)))
     if (same) return()
@@ -961,73 +947,6 @@
       class = "mt-2",
       shiny::tags$summary(class = "small", t("The content's code expanded")),
       shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", code)))
-  })
-  # -- the first listing: the data and its columns --------------------------
-  first_data_l <- shiny::reactive({
-    shiny::req(input$ml_data %in% first_files())
-    guarded(read_data_head(.data_file(rv$study$path, input$ml_data), n = 2000L))
-  })
-  output$modal_first_l_ui <- shiny::renderUI({
-    f <- first_files()
-    if (!length(f)) {
-      return(shiny::div(class = "alert alert-warning py-1 small",
-        t("No data files yet: put them on the Data tab (data/adam), then add the listing.")))
-    }
-    shiny::tagList(
-      shiny::selectInput("ml_data", t("Data"), f,
-                         selected = c(grep("adae", f, value = TRUE), f)[1L],
-                         width = "100%"),
-      shiny::uiOutput("ml_cols"))
-  })
-  output$ml_cols <- shiny::renderUI({
-    d <- first_data_l()
-    shiny::req(d)
-    cols <- as.list(d)
-    grp <- .group_choices(cols)
-    all <- .labelled(names(cols), cols)
-    usual <- c("USUBJID", "AEBODSYS", "AEDECOD", "ASTDT", "AENDT", "AESEV",
-               "AESER", "AEREL", "AEOUT", "PARAM", "AVISIT", "AVAL", "AVALC",
-               "CMDECOD", "MHDECOD")
-    shiny::tagList(
-      shiny::selectInput("ml_group", t("Group (ordered by first; optional)"),
-                         c(stats::setNames("", t("(none)")), grp),
-                         selected = c(intersect(c("TRTA", "TRT01A", "ARM"), grp), "")[1L],
-                         width = "100%"),
-      shiny::selectizeInput(
-        "ml_cols_pick", t("Columns (in order)"), all,
-        selected = intersect(usual, names(cols)), multiple = TRUE,
-        width = "100%",
-        options = list(plugins = list("remove_button", "drag_drop"))),
-      shiny::p(class = "small text-muted",
-               t("Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards in step 2 (Content).")))
-  })
-  start_first_listing <- function(id, desc) {
-    d <- first_data_l()
-    if (is.null(d)) return(notify(t("Choose the data"), "warning"))
-    g <- input$ml_group
-    p2 <- guarded(first_listing(rv$p, id, input$ml_data, d,
-                                columns = input$ml_cols_pick,
-                                group = if (length(g) && nzchar(g)) g,
-                                description = desc))
-    if (is.null(p2)) return()
-    after_id_change(p2, id)
-    go("lf")
-    lf_show_preview(id)
-  }
-  # -- the data files a report can start from (the first listing) ---------
-  first_files <- shiny::reactive({
-    f <- data_files()
-    ok <- !is.na(vapply(f$folder, .folder_level, "", USE.NAMES = FALSE)) &
-      tolower(tools::file_ext(f$file)) %in% .data_exts
-    mine <- file.path(f$folder, f$file)[ok]
-    # and the catalog's files outside the study folder (ADaM kept
-    # elsewhere), said so
-    p <- rv$p$ard$datasets$path
-    p <- unique(p[!is.na(p) & tolower(tools::file_ext(p)) %in% .data_exts])
-    p <- p[.data_outside(rv$study$path, p)]
-    p <- p[file.exists(.data_file(rv$study$path, p))]
-    c(stats::setNames(mine, mine),
-      stats::setNames(p, sprintf(t("%s (outside the study folder)"), p)))
   })
   .srv_keep(environment())
 }
