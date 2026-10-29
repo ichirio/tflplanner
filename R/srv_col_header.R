@@ -666,8 +666,8 @@
           rec_cache[[id]] <- list(key = key, d = r)
           r
         }
-        objs <- Filter(Negate(is.null), list(data = recs, ard = ard_raw(rv$study, id)))
-        if (is.null(objs$data) && is.null(objs$ard)) {
+        objs <- Filter(Negate(is.null), c(recs, list(ard = ard_raw(rv$study, id))))
+        if (!length(objs)) {
           return(list(id = id, error = t("No data to show yet: Update preview makes this table's ARD.")))
         }
         list(id = id, pages = .preview_content_pages(rv$p, id, objs))
