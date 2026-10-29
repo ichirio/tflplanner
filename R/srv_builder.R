@@ -521,7 +521,7 @@
     bodies <- Filter(Negate(is.null), bodies)
     shiny::div(
       class = "rp-builder-cards", `data-back` = t("Back to the code"),
-      .part_scope_bar(rv$p, current(), bpart(), lang),
+      .part_scope_bar(p0, current(), bpart(), lang),
       .table_cards(items, bodies, id = card_id, lang = lang, new = new_card,
                    level_from = st$level_from),
       # the other verbs: "+ Add a card", in the pipe's order, below the last
