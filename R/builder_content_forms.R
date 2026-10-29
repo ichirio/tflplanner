@@ -14,7 +14,11 @@
 # a form card's main arguments: those its schema marks `main`
 .plan_form_main <- function(fn) {
   a <- .schema_of(fn)$args %||% list()
-  names(a)[vapply(a, function(x) isTRUE(x$main), NA)]
+  m <- names(a)[vapply(a, function(x) isTRUE(x$main), NA)]
+  # (in the function's order, as its fields are drawn)
+  fo <- tryCatch(names(formals(utils::getFromNamespace(fn, "rtfreporter"))),
+                 error = function(e) character())
+  .arg_order(m, fo)
 }
 
 # the types the form uses over the schema's: a choice of the usual values,
