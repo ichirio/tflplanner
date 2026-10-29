@@ -4,4 +4,3 @@
 "No file %s.","ファイル %s がありません。"
 "The TOC / SHELL workbook is an .xlsx or .xlsm file.","TOC / SHELL ブックは .xlsx か .xlsm のファイルです。"
 "%s cannot be read: is it open in another program (Excel)?","%s を読めません: 別のプログラム（Excel）で開いていませんか？"
-"%d parts (%s)","Part %d つ（%s）"
