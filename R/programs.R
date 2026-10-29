@@ -835,7 +835,7 @@ report_setup_code <- function(x, date = Sys.Date()) {
     "record_report <- function(output_id, ard = \"\") {",
     paste0("  sf <- ", .r_string(sf)),
     # the study setup's fingerprint on a line of its own
-    paste0("  setup <- ", .setup_hash_code()),
+    paste0("  setup <- ", .report_setup_hash_code()),
     "  row <- data.frame(output_id = output_id,",
     "                    built = format(Sys.time(), \"%Y-%m-%d %H:%M:%S\"),",
     "                    setup = setup,",
