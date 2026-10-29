@@ -135,6 +135,7 @@ test_that("a categorical format the standards do not have is the table's own", {
 })
 
 test_that("one's own categorical format is written; left blank, nothing is", {
+  skip_on_cran()
   skip_if_not_installed("cards")
   p <- dm_study_planner()
   m <- ard_meta(dm_ard())

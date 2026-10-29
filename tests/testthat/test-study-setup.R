@@ -355,13 +355,17 @@ test_that("a change to report_setup.R (the rounding) marks the reports outdated,
                                   built = "2026-10-08 10:00:00", rows = 10L,
                                   error = "", setup = .study_setup_hash(s$path),
                                   stringsAsFactors = FALSE))
-  info <- report_info(s$planner, "DM")
-  rtf <- file.path(s$path, info$file)
-  dir.create(dirname(rtf), recursive = TRUE, showWarnings = FALSE)
-  writeLines("{\rtf1}", rtf)
+  # report_setup.R, then the RTF (a program newer than its RTF is outdated
+  # anyway: report_setup.R keeps its time below)
   rs <- file.path(s$path, .report_setup_path())
   dir.create(dirname(rs), recursive = TRUE, showWarnings = FALSE)
   writeLines("options(rtfreporter.rounding = \"sas\")", rs)
+  then <- Sys.time() - 3600
+  Sys.setFileTime(rs, then)
+  info <- report_info(s$planner, "DM")
+  rtf <- file.path(s$path, info$file)
+  dir.create(dirname(rtf), recursive = TRUE, showWarnings = FALSE)
+  writeLines("{\\rtf1}", rtf)
   rec <- report_setup_code(s$planner)
   rec <- rec[seq(grep("^record_report <- function", rec), length(rec) - 1L)]
   withr::with_dir(s$path, {
@@ -372,7 +376,9 @@ test_that("a change to report_setup.R (the rounding) marks the reports outdated,
   expect_equal(study_status(s)$status, "ok")
   # the study's rounding changed: report_setup.R written again
   writeLines("options(rtfreporter.rounding = \"r\")", rs)
+  Sys.setFileTime(rs, then)
   expect_equal(study_status(s)$status, "outdated")
+  expect_match(study_status(s)$why, "setup", fixed = TRUE)
   expect_equal(.report_run_light(s)$status, "outdated")
   expect_equal(ard_status(s)$state, "built")
   # a record of study_setup.R alone (made before): held to it alone
