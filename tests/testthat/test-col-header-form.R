@@ -55,6 +55,7 @@ test_that("the tokens are the table's", {
   expect_true(all(c("{col1}", "{col2}", "{n2}") %in%
                     header_token_choices(c("TRT01A", "SEX"))))
   expect_true("{N}" %in% header_token_choices("TRT01A", "n = page | N = table"))
+  expect_identical(header_token_choices("TRT01A", NULL), c("{col}", "{n}", "{n:sum}"))
   expect_true(header_uses_n(list(list(text = "(N={n})", stub = c(row_label = NA)))))
   expect_false(header_uses_n(list(list(text = "{col}", stub = c(row_label = NA)))))
 })
