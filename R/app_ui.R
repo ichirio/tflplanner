@@ -501,7 +501,12 @@ app_ui <- function(lang = "en") {
                               shiny::span(id = "builder_updating",
                                           class = "badge text-bg-warning ms-2 d-none",
                                           t("Updating ..."))),
-                  shiny::uiOutput("builder_pages", inline = TRUE)),
+                  # (the same Update preview as the other steps', here too:
+                  # a template's step 1 has no other)
+                  shiny::div(class = "d-flex gap-2 align-items-center",
+                             .btn("result_fetch", t("Update preview"),
+                                  class = "btn-sm btn-outline-primary py-0"),
+                             shiny::uiOutput("builder_pages", inline = TRUE))),
                 shiny::uiOutput("builder_preview"))))))),
       shiny::conditionalPanel(
         "output.report_kind == 'listing' && output.content_is_code != 'yes'",
