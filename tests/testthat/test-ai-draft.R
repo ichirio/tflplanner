@@ -1106,6 +1106,13 @@ test_that("the drafts' check: a level and what is to confirm a report, the fix t
   expect_identical(r$level[match(c("T-1", "T-2"), r$output_id)], c("OK", "ERROR"))
   expect_identical(r$confirms[r$output_id == "T-1"], 1L)
   expect_identical(names(ck$fix), "T-2")
+  # built too: T-1 reads but cannot be made (no data here) -- an ERROR, with
+  # its fix text, like the others
+  if ("build" %in% names(formals(tflspec::tfl_check_spec))) {
+    cb <- .ai_check_drafts(path, build = TRUE)
+    expect_identical(cb$reports$level[match("T-1", cb$reports$output_id)], "ERROR")
+    expect_true(all(c("T-1", "T-2") %in% names(cb$fix)))
+  }
   # the fix text's language: the study's (study.yml's ai: language)
   expect_identical(.ai_fix_language(path), "en")
   writeLines(c("study_id: X", "ai:", "  language: Japanese"), file.path(path, "study.yml"))

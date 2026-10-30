@@ -122,3 +122,5 @@
 "ADaM spec (P21 Spec workbook or define.xml)","ADaM の仕様（P21 Spec の Excel か define.xml）"
 "The ADaM spec is a P21 Spec workbook (.xlsx) or a define.xml.","ADaM の仕様は P21 Spec の Excel（.xlsx）か define.xml です。"
 "No ADaM spec %s.","ADaM の仕様 %s がありません。"
+"Checking and building each draft...","下書きを検査し、1 つずつ作っています…"
+"About 5 seconds a report.","1 帳票あたり 5 秒ほどかかります。"

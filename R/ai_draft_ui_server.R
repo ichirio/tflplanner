@@ -216,7 +216,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         return()
       }
       keep_unbuilt()
-      co <- guarded(.ai_collect(path()))
+      # (each draft built too: a few seconds a report)
+      co <- shiny::withProgress(message = t("Checking and building each draft..."),
+                                detail = t("About 5 seconds a report."), value = 0.3,
+                                guarded(.ai_collect(path(), build = TRUE)))
       if (is.null(co)) return()
       collected(co)
       ver(ver() + 1L)
