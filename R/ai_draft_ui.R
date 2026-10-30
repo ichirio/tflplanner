@@ -177,7 +177,7 @@ ai_ui <- function(id, lang = "en") {
                 value = 3L, min = 0L, step = 1L, width = "14rem"),
               .ai_path_input(ns("ref_path"),
                              with_tip(paste0(t("Add a reference"), " (docs)"),
-                                      t("Only the files chosen here (a SAP, say): copied into the study's ai/docs/, named in AGENTS.md. None: the agent reads none.")),
+                                      t("Only the files chosen here (a SAP, say), named in AGENTS.md. One in the study folder is read where it is (a .docx / .pdf / .xlsx gets a text copy in ai/docs/); one from elsewhere is copied into ai/docs/. None: the agent reads none.")),
                              "C:/.../SAP.pdf", ns("ref_browse"), t("Browse...")),
               shiny::div(class = "d-flex gap-2 mb-2",
                          .btn(ns("ref_add"), t("Add"), class = "btn-sm btn-outline-secondary")),
