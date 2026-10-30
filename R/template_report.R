@@ -85,7 +85,8 @@
 # The input a parameter gets: population, data, var (one column), vars
 # (columns, in order), levels (a variable's values), flag, number, text,
 # chips (several texts), choice (one of tfl_param(choices = )), choices
-# (several of them), list (a small table of lines, "a | b").  By the type
+# (several of them), list (a small table of lines, "a | b"), columns (a
+# listing's: R/tpl_columns_ui.R).  By the type
 # tflspec declares (tfl_param(type = )); guessed from the default and the
 # doc only when it declares none.
 .tpl_type <- function(prm, columns = character()) {
@@ -94,6 +95,7 @@
   if (identical(n, "data")) return("data")
   several <- isTRUE(prm$multiple)
   ty <- prm$type
+  if (.tpl_is_columns(prm)) return("columns")
   if (length(ty) == 1L && nzchar(ty)) {
     return(switch(ty,
       vars = if (several) "vars" else "var",
@@ -204,6 +206,8 @@
   val <- function(v, several = FALSE) {
     if (!nzchar(v)) return(NULL)
     if (v %in% c("TRUE", "FALSE")) return(v == "TRUE")
+    # (a whole number as one: a column's width 15, not 15.0)
+    if (grepl("^-?[0-9]+$", v)) return(as.integer(v))
     if (grepl("^-?[0-9]+(\\.[0-9]+)?$", v)) return(as.numeric(v))
     if (several && grepl(",", v, fixed = TRUE)) return(trimws(strsplit(v, ",", fixed = TRUE)[[1L]]))
     v
@@ -248,7 +252,7 @@
       v <- v[nzchar(trimws(v))]
       if (!length(v)) NULL else if (identical(type, "levels") && !isTRUE(prm$multiple)) v[1L] else v
     },
-    list = .tpl_list_parse(v, prm),
+    list = , columns = .tpl_list_parse(v, prm),
     {
       v <- trimws(paste(as.character(v), collapse = ""))
       if (nzchar(v)) v else NULL

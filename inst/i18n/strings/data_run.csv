@@ -76,3 +76,4 @@
 "Their draft changed after they were adopted (step 4 of the AI tab shows what changed): %s.","採用した後に下書きが変わっています（何が変わったかは AI 連携の手順 4 で見られます）: %s。"
 "They wait for corrections you asked the agent for (an assumption answered wrong, or dropped from your list): %s.","エージェントに頼んだ修正を待っています（仮定に「違う」と答えた、または自分の一覧で不要にした）: %s。"
 "The run makes them as the study has them now.","実行では、今の試験にある形のまま作ります。"
+"They have places the AI left to confirm (step 3 of the AI tab lists them): %s.","AI が決めきれず要確認の所があります（AI タブの手順 3 に一覧があります）: %s。"

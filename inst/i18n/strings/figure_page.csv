@@ -5,7 +5,6 @@
 "The definition has changed: saving rewrites the program as below (a program nobody edited follows the definition).","定義が変わっています。保存すると下の内容に更新されます（手修正のないプログラムは定義に追従します）。"
 "Add a report","帳票を追加"
 "Nothing yet: the button above makes this table's ARD.","まだありません。上のボタンでこの表の ARD を作ります。"
-"Start the listing from the data (writes its columns and shows it)","データから Listing を始める（列を書き、プレビューします）"
 "Start from the data","データから始める"
 "This report's font","この帳票のフォント"
 "Blank: every report's font and size (the study tab). A value here is this report's own (its row of the page sheet).","空欄なら全帳票のフォントと大きさ（試験タブ）になります。ここに入れた値はこの帳票だけのものです（page シートのこの帳票の行）。"
@@ -25,5 +24,4 @@
 "(your code)","（自分のコード）"
 "(the figure: [Run the code] in step 2 draws it here)","（図: 手順 2 の［試しに実行］でここに描かれます）"
 "(the figure: its design in step 2 draws it here)","（図: 手順 2 のデザインからここに描かれます）"
-"A kind of table: a few questions about the data, then its ARD definition and its table are written -- all of it editable afterwards.","表の種類とデータについて数問答えると、ARD 定義と表が書かれます。後から編集できます。"
 "How to make it","作り方"
