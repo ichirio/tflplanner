@@ -38,3 +38,11 @@
   planner$ard$datasets$path[ch] <- to[ch]
   list(planner = planner, changed = changed)
 }
+
+# Does a report make an ARD -- a data step of its own, or analyses / ARD
+# code (as fetch_ard() asks)?  A figure or a listing that reads its data
+# itself does not: its preview makes none, and says no error
+.report_uses_ard <- function(p, output_id) {
+  tryCatch(.is_code_step(p, output_id, "data") || !is.na(.ard_code_of(p, output_id)),
+           error = function(e) TRUE)
+}

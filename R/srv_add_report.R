@@ -901,6 +901,7 @@
     shiny::req(id)
     rv$ard_ver
     r <- ard_res()
+    shiny::validate(shiny::need(.report_uses_ard(rv$p, id), t("This report uses no ARD.")))
     a <- if (!is.null(r) && identical(r$scope, id)) r$ard else
       tryCatch(ard_raw(current_study(), id, rows = TRUE), error = function(e) NULL)
     shiny::validate(shiny::need(!is.null(a), t("No ARD yet: Update preview makes it.")))

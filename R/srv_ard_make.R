@@ -49,6 +49,7 @@
   shiny::observeEvent(input$page_fetch, do_preview())
   shiny::observeEvent(input$fetch2, do_preview())
   shiny::observeEvent(input$fetch3, do_preview())
+  shiny::observeEvent(input$result_fetch, do_preview())
   output$ard_summary <- shiny::renderUI({
     m <- meta_of(current())
     if (is.null(m)) return(NULL)

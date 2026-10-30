@@ -515,6 +515,13 @@
       notify(t("Correct the ARD definition first."), "warning")
       return(invisible(FALSE))
     }
+    # a report with no ARD (a figure or a listing that reads its data
+    # itself): nothing to make, and no error -- the ARD tab says so
+    if (is_report && !has_an && !.report_uses_ard(rv$p, id)) {
+      ard_res(list(scope = id, none = TRUE))
+      rv$ard_ver <- rv$ard_ver + 1L
+      return(invisible(TRUE))
+    }
     s <- current_study()
     t0 <- Sys.time()
     # (analyses not in the report list: their ARD made to be seen, alone)

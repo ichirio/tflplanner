@@ -1291,6 +1291,9 @@
       return(shiny::p(class = "small text-muted mt-2",
                       t("Update preview to see the ARD this report's analyses make.")))
     }
+    if (isTRUE(r$none)) {
+      return(shiny::p(class = "small text-muted mt-2", t("This report uses no ARD.")))
+    }
     if (!is.null(r$error)) {
       return(shiny::div(class = "alert alert-danger py-1 small mt-2",
                         shiny::tags$pre(class = "mb-0", r$error)))
