@@ -188,3 +188,4 @@
 "The variable of the treatment groups a template's by / group takes when the report does not say it (study.yml settings: treatment:). Blank: the template's own, TRT01A.","帳票で指定しないときにテンプレートの by / group が使う投与群の変数（study.yml の settings: treatment:）。空欄 = テンプレートの既定（TRT01A）。"
 "Tick the items to copy.","写す項目をチェックしてください。"
 "Copied from the company standard: %s (save to keep them)","会社標準から写しました: %s（保存すると残ります）"
+"The data files differ from spec/data.yml: %s. The paths now point at the files that are there; save to write them to data.yml.","データのファイルが spec/data.yml と違います: %s。パスを実際にあるファイルに合わせました。保存すると data.yml に書きます。"
