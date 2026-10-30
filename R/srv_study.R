@@ -1322,7 +1322,7 @@
       # at each letter)
       local({
         now <- v(.study_setting(shiny::isolate(rv$p), "treatment"))
-        adsl <- tryCatch(names(.tpl_data_cols(rv$study$path)[["ADSL"]]), error = function(e) character())
+        adsl <- tryCatch(names(.tpl_data_cols(rv$study$path, shiny::isolate(rv$p))[["ADSL"]]), error = function(e) character())
         shiny::selectizeInput(
           "study_treatment",
           with_tip(t("Treatment variable (settings.treatment)"),
