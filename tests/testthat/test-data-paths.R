@@ -15,3 +15,8 @@ test_that("a dataset delivered in another form is found: .sas7bdat, .xpt, .rds, 
   expect_identical(r$planner$ard$datasets$path[1:2], c("data/adam/adsl.sas7bdat", "data/adam/adae.xpt"))
   expect_identical(nrow(.datasets_as_delivered(r$planner, d)$changed), 0L)
 })
+
+test_that("a report with no ARD code makes no preview ARD (a figure or listing reading its data)", {
+  p <- add_output(new_planner(), "F-1", type = "figure")
+  expect_false(.report_uses_ard(p, "F-1"))
+})

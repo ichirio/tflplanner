@@ -54,3 +54,4 @@
 "The preview's ARD could not be made:","プレビューの ARD を作れませんでした:"
 "Preview of %s: its ARD is up to date (not made again).","%s のプレビュー: ARD は最新です（作り直していません）。"
 "Update preview first: it makes this table's ARD.","先に「プレビューを更新」を押してください。この表の ARD を作ります。"
+"This report uses no ARD.","この帳票は ARD を使いません。"
