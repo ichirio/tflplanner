@@ -43,7 +43,7 @@
       table = "tables", listing = "lf", figure = "designer", "outputs"))
   })
   # -- template reports (R/template_report.R, #440) ---------------------------
-  tpl_data <- function() .tpl_data_cols(rv$study$path)
+  tpl_data <- function() .tpl_data_cols(rv$study$path, rv$p)
   tpl_all_cols <- function() unique(unlist(lapply(tpl_data(), names)))
   # an argument's heading: "meaning (name)", its doc in the (i)
   # (.tpl_arg_labels; the doc itself when it has none)
