@@ -17,8 +17,10 @@
          "(tfl_ai_sample_study()).", call. = FALSE)
   }
   fn <- getExportedValue("tflspec", "tfl_ai_sample_study")
-  dir <- normalizePath(dir, "/", mustWork = FALSE)
   fn(dir, overwrite = TRUE)
+  # once written: a folder not there yet keeps its temp path unresolved
+  # (Windows RUNNER~1, macOS /var), so a second call would name it differently
+  dir <- normalizePath(dir, "/", mustWork = TRUE)
   inp <- function(f) file.path(dir, "inputs", f)
   list(toc = inp("toc.xlsx"), shells = inp("shells.xlsx"), adam = file.path(dir, "adam"),
        adam_spec = inp("adam_spec.xlsx"), docs = inp("sap.docx"))
