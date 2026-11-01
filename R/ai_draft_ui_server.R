@@ -216,7 +216,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         return()
       }
       keep_unbuilt()
-      co <- guarded(.ai_collect(path()))
+      # (each draft built too: a few seconds a report)
+      co <- shiny::withProgress(message = t("Checking and building each draft..."),
+                                detail = t("About 5 seconds a report."), value = 0.3,
+                                guarded(.ai_collect(path(), build = TRUE)))
       if (is.null(co)) return()
       collected(co)
       ver(ver() + 1L)
@@ -351,6 +354,10 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     shiny::observeEvent(input$adam_browse, {
       d <- browse_done(guarded(.ai_choose_dir(browse_start("adam", input$adam_dir))))
       if (length(d) == 1L && !is.na(d)) shiny::updateTextInput(session, "adam_dir", value = d)
+    })
+    shiny::observeEvent(input$adam_spec_browse, {
+      f <- browse_done(guarded(.ai_choose_adam_spec(browse_start("adam_spec", input$adam_spec))))
+      if (length(f) == 1L && !is.na(f)) shiny::updateTextInput(session, "adam_spec", value = f)
     })
     # (a workbook chosen from outside the study: copied into its docs/, the
     # copy read -- .ai_book_into_docs(); a study not made yet: as it is)
@@ -504,7 +511,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
            add = isTRUE(input$add) && !is_new(),
            sheet_roles = roles_now(),
            numbers = numbers_now()) |>
-        c(scope_args())
+        c(scope_args(), .ai_adam_spec_args(input$adam_spec))
     }
     inputs_ok <- function() {
       msg <- .ai_toc_problem(toc_src()$path, t)
@@ -514,6 +521,11 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       }
       if (is.null(.ai_adam_files(input$adam_dir))) {
         notify(t("Give the ADaM folder (a full path)."), "warning")
+        return(FALSE)
+      }
+      msg <- .ai_adam_spec_problem(input$adam_spec, t)
+      if (!is.null(msg)) {
+        notify(msg, "warning")
         return(FALSE)
       }
       msg <- shells_problems()

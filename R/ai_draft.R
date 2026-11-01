@@ -143,7 +143,7 @@
 
 # The answers checked: tfl_ai_collect_answers()'s list (reports,
 # next_steps, assumptions, stray, requests), with the time of the check
-.ai_collect <- function(path) {
+.ai_collect <- function(path, build = FALSE) {
   .ai_ensure_area(path)
   x <- tflspec::tfl_ai_collect_answers(path)
   x$time <- Sys.time()
@@ -152,7 +152,7 @@
   x$confirm <- .ai_confirm(path)
   # each draft's check, ERROR / WARNING / OK, and the fix text of those
   # that are not OK (tflspec::tfl_check_spec() on ai/spec/outputs)
-  x$checks <- .ai_check_drafts(path)
+  x$checks <- .ai_check_drafts(path, build = build)
   x
 }
 
@@ -163,10 +163,15 @@
 # confirms, confirm) and `fix` (the text for the agent's chat of each ERROR /
 # WARNING report, named by output_id, in the study's language); NULL when
 # tflspec cannot check
-.ai_check_drafts <- function(path) {
+# (`build`: each draft the checks pass is also built -- its data, ARD and
+# table / figure / listing -- and a build that stops is an ERROR like the
+# others; a tflspec without tfl_check_spec(build =) checks only)
+.ai_check_drafts <- function(path, build = FALSE) {
   old <- options(tflspec.outputs_dir = file.path("ai", "spec", "outputs"))
   on.exit(options(old), add = TRUE)
-  probs <- tryCatch(suppressMessages(suppressWarnings(tflspec::tfl_check_spec(path))),
+  a <- list(path)
+  if (isTRUE(build) && "build" %in% names(formals(tflspec::tfl_check_spec))) a$build <- TRUE
+  probs <- tryCatch(suppressMessages(suppressWarnings(do.call(tflspec::tfl_check_spec, a))),
                     error = function(e) NULL)
   if (is.null(probs)) return(NULL)
   reports <- tryCatch(tflspec::tfl_check_reports(probs), error = function(e) NULL)
@@ -558,7 +563,7 @@
 # study's, or for a new one studies_root/<ID> when it is there, else
 # studies_root) -- its data/adam for the ADaM folder, its docs for the
 # workbooks, when there
-.ai_browse_start <- function(kind = c("adam", "toc", "shells"), field = "", study_dir = NULL,
+.ai_browse_start <- function(kind = c("adam", "toc", "shells", "adam_spec"), field = "", study_dir = NULL,
                              root = studies_root(), new_id = "") {
   kind <- match.arg(kind)
   here <- function(d) {
@@ -636,6 +641,45 @@
                                             ncol = 2, byrow = TRUE))
   }
   .ai_chosen(out)
+}
+
+# The ADaM spec chosen in the dialog: a P21 Spec workbook or a define.xml
+.ai_choose_adam_spec <- function(default = "") {
+  f <- getOption("tflplanner.choose_file")
+  cap <- "ADaM spec (P21 Spec workbook or define.xml)"
+  out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
+    filters <- rbind(c("ADaM spec (*.xlsx, *.xml)", "*.xlsx;*.xml"), c("All files (*.*)", "*.*"))
+    .ps_dialog("file", default, cap,
+               filter = "ADaM spec (*.xlsx;*.xml)|*.xlsx;*.xml|All files (*.*)|*.*") %||%
+      .ai_dialog_try(getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
+                                                               caption = cap, multi = FALSE,
+                                                               filters = filters))
+  } else {
+    tcltk::tk_choose.files(default = .ai_file_default(default), caption = cap, multi = FALSE,
+                           filters = matrix(c("Excel workbook", ".xlsx", "define.xml", ".xml"),
+                                            ncol = 2, byrow = TRUE))
+  }
+  .ai_chosen(out)
+}
+
+# The ADaM spec field as tfl_ai_prepare()'s argument: a workbook as
+# adam_spec, an .xml as define; empty, none.  A problem with the path: its
+# message (`t` translating), else NULL -- .ai_adam_spec_problem()
+.ai_adam_spec_args <- function(field) {
+  f <- gsub('^"|"$', "", trimws(as.character(field %||% "")))
+  if (length(f) != 1L || is.na(f) || !nzchar(f)) return(list())
+  f <- normalizePath(f, "/", mustWork = FALSE)
+  if (grepl("[.]xml$", f, ignore.case = TRUE)) list(define = f) else list(adam_spec = f)
+}
+.ai_adam_spec_problem <- function(field, t = identity) {
+  a <- .ai_adam_spec_args(field)
+  if (!length(a)) return(NULL)
+  f <- a[[1L]]
+  if (!grepl("[.](xlsx|xml)$", f, ignore.case = TRUE)) {
+    return(t("The ADaM spec is a P21 Spec workbook (.xlsx) or a define.xml."))
+  }
+  if (!file.exists(f)) return(sprintf(t("No ADaM spec %s."), f))
+  NULL
 }
 
 # Shell workbooks chosen in the dialog (several), their paths; none when
