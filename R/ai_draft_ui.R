@@ -134,6 +134,9 @@ ai_ui <- function(id, lang = "en") {
             .ai_path_input(ns("adam_dir"), paste0(t("ADaM folder"), " (adam)"), "C:/.../adam",
                            ns("adam_browse"), t("Browse...")),
             shiny::uiOutput(ns("adam_files")),
+            .ai_path_input(ns("adam_spec"),
+                           paste0(t("ADaM spec (P21 Spec workbook or define.xml)"), " (adam_spec / define)"),
+                           "C:/.../define.xml", ns("adam_spec_browse"), t("Browse...")),
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-end",
               shiny::selectInput(ns("toc_sheet"), paste0(t("TOC sheet"), " (toc_sheet)"),
