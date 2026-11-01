@@ -471,7 +471,11 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     # the references the person chose (tfl_ai_prepare(docs = )): only
     # these, listed, each removable
     refs <- shiny::reactiveVal(character())
-    shiny::observeEvent(path(), refs(character()), ignoreNULL = FALSE)
+    keep_refs <- NULL
+    shiny::observeEvent(path(), {
+      if (!identical(path(), keep_refs)) refs(character())
+      keep_refs <<- NULL
+    }, ignoreNULL = FALSE)
     ref_add <- function(f) {
       f <- trimws(gsub('^"|"$', "", as.character(f)))
       f <- f[nzchar(f)]
@@ -1016,10 +1020,16 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     # step 1 filled from outside the tab (the New study dialog's AI sample):
     # a new study, its ID and title, the workbooks, the ADaM folder, its spec
     # and the references -- what a person would type; nothing is read yet
+    # (mode = "open": the study just made and opened, `path` its folder --
+    # its references kept when the study's change reaches the tab)
     prefill <- function(x) {
-      shiny::updateRadioButtons(session, "study_mode", selected = "new")
-      shiny::updateTextInput(session, "new_id", value = x$study_id %||% "")
-      shiny::updateTextInput(session, "new_title", value = x$title %||% "")
+      open <- identical(x$mode, "open")
+      shiny::updateRadioButtons(session, "study_mode", selected = if (open) "open" else "new")
+      if (!open) {
+        shiny::updateTextInput(session, "new_id", value = x$study_id %||% "")
+        shiny::updateTextInput(session, "new_title", value = x$title %||% "")
+      }
+      keep_refs <<- x$path
       shiny::updateTextInput(session, "toc_path", value = x$toc %||% "")
       shiny::updateTextAreaInput(session, "shell_paths",
                                  value = paste(x$shells %||% character(), collapse = "\n"))

@@ -626,6 +626,26 @@ test_that("Browse... for the references in the app: the dialog is given the TOC'
   })
 })
 
+test_that("New study > the AI sample: the study made at once, open in the AI tab, step 1 filled", {
+  skip_if_not("tfl_ai_sample_study" %in% getNamespaceExports("tflspec"))
+  local_home()
+  ai_study()
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  sent <- ai_catch_updates()
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(ns_from = "ai_sample", ns_id = "aitest-02", ns_root = studies_root(), ns_ok = 1L)
+    dir <- normalizePath(file.path(studies_root(), "aitest-02"), "/")
+    expect_true("aitest-02" %in% list_studies()$study_id)
+    expect_true(file.exists(file.path(dir, "study.yml")))
+    expect_identical(sent$toc_path$value, file.path(dir, "docs", "toc.xlsx"))
+    expect_identical(sent$adam_dir$value, file.path(dir, "data", "adam"))
+    expect_identical(sent$adam_spec$value, file.path(dir, "docs", "adam_spec.xlsx"))
+    # (a new study's ID is not set: the study is open)
+    expect_null(sent$new_id)
+  })
+})
+
 test_that("the ADaM folder put in: the chosen study's, following the ID; a folder given kept", {
   local_home()
   path <- ai_study()
