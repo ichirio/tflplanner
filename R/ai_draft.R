@@ -150,7 +150,37 @@
   # what is to confirm (the agent could not decide), the drafts' and the
   # study's: output_id, where, item, why, file
   x$confirm <- .ai_confirm(path)
+  # each draft's check, ERROR / WARNING / OK, and the fix text of those
+  # that are not OK (tflspec::tfl_check_spec() on ai/spec/outputs)
+  x$checks <- .ai_check_drafts(path)
   x
+}
+
+# The drafts checked as the user's three levels say it: ERROR (the SPEC
+# does not read: it cannot be copied), WARNING (it reads, no program can be
+# made from it yet), OK; what is to confirm apart.  A list: `reports`
+# (tflspec::tfl_check_reports(): output_id, level, errors, warnings, notes,
+# confirms, confirm) and `fix` (the text for the agent's chat of each ERROR /
+# WARNING report, named by output_id, in the study's language); NULL when
+# tflspec cannot check
+.ai_check_drafts <- function(path) {
+  old <- options(tflspec.outputs_dir = file.path("ai", "spec", "outputs"))
+  on.exit(options(old), add = TRUE)
+  probs <- tryCatch(suppressMessages(suppressWarnings(tflspec::tfl_check_spec(path))),
+                    error = function(e) NULL)
+  if (is.null(probs)) return(NULL)
+  reports <- tryCatch(tflspec::tfl_check_reports(probs), error = function(e) NULL)
+  fix <- tryCatch(tflspec::tfl_check_fix_text(probs, language = .ai_fix_language(path)),
+                  error = function(e) character())
+  list(reports = reports, fix = fix)
+}
+
+# The fix text's language: the study's (study.yml's ai: language), "ja" for
+# Japanese, else "en"
+.ai_fix_language <- function(path) {
+  y <- tryCatch(yaml::read_yaml(file.path(path, "study.yml")), error = function(e) NULL)
+  l <- tolower(as.character(y$ai$language %||% "")[1L])
+  if (!is.na(l) && l %in% c("ja", "japanese", "jp")) "ja" else "en"
 }
 
 # The places a report's SPEC leaves to confirm (tflspec::tfl_ai_confirm()):
@@ -660,26 +690,21 @@
   normalizePath(x, "/", mustWork = FALSE)
 }
 
-# ---- a coding agent (tfl_ai_prepare(mode = "agent")) --------------------------
+# ---- the coding agent -------------------------------------------------------
 
-
-# The agent's first message, as tfl_ai_prepare(mode = "agent") gives it
-# (its `agent_prompt`): ai/agent_prompt.md, which it writes too; made again
-# from the study's folder when there is none (a study of an older tflspec)
+# The agent's prompt, one for the whole study, as tfl_ai_prepare() gives it
+# (its `agent_prompt`): ai/agent_prompt.md, which it writes too; a plain one
+# when there is none (a study of an older tflspec), its paths from the study
+# folder
 .ai_agent_prompt <- function(path) {
   f <- file.path(path, "ai", "agent_prompt.md")
   if (file.exists(f)) {
     txt <- tryCatch(.ai_read_text(f), error = function(e) NULL)
     if (!is.null(txt)) return(sub("\n+$", "", txt))
   }
-  # (none: tflspec's message for the requests not answered yet; failing
-  # that, the plain one)
-  txt <- tryCatch(as.character(tflspec::tfl_ai_agent_prompt(path)), error = function(e) NULL)
-  if (length(txt) && nzchar(txt[1L])) return(sub("\n+$", "", paste(txt, collapse = "\n")))
-  at <- normalizePath(path, winslash = "/", mustWork = FALSE)
-  paste0("Follow ", at, "/AGENTS.md. Do every request of ", at, "/ai/requests/index.md, ",
-         "in its order: ask me here what you cannot decide, then write each report's SPEC ",
-         "draft as ", at, "/ai/spec/outputs/<id>.yml.")
+  paste0("Follow ai/AGENTS.md. Do every request of ai/requests/index.md, in its order: ",
+         "ask me here what you cannot decide, then write each report's SPEC draft as ",
+         "ai/spec/outputs/<id>.yml. When I say \"continue\", go on from where you stopped.")
 }
 
 # A study whose AI drafts are still written into spec/outputs (prepared

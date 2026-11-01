@@ -14,3 +14,4 @@
 "The prompt","プロンプト"
 "One prompt for the whole study: paste it into the agent's chat. The agent does the requests below in their order and asks there; to stop and go on, say so in the chat.","試験全体で 1 本のプロンプトです。エージェントのチャットに貼ります。エージェントは下の依頼を順に処理し、分からないことはチャットで聞きます。中断・再開もチャットで伝えます（「続けて」）。"
 "Copy the prompt","プロンプトをコピー"
+"The fix text of %s","%s の直しの文"

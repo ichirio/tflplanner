@@ -955,11 +955,12 @@ test_that("the agent's first message: ai/agent_prompt.md when the study has it",
   expect_identical(.ai_agent_prompt(path), out$prepared$agent_prompt)
   writeLines("Follow the steps.", file.path(path, "ai", "agent_prompt.md"))
   expect_identical(.ai_agent_prompt(path), "Follow the steps.")
-  # none (a study prepared before it was written): tflspec's message, no
-  # absolute path
+  # none (a study prepared before it was written): a plain one, its paths
+  # from the study folder (no absolute path)
   unlink(file.path(path, "ai", "agent_prompt.md"))
   m <- .ai_agent_prompt(path)
-  expect_identical(m, sub("\n+$", "", paste(as.character(tflspec::tfl_ai_agent_prompt(path)), collapse = "\n")))
+  expect_match(m, "ai/AGENTS.md", fixed = TRUE)
+  expect_match(m, "continue", fixed = TRUE)
   expect_false(grepl(normalizePath(path, "/"), m, fixed = TRUE))
 })
 
@@ -1089,4 +1090,24 @@ test_that("step 1: a number unticked and applied, then back to the rule, before 
     session$setInputs(`ai-numbers_rule` = 2)
     expect_true(row_of()$make)
   })
+})
+
+test_that("the drafts' check: a level and what is to confirm a report, the fix text of the ERROR one", {
+  path <- withr_tempdir()
+  area <- file.path(path, "ai", "spec", "outputs")
+  dir.create(area, recursive = TRUE)
+  o <- tflspec::tfl_output("T-1", "table", label = "One",
+                           content = list(tflspec::tfl_item("table_plan", list(cols = "TRT01A"))))
+  o$ai <- list(confirm = list(list(where = "content", item = "plan_cells", why = "the decimals")))
+  tflspec::tfl_write_output(o, file.path(area, "T-1.yml"))
+  writeLines(c("id: T-2", "kind: table", "content: [unclosed"), file.path(area, "T-2.yml"))
+  ck <- .ai_check_drafts(path)
+  r <- ck$reports
+  expect_identical(r$level[match(c("T-1", "T-2"), r$output_id)], c("OK", "ERROR"))
+  expect_identical(r$confirms[r$output_id == "T-1"], 1L)
+  expect_identical(names(ck$fix), "T-2")
+  # the fix text's language: the study's (study.yml's ai: language)
+  expect_identical(.ai_fix_language(path), "en")
+  writeLines(c("study_id: X", "ai:", "  language: Japanese"), file.path(path, "study.yml"))
+  expect_identical(.ai_fix_language(path), "ja")
 })

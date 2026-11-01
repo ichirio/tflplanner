@@ -91,6 +91,12 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         return(paste(c("## Could not be built", "",
                        sprintf("- %s: %s", u$output_id, u$reason)), collapse = "\n"))
       }
+      # (a report's fix text, from the last check: tfl_check_fix_text())
+      if (identical(what, "fix")) {
+        txt <- collected()$checks$fix[id]
+        if (is.null(txt) || is.na(txt)) stop("No fix text for ", id, ": check again.", call. = FALSE)
+        return(unname(txt))
+      }
       if (identical(what, "repair") && !is.null(kept[id]) && !is.na(kept[id]) &&
           !file.exists(file.path(p, .ai_repairs_dir, paste0(id, ".md")))) {
         return(kept[[id]])
@@ -101,6 +107,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       switch(what,
              agent = t("The agent's first message"),
              repair = .ai_rel(.ai_repairs_dir, paste0(id, ".md")),
+             fix = sprintf(t("The fix text of %s"), id),
              build = .ai_rel(.ai_repairs_dir, paste0(id, "-build.md")),
              unbuilt = .ai_rel(.ai_repairs_dir, paste0(
                id, if (id %in% attr(shiny::isolate(unbuilt()), "build")) "-build.md" else ".md")),
@@ -943,9 +950,24 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
                `no answer` = "text-muted")
       cf <- co$confirm
       n_cf <- function(id) if (is.null(cf)) 0L else sum(cf$output_id == id)
+      lv_cls <- c(OK = "text-success", WARNING = "text-warning", ERROR = "text-danger",
+                  `no draft` = "text-muted")
       # an ERROR or WARNING row's fix text, for the agent's chat (its
       # request's: one report a request)
+      # each report's level and its fix text, tflspec's check of the drafts
+      # (tfl_check_reports(), tfl_check_fix_text()); the collect's status
+      # where the check said nothing of a report
+      ck <- co$checks$reports
+      fixes <- co$checks$fix
+      level_of <- function(i) {
+        k <- if (is.null(ck)) NA else match(r$output_id[i], ck$output_id)
+        if (!is.na(k)) ck$level[k] else .ai_check_level(r$status[i])
+      }
       fix_btn <- function(i) {
+        id <- r$output_id[i]
+        if (length(fixes) && id %in% names(fixes) && !is.na(fixes[[id]])) {
+          return(shiny::HTML(act("fix", id, c(copy = t("Copy the fix text"), view = t("View")))))
+        }
         if (!r$status[i] %in% c("error", "warning") || is.na(r$repair[i])) return(NULL)
         shiny::HTML(act("repair", r$request[i], c(copy = t("Copy the fix text"), view = t("View"))))
       }
@@ -961,7 +983,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
             shiny::tagList(
               shiny::tags$tr(
                 shiny::tags$td(r$output_id[i]),
-                shiny::tags$td(class = cls[[r$status[i]]] %||% "", t(.ai_check_level(r$status[i]))),
+                shiny::tags$td(class = { lc <- unname(lv_cls[level_of(i)]); if (is.na(lc)) "" else lc },
+                               t(level_of(i))),
                 shiny::tags$td(if (k) shiny::span(class = "text-warning", sprintf(t("%d to confirm"), k)) else ""),
                 shiny::tags$td(if (is.na(r$first[i])) "" else r$first[i]),
                 shiny::tags$td(fix_btn(i))),

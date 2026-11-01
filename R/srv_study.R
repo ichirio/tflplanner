@@ -186,6 +186,17 @@
     s$planner <- .study_spec_keys(s$planner)
     rv$study <- s
     rv$p <- rv$saved <- s$planner
+    # a dataset delivered in another form than data.yml says (.xpt for .rds):
+    # its path set to the file that is there, shown as an unsaved change and
+    # said -- saving writes it to data.yml (#515)
+    dl <- .datasets_as_delivered(s$planner, s$path)
+    if (nrow(dl$changed)) {
+      rv$p <- dl$planner
+      shiny::showNotification(sprintf(t("The data files differ from spec/data.yml: %s. The paths now point at the files that are there; save to write them to data.yml."),
+                     paste(sprintf("%s %s -> %s", dl$changed$dataset, basename(dl$changed$from),
+                                   basename(dl$changed$to)), collapse = ", ")),
+                              type = "warning", duration = NULL)
+    }
     rv$meta <- rv$saved_meta <- s$meta[.study_fields]
     rv$want <- output_ids(s$planner)[1L]
     bump()
