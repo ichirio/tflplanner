@@ -783,6 +783,8 @@
         class = "d-flex flex-wrap gap-2 mb-2",
         .btn("try_sample", t("Try the sample study (about 1 minute)..."),
              class = "btn btn-primary"),
+        if (.ai_sample_ok()) .btn("try_ai_sample", t("The sample for the AI tab..."),
+                                  class = "btn btn-outline-primary"),
         .btn("start_empty", t("New study..."),
              class = "btn btn-outline-primary"),
         .btn("register2", t("Register a study folder"),
@@ -793,14 +795,19 @@
   # both open the New study dialog: the sample chosen, or nothing chosen
   # yet; the study's ID is given there
   shiny::observeEvent(input$try_sample, open_new_study("sample"))
+  shiny::observeEvent(input$try_ai_sample, open_new_study("ai_sample"))
+  shiny::observeEvent(input$add_ai_sample, open_new_study("ai_sample"))
   shiny::observeEvent(input$start_empty, open_new_study("empty"))
-  # SAMPLE-01, or the first SAMPLE-nn not taken
-  next_sample_id <- function(root = studies_root()) {
-    id <- "SAMPLE-01"
+  # SAMPLE-01, or the first SAMPLE-nn not taken (the AI sample: DMY-001,
+  # DMY-002, ...)
+  next_sample_id <- function(first = "SAMPLE-01", root = studies_root()) {
+    stem <- sub("[0-9]+$", "", first)
+    width <- nchar(sub("^.*[^0-9]", "", first))
+    id <- first
     k <- 1L
     while (id %in% studies()$study_id || dir.exists(file.path(root, id))) {
       k <- k + 1L
-      id <- sprintf("SAMPLE-%02d", k)
+      id <- sprintf("%s%0*d", stem, width, k)
     }
     id
   }
@@ -913,7 +920,9 @@
       shiny::div(
         class = "mb-2",
         .btn("add_sample", t("Add the sample study"), class = "btn-sm btn-outline-primary"),
-        help_tip(t("The sample study: tflspec's oncology sample data (simulated), its ARD, 5 tables, a listing and 2 figures."))),
+        help_tip(t("The sample study: tflspec's oncology sample data (simulated), its ARD, 5 tables, a listing and 2 figures.")),
+        if (.ai_sample_ok()) .btn("add_ai_sample", t("The sample for the AI tab..."),
+                                  class = "btn-sm btn-outline-primary")),
       shiny::hr(),
       shiny::p(shiny::strong(with_tip(t("Company standards"),
                                       t("Dropdowns, presets, statistics, ARD methods, listing types, and the defaults a new study starts with."))),
@@ -1107,14 +1116,21 @@
         "ns_from", t("Start from"),
         {
           ch <- stats::setNames(
-            c("sample", "empty", "study"),
+            c("sample", "ai_sample", "empty", "study"),
             c(t("The sample study: data, ARD definition, tables, listing and figures (made at once)"),
+              t("The sample for the AI tab: its TOC, shells, ADaM, ADaM spec and SAP, filled into the AI tab's step 1 (no answers)"),
               t("Start empty"),
               t("Copy another study (definition and data code)")))
+          # the AI sample needs the AI tab and a tflspec that writes it
+          if (!.ai_sample_ok()) ch <- ch[ch != "ai_sample"]
           # copying needs a study to copy from
-          if (nrow(studies())) ch else ch[1:2]
+          if (nrow(studies())) ch else ch[ch != "study"]
         },
         selected = from, width = "100%"),
+      shiny::conditionalPanel(
+        "input.ns_from == 'ai_sample'",
+        shiny::p(class = "small text-muted",
+                 t("Writes the materials into the home's samples/ai-sample and opens the AI tab's step 1 with them filled in. The study itself is made there, from step 1."))),
       shiny::conditionalPanel(
         "input.ns_from == 'study'",
         shiny::selectInput("ns_src", t("Copy from"),
@@ -1122,19 +1138,23 @@
                                            studies()$study_id))),
       shiny::textInput("ns_id",
                        t("Study ID (the folder name: letters, digits . _ -)"),
-                       value = if (identical(from, "sample")) next_sample_id() else ""),
+                       value = switch(from, sample = next_sample_id(),
+                                      ai_sample = next_sample_id("DMY-001"), "")),
       shiny::uiOutput("ns_id_check"),
-      shiny::tags$details(
-        class = "mb-2",
-        shiny::tags$summary(t("Details (optional)")),
-        shiny::textInput("ns_title", t("Title"), width = "100%"),
-        shiny::textInput("ns_compound", t("Compound")),
-        shiny::textInput("ns_phase", t("Phase")),
-        shiny::textAreaInput("ns_description", t("Description"), width = "100%")),
-      shiny::tags$details(
-        shiny::tags$summary(t("Where the study folder goes")),
-        shiny::textInput("ns_root", t("Create the study folder in"),
-                         value = studies_root(), width = "100%")),
+      # (the AI sample's study is made in the AI tab, in the studies folder)
+      shiny::conditionalPanel(
+        "input.ns_from != 'ai_sample'",
+        shiny::tags$details(
+          class = "mb-2",
+          shiny::tags$summary(t("Details (optional)")),
+          shiny::textInput("ns_title", t("Title"), width = "100%"),
+          shiny::textInput("ns_compound", t("Compound")),
+          shiny::textInput("ns_phase", t("Phase")),
+          shiny::textAreaInput("ns_description", t("Description"), width = "100%")),
+        shiny::tags$details(
+          shiny::tags$summary(t("Where the study folder goes")),
+          shiny::textInput("ns_root", t("Create the study folder in"),
+                           value = studies_root(), width = "100%"))),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn("ns_ok", t("Create"),
                                    class = "btn-primary")),
@@ -1165,9 +1185,12 @@
   # the sample suggests its own ID; another choice leaves the field to you
   shiny::observeEvent(input$ns_from, {
     id <- trimws(input$ns_id %||% "")
-    if (identical(input$ns_from, "sample") && !nzchar(id)) {
+    suggested <- !nzchar(id) || grepl("^(SAMPLE|DMY)-[0-9]+$", id)
+    if (identical(input$ns_from, "sample") && suggested) {
       shiny::updateTextInput(session, "ns_id", value = next_sample_id())
-    } else if (!identical(input$ns_from, "sample") && grepl("^SAMPLE-[0-9]+$", id)) {
+    } else if (identical(input$ns_from, "ai_sample") && suggested) {
+      shiny::updateTextInput(session, "ns_id", value = next_sample_id("DMY-001"))
+    } else if (grepl("^(SAMPLE|DMY)-[0-9]+$", id)) {
       shiny::updateTextInput(session, "ns_id", value = "")
     }
   }, ignoreInit = TRUE)
@@ -1175,6 +1198,20 @@
     if (!is.null(ns_id_problem(input$ns_id))) return()
     if (dirty()) {
       return(notify(t("There are unsaved changes. Save first."), "warning"))
+    }
+    # the AI sample: the materials written, the AI tab's step 1 filled with
+    # them; the study is made there, by step 1 (tfl_ai_study_init)
+    if (identical(input$ns_from, "ai_sample")) {
+      kit <- NULL
+      shiny::withProgress(
+        message = t("Writing the AI sample's materials ..."),
+        kit <- guarded(.ai_sample_kit(file.path(tflplanner_home(), "samples", "ai-sample"))))
+      if (is.null(kit)) return()
+      shiny::removeModal()
+      bslib::nav_select("nav", "ai")
+      session$userData$ai$prefill(c(list(study_id = trimws(input$ns_id),
+                                         title = "Example Pharma DMY-001 (fictional)"), kit))
+      return(notify(t("The AI tab's step 1 is filled in from the AI sample: press Read and check, then go on.")))
     }
     blank <- function(v) if (is.null(v) || !nzchar(trimws(v))) NA else v
     s <- if (identical(input$ns_from, "sample")) {

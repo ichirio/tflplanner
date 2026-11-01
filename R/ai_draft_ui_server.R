@@ -1009,8 +1009,26 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           }))))
     })
 
+    # step 1 filled from outside the tab (the New study dialog's AI sample):
+    # a new study, its ID and title, the workbooks, the ADaM folder, its spec
+    # and the references -- what a person would type; nothing is read yet
+    prefill <- function(x) {
+      shiny::updateRadioButtons(session, "study_mode", selected = "new")
+      shiny::updateTextInput(session, "new_id", value = x$study_id %||% "")
+      shiny::updateTextInput(session, "new_title", value = x$title %||% "")
+      shiny::updateTextInput(session, "toc_path", value = x$toc %||% "")
+      shiny::updateTextAreaInput(session, "shell_paths",
+                                 value = paste(x$shells %||% character(), collapse = "\n"))
+      shiny::updateTextInput(session, "adam_dir", value = x$adam %||% "")
+      shiny::updateTextInput(session, "adam_spec", value = x$adam_spec %||% "")
+      refs(character())
+      if (length(x$docs)) ref_add(x$docs)
+      bslib::nav_select("step", "prepare", session = session)
+      invisible(TRUE)
+    }
+
     list(requests = requests, collected = collected, prepared = prepared,
-         mode = mode_now,
+         mode = mode_now, prefill = prefill,
          text = function(id, what = "request") shiny::isolate(text_of(what, id)))
   })
 }
