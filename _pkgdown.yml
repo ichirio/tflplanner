@@ -137,7 +137,6 @@ reference:
       - preview_pages
   - title: Starting from the data
     contents:
-      - first_listing
       - catalog_add_files
       - add_group_n
       - set_total_column

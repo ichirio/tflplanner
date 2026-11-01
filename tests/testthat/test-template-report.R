@@ -35,7 +35,7 @@ test_that("a list argument reads and writes as lines of a small table", {
   expect_identical(.tpl_list_parse(txt, named), x)
   rec <- list(name = "columns", type = "list", multiple = TRUE,
               fields = c("vars", "label", "width"))
-  v <- list(list(vars = "USUBJID", label = "Subject", width = 12),
+  v <- list(list(vars = "USUBJID", label = "Subject", width = 12L),
             list(vars = c("AETERM", "AEDECOD"), label = "Term"))
   txt <- .tpl_list_text(v, rec)
   expect_identical(txt, "USUBJID | Subject | 12\nAETERM, AEDECOD | Term")

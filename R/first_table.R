@@ -704,30 +704,16 @@ set_total_column <- function(x, output_id, label = "Total",
   list(x = x, dataset = dsn)
 }
 
-#' Start a listing from the data
-#'
-#' Writes what a listing needs from the answers of the app's "first
-#' listing" form: the dataset in the data catalog (added when missing), the
-#' report (a Listing, added when missing), its `listings` row (the company's
-#' listing type; the order: the group, the subject, the start date when the
-#' data have one) and one `listing_cols` row per column, in order, headed by
-#' the data's label (a repeated group or subject printed once).
-#'
-#' @param x A `tflplanner`.
-#' @param output_id The report.
-#' @param path The data file, relative to the study folder.
-#' @param data Its data (the columns' labels).
-#' @param columns The columns, in order.
-#' @param group A group column the listing is ordered by first, or `NULL`.
-#' @param description The report's description.
-#' @return The `tflplanner`.
-#' @examples
-#' adsl <- data.frame(USUBJID = 1:4, SAFFL = "Y", TRT01A = c("A", "A", "B", "B"),
-#'                    AGE = c(34, 51, 47, 62), SEX = c("F", "M", "F", "M"))
-#' x <- first_listing(new_planner(), "L-1", "data/adam/adsl.rds", adsl,
-#'                    columns = c("USUBJID", "AGE", "SEX"), group = "TRT01A")
-#' x$sheets$listing_cols[, 1:3]  # one row a column, in order
-#' @export
+# A listing started from the data, as code of the sheets' way: the dataset
+# in the data catalog (added when missing), the report (a Listing, added
+# when missing), its `listings` row (the company's listing type; the
+# order: the group, the subject, the start date when the data have one)
+# and one `listing_cols` row per column, in order, headed by the data's
+# label (a repeated group or subject printed once).  The app's listings
+# start from the template `listing` now (tflplanner#504); the tests and the
+# end-to-end programs still make one this way.  `path` the data file from
+# the study folder, `data` its data (the columns' labels), `columns` in
+# order, `group` a column ordered by first (or NULL).
 first_listing <- function(x, output_id, path, data, columns, group = NULL,
                           description = NA_character_) {
   id <- output_id

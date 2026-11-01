@@ -653,15 +653,6 @@
           v <- report_population(rv$p, current() %||% "")
           if (is.na(v)) "" else v
         })),
-      if (type) shiny::conditionalPanel(
-        "input.modal_type == 'listing' && input.modal_how != 'template'",
-        shiny::checkboxInput(
-          "modal_first_l",
-          with_tip(t("Start from the data"),
-                   t("Start the listing from the data (writes its columns and shows it)")),
-          value = TRUE, width = "100%"),
-        shiny::conditionalPanel("input.modal_first_l",
-                                shiny::uiOutput("modal_first_l_ui"))),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn(button, "OK", class = "btn-primary")),
       easyClose = TRUE))

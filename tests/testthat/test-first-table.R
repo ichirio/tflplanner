@@ -269,7 +269,26 @@ test_that("first_listing() writes the listing and its columns from the data", {
                "has columns already")
 })
 
-test_that("Add > Listing from the data: a listing shown in one form", {
+test_that("a listing's columns are a field of their own: the data's, in order, each its heading and width", {
+  prm <- .tpl_params("listing")
+  expect_true(.tpl_is_columns(prm$columns))
+  expect_identical(.tpl_type(prm$columns), "columns")
+  expect_identical(.tpl_type(prm$sort), "vars")
+  # the field says the list field's lines: read back as the template's columns
+  v <- .tpl_value("USUBJID | Subject\nAEDECOD | Preferred term | 30 | TRUE", "columns", prm$columns)
+  expect_identical(v[[2L]], list(vars = "AEDECOD", label = "Preferred term", width = 30L, collapse_repeats = TRUE))
+  # drawn: the dataset's columns with their labels, the rows as they start
+  d <- list(ADAE = data.frame(USUBJID = "1", AEDECOD = "Headache"))
+  attr(d$ADAE$AEDECOD, "label") <- "Dictionary-Derived Term"
+  h <- as.character(.tpl_columns_widget("mtpl_listing__columns", "Columns", v, d,
+                                        data_id = "mtpl_listing__data", dataset = "ADAE"))
+  expect_match(h, "data-src=\"mtpl_listing__data\"", fixed = TRUE)
+  expect_match(h, "Dictionary-Derived Term", fixed = TRUE)
+  expect_match(h, "Preferred term", fixed = TRUE)
+  expect_match(h, "rpLcolsStart('mtpl_listing__columns')", fixed = TRUE)
+})
+
+test_that("Add > Listing: the template listing, its columns from the field (no start from the data)", {
   skip_on_cran()
   local_home()
   s <- create_study("L1")
@@ -277,18 +296,16 @@ test_that("Add > Listing from the data: a listing shown in one form", {
   saveRDS(cards::ADAE, file.path(s$path, "data/adam/adae.rds"))
   shiny::testServer(server_for("L1"), {
     rv <- session$userData$rv
-    session$setInputs(add = 1, modal_type = "listing", modal_first_l = TRUE,
+    session$setInputs(add = 1, modal_type = "listing", modal_how = "template", modal_tpl_listing = "listing",
                       modal_id = "L-AE", modal_desc = "AEs")
-    session$setInputs(ml_data = "data/adam/adae.rds")
-    expect_match(output$ml_cols$html, "AEDECOD")
-    session$setInputs(ml_group = "TRTA", ml_cols_pick = c("USUBJID", "AEDECOD", "AESEV"))
-    session$setInputs(add_ok = 1, target = "L-AE", nav = "make", step = "content", content_nav = "content")
-    expect_identical(lf_rows(rv$p, "listing_cols", "L-AE")$vars,
-                     c("TRTA", "USUBJID", "AEDECOD", "AESEV"))
-    h <- output$lf_preview_out$html
-    expect_false(grepl("alert-danger", h))
-    # the preview is shown, not the invitation to preview
-    expect_false(grepl("Preview the listing to see", h))
+    session$setInputs(mtpl_listing__data = "ADAE",
+                      mtpl_listing__columns = "USUBJID | Subject\nAEDECOD | Preferred term | 30")
+    session$setInputs(add_ok = 1)
+    tp <- .tpl_of(rv$p, "L-AE")
+    expect_identical(tp$name, "listing")
+    expect_identical(tp$args$data, "ADAE")
+    expect_identical(vapply(tp$args$columns, function(x) x$vars, ""), c("USUBJID", "AEDECOD"))
+    expect_identical(tp$args$columns[[2L]]$width, 30L)
   })
 })
 
