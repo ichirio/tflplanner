@@ -532,7 +532,11 @@ test_that("Browse... opens in the study's folder: the path given, the study's, s
   expect_identical(.ai_browse_start("adam", ai_adam, study_dir = open, root = root), ai_adam)
   expect_identical(.ai_browse_start("adam", file.path(tempdir(), "no-such"), study_dir = open,
                                     root = root), norm(file.path(open, "data", "adam")))
-  expect_identical(.ai_browse_start("adam", "", root = file.path(tempdir(), "no-root")), "")
+  # no studies_root: the home; no home either, none
+  expect_identical(.ai_browse_start("adam", "", root = file.path(tempdir(), "no-root")),
+                   norm(tflplanner_home()))
+  expect_identical(.ai_browse_start("adam", "", root = file.path(tempdir(), "no-root"),
+                                    home = file.path(tempdir(), "no-home")), "")
   # what the Windows dialog is given: a folder's mask, a file itself
   expect_identical(.ai_file_default(root, windows = TRUE),
                    paste0(normalizePath(root, "\\"), "\\*.*"))
@@ -572,6 +576,53 @@ test_that("Browse... in the app: the dialog is given the study's folder", {
     expect_identical(got$files, got$file)
     session$setInputs(`ai-adam_dir` = ai_adam, `ai-adam_browse` = 2)
     expect_identical(got$dir, ai_adam)
+  })
+})
+
+test_that("Browse... for a file opens where step 1's other files are (the AI sample's inputs/)", {
+  local_home()
+  root <- studies_root()
+  dir.create(file.path(root, "NEW-1", "docs"), recursive = TRUE)
+  norm <- function(d) normalizePath(d, "/")
+  inputs <- file.path(tempdir(), "browse-sample", "inputs")
+  dir.create(inputs, recursive = TRUE, showWarnings = FALSE)
+  toc <- file.path(inputs, "toc.xlsx")
+  file.copy(ai_toc, toc, overwrite = TRUE)
+  other <- file.path(tempdir(), "browse-other")
+  dir.create(other, showWarnings = FALSE)
+  sap <- file.path(other, "SAP.pdf")
+  writeLines("x", sap)
+  # the references: no path of their own -- the TOC's folder, not R's own
+  expect_identical(.ai_browse_start("refs", "", root = root, new_id = "NEW-1", also = toc), norm(inputs))
+  # the file given last first (a reference chosen just before)
+  expect_identical(.ai_browse_start("refs", "", root = root, also = list(toc, "", sap)), norm(other))
+  # a path of its own before the others
+  expect_identical(.ai_browse_start("shells", toc, root = root, also = sap), norm(inputs))
+  # none of them there: the study's docs/
+  expect_identical(.ai_browse_start("refs", "", root = root, new_id = "NEW-1",
+                                    also = c("C:/none/a.pdf", NA)),
+                   norm(file.path(root, "NEW-1", "docs")))
+})
+
+test_that("Browse... for the references in the app: the dialog is given the TOC's folder", {
+  local_home()
+  ai_study()
+  inputs <- file.path(tempdir(), "browse-sample2", "inputs")
+  dir.create(inputs, recursive = TRUE, showWarnings = FALSE)
+  toc <- file.path(inputs, "toc.xlsx")
+  file.copy(ai_toc, toc, overwrite = TRUE)
+  got <- new.env()
+  old <- options(tflplanner.ai_drafts = TRUE,
+                 tflplanner.choose_refs = function(default) {
+                   got$refs <- default
+                   character()
+                 })
+  on.exit(options(old))
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(`ai-study_mode` = "new", `ai-new_id` = "", `ai-toc_path` = toc,
+                      `ai-shell_paths` = "", `ai-adam_spec` = "", `ai-ref_path` = "")
+    session$setInputs(`ai-ref_browse` = 1)
+    expect_identical(got$refs, normalizePath(inputs, "/"))
   })
 })
 

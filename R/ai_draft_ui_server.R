@@ -346,10 +346,14 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     })
     # Browse...: the computer's own dialog fills the path (as typing it
     # does); cancelled, nothing changes
-    # (it opens in the study's folder: .ai_browse_start())
+    # (it opens in the study's folder: .ai_browse_start(); a file's, where
+    # step 1's other files are -- the reference chosen last, the TOC's)
     browse_start <- function(kind, field) {
+      also <- if (!identical(kind, "adam")) {
+        c(input$toc_path, input$shell_paths, input$adam_spec, refs())
+      }
       .ai_browse_start(kind, field, study_dir = if (!is_new()) path(), root = studies_root(),
-                       new_id = input$new_id %||% "")
+                       new_id = input$new_id %||% "", also = also)
     }
     shiny::observeEvent(input$adam_browse, {
       d <- browse_done(guarded(.ai_choose_dir(browse_start("adam", input$adam_dir))))
@@ -476,7 +480,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       refs(unique(c(refs(), normalizePath(setdiff(f, gone), "/", mustWork = FALSE))))
     }
     shiny::observeEvent(input$ref_browse, {
-      f <- browse_done(guarded(.ai_choose_refs(input$ref_path %||% "")))
+      f <- browse_done(guarded(.ai_choose_refs(browse_start("refs", input$ref_path))))
       if (length(f)) ref_add(f)
     })
     shiny::observeEvent(input$ref_add, {
