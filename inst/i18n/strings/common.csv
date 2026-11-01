@@ -693,7 +693,7 @@
 "left / center / right: the section label (rtf_tables(section_label_align = )); blank: left.","left / center / right：セクションのラベル（rtf_tables(section_label_align = )）。空欄 = left。"
 "TRUE / FALSE: each named table's name as its last title line (rtf_tables(auto_title = )); blank: FALSE.","TRUE / FALSE：名前の付いた表の名前をタイトルの最後の行にする（rtf_tables(auto_title = )）。空欄 = FALSE。"
 "left / center / right: that title line (rtf_tables(title_label_align = )); blank: left.","left / center / right：そのタイトルの行（rtf_tables(title_label_align = )）。空欄 = left。"
-"The table's font size in half-points (18 = 9 pt) (rtf_tables(font_size_half_points = )); blank: the document's.","表のフォントの大きさ（半ポイント。18 = 9 pt）（rtf_tables(font_size_half_points = )）。空欄 = 文書の大きさ。"
+"The table's font size in half-points (18 = 9 pt): the plan's plan_style(font_size_half_points = ), a listing's as_rtftables(font_size_half_points = ); blank: the document's.","表のフォントの大きさ（半ポイント。18 = 9 pt）。表は plan_style(font_size_half_points = )、リストは as_rtftables(font_size_half_points = ) に入る。空欄 = 文書の大きさ。"
 "The titles' font size in half-points; blank: the document's.","タイトルのフォントの大きさ（半ポイント）。空欄 = 文書の大きさ。"
 "The footnotes' font size in half-points; blank: the document's.","脚注のフォントの大きさ（半ポイント）。空欄 = 文書の大きさ。"
 "TRUE / FALSE: FALSE drops the running page header for this report, the study's default lines included; blank: TRUE.","TRUE / FALSE：FALSE でこの帳票だけページヘッダーを付けない（試験標準の行も）。空欄 = TRUE。"
