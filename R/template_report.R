@@ -51,19 +51,25 @@
   list(name = as.character(o$template$name), args = o$template$args %||% list())
 }
 
-# The study's datasets: their columns, by dataset (upper case), read once
-# a study folder
+# The study's datasets, by dataset (upper case), read once a study folder:
+# through spec/data.yml's paths and readers (`planner`'s datasets, as the
+# programs read them -- an .xpt too, #518), else the .rds files under data/
 .tpl_cols_cache <- new.env()
-.tpl_data_cols <- function(root) {
+.tpl_data_cols <- function(root, planner = NULL) {
   if (is.null(root)) return(list())
-  key <- normalizePath(root, "/", mustWork = FALSE)
+  ds <- if (!is.null(planner)) toupper(stats::na.omit(planner$ard$datasets$dataset))
+  key <- paste(c(normalizePath(root, "/", mustWork = FALSE), sort(ds)), collapse = "|")
   if (!is.null(.tpl_cols_cache[[key]])) return(.tpl_cols_cache[[key]])
-  files <- list.files(file.path(root, "data"), "\\.(rds|RDS)$", recursive = TRUE, full.names = TRUE)
-  out <- list()
-  for (f in files) {
-    d <- tryCatch(readRDS(f), error = function(e) NULL)
-    if (!is.data.frame(d)) next
-    out[[toupper(sub("\\.[^.]*$", "", basename(f)))]] <- d
+  out <- if (length(ds)) {
+    .study_data(list(planner = planner, path = root), ds)
+  } else {
+    files <- list.files(file.path(root, "data"), "\\.(rds|RDS)$", recursive = TRUE, full.names = TRUE)
+    o <- list()
+    for (f in files) {
+      d <- tryCatch(readRDS(f), error = function(e) NULL)
+      if (is.data.frame(d)) o[[toupper(sub("\\.[^.]*$", "", basename(f)))]] <- d
+    }
+    o
   }
   .tpl_cols_cache[[key]] <- out
   out

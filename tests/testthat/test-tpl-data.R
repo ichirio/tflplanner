@@ -1,0 +1,16 @@
+test_that("a template card reads the study's data through spec/data.yml: an .xpt too (#518)", {
+  skip_if_not_installed("haven")
+  home <- local_home()
+  d <- file.path(studies_root(home), "XPT-1")
+  dir.create(file.path(d, "adam"), recursive = TRUE)
+  df <- tflspec::adsl
+  for (v in names(df)) if (is.factor(df[[v]])) df[[v]] <- as.character(df[[v]])
+  haven::write_xpt(df, file.path(d, "adam", "adsl.xpt"))
+  invisible(tflspec::tfl_ai_study_init(d, adam = "adam", study_id = "XPT-1", overwrite = TRUE))
+  s <- suppressMessages(open_study(d, home = home))
+  got <- .tpl_data_cols(s$path, s$planner)
+  expect_true("ADSL" %in% names(got))
+  expect_true(all(c("USUBJID", "SAFFL") %in% names(got$ADSL)))
+  # (no planner: the .rds files under data/, as before -- none here)
+  expect_identical(.tpl_data_cols(s$path), list())
+})
