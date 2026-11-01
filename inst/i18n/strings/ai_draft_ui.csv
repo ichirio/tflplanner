@@ -119,3 +119,5 @@
 "ERROR","ERROR"
 "Give the agent the first message above; it reads these requests itself, in their order, asks in its chat what it cannot decide, and writes each report's SPEC draft (ai/spec/outputs/<id>.yml). Everything else is between you and the agent, in its chat.","上の最初の 1 通をエージェントに渡します。エージェントはこの依頼を順に読み、決められないことをチャットで聞いてから、帳票ごとの SPEC の下書き（ai/spec/outputs/<id>.yml）を書きます。やり取りはすべてエージェントのチャットで行います。"
 "Check reads every draft and checks it: ERROR, the SPEC does not read (it cannot be copied); WARNING, it reads but no program can be made from it yet; OK, a program can be made (whether the report is right is yours to see). An ERROR or WARNING row's fix text goes to the agent's chat. A row opened shows what the agent assumed and what it left to confirm.","「検査」はすべての下書きを読んで検査します。ERROR: SPEC が読めない（コピーできません）。WARNING: 読めるが、まだ実行できるプログラムが作れない。OK: プログラムが作れる（帳票が正しいかは別に確かめます）。ERROR・WARNING の行の直しの文は、エージェントのチャットに貼ります。行を開くと、エージェントの仮定と要確認が出ます。"
+"Checking and building each draft...","下書きを検査し、1 つずつ作っています…"
+"About 5 seconds a report.","1 帳票あたり 5 秒ほどかかります。"
