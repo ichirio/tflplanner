@@ -2031,3 +2031,7 @@
 "the time point that starts a second block of columns (each block its pages, the group's first); NULL: one","列の 2 つ目のかたまりを始める時点（かたまりごとにページ。グループの最初から）。NULL: 1 つ"
 "the groups: a page each (an analyte, an arm), the summary's too","グループ: それぞれ 1 ページ（分析対象、投与群）。要約も同じ"
 "the dataset of concentrations","濃度のデータセット"
+"two labels under the axis, Favours <left> and Favours <right> (the arms); NULL: none","軸の下の 2 つのラベル。Favours <左> と Favours <右>（群）。NULL: なし"
+"the hazard ratio axis's ticks (0.25, 0.5, 1, 2, 4); NULL: ggplot2's","ハザード比の軸の目盛り（0.25, 0.5, 1, 2, 4）。NULL: ggplot2 の既定"
+"TRUE: each point's size by its subjects (n)","TRUE: 各点の大きさを被験者数（n）にする"
+"TRUE: the subgroups' headings bold","TRUE: サブグループの見出しを太字にする"

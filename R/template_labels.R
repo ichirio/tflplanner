@@ -145,7 +145,11 @@
   time_heading = "Heading over the time points",
   summary_label = "Summary heading row",
   stats = "Summary statistics rows",
-  split_at = "Time point that starts a second column block"
+  split_at = "Time point that starts a second column block",
+  favours = "Favours labels",
+  x_breaks = "Hazard ratio axis ticks",
+  size_by_n = "Point size by subjects",
+  bold_headings = "Bold subgroup headings"
 )
 
 .tpl_doc_labels <- c(
