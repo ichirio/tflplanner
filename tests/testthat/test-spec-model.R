@@ -285,7 +285,7 @@ test_that("a card's edit writes that report's YAML only, its content only; Rever
   p <- .builder_item_write(s$planner, id, "plan_stub", utils::modifyList(it$args, list(indent = 3L)))
   st <- .spec_output(p, id)
   own <- Filter(function(x) identical(x$fn, "plan_stub"), st$content)[[1L]]
-  expect_identical(own$args, list(name = "row_label", before = TRUE, indent = 3L))
+  expect_identical(own$args, list(name = "row_label", heading = "", before = TRUE, indent = 3L))
   # only the report's file changes, and in it only lines of the content
   expect_identical(changed_files(s$planner$spec$text, p$spec$text), rel)
   y1 <- p$spec$text[[rel]]
