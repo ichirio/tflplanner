@@ -1,0 +1,162 @@
+---
+title: "Drafting the SPEC with an AI agent"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(eval = FALSE, collapse = TRUE, comment = "#>")
+```
+
+> tflplanner is experimental: the screens and functions may change. This
+> article follows the screens of the development version (`next`).
+
+The **AI drafts** tab hands the study's materials (the TOC, the annotated
+shells, the ADaM, the ADaM spec, the SAP) to an AI agent in your editor. The
+agent writes a draft SPEC for each report and asks in its chat where the
+materials do not settle a decision. tflplanner checks the drafts, copies the
+ones you choose into the study, and makes the reports from them.
+
+This article walks through the flow with the **AI sample**: a fictional study
+(DMY-001, Example Pharma) with eight reports, made in one click. Everything in
+it is fictional, and it holds no answers: the agent writes the SPEC.
+The Japanese edition is [AI 連携の使い方](ja-ai-flow.html).
+
+## What you need
+
+- R 4.1 or later.
+- An editor with an AI agent in **agent mode**, one of:
+  - VS Code with GitHub Copilot (agent mode in its chat), or
+  - Claude Code.
+- A model of the strongest tier: see [Which model](#models).
+- The tflplanner home **inside a folder the editor can open**. The agent
+  reads only the study's `ai/` folder, which the editor opens as a folder.
+
+## 1. Install and set up (once)
+
+```{r}
+install.packages("remotes")
+remotes::install_github("ichirio/rtfreporter@<tag>", upgrade = "never")
+remotes::install_github("ichirio/tflspec@<tag>", upgrade = "never")
+remotes::install_github("ichirio/tflplanner@<tag>", upgrade = "never")
+# what the sample's reports use
+install.packages(c("haven", "readxl", "officer", "cards", "cardx", "dplyr", "tidyr",
+                   "ggsurvfit", "patchwork", "broom", "broom.helpers", "parameters"))
+
+tflplanner::setup_tflplanner(home = "C:/work/tflplanner-home", language = "en")
+tflplanner::add_shortcut()   # a desktop shortcut that starts the app
+```
+
+Use the tag you were given (or `next` for the development version). Start
+the app with the shortcut or `tflplanner::run_app()`.
+
+## 2. Make the study from the AI sample
+
+1. On the **Studies** tab, press **New study...** (with no study yet, the
+   start page has **The sample for the AI tab...**).
+2. Under **Start from**, choose **The sample for the AI tab**.
+3. Keep the study ID (`DMY-001`) or type your own, and press **Create**.
+
+The study is made at once, in `studies/<ID>` under the home, and opened:
+
+| Where | What |
+|---|---|
+| `docs/toc.xlsx` | The TOC (8 reports) |
+| `docs/shells.xlsx` | The annotated shells (6 sheets, one shell a sheet) |
+| `docs/adam_spec.xlsx` | The ADaM spec (Pinnacle 21 form) |
+| `data/adam/` | 5 ADaM datasets (adsl, adae, adlb, advs, adtte) |
+| `ai/docs/sap.docx` | The SAP, as a reference for the agent |
+
+The materials leave some decisions open on purpose, to see whether the agent
+asks instead of deciding silently.
+
+## 3. Step 1: Write the prompt
+
+The **AI drafts** tab opens on **1 Write the prompt**, with **The open study**
+chosen and the fields filled: the TOC / SHELL workbook, the shell workbooks,
+the ADaM folder (it says "5 files" under it), the ADaM spec, and `sap.docx`
+under **Add a reference**. Each **Browse...** opens in the study's folder.
+
+1. Press **Read and check**. The right side shows what was read: 8 TOC items,
+   6 shells, the ADaM summary sent to the agent, and the workbook's sheets.
+2. In **Sheets**, move `General conventions` (rules common to every report) to
+   **Other sheets (not shells)** and press **Apply and read again**; then
+   choose it in **Sheets for every request** on the left, so every request
+   carries it.
+3. Press **Write the requests**. The requests and the agent's prompt are
+   written into the study's `ai/` folder.
+
+## 4. Step 2: The agent writes the SPEC
+
+1. On **2 The agent writes the SPEC**, press **Copy the prompt**.
+2. Open the study's **`ai` folder** in the editor (`studies/DMY-001/ai`; in VS
+   Code, double-clicking `ai/DMY-001.code-workspace` does the same). Do not
+   open the study folder or `studies/` above it.
+3. Put the chat in agent mode, paste the prompt and send it.
+
+The agent works request by request. It writes its drafts into
+`ai/spec/outputs/`, and its decisions into `ai/decisions.md`. Where the
+materials do not settle something, it writes to you, in one numbered message
+for each request:
+
+- **It decides** where the TOC, the shells, the SAP and the ADaM spec agree.
+  It records the decision as an assumption on the draft.
+- **It asks you to confirm a default** where the materials disagree, for
+  example a TOC that names one analysis set and the SAP another. Each
+  question gives the report, what each document says (sheet, section), the
+  default it would take and why, and the other choices.
+- **It asks** where nothing in the materials answers, still with a default.
+
+Answer in the chat, briefly ("1: FAS, 2: the raw data's digits + 1"). If it
+stops, send "continue". If it starts installing packages or searching folders,
+send "Follow AGENTS.md: only write the drafts."
+
+## 5. Step 3: Check the SPEC
+
+On **3 Check the SPEC**, press **Check** (you can press it while the agent is
+still working). Each draft gets:
+
+- **ERROR**: the SPEC does not read; it cannot be copied.
+- **WARNING**: it reads, but no program can be made from it yet.
+- **OK**: a program can be made.
+
+For an ERROR or a WARNING, copy the fix text on its row, paste it into the
+same chat, and check again once the agent has fixed it.
+
+## 6. Step 4: Copy into the study, and make the reports
+
+1. On **4 Copy into the study**, tick the reports to take (at first, the
+   drafts not adopted yet are ticked) and press **Adopt (copy) the reports
+   ticked into the study**. They go onto the study's Report list.
+2. Where the agent assumed something, its assumptions and the points **to
+   confirm** are listed with each report. Mark each as right or wrong; what is
+   wrong can be sent back to the chat as a correction request.
+3. Make the reports (the **Runs** tab, **Run all**) and open the RTFs.
+
+## Which model {#models}
+
+From a comparison on this sample (8 reports; the two hardest requests run
+three times each; the same answers given in every run):
+
+- **Use Opus or Fable.** Their results were equal within the noise of three
+  runs: the same questions, defaults that agreed with the SAP and the define,
+  no silent wrong decision, and the kit's rules kept. Choose between them by
+  cost.
+- **Sonnet and Haiku are not recommended** with the current kit. Sonnet chose
+  a derivation wrongly in two runs of three (once silently, once as a wrong
+  default), and rewrote requests whose drafts were already done. Haiku asked
+  good questions, but repaired failed drafts by guessing, and its questions
+  seldom said how the answer changes the numbers or why the default.
+- **The editor made no difference** where it was tested: Fable gave the same
+  result in VS Code with GitHub Copilot and in Claude Code (the same
+  questions, all 8 reports made at the first try). Opus was tested in Claude
+  Code only; the same is expected in Copilot, but it is not tested yet.
+
+## What to expect of the drafts
+
+- The drafts are **drafts**: a programmer reviews (QCs) every adopted report,
+  as for one written by hand. The agent works from the materials it is given;
+  where they are wrong or silent, so may the draft be.
+- What the agent decided is never hidden: its assumptions and the points to
+  confirm are on each report in step 4, and in `ai/decisions.md`. Read them
+  first: they are where a draft is most likely to differ from what you meant.
+- Some reports need a fix or two before they check OK; the shift tables were
+  the hardest for every model.
