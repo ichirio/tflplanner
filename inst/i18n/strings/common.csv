@@ -699,7 +699,7 @@
 "The footnotes' font size in half-points; blank: the document's.","脚注のフォントの大きさ（半ポイント）。空欄 = 文書の大きさ。"
 "TRUE / FALSE: FALSE drops the running page header for this report, the study's default lines included; blank: TRUE.","TRUE / FALSE：FALSE でこの帳票だけページヘッダーを付けない（試験標準の行も）。空欄 = TRUE。"
 "TRUE / FALSE: FALSE drops the running page footer, likewise; blank: TRUE.","TRUE / FALSE：FALSE でこの帳票だけページフッターを付けない（同じく）。空欄 = TRUE。"
-"Report: one row a report; the page (rtf_page()) and the document's text defaults (rtf_default_format()). Blank: rtfreporter's options (landscape Letter, 0.75 in margins).","帳票：1 行 = 1 帳票。用紙（rtf_page()）と文書の文字の既定（rtf_default_format()）。空欄 = rtfreporter の設定（横置き Letter、余白 0.75 インチ）。"
+"Report: one row a report; the page (rtf_page()) and the document's style (rtf_style()). Blank: rtfreporter's options (landscape Letter, 0.75 in margins).","帳票：1 行 = 1 帳票。用紙（rtf_page()）と文書の書式（rtf_style()）。空欄 = rtfreporter の設定（横置き Letter、余白 0.75 インチ）。"
 "letter / legal / A4 / A3 / A5; blank: letter.","letter / legal / A4 / A3 / A5。空欄 = letter。"
 "landscape / portrait; blank: landscape.","landscape / portrait。空欄 = landscape。"
 "Page width in inches (wins over paper_size); blank: the paper's.","用紙の幅（インチ。paper_size より優先）。空欄 = 用紙のとおり。"

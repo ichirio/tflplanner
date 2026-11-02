@@ -42,13 +42,19 @@
     list(arg = "margin_right_in", label = "Right (in)", kind = "number"),
     list(arg = "header_dist_in", label = "Header distance (in)", kind = "number"),
     list(arg = "footer_dist_in", label = "Footer distance (in)", kind = "number")),
-  rtf_default_format = list(
+  # rtf_style()'s shared level (its sections, table: titles: ..., have no
+  # fields: kept as the YAML says them)
+  rtf_style = list(
+    list(arg = "font", label = "Font family", kind = "text", choices = c("Courier", "Courier New")),
     list(arg = "font_size_half_points", label = "Size (pt)", kind = "pt"),
     list(arg = "row_height_twips", label = "Row height (twips)", kind = "number"),
     list(arg = "cell_padding_left_twips", label = "Cell padding, left (twips)", kind = "number"),
     list(arg = "cell_padding_right_twips", label = "Cell padding, right (twips)", kind = "number"),
+    list(arg = "cell_padding_top_twips", label = "Cell padding, top (twips)", kind = "number"),
+    list(arg = "cell_padding_bottom_twips", label = "Cell padding, bottom (twips)", kind = "number"),
     list(arg = "markup", label = "Markup", kind = "choice",
          choices = c("script", "relational", "all", "none")),
+    list(arg = "color", label = "Text colour", kind = "text"),
     list(arg = "title_format", label = "Titles as", kind = "choice", choices = c("text", "table")),
     list(arg = "footnote_format", label = "Footnotes as", kind = "choice",
          choices = c("table", "text")),
@@ -75,13 +81,13 @@
   rtf_footnotes = .pgs_band_fields)
 
 # a card's meaning, its title "meaning (function())"
-.pgs_cards <- c(rtf_page = "Paper and margins", rtf_default_format = "Text defaults",
+.pgs_cards <- c(rtf_page = "Paper and margins", rtf_style = "Text defaults",
                 rtf_document = "Document", rtf_tables = "Table on the page",
                 rtf_figures = "Figure size")
 
 # the call each card is in the program (tflspec writes rtf_page()'s
 # arguments as rtf_document(page = list(...)))
-.pgs_call_names <- c(rtf_page = "(rtf_document(page =))", rtf_default_format = "(rtf_default_format())",
+.pgs_call_names <- c(rtf_page = "(rtf_document(page =))", rtf_style = "(rtf_document(style = rtf_style()))",
                      rtf_document = "(rtf_document())", rtf_tables = "(rtf_tables())",
                      rtf_figures = "(rtf_figures())", rtf_titles = "(rtf_titles())",
                      rtf_footnotes = "(rtf_footnotes())")
@@ -103,6 +109,26 @@
 # The page maps a target's page is put together from, nearest first, named
 # by where they are: own, style:<name>, pattern:<name>, defaults
 .pgs_layers <- function(sp, target) {
+  lapply(.pgs_layers_as_said(sp, target), .pgs_style_norm)
+}
+
+# A page's old rtf_default_format (rtfreporter's, deprecated: rtf_style())
+# read as rtf_style's shared level, rtf_style's own keys winning, as
+# tflspec reads it (#537).  The own layer is written back so: rtf_style.
+.pgs_style_norm <- function(page) {
+  old <- if (is.list(page)) page$rtf_default_format
+  if (!is.list(old) || .pgs_unset(old) || !length(old)) return(page)
+  new <- page$rtf_style
+  if (!.pgs_unset(new)) {
+    if (!is.list(new)) new <- list()
+    for (k in setdiff(names(old), names(new))) new[k] <- list(old[[k]])
+    page["rtf_style"] <- list(if (length(new)) new)
+  }
+  page$rtf_default_format <- NULL
+  page
+}
+
+.pgs_layers_as_said <- function(sp, target) {
   st <- sp$study
   if (is.na(target)) return(list(own = st$defaults$page %||% list()))
   if (.is_pattern_id(target)) {
