@@ -21,6 +21,7 @@ content:
           text: (N={n})
   - plan_stub:
       name: row_label
+      heading: ""
       before: true
   - plan_blanks:
       where: between_groups
