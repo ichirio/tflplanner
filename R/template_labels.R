@@ -135,9 +135,22 @@
   missing_label = "Missing-baseline row label",
   total_label = "All-subjects row label",
   param_page = "One page per parameter",
-  param_heading = "Parameter page name"
+  param_heading = "Parameter page name",
+  time_order = "Time point order variable",
+  times = "Time points, in order",
+  blq = "BLQ records",
+  blq_label = "Text for a BLQ value",
+  subject = "Subject row label",
+  subject_heading = "Subject column heading",
+  time_heading = "Heading over the time points",
+  summary_label = "Summary heading row",
+  stats = "Summary statistics rows",
+  split_at = "Time point that starts a second column block"
 )
 
 .tpl_doc_labels <- c(
-  "the curves' variable (survfit2(~ by), the colours)" = "Variable that splits the curves"
+  "the curves' variable (survfit2(~ by), the colours)" = "Variable that splits the curves",
+  "a page's name in the titles ({<group>}: its value); NULL: the groups' values, a line each" =
+    "Page name in the titles",
+  "the groups: a page each (an analyte, an arm), the summary's too" = "Variable that splits the pages"
 )
