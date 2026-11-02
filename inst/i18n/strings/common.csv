@@ -2009,6 +2009,8 @@
 "method:incidence_rate","発現率"
 "method-note:incidence_rate","人時あたりのイベント数と CI（args: time = <人時の列>, count = <イベント数の列>, id = USUBJID）"
 "a subject once a parameter, at its worst category after baseline, the categories from the worst; NULL: every record (the baseline's records too)","被験者をパラメータごとに 1 回、ベースライン後の最悪のカテゴリで数える（カテゴリは最悪のものから）; NULL: すべてのレコード（ベースラインのレコードも）"
+"a parameter's own order from the worst, by its value (HGB: LOW, HIGH, NORMAL); the others take `worst`","パラメータごとの最悪の順（値ごと。HGB: LOW, HIGH, NORMAL）。ほかは `worst` の順"
+"what a cell's {p} is of: ""row"" the subjects of its baseline category, ""total"" the Total row -- the arm's subjects with a category after baseline for the parameter (the Missing row among them)","セルの {p} の分母: ""row"" はその基準値カテゴリの被験者、""total"" は Total 行（その群で、パラメータの投与後のカテゴリがある被験者。Missing 行を含む）"
 "the row of the subjects with no baseline category; NULL: none","ベースラインのカテゴリが無い被験者の行; NULL: なし"
 "the row of all the subjects; NULL: none","全被験者の行; NULL: なし"
 "TRUE: a page a parameter, named in the titles by `param_heading`","TRUE: パラメータごとに 1 ページ（タイトルの名前は `param_heading`）"

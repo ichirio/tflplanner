@@ -130,6 +130,8 @@
   label = "Row label heading",
   by_response = "Colour bars by response",
   worst = "Worst post-baseline category",
+  worst_by = "Worst order by parameter",
+  percent_of = "Percent of",
   missing_label = "Missing-baseline row label",
   total_label = "All-subjects row label",
   param_page = "One page per parameter",
