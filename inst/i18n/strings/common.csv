@@ -635,6 +635,7 @@
 "How a group's summary row shows in the stub (plan_stub(group_summary = )); blank: the default.","グループの要約行のスタブでの見せ方（plan_stub(group_summary = )）。空欄 = 既定。"
 "The row label column's header text when it is not its name; """" leaves it blank (a column header line naming the column still sets it). Blank: the name. e.g. """"","行ラベル列の見出しの文字（列の名前と違う時）。"""" で空欄（その列を名指しする列見出しの行があれば、そちらが優先）。空欄: 列の名前。例: """""
 "TRUE / FALSE: fold the stub before cell styles and sorting see the rows (plan_stub(before = )); blank: FALSE.","TRUE / FALSE：セルの書式と並べ替えが行を見る前にスタブを畳む（plan_stub(before = )）。空欄 = FALSE。"
+"The stub column's heading (plan_stub(heading = )); """" (quoted): no heading; blank: the default.","行見出しの列の見出し（plan_stub(heading = )）。"""" と引用符付きで書くと見出しなし。空欄 = 既定。"
 "Value columns a column page, a whole number (plan_paginate_cols(every = )); blank: no column pages.","列ページ 1 枚あたりの値の列数（plan_paginate_cols(every = )）。整数。空欄 = 列ページにしない。"
 "The columns to cut before (names or positions), | between them (plan_paginate_cols(at = )).","この列の前で列ページを分ける（名前か位置）。| 区切り（plan_paginate_cols(at = )）。"
 "A separator in the column names: one column page per key before it (plan_paginate_cols(cut_by = )).","列名の中の区切り文字：その前のキーごとに 1 枚の列ページ（plan_paginate_cols(cut_by = )）。"

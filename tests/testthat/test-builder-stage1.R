@@ -333,6 +333,13 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
                                         "c", "plan_stub"), it, "plan_stub")
   expect_identical(own, utils::modifyList(it$args, list(indent = 3L)))
   q <- .builder_item_write(p, id, "plan_stub", own)
+  # (with its heading, "" the study's, the item is the row's content_more:
+  # the stub_* columns cannot say a heading)
+  expect_identical(item(builder_items(q, id), "plan_stub")$args$indent, 3L)
+  expect_identical(item(builder_items(q, id), "plan_stub")$args$heading, "")
+  expect_identical(item(builder_items(q, id), "plan_stub")$from, "own")
+  # (no heading: the stub_* columns)
+  q <- .builder_item_write(p, id, "plan_stub", utils::modifyList(own, list(heading = NULL)))
   expect_identical(sheet_rows(q, "layout", id)$stub_indent, "3")
   # the field parts the figures use too
   expect_match(html(arg_field("f", "n", "integer", value = 2)), 'step="1" min="0"', fixed = TRUE)
