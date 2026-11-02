@@ -5,8 +5,9 @@
 # pointy-top hexagon (560 x 620 canvas), the same navy gradient, top gloss,
 # bottom vignette, drop shadow, dark border and thin inner highlight, the
 # same pale-blue paper card with its shadow, the same large white serif name
-# and the same small spaced tagline under it.  Only the card differs, and
-# the tagline takes a pale tint of the package's accent colour:
+# and the same small spaced tagline under it, and the same ichirio mark
+# along the lower edge.  Only the card differs, and the tagline takes a pale
+# tint of the package's accent colour:
 #
 #   tflspec     a spec sheet (output_id | analysis | method) and an arrow to
 #               a few lines of R code                       accent: green
@@ -27,30 +28,39 @@
 # Fonts: Liberation Serif and Liberation Mono (SIL Open Font License 1.1,
 # https://github.com/liberationfonts/liberation-fonts).  Liberation Serif is
 # the serif rtfreporter's PNG is drawn in.  The SVG names the fonts and the
-# PNGs are rendered from it with rsvg, which finds them through fontconfig;
-# the script stops if they are not installed (Debian / Ubuntu:
-# fonts-liberation2).
+# PNGs are rendered from it with rsvg, which finds them through fontconfig.
+# Without them (Debian / Ubuntu: fonts-liberation2) the script warns and the
+# PNGs fall back to Times New Roman / Courier New, which have the same
+# metrics.
 #
-# rtfreporter's logo for logo-family.png is read from a sibling checkout
-# (../rtfreporter) if there is one, else from GitHub.
+# The ichirio mark (a large "R" with a small "io" at its upper right) is
+# fixed path data, outlined from Source Sans 3 Black (SIL Open Font License
+# 1.1), so it needs no font.  rtfreporter's logo.svg carries the same path.
 #
-# Needs (developer only, not in DESCRIPTION): rsvg and magick.
+# rtfreporter's logo for logo-family.png is the SVG named by the environment
+# variable RTFREPORTER_LOGO, else a sibling checkout's
+# (../rtfreporter/man/figures/logo.svg), else the one on GitHub.
+#
+# Needs (developer only, not in DESCRIPTION): rsvg and png.
 # pkgdown::build_favicons() is not used: it sends the logo to the
 # RealFaviconGenerator web service.
 
 stopifnot(
   file.exists("DESCRIPTION"),
   requireNamespace("rsvg", quietly = TRUE),
-  requireNamespace("magick", quietly = TRUE)
+  requireNamespace("png", quietly = TRUE)
 )
 pkg <- unname(read.dcf("DESCRIPTION", fields = "Package")[1, 1])
 
 serif <- "Liberation Serif"
 mono  <- "Liberation Mono"
 for (fam in c(serif, mono)) {
-  got <- system2("fc-match", c("-f", "'%{family}'", shQuote(fam)), stdout = TRUE)
+  got <- if (nzchar(Sys.which("fc-match"))) {
+    system2("fc-match", c("-f", "'%{family}'", shQuote(fam)), stdout = TRUE)
+  } else ""
   if (!grepl(fam, paste(got, collapse = " "), fixed = TRUE)) {
-    stop(fam, " is not installed (fonts-liberation2); the PNGs need it.")
+    warning(fam, " is not found (fonts-liberation2); ",
+            "the PNGs fall back to another font.", call. = FALSE)
   }
 }
 font_serif <- sprintf("%s, Times New Roman, serif", serif)
@@ -66,9 +76,10 @@ family <- list(
                     tagline = "PLAN \u00b7 RUN",
                     bg = c("#a8424f", "#7a2734", "#4d1520"), edge = "#3e1019")
 )
-rtfreporter_png <- "../rtfreporter/man/figures/logo.png"
+rtfreporter_svg <- Sys.getenv("RTFREPORTER_LOGO",
+                              "../rtfreporter/man/figures/logo.svg")
 rtfreporter_url <- paste0("https://raw.githubusercontent.com/ichirio/",
-                          "rtfreporter/main/man/figures/logo.png")
+                          "rtfreporter/main/man/figures/logo.svg")
 
 W <- 560; H <- 620
 hex   <- "280,28 512,163 512,431 280,566 48,431 48,163"
@@ -169,13 +180,36 @@ outline <- function(edge) c(
                  'stroke-width="1.5" stroke-linejoin="round" opacity="0.18"/>'), inner)
 )
 
+# The ichirio mark: "R" with "io" at its upper right, outlined from Source
+# Sans 3 Black, centred on x = 280 between the tagline and the lower edge
+# (y 529 to 548).  The same path is in rtfreporter's logo.svg.
+ichirio_mark <- paste(
+  "M268.53 548V531.79H274.66Q276.41 531.79 277.88 532.25Q279.35 532.71",
+  "280.25 533.86Q281.15 535.01 281.15 537.03Q281.15 538.77 280.42",
+  "539.92Q279.7 541.07 278.53 541.72L282.05 548H277.26L274.46",
+  "542.56H272.82V548ZM272.82 539.17H274.36Q276.96 539.17 276.96",
+  "537.03Q276.96 535.98 276.3 535.58Q275.64 535.18 274.36",
+  "535.18H272.82ZM282.75 537.45V531.69H284.73V537.45ZM283.74",
+  "530.98Q283.25 530.98 282.95 530.71Q282.66 530.44 282.66 529.99Q282.66",
+  "529.54 282.95 529.27Q283.25 529 283.74 529Q284.22 529 284.52",
+  "529.27Q284.82 529.54 284.82 529.99Q284.82 530.44 284.52 530.71Q284.22",
+  "530.98 283.74 530.98ZM288.62 537.59Q287.88 537.59 287.23 537.23Q286.58",
+  "536.87 286.17 536.2Q285.76 535.53 285.76 534.57Q285.76 533.62 286.17",
+  "532.94Q286.58 532.27 287.23 531.91Q287.88 531.56 288.62 531.56Q289.35",
+  "531.56 290 531.91Q290.65 532.27 291.06 532.94Q291.47 533.62 291.47",
+  "534.57Q291.47 535.53 291.06 536.2Q290.65 536.87 290 537.23Q289.35",
+  "537.59 288.62 537.59ZM288.62 536Q289.07 536 289.26 535.61Q289.45",
+  "535.23 289.45 534.57Q289.45 533.91 289.26 533.53Q289.07 533.14 288.62",
+  "533.14Q288.17 533.14 287.98 533.53Q287.79 533.91 287.79 534.57Q287.79",
+  "535.23 287.98 535.61Q288.17 536 288.62 536Z"
+)
+
 wordmark <- function(p, tint, tagline) c(
   txt(280, 490, p, 46, "middle", "#ffffff", weight = 700,
       extra = ' letter-spacing="-0.5" filter="url(#text-shadow)"'),
   txt(280, 522, tagline, 13.5, "middle", tint, weight = 500,
       extra = ' letter-spacing="3.5"'),
-  txt(280, 555, "i c h i r i o", 11, "middle", "#ffffff", weight = 500,
-      extra = ' opacity="0.32" letter-spacing="6"')
+  sprintf('<path d="%s" fill="#ffffff" opacity="0.32"/>', ichirio_mark)
 )
 
 # -- the cards ----------------------------------------------------------------
@@ -314,25 +348,55 @@ sticker <- function(p, name = TRUE) {
     "</svg>")
 }
 
-# Without the time stamps magick writes, so that a re-run changes nothing.
-save <- function(img, file, ...) magick::image_write(magick::image_strip(img), file, ...)
-
-render <- function(svg, file, width, height = width * H / W) {
+# Images are RGBA arrays (height x width x 4), as png::readPNG() gives them;
+# png::writePNG() writes no time stamp, so a re-run changes nothing.
+render <- function(svg, width, height = width * H / W) {
   tmp <- tempfile(fileext = ".svg")
+  out <- tempfile(fileext = ".png")
   writeLines(svg, tmp, useBytes = TRUE)
-  rsvg::rsvg_png(tmp, file, width = round(width), height = round(height))
+  rsvg::rsvg_png(tmp, out, width = round(width), height = round(height))
+  img <- png::readPNG(out)
+  if (dim(img)[3] == 3) img <- array(c(img, rep(1, prod(dim(img)[1:2]))), c(dim(img)[1:2], 4))
+  img
+}
+
+# The image laid on a plain background colour.
+flatten <- function(img, bg) {
+  col <- grDevices::col2rgb(bg)[, 1] / 255
+  a <- img[, , 4]
+  for (k in 1:3) img[, , k] <- img[, , k] * a + col[k] * (1 - a)
+  img[, , 4] <- 1
+  img
 }
 
 # A square image of the sticker, for the favicons: the hexagon only (the
-# canvas below it holds the drop shadow), centred.
-square <- function(svg, size, bg = "none") {
-  tmp <- tempfile(fileext = ".png")
-  render(svg, tmp, W * 2)
-  img <- magick::image_read(tmp)
-  img <- magick::image_crop(img, sprintf("%dx%d+%d+%d", 2 * 478, 2 * 552, 2 * 41, 2 * 21))
-  img <- magick::image_resize(img, sprintf("%dx%d", size, size))
-  magick::image_extent(magick::image_background(img, bg), sprintf("%dx%d", size, size),
-                       gravity = "center", color = bg)
+# canvas below it holds the drop shadow), centred.  The SVG's view box is
+# narrowed to the hexagon and rsvg fits it into the square.
+square <- function(svg, size, bg = NULL) {
+  svg <- sub(sprintf('width="%d" height="%d" viewBox="0 0 %d %d"', W, H, W, H),
+             sprintf('width="%d" height="%d" viewBox="41 21 478 552"', size, size),
+             svg, fixed = TRUE)
+  img <- render(svg, size, size)
+  if (is.null(bg)) img else flatten(img, bg)
+}
+
+# A favicon.ico holding PNG images (read by every current browser): the
+# ICONDIR header, one 16-byte entry per image, then the PNG files.
+write_ico <- function(imgs, file) {
+  blobs <- lapply(imgs, function(img) png::writePNG(img))
+  con <- file(file, "wb")
+  on.exit(close(con))
+  le <- function(x, size) writeBin(as.integer(x), con, size = size, endian = "little")
+  le(c(0, 1, length(blobs)), 2)
+  offset <- 6 + 16 * length(blobs)
+  for (i in seq_along(blobs)) {
+    d <- dim(imgs[[i]])
+    writeBin(as.raw(c(d[2] %% 256, d[1] %% 256, 0, 0)), con)
+    le(c(1, 32), 2)
+    le(c(length(blobs[[i]]), offset), 4)
+    offset <- offset + length(blobs[[i]])
+  }
+  for (b in blobs) writeBin(b, con)
 }
 
 # -- write ---------------------------------------------------------------------
@@ -343,18 +407,18 @@ dir.create("pkgdown/favicon", recursive = TRUE, showWarnings = FALSE)
 
 svg <- sticker(pkg)
 writeLines(svg, "man/figures/logo.svg", useBytes = TRUE)
-render(svg, "man/figures/logo.png", W)
+png::writePNG(render(svg, W), "man/figures/logo.png")
 
 icon <- sticker(pkg, name = FALSE)
 writeLines(icon, "pkgdown/favicon/favicon.svg", useBytes = TRUE)
-save(square(icon, 96), "pkgdown/favicon/favicon-96x96.png")
-save(square(icon, 180, "#ffffff"), "pkgdown/favicon/apple-touch-icon.png")
+png::writePNG(square(icon, 96), "pkgdown/favicon/favicon-96x96.png")
+png::writePNG(square(icon, 180, "#ffffff"), "pkgdown/favicon/apple-touch-icon.png")
 for (n in c(192, 512)) {
-  save(square(icon, n, "#ffffff"),
-       sprintf("pkgdown/favicon/web-app-manifest-%dx%d.png", n, n))
+  png::writePNG(square(icon, n, "#ffffff"),
+                sprintf("pkgdown/favicon/web-app-manifest-%dx%d.png", n, n))
 }
-save(magick::image_join(lapply(c(16, 32, 48), function(n) square(icon, n))),
-     "pkgdown/favicon/favicon.ico", format = "ico")
+write_ico(lapply(c(16, 32, 48), function(n) square(icon, n)),
+          "pkgdown/favicon/favicon.ico")
 writeLines(c(
   "{",
   sprintf('  "name": "%s",', pkg),
@@ -370,21 +434,20 @@ writeLines(c(
   '  "display": "standalone"',
   "}"), "pkgdown/favicon/site.webmanifest")
 
-# The family, side by side, 300 px high each: rtfreporter's committed logo,
-# then tflspec and tflplanner as drawn here.
-rtf <- if (file.exists(rtfreporter_png)) rtfreporter_png else {
-  tmp <- tempfile(fileext = ".png")
+# The family, side by side, 300 px high each with a 12 px transparent
+# border: rtfreporter's committed logo, then tflspec and tflplanner as drawn
+# here.
+rtf <- if (file.exists(rtfreporter_svg)) rtfreporter_svg else {
+  tmp <- tempfile(fileext = ".svg")
   utils::download.file(rtfreporter_url, tmp, mode = "wb", quiet = TRUE)
   tmp
 }
-stickers <- c(
-  list(magick::image_read(rtf)),
-  lapply(names(family), function(p) {
-    tmp <- tempfile(fileext = ".png")
-    render(sticker(p), tmp, W)
-    magick::image_read(tmp)
-  })
-)
-stickers <- lapply(stickers, function(img)
-  magick::image_border(magick::image_resize(img, "x300"), "none", "12x12"))
-save(magick::image_append(do.call(c, stickers)), "data-raw/logo-family.png")
+sh <- 300; sw <- round(sh * W / H); pad <- 12
+stickers <- c(list(render(readLines(rtf, warn = FALSE, encoding = "UTF-8"), sw, sh)),
+              lapply(names(family), function(p) render(sticker(p), sw, sh)))
+cell <- sw + 2 * pad
+strip <- array(0, c(sh + 2 * pad, cell * length(stickers), 4))
+for (i in seq_along(stickers)) {
+  strip[pad + seq_len(sh), (i - 1) * cell + pad + seq_len(sw), ] <- stickers[[i]]
+}
+png::writePNG(strip, "data-raw/logo-family.png")
