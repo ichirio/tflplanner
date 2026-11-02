@@ -95,7 +95,7 @@ test_that("step 3: the pattern chosen, a value written, a line left out, from th
     session$setInputs(pg_edit = list(kind = "arg", fn = "rtf_page", arg = "margin_top_in",
                                      line = "", part = "", name = "", value = "0.5", n = 1))
     expect_identical(page_value_from(rv$p, "page", "margin_top_in", "T1")$value, "0.5")
-    session$setInputs(pg_edit = list(kind = "arg", fn = "rtf_default_format", arg = "font_size_half_points",
+    session$setInputs(pg_edit = list(kind = "arg", fn = "rtf_style", arg = "font_size_half_points",
                                      line = "", part = "", name = "", value = "8", n = 2))
     expect_identical(page_value_from(rv$p, "page", "font_size_half_points", "T1")$value, "16")
     expect_match(output$page_form$html, "Back to the study default", fixed = TRUE)

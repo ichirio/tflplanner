@@ -71,6 +71,8 @@ test_that("the code lists' dialog and step 2: a grid edit changes that cell and 
       col <- setdiff(names(d), c("output_id", "note"))
       col <- col[length(col)]
       new <- "changed"
+      # (a band's row height, tflspec#568: a whole number, or the save refuses it)
+      if (identical(col, "row_height_twips")) new <- "300"
       if (sh == "page") { col <- "margin_bottom_in"; new <- "0.9" }
       if (sh == "report") { col <- "watermark"; new <- "FINAL" }
       grid_edit(session, output, grid_id, 1L, col, new)
