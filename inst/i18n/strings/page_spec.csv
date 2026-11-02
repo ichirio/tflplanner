@@ -24,3 +24,6 @@
 "Figure size","図の大きさ"
 "Width (in)","幅（インチ）"
 "Height (in)","高さ（インチ）"
+"Font family","フォント名"
+"Cell padding, top (twips)","セルの余白・上 (twips)"
+"Cell padding, bottom (twips)","セルの余白・下 (twips)"
