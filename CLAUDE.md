@@ -1,0 +1,53 @@
+# tflplanner: notes for Claude Code
+
+- **Dependencies point one way:** rtfreporter \<- tflspec \<-
+  tflplanner. tflspec’s SPEC copies rtfreporter’s API shape. To change a
+  shape, change it upstream first; tflplanner only follows.
+- **Screens:**
+  - Labels are “meaning (function / argument name)”, e.g. “Parameter
+    (param: PARAMCD)”.
+  - The standard screens are for expert users: cut guidance an expert
+    would not need, or move it behind a “?”.
+  - Never drop data silently. Keep what a screen cannot show as YAML,
+    and show it.
+  - Every text shown has its Japanese in `inst/i18n/` (test-app-robust
+    checks this).
+- **Versions:** a PR never changes `Version` or NEWS. Versions are
+  bumped only for a tag or a CRAN submission, in one commit.
+- **PRs:**
+  - Branch from `main`; avoid stacking. If you must stack, rebase onto
+    `main` right after the lower PR merges.
+  - Keep PRs small and short-lived. Only one open PR per screen at a
+    time.
+  - When a PR is ready, add the `automerge` label. Write any order in
+    the body as `merge-after: tflspec#468`.
+  - A new screen, or a large UX change, waits for a screen review and
+    the user’s check before `automerge`.
+- **Before a PR:**
+  - Run the tests of what you changed, and lintr on the changed files.
+  - When tflspec changes the code it writes, also run tflplanner’s
+    related tests against that tflspec.
+  - The full suite, `R CMD check --as-cran` and pkgdown run in CI and
+    once before a tag.
+- **Browser tests** (`test-e2e-*.R`, chromote) run only with
+  `TFLPLANNER_E2E=true`.
+- **Screen checks:** first start the app from the branch and look at it,
+  before the heavy checks.
+- **R:** use R 4.6.1. Install each branch into its own library, with a
+  fresh library name per branch, and pass libraries to child R processes
+  via `R_LIBS`.
+- **Tests:**
+  - Never copy tests into `$TEMP`: `test_file()` reads that folder’s
+    `setup*.R`.
+  - Before loading tflplanner, point `R_USER_CONFIG_DIR`,
+    `R_USER_DATA_DIR`, `R_USER_CACHE_DIR` and
+    `options(tflplanner.home =)` at a scratch home, never the user’s.
+  - Run the installed package’s tests in one R session as well
+    (`test_dir`); per-file runs miss interference between tests.
+- **Files:**
+  - app_server()‘s parts are `R/srv_<part>.R` (functions run in its
+    environment by `.srv_part()`); texts’ Japanese in
+    `inst/i18n/strings/<file>.csv` (the R file that shows them;
+    `common.csv` for several).
+  - Split a file once it passes 2,000 lines.
+  - Translation keys must be unique (a test fails on duplicates).
