@@ -135,6 +135,8 @@
 "The height of the blank rows in twips: lower ones make a table shorter. Blank: as the body's. e.g. 120","空白行の高さ（twip）。低くすると表が短くなります。空欄 = 本体と同じ。例: 120"
 "The space between a cell's left border and its text, in twips. Blank: 0. e.g. 60","セルの左の罫線と文字の間の余白（twip）。空欄 = 0。例: 60"
 "The space between a cell's text and its right border, in twips. Blank: 0. e.g. 60","セルの文字と右の罫線の間の余白（twip）。空欄 = 0。例: 60"
+"The space between a cell's top border and its text, in twips. Blank: the document's (0). e.g. 20","セルの上の罫線と文字の間の余白（twip）。空欄 = 文書の余白（0）。例: 20"
+"The space between a cell's text and its bottom border, in twips. Blank: the document's (0). e.g. 20","セルの文字と下の罫線の間の余白（twip）。空欄 = 文書の余白（0）。例: 20"
 "Where a cell's text sits from top to bottom: ""bottom"", ""top"" or ""center"". Blank: bottom. e.g. ""top""","セルの中の文字の縦の位置: ""bottom""（下）、""top""（上）、""center""（中央）。空欄 = 下。例: ""top"""
 "Where the table sits on the page: ""left"", ""center"" or ""right"". Blank: left. e.g. ""center""","ページの中の表の位置: ""left""（左）、""center""（中央）、""right""（右）。空欄 = 左。例: ""center"""
 "The marks in the cells' text turned into print: ""script"" ^{...} superscript and _{...} subscript, ""relational"" >= and <= as signs, ""all"", ""none"". Blank: the document's (script). e.g. ""all""","セルの文字の記法を印字に変えるもの: ""script"" は ^{...} を上付き・_{...} を下付き、""relational"" は >= と <= を記号に、""all""、""none""。空欄 = 文書の設定（script）。例: ""all"""
