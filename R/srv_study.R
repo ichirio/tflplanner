@@ -1118,7 +1118,7 @@
           ch <- stats::setNames(
             c("sample", "ai_sample", "empty", "study"),
             c(t("The sample study: data, ARD definition, tables, listing and figures (made at once)"),
-              t("The sample for the AI tab: its TOC, shells, ADaM, ADaM spec and SAP, filled into the AI tab's step 1 (no answers)"),
+              t("The sample for the AI tab: a study made from its TOC, shells, ADaM, ADaM spec and SAP, filled into the AI tab's step 1 (no answers)"),
               t("Start empty"),
               t("Copy another study (definition and data code)")))
           # the AI sample needs the AI tab and a tflspec that writes it
@@ -1130,7 +1130,7 @@
       shiny::conditionalPanel(
         "input.ns_from == 'ai_sample'",
         shiny::p(class = "small text-muted",
-                 t("Writes the materials into the home's samples/ai-sample and opens the AI tab's step 1 with them filled in. The study itself is made there, from step 1."))),
+                 t("Makes the study now (its TOC and shells in docs/, the ADaM in data/adam, the SAP in ai/docs/) and opens it in the AI tab's step 1 with them filled in."))),
       shiny::conditionalPanel(
         "input.ns_from == 'study'",
         shiny::selectInput("ns_src", t("Copy from"),
@@ -1141,7 +1141,7 @@
                        value = switch(from, sample = next_sample_id(),
                                       ai_sample = next_sample_id("DMY-001"), "")),
       shiny::uiOutput("ns_id_check"),
-      # (the AI sample's study is made in the AI tab, in the studies folder)
+      # (not for the AI sample: its study takes the ID alone)
       shiny::conditionalPanel(
         "input.ns_from != 'ai_sample'",
         shiny::tags$details(
@@ -1199,19 +1199,27 @@
     if (dirty()) {
       return(notify(t("There are unsaved changes. Save first."), "warning"))
     }
-    # the AI sample: the materials written, the AI tab's step 1 filled with
-    # them; the study is made there, by step 1 (tfl_ai_study_init)
+    # the AI sample: the study made at once from its materials
+    # (tfl_ai_study_init) and opened; the AI tab's step 1 filled with them
     if (identical(input$ns_from, "ai_sample")) {
-      kit <- NULL
-      shiny::withProgress(
-        message = t("Writing the AI sample's materials ..."),
-        kit <- guarded(.ai_sample_kit(file.path(tflplanner_home(), "samples", "ai-sample"))))
-      if (is.null(kit)) return()
+      id <- trimws(input$ns_id)
+      root <- trimws(input$ns_root %||% "")
+      made <- NULL
+      shiny::withProgress(message = t("Making the study from the AI sample ..."), {
+        kit <- guarded(.ai_sample_kit(file.path(tflplanner_home(), "samples", "ai-sample")))
+        if (!is.null(kit)) {
+          made <- guarded(.ai_sample_study(id, kit, root = if (nzchar(root)) root else studies_root(),
+                                           title = "Example Pharma DMY-001 (fictional)"))
+        }
+      })
+      if (is.null(made)) return()
       shiny::removeModal()
+      rv$studies_ver <- rv$studies_ver + 1L
+      set_study(made$study)
       bslib::nav_select("nav", "ai")
-      session$userData$ai$prefill(c(list(study_id = trimws(input$ns_id),
-                                         title = "Example Pharma DMY-001 (fictional)"), kit))
-      return(notify(t("The AI tab's step 1 is filled in from the AI sample: press Read and check, then go on.")))
+      session$userData$ai$prefill(c(list(mode = "open", path = made$study$path), made$kit))
+      return(notify(sprintf(t("Created %s from the AI sample; the AI tab's step 1 is filled in: press Read and check."),
+                            id)))
     }
     blank <- function(v) if (is.null(v) || !nzchar(trimws(v))) NA else v
     s <- if (identical(input$ns_from, "sample")) {

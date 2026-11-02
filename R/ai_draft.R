@@ -559,21 +559,25 @@
 }
 
 # Where Browse... opens (a folder, "/" separated; "" when none is there):
-# the folder of the path already given; else the study's folder (the open
-# study's, or for a new one studies_root/<ID> when it is there, else
-# studies_root) -- its data/adam for the ADaM folder, its docs for the
-# workbooks, when there
-.ai_browse_start <- function(kind = c("adam", "toc", "shells", "adam_spec"), field = "", study_dir = NULL,
-                             root = studies_root(), new_id = "") {
+# the folder of the path already given; else of the other files step 1
+# has (`also`, the last first: the AI sample's inputs/, the TOC chosen just
+# before); else the study's folder (the open study's, or for a new one
+# studies_root/<ID> when it is there, else studies_root, else the home) --
+# its data/adam for the ADaM folder, its docs for the files, when there
+.ai_browse_start <- function(kind = c("adam", "toc", "shells", "adam_spec", "refs"), field = "",
+                             study_dir = NULL, root = studies_root(), new_id = "", also = character(),
+                             home = tflplanner_home()) {
   kind <- match.arg(kind)
   here <- function(d) {
     d <- as.character(d)
     length(d) == 1L && !is.na(d) && nzchar(d) && dir.exists(d)
   }
   done <- function(d) normalizePath(d, "/", mustWork = FALSE)
-  given <- trimws(unlist(strsplit(as.character(field %||% ""), "\n", fixed = TRUE)))
-  given <- gsub('^"|"$', "", given[nzchar(given)])
-  for (g in rev(given)) {
+  paths <- function(x) {
+    x <- trimws(unlist(strsplit(as.character(unlist(x) %||% ""), "\n", fixed = TRUE)))
+    gsub('^"|"$', "", x[!is.na(x) & nzchar(x)])
+  }
+  for (g in rev(c(paths(also), paths(field)))) {
     if (here(g)) return(done(g))
     if (file.exists(g) && here(dirname(g))) return(done(dirname(g)))
   }
@@ -585,6 +589,8 @@
     file.path(root, id)
   } else if (here(root)) {
     root
+  } else if (here(home)) {
+    return(done(home))
   }
   if (is.null(study)) return("")
   sub <- file.path(study, if (identical(kind, "adam")) study_layout()[["adam"]] else "docs")
