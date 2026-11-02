@@ -25,3 +25,14 @@ study's copy wins; when both have one, whether their files differ and
 which is newer.  Where the study's analyses use it, and the last time it
 was tried (\code{\link[=try_ard_function]{try_ard_function()}}).
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+s <- create_sample_study(run = FALSE)
+own_ard_functions(s)[, c("name", "where", "used_by")]
+}
+options(old)
+}

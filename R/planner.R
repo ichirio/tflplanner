@@ -24,20 +24,20 @@
 #' The sheet names each workbook carries, in the order they are written.
 #'
 #' @return `table_sheets()` and `report_sheets()` return a character vector.
-#' @export
+#' @noRd
 table_sheets <- function() {
   c("tables", "variables", "codelists", "cells", "digits", "layout", "columns",
     "style", "cell_styles", "col_header")
 }
 
 #' @rdname table_sheets
-#' @export
+#' @noRd
 report_sheets <- function() {
   c("report", "page", "header", "footer", "titles", "footnotes", "tokens")
 }
 
 #' @rdname table_sheets
-#' @export
+#' @noRd
 report_types <- function() c("table", "listing", "figure")
 
 # tflplanner wrote `program = {output_id}.R` on every study's default report
@@ -70,7 +70,7 @@ report_types <- function() c("table", "listing", "figure")
 #' is replaced, the others are kept (rows with no `under` column keep the
 #' `under` the report's values have).  A code list is a report's (tflspec:
 #' every row names its report); to use one in several reports, copy it
-#' ([import_codelist()], [standard_codelists()]).
+#' ([import_codelist()], `standard_codelists()`).
 #'
 #' @param path An `.xlsx` or `.csv` file.
 #' @param x A `tflplanner`.
@@ -79,6 +79,16 @@ report_types <- function() c("table", "listing", "figure")
 #'   and `under` optional): what `read_codelist()` returns.
 #' @return `read_codelist()`: a data frame; `set_codelist()`: the
 #'   `tflplanner`.
+#' @examples
+#' f <- tempfile(fileext = ".csv")
+#' writeLines(c("variable,value,label",
+#'              "SEX,F,Female",
+#'              "SEX,M,Male"), f)
+#' cl <- read_codelist(f)
+#' cl
+#' # put it into a report
+#' x <- add_output(new_planner(), "T-14-1-1", type = "table")
+#' x <- set_codelist(x, "T-14-1-1", cl)
 #' @export
 read_codelist <- function(path) {
   ext <- tolower(tools::file_ext(path))
@@ -303,6 +313,10 @@ print.tflplanner <- function(x, ...) {
 #' that the list lacks.
 #' @param x An `tflplanner`.
 #' @return A character vector.
+#' @examples
+#' x <- add_output(new_planner(), "T-14-1-1", type = "table")
+#' x <- add_output(x, "F-14-2-1", type = "figure")
+#' output_ids(x)
 #' @export
 output_ids <- function(x) {
   seen <- unlist(lapply(x$sheets, `[[`, "output_id"), use.names = FALSE)
@@ -411,7 +425,7 @@ read_planner <- function(path) {
 #'   plan normalizes `ard` (`ard |> normalize_ard() |> table_plan()`).  A listing's: a rework of its `data`
 #'   before it is sorted.  (A step that is the report's own code instead:
 #'   [set_step_code()].)
-#' @param type The report's type, one of [report_types()]; anything but
+#' @param type The report's type, one of `report_types()`; anything but
 #'   `"table"` is written on the `report` sheet.
 #' @param section The section of the TOC the report is under (its heading,
 #'   "14.1 Demographics"); `NA`: from its ID's numbers.
@@ -726,6 +740,17 @@ write_planner <- function(x, dir, table_file = "table_spec.xlsx",
 #'
 #' @param x An `tflplanner`.
 #' @return A data frame: `output_id`, `ok`, `message`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: the report is written and read back)
+#' x <- add_output(new_planner(), "F-1", type = "figure")
+#' check_planner(x)  # one row a report: ok, and the message when not
+#' }
+#' options(old)
 #' @export
 check_planner <- function(x) {
   dir <- tempfile("tflplanner")

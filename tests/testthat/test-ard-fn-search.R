@@ -96,16 +96,22 @@ test_that("a query finds the function for it first", {
   for (q in c("\u30ab\u30d7\u30e9\u30f3\u30de\u30a4\u30e4\u30fc",
               "\u30ab\u30d7\u30e9\u30f3\u30fb\u30de\u30a4\u30e4\u30fc",
               "\uff76\uff8c\uff9f\uff97\uff9d\uff8f\uff72\uff94\uff70", "KM")) {
-    expect_identical(fn_first(q), "cardx::ard_survival_survfit", info = q)
+    # (tflspec's own method first, cardx's function behind it)
+    expect_identical(fn_first(q), "km", info = q)
+    expect_true("cardx::ard_survival_survfit" %in% fn_find(q)$call, info = q)
   }
   expect_identical(fn_find("\u30cf\u30b6\u30fc\u30c9\u6bd4")$call[1L], "cardx::ard_regression")
-  expect_identical(fn_find("proc lifetest")$call,
-                   c("cardx::ard_survival_survfit", "cardx::ard_survival_survfit_diff",
-                     "cardx::ard_survival_survdiff"))
+  s <- fn_find("proc lifetest")$call
+  expect_identical(s[1L], "cardx::ard_survival_survfit")
+  expect_setequal(s, c("cardx::ard_survival_survfit", "cardx::ard_survival_survfit_diff",
+                       "cardx::ard_survival_survdiff"))
   expect_identical(fn_find("\u6700\u5c0f\u4e8c\u4e57\u5e73\u5747 \u5dee")$call,
                    "cardx::ard_emmeans_contrast")
-  expect_identical(fn_first("lsmeans"), "cardx::ard_emmeans_emmeans")
-  expect_identical(fn_first("CMH"), "cardx::ard_stats_mantelhaen_test")
+  # (tflspec's own methods first, cardx's functions behind them)
+  expect_identical(fn_first("lsmeans"), "lsmeans")
+  expect_true("cardx::ard_emmeans_emmeans" %in% fn_find("lsmeans")$call)
+  expect_identical(fn_first("CMH"), "cmh")
+  expect_true("cardx::ard_stats_mantelhaen_test" %in% fn_find("CMH")$call)
   expect_identical(fn_find("\u6709\u5bb3\u4e8b\u8c61 SOC")$call[1L],
                    "cards::ard_stack_hierarchical")
   expect_identical(fn_find("\u6700\u60aa\u30b0\u30ec\u30fc\u30c9")$call[1L],

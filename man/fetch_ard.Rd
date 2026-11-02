@@ -2,26 +2,9 @@
 % Please edit documentation in R/assist.R
 \name{fetch_ard}
 \alias{fetch_ard}
-\alias{ard_info}
-\alias{ard_data}
-\alias{ard_raw}
-\alias{ard_preview_state}
 \title{Run a report's data part and keep what its ARD holds}
 \usage{
 fetch_ard(study, output_id, timeout = 300, home = tflplanner_home())
-
-ard_info(study, output_id, home = tflplanner_home())
-
-ard_data(study, output_id, home = tflplanner_home())
-
-ard_raw(study, output_id, rows = FALSE, home = tflplanner_home())
-
-ard_preview_state(
-  study,
-  output_id,
-  meta = ard_info(study, output_id, home),
-  home = tflplanner_home()
-)
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
@@ -38,22 +21,17 @@ study ARD has them, with their ids), and \code{ard_preview_state()} whether
 what is kept is still the report's ARD: \code{"missing"}, \code{"outdated"} (its
 definition, its code, the study's setup or the data have changed since)
 or \code{"current"}.}
-
-\item{rows}{\code{TRUE}: the report's rows with their ids, as the study ARD
-has them (the ARD definition's reports; \code{NULL} for the others).}
-
-\item{meta}{What was kept (\code{\link[=ard_info]{ard_info()}}); by default, read.}
 }
 \value{
 The metadata (\code{\link[=ard_meta]{ard_meta()}}) with \code{fetched} (the time), \code{source}
 (\code{"data"} or \code{"ard"}), \code{error} (the rework's error, if it failed),
 \code{made} (\code{"here"}: made for the report; \code{"study"}: read from the study
-ARD), \code{print} (what it was made from, \code{\link[=ard_preview_state]{ard_preview_state()}}) and \code{log},
+ARD), \code{print} (what it was made from, \code{ard_preview_state()}) and \code{log},
 invisibly.
 }
 \description{
 Runs the study's setup code, the report's ARD code and its
-normalization and rework (\code{\link[=data_lines]{data_lines()}}) in a fresh R process, from the
+normalization and rework (\code{data_lines()}) in a fresh R process, from the
 study folder, and reads \code{\link[=ard_meta]{ard_meta()}} from the result: the normalized
 \code{data} when the rework ran, the raw \code{ard} otherwise.  A report whose ARD
 its ARD definition makes reads its rows of the study ARD when they are
@@ -65,4 +43,18 @@ code loaded (\code{adsl}, ...) add what the ARD lacks: each variable's label,
 and the order of its values (a factor's levels, or the order of a
 numeric companion \verb{<name>N}: \code{TRT01A} by \code{TRT01AN}).  The result is kept
 in tflplanner's home, so it is there the next time the study is opened.
+}
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (about 15 seconds: it runs the report's ARD code in another R process)
+s <- create_sample_study(run = FALSE)
+m <- fetch_ard(s, "T-14-1-1")
+m$by          # the column variables of its ARD
+m$variables[c("variable", "kind", "n_levels")]
+}
+options(old)
 }

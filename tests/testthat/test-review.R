@@ -168,6 +168,7 @@ test_that("the facts are kept: read once, a changed file or condition read again
 })
 
 test_that("each rule has its words in Japanese, with as many values", {
+  skip_on_cran()
   cat <- tflspec::tfl_review_rules()
   d <- .strings()
   n_args <- function(x) lengths(regmatches(x, gregexpr("%([0-9]+[$])?s", x)))

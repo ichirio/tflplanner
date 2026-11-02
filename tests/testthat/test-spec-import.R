@@ -35,6 +35,7 @@ test_that("the files go out as a folder or a zip, with a flat workbook", {
 })
 
 test_that("an edited, renamed copy comes back part by part, the old files kept", {
+  skip_on_cran()
   home <- local_home()
   s <- imp_study()
   out <- file.path(home, "copy")
@@ -83,6 +84,7 @@ test_that("a copy that does not read changes nothing", {
 })
 
 test_that("the flat workbook comes back: its rows into the YAML files", {
+  skip_on_cran()
   skip_if_not_installed("openxlsx")
   home <- local_home()
   s <- imp_study()
@@ -98,6 +100,7 @@ test_that("the flat workbook comes back: its rows into the YAML files", {
 })
 
 test_that("the workbooks of an earlier tflplanner are converted on import", {
+  skip_on_cran()
   skip_if_not_installed("openxlsx")
   home <- local_home()
   s <- imp_study()
@@ -118,6 +121,7 @@ test_that("the workbooks of an earlier tflplanner are converted on import", {
 })
 
 test_that("a filter that is not R stops the import at its report", {
+  skip_on_cran()
   skip_if_not_installed("cards")
   home <- local_home()
   suppressMessages(create_sample_study(run = FALSE))
@@ -141,6 +145,7 @@ test_that("a filter that is not R stops the import at its report", {
 })
 
 test_that("a figure design's R that does not read stops the import at its field", {
+  skip_on_cran()
   home <- local_home()
   p <- add_output(new_planner(), "F-1", type = "figure")
   p <- set_fig_design(p, "F-1", tflspec::tfl_fig_template("km_simple", data = "ADTTE"))

@@ -359,11 +359,9 @@
 #' `set_analysis_data()` adds one, or replaces the one named `old` (a new
 #' name is followed in the analyses and the analysis data made from it).
 #' `remove_analysis_data()` takes one out, refused while it is used.
-#' `name_analysis_data()` gives a report's data -- a dataset x analysis set
-#' its analyses read -- a name: the analysis data is made, those analyses
-#' read it, and a condition all of them have moves into it.
 #'
 #' @param x A `tflplanner`.
+#' @param output_id The report.
 #' @param data_id The name (lower case; also the object's name in the ARD
 #'   program).
 #' @param from A dataset, or an analysis data above.
@@ -375,6 +373,19 @@
 #' @param code R that makes the data itself (its value is the data); with
 #'   it the other columns but `from` stay blank.
 #' @return The `tflplanner`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_sample_study(run = FALSE)
+#' # the subjects aged 50 or more: a new analysis data made from ADSL
+#' x <- set_analysis_data(s$planner, "T-14-1-1", "adsl_old", from = "adsl", where = "AGE >= 50")
+#' ard_rows(x, "analysis_data", "T-14-1-1")[, c("data_id", "from", "where")]
+#' }
+#' options(old)
 #' @export
 set_analysis_data <- function(x, output_id, data_id, from, population_id = NA,
                               where = NA, add = NA, derive = NA,
@@ -481,7 +492,7 @@ import_analysis_data <- function(x, from_output, output_id, data_ids = NULL) {
 #' @param output_id The report.
 #' @param dataset The dataset its analyses read (`NA`: the analysis set's
 #'   own).
-#' @export
+#' @noRd
 name_analysis_data <- function(x, output_id, dataset, population_id,
                                data_id, label = NA) {
   a <- x$ard$analyses
@@ -609,7 +620,7 @@ name_analysis_data <- function(x, output_id, dataset, population_id,
 }
 
 #' @rdname set_analysis_data
-#' @export
+#' @noRd
 copy_analysis_data <- function(x, output_id, data_id) {
   ad <- .adata_rows(x, output_id)
   i <- match(data_id, ad$data_id)

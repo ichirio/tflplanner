@@ -1,4 +1,5 @@
 test_that("the sample study is copied, registered and written", {
+  skip_on_cran()
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)
@@ -110,6 +111,7 @@ test_that("the sample study makes its ARD and reports", {
 })
 
 test_that("the sample study copies under another ID, its definition the YAML spec", {
+  skip_on_cran()
   home <- withr_tempdir()
   old <- options(tflplanner.home = home)
   on.exit(options(old), add = TRUE)

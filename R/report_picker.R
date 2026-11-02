@@ -49,7 +49,7 @@
   lay <- study_layout()
   ids <- p$outputs$output_id
   setup <- .report_setup_recorded(study$path, ids)
-  now <- .study_setup_hash(study$path)
+  now <- .report_setup_hash(study$path)
   # (as study_status(): a figure printing an ARD's numbers turns with it)
   ard_why <- .fig_ard_why(study, ids)
   st <- vapply(ids, function(id) {
@@ -63,7 +63,7 @@
       any(grepl("^Error|Execution halted", readLines(log, warn = FALSE, encoding = "UTF-8")))
     if (failed) "error" else if (is.na(t_rtf)) "not run" else
       if (isTRUE(.program_time(prog, study$path) > t_rtf) ||
-          .setup_changed(setup[match(id, ids)], study$path, now) ||
+          .report_setup_changed(setup[match(id, ids)], study$path, now) ||
           nzchar(ard_why[[id]])) "outdated" else "ok"
   }, "")
   data.frame(output_id = ids, status = unname(st), stringsAsFactors = FALSE)

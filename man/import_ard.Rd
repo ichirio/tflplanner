@@ -32,3 +32,22 @@ report it is for, when \code{output_id} is given -- and records it
 (\code{\link[=ard_imports]{ard_imports()}}).  It is then used by a report whose report row says
 \verb{ard_source = import:<file>} (see \code{\link[=use_imported_ard]{use_imported_ard()}}).
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_sample_study(run = FALSE)
+ard_imports(s)  # none taken in yet
+# an ARD made elsewhere (here, with cards)
+if (requireNamespace("cards", quietly = TRUE)) {
+  f <- tempfile(fileext = ".rds")
+  saveRDS(cards::ard_continuous(mtcars, variables = "mpg"), f)
+  import_ard(s, f, source = "example")
+  ard_imports(s)
+}
+}
+options(old)
+}

@@ -4,6 +4,7 @@ sample_paths <- function() {
 }
 
 test_that("the sample reads, writes and reads back unchanged", {
+  skip_on_cran()
   p <- read_planner(sample_paths())
   expect_equal(p$outputs$output_id, c("DM", "AE", "ORR", "LB", "PK"))
   p$outputs$process_code[1] <- "data <- normalize_ard(ard)\n# two lines"
@@ -32,6 +33,7 @@ test_that("a layout with the former column names is refused, not emptied", {
 })
 
 test_that("code saved with tflspec's former engine names is read with rtfreporter's", {
+  skip_on_cran()
   expect_equal(
     .renamed_calls(c("data <- tfl_ard_normalize(ard)",
                      "d <- tflspec::tfl_ard_normalize(a, hierarchy = h)",
@@ -55,6 +57,7 @@ test_that("code saved with tflspec's former engine names is read with rtfreporte
 })
 
 test_that("each workbook carries its half and tflspec reads each alone", {
+  skip_on_cran()
   p <- read_planner(sample_paths())
   paths <- write_planner(p, withr_tempdir())
   t <- tflspec::tfl_read_table_spec(paths[["table"]])
@@ -129,6 +132,7 @@ test_that("a grid's empty rows never become rows of an output_id", {
 })
 
 test_that("check_planner() reports what tflspec refuses", {
+  skip_on_cran()
   p <- read_planner(sample_paths())
   expect_true(all(check_planner(p)$ok))
   p$sheets$layout$pages_max_rows[1] <- "twenty"
@@ -138,6 +142,7 @@ test_that("check_planner() reports what tflspec refuses", {
 })
 
 test_that("the cell_styles sheet is a table sheet, written and read back", {
+  skip_on_cran()
   expect_true("cell_styles" %in% table_sheets())
   p <- add_output(new_planner(), "T1")
   p <- set_sheet_rows(p, "cell_styles", "T1", data.frame(

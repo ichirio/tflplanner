@@ -43,6 +43,18 @@
 #'   company standards leave out (their settings' `review_off`, `A12 | C02`),
 #'   whose rows are not there.
 #' @seealso [tflspec::tfl_review_spec()], [tflspec::tfl_review_rules()]
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_sample_study(run = FALSE)
+#' # the definition alone, no data read
+#' study_review(s, data = "none")
+#' }
+#' options(old)
 #' @export
 study_review <- function(study, output_id = NULL, data = c("cached", "read", "none"),
                          ard = TRUE, deep = FALSE, home = tflplanner_home(),
@@ -109,8 +121,8 @@ study_review <- function(study, output_id = NULL, data = c("cached", "read", "no
 
 #' @rdname study_review
 #' @param x A planner ([new_planner()], a study's `$planner`).
-#' @param facts The facts of the data ([review_facts()]), or `NULL`.
-#' @export
+#' @param facts The facts of the data (`review_facts()`), or `NULL`.
+#' @noRd
 review_problems <- function(x, output_id = NULL, facts = NULL,
                             lang = tflplanner_language()) {
   r <- .review_planner(x, facts)
@@ -554,7 +566,7 @@ review_problems <- function(x, output_id = NULL, facts = NULL,
 #' @param refresh `TRUE` makes the facts again whatever is kept.
 #' @param read `FALSE` reads no file: the facts kept, the datasets with none
 #'   listed in `attr(, "not_read")`.
-#' @export
+#' @noRd
 review_facts <- function(study, refresh = FALSE, read = TRUE,
                          home = tflplanner_home(), progress = NULL) {
   p <- study$planner

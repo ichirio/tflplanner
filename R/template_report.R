@@ -51,19 +51,25 @@
   list(name = as.character(o$template$name), args = o$template$args %||% list())
 }
 
-# The study's datasets: their columns, by dataset (upper case), read once
-# a study folder
+# The study's datasets, by dataset (upper case), read once a study folder:
+# through spec/data.yml's paths and readers (`planner`'s datasets, as the
+# programs read them -- an .xpt too, #518), else the .rds files under data/
 .tpl_cols_cache <- new.env()
-.tpl_data_cols <- function(root) {
+.tpl_data_cols <- function(root, planner = NULL) {
   if (is.null(root)) return(list())
-  key <- normalizePath(root, "/", mustWork = FALSE)
+  ds <- if (!is.null(planner)) toupper(stats::na.omit(planner$ard$datasets$dataset))
+  key <- paste(c(normalizePath(root, "/", mustWork = FALSE), sort(ds)), collapse = "|")
   if (!is.null(.tpl_cols_cache[[key]])) return(.tpl_cols_cache[[key]])
-  files <- list.files(file.path(root, "data"), "\\.(rds|RDS)$", recursive = TRUE, full.names = TRUE)
-  out <- list()
-  for (f in files) {
-    d <- tryCatch(readRDS(f), error = function(e) NULL)
-    if (!is.data.frame(d)) next
-    out[[toupper(sub("\\.[^.]*$", "", basename(f)))]] <- d
+  out <- if (length(ds)) {
+    .study_data(list(planner = planner, path = root), ds)
+  } else {
+    files <- list.files(file.path(root, "data"), "\\.(rds|RDS)$", recursive = TRUE, full.names = TRUE)
+    o <- list()
+    for (f in files) {
+      d <- tryCatch(readRDS(f), error = function(e) NULL)
+      if (is.data.frame(d)) o[[toupper(sub("\\.[^.]*$", "", basename(f)))]] <- d
+    }
+    o
   }
   .tpl_cols_cache[[key]] <- out
   out
@@ -85,7 +91,8 @@
 # The input a parameter gets: population, data, var (one column), vars
 # (columns, in order), levels (a variable's values), flag, number, text,
 # chips (several texts), choice (one of tfl_param(choices = )), choices
-# (several of them), list (a small table of lines, "a | b").  By the type
+# (several of them), list (a small table of lines, "a | b"), columns (a
+# listing's: R/tpl_columns_ui.R).  By the type
 # tflspec declares (tfl_param(type = )); guessed from the default and the
 # doc only when it declares none.
 .tpl_type <- function(prm, columns = character()) {
@@ -94,6 +101,7 @@
   if (identical(n, "data")) return("data")
   several <- isTRUE(prm$multiple)
   ty <- prm$type
+  if (.tpl_is_columns(prm)) return("columns")
   if (length(ty) == 1L && nzchar(ty)) {
     return(switch(ty,
       vars = if (several) "vars" else "var",
@@ -204,6 +212,8 @@
   val <- function(v, several = FALSE) {
     if (!nzchar(v)) return(NULL)
     if (v %in% c("TRUE", "FALSE")) return(v == "TRUE")
+    # (a whole number as one: a column's width 15, not 15.0)
+    if (grepl("^-?[0-9]+$", v)) return(as.integer(v))
     if (grepl("^-?[0-9]+(\\.[0-9]+)?$", v)) return(as.numeric(v))
     if (several && grepl(",", v, fixed = TRUE)) return(trimws(strsplit(v, ",", fixed = TRUE)[[1L]]))
     v
@@ -248,7 +258,7 @@
       v <- v[nzchar(trimws(v))]
       if (!length(v)) NULL else if (identical(type, "levels") && !isTRUE(prm$multiple)) v[1L] else v
     },
-    list = .tpl_list_parse(v, prm),
+    list = , columns = .tpl_list_parse(v, prm),
     {
       v <- trimws(paste(as.character(v), collapse = ""))
       if (nzchar(v)) v else NULL
@@ -698,4 +708,16 @@ $(document).on('shiny:connected', function() {
   x <- tryCatch(tflspec::tfl_templates(), error = function(e) NULL)
   call <- if (!is.null(x) && "call" %in% names(x)) x$call[match(name, x$name)] else NA
   if (length(call) && !is.na(call) && nzchar(call)) paste0(call, "()") else sprintf("tfl_template(%s)", name)
+}
+
+# A template report made a code one (the template card's "Convert to
+# code"): the template's items, with the study's defaults and the report's
+# own over them (tflspec::tfl_template_to_spec()), written into the report;
+# the planner.  One way: the template is no longer the report's.
+.tpl_to_code <- function(p, id) {
+  sp <- .code_spec(p)
+  o <- sp$outputs[[id]]
+  if (is.null(o) || is.null(o$template)) stop(sprintf("%s is not a template report.", id), call. = FALSE)
+  b <- tflspec::tfl_template_to_spec(o, sp$study)
+  .spec_set_output(p, id, b)
 }

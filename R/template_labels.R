@@ -88,6 +88,8 @@
   linetype_by = "Line type per group",
   legend = "Legend position",
   legend_title = "Legend title",
+  legend_median = "Median in the legend",
+  legend_median_digits = "Decimals of the legend's median",
   pvalue = "Log-rank p-value",
   pvalue_location = "P-value position",
   title = "Figure title",
@@ -126,7 +128,12 @@
   rows = "Row keys",
   direction = "Cell direction",
   label = "Row label heading",
-  by_response = "Colour bars by response"
+  by_response = "Colour bars by response",
+  worst = "Worst post-baseline category",
+  missing_label = "Missing-baseline row label",
+  total_label = "All-subjects row label",
+  param_page = "One page per parameter",
+  param_heading = "Parameter page name"
 )
 
 .tpl_doc_labels <- c(

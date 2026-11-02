@@ -67,7 +67,7 @@
     rv$status_ver
     p <- shiny::isolate(rv$p)
     empty <- data.frame(output_id = character(), section = character(),
-                        batches = character(), type = character(),
+                        batches = character(), type = character(), how = character(),
                         program = character(), rtf = character(),
                         data = character(), title = character())
     if (is.null(p) || !nrow(p$outputs)) return(empty)
@@ -113,6 +113,11 @@
       section = .report_section(o$output_id, type, o$section),
       batches = ifelse(is.na(o$batches %||% NA_character_), "", o$batches %||% ""),
       type = t(unname(.type_labels[type])),
+      # how it is made: a template (its name) or code
+      how = vapply(o$output_id, function(id) {
+        tp <- .tpl_of(p, id)
+        if (is.null(tp)) t("Code") else paste0(t("Template"), ": ", tp$name)
+      }, "", USE.NAMES = FALSE),
       program = vapply(info, `[[`, "", "program"),
       rtf = vapply(info, `[[`, "", "file"),
       data = .cell_tip(data, data_tip),
@@ -123,13 +128,16 @@
     v <- outputs_view()
     # (a report just chosen by the server, not come back yet: that one)
     sel <- match(tgt_pick() %||% shiny::isolate(input$target), v$output_id)
-    v$output_id <- htmltools::htmlEscape(v$output_id)
+    # (a report adopted from the AI's draft: marked; its draft newer, said)
+    ai <- .ai_adopted_marks(if (has_study()) shiny::isolate(rv$study$path), v$output_id)
+    v$output_id <- paste0(htmltools::htmlEscape(v$output_id), .ai_mark_html(ai, t))
     v$section <- htmltools::htmlEscape(v$section)
     v$batches <- htmltools::htmlEscape(v$batches)
     v$program <- htmltools::htmlEscape(v$program)
     v$rtf <- htmltools::htmlEscape(v$rtf)
     # "Title" here is the report's title; t("Title") is the study's
-    names(v) <- c(t(c("output_id", "Section", "Report sets", "Type", "Program", "RTF", "Data")),
+    v$how <- htmltools::htmlEscape(v$how)
+    names(v) <- c(t(c("output_id", "Section", "Report sets", "Type", "How it is made", "Program", "RTF", "Data")),
                   if (identical(lang, "en")) "Title" else t("Report title"))
     v$.key <- .report_search_keys(shiny::isolate(picker_rows()), outputs_view()$output_id)
     DT::datatable(v, rownames = FALSE, escape = FALSE,
@@ -149,6 +157,9 @@
   shiny::observeEvent(input$target, {
     v <- outputs_view()
     sel <- match(input$target, v$output_id)
+    # (the table not drawn yet, its tab not opened: it is drawn with the
+    # report selected, so nothing to tell it -- #445)
+    if (is.null(input$outputs_rows_all)) return()
     if (!identical(input$outputs_rows_selected, if (!is.na(sel)) sel)) {
       DT::selectRows(DT::dataTableProxy("outputs"), if (!is.na(sel)) sel)
     }
@@ -550,10 +561,10 @@
     rf_drawn$size <- own_size
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-end mb-2",
-      shiny::textInput("rp_font", with_tip(t("This report's font"),
+      shiny::textInput(updateOn = "blur", "rp_font", with_tip(t("This report's font"),
         t("Blank: every report's font and size (the study tab). A value here is this report's own (its row of the page sheet).")),
         rf_drawn$font, placeholder = all_font),
-      shiny::textInput("rp_font_size", t("Size (pt)"), own_size,
+      shiny::textInput(updateOn = "blur", "rp_font_size", t("Size (pt)"), own_size,
                        placeholder = all_size, width = "8em"),
       shiny::span(class = "small text-muted mb-3",
                   sprintf(t("Every report's: %s, %s pt"), all_font, all_size)))
@@ -620,7 +631,8 @@
       # only), or the code SPEC as before (R/template_report.R)
       if (type) shiny::radioButtons(
         "modal_how", t("How to make it"),
-        stats::setNames(c("template", "code"), c(t("Template"), t("Code"))),
+        stats::setNames(c("template", "code"),
+                        c(t("Template (converted to code when needed)"), t("Code (from empty)"))),
         selected = "template", inline = TRUE),
       if (type) shiny::conditionalPanel("input.modal_how == 'template'", tpl_modal_ui()),
       if (type) shiny::uiOutput("modal_ok_js"),
@@ -641,24 +653,6 @@
           v <- report_population(rv$p, current() %||% "")
           if (is.na(v)) "" else v
         })),
-      if (type) shiny::conditionalPanel(
-        "input.modal_type == 'listing' && input.modal_how != 'template'",
-        shiny::checkboxInput(
-          "modal_first_l",
-          with_tip(t("Start from the data"),
-                   t("Start the listing from the data (writes its columns and shows it)")),
-          value = TRUE, width = "100%"),
-        shiny::conditionalPanel("input.modal_first_l",
-                                shiny::uiOutput("modal_first_l_ui"))),
-      if (type) shiny::conditionalPanel(
-        "input.modal_type == 'table' && input.modal_how != 'template'",
-        shiny::checkboxInput(
-          "modal_first",
-          with_tip(t("Apply a template"),
-                   t("A kind of table: a few questions about the data, then its ARD definition and its table are written -- all of it editable afterwards.")),
-          value = !nrow(rv$p$ard$analyses), width = "100%"),
-        shiny::conditionalPanel("input.modal_first",
-                                shiny::uiOutput("modal_first_ui"))),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn(button, "OK", class = "btn-primary")),
       easyClose = TRUE))

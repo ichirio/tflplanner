@@ -33,6 +33,18 @@
 #'   ARD form's search finds it by: the comment lines
 #'   `# tflplanner-keywords: odds ratio, PROC LOGISTIC` right above it;
 #'   `", "` between them).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' # write a function from tflspec's template into the company's folder
+#' d <- file.path(tflplanner_home(), "standards", "ard_functions")
+#' dir.create(d, recursive = TRUE)
+#' tflspec::tfl_ard_function_template("ard_cv_geomean", type = "summary",
+#'                                    file = file.path(d, "ard_cv_geomean.R"))
+#' company_ard_functions()[c("name", "title", "stat_names")]
+#' options(old)
 #' @export
 company_ard_functions <- function(home = tflplanner_home()) {
   fs <- list.files(.own_fun_dir(home), pattern = "[.][Rr]$", full.names = TRUE)
@@ -59,6 +71,21 @@ company_ard_functions <- function(home = tflplanner_home()) {
 #' @param name The function.
 #' @param home The tflplanner home.
 #' @return The study, its ARD definition's `source` updated.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it makes a study)
+#' d <- file.path(tflplanner_home(), "standards", "ard_functions")
+#' dir.create(d, recursive = TRUE)
+#' tflspec::tfl_ard_function_template("ard_cv_geomean", type = "summary",
+#'                                    file = file.path(d, "ard_cv_geomean.R"))
+#' s <- use_company_ard_function(create_study("DEMO-01"), "ard_cv_geomean")
+#' s$planner$ard$study  # its key `source` names the copy in the study
+#' }
+#' options(old)
 #' @export
 use_company_ard_function <- function(study, name, home = tflplanner_home()) {
   own <- company_ard_functions(home)
@@ -104,6 +131,23 @@ use_company_ard_function <- function(study, name, home = tflplanner_home()) {
 #' @param stat_names The statistics it should give.
 #' @param home The tflplanner home.
 #' @return The problems found ([tflspec::tfl_check_ard_function()]).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' if (requireNamespace("cards", quietly = TRUE)) {
+#'   d <- file.path(tflplanner_home(), "standards", "ard_functions")
+#'   dir.create(d, recursive = TRUE)
+#'   tflspec::tfl_ard_function_template("ard_cv_geomean", type = "summary",
+#'                                      file = file.path(d, "ard_cv_geomean.R"))
+#'   # no problem found: no rows
+#'   check_company_ard_function("ard_cv_geomean", cards::ADSL,
+#'                              by = ARM, variables = AGE)
+#' }
+#' }
+#' options(old)
 #' @export
 check_company_ard_function <- function(name, data, ..., stat_names = NULL,
                                        home = tflplanner_home()) {

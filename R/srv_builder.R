@@ -436,7 +436,7 @@
     bform$form_cols <- list()
     # (each call its own card: plan_cell_style()'s second is
     # "plan_cell_style#2", its form read and written as the second)
-    form_items <- Filter(function(it) it$fn %in% names(.plan_form_main) &&
+    form_items <- Filter(function(it) it$fn %in% .plan_form_fns &&
                            (isTRUE(it$present) || isTRUE(it$added)), items)
     for (it in form_items) {
       fn <- it$fn
@@ -496,6 +496,13 @@
           .nest_body(cid, it, st, lang = lang)
         })
     }
+    # a part (plan_append()): its own fields, its items as YAML
+    # (R/builder_parts.R)
+    for (it in Filter(function(it) identical(it$fn, "plan_append") &&
+                        (isTRUE(it$present) || isTRUE(it$added)), items)) {
+      bodies[[it$path]] <- .part_body(card_id(it$path), it,
+                                      datasets = rv$p$ard$datasets$dataset %||% character(), lang = lang)
+    }
     bodies <- Filter(Negate(is.null), bodies)
     shiny::div(
       class = "rp-builder-cards", `data-back` = t("Back to the code"),
@@ -548,6 +555,27 @@
       send_mark(it$path, f)
     }
   }
+  # a part's card: Apply writes its fields; Start writes the usual part
+  # (the ARD's summary statistics by the table's columns) into it
+  shiny::observeEvent(input$b_part_act, {
+    a <- input$b_part_act
+    it <- .builder_item_at(bform$items, a$path)
+    shiny::req(!is.null(it), identical(bform$id, current()))
+    cid <- card_id(it$path)
+    k <- if (grepl("#", it$path, fixed = TRUE)) as.integer(sub("^.*#", "", it$path)) else 1L
+    args <- if (identical(a$act, "start")) {
+      cols <- bform$st$key[!is.na(bform$st$key)]
+      utils::modifyList(it$args %||% list(),
+                        list(data = list(source = "ard"), content = .part_quickstart(cols)))
+    } else guarded(.part_args_read(input, cid, it))
+    if (is.null(args)) return()
+    p2 <- guarded(.builder_item_write(rv$p, bform$id, "plan_append", args, k))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    rv$btouched <- TRUE
+    rv$bver <- rv$bver + 1L
+    notify(t("The part is written: update the preview to see its rows."))
+  })
   # the Total column's switch: its card's
   total_on_id <- function() paste0(card_id("plan_total"), "__on")
   # a card's Revert: the report's own rows of its verb taken away, so the
@@ -688,7 +716,7 @@
       shiny::div(class = "small text-muted", "plan_sort(): ",
                  shiny::tags$code(shiny::textOutput("b_sort_code", inline = TRUE))))
   }
-  # The layout cards with a form (.plan_form_main: the blank rows, the
+  # The layout cards with a form (.plan_form_fns: the blank rows, the
   # pages, the row label column, the style): read back by verb -- none
   # until the card's fields are there -- and written to the sheets through
   # tflspec's bridge as the report's own: what the form changed from the
@@ -699,7 +727,7 @@
     out <- list()
     # (by the card's path: a verb's second call its own)
     for (it in bform$items) {
-      if (!it$fn %in% names(.plan_form_main) ||
+      if (!it$fn %in% .plan_form_fns ||
           !(isTRUE(it$present) || isTRUE(it$added))) next
       r <- .plan_form_read(input, card_id(it$path), it$fn, cols = bform$form_cols[[it$path]])
       if (!is.null(r)) out[[it$path]] <- r

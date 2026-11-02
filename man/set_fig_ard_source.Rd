@@ -24,3 +24,18 @@ is \code{\link[=use_imported_ard]{use_imported_ard()}}.  The figure's program th
 \code{ard}, for its design's \code{ard_stats} steps and \code{ard_number} layers (see
 \code{\link[tflspec:tfl_fig_parts]{tflspec::tfl_fig_parts()}}).
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: the sample study and its data)
+s <- create_sample_study(run = FALSE)
+# the figure reads the ARD of a table of the study
+p <- set_fig_ard_source(s$planner, "F-14-2-1", "table:T-14-2-1")
+p$sheets$report[which(p$sheets$report$output_id == "F-14-2-1"),
+                c("output_id", "ard_source")]
+}
+options(old)
+}

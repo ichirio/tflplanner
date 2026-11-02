@@ -23,3 +23,8 @@ programs run without tflspec.  Saving the study writes it again when
 tflspec's have changed (one edited by hand is copied to
 \verb{programs/.edited/} first).
 }
+\examples{
+# the functions the study's programs call
+code <- study_helpers_code()
+head(code)
+}

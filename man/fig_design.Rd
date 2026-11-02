@@ -24,6 +24,21 @@ set_fig_design(x, output_id, design)
 \code{fig_design()} gives a figure's design, \code{NULL} when it has none (its plot
 is written by hand); \code{set_fig_design()} sets it, or with \code{NULL} drops it.
 A design is tflspec's \code{\link[tflspec:tfl_fig_design]{tflspec::tfl_fig_design()}} (see also
-\code{\link[tflspec:tfl_fig_templates]{tflspec::tfl_fig_template()}}).  With a design, the figure's program
+\code{\link[tflspec:tfl_fig_template]{tflspec::tfl_fig_template()}}).  With a design, the figure's program
 makes its plot from it (\code{\link[=program_code]{program_code()}}).
+}
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_sample_study(run = FALSE)
+x <- s$planner
+fig_design(x, "F-14-2-1")  # NULL: this figure is written by hand
+x <- set_fig_design(x, "F-14-2-1", tflspec::tfl_fig_template("km_simple"))
+class(fig_design(x, "F-14-2-1"))
+}
+options(old)
 }

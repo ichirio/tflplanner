@@ -2,12 +2,9 @@
 % Please edit documentation in R/codelists.R
 \name{import_codelist}
 \alias{import_codelist}
-\alias{standard_codelists}
 \title{A report's code lists: copy one in}
 \usage{
 import_codelist(x, from_output, output_id, variables = NULL)
-
-standard_codelists(sets = NULL, home = tflplanner_home())
 }
 \arguments{
 \item{x}{A \code{tflplanner}.}
@@ -17,15 +14,9 @@ standard_codelists(sets = NULL, home = tflplanner_home())
 \item{output_id}{The report copied into.}
 
 \item{variables}{Only these variables' code lists; \code{NULL} for all.}
-
-\item{sets}{Only these sets of the standards; \code{NULL} for all.}
-
-\item{home}{tflplanner's home.}
 }
 \value{
-\code{import_codelist()}: the \code{tflplanner}; \code{standard_codelists()}: a
-data frame (\code{set}, \code{variable}, \code{value}, \code{label}, \code{order}, \code{under},
-\code{note}).
+The \code{tflplanner}.
 }
 \description{
 A code list is a report's: every row of the \code{codelists} sheet names its
@@ -34,4 +25,18 @@ one (all, or those of some variables); \code{standard_codelists()} gives the
 company standards' (their \code{codelists} sheet: one row a value, \code{set}
 naming each list), for \code{\link[=set_codelist]{set_codelist()}}.  The rows copied are the
 report's own: nothing ties them to where they came from.
+}
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: the sample study and its data)
+s <- create_sample_study(run = FALSE)
+# the code list of SEX in one report is copied into another
+p <- import_codelist(s$planner, "T-14-1-1", "T-14-1-3", variables = "SEX")
+sum(p$sheets$codelists$output_id \%in\% "T-14-1-3")
+}
+options(old)
 }

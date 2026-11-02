@@ -403,6 +403,15 @@
 #' @param home tflplanner's home.
 #' @return `standards_template()`: `path`, invisibly.  `read_standards()`
 #'   and `company_standards()`: a named list of data frames.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' f <- tempfile(fileext = ".xlsx")
+#' standards_template(f)  # the built-in draft, to edit
+#' file.exists(f)
+#' options(old)
 #' @export
 standards_template <- function(path, from = c("builtin", "current")) {
   from <- match.arg(from)
@@ -539,6 +548,15 @@ company_standards <- function(home = tflplanner_home()) {
 #' @param x A `tflplanner`.
 #' @param study_id The study's id (`{STUDY_ID}` in the defaults).
 #' @return The `tflplanner`, with attribute `added` (the sheets added to).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' x <- add_standard_defaults(new_planner(), "STUDY-1")
+#' # the sheets that got the company's defaults
+#' attr(x, "added")
+#' options(old)
 #' @export
 add_standard_defaults <- function(x, study_id) {
   std <- .standard_planner(study_id)

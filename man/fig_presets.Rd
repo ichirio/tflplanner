@@ -37,3 +37,18 @@ mean-over-time figure of a study type ...  \code{fig_presets()} lists them;
 \code{standards/figure-presets}); \code{read_fig_preset()} gives it back;
 \code{remove_fig_preset()} drops it.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it makes the sample study)
+s <- create_sample_study(run = FALSE)
+fig_presets()  # none yet
+save_fig_preset(fig_design(s$planner, "F-14-2-3"), "km-company",
+                "KM figure as the company draws it")
+fig_presets()[c("name", "description")]
+}
+options(old)
+}

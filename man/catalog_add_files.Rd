@@ -23,6 +23,22 @@ Every data file of the data folders (\code{data/adam}, \code{data/sdtm},
 already there are left as they are.  When one name has files in several
 formats (\code{adsl.rds}, \code{adsl.xpt}), the row is made for the format read
 first (\code{rds}, \code{rda}, \code{parquet}, \code{csv}, \code{xpt}, \code{sas7bdat}); the others
-stay files with no row of their own, and \code{\link[=catalog_name_clashes]{catalog_name_clashes()}} says
+stay files with no row of their own, and \code{catalog_name_clashes()} says
 which names have more than one file.
+}
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (needs the sample data; a few seconds)
+s <- create_sample_study(run = FALSE)
+# a new data file in the study's data folder ...
+saveRDS(data.frame(USUBJID = 1, PARAMCD = "ALT"), file.path(s$path, "data/adam/adlb.rds"))
+# ... gets its row in the data catalog
+p <- catalog_add_files(s$planner, study_files(s))
+attr(p, "added")
+}
+options(old)
 }

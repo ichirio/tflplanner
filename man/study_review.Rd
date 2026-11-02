@@ -2,8 +2,6 @@
 % Please edit documentation in R/review.R
 \name{study_review}
 \alias{study_review}
-\alias{review_problems}
-\alias{review_facts}
 \title{Review a study's definition}
 \usage{
 study_review(
@@ -14,21 +12,6 @@ study_review(
   deep = FALSE,
   home = tflplanner_home(),
   lang = tflplanner_language(),
-  progress = NULL
-)
-
-review_problems(
-  x,
-  output_id = NULL,
-  facts = NULL,
-  lang = tflplanner_language()
-)
-
-review_facts(
-  study,
-  refresh = FALSE,
-  read = TRUE,
-  home = tflplanner_home(),
   progress = NULL
 )
 }
@@ -52,15 +35,6 @@ will (\code{\link[=check_planner]{check_planner()}}): slow, one read a report.}
 
 \item{progress}{A function called with each dataset's name before its
 file is read (\code{data = "read"}), or \code{NULL}.}
-
-\item{x}{A planner (\code{\link[=new_planner]{new_planner()}}, a study's \verb{$planner}).}
-
-\item{facts}{The facts of the data (\code{\link[=review_facts]{review_facts()}}), or \code{NULL}.}
-
-\item{refresh}{\code{TRUE} makes the facts again whatever is kept.}
-
-\item{read}{\code{FALSE} reads no file: the facts kept, the datasets with none
-listed in \code{attr(, "not_read")}.}
 }
 \value{
 A \code{tflspec::tfl_review}, its \code{message} in the app's language and
@@ -80,6 +54,19 @@ datasets whose file or definition changed since; \code{"none"} reviews the
 definition alone.  \code{review_problems()} reviews a definition with no study
 (the planner alone: what an import's draft and the tests call).
 \code{review_facts()} gives the facts the review checks against.
+}
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_sample_study(run = FALSE)
+# the definition alone, no data read
+study_review(s, data = "none")
+}
+options(old)
 }
 \seealso{
 \code{\link[tflspec:tfl_review_spec]{tflspec::tfl_review_spec()}}, \code{\link[tflspec:tfl_review_rules]{tflspec::tfl_review_rules()}}

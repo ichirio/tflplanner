@@ -34,3 +34,16 @@ reads one like an import (so the same checks, and the study as it is now
 is kept in \verb{spec/.backup/} first) -- the way to undo a wrong edit.
 \code{preview_spec_backup()} says what restoring would change, taking nothing in.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: the sample study and its data)
+s <- create_sample_study(run = FALSE)
+# no import yet, so no backup: an empty list
+list_spec_backups(s)
+}
+options(old)
+}

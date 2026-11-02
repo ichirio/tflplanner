@@ -4,8 +4,6 @@
 \alias{set_analysis_data}
 \alias{remove_analysis_data}
 \alias{import_analysis_data}
-\alias{name_analysis_data}
-\alias{copy_analysis_data}
 \title{Add, change or remove an analysis data of the ARD definition}
 \usage{
 set_analysis_data(
@@ -28,10 +26,6 @@ set_analysis_data(
 remove_analysis_data(x, output_id, data_id)
 
 import_analysis_data(x, from_output, output_id, data_ids = NULL)
-
-name_analysis_data(x, output_id, dataset, population_id, data_id, label = NA)
-
-copy_analysis_data(x, output_id, data_id)
 }
 \arguments{
 \item{x}{A \code{tflplanner}.}
@@ -57,9 +51,6 @@ it the other columns but \code{from} stay blank.}
 
 \item{data_ids}{Which of them (\code{NULL}: all), with what they are made
 from and kept to, when those are analysis data as well.}
-
-\item{dataset}{The dataset its analyses read (\code{NA}: the analysis set's
-own).}
 }
 \value{
 The \code{tflplanner}.
@@ -78,11 +69,22 @@ but \code{from} blank).  An analysis names one in \code{data} (instead of
 \code{set_analysis_data()} adds one, or replaces the one named \code{old} (a new
 name is followed in the analyses and the analysis data made from it).
 \code{remove_analysis_data()} takes one out, refused while it is used.
-\code{name_analysis_data()} gives a report's data -- a dataset x analysis set
-its analyses read -- a name: the analysis data is made, those analyses
-read it, and a condition all of them have moves into it.
 
 \code{import_analysis_data()} copies a report's analysis data into
 another report, under the same names (a name the report has already
 gets \verb{_1}, \verb{_2} ...); attribute \code{copied} names the rows added.
+}
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_sample_study(run = FALSE)
+# the subjects aged 50 or more: a new analysis data made from ADSL
+x <- set_analysis_data(s$planner, "T-14-1-1", "adsl_old", from = "adsl", where = "AGE >= 50")
+ard_rows(x, "analysis_data", "T-14-1-1")[, c("data_id", "from", "where")]
+}
+options(old)
 }

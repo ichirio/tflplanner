@@ -26,6 +26,16 @@
 #' @param output_id A report id.
 #' @return A list: `type`, `program` (file name, with `.R`), `file` (the
 #'   RTF, joined to `output_path`).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' report_info(s$planner, "T-14-1-1")  # the program and the RTF of a report
+#' }
+#' options(old)
 #' @export
 report_info <- function(x, output_id) {
   r <- .resolve_row(x, "report", output_id)
@@ -210,6 +220,14 @@ report_info <- function(x, output_id) {
 #'
 #' @param name A template's name; `NULL` for all.
 #' @return A named character vector.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' names(code_templates())  # the templates the company standards have
+#' code_templates("table_data")
+#' options(old)
 #' @export
 code_templates <- function(name = NULL) {
   d <- company_standards()$code_templates
@@ -266,7 +284,7 @@ code_templates <- function(name = NULL) {
 #' @param output_id The report.
 #' @param todo `FALSE` returns `NULL` instead of the TODO.
 #' @return Code lines.
-#' @export
+#' @noRd
 data_lines <- function(x, output_id, todo = TRUE) {
   lay <- study_layout()
   info <- report_info(x, output_id)
@@ -295,6 +313,15 @@ data_lines <- function(x, output_id, todo = TRUE) {
       .fig_design_lines(x, output_id, design)
     }
     if (!is.null(f)) return(c(setup, f))
+  }
+  # a table of records: its records as `data`, its ARD too when it has
+  # analyses (a part's rows: plan_append())
+  if (identical(type, "table")) {
+    recs <- .table_dataset_lines(x, output_id)
+    if (!is.null(recs)) {
+      return(c(setup, "# the report's records", recs,
+               if (!is.na(code)) c("", "# its ARD (the parts' rows)", .code_block(code))))
+    }
   }
   if (is.na(code)) {
     if (!todo) return(NULL)
@@ -353,9 +380,14 @@ data_lines <- function(x, output_id, todo = TRUE) {
   } else switch(type,
     table = {
       a <- .ard_code_of(x, output_id)
-      c(.section(if (.table_norm_builtin(x, output_id, a, proc)) "data: this report's ARD"
-                 else "data: this report's normalized ARD"),
-        if (is.na(a)) todo("ARD") else c(.code_block(a), .table_process_lines(x, output_id, a, proc)))
+      recs <- .table_dataset_lines(x, output_id)
+      ard_lines <- c(.section(if (.table_norm_builtin(x, output_id, a, proc)) "data: this report's ARD"
+                              else "data: this report's normalized ARD"),
+                     if (is.na(a)) todo("ARD") else c(.code_block(a), .table_process_lines(x, output_id, a, proc)))
+      # a table of records (`data: {source: dataset}`): its records as
+      # `data`; its ARD too when it has analyses (a part's rows: plan_append())
+      if (is.null(recs)) ard_lines
+      else c(.section("data: this report's records"), recs, if (!is.na(a)) c("", ard_lines))
     },
     listing = c(.section("data: the listing's data"),
                 .listing_lines(x, output_id, rework = proc, part = "data") %||%
@@ -378,6 +410,30 @@ data_lines <- function(x, output_id, todo = TRUE) {
   # the figure style, report_content() and report_data() first (a designed
   # figure's program sources them at its top)
   c(if (is.null(design)) c(.fig_source_lines(), ""), data, content)
+}
+
+# A table of records (its YAML's `data: {source: dataset, ...}`): the code
+# that makes its `data` -- the dataset, or the report's analysis data, its
+# analysis set's subjects, its condition, its order -- as a listing's data
+# part is written (tflspec::tfl_listing_code(part = "data")); NULL for a
+# table of the ARD
+.table_dataset_lines <- function(x, output_id) {
+  sp <- .code_spec(x)
+  o <- sp$outputs[[output_id]]
+  if (is.null(o) || inherits(o$content, "tfl_r")) return(NULL)
+  # the objects it reads but its ARD (written from the study's ARD program):
+  # its records as `data`, a part's from a dataset by its name
+  # (tflspec::tfl_data_code(), the listing's data code); NULL: none
+  dc <- .table_objects_code(o, sp$study)
+  if (!length(dc)) NULL else unlist(dc, use.names = FALSE)
+}
+
+# ... by object, its ARD left out: list(data = <lines>, adpc = <lines>)
+.table_objects_code <- function(o, study) {
+  own <- identical(o$data[["source"]], "dataset")
+  parts <- any(vapply(o$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
+  if (!own && !parts) return(list())
+  tflspec::tfl_data_code(o, study, ard = FALSE)
 }
 
 #' The R program for one report
@@ -407,6 +463,17 @@ data_lines <- function(x, output_id, todo = TRUE) {
 #' @param output_id The report.
 #' @param date The date stamped in the banner.
 #' @return The program, one element per line.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' code <- program_code(s$planner, "T-14-1-1")  # one element a line
+#' head(code, 6)
+#' }
+#' options(old)
 #' @export
 program_code <- function(x, output_id, date = Sys.Date()) {
   # as the study's setup has it: its folders' variables, its packages
@@ -458,7 +525,8 @@ program_code <- function(x, output_id, date = Sys.Date()) {
     .section(paste0("data: ", switch(type,
       figure = "the figure",
       listing = "the listing's pages",
-      if (identical(obj, "ard")) "this report's ARD" else "this report's normalized ARD"))),
+      if (!is.null(.table_dataset_lines(x, output_id))) "this report's records and ARD"
+      else if (identical(obj, "ard")) "this report's ARD" else "this report's normalized ARD"))),
     data)
 
   # a figure's plot goes to the report as it is (rtf_figures(doc, plot)),
@@ -767,6 +835,16 @@ program_code <- function(x, output_id, date = Sys.Date()) {
 #' @param x A `tflplanner`.
 #' @param date The date stamped in the banner.
 #' @return The program, one element per line.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' head(report_setup_code(s$planner), 6)
+#' }
+#' options(old)
 #' @export
 report_setup_code <- function(x, date = Sys.Date()) {
   .with_study_code(.report_setup_code(x, date))
@@ -811,7 +889,7 @@ report_setup_code <- function(x, date = Sys.Date()) {
     "record_report <- function(output_id, ard = \"\") {",
     paste0("  sf <- ", .r_string(sf)),
     # the study setup's fingerprint on a line of its own
-    paste0("  setup <- ", .setup_hash_code()),
+    paste0("  setup <- ", .report_setup_hash_code()),
     "  row <- data.frame(output_id = output_id,",
     "                    built = format(Sys.time(), \"%Y-%m-%d %H:%M:%S\"),",
     "                    setup = setup,",
@@ -864,6 +942,16 @@ report_setup_code <- function(x, date = Sys.Date()) {
 #' @param x An `tflplanner`.
 #' @param date The date stamped in the banner.
 #' @return The program, one element per line.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' s <- create_sample_study(run = FALSE)
+#' head(autoexec_code(s$planner), 6)
+#' }
+#' options(old)
 #' @export
 autoexec_code <- function(x, date = Sys.Date()) {
   lay <- study_layout()

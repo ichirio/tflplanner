@@ -22,3 +22,15 @@ row each, errors first (\code{\link[tflspec:tfl_ard_conditions]{tflspec::tfl_ard
 with an error has no statistics in the ARD: its cells are blank in the
 table.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_sample_study(run = FALSE)
+study_ard_conditions(s)  # no rows: nothing went wrong, or no ARD yet
+}
+options(old)
+}

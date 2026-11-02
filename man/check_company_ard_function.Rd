@@ -30,3 +30,21 @@ The problems found (\code{\link[tflspec:tfl_check_ard_function]{tflspec::tfl_che
 Loads its file and runs \code{\link[tflspec:tfl_check_ard_function]{tflspec::tfl_check_ard_function()}} on \code{data},
 with the arguments an analysis row would give.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+if (requireNamespace("cards", quietly = TRUE)) {
+  d <- file.path(tflplanner_home(), "standards", "ard_functions")
+  dir.create(d, recursive = TRUE)
+  tflspec::tfl_ard_function_template("ard_cv_geomean", type = "summary",
+                                     file = file.path(d, "ard_cv_geomean.R"))
+  # no problem found: no rows
+  check_company_ard_function("ard_cv_geomean", cards::ADSL,
+                             by = ARM, variables = AGE)
+}
+}
+options(old)
+}

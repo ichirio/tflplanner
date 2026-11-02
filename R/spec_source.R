@@ -473,6 +473,19 @@ spec_status <- function(study, home = tflplanner_home()) {
 #'   `outputs` (the reports touched), `problems`, `ok` (no error).
 #'   `import_spec_files()`: the study, with `backup` (the folder of the
 #'   copy made before).
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the study's spec workbooks)
+#' s <- create_sample_study(run = FALSE)
+#' # copy the definition files out; edit the copy, then import_spec_files()
+#' copy <- file.path(tempdir(), "spec-copy")
+#' export_spec_files(s, copy)
+#' }
+#' options(old)
 #' @export
 export_spec_files <- function(study, path, home = tflplanner_home()) {
   st <- .read_state(.study_id_of(study), home)
@@ -776,6 +789,18 @@ import_spec_files <- function(study, path, parts = NULL,
 #' @return `list_spec_backups()`: a data frame (`name`, `time`, `files`).
 #'   `preview_spec_backup()`: as [preview_spec_import()].
 #'   `restore_spec_backup()`: as [import_spec_files()].
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: the sample study and its data)
+#' s <- create_sample_study(run = FALSE)
+#' # no import yet, so no backup: an empty list
+#' list_spec_backups(s)
+#' }
+#' options(old)
 #' @export
 list_spec_backups <- function(study, home = tflplanner_home()) {
   st <- .read_state(.study_id_of(study), home)

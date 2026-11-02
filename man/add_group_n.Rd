@@ -22,3 +22,16 @@ reporting calls big N (\code{GROUPN}: the group counted, by nothing) -- what
 the column headers' \code{(N={n})} read --
 with the data and analysis set of its first analysis.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_sample_study(run = FALSE)
+x <- add_group_n(s$planner, "T-14-1-1", "TRT01A")  # the subjects per group, for (N=n)
+ard_rows(x, "analyses", "T-14-1-1")$analysis_id
+}
+options(old)
+}

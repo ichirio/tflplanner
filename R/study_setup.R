@@ -41,6 +41,10 @@
 #'
 #' @param date The date stamped in the banner.
 #' @return The code, one element per line.
+#' @examples
+#' # the functions the study's programs call
+#' code <- study_helpers_code()
+#' head(code)
 #' @export
 study_helpers_code <- function(date = Sys.Date()) {
   c(.banner(
@@ -105,6 +109,13 @@ study_helpers_code <- function(date = Sys.Date()) {
 #' @param study_id The study's id (`{STUDY_ID}`); `NA` leaves it.
 #' @param standards The standards ([company_standards()]).
 #' @return The code, one element per line.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' setup_code("ABC-1")  # the company's lines, with the study's id in
+#' options(old)
 #' @export
 setup_code <- function(study_id = NA, standards = company_standards()) {
   d <- standards$setup_code
@@ -241,6 +252,14 @@ setup_code <- function(study_id = NA, standards = company_standards()) {
 #' @param date The date the marker of part 1 says it was copied.
 #' @param standards The standards to copy part 1 from.
 #' @return The program, one element per line.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' meta <- list(study_id = "ABC-1", title = "A study of Drug X")
+#' head(study_setup_code(meta), 8)
+#' options(old)
 #' @export
 study_setup_code <- function(meta, date = Sys.Date(),
                              standards = company_standards()) {
@@ -292,6 +311,36 @@ study_setup_code <- function(meta, date = Sys.Date(),
 # before the setup was recorded ("" or NA) is not.
 .setup_changed <- function(recorded, root, now = .study_setup_hash(root)) {
   !is.na(recorded) & nzchar(recorded) & recorded != now
+}
+
+# A report's setup: programs/study_setup.R and programs/tfl/report_setup.R
+# (the study's font, tokens, header, rounding: every report program sources
+# it), their fingerprints "<study>|<report>" -- what a report program records
+# (.report_setup_hash_code()); the ARD reads study_setup.R only
+.report_setup_hash <- function(root) {
+  f <- file.path(root, c(.study_setup_path(), .report_setup_path()))
+  paste(vapply(f, function(x) if (file.exists(x)) unname(tools::md5sum(x)) else "", ""),
+        collapse = "|")
+}
+
+.report_setup_path <- function() file.path(study_layout()[["programs_tfl"]], .report_setup_file)
+
+# Made with another report setup than the one there now?  A record of
+# study_setup.R alone (made before report_setup.R was counted) is held to
+# it alone; one made before the setup was recorded ("" or NA) is not.
+.report_setup_changed <- function(recorded, root, now = .report_setup_hash(root)) {
+  old <- !grepl("|", recorded, fixed = TRUE)
+  cmp <- ifelse(old, sub("[|].*$", "", now), now)
+  !is.na(recorded) & nzchar(recorded) & recorded != cmp
+}
+
+# ... the lines of a report program's record_report() that work it out
+.report_setup_hash_code <- function() {
+  p <- paste(encodeString(c(.study_setup_path(), .report_setup_path()), quote = "\""),
+             collapse = ", ")
+  sprintf(paste0("paste(vapply(c(%s), function(f) {\n",
+                 "    if (file.exists(f)) unname(tools::md5sum(f)) else \"\"\n",
+                 "  }, \"\"), collapse = \"|\")"), p)
 }
 
 # the line of a generated program that works out the setup's fingerprint

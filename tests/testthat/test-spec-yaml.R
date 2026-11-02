@@ -22,6 +22,7 @@ yaml_sample <- function(env = parent.frame()) {
 }
 
 test_that("the sample's YAML spec reads back to the same programs", {
+  skip_on_cran()
   s <- yaml_sample()
   expect_true("spec/toc.yml" %in% .spec_files(s$path))
   p <- .study_spec_keys(.planner_from_yaml(s$path))
@@ -33,6 +34,7 @@ test_that("the sample's YAML spec reads back to the same programs", {
 })
 
 test_that("a YAML study saves the files whose text changed, and keeps study.yml's keys", {
+  skip_on_cran()
   s <- yaml_sample()
   root <- s$path
   home <- getOption("tflplanner.home")

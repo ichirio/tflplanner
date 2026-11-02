@@ -19,7 +19,7 @@ ard_program_code(
 ard_autoexec_code(spec, date = Sys.Date())
 }
 \arguments{
-\item{spec}{An \code{\link[tflspec:tfl_read_ard_spec]{tflspec::tfl_ard_spec()}} (or the path of one).}
+\item{spec}{An \code{\link[tflspec:tfl_ard_spec]{tflspec::tfl_ard_spec()}} (or the path of one).}
 
 \item{date}{The date stamped in the banner.}
 
@@ -49,4 +49,17 @@ the study setup each ARD was built with.
 \code{programs/ard/autoexec_ard.R}, which runs them from the study folder --
 all, or the ones named (\verb{Rscript programs/ard/autoexec_ard.R T-14-1-1})
 -- each in its own R process with its log in \verb{logs/ard/}.
+}
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it makes the sample study)
+s <- create_sample_study(run = FALSE)
+spec <- tflspec::tfl_ard_spec(s$planner$ard)
+head(ard_setup_code(spec), 5)
+}
+options(old)
 }

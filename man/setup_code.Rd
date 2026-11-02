@@ -21,3 +21,11 @@ The code that opens every study's \code{programs/study_setup.R} (its part
 a copy; a later change to the standards does not change a study made
 before.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+setup_code("ABC-1")  # the company's lines, with the study's id in
+options(old)
+}

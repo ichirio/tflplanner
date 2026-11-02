@@ -42,3 +42,17 @@ analysis set; \code{cards::ADSL} when none is given), and runs
 \code{\link[tflspec:tfl_check_ard_function]{tflspec::tfl_check_ard_function()}} with \code{args} as an analysis row would
 give them.  The result is kept (\code{programs/ard/functions/.checks.json}).
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it runs in its own R process)
+s <- create_sample_study(run = FALSE)
+s <- new_ard_function(s, "ard_my_mean", test = FALSE)
+res <- try_ard_function(s, "ard_my_mean", args = "by = TRT01A, variables = AGE")
+res$problems  # what the checks found
+}
+options(old)
+}

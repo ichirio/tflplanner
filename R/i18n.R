@@ -29,7 +29,7 @@
 #' @param x English text.
 #' @param lang `"en"` or `"ja"`.
 #' @return The text in `lang`.
-#' @export
+#' @noRd
 tr <- function(x, lang = tflplanner_language()) {
   if (identical(lang, "en") || !length(x)) return(x)
   t <- .strings()
@@ -40,7 +40,7 @@ tr <- function(x, lang = tflplanner_language()) {
 }
 
 #' @rdname tr
-#' @export
+#' @noRd
 tflplanner_language <- function() {
   l <- tryCatch(tflplanner_config()$language, error = function(e) NULL)
   # the user's choice, else the company standards', else English
@@ -50,7 +50,7 @@ tflplanner_language <- function() {
 }
 
 #' @rdname tr
-#' @export
+#' @noRd
 app_languages <- function() c(English = "en", "\u65e5\u672c\u8a9e" = "ja")
 
 # An error's message on screen: R's and tflplanner's errors are written in

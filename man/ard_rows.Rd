@@ -26,3 +26,8 @@ set_ard_rows(x, sheet, output_id = "", rows)
 a report (\code{analyses}: that report's; the other sheets are the study's);
 \code{set_ard_rows()} puts them back, edited.
 }
+\examples{
+x <- new_planner()
+ard_rows(x, "datasets")  # the datasets of the ARD definition (none yet)
+ard_rows(x, "analyses", "T-1")  # a report's analyses
+}

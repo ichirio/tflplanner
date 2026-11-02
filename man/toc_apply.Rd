@@ -35,7 +35,7 @@ type corrected); the TOC's otherwise.}
 \code{changes}).}
 
 \item{populations}{The reports' analysis sets, a population_id named by
-report (see \code{\link[=toc_populations]{toc_populations()}}): each one that differs from the
+report (see \code{toc_populations()}): each one that differs from the
 report's is set with \code{\link[=set_report_population]{set_report_population()}} (its data made, its
 analyses moved).}
 
@@ -57,4 +57,21 @@ removed; one edited here and changed in the TOC only when \code{use_toc}
 says so; the lines added here after the TOC's.  A report's type is not
 changed, nor anything the TOC does not hold; a report no longer in the
 TOC stays.
+}
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+# a TOC read with tflspec, put into a planner that has one of its reports
+f <- tempfile(fileext = ".csv")
+writeLines(c("No.,Title,Population",
+             "T-14-1-1,Demographics,Safety Population",
+             "T-14-2-1,Adverse events,Safety Population"), f)
+spec <- tflspec::tfl_read_toc(f, map = c(output_id = "No.", title = "Title",
+                                         population = "Population"))
+x <- add_output(new_planner(), "T-14-1-1", type = "table")
+x <- toc_apply(x, spec, toc_changes(x, spec))  # adds T-14-2-1
+output_ids(x)
+options(old)
 }

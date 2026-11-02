@@ -135,6 +135,7 @@ test_that("a categorical format the standards do not have is the table's own", {
 })
 
 test_that("one's own categorical format is written; left blank, nothing is", {
+  skip_on_cran()
   skip_if_not_installed("cards")
   p <- dm_study_planner()
   m <- ard_meta(dm_ard())
@@ -174,6 +175,7 @@ test_that("a variable's rows under a level of another: read, written, unchanged 
 })
 
 test_that("the sample's T-14-1-5 nests the Asian sub-categories; T-14-1-6 has two blocks", {
+  skip_on_cran()
   home <- withr_tempdir()
   withr::local_options(tflplanner.home = home)
   suppressMessages(setup_tflplanner(studies_root = file.path(home, "studies")))

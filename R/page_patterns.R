@@ -28,6 +28,12 @@
 #' @return `page_patterns()`: the names, in alphabetical order (Standard
 #'   not among them).  `report_pattern()`: one name, or `NA`.
 #'   `set_report_pattern()`: `x`.
+#' @examples
+#' x <- add_output(new_planner(), "T-14-1-1", type = "table")
+#' x <- add_page_pattern(x, "landscape")
+#' x <- set_report_pattern(x, "T-14-1-1", "landscape")
+#' page_patterns(x)
+#' report_pattern(x, "T-14-1-1")
 #' @export
 page_patterns <- function(x) {
   ids <- unlist(lapply(x$sheets[.pattern_sheets], `[[`, "output_id"), use.names = FALSE)
@@ -243,6 +249,12 @@ set_page_token <- function(x, output_id, name, value) {
 #' @param x An `tflplanner`.
 #' @param name,new A pattern's name: a letter, then letters, digits or `_`.
 #' @return `x`.
+#' @examples
+#' x <- add_page_pattern(new_planner(), "landscape")
+#' x <- rename_page_pattern(x, "landscape", "wide")
+#' page_patterns(x)
+#' x <- remove_page_pattern(x, "wide")
+#' page_patterns(x)
 #' @export
 add_page_pattern <- function(x, name) {
   name <- .check_pattern_name(x, name)

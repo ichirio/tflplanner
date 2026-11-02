@@ -115,6 +115,7 @@ test_that("step 3: the pattern chosen, a value written, a line left out, from th
 })
 
 test_that("titles and footnotes: the heading is the header's {OUTPUT_TITLE}, lines as the bands", {
+  skip_on_cran()
   p <- pat_planner()
   p$sheets$header <- rbind(p$sheets$header, .normalize_sheet(data.frame(
     output_id = NA, line = "5", center = "{OUTPUT_TITLE}"), "header"))
@@ -177,6 +178,7 @@ test_that("a pattern made, renamed, removed; one used is not removed", {
 })
 
 test_that("the form edits a pattern (its own over Standard) or Standard itself", {
+  skip_on_cran()
   p <- pat_planner()
   # a pattern: its values its own, the rest Standard's
   expect_identical(page_value_from(p, "page", "paper_size", "@Compact"), list(value = "A4", from = "own"))

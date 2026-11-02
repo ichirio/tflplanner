@@ -20,3 +20,20 @@ The record of every ARD taken in (\code{\link[=import_ard]{import_ard()}}): \cod
 \code{output_id} column), the result of the \code{check}, and its \code{state}
 (\code{"in use"}, or \code{"removed"} -- a removed one stays on the record).
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+s <- create_sample_study(run = FALSE)
+ard_imports(s)  # none taken in yet
+if (requireNamespace("cards", quietly = TRUE)) {
+  f <- tempfile(fileext = ".rds")
+  saveRDS(cards::ard_continuous(mtcars, variables = "mpg"), f)
+  import_ard(s, f, source = "example")
+  ard_imports(s)[, c("import_id", "source", "rows", "state")]
+}
+}
+options(old)
+}

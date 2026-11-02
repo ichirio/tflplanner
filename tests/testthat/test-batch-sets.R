@@ -121,6 +121,7 @@ test_that("an official run of a named batch, or leaving reports out", {
 })
 
 test_that("the batches column survives the SPEC round trip", {
+  skip_on_cran()
   p <- set_batch(bs_planner(), "Topline", c("DM", "L1"))
   dir <- withr_tempdir()
   paths <- write_planner(p, dir)
@@ -376,4 +377,14 @@ test_that("two official runs of the sample compared after a data fix", {
   # (the study ARD; a table's data is not saved per report, #405)
   expect_true("output/ard/ard.rds" %in% attr(r3, "changed")$outputs)
   expect_false("output/ard/T-14-1-1.rds" %in% c(r3$file, attr(r3, "changed")$outputs))
+})
+
+test_that("the runs list of a study with no run yet is drawn (no run, no row)", {
+  skip_on_cran()
+  bs_home()
+  create_study("B0", planner = bs_planner())
+  shiny::testServer(server_for("B0"), {
+    session$setInputs(nav = "outputs", target = "VS")
+    expect_no_error(output$batches)
+  })
 })

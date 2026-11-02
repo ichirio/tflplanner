@@ -501,7 +501,12 @@ app_ui <- function(lang = "en") {
                               shiny::span(id = "builder_updating",
                                           class = "badge text-bg-warning ms-2 d-none",
                                           t("Updating ..."))),
-                  shiny::uiOutput("builder_pages", inline = TRUE)),
+                  # (the same Update preview as the other steps', here too:
+                  # a template's step 1 has no other)
+                  shiny::div(class = "d-flex gap-2 align-items-center",
+                             .btn("result_fetch", t("Update preview"),
+                                  class = "btn-sm btn-outline-primary py-0"),
+                             shiny::uiOutput("builder_pages", inline = TRUE))),
                 shiny::uiOutput("builder_preview"))))))),
       shiny::conditionalPanel(
         "output.report_kind == 'listing' && output.content_is_code != 'yes'",
@@ -640,6 +645,7 @@ app_ui <- function(lang = "en") {
                             shiny::tags$script(shiny::HTML(.builder_cards_js)),
                             shiny::tags$style(shiny::HTML(.tpl_css)),
                             shiny::tags$script(shiny::HTML(.tpl_js)),
+                            shiny::tags$script(shiny::HTML(.tpl_columns_js)),
                             shiny::tags$style(shiny::HTML(.builder_content_css)),
                             shiny::tags$script(shiny::HTML(.builder_content_js)),
                             shiny::tags$style(shiny::HTML(.study_section_css)),
@@ -704,7 +710,7 @@ app_ui <- function(lang = "en") {
             "output.shows_open == 'yes'",
             .study_section("keys", with_tip(paste0(t("Keys and setup code"), " (study)"), t("The subject key (id), where the study ARD goes (output) and the R files of the study's own analysis functions (source). (source is added when a function is made in Own ARD functions.)")),
               rhandsontable::rHandsontableOutput("hot_ard_study"),
-              shiny::textAreaInput(
+              shiny::textAreaInput(updateOn = "blur",
                 "setup",
                 t("Setup code every report runs first (library(), common data)"),
                 rows = 4, width = "100%", resize = "vertical"))),
@@ -795,6 +801,9 @@ app_ui <- function(lang = "en") {
             shiny::tags$summary(t("Column help")),
             DT::DTOutput("help_ard_populations"))))),
 
+    # tflspec's AI table requests and their answers (#431): before the Report list, where its reports go
+    if (.ai_drafts_on()) bslib::nav_panel(t("AI drafts"), value = "ai", ai_ui("ai", lang)),
+
     bslib::nav_panel(
       t("Report list"), value = "outputs",
       shiny::uiOutput("next_steps"),
@@ -821,8 +830,6 @@ app_ui <- function(lang = "en") {
         # its own height (a fixed one let a long list cover the buttons)
         DT::DTOutput("outputs", height = "auto", fill = FALSE))),
 
-    # tflspec's AI table requests and their answers (#431)
-    if (.ai_drafts_on()) bslib::nav_panel(t("AI drafts"), value = "ai", ai_ui("ai", lang)),
 
     # one report at a time: chosen on the left, made in its steps
     bslib::nav_panel(

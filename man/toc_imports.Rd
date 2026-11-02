@@ -3,17 +3,11 @@
 \name{toc_imports}
 \alias{toc_imports}
 \alias{toc_last}
-\alias{toc_shell_links}
-\alias{toc_profile}
 \title{TOCs taken into a study}
 \usage{
 toc_imports(study)
 
 toc_last(study)
-
-toc_shell_links(study)
-
-toc_profile(study)
 }
 \arguments{
 \item{study}{An \code{rtfstudy}.}
@@ -28,10 +22,23 @@ A data frame; a list or \code{NULL}.
 also \code{rule_set}, \code{standards_md5} -- the company standards' md5 then,
 blank for the built-in ones --, \code{sources}, \code{unread}, \code{warnings}; several
 files \code{|} between them).  \code{toc_last()}: what the last TOC taken in
-said, by report (\code{\link[=toc_snapshot]{toc_snapshot()}}), or \code{NULL}.  \code{toc_shell_links()}:
+said, by report (\code{toc_snapshot()}), or \code{NULL}.  \code{toc_shell_links()}:
 each report's shell sheet (\code{input/toc/shells.csv}: \code{output_id}, \code{file}
 -- the copy in \code{input/toc} --, \code{original}, \code{sheet}, \code{phase}, \code{md5},
 \code{import_id}).  \code{toc_profile()}: what the study's last import chose
 (\code{input/toc/profile.yml}: the rule set, the id rule, the overrides, each
 source's sheet and header row), or \code{NULL}.
+}
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it makes the sample study)
+s <- create_sample_study(run = FALSE)
+toc_imports(s)  # no TOC taken in yet: no rows
+toc_last(s)     # NULL: nothing said by a last TOC
+}
+options(old)
 }

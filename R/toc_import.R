@@ -106,7 +106,7 @@ toc_title_offset <- function(x) {
 #'
 #' Compares the report sheets a TOC gives ([tflspec::tfl_read_toc()]) with
 #' the study's definition and with what the last TOC taken in said
-#' (`last`, see [toc_snapshot()]).
+#' (`last`, see `toc_snapshot()`).
 #'
 #' A report's title and footnote lines are of two kinds: those the TOC gave
 #' (the lines the last TOC had; the first time, the lines where this TOC
@@ -139,6 +139,21 @@ toc_title_offset <- function(x) {
 #'   `toc`, `action` -- `"add"`, `"update"`, `"keep"` (edited or cleared
 #'   here, the TOC unchanged) or `"ask"`); and the `last` and
 #'   `title_offset` it was given.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' # what taking in a TOC would change in a planner with one of its reports
+#' f <- tempfile(fileext = ".csv")
+#' writeLines(c("No.,Title,Population",
+#'              "T-14-1-1,Demographics,Safety Population",
+#'              "T-14-2-1,Adverse events,Safety Population"), f)
+#' spec <- tflspec::tfl_read_toc(f, map = c(output_id = "No.", title = "Title",
+#'                                          population = "Population"))
+#' x <- add_output(new_planner(), "T-14-1-1", type = "table")
+#' toc_changes(x, spec)$reports[c("output_id", "status")]
+#' options(old)
 #' @export
 toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)) {
   ids <- unique(stats::na.omit(spec$report$output_id))
@@ -374,7 +389,7 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
 #' @param last,title_offset As [toc_changes()] was given them (kept in
 #'   `changes`).
 #' @param populations The reports' analysis sets, a population_id named by
-#'   report (see [toc_populations()]): each one that differs from the
+#'   report (see `toc_populations()`): each one that differs from the
 #'   report's is set with [set_report_population()] (its data made, its
 #'   analyses moved).
 #' @param make_data Make the analysis data of each new report's datasets
@@ -383,6 +398,22 @@ toc_changes <- function(x, spec, last = NULL, title_offset = toc_title_offset(x)
 #' @param again With `make_data`, also for the reports taken in before
 #'   (those deleted since are made again).
 #' @return The `tflplanner`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' # a TOC read with tflspec, put into a planner that has one of its reports
+#' f <- tempfile(fileext = ".csv")
+#' writeLines(c("No.,Title,Population",
+#'              "T-14-1-1,Demographics,Safety Population",
+#'              "T-14-2-1,Adverse events,Safety Population"), f)
+#' spec <- tflspec::tfl_read_toc(f, map = c(output_id = "No.", title = "Title",
+#'                                          population = "Population"))
+#' x <- add_output(new_planner(), "T-14-1-1", type = "table")
+#' x <- toc_apply(x, spec, toc_changes(x, spec))  # adds T-14-2-1
+#' output_ids(x)
+#' options(old)
 #' @export
 toc_apply <- function(x, spec, changes, use_toc = character(), types = character(),
                       last = changes$last,
@@ -507,7 +538,7 @@ toc_apply <- function(x, spec, changes, use_toc = character(), types = character
 #'   once taken in from a TOC is said to be missing every time.
 #' @return A list by output id: its `titles` and `footnotes` rows (as the
 #'   study numbers them), `type` and `in_toc`.
-#' @export
+#' @noRd
 toc_snapshot <- function(spec, title_offset = 0L, last = NULL) {
   ids <- unique(stats::na.omit(spec$report$output_id))
   now <- stats::setNames(lapply(ids, function(id) list(
@@ -587,7 +618,7 @@ toc_snapshot <- function(spec, title_offset = 0L, last = NULL) {
 #' @param id_col,pop_col Its columns of the report IDs and the populations.
 #' @param data The data of the analysis sets (ADSL), for its flags' labels.
 #' @return A data frame: output_id, text, population_id.
-#' @export
+#' @noRd
 toc_populations <- function(x, path, id_col = "output_id", pop_col = "population",
                             sheet = NULL, skip = 0L, data = NULL) {
   d <- if (is.data.frame(path)) path else .toc_raw(path, sheet, skip)
@@ -724,6 +755,18 @@ toc_headers <- function(path, sheet = NULL, skip = 0L) {
 #'
 #' @param from,to `rtfstudy` objects ([open_study()]).
 #' @return `TRUE` when there was a profile to copy, invisibly.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it makes two studies)
+#' from <- create_sample_study(run = FALSE)
+#' to <- create_study("OTHER-01")
+#' toc_copy_profile(from, to)  # FALSE: the sample took in no TOC, no profile
+#' }
+#' options(old)
 #' @export
 toc_copy_profile <- function(from, to) {
   f <- file.path(.toc_dir(from), "profile.yml")
@@ -740,7 +783,7 @@ toc_copy_profile <- function(from, to) {
 #' also `rule_set`, `standards_md5` -- the company standards' md5 then,
 #' blank for the built-in ones --, `sources`, `unread`, `warnings`; several
 #' files ` | ` between them).  `toc_last()`: what the last TOC taken in
-#' said, by report ([toc_snapshot()]), or `NULL`.  `toc_shell_links()`:
+#' said, by report (`toc_snapshot()`), or `NULL`.  `toc_shell_links()`:
 #' each report's shell sheet (`input/toc/shells.csv`: `output_id`, `file`
 #' -- the copy in `input/toc` --, `original`, `sheet`, `phase`, `md5`,
 #' `import_id`).  `toc_profile()`: what the study's last import chose
@@ -749,6 +792,18 @@ toc_copy_profile <- function(from, to) {
 #'
 #' @param study An `rtfstudy`.
 #' @return A data frame; a list or `NULL`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it makes the sample study)
+#' s <- create_sample_study(run = FALSE)
+#' toc_imports(s)  # no TOC taken in yet: no rows
+#' toc_last(s)     # NULL: nothing said by a last TOC
+#' }
+#' options(old)
 #' @export
 toc_imports <- function(study) {
   f <- file.path(.toc_dir(study), "imports.csv")
@@ -789,7 +844,7 @@ toc_last <- function(study) {
 }
 
 #' @rdname toc_imports
-#' @export
+#' @noRd
 toc_shell_links <- function(study) {
   f <- file.path(.toc_dir(study), "shells.csv")
   if (!file.exists(f)) {
@@ -801,7 +856,7 @@ toc_shell_links <- function(study) {
 }
 
 #' @rdname toc_imports
-#' @export
+#' @noRd
 toc_profile <- function(study) {
   f <- file.path(.toc_dir(study), "profile.yml")
   if (!file.exists(f)) return(NULL)
@@ -879,7 +934,7 @@ toc_profile <- function(study) {
 
 #' Put what a TOC read by the rules says besides the spec into a study
 #'
-#' The reports' batches (the Topline flag, [toc_batches()]) go into the
+#' The reports' batches (the Topline flag, `toc_batches()`) go into the
 #' report list's `batches` column: a report flagged gets the batch, one the
 #' last TOC flagged and this one does not loses it; a batch given here is
 #' kept, and nothing changes when the TOC has no flag column.
@@ -888,7 +943,7 @@ toc_profile <- function(study) {
 #' @param result What [toc_import_read()] returned.
 #' @param last The snapshot of the TOCs taken in before ([toc_last()]).
 #' @return The `tflplanner`.
-#' @export
+#' @noRd
 toc_apply_extras <- function(x, result, last = NULL) {
   r <- result$reports
   if (!nrow(r) || !.toc_has_item(result, "topline")) return(x)

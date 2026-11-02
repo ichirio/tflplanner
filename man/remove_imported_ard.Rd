@@ -20,3 +20,21 @@ Marks it \code{"removed"} in the record (\code{\link[=ard_imports]{ard_imports()
 forgotten), and a report still pointing at it is named in an error when
 its program runs.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes and runs the ARD program)
+s <- create_sample_study(run = FALSE)
+s <- save_study(s)  # the report's ARD program is written
+r <- run_ard(s, "T-14-1-2")  # the report's ARD, made in its own R process
+f <- tempfile(fileext = ".rds")
+saveRDS(r$ard, f)  # (here the same ARD stands for one made elsewhere)
+imp <- import_ard(s, f, output_id = "T-14-1-2", source = "CRO")
+remove_imported_ard(s, imp$import_id)  # the file stays; the record says so
+ard_imports(s)[, c("import_id", "state")]
+}
+options(old)
+}

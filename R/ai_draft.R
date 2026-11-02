@@ -1,21 +1,21 @@
 # ============================================================================
-#  AI drafts (#431): tflspec's AI table requests and their answers
+#  AI drafts (#431): tflspec's AI requests and the agent's SPEC drafts
 # ----------------------------------------------------------------------------
-#  tflspec writes a study's requests (ai/requests/<request>.md, each pasted
-#  into a chat as one message) and reads the chat's answers back
-#  (ai/answers/<request>.md -> tfl_ai_collect_answers() -> the report files
-#  spec/outputs/<id>.yml).  These functions know no Shiny: the AI drafts
+#  tflspec writes a study's requests (ai/requests/<request>.md) and the
+#  agent's first message; the agent asks in its chat what it cannot decide
+#  and writes each report's draft (ai/spec/outputs/<id>.yml), which
+#  tfl_ai_collect_answers() checks.  These functions know no Shiny: the AI
 #  tab (R/ai_draft_ui.R) draws what they give.
 #
 #  Thin: tflspec's functions do the work (tfl_ai_requests(),
-#  tfl_ai_save_answer(), tfl_ai_collect_answers(); tflspec 0.0.24.9175);
-#  here are what the screen adds -- an answer's file and time, a request's
-#  status, the counts, the study read again after a check.
+#  tfl_ai_collect_answers(), tfl_ai_confirm()); here are what the screen
+#  adds -- a request's drafts and their time, its status, the counts, the
+#  study read again after a check.
 # ============================================================================
 
 # the folders, under the study's
 .ai_requests_dir <- file.path("ai", "requests")
-.ai_answers_dir <- file.path("ai", "answers")
+.ai_drafts_dir <- file.path("ai", "spec", "outputs")
 .ai_repairs_dir <- file.path("ai", "repairs")
 # a request's status, worst last (as tflspec's print ranks them)
 .ai_status_rank <- c(ok = 1L, warning = 2L, `no answer` = 3L, error = 4L)
@@ -50,34 +50,31 @@
 
 # A study's requests, one row a request: request, family, outputs (the
 # report ids, comma-separated), n, chars, file (from the study's folder),
-# answer (the answer file, from the study's folder, or NA), answer_time.
-# attr "instructions": the instructions file (once) or NA.  No requests: a
-# data frame of no rows.
+# drafts (how many of its reports have a draft), draft_time (the newest).
+# No requests: a data frame of no rows.
 .ai_requests <- function(path) {
   d <- as.data.frame(tflspec::tfl_ai_requests(path), stringsAsFactors = FALSE)
   if (is.null(d$family)) d$family <- rep(NA_character_, nrow(d))
   d$family <- ifelse(is.na(d$family), .ai_family_of(d$request), d$family)
-  ans <- vapply(d$request, function(r) .ai_answer_file(path, r), "", USE.NAMES = FALSE)
-  d$answer <- ans
-  d$answer_time <- file.mtime(as.character(ifelse(is.na(ans), "", file.path(path, ans))))
-  # (the workbook a request's reports come from, tflspec >= 0.0.24.9178)
+  dr <- lapply(d$outputs, function(o) .ai_request_drafts(path, o))
+  d$drafts <- vapply(dr, function(x) x$n, 0L)
+  d$draft_time <- do.call(c, c(list(as.POSIXct(character())), lapply(dr, function(x) x$time)))
+  # (the workbook a request's reports come from)
   if (is.null(d$book)) d$book <- rep(NA_character_, nrow(d))
-  d <- d[c("request", "family", "outputs", "n", "chars", "file", "answer", "answer_time",
-           "book")]
+  d <- d[c("request", "family", "outputs", "n", "chars", "file", "drafts", "draft_time", "book")]
   rownames(d) <- NULL
-  ins <- file.path(path, .ai_requests_dir, "00-instructions.md")
-  attr(d, "instructions") <- if (file.exists(ins))
-    .ai_rel(.ai_requests_dir, "00-instructions.md") else NA_character_
   d
 }
 
-# The answer file of a request, from the study's folder: <request>.md, else
-# the names Notepad saves it as (<request>.md.txt, <request>.txt); NA when
-# there is none.  (tflspec reads them in this order.)
-.ai_answer_file <- function(path, request) {
-  f <- .ai_rel(.ai_answers_dir, paste0(request, c(".md", ".md.txt", ".txt")))
-  f <- f[file.exists(file.path(path, f))]
-  if (length(f)) f[1L] else NA_character_
+# A request's drafts: how many of its reports (`outputs`, comma-separated)
+# have one (ai/spec/outputs/<id>.yml), and when the newest was written
+.ai_request_drafts <- function(path, outputs) {
+  ids <- trimws(strsplit(outputs %||% "", ",", fixed = TRUE)[[1L]])
+  ids <- ids[nzchar(ids)]
+  f <- file.path(path, .ai_drafts_dir, paste0(ids, ".yml"))
+  have <- file.exists(f)
+  list(n = sum(have), of = length(ids),
+       time = if (any(have)) max(file.mtime(f[have])) else as.POSIXct(NA))
 }
 
 # The text of a request's file (or of 00-instructions.md, or of its fix
@@ -92,15 +89,15 @@
 }
 
 # The reports that passed their checks but could not be built, from what
-# tfl_ai_run() writes: ai/repairs/<request>-build.md (tflspec >= 0.0.24.9199;
-# run.R removes it once the request's reports are built; a check leaves it),
+# tfl_ai_run() writes: ai/repairs/<request>-build.md
+# (run.R removes it once the request's reports are built; a check leaves it),
 # else the "## Could not be built" section of ai/repairs/<request>.md
-# (tflspec 0.0.24.9197 / 9198), one "- <output_id>: <reason>" a line.
+# (an older run.R's), one "- <output_id>: <reason>" a line.
 # A data frame (request, output_id, reason, from: "build" or "repair") with
 # attr "texts" (each old-format request's whole fix request, named by
 # request: a later check removes that file of an answer that passes, so the
-# app keeps them) and attr "build" (the requests with a -build.md).  An
-# older tflspec writes neither: no rows.
+# app keeps them) and attr "build" (the requests with a -build.md).  A study
+# with neither file: no rows.
 .ai_unbuilt <- function(path) {
   none <- data.frame(request = character(), output_id = character(), reason = character(),
                      from = character(), stringsAsFactors = FALSE)
@@ -136,27 +133,6 @@
   out
 }
 
-# a reason short enough for a cell
-.ai_short <- function(x, n = 80L) {
-  x <- gsub("\\s+", " ", x)
-  ifelse(nchar(x) > n, paste0(substr(x, 1L, n - 3L), "..."), x)
-}
-
-# tfl_ai_run() builds only some requests (`Rscript run.R <request>`)
-.ai_run_has_requests <- function() {
-  f <- tryCatch(getExportedValue("tflspec", "tfl_ai_run"), error = function(e) NULL)
-  is.function(f) && "requests" %in% names(formals(f))
-}
-
-# The saved answer of a request, for the box it is pasted in: its text,
-# "" when there is none.  An answer not in UTF-8: "" with attr "problem".
-.ai_answer_text <- function(path, request) {
-  f <- .ai_answer_file(path, request)
-  if (is.na(f)) return("")
-  tryCatch(.ai_read_text(file.path(path, f)),
-           tflplanner_ai_encoding = function(e) structure("", problem = conditionMessage(e)))
-}
-
 .ai_check_request_name <- function(request) {
   if (!is.character(request) || length(request) != 1L || is.na(request) ||
       !grepl("^[A-Za-z0-9][A-Za-z0-9._-]*$", request)) {
@@ -165,33 +141,69 @@
   invisible(request)
 }
 
-# A request's answer saved as ai/answers/<request>.md (UTF-8, LF line
-# ends; tfl_ai_save_answer() checks the request is one of the study's).
-# Gives the file's path from the study's folder.
-.ai_save_answer <- function(path, request, text, overwrite = TRUE) {
-  .ai_check_request_name(request)
-  # (one line end at the end: the file's own)
-  text <- sub("\n+$", "", gsub("\r\n?", "\n", paste(as.character(text), collapse = "\n")))
-  f <- tflspec::tfl_ai_save_answer(path, request, text, overwrite = overwrite)
-  .ai_rel(.ai_answers_dir, basename(f))
-}
-
 # The answers checked: tfl_ai_collect_answers()'s list (reports,
 # next_steps, assumptions, stray, requests), with the time of the check
-.ai_collect <- function(path) {
+.ai_collect <- function(path, build = FALSE) {
+  .ai_ensure_area(path)
   x <- tflspec::tfl_ai_collect_answers(path)
   x$time <- Sys.time()
+  # what is to confirm (the agent could not decide), the drafts' and the
+  # study's: output_id, where, item, why, file
+  x$confirm <- .ai_confirm(path)
+  # each draft's check, ERROR / WARNING / OK, and the fix text of those
+  # that are not OK (tflspec::tfl_check_spec() on ai/spec/outputs)
+  x$checks <- .ai_check_drafts(path, build = build)
   x
 }
 
-# The answers compared, with templates or the code SPEC only:
-# tfl_ai_compare()'s table (one row a report; ai/compare.csv written), or
-# NULL with a tflspec that has none or when it fails
-.ai_compare <- function(path) {
-  ns <- asNamespace("tflspec")
-  if (!exists("tfl_ai_compare", envir = ns, inherits = FALSE)) return(NULL)
-  tryCatch(suppressMessages(get("tfl_ai_compare", envir = ns)(path)),
-           error = function(e) NULL)
+# The drafts checked as the user's three levels say it: ERROR (the SPEC
+# does not read: it cannot be copied), WARNING (it reads, no program can be
+# made from it yet), OK; what is to confirm apart.  A list: `reports`
+# (tflspec::tfl_check_reports(): output_id, level, errors, warnings, notes,
+# confirms, confirm) and `fix` (the text for the agent's chat of each ERROR /
+# WARNING report, named by output_id, in the study's language); NULL when
+# tflspec cannot check
+# (`build`: each draft the checks pass is also built -- its data, ARD and
+# table / figure / listing -- and a build that stops is an ERROR like the
+# others; a tflspec without tfl_check_spec(build =) checks only)
+.ai_check_drafts <- function(path, build = FALSE) {
+  old <- options(tflspec.outputs_dir = file.path("ai", "spec", "outputs"))
+  on.exit(options(old), add = TRUE)
+  a <- list(path)
+  if (isTRUE(build) && "build" %in% names(formals(tflspec::tfl_check_spec))) a$build <- TRUE
+  probs <- tryCatch(suppressMessages(suppressWarnings(do.call(tflspec::tfl_check_spec, a))),
+                    error = function(e) NULL)
+  if (is.null(probs)) return(NULL)
+  reports <- tryCatch(tflspec::tfl_check_reports(probs), error = function(e) NULL)
+  fix <- tryCatch(tflspec::tfl_check_fix_text(probs, language = .ai_fix_language(path)),
+                  error = function(e) character())
+  list(reports = reports, fix = fix)
+}
+
+# The fix text's language: the study's (study.yml's ai: language), "ja" for
+# Japanese, else "en"
+.ai_fix_language <- function(path) {
+  y <- tryCatch(yaml::read_yaml(file.path(path, "study.yml")), error = function(e) NULL)
+  l <- tolower(as.character(y$ai$language %||% "")[1L])
+  if (!is.na(l) && l %in% c("ja", "japanese", "jp")) "ja" else "en"
+}
+
+# The places a report's SPEC leaves to confirm (tflspec::tfl_ai_confirm()):
+# its drafts' and the adopted ones'; NULL when tflspec cannot say
+.ai_confirm <- function(path) {
+  d <- tryCatch(tflspec::tfl_ai_confirm(path, where = "both"), error = function(e) NULL)
+  if (!is.data.frame(d)) return(NULL)
+  for (k in c("output_id", "where", "item", "why", "file")) {
+    if (is.null(d[[k]])) d[[k]] <- rep(NA_character_, nrow(d))
+  }
+  d
+}
+
+# A check's three levels as the user says them (the collect's status):
+# ERROR the SPEC does not read; WARNING it reads, no program can be made
+# from it yet; OK a program can be made.  "no answer": no draft yet.
+.ai_check_level <- function(status) {
+  unname(c(ok = "OK", warning = "WARNING", error = "ERROR", `no answer` = "no draft")[status])
 }
 
 # a request's status: its worst report's (ok < warning < no answer < error);
@@ -219,7 +231,7 @@
 .ai_counts <- function(requests, collected = NULL) {
   r <- collected$reports
   st <- if (is.null(r)) character() else r$status
-  list(requests = nrow(requests), answers = sum(!is.na(requests$answer)),
+  list(requests = nrow(requests), drafts = sum(requests$drafts),
        reports = sum(requests$n),
        status = vapply(names(.ai_status_rank), function(s) sum(st == s), 0L))
 }
@@ -309,59 +321,13 @@
   data.frame(request = bt, n = n, stringsAsFactors = FALSE)
 }
 
-# The requests' names when each holds one report (size = 1, tflspec >=
-# 0.0.24.9211): the report's number (t.15.1.5.1), what a file name cannot
+# The requests' names when each holds one report (size = 1): the report's number (t.15.1.5.1), what a file name cannot
 # hold made "-", a name twice made unique ("-1") -- the tables', then the
 # figures', in order
 .ai_one_names <- function(ids) {
   x <- trimws(as.character(ids))
   y <- gsub("^-+|-+$", "", gsub("[^A-Za-z0-9._-]+", "-", x))
   make.unique(ifelse(grepl("^[A-Za-z0-9._-]+$", x), x, y), sep = "-")
-}
-
-# A dry run's TOC with its reports' parts (tfl_ai_read_shell()$toc, tflspec
-# >= 0.0.24.9211): `parts` (the parts' ids, " | " between them, NA for a
-# report not in parts) and `same_number` (a number the TOC names twice);
-# its requests named after their reports when each holds one (size = 1).
-# The workbook is read again for the parts only when the dry run's TOC
-# does not carry them.
-.ai_dry_with_parts <- function(p, toc, args = list(), shells = NULL) {
-  tc <- p$toc
-  # (tflspec >= 0.0.24.9230: the requests a sheet's, the TOC its items --
-  # nothing to add)
-  if (!nrow(tc) || !is.null(tc$toc_id)) return(p)
-  rq <- p$requests
-  if (isTRUE(as.integer(args$size %||% 0L) == 1L) && nrow(rq) && all(rq$n == 1L)) {
-    nm <- .ai_one_names(rq$outputs)
-    tc$request <- nm[match(tc$request, rq$request)]
-    rq$request <- nm
-    p$requests <- rq
-  }
-  if (is.null(tc$parts) || is.null(tc$same_number)) {
-    a <- Filter(Negate(is.null), list(toc_sheet = args$toc_sheet, sheets = args$sheets,
-                                      shells = if (length(shells)) unname(shells)))
-    x <- tryCatch(suppressWarnings(do.call(tflspec::tfl_ai_read_shell, c(list(toc), a))),
-                  error = function(e) NULL)
-    i <- if (!is.null(x)) match(tc$output_id, x$toc$output_id)
-    tc$parts <- if (!is.null(x$toc$parts)) x$toc$parts[i] else rep(NA_character_, nrow(tc))
-    tc$same_number <- if (!is.null(x$toc$same_number)) x$toc$same_number[i] %in% TRUE else
-      rep(FALSE, nrow(tc))
-  }
-  p$toc <- tc
-  p
-}
-
-# A report's parts as the TOC table says them: "2 parts (.a, .b)" -- each
-# part's id after the report's number; "" for a report not in parts
-.ai_parts_label <- function(output_id, parts, t = identity) {
-  if (is.null(parts)) return(rep("", length(output_id)))
-  vapply(seq_along(output_id), function(i) {
-    if (is.na(parts[i]) || !nzchar(parts[i])) return("")
-    p <- strsplit(parts[i], " | ", fixed = TRUE)[[1L]]
-    own <- startsWith(tolower(p), tolower(output_id[i]))
-    p[own] <- substring(p[own], nchar(output_id[i]) + 1L)
-    sprintf(t("%d parts (%s)"), length(p), paste(p, collapse = ", "))
-  }, "")
 }
 
 # Said when what the read was for has changed (the workbooks, their sheets)
@@ -439,14 +405,17 @@
          if (!is.null(study_id)) list(study_id = study_id),
          if (!is.null(title) && nzchar(title)) list(title = title),
          if (length(shells)) list(shells = unname(shells)),
-         Filter(Negate(is.null), args))
-  # (a new study: the AI's drafts in its area, ai/spec/outputs -- tflspec's
-  # default; step 4 lists them and adopts them into spec/outputs)
+         Filter(Negate(is.null), args),
+         if (!isTRUE(dry_run) && is.null(args$area)) list(area = TRUE))
+  # (the AI's drafts in their area, ai/spec/outputs, always -- for a study
+  # with reports of its own too, whose files the AI must not write over;
+  # step 4 lists the drafts and adopts them into spec/outputs)
   # (add = TRUE, overwrite = TRUE: the requests asked again alone -- the
-  # study's own files and the agent's are kept, tflspec >= 0.0.24.9178)
+  # study's own files and the agent's are kept)
   # (a dry run on a folder not made yet: its path is not there to normalize)
+  # (a study answered before: its drafts put apart first, adopted as they are)
+  if (!isTRUE(dry_run)) .ai_ensure_area(dir)
   p <- suppressWarnings(do.call(tflspec::tfl_ai_prepare, a))
-  if (isTRUE(dry_run)) p <- .ai_dry_with_parts(p, toc, a, shells)
   p
 }
 
@@ -594,7 +563,7 @@
 # study's, or for a new one studies_root/<ID> when it is there, else
 # studies_root) -- its data/adam for the ADaM folder, its docs for the
 # workbooks, when there
-.ai_browse_start <- function(kind = c("adam", "toc", "shells"), field = "", study_dir = NULL,
+.ai_browse_start <- function(kind = c("adam", "toc", "shells", "adam_spec"), field = "", study_dir = NULL,
                              root = studies_root(), new_id = "") {
   kind <- match.arg(kind)
   here <- function(d) {
@@ -645,11 +614,13 @@
 .ai_choose_dir <- function(default = "") {
   f <- getOption("tflplanner.choose_dir")
   out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
+    # (in front of the browser: R/ai_dialog_win.R; else utils's)
+    .ps_dialog("dir", default, "ADaM folder") %||% .ai_dialog_try(
     # (Windows only: looked up, not named, for the check on other systems)
     getExportedValue("utils", "choose.dir")(default = if (dir.exists(default)) {
       normalizePath(default, "\\", mustWork = FALSE)
     } else "",
-                                            caption = "ADaM folder")
+                                            caption = "ADaM folder"))
   } else {
     tcltk::tk_choose.dir(default = default, caption = "ADaM folder")
   }
@@ -660,9 +631,10 @@
   f <- getOption("tflplanner.choose_file")
   out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
     filters <- rbind(c("Excel workbook (*.xlsx, *.xlsm)", "*.xlsx;*.xlsm"), c("All files (*.*)", "*.*"))
-    getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
-                                              caption = "TOC / SHELL workbook",
-                                              multi = FALSE, filters = filters)
+    .ps_dialog("file", default, "TOC / SHELL workbook") %||% .ai_dialog_try(
+      getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
+                                                caption = "TOC / SHELL workbook",
+                                                multi = FALSE, filters = filters))
   } else {
     tcltk::tk_choose.files(default = .ai_file_default(default), caption = "TOC / SHELL workbook", multi = FALSE,
                            filters = matrix(c("Excel workbook", ".xlsx", "Excel workbook", ".xlsm"),
@@ -671,15 +643,55 @@
   .ai_chosen(out)
 }
 
+# The ADaM spec chosen in the dialog: a P21 Spec workbook or a define.xml
+.ai_choose_adam_spec <- function(default = "") {
+  f <- getOption("tflplanner.choose_file")
+  cap <- "ADaM spec (P21 Spec workbook or define.xml)"
+  out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
+    filters <- rbind(c("ADaM spec (*.xlsx, *.xml)", "*.xlsx;*.xml"), c("All files (*.*)", "*.*"))
+    .ps_dialog("file", default, cap,
+               filter = "ADaM spec (*.xlsx;*.xml)|*.xlsx;*.xml|All files (*.*)|*.*") %||%
+      .ai_dialog_try(getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
+                                                               caption = cap, multi = FALSE,
+                                                               filters = filters))
+  } else {
+    tcltk::tk_choose.files(default = .ai_file_default(default), caption = cap, multi = FALSE,
+                           filters = matrix(c("Excel workbook", ".xlsx", "define.xml", ".xml"),
+                                            ncol = 2, byrow = TRUE))
+  }
+  .ai_chosen(out)
+}
+
+# The ADaM spec field as tfl_ai_prepare()'s argument: a workbook as
+# adam_spec, an .xml as define; empty, none.  A problem with the path: its
+# message (`t` translating), else NULL -- .ai_adam_spec_problem()
+.ai_adam_spec_args <- function(field) {
+  f <- gsub('^"|"$', "", trimws(as.character(field %||% "")))
+  if (length(f) != 1L || is.na(f) || !nzchar(f)) return(list())
+  f <- normalizePath(f, "/", mustWork = FALSE)
+  if (grepl("[.]xml$", f, ignore.case = TRUE)) list(define = f) else list(adam_spec = f)
+}
+.ai_adam_spec_problem <- function(field, t = identity) {
+  a <- .ai_adam_spec_args(field)
+  if (!length(a)) return(NULL)
+  f <- a[[1L]]
+  if (!grepl("[.](xlsx|xml)$", f, ignore.case = TRUE)) {
+    return(t("The ADaM spec is a P21 Spec workbook (.xlsx) or a define.xml."))
+  }
+  if (!file.exists(f)) return(sprintf(t("No ADaM spec %s."), f))
+  NULL
+}
+
 # Shell workbooks chosen in the dialog (several), their paths; none when
 # cancelled
 .ai_choose_files <- function(default = "") {
   f <- getOption("tflplanner.choose_files")
   out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
     filters <- rbind(c("Excel workbook (*.xlsx, *.xlsm)", "*.xlsx;*.xlsm"), c("All files (*.*)", "*.*"))
-    getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
-                                              caption = "Shell workbooks",
-                                              multi = TRUE, filters = filters)
+    .ps_dialog("file", default, "Shell workbooks", multi = TRUE) %||% .ai_dialog_try(
+      getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
+                                                caption = "Shell workbooks",
+                                                multi = TRUE, filters = filters))
   } else {
     tcltk::tk_choose.files(default = .ai_file_default(default), caption = "Shell workbooks", multi = TRUE,
                            filters = matrix(c("Excel workbook", ".xlsx", "Excel workbook", ".xlsm"),
@@ -690,45 +702,65 @@
   normalizePath(out, "/", mustWork = FALSE)
 }
 
+# Reference files chosen in the dialog (any kind, several): their paths;
+# none when cancelled
+.ai_choose_refs <- function(default = "") {
+  f <- getOption("tflplanner.choose_refs")
+  out <- if (is.function(f)) f(default) else if (.Platform$OS.type == "windows") {
+    .ps_dialog("file", default, "References", multi = TRUE, filter = "All files (*.*)|*.*") %||%
+      .ai_dialog_try(getExportedValue("utils", "choose.files")(default = .ai_file_default(default),
+                                                               caption = "References", multi = TRUE))
+  } else {
+    .ai_dialog_try(tcltk::tk_choose.files(default = .ai_file_default(default), caption = "References",
+                                          multi = TRUE))
+  }
+  out <- as.character(out)
+  out <- out[!is.na(out) & nzchar(out)]
+  normalizePath(out, "/", mustWork = FALSE)
+}
+
+# A dialog of utils (or tcltk) that could not open: said so, with what to
+# do instead
+.ai_dialog_try <- function(expr) {
+  tryCatch(expr, error = function(e) {
+    stop("The computer's dialog cannot be opened here: paste the path into the field instead.",
+         call. = FALSE)
+  })
+}
+
 .ai_chosen <- function(x) {
   x <- as.character(x)
   if (length(x) != 1L || is.na(x) || !nzchar(x)) return(NA_character_)
   normalizePath(x, "/", mustWork = FALSE)
 }
 
-# ---- a coding agent (tfl_ai_prepare(mode = "agent")) --------------------------
+# ---- the coding agent -------------------------------------------------------
 
-# A study's mode: "agent" when tfl_ai_prepare(mode = "agent") wrote its
-# AGENTS.md, else "chat"
-.ai_mode <- function(path) {
-  if (!is.null(path) && file.exists(file.path(path, "AGENTS.md"))) "agent" else "chat"
-}
-
-# The agent's first message, as tfl_ai_prepare(mode = "agent") gives it
-# (its `agent_prompt`): ai/agent_prompt.md, which it writes too; made again
-# from the study's folder when there is none (a study of an older tflspec)
+# The agent's prompt, one for the whole study, as tfl_ai_prepare() gives it
+# (its `agent_prompt`): ai/agent_prompt.md, which it writes too; a plain one
+# when there is none (a study of an older tflspec), its paths from the study
+# folder
 .ai_agent_prompt <- function(path) {
   f <- file.path(path, "ai", "agent_prompt.md")
   if (file.exists(f)) {
     txt <- tryCatch(.ai_read_text(f), error = function(e) NULL)
     if (!is.null(txt)) return(sub("\n+$", "", txt))
   }
-  at <- normalizePath(path, winslash = "/", mustWork = FALSE)
-  paste0("Follow ", at, "/AGENTS.md. Do every request of ", at, "/ai/requests/index.md, ",
-         "in its order: save each answer as ", at, "/ai/answers/<request>.md and run ",
-         "`Rscript ", at, "/run.R` after it, then read ", at, "/ai/status.md and repair. ",
-         "Do not stop to ask; when every request is done, tell me which reports have an ",
-         "RTF and that ", at, "/ai/questions.md waits for my answers.")
+  paste0("Follow ai/AGENTS.md. Do every request of ai/requests/index.md, in its order: ",
+         "ask me here what you cannot decide, then write each report's SPEC draft as ",
+         "ai/spec/outputs/<id>.yml. When I say \"continue\", go on from where you stopped.")
 }
 
-# The questions of ai/questions.md (tfl_ai_questions()), the open ones
-# first: id, output_id, where, question, provisional, answer, status
-.ai_questions <- function(path) {
-  q <- tflspec::tfl_ai_questions(path)
-  q[order(q$status == "decided"), , drop = FALSE]
-}
-
-# Answers (named by the questions' ids) written into ai/questions.md
-.ai_answer_questions <- function(path, answers) {
-  tflspec::tfl_ai_answer_questions(path, answers)
+# A study whose AI drafts are still written into spec/outputs (prepared
+# before the drafts had their own folder, or a study with reports of its
+# own): its drafts put apart, ai/spec/outputs (tflspec::tfl_ai_migrate();
+# the study's files kept, as adopted), before answers are checked or run.R
+# runs -- so neither writes over a report the person changed
+.ai_ensure_area <- function(path) {
+  if (is.null(path) || dir.exists(file.path(path, "ai", "spec", "outputs"))) return(invisible(FALSE))
+  if (!dir.exists(file.path(path, "ai"))) return(invisible(FALSE))
+  tryCatch(tflspec::tfl_ai_migrate(path), error = function(e) {
+    message("tflplanner: the AI's drafts not put apart: ", conditionMessage(e))
+  })
+  invisible(TRUE)
 }

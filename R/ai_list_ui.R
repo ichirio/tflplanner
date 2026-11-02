@@ -20,28 +20,27 @@
   d
 }
 
-# What adopting the rows would do (tflspec >= 0.0.24.9237: dry_run), else
-# NULL: output_id, status (new / replace / same / no draft)
+# What adopting the rows would do, or NULL when it cannot say: output_id,
+# status (new / replace / same / no draft)
 .ai_adopt_plan <- function(dir, ids) {
-  if (!"dry_run" %in% names(formals(tflspec::tfl_ai_adopt))) return(NULL)
   p <- tryCatch(tflspec::tfl_ai_adopt(dir, outputs = ids, dry_run = TRUE), error = function(e) NULL)
   if (!is.data.frame(p)) return(NULL)
   p
 }
 
-# The differences of the reports adopting replaces (tflspec's
-# tfl_ai_adopted_diff(), when it has it), else NULL
+# The differences of the reports adopting replaces
+# (tflspec::tfl_ai_adopted_diff()), or NULL
 .ai_adopt_diff <- function(dir, ids) {
-  f <- tryCatch(getExportedValue("tflspec", "tfl_ai_adopted_diff"), error = function(e) NULL)
-  if (is.null(f) || !length(ids)) return(NULL)
-  d <- tryCatch(do.call(rbind, lapply(ids, function(id) f(dir, id))), error = function(e) NULL)
+  if (!length(ids)) return(NULL)
+  d <- tryCatch(do.call(rbind, lapply(ids, function(id) tflspec::tfl_ai_adopted_diff(dir, id))),
+                error = function(e) NULL)
   if (is.data.frame(d) && nrow(d)) d else NULL
 }
 
 #' @noRd
 ai_list_panel <- function(ns, t) {
   bslib::nav_panel(
-    paste0("4 ", t("List and corrections"), " (tfl_ai_outputs)"), value = "list",
+    paste0("4 ", t("Copy into the study"), " (tfl_ai_adopt)"), value = "list",
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center mb-2",
       shiny::h6(class = "mb-0 me-auto", with_tip(
@@ -53,6 +52,7 @@ ai_list_panel <- function(ns, t) {
       class = "d-flex flex-wrap gap-2 align-items-center mb-2",
       .btn(ns("list_all"), t("Tick all")),
       .btn(ns("list_none"), t("Untick all")),
+      .btn(ns("list_new"), t("Tick only those not in the study yet")),
       .btn(ns("list_newer"), t("Tick only the updated drafts")),
       shiny::uiOutput(ns("list_ticked"), inline = TRUE),
       .btn(ns("adopt"), paste0(t("Adopt (copy) the reports ticked into the study"), " (tfl_ai_adopt)"),
@@ -83,7 +83,8 @@ ai_list_panel <- function(ns, t) {
 # The server part: `path()` the study's folder, `ver()` bumped when the
 # answers are checked again, `reload_now()` the app's
 #' @noRd
-ai_list_server <- function(input, output, session, path, ver, reload_now, notify, guarded, t) {
+ai_list_server <- function(input, output, session, path, ver, reload_now, notify, guarded, t,
+                           dirty = function() FALSE) {
   ns <- session$ns
   again <- shiny::reactiveVal(0L)
   shiny::observeEvent(input$list_reread, again(again() + 1L))
@@ -96,10 +97,21 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   # buttons change it (the table drawn again only for the buttons)
   ticked <- shiny::reactiveVal(character())
   redraw <- shiny::reactiveVal(0L)
+  # (the list read again: the ticks the person left kept, the drafts new
+  # to the list ticked as at first)
+  seen <- new.env()
   shiny::observeEvent(listed(), {
     d <- listed()
-    ticked(if (is.null(d)) character() else .ai_ticked_first(d))
+    if (is.null(d)) {
+      seen$ids <- NULL
+      return(ticked(character()))
+    }
+    first <- .ai_ticked_first(d)
+    ticked(if (is.null(seen$ids)) first
+           else union(intersect(ticked(), d$output_id[.ai_adoptable(d)]), setdiff(first, seen$ids)))
+    seen$ids <- d$output_id
   }, ignoreNULL = FALSE)
+  shiny::observeEvent(path(), seen$ids <- NULL, ignoreInit = TRUE)
   shiny::observeEvent(input$ck_toggle, {
     id <- input$ck_toggle$id
     ticked(if (isTRUE(input$ck_toggle$on)) union(ticked(), id) else setdiff(ticked(), id))
@@ -113,6 +125,10 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     if (!is.null(d)) set_ticked(d$output_id[.ai_adoptable(d)])
   })
   shiny::observeEvent(input$list_none, set_ticked(character()))
+  shiny::observeEvent(input$list_new, {
+    d <- listed()
+    if (!is.null(d)) set_ticked(.ai_ticked_first(d))
+  })
   shiny::observeEvent(input$list_newer, {
     d <- listed()
     if (!is.null(d)) set_ticked(d$output_id[.ai_adoptable(d) & as.character(d$adopted) %in% "yes, draft newer"])
@@ -133,7 +149,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
     d <- listed()
     if (is.null(d) || !nrow(d)) {
       shiny::p(class = "small text-muted",
-               t("No report listed yet: write the requests (step 1) and check the answers (step 3)."))
+               t("No report listed yet: write the requests (step 1), then check the agent's SPEC drafts (step 3)."))
     }
   })
   output$list_table <- DT::renderDT({
@@ -150,11 +166,22 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       ns(""), htmltools::htmlEscape(d$rtf, attribute = TRUE), t("Open")), "")
     # (tflspec's words in the app's language: the state, adopted)
     tw <- function(x) ifelse(is.na(x) | !nzchar(x), "", vapply(as.character(x), t, ""))
-    v <- data.frame(ck, d$output_id, d$title, d$population, d$split, tw(d$status), tw(d$adopted), rtf,
-                    d$questions, d$problem, stringsAsFactors = FALSE)
+    # (a report's status in this list's words: "ok" and "error" are kept in
+    # English elsewhere, as program states)
+    # (the check's three levels: ERROR, WARNING, OK -- step 3's words)
+    tw_status <- function(x) {
+      x <- as.character(x)
+      lv <- .ai_check_level(x)
+      out <- tw(x)
+      has <- !is.na(lv)
+      out[has] <- vapply(lv[has], t, "", USE.NAMES = FALSE)
+      out
+    }
+    v <- data.frame(ck, d$output_id, d$title, d$population, d$split, tw_status(d$status),
+                    tw(d$adopted), rtf, d$problem, stringsAsFactors = FALSE)
     names(v) <- c(t("Tick to copy"), "output_id", t("Title (title)"), t("Analysis set (population)"),
-                  t("Split (split)"), t("State (status)"), paste0(t("Adopted"), " (adopted)"), "RTF",
-                  t("Questions (questions)"), t("First problem"))
+                  t("Split (split)"), t("Check"), paste0(t("Adopted"), " (adopted)"), "RTF",
+                  t("First problem"))
     v[is.na(v)] <- ""
     # (the boxes and the RTF links: not escaped)
     DT::datatable(v, rownames = FALSE, escape = which(!names(v) %in% c(t("Tick to copy"), "RTF")),
@@ -190,7 +217,15 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
                       shiny::tags$tbody(lapply(seq_len(nrow(d)), function(r)
                         shiny::tags$tr(lapply(d[r, cols], function(x) shiny::tags$td(as.character(x)))))))
   }
+  # (not while the study has unsaved changes: the adopted files would be
+  # taken in over them, or the study left apart from its files)
+  unsaved <- function() {
+    if (!isTRUE(dirty())) return(FALSE)
+    notify(t("Save first: the study has unsaved changes."), "warning")
+    TRUE
+  }
   shiny::observeEvent(input$adopt, {
+    if (unsaved()) return()
     if (!length(ticked())) return(notify(t("Tick the reports to adopt."), "warning"))
     s <- split_ticked()
     pending(s)
@@ -236,14 +271,23 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   })
   do_adopt <- function(fresh, over) {
     shiny::removeModal()
+    if (unsaved()) return()
     p <- path()
-    res <- list()
-    if (length(fresh)) res[[1L]] <- guarded(tflspec::tfl_ai_adopt(p, outputs = fresh, overwrite = FALSE))
-    if (length(over)) res[[2L]] <- guarded(tflspec::tfl_ai_adopt(p, outputs = over, overwrite = TRUE))
+    # (each call NULL when it failed: guarded() said why)
+    done_fresh <- if (length(fresh)) !is.null(guarded(tflspec::tfl_ai_adopt(p, outputs = fresh, overwrite = FALSE)))
+    done_over <- if (length(over)) !is.null(guarded(tflspec::tfl_ai_adopt(p, outputs = over, overwrite = TRUE)))
     again(again() + 1L)
-    reload_now()
-    notify(sprintf(t("%d reports adopted (copied) into the study, %d of them replaced: on the Report list."),
-                   length(fresh) + length(over), length(over)))
+    n_fresh <- if (isTRUE(done_fresh)) length(fresh) else 0L
+    n_over <- if (isTRUE(done_over)) length(over) else 0L
+    if (!(n_fresh + n_over)) return()
+    # (saved too: their programs and batch.R written, for a run)
+    adopted <- c(if (isTRUE(done_fresh)) fresh, if (isTRUE(done_over)) over)
+    saved <- isTRUE(reload_now(save = TRUE, after = function(x) .ai_apply_toc_batches(x, p, adopted)))
+    notify(if (saved) sprintf(t("%d reports adopted (copied) into the study, %d of them replaced: on the Report list."),
+                              n_fresh + n_over, n_over)
+           else sprintf(t("%d reports adopted (copied) into the study, but the study was not saved: save it to write their programs."),
+                        n_fresh + n_over),
+           if (saved) "message" else "warning")
   }
   shiny::observeEvent(input$adopt_fresh, {
     s <- pending()
@@ -261,4 +305,73 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
 .ai_in_study_spec <- function(f) {
   f <- as.character(f)
   !is.na(f) & startsWith(gsub("\\\\", "/", f), "spec/")
+}
+
+# ---- the batches of the TOC (Topline, ...) of the reports adopted ----------
+# The one place the AI's TOC gives the report sets: spec/toc.yml, each
+# output's `sets` (tflspec: a TOC_<batch> sheet or a column of marks) or
+# `batches` (a name or a list of them), or a top-level `batches` map,
+# name -> ids.
+
+# toc.yml's batches: a data frame batch, output_id (none: no row)
+.ai_toc_batches <- function(p) {
+  none <- data.frame(batch = character(), output_id = character(), stringsAsFactors = FALSE)
+  f <- if (!is.null(p)) file.path(p, "spec", "toc.yml")
+  if (is.null(f) || !file.exists(f)) return(none)
+  y <- tryCatch(yaml::read_yaml(f), error = function(e) NULL)
+  if (!is.list(y)) return(none)
+  names_of <- function(b) {
+    b <- unlist(b, use.names = FALSE)
+    b <- unlist(strsplit(as.character(b), "|", fixed = TRUE))
+    b <- trimws(b)
+    b[!is.na(b) & nzchar(b)]
+  }
+  rows <- list()
+  for (o in y$outputs %||% list()) {
+    if (!is.list(o) || is.null(o$id)) next
+    b <- names_of(c(o$sets, o$batches))
+    if (length(b)) rows[[length(rows) + 1L]] <- data.frame(batch = b, output_id = as.character(o$id),
+                                                           stringsAsFactors = FALSE)
+  }
+  top <- y$batches
+  if (is.list(top) && !is.null(names(top))) {
+    for (n in names(top)) {
+      ids <- names_of(top[[n]])
+      if (length(ids)) rows[[length(rows) + 1L]] <- data.frame(batch = n, output_id = ids,
+                                                               stringsAsFactors = FALSE)
+    }
+  }
+  if (!length(rows)) return(none)
+  out <- unique(do.call(rbind, rows))
+  rownames(out) <- NULL
+  out
+}
+
+# The planner with the reports `ids` in their TOC batches (a report's
+# batches set already are kept; a name a batch folder cannot carry is left)
+.ai_apply_toc_batches <- function(x, p, ids) {
+  b <- .ai_toc_batches(p)
+  if (!nrow(b) || !length(ids)) return(x)
+  have <- x$outputs$batches %||% rep(NA_character_, nrow(x$outputs))
+  for (id in intersect(ids, x$outputs$output_id)) {
+    i <- match(id, x$outputs$output_id)
+    if (!is.na(have[i]) && nzchar(have[i])) next
+    n <- b$batch[b$output_id == id]
+    n <- n[vapply(n, function(v) !inherits(tryCatch(.check_batch_name(v), error = function(e) e), "error"), NA)]
+    if (length(n)) x <- .set_report_batches(x, id, n)
+  }
+  x
+}
+
+# The AI's reports among `ids` an official run should say before it runs:
+# `newer` (their draft changed since adopted), `confirm` (places the AI
+# left to confirm); NULL study: none
+.ai_run_warnings <- function(p, ids) {
+  none <- list(newer = character(), confirm = character())
+  if (is.null(p) || !length(ids) || !dir.exists(file.path(p, "ai"))) return(none)
+  m <- .ai_adopted_marks(p, ids)
+  # (the study's reports with places still to confirm: tfl_ai_confirm())
+  cf <- tryCatch(tflspec::tfl_ai_confirm(p, where = "adopted"), error = function(e) NULL)
+  confirm <- if (is.data.frame(cf) && nrow(cf)) intersect(ids, unique(cf$output_id)) else character()
+  list(newer = names(m)[m == "newer"], confirm = confirm)
 }

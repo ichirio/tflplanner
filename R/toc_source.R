@@ -73,7 +73,7 @@
 #' @return `toc_source()`: a `toc_source`: `path`, `name`, `md5`, `kind`
 #'   (`"excel"`, `"csv"` or `"other"`), `sheets`, `head` (each sheet's
 #'   first rows as a character matrix).
-#' @export
+#' @noRd
 toc_source <- function(path, header_rows = 10L, name = basename(path)) {
   if (!is.character(path) || length(path) != 1L || !file.exists(path)) {
     stop("No file ", sQuote(path), ".", call. = FALSE)
@@ -147,13 +147,13 @@ print.toc_source <- function(x, ...) {
 #' @rdname toc_source
 #' @param head A sheet's first rows (a character matrix, as `source$head`
 #'   holds them).
-#' @param rule_set A rule set ([toc_rule_set()]) or a list of them (the
+#' @param rule_set A rule set (`toc_rule_set()`) or a list of them (the
 #'   candidates of all are used).
 #' @return `toc_find_header()`: a list: `row` (`NA` when no row matches),
 #'   `score` (the cells that match a column name), `items` (the items they
 #'   are), `toc` (`TRUE` when the row is a TOC's header: a title column and
 #'   one item more).
-#' @export
+#' @noRd
 toc_find_header <- function(head, rule_set) {
   sets <- if (inherits(rule_set, "toc_rule_set")) list(rule_set) else rule_set
   cands <- .toc_item_cands(sets)
@@ -183,7 +183,7 @@ toc_find_header <- function(head, rule_set) {
 #'   `""`), `name_hit`, `header_row`, `score`, `items`, `rows` (rows under
 #'   the header), `shell_like`, `why`; `attr(, "kind")`: `"toc"`,
 #'   `"shells"` (no TOC, shell sheets) or `"none"`.
-#' @export
+#' @noRd
 toc_find_sheet <- function(source, rules) {
   sets <- if (inherits(rules, "toc_rule_set")) list(rules) else rules
   sheet_names <- unique(unlist(lapply(sets, function(s) .toc_cands(s$settings$sheet_names))))
@@ -267,13 +267,13 @@ toc_find_sheet <- function(source, rules) {
 #' @param sheet The TOC sheet.
 #' @param header_row Its header row (as the sheet numbers its rows).
 #' @param map Which column is what: a named list, item -> column name(s) of
-#'   the header ([toc_map_for()]).
+#'   the header (`toc_map_for()`).
 #' @return `toc_rows()`: a data frame, a row a non-blank row under the
 #'   header: `.source`, `.sheet`, `.row` (the sheet's row number), a column
 #'   an item (`NA` when not mapped), `titles` and `footnotes` as list
 #'   columns (a title column's cell each, `NA` kept, so a title column's
 #'   place is known).
-#' @export
+#' @noRd
 toc_rows <- function(source, sheet, header_row, map) {
   m <- .toc_sheet_cells(source, sheet)
   header_row <- as.integer(header_row)

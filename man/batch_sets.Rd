@@ -5,7 +5,6 @@
 \alias{set_batch}
 \alias{rename_batch}
 \alias{remove_batch}
-\alias{batch_set_problems}
 \title{Named batches of a study's reports}
 \usage{
 batch_sets(x)
@@ -15,8 +14,6 @@ set_batch(x, name, output_ids)
 rename_batch(x, from, to)
 
 remove_batch(x, name)
-
-batch_set_problems(x)
 }
 \arguments{
 \item{x}{A \code{tflplanner}.}

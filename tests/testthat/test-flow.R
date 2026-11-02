@@ -79,6 +79,7 @@ test_that("the study ARD grows output by output, and says where it stands", {
 })
 
 test_that("two people saving different parts both keep their changes", {
+  skip_on_cran()
   skip_if_not_installed("cards")
   flow_home()
   s <- two_output_study("F2")

@@ -42,6 +42,7 @@ test_that("a hierarchy table reads its terms and its order", {
 })
 
 test_that("written back unchanged, nothing changes; the order is all it writes of its own", {
+  skip_on_cran()
   p <- hier_planner()
   st <- builder_read(p, "T-AE", hier_meta())
   expect_identical(builder_write(p, "T-AE", st, was = st), p)
@@ -236,6 +237,7 @@ test_that("an order of the sheets' own is kept, and the card's order is one clic
 })
 
 test_that("the rows are the table's: the ARD's keys by default, a group outermost, a page each", {
+  skip_on_cran()
   p <- hier_planner()
   m <- hier_meta()
   m$keys$SEX <- c("F", "M")

@@ -22,3 +22,19 @@ Copies the file that defines it into the study's
 which wins -- and adds it to the ARD definition's study key \code{source}, so
 the study's ARD programs load it.  Save the study afterwards.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it makes a study)
+d <- file.path(tflplanner_home(), "standards", "ard_functions")
+dir.create(d, recursive = TRUE)
+tflspec::tfl_ard_function_template("ard_cv_geomean", type = "summary",
+                                   file = file.path(d, "ard_cv_geomean.R"))
+s <- use_company_ard_function(create_study("DEMO-01"), "ard_cv_geomean")
+s$planner$ard$study  # its key `source` names the copy in the study
+}
+options(old)
+}

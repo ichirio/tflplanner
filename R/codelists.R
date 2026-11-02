@@ -46,11 +46,20 @@
 #' @param from_output The report copied from.
 #' @param output_id The report copied into.
 #' @param variables Only these variables' code lists; `NULL` for all.
-#' @param sets Only these sets of the standards; `NULL` for all.
-#' @param home tflplanner's home.
-#' @return `import_codelist()`: the `tflplanner`; `standard_codelists()`: a
-#'   data frame (`set`, `variable`, `value`, `label`, `order`, `under`,
-#'   `note`).
+#' @return The `tflplanner`.
+#' @examples
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: the sample study and its data)
+#' s <- create_sample_study(run = FALSE)
+#' # the code list of SEX in one report is copied into another
+#' p <- import_codelist(s$planner, "T-14-1-1", "T-14-1-3", variables = "SEX")
+#' sum(p$sheets$codelists$output_id %in% "T-14-1-3")
+#' }
+#' options(old)
 #' @export
 import_codelist <- function(x, from_output, output_id, variables = NULL) {
   src <- sheet_rows(x, "codelists", from_output)
@@ -69,7 +78,7 @@ import_codelist <- function(x, from_output, output_id, variables = NULL) {
 }
 
 #' @rdname import_codelist
-#' @export
+#' @noRd
 standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
   cl <- company_standards(home)$codelists
   if (is.null(cl) || !nrow(cl)) return(.builtin_standards()$codelists[0L, ])

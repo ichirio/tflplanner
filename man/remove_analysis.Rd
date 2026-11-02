@@ -22,3 +22,18 @@ one inside a stack (the stack keeps the others).  A stack itself is
 deleted with its own Delete button (\code{stack_remove()}), which says what becomes of the analyses
 inside it.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_sample_study(run = FALSE)
+a <- ard_rows(s$planner, "analyses", "T-14-1-1")$analysis_id
+# take the last analysis out
+x <- remove_analysis(s$planner, "T-14-1-1", a[length(a)])
+ard_rows(x, "analyses", "T-14-1-1")$analysis_id
+}
+options(old)
+}

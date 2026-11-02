@@ -21,3 +21,20 @@ The study's file of that function is overwritten with the company's
 (when the company's is newer, say).  The study's results change only
 when its ARD is made again.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+s <- create_sample_study(run = FALSE)
+# a function in the company standards, and a copy of it in the study
+s <- new_ard_function(s, "ard_my_mean", where = "company", test = FALSE)
+own <- own_ard_functions(s)
+file.copy(own$company_file, file.path(s$path, "programs/ard/functions"))
+own_ard_functions(s)[, c("name", "where")]
+# the study's copy is overwritten with the company's
+take_company_ard_function(s, "ard_my_mean")
+}
+options(old)
+}

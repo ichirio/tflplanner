@@ -74,7 +74,7 @@ remove_batch <- function(x, name) {
 }
 
 #' @rdname batch_sets
-#' @export
+#' @noRd
 batch_set_problems <- function(x) {
   sets <- batch_sets(x)
   out <- data.frame(batch = character(), problem = character(),

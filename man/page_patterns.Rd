@@ -32,3 +32,10 @@ whose \code{output_id} is \code{@} and its name -- says only what differs from
 Standard.  \code{report_pattern()} is a report's choice (\code{NA}: Standard),
 \code{set_report_pattern()} sets it: the report's own rows stay over it.
 }
+\examples{
+x <- add_output(new_planner(), "T-14-1-1", type = "table")
+x <- add_page_pattern(x, "landscape")
+x <- set_report_pattern(x, "T-14-1-1", "landscape")
+page_patterns(x)
+report_pattern(x, "T-14-1-1")
+}

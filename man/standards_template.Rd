@@ -37,3 +37,13 @@ applies: the installed workbook, else the built-in draft.
 \details{
 A sheet the workbook leaves out keeps the built-in one.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+f <- tempfile(fileext = ".xlsx")
+standards_template(f)  # the built-in draft, to edit
+file.exists(f)
+options(old)
+}

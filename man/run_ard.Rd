@@ -21,3 +21,17 @@ A list: \code{ard} (or \code{NULL}), \code{error}, \code{log}, \code{seconds}, \
 Runs \code{\link[tflspec:tfl_ard_code]{tflspec::tfl_ard_code()}} in its own R process from the study folder and
 reads back the ARD it makes.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it runs in its own R process)
+s <- create_sample_study(run = FALSE)
+r <- run_ard(s, "T-14-1-2")
+r$seconds
+head(ard_view(r$ard), 3)
+}
+options(old)
+}

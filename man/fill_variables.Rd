@@ -2,7 +2,6 @@
 % Please edit documentation in R/assist.R
 \name{fill_variables}
 \alias{fill_variables}
-\alias{fill_tables}
 \title{Fill a report's definition from its ARD}
 \usage{
 fill_variables(
@@ -11,8 +10,6 @@ fill_variables(
   meta,
   max_levels = as.integer(.std_setting("max_levels", "30"))
 )
-
-fill_tables(x, output_id, meta)
 }
 \arguments{
 \item{x}{An \code{tflplanner}.}
@@ -37,4 +34,19 @@ variables.  Rows already there are kept; only their blank \code{levels} and
 \code{label} are filled.  \code{fill_tables()} fills the blank cells of the
 report's \code{tables} row: the column key, and the hierarchy (\code{rows},
 \code{label}, \code{sort}) or \code{group = variable}.
+}
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+if (requireNamespace("cards", quietly = TRUE)) {
+  ard <- cards::ard_categorical(cards::ADSL, by = "ARM", variables = "AGEGR1")
+  x <- add_output(new_planner(), "T-14-1-1", type = "table")
+  x <- fill_variables(x, "T-14-1-1", ard_meta(ard))
+  x$sheets$variables[c("variable", "levels")]  # the levels, in the ARD's order
+}
+}
+options(old)
 }

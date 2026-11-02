@@ -29,3 +29,17 @@ overall rows, with no group, which the table reads as the column and
 the ARS writes as an analysis without the grouping.  No \code{"Total"} value
 of the arm is made up in the data.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_sample_study(run = FALSE)
+x <- set_total_column(s$planner, "T-14-1-1", "All subjects")  # switch it on
+x$sheets$tables[x$sheets$tables$output_id == "T-14-1-1", c("output_id", "total", "total_position")]
+x <- set_total_column(x, "T-14-1-1", NULL)  # and off again
+}
+options(old)
+}

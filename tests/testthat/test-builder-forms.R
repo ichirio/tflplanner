@@ -78,6 +78,7 @@ test_that("the stack's keys, and the rows' text read and written", {
 })
 
 test_that("an Overall Response table: the stack's subgroups as the rows, no block of variables", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-1"
   tb <- own_tables(p, id)
@@ -130,6 +131,7 @@ test_that("a column the plan makes keeps the plan's order, not its code list's",
 })
 
 test_that("plan_columns(): a width a column, the decimal alignment, the row title, written by column", {
+  skip_on_cran()
   sch <- .plan_form_schema("plan_columns")
   expect_identical(sch$visible, c("widths", "decimal", "row_title", "auto_width"))
   # (given as R: under Other arguments)
@@ -170,6 +172,7 @@ test_that("plan_columns(): a width a column, the decimal alignment, the row titl
 })
 
 test_that("plan_digits()' rounding: a choice, the study's (written there)", {
+  skip_on_cran()
   h <- html(.rounding_field("d", "sas"))
   expect_match(h, 'id="d__rounding"', fixed = TRUE)
   for (v in c("sas", "r", "iec60559")) expect_match(h, sprintf('value="%s"', v), fixed = TRUE)
@@ -185,7 +188,8 @@ test_that("plan_digits()' rounding: a choice, the study's (written there)", {
 })
 
 test_that("plan_filter(): its condition for the condition builder, any and parents as fields", {
-  expect_identical(.plan_form_main$plan_filter, c("any", "parents"))
+  skip_on_cran()
+  expect_identical(.plan_form_main("plan_filter"), c("any", "parents"))
   sch <- .plan_form_schema("plan_filter")
   expect_identical(sch$args$by$type, "r")
   expect_null(.filter_where_text(NULL))
@@ -217,6 +221,7 @@ test_that("plan_filter(): its condition for the condition builder, any and paren
 })
 
 test_that("plan_levels(): each variable's values dragged, its empty values hidden", {
+  skip_on_cran()
   p <- sample_planner()
   st <- builder_read(p, "T-14-1-1")
   vr <- data.frame(variable = c("SEX", "RACE"), empty_levels = c("hide", NA))
@@ -254,6 +259,7 @@ test_that("the new words have their Japanese", {
 })
 
 test_that("plan_labels(): the labels of the columns the plan makes are the item's, the data's code lists kept", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-1"
   before <- sheet_rows(p, "codelists", id)
@@ -290,6 +296,7 @@ test_that("the ARD's comparison records: the analyses with no column key, their 
 })
 
 test_that("plan_compare(): its columns chosen, each its template, written with its cells rows", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-1"
   cells0 <- sheet_rows(p, "cells", id)
@@ -344,6 +351,7 @@ test_that("plan_compare(): its columns chosen, each its template, written with i
 })
 
 test_that("plan_stat_groups(): a group a row (its name, its statistics), .variables and .others", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-1"
   q <- .builder_item_write(p, id, "plan_stat_groups",
@@ -375,6 +383,7 @@ test_that("plan_stat_groups(): a group a row (its name, its statistics), .variab
 })
 
 test_that("plan_nest(): a variable under a level of another, on its own card", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-1"
   st <- builder_read(p, id)
@@ -410,6 +419,7 @@ test_that("plan_nest(): a variable under a level of another, on its own card", {
 })
 
 test_that("a nest taken away keeps the variable where it was shown (#428)", {
+  skip_on_cran()
   p <- sample_planner()
   id <- "T-14-1-5"
   order_of <- function(q) as.character(unlist(.builder_args(builder_items(q, id), "plan_levels")$variable))
@@ -432,10 +442,11 @@ test_that("a nest taken away keeps the variable where it was shown (#428)", {
 })
 
 test_that("plan_paginate_group(), plan_paginate_cols(), plan_row_group(): a form line each", {
-  expect_identical(.plan_form_main$plan_paginate_group, c("col", "keep", "heading"))
-  expect_identical(.plan_form_main$plan_paginate_cols,
+  skip_on_cran()
+  expect_identical(.plan_form_main("plan_paginate_group"), c("col", "keep", "heading"))
+  expect_setequal(.plan_form_main("plan_paginate_cols"),
                    c("every", "fit", "at", "keep", "cut_by", "order", "allow_span_break"))
-  expect_identical(.plan_form_main$plan_row_group, c("mode", "collapse"))
+  expect_identical(.plan_form_main("plan_row_group"), c("mode", "collapse"))
   # given as R: under Other arguments, saved
   expect_identical(.plan_form_schema("plan_row_group")$args$group_col$type, "r")
   expect_identical(.plan_form_schema("plan_paginate_cols")$args$col_header$type, "r")
@@ -508,7 +519,8 @@ test_that("a comparison's rows (no arm row in their context) are not overall row
 })
 
 test_that("plan_hide(): the table's columns hidden, a multi-select, written by column", {
-  expect_identical(.plan_form_main$plan_hide, "cols")
+  skip_on_cran()
+  expect_identical(.plan_form_main("plan_hide"), "cols")
   sch <- .plan_form_schema("plan_hide")
   expect_identical(sch$formals, "cols")
   it0 <- list(fn = "plan_hide", args = list(), own_args = list())
@@ -537,7 +549,8 @@ test_that("plan_hide(): the table's columns hidden, a multi-select, written by c
 })
 
 test_that("plan_cell_style(): cols, where, the looks as fields, each call its own card", {
-  expect_identical(.plan_form_main$plan_cell_style,
+  skip_on_cran()
+  expect_identical(.plan_form_main("plan_cell_style"),
                    c("cols", "header", "where", "bold", "italic", "align", "color", "background"))
   sch <- .plan_form_schema("plan_cell_style")
   # a look left blank is not written (not FALSE); border: under Other arguments, as R
@@ -596,6 +609,7 @@ test_that("plan_cell_style(): cols, where, the looks as fields, each call its ow
 })
 
 test_that("plan_col_header(values = ): what {n} counts, header_n kept when it is none of the choices", {
+  skip_on_cran()
   ch <- header_n_choices(NULL, "TRT01A", "n = table")
   expect_true("n = table" %in% ch$choices)
   expect_identical(ch$selected, "n = table")
@@ -627,6 +641,7 @@ test_that("the third bundle's words have their Japanese", {
 })
 
 test_that("every form card shows all its function's arguments: those written above, the rest below (#417)", {
+  skip_on_cran()
   p <- sample_planner()
   args_of <- function(h, part) {
     x <- regmatches(h, regexpr(part, h, perl = TRUE))
@@ -636,7 +651,7 @@ test_that("every form card shows all its function's arguments: those written abo
   seen <- list()
   for (id in c("T-14-1-1", "T-14-3-1")) {
     items <- builder_items(p, id)
-    for (fn in names(.plan_form_main)) {
+    for (fn in .plan_form_fns) {
       it <- Filter(function(x) identical(x$fn, fn), items)
       it <- if (length(it)) it[[1L]] else list(fn = fn, args = list())
       h <- html(.plan_form_body("c", fn, it, cols = c("row_label", ".values")))

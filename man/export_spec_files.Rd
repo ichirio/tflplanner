@@ -55,3 +55,17 @@ the study is saved (its files written from it).  A copy with errors
 changes nothing (class \code{tflplanner_spec_invalid}, its \code{problems} the
 file, sheet, row, column and message of each); warnings do not stop it.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the study's spec workbooks)
+s <- create_sample_study(run = FALSE)
+# copy the definition files out; edit the copy, then import_spec_files()
+copy <- file.path(tempdir(), "spec-copy")
+export_spec_files(s, copy)
+}
+options(old)
+}

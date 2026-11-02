@@ -22,3 +22,12 @@ runs first.  In a template, \code{{OUTPUT_ID}}, \code{{ARD}} (the study ARD),
 \code{{ARD_PROGRAM}} (the output's ARD program), \code{{PROGRAM}} and \code{{STUDY_ID}}
 stand for the report's.
 }
+\examples{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+names(code_templates())  # the templates the company standards have
+code_templates("table_data")
+options(old)
+}

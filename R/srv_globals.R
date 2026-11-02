@@ -1,0 +1,35 @@
+# The names app_server()'s parts use from its environment.  Each part
+# (.srv_*(), R/srv_*.R) is run in app_server()'s environment by .srv_part(),
+# so the reactive values, inputs and helpers it reads are that function's
+# (rv, input, session, guarded(), go(), ...), not the package's: said here,
+# for R CMD check.
+utils::globalVariables(c(
+  ".stack_flag_words", "active_page", "adata_cols", "adata_count_words",
+  "adata_counts", "adata_derive_now", "adata_edit", "adata_pick",
+  "adata_root", "adata_where_now", "after_id_change", "an_data",
+  "an_dataset", "an_pick", "app_local", "ard_conds_shown", "ard_log_ver",
+  "ard_preview_out", "ard_ready", "ard_res", "ard_state", "ard_state_ver",
+  "ard_state_view", "ard_target", "ard_valid", "arg_hint", "argl",
+  "arms_id", "ask_id", "bform_drawn", "bid", "bstate", "builder_case",
+  "builder_exc_ui", "builder_guard", "builder_rows_ui",
+  "builder_templates", "bump", "cl_fig", "cl_lf", "current",
+  "current_study", "data_choices", "data_counts", "data_files",
+  "data_pill", "data_words", "data_words_list", "den_choices", "dirty",
+  "do_preview", "do_save", "ds_sub", "exc_ver", "fig_ard_ui", "first_data",
+  "first_subjects", "first_subjects_file", "fn_code", "fn_entries",
+  "fn_label", "form_data", "go", "grids_drawn", "guarded", "has_study",
+  "hdr_uid", "hdr_ver", "imp_row", "imp_study", "imp_ver", "input",
+  "key_levels", "lang", "lf_show_preview", "meta_of", "method_label",
+  "method_note", "need_current", "notify", "output_digits_ui",
+  "outputs_view", "own_data", "own_where_words", "p_ard", "p_list", "page",
+  "page_sample_figure", "page_ver", "picker_rows", "pop_choices",
+  "preview_button", "preview_now", "program_text", "read_grid",
+  "refresh_marks", "report_kind", "review_counts", "review_hold",
+  "review_jump", "review_now", "run_marks", "session", "st_arg_default",
+  "st_conditions", "st_default", "st_drawn", "st_id", "st_kind",
+  "st_method", "st_parent_of", "st_problems", "st_role", "st_row",
+  "st_row_now", "st_rows", "stack_form_ui", "stack_inside_note",
+  "start_first_table", "start_sample_run", "study_open", "target",
+  "tgt_pick", "to_catalog", "total_on_id", "tpl_head_link", "tpl_modal_ui",
+  "tpl_names", "uc_res"
+))

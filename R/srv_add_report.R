@@ -2,21 +2,6 @@
 # app_server()'s environment (.srv_part()); what it makes is copied back
 # there for the parts after it (.srv_keep()).
 .srv_add_report <- function() {
-  # the new report's section, as the Add dialog gave it
-  put_section <- function(id) {
-    s <- trimws(input$modal_section %||% "")
-    i <- match(id, rv$p$outputs$output_id)
-    if (nzchar(s) && !is.na(i)) rv$p$outputs$section[i] <- s
-    # and its analysis set (its data made)
-    pop <- input$modal_pop %||% ""
-    if (nzchar(pop) && !is.na(i)) {
-      p <- guarded(set_report_population(rv$p, id, pop))
-      if (!is.null(p)) {
-        attr(p, "made") <- attr(p, "left") <- NULL
-        rv$p <- p
-      }
-    }
-  }
   shiny::observeEvent(input$add_ok, {
     id <- .id_with_prefix(input$modal_id, input$modal_type)
     # (a new report until the study is saved: the usual cards, empty -- #440)
@@ -24,14 +9,6 @@
     d <- trimws(input$modal_desc)
     desc <- if (nzchar(d)) d else NA
     if (identical(input$modal_how, "template")) return(add_template_report(id, desc))
-    if (identical(input$modal_type, "table") && isTRUE(input$modal_first)) {
-      on.exit(put_section(id), add = TRUE)
-      return(start_first_table(id, desc))
-    }
-    if (identical(input$modal_type, "listing") && isTRUE(input$modal_first_l)) {
-      on.exit(put_section(id), add = TRUE)
-      return(start_first_listing(id, desc))
-    }
     sec <- trimws(input$modal_section %||% "")
     p2 <- guarded(add_output(rv$p, id, description = desc,
                              type = input$modal_type,
@@ -47,7 +24,7 @@
       table = "tables", listing = "lf", figure = "designer", "outputs"))
   })
   # -- template reports (R/template_report.R, #440) ---------------------------
-  tpl_data <- function() .tpl_data_cols(rv$study$path)
+  tpl_data <- function() .tpl_data_cols(rv$study$path, rv$p)
   tpl_all_cols <- function() unique(unlist(lapply(tpl_data(), names)))
   # an argument's heading: "meaning (name)", its doc in the (i)
   # (.tpl_arg_labels; the doc itself when it has none)
@@ -110,6 +87,11 @@
       choices = shiny::selectizeInput(
         input_id, lab, union(as.character(shown), as.character(prm$choices)),
         selected = as.character(shown), multiple = TRUE, width = "100%", options = rm_btn),
+      # (a listing's columns: the data's, in order, each its heading and
+      # width -- the template's `data` field beside it, by its id)
+      columns = .tpl_columns_widget(input_id, lab, shown, data,
+                                    data_id = sub("__columns$", "__data", input_id),
+                                    dataset = args$data %||% params$data$default %||% dataset, t = t),
       text = shiny::textInput(input_id, lab, value = if (is.null(shown)) "" else .tpl_show(shown),
                               width = "100%", updateOn = "blur",
                               placeholder = if (is.null(prm$default)) t("(default)")),
@@ -145,7 +127,7 @@
     if (is.null(nm) || !nzchar(nm)) NULL else nm
   }
   tpl_modal_ui <- function() {
-    lapply(report_types(), function(kind) {
+    shiny::tagList(lapply(report_types(), function(kind) {
       tp <- .tpl_list(kind)
       shiny::conditionalPanel(
         sprintf("input.modal_type == '%s'", kind),
@@ -179,8 +161,31 @@
                                                      .tpl_study_value(rv$p$spec$study, x),
                                                      dataset = prm$data$default, params = prm))))
           })))
-    })
+    }),
+    # the chosen template's other arguments, with their defaults (drawn for
+    # it alone: a template has a dozen)
+    shiny::uiOutput("tpl_modal_more"))
   }
+  # (an optional argument's value as the dialog starts it: the study's,
+  # else the template's default)
+  tpl_opt_start <- function(x) .tpl_study_value(rv$p$spec$study, x) %||% x$default
+  output$tpl_modal_more <- shiny::renderUI({
+    nm <- tpl_chosen()
+    shiny::req(nm)
+    prm <- .tpl_shown(.tpl_params(nm))
+    opt <- Filter(function(x) !isTRUE(x$required), prm)
+    if (!length(opt)) return(NULL)
+    shiny::tags$details(
+      class = "border rounded p-2 mb-2",
+      shiny::tags$summary(class = "small fw-semibold",
+                          sprintf(t("More arguments (%d): filters, variables, columns ..."), length(opt))),
+      shiny::p(class = "small text-muted mb-1",
+               t("Each starts at its default; only a value you change is written into the report.")),
+      lapply(opt, function(x) tpl_widget(tpl_arg_id(nm, x$name), x, tpl_opt_start(x),
+                                         dataset = prm$data$default, params = prm)))
+  })
+  # (bound while the dialog fades in, it counts as hidden: drawn anyway)
+  shiny::outputOptions(output, "tpl_modal_more", suspendWhenHidden = FALSE)
   # a template whose data stage is the report's (a KM type): the report's
   # data asked in the dialog -- the dataset, its parameter, the analysis
   # set -- written as its `data:` steps
@@ -248,7 +253,15 @@
   tpl_modal_args <- function(nm) {
     args <- list()
     for (x in .tpl_shown(.tpl_params(nm))) {
-      if (!isTRUE(x$required)) next
+      if (!isTRUE(x$required)) {
+        # (an optional one: written only when changed from where it started)
+        raw <- input[[tpl_arg_id(nm, x$name)]]
+        if (is.null(raw)) next
+        v <- .tpl_value(raw, .tpl_type(x), x)
+        if (is.null(v) || identical(as.character(unlist(v)), as.character(unlist(tpl_opt_start(x))))) next
+        args[[x$name]] <- v
+        next
+      }
       v <- .tpl_value(input[[tpl_arg_id(nm, x$name)]], .tpl_type(x), x)
       if (is.null(v)) return(structure(list(), missing = x$name))
       # (the study's own value, as prefilled: left to the study)
@@ -288,6 +301,34 @@
       onclick = "Shiny.setInputValue('tpl_goto_card', Math.random(), {priority: 'event'}); return false;",
       paste0(t("Template"), ": ", tp$name, if (!is.na(extra)) paste0(" (", extra, ")")))
   }
+  # a template report made a code one: the template's items, with the
+  # study's defaults and the report's own over them, written into the
+  # report (tflspec::tfl_template_to_spec()); one way, asked first
+  shiny::observeEvent(input$tpl_to_code, {
+    id <- current()
+    shiny::req(id, !is.null(.tpl_of(rv$p, id)))
+    shiny::showModal(shiny::modalDialog(
+      title = sprintf(t("Convert %s to code?"), id),
+      shiny::p(t("The template's items are written into the report, with the study's defaults and this report's settings, and edited on the usual cards from then on.")),
+      shiny::div(class = "alert alert-warning py-2 small mb-0",
+                 t("This cannot be undone: later changes of the template no longer reach this report.")),
+      footer = shiny::tagList(shiny::modalButton(t("Cancel")),
+                              .btn("tpl_to_code_ok", t("Convert"), class = "btn-primary")),
+      easyClose = TRUE))
+  })
+  shiny::observeEvent(input$tpl_to_code_ok, {
+    shiny::removeModal()
+    id <- current()
+    shiny::req(id)
+    p2 <- guarded(.tpl_to_code(rv$p, id))
+    if (is.null(p2)) return()
+    rv$p <- p2
+    bump()
+    tpl_mode_send(FALSE, report_kind(), id = id)
+    # (its cards drawn at once: a table's preview makes the ARD they read)
+    if (identical(report_kind(), "table")) do_preview(id)
+    notify(sprintf(t("%s is a code report now: its items are on the usual cards (save to keep it)."), id))
+  })
   shiny::observeEvent(input$tpl_goto_card, {
     go(switch(report_kind(), listing = "lf", figure = "designer", "tables"))
     session$onFlushed(function() session$sendCustomMessage("rp-tpl-card-show", TRUE), once = TRUE)
@@ -413,12 +454,12 @@
     if (is.null(tp) || !identical(tp$name, name)) return()
     prm <- .tpl_params(name)[[a]]
     type <- .tpl_type(prm, tpl_all_cols())
-    if (identical(type, "list") && is.null(.tpl_list_text(tp$args[[a]] %||% prm$default, prm))) return()
+    if (type %in% c("list", "columns") && is.null(.tpl_list_text(tp$args[[a]] %||% prm$default, prm))) return()
     val <- .tpl_value(v, type, prm)
     # (a field drawn again says its value back: what it shows already --
     # the report's, the study's or the default -- is no edit)
     shown <- tp$args[[a]] %||% .tpl_study_value(rv$p$spec$study, prm) %||% prm$default
-    same <- if (identical(type, "list")) {
+    same <- if (type %in% c("list", "columns")) {
       identical(.tpl_list_text(val, prm), .tpl_list_text(shown, prm))
     } else !is.null(val) && identical(as.character(unlist(val)), as.character(unlist(shown)))
     if (same) return()
@@ -728,6 +769,9 @@
           onchange = "Shiny.setInputValue('tpl_switch', this.value, {priority: 'event'})",
           lapply(others, function(n) shiny::tags$option(
             value = n, selected = if (identical(n, tp$name)) NA, n))),
+        # (one way: the template's items written into the report as code)
+        .btn("tpl_to_code", paste0(t("Convert to code"), " (tfl_template_to_spec)"),
+             class = "btn-sm btn-outline-primary"),
         # (for later: greyed)
         shiny::div(
           class = "dropdown",
@@ -843,6 +887,7 @@
     shiny::req(id)
     rv$ard_ver
     r <- ard_res()
+    shiny::validate(shiny::need(.report_uses_ard(rv$p, id), t("This report uses no ARD.")))
     a <- if (!is.null(r) && identical(r$scope, id)) r$ard else
       tryCatch(ard_raw(current_study(), id, rows = TRUE), error = function(e) NULL)
     shiny::validate(shiny::need(!is.null(a), t("No ARD yet: Update preview makes it.")))
@@ -904,210 +949,5 @@
       shiny::tags$summary(class = "small", t("The content's code expanded")),
       shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", code)))
   })
-  # -- the first listing: the data and its columns --------------------------
-  first_data_l <- shiny::reactive({
-    shiny::req(input$ml_data %in% first_files())
-    guarded(read_data_head(.data_file(rv$study$path, input$ml_data), n = 2000L))
-  })
-  output$modal_first_l_ui <- shiny::renderUI({
-    f <- first_files()
-    if (!length(f)) {
-      return(shiny::div(class = "alert alert-warning py-1 small",
-        t("No data files yet: put them on the Data tab (data/adam), then add the listing.")))
-    }
-    shiny::tagList(
-      shiny::selectInput("ml_data", t("Data"), f,
-                         selected = c(grep("adae", f, value = TRUE), f)[1L],
-                         width = "100%"),
-      shiny::uiOutput("ml_cols"))
-  })
-  output$ml_cols <- shiny::renderUI({
-    d <- first_data_l()
-    shiny::req(d)
-    cols <- as.list(d)
-    grp <- .group_choices(cols)
-    all <- .labelled(names(cols), cols)
-    usual <- c("USUBJID", "AEBODSYS", "AEDECOD", "ASTDT", "AENDT", "AESEV",
-               "AESER", "AEREL", "AEOUT", "PARAM", "AVISIT", "AVAL", "AVALC",
-               "CMDECOD", "MHDECOD")
-    shiny::tagList(
-      shiny::selectInput("ml_group", t("Group (ordered by first; optional)"),
-                         c(stats::setNames("", t("(none)")), grp),
-                         selected = c(intersect(c("TRTA", "TRT01A", "ARM"), grp), "")[1L],
-                         width = "100%"),
-      shiny::selectizeInput(
-        "ml_cols_pick", t("Columns (in order)"), all,
-        selected = intersect(usual, names(cols)), multiple = TRUE,
-        width = "100%",
-        options = list(plugins = list("remove_button", "drag_drop"))),
-      shiny::p(class = "small text-muted",
-               t("Each column is headed by the data's label; the order is the group, the subject and the start date. Everything can be changed afterwards in step 2 (Content).")))
-  })
-  start_first_listing <- function(id, desc) {
-    d <- first_data_l()
-    if (is.null(d)) return(notify(t("Choose the data"), "warning"))
-    g <- input$ml_group
-    p2 <- guarded(first_listing(rv$p, id, input$ml_data, d,
-                                columns = input$ml_cols_pick,
-                                group = if (length(g) && nzchar(g)) g,
-                                description = desc))
-    if (is.null(p2)) return()
-    after_id_change(p2, id)
-    go("lf")
-    lf_show_preview(id)
-  }
-  # -- the first table: a few answers instead of five sheets ---------------
-  first_files <- shiny::reactive({
-    f <- data_files()
-    ok <- !is.na(vapply(f$folder, .folder_level, "", USE.NAMES = FALSE)) &
-      tolower(tools::file_ext(f$file)) %in% .data_exts
-    mine <- file.path(f$folder, f$file)[ok]
-    # and the catalog's files outside the study folder (ADaM kept
-    # elsewhere), said so
-    p <- rv$p$ard$datasets$path
-    p <- unique(p[!is.na(p) & tolower(tools::file_ext(p)) %in% .data_exts])
-    p <- p[.data_outside(rv$study$path, p)]
-    p <- p[file.exists(.data_file(rv$study$path, p))]
-    c(stats::setNames(mine, mine),
-      stats::setNames(p, sprintf(t("%s (outside the study folder)"), p)))
-  })
-  first_data <- shiny::reactive({
-    shiny::req(input$mf_data %in% first_files())
-    guarded(read_data_head(.data_file(rv$study$path, input$mf_data), n = Inf))
-  })
-  # a hierarchical table's subject-level data: the study's ADSL
-  first_subjects_file <- shiny::reactive({
-    f <- first_files()
-    unname(c(f[grepl("(^|/)adsl[.][^/]+$", f, ignore.case = TRUE)], NA_character_)[1L])
-  })
-  first_subjects <- shiny::reactive({
-    f <- first_subjects_file()
-    shiny::req(!is.na(f))
-    guarded(read_data_head(.data_file(rv$study$path, f), n = Inf))
-  })
-  # the kind of table: a summary (variables as rows) or a hierarchy of terms
-  # (SOC / PT); chosen, never switched by the data
-  output$modal_first_ui <- shiny::renderUI({
-    f <- first_files()
-    if (!length(f)) {
-      return(shiny::div(class = "alert alert-warning py-1 small",
-        t("No data files yet: put them on the Data tab (data/adam), then add the table.")))
-    }
-    # the templates, one a line (more to come: AE overview, subgroups).  The
-    # shift table is hidden until the unified builder has its data stage
-    # (a dataset of the catalog, the parameters from the data, BNRIND /
-    # ANRIND checked): options(tflplanner.shift_template = TRUE) shows it
-    kinds <- c(summary = t("Summary table (demographics ...)"),
-               hierarchy = t("Hierarchical table (SOC / PT, ATC / drug ...)"))
-    if (isTRUE(getOption("tflplanner.shift_template", FALSE))) {
-      kinds <- c(kinds, shift = t("Shift table (baseline x worst after)"))
-    }
-    shiny::tagList(
-      shiny::radioButtons("mf_kind", NULL, stats::setNames(names(kinds), unname(kinds))),
-      shiny::uiOutput("mf_data_ui"),
-      shiny::uiOutput("mf_cols"))
-  })
-  output$mf_data_ui <- shiny::renderUI({
-    f <- first_files()
-    shiny::selectInput("mf_data", t("Data"), f,
-                       selected = c(grep(switch(input$mf_kind %||% "summary",
-                                                hierarchy = "adae", shift = "adlb", "adsl"),
-                                         f, value = TRUE), f)[1L],
-                       width = "100%")
-  })
-  output$mf_cols <- shiny::renderUI({
-    if (identical(input$mf_kind, "hierarchy")) return(mf_hier_ui())
-    if (identical(input$mf_kind, "shift")) return(mf_shift_ui())
-    d <- first_data()
-    shiny::req(d)
-    cols <- as.list(d)
-    fl <- grep("FL$", names(cols), value = TRUE)
-    grp <- .group_choices(cols)
-    vars <- .row_choices(cols, c(continuous = t("numbers"),
-                                 categorical = t("counts")))
-    shiny::tagList(
-      shiny::selectInput("mf_pop", t("Population (its flag = \"Y\")"),
-                         .labelled(fl, cols),
-                         selected = c(intersect(c("SAFFL", "ITTFL", "FASFL"), fl),
-                                      fl)[1L], width = "100%"),
-      shiny::selectInput("mf_group", t("Group (the columns)"), grp,
-                         selected = c(intersect(c("TRT01A", "TRT01P", "ARM"),
-                                                grp), grp)[1L],
-                         width = "100%"),
-      shiny::selectizeInput(
-        "mf_vars", t("Variables (the rows, in order)"), vars,
-        selected = intersect(c("AGE", "AGEGR1", "SEX", "RACE"), vars),
-        multiple = TRUE, width = "100%",
-        options = list(plugins = list("remove_button", "drag_drop"))),
-      shiny::checkboxInput("mf_stack", t("Run the analyses together (cards::ard_stack)"), TRUE),
-      shiny::uiOutput("mf_stack_note"),
-      shiny::p(class = "small text-muted",
-               t("Numbers get summary statistics; the others, counts and percents.")))
-  })
-  # a subject of the analysis set with no group: ard_stack() leaves them
-  # out, so the wizard makes the analyses one by one -- said before
-  output$mf_stack_note <- shiny::renderUI({
-    d <- first_data()
-    shiny::req(d, input$mf_group %in% names(d), input$mf_pop %in% names(d))
-    g <- d[[input$mf_group]]
-    n <- sum((is.na(g) | !nzchar(trimws(as.character(g)))) & d[[input$mf_pop]] %in% "Y")
-    if (!isTRUE(input$mf_stack)) return(NULL)
-    if (n > 0L) {
-      shiny::div(class = "alert alert-warning py-1 small", sprintf(
-        t("%d subjects of the population have no %s: ard_stack does not count them, so the analyses are made one by one."),
-        n, input$mf_group))
-    }
-  })
-  # a hierarchical table: the analysis set (of ADSL), the group, the terms,
-  # the records counted, a Total column
-  mf_hier_ui <- function() {
-    d <- first_data()
-    shiny::req(d)
-    sl <- first_subjects_file()
-    if (is.na(sl)) {
-      return(shiny::div(class = "alert alert-warning py-1 small",
-        t("A hierarchical table counts the subjects of an analysis set: put the subject-level data (adsl) on the Data tab.")))
-    }
-    a <- first_subjects()
-    shiny::req(a)
-    cols <- as.list(d)
-    fl <- grep("FL$", names(a), value = TRUE)
-    grp <- intersect(.group_choices(cols), names(a))
-    terms <- names(cols)[vapply(cols, function(v) is.character(v) || is.factor(v), NA)]
-    # (the selected keep the choices' order: the usual terms first, outermost
-    # first)
-    usual <- intersect(c("AEBODSYS", "AEDECOD"), terms)
-    terms <- c(usual, setdiff(terms, usual))
-    shiny::tagList(
-      shiny::selectInput("mf_pop", t("Population (its flag = \"Y\")"),
-                         .labelled(fl, as.list(a)),
-                         selected = c(intersect(c("SAFFL", "ITTFL", "FASFL"), fl), fl)[1L],
-                         width = "100%"),
-      shiny::selectInput("mf_group", t("Group (the columns)"), grp,
-                         selected = c(intersect(c("TRT01A", "TRT01P", "ARM"), grp), grp)[1L],
-                         width = "100%"),
-      shiny::selectizeInput(
-        "mf_hier", t("Hierarchy (outermost first)"), .labelled(terms, cols),
-        selected = usual,
-        multiple = TRUE, width = "100%",
-        options = list(plugins = list("remove_button", "drag_drop"))),
-      shiny::textInput("mf_where", t("Records counted (R; blank: all)"),
-                       value = if ("TRTEMFL" %in% names(cols)) "TRTEMFL == \"Y\"" else "",
-                       width = "100%"),
-      # by severity or grade too: the usual names first
-      shiny::selectInput(
-        "mf_grade", with_tip(t("By severity / grade (columns)"),
-                             t("Each subject counted once, at the worst: the grade's levels in order (a code list); each level's row, the worst within that level.")),
-        c(stats::setNames("", t("(none)")),
-          c(intersect(c("AESEV", "ASEV", "AETOXGR", "ATOXGR"), terms),
-            setdiff(terms, c("AESEV", "ASEV", "AETOXGR", "ATOXGR")))),
-        width = "100%"),
-      shiny::conditionalPanel(
-        "!input.mf_grade",
-        shiny::checkboxInput("mf_total", t("Total column"), FALSE)),
-      shiny::p(class = "small text-muted",
-               sprintf(t("Subjects counted once at each level, percents of the population's subjects in %s; most frequent first."),
-                       sl)))
-  }
   .srv_keep(environment())
 }
