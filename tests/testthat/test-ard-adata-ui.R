@@ -263,16 +263,16 @@ test_that("1-1's sheet: the report's rows replaced as a whole; a `from` the form
   s <- create_study("SH", planner = p)
   saveRDS(cards::ADSL, file.path(s$path, "data", "adam", "adsl.rds"))
   shiny::testServer(server_for("SH"), {
-    session$setInputs(nav = "make", step = "ard", target = "DM")
+    session$setInputs(nav = "make", step = "data", target = "DM")
     expect_false(is.null(output$hot_adata_report))
     session$setInputs(ard_adata_pick = "adsl_saf")
     f <- output$adata_detail$html
     expect_match(f, "ADSL2 (as written in the sheet", fixed = TRUE)
     expect_match(f, "<option value=\"ADSL2\" selected>", fixed = TRUE)
-    # the right of step 1 follows what is open: the analysis data's rows and
-    # its preview, then 1-2's again when it closes
-    expect_match(output$ard_spec_pane$html, "hot_adata_report", fixed = TRUE)
-    expect_match(output$ard_result_pane$html, "adata_preview", fixed = TRUE)
+    # the analysis data's rows and preview are the first step's own pane
+    # (adata_right); the ARD step's right pane stays 1-2's
+    expect_match(as.character(app_ui()), "hot_adata_report", fixed = TRUE)
+    expect_match(output$ard_spec_pane$html, "hot_ard_analyses", fixed = TRUE)
     session$setInputs(adata_close = 1)
     expect_match(output$ard_spec_pane$html, "hot_ard_analyses", fixed = TRUE)
     expect_match(output$ard_result_pane$html, "ard_preview", fixed = TRUE)
