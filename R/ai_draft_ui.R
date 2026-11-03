@@ -266,10 +266,10 @@ ai_ui <- function(id, lang = "en") {
                              with_tip(paste0(t("How the agent works through the requests"), " (ai: run)"),
                                       c(
                                         t("One request at a time (recommended): the agent does one request (its questions, its drafts, its build), then asks what next: the next one, the next N, or all the rest together. Try one, check it, then send the rest in one go."),
-                                        t("Everything together: the agent works through every request with defaults and asks all its questions once at the end (for 100 reports, about 5 h; then 20-40 min to read the questions and defaults, and about 1-2 min per changed report)."),
+                                        t("Everything together: the agent works through every request with defaults and asks all its questions once at the end. For 50 shells / 100 reports: a first run of about 2.5-5 h, then about 25 questions and a short list of the defaults it chose (20-40 min to read), then 5-15 min to rework only the reports affected (about 1 min each)."),
                                         t("In a batch, read every default the agent took (ai/defaults.md), not only the questions."),
-                                        t("For a long run: raise VS Code's chat.agent.maxRequests (25 by default) and allow Rscript without asking (chat.tools.terminal.autoApprove)."),
-                                        t("Times are estimates from the sample study, at the default review depth. Written into study.yml's ai: run."))),
+                                        t("For a long run: raise VS Code's chat.agent.maxRequests (25 by default) and allow Rscript without asking (chat.tools.terminal.autoApprove). With VS Code's auto-summarize on, a restart is rarely needed; otherwise expect about 5 clean stops (/compact or a new chat, then c)."),
+                                        t("Times are estimates from a 24-report test (about 1.4 min a request, at the default review depth). Written into study.yml's ai: run."))),
                              choices = .ai_run_choices(t), selected = .ai_run_default,
                              width = "18rem", selectize = FALSE),
           shiny::uiOutput(ns("run_help"))),
