@@ -204,11 +204,13 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
 }
 
 # The options the app sets while it runs, given back when it stops:
-# tflspec.ai_reference, the company's reference pack for AI agents in the
-# home (tflspec::tfl_ai_reference_build() writes it there,
-# tflspec::tfl_ai_prepare() copies it into each study)
+# the company's reference pack for AI agents in the home
+# (tflspec::tfl_ai_reference_build() writes it there, tflspec::tfl_ai_prepare()
+# copies it into each study) as tflspec.ai_reference, and the company's AI
+# folder as tflspec.ai_home -- the old tflspec reads the first, the new one
+# the second (an option the installed tflspec does not know is harmless)
 .app_options <- function(on_stop = shiny::onStop) {
-  old <- options(tflspec.ai_reference = .ai_reference_home())
+  old <- options(tflspec.ai_reference = .ai_reference_home(), tflspec.ai_home = .ai_home())
   on_stop(function() options(old))
   invisible(old)
 }
