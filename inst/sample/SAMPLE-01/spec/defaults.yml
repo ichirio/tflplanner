@@ -22,6 +22,7 @@ content:
   - plan_stub:
       name: row_label
       before: true
+      heading: ''
   - plan_blanks:
       where: between_groups
       first: true

@@ -187,7 +187,7 @@
       ch <- .header_preset_choices(hier)
       if (!length(ch)) NULL else list(header = hp[[ch[[1L]]]])
     },
-    plan_stub = list(name = "row_label"),
+    plan_stub = list(name = "row_label", heading = ""),
     plan_blanks = list(where = "between_groups"),
     plan_paginate_rows = list(max_rows = 30L, split = "group_safe"),
     plan_style = list(align_count_pct = TRUE),
