@@ -50,13 +50,21 @@ jobs:
         env:
           _R_CHECK_FORCE_SUGGESTS_: true
           _R_CHECK_CRAN_INCOMING_REMOTE_: true
+          # as on CRAN: the tests skip_on_cran() leaves out are not run, and
+          # the times show what CRAN would see
+          NOT_CRAN: false
         run: |
-          res <- rcmdcheck::rcmdcheck(args = "--as-cran", build_args = "--compact-vignettes=gs+qpdf",
+          res <- rcmdcheck::rcmdcheck(args = c("--as-cran", "--timings"), build_args = "--compact-vignettes=gs+qpdf",
                                       error_on = "never", check_dir = "check")
           out <- c("## R CMD check --as-cran",
                    sprintf("%d error(s), %d warning(s), %d note(s)",
                            length(res$errors), length(res$warnings), length(res$notes)),
                    "```", res$errors, res$warnings, res$notes, "```")
+          # the time of the examples and the tests, from the check log
+          log <- tryCatch(readLines(file.path(res$checkdir, "00check.log"), warn = FALSE),
+                          error = function(e) character())
+          out <- c(out, "Times:", "```",
+                   grep("examples|tests|Running", log, value = TRUE), "```")
           cat(out, file = Sys.getenv("GITHUB_STEP_SUMMARY"), sep = "\n", append = TRUE)
           if (length(res$errors) || length(res$warnings)) quit(status = 1)
         shell: Rscript {0}
