@@ -107,11 +107,10 @@
         } else {
           shiny::div(
             shiny::textAreaInput(
-              input_id, lab, value = txt, width = "100%", updateOn = "blur",
+              input_id, with_tip(lab, sprintf(t("A line a row: %s"), paste(.tpl_list_fields(prm), collapse = " | "))),
+              value = txt, width = "100%", updateOn = "blur",
               rows = max(2L, min(8L, length(strsplit(txt, "\n")[[1L]]) + 1L)),
-              placeholder = paste(.tpl_list_fields(prm), collapse = " | ")),
-            shiny::div(class = "small text-muted mt-n2 mb-2",
-                       sprintf(t("A line a row: %s"), paste(.tpl_list_fields(prm), collapse = " | "))))
+              placeholder = paste(.tpl_list_fields(prm), collapse = " | ")))
         }
       })
   }
@@ -178,9 +177,8 @@
     shiny::tags$details(
       class = "border rounded p-2 mb-2",
       shiny::tags$summary(class = "small fw-semibold",
-                          sprintf(t("More arguments (%d): filters, variables, columns ..."), length(opt))),
-      shiny::p(class = "small text-muted mb-1",
-               t("Each starts at its default; only a value you change is written into the report.")),
+                          with_tip(sprintf(t("More arguments (%d): filters, variables, columns ..."), length(opt)),
+                                   t("Each starts at its default; only a value you change is written into the report."))),
       lapply(opt, function(x) tpl_widget(tpl_arg_id(nm, x$name), x, tpl_opt_start(x),
                                          dataset = prm$data$default, params = prm)))
   })

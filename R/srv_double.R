@@ -372,7 +372,7 @@
                               value = mr, min = 1, width = "140px")),
         # as its program has them: the code lists, the order
         shiny::div(class = "mb-2", shiny::uiOutput("lf_cl"), shiny::uiOutput("lf_cl_detail")),
-        shiny::textInput(lf_id("sort"), t("Order (| between variables, - for descending; a column with a code list sorts in the list's order)"),
+        shiny::textInput(lf_id("sort"), with_tip(t("Order"), t("| between variables, - for descending; a column with a code list sorts in the list's order")),
                          value = lv("sort"), width = "100%",
                          placeholder = paste(t("e.g."), "TRTA | USUBJID | ASTDT"))))
   })

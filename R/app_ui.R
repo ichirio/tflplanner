@@ -585,8 +585,7 @@ app_ui <- function(lang = "en") {
           result_tabs_ui(
             "lf_right", lang = lang, selected = "result",
             spec = shiny::tagList(
-              shiny::p(class = "small text-muted",
-                       t("The listing's row of the definition (listings); its columns are the grid on the left.")),
+              pane_head(t("The listing's row"), t("The listing's row of the definition (listings); its columns are the grid on the left.")),
               rhandsontable::rHandsontableOutput("hot_lf_listings")),
             code = code_view("program_lf", lang),
             result = shiny::tagList(

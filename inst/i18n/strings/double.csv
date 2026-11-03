@@ -26,7 +26,7 @@
 "`ard` is this report's rows of the ARD (a cards ARD); normalize_ard(ard) makes it a table's shape.","`ard` は、この帳票の行だけの ARD（cards の形）です。normalize_ard(ard) で表の形になります。"
 "Add %s to the data it reads.","読むデータに %s を足してください。"
 "No file for: %s","ファイルがありません：%s"
-"Order (| between variables, - for descending; a column with a code list sorts in the list's order)","並べ順（変数は | で区切る。- で降順。コードリストのある列はリストの順）"
+"| between variables, - for descending; a column with a code list sorts in the list's order","変数は | で区切る。- で降順。コードリストのある列はリストの順"
 "This report's code lists of the listing's columns: its program puts them on the data after the condition (set_levels()), each column a factor in the list's order, its values the labels, and the rows sort in that order. A value a list does not have stops the program.","Listing の列の、この帳票のコードリストです。プログラムは絞り込みの後にこれをデータに当てます（set_levels()）。各列はリストの順の factor になり、値はラベルになり、行はその順に並びます。リストに無い値があるとプログラムは止まります。"
 "R program","R プログラム"
 "R program: this step is your own R code instead of the definition.","R プログラム: この手順を、定義の代わりに自分の R コードにします。"
