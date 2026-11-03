@@ -1087,29 +1087,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       # (copied into the study: its own spec/outputs/<id>.yml -- the check
       # reads the draft, ai/spec/outputs, either way)
       adopted <- file.exists(file.path(path(), "spec", "outputs", paste0(id, ".yml")))
-      txt <- function(x) if (is.null(x)) "" else paste(as.character(unlist(x)), collapse = " ")
-      shiny::div(
-        class = "ms-2",
-        if (length(asm)) shiny::tagList(
-          shiny::div(class = "fw-bold mt-1", paste0(t("What the agent assumed"), " (ai: assumptions)")),
-          shiny::tags$ul(class = "mb-1", lapply(asm, function(a) shiny::tags$li(
-            shiny::span(class = "text-muted", txt(a$where)), " ", shiny::code(txt(a$item)), " ",
-            txt(a$assumption),
-            if (length(a$from)) shiny::span(class = "badge text-bg-info ms-1",
-                                            sprintf(t("from %s"), txt(a$from))))))),
-        if (!is.null(cf) && nrow(cf)) shiny::tagList(
-          shiny::div(class = "fw-bold mt-1", paste0(t("To confirm"), " (ai: confirm)")),
-          shiny::tags$ul(class = "mb-1", lapply(seq_len(nrow(cf)), function(i) shiny::tags$li(
-            shiny::span(class = "text-muted", cf$where[i] %||% ""), " ", shiny::code(cf$item[i] %||% ""), " ",
-            cf$why[i] %||% "", " ",
-            if (adopted) shiny::tags$button(
-              type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
-              `data-ns` = ns(""), `data-id` = id,
-              `data-item` = if (identical(cf$where[i], "content")) cf$item[i] else "",
-              t("Open in Make a report"))
-            else shiny::span(class = "text-muted", t("Copy it into the study first (step 4)")))))),
-        if (!length(asm) && (is.null(cf) || !nrow(cf)))
-          shiny::div(class = "text-muted", t("Nothing assumed, nothing to confirm.")))
+      .ai_notes_block(asm, cf, id, adopted, ns(""), t)
     }
     output$result_all <- shiny::renderUI({
       co <- collected()
