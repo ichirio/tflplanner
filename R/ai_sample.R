@@ -58,3 +58,44 @@
   ok <- TRUE
   list(study = s, kit = out)
 }
+
+#' Add the AI sample study
+#'
+#' Makes the sample for the AI tab as a study of its own, without the app:
+#' the same as the app's *New study* dialog with *The sample for the AI tab*.
+#' 'tflspec' writes the sample's materials (a TOC, shells, ADaM data, an ADaM
+#' spec and a SAP; no answers) into `samples/ai-sample` under the home; the
+#' study `root/<study_id>` is then made over the sample's ADaM
+#' ([tflspec::tfl_ai_study_init()]) with the TOC, the shells and the ADaM
+#' spec in its `docs/`, the ADaM in `data/adam/` and the SAP in `ai/docs/`,
+#' and registered.  Everything in it is fictional.
+#'
+#' The returned `kit` holds the paths of the materials inside the study:
+#' `toc`, `shells`, `adam`, `adam_spec` and `docs`.  These are what
+#' [tflspec::tfl_ai_prepare()] takes (`toc`, `shells`, `adam`, `adam_spec`
+#' and `docs`), the same fields the AI tab's step 1 is filled with.
+#'
+#' @param root The studies folder (default: where new studies go, see
+#'   [setup_tflplanner()]).
+#' @param study_id The new study's ID (default `DMY-001`).
+#' @param title The study's title.
+#' @param home tflplanner's home.
+#' @return `list(study, kit)`, invisibly: the study, and the `kit` of paths
+#'   described above.
+#' @examples
+#' \dontrun{
+#' made <- create_ai_sample_study()
+#' kit <- made$kit
+#' # then, as the AI tab's step 1 does:
+#' p <- tflspec::tfl_ai_prepare(made$study$path, toc = kit$toc, adam = kit$adam,
+#'                              shells = kit$shells, adam_spec = kit$adam_spec,
+#'                              docs = kit$docs, dry_run = TRUE)
+#' }
+#' @export
+create_ai_sample_study <- function(root = studies_root(home), study_id = "DMY-001",
+                                   title = "Example Pharma DMY-001 (fictional)",
+                                   home = tflplanner_home()) {
+  kit <- .ai_sample_kit(file.path(home, "samples", "ai-sample"))
+  made <- .ai_sample_study(study_id, kit, root = root, home = home, title = title)
+  invisible(made)
+}

@@ -43,12 +43,13 @@ The Japanese edition is [AI 連携の使い方](ja-ai-flow.html).
 
 ```{r}
 install.packages("remotes")
-remotes::install_github("ichirio/rtfreporter@<tag>", upgrade = "never")
-remotes::install_github("ichirio/tflspec@<tag>", upgrade = "never")
-remotes::install_github("ichirio/tflplanner@<tag>", upgrade = "never")
+ref <- "ai-test-2026-11-09"  # the trial's tag; use the one you were given
+remotes::install_github(paste0("ichirio/rtfreporter@", ref), upgrade = "never")
+remotes::install_github(paste0("ichirio/tflspec@", ref), upgrade = "never")
+remotes::install_github(paste0("ichirio/tflplanner@", ref), upgrade = "never")
 # what the sample's reports use
-install.packages(c("haven", "readxl", "officer", "cards", "cardx", "dplyr", "tidyr",
-                   "ggsurvfit", "patchwork", "broom", "broom.helpers", "parameters"))
+install.packages(c("cards", "cardx", "haven", "broom", "broom.helpers", "parameters",
+                   "dplyr", "tidyr", "readxl", "officer", "ggsurvfit", "patchwork"))
 
 tflplanner::setup_tflplanner(home = "C:/work/tflplanner-home", language = "en")
 tflplanner::add_shortcut()   # a desktop shortcut that starts the app
@@ -92,6 +93,31 @@ under **Add a reference**. Each **Browse...** opens in the study's folder.
    carries it.
 3. Press **Write the requests**. The requests and the agent's prompt are
    written into the study's `ai/` folder.
+
+> **Without the app.** Steps 2 and 3 can be run from R. This makes the same
+> study and writes the same requests as the buttons above:
+>
+> ```{r}
+> made <- tflplanner::create_ai_sample_study()   # New study > The sample for the AI tab
+> kit <- made$kit
+> p <- tflspec::tfl_ai_prepare(
+>   dir = made$study$path, toc = kit$toc, adam = kit$adam,
+>   shells = kit$shells, adam_spec = kit$adam_spec, docs = kit$docs,
+>   sheet_roles = c("General conventions" = "other"),   # Sheets: move to Other
+>   sheets = "General conventions",                     # Sheets for every request
+>   dry_run = TRUE)                                      # Read and check
+> # Write the requests: the same call with dry_run = FALSE
+> ```
+>
+> - `kit$toc`, `kit$shells`, `kit$adam`, `kit$adam_spec` and `kit$docs` fill
+>   the TOC / SHELL workbook, the shell workbooks, the ADaM folder, the ADaM
+>   spec and **Add a reference**.
+> - `dry_run = TRUE` is **Read and check** (nothing is written); with
+>   `dry_run = FALSE` the call is **Write the requests**, and the drafts go to
+>   `ai/spec/outputs/` (`area = TRUE`, the default).
+> - `sheet_roles` is **Other sheets (not shells)** and **Apply and read
+>   again**; `sheets` is **Sheets for every request**.
+> - The app calls it with `quiet = TRUE`; leave that out to see the printout.
 
 ## 4. Step 2: The agent writes the SPEC
 
