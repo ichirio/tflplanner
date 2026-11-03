@@ -25,8 +25,15 @@
     v <- t(k)
     ifelse(v == k, note, v)
   }
+  # An error stays until it is closed (a message gone before it could be
+  # read or copied is no help); the others go after 6 s.
   notify <- function(msg, type = "message") {
-    shiny::showNotification(msg, type = type, duration = 6)
+    if (identical(type, "error")) {
+      shiny::showNotification(.error_note_ui(msg, t), type = type,
+                              duration = NULL, closeButton = TRUE)
+    } else {
+      shiny::showNotification(msg, type = type, duration = 6)
+    }
   }
   guarded <- function(expr) {
     # the detail (the calls) goes to the console / log; the screen gets
@@ -1760,3 +1767,47 @@
   })
   .srv_keep(environment())
 }
+
+# The body of an error notification: the message as text that can be
+# selected, and a button that copies exactly that text (the script is
+# .error_note_js, in the page header of app_ui()).
+.error_note_ui <- function(msg, t = identity) {
+  shiny::tagList(
+    shiny::div(class = "tp-error-text", msg),
+    shiny::tags$button(
+      type = "button", class = "btn btn-sm btn-outline-secondary tp-copy-error",
+      `data-copied` = t("Copied"), t("Copy the message")))
+}
+
+.error_note_css <- "
+.tp-error-text { white-space: pre-wrap; user-select: text; max-height: 40vh;
+  overflow-y: auto; margin-bottom: 6px; word-break: break-word; }
+"
+
+.error_note_js <- "
+$(document).on('click', '.tp-copy-error', function() {
+  var btn = this;
+  var txt = $(btn).siblings('.tp-error-text').text();
+  var done = function() {
+    var old = btn.getAttribute('data-label') || btn.textContent;
+    btn.setAttribute('data-label', old);
+    btn.textContent = btn.getAttribute('data-copied');
+    setTimeout(function() { btn.textContent = old; }, 1500);
+  };
+  var fallback = function() {
+    var ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(txt).then(done, fallback);
+  } else {
+    fallback();
+  }
+});
+"
