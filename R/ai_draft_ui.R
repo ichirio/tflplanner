@@ -31,6 +31,12 @@
                                                class = "btn-outline-secondary ai-browse")))
 }
 
+# The review depth's choices (study.yml's ai: review), by their stored text
+.ai_review_choices <- function(t) {
+  stats::setNames(c("none", "0", "1", "2", "3"),
+                  c(t("None"), t("0 check"), t("1 + program"), t("2 + facts"), t("3 + output")))
+}
+
 #' @noRd
 ai_ui <- function(id, lang = "en") {
   ns <- shiny::NS(id)
@@ -157,6 +163,23 @@ ai_ui <- function(id, lang = "en") {
                                                            c(t("Japanese"), t("English"), t("the chat's"))),
                                  selected = if (identical(lang, "ja")) "Japanese" else "English",
                                  width = "14rem", selectize = FALSE)),
+            # how deep the agent checks what it built, a level a kind
+            # (study.yml's ai: review; changed here, written at once)
+            shiny::div(
+              class = "mb-2",
+              shiny::tags$label(class = "control-label",
+                                with_tip(paste0(t("Review depth"), " (ai: review)"),
+                                         t("How far the agent checks what it built, by kind of report. None: the agent does not build it (you run run.R). 0: the check alone. 1: + the report's program. 2: + the facts (what R made, in words). 3: + the output (a figure's PNG, a table's pages). Written into study.yml's ai: review."))),
+              shiny::div(
+                class = "d-flex flex-wrap gap-2 align-items-end",
+                shiny::selectInput(ns("review_figure"), t("Figures"), choices = .ai_review_choices(t),
+                                   selected = "3", width = "10rem", selectize = FALSE),
+                shiny::selectInput(ns("review_table"), t("Tables"), choices = .ai_review_choices(t),
+                                   selected = "2", width = "10rem", selectize = FALSE),
+                shiny::selectInput(ns("review_listing"), t("Listings"), choices = .ai_review_choices(t),
+                                   selected = "1", width = "10rem", selectize = FALSE)),
+              shiny::div(class = "small text-muted",
+                         t("0 check only, 1 + the program, 2 + the facts, 3 + the output; None: you run run.R."))),
             shiny::checkboxInput(ns("add"), paste0(t("Add to the earlier requests"), " (add)"),
                                  value = FALSE),
             shiny::checkboxInput(ns("templates"), paste0(t("Use the templates"), " (templates)"),

@@ -770,3 +770,100 @@
   })
   invisible(TRUE)
 }
+
+# ---- the review depth (study.yml's ai: review) -------------------------------
+# How deep the agent checks what it built, a level a kind of report: "none"
+# (the agent does not build that kind), 0 (the check), 1 (+ the program),
+# 2 (+ the facts), 3 (+ the output).  Held here as the select's text:
+# "none", "0" ... "3".
+
+.ai_review_kinds <- c("figure", "table", "listing")
+.ai_review_default <- c(figure = "3", table = "2", listing = "1")
+
+# One level as the select's text; NA when it is not one
+.ai_review_level <- function(v) {
+  v <- unlist(v)[1L]
+  if (is.null(v) || is.na(v)) return(NA_character_)
+  if (isFALSE(v) || (is.character(v) && tolower(trimws(v)) %in% c("none", "off", "no"))) return("none")
+  n <- suppressWarnings(as.integer(v))
+  if (is.na(n) || !n %in% 0:3) NA_character_ else as.character(n)
+}
+
+# The levels a yml file says (its ai: review: a value for every kind, or a
+# list of kinds); a kind it does not say is NA
+.ai_review_file <- function(f) {
+  none <- stats::setNames(rep(NA_character_, 3L), .ai_review_kinds)
+  y <- tryCatch(yaml::read_yaml(f), error = function(e) NULL)
+  r <- if (is.list(y)) y$ai$review else NULL
+  if (is.null(r)) return(none)
+  if (!is.list(r)) r <- stats::setNames(rep(list(r), 3L), .ai_review_kinds)
+  vapply(.ai_review_kinds, function(k) {
+    if (is.null(r[[k]])) NA_character_ else .ai_review_level(r[[k]])
+  }, "")
+}
+
+# A study's levels as tflspec reads them: study.yml, over spec/defaults.yml,
+# over the default
+.ai_review_read <- function(path) {
+  out <- .ai_review_default
+  if (is.null(path)) return(out)
+  for (f in c(file.path(path, study_layout()[["spec"]], "defaults.yml"), file.path(path, "study.yml"))) {
+    if (!file.exists(f)) next
+    v <- .ai_review_file(f)
+    out[!is.na(v)] <- v[!is.na(v)]
+  }
+  out
+}
+
+# The levels written into study.yml's ai: review (the three kinds), the rest
+# of the file as it is.  `levels`: figure, table, listing as the select's text.
+.ai_review_write <- function(path, levels) {
+  f <- file.path(path, "study.yml")
+  y <- yaml::read_yaml(f)
+  if (is.null(y)) y <- list()
+  if (!is.list(y$ai)) y$ai <- list()
+  y$ai$review <- stats::setNames(lapply(.ai_review_kinds, function(k) {
+    v <- levels[[k]]
+    if (identical(v, "none")) "none" else as.integer(v)
+  }), .ai_review_kinds)
+  yaml::write_yaml(y, f, fileEncoding = "UTF-8")
+  invisible(f)
+}
+
+# The agent's AGENTS.md written again with the study's settings now (tflspec
+# fills its build-and-check part from study.yml).  What the person chose when
+# the requests were written -- the files the agent may open, the documents,
+# the templates -- is read back from the AGENTS.md there.  FALSE when the
+# study has none yet.
+.ai_agent_refresh <- function(path) {
+  f <- file.path(path, "ai", "AGENTS.md")
+  if (!file.exists(f)) return(FALSE)
+  old <- paste(.ai_read_text(f), collapse = "\n")
+  one <- function(re) {
+    m <- regmatches(old, regexec(re, old))[[1L]]
+    if (length(m) > 1L) m[2L] else NULL
+  }
+  book <- one("the TOC / SHELL workbook `([^`]+)`")
+  adam <- one("the ADaM in `([^`]+)`")
+  max_reads <- suppressWarnings(as.integer(one("At most ([0-9]+) times")))
+  docs_line <- one("the documents the person gave[^\n]*?: ([^\n]+)[.]")
+  docs <- if (is.null(docs_line)) character() else
+    gsub("`", "", regmatches(docs_line, gregexpr("`[^`]+`", docs_line))[[1L]], fixed = TRUE)
+  fn <- utils::getFromNamespace(".ai_agent_files", "tflspec")
+  fn(path, overwrite = TRUE, templates = grepl("<!-- templates: TRUE -->", old, fixed = TRUE),
+     adam = adam, book = book,
+     reads = c(if (!is.null(book)) "workbook", if (!is.null(adam)) "adam"),
+     docs = docs, docs_from = rep("", length(docs)),
+     max_reads = if (is.na(max_reads)) 3L else max_reads)
+  TRUE
+}
+
+# The levels set for a study: written into study.yml, the agent's files made
+# again.  The levels already there: nothing written.
+.ai_review_set <- function(path, levels) {
+  levels <- levels[.ai_review_kinds]
+  if (identical(unname(.ai_review_read(path)), unname(unlist(levels)))) return(FALSE)
+  .ai_review_write(path, levels)
+  .ai_agent_refresh(path)
+  TRUE
+}
