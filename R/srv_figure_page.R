@@ -235,8 +235,15 @@
   # from its ARD (the ARD step), a listing's from its records (the Analysis
   # data step); the editor is drawn in the one that fits the report's kind,
   # folded, and so only once
+  # (the editor of the kind that left is taken out in one flush and the
+  # other's put in in the next: the id is never on the page twice)
+  rework_kind <- shiny::reactiveVal("")
+  shiny::observeEvent(report_kind(), {
+    rework_kind("")
+    session$onFlushed(function() rework_kind(shiny::isolate(report_kind())), once = TRUE)
+  })
   rework_ui <- function(kind) shiny::renderUI({
-    if (!identical(report_kind(), kind)) return(NULL)
+    if (!identical(rework_kind(), kind)) return(NULL)
     id <- shiny::isolate(current())
     v <- if (is.null(id)) NA else shiny::isolate(field_value(id, "process_code"))
     shiny::tags$details(
