@@ -69,7 +69,7 @@
           options = c(if (several) rm_btn, list(create = TRUE)))
       },
       flag = bslib::input_switch(input_id, lab, value = isTRUE(shown)),
-      number = shiny::numericInput(input_id, lab, value = shown, width = "100%", updateOn = "blur"),
+      number = shiny::numericInput(input_id, lab, value = .num_or_null(shown), width = "100%", updateOn = "blur"),
       vars = shiny::selectizeInput(input_id, lab, union(as.character(shown), cols),
                                    selected = as.character(shown), multiple = TRUE,
                                    width = "100%",

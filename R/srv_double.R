@@ -356,7 +356,7 @@
                            c(stats::setNames("", "-"), ds_choices),
                            selected = lv("dataset"), width = "200px"),
         shiny::numericInput(lf_id("max_rows"), t("Rows per page"),
-                            value = mr, min = 1, width = "140px")),
+                            value = if (is.na(mr)) NULL else mr, min = 1, width = "140px")),
       shiny::textInput(lf_id("where"), t("Condition (R)"), value = lv("where"),
                        width = "100%",
                        placeholder = paste(t("e.g."), "AESEV == \"SEVERE\"")),
