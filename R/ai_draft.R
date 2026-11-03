@@ -1033,3 +1033,42 @@
   has <- names(saved) %in% sheets
   list(roles = if (any(has)) saved[has], gone = names(saved)[!has])
 }
+
+# ---- step 3: what the agent assumed and left to confirm ---------------------
+
+# A report's `ai:` block as step 3's row shows it: the items to confirm
+# first, as a block of their own (a warning-coloured left border), then the
+# assumptions under their own heading.  `asm`: the draft's `ai: assumptions`
+# (a list); `cf`: the report's rows of the collect's `confirm` (a data
+# frame, or NULL); `adopted`: the report is in the study (its place to
+# confirm opens in the builder).  No confirm items: no block.
+.ai_notes_block <- function(asm, cf, id, adopted, ns_prefix, t) {
+  txt <- function(x) if (is.null(x)) "" else paste(as.character(unlist(x)), collapse = " ")
+  asm <- asm %||% list()
+  has_cf <- !is.null(cf) && nrow(cf) > 0L
+  shiny::div(
+    class = "ms-2",
+    if (has_cf) shiny::div(
+      class = "ai-confirm-block border-start border-warning border-4 ps-2 mb-2",
+      shiny::div(class = "fw-bold mt-1 text-warning-emphasis",
+                 paste0("⚠ ", t("To confirm"), " (ai: confirm)")),
+      shiny::tags$ul(class = "mb-1", lapply(seq_len(nrow(cf)), function(i) shiny::tags$li(
+        shiny::span(class = "text-muted", cf$where[i] %||% ""), " ", shiny::code(cf$item[i] %||% ""), " ",
+        cf$why[i] %||% "", " ",
+        if (adopted) shiny::tags$button(
+          type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
+          `data-ns` = ns_prefix, `data-id` = id,
+          `data-item` = if (identical(cf$where[i], "content")) cf$item[i] else "",
+          t("Open in Make a report"))
+        else shiny::span(class = "text-muted", t("Copy it into the study first (step 4)")))))),
+    if (length(asm)) shiny::div(
+      class = "ai-assumption-block",
+      shiny::div(class = "fw-bold mt-1", paste0(t("What the agent assumed"), " (ai: assumptions)")),
+      shiny::tags$ul(class = "mb-1", lapply(asm, function(a) shiny::tags$li(
+        shiny::span(class = "text-muted", txt(a$where)), " ", shiny::code(txt(a$item)), " ",
+        txt(a$assumption),
+        if (length(a$from)) shiny::span(class = "badge text-bg-info ms-1",
+                                        sprintf(t("from %s"), txt(a$from))))))),
+    if (!length(asm) && !has_cf)
+      shiny::div(class = "text-muted", t("Nothing assumed, nothing to confirm.")))
+}
