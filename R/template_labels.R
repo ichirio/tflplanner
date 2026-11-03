@@ -149,7 +149,8 @@
   favours = "Favours labels",
   x_breaks = "Hazard ratio axis ticks",
   size_by_n = "Point size by subjects",
-  bold_headings = "Bold subgroup headings"
+  bold_headings = "Bold subgroup headings",
+  n_by_arm = "Events/N by arm"
 )
 
 .tpl_doc_labels <- c(
