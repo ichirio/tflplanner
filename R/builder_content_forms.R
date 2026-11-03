@@ -363,6 +363,10 @@
     new <- read[[a]]
     cur <- eff[[a]]
     if (is.null(cur) && lg) cur <- sch$args[[a]]$default
+    # (a text field drawn from "" reads back blank -- left out -- as one
+    # never set would: "" is a value (plan_stub(heading = "") a blank
+    # heading), so the field left blank keeps it)
+    if (is.null(new) && identical(cur, "")) next
     if (.same_value(new, cur, lg)) next
     eff[a] <- list(new)
     if (is.null(new)) eff[[a]] <- NULL
