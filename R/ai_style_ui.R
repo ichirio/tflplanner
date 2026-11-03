@@ -11,16 +11,38 @@
 # files are in <tflplanner home>/style.  The company standards themselves
 # (the workbook) are not changed here.
 
+# Which tflspec API the card talks to, found once from the prompt's
+# arguments: "old" (tfl_ai_style_prompt() takes `out`; the survey's files
+# are in <home>/style and the agent's result is a YAML file there) or "new"
+# (the company's AI folder <home>/ai holds the files and the company hints
+# file).  The old path goes when the new tflspec is on every machine.
+.ai_style_api <- function() {
+  if ("out" %in% names(formals(tflspec::tfl_ai_style_prompt))) "old" else "new"
+}
+
+# The company's AI folder (the home's): the app sets tflspec's option
+# tflspec.ai_home to it while it runs (.app_options())
+.ai_home <- function() file.path(tflplanner_home(), "ai")
+
 # The folder of the survey's files (the home's, not a study's)
-.ai_style_dir <- function() file.path(tflplanner_home(), "style")
+.ai_style_dir <- function(api = .ai_style_api()) {
+  if (identical(api, "new")) .ai_home() else file.path(tflplanner_home(), "style")
+}
+
+# The folder the card offers for past reports under the new API
+.ai_past_dir <- function() file.path(.ai_home(), "past_tfl")
+
+# The company hints file: the agent's result under the new API
+.ai_hints_file <- function() file.path(.ai_home(), "company_hints.yml")
 
 # The company's reference pack for AI agents (the home's): the app sets
 # tflspec's option tflspec.ai_reference to it while it runs (.app_options())
-.ai_reference_home <- function() file.path(tflplanner_home(), "ai", "reference")
+.ai_reference_home <- function() file.path(.ai_home(), "reference")
 
-# The agent's result: the path tflspec gave with the prompt, else the
-# folder's YAML file (its name tflspec's, not said twice here)
-.ai_style_result <- function(dir, files = NULL) {
+# The agent's result: the new API's company hints file; the old one's, the
+# path tflspec gave with the prompt, else the folder's YAML file
+.ai_style_result <- function(dir, files = NULL, api = .ai_style_api()) {
+  if (identical(api, "new")) return(.ai_hints_file())
   r <- if (!is.null(files) && "result" %in% names(files)) files[["result"]]
   if (length(r) && !is.na(r) && nzchar(r)) return(r)
   y <- if (dir.exists(dir)) list.files(dir, "[.]ya?ml$", full.names = TRUE) else character()
@@ -137,6 +159,41 @@
   data.frame(kind = "all", key = names(out), value = unname(unlist(out)), stringsAsFactors = FALSE)
 }
 
+# The prompt through the API tflspec has: the old one's files go to
+# <home>/style; the new one's to <home>/ai, with the card's company
+# standard so the agent leaves out what the standard already says
+.ai_style_prompt <- function(rtf, api = .ai_style_api()) {
+  if (identical(api, "new")) {
+    tflspec::tfl_ai_style_prompt(rtf_dir = rtf, dir = .ai_home(), standard = .std_conventions())
+  } else {
+    tflspec::tfl_ai_style_prompt(rtf, dir = .ai_style_dir("old"))
+  }
+}
+
+# The result through the API tflspec has: the new one's file is always the
+# company hints file in the AI folder
+.ai_style_read <- function(file, api = .ai_style_api()) {
+  if (identical(api, "new")) tflspec::tfl_ai_style_read(.ai_hints_file()) else tflspec::tfl_ai_style_read(file)
+}
+
+# The agent's notes (a named character vector, by kind) and the points where
+# the past reports differ from the standard (a data frame): two short lists
+.style_notes_ui <- function(s, t) {
+  n <- attr(s, "notes")
+  n <- n[!is.na(n) & nzchar(n)]
+  cf <- attr(s, "conflicts")
+  items <- function(x) shiny::tags$ul(class = "small mb-1", lapply(x, shiny::tags$li))
+  shiny::tagList(
+    if (length(n)) shiny::div(
+      shiny::div(class = "small fw-semibold", t("Notes from the agent")),
+      items(ifelse(nzchar(names(n)), paste0(names(n), ": ", n), n))),
+    if (is.data.frame(cf) && nrow(cf)) shiny::div(
+      shiny::div(class = "small fw-semibold", t("Where the past reports differ from the company standard")),
+      items(sprintf(t("%s / %s: the standard says %s, the files show %s (%s of %s)"),
+                    cf$kind, cf$key, cf$standard, cf$files,
+                    ifelse(is.na(cf$seen), "?", cf$seen), ifelse(is.na(cf$of), "?", cf$of)))))
+}
+
 # ---- the card ---------------------------------------------------------------
 
 # the lines ticked when the diff is shown: the proposed ones that differ
@@ -151,12 +208,12 @@
 ai_style_ui <- function(ns, t) {
   shiny::tagList(
     shiny::p(class = "small text-muted", t("Not a study's: for every study. The agent reads the numbers of the RTF files (column widths, borders, fonts, alignment), never their text, and writes the usual forms. Set against the company standard here, the lines you adopt become the company's reference pack, which every study's agent reads.")),
-    .ai_path_input(ns("style_rtf"), paste0(t("Folder of past RTF reports"), " (rtf_dir)"),
-                   "C:/.../tfl", ns("style_browse"), t("Browse...")),
+    .ai_path_input(ns("style_rtf"), t("Folder of past RTF reports"),
+                   if (identical(.ai_style_api(), "new")) .ai_past_dir() else "C:/.../tfl",
+                   ns("style_browse"), t("Browse...")),
     shiny::div(class = "d-flex flex-wrap gap-2 align-items-center my-2",
-               .btn(ns("style_prompt"), paste0(t("Write the prompt"), " (tfl_ai_style_prompt)"),
-                    class = "btn-sm btn-primary"),
-               .btn(ns("style_read"), paste0(t("Read the result"), " (tfl_ai_style_read)")),
+               .btn(ns("style_prompt"), t("Write the prompt"), class = "btn-sm btn-primary"),
+               .btn(ns("style_read"), t("Read the result")),
                .btn(ns("style_open"), t("Open the folder"))),
     shiny::uiOutput(ns("style_out")),
     shiny::uiOutput(ns("style_diff")))
@@ -164,7 +221,7 @@ ai_style_ui <- function(ns, t) {
 
 #' @noRd
 ai_style_panel <- function(ns, t) {
-  bslib::nav_panel(paste0(t("Past reports' look"), " (tfl_ai_style_prompt)"), value = "style",
+  bslib::nav_panel(t("Past reports' look"), value = "style",
                    ai_style_ui(ns, t))
 }
 
@@ -220,8 +277,10 @@ ai_style_server <- function(input, output, session, notify, guarded, t) {
   })
   shiny::observeEvent(input$style_prompt, {
     rtf <- trimws(gsub("^\"|\"$", "", input$style_rtf %||% ""))
+    # the new API: a blank field is the AI folder's past_tfl
+    if (!nzchar(rtf) && identical(.ai_style_api(), "new")) rtf <- .ai_past_dir()
     if (!nzchar(rtf) || !dir.exists(rtf)) return(notify(t("Choose the folder of past RTF reports."), "warning"))
-    out <- guarded(tflspec::tfl_ai_style_prompt(rtf, dir = .ai_style_dir()))
+    out <- guarded(.ai_style_prompt(rtf))
     if (is.null(out)) return()
     state$prompt <- paste(as.character(out), collapse = "\n")
     state$files <- unlist(attr(out, "files"))
@@ -234,7 +293,7 @@ ai_style_server <- function(input, output, session, notify, guarded, t) {
     if (is.na(f) || !file.exists(f)) {
       return(notify(sprintf(t("No result yet: the agent writes it in %s."), .ai_style_dir()), "warning"))
     }
-    s <- guarded(tflspec::tfl_ai_style_read(f))
+    s <- guarded(.ai_style_read(f))
     if (is.null(s)) return()
     std <- guarded(.std_conventions())
     if (is.null(std)) return()
@@ -275,8 +334,8 @@ ai_style_server <- function(input, output, session, notify, guarded, t) {
     prompt <- if (!is.null(state$prompt)) {
       shiny::tagList(
         if (length(f)) shiny::div(class = "small", t("Written:"), " ", shiny::code(paste(f, collapse = ", "))),
-        shiny::div(class = "small mt-1", sprintf(t("Give the agent this prompt (it reads the numbers and writes %s):"),
-                                                 basename(.ai_style_result(.ai_style_dir(), f)))),
+        shiny::div(class = "small mt-1",
+                   t("Give the agent this prompt (it reads the numbers and writes the company hints file):")),
         shiny::tags$textarea(class = "form-control small", rows = 8, readonly = NA, state$prompt))
     }
     if (is.null(prompt) && is.null(state$diff)) {
@@ -295,6 +354,7 @@ ai_style_server <- function(input, output, session, notify, guarded, t) {
     shiny::tagList(
       shiny::h6(class = "mt-3", t("Set against the company standard")),
       shiny::div(class = "small text-muted", head),
+      .style_notes_ui(s, t),
       shiny::p(class = "small text-muted mb-1",
                t("Ticked: the lines most files show that differ from the company standard or are not in it. A line marked by hand is yours to decide. The company standards themselves are not changed.")),
       if (!nrow(d)) shiny::p(class = "small", t("Nothing learned yet.")) else
