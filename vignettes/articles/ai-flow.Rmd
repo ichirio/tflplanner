@@ -9,6 +9,15 @@ knitr::opts_chunk$set(eval = FALSE, collapse = TRUE, comment = "#>")
 > tflplanner is experimental: the screens and functions may change. This
 > article follows the screens of the development version (`next`).
 
+> **What's new for 11/9**
+>
+> - The agent now builds and checks each report itself, and fixes what it
+>   finds (see [Build and check](#build-check)).
+> - Hints learned from your past TFLs, kept for every study (see
+>   [Company hints](#company-hints)).
+> - A short check to run on the company PC before the test (see
+>   [Before 11/9](#before-1109)).
+
 The **AI drafts** tab hands the study's materials (the TOC, the annotated
 shells, the ADaM, the ADaM spec, the SAP) to an AI agent in your editor. The
 agent writes a draft SPEC for each report and asks in its chat where the
@@ -130,6 +139,81 @@ same chat, and check again once the agent has fixed it.
    confirm** are listed with each report. Mark each as right or wrong; what is
    wrong can be sent back to the chat as a correction request.
 3. Make the reports (the **Runs** tab, **Run all**) and open the RTFs.
+
+## Build and check {#build-check}
+
+After the drafts of each request, the agent runs `Rscript run.R <request>`.
+That makes the reports from the drafts. The agent then reads, against the
+shell:
+
+- `ai/status.md`,
+- the program `<id>.R`,
+- the facts text `<id>-facts.txt`,
+- and, for a figure, the PNG.
+
+It fixes at most twice. After that, a figure falls back to the agent's own
+ggplot2 code, and a table is marked "to confirm".
+
+How far this goes is set by the **Review depth** selects on the AI tab. They
+are in step 1, under **Language**. The defaults are figures 3, tables 2,
+listings 1.
+
+| Level | The agent checks |
+|---|---|
+| 0 | Only that the report builds |
+| 1 | + the program |
+| 2 | + the facts |
+| 3 | + the output (the PNG for a figure) |
+
+**None** means the agent does not run anything: the person runs `run.R`. The
+choice is saved in `study.yml` as `ai: review`.
+
+Measured on the sample: about 110-120k tokens per 5 reports, at any level.
+
+## Company hints, learned from past TFLs {#company-hints}
+
+The agent can learn how your company's TFLs usually look.
+
+1. Put the past TFLs (RTF) in `<home>/ai/past_tfl/`. `<home>` is the
+   tflplanner home folder.
+2. Run the learning step from the **Past reports' look** card on the AI tab,
+   or in R:
+
+```{r}
+tflspec::tfl_ai_style_prompt(standard = company_standard)
+```
+
+3. Give the agent `AGENTS-learn.md`.
+
+The agent writes `<home>/ai/company_hints.yml`. Anything that conflicts with
+the company standard goes under `conflicts:`, never into the hints.
+
+Every study prepared afterwards reads the hints. The order of authority:
+
+1. the shell, the SAP and the company standard;
+2. the hints;
+3. usual practice;
+4. then the agent asks.
+
+Weak hints are marked "to confirm".
+
+The card can also show what was learned against the company standard, line
+by line. Tick the lines to adopt, then build a reference pack. This is
+optional: a way to start a company standard.
+
+## Before 11/9: a check on the company PC {#before-1109}
+
+Do these on the company PC, in the editor you will use.
+
+1. Ask the agent to run `Rscript --version` in its terminal. If it may not
+   run commands, the person runs `run.R` (set the review depth to **None**).
+2. Ask it to open a built PNG and describe it. If it can't open images, the
+   facts text (`<id>-facts.txt`) covers the figure.
+3. Check that tflspec is installed in the R that the terminal finds:
+
+```
+Rscript -e 'packageVersion("tflspec")'
+```
 
 ## Which model {#models}
 
