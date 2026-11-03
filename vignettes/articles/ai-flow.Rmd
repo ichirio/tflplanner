@@ -191,7 +191,7 @@ Answer in the chat, briefly ("1: FAS, 2: the raw data's digits + 1"). After
 each request the agent stops with a menu: reply `c` (the next request), a
 number `N` (the next N together) or `a` (all the rest together, with all
 its questions asked at the end of that batch). The select **How the agent
-works through the requests** in [step 1](#step-1) sets this (**One request at
+works through the requests** on this step, above the first message, sets this (**One request at
 a time**, the default, or **Everything together**). If it stops for another
 reason, send "continue". If it starts installing packages or searching folders,
 send "Follow AGENTS.md: only write the drafts."
