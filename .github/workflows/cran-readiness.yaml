@@ -53,6 +53,8 @@ jobs:
           # as on CRAN: the tests skip_on_cran() leaves out are not run, and
           # the times show what CRAN would see
           NOT_CRAN: false
+          # CRAN's incoming check notes an example over 5 s
+          _R_CHECK_EXAMPLE_TIMING_THRESHOLD_: 5
         run: |
           res <- rcmdcheck::rcmdcheck(args = c("--as-cran", "--timings"), build_args = "--compact-vignettes=gs+qpdf",
                                       error_on = "never", check_dir = "check")
@@ -68,9 +70,12 @@ jobs:
           # the slowest examples (seconds elapsed)
           tf <- Sys.glob(file.path(res$checkdir, "*-Ex.timings"))
           if (length(tf)) {
-            tm <- utils::read.table(tf[1], header = TRUE)
-            tm <- utils::head(tm[order(-tm$elapsed), c("name", "elapsed")], 10)
-            out <- c(out, "Slowest examples:", "```", utils::capture.output(print(tm, row.names = FALSE)), "```")
+            # each row ends in a tab, so the fields are split by hand
+            f <- strsplit(readLines(tf[1], warn = FALSE)[-1], "\t")
+            el <- vapply(f, function(x) as.numeric(x[4]), 0)
+            top <- utils::head(order(-el), 10)
+            out <- c(out, sprintf("Examples: %.0f s in all; the slowest:", sum(el)), "```",
+                     sprintf("%-28s %6.1f", vapply(f[top], `[`, "", 1), el[top]), "```")
           }
           cat(out, file = Sys.getenv("GITHUB_STEP_SUMMARY"), sep = "\n", append = TRUE)
           if (length(res$errors) || length(res$warnings)) quit(status = 1)
