@@ -83,7 +83,12 @@
 #' @return `list(study, kit)`, invisibly: the study, and the `kit` of paths
 #'   described above.
 #' @examples
-#' \dontrun{
+#' # a home in the temporary folder: used in this R session only, nothing
+#' # is written to your settings
+#' old <- options(tflplanner.home = NULL)
+#' setup_tflplanner(home = tempfile("tflplanner-home"))
+#' \donttest{
+#' # (a few seconds: it writes the sample's materials and the study)
 #' made <- create_ai_sample_study()
 #' kit <- made$kit
 #' # then, as the AI tab's step 1 does:
@@ -91,6 +96,7 @@
 #'                              shells = kit$shells, adam_spec = kit$adam_spec,
 #'                              docs = kit$docs, dry_run = TRUE)
 #' }
+#' options(old)
 #' @export
 create_ai_sample_study <- function(root = studies_root(home), study_id = "DMY-001",
                                    title = "Example Pharma DMY-001 (fictional)",
