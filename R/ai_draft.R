@@ -869,11 +869,11 @@
 }
 
 # ---- when the agent asks (study.yml's ai: ask_when) ---------------------------
-# "request": per request, before writing (the default); "report": per report;
-# "end": the agent takes defaults, notes every question, and asks all at once
-# after the whole run is built and checked.
+# "end" (the default, recommended): the agent takes defaults, notes every
+# question, and asks all at once after the whole run is built and checked;
+# "request": per request, before writing; "report": per report.
 
-.ai_ask_when_default <- "request"
+.ai_ask_when_default <- "end"
 .ai_ask_when_values <- c("request", "report", "end")
 
 # One value as the select's text; NA when it is not one

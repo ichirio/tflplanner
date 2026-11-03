@@ -43,11 +43,11 @@
 # When the agent asks (study.yml's ai: ask_when): the choices by their stored
 # text.  "report" is offered only when it is what is stored (`stored`).
 .ai_ask_when_choices <- function(t, stored = NULL) {
-  v <- c("request", "end")
-  l <- c(t("Ask as questions come up"), t("Ask everything at the end"))
+  v <- c("end", "request")
+  l <- c(t("Ask everything at the end"), t("Ask as questions come up"))
   if (identical(stored, "report")) {
-    v <- c("request", "report", "end")
-    l <- c(l[1L], t("Ask per report"), l[2L])
+    v <- c(v, "report")
+    l <- c(l, t("Ask per report"))
   }
   stats::setNames(v, l)
 }
@@ -270,8 +270,16 @@ ai_ui <- function(id, lang = "en") {
           class = "mb-2",
           shiny::selectInput(ns("ask_when"),
                              with_tip(paste0(t("When the agent asks"), " (ai: ask_when)"),
-                                      t("Ask as questions come up: the agent asks in its chat per request, before writing. Ask everything at the end: the agent takes defaults, notes every question, and asks once after the whole run is built and checked, then reworks only the reports affected. Written into study.yml's ai: ask_when.")),
-                             choices = .ai_ask_when_choices(t), selected = "request",
+                                      c(
+                                        t("Ask everything at the end (recommended): the agent goes on with defaults and asks once, after it has built and checked everything. Read every default it took (ai/defaults.md), not only the questions."),
+                                        paste("-", t("1 shell / 2 reports: questions after about 5 min; answers applied in about 1-2 min per changed report.")),
+                                        paste("-", t("50 shells / 100 reports: one batch after about 5 h (about 3 min a report). Allow 20-40 min to read the questions and defaults, then about 1-2 min per changed report.")),
+                                        t("Ask as questions come up: the agent stops at each shell with open questions; you stay at the PC."),
+                                        paste("-", t("1 shell / 2 reports: the first question after about 1 min.")),
+                                        paste("-", t("50 shells / 100 reports: the first question after 1-2 min, then about 30 stops over about 5 h.")),
+                                        t("A long run fills the agent's chat. About every 10 requests it asks you to open a new chat with ai/agent_prompt.md, in either mode."),
+                                        t("Times are estimates from the sample study, at the default review depth. Written into study.yml's ai: ask_when."))),
+                             choices = .ai_ask_when_choices(t), selected = .ai_ask_when_default,
                              width = "18rem", selectize = FALSE),
           shiny::uiOutput(ns("ask_when_help"))),
         shiny::uiOutput(ns("agent_card")),
