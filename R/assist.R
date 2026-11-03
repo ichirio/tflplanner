@@ -375,7 +375,7 @@ fetch_ard <- function(study, output_id, timeout = 300,
     why_shown <- .data_files_note(why, study)
     stop(.problem(
       paste0("The ARD code of '", output_id, "' did not run",
-             if (!is.na(why_shown)) paste0(": ", why_shown) else "", ".",
+             if (!is.na(why_shown)) paste0(": ", sub("\\.+$", "", why_shown)) else "", ".",
              .problem_hint(why)),
       detail = log))
   }
