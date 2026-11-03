@@ -407,7 +407,9 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
     set_by_us <- new.env()
     set_compact <- function(...) {
       args <- list(...)
-      set_by_us$v <- args$selected
+      # (a value the chooser already has comes back as nothing: not marked,
+      # or the mark stays and swallows the user's next choice of it)
+      set_by_us$v <- if (identical(args$selected, shiny::isolate(input$compact))) NULL else args$selected
       shiny::updateSelectizeInput(session, "compact", ...)
     }
     shiny::observe({
@@ -422,12 +424,12 @@ report_picker_server <- function(id, rows, now, pick, fixed, lang = "en",
     }, ignoreNULL = TRUE)
     shiny::observeEvent(input$compact, {
       v <- input$compact
+      # (the echo of a value set here, shown or not: the mark is spent)
+      echo <- identical(v, set_by_us$v)
+      if (echo) set_by_us$v <- NULL
       # chosen there only while it is shown
       if (!isTRUE(shiny::isolate(folded()))) return()
-      if (identical(v, set_by_us$v)) {
-        set_by_us$v <- NULL
-        return()
-      }
+      if (echo) return()
       if (nzchar(v %||% "") && !identical(v, now())) pick(v)
     }, ignoreInit = TRUE)
   })
