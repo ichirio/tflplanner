@@ -36,12 +36,13 @@ knitr::opts_chunk$set(eval = FALSE, collapse = TRUE, comment = "#>")
 
 ```{r}
 install.packages("remotes")
-remotes::install_github("ichirio/rtfreporter@<タグ>", upgrade = "never")
-remotes::install_github("ichirio/tflspec@<タグ>", upgrade = "never")
-remotes::install_github("ichirio/tflplanner@<タグ>", upgrade = "never")
+ref <- "ai-test-2026-11-09"  # 試験のタグ。伝えられたものを使う
+remotes::install_github(paste0("ichirio/rtfreporter@", ref), upgrade = "never")
+remotes::install_github(paste0("ichirio/tflspec@", ref), upgrade = "never")
+remotes::install_github(paste0("ichirio/tflplanner@", ref), upgrade = "never")
 # サンプルの帳票が使うパッケージ
-install.packages(c("haven", "readxl", "officer", "cards", "cardx", "dplyr", "tidyr",
-                   "ggsurvfit", "patchwork", "broom", "broom.helpers", "parameters"))
+install.packages(c("cards", "cardx", "haven", "broom", "broom.helpers", "parameters",
+                   "dplyr", "tidyr", "readxl", "officer", "ggsurvfit", "patchwork"))
 
 tflplanner::setup_tflplanner(home = "C:/work/tflplanner-home", language = "ja")
 tflplanner::add_shortcut()   # アプリを起動するデスクトップのショートカット
@@ -74,6 +75,25 @@ tflplanner::add_shortcut()   # アプリを起動するデスクトップのシ�
 1. 「**読み取って確かめる**」を押します。右側に読み取った結果が出ます。TOC 項目 8 つ、シェル 6 つ、エージェントに送る ADaM の要約、ブックのシートです。
 2. 「シート」で `General conventions`（全帳票に共通の決まり）を「**その他のシート（シェルではない）**」に動かし、「**当てはめて読み直す**」を押します。左の「**全依頼に足すシート**」で `General conventions` を選ぶと、すべての依頼に入ります。
 3. 「**依頼を書く**」を押します。依頼とエージェントへのプロンプトが、試験の `ai/` フォルダに書かれます。
+
+> **アプリを使わない場合**: 手順 2・3 は R からもできます。上のボタンと同じ試験を作り、同じ依頼を書きます。
+>
+> ```{r}
+> made <- tflplanner::create_ai_sample_study()   # 新規試験 > AI 連携用のサンプル
+> kit <- made$kit
+> p <- tflspec::tfl_ai_prepare(
+>   dir = made$study$path, toc = kit$toc, adam = kit$adam,
+>   shells = kit$shells, adam_spec = kit$adam_spec, docs = kit$docs,
+>   sheet_roles = c("General conventions" = "other"),   # シート: その他へ動かす
+>   sheets = "General conventions",                     # 全依頼に足すシート
+>   dry_run = TRUE)                                      # 読み込んで確認
+> # 依頼を書く: 同じ呼び出しを dry_run = FALSE にする
+> ```
+>
+> - `kit$toc`・`kit$shells`・`kit$adam`・`kit$adam_spec`・`kit$docs` は、TOC / SHELL ワークブック、シェルのワークブック、ADaM フォルダ、ADaM の仕様、「参考資料を追加」に入る欄と同じものです。
+> - `dry_run = TRUE` が「**読み込んで確認**」（何も書きません）。`dry_run = FALSE` にすると「**依頼を書く**」で、下書きの置き場は `ai/spec/outputs/`（`area = TRUE`、既定）です。
+> - `sheet_roles` が「**その他のシート（シェルではない）**」と「**当てはめて読み直す**」、`sheets` が「**全依頼に足すシート**」です。
+> - アプリは `quiet = TRUE` で呼びます。画面に出力を見たい時は付けません。
 
 ## 4. 手順 2「エージェントで SPEC を作成」
 

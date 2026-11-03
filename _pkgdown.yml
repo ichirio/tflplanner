@@ -69,6 +69,7 @@ reference:
     contents:
       - create_study
       - create_sample_study
+      - create_ai_sample_study
       - save_study
       - reload_from_spec
       - export_spec_files

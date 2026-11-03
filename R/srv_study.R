@@ -1206,11 +1206,8 @@
       root <- trimws(input$ns_root %||% "")
       made <- NULL
       shiny::withProgress(message = t("Making the study from the AI sample ..."), {
-        kit <- guarded(.ai_sample_kit(file.path(tflplanner_home(), "samples", "ai-sample")))
-        if (!is.null(kit)) {
-          made <- guarded(.ai_sample_study(id, kit, root = if (nzchar(root)) root else studies_root(),
-                                           title = "Example Pharma DMY-001 (fictional)"))
-        }
+        made <- guarded(create_ai_sample_study(
+          root = if (nzchar(root)) root else studies_root(), study_id = id))
       })
       if (is.null(made)) return()
       shiny::removeModal()
