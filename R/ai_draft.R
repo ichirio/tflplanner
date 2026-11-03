@@ -867,3 +867,60 @@
   .ai_agent_refresh(path)
   TRUE
 }
+
+# ---- when the agent asks (study.yml's ai: ask_when) ---------------------------
+# "request": per request, before writing (the default); "report": per report;
+# "end": the agent takes defaults, notes every question, and asks all at once
+# after the whole run is built and checked.
+
+.ai_ask_when_default <- "request"
+.ai_ask_when_values <- c("request", "report", "end")
+
+# One value as the select's text; NA when it is not one
+.ai_ask_when_value <- function(v) {
+  v <- unlist(v)[1L]
+  if (is.null(v) || is.na(v) || !is.character(v)) return(NA_character_)
+  v <- tolower(trimws(v))
+  if (v %in% .ai_ask_when_values) v else NA_character_
+}
+
+# What a yml file says (its ai: ask_when); NA when it says none
+.ai_ask_when_file <- function(f) {
+  y <- tryCatch(yaml::read_yaml(f), error = function(e) NULL)
+  if (!is.list(y) || !is.list(y$ai)) return(NA_character_)
+  .ai_ask_when_value(y$ai$ask_when)
+}
+
+# A study's value as tflspec reads it: study.yml, over spec/defaults.yml, over
+# the default
+.ai_ask_when_read <- function(path) {
+  out <- .ai_ask_when_default
+  if (is.null(path)) return(out)
+  for (f in c(file.path(path, study_layout()[["spec"]], "defaults.yml"), file.path(path, "study.yml"))) {
+    if (!file.exists(f)) next
+    v <- .ai_ask_when_file(f)
+    if (!is.na(v)) out <- v
+  }
+  out
+}
+
+# The value written into study.yml's ai: ask_when, the rest of the file as it is
+.ai_ask_when_write <- function(path, value) {
+  f <- file.path(path, "study.yml")
+  y <- yaml::read_yaml(f)
+  if (is.null(y)) y <- list()
+  if (!is.list(y$ai)) y$ai <- list()
+  y$ai$ask_when <- value
+  yaml::write_yaml(y, f, fileEncoding = "UTF-8")
+  invisible(f)
+}
+
+# The value set for a study: written into study.yml, the agent's files made
+# again.  The value already there: nothing written.
+.ai_ask_when_set <- function(path, value) {
+  value <- .ai_ask_when_value(value)
+  if (is.na(value) || identical(.ai_ask_when_read(path), value)) return(FALSE)
+  .ai_ask_when_write(path, value)
+  .ai_agent_refresh(path)
+  TRUE
+}

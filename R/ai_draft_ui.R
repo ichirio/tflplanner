@@ -40,6 +40,18 @@
                   c(t("None"), t("0 check"), t("1 + program"), t("2 + facts"), t("3 + output")))
 }
 
+# When the agent asks (study.yml's ai: ask_when): the choices by their stored
+# text.  "report" is offered only when it is what is stored (`stored`).
+.ai_ask_when_choices <- function(t, stored = NULL) {
+  v <- c("request", "end")
+  l <- c(t("Ask as questions come up"), t("Ask everything at the end"))
+  if (identical(stored, "report")) {
+    v <- c("request", "report", "end")
+    l <- c(l[1L], t("Ask per report"), l[2L])
+  }
+  stats::setNames(v, l)
+}
+
 #' @noRd
 ai_ui <- function(id, lang = "en") {
   ns <- shiny::NS(id)
@@ -253,6 +265,15 @@ ai_ui <- function(id, lang = "en") {
             t("Give the agent the first message above; it reads these requests itself, in their order, asks in its chat what it cannot decide, and writes each report's SPEC draft (ai/spec/outputs/<id>.yml). Everything else is between you and the agent, in its chat."))),
           .btn(ns("open_requests"), t("Open the folder")),
           .btn(ns("reread"), t("Read again"))),
+        # when the agent asks (study.yml's ai: ask_when; changed here, written at once)
+        shiny::div(
+          class = "mb-2",
+          shiny::selectInput(ns("ask_when"),
+                             with_tip(paste0(t("When the agent asks"), " (ai: ask_when)"),
+                                      t("Ask as questions come up: the agent asks in its chat per request, before writing. Ask everything at the end: the agent takes defaults, notes every question, and asks once after the whole run is built and checked, then reworks only the reports affected. Written into study.yml's ai: ask_when.")),
+                             choices = .ai_ask_when_choices(t), selected = "request",
+                             width = "18rem", selectize = FALSE),
+          shiny::uiOutput(ns("ask_when_help"))),
         shiny::uiOutput(ns("agent_card")),
         DT::DTOutput(ns("requests"))),
       bslib::nav_panel(

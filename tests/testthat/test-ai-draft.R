@@ -1267,3 +1267,66 @@ test_that("review depth: a change is written into study.yml (its other keys kept
     expect_identical(yaml::read_yaml(sy)$ai$review$figure, 3L)
   })
 })
+
+# -- when the agent asks (study.yml's ai: ask_when) --------------------------
+
+test_that("ask_when: study.yml over defaults.yml over the default; unknown values ignored", {
+  d <- withr_tempdir()
+  dir.create(file.path(d, "spec"))
+  expect_identical(.ai_ask_when_read(d), "request")
+  expect_identical(.ai_ask_when_read(NULL), "request")
+  writeLines(c("ai:", "  ask_when: end"), file.path(d, "spec", "defaults.yml"))
+  expect_identical(.ai_ask_when_read(d), "end")
+  writeLines(c("study_id: X", "ai:", "  ask_when: report"), file.path(d, "study.yml"))
+  expect_identical(.ai_ask_when_read(d), "report")
+  writeLines(c("study_id: X", "ai:", "  ask_when: sometimes"), file.path(d, "study.yml"))
+  expect_identical(.ai_ask_when_read(d), "end")
+})
+
+test_that("ask_when: the select's choices, 'report' only when stored", {
+  h <- as.character(ai_ui("ai"))
+  expect_match(h, "ai-ask_when", fixed = TRUE)
+  expect_match(h, "Ask everything at the end", fixed = TRUE)
+  expect_no_match(h, "Ask per report", fixed = TRUE)
+  tt <- function(x) x
+  expect_identical(unname(.ai_ask_when_choices(tt)), c("request", "end"))
+  expect_identical(unname(.ai_ask_when_choices(tt, "report")), c("request", "report", "end"))
+  expect_identical(names(.ai_ask_when_choices(tt, "report"))[2L], "Ask per report")
+  ja <- as.character(ai_ui("ai", "ja"))
+  expect_match(ja, "最後にまとめて聞く", fixed = TRUE)
+})
+
+test_that("ask_when: a change is written into study.yml (other keys kept) and AGENTS.md again; report kept", {
+  local_home()
+  path <- ai_study()
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  sy <- file.path(path, "study.yml")
+  y0 <- yaml::read_yaml(sy)
+  writeLines(c(readLines(sy, encoding = "UTF-8"), "ai:", "  language: Japanese"), sy, useBytes = TRUE)
+  ag <- file.path(path, "ai", "AGENTS.md")
+  Sys.setFileTime(ag, Sys.time() - 3600)
+  before <- file.mtime(ag)
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(`ai-study_mode` = "open")
+    session$setInputs(`ai-ask_when` = "request")
+    expect_identical(file.mtime(ag), before)
+    session$setInputs(`ai-ask_when` = "end")
+    y <- yaml::read_yaml(sy)
+    expect_identical(y$ai$ask_when, "end")
+    expect_identical(y$ai$language, "Japanese")
+    expect_identical(y$study_id, y0$study_id)
+    expect_gt(file.mtime(ag), before)
+    # unsaved changes: nothing written
+    session$userData$rv$meta$title <- "mine"
+    session$setInputs(`ai-ask_when` = "request")
+    expect_identical(yaml::read_yaml(sy)$ai$ask_when, "end")
+  })
+  # "report" in study.yml is kept, not overwritten, when the same is chosen
+  y <- yaml::read_yaml(sy)
+  y$ai$ask_when <- "report"
+  yaml::write_yaml(y, sy)
+  expect_false(.ai_ask_when_set(path, "report"))
+  expect_identical(yaml::read_yaml(sy)$ai$ask_when, "report")
+  expect_true(.ai_ask_when_set(path, "end"))
+})
