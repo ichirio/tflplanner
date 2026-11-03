@@ -1220,6 +1220,8 @@ test_that("review depth: the selects' choices and first values", {
   ja <- as.character(ai_ui("ai", "ja"))
   expect_match(ja, "確認の深さ", fixed = TRUE)
   expect_match(ja, "0 確認のみ", fixed = TRUE)
+  expect_match(ja, ">図</label>", fixed = TRUE)
+  expect_match(h, ">Figures</label>", fixed = TRUE)
   expect_match(ja, "3 ＋出力", fixed = TRUE)
 })
 

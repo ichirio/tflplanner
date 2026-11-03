@@ -31,6 +31,9 @@
                                                class = "btn-outline-secondary ai-browse")))
 }
 
+# A kind's label: its own text (the key's prefix, 'ai-review:', is not shown in English)
+.ai_review_label <- function(kind, t) sub("^ai-review:", "", t(paste0("ai-review:", kind)))
+
 # The review depth's choices (study.yml's ai: review), by their stored text
 .ai_review_choices <- function(t) {
   stats::setNames(c("none", "0", "1", "2", "3"),
@@ -172,11 +175,11 @@ ai_ui <- function(id, lang = "en") {
                                          t("How far the agent checks what it built, by kind of report. None: the agent does not build it (you run run.R). 0: the check alone. 1: + the report's program. 2: + the facts (what R made, in words). 3: + the output (a figure's PNG, a table's pages). Written into study.yml's ai: review."))),
               shiny::div(
                 class = "d-flex flex-wrap gap-2 align-items-end",
-                shiny::selectInput(ns("review_figure"), t("Figures"), choices = .ai_review_choices(t),
+                shiny::selectInput(ns("review_figure"), .ai_review_label("Figures", t), choices = .ai_review_choices(t),
                                    selected = "3", width = "10rem", selectize = FALSE),
-                shiny::selectInput(ns("review_table"), t("Tables"), choices = .ai_review_choices(t),
+                shiny::selectInput(ns("review_table"), .ai_review_label("Tables", t), choices = .ai_review_choices(t),
                                    selected = "2", width = "10rem", selectize = FALSE),
-                shiny::selectInput(ns("review_listing"), t("Listings"), choices = .ai_review_choices(t),
+                shiny::selectInput(ns("review_listing"), .ai_review_label("Listings", t), choices = .ai_review_choices(t),
                                    selected = "1", width = "10rem", selectize = FALSE)),
               shiny::div(class = "small text-muted",
                          t("0 check only, 1 + the program, 2 + the facts, 3 + the output; None: you run run.R."))),
