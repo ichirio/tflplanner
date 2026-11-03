@@ -570,10 +570,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       f <- browse_done(guarded(.ai_choose_refs(browse_start("refs", input$ref_path))))
       if (length(f)) ref_add(f)
     })
-    shiny::observeEvent(input$ref_add, {
-      ref_add(input$ref_path %||% "")
-      shiny::updateTextInput(session, "ref_path", value = "")
-    })
+    # a path typed or pasted: added on Enter or when the field is left (the
+    # page says so, with the path, and clears the field: .ai_draft_js)
+    shiny::observeEvent(input$ref_commit, ref_add(input$ref_commit$value %||% ""))
     shiny::observeEvent(input$ref_remove, refs(setdiff(refs(), input$ref_remove$id)))
     output$ref_list <- shiny::renderUI({
       r <- refs()
@@ -581,8 +580,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       shiny::tags$ul(class = "small mb-2", lapply(r, function(f) shiny::tags$li(
         shiny::code(basename(f)), " ", shiny::span(class = "text-muted", dirname(f)), " ",
         shiny::tags$a(href = "#", class = "ai-ref-remove", `data-ns` = ns(""), `data-id` = f,
+                      title = t("Remove"),
                       onclick = "Shiny.setInputValue(this.dataset.ns + 'ref_remove', {id: this.dataset.id, n: Date.now()}, {priority: 'event'}); return false;",
-                      t("Remove")))))
+                      "\u00d7"))))
     })
     # (the agent's scope)
     scope_args <- function() {
