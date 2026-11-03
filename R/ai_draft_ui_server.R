@@ -316,8 +316,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     })
     # -- the review depth (study.yml's ai: review) -----------------------------
     # The selects show what the open study says (its study.yml over its
-    # defaults.yml over the company standard over the default); a change is written into study.yml at
-    # once and the agent's AGENTS.md made again.  For a study not made yet,
+    # defaults.yml over the company standard over the default); a change is
+    # written into study.yml at once and the agent's AGENTS.md made again.  For a study not made yet,
     # the choice waits for Write.
     review_kinds <- .ai_review_kinds
     review_ids <- paste0("review_", review_kinds)
