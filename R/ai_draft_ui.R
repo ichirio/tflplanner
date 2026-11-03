@@ -40,6 +40,12 @@
                   c(t("None"), t("0 check"), t("1 + program"), t("2 + facts"), t("3 + output")))
 }
 
+# How the agent works through the requests (study.yml's ai: run): the choices
+# by their stored text.
+.ai_run_choices <- function(t) {
+  stats::setNames(c("one", "batch"), c(t("One request at a time"), t("Everything together")))
+}
+
 #' @noRd
 ai_ui <- function(id, lang = "en") {
   ns <- shiny::NS(id)
@@ -253,6 +259,20 @@ ai_ui <- function(id, lang = "en") {
             t("Give the agent the first message above; it reads these requests itself, in their order, asks in its chat what it cannot decide, and writes each report's SPEC draft (ai/spec/outputs/<id>.yml). Everything else is between you and the agent, in its chat."))),
           .btn(ns("open_requests"), t("Open the folder")),
           .btn(ns("reread"), t("Read again"))),
+        # how the agent works through the requests (study.yml's ai: run; changed here, written at once)
+        shiny::div(
+          class = "mb-2",
+          shiny::selectInput(ns("run"),
+                             with_tip(paste0(t("How the agent works through the requests"), " (ai: run)"),
+                                      c(
+                                        t("One request at a time (recommended): the agent does one request (its questions, its drafts, its build), then asks what next: the next one, the next N, or all the rest together. Try one, check it, then send the rest in one go."),
+                                        t("Everything together: the agent works through every request with defaults and asks all its questions once at the end (for 100 reports, about 5 h; then 20-40 min to read the questions and defaults, and about 1-2 min per changed report)."),
+                                        t("In a batch, read every default the agent took (ai/defaults.md), not only the questions."),
+                                        t("For a long run: raise VS Code's chat.agent.maxRequests (25 by default) and allow Rscript without asking (chat.tools.terminal.autoApprove)."),
+                                        t("Times are estimates from the sample study, at the default review depth. Written into study.yml's ai: run."))),
+                             choices = .ai_run_choices(t), selected = .ai_run_default,
+                             width = "18rem", selectize = FALSE),
+          shiny::uiOutput(ns("run_help"))),
         shiny::uiOutput(ns("agent_card")),
         DT::DTOutput(ns("requests"))),
       bslib::nav_panel(

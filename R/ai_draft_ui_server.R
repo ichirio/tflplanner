@@ -356,6 +356,47 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       }
       review_ver(review_ver() + 1L)
     })
+    # -- how the agent works (study.yml's ai: run) ------------------------
+    # The select shows what the open study says (its study.yml over its
+    # defaults.yml over the default); a change is written into study.yml at
+    # once and the agent's AGENTS.md made again.  "report" is offered only
+    # while it is the stored value.
+    run_ver <- shiny::reactiveVal(0L)
+    shiny::observe({
+      run_ver()
+      p <- path()
+      if (identical(input$study_mode, "new") || is.null(p)) return()
+      v <- .ai_run_read(p)
+      shiny::updateSelectInput(session, "run", choices = .ai_run_choices(t), selected = v)
+    })
+    shiny::observeEvent(input$run, ignoreInit = TRUE, {
+      now <- .ai_run_value(input$run)
+      p <- shiny::isolate(path())
+      if (is.na(now) || is.null(p) || identical(input$study_mode, "new")) return()
+      if (identical(.ai_run_read(p), now)) return()
+      if (isTRUE(dirty())) {
+        notify(t("Save first: the study has unsaved changes."), "warning")
+        run_ver(run_ver() + 1L)
+        return()
+      }
+      done <- tryCatch(.ai_run_set(p, now), error = function(e) {
+        message("tflplanner: ", conditionMessage(e))
+        notify(.error_view(conditionMessage(e), t), "error")
+        FALSE
+      })
+      if (isTRUE(done)) {
+        reload_now()
+        ver(ver() + 1L)
+        notify(t("How the agent works written into study.yml (ai: run), and AGENTS.md made again."))
+      }
+      run_ver(run_ver() + 1L)
+    })
+    output$run_help <- shiny::renderUI({
+      if (identical(input$run, "batch")) {
+        shiny::div(class = "small text-muted",
+                   t("In a batch, read every default the agent took (ai/defaults.md), not only the questions."))
+      }
+    })
     output$open_name <- shiny::renderUI({
       if (!identical(input$study_mode, "open")) return(NULL)
       if (!has_study()) {

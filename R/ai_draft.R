@@ -850,3 +850,59 @@
   .ai_agent_refresh(path)
   TRUE
 }
+
+# ---- how the agent works through the requests (study.yml's ai: run) ----------
+# "one" (the default, recommended): one request at a time, then it asks what
+# next; "batch": every request with defaults, all questions once at the end.
+
+.ai_run_default <- "one"
+.ai_run_values <- c("one", "batch")
+
+# One value as the select's text; NA when it is not one
+.ai_run_value <- function(v) {
+  v <- unlist(v)[1L]
+  if (is.null(v) || is.na(v) || !is.character(v)) return(NA_character_)
+  v <- tolower(trimws(v))
+  if (v %in% .ai_run_values) v else NA_character_
+}
+
+# What a yml file says (its ai: run); NA when it says none
+.ai_run_file <- function(f) {
+  y <- tryCatch(yaml::read_yaml(f), error = function(e) NULL)
+  if (!is.list(y) || !is.list(y$ai)) return(NA_character_)
+  .ai_run_value(y$ai$run)
+}
+
+# A study's value as tflspec reads it: study.yml, over spec/defaults.yml, over
+# the default
+.ai_run_read <- function(path) {
+  out <- .ai_run_default
+  if (is.null(path)) return(out)
+  for (f in c(file.path(path, study_layout()[["spec"]], "defaults.yml"), file.path(path, "study.yml"))) {
+    if (!file.exists(f)) next
+    v <- .ai_run_file(f)
+    if (!is.na(v)) out <- v
+  }
+  out
+}
+
+# The value written into study.yml's ai: run, the rest of the file as it is
+.ai_run_write <- function(path, value) {
+  f <- file.path(path, "study.yml")
+  y <- yaml::read_yaml(f)
+  if (is.null(y)) y <- list()
+  if (!is.list(y$ai)) y$ai <- list()
+  y$ai$run <- value
+  yaml::write_yaml(y, f, fileEncoding = "UTF-8")
+  invisible(f)
+}
+
+# The value set for a study: written into study.yml, the agent's files made
+# again.  The value already there: nothing written.
+.ai_run_set <- function(path, value) {
+  value <- .ai_run_value(value)
+  if (is.na(value) || identical(.ai_run_read(path), value)) return(FALSE)
+  .ai_run_write(path, value)
+  .ai_agent_refresh(path)
+  TRUE
+}
