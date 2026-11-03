@@ -322,3 +322,5 @@ three times each; the same answers given in every run):
   first: they are where a draft is most likely to differ from what you meant.
 - Some reports need a fix or two before they check OK; the shift tables were
   the hardest for every model.
+  - shift / lab_shift: list Missing and Total in the baseline's code list,
+    and write `levels` as the code list's labels (Low, Normal, High).
