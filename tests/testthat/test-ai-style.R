@@ -2,20 +2,9 @@
 
 test_that("the survey's files are the home's, not a study's", {
   local_home()
-  expect_identical(.ai_style_dir("old"), file.path(tflplanner_home(), "style"))
-  expect_identical(.ai_style_dir("new"), file.path(tflplanner_home(), "ai"))
-  expect_identical(.ai_style_dir(), if (.ai_style_api() == "new") .ai_home() else file.path(tflplanner_home(), "style"))
+  expect_identical(.ai_home(), file.path(tflplanner_home(), "ai"))
   expect_identical(.ai_reference_home(), file.path(tflplanner_home(), "ai", "reference"))
   expect_identical(.ai_past_dir(), file.path(tflplanner_home(), "ai", "past_tfl"))
-})
-
-test_that("the tflspec API is told from the prompt's arguments", {
-  local_mocked_bindings(tfl_ai_style_prompt = function(rtf_dir, out = NULL, dir = NULL) NULL,
-                        .package = "tflspec")
-  expect_identical(.ai_style_api(), "old")
-  local_mocked_bindings(tfl_ai_style_prompt = function(rtf_dir = NULL, dir = NULL, standard = NULL) NULL,
-                        .package = "tflspec")
-  expect_identical(.ai_style_api(), "new")
 })
 
 test_that("a cell's template reads in the agent's words", {
@@ -64,11 +53,9 @@ test_that("the company standard maps onto the conventions tflspec sets it agains
 # a fictional agent's result (no company's file)
 write_learned <- function(dir) {
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
-  new <- .ai_style_api() == "new"
-  f <- file.path(dir, if (new) "company_hints.yml" else "learned.yml")
+  f <- file.path(dir, "company_hints.yml")
   writeLines(c(
-    if (new) "tfl_company_hints: {version: 1, files: 4, tables: 12}" else
-      "tfl_style_learned: {version: 2, files: 4, tables: 12}",
+    "tfl_company_hints: {version: 1, files: 4, tables: 12}",
     "kinds:",
     "  all:",
     "    font: {value: \"Courier New 8 pt\", seen: 4, of: 4}",
@@ -88,7 +75,7 @@ style_server <- function(input, output, session) {
 
 test_that("the result is set against the standard, ticked lines adopted into the pack", {
   local_home()
-  f <- write_learned(.ai_style_dir())
+  f <- write_learned(.ai_home())
   std <- .std_conventions()
   d <- tflspec::tfl_ai_style_diff(f, std)
   at <- function(kind, key) which(d$kind == kind & d$key == key)
@@ -144,7 +131,7 @@ test_that("the result is set against the standard, ticked lines adopted into the
 
 test_that("a new reading starts its boxes afresh", {
   local_home()
-  write_learned(.ai_style_dir())
+  write_learned(.ai_home())
   shiny::testServer(style_server, {
     session$setInputs(style_read = 1)
     session$setInputs(style_adopt_1_1 = FALSE)
@@ -156,19 +143,17 @@ test_that("a new reading starts its boxes afresh", {
   })
 })
 
-test_that("the app points tflspec at the home's pack while it runs", {
+test_that("the app points tflspec at the home's AI folder while it runs", {
   local_home()
-  withr::local_options(tflspec.ai_reference = "before", tflspec.ai_home = "before home")
+  withr::local_options(tflspec.ai_home = "before home")
   stop_fn <- NULL
   .app_options(on_stop = function(f) stop_fn <<- f)
-  expect_identical(getOption("tflspec.ai_reference"), file.path(tflplanner_home(), "ai", "reference"))
   expect_identical(getOption("tflspec.ai_home"), file.path(tflplanner_home(), "ai"))
   stop_fn()
-  expect_identical(getOption("tflspec.ai_reference"), "before")
   expect_identical(getOption("tflspec.ai_home"), "before home")
 })
 
-# ---- both tflspec APIs, with tflspec's functions mocked --------------------
+# ---- tflspec's functions mocked --------------------
 
 # a diff of one learned line (the shape tfl_ai_style_diff() gives)
 fake_diff <- function(...) {
@@ -177,8 +162,7 @@ fake_diff <- function(...) {
              stringsAsFactors = FALSE)
 }
 
-# the agent's result as tfl_ai_style_read() gives it: notes and conflicts
-# are the new API's attributes
+# the agent's result as tfl_ai_style_read() gives it, with notes and conflicts
 fake_read <- function(file, notes = TRUE) {
   s <- data.frame(kind = "all", key = "font", value = "Courier New 8 pt", seen = 4L, of = 4L,
                   evidence = NA_character_, adopt = "proposed", stringsAsFactors = FALSE)
@@ -191,43 +175,9 @@ fake_read <- function(file, notes = TRUE) {
   s
 }
 
-test_that("the old API: the prompt goes to the style folder, the result is read from its file", {
-  local_home()
-  past <- withr_tempdir()
-  got <- list()
-  local_mocked_bindings(.ai_style_api = function() "old")
-  local_mocked_bindings(
-    tfl_ai_style_prompt = function(rtf_dir, out = NULL, dir = NULL) {
-      got$prompt <<- list(rtf_dir = rtf_dir, out = out, dir = dir)
-      structure("PROMPT", files = list(result = file.path(dir, "ai_style.yml")))
-    },
-    tfl_ai_style_read = function(file) {
-      got$read <<- file
-      fake_read(file, notes = FALSE)
-    },
-    tfl_ai_style_diff = fake_diff,
-    .package = "tflspec")
-  shiny::testServer(style_server, {
-    session$setInputs(style_rtf = past, style_prompt = 1)
-    expect_identical(got$prompt$rtf_dir, past)
-    expect_identical(got$prompt$dir, file.path(tflplanner_home(), "style"))
-    expect_match(output$style_out$html, "writes the company hints file", fixed = TRUE)
-    expect_no_match(output$style_out$html, "writes ai_style", fixed = TRUE)
-    # no result yet
-    dir.create(file.path(tflplanner_home(), "style"), recursive = TRUE, showWarnings = FALSE)
-    writeLines("x", file.path(tflplanner_home(), "style", "ai_style.yml"))
-    session$setInputs(style_read = 1)
-    expect_identical(got$read, file.path(tflplanner_home(), "style", "ai_style.yml"))
-    h <- output$style_diff$html
-    expect_match(h, "Courier New 8 pt", fixed = TRUE)
-    expect_no_match(h, "Notes from the agent", fixed = TRUE)
-  })
-})
-
-test_that("the new API: the prompt goes to the AI folder with the standard, the hints file is read", {
+test_that("the prompt goes to the AI folder with the standard, the hints file is read", {
   local_home()
   got <- list()
-  local_mocked_bindings(.ai_style_api = function() "new")
   local_mocked_bindings(
     tfl_ai_style_prompt = function(rtf_dir = NULL, dir = NULL, standard = NULL) {
       got$prompt <<- list(rtf_dir = rtf_dir, dir = dir, standard = standard)
