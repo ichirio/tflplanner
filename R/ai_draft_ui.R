@@ -18,15 +18,19 @@
 .ai_drafts_on <- function() !isFALSE(getOption("tflplanner.ai_drafts", TRUE))
 
 # A path typed, with Browse... (the computer's dialog) beside it when one
-# can be opened: an input group, as tall as shiny's upload field
-.ai_path_input <- function(id, label, placeholder, browse_id, browse_label) {
+# can be opened: an input group, as tall as shiny's upload field.
+# `commit_id`: the input the page sets (priority "event") with the path
+# typed or pasted when Enter is pressed or the field is left, and clears
+# the field (the references: .ai_draft_js).
+.ai_path_input <- function(id, label, placeholder, browse_id, browse_label, commit_id = NULL) {
   shiny::div(
     class = "form-group shiny-input-container",
     shiny::tags$label(class = "control-label", id = paste0(id, "-label"), `for` = id, label),
     shiny::div(
       class = "input-group",
-      shiny::tags$input(id = id, type = "text", class = "form-control", value = "",
-                        placeholder = placeholder),
+      shiny::tags$input(id = id, type = "text", value = "", placeholder = placeholder,
+                        class = paste("form-control", if (!is.null(commit_id)) "ai-commit"),
+                        `data-commit` = commit_id),
       if (.ai_dialog_ok()) shiny::actionButton(browse_id, browse_label,
                                                class = "btn-outline-secondary ai-browse")))
 }
@@ -80,6 +84,8 @@ ai_ui <- function(id, lang = "en") {
               choiceNames = list(t("The open study"), paste0(t("New study"), " (tfl_ai_study_init)")),
               choiceValues = c("open", "new"), selected = "open"),
             shiny::uiOutput(ns("open_name")),
+            # (step 1 filled from the study's ai/step1.yml; its sheet roles that fit no sheet)
+            shiny::uiOutput(ns("step1_note")),
             shiny::conditionalPanel(
               "input.study_mode == 'new'", ns = ns,
               shiny::div(
@@ -152,6 +158,7 @@ ai_ui <- function(id, lang = "en") {
             .ai_path_input(ns("adam_spec"),
                            paste0(t("ADaM spec (P21 Spec workbook or define.xml)"), " (adam_spec / define)"),
                            "C:/.../define.xml", ns("adam_spec_browse"), t("Browse...")),
+            shiny::uiOutput(ns("adam_spec_check")),
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-end",
               shiny::selectInput(ns("toc_sheet"), paste0(t("TOC sheet"), " (toc_sheet)"),
@@ -209,10 +216,8 @@ ai_ui <- function(id, lang = "en") {
                 value = 3L, min = 0L, step = 1L, width = "14rem"),
               .ai_path_input(ns("ref_path"),
                              with_tip(paste0(t("Add a reference"), " (docs)"),
-                                      t("Only the files chosen here (a SAP, say), named in AGENTS.md. One in the study folder is read where it is (a .docx / .pdf / .xlsx gets a text copy in ai/docs/); one from elsewhere is copied into ai/docs/. None: the agent reads none.")),
-                             "C:/.../SAP.pdf", ns("ref_browse"), t("Browse...")),
-              shiny::div(class = "d-flex gap-2 mb-2",
-                         .btn(ns("ref_add"), t("Add"), class = "btn-sm btn-outline-secondary")),
+                                      t("Only the files chosen here (a SAP, say), named in AGENTS.md. Choose a file with Browse..., or type or paste its path and press Enter (or leave the field): it is added to the list below at once, and the \u00d7 beside it removes it. One in the study folder is read where it is (a .docx / .pdf / .xlsx gets a text copy in ai/docs/); one from elsewhere is copied into ai/docs/. None: the agent reads none.")),
+                             "C:/.../SAP.pdf", ns("ref_browse"), t("Browse..."), commit_id = ns("ref_commit")),
               shiny::uiOutput(ns("ref_list"))),
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-center",
@@ -326,6 +331,18 @@ ai_ui <- function(id, lang = "en") {
     b.textContent = '\\u2713';
     setTimeout(function() { b.textContent = was; }, 1200);
   }
+  // a path typed or pasted into a field that adds it to a list (the
+  // references): added on Enter or when the field is left, the field cleared
+  function commit(el) {
+    var v = (el.value || '').trim();
+    if (!v || !el.dataset.commit) return;
+    $(el).val('').trigger('input');
+    Shiny.setInputValue(el.dataset.commit, {value: v, n: Date.now()}, {priority: 'event'});
+  }
+  $(document).on('keydown', '.ai-commit', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); commit(this); }
+  });
+  $(document).on('focusout', '.ai-commit', function() { commit(this); });
   $(document).on('click', '.ai-open', function() {
     Shiny.setInputValue(this.dataset.ns + 'open_report', {id: this.dataset.id, item: this.dataset.item || null, n: Date.now()},
                         {priority: 'event'});
