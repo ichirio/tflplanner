@@ -89,7 +89,7 @@ test_that("the result is set against the standard, ticked lines adopted into the
   shiny::testServer(style_server, {
     session$setInputs(style_read = 1)
     h <- output$style_diff$html
-    expect_match(h, "Set against the company standard (tfl_ai_style_diff)", fixed = TRUE)
+    expect_match(h, "Set against the company standard", fixed = TRUE)
     expect_match(h, "Differs from the standard", fixed = TRUE)
     expect_match(h, "Not in the standard", fixed = TRUE)
     expect_match(h, "Same as the standard", fixed = TRUE)
@@ -97,7 +97,7 @@ test_that("the result is set against the standard, ticked lines adopted into the
     expect_match(h, "by hand", fixed = TRUE)
     expect_match(h, "3 / 4", fixed = TRUE)
     expect_match(h, "(N=xx)", fixed = TRUE)
-    expect_match(h, "Adopt the ticked lines and build the pack (tfl_ai_reference_build)", fixed = TRUE)
+    expect_match(h, "Adopt the ticked lines and build the pack", fixed = TRUE)
     # a box a learned line, ticked as proposed
     boxes <- regmatches(h, gregexpr("<input id=\"[a-z-]*style_adopt_1_[0-9]+\"[^>]*>", h))[[1L]]
     expect_length(boxes, sum(!is.na(d$learned)))

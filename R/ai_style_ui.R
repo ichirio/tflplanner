@@ -293,15 +293,14 @@ ai_style_server <- function(input, output, session, notify, guarded, t) {
     gen <- state$gen
     built <- state$built
     shiny::tagList(
-      shiny::h6(class = "mt-3", paste0(t("Set against the company standard"), " (tfl_ai_style_diff)")),
+      shiny::h6(class = "mt-3", t("Set against the company standard")),
       shiny::div(class = "small text-muted", head),
       shiny::p(class = "small text-muted mb-1",
                t("Ticked: the lines most files show that differ from the company standard or are not in it. A line marked by hand is yours to decide. The company standards themselves are not changed.")),
       if (!nrow(d)) shiny::p(class = "small", t("Nothing learned yet.")) else
         .style_diff_table(d, ns, gen, shiny::isolate(.style_default_ticks(d)), t),
       shiny::div(class = "d-flex flex-wrap gap-2 align-items-center my-2",
-                 .btn(ns("style_build"), paste0(t("Adopt the ticked lines and build the pack"),
-                                                " (tfl_ai_reference_build)"),
+                 .btn(ns("style_build"), t("Adopt the ticked lines and build the pack"),
                       class = "btn-sm btn-primary")),
       if (!is.null(built)) shiny::div(
         class = "small alert alert-success py-2",
