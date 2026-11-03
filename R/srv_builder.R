@@ -346,7 +346,7 @@
     }
     labels_body <- if (nrow(v) > 0L) shiny::tagList(
       # (a template report has no step 1-1: #440)
-      if (!tpl) .btn("cl3_open", t("Code lists: in step 1 (1-1, column definitions)"),
+      if (!tpl) .btn("cl3_open", t("Code lists: in the Analysis data step (column definitions)"),
                      class = "btn-sm btn-link py-0 px-0 mb-1"),
       # the headings and the order as one grid (the code list of the
       # variables), once: here

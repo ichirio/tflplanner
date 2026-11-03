@@ -13,7 +13,7 @@
 # pattern's (in the pattern dialog), Standard's
 .pg_own_word <- function(id, t, kind = NULL) {
   if (is.na(id)) t("Standard") else if (.is_pattern_id(id)) t("this pattern") else
-    if (identical(kind, "figure")) t("This figure") else t("This table")
+    if (is.null(kind) || identical(kind, "table")) t("This table") else t("This report")
 }
 # what Revert goes back to, its tooltip
 .pg_back_word <- function(id, t) {

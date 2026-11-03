@@ -355,7 +355,7 @@ test_that("step 1 says the report's analyses and the study's; the Data tab expla
   shiny::testServer(server_for("RV"), {
     session$setInputs(nav = "make", step = "ard", target = "DM")
     expect_match(output$ard_check$html, "This report's analyses: 2 (the study's: 3)", fixed = TRUE)
-    expect_match(output$ard_2_2_head$html, "1-2 Analyses", fixed = TRUE)
+    expect_match(output$ard_2_2_head$html, "Analyses", fixed = TRUE)
     for (sh in c("datasets", "populations")) {
       expect_false(is.null(output[[paste0("help_ard_", sh)]]))
     }

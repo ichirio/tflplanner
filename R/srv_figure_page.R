@@ -35,8 +35,8 @@
     }
     if (is.null(png)) {
       return(shiny::div(class = "text-muted small text-center py-4",
-                        if (.is_code_step(p, id, "content")) t("(the figure: [Run the code] in step 2 draws it here)")
-                        else t("(the figure: its design in step 2 draws it here)")))
+                        if (.is_code_step(p, id, "content")) sprintf(t("(the figure: [Run the code] in step %s draws it here)"), .step_no("content"))
+                        else sprintf(t("(the figure: its design in step %s draws it here)"), .step_no("content"))))
     }
     shiny::tagList(img(png), caption)
   }

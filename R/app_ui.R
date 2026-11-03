@@ -397,10 +397,17 @@ app_ui <- function(lang = "en") {
         # a figure's: its data steps (its design's; none while its content is
         # its own code)
         shiny::conditionalPanel("output.content_is_code != 'yes'", .designer_data_ui()),
+        # a listing's: the dataset and the condition (its columns, order and
+        # type are the Content step's)
         shiny::conditionalPanel(
           "output.report_kind == 'listing'",
-          shiny::p(class = "text-muted small",
-                   t("A listing reads its dataset and its condition in the Content step."))),
+          shiny::conditionalPanel(
+            "output.content_is_code != 'yes'",
+            shiny::div(class = "rp-code-only", shiny::uiOutput("lf_data_form"))),
+          shiny::conditionalPanel(
+            "output.content_is_code == 'yes'",
+            shiny::p(class = "text-muted small",
+                     t("This listing is its own R program: it reads its data in the Content step.")))),
         shiny::conditionalPanel(
           "output.report_kind == 'table'",
           shiny::div(
@@ -441,6 +448,9 @@ app_ui <- function(lang = "en") {
     # the report's ARD: a figure's source (one place, either way), a table's
     # taken in
     shiny::uiOutput("ard_kind_note"),
+    # a figure's statistics (a KM fit ...): its data steps from the first
+    # that makes an object on
+    .designer_stat_ui(),
     shiny::conditionalPanel("output.data_is_code == 'yes'", code_step_ui("dc", t, lang)),
     shiny::conditionalPanel(
     "output.data_is_code != 'yes'",
@@ -459,16 +469,12 @@ app_ui <- function(lang = "en") {
     shiny::div(
       id = "ard_split", class = "rp-split rp-lay-side rp-show-def",
       bslib::card(
-        bslib::card_header(with_tip(t("ARD definition"), t("This report's analyses (the ARD): the data in 1-1, the analyses in 1-2."))),
-        bslib::navset_underline(
-          id = "ard_sheet",
-          bslib::nav_panel(paste0(t("The analyses"), " (analyses)"), value = "analyses",
-                           # 1-2 the analyses (1-1, the analysis data, is the
-                           # first step's)
-                           shiny::uiOutput("ard_2_2_head"),
-                           # the outline first: a click shows the analysis
-                           # as a form below; the sheet itself folded
-                           shiny::uiOutput("ard_outline"))),
+        bslib::card_header(with_tip(t("ARD definition"), t("This report's analyses (the ARD): the analysis data, and the analyses that read them."))),
+        # the analyses (the analysis data are the first step's)
+        shiny::uiOutput("ard_2_2_head"),
+        # the outline first: a click shows the analysis as a form below; the
+        # sheet itself folded
+        shiny::uiOutput("ard_outline"),
         shiny::uiOutput("ard_check"),
         shiny::div(
           class = "rp-b-card mt-2",
@@ -551,8 +557,10 @@ app_ui <- function(lang = "en") {
                   # (the same Update preview as the other steps', here too:
                   # a template's step 1 has no other)
                   shiny::div(class = "d-flex gap-2 align-items-center",
-                             .btn("result_fetch", t("Update preview"),
-                                  class = "btn-sm btn-outline-primary py-0"),
+                             # (a template report has the ARD card's, above)
+                             shiny::span(class = "rp-code-only",
+                                         .btn("result_fetch", t("Update preview"),
+                                              class = "btn-sm btn-outline-primary py-0")),
                              shiny::uiOutput("builder_pages", inline = TRUE))),
                 shiny::uiOutput("builder_preview"))))))),
       shiny::conditionalPanel(
@@ -843,7 +851,7 @@ app_ui <- function(lang = "en") {
         bslib::nav_panel(
           paste0(t("Populations"), " (populations)"), value = "populations",
           pane_head(paste0(t("Populations"), " (populations)"),
-                    paste(t("An analysis set: the subjects of a dataset that a condition keeps (SAFFL == \"Y\"). The Data of an analysis, 1-1\'s Population and a percent\'s denominator choose from here."), edit_note)),
+                    paste(t("An analysis set: the subjects of a dataset that a condition keeps (SAFFL == \"Y\"). The Data of an analysis, the analysis data\'s Population and a percent\'s denominator choose from here."), edit_note)),
           rhandsontable::rHandsontableOutput("hot_ard_populations"),
           shiny::tags$details(
             class = "rp-help mt-2",

@@ -28,6 +28,9 @@
 .step_labels <- c(data = "1 Analysis data", ard = "2 ARD", content = "3 Content",
                   page = "4 Page and output")
 
+# a step's number, from .step_labels (a message names a step by it)
+.step_no <- function(step) sub(" .*$", "", .step_labels[[step]])
+
 .type_labels <- c(table = "Table", listing = "Listing", figure = "Figure")
 # a new report's ID begins with its kind's prefix (the Add dialog)
 .id_prefix <- c(table = "T-", listing = "L-", figure = "F-")

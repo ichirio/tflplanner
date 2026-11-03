@@ -336,12 +336,12 @@ $(document).on('click', '#save', function() {
 }
 
 .grid <- function(d, sheet, key, choices, closed = character(),
-                  select = FALSE, read_only = character()) {
+                  select = FALSE, read_only = character(), spare = 1L) {
   d <- .na_blank(d)
   if (!nrow(d)) d[1L, ] <- ""
   h <- rhandsontable::rhandsontable(
     d, rowHeaders = TRUE, useTypes = FALSE, stretchH = "all",
-    height = .grid_height(nrow(d)), minSpareRows = 1L, planner_key = key,
+    height = .grid_height(nrow(d)), minSpareRows = spare, planner_key = key,
     selectCallback = select)
   h <- rhandsontable::hot_context_menu(h, allowRowEdit = TRUE,
                                        allowColEdit = FALSE)

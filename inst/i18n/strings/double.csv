@@ -40,3 +40,5 @@
 "Line %d of the %s step's code: ","%2$s の手順のコードの %1$d 行目: "
 "The rules","決まり"
 "A step of your own R: the rules","自分の R の手順: 決まり"
+"The data the listing reads","Listing が読むデータ"
+"The listing's data: a dataset of the catalog and a condition. Its data code (Content step, Data code), if any, changes the data after the condition.","Listing のデータ：カタログのデータセットと抽出条件。データコードがあれば、条件の後でデータを変えます（コンテンツのステップの「データコード」）。"

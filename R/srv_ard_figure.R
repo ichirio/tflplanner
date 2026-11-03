@@ -23,7 +23,7 @@
       shiny::div(class = "d-flex flex-wrap gap-3 align-items-end",
         shiny::radioButtons(
           "fig_ard_kind", with_tip(t("This figure's ARD"),
-            t("Where the numbers it prints come from (step 3: \"A number from the ARD\", \"Statistics from the ARD\"). The program puts it in `ard`.")),
+            sprintf(t("Where the numbers it prints come from (step %s: \"A number from the ARD\", \"Statistics from the ARD\"). The program puts it in `ard`."), .step_no("content"))),
           inline = TRUE, selected = src$kind,
           choices = stats::setNames(c("none", "own", "table"),
                                     c(t("None: the figure reads its data"),
@@ -71,7 +71,7 @@
           shiny::tags$td(class = "text-break", tbl$statistics[i]),
           shiny::tags$td(class = "text-success text-nowrap", tbl$used[i]))))),
       shiny::div(class = "d-flex gap-2 align-items-center",
-        shiny::span(class = "text-muted", sprintf(t("The statistics are %s's: add one to its analysis (its step 2) to print it here."), tb)),
+        shiny::span(class = "text-muted", sprintf(t("The statistics are %s's: add one to its analysis (its step %s) to print it here."), tb, .step_no("ard"))),
         .btn("fig_ard_open", sprintf(t("Open %s"), tb), class = "btn-sm btn-outline-secondary py-0")))
   }
   shiny::observeEvent(input$fig_ard_kind, {

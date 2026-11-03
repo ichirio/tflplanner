@@ -13,7 +13,7 @@
 "Blank: the label of this report's code list of variable (faint). What is written here is the table's own.","空欄なら、この帳票のコードリスト（variable）の見出し（薄い字）。ここに書くとこの表の見出しになります。"
 "Own","自分の書式"
 "{n} the count, {N} the denominator, {p} the proportion; a format after a colon: {p:.1f%} prints 16.3%, {p:.2f} 0.16. The table on the right shows it.","{n} は度数、{N} は分母、{p} は割合。コロンの後に書式: {p:.1f%} は 16.3%、{p:.2f} は 0.16。右の表に出ます。"
-"Code lists: in step 1 (1-1, column definitions)","コードリスト：ARD 作成の 1-1（列定義）で"
+"Code lists: in the Analysis data step (column definitions)","コードリスト：解析データのステップ（列定義）で"
 "No heading of its own: its rows go under %s.","独自の見出しはありません。この変数の行は %s の下に入ります。"
 "%d levels: %s","%d 水準: %s"
 "columns %s (%s groups)","列 %s（%s 群）"

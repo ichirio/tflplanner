@@ -517,7 +517,7 @@
     shiny::div(
       class = "d-flex flex-wrap align-items-baseline gap-2 mb-2",
       shiny::tags$label(`for` = "ard_report_pop_pick", class = "small fw-bold mb-0",
-                        with_tip(t("This report's population"), t("The report's analysis set (the TOC's; also the header's <OUTPUT_POPULATION> text): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; 1-1 and 1-2 start from it. An analysis may still read another."))),
+                        with_tip(t("This report's population"), t("The report's analysis set (the TOC's; also the header's <OUTPUT_POPULATION> text): one value for the report. Chosen, the data of its subjects (adsl_<set>) is made, and the report's analyses move to it; the analysis data and the analyses start from it. An analysis may still read another."))),
       shiny::div(style = "min-width: 16rem",
                  .for_report(shiny::selectInput("ard_report_pop_pick", NULL, pop_choices(now),
                                                 selected = if (is.na(now)) "" else now,
@@ -540,7 +540,7 @@
     rv$p <- p
     bump()
     if (length(made)) notify(sprintf(t("%s made (save to keep it)."), paste(made, collapse = ", ")))
-    if (length(left)) notify(sprintf(t("%s left as it is: change it in 1-1 if it should follow the population."),
+    if (length(left)) notify(sprintf(t("%s left as it is: change it in the analysis data if it should follow the population."),
                                      paste(left, collapse = ", ")), "warning")
   }, ignoreInit = TRUE)
   output$ard_adata <- shiny::renderUI({
@@ -632,8 +632,8 @@
     shiny::div(
       class = "rp-b-card mb-2",
       shiny::h6(class = "mb-2", with_tip(
-        t("1-1 Analysis data"),
-        t("The data this report's analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are this report's (another report's adsl_saf may differ: copy one with the button). The denominator of a percent is chosen with each analysis, in 1-2."))),
+        t("Analysis data"),
+        t("The data this report's analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are this report's (another report's adsl_saf may differ: copy one with the button). The denominator of a percent is chosen with each analysis."))),
       shiny::div(
         class = "d-flex flex-wrap gap-1 align-items-center mb-1",
         .btn("ard_adata_new", t("New analysis data"), class = "btn-sm btn-outline-primary py-0"),
@@ -663,8 +663,8 @@
     shiny::req(has_study(), ard_target())
     shiny::tagList(
       shiny::h6(class = "mt-3 mb-1", with_tip(
-        t("1-2 Analyses"),
-        t("The report's analyses. Each one's Data: an analysis data of 1-1; the denominator of a percent: chosen with it. ARD: the data of the analyses' results (the tables are made from it). Population: the subjects a percent is of (SAF ...)."))),
+        t("Analyses"),
+        t("The report's analyses. Each one's Data: one of the analysis data above; the denominator of a percent: chosen with it. ARD: the data of the analyses' results (the tables are made from it). Population: the subjects a percent is of (SAF ...)."))),
       if (length(.old_format(rv$p)))
         shiny::p(class = "small text-warning mb-1", t(.old_format_line)))
   })

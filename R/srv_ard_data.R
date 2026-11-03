@@ -416,7 +416,7 @@
     same <- .adata_same_as(.adata_rows(rv$p, ard_target()), one_of(input$adata_from), ps$pop, subjects, ps$where)
     if (is.na(same)) return(NULL)
     shiny::div(class = "alert alert-info small py-1 mb-2",
-               sprintf(t("%s, already there, is this same data: no need to make it again (in 1-2, choose %s)."),
+               sprintf(t("%s, already there, is this same data: no need to make it again (in the analyses, choose %s)."),
                        same, same))
   })
   # the form's values as a planner with them (an error, said, when it is
@@ -850,14 +850,14 @@
         col_widths = c(4, 8),
         shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label), width = "100%")),
-      shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data of 1-1 (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
+      shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
                          data_choices(r),
                          selected = .an_data_value_row(r),
                          width = "100%"),
       shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
         shiny::tags$summary(class = "small", with_tip(argl("This analysis's own filter", "where"),
-                                                      t("An R condition that filters this analysis's rows alone (e.g. AESER == \"Y\"). The data's own filter is 1-1's."))),
+                                                      t("An R condition that filters this analysis's rows alone (e.g. AESER == \"Y\"). The data's own filter is the analysis data's."))),
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
                          placeholder = "AESER == \"Y\""),
         .where_labels_note(sheet_rows(shiny::isolate(rv$p), "codelists",
@@ -1340,7 +1340,7 @@
     if (is.null(id) || !has_study() || !identical(report_kind(), "figure")) return(NULL)
     n <- length(fig_design(rv$p, id)$data)
     if (n) step_mark("\u25cf", sprintf(t("Data steps: %d"), n), "text-success") else
-      step_mark("\u25cb", t("No data step yet: start the figure in step 2"), "text-muted")
+      step_mark("\u25cb", sprintf(t("No data step yet: start the figure in step %s"), .step_no("content")), "text-muted")
   })
   output$step_mark_page <- shiny::renderUI(NULL)
   output$step_mark_codelist <- shiny::renderUI({

@@ -49,7 +49,7 @@
 "not matched: choose the population, or leave it","対応する集団が見つかりません。選ぶか、そのままにしてください"
 "Analysis data made for the reports' populations: %s.","帳票の解析対象集団の解析データを作りました: %s。"
 "Make the tables' analysis data from their datasets","表のデータセットから解析データも作る"
-"For each dataset of a table (the TOC's datasets column) that is not its population's own: <dataset>_<set>, kept to the subjects of adsl_<set> -- found, or made. Its first analysis starts from it; change or delete it in 1-1.","表のデータセット（TOC のデータセット列）のうち、解析対象集団のもの以外ごとに、adsl_<集団> の被験者に絞った <データセット>_<集団> を作ります（同じものがあればそれを使います）。最初の解析はこれを読みます。1-1 で直したり消したりできます。"
+"For each dataset of a table (the TOC's datasets column) that is not its population's own: <dataset>_<set>, kept to the subjects of adsl_<set> -- found, or made. Its first analysis starts from it; change or delete it in the analysis data.","表のデータセット（TOC のデータセット列）のうち、解析対象集団のもの以外ごとに、adsl_<集団> の被験者に絞った <データセット>_<集団> を作ります（同じものがあればそれを使います）。最初の解析はこれを読みます。解析データで直したり消したりできます。"
 "Also for the reports taken in before (made again where deleted)","取り込み済みの帳票にも作り直す（消したものはもう一度作られます）"
 "Report ID as printed (Table 14.1.1)","印刷する帳票番号（Table 14.1.1）"
 "TOC files (xlsx, xls, csv): the TFL workbook, and the listing workbook when it is another","TOC のファイル（xlsx、xls、csv）：TFL のブックと、別にあれば Listing のブック"

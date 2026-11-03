@@ -601,9 +601,9 @@
                                    width = "100%", options = list(create = TRUE)))),
       # (the analysis set, then the subset: CDISC ARS's AnalysisSet and
       # DataSubset)
-      shiny::selectInput("tpl_data_pop", t("Analysis set"), tpl_data_pop_choices(id, f),
+      shiny::selectInput("tpl_data_pop", t("Analysis set (population)"), tpl_data_pop_choices(id, f),
                          selected = tpl_data_pop_sel(id, f), width = "100%"),
-      shiny::textInput("tpl_data_filter", t("Subset"), f$filter, width = "100%",
+      shiny::textInput("tpl_data_filter", t("Record condition (filter)"), f$filter, width = "100%",
                        placeholder = t("an R condition on the records, e.g. AVAL > 0")),
       shiny::div(class = "small text-muted mb-1",
                  if (is.null(pop) && f$join) {
@@ -724,7 +724,7 @@
       sv <- og$study
       if (identical(og$from, "own")) {
         return(shiny::span(class = "rp-tpl-arg-from",
-                           t("This table"),
+                           t(if (identical(kind, "table")) "This table" else "This report"),
                            if (!is.null(sv)) paste0(" \u2014 ", sprintf(t("over the study standard (%s)"),
                                                                        .tpl_show(sv)))))
       }
@@ -773,9 +773,11 @@
               paste(miss, collapse = ", ")))
     if (part != "template") {
       none <- !any(sec_of %in% part) && !(part == "data" && own_data)
+      # (a template with no page arguments: no card, the step is the page's)
+      if (none && part == "page") return(NULL)
       return(bslib::card(
         class = "mb-2 border-primary",
-        bslib::card_header(shiny::strong(t(if (part == "data") "Analysis data" else "This report's page"))),
+        bslib::card_header(shiny::strong(t(if (part == "data") "Analysis data" else "Template arguments (page)"))),
         bslib::card_body(
           missing_alert,
           if (part == "data" && own_data) tpl_data_block(id, steps),
@@ -804,8 +806,13 @@
           lapply(others, function(n) shiny::tags$option(
             value = n, selected = if (identical(n, tp$name)) NA, n))),
         # (one way: the template's items written into the report as code)
-        .btn("tpl_to_code", paste0(t("Convert to code"), " (tfl_template_to_spec)"),
-             class = "btn-sm btn-outline-primary"),
+        # (a plain button, not an input: the card is drawn in one of three
+        # outputs, and two of them hold one for a moment while the report
+        # kind changes -- a duplicate input id)
+        shiny::tags$button(
+          type = "button", class = "btn btn-sm btn-outline-primary",
+          onclick = "Shiny.setInputValue('tpl_to_code', Math.random(), {priority: 'event'})",
+          paste0(t("Convert to code"), " (tfl_template_to_spec)")),
         # (for later: greyed)
         shiny::div(
           class = "dropdown",

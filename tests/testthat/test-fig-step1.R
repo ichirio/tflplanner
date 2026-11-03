@@ -54,7 +54,7 @@ test_that("a figure without a design: step 1 says where to start it", {
   create_study("S1", planner = p)
   shiny::testServer(server_for("S1"), {
     session$setInputs(target = "F1", nav = "make", step = "data")
-    expect_match(output$pd_data_body$html, "start it in step 2", fixed = TRUE)
+    expect_match(output$pd_data_body$html, "start it in step 3 (Content)", fixed = TRUE)
   })
 })
 
@@ -110,7 +110,10 @@ test_that("a step's In and Out: on one line, what they are when not said as plac
     # any function: suggested functions, its arguments named under the field
     k <- length(fig_design(session$userData$rv$p, "F1")$data)
     session$setInputs(pd_act = list(op = "sel", sec = "data", i = k, n = 2))
-    h2 <- output$pd_form_data$html
+    # (a function makes an object: a statistic, the ARD step's form; the
+    # records' form has none)
+    expect_match(output$pd_form_data$html, "Choose a data step", fixed = TRUE)
+    h2 <- output$pd_form_stat$html
     expect_match(h2, "ggsurvfit::survfit2", fixed = TRUE)
     expect_match(h2, "Its arguments: formula*", fixed = TRUE)
   })
@@ -153,3 +156,28 @@ test_that("an ARD analysis step is the figure's row of the ARD definition", {
   d0 <- tflspec::tfl_fig_design(data = list(list(step = "ard", analysis_id = "X")))
   expect_identical(.fig_ard_steps_rows(p, "F1", d0), p)
 })
+
+test_that("a figure's data steps are in two places: the records in step 1, the statistics in step 2", {
+  expect_identical(.pd_stat_start(list()), 1L)
+  expect_identical(.pd_stat_start(list(list(step = "read"), list(step = "param"))), 3L)
+  expect_identical(.pd_stat_start(list(list(step = "read"), list(step = "survfit"),
+                                       list(step = "derive"))), 2L)
+  local_home()
+  p <- add_output(new_planner(), "F1", type = "figure")
+  d <- tflspec::tfl_fig_template("mean_se", data = "ADVS", param = "SYSBP")
+  d$data <- c(d$data, list(list(step = "function", fn = "survival::survfit")))
+  p <- set_fig_design(p, "F1", d)
+  create_study("S1", planner = p)
+  shiny::testServer(server_for("S1"), {
+    session$setInputs(target = "F1", nav = "make", step = "data")
+    recs <- output$pd_stack_data$html
+    stats <- output$pd_stack_stat$html
+    expect_match(recs, "Read a dataset", fixed = TRUE)
+    expect_false(grepl("Any function", recs, fixed = TRUE))
+    expect_match(stats, "Any function", fixed = TRUE)
+    expect_false(grepl("Read a dataset", stats, fixed = TRUE))
+    # step 1 says where the statistics are
+    expect_match(output$pd_stat_note$html, ") are in step 2", fixed = TRUE)
+  })
+})
+
