@@ -356,30 +356,30 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       }
       review_ver(review_ver() + 1L)
     })
-    # -- when the agent asks (study.yml's ai: ask_when) ------------------------
+    # -- how the agent works (study.yml's ai: run) ------------------------
     # The select shows what the open study says (its study.yml over its
     # defaults.yml over the default); a change is written into study.yml at
     # once and the agent's AGENTS.md made again.  "report" is offered only
     # while it is the stored value.
-    ask_when_ver <- shiny::reactiveVal(0L)
+    run_ver <- shiny::reactiveVal(0L)
     shiny::observe({
-      ask_when_ver()
+      run_ver()
       p <- path()
       if (identical(input$study_mode, "new") || is.null(p)) return()
-      v <- .ai_ask_when_read(p)
-      shiny::updateSelectInput(session, "ask_when", choices = .ai_ask_when_choices(t, v), selected = v)
+      v <- .ai_run_read(p)
+      shiny::updateSelectInput(session, "run", choices = .ai_run_choices(t), selected = v)
     })
-    shiny::observeEvent(input$ask_when, ignoreInit = TRUE, {
-      now <- .ai_ask_when_value(input$ask_when)
+    shiny::observeEvent(input$run, ignoreInit = TRUE, {
+      now <- .ai_run_value(input$run)
       p <- shiny::isolate(path())
       if (is.na(now) || is.null(p) || identical(input$study_mode, "new")) return()
-      if (identical(.ai_ask_when_read(p), now)) return()
+      if (identical(.ai_run_read(p), now)) return()
       if (isTRUE(dirty())) {
         notify(t("Save first: the study has unsaved changes."), "warning")
-        ask_when_ver(ask_when_ver() + 1L)
+        run_ver(run_ver() + 1L)
         return()
       }
-      done <- tryCatch(.ai_ask_when_set(p, now), error = function(e) {
+      done <- tryCatch(.ai_run_set(p, now), error = function(e) {
         message("tflplanner: ", conditionMessage(e))
         notify(.error_view(conditionMessage(e), t), "error")
         FALSE
@@ -387,14 +387,14 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       if (isTRUE(done)) {
         reload_now()
         ver(ver() + 1L)
-        notify(t("When the agent asks written into study.yml (ai: ask_when), and AGENTS.md made again."))
+        notify(t("How the agent works written into study.yml (ai: run), and AGENTS.md made again."))
       }
-      ask_when_ver(ask_when_ver() + 1L)
+      run_ver(run_ver() + 1L)
     })
-    output$ask_when_help <- shiny::renderUI({
-      if (identical(input$ask_when, "end")) {
+    output$run_help <- shiny::renderUI({
+      if (identical(input$run, "batch")) {
         shiny::div(class = "small text-muted",
-                   t("The agent goes on with defaults and asks once at the end; read every default it took (ai/defaults.md), not only the questions."))
+                   t("In a batch, read every default the agent took (ai/defaults.md), not only the questions."))
       }
     })
     output$open_name <- shiny::renderUI({

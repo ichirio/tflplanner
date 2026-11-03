@@ -1268,35 +1268,33 @@ test_that("review depth: a change is written into study.yml (its other keys kept
   })
 })
 
-# -- when the agent asks (study.yml's ai: ask_when) --------------------------
+# -- how the agent works (study.yml's ai: run) -------------------------------
 
-test_that("ask_when: study.yml over defaults.yml over the default; unknown values ignored", {
+test_that("run: study.yml over defaults.yml over the default; unknown values ignored", {
   d <- withr_tempdir()
   dir.create(file.path(d, "spec"))
-  expect_identical(.ai_ask_when_read(d), "end")
-  expect_identical(.ai_ask_when_read(NULL), "end")
-  writeLines(c("ai:", "  ask_when: request"), file.path(d, "spec", "defaults.yml"))
-  expect_identical(.ai_ask_when_read(d), "request")
-  writeLines(c("study_id: X", "ai:", "  ask_when: report"), file.path(d, "study.yml"))
-  expect_identical(.ai_ask_when_read(d), "report")
-  writeLines(c("study_id: X", "ai:", "  ask_when: sometimes"), file.path(d, "study.yml"))
-  expect_identical(.ai_ask_when_read(d), "request")
+  expect_identical(.ai_run_read(d), "one")
+  expect_identical(.ai_run_read(NULL), "one")
+  writeLines(c("ai:", "  run: batch"), file.path(d, "spec", "defaults.yml"))
+  expect_identical(.ai_run_read(d), "batch")
+  writeLines(c("study_id: X", "ai:", "  run: one"), file.path(d, "study.yml"))
+  expect_identical(.ai_run_read(d), "one")
+  writeLines(c("study_id: X", "ai:", "  run: sometimes"), file.path(d, "study.yml"))
+  expect_identical(.ai_run_read(d), "batch")
 })
 
-test_that("ask_when: the select's choices, 'report' only when stored", {
+test_that("run: the select's choices", {
   h <- as.character(ai_ui("ai"))
-  expect_match(h, "ai-ask_when", fixed = TRUE)
-  expect_match(h, "Ask everything at the end", fixed = TRUE)
-  expect_no_match(h, "Ask per report", fixed = TRUE)
+  expect_match(h, "ai-run", fixed = TRUE)
+  expect_match(h, "One request at a time", fixed = TRUE)
   tt <- function(x) x
-  expect_identical(unname(.ai_ask_when_choices(tt)), c("end", "request"))
-  expect_identical(unname(.ai_ask_when_choices(tt, "report")), c("end", "request", "report"))
-  expect_identical(names(.ai_ask_when_choices(tt, "report"))[3L], "Ask per report")
+  expect_identical(unname(.ai_run_choices(tt)), c("one", "batch"))
+  expect_identical(names(.ai_run_choices(tt)), c("One request at a time", "Everything together"))
   ja <- as.character(ai_ui("ai", "ja"))
-  expect_match(ja, "最後にまとめて聞く", fixed = TRUE)
+  expect_match(ja, "1 依頼ずつ処理", fixed = TRUE)
 })
 
-test_that("ask_when: a change is written into study.yml (other keys kept) and AGENTS.md again; report kept", {
+test_that("run: a change is written into study.yml (other keys kept) and AGENTS.md again", {
   local_home()
   path <- ai_study()
   old <- options(tflplanner.ai_drafts = TRUE)
@@ -1309,24 +1307,17 @@ test_that("ask_when: a change is written into study.yml (other keys kept) and AG
   before <- file.mtime(ag)
   shiny::testServer(server_for("XYZ-1"), {
     session$setInputs(`ai-study_mode` = "open")
-    session$setInputs(`ai-ask_when` = "end")
+    session$setInputs(`ai-run` = "one")
     expect_identical(file.mtime(ag), before)
-    session$setInputs(`ai-ask_when` = "request")
+    session$setInputs(`ai-run` = "batch")
     y <- yaml::read_yaml(sy)
-    expect_identical(y$ai$ask_when, "request")
+    expect_identical(y$ai$run, "batch")
     expect_identical(y$ai$language, "Japanese")
     expect_identical(y$study_id, y0$study_id)
     expect_gt(file.mtime(ag), before)
     # unsaved changes: nothing written
     session$userData$rv$meta$title <- "mine"
-    session$setInputs(`ai-ask_when` = "end")
-    expect_identical(yaml::read_yaml(sy)$ai$ask_when, "request")
+    session$setInputs(`ai-run` = "one")
+    expect_identical(yaml::read_yaml(sy)$ai$run, "batch")
   })
-  # "report" in study.yml is kept, not overwritten, when the same is chosen
-  y <- yaml::read_yaml(sy)
-  y$ai$ask_when <- "report"
-  yaml::write_yaml(y, sy)
-  expect_false(.ai_ask_when_set(path, "report"))
-  expect_identical(yaml::read_yaml(sy)$ai$ask_when, "report")
-  expect_true(.ai_ask_when_set(path, "end"))
 })

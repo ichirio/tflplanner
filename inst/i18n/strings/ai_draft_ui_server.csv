@@ -16,4 +16,4 @@
 "Copy the prompt","プロンプトをコピー"
 "The fix text of %s","%s の直しの文"
 "Review depth written into study.yml (ai: review), and AGENTS.md made again.","確認の深さを study.yml（ai: review）に書き、AGENTS.md を作り直しました。"
-"When the agent asks written into study.yml (ai: ask_when), and AGENTS.md made again.","質問するときを study.yml（ai: ask_when）に書き、AGENTS.md を作り直しました。"
+"How the agent works written into study.yml (ai: run), and AGENTS.md made again.","エージェントの処理方法を study.yml（ai: run）に書き、AGENTS.md を作り直しました。"
