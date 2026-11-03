@@ -183,7 +183,17 @@ create_study <- function(study_id, title = NA, compound = NA, phase = NA,
   writeLines(.rproj, file.path(path, paste0(study_id, ".Rproj")))
   s <- .new_study(path, .read_meta(path)[.study_fields],
                   planner %||% .standard_planner(study_id))
-  save_study(s, home = home)
+  s <- save_study(s, home = home)
+  # the company's review depth of the AI agent into spec/defaults.yml (the
+  # study's own from now on), and the state told of the file as it is now
+  if (.ai_review_to_defaults(path)) {
+    rel <- file.path(study_layout()[["spec"]], "defaults.yml")
+    if (!is.null(s$planner$spec$text[[rel]])) {
+      s$planner$spec$text[[rel]] <- readLines(file.path(path, rel), encoding = "UTF-8", warn = FALSE)
+    }
+    .write_state(s, home)
+  }
+  invisible(s)
 }
 
 .new_study <- function(path, meta, planner) {

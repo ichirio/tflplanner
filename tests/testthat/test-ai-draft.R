@@ -1321,3 +1321,43 @@ test_that("run: a change is written into study.yml (other keys kept) and AGENTS.
     expect_identical(yaml::read_yaml(sy)$ai$run, "batch")
   })
 })
+
+test_that("review depth: the company standard is the start; the files override it", {
+  home <- local_home()
+  f <- file.path(withr_tempdir(), "acme.xlsx")
+  s <- .builtin_standards()
+  s$settings$value[s$settings$key == "ai_review_figure"] <- "none"
+  s$settings$value[s$settings$key == "ai_review_table"] <- "0"
+  s$settings$value[s$settings$key == "ai_review_listing"] <- "bad"
+  writexl::write_xlsx(s, f)
+  suppressMessages(setup_tflplanner(standards = f))
+  # (a wrong value: the built-in default of that kind)
+  expect_identical(.ai_review_company(), c(figure = "none", table = "0", listing = "1"))
+  d <- withr_tempdir()
+  dir.create(file.path(d, "spec"))
+  expect_identical(.ai_review_read(d), c(figure = "none", table = "0", listing = "1"))
+  expect_identical(.ai_review_read(NULL), c(figure = "none", table = "0", listing = "1"))
+  # defaults.yml over it, per kind; study.yml over that
+  writeLines(c("ai:", "  review:", "    table: 3"), file.path(d, "spec", "defaults.yml"))
+  expect_identical(.ai_review_read(d), c(figure = "none", table = "3", listing = "1"))
+  writeLines(c("study_id: X", "ai:", "  review:", "    figure: 2"), file.path(d, "study.yml"))
+  expect_identical(.ai_review_read(d), c(figure = "2", table = "3", listing = "1"))
+  # a new study's defaults.yml carries the company's levels
+  st <- create_study("NEW-AI")
+  y <- yaml::read_yaml(file.path(st$path, "spec", "defaults.yml"))
+  expect_identical(y$ai$review, list(figure = "none", table = 0L, listing = 1L))
+  expect_identical(.ai_review_read(st$path), c(figure = "none", table = "0", listing = "1"))
+  # the state knows the file as it is: the study opens and saves unchanged
+  st2 <- open_study("NEW-AI")
+  expect_false(identical(st2$planner$spec$status, "invalid"))
+  expect_no_error(save_study(st2))
+  expect_identical(.ai_review_read(st$path), c(figure = "none", table = "0", listing = "1"))
+})
+
+test_that("review depth: the built-in standards give the old defaults, a new study carries them", {
+  local_home()
+  expect_identical(.ai_review_company(), c(figure = "3", table = "2", listing = "1"))
+  st <- create_study("NEW-AI0")
+  y <- yaml::read_yaml(file.path(st$path, "spec", "defaults.yml"))
+  expect_identical(y$ai$review, list(figure = 3L, table = 2L, listing = 1L))
+})
