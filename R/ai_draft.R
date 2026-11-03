@@ -830,31 +830,14 @@
   invisible(f)
 }
 
-# The agent's AGENTS.md written again with the study's settings now (tflspec
-# fills its build-and-check part from study.yml).  What the person chose when
-# the requests were written -- the files the agent may open, the documents,
-# the templates -- is read back from the AGENTS.md there.  FALSE when the
-# study has none yet.
+# The agent's AGENTS.md written again with the study's settings now:
+# tflspec::tfl_ai_refresh_agents() fills it from study.yml and the inputs
+# recorded when the requests were written.  FALSE when the study has no
+# AGENTS.md yet, or the installed tflspec does not have the function.
 .ai_agent_refresh <- function(path) {
-  f <- file.path(path, "ai", "AGENTS.md")
-  if (!file.exists(f)) return(FALSE)
-  old <- paste(.ai_read_text(f), collapse = "\n")
-  one <- function(re) {
-    m <- regmatches(old, regexec(re, old))[[1L]]
-    if (length(m) > 1L) m[2L] else NULL
-  }
-  book <- one("the TOC / SHELL workbook `([^`]+)`")
-  adam <- one("the ADaM in `([^`]+)`")
-  max_reads <- suppressWarnings(as.integer(one("At most ([0-9]+) times")))
-  docs_line <- one("the documents the person gave[^\n]*?: ([^\n]+)[.]")
-  docs <- if (is.null(docs_line)) character() else
-    gsub("`", "", regmatches(docs_line, gregexpr("`[^`]+`", docs_line))[[1L]], fixed = TRUE)
-  fn <- utils::getFromNamespace(".ai_agent_files", "tflspec")
-  fn(path, overwrite = TRUE, templates = grepl("<!-- templates: TRUE -->", old, fixed = TRUE),
-     adam = adam, book = book,
-     reads = c(if (!is.null(book)) "workbook", if (!is.null(adam)) "adam"),
-     docs = docs, docs_from = rep("", length(docs)),
-     max_reads = if (is.na(max_reads)) 3L else max_reads)
+  if (!file.exists(file.path(path, "ai", "AGENTS.md"))) return(FALSE)
+  if (!exists("tfl_ai_refresh_agents", asNamespace("tflspec"), inherits = FALSE)) return(FALSE)
+  getExportedValue("tflspec", "tfl_ai_refresh_agents")(path)
   TRUE
 }
 
