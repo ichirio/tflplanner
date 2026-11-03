@@ -177,14 +177,17 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       out[has] <- vapply(lv[has], t, "", USE.NAMES = FALSE)
       out
     }
-    v <- data.frame(ck, d$output_id, d$title, d$population, d$split, tw_status(d$status),
+    # (a warning's or an error's reason under it, from ai/manifest.csv)
+    v <- data.frame(ck, d$output_id, d$title, d$population, d$split,
+                    .ai_status_cells(tw_status(d$status), d$status, d$output_id,
+                                     .ai_manifest_reasons(path())),
                     tw(d$adopted), rtf, d$problem, stringsAsFactors = FALSE)
     names(v) <- c(t("Tick to copy"), "output_id", t("Title (title)"), t("Analysis set (population)"),
                   t("Split (split)"), t("Check"), paste0(t("Adopted"), " (adopted)"), "RTF",
                   t("First problem"))
     v[is.na(v)] <- ""
     # (the boxes and the RTF links: not escaped)
-    DT::datatable(v, rownames = FALSE, escape = which(!names(v) %in% c(t("Tick to copy"), "RTF")),
+    DT::datatable(v, rownames = FALSE, escape = which(!names(v) %in% c(t("Tick to copy"), t("Check"), "RTF")),
                   selection = "none",
                   options = list(dom = "t", paging = FALSE, ordering = FALSE, scrollX = TRUE))
   })
@@ -374,4 +377,35 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   cf <- tryCatch(tflspec::tfl_ai_confirm(p, where = "adopted"), error = function(e) NULL)
   confirm <- if (is.data.frame(cf) && nrow(cf)) intersect(ids, unique(cf$output_id)) else character()
   list(newer = names(m)[m == "newer"], confirm = confirm)
+}
+
+# The reason a warning or an error report carries: ai/manifest.csv's
+# `reason` column (tflspec's collect writes it; a manifest of before has no
+# such column: no reason, NULL).  A named character vector, output_id ->
+# reason, the rows that have one.
+.ai_manifest_reasons <- function(dir) {
+  f <- if (is.null(dir)) NULL else file.path(dir, "ai", "manifest.csv")
+  if (is.null(f) || !file.exists(f)) return(NULL)
+  m <- tryCatch(utils::read.csv(f, stringsAsFactors = FALSE, colClasses = "character",
+                                encoding = "UTF-8", na.strings = character(), check.names = FALSE),
+                error = function(e) NULL)
+  if (is.null(m) || !all(c("output_id", "reason") %in% names(m))) return(NULL)
+  m <- m[nzchar(trimws(m$reason)) & nzchar(trimws(m$output_id)), , drop = FALSE]
+  m <- m[!duplicated(m$output_id), , drop = FALSE]
+  if (!nrow(m)) return(NULL)
+  stats::setNames(trimws(m$reason), m$output_id)
+}
+
+# The Check cell of step 4's list: the status, and under it the reason of a
+# warning or an error (HTML; the texts escaped).  `status`: the cell's words,
+# `raw`: the report's status (ok / warning / error ...), `reason`: the
+# reasons, as .ai_manifest_reasons() gives them, or NULL.
+.ai_status_cells <- function(status, raw, ids, reason) {
+  out <- htmltools::htmlEscape(status)
+  if (is.null(reason)) return(out)
+  why <- unname(reason[match(ids, names(reason))])
+  show <- as.character(raw) %in% c("warning", "error") & !is.na(why)
+  out[show] <- sprintf("%s<div class=\"small text-muted ai-reason\">%s</div>", out[show],
+                       htmltools::htmlEscape(why[show]))
+  out
 }

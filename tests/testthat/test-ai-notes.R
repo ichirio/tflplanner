@@ -25,3 +25,31 @@ test_that("no confirm items: only the assumptions, no empty block", {
   expect_match(h0, "Nothing assumed")
   expect_no_match(h0, "ai-confirm-block")
 })
+
+test_that("a warning or an error shows its reason under the status; an old manifest shows none", {
+  d <- file.path(tempfile("man"), "ai")
+  dir.create(d, recursive = TRUE)
+  study <- dirname(d)
+  on.exit(unlink(study, recursive = TRUE))
+  utils::write.csv(data.frame(request = "r1", toc = "1", output_id = c("a", "b", "c"),
+                              title = "", split = "", listed = "", status = c("ok", "warning", "error"),
+                              reason = c(NA, "no population <x> / no title", "SPEC does not read"),
+                              stringsAsFactors = FALSE),
+                   file.path(d, "manifest.csv"), row.names = FALSE, na = "", fileEncoding = "UTF-8")
+  why <- .ai_manifest_reasons(study)
+  expect_equal(unname(why), c("no population <x> / no title", "SPEC does not read"))
+  cells <- .ai_status_cells(c("OK", "WARNING", "ERROR"), c("ok", "warning", "error"),
+                            c("a", "b", "c"), why)
+  expect_equal(cells[1], "OK")
+  expect_match(cells[2], "WARNING<div class=\"small text-muted ai-reason\">no population &lt;x&gt; / no title</div>",
+               fixed = TRUE)
+  expect_match(cells[3], "SPEC does not read", fixed = TRUE)
+  # an old manifest: no `reason` column
+  utils::write.csv(data.frame(request = "r1", output_id = c("a", "b"), status = c("ok", "warning")),
+                   file.path(d, "manifest.csv"), row.names = FALSE)
+  expect_null(.ai_manifest_reasons(study))
+  expect_equal(.ai_status_cells(c("OK", "WARNING"), c("ok", "warning"), c("a", "b"), NULL),
+               c("OK", "WARNING"))
+  expect_null(.ai_manifest_reasons(NULL))
+  expect_null(.ai_manifest_reasons(tempfile()))
+})
