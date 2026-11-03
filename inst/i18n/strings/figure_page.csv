@@ -25,3 +25,4 @@
 "(the figure: [Run the code] in step %s draws it here)","（図: 手順 %s の［試しに実行］でここに描かれます）"
 "(the figure: its design in step %s draws it here)","（図: 手順 %s のデザインからここに描かれます）"
 "How to make it","作り方"
+"Rework the data (R)","データの加工 (R)"

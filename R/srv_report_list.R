@@ -199,9 +199,8 @@
       # (the analysis data and the ARD: both were the first step's page)
       data = "ard",
       ard = "ard",
-      content = if (identical(input$content_nav, "code")) "code" else
-        switch(report_kind(), table = "tables", listing = "lf",
-               figure = "designer", "outputs"),
+      content = switch(report_kind(), table = "tables", listing = "lf",
+                       figure = "designer", "outputs"),
       page = if (identical(input$page_right, "code")) "code" else "report_spec",
       "outputs")
   })
@@ -209,7 +208,7 @@
   go <- function(where) {
     # (`adata`: the analysis data, step 1; `data` is the Data tab's name)
     step <- switch(where, adata = "data", ard = "ard",
-                   tables = , lf = , designer = , code = "content",
+                   tables = , lf = , designer = "content",
                    report_spec = "page", NULL)
     if (is.null(step)) return(bslib::nav_select("nav", where))
     # (a template report has no ARD step: its step 1 is the content's)
@@ -218,9 +217,6 @@
     }
     bslib::nav_select("nav", "make")
     bslib::nav_select("step", step)
-    if (identical(step, "content")) {
-      bslib::nav_select("content_nav", if (identical(where, "code")) "code" else "content")
-    }
     if (identical(step, "page")) bslib::nav_select("page_right", "spec")
   }
   # The report chosen in the list: where its kind is made, as buttons

@@ -115,7 +115,7 @@
     msg <- switch(lf_type(),
       none = t("Choose a Listing report on the left."),
       table = sprintf(t("This is a Table: it is made in step %s, the table builder's cards."), .step_no("content")),
-      listing = sprintf(t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step %s, Data code), if any, changes the data after the condition."), .step_no("content")),
+      listing = sprintf(t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its rework (step %s, Rework the data), if any, changes the data after the condition."), .step_no("data")),
       figure = t("This is a Figure: it is made in Make the figure."))
     # a listing's: the (i) of its form's heading
     if (identical(lf_type(), "listing")) return(NULL)
@@ -352,7 +352,7 @@
     list(
       data = shiny::div(
         class = "rp-b-card",
-        shiny::h6(with_tip(t("The data the listing reads"), t("The listing's data: a dataset of the catalog and a condition. Its data code (Content step, Data code), if any, changes the data after the condition."))),
+        shiny::h6(with_tip(t("The data the listing reads"), sprintf(t("The listing's data: a dataset of the catalog and a condition. Its rework (step %s, Rework the data), if any, changes the data after the condition."), .step_no("data")))),
         shiny::div(
           class = "d-flex flex-wrap gap-2",
           shiny::selectInput(lf_id("dataset"), t("Dataset"),
@@ -363,7 +363,7 @@
                          placeholder = paste(t("e.g."), "AESEV == \"SEVERE\""))),
       main = shiny::div(
         class = "rp-b-card",
-        shiny::h6(with_tip(t("Listing"), sprintf(t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step %s, Data code), if any, changes the data after the condition."), .step_no("content")))),
+        shiny::h6(with_tip(t("Listing"), sprintf(t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its rework (step %s, Rework the data), if any, changes the data after the condition."), .step_no("data")))),
         shiny::div(
           class = "d-flex flex-wrap gap-2",
           shiny::selectInput(lf_id("type"), t("Type"), type_ch,

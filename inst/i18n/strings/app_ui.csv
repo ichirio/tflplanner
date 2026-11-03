@@ -10,7 +10,6 @@
 "Refresh","更新"
 "Settings","設定"
 "Reports (TFL)","帳票 (TFL)"
-"Data code","データ準備コード"
 "Setup code every report runs first (library(), common data)","全帳票共通の前処理（library()、共通データの読み込みなど）"
 "Add files","ファイルを取り込む"
 "Open folder","フォルダを開く"

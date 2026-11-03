@@ -403,7 +403,9 @@ app_ui <- function(lang = "en") {
           "output.report_kind == 'listing'",
           shiny::conditionalPanel(
             "output.content_is_code != 'yes'",
-            shiny::div(class = "rp-code-only", shiny::uiOutput("lf_data_form"))),
+            shiny::div(class = "rp-code-only", shiny::uiOutput("lf_data_form"),
+                       # (its rework, process_code: its data after the condition)
+                       shiny::uiOutput("rework_data"))),
           shiny::conditionalPanel(
             "output.content_is_code == 'yes'",
             shiny::p(class = "text-muted small",
@@ -503,12 +505,19 @@ app_ui <- function(lang = "en") {
             inline = TRUE),
           shiny::uiOutput("ard_prog_state"),
           code_view("ard_code", lang)),
-        result = shiny::uiOutput("ard_result_pane")))))
+        result = shiny::uiOutput("ard_result_pane")))),
+    # the table's rework (process_code): its data made from the ARD, folded
+    shiny::conditionalPanel(
+      "output.report_kind == 'table'",
+      shiny::uiOutput("rework_ard"),
+      shiny::div(
+        class = "d-flex gap-2 align-items-center my-2",
+        .btn("fetch", t("Update preview"), class = "btn-sm btn-outline-primary"),
+        help_tip(t(.preview_tip))),
+      shiny::uiOutput("ard_summary")))
 
-  step_content <- bslib::navset_underline(
-    id = "content_nav",
-    bslib::nav_panel(
-      t("Content"), value = "content",
+  step_content <- shiny::div(
+    class = "mt-2",
       # (a template report: its content is the template's, no R program)
       shiny::div(class = "rp-code-only", shiny::uiOutput("content_mode_bar")),
       shiny::conditionalPanel("output.content_is_code == 'yes'", code_step_ui("cc", t, lang)),
@@ -589,34 +598,7 @@ app_ui <- function(lang = "en") {
                               shiny::div(class = "rp-tpl-only",
                                          shiny::uiOutput("tpl_card_fig"), shiny::uiOutput("tpl_fig_out"))),
       shiny::conditionalPanel("output.content_is_code != 'yes'",
-                              shiny::div(class = "rp-code-only", .designer_ui(t)))),
-    bslib::nav_panel(
-      t("Data code"), value = "code",
-      shiny::uiOutput("current_label"),
-      shiny::div(
-        class = "d-flex flex-wrap gap-2",
-        shiny::div(style = "flex: 3 1 20rem",
-                   shiny::textInput("description", t("Description"), width = "100%")),
-        shiny::div(style = "flex: 1 1 12rem",
-                   shiny::textInput("section", t("Section (heading)"), width = "100%",
-                                    placeholder = t("blank: from the ID")))),
-      shiny::div(
-        class = "rp-code",
-        shiny::conditionalPanel(
-          "output.report_kind == 'table' || output.report_kind == 'listing'",
-          shiny::textAreaInput(
-            "process_code",
-            with_tip(t("Rework"),
-                     paste(t("Rework: usually blank (the standard one). Write code to change the data before the table is made."),
-                           sprintf(t("A table: make `data` from `ard` (normalize_ard(), then mutate() ...); blank = the company template (normalize). A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step %s or %s.)"), .step_no("ard"), .step_no("content")))),
-            rows = 5, width = "100%", resize = "vertical",
-            placeholder = "data <- normalize_ard(ard)"),
-          shiny::div(
-            class = "d-flex gap-2 align-items-center mb-2",
-            .btn("fetch", t("Update preview"),
-                 class = "btn-sm btn-outline-primary"),
-            help_tip(t(.preview_tip))),
-          shiny::uiOutput("ard_summary")))))
+                              shiny::div(class = "rp-code-only", .designer_ui(t))))
 
   step_page <- shiny::div(
     class = "mt-2",
@@ -647,6 +629,7 @@ app_ui <- function(lang = "en") {
       id = "page_split", class = "rp-split rp-lay-side rp-show-def",
       shiny::div(
         # the page as a form: each value with where it comes from
+        shiny::textInput("description", t("Description"), width = "100%"),
         shiny::uiOutput("page_form"),
         # the sheets themselves, the same rows
         shiny::tags$details(
