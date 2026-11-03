@@ -1189,3 +1189,81 @@ test_that("the drafts' check: a level and what is to confirm a report, the fix t
   writeLines(c("study_id: X", "ai:", "  language: Japanese"), file.path(path, "study.yml"))
   expect_identical(.ai_fix_language(path), "ja")
 })
+
+# -- the review depth (study.yml's ai: review, tflspec#598) ----------------
+
+test_that("review depth: study.yml over defaults.yml over the default; a partial one keeps the rest", {
+  d <- withr_tempdir()
+  dir.create(file.path(d, "spec"))
+  # nothing said: the default
+  expect_identical(.ai_review_read(d), c(figure = "3", table = "2", listing = "1"))
+  expect_identical(.ai_review_read(NULL), c(figure = "3", table = "2", listing = "1"))
+  # defaults.yml (one value is every kind's, a list is per kind)
+  writeLines(c("ai:", "  review:", "    table: 3", "    listing: none"), file.path(d, "spec", "defaults.yml"))
+  expect_identical(.ai_review_read(d), c(figure = "3", table = "3", listing = "none"))
+  writeLines(c("ai:", "  review: 0"), file.path(d, "spec", "defaults.yml"))
+  expect_identical(.ai_review_read(d), c(figure = "0", table = "0", listing = "0"))
+  # study.yml wins, per kind
+  writeLines(c("study_id: X", "ai:", "  review:", "    figure: 1", "    listing: 2"), file.path(d, "study.yml"))
+  expect_identical(.ai_review_read(d), c(figure = "1", table = "0", listing = "2"))
+  # (YAML reads a bare no as FALSE: none)
+  writeLines(c("study_id: X", "ai:", "  review:", "    figure: no"), file.path(d, "study.yml"))
+  expect_identical(.ai_review_read(d)[["figure"]], "none")
+})
+
+test_that("review depth: the selects' choices and first values", {
+  h <- as.character(ai_ui("ai"))
+  for (k in c("figure", "table", "listing")) expect_match(h, paste0("ai-review_", k), fixed = TRUE)
+  expect_match(h, "Review depth", fixed = TRUE)
+  expect_match(h, "3 + output", fixed = TRUE)
+  expect_match(h, "<option value=\"none\">None</option>", fixed = TRUE)
+  ja <- as.character(ai_ui("ai", "ja"))
+  expect_match(ja, "確認の深さ", fixed = TRUE)
+  expect_match(ja, "0 確認のみ", fixed = TRUE)
+  expect_match(ja, ">図</label>", fixed = TRUE)
+  expect_match(h, ">Figures</label>", fixed = TRUE)
+  expect_match(ja, "3 ＋出力", fixed = TRUE)
+})
+
+test_that("review depth: a change is written into study.yml (its other keys kept) and AGENTS.md again", {
+  local_home()
+  path <- ai_study()
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  sy <- file.path(path, "study.yml")
+  y0 <- yaml::read_yaml(sy)
+  writeLines(c(readLines(sy, encoding = "UTF-8"), "ai:", "  language: Japanese"), sy, useBytes = TRUE)
+  ag <- file.path(path, "ai", "AGENTS.md")
+  expect_true(file.exists(ag))
+  expect_match(paste(readLines(ag, encoding = "UTF-8"), collapse = "\n"),
+               "Tables: level **2**", fixed = TRUE)
+  Sys.setFileTime(ag, Sys.time() - 3600)
+  before <- file.mtime(ag)
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(`ai-study_mode` = "open")
+    # (the first values are what is there: nothing written)
+    session$setInputs(`ai-review_figure` = "3", `ai-review_table` = "2", `ai-review_listing` = "1")
+    expect_identical(file.mtime(ag), before)
+    # a change
+    session$setInputs(`ai-review_table` = "3")
+    y <- yaml::read_yaml(sy)
+    expect_identical(y$ai$review, list(figure = 3L, table = 3L, listing = 1L))
+    expect_identical(y$ai$language, "Japanese")
+    expect_identical(y$study_id, y0$study_id)
+    expect_identical(names(y), unique(c(names(y0), "ai")))
+    expect_gt(file.mtime(ag), before)
+    expect_match(paste(readLines(ag, encoding = "UTF-8"), collapse = "\n"),
+                 "Tables: level **3**", fixed = TRUE)
+    # none is the string
+    session$setInputs(`ai-review_listing` = "none")
+    expect_identical(yaml::read_yaml(sy)$ai$review$listing, "none")
+    expect_match(paste(readLines(ag, encoding = "UTF-8"), collapse = "\n"),
+                 "Listings: not built by you", fixed = TRUE)
+    expect_identical(.ai_review_read(path), c(figure = "3", table = "3", listing = "none"))
+    # unsaved changes: nothing written
+    session$userData$rv$meta$title <- "mine"
+    expect_true(isTRUE(session$userData$dirty()))
+    session$setInputs(`ai-review_figure` = "0")
+    expect_identical(yaml::read_yaml(sy)$ai$review$figure, 3L)
+  })
+})

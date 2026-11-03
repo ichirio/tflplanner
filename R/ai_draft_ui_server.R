@@ -314,6 +314,48 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         }
       })
     })
+    # -- the review depth (study.yml's ai: review) -----------------------------
+    # The selects show what the open study says (its study.yml over its
+    # defaults.yml over the default); a change is written into study.yml at
+    # once and the agent's AGENTS.md made again.  For a study not made yet,
+    # the choice waits for Write.
+    review_kinds <- .ai_review_kinds
+    review_ids <- paste0("review_", review_kinds)
+    review_ver <- shiny::reactiveVal(0L)
+    review_in <- function() {
+      v <- vapply(review_ids, function(i) as.character(input[[i]] %||% NA_character_)[1L], "")
+      if (anyNA(v)) NULL else stats::setNames(v, review_kinds)
+    }
+    shiny::observe({
+      review_ver()
+      p <- path()
+      if (identical(input$study_mode, "new") || is.null(p)) return()
+      lv <- .ai_review_read(p)
+      for (k in review_kinds) shiny::updateSelectInput(session, paste0("review_", k), selected = lv[[k]])
+    })
+    shiny::observeEvent(list(input$review_figure, input$review_table, input$review_listing),
+                        ignoreInit = TRUE, {
+      now <- review_in()
+      p <- shiny::isolate(path())
+      if (is.null(now) || is.null(p) || identical(input$study_mode, "new")) return()
+      if (identical(unname(.ai_review_read(p)), unname(now))) return()
+      if (isTRUE(dirty())) {
+        notify(t("Save first: the study has unsaved changes."), "warning")
+        review_ver(review_ver() + 1L)
+        return()
+      }
+      done <- tryCatch(.ai_review_set(p, now), error = function(e) {
+        message("tflplanner: ", conditionMessage(e))
+        notify(.error_view(conditionMessage(e), t), "error")
+        FALSE
+      })
+      if (isTRUE(done)) {
+        reload_now()
+        ver(ver() + 1L)
+        notify(t("Review depth written into study.yml (ai: review), and AGENTS.md made again."))
+      }
+      review_ver(review_ver() + 1L)
+    })
     output$open_name <- shiny::renderUI({
       if (!identical(input$study_mode, "open")) return(NULL)
       if (!has_study()) {
@@ -662,6 +704,14 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       }
       if (!is.null(out$study)) {
         prep_for(out$study$path)
+        # (the review depth chosen before the study was made: written now)
+        rv_now <- review_in()
+        if (!is.null(rv_now)) {
+          tryCatch(.ai_review_set(out$study$path, rv_now), error = function(e) {
+            message("tflplanner: ", conditionMessage(e))
+            notify(.error_view(conditionMessage(e), t), "error")
+          })
+        }
         adopt(out$study)
       } else {
         # (the study's TOC may have new reports, spec/toc.yml: taken in)
