@@ -44,7 +44,7 @@
 
 # A variable's levels in order, data first, and where the order comes
 # from: this table's own (the variables sheet's levels: "table"), the
-# report's code list ("codelist", ARD step 1-1 -- tflspec writes
+# report's code list ("codelist", the Analysis data step -- tflspec writes
 # plan_levels() from it, so the screen and the code agree), the ARD's
 # factor ("ard": `ard_factor`, its levels), else the ARD's values as
 # first seen ("seen"); a code list's order is followed by the ARD's values

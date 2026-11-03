@@ -25,8 +25,8 @@
       title = sprintf(t("Delete %s"), current()),
       t("The report's rows are deleted from every sheet (on save; its program and outputs stay on disk)."),
       if (length(readers)) shiny::p(class = "text-danger mt-2 mb-0",
-        sprintf(t("%s print numbers from its ARD: they will have none until their step 1 names another table."),
-                paste(readers, collapse = ", "))),
+        sprintf(t("%s print numbers from its ARD: they will have none until their step %s names another table."),
+                paste(readers, collapse = ", "), .step_no("ard"))),
       footer = shiny::tagList(
         shiny::modalButton(t("Cancel")),
         .btn("remove_ok", t("Delete"), class = "btn-danger"))))

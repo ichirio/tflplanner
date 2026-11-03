@@ -114,8 +114,8 @@
   output$lf_note <- shiny::renderUI({
     msg <- switch(lf_type(),
       none = t("Choose a Listing report on the left."),
-      table = t("This is a Table: it is made in step 2, the table builder's cards."),
-      listing = t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 2, Data code), if any, changes the data after the condition."),
+      table = sprintf(t("This is a Table: it is made in step %s, the table builder's cards."), .step_no("content")),
+      listing = sprintf(t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step %s, Data code), if any, changes the data after the condition."), .step_no("content")),
       figure = t("This is a Figure: it is made in Make the figure."))
     # a listing's: the (i) of its form's heading
     if (identical(lf_type(), "listing")) return(NULL)
@@ -246,8 +246,8 @@
       table = shiny::div(class = "small text-success",
                          sprintf(t("It reads %s's ARD."), st$id)),
       own = shiny::div(class = if (st$built) "small text-success" else "small text-warning",
-                       sprintf(if (st$built) t("Its ARD definition has %d analyses (built).") else
-                         t("Its ARD definition has %d analyses, not built yet: build them in step 1 (ARD)."), st$n)),
+                       if (st$built) sprintf(t("Its ARD definition has %d analyses (built)."), st$n) else
+                         sprintf(t("Its ARD definition has %d analyses, not built yet: build them in step %s (ARD)."), st$n, .step_no("ard"))),
       none = shiny::div(class = "small text-muted",
                         t("No ARD: `ard` is not in reach (add analyses, or take an ARD in, to have it).")))
     shiny::tagList(line, if (!identical(st$kind, "none")) shiny::div(
@@ -363,7 +363,7 @@
                          placeholder = paste(t("e.g."), "AESEV == \"SEVERE\""))),
       main = shiny::div(
         class = "rp-b-card",
-        shiny::h6(with_tip(t("Listing"), t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 2, Data code), if any, changes the data after the condition."))),
+        shiny::h6(with_tip(t("Listing"), sprintf(t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step %s, Data code), if any, changes the data after the condition."), .step_no("content")))),
         shiny::div(
           class = "d-flex flex-wrap gap-2",
           shiny::selectInput(lf_id("type"), t("Type"), type_ch,

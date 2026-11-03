@@ -183,7 +183,7 @@
 "Cell formats","セルの書式"
 "Column widths (twips)","列の幅（twip）"
 "Rows judged together","まとめて判定する行のキー"
-"Not the ARD analysis's (%s): the table may fail or come out otherwise. The analysis is changed in step 1.","ARD の解析（%s）と違います。表が作れないか、違う表になることがあります。解析は手順 1 で変えます。"
+"Not the ARD analysis's (%s): the table may fail or come out otherwise. The analysis is changed in step %s.","ARD の解析（%s）と違います。表が作れないか、違う表になることがあります。解析は手順 %s で変えます。"
 "The nested row keys, outermost first: each level's own summary rows become its rows (a SOC's row over its PTs). Blank: step 1's hierarchical analysis's, which is usually right; another may not match the ARD. e.g. AEBODSYS, AEDECOD","入れ子の行キー（外側から）。各段の自分の要約行がその段の行になります（PT の上の SOC の行）。空欄 = 手順 1 の階層の解析のもの（ふつうはこれで正しい）。別の値は ARD と合わないことがあります。例: AEBODSYS, AEDECOD"
 "The text of the row a hierarchical analysis makes over all its terms (the subjects with any event), put on the first hierarchy column. Blank: that row is left as it is. e.g. Any TEAE","階層の解析が全体について作る行（何かのイベントがある被験者）の文字。最初の階層の列に入ります。空欄 = その行はそのまま。例: Any TEAE"
 "How the statistics are laid out: ""cells"" one template a cell (n (%) in one cell), ""rows"" each statistic a row of its own. Blank: cells. e.g. ""rows""","統計量の並べ方。""cells"" は 1 セルに 1 つのテンプレート（n (%) を 1 セルに）、""rows"" は統計量ごとに 1 行。空欄 = cells。例: ""rows"""

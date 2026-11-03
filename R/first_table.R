@@ -177,7 +177,7 @@ first_table <- function(x, output_id, path, data, population, group,
   }
   if (!length(variables)) stop("Choose the variables of the rows.", call. = FALSE)
   if (nrow(ard_rows(x, "analyses", id))) {
-    stop("'", id, "' has analyses already: edit them in step 1 (ARD).",
+    stop("'", id, "' has analyses already: edit them in step ", .step_no("ard"), " (ARD).",
          call. = FALSE)
   }
   kind <- vapply(variables, function(v) .column_kind(data[[v]]), "")
@@ -402,7 +402,7 @@ first_hierarchy_table <- function(x, output_id, path, data, subjects_path, subje
     stop("The subject-level data have no ", paste(miss, collapse = ", "), ".", call. = FALSE)
   }
   if (nrow(ard_rows(x, "analyses", id))) {
-    stop("'", id, "' has analyses already: edit them in step 1 (ARD).", call. = FALSE)
+    stop("'", id, "' has analyses already: edit them in step ", .step_no("ard"), " (ARD).", call. = FALSE)
   }
   if (.is_blank(where)) where <- NA_character_
   if (.is_blank(grade)) grade <- NA_character_
@@ -723,7 +723,7 @@ first_listing <- function(x, output_id, path, data, columns, group = NULL,
     stop("The data have no ", paste(miss, collapse = ", "), ".", call. = FALSE)
   }
   if (nrow(lf_rows(x, "listing_cols", id))) {
-    stop("'", id, "' has columns already: edit them in step 2 (Content).",
+    stop("'", id, "' has columns already: edit them in step ", .step_no("content"), " (Content).",
          call. = FALSE)
   }
   cd <- .catalog_dataset(x, path)

@@ -587,7 +587,7 @@ test_that("the values' order, data first: this table's, the code list's, the ARD
                    "ARD \u306e\u9806\uff08\u56e0\u5b50\u306e\u6c34\u6e96\u9806\uff09\u3067\u3059\u3002")
   w <- .level_order_text(list(source = "codelist", differs = TRUE), "ja")
   expect_true(w$warn)
-  expect_match(w$text, tr("The code list's order (ARD step 1-1).", "ja"), fixed = TRUE)
+  expect_match(w$text, tr("The code list's order (the Analysis data step).", "ja"), fixed = TRUE)
   expect_match(w$text, tr("The ARD's order differs from the code list's; the table uses the code list's.", "ja"),
                fixed = TRUE)
   expect_true(.level_order_text(list(source = "seen"))$warn)

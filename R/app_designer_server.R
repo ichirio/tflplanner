@@ -332,11 +332,11 @@
       p2 <- guarded(set_fig_own_analyses(rv$p, id, an, population_id = pop))
       if (!is.null(p2)) {
         rv$p <- p2
-        notify(sprintf(t("Added analyses %s to step 1 (remove them there if not wanted): update the ARD, then Preview."),
-                       paste(attr(p2, "written"), collapse = ", ")))
+        notify(sprintf(t("Added analyses %s to step %s (remove them there if not wanted): update the ARD, then Preview."),
+                       paste(attr(p2, "written"), collapse = ", "), .step_no("ard")))
         if (is.na(pop %||% NA)) notify(sprintf(
-          t("No analysis set of the study is the flag %s: choose the analysis data's set in step 1."),
-          an$analysis_data$population_id[1L]), "warning")
+          t("No analysis set of the study is the flag %s: choose the analysis data's set in step %s."),
+          an$analysis_data$population_id[1L], .step_no("data")), "warning")
       }
     }
   }
@@ -541,7 +541,7 @@
   shiny::observeEvent(input$pd_drop, {
     shiny::showModal(shiny::modalDialog(
       title = t("Remove the design?"),
-      t("The figure's plot is then its data code again (step 2, Data code), written by hand."),
+      sprintf(t("The figure's plot is then its data code again (step %s, Data code), written by hand."), .step_no("content")),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn("pd_drop_ok", t("Remove"), class = "btn-danger"))))
   })

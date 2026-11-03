@@ -388,7 +388,7 @@ app_ui <- function(lang = "en") {
     shiny::conditionalPanel(
       "output.data_is_code == 'yes'",
       shiny::p(class = "alert alert-info py-1 small",
-               t("This report's step 1 is its own R program: it is on the ARD tab."))),
+               sprintf(t("This report's step %s is its own R program: it is on the ARD tab."), .step_no("ard")))),
     shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_card_data")),
     shiny::div(
       class = "rp-code-only",
@@ -608,7 +608,7 @@ app_ui <- function(lang = "en") {
             "process_code",
             with_tip(t("Rework"),
                      paste(t("Rework: usually blank (the standard one). Write code to change the data before the table is made."),
-                           t("A table: make `data` from `ard` (normalize_ard(), then mutate() ...); blank = the company template (normalize). A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step 1 or 2.)"))),
+                           sprintf(t("A table: make `data` from `ard` (normalize_ard(), then mutate() ...); blank = the company template (normalize). A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step %s or %s.)"), .step_no("ard"), .step_no("content")))),
             rows = 5, width = "100%", resize = "vertical",
             placeholder = "data <- normalize_ard(ard)"),
           shiny::div(

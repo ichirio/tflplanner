@@ -57,7 +57,7 @@
     sch <- first(sch, strata_now)
     shiny::tagList(
       if (!in_stack) shiny::selectizeInput(
-        st_id("by"), with_tip(argl("Grouping variables", "by"), t("The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step 2's. A combination with no records is shown, with 0.")),
+        st_id("by"), with_tip(argl("Grouping variables", "by"), sprintf(t("The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step %s's. A combination with no records is shown, with 0."), .step_no("content"))),
         bch, by_now, multiple = TRUE,
         width = "100%", options = list(plugins = list("remove_button", "drag_drop"))),
       # the same analysis once more without its groups: cards' overall rows,
@@ -66,7 +66,7 @@
       if (!in_stack) shiny::checkboxInput(
         st_id("overall"),
         with_tip(argl("Also over all subjects", "overall"),
-                 t("The analysis once more without its grouping variables, over all its subjects: the Total column of a table (step 3's switch sets it for every analysis by the column variable). Needs grouping variables.")),
+                 sprintf(t("The analysis once more without its grouping variables, over all its subjects: the Total column of a table (step %s's switch sets it for every analysis by the column variable). Needs grouping variables."), .step_no("content"))),
         .overall_on(r$overall), width = "100%"),
       shiny::selectizeInput(
         st_id("vars"), with_tip(argl("Analysis variables", "variables"),

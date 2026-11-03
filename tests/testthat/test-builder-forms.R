@@ -506,7 +506,7 @@ test_that("the second bundle's words have their Japanese", {
          "As R: Edit as R changes it.", "Choose or type a column's name", "A new group",
          "No categorical variable to nest.", "Every row key (TRUE)", "Rows under a level",
          "Group column",
-         "The ARD has no comparison records (a test, a difference): add one in step 1, then read the ARD again.")
+         "The ARD has no comparison records (a test, a difference): add one in step %s, then read the ARD again.")
   ja <- vapply(w, tr, "", lang = "ja")
   expect_true(all(ja != w), info = paste(w[ja == w], collapse = " / "))
 })
