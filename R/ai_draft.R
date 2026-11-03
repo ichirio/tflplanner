@@ -811,23 +811,6 @@
   }, "")
 }
 
-# A new study's spec/defaults.yml with the company's levels in it (ai:
-# review, an integer a kind or "none"), the study's own from then on.  The
-# file is left as it is when it says ai already or is not there.  TRUE when
-# written.
-.ai_review_to_defaults <- function(path) {
-  f <- file.path(path, study_layout()[["spec"]], "defaults.yml")
-  if (!file.exists(f)) return(FALSE)
-  lines <- readLines(f, encoding = "UTF-8", warn = FALSE)
-  if (any(grepl("^ai:", lines))) return(FALSE)
-  lv <- .ai_review_company()
-  one <- vapply(.ai_review_kinds, function(k) {
-    paste0("    ", k, ": ", lv[[k]])
-  }, "")
-  writeLines(c(lines, "ai:", "  review:", unname(one)), f, useBytes = TRUE)
-  TRUE
-}
-
 # A study's levels as tflspec reads them: study.yml, over spec/defaults.yml,
 # over the company standard, over the default
 .ai_review_read <- function(path) {

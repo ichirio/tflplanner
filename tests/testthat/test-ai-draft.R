@@ -1342,9 +1342,9 @@ test_that("review depth: the company standard is the start; the files override i
   expect_identical(.ai_review_read(d), c(figure = "none", table = "3", listing = "1"))
   writeLines(c("study_id: X", "ai:", "  review:", "    figure: 2"), file.path(d, "study.yml"))
   expect_identical(.ai_review_read(d), c(figure = "2", table = "3", listing = "1"))
-  # a new study's defaults.yml carries the company's levels
+  # a new study's study.yml carries the company's levels
   st <- create_study("NEW-AI")
-  y <- yaml::read_yaml(file.path(st$path, "spec", "defaults.yml"))
+  y <- yaml::read_yaml(file.path(st$path, "study.yml"))
   expect_identical(y$ai$review, list(figure = "none", table = 0L, listing = 1L))
   expect_identical(.ai_review_read(st$path), c(figure = "none", table = "0", listing = "1"))
   # the state knows the file as it is: the study opens and saves unchanged
@@ -1352,12 +1352,17 @@ test_that("review depth: the company standard is the start; the files override i
   expect_false(identical(st2$planner$spec$status, "invalid"))
   expect_no_error(save_study(st2))
   expect_identical(.ai_review_read(st$path), c(figure = "none", table = "0", listing = "1"))
+  # a save that changes defaults.yml (the font) keeps study.yml's ai: review
+  st2$planner <- set_study_page_value(st2$planner, "font", "Arial")
+  save_study(st2)
+  expect_identical(yaml::read_yaml(file.path(st$path, "study.yml"))$ai$review,
+                   list(figure = "none", table = 0L, listing = 1L))
 })
 
 test_that("review depth: the built-in standards give the old defaults, a new study carries them", {
   local_home()
   expect_identical(.ai_review_company(), c(figure = "3", table = "2", listing = "1"))
   st <- create_study("NEW-AI0")
-  y <- yaml::read_yaml(file.path(st$path, "spec", "defaults.yml"))
+  y <- yaml::read_yaml(file.path(st$path, "study.yml"))
   expect_identical(y$ai$review, list(figure = 3L, table = 2L, listing = 1L))
 })
