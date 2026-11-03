@@ -65,6 +65,13 @@ jobs:
                           error = function(e) character())
           out <- c(out, "Times:", "```",
                    grep("examples|tests|Running", log, value = TRUE), "```")
+          # the slowest examples (seconds elapsed)
+          tf <- Sys.glob(file.path(res$checkdir, "*-Ex.timings"))
+          if (length(tf)) {
+            tm <- utils::read.table(tf[1], header = TRUE)
+            tm <- utils::head(tm[order(-tm$elapsed), c("name", "elapsed")], 10)
+            out <- c(out, "Slowest examples:", "```", utils::capture.output(print(tm, row.names = FALSE)), "```")
+          }
           cat(out, file = Sys.getenv("GITHUB_STEP_SUMMARY"), sep = "\n", append = TRUE)
           if (length(res$errors) || length(res$warnings)) quit(status = 1)
         shell: Rscript {0}
@@ -110,6 +117,7 @@ jobs:
             check/*.Rcheck/00check.log
             check/*.Rcheck/00install.out
             check/*.Rcheck/tests/testthat.Rout.fail
+            check/*.Rcheck/*-Ex.timings
 
       - name: Any part with findings fails the run
         if: steps.check.outcome == 'failure' || steps.urls.outcome == 'failure' || steps.spelling.outcome == 'failure'
