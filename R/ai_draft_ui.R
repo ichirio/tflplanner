@@ -84,6 +84,8 @@ ai_ui <- function(id, lang = "en") {
               choiceNames = list(t("The open study"), paste0(t("New study"), " (tfl_ai_study_init)")),
               choiceValues = c("open", "new"), selected = "open"),
             shiny::uiOutput(ns("open_name")),
+            # (step 1 filled from the study's ai/step1.yml; its sheet roles that fit no sheet)
+            shiny::uiOutput(ns("step1_note")),
             shiny::conditionalPanel(
               "input.study_mode == 'new'", ns = ns,
               shiny::div(
@@ -156,6 +158,7 @@ ai_ui <- function(id, lang = "en") {
             .ai_path_input(ns("adam_spec"),
                            paste0(t("ADaM spec (P21 Spec workbook or define.xml)"), " (adam_spec / define)"),
                            "C:/.../define.xml", ns("adam_spec_browse"), t("Browse...")),
+            shiny::uiOutput(ns("adam_spec_check")),
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-end",
               shiny::selectInput(ns("toc_sheet"), paste0(t("TOC sheet"), " (toc_sheet)"),

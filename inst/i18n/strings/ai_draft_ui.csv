@@ -142,3 +142,7 @@
 "In a batch, read every default the agent took (ai/defaults.md), not only the questions.","まとめて処理したときは、質問だけでなく、エージェントが採った既定値をすべて（ai/defaults.md）確認してください。"
 "For a long run: raise VS Code's chat.agent.maxRequests (25 by default) and allow Rscript without asking (chat.tools.terminal.autoApprove). With VS Code's auto-summarize on, a restart is rarely needed; otherwise expect about 5 clean stops (/compact or a new chat, then c).","長く動かすとき：VS Code の chat.agent.maxRequests を上げ（既定は 25）、Rscript を確認なしで許可してください（chat.tools.terminal.autoApprove）。VS Code の自動要約が有効なら、やり直しはほぼ要りません。無効なら、きれいに止まることが 5 回ほどあります（/compact か新しいチャットの後、c）。"
 "Times are estimates from a 24-report test (about 1.4 min a request, at the default review depth). Written into study.yml's ai: run.","時間は帳票 24 での試験からの目安です（既定のレビューの深さで、依頼 1 件約 1.4 分）。study.yml の ai: run に書きます。"
+"not found","見つかりません"
+"Step 1 was filled from the study's ai/step1.yml.","手順 1 を、試験の ai/step1.yml から入れました。"
+"Sheet roles kept for sheets that are not in the workbooks now (kept until the roles are applied again): %s","いまのワークブックにないシートの役割が残っています（役割をもう一度適用するまで残ります）: %s"
+"Step 1's settings could not be kept in the study: %s","手順 1 の設定を試験に残せませんでした: %s"
