@@ -193,3 +193,45 @@ test_that("a template report converted to code: its items on the usual cards, it
   # (not a template report: said)
   expect_error(.tpl_to_code(p, "T-TPL"), "not a template report")
 })
+
+test_that("the step an argument is drawn in: the table, the name's default, else ARD (#514)", {
+  tab <- .tpl_section_table()
+  expect_identical(names(tab), c("template", "argument", "section"))
+  expect_true(all(tab$section %in% .tpl_sections))
+  expect_false(anyDuplicated(tab[c("template", "argument")]) > 0L)
+  # a table hit wins over the name's default (param_order filters the data,
+  # and is drawn with the content: the user's decision)
+  expect_identical(.tpl_arg_section(tab$template[1L], tab$argument[1L]), tab$section[1L])
+  i <- which(tab$argument == "param_order")[1L]
+  expect_identical(.tpl_arg_section(tab$template[i], "param_order"), "content")
+  # not in the table (a company template, a variant): by the name
+  for (a in c("population", "subset", "where", "data", "param", "paramcd")) {
+    expect_identical(.tpl_arg_section("company_tpl", a), "data")
+  }
+  for (a in c("labels", "heading", "order", "sort", "formats", "total_label", "visit_order")) {
+    expect_identical(.tpl_arg_section("company_tpl", a), "content")
+  }
+  for (a in c("title", "param_page", "param_heading")) {
+    expect_identical(.tpl_arg_section("company_tpl", a), "page")
+  }
+  # anything else: the ARD
+  expect_identical(.tpl_arg_section("company_tpl", "statistics"), "ard")
+  expect_identical(.tpl_arg_section("company_tpl", "a_new_argument"), "ard")
+})
+
+test_that("a code report's steps and a template report's: the arguments drawn once (#514)", {
+  ui <- as.character(app_ui())
+  at <- function(id) regexpr(sprintf('id="%s"', id), ui, fixed = TRUE)[[1L]]
+  # the analysis data before the ARD; the template's arguments in their steps
+  step_at <- function(v) regexpr(sprintf('data-value="%s"', v), ui, fixed = TRUE)[[1L]]
+  expect_true(step_at("data") < step_at("ard") && step_at("ard") < step_at("content") &&
+                step_at("content") < step_at("page"))
+  for (id in c("ard_adata", "ard_report_pop", "adata_detail", "tpl_card_data", "tpl_card_page",
+               "ard_outline")) {
+    expect_equal(lengths(gregexpr(sprintf('id="%s"', id), ui, fixed = TRUE)), 1L, info = id)
+  }
+  # the analysis data is the first step's, the analyses the ARD step's
+  expect_true(at("ard_adata") < at("ard_outline"))
+  expect_true(at("tpl_card_data") < at("ard_outline"))
+  expect_true(at("tpl_card_page") > at("ard_outline"))
+})

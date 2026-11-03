@@ -46,3 +46,5 @@
 "an R condition on the records, e.g. AVAL > 0","レコードに対する R の条件（例: AVAL > 0）"
 "Template (converted to code when needed)","テンプレート（必要ならコードに変換）"
 "Code (from empty)","コード（空から）"
+"Analysis (ARD)","解析（ARD）"
+"This template has no arguments in this step.","このステップに、このテンプレートの引数はありません。"

@@ -374,11 +374,11 @@ test_that("the top tabs are the flow, and a report is made in its steps", {
     unname(v[nzchar(v)])
   }
   expect_identical(vals("nav"), c("study", "data", "ai", "outputs", "make", "review", "results"))
-  expect_identical(vals("step"), c("ard", "content", "page"))
+  expect_identical(vals("step"), c("data", "ard", "content", "page"))
   expect_identical(vals("content_nav"), c("content", "code"))
   expect_identical(vals("page_right"), c("spec", "code", "result"))
   # the steps' names are in one place
-  expect_identical(names(.step_labels), c("ard", "content", "page"))
+  expect_identical(names(.step_labels), c("data", "ard", "content", "page"))
   html <- as.character(app_ui())
   # each kind's content shows for its kind only
   for (k in c("table", "listing", "figure")) {

@@ -249,6 +249,19 @@ $(document).on('shiny:connected', function() {
       $(this).toggleClass('rp-idle', x.indexOf($(this).attr('data-value')) >= 0);
     });
   });
+  // a step the chosen report's kind has none of (a listing's ARD): shut,
+  // with its reason as the tab's title; open on the first step when it was
+  // the one shown
+  Shiny.addCustomMessageHandler('rp-step-disable', function(x) {
+    var a = $('#step a[data-value=' + x.step + ']');
+    a.toggleClass('disabled', !!x.disabled);
+    if (x.disabled) a.attr({'aria-disabled': 'true', title: x.title}); else a.removeAttr('aria-disabled title');
+    if (x.disabled && a.hasClass('active')) {
+      var first = $('#step a[data-value]').first();
+      first.tab('show');
+      Shiny.setInputValue('step', first.attr('data-value'));
+    }
+  });
   // the ARD definition of the chosen report: hidden for a figure that has
   // none of its own (it reads none, or a table's)
   // the steps' names, the kind of report's own (a figure's 1 Data, 2 Figure)

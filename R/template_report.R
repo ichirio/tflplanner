@@ -292,6 +292,38 @@
   req[!vapply(req, given, NA)]
 }
 
+# The editor step a template's argument is drawn in (#514): "data" (the
+# analysis data: which records), "ard" (what is computed), "content" (how it
+# is shown) or "page" (the page's titles).  A tflplanner-side lookup, not a
+# part of the template: the table inst/extdata/template_arg_sections.csv
+# (the shipped templates' arguments), else the argument's name (the
+# company's templates, variants, a template not in the table), else "ard".
+# Where an argument is drawn only; it is saved as it was, in the report's
+# `template: {name, args}`.
+.tpl_sections <- c("data", "ard", "content", "page")
+.tpl_section_table <- local({
+  tab <- NULL
+  function() {
+    if (is.null(tab)) {
+      f <- system.file("extdata", "template_arg_sections.csv", package = "tflplanner")
+      tab <<- if (nzchar(f)) {
+        utils::read.csv(f, stringsAsFactors = FALSE, na.strings = character())
+      } else data.frame(template = character(), argument = character(), section = character())
+    }
+    tab
+  }
+})
+.tpl_arg_section <- function(template, argument) {
+  tab <- .tpl_section_table()
+  i <- which(tab$template == template & tab$argument == argument)
+  if (length(i)) return(tab$section[i[1L]])
+  if (argument %in% c("population", "subset", "where", "data", "param", "paramcd")) return("data")
+  if (argument %in% c("title", "param_page", "param_heading")) return("page")
+  if (argument %in% c("labels", "heading", "order", "sort", "formats") ||
+        grepl("_(label|order)$", argument)) return("content")
+  "ard"
+}
+
 # A template's parameters the card shows: not those it takes from the
 # study standard (`hidden`; a KM type's data stage, its look)
 .tpl_shown <- function(prm) Filter(function(x) !isTRUE(x$hidden), prm)
@@ -403,16 +435,16 @@
 }
 
 # ---- the page: a template report's steps -----------------------------------------
-# A template report is made in two steps -- "1 Template (ARD and
-# content)" (the content step, the ARD step hidden) and "2 Page and
-# output" -- a code SPEC report in three; never by its kind.  The server
+# A template report is made in three steps -- "1 Analysis data", "2 Template"
+# (the content step, the ARD step hidden: its ARD and content arguments) and
+# "3 Page and output" -- a code SPEC report in four; never by its kind.  The server
 # says which at once when the report changes (rp-tpl-mode, a custom
 # message: sent before the flush that draws the report), and the page
 # shows "Loading ..." over the steps until that flush is done
 # (rp-report-ready): the report before it, or the code SPEC's builder, is
 # never seen in its place.  `.rp-tpl-only` / `.rp-code-only` are shown by
 # the mode.
-.tpl_step_labels <- c(content = "1 Template (data and content)", page = "2 Page and output")
+.tpl_step_labels <- c(data = "1 Analysis data", content = "2 Template", page = "3 Page and output")
 
 .tpl_css <- "
 body:not(.rp-tpl) .rp-tpl-only, body.rp-tpl .rp-code-only { display: none !important; }

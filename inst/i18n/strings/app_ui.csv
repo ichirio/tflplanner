@@ -80,3 +80,5 @@
 "Puts the whole list in the order of the numbers in the ids (T-14-1-2 before T-14-1-10)","リスト全体を、ID の数字の順に並べます（T-14-1-2 が T-14-1-10 より前）"
 "AI drafts","AI 連携"
 "A row's file may also be outside the study folder, by its full path (C:/adam/adsl.rds).","行のファイルは、試験フォルダの外にフルパスで置くこともできます（C:/adam/adsl.rds）。"
+"This report's step 1 is its own R program: it is on the ARD tab.","この帳票の段 1 は自前の R プログラムです。ARD タブにあります。"
+"A listing reads its dataset and its condition in the Content step.","Listing は、データセットと抽出条件をコンテンツのステップで指定します。"

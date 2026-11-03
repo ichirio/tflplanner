@@ -1200,27 +1200,13 @@
   shiny::observeEvent(an_pick(), {
     if (!is.null(an_pick())) adata_close()
   }, ignoreNULL = FALSE, ignoreInit = TRUE)
+  # (an analysis data's own SPEC and Result are the first step's: adata_right)
   output$ard_spec_pane <- shiny::renderUI({
-    if (identical(step2_focus(), "adata")) {
-      return(shiny::tagList(
-        shiny::p(class = "small text-muted mb-1",
-                 t("The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved.")),
-        rhandsontable::rHandsontableOutput("hot_adata_report")))
-    }
     shiny::tagList(
       shiny::checkboxInput("ard_all", t("Every report's analyses (with output_id)"), FALSE),
       rhandsontable::rHandsontableOutput("hot_ard_analyses"))
   })
   output$ard_result_pane <- shiny::renderUI({
-    if (identical(step2_focus(), "adata")) {
-      return(shiny::tagList(
-        shiny::div(
-          class = "d-flex flex-wrap gap-2 align-items-center",
-          .btn("adata_preview", t("Preview"), class = "btn-sm btn-primary"),
-          shiny::span(class = "small text-muted",
-                      t("Makes the analysis data of the form (as it is now, not saved yet) from the study's data: its rows and subjects, the first rows."))),
-        shiny::uiOutput("adata_preview_out")))
-    }
     shiny::tagList(
     shiny::div(
       class = "d-flex flex-wrap gap-2 align-items-center",
@@ -1348,6 +1334,14 @@
   }
   # (steps 2 and 3 have no mark yet: drawn empty, not left waiting)
   output$step_mark_content <- shiny::renderUI(NULL)
+  # a figure's data steps (the first step's)
+  output$step_mark_data <- shiny::renderUI({
+    id <- current()
+    if (is.null(id) || !has_study() || !identical(report_kind(), "figure")) return(NULL)
+    n <- length(fig_design(rv$p, id)$data)
+    if (n) step_mark("\u25cf", sprintf(t("Data steps: %d"), n), "text-success") else
+      step_mark("\u25cb", t("No data step yet: start the figure in step 2"), "text-muted")
+  })
   output$step_mark_page <- shiny::renderUI(NULL)
   output$step_mark_codelist <- shiny::renderUI({
     id <- current()
@@ -1360,9 +1354,9 @@
     id <- current()
     if (is.null(id) || !has_study()) return(NULL)
     if (identical(report_kind(), "figure")) {
-      n <- length(fig_design(rv$p, id)$data)
-      return(if (n) step_mark("\u25cf", sprintf(t("Data steps: %d"), n), "text-success") else
-        step_mark("\u25cb", t("No data step yet: start the figure in step 2"), "text-muted"))
+      # (a figure's ARD is optional; the data steps' mark is the first step's)
+      src <- .fig_ard_source(rv$p, id)$kind
+      return(if (src %in% c("own", "none")) step_mark("\u25cb", t("Optional"), "text-muted"))
     }
     if ("ard" %in% (.type_idle_tabs[[report_kind()]] %||% character())) {
       return(step_mark("\u2013", t("Not used"), "text-muted"))

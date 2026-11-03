@@ -1,16 +1,15 @@
-# A figure's steps (#293, the user's figure feedback): step 1 "1 Data", its
-# data steps (list and form) and the numbers from an ARD below them; step 2
-# "2 Figure", the settings and the layers, laid out Design | Edit | Preview.
+# A figure's steps (#293, #514): "1 Analysis data", its data steps (list and
+# form); "2 ARD", the numbers from an ARD (optional); "3 Content", the
+# settings and the layers, laid out Design | Edit | Preview.
 
 # (slow: its tests write study folders or start the app -- run on CI
 # and locally with NOT_CRAN=true, not in CRAN's check)
 skip_on_cran()
 
-test_that("a figure's step names are its own; a table's stay", {
-  expect_identical(.step_labels_of$figure[["ard"]], "1 Data")
-  expect_identical(.step_labels_of$figure[["content"]], "2 Figure")
-  expect_null(.step_labels_of$table)
+test_that("every kind has the same steps; only a listing's ARD is idle", {
+  expect_identical(unname(.step_labels[c("data", "ard")]), c("1 Analysis data", "2 ARD"))
   expect_false("ard" %in% .type_idle_tabs$figure)
+  expect_true("ard" %in% .type_idle_tabs$listing)
 })
 
 test_that("the data steps are step 1's, the settings and layers step 2's", {
@@ -21,7 +20,7 @@ test_that("the data steps are step 1's, the settings and layers step 2's", {
   create_study("S1", planner = p)
   shiny::testServer(server_for("S1"), {
     rv <- session$userData$rv
-    session$setInputs(target = "F1", nav = "make", step = "ard")
+    session$setInputs(target = "F1", nav = "make", step = "data")
     h1 <- output$pd_stack_data$html
     h2 <- output$pd_stack$html
     # step 1: the data steps and the code lists, not the settings
@@ -54,7 +53,7 @@ test_that("a figure without a design: step 1 says where to start it", {
   p <- add_output(new_planner(), "F1", type = "figure")
   create_study("S1", planner = p)
   shiny::testServer(server_for("S1"), {
-    session$setInputs(target = "F1", nav = "make", step = "ard")
+    session$setInputs(target = "F1", nav = "make", step = "data")
     expect_match(output$pd_data_body$html, "start it in step 2", fixed = TRUE)
   })
 })
@@ -100,7 +99,7 @@ test_that("a step's In and Out: on one line, what they are when not said as plac
   p <- set_fig_design(p, "F1", d)
   create_study("S1", planner = p)
   shiny::testServer(server_for("S1"), {
-    session$setInputs(target = "F1", nav = "make", step = "ard")
+    session$setInputs(target = "F1", nav = "make", step = "data")
     # the PARAMCD step: In df, Out df (the object above it, changed)
     session$setInputs(pd_act = list(op = "sel", sec = "data", i = 2L, n = 1))
     h <- output$pd_form_data$html

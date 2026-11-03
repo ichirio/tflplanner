@@ -308,7 +308,7 @@
       open = adata_cl_part$open(), others = .codelist_others(cl, adata_cl_vars()))
   })
   # step 2's table: its code lists are where its data is made (1-1)
-  shiny::observeEvent(input$cl3_open, go("ard"))
+  shiny::observeEvent(input$cl3_open, go("adata"))
   output$type_note <- shiny::renderUI({
     id <- current()
     if (is.null(id)) return(NULL)
@@ -455,7 +455,7 @@
     bump()
     notify(if (is.null(n)) sprintf(t("%s: done"), what) else
       sprintf(t("%s: %d rows added or filled"), what, n))
-    if (identical(sheet, "codelists")) go("ard") else
+    if (identical(sheet, "codelists")) go("adata") else
       bslib::nav_select("table_sheet", sheet)
   }
   need_meta <- function() {
