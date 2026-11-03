@@ -887,6 +887,49 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         })
     })
 
+    # spec/data.yml against the ADaM given (tflspec's data_paths, #515): the
+    # datasets that are missing or differ, and a button that points data.yml
+    # at the files given -- only when the person presses it
+    output$data_paths <- shiny::renderUI({
+      p <- prepared()
+      if (is.null(p) || is_new() || isTRUE(stale())) return(NULL)
+      pr <- .data_paths_problems(p$data_paths, t)
+      if (!nrow(pr)) return(NULL)
+      can <- any(!is.na(pr$given) & nzchar(pr$given))
+      shiny::div(
+        class = "alert alert-warning py-2 small mt-2 ai-data-paths",
+        shiny::div(t("spec/data.yml and the ADaM files given do not match (data.yml is not changed unless you press the button):")),
+        shiny::tags$table(
+          class = "table table-sm small mb-2",
+          shiny::tags$thead(shiny::tags$tr(lapply(
+            c(t("Dataset"), t("Path in spec/data.yml"), t("File given"), t("Problem")), shiny::tags$th))),
+          shiny::tags$tbody(lapply(seq_len(nrow(pr)), function(i) shiny::tags$tr(
+            shiny::tags$td(pr$dataset[i]),
+            shiny::tags$td(shiny::code(if (is.na(pr$in_data_yml[i])) "" else pr$in_data_yml[i])),
+            shiny::tags$td(if (is.na(pr$given[i])) t("(none)") else shiny::code(pr$given[i])),
+            shiny::tags$td(pr$problem[i]))))),
+        if (can) .btn(ns("data_paths_update"), t("Update spec/data.yml to the files given"),
+                      class = "btn-sm btn-primary"))
+    })
+    shiny::observeEvent(input$data_paths_update, {
+      p <- shiny::isolate(prepared())
+      dir <- shiny::isolate(path())
+      if (is.null(p) || is.null(dir)) return()
+      if (isTRUE(dirty())) return(notify(t("Save first: the study has unsaved changes."), "warning"))
+      dp <- p$data_paths
+      done <- NULL
+      ok <- reload_now(save = TRUE, after = function(pl) {
+        x <- .data_paths_apply(pl, dp, dir)
+        done <<- x$changed
+        x$planner
+      })
+      if (!isTRUE(ok)) return()
+      if (is.null(done) || !nrow(done)) return(notify(t("spec/data.yml already points at the files given.")))
+      notify(sprintf(t("spec/data.yml updated: %s."),
+                     paste(sprintf("%s %s -> %s", done$dataset, done$from, done$to), collapse = ", ")))
+      read_now()
+    })
+
     # what was read: the TOC, the ADaM summary, the sheets
     output$prep_empty <- shiny::renderUI({
       e <- prep_error()

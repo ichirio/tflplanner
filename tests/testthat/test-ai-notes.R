@@ -53,3 +53,49 @@ test_that("a warning or an error shows its reason under the status; an old manif
   expect_null(.ai_manifest_reasons(NULL))
   expect_null(.ai_manifest_reasons(tempfile()))
 })
+
+test_that("data_paths: the rows that need a look, and data.yml pointed at the files given", {
+  dp <- data.frame(dataset = c("ADSL", "ADAE", "ADLB"),
+                   in_data_yml = c("data/adam/adsl.rds", "data/adam/adae.sas7bdat", "data/adam/adlb.rds"),
+                   given = c("C:/x/study/data/adam/adsl.sas7bdat", "C:/x/study/data/adam/adae.sas7bdat", NA),
+                   exists = c(FALSE, TRUE, FALSE), differs = c(TRUE, FALSE, FALSE),
+                   stringsAsFactors = FALSE)
+  pr <- .data_paths_problems(dp)
+  expect_equal(pr$dataset, c("ADSL", "ADLB"))
+  expect_equal(nrow(.data_paths_problems(dp[2, ])), 0L)
+  expect_equal(nrow(.data_paths_problems(NULL)), 0L)
+  pl <- list(ard = list(datasets = data.frame(
+    dataset = c("ADSL", "ADAE", "ADLB"),
+    path = c("data/adam/adsl.rds", "data/adam/adae.sas7bdat", "data/adam/adlb.rds"),
+    stringsAsFactors = FALSE)))
+  x <- .data_paths_apply(pl, dp, "C:/x/study")
+  expect_equal(x$planner$ard$datasets$path,
+               c("data/adam/adsl.sas7bdat", "data/adam/adae.sas7bdat", "data/adam/adlb.rds"))
+  expect_equal(x$changed$dataset, "ADSL")
+  # a file given outside the study stays absolute
+  dp$given[1] <- "D:/delivery/adsl.xpt"
+  x <- .data_paths_apply(pl, dp, "C:/x/study")
+  expect_equal(x$planner$ard$datasets$path[1], "D:/delivery/adsl.xpt")
+  # nothing to change
+  expect_equal(nrow(.data_paths_apply(pl, dp[2, ], "C:/x/study")$changed), 0L)
+})
+
+test_that("a file-open error names the datasets of data.yml whose file is missing", {
+  st <- tempfile("study")
+  dir.create(file.path(st, "data", "adam"), recursive = TRUE)
+  on.exit(unlink(st, recursive = TRUE))
+  file.create(file.path(st, "data", "adam", "adae.rds"))
+  study <- list(path = st, planner = list(ard = list(datasets = data.frame(
+    dataset = c("ADSL", "ADAE"), path = c("data/adam/adsl.rds", "data/adam/adae.rds"),
+    stringsAsFactors = FALSE))))
+  m <- .data_files_note("cannot open the connection", study)
+  expect_equal(m, "cannot open the connection. ADSL: no file at data/adam/adsl.rds (spec/data.yml).")
+  expect_match(.data_files_note("Error in file(con, \"rb\") : cannot open file 'x'.", study),
+               "ADSL: no file at data/adam/adsl.rds (spec/data.yml).", fixed = TRUE)
+  # another error: as it is
+  expect_equal(.data_files_note("object 'x' not found", study), "object 'x' not found")
+  expect_true(is.na(.data_files_note(NA_character_, study)))
+  # all paths there: as it is
+  file.create(file.path(st, "data", "adam", "adsl.rds"))
+  expect_equal(.data_files_note("cannot open the connection", study), "cannot open the connection")
+})

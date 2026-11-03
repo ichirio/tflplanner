@@ -371,9 +371,11 @@ fetch_ard <- function(study, output_id, timeout = 300,
   log <- px$stdout
   if (!file.exists(f_out)) {
     why <- .first_error(log)
+    # (a file that could not be opened: the datasets of data.yml with no file named)
+    why_shown <- .data_files_note(why, study)
     stop(.problem(
       paste0("The ARD code of '", output_id, "' did not run",
-             if (!is.na(why)) paste0(": ", why) else "", ".",
+             if (!is.na(why_shown)) paste0(": ", why_shown) else "", ".",
              .problem_hint(why)),
       detail = log))
   }

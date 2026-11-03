@@ -225,7 +225,8 @@ ai_ui <- function(id, lang = "en") {
               help_tip(t("Reads the workbook and the ADaM and writes nothing; what was read shows on the right. Check there: every report found its shell (TOC: the shell column), the reports in parts, the types, how the reports go into requests; the ADaM summary that is sent (no records); the sheets and what each was taken for. Then Write the requests.")),
               .btn(ns("write"), t("Write the requests"), class = "btn-sm btn-primary"),
               shiny::uiOutput(ns("write_note"), inline = TRUE)),
-            shiny::uiOutput(ns("prep_status"))),
+            shiny::uiOutput(ns("prep_status")),
+            shiny::uiOutput(ns("data_paths"))),
           bslib::card(
             bslib::card_header(t("What was read (dry_run = TRUE)")),
             shiny::uiOutput(ns("prep_empty")),
