@@ -199,7 +199,18 @@ planner_app <- function(study = NULL, stop_on_close = FALSE) {
                     if (isTRUE(stop_on_close)) .stop_when_closed(session)
                     start <- .session_study(start_path)
                     app_server(input, output, session, start)
-                  })
+                  },
+                  onStart = function() .app_options())
+}
+
+# The options the app sets while it runs, given back when it stops:
+# tflspec.ai_reference, the company's reference pack for AI agents in the
+# home (tflspec::tfl_ai_reference_build() writes it there,
+# tflspec::tfl_ai_prepare() copies it into each study)
+.app_options <- function(on_stop = shiny::onStop) {
+  old <- options(tflspec.ai_reference = .ai_reference_home())
+  on_stop(function() options(old))
+  invisible(old)
 }
 
 # What the launcher asks a running app, at /tflplanner-health/health.txt:

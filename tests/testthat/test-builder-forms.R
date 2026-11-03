@@ -466,6 +466,13 @@ test_that("plan_paginate_group(), plan_paginate_cols(), plan_row_group(): a form
   expect_identical(.plan_form_args(r, it0, "plan_paginate_group"), it0$args)
   r$keep <- FALSE
   expect_false(.plan_form_args(r, it0, "plan_paginate_group")$keep)
+  # a heading of "" (blank) is a value: its blank field keeps it, and a
+  # field emptied of another heading takes that one away
+  st <- list(fn = "plan_stub", args = list(name = "row_label", heading = ""))
+  r <- .plan_form_read(list(c__name = "row_label", c__heading = ""), "c", "plan_stub")
+  expect_identical(.plan_form_args(r, st, "plan_stub"), st$args)
+  st$args$heading <- "Parameter"
+  expect_null(.plan_form_args(r, st, "plan_stub")$heading)
   # written and read back through the sheets
   p <- sample_planner()
   id <- "T-14-1-1"
