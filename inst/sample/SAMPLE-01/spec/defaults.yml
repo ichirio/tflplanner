@@ -48,7 +48,7 @@ page:
     '5':
       center: '{OUTPUT_TITLE}'
     '6':
-      center: <{OUTPUT_POPULATION}>
+      center: ({OUTPUT_POPULATION})
   footer:
     '99':
       left: '{PROGRAM}       Generated on: {DATETIME}'
