@@ -1060,7 +1060,7 @@
     if (has_cf) shiny::div(
       class = "ai-confirm-block border-start border-warning border-4 ps-2 mb-2",
       shiny::div(class = "fw-bold mt-1 text-warning-emphasis",
-                 paste0("⚠ ", t("To confirm"), " (ai: confirm)")),
+                 paste0("\u26a0 ", t("To confirm"), " (ai: confirm)")),
       shiny::tags$ul(class = "mb-1", lapply(seq_len(nrow(cf)), function(i) shiny::tags$li(
         shiny::span(class = "text-muted", cf$where[i] %||% ""), " ", shiny::code(cf$item[i] %||% ""), " ",
         cf$why[i] %||% "", " ",
