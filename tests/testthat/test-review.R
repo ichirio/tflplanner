@@ -238,9 +238,9 @@ test_that("every sentence a review row can carry beyond its rule's has its Japan
   # and the app's own (the figure's ARD, F04-F07)
   own <- c("%s is not a table of the study",
            "%s is not a table of the study (deleted, or renamed by hand)",
-           "the design reads an ARD, but the figure has none: choose it in step 2",
+           "the design reads an ARD, but the figure has none: choose it in step %s",
            "%s has no analysis %s (any more): the figure prints from it",
-           "the ARD of %s is not made yet: make it first (its step 2)")
+           "the ARD of %s is not made yet: make it first (its step %s)")
   expect_false(any(vapply(own, tr, "", lang = "ja") == own))
 })
 
