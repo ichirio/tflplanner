@@ -12,8 +12,12 @@ By participating in this project you agree to abide by its
    to report a bug or propose a change (the issue forms guide you:
    *Bug report* / *Feature request*).
 2. For anything non-trivial, agree the approach on the issue first.
-3. Fork the repository, create a topic branch, make the change with its
-   tests, and open a pull request against `main`.
+3. Fork the repository, update your fork's `main` from upstream, create a
+   topic branch, make the change with its tests, and open a pull request
+   against `main`.  The `next` branch, the `automerge` label and
+   `merge-after:` lines are the maintainers' own workflow; a maintainer adds
+   any label that is needed.  The steps for updating the fork and rebasing a
+   topic branch are in *Git work for a contributor* in `AGENTS.md`.
 4. Address review feedback; once CI is green and a maintainer approves,
    it is merged.
 

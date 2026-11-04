@@ -12,6 +12,9 @@ and they disagree, they win:
 - **How to contribute** (fork, pull request, the checks before it):
   [CONTRIBUTING.md](../CONTRIBUTING.md)
 - **What the app is made of:** `vignettes/articles/concepts.Rmd`
+- **Git work for a contributor** (updating the fork, rebasing a topic branch,
+  what to do when CI or a review asks): the section of that name in
+  [AGENTS.md](../AGENTS.md)
 
 Key rules: dependencies point one way (rtfreporter <- tflspec <- tflplanner);
 ASCII-only R code (`\uXXXX` escapes); every text the app shows has its
