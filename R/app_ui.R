@@ -679,6 +679,8 @@ app_ui <- function(lang = "en") {
                               "    Shiny.setInputValue('ard_fn_opened', Date.now(), {priority: 'event'});",
                               "}, true);"))),
                             shiny::tags$script(shiny::HTML(.split_js)),
+                            shiny::tags$style(shiny::HTML(.error_note_css)),
+                            shiny::tags$script(shiny::HTML(.error_note_js)),
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
                             shiny::tags$style(shiny::HTML(.builder_cards_css)),
                             shiny::tags$script(shiny::HTML(.builder_cards_js)),

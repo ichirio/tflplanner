@@ -356,6 +356,47 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       }
       review_ver(review_ver() + 1L)
     })
+    # -- how the agent works (study.yml's ai: run) ------------------------
+    # The select shows what the open study says (its study.yml over its
+    # defaults.yml over the default); a change is written into study.yml at
+    # once and the agent's AGENTS.md made again.  "report" is offered only
+    # while it is the stored value.
+    run_ver <- shiny::reactiveVal(0L)
+    shiny::observe({
+      run_ver()
+      p <- path()
+      if (identical(input$study_mode, "new") || is.null(p)) return()
+      v <- .ai_run_read(p)
+      shiny::updateSelectInput(session, "run", choices = .ai_run_choices(t), selected = v)
+    })
+    shiny::observeEvent(input$run, ignoreInit = TRUE, {
+      now <- .ai_run_value(input$run)
+      p <- shiny::isolate(path())
+      if (is.na(now) || is.null(p) || identical(input$study_mode, "new")) return()
+      if (identical(.ai_run_read(p), now)) return()
+      if (isTRUE(dirty())) {
+        notify(t("Save first: the study has unsaved changes."), "warning")
+        run_ver(run_ver() + 1L)
+        return()
+      }
+      done <- tryCatch(.ai_run_set(p, now), error = function(e) {
+        message("tflplanner: ", conditionMessage(e))
+        notify(.error_view(conditionMessage(e), t), "error")
+        FALSE
+      })
+      if (isTRUE(done)) {
+        reload_now()
+        ver(ver() + 1L)
+        notify(t("How the agent works written into study.yml (ai: run), and AGENTS.md made again."))
+      }
+      run_ver(run_ver() + 1L)
+    })
+    output$run_help <- shiny::renderUI({
+      if (identical(input$run, "batch")) {
+        shiny::div(class = "small text-muted",
+                   t("In a batch, read every default the agent took (ai/defaults.md), not only the questions."))
+      }
+    })
     output$open_name <- shiny::renderUI({
       if (!identical(input$study_mode, "open")) return(NULL)
       if (!has_study()) {
@@ -430,18 +471,18 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     toc_src <- function() {
       f <- input$toc_file
       p <- gsub('^"|"$', "", trimws(input$toc_path %||% ""))
-      up <- if (!is.null(f) && nrow(f)) list(path = f$datapath[1L], name = f$name[1L])
-      typed <- if (nzchar(p)) list(path = p, name = basename(p))
+      up <- if (!is.null(f) && nrow(f)) list(path = f$datapath[1L], name = f$name[1L], upload = TRUE)
+      typed <- if (nzchar(p)) list(path = p, name = basename(p), upload = FALSE)
       if (identical(toc_from(), "path")) typed %||% up else up %||% typed
     }
     # the shell workbooks: those uploaded and those whose paths are typed
     shells_src <- function() {
       f <- input$shell_files
       up <- if (!is.null(f) && nrow(f)) lapply(seq_len(nrow(f)), function(i)
-        list(path = f$datapath[i], name = f$name[i]))
+        list(path = f$datapath[i], name = f$name[i], upload = TRUE))
       lines <- trimws(strsplit(input$shell_paths %||% "", "\n", fixed = TRUE)[[1L]])
       lines <- gsub('^"|"$', "", lines[nzchar(lines)])
-      c(up %||% list(), lapply(lines, function(p) list(path = p, name = basename(p))))
+      c(up %||% list(), lapply(lines, function(p) list(path = p, name = basename(p), upload = FALSE)))
     }
     shells_problems <- function() {
       unlist(lapply(shells_src(), function(s) .ai_toc_problem(s$path, t)))
@@ -529,20 +570,57 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       f <- browse_done(guarded(.ai_choose_refs(browse_start("refs", input$ref_path))))
       if (length(f)) ref_add(f)
     })
-    shiny::observeEvent(input$ref_add, {
-      ref_add(input$ref_path %||% "")
-      shiny::updateTextInput(session, "ref_path", value = "")
-    })
+    # a path typed or pasted: added on Enter or when the field is left (the
+    # page says so, with the path, and clears the field: .ai_draft_js)
+    shiny::observeEvent(input$ref_commit, ref_add(input$ref_commit$value %||% ""))
     shiny::observeEvent(input$ref_remove, refs(setdiff(refs(), input$ref_remove$id)))
     output$ref_list <- shiny::renderUI({
       r <- refs()
       if (!length(r)) return(shiny::p(class = "small text-muted", t("No reference: the agent reads none.")))
       shiny::tags$ul(class = "small mb-2", lapply(r, function(f) shiny::tags$li(
         shiny::code(basename(f)), " ", shiny::span(class = "text-muted", dirname(f)), " ",
+        # (kept with the study, a file that has gone since: said, not dropped)
+        if (!file.exists(f) || dir.exists(f)) shiny::span(class = "text-danger", t("not found"), " "),
         shiny::tags$a(href = "#", class = "ai-ref-remove", `data-ns` = ns(""), `data-id` = f,
+                      title = t("Remove"),
                       onclick = "Shiny.setInputValue(this.dataset.ns + 'ref_remove', {id: this.dataset.id, n: Date.now()}, {priority: 'event'}); return false;",
-                      t("Remove")))))
+                      "\u00d7"))))
     })
+    # -- step 1's settings kept with the study (ai/step1.yml, #512) -------------
+    # What step 1 holds now, for the study folder `dir`: a workbook as it is
+    # kept there (.ai_kept_path()), the sheet roles as corrected here (else
+    # as kept, those of sheets that are gone too).
+    step1_now <- function(dir) {
+      src <- toc_src()
+      kept <- function(s) .ai_kept_path(s$path, s$name, dir, upload = isTRUE(s$upload))
+      list(toc = if (!is.null(src)) kept(src),
+           toc_sheet = nz(input$toc_sheet),
+           shells = vapply(shells_src(), kept, ""),
+           adam = trimws(input$adam_dir %||% ""),
+           adam_spec = gsub('^"|"$', "", trimws(input$adam_spec %||% "")),
+           docs = refs(),
+           language = input$language,
+           templates = !isFALSE(input$templates),
+           agent_reads = as.character(input$agent_reads %||% character()),
+           agent_max_reads = suppressWarnings(as.integer(input$agent_max_reads)),
+           sheets = as.character(input$sheets %||% character()),
+           sheet_roles = roles_set() %||% roles_saved())
+    }
+    # Written into the study's ai/step1.yml.  A study with no ai/ folder yet
+    # waits (`hold`) until the requests are written: an ai/ with no
+    # spec/outputs would have the write put the study's reports apart.
+    save_step1 <- function(dir, hold = TRUE) {
+      if (is.null(dir) || (hold && !dir.exists(file.path(dir, "ai")))) return(invisible(FALSE))
+      tryCatch({
+        .ai_step1_write(dir, step1_now(dir))
+        invisible(TRUE)
+      }, error = function(e) {
+        message("tflplanner: step 1's settings not kept: ", conditionMessage(e))
+        notify(sprintf(t("Step 1's settings could not be kept in the study: %s"), conditionMessage(e)),
+               "warning")
+        invisible(FALSE)
+      })
+    }
     # (the agent's scope)
     scope_args <- function() {
       mr <- suppressWarnings(as.integer(input$agent_max_reads))
@@ -587,22 +665,34 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     }
     # the sheets to choose from, as soon as the workbooks are known (their
     # names only; what is chosen already kept)
+    # (the choices kept with the study, ai/step1.yml, wait here until the
+    # sheets are known: the TOC sheet and the sheets for every request)
+    step1_pending <- new.env()
     update_sheets <- function(sh, bk, in_toc) {
       lab <- .ai_sheet_labels(sh, bk)
       toc_now <- shiny::isolate(input$toc_sheet) %||% ""
+      toc_want <- if (toc_now %in% sh[in_toc]) toc_now
+                  else if (isTRUE(step1_pending$toc_sheet %in% sh[in_toc])) step1_pending$toc_sheet else ""
+      sheets_want <- intersect(c(shiny::isolate(input$sheets), step1_pending$sheets), sh)
+      step1_pending$toc_sheet <- NULL
+      step1_pending$sheets <- NULL
       shiny::updateSelectInput(session, "toc_sheet",
                                choices = c(stats::setNames("", t("guess")),
                                            stats::setNames(sh[in_toc], lab[in_toc])),
-                               selected = if (toc_now %in% sh[in_toc]) toc_now else "")
+                               selected = toc_want)
       shiny::updateSelectizeInput(session, "sheets", choices = stats::setNames(sh, lab),
-                                  selected = intersect(shiny::isolate(input$sheets), sh))
+                                  selected = sheets_want)
     }
-    shiny::observe({
+    # the sheets of the workbooks given (sheet, book, toc), or NULL
+    sheet_tbl <- shiny::reactive({
       src <- toc_src()
       shl <- vapply(shells_src(), `[[`, "", "path")
-      if (is.null(src) || !is.null(.ai_toc_problem(src$path))) return()
-      s <- .ai_sheet_names(src$path, shl[vapply(shl, function(f) is.null(.ai_toc_problem(f)), TRUE)])
-      if (nrow(s)) shiny::isolate(update_sheets(s$sheet, s$book, s$toc))
+      if (is.null(src) || !is.null(.ai_toc_problem(src$path))) return(NULL)
+      .ai_sheet_names(src$path, shl[vapply(shl, function(f) is.null(.ai_toc_problem(f)), TRUE)])
+    })
+    shiny::observe({
+      s <- sheet_tbl()
+      if (!is.null(s) && nrow(s)) shiny::isolate(update_sheets(s$sheet, s$book, s$toc))
     })
     # (Read and check, or the sheets' roles applied: read again)
     read_again <- shiny::reactiveVal(0L)
@@ -616,6 +706,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     shiny::observeEvent(list(input$read, read_again()), ignoreInit = TRUE, {
       if (is.null(input$read) && identical(read_again(), 0L)) return()
       if (!inputs_ok()) return()
+      # step 1's settings kept with the study before anything else runs
+      if (!is_new()) save_step1(path())
       src <- toc_src()
       a <- args_of(NULL)
       # every dataset read: the ones to send are ticked afterwards
@@ -662,6 +754,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       p <- prepared()
       shiny::req(p)
       if (!inputs_ok()) return()
+      # (a new study's, or one with no ai/ yet: kept once the requests are written)
+      if (!is_new()) save_step1(path())
       src <- toc_src()
       shl <- shells_src()
       a <- args_of(p)
@@ -702,6 +796,8 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
         }
         return()
       }
+      # (the study's folder is there now: the uploads copied, the paths kept)
+      save_step1(if (!is.null(out$study)) out$study$path else path(), hold = FALSE)
       if (!is.null(out$study)) {
         prep_for(out$study$path)
         # (the review depth chosen before the study was made: written now)
@@ -789,6 +885,49 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
           else shiny::span(class = "text-muted ms-1",
                            sprintf(t("Added to the %d requests there (their answers kept)."), nrow(had)))
         })
+    })
+
+    # spec/data.yml against the ADaM given (tflspec's data_paths, #515): the
+    # datasets that are missing or differ, and a button that points data.yml
+    # at the files given -- only when the person presses it
+    output$data_paths <- shiny::renderUI({
+      p <- prepared()
+      if (is.null(p) || is_new() || isTRUE(stale())) return(NULL)
+      pr <- .data_paths_problems(p$data_paths, t)
+      if (!nrow(pr)) return(NULL)
+      can <- any(!is.na(pr$given) & nzchar(pr$given))
+      shiny::div(
+        class = "alert alert-warning py-2 small mt-2 ai-data-paths",
+        shiny::div(t("spec/data.yml and the ADaM files given do not match (data.yml is not changed unless you press the button):")),
+        shiny::tags$table(
+          class = "table table-sm small mb-2",
+          shiny::tags$thead(shiny::tags$tr(lapply(
+            c(t("Dataset"), t("Path in spec/data.yml"), t("File given"), t("Problem")), shiny::tags$th))),
+          shiny::tags$tbody(lapply(seq_len(nrow(pr)), function(i) shiny::tags$tr(
+            shiny::tags$td(pr$dataset[i]),
+            shiny::tags$td(shiny::code(if (is.na(pr$in_data_yml[i])) "" else pr$in_data_yml[i])),
+            shiny::tags$td(if (is.na(pr$given[i])) t("(none)") else shiny::code(pr$given[i])),
+            shiny::tags$td(pr$problem[i]))))),
+        if (can) .btn(ns("data_paths_update"), t("Update spec/data.yml to the files given"),
+                      class = "btn-sm btn-primary"))
+    })
+    shiny::observeEvent(input$data_paths_update, {
+      p <- shiny::isolate(prepared())
+      dir <- shiny::isolate(path())
+      if (is.null(p) || is.null(dir)) return()
+      if (isTRUE(dirty())) return(notify(t("Save first: the study has unsaved changes."), "warning"))
+      dp <- p$data_paths
+      done <- NULL
+      ok <- reload_now(save = TRUE, after = function(pl) {
+        x <- .data_paths_apply(pl, dp, dir)
+        done <<- x$changed
+        x$planner
+      })
+      if (!isTRUE(ok)) return()
+      if (is.null(done) || !nrow(done)) return(notify(t("spec/data.yml already points at the files given.")))
+      notify(sprintf(t("spec/data.yml updated: %s."),
+                     paste(sprintf("%s %s -> %s", done$dataset, done$from, done$to), collapse = ", ")))
+      read_now()
     })
 
     # what was read: the TOC, the ADaM summary, the sheets
@@ -895,10 +1034,16 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     }, server = FALSE)
     # the sheets' roles as read (toc / shell / other), changed here: each
     # read after a change says every sheet's (tfl_ai_prepare(sheet_roles = ))
+    # (before any change here: the roles kept with the study, ai/step1.yml,
+    # for the sheets of that name the workbooks have)
     roles_set <- shiny::reactiveVal(NULL)
+    roles_saved <- shiny::reactiveVal(NULL)
     roles_now <- function() {
       r <- roles_set()
-      if (is.null(r)) NULL else r
+      if (!is.null(r)) return(r)
+      kept <- roles_saved()
+      if (is.null(kept)) return(NULL)
+      .ai_step1_roles(kept, sheet_tbl()$sheet)$roles
     }
     output$roles_ui <- shiny::renderUI({
       p <- prepared()
@@ -985,29 +1130,7 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       # (copied into the study: its own spec/outputs/<id>.yml -- the check
       # reads the draft, ai/spec/outputs, either way)
       adopted <- file.exists(file.path(path(), "spec", "outputs", paste0(id, ".yml")))
-      txt <- function(x) if (is.null(x)) "" else paste(as.character(unlist(x)), collapse = " ")
-      shiny::div(
-        class = "ms-2",
-        if (length(asm)) shiny::tagList(
-          shiny::div(class = "fw-bold mt-1", paste0(t("What the agent assumed"), " (ai: assumptions)")),
-          shiny::tags$ul(class = "mb-1", lapply(asm, function(a) shiny::tags$li(
-            shiny::span(class = "text-muted", txt(a$where)), " ", shiny::code(txt(a$item)), " ",
-            txt(a$assumption),
-            if (length(a$from)) shiny::span(class = "badge text-bg-info ms-1",
-                                            sprintf(t("from %s"), txt(a$from))))))),
-        if (!is.null(cf) && nrow(cf)) shiny::tagList(
-          shiny::div(class = "fw-bold mt-1", paste0(t("To confirm"), " (ai: confirm)")),
-          shiny::tags$ul(class = "mb-1", lapply(seq_len(nrow(cf)), function(i) shiny::tags$li(
-            shiny::span(class = "text-muted", cf$where[i] %||% ""), " ", shiny::code(cf$item[i] %||% ""), " ",
-            cf$why[i] %||% "", " ",
-            if (adopted) shiny::tags$button(
-              type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
-              `data-ns` = ns(""), `data-id` = id,
-              `data-item` = if (identical(cf$where[i], "content")) cf$item[i] else "",
-              t("Open in Make a report"))
-            else shiny::span(class = "text-muted", t("Copy it into the study first (step 4)")))))),
-        if (!length(asm) && (is.null(cf) || !nrow(cf)))
-          shiny::div(class = "text-muted", t("Nothing assumed, nothing to confirm.")))
+      .ai_notes_block(asm, cf, id, adopted, ns(""), t)
     }
     output$result_all <- shiny::renderUI({
       co <- collected()
@@ -1090,6 +1213,63 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       bslib::nav_select("step", "prepare", session = session)
       invisible(TRUE)
     }
+
+    # -- step 1 filled from the study's ai/step1.yml ----------------------------
+    # When a study is opened (or the tab first shows one).  A path kept that
+    # is not there now is still put in -- the field's own check says so
+    # (the docs list too); the roles apply to the sheets of that name, and
+    # those of sheets that are gone are listed (step1_note).
+    step1_from <- shiny::reactiveVal(NULL)
+    restore_step1 <- function(p) {
+      x <- if (!is.null(p)) .ai_step1_read(p)
+      roles_set(NULL)
+      roles_saved(x$sheet_roles)
+      step1_pending$toc_sheet <- NULL
+      step1_pending$sheets <- NULL
+      step1_from(if (!is.null(x)) p)
+      if (is.null(x)) return(invisible(FALSE))
+      shiny::updateTextInput(session, "toc_path", value = x$toc %||% "")
+      shiny::updateTextAreaInput(session, "shell_paths", value = paste(x$shells, collapse = "\n"))
+      if (length(x$adam)) shiny::updateTextInput(session, "adam_dir", value = x$adam)
+      shiny::updateTextInput(session, "adam_spec", value = x$adam_spec %||% "")
+      if (!is.null(x$language)) shiny::updateSelectInput(session, "language", selected = x$language)
+      if (!is.null(x$templates)) shiny::updateCheckboxInput(session, "templates", value = x$templates)
+      shiny::updateCheckboxGroupInput(session, "agent_reads", selected = x$agent_reads)
+      if (!is.null(x$agent_max_reads)) shiny::updateNumericInput(session, "agent_max_reads", value = x$agent_max_reads)
+      refs(x$docs)
+      # (the sheets: chosen once the workbooks' sheet names are known; until
+      # then, and when the workbook is gone, the names kept are the choices)
+      step1_pending$toc_sheet <- x$toc_sheet
+      step1_pending$sheets <- x$sheets
+      if (length(x$toc_sheet) && nzchar(x$toc_sheet)) {
+        shiny::updateSelectInput(session, "toc_sheet",
+                                 choices = c(stats::setNames("", t("guess")), stats::setNames(x$toc_sheet, x$toc_sheet)),
+                                 selected = x$toc_sheet)
+      }
+      if (length(x$sheets)) {
+        shiny::updateSelectizeInput(session, "sheets", choices = x$sheets, selected = x$sheets)
+      }
+      invisible(TRUE)
+    }
+    shiny::observeEvent(path(), restore_step1(path()), ignoreNULL = FALSE)
+    output$step1_note <- shiny::renderUI({
+      from <- step1_from()
+      kept <- roles_saved()
+      gone <- if (is.null(roles_set()) && !is.null(kept) && !is.null(sheet_tbl())) {
+        .ai_step1_roles(kept, sheet_tbl()$sheet)$gone
+      }
+      shiny::tagList(
+        if (!is.null(from)) shiny::div(class = "small text-muted mb-2",
+                                       t("Step 1 was filled from the study's ai/step1.yml.")),
+        if (length(gone)) shiny::div(
+          class = "small text-warning mb-2",
+          sprintf(t("Sheet roles kept for sheets that are not in the workbooks now (kept until the roles are applied again): %s"),
+                  paste(gone, collapse = ", "))))
+    })
+    output$adam_spec_check <- shiny::renderUI({
+      msg <- .ai_adam_spec_problem(input$adam_spec, t)
+      if (!is.null(msg)) shiny::div(class = "small text-danger mb-2", msg)
+    })
 
     list(requests = requests, collected = collected, prepared = prepared,
          mode = mode_now, prefill = prefill,

@@ -1267,3 +1267,57 @@ test_that("review depth: a change is written into study.yml (its other keys kept
     expect_identical(yaml::read_yaml(sy)$ai$review$figure, 3L)
   })
 })
+
+# -- how the agent works (study.yml's ai: run) -------------------------------
+
+test_that("run: study.yml over defaults.yml over the default; unknown values ignored", {
+  d <- withr_tempdir()
+  dir.create(file.path(d, "spec"))
+  expect_identical(.ai_run_read(d), "one")
+  expect_identical(.ai_run_read(NULL), "one")
+  writeLines(c("ai:", "  run: batch"), file.path(d, "spec", "defaults.yml"))
+  expect_identical(.ai_run_read(d), "batch")
+  writeLines(c("study_id: X", "ai:", "  run: one"), file.path(d, "study.yml"))
+  expect_identical(.ai_run_read(d), "one")
+  writeLines(c("study_id: X", "ai:", "  run: sometimes"), file.path(d, "study.yml"))
+  expect_identical(.ai_run_read(d), "batch")
+})
+
+test_that("run: the select's choices", {
+  h <- as.character(ai_ui("ai"))
+  expect_match(h, "ai-run", fixed = TRUE)
+  expect_match(h, "One request at a time", fixed = TRUE)
+  tt <- function(x) x
+  expect_identical(unname(.ai_run_choices(tt)), c("one", "batch"))
+  expect_identical(names(.ai_run_choices(tt)), c("One request at a time", "Everything together"))
+  ja <- as.character(ai_ui("ai", "ja"))
+  expect_match(ja, "1 依頼ずつ処理", fixed = TRUE)
+})
+
+test_that("run: a change is written into study.yml (other keys kept) and AGENTS.md again", {
+  local_home()
+  path <- ai_study()
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  sy <- file.path(path, "study.yml")
+  y0 <- yaml::read_yaml(sy)
+  writeLines(c(readLines(sy, encoding = "UTF-8"), "ai:", "  language: Japanese"), sy, useBytes = TRUE)
+  ag <- file.path(path, "ai", "AGENTS.md")
+  Sys.setFileTime(ag, Sys.time() - 3600)
+  before <- file.mtime(ag)
+  shiny::testServer(server_for("XYZ-1"), {
+    session$setInputs(`ai-study_mode` = "open")
+    session$setInputs(`ai-run` = "one")
+    expect_identical(file.mtime(ag), before)
+    session$setInputs(`ai-run` = "batch")
+    y <- yaml::read_yaml(sy)
+    expect_identical(y$ai$run, "batch")
+    expect_identical(y$ai$language, "Japanese")
+    expect_identical(y$study_id, y0$study_id)
+    expect_gt(file.mtime(ag), before)
+    # unsaved changes: nothing written
+    session$userData$rv$meta$title <- "mine"
+    session$setInputs(`ai-run` = "one")
+    expect_identical(yaml::read_yaml(sy)$ai$run, "batch")
+  })
+})

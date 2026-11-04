@@ -29,7 +29,7 @@ test_that("the company standard maps onto the conventions tflspec sets it agains
   expect_identical(v[["continuous"]], "n | Mean (SD) | Median | Min, Max")
   expect_match(v[["digits"]], "mean 1, sd 2", fixed = TRUE)
   expect_identical(v[["titles"]],
-                   "page header, centred: {OUTPUT_LABEL} / {OUTPUT_TITLE} / <{OUTPUT_POPULATION}>")
+                   "page header, centred: {OUTPUT_LABEL} / {OUTPUT_TITLE} / ({OUTPUT_POPULATION})")
   expect_match(v[["footnotes"]], "^page footer, left: \\{PROGRAM\\}")
   # what the standards do not hold is not there (shown as new)
   expect_false(any(c("rules", "spanner_rule", "zero", "first_row", "sort", "font", "orientation") %in%

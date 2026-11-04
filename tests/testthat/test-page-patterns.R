@@ -340,7 +340,7 @@ test_that("{OUTPUT_POPULATION} by default the label of the report's analysis set
   expect_identical(page_tokens_from(r, "T1")$value, "Safety Analysis Set")
   # the report's tokens as the program has them
   p$sheets$header <- .normalize_sheet(data.frame(output_id = NA, line = "1",
-                                                 center = "<{OUTPUT_POPULATION}>"), "header")
+                                                 center = "({OUTPUT_POPULATION})"), "header")
   tok <- tflspec::tfl_report_tokens(.spec_object_last(p, c(table_sheets(), report_sheets()),
                                                       unique(c(.study_keys$table, .study_keys$report))), "T1")
   expect_identical(tok[["OUTPUT_POPULATION"]], .pop_label(p, "SAF"))

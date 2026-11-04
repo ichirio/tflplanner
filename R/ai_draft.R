@@ -850,3 +850,225 @@
   .ai_agent_refresh(path)
   TRUE
 }
+
+# ---- how the agent works through the requests (study.yml's ai: run) ----------
+# "one" (the default, recommended): one request at a time, then it asks what
+# next; "batch": every request with defaults, all questions once at the end.
+
+.ai_run_default <- "one"
+.ai_run_values <- c("one", "batch")
+
+# One value as the select's text; NA when it is not one
+.ai_run_value <- function(v) {
+  v <- unlist(v)[1L]
+  if (is.null(v) || is.na(v) || !is.character(v)) return(NA_character_)
+  v <- tolower(trimws(v))
+  if (v %in% .ai_run_values) v else NA_character_
+}
+
+# What a yml file says (its ai: run); NA when it says none
+.ai_run_file <- function(f) {
+  y <- tryCatch(yaml::read_yaml(f), error = function(e) NULL)
+  if (!is.list(y) || !is.list(y$ai)) return(NA_character_)
+  .ai_run_value(y$ai$run)
+}
+
+# A study's value as tflspec reads it: study.yml, over spec/defaults.yml, over
+# the default
+.ai_run_read <- function(path) {
+  out <- .ai_run_default
+  if (is.null(path)) return(out)
+  for (f in c(file.path(path, study_layout()[["spec"]], "defaults.yml"), file.path(path, "study.yml"))) {
+    if (!file.exists(f)) next
+    v <- .ai_run_file(f)
+    if (!is.na(v)) out <- v
+  }
+  out
+}
+
+# The value written into study.yml's ai: run, the rest of the file as it is
+.ai_run_write <- function(path, value) {
+  f <- file.path(path, "study.yml")
+  y <- yaml::read_yaml(f)
+  if (is.null(y)) y <- list()
+  if (!is.list(y$ai)) y$ai <- list()
+  y$ai$run <- value
+  yaml::write_yaml(y, f, fileEncoding = "UTF-8")
+  invisible(f)
+}
+
+# The value set for a study: written into study.yml, the agent's files made
+# again.  The value already there: nothing written.
+.ai_run_set <- function(path, value) {
+  value <- .ai_run_value(value)
+  if (is.na(value) || identical(.ai_run_read(path), value)) return(FALSE)
+  .ai_run_write(path, value)
+  .ai_agent_refresh(path)
+  TRUE
+}
+
+# ---- step 1's settings kept with the study (ai/step1.yml, #512) ---------------
+# After a restart everything in step 1 had to be typed again.  tflplanner
+# keeps what step 1 holds in the study's ai/step1.yml (a file it owns; the
+# report numbers stay in tflspec's ai/sheet_numbers.csv, not here):
+#   toc, toc_sheet, shells, adam, adam_spec, docs, language, templates,
+#   agent_reads, agent_max_reads, sheets, sheet_roles
+# A path inside the study folder is stored relative to it (the study copied
+# elsewhere finds its files), any other absolute.  `sheet_roles` is the
+# roles as the person corrected them, keyed by sheet name.
+
+.ai_step1_file <- function(dir) file.path(dir, "ai", "step1.yml")
+
+# Whether `p` is an absolute path (a drive, a leading / or ~)
+.ai_is_abs <- function(p) grepl("^([A-Za-z]:|[/~])", p)
+
+# The paths `p` as stored: relative to the study folder `dir` when inside it,
+# else as given (slashes forward, quotes and blanks off).  Empty ones are left out.
+.ai_path_store <- function(p, dir) {
+  p <- trimws(gsub("\\", "/", as.character(p), fixed = TRUE))
+  p <- gsub('^"|"$', "", p)
+  p <- p[!is.na(p) & nzchar(p)]
+  d <- sub("/+$", "", normalizePath(dir, "/", mustWork = FALSE))
+  vapply(p, function(x) {
+    if (!.ai_is_abs(x)) return(x)
+    n <- normalizePath(x, "/", mustWork = FALSE)
+    if (startsWith(tolower(n), paste0(tolower(d), "/"))) substring(n, nchar(d) + 2L) else x
+  }, "", USE.NAMES = FALSE)
+}
+
+# The paths stored read back: a relative one is taken from the study folder
+.ai_path_resolve <- function(p, dir) {
+  p <- as.character(unlist(p))
+  p <- p[!is.na(p) & nzchar(p)]
+  vapply(p, function(x) {
+    if (.ai_is_abs(x)) x else normalizePath(file.path(dir, x), "/", mustWork = FALSE)
+  }, "", USE.NAMES = FALSE)
+}
+
+# Where a workbook of the TOC / shells ends up kept in the study `dir`
+# (.ai_keep_toc(): inside the study, its own path; else its copy in docs/).
+# When that copy is not there yet but the workbook `path` is (the requests
+# are not written yet), the path as given; an upload has only a temporary
+# path, so its copy's: it is there once the requests are written.
+.ai_kept_path <- function(path, name = basename(path), dir, upload = FALSE) {
+  copy <- file.path(dir, "docs", basename(name))
+  if (!upload && .ai_in_study(path, dir)) return(normalizePath(path, "/"))
+  if (file.exists(copy) || upload || !nzchar(path)) return(copy)
+  path
+}
+
+# Step 1's settings `x` (a list with the fields above, paths absolute or as
+# typed; NULL ones left out) written into the study `dir`'s ai/step1.yml.
+# Gives the file.
+.ai_step1_write <- function(dir, x) {
+  f <- .ai_step1_file(dir)
+  dir.create(dirname(f), recursive = TRUE, showWarnings = FALSE)
+  one <- function(v) if (is.null(v) || !length(v) || is.na(v[1L])) NULL else v[[1L]]
+  many <- function(v) as.list(as.character(unlist(v)))
+  paths <- function(v) many(.ai_path_store(v, dir))
+  roles <- x$sheet_roles
+  y <- list(
+    toc = one(if (length(x$toc)) .ai_path_store(x$toc[1L], dir)),
+    toc_sheet = one(x$toc_sheet),
+    shells = paths(x$shells),
+    adam = one(if (length(x$adam)) .ai_path_store(x$adam[1L], dir)),
+    adam_spec = one(if (length(x$adam_spec)) .ai_path_store(x$adam_spec[1L], dir)),
+    docs = paths(x$docs),
+    language = one(x$language),
+    templates = if (is.null(x$templates)) NULL else isTRUE(x$templates),
+    agent_reads = many(x$agent_reads),
+    agent_max_reads = if (is.null(one(x$agent_max_reads))) NULL else as.integer(one(x$agent_max_reads)),
+    sheets = many(x$sheets),
+    sheet_roles = if (length(roles)) as.list(stats::setNames(as.character(roles), names(roles))) else list())
+  y <- y[!vapply(y, is.null, TRUE)]
+  yaml::write_yaml(y, f)
+  invisible(f)
+}
+
+# The settings kept for the study `dir`: a list of the fields (paths absolute;
+# an absent field NULL for a single value, empty for several), or NULL when
+# there is no file or it cannot be read.
+.ai_step1_read <- function(dir) {
+  f <- .ai_step1_file(dir)
+  if (!file.exists(f)) return(NULL)
+  y <- tryCatch(yaml::read_yaml(f), error = function(e) {
+    message("tflplanner: ", f, " cannot be read: ", conditionMessage(e))
+    NULL
+  })
+  if (!is.list(y)) return(NULL)
+  one <- function(v) if (is.null(v) || !length(v)) NULL else as.character(v[[1L]])
+  many <- function(v) as.character(unlist(v))
+  roles <- unlist(y$sheet_roles)
+  list(
+    toc = one(.ai_path_resolve(y$toc, dir)),
+    toc_sheet = one(y$toc_sheet),
+    shells = .ai_path_resolve(y$shells, dir),
+    adam = one(.ai_path_resolve(y$adam, dir)),
+    adam_spec = one(.ai_path_resolve(y$adam_spec, dir)),
+    docs = .ai_path_resolve(y$docs, dir),
+    language = one(y$language),
+    templates = if (is.null(y$templates)) NULL else isTRUE(y$templates),
+    agent_reads = many(y$agent_reads),
+    agent_max_reads = if (is.null(y$agent_max_reads)) NULL else as.integer(y$agent_max_reads),
+    sheets = many(y$sheets),
+    sheet_roles = if (length(roles)) stats::setNames(as.character(roles), names(roles)))
+}
+
+# The paths of the settings `x` that are not there now: a data frame of
+# field and path (none: no rows).  The adam folder must be a folder, the rest files.
+.ai_step1_missing <- function(x) {
+  field <- c(rep("toc", length(x$toc)), rep("shells", length(x$shells)),
+             rep("adam", length(x$adam)), rep("adam_spec", length(x$adam_spec)),
+             rep("docs", length(x$docs)))
+  path <- c(x$toc, x$shells, x$adam, x$adam_spec, x$docs)
+  gone <- if (length(path)) ifelse(field == "adam", !dir.exists(path),
+                                   !file.exists(path) | dir.exists(path)) else logical()
+  data.frame(field = field[gone], path = path[gone], stringsAsFactors = FALSE)
+}
+
+# The sheet roles kept (named by sheet) taken to the sheets `sheets` the
+# workbooks have now: the roles of the sheets of that name, and the names
+# kept for sheets that are gone.  Gives list(roles, gone).
+.ai_step1_roles <- function(saved, sheets) {
+  has <- names(saved) %in% sheets
+  list(roles = if (any(has)) saved[has], gone = names(saved)[!has])
+}
+
+# ---- step 3: what the agent assumed and left to confirm ---------------------
+
+# A report's `ai:` block as step 3's row shows it: the items to confirm
+# first, as a block of their own (a warning-coloured left border), then the
+# assumptions under their own heading.  `asm`: the draft's `ai: assumptions`
+# (a list); `cf`: the report's rows of the collect's `confirm` (a data
+# frame, or NULL); `adopted`: the report is in the study (its place to
+# confirm opens in the builder).  No confirm items: no block.
+.ai_notes_block <- function(asm, cf, id, adopted, ns_prefix, t) {
+  txt <- function(x) if (is.null(x)) "" else paste(as.character(unlist(x)), collapse = " ")
+  asm <- asm %||% list()
+  has_cf <- !is.null(cf) && nrow(cf) > 0L
+  shiny::div(
+    class = "ms-2",
+    if (has_cf) shiny::div(
+      class = "ai-confirm-block border-start border-warning border-4 ps-2 mb-2",
+      shiny::div(class = "fw-bold mt-1 text-warning-emphasis",
+                 paste0("⚠ ", t("To confirm"), " (ai: confirm)")),
+      shiny::tags$ul(class = "mb-1", lapply(seq_len(nrow(cf)), function(i) shiny::tags$li(
+        shiny::span(class = "text-muted", cf$where[i] %||% ""), " ", shiny::code(cf$item[i] %||% ""), " ",
+        cf$why[i] %||% "", " ",
+        if (adopted) shiny::tags$button(
+          type = "button", class = "btn btn-sm btn-outline-primary py-0 ai-open",
+          `data-ns` = ns_prefix, `data-id` = id,
+          `data-item` = if (identical(cf$where[i], "content")) cf$item[i] else "",
+          t("Open in Make a report"))
+        else shiny::span(class = "text-muted", t("Copy it into the study first (step 4)")))))),
+    if (length(asm)) shiny::div(
+      class = "ai-assumption-block",
+      shiny::div(class = "fw-bold mt-1", paste0(t("What the agent assumed"), " (ai: assumptions)")),
+      shiny::tags$ul(class = "mb-1", lapply(asm, function(a) shiny::tags$li(
+        shiny::span(class = "text-muted", txt(a$where)), " ", shiny::code(txt(a$item)), " ",
+        txt(a$assumption),
+        if (length(a$from)) shiny::span(class = "badge text-bg-info ms-1",
+                                        sprintf(t("from %s"), txt(a$from))))))),
+    if (!length(asm) && !has_cf)
+      shiny::div(class = "text-muted", t("Nothing assumed, nothing to confirm.")))
+}

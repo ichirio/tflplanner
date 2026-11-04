@@ -230,7 +230,7 @@
       list(line = "3"),
       list(line = "4", center = "{OUTPUT_LABEL}"),
       list(line = "5", center = "{OUTPUT_TITLE}"),
-      list(line = "6", center = "<{OUTPUT_POPULATION}>")),
+      list(line = "6", center = "({OUTPUT_POPULATION})")),
     default_footer = default("footer",
       list(line = "99", left = "{PROGRAM}       Generated on: {DATETIME}")),
     default_cells = default("cells",

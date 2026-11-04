@@ -331,7 +331,7 @@
       shiny::conditionalPanel(
         sprintf("input['%s'] == 'stat' && input['%s'] != 'own'", bid("value"), bid("cat")),
         shiny::numericInput(bid("pct"), t("Decimals of the percent"),
-                            value = st$pct_decimals, min = 0, max = 3,
+                            value = .num_or_null(st$pct_decimals), min = 0, max = 3,
                             width = "260px")),
       shiny::uiOutput(bid("warn")),
       # each variable: the common template or its own, its conditions

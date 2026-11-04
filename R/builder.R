@@ -119,6 +119,12 @@ builder_stats <- function() {
 
 # a value, unless it is missing (NULL, NA): then the other
 .or_na <- function(a, b) if (length(a) == 1L && !is.na(a)) a else b
+# a number input's value: NULL (an empty field) rather than NA, which the
+# browser cannot parse ("NA") -- #445
+.num_or_null <- function(x) {
+  x <- suppressWarnings(as.numeric(x))
+  if (length(x) == 1L && !is.na(x)) x else NULL
+}
 
 .split_list <- function(x) {
   if (is.null(x) || is.na(x) || !nzchar(x)) return(character())

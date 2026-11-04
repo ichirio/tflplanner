@@ -369,7 +369,7 @@
           shiny::selectInput(lf_id("type"), t("Type"), type_ch,
                              selected = lf_env$last$type, width = "200px"),
           shiny::numericInput(lf_id("max_rows"), t("Rows per page"),
-                              value = mr, min = 1, width = "140px")),
+                              value = if (is.na(mr)) NULL else mr, min = 1, width = "140px")),
         # as its program has them: the code lists, the order
         shiny::div(class = "mb-2", shiny::uiOutput("lf_cl"), shiny::uiOutput("lf_cl_detail")),
         shiny::textInput(lf_id("sort"), with_tip(t("Order"), t("| between variables, - for descending; a column with a code list sorts in the list's order")),
