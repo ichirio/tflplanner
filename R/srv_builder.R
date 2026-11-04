@@ -629,7 +629,7 @@
     shiny::req(!is.null(args))
     # the check's problems are shown in the dialog first (drawn again with
     # the text as typed); Apply again with the same text writes it as it is
-    pr <- .args_problems(args)
+    pr <- .args_problems(args, t)
     if (length(pr) && !identical(bform$r_seen, txt)) {
       bform$r_seen <- txt
       shiny::showModal(r_dialog(it, txt, pr))

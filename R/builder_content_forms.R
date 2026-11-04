@@ -534,7 +534,9 @@
 # the sheet keeps them); NULL for none
 .filter_where_text <- function(where) {
   if (is.null(where) || !length(where)) return(NULL)
-  one <- function(w) if (inherits(w, "tfl_r")) as.character(unclass(w)) else .arg_to_r(w)
+  one <- function(w) {
+    if (inherits(w, "tfl_r") || is.character(w)) as.character(unclass(w)) else .arg_to_r(w)
+  }
   if (inherits(where, "tfl_r")) return(one(where))
   if (is.list(where)) {
     parts <- vapply(where, one, "")
