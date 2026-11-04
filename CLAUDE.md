@@ -8,7 +8,7 @@
   - Every text shown has its Japanese in `inst/i18n/` (test-app-robust checks this).
 - **Versions:** a PR never changes `Version` or NEWS. Versions are bumped only for a tag or a CRAN submission, in one commit.
 - **PRs:**
-  - Branch from `main`; avoid stacking. If you must stack, rebase onto `main` right after the lower PR merges.
+  - Maintainers branch from `next` and open PRs into `next`; outside contributors use `main` (see `CONTRIBUTING.md`). Avoid stacking. If you must stack, merge the base in right after the lower PR merges.
   - Keep PRs small and short-lived. Only one open PR per screen at a time.
   - When a PR is ready, add the `automerge` label. Write any order in the body as `merge-after: tflspec#468`.
   - A new screen, or a large UX change, waits for a screen review and the user's check before `automerge`.
