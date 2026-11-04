@@ -42,7 +42,12 @@ The returned \code{kit} holds the paths of the materials inside the study:
 and \code{docs}), the same fields the AI tab's step 1 is filled with.
 }
 \examples{
-\dontrun{
+# a home in the temporary folder: used in this R session only, nothing
+# is written to your settings
+old <- options(tflplanner.home = NULL)
+setup_tflplanner(home = tempfile("tflplanner-home"))
+\donttest{
+# (a few seconds: it writes the sample's materials and the study)
 made <- create_ai_sample_study()
 kit <- made$kit
 # then, as the AI tab's step 1 does:
@@ -50,4 +55,5 @@ p <- tflspec::tfl_ai_prepare(made$study$path, toc = kit$toc, adam = kit$adam,
                              shells = kit$shells, adam_spec = kit$adam_spec,
                              docs = kit$docs, dry_run = TRUE)
 }
+options(old)
 }
