@@ -2045,3 +2045,4 @@
 "the hazard ratio axis's ticks (0.25, 0.5, 1, 2, 4); NULL: ggplot2's","ハザード比の軸の目盛り（0.25, 0.5, 1, 2, 4）。NULL: ggplot2 の既定"
 "TRUE: each point's size by its subjects (n)","TRUE: 各点の大きさを被験者数（n）にする"
 "TRUE: the subgroups' headings bold","TRUE: サブグループの見出しを太字にする"
+"the subgroups' headings, a variable = its label (SEX: Sex, AGEGR1: Age group); a variable not given: the common ADaM variables' label (SEX, AGEGR1, RACE, REGION1, ECOGBL ...), else its name; the levels' rows are not changed","サブグループの見出し。変数 = そのラベル（SEX: Sex, AGEGR1: Age group）。指定のない変数: 一般的な ADaM 変数のラベル（SEX, AGEGR1, RACE, REGION1, ECOGBL ...）、なければ変数名。水準の行は変えない"
