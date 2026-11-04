@@ -246,10 +246,10 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   }
   pending <- shiny::reactiveVal(NULL)
   table_of <- function(d, cols, heads) {
-    # (one line a row: a cell too long is cut, its full text on hover)
-    cell <- function(x) shiny::tags$td(class = "text-truncate", style = "max-width: 28vw",
-                                       title = as.character(x), as.character(x))
-    shiny::tags$table(class = "table table-sm small mb-2",
+    # (one line a row, within the dialog: a cell too long is cut, its full
+    # text on hover)
+    cell <- function(x) shiny::tags$td(class = "text-truncate", title = as.character(x), as.character(x))
+    shiny::tags$table(class = "table table-sm small mb-2", style = "table-layout: fixed; width: 100%",
                       shiny::tags$thead(shiny::tags$tr(lapply(heads, shiny::tags$th))),
                       shiny::tags$tbody(lapply(seq_len(nrow(d)), function(r)
                         shiny::tags$tr(lapply(d[r, cols], cell)))))
@@ -270,6 +270,7 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
       return(notify(t("The reports ticked are in the study as they are: nothing to adopt."), "message"))
     }
     diff <- .ai_adopt_diff(path(), s$over)
+    if (!is.null(diff)) diff$change <- vapply(diff$change, t, "", USE.NAMES = FALSE)
     shiny::showModal(shiny::modalDialog(
       title = t("Adopt (copy) into the study"),
       if (length(s$fresh)) shiny::p(sprintf(t("Not in the study yet, copied to its Report list (%d): %s"),
