@@ -135,6 +135,7 @@
   missing_label = "Missing-baseline row label",
   total_label = "All-subjects row label",
   param_page = "One page per parameter",
+  header_n = "Subjects in the arm headings (N=)",
   param_heading = "Parameter page name",
   time_order = "Time point order variable",
   times = "Time points, in order",
