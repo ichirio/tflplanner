@@ -3,26 +3,26 @@
 This repository **is the R package** `tflplanner` (`DESCRIPTION` is at the
 root): a 'shiny' app and functions that manage clinical TFL studies on top of
 [tflspec](https://github.com/ichirio/tflspec) and
-[rtfreporter](https://github.com/ichirio/rtfreporter).  This file only points
-to the documents that hold the rules.
+[rtfreporter](https://github.com/ichirio/rtfreporter).  This file holds the
+rules for working on the code.
 
 ## Read these first
 
 | Topic | Document |
 |-------|----------|
-| The rules for working on the code (dependencies, screens, PRs, tests, files) | `CLAUDE.md` |
 | How to contribute: issues, fork and pull request, the checks before a PR | `CONTRIBUTING.md` |
 | What the app is made of (studies, specs, screens) | `vignettes/articles/concepts.Rmd` |
 | The AI tab's flow | `vignettes/articles/ai-flow.Rmd` |
 
-`CLAUDE.md` is written for any coding agent, not only Claude: read it as this
-repository's agent guide.  Where this file and those documents disagree,
-they win.
+Where this file and `CONTRIBUTING.md` disagree, tell a maintainer.
 
 ## In short
 
 - Dependencies point one way: rtfreporter <- tflspec <- tflplanner.  A change
-  to the table layout belongs in rtfreporter, a change to the spec in tflspec.
+  to the table layout belongs in rtfreporter, a change to the spec in tflspec:
+  change it upstream first; tflplanner only follows.
+- **Fictional data only.**  No company, study or patient data in code, tests,
+  fixtures, examples, issues or pull requests, and none sent to an AI service.
 - R code is ASCII (`\uXXXX` escapes).  Every text the app shows has its
   Japanese in `inst/i18n/strings/<file>.csv`.
 - **Record the change in the PR description.**  A PR never edits `NEWS.md`,
@@ -46,6 +46,33 @@ they win.
 - Outside contributors open pull requests against `main`.  The `next` branch,
   the `automerge` label and `merge-after:` lines are the maintainers' own
   workflow; a maintainer adds any label that is needed.
+
+## Screens
+
+- Labels are "meaning (function / argument name)", e.g. "Parameter (param:
+  PARAMCD)".
+- The standard screens are for expert users: cut guidance an expert would not
+  need, or move it behind a "?".
+- Never drop data silently.  Keep what a screen cannot show as YAML, and show
+  it.
+- Every text shown has its Japanese in `inst/i18n/strings/<file>.csv` (the R
+  file that shows it; `common.csv` for several).  `test-app-robust` checks
+  this, and translation keys must be unique (a test fails on duplicates).
+- Start the app from your branch and look at the screen first, before the
+  heavy checks.  Keep a pull request to one screen.
+
+## Tests and files
+
+- Run tests where they are; never copy them into a temporary folder
+  (`test_file()` reads that folder's `setup*.R`).
+- Before loading tflplanner, point `R_USER_CONFIG_DIR`, `R_USER_DATA_DIR`,
+  `R_USER_CACHE_DIR` and `options(tflplanner.home =)` at a scratch home, never
+  the user's.
+- Browser tests (`test-e2e-*.R`, chromote) run only with `TFLPLANNER_E2E=true`.
+- Run the installed package's tests in one R session as well (`test_dir`):
+  per-file runs miss interference between tests.
+- app_server()'s parts are `R/srv_<part>.R` (functions run in its environment
+  by `.srv_part()`).  Split a file once it passes 2,000 lines.
 
 ## Git work for a contributor
 
