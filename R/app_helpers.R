@@ -256,6 +256,8 @@ $(document).on('shiny:connected', function() {
     var a = $('#step a[data-value=' + x.step + ']');
     a.toggleClass('disabled', !!x.disabled);
     if (x.disabled) a.attr({'aria-disabled': 'true', title: x.title}); else a.removeAttr('aria-disabled title');
+    // the step's body, but its note (a listing's ARD step: the message only)
+    if (x.step === 'ard') $('#step_ard').children().not('#ard_kind_note').toggleClass('d-none', !!x.disabled);
     if (x.disabled && a.hasClass('active')) {
       var first = $('#step a[data-value]').first();
       first.tab('show');
