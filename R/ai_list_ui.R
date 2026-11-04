@@ -238,8 +238,9 @@ ai_list_server <- function(input, output, session, path, ver, reload_now, notify
   # with an older draft (copying overwrites the study's), and the same ones
   split_ticked <- function() {
     d <- listed()
-    st <- stats::setNames(copy_state(), d$output_id)
     ids <- intersect(ticked(), d$output_id[.ai_adoptable(d)])
+    # (asked again at the click: the study may have changed since the list was read)
+    st <- stats::setNames(.ai_copy_state(d, .ai_adopt_plan(path(), ids)), d$output_id)
     list(fresh = ids[st[ids] %in% "new"], over = ids[st[ids] %in% "replace"],
          same = ids[st[ids] %in% "same"])
   }
