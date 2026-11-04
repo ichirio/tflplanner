@@ -802,10 +802,19 @@
   }, "")
 }
 
+# The company standard's levels (its settings ai_review_figure, _table,
+# _listing); a kind it does not say, or says wrongly, has the default
+.ai_review_company <- function() {
+  vapply(.ai_review_kinds, function(k) {
+    v <- .ai_review_level(.std_setting(paste0("ai_review_", k), NA_character_))
+    if (is.na(v)) .ai_review_default[[k]] else v
+  }, "")
+}
+
 # A study's levels as tflspec reads them: study.yml, over spec/defaults.yml,
-# over the default
+# over the company standard, over the default
 .ai_review_read <- function(path) {
-  out <- .ai_review_default
+  out <- .ai_review_company()
   if (is.null(path)) return(out)
   for (f in c(file.path(path, study_layout()[["spec"]], "defaults.yml"), file.path(path, "study.yml"))) {
     if (!file.exists(f)) next

@@ -114,8 +114,8 @@
   output$lf_note <- shiny::renderUI({
     msg <- switch(lf_type(),
       none = t("Choose a Listing report on the left."),
-      table = t("This is a Table: it is made in step 2, the table builder's cards."),
-      listing = t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 2, Data code), if any, changes the data after the condition."),
+      table = sprintf(t("This is a Table: it is made in step %s, the table builder's cards."), .step_no("content")),
+      listing = sprintf(t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its rework (step %s, Rework the data), if any, changes the data after the condition."), .step_no("data")),
       figure = t("This is a Figure: it is made in Make the figure."))
     # a listing's: the (i) of its form's heading
     if (identical(lf_type(), "listing")) return(NULL)
@@ -246,8 +246,8 @@
       table = shiny::div(class = "small text-success",
                          sprintf(t("It reads %s's ARD."), st$id)),
       own = shiny::div(class = if (st$built) "small text-success" else "small text-warning",
-                       sprintf(if (st$built) t("Its ARD definition has %d analyses (built).") else
-                         t("Its ARD definition has %d analyses, not built yet: build them in step 1 (ARD)."), st$n)),
+                       if (st$built) sprintf(t("Its ARD definition has %d analyses (built)."), st$n) else
+                         sprintf(t("Its ARD definition has %d analyses, not built yet: build them in step %s (ARD)."), st$n, .step_no("ard"))),
       none = shiny::div(class = "small text-muted",
                         t("No ARD: `ard` is not in reach (add analyses, or take an ARD in, to have it).")))
     shiny::tagList(line, if (!identical(st$kind, "none")) shiny::div(
@@ -320,7 +320,11 @@
   }
   output$dc_result <- shiny::renderUI(uc_result())
   output$cc_result <- shiny::renderUI(uc_result())
-  output$lf_form <- shiny::renderUI({
+  # The listing's form, drawn once in two places: its data (the dataset and
+  # the condition) in the Analysis data step, the rest (type, rows per page,
+  # code lists, order) in Content.  One reactive makes both, so the inputs
+  # are drawn together (their ids share the counter) and read together.
+  lf_form_parts <- shiny::reactive({
     rv$ver
     type <- lf_type()
     shiny::req(identical(type, "listing"))
@@ -345,27 +349,38 @@
                         dataset = lv("dataset"), where = lv("where"),
                         sort = lv("sort"),
                         max_rows = if (is.na(mr)) "" else as.character(mr))
-    shiny::div(
-      class = "rp-b-card",
-      shiny::h6(with_tip(t("Listing"), t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its data code (step 2, Data code), if any, changes the data after the condition."))),
-      shiny::div(
-        class = "d-flex flex-wrap gap-2",
-        shiny::selectInput(lf_id("type"), t("Type"), type_ch,
-                           selected = lf_env$last$type, width = "200px"),
-        shiny::selectInput(lf_id("dataset"), t("Dataset"),
-                           c(stats::setNames("", "-"), ds_choices),
-                           selected = lv("dataset"), width = "200px"),
-        shiny::numericInput(lf_id("max_rows"), t("Rows per page"),
-                            value = if (is.na(mr)) NULL else mr, min = 1, width = "140px")),
-      shiny::textInput(lf_id("where"), t("Condition (R)"), value = lv("where"),
-                       width = "100%",
-                       placeholder = paste(t("e.g."), "AESEV == \"SEVERE\"")),
-      # as its program has them: the condition, the code lists, the order
-      shiny::div(class = "mb-2", shiny::uiOutput("lf_cl"), shiny::uiOutput("lf_cl_detail")),
-      shiny::textInput(lf_id("sort"), t("Order (| between variables, - for descending; a column with a code list sorts in the list's order)"),
-                       value = lv("sort"), width = "100%",
-                       placeholder = paste(t("e.g."), "TRTA | USUBJID | ASTDT")))
+    list(
+      data = shiny::div(
+        class = "rp-b-card",
+        shiny::h6(with_tip(t("The data the listing reads"), sprintf(t("The listing's data: a dataset of the catalog and a condition. Its rework (step %s, Rework the data), if any, changes the data after the condition."), .step_no("data")))),
+        shiny::div(
+          class = "d-flex flex-wrap gap-2",
+          shiny::selectInput(lf_id("dataset"), t("Dataset"),
+                             c(stats::setNames("", "-"), ds_choices),
+                             selected = lv("dataset"), width = "200px")),
+        shiny::textInput(lf_id("where"), t("Condition (R)"), value = lv("where"),
+                         width = "100%",
+                         placeholder = paste(t("e.g."), "AESEV == \"SEVERE\""))),
+      main = shiny::div(
+        class = "rp-b-card",
+        shiny::h6(with_tip(t("Listing"), sprintf(t("A listing: its data (a dataset of the catalog, a condition, an order) and its columns. Its rework (step %s, Rework the data), if any, changes the data after the condition."), .step_no("data")))),
+        shiny::div(
+          class = "d-flex flex-wrap gap-2",
+          shiny::selectInput(lf_id("type"), t("Type"), type_ch,
+                             selected = lf_env$last$type, width = "200px"),
+          shiny::numericInput(lf_id("max_rows"), t("Rows per page"),
+                              value = if (is.na(mr)) NULL else mr, min = 1, width = "140px")),
+        # as its program has them: the code lists, the order
+        shiny::div(class = "mb-2", shiny::uiOutput("lf_cl"), shiny::uiOutput("lf_cl_detail")),
+        shiny::textInput(lf_id("sort"), with_tip(t("Order"), t("| between variables, - for descending; a column with a code list sorts in the list's order")),
+                         value = lv("sort"), width = "100%",
+                         placeholder = paste(t("e.g."), "TRTA | USUBJID | ASTDT"))))
   })
+  output$lf_form <- shiny::renderUI(lf_form_parts()$main)
+  output$lf_data_form <- shiny::renderUI(lf_form_parts()$data)
+  # (both are drawn while the other step is shown: the form is read whole)
+  shiny::outputOptions(output, "lf_form", suspendWhenHidden = FALSE)
+  shiny::outputOptions(output, "lf_data_form", suspendWhenHidden = FALSE)
   # a listing's code lists: those of its dataset's columns (its program puts
   # them on the data after the condition, before the order)
   lf_cl_ids <- .codelist_part_ids("lf_cl", "cllf")
@@ -398,7 +413,8 @@
     lf_drawn()
     shiny::req(identical(lf_env$id, current()), identical(lf_type(), "listing"))
     get <- function(x) input[[lf_id(x)]]
-    shiny::req(!is.null(get("type")))
+    # (the form is drawn in two places: wait for both)
+    shiny::req(!is.null(get("type")), !is.null(get("dataset")), !is.null(get("where")))
     mr <- get("max_rows")
     list(sheet = "listings", values = list(
       type = get("type"), dataset = get("dataset") %||% "",

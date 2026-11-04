@@ -84,6 +84,7 @@ test_that("a click on an item goes to it: the report, the page, the tabs, the gr
                            population_id = "SAF")
     tg <- .review_target(data.frame(output_id = "T1", sheet = "codelists", row = "SEX / U",
                                     field = "value", area = "codelists", stringsAsFactors = FALSE), p)
+    expect_identical(tg$go, "adata")
     expect_identical(tg$inputs, list(ard_adata_pick = "adsl_saf", adata_cl_pick = "SEX"))
     expect_identical(tg$grid, "adata_cl_hot")
     expect_identical(tg$key, "U")

@@ -286,7 +286,7 @@ test_that("the builder of a table with no definition yet writes one, and keeps t
   shiny::testServer(server_for("B1"), {
     rv <- session$userData$rv
     bform <- session$userData$bform
-    session$setInputs(target = "T-DM", nav = "make", step = "content", content_nav = "content", table_nav = "builder")
+    session$setInputs(target = "T-DM", nav = "make", step = "content", table_nav = "builder")
     b <- function(x) paste0("b", bform$n, "_", x)
     v <- list(TRT01A = NULL)
     v[[b("key")]] <- "TRT01A"
@@ -309,7 +309,7 @@ test_that("a table with no ARD says so, and offers the one Preview", {
   local_home()
   create_study("P1", planner = add_output(new_planner(), "T1", type = "table"))
   shiny::testServer(server_for("P1"), {
-    session$setInputs(target = "T1", nav = "make", step = "content", content_nav = "content", table_nav = "builder")
+    session$setInputs(target = "T1", nav = "make", step = "content", table_nav = "builder")
     expect_match(output$assist$html, "Not made")
     expect_match(output$assist$html, 'id="fetch2"')
     expect_match(output$builder_note$html, 'id="fetch3"')
@@ -374,11 +374,12 @@ test_that("the top tabs are the flow, and a report is made in its steps", {
     unname(v[nzchar(v)])
   }
   expect_identical(vals("nav"), c("study", "data", "ai", "outputs", "make", "review", "results"))
-  expect_identical(vals("step"), c("ard", "content", "page"))
-  expect_identical(vals("content_nav"), c("content", "code"))
+  expect_identical(vals("step"), c("data", "ard", "content", "page"))
+  # (the Content step has no tabs of its own)
+  expect_identical(vals("content_nav"), character())
   expect_identical(vals("page_right"), c("spec", "code", "result"))
   # the steps' names are in one place
-  expect_identical(names(.step_labels), c("ard", "content", "page"))
+  expect_identical(names(.step_labels), c("data", "ard", "content", "page"))
   html <- as.character(app_ui())
   # each kind's content shows for its kind only
   for (k in c("table", "listing", "figure")) {

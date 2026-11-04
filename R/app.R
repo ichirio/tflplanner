@@ -23,11 +23,13 @@
   titles = "titles", footnotes = "footnotes", tokens = "tokens: your own")
 
 # The steps of making a report (the Make a report tab), by their tab values:
-# their names here only, so a name changes in one place (and its Japanese)
-.step_labels <- c(ard = "1 ARD", content = "2 Content", page = "3 Page and output")
-# a kind's own names of the steps (a figure's step 1 is mostly its data; an
-# ARD only sometimes, as a part of it)
-.step_labels_of <- list(figure = c(ard = "1 Data", content = "2 Figure"))
+# their names here only, so a name changes in one place (and its Japanese).
+# A template report has three of them (.tpl_step_labels).
+.step_labels <- c(data = "1 Analysis data", ard = "2 ARD", content = "3 Content",
+                  page = "4 Page and output")
+
+# a step's number, from .step_labels (a message names a step by it)
+.step_no <- function(step) sub(" .*$", "", .step_labels[[step]])
 
 .type_labels <- c(table = "Table", listing = "Listing", figure = "Figure")
 # a new report's ID begins with its kind's prefix (the Add dialog)

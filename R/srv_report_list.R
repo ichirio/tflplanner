@@ -195,18 +195,20 @@
   page <- shiny::reactive({
     nav <- input$nav %||% ""
     if (!identical(nav, "make")) return(nav)
-    switch(input$step %||% "ard",
+    switch(input$step %||% "data",
+      # (the analysis data and the ARD: both were the first step's page)
+      data = "ard",
       ard = "ard",
-      content = if (identical(input$content_nav, "code")) "code" else
-        switch(report_kind(), table = "tables", listing = "lf",
-               figure = "designer", "outputs"),
+      content = switch(report_kind(), table = "tables", listing = "lf",
+                       figure = "designer", "outputs"),
       page = if (identical(input$page_right, "code")) "code" else "report_spec",
       "outputs")
   })
   # a page: its top tab, and for a report's, its step (and the step's tab)
   go <- function(where) {
-    step <- switch(where, ard = "ard",
-                   tables = , lf = , designer = , code = "content",
+    # (`adata`: the analysis data, step 1; `data` is the Data tab's name)
+    step <- switch(where, adata = "data", ard = "ard",
+                   tables = , lf = , designer = "content",
                    report_spec = "page", NULL)
     if (is.null(step)) return(bslib::nav_select("nav", where))
     # (a template report has no ARD step: its step 1 is the content's)
@@ -215,9 +217,6 @@
     }
     bslib::nav_select("nav", "make")
     bslib::nav_select("step", step)
-    if (identical(step, "content")) {
-      bslib::nav_select("content_nav", if (identical(where, "code")) "code" else "content")
-    }
     if (identical(step, "page")) bslib::nav_select("page_right", "spec")
   }
   # The report chosen in the list: where its kind is made, as buttons
@@ -250,13 +249,22 @@
     src <- if (identical(k, "figure") && !is.null(current())) .fig_ard_source(rv$p, current())
     if (!is.null(src) && src$kind != "none") idle <- setdiff(idle, "ard")
     session$sendCustomMessage("rp-idle-tabs", as.list(idle))
+    # a listing has no ARD: its tab is shut, and says why
+    session$sendCustomMessage("rp-step-disable", list(
+      step = "ard", disabled = identical(k, "listing"),
+      title = if (identical(k, "listing")) t("A listing has no ARD") else ""))
     # the ARD definition: a figure's only when it has its own analyses
     session$sendCustomMessage("rp-ard-def", !identical(k, "figure") ||
                                 identical(src$kind, "own"))
   })
   output$ard_kind_note <- shiny::renderUI({
     k <- report_kind()
-    if (identical(k, "figure") && !is.null(current())) return(fig_ard_ui(current()))
+    if (identical(k, "figure") && !is.null(current())) {
+      none <- identical(.fig_ard_source(rv$p, current())$kind, "none")
+      return(shiny::tagList(
+        if (none) shiny::p(class = "text-muted small mb-1", t("No ARD for this figure (optional)")),
+        fig_ard_ui(current())))
+    }
     # a report whose ARD was taken in: its analyses here are not used
     f <- if (!is.null(current())) .ard_import_of(rv$p, current())
     if (!is.null(f)) {
@@ -275,9 +283,7 @@
     if (!k %in% names(.type_idle_tabs) || !"ard" %in% .type_idle_tabs[[k]]) {
       return(NULL)
     }
-    shiny::div(class = "alert alert-info py-1 small",
-               sprintf(t("%s is a %s: it has no ARD (its program reads its data). The ARD here is the tables'."),
-                       current(), t(.type_labels[[k]])))
+    shiny::div(class = "alert alert-info py-1 small", t("A listing has no ARD"))
   })
   .srv_keep(environment())
 }

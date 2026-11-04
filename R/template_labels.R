@@ -151,7 +151,8 @@
   x_breaks = "Hazard ratio axis ticks",
   size_by_n = "Point size by subjects",
   bold_headings = "Bold subgroup headings",
-  n_by_arm = "Events/N by arm"
+  n_by_arm = "Events/N by arm",
+  subgroup_labels = "Subgroup headings' labels"
 )
 
 .tpl_doc_labels <- c(
