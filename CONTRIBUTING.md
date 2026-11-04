@@ -23,8 +23,10 @@ By participating in this project you agree to abide by its
   warnings.
 - `lintr::lint_package()` reports nothing (the configuration is `.lintr`).
 - R source files are ASCII: write non-ASCII text as `\uXXXX` escapes.
-  The app's Japanese strings live in `inst/i18n/strings.csv`.
-- Add a line to `NEWS.md` for a user-visible change.
+  The app's Japanese strings live in `inst/i18n/strings/<file>.csv` (the
+  R file that shows them; `common.csv` for several).
+- Do not change `Version` or `NEWS.md`: the maintainers write them when a
+  version is tagged or released.
 
 tflplanner builds on [rtfreporter](https://github.com/ichirio/rtfreporter);
 a change the table layout needs belongs there.
