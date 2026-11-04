@@ -202,7 +202,7 @@ test_that("the study review lists a figure's ARD problems as F04-F08, each with 
   expect_identical(r$level, "check")
   expect_identical(c(r$sheet, r$field), c("report", "ard_source"))
   expect_identical(r$message, "the ARD of T-14-2-2 is not made yet: make it first (its step 2)")
-  expect_identical(r$template, "the ARD of %s is not made yet: make it first (its step 2)")
+  expect_identical(r$template, "the ARD of %s is not made yet: make it first (its step %s)")
   expect_identical(.review_target(r, s$planner)$go, "ard")
   # in Japanese: the sentence translated, the value put in
   expect_identical(rv(s, "ja")$message,
