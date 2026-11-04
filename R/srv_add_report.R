@@ -107,11 +107,10 @@
         } else {
           shiny::div(
             shiny::textAreaInput(
-              input_id, lab, value = txt, width = "100%", updateOn = "blur",
+              input_id, with_tip(lab, sprintf(t("A line a row: %s"), paste(.tpl_list_fields(prm), collapse = " | "))),
+              value = txt, width = "100%", updateOn = "blur",
               rows = max(2L, min(8L, length(strsplit(txt, "\n")[[1L]]) + 1L)),
-              placeholder = paste(.tpl_list_fields(prm), collapse = " | ")),
-            shiny::div(class = "small text-muted mt-n2 mb-2",
-                       sprintf(t("A line a row: %s"), paste(.tpl_list_fields(prm), collapse = " | "))))
+              placeholder = paste(.tpl_list_fields(prm), collapse = " | ")))
         }
       })
   }
@@ -178,9 +177,8 @@
     shiny::tags$details(
       class = "border rounded p-2 mb-2",
       shiny::tags$summary(class = "small fw-semibold",
-                          sprintf(t("More arguments (%d): filters, variables, columns ..."), length(opt))),
-      shiny::p(class = "small text-muted mb-1",
-               t("Each starts at its default; only a value you change is written into the report.")),
+                          with_tip(sprintf(t("More arguments (%d): filters, variables, columns ..."), length(opt)),
+                                   t("Each starts at its default; only a value you change is written into the report."))),
       lapply(opt, function(x) tpl_widget(tpl_arg_id(nm, x$name), x, tpl_opt_start(x),
                                          dataset = prm$data$default, params = prm)))
   })
@@ -336,9 +334,7 @@
   # the page told at once that a report is being opened, and whether it is
   # a template report (.tpl_js): its steps hidden until drawn
   tpl_names <- function(tpl, kind) {
-    own <- .step_labels_of[[kind]] %||% character()
     nm <- .step_labels
-    nm[names(own)] <- own
     if (isTRUE(tpl)) nm[names(.tpl_step_labels)] <- .tpl_step_labels
     stats::setNames(as.list(t(unname(nm))), names(nm))
   }
@@ -429,10 +425,13 @@
     after_id_change(p2, id)
     if (!is.null(p2)) go(switch(kind, table = "tables", listing = "lf", figure = "designer", "outputs"))
   }
-  # The template's card: the required arguments and those the report gives
+  # The template's cards: the required arguments and those the report gives
   # above, the others (their defaults, greyed) folded below; each with
-  # where its value comes from.  Its own output (tpl_card, tpl_card_lf,
-  # tpl_card_fig), whatever step it is put in.
+  # where its value comes from.  An argument is drawn once, in the step of
+  # its section (.tpl_arg_section): the Template step's card (tpl_card,
+  # tpl_card_lf, tpl_card_fig) has the template's choice and the ARD and
+  # content arguments, the Analysis data step's (tpl_card_data) and the Page
+  # and output step's (tpl_card_page) their own.  Whatever step it is put in.
   tpl_ver <- shiny::reactiveVal(0L)
   tpl_obs <- new.env()
   tpl_iid <- function(name, a) paste0("tpl_", name, "__", gsub("[^A-Za-z0-9_]", "_", a))
@@ -600,9 +599,9 @@
                                    width = "100%", options = list(create = TRUE)))),
       # (the analysis set, then the subset: CDISC ARS's AnalysisSet and
       # DataSubset)
-      shiny::selectInput("tpl_data_pop", t("Analysis set"), tpl_data_pop_choices(id, f),
+      shiny::selectInput("tpl_data_pop", t("Analysis set (population)"), tpl_data_pop_choices(id, f),
                          selected = tpl_data_pop_sel(id, f), width = "100%"),
-      shiny::textInput("tpl_data_filter", t("Subset"), f$filter, width = "100%",
+      shiny::textInput("tpl_data_filter", t("Record condition (filter)"), f$filter, width = "100%",
                        placeholder = t("an R condition on the records, e.g. AVAL > 0")),
       shiny::div(class = "small text-muted mb-1",
                  if (is.null(pop) && f$join) {
@@ -694,7 +693,8 @@
     tpl_ver(tpl_ver() + 1L)
     bump()
   })
-  tpl_card_draw <- function(id) {
+  tpl_card_draw <- function(id, part = c("template", "data", "page")) {
+    part <- match.arg(part)
     tpl_ver()
     rv$ver
     p <- shiny::isolate(rv$p)
@@ -707,9 +707,11 @@
     args <- tp$args
     steps <- p$spec$outputs[[id]]$data$steps
     dataset <- if (own_data) .tpl_steps_fields(steps)$dataset else args$data %||% prm$data$default
-    up <- names(prm)[vapply(prm, function(x) isTRUE(x$required) || x$name %in% names(args), NA)]
-    low <- setdiff(names(prm), up)
+    sec_of <- vapply(names(prm), function(a) .tpl_arg_section(tp$name, a), "")
     miss <- .tpl_missing(tp$name, args, p$spec$study)
+    # (the required arguments empty, said in the step they are drawn in)
+    miss <- miss[vapply(miss, function(a) .tpl_arg_section(tp$name, a), "") %in%
+                   switch(part, data = "data", page = "page", c("ard", "content"))]
     kind <- report_info(p, id)$type
     study <- p$spec$study
     # where a value comes from: this report / the study standard / the
@@ -720,7 +722,7 @@
       sv <- og$study
       if (identical(og$from, "own")) {
         return(shiny::span(class = "rp-tpl-arg-from",
-                           t("This table"),
+                           t(if (identical(kind, "table")) "This table" else "This report"),
                            if (!is.null(sv)) paste0(" \u2014 ", sprintf(t("over the study standard (%s)"),
                                                                        .tpl_show(sv)))))
       }
@@ -747,7 +749,39 @@
           onclick = sprintf("Shiny.setInputValue('tpl_revert', '%s', {priority: 'event'})", a),
           t("Revert")))
     }
-    open <- isTRUE(shiny::isolate(input$tpl_open))
+    # a section's arguments: those required or given, then the others folded
+    block <- function(secs, head = NULL) {
+      nm <- names(prm)[sec_of %in% secs]
+      if (!length(nm)) return(NULL)
+      up <- nm[vapply(nm, function(a) isTRUE(prm[[a]]$required) || a %in% names(args), NA)]
+      low <- setdiff(nm, up)
+      key <- paste0("tpl_open_", secs[1L])
+      shiny::tagList(
+        if (!is.null(head)) shiny::h6(class = "mt-2 mb-1", head),
+        lapply(up, row, upper = TRUE),
+        if (length(low)) shiny::tags$details(
+          class = "mt-1", open = if (isTRUE(shiny::isolate(input[[key]]))) NA,
+          ontoggle = sprintf("Shiny.setInputValue('%s', this.open)", key),
+          shiny::tags$summary(class = "small", sprintf(t("Arguments with defaults (%d)"), length(low))),
+          shiny::div(class = "mt-2", lapply(low, row, upper = FALSE))))
+    }
+    missing_alert <- if (length(miss)) shiny::div(
+      class = "alert alert-danger py-1 small",
+      sprintf(t("Required arguments are empty: %s. The preview waits for them."),
+              paste(miss, collapse = ", ")))
+    if (part != "template") {
+      none <- !any(sec_of %in% part) && !(part == "data" && own_data)
+      # (a template with no page arguments: no card, the step is the page's)
+      if (none && part == "page") return(NULL)
+      return(bslib::card(
+        class = "mb-2 border-primary",
+        bslib::card_header(shiny::strong(t(if (part == "data") "Analysis data" else "Template arguments (page)"))),
+        bslib::card_body(
+          missing_alert,
+          if (part == "data" && own_data) tpl_data_block(id, steps),
+          block(part),
+          if (none) shiny::p(class = "small text-muted mb-0", t("This template has no arguments in this step.")))))
+    }
     # (a figure's preview is under the card; a table's and a listing's in
     # the right pane)
     preview_btn <- if (identical(kind, "figure")) {
@@ -770,8 +804,13 @@
           lapply(others, function(n) shiny::tags$option(
             value = n, selected = if (identical(n, tp$name)) NA, n))),
         # (one way: the template's items written into the report as code)
-        .btn("tpl_to_code", paste0(t("Convert to code"), " (tfl_template_to_spec)"),
-             class = "btn-sm btn-outline-primary"),
+        # (a plain button, not an input: the card is drawn in one of three
+        # outputs, and two of them hold one for a moment while the report
+        # kind changes -- a duplicate input id)
+        shiny::tags$button(
+          type = "button", class = "btn btn-sm btn-outline-primary",
+          onclick = "Shiny.setInputValue('tpl_to_code', Math.random(), {priority: 'event'})",
+          paste0(t("Convert to code"), " (tfl_template_to_spec)")),
         # (for later: greyed)
         shiny::div(
           class = "dropdown",
@@ -785,17 +824,9 @@
                                          t("Make a variant ..."))))),
         if (!is.na(.tpl_desc[tp$name])) shiny::div(class = "small text-muted w-100", t(.tpl_desc[[tp$name]])))),
       bslib::card_body(
-        if (length(miss)) shiny::div(
-          class = "alert alert-danger py-1 small",
-          sprintf(t("Required arguments are empty: %s. The preview waits for them."),
-                  paste(miss, collapse = ", "))),
-        if (own_data) tpl_data_block(id, steps),
-        lapply(up, row, upper = TRUE),
-        shiny::tags$details(
-          class = "mt-1", open = if (open) NA,
-          ontoggle = "Shiny.setInputValue('tpl_open', this.open)",
-          shiny::tags$summary(class = "small", sprintf(t("Arguments with defaults (%d)"), length(low))),
-          shiny::div(class = "mt-2", lapply(low, row, upper = FALSE))),
+        missing_alert,
+        block("ard", t("Analysis (ARD)")),
+        block("content", t("Content")),
         if (!is.null(preview_btn)) shiny::div(class = "mt-2", preview_btn)))
   }
   # a template figure: drawn here from the template's items
@@ -861,8 +892,19 @@
     if (!identical(report_kind(), "figure")) return(NULL)
     tpl_card_ui()
   })
+  # the other steps' arguments (any kind of template report)
+  for (part in c("data", "page")) {
+    local({
+      part <- part
+      output[[paste0("tpl_card_", part)]] <- shiny::renderUI({
+        id <- current()
+        shiny::req(id)
+        tpl_card_draw(id, part)
+      })
+    })
+  }
   # (drawn on any step: its draw ends "Loading ...")
-  for (o in c("tpl_card", "tpl_card_lf", "tpl_card_fig")) {
+  for (o in c("tpl_card", "tpl_card_lf", "tpl_card_fig", "tpl_card_data", "tpl_card_page")) {
     shiny::outputOptions(output, o, suspendWhenHidden = FALSE)
   }
   # The right pane of a template table: ARD (the ARD its template makes,

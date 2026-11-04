@@ -203,7 +203,7 @@
 # seen is a warning (check it).  A list: `text` (the sentences), `warn`.
 .level_order_words <- c(
   ard = "The ARD's order (its factor levels).",
-  codelist = "The code list's order (ARD step 1-1).",
+  codelist = "The code list's order (the Analysis data step).",
   seen = "Check this order: the data do not give one (no factor, no numeric twin such as TRT01AN), so it is the ARD's.",
   differs = "The ARD's order differs from the code list's; the table uses the code list's.")
 

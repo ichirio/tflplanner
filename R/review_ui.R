@@ -228,7 +228,7 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
     out$grid <- paste0("hot_", sheet)
     out$keycols <- keys[[sheet]] %||% character()
   } else if (identical(sheet, "codelists")) {
-    out$go <- "ard"
+    out$go <- "adata"
     ad <- .adata_rows(p, id)
     v <- sub(" / .*$", "", key)
     if (nrow(ad)) out$inputs <- list(ard_adata_pick = ad$data_id[1L], adata_cl_pick = v)
@@ -241,7 +241,7 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
     out$grid <- paste0("hot_ard_", s)
     out$keycols <- keys[[s]]
   } else if (identical(sheet, "analysis_data")) {
-    out$go <- "ard"
+    out$go <- "adata"
     if (nzchar(key)) out$inputs <- list(ard_adata_pick = key)
   } else if (identical(sheet, "analyses")) {
     out$go <- "ard"
@@ -252,9 +252,10 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
     out$grid <- if (identical(sheet, "listings")) "hot_lf_listings" else "hot_lf_cols"
     out$row_index <- if (identical(sheet, "listing_cols")) suppressWarnings(as.integer(key)) else 1L
   } else if (identical(sheet, "design")) {
-    out$go <- "designer"
     m <- regmatches(key, regexec("^([a-z]+)\\[([0-9]+)\\]", key))[[1L]]
     sec <- if (length(m)) m[2L] else if (nzchar(key)) sub(" .*$", "", key) else "plot"
+    # (the data steps and code lists are the first step's)
+    out$go <- if (sec %in% .pd_step_secs$data) "adata" else "designer"
     i <- if (length(m)) as.integer(m[3L]) else 1L
     out$inputs <- list(pd_act = list(op = "sel", sec = sec, i = i))
   } else if (identical(sheet, "_tflplanner")) {

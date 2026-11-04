@@ -13,7 +13,7 @@
 # pattern's (in the pattern dialog), Standard's
 .pg_own_word <- function(id, t, kind = NULL) {
   if (is.na(id)) t("Standard") else if (.is_pattern_id(id)) t("this pattern") else
-    if (identical(kind, "figure")) t("This figure") else t("This table")
+    if (is.null(kind) || identical(kind, "table")) t("This table") else t("This report")
 }
 # what Revert goes back to, its tooltip
 .pg_back_word <- function(id, t) {
@@ -489,12 +489,12 @@ $(document).on('shiny:value', function(e) {
         value = if (own) v else "",
         placeholder = switch(k,
           OUTPUT_LABEL = sprintf(t("(blank: the text made from the ID, %s)"), d),
-          OUTPUT_POPULATION = if (nzchar(d)) sprintf(t("(blank: step 1's analysis set, %s)"), d)
-                              else t("(blank: step 1's analysis set, none chosen)"),
+          OUTPUT_POPULATION = if (nzchar(d)) sprintf(t("(blank: step %s's analysis set, %s)"), .step_no("data"), d)
+                              else sprintf(t("(blank: step %s's analysis set, none chosen)"), .step_no("data")),
           if (nzchar(d)) d else ""),
         `data-kind` = "info", `data-name` = k, `data-key` = paste0("info:", k)),
       if (identical(k, "OUTPUT_POPULATION"))
-        shiny::div(class = "pg-from", go("ard", t("The analysis set: step 1"))))
+        shiny::div(class = "pg-from", go("ard", sprintf(t("The analysis set: step %s"), .step_no("data")))))
   }
   shiny::div(
     class = "pg-grid pg-info",

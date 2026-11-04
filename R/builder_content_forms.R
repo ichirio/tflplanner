@@ -212,8 +212,8 @@
   field <- htmltools::tagAppendAttributes(field, `data-ard` = paste(ard, collapse = "|"))
   field <- htmltools::tagAppendChild(field, shiny::div(
     class = "small text-warning rp-ard-warn", style = if (same) "display: none;",
-    sprintf(tr("Not the ARD analysis's (%s): the table may fail or come out otherwise. The analysis is changed in step 1.", lang),
-            paste(ard, collapse = " > "))))
+    sprintf(tr("Not the ARD analysis's (%s): the table may fail or come out otherwise. The analysis is changed in step %s.", lang),
+            paste(ard, collapse = " > "), .step_no("ard"))))
   htmltools::tagAppendChild(field, shiny::div(class = "small rp-ard-link", link))
 }
 

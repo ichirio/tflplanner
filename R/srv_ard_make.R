@@ -191,8 +191,9 @@
     ad <- .adata_rows(p, ard_target())
     d <- ad[ad$data_id %in% shiny::isolate(adata_grid_ids()), , drop = FALSE]
     grids_drawn()
+    # (no spare row: a new data's row comes from the form, when it is saved)
     .grid(d, "analysis_data", adata_grid_key(), shiny::isolate(ard_choices("analysis_data")),
-          closed = .ard_closed_columns)
+          closed = .ard_closed_columns, spare = 0L)
   })
   shiny::observeEvent(input$hot_adata_report, {
     h <- input$hot_adata_report
@@ -623,7 +624,7 @@
         shiny::textInput(st_id("id"), with_tip(t("Analysis ID (a set of analyses)"), t("Several variables: in the ARD, one row per variable under the same ID.")), r$analysis_id),
         shiny::textInput(st_id("label"), t("Label"), blank_na(r$label),
                          width = "100%")),
-      if (!inside) shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data of 1-1 (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
+      if (!inside) shiny::selectInput(st_id("data"), with_tip(t("Data"), t("The rows the analysis reads, chosen from the definitions: a dataset (Data tab) kept to an analysis set (Populations tab), or an analysis data (the same, with more done to it). The population is part of the choice. The name is the one the program gives it.")),
                                       data_choices(r),
                                       selected = .an_data_value_row(r),
                                       width = "100%"),
@@ -636,7 +637,7 @@
       if (!inside) shiny::tags$details(
         class = "mb-2", open = if (!is.na(r$where)) NA,
         shiny::tags$summary(class = "small", with_tip(argl("This analysis's own filter", "where"),
-                                                      t("An R condition that filters this analysis's rows alone (e.g. AESER == \"Y\"). The data's own filter is 1-1's."))),
+                                                      t("An R condition that filters this analysis's rows alone (e.g. AESER == \"Y\"). The data's own filter is the analysis data's."))),
         shiny::textInput(st_id("where"), NULL, blank_na(r$where), width = "100%",
                          placeholder = "AESER == \"Y\""),
         .where_labels_note(sheet_rows(shiny::isolate(rv$p), "codelists",

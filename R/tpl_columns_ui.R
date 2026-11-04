@@ -56,12 +56,13 @@
     `data-id` = input_id, `data-src` = data_id,
     `data-cols` = json(cols), `data-rows` = json(rows),
     `data-heads` = json(list(t("Column"), t("Heading"), t("Width"), t("Once"))),
-    shiny::selectizeInput(paste0(input_id, "__pick"), label, choices, selected = picked,
+    shiny::selectizeInput(paste0(input_id, "__pick"),
+                          with_tip(label, paste(
+                            t("Drag to order; each column's heading starts as the data's label. Width: a share of the page (blank: the study's)."),
+                            t("Once: a value repeated in the rows below is printed once."))),
+                          choices, selected = picked,
                           multiple = TRUE, width = "100%",
                           options = list(plugins = list("remove_button", "drag_drop"))),
-    shiny::div(class = "small text-muted mt-n2 mb-1",
-               t("Drag to order; each column's heading starts as the data's label. Width: a share of the page (blank: the study's)."),
-               " ", t("Once: a value repeated in the rows below is printed once.")),
     shiny::div(class = "rp-lcols-rows"),
     shiny::tags$script(shiny::HTML(sprintf("rpLcolsStart('%s');", input_id))))
 }

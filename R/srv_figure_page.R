@@ -35,8 +35,8 @@
     }
     if (is.null(png)) {
       return(shiny::div(class = "text-muted small text-center py-4",
-                        if (.is_code_step(p, id, "content")) t("(the figure: [Run the code] in step 2 draws it here)")
-                        else t("(the figure: its design in step 2 draws it here)")))
+                        if (.is_code_step(p, id, "content")) sprintf(t("(the figure: [Run the code] in step %s draws it here)"), .step_no("content"))
+                        else sprintf(t("(the figure: its design in step %s draws it here)"), .step_no("content"))))
     }
     shiny::tagList(img(png), caption)
   }
@@ -221,7 +221,7 @@
   }
   study_key <- function() if (has_study()) rv$study$meta$study_id
 
-  editors <- c(description = "text", section = "text", process_code = "area",
+  editors <- c(description = "text", process_code = "area",
                dc_code = "area", cc_code = "area")
   # an editor and the field it edits: the report list's, or a step's own
   # code (the report sheet's, step_code())
@@ -231,6 +231,36 @@
     if (startsWith(field, "step:")) return(step_code(rv$p, id, sub("^step:", "", field)))
     rv$p$outputs[[field]][match(id, rv$p$outputs$output_id)]
   }
+  # the report's rework (process_code): where its `data` is made -- a table's
+  # from its ARD (the ARD step), a listing's from its records (the Analysis
+  # data step); the editor is drawn in the one that fits the report's kind,
+  # folded, and so only once
+  # (the editor of the kind that left is taken out in one flush and the
+  # other's put in in the next: the id is never on the page twice)
+  rework_kind <- shiny::reactiveVal("")
+  shiny::observeEvent(report_kind(), {
+    rework_kind("")
+    session$onFlushed(function() rework_kind(shiny::isolate(report_kind())), once = TRUE)
+  })
+  rework_ui <- function(kind) shiny::renderUI({
+    if (!identical(rework_kind(), kind)) return(NULL)
+    id <- shiny::isolate(current())
+    v <- if (is.null(id)) NA else shiny::isolate(field_value(id, "process_code"))
+    shiny::tags$details(
+      class = "rp-help mt-2 rp-code",
+      shiny::tags$summary(t("Rework the data (R)")),
+      shiny::textAreaInput(
+        "process_code",
+        with_tip(t("Rework"),
+                 paste(t("Rework: usually blank (the standard one). Write code to change the data before the table is made."),
+                       sprintf(t("A table: make `data` from `ard` (normalize_ard(), then mutate() ...); blank = the company template (normalize). A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step %s or %s.)"), .step_no("ard"), .step_no("content")))),
+        value = if (length(v) && !is.na(v)) v else "", rows = 5, width = "100%",
+        resize = "vertical", placeholder = "data <- normalize_ard(ard)"))
+  })
+  output$rework_ard <- rework_ui("table")
+  output$rework_data <- rework_ui("listing")
+  shiny::outputOptions(output, "rework_ard", suspendWhenHidden = FALSE)
+  shiny::outputOptions(output, "rework_data", suspendWhenHidden = FALSE)
   shiny::observeEvent(list(current(), rv$ver), {
     id <- current()
     val <- function(v) if (length(v) && !is.na(v)) v else ""
@@ -499,9 +529,9 @@
   shiny::observeEvent(input$pg_act, {
     a <- input$pg_act
     # where a report list's token changes: the report list, step 1, the
-    # report's section (Data code)
+    # report's section (the Page step's)
     if (identical(a$act, "goto")) {
-      if (a$name %in% c("outputs", "ard", "code")) go(a$name)
+      if (a$name %in% c("outputs", "ard")) go(a$name)
       return()
     }
     id <- pg_id(a$target)
