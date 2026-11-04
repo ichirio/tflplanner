@@ -81,3 +81,4 @@
 "This report's step %s is its own R program: it is on the ARD tab.","この帳票の手順 %s は自前の R プログラムです。ARD タブにあります。"
 "This listing is its own R program: it reads its data in the Content step.","この Listing は自前の R プログラムです。データはコンテンツのステップで読みます。"
 "The listing's row","Listing の行"
+"This figure is its own R program: it reads its data in the Content step.","この図は自前の R プログラムです。データはコンテンツのステップで読みます。"

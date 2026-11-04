@@ -410,6 +410,11 @@ app_ui <- function(lang = "en") {
             "output.content_is_code == 'yes'",
             shiny::p(class = "text-muted small",
                      t("This listing is its own R program: it reads its data in the Content step.")))),
+        # a figure's own code: no data step of the definition
+        shiny::conditionalPanel(
+          "output.report_kind == 'figure' && output.content_is_code == 'yes'",
+          shiny::p(class = "text-muted small",
+                   t("This figure is its own R program: it reads its data in the Content step."))),
         shiny::conditionalPanel(
           "output.report_kind == 'table'",
           shiny::div(
@@ -441,8 +446,10 @@ app_ui <- function(lang = "en") {
                                   t("Makes the analysis data of the form (as it is now, not saved yet) from the study's data: its rows and subjects, the first rows."))),
                     shiny::uiOutput("adata_preview_out"))))))))))
 
+  # (a listing has no ARD: only the note of ard_kind_note stays in #step_ard
+  # -- rp-step-disable)
   step_ard <- shiny::div(
-    class = "mt-2",
+    id = "step_ard", class = "mt-2",
     # the definition or the report's own code (R/step_code.R)
     shiny::uiOutput("data_mode_bar"),
     # what a step of its own code reads: its datasets, its ARD

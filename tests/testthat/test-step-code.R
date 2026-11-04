@@ -313,3 +313,29 @@ test_that("a step's code editor and the whole app UI build (in English and Japan
   # the editor's height: the app's style
   expect_match(as.character(app_ui()), ".rp-code-step textarea { height: clamp(", fixed = TRUE)
 })
+
+test_that("a listing's ARD step is shut to its message; a code figure's data step says why it is empty", {
+  skip_on_cran()
+  fig_msg <- "This figure is its own R program: it reads its data in the Content step."
+  for (lang in c("en", "ja")) {
+    html <- as.character(app_ui(lang))
+    # the ARD step is one frame; the page script shuts all of it but the note
+    expect_match(html, "id=\"step_ard\"", fixed = TRUE)
+    expect_match(html, "id=\"ard_kind_note\"", fixed = TRUE)
+    # the figure's line, for a figure whose content is code
+    expect_match(html, tr(fig_msg, lang), fixed = TRUE)
+    expect_match(html, "output.report_kind == &#39;figure&#39; &amp;&amp; output.content_is_code == &#39;yes&#39;",
+                 fixed = TRUE)
+  }
+  expect_false(identical(tr(fig_msg, "ja"), fig_msg))
+  expect_match(as.character(app_ui()),
+               "$('#step_ard').children().not('#ard_kind_note')", fixed = TRUE)
+  # a listing's note is the message that stays
+  local_home()
+  p <- add_output(new_planner(), "L1", type = "listing")
+  create_study("S1", planner = p)
+  shiny::testServer(server_for("S1"), {
+    session$setInputs(target = "L1", nav = "make", step = "ard")
+    expect_match(output$ard_kind_note$html, "A listing has no ARD", fixed = TRUE)
+  })
+})
