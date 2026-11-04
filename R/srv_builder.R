@@ -264,8 +264,8 @@
         shiny::selectizeInput(
           bid("layers"),
           with_tip(al("table_plan", "rows"),
-                   paste(if (hier) t("Outermost first; drag to order. The keys are the analysis's by (step 1).") else
-                     t("Outermost first; drag to order. The keys are the analysis's by (step 1) and the stack's (normalize_ard()); \"...\" typed is a constant heading."),
+                   paste(if (hier) sprintf(t("Outermost first; drag to order. The keys are the analysis's by (step %s)."), .step_no("ard")) else
+                     sprintf(t("Outermost first; drag to order. The keys are the analysis's by (step %s) and the stack's (normalize_ard()); \"...\" typed is a constant heading."), .step_no("ard")),
                      t("What can be placed: the normalized ARD's columns (the keys, variable, a stack's subgroup). group1 is not there: normalizing makes it a column named after its group (TRT01A ...); the analysis variables AGE/SEX are values of variable, so they come as the block of variable. A column is in cols or in rows, not both."))),
           stats::setNames(lay_ch, layer_names), selected = lay_now,
           multiple = TRUE, width = "100%",
@@ -283,14 +283,14 @@
         # (what it means, behind the (i): the way to step 1 alone shown)
         if (hier) shiny::div(
           class = "small text-muted rp-b-fixed-note",
-          shiny::actionLink("b_rows_step1", t("Step 1's analysis")), " ",
-          help_tip(paste(sprintf(t("The levels %s are the ARD analysis's (step 1)."),
-                                 paste(st$hierarchy, collapse = " \u203a ")),
+          shiny::actionLink("b_rows_step1", sprintf(t("Step %s's analysis"), .step_no("ard"))), " ",
+          help_tip(paste(sprintf(t("The levels %s are the ARD analysis's (step %s)."),
+                                 paste(st$hierarchy, collapse = " \u203a "), .step_no("ard")),
                          t("A table never drops a level of its hierarchy: a table of other levels is made from another ARD analysis. Rows the table should not show can be hidden in a later stage."))))),
       # a variable the ARD lacks is not offered: the ARD analysis adds it
       if (!hier) shiny::div(
         class = "small text-muted rp-b-fixed-note",
-        shiny::actionLink("b_rows_step1", t("Step 1's analysis")), " ",
+        shiny::actionLink("b_rows_step1", sprintf(t("Step %s's analysis"), .step_no("ard"))), " ",
         help_tip(t("A variable not here is added in the ARD analysis."))))
     # (a summary table's variables each shown or not: plan_filter()'s card,
     # written as its row filter; the ARD stays as it is)
@@ -303,7 +303,7 @@
     cells_body <- shiny::tagList(
       shiny::radioButtons(
         bid("value"),
-        with_tip(al("plan_cells", "value"), t("Numbers: the ARD's values (stat), rounded here to the decimals below. Formatted text: the values as step 1 formatted them (stat_fmt), printed as they are, not rounded here; a row may still put two in one (Mean (SD)).")),
+        with_tip(al("plan_cells", "value"), sprintf(t("Numbers: the ARD's values (stat), rounded here to the decimals below. Formatted text: the values as step %s formatted them (stat_fmt), printed as they are, not rounded here; a row may still put two in one (Mean (SD))."), .step_no("ard"))),
         stats::setNames(c("stat", "stat_fmt"),
                         t(c("Numbers (stat)", "Formatted text (stat_fmt)"))),
         selected = st$value, inline = TRUE),
@@ -346,7 +346,7 @@
     }
     labels_body <- if (nrow(v) > 0L) shiny::tagList(
       # (a template report has no step 1-1: #440)
-      if (!tpl) .btn("cl3_open", t("Code lists: in step 1 (1-1, column definitions)"),
+      if (!tpl) .btn("cl3_open", t("Code lists: in the Analysis data step (column definitions)"),
                      class = "btn-sm btn-link py-0 px-0 mb-1"),
       # the headings and the order as one grid (the code list of the
       # variables), once: here
@@ -456,7 +456,7 @@
         card_id(it$path), fn, it, choices = ch, lang = lang, cols = wc,
         ard = if (identical(fn, "normalize_ard")) list(hierarchy = st$hierarchy),
         fixed_link = if (identical(fn, "normalize_ard"))
-          shiny::actionLink("b_norm_step1", t("Step 1's analysis"), class = "small ms-1"))
+          shiny::actionLink("b_norm_step1", sprintf(t("Step %s's analysis"), .step_no("ard")), class = "small ms-1"))
       # plan_filter(): its condition by the condition builder (the rows
       # kept: tables$keep_where), its switches as fields
       if (identical(fn, "plan_filter")) {

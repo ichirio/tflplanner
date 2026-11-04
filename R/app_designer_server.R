@@ -44,8 +44,13 @@
     })
     shiny::updateSelectInput(session, "pd_add", choices = ch$layers,
                              selected = shiny::isolate(input$pd_add))
-    shiny::updateSelectInput(session, "pd_add_data", choices = ch$data,
+    # (the data steps: the records' in step 1, the statistics' in step 2)
+    shiny::updateSelectInput(session, "pd_add_data",
+                             choices = ch$data[!ch$data %in% .pd_stat_steps],
                              selected = shiny::isolate(input$pd_add_data))
+    shiny::updateSelectInput(session, "pd_add_stat",
+                             choices = ch$data[ch$data %in% .pd_stat_steps],
+                             selected = shiny::isolate(input$pd_add_stat))
   })
   design <- shiny::reactive({
     id <- current()
@@ -327,11 +332,11 @@
       p2 <- guarded(set_fig_own_analyses(rv$p, id, an, population_id = pop))
       if (!is.null(p2)) {
         rv$p <- p2
-        notify(sprintf(t("Added analyses %s to step 1 (remove them there if not wanted): update the ARD, then Preview."),
-                       paste(attr(p2, "written"), collapse = ", ")))
+        notify(sprintf(t("Added analyses %s to step %s (remove them there if not wanted): update the ARD, then Preview."),
+                       paste(attr(p2, "written"), collapse = ", "), .step_no("ard")))
         if (is.na(pop %||% NA)) notify(sprintf(
-          t("No analysis set of the study is the flag %s: choose the analysis data's set in step 1."),
-          an$analysis_data$population_id[1L]), "warning")
+          t("No analysis set of the study is the flag %s: choose the analysis data's set in step %s."),
+          an$analysis_data$population_id[1L], .step_no("data")), "warning")
       }
     }
   }
@@ -536,7 +541,7 @@
   shiny::observeEvent(input$pd_drop, {
     shiny::showModal(shiny::modalDialog(
       title = t("Remove the design?"),
-      t("The figure's plot is then its data code again (step 2, Data code), written by hand."),
+      sprintf(t("The figure's plot is then its data code again (step %s, Data code), written by hand."), .step_no("content")),
       footer = shiny::tagList(shiny::modalButton(t("Cancel")),
                               .btn("pd_drop_ok", t("Remove"), class = "btn-danger"))))
   })
@@ -555,10 +560,20 @@
     shiny::req(d)
     s <- sel()
     bad <- unique((pv()$problems %||% data.frame(part = character()))$part)
+    # the data steps of this view: step 1 the records' (before the first
+    # statistic), step 2 the statistics' (from it on)
+    st0 <- .pd_stat_start(d$data)
+    seen <- function(sec) {
+      n <- length(d[[sec]])
+      if (sec != "data" || identical(step, "figure")) seq_len(n)
+      else if (identical(step, "data")) seq_len(st0 - 1L)
+      else seq_len(n)[seq_len(n) >= st0]
+    }
     item <- function(sec, i, p, label) {
       part <- if (sec == "plot") "plot" else sprintf("%s[%d] %s", sec, i,
                                                    p$step %||% p$layer %||% "")
-      n <- length(d[[sec]])
+      n <- max(c(0L, seen(sec)))
+      first <- min(c(Inf, seen(sec)))
       shiny::div(
         class = paste("pd-item d-flex justify-content-between align-items-start",
                       if (identical(s$sec, sec) && identical(s$i, i)) "active"),
@@ -569,7 +584,7 @@
           shiny::div(class = "pd-sum", if (sec != "plot") .pd_summary(p))),
         if (sec != "plot") shiny::div(
           class = "pd-tools text-nowrap",
-          if (i > 1L) shiny::tags$button(class = "btn btn-link", title = t("Up"),
+          if (i > first) shiny::tags$button(class = "btn btn-link", title = t("Up"),
                                          onclick = .pd_act("up", sec, i), "\u25b2"),
           if (i < n) shiny::tags$button(class = "btn btn-link", title = t("Down"),
                                         onclick = .pd_act("down", sec, i), "\u25bc"),
@@ -583,15 +598,15 @@
     }
     sec_ui <- function(sec) {
       items <- if (sec == "plot") list(item("plot", 1L, d$plot, t("Title, axes, colours, legend, size")))
-        else lapply(seq_along(d[[sec]]), function(i) item(sec, i, d[[sec]][[i]], label_of(d[[sec]][[i]])))
+        else lapply(seen(sec), function(i) item(sec, i, d[[sec]][[i]], label_of(d[[sec]][[i]])))
       # the code lists go on df: before the first step that makes an object
-      if (sec == "data") {
+      if (sec == "data" && !identical(step, "stat")) {
         named <- which(vapply(d$data, function(p) isTRUE(p$step %in% names(.pd_named_steps)), NA))
         items <- append(items, list(cl_item()),
                         after = if (length(named)) named[1L] - 1L else length(items))
       }
       shiny::div(
-        shiny::div(class = "pd-sec", t(.pd_sections[[sec]])),
+        if (!identical(step, "stat")) shiny::div(class = "pd-sec", t(.pd_sections[[sec]])),
         if (length(items)) items else shiny::div(class = "small text-muted ps-2", t("(none)")))
     }
     # always there, on df before its first object (#293): the report's
@@ -615,6 +630,7 @@
   }
   output$pd_stack <- shiny::renderUI(stack_ui("figure"))
   output$pd_stack_data <- shiny::renderUI(stack_ui("data"))
+  output$pd_stack_stat <- shiny::renderUI(stack_ui("stat"))
 
   # A figure's step 1: its data steps (as step 2 draws the rest) -- or,
   # with no design yet, where to start it
@@ -624,12 +640,12 @@
     if (m == "hand") {
       return(shiny::div(
         class = "alert alert-info py-2 small",
-        t("The figure's data steps come with its design: start it in step 2 (Figure), from a template or empty; they are then here."),
-        " ", .btn("pd_goto_figure", t("Go to step 2"), class = "btn-sm btn-outline-primary py-0")))
+        sprintf(t("The figure's data steps come with its design: start it in step %s (Content), from a template or empty; they are then here."), .step_no("content")),
+        " ", .btn("pd_goto_figure", sprintf(t("Go to step %s"), .step_no("content")), class = "btn-sm btn-outline-primary py-0")))
     }
     bslib::card(
       bslib::card_header(with_tip(t("The data the figure reads"),
-        t("The figure's data steps, in their order: the dataset read, the rows kept, the variables joined or derived, the objects made (a KM fit, summary statistics ...). The figure (step 2) draws what they make."))),
+        sprintf(t("The figure's data steps, in their order: the dataset read, the rows kept, the variables joined or derived, the objects made (a KM fit, summary statistics ...). The figure (step %s) draws what they make."), .step_no("content")))),
       bslib::layout_columns(
         col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
         shiny::div(
@@ -637,9 +653,11 @@
           shiny::div(
             class = "d-flex gap-1 mt-2 align-items-start",
             shiny::div(style = "flex: 1", shiny::selectInput(
-              "pd_add_data", NULL, width = "100%", pieces_of("data"))),
+              "pd_add_data", NULL, width = "100%",
+              pieces_of("data")[!pieces_of("data") %in% .pd_stat_steps])),
             .btn("pd_addbtn_data", t("Add"), class = "btn-sm btn-outline-primary"))),
         shiny::uiOutput("pd_form_data")),
+      shiny::uiOutput("pd_stat_note"),
       shiny::div(
         class = "border-top pt-2 mt-2",
         shiny::div(
@@ -648,6 +666,38 @@
             t("The data frames and objects the data steps leave (df, a KM fit, the ARD's statistics ...), made from the study's data as the program makes them: their size, columns and first rows."))),
           .btn("pd_data_preview", t("Preview the data"), class = "btn-sm btn-outline-primary py-0")),
         shiny::uiOutput("pd_objects")))
+  })
+  # step 1 says where the statistics are
+  output$pd_stat_note <- shiny::renderUI({
+    d <- design()
+    shiny::req(d, mode() == "design")
+    n <- length(d$data) - .pd_stat_start(d$data) + 1L
+    if (n < 1L) return(NULL)
+    shiny::div(
+      class = "small text-muted mt-2",
+      sprintf(t("The steps that make a statistic (%d) are in step %s: "), n, .step_no("ard")),
+      .btn("pd_goto_stat", sprintf(t("Go to step %s"), .step_no("ard")), class = "btn-sm btn-outline-secondary py-0"))
+  })
+  shiny::observeEvent(input$pd_goto_stat, bslib::nav_select("step", "ard"))
+  # A figure's step 2 (ARD): the statistics its data steps make -- a KM fit,
+  # summary statistics ... (the records are step 1's)
+  output$pd_stat_body <- shiny::renderUI({
+    shiny::req(mode() == "design")
+    bslib::card(
+      bslib::card_header(with_tip(t("The statistics the figure makes"),
+        sprintf(t("The data steps that make an object: a KM fit, summary statistics, a function's result, the ARD's numbers. They read the records of step %s; the figure (step %s) draws what they make."),
+                .step_no("data"), .step_no("content")))),
+      bslib::layout_columns(
+        col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
+        shiny::div(
+          shiny::uiOutput("pd_stack_stat"),
+          shiny::div(
+            class = "d-flex gap-1 mt-2 align-items-start",
+            shiny::div(style = "flex: 1", shiny::selectInput(
+              "pd_add_stat", NULL, width = "100%",
+              pieces_of("data")[pieces_of("data") %in% .pd_stat_steps])),
+            .btn("pd_addbtn_stat", t("Add"), class = "btn-sm btn-outline-primary"))),
+        shiny::uiOutput("pd_form_stat")))
   })
   shiny::observeEvent(input$pd_data_preview, draw())
   # what the steps made, from the last drawing of this figure
@@ -660,7 +710,7 @@
     }
     if (is.null(r) || !identical(r$id, current())) {
       return(shiny::p(class = "small text-muted mb-0",
-                      t("Not made yet: press Preview the data (or draw the figure in step 2).")))
+                      sprintf(t("Not made yet: press Preview the data (or draw the figure in step %s)."), .step_no("content"))))
     }
     ob <- r$objects %||% list()
     shiny::tagList(
@@ -716,7 +766,24 @@
       redraw_form()
   }
   shiny::observeEvent(input$pd_addbtn, add_piece(input$pd_add))
-  shiny::observeEvent(input$pd_addbtn_data, add_piece(input$pd_add_data))
+  # (a step added in step 1 goes among the records, in step 2 among the
+  # statistics: not after the other step's piece that is still chosen)
+  shiny::observeEvent(input$pd_addbtn_data, {
+    d <- design()
+    s <- sel()
+    if (!is.null(d) && identical(s$sec, "data") && s$i >= .pd_stat_start(d$data)) {
+      sel(list(sec = "plot", i = 1L))
+    }
+    add_piece(input$pd_add_data)
+  })
+  shiny::observeEvent(input$pd_addbtn_stat, {
+    d <- design()
+    s <- sel()
+    if (!is.null(d) && identical(s$sec, "data") && s$i < .pd_stat_start(d$data)) {
+      sel(list(sec = "plot", i = 1L))
+    }
+    add_piece(input$pd_add_stat)
+  })
 
   # ---- the form of the chosen piece -----------------------------------------
   piece_now <- function(d, s) {
@@ -745,12 +812,27 @@
   output$pd_form_data <- shiny::renderUI({
     form_ver()
     fig_id()
-    if (!.pd_in_step(shiny::isolate(sel()), "data")) {
+    if (!.pd_in_step(shiny::isolate(sel()), "data") || sel_is_stat()) {
       return(shiny::p(class = "small text-muted",
                       t("Choose a data step on the left, or add one.")))
     }
     shiny::tagList(form_ui(), code_box("pd_piece_code_data"))
   })
+  output$pd_form_stat <- shiny::renderUI({
+    form_ver()
+    fig_id()
+    if (!.pd_in_step(shiny::isolate(sel()), "stat") || !sel_is_stat()) {
+      return(shiny::p(class = "small text-muted",
+                      t("Choose a statistic on the left, or add one.")))
+    }
+    shiny::tagList(form_ui(), code_box("pd_piece_code_stat"))
+  })
+  # is the piece chosen one of the statistic steps (step 2's)?
+  sel_is_stat <- function() {
+    s <- shiny::isolate(sel())
+    d <- shiny::isolate(design())
+    !is.null(d) && identical(s$sec, "data") && s$i >= .pd_stat_start(d$data)
+  }
   form_ui <- function() {
     form_on_page$id <- shiny::isolate(current())
     if (isTRUE(form_on_page$waiting)) {
@@ -1135,8 +1217,8 @@
     z <- r$size
     if (is.null(z)) return(NULL)
     shiny::p(class = "text-muted small mb-1",
-             sprintf(t("On the page %s x %s in (step 3), %s dpi (shown at screen resolution)"),
-                     z$width, z$height, z$dpi))
+             sprintf(t("On the page %s x %s in (step %s), %s dpi (shown at screen resolution)"),
+                     z$width, z$height, .step_no("page"), z$dpi))
   })
   output$pd_checks <- shiny::renderUI({
     r <- pv()
@@ -1180,6 +1262,7 @@
   }
   output$pd_piece_code <- shiny::renderText(piece_code("figure"))
   output$pd_piece_code_data <- shiny::renderText(piece_code("data"))
+  output$pd_piece_code_stat <- shiny::renderText(piece_code("stat"))
   output$pd_code <- shiny::renderText({
     id <- current()
     d <- design()

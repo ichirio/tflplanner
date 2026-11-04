@@ -76,8 +76,17 @@
     shiny::uiOutput("pd_data_body"))
 }
 
+# A figure's statistic steps (a KM fit, summary statistics ...), in the
+# ARD step: the data steps from the first that makes an object on
+.designer_stat_ui <- function() {
+  shiny::conditionalPanel(
+    "output.report_kind == 'figure' && output.content_is_code != 'yes'",
+    shiny::uiOutput("pd_stat_body"))
+}
+
 # the sections of a design each step shows (the code lists go with the data)
-.pd_step_secs <- list(data = c("data", "codelists"), figure = c("plot", "layers"))
+.pd_step_secs <- list(data = c("data", "codelists"), figure = c("plot", "layers"),
+                      stat = "data")
 .pd_in_step <- function(s, step) isTRUE(s$sec %in% .pd_step_secs[[step]])
 
 # A select input with some of its options disabled (selectize keeps them

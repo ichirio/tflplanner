@@ -760,7 +760,7 @@
     } else if (identical(info$type, "figure")) {
       page_sample_figure(p, id)
     } else {
-      shiny::div(class = "text-muted small text-center py-4", t("(the listing: see step 2)"))
+      shiny::div(class = "text-muted small text-center py-4", sprintf(t("(the listing: see step %s)"), .step_no("content")))
     }
     .page_sample_html(p, id, rv$meta$study_id %||% "", body,
                       program = info$program)
