@@ -29,8 +29,23 @@ By participating in this project you agree to abide by its
 - R source files are ASCII: write non-ASCII text as `\uXXXX` escapes.
   The app's Japanese strings live in `inst/i18n/strings/<file>.csv` (the
   R file that shows them; `common.csv` for several).
-- Do not change `Version` or `NEWS.md`: the maintainers write them when a
-  version is tagged or released.
+- **Record the change in the PR description.**  A PR never edits `NEWS.md`,
+  `CHANGELOG.md` or `Version:`, and there is no separate memo file.  Fill the
+  template's *User-visible change (for NEWS)* field without being asked: one or
+  two bullets in NEWS style (what a user can now do, or what is fixed, named by
+  its function or argument), or "none" for an internal change; then "Breaking:
+  no", or "Breaking: yes" with the migration.  The maintainers write `NEWS.md`
+  from the merged PRs at release.  For example:
+
+  ```markdown
+  ## User-visible change (for NEWS)
+
+  - The AI tab's docs field adds a file at once: on Browse, on Enter, or on
+    leaving the field.
+
+  Breaking: no
+  ```
+  The maintainers bump the version when they tag or release.
 
 tflplanner builds on [rtfreporter](https://github.com/ichirio/rtfreporter);
 a change the table layout needs belongs there.

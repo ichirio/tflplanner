@@ -25,7 +25,22 @@ they win.
   to the table layout belongs in rtfreporter, a change to the spec in tflspec.
 - R code is ASCII (`\uXXXX` escapes).  Every text the app shows has its
   Japanese in `inst/i18n/strings/<file>.csv`.
-- A pull request never changes `Version` or `NEWS.md`.
+- **Record the change in the PR description.**  A PR never edits `NEWS.md`,
+  `CHANGELOG.md` or `Version:`, and there is no separate memo file.  Fill the
+  template's *User-visible change (for NEWS)* field without being asked: one or
+  two bullets in NEWS style (what a user can now do, or what is fixed, named by
+  its function or argument), or "none" for an internal change; then "Breaking:
+  no", or "Breaking: yes" with the migration.  The maintainers write `NEWS.md`
+  from the merged PRs at release.  For example:
+
+  ```markdown
+  ## User-visible change (for NEWS)
+
+  - The AI tab's docs field adds a file at once: on Browse, on Enter, or on
+    leaving the field.
+
+  Breaking: no
+  ```
 - Before a pull request: the tests of what you changed and `lintr` on the
   changed files (see `CONTRIBUTING.md`).
 - Outside contributors open pull requests against `main`.  The `next` branch,
