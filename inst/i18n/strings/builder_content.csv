@@ -230,6 +230,7 @@
 "The row heading columns: left aligned (the others centred) and repeated on every column page. Blank: the first column. e.g. row_label","行見出しの列: 左揃え（ほかの列は中央）で、どの列ページにも繰り返します。空欄 = 最初の列。例: row_label"
 "TRUE: each column sized to its content. e.g. TRUE","TRUE: 各列を中身に合わせた幅にします。例: TRUE"
 "The table's borders: ""tfl"" (rules over and under the header and under the last row) or ""none""; another style as R (rtf_border()). Blank: tfl. e.g. ""none""","表の罫線: ""tfl""（列見出しの上下と最終行の下の罫線）または ""none""。ほかの形は R で（rtf_border()）。空欄 = tfl。例: ""none"""
+"The table's borders: ""tfl"" (rules over and under the header and under the last row) or ""none""; another style as a border ({fn: rtf_border, args: {all: true, inside_h: true}}). Blank: tfl. e.g. ""none""","表の罫線: ""tfl""（列見出しの上下と最終行の下の罫線）または ""none""。ほかの形は罫線の指定で（{fn: rtf_border, args: {all: true, inside_h: true}}）。空欄 = tfl。例: ""none"""
 "TRUE: the n and the (%) of a count cell line up from row to row. e.g. TRUE","TRUE: 件数セルの n と (%) を行の間で揃えます。例: TRUE"
 "The table's font size in half points (18 = 9 pt). Blank: the document's. e.g. 16","表のフォントの大きさ（半ポイント。18 = 9 pt）。空欄 = 文書のもの。例: 16"
 "The columns styled, by name (.values every value column). Blank: every column. e.g. .values","スタイルを付ける列（名前で、.values はすべての値の列）。空欄 = すべての列。例: .values"
