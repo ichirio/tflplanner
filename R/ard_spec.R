@@ -73,16 +73,63 @@
                          methods = .std_ard_methods())
 }
 
-# The reports' code lists (the codelists sheet: every row a report's): a
-# report's ARD program makes each listed column its analyses read a factor
-# in their order before the analyses, so the ARD keeps the order and counts
-# a value no record has (0) (tflspec picks a report's rows by output_id).
-# NULL when there are none.
+# The reports' code lists: a report's ARD program makes each listed column
+# its analyses read a factor in their order before the analyses, so the ARD
+# keeps the order and counts a value no record has (0) (tflspec picks a
+# report's rows by output_id).  The codelists sheet's rows (spec/codelists.yml's
+# lists are no report's: left out) with the lists a report takes from its
+# layers (study defaults, patterns) added where it has none of its own for
+# that variable: the sheets do not hold those, tflspec::tfl_report_codelists()
+# gives them from the planner's spec, given the sheet's rows (`rows`) as the
+# reports' own, so the sheet is current for a report's own lists (it may have
+# edits the spec has not taken in, and .spec_sync() is seconds a run): one
+# the sheet has dropped is the layer's again, or none.  NULL when there are
+# none.
 .study_codelists <- function(p) {
   cl <- if (!is.null(p$sheets$codelists)) sheet_rows(p, "codelists", "")
+  cl <- .codelists_of_reports(cl)
+  cl <- .with_layer_codelists(p, cl)
   if (is.null(cl) || !nrow(cl)) return(NULL)
   cl <- cl[!is.na(cl$variable) & !is.na(cl$value), , drop = FALSE]
   if (nrow(cl)) cl
+}
+
+# `own` (the sheet's rows of reports) with the layers' lists added; `own`
+# itself when the planner has no spec with reports (a new study, workbooks,
+# the company standards) or tflspec cannot give them.
+.with_layer_codelists <- function(p, own) {
+  sp <- p$spec
+  if (!inherits(sp$study, "tfl_study_spec") || !length(sp$outputs) ||
+      !"tfl_report_codelists" %in% getNamespaceExports("tflspec") ||
+      !"rows" %in% names(formals(tflspec::tfl_report_codelists))) return(own)
+  rows <- if (is.data.frame(own)) own else data.frame(output_id = character())
+  all <- .report_codelists_memo(sp$study, sp$outputs, rows)
+  if (!is.data.frame(all)) return(own)
+  # (a report the sheet no longer has: none of its layers' rows)
+  key <- function(d) paste(d$output_id, d$variable, sep = " / ")
+  gone <- setdiff(names(sp$outputs), p$outputs$output_id)
+  all <- all[!(all$output_id %in% gone & !key(all) %in% key(rows)), , drop = FALSE]
+  rownames(all) <- NULL
+  all[] <- lapply(all, as.character)
+  all
+}
+
+# tfl_report_codelists() is asked for per report in loops: kept for the same
+# study, reports and rows.  NULL when it stops (a report naming a pattern
+# that is not there): the own rows stand and this is called from status
+# screens, so it must not stop them; the stop comes where that report is
+# resolved.
+.report_codelists_cache <- new.env()
+.report_codelists_memo <- function(study, outputs, rows) {
+  k <- list(study, outputs, rows)
+  if (!is.null(.report_codelists_cache$key) && identical(.report_codelists_cache$key, k)) {
+    return(.report_codelists_cache$value)
+  }
+  v <- tryCatch(tflspec::tfl_report_codelists(study, outputs, rows = rows),
+                error = function(e) NULL)
+  .report_codelists_cache$key <- k
+  .report_codelists_cache$value <- v
+  v
 }
 
 # The app's own reading of a row, for its forms (the engine reads them the

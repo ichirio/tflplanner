@@ -362,7 +362,9 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
     any(filled & (is.na(d$output_id) | !nzchar(trimws(d$output_id))))
   }
   c(if (old(p$ard$analysis_data)) "analysis_data",
-    if (old(p$sheets$codelists)) "codelists")
+    # (rows of spec/codelists.yml, which the planner's spec holds, are
+    # lists to copy from, not a report-less old format)
+    if (!.codelists_file() %in% names(p$spec$text) && old(p$sheets$codelists)) "codelists")
 }
 
 # The code list of `variable` (an earlier form of the variables' headings:
