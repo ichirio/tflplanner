@@ -182,28 +182,133 @@ test_that("only a part of the report's own, from its ARD, gets the cards", {
                    c("cards", "dataset"))
   # the scope bar: a button for each part the cards can edit, none else
   bar <- as.character(.part_scope_bar(.part_modes(list(mk(), mk(source = "dataset", name = "listing"))), "", "en"))
-  expect_match(bar, "Part: summary", fixed = TRUE)
+  expect_match(bar, "Editing:", fixed = TRUE)
+  expect_match(bar, ">This table<", fixed = TRUE)
+  expect_match(bar, "Part: summary (plan_append)", fixed = TRUE)
   expect_no_match(bar, "listing", fixed = TRUE)
   expect_null(.part_scope_bar(.part_modes(list(mk(source = "dataset"))), "", "en"))
   expect_null(.part_scope_bar(.part_modes(list(mk(from = "defaults"))), "", "en"))
   expect_null(.part_scope_bar(list(), "", "en"))
   # the part's card: the button for the one the cards can edit; a line, no
-  # button, for the others
+  # button, for the others -- under the YAML field and the buttons
   body <- function(mode) as.character(.part_body("c", mk(), lang = "en", mode = mode))
-  expect_match(body(list(name = "summary", mode = "cards")), "Edit its items in cards", fixed = TRUE)
+  expect_match(body(list(name = "summary", mode = "cards")), ">Open in cards<", fixed = TRUE)
+  expect_match(body(list(name = "summary", mode = "cards")), "data-rp-scope-jump", fixed = TRUE)
   ds <- body(list(name = "summary", mode = "dataset"))
-  expect_no_match(ds, "Edit its items in cards", fixed = TRUE)
-  expect_match(ds, "come from a dataset", fixed = TRUE)
+  expect_no_match(ds, "Open in cards", fixed = TRUE)
+  expect_match(ds, "No cards for a dataset part (the cards read the ARD): edit its items in the YAML above.",
+               fixed = TRUE)
+  expect_lt(regexpr("c__content", ds, fixed = TRUE), regexpr("No cards for a dataset part", ds, fixed = TRUE))
   df <- body(list(name = "summary", mode = "defaults"))
-  expect_no_match(df, "Edit its items in cards", fixed = TRUE)
-  expect_match(df, "set in the study defaults", fixed = TRUE)
-  expect_no_match(body(NULL), "Edit its items in cards", fixed = TRUE)
-  # both lines are in Japanese too
-  for (z in c("Its rows come from a dataset: the cards work on the ARD, so edit its items here.",
-              "This part is set in the study defaults: the cards cannot edit it.",
-              "Cards of", "Part", "Edit its items in cards")) {
+  expect_no_match(df, "Open in cards", fixed = TRUE)
+  expect_match(df, "From the study defaults: no cards.", fixed = TRUE)
+  expect_match(df, "spec/defaults.yml", fixed = TRUE)
+  expect_no_match(body(NULL), "Open in cards", fixed = TRUE)
+  # all these words are in Japanese too
+  for (z in c("Editing:", "Part: %s (plan_append)", "Open in cards", "This part",
+              "The part is on page %s.", "The part's rows print under the table: see the later pages.",
+              "The table's sheets; the part is in its plan_append content.",
+              "These cards edit the part \"%s\" (its rows print under the table).",
+              "The part's name, where its rows come from and its YAML are in its card under this table.",
+              "No cards for a dataset part (the cards read the ARD): edit its items in the YAML above.")) {
     expect_false(identical(tr(z, "ja"), z), info = z)
   }
+  expect_identical(tr("Open in cards", "ja"), "カードで編集")
+  expect_identical(tr("This part", "ja"), "この部分")
+})
+
+test_that("in part scope the bar says what the cards edit; the table scope says nothing more", {
+  modes <- list(list(name = "summary", mode = "cards"))
+  tb <- as.character(.part_scope_bar(modes, "", "en"))
+  expect_no_match(tb, "These cards edit", fixed = TRUE)
+  pt <- as.character(.part_scope_bar(modes, "summary", "en"))
+  expect_match(pt, "These cards edit the part \"summary\" (its rows print under the table).",
+               fixed = TRUE)
+  expect_match(pt, "its card under this table", fixed = TRUE)
+  expect_match(pt, 'aria-pressed="true"', fixed = TRUE)
+  ja <- as.character(.part_scope_bar(modes, "summary", "ja"))
+  expect_match(ja, "「summary」", fixed = TRUE)
+  expect_match(ja, "「表の下に足す部分」", fixed = TRUE)
+})
+
+test_that("a part's cards say This part, and only table_plan is required", {
+  mk <- function(fn) list(fn = fn, args = list(), path = fn, present = TRUE, from = "own",
+                          own_args = list(a = 1), required = fn %in% .plan_required)
+  its <- .part_items_mark(list(mk("normalize_ard"), mk("table_plan"), mk("plan_cells"), mk("plan_labels")))
+  expect_identical(vapply(its, function(it) it$required, NA), c(FALSE, TRUE, FALSE, FALSE))
+  expect_true(all(vapply(its, function(it) identical(it$own_word, "This part"), NA)))
+  h <- function(items, lang = "en") paste(vapply(.table_cards(items, lang = lang), as.character, ""),
+                                          collapse = "\n")
+  part <- h(its)
+  expect_match(part, ">This part<", fixed = TRUE)
+  expect_no_match(part, ">This table<", fixed = TRUE)
+  expect_equal(lengths(regmatches(part, gregexpr(">Required<", part, fixed = TRUE))), 1L)
+  expect_match(h(its, "ja"), "この部分", fixed = TRUE)
+  # the table's own cards are as they were
+  tbl <- h(lapply(its, function(it) {
+    it$own_word <- NULL
+    it$required <- it$fn %in% .plan_required
+    it
+  }))
+  expect_match(tbl, ">This table<", fixed = TRUE)
+  expect_no_match(tbl, ">This part<", fixed = TRUE)
+  expect_equal(lengths(regmatches(tbl, gregexpr(">Required<", tbl, fixed = TRUE))), 3L)
+  # the mark sent after a write, and a field's mark
+  expect_match(as.character(.card_mark(its[[2L]], "c", "en")), ">This part<", fixed = TRUE)
+  it <- list(fn = "plan_sort", args = list(keys = c(".overall", "label"), keep = ".overall"),
+             own_args = list(keep = ".overall"), path = "plan_sort", present = TRUE, from = "own",
+             own_word = "This part")
+  fo <- as.character(.special_more("c", "plan_sort", it))
+  expect_match(fo, ">This part<", fixed = TRUE)
+})
+
+test_that("a part has no cards for what rtfreporter lets only the table say", {
+  skip_if_not_installed("rtfreporter")
+  # ?plan_append: the pages, column header, widths and style are the first plan's
+  gone <- c("plan_paginate_rows", "plan_paginate_group", "plan_paginate_cols", "plan_col_header",
+            "plan_columns", "plan_style", "plan_append", "plan_total", "plan_digits")
+  expect_true(all(gone %in% .part_skip))
+  # ... and these a part may carry
+  expect_false(any(c("plan_cells", "plan_labels", "plan_levels", "plan_hide", "plan_cell_style",
+                     "plan_blanks", "plan_stub", "plan_sort", "plan_filter") %in% .part_skip))
+  d <- data.frame(g = rep(c("A", "B"), each = 2), v = c("x", "y", "x", "y"), s = 1:4)
+  parent <- rtfreporter::table_plan(d, cols = "g", rows = c(v = "v"), value = "s")
+  ok <- function(f) tryCatch({
+    rtfreporter::plan_append(parent, f(parent), name = "p")
+    TRUE
+  }, error = function(e) FALSE)
+  expect_false(ok(function(q) rtfreporter::plan_paginate_rows(q, max_rows = 10)))
+  expect_false(ok(function(q) rtfreporter::plan_columns(q, widths = c(v = 20))))
+  expect_false(ok(function(q) rtfreporter::plan_style(q, align_count_pct = TRUE)))
+  expect_false(ok(function(q) rtfreporter::plan_col_header(q, header = list(list(line = "1", cols = "v")))))
+  expect_true(ok(function(q) rtfreporter::plan_hide(q, cols = "g")))
+  expect_true(ok(function(q) rtfreporter::plan_cell_style(q, where = ~ s > 1, bold = TRUE)))
+})
+
+test_that("the part's page in the preview is found by its first row", {
+  full <- data.frame(row_label = c("a", "b", "Summary", "n", "Mean"), X = c("1", "2", "", "80", "60"),
+                     .part = c("part1", "part1", "summary", "summary", "summary"),
+                     check.names = FALSE, stringsAsFactors = FALSE)
+  first <- .part_first_rows(full)
+  expect_identical(names(first), "summary")
+  expect_identical(first$summary, c("Summary", ""))
+  expect_null(.part_first_rows(full[, c("row_label", "X")]))
+  pg <- function(label, x) structure(list(data = data.frame(row_label = label, X = x, check.names = FALSE,
+                                                           stringsAsFactors = FALSE)), class = "rtftable")
+  pages <- structure(list(pg(c("a", "b"), c("1", "2")), pg(c("c", "  Summary", "n"), c("9", "", "80"))),
+                     part_first = first)
+  expect_identical(.part_start_page(pages, "summary"), 2L)
+  expect_true(is.na(.part_start_page(pages, "other")))
+  expect_true(is.na(.part_start_page(structure(list(pg("a", "1")), part_first = first), "summary")))
+  note <- function(pages, lang = "en") as.character(.part_page_note(pages, "summary", lang))
+  expect_match(note(pages), "The part is on page 2.", fixed = TRUE)
+  expect_match(note(pages), 'data-part-page="2"', fixed = TRUE)
+  expect_match(note(pages, "ja"),
+               "部分は 2 ページ目にあります。", fixed = TRUE)
+  # not found: the line that says where to look, and nothing to scroll to
+  none <- note(structure(list(pg("a", "1")), part_first = first))
+  expect_match(none, "see the later pages", fixed = TRUE)
+  expect_no_match(none, "data-part-page", fixed = TRUE)
 })
 
 test_that("a dataset part and a study-defaults part are not written by the cards", {

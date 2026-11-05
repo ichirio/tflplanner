@@ -232,7 +232,9 @@
                                   code_fns = if (tpl) .tpl_code_fns(p0, id) else character())
     # (a part: not a part of its own, nor the Total column and the decimals
     # -- the report's, the study's)
-    if (part) items <- Filter(function(it) !it$fn %in% .part_skip, items)
+    # (nor the pages, header, widths and style; its cards are marked "This
+    # part", only table_plan() required)
+    if (part) items <- .part_items_mark(Filter(function(it) !it$fn %in% .part_skip, items))
     bform$items <- items
     new_card <- bform$just_added
     bform$just_added <- NULL
@@ -598,6 +600,7 @@
           identical(f$args, it$args)) next
       bform$items[[i]][c("args", "own_args", "from", "arg_from", "below", "revert")] <-
         f[c("args", "own_args", "from", "arg_from", "below", "revert")]
+      f$own_word <- it$own_word
       send_mark(it$path, f)
     }
   }

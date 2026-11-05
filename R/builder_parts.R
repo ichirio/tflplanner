@@ -95,14 +95,15 @@
       btn("start", t("Start: the ARD's summary statistics under the table")),
       if (identical(mode$mode, "cards")) shiny::tags$button(
         type = "button", class = "btn btn-sm btn-outline-secondary", `data-name` = mode$name,
+        `data-rp-scope-jump` = "1",
         onclick = "Shiny.setInputValue('b_scope', {name: this.dataset.name, n: Date.now()}, {priority: 'event'})",
-        t("Edit its items in cards"))),
-    # (why the cards are not offered: one line)
+        t("Open in cards"))),
+    # (why the cards are not offered: one line, under the YAML and the buttons)
     if (!is.null(mode) && !identical(mode$mode, "cards")) shiny::div(
       class = "small text-muted mt-1",
       t(switch(mode$mode,
-               dataset = "Its rows come from a dataset: the cards work on the ARD, so edit its items here.",
-               "This part is set in the study defaults: the cards cannot edit it."))))
+               dataset = "No cards for a dataset part (the cards read the ARD): edit its items in the YAML above.",
+               "From the study defaults: no cards. Change the YAML here to make it this table's own, or edit spec/defaults.yml."))))
 }
 
 # The item's arguments from the card's fields (an error when its items do
@@ -131,10 +132,29 @@
 
 .part_sep <- "::"
 
-# the cards of a table-wide thing a part has none of: a part of its own,
-# the Total column (the report's ARD's overall rows) and the decimals' rule
-# (the study's rounding)
-.part_skip <- c("plan_append", "plan_total", "plan_digits")
+# The cards a part has none of.  Its own part, the Total column (the
+# report's ARD's overall rows) and the decimals' rule (the study's rounding)
+# are the table's.  The rest is what rtfreporter says a part may not carry
+# (?plan_append, "Parts"; plan_append() stops at it): the whole table's
+# pages (plan_paginate_rows / _group / _cols), column header, column widths
+# and alignment, and table style are the first plan's.  Kept though a part
+# may use them only in part: plan_cell_style (only with `where`, not header
+# or cols), plan_blanks (first / last, not where / counted) and plan_levels
+# (its row keys, not the column key); plan_hide is allowed.
+.part_skip <- c("plan_append", "plan_total", "plan_digits",
+                "plan_paginate_rows", "plan_paginate_group", "plan_paginate_cols",
+                "plan_col_header", "plan_columns", "plan_style")
+
+# The mark of a part's items: "This part" for "This table" (the part's own
+# are the part's), and only table_plan() required (tflspec stops a part with
+# none; normalize_ard() and plan_cells() may be left out)
+.part_items_mark <- function(items) {
+  lapply(items, function(it) {
+    it$own_word <- "This part"
+    it$required <- identical(it$fn, "table_plan")
+    it
+  })
+}
 
 # the builder's id of a report's part
 .part_id <- function(output_id, name) paste0(output_id, .part_sep, name)
@@ -199,12 +219,14 @@
   }
   shiny::div(
     class = "rp-part-scope d-flex flex-wrap gap-1 align-items-center mb-2",
-    shiny::span(class = "small text-muted me-1", t("Cards of")),
-    btn("", t("The table")),
-    lapply(nm, function(n) btn(n, paste0(t("Part"), ": ", n))),
+    shiny::span(class = "small text-muted me-1", t("Editing:")),
+    btn("", t("This table")),
+    lapply(nm, function(n) btn(n, sprintf(t("Part: %s (plan_append)"), n))),
     if (nzchar(part)) shiny::span(
       class = "small text-muted ms-2",
-      sprintf(t("These cards edit the part %s: its rows go under the table's. What they do not cover is in its card under \"The table\"."), part)))
+      sprintf(t("These cards edit the part \"%s\" (its rows print under the table)."), part),
+      " ",
+      help_tip(t("The part's name, where its rows come from and its YAML are in its card under this table."))))
 }
 
 # Stop for an id that is a part: what writes a program or a file for a
@@ -248,4 +270,57 @@
   if (is.null(v) || !nrow(v)) return(d[0L, , drop = FALSE])
   v$output_id <- rep(part_id, nrow(v))
   v[names(d)]
+}
+
+# ---- the preview, in part scope ------------------------------------------------
+# The preview is the whole table, its pages one under the other; a part's
+# rows are under the parent's, usually on a later page.  The table before
+# it is cut into pages has each row's part (the `.part` column); the pages
+# do not.  So the first row of each part is kept (.part_first_rows()), and
+# the page it is on found in the pages (.part_start_page()).
+
+# The first row of each part but the first plan's (part1): its cells as
+# trimmed text, by the part's name.  NULL: not a table of parts.
+.part_first_rows <- function(full) {
+  if (!is.data.frame(full) || !".part" %in% names(full)) return(NULL)
+  nm <- setdiff(unique(as.character(full$.part)), c("part1", NA))
+  cells <- setdiff(names(full), ".part")
+  out <- lapply(nm, function(n) {
+    r <- full[match(n, full$.part), cells, drop = FALSE]
+    v <- trimws(as.character(unlist(r, use.names = FALSE)))
+    v[is.na(v)] <- ""
+    v
+  })
+  stats::setNames(out, nm)
+}
+
+# The page a part's rows start on: the first page that has the part's first
+# row, `pages` the preview's (attr "part_first": .part_first_rows()).  NA:
+# not known.
+.part_start_page <- function(pages, part) {
+  first <- attr(pages, "part_first")[[part]]
+  if (is.null(first)) return(NA_integer_)
+  for (i in seq_along(pages)) {
+    d <- pages[[i]]$data
+    if (!is.data.frame(d) || ncol(d) != length(first)) next
+    for (r in seq_len(nrow(d))) {
+      v <- trimws(as.character(unlist(d[r, , drop = FALSE], use.names = FALSE)))
+      v[is.na(v)] <- ""
+      if (identical(v, first)) return(i)
+    }
+  }
+  NA_integer_
+}
+
+# The one line over the preview in part scope: the page the part's rows are
+# on (`data-part-page`: the page scrolls to it when the preview is drawn)
+.part_page_note <- function(pages, part, lang = "en") {
+  t <- function(z) tr(z, lang)
+  at <- .part_start_page(pages, part)
+  shiny::div(
+    # (stays in view as the pages scroll)
+    class = "small text-muted mb-1 py-1 rp-pv-part", `data-part-page` = if (!is.na(at)) at,
+    style = "position: sticky; top: 0; z-index: 2; background: var(--bs-body-bg, #fff)",
+    if (is.na(at)) t("The part's rows print under the table: see the later pages.") else
+      sprintf(t("The part is on page %s."), at))
 }

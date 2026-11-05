@@ -186,8 +186,43 @@ $(document).on('shiny:value', function(e) {
   if (e.name === 'builder_preview') {
     $('#builder_updating').addClass('d-none');
     $('#builder_preview').css('opacity', 1);
+    // in part scope the preview opens on the page the part's rows start on
+    // (the pages are one under the other, in the Result tab's own scroll)
+    setTimeout(function() {
+      var pre = document.getElementById('builder_preview');
+      var m = pre && pre.querySelector('[data-part-page]');
+      var right = pre && pre.closest('.tab-pane');
+      if (!right) return;
+      var pg = m ? pre.querySelectorAll('.rp-pv-page')[parseInt(m.getAttribute('data-part-page'), 10) - 1] : null;
+      // (the table again: back to the first page)
+      if (!m) {
+        if (right.getAttribute('data-rp-part-at')) { right.scrollTop = 0; right.removeAttribute('data-rp-part-at'); }
+        return;
+      }
+      if (!pg) { right.scrollTop = 0; return; }
+      right.setAttribute('data-rp-part-at', m.getAttribute('data-part-page'));
+      right.scrollTop += pg.getBoundingClientRect().top - right.getBoundingClientRect().top - m.offsetHeight - 4;
+    }, 60);
   }
 });
+// \"Open in cards\" on a part's card: the cards of the part are drawn again,
+// and the bar over them (Editing: ...) is brought into view, below the
+// page's sticky bar
+(function() {
+  var want = 0;
+  $(document).on('click', '[data-rp-scope-jump]', function() { want = Date.now(); });
+  $(document).on('shiny:value', function(e) {
+    if (e.name !== 'builder_form' || !want || Date.now() - want > 8000) return;
+    want = 0;
+    setTimeout(function() {
+      var el = document.querySelector('.rp-part-scope');
+      if (!el) return;
+      var bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--rp-top')) || 0;
+      window.scrollTo({top: Math.max(0, window.scrollY + el.getBoundingClientRect().top - bar - 12),
+                       behavior: 'instant'});
+    }, 300);
+  });
+})();
 // The builder's form is drawn again after an edit that changes its
 // shape (a heading or the order in the code list of variable, a row of
 // one's own): the page keeps its place instead of jumping to the top.

@@ -571,7 +571,7 @@ test_that("plan_cell_style(): cols, where, the looks as fields, each call its ow
   for (a in c("cols", "header", "where", "bold", "italic", "align", "color", "background")) {
     expect_match(h, sprintf('id="c__%s"', a), fixed = TRUE)
   }
-  expect_match(h, "Not in the code", fixed = TRUE)
+  expect_match(h, "Arguments not in the code", fixed = TRUE)
   # blank fields: nothing (the header's check unticked is its default)
   inp <- list(c__cols = NULL, c__header = FALSE, c__where = "", c__bold = "", c__italic = "",
               c__align = "", c__color = "", c__background = "")
@@ -678,4 +678,5 @@ test_that("every form card shows all its function's arguments: those written abo
   # the same fields whatever the table's kind
   expect_identical(seen[["T-14-1-1"]], seen[["T-14-3-1"]])
   expect_identical(tr("Not in the code", "ja"), "コードに書かれない引数")
+  expect_identical(tr("Arguments not in the code", "ja"), tr("Not in the code", "ja"))
 })

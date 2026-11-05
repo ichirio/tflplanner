@@ -107,7 +107,7 @@
 
 # A form card's body: the function's arguments as fields (each marked where
 # its value came from), those its code writes above, the rest below
-# ("Not in the code", folded: a value given there moves its field up).
+# ("Arguments not in the code", folded: a value given there moves its field up).
 # `choices`: the columns offered (the row layers, the ARD's keys).
 .plan_form_body <- function(cid, fn, it, choices = NULL, lang = "en", cols = NULL,
                             ard = list(), fixed_link = NULL) {
@@ -116,7 +116,7 @@
   sp <- .fields_split(fn, it, sch$formals, ard = names(Filter(length, ard)))
   field <- function(k, value) {
     from <- if (k %in% names(a)) .arg_from(it, k) else "own"
-    own <- if (k %in% names(it$own_args %||% list())) "This table"
+    own <- if (k %in% names(it$own_args %||% list())) it$own_word %||% "This table"
     # an argument the ARD decides (normalize_ard()'s hierarchy: step 1's
     # analysis): an ordinary field, "From the ARD" while it says the same
     # (blank: the ARD's), a warning when another value is given
@@ -143,7 +143,7 @@
     shiny::div(class = "rp-args-up", `data-formals` = paste(sch$formals, collapse = ","),
                arg_group(NULL, lapply(sp$upper, function(k) field(k, a[[k]])), lang = lang)),
     arg_more(cid, fn, schema = sch, lang = lang, rest = sp$lower,
-             fields = lapply(sp$lower, function(k) field(k, NULL)), label = "Not in the code"))
+             fields = lapply(sp$lower, function(k) field(k, NULL)), label = "Arguments not in the code"))
 }
 
 # The cards of a form of their own (table_plan()'s roles, plan_cells()'
@@ -168,7 +168,7 @@
     arg_field(cid, k, sch$args[[k]]$type, label = .arg_meaning(fn, k), value = value,
               default = sch$args[[k]]$default,
               from = if (k %in% names(a)) .arg_from(it, k) else "own",
-              own = if (k %in% names(it$own_args %||% list())) "This table",
+              own = if (k %in% names(it$own_args %||% list())) it$own_word %||% "This table",
               help = .arg_help(fn, k, sch, lang), lang = lang)
   }
   shiny::div(
@@ -176,7 +176,7 @@
     shiny::div(class = "rp-args-up", `data-formals` = paste(ex, collapse = ","),
                arg_group(NULL, lapply(up, function(k) field(k, a[[k]])), lang = lang)),
     arg_more(cid, fn, schema = sch, lang = lang, rest = lo,
-             fields = lapply(lo, function(k) field(k, NULL)), label = "Not in the code"))
+             fields = lapply(lo, function(k) field(k, NULL)), label = "Arguments not in the code"))
 }
 # ... read back: those fields' values (`set`) and the fields emptied, or a
 # check as the function's default (`unset`); NULL while they are not there
