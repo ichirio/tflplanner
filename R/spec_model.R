@@ -382,6 +382,7 @@
 # program is then written from the sheets: .code_spec()), the spec has no
 # such report, or its content is R of its own.
 .spec_items <- function(p, output_id) {
+  if (!is.null(.part_of(output_id))) return(.spec_part_items(p, output_id))
   sp <- .code_spec(p)
   o <- sp$outputs[[output_id]]
   if (is.null(o) || inherits(o$content, "tfl_r")) return(NULL)
@@ -442,6 +443,7 @@
 # is taken away (a verb of named `...` emptied: plan_levels() of no
 # variable is no call).
 .spec_set_items <- function(p, output_id, items) {
+  if (!is.null(.part_of(output_id))) return(.spec_set_part_items(p, output_id, items))
   p <- .spec_ensure(p)
   p <- .spec_sync(p, p$spec$meta)
   attr(p, "changed") <- NULL
@@ -504,6 +506,7 @@
 # ... and the report's own `k`-th item of `fn` taken away: the layers' again
 # (none: the verb is gone from the report's plan)
 .spec_revert_item <- function(p, output_id, fn, k = 1L) {
+  if (!is.null(.part_of(output_id))) return(.spec_revert_part_item(p, output_id, fn, k))
   p <- .spec_ensure(p)
   o <- .spec_output(p, output_id)
   if (is.null(o) || inherits(o$content, "tfl_r")) return(p)
@@ -631,4 +634,55 @@
   if (!is.null(study$defaults)) study$defaults[c("content", "page")] <- list(NULL)
   study$patterns <- list()
   study
+}
+
+# A part's items (`part_id`: .part_id()): the plan_append() item's own
+# content, in the report's own content -- a part is nothing but the
+# report's own item (the layers' parts, if any, are the defaults'; not
+# for the cards), and its content is its own, with no layers.  Read from
+# the spec as it is: the sheets hold none of a part's, so an edit of them
+# not yet in the spec leaves it as it is.  NULL: no spec, no such part,
+# or the report's content is R of its own.
+.spec_part_items <- function(p, part_id) {
+  pt <- .part_of(part_id)
+  o <- p$spec$outputs[[pt$id]]
+  if (is.null(o) || inherits(o$content, "tfl_r")) return(NULL)
+  at <- .part_at(o$content, pt$name)
+  if (is.na(at)) return(NULL)
+  content <- o$content[[at]]$args$content %||% list()
+  list(items = lapply(content, function(it) c(it, list(from = "own"))), own = content)
+}
+
+# ... written: the items set in the part's content (as .spec_set_items()
+# does a report's, each whole), the part item put back in the report's own
+# content.  An error when the part is not the report's own.
+.spec_set_part_items <- function(p, part_id, items) {
+  pt <- .part_of(part_id)
+  p <- .spec_ensure(p)
+  p <- .spec_sync(p, p$spec$meta)
+  attr(p, "changed") <- NULL
+  o <- p$spec$outputs[[pt$id]]
+  if (is.null(o)) stop("The spec has no report ", pt$id, ".", call. = FALSE)
+  if (inherits(o$content, "tfl_r")) {
+    stop("The report ", pt$id, "'s content is R of its own.", call. = FALSE)
+  }
+  at <- .part_at(o$content, pt$name)
+  if (is.na(at)) {
+    stop("The report ", pt$id, " has no part of its own called ", pt$name, ".", call. = FALSE)
+  }
+  part <- o$content[[at]]
+  content <- part$args$content %||% list()
+  for (w in items) {
+    args <- Filter(Negate(is.null), w$args %||% list())
+    it <- if (isTRUE(w$drop_empty) && !length(args)) NULL else tflspec::tfl_item(w$fn, args)
+    content <- .content_put(content, w$fn, w$k %||% 1L, it)
+  }
+  part$args$content <- content
+  o$content[[at]] <- part
+  .spec_set_output(p, pt$id, o, content_only = TRUE)
+}
+
+# ... and a part's `k`-th item of `fn` taken away
+.spec_revert_part_item <- function(p, part_id, fn, k = 1L) {
+  .spec_set_part_items(p, part_id, list(list(fn = fn, args = list(), k = k, drop_empty = TRUE)))
 }

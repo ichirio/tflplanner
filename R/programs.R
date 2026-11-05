@@ -38,6 +38,7 @@
 #' options(old)
 #' @export
 report_info <- function(x, output_id) {
+  .stop_part(output_id)
   r <- .resolve_row(x, "report", output_id)
   type <- if (is.na(r$type)) "table" else r$type
   prog <- .fill_id(if (is.na(r$program)) "{output_id}" else r$program,

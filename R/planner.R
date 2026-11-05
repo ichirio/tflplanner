@@ -600,6 +600,9 @@ remove_output <- function(x, output_id) {
 # The rows of a sheet one filter shows: "" = every row, NA = the defaults,
 # an id = that report's own rows.
 sheet_rows <- function(x, sheet, output_id = "") {
+  # (a builder part's: the sheet rows its own items make, none of the
+  # report's -- R/builder_parts.R)
+  if (!is.null(.part_of(output_id))) return(.part_sheet_rows(x, sheet, output_id))
   d <- x$sheets[[sheet]]
   if (identical(output_id, "")) return(d)
   if (is.na(output_id)) return(d[is.na(d$output_id), , drop = FALSE])
@@ -623,6 +626,9 @@ sheet_rows <- function(x, sheet, output_id = "") {
 # Put back what the filter showed, edited: the rows outside the filter
 # stay, in place, and the edited ones go where the first shown one was.
 set_sheet_rows <- function(x, sheet, output_id = "", rows) {
+  if (!is.null(.part_of(output_id))) {
+    stop("A part has no rows in the sheets: its items are written into the report's spec.", call. = FALSE)
+  }
   d <- x$sheets[[sheet]]
   rows <- .drop_blank_rows(as.data.frame(rows, stringsAsFactors = FALSE))
   if (!identical(output_id, "")) rows$output_id <- rep(output_id, nrow(rows))
