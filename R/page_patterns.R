@@ -258,12 +258,23 @@ set_page_token <- function(x, output_id, name, value) {
 #' @export
 add_page_pattern <- function(x, name) {
   name <- .check_pattern_name(x, name)
+  .pattern_marker(x, paste0("@", name))
+}
+
+# A pattern's one row of the report sheet (output_id only): all there is of
+# a pattern with no page rows
+.pattern_marker <- function(x, id) {
   d <- .normalize_sheet(x$sheets$report, "report")
   row <- d[0L, , drop = FALSE]
   row[1L, ] <- NA
-  row$output_id <- paste0("@", name)
+  row$output_id <- id
   x$sheets$report <- rbind(d, row)
   x
+}
+
+# Whether the view has a row of the pattern `id` in any of the sheets
+.pattern_in_view <- function(x, id, sheets = .pattern_sheets) {
+  any(vapply(x$sheets[sheets], function(d) any(d$output_id %in% id), NA))
 }
 
 #' @rdname add_page_pattern
