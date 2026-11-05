@@ -375,5 +375,9 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   })
   attr(res, "header_tokens") <- tryCatch(rtfreporter::plan_header_tokens(plan),
                                          error = function(e) NULL)
+  # where each part's rows start (the cut pages do not say which rows are a
+  # part's; the table before it is cut does): .part_start_page()
+  attr(res, "part_first") <- .part_first_rows(
+    tryCatch(suppressMessages(rtfreporter::plan_apply(plan, "table")), error = function(e) NULL))
   res
 }

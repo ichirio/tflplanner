@@ -219,12 +219,12 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
   args <- gsub('data-arg="|"', "", regmatches(h, gregexpr('data-arg="[^"]+"', h))[[1L]])
   expect_identical(args, c("hierarchy", "overall", "keys", "drop_contexts", "drop_key_variables",
                            "stack", "stack_sep", "stack_nest"))
-  expect_match(h, "Not in the code (6)", fixed = TRUE)
+  expect_match(h, "Arguments not in the code (6)", fixed = TRUE)
   expect_false(grepl("rp-badge-unsaved", h, fixed = TRUE))
   # a summary table's (the study's defaults: none): every argument below
   i0 <- item(builder_items(p, "T-14-1-1"), "normalize_ard")
   h0 <- html(.plan_form_body("n", "normalize_ard", i0, ard = list(hierarchy = character())))
-  expect_match(h0, "Not in the code (8)", fixed = TRUE)
+  expect_match(h0, "Arguments not in the code (8)", fixed = TRUE)
   # its hierarchy an ordinary field below (the code does not write it)
   expect_false(grepl("data-ard=", h0, fixed = TRUE))
   expect_match(h0, 'id="n__hierarchy"', fixed = TRUE)
@@ -287,7 +287,7 @@ test_that("the layout cards' forms: their fields, the study's defaults marked, e
     for (a in want[[fn]]) expect_match(h, sprintf('id="c__%s"', a), fixed = TRUE, info = paste(fn, a))
     # (the arguments the code does not write: below, when there are any)
     if (length(setdiff(.plan_form_schema(fn)$formals, c(names(it$args), .data_args)))) {
-      expect_match(h, "Not in the code", fixed = TRUE, info = fn)
+      expect_match(h, "Arguments not in the code", fixed = TRUE, info = fn)
     }
   }
   # the kinds of field: a choice, a number, a check

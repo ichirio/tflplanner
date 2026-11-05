@@ -550,6 +550,8 @@ app_ui <- function(lang = "en") {
               # (a template report's: the ARD its template makes)
               ard = shiny::uiOutput("tpl_ard_pane"),
               spec = shiny::tagList(
+                # (in part scope: one line -- the sheets are the table's)
+                shiny::uiOutput("part_spec_note"),
                 shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_spec_yaml")),
                 shiny::div(class = "rp-code-only",
                 shiny::uiOutput("type_note"),
