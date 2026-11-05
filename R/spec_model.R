@@ -3,7 +3,7 @@
 # a study carries, in `p$spec`:
 #
 #   study    the study's spec, tflspec::tfl_read_study_spec() (study.yml,
-#            data, defaults, codelists, patterns, toc)
+#            data, defaults, patterns, toc)
 #   outputs  the reports as their files say them (not resolved), a named
 #            list of tfl_output, by id
 #   text     every file's text (its lines), by its path relative to the
@@ -177,7 +177,7 @@
   invisible(f)
 }
 
-# Which part of the spec a file is: study, data, defaults, codelists, toc,
+# Which part of the spec a file is: study, data, defaults, toc,
 # pattern (its name) or output
 .spec_part <- function(rel) {
   sp <- study_layout()[["spec"]]
@@ -350,11 +350,8 @@
     }
     files[nrow(files) + 1L, ] <- list(to, if (same) "unchanged" else "written")
   }
-  # a report's (or a pattern's) file no longer in the definition; not
-  # spec/codelists.yml: its lists are no report's, the sheets do not hold
-  # them (the bridge never writes the file), so its absence from the
-  # bridge says nothing and tflplanner never removes it
-  for (r in setdiff(.spec_files_yaml(root), c(names(text), .study_file, .codelists_file()))) {
+  # a report's (or a pattern's) file no longer in the definition
+  for (r in setdiff(.spec_files_yaml(root), c(names(text), .study_file))) {
     if (isTRUE(own(r))) {
       unlink(file.path(root, r))
       files[nrow(files) + 1L, ] <- list(file.path(root, r), "removed")
