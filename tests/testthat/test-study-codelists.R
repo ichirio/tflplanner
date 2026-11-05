@@ -372,13 +372,28 @@ test_that("a re-saved spec file with only its line ends changed is no change to 
   cl_home()
   s <- cl_study("CL17")
   f <- file.path(s$path, "spec", "outputs", "DM.yml")
+  # (the other line ends than the file has, so its bytes do change: on
+  # Windows writeLines() has already written these with CRLF)
+  raw <- readBin(f, "raw", file.size(f))
   x <- readLines(f)
-  con <- file(f, "wb")
-  writeBin(charToRaw(paste0(paste(x, collapse = "\r\n"), "\r\n")), con)
-  close(con)
+  eol <- if (as.raw(13L) %in% raw) "\n" else "\r\n"
+  writeBin(charToRaw(paste0(paste(x, collapse = eol), eol)), f)
+  expect_false(identical(readBin(f, "raw", file.size(f)), raw))
   o <- open_study("CL17")
-  expect_true(o$spec$status %in% c("same", "touched"))
+  expect_identical(o$spec$status, "touched")
   expect_null(o$spec$parts)
+})
+
+test_that("a real change to spec/codelists.yml is still a change", {
+  cl_home()
+  s <- cl_study("CL18")
+  writeLines("ANRIND: [{value: LOW, label: Lower}, {value: HIGH, label: High}]",
+             file.path(s$path, "spec", "codelists.yml"))
+  o <- open_study("CL18")
+  rows <- o$planner$sheets$codelists
+  expect_identical(rows$label[is.na(rows$output_id) & rows$value == "LOW"], "Lower")
+  expect_identical(o$spec$status, "adopted")
+  expect_true("sheet:codelists" %in% o$spec$parts)
 })
 
 test_that("the other readers of the sheets leave the rows with no report out too", {

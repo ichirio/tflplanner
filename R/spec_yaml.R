@@ -109,8 +109,15 @@
   }, error = function(e) NULL)
   if (!is.null(p)) {
     attr(p, "not_converted") <- NULL
-    # (the study's own spec stays its own)
+    # (the study's own spec stays its own; so do the rows of no report,
+    # spec/codelists.yml's: tflspec writes a report's only)
     p$spec <- s$planner$spec
+    cl <- s$planner$sheets$codelists
+    cl <- cl[is.na(cl$output_id), , drop = FALSE]
+    if (nrow(cl)) {
+      p$sheets$codelists <- rbind(cl, p$sheets$codelists)
+      rownames(p$sheets$codelists) <- NULL
+    }
     s$planner <- p
   }
   s
