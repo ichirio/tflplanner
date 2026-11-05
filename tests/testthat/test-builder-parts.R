@@ -350,3 +350,47 @@ test_that("a part's id never reaches a program, a file or the table's sheets", {
   # a part that is not there has no items: not the sheets' bridge
   expect_identical(builder_items(p, .part_id(f$id, "nothing")), .builder_items_ard_first(list()))
 })
+
+# a sample study whose T-14-1-2 has a part read from ADSL (its data code
+# calls order_arms(), which programs/study_helpers.R defines)
+.part_study <- function(env = parent.frame()) {
+  home <- local_home(env)
+  s <- suppressMessages(create_sample_study(run = FALSE))
+  args <- list(name = "demog", absent = "skip",
+               data = list(source = "dataset", dataset = "ADSL"),
+               content = .part_items_parse("- fn: table_plan\n  args:\n    cols: SEX\n"))
+  s$planner <- .builder_item_write(s$planner, "T-14-1-2", "plan_append", args, 1L)
+  s
+}
+
+test_that("the preview of a part from a dataset runs the data code with the study's helpers", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  s <- .part_study()
+  expect_true(any(grepl("order_arms()", .table_dataset_lines(s$planner, "T-14-1-2"), fixed = TRUE)))
+  wd <- getwd()
+  r <- .preview_records(s$planner, "T-14-1-2", s$path)
+  expect_gt(length(r), 0L)
+  expect_true(all(vapply(r, is.data.frame, NA)))
+  expect_gt(nrow(r[[1L]]), 0L)
+  # the app's own session is as it was
+  expect_identical(getwd(), wd)
+  expect_false(exists("order_arms", envir = globalenv(), inherits = FALSE))
+  expect_false(exists("adsl", envir = globalenv(), inherits = FALSE))
+})
+
+test_that("the preview reads the study's own study_helpers.R, and says when it stops", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  s <- .part_study()
+  f <- file.path(s$path, "programs", "study_helpers.R")
+  writeLines("order_arms <- function(data) { data$MARKED <- 1L; data }", f)
+  r <- .preview_records(s$planner, "T-14-1-2", s$path)
+  expect_true(all(vapply(r, function(d) "MARKED" %in% names(d), NA)))
+  writeLines("stop('boom')", f)
+  expect_error(.preview_records(s$planner, "T-14-1-2", s$path), "study_helpers.R stopped: boom")
+  # no helpers file: tflspec's functions stand
+  unlink(f)
+  r <- .preview_records(s$planner, "T-14-1-2", s$path)
+  expect_gt(nrow(r[[1L]]), 0L)
+})
