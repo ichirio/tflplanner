@@ -1185,7 +1185,8 @@ test_that("the drafts' check: a level and what is to confirm a report, the fix t
     expect_true(all(c("T-1", "T-2") %in% names(cb$fix)))
   }
   # the fix text's language: the study's (study.yml's ai: language)
-  expect_identical(.ai_fix_language(path), "en")
+  expect_no_warning(l0 <- .ai_fix_language(path))
+  expect_identical(l0, "en")
   writeLines(c("study_id: X", "ai:", "  language: Japanese"), file.path(path, "study.yml"))
   expect_identical(.ai_fix_language(path), "ja")
 })

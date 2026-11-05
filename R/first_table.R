@@ -633,6 +633,7 @@ add_group_n <- function(x, output_id, group) {
 set_total_column <- function(x, output_id, label = "Total",
                              position = c("last", "first")) {
   position <- match.arg(position)
+  .stop_part(output_id)
   on <- !is.null(label) && !is.na(label) && nzchar(trimws(label))
   key <- .report_cols(x, output_id)[1L]
   if (on && is.na(key)) {

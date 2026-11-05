@@ -286,7 +286,7 @@
 .card_mark <- function(it, id, lang = "en") {
   shiny::tagList(
     from_badge(.card_from(it), lang,
-               own = if (isTRUE(it$present) && identical(.card_from(it), "own")) "This table"),
+               own = if (isTRUE(it$present) && identical(.card_from(it), "own")) it$own_word %||% "This table"),
     if (isTRUE(it$revert)) .card_revert(id, lang))
 }
 
@@ -359,7 +359,7 @@
       # changed and the off: closed
       open = on && (pending || (!rare && (req || own_form || identical(it$from, "own")))),
       path = it$path, lang = lang,
-      own_label = if (isTRUE(it$present) && identical(from, "own")) "This table",
+      own_label = if (isTRUE(it$present) && identical(from, "own")) it$own_word %||% "This table",
       absent = absent, rare = rare, section = sec,
       tag = .plan_section_labels[[sec]],
       new = identical(it$path, new),

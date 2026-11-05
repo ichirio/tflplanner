@@ -50,7 +50,21 @@
     if (!is.null(pv$error)) {
       return(shiny::div(class = "small text-muted", pv$error))
     }
+    # in part scope: the page the part's rows start on, said and shown
+    # (the pages are one under the other; the preview scrolls to it)
+    pn <- bpart_name()
+    if (nzchar(pn) && identical(bpart()$id, current())) {
+      at <- .part_start_page(pv$pages, pn)
+      return(shiny::tagList(.part_page_note(pv$pages, pn, lang),
+                            preview_html(pv$pages, max_pages = max(3L, at, na.rm = TRUE))))
+    }
     preview_html(pv$pages)
+  })
+  output$part_spec_note <- shiny::renderUI({
+    pn <- bpart_name()
+    if (!nzchar(pn) || !identical(bpart()$id, current())) return(NULL)
+    shiny::div(class = "small text-muted mb-1",
+               t("The table's sheets; the part is in its plan_append content."))
   })
   output$builder_pages <- shiny::renderUI({
     pv <- preview_now()

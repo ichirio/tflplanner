@@ -351,7 +351,7 @@
   bstate <- shiny::reactive(builder_guard({
     bform_drawn()
     shiny::req(builder_case() %in% c("ok", "hierarchy"),
-               identical(bform$id, current()))
+               identical(bform$id, bcur()))
     st <- bform$st
     get <- function(x) input[[bid(x)]]
     hier <- length(st$hierarchy) > 0L

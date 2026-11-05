@@ -219,6 +219,7 @@ ard_meta <- function(ard = NULL, data = NULL) {
 # ------------------------------------------------------------ fetching
 
 .meta_file <- function(study, output_id, home = tflplanner_home()) {
+  .stop_part(output_id)
   file.path(.store_dir(study$meta$study_id, home), "ard",
             paste0(output_id, ".rds"))
 }
@@ -830,6 +831,8 @@ grid_choices <- function(sheet, meta) {
 #' @noRd
 inherited_rows <- function(x, sheet, output_id) {
   d <- x$sheets[[sheet]]
+  # (a builder part has no layers under it: none of the defaults' rows)
+  if (!is.null(.part_of(output_id))) return(d[0L, , drop = FALSE])
   def <- d[is.na(d$output_id), , drop = FALSE]
   own <- d[!is.na(d$output_id) & d$output_id == output_id, , drop = FALSE]
   # a report's page pattern: its rows over Standard's are what it inherits

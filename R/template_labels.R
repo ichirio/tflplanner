@@ -152,7 +152,8 @@
   size_by_n = "Point size by subjects",
   bold_headings = "Bold subgroup headings",
   n_by_arm = "Events/N by arm",
-  subgroup_labels = "Subgroup headings' labels"
+  subgroup_labels = "Subgroup headings' labels",
+  post_header = "Header over each post-baseline category"
 )
 
 .tpl_doc_labels <- c(
