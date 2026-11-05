@@ -50,7 +50,7 @@
   vapply(list.files(kit$adam, full.names = TRUE), put, "", sub = adam)
   out <- list(toc = put(kit$toc, "docs"),
               shells = vapply(kit$shells, put, "", sub = "docs", USE.NAMES = FALSE),
-              adam = normalizePath(file.path(dir, adam), "/"),
+              adam = normalizePath(file.path(dir, adam), "/", mustWork = FALSE),
               adam_spec = put(kit$adam_spec, "docs"),
               docs = vapply(kit$docs, put, "", sub = "ai/docs", USE.NAMES = FALSE))
   tflspec::tfl_ai_study_init(dir, adam = adam, study_id = id, title = title)

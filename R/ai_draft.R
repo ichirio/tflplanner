@@ -183,7 +183,8 @@
 # The fix text's language: the study's (study.yml's ai: language), "ja" for
 # Japanese, else "en"
 .ai_fix_language <- function(path) {
-  y <- tryCatch(yaml::read_yaml(file.path(path, "study.yml")), error = function(e) NULL)
+  f <- file.path(path, "study.yml")
+  y <- if (file.exists(f)) tryCatch(yaml::read_yaml(f), error = function(e) NULL)
   l <- tolower(as.character(y$ai$language %||% "")[1L])
   if (!is.na(l) && l %in% c("ja", "japanese", "jp")) "ja" else "en"
 }
@@ -551,11 +552,14 @@
 # Whether a dialog to choose a folder or a file can be opened: on Windows
 # (utils::choose.dir() / choose.files()), else with tcltk.  A server sets
 # options(tflplanner.file_dialog = FALSE): the dialog would open on the
-# server, not before the user.
+# server, not before the user.  Loading tcltk on a machine with no display
+# warns ("no DISPLAY variable so Tk is not available") though it loads: the
+# warning is dropped here, a UI is built on such a machine all the same.
 .ai_dialog_ok <- function() {
   if (isFALSE(getOption("tflplanner.file_dialog", TRUE))) return(FALSE)
   .Platform$OS.type == "windows" ||
-    (isTRUE(capabilities("tcltk")) && requireNamespace("tcltk", quietly = TRUE))
+    (isTRUE(capabilities("tcltk")) &&
+       suppressWarnings(requireNamespace("tcltk", quietly = TRUE)))
 }
 
 # Where Browse... opens (a folder, "/" separated; "" when none is there):

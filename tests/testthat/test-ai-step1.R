@@ -197,7 +197,7 @@ test_that("the dry run keeps step 1 in ai/step1.yml first; a study with no ai/ w
   local_home()
   s <- create_study("KEP-2")
   adam <- file.path(s$path, "data", "adam")
-  dir.create(adam, recursive = TRUE)
+  dir.create(adam, recursive = TRUE, showWarnings = FALSE)
   df <- utils::head(tflspec::adsl, 5L)
   for (v in names(df)) if (is.factor(df[[v]])) df[[v]] <- as.character(df[[v]])
   haven::write_xpt(df, file.path(adam, "adsl.xpt"))
