@@ -212,7 +212,9 @@ import_ard <- function(study, path, output_id = NULL, source = NA_character_,
 
 # the study's table definition, as the programs read it
 .study_table_spec <- function(study) {
-  structure(study$planner$sheets, class = "tfl_table_spec")
+  sheets <- study$planner$sheets
+  sheets$codelists <- .codelists_of_reports(sheets$codelists)
+  structure(sheets, class = "tfl_table_spec")
 }
 
 #' Use an ARD taken in for a report, or stop using it

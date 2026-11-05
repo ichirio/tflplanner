@@ -22,6 +22,11 @@
   if (any(file.exists(file.path(sp, old)))) "sheets" else "none"
 }
 
+# spec/codelists.yml: lists to copy from, no report's; the sheets keep its
+# rows for the round trip but the bridge does not write the file, so
+# tflplanner leaves it as it is (.spec_write(), save_study())
+.codelists_file <- function() file.path(study_layout()[["spec"]], "codelists.yml")
+
 # The YAML spec's files, relative to the study folder (the converter's list
 # of what it could not convert and the backups are not the study's)
 .spec_files_yaml <- function(root) {

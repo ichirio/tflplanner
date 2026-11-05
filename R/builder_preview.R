@@ -99,6 +99,7 @@ preview_pages <- function(x, output_id, data) {
   })
   st <- x$study["rounding"]
   sheets$study <- if (!is.na(st)) st
+  sheets$codelists <- .codelists_of_reports(sheets$codelists)
   spec <- tflspec::tfl_table_spec(sheets)
   plan <- rtfreporter::plan_cells(tflspec::tfl_table_plan(data, spec, output_id),
                                   notes = FALSE)
