@@ -195,6 +195,8 @@ test_that("the form shows the variables, groups and strata in the definition's o
   # not in the data's (alphabetical) order: the hierarchy, outermost first
   a$variables <- "AEBODSYS | AEDECOD"
   a$by <- "TRT01A"
+  # the copied row's args (.total_n) belong to its own method: none here
+  a$args <- NA_character_
   s$planner <- set_ard_rows(s$planner, "analyses", "T1", a)
   save_study(s)
   shiny::testServer(server_for("VO"), {
