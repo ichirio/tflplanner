@@ -333,10 +333,26 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   if (!length(dc)) return(list())
   old <- setwd(study_dir)
   on.exit(setwd(old), add = TRUE)
-  env <- new.env(parent = globalenv())
+  # as a program runs under the study's setup: the functions it calls
+  # (order_arms() ... from the study's own programs/study_helpers.R, else
+  # tflspec's) and the packages it attaches, the app's session left as it is
+  env <- new.env(parent = .ard_program_env())
+  .source_study_helpers(env, study_dir)
   eval(parse(text = unlist(dc, use.names = FALSE), keep.source = FALSE), envir = env)
   # (a plain data frame: the plan reads columns it may not have by `$`)
   lapply(mget(names(dc), envir = env), as.data.frame)
+}
+
+# The study's own programs/study_helpers.R run in `env` (what its setup
+# sources); none there: tflspec's helpers, already in the parents, stand.
+# A file that stops is said as such, not as the data code's error
+.source_study_helpers <- function(env, study_dir) {
+  f <- file.path(study_dir, .study_helpers_path())
+  if (!file.exists(f)) return(invisible(env))
+  tryCatch(sys.source(f, envir = env, keep.source = FALSE),
+           error = function(e) stop(sprintf("%s stopped: %s", .study_helpers_path(),
+                                            conditionMessage(e)), call. = FALSE))
+  invisible(env)
 }
 
 # Its pages: the report resolved, its content run (tflspec::tfl_content_run())
