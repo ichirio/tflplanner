@@ -328,6 +328,18 @@ $(document).on('click', '#save', function() {
 });
 "
 
+# A dialog shown over another (the code lists', then its copy) takes the page's
+# locked scroll as the page's own and puts it back on closing: the page would
+# never scroll again.  When the last dialog has gone, the lock goes.
+.modal_scroll_js <- "
+$(document).on('hidden.bs.modal', function() {
+  if (!document.querySelector('.modal.show')) {
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+  }
+});
+"
+
 .unsaved_js <- "
 (function() {
   var dirty = false;

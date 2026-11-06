@@ -499,6 +499,9 @@
       keep <- keep[now - keep$t <= 60, , drop = FALSE]
       tpl_past[[key]] <- utils::tail(rbind(keep, data.frame(v = as_key(shown), t = now)), 5L)
     }
+    # (a soft warning: the value is kept)
+    msg <- if (!is.null(val) && a %in% .tpl_header_checked) .tpl_header_problem(val, a)
+    if (!is.null(msg)) notify(t(msg), "warning")
   }
   tpl_observe <- function(name, prm) {
     for (a in names(prm)) {
