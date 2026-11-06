@@ -255,7 +255,7 @@ test_that("the new words have their Japanese", {
   ja <- vapply(w, tr, "", lang = "ja")
   expect_true(all(ja != w), info = paste(w[ja == w], collapse = " / "))
   expect_identical(tr(w[[1L]], "ja"),
-                   "解析変数 (variable) は行になりません（1 変数の表、ORR など）")
+                   "解析変数 (variable) は行になりません（1 変数の Table、ORR など）")
 })
 
 test_that("plan_labels(): the labels of the columns the plan makes are the item's, the data's code lists kept", {

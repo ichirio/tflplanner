@@ -2,4 +2,4 @@
 "The ARD of %s has no rows yet: make it (step %s, or an official run in Runs).","%s の ARD にまだ行がありません。作ってください（手順 %s、または実行タブの正式実行）。"
 "%s x %s in%s","%s x %s インチ%s"
 " (the page's body)","（ページの本文）"
-" (its own size)","（図そのもの）"
+" (its own size)","（Figure そのもの）"
