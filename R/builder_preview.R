@@ -312,14 +312,15 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   htmltools::tagList(lapply(seq_len(n), function(i) one(pages[[i]], i)))
 }
 
-# A table of records (`data: {source: dataset}`), or one with parts
-# (plan_append()): its pages are its content run on the objects its program
-# makes -- `data` its records, `ard` the report's ARD as read -- not the
-# ARD's sheets.  FALSE for the others.
+# A table of records (`data: {source: dataset}`), one with parts
+# (plan_append()), or one from a template: its pages are its content run on
+# the objects its program makes -- `data` its records, `ard` the report's ARD
+# as read -- not the ARD's sheets (a template's items are not in them: the
+# sheets hold the study's defaults).  FALSE for the others.
 .preview_by_content <- function(x, output_id) {
   o <- tryCatch(.code_spec(x)$outputs[[output_id]], error = function(e) NULL)
   if (is.null(o) || inherits(o$content, "tfl_r")) return(FALSE)
-  identical(o$data$source, "dataset") ||
+  !is.null(o$template) || identical(o$data$source, "dataset") ||
     any(vapply(o$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
 }
 
@@ -361,6 +362,11 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
 .preview_content_pages <- function(x, output_id, objects) {
   sp <- .code_spec(x)
   r <- tflspec::tfl_resolve_output(sp$outputs[[output_id]], sp$study)
+  # (a table with no records of its own and no parts -- a template's -- reads
+  # the ARD itself, as its program does: not a list of objects)
+  own <- identical(r$data$source, "dataset") ||
+    any(vapply(r$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
+  if (!own && !is.null(objects$ard)) objects <- objects$ard
   plan <- tflspec::tfl_content_run(r, objects)
   res <- suppressMessages(rtfreporter::plan_apply(plan))
   if (is.data.frame(res)) {

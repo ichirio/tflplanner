@@ -287,3 +287,42 @@ test_that("the Japanese says one word for post-baseline, and the tip has its \\n
   expect_identical(tr("Copy the lists", "ja"), "\u5199\u3059")
   expect_identical(tr("Copy", "ja"), "\u8907\u88fd")
 })
+
+test_that("a template report's preview is its content run on its ARD, not the study defaults' sheets", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  home <- local_home()
+  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  # the lab data the shift table reads (tflspec's simulated ADLB)
+  saveRDS(tflspec::adlb, file.path(s$path, "data", "adam", "adlb.rds"))
+  y <- readLines(file.path(s$path, "spec", "data.yml"), warn = FALSE)
+  i <- grep("path: data/adam/advs.rds", y, fixed = TRUE)
+  writeLines(append(y, c("  - dataset: ADLB", "    level: ADaM", "    path: data/adam/adlb.rds"),
+                    after = i),
+             file.path(s$path, "spec", "data.yml"))
+  s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  o <- tflspec::tfl_output("T-TPL", "table", label = "Shift", population = "SAF",
+                           template = list(name = "shift",
+                                           args = list(population = "SAF",
+                                                       post_header = "Worst: {col}")))
+  s$planner <- .spec_add_output(s$planner, o, label = "Shift", population = "SAF")
+  s <- suppressMessages(save_study(s, home = home))
+  # a template report is drawn by its content; a plain table of the ARD, not
+  expect_true(.preview_by_content(s$planner, "T-TPL"))
+  expect_false(.preview_by_content(s$planner, "T-14-1-2"))
+  suppressMessages(fetch_ard(s, "T-TPL", home = home))
+  ard <- ard_raw(s, "T-TPL", home = home)
+  skip_if(is.null(ard), "the report's ARD was not made")
+  pages <- .preview_content_pages(s$planner, "T-TPL", list(ard = ard))
+  hdr <- lapply(pages[[1L]]$col_header, function(l) {
+    if (is.list(l)) vapply(l, function(z) z$label, "") else l
+  })
+  # the template's own header: the argument's text over each category, the
+  # arms' N over their columns (not the defaults' "LOW NORMAL HIGH" over NA)
+  expect_true(all(c("Worst: LOW", "Worst: NORMAL", "Worst: HIGH") %in% unlist(hdr)))
+  expect_true(any(grepl("^Drug X \\(N=[0-9]+\\)$", unlist(hdr))))
+  expect_false(any(grepl("N=NA", unlist(hdr), fixed = TRUE)))
+  # (the sheets' route, which this report's preview took before, has neither)
+  old <- suppressWarnings(preview_pages(s$planner, "T-TPL", rtfreporter::normalize_ard(ard)))
+  expect_false(any(grepl("Worst:", unlist(old[[1L]]$col_header), fixed = TRUE)))
+})
