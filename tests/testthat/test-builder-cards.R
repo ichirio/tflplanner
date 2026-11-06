@@ -459,6 +459,7 @@ test_that("a type's kind picks the field", {
   expect_identical(.arg_kind("list<column>"), "list")
   expect_identical(.arg_kind("vec<string, column>|map<string, column|guard>|list<column>"), "list")
   expect_identical(.arg_kind("list<number>|r"), "list")
+  expect_identical(.arg_kind("list<date|string|number>|r"), "list")
   expect_identical(.arg_kind("r|list<number>"), "list")
   expect_identical(.arg_kind("enum[sas|r|iec60559]"), "enum")
   expect_identical(.type_enum("enum[sas|r|iec60559]"), c("sas", "r", "iec60559"))
