@@ -16,7 +16,7 @@
   if (grepl("^(list|vec)<", first)) {
     inner <- sub("^(list|vec)<(.*)>$", "\\2", first)
     return(if (grepl("^column", inner) || grepl("^string", inner) ||
-                 grepl("^number|^integer", inner)) "list" else "r")
+                 grepl("^number|^integer|^date", inner)) "list" else "r")
   }
   if (grepl("^map<", first)) return("map")
   if (grepl("^call", first)) return("call")
