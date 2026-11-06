@@ -849,6 +849,18 @@
       r <- tflspec::tfl_resolve_output(p$spec$outputs[[id]], p$spec$study)
       d <- tpl_data()
       names(d) <- tolower(names(d))
+      # a figure that reads an ARD (forest_hr): the ARD of its analyses made
+      # for the preview, as a table template's preview makes its own (not
+      # the study's ard.rds, which may not be made); tfl_content_run() adds
+      # the helpers (ard_stats ...) when it has `ard`
+      src <- .fig_ard_source(p, id)
+      if (src$kind %in% c("own", "table")) {
+        shiny::setProgress(0.1, detail = sprintf(t("making its ARD (%d analyses, in its own R process)"),
+                                                  NROW(ard_rows(p, "analyses", src$id))))
+        a <- run_ard(current_study(), src$id)
+        if (is.null(a$ard)) stop(paste(t("The preview's ARD could not be made:"), a$error), call. = FALSE)
+        d$ard <- a$ard
+      }
       g <- tflspec::tfl_content_run(r, d)
       f <- tempfile("tplfig", fileext = ".png")
       save <- getExportedValue("ggplot2", "ggsave")
