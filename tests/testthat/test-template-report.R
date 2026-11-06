@@ -366,13 +366,13 @@ test_that("a template listing's preview is its content: pages at 22 rows, as the
   pages <- preview_listing(s, "L-TPL")
   expect_gt(length(pages), 1L)
   expect_true(all(vapply(pages, function(p) nrow(p$data), 1L) <= 22L))
-  # (the program writes the same number of pages)
+  # (the program writes the same number of pages: a section a page)
   owd <- setwd(s$path)
   on.exit(setwd(owd), add = TRUE)
   out <- system2(file.path(R.home("bin"), "Rscript"), "programs/tfl/L-TPL.R", stdout = TRUE, stderr = TRUE)
   expect_true(file.exists("output/tfl/L-TPL.rtf"), info = paste(out, collapse = "\n"))
   rtf <- readLines("output/tfl/L-TPL.rtf", warn = FALSE)
-  expect_equal(lengths(regmatches(rtf, gregexpr("\\page", rtf, fixed = TRUE))) |> sum(), length(pages))
+  expect_equal(sum(lengths(regmatches(rtf, gregexpr("sbkpage", rtf, fixed = TRUE)))), length(pages))
 })
 
 test_that("a template listing's `by` divides its pages in the preview and the program", {
