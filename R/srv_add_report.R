@@ -860,6 +860,9 @@
         a <- run_ard(current_study(), src$id)
         if (is.null(a$ard)) stop(paste(t("The preview's ARD could not be made:"), a$error), call. = FALSE)
         d$ard <- a$ard
+        # (the ARD result tab shows it, as after a table's Update preview)
+        ard_res(list(ard = a$ard, scope = id, seconds = a$seconds))
+        rv$ard_ver <- rv$ard_ver + 1L
       }
       g <- tflspec::tfl_content_run(r, d)
       f <- tempfile("tplfig", fileext = ".png")
