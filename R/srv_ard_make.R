@@ -205,12 +205,23 @@
     p <- rv$p
     guarded(rv$p <- set_ard_rows(p, "analysis_data", ard_target(), d))
   })
-  output$ard_methods <- DT::renderDT(
-    .std_ard_methods()[c("method", "call", "kind", "defaults", "formats", "note")],
-    rownames = FALSE,
-    options = list(dom = "t", paging = FALSE, ordering = FALSE))
+  output$ard_methods <- DT::renderDT({
+    d <- .std_ard_methods()[c("method", "call", "kind", "defaults", "formats", "note")]
+    # the note in the app's language ("method-note:<name>" in the translations)
+    d$note <- method_note(d$method, d$note)
+    DT::datatable(d, rownames = FALSE,
+                  options = list(dom = "t", paging = FALSE, ordering = FALSE))
+  })
   output$ard_stat_catalog <- DT::renderDT({
     d <- .std_ard_statistics()
+    # the labels in the app's language ("stat-label:<label>" in the
+    # translations; as they are when there is none)
+    d$label <- vapply(d$label, function(l) {
+      if (is.na(l) || !nzchar(l)) return(l)
+      k <- paste0("stat-label:", l)
+      v <- t(k)
+      if (identical(v, k)) l else v
+    }, "", USE.NAMES = FALSE)
     d$computed <- ifelse(is.na(d$fun), "cards / cardx", "tflplanner")
     DT::datatable(d[c("statistic", "kind", "group", "label", "fmt",
                       "computed", "note")],

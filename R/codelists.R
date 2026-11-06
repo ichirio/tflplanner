@@ -156,7 +156,8 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
       shiny::tags$summary(t("Read a file into this report")),
       shiny::fileInput(
         p("file"), t("A code list (xlsx / csv: variable, value, label, order, under)"),
-        accept = c(".xlsx", ".csv"), width = "100%")),
+        accept = c(".xlsx", ".csv"), width = "100%",
+        buttonLabel = t("Browse..."), placeholder = t("No file selected"))),
     shiny::tags$details(
       class = "rp-help mt-2",
       shiny::tags$summary(t("Column help")),

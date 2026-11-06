@@ -240,7 +240,7 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   rows <- list()
   add <- function(p, f, rule, tpl, args = character(), sev = "error") {
     rows[[length(rows) + 1L]] <<- list(
-      part = p, field = f, problem = do.call(sprintf, c(list(tpl), as.list(args))),
+      part = p, field = f, problem = do.call(sprintf, c(list(tr(tpl)), as.list(args))),
       severity = sev, rule = rule, template = tpl, args = as.character(args))
   }
   done <- function() {

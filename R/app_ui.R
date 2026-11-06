@@ -10,6 +10,8 @@
 .rp-upload .input-group .btn-file { height: 38px; }
 .rp-upload .input-group .btn-file { display: inline-flex; align-items: center; }
 .rp-upload .checkbox, .rp-upload .form-check { margin: 0; }
+/* a table's header is not broken one character a line (a narrow column) */
+table.dataTable thead th { white-space: nowrap; }
 .rp-upload select { appearance: auto; }
 /* fields that are not used (a data written as R) */
 .rp-greyed { opacity: .45; pointer-events: none; }
@@ -687,7 +689,8 @@ app_ui <- function(lang = "en") {
                               "  if (e.target.matches && e.target.matches('details.ard-fn') && e.target.open)",
                               "    Shiny.setInputValue('ard_fn_opened', Date.now(), {priority: 'event'});",
                               "}, true);"))),
-                            shiny::tags$script(shiny::HTML(.split_js)),
+                            shiny::tags$script(shiny::HTML(
+                              sub("drag to resize", t("drag to resize"), .split_js, fixed = TRUE))),
                             shiny::tags$style(shiny::HTML(.error_note_css)),
                             shiny::tags$script(shiny::HTML(.error_note_js)),
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
@@ -803,7 +806,8 @@ app_ui <- function(lang = "en") {
               shiny::uiOutput("catalog_files_note"),
               shiny::div(
                 class = "d-flex gap-2 align-items-end mt-2 rp-upload",
-                shiny::fileInput("data_upload", t("Add files"), multiple = TRUE)),
+                shiny::fileInput("data_upload", t("Add files"), multiple = TRUE,
+                                 buttonLabel = t("Browse..."), placeholder = t("No file selected"))),
               shiny::div(class = "d-flex gap-2 align-items-center",
                          .btn("data_refresh", t("Refresh")),
                          .btn("data_open", t("Open folder")),
