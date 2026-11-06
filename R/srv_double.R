@@ -509,8 +509,10 @@
     lf_show_preview(id)
   })
   lf_show_preview <- function(id) {
-    if (!nrow(lf_rows(rv$p, "listing_cols", id))) {
-      return(lf_pv(list(error = t("The listing has no columns yet: add them to the table of columns (below the form), or add the listing again with 'Start the listing from the data'."))))
+    # (a template listing's columns are the template's `columns` argument,
+    # not rows of the table: its definition says when they are missing)
+    if (!.is_template_listing(rv$p, id) && !nrow(lf_rows(rv$p, "listing_cols", id))) {
+      return(lf_pv(list(error = t("The listing has no columns yet: add them to the table of columns (below the form)."))))
     }
     r <- NULL
     shiny::withProgress(message = sprintf(t("Preview of %s"), id), {
@@ -518,7 +520,14 @@
                     error = function(e) list(error = conditionMessage(e)))
     })
     r$id <- id
+    r$key <- lf_def_key(id)
     lf_pv(r)
+  }
+  # what the preview was made from: the listing's definition (a template's
+  # arguments, or its rows and columns); the pane says when it has changed
+  lf_def_key <- function(id) {
+    list(tryCatch(.code_spec(rv$p)$outputs[[id]], error = function(e) NULL),
+         lf_rows(rv$p, "listings", id), lf_rows(rv$p, "listing_cols", id))
   }
   output$lf_preview_out <- shiny::renderUI({
     r <- lf_pv()
@@ -528,9 +537,12 @@
     }
     if (!is.null(r$error)) {
       return(shiny::div(class = "alert alert-danger py-1 small",
-                        shiny::tags$pre(class = "mb-0", r$error)))
+                        shiny::tags$pre(class = "mb-0", style = "white-space: pre-wrap;", r$error)))
     }
     shiny::tagList(
+      if (!is.null(r$key) && !identical(r$key, lf_def_key(r$id))) {
+        shiny::p(class = "small text-warning mb-1", t("Changed: preview again"))
+      },
       shiny::p(class = "small text-muted",
                sprintf(t("%d pages"), length(r$pages))),
       preview_html(r$pages, max_pages = 2L, align = "left"))

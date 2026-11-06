@@ -299,6 +299,19 @@ data_lines <- function(x, output_id, todo = TRUE) {
   if (.is_code_step(x, output_id, "data") || .is_code_step(x, output_id, "content")) {
     return(c(setup, .code_report_lines(x, output_id, info, proc)))
   }
+  # a template listing: its records as `data`, as a table of records has them
+  # (its content is the template's: .report_code_lines())
+  if (.is_template_listing(x, output_id)) {
+    # (a definition that does not hold: the report part says so and stops)
+    recs <- tryCatch(.table_dataset_lines(x, output_id), error = function(e) "failed")
+    if (identical(recs, "failed")) {
+      return(c(setup, "# the listing's definition does not hold: see the report part"))
+    }
+    if (!is.null(recs)) {
+      return(c(setup, "# the listing's records", recs,
+               if (!is.na(proc)) c("", "# its rework", .code_block(proc))))
+    }
+  }
   # a listing defined in rows: its process code is a rework of `data`
   if (identical(type, "listing")) {
     l <- .listing_lines(x, output_id, rework = proc)
@@ -429,8 +442,23 @@ data_lines <- function(x, output_id, todo = TRUE) {
   if (!length(dc)) NULL else unlist(dc, use.names = FALSE)
 }
 
+# A listing made from a template (`template: {name: listing, ...}`) that is
+# not a code report: its program and its preview are the template's
+# content (tflspec::tfl_content_code()), not the listing sheets'
+.is_template_listing <- function(x, output_id) {
+  if (!identical(report_info(x, output_id)$type, "listing")) return(FALSE)
+  o <- tryCatch(.code_spec(x)$outputs[[output_id]], error = function(e) NULL)
+  !is.null(o) && !inherits(o$content, "tfl_r") && is.list(o$template) &&
+    !is.null(o$template$name) &&
+    !.is_code_step(x, output_id, "data") && !.is_code_step(x, output_id, "content")
+}
+
 # ... by object, its ARD left out: list(data = <lines>, adpc = <lines>)
 .table_objects_code <- function(o, study) {
+  # (a template listing: its records are the template's, once it is resolved)
+  if (identical(o$kind, "listing") && is.list(o$template)) {
+    o <- tflspec::tfl_resolve_output(o, study)
+  }
   own <- identical(o$data[["source"]], "dataset")
   parts <- any(vapply(o$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
   if (!own && !parts) return(list())
@@ -489,9 +517,12 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   titles <- .title_lines(x, output_id)
   type <- info$type
   table <- identical(type, "table")
+  # a template listing is planned like a table of records: `data`, then the
+  # template's plan
+  tpl_listing <- .is_template_listing(x, output_id)
   # a table normalized in its plan's pipe keeps its ARD (`ard`), one
   # normalized in its data part `data`
-  obj <- if (!table) "content" else if (.table_norm_builtin(x, output_id)) "ard" else "data"
+  obj <- if (tpl_listing) "data" else if (!table) "content" else if (.table_norm_builtin(x, output_id)) "ard" else "data"
   # a designed figure: its code is the design's (#293)
   design <- if (identical(type, "figure")) fig_design(x, output_id)
   # a step of the report's own code: its data and content parts are
@@ -525,7 +556,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   data_part <- if (!is.null(design) || own) data else c(
     .section(paste0("data: ", switch(type,
       figure = "the figure",
-      listing = "the listing's pages",
+      listing = if (tpl_listing) "the listing's records" else "the listing's pages",
       if (!is.null(.table_dataset_lines(x, output_id))) "this report's records and ARD"
       else if (identical(obj, "ard")) "this report's ARD" else "this report's normalized ARD"))),
     data)
@@ -533,11 +564,11 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   # a figure's plot goes to the report as it is (rtf_figures(doc, plot)),
   # unless its code makes `content` itself
   content <- if (.is_code_step(x, output_id, "content")) "content" else
-    if (table) "plan" else if (identical(type, "figure") &&
+    if (table || tpl_listing) "plan" else if (identical(type, "figure") &&
       !any(grepl("^[[:space:]]*content[[:space:]]*(<-|=)[^=]", data))) "plot" else "content"
   report_part <- c(
     .section("report"),
-    .report_code_lines(x, output_id, table && identical(content, "plan"), content))
+    .report_code_lines(x, output_id, (table || tpl_listing) && identical(content, "plan"), content))
 
   c(head,
     "",
@@ -620,16 +651,17 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   sheets <- function() .spec_object_last(x, c(table_sheets(), report_sheets()),
                                          unique(c(.study_keys$table, .study_keys$report)))
   sp <- if (is.null(y)) sheets()
+  tpl <- table && .is_template_listing(x, output_id)
   tryCatch(c(
     if (table) c(
-      paste0("# the table, as ", file.path(lay[["spec"]], "outputs", paste0(output_id, ".yml")),
-             " defines it"),
+      paste0("# the ", if (tpl) "listing" else "table", ", as ",
+             file.path(lay[["spec"]], "outputs", paste0(output_id, ".yml")), " defines it"),
       # the built-in normalization in its pipe (the hierarchy of its
       # hierarchical analysis, the any-event row: as the report's
       # definitions say; an ARD definition that does not hold yet, a
       # half-filled one: as the table's rows say); otherwise the data part
       # made `data`
-      if (.table_norm_builtin(x, output_id)) {
+      if (tpl || .table_norm_builtin(x, output_id)) {
         if (!is.null(y)) {
           tflspec::tfl_content_code(.code_content(y), pipe = "|>")
         } else {
