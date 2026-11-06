@@ -48,7 +48,7 @@ test_that("the row layers are written in their order, the block where it is or n
   expect_identical(.layer_names(".variable", lang = "ja"), "解析変数 (variable)")
   expect_identical(.layer_names(c("subgroup", "subgroup_level", "TRT01A"), lang = "ja",
                                 stack = c("subgroup", "subgroup_level")),
-                   c("subgroup（積み上げ）", "subgroup_level（積み上げ）", "TRT01A（キー）"))
+                   c("subgroup（スタック）", "subgroup_level（スタック）", "TRT01A（キー）"))
   expect_identical(.layer_names(c("AEBODSYS", "AEDECOD"), c("AEBODSYS", "AEDECOD")),
                    c("AEBODSYS (hierarchy)", "AEDECOD (label)"))
   expect_identical(.col_key_names("TRT01A", "ja"), c("TRT01A（列キー）" = "TRT01A"))

@@ -9,7 +9,7 @@
 "%s has no SAP number.","%s に SAP 番号がありません。"
 "SAP number %s is on more than one report: %s.","SAP 番号 %s が複数の帳票にあります：%s。"
 "No shell sheet for %s.","%s のシェルのシートがありません。"
-"Shell sheet %s is linked to no report.","シェルのシート %s はどの帳票にも結び付いていません。"
+"Shell sheet %s is linked to no report.","シェルのシート %s はどの帳票にも紐付いていません。"
 "%s is flagged for %s but is not on the sheet %s.","%s は %s のフラグがありますが、シート %s にありません。"
 "%s is on the sheet %s but is not flagged for %s.","%s はシート %s にありますが、%s のフラグがありません。"
 "Sheets %s look like the TOC in %s: %s was taken (more rows).","%2$s では %1$s が TOC のように見えます：%3$s を使いました（行が多いため）。"

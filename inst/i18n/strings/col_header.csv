@@ -31,6 +31,6 @@
 "This report's ARD has not been read yet.","この帳票の ARD はまだ読み込まれていません。"
 "The normalized ARD: %s (%d rows)","正規化した ARD: %s（%d 行）"
 "All the columns (%d)","すべての列（%d）"
-"The report's own page: in its YAML file (edit it on the left). The pattern it extends and the study defaults fill what it leaves out.","帳票自身のページ：その YAML ファイルの page:（左で編集）。書いていないところは、使う型と試験標準が埋めます。"
+"The report's own page: in its YAML file (edit it on the left). The pattern it extends and the study defaults fill what it leaves out.","帳票自身のページ：その YAML ファイルの page:（左で編集）。書いていないところは、使うパターンと試験標準が埋めます。"
 "No data to show yet: Update preview makes this table's ARD.","表示するデータがまだありません。「プレビューを更新」でこの Table の ARD を作ります。"
 "normalize_ard() stopped:","normalize_ard() が止まりました:"

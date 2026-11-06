@@ -42,7 +42,7 @@
 "%s made (save to keep it).","%s を作りました（保存すると残ります）。"
 "%s left as it is: change it in the analysis data if it should follow the population.","%s はそのままです。解析対象集団に合わせるなら解析データで直してください。"
 "The data this report's analyses read, made from the study's datasets: the rows a condition keeps, the subjects of another analysis data, columns made. They are this report's (another report's adsl_saf may differ: copy one with the button). The denominator of a percent is chosen with each analysis.","この帳票の解析が読むデータ。試験のデータセットから、絞り込み条件で絞った行・別の解析データの被験者・作る列で作ります。この帳票のものです（別の帳票の adsl_saf は中身が違うことがあります。ボタンで写せます）。% の分母は解析ごとに選びます。"
-"Copy from another report...","ほかの帳票から写す…"
+"Copy from another report...","ほかの帳票からコピー…"
 "The variables the analysis is grouped by (e.g. TRT01A); whether they are the table's columns, rows or pages is step %s's. A combination with no records is shown, with 0.","解析をグループ分けする変数（例: TRT01A）。列・行・ページのどこに出すかは手順 %s で決めます。記録の無い組み合わせも 0 で出ます。"
 "Code lists: %s (Column definitions ④)","コードリスト：%s（列定義 ④）"
 "The analysis once more without its grouping variables, over all its subjects: the Total column of a table (step %s's switch sets it for every analysis by the column variable). Needs grouping variables.","同じ解析をグループ変数なしでもう一度、全被験者で：Table の Total 列になる（手順 %s のスイッチが列変数で分けた解析すべてに入れる）。グループ変数が必要。"

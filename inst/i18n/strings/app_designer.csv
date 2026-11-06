@@ -54,7 +54,7 @@
 "The template's choices could not be made from the data: %s","データからテンプレートの選択肢を作れませんでした: %s"
 "First step (both become the designer's layers)","最初の一歩（どちらもデザイナーのレイヤーになります）"
 "Start from a template","テンプレートから始める"
-"Choose a type, its data and a few settings, then apply: the designer gets its layers at once, to add to and change.","型・データ・簡単なパラメータを選んで適用すると、デザイナーにレイヤーがまとめて並びます。その後は足す・直すことができます。"
+"Choose a type, its data and a few settings, then apply: the designer gets its layers at once, to add to and change.","タイプ・データ・簡単なパラメータを選んで適用すると、デザイナーにレイヤーがまとめて並びます。その後は足す・直すことができます。"
 "Apply the template","テンプレートを適用"
 "Only ggplot() and the data it reads: add the layers one by one.","ggplot() と読むデータだけの状態から、レイヤーを 1 つずつ足します。"
 "This figure's Spec (YAML):","この Figure の Spec（YAML）:"

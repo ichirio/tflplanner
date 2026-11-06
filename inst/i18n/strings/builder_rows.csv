@@ -21,4 +21,4 @@
 "Headings and order as a grid","見出しと順を表で編集"
 "plan_total puts the ARD's overall rows (results not split by group) in a Total column.","plan_total は ARD の全体の行（群で分けない結果）を Total 列にします。"
 "One row of plan_cells(continuous = c(row label = template)). Write the ARD's statistic names, {mean} {sd} ...; {mean:.2f} sets the decimals too.","plan_cells(continuous = c(行ラベル = テンプレート)) の 1 行。{mean} {sd} など ARD の統計量名を書き、{mean:.2f} で桁も書けます。"
-"%d analyses are run over all subjects too: Update preview makes the ARD again.","%d 本の解析を全体でも走らせます。「プレビューを更新」で ARD を作り直します。"
+"%d analyses are run over all subjects too: Update preview makes the ARD again.","%d 本の解析を全体でも実行します。「プレビューを更新」で ARD を作り直します。"
