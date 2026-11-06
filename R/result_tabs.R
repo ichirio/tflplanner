@@ -21,11 +21,11 @@ result_tabs_ui <- function(id, spec, code, result, lang = "en", selected = "spec
     class = "rp-tabs border rounded p-2",
     bslib::navset_underline(
       id = id, selected = selected,
+      bslib::nav_panel(lab("SPEC", "Template SPEC"), value = "spec", shiny::div(class = "pt-2", spec)),
       # (a template report's ARD is made in steps of its own, code => result,
-      # before the report's -- tabs shown only for such a report)
+      # after its SPEC and before the report's -- tabs shown only for such a report)
       if (!is.null(ard_code)) bslib::nav_panel(tr("ARD code", lang), value = "ard_code", shiny::div(class = "pt-2", ard_code)),
       if (!is.null(ard)) bslib::nav_panel(tr("ARD result", lang), value = "ard", shiny::div(class = "pt-2", ard)),
-      bslib::nav_panel(lab("SPEC", "Template SPEC"), value = "spec", shiny::div(class = "pt-2", spec)),
       bslib::nav_panel(lab(tr("Code", lang), "Report code"), value = "code", shiny::div(class = "pt-2", code)),
       bslib::nav_panel(lab(tr("Result", lang), "Report result"), value = "result", shiny::div(class = "pt-2", result))))
 }

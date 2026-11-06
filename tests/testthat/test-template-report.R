@@ -332,7 +332,7 @@ test_that("a template report's step has five tabs in the order they are made, th
   links <- ui$find("#table_right")$find("a")$selectedTags()
   v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
   expect_identical(unname(v[nzchar(v)]),
-                   c("ard_code", "ard", "spec", "code", "result"))
+                   c("spec", "ard_code", "ard", "code", "result"))
   # the other lists of tabs are the three, named plainly
   tabs <- as.character(result_tabs_ui("x", "s", "c", "r"))
   expect_false(grepl("ard", tabs, fixed = TRUE))
@@ -340,6 +340,10 @@ test_that("a template report's step has five tabs in the order they are made, th
   # a template report's are named for what they are, shown with body.rp-tpl
   tpl <- as.character(result_tabs_ui("x", "s", "c", "r", ard = "a", ard_code = "b"))
   expect_true(grepl("Template SPEC", tpl, fixed = TRUE) && grepl("Report result", tpl, fixed = TRUE))
+  # in the HTML: Template SPEC, ARD code, ARD result, Report code, Report result
+  at <- vapply(c("Template SPEC", "ARD code", "ARD result", "Report code", "Report result"),
+               function(x) regexpr(x, tpl, fixed = TRUE)[[1L]], 1L)
+  expect_true(all(at > 0L) && !is.unsorted(at, strictly = TRUE))
   expect_true(grepl("body.rp-tpl #table_right .rp-lab-plain", .result_tabs_css, fixed = TRUE))
   # a code report has no ARD tabs; a template report's are disabled (not hidden) without an ARD
   expect_true(grepl("body:not(.rp-tpl) #table_right > .nav-item", .result_tabs_css, fixed = TRUE))

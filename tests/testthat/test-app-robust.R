@@ -348,8 +348,9 @@ test_that("a step's right is SPEC | Code | Result, the form on its left", {
     unname(v[nzchar(v)])
   }
   for (id in c("ard_right", "table_right", "lf_right", "dc_right", "cc_right", "page_right")) {
-    # (the table's: the ARD's own two first, a template report's -- #440, #514)
-    want <- c(if (identical(id, "table_right")) c("ard_code", "ard"), "spec", "code", "result")
+    # (the table's: SPEC, then the ARD's own two, a template report's -- #440, #514)
+    want <- if (identical(id, "table_right")) c("spec", "ard_code", "ard", "code", "result") else
+      c("spec", "code", "result")
     expect_identical(vals(id), want, info = id)
   }
   # the table: the sheets in SPEC, the preview in Result, the builder beside
