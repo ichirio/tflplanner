@@ -313,7 +313,31 @@
       conflicts <- c(conflicts, k)
     }
   }
+  out$planner <- .merge_spec_outputs(base$planner, mine$planner, out$planner)
   list(study = out, conflicts = conflicts)
+}
+
+# The reports' spec (a template, its arguments) is not one of the parts, so
+# the merge above leaves it as `now` has it -- and a report only `mine` made
+# or changed would be written on save from its sheets, its template lost.
+# A report whose spec `mine` changed and `now` did not takes `mine`'s (a
+# report `mine` took out stays out, one both changed stays as `now` has it,
+# the conflict the parts already say); its rows of the view are made again
+# from it.  `now` is the merged planner.
+.merge_spec_outputs <- function(base, mine, now) {
+  if (is.null(mine$spec) || is.null(now$spec)) return(now)
+  bo <- base$spec$outputs
+  no <- now$spec$outputs
+  for (id in intersect(names(mine$spec$outputs), now$outputs$output_id)) {
+    o <- mine$spec$outputs[[id]]
+    if (identical(o, bo[[id]]) || !identical(no[[id]], bo[[id]])) next
+    now <- tryCatch(.spec_set_output(now, id, o), error = function(e) {
+      warning("The report ", id, "'s unsaved spec could not be kept: ",
+              conditionMessage(e), call. = FALSE)
+      now
+    })
+  }
+  now
 }
 
 # The parts named for people: "titles (sheet)", "report list", "figure F-1"
