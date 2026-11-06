@@ -549,7 +549,7 @@ app_ui <- function(lang = "en") {
               "table_right", lang = lang, selected = "result",
               # (a template report's ARD, made in steps of its own before the
               # report's: its code, the result)
-              ard_code = shiny::uiOutput("tpl_ard_code"),
+              ard_code = shiny::tagList(shiny::uiOutput("tpl_ard_code_head"), code_view("tpl_ard_code", lang)),
               ard = shiny::uiOutput("tpl_ard_pane"),
               spec = shiny::tagList(
                 # (in part scope: one line -- the sheets are the table's)

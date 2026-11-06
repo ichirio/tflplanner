@@ -931,7 +931,6 @@
     out <- .ard_study_value(rv$p$ard, "output", "output/ard/ard.rds")
     shiny::tagList(
       shiny::p(class = "small text-muted mb-1",
-               t("The ARD the template makes: Update preview makes it with the table."),
                sprintf(t("A run saves it in the study's ARD (%s)."), out)),
       shiny::div(class = "rp-resize", DT::DTOutput("tpl_ard_table", height = "auto", fill = FALSE)))
   })
@@ -943,14 +942,15 @@
     shiny::validate(shiny::need(.report_uses_ard(rv$p, id), t("This report uses no ARD.")))
     a <- if (!is.null(r) && identical(r$scope, id)) r$ard else
       tryCatch(ard_raw(current_study(), id, rows = TRUE), error = function(e) NULL)
-    shiny::validate(shiny::need(!is.null(a), t("No ARD yet: Update preview makes it.")))
+    # (no ARD yet: the badge and the ARD line above say it)
+    shiny::req(!is.null(a))
     DT::datatable(ard_view(a), rownames = FALSE, filter = "top",
                   selection = "none", class = "compact stripe nowrap", fillContainer = FALSE,
                   options = list(pageLength = 50, scrollX = TRUE, scrollY = "55vh",
                                  scrollCollapse = TRUE, dom = "tip"))
   })
-  # ARD code: the code that makes the ARD (from the template's `ard:`, in SPEC)
-  output$tpl_ard_code <- shiny::renderUI({
+  # ARD code: the code that makes the ARD, as Report code shows its program
+  tpl_ard_program <- shiny::reactive({
     id <- tpl_now()
     shiny::req(id)
     a <- structure(rv$p$ard, class = "tfl_ard_spec")
@@ -958,10 +958,14 @@
       ard_program_code(a, id, dir = rv$study$path, codelists = .study_codelists(rv$p)),
       error = function(e) paste(t("The code cannot be written yet:"), conditionMessage(e)))
     shiny::req(!is.null(code))
-    shiny::tagList(
-      shiny::p(class = "small text-muted mb-1", t("The code that makes the ARD (expanded)"), " ",
-               shiny::code(file.path(study_layout()[["programs_ard"]], .ard_prog_name(id)))),
-      shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", paste(code, collapse = "\n"))))
+    paste(code, collapse = "\n")
+  })
+  output$tpl_ard_code <- shiny::renderText(tpl_ard_program())
+  output$tpl_ard_code_head <- shiny::renderUI({
+    id <- tpl_now()
+    shiny::req(id)
+    shiny::p(class = "small text-muted mb-1",
+             shiny::code(file.path(study_layout()[["programs_ard"]], .ard_prog_name(id))))
   })
   # SPEC: the report's YAML file as written, and expanded (the template's
   # items with the report's over them), read only

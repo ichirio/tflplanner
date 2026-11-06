@@ -60,7 +60,7 @@ code_view <- function(output_id, lang = "en") {
 body:not(.rp-tpl) #table_right > .nav-item:has(> a[data-value^=\"ard\"]) { display: none; }
 body:not(.rp-tpl) #table_right .rp-lab-tpl, body.rp-tpl #table_right .rp-lab-plain { display: none; }
 #table_right { flex-wrap: nowrap; white-space: nowrap; }
-#table_right .nav-link.disabled { opacity: .4; text-decoration: line-through; }
+#table_right .nav-link.disabled { opacity: .4; }
 /* the ARD result's wide grid must not widen the pane past its column */
 .rp-tabs:has(#table_right), .rp-tabs:has(#table_right) .tabbable,
 .rp-tabs:has(#table_right) .tab-content, .rp-tabs:has(#table_right) .tab-pane { min-width: 0; max-width: 100%; }

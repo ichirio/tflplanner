@@ -345,6 +345,12 @@ test_that("a template report's step has five tabs in the order they are made, th
   expect_true(grepl("body:not(.rp-tpl) #table_right > .nav-item", .result_tabs_css, fixed = TRUE))
   expect_true(grepl("rp-ard-tabs", .tpl_js, fixed = TRUE))
   expect_true(grepl("toggleClass('disabled', !on)", .tpl_js, fixed = TRUE))
+  # ARD code is read as Report code is: numbered lines and Copy
+  html <- as.character(app_ui())
+  expect_true(grepl('data-copy="tpl_ard_code"', html, fixed = TRUE))
+  expect_false(grepl("text-decoration: line-through", .result_tabs_css, fixed = TRUE))
+  # an outdated ARD: Report result says so in one line (both languages)
+  expect_false(identical(tr("ARD outdated: Update preview", "ja"), "ARD outdated: Update preview"))
   # their names in Japanese
   expect_identical(tr("Report code", "ja"), "\u5e33\u7968\u30b3\u30fc\u30c9")
   expect_identical(tr("ARD code", "ja"), "ARD \u30b3\u30fc\u30c9")
