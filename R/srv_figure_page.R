@@ -246,7 +246,7 @@
     rv$p$outputs[[field]][match(id, rv$p$outputs$output_id)]
   }
   # the report's rework (process_code): where its `data` is made -- a table's
-  # from its ARD (the ARD step), a listing's from its records (the Analysis
+  # from its ARD (the Content step), a listing's from its records (the Analysis
   # data step); the editor is drawn in the one that fits the report's kind,
   # folded, and so only once
   # (the editor of the kind that left is taken out in one flush and the
@@ -271,9 +271,9 @@
         value = if (length(v) && !is.na(v)) v else "", rows = 5, width = "100%",
         resize = "vertical", placeholder = "data <- normalize_ard(ard)"))
   })
-  output$rework_ard <- rework_ui("table")
+  output$rework_table <- rework_ui("table")
   output$rework_data <- rework_ui("listing")
-  shiny::outputOptions(output, "rework_ard", suspendWhenHidden = FALSE)
+  shiny::outputOptions(output, "rework_table", suspendWhenHidden = FALSE)
   shiny::outputOptions(output, "rework_data", suspendWhenHidden = FALSE)
   shiny::observeEvent(list(current(), rv$ver), {
     id <- current()
