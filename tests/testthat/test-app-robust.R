@@ -347,9 +347,9 @@ test_that("a step's right is SPEC | Code | Result, the form on its left", {
     v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
     unname(v[nzchar(v)])
   }
-  for (id in c("ard_right", "table_right", "lf_right", "dc_right", "cc_right", "page_right")) {
-    # (the table's: the ARD's own two first, a template report's -- #440, #514)
-    want <- c(if (identical(id, "table_right")) c("ard_code", "ard"), "spec", "code", "result")
+  for (id in c("ard_right", "table_right", "lf_right", "fig_right", "dc_right", "cc_right", "page_right")) {
+    # (a template report's: the ARD's own two first -- #440, #514)
+    want <- c(if (id %in% c("table_right", "lf_right", "fig_right")) c("ard_code", "ard"), "spec", "code", "result")
     expect_identical(vals(id), want, info = id)
   }
   # the table: the sheets in SPEC, the preview in Result, the builder beside

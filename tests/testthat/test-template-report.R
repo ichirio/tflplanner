@@ -327,6 +327,26 @@ test_that("a template report's preview is its content run on its ARD, not the st
   expect_false(any(grepl("Worst:", unlist(old[[1L]]$col_header), fixed = TRUE)))
 })
 
+test_that("a template figure and a template listing have the table's five tabs too (#514)", {
+  ui <- htmltools::tagQuery(app_ui())
+  for (id in c("fig_right", "lf_right")) {
+    links <- ui$find(paste0("#", id))$find("a")$selectedTags()
+    v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
+    expect_identical(unname(v[nzchar(v)]), c("ard_code", "ard", "spec", "code", "result"), info = id)
+  }
+  html <- as.character(app_ui())
+  # each pane's output is in the page once (an output id twice breaks the page)
+  ids <- regmatches(html, gregexpr('id="(tpl_(ard|spec|code)[a-z_]*|program_[a-z]+)"', html))[[1L]]
+  expect_identical(anyDuplicated(ids), 0L)
+  for (o in c("tpl_spec_yaml_lf", "tpl_spec_yaml_fig", "tpl_ard_pane_lf", "tpl_ard_pane_fig",
+              "tpl_code_expanded_fig", "program_fig", "tpl_ard_code_lf")) {
+    expect_true(grepl(sprintf('id="%s"', o), html, fixed = TRUE), info = o)
+  }
+  # the tab rules and the greying are for the three
+  expect_true(grepl("#table_right, #fig_right, #lf_right", .result_tabs_css, fixed = TRUE))
+  expect_true(grepl("#table_right, #fig_right, #lf_right", .tpl_js, fixed = TRUE))
+})
+
 test_that("a template report's step has five tabs in the order they are made, the ARD's two greyed out when it has none (#514)", {
   ui <- htmltools::tagQuery(app_ui())
   links <- ui$find("#table_right")$find("a")$selectedTags()
@@ -340,9 +360,9 @@ test_that("a template report's step has five tabs in the order they are made, th
   # a template report's are named for what they are, shown with body.rp-tpl
   tpl <- as.character(result_tabs_ui("x", "s", "c", "r", ard = "a", ard_code = "b"))
   expect_true(grepl("Template SPEC", tpl, fixed = TRUE) && grepl("Report result", tpl, fixed = TRUE))
-  expect_true(grepl("body.rp-tpl #table_right .rp-lab-plain", .result_tabs_css, fixed = TRUE))
+  expect_true(grepl("body.rp-tpl :is(#table_right, #fig_right, #lf_right) .rp-lab-plain", .result_tabs_css, fixed = TRUE))
   # a code report has no ARD tabs; a template report's are disabled (not hidden) without an ARD
-  expect_true(grepl("body:not(.rp-tpl) #table_right > .nav-item", .result_tabs_css, fixed = TRUE))
+  expect_true(grepl("body:not(.rp-tpl) :is(#table_right, #fig_right, #lf_right) > .nav-item", .result_tabs_css, fixed = TRUE))
   expect_true(grepl("rp-ard-tabs", .tpl_js, fixed = TRUE))
   expect_true(grepl("toggleClass('disabled', !on)", .tpl_js, fixed = TRUE))
   # ARD code is read as Report code is: numbered lines and Copy
