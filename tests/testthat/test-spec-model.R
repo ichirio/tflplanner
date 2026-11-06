@@ -705,3 +705,87 @@ test_that("a planner kept before the treatment key reads it as not set", {
   .study_yml_own_settings(f, c(treatment = "ARM"))
   expect_identical(yaml::read_yaml(f)$settings$treatment, "ARM")
 })
+
+# study.yml with `sd_missing: <text>` in its settings block (text: the YAML)
+sd_missing_into <- function(root, text) {
+  f <- file.path(root, "study.yml")
+  x <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  at <- which(x == "settings:")[1L]
+  stopifnot(!is.na(at))
+  end <- at
+  while (end < length(x) && grepl("^[ ]", x[end + 1L])) end <- end + 1L
+  writeLines(append(x, paste0("  sd_missing: ", text), after = end), f, useBytes = TRUE)
+}
+
+test_that("settings: sd_missing survives open, an unchanged save and a change of rounding", {
+  skip_on_cran()
+  for (case in list(list(v = "NA", y = "\"NA\""), list(v = "", y = "''"),
+                    list(v = "-", y = "\"-\""))) {
+    s <- model_sample()
+    home <- getOption("tflplanner.home")
+    sd_missing_into(s$path, case$y)
+    expect_identical(tflspec::tfl_read_study_spec(s$path)$study$settings$sd_missing, case$v)
+    s <- suppressMessages(open_study("SAMPLE-01", home = home))
+    expect_identical(s$planner$study[["sd_missing"]], case$v)
+    # saved unchanged: nothing written
+    m0 <- spec_md5(s$path)
+    s <- suppressMessages(save_study(s, home = home))
+    expect_identical(changed_files(m0, spec_md5(s$path)), character())
+    # a change that rewrites study.yml: the value stays
+    s$planner$study[["rounding"]] <- "r"
+    s <- suppressMessages(save_study(s, home = home))
+    expect_true("study.yml" %in% changed_files(m0, spec_md5(s$path)))
+    y <- yaml::read_yaml(file.path(s$path, "study.yml"))
+    expect_identical(y$settings$sd_missing, case$v)
+    expect_identical(y$settings$rounding, "r")
+    expect_identical(sum(grepl("^  sd_missing:", readLines(file.path(s$path, "study.yml")))), 1L)
+    expect_identical(tflspec::tfl_read_study_spec(s$path)$study$settings$sd_missing, case$v)
+    s2 <- suppressMessages(open_study("SAMPLE-01", home = home))
+    expect_identical(s2$planner$study[["sd_missing"]], case$v)
+  }
+})
+
+test_that("a study without settings: sd_missing keeps no such line", {
+  skip_on_cran()
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  s <- suppressMessages(open_study("SAMPLE-01", home = home))
+  expect_identical(s$planner$study[["sd_missing"]], NA_character_)
+  s$planner$study[["rounding"]] <- "r"
+  s <- suppressMessages(save_study(s, home = home))
+  expect_false(any(grepl("sd_missing", readLines(file.path(s$path, "study.yml")))))
+})
+
+test_that("a blank treatment is no line; a blank sd_missing is a real value", {
+  f <- tempfile(fileext = ".yml")
+  on.exit(unlink(f), add = TRUE)
+  base <- c("study_id: X", "keys:", "  id: USUBJID")
+  w <- function(study) {
+    writeLines(base, f)
+    .study_yml_own_settings(f, study)
+    yaml::read_yaml(f)$settings
+  }
+  expect_null(w(c(treatment = "")))
+  expect_null(w(c(treatment = "  ")))
+  expect_identical(w(c(treatment = NA_character_, sd_missing = "")), list(sd_missing = ""))
+  expect_identical(w(c(sd_missing = "")), list(sd_missing = ""))
+  expect_identical(w(c(sd_missing = "-")), list(sd_missing = "-"))
+  expect_null(w(c(sd_missing = NA_character_)))
+  expect_identical(w(c(treatment = "ARM", sd_missing = "")),
+                   list(treatment = "ARM", sd_missing = ""))
+  writeLines(base, f)
+  .study_yml_own_settings(f, c(sd_missing = ""))
+  expect_true("  sd_missing: ''" %in% readLines(f))
+})
+
+test_that("sd_missing set and then removed leaves no line", {
+  skip_on_cran()
+  s <- model_sample()
+  home <- getOption("tflplanner.home")
+  s$planner$study[["sd_missing"]] <- "NA"
+  s <- suppressMessages(save_study(s, home = home))
+  expect_identical(yaml::read_yaml(file.path(s$path, "study.yml"))$settings$sd_missing, "NA")
+  s$planner$study[["sd_missing"]] <- NA_character_
+  s <- suppressMessages(save_study(s, home = home))
+  expect_false(any(grepl("sd_missing", readLines(file.path(s$path, "study.yml")))))
+})
