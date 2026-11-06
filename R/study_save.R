@@ -92,9 +92,7 @@ save_study <- function(study, home = tflplanner_home(), base = NULL,
       .back_up_rejected(root, diff$file[diff$status %in% c("changed", "added")])
       # a file added outside tflplanner is not the last save's: it goes
       # (its copy is in spec/.rejected/)
-      # (but for spec/codelists.yml: no report's, never the bridge's)
-      unlink(file.path(root, setdiff(diff$file[diff$status == "added"],
-                                     .codelists_file())))
+      unlink(file.path(root, diff$file[diff$status == "added"]))
       rec <- rec[names(rec) %in% diff$file[diff$status == "same"]]
     }
   }
