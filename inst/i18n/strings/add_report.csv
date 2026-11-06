@@ -47,7 +47,7 @@
 "Template (converted to code when needed)","テンプレート（必要ならコードに変換）"
 "Code (from empty)","コード（空から）"
 "Analysis (ARD)","解析（ARD）"
-"This template has no arguments in this step.","このステップに、このテンプレートの引数はありません。"
+"This template has no arguments in this step.","この手順に、このテンプレートの引数はありません。"
 "Record condition (filter)","レコードの条件（filter）"
 "Template arguments (page)","テンプレートの引数（ページ）"
 "The header has no {col}: each category's column gets the same text.","見出しに {col} がありません。どのカテゴリの列も同じ文字になります。"

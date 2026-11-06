@@ -30,7 +30,7 @@
 "Reports in the run: %d of %d (%d left out)","実行する帳票：%2$d 件中 %1$d 件（%3$d 件を除く）"
 "Tick the reports of the report set first.","先に帳票セットの帳票にチェックを付けてください。"
 "Save the %d ticked reports as a report set","チェックした %d 件の帳票を、帳票セットとして保存"
-"A name the study has already is overwritten: it becomes these reports. Letters, digits, spaces, . _ -","試験にすでにある名前なら上書きします（そのバッチはこれらの帳票になります）。使える文字：英数字、空白、. _ -"
+"A name the study has already is overwritten: it becomes these reports. Letters, digits, spaces, . _ -","試験にすでにある名前なら上書きします（その帳票セットはこれらの帳票になります）。使える文字：英数字、空白、. _ -"
 "The report set %s: %d reports (save the study to keep it).","帳票セット %s：%d 件の帳票（残すには試験を保存してください）。"
 "Rename the report set %s","帳票セット %s の名前を変える"
 "Its reports stay as they are.","帳票はそのままです。"
@@ -77,3 +77,4 @@
 "They wait for corrections you asked the agent for (an assumption answered wrong, or dropped from your list): %s.","エージェントに頼んだ修正を待っています（仮定に「違う」と答えた、または自分の一覧で不要にした）: %s。"
 "The run makes them as the study has them now.","実行では、今の試験にある形のまま作ります。"
 "They have places the AI left to confirm (step 3 of the AI tab lists them): %s.","AI が決めきれず要確認の所があります（AI タブの手順 3 に一覧があります）: %s。"
+"No official run yet.","正式実行はまだありません。"

@@ -8,4 +8,4 @@
 "a template reads {%s}, a statistic the ARD does not have","テンプレートが {%s} を読みますが、ARD にその統計量がありません"
 "cards' check of the ARD's shape: ","cards による ARD の形の確認: "
 "it does not give %s","宣言した統計量 %s を出していません"
-"it does not say which statistics it gives: cards::as_cards_fn(<the function>, stat_names = c(...)) lets a check see them","出す統計量を宣言していません（cards::as_cards_fn(<関数>"
+"it does not say which statistics it gives: cards::as_cards_fn(<the function>, stat_names = c(...)) lets a check see them","出す統計量を宣言していません（cards::as_cards_fn(<関数>, stat_names = c(...)) で宣言すると、検査で確かめられます）"
