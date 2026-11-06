@@ -284,7 +284,7 @@ test_that("the Japanese says one word for post-baseline, and the tip has its \\n
   # the old tip stays
   expect_true("the header over each post-baseline category (`{col}`: the category)" %in% s$en)
   # the code-list copy dialog's button has its own text; the common Copy stays
-  expect_identical(tr("Copy the lists", "ja"), "\u5199\u3059")
+  expect_identical(tr("Copy the lists", "ja"), "\u30b3\u30d4\u30fc")
   expect_identical(tr("Copy", "ja"), "\u8907\u88fd")
 })
 
