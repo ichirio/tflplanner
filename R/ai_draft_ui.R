@@ -222,7 +222,7 @@ ai_ui <- function(id, lang = "en") {
             shiny::div(
               class = "d-flex flex-wrap gap-2 align-items-center",
               .btn(ns("read"), paste0(t("Read and check"), " (dry_run)"), class = "btn-sm btn-outline-primary"),
-              help_tip(t("Reads the workbook and the ADaM and writes nothing; what was read shows on the right. Check there: every report found its shell (TOC: the shell column), the reports in parts, the types, how the reports go into requests; the ADaM summary that is sent (no records); the sheets and what each was taken for. Then Write the requests.")),
+              help_tip(t("Reads the workbook and the ADaM and writes no requests; what was read shows on the right. Check there: every report found its shell (TOC: the shell column), the reports in parts, the types, how the reports go into requests; the ADaM summary that is sent (no records); the sheets and what each was taken for. Then Write the requests. A study that already has an ai/ folder keeps step 1's settings and the corrected report numbers there.")),
               .btn(ns("write"), t("Write the requests"), class = "btn-sm btn-primary"),
               shiny::uiOutput(ns("write_note"), inline = TRUE)),
             shiny::uiOutput(ns("prep_status")),
