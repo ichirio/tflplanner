@@ -705,6 +705,7 @@ app_ui <- function(lang = "en") {
                             shiny::tags$script(shiny::HTML(.help_tip_js)),
                             shiny::tags$script(shiny::HTML(.result_tabs_js)),
                             shiny::tags$script(shiny::HTML(.unsaved_js)),
+                            shiny::tags$script(shiny::HTML(.modal_scroll_js)),
                             shiny::tags$script(shiny::HTML(.updating_js)),
                             shiny::tags$script(shiny::HTML(.report_pick_js)),
                             shiny::tags$script(shiny::HTML(.dt_adjust_js)),

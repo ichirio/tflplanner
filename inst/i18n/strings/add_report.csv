@@ -55,3 +55,5 @@
 "Template SPEC","テンプレート SPEC"
 "Report code","帳票コード"
 "Report result","帳票結果"
+"The header has no {col}: each category's column gets the same text.","見出しに {col} がありません。どのカテゴリの列も同じ文字になります。"
+"The header's braces don't match: it prints as typed.","見出しの波かっこが対応していません。入力のとおりに出ます。"

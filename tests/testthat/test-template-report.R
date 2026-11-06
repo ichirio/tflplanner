@@ -236,6 +236,58 @@ test_that("a code report's steps and a template report's: the arguments drawn on
   expect_true(at("tpl_card_page") > at("ard_outline"))
 })
 
+test_that("post_header: an emptied field goes back to the default, a text argument in general keeps ''", {
+  ph <- list(name = "post_header", default = "{col}", required = FALSE)
+  # (the field's own value for an empty field is NULL; "" is taken the same)
+  expect_null(.tpl_value("", "text", ph))
+  expect_length(.tpl_set_arg(list(post_header = "x {col}"), ph, .tpl_value("  ", "text", ph)), 0L)
+  # a value stays
+  expect_identical(.tpl_set_arg(list(), ph, "Post {col}"), list(post_header = "Post {col}"))
+  # not text arguments in general: "" is a value (sd_missing)
+  sm <- list(name = "sd_missing", default = "NA", required = FALSE)
+  expect_identical(.tpl_set_arg(list(), sm, ""), list(sd_missing = ""))
+})
+
+test_that("post_header: the soft warning says which, or nothing", {
+  expect_identical(.tpl_header_checked, "post_header")
+  nocol <- "The header has no {col}: each category's column gets the same text."
+  braces <- "The header's braces don't match: it prints as typed."
+  expect_null(.tpl_header_problem("{col}"))
+  expect_null(.tpl_header_problem("Post {col}"))
+  expect_null(.tpl_header_problem("{col1} / {col2}"))
+  expect_null(.tpl_header_problem("Post\\n{col}"))
+  expect_null(.tpl_header_problem("{{col}}"))
+  expect_identical(.tpl_header_problem("Post-baseline"), nocol)
+  expect_identical(.tpl_header_problem("{n}"), nocol)
+  expect_identical(.tpl_header_problem("{col"), braces)
+  expect_identical(.tpl_header_problem("col}"), braces)
+  expect_identical(.tpl_header_problem("{col}}"), braces)
+  expect_identical(.tpl_header_problem("}{col}{"), braces)
+  expect_identical(.tpl_header_problem("{{col}"), braces)
+  # blank, or another argument: nothing
+  expect_null(.tpl_header_problem(""))
+  expect_null(.tpl_header_problem(NULL))
+  expect_null(.tpl_header_problem("no braces", name = "heading"))
+  # both texts have their Japanese
+  for (m in c(nocol, braces)) expect_false(identical(tr(m, "ja"), m))
+})
+
+test_that("the Japanese says one word for post-baseline, and the tip has its \\n row", {
+  s <- .strings()
+  ja <- s$ja
+  expect_false(any(grepl("\u30dd\u30b9\u30c8\u30d9\u30fc\u30b9\u30e9\u30a4\u30f3", ja)))
+  expect_identical(tr("Worst post-baseline category", "ja"), "\u30d9\u30fc\u30b9\u30e9\u30a4\u30f3\u5f8c\u306e\u6700\u60aa\u306e\u30ab\u30c6\u30b4\u30ea")
+  tip <- "the header over each post-baseline category (`{col}`: the category; a typed \\n breaks the line)"
+  expect_true(tip %in% s$en)
+  expect_match(tr(tip, "ja"), "\u3068\u5165\u529b\u3059\u308b\u3068\u6539\u884c\uff09$")
+  expect_true(grepl("\\n", tr(tip, "ja"), fixed = TRUE))
+  # the old tip stays
+  expect_true("the header over each post-baseline category (`{col}`: the category)" %in% s$en)
+  # the code-list copy dialog's button has its own text; the common Copy stays
+  expect_identical(tr("Copy the lists", "ja"), "\u5199\u3059")
+  expect_identical(tr("Copy", "ja"), "\u8907\u88fd")
+})
+
 test_that("a template report's preview is its content run on its ARD, not the study defaults' sheets", {
   skip_on_cran()
   skip_if_not_installed("cards")

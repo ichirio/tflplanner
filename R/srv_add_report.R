@@ -465,6 +465,9 @@
     args <- .tpl_set_arg(tp$args, prm, val)
     if (identical(args, tp$args)) return()
     tpl_write(id, args)
+    # (a soft warning: the value is kept)
+    msg <- if (!is.null(val) && a %in% .tpl_header_checked) .tpl_header_problem(val, a)
+    if (!is.null(msg)) notify(t(msg), "warning")
   }
   tpl_observe <- function(name, prm) {
     for (a in names(prm)) {

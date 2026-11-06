@@ -279,6 +279,29 @@
   args
 }
 
+# The text arguments that are a header over the columns: the soft warning on
+# an edit (the value is kept).  tflspec reads {col} {col1} ... by plain text
+# replacement (rtfreporter .plan_header_fill), so a typed header without one
+# gives every column the same text.
+.tpl_header_checked <- "post_header"
+
+# Which warning a header text earns: the English text (for t()), or NULL.
+# The braces are read in order -- a "}" with no "{" before it, or a "{" left
+# open, does not match; "{{col}}" matches (and holds a {col}).
+.tpl_header_problem <- function(value, name = "post_header") {
+  if (!name %in% .tpl_header_checked) return(NULL)
+  if (!is.character(value) || length(value) != 1L || is.na(value) || !nzchar(value)) return(NULL)
+  ch <- strsplit(value, "", fixed = TRUE)[[1L]]
+  depth <- 0L
+  for (x in ch[ch %in% c("{", "}")]) {
+    depth <- depth + if (identical(x, "{")) 1L else -1L
+    if (depth < 0L) break
+  }
+  if (depth != 0L) return("The header's braces don't match: it prints as typed.")
+  if (!grepl("[{]col[0-9]*[}]", value)) return("The header has no {col}: each category's column gets the same text.")
+  NULL
+}
+
 # The required arguments still empty
 .tpl_missing <- function(name, args, study = NULL) {
   prm <- .tpl_params(name)
