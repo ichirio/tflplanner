@@ -442,6 +442,8 @@
   # which the page keeps, .tpl_js)
   tpl_held <- FALSE
   tpl_obs <- new.env()
+  # (per report, template and argument: the values its writes replaced, and when)
+  tpl_past <- new.env()
   tpl_iid <- function(name, a) paste0("tpl_", name, "__", gsub("[^A-Za-z0-9_]", "_", a))
   tpl_write <- function(id, args, name = NULL, steps = NULL, redraw = TRUE) {
     o <- .tpl_output(rv$p, id, args, name = name)
@@ -473,6 +475,18 @@
       identical(.tpl_list_text(val, prm), .tpl_list_text(shown, prm))
     } else !is.null(val) && identical(as.character(unlist(val)), as.character(unlist(shown)))
     if (same) return()
+    # (a field drawn from a card older than its last write says the value it
+    # had then: not an edit -- drawn again, it shows the report's.  A person
+    # who really types the old value again within the window sees the field
+    # go back and types it once more)
+    key <- paste(id, name, a)
+    now <- as.numeric(Sys.time())
+    as_key <- function(z) if (type %in% c("list", "columns")) .tpl_list_text(z, prm) %||% "" else
+      paste(as.character(unlist(z)), collapse = "\n")
+    if (.tpl_stale_say(as_key(val), tpl_past[[key]], now)) {
+      tpl_ver(tpl_ver() + 1L)
+      return()
+    }
     args <- .tpl_set_arg(tp$args, prm, val)
     if (identical(args, tp$args)) return()
     # (the columns field shows its edit already, and a redraw takes the focus
@@ -480,7 +494,11 @@
     # the field changes -- the field given or not, the required ones missing)
     redraw <- !identical(type, "columns") || is.null(tp$args[[a]]) != is.null(args[[a]]) ||
       !identical(.tpl_missing(name, tp$args, rv$p$spec$study), .tpl_missing(name, args, rv$p$spec$study))
-    tpl_write(id, args, redraw = redraw)
+    if (isTRUE(tpl_write(id, args, redraw = redraw))) {
+      keep <- tpl_past[[key]] %||% data.frame(v = character(), t = numeric())
+      keep <- keep[now - keep$t <= 60, , drop = FALSE]
+      tpl_past[[key]] <- utils::tail(rbind(keep, data.frame(v = as_key(shown), t = now)), 5L)
+    }
   }
   tpl_observe <- function(name, prm) {
     for (a in names(prm)) {

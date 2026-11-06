@@ -757,3 +757,13 @@ $(document).on('shiny:connected', function() {
   b <- tflspec::tfl_template_to_spec(o, sp$study)
   .spec_set_output(p, id, b)
 }
+
+# A value a field says that is not its current one but is one a write of it
+# replaced within `window` seconds: a field drawn from an older card saying
+# its old value back, not an edit.  `past`: data frame of v (the values) and
+# t (their times, seconds); `val`, `now` likewise.  (A write's say-back came
+# 2-6 s after it when measured; 15 s is the margin.)
+.tpl_stale_say <- function(val, past, now, window = 15) {
+  if (is.null(past) || !nrow(past)) return(FALSE)
+  any(past$v == val & now - past$t <= window)
+}

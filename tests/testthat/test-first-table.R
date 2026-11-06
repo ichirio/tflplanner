@@ -349,6 +349,44 @@ test_that("an edit in a listing's columns field does not draw the template card 
   })
 })
 
+test_that(".tpl_stale_say: a value a write replaced a moment ago, not the current one", {
+  past <- data.frame(v = c("a", "b"), t = c(100, 110))
+  expect_true(.tpl_stale_say("a", past, now = 112))
+  expect_true(.tpl_stale_say("b", past, now = 112))
+  # (too long ago, or never held)
+  expect_false(.tpl_stale_say("a", past, now = 200))
+  expect_false(.tpl_stale_say("c", past, now = 112))
+  expect_false(.tpl_stale_say("a", NULL, now = 112))
+  expect_false(.tpl_stale_say("a", past[0L, ], now = 112))
+  expect_false(.tpl_stale_say("a", past, now = 112, window = 5))
+})
+
+test_that("a field saying the value a write just replaced is not an edit; the card is drawn again for it", {
+  skip_on_cran()
+  local_home()
+  s <- create_study("L3")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADAE, file.path(s$path, "data/adam/adae.rds"))
+  shiny::testServer(server_for("L3"), {
+    rv <- session$userData$rv
+    session$setInputs(add = 1, modal_type = "listing", modal_how = "template", modal_tpl_listing = "listing",
+                      modal_id = "L-AE", modal_desc = "AEs")
+    session$setInputs(mtpl_listing__data = "ADAE", mtpl_listing__columns = "USUBJID | Subject\nAEDECOD | Term")
+    session$setInputs(add_ok = 1)
+    session$setInputs(target = "L-AE", nav = "make", step = "content", content_nav = "content")
+    session$setInputs(tpl_listing__columns = "USUBJID | Subject 1\nAEDECOD | Term")
+    expect_match(output$tpl_card_lf$html, "rp-keep", fixed = TRUE)
+    # a card drawn before that write says the old lines: no write, the card drawn
+    session$setInputs(tpl_listing__columns = "USUBJID | Subject\nAEDECOD | Term")
+    expect_identical(.tpl_of(rv$p, "L-AE")$args$columns[[1L]]$label, "Subject 1")
+    expect_false(grepl("rp-keep", output$tpl_card_lf$html, fixed = TRUE))
+    expect_match(output$tpl_card_lf$html, "Subject 1", fixed = TRUE)
+    # and what it says now is the report's: nothing more happens
+    session$setInputs(tpl_listing__columns = "USUBJID | Subject 1\nAEDECOD | Term")
+    expect_identical(.tpl_of(rv$p, "L-AE")$args$columns[[1L]]$label, "Subject 1")
+  })
+})
+
 test_that("a new figure starts from a template the study's data can draw", {
   skip_on_cran()
   skip_if_not("data" %in% names(tflspec::tfl_fig_templates()))
