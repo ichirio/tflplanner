@@ -196,3 +196,4 @@
 "The sample for the AI tab...","AI 連携用のサンプル…"
 "Copy the message","メッセージをコピー"
 "Copied","コピーしました"
+"spec/codelists.yml is not read: a code list is now a report's or a layer's. Its rows have no effect; the file is left as it is.","spec/codelists.yml は読まれません。コードリストは帳票ごと・層ごとになりました。このファイルの行は効きません。ファイルはそのまま残ります。"
