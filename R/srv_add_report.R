@@ -834,7 +834,7 @@
   }
   # a template figure: drawn here from the template's items
   # (tflspec::tfl_content_run(), the figure as its program makes it), the
-  # PNG under the card and the expanded code folded below it
+  # PNG in the Report result tab
   tpl_fig <- shiny::reactiveVal(NULL)
   tpl_fig_draw <- function() {
     id <- current()
@@ -853,7 +853,7 @@
       f <- tempfile("tplfig", fileext = ".png")
       save <- getExportedValue("ggplot2", "ggsave")
       save(f, g, width = 7.3, height = 4.2, dpi = 110)
-      list(id = id, png = f, code = paste(tflspec::tfl_content_code(r), collapse = "\n"))
+      list(id = id, png = f)
     }, error = function(e) list(id = id, error = conditionMessage(e))))
     tpl_fig(res)
   }
@@ -870,18 +870,12 @@
                  shiny::strong(t("The figure could not be drawn: ")), r$error)
     } else {
       bytes <- readBin(r$png, "raw", file.size(r$png))
-      shiny::tagList(
-        shiny::tags$img(src = paste0("data:image/png;base64,", jsonlite::base64_enc(bytes)),
-                        style = "max-width: min(100%, 760px); border: 1px solid #dee2e6"),
-        shiny::tags$details(
-          class = "mt-2",
-          shiny::tags$summary(class = "small", t("The expanded code")),
-          shiny::div(class = "rp-code", shiny::tags$pre(class = "small", r$code))))
+      shiny::tags$img(src = paste0("data:image/png;base64,", jsonlite::base64_enc(bytes)),
+                      style = "max-width: min(100%, 760px); border: 1px solid #dee2e6")
     }
-    bslib::card(
-      class = "mb-2",
-      bslib::card_header(t("Preview")),
-      bslib::card_body(body))
+    # (not a card: it sits in the Report result tab; the expanded code is in
+    # Report code)
+    body
   })
   output$tpl_card <- shiny::renderUI({
     if (!identical(report_kind(), "table")) return(NULL)
@@ -925,30 +919,6 @@
     on <- !is.null(id) && .report_uses_ard(rv$p, id)
     session$sendCustomMessage("rp-ard-tabs", list(on = on, tip = t("This report uses no ARD.")))
   })
-  output$tpl_ard_pane <- shiny::renderUI({
-    id <- tpl_now()
-    shiny::req(id)
-    out <- .ard_study_value(rv$p$ard, "output", "output/ard/ard.rds")
-    shiny::tagList(
-      shiny::p(class = "small text-muted mb-1",
-               sprintf(t("A run saves it in the study's ARD (%s)."), out)),
-      shiny::div(class = "rp-resize", DT::DTOutput("tpl_ard_table", height = "auto", fill = FALSE)))
-  })
-  output$tpl_ard_table <- DT::renderDT({
-    id <- tpl_now()
-    shiny::req(id)
-    rv$ard_ver
-    r <- ard_res()
-    shiny::validate(shiny::need(.report_uses_ard(rv$p, id), t("This report uses no ARD.")))
-    a <- if (!is.null(r) && identical(r$scope, id)) r$ard else
-      tryCatch(ard_raw(current_study(), id, rows = TRUE), error = function(e) NULL)
-    # (no ARD yet: the badge and the ARD line above say it)
-    shiny::req(!is.null(a))
-    DT::datatable(ard_view(a), rownames = FALSE, filter = "top",
-                  selection = "none", class = "compact stripe nowrap", fillContainer = FALSE,
-                  options = list(pageLength = 50, scrollX = TRUE, scrollY = "55vh",
-                                 scrollCollapse = TRUE, dom = "tip"))
-  })
   # ARD code: the code that makes the ARD, as Report code shows its program
   tpl_ard_program <- shiny::reactive({
     id <- tpl_now()
@@ -960,50 +930,78 @@
     shiny::req(!is.null(code))
     paste(code, collapse = "\n")
   })
-  output$tpl_ard_code <- shiny::renderText(tpl_ard_program())
-  output$tpl_ard_code_head <- shiny::renderUI({
-    id <- tpl_now()
-    shiny::req(id)
-    shiny::p(class = "small text-muted mb-1",
-             shiny::code(file.path(study_layout()[["programs_ard"]], .ard_prog_name(id))))
-  })
-  # SPEC: the report's YAML file as written, and expanded (the template's
-  # items with the report's over them), read only
-  output$tpl_spec_yaml <- shiny::renderUI({
-    id <- tpl_now()
-    shiny::req(id)
-    sp <- tryCatch(.code_spec(rv$p), error = function(e) NULL)
-    o <- sp$outputs[[id]]
-    shiny::req(!is.null(o))
-    yaml_of <- function(x) tryCatch({
-      f <- tempfile("tflplanner-tpl", fileext = ".yml")
-      on.exit(unlink(f), add = TRUE)
-      tflspec::tfl_write_output(x, f)
-      paste(readLines(f, encoding = "UTF-8", warn = FALSE), collapse = "\n")
-    }, error = function(e) conditionMessage(e))
-    expanded <- tryCatch(tflspec::tfl_template_to_spec(o, sp$study), error = function(e) NULL)
-    shiny::tagList(
-      shiny::p(class = "small text-muted mb-1", shiny::code(sp$where[[id]] %||% paste0(id, ".yml"))),
-      shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", yaml_of(o))),
-      if (!is.null(expanded)) shiny::tagList(
-        shiny::h6(class = "small fw-bold mt-2 mb-1", t("Expanded (read only)")),
-        shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", yaml_of(expanded)))))
-  })
-  output$tpl_code_expanded <- shiny::renderUI({
-    id <- tpl_now()
-    shiny::req(id)
-    sp <- tryCatch(.code_spec(rv$p), error = function(e) NULL)
-    o <- sp$outputs[[id]]
-    shiny::req(!is.null(o))
-    code <- tryCatch({
-      b <- tflspec::tfl_template_to_spec(o, sp$study)
-      paste(tflspec::tfl_content_code(tflspec::tfl_resolve_output(b, sp$study), pipe = "|>"),
-            collapse = "\n")
-    }, error = function(e) conditionMessage(e))
-    shiny::tags$details(
-      class = "mt-2",
-      shiny::tags$summary(class = "small", t("The content's code expanded")),
-      shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", code)))
+  # (a pane for each kind of template report: an output id is in the page once)
+  for (sfx in c("", "_lf", "_fig")) local({
+    sfx <- sfx
+    output[[paste0("tpl_ard_pane", sfx)]] <- shiny::renderUI({
+      id <- tpl_now()
+      shiny::req(id)
+      out <- .ard_study_value(rv$p$ard, "output", "output/ard/ard.rds")
+      shiny::tagList(
+        shiny::p(class = "small text-muted mb-1",
+                 sprintf(t("A run saves it in the study's ARD (%s)."), out)),
+        shiny::div(class = "rp-resize", DT::DTOutput(paste0("tpl_ard_table", sfx), height = "auto", fill = FALSE)))
+    })
+    output[[paste0("tpl_ard_table", sfx)]] <- DT::renderDT({
+      id <- tpl_now()
+      shiny::req(id)
+      rv$ard_ver
+      r <- ard_res()
+      shiny::validate(shiny::need(.report_uses_ard(rv$p, id), t("This report uses no ARD.")))
+      a <- if (!is.null(r) && identical(r$scope, id)) r$ard else
+        tryCatch(ard_raw(current_study(), id, rows = TRUE), error = function(e) NULL)
+      # (no ARD yet: the badge and the ARD line above say it)
+      shiny::req(!is.null(a))
+      DT::datatable(ard_view(a), rownames = FALSE, filter = "top",
+                    selection = "none", class = "compact stripe nowrap", fillContainer = FALSE,
+                    options = list(pageLength = 50, scrollX = TRUE, scrollY = "55vh",
+                                   scrollCollapse = TRUE, dom = "tip"))
+    })
+    output[[paste0("tpl_ard_code", sfx)]] <- shiny::renderText(tpl_ard_program())
+    output[[paste0("tpl_ard_code_head", sfx)]] <- shiny::renderUI({
+      id <- tpl_now()
+      shiny::req(id)
+      shiny::p(class = "small text-muted mb-1",
+               shiny::code(file.path(study_layout()[["programs_ard"]], .ard_prog_name(id))))
+    })
+    # SPEC: the report's YAML file as written, and expanded (the template's
+    # items with the report's over them), read only
+    output[[paste0("tpl_spec_yaml", sfx)]] <- shiny::renderUI({
+      id <- tpl_now()
+      shiny::req(id)
+      sp <- tryCatch(.code_spec(rv$p), error = function(e) NULL)
+      o <- sp$outputs[[id]]
+      shiny::req(!is.null(o))
+      yaml_of <- function(x) tryCatch({
+        f <- tempfile("tflplanner-tpl", fileext = ".yml")
+        on.exit(unlink(f), add = TRUE)
+        tflspec::tfl_write_output(x, f)
+        paste(readLines(f, encoding = "UTF-8", warn = FALSE), collapse = "\n")
+      }, error = function(e) conditionMessage(e))
+      expanded <- tryCatch(tflspec::tfl_template_to_spec(o, sp$study), error = function(e) NULL)
+      shiny::tagList(
+        shiny::p(class = "small text-muted mb-1", shiny::code(sp$where[[id]] %||% paste0(id, ".yml"))),
+        shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", yaml_of(o))),
+        if (!is.null(expanded)) shiny::tagList(
+          shiny::h6(class = "small fw-bold mt-2 mb-1", t("Expanded (read only)")),
+          shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", yaml_of(expanded)))))
+    })
+    output[[paste0("tpl_code_expanded", sfx)]] <- shiny::renderUI({
+      id <- tpl_now()
+      shiny::req(id)
+      sp <- tryCatch(.code_spec(rv$p), error = function(e) NULL)
+      o <- sp$outputs[[id]]
+      shiny::req(!is.null(o))
+      code <- tryCatch({
+        b <- tflspec::tfl_template_to_spec(o, sp$study)
+        paste(tflspec::tfl_content_code(tflspec::tfl_resolve_output(b, sp$study), pipe = "|>"),
+              collapse = "\n")
+      }, error = function(e) conditionMessage(e))
+      shiny::tags$details(
+        class = "mt-2",
+        shiny::tags$summary(class = "small", t("The content's code expanded")),
+        shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", code)))
+    })
   })
   .srv_keep(environment())
 }

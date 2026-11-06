@@ -18,7 +18,7 @@ result_tabs_ui <- function(id, spec, code, result, lang = "en", selected = "spec
   lab <- function(plain, tpl) if (is.null(ard)) plain else shiny::tagList(
     shiny::span(class = "rp-lab-plain", plain), shiny::span(class = "rp-lab-tpl", tr(tpl, lang)))
   shiny::div(
-    class = "rp-tabs border rounded p-2",
+    class = paste("rp-tabs border rounded p-2", if (!is.null(ard)) "rp-tabs-ard"),
     bslib::navset_underline(
       id = id, selected = selected,
       # (a template report's ARD is made in steps of its own, code => result,
@@ -57,14 +57,20 @@ code_view <- function(output_id, lang = "en") {
 /* the two ARD tabs belong to a template report (body.rp-tpl): shown for
    it, greyed out and not selectable (.disabled) when it makes no ARD; a
    code report has neither.  Five short tabs in one row */
-body:not(.rp-tpl) #table_right > .nav-item:has(> a[data-value^=\"ard\"]) { display: none; }
-body:not(.rp-tpl) #table_right .rp-lab-tpl, body.rp-tpl #table_right .rp-lab-plain { display: none; }
-#table_right { flex-wrap: nowrap; white-space: nowrap; }
-#table_right .nav-link.disabled { opacity: .4; }
+body:not(.rp-tpl) :is(#table_right, #fig_right, #lf_right) > .nav-item:has(> a[data-value^=\"ard\"]) { display: none; }
+body:not(.rp-tpl) :is(#table_right, #fig_right, #lf_right) .rp-lab-tpl,
+body.rp-tpl :is(#table_right, #fig_right, #lf_right) .rp-lab-plain { display: none; }
+:is(#table_right, #fig_right, #lf_right) { flex-wrap: nowrap; white-space: nowrap; }
+:is(#table_right, #fig_right, #lf_right) .nav-link.disabled { opacity: .4; }
+/* a template listing's five tabs need the table's 7 of 12 */
+@media (min-width: 992px) {
+  body.rp-tpl .rp-lf-split > :nth-child(1) { grid-column: span 5 !important; }
+  body.rp-tpl .rp-lf-split > :nth-child(2) { grid-column: span 7 !important; }
+}
 /* the ARD result's wide grid must not widen the pane past its column */
-.rp-tabs:has(#table_right), .rp-tabs:has(#table_right) .tabbable,
-.rp-tabs:has(#table_right) .tab-content, .rp-tabs:has(#table_right) .tab-pane { min-width: 0; max-width: 100%; }
-#table_right .nav-link { padding-left: .6rem; padding-right: .6rem; }
+.rp-tabs-ard, .rp-tabs-ard .tabbable,
+.rp-tabs-ard .tab-content, .rp-tabs-ard .tab-pane { min-width: 0; max-width: 100%; }
+:is(#table_right, #fig_right, #lf_right) .nav-link { padding-left: .6rem; padding-right: .6rem; }
 .rp-code-view { position: relative; }
 .rp-code-view .rp-code-tools { position: absolute; right: .5rem; top: .35rem; z-index: 2; }
 .rp-code-view pre { counter-reset: rp-line; padding-top: 1.8rem; }
