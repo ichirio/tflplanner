@@ -245,6 +245,13 @@ listing_types <- function() company_standards()$listing_types
 #' options(old)
 #' @export
 preview_listing <- function(study, output_id) {
+  # a template listing whose definition does not hold: that, as one message
+  if (.is_template_listing(study$planner, output_id)) {
+    sp <- .code_spec(study$planner)
+    tryCatch(tflspec::tfl_resolve_output(sp$outputs[[output_id]], sp$study),
+             error = function(e) stop(sprintf(tr("The definition of %s does not hold: %s"),
+                                              output_id, conditionMessage(e)), call. = FALSE))
+  }
   code <- data_lines(study$planner, output_id, todo = FALSE)
   if (is.null(code)) stop("The listing has no data yet.", call. = FALSE)
   code <- c(.report_id_line(output_id), code)
@@ -252,6 +259,11 @@ preview_listing <- function(study, output_id) {
   on.exit(setwd(owd), add = TRUE)
   e <- new.env(parent = .helpers_env(asNamespace("rtfreporter")))
   eval(parse(text = code, encoding = "UTF-8"), envir = e)
+  # a template listing: the template's content on its records, as its
+  # program plans it
+  if (.is_template_listing(study$planner, output_id)) {
+    return(.preview_content_pages(study$planner, output_id, as.data.frame(e$data)))
+  }
   content <- e$content
   if (inherits(content, "rtftable")) content <- list(content)
   content
