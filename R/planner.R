@@ -151,8 +151,14 @@ set_codelist <- function(x, output_id, rows) {
 
 # The study's settings no workbook sheet holds: written into study.yml's
 # `settings:` by the app itself (.spec_bridge()) -- `treatment`, the
-# treatment variable a template's by / group reads (settings.treatment)
-.study_own_settings <- "treatment"
+# treatment variable a template's by / group reads (settings.treatment),
+# and `sd_missing`, what a Mean (SD) cell prints for a group with no SD
+# (settings.sd_missing)
+.study_own_settings <- c("treatment", "sd_missing")
+
+# Of those, the ones for which "" is a value (sd_missing: "" prints the
+# mean alone); for the others blank is not set.  NA is not set for all.
+.study_settings_blank_ok <- "sd_missing"
 
 # A study key's value (NA: not set; a planner kept before the key was one)
 .study_setting <- function(p, key) {
@@ -267,7 +273,7 @@ sheet_columns <- function(sheet) {
 #' A new, empty study definition
 #'
 #' @param study Named study keys (`rounding`, `output_path`,
-#'   `program_dir`, `treatment`).
+#'   `program_dir`, `treatment`, `sd_missing`).
 #' @return An `tflplanner` object.
 #' @examples
 #' p <- new_planner(c(rounding = "sas"))
