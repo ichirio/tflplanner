@@ -16,6 +16,7 @@
   min_pct = "Minimum percentage to keep",
   min_pct_in = "Where minimum applies",
   count_cell = "Count cell format",
+  sd_missing = "Missing SD",
   denominator = "Percentage denominator",
   total = "Total column",
   exposure = "Exposure days variable",

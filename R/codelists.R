@@ -675,7 +675,7 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
 # The ids of a place's code lists part, from its stem (`adata_cl`) and
 # its dialog's prefix (`cl21`)
 .codelist_part_ids <- function(stem, prefix, edit = paste0(prefix, "_open"),
-                               copy = paste0(prefix, "_copy")) {
+                               copy = paste0(prefix, "_copy_btn")) {
   c(edit = edit, copy = copy, add = paste0(stem, "_add"),
     pick = paste0(stem, "_pick"), new = paste0(stem, "_new"),
     close = paste0(stem, "_close"), detail = paste0(stem, "_detail"),

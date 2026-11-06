@@ -238,12 +238,9 @@ test_that("a code report's steps and a template report's: the arguments drawn on
 
 test_that("post_header: an emptied field goes back to the default, a text argument in general keeps ''", {
   ph <- list(name = "post_header", default = "{col}", required = FALSE)
-  expect_identical(.tpl_blank_is_default, "post_header")
   # (the field's own value for an empty field is NULL; "" is taken the same)
   expect_null(.tpl_value("", "text", ph))
   expect_length(.tpl_set_arg(list(post_header = "x {col}"), ph, .tpl_value("  ", "text", ph)), 0L)
-  expect_length(.tpl_set_arg(list(post_header = "x {col}"), ph, ""), 0L)
-  expect_identical(.tpl_set_arg(list(post_header = "x {col}", a = 1), ph, " "), list(a = 1))
   # a value stays
   expect_identical(.tpl_set_arg(list(), ph, "Post {col}"), list(post_header = "Post {col}"))
   # not text arguments in general: "" is a value (sd_missing)

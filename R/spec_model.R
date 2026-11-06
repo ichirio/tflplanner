@@ -72,11 +72,14 @@
 .planner_from_spec <- function(study, outputs) {
   back <- tflspec::tfl_sheets_from_spec(study, outputs)
   p <- .planner_from_sheets(back$table, back$planner)
-  # study.yml's settings no sheet holds (the treatment variable)
+  # study.yml's settings no sheet holds (the treatment variable, the missing SD)
   st <- study$study$settings %||% list()
   for (k in .study_own_settings) {
     v <- st[[k]]
-    if (length(v) == 1L && !is.na(v) && nzchar(as.character(v))) p$study[[k]] <- as.character(v)
+    if (length(v) == 1L && !is.na(v) &&
+        (k %in% .study_settings_blank_ok || nzchar(as.character(v)))) {
+      p$study[[k]] <- as.character(v)
+    }
   }
   old <- attr(p, "old_data_code")
   attr(p, "old_data_code") <- NULL
@@ -133,6 +136,13 @@
 .spec_attach <- function(s) {
   sp <- tryCatch(.spec_load(s$path), error = function(e) NULL)
   s$planner$spec <- sp
+  # (a state saved before the marker rows had none for a pattern with no
+  # page rows, and the report sheet then refuses the pattern)
+  for (nm in names(sp$study$patterns)) {
+    if (!.pattern_in_view(s$planner, paste0("@", nm))) {
+      s$planner <- .pattern_marker(s$planner, paste0("@", nm))
+    }
+  }
   s$planner <- .spec_rebase(s$planner, s$meta)
   s
 }
@@ -152,14 +162,17 @@
     readLines(file.path(tmp, r), encoding = "UTF-8", warn = FALSE)), rel))
 }
 
-# The study's own settings (.study_own_settings: the treatment variable)
+# The study's own settings (.study_own_settings: the treatment variable and
+# the missing-SD text)
 # put into study.yml's `settings:` as tflspec wrote it: each one set, a
 # line at the block's end (a block of its own when tflspec wrote none); none
 # set: the file as it is
 .study_yml_own_settings <- function(f, study) {
   v <- vapply(.study_own_settings, function(k) {
     x <- if (k %in% names(study)) study[[k]] else NA_character_
-    if (length(x) == 1L && !is.na(x) && nzchar(trimws(x))) trimws(x) else NA_character_
+    if (length(x) != 1L || is.na(x)) return(NA_character_)
+    if (k %in% .study_settings_blank_ok) return(as.character(x))
+    if (nzchar(trimws(x))) trimws(x) else NA_character_
   }, "")
   v <- v[!is.na(v)]
   if (!length(v) || !file.exists(f)) return(invisible(f))
@@ -228,6 +241,16 @@
       now$text[[.study_file]] <- readLines(sy, encoding = "UTF-8", warn = FALSE)
     }
     new <- .spec_load(now$dir)
+    # (the study as the bridge wrote it before the edits: read when a layer needs it)
+    was_study <- local({
+      st <- NULL
+      function() {
+        if (is.null(st) && !is.null(was)) {
+          st <<- tryCatch(tflspec::tfl_read_study_spec(was$dir), error = function(e) NULL)
+        }
+        st
+      }
+    })
     dir <- sp$study$dir
     if (is.null(sp)) sp <- list(study = NULL, outputs = list(), text = list(), where = character())
     if (is.null(sp$study)) sp$study <- new$study
@@ -247,8 +270,29 @@
           }
           if (!is.null(kept$text)) sp$text[[r]] <- kept$text
         },
-        pattern = sp$study$patterns[[part$name]] <- new$study$patterns[[part$name]],
-        sp$study[part$kind] <- list(new$study[[part$kind]]))
+        pattern = {
+          nm <- part$name
+          # (a pattern renamed in the view is new here, and the old one gone)
+          from <- .renamed_from(p$spec$study$patterns, was_study()$patterns, new$study$patterns, nm)
+          mine <- new$study$patterns[[nm]]
+          if (!is.null(from)) {
+            mine <- .keep_layer_keys(p$spec$study$patterns[[from]], was_study()$patterns[[from]], mine)
+          }
+          if (is.null(mine)) sp$study$patterns[[nm]] <- NULL else sp$study$patterns[[nm]] <- mine
+          if (!identical(mine, new$study$patterns[[nm]])) {
+            sp$text[[r]] <- .study_part_lines(sp$study, "patterns", nm)
+          }
+        },
+        {
+          mine <- new$study[[part$kind]]
+          if (identical(part$kind, "defaults")) {
+            mine <- .keep_layer_keys(sp$study$defaults, was_study()$defaults, mine)
+          }
+          sp$study[part$kind] <- list(mine)
+          if (!identical(mine, new$study[[part$kind]])) {
+            sp$text[[r]] <- .study_part_lines(sp$study, part$kind)
+          }
+        })
     }
     sp$study$dir <- dir %||% sp$study$dir
     # the files and the reports in the files' order (as read from a folder)
@@ -260,6 +304,31 @@
   p <- .spec_rebase(p, meta)
   attr(p, "changed") <- changed
   p
+}
+
+# The pattern of the spec that `name` is: itself, or (a name new here) the
+# one gone with the same page, when there is exactly one (rename_page_pattern()
+# changes the name in the sheets).  NULL: none.
+.renamed_from <- function(spec, was, now, name) {
+  if (!is.null(spec[[name]])) return(name)
+  gone <- setdiff(names(spec), names(now))
+  gone <- gone[vapply(gone, function(g) identical(was[[g]]$page, now[[name]]$page), NA)]
+  if (length(gone) == 1L && !is.null(now[[name]])) gone else NULL
+}
+
+# A layer (the defaults, a pattern) as the sheets give it (`now`) with what
+# the edits did not touch kept as the spec (`spec`) has it: the bridge gives
+# the page and little else (code lists, data ... empty; content as rows, and
+# an item the rows cannot say is lost), so a key whose bridge value is the
+# same before the edits (`was`) is the spec's.  Without `was` (no base): a
+# key the bridge gives empty.  A layer new or gone is the bridge's.
+.keep_layer_keys <- function(spec, was, now) {
+  if (is.null(spec) || is.null(now)) return(now)
+  for (k in setdiff(names(spec), "page")) {
+    same <- if (is.null(was)) !length(now[[k]]) else identical(was[[k]], now[[k]])
+    if (same) now[k] <- list(spec[[k]])
+  }
+  now
 }
 
 # A report file the edits change, part by part (#415): the bridge's value

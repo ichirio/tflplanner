@@ -512,3 +512,10 @@ test_that("an old spec/codelists.yml in a study is noted, once opened", {
   expect_false(identical(tr(msg, "ja"), msg))
   expect_match(tr(msg, "ja"), "^spec/codelists.yml \u306f\u8aad\u307e\u308c\u307e\u305b\u3093")
 })
+
+test_that("a place's copy button is not its dialog's: one click opens one dialog", {
+  # the dialog's own button is <prefix>_copy; both on a page, one id would
+  # fire both observers
+  expect_identical(.codelist_part_ids("lf_cl", "cllf")[["copy"]], "cllf_copy_btn")
+  expect_identical(.codelist_part_ids("adata_cl", "cl21")[["copy"]], "cl21_copy_btn")
+})

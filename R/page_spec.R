@@ -370,13 +370,18 @@
   rel <- if (identical(part, "patterns")) {
     file.path(study_layout()[["spec"]], "patterns", paste0(name, ".yml"))
   } else file.path(study_layout()[["spec"]], paste0(part, ".yml"))
-  f <- tempfile("tflplanner-part", fileext = ".yml")
-  on.exit(unlink(f), add = TRUE)
-  tflspec::tfl_write_study_part(sp$study, part, f, name = name)
-  sp$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
+  sp$text[[rel]] <- .study_part_lines(sp$study, part, name)
   sp$text <- sp$text[sort(names(sp$text), method = "radix")]
   p$spec <- sp
   .spec_view_study_page(p)
+}
+
+# A study part's file text, as tflspec writes it from the study's spec
+.study_part_lines <- function(study, part, name = NULL) {
+  f <- tempfile("tflplanner-part", fileext = ".yml")
+  on.exit(unlink(f), add = TRUE)
+  tflspec::tfl_write_study_part(study, part, f, name = name)
+  readLines(f, encoding = "UTF-8", warn = FALSE)
 }
 
 # The view's study rows of the report sheets (the defaults' page: blank
@@ -396,6 +401,13 @@
     for (id in ids_s) {
       new <- sheet_rows(v, s, id)
       old <- sheet_rows(p, s, id)
+      # (a pattern with no page rows keeps its report row, the marker:
+      # set_sheet_rows() drops a row of nothing)
+      if (s == "report" && id %in% ids[-1L] && !nrow(.drop_blank_rows(no_id(new))) &&
+          !.pattern_in_view(v, id, setdiff(.pattern_sheets, "report"))) {
+        if (!nrow(old)) p <- .pattern_marker(p, id)
+        next
+      }
       if (!identical(no_id(old), no_id(new))) p <- set_sheet_rows(p, s, id, no_id(new))
     }
   }
