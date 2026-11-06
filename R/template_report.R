@@ -519,6 +519,10 @@ $(document).on('shiny:connected', function() {
     $('#report_head').toggleClass('rp-stale', !!want && h.length > 0 && h.attr('data-rp-head') !== want);
   }
   $(document).on('shiny:value', function(e) { if (e.name === 'report_head') setTimeout(headCheck, 0); });
+  // (a card the server says is as drawn: left as it is, with the focus in it)
+  $(document).on('shiny:value', function(e) {
+    if (/^tpl_card/.test(e.name) && e.value && /rp-keep/.test(e.value.html || '')) e.preventDefault();
+  });
   document.body.setAttribute('data-loading', $('.rp-report-loading').first().text() || 'Loading ...');
   Shiny.addCustomMessageHandler('rp-tpl-mode', function(x) {
     if (x.id) document.body.setAttribute('data-rp-id', x.id);

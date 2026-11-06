@@ -309,6 +309,46 @@ test_that("Add > Listing: the template listing, its columns from the field (no s
   })
 })
 
+test_that("the columns field says its rows from the start only where the server has not got them (the dialog)", {
+  v <- .tpl_value("USUBJID | Subject", "columns", .tpl_params("listing")$columns)
+  d <- list(ADSL = data.frame(USUBJID = "1"))
+  card <- as.character(.tpl_columns_widget("tpl_listing__columns", "Columns", v, d, data_id = "tpl_listing__data"))
+  dlg <- as.character(.tpl_columns_widget("mtpl_listing__columns", "Columns", v, d,
+                                          data_id = "mtpl_listing__data", say_first = TRUE))
+  expect_false(grepl("data-say0", card, fixed = TRUE))
+  expect_match(dlg, "data-say0=\"1\"", fixed = TRUE)
+  # (the page: the first draw is quiet unless it says so; a later change says, as an event)
+  expect_match(.tpl_columns_js, "draw(!box.dataset.say0)", fixed = TRUE)
+  expect_match(.tpl_columns_js, "{priority: 'event'}", fixed = TRUE)
+  expect_match(.tpl_js, "rp-keep", fixed = TRUE)
+})
+
+test_that("an edit in a listing's columns field does not draw the template card again; one that changes it does", {
+  skip_on_cran()
+  local_home()
+  s <- create_study("L2")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADAE, file.path(s$path, "data/adam/adae.rds"))
+  shiny::testServer(server_for("L2"), {
+    rv <- session$userData$rv
+    session$setInputs(add = 1, modal_type = "listing", modal_how = "template", modal_tpl_listing = "listing",
+                      modal_id = "L-AE", modal_desc = "AEs")
+    session$setInputs(mtpl_listing__data = "ADAE", mtpl_listing__columns = "USUBJID | Subject\nAEDECOD | Term")
+    session$setInputs(add_ok = 1)
+    session$setInputs(target = "L-AE", nav = "make", step = "content", content_nav = "content")
+    expect_false(grepl("rp-keep", output$tpl_card_lf$html, fixed = TRUE))
+    # a heading changed: written, the card left as it is (the page shows it)
+    session$setInputs(tpl_listing__columns = "USUBJID | Subject 1\nAEDECOD | Term")
+    expect_identical(.tpl_of(rv$p, "L-AE")$args$columns[[1L]]$label, "Subject 1")
+    expect_match(output$tpl_card_lf$html, "rp-keep", fixed = TRUE)
+    # the field emptied: the required argument is missing now, the card says so
+    suppressWarnings(session$setInputs(tpl_listing__columns = ""))
+    expect_null(.tpl_of(rv$p, "L-AE")$args$columns)
+    expect_false(grepl("rp-keep", output$tpl_card_lf$html, fixed = TRUE))
+    expect_match(output$tpl_card_lf$html, "Required arguments are empty: columns", fixed = TRUE)
+  })
+})
+
 test_that("a new figure starts from a template the study's data can draw", {
   skip_on_cran()
   skip_if_not("data" %in% names(tflspec::tfl_fig_templates()))

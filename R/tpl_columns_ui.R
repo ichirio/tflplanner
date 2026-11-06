@@ -36,8 +36,14 @@
 }
 
 # The field: `input_id` takes the lines, `data_id` is the template's `data`
-# field (the dataset the columns come from), `dataset` the one shown first
-.tpl_columns_widget <- function(input_id, label, shown, data, data_id, dataset = NULL, t = identity) {
+# field (the dataset the columns come from), `dataset` the one shown first.
+# The rows the field starts from are the server's already: it says its value
+# only when they change (a redraw saying them back was an edit, which drew
+# the card again -- the loop of two edits close together), except with
+# `say_first` (the new report's dialog: nothing else tells the server the
+# field's rows)
+.tpl_columns_widget <- function(input_id, label, shown, data, data_id, dataset = NULL, t = identity,
+                                say_first = FALSE) {
   ds <- toupper(as.character(dataset %||% "")[1L])
   cols <- .tpl_columns_labels(data)
   now <- if (!is.na(ds) && nzchar(ds) && !is.null(cols[[ds]])) cols[[ds]] else
@@ -53,7 +59,7 @@
   json <- function(x) as.character(jsonlite::toJSON(x, auto_unbox = TRUE, null = "null"))
   shiny::div(
     class = "rp-lcols mb-3", id = paste0(input_id, "__box"),
-    `data-id` = input_id, `data-src` = data_id,
+    `data-id` = input_id, `data-src` = data_id, `data-say0` = if (say_first) "1",
     `data-cols` = json(cols), `data-rows` = json(rows),
     `data-heads` = json(list(t("Column"), t("Heading"), t("Width"), t("Once"))),
     shiny::selectizeInput(paste0(input_id, "__pick"),
@@ -100,9 +106,11 @@ window.rpLcolsStart = function(id) {
         while (cells.length > 1 && cells[cells.length - 1] === '') cells.pop();
         return cells.join(' | ');
       });
-      Shiny.setInputValue(id, lines.join(String.fromCharCode(10)));
+      // (an event: the same lines again are still an edit -- the input keeps
+      // its last value when another report's card is drawn)
+      Shiny.setInputValue(id, lines.join(String.fromCharCode(10)), {priority: 'event'});
     };
-    var draw = function() {
+    var draw = function(quiet) {
       var vs = sel.selectize.getValue();
       vs.forEach(function(v) { if (!kept[v]) kept[v] = {v: v, l: labelOf(v), w: '', c: false}; });
       var h = '<table class=\"table table-sm small mb-1\"><thead><tr>' +
@@ -123,9 +131,9 @@ window.rpLcolsStart = function(id) {
         w.addEventListener('change', function() { r.w = w.value; say(); });
         c.addEventListener('change', function() { r.c = c.checked; say(); });
       });
-      say();
+      if (!quiet) say();
     };
-    sel.selectize.on('change', draw);
+    sel.selectize.on('change', function() { draw(); });
     // the dataset changed: its columns offered, those it has kept
     var src = document.getElementById(box.dataset.src);
     if (src) $(src).on('change', function() {
@@ -140,7 +148,7 @@ window.rpLcolsStart = function(id) {
       s.refreshOptions(false);
       draw();
     });
-    draw();
+    draw(!box.dataset.say0);
   })();
 };
 "

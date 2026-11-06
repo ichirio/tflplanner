@@ -39,9 +39,10 @@
   # the input of an argument, by its type (.tpl_type(): tflspec's
   # tfl_param(type = ), guessed only when it declares none).  `params`,
   # `args`: the template's parameters and the report's arguments (a levels
-  # parameter's variable is another's value)
+  # parameter's variable is another's value).  `say_first`: the dialog's, whose
+  # columns field tells the server its rows from the start
   tpl_widget <- function(input_id, prm, value, dataset = NULL, params = list(), args = list(),
-                         label = tpl_label(prm)) {
+                         label = tpl_label(prm), say_first = FALSE) {
     data <- tpl_data()
     type <- .tpl_type(prm, tpl_all_cols())
     cols <- .tpl_columns(data, dataset)
@@ -91,7 +92,8 @@
       # width -- the template's `data` field beside it, by its id)
       columns = .tpl_columns_widget(input_id, lab, shown, data,
                                     data_id = sub("__columns$", "__data", input_id),
-                                    dataset = args$data %||% params$data$default %||% dataset, t = t),
+                                    dataset = args$data %||% params$data$default %||% dataset, t = t,
+                                    say_first = say_first),
       text = shiny::textInput(input_id, lab, value = if (is.null(shown)) "" else .tpl_show(shown),
                               width = "100%", updateOn = "blur",
                               placeholder = if (is.null(prm$default)) t("(default)")),
@@ -158,7 +160,8 @@
                 # (the study's value first: its treatment for `by`)
                 lapply(req_p, function(x) tpl_widget(tpl_arg_id(nm, x$name), x,
                                                      .tpl_study_value(rv$p$spec$study, x),
-                                                     dataset = prm$data$default, params = prm))))
+                                                     dataset = prm$data$default, params = prm,
+                                                     say_first = TRUE))))
           })))
     }),
     # the chosen template's other arguments, with their defaults (drawn for
@@ -180,7 +183,8 @@
                           with_tip(sprintf(t("More arguments (%d): filters, variables, columns ..."), length(opt)),
                                    t("Each starts at its default; only a value you change is written into the report."))),
       lapply(opt, function(x) tpl_widget(tpl_arg_id(nm, x$name), x, tpl_opt_start(x),
-                                         dataset = prm$data$default, params = prm)))
+                                         dataset = prm$data$default, params = prm,
+                                         say_first = TRUE)))
   })
   # (bound while the dialog fades in, it counts as hidden: drawn anyway)
   shiny::outputOptions(output, "tpl_modal_more", suspendWhenHidden = FALSE)
@@ -433,9 +437,13 @@
   # content arguments, the Analysis data step's (tpl_card_data) and the Page
   # and output step's (tpl_card_page) their own.  Whatever step it is put in.
   tpl_ver <- shiny::reactiveVal(0L)
+  # (a write the page shows already, tpl_write(redraw = FALSE): the card is
+  # left as it is while this flush is drawn -- it stands for "drawn as it was",
+  # which the page keeps, .tpl_js)
+  tpl_held <- FALSE
   tpl_obs <- new.env()
   tpl_iid <- function(name, a) paste0("tpl_", name, "__", gsub("[^A-Za-z0-9_]", "_", a))
-  tpl_write <- function(id, args, name = NULL, steps = NULL) {
+  tpl_write <- function(id, args, name = NULL, steps = NULL, redraw = TRUE) {
     o <- .tpl_output(rv$p, id, args, name = name)
     if (length(steps)) o$data$steps <- steps
     p2 <- guarded(.spec_set_output(rv$p, id, o))
@@ -443,7 +451,10 @@
     rv$p <- p2
     rv$bver <- rv$bver + 1L
     rv$status_ver <- rv$status_ver + 1L
-    tpl_ver(tpl_ver() + 1L)
+    if (redraw) tpl_ver(tpl_ver() + 1L) else {
+      tpl_held <<- TRUE
+      session$onFlushed(function() tpl_held <<- FALSE, once = TRUE)
+    }
     bump()
     invisible(TRUE)
   }
@@ -464,7 +475,12 @@
     if (same) return()
     args <- .tpl_set_arg(tp$args, prm, val)
     if (identical(args, tp$args)) return()
-    tpl_write(id, args)
+    # (the columns field shows its edit already, and a redraw takes the focus
+    # from its table: the card is drawn again only when what it shows around
+    # the field changes -- the field given or not, the required ones missing)
+    redraw <- !identical(type, "columns") || is.null(tp$args[[a]]) != is.null(args[[a]]) ||
+      !identical(.tpl_missing(name, tp$args, rv$p$spec$study), .tpl_missing(name, args, rv$p$spec$study))
+    tpl_write(id, args, redraw = redraw)
   }
   tpl_observe <- function(name, prm) {
     for (a in names(prm)) {
@@ -697,6 +713,7 @@
     part <- match.arg(part)
     tpl_ver()
     rv$ver
+    if (tpl_held) return(shiny::HTML("<!--rp-keep-->"))
     p <- shiny::isolate(rv$p)
     tp <- .tpl_of(p, id)
     if (is.null(tp)) return(NULL)
