@@ -274,3 +274,28 @@ test_that("a template report's preview is its content run on its ARD, not the st
   old <- suppressWarnings(preview_pages(s$planner, "T-TPL", rtfreporter::normalize_ard(ard)))
   expect_false(any(grepl("Worst:", unlist(old[[1L]]$col_header), fixed = TRUE)))
 })
+
+test_that("a template report's step has five tabs in the order they are made, the ARD's two greyed out when it has none (#514)", {
+  ui <- htmltools::tagQuery(app_ui())
+  links <- ui$find("#table_right")$find("a")$selectedTags()
+  v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
+  expect_identical(unname(v[nzchar(v)]),
+                   c("ard_code", "ard", "spec", "code", "result"))
+  # the other lists of tabs are the three, named plainly
+  tabs <- as.character(result_tabs_ui("x", "s", "c", "r"))
+  expect_false(grepl("ard", tabs, fixed = TRUE))
+  expect_false(grepl("rp-lab-tpl", tabs, fixed = TRUE))
+  # a template report's are named for what they are, shown with body.rp-tpl
+  tpl <- as.character(result_tabs_ui("x", "s", "c", "r", ard = "a", ard_code = "b"))
+  expect_true(grepl("Template SPEC", tpl, fixed = TRUE) && grepl("Report result", tpl, fixed = TRUE))
+  expect_true(grepl("body.rp-tpl #table_right .rp-lab-plain", .result_tabs_css, fixed = TRUE))
+  # a code report has no ARD tabs; a template report's are disabled (not hidden) without an ARD
+  expect_true(grepl("body:not(.rp-tpl) #table_right > .nav-item", .result_tabs_css, fixed = TRUE))
+  expect_true(grepl("rp-ard-tabs", .tpl_js, fixed = TRUE))
+  expect_true(grepl("toggleClass('disabled', !on)", .tpl_js, fixed = TRUE))
+  # their names in Japanese
+  expect_identical(tr("Report code", "ja"), "\u5e33\u7968\u30b3\u30fc\u30c9")
+  expect_identical(tr("ARD code", "ja"), "ARD \u30b3\u30fc\u30c9")
+  expect_identical(tr("ARD result", "ja"), "ARD \u7d50\u679c")
+})
+

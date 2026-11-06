@@ -907,21 +907,29 @@
   for (o in c("tpl_card", "tpl_card_lf", "tpl_card_fig", "tpl_card_data", "tpl_card_page")) {
     shiny::outputOptions(output, o, suspendWhenHidden = FALSE)
   }
-  # The right pane of a template table: ARD (the ARD its template makes,
-  # as the preview made it), and in Code the ARD's code expanded first,
-  # the content's expanded code folded after the program
+  # The right of a template table: the ARD its template makes is made in
+  # steps of its own, ARD code => ARD result, before the
+  # report's SPEC => Code => Result -- tabs of every template report, greyed
+  # out when it makes no ARD
   tpl_now <- shiny::reactive({
     id <- current()
     if (is.null(id)) return(NULL)
     tp <- .tpl_of(rv$p, id)
     if (is.null(tp)) NULL else id
   })
+  shiny::observe({
+    id <- tpl_now()
+    on <- !is.null(id) && .report_uses_ard(rv$p, id)
+    session$sendCustomMessage("rp-ard-tabs", list(on = on, tip = t("This report uses no ARD.")))
+  })
   output$tpl_ard_pane <- shiny::renderUI({
     id <- tpl_now()
     shiny::req(id)
+    out <- .ard_study_value(rv$p$ard, "output", "output/ard/ard.rds")
     shiny::tagList(
       shiny::p(class = "small text-muted mb-1",
-               t("The ARD the template makes: Update preview makes it with the table.")),
+               t("The ARD the template makes: Update preview makes it with the table."),
+               sprintf(t("A run saves it in the study's ARD (%s)."), out)),
       shiny::div(class = "rp-resize", DT::DTOutput("tpl_ard_table", height = "auto", fill = FALSE)))
   })
   output$tpl_ard_table <- DT::renderDT({
@@ -938,20 +946,19 @@
                   options = list(pageLength = 50, scrollX = TRUE, scrollY = "55vh",
                                  scrollCollapse = TRUE, dom = "tip"))
   })
-  output$tpl_code_ard <- shiny::renderUI({
+  # ARD code: the code that makes the ARD (from the template's `ard:`, in SPEC)
+  output$tpl_ard_code <- shiny::renderUI({
     id <- tpl_now()
     shiny::req(id)
     a <- structure(rv$p$ard, class = "tfl_ard_spec")
     code <- if (any(a$analyses$output_id %in% id)) tryCatch(
       ard_program_code(a, id, dir = rv$study$path, codelists = .study_codelists(rv$p)),
       error = function(e) paste(t("The code cannot be written yet:"), conditionMessage(e)))
-    if (is.null(code)) return(NULL)
-    shiny::div(
-      class = "mb-2",
-      shiny::tags$details(
-        shiny::tags$summary(class = "small fw-bold", t("The code that makes the ARD (expanded)")),
-        shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", paste(code, collapse = "\n")))),
-      shiny::h6(class = "small fw-bold mb-1 mt-2", t("The table's program")))
+    shiny::req(!is.null(code))
+    shiny::tagList(
+      shiny::p(class = "small text-muted mb-1", t("The code that makes the ARD (expanded)"), " ",
+               shiny::code(file.path(study_layout()[["programs_ard"]], .ard_prog_name(id)))),
+      shiny::div(class = "rp-code", shiny::tags$pre(class = "small rp-flow", paste(code, collapse = "\n"))))
   })
   # SPEC: the report's YAML file as written, and expanded (the template's
   # items with the report's over them), read only

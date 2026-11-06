@@ -10,16 +10,24 @@
 # not a card: a card around the sheets' own card makes the inner one a fill
 # item of a box with no height, and every grid in it 0 px high
 #' @noRd
-result_tabs_ui <- function(id, spec, code, result, lang = "en", selected = "spec", ard = NULL) {
+result_tabs_ui <- function(id, spec, code, result, lang = "en", selected = "spec", ard = NULL,
+                           ard_code = NULL) {
+  # a template report's tabs are named for what they are (Template SPEC,
+  # Report code, Report result), shown while body.rp-tpl; a code report's
+  # keep SPEC | Code | Result
+  lab <- function(plain, tpl) if (is.null(ard)) plain else shiny::tagList(
+    shiny::span(class = "rp-lab-plain", plain), shiny::span(class = "rp-lab-tpl", tr(tpl, lang)))
   shiny::div(
     class = "rp-tabs border rounded p-2",
     bslib::navset_underline(
       id = id, selected = selected,
-      # (an ARD tab first: a template report's, its tab hidden for others)
-      if (!is.null(ard)) bslib::nav_panel("ARD", value = "ard", shiny::div(class = "pt-2", ard)),
-      bslib::nav_panel("SPEC", value = "spec", shiny::div(class = "pt-2", spec)),
-      bslib::nav_panel(tr("Code", lang), value = "code", shiny::div(class = "pt-2", code)),
-      bslib::nav_panel(tr("Result", lang), value = "result", shiny::div(class = "pt-2", result))))
+      # (a template report's ARD is made in steps of its own, code => result,
+      # before the report's -- tabs shown only for such a report)
+      if (!is.null(ard_code)) bslib::nav_panel(tr("ARD code", lang), value = "ard_code", shiny::div(class = "pt-2", ard_code)),
+      if (!is.null(ard)) bslib::nav_panel(tr("ARD result", lang), value = "ard", shiny::div(class = "pt-2", ard)),
+      bslib::nav_panel(lab("SPEC", "Template SPEC"), value = "spec", shiny::div(class = "pt-2", spec)),
+      bslib::nav_panel(lab(tr("Code", lang), "Report code"), value = "code", shiny::div(class = "pt-2", code)),
+      bslib::nav_panel(lab(tr("Result", lang), "Report result"), value = "result", shiny::div(class = "pt-2", result))))
 }
 
 # Code to read: its lines numbered, a button to copy it.  No field to edit:
@@ -46,6 +54,17 @@ code_view <- function(output_id, lang = "en") {
   .rp-split.rp-lay-stack > .rp-tabs, .rp-split.rp-lay-one > .rp-tabs {
     position: static; max-height: none; overflow-y: visible; }
 }
+/* the two ARD tabs belong to a template report (body.rp-tpl): shown for
+   it, greyed out and not selectable (.disabled) when it makes no ARD; a
+   code report has neither.  Five short tabs in one row */
+body:not(.rp-tpl) #table_right > .nav-item:has(> a[data-value^=\"ard\"]) { display: none; }
+body:not(.rp-tpl) #table_right .rp-lab-tpl, body.rp-tpl #table_right .rp-lab-plain { display: none; }
+#table_right { flex-wrap: nowrap; white-space: nowrap; }
+#table_right .nav-link.disabled { opacity: .4; text-decoration: line-through; }
+/* the ARD result's wide grid must not widen the pane past its column */
+.rp-tabs:has(#table_right), .rp-tabs:has(#table_right) .tabbable,
+.rp-tabs:has(#table_right) .tab-content, .rp-tabs:has(#table_right) .tab-pane { min-width: 0; max-width: 100%; }
+#table_right .nav-link { padding-left: .6rem; padding-right: .6rem; }
 .rp-code-view { position: relative; }
 .rp-code-view .rp-code-tools { position: absolute; right: .5rem; top: .35rem; z-index: 2; }
 .rp-code-view pre { counter-reset: rp-line; padding-top: 1.8rem; }

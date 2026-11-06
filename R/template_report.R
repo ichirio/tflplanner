@@ -520,6 +520,21 @@ $(document).on('shiny:connected', function() {
   }
   $(document).on('shiny:value', function(e) { if (e.name === 'report_head') setTimeout(headCheck, 0); });
   document.body.setAttribute('data-loading', $('.rp-report-loading').first().text() || 'Loading ...');
+  // the two ARD tabs of a template report: greyed out and not selectable
+  // when it makes no ARD (a click, the keys, do nothing); one selected gives
+  // way to the report's Result, so no pane is left empty
+  function rpArdTabs(on, tip) {
+    $('body').toggleClass('rp-ard', !!on);
+    $('#table_right a[data-value^=\"ard\"]').each(function() {
+      $(this).toggleClass('disabled', !on).attr('aria-disabled', on ? null : 'true')
+        .attr('tabindex', on ? null : '-1');
+      $(this).parent().attr('title', on ? null : (tip || ''));
+    });
+    if (!on && $('#table_right a.active[data-value^=\"ard\"]').length) {
+      $('#table_right a[data-value=\"result\"]').tab('show');
+    }
+  }
+  Shiny.addCustomMessageHandler('rp-ard-tabs', function(x) { rpArdTabs(x.on, x.tip); });
   Shiny.addCustomMessageHandler('rp-tpl-mode', function(x) {
     if (x.id) document.body.setAttribute('data-rp-id', x.id);
     headCheck();
@@ -537,10 +552,9 @@ $(document).on('shiny:connected', function() {
         if (x.names[k]) $(this).text(x.names[k]);
       });
     }
-    // (the right pane's ARD tab: a template report's)
-    var at = $('#table_right a[data-value=\"ard\"]');
-    at.parent().toggleClass('d-none', !x.tpl);
-    if (!x.tpl && at.hasClass('active')) $('#table_right a[data-value=\"result\"]').tab('show');
+    // (the right pane's ARD tabs: a template report's; rp-ard-tabs says
+    // whether it makes an ARD once the report is known)
+    if (!x.tpl) rpArdTabs(false);
     if (x.loading) {
       $('body').addClass('rp-switching');
       clearTimeout(timer);
