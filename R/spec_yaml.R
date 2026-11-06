@@ -1,5 +1,5 @@
 # The study definition as tflspec's YAML spec (2026-10-15): study.yml and
-# spec/ (data.yml, defaults.yml, codelists.yml, toc.yml, patterns/,
+# spec/ (data.yml, defaults.yml, toc.yml, patterns/,
 # outputs/<id>.yml), one file a report.  The planner holds the spec itself
 # and the sheets every screen edits are a view of it (spec_model.R, #407);
 # the view's edits go back through tflspec's tfl_yaml_from_sheets().  A study whose
@@ -22,16 +22,11 @@
   if (any(file.exists(file.path(sp, old)))) "sheets" else "none"
 }
 
-# spec/codelists.yml: lists to copy from, no report's; the sheets keep its
-# rows for the round trip but the bridge does not write the file, so
-# tflplanner leaves it as it is (.spec_write(), save_study())
-.codelists_file <- function() file.path(study_layout()[["spec"]], "codelists.yml")
-
 # The YAML spec's files, relative to the study folder (the converter's list
 # of what it could not convert and the backups are not the study's)
 .spec_files_yaml <- function(root) {
   sp <- study_layout()[["spec"]]
-  f <- c(.study_file, file.path(sp, c("data.yml", "defaults.yml", "codelists.yml", "toc.yml")))
+  f <- c(.study_file, file.path(sp, c("data.yml", "defaults.yml", "toc.yml")))
   for (d in c("patterns", "outputs")) {
     dd <- file.path(root, sp, d)
     if (dir.exists(dd)) {
@@ -109,15 +104,8 @@
   }, error = function(e) NULL)
   if (!is.null(p)) {
     attr(p, "not_converted") <- NULL
-    # (the study's own spec stays its own; so do the rows of no report,
-    # spec/codelists.yml's: tflspec writes a report's only)
+    # (the study's own spec stays its own)
     p$spec <- s$planner$spec
-    cl <- s$planner$sheets$codelists
-    cl <- cl[is.na(cl$output_id), , drop = FALSE]
-    if (nrow(cl)) {
-      p$sheets$codelists <- rbind(cl, p$sheets$codelists)
-      rownames(p$sheets$codelists) <- NULL
-    }
     s$planner <- p
   }
   s

@@ -652,10 +652,10 @@ set_sheet_rows <- function(x, sheet, output_id = "", rows) {
 # ---------------------------------------------------------------- writing
 
 # The codelists sheet without the rows that have no report (NA output_id):
-# spec/codelists.yml's lists to copy from, which the sheet keeps for the
-# round trip but which are no report's.  tflspec's tfl_table_spec() refuses
-# such a row (a workbook's blank output_id must not be ignored), so every
-# call that hands the sheets to tflspec filters first.  NULL stays NULL.
+# only an old workbook's (read_planner(); a YAML spec has none, tflspec
+# #659) and no report's.  tflspec's tfl_table_spec() refuses such a row (a
+# workbook's blank output_id must not be ignored), so every call that hands
+# the sheets to tflspec filters first.  NULL stays NULL.
 .codelists_of_reports <- function(cl) {
   if (is.data.frame(cl) && nrow(cl) && "output_id" %in% names(cl)) {
     cl <- cl[!is.na(cl$output_id), , drop = FALSE]
