@@ -76,8 +76,8 @@
 # The reports' code lists: a report's ARD program makes each listed column
 # its analyses read a factor in their order before the analyses, so the ARD
 # keeps the order and counts a value no record has (0) (tflspec picks a
-# report's rows by output_id).  The codelists sheet's rows (spec/codelists.yml's
-# lists are no report's: left out) with the lists a report takes from its
+# report's rows by output_id).  The codelists sheet's rows (an old workbook's
+# rows with no report are left out) with the lists a report takes from its
 # layers (study defaults, patterns) added where it has none of its own for
 # that variable: the sheets do not hold those, tflspec::tfl_report_codelists()
 # gives them from the planner's spec, given the sheet's rows (`rows`) as the
