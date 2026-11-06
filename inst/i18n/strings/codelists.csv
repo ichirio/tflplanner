@@ -29,3 +29,4 @@
 "All code lists...","すべてのコードリスト…"
 "Code list of %s","%s のコードリスト"
 "value: as the data has it; label: what it prints as (blank: itself); order: its place","value：データの値、label：表示する文字（空欄なら値のまま）、order：並び順"
+"Copy the lists","写す"

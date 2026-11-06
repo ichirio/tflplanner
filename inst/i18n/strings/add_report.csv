@@ -50,3 +50,5 @@
 "This template has no arguments in this step.","このステップに、このテンプレートの引数はありません。"
 "Record condition (filter)","レコードの条件（filter）"
 "Template arguments (page)","テンプレートの引数（ページ）"
+"The header has no {col}: each category's column gets the same text.","見出しに {col} がありません。どのカテゴリの列も同じ文字になります。"
+"The header's braces don't match: it prints as typed.","見出しの波かっこが対応していません。入力のとおりに出ます。"

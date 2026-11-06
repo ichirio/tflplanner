@@ -1103,7 +1103,11 @@
     s <- guarded(open_study(d$study_id))
     if (!is.null(s)) {
       set_study(s)
+      # (a dialog of the study before stays up otherwise)
+      shiny::removeModal()
       notify(sprintf(t("Opened %s"), s$meta$study_id))
+      note <- .old_codelists_note(s$path)
+      if (!is.null(note)) notify(t(note), "warning")
       rv$studies_ver <- rv$studies_ver + 1L
       bslib::nav_select("nav", "outputs")
     }

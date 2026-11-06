@@ -268,7 +268,7 @@
 # The args with one argument set (NULL, or the default itself: taken away)
 .tpl_set_arg <- function(args, prm, value) {
   args <- args %||% list()
-  if (is.null(value) || (!isTRUE(prm$required) && identical(value, prm$default)) ||
+  if (is.null(value) || .tpl_blank_default(prm, value) || (!isTRUE(prm$required) && identical(value, prm$default)) ||
       (!isTRUE(prm$required) && !is.null(prm$default) &&
        identical(unname(as.vector(value)), unname(as.vector(prm$default))))) {
     args[[prm$name]] <- NULL
@@ -277,6 +277,41 @@
   }
   # (in the template's order)
   args
+}
+
+# The text arguments whose emptied field means the default again, not an
+# empty text (post_header: "" would print nothing over the categories).  Not
+# the text arguments in general: some take "" as a value (sd_missing: "" prints
+# the mean alone).
+.tpl_blank_is_default <- "post_header"
+
+# TRUE: this blank text is for an argument that goes back to its default
+.tpl_blank_default <- function(prm, value) {
+  prm$name %in% .tpl_blank_is_default && is.character(value) &&
+    length(value) == 1L && !nzchar(trimws(value))
+}
+
+# The text arguments that are a header over the columns: the soft warning on
+# an edit (the value is kept).  tflspec reads {col} {col1} ... by plain text
+# replacement (rtfreporter .plan_header_fill), so a typed header without one
+# gives every column the same text.
+.tpl_header_checked <- "post_header"
+
+# Which warning a header text earns: the English text (for t()), or NULL.
+# The braces are read in order -- a "}" with no "{" before it, or a "{" left
+# open, does not match; "{{col}}" matches (and holds a {col}).
+.tpl_header_problem <- function(value, name = "post_header") {
+  if (!name %in% .tpl_header_checked) return(NULL)
+  if (!is.character(value) || length(value) != 1L || is.na(value) || !nzchar(value)) return(NULL)
+  ch <- strsplit(value, "", fixed = TRUE)[[1L]]
+  depth <- 0L
+  for (x in ch[ch %in% c("{", "}")]) {
+    depth <- depth + if (identical(x, "{")) 1L else -1L
+    if (depth < 0L) break
+  }
+  if (depth != 0L) return("The header's braces don't match: it prints as typed.")
+  if (!grepl("[{]col[0-9]*[}]", value)) return("The header has no {col}: each category's column gets the same text.")
+  NULL
 }
 
 # The required arguments still empty

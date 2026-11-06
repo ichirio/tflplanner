@@ -498,3 +498,17 @@ test_that("an older study's study_helpers.R without complete_hierarchy() is writ
   expect_identical(s$files$status[s$files$file == f], "written")
   expect_true(any(grepl("^complete_hierarchy <- function", readLines(f))))
 })
+
+test_that("an old spec/codelists.yml in a study is noted, once opened", {
+  d <- withr_tempdir(environment())
+  expect_null(.old_codelists_note(d))
+  expect_null(.old_codelists_note(NULL))
+  expect_null(.old_codelists_note(NA_character_))
+  dir.create(file.path(d, "spec"))
+  expect_null(.old_codelists_note(d))
+  writeLines("codelists: []", file.path(d, "spec", "codelists.yml"))
+  msg <- .old_codelists_note(d)
+  expect_match(msg, "^spec/codelists.yml is not read: ")
+  expect_false(identical(tr(msg, "ja"), msg))
+  expect_match(tr(msg, "ja"), "^spec/codelists.yml \u306f\u8aad\u307e\u308c\u307e\u305b\u3093")
+})
