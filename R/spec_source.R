@@ -45,6 +45,9 @@
 # changed / added / removed
 .spec_diff <- function(rec, now) {
   rec <- rec %||% list()
+  # (a record of the version before tflspec #659 lists spec/codelists.yml,
+  # which is no definition file now: its file, there or gone, is no change)
+  rec[[file.path(study_layout()[["spec"]], "codelists.yml")]] <- NULL
   files <- union(names(rec), names(now))
   status <- vapply(files, function(f) {
     if (is.null(rec[[f]])) "added" else if (is.null(now[[f]])) "removed" else
@@ -637,6 +640,8 @@ export_spec_files <- function(study, path, home = tflplanner_home()) {
       !grepl("(^|/)spec/", rel)) return(.study_file)
   m <- regmatches(rel, regexpr(paste0(sp, "/(outputs|patterns)/.+$|", sp, "/[^/]+$"), rel))
   if (length(m) && !grepl("_not_converted", m)) {
+    # (not spec/codelists.yml: a code list is a report's or a layer's)
+    if (identical(m, file.path(sp, "codelists.yml"))) return(NA_character_)
     # (an old figure design, spec/figures/<id>.yml)
     if (startsWith(m, file.path(sp, .fig_design_dir))) return("(old)")
     return(m)
@@ -653,7 +658,6 @@ export_spec_files <- function(study, path, home = tflplanner_home()) {
   if (!is.null(y$datasets) || !is.null(y$populations)) return(file.path(sp, "data.yml"))
   if (!is.null(y$layers) || !is.null(y$template)) return("(old)")
   if (!is.null(y$content) || !is.null(y$page)) return(file.path(sp, "defaults.yml"))
-  if (!is.null(y$codelists)) return(file.path(sp, "codelists.yml"))
   NA_character_
 }
 

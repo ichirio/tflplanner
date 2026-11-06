@@ -144,5 +144,7 @@
 "Bold subgroup headings","サブグループの見出しを太字"
 "Events/N by arm","群ごとのイベント数/例数"
 "Subgroup headings' labels","サブグループ見出しのラベル"
+"Header over each post-baseline category","ポストベースライン各カテゴリの上の見出し"
 "Subjects in the arm headings (N=)","群の見出しの被験者数（N=）"
 "TRUE: each page's arm headings show the arm's subjects for that parameter (N=); FALSE: the arm only. Only with `param_page`: one page of several parameters has no one N","TRUE: 各ページの群の見出しに、そのパラメータの群の被験者数（N=）を出します。FALSE: 群だけを出します。`param_page` のときだけ使えます（複数のパラメータを 1 ページに載せると、N が 1 つに決まらないため）"
+"the header over each post-baseline category (`{col}`: the category)","ポストベースライン各カテゴリの上の見出し（`{col}`: そのカテゴリ）"

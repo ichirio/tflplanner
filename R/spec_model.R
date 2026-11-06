@@ -3,7 +3,7 @@
 # a study carries, in `p$spec`:
 #
 #   study    the study's spec, tflspec::tfl_read_study_spec() (study.yml,
-#            data, defaults, codelists, patterns, toc)
+#            data, defaults, patterns, toc)
 #   outputs  the reports as their files say them (not resolved), a named
 #            list of tfl_output, by id
 #   text     every file's text (its lines), by its path relative to the
@@ -177,7 +177,7 @@
   invisible(f)
 }
 
-# Which part of the spec a file is: study, data, defaults, codelists, toc,
+# Which part of the spec a file is: study, data, defaults, toc,
 # pattern (its name) or output
 .spec_part <- function(rel) {
   sp <- study_layout()[["spec"]]
