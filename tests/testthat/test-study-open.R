@@ -1,5 +1,5 @@
-# Opening a study from the Studies tab: the dialog of the study before is
-# closed, and a study with the old spec/codelists.yml says so on screen.
+# Opening a study from the Studies tab: a study with the old
+# spec/codelists.yml says so on screen.
 skip_on_cran()
 
 # The modal and notification messages a mock session is sent, kept in `log`
@@ -11,7 +11,7 @@ record_session <- function(session, log) {
   invisible(session)
 }
 
-test_that("opening a study closes the dialog of the study before (and notes the old codelists.yml)", {
+test_that("opening a study notes the old codelists.yml, once", {
   home <- local_home()
   two_studies()
   s2 <- file.path(home, "ws", "S2")
@@ -25,7 +25,9 @@ test_that("opening a study closes the dialog of the study before (and notes the 
     session$setInputs(studies_rows_selected = 2L, open_study = 1L)
     expect_equal(session$userData$rv$study$meta$study_id, "S2")
   }))
-  expect_true("remove" %in% log$modal)
+  # (opening removes no dialog itself: `open_discard` has removed its own, and
+  # a second removal during the fade leaves the page unable to scroll)
+  expect_false("remove" %in% log$modal)
   expect_equal(sum(grepl("warning.*spec/codelists.yml is not read", log$note)), 1L)
 })
 
