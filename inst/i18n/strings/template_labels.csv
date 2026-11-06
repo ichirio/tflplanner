@@ -117,6 +117,8 @@
 "Variable that splits the curves","曲線を分ける変数"
 "Median in the legend","凡例に中央値"
 "Decimals of the legend's median","凡例の中央値の桁"
+"Wording of the legend's median","凡例の中央値の文言"
+"the wording of that legend text, with {arm}, {median}, {lcl} and {ucl} for the arm and its median and 95% CI limits (any may be left out or repeated): ""{arm}, Median (95% CI): {median} ({lcl}, {ucl})""; no effect without `legend_median`","その凡例の文。{arm}、{median}、{lcl}、{ucl} が群、中央値、95% CI の下限と上限になる（省いても、繰り返してもよい）: ""{arm}, Median (95% CI): {median} ({lcl}, {ucl})""。`legend_median` がなければ効かない"
 "TRUE: each arm's legend text has its median survival and 95% CI, ""Drug X: 12.3 (9.8, 15.1)"" (from the fit; NE when not reached)","TRUE: 各群の凡例の文字に、生存期間の中央値と 95% 信頼区間を付けます（""Drug X: 12.3 (9.8, 15.1)""。モデルから。未到達は NE）"
 "the decimals of the median and its CI in the legend","凡例の中央値と信頼区間の小数点以下の桁数"
 "Worst post-baseline category","投与後の最悪のカテゴリ"

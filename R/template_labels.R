@@ -91,6 +91,7 @@
   legend_title = "Legend title",
   legend_median = "Median in the legend",
   legend_median_digits = "Decimals of the legend's median",
+  legend_median_text = "Wording of the legend's median",
   pvalue = "Log-rank p-value",
   pvalue_location = "P-value position",
   title = "Figure title",
