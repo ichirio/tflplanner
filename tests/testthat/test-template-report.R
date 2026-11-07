@@ -484,6 +484,20 @@ test_that("a template figure and listing have Update preview above their tabs, o
   expect_true(grepl("tpl_ard_of", paste(deparse(.srv_add_report), collapse = " "), fixed = TRUE))
 })
 
+test_that("the right pane of a template figure, listing and table fills its column, and only the tab shown scrolls (#612)", {
+  css <- gsub("[[:space:]]+", " ", .result_tabs_css)
+  # (no align-self: start on the figure's and listing's pane: it shrank to its content)
+  pane <- regmatches(css, regexpr("[.]rp-tpl-right [{] position: sticky;[^}]*[}]", css))
+  expect_length(pane, 1L)
+  expect_false(grepl("align-self", pane, fixed = TRUE))
+  # the tabs of the table's pane fill it
+  expect_true(grepl(".rp-b-right > .rp-tabs { align-self: stretch; }", css, fixed = TRUE))
+  # the tab row stays: the pane's box does not scroll, the tab content does
+  expect_true(grepl(".rp-tpl-right > .rp-tabs { position: static;", css, fixed = TRUE))
+  expect_true(grepl("overflow: hidden;", regmatches(css, regexpr("[.]rp-tpl-right > [.]rp-tabs [{][^}]*[}]", css)), fixed = TRUE))
+  expect_true(grepl(".rp-tpl-right > .rp-tabs > .tabbable > .tab-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; }", css, fixed = TRUE))
+})
+
 test_that("a template listing with no columns left says so in Report result, not old pages (#514)", {
   skip_on_cran()
   s <- .listing_tpl_study(list(columns = NULL))
