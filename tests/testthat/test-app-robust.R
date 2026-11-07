@@ -403,6 +403,17 @@ test_that("the page sample puts a report's lines over the study defaults", {
   expect_match(h, "BODY")
 })
 
+test_that("the page sample leaves out a title line that is only {PAGE_HEADING}", {
+  p <- new_planner()
+  p <- add_output(p, "T1")
+  p <- set_sheet_rows(p, "titles", "T1", data.frame(
+    line = c("1", "2", "3"), center = c("Table 1", NA, "Pop"),
+    left = c(NA, "{PAGE_HEADING}", NA)))
+  h <- as.character(.page_sample_html(p, "T1", "S-01", htmltools::div("BODY")))
+  expect_false(grepl("PAGE_HEADING", h, fixed = TRUE))
+  expect_equal(lengths(regmatches(h, gregexpr("rp-page-line title", h, fixed = TRUE))), 2L)
+})
+
 test_that("with no study, the app offers the ways to start, the sample first", {
   skip_on_cran()
   local_home()
