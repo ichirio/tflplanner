@@ -323,6 +323,32 @@
   }, NA))
 }
 
+# The items of a part that read a dataset which cannot run on it: they read
+# a cards ARD (a statistic name, a context).  normalize_ard() and
+# plan_stat_groups() always; plan_cells() when its templates are for the
+# kinds of variable (continuous / categorical) with no `default` for the
+# rest.  (Its `default`, a column's template and plan_filter() / plan_compare()
+# run on a dataset.)  Returns list(content, dropped): the items that can run
+# and the verbs taken out.
+.part_dataset_items_split <- function(content) {
+  ard_only <- function(it) {
+    fn <- it$fn
+    if (fn %in% c("normalize_ard", "plan_stat_groups")) return(TRUE)
+    identical(fn, "plan_cells") && any(c("continuous", "categorical") %in% names(it$args)) &&
+      !"default" %in% names(it$args)
+  }
+  gone <- vapply(content %||% list(), ard_only, NA)
+  list(content = (content %||% list())[!gone],
+       dropped = unique(vapply((content %||% list())[gone], function(it) it$fn, "")))
+}
+
+# What was taken out (`fn`: the verbs), in one line
+.part_dataset_dropped_note <- function(name, fn, tr = function(x) x) {
+  name <- if (is.na(name) || !nzchar(name)) "(no name)" else name
+  sprintf(tr("The part %s now reads a dataset: %s read the ARD and cannot run on it, so they were taken out of its items."),
+          name, paste(fn, collapse = ", "))
+}
+
 # What to say of such a part (`name`: the parts' names)
 .dataset_part_ard_items_note <- function(name, tr = function(x) x) {
   name <- ifelse(is.na(name) | !nzchar(name), "(no name)", name)
