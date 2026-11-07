@@ -8,7 +8,7 @@
 "(%d more variables' code lists: tick the box to see them)","（ほかに %d 変数のコードリスト：チェックを入れると見える）"
 "%d values of %d variables read into %s's code lists.","%d 個の値（%d 変数）を %s のコードリストに読み込みました。"
 "The company standards","会社標準"
-"No code lists to copy: the company standards have none, nor do the other reports.","写せるコードリストがありません：会社標準にも、ほかの帳票にもありません。"
+"No code lists to copy: the company standards have none, nor do the other reports.","コピーできるコードリストがありません：会社標準にも、ほかの帳票にもありません。"
 "Copy code lists into %s","コードリストを %s にコピー"
 "The rows copied are this report's own: change them here, and the source stays as it is. A value this report has already is replaced.","コピーした行はこの帳票のもの：ここで直してもコピー元は変わりません。この帳票にすでにある値は置き換わります。"
 "Its code lists","そのコードリスト"

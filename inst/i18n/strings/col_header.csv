@@ -35,4 +35,4 @@
 "No data to show yet: Update preview makes this table's ARD.","表示するデータがまだありません。「プレビューを更新」でこの Table の ARD を作ります。"
 "normalize_ard() stopped:","normalize_ard() が止まりました:"
 "The part %s reads a dataset, but its items are for an ARD: normalize_ard reads cards, not a dataset. Take normalize_ard (and the items for cards) out of its items, or set its data back to the report's ARD.","パート %s はデータセットを読みますが、その項目は ARD 用です（normalize_ard はカードを読むもので、データセットは読めません）。項目から normalize_ard（とカード用の項目）を外すか、パートのデータをレポートの ARD に戻してください。"
-"The table is shown without it.","表はそのパートを除いて表示しています。"
+"The table is shown without it.","Table はそのパートを除いて表示しています。"

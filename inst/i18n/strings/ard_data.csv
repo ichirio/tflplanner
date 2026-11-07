@@ -121,7 +121,7 @@
 "No other report has analysis data.","ほかの帳票に解析データがありません。"
 "Copy analysis data from another report","ほかの帳票から解析データをコピー"
 "From the report","コピー元の帳票"
-"Its analysis data (what they are made from and kept to come with them)","その解析データ（元になるもの・絞る先も一緒に写ります）"
+"Its analysis data (what they are made from and kept to come with them)","その解析データ（元になるもの・絞る先も一緒にコピーされます）"
 "%s copied from %s (save to keep them).","%s を %s からコピーしました（保存すると残ります）。"
 "The rows of analysis_data this report reads, every column, as in the workbook: what the form does not show is written here. A new data's row comes when it is saved.","この帳票の analysis_data の行（全列、ブックのまま）。フォームに無い列はここで書きます。新しいデータの行は保存で入ります。"
 "The checks' messages","検査のメッセージ（詳細）"
