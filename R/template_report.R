@@ -552,14 +552,18 @@ $(document).on('shiny:connected', function() {
   // way to the report's Result, so no pane is left empty
   function rpArdTabs(on, tip) {
     $('body').toggleClass('rp-ard', !!on);
-    $('#table_right a[data-value^=\"ard\"]').each(function() {
+    // (a table's, a figure's and a listing's tabs: the one of the report shown is the one that counts)
+    var tabs = $('#table_right, #fig_right, #lf_right');
+    tabs.find('a[data-value^=\"ard\"]').each(function() {
       $(this).toggleClass('disabled', !on).attr('aria-disabled', on ? null : 'true')
         .attr('tabindex', on ? null : '-1');
       $(this).parent().attr('title', on ? null : (tip || ''));
     });
-    if (!on && $('#table_right a.active[data-value^=\"ard\"]').length) {
-      $('#table_right a[data-value=\"result\"]').tab('show');
-    }
+    if (!on) tabs.each(function() {
+      if ($(this).find('a.active[data-value^=\"ard\"]').length) {
+        $(this).find('a[data-value=\"result\"]').tab('show');
+      }
+    });
   }
   Shiny.addCustomMessageHandler('rp-ard-tabs', function(x) { rpArdTabs(x.on, x.tip); });
   Shiny.addCustomMessageHandler('rp-tpl-mode', function(x) {

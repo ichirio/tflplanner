@@ -530,6 +530,16 @@
          lf_rows(rv$p, "listings", id), lf_rows(rv$p, "listing_cols", id))
   }
   output$lf_preview_out <- shiny::renderUI({
+    # a template listing with a required argument empty (no columns left):
+    # said, and no old pages to preview again
+    id <- current()
+    tp <- if (!is.null(id)) .tpl_of(rv$p, id)
+    miss <- if (!is.null(tp) && .is_template_listing(rv$p, id)) .tpl_missing(tp$name, tp$args, rv$p$spec$study)
+    if (length(miss)) {
+      return(shiny::p(class = "small text-warning",
+                      sprintf(t("Required arguments are empty: %s. The preview waits for them."),
+                              paste(miss, collapse = ", "))))
+    }
     r <- lf_pv()
     if (is.null(r)) {
       return(shiny::p(class = "small text-muted",

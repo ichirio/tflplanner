@@ -348,3 +348,16 @@ test_that("Review does not say 'No dataset is read' of a figure reading an ARD",
   r <- review_problems(p)
   expect_true(any(r$output_id == "F-14-2-4" & r$message == "No dataset is read."))
 })
+
+test_that("a template figure's ARD tabs are on when it makes an ARD (forest_hr), off when it does not (km_survival, mean_se) (#514)", {
+  s <- fig_ard_study()
+  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  expect_true(.report_uses_ard(p, "F-9-1"))
+  p <- tpl_fig_planner(p, "mean_se", "F-9-2", param = "SYSBP")
+  p <- tpl_fig_planner(p, "km_survival", "F-9-3", by = "TRT01A")
+  expect_false(.report_uses_ard(p, "F-9-3"))
+  expect_false(.report_uses_ard(p, "F-9-2"))
+  # a table (template or not) and a figure of its own code keep their answers
+  expect_true(.report_uses_ard(p, "T-14-1-1"))
+  expect_false(.report_uses_ard(p, "F-14-2-1"))
+})
