@@ -1027,6 +1027,30 @@
     sheet_roles = if (length(roles)) stats::setNames(as.character(roles), names(roles)))
 }
 
+# Step 1 as tflspec kept it in the study's ai/prepare.yml (the last call that
+# wrote the requests; tfl_ai_prepare_settings(), tflspec#708), in the shape
+# .ai_step1_read() gives, except that a field the file does not have is NULL
+# (the screen keeps its default).  Gives list(x, error): `x` NULL when there is
+# no file, or this tflspec has no such function; `error` the message when the
+# file could not be read (damaged, or a newer version of the format).
+.ai_step1_prepared <- function(dir) {
+  ns <- asNamespace("tflspec")
+  if (!exists("tfl_ai_prepare_settings", envir = ns, inherits = FALSE)) return(list(x = NULL, error = NULL))
+  s <- tryCatch(get("tfl_ai_prepare_settings", envir = ns)(dir), error = function(e) e)
+  if (inherits(s, "error")) return(list(x = NULL, error = conditionMessage(s)))
+  if (is.null(s)) return(list(x = NULL, error = NULL))
+  one <- function(v) if (is.null(v) || !length(v)) NULL else as.character(v[[1L]])
+  many <- function(v) if (is.null(v)) NULL else as.character(unlist(v))
+  list(x = list(
+    toc = one(s$toc), toc_sheet = one(s$toc_sheet), shells = many(s$shells),
+    adam = one(s$adam), adam_spec = one(s$adam_spec %||% s$define), docs = many(s$docs),
+    language = one(s$language), templates = if (is.null(s$templates)) NULL else isTRUE(s$templates),
+    agent_reads = many(s$agent_reads),
+    agent_max_reads = if (is.null(s$agent_max_reads)) NULL else as.integer(s$agent_max_reads),
+    sheets = many(s$sheets),
+    sheet_roles = if (length(s$sheet_roles)) s$sheet_roles), error = NULL)
+}
+
 # The paths of the settings `x` that are not there now: a data frame of
 # field and path (none: no rows).  The adam folder must be a folder, the rest files.
 .ai_step1_missing <- function(x) {

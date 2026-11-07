@@ -1214,19 +1214,31 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       invisible(TRUE)
     }
 
-    # -- step 1 filled from the study's ai/step1.yml ----------------------------
+    # -- step 1 filled from the study's ai/prepare.yml (else ai/step1.yml) ------
+    # tflspec's file first (the last call that wrote the requests; none there,
+    # or a tflspec without it: ai/step1.yml); one it cannot read leaves the
+    # fields at their defaults and says so (step1_note).  A field the file does
+    # not have keeps its default.
     # When a study is opened (or the tab first shows one).  A path kept that
     # is not there now is still put in -- the field's own check says so
     # (the docs list too); the roles apply to the sheets of that name, and
     # those of sheets that are gone are listed (step1_note).
     step1_from <- shiny::reactiveVal(NULL)
+    step1_error <- shiny::reactiveVal(NULL)
     restore_step1 <- function(p) {
-      x <- if (!is.null(p)) .ai_step1_read(p)
+      pr <- if (!is.null(p)) .ai_step1_prepared(p)
+      from <- "ai/prepare.yml"
+      x <- pr$x
+      if (is.null(x) && is.null(pr$error) && !is.null(p)) {
+        x <- .ai_step1_read(p)
+        from <- "ai/step1.yml"
+      }
+      step1_error(pr$error)
       roles_set(NULL)
       roles_saved(x$sheet_roles)
       step1_pending$toc_sheet <- NULL
       step1_pending$sheets <- NULL
-      step1_from(if (!is.null(x)) p)
+      step1_from(if (!is.null(x)) from)
       if (is.null(x)) return(invisible(FALSE))
       shiny::updateTextInput(session, "toc_path", value = x$toc %||% "")
       shiny::updateTextAreaInput(session, "shell_paths", value = paste(x$shells, collapse = "\n"))
@@ -1234,9 +1246,9 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       shiny::updateTextInput(session, "adam_spec", value = x$adam_spec %||% "")
       if (!is.null(x$language)) shiny::updateSelectInput(session, "language", selected = x$language)
       if (!is.null(x$templates)) shiny::updateCheckboxInput(session, "templates", value = x$templates)
-      shiny::updateCheckboxGroupInput(session, "agent_reads", selected = x$agent_reads)
+      if (!is.null(x$agent_reads)) shiny::updateCheckboxGroupInput(session, "agent_reads", selected = x$agent_reads)
       if (!is.null(x$agent_max_reads)) shiny::updateNumericInput(session, "agent_max_reads", value = x$agent_max_reads)
-      refs(x$docs)
+      refs(x$docs %||% character())
       # (the sheets: chosen once the workbooks' sheet names are known; until
       # then, and when the workbook is gone, the names kept are the choices)
       step1_pending$toc_sheet <- x$toc_sheet
@@ -1254,13 +1266,18 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     shiny::observeEvent(path(), restore_step1(path()), ignoreNULL = FALSE)
     output$step1_note <- shiny::renderUI({
       from <- step1_from()
+      err <- step1_error()
       kept <- roles_saved()
       gone <- if (is.null(roles_set()) && !is.null(kept) && !is.null(sheet_tbl())) {
         .ai_step1_roles(kept, sheet_tbl()$sheet)$gone
       }
       shiny::tagList(
         if (!is.null(from)) shiny::div(class = "small text-muted mb-2",
-                                       t("Step 1 was filled from the study's ai/step1.yml.")),
+                                       if (identical(from, "ai/prepare.yml")) {
+                                         t("Step 1 was filled from the study's ai/prepare.yml.")
+                                       } else t("Step 1 was filled from the study's ai/step1.yml.")),
+        if (!is.null(err)) shiny::div(class = "small text-danger mb-2",
+                                      sprintf(t("The saved settings of step 1 could not be read: %s"), err)),
         if (length(gone)) shiny::div(
           class = "small text-warning mb-2",
           sprintf(t("Sheet roles kept for sheets that are not in the workbooks now (kept until the roles are applied again): %s"),

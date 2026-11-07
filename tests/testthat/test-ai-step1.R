@@ -266,3 +266,112 @@ test_that("a new study: step 1 held until the requests are written, then kept in
     expect_identical(nrow(.ai_step1_missing(y)), 0L)
   })
 })
+
+# ---- step 1 filled from tflspec's ai/prepare.yml (#512, tflspec#708) ----------
+# A study whose requests tflspec's own tfl_ai_prepare() wrote on the sample
+prepared_study <- function(id, ..., env = parent.frame()) {
+  adam <- normalizePath(file.path(withr_tempdir(env), "adam"), "/", mustWork = FALSE)
+  dir.create(adam)
+  df <- utils::head(tflspec::adsl, 5L)
+  for (v in names(df)) if (is.factor(df[[v]])) df[[v]] <- as.character(df[[v]])
+  haven::write_xpt(df, file.path(adam, "adsl.xpt"))
+  s <- create_study(id)
+  dir.create(file.path(s$path, "docs"), showWarnings = FALSE)
+  toc <- file.path(s$path, "docs", "toc.xlsx")
+  file.copy(system.file("ai", "example", "onco_toc_shell.xlsx", package = "tflspec"), toc)
+  suppressWarnings(tflspec::tfl_ai_prepare(s$path, toc = toc, adam = adam, dry_run = FALSE,
+                                           quiet = TRUE, ...))
+  list(study = s, toc = toc, adam = adam)
+}
+
+skip_if_no_prepare_settings <- function() {
+  skip_if_not_installed("yaml")
+  skip_if_not_installed("haven")
+  skip_if(!exists("tfl_ai_prepare_settings", envir = asNamespace("tflspec"), inherits = FALSE),
+          "this tflspec has no tfl_ai_prepare_settings()")
+}
+
+test_that("a study opened in the tab: step 1 filled from the ai/prepare.yml tflspec wrote", {
+  skip_if_no_prepare_settings()
+  local_home()
+  p <- prepared_study("KEP-4", language = "Japanese", agent_reads = c("workbook", "adam"),
+                      agent_max_reads = 6L, templates = FALSE, docs = character(),
+                      sheet_roles = c(Safety = "other"))
+  expect_true(file.exists(file.path(p$study$path, "ai", "prepare.yml")))
+  expect_false(file.exists(file.path(p$study$path, "ai", "step1.yml")))
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  sent <- step1_catch()
+  shiny::testServer(server_for("KEP-4"), {
+    session$flushReact()
+    expect_identical(sent$toc_path$value, normalizePath(p$toc, "/"))
+    expect_identical(sent$adam_dir$value, normalizePath(p$adam, "/"))
+    expect_identical(sent$language$selected, "Japanese")
+    expect_false(sent$templates$value)
+    expect_identical(sent$agent_reads$selected, c("workbook", "adam"))
+    expect_identical(sent$agent_max_reads$value, 6L)
+    expect_match(output[["ai-step1_note"]]$html, "ai/prepare.yml", fixed = TRUE)
+    expect_false(grepl("could not be read", output[["ai-step1_note"]]$html, fixed = TRUE))
+  })
+})
+
+test_that("a study with no ai/prepare.yml: the fields keep the screen's defaults", {
+  skip_if_no_prepare_settings()
+  local_home()
+  create_study("KEP-5")
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  sent <- step1_catch()
+  shiny::testServer(server_for("KEP-5"), {
+    session$flushReact()
+    expect_null(sent$toc_path)
+    expect_null(sent$language)
+    expect_null(sent$agent_reads)
+    expect_false(grepl("filled from", output[["ai-step1_note"]]$html, fixed = TRUE))
+  })
+})
+
+test_that("an ai/prepare.yml of a newer version, or unreadable: one line, the defaults, no crash", {
+  skip_if_no_prepare_settings()
+  local_home()
+  s <- create_study("KEP-6")
+  dir.create(file.path(s$path, "ai"))
+  f <- file.path(s$path, "ai", "prepare.yml")
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  for (txt in list(c("version: 99", 'toc: "docs/toc.xlsx"'), "toc: [unclosed")) {
+    writeLines(txt, f)
+    sent <- step1_catch()
+    shiny::testServer(server_for("KEP-6"), {
+      session$flushReact()
+      expect_null(sent$toc_path)
+      html <- output[["ai-step1_note"]]$html
+      expect_match(html, "The saved settings of step 1 could not be read: ", fixed = TRUE)
+      expect_match(html, "prepare.yml", fixed = TRUE)
+    })
+  }
+})
+
+test_that("a rewrite of the requests starts from the filled fields (the file's values go to tflspec)", {
+  skip_if_no_prepare_settings()
+  local_home()
+  p <- prepared_study("KEP-7", language = "Japanese", agent_max_reads = 6L)
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  shiny::testServer(server_for("KEP-7"), {
+    session$flushReact()
+    # (the fields as the updates leave them: the inputs the browser would hold)
+    session$setInputs(`ai-study_mode` = "open", `ai-toc_path` = normalizePath(p$toc, "/"),
+                      `ai-shell_paths` = "", `ai-adam_dir` = normalizePath(p$adam, "/"),
+                      `ai-adam_spec` = "", `ai-toc_sheet` = "", `ai-language` = "English",
+                      `ai-templates` = TRUE, `ai-agent_reads` = "adam", `ai-agent_max_reads` = 9L)
+    session$setInputs(`ai-read` = 1)
+    session$setInputs(`ai-write` = 1)
+    session$setInputs(`ai-write_ok` = 1)
+    y <- tflspec::tfl_ai_prepare_settings(p$study$path)
+    # the new value is in the file, the file's other values stay
+    expect_identical(y$language, "English")
+    expect_identical(y$agent_max_reads, 9L)
+    expect_identical(y$agent_reads, "adam")
+  })
+})
