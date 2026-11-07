@@ -69,7 +69,7 @@
 "Compare...","比べる…"
 "Rework","Rework"
 "Rework: usually blank (the standard one). Write code to change the data before the table is made.","Rework: ふつうは空欄（標準のもの）。Table を作る前にデータを変えるコードを書きます。"
-"A table: make `data` from `ard` (normalize_ard(), then mutate() ...); blank = the company template (normalize). A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step %s or %s.)","Table: `ard` から `data` を作ります（normalize_ard() のあと mutate() など）。空欄 = 会社のテンプレート（正規化）。Listing: 条件のあと、並べる前に `data` を変えます。（手順全体を自分のコードにするときは、手順 %s か %s の上の R プログラムで）"
+"A table: optional R that runs after normalize_ard(), before table_plan(). It starts from `data`, the normalized ARD, and leaves the result in `data`. A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step %s or %s.)","表: 省略できます。normalize_ard() の後、table_plan() の前に動く R のコードです。正規化した ARD（`data`）から始め、結果を `data` に残します。一覧: 条件のあと、並べる前に `data` を変えます。（手順全体を自分のコードにするときは、手順 %s か %s の上の R プログラムで）"
 "Files and datasets","ファイルとデータセット"
 "The data files of the folder (data/) and what the study's programs read of them (the data catalog): a name, its level, its file, columns derived. A file put in the folder gets a row; a row with no file is a dataset made on the way. Defined once for the study, used by every report.","フォルダ（data/）のデータファイルと、試験のプログラムがそのうち何を読むか（データカタログ）：名前、レベル、ファイル、作る列。フォルダに入れたファイルには行ができます。ファイルのない行は、途中で作るデータセットです。試験で 1 回だけ定義し、すべての帳票で使います。"
 "ARDs made elsewhere are in ""ARDs taken in"" (input/ard/).","別の場所で作った ARD は「取り込んだ ARD」（input/ard/）にあります。"

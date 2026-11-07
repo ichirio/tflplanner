@@ -157,14 +157,15 @@ report_info <- function(x, output_id) {
     .imported_ard_code(imp, output_id)
 }
 
-# A table's normalization after its ARD: its process code, or (when the
-# code before it did not make `data`) the company's template; the built-in
-# normalization is the table's plan's (tflspec::tfl_table_code(): `plan <-
-# ard |> normalize_ard(...) |> table_plan(...)`), no line here
+# A table's normalization after its ARD: its Rework (process code) after
+# the table's normalize_ard(), or (when the code before it did not make
+# `data`) the company's template; the built-in normalization is the
+# table's plan's (tflspec::tfl_table_code(): `plan <- ard |>
+# normalize_ard(...) |> table_plan(...)`), no line here
 .table_process_lines <- function(x, output_id, code, proc) {
   if (.table_norm_builtin(x, output_id, code, proc)) return(NULL)
   if (!is.na(proc)) {
-    c("", "# normalize and rework", .code_block(proc))
+    c("", "# normalize and rework", .rework_lines(x, output_id, code, proc))
   } else if (!.makes_data(code)) {
     c("", .code_block(.fill_template("table_process", x, output_id)))
   }
@@ -191,6 +192,61 @@ report_info <- function(x, output_id) {
   if (!is.na(code) && .makes_data(code)) return(FALSE)
   tp <- .fill_template("table_process", x, output_id)
   is.na(tp) || identical(trimws(tp), "data <- normalize_ard(ard)")
+}
+
+# A table's Rework as its program writes it: `data <- ard |>
+# normalize_ard(...)` (the table's own arguments), then the code, which
+# starts from `data` and leaves `data`.  The code is written as it is: an
+# old one that normalizes itself (`data <- normalize_ard(ard)`) overwrites
+# the line before it with the same data.  `code` the table's ARD code: one
+# that makes `data` itself has no `ard` to normalize.
+.rework_lines <- function(x, output_id, code, proc) {
+  c(if (is.na(code) || !.makes_data(code)) .rework_normalize_lines(x, output_id),
+    .code_block(proc))
+}
+
+# The check tflspec makes of a Rework, in its words: it names `data`
+# (code that does not parse is left to R, which says so when it runs)
+.rework_need_data <- function(proc) {
+  ok <- tryCatch("data" %in% all.names(parse(text = proc, keep.source = FALSE)),
+                 error = function(e) TRUE)
+  if (!ok) stop("the data.steps leave no `data`, the data the plan is made from.", call. = FALSE)
+  invisible(TRUE)
+}
+
+# The lines before a Rework, as the table's plan would say them: the
+# content's normalize_ard() with its arguments -- tflspec writes them (the
+# lines before a marker step) -- else, with no spec to ask, the
+# definitions' (.rework_normalize_sheets())
+.rework_mark <- "data <- data  # rework"
+.rework_normalize_lines <- function(x, output_id) {
+  y <- .code_output(x, output_id)
+  if (!is.null(y)) {
+    o <- .code_content(y)
+    o$data <- list(source = "ard", object = "ard", steps = list(tflspec::tfl_r(.rework_mark)))
+    code <- tryCatch(tflspec::tfl_content_code(o, pipe = "|>"), error = function(e) NULL)
+    i <- match(.rework_mark, code)
+    if (!is.na(i) && i > 1L) return(code[seq_len(i - 1L)])
+  }
+  .rework_normalize_sheets(x, output_id)
+}
+
+# The same from the sheets: the steps before table_plan() in the pipe that
+# tfl_table_code() writes for the table's plan (the same call as the
+# program's, so the same arguments), as `data <- ard |> normalize_ard(...)`
+.rework_normalize_sheets <- function(x, output_id) {
+  sp <- .spec_object_last(x, table_sheets(), .study_keys$table)
+  code <- tryCatch(
+    tflspec::tfl_table_code(sp, output_id, pipe = "|>", ard_spec = .ard_spec(x$ard)),
+    error = function(e) tryCatch(tflspec::tfl_table_code(sp, output_id, pipe = "|>"),
+                                 error = function(e) NULL))
+  i <- match("plan <- ard |>", code)
+  j <- grep("^  table_plan\\(", code)[1L]
+  if (is.na(i) || is.na(j) || j <= i + 1L) return("data <- ard |> normalize_ard()")
+  steps <- code[(i + 1L):(j - 1L)]
+  steps[length(steps)] <- sub(" \\|>$", "", steps[length(steps)])
+  one <- paste("data <- ard |>", trimws(steps[1L]))
+  if (length(steps) == 1L && nchar(one) <= 80L) one else c("data <- ard |>", steps)
 }
 
 # a report whose ARD was made elsewhere and taken in (ard_source =
@@ -654,6 +710,11 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   tpl <- table && .is_template_listing(x, output_id)
   tryCatch(c(
     if (table) c(
+      if (!.table_norm_builtin(x, output_id)) {
+        # (a Rework that leaves no `data` is a definition that does not hold)
+        o <- x$outputs[x$outputs$output_id == output_id, , drop = FALSE]
+        if (nrow(o) && !is.na(o$process_code)) .rework_need_data(o$process_code)
+      },
       paste0("# the ", if (tpl) "listing" else "table", ", as ",
              file.path(lay[["spec"]], "outputs", paste0(output_id, ".yml")), " defines it"),
       # the built-in normalization in its pipe (the hierarchy of its

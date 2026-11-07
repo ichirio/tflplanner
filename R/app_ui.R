@@ -515,10 +515,8 @@ app_ui <- function(lang = "en") {
           shiny::uiOutput("ard_prog_state"),
           code_view("ard_code", lang)),
         result = shiny::uiOutput("ard_result_pane")))),
-    # the table's rework (process_code): its data made from the ARD, folded
     shiny::conditionalPanel(
       "output.report_kind == 'table'",
-      shiny::uiOutput("rework_ard"),
       shiny::div(
         class = "d-flex gap-2 align-items-center my-2",
         .btn("fetch", t("Update preview"), class = "btn-sm btn-outline-primary"),
@@ -527,6 +525,11 @@ app_ui <- function(lang = "en") {
 
   step_content <- shiny::div(
     class = "mt-2",
+      # the table's rework (process_code): its data made from the ARD, folded
+      # (a template report has none: its content is the template's)
+      shiny::div(class = "rp-code-only",
+                 shiny::conditionalPanel("output.report_kind == 'table'",
+                                         shiny::uiOutput("rework_table"))),
       # (a template report: its content is the template's, no R program)
       shiny::div(class = "rp-code-only", shiny::uiOutput("content_mode_bar")),
       shiny::conditionalPanel("output.content_is_code == 'yes'", code_step_ui("cc", t, lang)),
