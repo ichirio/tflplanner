@@ -100,7 +100,7 @@ test_that("the preview is the table rtfreporter lays out", {
   expect_true(any(vapply(pages[[1]]$data, function(v) "Mean (SD)" %in% v,
                          NA)))
   h <- as.character(preview_html(pages))
-  expect_match(h, "<table class=\"rp-pv\">")
+  expect_match(h, "<table class=\"rp-pv")
   expect_match(h, "Mean (SD)", fixed = TRUE)
 })
 

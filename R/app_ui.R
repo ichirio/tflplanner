@@ -76,6 +76,9 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
 .rp-pv .rp-pv-indent { padding-left: 2.2em; }
 .rp-pv-blank td { height: 1em; }
 .rp-pv-page { font-size: 11px; color: #6b7280; }
+.rp-pv-wrap { max-width: 100%; overflow-x: auto; }
+.rp-pv.rp-pv-fixed { table-layout: fixed; }
+.rp-pv.rp-pv-fixed td { white-space: pre-wrap; overflow-wrap: anywhere; }
 .rp-b-card { border: 1px solid var(--bs-border-color, #dee2e6);
   border-radius: .5rem; padding: .6rem .8rem; margin-bottom: .6rem; }
 .rp-b-card h6 { font-weight: 600; margin-bottom: .4rem; }
