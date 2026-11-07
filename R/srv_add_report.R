@@ -64,7 +64,9 @@
         lv <- .tpl_levels(data, vr, dataset)
         several <- isTRUE(prm$multiple)
         shiny::selectizeInput(
-          input_id, lab, c(if (!several) "", union(as.character(shown %||% character()), lv)),
+          input_id, lab,
+          c(if (!several) stats::setNames("", t("(not chosen)")),
+            union(as.character(shown %||% character()), lv)),
           selected = as.character(shown %||% if (several) character() else ""),
           multiple = several, width = "100%",
           options = c(if (several) rm_btn, list(create = TRUE)))
@@ -202,7 +204,8 @@
       shiny::observeEvent(input[[did]], {
         pcd <- tpl_data()[[toupper(input[[did]] %||% "")]]$PARAMCD
         pcd <- if (is.null(pcd)) character() else sort(unique(as.character(stats::na.omit(pcd))))
-        shiny::updateSelectizeInput(session, pid, choices = c("", pcd), selected = "")
+        shiny::updateSelectizeInput(session, pid, choices = c(stats::setNames("", t("(not chosen)")), pcd),
+                                    selected = "")
       }, ignoreInit = TRUE)
     }
     pcd <- d[[first]]$PARAMCD
@@ -216,7 +219,8 @@
                    shiny::selectizeInput(did, t("Dataset (read)"), c("", ds_all), selected = first,
                                          width = "100%", options = list(create = TRUE))),
         shiny::div(style = "flex: 1 1 140px",
-                   shiny::selectizeInput(pid, t("Parameter (param)"), c("", pcd),
+                   shiny::selectizeInput(pid, t("Parameter (param)"),
+                                         c(stats::setNames("", t("(not chosen)")), pcd),
                                          width = "100%", options = list(create = TRUE))),
         shiny::div(style = "flex: 1 1 140px",
                    shiny::selectInput(tpl_arg_id(nm, ".data_pop"), t("Analysis set"),
