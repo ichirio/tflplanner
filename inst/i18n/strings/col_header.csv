@@ -34,3 +34,5 @@
 "The report's own page: in its YAML file (edit it on the left). The pattern it extends and the study defaults fill what it leaves out.","帳票自身のページ：その YAML ファイルの page:（左で編集）。書いていないところは、使う型と試験標準が埋めます。"
 "No data to show yet: Update preview makes this table's ARD.","表示するデータがまだありません。「プレビューを更新」でこの表の ARD を作ります。"
 "normalize_ard() stopped:","normalize_ard() が止まりました:"
+"The part %s reads a dataset, but its items are for an ARD: normalize_ard reads cards, not a dataset. Take normalize_ard (and the items for cards) out of its items, or set its data back to the report's ARD.","パート %s はデータセットを読みますが、その項目は ARD 用です（normalize_ard はカードを読むもので、データセットは読めません）。項目から normalize_ard（とカード用の項目）を外すか、パートのデータをレポートの ARD に戻してください。"
+"The table is shown without it.","表はそのパートを除いて表示しています。"

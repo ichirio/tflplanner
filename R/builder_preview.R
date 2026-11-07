@@ -364,10 +364,27 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   r <- tflspec::tfl_resolve_output(sp$outputs[[output_id]], sp$study)
   # (a table with no records of its own and no parts -- a template's -- reads
   # the ARD itself, as its program does: not a list of objects)
-  own <- identical(r$data$source, "dataset") ||
-    any(vapply(r$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
-  if (!own && !is.null(objects$ard)) objects <- objects$ard
-  plan <- tflspec::tfl_content_run(r, objects)
+  objects_for <- function(r) {
+    own <- identical(r$data$source, "dataset") ||
+      any(vapply(r$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
+    if (!own && !is.null(objects$ard)) objects$ard else objects
+  }
+  # A part that reads a dataset with items for an ARD stops the program as
+  # it stops here (normalize_ard() reads cards): the table is shown without
+  # that part, and the parts' names said (`dataset_parts`), when it then runs
+  dropped <- character()
+  plan <- tryCatch(tflspec::tfl_content_run(r, objects_for(r)), error = function(e) {
+    bad <- .dataset_parts_with_ard_items(r$content)
+    if (!length(bad)) stop(e)
+    nm <- vapply(r$content[bad], function(it) it$args$name %||% NA_character_, "")
+    r2 <- r
+    r2$content <- r$content[-bad]
+    plan2 <- tryCatch(tflspec::tfl_content_run(r2, objects_for(r2)), error = function(e2) {
+      stop(paste(.dataset_part_ard_items_note(nm), conditionMessage(e2)), call. = FALSE)
+    })
+    dropped <<- nm
+    plan2
+  })
   res <- suppressMessages(rtfreporter::plan_apply(plan))
   if (is.data.frame(res)) {
     res <- list(structure(list(data = res, col_header = list(names(res)),
@@ -382,6 +399,7 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   })
   attr(res, "header_tokens") <- tryCatch(rtfreporter::plan_header_tokens(plan),
                                          error = function(e) NULL)
+  if (length(dropped)) attr(res, "dataset_parts") <- dropped
   # where each part's rows start (the cut pages do not say which rows are a
   # part's; the table before it is cut does): .part_start_page()
   attr(res, "part_first") <- .part_first_rows(

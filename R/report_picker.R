@@ -59,8 +59,7 @@
     log <- file.path(study$path, lay[["logs_preview"]],
                      sub("\\.[Rr]$", ".log", info$program))
     t_log <- .mtime(log)
-    failed <- !is.na(t_log) && (is.na(t_rtf) || t_log > t_rtf) &&
-      any(grepl("^Error|Execution halted", readLines(log, warn = FALSE, encoding = "UTF-8")))
+    failed <- !is.na(t_log) && (is.na(t_rtf) || t_log > t_rtf) && .log_failed(log)
     if (failed) "error" else if (is.na(t_rtf)) "not run" else
       if (isTRUE(.program_time(prog, study$path) > t_rtf) ||
           .report_setup_changed(setup[match(id, ids)], study$path, now) ||
