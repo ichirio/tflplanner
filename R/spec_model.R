@@ -609,7 +609,9 @@
     f <- tempfile("tflplanner-output", fileext = ".yml")
     on.exit(unlink(f), add = TRUE)
     tflspec::tfl_write_output(output, f)
-    sp$outputs[[output_id]] <- output
+    # (the report as the file says it: a column given as a plain list is a
+    # listing_col() call only once read back, and the bridge reads only calls)
+    sp$outputs[[output_id]] <- tryCatch(tflspec::tfl_read_output(f), error = function(e) output)
     sp$where[[output_id]] <- rel
     sp$text[[rel]] <- readLines(f, encoding = "UTF-8", warn = FALSE)
   }
