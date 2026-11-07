@@ -785,11 +785,6 @@
           block(part),
           if (none) shiny::p(class = "small text-muted mb-0", t("This template has no arguments in this step.")))))
     }
-    # (a figure's preview is under the card; a table's and a listing's in
-    # the right pane)
-    preview_btn <- if (identical(kind, "figure")) {
-      .btn("tpl_fig_preview", t("Update preview"), class = "btn-sm btn-primary")
-    }
     others <- .tpl_list(kind)$name
     bslib::card(
       class = "mb-2 border-primary",
@@ -829,21 +824,24 @@
       bslib::card_body(
         missing_alert,
         block("ard", t("Analysis (ARD)")),
-        block("content", t("Content")),
-        if (!is.null(preview_btn)) shiny::div(class = "mt-2", preview_btn)))
+        block("content", t("Content"))))
   }
   # a template figure: drawn here from the template's items
   # (tflspec::tfl_content_run(), the figure as its program makes it), the
   # PNG in the Report result tab
   tpl_fig <- shiny::reactiveVal(NULL)
+  # what the figure's own ARD of the preview was made from (a table's is kept
+  # by its Update preview; ard_preview_state())
+  tpl_fig_ard <- shiny::reactiveVal(NULL)
   tpl_fig_draw <- function() {
     id <- current()
     p <- rv$p
     if (is.null(id) || is.null(.tpl_of(p, id))) return()
     miss <- .tpl_missing(.tpl_of(p, id)$name, .tpl_of(p, id)$args, p$spec$study)
     if (length(miss)) {
-      return(tpl_fig(list(id = id, error = sprintf(
-        t("Required arguments are empty: %s. The preview waits for them."), paste(miss, collapse = ", ")))))
+      tpl_fig(list(id = id, key = tpl_def_key(id), error = sprintf(
+        t("Required arguments are empty: %s. The preview waits for them."), paste(miss, collapse = ", "))))
+      return(tpl_show_result("fig_right"))
     }
     res <- shiny::withProgress(message = sprintf(t("Preview of %s"), id), tryCatch({
       r <- tflspec::tfl_resolve_output(p$spec$outputs[[id]], p$spec$study)
@@ -860,9 +858,12 @@
         a <- run_ard(current_study(), src$id)
         if (is.null(a$ard)) stop(paste(t("The preview's ARD could not be made:"), a$error), call. = FALSE)
         d$ard <- a$ard
-        # (the ARD result tab shows it, as after a table's Update preview)
-        ard_res(list(ard = a$ard, scope = id, seconds = a$seconds))
-        rv$ard_ver <- rv$ard_ver + 1L
+        if (identical(src$kind, "own")) {
+          # (the ARD result tab shows it; what it was made from says when it is outdated)
+          ard_res(list(ard = a$ard, scope = id, seconds = a$seconds))
+          tpl_fig_ard(list(id = id, print = .ard_print(current_study(), id)))
+          rv$ard_ver <- rv$ard_ver + 1L
+        }
       }
       g <- tflspec::tfl_content_run(r, d)
       f <- tempfile("tplfig", fileext = ".png")
@@ -870,14 +871,45 @@
       save(f, g, width = 7.3, height = 4.2, dpi = 110)
       list(id = id, png = f)
     }, error = function(e) list(id = id, error = conditionMessage(e))))
+    res$key <- tpl_def_key(id)
     tpl_fig(res)
+    tpl_show_result("fig_right")
   }
+  # what a preview was made from: the report's definition; the pane says
+  # when it has changed since
+  tpl_def_key <- function(id) tryCatch(.code_spec(rv$p)$outputs[[id]], error = function(e) NULL)
+  # Update preview: on to Report result, unless the ARD's tabs are shown
+  # (the ARD is what is being looked at then)
+  tpl_show_result <- function(nav) {
+    if (!input[[nav]] %in% c("ard_code", "ard")) bslib::nav_select(nav, "result", session = session)
+  }
+  # Update preview above the tabs (a figure's, a listing's; a table's is the ARD card's)
+  tpl_bar <- function(btn) shiny::div(class = "d-flex align-items-center gap-1 mb-1 rp-pv-bar", btn)
+  output$tpl_fig_bar <- shiny::renderUI({
+    id <- current()
+    shiny::req(id, identical(report_kind(), "figure"), !is.null(.tpl_of(shiny::isolate(rv$p), id)))
+    tpl_bar(shiny::tagList(
+      .btn("tpl_fig_preview", t("Update preview"), class = "btn-sm btn-outline-primary py-0"),
+      help_tip(t(.preview_tip))))
+  })
+  output$tpl_lf_bar <- shiny::renderUI({
+    id <- current()
+    shiny::req(id, identical(report_kind(), "listing"))
+    tpl_bar(.btn("lf_preview_tpl", t("Update preview"), class = "btn-sm btn-outline-primary py-0"))
+  })
+  shiny::observeEvent(input$lf_preview_tpl, {
+    id <- current()
+    if (!identical(lf_type(), "listing")) return()
+    lf_show_preview(id)
+    tpl_show_result("lf_right")
+  })
   shiny::observeEvent(input$tpl_fig_preview, tpl_fig_draw())
   output$tpl_fig_out <- shiny::renderUI({
     if (!identical(report_kind(), "figure")) return(NULL)
     id <- current()
     if (is.null(id) || is.null(.tpl_of(shiny::isolate(rv$p), id))) return(NULL)
     r <- tpl_fig()
+    old <- !is.null(r$key) && !identical(r$key, tpl_def_key(id))
     body <- if (is.null(r) || !identical(r$id, id)) {
       shiny::p(class = "small text-muted", t("Update preview draws the figure."))
     } else if (!is.null(r$error)) {
@@ -885,8 +917,10 @@
                  shiny::strong(t("The figure could not be drawn: ")), r$error)
     } else {
       bytes <- readBin(r$png, "raw", file.size(r$png))
-      shiny::tags$img(src = paste0("data:image/png;base64,", jsonlite::base64_enc(bytes)),
-                      style = "max-width: min(100%, 760px); border: 1px solid #dee2e6")
+      shiny::tagList(
+        if (old) shiny::p(class = "small text-warning mb-1", t("Changed: preview again")),
+        shiny::tags$img(src = paste0("data:image/png;base64,", jsonlite::base64_enc(bytes)),
+                        style = "max-width: min(100%, 760px); border: 1px solid #dee2e6"))
     }
     # (not a card: it sits in the Report result tab; the expanded code is in
     # Report code)
@@ -945,26 +979,49 @@
     shiny::req(!is.null(code))
     paste(code, collapse = "\n")
   })
+  # the report's ARD as the ARD result tab shows it: the preview's, else the
+  # one made before (NULL: none yet)
+  tpl_ard_of <- function(id) {
+    r <- ard_res()
+    if (!is.null(r) && identical(r$scope, id)) r$ard else
+      tryCatch(ard_raw(current_study(), id, rows = TRUE), error = function(e) NULL)
+  }
+  # its ARD made from a definition that has changed since (a table's: the
+  # badge's idea, preview_state(); a figure's own: what its preview was made from)
+  tpl_ard_outdated <- function(id) {
+    if (identical(report_kind(), "table")) return(identical(preview_state(id), "outdated"))
+    k <- tpl_fig_ard()
+    !is.null(k) && identical(k$id, id) &&
+      !identical(k$print, tryCatch(.ard_print(current_study(), id), error = function(e) NULL))
+  }
   # (a pane for each kind of template report: an output id is in the page once)
   for (sfx in c("", "_lf", "_fig")) local({
     sfx <- sfx
     output[[paste0("tpl_ard_pane", sfx)]] <- shiny::renderUI({
       id <- tpl_now()
       shiny::req(id)
+      rv$ard_ver
       out <- .ard_study_value(rv$p$ard, "output", "output/ard/ard.rds")
+      run <- shiny::p(class = "small text-muted mb-1",
+                      sprintf(t("A run saves it in the study's ARD (%s)."), out))
+      # no ARD made yet: Update preview makes it
+      if (.report_uses_ard(rv$p, id) && is.null(tpl_ard_of(id))) {
+        return(shiny::tagList(
+          shiny::p(class = "small text-muted mb-1", t("Update preview to see the ARD this report's analyses make.")), run))
+      }
       shiny::tagList(
-        shiny::p(class = "small text-muted mb-1",
-                 sprintf(t("A run saves it in the study's ARD (%s)."), out)),
+        if (tpl_ard_outdated(id)) {
+          shiny::p(class = "small text-warning mb-1", t("ARD outdated: Update preview"))
+        },
+        run,
         shiny::div(class = "rp-resize", DT::DTOutput(paste0("tpl_ard_table", sfx), height = "auto", fill = FALSE)))
     })
     output[[paste0("tpl_ard_table", sfx)]] <- DT::renderDT({
       id <- tpl_now()
       shiny::req(id)
       rv$ard_ver
-      r <- ard_res()
       shiny::validate(shiny::need(.report_uses_ard(rv$p, id), t("This report uses no ARD.")))
-      a <- if (!is.null(r) && identical(r$scope, id)) r$ard else
-        tryCatch(ard_raw(current_study(), id, rows = TRUE), error = function(e) NULL)
+      a <- tpl_ard_of(id)
       # (no ARD yet: the badge and the ARD line above say it)
       shiny::req(!is.null(a))
       DT::datatable(ard_view(a), rownames = FALSE, filter = "top",

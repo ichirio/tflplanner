@@ -62,6 +62,13 @@ body:not(.rp-tpl) :is(#table_right, #fig_right, #lf_right) .rp-lab-tpl,
 body.rp-tpl :is(#table_right, #fig_right, #lf_right) .rp-lab-plain { display: none; }
 :is(#table_right, #fig_right, #lf_right) { flex-wrap: nowrap; white-space: nowrap; }
 :is(#table_right, #fig_right, #lf_right) .nav-link.disabled { opacity: .4; }
+.rp-tpl-right { min-width: 0; max-width: 100%; }
+/* a template figure's and listing's pane: Update preview above the tabs,
+   both in view as the card beside them scrolls */
+@media (min-width: 992px) {
+  .rp-tpl-right { position: sticky; top: calc(var(--rp-top, 0px) + .5rem); align-self: start; }
+  .rp-tpl-right > .rp-tabs { position: static; max-height: calc(100vh - var(--rp-top, 0px) - 4rem); }
+}
 /* a template listing's five tabs need the table's 7 of 12 */
 @media (min-width: 992px) {
   body.rp-tpl .rp-lf-split > :nth-child(1) { grid-column: span 5 !important; }

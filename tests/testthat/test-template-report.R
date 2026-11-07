@@ -332,7 +332,7 @@ test_that("a template figure and a template listing have the table's five tabs t
   for (id in c("fig_right", "lf_right")) {
     links <- ui$find(paste0("#", id))$find("a")$selectedTags()
     v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
-    expect_identical(unname(v[nzchar(v)]), c("ard_code", "ard", "spec", "code", "result"), info = id)
+    expect_identical(unname(v[nzchar(v)]), c("spec", "ard_code", "ard", "code", "result"), info = id)
   }
   html <- as.character(app_ui())
   # each pane's output is in the page once (an output id twice breaks the page)
@@ -387,10 +387,11 @@ test_that("a template report's step has five tabs in the order they are made, th
 .listing_tpl_study <- function(extra = list(), id = "L-TPL") {
   home <- local_home(parent.frame())
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
-  args <- c(list(data = "ADAE",
-                 columns = list(list(vars = "USUBJID", label = "Subject"),
-                                list(vars = "AEDECOD", label = "Term", width = 30L))),
-            extra)
+  args <- utils::modifyList(
+    list(data = "ADAE",
+         columns = list(list(vars = "USUBJID", label = "Subject"),
+                        list(vars = "AEDECOD", label = "Term", width = 30L))),
+    extra)
   o <- tflspec::tfl_output(id, "listing", label = "AE listing",
                            template = list(name = "listing", args = args))
   s$planner <- .spec_add_output(s$planner, o, label = "AE listing")
@@ -463,4 +464,25 @@ test_that("the listing preview's guard is for a listing of rows: a template list
   })
   # (the sheets' listings: a listing with no columns says so)
   expect_false(grepl("Start the listing from the data", t("The listing has no columns yet: add them to the table of columns (below the form)."), fixed = TRUE))
+})
+
+test_that("a template figure and listing have Update preview above their tabs, one label; a listing in rows keeps its button (#514)", {
+  html <- as.character(app_ui())
+  for (o in c("tpl_fig_bar", "tpl_lf_bar")) expect_true(grepl(sprintf('id="%s"', o), html, fixed = TRUE), info = o)
+  # the bar is above the tabs, in the pane that stays in view
+  expect_true(grepl('rp-tpl-right[^<]*">\\s*<div id="tpl_fig_bar"', html, perl = TRUE))
+  # the listing's own button is for a listing in rows only
+  expect_true(grepl('rp-code-only">\\s*<button[^>]*id="lf_preview"', html, perl = TRUE))
+  expect_true(grepl("tpl_ard_of", paste(deparse(.srv_add_report), collapse = " "), fixed = TRUE))
+})
+
+test_that("a template listing with no columns left says so in Report result, not old pages (#514)", {
+  skip_on_cran()
+  s <- .listing_tpl_study(list(columns = NULL))
+  shiny::testServer(function(input, output, session) app_server(input, output, session, s), {
+    session$setInputs(target = "L-TPL")
+    html <- as.character(output$lf_preview_out$html)
+    expect_match(html, "Required arguments are empty: columns", fixed = TRUE)
+    expect_false(grepl("pages", html, fixed = TRUE))
+  })
 })
