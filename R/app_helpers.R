@@ -336,7 +336,8 @@ $(document).on('click', '#save', function() {
 // scrolls and would clip it under the footer
 (function() {
   var st = document.createElement('style');
-  st.textContent = 'body > .selectize-dropdown { z-index: 2000; }';
+  st.textContent = 'body > .selectize-dropdown { z-index: 2000 !important; } ' +
+    'body > .selectize-dropdown .selectize-dropdown-content { max-height: 22vh; }';
   document.head.appendChild(st);
   function wrap() {
     var f = jQuery.fn.selectize;
