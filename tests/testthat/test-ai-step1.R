@@ -375,3 +375,27 @@ test_that("a rewrite of the requests starts from the filled fields (the file's v
     expect_identical(y$agent_reads, "adam")
   })
 })
+
+test_that("both files there: the newer one fills step 1, a tie goes to ai/prepare.yml", {
+  skip_if_no_prepare_settings()
+  local_home()
+  p <- prepared_study("KEP-8", language = "Japanese")
+  written <- as.POSIXct(tflspec::tfl_ai_prepare_settings(p$study$path) |> attr("written"),
+                        format = "%Y-%m-%d %H:%M:%S")
+  f1 <- file.path(p$study$path, "ai", "step1.yml")
+  # a dry run after the write changed the language
+  .ai_step1_write(p$study$path, list(toc = p$toc, adam = p$adam, language = "English"))
+  old <- options(tflplanner.ai_drafts = TRUE)
+  on.exit(options(old))
+  for (case in c("dry run newer", "tie", "dry run older")) {
+    Sys.setFileTime(f1, written + c(10, 0, -10)[match(case, c("dry run newer", "tie", "dry run older"))])
+    want <- if (case == "dry run newer") "English" else "Japanese"
+    sent <- step1_catch()
+    shiny::testServer(server_for("KEP-8"), {
+      session$flushReact()
+      expect_identical(sent$language$selected, want, label = case)
+      expect_match(output[["ai-step1_note"]]$html,
+                   if (case == "dry run newer") "ai/step1.yml" else "ai/prepare.yml", fixed = TRUE)
+    })
+  }
+})

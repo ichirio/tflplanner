@@ -1215,9 +1215,11 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
     }
 
     # -- step 1 filled from the study's ai/prepare.yml (else ai/step1.yml) ------
-    # tflspec's file first (the last call that wrote the requests; none there,
-    # or a tflspec without it: ai/step1.yml); one it cannot read leaves the
-    # fields at their defaults and says so (step1_note).  A field the file does
+    # tflspec's file (the last call that wrote the requests) and ai/step1.yml
+    # (also written at a dry run): the newer one, to the second, a tie
+    # prefers tflspec's; one only, that one (a tflspec without it: step1.yml);
+    # tflspec's file it cannot read leaves the fields at their defaults and
+    # says so (step1_note).  A field the file does
     # not have keeps its default.
     # When a study is opened (or the tab first shows one).  A path kept that
     # is not there now is still put in -- the field's own check says so
@@ -1229,9 +1231,14 @@ ai_server <- function(id, rv, has_study, dirty, reload_now, adopt, open_report, 
       pr <- if (!is.null(p)) .ai_step1_prepared(p)
       from <- "ai/prepare.yml"
       x <- pr$x
-      if (is.null(x) && is.null(pr$error) && !is.null(p)) {
-        x <- .ai_step1_read(p)
-        from <- "ai/step1.yml"
+      if (is.null(pr$error) && !is.null(p)) {
+        f1 <- .ai_step1_file(p)
+        newer <- !is.null(x) && file.exists(f1) &&
+          floor(as.numeric(file.mtime(f1))) > floor(as.numeric(pr$time))
+        if (is.null(x) || newer) {
+          x <- .ai_step1_read(p)
+          from <- "ai/step1.yml"
+        }
       }
       step1_error(pr$error)
       roles_set(NULL)

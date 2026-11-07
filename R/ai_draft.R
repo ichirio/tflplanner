@@ -1032,13 +1032,16 @@
 # .ai_step1_read() gives, except that a field the file does not have is NULL
 # (the screen keeps its default).  Gives list(x, error): `x` NULL when there is
 # no file, or this tflspec has no such function; `error` the message when the
-# file could not be read (damaged, or a newer version of the format).
+# file could not be read (damaged, or a newer version of the format); `time`
+# when the file was written (its `written`, else its modified time).
 .ai_step1_prepared <- function(dir) {
   ns <- asNamespace("tflspec")
   if (!exists("tfl_ai_prepare_settings", envir = ns, inherits = FALSE)) return(list(x = NULL, error = NULL))
   s <- tryCatch(get("tfl_ai_prepare_settings", envir = ns)(dir), error = function(e) e)
   if (inherits(s, "error")) return(list(x = NULL, error = conditionMessage(s)))
   if (is.null(s)) return(list(x = NULL, error = NULL))
+  time <- suppressWarnings(as.POSIXct(attr(s, "written"), format = "%Y-%m-%d %H:%M:%S"))
+  if (length(time) != 1L || is.na(time)) time <- file.mtime(attr(s, "file"))
   one <- function(v) if (is.null(v) || !length(v)) NULL else as.character(v[[1L]])
   many <- function(v) if (is.null(v)) NULL else as.character(unlist(v))
   list(x = list(
@@ -1048,7 +1051,7 @@
     agent_reads = many(s$agent_reads),
     agent_max_reads = if (is.null(s$agent_max_reads)) NULL else as.integer(s$agent_max_reads),
     sheets = many(s$sheets),
-    sheet_roles = if (length(s$sheet_roles)) s$sheet_roles), error = NULL)
+    sheet_roles = if (length(s$sheet_roles)) s$sheet_roles), error = NULL, time = time)
 }
 
 # The paths of the settings `x` that are not there now: a data frame of
