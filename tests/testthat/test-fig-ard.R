@@ -289,3 +289,62 @@ test_that("the forest template's arm compared defaults to the group's second lev
   expect_null(.second_level(dat, "NOPE"))
   expect_null(.second_level(list(), NULL))
 })
+
+# (a template figure added as Add > Figure > Template does)
+tpl_fig_planner <- function(p, name, id, ...) {
+  pops <- p$ard$populations
+  saf <- as.list(pops[match("SAF", pops$population_id),
+                      intersect(c("population_id", "dataset", "where"), names(pops)), drop = FALSE])
+  steps <- if (.tpl_own_data(tflspec::tfl_template_params(name))) .tpl_steps_from("ADTTE", saf, "PFS")
+  o <- tflspec::tfl_output(id, "figure", label = name, population = "SAF",
+                           template = list(name = name, args = list(...)),
+                           data = if (length(steps)) list(steps = steps))
+  .spec_add_output(p, o, label = name, population = "SAF")
+}
+
+test_that("a template figure with analyses of its own reads its own ARD; one without, none", {
+  s <- fig_ard_study()
+  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  expect_true(NROW(ard_rows(p, "analyses", "F-9-1")) > 0L)
+  expect_true(is.na(p$sheets$report$ard_source[match("F-9-1", p$sheets$report$output_id)]) ||
+                !"ard_source" %in% names(p$sheets$report))
+  expect_identical(.fig_ard_source(p, "F-9-1"), list(kind = "own", id = "F-9-1"))
+  expect_identical(.fig_ard_need(p, "F-9-1"), "F-9-1")
+  # a set value wins
+  q <- set_fig_ard_source(p, "F-9-1", "table:T-14-2-2")
+  expect_identical(.fig_ard_source(q, "F-9-1")$kind, "table")
+  # no analyses: none, as before
+  k <- tpl_fig_planner(s$planner, "km_survival", "F-9-2", by = "TRT01A")
+  expect_identical(NROW(ard_rows(k, "analyses", "F-9-2")), 0L)
+  expect_identical(.fig_ard_source(k, "F-9-2")$kind, "none")
+  # a designed figure's source is its row's, as before
+  expect_identical(.fig_ard_source(p, "F-14-2-4")$kind, "own")
+  expect_identical(.fig_ard_source(p, "F-14-2-3")$kind, "table")
+})
+
+test_that("a forest_hr template figure's program reads its ARD, no stop()", {
+  s <- fig_ard_study()
+  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  code <- program_code(p, "F-9-1")
+  expect_false(any(grepl("stop(\"F-9-1 reads an ARD", code, fixed = TRUE)))
+  expect_true(any(grepl("readRDS(", code, fixed = TRUE)))
+  expect_true(any(grepl('filter(output_id == "F-9-1")', code, fixed = TRUE)))
+  expect_true(any(grepl("record_report(report_id, ard = ard_built)", code, fixed = TRUE)))
+  # a designed figure that truly has none still stops, saying where to choose it
+  d <- set_fig_ard_source(p, "F-14-2-3", NULL)
+  expect_identical(.fig_ard_source(d, "F-14-2-3")$kind, "none")
+  expect_true(any(grepl("F-14-2-3 reads an ARD", program_code(d, "F-14-2-3"), fixed = TRUE)))
+})
+
+test_that("Review does not say 'No dataset is read' of a figure reading an ARD", {
+  s <- fig_ard_study()
+  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  r <- review_problems(p)
+  expect_false(any(r$output_id == "F-9-1" & r$message == "No dataset is read."))
+  # a figure reading neither an ARD nor a dataset still gets it
+  d <- fig_design(p, "F-14-2-4")
+  d$data <- list()
+  p$fig_designs[["F-14-2-4"]] <- d
+  r <- review_problems(p)
+  expect_true(any(r$output_id == "F-14-2-4" & r$message == "No dataset is read."))
+})
