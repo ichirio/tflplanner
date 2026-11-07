@@ -448,6 +448,7 @@ test_that("a part that stops the table is left out of the preview, whatever its 
   expect_match(attr(pages, "part_errors")[["demog"]], "column key")
   note <- .dropped_parts_note(pages)
   expect_match(note, "The part demog stopped: ", fixed = TRUE)
+  expect_no_match(note, "plan_append(", fixed = TRUE)
   expect_match(note, "The table is shown without it.", fixed = TRUE)
   expect_null(.dropped_parts_note(structure(list(), class = "x")))
   # the part's error comes when the pages are made (a dataset, no statistics

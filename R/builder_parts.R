@@ -366,6 +366,8 @@
   why <- attr(pages, "part_errors")[nm]
   why <- if (is.null(why)) rep(NA_character_, length(nm)) else unname(why)
   other <- !is.na(why)
+  # (the error names the part already: "plan_append("name"): ...")
+  why <- sub("^plan_append\\(\"[^\"]*\"\\): ", "", why)
   paste(c(if (any(!other)) .dataset_part_ard_items_note(nm[!other], tr),
           sprintf(tr("The part %s stopped: %s"), ifelse(nzchar(nm[other]) & !is.na(nm[other]), nm[other], "(no name)"),
                   why[other]),
