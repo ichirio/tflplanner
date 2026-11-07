@@ -23,7 +23,21 @@
   orr = "Objective response",
   shift = "Shift table",
   summary = "Continuous and categorical variables by a column key",
-  vs_change = "A vital sign's change")
+  vs_change = "A vital sign's change",
+  ae_disc_soc_pt = "Adverse events leading to discontinuation by SOC and PT",
+  ae_eair = "Exposure-adjusted incidence rates by SOC and PT",
+  ae_ser_soc_pt = "Serious adverse events by SOC and PT",
+  lab_abnormal = "Laboratory abnormalities",
+  param_change = "Parameters' value and change",
+  pk_conc = "PK concentrations by time point",
+  stat_block = "Statistics from the study's ARD, a block a row",
+  forest_hr = "Hazard ratio by subgroup (forest plot)",
+  km = "Kaplan-Meier curves by group",
+  km_survival = "Kaplan-Meier survival curves with a risk table",
+  km_cumulative = "Cumulative incidence (1 - KM)",
+  mean_ci = "Mean by visit with its CI",
+  mean_se = "Mean by visit with its SE",
+  waterfall = "Waterfall plot")
 
 # The templates of a kind of report: name and kind
 .tpl_list <- function(kind) {
