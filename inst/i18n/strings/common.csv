@@ -2153,3 +2153,5 @@
 "arg-hint:The statistics to format, by their names: c(""mean"", ""sd"").","書式を適用する統計量。名前で指定：c(""mean"", ""sd"")。"
 "arg-hint:Their format: a number of decimals (2L), a format (""xx.xx"", ""xx.x%""), or a function (cards::label_round(2)).","その書式：小数の桁数（2L）、書式（""xx.xx""、""xx.x%""）、または関数（cards::label_round(2)）。"
 "arg-hint:Which rows get it, as an expression of the ARD's columns: group1_level == ""Drug X"" (default TRUE: all).","書式を適用する行。ARD の列の式で書く：group1_level == ""Drug X""（既定 TRUE：すべて）。"
+"The figure's own colours are not applied: its 'Colours by' (colour_by) is empty.","Figure 自身の色は使われません。Figure 全体の「色を割り当てる変数」（colour_by）が空です。"
+"The palette %s colours no groups: the figure's 'Colours by' (colour_by) is empty.","パレット %s の色はどの群にも割り当てられません。Figure 全体の「色を割り当てる変数」（colour_by）が空です。"
