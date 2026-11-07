@@ -550,7 +550,9 @@ app_ui <- function(lang = "en") {
               shiny::uiOutput("builder_ard_card"),
               result_tabs_ui(
               "table_right", lang = lang, selected = "result",
-              # (a template report's: the ARD its template makes)
+              # (a template report's ARD, made in steps of its own before the
+              # report's: its code, the result)
+              ard_code = shiny::tagList(shiny::uiOutput("tpl_ard_code_head"), code_view("tpl_ard_code", lang)),
               ard = shiny::uiOutput("tpl_ard_pane"),
               spec = shiny::tagList(
                 # (in part scope: one line -- the sheets are the table's)
@@ -564,8 +566,7 @@ app_ui <- function(lang = "en") {
                 do.call(bslib::navset_card_underline,
                         c(list(id = "table_sheet"),
                           lapply(setdiff(table_sheets(), "codelists"), sheet_panel))))),
-              code = shiny::tagList(shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_code_ard")),
-                                    code_view("program_table", lang),
+              code = shiny::tagList(code_view("program_table", lang),
                                     shiny::uiOutput("builder_code_jump"),
                                     shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_code_expanded"))),
               result = shiny::tagList(

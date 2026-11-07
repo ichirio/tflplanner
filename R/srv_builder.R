@@ -126,7 +126,6 @@
                                                code_fns = .tpl_code_fns(rv$p, id)),
                           error = function(e) list())
         shiny::tagList(
-          shiny::p(class = "small text-muted", t("No ARD yet: Update preview makes it.")),
           .plan_add_menu_ui("b_add_pick", .plan_add_menu(cards, made = made, template = TRUE),
                             lang = lang))
       })

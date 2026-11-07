@@ -50,6 +50,12 @@
     if (!is.null(pv$error)) {
       return(shiny::div(class = "small text-muted", pv$error))
     }
+    # an outdated ARD: one line, over the last table dimmed (if there is one)
+    if (isTRUE(pv$stale)) {
+      line <- shiny::div(class = "small text-warning mb-1", t("ARD outdated: Update preview"))
+      return(if (is.null(pv$pages)) line else
+        shiny::tagList(line, shiny::div(style = "opacity: .4", preview_html(pv$pages))))
+    }
     # in part scope: the page the part's rows start on, said and shown
     # (the pages are one under the other; the preview scrolls to it)
     pn <- bpart_name()
