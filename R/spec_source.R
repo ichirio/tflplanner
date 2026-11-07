@@ -340,6 +340,30 @@
   now
 }
 
+# "Keep my unsaved changes" over a conflict: `keep` is the study with the
+# session's value of each conflicting part, but the reports' spec is not a
+# part, so a template report whose sheets are the session's would be written
+# from them on the next save, its template and arguments lost.  Such a
+# report (in `mine` and in `now`, one of the conflicting `parts`' reports,
+# its spec different between the two) takes `mine`'s spec; a report that is
+# not a template report is left as it is.  `now` is the merged study.
+.keep_mine_outputs <- function(keep, mine, now, parts) {
+  p <- keep$planner
+  if (is.null(mine$planner$spec) || is.null(p$spec)) return(keep)
+  for (id in .changed_outputs(now, mine, parts)) {
+    o <- mine$planner$spec$outputs[[id]]
+    if (is.null(.tpl_of(mine$planner, id)) || is.null(now$planner$spec$outputs[[id]]) ||
+        identical(o, now$planner$spec$outputs[[id]])) next
+    p <- tryCatch(.spec_set_output(p, id, o), error = function(e) {
+      warning("The report ", id, "'s unsaved spec could not be kept: ",
+              conditionMessage(e), call. = FALSE)
+      p
+    })
+  }
+  keep$planner <- p
+  keep
+}
+
 # The parts named for people: "titles (sheet)", "report list", "figure F-1"
 .part_labels <- function(parts) {
   kind <- sub(":.*$", "", parts)
