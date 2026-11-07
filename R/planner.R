@@ -425,10 +425,12 @@ read_planner <- function(path) {
 #' @param x An `tflplanner`.
 #' @param output_id,from,to Report ids.
 #' @param description A short description shown in the report list.
-#' @param process_code A table's: R code that turns `ard` into `data`,
-#'   what [rtfreporter::table_plan()] is given: [rtfreporter::normalize_ard()]
-#'   and any rework after it (`mutate()` ...); `NA`: none, the table's
-#'   plan normalizes `ard` (`ard |> normalize_ard() |> table_plan()`).  A listing's: a rework of its `data`
+#' @param process_code A table's: its Rework, optional R that runs after
+#'   [rtfreporter::normalize_ard()] and before [rtfreporter::table_plan()].
+#'   It starts from `data`, the normalized ARD (`data <- ard |> normalize_ard()`,
+#'   with the table's arguments, is written before it), and leaves the
+#'   result in `data`, what the plan is given (`mutate()` ...); `NA`: none,
+#'   the table's plan normalizes `ard` (`ard |> normalize_ard() |> table_plan()`).  A listing's: a rework of its `data`
 #'   before it is sorted.  (A step that is the report's own code instead:
 #'   [set_step_code()].)
 #' @param type The report's type, one of `report_types()`; anything but
