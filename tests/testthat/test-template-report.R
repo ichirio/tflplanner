@@ -281,8 +281,6 @@ test_that("the Japanese says one word for post-baseline, and the tip has its \\n
   expect_true(tip %in% s$en)
   expect_match(tr(tip, "ja"), "\u3068\u5165\u529b\u3059\u308b\u3068\u6539\u884c\uff09$")
   expect_true(grepl("\\n", tr(tip, "ja"), fixed = TRUE))
-  # the old tip stays
-  expect_true("the header over each post-baseline category (`{col}`: the category)" %in% s$en)
   # the code-list copy dialog's button has its own text; the common Copy stays
   expect_identical(tr("Copy the lists", "ja"), "\u5199\u3059")
   expect_identical(tr("Copy", "ja"), "\u8907\u88fd")
