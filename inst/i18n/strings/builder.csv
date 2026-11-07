@@ -93,3 +93,4 @@
 "The part is on page %s.","部分は %s ページ目にあります。"
 "The part's rows print under the table: see the later pages.","部分の行は Table の下に印刷されます。後ろのページを見てください。"
 "The table's sheets; the part is in its plan_append content.","Table のシートです。部分は plan_append の content にあります。"
+"The part %s now reads a dataset: %s read the ARD and cannot run on it, so they were taken out of its items.","部分 %s のデータをデータセットにしたため、ARD を読む %s は動かせないので、部分の項目から外しました。"

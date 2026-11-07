@@ -414,3 +414,21 @@ test_that("a dataset part with items for an ARD is found, and the message names 
   expect_match(.dataset_part_ard_items_note(c("a", "b")), "part a, b ", fixed = TRUE)
   expect_match(.dataset_part_ard_items_note(NA_character_), "(no name)", fixed = TRUE)
 })
+
+test_that("a part switched to a dataset loses the items that read the ARD, and the line says which", {
+  it <- function(fn, ...) list(fn = fn, args = list(...))
+  content <- list(it("normalize_ard"), it("table_plan", cols = "SEX"),
+                  it("plan_cells", continuous = list(n = "{N}")),
+                  it("plan_stat_groups", n = "N"),
+                  it("plan_labels", SEX = "Sex"))
+  r <- .part_dataset_items_split(content)
+  expect_identical(r$dropped, c("normalize_ard", "plan_cells", "plan_stat_groups"))
+  expect_identical(vapply(r$content, function(z) z$fn, ""), c("table_plan", "plan_labels"))
+  # plan_cells with a `default` runs on a dataset: it stays
+  keep <- list(it("table_plan", cols = "SEX"), it("plan_cells", default = "{x}"))
+  expect_identical(.part_dataset_items_split(keep)$dropped, character())
+  expect_length(.part_dataset_items_split(keep)$content, 2L)
+  expect_length(.part_dataset_items_split(NULL)$content, 0L)
+  expect_match(.part_dataset_dropped_note("summary", r$dropped),
+               "The part summary now reads a dataset: normalize_ard, plan_cells, plan_stat_groups read the ARD", fixed = TRUE)
+})
