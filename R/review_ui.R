@@ -105,7 +105,12 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
       r <- shown()
       shiny::req(!is.null(r))
       where <- vapply(seq_len(nrow(r)), function(i) {
-        p <- c(r$sheet[i], r$row[i], r$field[i])
+        # (the scope word in the app's language: "review-scope:<word>" in the
+        # translations; as it is when there is none, as a sheet's name)
+        sc <- r$sheet[i]
+        k <- paste0("review-scope:", sc)
+        if (!identical(t(k), k)) sc <- t(k)
+        p <- c(sc, r$row[i], r$field[i])
         paste(p[nzchar(p)], collapse = " \u00b7 ")
       }, "")
       dot <- sprintf('<span class="%s" title="%s">\u25cf</span>',
@@ -128,7 +133,7 @@ review_server <- function(id, review, rows, jump, apply_fix, run_light, run_data
                                    autoWidth = FALSE,
                                    columnDefs = list(
                                      list(width = "1.2em", targets = 0),
-                                     list(width = "7em", targets = 1),
+                                     list(width = "9em", targets = 1),
                                      list(width = "16%", targets = 2),
                                      list(width = "38%", targets = 3),
                                      list(width = "28%", targets = 4),

@@ -206,7 +206,7 @@ test_that("the study review lists a figure's ARD problems as F04-F08, each with 
   expect_identical(.review_target(r, s$planner)$go, "ard")
   # in Japanese: the sentence translated, the value put in
   expect_identical(rv(s, "ja")$message,
-                   "T-14-2-2 \u306e ARD \u306f\u307e\u3060\u4f5c\u3089\u308c\u3066\u3044\u307e\u305b\u3093\u3002\u5148\u306b\u4f5c\u3063\u3066\u304f\u3060\u3055\u3044\uff08\u305d\u306e\u30b9\u30c6\u30c3\u30d7 2\uff09")
+                   "T-14-2-2 \u306e ARD \u306f\u307e\u3060\u4f5c\u3089\u308c\u3066\u3044\u307e\u305b\u3093\u3002\u5148\u306b\u4f5c\u3063\u3066\u304f\u3060\u3055\u3044\uff08\u305d\u306e\u624b\u9806 2\uff09")
   # no source: F05, by hand
   s0 <- s
   s0$planner <- set_fig_ard_source(s$planner, "F-14-2-3", NULL)
