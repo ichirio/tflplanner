@@ -327,7 +327,8 @@ fetch_ard <- function(study, output_id, timeout = 300,
     tryCatch({
       .rework_need_data(o$process_code)
       .rework_lines(p, output_id, ard_code, o$process_code)
-    }, error = function(e) sprintf("stop(%s)", .r_string(conditionMessage(e))))
+    }, error = function(e) sprintf("stop(%s)", .r_string(paste0(
+      "tflplanner: the definition of ", output_id, " does not hold: ", conditionMessage(e)))))
   } else if (!.makes_data(ard_code)) .normalize_line(p, output_id) else ""
   writeLines(enc2utf8(proc), f_proc, useBytes = TRUE)
   # the functions the programs call (programs/study_helpers.R's)
@@ -522,6 +523,13 @@ fetch_ard <- function(study, output_id, timeout = 300,
   m$hierarchy <- hier
   if (!is.null(v)) m$variables <- v[!v$variable %in% hier, , drop = FALSE]
   m
+}
+
+# Why a report's data step left no data, as the last fetch_ard() read it
+# (NULL: no error kept)
+ard_data_error <- function(study, output_id, home = tflplanner_home()) {
+  why <- tryCatch(ard_info(study, output_id, home)$error, error = function(e) NULL)
+  if (length(why) && !is.na(why[1L]) && nzchar(why[1L])) why[1L]
 }
 
 #' @rdname fetch_ard

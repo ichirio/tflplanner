@@ -695,7 +695,11 @@
     if (inherits(d, "error")) {
       return(list(id = id, error = paste(t("normalize_ard() stopped:"), conditionMessage(d))))
     }
-    if (is.null(d)) return(list(id = id, error = t("No data to show yet: Update preview makes this table's ARD.")))
+    if (is.null(d)) {
+      # (the data step ran and left no data: its error, as the program says it)
+      return(list(id = id, error = ard_data_error(rv$study, id) %||%
+                    t("No data to show yet: Update preview makes this table's ARD.")))
+    }
     tryCatch(keep(list(id = id, pages = preview_cached(rv$p, id, d))),
              error = function(e) list(id = id, error = conditionMessage(e)))
   })
