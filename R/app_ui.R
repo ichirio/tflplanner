@@ -574,7 +574,7 @@ app_ui <- function(lang = "en") {
                                     shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_code_expanded"))),
               result = shiny::tagList(
                 shiny::div(
-                  class = "d-flex justify-content-between small mb-1",
+                  class = "d-flex flex-wrap justify-content-between align-items-center gap-1 small mb-1",
                   shiny::span(t("The table as it will print"),
                               shiny::span(id = "builder_updating",
                                           class = "badge text-bg-warning ms-2 d-none",
