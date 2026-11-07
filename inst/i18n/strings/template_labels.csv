@@ -45,7 +45,7 @@
 "Group size label","投与群の例数のラベル"
 "Treatment group compared","比較する投与群"
 "Subgroup variables","部分集団の変数"
-"Group compared with reference","基準と比較する投与群"
+"Group compared with reference","対照群と比べる投与群"
 "Censoring variable","打ち切りの変数"
 "Event definition","事象の定義"
 "Y axis type","y 軸の種類"

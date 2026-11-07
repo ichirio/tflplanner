@@ -65,7 +65,7 @@
 "Fit to width","幅に合わせる"
 "Details: edit the sheets","詳細：シートを編集"
 "keep the data in the run folder","実行フォルダにデータを含める"
-"The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the run can be made again.","実行するプログラムが読むデータファイル（データカタログのもの：Table のデータセット、Listing・Figure のデータセット、取り込んだ ARD）を md5 付きで写します（data_manifest.csv）。コード・ログ・R とパッケージの版（session_info.txt）と合わせて、同じ実行をやり直せます。"
+"The data files the run's programs read (the data catalog's: each table's datasets, a listing's, a figure's, an ARD taken in), copied with their md5 (data_manifest.csv). With the code, the logs and the R and package versions (session_info.txt), the run can be made again.","実行するプログラムが読むデータファイル（データカタログのもの：Table のデータセット、Listing・Figure のデータセット、取り込んだ ARD）を md5 付きでコピーします（data_manifest.csv）。コード・ログ・R とパッケージの版（session_info.txt）と合わせて、同じ実行をやり直せます。"
 "Compare...","比べる…"
 "Rework","Rework"
 "Rework: usually blank (the standard one). Write code to change the data before the table is made.","Rework: ふつうは空欄（標準のもの）。Table を作る前にデータを変えるコードを書きます。"

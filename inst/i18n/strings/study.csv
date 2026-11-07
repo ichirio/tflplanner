@@ -192,7 +192,7 @@
 "The sample for the AI tab: a study made from its TOC, shells, ADaM, ADaM spec and SAP, filled into the AI tab's step 1 (no answers)","AI 連携用のサンプル：TOC・シェル・ADaM・ADaM の仕様・SAP から試験を作り、AI 連携タブの手順 1 に入れます（答えは入っていません）"
 "Makes the study now (its TOC and shells in docs/, the ADaM in data/adam, the SAP in ai/docs/) and opens it in the AI tab's step 1 with them filled in.","試験をこの場で作り（TOC とシェルは docs/、ADaM は data/adam、SAP は ai/docs/ に置きます）、AI 連携タブの手順 1 を、それらを入れた状態で開きます。"
 "Making the study from the AI sample ...","AI 連携用のサンプルから試験を作っています…"
-"Created %s from the AI sample; the AI tab's step 1 is filled in: press Read and check.","AI 連携用のサンプルから %s を作りました。AI 連携タブの手順 1 に材料を入れてあります。「読み取って確かめる」を押してください。"
+"Created %s from the AI sample; the AI tab's step 1 is filled in: press Read and check.","AI 連携用のサンプルから %s を作りました。AI 連携タブの手順 1 に材料を入れてあります。「ドライラン」を押してください。"
 "The sample for the AI tab...","AI 連携用のサンプル…"
 "Copy the message","メッセージをコピー"
 "Copied","コピーしました"
