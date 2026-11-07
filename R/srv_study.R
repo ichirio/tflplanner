@@ -878,7 +878,8 @@
     rv$studies_ver
     shiny::p(class = "small text-muted mb-1",
              t("New study folders go to"), ": ",
-             shiny::code(tflplanner_config()$studies_root %||% ""))
+             # (the one in use: the default place when no setting is saved yet)
+             shiny::code(studies_root()))
   })
   # the study the list points at: the selected row, else the open study
   shown_study <- shiny::reactive({
