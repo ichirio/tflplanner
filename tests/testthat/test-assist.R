@@ -159,11 +159,15 @@ test_that("fetch_ard() runs the data part from the study folder", {
   expect_equal(m$variables$levels, "M | F")                # the factor
   expect_equal(m$variables$label, "Sex at birth")
 
-  s$planner$outputs$process_code <- "stop('rework failed')"
+  s$planner$outputs$process_code <- "data <- stop('rework failed')"
   m <- fetch_ard(s, "DM")
   expect_equal(m$source, "ard")
   expect_match(m$error, "rework failed")
   expect_equal(m$variables$variable, "SEX")
+  # a Rework that leaves no `data` is the error, as the program says it
+  s$planner$outputs$process_code <- "ard <- ard"
+  m <- fetch_ard(s, "DM")
+  expect_match(m$error, "the data.steps leave no `data`", fixed = TRUE)
 
   s$planner <- set_step_code(s$planner, "DM", "data", "stop('no data')")
   expect_error(fetch_ard(s, "DM"), "no data")

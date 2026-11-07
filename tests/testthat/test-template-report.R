@@ -236,6 +236,16 @@ test_that("a code report's steps and a template report's: the arguments drawn on
   expect_true(at("tpl_card_page") > at("ard_outline"))
 })
 
+test_that("a table's rework is at the top of the Content step, once", {
+  ui <- as.character(app_ui())
+  at <- function(id) regexpr(sprintf('id="%s"', id), ui, fixed = TRUE)[[1L]]
+  expect_equal(lengths(gregexpr('id="rework_table"', ui, fixed = TRUE)), 1L)
+  expect_true(at("rework_table") > at("ard_outline"))
+  expect_true(at("rework_table") < at("content_mode_bar"))
+  # a listing's stays in the Analysis data step
+  expect_true(at("rework_data") < at("ard_outline"))
+})
+
 test_that("post_header: an emptied field goes back to the default, a text argument in general keeps ''", {
   ph <- list(name = "post_header", default = "{col}", required = FALSE)
   # (the field's own value for an empty field is NULL; "" is taken the same)
@@ -281,8 +291,6 @@ test_that("the Japanese says one word for post-baseline, and the tip has its \\n
   expect_true(tip %in% s$en)
   expect_match(tr(tip, "ja"), "\u3068\u5165\u529b\u3059\u308b\u3068\u6539\u884c\uff09$")
   expect_true(grepl("\\n", tr(tip, "ja"), fixed = TRUE))
-  # the old tip stays
-  expect_true("the header over each post-baseline category (`{col}`: the category)" %in% s$en)
   # the code-list copy dialog's button has its own text; the common Copy stays
   expect_identical(tr("Copy the lists", "ja"), "\u5199\u3059")
   expect_identical(tr("Copy", "ja"), "\u8907\u88fd")

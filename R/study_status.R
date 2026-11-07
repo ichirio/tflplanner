@@ -62,9 +62,7 @@ study_status <- function(study) {
     pstate <- .program_state(p, id, prog)
     t_rtf <- .mtime(rtf)
     t_log <- .mtime(log)
-    failed <- !is.na(t_log) && (is.na(t_rtf) || t_log > t_rtf) &&
-      any(grepl("^Error|Execution halted",
-                readLines(log, warn = FALSE, encoding = "UTF-8")))
+    failed <- !is.na(t_log) && (is.na(t_rtf) || t_log > t_rtf) && .log_failed(log)
     k <- match(id, p$outputs$output_id)
     why <- c(
       if (isTRUE(.program_time(prog, root) > t_rtf)) "program",

@@ -542,6 +542,10 @@ $(document).on('shiny:connected', function() {
     $('#report_head').toggleClass('rp-stale', !!want && h.length > 0 && h.attr('data-rp-head') !== want);
   }
   $(document).on('shiny:value', function(e) { if (e.name === 'report_head') setTimeout(headCheck, 0); });
+  // (a card the server says is as drawn: left as it is, with the focus in it)
+  $(document).on('shiny:value', function(e) {
+    if (/^tpl_card/.test(e.name) && e.value && /rp-keep/.test(e.value.html || '')) e.preventDefault();
+  });
   document.body.setAttribute('data-loading', $('.rp-report-loading').first().text() || 'Loading ...');
   // the two ARD tabs of a template report: greyed out and not selectable
   // when it makes no ARD (a click, the keys, do nothing); one selected gives
@@ -793,4 +797,14 @@ $(document).on('shiny:connected', function() {
   if (is.null(o) || is.null(o$template)) stop(sprintf("%s is not a template report.", id), call. = FALSE)
   b <- tflspec::tfl_template_to_spec(o, sp$study)
   .spec_set_output(p, id, b)
+}
+
+# A value a field says that is not its current one but is one a write of it
+# replaced within `window` seconds: a field drawn from an older card saying
+# its old value back, not an edit.  `past`: data frame of v (the values) and
+# t (their times, seconds); `val`, `now` likewise.  (A write's say-back came
+# 2-6 s after it when measured; 15 s is the margin.)
+.tpl_stale_say <- function(val, past, now, window = 15) {
+  if (is.null(past) || !nrow(past)) return(FALSE)
+  any(past$v == val & now - past$t <= window)
 }

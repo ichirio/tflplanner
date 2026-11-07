@@ -683,7 +683,12 @@
         if (!length(objs)) {
           return(list(id = id, error = t("No data to show yet: Update preview makes this table's ARD.")))
         }
-        keep(list(id = id, pages = .preview_content_pages(rv$p, id, objs)))
+        pages <- .preview_content_pages(rv$p, id, objs)
+        # (a part the table is shown without: said above it)
+        dp <- attr(pages, "dataset_parts")
+        keep(list(id = id, pages = pages,
+                  note = if (length(dp)) paste(.dataset_part_ard_items_note(dp, t),
+                                               t("The table is shown without it."))))
       }, error = function(e) list(id = id, error = conditionMessage(e))))
     }
     d <- tryCatch(preview_data(rv$p, id), error = function(e) e)
