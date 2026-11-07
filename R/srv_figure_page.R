@@ -270,9 +270,9 @@
         "process_code",
         with_tip(t("Rework"),
                  paste(t("Rework: usually blank (the standard one). Write code to change the data before the table is made."),
-                       sprintf(t("A table: make `data` from `ard` (normalize_ard(), then mutate() ...); blank = the company template (normalize). A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step %s or %s.)"), .step_no("ard"), .step_no("content")))),
+                       sprintf(t("A table: optional R that runs after normalize_ard(), before table_plan(). It starts from `data`, the normalized ARD, and leaves the result in `data`. A listing: change `data` after its condition, before its order. (A whole step of your own code: R program at the top of step %s or %s.)"), .step_no("ard"), .step_no("content")))),
         value = if (length(v) && !is.na(v)) v else "", rows = 5, width = "100%",
-        resize = "vertical", placeholder = "data <- normalize_ard(ard)"))
+        resize = "vertical", placeholder = "data <- data |> dplyr::mutate(...)"))
   })
   output$rework_table <- rework_ui("table")
   output$rework_data <- rework_ui("listing")
