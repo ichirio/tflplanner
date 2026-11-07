@@ -215,7 +215,7 @@
     }
     # the variables' headings moved from the code lists: said once
     if (!is.null(attr(s$planner, "moved_headings"))) {
-      shiny::showNotification(t(.moved_headings_msg), type = "message", duration = NULL)
+      shiny::showNotification(sprintf(t(.moved_headings_msg), .step_no("content")), type = "message", duration = NULL)
     }
     # the definition files changed outside tflplanner (#274): taken in, or
     # not readable (the study open as last saved, no save until resolved)

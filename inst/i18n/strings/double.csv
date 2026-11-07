@@ -2,7 +2,7 @@
 "Rows per page","1 ページの行数"
 "Condition (R)","条件 (R)"
 "Columns, in order","列（この順で表示）"
-"vars: variables stacked in the column (| between them); label: \n breaks the header; width: characters; collapse_repeats: print a repeated value once.","vars：列に積み重ねる変数（| 区切り）、label：\\n で見出しを改行、width：文字数、collapse_repeats：繰り返す値を 1 回だけ表示。"
+"vars: variables stacked in the column (| between them); label: \n breaks the header; width: characters; collapse_repeats: print a repeated value once.","vars：列に積み重ねる変数（| 区切り）、label：\n で見出しを改行、width：文字数、collapse_repeats：繰り返す値を 1 回だけ表示。"
 "Choose a Listing report","Listing の帳票を選んでください"
 "Preview the listing to see its first pages with the data.","Listing をプレビューすると、実データで最初のページを表示します。"
 "Choose a row to see its log in the latest official run.","行を選ぶと最新の正式実行でのログを表示します。"

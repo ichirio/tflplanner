@@ -403,7 +403,7 @@ standard_codelists <- function(sets = NULL, home = tflplanner_home()) {
 
 .moved_headings_msg <- paste(
   "The code lists' rows of `variable` (the variables' headings) are the table's labels now",
-  "(step 2, a variable's label): moved there.  Save the study to keep it.")
+  "(step %s, a variable's label): moved there.  Save the study to keep it.")
 
 .old_format_msg <- paste(
   "This study is in an old format: its analysis data and code lists are the whole study's, not a report's.",
