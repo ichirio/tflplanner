@@ -531,7 +531,7 @@ test_that("the ARD preview, the form as drawn and its other arguments leave the 
     shiny::testServer(server_for("SAMPLE-01"), {
       session$setInputs(target = id, nav = "make", step = "content", content_nav = "content",
                         table_nav = "builder")
-      session$setInputs(fetch3 = 1)
+      session$setInputs(b_preview = 1)
       session$elapse(2000)
       expect_false(session$userData$dirty())
       bf <- session$userData$bform

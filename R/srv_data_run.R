@@ -490,11 +490,13 @@
                     d = st,
                     f = ifelse(d$code, "\u2713", ""),
                     f2 = ifelse(d$data, "\u2713", ""),
-                    # the programs left out, the first few when many
+                    # the programs left out (a report leaves out its ARD program and
+                    # its report program: more of them than the reports of the
+                    # count above), the first few when many, with what is counted
                     g = vapply(strsplit(d$excluded, ", ", fixed = TRUE), function(x) {
                       x <- basename(x)
                       if (length(x) > 4L) paste0(paste(x[1:3], collapse = ", "),
-                                                 sprintf(t(", ... (%d)"), length(x)))
+                                                 sprintf(t(", ... (%d programs)"), length(x)))
                       else paste(x, collapse = ", ")
                     }, ""),
                     h = esc(d$set),

@@ -287,7 +287,10 @@
     shiny::req(!is.null(id))
     s <- rv$study
     s$planner <- rv$p
-    uc_res(guarded(preview_code(s, id)))
+    # (a note from an earlier run, "no code yet", is gone once it has run)
+    res <- guarded(preview_code(s, id), note_id = "uc_run_error", duration = 6)
+    if (!is.null(res)) shiny::removeNotification("uc_run_error")
+    uc_res(res)
   }
   shiny::observeEvent(input$dc_run, uc_run())
   shiny::observeEvent(input$cc_run, uc_run())

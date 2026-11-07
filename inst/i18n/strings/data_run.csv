@@ -45,6 +45,7 @@
 "Choose a report set first.","先に帳票セットを選んでください。"
 "(not the report set %s any more: the run has no name)","（帳票セット %s とは違います：名前なしの実行になります）"
 ", ... (%d)","、…（%d 件）"
+", ... (%d programs)","、…（プログラム %d 件）"
 "The run's programs read no data file of the data catalog.","実行するプログラムが読むデータカタログのファイルはありません。"
 "Data kept: %d files, %s.","含めるデータ：%d ファイル、%s。"
 "Over %s: every run keeps its own copy, so the runs folder grows by this much each time.","%s を超えます。実行ごとに写しを持つので、runs フォルダは毎回この分だけ大きくなります。"
