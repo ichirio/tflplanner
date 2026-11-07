@@ -37,7 +37,8 @@
   km_cumulative = "Cumulative incidence (1 - KM)",
   mean_ci = "Mean by visit with its CI",
   mean_se = "Mean by visit with its SE",
-  waterfall = "Waterfall plot")
+  waterfall = "Waterfall plot",
+  ancova = "Analysis of covariance (ANCOVA) of a change")
 
 # The templates of a kind of report: name and kind
 .tpl_list <- function(kind) {
