@@ -369,23 +369,53 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
       any(vapply(r$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
     if (!own && !is.null(objects$ard)) objects$ard else objects
   }
-  # A part that reads a dataset with items for an ARD stops the program as
-  # it stops here (normalize_ard() reads cards): the table is shown without
-  # that part, and the parts' names said (`dataset_parts`), when it then runs
+  # A part that stops the table (whatever its error: items for an ARD on a
+  # dataset, a source with no statistics to read, ...) stops the program as
+  # it stops here: the table is shown without it when it then runs, the
+  # parts' names said (`dataset_parts`) with why (`part_errors`: NA for a
+  # dataset part with items for an ARD, whose note says it)
   dropped <- character()
-  plan <- tryCatch(tflspec::tfl_content_run(r, objects_for(r)), error = function(e) {
-    bad <- .dataset_parts_with_ard_items(r$content)
+  why_dropped <- character()
+  # (the plan and its pages: a part's source with no statistics to read stops
+  # at plan_apply(), not when the plan is made)
+  run_pages <- function(r) {
+    plan <- tflspec::tfl_content_run(r, objects_for(r))
+    list(plan = plan, res = suppressMessages(rtfreporter::plan_apply(plan)))
+  }
+  made <- tryCatch(run_pages(r), error = function(e) {
+    parts <- which(vapply(r$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
+    if (!length(parts)) stop(e)
+    ard_items <- .dataset_parts_with_ard_items(r$content)
+    run_with <- function(keep) {
+      r2 <- r
+      r2$content <- r$content[sort(c(setdiff(seq_along(r$content), parts), keep))]
+      tryCatch(run_pages(r2), error = function(e2) e2)
+    }
+    pname <- function(i) r$content[[i]]$args$name %||% NA_character_
+    # (the table without any part must run: else the parts are not the cause)
+    base <- run_with(integer())
+    if (inherits(base, "error")) {
+      if (!length(ard_items)) stop(e)
+      stop(paste(.dataset_part_ard_items_note(vapply(ard_items, pname, "")),
+                 conditionMessage(base)), call. = FALSE)
+    }
+    # (each part alone with the table: the ones that stop it)
+    alone <- lapply(parts, run_with)
+    bad <- parts[vapply(alone, inherits, NA, "error")]
     if (!length(bad)) stop(e)
-    nm <- vapply(r$content[bad], function(it) it$args$name %||% NA_character_, "")
-    r2 <- r
-    r2$content <- r$content[-bad]
-    plan2 <- tryCatch(tflspec::tfl_content_run(r2, objects_for(r2)), error = function(e2) {
-      stop(paste(.dataset_part_ard_items_note(nm), conditionMessage(e2)), call. = FALSE)
-    })
-    dropped <<- nm
-    plan2
+    made2 <- run_with(setdiff(parts, bad))
+    if (inherits(made2, "error")) {
+      if (!length(ard_items)) stop(made2)
+      stop(paste(.dataset_part_ard_items_note(vapply(ard_items, pname, "")),
+                 conditionMessage(made2)), call. = FALSE)
+    }
+    dropped <<- vapply(bad, pname, "")
+    why_dropped <<- vapply(alone[match(bad, parts)], conditionMessage, "")
+    why_dropped[bad %in% ard_items] <<- NA_character_
+    made2
   })
-  res <- suppressMessages(rtfreporter::plan_apply(plan))
+  plan <- made$plan
+  res <- made$res
   if (is.data.frame(res)) {
     res <- list(structure(list(data = res, col_header = list(names(res)),
                                blank_rows = integer()),
@@ -399,7 +429,10 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   })
   attr(res, "header_tokens") <- tryCatch(rtfreporter::plan_header_tokens(plan),
                                          error = function(e) NULL)
-  if (length(dropped)) attr(res, "dataset_parts") <- dropped
+  if (length(dropped)) {
+    attr(res, "dataset_parts") <- dropped
+    attr(res, "part_errors") <- stats::setNames(why_dropped, dropped)
+  }
   # where each part's rows start (the cut pages do not say which rows are a
   # part's; the table before it is cut does): .part_start_page()
   attr(res, "part_first") <- .part_first_rows(
