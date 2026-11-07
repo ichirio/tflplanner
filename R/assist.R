@@ -321,8 +321,14 @@ fetch_ard <- function(study, output_id, timeout = 300,
                         .code_block(ard_code))), f_ard, useBytes = TRUE)
   # (the normalization its program has: a hierarchical analysis's terms
   # and the any-event row, so the builder sees the hierarchy)
-  proc <- if (!is.na(o$process_code)) .code_block(o$process_code) else
-    if (!.makes_data(ard_code)) .normalize_line(p, output_id) else ""
+  # (a Rework after the normalization, as the program has it; one that
+  # leaves no `data` is the error the builder shows, as a run's)
+  proc <- if (!is.na(o$process_code)) {
+    tryCatch({
+      .rework_need_data(o$process_code)
+      .rework_lines(p, output_id, ard_code, o$process_code)
+    }, error = function(e) sprintf("stop(%s)", .r_string(conditionMessage(e))))
+  } else if (!.makes_data(ard_code)) .normalize_line(p, output_id) else ""
   writeLines(enc2utf8(proc), f_proc, useBytes = TRUE)
   # the functions the programs call (programs/study_helpers.R's)
   f_helpers <- file.path(tmp, "study_helpers.R")
