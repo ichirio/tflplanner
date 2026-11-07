@@ -312,6 +312,24 @@
   NA_integer_
 }
 
+# The parts that read a dataset but whose items are for an ARD: normalize_ard()
+# reads cards (context, stat_name), not a dataset, so the program stops there
+# too.  `content`: the report's items; the positions of those plan_append items.
+.dataset_parts_with_ard_items <- function(content) {
+  which(vapply(content %||% list(), function(it) {
+    identical(it$fn, "plan_append") &&
+      identical(it$args$data$source, "dataset") &&
+      any(vapply(it$args$content %||% list(), function(z) identical(z$fn, "normalize_ard"), NA))
+  }, NA))
+}
+
+# What to say of such a part (`name`: the parts' names)
+.dataset_part_ard_items_note <- function(name, tr = function(x) x) {
+  name <- ifelse(is.na(name) | !nzchar(name), "(no name)", name)
+  sprintf(tr("The part %s reads a dataset, but its items are for an ARD: normalize_ard reads cards, not a dataset. Take normalize_ard (and the items for cards) out of its items, or set its data back to the report's ARD."),
+          paste(name, collapse = ", "))
+}
+
 # The one line over the preview in part scope: the page the part's rows are
 # on (`data-part-page`: the page scrolls to it when the preview is drawn)
 .part_page_note <- function(pages, part, lang = "en") {

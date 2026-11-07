@@ -2153,4 +2153,3 @@
 "arg-hint:The statistics to format, by their names: c(""mean"", ""sd"").","書式を適用する統計量。名前で指定：c(""mean"", ""sd"")。"
 "arg-hint:Their format: a number of decimals (2L), a format (""xx.xx"", ""xx.x%""), or a function (cards::label_round(2)).","その書式：小数の桁数（2L）、書式（""xx.xx""、""xx.x%""）、または関数（cards::label_round(2)）。"
 "arg-hint:Which rows get it, as an expression of the ARD's columns: group1_level == ""Drug X"" (default TRUE: all).","書式を適用する行。ARD の列の式で書く：group1_level == ""Drug X""（既定 TRUE：すべて）。"
-"what prints in place of the SD when a group has no SD (n = 1): {mean} (<sd_missing>); """" prints the mean alone; no effect when `cells` is given","群に SD がないとき（n = 1）に SD の代わりに出す文字。形は {mean} (<sd_missing>)。"""" は平均だけを出す。`cells` を指定すると効かない。"

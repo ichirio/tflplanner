@@ -104,6 +104,11 @@ set_fig_ard_source <- function(x, output_id, source = NULL) {
   if (identical(src, "own")) return(list(kind = "own", id = output_id))
   if (startsWith(src, "table:")) return(list(kind = "table", id = sub("^table:", "", src)))
   if (startsWith(src, "import:")) return(list(kind = "import", file = sub("^import:", "", src)))
+  # a template figure with analyses of its own (forest_hr): the ARD it
+  # makes, though its report row says nothing (derived here, not saved)
+  if (!is.null(.tpl_of(x, output_id)) && NROW(ard_rows(x, "analyses", output_id))) {
+    return(list(kind = "own", id = output_id))
+  }
   list(kind = "none")
 }
 

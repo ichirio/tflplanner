@@ -59,12 +59,15 @@
     # in part scope: the page the part's rows start on, said and shown
     # (the pages are one under the other; the preview scrolls to it)
     pn <- bpart_name()
-    if (nzchar(pn) && identical(bpart()$id, current())) {
+    # (a part the table is shown without: said above the pages)
+    note <- if (!is.null(pv$note)) shiny::div(class = "small text-danger mb-1 rp-pv-note", pv$note)
+    if (nzchar(pn) && identical(bpart()$id, current()) &&
+        !pn %in% attr(pv$pages, "dataset_parts")) {
       at <- .part_start_page(pv$pages, pn)
-      return(shiny::tagList(.part_page_note(pv$pages, pn, lang),
+      return(shiny::tagList(note, .part_page_note(pv$pages, pn, lang),
                             preview_html(pv$pages, max_pages = max(3L, at, na.rm = TRUE))))
     }
-    preview_html(pv$pages)
+    shiny::tagList(note, preview_html(pv$pages))
   })
   output$part_spec_note <- shiny::renderUI({
     pn <- bpart_name()
