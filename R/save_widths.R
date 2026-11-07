@@ -96,7 +96,8 @@
   for (id in ids) {
     o <- tryCatch(tflspec::tfl_read_output(path_of(id)), error = function(e) NULL)
     if (!inherits(o, "tfl_output") || identical(o, p$spec$outputs[[id]])) next
-    p <- .spec_set_output(p, id, o, content_only = TRUE)
+    # (a listing's columns are in the lf sheets, which only the whole bridge reads)
+    p <- .spec_set_output(p, id, o, content_only = !identical(o$kind, "listing"))
   }
   p
 }

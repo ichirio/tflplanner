@@ -394,3 +394,23 @@ test_that("the preview reads the study's own study_helpers.R, and says when it s
   r <- .preview_records(s$planner, "T-14-1-2", s$path)
   expect_gt(nrow(r[[1L]]), 0L)
 })
+
+test_that("a dataset part with items for an ARD is found, and the message names it", {
+  part <- function(name, source, fns) {
+    list(fn = "plan_append", args = list(
+      name = name, data = list(source = source),
+      content = lapply(fns, function(f) list(fn = f, args = list()))))
+  }
+  content <- list(list(fn = "table_plan", args = list()),
+                  part("summary", "dataset", c("normalize_ard", "table_plan")),
+                  part("by_ard", "ard", c("normalize_ard", "table_plan")),
+                  part("plain", "dataset", "table_plan"))
+  expect_identical(.dataset_parts_with_ard_items(content), 2L)
+  expect_identical(.dataset_parts_with_ard_items(NULL), integer())
+  msg <- .dataset_part_ard_items_note("summary")
+  expect_match(msg, "The part summary reads a dataset, but its items are for an ARD", fixed = TRUE)
+  expect_match(msg, "normalize_ard", fixed = TRUE)
+  expect_match(msg, "ARD", fixed = TRUE)
+  expect_match(.dataset_part_ard_items_note(c("a", "b")), "part a, b ", fixed = TRUE)
+  expect_match(.dataset_part_ard_items_note(NA_character_), "(no name)", fixed = TRUE)
+})

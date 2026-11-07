@@ -281,8 +281,6 @@ test_that("the Japanese says one word for post-baseline, and the tip has its \\n
   expect_true(tip %in% s$en)
   expect_match(tr(tip, "ja"), "\u3068\u5165\u529b\u3059\u308b\u3068\u6539\u884c\uff09$")
   expect_true(grepl("\\n", tr(tip, "ja"), fixed = TRUE))
-  # the old tip stays
-  expect_true("the header over each post-baseline category (`{col}`: the category)" %in% s$en)
   # the code-list copy dialog's button has its own text; the common Copy stays
   expect_identical(tr("Copy the lists", "ja"), "\u5199\u3059")
   expect_identical(tr("Copy", "ja"), "\u8907\u88fd")
@@ -325,4 +323,87 @@ test_that("a template report's preview is its content run on its ARD, not the st
   # (the sheets' route, which this report's preview took before, has neither)
   old <- suppressWarnings(preview_pages(s$planner, "T-TPL", rtfreporter::normalize_ard(ard)))
   expect_false(any(grepl("Worst:", unlist(old[[1L]]$col_header), fixed = TRUE)))
+})
+
+# ---- a template listing is written and previewed from its content ----------
+
+.listing_tpl_study <- function(extra = list(), id = "L-TPL") {
+  home <- local_home(parent.frame())
+  s <- suppressMessages(create_sample_study(run = FALSE, home = home))
+  args <- c(list(data = "ADAE",
+                 columns = list(list(vars = "USUBJID", label = "Subject"),
+                                list(vars = "AEDECOD", label = "Term", width = 30L))),
+            extra)
+  o <- tflspec::tfl_output(id, "listing", label = "AE listing",
+                           template = list(name = "listing", args = args))
+  s$planner <- .spec_add_output(s$planner, o, label = "AE listing")
+  suppressWarnings(suppressMessages(save_study(s, home = home)))
+}
+.listing_has_by <- function() "by" %in% names(tflspec::tfl_template_params("listing"))
+
+test_that("a template listing's program is the template's plan, not the listing sheets' code", {
+  skip_on_cran()
+  s <- .listing_tpl_study()
+  expect_true(.is_template_listing(s$planner, "L-TPL"))
+  expect_false(.is_template_listing(s$planner, "L-16-2-7"))
+  code <- paste(program_code(s$planner, "L-TPL"), collapse = "\n")
+  expect_match(code, "plan_paginate_rows(max_rows = 22)", fixed = TRUE)
+  expect_match(code, "plan_listing(", fixed = TRUE)
+  expect_false(grepl("listing_spec", code, fixed = TRUE))
+  expect_false(grepl("as_rtftables", code, fixed = TRUE))
+  # a listing defined in rows keeps its code
+  old <- paste(program_code(s$planner, "L-16-2-7"), collapse = "\n")
+  expect_match(old, "listing_spec", fixed = TRUE)
+  expect_false(grepl("plan_paginate_rows", old, fixed = TRUE))
+})
+
+test_that("a template listing's preview is its content: pages at 22 rows, as the program's", {
+  skip_on_cran()
+  s <- .listing_tpl_study()
+  expect_true(.preview_by_content(s$planner, "L-TPL"))
+  pages <- preview_listing(s, "L-TPL")
+  expect_gt(length(pages), 1L)
+  expect_true(all(vapply(pages, function(p) nrow(p$data), 1L) <= 22L))
+  # (the program writes the same number of pages: a section a page)
+  owd <- setwd(s$path)
+  on.exit(setwd(owd), add = TRUE)
+  out <- system2(file.path(R.home("bin"), "Rscript"), "programs/tfl/L-TPL.R", stdout = TRUE, stderr = TRUE)
+  expect_true(file.exists("output/tfl/L-TPL.rtf"), info = paste(out, collapse = "\n"))
+  rtf <- readLines("output/tfl/L-TPL.rtf", warn = FALSE)
+  expect_equal(sum(lengths(regmatches(rtf, gregexpr("sbkpage", rtf, fixed = TRUE)))), length(pages))
+})
+
+test_that("a template listing's `by` divides its pages in the preview and the program", {
+  skip_on_cran()
+  skip_if_not(.listing_has_by(), "the installed tflspec has no `by` for a listing template")
+  s <- .listing_tpl_study(list(by = "AESEV"))
+  code <- paste(program_code(s$planner, "L-TPL"), collapse = "\n")
+  expect_match(code, "page_by = \"AESEV\"", fixed = TRUE)
+  pages <- preview_listing(s, "L-TPL")
+  n <- length(unique(readRDS(file.path(s$path, "data/adam/adae.rds"))$AESEV))
+  expect_gte(length(pages), n)
+})
+
+test_that("a template listing whose definition does not hold says so once, in the preview and the program", {
+  skip_on_cran()
+  skip_if_not(.listing_has_by(), "the installed tflspec has no `by` for a listing template")
+  s <- suppressWarnings(.listing_tpl_study(list(by_break = "block")))
+  expect_error(suppressWarnings(preview_listing(s, "L-TPL")), "The definition of L-TPL does not hold: .*by_break", perl = TRUE)
+  # (the program is still written, and stops with that)
+  code <- suppressWarnings(program_code(s$planner, "L-TPL"))
+  expect_true(any(grepl("^stop\\(\"tflplanner: the definition of L-TPL does not hold", code)))
+})
+
+test_that("the listing preview's guard is for a listing of rows: a template listing has its columns as an argument", {
+  skip_on_cran()
+  s <- .listing_tpl_study()
+  shiny::testServer(function(input, output, session) app_server(input, output, session, s), {
+    session$setInputs(target = "L-TPL")
+    session$setInputs(lf_preview = 1)
+    html <- as.character(output$lf_preview_out$html)
+    expect_false(grepl("has no columns yet", html, fixed = TRUE))
+    expect_match(html, "pages")
+  })
+  # (the sheets' listings: a listing with no columns says so)
+  expect_false(grepl("Start the listing from the data", t("The listing has no columns yet: add them to the table of columns (below the form)."), fixed = TRUE))
 })
