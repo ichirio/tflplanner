@@ -576,13 +576,8 @@ app_ui <- function(lang = "en") {
                               shiny::span(id = "builder_updating",
                                           class = "badge text-bg-warning ms-2 d-none",
                                           t("Updating ..."))),
-                  # (the same Update preview as the other steps', here too:
-                  # a template's step 1 has no other)
+                  # (Update preview is the ARD card's, above the tabs)
                   shiny::div(class = "d-flex gap-2 align-items-center",
-                             # (a template report has the ARD card's, above)
-                             shiny::span(class = "rp-code-only",
-                                         .btn("result_fetch", t("Update preview"),
-                                              class = "btn-sm btn-outline-primary py-0")),
                              shiny::uiOutput("builder_pages", inline = TRUE))),
                 shiny::uiOutput("builder_preview"))))))),
       shiny::conditionalPanel(
