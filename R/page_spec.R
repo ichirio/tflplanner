@@ -485,7 +485,7 @@
 # ---- extends and the patterns ---------------------------------------------
 
 # A report's page pattern (NA or "Standard": none): its `extends:` with the
-# pattern put first, in place of the one it had
+# pattern in place of the one it had (put first when it had none)
 .pgs_set_pattern <- function(p, id, pattern) {
   if (!is.na(pattern) && identical(pattern, "Standard")) pattern <- NA_character_
   sp <- .pgs_spec(p)
@@ -497,8 +497,14 @@
   ch <- o$extends
   if (identical(ch, "none")) ch <- character()
   had <- grep("^patterns/", ch)
-  rest <- if (length(had)) ch[-had[1L]] else ch
-  new <- c(if (!is.na(pattern)) paste0("patterns/", pattern), rest)
+  # (the chain's pattern is replaced where it stands, so the order of the
+  # layers stays: [defaults, patterns/a] with b is [defaults, patterns/b])
+  new <- if (length(had) && !is.na(pattern)) {
+    replace(ch, had[1L], paste0("patterns/", pattern))
+  } else {
+    c(if (!is.na(pattern)) paste0("patterns/", pattern),
+      if (length(had)) ch[-had[1L]] else ch)
+  }
   if (!length(new)) new <- if (identical(o$extends, "none")) "none" else character()
   if (identical(as.character(o$extends %||% character()), new)) return(p)
   o["extends"] <- list(if (length(new)) new)

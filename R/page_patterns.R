@@ -57,7 +57,47 @@ set_report_pattern <- function(x, output_id, pattern) {
   if (!is.na(pattern) && !pattern %in% page_patterns(x)) {
     stop("No page pattern '", pattern, "'.", call. = FALSE)
   }
-  .set_row_value(x, "report", "pattern", pattern, output_id)
+  # a report with an `extends` cell (tflspec's report sheet): the cell is
+  # rewritten with the pattern, so the rest of its chain stays
+  cell <- .extends_cell_for(x, output_id, pattern)
+  # (no pattern chosen but a second one in the chain: that one is now the
+  # first, and the `pattern` cell names it, as tflspec requires)
+  if (!is.null(cell) && !is.na(cell$pattern)) pattern <- cell$pattern
+  x <- .set_row_value(x, "report", "pattern", pattern, output_id)
+  if (!is.null(cell)) x <- .set_row_value(x, "report", "extends", cell$value, output_id)
+  x
+}
+
+# The `extends` cell of a report once its pattern is `pattern` (NA: none):
+# NULL when the sheet has no such column or the report's cell is blank (the
+# cell is left alone); else list(value =, pattern =): value NA for a blank
+# cell, pattern the one the `pattern` cell names (NA: none).
+#  - the chain's first pattern token is replaced, or taken out for no
+#    pattern (tflspec reads the first one as the `pattern` cell's);
+#  - a chain with no pattern: `none` becomes the pattern alone, any other
+#    gets it first (what the pattern cell alone reads back as);
+#  - a chain that is what the `pattern` cell alone reads back as, or empty,
+#    is a blank cell (tflspec writes it blank).
+.extends_cell_for <- function(x, output_id, pattern) {
+  d <- x$sheets$report
+  if (is.null(d$extends)) return(NULL)
+  v <- d$extends[!is.na(d$output_id) & d$output_id == output_id]
+  v <- v[!is.na(v) & nzchar(trimws(v))]
+  if (!length(v)) return(NULL)
+  chain <- trimws(strsplit(v[1L], "|", fixed = TRUE)[[1L]])
+  chain <- chain[nzchar(chain)]
+  tok <- if (!is.na(pattern)) paste0("patterns/", pattern)
+  at <- grep("^patterns/", chain)[1L]
+  if (!is.na(at)) {
+    chain <- if (is.null(tok)) chain[-at] else replace(chain, at, tok)
+  } else if (!is.null(tok)) {
+    chain <- if (identical(chain, "none")) tok else c(tok, chain)
+  }
+  alone <- c(tok, "defaults")
+  first <- grep("^patterns/", chain, value = TRUE)[1L]
+  pat <- if (is.na(first)) NA_character_ else substring(first, 10L)
+  if (!length(chain) || identical(chain, alone)) return(list(value = NA_character_, pattern = pat))
+  list(value = paste(chain, collapse = " | "), pattern = pat)
 }
 
 # One cell of a one-row sheet (report, page): the row of `output_id` (NA:
