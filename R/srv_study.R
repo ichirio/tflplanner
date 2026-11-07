@@ -27,15 +27,18 @@
   }
   # An error stays until it is closed (a message gone before it could be
   # read or copied is no help); the others go after 6 s.
-  notify <- function(msg, type = "message") {
+  # `note_id`, `duration`: an error note that replaces its earlier one and is
+  # taken away by its own id, and one that goes by itself (default: it stays
+  # until closed)
+  notify <- function(msg, type = "message", note_id = NULL, duration = NULL) {
     if (identical(type, "error")) {
-      shiny::showNotification(.error_note_ui(msg, t), type = type,
-                              duration = NULL, closeButton = TRUE)
+      shiny::showNotification(.error_note_ui(msg, t), type = type, id = note_id,
+                              duration = duration, closeButton = TRUE)
     } else {
       shiny::showNotification(msg, type = type, duration = 6)
     }
   }
-  guarded <- function(expr) {
+  guarded <- function(expr, note_id = NULL, duration = NULL) {
     # the detail (the calls) goes to the console / log; the screen gets
     # the message only
     tryCatch(
@@ -51,7 +54,7 @@
           message("tflplanner: the output of what failed:\n",
                   paste(e$detail, collapse = "\n"))
         }
-        notify(.error_view(conditionMessage(e), t), "error")
+        notify(.error_view(conditionMessage(e), t), "error", note_id, duration)
         NULL
       })
   }
