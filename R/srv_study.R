@@ -413,6 +413,7 @@
       if (length(m$conflicts)) {
         mine2 <- m$study
         for (k in m$conflicts) mine2 <- .set_study_part(mine2, k, .study_parts(mine)[[k]])
+        mine2 <- .keep_mine_outputs(mine2, mine, m$study, m$conflicts)
         ask_conflict(m$conflicts, m$study, mine2)
         return()
       }
