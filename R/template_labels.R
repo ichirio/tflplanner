@@ -155,12 +155,16 @@
   bold_headings = "Bold subgroup headings",
   n_by_arm = "Events/N by arm",
   subgroup_labels = "Subgroup headings' labels",
-  post_header = "Header over each post-baseline category"
+  post_header = "Header over each post-baseline category",
+  by_break = "How the listing is divided",
+  by_heading = "Page heading"
 )
 
 .tpl_doc_labels <- c(
   "the curves' variable (survfit2(~ by), the colours)" = "Variable that splits the curves",
   "a page's name in the titles ({<group>}: its value); NULL: the groups' values, a line each" =
     "Page name in the titles",
-  "the groups: a page each (an analyte, an arm), the summary's too" = "Variable that splits the pages"
+  "the groups: a page each (an analyte, an arm), the summary's too" = "Variable that splits the pages",
+  "the variables that divide the listing (`by_break`); the records are ordered by them first, then by `sort`" =
+    "Variables that divide the listing"
 )
