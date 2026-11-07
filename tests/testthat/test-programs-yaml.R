@@ -33,8 +33,10 @@ test_that("a table's program writes what only its file holds", {
   code <- program_code(p, id)
   expect_true(any(grepl("kept_arg = \"kept\"", code, fixed = TRUE)))
   expect_false(any(grepl("(study default)", code, fixed = TRUE)))
-  # the sheets cannot hold it
-  expect_false(any(grepl("kept_arg", program_code(.planner_body(p), id), fixed = TRUE)))
+  # the sheets keep it whole too (an item they cannot say, tflspec #692), and
+  # it still reaches the program
+  expect_true(any(grepl("kept_arg = \"kept\"", program_code(.planner_body(p), id),
+                        fixed = TRUE)))
 })
 
 test_that("a report's analysis set is its token when its page says none", {
