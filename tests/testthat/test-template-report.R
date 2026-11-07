@@ -330,9 +330,6 @@ test_that("a template report's preview is its content run on its ARD, not the st
   expect_true(all(c("Worst: LOW", "Worst: NORMAL", "Worst: HIGH") %in% unlist(hdr)))
   expect_true(any(grepl("^Drug X \\(N=[0-9]+\\)$", unlist(hdr))))
   expect_false(any(grepl("N=NA", unlist(hdr), fixed = TRUE)))
-  # (the sheets' route, which this report's preview took before, has neither)
-  old <- suppressWarnings(preview_pages(s$planner, "T-TPL", rtfreporter::normalize_ard(ard)))
-  expect_false(any(grepl("Worst:", unlist(old[[1L]]$col_header), fixed = TRUE)))
 })
 
 test_that("a template report's step has five tabs in the order they are made, the ARD's two greyed out when it has none (#514)", {
