@@ -1751,7 +1751,6 @@
 "the time axis' unit","時間軸の単位"
 "the dataset; NULL: ADTTE","データセット（NULL: ADTTE）"
 "the analysis data's label","解析データのラベル"
-"No ARD yet: Update preview makes it.","ARD はまだありません。「プレビューを更新」で作ります。"
 "Study standard","試験標準"
 "left: add the variables; semi: keep only the rows of its subjects (no variables).","left = 変数を足す。semi = その被験者の行だけを残す（変数は足さない）。"
 "TRUE: the variables are the ones the data has of them (written any_of(); tfl_build_ard() says which it left out), as a template's default list. Blank: every variable must be in the data.","TRUE: 変数のうち、データにあるものだけを使います（any_of() で書き、tfl_build_ard() が外した変数を知らせます）。テンプレートのデフォルトの一覧に使います。空欄: どの変数もデータに無ければなりません。"

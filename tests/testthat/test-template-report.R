@@ -335,6 +335,41 @@ test_that("a template report's preview is its content run on its ARD, not the st
   expect_false(any(grepl("Worst:", unlist(old[[1L]]$col_header), fixed = TRUE)))
 })
 
+test_that("a template report's step has five tabs in the order they are made, the ARD's two greyed out when it has none (#514)", {
+  ui <- htmltools::tagQuery(app_ui())
+  links <- ui$find("#table_right")$find("a")$selectedTags()
+  v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
+  expect_identical(unname(v[nzchar(v)]),
+                   c("spec", "ard_code", "ard", "code", "result"))
+  # the other lists of tabs are the three, named plainly
+  tabs <- as.character(result_tabs_ui("x", "s", "c", "r"))
+  expect_false(grepl("ard", tabs, fixed = TRUE))
+  expect_false(grepl("rp-lab-tpl", tabs, fixed = TRUE))
+  # a template report's are named for what they are, shown with body.rp-tpl
+  tpl <- as.character(result_tabs_ui("x", "s", "c", "r", ard = "a", ard_code = "b"))
+  expect_true(grepl("Template SPEC", tpl, fixed = TRUE) && grepl("Report result", tpl, fixed = TRUE))
+  # in the HTML: Template SPEC, ARD code, ARD result, Report code, Report result
+  at <- vapply(c("Template SPEC", "ARD code", "ARD result", "Report code", "Report result"),
+               function(x) regexpr(x, tpl, fixed = TRUE)[[1L]], 1L)
+  expect_true(all(at > 0L) && !is.unsorted(at, strictly = TRUE))
+  expect_true(grepl("body.rp-tpl #table_right .rp-lab-plain", .result_tabs_css, fixed = TRUE))
+  # a code report has no ARD tabs; a template report's are disabled (not hidden) without an ARD
+  expect_true(grepl("body:not(.rp-tpl) #table_right > .nav-item", .result_tabs_css, fixed = TRUE))
+  expect_true(grepl("rp-ard-tabs", .tpl_js, fixed = TRUE))
+  expect_true(grepl("toggleClass('disabled', !on)", .tpl_js, fixed = TRUE))
+  # ARD code is read as Report code is: numbered lines and Copy
+  html <- as.character(app_ui())
+  expect_true(grepl('data-copy="tpl_ard_code"', html, fixed = TRUE))
+  expect_false(grepl("text-decoration: line-through", .result_tabs_css, fixed = TRUE))
+  # an outdated ARD: Report result says so in one line (both languages)
+  expect_false(identical(tr("ARD outdated: Update preview", "ja"), "ARD outdated: Update preview"))
+  # their names in Japanese
+  expect_identical(tr("Report code", "ja"), "\u5e33\u7968\u30b3\u30fc\u30c9")
+  expect_identical(tr("ARD code", "ja"), "ARD \u30b3\u30fc\u30c9")
+  expect_identical(tr("ARD result", "ja"), "ARD \u7d50\u679c")
+})
+
+
 # ---- a template listing is written and previewed from its content ----------
 
 .listing_tpl_study <- function(extra = list(), id = "L-TPL") {
