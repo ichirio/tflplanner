@@ -1404,8 +1404,14 @@
       shiny::h6(with_tip(t("Every report's font"),
                          t("The font and size every report is written in, set once here (the page sheet's study row; programs/tfl/report_setup.R says them as options()). Blank: rtfreporter's, Courier New 9 pt. The company standards give a new study theirs."))),
       shiny::div(class = "d-flex flex-wrap gap-2",
-        shiny::textInput(updateOn = "blur", "pg_font", t("Font"), v(study_page_value(rv$p, "font")),
-                         placeholder = "Courier New"),
+        shiny::textInput(updateOn = "blur", "pg_font",
+                         with_tip(t("Font"), t("A font for every script: Courier New. A font per script is written latin = Courier New | east_asian = MS Mincho. Use it when the texts are in Japanese or another East Asian script (Chinese, Korean): the Latin letters and the East Asian characters then each get their own font.")),
+                         v(study_page_value(rv$p, "font")),
+                         placeholder = "Courier New", width = "22em"),
+        shiny::textInput(updateOn = "blur", "pg_font_lang",
+                         with_tip(t("Font language"), t("The language of a script's font, written the same way: east_asian = ja (languages ja, zh-Hans, zh-Hant, ko). Set it along with an East Asian font, so Word treats the characters as Japanese. Blank: none.")),
+                         v(study_page_value(rv$p, "font_lang")),
+                         placeholder = "east_asian = ja", width = "13em"),
         shiny::textInput(updateOn = "blur", "pg_font_size", t("Size (pt)"),
                          .points(study_page_value(rv$p, "font_size_half_points")),
                          placeholder = "9", width = "8em")),
@@ -1508,6 +1514,13 @@
     now <- study_page_value(rv$p, "font")
     if (!identical(if (is.na(now)) "" else now, v)) {
       rv$p <- set_study_page_value(rv$p, "font", v)
+    }
+  }, ignoreInit = TRUE)
+  shiny::observeEvent(input$pg_font_lang, {
+    v <- trimws(input$pg_font_lang)
+    now <- study_page_value(rv$p, "font_lang")
+    if (!identical(if (is.na(now)) "" else now, v)) {
+      rv$p <- set_study_page_value(rv$p, "font_lang", v)
     }
   }, ignoreInit = TRUE)
   shiny::observeEvent(input$pg_font_size, {

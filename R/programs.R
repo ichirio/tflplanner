@@ -910,6 +910,7 @@ program_code <- function(x, output_id, date = Sys.Date()) {
   }
   study_rows("tokens") || study_rows("header") || study_rows("footer") ||
     !is.na(study_page_value(x, "font")) ||
+    !is.na(study_page_value(x, "font_lang")) ||
     !is.na(study_page_value(x, "font_size_half_points"))
 }
 
