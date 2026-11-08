@@ -167,7 +167,7 @@ test_that("a template report in the browser: add, empty card, no veil, OK, this 
         sprintf("top %.0f bottom %.0f of %.0f (scrollY %.0f)", pos[[1]], pos[[2]], pos[[3]], pos[[4]]))
   head <- card_head("plan_hide")
   check("(b) the empty card says Not set", grepl("\u672a\u8a2d\u5b9a", head), gsub("\\s+", " ", head))
-  check("(b) the empty card is not This table", !grepl("\u3053\u306e\u8868", head))
+  check("(b) the empty card is not This table", !grepl("\u3053\u306e Table", head))
   shown <- js("$('.rp-builder-cards .rp-card').map((i, e) => e.dataset.fn).get().join(' ')")
   check("the template card and the added card only", identical(shown, "plan_hide"), shown)
 
@@ -206,10 +206,10 @@ test_that("a template report in the browser: add, empty card, no veil, OK, this 
   js(sprintf("(() => { const e = document.getElementById('%s'); e.select(); return true; })()", pct))
   type_text(new)
   key("Tab", "Tab", 9)
-  wait_for("document.querySelector('.rp-card[data-fn=plan_cells] > .rp-card-head').innerText.includes('\u3053\u306e\u8868')", 30)
+  wait_for("document.querySelector('.rp-card[data-fn=plan_cells] > .rp-card-head').innerText.includes('\u3053\u306e Table')", 30)
   idle()
   after <- card_head("plan_cells")
-  check("(e) the edited study standard's card says This table", grepl("\u3053\u306e\u8868", after),
+  check("(e) the edited study standard's card says This table", grepl("\u3053\u306e Table", after),
         sprintf("before: %s | after: %s", gsub("\\s+", " ", before), gsub("\\s+", " ", after)))
 
   # the study left as it was: the changes thrown away
