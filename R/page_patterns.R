@@ -332,6 +332,19 @@ rename_page_pattern <- function(x, name, new) {
     p[!is.na(p) & sub("^@", "", trimws(p)) == name] <- new
     x$sheets$report$pattern <- p
   }
+  # (a report's `extends` chain names the pattern too: patterns/<name>)
+  e <- x$sheets$report$extends
+  if (!is.null(e)) {
+    tok <- function(v) trimws(strsplit(v, "|", fixed = TRUE)[[1L]])
+    ch <- which(!is.na(e))
+    ch <- ch[vapply(e[ch], function(v) paste0("patterns/", name) %in% tok(v), NA)]
+    e[ch] <- vapply(e[ch], function(v) {
+      t <- tok(v)
+      t[t == paste0("patterns/", name)] <- paste0("patterns/", new)
+      paste(t, collapse = " | ")
+    }, "", USE.NAMES = FALSE)
+    x$sheets$report$extends <- e
+  }
   x
 }
 

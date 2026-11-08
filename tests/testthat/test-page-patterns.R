@@ -428,3 +428,17 @@ test_that("the page form's pattern choice keeps the order of the report's chain"
   q <- expect_no_error(.pgs_set_pattern(ext_cells(p0, id, NA_character_, "none"), id, "Wide"))
   expect_identical(as.character(q$spec$outputs[[id]]$extends), "patterns/Wide")
 })
+
+test_that("renaming a pattern renames it in the reports' extends chains", {
+  skip_on_cran()
+  p0 <- ext_sample()
+  skip_if_not("extends" %in% names(p0$sheets$report), "tflspec without the extends cell")
+  p <- ext_cells(p0, "T-14-1-1", "@Wide", "defaults | patterns/Wide")
+  p <- ext_cells(p, "T-14-1-2", "@Third", "patterns/Third|defaults")
+  p <- rename_page_pattern(p, "Wide", "Broad")
+  r <- p$sheets$report
+  expect_identical(r$pattern[r$output_id %in% "T-14-1-1"], "Broad")
+  expect_identical(r$extends[r$output_id %in% "T-14-1-1"], "defaults | patterns/Broad")
+  # (a chain that does not name it is left as written)
+  expect_identical(r$extends[r$output_id %in% "T-14-1-2"], "patterns/Third|defaults")
+})
