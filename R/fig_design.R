@@ -382,7 +382,7 @@ preview_figure <- function(study, output_id,
   no_ard <- if (reads_ard && (is.null(ard) || !NROW(ard))) {
     src <- .fig_ard_source(study$planner, output_id)
     if (src$kind %in% c("own", "table")) {
-      sprintf("The ARD of %s has no rows yet: make it (step %s, or an official run in Runs).",
+      sprintf(tr("The ARD of %s has no rows yet: make it (step %s, or an official run in Runs)."),
               src$id, .step_no("ard"))
     }
   }

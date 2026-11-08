@@ -24,7 +24,7 @@
 "Adopt the ticked lines and build the pack","チェックした行を採用してパックを作る"
 "The pack is built: %d line(s) adopted.","パックを作りました（%d 行を採用）。"
 "%d line(s) adopted. Every study's agent reads the pack from its next preparation (tfl_ai_prepare):","%d 行を採用しました。どの試験のエージェントも、次の準備（tfl_ai_prepare）からこのパックを読みます:"
-"Learned from %s file(s), %s table(s).","%s ファイル・%s 表から読み取りました。"
+"Learned from %s file(s), %s table(s).","%s ファイル・%s Table から読み取りました。"
 "Notes from the agent","エージェントのメモ"
 "Where the past reports differ from the company standard","過去の帳票が会社標準と違う点"
 "%s / %s: the standard says %s, the files show %s (%s of %s)","%s / %s: 会社標準は %s、ファイルは %s（%s / %s）"

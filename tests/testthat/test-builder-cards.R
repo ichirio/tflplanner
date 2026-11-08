@@ -221,7 +221,7 @@ test_that("a card whose on / off cannot work has no switch", {
 
 test_that("the badge says where a value came from; own has its mark when named", {
   expect_match(html(from_badge("own", own = "This table")), ">This table<", fixed = TRUE)
-  expect_match(html(from_badge("own", "ja", own = "This table")), "この表", fixed = TRUE)
+  expect_match(html(from_badge("own", "ja", own = "This table")), "この Table", fixed = TRUE)
   expect_null(from_badge("own"))
   expect_null(from_badge(NULL))
   h <- html(from_badge("defaults"))

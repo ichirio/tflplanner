@@ -1,6 +1,6 @@
 "en","ja"
 "Rows under a level of another variable","別の変数の水準の下に入れる"
-"Its rows go right after that level's row, one step deeper, without its own heading: Chinese / Japanese / Korean under Race's Asian. Blank: a block of its own.","この変数の行を、選んだ水準の行のすぐ後に、1 段深く、見出しなしで入れます（Race の Asian の下に Chinese / Japanese / Korean）。空欄：独立したブロック。"
+"Its rows go right after that level's row, one step deeper, without its own heading: Chinese / Japanese / Korean under Race's Asian. Blank: a block of its own.","この変数の行を、選んだ水準の行のすぐ後に、1 レベル深く、見出しなしで入れます（Race の Asian の下に Chinese / Japanese / Korean）。空欄：独立したブロック。"
 "(its own block)","（独立したブロック）"
 "Group name","グループ名"
 "As R: Edit as R changes it.","R のまま：「R で編集」で変えます"

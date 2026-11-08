@@ -10,6 +10,8 @@
 .rp-upload .input-group .btn-file { height: 38px; }
 .rp-upload .input-group .btn-file { display: inline-flex; align-items: center; }
 .rp-upload .checkbox, .rp-upload .form-check { margin: 0; }
+/* a table's header is not broken one character a line (a narrow column) */
+table.dataTable thead th { white-space: nowrap; }
 .rp-upload select { appearance: auto; }
 /* fields that are not used (a data written as R) */
 .rp-greyed { opacity: .45; pointer-events: none; }
@@ -589,26 +591,55 @@ app_ui <- function(lang = "en") {
         "output.report_kind == 'listing' && output.content_is_code != 'yes'",
         shiny::uiOutput("lf_note"),
         bslib::layout_columns(
+          class = "rp-lf-split",
           col_widths = bslib::breakpoints(sm = 12, lg = c(6, 6)),
           shiny::div(
             shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_card_lf")),
             shiny::div(class = "rp-code-only",
                        shiny::uiOutput("lf_form"),
                        shiny::uiOutput("lf_cols_box"))),
+          # (a template listing: its Update preview above the tabs, the pane
+          # in view as the card scrolls)
+          shiny::div(
+            class = "rp-tpl-right",
+            shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_lf_bar")),
           result_tabs_ui(
             "lf_right", lang = lang, selected = "result",
+            # (a template listing's: as a table's -- its ARD, then the YAML)
+            ard_code = shiny::tagList(shiny::uiOutput("tpl_ard_code_head_lf"), code_view("tpl_ard_code_lf", lang)),
+            ard = shiny::uiOutput("tpl_ard_pane_lf"),
             spec = shiny::tagList(
-              pane_head(t("The listing's row"), t("The listing's row of the definition (listings); its columns are the grid on the left.")),
-              rhandsontable::rHandsontableOutput("hot_lf_listings")),
-            code = code_view("program_lf", lang),
+              shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_spec_yaml_lf")),
+              shiny::div(
+                class = "rp-code-only",
+                pane_head(t("The listing's row"), t("The listing's row of the definition (listings); its columns are the grid on the left.")),
+                rhandsontable::rHandsontableOutput("hot_lf_listings"))),
+            code = shiny::tagList(code_view("program_lf", lang),
+                                  shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_code_expanded_lf"))),
             result = shiny::tagList(
-              shiny::div(class = "mb-2",
+              shiny::div(class = "mb-2 rp-code-only",
                          .btn("lf_preview", t("Preview the listing"),
                               class = "btn-sm btn-outline-primary")),
-              shiny::uiOutput("lf_preview_out"))))),
-      shiny::conditionalPanel("output.report_kind == 'figure'",
-                              shiny::div(class = "rp-tpl-only",
-                                         shiny::uiOutput("tpl_card_fig"), shiny::uiOutput("tpl_fig_out"))),
+              shiny::uiOutput("lf_preview_out")))))),
+      shiny::conditionalPanel(
+        "output.report_kind == 'figure'",
+        shiny::div(
+          class = "rp-tpl-only",
+          bslib::layout_columns(
+            col_widths = bslib::breakpoints(sm = 12, lg = c(5, 7)),
+            shiny::uiOutput("tpl_card_fig"),
+            # (a template figure: the table's five tabs, its picture the
+            # result, Update preview above them)
+            shiny::div(
+              class = "rp-tpl-right",
+              shiny::uiOutput("tpl_fig_bar"),
+              result_tabs_ui(
+                "fig_right", lang = lang, selected = "result",
+                ard_code = shiny::tagList(shiny::uiOutput("tpl_ard_code_head_fig"), code_view("tpl_ard_code_fig", lang)),
+                ard = shiny::uiOutput("tpl_ard_pane_fig"),
+                spec = shiny::uiOutput("tpl_spec_yaml_fig"),
+                code = shiny::tagList(code_view("program_fig", lang), shiny::uiOutput("tpl_code_expanded_fig")),
+                result = shiny::uiOutput("tpl_fig_out")))))),
       shiny::conditionalPanel("output.content_is_code != 'yes'",
                               shiny::div(class = "rp-code-only", .designer_ui(t))))
 
@@ -691,7 +722,8 @@ app_ui <- function(lang = "en") {
                               "  if (e.target.matches && e.target.matches('details.ard-fn') && e.target.open)",
                               "    Shiny.setInputValue('ard_fn_opened', Date.now(), {priority: 'event'});",
                               "}, true);"))),
-                            shiny::tags$script(shiny::HTML(.split_js)),
+                            shiny::tags$script(shiny::HTML(
+                              sub("drag to resize", t("drag to resize"), .split_js, fixed = TRUE))),
                             shiny::tags$style(shiny::HTML(.error_note_css)),
                             shiny::tags$script(shiny::HTML(.error_note_js)),
                             shiny::tags$style(shiny::HTML(.result_tabs_css)),
@@ -807,7 +839,8 @@ app_ui <- function(lang = "en") {
               shiny::uiOutput("catalog_files_note"),
               shiny::div(
                 class = "d-flex gap-2 align-items-end mt-2 rp-upload",
-                shiny::fileInput("data_upload", t("Add files"), multiple = TRUE)),
+                shiny::fileInput("data_upload", t("Add files"), multiple = TRUE,
+                                 buttonLabel = t("Browse..."), placeholder = t("No file selected"))),
               shiny::div(class = "d-flex gap-2 align-items-center",
                          .btn("data_refresh", t("Refresh")),
                          .btn("data_open", t("Open folder")),

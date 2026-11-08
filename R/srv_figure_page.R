@@ -354,6 +354,7 @@
   output$program <- shiny::renderText(program_text())
   output$program_table <- shiny::renderText(program_text())
   output$program_lf <- shiny::renderText(program_text())
+  output$program_fig <- shiny::renderText(program_text())
   output$program_dc <- shiny::renderText(program_text())
   output$program_cc <- shiny::renderText(program_text())
   # Step 3: this report's font and size.  Blank: every report's (the study
