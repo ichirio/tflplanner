@@ -34,62 +34,15 @@ test_that("the study's font and language reach report_setup.R", {
   expect_true(any(grepl('rtfreporter.font_lang = c(east_asian = "ja")', set, fixed = TRUE)))
 })
 
-test_that("a new study made in the Japanese app starts with the East Asian font and language", {
+test_that("a new study made in the Japanese app keeps Courier New only", {
   local_home()
   .set_config("language", "ja")
   s <- create_study("NEW-JA")
-  expect_identical(study_page_value(s$planner, "font"),
-                   "latin = Courier New | east_asian = MS Mincho")
-  expect_identical(study_page_value(s$planner, "font_lang"), "east_asian = ja")
-  dy <- paste(readLines(file.path(s$path, "spec", "defaults.yml"),
-                        encoding = "UTF-8"), collapse = "\n")
-  expect_match(dy, "east_asian: MS Mincho", fixed = TRUE)
-  expect_match(dy, "font_lang", fixed = TRUE)
-  set <- readLines(file.path(s$path, "programs", "tfl", "report_setup.R"))
-  expect_true(any(grepl('rtfreporter.font = c(latin = "Courier New", east_asian = "MS Mincho")',
-                        set, fixed = TRUE)))
-  expect_true(any(grepl('rtfreporter.font_lang = c(east_asian = "ja")', set, fixed = TRUE)))
-})
-
-test_that("a new study made in the English app gets nothing new", {
-  local_home()
-  .set_config("language", "en")
-  s <- create_study("NEW-EN")
   expect_true(is.na(study_page_value(s$planner, "font")))
   expect_true(is.na(study_page_value(s$planner, "font_lang")))
   set <- readLines(file.path(s$path, "programs", "tfl", "report_setup.R"))
   expect_false(any(grepl("rtfreporter.font", set, fixed = TRUE)))
-})
-
-test_that("opening an existing study in the Japanese app changes nothing", {
-  local_home()
-  .set_config("language", "en")
-  s <- create_study("OLD-EN")
-  .set_config("language", "ja")
-  s2 <- open_study("OLD-EN")
-  expect_true(is.na(study_page_value(s2$planner, "font")))
-  expect_true(is.na(study_page_value(s2$planner, "font_lang")))
-  expect_identical(s2$planner$sheets$page, s$planner$sheets$page)
-})
-
-test_that("another font a user sets later is kept", {
-  local_home()
-  .set_config("language", "ja")
-  s <- create_study("NEW-JB")
-  s$planner <- set_study_page_value(s$planner, "font", "Arial")
-  s <- save_study(s)
-  s2 <- open_study("NEW-JB")
-  expect_identical(study_page_value(s2$planner, "font"), "Arial")
-})
-
-test_that("the sample study made in the Japanese app gets the font, in English it does not", {
-  local_home()
-  .set_config("language", "ja")
   s <- suppressMessages(create_sample_study(run = FALSE, study_id = "SMP-JA"))
-  expect_identical(study_page_value(s$planner, "font"),
-                   "latin = Courier New | east_asian = MS Mincho")
-  expect_identical(study_page_value(s$planner, "font_lang"), "east_asian = ja")
-  .set_config("language", "en")
-  s <- suppressMessages(create_sample_study(run = FALSE, study_id = "SMP-EN"))
   expect_true(is.na(study_page_value(s$planner, "font")))
+  expect_true(is.na(study_page_value(s$planner, "font_lang")))
 })

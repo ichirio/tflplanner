@@ -594,18 +594,9 @@ add_standard_defaults <- function(x, study_id) {
 # The company's font and size (the standards' settings `font`, `font_size`
 # in points) into the study's page row: every report's, written once as
 # options() in report_setup.R.  `only_missing`: where the study has none.
-.std_font <- function(x, only_missing = FALSE, new_study = FALSE) {
+.std_font <- function(x, only_missing = FALSE) {
   want <- c(font = .std_setting("font"),
             font_size_half_points = .half_points(.std_setting("font_size")))
-  # a new study made in the Japanese app: Japanese texts get MS Mincho (and
-  # the language ja) next to the Latin font, Courier New or the company's
-  if (new_study && identical(tflplanner_language(), "ja")) {
-    latin <- if (is.na(want[["font"]])) "Courier New" else want[["font"]]
-    if (!grepl("=", latin, fixed = TRUE)) {
-      want[["font"]] <- paste0("latin = ", latin, " | east_asian = MS Mincho")
-    }
-    want[["font_lang"]] <- "east_asian = ja"
-  }
   for (cn in names(want)) {
     if (is.na(want[[cn]])) next
     if (only_missing && !is.na(study_page_value(x, cn))) next
@@ -639,7 +630,7 @@ add_standard_defaults <- function(x, study_id) {
     p$sheets[[sh]] <- .normalize_sheet(d, sh)
     if (sh == "report") p <- .old_program_default(p)
   }
-  p <- .std_font(p, new_study = TRUE)
+  p <- .std_font(p)
   p$ard$study$value[p$ard$study$key == "id"] <- .std_setting("subject_id",
                                                              "USUBJID")
   p$ard$study$value[p$ard$study$key == "output"] <-

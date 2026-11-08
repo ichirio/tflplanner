@@ -85,11 +85,6 @@ create_sample_study <- function(root = studies_root(home), run = TRUE,
   .write_meta(meta, path)
   s <- register_study(path, home)
   s <- .sample_study_words(s)
-  # made in the Japanese app: the East Asian font and language, as a new
-  # study of the company standards gets them (a font the sample has stays)
-  if (identical(tflplanner_language(), "ja")) {
-    s$planner <- .std_font(s$planner, only_missing = TRUE, new_study = TRUE)
-  }
   s <- save_study(s, home = home)
   if (run) {
     miss <- .sample_missing()
