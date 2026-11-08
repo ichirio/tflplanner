@@ -332,6 +332,27 @@ $(document).on('click', '#save', function() {
 # locked scroll as the page's own and puts it back on closing: the page would
 # never scroll again.  When the last dialog has gone, the lock goes.
 .modal_scroll_js <- "
+// a selectize list opened in a dialog is drawn in <body>: the dialog's body
+// scrolls and would clip it under the footer
+(function() {
+  var st = document.createElement('style');
+  st.textContent = 'body > .selectize-dropdown { z-index: 2000 !important; } ' +
+    'body > .selectize-dropdown .selectize-dropdown-content { max-height: 22vh; }';
+  document.head.appendChild(st);
+  function wrap() {
+    var f = jQuery.fn.selectize;
+    if (!f || f.tflBody) return;
+    jQuery.fn.selectize = function(opts) {
+      if (opts && typeof opts === 'object' && this.closest('.modal').length && !opts.dropdownParent)
+        opts.dropdownParent = 'body';
+      return f.apply(this, arguments);
+    };
+    jQuery.fn.selectize.tflBody = true;
+    for (var k in f) if (f.hasOwnProperty(k)) jQuery.fn.selectize[k] = f[k];
+  }
+  wrap();
+  jQuery(wrap);
+})();
 $(document).on('hidden.bs.modal', function() {
   if (!document.querySelector('.modal.show')) {
     document.body.style.removeProperty('overflow');

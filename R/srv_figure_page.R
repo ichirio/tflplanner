@@ -716,7 +716,11 @@
     rv$p <- p
     rv$want <- id
     tgt_sent$v <- id
-    tgt_sent$t <- Sys.time()
+    # (the 3 s of tgt_pick() are counted from the end of the flush that sends
+    # the choice: a slow flush -- a template report's -- must not use them up,
+    # or the list drawn at its end puts the old report back)
+    tgt_sent$t <- NULL
+    session$onFlushed(function() tgt_sent$t <- Sys.time(), once = TRUE)
     shiny::removeModal()
     bump()
   }

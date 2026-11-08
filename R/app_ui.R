@@ -31,6 +31,20 @@ table.dataTable thead th { white-space: nowrap; }
 nav.navbar.navbar-static-top { position: sticky; top: 0; z-index: 1020;
   background-color: var(--bs-body-bg, #fff); }
 html { scroll-padding-top: calc(var(--rp-top, 0px) + .5rem); }
+/* the top bar on one line at 1366 px, in either language: the study's title
+   gives way (cut with ...), the buttons keep their place and order */
+@media (min-width: 992px) {
+nav.navbar .navbar-collapse, nav.navbar .navbar-nav.nav { min-width: 0; flex-wrap: nowrap; }
+nav.navbar .navbar-nav > li { flex-shrink: 0; white-space: nowrap; }
+nav.navbar .navbar-nav > li:has(> #open_study_bar) { flex-shrink: 1; min-width: 0; }
+#open_study_bar { min-width: 0; overflow: hidden; }
+#open_study_bar > a { max-width: 100% !important; }
+}
+/* Japanese breaks at the end of a phrase, not inside one: a label or a
+   notice does not end a line with half of (...) (the page's lang says which) */
+.control-label, .form-label, .form-check-label, .shiny-notification { word-break: auto-phrase; }
+/* ... and no line of a notice ends with one or two characters of its own */
+.shiny-notification { text-wrap: pretty; }
 /* a step's mark worked out again (a run in the background): not faded */
 [id^='step_mark_'].recalculating { opacity: 1 !important; }
 /* While the server works on what the user did (opening a study, switching
@@ -578,13 +592,8 @@ app_ui <- function(lang = "en") {
                               shiny::span(id = "builder_updating",
                                           class = "badge text-bg-warning ms-2 d-none",
                                           t("Updating ..."))),
-                  # (the same Update preview as the other steps', here too:
-                  # a template's step 1 has no other)
+                  # (Update preview is the ARD card's, above the tabs)
                   shiny::div(class = "d-flex gap-2 align-items-center",
-                             # (a template report has the ARD card's, above)
-                             shiny::span(class = "rp-code-only",
-                                         .btn("result_fetch", t("Update preview"),
-                                              class = "btn-sm btn-outline-primary py-0")),
                              shiny::uiOutput("builder_pages", inline = TRUE))),
                 shiny::uiOutput("builder_preview"))))))),
       shiny::conditionalPanel(
@@ -711,6 +720,7 @@ app_ui <- function(lang = "en") {
     title = "tflplanner",
     # pages scroll: a grid squeezed to fit the window would be 0 px high
     fillable = FALSE,
+    lang = lang,
     theme = bslib::bs_theme(version = 5, preset = "shiny"),
     header = shiny::tagList(shiny::tags$style(shiny::HTML(.code_css)),
                             # a function picked on the ARD form: its list closes
