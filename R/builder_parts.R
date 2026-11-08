@@ -356,6 +356,24 @@
           paste(name, collapse = ", "))
 }
 
+# What to say over a preview that is shown without the parts that stopped it
+# (`pages`: .preview_content_pages()'s, with attr "dataset_parts" and
+# "part_errors"): the note of a dataset part with items for an ARD, and for
+# any other part its name with its error
+.dropped_parts_note <- function(pages, tr = function(x) x) {
+  nm <- attr(pages, "dataset_parts")
+  if (!length(nm)) return(NULL)
+  why <- attr(pages, "part_errors")[nm]
+  why <- if (is.null(why)) rep(NA_character_, length(nm)) else unname(why)
+  other <- !is.na(why)
+  # (the error names the part already: "plan_append("name"): ...")
+  why <- sub("^plan_append\\(\"[^\"]*\"\\): ", "", why)
+  paste(c(if (any(!other)) .dataset_part_ard_items_note(nm[!other], tr),
+          sprintf(tr("The part %s stopped: %s"), ifelse(nzchar(nm[other]) & !is.na(nm[other]), nm[other], "(no name)"),
+                  why[other]),
+          tr("The table is shown without it.")), collapse = " ")
+}
+
 # The one line over the preview in part scope: the page the part's rows are
 # on (`data-part-page`: the page scrolls to it when the preview is drawn)
 .part_page_note <- function(pages, part, lang = "en") {

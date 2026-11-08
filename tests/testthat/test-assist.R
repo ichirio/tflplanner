@@ -168,6 +168,10 @@ test_that("fetch_ard() runs the data part from the study folder", {
   s$planner$outputs$process_code <- "ard <- ard"
   m <- fetch_ard(s, "DM")
   expect_match(m$error, "the data.steps leave no `data`", fixed = TRUE)
+  expect_match(m$error, "tflplanner: the definition of DM does not hold: ", fixed = TRUE)
+  # (the builder's preview shows that, not "No data to show yet")
+  expect_null(ard_data(s, "DM"))
+  expect_match(ard_data_error(s, "DM"), "the data.steps leave no `data`", fixed = TRUE)
 
   s$planner <- set_step_code(s$planner, "DM", "data", "stop('no data')")
   expect_error(fetch_ard(s, "DM"), "no data")

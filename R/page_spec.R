@@ -65,6 +65,7 @@
   rtf_document = list(
     list(arg = "font_table", label = "Font", kind = "font",
          choices = c("Courier", "Courier New")),
+    list(arg = "font_lang", label = "Font language", kind = "slots"),
     list(arg = "watermark", label = "Watermark", kind = "text")),
   rtf_tables = list(
     list(arg = "auto_section", label = "Section from the table's name", kind = "logical"),
@@ -180,13 +181,41 @@
   now
 }
 
+# "latin = X | east_asian = Y" (the sheets' way to say a value per script slot)
+# as a named list (YAML's map); a text without "=" is as it is
+.slots_parse <- function(v) {
+  if (length(v) != 1L || !grepl("=", v, fixed = TRUE)) return(v)
+  parts <- trimws(strsplit(v, "|", fixed = TRUE)[[1L]])
+  parts <- parts[nzchar(parts)]
+  kv <- strsplit(parts, "=", fixed = TRUE)
+  ok <- vapply(kv, function(x) length(x) >= 2L && nzchar(trimws(x[1L])) &&
+                 nzchar(trimws(paste(x[-1L], collapse = "="))), NA)
+  if (!all(ok)) {
+    stop("A font per script is written latin = Courier New | east_asian = MS Mincho.",
+         call. = FALSE)
+  }
+  stats::setNames(lapply(kv, function(x) trimws(paste(x[-1L], collapse = "="))),
+                  vapply(kv, function(x) trimws(x[1L]), ""))
+}
+
+# ... and back: a map as "latin = X | east_asian = Y", a text as it is
+.slots_show <- function(v) {
+  if (is.null(v)) return("")
+  if (length(names(v)) && length(v) && all(nzchar(names(v)))) {
+    return(paste(names(v), vapply(as.list(v), function(x) as.character(x)[1L], ""),
+                 sep = " = ", collapse = " | "))
+  }
+  as.character(v)[1L]
+}
+
 # A value as the form shows it (text)
 .pgs_show <- function(v, kind) {
   if (is.null(v)) return("")
   if (identical(kind, "font")) {
-    v <- if (is.list(v) && length(v)) v[[1L]]$name %||% "" else as.character(v)
-    return(as.character(v %||% ""))
+    v <- if (is.list(v) && length(v)) v[[1L]]$name %||% "" else v
+    return(.slots_show(v))
   }
+  if (identical(kind, "slots")) return(.slots_show(v))
   if (identical(kind, "pt")) return(.points(as.character(v)))
   if (identical(kind, "inches")) {
     n <- suppressWarnings(as.numeric(v))
@@ -203,7 +232,9 @@
   v <- trimws(v %||% "")
   if (!nzchar(v)) return(NULL)
   if (identical(v, "(none)")) return(tflspec::tfl_unset())
-  if (identical(kind, "font")) return(list(list(name = v)))
+  # a family, or a family per script slot: latin = Courier New | east_asian = MS Mincho
+  if (identical(kind, "font")) return(list(list(name = .slots_parse(v))))
+  if (identical(kind, "slots")) return(.slots_parse(v))
   if (identical(kind, "pt")) {
     hp <- .half_points(v)
     if (is.na(hp)) stop("The size is a number of points (9, 10 ...).", call. = FALSE)

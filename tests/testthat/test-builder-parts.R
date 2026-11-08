@@ -353,12 +353,12 @@ test_that("a part's id never reaches a program, a file or the table's sheets", {
 
 # a sample study whose T-14-1-2 has a part read from ADSL (its data code
 # calls order_arms(), which programs/study_helpers.R defines)
-.part_study <- function(env = parent.frame()) {
+.part_study <- function(env = parent.frame(), cols = "SEX") {
   home <- local_home(env)
   s <- suppressMessages(create_sample_study(run = FALSE))
   args <- list(name = "demog", absent = "skip",
                data = list(source = "dataset", dataset = "ADSL"),
-               content = .part_items_parse("- fn: table_plan\n  args:\n    cols: SEX\n"))
+               content = .part_items_parse(paste0("- fn: table_plan\n  args:\n    cols: ", cols, "\n")))
   s$planner <- .builder_item_write(s$planner, "T-14-1-2", "plan_append", args, 1L)
   s
 }
@@ -431,4 +431,33 @@ test_that("a part switched to a dataset loses the items that read the ARD, and t
   expect_length(.part_dataset_items_split(NULL)$content, 0L)
   expect_match(.part_dataset_dropped_note("summary", r$dropped),
                "The part summary now reads a dataset: normalize_ard, plan_cells, plan_stat_groups read the ARD", fixed = TRUE)
+})
+
+test_that("a part that stops the table is left out of the preview, whatever its error, and said", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  s <- .part_study()
+  suppressMessages(fetch_ard(s, "T-14-1-2"))
+  # the part reads a dataset with its own column key: it stops the table, and not
+  # as a normalize_ard() case
+  objs <- c(.preview_records(s$planner, "T-14-1-2", s$path),
+            list(ard = ard_raw(s, "T-14-1-2")))
+  pages <- .preview_content_pages(s$planner, "T-14-1-2", objs)
+  expect_gt(length(pages), 0L)
+  expect_identical(attr(pages, "dataset_parts"), "demog")
+  expect_match(attr(pages, "part_errors")[["demog"]], "column key")
+  note <- .dropped_parts_note(pages)
+  expect_match(note, "The part demog stopped: ", fixed = TRUE)
+  expect_no_match(note, "plan_append(", fixed = TRUE)
+  expect_match(note, "The table is shown without it.", fixed = TRUE)
+  expect_null(.dropped_parts_note(structure(list(), class = "x")))
+  # the part's error comes when the pages are made (a dataset, no statistics
+  # to read), not when the plan is: the same
+  s2 <- .part_study(cols = "TRT01A")
+  suppressMessages(fetch_ard(s2, "T-14-1-2"))
+  objs2 <- c(.preview_records(s2$planner, "T-14-1-2", s2$path),
+             list(ard = ard_raw(s2, "T-14-1-2")))
+  pages2 <- .preview_content_pages(s2$planner, "T-14-1-2", objs2)
+  expect_gt(length(pages2), 0L)
+  expect_match(attr(pages2, "part_errors")[["demog"]], "no statistics to read")
 })

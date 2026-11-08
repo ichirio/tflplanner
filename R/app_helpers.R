@@ -228,6 +228,15 @@ $(document).on('shiny:value', function(e) {
 // one's own): the page keeps its place instead of jumping to the top.
 (function() {
   var y = null;
+  // A part card's Apply / Start: the cards come back shorter (the ones above
+  // are drawn again, their lazy parts not yet there), so the same scroll
+  // offset would leave the card off screen.  The card keeps its place on
+  // the screen instead, while the rest of the form fills in.
+  var keep = null;
+  $(document).on('click', '.rp-part button[data-path]', function() {
+    var c = $(this).closest('.rp-card')[0];
+    keep = c ? {path: c.getAttribute('data-path'), top: c.getBoundingClientRect().top, t: Date.now()} : null;
+  });
   $(document).on('shiny:outputinvalidated', function(e) {
     if (e.name === 'builder_form') y = window.scrollY;
   });
@@ -235,6 +244,17 @@ $(document).on('shiny:value', function(e) {
     if (e.name !== 'builder_form' || y === null) return;
     var at = y;
     y = null;
+    if (keep && Date.now() - keep.t < 30000) {
+      var k = keep;
+      keep = null;
+      [0, 150, 600, 1500, 3000].forEach(function(ms) {
+        setTimeout(function() {
+          var c = $('.rp-card').filter(function() { return this.getAttribute('data-path') === k.path; })[0];
+          if (c) window.scrollBy({top: c.getBoundingClientRect().top - k.top, behavior: 'instant'});
+        }, ms);
+      });
+      return;
+    }
     setTimeout(function() { window.scrollTo(0, at); }, 0);
     setTimeout(function() { window.scrollTo(0, at); }, 150);
   });

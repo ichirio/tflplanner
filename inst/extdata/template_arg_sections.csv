@@ -101,6 +101,7 @@
 "ancova","covariates","ard"
 "ancova","where","data"
 "ancova","ref","ard"
+"ancova","adjust","ard"
 "demog","population","data"
 "demog","subset","data"
 "demog","data","data"
@@ -475,3 +476,4 @@
 "waterfall","value","ard"
 "waterfall","where","data"
 "waterfall","by_response","data"
+"listing","by_na_label","page"
