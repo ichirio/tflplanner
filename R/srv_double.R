@@ -287,7 +287,10 @@
     shiny::req(!is.null(id))
     s <- rv$study
     s$planner <- rv$p
-    uc_res(guarded(preview_code(s, id)))
+    # (a note from an earlier run, "no code yet", is gone once it has run)
+    res <- guarded(preview_code(s, id), note_id = "uc_run_error", duration = 6)
+    if (!is.null(res)) shiny::removeNotification("uc_run_error")
+    uc_res(res)
   }
   shiny::observeEvent(input$dc_run, uc_run())
   shiny::observeEvent(input$cc_run, uc_run())
@@ -438,7 +441,7 @@
     }
     lf_env$last <- v$values
     p2 <- set_lf_rows(rv$p, v$sheet, id, row)
-    if (!identical(p2$lf, rv$p$lf)) rv$p <- p2
+    if (!identical(p2$lf, rv$p$lf)) rv$p <- .lf_follow_content(p2, id)
   })
   output$lf_cols_box <- shiny::renderUI({
     shiny::req(identical(lf_type(), "listing"))
@@ -470,7 +473,7 @@
     if (!identical(h$params$planner_key, lf_cols_key())) return()
     d <- read_grid(h)
     if (is.null(d)) return()
-    guarded(rv$p <- set_lf_rows(rv$p, "listing_cols", current(), d))
+    guarded(rv$p <- .lf_follow_content(set_lf_rows(rv$p, "listing_cols", current(), d), current()))
   })
   lf_key <- shiny::reactive(paste("lf_listings", input$target, rv$ver, sep = "|"))
   output$hot_lf_listings <- rhandsontable::renderRHandsontable({
@@ -493,7 +496,7 @@
     if (is.null(d)) return()
     p2 <- guarded(set_lf_rows(rv$p, "listings", current(), d))
     if (!is.null(p2)) {
-      rv$p <- p2
+      rv$p <- .lf_follow_content(p2, current())
       bump()
     }
   })
@@ -530,6 +533,16 @@
          lf_rows(rv$p, "listings", id), lf_rows(rv$p, "listing_cols", id))
   }
   output$lf_preview_out <- shiny::renderUI({
+    # a template listing with a required argument empty (no columns left):
+    # said, and no old pages to preview again
+    id <- current()
+    tp <- if (!is.null(id)) .tpl_of(rv$p, id)
+    miss <- if (!is.null(tp) && .is_template_listing(rv$p, id)) .tpl_missing(tp$name, tp$args, rv$p$spec$study)
+    if (length(miss)) {
+      return(shiny::p(class = "small text-warning",
+                      sprintf(t("Required arguments are empty: %s. The preview waits for them."),
+                              paste(miss, collapse = ", "))))
+    }
     r <- lf_pv()
     if (is.null(r)) {
       return(shiny::p(class = "small text-muted",

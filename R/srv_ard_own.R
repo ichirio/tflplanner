@@ -389,7 +389,8 @@
     shiny::showModal(shiny::modalDialog(
       title = title, size = "l",
       shiny::fileInput(imp_id("file"), t("ARD file (rds, json, yaml, xpt, csv)"),
-                       accept = c(".rds", ".json", ".yaml", ".yml", ".xpt", ".csv")),
+                       accept = c(".rds", ".json", ".yaml", ".yml", ".xpt", ".csv"),
+                       buttonLabel = t("Browse..."), placeholder = t("No file selected")),
       shiny::uiOutput(imp_id("summary")),
       shiny::textInput(imp_id("source"), t("Made by (a CRO, a program)"),
                        value = source, width = "100%"),

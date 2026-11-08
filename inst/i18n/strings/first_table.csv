@@ -2,7 +2,7 @@
 "Rename %s","%s の名前を変更"
 "The report's rows are deleted from every sheet (on save; its program and outputs stay on disk).","全シートからこの帳票の行を削除します（保存時に反映。プログラムと成果物のファイルは残ります）。"
 "%d files added to %s","%d ファイルを %s に取り込みました"
-"%s print numbers from its ARD: they will have none until their step %s names another table.","%s はこの表の ARD の数値を表示しています。手順 %s で別の表を選ぶまで、数値の出どころがなくなります。"
+"%s print numbers from its ARD: they will have none until their step %s names another table.","%s はこの Table の ARD の数値を表示しています。手順 %s で別の Table を選ぶまで、数値のソースがなくなります。"
 "The reports are in their ids' order already.","帳票はすでに ID 順に並んでいます。"
 "Sort the reports by ID?","帳票を ID 順に並べ替えますか？"
 "%d of %d reports move: the list goes in its ids' order, by the numbers in the id (T-14-1-2 before T-14-1-10, T-14-0-1 before F-14-2-1), then its letters. The list's order is the order the reports are made in; the up and down arrows still move one.","%2$d 帳票のうち %1$d が動きます。一覧を ID の順に並べます。ID の中の数を数として並べ（T-14-1-2 は T-14-1-10 より前、T-14-0-1 は F-14-2-1 より前）、同じなら文字の順です。一覧の順は帳票を作る順です。↑ ↓ で 1 つずつ動かすこともできます。"

@@ -206,7 +206,7 @@ test_that("the study review lists a figure's ARD problems as F04-F08, each with 
   expect_identical(.review_target(r, s$planner)$go, "ard")
   # in Japanese: the sentence translated, the value put in
   expect_identical(rv(s, "ja")$message,
-                   "T-14-2-2 \u306e ARD \u306f\u307e\u3060\u4f5c\u3089\u308c\u3066\u3044\u307e\u305b\u3093\u3002\u5148\u306b\u4f5c\u3063\u3066\u304f\u3060\u3055\u3044\uff08\u305d\u306e\u30b9\u30c6\u30c3\u30d7 2\uff09")
+                   "T-14-2-2 \u306e ARD \u306f\u307e\u3060\u4f5c\u3089\u308c\u3066\u3044\u307e\u305b\u3093\u3002\u5148\u306b\u4f5c\u3063\u3066\u304f\u3060\u3055\u3044\uff08\u305d\u306e\u624b\u9806 2\uff09")
   # no source: F05, by hand
   s0 <- s
   s0$planner <- set_fig_ard_source(s$planner, "F-14-2-3", NULL)
@@ -347,4 +347,17 @@ test_that("Review does not say 'No dataset is read' of a figure reading an ARD",
   p$fig_designs[["F-14-2-4"]] <- d
   r <- review_problems(p)
   expect_true(any(r$output_id == "F-14-2-4" & r$message == "No dataset is read."))
+})
+
+test_that("a template figure's ARD tabs are on when it makes an ARD (forest_hr), off when it does not (km_survival, mean_se) (#514)", {
+  s <- fig_ard_study()
+  p <- tpl_fig_planner(s$planner, "forest_hr", "F-9-1", param = "PFS", population = "SAF")
+  expect_true(.report_uses_ard(p, "F-9-1"))
+  p <- tpl_fig_planner(p, "mean_se", "F-9-2", param = "SYSBP")
+  p <- tpl_fig_planner(p, "km_survival", "F-9-3", by = "TRT01A")
+  expect_false(.report_uses_ard(p, "F-9-3"))
+  expect_false(.report_uses_ard(p, "F-9-2"))
+  # a table (template or not) and a figure of its own code keep their answers
+  expect_true(.report_uses_ard(p, "T-14-1-1"))
+  expect_false(.report_uses_ard(p, "F-14-2-1"))
 })

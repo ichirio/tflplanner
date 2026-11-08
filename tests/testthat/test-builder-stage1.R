@@ -259,7 +259,7 @@ test_that("normalize_ard(): a form card -- the hierarchy a field marked From the
   expect_match(h, "group1 = TRT01A, group1_level = Drug X", fixed = TRUE)
   expect_match(h, ".label = F, stat_name = n", fixed = TRUE)
   hj <- html(.plan_card_note("normalize_ard", lang = "ja"))
-  expect_match(hj, "ARD を表を作りやすい形に整えます。", fixed = TRUE)
+  expect_match(hj, "ARD を Table を作りやすい形に整えます。", fixed = TRUE)
   expect_match(hj, "カテゴリの値は .label（行の文字）になります。", fixed = TRUE)
   # every argument's help under Other arguments is said in Japanese too
   helps <- unlist(lapply(names(.plan_meaning), function(fn)
