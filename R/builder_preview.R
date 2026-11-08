@@ -176,6 +176,9 @@ header_token_labels <- function(choices, tokens = NULL) {
     tok <- tok[names(tok) != "STUDY_ID"]
   }
   rx <- "\\{[A-Z][A-Z0-9_]*\\}"
+  # the page's heading ({PAGE_HEADING}) depends on the data, so the sample shows
+  # none: a title line of only that is left out, as an empty one is
+  tok[["PAGE_HEADING"]] <- ""
   # a line whose tokens are all empty, the rest blanks or brackets, is not
   # printed (rtfreporter's drop_empty_rows)
   empty <- function(cells) {
