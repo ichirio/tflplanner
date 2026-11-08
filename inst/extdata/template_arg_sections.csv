@@ -101,6 +101,7 @@
 "ancova","covariates","ard"
 "ancova","where","data"
 "ancova","ref","ard"
+"ancova","adjust","ard"
 "demog","population","data"
 "demog","subset","data"
 "demog","data","data"

@@ -2150,3 +2150,4 @@
 "arg-hint:Their format: a number of decimals (2L), a format (""xx.xx"", ""xx.x%""), or a function (cards::label_round(2)).","その書式：小数の桁数（2L）、書式（""xx.xx""、""xx.x%""）、または関数（cards::label_round(2)）。"
 "arg-hint:Which rows get it, as an expression of the ARD's columns: group1_level == ""Drug X"" (default TRUE: all).","書式を適用する行。ARD の列の式で書く：group1_level == ""Drug X""（デフォルト TRUE：すべて）。"
 "Legend labels","凡例の文字"
+"the multiplicity adjustment of the differences' CIs and p-values, as emmeans' adjust (none: no adjustment)","差の信頼区間と p 値の多重性の調整（emmeans の adjust）（none: 調整しない）"

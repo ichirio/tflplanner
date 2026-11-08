@@ -157,7 +157,8 @@
   subgroup_labels = "Subgroup headings' labels",
   post_header = "Header over each post-baseline category",
   by_break = "How the listing is divided",
-  by_heading = "Page heading"
+  by_heading = "Page heading",
+  adjust = "Multiplicity adjustment"
 )
 
 .tpl_doc_labels <- c(
