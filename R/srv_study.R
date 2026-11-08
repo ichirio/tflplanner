@@ -27,15 +27,18 @@
   }
   # An error stays until it is closed (a message gone before it could be
   # read or copied is no help); the others go after 6 s.
-  notify <- function(msg, type = "message") {
+  # `note_id`, `duration`: an error note that replaces its earlier one and is
+  # taken away by its own id, and one that goes by itself (default: it stays
+  # until closed)
+  notify <- function(msg, type = "message", note_id = NULL, duration = NULL) {
     if (identical(type, "error")) {
-      shiny::showNotification(.error_note_ui(msg, t), type = type,
-                              duration = NULL, closeButton = TRUE)
+      shiny::showNotification(.error_note_ui(msg, t), type = type, id = note_id,
+                              duration = duration, closeButton = TRUE)
     } else {
       shiny::showNotification(msg, type = type, duration = 6)
     }
   }
-  guarded <- function(expr) {
+  guarded <- function(expr, note_id = NULL, duration = NULL) {
     # the detail (the calls) goes to the console / log; the screen gets
     # the message only
     tryCatch(
@@ -51,7 +54,7 @@
           message("tflplanner: the output of what failed:\n",
                   paste(e$detail, collapse = "\n"))
         }
-        notify(.error_view(conditionMessage(e), t), "error")
+        notify(.error_view(conditionMessage(e), t), "error", note_id, duration)
         NULL
       })
   }
@@ -215,7 +218,7 @@
     }
     # the variables' headings moved from the code lists: said once
     if (!is.null(attr(s$planner, "moved_headings"))) {
-      shiny::showNotification(t(.moved_headings_msg), type = "message", duration = NULL)
+      shiny::showNotification(sprintf(t(.moved_headings_msg), .step_no("content")), type = "message", duration = NULL)
     }
     # the definition files changed outside tflplanner (#274): taken in, or
     # not readable (the study open as last saved, no save until resolved)
@@ -875,7 +878,8 @@
     rv$studies_ver
     shiny::p(class = "small text-muted mb-1",
              t("New study folders go to"), ": ",
-             shiny::code(tflplanner_config()$studies_root %||% ""))
+             # (the one in use: the default place when no setting is saved yet)
+             shiny::code(studies_root()))
   })
   # the study the list points at: the selected row, else the open study
   shown_study <- shiny::reactive({
@@ -949,7 +953,8 @@
         .btn("std_builtin", t("Back to the built-in draft"),
              class = "btn-sm btn-outline-secondary")),
       shiny::fileInput("std_upload", t("Install company standards (Excel)"),
-                       accept = ".xlsx", width = "100%"))
+                       accept = ".xlsx", width = "100%",
+                       buttonLabel = t("Browse..."), placeholder = t("No file selected")))
   })
   shiny::observeEvent(input$add_sample, {
     s <- NULL
@@ -1460,7 +1465,7 @@
         shiny::fileInput(
           "spec_import", NULL, placeholder = t("(an edited copy: workbooks, .yml, .json or the zip)"),
           multiple = TRUE, accept = c(".xlsx", ".yml", ".yaml", ".json", ".zip"),
-          width = "100%")),
+          width = "100%", buttonLabel = t("Browse..."))),
       grp(t("Restore from a backup"), t("Every import keeps the files as they were in spec/.backup/. Choose one to bring the study back to it (the study as it is now is kept first): the way to undo a wrong edit."),
         .btn("restore_open", t("Restore from a backup ..."),
              class = "btn-sm btn-outline-secondary")),

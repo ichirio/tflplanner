@@ -228,7 +228,7 @@ test_that("in part scope the bar says what the cards edit; the table scope says 
   expect_match(pt, 'aria-pressed="true"', fixed = TRUE)
   ja <- as.character(.part_scope_bar(modes, "summary", "ja"))
   expect_match(ja, "「summary」", fixed = TRUE)
-  expect_match(ja, "「表の下に足す部分」", fixed = TRUE)
+  expect_match(ja, "「Table の下に足す部分」", fixed = TRUE)
 })
 
 test_that("a part's cards say This part, and only table_plan is required", {
