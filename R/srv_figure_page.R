@@ -62,7 +62,7 @@
     # (a part the table is shown without: said above the pages)
     note <- if (!is.null(pv$note)) shiny::div(class = "small text-danger mb-1 rp-pv-note", pv$note)
     if (nzchar(pn) && identical(bpart()$id, current()) &&
-        !pn %in% attr(pv$pages, "dataset_parts")) {
+        !pn %in% attr(pv$pages, "dropped_parts")) {
       at <- .part_start_page(pv$pages, pn)
       return(shiny::tagList(note, .part_page_note(pv$pages, pn, lang),
                             preview_html(pv$pages, max_pages = max(3L, at, na.rm = TRUE))))

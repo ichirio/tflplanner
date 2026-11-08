@@ -50,14 +50,13 @@
          "Min, Max" = "{min:.3s}, {max:.3s}"))))
 }
 
-# The card's body: `cid` its input ids' stem, `it` the item, `datasets` the
-# study's datasets, `mode` how the part can be edited (.part_modes(): its
-# name and "cards", "dataset" or "defaults"; NULL a part not written yet)
-.part_body <- function(cid, it, datasets = character(), lang = "en", mode = NULL) {
+# The card's body: `cid` its input ids' stem, `it` the item, `mode` how the
+# part can be edited (.part_modes(): its name and "cards" or "defaults"; NULL
+# a part not written yet).  A table's part always reads the report's ARD.
+.part_body <- function(cid, it, lang = "en", mode = NULL) {
   t <- function(x) tr(x, lang)
   a <- it$args %||% list()
-  d <- a$data %||% list(source = "ard")
-  src <- if (identical(d[["source"]], "dataset")) "dataset" else "ard"
+  old_dataset <- identical((a$data %||% list())[["source"]], "dataset")
   btn <- function(what, label, class = "btn-sm btn-outline-primary") {
     shiny::tags$button(
       type = "button", class = paste("btn", class), `data-path` = it$path,
@@ -76,15 +75,11 @@
                                     with_tip(paste0(t("A page group with no rows of it"), " (absent)"),
                                              t("error: stop; skip: the page without the part.")),
                                     c("error", "skip"), selected = a$absent %||% "error", width = "100%"))),
-    shiny::div(
-      class = "d-flex flex-wrap gap-2",
-      shiny::div(style = "flex: 1 1 10rem",
-                 shiny::radioButtons(paste0(cid, "__source"), paste0(t("Its rows come from"), " (data)"),
-                                     stats::setNames(c("ard", "dataset"), c(t("The report's ARD"), t("A dataset"))),
-                                     selected = src, inline = TRUE)),
-      shiny::div(style = "flex: 1 1 10rem",
-                 shiny::selectInput(paste0(cid, "__dataset"), t("Dataset"),
-                                    c("", datasets), selected = d[["dataset"]] %||% "", width = "100%"))),
+    # (a saved YAML of an older version may still say dataset: Apply sets the ARD)
+    if (old_dataset) shiny::div(
+      class = "small text-warning rp-part-old-dataset",
+      t("This part reads a dataset; a table's part reads the report's ARD. Apply sets it to the ARD.")) else
+      shiny::div(class = "small text-muted", t("Its rows come from the report's ARD.")),
     shiny::textAreaInput(paste0(cid, "__content"),
                          with_tip(paste0(t("The part's items"), " (content)"),
                                   t("Its own table items, as the report's file writes them: table_plan, plan_cells, ... (normalize_ard first for the ARD).")),
@@ -102,23 +97,18 @@
     if (!is.null(mode) && !identical(mode$mode, "cards")) shiny::div(
       class = "small text-muted mt-1",
       t(switch(mode$mode,
-               dataset = "No cards for a dataset part (the cards read the ARD): edit its items in the YAML above.",
                "From the study defaults: no cards. Change the YAML here to make it this table's own, or edit spec/defaults.yml."))))
 }
 
 # The item's arguments from the card's fields (an error when its items do
 # not read)
 .part_args_read <- function(input, cid, it) {
-  src <- input[[paste0(cid, "__source")]] %||% "ard"
-  ds <- input[[paste0(cid, "__dataset")]] %||% ""
-  if (identical(src, "dataset") && !nzchar(ds)) stop("Choose the part's dataset.", call. = FALSE)
   content <- .part_items_parse(input[[paste0(cid, "__content")]])
   nm <- trimws(input[[paste0(cid, "__name")]] %||% "")
   ab <- input[[paste0(cid, "__absent")]] %||% "error"
   c(if (nzchar(nm)) list(name = nm),
     if (!identical(ab, "error")) list(absent = ab),
-    list(data = if (identical(src, "dataset")) list(source = "dataset", dataset = ds) else list(source = "ard"),
-         content = content))
+    list(data = list(source = "ard"), content = content))
 }
 
 # ---- a part's items in the builder's own cards --------------------------------
@@ -188,16 +178,14 @@
 
 # How each part of a report's items (.spec_items()$items, each with where
 # it comes from) can be edited, in order: list(name, mode) -- "cards" (the
-# report's own, its rows the report's ARD's), "dataset" (its rows come from
-# a dataset: the cards work on an ARD) or "defaults" (the study's defaults
-# say it; a report with a part of its own has the defaults' parts replaced,
-# so a report's parts are all of the one kind or all of the other)
+# report's own, its rows the report's ARD's) or "defaults" (the study's
+# defaults say it; a report with a part of its own has the defaults' parts
+# replaced, so a report's parts are all of the one kind or all of the other)
 .part_modes <- function(items) {
   parts <- Filter(function(it) identical(it$fn, "plan_append") && !isFALSE(it$present), items %||% list())
   lapply(seq_along(parts), function(i) {
     it <- parts[[i]]
-    mode <- if (!identical(it$from %||% "own", "own")) "defaults" else
-      if (identical(it$args$data[["source"]], "dataset")) "dataset" else "cards"
+    mode <- if (!identical(it$from %||% "own", "own")) "defaults" else "cards"
     list(name = .part_name_of(it, i), mode = mode)
   })
 }
@@ -312,65 +300,16 @@
   NA_integer_
 }
 
-# The parts that read a dataset but whose items are for an ARD: normalize_ard()
-# reads cards (context, stat_name), not a dataset, so the program stops there
-# too.  `content`: the report's items; the positions of those plan_append items.
-.dataset_parts_with_ard_items <- function(content) {
-  which(vapply(content %||% list(), function(it) {
-    identical(it$fn, "plan_append") &&
-      identical(it$args$data$source, "dataset") &&
-      any(vapply(it$args$content %||% list(), function(z) identical(z$fn, "normalize_ard"), NA))
-  }, NA))
-}
-
-# The items of a part that read a dataset which cannot run on it: they read
-# a cards ARD (a statistic name, a context).  normalize_ard() and
-# plan_stat_groups() always; plan_cells() when its templates are for the
-# kinds of variable (continuous / categorical) with no `default` for the
-# rest.  (Its `default`, a column's template and plan_filter() / plan_compare()
-# run on a dataset.)  Returns list(content, dropped): the items that can run
-# and the verbs taken out.
-.part_dataset_items_split <- function(content) {
-  ard_only <- function(it) {
-    fn <- it$fn
-    if (fn %in% c("normalize_ard", "plan_stat_groups")) return(TRUE)
-    identical(fn, "plan_cells") && any(c("continuous", "categorical") %in% names(it$args)) &&
-      !"default" %in% names(it$args)
-  }
-  gone <- vapply(content %||% list(), ard_only, NA)
-  list(content = (content %||% list())[!gone],
-       dropped = unique(vapply((content %||% list())[gone], function(it) it$fn, "")))
-}
-
-# What was taken out (`fn`: the verbs), in one line
-.part_dataset_dropped_note <- function(name, fn, tr = function(x) x) {
-  name <- if (is.na(name) || !nzchar(name)) "(no name)" else name
-  sprintf(tr("The part %s now reads a dataset: %s read the ARD and cannot run on it, so they were taken out of its items."),
-          name, paste(fn, collapse = ", "))
-}
-
-# What to say of such a part (`name`: the parts' names)
-.dataset_part_ard_items_note <- function(name, tr = function(x) x) {
-  name <- ifelse(is.na(name) | !nzchar(name), "(no name)", name)
-  sprintf(tr("The part %s reads a dataset, but its items are for an ARD: normalize_ard reads cards, not a dataset. Take normalize_ard (and the items for cards) out of its items, or set its data back to the report's ARD."),
-          paste(name, collapse = ", "))
-}
-
 # What to say over a preview that is shown without the parts that stopped it
-# (`pages`: .preview_content_pages()'s, with attr "dataset_parts" and
-# "part_errors"): the note of a dataset part with items for an ARD, and for
-# any other part its name with its error
+# (`pages`: .preview_content_pages()'s, with attr "dropped_parts" and
+# "part_errors"): each part's name with its error
 .dropped_parts_note <- function(pages, tr = function(x) x) {
-  nm <- attr(pages, "dataset_parts")
+  nm <- attr(pages, "dropped_parts")
   if (!length(nm)) return(NULL)
-  why <- attr(pages, "part_errors")[nm]
-  why <- if (is.null(why)) rep(NA_character_, length(nm)) else unname(why)
-  other <- !is.na(why)
+  why <- unname(attr(pages, "part_errors")[nm])
   # (the error names the part already: "plan_append("name"): ...")
   why <- sub("^plan_append\\(\"[^\"]*\"\\): ", "", why)
-  paste(c(if (any(!other)) .dataset_part_ard_items_note(nm[!other], tr),
-          sprintf(tr("The part %s stopped: %s"), ifelse(nzchar(nm[other]) & !is.na(nm[other]), nm[other], "(no name)"),
-                  why[other]),
+  paste(c(sprintf(tr("The part %s stopped: %s"), ifelse(nzchar(nm) & !is.na(nm), nm, "(no name)"), why),
           tr("The table is shown without it.")), collapse = " ")
 }
 
