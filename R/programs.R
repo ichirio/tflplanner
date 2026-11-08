@@ -519,8 +519,9 @@ data_lines <- function(x, output_id, todo = TRUE) {
 
 # ... by object, its ARD left out: list(data = <lines>, adpc = <lines>)
 .table_objects_code <- function(o, study) {
-  # (a template listing: its records are the template's, once it is resolved)
-  if (identical(o$kind, "listing") && is.list(o$template)) {
+  # (a template report: its records -- a listing's, a table of records
+  # such as pk_conc's -- are the template's, once it is resolved)
+  if (is.list(o$template)) {
     o <- tflspec::tfl_resolve_output(o, study)
   }
   own <- identical(o$data[["source"]], "dataset")
