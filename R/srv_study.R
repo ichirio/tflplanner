@@ -215,7 +215,7 @@
     }
     # the variables' headings moved from the code lists: said once
     if (!is.null(attr(s$planner, "moved_headings"))) {
-      shiny::showNotification(t(.moved_headings_msg), type = "message", duration = NULL)
+      shiny::showNotification(sprintf(t(.moved_headings_msg), .step_no("content")), type = "message", duration = NULL)
     }
     # the definition files changed outside tflplanner (#274): taken in, or
     # not readable (the study open as last saved, no save until resolved)
@@ -949,7 +949,8 @@
         .btn("std_builtin", t("Back to the built-in draft"),
              class = "btn-sm btn-outline-secondary")),
       shiny::fileInput("std_upload", t("Install company standards (Excel)"),
-                       accept = ".xlsx", width = "100%"))
+                       accept = ".xlsx", width = "100%",
+                       buttonLabel = t("Browse..."), placeholder = t("No file selected")))
   })
   shiny::observeEvent(input$add_sample, {
     s <- NULL
@@ -1460,7 +1461,7 @@
         shiny::fileInput(
           "spec_import", NULL, placeholder = t("(an edited copy: workbooks, .yml, .json or the zip)"),
           multiple = TRUE, accept = c(".xlsx", ".yml", ".yaml", ".json", ".zip"),
-          width = "100%")),
+          width = "100%", buttonLabel = t("Browse..."))),
       grp(t("Restore from a backup"), t("Every import keeps the files as they were in spec/.backup/. Choose one to bring the study back to it (the study as it is now is kept first): the way to undo a wrong edit."),
         .btn("restore_open", t("Restore from a backup ..."),
              class = "btn-sm btn-outline-secondary")),

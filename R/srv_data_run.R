@@ -507,7 +507,8 @@
     DT::datatable(v, rownames = FALSE, escape = FALSE,
                   selection = list(mode = "single", selected = sel),
                   options = list(dom = "t", paging = FALSE, ordering = FALSE,
-                                 scrollX = TRUE))
+                                 scrollX = TRUE,
+                                 language = list(emptyTable = t("No official run yet."))))
   })
   # a row's folder icon: the folder opened (not the row chosen: DT chooses
   # on mousedown, which the icon keeps to itself), and said
