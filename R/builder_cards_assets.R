@@ -53,7 +53,9 @@
 .rp-card-stage { font-size: 10.5px; color: #9ca3af; margin-left: auto; white-space: nowrap; }
 .rp-card-stage + .rp-card-menu { margin-left: 0; }
 .rp-card-sep-note { color: #9ca3af; letter-spacing: 0; }
-.rp-revert { padding: 0 .3rem; font-size: 12px; text-decoration: none; }
+.rp-revert { padding: 0 .3rem; font-size: 12px; text-decoration: none; white-space: nowrap; flex-shrink: 0; }
+/* the template card's Revert (one line, its text is the width it needs) */
+button[onclick*='tpl_revert'] { white-space: nowrap; flex-shrink: 0; }
 .rp-field { margin-bottom: .35rem; min-width: 0; }
 .rp-field-label { font-size: 12.5px; margin-bottom: .1rem; display: flex; align-items: center;
   gap: .25rem; flex-wrap: wrap; }

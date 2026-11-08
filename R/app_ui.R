@@ -92,6 +92,9 @@ details.ard-fn[open] .ard-fn-closed, details.ard-fn:not([open]) .ard-fn-open { d
 .rp-pv .rp-pv-indent { padding-left: 2.2em; }
 .rp-pv-blank td { height: 1em; }
 .rp-pv-page { font-size: 11px; color: #6b7280; }
+.rp-pv-wrap { max-width: 100%; overflow-x: auto; }
+.rp-pv.rp-pv-fixed { table-layout: fixed; }
+.rp-pv.rp-pv-fixed td { white-space: pre-wrap; overflow-wrap: anywhere; }
 .rp-b-card { border: 1px solid var(--bs-border-color, #dee2e6);
   border-radius: .5rem; padding: .6rem .8rem; margin-bottom: .6rem; }
 .rp-b-card h6 { font-weight: 600; margin-bottom: .4rem; }
@@ -587,7 +590,7 @@ app_ui <- function(lang = "en") {
                                     shiny::div(class = "rp-tpl-only", shiny::uiOutput("tpl_code_expanded"))),
               result = shiny::tagList(
                 shiny::div(
-                  class = "d-flex justify-content-between small mb-1",
+                  class = "d-flex flex-wrap justify-content-between align-items-center gap-1 small mb-1",
                   shiny::span(t("The table as it will print"),
                               shiny::span(id = "builder_updating",
                                           class = "badge text-bg-warning ms-2 d-none",

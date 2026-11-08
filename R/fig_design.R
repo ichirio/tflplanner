@@ -302,7 +302,7 @@ set_fig_design <- function(x, output_id, design) {
 #'
 #' Runs a design's script on the study's data, as the figure's program will
 #' (in a temporary folder, so nothing of the study changes), and gives the
-#' PNG it saves -- at its size on the page (step 3) -- with the design's problems
+#' PNG it saves -- at its size on the page (step 4, Page and output) -- with the design's problems
 #' and the figure checks.  The Plot Designer's preview.
 #'
 #' @param study An `rtfstudy`.
