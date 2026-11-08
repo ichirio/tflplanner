@@ -231,9 +231,56 @@ header_token_labels <- function(choices, tokens = NULL) {
     htmltools::div(class = "rp-page-foot", block("footer", "foot")))
 }
 
+# The longest line of each column over the pages shown (its cells and its
+# plain header cells), in characters; NULL when the pages do not have the
+# same columns
+.pv_shared_widths <- function(pages) {
+  if (!length(pages)) return(NULL)
+  nc <- vapply(pages, function(pg) ncol(pg$data) %||% 0L, 1L)
+  if (any(nc != nc[[1L]]) || !nc[[1L]]) return(NULL)
+  longest <- function(x) {
+    x <- as.character(unlist(x))
+    x <- x[!is.na(x)]
+    if (!length(x)) return(0L)
+    max(nchar(unlist(strsplit(x, "\n", fixed = TRUE)), type = "width"), 0L)
+  }
+  w <- integer(nc[[1L]])
+  for (pg in pages) {
+    for (k in seq_len(nc[[1L]])) w[k] <- max(w[k], longest(pg$data[[k]]))
+    for (line in pg$col_header) {
+      spans <- is.list(line) && length(line) &&
+        all(vapply(line, function(x) is.list(x) && !is.null(x$from), NA))
+      if (spans) next
+      line <- as.list(line)
+      for (k in seq_len(min(length(line), nc[[1L]]))) w[k] <- max(w[k], longest(line[[k]]))
+    }
+  }
+  w
+}
+
+# The preview table's <colgroup> and width: the report's widths
+# (`col_rel_width`, as the RTF is laid out) over the card's width, else the
+# pages' longest lines; NULL when there is no column
+.pv_colgroup <- function(rel, n, fallback) {
+  if (!n) return(NULL)
+  col <- function(w) htmltools::tags$col(style = paste0("width: ", w, ";"))
+  if (is.numeric(rel) && length(rel) == n && all(is.finite(rel)) && all(rel > 0)) {
+    return(list(group = htmltools::tags$colgroup(lapply(
+      sprintf("%.3f%%", rel / sum(rel) * 100), col)),
+      style = "width: 100%; min-width: 36em;"))
+  }
+  if (is.null(fallback) || length(fallback) != n) return(NULL)
+  w <- sprintf("calc(%dch + 12px)", as.integer(fallback))
+  list(group = htmltools::tags$colgroup(lapply(w, col)),
+       style = sprintf("width: calc(%dch + %dpx);", sum(as.integer(fallback)), 12L * n))
+}
+
 #' @rdname preview_pages
 #' @noRd
 preview_html <- function(pages, max_pages = 3L, align = "center") {
+  # the columns' widths the pages share, so that page 1 and page 2 line up
+  # (a page by itself would size its columns to its own rows)
+  fallback <- .pv_shared_widths(pages[seq_len(min(length(pages), max_pages))])
   one <- function(pg, i) {
     d <- pg$data
     blank_after <- attr(d, "rtf_blank_rows") %||% pg$blank_rows %||%
@@ -300,13 +347,19 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
           val(d[r, k]))))))
       if (r %in% blank_after) body <- c(body, list(blank))
     }
+    cols <- .pv_colgroup(pg$col_rel_width, ncol(d), fallback)
     htmltools::tagList(
       if (length(pages) > 1L) htmltools::div(
         class = "rp-pv-page", sprintf("%d / %d", i, length(pages))),
-      htmltools::tags$table(
-        class = paste(c("rp-pv", if (identical(align, "left")) "rp-pv-left"),
-                      collapse = " "),
-        htmltools::tags$thead(head), htmltools::tags$tbody(body)))
+      # (wider than the card: it scrolls, it is not cut)
+      htmltools::div(
+        class = "rp-pv-wrap",
+        htmltools::tags$table(
+          class = paste(c("rp-pv", if (identical(align, "left")) "rp-pv-left",
+                          if (!is.null(cols)) "rp-pv-fixed"), collapse = " "),
+          style = cols$style,
+          cols$group,
+          htmltools::tags$thead(head), htmltools::tags$tbody(body))))
   }
   n <- min(length(pages), max_pages)
   htmltools::tagList(lapply(seq_len(n), function(i) one(pages[[i]], i)))

@@ -519,6 +519,23 @@ test_that("a preview's spanning header cells span their columns", {
   expect_match(h, "Placebo")
 })
 
+test_that("a preview's pages share one column layout", {
+  mk <- function(a, ...) structure(list(
+    data = data.frame(a = a, b = c("1", "2"), stringsAsFactors = FALSE),
+    col_header = list(c("Name", "N")), ...), class = "rtftable")
+  # the report's widths, as the RTF lays out: the same on each page
+  h <- as.character(preview_html(
+    list(mk(c("x", "y"), col_rel_width = c(3, 1)), mk(c("long text here", "z"), col_rel_width = c(3, 1))),
+    align = "left"))
+  expect_equal(lengths(regmatches(h, gregexpr("width: 75.000%", h, fixed = TRUE))), 2L)
+  expect_equal(lengths(regmatches(h, gregexpr("width: 25.000%", h, fixed = TRUE))), 2L)
+  # no widths: the longest line over the pages shown, on each of them
+  h <- as.character(preview_html(list(mk(c("x", "y")), mk(c("long text here", "z")))))
+  expect_equal(lengths(regmatches(h, gregexpr("calc(14ch + 12px)", h, fixed = TRUE))), 2L)
+  # a table too wide for the card scrolls in its own box
+  expect_match(h, "rp-pv-wrap", fixed = TRUE)
+})
+
 test_that("tflspec's column help (English) is shown in the app's language", {
   d <- tflspec::tfl_spec_columns()
   ja <- tr(unique(d$description), lang = "ja")
