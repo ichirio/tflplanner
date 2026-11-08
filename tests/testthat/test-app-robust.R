@@ -312,7 +312,8 @@ test_that("a table with no ARD says so, and offers the one Preview", {
     session$setInputs(target = "T1", nav = "make", step = "content", table_nav = "builder")
     expect_match(output$assist$html, "Not made")
     expect_match(output$assist$html, 'id="fetch2"')
-    expect_match(output$builder_note$html, 'id="fetch3"')
+    expect_match(output$builder_note$html, "no ARD yet")
+    expect_false(grepl('id="fetch3"', output$builder_note$html, fixed = TRUE))
   })
 })
 
@@ -516,6 +517,23 @@ test_that("a preview's spanning header cells span their columns", {
   expect_match(h, 'colspan="2"[^>]*>Active')
   expect_match(h, "SOC<br>PT")
   expect_match(h, "Placebo")
+})
+
+test_that("a preview's pages share one column layout", {
+  mk <- function(a, ...) structure(list(
+    data = data.frame(a = a, b = c("1", "2"), stringsAsFactors = FALSE),
+    col_header = list(c("Name", "N")), ...), class = "rtftable")
+  # the report's widths, as the RTF lays out: the same on each page
+  h <- as.character(preview_html(
+    list(mk(c("x", "y"), col_rel_width = c(3, 1)), mk(c("long text here", "z"), col_rel_width = c(3, 1))),
+    align = "left"))
+  expect_equal(lengths(regmatches(h, gregexpr("width: 75.000%", h, fixed = TRUE))), 2L)
+  expect_equal(lengths(regmatches(h, gregexpr("width: 25.000%", h, fixed = TRUE))), 2L)
+  # no widths: the longest line over the pages shown, on each of them
+  h <- as.character(preview_html(list(mk(c("x", "y")), mk(c("long text here", "z")))))
+  expect_equal(lengths(regmatches(h, gregexpr("calc(14ch + 12px)", h, fixed = TRUE))), 2L)
+  # a table too wide for the card scrolls in its own box
+  expect_match(h, "rp-pv-wrap", fixed = TRUE)
 })
 
 test_that("tflspec's column help (English) is shown in the app's language", {

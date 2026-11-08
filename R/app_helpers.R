@@ -228,6 +228,15 @@ $(document).on('shiny:value', function(e) {
 // one's own): the page keeps its place instead of jumping to the top.
 (function() {
   var y = null;
+  // A part card's Apply / Start: the cards come back shorter (the ones above
+  // are drawn again, their lazy parts not yet there), so the same scroll
+  // offset would leave the card off screen.  The card keeps its place on
+  // the screen instead, while the rest of the form fills in.
+  var keep = null;
+  $(document).on('click', '.rp-part button[data-path]', function() {
+    var c = $(this).closest('.rp-card')[0];
+    keep = c ? {path: c.getAttribute('data-path'), top: c.getBoundingClientRect().top, t: Date.now()} : null;
+  });
   $(document).on('shiny:outputinvalidated', function(e) {
     if (e.name === 'builder_form') y = window.scrollY;
   });
@@ -235,6 +244,17 @@ $(document).on('shiny:value', function(e) {
     if (e.name !== 'builder_form' || y === null) return;
     var at = y;
     y = null;
+    if (keep && Date.now() - keep.t < 30000) {
+      var k = keep;
+      keep = null;
+      [0, 150, 600, 1500, 3000].forEach(function(ms) {
+        setTimeout(function() {
+          var c = $('.rp-card').filter(function() { return this.getAttribute('data-path') === k.path; })[0];
+          if (c) window.scrollBy({top: c.getBoundingClientRect().top - k.top, behavior: 'instant'});
+        }, ms);
+      });
+      return;
+    }
     setTimeout(function() { window.scrollTo(0, at); }, 0);
     setTimeout(function() { window.scrollTo(0, at); }, 150);
   });
@@ -332,6 +352,27 @@ $(document).on('click', '#save', function() {
 # locked scroll as the page's own and puts it back on closing: the page would
 # never scroll again.  When the last dialog has gone, the lock goes.
 .modal_scroll_js <- "
+// a selectize list opened in a dialog is drawn in <body>: the dialog's body
+// scrolls and would clip it under the footer
+(function() {
+  var st = document.createElement('style');
+  st.textContent = 'body > .selectize-dropdown { z-index: 2000 !important; } ' +
+    'body > .selectize-dropdown .selectize-dropdown-content { max-height: 22vh; }';
+  document.head.appendChild(st);
+  function wrap() {
+    var f = jQuery.fn.selectize;
+    if (!f || f.tflBody) return;
+    jQuery.fn.selectize = function(opts) {
+      if (opts && typeof opts === 'object' && this.closest('.modal').length && !opts.dropdownParent)
+        opts.dropdownParent = 'body';
+      return f.apply(this, arguments);
+    };
+    jQuery.fn.selectize.tflBody = true;
+    for (var k in f) if (f.hasOwnProperty(k)) jQuery.fn.selectize[k] = f[k];
+  }
+  wrap();
+  jQuery(wrap);
+})();
 $(document).on('hidden.bs.modal', function() {
   if (!document.querySelector('.modal.show')) {
     document.body.style.removeProperty('overflow');

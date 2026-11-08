@@ -119,6 +119,16 @@ set_lf_rows <- function(x, sheet, output_id, rows) {
   c(items = if (!is.null(l$content_more)) n_yaml(l$content_more) else 0L,
     columns = if (!is.null(cl$more)) sum(!is.na(cl$more) & nzchar(trimws(cl$more))) else 0L)
 }
+# A listing with items its sheets cannot say (`page_by` ...: a template
+# listing converted to code has them) after an edit of its sheets: the
+# spec takes the edit in, so its program and preview are the content with
+# the edit, not the sheets' code without those items (.is_template_listing())
+.lf_follow_content <- function(p, output_id) {
+  if (is.null(p$spec) || !.lf_more_count(p, output_id)[["items"]]) return(p)
+  p <- .spec_sync(p, p$spec$meta)
+  attr(p, "changed") <- NULL
+  p
+}
 .lf_more_note <- function(x, output_id, t = identity) {
   n <- .lf_more_count(x, output_id)
   if (!sum(n)) return(NULL)

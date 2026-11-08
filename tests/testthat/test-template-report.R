@@ -447,6 +447,76 @@ test_that("a template listing's `by` divides its pages in the preview and the pr
   expect_gte(length(pages), n)
 })
 
+test_that("a template listing converted to code prints the same pages: `by`, `by_break`, `by_heading` kept (#605)", {
+  skip_on_cran()
+  skip_if_not(.listing_has_by(), "the installed tflspec has no `by` for a listing template")
+  # a child R runs the program; its RTF: the pages, and each page's heading
+  run_rtf <- function(s) {
+    owd <- setwd(s$path)
+    on.exit(setwd(owd), add = TRUE)
+    unlink("output/tfl/L-TPL.rtf")
+    out <- system2(file.path(R.home("bin"), "Rscript"), "programs/tfl/L-TPL.R", stdout = TRUE, stderr = TRUE)
+    expect_true(file.exists("output/tfl/L-TPL.rtf"), info = paste(out, collapse = "
+"))
+    rtf <- readLines("output/tfl/L-TPL.rtf", warn = FALSE)
+    list(pages = sum(lengths(regmatches(rtf, gregexpr("sbkpage", rtf, fixed = TRUE)))),
+         text = unlist(regmatches(rtf, gregexpr("Severity [A-Z]+", rtf))))
+  }
+  for (case in list(list(by_break = "page", by_heading = "Severity {value}"),
+                    list(by_break = "block"))) {
+    s <- .listing_tpl_study(c(list(by = "AESEV"), case))
+    home <- dirname(dirname(s$path))  # (the study's home)
+    before <- run_rtf(s)
+    expect_gt(before$pages, 1L)
+    # Convert to code, written and run again
+    s$planner <- .tpl_to_code(s$planner, "L-TPL")
+    expect_false(.is_template_listing(s$planner, "L-TPL") && !is.null(.code_spec(s$planner)$outputs[["L-TPL"]]$template))
+    code <- paste(program_code(s$planner, "L-TPL"), collapse = "
+")
+    expect_false(grepl("listing_spec", code, fixed = TRUE))
+    expect_match(code, "plan_listing(", fixed = TRUE)
+    s <- suppressWarnings(suppressMessages(save_study(s, home = home)))
+    after <- run_rtf(s)
+    expect_equal(after$pages, before$pages)
+    expect_equal(after$text, before$text)
+    # (the preview is the same pages too)
+    expect_length(preview_listing(s, "L-TPL"), before$pages)
+    if (identical(case$by_break, "page")) expect_gt(length(before$text), 0L)
+    # the converted report reopens as a code one, its pages unchanged
+    s2 <- open_study(s$path)
+    expect_length(preview_listing(s2, "L-TPL"), before$pages)
+  }
+})
+
+test_that("a converted template listing follows an edit of its columns: program, preview and YAML (#605)", {
+  skip_on_cran()
+  skip_if_not(.listing_has_by(), "the installed tflspec has no `by` for a listing template")
+  s <- .listing_tpl_study(list(by = "AESEV", by_break = "page", by_heading = "Severity {value}"))
+  home <- dirname(dirname(s$path))
+  p <- .tpl_to_code(s$planner, "L-TPL")
+  # what the Columns grid writes: a width and a heading
+  d <- lf_rows(p, "listing_cols", "L-TPL")
+  d$output_id <- NULL
+  d$width[d$vars == "AEDECOD"] <- "41"
+  d$label[d$vars == "AEDECOD"] <- "Event term"
+  s$planner <- .lf_follow_content(set_lf_rows(p, "listing_cols", "L-TPL", d), "L-TPL")
+  expect_true(.is_template_listing(s$planner, "L-TPL"))
+  code <- paste(program_code(s$planner, "L-TPL"), collapse = "
+")
+  expect_match(code, "listing_col(vars = \"AEDECOD\", label = \"Event term\", width = 41)", fixed = TRUE)
+  expect_match(code, "page_by = \"AESEV\"", fixed = TRUE)
+  expect_false(grepl("listing_spec", code, fixed = TRUE))
+  expect_gt(length(preview_listing(s, "L-TPL")), 5L)
+  s <- suppressWarnings(suppressMessages(save_study(s, home = home)))
+  y <- paste(readLines(file.path(s$path, "spec/outputs/L-TPL.yml"), warn = FALSE), collapse = "
+")
+  expect_match(y, "label: Event term", fixed = TRUE)
+  expect_match(y, "width: 41", fixed = TRUE)
+  expect_match(y, "page_by: AESEV", fixed = TRUE)
+  expect_match(paste(program_code(open_study(s$path)$planner, "L-TPL"), collapse = "
+"), "width = 41", fixed = TRUE)
+})
+
 test_that("a template listing whose definition does not hold says so once, in the preview and the program", {
   skip_on_cran()
   skip_if_not(.listing_has_by(), "the installed tflspec has no `by` for a listing template")
