@@ -499,13 +499,21 @@ data_lines <- function(x, output_id, todo = TRUE) {
 }
 
 # A listing made from a template (`template: {name: listing, ...}`) that is
-# not a code report: its program and its preview are the template's
-# content (tflspec::tfl_content_code()), not the listing sheets'
+# not a code report, or one converted to code from it (content kept): its
+# program and its preview are the content (tflspec::tfl_content_code()),
+# not the listing sheets'
 .is_template_listing <- function(x, output_id) {
   if (!identical(report_info(x, output_id)$type, "listing")) return(FALSE)
   o <- tryCatch(.code_spec(x)$outputs[[output_id]], error = function(e) NULL)
-  !is.null(o) && !inherits(o$content, "tfl_r") && is.list(o$template) &&
-    !is.null(o$template$name) &&
+  # (one converted to code keeps the template's content, so its pages are
+  # still the content's: a listing of records with a `plan_listing` item and
+  # items the listing sheets cannot say (`page_by` ...): the sheets' program
+  # would drop them, the content's has them)
+  from_template <- is.list(o$template) && !is.null(o$template$name)
+  converted <- !is.null(o) && is.null(o$template) && identical(o$data[["source"]], "dataset") &&
+    any(vapply(o$content %||% list(), function(it) identical(it$fn, "plan_listing"), NA)) &&
+    any(nzchar(trimws(stats::na.omit(lf_rows(x, "listings", output_id)$content_more))))
+  !is.null(o) && !inherits(o$content, "tfl_r") && (from_template || converted) &&
     !.is_code_step(x, output_id, "data") && !.is_code_step(x, output_id, "content")
 }
 

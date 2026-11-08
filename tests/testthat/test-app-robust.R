@@ -312,7 +312,8 @@ test_that("a table with no ARD says so, and offers the one Preview", {
     session$setInputs(target = "T1", nav = "make", step = "content", table_nav = "builder")
     expect_match(output$assist$html, "Not made")
     expect_match(output$assist$html, 'id="fetch2"')
-    expect_match(output$builder_note$html, 'id="fetch3"')
+    expect_match(output$builder_note$html, "no ARD yet")
+    expect_false(grepl('id="fetch3"', output$builder_note$html, fixed = TRUE))
   })
 })
 

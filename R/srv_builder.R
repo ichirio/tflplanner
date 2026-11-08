@@ -133,11 +133,9 @@
     msg <- switch(builder_case(),
       none = t("Choose a report above, or in the list on the left (> opens it)."),
       type = t("The builder is for Tables; Listings and Figures are made in their data code."),
-      meta = shiny::tagList(
-        t("This table has no ARD yet: the builder is built from it."), " ",
-        .btn("fetch3", t("Update preview"),
-             class = "btn-sm btn-primary ms-1"), " ",
-        help_tip(t(.preview_tip))),
+      # (Update preview is the one above the right-hand tabs, with the mark
+      # "No ARD yet": one button for it on this tab, not three)
+      meta = t("This table has no ARD yet: the builder is built from it."),
       NULL)
     # (plan_cells()' variables of their own, read only, until the ARD is
     # there to edit them against -- #454)
