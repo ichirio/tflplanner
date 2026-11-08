@@ -170,14 +170,31 @@ t_static <- function(x) x
   cols
 }
 
-# The second level of a group column (the first is the reference), or NULL
-.second_level <- function(dat, group) {
+# The levels of a group column in the arms' order: a factor's levels, else
+# by its number column (TRT01A by TRT01AN, ARM by ARMN), else sorted
+.group_levels <- function(dat, group = NULL) {
   cols <- .data_columns(dat)
   g <- group %||% .group_choices(cols)[1L]
-  if (is.null(g) || is.na(g) || is.null(cols[[g]])) return(NULL)
+  if (is.null(g) || is.na(g) || is.null(cols[[g]])) return(character())
   v <- cols[[g]]
-  lv <- if (is.factor(v)) levels(v) else sort(unique(stats::na.omit(as.character(v))))
-  if (length(lv) >= 2L) lv[[2L]] else NULL
+  if (is.factor(v)) return(levels(v))
+  v <- as.character(v)
+  n <- cols[[paste0(g, "N")]]
+  if (is.numeric(n) && length(n) == length(v)) {
+    ok <- !is.na(v)
+    first <- suppressWarnings(tapply(n[ok], v[ok], min, na.rm = TRUE))
+    return(names(first)[order(first, names(first))])
+  }
+  sort(unique(stats::na.omit(v)))
+}
+
+# The arm a forest compares when none is chosen: the first that is not the
+# reference (`ref`, else the first level), or NULL
+.second_level <- function(dat, group, ref = NULL) {
+  lv <- .group_levels(dat, group)
+  if (!length(lv)) return(NULL)
+  rest <- setdiff(lv, ref %||% lv[[1L]])
+  if (length(rest)) rest[[1L]] else NULL
 }
 
 # Choices shown as "NAME \u2014 label" when the column has a label.
