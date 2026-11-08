@@ -209,6 +209,8 @@ test_that("every template of tflspec makes its report in an official run", {
       args[[x$name]] <- .tpl_value(v, .tpl_type(x), x)
     }
     if (identical(n, "summary")) args <- c(args, list(continuous = "AGE", categorical = "SEX"))
+    # (km's param is not required, but ADTTE has several: tflspec#727 stops then)
+    if (identical(n, "km")) args$param <- first(dat$adtte$PARAMCD)
     pop <- if (!is.null(args$population)) "SAF" else NA_character_
     steps <- NULL
     if (.tpl_own_data(prm)) {

@@ -2154,5 +2154,6 @@
 "a parameter's page name (`{value}`: the parameter); the last title line, or where the title line `{PAGE_HEADING}` is","パラメータのページ名（`{value}`: パラメータ）。タイトルの最終行、または `{PAGE_HEADING}` のタイトル行の位置"
 "a page's name in the titles ({<group>}: its value); NULL: the groups' values, a line each; the last title line, or where the title line `{PAGE_HEADING}` is","タイトルに出すページの名前（{<group>}: その値）。NULL: グループの値を 1 行ずつ。タイトルの最終行、または `{PAGE_HEADING}` のタイトル行の位置"
 "the multiplicity adjustment of the differences' CIs and p-values, as emmeans' adjust (none: no adjustment)","差の信頼区間と p 値の多重性の調整（emmeans の adjust）（none: 調整しない）"
+"What the report extends, when the pattern cell alone doesn't say it: a | b in order (defaults | patterns/p), or none. Blank: the pattern cell's pattern, then the defaults. Its first pattern has to be the pattern cell's.","帳票が引き継ぐもの。pattern セルだけでは言えないときに書きます。a | b の順に（defaults | patterns/p）、または none。空欄なら pattern セルのパターン、続いて defaults。最初のパターンは pattern セルと同じにします。"
 "The figure's own colours are not applied: its 'Colours by' (colour_by) is empty.","Figure 自身の色は使われません。Figure 全体の「色を割り当てる変数」（colour_by）が空です。"
 "The palette %s colours no groups: the figure's 'Colours by' (colour_by) is empty.","パレット %s の色はどの群にも割り当てられません。Figure 全体の「色を割り当てる変数」（colour_by）が空です。"
