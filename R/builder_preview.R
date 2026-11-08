@@ -392,7 +392,7 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   old <- setwd(study_dir)
   on.exit(setwd(old), add = TRUE)
   # as a program runs under the study's setup: the functions it calls
-  # (order_arms() ... from the study's own programs/study_helpers.R, else
+  # (order_levels() ... from the study's own programs/study_helpers.R, else
   # tflspec's) and the packages it attaches, the app's session left as it is
   env <- new.env(parent = .ard_program_env())
   .source_study_helpers(env, study_dir)
