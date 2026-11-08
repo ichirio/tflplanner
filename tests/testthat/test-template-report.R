@@ -332,6 +332,26 @@ test_that("a template report's preview is its content run on its ARD, not the st
   expect_false(any(grepl("N=NA", unlist(hdr), fixed = TRUE)))
 })
 
+test_that("a template figure and a template listing have the table's five tabs too (#514)", {
+  ui <- htmltools::tagQuery(app_ui())
+  for (id in c("fig_right", "lf_right")) {
+    links <- ui$find(paste0("#", id))$find("a")$selectedTags()
+    v <- vapply(links, function(x) x$attribs[["data-value"]] %||% "", "")
+    expect_identical(unname(v[nzchar(v)]), c("spec", "ard_code", "ard", "code", "result"), info = id)
+  }
+  html <- as.character(app_ui())
+  # each pane's output is in the page once (an output id twice breaks the page)
+  ids <- regmatches(html, gregexpr('id="(tpl_(ard|spec|code)[a-z_]*|program_[a-z]+)"', html))[[1L]]
+  expect_identical(anyDuplicated(ids), 0L)
+  for (o in c("tpl_spec_yaml_lf", "tpl_spec_yaml_fig", "tpl_ard_pane_lf", "tpl_ard_pane_fig",
+              "tpl_code_expanded_fig", "program_fig", "tpl_ard_code_lf")) {
+    expect_true(grepl(sprintf('id="%s"', o), html, fixed = TRUE), info = o)
+  }
+  # the tab rules and the greying are for the three
+  expect_true(grepl("#table_right, #fig_right, #lf_right", .result_tabs_css, fixed = TRUE))
+  expect_true(grepl("#table_right, #fig_right, #lf_right", .tpl_js, fixed = TRUE))
+})
+
 test_that("a template report's step has five tabs in the order they are made, the ARD's two greyed out when it has none (#514)", {
   ui <- htmltools::tagQuery(app_ui())
   links <- ui$find("#table_right")$find("a")$selectedTags()
@@ -349,9 +369,9 @@ test_that("a template report's step has five tabs in the order they are made, th
   at <- vapply(c("Template SPEC", "ARD code", "ARD result", "Report code", "Report result"),
                function(x) regexpr(x, tpl, fixed = TRUE)[[1L]], 1L)
   expect_true(all(at > 0L) && !is.unsorted(at, strictly = TRUE))
-  expect_true(grepl("body.rp-tpl #table_right .rp-lab-plain", .result_tabs_css, fixed = TRUE))
+  expect_true(grepl("body.rp-tpl :is(#table_right, #fig_right, #lf_right) .rp-lab-plain", .result_tabs_css, fixed = TRUE))
   # a code report has no ARD tabs; a template report's are disabled (not hidden) without an ARD
-  expect_true(grepl("body:not(.rp-tpl) #table_right > .nav-item", .result_tabs_css, fixed = TRUE))
+  expect_true(grepl("body:not(.rp-tpl) :is(#table_right, #fig_right, #lf_right) > .nav-item", .result_tabs_css, fixed = TRUE))
   expect_true(grepl("rp-ard-tabs", .tpl_js, fixed = TRUE))
   expect_true(grepl("toggleClass('disabled', !on)", .tpl_js, fixed = TRUE))
   # ARD code is read as Report code is: numbered lines and Copy
@@ -372,10 +392,11 @@ test_that("a template report's step has five tabs in the order they are made, th
 .listing_tpl_study <- function(extra = list(), id = "L-TPL") {
   home <- local_home(parent.frame())
   s <- suppressMessages(create_sample_study(run = FALSE, home = home))
-  args <- c(list(data = "ADAE",
-                 columns = list(list(vars = "USUBJID", label = "Subject"),
-                                list(vars = "AEDECOD", label = "Term", width = 30L))),
-            extra)
+  args <- utils::modifyList(
+    list(data = "ADAE",
+         columns = list(list(vars = "USUBJID", label = "Subject"),
+                        list(vars = "AEDECOD", label = "Term", width = 30L))),
+    extra)
   o <- tflspec::tfl_output(id, "listing", label = "AE listing",
                            template = list(name = "listing", args = args))
   s$planner <- .spec_add_output(s$planner, o, label = "AE listing")
@@ -448,4 +469,39 @@ test_that("the listing preview's guard is for a listing of rows: a template list
   })
   # (the sheets' listings: a listing with no columns says so)
   expect_false(grepl("Start the listing from the data", t("The listing has no columns yet: add them to the table of columns (below the form)."), fixed = TRUE))
+})
+
+test_that("a template figure and listing have Update preview above their tabs, one label; a listing in rows keeps its button (#514)", {
+  html <- as.character(app_ui())
+  for (o in c("tpl_fig_bar", "tpl_lf_bar")) expect_true(grepl(sprintf('id="%s"', o), html, fixed = TRUE), info = o)
+  # the bar is above the tabs, in the pane that stays in view
+  expect_true(grepl('rp-tpl-right[^<]*">\\s*<div id="tpl_fig_bar"', html, perl = TRUE))
+  # the listing's own button is for a listing in rows only
+  expect_true(grepl('rp-code-only">\\s*<button[^>]*id="lf_preview"', html, perl = TRUE))
+  expect_true(grepl("tpl_ard_of", paste(deparse(.srv_add_report), collapse = " "), fixed = TRUE))
+})
+
+test_that("the right pane of a template figure, listing and table fills its column, and only the tab shown scrolls (#612)", {
+  css <- gsub("[[:space:]]+", " ", .result_tabs_css)
+  # (no align-self: start on the figure's and listing's pane: it shrank to its content)
+  pane <- regmatches(css, regexpr("[.]rp-tpl-right [{] position: sticky;[^}]*[}]", css))
+  expect_length(pane, 1L)
+  expect_false(grepl("align-self", pane, fixed = TRUE))
+  # the tabs of the table's pane fill it
+  expect_true(grepl(".rp-b-right > .rp-tabs { align-self: stretch; }", css, fixed = TRUE))
+  # the tab row stays: the pane's box does not scroll, the tab content does
+  expect_true(grepl(".rp-tpl-right > .rp-tabs { position: static;", css, fixed = TRUE))
+  expect_true(grepl("overflow: hidden;", regmatches(css, regexpr("[.]rp-tpl-right > [.]rp-tabs [{][^}]*[}]", css)), fixed = TRUE))
+  expect_true(grepl(".rp-tpl-right > .rp-tabs > .tabbable > .tab-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; }", css, fixed = TRUE))
+})
+
+test_that("a template listing with no columns left says so in Report result, not old pages (#514)", {
+  skip_on_cran()
+  s <- .listing_tpl_study(list(columns = NULL))
+  shiny::testServer(function(input, output, session) app_server(input, output, session, s), {
+    session$setInputs(target = "L-TPL")
+    html <- as.character(output$lf_preview_out$html)
+    expect_match(html, "Required arguments are empty: columns", fixed = TRUE)
+    expect_false(grepl("pages", html, fixed = TRUE))
+  })
 })

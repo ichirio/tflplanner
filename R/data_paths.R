@@ -41,9 +41,11 @@
 
 # Does a report make an ARD -- a data step of its own, or analyses / ARD
 # code (as fetch_ard() asks)?  A figure or a listing that reads its data
-# itself does not: its preview makes none, and says no error
+# itself does not: its preview makes none, and says no error.  A template
+# figure with analyses of its own (forest_hr) does.
 .report_uses_ard <- function(p, output_id) {
-  tryCatch(.is_code_step(p, output_id, "data") || !is.na(.ard_code_of(p, output_id)),
+  tryCatch(.is_code_step(p, output_id, "data") || !is.na(.ard_code_of(p, output_id)) ||
+             (!is.null(.tpl_of(p, output_id)) && identical(.fig_ard_source(p, output_id)$kind, "own")),
            error = function(e) TRUE)
 }
 
