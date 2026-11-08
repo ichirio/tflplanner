@@ -425,11 +425,10 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
       any(vapply(r$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
     if (!own && !is.null(objects$ard)) objects$ard else objects
   }
-  # A part that stops the table (whatever its error: items for an ARD on a
-  # dataset, a source with no statistics to read, ...) stops the program as
-  # it stops here: the table is shown without it when it then runs, the
-  # parts' names said (`dataset_parts`) with why (`part_errors`: NA for a
-  # dataset part with items for an ARD, whose note says it)
+  # A part that stops the table (whatever its error: a source with no
+  # statistics to read, ...) stops the program as it stops here: the table is
+  # shown without it when it then runs, the parts' names said
+  # (`dropped_parts`) with why (`part_errors`)
   dropped <- character()
   why_dropped <- character()
   # (the plan and its pages: a part's source with no statistics to read stops
@@ -441,7 +440,6 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   made <- tryCatch(run_pages(r), error = function(e) {
     parts <- which(vapply(r$content %||% list(), function(it) identical(it$fn, "plan_append"), NA))
     if (!length(parts)) stop(e)
-    ard_items <- .dataset_parts_with_ard_items(r$content)
     run_with <- function(keep) {
       r2 <- r
       r2$content <- r$content[sort(c(setdiff(seq_along(r$content), parts), keep))]
@@ -450,24 +448,15 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
     pname <- function(i) r$content[[i]]$args$name %||% NA_character_
     # (the table without any part must run: else the parts are not the cause)
     base <- run_with(integer())
-    if (inherits(base, "error")) {
-      if (!length(ard_items)) stop(e)
-      stop(paste(.dataset_part_ard_items_note(vapply(ard_items, pname, "")),
-                 conditionMessage(base)), call. = FALSE)
-    }
+    if (inherits(base, "error")) stop(e)
     # (each part alone with the table: the ones that stop it)
     alone <- lapply(parts, run_with)
     bad <- parts[vapply(alone, inherits, NA, "error")]
     if (!length(bad)) stop(e)
     made2 <- run_with(setdiff(parts, bad))
-    if (inherits(made2, "error")) {
-      if (!length(ard_items)) stop(made2)
-      stop(paste(.dataset_part_ard_items_note(vapply(ard_items, pname, "")),
-                 conditionMessage(made2)), call. = FALSE)
-    }
+    if (inherits(made2, "error")) stop(made2)
     dropped <<- vapply(bad, pname, "")
     why_dropped <<- vapply(alone[match(bad, parts)], conditionMessage, "")
-    why_dropped[bad %in% ard_items] <<- NA_character_
     made2
   })
   plan <- made$plan
@@ -486,7 +475,7 @@ preview_html <- function(pages, max_pages = 3L, align = "center") {
   attr(res, "header_tokens") <- tryCatch(rtfreporter::plan_header_tokens(plan),
                                          error = function(e) NULL)
   if (length(dropped)) {
-    attr(res, "dataset_parts") <- dropped
+    attr(res, "dropped_parts") <- dropped
     attr(res, "part_errors") <- stats::setNames(why_dropped, dropped)
   }
   # where each part's rows start (the cut pages do not say which rows are a

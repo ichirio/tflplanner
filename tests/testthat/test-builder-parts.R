@@ -17,14 +17,34 @@ test_that("a new part starts as the ARD's summary statistics by the table's colu
 
 test_that("the card's fields make the item's arguments", {
   it <- list(path = "plan_append", args = list())
-  input <- list(c__name = "summary", c__absent = "skip", c__source = "dataset", c__dataset = "",
+  input <- list(c__name = "summary", c__absent = "skip",
                 c__content = .part_items_yaml(.part_quickstart()))
-  expect_error(.part_args_read(input, "c", it), "dataset")
-  input$c__dataset <- "ADPC"
   a <- .part_args_read(input, "c", it)
   expect_identical(a$absent, "skip")
-  expect_identical(a$data, list(source = "dataset", dataset = "ADPC"))
+  expect_identical(a$data, list(source = "ard"))
   expect_length(a$content, 3L)
+  # (a table's part is always from the ARD: no source or dataset input is read)
+  input$c__source <- "dataset"
+  input$c__dataset <- "ADPC"
+  expect_identical(.part_args_read(input, "c", it)$data, list(source = "ard"))
+})
+
+test_that("the part's card says its rows come from the ARD, or warns of an old dataset", {
+  mk <- function(source) list(
+    path = "plan_append",
+    args = list(name = "summary", data = list(source = source), content = .part_quickstart()))
+  ok <- as.character(.part_body("c", mk("ard"), lang = "en"))
+  expect_match(ok, "Its rows come from the report's ARD.", fixed = TRUE)
+  expect_no_match(ok, "reads a dataset", fixed = TRUE)
+  old <- as.character(.part_body("c", mk("dataset"), lang = "en"))
+  expect_match(old, "This part reads a dataset; a table's part reads the report's ARD. Apply sets it to the ARD.",
+               fixed = TRUE)
+  expect_no_match(old, "text-muted\">Its rows", fixed = TRUE)
+  for (h in c(ok, old)) {
+    expect_no_match(h, "c__source", fixed = TRUE)
+    expect_no_match(h, "c__dataset", fixed = TRUE)
+    expect_no_match(h, "type=\"radio\"", fixed = TRUE)
+  }
 })
 
 test_that("a part's builder id names its report and its part", {
@@ -176,17 +196,16 @@ test_that("only a part of the report's own, from its ARD, gets the cards", {
     args = list(name = name, data = if (identical(source, "dataset")) list(source = "dataset", dataset = "ADPC") else
                   list(source = "ard"), content = .part_quickstart()))
   expect_identical(.part_modes(list(mk()))[[1L]], list(name = "summary", mode = "cards"))
-  expect_identical(.part_modes(list(mk(source = "dataset")))[[1L]]$mode, "dataset")
+  expect_identical(.part_modes(list(mk(source = "dataset")))[[1L]]$mode, "cards")
   expect_identical(.part_modes(list(mk(from = "defaults")))[[1L]]$mode, "defaults")
-  expect_identical(vapply(.part_modes(list(mk(), mk(source = "dataset", name = "b"))), `[[`, "", "mode"),
-                   c("cards", "dataset"))
+  expect_identical(vapply(.part_modes(list(mk(), mk(from = "defaults", name = "b"))), `[[`, "", "mode"),
+                   c("cards", "defaults"))
   # the scope bar: a button for each part the cards can edit, none else
-  bar <- as.character(.part_scope_bar(.part_modes(list(mk(), mk(source = "dataset", name = "listing"))), "", "en"))
+  bar <- as.character(.part_scope_bar(.part_modes(list(mk(), mk(from = "defaults", name = "listing"))), "", "en"))
   expect_match(bar, "Editing:", fixed = TRUE)
   expect_match(bar, ">This table<", fixed = TRUE)
   expect_match(bar, "Part: summary (plan_append)", fixed = TRUE)
   expect_no_match(bar, "listing", fixed = TRUE)
-  expect_null(.part_scope_bar(.part_modes(list(mk(source = "dataset"))), "", "en"))
   expect_null(.part_scope_bar(.part_modes(list(mk(from = "defaults"))), "", "en"))
   expect_null(.part_scope_bar(list(), "", "en"))
   # the part's card: the button for the one the cards can edit; a line, no
@@ -194,11 +213,6 @@ test_that("only a part of the report's own, from its ARD, gets the cards", {
   body <- function(mode) as.character(.part_body("c", mk(), lang = "en", mode = mode))
   expect_match(body(list(name = "summary", mode = "cards")), ">Open in cards<", fixed = TRUE)
   expect_match(body(list(name = "summary", mode = "cards")), "data-rp-scope-jump", fixed = TRUE)
-  ds <- body(list(name = "summary", mode = "dataset"))
-  expect_no_match(ds, "Open in cards", fixed = TRUE)
-  expect_match(ds, "No cards for a dataset part (the cards read the ARD): edit its items in the YAML above.",
-               fixed = TRUE)
-  expect_lt(regexpr("c__content", ds, fixed = TRUE), regexpr("No cards for a dataset part", ds, fixed = TRUE))
   df <- body(list(name = "summary", mode = "defaults"))
   expect_no_match(df, "Open in cards", fixed = TRUE)
   expect_match(df, "From the study defaults: no cards.", fixed = TRUE)
@@ -210,7 +224,8 @@ test_that("only a part of the report's own, from its ARD, gets the cards", {
               "The table's sheets; the part is in its plan_append content.",
               "These cards edit the part \"%s\" (its rows print under the table).",
               "The part's name, where its rows come from and its YAML are in its card under this table.",
-              "No cards for a dataset part (the cards read the ARD): edit its items in the YAML above.")) {
+              "Its rows come from the report's ARD.",
+              "This part reads a dataset; a table's part reads the report's ARD. Apply sets it to the ARD.")) {
     expect_false(identical(tr(z, "ja"), z), info = z)
   }
   expect_identical(tr("Open in cards", "ja"), "カードで編集")
@@ -326,14 +341,13 @@ test_that("a dataset part and a study-defaults part are not written by the cards
   expect_null(.spec_items(q, .part_id(other, "std")))
   expect_error(.spec_set_part_items(q, .part_id(other, "part2"), list(list(fn = "plan_cells", args = list()))),
                "no part of its own")
-  # a part whose rows come from a dataset: written as before, by its YAML card
+  # an old part whose data says dataset: still an own part, edited in cards
   a <- .plan_starter_args("plan_append", list(key = "ARM"))
   a$data <- list(source = "dataset", dataset = "ADSL")
   a$name <- "records"
   d <- .builder_item_write(p, "T-14-1-2", "plan_append", a, 1L)
   modes <- .part_modes(.spec_items(d, "T-14-1-2")$items)
-  expect_identical(vapply(modes, `[[`, "", "mode"), "dataset")
-  expect_null(.part_scope_bar(modes, "", "en"))
+  expect_identical(vapply(modes, `[[`, "", "mode"), "cards")
 })
 
 test_that("a part's id never reaches a program, a file or the table's sheets", {
@@ -395,42 +409,33 @@ test_that("the preview reads the study's own study_helpers.R, and says when it s
   expect_gt(nrow(r[[1L]]), 0L)
 })
 
-test_that("a dataset part with items for an ARD is found, and the message names it", {
-  part <- function(name, source, fns) {
-    list(fn = "plan_append", args = list(
-      name = name, data = list(source = source),
-      content = lapply(fns, function(f) list(fn = f, args = list()))))
-  }
-  content <- list(list(fn = "table_plan", args = list()),
-                  part("summary", "dataset", c("normalize_ard", "table_plan")),
-                  part("by_ard", "ard", c("normalize_ard", "table_plan")),
-                  part("plain", "dataset", "table_plan"))
-  expect_identical(.dataset_parts_with_ard_items(content), 2L)
-  expect_identical(.dataset_parts_with_ard_items(NULL), integer())
-  msg <- .dataset_part_ard_items_note("summary")
-  expect_match(msg, "The part summary reads a dataset, but its items are for an ARD", fixed = TRUE)
-  expect_match(msg, "normalize_ard", fixed = TRUE)
-  expect_match(msg, "ARD", fixed = TRUE)
-  expect_match(.dataset_part_ard_items_note(c("a", "b")), "part a, b ", fixed = TRUE)
-  expect_match(.dataset_part_ard_items_note(NA_character_), "(no name)", fixed = TRUE)
-})
-
-test_that("a part switched to a dataset loses the items that read the ARD, and the line says which", {
-  it <- function(fn, ...) list(fn = fn, args = list(...))
-  content <- list(it("normalize_ard"), it("table_plan", cols = "SEX"),
-                  it("plan_cells", continuous = list(n = "{N}")),
-                  it("plan_stat_groups", n = "N"),
-                  it("plan_labels", SEX = "Sex"))
-  r <- .part_dataset_items_split(content)
-  expect_identical(r$dropped, c("normalize_ard", "plan_cells", "plan_stat_groups"))
-  expect_identical(vapply(r$content, function(z) z$fn, ""), c("table_plan", "plan_labels"))
-  # plan_cells with a `default` runs on a dataset: it stays
-  keep <- list(it("table_plan", cols = "SEX"), it("plan_cells", default = "{x}"))
-  expect_identical(.part_dataset_items_split(keep)$dropped, character())
-  expect_length(.part_dataset_items_split(keep)$content, 2L)
-  expect_length(.part_dataset_items_split(NULL)$content, 0L)
-  expect_match(.part_dataset_dropped_note("summary", r$dropped),
-               "The part summary now reads a dataset: normalize_ard, plan_cells, plan_stat_groups read the ARD", fixed = TRUE)
+test_that("a part that stops the table is left out of the preview, whatever its error, and said", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  s <- .part_study()
+  suppressMessages(fetch_ard(s, "T-14-1-2"))
+  # the part reads a dataset with its own column key: it stops the table, and not
+  # as a normalize_ard() case
+  objs <- c(.preview_records(s$planner, "T-14-1-2", s$path),
+            list(ard = ard_raw(s, "T-14-1-2")))
+  pages <- .preview_content_pages(s$planner, "T-14-1-2", objs)
+  expect_gt(length(pages), 0L)
+  expect_identical(attr(pages, "dropped_parts"), "demog")
+  expect_match(attr(pages, "part_errors")[["demog"]], "column key")
+  note <- .dropped_parts_note(pages)
+  expect_match(note, "The part demog stopped: ", fixed = TRUE)
+  expect_no_match(note, "plan_append(", fixed = TRUE)
+  expect_match(note, "The table is shown without it.", fixed = TRUE)
+  expect_null(.dropped_parts_note(structure(list(), class = "x")))
+  # the part's error comes when the pages are made (a dataset, no statistics
+  # to read), not when the plan is: the same
+  s2 <- .part_study(cols = "TRT01A")
+  suppressMessages(fetch_ard(s2, "T-14-1-2"))
+  objs2 <- c(.preview_records(s2$planner, "T-14-1-2", s2$path),
+             list(ard = ard_raw(s2, "T-14-1-2")))
+  pages2 <- .preview_content_pages(s2$planner, "T-14-1-2", objs2)
+  expect_gt(length(pages2), 0L)
+  expect_match(attr(pages2, "part_errors")[["demog"]], "no statistics to read")
 })
 
 test_that("a part that stops the table is left out of the preview, whatever its error, and said", {
@@ -444,7 +449,7 @@ test_that("a part that stops the table is left out of the preview, whatever its 
             list(ard = ard_raw(s, "T-14-1-2")))
   pages <- .preview_content_pages(s$planner, "T-14-1-2", objs)
   expect_gt(length(pages), 0L)
-  expect_identical(attr(pages, "dataset_parts"), "demog")
+  expect_identical(attr(pages, "dropped_parts"), "demog")
   expect_match(attr(pages, "part_errors")[["demog"]], "column key")
   note <- .dropped_parts_note(pages)
   expect_match(note, "The part demog stopped: ", fixed = TRUE)

@@ -537,8 +537,7 @@
     modes <- if (!part) .part_modes(.spec_items(p0, id)$items)
     for (it in Filter(function(it) identical(it$fn, "plan_append") &&
                         (isTRUE(it$present) || isTRUE(it$added)), items)) {
-      bodies[[it$path]] <- .part_body(card_id(it$path), it,
-                                      datasets = rv$p$ard$datasets$dataset %||% character(), lang = lang,
+      bodies[[it$path]] <- .part_body(card_id(it$path), it, lang = lang,
                                       mode = if (isTRUE(it$present) && .path_k(it$path) <= length(modes))
                                         modes[[.path_k(it$path)]])
     }
@@ -615,20 +614,12 @@
                         list(data = list(source = "ard"), content = .part_quickstart(cols)))
     } else guarded(.part_args_read(input, cid, it))
     if (is.null(args)) return()
-    # a part's data a dataset: the items that read the ARD cannot run on it
-    gone <- if (identical(args$data[["source"]], "dataset")) .part_dataset_items_split(args$content) else NULL
-    if (length(gone$dropped)) args$content <- gone$content
     p2 <- guarded(.builder_item_write(rv$p, bform$id, "plan_append", args, k))
     if (is.null(p2)) return()
     rv$p <- p2
     rv$btouched <- TRUE
     rv$bver <- rv$bver + 1L
-    if (length(gone$dropped)) {
-      # (the items shown are the ones that were written)
-      shiny::updateTextAreaInput(session, paste0(cid, "__content"), value = .part_items_yaml(args$content))
-      notify(paste(t("The part is written: update the preview to see its rows."),
-                   .part_dataset_dropped_note(.part_name_of(list(args = args), k), gone$dropped, t)), "warning")
-    } else notify(t("The part is written: update the preview to see its rows."))
+    notify(t("The part is written: update the preview to see its rows."))
   })
   # the Total column's switch: its card's
   total_on_id <- function() paste0(card_id("plan_total"), "__on")
