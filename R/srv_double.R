@@ -438,7 +438,7 @@
     }
     lf_env$last <- v$values
     p2 <- set_lf_rows(rv$p, v$sheet, id, row)
-    if (!identical(p2$lf, rv$p$lf)) rv$p <- p2
+    if (!identical(p2$lf, rv$p$lf)) rv$p <- .lf_follow_content(p2, id)
   })
   output$lf_cols_box <- shiny::renderUI({
     shiny::req(identical(lf_type(), "listing"))
@@ -470,7 +470,7 @@
     if (!identical(h$params$planner_key, lf_cols_key())) return()
     d <- read_grid(h)
     if (is.null(d)) return()
-    guarded(rv$p <- set_lf_rows(rv$p, "listing_cols", current(), d))
+    guarded(rv$p <- .lf_follow_content(set_lf_rows(rv$p, "listing_cols", current(), d), current()))
   })
   lf_key <- shiny::reactive(paste("lf_listings", input$target, rv$ver, sep = "|"))
   output$hot_lf_listings <- rhandsontable::renderRHandsontable({
@@ -493,7 +493,7 @@
     if (is.null(d)) return()
     p2 <- guarded(set_lf_rows(rv$p, "listings", current(), d))
     if (!is.null(p2)) {
-      rv$p <- p2
+      rv$p <- .lf_follow_content(p2, current())
       bump()
     }
   })
