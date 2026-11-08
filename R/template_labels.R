@@ -158,7 +158,8 @@
   post_header = "Header over each post-baseline category",
   by_break = "How the listing is divided",
   by_heading = "Page heading",
-  by_na_label = "Text for a blank value"
+  by_na_label = "Text for a blank value",
+  adjust = "Multiplicity adjustment"
 )
 
 .tpl_doc_labels <- c(
