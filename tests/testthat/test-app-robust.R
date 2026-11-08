@@ -405,6 +405,17 @@ test_that("the page sample puts a report's lines over the study defaults", {
   expect_match(h, "BODY")
 })
 
+test_that("the page sample leaves out a title line that is only {PAGE_HEADING}", {
+  p <- new_planner()
+  p <- add_output(p, "T1")
+  p <- set_sheet_rows(p, "titles", "T1", data.frame(
+    line = c("1", "2", "3"), center = c("Table 1", NA, "Pop"),
+    left = c(NA, "{PAGE_HEADING}", NA)))
+  h <- as.character(.page_sample_html(p, "T1", "S-01", htmltools::div("BODY")))
+  expect_false(grepl("PAGE_HEADING", h, fixed = TRUE))
+  expect_equal(lengths(regmatches(h, gregexpr("rp-page-line title", h, fixed = TRUE))), 2L)
+})
+
 test_that("with no study, the app offers the ways to start, the sample first", {
   skip_on_cran()
   local_home()
@@ -517,6 +528,23 @@ test_that("a preview's spanning header cells span their columns", {
   expect_match(h, 'colspan="2"[^>]*>Active')
   expect_match(h, "SOC<br>PT")
   expect_match(h, "Placebo")
+})
+
+test_that("a preview's pages share one column layout", {
+  mk <- function(a, ...) structure(list(
+    data = data.frame(a = a, b = c("1", "2"), stringsAsFactors = FALSE),
+    col_header = list(c("Name", "N")), ...), class = "rtftable")
+  # the report's widths, as the RTF lays out: the same on each page
+  h <- as.character(preview_html(
+    list(mk(c("x", "y"), col_rel_width = c(3, 1)), mk(c("long text here", "z"), col_rel_width = c(3, 1))),
+    align = "left"))
+  expect_equal(lengths(regmatches(h, gregexpr("width: 75.000%", h, fixed = TRUE))), 2L)
+  expect_equal(lengths(regmatches(h, gregexpr("width: 25.000%", h, fixed = TRUE))), 2L)
+  # no widths: the longest line over the pages shown, on each of them
+  h <- as.character(preview_html(list(mk(c("x", "y")), mk(c("long text here", "z")))))
+  expect_equal(lengths(regmatches(h, gregexpr("calc(14ch + 12px)", h, fixed = TRUE))), 2L)
+  # a table too wide for the card scrolls in its own box
+  expect_match(h, "rp-pv-wrap", fixed = TRUE)
 })
 
 test_that("tflspec's column help (English) is shown in the app's language", {

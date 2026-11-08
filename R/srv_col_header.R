@@ -685,17 +685,18 @@
         }
         pages <- .preview_content_pages(rv$p, id, objs)
         # (a part the table is shown without: said above it)
-        dp <- attr(pages, "dataset_parts")
-        keep(list(id = id, pages = pages,
-                  note = if (length(dp)) paste(.dataset_part_ard_items_note(dp, t),
-                                               t("The table is shown without it."))))
+        keep(list(id = id, pages = pages, note = .dropped_parts_note(pages, t)))
       }, error = function(e) list(id = id, error = conditionMessage(e))))
     }
     d <- tryCatch(preview_data(rv$p, id), error = function(e) e)
     if (inherits(d, "error")) {
       return(list(id = id, error = paste(t("normalize_ard() stopped:"), conditionMessage(d))))
     }
-    if (is.null(d)) return(list(id = id, error = t("No data to show yet: Update preview makes this table's ARD.")))
+    if (is.null(d)) {
+      # (the data step ran and left no data: its error, as the program says it)
+      return(list(id = id, error = ard_data_error(rv$study, id) %||%
+                    t("No data to show yet: Update preview makes this table's ARD.")))
+    }
     tryCatch(keep(list(id = id, pages = preview_cached(rv$p, id, d))),
              error = function(e) list(id = id, error = conditionMessage(e)))
   })

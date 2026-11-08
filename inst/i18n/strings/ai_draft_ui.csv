@@ -144,5 +144,7 @@
 "Times are estimates from a 24-report test (about 1.4 min a request, at the default review depth). Written into study.yml's ai: run.","時間は帳票 24 での試験からの目安です（デフォルトのレビューの深さで、依頼 1 件約 1.4 分）。study.yml の ai: run に書きます。"
 "not found","見つかりません"
 "Step 1 was filled from the study's ai/step1.yml.","手順 1 を、試験の ai/step1.yml から入れました。"
+"Step 1 was filled from the study's ai/prepare.yml.","手順 1 を、試験の ai/prepare.yml から入れました。"
+"The saved settings of step 1 could not be read: %s","手順 1 の保存した設定を読めませんでした: %s"
 "Sheet roles kept for sheets that are not in the workbooks now (kept until the roles are applied again): %s","いまのワークブックにないシートの役割が残っています（役割をもう一度適用するまで残ります）: %s"
 "Step 1's settings could not be kept in the study: %s","手順 1 の設定を試験に残せませんでした: %s"
