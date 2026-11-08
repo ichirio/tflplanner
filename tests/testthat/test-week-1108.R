@@ -142,7 +142,6 @@ test_that("a code listing's RTF has the pages of the preview for several `max_ro
 })
 
 test_that("a code listing's program names its columns, whether or not the save fills widths", {
-  skip("bug: a content-defined code listing saved without fill_widths is written as listing_spec(list(), ...) and stops when run")
   h <- sample_in_home()
   col <- function(v, ...) list(fn = "listing_col", args = c(list(vars = v), list(...)))
   o <- tflspec::tfl_output("L-C1", "listing", data = list(source = "dataset", dataset = "ADAE"),
