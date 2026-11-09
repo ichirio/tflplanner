@@ -260,3 +260,5 @@
 "Not set (not in the code)","未設定（コードには出ません）"
 "Applies to every report","全帳票に効きます"
 "Value column","値の列"
+"Name of a blank page","空白の値のページの名前"
+"With page by: the text a blank BY value ("""" or NA) prints as in the page's heading. Blank: the value as it is. e.g. ""Not coded""","ページを分けるとき、空白の BY の値（"""" や NA）がページの見出しに出す文字。空欄 = 値のまま。例: ""Not coded"""
