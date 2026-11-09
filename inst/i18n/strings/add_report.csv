@@ -56,3 +56,4 @@
 "The header has no {col}: each category's column gets the same text.","見出しに {col} がありません。どのカテゴリの列も同じ文字になります。"
 "The header's braces don't match: it prints as typed.","見出しの波かっこが対応していません。入力のとおりに出ます。"
 "ARD outdated: Update preview","ARD が古くなっています:「プレビューを更新」で作り直します"
+"%s is not valid YAML, so it is not changed: %s","%s は YAML として読めないため、変更しません: %s"
