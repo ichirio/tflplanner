@@ -80,8 +80,8 @@ test_that("the Rows card: a row of one's own, a variable's own decimals; the Tot
   skip_if_not_installed("cards")
   rr_home()
   rr_study("T-RR", rr_ard())
+  notes <- rr_notes()
   shiny::testServer(server_for("RR"), {
-    notes <- rr_notes()
     rv <- session$userData$rv
     rr_open(session, "T-RR")
     # ---- a row of one's own
@@ -161,8 +161,8 @@ test_that("back to the ARD's order, and the variables' grid when its edit does n
   skip_if_not_installed("cards")
   rr_home()
   rr_study("T-RR", rr_ard())
+  notes <- rr_notes()
   shiny::testServer(server_for("RR"), {
-    notes <- rr_notes()
     rv <- session$userData$rv
     rr_open(session, "T-RR")
     bf <- function() session$userData$bform
@@ -225,8 +225,8 @@ test_that("plan_cells() of a variable edited on its card: own template, conditio
   skip_if_not_installed("cards")
   rr_home()
   rr_study("T-RR", rr_ard())
+  rr_notes()
   shiny::testServer(server_for("RR"), {
-    rr_notes()
     rv <- session$userData$rv
     rr_open(session, "T-RR")
     n <- 0L

@@ -117,8 +117,8 @@ test_that("the Data tab puts the files without a row into the catalog once, and 
   skip_on_cran()
   dr_home()
   dr_study("DR", c("data/adam/adsl.rds", "data/sdtm/dm.rds"))
+  notes <- dr_notes()
   shiny::testServer(server_for("DR"), {
-    notes <- dr_notes()
     rv <- session$userData$rv
     expect_false(any(grepl("adsl", rv$p$ard$datasets$path)))
     session$setInputs(nav = "outputs")
@@ -155,8 +155,8 @@ test_that("the log: what to do with nothing chosen, a report not run, a run fold
   dr_home()
   s <- dr_study("DR")
   dr_batch(s, "20260101_100000_all", status = "OK")
+  dr_notes()
   shiny::testServer(server_for("DR"), {
-    dr_notes()
     session$setInputs(nav = "results")
     expect_match(output$log, "Choose a report to see what its last preview printed", fixed = TRUE)
     # no report chosen: no RTF
@@ -184,9 +184,9 @@ test_that("the report set buttons: what they say with nothing to work on, a bad 
   skip_on_cran()
   dr_home()
   dr_study("DR")
+  notes <- dr_notes()
+  ticks <- dr_ticks()
   shiny::testServer(server_for("DR"), {
-    notes <- dr_notes()
-    ticks <- dr_ticks()
     rv <- session$userData$rv
     last <- function() notes()[[length(notes())]]
     session$setInputs(nav = "runs", batch_reports = character(), batch_save = 1)
@@ -254,8 +254,8 @@ test_that("a preview run: started once, said while it goes on, how it ended; one
     asked[[length(asked) + 1L]] <<- list(ids = output_id, wait = wait)
     px
   })
+  notes <- dr_notes()
   shiny::testServer(server_for("DR"), {
-    notes <- dr_notes()
     rv <- session$userData$rv
     last <- function() notes()[[length(notes())]]
     session$setInputs(nav = "results", run_selected = 1)
@@ -302,8 +302,8 @@ test_that("a preview is stopped with the session", {
   dr_study("DR")
   px <- dr_proc()
   testthat::local_mocked_bindings(run_study = function(...) px)
+  dr_notes()
   shiny::testServer(server_for("DR"), {
-    dr_notes()
     session$setInputs(nav = "results", run_all = 1)
     expect_false(px$state$killed)
   })
@@ -324,9 +324,9 @@ test_that("the official run: nothing ticked is refused; reports left out; a repo
       dr_proc()
     },
     .ai_run_warnings = function(p, ids) warn)
+  notes <- dr_notes()
+  modals <- dr_modals()
   shiny::testServer(server_for("DR"), {
-    notes <- dr_notes()
-    modals <- dr_modals()
     rv <- session$userData$rv
     last <- function() notes()[[length(notes())]]
     # nothing ticked
@@ -397,8 +397,8 @@ test_that("an official run that ends is said from its run folder: how many progr
     dr_batch(s, folder, status = status)
     px
   })
+  notes <- dr_notes()
   shiny::testServer(server_for("DR"), {
-    notes <- dr_notes()
     rv <- session$userData$rv
     last <- function() notes()[[length(notes())]]
     session$setInputs(nav = "runs", batch_parts = "tfl", batch_run = 1)
@@ -447,18 +447,18 @@ test_that("comparing runs needs two; the table lists what changed, or everything
   dr_home()
   s <- dr_study("DR")
   dr_batch(s, "20251231_100000_all")
+  notes <- dr_notes()
+  modals <- dr_modals()
   shiny::testServer(server_for("DR"), {
-    notes <- dr_notes()
-    modals <- dr_modals()
     session$setInputs(nav = "results", batch_compare = 1)
     expect_identical(notes()[[1L]]$text, "Two official runs are needed to compare.")
     expect_length(modals(), 0L)
   })
   dr_runs(s)
+  dr_notes()
+  modals <- dr_modals()
+  tab <- dr_tables()
   shiny::testServer(server_for("DR"), {
-    dr_notes()
-    modals <- dr_modals()
-    tab <- dr_tables()
     session$setInputs(nav = "results", batches_rows_selected = 1L, batch_compare = 1)
     # the newest run chosen, against the one before it: both in the dialog's lists
     expect_match(modals()[1L], "Compare official runs", fixed = TRUE)
@@ -501,9 +501,9 @@ test_that("the runs table: state, what was left out (the first few); folders ope
   opened <- character()
   withr::local_options(tflplanner.open_folder = function(p) opened <<- c(opened, p))
   testthat::local_mocked_bindings(.is_local_host = function(host) TRUE)
+  notes <- dr_notes()
+  tab <- dr_tables()
   shiny::testServer(server_for("DR"), {
-    notes <- dr_notes()
-    tab <- dr_tables()
     session$setInputs(nav = "results")
     output$batches
     d <- tab()
@@ -538,8 +538,8 @@ test_that("on a server the run folders are not opened", {
   opened <- character()
   withr::local_options(tflplanner.open_folder = function(p) opened <<- c(opened, p))
   testthat::local_mocked_bindings(.is_local_host = function(host) FALSE)
+  dr_notes()
   shiny::testServer(server_for("DR"), {
-    dr_notes()
     session$setInputs(nav = "results", batch_open_row = "20260101_100000_all", batch_open = 1)
     expect_length(opened, 0L)
     expect_null(output$batch_open_ui)
