@@ -188,15 +188,6 @@ t_static <- function(x) x
   sort(unique(stats::na.omit(v)))
 }
 
-# The arm a forest compares when none is chosen: the first that is not the
-# reference (`ref`, else the first level), or NULL
-.second_level <- function(dat, group, ref = NULL) {
-  lv <- .group_levels(dat, group)
-  if (!length(lv)) return(NULL)
-  rest <- setdiff(lv, ref %||% lv[[1L]])
-  if (length(rest)) rest[[1L]] else NULL
-}
-
 # Choices shown as "NAME \u2014 label" when the column has a label.
 .labelled <- function(nm, cols) {
   nm <- as.character(nm)

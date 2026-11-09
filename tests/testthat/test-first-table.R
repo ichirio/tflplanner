@@ -571,3 +571,33 @@ test_that("the wizard runs the analyses together (ard_stack), unless a subject h
   expect_identical(ard_rows(p2, "analyses", "T-S")$analysis_id, c("GROUPN", "CONT", "CAT"))
   expect_identical(attr(p2, "group_missing"), 1L)
 })
+
+test_that("a forest's blank comparison is left to the template: every other arm", {
+  skip_on_cran()
+  skip_if_not_installed("cards")
+  local_home()
+  s <- create_study("G2")
+  dir.create(file.path(s$path, "data/adam"), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(cards::ADSL, file.path(s$path, "data/adam/adsl.rds"))
+  saveRDS(cards::ADTTE, file.path(s$path, "data/adam/adtte.rds"))
+  s$planner <- add_output(s$planner, "F-HR", type = "figure")
+  save_study(s)
+  shiny::testServer(server_for("G2"), {
+    session$setInputs(target = "F-HR", nav = "make", step = "content", content_nav = "content")
+    session$setInputs(pd_from = "template", pd_tpl = "forest_hr", pd_tpl_data = "ADTTE",
+                      pd_tpl_param = cards::ADTTE$PARAMCD[1L], pd_tpl_ref = "Placebo",
+                      pd_tpl_comparison = "")
+    # the comparison box says what blank means
+    expect_match(output$pd_tpl_more$html, "every other arm", fixed = TRUE)
+    code <- function() {
+      session$setInputs(pd_start = 1)
+      paste(unlist(fig_design(session$userData$rv$p, "F-HR")$data), collapse = "
+")
+    }
+    # blank: no comparison is written, so the template keeps every other arm
+    expect_false(grepl("`comparison`", code(), fixed = TRUE))
+    # one arm chosen: the figure is narrowed to it
+    session$setInputs(pd_tpl_comparison = "Xanomeline High Dose")
+    expect_match(code(), "`comparison` (Xanomeline High Dose)", fixed = TRUE)
+  })
+})

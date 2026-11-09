@@ -279,8 +279,9 @@
     x <- dat[[toupper(ds %||% "")]]
     vars <- unique(c(names(x), names(dat$ADSL)))
     prm <- if (!is.null(x) && "PARAMCD" %in% names(x)) sort(unique(x$PARAMCD))
-    sz <- function(id, lab, ch) shiny::selectizeInput(id, lab, c("", ch),
-      options = list(placeholder = t("the template's default"), create = TRUE))
+    sz <- function(id, lab, ch, placeholder = t("the template's default"))
+      shiny::selectizeInput(id, lab, c("", ch),
+                            options = list(placeholder = placeholder, create = TRUE))
     cols <- .data_columns(dat)
     whole <- !templates$parts[templates$template == tp]
     shiny::tagList(
@@ -316,7 +317,9 @@
         lv <- .group_levels(dat)
         shiny::tagList(
           sz("pd_tpl_ref", t("Reference arm"), lv),
-          sz("pd_tpl_comparison", t("Arm shown against the reference"), lv[-1L]))
+          # (blank: every other arm against the reference)
+          sz("pd_tpl_comparison", t("Arm shown against the reference"), lv[-1L],
+             placeholder = t("every other arm")))
       },
       if (tp %in% c("box_by_group", "scatter_shift")) sz("pd_tpl_at_visit", t("At visit"),
         if (!is.null(x) && "AVISIT" %in% names(x)) unique(x$AVISIT)),
@@ -407,10 +410,10 @@
                    subgroups = if (length(input$pd_tpl_subgroups))
                      paste(input$pd_tpl_subgroups, collapse = ", "),
                    ref = ref,
-                   # the arm compared: the one chosen, else the first arm
-                   # that is not the reference
-                   comparison = nz(input$pd_tpl_comparison) %||%
-                     .second_level(study_data(c(ds, "ADSL")), grp, ref))
+                   # the arm compared: the one chosen; blank (NULL): the
+                   # template shows every other arm against the reference
+                   comparison = if (identical(templates$kind[templates$template == tp], "forest"))
+                     nz(input$pd_tpl_comparison))
       if (!is.null(nz(input$pd_tpl_unit))) args$time_unit <- input$pd_tpl_unit
       make <- function(a) guarded(do.call(tflspec::tfl_fig_template,
                                           a[!vapply(a, is.null, logical(1))]))
