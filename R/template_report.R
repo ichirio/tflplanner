@@ -326,12 +326,18 @@
   go(x)
 }
 
-# Text in the card's box read as a value: one starting with `[`, `{` or `!r`
-# is YAML flow (`!r` raw R, as .tpl_show() writes it), any other is a string.
-# An error (not a YAML text) is raised for the caller to say.
+# Text in the card's box read as a value.  One starting with `[` or `!r ` is
+# YAML (`!r` raw R, as .tpl_show() writes it): an error (not YAML) is raised
+# for the caller to say.  One starting with `{` is a map only when it parses
+# to a named list with no empty value; otherwise (`{n} ({p:.1f%})`, `{n}`: a
+# format) it is the string as typed, with no error.  Any other text is a string.
 .tpl_text_parse <- function(v) {
-  if (!is.character(v) || length(v) != 1L || !grepl("^([[{]|!r )", v)) return(v)
-  yaml::yaml.load(v, handlers = .tpl_yaml_handlers())
+  if (!is.character(v) || length(v) != 1L) return(v)
+  if (grepl("^([[]|!r )", v)) return(yaml::yaml.load(v, handlers = .tpl_yaml_handlers()))
+  if (!startsWith(v, "{")) return(v)
+  r <- tryCatch(yaml::yaml.load(v, handlers = .tpl_yaml_handlers()), error = function(e) NULL)
+  if (is.list(r) && length(r) && !is.null(names(r)) && all(nzchar(names(r))) &&
+        !any(vapply(r, is.null, NA))) r else v
 }
 
 # What an input gives, as the argument's value (NULL: none -- the default)

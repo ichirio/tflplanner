@@ -57,5 +57,18 @@ test_that("a plain string is shown as itself and read back as itself", {
 
 test_that("a text that does not parse raises an error for the card to say", {
   expect_error(.tpl_text_parse("[a, b"))
-  expect_error(.tpl_text_parse("{a: [}"))
 })
+
+test_that("a plain format starting with a brace stays a string, in both paths, with no error", {
+  for (f in c("{n} ({p:.0f%})", "{n}", "{n} ({p:.1f%})")) {
+    expect_identical(.tpl_text_parse(f), f)
+    expect_identical(.tpl_value(f, "text"), f)
+    expect_no_error(.tpl_text_parse(f))
+  }
+  m <- .tpl_text_parse("{\"n\": \"{N:.0f}\", Mean (SD): [!r \"N < 3 ~ 1\", b]}")
+  expect_named(m, c("n", "Mean (SD)"))
+  expect_s3_class(m[["Mean (SD)"]][[1L]], "tfl_r")
+  expect_error(.tpl_text_parse("[a, b"))
+  expect_error(.tpl_text_parse("!r \"unclosed"))
+})
+
