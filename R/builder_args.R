@@ -201,7 +201,8 @@ args_from_r <- function(fn, text) {
 # several arguments with no name: one vector when they are all scalars of
 # a kind, else a list
 .args_simplify <- function(pos) {
-  if (all(vapply(pos, function(p) is.atomic(p) && length(p) == 1L && !is.object(p), NA))) {
+  if (all(vapply(pos, function(p) is.atomic(p) && length(p) == 1L && !is.object(p), NA)) &&
+      length(unique(vapply(pos, typeof, ""))) == 1L) {
     return(unlist(pos, use.names = FALSE))
   }
   pos
