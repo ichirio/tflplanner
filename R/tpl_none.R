@@ -7,14 +7,17 @@
 #   * a text / number / list field: the value reads "(none)" when unset, and
 #     the small "(none)" button under it writes it;
 #   * a flag: the switch off with a "(none)" note, and the same button.
-# Not on a required argument (it cannot be left out), nor on the columns
+# Not on a required argument (it cannot be left out), nor on one tflspec
+# marks `unset: "stop"`, nor on the columns
 # field (its own table).  What an input then gives is read by .tpl_value().
 
 .tpl_none_selects <- c("population", "data", "levels", "vars", "var", "chips", "choice", "choices")
 .tpl_none_buttons <- c("text", "number", "flag", "list")
 
 .tpl_none_wrap <- function(w, input_id, type, prm, none, t = identity) {
-  if (isTRUE(prm$required)) return(w)
+  # (nor on one tflspec says cannot be left unset: its `unset` "stop"; NA, a
+  # template not yet marked, still offers it)
+  if (isTRUE(prm$required) || identical(prm$unset, "stop")) return(w)
   if (type %in% .tpl_none_selects) {
     q <- htmltools::tagQuery(w)
     sel <- q$find("select")

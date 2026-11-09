@@ -226,6 +226,16 @@ test_that("fields without an unset render as before; a required one has no (none
   }
   # (the columns field has its own table: none)
   expect_identical(.tpl_none_wrap(widgets$text, "w", "columns", prm_opt, FALSE), widgets$text)
+  # (tflspec's `unset`: "stop" cannot be left unset, so no (none); "omit", "step_off" and NA offer it)
+  for (ty in c("text", "choice")) {
+    w <- widgets[[ty]]
+    stop_prm <- c(prm_opt, list(unset = "stop"))
+    expect_identical(as.character(.tpl_none_wrap(w, "w", ty, stop_prm, FALSE)), as.character(w), info = ty)
+    for (u in list("omit", "step_off", NA_character_)) {
+      expect_match(as.character(.tpl_none_wrap(w, "w", ty, c(prm_opt, list(unset = u)), FALSE)), "(none)",
+                   fixed = TRUE, info = paste(ty, u))
+    }
+  }
 })
 
 test_that("a code SPEC card: !unset shows (none), is chosen, kept in the SPEC YAML and out of the program", {
