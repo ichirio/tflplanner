@@ -193,7 +193,9 @@
       if (!identical(h$params$planner_key, key())) return()
       d <- read_grid(h)
       if (is.null(d)) return()
-      guarded(rv$p <- set_sheet_rows(rv$p, sh, target(), d))
+      cand <- guarded(set_sheet_rows(rv$p, sh, target(), d))
+      # (a grid drawn again sends its rows back with no edit: no write then)
+      if (!is.null(cand) && !identical(cand$sheets[[sh]], rv$p$sheets[[sh]])) rv$p <- cand
       # the table's builder shows the sheets: drawn again from them
       if (sh %in% table_sheets() && identical(active_page(), "builder")) {
         rv$bver <- rv$bver + 1L
