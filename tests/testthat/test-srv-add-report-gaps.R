@@ -149,7 +149,8 @@ test_that("the dialog's Create waits for an ID and the required arguments, and t
     # (each kind has its template list; the chosen one's required argument is in the dialog)
     dlg <- add_modal(shown)
     for (k in c("table", "listing", "figure")) expect_match(dlg, sprintf('id="modal_tpl_%s"', k), fixed = TRUE)
-    expect_match(dlg, 'id="mtpl_demog__population"', fixed = TRUE)
+    # (a template with a data argument: its required fields drawn apart, to follow the dataset)
+    expect_match(add_html(output$mtpl_demog___req_box$html), 'id="mtpl_demog__population"', fixed = TRUE)
     expect_match(add_html(output$modal_ok_js$html), "prop('disabled', true)", fixed = TRUE)
     # an ID, but the analysis set is not chosen
     session$setInputs(modal_id = "ZZ-5")

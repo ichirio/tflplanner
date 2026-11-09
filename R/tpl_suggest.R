@@ -67,7 +67,7 @@
 
 # The suggestion as one line: the first few, then "..."
 .tpl_suggest_line <- function(sugg, n = 5L) {
-  paste0(paste(utils::head(sugg, n), collapse = ", "), if (length(sugg) > n) ", …")
+  paste0(paste(utils::head(sugg, n), collapse = ", "), if (length(sugg) > n) ", \u2026")
 }
 
 # A picked "Add all suggested" item taken for the suggested values, in its place
@@ -115,7 +115,7 @@
       " var has = s.options.hasOwnProperty(C.sentinel);",
       " if (rem.length >= 2) {",
       "  var d = {value: C.sentinel, optgroup: C.group, $order: -1,",
-      "   label: C.fmt.replace('{names}', rem.slice(0, 3).join(', ') + (rem.length > 3 ? ', …' : ''))};",
+      "   label: C.fmt.replace('{names}', rem.slice(0, 3).join(', ') + (rem.length > 3 ? ', \u2026' : ''))};",
       "  if (has) s.updateOption(C.sentinel, d); else s.addOption(d);",
       " } else if (has) s.removeOption(C.sentinel);",
       " s.refreshOptions(false); }")
