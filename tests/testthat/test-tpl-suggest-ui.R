@@ -170,3 +170,27 @@ test_that(".tpl_suggest_select: a multi-pick lists each suggested value, once, w
   expect_false(grepl("<option value=\"__tpl_suggest_all__\"", h1, fixed = TRUE))
   expect_match(h1, "value=\"V2\"", fixed = TRUE)
 })
+
+test_that("a template with a data argument: its required fields follow the dataset chosen", {
+  skip_on_cran()
+  local_home()
+  s <- ui_study("U7")
+  saveRDS(data.frame(USUBJID = "EX-1", AEBODSYS = "Cardiac disorders", AEDECOD = "Palpitations",
+                     stringsAsFactors = FALSE), file.path(s$path, "data/adam/adae.rds"))
+  saveRDS(data.frame(USUBJID = "EX-1", CMCLAS = "Analgesics", CMDECOD = "Paracetamol",
+                     stringsAsFactors = FALSE), file.path(s$path, "data/adam/adcm.rds"))
+  shiny::testServer(server_for("U7"), {
+    session$setInputs(add = 1, modal_type = "table", modal_how = "template", modal_tpl_table = "hierarchical",
+                      modal_id = "T-H", modal_desc = "x")
+    box <- function() as.character(output$mtpl_hierarchical___req_box$html)
+    expect_match(box(), "Suggested: AEBODSYS, AEDECOD", fixed = TRUE)
+    session$setInputs(mtpl_hierarchical__data = "ADCM")
+    expect_match(box(), "Suggested: CMCLAS, CMDECOD", fixed = TRUE)
+    expect_false(grepl("AEBODSYS", box(), fixed = TRUE))
+    # ("Add all" picked: the new dataset's values)
+    session$setInputs(mtpl_hierarchical__population = "SAF", mtpl_hierarchical__hierarchy = .tpl_suggest_all)
+    session$setInputs(add_ok = 1)
+    tp <- .tpl_of(session$userData$rv$p, "T-H")
+    expect_identical(tp$args$hierarchy, c("CMCLAS", "CMDECOD"))
+  })
+})

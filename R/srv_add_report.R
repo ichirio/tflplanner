@@ -43,10 +43,16 @@
   # columns field tells the server its rows from the start.  `tpl`: the
   # template's name, for the suggestion of a field that has no value and no
   # default (its placeholder and the top of its choices; never filled in)
-  # the suggestion for a template's argument, from the dialog's data (none: character())
-  tpl_suggestion <- function(tpl, arg, params = list()) {
-    .tpl_suggest_for(tpl, arg, tpl_data(), list(), if (length(params)) params else .tpl_params(tpl),
+  # the suggestion for a template's argument, from the dialog's data (none: character());
+  # `args$data`: the dataset it reads, when not the template's default
+  tpl_suggestion <- function(tpl, arg, params = list(), args = list()) {
+    .tpl_suggest_for(tpl, arg, tpl_data(), args, if (length(params)) params else .tpl_params(tpl),
                      study = rv$p$spec$study)
+  }
+  # the dataset chosen in the dialog's `data` field (NULL: the template's default)
+  tpl_cur_data <- function(nm) {
+    v <- input[[tpl_arg_id(nm, "data")]]
+    if (is.character(v) && length(v) == 1L && nzchar(v)) v
   }
   tpl_widget <- function(input_id, prm, value, dataset = NULL, params = list(), args = list(),
                          label = tpl_label(prm), say_first = FALSE, tpl = NULL) {
@@ -59,7 +65,8 @@
     shut <- I("function() { this.close(); this.blur(); }")
     rm_btn <- list(plugins = list("remove_button"), onItemRemove = shut)
     sugg <- if (!is.null(tpl) && type %in% c("vars", "var", "chips", "levels") && .tpl_blank(shown)) {
-      tpl_suggestion(tpl, prm$name, params)
+      tpl_suggestion(tpl, prm$name, params,
+                     if (is.null(args$data) && !is.null(dataset)) c(args, list(data = dataset)) else args)
     } else character()
     switch(type,
       population = shiny::selectInput(input_id, lab, pop_choices(),
@@ -180,17 +187,39 @@
               } else shiny::div(
                 class = "border rounded p-2 mb-2",
                 shiny::h6(t("Required arguments")),
-                # (the study's value first: its treatment for `by`)
-                lapply(req_p, function(x) tpl_widget(tpl_arg_id(nm, x$name), x,
-                                                     .tpl_study_value(rv$p$spec$study, x),
-                                                     dataset = prm$data$default, params = prm,
-                                                     say_first = TRUE, tpl = nm))))
+                # (a template with a `data` argument: drawn again when it changes)
+                if (is.null(prm$data)) tpl_req_widgets(nm) else
+                  shiny::uiOutput(tpl_arg_id(nm, ".req_box"))))
           })))
     }),
     # the chosen template's other arguments, with their defaults (drawn for
     # it alone: a template has a dozen)
     shiny::uiOutput("tpl_modal_more"))
   }
+  # the dialog's required arguments of a template, for the dataset `ds` (NULL:
+  # the template's default); the study's value first: its treatment for `by`
+  tpl_req_widgets <- function(nm, ds = NULL) {
+    prm <- .tpl_shown(.tpl_params(nm))
+    lapply(Filter(function(x) isTRUE(x$required), prm), function(x) {
+      tpl_widget(tpl_arg_id(nm, x$name), x, .tpl_study_value(rv$p$spec$study, x),
+                 dataset = ds %||% prm$data$default, params = prm, say_first = TRUE, tpl = nm)
+    })
+  }
+  # (... drawn again, for a template with a `data` argument, when the dataset in
+  # it changes: its columns and suggestions are the new dataset's; one output a
+  # template, bound the first time it is chosen)
+  tpl_req_bound <- new.env()
+  shiny::observeEvent(tpl_chosen(), {
+    nm <- tpl_chosen()
+    if (is.null(.tpl_shown(.tpl_params(nm))$data) || exists(nm, tpl_req_bound, inherits = FALSE)) return()
+    assign(nm, TRUE, envir = tpl_req_bound)
+    box <- tpl_arg_id(nm, ".req_box")
+    output[[box]] <- shiny::renderUI({
+      ds <- tpl_cur_data(nm)
+      shiny::isolate(tpl_req_widgets(nm, ds))
+    })
+    shiny::outputOptions(output, box, suspendWhenHidden = FALSE)
+  })
   # (an optional argument's value as the dialog starts it: the study's,
   # else the template's default)
   tpl_opt_start <- function(x) .tpl_study_value(rv$p$spec$study, x) %||% x$default
@@ -279,7 +308,11 @@
   # what is in an argument's field (a picked "Add all suggested" is the suggestion)
   tpl_picked <- function(nm, x) {
     v <- input[[tpl_arg_id(nm, x$name)]]
-    if (.tpl_suggest_all %in% v) v <- .tpl_suggest_expand(v, tpl_suggestion(nm, x$name, .tpl_shown(.tpl_params(nm))))
+    if (.tpl_suggest_all %in% v) {
+      ds <- tpl_cur_data(nm)
+      v <- .tpl_suggest_expand(v, tpl_suggestion(nm, x$name, .tpl_shown(.tpl_params(nm)),
+                                                 if (!is.null(ds)) list(data = ds) else list()))
+    }
     v
   }
   # the required arguments the dialog has (NULL: one is empty)
