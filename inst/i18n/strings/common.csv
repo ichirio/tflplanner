@@ -2162,3 +2162,4 @@
 "the reference arm, put first; NULL: the first arm in the code list's order, or in its number order","基準群（最初に置きます）; NULL: コードリストの順、それが無ければ番号の順で最初の投与群"
 "the one arm to show against the reference (not the reference itself); NULL: every other arm","基準群に対して示す 1 つの投与群（基準群そのものは選べません）; NULL: 他のすべての投与群"
 "With pages_page_by: the text a blank or missing BY value prints as in the page's heading and name (plan_paginate_rows(na_label = )); blank: empty.","pages_page_by のとき、空欄または欠測の BY の値を、ページの見出しと名前に出すときの文字（plan_paginate_rows(na_label = )）。空欄 = 空文字です。"
+"The rule under the last row of each row group: sides, or none; blank: none.","各行グループの最後の行の下の罫線：辺か none。空欄 = なし。"
