@@ -173,7 +173,11 @@ test_that("the drafts checked: tflspec's list (reports, next_steps, assumptions)
   # a request's status: its worst report's
   expect_identical(.ai_request_status(c("ae-1", "efficacy-1", "x"), r), c("error", "no answer", NA))
   expect_identical(.ai_status_label(c("demographics-1", "ae-1", "efficacy-1"), r),
-                   c("ok 1", "error 2", "no answer"))
+                   c("OK 1", "ERROR 2", "no draft"))
+  # (the app's words for the levels: the same as step 3's table)
+  ja <- c(OK = "OK", ERROR = "ERROR", `no draft` = "下書きなし")
+  expect_identical(.ai_status_label(c("ae-1", "efficacy-1"), r, function(x) unname(ja[x])),
+                   c("ERROR 2", "下書きなし"))
   n <- .ai_counts(.ai_requests(path), co)
   expect_identical(n$drafts, 2L)
   expect_null(n$answers)
@@ -260,6 +264,8 @@ test_that("steps 2 to 4: the list and its drafts, Check, the levels and what is 
     expect_match(html, "<td class=\"text-success\">OK</td>", fixed = TRUE)
     expect_match(html, "<td class=\"text-muted\">no draft</td>", fixed = TRUE)
     expect_match(html, "1 to confirm", fixed = TRUE)
+    # the status line above it: the same words as the table's levels
+    expect_match(output$`ai-status_line`$html, "OK 2, WARNING 0, no draft 3, ERROR 0", fixed = TRUE)
     expect_match(html, "<details>", fixed = TRUE)
     expect_match(html, "the shell shows n (%) but not its denominator", fixed = TRUE)
     expect_match(html, "treatment-emergent is TRTEMFL", fixed = TRUE)
