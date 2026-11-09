@@ -1,0 +1,45 @@
+# Suggested values for a template report's required variable-set arguments.
+#
+# FIRST DRAFT: these lists are a starting point for the user to edit.
+#
+# template -> argument -> named candidate lists.  `max:` is the default one
+# (the largest set expected; only the variables the study's data has are
+# suggested, in this order); `stf:` is a second list, to be selectable later
+# (not used by default).  `data:` names the dataset to look in, only where
+# the template's own `data` argument/default does not give it.  `single:`
+# lists the arguments that take one variable: the first present is suggested.
+demog:
+  continuous:
+    max: [AGE, HEIGHTBL, WEIGHTBL, BMIBL]
+  categorical:
+    max: [SEX, AGEGR1, RACE, ETHNIC, COUNTRY]
+stf_t02_demog:
+  continuous:
+    max: [AGE, HEIGHTBL, WEIGHTBL, BMIBL]
+    stf: [AGE]
+  categorical:
+    max: [SEX, AGEGR1, RACE, ETHNIC, COUNTRY]
+    stf: [SEX, AGEGR1, RACE, ETHNIC]
+disposition:
+  data: ADSL
+  categorical:
+    max: [EOSSTT, DCSREAS]
+ae_soc_pt:
+  hierarchy:
+    max: [AEBODSYS, AEDECOD]
+ae_ser_soc_pt:
+  hierarchy:
+    max: [AEBODSYS, AEDECOD]
+ae_disc_soc_pt:
+  hierarchy:
+    max: [AEBODSYS, AEDECOD]
+ae_max_grade:
+  hierarchy:
+    max: [AEBODSYS, AEDECOD]
+ae_pt_freq:
+  single: [term]
+  term:
+    max: [AEDECOD]
+forest_hr:
+  subgroups:
+    max: [SEX, AGEGR1, RACE]
